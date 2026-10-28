@@ -1,0 +1,359 @@
+{
+  "as_of": "2026-10-28",
+  "scope": "Official public README, documentation and selected license snapshots for continuous-evolution research; no runtime, benchmark or security acceptance. Mutable HEAD/latest snapshots, not pinned release identities. Failed URL guesses remain recorded; canonical DGM source was later obtained via its official research page.",
+  "records": [
+    {
+      "id": "ace",
+      "repo": "ace-agent/ace",
+      "url": "https://raw.githubusercontent.com/ace-agent/ace/HEAD/README.md",
+      "final_url": "https://raw.githubusercontent.com/ace-agent/ace/HEAD/README.md",
+      "sha256": "49ade80bc5d5947a439f8c9861b57bde31531e2962638f78ff53b57b90428cd0",
+      "bytes": 14482,
+      "checked_on": "2026-10-28",
+      "status": "ok"
+    },
+    {
+      "id": "agent-lightning",
+      "repo": "microsoft/agent-lightning",
+      "url": "https://raw.githubusercontent.com/microsoft/agent-lightning/HEAD/README.md",
+      "final_url": "https://raw.githubusercontent.com/microsoft/agent-lightning/HEAD/README.md",
+      "sha256": "aabd3c1ff7dbf32f717cc98b6cbcaece27bf13de52f46d46acde9108c8f61edf",
+      "bytes": 11560,
+      "checked_on": "2026-10-28",
+      "status": "ok"
+    },
+    {
+      "id": "agent-skills-spec",
+      "url": "https://raw.githubusercontent.com/agentskills/agentskills/HEAD/docs/specification.mdx",
+      "checked_on": "2026-10-28",
+      "repo": "agentskills/agentskills",
+      "final_url": "https://raw.githubusercontent.com/agentskills/agentskills/HEAD/docs/specification.mdx",
+      "sha256": "b9079c0c10b7930e8c6a20ff2bc10cda2a3343c55185120e3f1116a1a529b220",
+      "bytes": 7166,
+      "status": "ok"
+    },
+    {
+      "id": "changedetection",
+      "repo": "dgtlmoon/changedetection.io",
+      "url": "https://raw.githubusercontent.com/dgtlmoon/changedetection.io/HEAD/README.md",
+      "final_url": "https://raw.githubusercontent.com/dgtlmoon/changedetection.io/HEAD/README.md",
+      "sha256": "76e57990070fa03f4001fbd04849f0e521747dc04c96bd5c200a7fbaa7b2bf4b",
+      "bytes": 22415,
+      "checked_on": "2026-10-28",
+      "status": "ok"
+    },
+    {
+      "id": "cognee",
+      "repo": "topoteretes/cognee",
+      "url": "https://raw.githubusercontent.com/topoteretes/cognee/HEAD/README.md",
+      "final_url": "https://raw.githubusercontent.com/topoteretes/cognee/HEAD/README.md",
+      "sha256": "a19c715a2c161960f222eb1d52b1f28048bf6d998c8e7b7013bc3cf024c15a89",
+      "bytes": 18243,
+      "checked_on": "2026-10-28",
+      "status": "ok"
+    },
+    {
+      "id": "deepagents",
+      "repo": "langchain-ai/deepagents",
+      "url": "https://raw.githubusercontent.com/langchain-ai/deepagents/HEAD/README.md",
+      "final_url": "https://raw.githubusercontent.com/langchain-ai/deepagents/HEAD/README.md",
+      "sha256": "24666c576b54e1e1ed9793b97971f8cb0e16ebb9d0ab9a887989c6e4dfece4ac",
+      "bytes": 7043,
+      "checked_on": "2026-10-28",
+      "status": "ok"
+    },
+    {
+      "id": "deerflow",
+      "repo": "bytedance/deer-flow",
+      "url": "https://raw.githubusercontent.com/bytedance/deer-flow/HEAD/README.md",
+      "final_url": "https://raw.githubusercontent.com/bytedance/deer-flow/HEAD/README.md",
+      "sha256": "89bccd0b1fc661d00f4ee798037b29c3aa3f6e7888f9d12ddcf4964b20d7e5e0",
+      "bytes": 364375,
+      "checked_on": "2026-10-28",
+      "status": "ok"
+    },
+    {
+      "id": "dgm",
+      "repo": "SakanaAI/DarwinianGodelMachine",
+      "url": "https://raw.githubusercontent.com/SakanaAI/DarwinianGodelMachine/HEAD/README.md",
+      "checked_on": "2026-10-28",
+      "status": "error",
+      "error": "HTTP Error 404: Not Found"
+    },
+    {
+      "id": "dgm-canonical",
+      "url": "https://raw.githubusercontent.com/jennyzzt/dgm/HEAD/README.md",
+      "checked_on": "2026-10-28",
+      "repo": "jennyzzt/dgm",
+      "final_url": "https://raw.githubusercontent.com/jennyzzt/dgm/HEAD/README.md",
+      "sha256": "9760f30330e519946592ae88178f579dd717c3e55d3d461322e5facfa09c6bd4",
+      "bytes": 4232,
+      "status": "ok"
+    },
+    {
+      "id": "dgm-official",
+      "url": "https://sakana.ai/dgm/",
+      "checked_on": "2026-10-28",
+      "final_url": "https://sakana.ai/dgm/",
+      "sha256": "3427fdd07f4f39a9a2cf8220cd6ec2b1c3b84e87af208b390eaa6d6fc3575fb7",
+      "bytes": 21359,
+      "status": "ok"
+    },
+    {
+      "id": "dspy",
+      "repo": "stanfordnlp/dspy",
+      "url": "https://raw.githubusercontent.com/stanfordnlp/dspy/HEAD/README.md",
+      "final_url": "https://raw.githubusercontent.com/stanfordnlp/dspy/HEAD/README.md",
+      "sha256": "9b2fa5d078b4e4aafe6f8a91d5677c735427e149a235708d98a18c28db8efdea",
+      "bytes": 4788,
+      "checked_on": "2026-10-28",
+      "status": "ok"
+    },
+    {
+      "id": "evoagentx",
+      "repo": "EvoAgentX/EvoAgentX",
+      "url": "https://raw.githubusercontent.com/EvoAgentX/EvoAgentX/HEAD/README.md",
+      "final_url": "https://raw.githubusercontent.com/EvoAgentX/EvoAgentX/HEAD/README.md",
+      "sha256": "2b01b62fc0c4ef5cf43231f69859fc485e79fbe190dcce4943aa4b174d144670",
+      "bytes": 36972,
+      "checked_on": "2026-10-28",
+      "status": "ok"
+    },
+    {
+      "id": "gepa",
+      "repo": "gepa-ai/gepa",
+      "url": "https://raw.githubusercontent.com/gepa-ai/gepa/HEAD/README.md",
+      "final_url": "https://raw.githubusercontent.com/gepa-ai/gepa/HEAD/README.md",
+      "sha256": "10d7f30035b21bb38fde51fb3ccc0fc64d5e8b64ab51c09731606132782a57b2",
+      "bytes": 39867,
+      "checked_on": "2026-10-28",
+      "status": "ok"
+    },
+    {
+      "id": "gepa-license",
+      "url": "https://raw.githubusercontent.com/gepa-ai/gepa/HEAD/LICENSE",
+      "checked_on": "2026-10-28",
+      "repo": "gepa-ai/gepa",
+      "final_url": "https://raw.githubusercontent.com/gepa-ai/gepa/HEAD/LICENSE",
+      "sha256": "10c47467a961feb40adf3294fe27dd9cba79d4d1b7cf27173b1c34586d4126c3",
+      "bytes": 1067,
+      "status": "ok"
+    },
+    {
+      "id": "gepa-skill-guide",
+      "url": "https://gepa-ai.github.io/gepa/guides/agent-skill/",
+      "checked_on": "2026-10-28",
+      "final_url": "https://gepa-ai.github.io/gepa/guides/agent-skill/",
+      "sha256": "36614bbeb849aca304b044ae4a68b6d0718c329d100c7860eb560548a6967d81",
+      "bytes": 89826,
+      "status": "ok"
+    },
+    {
+      "id": "gepa-skill-learning",
+      "url": "https://gepa-ai.github.io/gepa/blog/2026/02/18/automatically-learning-skills-for-coding-agents/",
+      "checked_on": "2026-10-28",
+      "final_url": "https://gepa-ai.github.io/gepa/blog/2026/02/18/automatically-learning-skills-for-coding-agents/",
+      "sha256": "5f0ba2169fa088855fad93198a4c1e82a431141e486fd2d9cb696f6ba52c934a",
+      "bytes": 106212,
+      "status": "ok"
+    },
+    {
+      "id": "gpt-researcher",
+      "repo": "assafelovic/gpt-researcher",
+      "url": "https://raw.githubusercontent.com/assafelovic/gpt-researcher/HEAD/README.md",
+      "final_url": "https://raw.githubusercontent.com/assafelovic/gpt-researcher/HEAD/README.md",
+      "sha256": "a43c071ae3d19ae35631ae325742b973a8a925ecc3669563c67ed759398ec0e2",
+      "bytes": 19172,
+      "checked_on": "2026-10-28",
+      "status": "ok"
+    },
+    {
+      "id": "graphiti",
+      "repo": "getzep/graphiti",
+      "url": "https://raw.githubusercontent.com/getzep/graphiti/HEAD/README.md",
+      "final_url": "https://raw.githubusercontent.com/getzep/graphiti/HEAD/README.md",
+      "sha256": "831ab734e5b6713741dbfc15712f01f78fff7e0d6b5be86c5c20acd17c4249e4",
+      "bytes": 35215,
+      "checked_on": "2026-10-28",
+      "status": "ok"
+    },
+    {
+      "id": "hermes-agent",
+      "repo": "NousResearch/hermes-agent",
+      "url": "https://raw.githubusercontent.com/NousResearch/hermes-agent/HEAD/README.md",
+      "final_url": "https://raw.githubusercontent.com/NousResearch/hermes-agent/HEAD/README.md",
+      "sha256": "38b023e1bb33bf302dbc7d0856dd7d79e87cbd67de506dac47a3fed6e5c776bc",
+      "bytes": 17490,
+      "checked_on": "2026-10-28",
+      "status": "ok"
+    },
+    {
+      "id": "hermes-license",
+      "url": "https://raw.githubusercontent.com/NousResearch/hermes-agent/HEAD/LICENSE",
+      "checked_on": "2026-10-28",
+      "repo": "NousResearch/hermes-agent",
+      "final_url": "https://raw.githubusercontent.com/NousResearch/hermes-agent/HEAD/LICENSE",
+      "sha256": "821556e6336796450ab852d375117b48a4887e71d255794fd6318d99982a5ab6",
+      "bytes": 1070,
+      "status": "ok"
+    },
+    {
+      "id": "hindsight",
+      "repo": "vectorize-io/hindsight",
+      "url": "https://raw.githubusercontent.com/vectorize-io/hindsight/HEAD/README.md",
+      "final_url": "https://raw.githubusercontent.com/vectorize-io/hindsight/HEAD/README.md",
+      "sha256": "a3e2745dedec4f9e0d4452857ef054699e60414740f5d8f12d41bd42711d476a",
+      "bytes": 24997,
+      "checked_on": "2026-10-28",
+      "status": "ok"
+    },
+    {
+      "id": "letta",
+      "repo": "letta-ai/letta",
+      "url": "https://raw.githubusercontent.com/letta-ai/letta/HEAD/README.md",
+      "final_url": "https://raw.githubusercontent.com/letta-ai/letta/HEAD/README.md",
+      "sha256": "67ec50661bb95db1839101863f08eaaa3cae3f2cc804adb2250a058393e56417",
+      "bytes": 1477,
+      "checked_on": "2026-10-28",
+      "status": "ok"
+    },
+    {
+      "id": "letta-code",
+      "repo": "letta-ai/letta-code",
+      "url": "https://raw.githubusercontent.com/letta-ai/letta-code/HEAD/README.md",
+      "final_url": "https://raw.githubusercontent.com/letta-ai/letta-code/HEAD/README.md",
+      "sha256": "7543b5df7349bb8fbdbf7f377a161c3163b6ff062a9c6f7b7430a5ca9a3d0abe",
+      "bytes": 9952,
+      "checked_on": "2026-10-28",
+      "status": "ok"
+    },
+    {
+      "id": "letta-code-license",
+      "url": "https://raw.githubusercontent.com/letta-ai/letta-code/HEAD/LICENSE",
+      "checked_on": "2026-10-28",
+      "repo": "letta-ai/letta-code",
+      "final_url": "https://raw.githubusercontent.com/letta-ai/letta-code/HEAD/LICENSE",
+      "sha256": "036e78b9d7dd33ae5b378fdda973b4aad7901c8d8371a0ae40fae1f6659a89d0",
+      "bytes": 11092,
+      "status": "ok"
+    },
+    {
+      "id": "mem0",
+      "repo": "mem0ai/mem0",
+      "url": "https://raw.githubusercontent.com/mem0ai/mem0/HEAD/README.md",
+      "final_url": "https://raw.githubusercontent.com/mem0ai/mem0/HEAD/README.md",
+      "sha256": "f72db3426438dbdf6879a2b50583fbee8e7e2dde5d01308c6295bcd09fd3db86",
+      "bytes": 12306,
+      "checked_on": "2026-10-28",
+      "status": "ok"
+    },
+    {
+      "id": "memos",
+      "repo": "MemTensor/MemOS",
+      "url": "https://raw.githubusercontent.com/MemTensor/MemOS/HEAD/README.md",
+      "final_url": "https://raw.githubusercontent.com/MemTensor/MemOS/HEAD/README.md",
+      "sha256": "9c2ec97ba97e5371088e041d04085f70195b4626a9dcb517194f90b9495b30dc",
+      "bytes": 17535,
+      "checked_on": "2026-10-28",
+      "status": "ok"
+    },
+    {
+      "id": "memu",
+      "repo": "NevaMind-AI/memU",
+      "url": "https://raw.githubusercontent.com/NevaMind-AI/memU/HEAD/README.md",
+      "final_url": "https://raw.githubusercontent.com/NevaMind-AI/memU/HEAD/README.md",
+      "sha256": "7d0a113f84c1de65b2ecadcf457e0dec4173cbfa6398bd4c1ab63bde1c0d58f3",
+      "bytes": 12305,
+      "checked_on": "2026-10-28",
+      "status": "ok"
+    },
+    {
+      "id": "mlflow-optimize",
+      "url": "https://mlflow.org/docs/latest/genai/prompt-registry/optimize-prompts/",
+      "checked_on": "2026-10-28",
+      "final_url": "https://mlflow.org/docs/latest/genai/prompt-registry/optimize-prompts/",
+      "sha256": "72a8349c947f6b2b98037ac2f28d30ce49b654b273f53d58b05cee5f603fe050",
+      "bytes": 224736,
+      "status": "ok"
+    },
+    {
+      "id": "openevolve",
+      "repo": "codelion/openevolve",
+      "url": "https://raw.githubusercontent.com/codelion/openevolve/HEAD/README.md",
+      "final_url": "https://raw.githubusercontent.com/codelion/openevolve/HEAD/README.md",
+      "sha256": "0bdc9574cd1c047c89607f81e21bad1fd51ed194fcd9529ed9a15b3462ef9d4b",
+      "bytes": 36141,
+      "checked_on": "2026-10-28",
+      "status": "ok"
+    },
+    {
+      "id": "openviking",
+      "repo": "volcengine/OpenViking",
+      "url": "https://raw.githubusercontent.com/volcengine/OpenViking/HEAD/README.md",
+      "final_url": "https://raw.githubusercontent.com/volcengine/OpenViking/HEAD/README.md",
+      "sha256": "e6e7518a7e94294dbe40a2578c804e331a2567198470de54f39ccf74ab0349c0",
+      "bytes": 27231,
+      "checked_on": "2026-10-28",
+      "status": "ok"
+    },
+    {
+      "id": "reme",
+      "repo": "agentscope-ai/ReMe",
+      "url": "https://raw.githubusercontent.com/agentscope-ai/ReMe/HEAD/README.md",
+      "final_url": "https://raw.githubusercontent.com/agentscope-ai/ReMe/HEAD/README.md",
+      "sha256": "2db2aef02ad28fcd50a840958c04ec3d6fbc4b8102da6c2260ba575dd3b1e2fa",
+      "bytes": 29790,
+      "checked_on": "2026-10-28",
+      "status": "ok"
+    },
+    {
+      "id": "reme-codex",
+      "url": "https://raw.githubusercontent.com/agentscope-ai/ReMe/HEAD/integrations/codex/README.md",
+      "checked_on": "2026-10-28",
+      "repo": "agentscope-ai/ReMe",
+      "final_url": "https://raw.githubusercontent.com/agentscope-ai/ReMe/HEAD/integrations/codex/README.md",
+      "sha256": "eae9d8aed40b22931109c0c5cd2f3a7d1111e7bb5fa4124079a5f3cb273fec29",
+      "bytes": 14740,
+      "status": "ok"
+    },
+    {
+      "id": "reme-license",
+      "url": "https://raw.githubusercontent.com/agentscope-ai/ReMe/HEAD/LICENSE",
+      "checked_on": "2026-10-28",
+      "repo": "agentscope-ai/ReMe",
+      "final_url": "https://raw.githubusercontent.com/agentscope-ai/ReMe/HEAD/LICENSE",
+      "sha256": "cc54d679aaced751c096f120b666355c106d9394d28f93f6df353973f6cd7dbe",
+      "bytes": 11343,
+      "status": "ok"
+    },
+    {
+      "id": "shinkaevolve",
+      "repo": "SakanaAI/ShinkaEvolve",
+      "url": "https://raw.githubusercontent.com/SakanaAI/ShinkaEvolve/HEAD/README.md",
+      "final_url": "https://raw.githubusercontent.com/SakanaAI/ShinkaEvolve/HEAD/README.md",
+      "sha256": "59479b30a6292024ee0d32ccf156e96539d7221ca259402b1dc41aa59ebb666c",
+      "bytes": 31860,
+      "checked_on": "2026-10-28",
+      "status": "ok"
+    },
+    {
+      "id": "temporal-schedule",
+      "url": "https://docs.temporal.io/schedule.md",
+      "checked_on": "2026-10-28",
+      "final_url": "https://docs.temporal.io/schedule.md",
+      "sha256": "698328fe7cb6112a41be47be15a3441774b20d917bd42b8cf74ad55aba4731b0",
+      "bytes": 16495,
+      "status": "ok"
+    },
+    {
+      "id": "textgrad",
+      "repo": "zou-group/textgrad",
+      "url": "https://raw.githubusercontent.com/zou-group/textgrad/HEAD/README.md",
+      "final_url": "https://raw.githubusercontent.com/zou-group/textgrad/HEAD/README.md",
+      "sha256": "dec0a328e998dfdf721946d5f057a678a32e034877784d7a38881fae3df9e910",
+      "bytes": 19154,
+      "checked_on": "2026-10-28",
+      "status": "ok"
+    }
+  ]
+}
