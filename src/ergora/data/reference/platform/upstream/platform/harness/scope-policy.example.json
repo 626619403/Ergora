@@ -1,0 +1,6 @@
+{
+  "schema_version": 1,
+  "protected_paths": [".github", ".gitlab-ci.yml", ".gitlab", "infra/production", "platform-control"],
+  "max_changed_files": 30,
+  "max_changed_lines": 1200
+}

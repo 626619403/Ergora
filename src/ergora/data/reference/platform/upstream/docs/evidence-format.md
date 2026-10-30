@@ -1,0 +1,10 @@
+# 机器可读证据
+experiment.json定义完整commit、最终有效config哈希、dataset/初始checkpoint/硬件环境/质量契约与比较器版本哈希。
+注册时原字节固定；修改任何字段产生新experiment_id或修订，不覆盖已注册manifest。
+evidence.json的artifacts逐项使用规范相对路径与SHA256。禁止绝对路径、dot/dotdot、反斜杠及evidence.json/gate-result.json/_archive_meta保留路径。
+checks、quality、review、integration指向结构化JSON。每项至少包含kind、status、candidate_commit、manifest_sha256、validation_contract_sha256。kind分别为check:检查名、quality、review、integration；review还含reviewer_id，integration还含baseline_id。外层PASS不能覆盖内层FAIL。
+比较输入按research/measurement.md schema；每个pair的每个arm还须包含config_sha256与dataset_manifest_sha256，分别核对批准的baseline/candidate最终配置和数据manifest。matched_input_fingerprint保证该pair两臂实际输入/增强匹配，不能只比较样本数。
+性能policy由normalization_source_samples、statistics、thresholds三项组成，与批准manifest完全一致。比较器原字节SHA256也必须匹配，禁止临时换算法获得PASS。
+archive先复制私有快照再验证和原子发布；归档包含manifest、baseline和比较器快照。重复归档会检查内容地址与已有结果。
+当前gate检查当前基线适用性；旧基线历史归档不能因此自动采用。历史证据保留其快照单独复核。
+哈希与结构化JSON不能认证执行者或证明测试真实完成；请由受控runner产出，平台权限隔离检查器和审批，独立审计核验原始记录。

@@ -1,0 +1,53 @@
+<header class="hero">
+  <div class="eyebrow">AGENTFLOW · INSTALL → DEVELOP → VERIFY</div>
+  <h1>从全新 Linux 环境开始，<br><span>建立可复用的多 agent 工作流。</span></h1>
+  <p class="lede">Codex 实现与独立新会话审查；Temporal 编排，Supervisor 管理服务。每个项目使用自己的仓库、工单和任务分支，平台复用工具、模板与执行记录。</p>
+  <div class="hero-meta"><span class="pill">公开使用版 v2.2</span><span class="pill">Ubuntu 24.04 · Linux x86_64</span><span class="pill">3 个模板 · 2 份完整手册</span><span class="pill">home 持久安装 · 云端模型</span></div>
+  <div class="actions"><button class="primary" id="download-installer" data-download="install-agentflow.sh">下载全新环境一键安装器</button><button id="download-kit">下载完整部署包 ZIP</button><button data-download="downloads/agentflow-templates.zip">下载三个模板 ZIP</button><button id="print">打印 / 保存 PDF</button></div>
+  <p class="muted">无需预装 Python、Node、uv、Codex。安装器补齐工具；使用者随后配置自己的模型认证、执行边界与具体项目。安装不会自动登录、运行项目任务或开始训练。</p>
+  <div class="stats"><div class="stat"><strong>3</strong><span>治理 / 大型变更 / 训练优化</span></div><div class="stat"><strong>2</strong><span>部署使用 / 训练优化完整手册</span></div><div class="stat"><strong>同一 SHA</strong><span>固定候选验证与独立审查</span></div><div class="stat"><strong>人工决定</strong><span>计划、合并与实验采用</span></div></div>
+</header>
+
+<section id="platform"><div class="section-head"><span class="section-num">A</span><h2>工具栈、职责与适用边界</h2></div>
+  <div class="table-wrap"><table><thead><tr><th>层 / 工具</th><th>发布版本与职责</th><th>优势</th><th>使用条件 / 获取</th></tr></thead><tbody>{{STACK_ROWS}}</tbody></table></div>
+  <div class="callout"><b>项目独立，按工单建立分支</b><p>每个业务项目使用自己的 GitLab 项目、仓库与工单；在项目内创建 <code>agent/123-description</code> 这样的任务分支。平台目录只共享工具和状态。工单属于项目，分支保存对应改动。</p></div>
+  <details><summary>执行配置、容器与信任边界</summary><div class="detail-body">{{BOUNDARY}}</div></details>
+</section>
+
+<section id="portable-deploy"><div class="section-head"><span class="section-num">B</span><h2>从零安装：下载、运行与配置</h2></div>
+  <p>面向 Ubuntu 24.04 / Linux x86_64；需要网络及当前系统或容器内的 root/sudo 包安装权限。默认推荐在可信项目的执行容器中安装，home 使用持久卷。其他发行版或架构需按自己的包管理器和对应二进制适配。</p>
+  <div class="grid"><div class="card"><span class="tag">推荐 · 单文件入口</span><h3>直接下载并运行</h3>{{BOOTSTRAP_CODE}}<p>脚本内嵌完整源码，先安装 Python 和 Linux 支持包，再补齐固定版本 Node.js、uv、Codex、Temporal、Symphony 与 Python 环境。解包与长期文件均保存在 home。</p><button class="text-button" data-download="install-agentflow.sh">一键安装器 ↓</button></div><div class="card"><span class="tag">可审阅 · 源码包</span><h3>先解压，再安装</h3>{{EXPORT_CODE}}<p>可先审阅包内脚本与版本锁；已有不同源码会被保留并停止。<code>--check</code> 只检查源码和缓存，不启动服务。首次最小系统若没有 unzip，可选左侧单文件入口。</p><button class="text-button" data-download="INSTALL.zh-CN.md">安装步骤 ↓</button></div></div>
+  <details><summary>完整安装说明、网络与缓存</summary><div class="detail-body">{{INSTALL}}</div></details>
+  {{PATHS}}
+  <h3>官方工具与版本锁</h3><p>安装入口使用固定版本与哈希锁，便于审阅和复现。升级时更新锁并完成项目验收；滚动发布摘要变化时停止，不自动接受新版本。</p>
+  <div class="downloads"><button class="text-button" data-download="bootstrap/install-multi-agent-linux-deps.sh">Linux 依赖脚本 ↓</button><button class="text-button" data-download="bootstrap/install-multi-agent-platform.sh">已安装环境修复脚本 ↓</button><button class="text-button" data-download="bootstrap/report/public-release.json">工具版本清单 ↓</button><button class="text-button" data-download="requirements.lock">Python 哈希锁 ↓</button></div>
+  <p><a href="https://docs.astral.sh/uv/getting-started/installation/" target="_blank" rel="noopener noreferrer">uv</a> · <a href="https://nodejs.org/en/download" target="_blank" rel="noopener noreferrer">Node.js</a> · <a href="https://developers.openai.com/codex/cli/" target="_blank" rel="noopener noreferrer">Codex CLI</a> · <a href="{{TEMPORAL_URL}}" target="_blank" rel="noopener noreferrer">Temporal 固定归档</a> · <a href="https://github.com/openai/symphony" target="_blank" rel="noopener noreferrer">Symphony</a></p>
+  <p class="mini">部署包 SHA256：<code class="mono">{{KIT_SHA256}}</code></p><p class="mini">单文件安装器 SHA256：<code class="mono">{{INSTALLER_SHA256}}</code></p>
+</section>
+
+<section id="task-templates"><div class="section-head"><span class="section-num">C</span><h2>三个模板：选择、填写与验收</h2></div>
+  <p>模板是填写起点。项目名、提交、性能值和示例 PASS 都需替换为真实输入与证据。先确认目标、允许路径、基线和可信命令，再启动任务。</p><div class="grid3">{{TEMPLATE_CARDS}}</div>
+  <details><summary>工作单元 DAG 与可信检查</summary><div class="detail-body"><p>开发 input.json 包含 goal、allowed_paths、acceptance、constraints、risk、work_units。每个单元声明唯一 id、depends_on、paths、instructions；DAG 无环、所有权明确。大型变更先固定公共契约，再实现依赖模块。</p><p>治理要求 behavior、architecture、knowledge；大改额外要求 integration、compatibility、migration-rollback。缺项或基线失败会拒绝执行。CLI 固定 task、policy、binding 和模板快照；同一 ID 不可换输入，验证与审查绑定同一 candidate SHA。</p><div class="downloads"><button class="text-button" data-download="upstream/platform/PORTABILITY.md">契约格式 ↓</button><button class="text-button" data-download="upstream/platform/EXECUTOR_PROTOCOL.md">执行器协议 ↓</button><button class="text-button" data-download="upstream/platform/harness/README.md">检查器接入 ↓</button></div></div></details>
+  <div class="actions"><button data-download="downloads/agentflow-templates.zip">下载三个模板</button><button id="copy-setup">复制项目接入任务</button><button data-download="docs/PROJECT-ONBOARDING.zh-CN.md">下载项目接入任务</button></div>
+</section>
+
+<section id="dev-deploy"><div class="section-head"><span class="section-num">D</span><h2>部署与日常使用手册</h2></div>
+  <p>以下为完整操作主线；也可下载独立 Markdown，交给团队或项目维护者。</p><button class="text-button" data-download="README.zh-CN.md">下载部署与日常使用手册 ↓</button>
+  {{FIRST_INSTALL}}
+  {{AUTH}}
+  <div class="flow"><div class="node"><b>1 基线与范围</b><small>真实提交、可信检查</small></div><div class="node"><b>2 人工批准计划</b><small>批准精确 plan SHA</small></div><div class="node"><b>3 Codex 实现</b><small>DAG 与 worktree</small></div><div class="node"><b>4 集成与验证</b><small>固定 candidate SHA</small></div><div class="node"><b>5 Codex 独立审查</b><small>独立新会话</small></div><div class="node"><b>6 导出与人审</b><small>任务分支、MR、复验</small></div></div>
+  {{DEVELOPMENT}}
+  {{SEARCH}}
+  {{GITLAB}}
+  <details><summary>对话、CLI、A2A 如何配合</summary><div class="detail-body"><p>首次项目接入，把“项目接入任务”交给开发 agent，并提供仓库路径、目标与允许范围。先盘点真实命令和基线，再注册项目与创建任务。CLI 负责确定的启动、查询、批准与取消；Temporal UI 看历史；MLflow 看实验观测。</p><p>人工批准应在阅读精确计划后进行。A2A 支持其他 agent 委托任务，保持相同输入、审批与证据要求；CLI/A2A/Symphony 共享工单归属。上游 Cloud、独立身份和集群文档是扩展部署参考。</p><button class="text-button" data-download="upstream/platform/A2A.md">A2A 协议与客户端 ↓</button><button class="text-button" data-download="upstream/platform/INGRESS.md">入口所有权 ↓</button></div></details>
+</section>
+
+<section id="training-local"><div class="section-head"><span class="section-num">E</span><h2>训练优化手册</h2></div><button class="text-button" data-download="docs/TRAINING.md">下载训练优化手册 ↓</button>{{TRAINING}}</section>
+
+<section id="dev-operations"><div class="section-head"><span class="section-num">F</span><h2>服务、恢复、验证与维护</h2></div>{{SERVICES}}{{BACKUP}}
+  <details><summary>完整验证与维护指南</summary><div class="detail-body">{{VALIDATION}}</div></details>
+  <div class="checklist"><label><input type="checkbox" data-check="public-tools"><span>已安装工具，检查版本锁与 home 持久化</span></label><label><input type="checkbox" data-check="public-auth"><span>已配置自己的模型认证与执行边界</span></label><label><input type="checkbox" data-check="public-project"><span>已提交项目基线、替换示例并配置真实检查</span></label><label><input type="checkbox" data-check="public-flow"><span>已完成项目自己的审批、独立审查、取消与恢复验证</span></label></div><p class="mini">清单仅保存于浏览器，不会启动或批准工作流。实际结果应在项目自己的证据中记录。</p>
+</section>
+
+<details id="training-appendix" class="training-appendix"><summary>G 研究附录：计量、十二个优化方向与组合规则</summary><div class="detail-body"><p>工程研究与任务卡供具体训练项目参考。硬件、数据、数值容差和训练质量需要项目自行验证；研究资料不构成效果保证。Cloud、Slurm、Kubernetes 与团队身份作为扩展方案。</p>{{RESEARCH}}</div></details>
+<footer class="footnote"><p>公开使用版 v2.2 · 2026-10-28。包内提供通用工具安装、可复用适配器、三个模板和两份完整手册；不包含任何使用者的私有配置、账号、项目数据或预设验收状态。</p><p>本页可离线阅读，下载按钮在浏览器本地生成文件。安装与模型/工单访问需要网络及使用者自己的授权。</p></footer>

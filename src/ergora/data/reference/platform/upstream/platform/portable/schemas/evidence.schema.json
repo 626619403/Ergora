@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-platform:portable:evidence:v1",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "evidence_id": {
+      "const": "candidate-evidence-v1"
+    },
+    "required_checks": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"
+      },
+      "minItems": 1,
+      "maxItems": 40,
+      "uniqueItems": true
+    },
+    "artifacts_by_stage": {
+      "type": "object",
+      "properties": {
+        "inventory": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"
+          },
+          "minItems": 1,
+          "maxItems": 30,
+          "uniqueItems": true
+        },
+        "plan": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"
+          },
+          "minItems": 1,
+          "maxItems": 30,
+          "uniqueItems": true
+        },
+        "work": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"
+          },
+          "minItems": 1,
+          "maxItems": 30,
+          "uniqueItems": true
+        },
+        "integrate": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"
+          },
+          "minItems": 1,
+          "maxItems": 30,
+          "uniqueItems": true
+        },
+        "verify": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"
+          },
+          "minItems": 1,
+          "maxItems": 30,
+          "uniqueItems": true
+        },
+        "review": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"
+          },
+          "minItems": 1,
+          "maxItems": 30,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "inventory",
+        "plan",
+        "work",
+        "integrate",
+        "verify",
+        "review"
+      ],
+      "additionalProperties": false
+    },
+    "protected_paths": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 300
+      },
+      "minItems": 1,
+      "maxItems": 64,
+      "uniqueItems": true
+    },
+    "required_capabilities": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 12000
+      },
+      "minItems": 1,
+      "maxItems": 64,
+      "uniqueItems": true
+    }
+  },
+  "required": [
+    "schema_version",
+    "evidence_id",
+    "required_checks",
+    "artifacts_by_stage",
+    "protected_paths",
+    "required_capabilities"
+  ],
+  "additionalProperties": false,
+  "x-semantic-validation": [
+    "dev_platform.portable validators enforce digests, canonical paths, policy authority boundaries, capability and workflow support, DAG ownership, legacy profile equivalence and payload bounds. A JSON Schema pass alone is insufficient."
+  ]
+}

@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-platform:portable:roles:v1",
+  "const": {
+    "schema_version": 1,
+    "roles": {
+      "inspector": {
+        "capabilities": [
+          "repository-read",
+          "baseline-inspection"
+        ],
+        "actor_kinds": [
+          "agent",
+          "human"
+        ],
+        "forbidden_actions": [
+          "approve-own-plan",
+          "merge",
+          "deploy",
+          "change-trusted-policy"
+        ],
+        "independent_from": []
+      },
+      "planner": {
+        "capabilities": [
+          "repository-read",
+          "plan-write"
+        ],
+        "actor_kinds": [
+          "agent",
+          "human"
+        ],
+        "forbidden_actions": [
+          "approve-own-plan",
+          "merge",
+          "deploy",
+          "change-trusted-policy"
+        ],
+        "independent_from": []
+      },
+      "implementer": {
+        "capabilities": [
+          "scoped-code-write",
+          "test-execution"
+        ],
+        "actor_kinds": [
+          "agent",
+          "human"
+        ],
+        "forbidden_actions": [
+          "approve-own-plan",
+          "merge",
+          "deploy",
+          "change-trusted-policy"
+        ],
+        "independent_from": []
+      },
+      "integrator": {
+        "capabilities": [
+          "candidate-integration"
+        ],
+        "actor_kinds": [
+          "agent",
+          "human"
+        ],
+        "forbidden_actions": [
+          "approve-own-plan",
+          "merge",
+          "deploy",
+          "change-trusted-policy"
+        ],
+        "independent_from": []
+      },
+      "verifier": {
+        "capabilities": [
+          "trusted-ci-verification"
+        ],
+        "actor_kinds": [
+          "ci"
+        ],
+        "forbidden_actions": [
+          "approve-own-plan",
+          "merge",
+          "deploy",
+          "change-trusted-policy"
+        ],
+        "independent_from": [
+          "authors"
+        ]
+      },
+      "reviewer": {
+        "capabilities": [
+          "independent-candidate-review"
+        ],
+        "actor_kinds": [
+          "agent",
+          "human"
+        ],
+        "forbidden_actions": [
+          "approve-own-plan",
+          "merge",
+          "deploy",
+          "change-trusted-policy"
+        ],
+        "independent_from": [
+          "authors"
+        ]
+      }
+    }
+  },
+  "type": "object",
+  "x-semantic-validation": [
+    "dev_platform.portable validators enforce digests, canonical paths, policy authority boundaries, capability and workflow support, DAG ownership, legacy profile equivalence and payload bounds. A JSON Schema pass alone is insufficient."
+  ]
+}

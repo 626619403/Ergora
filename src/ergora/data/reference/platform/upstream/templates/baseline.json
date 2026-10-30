@@ -1,0 +1,8 @@
+{
+  "baseline_id": "b0001",
+  "commit": "REPLACE_FULL_SHA",
+  "config_sha256": "REPLACE_SHA256",
+  "workload_fingerprint": "REPLACE_SHA256",
+  "evidence_uri": "REPLACE_STABLE_URI",
+  "quality_scope": "REPLACE"
+}

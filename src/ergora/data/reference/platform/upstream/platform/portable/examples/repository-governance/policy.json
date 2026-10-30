@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "policy_id": "demo-project-policy",
+  "revision": 1,
+  "project_id": "demo-project",
+  "package_sha256": "84576faa65399513f340ba2362582af2568d247f7d4d2a8a1e7e876273bbca4e",
+  "tracker_scope": {
+    "kind": "gitlab",
+    "project": "YOUR_GROUP/YOUR_REPO"
+  },
+  "base_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "allowed_paths": [
+    "AGENTS.md",
+    "ARCHITECTURE.md",
+    "docs/governance",
+    "tests/architecture"
+  ],
+  "protected_paths": [
+    ".git",
+    ".symphony",
+    ".agent-control",
+    ".agent-platform-private"
+  ],
+  "allowed_risks": [
+    "standard"
+  ],
+  "max_work_units": 4,
+  "max_parallel_units": 2,
+  "required_checks": [
+    "scope",
+    "behavior",
+    "architecture",
+    "knowledge",
+    "baseline-regression"
+  ],
+  "required_capabilities": [
+    "immutable-input",
+    "durable-recovery",
+    "dag-work-units",
+    "human-plan-approval",
+    "candidate-bound-evidence",
+    "independent-verification",
+    "independent-review",
+    "cooperative-cancel-fence",
+    "review-ready-only"
+  ]
+}

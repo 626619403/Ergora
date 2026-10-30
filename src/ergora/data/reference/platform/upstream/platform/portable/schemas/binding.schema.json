@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-platform:portable:binding:v1",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "binding_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"
+    },
+    "project_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"
+    },
+    "policy_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "runtime": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "temporal-development-v1"
+        },
+        "executor_protocol": {
+          "const": "trusted-file-v1"
+        },
+        "capabilities": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "immutable-input",
+              "durable-recovery",
+              "dag-work-units",
+              "human-plan-approval",
+              "candidate-bound-evidence",
+              "independent-verification",
+              "independent-review",
+              "cooperative-cancel-fence",
+              "review-ready-only"
+            ]
+          },
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "max_parallel_units": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        }
+      },
+      "required": [
+        "kind",
+        "executor_protocol",
+        "capabilities",
+        "max_parallel_units"
+      ],
+      "additionalProperties": false
+    },
+    "tracker": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "local",
+            "github",
+            "gitlab"
+          ]
+        },
+        "project": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 300,
+          "pattern": "^[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)+$"
+        },
+        "issue_id": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,19}$"
+        }
+      },
+      "required": [
+        "kind",
+        "project",
+        "issue_id"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "binding_id",
+    "project_id",
+    "policy_sha256",
+    "runtime",
+    "tracker"
+  ],
+  "additionalProperties": false,
+  "x-semantic-validation": [
+    "dev_platform.portable validators enforce digests, canonical paths, policy authority boundaries, capability and workflow support, DAG ownership, legacy profile equivalence and payload bounds. A JSON Schema pass alone is insufficient."
+  ]
+}

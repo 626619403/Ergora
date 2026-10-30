@@ -1,0 +1,430 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-platform:repository-governance:output:v1",
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "status": {
+          "const": "REVIEW_READY"
+        },
+        "task_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"
+        },
+        "task_type": {
+          "const": "repository-governance"
+        },
+        "request_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "profile_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "base_sha": {
+          "type": "string",
+          "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+        },
+        "candidate_sha": {
+          "type": "string",
+          "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+        },
+        "plan_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "plan_approval": {
+          "type": "object",
+          "properties": {
+            "receipt_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "approval_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "actor_id": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "receipt_id",
+            "approval_sha256",
+            "actor_id"
+          ],
+          "additionalProperties": true
+        },
+        "evidence_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "verification": {
+          "type": "object",
+          "properties": {
+            "schema_version": {
+              "const": 1
+            },
+            "job_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "job_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "state": {
+              "enum": [
+                "SUCCEEDED",
+                "FAILED",
+                "CANCELLED"
+              ]
+            },
+            "actor": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "session_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "role": {
+                  "enum": [
+                    "inspector",
+                    "planner",
+                    "implementer",
+                    "integrator",
+                    "verifier",
+                    "reviewer"
+                  ]
+                },
+                "kind": {
+                  "enum": [
+                    "agent",
+                    "ci",
+                    "human"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "session_id",
+                "role",
+                "kind"
+              ],
+              "additionalProperties": true
+            },
+            "candidate_sha": {
+              "type": "string",
+              "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+            },
+            "artifacts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                },
+                "required": [
+                  "name",
+                  "path",
+                  "sha256"
+                ],
+                "additionalProperties": true
+              },
+              "minItems": 0,
+              "maxItems": 100,
+              "uniqueItems": true
+            },
+            "checks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "status": {
+                    "enum": [
+                      "pass",
+                      "fail"
+                    ]
+                  },
+                  "artifact": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "id",
+                  "status",
+                  "artifact"
+                ],
+                "additionalProperties": true
+              },
+              "minItems": 0,
+              "maxItems": 100,
+              "uniqueItems": true
+            },
+            "detail": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "schema_version",
+            "job_id",
+            "job_sha256",
+            "state",
+            "actor",
+            "candidate_sha",
+            "artifacts"
+          ],
+          "additionalProperties": true
+        },
+        "review": {
+          "type": "object",
+          "properties": {
+            "schema_version": {
+              "const": 1
+            },
+            "job_id": {
+              "type": "string",
+              "minLength": 1
+            },
+            "job_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "state": {
+              "enum": [
+                "SUCCEEDED",
+                "FAILED",
+                "CANCELLED"
+              ]
+            },
+            "actor": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "session_id": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "role": {
+                  "enum": [
+                    "inspector",
+                    "planner",
+                    "implementer",
+                    "integrator",
+                    "verifier",
+                    "reviewer"
+                  ]
+                },
+                "kind": {
+                  "enum": [
+                    "agent",
+                    "ci",
+                    "human"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "session_id",
+                "role",
+                "kind"
+              ],
+              "additionalProperties": true
+            },
+            "candidate_sha": {
+              "type": "string",
+              "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+            },
+            "artifacts": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "path": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  }
+                },
+                "required": [
+                  "name",
+                  "path",
+                  "sha256"
+                ],
+                "additionalProperties": true
+              },
+              "minItems": 0,
+              "maxItems": 100,
+              "uniqueItems": true
+            },
+            "checks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "status": {
+                    "enum": [
+                      "pass",
+                      "fail"
+                    ]
+                  },
+                  "artifact": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "required": [
+                  "id",
+                  "status",
+                  "artifact"
+                ],
+                "additionalProperties": true
+              },
+              "minItems": 0,
+              "maxItems": 100,
+              "uniqueItems": true
+            },
+            "detail": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "schema_version",
+            "job_id",
+            "job_sha256",
+            "state",
+            "actor",
+            "candidate_sha",
+            "artifacts"
+          ],
+          "additionalProperties": true
+        },
+        "detail": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "status",
+        "task_id",
+        "task_type",
+        "request_sha256",
+        "profile_sha256",
+        "base_sha",
+        "candidate_sha",
+        "plan_sha256",
+        "plan_approval",
+        "evidence_sha256",
+        "verification",
+        "review",
+        "detail"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "status": {
+          "enum": [
+            "BLOCKED",
+            "CANCEL_UNCONFIRMED",
+            "NEEDS_RECONCILIATION"
+          ]
+        },
+        "task_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"
+        },
+        "request_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "candidate_sha": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "detail": {
+          "type": "string"
+        },
+        "fence": {
+          "type": "object",
+          "properties": {
+            "fenced": {
+              "type": "boolean"
+            },
+            "confirmed": {
+              "type": "boolean"
+            },
+            "unresolved_jobs": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 0,
+              "maxItems": 64,
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "fenced",
+            "confirmed",
+            "unresolved_jobs"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "status",
+        "task_id",
+        "request_sha256",
+        "candidate_sha",
+        "detail"
+      ],
+      "additionalProperties": false
+    }
+  ],
+  "description": "Final DevelopmentWorkflow outcome. REVIEW_READY is a reviewable candidate, not merge/deploy authorization. Hashed artifacts and actor identities must be authenticated by trusted CI/runner ACLs."
+}

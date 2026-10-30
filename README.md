@@ -4,9 +4,18 @@
 
 Ergora 用任务合同明确目标、角色、修改范围和验收标准，把人工审批、并行工作、命令验证、独立审查与执行证据连接成可追溯的流程。开发者可以在自己的项目仓库和工单体系中使用它，逐步接入现有执行器、服务和实验环境。
 
-当前交付为 **v2.2 参考实现的说明与可安装分发包**，命令仍叫 `agentflow`。源码随单文件 HTML 中的完整部署包提供，尚未拆成 Ergora 的独立软件包。本文中的模块化拆分与关系编辑器属于后续规划。
+仓库提供独立的 **`ergora` CLI / 本地图形控制面**，以及保持内容一致的 **v2.2 `agentflow` 参考发行**。新入口支持分层工具绑定、持久记忆、skill 候选评价与采用回退、有界资料观察、可选 Temporal 调度，以及模板与工作单元 DAG 草稿；完整六阶段执行仍通过参考发行安装。实际验收进度记录在 [持续计划](docs/PLAN.md)。
 
-[安装与完整手册](docs/distribution/multi-agent-development-platform.html) · [现有工具栈](#现有工具栈) · [源码组织](#源码组织) · [首个开发任务](#首个开发任务) · [解耦与界面规划](#解耦与界面规划)
+[安装与日常使用](docs/USAGE.md) · [训练优化手册](docs/TRAINING.md) · [Agent 选择与正式执行](docs/AGENT_BACKENDS.md) · [工具接入](docs/INTEGRATIONS.md) · [单文件参考发行](docs/distribution/multi-agent-development-platform.html) · [计划与进度](docs/PLAN.md)
+
+```bash
+git clone --branch feat/evolution-console https://github.com/626619403/Ergora.git
+cd Ergora
+bash scripts/install.sh
+"$HOME/.local/bin/ergora" serve
+```
+
+需要 Linux、Git 和 Python 3.11+ / venv。打开 `http://127.0.0.1:8977`，注册已有仓库即可使用。网页资源随包安装，无需 Node 构建或外部工单。可选工具有各自的安装、认证与服务要求，见 [使用手册](docs/USAGE.md)。
 
 ## 用来做什么
 
@@ -45,6 +54,10 @@ flowchart LR
 
 ## 现有工具栈
 
+独立控制面使用 Python、SQLite、FastAPI / Uvicorn 和随包 Cytoscape.js。各项目可按盘点、规划、实现、审查及训练角色选择 Codex / Claude Code / 自定义命令，实现角色也可选择 mini-swe-agent；kernel 层可接原生 ForgeKernel。记忆、优化和调度分别选择 SQLite / ReMe、手动 / GEPA、手动 / Temporal。前端和 CLI 共用应用函数，不复制评价、采用或合同校验逻辑。
+
+下表为完整六阶段**参考发行**的工具栈：
+
 |职责|当前使用|边界|
 |---|---|---|
 |代码实现与独立审查|Codex CLI|共用模型 API 配置，分别启动会话|
@@ -57,11 +70,27 @@ flowchart LR
 |训练证据比较|perfctl + 可信 runner|重新计算统计与门禁；项目负责实际训练环境|
 |安装与依赖|Bash、uv、Python、Node.js|安装器固定工具版本与 Python 依赖|
 
-当前入口包括 CLI、Temporal UI 和 MLflow。Ergora 自有的任务面板与 agent 关系编辑器尚未实现。
+Ergora 控制台提供项目总览、工具绑定、记忆修订、候选比较 / 评价 / 采用、资料提案和受约束的工作单元关系编辑。正式任务的运行历史、审批和训练观测继续使用参考 CLI、Temporal UI 和 MLflow；页面不会自行产生正式验收状态。
 
 ## 源码组织
 
-以下是**安装后参考实现**的目录，亦对应完整部署包的 `platform/`。本仓库当前通过 `docs/distribution/` 保存分发入口。
+新入口位于 `src/ergora/`，测试在 `tests/`。`src/ergora/data/reference/` 保存从已发布 HTML 提取的 283 个原始文件，身份清单为 `reference-manifest.json`。复现提取使用 `python scripts/import-reference.py`，参考文件保持原内容以便对照。工程计划与每切片证据在 `docs/PLAN.md` 和 `docs/delivery/`。
+
+```text
+src/ergora/
+├── projects.py / tools.py          项目修订、工具绑定与独立调用
+├── agents.py / reference_executor.py 原生 Agent 适配与可选六阶段桥接
+├── kernel.py / data/drivers/        原生 Forge campaign 与独立 SDK 驱动
+├── memory.py / state.py            项目记忆、来源与持久状态
+├── skills.py / evaluation.py       版本资产、固定评价与采用回退
+├── optimization.py                可选 GEPA 候选搜索
+├── research.py / scheduling.py     有界资料观察与 Temporal 适配
+├── reference.py / drafts.py        冻结参考合同与可编辑输入草稿
+├── cli.py / web.py                 共用业务逻辑的两个入口
+└── data/console/                   随包页面、样式、图组件与许可证
+```
+
+以下是**安装后参考实现**的目录，亦对应完整部署包的 `platform/`：
 
 ```text
 multi-agent-platform/
@@ -90,7 +119,44 @@ multi-agent-platform/
 
 ## 安装
 
-当前打包支持 **Ubuntu 24.04 / Linux x86_64**。Linux 包安装需要目标系统或容器内的 root/sudo 权限；安装器会补齐 Python 3.12、Node.js、uv 及所需工具。安装过程需要访问软件源、GitHub、npm 和 Python 包索引。
+独立包需要 Linux / Python 3.11+，从源码安装，无需启动外部服务：
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install '.[web]'
+.venv/bin/ergora reference verify
+.venv/bin/ergora templates list
+.venv/bin/ergora templates copy repository-governance ./workflow-governance
+.venv/bin/ergora workflow --help
+.venv/bin/ergora serve
+```
+
+开发检查：安装 `.[dev,web,gepa,temporal]` 后运行 `python -m pytest tests`；真实 Temporal 回归需通过 `ERGORA_TEMPORAL_TEST_ADDRESS` 明确指定隔离服务，否则跳过。`ergora workflow` 直接调用随包的原合同编译器，支持 `compile`、`validate`、`convert-v2`、`export-v2`，不自动安装或启动执行服务。
+
+新入口也支持注册自己的 Git 项目并按角色调用工具：
+
+```bash
+ergora project add my-project --repo "$HOME/projects/my-project"
+ergora project show my-project
+ergora tools list
+ergora tools doctor my-project
+# binding.json 示例：{"tool":"codex","model":"YOUR_MODEL_ID"}
+ergora project bind my-project reviewer --binding binding.json --revision 1
+ergora agent run my-project reviewer --prompt review-request.md --timeout 300
+ergora agent runs my-project
+```
+
+各 Agent 角色选择 `codex`、`claude-code` 或 `command`；实现角色额外支持 `mini-swe-agent`。普通自定义命令 `{"tool":"command","argv":["/path/to/tool"]}` 接收 stdin 文本；模板产物和正式阶段使用明确的 stage-json 协议。工具沿用自己的登录和环境变量，配置内不存密钥。保存绑定时传入 `project show` 的当前修订号以避免覆盖别人的修改。状态与输出默认保存在 `~/.local/share/ergora/`，可通过 `ERGORA_HOME` 或 `--home` 改为其他持久目录；持久化整个目录以备份恢复。
+
+`agent run` 是独立工具调用，成功不产生正式合同的验证/审查结论。`--template TEMPLATE` 可要求该角色的结构化产物。需要绑定作用于正式六阶段时，显式启用 `ergora reference executor --installation INSTALLATION`：复用参考执行器及门禁，在新任务首次接入时冻结角色工具。完整配置、安装可选 Agent、原生 Forge campaign 与恢复操作见 [Agent 手册](docs/AGENT_BACKENDS.md)。可执行文件存在不代表已认证，实际调用失败和超时会保留在运行记录。
+
+项目记忆通过 `ergora memory save/search/history/restore/delete/sync` 管理，默认使用同一持久目录里的 SQLite 文件，也可将记忆层绑定到 ReMe HTTP 检索投影。来源与修订是必填信息，跨项目结果会过滤，远程服务故障不会自动换后端。配置和完整命令见 [工具接入手册](docs/INTEGRATIONS.md)；ReMe 引擎的目标环境验收与质量比较仍需单独完成。
+
+skill 使用标准 `SKILL.md` 目录，完整内容按 SHA 保存。`skill import`、`evaluation register/run/compare`、`skill adopt/rollback` 组成可审查闭环，可选 `.[gepa]` 接真实 GEPA 搜索；搜索不自动采用。后续 `agent run --skill NAME --recall QUERY` 消费当前采用版本与项目记忆。评价合同、提案协议和边界见 [接入手册](docs/INTEGRATIONS.md#skill-候选评价与采用)。
+
+`research run` 观察明确 URL，保留内容 SHA、快照、去重和资料提案；总正文、时间、取消和失败可见。`.[temporal]` 提供持久 Schedule / worker，创建默认暂停。来源正文不执行，也不自动写入有效记忆。配置与恢复边界见 [有界资料检查](docs/INTEGRATIONS.md#有界资料检查与定时触发)。
+
+下述**完整参考发行**支持 **Ubuntu 24.04 / Linux x86_64**。Linux 包安装需要目标系统或容器内的 root/sudo 权限；安装器会补齐 Python 3.12、Node.js、uv 及所需工具。安装过程需要访问软件源、GitHub、npm 和 Python 包索引。
 
 1. 下载 [单文件 HTML](docs/distribution/multi-agent-development-platform.html)。在 GitHub 文件页使用 **Download raw file** 保存后，用本地浏览器打开。
 2. 点击“下载全新环境一键安装器”。HTML 同时内嵌完整源码部署包、三个模板、**部署与日常使用手册**和**训练优化手册**，可直接阅读和单独下载。
@@ -255,9 +321,9 @@ agentflow verify
 
 可选训练 worker 默认关闭，`services status` 可能因 STOPPED 项返回退出码 3，应查看每项实际状态。停止服务与取消外部作业是不同操作；维护和备份前先确认在途作业的状态。备份平台、私有配置、state 和各业务仓库。更多步骤见 HTML 部署手册与安装后的 `docs/VALIDATION.md`。
 
-## 解耦与界面规划
+## 解耦与后续工作
 
-建议保留现有合同与编译器的边界，分步提取以下职责；这些是**后续整理方向**，当前没有通用插件发现或任意后端切换能力。
+合同、业务状态、工具调用和入口已有独立归属；冻结参考执行器仍有待逐步迁移。以下边界指导后续扩展，当前没有通用插件发现或任意后端切换能力。
 
 |层|应拥有的内容|接入边界|
 |---|---|---|
@@ -270,14 +336,16 @@ agentflow verify
 
 这样可以保留当前工作流，并让工单来源、通信渠道和执行后端分别演进。提取时应以同一个本地任务能够完整运行和恢复为验收，再扩展新的后端。
 
-**建议做图形页面，先提供运行观察与审批，再提供有约束的关系编辑。** 第一阶段展示任务状态、依赖、证据和待办审批；第二阶段用 Schema 表单和 DAG 预览帮助配置工作单元；之后再增加可视化编辑。界面与 CLI 使用同一套编译、权限和审批规则。当前六阶段保持固定，编辑器只调整允许的工作单元依赖和路径所有权；支持新的阶段拓扑需要先扩展并验证协议与运行时。
+**图形页面已提供分层绑定与有约束的工作单元编辑。** 编辑器只调整允许的依赖和路径所有权，保存为任务输入草稿；正式任务冻结、审批和执行继续使用参考工作流。支持新的阶段拓扑，需要先扩展并验证合同与运行时。
 
 进一步的 [工具调研与产品方案](docs/research/2026-10-28-multi-agent-landscape.md) 比较了 40 个代表性工具或产品家族，讨论 Agent Spec 等现有关系格式、组件复用和各层工具绑定。建议面向用户提供统一安装、配置与任务视图的 all-in-one 体验，内部逐步验证可替换组件；这些仍是后续方案。术语见 [领域词汇表](CONTEXT.md)。
 
-[长期记忆与持续演进调研](docs/research/2026-10-28-continuous-evolution.md) 进一步梳理 24 份项目官方 README，提出 ReMe 记忆、GEPA skill 候选、定期研究及架构改进的分步接入方案。演进能力尚未集成，候选改进需要评价、审阅和可回退的采用记录。
+[长期记忆与持续演进调研](docs/research/2026-10-28-continuous-evolution.md) 进一步梳理 24 份项目官方 README。本轮已实现项目记忆、可选 ReMe 协议接入、真实 GEPA 有界候选搜索、资料快照和持久调度入口；候选改进仍须评价、审阅和明确采用，不声明真实模型或 GPU 效果收益。
+
+三个模板的角色现可独立于工具选择；[选型调研](docs/research/2026-10-31-template-agents.md) 说明首批适配和未接入工具的优缺点。ForgeKernel 作为可选原生候选生成工具，其内部 judge 不替代可信训练门禁；模型质量和 GPU 性能比较需要真实项目证据。固定官方版本及实际检查范围记录在 [计划](docs/PLAN.md) 和各切片交付记录。
 
 ## 项目状态与许可
 
 当前参考分发面向单机和可信容器。团队级身份、独立执行隔离、生产 Temporal 部署及其他执行后端需要后续工程接入和验收。任务中的角色字段和摘要不构成团队身份认证。
 
-项目许可证尚待确定；第三方组件适用各自许可证。源码迁入时需补齐项目许可证、第三方声明和贡献说明。
+项目许可证尚待维护者确定；第三方组件适用各自许可证，来源与随包许可见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。当前源码与研究分支不代表已完成开源许可证发布。

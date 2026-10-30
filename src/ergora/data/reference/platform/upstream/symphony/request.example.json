@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "tracker": {
+    "kind": "gitlab",
+    "project": "YOUR_GROUP/YOUR_REPO",
+    "issue_id": "123"
+  },
+  "baseline_id": "b0001",
+  "experiment": {
+    "binding": {
+      "experiment_id": "yourproject-gl123-r1",
+      "manifest_sha": "REPLACE_SHA256",
+      "candidate_sha": "REPLACE_FULL_SHA",
+      "baseline_sha": "REPLACE_FULL_SHA"
+    },
+    "manifest_uri": "https://YOUR_IMMUTABLE_STORE/manifest.json",
+    "poll_seconds": 60,
+    "max_run_seconds": 21600,
+    "release_wait_seconds": 86400,
+    "cancel_wait_seconds": 600
+  }
+}

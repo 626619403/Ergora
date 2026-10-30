@@ -1,0 +1,39 @@
+{
+  "goal": "Make this existing repository navigable and prevent one recurring dependency-boundary regression.",
+  "allowed_paths": [
+    "AGENTS.md",
+    "ARCHITECTURE.md",
+    "docs/governance",
+    "tests/architecture"
+  ],
+  "acceptance": [
+    "The repository map links to the actual build/test commands and architecture owner.",
+    "A regression test reproduces the selected boundary violation and rejects new violations.",
+    "Existing external behavior and the accepted baseline are preserved."
+  ],
+  "constraints": [
+    "No whole-repository rewrite or formatting sweep.",
+    "Trusted CI policy and accepted baseline remain outside the candidate workspace."
+  ],
+  "risk": "standard",
+  "work_units": [
+    {
+      "id": "knowledge-map",
+      "depends_on": [],
+      "paths": [
+        "AGENTS.md",
+        "ARCHITECTURE.md",
+        "docs/governance"
+      ],
+      "instructions": "Create a short navigation map and document existing boundaries, owners, trusted checks and known debt; preserve application behavior."
+    },
+    {
+      "id": "boundary-test",
+      "depends_on": [],
+      "paths": [
+        "tests/architecture"
+      ],
+      "instructions": "Add one focused architecture test for the accepted module boundary using the trusted baseline; do not change baseline policy."
+    }
+  ]
+}

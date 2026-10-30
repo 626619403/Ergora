@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "runner_template_id": "project-training-v1",
+  "project": "REPLACE_PROJECT",
+  "repo": "/absolute/path/your-project",
+  "command": [
+    "bash",
+    "scripts/run-bound-experiment.sh",
+    "{manifest}",
+    "{output}"
+  ],
+  "timeout_seconds": 21600
+}

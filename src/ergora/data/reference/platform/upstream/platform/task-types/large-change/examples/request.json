@@ -1,0 +1,85 @@
+{
+  "schema_version": 2,
+  "task_type": "large-change",
+  "task_version": 1,
+  "task_id": "large-change-demo-r1",
+  "profile_sha256": "40711a913ab14ac3f1c60092edaecdb36db82c0d5e73e5788ebc9b8b199e1ea9",
+  "tracker": {
+    "kind": "gitlab",
+    "project": "YOUR_GROUP/YOUR_REPO",
+    "issue_id": "7"
+  },
+  "repository": {
+    "base_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "starting_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "input": {
+    "goal": "Introduce a backward-compatible pagination API across server and client with a reversible rollout.",
+    "allowed_paths": [
+      "api/contracts",
+      "docs/design",
+      "src/server",
+      "tests/server",
+      "src/client",
+      "tests/client",
+      "tests/integration",
+      "docs/rollout"
+    ],
+    "acceptance": [
+      "Old clients still work with the new server.",
+      "New clients handle old and new server responses.",
+      "End-to-end tests and compatibility matrix pass on the final integrated candidate.",
+      "Rollback procedure is rehearsed with isolated fixtures; production deployment is out of scope."
+    ],
+    "constraints": [
+      "No production data migration or auto-merge.",
+      "Shared contracts are approved before dependent implementations start."
+    ],
+    "risk": "high",
+    "work_units": [
+      {
+        "id": "contract",
+        "depends_on": [],
+        "paths": [
+          "api/contracts",
+          "docs/design"
+        ],
+        "instructions": "Publish the approved backward-compatible pagination contract and consumer fixtures."
+      },
+      {
+        "id": "server",
+        "depends_on": [
+          "contract"
+        ],
+        "paths": [
+          "src/server",
+          "tests/server"
+        ],
+        "instructions": "Implement the contract and existing API compatibility in an isolated workspace."
+      },
+      {
+        "id": "client",
+        "depends_on": [
+          "contract"
+        ],
+        "paths": [
+          "src/client",
+          "tests/client"
+        ],
+        "instructions": "Implement consumer support using the fixed contract; retain old-server compatibility."
+      },
+      {
+        "id": "integration-tests",
+        "depends_on": [
+          "server",
+          "client"
+        ],
+        "paths": [
+          "tests/integration",
+          "docs/rollout"
+        ],
+        "instructions": "Exercise mixed versions, rollback conditions and end-to-end behavior against the integrated candidate."
+      }
+    ]
+  }
+}

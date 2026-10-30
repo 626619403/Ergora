@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "binding_id": "demo-project-temporal",
+  "project_id": "demo-project",
+  "policy_sha256": "bc339452c76ffb38852b9cda10f09ca290e1aed75df1dfd62e602f88f2057417",
+  "runtime": {
+    "kind": "temporal-development-v1",
+    "executor_protocol": "trusted-file-v1",
+    "capabilities": [
+      "immutable-input",
+      "durable-recovery",
+      "dag-work-units",
+      "human-plan-approval",
+      "candidate-bound-evidence",
+      "independent-verification",
+      "independent-review",
+      "cooperative-cancel-fence",
+      "review-ready-only"
+    ],
+    "max_parallel_units": 2
+  },
+  "tracker": {
+    "kind": "gitlab",
+    "project": "YOUR_GROUP/YOUR_REPO",
+    "issue_id": "7"
+  }
+}

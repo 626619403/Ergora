@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "experiment_id": "exp001",
+  "baseline_id": "b0001",
+  "track": "E",
+  "contract_approved": false,
+  "owner": "REPLACE_HUMAN",
+  "author": "REPLACE_IMPLEMENTER",
+  "baseline_commit": "REPLACE_FULL_SHA",
+  "candidate_commit": "REPLACE_FULL_SHA",
+  "workload_fingerprint": "REPLACE_SHA256",
+  "environment_fingerprint": "REPLACE_SHA256",
+  "dataset_manifest_sha256": "REPLACE_SHA256",
+  "initial_checkpoint_sha256": "REPLACE_SHA256",
+  "base_config_sha256": "REPLACE_SHA256",
+  "candidate_config_sha256": "REPLACE_SHA256",
+  "validation_contract_sha256": "REPLACE_SHA256",
+  "comparison_tool_sha256": "9d931b68dc8577cad3f66355588e526a55e5ecf3ebf0bc0e0b0f179828f0ad1d",
+  "allowed_changes": [
+    "REPLACE_WITH_EXACT_SCOPE"
+  ],
+  "checks_required": [
+    "harness_integrity",
+    "forward",
+    "backward",
+    "jvp",
+    "optimizer_update",
+    "all_rank_consistency",
+    "lifecycle",
+    "resume"
+  ],
+  "quality_required": true,
+  "performance_policy": {
+    "normalization_source_samples": 128,
+    "statistics": {
+      "min_pairs": 8,
+      "bootstrap_resamples": 10000,
+      "confidence": 0.95,
+      "seed": 20261026
+    },
+    "thresholds": {
+      "min_saved_seconds_at_normalization": 0.01,
+      "min_speedup_percent": null,
+      "mode": "all"
+    }
+  },
+  "notes": "阈值是待确认示例；每128个全局源样本的10ms。128示例对应8卡每卡16个源样本，不是每GPU指标。按真实计量口径修改并批准后才设contract_approved=true。"
+}

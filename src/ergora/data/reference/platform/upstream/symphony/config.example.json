@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "provider": "gitlab",
+  "project": "YOUR_GROUP/YOUR_REPO",
+  "api_url": "https://gitlab.com/api/v4",
+  "token_env": "GITLAB_PAT",
+  "repo_url": "git@gitlab.com:YOUR_GROUP/YOUR_REPO.git",
+  "workspace_root": "/srv/agent-workspaces",
+  "outbox": "/srv/agent-outbox",
+  "receipts": "/srv/agent-receipts",
+  "approvals": "/srv/bridge-private/admissions",
+  "state_dir": "/srv/bridge-state",
+  "baseline_file": "/srv/baselines/baseline.json",
+  "ready_label": "agent-ready",
+  "max_concurrent_agents": 3,
+  "codex_bin": "/usr/local/bin/codex",
+  "symphony_bin": "/opt/symphony/symphony",
+  "dashboard_port": 4000
+}

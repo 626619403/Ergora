@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "a2a_task_id": "REPLACE_WITH_SERVER_ASSIGNED_A2A_ID",
+  "task_id": "REPLACE_WITH_DOMAIN_TASK_ID",
+  "compiled_sha256": "REPLACE_WITH_EXACT_COMPILED_SHA256",
+  "request_sha256": "REPLACE_WITH_EXACT_RUNTIME_REQUEST_SHA256",
+  "workflow_id": "dev-task/REPLACE_WITH_DOMAIN_TASK_ID",
+  "run_id": "REPLACE_WITH_VERIFIED_TERMINAL_RUN_ID",
+  "all_external_work_stopped": true,
+  "operator": "REPLACE_WITH_TRUSTED_OPERATOR",
+  "evidence_sha256": "REPLACE_WITH_CLEANUP_EVIDENCE_SHA256",
+  "evidence_uri": "https://evidence.example.com/cleanup/REPLACE_WITH_RECORD_ID",
+  "confirmed_at": "REPLACE_WITH_RECENT_TIMEZONE_AWARE_ISO_TIME"
+}

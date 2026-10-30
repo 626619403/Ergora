@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "package_id": "large-change-v1",
+  "task_type": "large-change",
+  "task_version": 1,
+  "title": "大型变更",
+  "legacy_profile_sha256": "40711a913ab14ac3f1c60092edaecdb36db82c0d5e73e5788ebc9b8b199e1ea9",
+  "components": {
+    "workflow": {
+      "path": "workflow.json",
+      "sha256": "e0b9539dffc8d88d20a587e47b83bd91aa651672a08787e689f2e93899c14a67"
+    },
+    "roles": {
+      "path": "roles.json",
+      "sha256": "cca2f89fc0c98e763cfae28553602b2dd429569bed2d0326b507c469af8f70ea"
+    },
+    "evidence": {
+      "path": "evidence.json",
+      "sha256": "f3a5561aa7b8a5f9edd1f30ca4ed64d296aa5f510e68c384cc66c0a015b17660"
+    },
+    "README.md": {
+      "path": "README.md",
+      "sha256": "4beea30e7c92a2c9814ba5f944191526440b42c913f8f3deae7593370e86727c"
+    },
+    "instructions.md": {
+      "path": "instructions.md",
+      "sha256": "7518e23e5353c57b9ee2f5a245a847169ba42d937124994766fadb70884582dd"
+    },
+    "input.schema.json": {
+      "path": "input.schema.json",
+      "sha256": "0221f76400bdc57102828ea90226d5dfa37124e17a1a6878121a25fa817b84cd"
+    },
+    "output.schema.json": {
+      "path": "output.schema.json",
+      "sha256": "d8d6877950d4ba034167f32b35d0b0c8925da86e7b9951e596e5956c246e3588"
+    }
+  }
+}

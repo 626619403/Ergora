@@ -1,0 +1,193 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-platform:large-change:input:v1",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": 2
+    },
+    "task_type": {
+      "const": "large-change"
+    },
+    "task_version": {
+      "const": 1
+    },
+    "task_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"
+    },
+    "profile_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "tracker": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "enum": [
+            "github",
+            "gitlab"
+          ]
+        },
+        "project": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 300,
+          "pattern": "^[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)+$"
+        },
+        "issue_id": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,19}$"
+        }
+      },
+      "required": [
+        "kind",
+        "project",
+        "issue_id"
+      ],
+      "additionalProperties": false
+    },
+    "repository": {
+      "type": "object",
+      "properties": {
+        "base_sha": {
+          "type": "string",
+          "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+        },
+        "starting_sha": {
+          "type": "string",
+          "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+        }
+      },
+      "required": [
+        "base_sha",
+        "starting_sha"
+      ],
+      "additionalProperties": false
+    },
+    "input": {
+      "type": "object",
+      "properties": {
+        "goal": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 12000
+        },
+        "allowed_paths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300,
+            "description": "Canonical relative POSIX prefix, no wildcard/control characters, . or .. components, or reserved control metadata. Additional checks enforced by validate_task/validate_spec."
+          },
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "acceptance": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 4000
+          },
+          "minItems": 0,
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "risk": {
+          "enum": [
+            "standard",
+            "high"
+          ]
+        },
+        "work_units": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"
+              },
+              "depends_on": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"
+                },
+                "minItems": 0,
+                "maxItems": 23,
+                "uniqueItems": true
+              },
+              "paths": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 300,
+                  "description": "Canonical relative POSIX prefix, no wildcard/control characters, . or .. components, or reserved control metadata. Additional checks enforced by validate_task/validate_spec."
+                },
+                "minItems": 1,
+                "maxItems": 64,
+                "uniqueItems": true
+              },
+              "instructions": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 12000
+              }
+            },
+            "required": [
+              "id",
+              "depends_on",
+              "paths",
+              "instructions"
+            ],
+            "additionalProperties": false
+          },
+          "minItems": 1,
+          "maxItems": 24,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "goal",
+        "allowed_paths",
+        "acceptance",
+        "constraints",
+        "risk",
+        "work_units"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "schema_version",
+    "task_type",
+    "task_version",
+    "task_id",
+    "profile_sha256",
+    "tracker",
+    "repository",
+    "input"
+  ],
+  "additionalProperties": false,
+  "x-semantic-validation": [
+    "validate_task checks canonical paths, reserved components, unit ID uniqueness, dependency references and cycles, ancestor-based ownership containment and overlapping unordered units.",
+    "make_spec/validate_spec additionally require the installed immutable profile digest, profile protected paths and profile-specific work-unit limits.",
+    "Ownership declarations do not validate a Git diff or provide an OS sandbox; the trusted scope check must do so."
+  ]
+}

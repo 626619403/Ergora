@@ -1,0 +1,1 @@
+{"example_only": true, "experiment_id": "example", "baseline_id": "b0001", "hypothesis": "GPU overlap helps", "outcome": "REJECTED", "failure_class": "resource_contention", "evidence_uri": "REPLACE", "reopen_when": "shape/hardware/resource balance changes"}

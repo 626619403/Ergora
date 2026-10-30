@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "workflow_id": "development-lifecycle",
+  "workflow_version": 1,
+  "stages": [
+    {
+      "id": "inventory",
+      "role": "inspector",
+      "depends_on": []
+    },
+    {
+      "id": "plan",
+      "role": "planner",
+      "depends_on": [
+        "inventory"
+      ]
+    },
+    {
+      "id": "work",
+      "role": "implementer",
+      "depends_on": [
+        "plan"
+      ]
+    },
+    {
+      "id": "integrate",
+      "role": "integrator",
+      "depends_on": [
+        "work"
+      ]
+    },
+    {
+      "id": "verify",
+      "role": "verifier",
+      "depends_on": [
+        "integrate"
+      ]
+    },
+    {
+      "id": "review",
+      "role": "reviewer",
+      "depends_on": [
+        "verify"
+      ]
+    }
+  ],
+  "work_units": "dependency-dag",
+  "human_gates": [
+    "plan",
+    "merge"
+  ],
+  "terminal": "REVIEW_READY",
+  "limits": {
+    "max_work_units": 24,
+    "max_parallel_units": 4
+  },
+  "stage_timeout_seconds": 3600,
+  "approval_timeout_seconds": 86400,
+  "poll_seconds": 15
+}

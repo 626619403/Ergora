@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "ledger": "/srv/agent-control/a2a/ledger.sqlite3",
+  "shared_ingress_db": "/srv/agent-control/ingress/leases.sqlite3",
+  "public_url": "https://agents.example.com",
+  "host": "127.0.0.1",
+  "port": 8765,
+  "principals": {
+    "team-orchestrator": "A2A_TEAM_ORCHESTRATOR_TOKEN"
+  }
+}

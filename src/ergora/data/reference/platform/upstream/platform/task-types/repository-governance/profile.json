@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "task_type": "repository-governance",
+  "task_version": 1,
+  "engine": "development-v1",
+  "title": "仓库治理",
+  "required_checks": [
+    "scope",
+    "behavior",
+    "architecture",
+    "knowledge",
+    "baseline-regression"
+  ],
+  "limits": {
+    "max_work_units": 4,
+    "max_parallel_units": 2
+  },
+  "stage_timeout_seconds": 3600,
+  "approval_timeout_seconds": 86400,
+  "poll_seconds": 15,
+  "artifacts_by_stage": {
+    "inventory": [
+      "inventory",
+      "behavior-baseline"
+    ],
+    "plan": [
+      "execution-plan",
+      "ownership-map",
+      "rollback-plan"
+    ],
+    "work": [
+      "change-summary",
+      "test-results"
+    ],
+    "integrate": [
+      "integration-record"
+    ],
+    "verify": [
+      "check-results"
+    ],
+    "review": [
+      "review-report",
+      "handoff"
+    ]
+  },
+  "roles": {
+    "inventory": "inspector",
+    "plan": "planner",
+    "work": "implementer",
+    "integrate": "integrator",
+    "verify": "verifier",
+    "review": "reviewer"
+  },
+  "protected_paths": [
+    ".git",
+    ".symphony",
+    ".agent-control",
+    ".agent-platform-private"
+  ],
+  "template_files": {
+    "README.md": "d8407d5728cbf353a649ba96af76723e169c95c553460e84472968c9365d43d1",
+    "instructions.md": "bbe4033de08edeacaa9ab3fe65f85f382093ac68c59df565cc3a9e588a509178",
+    "input.schema.json": "a43bda27c256edafb4f68dd591796c27923d081176758a25b8e111323dd1891e",
+    "output.schema.json": "c95ddfbc9994d1f0bff2b7dd7583574690b8b03ada956798cd8cbc780578d7c3"
+  }
+}

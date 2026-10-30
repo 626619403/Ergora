@@ -1,0 +1,8 @@
+{
+  "repository": "https://github.com/openai/symphony",
+  "commit": "be10a1b79df723d6d7612b5651c8522704dafb2e",
+  "checked_at": "2026-10-26",
+  "platform": "linux_x86_64",
+  "binary_url": "https://github.com/openai/symphony/releases/download/nightly/symphony-nightly-linux_x86_64",
+  "binary_sha256": "08d7aac26747fdc14022ade870cf7e530a6343ab92a040f39a4294b27a0cd5af"
+}

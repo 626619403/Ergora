@@ -1,0 +1,124 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-platform:portable:workflow:v1",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "workflow_id": {
+      "const": "development-lifecycle"
+    },
+    "workflow_version": {
+      "const": 1
+    },
+    "stages": {
+      "const": [
+        {
+          "id": "inventory",
+          "role": "inspector",
+          "depends_on": []
+        },
+        {
+          "id": "plan",
+          "role": "planner",
+          "depends_on": [
+            "inventory"
+          ]
+        },
+        {
+          "id": "work",
+          "role": "implementer",
+          "depends_on": [
+            "plan"
+          ]
+        },
+        {
+          "id": "integrate",
+          "role": "integrator",
+          "depends_on": [
+            "work"
+          ]
+        },
+        {
+          "id": "verify",
+          "role": "verifier",
+          "depends_on": [
+            "integrate"
+          ]
+        },
+        {
+          "id": "review",
+          "role": "reviewer",
+          "depends_on": [
+            "verify"
+          ]
+        }
+      ]
+    },
+    "work_units": {
+      "const": "dependency-dag"
+    },
+    "human_gates": {
+      "const": [
+        "plan",
+        "merge"
+      ]
+    },
+    "terminal": {
+      "const": "REVIEW_READY"
+    },
+    "limits": {
+      "type": "object",
+      "properties": {
+        "max_work_units": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 24
+        },
+        "max_parallel_units": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        }
+      },
+      "required": [
+        "max_work_units",
+        "max_parallel_units"
+      ],
+      "additionalProperties": false
+    },
+    "stage_timeout_seconds": {
+      "type": "integer",
+      "minimum": 30,
+      "maximum": 86400
+    },
+    "approval_timeout_seconds": {
+      "type": "integer",
+      "minimum": 60,
+      "maximum": 604800
+    },
+    "poll_seconds": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 300
+    }
+  },
+  "required": [
+    "schema_version",
+    "workflow_id",
+    "workflow_version",
+    "stages",
+    "work_units",
+    "human_gates",
+    "terminal",
+    "limits",
+    "stage_timeout_seconds",
+    "approval_timeout_seconds",
+    "poll_seconds"
+  ],
+  "additionalProperties": false,
+  "x-semantic-validation": [
+    "dev_platform.portable validators enforce digests, canonical paths, policy authority boundaries, capability and workflow support, DAG ownership, legacy profile equivalence and payload bounds. A JSON Schema pass alone is insufficient."
+  ]
+}

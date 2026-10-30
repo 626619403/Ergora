@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "experiment_id": "exp001",
+  "baseline_id": "b0001",
+  "candidate_commit": "REPLACE_FULL_SHA",
+  "manifest_sha256": "REPLACE_SHA256",
+  "checks": {
+    "harness_integrity": {
+      "status": "NOT_RUN",
+      "artifact": "checks/harness_integrity.json"
+    },
+    "forward": {
+      "status": "NOT_RUN",
+      "artifact": "checks/forward.json"
+    },
+    "backward": {
+      "status": "NOT_RUN",
+      "artifact": "checks/backward.json"
+    },
+    "jvp": {
+      "status": "NOT_RUN",
+      "artifact": "checks/jvp.json"
+    },
+    "optimizer_update": {
+      "status": "NOT_RUN",
+      "artifact": "checks/optimizer_update.json"
+    },
+    "all_rank_consistency": {
+      "status": "NOT_RUN",
+      "artifact": "checks/all_rank_consistency.json"
+    },
+    "lifecycle": {
+      "status": "NOT_RUN",
+      "artifact": "checks/lifecycle.json"
+    },
+    "resume": {
+      "status": "NOT_RUN",
+      "artifact": "checks/resume.json"
+    }
+  },
+  "comparison": {
+    "input": "comparison-input.json",
+    "report": "comparison-report.json"
+  },
+  "review": {
+    "status": "NOT_RUN",
+    "reviewer_id": "REPLACE_INDEPENDENT_REVIEWER",
+    "candidate_commit": "REPLACE_FULL_SHA",
+    "artifact": "review.json"
+  },
+  "integration": {
+    "status": "NOT_RUN",
+    "baseline_id": "b0001",
+    "candidate_commit": "REPLACE_FULL_SHA",
+    "artifact": "integration.json"
+  },
+  "quality": {
+    "status": "NOT_RUN",
+    "artifact": "quality.json"
+  },
+  "artifacts": [
+    {
+      "path": "REPLACE_RELATIVE_FILE",
+      "sha256": "REPLACE_SHA256"
+    }
+  ]
+}

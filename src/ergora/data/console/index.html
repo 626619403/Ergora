@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="color-scheme" content="light" />
+    <title>Ergora · 协作与演进</title>
+    <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
+    <link rel="stylesheet" href="/assets/style.css" />
+    <script defer src="/assets/vendor/cytoscape.min.js"></script>
+    <script type="module" src="/assets/app.js"></script>
+  </head>
+  <body>
+    <aside class="sidebar">
+      <a class="brand" href="/"
+        ><span class="brand-icon">e<span></span></span
+        ><span>Ergora<small>协作与演进</small></span></a
+      >
+      <label class="workspace-label" for="project-select">当前项目</label>
+      <select id="project-select" aria-label="当前项目">
+        <option>正在读取…</option>
+      </select>
+      <nav aria-label="主导航">
+        <button data-tab="overview" class="nav-item active">
+          <span>◈</span>项目总览
+        </button>
+        <button data-tab="tools" class="nav-item">
+          <span>⌘</span>工具绑定
+        </button>
+        <button data-tab="memory" class="nav-item">
+          <span>▤</span>长期记忆
+        </button>
+        <button data-tab="skills" class="nav-item">
+          <span>◇</span>Skill 演进
+        </button>
+        <button data-tab="research" class="nav-item">
+          <span>◎</span>资料观察
+        </button>
+        <button data-tab="workflow" class="nav-item">
+          <span>⌁</span>工作流设计
+        </button>
+      </nav>
+      <div class="sidebar-bottom">
+        <span class="live-dot"></span> 数据保存在本机<small id="version"
+          >Ergora</small
+        >
+      </div>
+    </aside>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="breadcrumb">
+          工作空间 <span>/</span> <strong id="project-title">选择项目</strong>
+        </div>
+        <div class="top-actions">
+          <span class="local-pill">本地控制台</span
+          ><button
+            id="refresh"
+            class="icon-button"
+            title="刷新"
+            aria-label="刷新"
+          >
+            ↻</button
+          ><button id="help" class="quiet-button">使用指南</button
+          ><button id="add-project" class="primary small">＋ 新建项目</button>
+        </div>
+      </header>
+      <main id="main" tabindex="-1">
+        <div class="empty">
+          <div class="spinner"></div>
+          <p>正在读取工作空间…</p>
+        </div>
+      </main>
+    </div>
+    <div id="notice" role="status" aria-live="polite" hidden></div>
+    <dialog id="dialog"><div id="dialog-content"></div></dialog>
+  </body>
+</html>

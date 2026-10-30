@@ -1,0 +1,8 @@
+{
+  "requests": "/srv/dev-platform/requests",
+  "receipts": "/srv/dev-platform/receipts",
+  "artifacts": "/srv/dev-platform/artifacts",
+  "approvals": "/srv/dev-platform/approvals",
+  "fences": "/srv/dev-platform/fences",
+  "trusted_receipts": true
+}

@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "template": "training-optimization",
+  "agents": {
+    "experiment-planner": {
+      "capabilities": ["experiment-design"],
+      "artifacts": ["hypothesis", "experiment-proposal"],
+      "acceptance": "A proposal references the workload, baseline, candidate and fixed correctness/quality contract; an operator freezes the actual experiment."
+    },
+    "performance-analyst": {
+      "capabilities": ["performance-analysis"],
+      "artifacts": ["profile-analysis", "measurement-plan"],
+      "acceptance": "Analysis distinguishes measured data from hypotheses and specifies reproducible profiling and paired measurement."
+    },
+    "kernel-tuner": {
+      "capabilities": ["kernel-generation"],
+      "artifacts": ["candidate-summary", "validation-plan"],
+      "acceptance": "Generated kernels remain candidates until independent correctness and performance checks pass. Native candidate generation is selected through the project kernel layer."
+    }
+  },
+  "trusted_operations": ["runner execution", "correctness and quality checks", "paired performance comparison", "evidence archive", "human evidence approval"],
+  "acceptance": "Agent output and native generator reports do not constitute perfctl evidence or experiment approval."
+}

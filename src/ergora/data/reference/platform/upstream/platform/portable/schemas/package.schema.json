@@ -1,0 +1,589 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:agent-platform:portable:package:v1",
+  "type": "object",
+  "properties": {
+    "manifest": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "package_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"
+        },
+        "task_type": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"
+        },
+        "task_version": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000000
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "legacy_profile_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "components": {
+          "type": "object",
+          "properties": {
+            "workflow": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 300
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              },
+              "required": [
+                "path",
+                "sha256"
+              ],
+              "additionalProperties": false
+            },
+            "roles": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 300
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              },
+              "required": [
+                "path",
+                "sha256"
+              ],
+              "additionalProperties": false
+            },
+            "evidence": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 300
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              },
+              "required": [
+                "path",
+                "sha256"
+              ],
+              "additionalProperties": false
+            },
+            "README.md": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 300
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              },
+              "required": [
+                "path",
+                "sha256"
+              ],
+              "additionalProperties": false
+            },
+            "instructions.md": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 300
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              },
+              "required": [
+                "path",
+                "sha256"
+              ],
+              "additionalProperties": false
+            },
+            "input.schema.json": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 300
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              },
+              "required": [
+                "path",
+                "sha256"
+              ],
+              "additionalProperties": false
+            },
+            "output.schema.json": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 300
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              },
+              "required": [
+                "path",
+                "sha256"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "workflow",
+            "roles",
+            "evidence",
+            "README.md",
+            "instructions.md",
+            "input.schema.json",
+            "output.schema.json"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "schema_version",
+        "package_id",
+        "task_type",
+        "task_version",
+        "title",
+        "legacy_profile_sha256",
+        "components"
+      ],
+      "additionalProperties": false
+    },
+    "workflow": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "workflow_id": {
+          "const": "development-lifecycle"
+        },
+        "workflow_version": {
+          "const": 1
+        },
+        "stages": {
+          "const": [
+            {
+              "id": "inventory",
+              "role": "inspector",
+              "depends_on": []
+            },
+            {
+              "id": "plan",
+              "role": "planner",
+              "depends_on": [
+                "inventory"
+              ]
+            },
+            {
+              "id": "work",
+              "role": "implementer",
+              "depends_on": [
+                "plan"
+              ]
+            },
+            {
+              "id": "integrate",
+              "role": "integrator",
+              "depends_on": [
+                "work"
+              ]
+            },
+            {
+              "id": "verify",
+              "role": "verifier",
+              "depends_on": [
+                "integrate"
+              ]
+            },
+            {
+              "id": "review",
+              "role": "reviewer",
+              "depends_on": [
+                "verify"
+              ]
+            }
+          ]
+        },
+        "work_units": {
+          "const": "dependency-dag"
+        },
+        "human_gates": {
+          "const": [
+            "plan",
+            "merge"
+          ]
+        },
+        "terminal": {
+          "const": "REVIEW_READY"
+        },
+        "limits": {
+          "type": "object",
+          "properties": {
+            "max_work_units": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 24
+            },
+            "max_parallel_units": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 8
+            }
+          },
+          "required": [
+            "max_work_units",
+            "max_parallel_units"
+          ],
+          "additionalProperties": false
+        },
+        "stage_timeout_seconds": {
+          "type": "integer",
+          "minimum": 30,
+          "maximum": 86400
+        },
+        "approval_timeout_seconds": {
+          "type": "integer",
+          "minimum": 60,
+          "maximum": 604800
+        },
+        "poll_seconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 300
+        }
+      },
+      "required": [
+        "schema_version",
+        "workflow_id",
+        "workflow_version",
+        "stages",
+        "work_units",
+        "human_gates",
+        "terminal",
+        "limits",
+        "stage_timeout_seconds",
+        "approval_timeout_seconds",
+        "poll_seconds"
+      ],
+      "additionalProperties": false
+    },
+    "roles": {
+      "const": {
+        "schema_version": 1,
+        "roles": {
+          "inspector": {
+            "capabilities": [
+              "repository-read",
+              "baseline-inspection"
+            ],
+            "actor_kinds": [
+              "agent",
+              "human"
+            ],
+            "forbidden_actions": [
+              "approve-own-plan",
+              "merge",
+              "deploy",
+              "change-trusted-policy"
+            ],
+            "independent_from": []
+          },
+          "planner": {
+            "capabilities": [
+              "repository-read",
+              "plan-write"
+            ],
+            "actor_kinds": [
+              "agent",
+              "human"
+            ],
+            "forbidden_actions": [
+              "approve-own-plan",
+              "merge",
+              "deploy",
+              "change-trusted-policy"
+            ],
+            "independent_from": []
+          },
+          "implementer": {
+            "capabilities": [
+              "scoped-code-write",
+              "test-execution"
+            ],
+            "actor_kinds": [
+              "agent",
+              "human"
+            ],
+            "forbidden_actions": [
+              "approve-own-plan",
+              "merge",
+              "deploy",
+              "change-trusted-policy"
+            ],
+            "independent_from": []
+          },
+          "integrator": {
+            "capabilities": [
+              "candidate-integration"
+            ],
+            "actor_kinds": [
+              "agent",
+              "human"
+            ],
+            "forbidden_actions": [
+              "approve-own-plan",
+              "merge",
+              "deploy",
+              "change-trusted-policy"
+            ],
+            "independent_from": []
+          },
+          "verifier": {
+            "capabilities": [
+              "trusted-ci-verification"
+            ],
+            "actor_kinds": [
+              "ci"
+            ],
+            "forbidden_actions": [
+              "approve-own-plan",
+              "merge",
+              "deploy",
+              "change-trusted-policy"
+            ],
+            "independent_from": [
+              "authors"
+            ]
+          },
+          "reviewer": {
+            "capabilities": [
+              "independent-candidate-review"
+            ],
+            "actor_kinds": [
+              "agent",
+              "human"
+            ],
+            "forbidden_actions": [
+              "approve-own-plan",
+              "merge",
+              "deploy",
+              "change-trusted-policy"
+            ],
+            "independent_from": [
+              "authors"
+            ]
+          }
+        }
+      },
+      "type": "object"
+    },
+    "evidence": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "evidence_id": {
+          "const": "candidate-evidence-v1"
+        },
+        "required_checks": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"
+          },
+          "minItems": 1,
+          "maxItems": 40,
+          "uniqueItems": true
+        },
+        "artifacts_by_stage": {
+          "type": "object",
+          "properties": {
+            "inventory": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"
+              },
+              "minItems": 1,
+              "maxItems": 30,
+              "uniqueItems": true
+            },
+            "plan": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"
+              },
+              "minItems": 1,
+              "maxItems": 30,
+              "uniqueItems": true
+            },
+            "work": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"
+              },
+              "minItems": 1,
+              "maxItems": 30,
+              "uniqueItems": true
+            },
+            "integrate": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"
+              },
+              "minItems": 1,
+              "maxItems": 30,
+              "uniqueItems": true
+            },
+            "verify": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"
+              },
+              "minItems": 1,
+              "maxItems": 30,
+              "uniqueItems": true
+            },
+            "review": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"
+              },
+              "minItems": 1,
+              "maxItems": 30,
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "inventory",
+            "plan",
+            "work",
+            "integrate",
+            "verify",
+            "review"
+          ],
+          "additionalProperties": false
+        },
+        "protected_paths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 300
+          },
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true
+        },
+        "required_capabilities": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 12000
+          },
+          "minItems": 1,
+          "maxItems": 64,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "schema_version",
+        "evidence_id",
+        "required_checks",
+        "artifacts_by_stage",
+        "protected_paths",
+        "required_capabilities"
+      ],
+      "additionalProperties": false
+    },
+    "templates": {
+      "type": "object",
+      "properties": {
+        "README.md": {
+          "type": "string",
+          "maxLength": 1048576
+        },
+        "instructions.md": {
+          "type": "string",
+          "maxLength": 1048576
+        },
+        "input.schema.json": {
+          "type": "string",
+          "maxLength": 1048576
+        },
+        "output.schema.json": {
+          "type": "string",
+          "maxLength": 1048576
+        }
+      },
+      "required": [
+        "README.md",
+        "instructions.md",
+        "input.schema.json",
+        "output.schema.json"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "manifest",
+    "workflow",
+    "roles",
+    "evidence",
+    "templates"
+  ],
+  "additionalProperties": false,
+  "x-semantic-validation": [
+    "dev_platform.portable validators enforce digests, canonical paths, policy authority boundaries, capability and workflow support, DAG ownership, legacy profile equivalence and payload bounds. A JSON Schema pass alone is insufficient."
+  ]
+}

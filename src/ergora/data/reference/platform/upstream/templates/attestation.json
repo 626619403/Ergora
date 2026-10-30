@@ -1,0 +1,8 @@
+{
+  "kind": "check:forward",
+  "status": "NOT_RUN",
+  "candidate_commit": "REPLACE_FULL_SHA",
+  "manifest_sha256": "REPLACE_SHA256",
+  "validation_contract_sha256": "REPLACE_SHA256",
+  "details": "写实际命令、退出码、验收指标与原始证据URI；review另含reviewer_id；integration另含baseline_id"
+}

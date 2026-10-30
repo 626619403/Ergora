@@ -1,0 +1,5 @@
+{
+  "project": "YOUR_GROUP/YOUR_REPO",
+  "base_sha": "REPLACE_WITH_PROTECTED_BRANCH_FULL_SHA",
+  "policy_revision": "repo-policy-v1"
+}

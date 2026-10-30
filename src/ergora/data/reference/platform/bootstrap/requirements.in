@@ -1,0 +1,6 @@
+-r ../upstream/platform/requirements-a2a.txt
+supervisor
+mlflow
+langgraph
+langgraph-checkpoint-sqlite
+httpx

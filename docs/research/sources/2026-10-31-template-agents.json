@@ -1,0 +1,379 @@
+{
+  "date": "2026-10-31",
+  "sources": [
+    {
+      "repository": "OpenBMB/ForgeKernel",
+      "url": "https://github.com/OpenBMB/ForgeKernel",
+      "default_branch": "main",
+      "license": "Apache-2.0",
+      "commit": "5030503d3ff71851aa34c14b9caf13ebfa9d9a78",
+      "files": {
+        "README.md": {
+          "url": "https://raw.githubusercontent.com/OpenBMB/ForgeKernel/5030503d3ff71851aa34c14b9caf13ebfa9d9a78/README.md",
+          "sha256": "dbdff377a8c099012781f14e434c95d7170b60ecdf13e15316f67feac51e5fba",
+          "bytes": 16427
+        },
+        "pyproject.toml": {
+          "url": "https://raw.githubusercontent.com/OpenBMB/ForgeKernel/5030503d3ff71851aa34c14b9caf13ebfa9d9a78/pyproject.toml",
+          "sha256": "5eab269652cf8bb065675318ab256d66bf9f47a89f728601460c8b456cbfbca7",
+          "bytes": 599
+        },
+        "LICENSE": {
+          "url": "https://raw.githubusercontent.com/OpenBMB/ForgeKernel/5030503d3ff71851aa34c14b9caf13ebfa9d9a78/LICENSE",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "bytes": 11358
+        },
+        "global_config/loop.toml": {
+          "url": "https://raw.githubusercontent.com/OpenBMB/ForgeKernel/5030503d3ff71851aa34c14b9caf13ebfa9d9a78/global_config/loop.toml",
+          "sha256": "3835cad5716b7097f5d5e23c8122ff5b6429c7d21a0b170167d37ead01f89c82",
+          "bytes": 542
+        },
+        "global_config/models.toml": {
+          "url": "https://raw.githubusercontent.com/OpenBMB/ForgeKernel/5030503d3ff71851aa34c14b9caf13ebfa9d9a78/global_config/models.toml",
+          "sha256": "3d3e7bd9b20b1d5d35780f0ae15c0b6150e5da90789980fab9921c534817a7e0",
+          "bytes": 629
+        },
+        "src/forgekernel/__main__.py": {
+          "url": "https://raw.githubusercontent.com/OpenBMB/ForgeKernel/5030503d3ff71851aa34c14b9caf13ebfa9d9a78/src/forgekernel/__main__.py",
+          "sha256": "ada38d28dec0406a0961e26fd8a1fa73c314835f0778845cdc73805bda952347",
+          "bytes": 3996
+        },
+        "src/forgekernel/agents.py": {
+          "url": "https://raw.githubusercontent.com/OpenBMB/ForgeKernel/5030503d3ff71851aa34c14b9caf13ebfa9d9a78/src/forgekernel/agents.py",
+          "sha256": "3ccf41e3ff4316dbc0d082de7a20a18ad947e7be491e79eaa801fc8d7ad6870a",
+          "bytes": 1348
+        },
+        "src/forgekernel/task.py": {
+          "url": "https://raw.githubusercontent.com/OpenBMB/ForgeKernel/5030503d3ff71851aa34c14b9caf13ebfa9d9a78/src/forgekernel/task.py",
+          "sha256": "674c3c58ecbb878653cf18d046d655de951fb1af25f513bb176c4a535575732b",
+          "bytes": 29661
+        },
+        "tasks/rmsnorm/task.toml": {
+          "url": "https://raw.githubusercontent.com/OpenBMB/ForgeKernel/5030503d3ff71851aa34c14b9caf13ebfa9d9a78/tasks/rmsnorm/task.toml",
+          "sha256": "8f263e19e1fc6cb43355908f6a7069806d2ff713c29c94dcc874a6c3e9757977",
+          "bytes": 537
+        },
+        "src/forgekernel/launch.py": {
+          "url": "https://raw.githubusercontent.com/OpenBMB/ForgeKernel/5030503d3ff71851aa34c14b9caf13ebfa9d9a78/src/forgekernel/launch.py",
+          "sha256": "29e05014af8afcfb4d51eefc6154dea3fa8c499462d24e38c11f354b8b8676e1",
+          "bytes": 31526
+        },
+        "src/forgekernel/localenv.py": {
+          "url": "https://raw.githubusercontent.com/OpenBMB/ForgeKernel/5030503d3ff71851aa34c14b9caf13ebfa9d9a78/src/forgekernel/localenv.py",
+          "sha256": "3e8947393211627948a1f2a3a746bf7a9fa88969c493c88a0bc83d78d0fcdf11",
+          "bytes": 5017
+        },
+        "src/forgekernel/runs.py": {
+          "url": "https://raw.githubusercontent.com/OpenBMB/ForgeKernel/5030503d3ff71851aa34c14b9caf13ebfa9d9a78/src/forgekernel/runs.py",
+          "sha256": "f4d45d50d95a02fedcce1779832b1f4eecc36147a928a03c33163a41b0ea8c49",
+          "bytes": 6009
+        },
+        "src/forgekernel/paths.py": {
+          "url": "https://raw.githubusercontent.com/OpenBMB/ForgeKernel/5030503d3ff71851aa34c14b9caf13ebfa9d9a78/src/forgekernel/paths.py",
+          "sha256": "ecbed1498338a880856d9bdc9031493899fe54273fc09b89bd4bd2f1a41fb230",
+          "bytes": 1934
+        }
+      }
+    },
+    {
+      "repository": "OpenBMB/ForgeTrain",
+      "url": "https://github.com/OpenBMB/ForgeTrain",
+      "default_branch": "main",
+      "license": "Apache-2.0",
+      "commit": "3242a5cd74851a14a7e0c1ebbfb19decdafd2cde",
+      "files": {
+        "README.md": {
+          "url": "https://raw.githubusercontent.com/OpenBMB/ForgeTrain/3242a5cd74851a14a7e0c1ebbfb19decdafd2cde/README.md",
+          "sha256": "5736c442a74823426d132b303ddc09427b9c6dac76b3acd38bc341de8c4ba6f9",
+          "bytes": 12994
+        },
+        "pyproject.toml": {
+          "url": "https://raw.githubusercontent.com/OpenBMB/ForgeTrain/3242a5cd74851a14a7e0c1ebbfb19decdafd2cde/pyproject.toml",
+          "sha256": "1e773cce83ab3ed448d11183b8944edfb3e7b4878e70dfea0a651c5b7692fb8b",
+          "bytes": 808
+        },
+        "LICENSE": {
+          "url": "https://raw.githubusercontent.com/OpenBMB/ForgeTrain/3242a5cd74851a14a7e0c1ebbfb19decdafd2cde/LICENSE",
+          "sha256": "ab143cdeee0f6bd02ddd815ea25dcfe9b0c397759deaeeda063d489166c7d6d5",
+          "bytes": 11299
+        }
+      }
+    },
+    {
+      "repository": "Aider-AI/aider",
+      "url": "https://github.com/Aider-AI/aider",
+      "default_branch": "main",
+      "license": "Apache-2.0",
+      "commit": "5dc9490bb35f9729ef2c95d00a19ccd30c26339c",
+      "files": {
+        "README.md": {
+          "url": "https://raw.githubusercontent.com/Aider-AI/aider/5dc9490bb35f9729ef2c95d00a19ccd30c26339c/README.md",
+          "sha256": "e40e05367ceacf7138a2605484bf7d1cb5a262d2dba03f52a5327c023b3cd0dc",
+          "bytes": 12406
+        },
+        "pyproject.toml": {
+          "url": "https://raw.githubusercontent.com/Aider-AI/aider/5dc9490bb35f9729ef2c95d00a19ccd30c26339c/pyproject.toml",
+          "sha256": "1faaea506c1d42f5e9db0d7152cea43920596b901e281e27c2655e791284c9ef",
+          "bytes": 1580
+        },
+        "LICENSE": {
+          "url": "https://raw.githubusercontent.com/Aider-AI/aider/5dc9490bb35f9729ef2c95d00a19ccd30c26339c/LICENSE",
+          "error": "HTTP Error 404: Not Found"
+        },
+        "aider/coders/base_coder.py": {
+          "url": "https://raw.githubusercontent.com/Aider-AI/aider/5dc9490bb35f9729ef2c95d00a19ccd30c26339c/aider/coders/base_coder.py",
+          "sha256": "04a7b38c4f1d2b1684ac958f40bcd81a28b00139eae88afed59d2c970bef1ee1",
+          "bytes": 86302
+        },
+        "LICENSE.txt": {
+          "url": "https://raw.githubusercontent.com/Aider-AI/aider/5dc9490bb35f9729ef2c95d00a19ccd30c26339c/LICENSE.txt",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+          "bytes": 11358
+        }
+      }
+    },
+    {
+      "repository": "oraios/serena",
+      "url": "https://github.com/oraios/serena",
+      "default_branch": "main",
+      "license": "NOASSERTION",
+      "commit": "ede329aaf0c824bea75455a2926f01420d7aa620",
+      "files": {
+        "README.md": {
+          "url": "https://raw.githubusercontent.com/oraios/serena/ede329aaf0c824bea75455a2926f01420d7aa620/README.md",
+          "sha256": "26c1db5a91658c4fb2d3bd43c4da5aa90fa0efb172a9175a959643c177a14823",
+          "bytes": 15329
+        },
+        "pyproject.toml": {
+          "url": "https://raw.githubusercontent.com/oraios/serena/ede329aaf0c824bea75455a2926f01420d7aa620/pyproject.toml",
+          "sha256": "95e4807888b120d1813ee6c0ce908df54ed7b33505e55e29686f91ab47b40db0",
+          "bytes": 14227
+        },
+        "LICENSE": {
+          "url": "https://raw.githubusercontent.com/oraios/serena/ede329aaf0c824bea75455a2926f01420d7aa620/LICENSE",
+          "sha256": "6239f4be78ccff409aedfbce88ac89b26f488f76aac7ab199fb6876dc7fdeb4c",
+          "bytes": 3470
+        },
+        "LICENSES/GPL-3.0-or-later.txt": {
+          "url": "https://raw.githubusercontent.com/oraios/serena/ede329aaf0c824bea75455a2926f01420d7aa620/LICENSES/GPL-3.0-or-later.txt",
+          "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986",
+          "bytes": 35149
+        },
+        "LICENSES/MIT.txt": {
+          "url": "https://raw.githubusercontent.com/oraios/serena/ede329aaf0c824bea75455a2926f01420d7aa620/LICENSES/MIT.txt",
+          "sha256": "16017e50562bb112006f6f32d17ca989e0e573b011bd6790b642018b1c195b0c",
+          "bytes": 1066
+        }
+      }
+    },
+    {
+      "repository": "OpenHands/software-agent-sdk",
+      "url": "https://github.com/OpenHands/software-agent-sdk",
+      "default_branch": "main",
+      "license": "MIT",
+      "commit": "c048a1eb82353b0586f3ce600708394a68ebb246",
+      "files": {
+        "README.md": {
+          "url": "https://raw.githubusercontent.com/OpenHands/software-agent-sdk/c048a1eb82353b0586f3ce600708394a68ebb246/README.md",
+          "sha256": "95094c9745c7cc58136d4eaa1688fb6038aafefec2be05344293f6df7e55dbf8",
+          "bytes": 10835
+        },
+        "pyproject.toml": {
+          "url": "https://raw.githubusercontent.com/OpenHands/software-agent-sdk/c048a1eb82353b0586f3ce600708394a68ebb246/pyproject.toml",
+          "sha256": "b0592d8d2aaa1543036d5ca4ed91bf13c17ac9bbeae2eaccf8098e6244e4b95b",
+          "bytes": 4570
+        },
+        "LICENSE": {
+          "url": "https://raw.githubusercontent.com/OpenHands/software-agent-sdk/c048a1eb82353b0586f3ce600708394a68ebb246/LICENSE",
+          "sha256": "14a9b631c658eee682c6c2973525fbdf808c3457176bc47513052c559cc5ce86",
+          "bytes": 1079
+        },
+        "openhands-sdk/pyproject.toml": {
+          "url": "https://raw.githubusercontent.com/OpenHands/software-agent-sdk/c048a1eb82353b0586f3ce600708394a68ebb246/openhands-sdk/pyproject.toml",
+          "sha256": "c8e172ade057d77898db9f3f222c5dd30c33c49567f16480d318f379c3cf62a4",
+          "bytes": 1753
+        }
+      }
+    },
+    {
+      "repository": "SWE-agent/mini-swe-agent",
+      "url": "https://github.com/SWE-agent/mini-swe-agent",
+      "default_branch": "main",
+      "license": "MIT",
+      "commit": "04d809ceab9df28f9adaed044884180159172930",
+      "files": {
+        "README.md": {
+          "url": "https://raw.githubusercontent.com/SWE-agent/mini-swe-agent/04d809ceab9df28f9adaed044884180159172930/README.md",
+          "sha256": "9982d90b7566f2f3fa5e9811b475d5e8e2a84e2df80cf3f1e4be6e820b129835",
+          "bytes": 11106
+        },
+        "pyproject.toml": {
+          "url": "https://raw.githubusercontent.com/SWE-agent/mini-swe-agent/04d809ceab9df28f9adaed044884180159172930/pyproject.toml",
+          "sha256": "c176ff37a89ee88a2ea2ce746b9b7e723ea3175e53be5336ab99f5aba0d59ddf",
+          "bytes": 7285
+        },
+        "LICENSE": {
+          "url": "https://raw.githubusercontent.com/SWE-agent/mini-swe-agent/04d809ceab9df28f9adaed044884180159172930/LICENSE",
+          "error": "HTTP Error 404: Not Found"
+        },
+        "LICENSE.md": {
+          "url": "https://raw.githubusercontent.com/SWE-agent/mini-swe-agent/04d809ceab9df28f9adaed044884180159172930/LICENSE.md",
+          "sha256": "0f796e58f91d1c07bb2c1b1d0f8bf3a83017c3a5dec1bdc6fae733b2cd2e875b",
+          "bytes": 1094
+        },
+        "src/minisweagent/agents/default.py": {
+          "url": "https://raw.githubusercontent.com/SWE-agent/mini-swe-agent/04d809ceab9df28f9adaed044884180159172930/src/minisweagent/agents/default.py",
+          "sha256": "e8ef8aa365942d739c2ec5cb0879f60f377d2dc2de8ec670aaedf3bafb45a4c2",
+          "bytes": 8043
+        },
+        "src/minisweagent/config/mini.yaml": {
+          "url": "https://raw.githubusercontent.com/SWE-agent/mini-swe-agent/04d809ceab9df28f9adaed044884180159172930/src/minisweagent/config/mini.yaml",
+          "sha256": "b539a8965f5bf41dd0f32daafa5d2db22581923d13812fa378fd09569b9d6b0c",
+          "bytes": 5228
+        },
+        "src/minisweagent/run/hello_world.py": {
+          "url": "https://raw.githubusercontent.com/SWE-agent/mini-swe-agent/04d809ceab9df28f9adaed044884180159172930/src/minisweagent/run/hello_world.py",
+          "sha256": "e1d2b259e5716167e3066ce406d91e51d67b432dd49d47342e1306d25f5cf2f6",
+          "bytes": 1157
+        },
+        "src/minisweagent/run/mini.py": {
+          "url": "https://raw.githubusercontent.com/SWE-agent/mini-swe-agent/04d809ceab9df28f9adaed044884180159172930/src/minisweagent/run/mini.py",
+          "sha256": "ae9c82013afbc8e0320dc1e55600eed9d9ee6dec5acbc59763ff984a0594f9a9",
+          "bytes": 4895
+        },
+        "src/minisweagent/models/__init__.py": {
+          "url": "https://raw.githubusercontent.com/SWE-agent/mini-swe-agent/04d809ceab9df28f9adaed044884180159172930/src/minisweagent/models/__init__.py",
+          "sha256": "eb141eae346d51af407b4faf868ad7e869fa4fff275415381fa8ef845616f351",
+          "bytes": 4466
+        },
+        "src/minisweagent/environments/local.py": {
+          "url": "https://raw.githubusercontent.com/SWE-agent/mini-swe-agent/04d809ceab9df28f9adaed044884180159172930/src/minisweagent/environments/local.py",
+          "sha256": "01dd33ae6be897458611911cc0eee1389092ea9fc6788c7eb24773e7c6342b1c",
+          "bytes": 3617
+        },
+        "src/minisweagent/config/default.yaml": {
+          "url": "https://raw.githubusercontent.com/SWE-agent/mini-swe-agent/04d809ceab9df28f9adaed044884180159172930/src/minisweagent/config/default.yaml",
+          "sha256": "112aa58328f478a41cc2630702a4b89ef459e912870e05065157ed221f56701f",
+          "bytes": 5829
+        }
+      }
+    },
+    {
+      "repository": "openai/codex",
+      "url": "https://github.com/openai/codex",
+      "default_branch": "main",
+      "license": "Apache-2.0",
+      "commit": "0ffae14a4316d67eae25a0539e72345d0ece7118",
+      "files": {
+        "README.md": {
+          "url": "https://raw.githubusercontent.com/openai/codex/0ffae14a4316d67eae25a0539e72345d0ece7118/README.md",
+          "sha256": "ba4e1f69ff48386e72a9c5e1edaf76aad64a475c2d51af79ccba6d1128261ba7",
+          "bytes": 3334
+        },
+        "pyproject.toml": {
+          "url": "https://raw.githubusercontent.com/openai/codex/0ffae14a4316d67eae25a0539e72345d0ece7118/pyproject.toml",
+          "error": "HTTP Error 404: Not Found"
+        },
+        "LICENSE": {
+          "url": "https://raw.githubusercontent.com/openai/codex/0ffae14a4316d67eae25a0539e72345d0ece7118/LICENSE",
+          "sha256": "d17f227e4df5da1600391338865ce0f3055211760a36688f816941d58232d8dc",
+          "bytes": 10926
+        }
+      }
+    },
+    {
+      "repository": "anthropics/claude-code",
+      "url": "https://github.com/anthropics/claude-code",
+      "default_branch": "main",
+      "license": null,
+      "commit": "d4dfed4e1c578cfea8bd6e64873e4f5e5b7e36f0",
+      "files": {
+        "README.md": {
+          "url": "https://raw.githubusercontent.com/anthropics/claude-code/d4dfed4e1c578cfea8bd6e64873e4f5e5b7e36f0/README.md",
+          "sha256": "07445fe9698dd4e038fa5b30ea3bde5f8f1480068b2f275fdd20725cecda0a6c",
+          "bytes": 2867
+        },
+        "pyproject.toml": {
+          "url": "https://raw.githubusercontent.com/anthropics/claude-code/d4dfed4e1c578cfea8bd6e64873e4f5e5b7e36f0/pyproject.toml",
+          "error": "HTTP Error 404: Not Found"
+        },
+        "LICENSE": {
+          "url": "https://raw.githubusercontent.com/anthropics/claude-code/d4dfed4e1c578cfea8bd6e64873e4f5e5b7e36f0/LICENSE",
+          "error": "HTTP Error 404: Not Found"
+        },
+        "LICENSE.md": {
+          "url": "https://raw.githubusercontent.com/anthropics/claude-code/d4dfed4e1c578cfea8bd6e64873e4f5e5b7e36f0/LICENSE.md",
+          "sha256": "728158fd1037143fad6907e8fa34804177e598b7326519503fe83cafdef849e6",
+          "bytes": 150
+        }
+      }
+    },
+    {
+      "repository": "optuna/optuna",
+      "url": "https://github.com/optuna/optuna",
+      "default_branch": "master",
+      "license": "MIT",
+      "commit": "8c615f0404e4cd41dca763c6de235af7e36b75d5",
+      "files": {
+        "README.md": {
+          "url": "https://raw.githubusercontent.com/optuna/optuna/8c615f0404e4cd41dca763c6de235af7e36b75d5/README.md",
+          "sha256": "75ad3e0de21c5cade254143d329195cdeee8bdb5942bc7c66eedbb696f71ad24",
+          "bytes": 12204
+        },
+        "pyproject.toml": {
+          "url": "https://raw.githubusercontent.com/optuna/optuna/8c615f0404e4cd41dca763c6de235af7e36b75d5/pyproject.toml",
+          "sha256": "c6c35f754a205e8384cbbe65cfb0704b82744cba4034461793be1d7ca83b57f8",
+          "bytes": 5762
+        },
+        "LICENSE": {
+          "url": "https://raw.githubusercontent.com/optuna/optuna/8c615f0404e4cd41dca763c6de235af7e36b75d5/LICENSE",
+          "sha256": "c3df8e8523cf46be4b366ee7dd11578454b10ea5ec5159e57df849513aafe059",
+          "bytes": 1081
+        }
+      }
+    },
+    {
+      "repository": "microsoft/agent-lightning",
+      "url": "https://github.com/microsoft/agent-lightning",
+      "default_branch": "main",
+      "license": "MIT",
+      "commit": "05c7fe133175653e48c990546a3509e52dc56512",
+      "files": {
+        "README.md": {
+          "url": "https://raw.githubusercontent.com/microsoft/agent-lightning/05c7fe133175653e48c990546a3509e52dc56512/README.md",
+          "sha256": "aabd3c1ff7dbf32f717cc98b6cbcaece27bf13de52f46d46acde9108c8f61edf",
+          "bytes": 11560
+        },
+        "pyproject.toml": {
+          "url": "https://raw.githubusercontent.com/microsoft/agent-lightning/05c7fe133175653e48c990546a3509e52dc56512/pyproject.toml",
+          "sha256": "ee9aa4849c519f58d993c6e1556ba85b2d61cedd5bfbb75f9b1f71427d504c6b",
+          "bytes": 3430
+        },
+        "LICENSE": {
+          "url": "https://raw.githubusercontent.com/microsoft/agent-lightning/05c7fe133175653e48c990546a3509e52dc56512/LICENSE",
+          "sha256": "8f71659370c5268d9a1dc962a46232540e8fca63462586d8efaa95aab492a208",
+          "bytes": 1046
+        }
+      }
+    },
+    {
+      "repository": "NVlabs/kda",
+      "url": "https://github.com/NVlabs/kda",
+      "default_branch": "main",
+      "license": "NOASSERTION",
+      "commit": "acdd79343c5e9d0c7cb96289f26fd3f1051ce785",
+      "files": {
+        "README.md": {
+          "url": "https://raw.githubusercontent.com/NVlabs/kda/acdd79343c5e9d0c7cb96289f26fd3f1051ce785/README.md",
+          "sha256": "0601f3bcdada46ddeaf71245a7975ca6d8bafacf5eb871cd32024c0981f7977d",
+          "bytes": 6200
+        },
+        "LICENSE": {
+          "url": "https://raw.githubusercontent.com/NVlabs/kda/acdd79343c5e9d0c7cb96289f26fd3f1051ce785/LICENSE",
+          "sha256": "79a6a78693f4e02b1f43837ceb014aefda32d319e4298425c7314465c26abe23",
+          "bytes": 30220
+        }
+      }
+    }
+  ]
+}

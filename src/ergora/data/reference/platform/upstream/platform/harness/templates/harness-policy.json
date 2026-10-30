@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "required_docs": ["AGENTS.md", "ARCHITECTURE.md", "docs/QUALITY.md", "docs/RUNBOOK.md"],
+  "doc_roots": ["AGENTS.md", "ARCHITECTURE.md", "docs"],
+  "python_roots": ["src"],
+  "layers": {
+    "domain": ["app.domain"],
+    "service": ["app.service"],
+    "adapters": ["app.adapters"],
+    "entrypoints": ["app.entrypoints"]
+  },
+  "allowed_edges": {
+    "domain": [],
+    "service": ["domain"],
+    "adapters": ["domain", "service"],
+    "entrypoints": ["domain", "service", "adapters"]
+  },
+  "max_file_lines": 500
+}

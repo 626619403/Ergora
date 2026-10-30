@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "evidence_id": "candidate-evidence-v1",
+  "required_checks": [
+    "scope",
+    "behavior",
+    "architecture",
+    "knowledge",
+    "baseline-regression",
+    "integration",
+    "compatibility",
+    "migration-rollback"
+  ],
+  "artifacts_by_stage": {
+    "inventory": [
+      "inventory",
+      "behavior-baseline"
+    ],
+    "plan": [
+      "execution-plan",
+      "ownership-map",
+      "rollback-plan"
+    ],
+    "work": [
+      "change-summary",
+      "test-results"
+    ],
+    "integrate": [
+      "integration-record"
+    ],
+    "verify": [
+      "check-results"
+    ],
+    "review": [
+      "review-report",
+      "handoff"
+    ]
+  },
+  "protected_paths": [
+    ".git",
+    ".symphony",
+    ".agent-control",
+    ".agent-platform-private"
+  ],
+  "required_capabilities": [
+    "immutable-input",
+    "durable-recovery",
+    "dag-work-units",
+    "human-plan-approval",
+    "candidate-bound-evidence",
+    "independent-verification",
+    "independent-review",
+    "cooperative-cancel-fence",
+    "review-ready-only"
+  ]
+}
