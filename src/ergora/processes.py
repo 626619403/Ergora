@@ -8,6 +8,7 @@ import signal
 import shutil
 import subprocess
 import sys
+import time
 
 
 _cancel_requested = False
@@ -40,12 +41,22 @@ def _run_windows(argv, cwd, output, timeout, stdin, env):
             try:
                 # Our child waits for stdin. No user program runs before assignment.
                 job.assign(process.pid)
-                try:
-                    process.communicate(request, timeout=timeout)
-                except subprocess.TimeoutExpired:
-                    status = "timed_out"
-                except KeyboardInterrupt:
-                    status = "cancelled"
+                deadline = time.monotonic() + timeout
+                payload = request
+                while True:
+                    try:
+                        # Windows native waits can defer Python signal handlers.
+                        # Return to Python regularly so Ctrl+C can close the job.
+                        process.communicate(payload, timeout=min(.2, max(0, deadline - time.monotonic())))
+                        break
+                    except subprocess.TimeoutExpired:
+                        payload = None  # communicate must receive stdin only once.
+                        if time.monotonic() >= deadline:
+                            status = "timed_out"
+                            break
+                    except KeyboardInterrupt:
+                        status = "cancelled"
+                        break
             except BaseException:
                 process.kill()  # Also covers assignment failure before the gate opens.
                 process.wait()
