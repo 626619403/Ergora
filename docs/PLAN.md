@@ -4,11 +4,11 @@
 
 ## 当前检查点
 
-- 基线：`3b52365`；实现分支 `feat/evolution-console`，从已发布研究分支建立；远端已核对一致，开始时工作区干净。
-- 当前工作：S0–S9 已交付；开始用户追加的 S10 Windows 支持。新分支 `feat/windows-support`，基线 `4c7426a4ce5b733bb32b32fc6fa2fe8438e05e9d`，起始工作区干净。原 Linux 发行及冻结参考内容保持可比较。
+- 前阶段基线：`3b52365`，实现分支 `feat/evolution-console`，S0–S9 已交付。
+- 当前交付：S10 Windows 支持完成，分支 `feat/windows-support`，基线 `4c7426a4ce5b733bb32b32fc6fa2fe8438e05e9d`；已验证运行代码 `9c196a9d27874d11befbcdf21a294f3a438697a7` 已推送并核对远端一致。最终交接文档不再修改运行代码。原 Linux 发行及冻结参考内容保持可比较。
 - 当前范围：原生 Windows 10/11 的控制面、CLI、项目 / 记忆 / Skill / 资料观察、Codex / Claude / 原生命令调用；完整六阶段与 Linux 专用工具通过 WSL2/Linux。使用 PowerShell 用户目录安装，不需要管理员权限或 Node 构建控制台。
-- 下一动作：检查点已推送；Ubuntu CI 通过，Windows PowerShell 5.1 安装 / 升级通过，Windows 原生回归仍待修正后复验。独立初审已记录，正在处理冻结编译器 POSIX 读取与 evaluator 路径解析；新增原生编译 / 导出 / 取消回归后重跑 CI，再完成复审及最终推送核对。
-- 验证基线：前阶段全量 110 项 +36 子测试、安装器追加 1 项；Windows 尚未验收，Linux 结果不能替代 Windows 结果。
+- 下一动作：新机器按 Windows / Linux 手册安装，从真实项目完成所选 Agent 的认证和小任务验收；需要完整六阶段时按可信 Linux 容器路径部署。恢复工程前先核对本计划、当前交接记录和 Git。
+- 验证：Windows / Ubuntu CI 41225920073 全部成功；Linux 完整回归 115 passed +36 subtests。两个切片最终独立审查通过；Linux 用户目录 0.2.0 升级和 314 文件身份一致。真实模型 / GPU / winget 空白系统等未验收范围保留在交付记录，不从 CI 推导。
 - 恢复要求：重读本文件及活动切片记录，对照分支、工作区和最近提交；完成核对后继续当前项，不重新做已验收的调研。
 
 ## 从调研收敛的决策
@@ -84,7 +84,7 @@
 
 |切片|范围及验收|实现|验证|独立审查|
 |---|---|---|---|---|
-|S10.1 原生运行适配|移除导入级 fcntl 阻断；跨进程互斥；原生 Agent / evaluator / proposer 的 UTF-8、超时及整棵后代清理；抓取取消、预算与控制器异常退出边界|初审修正中|Linux 应用 / 定向 / 合同通过；Windows 回归修正后待复验|[初审](delivery/2026-11-01-s10-runtime-review.md)有发现，待复审|
-|S10.2 安装与交付|用户目录 PowerShell 安装 / 升级及外来入口保护；Windows 手册与平台能力提示；跨平台 wheel / CLI / Web / 回归 CI；Linux 无回归；提交推送|初审修正中|真实 Windows 安装 / 升级已通过；完整 CI 待复验|[初审](delivery/2026-11-01-s10-delivery-review.md)待最终证据|
+|S10.1 原生运行适配|移除导入级 fcntl 阻断；跨进程互斥；原生 Agent / evaluator / proposer 的 UTF-8、超时及整棵后代清理；抓取取消、预算与控制器异常退出边界|完成|Windows / Ubuntu CI 41225920073 通过；Linux 115 项 +36 子测试|[最终复审通过](delivery/2026-11-01-s10-runtime-review.md)|
+|S10.2 安装与交付|用户目录 PowerShell 安装 / 升级及外来入口保护；Windows 手册与平台能力提示；跨平台 wheel / CLI / Web / 回归 CI；Linux 无回归；提交推送|完成|Windows 真实安装 / 重复升级及完整 CI 通过；home 升级通过，运行代码远端一致|[最终复审通过](delivery/2026-11-01-s10-delivery-review.md)|
 
-验收使用真实 Windows runner 执行 Windows 路径，不以 Linux 上模拟 os.name 代替。当前机器只有 Linux，因此本地先验证 Linux 回归和可执行的 PowerShell 静态检查；若远端 CI 因外部权限不可用，将明确保留 Windows 实机验收未完成状态。过程与检查证据记录在 [Windows 交付记录](delivery/2026-11-01-windows.md)。
+验收使用真实 Windows runner 执行 Windows 路径，不以 Linux 上模拟 os.name 代替。本轮已通过实际 Windows / Ubuntu CI，历史失败、修复、独立审查及未验证范围记录在 [Windows 交付记录](delivery/2026-11-01-windows.md)。
