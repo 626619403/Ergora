@@ -1,6 +1,6 @@
 """Bounded source observations. Web content is evidence, never executable instructions."""
 
-import fcntl
+from contextlib import nullcontext
 import ctypes
 import hashlib
 from html.parser import HTMLParser
@@ -18,10 +18,10 @@ from urllib.parse import urljoin, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 import uuid
 
-from .state import State, now
+from .state import State, file_lock, now
 
 
-def _fetch_source(url, allow_private, max_bytes, filename, sender, deadline, controller_pid):
+def _fetch_source(url, allow_private, max_bytes, filename, sender, deadline, controller_pid, gate=None):
     """A network-only child; the parent owns the wall deadline and persistent state."""
     class NoRedirect(HTTPRedirectHandler):
         def redirect_request(self, req, fp, code, msg, headers, newurl):
@@ -31,13 +31,18 @@ def _fetch_source(url, allow_private, max_bytes, filename, sender, deadline, con
         raise TimeoutError("Research time budget exhausted")
 
     try:
-        # Linux sends SIGKILL if the controller dies, including abrupt exits.
-        if ctypes.CDLL(None, use_errno=True).prctl(1, signal.SIGKILL, 0, 0, 0):
-            raise OSError(ctypes.get_errno(), "Cannot bind network child lifetime to controller")
-        if os.getppid() != controller_pid:
-            return
-        signal.signal(signal.SIGALRM, expire)
-        signal.setitimer(signal.ITIMER_REAL, max(.001, deadline - time.monotonic()))
+        if os.name == "nt":
+            # Also bound the pre-assignment window if the parent exits before assigning us.
+            if not gate.wait(max(.001, deadline - time.monotonic())):
+                raise TimeoutError("Research time budget exhausted before job assignment")
+        else:
+            # Linux sends SIGKILL if the controller dies, including abrupt exits.
+            if ctypes.CDLL(None, use_errno=True).prctl(1, signal.SIGKILL, 0, 0, 0):
+                raise OSError(ctypes.get_errno(), "Cannot bind network child lifetime to controller")
+            if os.getppid() != controller_pid:
+                return
+            signal.signal(signal.SIGALRM, expire)
+            signal.setitimer(signal.ITIMER_REAL, max(.001, deadline - time.monotonic()))
         opener = build_opener(NoRedirect())
         target = url
         for _ in range(6):
@@ -73,40 +78,51 @@ def _fetch_source(url, allow_private, max_bytes, filename, sender, deadline, con
         # Network/protocol failures cross this process boundary as explicit failed outcomes.
         sender.send({"status": "failed", "error": str(error), "error_type": type(error).__name__})
     finally:
-        signal.setitimer(signal.ITIMER_REAL, 0)
+        if os.name != "nt":
+            signal.setitimer(signal.ITIMER_REAL, 0)
         sender.close()
 
 
 def _download(url, allow_private, max_bytes, filename, check, progress, deadline):
     context = multiprocessing.get_context("spawn")
+    gate = context.Event() if os.name == "nt" else None
     receiver, sender = context.Pipe(duplex=False)
-    process = context.Process(target=_fetch_source, args=(url, allow_private, max_bytes, str(filename), sender, deadline, os.getpid()), daemon=True)
-    process.start()
-    sender.close()
-    try:
-        while process.is_alive():
+    process = context.Process(target=_fetch_source, args=(url, allow_private, max_bytes, str(filename), sender, deadline, os.getpid(), gate), daemon=True)
+    if os.name == "nt":
+        from .windows_job import Job
+        lifetime = Job()
+    else:
+        lifetime = nullcontext()
+    with lifetime as job:
+        process.start()
+        try:
+            if job is not None:
+                job.assign(process.pid)
+                gate.set()
+            while process.is_alive():
+                progress()
+                check()
+                process.join(timeout=.05)
             progress()
             check()
-            process.join(timeout=.05)
-        progress()
-        check()
-        if not receiver.poll(.1):
-            raise ValueError("Source fetch process ended without a result")
-        try:
-            result = receiver.recv()
-        except EOFError as error:
-            raise ValueError("Source fetch process ended without a result") from error
-        if result["status"] != "succeeded":
-            if result["error_type"] == "TimeoutError":
-                raise TimeoutError(result["error"])
-            raise ValueError(result["error"])
-        return result
-    finally:
-        if process.is_alive():
-            process.kill()
-        process.join()
-        progress()
-        receiver.close()
+            if not receiver.poll(.1):
+                raise ValueError("Source fetch process ended without a result")
+            try:
+                result = receiver.recv()
+            except EOFError as error:
+                raise ValueError("Source fetch process ended without a result") from error
+            if result["status"] != "succeeded":
+                if result["error_type"] == "TimeoutError":
+                    raise TimeoutError(result["error"])
+                raise ValueError(result["error"])
+            return result
+        finally:
+            sender.close()
+            if process.is_alive():
+                process.kill()
+            process.join()
+            progress()
+            receiver.close()
 
 
 def _schema(state: State):
@@ -230,11 +246,7 @@ def run(state: State, project_id: str, urls: list[str], max_bytes: int = 1_000_0
     _schema(state)
     locks = state.root / "locks"
     locks.mkdir(exist_ok=True)
-    with (locks / f"research-{run_id}.lock").open("a") as lock:
-        try:
-            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError as error:
-            raise ValueError("Research run is already active") from error
+    with file_lock(locks / f"research-{run_id}.lock", blocking=False):
         with state.connect() as db:
             row = db.execute("SELECT project,document FROM research_runs WHERE id=?", (run_id,)).fetchone()
             if row:

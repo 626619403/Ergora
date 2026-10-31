@@ -5,7 +5,7 @@ import importlib.util
 import hashlib
 from pathlib import Path
 import re
-import shutil
+import sys
 import uuid
 from urllib.parse import urlsplit
 
@@ -70,7 +70,7 @@ def catalog() -> dict:
         for tool in choices:
             installed = True if tool in ("sqlite", "manual", "urls") else None
             if tool in ("codex", "claude-code"):
-                installed = shutil.which("claude" if tool == "claude-code" else tool) is not None
+                installed = agents.available({"tool": tool}, Path.cwd())
             if tool == "mini-swe-agent":
                 installed = importlib.util.find_spec("minisweagent") is not None
             if tool == "gepa":
@@ -81,7 +81,10 @@ def catalog() -> dict:
                           "optimizer": ["skill.import"] if tool == "manual" else ["skill.optimize"]}
             operations.update(research=["research.run"], scheduler=["research.run"] if tool == "manual" else ["research.schedule", "research.worker"])
             operations["kernel"] = [] if tool == "manual" else ["kernel.plan", "kernel.prepare", "kernel.run", "kernel.status"]
-            result[layer].append({"tool": tool, "installed": installed, "authentication": "not_checked",
+            supported = tool not in ("forgekernel", "mini-swe-agent") or sys.platform == "linux"
+            result[layer].append({"tool": tool, "installed": installed if supported else False,
+                                  "supported": supported, "platform_note": "" if supported else "Requires Linux; use WSL2",
+                                  "authentication": "not_checked",
                                   "operations": operations.get(layer, ["agent.run"]),
                                   "capabilities": agents.TOOL_CAPABILITIES.get(tool, []),
                                   "requires": agents.ROLE_CAPABILITIES.get(layer, [])})
@@ -112,9 +115,11 @@ def doctor(state: State, project_id: str) -> dict:
                            "connectivity": "not_checked" if tool == "temporal" else "local"})
             continue
         checks.append({"layer": layer, "tool": tool, "installed": agents.available(binding, Path(project["repo"])),
-                       "authentication": "not_checked", "runtime": "ergora-agent-invocation"})
+                       "authentication": "not_checked", "runtime": "ergora-agent-invocation",
+                       "supported": tool != "mini-swe-agent" or sys.platform == "linux",
+                       "platform_note": "Requires Linux/bash; use WSL2" if tool == "mini-swe-agent" and sys.platform != "linux" else ""})
     return {"project": project_id, "checks": checks,
-            "reference_runtime": "default agentflow unchanged; opt in with ergora reference executor for new tasks"}
+            "reference_runtime": "default agentflow unchanged; opt in with ergora reference executor for new tasks" if sys.platform == "linux" else "Formal reference execution requires Linux; use WSL2"}
 
 
 def run_agent(state: State, project_id: str, role: str, prompt: str, timeout: int = 300,
@@ -135,7 +140,7 @@ def run_agent(state: State, project_id: str, role: str, prompt: str, timeout: in
                 raise ValueError(f"Unknown active skill: {name}")
             bundle = skills.get(state, project_id, active[name]["digest"])
             context["skills"].append({"name": name, "digest": bundle["digest"]})
-            prompt += f"\n\nSelected skill {name}; resources: {bundle['path']}\n" + (Path(bundle["path"]) / "SKILL.md").read_text()
+            prompt += f"\n\nSelected skill {name}; resources: {bundle['path']}\n" + (Path(bundle["path"]) / "SKILL.md").read_text(encoding="utf-8")
     if recall:
         from . import memory
 

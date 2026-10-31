@@ -88,11 +88,11 @@ def optimize(state: State, project_id: str, baseline_digest: str, suite_digest: 
                 with tempfile.TemporaryDirectory(dir=directory) as temporary:
                     bundle = Path(temporary) / baseline["name"]
                     shutil.copytree(baseline["path"], bundle)
-                    (bundle / "SKILL.md").write_text(text)
+                    (bundle / "SKILL.md").write_text(text, encoding="utf-8", newline="\n")
                     imported = skills.import_bundle(state, project_id, bundle, f"GEPA search {run_id}", parents.get(text_sha, baseline_digest))
             except (ValueError, OSError) as error:
                 outputs = [{"input": visible[case_id]["input"], "feedback": str(error), "score": 0.0} for case_id in batch]
-                (directory / f"invalid-{document['metric_calls']}.txt").write_text(text)
+                (directory / f"invalid-{document['metric_calls']}.txt").write_text(text, encoding="utf-8", newline="\n")
             else:
                 text_versions[text_sha] = imported["digest"]
                 if imported["digest"] not in document["candidates"]:
@@ -140,7 +140,7 @@ def optimize(state: State, project_id: str, baseline_digest: str, suite_digest: 
         output = Path(outcome["output"]) / "stdout.txt"
         if output.stat().st_size > 200_000:
             raise ValueError("Proposer response exceeded 200 KB")
-        response = json.loads(output.read_text())
+        response = json.loads(output.read_text(encoding="utf-8"))
         cost = response["cost"]
         if not isinstance(response["skill"], str) or type(cost) not in (int, float) or not math.isfinite(cost) or cost < 0:
             raise ValueError("Proposer requires complete skill text and a finite nonnegative cost")
@@ -164,12 +164,12 @@ def optimize(state: State, project_id: str, baseline_digest: str, suite_digest: 
 
     class FileLog:
         def log(self, message):
-            with (directory / "engine.log").open("a") as stream:
+            with (directory / "engine.log").open("a", encoding="utf-8") as stream:
                 stream.write(str(message) + "\n")
 
     try:
         result = gepa_optimize(
-            seed_candidate={"skill": (Path(baseline["path"]) / "SKILL.md").read_text()}, trainset=train, valset=validation,
+            seed_candidate={"skill": (Path(baseline["path"]) / "SKILL.md").read_text(encoding="utf-8")}, trainset=train, valset=validation,
             adapter=Adapter(), custom_candidate_proposer=propose, max_metric_calls=max_evaluations,
             stop_callbacks=[TimeoutStopCondition(timeout), lambda _: document["status"] != "running"], reflection_minibatch_size=1,
             skip_perfect_score=False, run_dir=str(directory / "gepa"), raise_on_exception=True,

@@ -1,6 +1,6 @@
 """ForgeKernel campaigns remain native; Ergora records project ownership and evidence."""
 
-import fcntl
+import sys
 import hashlib
 import json
 from pathlib import Path
@@ -8,7 +8,7 @@ import subprocess
 import uuid
 
 from . import processes
-from .state import State, now
+from .state import State, file_lock, now
 
 
 FORGE_COMMIT = "5030503d3ff71851aa34c14b9caf13ebfa9d9a78"
@@ -31,11 +31,13 @@ def validate_binding(binding: dict) -> None:
 def available(binding: dict) -> dict:
     if binding["tool"] == "manual":
         return {"installed": True, "version": "not_applicable"}
+    if sys.platform != "linux":
+        return {"installed": False, "version": "unsupported_platform", "reason": "ForgeKernel requires Linux; use WSL2"}
     try:
         checkout = Path(binding["checkout"]).expanduser().resolve(strict=True)
-        commit = subprocess.check_output(["git", "-C", str(checkout), "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL).strip()
+        commit = subprocess.check_output(["git", "-C", str(checkout), "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL, encoding="utf-8").strip()
         result = subprocess.run([str(Path(binding["python"]).expanduser()), "-c",
-            "from forgekernel.paths import repo_root;print(repo_root())"], capture_output=True, text=True, timeout=5)
+            "from forgekernel.paths import repo_root;print(repo_root())"], capture_output=True, text=True, timeout=5, encoding="utf-8")
         installed = result.returncode == 0 and Path(result.stdout.strip()).resolve() == checkout
         return {"installed": installed, "version": "pinned" if commit == FORGE_COMMIT else "unsupported", "commit": commit}
     except (OSError, ValueError, subprocess.SubprocessError):
@@ -64,15 +66,13 @@ def get(state: State, project_id: str, run_id: str) -> dict:
 
 
 def _call(state: State, project_id: str, document: dict, action: str, timeout: int, reconcile_reason: str | None = None) -> dict:
+    if sys.platform != "linux":
+        raise ValueError("ForgeKernel requires Linux; run this operation in WSL2")
     if not 1 <= timeout <= 86400:
         raise ValueError("Kernel timeout must be 1–86400 seconds")
     folder = state.root / "kernel" / document["id"]
     folder.mkdir(parents=True, exist_ok=True, mode=0o700)
-    with (folder / "lock").open("a") as lock:
-        try:
-            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except BlockingIOError as error:
-            raise ValueError("A kernel operation is already active; inspect the same campaign") from error
+    with file_lock(folder / "lock", blocking=False) as lock:
         # Reload after taking the lock; another caller may have just completed.
         document = get(state, project_id, document["id"])
         if (document.get("requires_reconciliation") or document["status"] in ("running", "outcome_unknown") or
@@ -80,7 +80,7 @@ def _call(state: State, project_id: str, document: dict, action: str, timeout: i
             document["requires_reconciliation"] = True
         binding = document["binding"]
         checkout = Path(binding["checkout"]).expanduser().resolve(strict=True)
-        source = subprocess.check_output(["git", "-C", str(checkout), "rev-parse", "HEAD"], text=True).strip()
+        source = subprocess.check_output(["git", "-C", str(checkout), "rev-parse", "HEAD"], text=True, encoding="utf-8").strip()
         if source != FORGE_COMMIT:
             raise ValueError(f"ForgeKernel adapter requires fixed commit {FORGE_COMMIT}")
         if subprocess.run(["git", "-C", str(checkout), "diff", "--quiet", "HEAD", "--", "src/forgekernel"], check=False).returncode:
@@ -98,7 +98,7 @@ def _call(state: State, project_id: str, document: dict, action: str, timeout: i
                    "campaign": document.get("campaign"), "native_root": str(folder / "native"),
                    "global_config_sha256": document.get("global_config_sha256")}
         request_path = folder / f"{operation}.json"
-        request_path.write_text(json.dumps(request))
+        request_path.write_text(json.dumps(request), encoding="utf-8", newline="\n")
         document.update(status="running", last_action=action, updated=now())
         _store(state, project_id, document)
         try:
@@ -108,7 +108,7 @@ def _call(state: State, project_id: str, document: dict, action: str, timeout: i
             with (Path(result["output"]) / "stderr.txt").open("rb") as diagnostics:
                 evidence["stderr_preview"] = diagnostics.read(4096).decode("utf-8", errors="replace")
             if result["status"] == "succeeded":
-                native = json.loads((Path(result["output"]) / "stdout.txt").read_text())
+                native = json.loads((Path(result["output"]) / "stdout.txt").read_text(encoding="utf-8"))
                 document.update(campaign=native.get("campaign"), native=native,
                                 status="prepared" if action == "prepare" else "observed" if action in ("status", "plan") else "native_finished")
                 if native.get("native_returncode", 0) != 0:
@@ -128,6 +128,8 @@ def _call(state: State, project_id: str, document: dict, action: str, timeout: i
 
 
 def create(state: State, project_id: str, action: str = "plan", timeout: int = 30) -> dict:
+    if sys.platform != "linux":
+        raise ValueError("ForgeKernel requires Linux; run this operation in WSL2")
     if action not in ("plan", "prepare"):
         raise ValueError("Create supports plan or prepare")
     project = state.project(project_id)

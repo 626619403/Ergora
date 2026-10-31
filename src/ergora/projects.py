@@ -15,7 +15,7 @@ def create(state: State, project_id: str, repo: Path) -> dict:
         raise ValueError("Project ID must use 1–64 letters, digits, underscores or hyphens")
     repo = repo.expanduser().resolve(strict=True)
     result = subprocess.run(["git", "-C", str(repo), "rev-parse", "--show-toplevel"],
-                            capture_output=True, text=True)
+                            capture_output=True, text=True, encoding="utf-8")
     if result.returncode:
         raise ValueError("Project root must be an existing Git repository")
     if Path(result.stdout.strip()).resolve() != repo:

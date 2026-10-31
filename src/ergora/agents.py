@@ -3,7 +3,6 @@
 import hashlib
 import json
 from pathlib import Path
-import shutil
 import subprocess
 import sys
 
@@ -81,10 +80,11 @@ def executable(binding: dict) -> str:
 
 
 def available(binding: dict, cwd: Path) -> bool:
-    program = executable(binding)
-    if "/" in program and not Path(program).is_absolute():
-        program = str(cwd / program)
-    if shutil.which(program) is None:
+    if binding["tool"] == "mini-swe-agent" and sys.platform != "linux":
+        return False
+    try:
+        program = processes.resolve_program(executable(binding), cwd)
+    except (OSError, ValueError):
         return False
     if binding["tool"] == "mini-swe-agent":
         try:
@@ -125,13 +125,17 @@ def invoke(binding: dict, role: str, prompt: str, cwd: Path, output: Path, timeo
     """A successful process is not evidence acceptance; structured consumers validate separately."""
     validate_binding(role, binding)
     tool = binding["tool"]
+    if tool == "mini-swe-agent" and sys.platform != "linux":
+        raise ValueError("This mini-swe-agent driver requires Linux/bash; use WSL2")
+    if sys.platform != "linux" and tool == "codex" and binding.get("sandbox") == "current-container":
+        raise ValueError("current-container requires the trusted Linux container configuration; use the native Codex sandbox on Windows")
     if schema and tool == "command" and binding.get("protocol") != "stage-json-v1":
         raise ValueError("Formal stages require command protocol stage-json-v1 and capabilities")
     protocol = output.with_name(output.name + ".protocol")
     protocol.mkdir(parents=True, exist_ok=False, mode=0o700)
-    (protocol / "prompt.txt").write_text(prompt)
+    (protocol / "prompt.txt").write_text(prompt, encoding="utf-8", newline="\n")
     if schema:
-        (protocol / "schema.json").write_text(json.dumps(schema))
+        (protocol / "schema.json").write_text(json.dumps(schema), encoding="utf-8", newline="\n")
     stdin = prompt
     if tool == "codex":
         sandbox = binding.get("sandbox", "read-only" if role != "implementer" else "workspace-write")
@@ -153,7 +157,7 @@ def invoke(binding: dict, role: str, prompt: str, cwd: Path, output: Path, timeo
     elif tool == "mini-swe-agent":
         request = {"binding": binding, "prompt": prompt, "cwd": str(cwd),
                    "timeout": timeout, "trajectory": str(protocol / "trajectory.json")}
-        (protocol / "request.json").write_text(json.dumps(request))
+        (protocol / "request.json").write_text(json.dumps(request), encoding="utf-8", newline="\n")
         argv = [binding.get("python", sys.executable), str(Path(__file__).parent / "data/drivers/mini.py"), str(protocol / "request.json")]
         stdin = ""
     else:
@@ -164,9 +168,9 @@ def invoke(binding: dict, role: str, prompt: str, cwd: Path, output: Path, timeo
     if document["status"] == "succeeded" and schema:
         try:
             if tool == "codex":
-                result = json.loads((protocol / "result.json").read_text())
+                result = json.loads((protocol / "result.json").read_text(encoding="utf-8"))
             else:
-                result = json.loads((output / "stdout.txt").read_text())
+                result = json.loads((output / "stdout.txt").read_text(encoding="utf-8"))
                 if tool == "claude-code":
                     if result.get("is_error"):
                         raise ValueError("Claude Code reported an error")

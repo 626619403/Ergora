@@ -3,7 +3,10 @@ from pathlib import Path
 import subprocess
 import sys
 
+import pytest
 
+
+@pytest.mark.skipif(os.name == "nt", reason="Bash installer; native PowerShell installer has a Windows CI check")
 def test_installer_upgrades_symlinked_directories_and_preserves_foreign_command(tmp_path):
     """Run the real shell entry point; only venv/package installation is substituted."""
     real_install = tmp_path / "physical-install"

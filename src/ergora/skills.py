@@ -32,7 +32,7 @@ def digest_tree(directory: Path) -> tuple[str, dict]:
 
 
 def metadata(directory: Path) -> dict:
-    text = (directory / "SKILL.md").read_text()
+    text = (directory / "SKILL.md").read_text(encoding="utf-8-sig")
     if not text.startswith("---\n") or "\n---\n" not in text[4:]:
         raise ValueError("SKILL.md requires YAML frontmatter")
     try:

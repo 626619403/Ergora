@@ -1,4 +1,5 @@
 import json
+import os
 import math
 from pathlib import Path
 import subprocess
@@ -150,6 +151,7 @@ def test_real_gepa_retains_failed_proposer_and_cost_budget_evidence(skill_projec
     assert len(evaluation_result["cases"]) == 1 and evaluation_result["reported_cost"] == 2
 
 
+@pytest.mark.skipif(os.name == "nt", reason="POSIX executable mode evidence; Windows content evidence is covered separately")
 def test_executable_bits_and_undeclared_scorer_arguments_are_bound(skill_project):
     state, repo, source, baseline, suite = skill_project
     script = source / "run.sh"

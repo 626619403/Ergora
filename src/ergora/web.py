@@ -2,6 +2,7 @@
 
 import difflib
 import json
+import sys
 from pathlib import Path
 from typing import Literal
 
@@ -149,6 +150,8 @@ def create_app(home: Path | None = None) -> FastAPI:
     def bootstrap():
         return {"version": __version__, "projects": projects.list_projects(state), "tools": tools.catalog(),
                 "templates": list(reference.TEMPLATES), "agent_contracts": {kind: reference.agent_contract(kind) for kind in reference.TEMPLATES},
+                "platform": sys.platform, "state_directory": str(state.root),
+                "reference_supported": sys.platform == "linux",
                 "boundary": "local trusted-user control plane"}
 
     @application.post("/api/projects")
@@ -214,8 +217,8 @@ def create_app(home: Path | None = None) -> FastAPI:
     @application.get("/api/projects/{project_id}/skills/diff")
     def skill_diff(project_id: str, baseline: str, candidate: str):
         before, after = skills.get(state, project_id, baseline), skills.get(state, project_id, candidate)
-        before_text = (Path(before["path"]) / "SKILL.md").read_text()
-        after_text = (Path(after["path"]) / "SKILL.md").read_text()
+        before_text = (Path(before["path"]) / "SKILL.md").read_text(encoding="utf-8")
+        after_text = (Path(after["path"]) / "SKILL.md").read_text(encoding="utf-8")
         changed = [name for name in sorted(set(before["files"]) | set(after["files"])) if before["files"].get(name) != after["files"].get(name)]
         return {"diff": "".join(difflib.unified_diff(before_text.splitlines(True), after_text.splitlines(True), fromfile=baseline[:12], tofile=candidate[:12])),
                 "changed_files": changed, "baseline": before, "candidate": after}
@@ -268,10 +271,10 @@ def create_app(home: Path | None = None) -> FastAPI:
         if kind == "training-optimization":
             directory = reference.ROOT / "platform/templates" / kind
             return {"kind": kind, "agents": reference.agent_contract(kind),
-                    "files": {**{path.name: path.read_text() for path in sorted(directory.iterdir()) if path.is_file()},
+                    "files": {**{path.name: path.read_text(encoding="utf-8") for path in sorted(directory.iterdir()) if path.is_file()},
                               "agent-contract.json": json.dumps(reference.agent_contract(kind), ensure_ascii=False, indent=2)}}
         return {"kind": kind, "agents": reference.agent_contract(kind),
-                "input": json.loads((reference.ROOT / "platform/templates" / kind / "input.json").read_text())}
+                "input": json.loads((reference.ROOT / "platform/templates" / kind / "input.json").read_text(encoding="utf-8"))}
 
     @application.post("/api/projects/{project_id}/drafts/validate")
     def validate_draft(project_id: str, body: DraftPayload):

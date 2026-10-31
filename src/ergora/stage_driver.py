@@ -17,18 +17,18 @@ def _cancel(_signal, _frame):
 
 def main() -> int:
     signal.signal(signal.SIGTERM, _cancel)
-    request = json.loads(Path(sys.argv[1]).read_text())
+    request = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
     env = dict(os.environ)
     credentials = Path(request["credentials"])
     if credentials.exists():
         if credentials.stat().st_mode & 0o077:
             raise ValueError("Reference credentials must have mode 0600")
-        for key, value in json.loads(credentials.read_text()).items():
+        for key, value in json.loads(credentials.read_text(encoding="utf-8")).items():
             env.setdefault(key, value)
     options = []
     if request["binding"]["tool"] == "codex":
         options += ["--ignore-user-config", "--ignore-rules", "--disable", "plugins", "--disable", "apps"]
-        config = tomllib.loads(Path(request["codex_config"]).read_text())
+        config = tomllib.loads(Path(request["codex_config"]).read_text(encoding="utf-8"))
         def add(table, prefix=""):
             for key, value in table.items():
                 name = prefix + key

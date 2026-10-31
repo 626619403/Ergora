@@ -383,7 +383,7 @@ function helpDialog() {
     node(
       "p",
       {},
-      "持久状态默认在 ~/.local/share/ergora。先停止写入，再备份完整目录。换机后重新核对项目路径与工具认证。",
+      `持久状态目录：${app.bootstrap.state_directory}。先停止写入，再备份完整目录。换机后重新核对项目路径与工具认证。`,
     ),
     node(
       "p",
@@ -676,6 +676,8 @@ function toolsView(data) {
                     : check.connectivity === "not_checked"
                       ? "组件可用 · 服务待确认"
                       : "本地可用"
+                  : check?.supported === false || check?.version === "unsupported_platform"
+                    ? "需 WSL2 / Linux"
                   : check?.installed === false
                     ? "尚未安装"
                     : "外部配置待确认",
@@ -692,7 +694,9 @@ function toolsView(data) {
     node(
       "div",
       { className: "info-bar" },
-      "独立调用使用当前项目绑定。正式六阶段需显式启用 ergora reference executor；它在新任务首次接入时冻结角色绑定，恢复不换 Agent。集成和可信验证仍由执行器负责。",
+      app.bootstrap.reference_supported
+        ? "独立调用使用当前项目绑定。正式六阶段需显式启用 ergora reference executor；它在新任务首次接入时冻结角色绑定，恢复不换 Agent。集成和可信验证仍由执行器负责。"
+        : "当前系统不支持正式六阶段、mini-swe-agent 和 ForgeKernel；请在 WSL2/Linux 中安装运行。切换系统后重新注册项目与工具路径。",
     ),
     panel("检查详情", null, pre(data.tools)),
   ];
@@ -700,7 +704,7 @@ function toolsView(data) {
 function bindingDialog(data, layer) {
   const current = bindingFor(data.project, layer);
   const choice = select(
-    app.bootstrap.tools[layer].map((item) => item.tool),
+    app.bootstrap.tools[layer].map((item) => [item.tool, item.supported === false ? `${item.tool} · WSL2/Linux` : item.tool]),
     current.tool,
     "tool",
   );
@@ -721,7 +725,9 @@ function bindingDialog(data, layer) {
             ["", "使用角色默认 sandbox"],
             ["read-only", "只读 sandbox"],
             ["workspace-write", "工作区写入 sandbox"],
-            ["current-container", "已信任的当前容器 / 用户"],
+            ...(app.bootstrap.platform === "linux"
+              ? [["current-container", "已信任的当前容器 / 用户"]]
+              : []),
           ],
           same.sandbox || "",
           "sandbox",
@@ -732,7 +738,9 @@ function bindingDialog(data, layer) {
         field(
           "命令参数 JSON 数组",
           "argv",
-          JSON.stringify(same.argv || ["python3", "/path/to/tool.py"]),
+          JSON.stringify(same.argv || (app.bootstrap.platform === "win32"
+            ? ["python.exe", "C:\\path\\to\\tool.py"]
+            : ["python3", "/path/to/tool.py"])),
           "textarea",
           { required: true },
         ),

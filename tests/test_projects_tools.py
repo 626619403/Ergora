@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 import signal
 import subprocess
@@ -70,6 +71,7 @@ def test_agent_timeout_is_recorded_and_missing_executable_is_visible(state_proje
     assert result["status"] == "failed" and "error" in result
 
 
+@pytest.mark.skipif(os.name == "nt", reason="POSIX executable / fork / SIGINT fixture; native lifecycle has portable coverage")
 def test_doctor_resolves_relative_executable_in_project(state_project):
     state, repo = state_project
     tool = repo / "local-tool"
@@ -81,6 +83,7 @@ def test_doctor_resolves_relative_executable_in_project(state_project):
     assert tools.run_agent(state, "demo", "reviewer", "relative path")["status"] == "succeeded"
 
 
+@pytest.mark.skipif(os.name == "nt", reason="POSIX executable / fork / SIGINT fixture; native lifecycle has portable coverage")
 def test_normal_exit_also_cleans_up_same_group_descendants(state_project):
     state, repo = state_project
     code = "import os,time,pathlib; child=os.fork(); time.sleep(.5) if child==0 else None; pathlib.Path('late-write').touch() if child==0 else None"
@@ -91,6 +94,7 @@ def test_normal_exit_also_cleans_up_same_group_descendants(state_project):
     assert not (repo / "late-write").exists()
 
 
+@pytest.mark.skipif(os.name == "nt", reason="POSIX executable / fork / SIGINT fixture; native lifecycle has portable coverage")
 def test_sigint_leaves_a_terminal_run(state_project):
     state, repo = state_project
     code = "import pathlib,time;pathlib.Path('ready').touch();time.sleep(20)"

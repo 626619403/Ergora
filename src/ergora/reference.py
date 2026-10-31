@@ -17,7 +17,7 @@ TEMPLATES = ("repository-governance", "large-change", "training-optimization")
 
 
 def info() -> dict:
-    manifest = json.loads((DATA / "reference-manifest.json").read_text())
+    manifest = json.loads((DATA / "reference-manifest.json").read_text(encoding="utf-8"))
     return {
         "version": manifest["version"],
         "path": str(ROOT.resolve()),
@@ -29,7 +29,7 @@ def info() -> dict:
 
 
 def verify() -> dict:
-    manifest = json.loads((DATA / "reference-manifest.json").read_text())
+    manifest = json.loads((DATA / "reference-manifest.json").read_text(encoding="utf-8"))
     for relative, expected in manifest["files"].items():
         path = ROOT / relative
         if not path.is_file() or path.is_symlink():
@@ -46,7 +46,7 @@ def copy_template(kind: str, destination: Path) -> dict:
         raise ValueError("Choose a new destination to preserve existing project files")
     source = ROOT / "platform/templates" / kind
     shutil.copytree(source, destination)
-    (destination / "agent-contract.json").write_text(json.dumps(agent_contract(kind), ensure_ascii=False, indent=2) + "\n")
+    (destination / "agent-contract.json").write_text(json.dumps(agent_contract(kind), ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
     return {"template": kind, "destination": str(destination.resolve())}
 
 
@@ -55,10 +55,10 @@ def agent_contract(kind: str) -> dict:
     if kind not in TEMPLATES:
         raise ValueError(f"Unknown template: {kind}")
     if kind == "training-optimization":
-        return json.loads((DATA / "training-agents.json").read_text())
+        return json.loads((DATA / "training-agents.json").read_text(encoding="utf-8"))
     directory = ROOT / "platform/upstream/platform/task-types" / kind
-    profile = json.loads((directory / "profile.json").read_text())
-    roles = json.loads((ROOT / "platform/templates" / kind / "roles.json").read_text())["roles"]
+    profile = json.loads((directory / "profile.json").read_text(encoding="utf-8"))
+    roles = json.loads((ROOT / "platform/templates" / kind / "roles.json").read_text(encoding="utf-8"))["roles"]
     selected = {}
     for stage in ("inventory", "plan", "work", "review"):
         role = profile["roles"][stage]
@@ -70,8 +70,10 @@ def agent_contract(kind: str) -> dict:
 
 
 def executor(installation: Path, home: Path, request: Path | None = None):
+    if sys.platform != "linux":
+        raise ValueError("The formal reference executor requires Linux; use WSL2 and a trusted Linux container")
     installation = installation.expanduser().resolve(strict=True)
-    manifest = json.loads((DATA / "reference-manifest.json").read_text())
+    manifest = json.loads((DATA / "reference-manifest.json").read_text(encoding="utf-8"))
     for relative, expected in manifest["files"].items():
         if relative.startswith(("platform/local/", "platform/upstream/platform/")) and relative.endswith(".py"):
             file = installation / relative.removeprefix("platform/")
@@ -86,6 +88,7 @@ def workflow(arguments: list[str]) -> int:
     environment = dict(os.environ)
     environment["PYTHONPATH"] = str(ROOT / "platform/upstream/platform")
     environment["PYTHONDONTWRITEBYTECODE"] = "1"
+    environment["PYTHONUTF8"] = "1"
     return subprocess.call(
         [sys.executable, "-P", "-S", "-m", "dev_platform.portable", *arguments],
         env=environment,
@@ -96,12 +99,12 @@ def validate_input(kind: str, task_input: dict) -> dict:
     if kind not in ("repository-governance", "large-change"):
         raise ValueError("DAG editing supports repository-governance and large-change")
     example = ROOT / "platform/upstream/platform/task-types" / kind / "examples/request.json"
-    request = json.loads(example.read_text())
+    request = json.loads(example.read_text(encoding="utf-8"))
     request["input"] = task_input
-    environment = dict(os.environ, PYTHONPATH=str(ROOT / "platform/upstream/platform"), PYTHONDONTWRITEBYTECODE="1")
+    environment = dict(os.environ, PYTHONPATH=str(ROOT / "platform/upstream/platform"), PYTHONDONTWRITEBYTECODE="1", PYTHONUTF8="1")
     script = "import json,sys;from dev_platform.contracts import make_spec;make_spec(json.load(sys.stdin));print('PASS')"
     result = subprocess.run([sys.executable, "-P", "-S", "-c", script], input=json.dumps(request),
-                            capture_output=True, text=True, env=environment, timeout=10)
+                            capture_output=True, text=True, env=environment, timeout=10, encoding="utf-8")
     if result.returncode:
         raise ValueError(result.stderr.strip().splitlines()[-1])
     return {"status": "PASS", "task_type": kind,

@@ -133,7 +133,7 @@ def evaluate(state: State, project_id: str, digest: str, suite_digest: str, case
     run_id = uuid.uuid4().hex
     directory = state.root / "evaluations" / run_id
     directory.mkdir(parents=True)
-    (directory / "suite.json").write_text(json.dumps(specification, ensure_ascii=False, indent=2))
+    (directory / "suite.json").write_text(json.dumps(specification, ensure_ascii=False, indent=2), encoding="utf-8", newline="\n")
     working = directory / "work"
     working.mkdir()
     document = {"id": run_id, "project": project_id, "skill": digest, "name": candidate["name"],
@@ -160,7 +160,7 @@ def evaluate(state: State, project_id: str, digest: str, suite_digest: str, case
             output = Path(outcome["output"]) / "stdout.txt"
             if output.stat().st_size > 1_000_000:
                 raise ValueError("Evaluator JSON response exceeded 1 MB")
-            result = json.loads(output.read_text())
+            result = json.loads(output.read_text(encoding="utf-8"))
             if not isinstance(result, dict):
                 raise ValueError("Evaluator response must be a JSON object")
             score, cost = result["score"], result["cost"]

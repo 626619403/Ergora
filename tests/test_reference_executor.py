@@ -1,10 +1,12 @@
 import importlib.util
 import json
+import sys
 from pathlib import Path
 import subprocess
-import sys
 
 import pytest
+
+pytestmark = pytest.mark.skipif(sys.platform != "linux", reason="Formal reference execution requires Linux / WSL2")
 
 
 @pytest.mark.parametrize("kind", ["repository-governance", "large-change"])

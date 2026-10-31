@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 from pathlib import Path
 import sys
 
@@ -15,7 +16,7 @@ from .state import State
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(prog="ergora", description="Project collaboration and continuous improvement")
     result.add_argument("--version", action="version", version=__version__)
-    result.add_argument("--home", type=Path, help="Persistent state directory (default: ERGORA_HOME or XDG data)")
+    result.add_argument("--home", type=Path, help="Persistent state directory (default: ERGORA_HOME, LocalAppData on Windows, or XDG data)")
     commands = result.add_subparsers(dest="command", required=True)
     web = commands.add_parser("serve", help="Start the local graphical console (requires ergora[web])")
     web.add_argument("--port", type=int, default=8977)
@@ -167,6 +168,10 @@ def parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    if os.name == "nt":
+        for stream in (sys.stdout, sys.stderr):
+            if hasattr(stream, "reconfigure"):
+                stream.reconfigure(encoding="utf-8")
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv[:1] == ["workflow"]:
         return reference.workflow(argv[1:])
@@ -203,7 +208,7 @@ def main(argv: list[str] | None = None) -> int:
             elif args.operation == "show":
                 output = state.project(args.id)
             else:
-                output = projects.bind(state, args.id, args.layer, json.loads(args.binding.read_text()), args.revision)
+                output = projects.bind(state, args.id, args.layer, json.loads(args.binding.read_text(encoding="utf-8-sig")), args.revision)
         elif args.command == "tools":
             output = tools.catalog() if args.operation == "list" else tools.doctor(State(args.home), args.project)
         elif args.command == "agent":
@@ -213,7 +218,7 @@ def main(argv: list[str] | None = None) -> int:
             elif args.operation == "output":
                 output = tools.output(state, args.project, args.id)
             else:
-                output = tools.run_agent(state, args.project, args.role, args.prompt.read_text(), args.timeout, args.skill, args.recall, args.template)
+                output = tools.run_agent(state, args.project, args.role, args.prompt.read_text(encoding="utf-8-sig"), args.timeout, args.skill, args.recall, args.template)
             print(json.dumps(output, ensure_ascii=False, indent=2))
             return 0 if args.operation != "run" or output["status"] == "succeeded" else 1
         elif args.command == "kernel":
@@ -241,7 +246,7 @@ def main(argv: list[str] | None = None) -> int:
             elif args.operation == "restore":
                 output = memory.restore(state, args.project, args.id, args.from_revision, args.revision)
             else:
-                output = memory.save(state, args.project, args.text.read_text(),
+                output = memory.save(state, args.project, args.text.read_text(encoding="utf-8-sig"),
                                      {"uri": args.source, "revision": args.source_revision}, args.id, args.revision)
         elif args.command == "skill":
             state = State(args.home)
@@ -265,7 +270,7 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "evaluation":
             state = State(args.home)
             if args.operation == "register":
-                output = evaluation.register(state, args.project, json.loads(args.manifest.read_text()))
+                output = evaluation.register(state, args.project, json.loads(args.manifest.read_text(encoding="utf-8-sig")))
             elif args.operation == "list":
                 output = evaluation.listing(state, args.project)
             elif args.operation == "show":

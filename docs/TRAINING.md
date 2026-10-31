@@ -2,6 +2,8 @@
 
 训练模板负责固定 workload、实验输入、正确性要求、基线和候选证据。实际训练、kernel 生成及设备访问由所选工具和项目环境完成。Ergora 的项目记忆、Skill 候选和资料观察可以先独立使用，不代表模型训练或性能已经得到改善。
 
+Windows 原生可设计训练模板、运行提案角色并管理记忆 / Skill；ForgeKernel、mini 驱动及完整参考实验执行请使用 WSL2/Linux，可信参考执行器还要求 Linux 容器。原生安装不会配置 CUDA、GPU 或这些参考服务，详见 [Windows 手册](WINDOWS.md)。
+
 ## 准备工作
 
 ```bash

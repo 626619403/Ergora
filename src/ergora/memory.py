@@ -1,12 +1,11 @@
 """Project memories are canonical here; ReMe is an optional retrieval projection."""
 
-import fcntl
 import json
 import os
 import uuid
 from urllib.request import Request, urlopen
 
-from .state import State, now
+from .state import State, file_lock, now
 
 
 def _schema(state: State):
@@ -122,8 +121,7 @@ def sync(state: State, project_id: str, rebuild: bool = False) -> dict:
     # A per-project file lock spans remote requests, without holding a SQLite write transaction.
     lockdir = state.root / "locks"
     lockdir.mkdir(exist_ok=True)
-    with (lockdir / f"memory-{project_id}.lock").open("a") as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX)
+    with file_lock(lockdir / f"memory-{project_id}.lock"):
         current = {doc["id"]: doc for doc in records(state, project_id, include_deleted=True)}
         binding = project["bindings"].get("memory", {"tool": "sqlite"})
         with state.connect() as db:

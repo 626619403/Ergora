@@ -27,7 +27,7 @@ class ManagedLocalEnvironment(LocalEnvironment):
 
 
 def main():
-    request = json.loads(Path(sys.argv[1]).read_text())
+    request = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
     binding = request["binding"]
     submission = Path(request["trajectory"]).with_name("submission.txt")
     command = shlex.join([sys.executable, "-c",

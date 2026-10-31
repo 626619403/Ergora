@@ -1,0 +1,4 @@
+* text=auto eol=lf
+# These files are a byte-identified distribution; never rewrite their line endings.
+src/ergora/data/reference/** -text
+docs/distribution/*.html -text

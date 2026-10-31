@@ -63,6 +63,7 @@ def test_missing_capability_and_malformed_stage_result_are_visible(tmp_path):
 
 
 @pytest.mark.parametrize("tool", ["codex", "claude-code"])
+@pytest.mark.skipif(os.name == "nt", reason="POSIX CLI shebang fixtures; Windows uses structured command fixtures")
 def test_native_structured_output_normalization_uses_actual_process(tmp_path, monkeypatch, tool):
     programs = tmp_path / "bin"
     programs.mkdir()

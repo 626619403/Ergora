@@ -1,7 +1,7 @@
 import json
+import sys
 from pathlib import Path
 import subprocess
-import sys
 
 import pytest
 
@@ -141,6 +141,7 @@ def test_skill_evidence_and_adoption_use_existing_business_gate(console, tmp_pat
     assert client.post("/api/projects/demo/skills/adopt", json=payload).status_code == 400
 
 
+@pytest.mark.skipif(sys.platform != "linux", reason="mini driver explicitly requires Linux/bash")
 def test_slow_optional_mini_probe_keeps_dashboard_repairable(console, tmp_path):
     client, state, _ = console
     slow = tmp_path / "slow-python"

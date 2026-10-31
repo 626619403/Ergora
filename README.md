@@ -119,7 +119,7 @@ multi-agent-platform/
 
 ## 安装
 
-独立包需要 Linux / Python 3.11+，从源码安装，无需启动外部服务：
+独立控制面支持 Linux 和原生 Windows，要求 Python 3.11+、Git；无需先启动外部服务。Linux 从源码安装：
 
 ```bash
 python3 -m venv .venv
@@ -130,6 +130,15 @@ python3 -m venv .venv
 .venv/bin/ergora workflow --help
 .venv/bin/ergora serve
 ```
+
+Windows PowerShell 在源码根目录运行：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1 -AddToPath
+& "$env:LOCALAPPDATA\Ergora\bin\ergora.exe" serve
+```
+
+空环境可加 `-InstallPrerequisites` 通过 winget 安装缺失的 Python / Git。安装、认证、目录、升级及功能范围见 [Windows 手册](docs/WINDOWS.md)。原生支持项目、模板设计、角色调用、记忆与持续改进；完整六阶段参考执行器、mini-swe-agent 驱动和 ForgeKernel 使用 WSL2/Linux，正式执行器还要求可信 Linux 容器。旧 HTML 保持 Linux v2.2 内容。
 
 开发检查：安装 `.[dev,web,gepa,temporal]` 后运行 `python -m pytest tests`；真实 Temporal 回归需通过 `ERGORA_TEMPORAL_TEST_ADDRESS` 明确指定隔离服务，否则跳过。`ergora workflow` 直接调用随包的原合同编译器，支持 `compile`、`validate`、`convert-v2`、`export-v2`，不自动安装或启动执行服务。
 

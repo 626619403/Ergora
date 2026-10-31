@@ -1,6 +1,6 @@
 # 安装与日常使用
 
-Ergora 提供本地 CLI / 图形控制面，并保留 v2.2 的完整六阶段参考发行。控制面可以先独立使用；项目工具、工单、服务和实验环境按需接入。已实现的能力和实际验收范围见 [计划与进度](PLAN.md)。
+Ergora 提供 Linux / Windows 本地 CLI 与图形控制面，并保留 v2.2 的完整六阶段 Linux 参考发行。控制面可以先独立使用；项目工具、工单、服务和实验环境按需接入。Windows 的 PowerShell 安装、Agent 与 WSL2 范围见 [Windows 手册](WINDOWS.md)。已实现的能力和实际验收范围见 [计划与进度](PLAN.md)。
 
 ## 从空环境安装
 
@@ -9,7 +9,7 @@ Ergora 提供本地 CLI / 图形控制面，并保留 v2.2 的完整六阶段参
 ```bash
 sudo apt-get update
 sudo apt-get install -y ca-certificates curl git python3 python3-venv
-git clone --branch feat/evolution-console https://github.com/626619403/Ergora.git
+git clone --branch feat/windows-support https://github.com/626619403/Ergora.git
 cd Ergora
 bash scripts/install.sh
 export PATH="$HOME/.local/bin:$PATH"
@@ -129,8 +129,8 @@ ergora reference info
 ssh -L 8977:127.0.0.1:8977 user@server
 ```
 
-本地接口要求同源与自定义请求头，并校验 Host；它使用当前 Unix 用户权限，面向可信项目。团队身份、公网服务和每 Agent 的 OS 隔离需要单独接入。容器内无法使用 namespace 沙箱时，不会为让调用成功而自动取消 Agent 自身的 sandbox。
+本地接口要求同源与自定义请求头，并校验 Host；它使用当前用户权限，面向可信项目。团队身份、公网服务和每 Agent 的 OS 隔离需要单独接入。容器内无法使用 namespace 沙箱时，不会为让调用成功而自动取消 Agent 自身的 sandbox。
 
-应用在前台运行，可用 Supervisor 管理 `ergora serve` 及各项目的 `ergora research worker PROJECT`。安装不自动后台执行任务、调用模型或启动研究。停止写入后备份完整 `ERGORA_HOME` 以及业务 Git 仓库；恢复时核对仓库实际路径和工具登录。记忆删除不会清除独立备份及过去归档的调用输入。
+应用在前台运行；Linux / WSL2 可用 Supervisor 管理 `ergora serve` 及各项目的 `ergora research worker PROJECT`，Windows 原生先使用前台终端。安装不自动后台执行任务、调用模型或启动研究。停止写入后备份完整 `ERGORA_HOME` 以及业务 Git 仓库；恢复时核对仓库实际路径和工具登录。记忆删除不会清除独立备份及过去归档的调用输入。
 
 开发和换机继续工作时，先读 [PLAN.md](PLAN.md)、当前活动切片的 `docs/delivery/` 记录，再检查分支、`git status` 与最近提交。测试默认不调用付费模型；外部服务和 GPU 的效果验收单独记录。

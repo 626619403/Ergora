@@ -1,0 +1,45 @@
+name: Portability
+
+on:
+  push:
+    branches: ["feat/windows-support", "feat/evolution-console", "main", "master"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: "3.11"
+          - os: windows-latest
+            python: "3.12"
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    env:
+      PYTHONUTF8: "1"
+      PYTHONIOENCODING: utf-8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Build and install wheel
+        shell: bash
+        run: |
+          python -m pip install build
+          python -m build --wheel
+          python -m pip install "$(python -c 'import glob; print(glob.glob("dist/*.whl")[0])')[dev,web,gepa,temporal]"
+      - name: Packaged reference identity
+        run: python -m ergora reference verify
+      - name: Native application regression
+        run: python -m pytest -q tests src/ergora/data/reference/platform/upstream/platform/tests/test_contracts.py src/ergora/data/reference/platform/upstream/platform/tests/test_portable.py
+      - name: Windows PowerShell 5.1 installer and upgrade
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: .\tests\windows-installation.ps1

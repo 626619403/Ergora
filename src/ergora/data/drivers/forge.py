@@ -15,7 +15,7 @@ from forgekernel import taskcard
 
 
 def main():
-    request = json.loads(Path(sys.argv[1]).read_text())
+    request = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
     if repo_root().resolve() != Path(request["checkout"]).resolve():
         raise ValueError("The selected Python must import ForgeKernel from the configured checkout")
     expected = request.get("global_config_sha256")

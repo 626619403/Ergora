@@ -48,7 +48,7 @@ class Executor(original.Executor):
     def model(self, names: list[str], *, review: bool = False) -> dict:
         role = self.spec["profile"]["roles"][self.stage]
         binding = self.selection["bindings"][role]
-        evidence = {stage: {item["name"]: (STATE / "artifacts" / item["path"]).read_text()[:60000]
+        evidence = {stage: {item["name"]: (STATE / "artifacts" / item["path"]).read_text(encoding="utf-8")[:60000]
                             for item in receipt["artifacts"]}
                     for stage, receipt in self.context["dependencies"].items()}
         prompt = """Execute only the assigned development stage under the frozen task, scope and dependency DAG.
@@ -74,17 +74,17 @@ Return exactly one JSON object matching result_schema; include concrete artifact
         protocol.mkdir(parents=True, exist_ok=True)
         prompt_path = protocol / "prompt.txt"
         if not prompt_path.exists():
-            prompt_path.write_text("")
+            prompt_path.write_text("", encoding="utf-8", newline="\n")
         monitor_output = self.scratch / "selected-monitor"
         code = self.sandbox.run("af-" + self.job_id + "-selected", self.checkout, monitor_output,
             [sys.executable, "-m", "ergora.stage_driver", str(protocol / "request.json")],
             writable=self.stage == "work", fence=self.fence,
             timeout=self.config["stage_walltime_seconds"], model="codex", protocol=protocol, gitdir=self.mirror)
         output = Path(request["output"])
-        log = (monitor_output / "execution.log").read_text()
+        log = (monitor_output / "execution.log").read_text(encoding="utf-8")
         for stream in ("stdout.txt", "stderr.txt"):
             if (output / stream).exists():
-                log += f"\n{stream}\n" + (output / stream).read_text(errors="replace")
+                log += f"\n{stream}\n" + (output / stream).read_text(errors="replace", encoding="utf-8")
         self.artifact("model-log", log)
         require(code == 0, f"Selected {binding['tool']} agent failed; inspect model-log and native invocation")
         result = agents.validate_result(read(output / "result.json"), schema)
@@ -140,7 +140,7 @@ def process(path: Path, home: Path) -> dict:
 
 def main(home: Path, request: Path | None = None) -> dict | None:
     STATE.mkdir(parents=True, exist_ok=True)
-    with (STATE / "executor.lock").open("a") as lock:
+    with (STATE / "executor.lock").open("a", encoding="utf-8") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         if request:
             return process(request, home)
