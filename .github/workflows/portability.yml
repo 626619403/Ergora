@@ -41,14 +41,19 @@ jobs:
         shell: python
         run: |
           import subprocess, sys
-          result = subprocess.run([sys.executable, '-m', 'pytest', '-q', 'tests',
-              'src/ergora/data/reference/platform/upstream/platform/tests/test_contracts.py',
-              'src/ergora/data/reference/platform/upstream/platform/tests/test_portable.py'],
+          suites = ['tests', 'src/ergora/data/reference/platform/upstream/platform/tests/test_contracts.py']
+          if sys.platform == 'linux':
+              suites += ['src/ergora/data/reference/platform/upstream/platform/tests/test_portable.py']
+          result = subprocess.run([sys.executable, '-m', 'pytest', '-q', '--tb=short', *suites],
               stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding='utf-8')
           print(result.stdout, flush=True)
           if result.returncode:
-              details = result.stdout[-50000:].replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+              details = result.stdout[-3500:].replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
               print(f'::error title=Native regression::{details}', flush=True)
+              for line in result.stdout.splitlines():
+                  if line.startswith('FAILED '):
+                      detail = line[:3000].replace('%', '%25')
+                      print(f'::error title=Failed test::{detail}', flush=True)
           raise SystemExit(result.returncode)
       - name: Windows PowerShell 5.1 installer and upgrade
         if: runner.os == 'Windows' && !cancelled()

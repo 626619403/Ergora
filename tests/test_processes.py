@@ -98,6 +98,16 @@ def test_controller_death_kills_job_before_delayed_write(tmp_path):
         process.communicate(timeout=10)
 
 
+@pytest.mark.skipif(os.name != 'nt', reason='Windows console cancellation contract')
+def test_native_console_event_cancels_and_stops_descendants(tmp_path):
+    fixture = Path(__file__).parent / 'fixtures/windows_cancel.py'
+    result = subprocess.run([sys.executable, str(fixture), str(tmp_path)],
+                            creationflags=subprocess.CREATE_NEW_CONSOLE,
+                            capture_output=True, text=True, encoding='utf-8', timeout=30)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert 'cancellation and descendant cleanup: PASS' in result.stdout
+
+
 @pytest.mark.skipif(os.name != 'nt', reason='Windows job assignment gate')
 def test_job_assignment_failure_never_launches_command(tmp_path, monkeypatch):
     from ergora.windows_job import Job

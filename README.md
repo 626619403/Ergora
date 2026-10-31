@@ -6,16 +6,16 @@ Ergora 用任务合同明确目标、角色、修改范围和验收标准，把�
 
 仓库提供独立的 **`ergora` CLI / 本地图形控制面**，以及保持内容一致的 **v2.2 `agentflow` 参考发行**。新入口支持分层工具绑定、持久记忆、skill 候选评价与采用回退、有界资料观察、可选 Temporal 调度，以及模板与工作单元 DAG 草稿；完整六阶段执行仍通过参考发行安装。实际验收进度记录在 [持续计划](docs/PLAN.md)。
 
-[安装与日常使用](docs/USAGE.md) · [训练优化手册](docs/TRAINING.md) · [Agent 选择与正式执行](docs/AGENT_BACKENDS.md) · [工具接入](docs/INTEGRATIONS.md) · [单文件参考发行](docs/distribution/multi-agent-development-platform.html) · [计划与进度](docs/PLAN.md)
+[安装与日常使用](docs/USAGE.md) · [Windows 安装](docs/WINDOWS.md) · [训练优化手册](docs/TRAINING.md) · [Agent 选择与正式执行](docs/AGENT_BACKENDS.md) · [工具接入](docs/INTEGRATIONS.md) · [单文件参考发行](docs/distribution/multi-agent-development-platform.html) · [计划与进度](docs/PLAN.md)
 
 ```bash
-git clone --branch feat/evolution-console https://github.com/626619403/Ergora.git
+git clone --branch feat/windows-support https://github.com/626619403/Ergora.git
 cd Ergora
 bash scripts/install.sh
 "$HOME/.local/bin/ergora" serve
 ```
 
-需要 Linux、Git 和 Python 3.11+ / venv。打开 `http://127.0.0.1:8977`，注册已有仓库即可使用。网页资源随包安装，无需 Node 构建或外部工单。可选工具有各自的安装、认证与服务要求，见 [使用手册](docs/USAGE.md)。
+以上是 Linux 的 Git / Python 3.11+ 安装路径；Windows 使用 [PowerShell 安装器](docs/WINDOWS.md)。打开 `http://127.0.0.1:8977`，注册已有仓库即可使用。网页资源随包安装，无需 Node 构建或外部工单。可选工具有各自的安装、认证与服务要求，见 [使用手册](docs/USAGE.md)。
 
 ## 用来做什么
 
@@ -155,7 +155,7 @@ ergora agent run my-project reviewer --prompt review-request.md --timeout 300
 ergora agent runs my-project
 ```
 
-各 Agent 角色选择 `codex`、`claude-code` 或 `command`；实现角色额外支持 `mini-swe-agent`。普通自定义命令 `{"tool":"command","argv":["/path/to/tool"]}` 接收 stdin 文本；模板产物和正式阶段使用明确的 stage-json 协议。工具沿用自己的登录和环境变量，配置内不存密钥。保存绑定时传入 `project show` 的当前修订号以避免覆盖别人的修改。状态与输出默认保存在 `~/.local/share/ergora/`，可通过 `ERGORA_HOME` 或 `--home` 改为其他持久目录；持久化整个目录以备份恢复。
+各 Agent 角色选择 `codex`、`claude-code` 或 `command`；实现角色额外支持 `mini-swe-agent`。普通自定义命令 `{"tool":"command","argv":["/path/to/tool"]}` 接收 stdin 文本；模板产物和正式阶段使用明确的 stage-json 协议。工具沿用自己的登录和环境变量，配置内不存密钥。保存绑定时传入 `project show` 的当前修订号以避免覆盖别人的修改。状态与输出在 Linux 默认保存在 `~/.local/share/ergora/`（遵循 XDG），Windows 默认为 `%LOCALAPPDATA%\Ergora\data`，可通过 `ERGORA_HOME` 或 `--home` 改为其他持久目录；持久化整个目录以备份恢复。
 
 `agent run` 是独立工具调用，成功不产生正式合同的验证/审查结论。`--template TEMPLATE` 可要求该角色的结构化产物。需要绑定作用于正式六阶段时，显式启用 `ergora reference executor --installation INSTALLATION`：复用参考执行器及门禁，在新任务首次接入时冻结角色工具。完整配置、安装可选 Agent、原生 Forge campaign 与恢复操作见 [Agent 手册](docs/AGENT_BACKENDS.md)。可执行文件存在不代表已认证，实际调用失败和超时会保留在运行记录。
 

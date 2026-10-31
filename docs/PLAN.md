@@ -7,7 +7,7 @@
 - 基线：`3b52365`；实现分支 `feat/evolution-console`，从已发布研究分支建立；远端已核对一致，开始时工作区干净。
 - 当前工作：S0–S9 已交付；开始用户追加的 S10 Windows 支持。新分支 `feat/windows-support`，基线 `4c7426a4ce5b733bb32b32fc6fa2fe8438e05e9d`，起始工作区干净。原 Linux 发行及冻结参考内容保持可比较。
 - 当前范围：原生 Windows 10/11 的控制面、CLI、项目 / 记忆 / Skill / 资料观察、Codex / Claude / 原生命令调用；完整六阶段与 Linux 专用工具通过 WSL2/Linux。使用 PowerShell 用户目录安装，不需要管理员权限或 Node 构建控制台。
-- 下一动作：S10.1 原生运行及 S10.2 安装器 / 手册 / CI 已实现，Linux 应用回归 67 passed / 8 skipped，定向及冻结合同结果待收集。提交验证检查点并推送启动真实 Windows CI，处理发现，分别完成独立审查，最后提交推送并核对远端。
+- 下一动作：检查点已推送；Ubuntu CI 通过，Windows PowerShell 5.1 安装 / 升级通过，Windows 原生回归仍待修正后复验。独立初审已记录，正在处理冻结编译器 POSIX 读取与 evaluator 路径解析；新增原生编译 / 导出 / 取消回归后重跑 CI，再完成复审及最终推送核对。
 - 验证基线：前阶段全量 110 项 +36 子测试、安装器追加 1 项；Windows 尚未验收，Linux 结果不能替代 Windows 结果。
 - 恢复要求：重读本文件及活动切片记录，对照分支、工作区和最近提交；完成核对后继续当前项，不重新做已验收的调研。
 
@@ -84,7 +84,7 @@
 
 |切片|范围及验收|实现|验证|独立审查|
 |---|---|---|---|---|
-|S10.1 原生运行适配|移除导入级 fcntl 阻断；跨进程互斥；原生 Agent / evaluator / proposer 的 UTF-8、超时及整棵后代清理；抓取取消、预算与控制器异常退出边界|已实现，待验收|Linux 应用 67 passed / 8 skipped；Windows 待 CI|待进行|
-|S10.2 安装与交付|用户目录 PowerShell 安装 / 升级及外来入口保护；Windows 手册与平台能力提示；跨平台 wheel / CLI / Web / 回归 CI；Linux 无回归；提交推送|已实现，待验收|真实 Windows CI 及安装器待执行|待进行|
+|S10.1 原生运行适配|移除导入级 fcntl 阻断；跨进程互斥；原生 Agent / evaluator / proposer 的 UTF-8、超时及整棵后代清理；抓取取消、预算与控制器异常退出边界|初审修正中|Linux 应用 / 定向 / 合同通过；Windows 回归修正后待复验|[初审](delivery/2026-11-01-s10-runtime-review.md)有发现，待复审|
+|S10.2 安装与交付|用户目录 PowerShell 安装 / 升级及外来入口保护；Windows 手册与平台能力提示；跨平台 wheel / CLI / Web / 回归 CI；Linux 无回归；提交推送|初审修正中|真实 Windows 安装 / 升级已通过；完整 CI 待复验|[初审](delivery/2026-11-01-s10-delivery-review.md)待最终证据|
 
 验收使用真实 Windows runner 执行 Windows 路径，不以 Linux 上模拟 os.name 代替。当前机器只有 Linux，因此本地先验证 Linux 回归和可执行的 PowerShell 静态检查；若远端 CI 因外部权限不可用，将明确保留 Windows 实机验收未完成状态。过程与检查证据记录在 [Windows 交付记录](delivery/2026-11-01-windows.md)。

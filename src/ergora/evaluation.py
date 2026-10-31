@@ -6,7 +6,6 @@ import json
 import math
 from pathlib import Path
 import re
-import shutil
 import time
 import uuid
 
@@ -51,9 +50,7 @@ def register(state: State, project_id: str, manifest: dict) -> dict:
     if {case["split"] for case in cases} != {"train", "validation", "holdout"}:
         raise ValueError("Train, validation and holdout splits are required")
     argv = list(argv)
-    executable = shutil.which(argv[0]) if "/" not in argv[0] else str(Path(project["repo"]) / argv[0])
-    if not executable or not Path(executable).is_file():
-        raise ValueError("Evaluator executable is unavailable")
+    executable = processes.resolve_program(argv[0], Path(project["repo"]))
     argv[0] = str(Path(executable).resolve())
     declared = manifest["evaluator_files"]
     if not isinstance(declared, list) or any(not isinstance(p, str) or not p for p in declared):

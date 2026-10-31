@@ -1,12 +1,13 @@
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 
 import pytest
 
-from ergora import agents, kernel, projects, reference, tools
+from ergora import agents, evaluation, kernel, projects, reference, tools
 from ergora.state import State
 
 
@@ -73,3 +74,63 @@ def test_container_override_cannot_disable_native_windows_sandbox(tmp_path):
     with pytest.raises(ValueError, match='native Codex sandbox'):
         agents.invoke({'tool': 'codex', 'sandbox': 'current-container'}, 'implementer', 'fixture',
                       tmp_path, tmp_path / 'output', 5)
+
+
+def test_windows_evaluator_uses_project_relative_native_executable(tmp_path):
+    repo = tmp_path / 'repo'
+    subprocess.run(['git', 'init', str(repo)], check=True, capture_output=True)
+    program = repo / 'tools/scorer.exe'
+    program.parent.mkdir()
+    shutil.copyfile(sys.executable, program)
+    state = State(tmp_path / 'data')
+    projects.create(state, 'demo', repo)
+    manifest = {'schema_version': 1, 'evaluator_argv': ['.\\tools\\scorer'], 'evaluator_files': [],
+                'timeout_seconds': 5, 'minimum_gain': 0.1, 'max_reported_cost': 1,
+                'cases': [{'id': split, 'split': split, 'input': 'fixture'}
+                          for split in ('train', 'validation', 'holdout')]}
+    registered = evaluation.register(state, 'demo', manifest)
+    assert Path(registered['manifest']['evaluator_argv'][0]) == program
+    batch = repo / 'tools/scorer.cmd'
+    batch.write_text('@echo unexpected', encoding='ascii')
+    with pytest.raises(ValueError, match='batch launchers'):
+        evaluation.register(state, 'demo', {**manifest, 'evaluator_argv': [str(batch)]})
+
+
+def test_native_workflow_compilation_conversion_and_immutable_export(tmp_path):
+    example = reference.ROOT / 'platform/upstream/platform/task-types/repository-governance/examples/request.json'
+    request = json.loads(example.read_text(encoding='utf-8'))
+    request['input']['goal'] = '整理中文项目'
+    source = tmp_path / 'request.json'
+    source.write_text(json.dumps(request, ensure_ascii=False), encoding='utf-8')
+    base = [sys.executable, '-m', 'ergora', 'workflow']
+
+    def call(*arguments, ok=True):
+        result = subprocess.run([*base, *map(str, arguments)], cwd=tmp_path, capture_output=True,
+                                text=True, encoding='utf-8', timeout=15)
+        assert (result.returncode == 0) == ok, result.stdout + result.stderr
+        return result
+
+    converted = tmp_path / 'converted'
+    call('convert-v2', '--request', source, '--out-dir', converted)
+    compiled = converted / 'compiled.json'
+    call('validate', compiled)
+    package = reference.ROOT / 'platform/upstream/platform/portable/packages/repository-governance/manifest.json'
+    call('compile', '--task', converted / 'task.json', '--package', package,
+         '--policy', converted / 'policy.json', '--binding', converted / 'binding.json', '--out', compiled)
+    exported = tmp_path / 'export.json'
+    for _ in range(2):
+        call('export-v2', '--compiled', compiled, '--out', exported)
+    assert json.loads(exported.read_text(encoding='utf-8')) == request
+    exported.write_text('{}', encoding='utf-8')
+    assert 'Immutable publication conflicts' in call('export-v2', '--compiled', compiled, '--out', exported, ok=False).stderr
+    linked = tmp_path / 'linked'
+    # Junctions need no Developer Mode or administrator rights.
+    subprocess.run(['cmd.exe', '/d', '/c', 'mklink', '/J', str(linked), str(converted)],
+                   check=True, capture_output=True)
+    try:
+        assert 'reparsed' in call('validate', linked / 'compiled.json', ok=False).stderr
+    finally:
+        linked.rmdir()
+    oversized = tmp_path / 'oversized.json'
+    oversized.write_bytes(b' ' * 1_048_577)
+    assert 'size limit' in call('validate', oversized, ok=False).stderr
