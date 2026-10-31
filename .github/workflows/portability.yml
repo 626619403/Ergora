@@ -38,8 +38,26 @@ jobs:
       - name: Packaged reference identity
         run: python -m ergora reference verify
       - name: Native application regression
-        run: python -m pytest -q tests src/ergora/data/reference/platform/upstream/platform/tests/test_contracts.py src/ergora/data/reference/platform/upstream/platform/tests/test_portable.py
+        shell: python
+        run: |
+          import subprocess, sys
+          result = subprocess.run([sys.executable, '-m', 'pytest', '-q', 'tests',
+              'src/ergora/data/reference/platform/upstream/platform/tests/test_contracts.py',
+              'src/ergora/data/reference/platform/upstream/platform/tests/test_portable.py'],
+              stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding='utf-8')
+          print(result.stdout, flush=True)
+          if result.returncode:
+              details = result.stdout[-50000:].replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+              print(f'::error title=Native regression::{details}', flush=True)
+          raise SystemExit(result.returncode)
       - name: Windows PowerShell 5.1 installer and upgrade
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && !cancelled()
         shell: powershell
-        run: .\tests\windows-installation.ps1
+        run: |
+          try { .\tests\windows-installation.ps1 }
+          catch {
+            $details = ($_ | Out-String) + $_.ScriptStackTrace
+            $details = $details.Replace('%', '%25').Replace("`r", '%0D').Replace("`n", '%0A')
+            Write-Output "::error title=Windows installer::$details"
+            throw
+          }

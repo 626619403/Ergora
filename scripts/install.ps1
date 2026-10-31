@@ -44,7 +44,8 @@ if (-not (Get-Command git.exe -ErrorAction SilentlyContinue)) { throw 'Git is re
 if (-not $pythonSpec) { throw 'Python 3.11+ is required. Use -InstallPrerequisites or install Python, then open a new terminal.' }
 $Python = $pythonSpec.executable
 $pythonArguments = @($pythonSpec.arguments)
-Invoke-Checked $Python ($pythonArguments + @('-c', 'import sys;sys.exit(0 if sys.version_info >= (3,11) else "Python 3.11+ is required")'))
+& $Python @pythonArguments -c 'import sys;sys.exit(0 if sys.version_info >= (3,11) else 1)'
+if ($LASTEXITCODE -ne 0) { throw 'Python 3.11+ is required.' }
 if (-not $InstallRoot) { $InstallRoot = Join-Path $env:LOCALAPPDATA 'Ergora\app' }
 if (-not $BinDir) { $BinDir = Join-Path $env:LOCALAPPDATA 'Ergora\bin' }
 $InstallRoot = [IO.Path]::GetFullPath($InstallRoot)
