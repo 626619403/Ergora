@@ -28,6 +28,7 @@ def test_catalog_preserves_legacy_fields_and_returns_isolated_descriptions():
 
 
 def test_binding_matrix_preserves_acceptance_and_rejection():
+    fixture_root = Path(__file__).resolve().parent
     valid = {
         "codex": [{"tool": "codex"}, {"tool": "codex", "model": "provider/model", "sandbox": "current-container"}],
         "claude-code": [{"tool": "claude-code", "model": "provider/model"}],
@@ -37,7 +38,8 @@ def test_binding_matrix_preserves_acceptance_and_rejection():
         "reme": [{"tool": "reme", "endpoint": "https://example.org/memory", "token_env": "REME_TOKEN"}],
         "gepa": [{"tool": "gepa", "proposer_argv": [sys.executable, "propose.py"]}],
         "temporal": [{"tool": "temporal", "address": "localhost:7233", "namespace": "default", "task_queue": "demo"}],
-        "forgekernel": [{"tool": "forgekernel", "checkout": "/forge", "python": "/forge/.venv/bin/python", "task": "/forge/task"}],
+        "forgekernel": [{"tool": "forgekernel", "checkout": str(fixture_root / "forge"),
+                          "python": sys.executable, "task": str(fixture_root / "forge/task")}],
     }
     for layer, choices in tools.CATALOG.items():
         for tool in choices:

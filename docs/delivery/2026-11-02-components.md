@@ -35,6 +35,8 @@
 
 浏览器材料位于忽略的 `output/playwright/r1-temporal-{mobile,viewport}.png`，使用本节点独立测试项目、非 editable wheel 和 loopback 服务。只验证配置和展示，没有调用真实模型/GPU或远端 ReMe/Temporal。自动化先后纠正了 select 的精确 label 定位和刷新后需要重新打开工具页的操作；不是产品错误。未安装系统库，使用已有缓存 headless shell；npm 使用隔离验收缓存，未改用户配置。
 
+候选 `007a88ecd7529d2838ad8f0f0c5b4b7635898e7d` 已推送并核对远端一致。CI [41332520254](https://github.com/626619403/Ergora/actions/runs/41332520254) Ubuntu job 成功，Windows 回归暴露新增 Forge 绑定测试用了 POSIX 绝对路径（`/forge`）；该路径在 Windows 正确被原业务规则拒绝。已将测试数据改为 runner 自身的绝对路径，不改变产品校验或 Linux 专用支持范围；修正后重新验 CI，当前节点仍未完成。
+
 ## 迁移与下一动作
 
 不迁移用户数据；项目创建时复制默认，已保存项目/冻结任务绑定不自动变化。UI 注解只用于配置输入，保存仍经过原业务校验。回退是本节点正常提交；在途任务不换执行器。完成本切片与独立审查并推送后继续 R2。
