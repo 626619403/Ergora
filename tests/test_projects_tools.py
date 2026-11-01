@@ -8,7 +8,7 @@ import time
 
 import pytest
 
-from ergora import projects, tools
+from ergora import agents, projects, tools
 from ergora.state import State
 
 
@@ -130,7 +130,7 @@ def test_native_reviewer_starts_a_fresh_restricted_invocation(state_project, mon
         observed.extend(argv)
         return {"status": "succeeded", "returncode": 0}
 
-    monkeypatch.setattr(tools.processes, "run", invoke)
+    monkeypatch.setattr(agents.processes, "run", invoke)
     tools.run_agent(state, "demo", "reviewer", "review request")
     assert "resume" not in observed
     if tool == "codex":

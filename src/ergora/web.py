@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from . import __version__, drafts, evaluation, kernel, memory, optimization, projects, reference, research, skills, tools
+from . import __version__, components, drafts, evaluation, kernel, memory, optimization, projects, reference, research, skills, tools
 from .state import State
 
 
@@ -149,6 +149,7 @@ def create_app(home: Path | None = None) -> FastAPI:
     @application.get("/api/bootstrap")
     def bootstrap():
         return {"version": __version__, "projects": projects.list_projects(state), "tools": tools.catalog(),
+                "layers": components.LAYERS,
                 "templates": list(reference.TEMPLATES), "agent_contracts": {kind: reference.agent_contract(kind) for kind in reference.TEMPLATES},
                 "platform": sys.platform, "state_directory": str(state.root),
                 "reference_supported": sys.platform == "linux",

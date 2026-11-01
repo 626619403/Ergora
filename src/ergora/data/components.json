@@ -1,0 +1,707 @@
+{
+  "schema_version": 1,
+  "layers": {
+    "inspector": {
+      "kind": "agent",
+      "title": "仓库盘点 Agent",
+      "description": "理解代码、建立知识导航与基线清单",
+      "icon": "⌕",
+      "display_order": 0,
+      "requires": [
+        "repository-read",
+        "baseline-inspection"
+      ],
+      "default_binding": {
+        "tool": "codex"
+      }
+    },
+    "planner": {
+      "kind": "agent",
+      "title": "开发规划 Agent",
+      "description": "规划范围、工作单元、依赖与回退",
+      "icon": "▧",
+      "display_order": 1,
+      "requires": [
+        "repository-read",
+        "plan-write"
+      ],
+      "default_binding": {
+        "tool": "codex"
+      }
+    },
+    "implementer": {
+      "kind": "agent",
+      "title": "实现 Agent",
+      "description": "编写与修改项目代码",
+      "icon": "⌘",
+      "display_order": 2,
+      "requires": [
+        "scoped-code-write",
+        "test-execution"
+      ],
+      "default_binding": {
+        "tool": "codex"
+      }
+    },
+    "reviewer": {
+      "kind": "agent",
+      "title": "审查 Agent",
+      "description": "在独立调用中核对实现与证据",
+      "icon": "◇",
+      "display_order": 3,
+      "requires": [
+        "independent-candidate-review"
+      ],
+      "default_binding": {
+        "tool": "codex"
+      }
+    },
+    "experiment-planner": {
+      "kind": "agent",
+      "title": "实验规划 Agent",
+      "description": "提出有固定 workload 和基线的实验",
+      "icon": "◈",
+      "display_order": 4,
+      "requires": [
+        "experiment-design"
+      ],
+      "default_binding": {
+        "tool": "codex"
+      }
+    },
+    "performance-analyst": {
+      "kind": "agent",
+      "title": "性能分析 Agent",
+      "description": "分析瓶颈并提出可复验的测量计划",
+      "icon": "↝",
+      "display_order": 5,
+      "requires": [
+        "performance-analysis"
+      ],
+      "default_binding": {
+        "tool": "codex"
+      }
+    },
+    "kernel-tuner": {
+      "kind": "agent",
+      "title": "Kernel 提案 Agent",
+      "description": "生成候选说明与独立验证计划",
+      "icon": "⊞",
+      "display_order": 6,
+      "requires": [
+        "kernel-generation"
+      ],
+      "default_binding": {
+        "tool": "codex"
+      }
+    },
+    "memory": {
+      "kind": "support",
+      "title": "项目记忆",
+      "description": "保存来源、修订和可检索的项目约定",
+      "icon": "▤",
+      "display_order": 8,
+      "requires": [],
+      "default_binding": {
+        "tool": "sqlite"
+      }
+    },
+    "optimizer": {
+      "kind": "support",
+      "title": "Skill 优化",
+      "description": "产生候选，通过固定评价后显式采用",
+      "icon": "↗",
+      "display_order": 9,
+      "requires": [],
+      "default_binding": {
+        "tool": "manual"
+      }
+    },
+    "research": {
+      "kind": "support",
+      "title": "资料来源",
+      "description": "有预算地观察指定资料的新版本",
+      "icon": "◎",
+      "display_order": 10,
+      "requires": [],
+      "default_binding": {
+        "tool": "urls"
+      }
+    },
+    "scheduler": {
+      "kind": "support",
+      "title": "任务调度",
+      "description": "手动触发或使用 Temporal 持久调度",
+      "icon": "◷",
+      "display_order": 11,
+      "requires": [],
+      "default_binding": {
+        "tool": "manual"
+      }
+    },
+    "kernel": {
+      "kind": "support",
+      "title": "Kernel 生成工具",
+      "description": "原生候选生成；独立正确性与性能门禁仍由项目负责",
+      "icon": "⚙",
+      "display_order": 7,
+      "requires": [],
+      "default_binding": {
+        "tool": "manual"
+      }
+    }
+  },
+  "components": {
+    "codex": {
+      "kind": "agent",
+      "implementation": "codex",
+      "layers": [],
+      "capabilities": [
+        "baseline-inspection",
+        "experiment-design",
+        "independent-candidate-review",
+        "kernel-generation",
+        "performance-analysis",
+        "plan-write",
+        "repository-read",
+        "scoped-code-write",
+        "test-execution"
+      ],
+      "operations": {
+        "*": [
+          "agent.run"
+        ]
+      },
+      "platforms": [],
+      "probe": "agent",
+      "configuration": {
+        "type": "object",
+        "properties": {
+          "tool": {
+            "const": "codex"
+          },
+          "model": {
+            "type": "string",
+            "title": "模型 ID（留空采用工具配置）",
+            "minLength": 1
+          },
+          "sandbox": {
+            "type": "string",
+            "title": "执行边界",
+            "enum": [
+              "read-only",
+              "workspace-write",
+              "current-container"
+            ],
+            "x-ergora-empty-label": "使用角色默认 sandbox",
+            "x-ergora-enum-labels": {
+              "read-only": "只读 sandbox",
+              "workspace-write": "工作区写入 sandbox",
+              "current-container": "已信任的当前容器 / 用户"
+            },
+            "x-ergora-enum-platforms": {
+              "current-container": [
+                "linux"
+              ]
+            }
+          }
+        },
+        "required": [
+          "tool"
+        ],
+        "additionalProperties": false
+      },
+      "note": "",
+      "installation": {
+        "kind": "external",
+        "url": "https://learn.chatgpt.com/docs/codex/cli"
+      }
+    },
+    "claude-code": {
+      "kind": "agent",
+      "implementation": "claude-code",
+      "layers": [],
+      "capabilities": [
+        "baseline-inspection",
+        "experiment-design",
+        "independent-candidate-review",
+        "kernel-generation",
+        "performance-analysis",
+        "plan-write",
+        "repository-read",
+        "scoped-code-write",
+        "test-execution"
+      ],
+      "operations": {
+        "*": [
+          "agent.run"
+        ]
+      },
+      "platforms": [],
+      "probe": "agent",
+      "configuration": {
+        "type": "object",
+        "properties": {
+          "tool": {
+            "const": "claude-code"
+          },
+          "model": {
+            "type": "string",
+            "title": "模型 ID（留空采用工具配置）",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "tool"
+        ],
+        "additionalProperties": false
+      },
+      "note": "",
+      "installation": {
+        "kind": "external",
+        "url": "https://code.claude.com/docs/en/setup"
+      }
+    },
+    "mini-swe-agent": {
+      "kind": "agent",
+      "implementation": "mini-swe-agent",
+      "layers": [],
+      "capabilities": [
+        "scoped-code-write",
+        "test-execution"
+      ],
+      "operations": {
+        "*": [
+          "agent.run"
+        ]
+      },
+      "platforms": [
+        "linux"
+      ],
+      "probe": "python-module",
+      "configuration": {
+        "type": "object",
+        "properties": {
+          "tool": {
+            "const": "mini-swe-agent"
+          },
+          "model": {
+            "type": "string",
+            "title": "provider/model ID",
+            "minLength": 1
+          },
+          "python": {
+            "type": "string",
+            "title": "独立环境 Python 路径（可选）",
+            "minLength": 1
+          },
+          "step_limit": {
+            "type": "integer",
+            "title": "最大步数",
+            "minimum": 1,
+            "maximum": 1000,
+            "default": 30
+          },
+          "cost_limit": {
+            "type": "number",
+            "title": "报告成本预算（USD；单次调用可超过剩余值）",
+            "exclusiveMinimum": 0,
+            "maximum": 100,
+            "default": 3,
+            "x-ergora-ui": {
+              "min": 0.01,
+              "step": 0.01
+            }
+          }
+        },
+        "required": [
+          "tool",
+          "model"
+        ],
+        "additionalProperties": false
+      },
+      "note": "",
+      "installation": {
+        "kind": "git",
+        "repository": "https://github.com/SWE-agent/mini-swe-agent.git",
+        "commit": "04d809ceab9df28f9adaed044884180159172930"
+      },
+      "module": "minisweagent",
+      "platform_note": "Requires Linux; use WSL2"
+    },
+    "command": {
+      "kind": "agent",
+      "implementation": "command",
+      "layers": [],
+      "capabilities": [],
+      "operations": {
+        "*": [
+          "agent.run"
+        ]
+      },
+      "platforms": [],
+      "probe": "binding",
+      "configuration": {
+        "type": "object",
+        "properties": {
+          "tool": {
+            "const": "command"
+          },
+          "argv": {
+            "type": "array",
+            "title": "命令参数 JSON 数组",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "default": [
+              "python3",
+              "/path/to/tool.py"
+            ],
+            "x-ergora-platform-defaults": {
+              "win32": [
+                "python.exe",
+                "C:\\path\\to\\tool.py"
+              ]
+            }
+          },
+          "protocol": {
+            "type": "string",
+            "title": "命令协议",
+            "enum": [
+              "stage-json-v1"
+            ],
+            "x-ergora-empty-label": "stdin 文本（普通调用）",
+            "x-ergora-enum-labels": {
+              "stage-json-v1": "结构化阶段 JSON"
+            }
+          },
+          "capabilities": {
+            "type": "array",
+            "title": "声明能力 JSON 数组（结构化命令必填）",
+            "items": {
+              "type": "string",
+              "enum": [
+                "baseline-inspection",
+                "experiment-design",
+                "independent-candidate-review",
+                "kernel-generation",
+                "performance-analysis",
+                "plan-write",
+                "repository-read",
+                "scoped-code-write",
+                "test-execution"
+              ]
+            }
+          }
+        },
+        "required": [
+          "tool",
+          "argv"
+        ],
+        "additionalProperties": false
+      },
+      "note": "",
+      "installation": null,
+      "declared_capabilities": true
+    },
+    "sqlite": {
+      "kind": "support",
+      "implementation": "sqlite",
+      "layers": [
+        "memory"
+      ],
+      "capabilities": [],
+      "operations": {
+        "memory": [
+          "memory.save",
+          "memory.search",
+          "memory.sync"
+        ]
+      },
+      "platforms": [],
+      "probe": "local",
+      "configuration": {
+        "type": "object",
+        "properties": {
+          "tool": {
+            "const": "sqlite"
+          }
+        },
+        "required": [
+          "tool"
+        ],
+        "additionalProperties": false
+      },
+      "note": "",
+      "installation": null
+    },
+    "reme": {
+      "kind": "support",
+      "implementation": "reme",
+      "layers": [
+        "memory"
+      ],
+      "capabilities": [],
+      "operations": {
+        "memory": [
+          "memory.save",
+          "memory.search",
+          "memory.sync"
+        ]
+      },
+      "platforms": [],
+      "probe": "remote",
+      "configuration": {
+        "type": "object",
+        "properties": {
+          "tool": {
+            "const": "reme"
+          },
+          "endpoint": {
+            "type": "string",
+            "title": "服务地址",
+            "default": "http://127.0.0.1:2333",
+            "format": "uri"
+          },
+          "token_env": {
+            "type": "string",
+            "title": "凭据环境变量名（可选）",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "tool",
+          "endpoint"
+        ],
+        "additionalProperties": false
+      },
+      "note": "只填写变量名称。密钥由服务进程环境读取。切换前核对远端项目和删除传播。",
+      "installation": null
+    },
+    "manual": {
+      "kind": "support",
+      "implementation": "manual",
+      "layers": [
+        "optimizer",
+        "scheduler",
+        "kernel"
+      ],
+      "capabilities": [],
+      "operations": {
+        "optimizer": [
+          "skill.import"
+        ],
+        "scheduler": [
+          "research.run"
+        ],
+        "kernel": []
+      },
+      "platforms": [],
+      "probe": "local",
+      "configuration": {
+        "type": "object",
+        "properties": {
+          "tool": {
+            "const": "manual"
+          }
+        },
+        "required": [
+          "tool"
+        ],
+        "additionalProperties": false
+      },
+      "note": "",
+      "installation": null
+    },
+    "gepa": {
+      "kind": "support",
+      "implementation": "gepa",
+      "layers": [
+        "optimizer"
+      ],
+      "capabilities": [],
+      "operations": {
+        "optimizer": [
+          "skill.optimize"
+        ]
+      },
+      "platforms": [],
+      "probe": "python-module",
+      "configuration": {
+        "type": "object",
+        "properties": {
+          "tool": {
+            "const": "gepa"
+          },
+          "proposer_argv": {
+            "type": "array",
+            "title": "提案器参数 JSON 数组",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1,
+            "default": [
+              "python3",
+              "/path/to/propose-skill.py"
+            ]
+          }
+        },
+        "required": [
+          "tool",
+          "proposer_argv"
+        ],
+        "additionalProperties": false
+      },
+      "note": "提案器遵守 JSON 输入/输出协议。GEPA 需要安装可选依赖，仍须固定评价和显式采用。",
+      "installation": {
+        "kind": "extra",
+        "extra": "gepa"
+      },
+      "module": "gepa"
+    },
+    "urls": {
+      "kind": "support",
+      "implementation": "urls",
+      "layers": [
+        "research"
+      ],
+      "capabilities": [],
+      "operations": {
+        "research": [
+          "research.run"
+        ]
+      },
+      "platforms": [],
+      "probe": "local",
+      "configuration": {
+        "type": "object",
+        "properties": {
+          "tool": {
+            "const": "urls"
+          }
+        },
+        "required": [
+          "tool"
+        ],
+        "additionalProperties": false
+      },
+      "note": "",
+      "installation": null
+    },
+    "temporal": {
+      "kind": "support",
+      "implementation": "temporal",
+      "layers": [
+        "scheduler"
+      ],
+      "capabilities": [],
+      "operations": {
+        "scheduler": [
+          "research.schedule",
+          "research.worker"
+        ]
+      },
+      "platforms": [],
+      "probe": "python-module",
+      "configuration": {
+        "type": "object",
+        "properties": {
+          "tool": {
+            "const": "temporal"
+          },
+          "address": {
+            "type": "string",
+            "title": "Temporal 地址",
+            "default": "127.0.0.1:7233",
+            "minLength": 1
+          },
+          "namespace": {
+            "type": "string",
+            "title": "命名空间",
+            "default": "default",
+            "minLength": 1
+          },
+          "task_queue": {
+            "type": "string",
+            "title": "项目 Task Queue",
+            "minLength": 1,
+            "x-ergora-project-default": "ergora-{project_id}-research"
+          }
+        },
+        "required": [
+          "tool",
+          "address",
+          "namespace",
+          "task_queue"
+        ],
+        "additionalProperties": false
+      },
+      "note": "Schedule 和 worker 使用 CLI 创建和启动。各项目使用独立 task queue；新 Schedule 默认暂停。",
+      "installation": {
+        "kind": "extra",
+        "extra": "temporal"
+      },
+      "module": "temporalio"
+    },
+    "forgekernel": {
+      "kind": "support",
+      "implementation": "forgekernel",
+      "layers": [
+        "kernel"
+      ],
+      "capabilities": [],
+      "operations": {
+        "kernel": [
+          "kernel.plan",
+          "kernel.prepare",
+          "kernel.run",
+          "kernel.status"
+        ]
+      },
+      "platforms": [
+        "linux"
+      ],
+      "probe": "campaign",
+      "configuration": {
+        "type": "object",
+        "properties": {
+          "tool": {
+            "const": "forgekernel"
+          },
+          "checkout": {
+            "type": "string",
+            "title": "固定版本源码目录",
+            "minLength": 1
+          },
+          "python": {
+            "type": "string",
+            "title": "Forge 环境 Python 绝对路径",
+            "minLength": 1
+          },
+          "task": {
+            "type": "string",
+            "title": "原生任务目录绝对路径",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "tool",
+          "checkout",
+          "python",
+          "task"
+        ],
+        "additionalProperties": false
+      },
+      "note": "使用独立安装器准备固定版本。当前适配仅支持 local delivery，执行需要 Claude 与 GPU；计划检查不运行它们。",
+      "installation": {
+        "kind": "git",
+        "repository": "https://github.com/OpenBMB/ForgeKernel.git",
+        "commit": "5030503d3ff71851aa34c14b9caf13ebfa9d9a78"
+      },
+      "platform_note": "Requires Linux; use WSL2"
+    }
+  }
+}

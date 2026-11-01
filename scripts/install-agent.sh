@@ -6,20 +6,31 @@ ergora_agent="${1:---help}"
 ergora_tools_root="${ERGORA_TOOLS_ROOT:-$HOME/.local/share/ergora-tools}"
 ergora_python="${ERGORA_PYTHON:-python3}"
 case "$ergora_agent" in
-  forgekernel)
-    ergora_repository="https://github.com/OpenBMB/ForgeKernel.git"
-    ergora_commit="5030503d3ff71851aa34c14b9caf13ebfa9d9a78" ;;
-  mini-swe-agent)
-    ergora_repository="https://github.com/SWE-agent/mini-swe-agent.git"
-    ergora_commit="04d809ceab9df28f9adaed044884180159172930" ;;
   --help|-h)
     echo 'Usage: bash scripts/install-agent.sh {forgekernel|mini-swe-agent}'
     echo 'Installs a pinned source and isolated venv under ~/.local/share/ergora-tools/.'
     echo 'Overrides: ERGORA_TOOLS_ROOT, ERGORA_PYTHON. Does not log in or run models/GPU jobs.'
     exit 0 ;;
-  *) echo "Unknown optional agent: $ergora_agent" >&2; exit 2 ;;
 esac
 "$ergora_python" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 11) else "Python 3.11+ is required")'
+ergora_project_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd -P)"
+ergora_recipe="$("$ergora_python" - "$ergora_project_root/src/ergora/data/components.json" "$ergora_agent" <<'PY'
+import json, pathlib, sys
+manifest = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding='utf-8'))
+if manifest['schema_version'] != 1:
+    raise SystemExit('Unsupported built-in component catalog version')
+component = manifest['components'].get(sys.argv[2])
+recipe = component['installation'] if component else None
+if not recipe or recipe['kind'] != 'git':
+    print('Unknown optional agent: ' + sys.argv[2], file=sys.stderr)
+    raise SystemExit(2)
+print(recipe['repository'])
+print(recipe['commit'])
+PY
+)"
+mapfile -t ergora_recipe_fields <<< "$ergora_recipe"
+ergora_repository="${ergora_recipe_fields[0]}"
+ergora_commit="${ergora_recipe_fields[1]}"
 mkdir -p -- "$ergora_tools_root"
 ergora_checkout="$ergora_tools_root/$ergora_agent"
 if [[ ! -d "$ergora_checkout" ]]; then

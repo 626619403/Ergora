@@ -6,41 +6,7 @@ const app = {
   bootstrap: null,
   data: null,
 };
-const layers = {
-  inspector: ["仓库盘点 Agent", "理解代码、建立知识导航与基线清单", "⌕"],
-  planner: ["开发规划 Agent", "规划范围、工作单元、依赖与回退", "▧"],
-  implementer: ["实现 Agent", "编写与修改项目代码", "⌘"],
-  reviewer: ["审查 Agent", "在独立调用中核对实现与证据", "◇"],
-  "experiment-planner": [
-    "实验规划 Agent",
-    "提出有固定 workload 和基线的实验",
-    "◈",
-  ],
-  "performance-analyst": [
-    "性能分析 Agent",
-    "分析瓶颈并提出可复验的测量计划",
-    "↝",
-  ],
-  "kernel-tuner": ["Kernel 提案 Agent", "生成候选说明与独立验证计划", "⊞"],
-  kernel: [
-    "Kernel 生成工具",
-    "原生候选生成；独立正确性与性能门禁仍由项目负责",
-    "⚙",
-  ],
-  memory: ["项目记忆", "保存来源、修订和可检索的项目约定", "▤"],
-  optimizer: ["Skill 优化", "产生候选，通过固定评价后显式采用", "↗"],
-  research: ["资料来源", "有预算地观察指定资料的新版本", "◎"],
-  scheduler: ["任务调度", "手动触发或使用 Temporal 持久调度", "◷"],
-};
-const agentRoles = [
-  "inspector",
-  "planner",
-  "implementer",
-  "reviewer",
-  "experiment-planner",
-  "performance-analyst",
-  "kernel-tuner",
-];
+let layers = {}, agentRoles = [];
 const bindingFor = (project, layer) =>
   project.bindings[layer] ||
   (layer === "kernel" ? { tool: "manual" } : project.bindings.implementer);
@@ -303,6 +269,14 @@ async function refresh(expectedProject) {
   const bootstrap = await api("/api/bootstrap");
   if (sequence !== refreshSequence) return;
   app.bootstrap = bootstrap;
+  layers = Object.fromEntries(
+    Object.entries(bootstrap.layers)
+      .sort(([, left], [, right]) => left.display_order - right.display_order)
+      .map(([layer, definition]) => [layer, [definition.title, definition.description, definition.icon]]),
+  );
+  agentRoles = Object.entries(bootstrap.layers)
+    .filter(([, definition]) => definition.kind === "agent")
+    .map(([layer]) => layer);
   if (!bootstrap.projects.some((project) => project.id === app.project))
     app.project = bootstrap.projects[0]?.id || null;
   const projectId = app.project;
@@ -703,162 +677,44 @@ function toolsView(data) {
 }
 function bindingDialog(data, layer) {
   const current = bindingFor(data.project, layer);
+  const choices = app.bootstrap.tools[layer];
   const choice = select(
-    app.bootstrap.tools[layer].map((item) => [item.tool, item.supported === false ? `${item.tool} · WSL2/Linux` : item.tool]),
+    choices.map((item) => [item.tool, item.supported === false ? `${item.tool} · WSL2/Linux` : item.tool]),
     current.tool,
     "tool",
   );
   const options = node("div");
+  let schema;
   function fields() {
-    const tool = choice.value;
-    const same = tool === current.tool ? current : {};
+    const component = choices.find((item) => item.tool === choice.value);
+    schema = component.configuration;
+    const same = choice.value === current.tool ? current : {};
     const content = [];
-    if (["codex", "claude-code"].includes(tool))
-      content.push(
-        field("模型 ID（留空采用工具配置）", "model", same.model || ""),
-      );
-    if (tool === "codex")
-      content.push(
-        selectField(
-          "执行边界",
-          [
-            ["", "使用角色默认 sandbox"],
-            ["read-only", "只读 sandbox"],
-            ["workspace-write", "工作区写入 sandbox"],
-            ...(app.bootstrap.platform === "linux"
-              ? [["current-container", "已信任的当前容器 / 用户"]]
-              : []),
-          ],
-          same.sandbox || "",
-          "sandbox",
-        ),
-      );
-    if (tool === "command")
-      content.push(
-        field(
-          "命令参数 JSON 数组",
-          "argv",
-          JSON.stringify(same.argv || (app.bootstrap.platform === "win32"
-            ? ["python.exe", "C:\\path\\to\\tool.py"]
-            : ["python3", "/path/to/tool.py"])),
-          "textarea",
-          { required: true },
-        ),
-        selectField(
-          "命令协议",
-          [
-            ["", "stdin 文本（普通调用）"],
-            ["stage-json-v1", "结构化阶段 JSON"],
-          ],
-          same.protocol || "",
-          "protocol",
-        ),
-        field(
-          "声明能力 JSON 数组（结构化命令必填）",
-          "capabilities",
-          JSON.stringify(
-            same.capabilities || app.bootstrap.tools[layer][0].requires || [],
-          ),
-          "textarea",
-        ),
-      );
-    if (tool === "mini-swe-agent")
-      content.push(
-        field("provider/model ID", "model", same.model || "", "text", {
-          required: true,
-        }),
-        field("独立环境 Python 路径（可选）", "python", same.python || ""),
-        field("最大步数", "step_limit", same.step_limit || 30, "number", {
-          min: 1,
-          max: 1000,
-        }),
-        field(
-          "报告成本预算（USD；单次调用可超过剩余值）",
-          "cost_limit",
-          same.cost_limit || 3,
-          "number",
-          { min: 0.01, max: 100, step: 0.01 },
-        ),
-      );
-    if (tool === "forgekernel")
-      content.push(
-        field("固定版本源码目录", "checkout", same.checkout || "", "text", {
-          required: true,
-        }),
-        field(
-          "Forge 环境 Python 绝对路径",
-          "python",
-          same.python || "",
-          "text",
-          { required: true },
-        ),
-        field("原生任务目录绝对路径", "task", same.task || "", "text", {
-          required: true,
-        }),
-        node(
-          "p",
-          {},
-          "使用独立安装器准备固定版本。当前适配仅支持 local delivery，执行需要 Claude 与 GPU；计划检查不运行它们。",
-        ),
-      );
-    if (tool === "gepa")
-      content.push(
-        field(
-          "提案器参数 JSON 数组",
-          "proposer_argv",
-          JSON.stringify(
-            same.proposer_argv || ["python3", "/path/to/propose-skill.py"],
-          ),
-          "textarea",
-          { required: true },
-        ),
-        node(
-          "p",
-          {},
-          "提案器遵守 JSON 输入/输出协议。GEPA 需要安装可选依赖，仍须固定评价和显式采用。",
-        ),
-      );
-    if (tool === "reme")
-      content.push(
-        field(
-          "服务地址",
-          "endpoint",
-          same.endpoint || "http://127.0.0.1:2333",
-          "url",
-          { required: true },
-        ),
-        field("凭据环境变量名（可选）", "token_env", same.token_env || ""),
-        node(
-          "p",
-          {},
-          "只填写变量名称。密钥由服务进程环境读取。切换前核对远端项目和删除传播。",
-        ),
-      );
-    if (tool === "temporal")
-      content.push(
-        field(
-          "Temporal 地址",
-          "address",
-          same.address || "127.0.0.1:7233",
-          "text",
-          { required: true },
-        ),
-        field("命名空间", "namespace", same.namespace || "default", "text", {
-          required: true,
-        }),
-        field(
-          "项目 Task Queue",
-          "task_queue",
-          same.task_queue || `ergora-${data.project.id}-research`,
-          "text",
-          { required: true },
-        ),
-        node(
-          "p",
-          {},
-          "Schedule 和 worker 使用 CLI 创建和启动。各项目使用独立 task queue；新 Schedule 默认暂停。",
-        ),
-      );
+    for (const [name, property] of Object.entries(schema.properties)) {
+      if (name === "tool") continue;
+      const required = schema.required.includes(name);
+      const value = same[name] ?? property["x-ergora-project-default"]?.replace("{project_id}", data.project.id)
+        ?? property.default ?? "";
+      if (property.enum) {
+        const labels = property["x-ergora-enum-labels"] || {};
+        const entries = property.enum.map((item) => [item, labels[item] || item]);
+        if (!required) entries.unshift(["", property["x-ergora-empty-label"] || "使用默认值"]);
+        content.push(selectField(property.title, entries, value, name));
+      } else if (property.type === "array") {
+        content.push(field(property.title, name, JSON.stringify(value === "" ? [] : value), "textarea", { required: required ? true : null }));
+      } else if (["number", "integer"].includes(property.type)) {
+        const ui = property["x-ergora-ui"] || {};
+        content.push(field(property.title, name, value, "number", {
+          required: required ? true : null, min: ui.min ?? property.minimum, max: property.maximum,
+          step: ui.step ?? (property.type === "integer" ? 1 : "any"),
+        }));
+      } else if (property.type === "string") {
+        content.push(field(property.title, name, value, property.format === "uri" ? "url" : "text", { required: required ? true : null }));
+      } else {
+        throw new Error(`不支持的配置字段类型：${property.type}`);
+      }
+    }
+    if (component.note) content.push(node("p", {}, component.note));
     options.replaceChildren(...content);
   }
   choice.addEventListener("change", fields);
@@ -869,19 +725,14 @@ function bindingDialog(data, layer) {
       [node("label", {}, "选择工具", choice), options],
       "保存绑定",
       async (values, element) => {
-        const binding = Object.fromEntries(values);
-        for (const key of ["argv", "proposer_argv", "capabilities"])
-          if (key in binding) binding[key] = JSON.parse(binding[key]);
-        for (const key of [
-          "model",
-          "token_env",
-          "python",
-          "sandbox",
-          "protocol",
-        ])
-          if (binding[key] === "") delete binding[key];
-        for (const key of ["step_limit", "cost_limit"])
-          if (key in binding) binding[key] = Number(binding[key]);
+        const binding = { tool: choice.value };
+        for (const [name, property] of Object.entries(schema.properties)) {
+          if (name === "tool") continue;
+          const value = values.get(name);
+          if (value === null || (value === "" && !schema.required.includes(name))) continue;
+          binding[name] = property.type === "array" ? JSON.parse(value)
+            : ["number", "integer"].includes(property.type) ? Number(value) : value;
+        }
         await api(
           `/api/projects/${encodeURIComponent(data.project.id)}/bindings/${layer}`,
           { binding, revision: data.project.revision },

@@ -102,6 +102,10 @@ def test_template_roles_and_structured_agent_selection(console):
     from ergora import agents
     client, state, repo = console
     bootstrap = client.get("/api/bootstrap").json()
+    assert bootstrap["layers"]["reviewer"]["requires"] == ["independent-candidate-review"]
+    command = next(item for item in bootstrap["tools"]["reviewer"] if item["tool"] == "command")
+    assert command["configuration"]["properties"]["capabilities"]["default"] == ["independent-candidate-review"]
+    assert command["configuration"]["required"] == ["tool", "argv"]
     assert set(bootstrap["agent_contracts"]) == set(bootstrap["templates"])
     for kind, contract in bootstrap["agent_contracts"].items():
         assert client.get(f"/api/templates/{kind}").json()["agents"] == contract

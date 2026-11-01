@@ -1,5 +1,6 @@
 """Concrete layer bindings. Selection never silently changes the reference runtime."""
 
+from copy import deepcopy
 import json
 import importlib.util
 import hashlib
@@ -9,18 +10,11 @@ import sys
 import uuid
 from urllib.parse import urlsplit
 
-from . import agents, kernel, processes
+from . import agents, components, kernel
 from .state import State, now
 
 
-CATALOG = {
-    **agents.CHOICES,
-    "memory": ["sqlite", "reme"],
-    "optimizer": ["manual", "gepa"],
-    "research": ["urls"],
-    "scheduler": ["manual", "temporal"],
-    "kernel": ["manual", "forgekernel"],
-}
+CATALOG = components.CATALOG
 
 
 def validate_binding(layer: str, binding: dict) -> None:
@@ -33,18 +27,9 @@ def validate_binding(layer: str, binding: dict) -> None:
     if layer == "kernel":
         kernel.validate_binding(binding)
         return
-    allowed = {"codex": {"tool", "model"}, "claude-code": {"tool", "model"}, "command": {"tool", "argv"},
-               "sqlite": {"tool"}, "reme": {"tool", "endpoint", "token_env"},
-               "manual": {"tool"}, "gepa": {"tool", "proposer_argv"}, "urls": {"tool"},
-               "temporal": {"tool", "address", "namespace", "task_queue"}}[tool]
+    allowed = set(components.COMPONENTS[tool]["configuration"]["properties"])
     if set(binding) - allowed:
         raise ValueError(f"Unknown binding options: {sorted(set(binding) - allowed)}")
-    if "model" in binding and (not isinstance(binding["model"], str) or not binding["model"].strip()):
-        raise ValueError("model must be a nonempty model ID")
-    if tool == "command":
-        argv = binding.get("argv")
-        if not isinstance(argv, list) or not argv or any(not isinstance(x, str) or not x or "\0" in x for x in argv):
-            raise ValueError("command requires a nonempty argv array; prompt is passed via stdin")
     if tool == "reme":
         endpoint = binding.get("endpoint")
         if not isinstance(endpoint, str):
@@ -68,27 +53,29 @@ def catalog() -> dict:
     for layer, choices in CATALOG.items():
         result[layer] = []
         for tool in choices:
-            installed = True if tool in ("sqlite", "manual", "urls") else None
-            if tool in ("codex", "claude-code"):
+            component = components.COMPONENTS[tool]
+            probe = component["probe"]
+            if probe == "local":
+                installed = True
+            elif probe == "agent":
                 installed = agents.available({"tool": tool}, Path.cwd())
-            if tool == "mini-swe-agent":
-                installed = importlib.util.find_spec("minisweagent") is not None
-            if tool == "gepa":
-                installed = importlib.util.find_spec("gepa") is not None
-            if tool == "temporal":
-                installed = importlib.util.find_spec("temporalio") is not None
-            operations = {"memory": ["memory.save", "memory.search", "memory.sync"],
-                          "optimizer": ["skill.import"] if tool == "manual" else ["skill.optimize"]}
-            operations.update(research=["research.run"], scheduler=["research.run"] if tool == "manual" else ["research.schedule", "research.worker"])
-            operations["kernel"] = [] if tool == "manual" else ["kernel.plan", "kernel.prepare", "kernel.run", "kernel.status"]
-            supported = tool not in ("forgekernel", "mini-swe-agent") or sys.platform == "linux"
+            elif probe == "python-module":
+                installed = importlib.util.find_spec(component["module"]) is not None
+            elif probe in ("binding", "remote", "campaign"):
+                installed = None
+            else:
+                raise ValueError(f"Unsupported component probe: {probe}")
+            operations = component["operations"]
+            supported = not component["platforms"] or sys.platform in component["platforms"]
             result[layer].append({"tool": tool, "installed": installed if supported else False,
-                                  "supported": supported, "platform_note": "" if supported else "Requires Linux; use WSL2",
+                                  "supported": supported, "platform_note": "" if supported else component["platform_note"],
                                   "authentication": "not_checked",
-                                  "operations": operations.get(layer, ["agent.run"]),
+                                  "operations": operations[layer] if layer in operations else operations["*"],
                                   "capabilities": agents.TOOL_CAPABILITIES.get(tool, []),
-                                  "requires": agents.ROLE_CAPABILITIES.get(layer, [])})
-    return result
+                                  "requires": agents.ROLE_CAPABILITIES.get(layer, []),
+                                  "configuration": components.configuration(layer, tool, sys.platform),
+                                  "note": component["note"], "installation": component["installation"]})
+    return deepcopy(result)
 
 
 def doctor(state: State, project_id: str) -> dict:
@@ -114,10 +101,12 @@ def doctor(state: State, project_id: str) -> dict:
             checks.append({"layer": layer, "tool": tool, "installed": tool != "temporal" or importlib.util.find_spec("temporalio") is not None,
                            "connectivity": "not_checked" if tool == "temporal" else "local"})
             continue
+        component = components.COMPONENTS[tool]
+        supported = not component["platforms"] or sys.platform in component["platforms"]
         checks.append({"layer": layer, "tool": tool, "installed": agents.available(binding, Path(project["repo"])),
                        "authentication": "not_checked", "runtime": "ergora-agent-invocation",
-                       "supported": tool != "mini-swe-agent" or sys.platform == "linux",
-                       "platform_note": "Requires Linux/bash; use WSL2" if tool == "mini-swe-agent" and sys.platform != "linux" else ""})
+                       "supported": supported,
+                       "platform_note": "" if supported else component["platform_note"]})
     return {"project": project_id, "checks": checks,
             "reference_runtime": "default agentflow unchanged; opt in with ergora reference executor for new tasks" if sys.platform == "linux" else "Formal reference execution requires Linux; use WSL2"}
 

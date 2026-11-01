@@ -7,11 +7,11 @@ from pathlib import Path
 import subprocess
 import uuid
 
-from . import processes
+from . import components, processes
 from .state import State, file_lock, now
 
 
-FORGE_COMMIT = "5030503d3ff71851aa34c14b9caf13ebfa9d9a78"
+FORGE_COMMIT = components.COMPONENTS["forgekernel"]["installation"]["commit"]
 
 
 def validate_binding(binding: dict) -> None:
@@ -19,7 +19,7 @@ def validate_binding(binding: dict) -> None:
         if set(binding) != {"tool"}:
             raise ValueError("manual kernel binding has no options")
         return
-    if binding.get("tool") != "forgekernel" or set(binding) - {"tool", "checkout", "python", "task"}:
+    if binding.get("tool") != "forgekernel" or set(binding) - set(components.COMPONENTS["forgekernel"]["configuration"]["properties"]):
         raise ValueError("Kernel tool must be manual or forgekernel")
     for name in ("checkout", "python", "task"):
         if not isinstance(binding.get(name), str) or not binding[name].strip() or "\0" in binding[name]:

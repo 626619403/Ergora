@@ -1,0 +1,511 @@
+{
+  "baseline": "588161b04d2ca56805220a2dcb5c11b7caa2773a",
+  "catalog": {
+    "inspector": [
+      {
+        "tool": "codex",
+        "authentication": "not_checked",
+        "operations": [
+          "agent.run"
+        ],
+        "capabilities": [
+          "baseline-inspection",
+          "experiment-design",
+          "independent-candidate-review",
+          "kernel-generation",
+          "performance-analysis",
+          "plan-write",
+          "repository-read",
+          "scoped-code-write",
+          "test-execution"
+        ],
+        "requires": [
+          "repository-read",
+          "baseline-inspection"
+        ]
+      },
+      {
+        "tool": "claude-code",
+        "authentication": "not_checked",
+        "operations": [
+          "agent.run"
+        ],
+        "capabilities": [
+          "baseline-inspection",
+          "experiment-design",
+          "independent-candidate-review",
+          "kernel-generation",
+          "performance-analysis",
+          "plan-write",
+          "repository-read",
+          "scoped-code-write",
+          "test-execution"
+        ],
+        "requires": [
+          "repository-read",
+          "baseline-inspection"
+        ]
+      },
+      {
+        "tool": "command",
+        "authentication": "not_checked",
+        "operations": [
+          "agent.run"
+        ],
+        "capabilities": [],
+        "requires": [
+          "repository-read",
+          "baseline-inspection"
+        ]
+      }
+    ],
+    "planner": [
+      {
+        "tool": "codex",
+        "authentication": "not_checked",
+        "operations": [
+          "agent.run"
+        ],
+        "capabilities": [
+          "baseline-inspection",
+          "experiment-design",
+          "independent-candidate-review",
+          "kernel-generation",
+          "performance-analysis",
+          "plan-write",
+          "repository-read",
+          "scoped-code-write",
+          "test-execution"
+        ],
+        "requires": [
+          "repository-read",
+          "plan-write"
+        ]
+      },
+      {
+        "tool": "claude-code",
+        "authentication": "not_checked",
+        "operations": [
+          "agent.run"
+        ],
+        "capabilities": [
+          "baseline-inspection",
+          "experiment-design",
+          "independent-candidate-review",
+          "kernel-generation",
+          "performance-analysis",
+          "plan-write",
+          "repository-read",
+          "scoped-code-write",
+          "test-execution"
+        ],
+        "requires": [
+          "repository-read",
+          "plan-write"
+        ]
+      },
+      {
+        "tool": "command",
+        "authentication": "not_checked",
+        "operations": [
+          "agent.run"
+        ],
+        "capabilities": [],
+        "requires": [
+          "repository-read",
+          "plan-write"
+        ]
+      }
+    ],
+    "implementer": [
+      {
+        "tool": "codex",
+        "authentication": "not_checked",
+        "operations": [
+          "agent.run"
+        ],
+        "capabilities": [
+          "baseline-inspection",
+          "experiment-design",
+          "independent-candidate-review",
+          "kernel-generation",
+          "performance-analysis",
+          "plan-write",
+          "repository-read",
+          "scoped-code-write",
+          "test-execution"
+        ],
+        "requires": [
+          "scoped-code-write",
+          "test-execution"
+        ]
+      },
+      {
+        "tool": "claude-code",
+        "authentication": "not_checked",
+        "operations": [
+          "agent.run"
+        ],
+        "capabilities": [
+          "baseline-inspection",
+          "experiment-design",
+          "independent-candidate-review",
+          "kernel-generation",
+          "performance-analysis",
+          "plan-write",
+          "repository-read",
+          "scoped-code-write",
+          "test-execution"
+        ],
+        "requires": [
+          "scoped-code-write",
+          "test-execution"
+        ]
+      },
+      {
+        "tool": "mini-swe-agent",
+        "authentication": "not_checked",
+        "operations": [
+          "agent.run"
+        ],
+        "capabilities": [
+          "scoped-code-write",
+          "test-execution"
+        ],
+        "requires": [
+          "scoped-code-write",
+          "test-execution"
+        ]
+      },
+      {
+        "tool": "command",
+        "authentication": "not_checked",
+        "operations": [
+          "agent.run"
+        ],
+        "capabilities": [],
+        "requires": [
+          "scoped-code-write",
+          "test-execution"
+        ]
+      }
+    ],
+    "reviewer": [
+      {
+        "tool": "codex",
+        "authentication": "not_checked",
+        "operations": [
+          "agent.run"
+        ],
+        "capabilities": [
+          "baseline-inspection",
+          "experiment-design",
+          "independent-candidate-review",
+          "kernel-generation",
+          "performance-analysis",
+          "plan-write",
+          "repository-read",
+          "scoped-code-write",
+          "test-execution"
+        ],
+        "requires": [
+          "independent-candidate-review"
+        ]
+      },
+      {
+        "tool": "claude-code",
+        "authentication": "not_checked",
+        "operations": [
+          "agent.run"
+        ],
+        "capabilities": [
+          "baseline-inspection",
+          "experiment-design",
+          "independent-candidate-review",
+          "kernel-generation",
+          "performance-analysis",
+          "plan-write",
+          "repository-read",
+          "scoped-code-write",
+          "test-execution"
+        ],
+        "requires": [
+          "independent-candidate-review"
+        ]
+      },
+      {
+        "tool": "command",
+        "authentication": "not_checked",
+        "operations": [
+          "agent.run"
+        ],
+        "capabilities": [],
+        "requires": [
+          "independent-candidate-review"
+        ]
+      }
+    ],
+    "experiment-planner": [
+      {
+        "tool": "codex",
+        "authentication": "not_checked",
+        "operations": [
+          "agent.run"
+        ],
+        "capabilities": [
+          "baseline-inspection",
+          "experiment-design",
+          "independent-candidate-review",
+          "kernel-generation",
+          "performance-analysis",
+          "plan-write",
+          "repository-read",
+          "scoped-code-write",
+          "test-execution"
+        ],
+        "requires": [
+          "experiment-design"
+        ]
+      },
+      {
+        "tool": "claude-code",
+        "authentication": "not_checked",
+        "operations": [
+          "agent.run"
+        ],
+        "capabilities": [
+          "baseline-inspection",
+          "experiment-design",
+          "independent-candidate-review",
+          "kernel-generation",
+          "performance-analysis",
+          "plan-write",
+          "repository-read",
+          "scoped-code-write",
+          "test-execution"
+        ],
+        "requires": [
+          "experiment-design"
+        ]
+      },
+      {
+        "tool": "command",
+        "authentication": "not_checked",
+        "operations": [
+          "agent.run"
+        ],
+        "capabilities": [],
+        "requires": [
+          "experiment-design"
+        ]
+      }
+    ],
+    "performance-analyst": [
+      {
+        "tool": "codex",
+        "authentication": "not_checked",
+        "operations": [
+          "agent.run"
+        ],
+        "capabilities": [
+          "baseline-inspection",
+          "experiment-design",
+          "independent-candidate-review",
+          "kernel-generation",
+          "performance-analysis",
+          "plan-write",
+          "repository-read",
+          "scoped-code-write",
+          "test-execution"
+        ],
+        "requires": [
+          "performance-analysis"
+        ]
+      },
+      {
+        "tool": "claude-code",
+        "authentication": "not_checked",
+        "operations": [
+          "agent.run"
+        ],
+        "capabilities": [
+          "baseline-inspection",
+          "experiment-design",
+          "independent-candidate-review",
+          "kernel-generation",
+          "performance-analysis",
+          "plan-write",
+          "repository-read",
+          "scoped-code-write",
+          "test-execution"
+        ],
+        "requires": [
+          "performance-analysis"
+        ]
+      },
+      {
+        "tool": "command",
+        "authentication": "not_checked",
+        "operations": [
+          "agent.run"
+        ],
+        "capabilities": [],
+        "requires": [
+          "performance-analysis"
+        ]
+      }
+    ],
+    "kernel-tuner": [
+      {
+        "tool": "codex",
+        "authentication": "not_checked",
+        "operations": [
+          "agent.run"
+        ],
+        "capabilities": [
+          "baseline-inspection",
+          "experiment-design",
+          "independent-candidate-review",
+          "kernel-generation",
+          "performance-analysis",
+          "plan-write",
+          "repository-read",
+          "scoped-code-write",
+          "test-execution"
+        ],
+        "requires": [
+          "kernel-generation"
+        ]
+      },
+      {
+        "tool": "claude-code",
+        "authentication": "not_checked",
+        "operations": [
+          "agent.run"
+        ],
+        "capabilities": [
+          "baseline-inspection",
+          "experiment-design",
+          "independent-candidate-review",
+          "kernel-generation",
+          "performance-analysis",
+          "plan-write",
+          "repository-read",
+          "scoped-code-write",
+          "test-execution"
+        ],
+        "requires": [
+          "kernel-generation"
+        ]
+      },
+      {
+        "tool": "command",
+        "authentication": "not_checked",
+        "operations": [
+          "agent.run"
+        ],
+        "capabilities": [],
+        "requires": [
+          "kernel-generation"
+        ]
+      }
+    ],
+    "memory": [
+      {
+        "tool": "sqlite",
+        "authentication": "not_checked",
+        "operations": [
+          "memory.save",
+          "memory.search",
+          "memory.sync"
+        ],
+        "capabilities": [],
+        "requires": []
+      },
+      {
+        "tool": "reme",
+        "authentication": "not_checked",
+        "operations": [
+          "memory.save",
+          "memory.search",
+          "memory.sync"
+        ],
+        "capabilities": [],
+        "requires": []
+      }
+    ],
+    "optimizer": [
+      {
+        "tool": "manual",
+        "authentication": "not_checked",
+        "operations": [
+          "skill.import"
+        ],
+        "capabilities": [],
+        "requires": []
+      },
+      {
+        "tool": "gepa",
+        "authentication": "not_checked",
+        "operations": [
+          "skill.optimize"
+        ],
+        "capabilities": [],
+        "requires": []
+      }
+    ],
+    "research": [
+      {
+        "tool": "urls",
+        "authentication": "not_checked",
+        "operations": [
+          "research.run"
+        ],
+        "capabilities": [],
+        "requires": []
+      }
+    ],
+    "scheduler": [
+      {
+        "tool": "manual",
+        "authentication": "not_checked",
+        "operations": [
+          "research.run"
+        ],
+        "capabilities": [],
+        "requires": []
+      },
+      {
+        "tool": "temporal",
+        "authentication": "not_checked",
+        "operations": [
+          "research.schedule",
+          "research.worker"
+        ],
+        "capabilities": [],
+        "requires": []
+      }
+    ],
+    "kernel": [
+      {
+        "tool": "manual",
+        "authentication": "not_checked",
+        "operations": [],
+        "capabilities": [],
+        "requires": []
+      },
+      {
+        "tool": "forgekernel",
+        "authentication": "not_checked",
+        "operations": [
+          "kernel.plan",
+          "kernel.prepare",
+          "kernel.run",
+          "kernel.status"
+        ],
+        "capabilities": [],
+        "requires": []
+      }
+    ]
+  }
+}

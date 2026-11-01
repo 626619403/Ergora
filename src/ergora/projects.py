@@ -1,5 +1,6 @@
 """Versioned project ownership and tool choices."""
 
+from copy import deepcopy
 import json
 from pathlib import Path
 import re
@@ -8,6 +9,7 @@ import subprocess
 
 from .state import State, now
 from .tools import validate_binding
+from .components import DEFAULT_BINDINGS
 
 
 def create(state: State, project_id: str, repo: Path) -> dict:
@@ -21,10 +23,7 @@ def create(state: State, project_id: str, repo: Path) -> dict:
     if Path(result.stdout.strip()).resolve() != repo:
         raise ValueError("Choose the Git repository root")
     document = {"schema_version": 1, "id": project_id, "repo": str(repo), "created": now(),
-                "revision": 1, "bindings": {**{role: {"tool": "codex"} for role in (
-                    "inspector", "planner", "implementer", "reviewer", "experiment-planner", "performance-analyst", "kernel-tuner")},
-                                           "memory": {"tool": "sqlite"}, "optimizer": {"tool": "manual"},
-                                           "research": {"tool": "urls"}, "scheduler": {"tool": "manual"}, "kernel": {"tool": "manual"}}}
+                "revision": 1, "bindings": deepcopy(DEFAULT_BINDINGS)}
     try:
         with state.connect() as db:
             db.execute("INSERT INTO projects VALUES (?, ?)", (project_id, json.dumps(document)))

@@ -19,7 +19,7 @@ from agent_platform.core import Blocked, CONFIG, STATE, read, require, settings,
 from dev_platform.adapter import FileAdapter, publish
 from dev_platform.contracts import canonical_sha, validate_spec
 
-from . import agents
+from . import agents, components
 from .state import State
 
 
@@ -41,7 +41,7 @@ class Executor(original.Executor):
                               "bindings": {role: agents.binding_for(project, role) for role in roles}}
             for role, binding in self.selection["bindings"].items():
                 agents.validate_binding(role, binding)
-                if binding["tool"] == "command":
+                if components.COMPONENTS[binding["tool"]]["implementation"] == "command":
                     require(binding.get("protocol") == "stage-json-v1", "Formal command agents require stage-json-v1")
             write(snapshot, self.selection)
 

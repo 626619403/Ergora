@@ -120,3 +120,11 @@ ergora kernel run my-project CAMPAIGN_ID --timeout 3600
 除原生任务快照，campaign 还固定 models.toml、loop.toml、backends.toml 的 SHA；后续配置漂移会明确拒绝，须恢复对应配置。运行中不要修改共享默认配置；备份与换机须同时保留工具源码、这些配置及 campaign。报告与实际 best/kernel.py 或 best/kernel.cu 的身份会保存；`native_finished` 只描述生成器的完成，`native_failed` 保留上游失败。选择候选提交后，继续用训练模板的 manifest、可信 runner、正确性/质量与配对性能证据，并按 evidence SHA 人工放行。ForgeKernel 的内部 judge、target_met 或报告文字不能直接成为 perfctl PASS。实际验证范围及未测的 GPU/模型效果见 [S8 记录](delivery/2026-10-31-s8-agents.md)。
 
 完整选型与未接入工具见 [三模板调研](research/2026-10-31-template-agents.md)。
+
+## 维护内置组件描述
+
+源码中的 `src/ergora/data/components.json` 是内置角色与工具目录的来源，目录版本为 `schema_version: 1`。角色保存能力要求、显示信息和新项目默认绑定；组件保存已实现的驱动名称、能力、操作、平台、探测方式、配置字段及安装来源。`ergora tools list` 和 Web bootstrap 返回这些描述，绑定表单按字段生成。ForgeKernel 与 mini 的安装器也从此文件读取固定源码和提交。
+
+复用已有 `command` 驱动时，可在随包目录增加一个组件，使用 `implementation: "command"`、对应的 `tool.const` 和既有配置字段；模板及页面不需要增加厂商分支。重新构建并安装软件后生效。普通命令、`stage-json-v1`、角色能力及可信验收规则仍由相同实现检查。实际驱动、资源清理和新的操作语义需要代码适配与合同验收；增加描述不会自动支持新的 SDK。
+
+当前表单支持 string、number、integer、array 和 enum。`x-ergora-*` 字段仅提供表单的枚举标签、平台默认值、项目 task queue 默认值及输入步长。配置描述不注入已保存绑定或运行快照，也不改变 Agent 的运行默认值。当前后端继续执行既有业务校验；集中 JSON Schema 校验在后续 R2 交付。目录不加载用户提供的 Python 插件，配置中也不保存密钥值。

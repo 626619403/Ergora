@@ -6,26 +6,8 @@ from pathlib import Path
 import subprocess
 import sys
 
-from . import processes
-
-
-ROLE_CAPABILITIES = {
-    "inspector": ["repository-read", "baseline-inspection"],
-    "planner": ["repository-read", "plan-write"],
-    "implementer": ["scoped-code-write", "test-execution"],
-    "reviewer": ["independent-candidate-review"],
-    "experiment-planner": ["experiment-design"],
-    "performance-analyst": ["performance-analysis"],
-    "kernel-tuner": ["kernel-generation"],
-}
-GENERAL_CAPABILITIES = sorted({cap for caps in ROLE_CAPABILITIES.values() for cap in caps})
-TOOL_CAPABILITIES = {
-    "codex": GENERAL_CAPABILITIES,
-    "claude-code": GENERAL_CAPABILITIES,
-    "mini-swe-agent": ROLE_CAPABILITIES["implementer"],
-}
-CHOICES = {role: [tool for tool, caps in TOOL_CAPABILITIES.items() if set(required) <= set(caps)] + ["command"]
-           for role, required in ROLE_CAPABILITIES.items()}
+from . import components, processes
+from .components import CHOICES, GENERAL_CAPABILITIES, ROLE_CAPABILITIES, TOOL_CAPABILITIES
 
 
 def binding_for(project: dict, role: str) -> dict:
@@ -38,20 +20,16 @@ def validate_binding(role: str, binding: dict) -> None:
     tool = binding.get("tool")
     if tool not in CHOICES[role]:
         raise ValueError(f"Agent {tool!r} does not support role {role}; choices: {CHOICES[role]}")
-    allowed = {
-        "codex": {"tool", "model", "sandbox"},
-        "claude-code": {"tool", "model"},
-        "mini-swe-agent": {"tool", "model", "python", "cost_limit", "step_limit"},
-        "command": {"tool", "argv", "protocol", "capabilities"},
-    }[tool]
+    allowed = set(components.COMPONENTS[tool]["configuration"]["properties"])
     if set(binding) - allowed:
         raise ValueError(f"Unknown agent options: {sorted(set(binding) - allowed)}")
     for field in ("model", "python"):
         if field in binding and (not isinstance(binding[field], str) or not binding[field].strip() or "\0" in binding[field]):
             raise ValueError(f"{field} must be a nonempty string")
-    if tool == "codex" and binding.get("sandbox", "workspace-write") not in ("workspace-write", "read-only", "current-container"):
+    implementation = components.COMPONENTS[tool]["implementation"]
+    if implementation == "codex" and binding.get("sandbox", "workspace-write") not in ("workspace-write", "read-only", "current-container"):
         raise ValueError("Codex sandbox must be read-only, workspace-write or explicitly current-container")
-    if tool == "mini-swe-agent":
+    if implementation == "mini-swe-agent":
         if not binding.get("model"):
             raise ValueError("mini-swe-agent requires an explicit provider/model ID")
         if type(binding.get("step_limit", 30)) is not int or not 1 <= binding.get("step_limit", 30) <= 1000:
@@ -59,7 +37,7 @@ def validate_binding(role: str, binding: dict) -> None:
         cost = binding.get("cost_limit", 3.0)
         if type(cost) not in (float, int) or not 0 < cost <= 100:
             raise ValueError("mini-swe-agent cost_limit must be >0 and <=100 (upstream reported USD)")
-    if tool == "command":
+    if implementation == "command":
         argv = binding.get("argv")
         if not isinstance(argv, list) or not argv or any(not isinstance(item, str) or not item or "\0" in item for item in argv):
             raise ValueError("command requires a nonempty argv array")
@@ -73,20 +51,21 @@ def validate_binding(role: str, binding: dict) -> None:
 
 
 def executable(binding: dict) -> str:
-    tool = binding["tool"]
+    tool = components.COMPONENTS[binding["tool"]]["implementation"]
     if tool == "command":
         return binding["argv"][0]
     return {"codex": "codex", "claude-code": "claude", "mini-swe-agent": binding.get("python", sys.executable)}[tool]
 
 
 def available(binding: dict, cwd: Path) -> bool:
-    if binding["tool"] == "mini-swe-agent" and sys.platform != "linux":
+    implementation = components.COMPONENTS[binding["tool"]]["implementation"]
+    if implementation == "mini-swe-agent" and sys.platform != "linux":
         return False
     try:
         program = processes.resolve_program(executable(binding), cwd)
     except (OSError, ValueError):
         return False
-    if binding["tool"] == "mini-swe-agent":
+    if implementation == "mini-swe-agent":
         try:
             result = subprocess.run([program, "-c", "import importlib.util;raise SystemExit(0 if importlib.util.find_spec('minisweagent') else 1)"],
                                     cwd=cwd, capture_output=True, timeout=5)
@@ -124,7 +103,7 @@ def invoke(binding: dict, role: str, prompt: str, cwd: Path, output: Path, timeo
            codex_options: list[str] | None = None, codex_bin: str = "codex", supervised: bool = False) -> dict:
     """A successful process is not evidence acceptance; structured consumers validate separately."""
     validate_binding(role, binding)
-    tool = binding["tool"]
+    tool = components.COMPONENTS[binding["tool"]]["implementation"]
     if tool == "mini-swe-agent" and sys.platform != "linux":
         raise ValueError("This mini-swe-agent driver requires Linux/bash; use WSL2")
     if sys.platform != "linux" and tool == "codex" and binding.get("sandbox") == "current-container":
