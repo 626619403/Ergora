@@ -61,3 +61,36 @@
 ## 待补交付
 
 修复并复审 P1，核对最终源码/测试/非 editable wheel 身份与受影响检查；完成当前提交的两 OS CI，记录原失败的处置与新 run 身份，然后按既有授权提交/推送并核对远端。完成前不得将 R2 标为完成。下一业务切片仍为 R3；本报告及后续审查状态记录属于 R2，不另起实现切片。
+
+## 修复复审：d402d1b
+
+精确复审提交：`d402d1b88d273e0cb7e2a2a4bf7f25ef636ba503`；原基线仍为 `9808870c7baf298f0d3ac20337daed0e1e561297`。复审开始时分支不变、工作区干净。已读 `defda32` 到本提交的全部改动文件及相关实现：七文件包括 contracts、schema_contracts 测试、格式说明、PLAN、详细计划、交付记录和本初审报告；本报告及状态登记属于原切片 bookkeeping。
+
+生产修复只在严格 integer 的判定中共用现有 `_is_finite_number`，并说明库的数值关键词先询问 number 的原因；没有新增包装、分派、异常兜底或跨层职责。两个现有 integer 字段（step_limit、timeout_seconds）均有小范围上下界，因此排除溢出整数保持旧有效输入集合。新测试直接保护正负巨大步数的拒绝和完整评价注册边界，没有改 golden 或下游生命周期约束。
+
+**P1 已关闭。** 需求符合性：本次源码/合同复审通过，节点的完整验收仍待新提交的两 OS CI 与交付核对。可维护性：通过；本次复审范围无新增 findings。上文初审结论及旧包/旧运行身份保留为历史证据，不代表最终候选。
+
+本次实际独立只读复核：
+
+- 再从 Git 加载原基线验证函数，对最终源码做 2570 个绑定样本和 295 个完整注册样本对照，接受集合差异均为 0，绑定无意外异常。注册仍仅使用内存 SQLite 和只读已有 evaluator fixture。
+- 定向核对 step_limit 的 1/1000、timeout_seconds 的 1/300 可接受；0、上界+1、bool、1.0、正负 `10**1000` 均以 ValueError 拒绝。完整注册的 `1` / `1.0` / `true` 版本继续保留原类型和旧 digest。
+- 最终非 editable wheel SHA-256 实查为 `685d3d874c47bd52efed0447f45fb641b24e3f53bda61ad27ccd024219b1d4e6`。27 个生产 Python/JSON/JS 文件在源码、wheel、开发 venv 安装和基础 venv 安装四者间逐字节一致。
+- 基础 venv 的 fastapi、uvicorn、gepa、temporalio、minisweagent 五个模块仍实际缺席，核心导入和工具目录可用；两个安装环境分别 reference verify，283 文件 PASS，source zip 身份仍为 `8018be5094623ca0646d28d3671daaf7ac60774280eefc1c5c023bc19dc5c760`，未启动 runtime。
+- 实读 `.ergora/checks/r2/regression-fix.log`：172 passed、17 skipped、36 subtests passed、1 原有 warning、86.00s，与交付记录一致。43 passed / 10.27s 的源码定向结果和四条基础 CLI 再验为实施者记录；本 reviewer 未重跑 pytest、安装、状态初始化 CLI 或浏览器。
+
+本次未读取新远端 CI。`defda32` 的 `41334860593` 失败记录继续保留，不能从这次本地修复/复审推导 Windows 的研究计时问题已解决。`d402d1b` 推送后的 Ubuntu/Windows 新 run、对应 SHA、检查结果及远端交付一致性仍待补齐；在此之前 R2 保持“源码复审通过、CI/交付未完成”。真实模型/GPU/外部服务的原未验证范围不变。
+
+## 两 OS CI 独立核对与最终审查结论
+
+2026-11-01 **18:25:30 UTC**（本地 2026-11-02）直接读取 GitHub 公开 jobs API，两次请求使用 `Cache-Control: no-cache`，响应 Date 均为上述时间；未从旧 run 或 HTML 页面缓存推导。两 job 的 `run_id` 均为 **41336217446**、`run_attempt` 为 1、`head_sha` 均为 **`d402d1b88d273e0cb7e2a2a4bf7f25ef636ba503`**、`head_branch` 均为 `refactor/architecture-foundations`。
+
+|独立读取的 job|最终状态|开始 / 完成（UTC）|
+|---|---|---|
+|[Windows / Python 3.12，124936492868](https://api.github.com/repos/626619403/Ergora/actions/jobs/124936492868)|completed / success|2026-11-01 18:21:42 / 18:24:31|
+|[Ubuntu / Python 3.11，124936493019](https://api.github.com/repos/626619403/Ergora/actions/jobs/124936493019)|completed / success|2026-11-01 18:21:42 / 18:22:50|
+
+两个 job 的 `Build and install wheel`、`Packaged reference identity`、`Native application regression` 步骤逐项均为 completed / success；Windows 的 `Windows PowerShell 5.1 installer and upgrade` 也为 completed / success，Ubuntu 的该 Windows 专用步骤按 workflow 条件为 skipped。
+
+**本次 CI 门禁已关闭。需求符合性通过，可维护性通过；已检范围无未解决阻塞 findings。** P1 的关闭、最终包身份和源码复审仍以上节 `d402d1b` 的实际检查为依据；本节补齐同一精确提交的真实两 OS 证据。`defda32` / run `41334860593` 的 Windows 历史失败原因仍未证实，原计时断言与该失败记录继续保留。
+
+实施者报告 `defda32..d402d1b` 已推送；本 reviewer 实查的 GitHub 两 job 与该源码提交和分支相符。最终计划/交付状态和本审查追加内容的提交、推送及远端一致性仍由实施者按已有授权完成。本 reviewer 仅追加本报告，没有提交或推送。真实模型/GPU/外部服务效果与 R2 浏览器重跑仍不在本次验收范围。
