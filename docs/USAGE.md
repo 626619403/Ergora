@@ -9,7 +9,7 @@ Ergora 提供 Linux / Windows 本地 CLI 与图形控制面，并保留 v2.2 的
 ```bash
 sudo apt-get update
 sudo apt-get install -y ca-certificates curl git python3 python3-venv
-git clone --branch feat/windows-support https://github.com/626619403/Ergora.git
+git clone --branch main https://github.com/626619403/Ergora.git
 cd Ergora
 bash scripts/install.sh
 export PATH="$HOME/.local/bin:$PATH"

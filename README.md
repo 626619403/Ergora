@@ -9,7 +9,7 @@ Ergora 用任务合同明确目标、角色、修改范围和验收标准，把�
 [安装与日常使用](docs/USAGE.md) · [Windows 安装](docs/WINDOWS.md) · [训练优化手册](docs/TRAINING.md) · [Agent 选择与正式执行](docs/AGENT_BACKENDS.md) · [工具接入](docs/INTEGRATIONS.md) · [单文件参考发行](docs/distribution/multi-agent-development-platform.html) · [计划与进度](docs/PLAN.md)
 
 ```bash
-git clone --branch feat/windows-support https://github.com/626619403/Ergora.git
+git clone --branch main https://github.com/626619403/Ergora.git
 cd Ergora
 bash scripts/install.sh
 "$HOME/.local/bin/ergora" serve

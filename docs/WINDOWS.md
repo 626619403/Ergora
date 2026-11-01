@@ -23,7 +23,7 @@ Ergora 0.2 提供原生 Windows CLI 和本地图形控制台，与 Linux 使用�
 
 ```powershell
 New-Item -ItemType Directory -Force "$HOME\source" | Out-Null
-git clone --branch feat/windows-support https://github.com/626619403/Ergora.git "$HOME\source\Ergora"
+git clone --branch main https://github.com/626619403/Ergora.git "$HOME\source\Ergora"
 Set-Location "$HOME\source\Ergora"
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1 -AddToPath
 & "$env:LOCALAPPDATA\Ergora\bin\ergora.exe" --version
@@ -32,7 +32,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1 -A
 
 打开 `http://127.0.0.1:8977`。控制台资源随包提供，无需 Node 或前端构建。`-AddToPath` 将命令目录加入当前用户 PATH，新终端可直接使用 `ergora`；已有终端用上述绝对路径。命令中的 ExecutionPolicy 仅作用于这次 PowerShell 进程；组织策略仍可能要求使用签名脚本或由管理员部署。
 
-空环境先从 GitHub 下载 [源码 ZIP](https://github.com/626619403/Ergora/archive/refs/heads/feat/windows-support.zip)，解压到用户的持久目录，在包含 `pyproject.toml` 的目录打开 PowerShell：
+空环境先从 GitHub 下载 [源码 ZIP](https://github.com/626619403/Ergora/archive/refs/heads/main.zip)，解压到用户的持久目录，在包含 `pyproject.toml` 的目录打开 PowerShell：
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1 -InstallPrerequisites -AddToPath
