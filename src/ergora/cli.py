@@ -10,7 +10,7 @@ import sys
 from . import __version__
 from . import reference
 from . import agents, evaluation, kernel, memory, optimization, projects, research, skills, tools
-from .state import State
+from .state import State, resolve_home
 
 
 def parser() -> argparse.ArgumentParser:
@@ -18,6 +18,15 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--version", action="version", version=__version__)
     result.add_argument("--home", type=Path, help="Persistent state directory (default: ERGORA_HOME, LocalAppData on Windows, or XDG data)")
     commands = result.add_subparsers(dest="command", required=True)
+    maintenance = commands.add_parser("state", help="Inspect, back up, verify or restore offline local state")
+    operations = maintenance.add_subparsers(dest="operation", required=True)
+    operations.add_parser("info")
+    for name in ("backup", "verify-backup", "restore"):
+        operation = operations.add_parser(name)
+        operation.add_argument("directory", type=Path)
+        if name != "verify-backup":
+            operation.add_argument("--offline", action="store_true", required=True,
+                                   help="Confirm state writers and external work have stopped")
     web = commands.add_parser("serve", help="Start the local graphical console (requires ergora[web])")
     web.add_argument("--port", type=int, default=8977)
     legacy = commands.add_parser("reference", help="Inspect the bundled v2.2 reference implementation")
@@ -177,7 +186,19 @@ def main(argv: list[str] | None = None) -> int:
         return reference.workflow(argv[1:])
     args = parser().parse_args(argv)
     try:
-        if args.command == "reference":
+        if args.command == "state":
+            from . import backups
+
+            root = resolve_home(args.home)
+            if args.operation == "info":
+                output = backups.info(root)
+            elif args.operation == "backup":
+                output = backups.create(root, args.directory, offline=args.offline)
+            elif args.operation == "verify-backup":
+                output = backups.verify(args.directory)
+            else:
+                output = backups.restore(root, args.directory, offline=args.offline)
+        elif args.command == "reference":
             if args.operation == "executor":
                 if not args.installation:
                     raise ValueError("The selectable executor requires --installation and an explicitly configured reference runtime")

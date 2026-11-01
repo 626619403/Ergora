@@ -11,6 +11,7 @@ R2 的所有权说明。共享结构按 JSON Schema Draft 2020-12 描述，核�
 |Agent 结构化结果|`agents.result_schema` 生成所选模板角色的必需 artifacts 和审查 decision；命令信封沿用 `stage-json-v1`|`agents.validate_result` 使用同一份 schema 验证实际输出，非空白 summary/artifacts 和拒绝额外字段保持；进程成功不是正式验收|
 |评价输入|`data/schemas/evaluation-manifest-v1.json`|`evaluation.register` 负责版本、case 安全 ID/唯一性/三个 split、可信文件解析和指纹；不允许额外顶层/case 字段|
 |evaluator 响应|`data/schemas/evaluation-result-v1.json`，结果本身不新增版本字段|`evaluation.evaluate` 要求有限 score/cost、bool passed、string feedback；沿用旧行为接受并忽略附加上游字段，预算和候选绑定仍由评价所有者负责|
+|离线控制面备份|`data/schemas/state-backup-v1.json`，严格整数版本 1|`backups` 负责库/文件/Skill/来源身份核对及同平台原 home 恢复；CLI state 入口不先创建或迁移 State|
 |CLI JSON 文件 / Web body|CLI 沿用 `utf-8-sig`（接受 UTF-8 BOM）；Web 继续使用原 Pydantic 传输 DTO|业务绑定/评价都走相同函数；传输错误仍由各入口解释。Agent/evaluator stdout 沿用严格 UTF-8 JSON，不自动剥 BOM|
 |冻结 reference 编译 / 请求 / 回执 / 训练合同|原 `dev_platform` / `agent_platform` 版本与验证器|不修改冻结 schema、可信检查、批准权限或 canonical 编码；训练 prepare / worker 不启动实际训练|
 |Skill metadata / 资产、记忆、研究和持久文档|沿用各领域现有格式及 schema_version|目录/修订/来源和领域状态由原模块负责；R2 不为旧 DB 强加重写。DB 迁移与旧客户端隔离由 R3 单独实施|
@@ -29,6 +30,7 @@ R2 的所有权说明。共享结构按 JSON Schema Draft 2020-12 描述，核�
 |reference canonical JSON|冻结 `dev_platform.contracts.canonical_sha` / adapter sha：排序、UTF-8、不转义 Unicode、紧凑分隔符、拒绝 NaN|原编译、request、profile、批准及回执使用此身份，不与评价摘要合并|
 |Skill 目录|`skills.digest_tree`：排序相对路径；逐文件内容 SHA 和 executable bits；文件清单沿用原排序 JSON编码再 SHA-256|脚本执行位与内容共同构成资产；不能只 hash SKILL.md 或把不同换行/字节归一化|
 |Agent 结果 / prompt / 文件产物|原所有者对实际固定字节计算 SHA；结果沿用排序、保留 Unicode 的 JSON|是不同用途的实际内容身份，不做统一的“自动标准化”|
+|离线备份清单|`backups.verify` 对 manifest.json 原 UTF-8 字节 SHA-256；文件清单各自记录实际字节、大小和文件模式|清单身份绑定这一份快照；不重写其中引用的旧 Skill / 评价 / 正式证据摘要|
 
 A2 的固定向量、两种 compiled/request/profile 身份、Skill 执行位和合成旧状态继续作为回归依据。R2 只把测试中的私有 `_sha` 调用迁到实际语义名称，未改任何身份夹具。
 

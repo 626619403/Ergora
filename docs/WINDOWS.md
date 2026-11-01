@@ -121,4 +121,14 @@ Windows 与 WSL2 分别安装解释器、Agent 和依赖，分别注册业务仓
 
 停止写入后备份完整 `ERGORA_HOME`（默认 data）、业务 Git 仓库及外部工具配置。换机后重新安装应用并核对每个项目路径和登录状态。恢复与删除的语义见 [日常使用手册](USAGE.md#远程访问恢复与维护)。
 
+控制面提供离线完整备份入口，不要求管理员权限。在停止控制台、worker 与其他工作并对账外部作业后：
+
+```powershell
+ergora state info
+ergora state backup "$HOME\Ergora-backups\snapshot-001" --offline
+ergora state verify-backup "$HOME\Ergora-backups\snapshot-001"
+```
+
+需要恢复时，先按 `state info` 返回的 home 路径将当前目录移到另一个持久位置保留，再运行 `ergora state restore "$HOME\Ergora-backups\snapshot-001" --offline`。如果使用自定义 home，写为 `ergora --home ORIGINAL_HOME state restore ...`。目标必须不存在，且与清单记录的 Windows 原 home 一致；工具不会改写绝对路径或跨 Windows / WSL2 转换 Skill 身份。详细文件清单、数据库版本及恢复边界见 [升级与恢复说明](architecture/state-migrations.md#离线完整备份与恢复)。
+
 卸载时停止前台进程，删除应用目录与属于此次安装的 `ergora.exe` / `ergora-install.json`；从用户 PATH 移除对应 bin 项。data 目录是独立资产，按是否保留历史自行处理。不要把整个 `%LOCALAPPDATA%\Ergora` 当作只有可重建程序的目录直接删除。

@@ -25,6 +25,7 @@ StrictValidator = validators.extend(Draft202012Validator, type_checker=Draft2020
 _SCHEMAS = Path(__file__).parent / "data/schemas"
 EVALUATION_MANIFEST = json.loads((_SCHEMAS / "evaluation-manifest-v1.json").read_text(encoding="utf-8"))
 EVALUATION_RESULT = json.loads((_SCHEMAS / "evaluation-result-v1.json").read_text(encoding="utf-8"))
+STATE_BACKUP = json.loads((_SCHEMAS / "state-backup-v1.json").read_text(encoding="utf-8"))
 
 
 def validate(value, schema: dict, context: str) -> None:

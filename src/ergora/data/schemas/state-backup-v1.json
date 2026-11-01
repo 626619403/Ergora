@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ergora:state-backup:v1",
+  "type": "object",
+  "properties": {
+    "schema_version": {"type": "integer", "const": 1},
+    "source_home": {"type": "string", "minLength": 1},
+    "platform": {"type": "string", "minLength": 1},
+    "database_schema_version": {"type": "integer", "minimum": 0},
+    "created": {"type": "string", "minLength": 1},
+    "directories": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "files": {
+      "type": "object",
+      "required": ["ergora.sqlite3"],
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+          "size": {"type": "integer", "minimum": 0},
+          "mode": {"type": "integer", "minimum": 0, "maximum": 4095}
+        },
+        "required": ["sha256", "size", "mode"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["schema_version", "source_home", "platform", "database_schema_version", "created", "directories", "files"],
+  "additionalProperties": false
+}
