@@ -10,7 +10,8 @@
 - 主线交付：M1 完成。已从研究基线创建 `main` 并快进纳入 Windows/计划历史；主线提交 `ae5319d57f1a647c8ab8874039fd6245ce423e5f` 已推送并核对一致。main CI 41319564418（Windows/Ubuntu）成功，[独立审查通过](delivery/2026-11-01-mainline-review.md)，范围内无 findings；见 [主线交付记录](delivery/2026-11-01-mainline.md)。
 - 审计交付：A1 完成，[调用与影响审计](architecture/2026-11-01-audit.md)和 113 文件 / 701 函数的日期索引静态核查通过，[独立审查通过](delivery/2026-11-01-audit-review.md)；训练人工执行边界 P2 已修正复核，无未解决 findings，见 [交付记录](delivery/2026-11-01-audit.md)。
 - 兼容交付：A2 完成，分支 `refactor/architecture-foundations`，基线 `cab3a724e421d0a7d9ff6f03dfcbd3225361e2f1`，运行/测试/CI 身份 `4deb8b78690ba1c102c2b08aa6dd3c4054815d6c` 已推送。[兼容基线](architecture/2026-11-01-compatibility.md)、固定旧数据/摘要与 [边界 ADR](architecture/decisions/0001-refactoring-foundations.md) 已交付；Linux 144 passed、17 skipped、36 subtests passed，两 OS CI 41323798679 成功，[独立审查通过](delivery/2026-11-01-compatibility-review.md)，见 [交付记录](delivery/2026-11-01-compatibility.md)。
-- 活动切片：R1 已实现，Linux / 浏览器已通过，两 OS CI 与独立审查待验；在 `refactor/architecture-foundations` 集中内置组件描述、绑定字段和默认值，连接现有 Python/CLI/Web/安装配方消费者。非 editable wheel 的完整 Linux 回归 152 passed、17 skipped、36 subtests passed，冻结 283 文件身份保持；见 [R1 交付记录](delivery/2026-11-02-components.md)。先完成 R1 再接 R2 schema 依赖。
+- 组件交付：R1 完成，`refactor/architecture-foundations` 上实现 `007a88e`、跨平台测试修正 `1cbc77e` 已推送；集中内置组件描述及 Python/CLI/Web/安装配方消费者。非 editable wheel 的完整 Linux 回归 152 passed、17 skipped、36 subtests passed，冻结 283 文件身份保持；浏览器 / 两 OS CI 41333003887 / [独立审查](delivery/2026-11-02-components-review.md)均通过，见 [R1 记录](delivery/2026-11-02-components.md)。
+- 下一活动切片：R2，接入 ADR 已选定的 JSON Schema 校验，整理核心配置/结果的所有权、字段错误与不同身份规则；不改变存储或冻结合同。
 - 默认分支：M2 完成。用户已设置，2026-11-01 15:30 UTC 远端 HEAD 实际指向 main，与当时主线 `0027f3f` 一致，[独立核对通过](delivery/2026-11-01-default-branch-review.md)，见 [设置记录](delivery/2026-11-01-default-branch.md)。
 - 下一动作：A1/A2 → R1–R8 → P0 → P1。每个节点完成后更新状态、实际检查和独立审查，再继续下一项；用户无需逐节点重复授权。不要把规划中的统一任务、低代码、会话或远端执行写成已实现。
 - 已交付平台范围：原生 Windows 控制面、CLI、项目 / 记忆 / Skill / 资料观察及支持的原生工具；完整六阶段与 Linux 专用工具走 Linux/WSL2。后续仍按实际能力逐项验收。
@@ -106,4 +107,4 @@ S0–S10 后续范围现在由 S11 详细计划承接；尚未测得收益的优
 - P1：低代码、逐项目工单、真实可选 harness/会话、训练实验与受评估的持续改进。
 - P2/P3：通信、远端隔离、搜索/格式互操作、多用户与规模化，按固定版本和真实需求分阶段验证，不进入默认必装。
 
-每次上下文压缩、换机、节点切换后，重读本文件、详细节点及其交付记录，核对 Git 后从未完成项继续。M1/M2/A1/A2 已完成，R1 代码已实现、尚待全部验收与审查；尚无数据迁移，各 M/A/R/F 节点只以登记表和交付证据为准。
+每次上下文压缩、换机、节点切换后，重读本文件、详细节点及其交付记录，核对 Git 后从未完成项继续。M1/M2/A1/A2/R1 已完成，下一项 R2；尚无数据迁移，各 M/A/R/F 节点只以登记表和交付证据为准。
