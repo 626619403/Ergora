@@ -7,7 +7,7 @@ from pathlib import Path
 import subprocess
 import uuid
 
-from . import components, processes
+from . import components, contracts, processes
 from .state import State, file_lock, now
 
 
@@ -15,15 +15,13 @@ FORGE_COMMIT = components.COMPONENTS["forgekernel"]["installation"]["commit"]
 
 
 def validate_binding(binding: dict) -> None:
-    if binding.get("tool") == "manual":
-        if set(binding) != {"tool"}:
-            raise ValueError("manual kernel binding has no options")
-        return
-    if binding.get("tool") != "forgekernel" or set(binding) - set(components.COMPONENTS["forgekernel"]["configuration"]["properties"]):
+    tool = binding.get("tool")
+    if tool not in components.CATALOG["kernel"]:
         raise ValueError("Kernel tool must be manual or forgekernel")
+    contracts.validate(binding, components.COMPONENTS[tool]["configuration"], "kernel binding")
+    if tool == "manual":
+        return
     for name in ("checkout", "python", "task"):
-        if not isinstance(binding.get(name), str) or not binding[name].strip() or "\0" in binding[name]:
-            raise ValueError(f"ForgeKernel requires {name}")
         if not Path(binding[name]).expanduser().is_absolute():
             raise ValueError(f"ForgeKernel {name} must be an absolute path")
 

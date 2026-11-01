@@ -107,7 +107,8 @@ def test_skill_symlinks_and_malformed_evaluator_output_fail_visibly(skill_projec
     manifest["evaluator_files"] = [str(scorer)]
     malformed_suite = evaluation.register(state, "demo", manifest)
     result = evaluation.evaluate(state, "demo", baseline["digest"], malformed_suite["digest"])
-    assert result["status"] == "failed" and "JSON object" in result["error"]
+    assert result["status"] == "failed"
+    assert "Evaluator result at /:" in result["error"] and "type 'object'" in result["error"]
     assert evaluation.get(State(state.root), "demo", result["id"])["status"] == "failed"
 
 

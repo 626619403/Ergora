@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ergora:evaluation-result:v1",
+  "type": "object",
+  "properties": {
+    "score": {"type": "number", "minimum": 0, "maximum": 1},
+    "cost": {"type": "number", "minimum": 0},
+    "passed": {"type": "boolean"},
+    "feedback": {"type": "string"}
+  },
+  "required": ["score", "cost", "passed", "feedback"],
+  "additionalProperties": true
+}

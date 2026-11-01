@@ -20,7 +20,7 @@ IDENTITIES = json.loads((FIXTURES / "identities.json").read_text(encoding="utf-8
 
 def test_distinct_json_identity_vectors_are_preserved(tmp_path):
     payload = IDENTITIES["payload"]
-    assert evaluation._sha(payload) == IDENTITIES["evaluation_sha256"]
+    assert evaluation.manifest_sha256(payload) == IDENTITIES["evaluation_sha256"]
     environment = dict(os.environ, PYTHONPATH=str(reference.ROOT / "platform/upstream/platform"),
                        PYTHONDONTWRITEBYTECODE="1", PYTHONUTF8="1")
     result = subprocess.run(

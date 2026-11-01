@@ -6,7 +6,7 @@ from pathlib import Path
 import subprocess
 import sys
 
-from . import components, processes
+from . import components, contracts, processes
 from .components import CHOICES, GENERAL_CAPABILITIES, ROLE_CAPABILITIES, TOOL_CAPABILITIES
 
 
@@ -20,34 +20,11 @@ def validate_binding(role: str, binding: dict) -> None:
     tool = binding.get("tool")
     if tool not in CHOICES[role]:
         raise ValueError(f"Agent {tool!r} does not support role {role}; choices: {CHOICES[role]}")
-    allowed = set(components.COMPONENTS[tool]["configuration"]["properties"])
-    if set(binding) - allowed:
-        raise ValueError(f"Unknown agent options: {sorted(set(binding) - allowed)}")
-    for field in ("model", "python"):
-        if field in binding and (not isinstance(binding[field], str) or not binding[field].strip() or "\0" in binding[field]):
-            raise ValueError(f"{field} must be a nonempty string")
+    contracts.validate(binding, components.COMPONENTS[tool]["configuration"], f"{role} binding")
     implementation = components.COMPONENTS[tool]["implementation"]
-    if implementation == "codex" and binding.get("sandbox", "workspace-write") not in ("workspace-write", "read-only", "current-container"):
-        raise ValueError("Codex sandbox must be read-only, workspace-write or explicitly current-container")
-    if implementation == "mini-swe-agent":
-        if not binding.get("model"):
-            raise ValueError("mini-swe-agent requires an explicit provider/model ID")
-        if type(binding.get("step_limit", 30)) is not int or not 1 <= binding.get("step_limit", 30) <= 1000:
-            raise ValueError("mini-swe-agent step_limit must be 1–1000")
-        cost = binding.get("cost_limit", 3.0)
-        if type(cost) not in (float, int) or not 0 < cost <= 100:
-            raise ValueError("mini-swe-agent cost_limit must be >0 and <=100 (upstream reported USD)")
-    if implementation == "command":
-        argv = binding.get("argv")
-        if not isinstance(argv, list) or not argv or any(not isinstance(item, str) or not item or "\0" in item for item in argv):
-            raise ValueError("command requires a nonempty argv array")
-        if "protocol" in binding and binding["protocol"] != "stage-json-v1":
-            raise ValueError("Only stage-json-v1 is supported for structured commands")
-        caps = binding.get("capabilities", [])
-        if not isinstance(caps, list) or any(cap not in GENERAL_CAPABILITIES for cap in caps):
-            raise ValueError("Unknown agent capability")
-        if "protocol" in binding and not set(ROLE_CAPABILITIES[role]) <= set(caps):
-            raise ValueError(f"Command lacks capabilities for {role}: {ROLE_CAPABILITIES[role]}")
+    if (implementation == "command" and "protocol" in binding and
+            not set(ROLE_CAPABILITIES[role]) <= set(binding.get("capabilities", []))):
+        raise ValueError(f"Command lacks capabilities for {role}: {ROLE_CAPABILITIES[role]}")
 
 
 def executable(binding: dict) -> str:
@@ -76,25 +53,15 @@ def available(binding: dict, cwd: Path) -> bool:
 
 
 def result_schema(names: list[str], review: bool = False) -> dict:
-    properties = {"summary": {"type": "string"}, "artifacts": {"type": "object", "properties":
-                  {name: {"type": "string"} for name in names}, "required": names, "additionalProperties": False}}
+    properties = {"summary": {"type": "string", "pattern": r"\S"}, "artifacts": {"type": "object", "properties":
+                  {name: {"type": "string", "pattern": r"\S"} for name in names}, "required": names, "additionalProperties": False}}
     if review:
         properties["decision"] = {"type": "string", "enum": ["approve", "request-changes"]}
     return {"type": "object", "properties": properties, "required": list(properties), "additionalProperties": False}
 
 
 def validate_result(result: dict, schema: dict) -> dict:
-    if not isinstance(result, dict) or set(result) != set(schema["required"]):
-        raise ValueError("Agent result does not match the required stage fields")
-    if not isinstance(result["summary"], str) or not result["summary"].strip():
-        raise ValueError("Agent omitted the stage summary")
-    artifacts = result["artifacts"]
-    if not isinstance(artifacts, dict) or set(artifacts) != set(schema["properties"]["artifacts"]["required"]):
-        raise ValueError("Agent omitted required stage artifacts")
-    if any(not isinstance(content, str) or not content.strip() for content in artifacts.values()):
-        raise ValueError("Agent returned an empty stage artifact")
-    if "decision" in result and result["decision"] not in ("approve", "request-changes"):
-        raise ValueError("Agent must explicitly approve or request changes")
+    contracts.validate(result, schema, "Agent result")
     return result
 
 

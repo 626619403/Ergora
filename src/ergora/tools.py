@@ -10,7 +10,7 @@ import sys
 import uuid
 from urllib.parse import urlsplit
 
-from . import agents, components, kernel
+from . import agents, components, contracts, kernel
 from .state import State, now
 
 
@@ -27,25 +27,14 @@ def validate_binding(layer: str, binding: dict) -> None:
     if layer == "kernel":
         kernel.validate_binding(binding)
         return
-    allowed = set(components.COMPONENTS[tool]["configuration"]["properties"])
-    if set(binding) - allowed:
-        raise ValueError(f"Unknown binding options: {sorted(set(binding) - allowed)}")
+    contracts.validate(binding, components.COMPONENTS[tool]["configuration"], f"{layer} binding")
     if tool == "reme":
         endpoint = binding.get("endpoint")
-        if not isinstance(endpoint, str):
-            raise ValueError("ReMe requires an endpoint URL")
         url = urlsplit(endpoint)
         if url.scheme not in ("http", "https") or not url.hostname or url.username or url.password or url.query or url.fragment:
             raise ValueError("ReMe endpoint requires HTTP(S), without credentials, query or fragment")
-        if "token_env" in binding and (not isinstance(binding["token_env"], str) or
-                                      not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", binding["token_env"])):
+        if "token_env" in binding and not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", binding["token_env"]):
             raise ValueError("token_env must name an environment variable")
-    if tool == "gepa":
-        validate_binding("implementer", {"tool": "command", "argv": binding.get("proposer_argv")})
-    if tool == "temporal":
-        for key in ("address", "namespace", "task_queue"):
-            if not isinstance(binding.get(key), str) or not binding[key].strip():
-                raise ValueError(f"Temporal requires a nonempty {key}")
 
 
 def catalog() -> dict:

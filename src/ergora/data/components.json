@@ -183,7 +183,11 @@
           "model": {
             "type": "string",
             "title": "模型 ID（留空采用工具配置）",
-            "minLength": 1
+            "minLength": 1,
+            "pattern": "\\S",
+            "not": {
+              "pattern": "\u0000"
+            }
           },
           "sandbox": {
             "type": "string",
@@ -248,7 +252,11 @@
           "model": {
             "type": "string",
             "title": "模型 ID（留空采用工具配置）",
-            "minLength": 1
+            "minLength": 1,
+            "pattern": "\\S",
+            "not": {
+              "pattern": "\u0000"
+            }
           }
         },
         "required": [
@@ -288,12 +296,20 @@
           "model": {
             "type": "string",
             "title": "provider/model ID",
-            "minLength": 1
+            "minLength": 1,
+            "pattern": "\\S",
+            "not": {
+              "pattern": "\u0000"
+            }
           },
           "python": {
             "type": "string",
             "title": "独立环境 Python 路径（可选）",
-            "minLength": 1
+            "minLength": 1,
+            "pattern": "\\S",
+            "not": {
+              "pattern": "\u0000"
+            }
           },
           "step_limit": {
             "type": "integer",
@@ -352,7 +368,10 @@
             "title": "命令参数 JSON 数组",
             "items": {
               "type": "string",
-              "minLength": 1
+              "minLength": 1,
+              "not": {
+                "pattern": "\u0000"
+              }
             },
             "minItems": 1,
             "default": [
@@ -540,7 +559,10 @@
             "title": "提案器参数 JSON 数组",
             "items": {
               "type": "string",
-              "minLength": 1
+              "minLength": 1,
+              "not": {
+                "pattern": "\u0000"
+              }
             },
             "minItems": 1,
             "default": [
@@ -616,19 +638,22 @@
             "type": "string",
             "title": "Temporal 地址",
             "default": "127.0.0.1:7233",
-            "minLength": 1
+            "minLength": 1,
+            "pattern": "\\S"
           },
           "namespace": {
             "type": "string",
             "title": "命名空间",
             "default": "default",
-            "minLength": 1
+            "minLength": 1,
+            "pattern": "\\S"
           },
           "task_queue": {
             "type": "string",
             "title": "项目 Task Queue",
             "minLength": 1,
-            "x-ergora-project-default": "ergora-{project_id}-research"
+            "x-ergora-project-default": "ergora-{project_id}-research",
+            "pattern": "\\S"
           }
         },
         "required": [
@@ -674,17 +699,29 @@
           "checkout": {
             "type": "string",
             "title": "固定版本源码目录",
-            "minLength": 1
+            "minLength": 1,
+            "pattern": "\\S",
+            "not": {
+              "pattern": "\u0000"
+            }
           },
           "python": {
             "type": "string",
             "title": "Forge 环境 Python 绝对路径",
-            "minLength": 1
+            "minLength": 1,
+            "pattern": "\\S",
+            "not": {
+              "pattern": "\u0000"
+            }
           },
           "task": {
             "type": "string",
             "title": "原生任务目录绝对路径",
-            "minLength": 1
+            "minLength": 1,
+            "pattern": "\\S",
+            "not": {
+              "pattern": "\u0000"
+            }
           }
         },
         "required": [

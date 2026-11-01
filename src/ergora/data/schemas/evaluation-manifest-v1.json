@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ergora:evaluation-manifest:v1",
+  "type": "object",
+  "properties": {
+    "schema_version": {
+      "$comment": "evaluation.register preserves the legacy equality-to-1 version rule."
+    },
+    "evaluator_argv": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"type": "string", "minLength": 1, "not": {"pattern": "\u0000"}}
+    },
+    "evaluator_files": {"type": "array", "items": {"type": "string", "minLength": 1}},
+    "timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 300},
+    "minimum_gain": {"type": "number", "minimum": 0, "maximum": 1},
+    "max_reported_cost": {"type": "number", "minimum": 0},
+    "cases": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {"type": "string"},
+          "split": {"enum": ["train", "validation", "holdout"]},
+          "input": {}
+        },
+        "required": ["id", "split", "input"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["schema_version", "evaluator_argv", "evaluator_files", "timeout_seconds", "cases", "minimum_gain", "max_reported_cost"],
+  "additionalProperties": false
+}

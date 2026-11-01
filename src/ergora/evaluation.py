@@ -3,17 +3,17 @@
 import hashlib
 import errno
 import json
-import math
 from pathlib import Path
 import re
 import time
 import uuid
 
-from . import processes, skills
+from . import contracts, processes, skills
 from .state import State, now
 
 
-def _sha(value: dict) -> str:
+def manifest_sha256(value: dict) -> str:
+    """Evaluation identity retains spaced sorted UTF-8 JSON; reference uses compact JSON."""
     return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=False, allow_nan=False).encode()).hexdigest()
 
 
@@ -25,26 +25,14 @@ def _schema(state: State):
 
 def register(state: State, project_id: str, manifest: dict) -> dict:
     project = state.project(project_id)
-    required = {"schema_version", "evaluator_argv", "evaluator_files", "timeout_seconds", "cases", "minimum_gain", "max_reported_cost"}
-    if set(manifest) != required or manifest["schema_version"] != 1:
-        raise ValueError("Evaluation manifest requires schema_version=1, evaluator_argv, evaluator_files, timeout_seconds, cases, minimum_gain, max_reported_cost")
+    contracts.validate(manifest, contracts.EVALUATION_MANIFEST, "Evaluation manifest")
+    if manifest["schema_version"] != 1:
+        raise ValueError("Evaluation manifest at /schema_version: requires version 1")
     argv = manifest["evaluator_argv"]
-    if not isinstance(argv, list) or not argv or any(not isinstance(a, str) or not a or "\0" in a for a in argv):
-        raise ValueError("Evaluator must be a nonempty argv array")
-    if type(manifest["timeout_seconds"]) is not int or not 1 <= manifest["timeout_seconds"] <= 300:
-        raise ValueError("Evaluator timeout must be 1–300 seconds")
-    for key, upper in (("minimum_gain", 1), ("max_reported_cost", float("inf"))):
-        value = manifest[key]
-        if type(value) not in (int, float) or not math.isfinite(value) or not 0 <= value <= upper:
-            raise ValueError(f"Invalid {key}")
     cases = manifest["cases"]
-    if not isinstance(cases, list) or not 3 <= len(cases) <= 200:
-        raise ValueError("Require 3–200 evaluation cases, including train, validation and holdout")
     ids = set()
     for case in cases:
-        if (not isinstance(case, dict) or set(case) != {"id", "split", "input"} or
-                not isinstance(case["id"], str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", case["id"]) or
-                case["id"] in ids or case["split"] not in ("train", "validation", "holdout")):
+        if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", case["id"]) or case["id"] in ids:
             raise ValueError("Each case requires a unique safe id, split, and input")
         ids.add(case["id"])
     if {case["split"] for case in cases} != {"train", "validation", "holdout"}:
@@ -53,8 +41,6 @@ def register(state: State, project_id: str, manifest: dict) -> dict:
     executable = processes.resolve_program(argv[0], Path(project["repo"]))
     argv[0] = str(Path(executable).resolve())
     declared = manifest["evaluator_files"]
-    if not isinstance(declared, list) or any(not isinstance(p, str) or not p for p in declared):
-        raise ValueError("evaluator_files must list trusted source/dependency files to fingerprint")
     resolved = {}
     for filename in declared:
         path = (Path(project["repo"]) / filename).resolve(strict=True)
@@ -78,7 +64,7 @@ def register(state: State, project_id: str, manifest: dict) -> dict:
         with Path(filename).open("rb") as stream:
             fingerprints[filename] = hashlib.file_digest(stream, "sha256").hexdigest()
     frozen = {**manifest, "evaluator_argv": argv, "file_sha256": fingerprints, "path_bindings": path_bindings}
-    digest = _sha(frozen)
+    digest = manifest_sha256(frozen)
     document = {"project": project_id, "digest": digest, "manifest": frozen, "created": now()}
     _schema(state)
     with state.connect() as db:
@@ -158,13 +144,8 @@ def evaluate(state: State, project_id: str, digest: str, suite_digest: str, case
             if output.stat().st_size > 1_000_000:
                 raise ValueError("Evaluator JSON response exceeded 1 MB")
             result = json.loads(output.read_text(encoding="utf-8"))
-            if not isinstance(result, dict):
-                raise ValueError("Evaluator response must be a JSON object")
-            score, cost = result["score"], result["cost"]
-            if (type(score) not in (int, float) or not math.isfinite(score) or not 0 <= score <= 1 or
-                    type(cost) not in (int, float) or not math.isfinite(cost) or cost < 0 or
-                    type(result["passed"]) is not bool or not isinstance(result["feedback"], str)):
-                raise ValueError("Evaluator requires finite score 0–1, nonnegative cost, passed boolean, feedback string")
+            contracts.validate(result, contracts.EVALUATION_RESULT, "Evaluator result")
+            cost = result["cost"]
             row.update({key: result[key] for key in ("score", "cost", "passed", "feedback")})
             document["cases"].append(row)
             document["reported_cost"] += cost
