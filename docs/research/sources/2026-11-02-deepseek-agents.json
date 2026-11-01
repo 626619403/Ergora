@@ -1,0 +1,327 @@
+{
+  "checked_at": "2026-11-01T20:04:10.681224+00:00",
+  "scope": "Official-source and targeted code inspection only; no DeepSeek runtime installed, built, authenticated, or executed. File hashes identify the inspected snapshots, not runtime acceptance.",
+  "official_landing": "https://www.deepseek.com/zh/harness/",
+  "repositories": [
+    {
+      "repository": "https://github.com/deepseek-ai/deepseek-harness",
+      "commit": "ce7073d51254c26cd63b22a60835b8f948deb447",
+      "commit_time": "2026-10-30T00:13:15+08:00",
+      "repository_created_at": "2026-08-13T11:56:32Z",
+      "license": "MIT",
+      "package_version": "0.2.2-alpha.2",
+      "engines": {
+        "node": ">=24.9.0"
+      },
+      "package_manager": "pnpm@11.28.5",
+      "latest_github_release_lookup": {
+        "url": "https://api.github.com/repos/deepseek-ai/deepseek-harness/releases/latest",
+        "status": 404
+      },
+      "files": [
+        {
+          "path": "README.md",
+          "url": "https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/README.md",
+          "sha256": "0f5516be2acde776f05572cbc8c3093c90549afe04ce118e11157d073d5d15f4"
+        },
+        {
+          "path": "LICENSE",
+          "url": "https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/LICENSE",
+          "sha256": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be"
+        },
+        {
+          "path": "package.json",
+          "url": "https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/package.json",
+          "sha256": "d0fd7a2084d455b1651815bfbf9034e8b7dfb6571513727bec5d6cbc175a0b45"
+        },
+        {
+          "path": "docs/architecture.md",
+          "url": "https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/docs/architecture.md",
+          "sha256": "c329e1a9e6227475069edc19284c4eee39aff8cc77084ec962099617b1698358"
+        },
+        {
+          "path": "packages/core/agent/README.md",
+          "url": "https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/packages/core/agent/README.md",
+          "sha256": "3e910acefd4429db6faf1493a82ab75475978e1a8c40b2bb2efb4b55546518da"
+        },
+        {
+          "path": "packages/core/agent/src/index.ts",
+          "url": "https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/packages/core/agent/src/index.ts",
+          "sha256": "19c6c34dd4dd63dfa8c3c388bffe0cd4d4f254a1fc564eb52c44ef4321f79b39"
+        },
+        {
+          "path": "packages/core/agent/src/runtime-types.ts",
+          "url": "https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/packages/core/agent/src/runtime-types.ts",
+          "sha256": "2f7161c634956759bc33285ab1f293443cc30e64826c71c4164977802025f216"
+        },
+        {
+          "path": "packages/core/agent-loop/README.md",
+          "url": "https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/packages/core/agent-loop/README.md",
+          "sha256": "22cb7970e85d04d3658e03edcca1357f074f3a608bde3aa097f1609675c5c76d"
+        },
+        {
+          "path": "packages/core/agent-loop/src/index.ts",
+          "url": "https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/packages/core/agent-loop/src/index.ts",
+          "sha256": "8c2f579b21e482ecbca023341a79fdbc083124a3d8e1160bfd2f00136214a3c9"
+        },
+        {
+          "path": "packages/experimental/agent-team/README.md",
+          "url": "https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/packages/experimental/agent-team/README.md",
+          "sha256": "42b05f631f3b89d595da0413ad18addd77cb476bef5ed01a1db4a3e141633cdd"
+        },
+        {
+          "path": "packages/experimental/agent-team/src/index.ts",
+          "url": "https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/packages/experimental/agent-team/src/index.ts",
+          "sha256": "329d6c931ec43e5dc643bd87ef27f4262a87bcfd679b7b5c70c4d600935907af"
+        },
+        {
+          "path": "packages/experimental/agent-team/src/types.ts",
+          "url": "https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/packages/experimental/agent-team/src/types.ts",
+          "sha256": "0537a77c061605b878e5fd6520fc5f363a2f12ab570650ddce7084b5436fbbbd"
+        },
+        {
+          "path": "packages/experimental/agent-team/src/projection.ts",
+          "url": "https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/packages/experimental/agent-team/src/projection.ts",
+          "sha256": "8c8cc1c55f42f8bffcfbcfc0e5532bb842cce350bf42a53c55208a4b7c4ad01c"
+        },
+        {
+          "path": "packages/subagent/subagent-codex/README.md",
+          "url": "https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/packages/subagent/subagent-codex/README.md",
+          "sha256": "4eeacfc32baafbc28b6487e95249dab954228a88932c496c156f316192ad7fd6"
+        },
+        {
+          "path": "packages/subagent/subagent-codex/src/run.ts",
+          "url": "https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/packages/subagent/subagent-codex/src/run.ts",
+          "sha256": "b1630b87fd3ab253a77537f3b0a8301dd0317eaa40b604d62f862762f442b86f"
+        },
+        {
+          "path": "packages/skill/skill/README.md",
+          "url": "https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/packages/skill/skill/README.md",
+          "sha256": "c084a66256f34d42312144bd55bfefa7218e624782557622faa48c80aaf88e6c"
+        },
+        {
+          "path": "packages/skill/skill-filesystem/README.md",
+          "url": "https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/packages/skill/skill-filesystem/README.md",
+          "sha256": "f73e09f41d99ca7684bcb96d20f26c5d177331a68c23392b7c36d8182f6bd608"
+        },
+        {
+          "path": "packages/llm/llm-pi-ai/README.md",
+          "url": "https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/packages/llm/llm-pi-ai/README.md",
+          "sha256": "6189362b2923ffd1ccff515258920bb11d1ee26d5beb7b8a0cc683f157b9450a"
+        },
+        {
+          "path": "packages/sandbox/sandbox-local/README.md",
+          "url": "https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/packages/sandbox/sandbox-local/README.md",
+          "sha256": "1e2e7817292be6289940b4eb2f4231a38a090c7532061f0c6e8395872f7d73f8"
+        },
+        {
+          "path": "packages/sandbox/sandbox-local/src/index.ts",
+          "url": "https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/packages/sandbox/sandbox-local/src/index.ts",
+          "sha256": "a7a531c067547da088f37867b0c24dc366dab0a045fa53f7a16ff7d8b4a100ef"
+        },
+        {
+          "path": "packages/bundle/headless/README.md",
+          "url": "https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/packages/bundle/headless/README.md",
+          "sha256": "0308c736e63f4169725a077bedd0bcac8c4f2e3770f87a9ddb53a8f2450d8dd7"
+        },
+        {
+          "path": "packages/bundle/sdk-app/README.md",
+          "url": "https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/packages/bundle/sdk-app/README.md",
+          "sha256": "8072077deb90d6b29001645526338cc377319461c63109887d28d4559a1c93b8"
+        },
+        {
+          "path": "packages/sdk/server/src/index.ts",
+          "url": "https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/packages/sdk/server/src/index.ts",
+          "sha256": "f45d40e53f308b4c79f642079820857f003f1ab375dbf305a3e9f42b1db5a287"
+        },
+        {
+          "path": "packages/acp/acp/README.md",
+          "url": "https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/packages/acp/acp/README.md",
+          "sha256": "f72402f208acd96fa65359cd8ea083e3944c7f30b0f835eb9fd2ce1705bf432b"
+        },
+        {
+          "path": "python/sdk/README.md",
+          "url": "https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/python/sdk/README.md",
+          "sha256": "c4394e0cf3134eb203a600ab458d0b4133c527112832e7d1ffd607896b971e1e"
+        },
+        {
+          "path": "python/sdk/src/deepseek_harness/api.py",
+          "url": "https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/python/sdk/src/deepseek_harness/api.py",
+          "sha256": "9c772909775196fc4070182191738ad227a3bfdccc68d1b6f4e8b90dec08430b"
+        },
+        {
+          "path": "python/sdk/src/deepseek_harness/client.py",
+          "url": "https://github.com/deepseek-ai/deepseek-harness/blob/ce7073d51254c26cd63b22a60835b8f948deb447/python/sdk/src/deepseek_harness/client.py",
+          "sha256": "e0bdbf82d5932d38bb38a2eb8b2ae123487c7c520444c64c859c70e4504028da"
+        }
+      ]
+    },
+    {
+      "repository": "https://github.com/deepseek-ai/dsh-superagent-prototype",
+      "commit": "6337fc823ce20251c8de8085948165c81aaa701e",
+      "commit_time": "2026-10-31T20:05:39+08:00",
+      "repository_created_at": "2026-10-31T09:32:46Z",
+      "license": "MIT",
+      "package_version": "0.1.0",
+      "engines": {
+        "node": "^22.19.0 || >=24.0.0",
+        "dsh": "^0.2.1-alpha.2"
+      },
+      "package_manager": "pnpm@11.7.0",
+      "latest_github_release_lookup": {
+        "url": "https://api.github.com/repos/deepseek-ai/dsh-superagent-prototype/releases/latest",
+        "status": 404
+      },
+      "files": [
+        {
+          "path": "README.md",
+          "url": "https://github.com/deepseek-ai/dsh-superagent-prototype/blob/6337fc823ce20251c8de8085948165c81aaa701e/README.md",
+          "sha256": "737997cf5b7d4129f12ed5485ebbdd5e9d2ce3859a82ded6ac535d222327b713"
+        },
+        {
+          "path": "LICENSE",
+          "url": "https://github.com/deepseek-ai/dsh-superagent-prototype/blob/6337fc823ce20251c8de8085948165c81aaa701e/LICENSE",
+          "sha256": "6d66f91815b720e18cfb2b3552043a0359236aec9a1a6917787900546f6ce550"
+        },
+        {
+          "path": "package.json",
+          "url": "https://github.com/deepseek-ai/dsh-superagent-prototype/blob/6337fc823ce20251c8de8085948165c81aaa701e/package.json",
+          "sha256": "f5170d812137dd370c568decb481e19f4da9a3d1fd7bad341a0f07942020a559"
+        },
+        {
+          "path": "docs/000-philosophy.md",
+          "url": "https://github.com/deepseek-ai/dsh-superagent-prototype/blob/6337fc823ce20251c8de8085948165c81aaa701e/docs/000-philosophy.md",
+          "sha256": "0a12126843556fde2bcc2ca52dae2c297b9b5ca9170c3e33d624b2a4d85ca76b"
+        },
+        {
+          "path": "docs/001-domain.md",
+          "url": "https://github.com/deepseek-ai/dsh-superagent-prototype/blob/6337fc823ce20251c8de8085948165c81aaa701e/docs/001-domain.md",
+          "sha256": "cd010379e65cc428ffb335aee46529f2a524b8f573fc72359223060fb5a5111b"
+        },
+        {
+          "path": "docs/002-authorization.md",
+          "url": "https://github.com/deepseek-ai/dsh-superagent-prototype/blob/6337fc823ce20251c8de8085948165c81aaa701e/docs/002-authorization.md",
+          "sha256": "85f559708ac7faef89f88fcad30a405ca62a582a15764a7293686071e609dea0"
+        },
+        {
+          "path": "docs/003-execution.md",
+          "url": "https://github.com/deepseek-ai/dsh-superagent-prototype/blob/6337fc823ce20251c8de8085948165c81aaa701e/docs/003-execution.md",
+          "sha256": "049aa22a717f75b9dec4cd6969356db6f736c127de4501c3ce1f6d846217f6eb"
+        },
+        {
+          "path": "docs/004-prompts.md",
+          "url": "https://github.com/deepseek-ai/dsh-superagent-prototype/blob/6337fc823ce20251c8de8085948165c81aaa701e/docs/004-prompts.md",
+          "sha256": "186ec9307249deae11f7aec68ff21bf58fb0601a204ada0d2688253d58627bf7"
+        },
+        {
+          "path": "docs/005-panel.md",
+          "url": "https://github.com/deepseek-ai/dsh-superagent-prototype/blob/6337fc823ce20251c8de8085948165c81aaa701e/docs/005-panel.md",
+          "sha256": "f1f40a19be353933affef35f85428a5be4a3225045ab60bbbc307d35adf652bd"
+        },
+        {
+          "path": "docs/006-deployment.md",
+          "url": "https://github.com/deepseek-ai/dsh-superagent-prototype/blob/6337fc823ce20251c8de8085948165c81aaa701e/docs/006-deployment.md",
+          "sha256": "92c5a1c6aecab6782a64b3847a2d6f36a48dc9865fa7b04b892fcdaf04f7de9d"
+        },
+        {
+          "path": "docs/007-architecture.md",
+          "url": "https://github.com/deepseek-ai/dsh-superagent-prototype/blob/6337fc823ce20251c8de8085948165c81aaa701e/docs/007-architecture.md",
+          "sha256": "e3747665587fdf88b28d4e9c1a1f8ac40cbc2c65a9999be1fce14b69ec44d748"
+        },
+        {
+          "path": "src/core/ports.ts",
+          "url": "https://github.com/deepseek-ai/dsh-superagent-prototype/blob/6337fc823ce20251c8de8085948165c81aaa701e/src/core/ports.ts",
+          "sha256": "0b44f1cd716d64776b0e3ea74a158cf0effd92e763b1b13c7705e766e9225a43"
+        },
+        {
+          "path": "src/core/engine.ts",
+          "url": "https://github.com/deepseek-ai/dsh-superagent-prototype/blob/6337fc823ce20251c8de8085948165c81aaa701e/src/core/engine.ts",
+          "sha256": "bd9a4caff834859877d1a08ccddebc990d0e1ca568674b80f9d59ce5adcac827"
+        },
+        {
+          "path": "src/core/memory.ts",
+          "url": "https://github.com/deepseek-ai/dsh-superagent-prototype/blob/6337fc823ce20251c8de8085948165c81aaa701e/src/core/memory.ts",
+          "sha256": "36cefca987a4e533369a414e52e3fb4754945ae942bb021f8e5cf23c186cf536"
+        },
+        {
+          "path": "src/sources/kind.ts",
+          "url": "https://github.com/deepseek-ai/dsh-superagent-prototype/blob/6337fc823ce20251c8de8085948165c81aaa701e/src/sources/kind.ts",
+          "sha256": "4ea3d8eee14707e0ee9b67289a62b1a568bab64732bd04041da5ad89bc9a7e98"
+        },
+        {
+          "path": "src/admission.ts",
+          "url": "https://github.com/deepseek-ai/dsh-superagent-prototype/blob/6337fc823ce20251c8de8085948165c81aaa701e/src/admission.ts",
+          "sha256": "62f54fe63762a347e54cec2aed098e1b28a0a547a4133b5e3fc2e91a10b94afd"
+        },
+        {
+          "path": "src/app/runtime.ts",
+          "url": "https://github.com/deepseek-ai/dsh-superagent-prototype/blob/6337fc823ce20251c8de8085948165c81aaa701e/src/app/runtime.ts",
+          "sha256": "5befef035b4a70978cd881b32282680260c6d2561679f890dd911214664cf515"
+        },
+        {
+          "path": "src/app/store.ts",
+          "url": "https://github.com/deepseek-ai/dsh-superagent-prototype/blob/6337fc823ce20251c8de8085948165c81aaa701e/src/app/store.ts",
+          "sha256": "c124de893fbe260571b18b0ac4875bc7647e44e72062ba38b02c809e0012d583"
+        },
+        {
+          "path": "src/app/migration.ts",
+          "url": "https://github.com/deepseek-ai/dsh-superagent-prototype/blob/6337fc823ce20251c8de8085948165c81aaa701e/src/app/migration.ts",
+          "sha256": "b479546845852ac670ae8fe592b8564f96bb78d30dd2370f767ba2050bab8d9b"
+        },
+        {
+          "path": "src/app/effects.ts",
+          "url": "https://github.com/deepseek-ai/dsh-superagent-prototype/blob/6337fc823ce20251c8de8085948165c81aaa701e/src/app/effects.ts",
+          "sha256": "d350590473299398b17c50dd641c72e1995dd95920c5138699491ab77e3ae481"
+        },
+        {
+          "path": "src/app/outbox.ts",
+          "url": "https://github.com/deepseek-ai/dsh-superagent-prototype/blob/6337fc823ce20251c8de8085948165c81aaa701e/src/app/outbox.ts",
+          "sha256": "48d20062dd8c34c2b95e851c78265c9e403d1040894e97c7d9d0fa190d54415e"
+        },
+        {
+          "path": "src/app/skill-files.ts",
+          "url": "https://github.com/deepseek-ai/dsh-superagent-prototype/blob/6337fc823ce20251c8de8085948165c81aaa701e/src/app/skill-files.ts",
+          "sha256": "c95a1bb606bb9c7d932c807c4a9597ed7e0f8a02dbb1e16adb4133c0f1bfccf1"
+        },
+        {
+          "path": "src/executor/dsh.ts",
+          "url": "https://github.com/deepseek-ai/dsh-superagent-prototype/blob/6337fc823ce20251c8de8085948165c81aaa701e/src/executor/dsh.ts",
+          "sha256": "6445a03121fa9bd15fc437736bcc2acc6ab950c5fe732e5b99eb8ee2c8a9476b"
+        }
+      ]
+    }
+  ],
+  "npm_observations": [
+    {
+      "package": "@deepseek-ai/dsh",
+      "dist-tags": {
+        "latest": "0.2.1-rc.5",
+        "alpha": "0.2.2-alpha.2",
+        "next": "0.2.1-rc.5"
+      },
+      "time": {
+        "0.2.1-rc.5": "2026-10-29T14:15:23.355Z",
+        "0.2.2-alpha.2": "2026-10-27T19:10:28.529Z"
+      }
+    },
+    {
+      "package": "@deepseek-ai/dsh-agent",
+      "dist-tags": {
+        "latest": "0.1.0-rc.6",
+        "next": "0.2.1-rc.5",
+        "alpha": "0.2.2-alpha.2"
+      },
+      "time": {
+        "0.1.0-rc.6": "2026-08-13T12:11:15.454Z",
+        "0.2.1-rc.5": "2026-10-29T13:47:03.117Z",
+        "0.2.2-alpha.2": "2026-10-27T18:52:30.682Z"
+      }
+    }
+  ],
+  "user_reference": "https://www.reddit.com/r/DeepSeek/comments/1xkg08h/deepseek_has_opensourced_again_unveils_super/",
+  "unverified_article": {
+    "url": "https://x.com/DeepSeekHarness/article/2116857257245987236",
+    "fetch_status": 403,
+    "use": "Article full text and its performance/Watchdog claims are excluded from verified implementation findings."
+  }
+}

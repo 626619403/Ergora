@@ -14,9 +14,10 @@
 - 合同交付：R2 完成，基线 `9808870`，最终运行/测试 `d402d1b` 已推送。共享 schema / 字段错误 / 原身份规则已接入，初审 P1 数值边界已修正；最终非 editable wheel 的 Linux 172 passed、17 skipped、36 subtests passed，基础 CLI / 两 OS CI 41336217446 / [独立复审](delivery/2026-11-02-schemas-review.md)均通过，见 [R2 记录](delivery/2026-11-02-schemas.md)。
 - 存储迁移交付：R3.1 完成并推送 `4d4d124`，基线 `0d86315`；16 表初始化、有序版本、迁移前 DB 备份与旧客户端拒写已接入。最终非 editable wheel 的 Linux 182 passed、17 skipped、36 subtests passed；基础 CLI / 两 OS CI 41337468262 / [独立审查](delivery/2026-11-02-state-migrations-review.md)通过，见 [R3 记录](delivery/2026-11-02-storage.md)。
 - 存储恢复交付：R3.2 / R3 完成，最终运行/测试 `4fe2ec5` 已推送，Linux 202 passed、18 skipped、36 subtests passed，基础 CLI 完整恢复通过；两 OS CI 41340075293 / [独立审查](delivery/2026-11-02-state-backups-review.md)均通过，见 [R3 记录](delivery/2026-11-02-storage.md)。未迁移实际用户库。
-- 本地验收交付：L0 [本地完整环境与 CLI 全流程验收](delivery/2026-11-02-local-e2e.md)完成：独立持久配置与数据、两开发模板六阶段/导出、真实GPU微实验门禁/票据、控制面/调度/离线恢复均通过适用验收，[独立审查通过](delivery/2026-11-02-local-e2e-review.md)。取消原workflow保留CANCEL_UNCONFIRMED、沿原ID对账确认进程已停。未验范围保留；不替代R4–R8或未来F/G功能。L1随后调研用户帖子指向的DeepSeek Super-agent原型及其Harness依赖。
+- 本地验收交付：L0 [本地完整环境与 CLI 全流程验收](delivery/2026-11-02-local-e2e.md)完成并推送 `b80d90e`：独立持久配置与数据、两开发模板六阶段/导出、真实GPU微实验门禁/票据、控制面/调度/离线恢复均通过适用验收，[独立审查通过](delivery/2026-11-02-local-e2e-review.md)。取消原workflow保留CANCEL_UNCONFIRMED、沿原ID对账确认进程已停。未验范围保留；不替代R4–R8或未来F/G功能。
+- 研究交付：L1 [DeepSeek Super-agent原型与Harness](research/2026-11-02-deepseek-agents.md)完成，已核实用户帖子指向及两个固定源码，记录50文件来源；报告和F2–F10/D3验收细化已写，84个本地链接/50文件提交身份/静态差异核查及[独立审查](delivery/2026-11-02-deepseek-research-review.md)通过。Thread图表标注已修正；未安装或接入DSH，文章全文未取得。
 - 默认分支：M2 完成。用户已设置，2026-11-01 15:30 UTC 远端 HEAD 实际指向 main，与当时主线 `0027f3f` 一致，[独立核对通过](delivery/2026-11-01-default-branch-review.md)，见 [设置记录](delivery/2026-11-01-default-branch.md)。
-- 下一动作：L0验收文档提交推送 → L1 DeepSeek Super-agent调研 → R4–R8 → P0 → P1。每个节点完成后更新状态、实际检查和独立审查，再继续下一项；用户无需逐节点重复授权。不要把规划中的统一任务、低代码、会话或远端执行写成已实现。
+- 下一动作：R4用例与Skill依赖环整理 → R5–R8 → P0 → P1。每个节点完成后更新状态、实际检查和独立审查，再继续下一项；用户无需逐节点重复授权。不要把规划中的统一任务、低代码、会话或远端执行写成已实现。
 - 已交付平台范围：原生 Windows 控制面、CLI、项目 / 记忆 / Skill / 资料观察及支持的原生工具；完整六阶段与 Linux 专用工具走 Linux/WSL2。后续仍按实际能力逐项验收。
 - 验证：Windows / Ubuntu CI 41225920073 全部成功；Linux 完整回归 115 passed +36 subtests。两个切片最终独立审查通过；Linux 用户目录 0.2.0 升级和 314 文件身份一致。真实模型 / GPU / winget 空白系统等未验收范围保留在交付记录，不从 CI 推导。
 - 恢复要求：重读本文件及活动切片记录，对照分支、工作区和最近提交；完成核对后继续当前项，不重新做已验收的调研。
@@ -110,4 +111,4 @@ S0–S10 后续范围现在由 S11 详细计划承接；尚未测得收益的优
 - P1：低代码、逐项目工单、真实可选 harness/会话、训练实验与受评估的持续改进。
 - P2/P3：通信、远端隔离、搜索/格式互操作、多用户与规模化，按固定版本和真实需求分阶段验证，不进入默认必装。
 
-每次上下文压缩、换机、节点切换后，重读本文件、详细节点及其交付记录，核对 Git 后从未完成项继续。M1/M2/A1/A2/R1/R2/R3/L0 已完成；下一项为L1；尚无实际业务用户数据迁移，各 M/A/R/F 节点只以登记表和交付证据为准。
+每次上下文压缩、换机、节点切换后，重读本文件、详细节点及其交付记录，核对 Git 后从未完成项继续。M1/M2/A1/A2/R1/R2/R3/L0/L1 已完成；下一项为R4；尚无实际业务用户数据迁移，各 M/A/R/F 节点只以登记表和交付证据为准。
