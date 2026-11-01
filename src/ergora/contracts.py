@@ -17,7 +17,9 @@ def _is_finite_number(checker, value) -> bool:
 
 
 StrictValidator = validators.extend(Draft202012Validator, type_checker=Draft202012Validator.TYPE_CHECKER.redefine_many({
-    "integer": lambda checker, value: type(value) is int,
+    # Numeric bounds ask the number checker first. Both types must agree on
+    # finite integers so an overflowing int cannot bypass minimum / maximum.
+    "integer": lambda checker, value: type(value) is int and _is_finite_number(checker, value),
     "number": _is_finite_number,
 }))
 _SCHEMAS = Path(__file__).parent / "data/schemas"

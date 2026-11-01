@@ -17,7 +17,7 @@ R2 的所有权说明。共享结构按 JSON Schema Draft 2020-12 描述，核�
 
 结构错误为 `CONTEXT at /field/0: REASON`；路径使用 JSON Pointer，`/` 和 `~` 分别编码为 `~1`、`~0`。缺失字段或额外字段的结构错误指向所属对象，并在原因中列出字段。业务错误继续给出具体原因，不假装 URL、文件可用性或评分判断都是 schema 规则。
 
-`integer` 保持原 Python `type(value) is int`，拒绝 bool 与 `1.0`。`number` 保持 int/float 且可由原 `math.isfinite` 判断为有限的值，拒绝 bool、NaN、Infinity，以及超出该数值表示范围的巨大整数；后者转成可读的 ValueError，不让 OverflowError 中断用例。各字段范围来自原实现（例如 mini step 1–1000、cost >0 且 ≤100）。这比 JSON Schema 对“数学整数”的默认判定严格，外部校验器还须遵循这些领域语义。
+`integer` 要求 Python `type(value) is int`，拒绝 bool 与 `1.0`；也与 `number` 使用同一有限数判定，防止范围关键词因两种类型判定不一致而跳过巨大整数。当前所有 integer 字段都有小范围上限，这保持原有字段的接受集合。`number` 保持 int/float 且可由原 `math.isfinite` 判断为有限的值，拒绝 bool、NaN、Infinity，以及超出该数值表示范围的巨大整数；后者转成可读的 ValueError，不让 OverflowError 中断用例。各字段范围来自原实现（例如 mini step 1–1000、cost >0 且 ≤100）。这比 JSON Schema 对“数学整数”的默认判定严格，外部校验器还须遵循这些领域语义。
 
 评价版本号的旧检查使用 `== 1`，实际接受 `1` / `1.0` / `true`；R2 保留该兼容行为，其他版本仍拒绝。新文档和生成器始终写整数 `1`。如后续要求严格版本类型，须单独版本化迁移；本节点不静默改写旧输入或摘要。内置目录的未知版本仍由现有加载边界拒绝。
 

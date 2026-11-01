@@ -21,7 +21,8 @@ def test_shipped_schemas_are_valid_and_validation_does_not_supply_defaults():
     assert binding == before and "step_limit" not in binding
 
 
-@pytest.mark.parametrize("value,accepted", [(1, True), (1000, True), (1.0, False), (True, False), (0, False), (1001, False)])
+@pytest.mark.parametrize("value,accepted", [(1, True), (1000, True), (1.0, False), (True, False), (0, False),
+                                          (1001, False), (10 ** 1000, False), (-10 ** 1000, False)])
 def test_binding_keeps_python_strict_integer_limits(value, accepted):
     binding = {"tool": "mini-swe-agent", "model": "p/m", "step_limit": value}
     if accepted:
@@ -82,6 +83,8 @@ def test_manifest_versions_and_domain_rules_survive_structural_validation(contra
     for changes, expected_path in [({"schema_version": 2}, "/schema_version"), ({"unexpected": True}, "/"),
                                     ({"timeout_seconds": True}, "/timeout_seconds"),
                                     ({"timeout_seconds": 5.0}, "/timeout_seconds"),
+                                    ({"timeout_seconds": 10 ** 1000}, "/timeout_seconds"),
+                                    ({"timeout_seconds": -10 ** 1000}, "/timeout_seconds"),
                                     ({"minimum_gain": float("nan")}, "/minimum_gain")]:
         with pytest.raises(ValueError) as error:
             evaluation.register(state, "schema-demo", {**manifest, **changes})
