@@ -211,6 +211,16 @@ agentflow doctor
 
 下面使用本地入口，准备好模型与执行环境后即可接入自己的 Git 仓库。所有项目名、目录、工单编号和摘要都应替换为实际值。
 
+参考任务 CLI 从当前 shell 读取 Temporal 连接。使用上述本机开发服务时，在运行 `task` 命令的 shell 中设置：
+
+```bash
+export TEMPORAL_ADDRESS=127.0.0.1:7233
+export TEMPORAL_NAMESPACE=default
+export TEMPORAL_LOCAL_DEV=1
+```
+
+`TEMPORAL_LOCAL_DEV=1` 仅用于 loopback 开发服务；生产服务按其认证配置连接。参考生成的 `env.sh` 当前不导出这三项。
+
 ### 1. 准备项目与可信检查
 
 项目必须是已有提交的 Git 仓库。先提交需要作为任务基线的准备内容；注册会记录当时的 HEAD。复制模板到尚不存在的目录：
@@ -326,7 +336,7 @@ agentflow verify
 |A2A Agent Card|`http://127.0.0.1:8765/.well-known/agent-card.json`|
 |A2A JSON-RPC|`http://127.0.0.1:8765/a2a`，使用 token 与 `A2A-Version: 1.0`|
 
-地址均指服务所在环境的 localhost；远程或容器访问按部署手册配置端口转发。修改模型等环境变量后先 `agentflow services stop`，再从持有新变量的 shell 中 `agentflow services start`。仅 `services restart` 会沿用 Supervisor 的旧环境。
+地址均指服务所在环境的 localhost；远程或容器访问按部署手册配置端口转发。修改模型等环境变量后先 `agentflow services stop`，再从持有新变量的 shell 中 `agentflow services start`。仅 `services restart` 会沿用 Supervisor 的旧环境。 `services stop` 返回后，先确认原服务进程和 Supervisor socket 已退出，再启动；否则可能遇到旧 socket 仍占用的错误。
 
 可选训练 worker 默认关闭，`services status` 可能因 STOPPED 项返回退出码 3，应查看每项实际状态。停止服务与取消外部作业是不同操作；维护和备份前先确认在途作业的状态。备份平台、私有配置、state 和各业务仓库。更多步骤见 HTML 部署手册与安装后的 `docs/VALIDATION.md`。
 

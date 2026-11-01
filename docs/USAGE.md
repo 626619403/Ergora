@@ -135,7 +135,7 @@ ergora reference info
 - [完整训练优化参考手册](../src/ergora/data/reference/platform/docs/TRAINING.md)
 - [新入口的训练说明](TRAINING.md)
 
-这些冻结参考文件保持 v2.2 内容身份，便于校验；本手册和接入手册说明新的控制面能力。它们不会自动回写旧 HTML 内嵌包。
+这些冻结参考文件保持 v2.2 内容身份，便于校验；本手册和接入手册说明新的控制面能力。它们不会自动回写旧 HTML 内嵌包。 使用本地参考任务 CLI 前，还需在当前 shell 配置 Temporal 连接，见 [首个开发任务](../README.md#首个开发任务)。
 
 ## 远程访问、恢复与维护
 
