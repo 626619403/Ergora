@@ -41,4 +41,6 @@ fresh-context 文档审查已完成：[审查报告](2026-11-01-all-in-one-plan-
 
 ## 交接与下一动作
 
-文档检查与独立审查通过，待提交并推送本计划到当前工作分支、核对远端 SHA；不把文档推送当成主线合并。下一实施为 M1，随后 A1/A2 和渐进重构。根许可证待维护者选择，当前真实模型/GPU/未配置服务的历史未验收项保持原范围。
+文档检查与独立审查通过。主体计划提交 `7d9d246fccf7c8226e5028bfe52a97b7403726a6` 已通过 `git push origin HEAD:refs/heads/feat/windows-support` 推送到 Ergora；随后 `git rev-parse HEAD` 与 `git ls-remote origin refs/heads/feat/windows-support` 返回同一 SHA，工作区干净。审查后的补充仅为状态/交接记录，不触及架构方案或生产实现。
+
+A0 已完成；本轮没有建立/合并 main 或更改 GitHub 默认分支。下一实施为 M1，随后 A1/A2 和渐进重构。根许可证待维护者选择，当前真实模型/GPU/未配置服务的历史未验收项保持原范围。

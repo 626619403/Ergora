@@ -6,9 +6,9 @@
 
 - 前阶段基线：`3b52365`，实现分支 `feat/evolution-console`，S0–S9 已交付。
 - 上一交付：S10 Windows 支持完成，分支 `feat/windows-support`，基线 `4c7426a4ce5b733bb32b32fc6fa2fe8438e05e9d`；已验证运行代码 `9c196a9d27874d11befbcdf21a294f3a438697a7` 已推送。最终交接提交 `44c1c94d8c34ac3d6179eba91dfcd194ea9b005a` 是本轮源码基线；原 Linux 发行及冻结参考内容保持可比较。
-- 活动切片：S11 / A0，形成 [下一阶段详细计划](plans/2026-11-01-all-in-one.md) 和 [架构基线](architecture/2026-11-01-baseline.md)，静态核查及独立文档审查通过，当前待提交/推送交接；实际检查与审查在 [A0 交付记录](delivery/2026-11-01-all-in-one-plan.md)。
+- 当前交付：S11 / A0 完成，形成 [下一阶段详细计划](plans/2026-11-01-all-in-one.md) 和 [架构基线](architecture/2026-11-01-baseline.md)，静态核查及独立文档审查通过。主体计划提交 `7d9d246fccf7c8226e5028bfe52a97b7403726a6` 已推送 `feat/windows-support` 并核对远端一致；审查后仅补状态/交接信息，实际检查在 [A0 交付记录](delivery/2026-11-01-all-in-one-plan.md)。
 - 主线现状：2026-11-01 远端读取确认没有 `main/master`，默认分支仍为早期研究分支 `research/multi-agent-evolution-20261028`。研究与 evolution 基线均为 Windows HEAD 祖先。用户已提出合入主线，本轮先计划；M1 将重核 refs、建立正式 `main`、纳入 Windows、验证 CI，并单独核对 GitHub 默认分支设置。
-- 下一动作：完成 A0 计划推送，随后按 M1 → A1/A2 → R1–R8 → P0 → P1 推进。不要把本计划中的统一任务、低代码、会话或远端执行写成已实现；恢复时先核对计划登记表、活动交付记录和 Git。
+- 下一动作：M1 → A1/A2 → R1–R8 → P0 → P1。主线合入与生产重构尚未实施。不要把本计划中的统一任务、低代码、会话或远端执行写成已实现；恢复时先核对计划登记表、活动交付记录和 Git。
 - 已交付平台范围：原生 Windows 控制面、CLI、项目 / 记忆 / Skill / 资料观察及支持的原生工具；完整六阶段与 Linux 专用工具走 Linux/WSL2。后续仍按实际能力逐项验收。
 - 验证：Windows / Ubuntu CI 41225920073 全部成功；Linux 完整回归 115 passed +36 subtests。两个切片最终独立审查通过；Linux 用户目录 0.2.0 升级和 314 文件身份一致。真实模型 / GPU / winget 空白系统等未验收范围保留在交付记录，不从 CI 推导。
 - 恢复要求：重读本文件及活动切片记录，对照分支、工作区和最近提交；完成核对后继续当前项，不重新做已验收的调研。
