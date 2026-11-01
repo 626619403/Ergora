@@ -52,6 +52,37 @@ CI 保留两 OS wheel 安装、冻结身份、应用与原生 PowerShell 安装/
 
 已安装 CLI 的首次无模型命令旅程：1 次 `git init`，`project add/bind`、`agent run/output` 共 4 次 Ergora 调用，创建 binding/prompt 两文件，共 7 个操作单元。用当前解释器作为 command 回显，实际 succeeded、revision=2、stdout 可读；自动脚本总计 1.18 s。**不含安装、人工输入、模型认证、正式任务服务或六阶段验收**；这个时间不表示人工易用性或 LLM 性能。
 
+用已安装 Ergora 的 Python 解释器执行以下片段可复跑该旅程；临时目录在检查后清理。计数只含上述用户操作，临时目录/计时/断言等测量代码不另计；时间因机器和目录而异：
+
+```python
+from pathlib import Path
+import json, subprocess, sys, tempfile, time
+
+with tempfile.TemporaryDirectory() as temporary:
+    folder = Path(temporary)
+    repo, data = folder / "repo", folder / "data"
+    started = time.monotonic()
+    subprocess.run(["git", "init", str(repo)], check=True, capture_output=True)
+    binding = folder / "binding.json"
+    binding.write_text(json.dumps({"tool": "command", "argv": [
+        sys.executable, "-c", "import sys;print(sys.stdin.read())"]}), encoding="utf-8")
+    prompt = folder / "prompt.md"
+    prompt.write_text("Return this synthetic project note.\n", encoding="utf-8")
+
+    def cli(*args):
+        result = subprocess.run([sys.executable, "-m", "ergora", "--home", str(data), *args],
+                                check=True, capture_output=True, text=True, encoding="utf-8")
+        return json.loads(result.stdout)
+
+    cli("project", "add", "journey", "--repo", str(repo))
+    project = cli("project", "bind", "journey", "implementer", "--binding", str(binding), "--revision", "1")
+    run = cli("agent", "run", "journey", "implementer", "--prompt", str(prompt))
+    output = cli("agent", "output", "journey", run["id"])
+    assert project["revision"] == 2 and run["status"] == "succeeded"
+    assert "synthetic project note" in output["streams"]["stdout"]["text"]
+    print({"operations": 7, "status": run["status"], "seconds": time.monotonic() - started})
+```
+
 安装基线按使用手册计数：Ubuntu 空环境示例含包索引/基础包、clone、cd、安装脚本、PATH、serve 共 7 条 shell 指令，要求系统包权限；已有 Python 的自有 venv 示例为 3 条。这里是文档步骤计数，不是新空白系统安装实验。原生 Windows 和完整 reference 各有独立手册/权限范围，不据此推算它们的安装时间。
 
 新增 Agent 的当前同步面按 A1 核查为 agents、tools、projects 默认（若变更）、JS 字段、SDK 安装配方及 kernel 版本（若对应工具）；R1 用真实新增兼容组件检查缩小范围。后续比较操作数、必须编辑的位置和用户错误可恢复性，不以代码行数或抽象类数量证明易用性提升。

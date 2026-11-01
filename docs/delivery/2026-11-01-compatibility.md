@@ -20,11 +20,15 @@
 3. 新兼容测试：7 passed，1.05 s；POSIX 和普通 Skill 向量、compiled SHA、旧库重开/新进程/冲突通过。
 4. 安装后的无模型 command 旅程：7 个计数操作、1.18 s、succeeded、revision=2，完整输出可读；不含安装/输入/认证/正式执行。
 5. 首次最终 Linux 组合在 collection 失败：显式选择 frozen AdapterTests 时不能依赖其他测试的导入副作用，缺少 dev_platform 路径。已在 CI 的该 Linux 测试子进程明确设置冻结 platform PYTHONPATH；不修改运行时环境或冻结代码。随后直接执行修改后的 CI Python step：**144 passed、17 skipped、36 subtests passed、1 warning，78.64 s**。
-6. 静态检查：65 本地文档链接/围栏、fixture JSON、CI refactor 触发和 Python step 语法通过；git diff --check 通过；运行/脚本/依赖/旧 HTML 与基线零差异；reference.verify PASS 283。两 OS wheel / CI 结果待实际运行，不预先标通过。
+6. 静态检查：65 本地文档链接/围栏、fixture JSON、CI refactor 触发和 Python step 语法通过；git diff --check 通过；运行/脚本/依赖/旧 HTML 与基线零差异；reference.verify PASS 283。
+7. 候选提交 `4deb8b78690ba1c102c2b08aa6dd3c4054815d6c` 已推送本分支，实际远端 SHA 一致。[CI 41323798679](https://github.com/626619403/Ergora/actions/runs/41323798679)公开页面核对精确提交/分支，**Success、2 jobs completed、3m 1s**；现有 workflow 实际构建安装 wheel、两 OS 回归/冻结身份及 Windows PowerShell 安装/升级。完整日志需登录，不编造 Windows 条目计数。
+8. 审查期间在兼容基线补齐可公开复跑的无模型 Python 片段，并实际提取该片段执行：7 操作、succeeded，revision/stdout 断言通过；时间可变，不作为固定性能指标。此后只有文档/审查状态收口，CI 的源代码/测试/配置不变。
 
 17 个原基线跳过包含原生 Windows、未显式选择的 SDK 和隔离 Temporal 服务；不从历史 115 项计数推导本轮未跑的可选检查。FastAPI 的 httpx 弃用提示可见，本切片没有为消除 warning 顺带升级依赖。
 
-独立审查：待新 fresh-context reviewer；当前实现已整理，最终验证未收口。公开推送用于实际两 OS CI，审查和节点完成状态另记。
+[Fresh-context 独立审查通过](2026-11-01-compatibility-review.md)（2026-11-02 Asia/Shanghai），需求符合性和可维护性均通过，无实质 findings。审查者独立重跑 7 项、28 项、公开旅程；重建 16 表/索引、验证 283 冻结身份，并读取两份原生 OS job 成功。未重复全量组合，未把合成测试当真实服务或效果验收。
+
+A2 实现、验证、独立审查和候选推送已完成；最后的文档/审查状态随正常提交推送，运行/测试/CI 与已验提交相同。后续从该分支进入 R1，不在 main 上混入未经节点验收的行为变更。
 
 ## 迁移/回退与下一步
 
