@@ -49,16 +49,8 @@ def metadata(directory: Path) -> dict:
     return {"name": name, "description": description}
 
 
-def _schema(state: State):
-    with state.connect() as db:
-        db.execute("CREATE TABLE IF NOT EXISTS skill_versions (project TEXT, digest TEXT, document TEXT, PRIMARY KEY(project,digest))")
-        db.execute("CREATE TABLE IF NOT EXISTS skill_heads (project TEXT, name TEXT, digest TEXT, revision INTEGER, PRIMARY KEY(project,name))")
-        db.execute("CREATE TABLE IF NOT EXISTS skill_events (project TEXT, name TEXT, document TEXT)")
-
-
 def versions(state: State, project_id: str) -> dict:
     state.project(project_id)
-    _schema(state)
     with state.connect() as db:
         return {"versions": [json.loads(row[0]) for row in db.execute(
                     "SELECT document FROM skill_versions WHERE project=? ORDER BY rowid DESC", (project_id,))],
@@ -69,7 +61,6 @@ def versions(state: State, project_id: str) -> dict:
 
 def get(state: State, project_id: str, digest: str) -> dict:
     state.project(project_id)
-    _schema(state)
     with state.connect() as db:
         row = db.execute("SELECT document FROM skill_versions WHERE project=? AND digest=?", (project_id, digest)).fetchone()
     if row is None:
@@ -84,7 +75,6 @@ def get(state: State, project_id: str, digest: str) -> dict:
 def import_bundle(state: State, project_id: str, source: Path, hypothesis: str = "Imported candidate",
                   parent: str | None = None) -> dict:
     state.project(project_id)
-    _schema(state)
     source = source.expanduser().resolve(strict=True)
     original_digest, _ = digest_tree(source)
     staging = state.root / "imports"

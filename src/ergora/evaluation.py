@@ -17,12 +17,6 @@ def manifest_sha256(value: dict) -> str:
     return hashlib.sha256(json.dumps(value, sort_keys=True, ensure_ascii=False, allow_nan=False).encode()).hexdigest()
 
 
-def _schema(state: State):
-    with state.connect() as db:
-        db.execute("CREATE TABLE IF NOT EXISTS evaluation_suites (project TEXT, digest TEXT, document TEXT, PRIMARY KEY(project,digest))")
-        db.execute("CREATE TABLE IF NOT EXISTS evaluations (id TEXT PRIMARY KEY, project TEXT, document TEXT)")
-
-
 def register(state: State, project_id: str, manifest: dict) -> dict:
     project = state.project(project_id)
     contracts.validate(manifest, contracts.EVALUATION_MANIFEST, "Evaluation manifest")
@@ -66,7 +60,6 @@ def register(state: State, project_id: str, manifest: dict) -> dict:
     frozen = {**manifest, "evaluator_argv": argv, "file_sha256": fingerprints, "path_bindings": path_bindings}
     digest = manifest_sha256(frozen)
     document = {"project": project_id, "digest": digest, "manifest": frozen, "created": now()}
-    _schema(state)
     with state.connect() as db:
         db.execute("INSERT OR IGNORE INTO evaluation_suites VALUES (?, ?, ?)", (project_id, digest, json.dumps(document)))
     return document
@@ -74,7 +67,6 @@ def register(state: State, project_id: str, manifest: dict) -> dict:
 
 def suite(state: State, project_id: str, digest: str) -> dict:
     state.project(project_id)
-    _schema(state)
     with state.connect() as db:
         row = db.execute("SELECT document FROM evaluation_suites WHERE project=? AND digest=?", (project_id, digest)).fetchone()
     if row is None:
@@ -93,7 +85,6 @@ def suite(state: State, project_id: str, digest: str) -> dict:
 
 def listing(state: State, project_id: str) -> dict:
     state.project(project_id)
-    _schema(state)
     with state.connect() as db:
         return {"suites": [json.loads(row[0]) for row in db.execute(
                     "SELECT document FROM evaluation_suites WHERE project=? ORDER BY rowid DESC", (project_id,))],
@@ -169,7 +160,6 @@ def evaluate(state: State, project_id: str, digest: str, suite_digest: str, case
 
 def get(state: State, project_id: str, run_id: str) -> dict:
     state.project(project_id)
-    _schema(state)
     with state.connect() as db:
         row = db.execute("SELECT document FROM evaluations WHERE project=? AND id=?", (project_id, run_id)).fetchone()
     if row is None:

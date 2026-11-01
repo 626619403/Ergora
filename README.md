@@ -155,7 +155,7 @@ ergora agent run my-project reviewer --prompt review-request.md --timeout 300
 ergora agent runs my-project
 ```
 
-各 Agent 角色选择 `codex`、`claude-code` 或 `command`；实现角色额外支持 `mini-swe-agent`。普通自定义命令 `{"tool":"command","argv":["/path/to/tool"]}` 接收 stdin 文本；模板产物和正式阶段使用明确的 stage-json 协议。工具沿用自己的登录和环境变量，配置内不存密钥。保存绑定时传入 `project show` 的当前修订号以避免覆盖别人的修改。状态与输出在 Linux 默认保存在 `~/.local/share/ergora/`（遵循 XDG），Windows 默认为 `%LOCALAPPDATA%\Ergora\data`，可通过 `ERGORA_HOME` 或 `--home` 改为其他持久目录；持久化整个目录以备份恢复。
+各 Agent 角色选择 `codex`、`claude-code` 或 `command`；实现角色额外支持 `mini-swe-agent`。普通自定义命令 `{"tool":"command","argv":["/path/to/tool"]}` 接收 stdin 文本；模板产物和正式阶段使用明确的 stage-json 协议。工具沿用自己的登录和环境变量，配置内不存密钥。保存绑定时传入 `project show` 的当前修订号以避免覆盖别人的修改。状态与输出在 Linux 默认保存在 `~/.local/share/ergora/`（遵循 XDG），Windows 默认为 `%LOCALAPPDATA%\Ergora\data`，可通过 `ERGORA_HOME` 或 `--home` 改为其他持久目录。升级前停止相关工作并备份整个目录；自动迁移保存的 DB 快照不包含文件资产，见 [升级与恢复说明](docs/architecture/state-migrations.md)。
 
 `agent run` 是独立工具调用，成功不产生正式合同的验证/审查结论。`--template TEMPLATE` 可要求该角色的结构化产物。需要绑定作用于正式六阶段时，显式启用 `ergora reference executor --installation INSTALLATION`：复用参考执行器及门禁，在新任务首次接入时冻结角色工具。完整配置、安装可选 Agent、原生 Forge campaign 与恢复操作见 [Agent 手册](docs/AGENT_BACKENDS.md)。可执行文件存在不代表已认证，实际调用失败和超时会保留在运行记录。
 

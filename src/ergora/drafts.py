@@ -10,12 +10,11 @@ from .state import State, now
 def listing(state: State, project_id: str) -> list[dict]:
     state.project(project_id)
     with state.connect() as db:
-        db.execute("CREATE TABLE IF NOT EXISTS drafts (project TEXT,id TEXT,document TEXT,PRIMARY KEY(project,id))")
         return [json.loads(row[0]) for row in db.execute("SELECT document FROM drafts WHERE project=? ORDER BY id", (project_id,))]
 
 
 def save(state: State, project_id: str, name: str, kind: str, task_input: dict, expected_revision: int) -> dict:
-    listing(state, project_id)
+    state.project(project_id)
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,63}", name):
         raise ValueError("Draft ID must use letters, digits, underscores or hyphens")
     validation = reference.validate_input(kind, task_input)

@@ -14,14 +14,8 @@ from . import evaluation, processes, skills
 from .state import State, now
 
 
-def _schema(state: State):
-    with state.connect() as db:
-        db.execute("CREATE TABLE IF NOT EXISTS optimizations (id TEXT PRIMARY KEY, project TEXT, document TEXT)")
-
-
 def listing(state: State, project_id: str) -> list[dict]:
     state.project(project_id)
-    _schema(state)
     with state.connect() as db:
         return [json.loads(row[0]) for row in db.execute(
             "SELECT document FROM optimizations WHERE project=? ORDER BY rowid DESC", (project_id,))]
@@ -53,7 +47,6 @@ def optimize(state: State, project_id: str, baseline_digest: str, suite_digest: 
                 "max_proposals": max_proposals, "timeout_seconds": timeout, "started": now(), "status": "running",
                 "metric_calls": 0, "proposals": 0, "reported_cost": 0.0, "evaluations": [], "candidates": [],
                 "output": str(directory)}
-    _schema(state)
 
     def persist():
         with state.connect() as db:

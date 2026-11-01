@@ -125,14 +125,6 @@ def _download(url, allow_private, max_bytes, filename, check, progress, deadline
             receiver.close()
 
 
-def _schema(state: State):
-    with state.connect() as db:
-        db.execute("CREATE TABLE IF NOT EXISTS research_runs (id TEXT PRIMARY KEY,project TEXT,cancel INTEGER,document TEXT)")
-        db.execute("CREATE TABLE IF NOT EXISTS source_snapshots (project TEXT,url TEXT,sha TEXT,document TEXT,PRIMARY KEY(project,url,sha))")
-        db.execute("CREATE TABLE IF NOT EXISTS source_heads (project TEXT,url TEXT,sha TEXT,PRIMARY KEY(project,url))")
-        db.execute("CREATE TABLE IF NOT EXISTS research_proposals (id TEXT PRIMARY KEY,project TEXT,document TEXT)")
-
-
 def validate_url(url: str, allow_private: bool = False):
     parsed = urlsplit(url)
     if (parsed.scheme not in ("http", "https") or not parsed.hostname or parsed.username or parsed.password
@@ -179,7 +171,6 @@ def text_content(raw: bytes, content_type: str) -> str:
 
 def get(state: State, project_id: str, run_id: str) -> dict:
     state.project(project_id)
-    _schema(state)
     with state.connect() as db:
         row = db.execute("SELECT document FROM research_runs WHERE project=? AND id=?", (project_id, run_id)).fetchone()
     if row is None:
@@ -189,7 +180,6 @@ def get(state: State, project_id: str, run_id: str) -> dict:
 
 def listing(state: State, project_id: str) -> dict:
     state.project(project_id)
-    _schema(state)
     with state.connect() as db:
         return {"runs": [json.loads(row[0]) for row in db.execute("SELECT document FROM research_runs WHERE project=? ORDER BY rowid DESC", (project_id,))],
                 "proposals": [json.loads(row[0]) for row in db.execute("SELECT document FROM research_proposals WHERE project=? ORDER BY rowid DESC", (project_id,))]}
@@ -204,7 +194,6 @@ def cancel(state: State, project_id: str, run_id: str) -> dict:
 
 def proposal(state: State, project_id: str, proposal_id: str) -> dict:
     state.project(project_id)
-    _schema(state)
     with state.connect() as db:
         row = db.execute("SELECT document FROM research_proposals WHERE project=? AND id=?", (project_id, proposal_id)).fetchone()
     if row is None:
@@ -219,7 +208,6 @@ def proposal(state: State, project_id: str, proposal_id: str) -> dict:
 def review(state: State, project_id: str, proposal_id: str, status: str, expected_revision: int, reason: str) -> dict:
     if status not in ("reviewed", "dismissed") or not reason.strip():
         raise ValueError("Choose reviewed/dismissed and provide a reason")
-    _schema(state)
     with state.connect() as db:
         db.execute("BEGIN IMMEDIATE")
         row = db.execute("SELECT document FROM research_proposals WHERE project=? AND id=?", (project_id, proposal_id)).fetchone()
@@ -243,7 +231,6 @@ def run(state: State, project_id: str, urls: list[str], max_bytes: int = 1_000_0
     run_id = run_id or uuid.uuid4().hex
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,127}", run_id):
         raise ValueError("Invalid research run ID")
-    _schema(state)
     locks = state.root / "locks"
     locks.mkdir(exist_ok=True)
     with file_lock(locks / f"research-{run_id}.lock", blocking=False):

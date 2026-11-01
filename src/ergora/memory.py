@@ -8,19 +8,8 @@ from urllib.request import Request, urlopen
 from .state import State, file_lock, now
 
 
-def _schema(state: State):
-    with state.connect() as db:
-        db.execute("""CREATE TABLE IF NOT EXISTS memories (
-            project TEXT, id TEXT, revision INTEGER, document TEXT NOT NULL,
-            PRIMARY KEY(project, id, revision))""")
-        db.execute("""CREATE TABLE IF NOT EXISTS memory_mirrors (
-            project TEXT, endpoint TEXT, id TEXT, revision INTEGER, binding TEXT NOT NULL,
-            PRIMARY KEY(project, endpoint, id))""")
-
-
 def records(state: State, project_id: str, include_deleted: bool = False) -> list[dict]:
     state.project(project_id)
-    _schema(state)
     with state.connect() as db:
         rows = db.execute("""SELECT document FROM memories m WHERE project=? AND revision=(
             SELECT MAX(revision) FROM memories WHERE project=m.project AND id=m.id) ORDER BY rowid DESC""", (project_id,))
@@ -29,7 +18,6 @@ def records(state: State, project_id: str, include_deleted: bool = False) -> lis
 
 def history(state: State, project_id: str, memory_id: str) -> list[dict]:
     state.project(project_id)
-    _schema(state)
     with state.connect() as db:
         result = [json.loads(row[0]) for row in db.execute(
             "SELECT document FROM memories WHERE project=? AND id=? ORDER BY revision", (project_id, memory_id))]
@@ -47,7 +35,6 @@ def save(state: State, project_id: str, text: str, source: dict, memory_id: str 
         not isinstance(source[k], str) or not source[k].strip() for k in ("uri", "revision")
     ):
         raise ValueError("Source must contain nonempty uri and revision strings")
-    _schema(state)
     is_correction = memory_id is not None
     memory_id = memory_id or uuid.uuid4().hex
     with state.connect() as db:
@@ -66,7 +53,6 @@ def save(state: State, project_id: str, text: str, source: dict, memory_id: str 
 
 def delete(state: State, project_id: str, memory_id: str, expected_revision: int) -> dict:
     state.project(project_id)
-    _schema(state)
     with state.connect() as db:
         db.execute("BEGIN IMMEDIATE")
         versions = [json.loads(row[0]) for row in db.execute(
@@ -117,7 +103,6 @@ def _job(binding: dict, operation: str, payload: dict) -> dict:
 
 def sync(state: State, project_id: str, rebuild: bool = False) -> dict:
     project = state.project(project_id)
-    _schema(state)
     # A per-project file lock spans remote requests, without holding a SQLite write transaction.
     lockdir = state.root / "locks"
     lockdir.mkdir(exist_ok=True)

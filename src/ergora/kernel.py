@@ -44,7 +44,6 @@ def available(binding: dict) -> dict:
 
 def _store(state: State, project_id: str, document: dict) -> dict:
     with state.connect() as db:
-        db.execute("CREATE TABLE IF NOT EXISTS kernel_runs (id TEXT PRIMARY KEY, project TEXT, document TEXT)")
         db.execute("INSERT OR REPLACE INTO kernel_runs VALUES (?, ?, ?)", (document["id"], project_id, json.dumps(document)))
     return document
 
@@ -52,7 +51,6 @@ def _store(state: State, project_id: str, document: dict) -> dict:
 def listing(state: State, project_id: str) -> list[dict]:
     state.project(project_id)
     with state.connect() as db:
-        db.execute("CREATE TABLE IF NOT EXISTS kernel_runs (id TEXT PRIMARY KEY, project TEXT, document TEXT)")
         return [json.loads(row[0]) for row in db.execute("SELECT document FROM kernel_runs WHERE project=? ORDER BY rowid DESC", (project_id,))]
 
 

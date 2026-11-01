@@ -12,7 +12,7 @@
 - 兼容交付：A2 完成，分支 `refactor/architecture-foundations`，基线 `cab3a724e421d0a7d9ff6f03dfcbd3225361e2f1`，运行/测试/CI 身份 `4deb8b78690ba1c102c2b08aa6dd3c4054815d6c` 已推送。[兼容基线](architecture/2026-11-01-compatibility.md)、固定旧数据/摘要与 [边界 ADR](architecture/decisions/0001-refactoring-foundations.md) 已交付；Linux 144 passed、17 skipped、36 subtests passed，两 OS CI 41323798679 成功，[独立审查通过](delivery/2026-11-01-compatibility-review.md)，见 [交付记录](delivery/2026-11-01-compatibility.md)。
 - 组件交付：R1 完成，`refactor/architecture-foundations` 上实现 `007a88e`、跨平台测试修正 `1cbc77e` 已推送；集中内置组件描述及 Python/CLI/Web/安装配方消费者。非 editable wheel 的完整 Linux 回归 152 passed、17 skipped、36 subtests passed，冻结 283 文件身份保持；浏览器 / 两 OS CI 41333003887 / [独立审查](delivery/2026-11-02-components-review.md)均通过，见 [R1 记录](delivery/2026-11-02-components.md)。
 - 合同交付：R2 完成，基线 `9808870`，最终运行/测试 `d402d1b` 已推送。共享 schema / 字段错误 / 原身份规则已接入，初审 P1 数值边界已修正；最终非 editable wheel 的 Linux 172 passed、17 skipped、36 subtests passed，基础 CLI / 两 OS CI 41336217446 / [独立复审](delivery/2026-11-02-schemas-review.md)均通过，见 [R2 记录](delivery/2026-11-02-schemas.md)。
-- 活动切片：R3.1 的设计及验收已登记在 [R3 记录](delivery/2026-11-02-storage.md)。先集中 16 表初始化、有序版本、迁移前 DB 备份与旧客户端拒写，再单独完成 R3.2 离线资产备份恢复；源码尚待开始，未迁移实际用户库。
+- 活动切片：R3.1 已实现，基线 `0d86315`；16 表初始化、有序版本、迁移前 DB 备份与旧客户端拒写已接入，最终非 editable wheel 的 Linux 182 passed、17 skipped、36 subtests passed；两 OS CI / 独立审查待完成，见 [R3 记录](delivery/2026-11-02-storage.md)。R3.2 离线资产备份恢复尚未实现，未迁移实际用户库。
 - 默认分支：M2 完成。用户已设置，2026-11-01 15:30 UTC 远端 HEAD 实际指向 main，与当时主线 `0027f3f` 一致，[独立核对通过](delivery/2026-11-01-default-branch-review.md)，见 [设置记录](delivery/2026-11-01-default-branch.md)。
 - 下一动作：A1/A2 → R1–R8 → P0 → P1。每个节点完成后更新状态、实际检查和独立审查，再继续下一项；用户无需逐节点重复授权。不要把规划中的统一任务、低代码、会话或远端执行写成已实现。
 - 已交付平台范围：原生 Windows 控制面、CLI、项目 / 记忆 / Skill / 资料观察及支持的原生工具；完整六阶段与 Linux 专用工具走 Linux/WSL2。后续仍按实际能力逐项验收。
@@ -108,4 +108,4 @@ S0–S10 后续范围现在由 S11 详细计划承接；尚未测得收益的优
 - P1：低代码、逐项目工单、真实可选 harness/会话、训练实验与受评估的持续改进。
 - P2/P3：通信、远端隔离、搜索/格式互操作、多用户与规模化，按固定版本和真实需求分阶段验证，不进入默认必装。
 
-每次上下文压缩、换机、节点切换后，重读本文件、详细节点及其交付记录，核对 Git 后从未完成项继续。M1/M2/A1/A2/R1/R2 已完成，R3.1 待开始源码；尚无实际用户数据迁移，各 M/A/R/F 节点只以登记表和交付证据为准。
+每次上下文压缩、换机、节点切换后，重读本文件、详细节点及其交付记录，核对 Git 后从未完成项继续。M1/M2/A1/A2/R1/R2 已完成，R3.1 已实现待最终验收；尚无实际用户数据迁移，各 M/A/R/F 节点只以登记表和交付证据为准。
