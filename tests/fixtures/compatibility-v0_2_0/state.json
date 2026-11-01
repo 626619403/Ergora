@@ -1,0 +1,418 @@
+{
+  "schema_version": 1,
+  "source_commit": "0027f3f9bf9f03a62afe8710970587b66103f7fe",
+  "description": "Synthetic old-format storage/read-model fixture, not executable benchmark evidence. Historical evaluator/Forge locations and identities are intentionally unavailable; only @HOME@ and @REPO@ are test-local relocation tokens.",
+  "project": "legacy-project",
+  "rows": {
+    "projects": [
+      {
+        "id": "legacy-project",
+        "document": {
+          "schema_version": 1,
+          "id": "legacy-project",
+          "repo": "@REPO@",
+          "created": "2026-01-01T00:00:00+00:00",
+          "revision": 3,
+          "bindings": {
+            "inspector": {
+              "tool": "codex"
+            },
+            "planner": {
+              "tool": "codex"
+            },
+            "implementer": {
+              "tool": "codex"
+            },
+            "reviewer": {
+              "tool": "codex"
+            },
+            "experiment-planner": {
+              "tool": "codex"
+            },
+            "performance-analyst": {
+              "tool": "codex"
+            },
+            "kernel-tuner": {
+              "tool": "codex"
+            },
+            "memory": {
+              "tool": "sqlite"
+            },
+            "optimizer": {
+              "tool": "manual"
+            },
+            "research": {
+              "tool": "urls"
+            },
+            "scheduler": {
+              "tool": "manual"
+            },
+            "kernel": {
+              "tool": "manual"
+            }
+          }
+        }
+      }
+    ],
+    "agent_runs": [
+      {
+        "id": "agent-1",
+        "project": "legacy-project",
+        "document": {
+          "id": "agent-1",
+          "project": "legacy-project",
+          "role": "implementer",
+          "binding": {
+            "tool": "command",
+            "argv": [
+              "synthetic-missing-program"
+            ]
+          },
+          "project_revision": 3,
+          "started": "2026-01-01T00:00:00+00:00",
+          "finished": "2026-01-01T00:00:00+00:00",
+          "status": "failed",
+          "error": "Synthetic missing executable",
+          "context": {
+            "skills": [],
+            "memories": []
+          },
+          "template": null,
+          "prompt_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        }
+      }
+    ],
+    "drafts": [
+      {
+        "project": "legacy-project",
+        "id": "draft-1",
+        "document": {
+          "schema_version": 1,
+          "project": "legacy-project",
+          "id": "draft-1",
+          "kind": "repository-governance",
+          "revision": 2,
+          "input": {
+            "goal": "Make this existing repository navigable and prevent one recurring dependency-boundary regression.",
+            "allowed_paths": [
+              "AGENTS.md",
+              "ARCHITECTURE.md",
+              "docs/governance",
+              "tests/architecture"
+            ],
+            "acceptance": [
+              "The repository map links to the actual build/test commands and architecture owner.",
+              "A regression test reproduces the selected boundary violation and rejects new violations.",
+              "Existing external behavior and the accepted baseline are preserved."
+            ],
+            "constraints": [
+              "No whole-repository rewrite or formatting sweep.",
+              "Trusted CI policy and accepted baseline remain outside the candidate workspace."
+            ],
+            "risk": "standard",
+            "work_units": [
+              {
+                "id": "knowledge-map",
+                "depends_on": [],
+                "paths": [
+                  "AGENTS.md",
+                  "ARCHITECTURE.md",
+                  "docs/governance"
+                ],
+                "instructions": "Create a short navigation map and document existing boundaries, owners, trusted checks and known debt; preserve application behavior."
+              },
+              {
+                "id": "boundary-test",
+                "depends_on": [],
+                "paths": [
+                  "tests/architecture"
+                ],
+                "instructions": "Add one focused architecture test for the accepted module boundary using the trusted baseline; do not change baseline policy."
+              }
+            ]
+          },
+          "validation": {
+            "status": "PASS",
+            "task_type": "repository-governance",
+            "input_sha256": "987fff485523e1399b0c3001545580d097a1bfc1dd1b4bb5b49a9353c8755300"
+          },
+          "updated": "2026-01-01T00:00:00+00:00",
+          "state": "draft"
+        }
+      }
+    ],
+    "memories": [
+      {
+        "project": "legacy-project",
+        "id": "memory-1",
+        "revision": 1,
+        "document": {
+          "project": "legacy-project",
+          "id": "memory-1",
+          "revision": 1,
+          "text": "Run the reviewed check.",
+          "source": {
+            "uri": "manual:synthetic",
+            "revision": "1"
+          },
+          "observed": "2026-01-01T00:00:00+00:00",
+          "status": "active"
+        }
+      },
+      {
+        "project": "legacy-project",
+        "id": "memory-1",
+        "revision": 2,
+        "document": {
+          "project": "legacy-project",
+          "id": "memory-1",
+          "revision": 2,
+          "text": "Run the current reviewed check.",
+          "source": {
+            "uri": "manual:synthetic",
+            "revision": "2"
+          },
+          "observed": "2026-01-01T00:00:00+00:00",
+          "status": "active"
+        }
+      }
+    ],
+    "memory_mirrors": [
+      {
+        "project": "legacy-project",
+        "endpoint": "https://example.invalid/reme",
+        "id": "memory-1",
+        "revision": 1,
+        "binding": {
+          "tool": "reme",
+          "endpoint": "https://example.invalid/reme"
+        }
+      }
+    ],
+    "skill_versions": [
+      {
+        "project": "legacy-project",
+        "digest": "338a61c2e9dbcab71713578731d61785353b560c5da2302c7329bf6e8cca9275",
+        "document": {
+          "name": "compatibility-skill",
+          "description": "Synthetic versioned compatibility fixture",
+          "project": "legacy-project",
+          "digest": "338a61c2e9dbcab71713578731d61785353b560c5da2302c7329bf6e8cca9275",
+          "path": "@HOME@/skills/compatibility-skill",
+          "files": {
+            "SKILL.md": {
+              "sha256": "bc9ccc001e6a04f68cf88e0a6e7a9ae44d80da1a39bb878f27a44ed5dac59346",
+              "executable_bits": 0
+            },
+            "scripts/check.py": {
+              "sha256": "cef69e10522d3740947f7cc9690888abbf678e40656043ff938594015d700022",
+              "executable_bits": 0
+            }
+          },
+          "parent": null,
+          "hypothesis": "Synthetic historical baseline",
+          "source": "synthetic:fixture",
+          "created": "2026-01-01T00:00:00+00:00"
+        }
+      }
+    ],
+    "skill_heads": [
+      {
+        "project": "legacy-project",
+        "name": "compatibility-skill",
+        "digest": "338a61c2e9dbcab71713578731d61785353b560c5da2302c7329bf6e8cca9275",
+        "revision": 1
+      }
+    ],
+    "skill_events": [
+      {
+        "project": "legacy-project",
+        "name": "compatibility-skill",
+        "document": {
+          "action": "baseline",
+          "to": "338a61c2e9dbcab71713578731d61785353b560c5da2302c7329bf6e8cca9275",
+          "reason": "Synthetic historical baseline",
+          "at": "2026-01-01T00:00:00+00:00"
+        }
+      }
+    ],
+    "evaluation_suites": [
+      {
+        "project": "legacy-project",
+        "digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "document": {
+          "project": "legacy-project",
+          "digest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "manifest": {
+            "schema_version": 1,
+            "evaluator_argv": [
+              "/historical-runtime/python",
+              "/historical-runtime/evaluate.py"
+            ],
+            "evaluator_files": [
+              "/historical-runtime/evaluate.py"
+            ],
+            "timeout_seconds": 5,
+            "cases": [
+              {
+                "id": "train",
+                "split": "train",
+                "input": {
+                  "synthetic": true
+                }
+              },
+              {
+                "id": "validation",
+                "split": "validation",
+                "input": {
+                  "synthetic": true
+                }
+              },
+              {
+                "id": "holdout",
+                "split": "holdout",
+                "input": {
+                  "synthetic": true
+                }
+              }
+            ],
+            "minimum_gain": 0.1,
+            "max_reported_cost": 1,
+            "file_sha256": {
+              "/historical-runtime/python": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+              "/historical-runtime/evaluate.py": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+            },
+            "path_bindings": {}
+          },
+          "created": "2026-01-01T00:00:00+00:00"
+        }
+      }
+    ],
+    "evaluations": [
+      {
+        "id": "evaluation-1",
+        "project": "legacy-project",
+        "document": {
+          "id": "evaluation-1",
+          "project": "legacy-project",
+          "skill": "338a61c2e9dbcab71713578731d61785353b560c5da2302c7329bf6e8cca9275",
+          "name": "compatibility-skill",
+          "suite": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "started": "2026-01-01T00:00:00+00:00",
+          "finished": "2026-01-01T00:00:00+00:00",
+          "status": "failed",
+          "cases": [],
+          "reported_cost": 0,
+          "cost_limit": 1,
+          "error": "Synthetic historical evaluator unavailable",
+          "output": "@HOME@/evaluations/evaluation-1"
+        }
+      }
+    ],
+    "optimizations": [
+      {
+        "id": "optimization-1",
+        "project": "legacy-project",
+        "document": {
+          "id": "optimization-1",
+          "project": "legacy-project",
+          "status": "budget_exhausted",
+          "baseline": "338a61c2e9dbcab71713578731d61785353b560c5da2302c7329bf6e8cca9275",
+          "suite": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "started": "2026-01-01T00:00:00+00:00",
+          "finished": "2026-01-01T00:00:00+00:00"
+        }
+      }
+    ],
+    "research_runs": [
+      {
+        "id": "research-1",
+        "project": "legacy-project",
+        "cancel": 1,
+        "document": {
+          "id": "research-1",
+          "project": "legacy-project",
+          "status": "cancelled",
+          "started": "2026-01-01T00:00:00+00:00",
+          "finished": "2026-01-01T00:00:00+00:00",
+          "request": {
+            "urls": [
+              "https://example.invalid/source"
+            ],
+            "max_bytes": 1000,
+            "timeout": 5,
+            "allow_private": false
+          },
+          "bytes_used": 0,
+          "results": []
+        }
+      }
+    ],
+    "research_proposals": [
+      {
+        "id": "proposal-1",
+        "project": "legacy-project",
+        "document": {
+          "id": "proposal-1",
+          "project": "legacy-project",
+          "url": "https://example.invalid/source",
+          "sha": "092766dec78b7639318e74321fc954b53af7b400741c67904f9f15ddcf73bec8",
+          "previous_sha": null,
+          "content_type": "text/plain; charset=utf-8",
+          "status": "reviewed",
+          "revision": 2,
+          "reason": "Synthetic historical source review",
+          "created": "2026-01-01T00:00:00+00:00"
+        }
+      }
+    ],
+    "source_heads": [
+      {
+        "project": "legacy-project",
+        "url": "https://example.invalid/source",
+        "sha": "092766dec78b7639318e74321fc954b53af7b400741c67904f9f15ddcf73bec8"
+      }
+    ],
+    "source_snapshots": [
+      {
+        "project": "legacy-project",
+        "url": "https://example.invalid/source",
+        "sha": "092766dec78b7639318e74321fc954b53af7b400741c67904f9f15ddcf73bec8",
+        "document": {
+          "url": "https://example.invalid/source",
+          "sha": "092766dec78b7639318e74321fc954b53af7b400741c67904f9f15ddcf73bec8",
+          "content_type": "text/plain; charset=utf-8",
+          "fetched": "2026-01-01T00:00:00+00:00"
+        }
+      }
+    ],
+    "kernel_runs": [
+      {
+        "id": "kernel-1",
+        "project": "legacy-project",
+        "document": {
+          "id": "kernel-1",
+          "project": "legacy-project",
+          "project_revision": 3,
+          "binding": {
+            "tool": "forgekernel",
+            "checkout": "/historical-runtime/forge",
+            "python": "/historical-runtime/python",
+            "task": "/historical-runtime/task"
+          },
+          "status": "outcome_unknown",
+          "requires_reconciliation": true,
+          "started": "2026-01-01T00:00:00+00:00",
+          "finished": "2026-01-01T00:00:00+00:00",
+          "error": "Synthetic interruption after native submission",
+          "native": null
+        }
+      }
+    ]
+  },
+  "assets": {
+    "skills/compatibility-skill/SKILL.md": "---\nname: compatibility-skill\ndescription: Synthetic versioned compatibility fixture\n---\nUse the reviewed checks.\n",
+    "skills/compatibility-skill/scripts/check.py": "print(\"fixture check\")\n",
+    "sources/legacy-project/092766dec78b7639318e74321fc954b53af7b400741c67904f9f15ddcf73bec8.raw": "Synthetic source snapshot.\n"
+  }
+}

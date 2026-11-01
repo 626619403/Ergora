@@ -9,7 +9,7 @@
 - 当前交付：S11 / A0 完成，形成 [下一阶段详细计划](plans/2026-11-01-all-in-one.md) 和 [架构基线](architecture/2026-11-01-baseline.md)，静态核查及独立文档审查通过。主体计划提交 `7d9d246fccf7c8226e5028bfe52a97b7403726a6` 已推送 `feat/windows-support` 并核对远端一致；审查后仅补状态/交接信息，实际检查在 [A0 交付记录](delivery/2026-11-01-all-in-one-plan.md)。
 - 主线交付：M1 完成。已从研究基线创建 `main` 并快进纳入 Windows/计划历史；主线提交 `ae5319d57f1a647c8ab8874039fd6245ce423e5f` 已推送并核对一致。main CI 41319564418（Windows/Ubuntu）成功，[独立审查通过](delivery/2026-11-01-mainline-review.md)，范围内无 findings；见 [主线交付记录](delivery/2026-11-01-mainline.md)。
 - 审计交付：A1 完成，[调用与影响审计](architecture/2026-11-01-audit.md)和 113 文件 / 701 函数的日期索引静态核查通过，[独立审查通过](delivery/2026-11-01-audit-review.md)；训练人工执行边界 P2 已修正复核，无未解决 findings，见 [交付记录](delivery/2026-11-01-audit.md)。
-- 活动切片：A2，固定旧数据/摘要样例、兼容性命令、操作成本及边界 ADR；不改生产合同或冻结内容。既有回归实际 109 passed、17 skipped、36 subtests passed；具体范围随 A2 记录，不承接历史计数。
+- 活动切片：A2，分支 `refactor/architecture-foundations`，基线 `cab3a724e421d0a7d9ff6f03dfcbd3225361e2f1`。已整理 [兼容基线](architecture/2026-11-01-compatibility.md)、固定旧数据/摘要与 [边界 ADR](architecture/decisions/0001-refactoring-foundations.md)；最终 Linux 组合 144 passed、17 skipped、36 subtests passed，两 OS CI 与独立审查待收口，见 [交付记录](delivery/2026-11-01-compatibility.md)。不改生产合同或冻结内容。
 - 默认分支：M2 完成。用户已设置，2026-11-01 15:30 UTC 远端 HEAD 实际指向 main，与当时主线 `0027f3f` 一致，[独立核对通过](delivery/2026-11-01-default-branch-review.md)，见 [设置记录](delivery/2026-11-01-default-branch.md)。
 - 下一动作：A1/A2 → R1–R8 → P0 → P1。每个节点完成后更新状态、实际检查和独立审查，再继续下一项；用户无需逐节点重复授权。不要把规划中的统一任务、低代码、会话或远端执行写成已实现。
 - 已交付平台范围：原生 Windows 控制面、CLI、项目 / 记忆 / Skill / 资料观察及支持的原生工具；完整六阶段与 Linux 专用工具走 Linux/WSL2。后续仍按实际能力逐项验收。

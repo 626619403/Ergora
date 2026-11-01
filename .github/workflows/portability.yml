@@ -2,7 +2,7 @@ name: Portability
 
 on:
   push:
-    branches: ["feat/windows-support", "feat/evolution-console", "main", "master"]
+    branches: ["feat/windows-support", "feat/evolution-console", "refactor/**", "main", "master"]
   pull_request:
   workflow_dispatch:
 
@@ -40,12 +40,17 @@ jobs:
       - name: Native application regression
         shell: python
         run: |
-          import subprocess, sys
+          import os, subprocess, sys
+          from pathlib import Path
           suites = ['tests', 'src/ergora/data/reference/platform/upstream/platform/tests/test_contracts.py']
+          environment = dict(os.environ)
           if sys.platform == 'linux':
+              environment['PYTHONPATH'] = str(Path('src/ergora/data/reference/platform/upstream/platform').resolve())
               suites += ['src/ergora/data/reference/platform/upstream/platform/tests/test_portable.py']
+              suites += ['src/ergora/data/reference/platform/upstream/platform/tests/test_workflow.py::AdapterTests',
+                         'src/ergora/data/reference/platform/upstream/platform/tests/test_runtime.py']
           result = subprocess.run([sys.executable, '-m', 'pytest', '-q', '--tb=short', *suites],
-              stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding='utf-8')
+              stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding='utf-8', env=environment)
           print(result.stdout, flush=True)
           if result.returncode:
               details = result.stdout[-3500:].replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')

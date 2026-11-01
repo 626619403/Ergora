@@ -1,0 +1,67 @@
+{
+  "source_commit": "0027f3f9bf9f03a62afe8710970587b66103f7fe",
+  "payload": {
+    "schema_version": 1,
+    "label": "兼容 ✓",
+    "values": [
+      1,
+      0.5,
+      null
+    ],
+    "scope": {
+      "paths": [
+        "src",
+        "tests"
+      ],
+      "enabled": true
+    }
+  },
+  "compact_utf8": "{\"label\":\"兼容 ✓\",\"schema_version\":1,\"scope\":{\"enabled\":true,\"paths\":[\"src\",\"tests\"]},\"values\":[1,0.5,null]}",
+  "compact_sha256": "42006e97289eba594ee5e2cac8e1c5323283a66e575ef35c0e7e5d814b83e93b",
+  "evaluation_utf8": "{\"label\": \"兼容 ✓\", \"schema_version\": 1, \"scope\": {\"enabled\": true, \"paths\": [\"src\", \"tests\"]}, \"values\": [1, 0.5, null]}",
+  "evaluation_sha256": "bd59b7200356d1883aa1422cfc148929bbc574dc72f181bd31df9c9cb9547897",
+  "skill_content": {
+    "SKILL.md": "---\nname: compatibility-skill\ndescription: Synthetic versioned compatibility fixture\n---\nUse the reviewed checks.\n",
+    "scripts/check.py": "print(\"fixture check\")\n"
+  },
+  "skill_identity": {
+    "plain": {
+      "digest": "338a61c2e9dbcab71713578731d61785353b560c5da2302c7329bf6e8cca9275",
+      "files": {
+        "SKILL.md": {
+          "sha256": "bc9ccc001e6a04f68cf88e0a6e7a9ae44d80da1a39bb878f27a44ed5dac59346",
+          "executable_bits": 0
+        },
+        "scripts/check.py": {
+          "sha256": "cef69e10522d3740947f7cc9690888abbf678e40656043ff938594015d700022",
+          "executable_bits": 0
+        }
+      }
+    },
+    "executable": {
+      "digest": "51b76fba5237f7d2d78212712a3b3eca472f5a46ed42550b59e13d4d47a20788",
+      "files": {
+        "SKILL.md": {
+          "sha256": "bc9ccc001e6a04f68cf88e0a6e7a9ae44d80da1a39bb878f27a44ed5dac59346",
+          "executable_bits": 0
+        },
+        "scripts/check.py": {
+          "sha256": "cef69e10522d3740947f7cc9690888abbf678e40656043ff938594015d700022",
+          "executable_bits": 73
+        }
+      }
+    }
+  },
+  "compiled": {
+    "repository-governance": {
+      "canonical_sha256": "7855d466b9bb56ef0fbb1f07246eafae3b109462de8001e385bee9ffbf7e8ea0",
+      "request_sha256": "081061f1724eb621f753045e0932691ba63572265a2654648466c430a72893ec",
+      "profile_sha256": "2bdb50d81344b572d573c2e13a067ae288a1105df5ec49f9d0f9b6eeb26cc2a4"
+    },
+    "large-change": {
+      "canonical_sha256": "e976f772930dc00faf671c92318c83d792bd6d75b414ba8ebe3c02f04dddbaac",
+      "request_sha256": "91837f42dd764eac99184cefbbf21a041a3076ad526ceb48c8e70cb41d9af900",
+      "profile_sha256": "40711a913ab14ac3f1c60092edaecdb36db82c0d5e73e5788ebc9b8b199e1ea9"
+    }
+  }
+}
