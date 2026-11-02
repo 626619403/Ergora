@@ -2,6 +2,8 @@
 
 日期：2026-11-03。审查者：独立 fresh-context reviewer `/root/f3_tasks_read_review`。先读取原始差异及新文件，再读取作者交付叙述；未继承实现会话。使用 `maintainable-project-delivery` 与 `review-pr`，未修改生产源码、安装、真实服务或旧任务。
 
+最终结论：**F3.1 需求符合性与可维护性均通过，无未解决 finding。** 三组 P2 及后续 Windows 测试夹具问题已闭环；最终测试候选 `e9b53f7d9e0bf5ddf7090ec6a76e8763ca42a732` 的精确两 OS CI 与实际远端身份已独立核实。下文保留初审、首轮 CI 失败及各次修正的历史身份，最终证据见末节。此通过只覆盖 F3.1 本地合同只读入口，不代表完整 F3 或实时运行验收。
+
 ## 范围与身份
 
 审查基线为 `c272ce1`，生产前基线 `67d88ec`。检查完整 tracked diff，另检查新增 `src/ergora/tasks.py`、`tests/test_tasks.py`；生产变化为 `cli.py`、`web.py`、`tasks.py`、`reference.py`。同时读根 AGENTS、PLAN、详细计划 F3、活动交付记录、使用/项目/Agent 手册、架构及 reference 边界文档，并沿原 `core`、`projects`、`adapter`、`contracts` 和选择式 executor 核对合同来源。冻结 reference 文件无本切片 diff。
@@ -54,3 +56,29 @@
 - 审阅 `review-fixed-legacy-journey.py/json/log` 并核对 JSON 与日志相等：最终基础安装读取 `repository-governance` 与 `large-change` 两个真实旧任务，返回 spec 及冻结绑定、`runtime_status=not_queried`；所检查顶层任务文件前后摘要一致。脚本只复制项目/策略输入到独立控制目录并显式采用，读取原 task store；未从该旅程推导实时状态、模型效果或新的六阶段验收。审查者本轮未重跑涉及实际旧任务的旅程。
 
 本轮读取的 CI 归档 `ci/ci-html-run-selection.json` 对应 [Portability 41519399689](https://github.com/626619403/Ergora/actions/runs/41519399689)，原始 commit 链接精确匹配 `13e9f33623c5811547bdb43d3b2b0218b62ffda2`；当时为 `WORKFLOW_RUN_STATUS_IN_PROGRESS`。已读该提交的 workflow：Ubuntu/Python 3.11 与 Windows/Python 3.12 均构建非 editable wheel、核对冻结参考并运行适用回归，Windows 另验 PowerShell 5.1 安装升级。**最终本地证据已通过；两平台结果尚未据此宣称通过，F3.1 交付状态需待精确 CI 结果后收口。**
+
+### 首轮 CI 失败与 Windows 夹具修正复审
+
+精确 `13e9f33…` 的 CI 41519399689 最终为 failure，**不计为两 OS 通过**。独立读取官方归档：Ubuntu job `125531223034` 的构建、参考身份和回归三步均为 success；Windows job `125531223412` 构建、参考身份及 PowerShell 安装升级为 success，Native application regression 为 failure。Windows 原始 HTML SHA256 为 `6c6cd6ae54eaf396c3933615496933e46f40c916cdf772795aa08b1c6a6b6eeb`；失败注释的 24 个 setup errors 追溯到 `test_tasks.task_store` → `create_task` → 冻结 `portable.load_package/read_json/_read_bytes`，最终为 `os.O_NOFOLLOW` 在 Windows 不存在。读取用例本身尚未进入该 fixture 的各个断言，不能将这轮失败解释为正式任务读取已经通过 Windows 验收。
+
+相对 `13e9f33…` 的本轮行为 diff 仅为 `tests/test_tasks.py:28`、`:34` 的 fixture 子进程：为 `-S` 导入增加实际 Ergora 包根，在 Windows 将 `portable._read_bytes` 和 `adapter.read_raw` 绑定已有 `_read_windows_contract`。顺序为导入模块、应用读取适配、再调用 `create_task`，与生产 `reference._compiler_main` 的现有 Windows 映射一致；不禁用安全读取、不改冻结 reference、不改变测试断言或产品路径。该测试文件 SHA256 为 `03c194ad194ad9cc8ebce5888d4208871a641e39d03b0840f8b826c1fd87cd4c`。
+
+此修正的结构/行为复审通过，无新增 finding。独立安装包定向 `PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m pytest -q tests/test_tasks.py -p no:cacheprovider` 为 **26 passed，13.25 秒**；作者另记相关 34 项为 13.26 秒通过。独立重新逐项比较生产目录 339 文件与最终 `2fa191…` 包 manifest 一致，`git diff --check` 通过。由于产品源码和 wheel 身份未变，既有最终 Linux 350 项、性能和旧任务旅程继续只绑定该生产身份；未为测试夹具变动再重复整套 Linux 回归。
+
+**Windows fixture 的实际运行尚须新的测试修正候选及精确两 OS CI。** 当前只确认修正方向和 Linux 回归，不从本机静态检查推导 Windows 成功；F3.1 最终交付仍待新 CI。
+
+### 最终精确 CI 与远端身份复核
+
+最终测试/文档候选为 `e9b53f7d9e0bf5ddf7090ec6a76e8763ca42a732`，生产源码仍为已复审的 `13e9f33…` 身份。独立检查两候选间 `src` 与 `.github/workflows` diff 为空；当前 `tests/test_tasks.py` SHA256 仍为 `03c194ad194ad9cc8ebce5888d4208871a641e39d03b0840f8b826c1fd87cd4c`，即已复审的 Windows fixture 修正。
+
+独立解析 `.ergora/checks/f3-tasks-read/ci-windows-fix/` 的官方 run/job HTML，并核对来源文件大小与 SHA256 均匹配 `ci-html-status.json`：
+
+- [Portability 41521060898](https://github.com/626619403/Ergora/actions/runs/41521060898) 为 completed / success，run 的 commit 链接精确匹配上述完整候选 SHA。
+- Ubuntu/Python 3.11 job [125536888396](https://github.com/626619403/Ergora/actions/runs/41521060898/job/125536888396) 的 `Build and install wheel`、`Packaged reference identity`、`Native application regression` 均为 success。
+- Windows/Python 3.12 job [125536888713](https://github.com/626619403/Ergora/actions/runs/41521060898/job/125536888713) 的上述三步及 `Windows PowerShell 5.1 installer and upgrade` 均为 success。逐步确认已完成标志、job ID 和日志 URL 内的完整候选 SHA；未从其他提交、仅 workflow 总标题或 skipped 步骤推导通过。
+- 独立重新计算 `2fa1915726503715d312e839c7d0672165503c7f855b23ecdb77c7bdd29da3e7` wheel 摘要，并逐文件比较源码、wheel 和最终 manifest：339 文件保持一致。生产源码不变，最终 Linux 350 项、1000 合同性能、两旧任务无 SDK 只读及冻结 283 文件证据仍绑定此前记录的同一生产身份；本轮未重复整套回归。
+- 独立执行 `git ls-remote origin refs/heads/refactor/architecture-foundations`，实际远端返回 `e9b53f7d9e0bf5ddf7090ec6a76e8763ca42a732`，与本机 HEAD、精确 CI 候选一致；`git diff --check` 通过。
+
+首轮失败 41519399689 的原始归档仍单独保留在 `ci/`，其 failure 状态已重新核实；新成功证据使用 `ci-windows-fix/`，未覆盖或改写首次 Windows fixture 失败。
+
+**F3.1 最终独立审查通过，全部本切片验收项已闭环，无待补 CI 或身份项。** 保留已说明的规模/缓存/子进程内存测量限制及每页 O(N) 名称枚举成本；不连接 Temporal、不推断运行成功、不写旧任务的边界保持。编译/创建、实时状态、提交/批准/取消、恢复与导出继续分别属于 F3.2–F3.4。
