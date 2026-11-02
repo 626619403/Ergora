@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -315,6 +316,30 @@ def task_creation(project: dict, home: Path, operation: str, payload: dict) -> d
     if result.returncode:
         lines = result.stderr.strip().splitlines()
         raise ValueError(lines[-1] if lines else f'Task creation process exited with status {result.returncode}; inspect creation status')
+    return json.loads(result.stdout)
+
+
+def task_runtime_status(project: dict, spec: dict, *, run_id: str | None, timeout: int) -> dict:
+    """Query the installed native transport without loading its globals into Web/CLI."""
+    if importlib.util.find_spec('temporalio') is None:
+        raise ValueError('Task runtime queries require the optional Temporal SDK; install ergora[temporal] in this environment')
+    execution = project['registration']['definition']['execution']
+    installation = Path(execution['installation'])
+    environment = dict(os.environ, PYTHONDONTWRITEBYTECODE='1', PYTHONUTF8='1',
+                       AGENTFLOW_CONFIG_DIR=execution['config_directory'],
+                       AGENTFLOW_STATE_DIR=execution['state_directory'])
+    environment['PYTHONPATH'] = os.pathsep.join(map(str, (
+        Path(__file__).parent.parent, installation / 'local', installation / 'upstream/platform')))
+    try:
+        result = subprocess.run([sys.executable, '-P', '-c',
+                                 'from ergora.reference_task_runtime import main;main()'],
+                                input=json.dumps({'spec': spec, 'run_id': run_id, 'timeout': timeout}, allow_nan=False),
+                                capture_output=True, text=True, encoding='utf-8', env=environment, timeout=timeout + 5)
+    except subprocess.TimeoutExpired as error:
+        raise ValueError('Task runtime query process timed out; execution state remains unknown') from error
+    if result.returncode:
+        lines = result.stderr.strip().splitlines()
+        raise ValueError(lines[-1] if lines else f'Task runtime query process exited with status {result.returncode}')
     return json.loads(result.stdout)
 
 

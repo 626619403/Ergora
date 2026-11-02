@@ -89,6 +89,11 @@ def parser() -> argparse.ArgumentParser:
     show_task = operations.add_parser("show")
     show_task.add_argument("project")
     show_task.add_argument("task_id")
+    status_task = operations.add_parser("status", help="Query original Temporal facts without starting or changing execution")
+    status_task.add_argument("project")
+    status_task.add_argument("task_id")
+    status_task.add_argument("--run-id", help="Pin a previously observed native run ID")
+    status_task.add_argument("--timeout", type=int, default=20)
     for name in ("preview", "create"):
         operation = operations.add_parser(name)
         operation.add_argument("project")
@@ -329,6 +334,8 @@ def main(argv: list[str] | None = None) -> int:
                 output = tasks.listing(state, args.project, limit=args.limit, after=args.after)
             elif args.operation == "show":
                 output = tasks.show(state, args.project, args.task_id)
+            elif args.operation == "status":
+                output = tasks.status(state, args.project, args.task_id, run_id=args.run_id, timeout=args.timeout)
             elif args.operation == "creation":
                 output = tasks.creation(state, args.project, args.task_id)
             elif args.operation == "resume-create":

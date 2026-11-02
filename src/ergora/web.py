@@ -254,6 +254,10 @@ def create_app(home: Path | None = None) -> FastAPI:
     def formal_task_creation(project_id: str, task_id: str):
         return tasks.creation(state, project_id, task_id)
 
+    @application.get("/api/projects/{project_id}/tasks/{task_id}/status")
+    def formal_task_status(project_id: str, task_id: str, run_id: str | None = None, timeout: int = 20):
+        return tasks.status(state, project_id, task_id, run_id=run_id, timeout=timeout)
+
     @application.post("/api/projects/{project_id}/tasks/{task_id}/resume-create")
     def resume_formal_task_creation(project_id: str, task_id: str, body: TaskResumePayload):
         return tasks.resume_create(state, project_id, task_id, body.revision, body.intent_sha256)

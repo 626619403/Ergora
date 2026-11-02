@@ -33,3 +33,17 @@ tasks.status及CLI/API已实现；reference_task_runtime是新的专用原生读
 
 
 F3.3a最终源码定向26 passed（22.12秒），原始结果fixture-fixed-targeted.log；首轮夹具失败保留source-targeted.log。当前26项仅覆盖原Transport+可控SDK端口及CLI/API，不是实际Temporal服务验收。准备新的fresh-context结构/性能审计，以及最终非editable包/实际旧任务只读旅程/精确CI；原始服务和在途任务不做变更。
+
+
+## F3.3a独立审查与发行身份
+
+[独立源码/结构/性能审查](2026-11-03-task-runtime-read-review.md)通过，无确认finding；审查者独立26项检查通过（23.51秒）。真实父进程兜底探针在timeout=1时约6.010秒明确超时并回收子进程，父进程未导入SDK。当前非editable wheel SHA256为816b72d75fca0ae8c8e25911d88d165f8e2618c278c57fb7108305314747e43f，342文件×源码/wheel/开发与基础两安装一致，冻结283文件通过，独立只读重算一致。
+
+实际既有两模板任务通过48次CLI查询：当前服务均返回权威NOT_FOUND、run_id=null，两个原任务目录20个文件字节保持。每个模板20次样本的CLI端到端中位1224.93/1218.01ms、最大1444.52/1295.10ms。该测量包含本地合同/安装身份预检、CLI/子进程/SDK启动及不存在分支RPC，不是纯RPC延迟，也不代表存在运行的查询性能；没有优化收益或并发吞吐结论。基础安装在真实无SDK时明确返回安装指导。
+
+这些真实服务查询**没有取得旧run**，不证明真实running/completed、history输入比对或找到run后的固定；原因未在本切片确定。对应语义当前仅由原Transport+受控SDK合同覆盖，将在F3.4的新两模板完整旅程继续实测。不为扩展只读验收去修改现有服务、启动模型或接管旧任务。
+
+准备推送已源码复审候选以触发精确两OS CI；完整适用回归及最终身份/CI独立复核单独记账，当前不把本切片标为完成。
+
+
+当前816b…包的完整适用Linux回归396 passed、19 skipped、36 subtests passed（230.11秒），只含已有Starlette弃用警告。该结果与源码定向/真实只读旅程分别保存，精确两OS CI和最终审计仍待完成。

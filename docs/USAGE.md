@@ -132,7 +132,7 @@ ergora task show my-project TASK_ID
 
 同源API为 `GET /api/projects/ID/tasks?limit=50&after=CURSOR` 和 `GET /api/projects/ID/tasks/TASK_ID`。默认每页校验50个候选目录项，可设1–100；原样使用返回的不透明ASCII游标 `next_after` 继续，直到其为null；游标不是任务ID或文件路径。每页流式枚举全部目录名再选取候选窗口，因此枚举时间随任务数增加；`inspected_entries`只计该页校验项数。其他项目或损坏目录可能产生空页，仍应沿游标前进。`items`只包含匹配该项目/Git根/tracker并通过合同结构与摘要校验的任务；归属已确认但合同损坏的条目进入 `errors`，不能判断归属的条目只计入 `unreadable_count`。
 
-详情返回原始spec、冻结项目、可选的 `agent_bindings` 及其文件SHA256。`project_revision`是当前控制项目修订，冻结绑定中的 `project_revision`属于创建或首次执行时的快照。`runtime_status: not_queried`表示没有访问Temporal；本地文件存在不代表任务开始、完成或验收通过。查询不安装SDK、启动服务、提交任务或写回旧记录；实时状态、批准、取消和导出仍按[正式执行手册](AGENT_BACKENDS.md)使用原参考入口。Linux/Windows均可读取本机可访问的执行目录，完整六阶段执行需要Linux/WSL2。
+详情返回原始spec、冻结项目、可选的 `agent_bindings` 及其文件SHA256。`project_revision`是当前控制项目修订，冻结绑定中的 `project_revision`属于创建或首次执行时的快照。`runtime_status: not_queried`表示没有访问Temporal；本地文件存在不代表任务开始、完成或验收通过。查询不安装SDK、启动服务、提交任务或写回旧记录；批准、取消和导出仍按[正式执行手册](AGENT_BACKENDS.md)使用原参考入口。Linux/Windows均可读取本机可访问的执行目录，完整六阶段执行需要Linux/WSL2。
 
 ### 预览与创建正式任务
 
@@ -174,6 +174,20 @@ preview只在自动清理的临时目录调用原编译器，不写真实任务�
 发生中断先查creation，再以明确的原意图摘要恢复；恢复不重新编译，项目绑定改变后仍保留原角色快照。冲突文件保留并报错，不自动覆盖或重建历史。项目配置投影或执行目录发生漂移需要先修复原登记；切换执行目录不会自动迁移旧任务。写操作串行保留项目修订并持有同ID文件锁，单次原生进程预算30秒；超时后先查询原意图，不自动重试。
 
 对应API为 `POST /api/projects/ID/tasks/preview`（`definition/revision`）、`POST /api/projects/ID/tasks`（加`preview_sha256`）、`GET .../tasks/TASK_ID/creation`、`POST .../tasks/TASK_ID/resume-create`（`revision/intent_sha256`）；写请求沿用本地同源限制及 `X-Ergora-Request: 1`。预览与创建支持Linux/Windows本地文件合同；完整六阶段执行仍使用Linux/WSL2和[正式执行手册](AGENT_BACKENDS.md)。
+
+### 查询正式任务运行状态
+
+安装development组合或 `ergora[temporal]`，并准备所登记的参考运行时。通过CLI或 `GET /api/projects/ID/tasks/TASK_ID/status?run_id=RUN_ID&timeout=20` 只读查询原生运行事实：
+
+```bash
+ergora task status my-project TASK_ID --timeout 20
+# 后续查询固定前次返回的原生run_id：
+ergora task status my-project TASK_ID --run-id RUN_ID --timeout 20
+```
+
+该操作先验证本地任务的项目归属和spec，再由所登记安装中的原DevelopmentTransport核对Temporal的原始启动输入。`runtime_status: queried`附原生workflow/run ID、phase及status或outcome；未提供run ID时先解析当前workflow并返回其确定的run ID，后续可固定这个ID。只有原生NOT_FOUND返回 `runtime_status: not_found`，不附伪造phase；连接、认证、超时、原始输入碰撞等均报错，不能当作未启动。查询不提交、批准、取消或释放工单租约，不写入任务状态。
+
+`terminal: true`只表示Temporal运行已闭合；outcome仍可能是CANCEL_UNCONFIRMED，或phase为NEEDS_RECONCILIATION，均须沿原ID对账。该入口使用登记的参考环境连接规则（目前是本机127.0.0.1:7233/default），项目scheduler绑定的地址/队列只用于资料研究调度。1–60秒timeout约束网络查询；子进程另留5秒启动/回收预算，本地合同预检和安装身份检查另计。SDK缺失会明确提示，不自动安装或从本地COMPILED/服务RUNNING推断运行状态。完整六阶段执行仍使用Linux/WSL2。
 
 ### 显式服务管理
 

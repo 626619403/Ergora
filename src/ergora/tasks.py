@@ -79,6 +79,19 @@ def resume_create(state: State, project_id: str, task_id: str, expected_revision
                                        {'task_id': task_id, 'intent_sha256': intent_sha256})
 
 
+def status(state: State, project_id: str, task_id: str, *, run_id: str | None = None, timeout: int = 20) -> dict:
+    """Read verified native execution facts; absence and transport errors stay distinct."""
+    if type(timeout) is not int or not 1 <= timeout <= 60:
+        raise ValueError('Task runtime query timeout must be 1–60 seconds')
+    if run_id is not None and (not isinstance(run_id, str) or not 1 <= len(run_id) <= 128 or run_id.strip() != run_id):
+        raise ValueError('Run ID must be a nonempty opaque identifier of at most 128 characters')
+    project = _project(state, project_id)
+    task = reference.task_files(project, task_id=task_id)
+    return {'project': project_id, 'project_revision': project['revision'], 'task_id': task_id,
+            'request_sha256': task['spec']['request_sha256'], 'profile_sha256': task['spec']['profile_sha256'],
+            **reference.task_runtime_status(project, task['spec'], run_id=run_id, timeout=timeout)}
+
+
 def listing(state: State, project_id: str, *, limit: int = 50, after: str | None = None) -> dict:
     """Read a bounded window of native task contracts, without querying execution."""
     if type(limit) is not int or not 1 <= limit <= 100:
