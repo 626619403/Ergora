@@ -6,7 +6,7 @@
 
 - **需求符合性：源码及受控协议范围通过，无已确认 finding。** published 项目、安装身份和本地任务归属/spec 校验先于网络；原安装 `DevelopmentTransport.poll` 继续拥有 lookup、原始启动 spec 比对和 run ID 固定。仅 `RuntimeNotFound` 成为 `not_found`；其他失败公开报错，没有本地状态回退。原 phase/status/outcome 直接保留，terminal 未转换成取消或验收确认。
 - **结构、复用和资源边界：通过，无已确认 finding。** CLI/API 共用 `tasks.status`，没有复制状态机、持久镜像或新的执行器。此次代码不调用 start/signal/cancel，不写任务、ledger 或租约。默认网络预算 20 秒、允许 1–60 秒；父进程在网络预算之外留 5 秒并强制回收，已有本地合同预检另计。
-- **发行验收：已复核本地包身份和真实不存在分支，完整回归/精确 CI 待收口。** 当前 wheel 的 342 文件在源码及两非 editable 安装间一致；两个旧 L0 任务对当前真实服务均为权威 not_found。该结果不证明真实在途/完成运行、原 history 输入验证或真实固定 run ID 已验收，也不代表 F3.3b/F3.3c/F3.4 完成。
+- **本地发行、精确两 OS CI 和远端身份复核通过。** 当前 wheel 的 342 文件在源码及两非 editable 安装间一致；两个旧 L0 任务对当前真实服务均为权威 not_found。该结果不证明真实在途/完成运行、原 history 输入验证或真实固定 run ID 已验收，也不代表 F3.3b/F3.3c/F3.4 完成。
 
 ## 检查范围与身份
 
@@ -57,6 +57,33 @@ run ID/timeout 的校验位于公共用例；SDK 缺失指导位于进程边界�
 
 F3.2 的后续 HEAD `10f9f3e` 仅收口文档，源码基线仍为本报告的 b680221；本报告的源码/测试身份未变。补核时 wheel-regression.log 仍在输出测试进度，未将未完成运行记为通过。
 
-## 尚待收口
+## 验收边界与后续职责
 
-需对同一精确源码/测试候选核对完整适用回归和 Ubuntu/Windows 精确 CI；实际服务的在途/完成运行、原 history 输入验证与固定原 run ID、真实 API 查询仍按现有证据范围分别记录。真实 Windows 连接/凭据路径只能按实际证据表述，受控 SDK 端口通过不证明真实 Windows 服务已验收。本审查未执行模型/GPU任务或任何运行变更；下一实施段仍为 F3.3b，需独立计划和审查。
+完整适用 Linux 回归、Ubuntu/Windows 精确 CI 及远端身份已按下方最终归档复核；实际服务的在途/完成运行、原 history 输入验证与固定原 run ID、真实 API 查询仍按现有证据范围分别记录。真实 Windows 连接/凭据路径只能按实际证据表述，受控 SDK 端口通过不证明真实 Windows 服务已验收。本审查未执行模型/GPU任务或任何运行变更；下一实施段仍为 F3.3b，需独立计划和审查。
+
+
+## 最终本地归档与提交身份复核
+
+同切片再次受托核对最终本地证据，未重跑全量。生产/测试候选已提交 `889d9b49fd12e6e972dfccef58b40d3b306bb5eb`。独立读取 `git show` 的 8 个源码/测试文件并重新计算 SHA256，与前述逐文件及聚合身份全部一致；此时工作树干净，没有下一节点的生产修改。
+
+独立读取完整 `wheel-regression.log`：**396 passed、19 skipped、36 subtests passed，230.11 秒**；仅已有 Starlette 测试客户端弃用警告。此次以归档结果核验，未将之前 26 项定向检查当作全量结果，也未新增全量运行。
+
+再次只读重算 wheel、源码及两安装的全部包文件：仍为 **342 文件一致**，wheel SHA256 仍为 `816b72d75fca0ae8c8e25911d88d165f8e2618c278c57fb7108305314747e43f`，与最终提交中的已审生产文件一致。原始实际服务证据仍仅有 NOT_FOUND；没有借本地回归或包身份推导真实存在运行/history/固定 run ID 已验。
+
+**最终本地复核通过，无新增 finding。** 本地复核时精确两 OS CI、推送/远端身份尚待单独核对，最终结果见下段。
+
+
+## 最终精确 CI 与远端身份复核
+
+同切片独立复核 [CI 41528801888](https://github.com/626619403/Ergora/actions/runs/41528801888)。读取归档 `ci/verify-ci.py` 后，另写仅在内存中运行的 HTML 解析校验，从原始 `ci-actions.html` 重新定位 `.github/workflows/portability.yml`、候选完整 SHA 和工作分支，结果与归档 selection 一致；原始 run 页面明确为 Success，链接精确提交 `889d9b49fd12e6e972dfccef58b40d3b306bb5eb`。未重新执行会写归档的作者核对脚本。
+
+|实际 runner / Python|Job|必需步骤|
+|---|---|---|
+|ubuntu-latest / 3.11|[125563379878](https://github.com/626619403/Ergora/actions/runs/41528801888/job/125563379878)|Build and install wheel、Packaged reference identity、Native application regression 均 success|
+|windows-latest / 3.12|[125563380140](https://github.com/626619403/Ergora/actions/runs/41528801888/job/125563380140)|上述三步及 Windows PowerShell 5.1 installer and upgrade 均 success|
+
+两个原始 job 页面均有对应 selectedJobId，每个必需步骤和 Complete job 都已完成并为 success，其日志 URL 绑定上述完整候选 SHA 和对应 job ID。其他步骤没有 failure/cancelled/timed_out；Ubuntu 的 Windows 专用安装步骤按条件 skipped。重新计算 selection/run/两份 job 原始归档的字节数和 SHA256，与 `ci-html-status.json` 的四份来源身份一致。该独立结论来自官方 HTML 归档，不要求公共 API 在限流后可用，也不从摘要的 success 字段直接推断测试成功。
+
+另独立执行 `git ls-remote origin refs/heads/refactor/architecture-foundations`，远端返回 **`889d9b49fd12e6e972dfccef58b40d3b306bb5eb`**。检查相对该提交的 src、tests、pyproject.toml 和 CI workflow 差异为空；当前未提交的后续 runtime/submission 文档不属于新生产代码。本轮唯一写入仍为原审查报告，未提交、推送、安装、操作实际服务或重跑全量。
+
+**F3.3a 最终独立复核通过，无未解决 finding。** 已审源码/测试、816b…发行包/342 文件、本地 396 项回归与精确两平台 CI 的身份链一致，远端候选 SHA 已核对。真实服务仍只验证 NOT_FOUND、旧文件不变和无 SDK 指导；真实存在运行/history/固定 run ID 及 Windows 实际服务连接不因 CI 通过而扩大验收范围，后续按 F3.3b/F3.4 分段补验。

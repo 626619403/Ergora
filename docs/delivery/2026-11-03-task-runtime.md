@@ -11,7 +11,7 @@
 |切片|范围|验收与依赖|
 |---|---|---|
 |F3.3a|只读原生运行状态；CLI/API同源|published项目的本地spec先由既有reader验证，再经固定专用进程调用原Transport.lookup/poll；返回workflow/run ID、request/profile身份及原始phase/status/outcome。显式run ID原样沿用；未指定时查询原workflow ID并返回查得的run ID。只有原生NOT_FOUND可报不存在，连接/认证/超时/输入冲突明确报错；不从本地文件或服务进程状态补造运行结果。可选SDK缺失提示安装。旧正式任务可只读；不写任务/ledger/配置，不调用start/signal/cancel。|
-|F3.3b|显式提交与原ID对账|当前项目revision及精确创建意图/原spec准入；复用原doctor/可信检查/IngressLeases/Transport.start。任何外部调用前保存不可变操作意图，结果绑定原workflow/run ID。丢响应/超时保留unknown，按原ID查原始输入后恢复；不能换任务ID或重启已关闭workflow。旧在途任务不隐式接管。|
+|F3.3b|[显式提交与原ID对账](2026-11-03-task-submission.md)|当前项目revision及精确创建意图/原spec准入；复用原doctor/可信检查/IngressLeases/Transport.start。任何外部调用前保存不可变操作意图，结果绑定原workflow/run ID。丢响应/超时保留unknown，按原ID查原始输入后恢复；不能换任务ID或重启已关闭workflow。旧在途任务不隐式接管。|
 |F3.3c|精确计划批准、取消及恢复|批准必须绑定同一任务spec、原run ID、当前plan SHA和明确owner决策；沿用原批准receipt/信号，持久意图与结果分别记录。取消必须有原因及明确确认，信号成功只记请求已发出；CANCEL_UNCONFIRMED/NEEDS_RECONCILIATION及原外部进程对账保持可见。不得用terminate、删ledger或重提交来掩盖未知。|
 
 各段为完整可审查切片，分别做fresh-context结构/性能审计。F3.3a仅是读接口，不代表提交、批准、取消已交付；F3.4才做两模板新的完整六阶段和分支导出/异常重启综合验收。
@@ -47,3 +47,10 @@ F3.3a最终源码定向26 passed（22.12秒），原始结果fixture-fixed-targe
 
 
 当前816b…包的完整适用Linux回归396 passed、19 skipped、36 subtests passed（230.11秒），只含已有Starlette弃用警告。该结果与源码定向/真实只读旅程分别保存，精确两OS CI和最终审计仍待完成。
+
+
+## F3.3a 收口
+
+F3.3a完成。生产/测试候选889d9b49fd12e6e972dfccef58b40d3b306bb5eb已推送，独立git ls-remote核对远端一致；[精确CI41528801888](https://github.com/626619403/Ergora/actions/runs/41528801888)的Ubuntu job125563379878和Windows job125563380140全部必需步骤成功，包括Windows PowerShell5.1安装/升级。审查者已在[原报告](2026-11-03-task-runtime-read-review.md)完成最终CI/远端复核，无未解决finding。最终816b…wheel、342文件×两安装/冻结283、396项/36子测试（19跳过）及真实NOT_FOUND测量均沿用上述精确身份，不扩大真实存在run的验收范围。
+
+下一步按[F3.3b设计](2026-11-03-task-submission.md)实现显式提交/未知结果原身份恢复，再做F3.3c批准/取消和F3.4新两模板完整旅程。
