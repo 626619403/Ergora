@@ -1,6 +1,6 @@
 # 当前架构与扩展边界
 
-2026-11-02，R8后的当前导航，加入F1.1有效绑定与快照增量（已交付；本地验收、独立复审与精确两OS CI通过）。历史 [A1 审计](2026-11-01-audit.md)及[R8记录](../delivery/2026-11-02-refactoring-exit.md)保留原身份与范围；新行为验收见[F1记录](../delivery/2026-11-02-project-configuration.md)。设计约束见 [ADR 0001](decisions/0001-refactoring-foundations.md) / [0002](decisions/0002-static-boundaries.md)。
+2026-11-03，R8后的当前导航，加入F1项目定义、有效绑定、快照及单向投影（F1.1/F1.2已交付；F1.3候选62c验收及精确两OS CI通过，tracker补修完整包/源码复核通过，新提交精确CI待核）。历史 [A1 审计](2026-11-01-audit.md)及[R8记录](../delivery/2026-11-02-refactoring-exit.md)保留原身份与范围；新行为验收见[F1记录](../delivery/2026-11-02-project-configuration.md)。设计约束见 [ADR 0001](decisions/0001-refactoring-foundations.md) / [0002](decisions/0002-static-boundaries.md)。
 
 ## 模块与依赖
 
@@ -100,7 +100,7 @@ sequenceDiagram
   User->>Entry: export 到候选分支
 ```
 
-执行桥只替换生成阶段的 Agent，原执行器仍拥有候选 SHA、只读检查、提交和回执。默认值或项目绑定变化不修改在途任务的 `agent-bindings.json`。取消是意图，`CANCEL_UNCONFIRMED / NEEDS_RECONCILIATION` 保持可见，不能删 ledger 后重跑。当前控制台没有这套任务 API；F1/F3/F4 才连接统一入口。
+执行桥只替换生成阶段的Agent，原执行器仍拥有候选SHA、只读检查、提交和回执。默认值或项目绑定变化不修改在途任务的`agent-bindings.json`。取消是意图，`CANCEL_UNCONFIRMED / NEEDS_RECONCILIATION`保持可见，不能删ledger后重跑。F1已统一项目配置与投影；正式任务API/页面仍由F3/F4接入。
 
 训练保持独立的 workload/baseline/manifest/runner/evidence：`prepare → start（控制排队）→ 操作者 run-local + manifest SHA → 可信统计门禁 → owner evidence SHA → 集成/复验任务`。control worker 不自动启动训练；Forge 只生成原生候选。R8 的 fixture 只检验协议，真实模型/GPU效果以各次实测记录为准。
 
@@ -128,7 +128,7 @@ flowchart LR
 |State / backups|schema 版本、迁移前 DB 快照、完整离线备份清单|DDL/锁/版本拒绝；DB 快照不等于完整文件备份|
 |原 runtime / executor / runner|原配置、任务文件、ingress leases、jobs ledger、Git/产物；Temporal history|正式阶段、批准、候选与取消事实；不搬迁在途 history|
 
-当前仍有控制面项目绑定与 reference 正式注册两种配置，另有 CLI/env 路径、模板和 SDK 原生设置；R8 未将其伪装为单一项目。它们有显式入口，没有本轮新增或遗留已弃用的同步双写器。F1 将检测差异、显式导入并单向投影；凭据值继续由运行环境/工具认证提供，不进入分享定义。详见 [状态迁移](state-migrations.md) 与 [参考配置范围](reference-boundary.md#配置与进程范围)。
+F1统一注册将控制项目定义和bindings作为权威来源，reference正式注册/策略是不可变单向投影；旧注册经只读预览、差异与显式采用接入，轻量项目和旧参考入口保持兼容。CLI/env路径、模板输入和SDK原生设置仍按域归属，没有新增双向同步器。pending项目与before/after意图协调跨资源恢复，published状态和实际文件一致性分别查询。凭据值继续由运行环境/工具认证提供，不进入分享定义。详见[项目手册](../PROJECTS.md)、[状态迁移](state-migrations.md)与[参考配置范围](reference-boundary.md#配置与进程范围)。
 
 ## A1 清单结案
 
@@ -174,4 +174,4 @@ flowchart LR
 |新模板、阶段或通用低代码|目前只有3个固定模板及受约束输入草稿；新模板/合同需显式实现和验收|F6才扩展描述/编辑；不能承诺现有任意配置可增删可信阶段|
 |新 tracker/通信/会话|对应 F7/F8/D1/D2 的真实 adapter、native ID/去重/取消和授权合同|本地无工单流程继续可用；上下文消息不扩大权限|
 
-复用 SQLite、Git、jsonschema、Temporal、MLflow、Cytoscape、GEPA/ReMe 和各工具真实 SDK。项目 revision、精确候选授权、证据关联与显式采用属于 Ergora 规则；没有理由用通用库替换这些规则。继续保持函数和既有 Protocol，只有外部框架 hook 使用继承。静态边界检查运行方式及局限见 [ADR 0002](decisions/0002-static-boundaries.md)。下一功能节点为 F1.2 单一注册与单向投影，尚不能宣称 all-in-one 用户旅程已经打通。
+复用SQLite、Git、jsonschema、Temporal、MLflow、Cytoscape、GEPA/ReMe和各工具真实SDK。项目revision、精确候选授权、证据关联与显式采用属于Ergora规则。继续保持函数和既有Protocol，只有外部框架hook使用继承。静态边界检查运行方式及局限见[ADR 0002](decisions/0002-static-boundaries.md)。F1完成后进入F2环境/服务管理，再接F3/F4正式任务与页面；完整all-in-one用户旅程仍需这些后续节点验收。

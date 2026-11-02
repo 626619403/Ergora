@@ -1,6 +1,6 @@
 # Ergora 下一阶段计划与进度
 
-本文件是项目执行与上下文恢复入口。最后更新：2026-11-02。S0–S10 及 A0 计划已交付；用户已批准开始主线合入、审计、渐进重构与按优先级补齐功能，并要求每完成一步更新文档。各阶段详细计划只在对应链接内维护节点状态。
+本文件是项目执行与上下文恢复入口。最后更新：2026-11-03。S0–S10 及 A0 计划已交付；用户已批准开始主线合入、审计、渐进重构与按优先级补齐功能，并要求每完成一步更新文档。各阶段详细计划只在对应链接内维护节点状态。
 
 ## 当前检查点
 
@@ -23,10 +23,10 @@
 - 边界交付：R6 [reference访问边界](delivery/2026-11-02-reference-boundary.md)完成，运行代码`277ec1f`已推送并核对一致。Web模板读取已归入reference接口，[已有边界/退出清单](architecture/reference-boundary.md)已写；Linux206项+36子测试/18跳过、324文件×两安装/21次基础CLI、104链接/283冻结身份及精确两OS CI41388048791通过，[独立审查](delivery/2026-11-02-reference-boundary-review.md)通过；原六阶段、冻结绑定和证据身份保持。
 - 前端交付：R7 [CLI/Web与前端模块化](delivery/2026-11-02-console-modules.md)完成，实现`ad73bec`及窄屏修复`b8bee53`已分别提交推送，远端SHA一致。12模块/入口149行及资产diff已归位；最终包Linux206项+36子测试/18跳过、335×两安装、21次基础CLI/30次API对照及完整浏览器旅程/390px六页与图通过。精确候选CI41410702773两OS成功，[独立审查及最终远端复核](delivery/2026-11-02-console-modules-review.md)通过，无未解决findings。
 - 重构出口：R8 [交付](delivery/2026-11-02-refactoring-exit.md)完成；当前架构/13项清单/ADR及8项边界检查已写，初审两项已解决。实现/测试46ac633已推送并核对远端；最终wheel Linux214项+36子测试/18跳过、335文件×两安装/21次基础CLI/10种反例及精确两OS CI41421965020通过，[独立复审和精确CI/远端最终核对](delivery/2026-11-02-refactoring-exit-review.md)通过。应用源码保持R7身份。
-- 配置交付：F1.1 [有效绑定与运行快照](delivery/2026-11-02-project-configuration.md)完成，实现/测试`d914ea724e87495fb5efcd92e12f50b5931fc42c`已推送且远端一致。初审两项P2已修正；最终wheel222项/36子测试、18跳过，335文件×两安装/28次基础CLI、桌面及390px六页/三模板浏览器、精确两OS CI41440299977和[独立复审/最终远端核对](delivery/2026-11-02-project-configuration-review.md)通过。完整F1尚未完成。
+- 配置交付：F1.1 [有效绑定与运行快照](delivery/2026-11-02-project-configuration.md)完成，实现/测试`d914ea724e87495fb5efcd92e12f50b5931fc42c`已推送且远端一致。初审两项P2已修正；最终wheel222项/36子测试、18跳过，335文件×两安装/28次基础CLI、桌面及390px六页/三模板浏览器、精确两OS CI41440299977和[独立复审/最终远端核对](delivery/2026-11-02-project-configuration-review.md)通过。当时完整F1尚未完成，当前状态见下方F1.3检查点。
 - 研究补充：LC1 [低代码编辑器研究](research/2026-11-02-low-code-editors.md)完成并随`d914ea7`推送；7个固定仓库/18份来源及官方文档复核、[独立审查](delivery/2026-11-02-low-code-editors-review.md)通过，作为F4/F6设计依据。未安装竞品或改变图形库。
 - 注册交付：F1.2已推送`a6fd291`且远端一致，最终wheel255项/36子测试、18跳过及337文件×两安装、[独立复审](delivery/2026-11-02-project-registration-review.md)及精确两OS CI41448910719通过，见[注册记录](delivery/2026-11-02-project-registration.md)。
-- 当前动作：[F1.3旧注册预览/差异/显式导入/恢复](delivery/2026-11-02-project-import.md)已实现、容量兼容P2已修正并[独立复审通过](delivery/2026-11-02-project-import-review.md)；最终非editable包279项/36子测试、18跳过、337文件×两安装及基础8次CLI旅程通过。正在提交推送并核对精确CI；完成后关闭完整F1，再按P0后续 → P1推进。
+- 当前动作：[F1.3旧注册预览/差异/显式导入/恢复](delivery/2026-11-02-project-import.md)候选`62c4d69`已推送且远端一致，279项/36子测试、18跳过、337文件×两安装、8次CLI、独立复审及精确两OS CI41480569812通过。收口发现tracker末尾换行可通过schema但被执行合同拒绝；共享schema补修及两条先失败回归已独立源码复核通过；新wheel281项/36子测试、18跳过、337文件×两安装与8次基础CLI已通过，之后提交推送并核精确CI，完整F1尚未关闭，见[F1阶段记录](delivery/2026-11-03-f1-completion.md)。之后按F2及P0后续推进。
 - 已交付平台范围：原生 Windows 控制面、CLI、项目 / 记忆 / Skill / 资料观察及支持的原生工具；完整六阶段与 Linux 专用工具走 Linux/WSL2。后续仍按实际能力逐项验收。
 - 验证：Windows / Ubuntu CI 41225920073 全部成功；Linux 完整回归 115 passed +36 subtests。两个切片最终独立审查通过；Linux 用户目录 0.2.0 升级和 314 文件身份一致。真实模型 / GPU / winget 空白系统等未验收范围保留在交付记录，不从 CI 推导。
 - 恢复要求：重读本文件及活动切片记录，对照分支、工作区和最近提交；完成核对后继续当前项，不重新做已验收的调研。

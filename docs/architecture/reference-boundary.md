@@ -1,6 +1,6 @@
 # reference 访问与迁出边界
 
-当前实现：R6，2026-11-02。[交付/验收](../delivery/2026-11-02-reference-boundary.md) · [运行契约](2026-11-02-runtime-contracts.md) · [ADR 0001](decisions/0001-refactoring-foundations.md)。
+当前实现：R6边界及F1注册/导入增量，2026-11-03。[R6交付](../delivery/2026-11-02-reference-boundary.md) · [F1阶段记录](../delivery/2026-11-03-f1-completion.md) · [运行契约](2026-11-02-runtime-contracts.md) · [ADR 0001](decisions/0001-refactoring-foundations.md)。
 
 ## 入口与所有者
 
@@ -8,9 +8,12 @@
 flowchart LR
   Web[Web / drafts / agent_runs] --> Ref[reference 资源与编译接口]
   CLI[CLI workflow / templates] --> Ref
+  Registration[CLI / Web → registrations] --> Ref
   Ref --> Resources[冻结模板 / profile / manifest]
   Ref --> Compiler[专用编译子进程]
   Compiler --> Portable[原 portable / contracts]
+  Ref --> Projection[专用注册 I/O 子进程]
+  Projection --> Files[原 write / safe_file / 路径与 scope 校验]
   ExecCLI[CLI reference executor] --> Identity[reference 安装身份核对]
   Identity --> Bridge[reference_executor 原生执行适配]
   Bridge --> Original[原 Executor / Sandbox / ledger]
@@ -29,7 +32,7 @@ flowchart LR
 |新任务角色绑定快照|`reference_executor.Executor.__init__`；原执行链|首次核对同一个Git根并冻结4角色、项目修订；后续阶段读同一`agent-bindings.json`；旧任务已有receipt时拒绝换为可选择执行器|
 |阶段Agent及原生继承hook|`reference_executor.Executor.model / receipt`|只替换生成阶段调用及actor标识；原Executor保留提交、只读检查、集成/验证、候选SHA和回执；stage_driver负责专用进程的凭据/信号处理|
 |原配置、文件、回执发布与ledger更新|`reference_executor`内的原core/FileAdapter接口|原CONFIG/STATE、claim/ledger、immutable write/publish不向应用层扩散；不逐个函数增加第二层转发；不复制原文件/SQL逻辑|
-|正式任务create/start/status/result/approve/cancel/export|当前原`agentflow`、`DevelopmentTransport / Runtime / Workflow`|这是现有事实来源，尚无统一Ergora任务API；后续F1/F3接入此边界，不让HTTP或前端直接操作原全局/ledger|
+|正式任务create/start/status/result/approve/cancel/export|当前原`agentflow`、`DevelopmentTransport / Runtime / Workflow`|这是现有事实来源，尚无统一Ergora任务API；后续F3接入此边界，不让HTTP或前端直接操作原全局/ledger|
 
 `reference.ROOT`仍保留给既有Python调用者和身份/兼容测试；生产布局知识只在reference模块。没有删除公共常量或改变CLI响应/退出码。`template_details`是实际Web使用的资源读取接口，没有另造模板存储层。
 
@@ -37,7 +40,7 @@ flowchart LR
 
 安装位置由`reference executor --installation`明确提供，或由`--project ID`选择统一注册保存的安装/配置/状态。原配置/状态由导入前的`AGENTFLOW_CONFIG_DIR / AGENTFLOW_STATE_DIR`决定，未设置时继续使用原默认目录。Ergora`--home`是控制项目来源。统一注册通过单向投影生成项目/策略/归属文件，保留adapter、凭据和服务设置。旧注册仍需显式导入；在途任务继续使用原runtime与冻结快照。
 
-`agent_platform.core`在导入时固定ROOT/CONFIG/STATE，`reference.executor`为单一安装的专用进程入口。它不是Web中可并行热切换多个安装/配置的服务对象；同一解释器内缓存模块不能用于切换runtime。当前HTTP没有调用它。F1/F3若接查询/命令，须在边界明确选择安装/配置/状态并隔离调用，不能把现有全局当成request-local数据。
+`agent_platform.core`在导入时固定ROOT/CONFIG/STATE，`reference.executor`为单一安装的专用进程入口。它不是Web中可并行热切换多个安装/配置的服务对象；同一解释器内缓存模块不能用于切换runtime。当前HTTP没有调用它。F1登记I/O采用固定代码的专用子进程，明确选择配置/状态；F3若接任务查询/命令，也须隔离调用，不能把现有全局当成request-local数据。
 
 原Executor的继承和Windows reader兼容分别留在`reference_executor.py`与`reference.py`，属于现成框架/平台接口的真实变化点。编译器的`sys.path / PYTHONPATH`及私有reader知识不下放到项目/资产/Web。没有新Runtime基类、配置镜像、文件repository或与Temporal竞争的调度器。
 
@@ -55,4 +58,4 @@ flowchart LR
 |原工单/通信/服务和bootstrap分发镜像|对应F2/F7及通信节点有实际替代消费者，安装器/报告/手册不再依赖镜像；更新来源清单及退出记录后才能删除|
 |Windows reader兼容patch|上游/迁入编译器有真实Windows下等价的限长、no-follow/reparse拒绝与不可变发布证据；不能仅凭Linux测试移除|
 
-R6只迁出有真实消费者的资源读取；其余已符合当前适配边界的代码保留。R8更新整体依赖图及静态边界检查；F1/F3再补统一项目与正式任务用例，F9接训练闭环。新增工具仍经agents/kernel等实际适配，不修改冻结模板来绑定厂商。
+R6迁出资源读取，R8已增加整体依赖图及静态边界检查；F1统一项目、显式采用与单向投影复用同一边界。后续F3接正式任务用例、F9接训练闭环。新增工具仍经agents/kernel等实际适配，不修改冻结模板来绑定厂商。

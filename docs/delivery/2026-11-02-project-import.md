@@ -35,3 +35,11 @@ F1.3已实现，审查发现的容量兼容P2已修正并源码复核关闭，�
 修正后定向：合法紧凑源可采用/恢复/状态一致、新建超限仍拒绝，2项通过；注册/导入及静态边界58项通过（`fixed-registration-regression.log`）。独立审查者以4个无写入探针复核旧大文件PASS、新建同内容超限拒绝、源字节变化拒绝和语义冲突拒绝，P2源码修正关闭；未提出其他结构/维护性阻塞。最终包及CI/远端证据仍待完成。
 
 最终本地验收（2026-11-03）：修正wheel SHA256`6d1ef44aa2d71988e21930cc7908aa5fb6e398bf057106d8907b3e8e79e5319f`，源码/wheel/两安装337文件一致；`final-wheel-regression.log`为279 passed、18 skipped、36 subtests passed。最终基础8次CLI旅程保持原字节、绑定修订及状态一致。新的[独立结构/维护性复审](2026-11-02-project-import-review.md)通过，容量P2关闭、无未解决源码finding，最终包/安装/基础旅程已由审查者另行核对。接下来提交推送并核对该候选精确两OS CI，再关闭完整F1。
+
+实现/测试提交`62c4d696396942fbad86fc21f56f9e854e3ed4d1`已推送到`refactor/architecture-foundations`，`git ls-remote`已核远端一致。[精确CI41480569812](https://github.com/626619403/Ergora/actions/runs/41480569812)两OS已通过，已按官方HTML核对完整SHA、对应job和安装/冻结身份/回归实际步骤，WindowsPowerShell5.1安装升级也通过；证据为`ci-html-status.json`及原页面。最终独立交付复核进行中。
+
+收口合同对齐补修（2026-11-03）：原JSON Schema正则的`$`可匹配末尾LF，使`local/demo\n`在注册/导入被接受，但冻结执行合同的fullmatch拒绝该tracker，导致登记后无法创建任务。新增两条回归先实际失败（`tracker-before-fix.log`），再在共享tracker.project属性以标准`not/pattern: \\s`显式禁止空白；新注册和旧项目结构共同复用，无新领域分支或冻结修改。两项修正测试通过；需要对新包、源码修正复审及精确候选CI重验。62c候选的279项/两OS CI保留原范围，不套用到补修后。其wheel和包清单已保存在`.ergora/checks/f1-import/accepted-62c4d69/`。
+
+补修安装与基础旅程（2026-11-03）：新非editable wheel SHA256为`4fa5adac91721adfd6e274a544336d492800494b82339658d321ff63d0b9dd63`，源码/wheel/开发及基础安装337文件一致。`tracker-base-journey.log/json`记录独立基础环境8次CLI、原字节保持、绑定修订和状态一致。原审查者已完成schema最小修正及13个独立词法边界复核，两项源码P2均关闭。补修后的完整回归进行中，提交/远端及精确两OS CI待核，不能沿用62c结果。
+
+补修完整本地验收：`tracker-wheel-regression.log`最终为281 passed、18 skipped、36 subtests passed，147.11秒；从已安装的新wheel执行，PYTHONPATH仅选冻结upstream。`tracker-reference-verify.log`确认283冻结文件PASS且未启动runtime。当前源码/测试相对62c仅共享schema和两条参数化回归变化，独立审查的修正结论保持，包/安装/回归证据已交原审查者复核；新提交精确两OS CI与最终远端复核待完成。

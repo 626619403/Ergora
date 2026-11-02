@@ -67,6 +67,7 @@ def test_registration_publishes_three_templates_and_readonly_effective_view(regi
     (lambda d: d.update(bindings={"inspector": {"tool": "command", "argv": ["echo"]}}), "stage-json-v1"),
     (lambda d: d.update(bindings={"reviewer": {"tool": "command", "argv": ["echo"], "protocol": "stage-json-v1", "capabilities": []}}), "capabilities"),
     (lambda d: d["tracker"].update(project="local/../demo"), "traversal"),
+    pytest.param(lambda d: d["tracker"].update(project="local/demo\n"), "tracker", id="tracker-newline"),
     (lambda d: d["tracker"].update(kind="github", project="group/sub/demo"), "owner/repository"),
     (lambda d: d["execution"].update(config_directory=d["repo"]), "outside"),
     (lambda d: d["execution"].update(state_directory="relative"), "absolute"),
@@ -383,6 +384,7 @@ def test_import_refuses_any_source_change_since_preview(legacy_registration, sou
     (lambda d: d.update(schema_version=True), "schema_version"),
     (lambda d: d.update(schema_version=2), "schema_version"),
     (lambda d: d.update(extra="unknown"), "Additional properties"),
+    pytest.param(lambda d: d["tracker"].update(project="local/demo\n"), "tracker", id="tracker-newline"),
 ])
 def test_import_rejects_unknown_legacy_project_formats(legacy_registration, mutation, error):
     state, specification, _ = legacy_registration
