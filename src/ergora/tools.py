@@ -126,7 +126,9 @@ def _probe_check(check: dict, binding: dict, repo: Path, deadline: float) -> Non
         try:
             address = binding["endpoint"] if tool == "reme" else binding["address"]
             endpoint = urlsplit(address if "://" in address else "//" + address)
-            port = endpoint.port or ({"http": 80, "https": 443}.get(endpoint.scheme) if tool == "reme" else 7233)
+            port = endpoint.port
+            if port is None:
+                port = {"http": 80, "https": 443}.get(endpoint.scheme, 7233 if tool == "temporal" else None)
             if not endpoint.hostname or not port:
                 raise ValueError("Missing endpoint host/port")
         except ValueError:
