@@ -8,9 +8,9 @@
 
 |分步|产出|实现|验证|独立审查|
 |---|---|---|---|---|
-|R6.1 模板读取归属|移入reference，Web不依赖ROOT布局；保持开发input/训练files/agents响应|完成|20项定向通过|随完整R6审查|
-|R6.2 既有适配边界及退出清单|明确配置定位、编译、正式任务查询/命令、绑定快照、文件/ledger和Windows reader责任；记录保留理由及未来迁出条件|[边界及退出清单](../architecture/reference-boundary.md)已写|原合同/六阶段/绑定及静态检查通过|随完整R6审查|
-|R6 完整验收|非editable wheel、基础编译/模板、原六阶段/冻结绑定、导出/恢复/精确批准的适用回归及冻结身份、真实两OS CI|已打包安装|Linux206项+36子测试/18跳过、324文件×两安装及21次基础CLI通过|待fresh-context审查及精确两OS CI|
+|R6.1 模板读取归属|移入reference，Web不依赖ROOT布局；保持开发input/训练files/agents响应|完成|20项定向通过|通过|
+|R6.2 既有适配边界及退出清单|明确配置定位、编译、正式任务查询/命令、绑定快照、文件/ledger和Windows reader责任；记录保留理由及未来迁出条件|[边界及退出清单](../architecture/reference-boundary.md)已写|原合同/六阶段/绑定及静态检查通过|通过|
+|R6 完整验收|非editable wheel、基础编译/模板、原六阶段/冻结绑定、导出/恢复/精确批准的适用回归及冻结身份、真实两OS CI|已打包安装，候选已推送|Linux206项+36子测试/18跳过、324文件×两安装、21次基础CLI及两OS CI通过|[通过](2026-11-02-reference-boundary-review.md)|
 
 ## 责任与非目标
 
@@ -37,4 +37,20 @@
 - 18项跳过为11项Windows-only、6项未选择的Forge/mini SDK、1项未选择隔离Temporal；不将R5的SDK实跑当成本轮重验。未跑真实模型/GPU、真实Temporal服务旅程、新浏览器交互或空白Windows安装；未改界面JS。原L0验收的身份与范围独立保留。
 - 五份当前文档102个本地文件链接及空白检查通过；应用中原agent_platform/dev_platform导入只在reference/reference_executor，已无`reference.ROOT`或其私有入口的应用访问。非editable`reference verify`为 **PASS / 283 files**；源码diff确认冻结数据、测试、依赖及CI未改。清单`.ergora/checks/r6/static-checks.json`。与R4包清单统一相对路径后，仅`reference.py / web.py`两文件内容变化，其余322文件不变。
 
-新的精确提交两OS CI和独立审查尚待收口；本轮生产源码已变，不能用R5的历史同源码CI代替新候选验证。
+## 候选与跨平台CI
+
+实现候选 **`277ec1f76e0b304dc30fb82a14e0f95ac9d022d1`** 已推送`origin/refactor/architecture-foundations`，再次读取远端SHA一致。该候选的[Portability CI 41388048791](https://github.com/626619403/Ergora/actions/runs/41388048791)为 **completed / success**：Ubuntu job **125093151283**（Python3.11，1m10s）和Windows job **125093151521**（Python3.12，2m52s）均成功。官方API的run与两个job均指向相同完整候选；不是复用R5的历史CI。
+
+原始官方响应`.ergora/checks/r6/ci-run.json / ci-jobs.json`，摘要`.ergora/checks/r6/ci-status.json`，2026-11-02 04:26:24 UTC核对；两原始响应SHA分别为`7615fe45a2342e95eb89d22b10273577330403cb694dc32d199592e68ab5420e`、`a5d89b7ecf9b1767fb0e3058de355f2deb340f286a93ef8e7a6cec7231ca817a`。未下载逐项测试日志，不据job成功补造Windows项数；workflow包含真实原生回归及Windows安装/升级步骤。
+
+新增详细计划导航后再次检查五份文档 **104个本地文件链接** 和空白，记录`.ergora/checks/r6/static-checks-final.json`，此前102个的初轮记录保留。源码/测试/CI在候选后未改。
+
+## 独立审查与下一步
+
+新的fresh-context reviewer已完成[独立审查](2026-11-02-reference-boundary-review.md)，需求符合性、可维护性及精确两OS CI均通过，无findings和阻断性验收缺口。独立检查候选diff、真实消费者、324文件×两安装、283冻结身份、原始CLI/回归日志、官方CI响应及实际断言；未把只读复核当作再次跑测试。
+
+**R6完成。** 生产/测试验收身份保持`277ec1f76e0b304dc30fb82a14e0f95ac9d022d1`；本次收尾仅提交审查及状态文档，按原授权推送当前分支。原模型/GPU/真实服务/浏览器等未验维度保持上述范围；原执行器仍是生产路径，冻结目录尚未退为归档。
+
+收尾核对：包含新审查报告的六份当前Markdown共 **112个本地文件链接** 目标存在，空白检查通过；`git diff 277ec1f -- src tests README.md pyproject.toml .github/workflows`为空。记录`.ergora/checks/r6/closure-checks.json`。仅状态/审查文档更新，无须再次运行已通过的代码测试。
+
+下一节点R7：按请求/状态、项目与绑定、记忆/Skill资产、研究、模板图及运行视图的真实责任拆分现有ES modules，保持Cytoscape和纯文本DOM、异步顺序/草稿revision/同源边界；入口继续直接使用领域用例，不引入Node构建要求或框架重写。先读本记录及PLAN核对Git，分别验包文件、API/CLI与真实浏览器操作，再进行新的独立审查。
