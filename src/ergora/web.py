@@ -41,6 +41,10 @@ class RegistrationRevisionPayload(Payload):
     revision: int = Field(strict=True, ge=0)
 
 
+class RegistrationImportPayload(RegistrationPayload):
+    preview_sha256: str = Field(pattern="^[0-9a-f]{64}$")
+
+
 class MemoryPayload(RevisionPayload):
     revision: int = 0
     text: str
@@ -169,6 +173,14 @@ def create_app(home: Path | None = None) -> FastAPI:
     @application.post("/api/project-registrations")
     def register_project(body: RegistrationPayload):
         return registrations.register(state, body.definition, body.revision)
+
+    @application.post("/api/project-registration-imports/preview")
+    def preview_registration_import(body: RegistrationPayload):
+        return registrations.preview_import(state, body.definition, body.revision)
+
+    @application.post("/api/project-registration-imports")
+    def apply_registration_import(body: RegistrationImportPayload):
+        return registrations.apply_import(state, body.definition, body.revision, body.preview_sha256)
 
     @application.get("/api/projects/{project_id}/registration")
     def project_registration(project_id: str):

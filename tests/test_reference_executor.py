@@ -52,11 +52,12 @@ def test_existing_task_selection_without_effective_view_remains_usable(tmp_path)
 
 
 @pytest.mark.parametrize("kind", ["repository-governance", "large-change"])
-def test_unified_registration_drives_six_stages(tmp_path, kind):
+@pytest.mark.parametrize("mode", ["unified-registration", "imported-registration"])
+def test_unified_registration_drives_six_stages(tmp_path, kind, mode):
     if importlib.util.find_spec("temporalio") is None:
         pytest.skip("Reference activity validation requires the optional Temporal SDK")
     fixture = Path(__file__).parent / "fixtures/reference_acceptance.py"
-    result = subprocess.run([sys.executable, str(fixture), str(tmp_path), kind, "command", "unified-registration"],
+    result = subprocess.run([sys.executable, str(fixture), str(tmp_path), kind, "command", mode],
                             capture_output=True, text=True, timeout=90)
     assert result.returncode == 0, result.stdout + result.stderr
     summary = json.loads(result.stdout)

@@ -86,4 +86,40 @@ ergora reference executor --project my-project
 |`GET /api/projects/ID/registration`|发布状态、逐文件一致性、恢复记录位置|
 |`POST /api/projects/ID/registration/resume`|`{"revision": CURRENT_REVISION}`|
 
-已有reference注册需要显式导入，不能通过`register`自动接管。导入功能的交付状态见[计划](PLAN.md)。
+## 显式导入旧注册
+
+已有reference注册需要显式导入，不能通过`register`自动接管。先停止该配置目录的注册写入者，保留旧任务及原运行目录。导入仅读取同名`projects/ID.json`、`policies/ID/scope.json`和可选`execution.json`，不导入模型密钥或服务设置。
+
+保存`import.json`，填写已有注册的ID、预期Git根、要启用的模板和三个绝对执行目录：
+
+```json
+{
+  "schema_version": 1,
+  "id": "my-project",
+  "repo": "/home/USER/projects/my-project",
+  "templates": ["repository-governance"],
+  "execution": {
+    "installation": "/home/USER/multi-agent-platform",
+    "config_directory": "/home/USER/.config/multi-agent-platform",
+    "state_directory": "/home/USER/.local/state/multi-agent-platform"
+  }
+}
+```
+
+可选`bindings`指定角色/支持工具，未指定时保留已有控制项目的选择，新项目使用默认。基线、tracker、检查、允许路径及scope从旧文件取得；不同Git根、未知字段/版本、不足的角色能力或检查均拒绝。旧execution策略若存在，开发模板的成员集合必须相同，成员顺序和JSON格式保留；不存在时显式生成所选开发模板的allowlist，可能收窄原来未限定的任务类型。
+
+```bash
+# 默认只读预览；新控制项目revision为0，已有轻量项目用当前revision。
+ergora project import-reference import.json --revision 0
+# 审阅上一步的definition、changes、files及目标control_home，再填入其preview_sha256。
+ergora project import-reference import.json --revision 0 --apply --preview-sha256 REVIEWED_SHA256
+```
+
+预览的`changes`使用JSON Pointer；`files`逐项列出`adopt/create`、源原始字节SHA和预期投影语义SHA。`preview_sha256`绑定目标控制目录、修订、定义和文件意图。执行时重新读取并核验：源文件即使只改变空白也须重新预览。兼容的旧文件原字节保持，只补建缺失策略与归属记录，不扫描或迁移在途任务。
+
+导入同样使用pending意图与`resume-registration`。恢复记录还包含预览SHA、每份源身份和修改前/后的控制项目；它是恢复操作的证据，不是原目录的完整文件备份。若采用文件在预留后被其他进程改动，恢复会拒绝；应先核对并恢复原文件，或保留pending供维护者处理。不要绕过冲突覆盖原配置。已归属其他控制目录的注册不能被再次接管。
+
+|方法与路径|输入/输出|
+|---|---|
+|`POST /api/project-registration-imports/preview`|`{"definition": IMPORT_SPEC, "revision": 0}`，返回只读预览|
+|`POST /api/project-registration-imports`|上述输入加`"preview_sha256": "REVIEWED_SHA256"`，显式采用|

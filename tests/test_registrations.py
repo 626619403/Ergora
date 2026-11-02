@@ -1,4 +1,5 @@
 from copy import deepcopy
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -260,3 +261,274 @@ def test_cli_and_api_register_equivalent_projects_and_reject_coerced_revisions(r
         assert client.get("/api/projects/demo/registration").json()["consistent"]
         response = client.post("/api/projects/demo/registration/resume", json={"revision": 1}, headers=headers)
         assert response.status_code == 200
+
+
+@pytest.fixture
+def legacy_registration(registration):
+    state, definition = registration
+    baseline = subprocess.check_output(["git", "-C", definition["repo"], "rev-parse", "HEAD"], text=True).strip()
+    project = {"schema_version": 1, "name": "demo", "repo": definition["repo"], "base_sha": baseline,
+               **{key: definition[key] for key in ("tracker", "allowed_paths", "checks")}}
+    sources = {"projects/demo.json": project, "policies/demo/scope.json": definition["scope_policy"]}
+    raw = {}
+    for relative, document in sources.items():
+        path = Path(definition["execution"]["config_directory"]) / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        raw[relative] = (json.dumps(document, indent=4) + "\r\n").encode("utf-8")
+        path.write_bytes(raw[relative])
+    specification = {key: deepcopy(definition[key]) for key in ("schema_version", "id", "repo", "templates", "execution")}
+    return state, specification, raw
+
+
+def test_import_preview_is_stable_and_changes_no_project_or_source_files(legacy_registration):
+    state, specification, raw = legacy_registration
+    preview = registrations.preview_import(state, specification, 0)
+    assert preview == registrations.preview_import(State(state.root), specification, 0)
+    assert preview["expected_revision"] == 0 and preview["definition"]["repo"] == specification["repo"]
+    assert preview["definition"]["base_sha"]
+    assert {item["path"] for item in preview["changes"]} == {"/id", "/repo", "/bindings", "/definition"}
+    for relative, value in raw.items():
+        assert preview["files"][relative]["operation"] == "adopt"
+        assert preview["files"][relative]["source_sha256"] == hashlib.sha256(value).hexdigest()
+        assert (Path(specification["execution"]["config_directory"]) / relative).read_bytes() == value
+    assert preview["files"]["policies/demo/execution.json"]["operation"] == "create"
+    assert projects.list_projects(state) == [] and not (state.root / "registrations").exists()
+    assert not (Path(specification["execution"]["config_directory"]) / "ergora").exists()
+
+
+def test_import_preserves_legacy_bytes_tasks_and_compatible_policy_order(legacy_registration):
+    state, specification, raw = legacy_registration
+    config = Path(specification["execution"]["config_directory"])
+    # Membership is the policy meaning; adoption keeps this original order and bytes.
+    relative = "policies/demo/execution.json"
+    raw[relative] = b'{"allowed_task_types": ["repository-governance", "large-change"]}\r\n'
+    (config / relative).write_bytes(raw[relative])
+    (config / "credentials.json").write_bytes(b"must not parse this secret fixture")
+    (config / "platform.json").write_bytes(b"must not parse service settings")
+    task = Path(specification["execution"]["state_directory"]) / "tasks/old-task/task.spec.json"
+    task.parent.mkdir(parents=True)
+    task.write_bytes(b"existing task must stay unchanged")
+    preview = registrations.preview_import(state, specification, 0)
+    project = registrations.apply_import(state, specification, 0, preview["preview_sha256"])
+    assert project["registration"]["status"] == "published"
+    assert project["registration"]["sha256"] == preview["registration_sha256"]
+    for relative, value in raw.items():
+        assert (config / relative).read_bytes() == value
+    assert task.read_bytes() == b"existing task must stay unchanged"
+    assert registrations.status(state, "demo")["consistent"]
+    journal = state.root / "registrations/demo" / (project["registration"]["operation_id"] + ".json")
+    record = json.loads(journal.read_text())
+    assert record["source"]["preview_sha256"] == preview["preview_sha256"]
+    assert record["source"]["files"] == preview["files"] and record["before"] is None
+    assert record["after"]["registration"]["status"] == "pending"
+    # Later unchanged registration uses the already-approved materialization.
+    updated = registrations.register(state, preview["definition"], 1)
+    assert updated["revision"] == 2
+    assert (config / "policies/demo/execution.json").read_bytes() == raw["policies/demo/execution.json"]
+
+
+def test_import_adopts_bounded_raw_json_even_when_its_pretty_encoding_is_larger(legacy_registration):
+    state, specification, _ = legacy_registration
+    path = Path(specification["execution"]["config_directory"]) / "projects/demo.json"
+    document = json.loads(path.read_bytes())
+    document["checks"]["unused"] = ["echo", *(["x"] * 110_000)]
+    raw = json.dumps(document, separators=(",", ":")).encode("utf-8")
+    pretty = (json.dumps(document, indent=2) + "\n").encode("utf-8")
+    assert len(raw) <= 1_048_576 < len(pretty)
+    path.write_bytes(raw)
+    preview = registrations.preview_import(state, specification, 0)
+    project = registrations.apply_import(state, specification, 0, preview["preview_sha256"])
+    assert project["registration"]["status"] == "published" and path.read_bytes() == raw
+    assert registrations.resume(state, "demo", 1) == project
+    assert registrations.status(state, "demo")["consistent"]
+
+
+def test_import_upgrades_control_project_with_pointer_diff_and_before_record(legacy_registration):
+    state, specification, _ = legacy_registration
+    projects.create(state, "demo", Path(specification["repo"]))
+    before = projects.bind(state, "demo", "reviewer", {"tool": "claude-code"}, 1)
+    specification["bindings"] = {"reviewer": {"tool": "codex"}}
+    preview = registrations.preview_import(state, specification, 2)
+    assert {"path": "/bindings/reviewer/tool", "operation": "replace", "before": "claude-code", "after": "codex"} in preview["changes"]
+    project = registrations.apply_import(state, specification, 2, preview["preview_sha256"])
+    assert project["created"] == before["created"] and project["revision"] == 3
+    journal = state.root / "registrations/demo" / (project["registration"]["operation_id"] + ".json")
+    assert json.loads(journal.read_text())["before"] == before
+
+
+@pytest.mark.parametrize("source,change", [
+    ("projects/demo.json", "format"), ("policies/demo/scope.json", "format"),
+    ("projects/demo.json", "semantic"), ("policies/demo/execution.json", "create"),
+])
+def test_import_refuses_any_source_change_since_preview(legacy_registration, source, change):
+    state, specification, _ = legacy_registration
+    preview = registrations.preview_import(state, specification, 0)
+    path = Path(specification["execution"]["config_directory"]) / source
+    if change == "format":
+        path.write_bytes(path.read_bytes() + b"\n")
+    elif change == "semantic":
+        document = json.loads(path.read_bytes())
+        document["checks"]["behavior"] = ["new-command"]
+        path.write_text(json.dumps(document), encoding="utf-8")
+    else:
+        path.write_text('{"allowed_task_types": ["large-change", "repository-governance"]}', encoding="utf-8")
+    changed = path.read_bytes()
+    with pytest.raises(ValueError, match="preview changed"):
+        registrations.apply_import(state, specification, 0, preview["preview_sha256"])
+    assert projects.list_projects(state) == [] and path.read_bytes() == changed
+    assert not (state.root / "registrations").exists()
+
+
+@pytest.mark.parametrize("mutation,error", [
+    (lambda d: d.update(schema_version=True), "schema_version"),
+    (lambda d: d.update(schema_version=2), "schema_version"),
+    (lambda d: d.update(extra="unknown"), "Additional properties"),
+])
+def test_import_rejects_unknown_legacy_project_formats(legacy_registration, mutation, error):
+    state, specification, _ = legacy_registration
+    path = Path(specification["execution"]["config_directory"]) / "projects/demo.json"
+    document = json.loads(path.read_bytes())
+    mutation(document)
+    path.write_text(json.dumps(document), encoding="utf-8")
+    with pytest.raises(ValueError, match=error):
+        registrations.preview_import(state, specification, 0)
+    assert projects.list_projects(state) == []
+
+
+@pytest.mark.parametrize("encoding", ["utf-8-sig", "utf-16"])
+def test_import_refuses_source_encodings_the_original_executor_cannot_read(legacy_registration, encoding):
+    state, specification, raw = legacy_registration
+    path = Path(specification["execution"]["config_directory"]) / "projects/demo.json"
+    path.write_bytes(raw["projects/demo.json"].decode("utf-8").encode(encoding))
+    with pytest.raises(ValueError):
+        registrations.preview_import(state, specification, 0)
+    assert projects.list_projects(state) == []
+
+
+def test_import_refuses_wrong_roots_missing_scope_duplicate_tracker_and_control_owner(legacy_registration, tmp_path):
+    state, specification, raw = legacy_registration
+    config = Path(specification["execution"]["config_directory"])
+    wrong = deepcopy(specification)
+    wrong["repo"] = str(tmp_path / "other-repo")
+    with pytest.raises(ValueError, match="same ID and Git repository"):
+        registrations.preview_import(state, wrong, 0)
+    scope = config / "policies/demo/scope.json"
+    scope.unlink()
+    with pytest.raises(ValueError, match="requires both"):
+        registrations.preview_import(state, specification, 0)
+    scope.write_bytes(raw["policies/demo/scope.json"])
+    other = config / "projects/other.json"
+    other.write_bytes(raw["projects/demo.json"])
+    with pytest.raises(ValueError, match="already owns"):
+        registrations.preview_import(state, specification, 0)
+    other.unlink()
+    marker = config / "ergora/registrations/demo.json"
+    marker.parent.mkdir(parents=True)
+    marker.write_text('{"control_home": "another-control"}', encoding="utf-8")
+    with pytest.raises(ValueError, match="control owner"):
+        registrations.preview_import(state, specification, 0)
+    assert projects.list_projects(state) == [] and marker.exists()
+
+
+def test_import_refuses_revision_changes_or_an_unapproved_preview(legacy_registration):
+    state, specification, _ = legacy_registration
+    projects.create(state, "demo", Path(specification["repo"]))
+    preview = registrations.preview_import(state, specification, 1)
+    projects.bind(state, "demo", "reviewer", {"tool": "claude-code"}, 1)
+    with pytest.raises(ValueError, match="revision changed"):
+        registrations.apply_import(state, specification, 1, preview["preview_sha256"])
+    with pytest.raises(ValueError, match="preview changed"):
+        registrations.apply_import(state, specification, 2, preview["preview_sha256"])
+    assert "registration" not in state.project("demo")
+
+
+def test_preview_binds_the_control_owner_and_requires_matching_policy_membership(legacy_registration, tmp_path):
+    state, specification, _ = legacy_registration
+    preview = registrations.preview_import(state, specification, 0)
+    assert preview["control_home"] == str(state.root)
+    other = State(tmp_path / "other-control")
+    with pytest.raises(ValueError, match="preview changed"):
+        registrations.apply_import(other, specification, 0, preview["preview_sha256"])
+    path = Path(specification["execution"]["config_directory"]) / "policies/demo/execution.json"
+    path.write_text('{"allowed_task_types": ["repository-governance"]}', encoding="utf-8")
+    with pytest.raises(ValueError, match="conflict with the legacy execution policy"):
+        registrations.preview_import(state, specification, 0)
+
+
+@pytest.mark.parametrize("template", reference.TEMPLATES)
+def test_each_template_can_adopt_legacy_configuration(legacy_registration, template):
+    state, specification, _ = legacy_registration
+    specification["templates"] = [template]
+    preview = registrations.preview_import(state, specification, 0)
+    project = registrations.apply_import(state, specification, 0, preview["preview_sha256"])
+    assert project["registration"]["definition"]["templates"] == [template]
+    assert registrations.status(state, "demo")["consistent"]
+
+
+def test_interrupted_import_resumes_in_new_process_and_preserves_source_identity(legacy_registration, monkeypatch):
+    state, specification, raw = legacy_registration
+    preview = registrations.preview_import(state, specification, 0)
+    original = reference.registration_io
+
+    def interrupt(*args, **kwargs):
+        if kwargs.get("publish"):
+            raise OSError("interrupted legacy adoption")
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(reference, "registration_io", interrupt)
+    with pytest.raises(OSError, match="interrupted"):
+        registrations.apply_import(state, specification, 0, preview["preview_sha256"])
+    assert state.project("demo")["registration"]["status"] == "pending"
+    result = subprocess.run([sys.executable, "-m", "ergora", "--home", str(state.root), "project",
+                             "resume-registration", "demo", "--revision", "1"], capture_output=True, text=True)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert json.loads(result.stdout)["registration"]["status"] == "published"
+    for relative, value in raw.items():
+        assert (Path(specification["execution"]["config_directory"]) / relative).read_bytes() == value
+
+
+def test_import_detects_source_change_after_reservation_and_can_resume_after_restoration(legacy_registration, monkeypatch):
+    state, specification, raw = legacy_registration
+    preview = registrations.preview_import(state, specification, 0)
+    path = Path(specification["execution"]["config_directory"]) / "projects/demo.json"
+    original = registrations._reserve
+
+    def change_after_reservation(*args):
+        original(*args)
+        path.write_bytes(path.read_bytes() + b"\n")
+
+    monkeypatch.setattr(registrations, "_reserve", change_after_reservation)
+    with pytest.raises(ValueError, match="source bytes changed"):
+        registrations.apply_import(state, specification, 0, preview["preview_sha256"])
+    assert state.project("demo")["registration"]["status"] == "pending"
+    with pytest.raises(ValueError, match="source bytes changed"):
+        registrations.resume(State(state.root), "demo", 1)
+    path.write_bytes(raw["projects/demo.json"])
+    assert registrations.resume(State(state.root), "demo", 1)["registration"]["status"] == "published"
+
+
+def test_cli_api_import_preview_agree_and_only_explicit_approved_apply_writes(legacy_registration, tmp_path):
+    pytest.importorskip("fastapi")
+    pytest.importorskip("httpx")
+    from fastapi.testclient import TestClient
+    from ergora.web import create_app
+
+    state, specification, _ = legacy_registration
+    path = tmp_path / "import.json"
+    path.write_text(json.dumps(specification), encoding="utf-8")
+    argv = [sys.executable, "-m", "ergora", "--home", str(state.root), "project", "import-reference", str(path), "--revision", "0"]
+    cli = subprocess.run(argv, capture_output=True, text=True)
+    assert cli.returncode == 0, cli.stderr
+    preview = json.loads(cli.stdout)
+    assert projects.list_projects(state) == []
+    refused = subprocess.run([*argv, "--apply"], capture_output=True, text=True)
+    assert refused.returncode == 2 and "requires --preview-sha256" in refused.stderr
+    with TestClient(create_app(state.root), base_url="http://127.0.0.1:8977") as client:
+        headers = {"Origin": "http://127.0.0.1:8977", "X-Ergora-Request": "1"}
+        body = {"definition": specification, "revision": 0}
+        response = client.post("/api/project-registration-imports/preview", json=body, headers=headers)
+        assert response.status_code == 200 and response.json() == preview
+        assert client.post("/api/project-registration-imports", json=body, headers=headers).status_code == 422
+        response = client.post("/api/project-registration-imports", json={**body, "preview_sha256": preview["preview_sha256"]}, headers=headers)
+        assert response.status_code == 200, response.text
+        assert response.json()["registration"]["status"] == "published"

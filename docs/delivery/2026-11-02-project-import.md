@@ -1,6 +1,6 @@
 # F1.3：旧注册预览、显式采用与恢复
 
-日期：2026-11-02。前置F1.2统一注册正在独立审查；本记录先固定下一切片的范围与验收，尚未实现。代码基线将在F1.2提交后记录。
+日期：2026-11-02。源码基线`a6fd29162bc066cd8954275032bc103b3f11fc66`，已推送且远端一致；F1.2独立审查及最终本地255项回归通过，精确两OS CI待核。用户授权继续完成F1。本切片从该提交开始实现，保留F1.2审查者补充的最终本地证据文档。
 
 ## 范围与设计
 
@@ -20,4 +20,18 @@
 
 ## 进度
 
-范围与验收已记录，实现、验证及独立审查均待进行。
+F1.3已实现，审查发现的容量兼容P2已修正并源码复核关闭，最终非editable包验收中。`registrations`增加preview/apply，沿用同一_prepare/reserve/finish/resume；import spec与旧项目格式复用现有schema属性。私有执行目录规范化供注册/导入共用。reference边界只补严格UTF8读取及采用文件原始SHA核验，避免接受原runtime无法读取的BOM/UTF16文件，也避免预留后/恢复时偷偷采用已改变的旧字节。
+
+预览绑定控制home、修订、完整规范化定义、源原始SHA及各投影语义摘要，差异使用JSON Pointer。既有execution allowlist按成员集合匹配并保留旧顺序/字节；同一登记以后只改绑定时保留已批准投影。缺失策略在预览中标为create，已有文件标为adopt。仅生成配置，不读platform/credentials，不迁任务、不调用服务。
+
+首次源码定向53项通过（新预览/采用/字节保持、两类编码拒绝、错误格式/根/归属、源变化、旧revision、预留后变化及跨进程恢复、CLI/API一致性）；随后补入目标控制home绑定、策略成员冲突、三个模板分别导入和两开发模板真实旧注册导入六阶段，当前组合定向尚未结束。新证据目录`.ergora/checks/f1-import/`，不与F1.2最终包混用。
+
+预审验收：组合定向72项通过；非editable wheel SHA256`5d5eb60011d69f7e544a665208ae736b260c2ef98ea0b5a9fccdd2aee7629db6`，源码/wheel/开发环境及独立基础环境337文件一致。完整适用回归278 passed、18 skipped、36 subtests passed（`wheel-regression.log`），命令范围同F1.2，PYTHONPATH仅选冻结upstream、没有src。实际fixture包括两开发模板经旧原register→预览→显式采用→CLI保存目录入口→六阶段，后续新登记不影响原runtime里的在途快照。受控command/伪Codex不代表真实模型/外部服务/GPU验收。开始新的fresh-context独立审查；精确两OS CI与推送尚待实施。
+
+独立基础环境CLI旅程通过8次操作（reference info、默认导入预览、带SHA采用、状态、幂等恢复、改reviewer绑定、有效配置及再次状态）；确认采用前没有归属投影，采用后旧文件原字节不变，绑定revision更新且投影继续一致。结果记录`base-journey.json`。当前独立审查进行中，尚未声明F1.3交付完成。
+
+审查发现容量兼容P2：原始紧凑JSON小于1MiB、假设indent2后大于1MiB时，原边界错误地拒绝无需重写的采用文件。新增回归先复现失败（`compact-source-before-fix.log`），再将生成大小校验限制到observed缺失、确实新建的文件；已有文件仍通过原reader上限、源SHA和语义冲突检查。修正后的定向/最终包验收与复审待记录，预审278项不能替代修正后结果。
+
+修正后定向：合法紧凑源可采用/恢复/状态一致、新建超限仍拒绝，2项通过；注册/导入及静态边界58项通过（`fixed-registration-regression.log`）。独立审查者以4个无写入探针复核旧大文件PASS、新建同内容超限拒绝、源字节变化拒绝和语义冲突拒绝，P2源码修正关闭；未提出其他结构/维护性阻塞。最终包及CI/远端证据仍待完成。
+
+最终本地验收（2026-11-03）：修正wheel SHA256`6d1ef44aa2d71988e21930cc7908aa5fb6e398bf057106d8907b3e8e79e5319f`，源码/wheel/两安装337文件一致；`final-wheel-regression.log`为279 passed、18 skipped、36 subtests passed。最终基础8次CLI旅程保持原字节、绑定修订及状态一致。新的[独立结构/维护性复审](2026-11-02-project-import-review.md)通过，容量P2关闭、无未解决源码finding，最终包/安装/基础旅程已由审查者另行核对。接下来提交推送并核对该候选精确两OS CI，再关闭完整F1。

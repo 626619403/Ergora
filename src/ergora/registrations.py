@@ -16,6 +16,28 @@ from .state import State, file_lock
 
 
 _SCHEMA = json.loads((Path(__file__).parent / "data/schemas/project-registration-v1.json").read_text(encoding="utf-8"))
+_IMPORT_FIELDS = ("schema_version", "id", "repo", "templates", "execution", "bindings")
+_IMPORT_SCHEMA = {"type": "object", "additionalProperties": False,
+                  "required": list(_IMPORT_FIELDS[:-1]),
+                  "properties": {key: _SCHEMA["properties"][key] for key in _IMPORT_FIELDS}}
+_LEGACY_FIELDS = ("schema_version", "repo", "tracker", "base_sha", "allowed_paths", "checks")
+_LEGACY_PROJECT_SCHEMA = {"type": "object", "additionalProperties": False,
+                          "required": ["name", *_LEGACY_FIELDS],
+                          "properties": {"name": _SCHEMA["properties"]["id"],
+                                         **{key: _SCHEMA["properties"][key] for key in _LEGACY_FIELDS}}}
+
+
+def _execution_directories(execution: dict, repo: Path) -> dict:
+    normalized = {}
+    for key, value in execution.items():
+        path = Path(value).expanduser()
+        if not path.is_absolute():
+            raise ValueError("Execution directories must be absolute paths")
+        path = path.resolve()
+        if path.is_relative_to(repo):
+            raise ValueError("Execution directories must be outside the business Git repository")
+        normalized[key] = str(path)
+    return normalized
 
 
 def _sha(value) -> str:
@@ -67,14 +89,8 @@ def _prepare(state: State, definition: dict, before: dict | None) -> dict:
         raise ValueError("Tracker project cannot contain traversal segments")
     if tracker["kind"] == "github" and len(tracker["project"].split("/")) != 2:
         raise ValueError("GitHub tracker requires owner/repository")
-    execution = selected["execution"]
-    for key, value in execution.items():
-        path = Path(value).expanduser()
-        if not path.is_absolute():
-            raise ValueError("Execution directories must be absolute paths")
-        execution[key] = str(path.resolve())
-        if Path(execution[key]).is_relative_to(Path(project["repo"])):
-            raise ValueError("Execution directories must be outside the business Git repository")
+    execution = _execution_directories(selected["execution"], Path(project["repo"]))
+    selected["execution"] = execution
     reference.validate_installation(Path(execution["installation"]))
     result = subprocess.run(["git", "-C", project["repo"], "rev-parse", "--verify",
                              selected.get("base_sha", "HEAD") + "^{commit}"],
@@ -92,6 +108,11 @@ def _prepare(state: State, definition: dict, before: dict | None) -> dict:
         config: {"schema_version": 1, "name": project["id"], "repo": project["repo"],
                  **{key: selected[key] for key in ("tracker", "base_sha", "allowed_paths", "checks")}},
     }
+    if before and "registration" in before:
+        previous = before["registration"]
+        if previous["sha256"] == digest and previous["files"][marker] == files[marker]:
+            # An adopted execution allowlist may have a different, equivalent order.
+            files = deepcopy(previous["files"])
     project["revision"] = before["revision"] + 1 if before else 1
     project["registration"] = {"schema_version": 1, "definition": selected, "sha256": digest,
                                "status": "pending", "operation_id": uuid.uuid4().hex, "files": files}
@@ -151,7 +172,10 @@ def _finish(state: State, project: dict) -> dict:
         raise ValueError("Project does not match its saved recovery intent")
     execution = registration["definition"]["execution"]
     reference.validate_installation(Path(execution["installation"]))
-    reference.registration_io(execution, project["id"], files=registration["files"], publish=True)
+    source_sha256 = {path: item["source_sha256"] for path, item in record["source"].get("files", {}).items()
+                     if item["operation"] == "adopt"}
+    reference.registration_io(execution, project["id"], files=registration["files"], publish=True,
+                              source_sha256=source_sha256)
     with state.connect() as db:
         db.execute("BEGIN IMMEDIATE")
         current = json.loads(db.execute("SELECT document FROM projects WHERE id=?", (project["id"],)).fetchone()[0])
@@ -180,6 +204,92 @@ def register(state: State, definition: dict, expected_revision: int) -> dict:
         if observed["files"][marker] is None and any(value is not None for value in observed["files"].values()):
             raise ValueError("Legacy reference registration detected; preview and explicitly import it")
         _reserve(state, before, project, {"kind": "registration"})
+        return _finish(state, project)
+
+
+def _differences(before: dict, after: dict, prefix: str = "") -> list[dict]:
+    changes = []
+    for key in sorted(before.keys() | after.keys()):
+        pointer = prefix + "/" + key.replace("~", "~0").replace("/", "~1")
+        if key not in before:
+            changes.append({"path": pointer, "operation": "add", "after": after[key]})
+        elif key not in after:
+            changes.append({"path": pointer, "operation": "remove", "before": before[key]})
+        elif isinstance(before[key], dict) and isinstance(after[key], dict):
+            changes.extend(_differences(before[key], after[key], pointer))
+        elif _sha(before[key]) != _sha(after[key]):
+            changes.append({"path": pointer, "operation": "replace", "before": before[key], "after": after[key]})
+    return changes
+
+
+def _import_plan(state: State, specification: dict, expected_revision: int) -> tuple[dict, dict, dict | None]:
+    _revision(expected_revision)
+    contracts.validate(specification, _IMPORT_SCHEMA, "Reference import")
+    before = _current(state, specification["id"])
+    if (before["revision"] if before else 0) != expected_revision:
+        raise ValueError("Project revision changed; reload before importing")
+    if before and before.get("registration", {}).get("status") == "pending":
+        raise ValueError("Project registration is pending; resume its existing operation")
+    repo = Path(specification["repo"]).expanduser().resolve()
+    execution = _execution_directories(specification["execution"], repo)
+    observed = reference.registration_io(execution, specification["id"])
+    marker, scope_path, policy_path, project_path = reference.registration_paths(specification["id"])
+    if observed["files"][marker] is not None:
+        raise ValueError("Reference registration already has a control owner; use its status/resume instead of importing")
+    if observed["files"][project_path] is None or observed["files"][scope_path] is None:
+        raise ValueError("Legacy import requires both the project registration and scope policy")
+    legacy = observed["files"][project_path]["document"]
+    scope = observed["files"][scope_path]["document"]
+    contracts.validate(legacy, _LEGACY_PROJECT_SCHEMA, "Legacy project")
+    if legacy["name"] != specification["id"] or Path(legacy["repo"]).expanduser().resolve() != repo:
+        raise ValueError("Legacy and expected projects must use the same ID and Git repository")
+    definition = {**deepcopy(specification), **{key: legacy[key] for key in ("tracker", "base_sha", "allowed_paths", "checks")},
+                  "execution": execution, "scope_policy": scope}
+    contracts.validate(definition, _SCHEMA, "Imported project registration")
+    project = _prepare(state, definition, before)
+    registration = project["registration"]
+    existing_policy = observed["files"][policy_path]
+    if existing_policy is not None:
+        policy = existing_policy["document"]
+        contracts.validate(policy, {"type": "object", "additionalProperties": False, "required": ["allowed_task_types"],
+            "properties": {"allowed_task_types": {"type": "array", "uniqueItems": True,
+                "items": {"enum": [t for t in reference.TEMPLATES if t != "training-optimization"]}}}}, "Legacy execution policy")
+        if set(policy["allowed_task_types"]) != set(registration["files"][policy_path]["allowed_task_types"]):
+            raise ValueError("Selected templates conflict with the legacy execution policy")
+        registration["files"][policy_path] = policy
+    reference.registration_io(execution, project["id"], files=registration["files"])
+    current = {key: before[key] for key in ("id", "repo", "bindings")} if before else {}
+    if before and "registration" in before:
+        current["definition"] = before["registration"]["definition"]
+    proposed = {key: project[key] for key in ("id", "repo", "bindings")}
+    proposed["definition"] = registration["definition"]
+    preview = {"schema_version": 1, "kind": "reference-import", "project": project["id"],
+               "control_home": str(state.root), "expected_revision": expected_revision, "definition": {
+                   "schema_version": 1, "id": project["id"], "repo": project["repo"],
+                   **deepcopy(registration["definition"]), "bindings": deepcopy(project["bindings"])},
+               "registration_sha256": registration["sha256"], "changes": _differences(current, proposed),
+               "files": {path: {"operation": "adopt" if value is not None else "create",
+                                "source_sha256": value["sha256"] if value is not None else None,
+                                "projected_sha256": _sha(registration["files"][path])}
+                         for path, value in observed["files"].items()}}
+    preview["preview_sha256"] = _sha(preview)
+    return preview, project, before
+
+
+def preview_import(state: State, specification: dict, expected_revision: int) -> dict:
+    """Read a legacy registration and describe adoption without writing project files."""
+    return _import_plan(state, specification, expected_revision)[0]
+
+
+def apply_import(state: State, specification: dict, expected_revision: int, preview_sha256: str) -> dict:
+    contracts.validate(specification, _IMPORT_SCHEMA, "Reference import")
+    execution = _execution_directories(specification["execution"], Path(specification["repo"]).expanduser().resolve())
+    with _publication_lock(state, execution):
+        preview, project, before = _import_plan(state, specification, expected_revision)
+        if preview_sha256 != preview["preview_sha256"]:
+            raise ValueError("Import preview changed; review a new preview before applying")
+        _reserve(state, before, project, {"kind": "reference-import", "preview_sha256": preview_sha256,
+                                        "files": preview["files"]})
         return _finish(state, project)
 
 

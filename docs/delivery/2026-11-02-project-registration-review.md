@@ -4,11 +4,11 @@
 
 ## 结论与范围
 
-- **需求符合性：F1.2 修正后在所审范围通过。** 发现的 P2 容量问题已修正并独立复核，无未解决阻塞 finding。最终修正版 wheel 完整回归和精确 Windows/Ubuntu 候选 CI 仍待交付记录确认，因此本报告不把整个切片标为交付完成。
+- **需求符合性：F1.2 修正后在所审范围通过。** 发现的 P2 容量问题已修正并独立复核，无未解决阻塞 finding。修正版最终 wheel 的本地完整回归、文件身份、精确 Windows/Ubuntu 候选 CI 及远端身份均已复核通过，F1.2 交付收尾通过。
 - **结构与维护性：通过。** 所有权及依赖方向合理，现有合同/绑定/模板/文件原语得到实际复用；两项小型重复已清理，没有要求新增抽象或扩大重构。
 - 本次只验收统一 JSON 定义、角色/执行位置/模板/检查/策略、reference 单向不可变投影、intent/pending/resume、CLI/API 一致性及新任务准入/旧快照兼容。F1.3 旧注册 dry-run/diff/import 不属于本切片，新增 F1.3 计划记录不作为本报告的实现审查对象。
 
-原始依据为 [详细计划 F1](../plans/2026-11-01-all-in-one.md#f1-单一项目及有效配置)、[F1.1 分步边界](2026-11-02-project-configuration.md)、[F1.2 交付记录](2026-11-02-project-registration.md)。基线为 `f11b8ccb59a4073a4e17b35d5c7500105c9d5b29`，分支 `refactor/architecture-foundations`，工作区未提交。初审工件 `.ergora/checks/f1-registration/review.diff` 的 SHA-256 为 `1c6efa1ee06b6ae7d7d636ec5bb24e77ce2be035eb980720e1e716c469655b19`，`review-files.txt` 为 `5f8bb60829ba589e865dc6e704986265c29f587637f927c901d844f6df67411b`；本报告另外复核审查期间的容量修正及两项清理，不将初审 diff 当作修正后的完整身份。
+原始依据为 [详细计划 F1](../plans/2026-11-01-all-in-one.md#f1-单一项目及有效配置)、[F1.1 分步边界](2026-11-02-project-configuration.md)、[F1.2 交付记录](2026-11-02-project-registration.md)。基线为 `f11b8ccb59a4073a4e17b35d5c7500105c9d5b29`，分支 `refactor/architecture-foundations`，初审时工作区未提交。最终本地补核时源码已提交为 `a6fd29162bc066cd8954275032bc103b3f11fc66`，与下表运行文件身份一致。初审工件 `.ergora/checks/f1-registration/review.diff` 的 SHA-256 为 `1c6efa1ee06b6ae7d7d636ec5bb24e77ce2be035eb980720e1e716c469655b19`，`review-files.txt` 为 `5f8bb60829ba589e865dc6e704986265c29f587637f927c901d844f6df67411b`；本报告另外复核审查期间的容量修正及两项清理，不将初审 diff 当作修正后的完整身份。
 
 完整审查文件：`src/ergora/{cli,projects,reference,reference_executor,web,registrations}.py`、`src/ergora/data/schemas/project-registration-v1.json`、`tests/test_registrations.py`、`tests/test_reference_executor.py`、`tests/fixtures/reference_acceptance.py`、`README.md`、`docs/{AGENT_BACKENDS,PLAN,USAGE,PROJECTS}.md`、`docs/architecture/{current,reference-boundary}.md`、本切片交付记录。新文件均直接读取。邻接检查包括 `bindings/components/contracts/state/backups`、原 `core/projects/executor/training`、`dev_platform.adapter/contracts`、`harness.git_scope`、原模板/portable tracker 合同及现有架构测试/CI。
 
@@ -43,7 +43,7 @@
 
 审查者执行：完整变更与邻接调用链阅读；`git diff --check`；对 9 份 Python 变更进行 AST 解析及 1 份新增 schema 的 JSON 解析；`reference.verify()` 核对 283 文件；上述只读容量预检。没有把测试绿灯作为正确性结论，也未重复运行长回归。
 
-已核对实施者记录的初版非 editable wheel `c3d94c6ad8b7419c77ff996da7b1a92de2188cd878ea930e4339b1b311ffa5e0`、337 文件 × 两安装一致性说明，以及 `wheel-regression.log` 末尾的 254 passed / 18 skipped / 36 subtests passed；`cli-saved-execution.log` 为 2 项通过。这些是初版候选的实现者验收，不能替代修正后最终包或当前 Windows 候选 CI。源码定向、受控六阶段 fixture、取消和旧快照证据按各自实际范围保留；未验证真实模型、外部服务或 GPU。
+已核对初版非 editable wheel `c3d94c6ad8b7419c77ff996da7b1a92de2188cd878ea930e4339b1b311ffa5e0` 的 `wheel-regression.log`（254 passed / 18 skipped / 36 subtests passed）及 `cli-saved-execution.log`（2 项通过），保留其初版身份。最终修正包位于 `.ergora/checks/f1-registration/dist/ergora-0.2.0-py3-none-any.whl`；审查者独立计算其 SHA-256 为 `8c690d6b087e9f293ed5c40adaec3d0347e24d276f939d6832ad695a0e919750`，并逐一核对源码、wheel 和两套安装的 337 份文件，均与 `package-identity.json` 匹配。已读 `final-wheel-regression.log` 末尾的 255 passed / 18 skipped / 36 subtests passed。长回归由实现者执行；上述文件身份由审查者只读复核。本地验收与下附精确 Windows/Ubuntu CI 分别保留各自身份；源码定向、受控六阶段 fixture、取消和旧快照证据按各自实际范围保留，未验证真实模型、外部服务或 GPU。
 
 审查结束时的运行相关文件身份：
 
@@ -60,4 +60,13 @@
 |`tests/test_reference_executor.py`|`656f138b903053408a76bd00777380188db012867de24836eb3684ae93722cc6`|
 |`tests/fixtures/reference_acceptance.py`|`5f46690d992a0a0c302dc7440daaa7b0c608f17f5c91c9722811577db07f19b6`|
 
-剩余交付条件：记录修正后最终包的验收和文件身份、精确 Windows/Ubuntu 候选 CI、最终提交/远端身份；同步 PLAN、详细 F1 登记表和交付记录。F1.3 继续作为下一切片。**当前无未解决的阻塞 finding。**
+最终本地补核还确认详细计划已将 F1.2 更新为已实现，项目手册明确切换配置后旧任务必须保留原 CONFIG/STATE/安装；`--project` 不自动迁移旧任务。报告中 10 份运行/测试文件身份也已逐一与 `git show a6fd291` 复核一致，本地链接和空白检查通过。以上为初审及本地验收记录；最终远端和 CI 复核见下文。F1.3 由另一切片及独立审查处理。**当前无未解决的阻塞 finding。**
+
+
+## 最终 CI 与交付复核（2026-11-03）
+
+审查者重新只读核对保存的最终 wheel SHA-256 `8c690d6b087e9f293ed5c40adaec3d0347e24d276f939d6832ad695a0e919750`，其 337 份文件均与固定提交 `a6fd29162bc066cd8954275032bc103b3f11fc66` 的内容一致；报告中 10 份源码/测试摘要也逐一与该提交匹配。独立执行 `git ls-remote origin refs/heads/refactor/architecture-foundations`，远端返回同一完整 SHA。
+
+已只读解析 `.ergora/checks/f1-registration/` 下的 `ci-html-run-selection.json`、`ci-run-latest.html` 和两份 `ci-job-*.html`，并核对四份源证据的大小/哈希与 `ci-html-status.json` 一致。公开 API 限流后保存的 GitHub 官方 HTML 将 [Portability run 41448910719](https://github.com/626619403/Ergora/actions/runs/41448910719) 关联到上述完整候选，运行状态为 Success；[Ubuntu / Python 3.11 job 125288899157](https://github.com/626619403/Ergora/actions/runs/41448910719/job/125288899157) 和 [Windows / Python 3.12 job 125288899281](https://github.com/626619403/Ergora/actions/runs/41448910719/job/125288899281) 的 Build and install wheel、Packaged reference identity、Native application regression 均为 success，Windows 的 PowerShell 5.1 installer and upgrade 也为 success。逐步骤日志链接包含完整候选 SHA 及对应 job/check ID，步骤已完成，未见 failure/cancelled/timed_out 步骤。
+
+**F1.2 的需求、维护性与最终 CI/交付复核通过，无未解决阻塞 finding。** 本次仅补记原切片交付证据，未审查或修改 F1.3 工作区源码；真实模型、外部服务和 GPU 的未验边界保持原记录。

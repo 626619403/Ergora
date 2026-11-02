@@ -110,7 +110,8 @@ def registration_paths(project_id: str) -> tuple[str, ...]:
 
 
 def registration_io(execution: dict, project_id: str, *, files: dict | None = None,
-                    publish: bool = False, paths: list | None = None, scope: dict | None = None) -> dict:
+                    publish: bool = False, paths: list | None = None, scope: dict | None = None,
+                    source_sha256: dict | None = None) -> dict:
     """Inspect or publish only project registration files, using fixed reference code.
 
     Separate processes avoid import-time CONFIG/STATE leaking between Web projects.
@@ -124,7 +125,7 @@ def registration_io(execution: dict, project_id: str, *, files: dict | None = No
     result = subprocess.run([sys.executable, "-P", "-S", "-c",
                              "from ergora.reference import _registration_main;_registration_main()"],
                             input=json.dumps({"id": project_id, "files": files, "publish": publish,
-                                              "paths": paths, "scope": scope}, allow_nan=False),
+                                              "paths": paths, "scope": scope, "source_sha256": source_sha256}, allow_nan=False),
                             capture_output=True, text=True, encoding="utf-8", env=environment, timeout=30)
     if result.returncode:
         raise ValueError(result.stderr.strip().splitlines()[-1])
@@ -153,9 +154,12 @@ def _registration_main():
                 raw = adapter.read_raw(path)
             except FileNotFoundError:
                 return None
-            return {"document": json.loads(raw), "sha256": hashlib.sha256(raw).hexdigest()}
+            return {"document": json.loads(raw.decode("utf-8")), "sha256": hashlib.sha256(raw).hexdigest()}
 
         observed = {relative: inspect(relative) for relative in registration_paths(project_id)}
+        for relative, expected in (payload["source_sha256"] or {}).items():
+            if observed[relative] is None or observed[relative]["sha256"] != expected:
+                raise ValueError(f"Legacy source bytes changed since the approved preview: {relative}")
         other_projects = []
         directory = adapter.safe_file(root, "projects")
         for path in sorted(directory.glob("*.json")):
@@ -169,11 +173,12 @@ def _registration_main():
             if any(project["tracker"] == tracker for project in other_projects):
                 raise ValueError("Another reference project already owns this tracker")
             for relative, expected in files.items():
-                encoded = (json.dumps(expected, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode("utf-8")
-                if len(encoded) > 1_048_576:
-                    raise ValueError(f"Registration file exceeds 1 MiB read limit: {relative}")
                 current = observed[relative]
-                if current is not None and canonical_sha(current["document"]) != canonical_sha(expected):
+                if current is None:
+                    encoded = (json.dumps(expected, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode("utf-8")
+                    if len(encoded) > 1_048_576:
+                        raise ValueError(f"Registration file exceeds 1 MiB read limit: {relative}")
+                elif canonical_sha(current["document"]) != canonical_sha(expected):
                     raise ValueError(f"Immutable registration conflict: {relative}")
             if payload["publish"]:
                 # Ownership/policies first; make the runnable project visible last.

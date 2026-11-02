@@ -62,6 +62,11 @@ def parser() -> argparse.ArgumentParser:
     registration = operations.add_parser("resume-registration", help="Resume the saved publication intent")
     registration.add_argument("id")
     registration.add_argument("--revision", type=int, required=True)
+    importing = operations.add_parser("import-reference", help="Preview legacy adoption; applying requires the preview digest")
+    importing.add_argument("specification", type=Path)
+    importing.add_argument("--revision", type=int, required=True)
+    importing.add_argument("--apply", action="store_true")
+    importing.add_argument("--preview-sha256", help="Required with --apply; from the reviewed dry-run")
     bind = operations.add_parser("bind")
     bind.add_argument("id")
     bind.add_argument("layer")
@@ -256,6 +261,16 @@ def main(argv: list[str] | None = None) -> int:
                 output = registrations.status(state, args.id)
             elif args.operation == "resume-registration":
                 output = registrations.resume(state, args.id, args.revision)
+            elif args.operation == "import-reference":
+                specification = json.loads(args.specification.read_text(encoding="utf-8-sig"))
+                if args.apply:
+                    if not args.preview_sha256:
+                        raise ValueError("Applying a legacy import requires --preview-sha256 from a reviewed preview")
+                    output = registrations.apply_import(state, specification, args.revision, args.preview_sha256)
+                else:
+                    if args.preview_sha256:
+                        raise ValueError("--preview-sha256 requires --apply")
+                    output = registrations.preview_import(state, specification, args.revision)
             else:
                 output = projects.bind(state, args.id, args.layer, json.loads(args.binding.read_text(encoding="utf-8-sig")), args.revision)
         elif args.command == "tools":

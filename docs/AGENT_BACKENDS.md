@@ -71,6 +71,8 @@ bash scripts/install-agent.sh mini-swe-agent
 
 默认`agentflow`执行器保持v2.2行为。要使项目的角色选择作用于正式任务，先按参考手册安装、配置模型和可信执行边界，再用[统一项目注册](PROJECTS.md)一次登记Git根、角色、模板与可信检查，并运行`ergora reference executor --project PROJECT_ID`。旧的两次注册方式继续兼容，两个同名项目必须指向相同Git根。只对新任务启用；不要中途切换已开始的参考任务。
 
+已有reference项目可用`ergora project import-reference import.json --revision N`预览，审阅差异和文件身份后加`--apply --preview-sha256 SHA`显式采用。它保持兼容旧文件原字节，保存前后项目与来源记录；不搬迁在途任务或导入模型密钥。详细spec和恢复命令见[项目定义手册](PROJECTS.md#显式导入旧注册)。
+
 先停止原 executor，保留 Temporal、worker 等服务：
 
 ```bash

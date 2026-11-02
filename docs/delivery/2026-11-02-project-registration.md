@@ -22,14 +22,14 @@
 
 ## 进度
 
-F1.2已实现，正在完成非editable包验收；独立审查待开始。F1.3尚未实施。证据放忽略目录`.ergora/checks/f1-registration/`，源码/文档不放临时目录。
+F1.2已交付：实现/测试提交`a6fd29162bc066cd8954275032bc103b3f11fc66`已推送且远端一致；最终本地验收、独立复审和精确两OS CI通过。F1.3继续独立实施。证据放忽略目录`.ergora/checks/f1-registration/`，源码/文档不放临时目录。
 
 实现范围：新增`registrations.py`和严格schema；CLI/API共享register/status/resume用例。`projects.new_document`是轻量创建与完整登记共同使用的Git根/项目身份校验，不让基础项目反向依赖reference。`reference.registration_io`专用子进程持有布局、原scope/路径校验、有界读取与不可变发布；没有把原CONFIG全局加载进Web。执行桥仅对尚未冻结的新任务核对完整登记；`reference executor --project`使用保存的目录。README、两手册、项目定义手册和当前架构入口同步。
 
-已执行：源码配置/结构/注册定向39项通过；注册与正式执行定向40项通过（包含两个统一注册六阶段fixture和三个准入拒绝场景）。随后增加恢复意图写入失败、相同旧文件显式导入要求、不同Git根/unborn/symlink边界及CLI保存目录入口验收，纳入当前wheel全量回归。fixture为受控命令/伪Codex协议执行，不代表真实模型/外部服务/GPU效果。当前生产包已构建并安装到专用验收环境，全量结果尚待结束。
+已执行：源码配置/结构/注册定向39项通过；注册与正式执行定向40项通过（包含两个统一注册六阶段fixture和三个准入拒绝场景）。随后增加恢复意图写入失败、相同旧文件显式导入要求、不同Git根/unborn/symlink边界及CLI保存目录入口验收，纳入当前wheel全量回归。fixture为受控命令/伪Codex协议执行，不代表真实模型/外部服务/GPU效果。首次生产包已构建并安装到专用验收环境，其后完整结果见下。
 
-预审验收：当前非editable wheel（Python3.11开发验收环境）完整适用回归254 passed、18 skipped、36 subtests passed；独立基础依赖环境安装通过，337个应用/资源文件在源码、wheel和两套安装间一致。增量注册/静态边界35项通过。全量命令沿用`tests`及冻结upstream的`test_contracts.py`、`test_portable.py`、`test_workflow.py::AdapterTests`、`test_runtime.py`，PYTHONPATH仅指冻结upstream，未指src。命令与日志位于`.ergora/checks/f1-registration/`。Windows精确候选CI与最终推送尚待实施；独立审查开始。
+预审验收：当前非editable wheel（Python3.11开发验收环境）完整适用回归254 passed、18 skipped、36 subtests passed；独立基础依赖环境安装通过，337个应用/资源文件在源码、wheel和两套安装间一致。增量注册/静态边界35项通过。全量命令沿用`tests`及冻结upstream的`test_contracts.py`、`test_portable.py`、`test_workflow.py::AdapterTests`、`test_runtime.py`，PYTHONPATH仅指冻结upstream，未指src。命令与日志位于`.ergora/checks/f1-registration/`。这是独立审查前的历史候选；修正后结果和最终CI见下。
 
-独立审查期间复现并修正一个大小边界：1MiB argv参数可写成超过安全reader上限的文件，原实现发布后无法status/resume。reference发布预检现按原write的UTF8/indent2/newline计算实际字节并在reserve前拒绝超过1MiB的文件；新增拒绝且不落DB/投影的回归，与等价legacy边界共2项通过。此修正尚待最终wheel重建。额外基础包5次CLI操作（verify/register/config/status/resume）和当前CLI保存执行目录的两开发模板六阶段均通过。首次全量结果仅对应预审包，不混作修正后证据。
+独立审查期间复现并修正一个大小边界：1MiB argv参数可写成超过安全reader上限的文件，原实现发布后无法status/resume。reference发布预检现按原write的UTF8/indent2/newline计算实际字节并在reserve前拒绝超过1MiB的文件；新增拒绝且不落DB/投影的回归，与等价legacy边界共2项通过。修正后的最终wheel结果见下。额外基础包5次CLI操作（verify/register/config/status/resume）和当前CLI保存执行目录的两开发模板六阶段均通过。首次全量结果仅对应预审包，不混作修正后证据。
 
-最终本地验收完成：修正包SHA256`8c690d6b087e9f293ed5c40adaec3d0347e24d276f939d6832ad695a0e919750`，337文件×两安装与源码一致；完整适用回归255 passed、18 skipped、36 subtests passed（`final-wheel-regression.log`）。[独立审查](2026-11-02-project-registration-review.md)需求/维护性均通过，容量P2与两项重复清理均关闭，无未解决阻塞。接下来提交推送并核对精确两OS CI；F1.3设计在[下一切片记录](2026-11-02-project-import.md)，继续实施，不把整个F1标为完成。
+最终本地验收完成：修正包SHA256`8c690d6b087e9f293ed5c40adaec3d0347e24d276f939d6832ad695a0e919750`，337文件×两安装与源码一致；完整适用回归255 passed、18 skipped、36 subtests passed（`final-wheel-regression.log`）。[独立审查](2026-11-02-project-registration-review.md)需求/维护性均通过，容量P2与两项重复清理均关闭，无未解决阻塞。精确候选[a6fd291的CI41448910719](https://github.com/626619403/Ergora/actions/runs/41448910719)两OS通过；官方API403限流后以官方HTML核对完整SHA及Ubuntu/Windows安装、冻结身份、回归和WindowsPowerShell安装升级步骤。证据为`ci-html-status.json`及原页面，F1.2交付完成。F1.3设计在[下一切片记录](2026-11-02-project-import.md)，继续实施，不把整个F1标为完成。
