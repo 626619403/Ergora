@@ -1,5 +1,6 @@
 """Agent Skills assets, content identities and atomic version-head history."""
 
+import difflib
 import hashlib
 import json
 from pathlib import Path
@@ -70,6 +71,15 @@ def get(state: State, project_id: str, digest: str) -> dict:
     if actual != digest:
         raise ValueError("Stored skill content changed; refuse to use modified evidence")
     return document
+
+
+def diff(state: State, project_id: str, baseline: str, candidate: str) -> dict:
+    before, after = get(state, project_id, baseline), get(state, project_id, candidate)
+    before_text = (Path(before["path"]) / "SKILL.md").read_text(encoding="utf-8")
+    after_text = (Path(after["path"]) / "SKILL.md").read_text(encoding="utf-8")
+    changed = [name for name in sorted(set(before["files"]) | set(after["files"])) if before["files"].get(name) != after["files"].get(name)]
+    return {"diff": "".join(difflib.unified_diff(before_text.splitlines(True), after_text.splitlines(True), fromfile=baseline[:12], tofile=candidate[:12])),
+            "changed_files": changed, "baseline": before, "candidate": after}
 
 
 def import_bundle(state: State, project_id: str, source: Path, hypothesis: str = "Imported candidate",

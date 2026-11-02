@@ -1,7 +1,5 @@
 """Local control plane. All state transitions use the same application functions as the CLI."""
 
-import difflib
-import json
 import sys
 from pathlib import Path
 from typing import Literal
@@ -217,12 +215,7 @@ def create_app(home: Path | None = None) -> FastAPI:
 
     @application.get("/api/projects/{project_id}/skills/diff")
     def skill_diff(project_id: str, baseline: str, candidate: str):
-        before, after = skill_assets.get(state, project_id, baseline), skill_assets.get(state, project_id, candidate)
-        before_text = (Path(before["path"]) / "SKILL.md").read_text(encoding="utf-8")
-        after_text = (Path(after["path"]) / "SKILL.md").read_text(encoding="utf-8")
-        changed = [name for name in sorted(set(before["files"]) | set(after["files"])) if before["files"].get(name) != after["files"].get(name)]
-        return {"diff": "".join(difflib.unified_diff(before_text.splitlines(True), after_text.splitlines(True), fromfile=baseline[:12], tofile=candidate[:12])),
-                "changed_files": changed, "baseline": before, "candidate": after}
+        return skill_assets.diff(state, project_id, baseline, candidate)
 
     @application.post("/api/projects/{project_id}/skills/adopt")
     def adopt_skill(project_id: str, body: AdoptPayload):
