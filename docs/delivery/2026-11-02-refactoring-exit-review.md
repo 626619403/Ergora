@@ -4,7 +4,7 @@
 
 ## 范围与身份
 
-审查 HEAD / 切片基线均为 `2a18427778ef65172bb5e6130c23876b1e579fd6`，分支 `refactor/architecture-foundations`；生产基线为 `b8bee53bdc85a803109a9b8b804aee7408d7a535`。初审检查了 `.ergora/checks/r8/review.diff` 的完整内容，包括四个新增文件；以下八个输入文件的初审 SHA256 均与 `review-context.json` 一致，修正版身份见文末复审记录：
+初审与修正复审 HEAD / 切片基线均为 `2a18427778ef65172bb5e6130c23876b1e579fd6`，分支 `refactor/architecture-foundations`；生产基线为 `b8bee53bdc85a803109a9b8b804aee7408d7a535`。最终交付候选为 `46ac6330432871d809767a3b11b808c4da129e82`，精确 CI / 远端核对见文末。初审检查了 `.ergora/checks/r8/review.diff` 的完整内容，包括四个新增文件；以下八个输入文件的初审 SHA256 均与 `review-context.json` 一致，修正版身份见文末复审记录：
 
 - `README.md`、`docs/PLAN.md`、`docs/plans/2026-11-01-all-in-one.md`。
 - `docs/architecture/current.md`、`docs/architecture/decisions/0001-refactoring-foundations.md`、`docs/architecture/decisions/0002-static-boundaries.md`。
@@ -14,7 +14,7 @@
 
 ## 结论
 
-**需求符合性：修正后审查通过，剩余交付验收待完成。** 当前架构和 A1 的 13 项结案均有对应记录，旧 API 的别名与实际消费者、退出前提可追溯；未将 F1–F10 或历史浏览器/模型/GPU结果写成本轮实现。初审的 reference 显式导入缺口与 GEPA 所有者描述均已最小修正并独立复核，已检查范围无未解决 findings。最终完整回归已核对；提交/推送和精确两 OS CI 尚待录入，R8 不能据此先标记完成。
+**需求符合性：通过，含精确 CI / 远端复核。** 当前架构和 A1 的 13 项结案均有对应记录，旧 API 的别名与实际消费者、退出前提可追溯；未将 F1–F10 或历史浏览器/模型/GPU结果写成本轮实现。初审的 reference 显式导入缺口与 GEPA 所有者描述均已最小修正并独立复核，已检查范围无未解决 findings。最终完整回归、实现提交/推送及精确候选的两 OS CI 已核对；剩余为四份状态/审查文档的收尾提交与推送。
 
 **可维护性：通过。** 使用既有 pytest、AST 和 graphlib 与当前单包规模相称；两个 fixture 属于测试准备，未增加生产框架、包层级、依赖或逐文件全量白名单。五个基础模块限制和入口限制对应实际职责，reference 修正只补充现有命名空间及点分隔匹配；已有公共别名不自带存储/算法，按明确 API 破坏版本和消费者迁移退出，比无依据强删合理。没有发现需要另建抽象、合并状态机或改动生产代码的依据。
 
@@ -61,7 +61,7 @@ from ergora.data.reference.platform.upstream.platform.dev_platform.contracts imp
 
 ## 剩余验收
 
-P2/P3 已解决并通过同切片复审，已检查范围没有剩余阻断 findings。最终完整回归已核对；仍须记录普通提交/推送与远端 SHA，以及精确候选的 Ubuntu/Windows CI，现有历史两 OS CI 不能代替本轮检查。
+P2/P3 已解决并通过同切片复审，已检查范围没有剩余阻断 findings。最终完整回归、实现提交与远端 SHA、精确候选 Ubuntu/Windows CI 均已核对，依据本轮候选和最终状态，没有以历史 CI 替代。实施者仍须收尾提交/推送 PLAN、详细计划、交付记录及本报告四份文档；该记账不改变已验收的生产或测试实现。
 
 浏览器、真实模型/GPU、固定 Forge/mini SDK、外部工单、ReMe/Temporal 服务和空白 Windows 安装没有在本轮重验。生产包与 R7 全相同支持沿用其历史边界说明，不将历史运行改称新验收；无需为本轮测试/文档变化无依据地扩大到这些运行。F1 尚未开始，R8 出口关闭前不进入产品行为变更。
 
@@ -75,4 +75,21 @@ P2/P3 已解决并通过同切片复审，已检查范围没有剩余阻断 find
 
 随后作者在 PLAN、详细计划登记表和交付记录补录最终 181.87s 结果，三文件的状态 SHA 已变化；已检查这些更新与原始日志一致，仍明确复审/提交/CI 状态。README、当前架构、两份 ADR 和最终测试的五个实现输入保持修正版 SHA 不变，未发生新的行为或架构变更。
 
-复审结论为两项已解决，需求范围与可维护性审查通过，无新增 findings。提交、推送、远端 SHA 及精确两 OS CI 仍待后续核对，本报告不把这些交付动作标为完成。
+本次修正复审结论为两项已解决，需求范围与可维护性审查通过，无新增 findings。复审当时待核对的提交、推送、远端 SHA 及精确两 OS CI 已由下述最终核对关闭。
+
+## 精确 CI 与远端最终核对
+
+2026-11-02，同一 reviewer 只读核对最终实现提交 **`46ac6330432871d809767a3b11b808c4da129e82`**。直接执行 `git ls-remote origin refs/heads/refactor/architecture-foundations` 返回相同完整 SHA，与本地 HEAD 一致。逐一读取该提交中的 README、当前架构、两份 ADR 和最终测试，五文件 SHA256 均与修正复审输入一致；最终测试仍为 `de2d71626793076fd63292cbfe4df82bd5b6640bc2b00e5cb72a8d0953cbf762`。相对该候选的 `src / tests / README.md / pyproject.toml / .github/workflows` 无差异；相对 R7 的生产/依赖/CI 差异仍为空。此时本地候选后仅 PLAN、详细计划和 R8 交付记录三份状态文档变化，本报告由本次核对继续更新。
+
+独立解析 `.ergora/checks/r8/ci-actions-page.html` 的原始内嵌 JSON，定位唯一 run `41421965020`，其 `description.linkUrl` 包含上述完整候选 SHA，分支为 `refs/heads/refactor/architecture-foundations`、workflow 为 `.github/workflows/portability.yml`，最终状态为 `WORKFLOW_RUN_STATUS_COMPLETED / WORKFLOW_RUN_CONCLUSION_SUCCESS`。逐段解析 `ci-matrix-page.html` 的两个 `streaming-graph-job`，将每行自身的 job URL、平台名、`data-concluded=true` 和 `completed successfully: ` aria-label 关联核对：
+
+|精确运行|平台 / Python|作业|已核对最终状态|
+|---|---|---|---|
+|[41421965020](https://github.com/626619403/Ergora/actions/runs/41421965020)|ubuntu-latest / 3.11|[125199372145](https://github.com/626619403/Ergora/actions/runs/41421965020/job/125199372145)|completed successfully|
+|同一运行|windows-latest / 3.12|[125199372476](https://github.com/626619403/Ergora/actions/runs/41421965020/job/125199372476)|completed successfully|
+
+保存的最终官方 Actions、run、展开矩阵 HTML 的 SHA256 分别为 `ec81e7740b2c9f65014aa37364412bfc4dc0febb680c451e72fb68529d3ad937`、`64210a22f0e997bade62fb0f8901bce37f4ae3db6fdf9fe4a979087c2a50f616`、`848aa9eb30706b7bbf94365449918a9319914444337e557be11f1a57c6c2a14c`；独立计算与 `final-ci-checks.json` 一致，`ci-html-status.json` 的身份也一致。核查依据为 09:39:46 UTC 保存的最终页面，未用 `initial-ci-*` 的 running 状态下最终结论。
+
+reviewer 在 **09:43:33–34 UTC** 再直接读取官方 Actions 与该 run 页面，均返回 HTTP 200：Actions 内嵌数据再次确认相同完整候选和 completed/success，run 页面含相同完整 commit 链接。本次实时展开矩阵端点返回 HTTP 404，故两个作业的逐行状态依据上述已核验保存页面；没有声称取得实时矩阵、逐项 Windows 日志或其测试数量。没有依赖匿名 API 配额或额外认证。
+
+已对照实际 workflow：两平台先构建并非 editable 安装 wheel、核对参考包身份，再执行 `tests`；Linux 追加冻结参考的相关集合，Windows 配置另有原生 PowerShell 安装/升级步骤。本次新增架构检查处于该实际 `tests` 路径，没有独立旁路 CI。最终核对通过，范围内无新增 findings；四份状态/审查文档收尾后可按原计划进入 F1，不扩大本次模型、GPU、浏览器或 SDK 的验证声明。
