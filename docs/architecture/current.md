@@ -4,7 +4,7 @@
 
 ## 模块与依赖
 
-自有Python仍为单包`ergora`，29个顶层文件（含两个包入口）；F1.2增加完整注册用例`registrations`，F2.3增加显式服务用例`services`。没有为层级增加空子包、通用Agent基类或插件容器。下图表示当前调用方向，组合节点内的模块并非互相依赖；精确导入由静态检查和源码确定。
+自有Python仍为单包`ergora`，30个顶层文件（含两个包入口）；F1.2增加完整注册用例`registrations`，F2.3增加显式服务用例`services`，F3.1增加项目范围的正式任务查询`tasks`。没有为层级增加空子包、通用Agent基类或插件容器。下图表示当前调用方向，组合节点内的模块并非互相依赖；精确导入由静态检查和源码确定。
 
 ```mermaid
 flowchart TB
@@ -15,6 +15,9 @@ flowchart TB
   Registration --> Query
   CLI --> Services[services]
   Web --> Services
+  CLI --> Tasks[tasks]
+  Web --> Tasks
+  Tasks --> Ref
   Services --> Registration
   Services --> Ref
   Services --> Supervisor[Supervisor Unix RPC / native launcher]
@@ -49,6 +52,7 @@ flowchart TB
 |结构与身份|`contracts` + `data/schemas`；agents/bindings/evaluation/backups 和页面元数据|JSON Schema 校验不注入默认值；业务 revision/授权保留原所有者；[不同摘要规范](contracts-and-identities.md)不互换|
 |项目与绑定事务|`projects.create / bind / effective_configuration`、`components.resolve_binding`、`bindings.validate_binding`；CLI/Web/调用与执行桥|Git根、项目revision与能力拒绝；轻量项目保持兼容，统一项目附定义/发布状态|
 |完整注册、旧注册采用与跨资源恢复|`registrations.register / preview_import / apply_import / resume / status`；CLI/Web|复用基础项目与绑定校验，保存before/after意图及pending状态；显式采用绑定预览/源字节身份并保持旧文件；reference仅拥有投影布局、原校验和不覆盖发布，不反向写控制项目|
+|正式任务本地合同查询|`tasks.listing / show` → `reference.task_files`；CLI/API|固定子进程复用原合同与有界文件读取、项目/目录/基线/tracker归属、不透明分页游标；不查询Temporal或推断运行成功，不新增索引/调度器|
 |本地服务运维|`services.status / control / logs`；CLI/API|复制原 Supervisor 定义并关闭自动启动；所选服务、当前修订及停止确认；共享执行目录/控制库归属；有界日志与原生游标，未确认不报告成功|
 |独立 Agent 调用|`agent_runs.run_agent / runs / output`；CLI/Web|冻结有效绑定视图、所选 Skill/记忆上下文及归档；普通调用成功不产生正式任务通过|
 |原生 Agent/Forge|`agents.invoke`、`kernel.create / operate`；独立调用、参考阶段/页面|既有 CLI/SDK 协议；Forge campaign 完成不等于可信训练采用，未知结果先对账|

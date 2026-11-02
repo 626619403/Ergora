@@ -32,7 +32,8 @@ flowchart LR
 |新任务角色绑定快照|`reference_executor.Executor.__init__`；原执行链|首次核对同一个Git根并冻结4角色、项目修订；后续阶段读同一`agent-bindings.json`；旧任务已有receipt时拒绝换为可选择执行器|
 |阶段Agent及原生继承hook|`reference_executor.Executor.model / receipt`|只替换生成阶段调用及actor标识；原Executor保留提交、只读检查、集成/验证、候选SHA和回执；stage_driver负责专用进程的凭据/信号处理|
 |原配置、文件、回执发布与ledger更新|`reference_executor`内的原core/FileAdapter接口|原CONFIG/STATE、claim/ledger、immutable write/publish不向应用层扩散；不逐个函数增加第二层转发；不复制原文件/SQL逻辑|
-|正式任务create/start/status/result/approve/cancel/export|当前原`agentflow`、`DevelopmentTransport / Runtime / Workflow`|这是现有事实来源，尚无统一Ergora任务API；后续F3接入此边界，不让HTTP或前端直接操作原全局/ledger|
+|正式任务本地合同读取|`reference.task_files` → 固定只读子进程；tasks/CLI/API|按项目/Git根/tracker/基线/目录ID复用validate_spec和有界no-follow读取；每页最多100项合同检查，目录名流式枚举为O(N)，不读取日志/凭据、不连接Temporal、不推断运行终态|
+|正式任务create/start/status/result/approve/cancel/export|当前原`agentflow`、`DevelopmentTransport / Runtime / Workflow`|运行事实仍在原runtime，F3.1仅提供本地合同查询；后续F3接写操作与原生状态，不让HTTP或前端直接操作原全局/ledger|
 
 `reference.ROOT`仍保留给既有Python调用者和身份/兼容测试；生产布局知识只在reference模块。没有删除公共常量或改变CLI响应/退出码。`template_details`是实际Web使用的资源读取接口，没有另造模板存储层。
 

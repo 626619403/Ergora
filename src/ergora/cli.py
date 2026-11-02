@@ -9,7 +9,7 @@ import sys
 
 from . import __version__
 from . import reference
-from . import agent_runs, agents, evaluation, kernel, memory, optimization, projects, registrations, research, services, skill_assets, skills, tools
+from . import agent_runs, agents, evaluation, kernel, memory, optimization, projects, registrations, research, services, tasks, skill_assets, skills, tools
 from .state import State, resolve_home
 
 
@@ -80,6 +80,15 @@ def parser() -> argparse.ArgumentParser:
     doctor.add_argument("project")
     doctor.add_argument("--probe", action="store_true", help="Explicit local version/credential status and TCP probes; never calls a model")
     doctor.add_argument("--timeout", type=int, default=5, help="Total active probe budget in seconds (1–30)")
+    task = commands.add_parser("task", help="Read existing formal development task contracts")
+    operations = task.add_subparsers(dest="operation", required=True)
+    listing = operations.add_parser("list")
+    listing.add_argument("project")
+    listing.add_argument("--limit", type=int, default=50)
+    listing.add_argument("--after", help="Continue using the returned opaque directory cursor")
+    show_task = operations.add_parser("show")
+    show_task.add_argument("project")
+    show_task.add_argument("task_id")
     service = commands.add_parser("services", help="Explicit selected-service Supervisor operations (Linux/WSL2)")
     operations = service.add_subparsers(dest="operation", required=True)
     status = operations.add_parser("status")
@@ -300,6 +309,10 @@ def main(argv: list[str] | None = None) -> int:
                 output = tools.installation_profiles()
             else:
                 output = tools.catalog() if args.operation == "list" else tools.doctor(State(args.home), args.project, probe=args.probe, timeout=args.timeout)
+        elif args.command == "task":
+            state = State(args.home)
+            output = (tasks.listing(state, args.project, limit=args.limit, after=args.after)
+                      if args.operation == "list" else tasks.show(state, args.project, args.task_id))
         elif args.command == "services":
             state = State(args.home)
             if args.operation == "status":

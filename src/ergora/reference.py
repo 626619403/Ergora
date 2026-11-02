@@ -266,3 +266,130 @@ def validate_input(kind: str, task_input: dict) -> dict:
         raise ValueError(result.stderr.strip().splitlines()[-1])
     return {"status": "PASS", "task_type": kind,
             "input_sha256": hashlib.sha256(json.dumps(task_input, sort_keys=True).encode()).hexdigest()}
+
+
+def task_files(project: dict, *, task_id: str | None = None, limit: int = 50,
+               after: str | None = None) -> dict:
+    """Read native task files in a dedicated process; no optional SDK is loaded."""
+    execution = project['registration']['definition']['execution']
+    environment = dict(os.environ, PYTHONDONTWRITEBYTECODE='1', PYTHONUTF8='1',
+                       AGENTFLOW_CONFIG_DIR=execution['config_directory'],
+                       AGENTFLOW_STATE_DIR=execution['state_directory'])
+    environment['PYTHONPATH'] = os.pathsep.join(map(str, (
+        Path(__file__).parent.parent, ROOT / 'platform/local', ROOT / 'platform/upstream/platform')))
+    try:
+        result = subprocess.run([sys.executable, '-P', '-S', '-c',
+                                 'from ergora.reference import _task_files_main;_task_files_main()'],
+                                input=json.dumps({'project': project['id'], 'repo': project['repo'],
+                                                  'tracker': project['registration']['definition']['tracker'],
+                                                  'task_id': task_id, 'limit': limit, 'after': after}),
+                                capture_output=True, text=True, encoding='utf-8', env=environment, timeout=30)
+    except subprocess.TimeoutExpired as error:
+        raise ValueError('Task contract reader timed out; inspect the selected execution storage before retrying') from error
+    if result.returncode:
+        lines = result.stderr.strip().splitlines()
+        raise ValueError(lines[-1] if lines else f'Task contract reader exited with status {result.returncode}')
+    return json.loads(result.stdout)
+
+
+def _task_files_main():
+    import base64
+    import heapq
+    from agent_platform.core import STATE, Blocked, slug
+    from dev_platform import adapter
+    from dev_platform.contracts import validate_spec
+
+    try:
+        payload = json.load(sys.stdin)
+        slug(payload['project'])
+        if payload['task_id'] is not None:
+            slug(payload['task_id'])
+        after = payload['after']
+        if after is not None:
+            if not isinstance(after, str) or len(after) > 2048:
+                raise ValueError('Invalid task directory cursor')
+            try:
+                after = os.fsdecode(base64.b64decode(after.encode('ascii'), altchars=b'-_', validate=True))
+            except ValueError as error:
+                raise ValueError('Invalid task directory cursor') from error
+        if os.name == 'nt':
+            adapter.read_raw = _read_windows_contract
+        root = STATE.resolve()
+        directory = adapter.safe_file(root, 'tasks')
+
+        def document(task_id, filename):
+            path = adapter.safe_file(root, 'tasks/' + slug(task_id) + '/' + filename)
+            if not path.is_file():
+                raise ValueError('Task contract must be an existing regular file: ' + filename)
+            raw = adapter.read_raw(path)
+            try:
+                value = json.loads(raw.decode('utf-8'))
+            except ValueError as error:
+                raise ValueError('Invalid task JSON: ' + filename) from error
+            if not isinstance(value, dict):
+                raise ValueError('Task JSON must be an object: ' + filename)
+            if filename == 'project.json' and not all(isinstance(value.get(key), str) and value[key]
+                                                      for key in ('name', 'repo')):
+                raise ValueError('Task project ownership fields are missing or invalid')
+            return value, hashlib.sha256(raw).hexdigest()
+
+        def owns(project):
+            return (project.get('name') == payload['project']
+                    and project.get('repo') == payload['repo'])
+
+        def inspect(task_id, project, *, detail=False):
+            if not owns(project):
+                raise ValueError('Task does not belong to the selected project and Git repository')
+            spec, file_sha = document(task_id, 'task.spec.json')
+            validate_spec(spec)
+            request = spec['request']
+            if request['task_id'] != task_id:
+                raise ValueError('Task ID differs from its native directory')
+            if (project.get('tracker') != payload['tracker']
+                    or {key: request['tracker'][key] for key in ('kind', 'project')} != payload['tracker']):
+                raise ValueError('Task tracker differs from the selected project')
+            if request['repository']['base_sha'] != project.get('base_sha'):
+                raise ValueError('Task baseline differs from its frozen project')
+            item = {'task_id': task_id, 'task_type': request['task_type'],
+                    'goal': request['input']['goal'][:200], 'tracker': request['tracker'],
+                    'request_sha256': spec['request_sha256'], 'profile_sha256': spec['profile_sha256'],
+                    'spec_file_sha256': file_sha, 'runtime_status': 'not_queried'}
+            if detail:
+                snapshot = adapter.safe_file(root, 'tasks/' + task_id + '/agent-bindings.json')
+                bindings, bindings_sha = document(task_id, 'agent-bindings.json') if snapshot.exists() else (None, None)
+                if bindings is not None and bindings.get('reference_project') != payload['project']:
+                    raise ValueError('Frozen agent snapshot project mismatch')
+                item.update(spec=spec, frozen_project=project, agent_bindings=bindings,
+                            agent_bindings_file_sha256=bindings_sha)
+            return item
+
+        if payload['task_id'] is not None:
+            project, _ = document(payload['task_id'], 'project.json')
+            result = inspect(payload['task_id'], project, detail=True)
+        else:
+            # Bound both resident candidate names and per-page file reads. A cursor
+            # advances across scanned entries even when they belong to other projects.
+            if directory.exists():
+                with os.scandir(directory) as entries:
+                    names = heapq.nsmallest(payload['limit'] + 1, (entry.name for entry in entries
+                        if not entry.name.startswith('.') and (after is None or entry.name > after)))
+            else:
+                names = []
+            result = {'items': [], 'errors': [], 'unreadable_count': 0, 'inspected_entries': min(len(names), payload['limit']),
+                      'next_after': base64.urlsafe_b64encode(os.fsencode(names[payload['limit'] - 1])).decode('ascii') if len(names) > payload['limit'] else None,
+                      'runtime_status': 'not_queried'}
+            for name in names[:payload['limit']]:
+                try:
+                    project, _ = document(name, 'project.json')
+                except (OSError, ValueError, Blocked):
+                    result['unreadable_count'] += 1
+                    continue
+                if not owns(project):
+                    continue
+                try:
+                    result['items'].append(inspect(name, project))
+                except (OSError, ValueError, KeyError, TypeError, Blocked) as error:
+                    result['errors'].append({'task_id': name, 'error': str(error)})
+        print(json.dumps(result, ensure_ascii=False, allow_nan=False))
+    except (OSError, ValueError, KeyError, TypeError, Blocked) as error:
+        raise SystemExit('BLOCKED: ' + str(error))

@@ -121,6 +121,19 @@ claude
 
 `credentials_present` 只表示 CLI/环境有凭据，不证明账号、额度或模型可用；`tcp_reachable` 只证明传输可达，不证明服务协议、授权、命名空间或 worker 就绪。`not_checked`、`not_confirmed`、超时和预算耗尽均不能当作通过。自定义命令不会被 doctor 执行，Claude/mini/GEPA/Forge 的认证及真实任务仍需按修复指引显式验收；Forge 版本必须符合固定提交。`task_availability: available` 仅表示 SQLite/手动操作等本地前置条件可用，不是正式六阶段验收。原始探测输出不返回、不持久保留，只返回版本号或状态。
 
+### 读取正式任务合同
+
+先完成[统一项目注册](PROJECTS.md)，执行目录已有的开发任务可直接从主入口读取：
+
+```bash
+ergora task list my-project --limit 50
+ergora task show my-project TASK_ID
+```
+
+同源API为 `GET /api/projects/ID/tasks?limit=50&after=CURSOR` 和 `GET /api/projects/ID/tasks/TASK_ID`。默认每页校验50个候选目录项，可设1–100；原样使用返回的不透明ASCII游标 `next_after` 继续，直到其为null；游标不是任务ID或文件路径。每页流式枚举全部目录名再选取候选窗口，因此枚举时间随任务数增加；`inspected_entries`只计该页校验项数。其他项目或损坏目录可能产生空页，仍应沿游标前进。`items`只包含匹配该项目/Git根/tracker并通过合同结构与摘要校验的任务；归属已确认但合同损坏的条目进入 `errors`，不能判断归属的条目只计入 `unreadable_count`。
+
+详情返回原始spec、冻结项目、可选的 `agent_bindings` 及其文件SHA256。`project_revision`是当前控制项目修订，冻结绑定中的 `project_revision`属于任务开始时的快照。`runtime_status: not_queried`表示没有访问Temporal；本地文件存在不代表任务开始、完成或验收通过。查询不安装SDK、启动服务、提交任务或写回旧记录；创建、实时状态、批准、取消和导出仍按[正式执行手册](AGENT_BACKENDS.md)使用原参考入口。Linux/Windows均可读取本机可访问的执行目录，完整六阶段执行需要Linux/WSL2。
+
 ### 显式服务管理
 
 Linux/WSL2 中，先安装、初始化参考运行环境并完成[统一项目注册](PROJECTS.md)。`ergora services` 使用登记的 execution 目录及参考环境中的 Supervisor，不需要系统服务权限。一个执行状态目录是一套共享服务栈，可能服务多个项目；停止会影响该栈的在途任务。以下 `--revision 1` 应替换为 `project show` 的当前修订：
