@@ -1,4 +1,5 @@
 import { api } from "./api.js";
+import { bindingFor } from "./state.js";
 import {
   $, node, button, pre, lines, short, heading, panel, empty, row,
   field, selectField, checkbox, status, notify, form, modal, table,
@@ -144,7 +145,7 @@ export function researchView(data, base, { refresh }) {
     ),
     panel(
       "持久调度",
-      `当前调度工具：${data.project.bindings.scheduler.tool}`,
+      `当前调度工具：${bindingFor(data, "scheduler").tool}`,
       pre(
         `ergora research worker ${data.project.id}\nergora research schedule ${data.project.id} create docs-check --url https://example.com/official-doc --interval 86400\nergora research schedule ${data.project.id} trigger docs-check\nergora research schedule ${data.project.id} resume docs-check`,
       ),

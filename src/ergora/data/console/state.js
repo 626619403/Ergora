@@ -7,7 +7,6 @@ export const app = {
   layers: {},
   agentRoles: [],
 };
-export const bindingFor = (project, layer) =>
-  project.bindings[layer] ||
-  (layer === "kernel" ? { tool: "manual" } : project.bindings.implementer);
+export const bindingFor = (data, layer) =>
+  data.configuration.layers[layer].binding;
 export const stages = ["inventory", "plan", "work", "integrate", "verify", "review"];

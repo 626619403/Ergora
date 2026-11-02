@@ -5,7 +5,7 @@ import importlib.util
 from pathlib import Path
 import sys
 
-from . import agents, components, kernel
+from . import agents, components, kernel, projects
 from .agent_runs import output as output, run_agent as run_agent, runs as runs
 from .bindings import validate_binding as validate_binding
 from .state import State
@@ -44,12 +44,17 @@ def catalog() -> dict:
     return deepcopy(result)
 
 
-def doctor(state: State, project_id: str) -> dict:
-    project = state.project(project_id)
+def doctor(state: State, project_id: str, *, project: dict | None = None) -> dict:
+    project = state.project(project_id) if project is None else project
+    configuration = projects.effective_configuration(project)
     checks = []
     for layer in CATALOG:
-        binding = agents.binding_for(project, layer) if layer in agents.ROLE_CAPABILITIES else project["bindings"].get(layer, {"tool": "manual"})
-        validate_binding(layer, binding)
+        resolved = configuration["layers"][layer]
+        binding = resolved["binding"]
+        if not resolved["validation"]["valid"]:
+            checks.append({"layer": layer, "tool": binding["tool"], "installed": None,
+                           "configuration_valid": False, "error": resolved["validation"]["error"]})
+            continue
         tool = binding["tool"]
         if layer == "kernel":
             checks.append({"layer": layer, "tool": tool, **kernel.available(binding),

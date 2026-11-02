@@ -13,7 +13,7 @@ from .components import CHOICES, GENERAL_CAPABILITIES, ROLE_CAPABILITIES, TOOL_C
 def binding_for(project: dict, role: str) -> dict:
     if role not in ROLE_CAPABILITIES:
         raise ValueError(f"Unknown agent role: {role}")
-    return project["bindings"].get(role, project["bindings"]["implementer"])
+    return components.resolve_binding(project, role)["binding"]
 
 
 def validate_binding(role: str, binding: dict) -> None:

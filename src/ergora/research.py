@@ -18,6 +18,7 @@ from urllib.parse import urljoin, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 import uuid
 
+from . import components
 from .state import State, file_lock, now
 
 
@@ -224,7 +225,7 @@ def review(state: State, project_id: str, proposal_id: str, status: str, expecte
 def run(state: State, project_id: str, urls: list[str], max_bytes: int = 1_000_000,
         timeout: int = 30, allow_private: bool = False, run_id: str | None = None) -> dict:
     project = state.project(project_id)
-    if project["bindings"].get("research", {"tool": "urls"})["tool"] != "urls":
+    if components.resolve_binding(project, "research")["binding"]["tool"] != "urls":
         raise ValueError("Research binding does not support URL observations")
     validate_request(urls, max_bytes, timeout)
     request = {"urls": urls, "max_bytes": max_bytes, "timeout_seconds": timeout, "allow_private": allow_private}

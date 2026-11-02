@@ -15,7 +15,9 @@ export function toolsView(data, _base, { refresh }) {
       "div",
       { className: "tools-grid" },
       Object.entries(app.layers).map(([layer, [title, description, icon]]) => {
-        const binding = bindingFor(data.project, layer);
+        const binding = bindingFor(data, layer);
+        const resolved = data.configuration.layers[layer];
+        const source = { project: "项目绑定", inherited: "继承实现者", "legacy-default": "旧项目兼容默认" }[resolved.source.kind];
         const check = data.tools.checks.find((item) => item.layer === layer);
         return node(
           "section",
@@ -30,8 +32,11 @@ export function toolsView(data, _base, { refresh }) {
               "div",
               {},
               node("div", { className: "tool-name" }, binding.tool),
+              node("div", {}, source),
               badge(
-                check?.installed === true
+                !resolved.validation.valid
+                  ? "配置需修正"
+                  : check?.installed === true
                   ? app.agentRoles.includes(layer)
                     ? "本地可用 · 认证待确认"
                     : check.connectivity === "not_checked"
@@ -42,7 +47,7 @@ export function toolsView(data, _base, { refresh }) {
                   : check?.installed === false
                     ? "尚未安装"
                     : "外部配置待确认",
-                check?.installed === false ? "amber" : "gray",
+                !resolved.validation.valid || check?.installed === false ? "amber" : "gray",
               ),
             ),
             button("配置", () => bindingDialog(data, layer, refresh), "text-button", {
@@ -60,19 +65,26 @@ export function toolsView(data, _base, { refresh }) {
         : "当前系统不支持正式六阶段、mini-swe-agent 和 ForgeKernel；请在 WSL2/Linux 中安装运行。切换系统后重新注册项目与工具路径。",
     ),
     panel("检查详情", null, pre(data.tools)),
+    panel(`有效绑定 · 修订 ${data.configuration.project.revision}`, "包含每层来源与校验结果；运行使用保存的快照。", pre(data.configuration)),
   ];
 }
 function bindingDialog(data, layer, refresh) {
-  const current = bindingFor(data.project, layer);
+  const current = bindingFor(data, layer);
   const choices = app.bootstrap.tools[layer];
   const choice = select(
-    choices.map((item) => [item.tool, item.supported === false ? `${item.tool} · WSL2/Linux` : item.tool]),
-    current.tool,
+    [["", "选择兼容工具"], ...choices.map((item) => [item.tool, item.supported === false ? `${item.tool} · WSL2/Linux` : item.tool])],
+    choices.some((item) => item.tool === current.tool) ? current.tool : "",
     "tool",
   );
+  choice.required = true;
   const options = node("div");
   let schema;
   function fields() {
+    if (!choice.value) {
+      schema = null;
+      options.replaceChildren(node("p", {}, "请选择可用于这一层的工具，再保存绑定。"));
+      return;
+    }
     const component = choices.find((item) => item.tool === choice.value);
     schema = component.configuration;
     const same = choice.value === current.tool ? current : {};

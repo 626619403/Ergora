@@ -10,7 +10,7 @@ import tempfile
 import time
 import uuid
 
-from . import evaluation, processes, skill_assets
+from . import components, evaluation, processes, skill_assets
 from .state import State, now
 
 
@@ -23,7 +23,7 @@ def listing(state: State, project_id: str) -> list[dict]:
 
 def optimize(state: State, project_id: str, baseline_digest: str, suite_digest: str, objective: str,
              max_evaluations: int = 20, max_proposals: int = 5, timeout: int = 300) -> dict:
-    binding = state.project(project_id)["bindings"].get("optimizer", {"tool": "manual"})
+    binding = components.resolve_binding(state.project(project_id), "optimizer")["binding"]
     if binding["tool"] != "gepa":
         raise ValueError("Select the gepa optimizer, or import a manual candidate")
     if importlib.util.find_spec("gepa") is None:

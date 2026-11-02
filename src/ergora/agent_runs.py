@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import uuid
 
-from . import agents
+from . import agents, projects
 from .bindings import validate_binding
 from .state import State, now
 
@@ -18,6 +18,7 @@ def run_agent(state: State, project_id: str, role: str, prompt: str, timeout: in
     if not prompt.strip() or not 1 <= timeout <= 3600:
         raise ValueError("Require a prompt and timeout of 1–3600 seconds")
     project = state.project(project_id)
+    configuration = projects.effective_configuration(project)
     context = {"skills": [], "memories": []}
     if skill_names:
         from . import skill_assets
@@ -32,10 +33,10 @@ def run_agent(state: State, project_id: str, role: str, prompt: str, timeout: in
     if recall:
         from . import memory
 
-        recalled = memory.search(state, project_id, recall, limit=5)
+        recalled = memory.search(state, project_id, recall, limit=5, project=project)
         context["memories"] = recalled["results"]
         prompt += "\n\nProject observations with provenance (verify their applicability):\n" + json.dumps(recalled, ensure_ascii=False)
-    binding = agents.binding_for(project, role)
+    binding = configuration["layers"][role]["binding"]
     validate_binding(role, binding)
     schema = None
     if template:
@@ -49,6 +50,7 @@ def run_agent(state: State, project_id: str, role: str, prompt: str, timeout: in
     run_id = uuid.uuid4().hex
     document = {"id": run_id, "project": project_id, "role": role, "binding": binding,
                 "project_revision": project["revision"], "started": now(), "status": "running",
+                "configuration": configuration,
                 "context": context, "template": template, "prompt_sha256": hashlib.sha256(prompt.encode()).hexdigest()}
     with state.connect() as db:
         db.execute("INSERT INTO agent_runs VALUES (?, ?, ?)", (run_id, project_id, json.dumps(document)))

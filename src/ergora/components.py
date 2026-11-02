@@ -17,6 +17,28 @@ TOOL_CAPABILITIES = {tool: definition["capabilities"] for tool, definition in CO
                      if definition["kind"] == "agent" and not definition.get("declared_capabilities")}
 DEFAULT_BINDINGS = {layer: definition["default_binding"] for layer, definition in LAYERS.items()}
 
+# Missing fields in schema-v1 projects keep their original execution semantics.
+_LEGACY_SUPPORT_BINDINGS = {
+    "memory": {"tool": "sqlite"}, "optimizer": {"tool": "manual"},
+    "research": {"tool": "urls"}, "scheduler": {"tool": "manual"},
+    "kernel": {"tool": "manual"},
+}
+
+
+def resolve_binding(project: dict, layer: str) -> dict:
+    if layer not in LAYERS:
+        raise ValueError(f"Unknown project layer: {layer}")
+    if layer in project["bindings"]:
+        binding = project["bindings"][layer]
+        source = {"kind": "project", "path": f"bindings.{layer}"}
+    elif LAYERS[layer]["kind"] == "agent":
+        binding = project["bindings"]["implementer"]
+        source = {"kind": "inherited", "path": "bindings.implementer"}
+    else:
+        binding = _LEGACY_SUPPORT_BINDINGS[layer]
+        source = {"kind": "legacy-default", "path": f"legacy-missing-bindings-v1.{layer}"}
+    return {"binding": deepcopy(binding), "source": source}
+
 
 def _choices(layer: str) -> list[str]:
     definition = LAYERS[layer]

@@ -101,7 +101,7 @@ export function workflowView(data, base, { refresh, render }) {
         Object.entries(requirements.agents).map(([role, requirement]) => [
           role,
           requirement.capabilities.join(", "),
-          bindingFor(data.project, role).tool,
+          bindingFor(data, role).tool,
           requirement.artifacts.join(", "),
         ]),
       ),
@@ -385,7 +385,7 @@ function kernelPanel(data, base, refresh) {
   };
   return panel(
     "原生 Kernel 候选",
-    `生成工具：${bindingFor(data.project, "kernel").tool}。先配置任务与预算，计划检查不运行模型或 GPU。`,
+    `生成工具：${bindingFor(data, "kernel").tool}。先配置任务与预算，计划检查不运行模型或 GPU。`,
     row(
       button("检查原生计划", () => invoke("plan")),
       button("创建原生 campaign", () => invoke("prepare")),

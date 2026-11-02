@@ -83,6 +83,7 @@ async def main():
     activities = Activities(adapter)
     await activities.validate(app.spec)
     records = {}
+    frozen_selection = None
     starting = app.spec["request"]["repository"]["starting_sha"]
     if cancellation:
         context = app.context("inventory", starting, dependencies={})
@@ -116,9 +117,20 @@ async def main():
         assert await activities.poll(job) == receipt
         records[stage] = receipt
         app.results[stage] = receipt
+        selection_path = runtime / "tasks/task-1/agent-bindings.json"
+        selection = read(selection_path)
         if stage == "inventory":
+            assert selection["configuration"] == projects.effective_configuration(state.project("demo"))
+            assert selection["configuration"]["project"]["revision"] == selection["project_revision"]
+            if len(sys.argv) > 4 and sys.argv[4] == "legacy-snapshot":
+                # Prior task selections lack the new additive view and must stay usable.
+                del selection["configuration"]
+                write(selection_path, selection, replace=True)
+            frozen_selection = selection
             # Later project changes must not change the already-frozen task selection.
             projects.bind(state, "demo", "implementer", {"tool": "command", "argv": ["/missing/changed-binding"]}, state.project("demo")["revision"])
+        else:
+            assert selection == frozen_selection
         if stage == "plan":
             plan_sha = sha(receipt)
             write(runtime / "approvals/fixture-approval.json", {"schema_version": 1, "kind": "plan-approval",

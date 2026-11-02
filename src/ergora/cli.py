@@ -51,6 +51,8 @@ def parser() -> argparse.ArgumentParser:
     operations.add_parser("list")
     show = operations.add_parser("show")
     show.add_argument("id")
+    configuration = operations.add_parser("config", help="Show effective bindings, sources and project revision")
+    configuration.add_argument("id")
     bind = operations.add_parser("bind")
     bind.add_argument("id")
     bind.add_argument("layer")
@@ -228,6 +230,8 @@ def main(argv: list[str] | None = None) -> int:
                 output = projects.list_projects(state)
             elif args.operation == "show":
                 output = state.project(args.id)
+            elif args.operation == "config":
+                output = projects.effective_configuration(state.project(args.id))
             else:
                 output = projects.bind(state, args.id, args.layer, json.loads(args.binding.read_text(encoding="utf-8-sig")), args.revision)
         elif args.command == "tools":

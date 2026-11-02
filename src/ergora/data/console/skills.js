@@ -1,4 +1,5 @@
 import { api } from "./api.js";
+import { bindingFor } from "./state.js";
 import {
   $, node, button, pre, short, heading, panel, empty, row, select,
   field, badge, status, notify, form, modal, table,
@@ -279,8 +280,8 @@ export function skillsView(data, base, { refresh }) {
     ),
     panel(
       "有限优化",
-      `当前优化工具：${data.project.bindings.optimizer.tool}。优化只产生候选，采用继续使用上方证据门禁。`,
-      data.project.bindings.optimizer.tool === "gepa"
+      `当前优化工具：${bindingFor(data, "optimizer").tool}。优化只产生候选，采用继续使用上方证据门禁。`,
+      bindingFor(data, "optimizer").tool === "gepa"
         ? form(
             [
               field("优化目标", "objective", "", "textarea", {

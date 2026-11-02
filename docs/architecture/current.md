@@ -1,6 +1,6 @@
 # 当前架构与扩展边界
 
-2026-11-02，R8 核对。运行树为 R7 `b8bee53bdc85a803109a9b8b804aee7408d7a535`，本轮只增加静态保护和文档。历史 [A1 审计](2026-11-01-audit.md) 保留原观察；本页是 R1–R8 后的当前导航。验收身份和未验范围见 [R8 记录](../delivery/2026-11-02-refactoring-exit.md)，设计约束见 [ADR 0001](decisions/0001-refactoring-foundations.md) / [0002](decisions/0002-static-boundaries.md)。
+2026-11-02，R8后的当前导航，加入F1.1有效绑定与快照增量（本地验收及独立复审通过，精确CI待核对）。历史 [A1 审计](2026-11-01-audit.md)及[R8记录](../delivery/2026-11-02-refactoring-exit.md)保留原身份与范围；新行为验收见[F1记录](../delivery/2026-11-02-project-configuration.md)。设计约束见 [ADR 0001](decisions/0001-refactoring-foundations.md) / [0002](decisions/0002-static-boundaries.md)。
 
 ## 模块与依赖
 
@@ -38,8 +38,8 @@ flowchart TB
 |---|---|---|
 |组件、默认值、平台、字段和安装配方身份|`data/components.json` → `components`；agents/bindings/projects/tools、Web bootstrap、SDK 安装器|描述不制造执行能力；probe/认证/连通/任务验收分开|
 |结构与身份|`contracts` + `data/schemas`；agents/bindings/evaluation/backups 和页面元数据|JSON Schema 校验不注入默认值；业务 revision/授权保留原所有者；[不同摘要规范](contracts-and-identities.md)不互换|
-|项目与绑定事务|`projects.create / bind`、`bindings.validate_binding`；CLI/Web|Git 根、项目 revision 与能力拒绝；尚未统一 reference 注册|
-|独立 Agent 调用|`agent_runs.run_agent / runs / output`；CLI/Web|冻结绑定、所选 Skill/记忆上下文及归档；普通调用成功不产生正式任务通过|
+|项目与绑定事务|`projects.create / bind / effective_configuration`、`components.resolve_binding`、`bindings.validate_binding`；CLI/Web/调用与执行桥|Git 根、项目 revision 与能力拒绝；F1.1集中有效绑定及来源，尚未统一 reference 注册|
+|独立 Agent 调用|`agent_runs.run_agent / runs / output`；CLI/Web|冻结有效绑定视图、所选 Skill/记忆上下文及归档；普通调用成功不产生正式任务通过|
 |原生 Agent/Forge|`agents.invoke`、`kernel.create / operate`；独立调用、参考阶段/页面|既有 CLI/SDK 协议；Forge campaign 完成不等于可信训练采用，未知结果先对账|
 |Skill 资产、评价、采用和搜索|`skill_assets`、`evaluation`、`skills.adopt`、`optimization.optimize`；CLI/Web|资产与评价不反向导入采用；GEPA 搜索复用评价，不拥有评分/采用权限|
 |记忆与资料|`memory`、`research`；CLI/Web，`scheduling` 调用 research|SQLite canonical / ReMe 投影；来源快照、预算、取消及人工审阅，资料不自动成为有效记忆|
@@ -115,7 +115,7 @@ flowchart LR
 
 |事实所有者|表或资产|修改责任|
 |---|---|---|
-|projects / agent_runs|`projects`、`agent_runs`；`runs/`|项目/binding 修订、独立调用上下文与结果|
+|projects / agent_runs|`projects`、`agent_runs`；`runs/`|项目/binding 修订、独立调用上下文与结果；F1.1新调用附加版本化有效绑定视图，旧文档不回写|
 |memory|`memories`、`memory_mirrors`|来源、修订、删除；投影同步不改变 canonical|
 |skill_assets|`skill_versions`、`skill_heads`、`skill_events`；`skills/`|不可变树身份、活动头及采用/回退历史|
 |evaluation / optimization|`evaluation_suites`、`evaluations`、`optimizations`；suite/run/proposal 文件|固定评分输入与成本、候选关系；生成器不改可信评分|

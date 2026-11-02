@@ -5,6 +5,7 @@ import os
 import uuid
 from urllib.request import Request, urlopen
 
+from . import components
 from .state import State, file_lock, now
 
 
@@ -101,14 +102,14 @@ def _job(binding: dict, operation: str, payload: dict) -> dict:
     return result
 
 
-def sync(state: State, project_id: str, rebuild: bool = False) -> dict:
-    project = state.project(project_id)
+def sync(state: State, project_id: str, rebuild: bool = False, *, project: dict | None = None) -> dict:
+    project = state.project(project_id) if project is None else project
     # A per-project file lock spans remote requests, without holding a SQLite write transaction.
     lockdir = state.root / "locks"
     lockdir.mkdir(exist_ok=True)
     with file_lock(lockdir / f"memory-{project_id}.lock"):
         current = {doc["id"]: doc for doc in records(state, project_id, include_deleted=True)}
-        binding = project["bindings"].get("memory", {"tool": "sqlite"})
+        binding = components.resolve_binding(project, "memory")["binding"]
         with state.connect() as db:
             if binding["tool"] == "reme":
                 for doc in current.values():
@@ -143,18 +144,18 @@ def sync(state: State, project_id: str, rebuild: bool = False) -> dict:
     return {"project": project_id, "changes_acknowledged": changed, "index_visibility": "eventual; controlled by ReMe watcher"}
 
 
-def search(state: State, project_id: str, query: str, limit: int = 10) -> dict:
+def search(state: State, project_id: str, query: str, limit: int = 10, *, project: dict | None = None) -> dict:
     if not query.strip() or not 1 <= limit <= 100:
         raise ValueError("Require a query and limit of 1–100")
-    project = state.project(project_id)
+    project = state.project(project_id) if project is None else project
     docs = records(state, project_id)
-    binding = project["bindings"].get("memory", {"tool": "sqlite"})
+    binding = components.resolve_binding(project, "memory")["binding"]
     if binding["tool"] == "sqlite":
         terms = query.casefold().split()
         scored = [(sum(term in doc["text"].casefold() for term in terms), doc) for doc in docs]
         matches = [doc for score, doc in sorted(scored, key=lambda pair: pair[0], reverse=True) if score > 0][:limit]
     else:
-        sync(state, project_id)
+        sync(state, project_id, project=project)
         by_path = {f"digest/ergora/{project_id}/{doc['id']}.md": doc for doc in records(state, project_id)}
         if not by_path:
             return {"project": project_id, "backend": "reme", "results": []}

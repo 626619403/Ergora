@@ -19,7 +19,7 @@ from agent_platform.core import Blocked, CONFIG, STATE, read, require, settings,
 from dev_platform.adapter import FileAdapter, publish
 from dev_platform.contracts import canonical_sha, validate_spec
 
-from . import agents, components
+from . import agents, components, projects
 from .state import State
 
 
@@ -36,9 +36,11 @@ class Executor(original.Executor):
             project = State(home).project(self.project["name"])
             require(Path(project["repo"]).resolve() == Path(self.project["repo"]).resolve(), "Control and reference projects must use the same Git repository")
             roles = ("inspector", "planner", "implementer", "reviewer")
+            configuration = projects.effective_configuration(project)
             self.selection = {"schema_version": 1, "reference_project": self.project["name"],
                               "project_revision": project["revision"],
-                              "bindings": {role: agents.binding_for(project, role) for role in roles}}
+                              "bindings": {role: configuration["layers"][role]["binding"] for role in roles},
+                              "configuration": configuration}
             for role, binding in self.selection["bindings"].items():
                 agents.validate_binding(role, binding)
                 if components.COMPONENTS[binding["tool"]]["implementation"] == "command":

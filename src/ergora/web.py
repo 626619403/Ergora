@@ -159,11 +159,17 @@ def create_app(home: Path | None = None) -> FastAPI:
 
     @application.get("/api/projects/{project_id}/dashboard")
     def dashboard(project_id: str):
-        return {"project": state.project(project_id), "tools": tools.doctor(state, project_id),
+        project = state.project(project_id)
+        return {"project": project, "configuration": projects.effective_configuration(project),
+                "tools": tools.doctor(state, project_id, project=project),
                 "agent_runs": agent_runs.runs(state, project_id), "memories": memory.records(state, project_id),
                 "skills": skill_assets.versions(state, project_id), "evaluations": evaluation.listing(state, project_id),
                 "optimizations": optimization.listing(state, project_id), "research": research.listing(state, project_id),
                 "drafts": drafts.listing(state, project_id), "kernel_runs": kernel.listing(state, project_id)}
+
+    @application.get("/api/projects/{project_id}/configuration")
+    def project_configuration(project_id: str):
+        return projects.effective_configuration(state.project(project_id))
 
     @application.put("/api/projects/{project_id}/bindings/{layer}")
     def bind(project_id: str, layer: str, body: BindingPayload):

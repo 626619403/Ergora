@@ -1,6 +1,7 @@
 """Versioned project ownership and tool choices."""
 
 from copy import deepcopy
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -8,6 +9,7 @@ import sqlite3
 import subprocess
 
 from .state import State, now
+from . import components
 from .bindings import validate_binding
 from .components import DEFAULT_BINDINGS
 
@@ -35,6 +37,24 @@ def create(state: State, project_id: str, repo: Path) -> dict:
 def list_projects(state: State) -> list[dict]:
     with state.connect() as db:
         return [json.loads(row[0]) for row in db.execute("SELECT document FROM projects ORDER BY id")]
+
+
+def effective_configuration(project: dict) -> dict:
+    """Resolve project bindings without probing tools or modifying stored documents."""
+    layers = {}
+    for layer in components.LAYERS:
+        resolved = components.resolve_binding(project, layer)
+        try:
+            validate_binding(layer, resolved["binding"])
+        except ValueError as error:
+            resolved["validation"] = {"valid": False, "error": str(error)}
+        else:
+            resolved["validation"] = {"valid": True}
+        layers[layer] = resolved
+    document = {"schema_version": 1, "resolution_version": 1, "scope": "project-bindings",
+                "project": {key: project[key] for key in ("id", "repo", "revision")}, "layers": layers}
+    content = json.dumps(document, sort_keys=True, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+    return {**document, "sha256": hashlib.sha256(content.encode("utf-8")).hexdigest()}
 
 
 def bind(state: State, project_id: str, layer: str, binding: dict, expected_revision: int) -> dict:

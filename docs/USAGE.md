@@ -94,6 +94,7 @@ claude
 ```bash
 ergora project add my-project --repo "$HOME/projects/my-project"
 ergora project show my-project
+ergora project config my-project
 ergora tools list
 ergora tools doctor my-project
 # JSON 示例：{"tool":"codex","model":"YOUR_MODEL_ID"}
@@ -104,6 +105,16 @@ ergora agent output my-project RUN_ID
 ```
 
 页面和 CLI 共用持久业务状态；修订冲突时刷新后再保存。Agent 调用的 `succeeded` 不是正式任务验收或审查通过。默认参考执行器保持原配置；需要角色选择作用于正式任务时显式启用桥接，见 [Agent 选择与正式执行手册](AGENT_BACKENDS.md)。
+
+## 有效绑定与运行快照
+
+`ergora project config PROJECT_ID` 与 `GET /api/projects/PROJECT_ID/configuration` 返回同一份只读结果。`project show` 仍返回保存的原文档。有效视图的 `schema_version: 1`、`resolution_version: 1` 和 `scope: project-bindings` 标识它只描述项目工具绑定；检查/策略、模板输入、工具内部默认值、认证和服务连接继续由各自入口管理。
+
+`project` 包含 ID、Git 根和当前 revision；`layers` 中每层含 `binding`、`source`、`validation`。来源 `project` 指向已保存字段，`inherited` 表示旧项目缺角色时继承 `bindings.implementer`，`legacy-default` 表示缺支持层时使用固定兼容默认：memory=sqlite、research=urls，其余支持层=manual。创建新项目仍保存当时的完整推荐绑定。
+
+`sha256` 是去掉自身字段后，对 UTF-8、排序键、紧凑分隔符、保留 Unicode 且拒绝非有限数字的 JSON 计算的 SHA-256。它标识此视图内容，不能替代正式任务、产物或可信检查的证据摘要。视图校验不调用工具；无效继承显示具体层错误，需显式保存兼容绑定；认证与可用性另看 doctor。
+
+独立 Agent 调用在启动工具前将该视图保存到运行记录的 `configuration`，并沿用原 `binding/project_revision`；新正式任务在首次接入可选执行器时把它加入 `agent-bindings.json`。之后修改项目或推荐默认不会更新在途任务。旧任务没有此附加字段时继续读取原绑定快照，不补造历史来源；旧运行记录也不回写。Skill/记忆实际上下文仍单独保存在调用记录，当前快照不声明冻结所有外部工具内部行为。统一注册与旧 reference 注册的导入仍在 F1 后续节点。
 
 ## 页面操作
 

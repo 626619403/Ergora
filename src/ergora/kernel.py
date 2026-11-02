@@ -129,7 +129,7 @@ def create(state: State, project_id: str, action: str = "plan", timeout: int = 3
     if action not in ("plan", "prepare"):
         raise ValueError("Create supports plan or prepare")
     project = state.project(project_id)
-    binding = project["bindings"].get("kernel", {"tool": "manual"})
+    binding = components.resolve_binding(project, "kernel")["binding"]
     validate_binding(binding)
     if binding["tool"] != "forgekernel":
         raise ValueError("Bind the kernel layer to ForgeKernel before using native campaigns")

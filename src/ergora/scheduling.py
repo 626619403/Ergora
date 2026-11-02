@@ -11,7 +11,7 @@ from temporalio.common import RetryPolicy
 from temporalio.worker import Worker
 
 with workflow.unsafe.imports_passed_through():
-    from . import research
+    from . import components, research
     from .state import State
 
 
@@ -46,7 +46,7 @@ class ResearchActivities:
 
 
 def _binding(state: State, project_id: str) -> dict:
-    binding = state.project(project_id)["bindings"].get("scheduler", {"tool": "manual"})
+    binding = components.resolve_binding(state.project(project_id), "scheduler")["binding"]
     if binding["tool"] != "temporal":
         raise ValueError("Select the temporal scheduler first")
     return binding
