@@ -63,3 +63,15 @@ bindings.development_snapshot为tasks与原reference_executor两个真实消费�
 ## 修正后源码与包身份
 
 大意图修正后，作者源码定向36项通过（16.25秒），[独立复审](2026-11-03-task-creation-review.md)另跑36项通过（15.69秒），P2关闭且无未解决源码finding。最终wheel SHA256为b361813de921eca66eb7f3eae0b896f5bd4ce728b5fd3a3f84ef8db646a18ce9；341文件×源码/wheel/开发及基础两安装一致。修正后的完整适用Linux回归与127次CLI基础旅程/测量运行中，精确两OS CI及最终审计身份仍待完成。准备按授权推送源码已复审候选以触发CI；推送不代表本切片已完成。
+
+
+最终非editable包完整适用Linux回归378 passed、19 skipped、36 subtests passed（202.75秒）。最终Python3.12基础安装的两模板127次CLI旅程通过，无fastapi/temporalio/gepa；全部正常/重复/恢复/读取保持原字节且未生成workflow请求。各20次测量含CLI启动：governance/large-change的preview中位355.1/352.0ms、幂等create426.0/419.9ms、resume408.8/394.6ms；最大stdout55841字节。没有声称优化收益，也不能推导高并发吞吐/子进程内存上界。
+
+源码/测试候选b6802216b0a60c9e439b1441c39004bf269503c3已提交推送且远端一致。独立最终本地复核确认341包文件与该提交一致；精确CI41525112557仍在运行。下一阶段[F3.3分段设计](2026-11-03-task-runtime.md)已写，未混入本候选源码。
+
+
+## 最终收口
+
+F3.2完成。精确[CI41525112557](https://github.com/626619403/Ergora/actions/runs/41525112557)绑定b6802216b0a60c9e439b1441c39004bf269503c3，Windows job125550721760四必需步骤、Ubuntu job125550722081三必需步骤全部success。[独立最终审查](2026-11-03-task-creation-review.md)逐项核对官方页面/归档摘要、精确提交341文件/最终b361…wheel/两安装及实时远端身份，无未解决finding；没有混用下一F3.3a工作区。源码、验证及审计闭合。
+
+本切片未提交或运行workflow。下一项为[F3.3a只读原生状态](2026-11-03-task-runtime.md)，其源码/验证/独立审计和包身份单独记账；之后F3.3b/F3.3c提交及批准/取消，最后F3.4新的完整六阶段/导出/恢复综合旅程。
