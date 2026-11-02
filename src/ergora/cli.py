@@ -9,7 +9,7 @@ import sys
 
 from . import __version__
 from . import reference
-from . import agent_runs, agents, evaluation, kernel, memory, optimization, projects, registrations, research, skill_assets, skills, tools
+from . import agent_runs, agents, evaluation, kernel, memory, optimization, projects, registrations, research, services, skill_assets, skills, tools
 from .state import State, resolve_home
 
 
@@ -80,6 +80,25 @@ def parser() -> argparse.ArgumentParser:
     doctor.add_argument("project")
     doctor.add_argument("--probe", action="store_true", help="Explicit local version/credential status and TCP probes; never calls a model")
     doctor.add_argument("--timeout", type=int, default=5, help="Total active probe budget in seconds (1–30)")
+    service = commands.add_parser("services", help="Explicit selected-service Supervisor operations (Linux/WSL2)")
+    operations = service.add_subparsers(dest="operation", required=True)
+    status = operations.add_parser("status")
+    status.add_argument("project")
+    for name in ("start", "stop", "shutdown"):
+        operation = operations.add_parser(name)
+        operation.add_argument("project")
+        if name != "shutdown":
+            operation.add_argument("names", nargs="+", choices=services.NAMES)
+        operation.add_argument("--revision", type=int, required=True)
+        operation.add_argument("--timeout", type=int, default=30)
+        if name != "start":
+            operation.add_argument("--confirm", action="store_true", required=True)
+    logs = operations.add_parser("logs")
+    logs.add_argument("project")
+    logs.add_argument("name", choices=services.NAMES)
+    logs.add_argument("--offset", type=int, default=0)
+    logs.add_argument("--bytes", type=int, default=8192)
+    logs.add_argument("--stderr", action="store_true")
     agent = commands.add_parser("agent", help="Invoke a configured tool, independently of formal workflow acceptance")
     operations = agent.add_subparsers(dest="operation", required=True)
     run = operations.add_parser("run")
@@ -281,6 +300,15 @@ def main(argv: list[str] | None = None) -> int:
                 output = tools.installation_profiles()
             else:
                 output = tools.catalog() if args.operation == "list" else tools.doctor(State(args.home), args.project, probe=args.probe, timeout=args.timeout)
+        elif args.command == "services":
+            state = State(args.home)
+            if args.operation == "status":
+                output = services.status(state, args.project)
+            elif args.operation == "logs":
+                output = services.logs(state, args.project, args.name, offset=args.offset, limit=args.bytes, stderr=args.stderr)
+            else:
+                output = services.control(state, args.project, args.operation, getattr(args, "names", []), args.revision,
+                                          confirm=getattr(args, "confirm", False), timeout=args.timeout)
         elif args.command == "agent":
             state = State(args.home)
             if args.operation == "runs":
@@ -388,6 +416,8 @@ def main(argv: list[str] | None = None) -> int:
             return reference.workflow(args.arguments)
         print(json.dumps(output, ensure_ascii=False, indent=2))
         if args.command == "reference" and args.operation == "executor" and output and output["state"] != "SUCCEEDED":
+            return 1
+        if args.command == "services" and output.get("outcome") in ("unconfirmed", "failed"):
             return 1
         return 0
     except (ValueError, OSError, RuntimeError) as error:

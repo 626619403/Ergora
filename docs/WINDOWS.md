@@ -113,6 +113,8 @@ Windows 命令与资料抓取使用 Job Object 管理生命周期：超时、取
 
 ## WSL2 完整流程
 
+`ergora services status/start/stop/logs/shutdown` 的本地 Supervisor 管理在 Linux/WSL2 执行；Windows 原生明确返回 WSL2 指引。安装控制面/Temporal SDK不会启动这些服务，详见[显式服务管理](USAGE.md#显式服务管理)。
+
 需要完整参考执行器或 Linux 工具时，按 [Microsoft WSL 安装说明](https://learn.microsoft.com/en-us/windows/wsl/install) 在宿主 Windows 启用 WSL2。这通常需要管理员启用系统组件和重启；无宿主权限时请让管理员预先提供 WSL2，或使用已有 Linux 主机。
 
 在 WSL2 的 Linux home 内重新 clone 并按 [Linux 安装手册](USAGE.md#从空环境安装) 安装。完整参考发行仍要求其支持的可信 Linux 容器；仅进入 WSL2 不会通过容器准入，也不会自动启用执行。参考发行部署、Docker 与执行准入步骤见两本随包参考手册。

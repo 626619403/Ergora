@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from . import __version__, agent_runs, components, drafts, evaluation, kernel, memory, optimization, projects, reference, registrations, research, skill_assets, skills, tools
+from . import __version__, agent_runs, components, drafts, evaluation, kernel, memory, optimization, projects, reference, registrations, research, services, skill_assets, skills, tools
 from .state import State
 
 
@@ -34,6 +34,14 @@ class RevisionPayload(Payload):
 
 class DoctorPayload(Payload):
     timeout: int = Field(default=5, strict=True, ge=1, le=30)
+
+
+class ServicesPayload(Payload):
+    action: Literal["start", "stop", "shutdown"]
+    names: list[str] = Field(default_factory=list)
+    revision: int = Field(strict=True, ge=1)
+    confirm: bool = Field(default=False, strict=True)
+    timeout: int = Field(default=30, strict=True, ge=1, le=60)
 
 
 class RegistrationPayload(Payload):
@@ -215,6 +223,19 @@ def create_app(home: Path | None = None) -> FastAPI:
     @application.post("/api/projects/{project_id}/doctor")
     def probe_tools(project_id: str, body: DoctorPayload):
         return tools.doctor(state, project_id, probe=True, timeout=body.timeout)
+
+    @application.get("/api/projects/{project_id}/services")
+    def service_status(project_id: str):
+        return services.status(state, project_id)
+
+    @application.post("/api/projects/{project_id}/services")
+    def control_services(project_id: str, body: ServicesPayload):
+        return services.control(state, project_id, body.action, body.names, body.revision,
+                                confirm=body.confirm, timeout=body.timeout)
+
+    @application.get("/api/projects/{project_id}/services/{name}/logs")
+    def service_logs(project_id: str, name: str, offset: int = 0, limit: int = 8192, stderr: bool = False):
+        return services.logs(state, project_id, name, offset=offset, limit=limit, stderr=stderr)
 
     @application.put("/api/projects/{project_id}/bindings/{layer}")
     def bind(project_id: str, layer: str, body: BindingPayload):
