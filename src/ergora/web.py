@@ -267,15 +267,7 @@ def create_app(home: Path | None = None) -> FastAPI:
 
     @application.get("/api/templates/{kind}")
     def template(kind: str):
-        if kind not in reference.TEMPLATES:
-            raise ValueError("Unknown template")
-        if kind == "training-optimization":
-            directory = reference.ROOT / "platform/templates" / kind
-            return {"kind": kind, "agents": reference.agent_contract(kind),
-                    "files": {**{path.name: path.read_text(encoding="utf-8") for path in sorted(directory.iterdir()) if path.is_file()},
-                              "agent-contract.json": json.dumps(reference.agent_contract(kind), ensure_ascii=False, indent=2)}}
-        return {"kind": kind, "agents": reference.agent_contract(kind),
-                "input": json.loads((reference.ROOT / "platform/templates" / kind / "input.json").read_text(encoding="utf-8"))}
+        return reference.template_details(kind)
 
     @application.post("/api/projects/{project_id}/drafts/validate")
     def validate_draft(project_id: str, body: DraftPayload):

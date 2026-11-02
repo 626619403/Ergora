@@ -19,7 +19,8 @@
 - 默认分支：M2 完成。用户已设置，2026-11-01 15:30 UTC 远端 HEAD 实际指向 main，与当时主线 `0027f3f` 一致，[独立核对通过](delivery/2026-11-01-default-branch-review.md)，见 [设置记录](delivery/2026-11-01-default-branch.md)。
 - 用例交付：R4 [用例所有权与依赖整理](delivery/2026-11-02-application-use-cases.md)完成，运行/测试 `f9a9b74` 已推送；非editable包Linux206 passed/18 skips/36子测试、基础21次CLI符合预期，最终35项定向和两套324文件身份通过。精确候选CI41380351919两OS成功，[独立审查及最终CI复核](delivery/2026-11-02-application-use-cases-review.md)通过，无未解决findings。
 - DeepSeek参考项已在[详细计划 L1 执行清单](plans/2026-11-01-all-in-one.md#l1-deepseek-agent-管理工具调研用户追加)按DS1–DS7关联F1–F10/D3：有效配置、意图/回执、人工待办、事件/授权、可选DSH、受评价改进及隔离实测。均待对应节点实施；不整包替换当前执行链。
-- 生命周期交付：R5 [运行契约与平台生命周期](delivery/2026-11-02-runtime-contracts.md)完成，从干净 `39e0c34` 开始；生产身份仍为 `f9a9b74`。已形成[结果/产物/平台矩阵](architecture/2026-11-02-runtime-contracts.md)，无额外源码抽取依据；Linux最终43项/5跳过、固定Forge/mini SDK及SIGINT/KILL探针、106链接/283冻结身份通过，[独立审查](delivery/2026-11-02-runtime-contracts-review.md)通过。保留mini首轮超时及未验维度，文档待本次提交推送。
+- 生命周期交付：R5 [运行契约与平台生命周期](delivery/2026-11-02-runtime-contracts.md)完成并推送 `d685bb9`，远端SHA已核对；生产身份仍为 `f9a9b74`。已形成[结果/产物/平台矩阵](architecture/2026-11-02-runtime-contracts.md)，无额外源码抽取依据；Linux最终43项/5跳过、固定Forge/mini SDK及SIGINT/KILL探针、106链接/283冻结身份通过，[独立审查](delivery/2026-11-02-runtime-contracts-review.md)通过。保留mini首轮超时及未验维度。
+- 活动切片：R6 [reference访问边界](delivery/2026-11-02-reference-boundary.md)，从干净且已推送的 `d685bb9` 开始。Web模板读取已归入reference接口，[已有边界/退出清单](architecture/reference-boundary.md)已写；Linux206项+36子测试/18跳过、324文件×两安装/21次基础CLI、102链接/283冻结身份通过；待独立审查及新候选两OS CI，保持原六阶段、冻结绑定和证据身份。
 - 下一动作：R6 reference边界 → R7–R8 → P0 → P1。先收拢Web直接读取模板的边界，复验编译/原执行链及冻结绑定，无依据不增加包装层。每个节点完成后更新状态、实际检查和独立审查，再继续下一项；用户无需逐节点重复授权。不要把规划中的统一任务、低代码、会话或远端执行写成已实现。
 - 已交付平台范围：原生 Windows 控制面、CLI、项目 / 记忆 / Skill / 资料观察及支持的原生工具；完整六阶段与 Linux 专用工具走 Linux/WSL2。后续仍按实际能力逐项验收。
 - 验证：Windows / Ubuntu CI 41225920073 全部成功；Linux 完整回归 115 passed +36 subtests。两个切片最终独立审查通过；Linux 用户目录 0.2.0 升级和 314 文件身份一致。真实模型 / GPU / winget 空白系统等未验收范围保留在交付记录，不从 CI 推导。

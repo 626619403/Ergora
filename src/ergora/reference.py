@@ -69,6 +69,20 @@ def agent_contract(kind: str) -> dict:
             "acceptance": {"required_checks": profile["required_checks"], "artifacts_by_stage": profile["artifacts_by_stage"]}}
 
 
+def template_details(kind: str) -> dict:
+    """Read editable template inputs without exposing the frozen directory layout."""
+    if kind not in TEMPLATES:
+        raise ValueError("Unknown template")
+    directory = ROOT / "platform/templates" / kind
+    contract = agent_contract(kind)
+    if kind == "training-optimization":
+        return {"kind": kind, "agents": contract,
+                "files": {**{path.name: path.read_text(encoding="utf-8") for path in sorted(directory.iterdir()) if path.is_file()},
+                          "agent-contract.json": json.dumps(contract, ensure_ascii=False, indent=2)}}
+    return {"kind": kind, "agents": contract,
+            "input": json.loads((directory / "input.json").read_text(encoding="utf-8"))}
+
+
 def executor(installation: Path, home: Path, request: Path | None = None):
     if sys.platform != "linux":
         raise ValueError("The formal reference executor requires Linux; use WSL2 and a trusted Linux container")
