@@ -32,6 +32,10 @@ class RevisionPayload(Payload):
     revision: int
 
 
+class DoctorPayload(Payload):
+    timeout: int = Field(default=5, strict=True, ge=1, le=30)
+
+
 class RegistrationPayload(Payload):
     definition: dict
     revision: int = Field(strict=True, ge=0)
@@ -207,6 +211,10 @@ def create_app(home: Path | None = None) -> FastAPI:
     @application.get("/api/projects/{project_id}/configuration")
     def project_configuration(project_id: str):
         return projects.effective_configuration(state.project(project_id))
+
+    @application.post("/api/projects/{project_id}/doctor")
+    def probe_tools(project_id: str, body: DoctorPayload):
+        return tools.doctor(state, project_id, probe=True, timeout=body.timeout)
 
     @application.put("/api/projects/{project_id}/bindings/{layer}")
     def bind(project_id: str, layer: str, body: BindingPayload):

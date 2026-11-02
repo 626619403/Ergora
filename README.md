@@ -157,6 +157,7 @@ ergora project show my-project
 ergora project config my-project
 ergora tools list
 ergora tools doctor my-project
+ergora tools doctor my-project --probe --timeout 5
 # binding.json 示例：{"tool":"codex","model":"YOUR_MODEL_ID"}
 ergora project bind my-project reviewer --binding binding.json --revision 1
 ergora agent run my-project reviewer --prompt review-request.md --timeout 300

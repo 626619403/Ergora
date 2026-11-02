@@ -78,6 +78,8 @@ def parser() -> argparse.ArgumentParser:
     operations.add_parser("profiles", help="Describe SDK installation combinations and their external requirements")
     doctor = operations.add_parser("doctor")
     doctor.add_argument("project")
+    doctor.add_argument("--probe", action="store_true", help="Explicit local version/credential status and TCP probes; never calls a model")
+    doctor.add_argument("--timeout", type=int, default=5, help="Total active probe budget in seconds (1–30)")
     agent = commands.add_parser("agent", help="Invoke a configured tool, independently of formal workflow acceptance")
     operations = agent.add_subparsers(dest="operation", required=True)
     run = operations.add_parser("run")
@@ -278,7 +280,7 @@ def main(argv: list[str] | None = None) -> int:
             if args.operation == "profiles":
                 output = tools.installation_profiles()
             else:
-                output = tools.catalog() if args.operation == "list" else tools.doctor(State(args.home), args.project)
+                output = tools.catalog() if args.operation == "list" else tools.doctor(State(args.home), args.project, probe=args.probe, timeout=args.timeout)
         elif args.command == "agent":
             state = State(args.home)
             if args.operation == "runs":

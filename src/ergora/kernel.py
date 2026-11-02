@@ -33,7 +33,7 @@ def available(binding: dict) -> dict:
         return {"installed": False, "version": "unsupported_platform", "reason": "ForgeKernel requires Linux; use WSL2"}
     try:
         checkout = Path(binding["checkout"]).expanduser().resolve(strict=True)
-        commit = subprocess.check_output(["git", "-C", str(checkout), "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL, encoding="utf-8").strip()
+        commit = subprocess.check_output(["git", "-C", str(checkout), "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL, encoding="utf-8", timeout=5).strip()
         result = subprocess.run([str(Path(binding["python"]).expanduser()), "-c",
             "from forgekernel.paths import repo_root;print(repo_root())"], capture_output=True, text=True, timeout=5, encoding="utf-8")
         installed = result.returncode == 0 and Path(result.stdout.strip()).resolve() == checkout
