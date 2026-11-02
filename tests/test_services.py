@@ -66,7 +66,7 @@ def stack():
 from pathlib import Path
 root=Path(os.environ['AGENTFLOW_STATE_DIR'])
 (root/'temporal.started').write_text(str(os.getpid()))
-signal.signal(signal.SIGTERM,lambda *_: exit(0))
+signal.signal(signal.SIGTERM,signal.SIG_IGN if (root/'ignore-term').exists() else lambda *_: exit(0))
 print('fixture service ready',flush=True)
 while True: time.sleep(.1)
 ''', encoding="utf-8")
@@ -149,14 +149,74 @@ def test_shutdown_reconciles_a_daemon_already_shutting_down(stack):
     assert result["outcome"] == "confirmed" and result["daemon"] == "not_running"
 
 
-def test_non_text_native_logs_fail_visibly(stack):
+def test_non_utf8_bytes_are_visible_with_replacement(stack):
     state, runtime, _ = stack
     services.control(state, "demo", "start", ["temporal"], 1, timeout=5)
     wait_for_fixture_log(runtime)
     with (runtime / "logs/temporal.log").open("ab") as stream:
-        stream.write(b"\x00binary log bytes")
-    with pytest.raises(ValueError, match="XML-compatible"):
+        stream.write(b"\xffbinary log bytes")
+    assert "\ufffdbinary log bytes" in services.logs(state, "demo", "temporal")["text"]
+
+
+def test_utf8_default_window_and_partial_append_keep_character_boundaries(stack):
+    state, runtime, _ = stack
+    services.control(state, "demo", "start", ["temporal"], 1, timeout=5)
+    wait_for_fixture_log(runtime)
+    path = runtime / "logs/temporal.log"
+    path.write_text("文" * 4000, encoding="utf-8")
+    report = services.logs(state, "demo", "temporal")
+    assert report["text"] == "文" * 2730 and report["next_offset"] == 12000
+    assert report["bytes_read"] == 8192 and report["pending_bytes"] == 0
+    with path.open("ab") as stream:
+        stream.write("中".encode("utf-8")[:2])
+    partial = services.logs(state, "demo", "temporal", offset=12000, limit=4)
+    assert partial["text"] == "" and partial["pending_bytes"] == 2 and partial["next_offset"] == 12000
+    with path.open("ab") as stream:
+        stream.write("中".encode("utf-8")[2:])
+    complete = services.logs(state, "demo", "temporal", offset=partial["next_offset"], limit=4)
+    assert complete["text"] == "中" and complete["next_offset"] == 12003
+    with path.open("ab") as stream:
+        stream.write("文".encode("utf-8") + "😀".encode("utf-8")[:1])
+    first = services.logs(state, "demo", "temporal", offset=12003, limit=4)
+    assert first["text"] == "文" and first["pending_bytes"] == 1 and first["next_offset"] == 12006
+    with path.open("ab") as stream:
+        stream.write("😀".encode("utf-8")[1:])
+    second = services.logs(state, "demo", "temporal", offset=first["next_offset"], limit=4)
+    assert second["text"] == "😀" and second["pending_bytes"] == 0 and second["next_offset"] == 12010
+    overflow = services.logs(state, "demo", "temporal", offset=12003, limit=4)
+    assert overflow["overflow"] is True and overflow["text"] == "😀" and overflow["next_offset"] == 12010
+
+
+def test_nonregular_native_log_cannot_block_reader(stack):
+    state, runtime, _ = stack
+    services.control(state, "demo", "start", ["temporal"], 1, timeout=5)
+    wait_for_fixture_log(runtime)
+    path = runtime / "logs/temporal.log"
+    path.unlink()
+    os.mkfifo(path)
+    with pytest.raises(ValueError, match="regular native file"):
         services.logs(state, "demo", "temporal")
+
+
+def test_stop_retry_waits_for_real_stopping_process(stack, monkeypatch):
+    state, runtime, config = stack
+    (runtime / "ignore-term").touch()
+    path = config / "supervisor.d/temporal.ini"
+    path.write_text(path.read_text().replace("stopwaitsecs = 1", "stopwaitsecs = 3"))
+    services.control(state, "demo", "start", ["temporal"], 1, timeout=5)
+    wait_for_fixture_log(runtime)
+    original = services._rpc
+    calls = []
+    def rpc(path, method, *args, **kwargs):
+        if method == "stopProcess":
+            calls.append(method)
+        return original(path, method, *args, **kwargs)
+    monkeypatch.setattr(services, "_rpc", rpc)
+    first = services.control(state, "demo", "stop", ["temporal"], 1, confirm=True, timeout=1)
+    assert first["outcome"] == "unconfirmed"
+    assert next(p for p in first["services"] if p["name"] == "temporal")["statename"] == "STOPPING"
+    second = services.control(state, "demo", "stop", ["temporal"], 1, confirm=True, timeout=5)
+    assert second["outcome"] == "confirmed" and calls == ["stopProcess"]
 
 
 def test_mutations_require_revision_confirmation_and_consistent_registration(stack):
@@ -246,6 +306,12 @@ def test_api_and_cli_share_status_and_protected_mutations(stack):
 def test_native_windows_reports_wsl_requirement(tmp_path):
     with pytest.raises(ValueError, match="WSL2"):
         services.status(State(tmp_path), "unused")
+
+
+@pytest.mark.parametrize("limit", [1, 2, 3])
+def test_text_window_rejects_sizes_smaller_than_a_utf8_character(tmp_path, limit):
+    with pytest.raises(ValueError, match="4–65536"):
+        services.logs(State(tmp_path), "unused", "temporal", limit=limit)
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="Unix Supervisor transport")

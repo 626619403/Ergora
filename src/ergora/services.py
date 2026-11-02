@@ -1,5 +1,6 @@
 """Explicit local service operations; Supervisor owns process lifetime and logs."""
 
+import codecs
 import configparser
 import glob
 import http.client
@@ -9,6 +10,7 @@ import os
 from pathlib import Path
 import shlex
 import socket
+import stat
 import subprocess
 import sys
 import tempfile
@@ -207,7 +209,7 @@ def control(state: State, project_id: str, action: str, names: list[str], revisi
                     if action == "start" and current[name] == "STOPPING":
                         raise ValueError("Stop is not confirmed; wait for STOPPED before starting again")
                 for name in names:
-                    if (action == "start" and current[name] not in {"RUNNING", "STARTING"}) or (action == "stop" and current[name] not in _STOPPED):
+                    if (action == "start" and current[name] not in {"RUNNING", "STARTING", "BACKOFF"}) or (action == "stop" and current[name] not in _STOPPED | {"STOPPING"}):
                         _rpc(path, "startProcess" if action == "start" else "stopProcess", name, False,
                              timeout=max(.01, min(1, deadline - time.monotonic())))
             while time.monotonic() < deadline:
@@ -233,23 +235,43 @@ def control(state: State, project_id: str, action: str, names: list[str], revisi
 
 def logs(state: State, project_id: str, name: str, *, offset: int = 0,
          limit: int = 8192, stderr: bool = False) -> dict:
-    if name not in NAMES or isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 65536:
-        raise ValueError("Choose a supported service and a log limit of 1–65536 bytes")
-    if isinstance(offset, bool) or not isinstance(offset, int) or not 0 <= offset <= 2_147_483_647:
-        raise ValueError("Log offset must be a nonnegative XML-RPC integer")
+    if name not in NAMES or isinstance(limit, bool) or not isinstance(limit, int) or not 4 <= limit <= 65536:
+        raise ValueError("Choose a supported service and a text log window of 4–65536 bytes")
+    if isinstance(offset, bool) or not isinstance(offset, int) or not 0 <= offset <= 2**63 - 1:
+        raise ValueError("Log offset must be a nonnegative 64-bit file offset")
     _, _, folder = _context(state, project_id)
     try:
-        method = "tailProcessStderrLog" if stderr else "tailProcessStdoutLog"
-        text, following, overflow = _rpc(folder / "s.sock", method, name, offset, limit)
-        rotated = following < offset
-        if rotated:
-            text, following, overflow = _rpc(folder / "s.sock", method, name, 0, limit)
-        elif offset and not overflow:
-            # Supervisor 4.3.0 repeats the previous tail when fewer than limit bytes arrive.
-            # Its native byte cursor still lets us return only the newly appended suffix.
-            count = following - offset
-            text = text.encode("utf-8")[-count:].decode("utf-8", errors="replace") if count else ""
+        process = _rpc(folder / "s.sock", "getProcessInfo", name)
+        filename = process["stderr_logfile" if stderr else "stdout_logfile"]
+        if not filename:
+            raise ValueError("The selected service has no native log file")
+        # Supervisor decodes its RPC byte slices before returning them, which can split UTF-8.
+        # Query its path, then perform one bounded local read instead.
+        descriptor = os.open(filename, os.O_RDONLY | os.O_NONBLOCK)
+        with os.fdopen(descriptor, "rb") as stream:
+            if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
+                raise ValueError("Service logs require a regular native file")
+            size = stream.seek(0, os.SEEK_END)
+            rotated = offset > size
+            start = 0 if rotated else offset
+            overflow = size - start > limit
+            if overflow:
+                start = size - limit
+            stream.seek(start)
+            raw = stream.read(limit)
+        read_bytes = len(raw)
+        if start:
+            prefix = 0
+            while prefix < min(3, len(raw)) and raw[prefix] & 0xC0 == 0x80:
+                prefix += 1
+            start += prefix
+            raw = raw[prefix:]
+        decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
+        text = decoder.decode(raw, final=False)
+        pending = len(decoder.getstate()[0])
+        following = start + len(raw) - pending
     except (*_COMMUNICATION_ERRORS, xmlrpc.client.Fault) as error:
-        raise ValueError("Service log is unavailable or not XML-compatible text; inspect managed services status and the native log file") from error
+        raise ValueError("Service log is unavailable; inspect managed services status and the native log file") from error
     return {"project": project_id, "service": name, "stream": "stderr" if stderr else "stdout",
-            "text": text, "next_offset": following, "overflow": overflow, "rotated": rotated, "requested_bytes": limit}
+            "text": text, "next_offset": following, "overflow": overflow, "rotated": rotated,
+            "requested_bytes": limit, "bytes_read": read_bytes, "pending_bytes": pending}

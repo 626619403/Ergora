@@ -137,7 +137,7 @@ ergora services shutdown my-project --revision 1 --confirm --timeout 30
 
 首次 start 在执行状态目录下创建 `ergora-services/`，记录控制目录归属、独立 socket 及配置，复制原 Supervisor 程序定义并关闭全部 autostart，原 ini 保持不变。原 Supervisor socket 仍存在时拒绝接管：先通过原 `agentflow services stop` 停止并核对原栈，再使用新入口；陈旧 socket/PID 也需先对账。注册投影漂移、控制目录归属冲突或过长 Unix socket 路径会明确报错，后者应选择较短的持久 execution state 目录。软件升级前先 shutdown 托管栈，升级后按原参数显式启动。
 
-日志默认最多 8192 字节，可设 1–65536；使用返回的 `next_offset` 作为下次 `--offset`。`overflow` 表示中间内容超过窗口，`rotated` 表示文件缩短/轮转且游标已重置，需结合原生日志核对。日志通过 Supervisor 有界 RPC 读取，不完整加载大文件；包含不兼容 XML 的二进制内容时明确报错，应查看原生文件。
+日志默认原生字节窗口为 8192，可设 4–65536（至少容纳一个 UTF-8 字符）；使用返回的 `next_offset` 作为下次 `--offset`。`overflow` 表示中间内容超过窗口，`rotated` 表示当前文件长度小于游标、窗口已重置，需结合原生日志核对。通过 Supervisor 查询实际日志路径后，只对普通文件进行有界读取，不完整加载大文件。`limit` 限制原始读取字节数，文本/JSON响应大小可能因替换字符或转义而增加。合法 UTF-8 边界会保留；不完整后缀的 `pending_bytes` 尚不计入 `next_offset`，后续追加后用原游标继续；非法字节显示替换字符。
 
 同源 API：`GET /api/projects/ID/services`；`POST` 同路径，正文 `{"action":"start","names":["temporal"],"revision":1,"timeout":30}`；停止加 `"confirm":true`，shutdown 的 names 为空。写请求沿用 `X-Ergora-Request: 1`。`GET /api/projects/ID/services/NAME/logs?limit=8192&offset=0&stderr=false` 返回有界文本与游标。Windows 原生支持控制台，但本地 Supervisor 管理需要 WSL2/Linux。
 
