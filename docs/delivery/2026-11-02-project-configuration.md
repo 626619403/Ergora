@@ -6,7 +6,7 @@
 
 |子节点|范围与验收|实现|验证|独立审查|
 |---|---|---|---|---|
-|F1.1 有效绑定与运行快照|CLI/API/页面读取同一解析结果，显示项目修订、每层来源和校验状态；旧角色继承和支持层默认不变；独立调用和新正式任务保存快照，在途调用不随项目/默认变化|已实现；初审两项已修正|修正后完整包222项+36子测试/18跳过；两安装/28次CLI/浏览器通过；CI待提交|[复审通过](2026-11-02-project-configuration-review.md)，两项已关闭|
+|F1.1 有效绑定与运行快照|CLI/API/页面读取同一解析结果，显示项目修订、每层来源和校验状态；旧角色继承和支持层默认不变；独立调用和新正式任务保存快照，在途调用不随项目/默认变化|完成并推送；初审两项已修正|修正后完整包222项+36子测试/18跳过；两安装/28次CLI/浏览器及精确两OS CI通过|[复审通过](2026-11-02-project-configuration-review.md)，两项已关闭；最终CI/远端核对通过|
 |F1.2 单一注册与单向投影|一次选择仓库、模板、角色、执行位置、检查/策略及可选组件；同一用例生成 reference 配置；CLI/API 等价、能力与 Git 根检查、不可变文件冲突和中断恢复|未实施|待验证|待审查|
 |F1.3 旧注册显式导入|检测、dry-run、差异、revision 冲突和恢复记录；不自动双向同步、覆盖旧注册或切换在途执行器|未实施|待验证|待审查|
 
@@ -35,7 +35,7 @@ F1 的完整原始验收仍在[详细计划](../plans/2026-11-01-all-in-one.md#f
 
 报告已写，7个官方仓库的完整HEAD已固定，18份文件的URL/字节/SHA256复核通过；1份n8n Canvas路径404记录保留。核对Node-RED、n8n、Langflow、Dify、Appsmith官方页面及React Flow、JSON Forms、Cytoscape库文档；未实测这些平台或其性能。建议先保留当前原生界面/Cytoscape，在F6用同旅程原型比较React Flow和成熟条件表单；角色绑定、任务依赖、通信关系分别表达，布局不进入执行摘要。8份当前文档178个本地文件链接存在。
 
-新的[LC1独立审查](2026-11-02-low-code-editors-review.md)需求符合性/可维护性均通过，范围内无findings。reviewer重新抓取全部18份固定源码/许可/包描述，身份一致，预期404保持；复核官方页面及3份主审文档54本地链接。研究审查已完成，待与本轮提交推送交付；不把该文档审查计为F1.1代码通过。
+新的[LC1独立审查](2026-11-02-low-code-editors-review.md)需求符合性/可维护性均通过，范围内无findings。reviewer重新抓取全部18份固定源码/许可/包描述，身份一致，预期404保持；复核官方页面及3份主审文档54本地链接。研究审查已完成，并随本轮`d914ea7`提交推送交付；不把该文档审查计为F1.1代码通过。
 
 ## F1.1 实现与初步验证
 
@@ -83,4 +83,12 @@ F1 的完整原始验收仍在[详细计划](../plans/2026-11-01-all-in-one.md#f
 - `review-fix-browser-configuration.log`：最终安装包的12层展示/API一致，继承和兼容默认来源可见；全新无效继承fixture可显式选择兼容工具，保存revision2、刷新仍持久。`review-fix-browser-workflow.log`：三模板分别4/4/3角色继承command，训练kernel=manual，两开发图实际装载，390px无溢出/pageerror。测试独立数据目录与本机现有用户服务分离。
 - 最终安装只读`ergora reference verify`：**PASS、283文件**，没有启动运行时或修改冻结内容。自有前端已无绕过有效配置的`project.bindings`读取，`git diff --check`通过。
 
-独立复审已通过，首轮两项P2均关闭，无未解决findings；reviewer另核对30输入、335文件×两安装及283冻结身份，并重做内存探针。精确候选Ubuntu/Windows CI仍待提交/推送后核对。下一可实施节点为F1.2的单一注册与单向投影，随后F1.3；本轮不把有效绑定视图宣称为完整环境快照、全套注册或all-in-one旅程。
+独立复审已通过，首轮两项P2均关闭，无未解决findings；reviewer另核对30输入、335文件×两安装及283冻结身份，并重做内存探针。下一可实施节点为F1.2的单一注册与单向投影，随后F1.3；本轮不把有效绑定视图宣称为完整环境快照、全套注册或all-in-one旅程。
+
+## 提交、远端与精确 CI
+
+实现、测试及LC1研究提交`d914ea724e87495fb5efcd92e12f50b5931fc42c`已正常推送到`origin/refactor/architecture-foundations`，远端SHA相同；31个审查范围文件入库，未提交本地证据缓存、安装/登录状态或运行数据。推送前核对远端仍为源码基线，没有强推或修改main。后续仅补审查/状态收尾文档。
+
+[精确候选Portability CI 41440299977](https://github.com/626619403/Ergora/actions/runs/41440299977)成功：Ubuntu3.11与Windows3.12的构建/安装wheel、冻结参考身份、Native application regression均成功；Windows PowerShell5.1安装/升级也成功。官方API返回403限流后，改读官方Actions列表、run和两份job HTML，核对完整提交链接、job ID及各`check-step`的success与含同一SHA的日志URL；没有用历史绿色结果替代本候选。官方页面仅有既有Actions Node运行时/Ubuntu镜像提示，本轮不扩展修改CI依赖。
+
+证据为`remote-candidate.json`、`ci-api-error.json`、`ci-html-run-selection.json`、`ci-run-latest.html`、`ci-job-125260189208.html`、`ci-job-125260188816.html`，汇总身份在`ci-html-status.json`，解析断言在`verify-ci-html.py`。本地隔离浏览器和测试Web服务已停止；用户现有服务未动。最终独立CI/远端核对已通过并记录于原审查报告：reviewer独立读取远端、核对提交中的应用/测试身份、只读解析已存证据并实时重读官方run/两job；各项对应同一候选。F1.1与LC1完成交付；F1.2/F1.3保持待实施。

@@ -1,6 +1,6 @@
 # 当前架构与扩展边界
 
-2026-11-02，R8后的当前导航，加入F1.1有效绑定与快照增量（本地验收及独立复审通过，精确CI待核对）。历史 [A1 审计](2026-11-01-audit.md)及[R8记录](../delivery/2026-11-02-refactoring-exit.md)保留原身份与范围；新行为验收见[F1记录](../delivery/2026-11-02-project-configuration.md)。设计约束见 [ADR 0001](decisions/0001-refactoring-foundations.md) / [0002](decisions/0002-static-boundaries.md)。
+2026-11-02，R8后的当前导航，加入F1.1有效绑定与快照增量（已交付；本地验收、独立复审与精确两OS CI通过）。历史 [A1 审计](2026-11-01-audit.md)及[R8记录](../delivery/2026-11-02-refactoring-exit.md)保留原身份与范围；新行为验收见[F1记录](../delivery/2026-11-02-project-configuration.md)。设计约束见 [ADR 0001](decisions/0001-refactoring-foundations.md) / [0002](decisions/0002-static-boundaries.md)。
 
 ## 模块与依赖
 
@@ -169,4 +169,4 @@ flowchart LR
 |新模板、阶段或通用低代码|目前只有3个固定模板及受约束输入草稿；新模板/合同需显式实现和验收|F6才扩展描述/编辑；不能承诺现有任意配置可增删可信阶段|
 |新 tracker/通信/会话|对应 F7/F8/D1/D2 的真实 adapter、native ID/去重/取消和授权合同|本地无工单流程继续可用；上下文消息不扩大权限|
 
-复用 SQLite、Git、jsonschema、Temporal、MLflow、Cytoscape、GEPA/ReMe 和各工具真实 SDK。项目 revision、精确候选授权、证据关联与显式采用属于 Ergora 规则；没有理由用通用库替换这些规则。继续保持函数和既有 Protocol，只有外部框架 hook 使用继承。静态边界检查运行方式及局限见 [ADR 0002](decisions/0002-static-boundaries.md)。下一功能节点为 F1 有效项目配置，尚不能宣称 all-in-one 用户旅程已经打通。
+复用 SQLite、Git、jsonschema、Temporal、MLflow、Cytoscape、GEPA/ReMe 和各工具真实 SDK。项目 revision、精确候选授权、证据关联与显式采用属于 Ergora 规则；没有理由用通用库替换这些规则。继续保持函数和既有 Protocol，只有外部框架 hook 使用继承。静态边界检查运行方式及局限见 [ADR 0002](decisions/0002-static-boundaries.md)。下一功能节点为 F1.2 单一注册与单向投影，尚不能宣称 all-in-one 用户旅程已经打通。

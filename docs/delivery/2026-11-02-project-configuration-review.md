@@ -2,7 +2,7 @@
 
 日期：2026-11-02。审查者：fresh-context 独立 reviewer（`project_configuration_review`）；未继承实现对话。按根 `AGENTS.md` 及 `maintainable-project-delivery/references/independent-review.md` 审查原始 F1 要求、F1.1 切分、实际源码与原始证据。仅写本报告；未修改生产代码或测试，未安装、提交、推送或重跑昂贵回归。
 
-**最新复审裁决：F1.1 需求符合性通过、可维护性通过；首轮 R1/R2 均已关闭，检查范围内无未解决 findings。** 下文保留首轮发现和身份，修正后身份及证据见文末。精确候选 Ubuntu/Windows CI 尚待后续核对；此裁决不标记完整 F1 完成。
+**最新复审裁决：F1.1 需求符合性通过、可维护性通过；首轮 R1/R2 均已关闭，检查范围内无未解决 findings。** 精确候选 Ubuntu/Windows CI 与远端身份已完成独立核对，F1.1 验收闭合。下文保留首轮发现、复审身份及历史待验状态，最后一节记录提交后的实际核查；完整 F1 仍未完成。
 
 ## 首轮裁决
 
@@ -87,3 +87,16 @@
 - **需求符合性：通过（F1.1 检查范围）。** 两项首轮缺口已有针对修正和实际证据；来源/校验、旧状态、主调用/recall 的绑定身份和正式任务恢复未见剩余问题。
 - **可维护性：通过。** 统一解析的实际消费者已补全，内存接口的项目输入拥有明确的一次调用一致性用途；没有扩大为新注册/迁移/执行框架。
 - **剩余阻断 findings：无。** 精确候选 Ubuntu/Windows CI、提交/推送尚未发生，应在交付关闭前另行核对。本复审没有重跑昂贵全量/浏览器，没有验证真实模型、GPU、外部服务或竞品；LC1 研究未重复审查。F1.2/F1.3 未实施，完整 F1 继续保持未完成。
+
+## 精确 CI 与远端最终核对
+
+2026-11-02，独立 reviewer 完成提交后的状态收尾核查；以上首轮和修正后身份不变。
+
+- 实现/测试提交 [`d914ea724e87495fb5efcd92e12f50b5931fc42c`](https://github.com/626619403/Ergora/commit/d914ea724e87495fb5efcd92e12f50b5931fc42c) 的直接父提交为审查基线 `267cc776772c96d68870b55b726333ce0d175810`。独立读取 origin URL 为 `https://github.com/626619403/Ergora.git`，实际 `git ls-remote origin refs/heads/refactor/architecture-foundations` 返回该完整候选 SHA，与 `remote-candidate.json` 一致。
+- 从候选提交直接读取并计算 **335 个应用文件**和复审 manifest 中 **21 个源码/测试文件**的 SHA256，分别与已验最终包清单、复审输入全部一致。核对时工作区仅有 PLAN、详细计划、F1 交付记录、current 架构页四份状态文档变化；没有新的生产/测试变更。
+- 读取候选自身 `.github/workflows/portability.yml`，确认 Ubuntu 3.11 / Windows 3.12 矩阵、wheel 构建/安装、冻结参考身份、Native application regression 的实际命令，以及仅 Windows 执行的 PowerShell 5.1 安装/升级步骤。没有把两平台的适用套件范围混为一谈。
+- 已独立重算 `ci-html-status.json` 列出的四份原始证据字节数与 SHA256，全部匹配：selection `8ff4e9e6…`、run HTML `ad40e585…`、Ubuntu job HTML `f26aeee7…`、Windows job HTML `0d684568…`。selection 将完整候选映射至 run `41440299977`；它保存于运行中，最终结论另由最新 run/job HTML 核对。`verify-ci-html.py` 最后会写入汇总，reviewer 未执行该写操作，而是独立进行只读解析，未改原始证据或汇总。
+- 另实时读取三个官方页面，均 HTTP 200：[run 41440299977](https://github.com/626619403/Ergora/actions/runs/41440299977)、[Ubuntu job 125260189208](https://github.com/626619403/Ergora/actions/runs/41440299977/job/125260189208)、[Windows job 125260188816](https://github.com/626619403/Ergora/actions/runs/41440299977/job/125260188816)。run 的完整 commit 链接匹配候选，Status 为 **Success**；两 job 的 selectedJobId、平台/Python 名称及所需 check-step 日志 URL 中的完整 SHA/job ID 均一致。
+- Ubuntu 的 Build and install wheel、Packaged reference identity、Native application regression 均为已完成 **success**；Windows 的这三步及 Windows PowerShell 5.1 installer and upgrade 均为已完成 **success**。Ubuntu 跳过 Windows 专用安装步骤符合 workflow 条件，未计为 Windows 安装通过。官方页面证据没有使用历史绿色运行替代本候选。
+
+**最终裁决：F1.1 需求符合性、可维护性及本切片所需交付证据均通过，首轮两项关闭，无未解决 findings。** 可在计划和交付记录关闭 F1.1。此收尾未重复全量测试/浏览器或 LC1 来源审查；CI 核对使用官方 HTML 与候选 workflow，没有重试已限流 API，也没有重新下载逐项测试日志。它不增加真实模型、GPU、外部服务或竞品效果结论。F1.2 单一注册/单向投影、F1.3 旧注册显式导入仍未实施，完整 F1 不标完成。
