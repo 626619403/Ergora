@@ -10,10 +10,10 @@ R4 只调整职责和依赖方向：资产拥有身份、导入/读取/导出、
 
 |分步|实现|验证|独立审查|
 |---|---|---|---|
-|R4.1 Skill 资产与采用|已实现|源码定向 44 passed / 1 Windows-only skip|随完整 R4 审查|
-|R4.2 独立 Agent 运行|已实现|源码定向 69 passed / 6 skipped|随完整 R4 审查|
+|R4.1 Skill 资产与采用|完成，f9a9b74已推送|定向/非editable包/最终两OS CI通过|[通过，含最终CI复核](2026-11-02-application-use-cases-review.md)|
+|R4.2 独立 Agent 运行|完成，f9a9b74已推送|定向/基础CLI/最终两OS CI通过|[通过，含最终CI复核](2026-11-02-application-use-cases-review.md)|
 
-两步组成一个可回退的依赖整理切片，完整检查与 fresh-context 独立审查通过后才标为完成。不增加 service 基类、调度器、会话、额外依赖或数据迁移。
+两步组成一个可回退的依赖整理切片，现已通过完整检查与 fresh-context 独立审查。不增加 service 基类、调度器、会话、额外依赖或数据迁移。
 
 ## 已核实的调用与设计
 
@@ -67,15 +67,27 @@ R4.2 已迁出 agent_runs 的完整上下文/运行用例与 bindings 的实际�
 - 通过既有 `uv build --wheel --out-dir .ergora/checks/r4/dist` 构建，再用 `uv pip install --python .venv-dev/bin/python --no-deps --reinstall` 安装非 editable wheel。初轮 **324 个包文件**与源码及 wheel 逐字节一致，包含三个新增所有者；身份清单 `.ergora/checks/r4/package-identity.json`。初轮 wheel SHA-256：`3e6e96069aaa888002ae0c9435de85a80c99e4f90d09c08067d89b8260fec959`。
 - 安装包 `python -m ergora reference verify` **283 PASS**，旧 zip SHA 仍为 `8018be5094623ca0646d28d3671daaf7ac60774280eefc1c5c023bc19dc5c760`，未启动 reference runtime。
 - 非 editable wheel 的完整 Linux 回归 **206 passed、18 skipped、36 subtests passed、1 既有 warning，178.92s**；日志 `.ergora/checks/r4/wheel-regression.log`。命令：`.venv-dev/bin/python -m pytest -q -rs --tb=short -p no:cacheprovider --basetemp .ergora/checks/r4/wheel-tests tests src/ergora/data/reference/platform/upstream/platform/tests/test_contracts.py src/ergora/data/reference/platform/upstream/platform/tests/test_portable.py src/ergora/data/reference/platform/upstream/platform/tests/test_workflow.py::AdapterTests src/ergora/data/reference/platform/upstream/platform/tests/test_runtime.py`，`PYTHONPATH` 仅指冻结 reference 的 `upstream/platform`，`PYTHONDONTWRITEBYTECODE=1`。18项跳过为11项Windows-only、6项未显式选择的Forge/mini SDK检查及1项未选择隔离Temporal的检查，不能据此声称这些路径已重验。
-- 在隔离基础 venv 重装同一 wheel，fastapi / uvicorn / gepa / temporalio / minisweagent 均缺席。真实执行 **21 次 CLI 调用全部通过**：项目/绑定、带来源记忆、两版 Skill 导入、固定评价集/评价/比较、采用、带 Skill/recall 的 Agent、运行与输出、回退后的新上下文、原运行快照不变、旧 revision 拒绝、候选导出和 reference 核对。使用本地确定性 command/evaluator，不涉及模型或外部服务。可复跑脚本 `.ergora/checks/r4/cli-journey.py`，逐次参数/输出 `.ergora/checks/r4/base-cli-journey.json`，演示数据只在忽略目录。
+- 在隔离基础 venv 重装同一 wheel，fastapi / uvicorn / gepa / temporalio / minisweagent 均缺席。真实执行 **21 次 CLI 调用符合预期（20成功、1预期旧revision拒绝）**：项目/绑定、带来源记忆、两版 Skill 导入、固定评价集/评价/比较、采用、带 Skill/recall 的 Agent、运行与输出、回退后的新上下文、原运行快照不变、旧 revision 拒绝、候选导出和 reference 核对。使用本地确定性 command/evaluator，不涉及模型或外部服务。可复跑脚本 `.ergora/checks/r4/cli-journey.py`，逐次参数/输出 `.ergora/checks/r4/base-cli-journey.json`，演示数据只在忽略目录。
 - 随后对未跟踪新文件补做 diff 空白检查，删除 bindings.py 末尾一个多余空行，Python AST 不变。重建最终 wheel 并在上述两套 venv 重装，**324 文件两套均与最终源码一致**，最终 SHA-256：`b58be7546fb3af84886e1654631c1a55972cde51bfee0c7c07c639b8adbee83d`，清单 `package-identity-final.json`。最终包再跑 `test_components.py test_schema_contracts.py test_compatibility_baseline.py`，**35 passed、1 既有 warning，12.70s**（`boundary-regression-final.log`）；基础包仍无五项 optional，原21调用留下的两条运行及Skill revision3保持（`base-final-check.log`）。完整206项和21调用属于初轮wheel，最终精确提交的完整两OS回归由CI另核对。
 - 构建起初尝试该开发 venv 的 `python -m build` / `pip wheel`，因它由 uv 管理且未装 build/pip 而失败；最终复用已有 uv，未增加应用或测试依赖。失败日志与成功日志均保留，不属于应用回归失败。
 - 已核对当前四份 Markdown 的 105 个本地文件链接目标存在，`git diff --check` 通过。README 源码组织已更新，日期化历史审计保留原身份。
 
-当前源码、完整 Linux 包回归和基础 CLI 旅程已验证，独立审查进行中；精确提交的两 OS CI 待推送后核对，未标 R4 完成。
+## 独立审查及交付身份
+
+[fresh-context 独立审查](2026-11-02-application-use-cases-review.md)已通过源码/本地需求及可维护性检查，无 findings。Reviewer 独立核对 12 个迁移函数 AST、最终324文件×两套安装、6项定向测试和原始日志；其未重跑完整Linux/21次CLI，不把证据核对伪装为重复实跑。审查期间提示的一处过期下一动作已修正。
+
+最终源码/测试候选 `f9a9b743be1b5bde352d212b75c47358d5d73e9a` 已提交并推送当前分支，远端读取与本地一致，不改 main。该候选对应最终 wheel 身份 `b58be754…`，与前述初轮运行和最终边界检查分别关联。[Portability CI 41380351919](https://github.com/626619403/Ergora/actions/runs/41380351919)现已 **Success**：Windows job `125069579809`（Python3.12）**succeeded，3m12s**；Ubuntu job `125069579994`（Python3.11）**succeeded，54s**。两个job的官方页面均含精确完整提交链接。
+
+初次公开API查询返回IP速率限制403，改从GitHub官方Actions页核对，未要求额外认证。2026-11-02T03:03:19Z 的结构化摘录、完整SHA和页面摘要在 `.ergora/checks/r4/ci-final-web.json`，原始运行页及两个job页也保留。匿名页面需登录才能看步骤原始日志，本轮只确认两个job及整体成功，不报告CI各OS测试计数。未将IP限流写成用户权限拒绝。
+
+2026-11-02 03:05:54 UTC，同一 reviewer 已独立解析三份原始官方页并核对精确提交、job状态和页面摘要；需求符合性、可维护性及最终CI均通过，无未解决 findings。**R4 完成**。本次审查报告和状态收尾不改生产代码/测试/README，运行身份仍为 `f9a9b74`。
+
+本轮未重新运行真实模型/GPU、浏览器、隔离Temporal或显式可选Forge/mini SDK，也未接入DSH；相关L0/S8历史结果保留原身份。R4没有升级实际用户运行部署、迁移真实项目或改动冻结283文件/旧HTML；本轮验收覆盖依赖整理及公开用例兼容，未来F/G能力仍待实施。
+
+最终收尾核对：五份当前Markdown的116个本地文件链接目标存在，包含新独立报告的暂存差异空白检查通过；`git diff f9a9b74 -- src tests README.md pyproject.toml .github/workflows`为空。收尾提交仅保存四份计划/交付/审查文档，生产验收仍对应上述精确源码身份。
 
 ## 迁移、回退与下一动作
 
 没有库或文件格式迁移，无需重写旧运行和证据。旧 Python 入口用于已有测试及外部脚本；本轮不删除，退出须在未来明确 API 版本、迁移公告和调用者核对后单独处理。移除旧转发调用不影响新实现；出现回归可普通 revert 源码提交，不回写数据。
 
-当前下一动作：处置独立审查、提交/推送并核对精确候选两 OS CI，再关闭 R4 并进入 R5。代码/包身份和未验证范围分别保留。
+下一动作：R5 运行与平台责任。先核查 processes/research 的生命周期差异、现有 Windows Job / Linux 受监督执行所有者及真实消费者，再按计划决定必要的最小整理；没有复用依据时保留实现，不新增统一状态机或泛用运行基类。R4状态收尾及独立报告随当前分支推送，下一轮从PLAN和Git恢复。
