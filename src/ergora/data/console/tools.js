@@ -5,7 +5,7 @@ import {
 } from "./ui.js";
 import { app, bindingFor } from "./state.js";
 
-export function toolsView(data, _base, { refresh }) {
+export function toolsView(data, _base, { refresh, render }) {
   const diagnostics = node("div", {}, pre(data.tools));
   return [
     heading(
@@ -71,7 +71,9 @@ export function toolsView(data, _base, { refresh }) {
     panel("检查详情", "已安装、凭据存在、TCP 可达与任务验收分别记录。主动探测共用 5 秒预算，不调用模型。",
       button("主动探测版本、凭据与连接", async () => {
         const result = await api(`/api/projects/${encodeURIComponent(data.project.id)}/doctor`, { timeout: 5 });
-        diagnostics.replaceChildren(pre(result));
+        if (app.data !== data || app.project !== data.project.id) return;
+        data.tools = result;
+        render();
         notify("诊断完成；请查看分项状态与修复指引");
       }), diagnostics),
     panel(`有效绑定 · 修订 ${data.configuration.project.revision}`, "包含每层来源与校验结果；运行使用保存的快照。", pre(data.configuration)),

@@ -102,6 +102,21 @@ def test_missing_reme_credential_is_distinct_from_tcp_reachable(project, monkeyp
     assert result["task_availability"] == "blocked"
 
 
+@pytest.mark.parametrize("scheme", ["", "http://", "https://"])
+def test_temporal_probe_uses_the_configured_host_and_port(project, monkeypatch, scheme):
+    state, _ = project
+    monkeypatch.setattr(agents, "available", lambda *args: False)
+    with socket.socket() as server:
+        server.bind(("127.0.0.1", 0))
+        server.listen()
+        port = server.getsockname()[1]
+        projects.bind(state, "demo", "scheduler", {"tool": "temporal", "address": f"{scheme}127.0.0.1:{port}",
+                                                  "namespace": "default", "task_queue": "fixture"}, 1)
+        result = checks(tools.doctor(state, "demo", probe=True))["scheduler"]
+    assert result["connectivity"] == "tcp_reachable"
+    assert result["task_availability"] != "available" and result["authentication"] == "not_checked"
+
+
 def test_whole_active_budget_includes_child_timeout(project, monkeypatch):
     state, _ = project
     monkeypatch.setattr(agents, "available", lambda *args: True)

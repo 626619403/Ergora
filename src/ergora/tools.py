@@ -124,7 +124,8 @@ def _probe_check(check: dict, binding: dict, repo: Path, deadline: float) -> Non
             "from importlib.metadata import version; print(version('mini-swe-agent'))"]))
     elif tool in ("reme", "temporal"):
         try:
-            endpoint = urlsplit(binding["endpoint"] if tool == "reme" else "//" + binding["address"])
+            address = binding["endpoint"] if tool == "reme" else binding["address"]
+            endpoint = urlsplit(address if "://" in address else "//" + address)
             port = endpoint.port or ({"http": 80, "https": 443}.get(endpoint.scheme) if tool == "reme" else 7233)
             if not endpoint.hostname or not port:
                 raise ValueError("Missing endpoint host/port")
