@@ -51,6 +51,35 @@ def test_existing_task_selection_without_effective_view_remains_usable(tmp_path)
     assert summary["candidate_bound"] is True and len(summary["stages"]) == 6
 
 
+@pytest.mark.parametrize("kind", ["repository-governance", "large-change"])
+def test_unified_registration_drives_six_stages(tmp_path, kind):
+    if importlib.util.find_spec("temporalio") is None:
+        pytest.skip("Reference activity validation requires the optional Temporal SDK")
+    fixture = Path(__file__).parent / "fixtures/reference_acceptance.py"
+    result = subprocess.run([sys.executable, str(fixture), str(tmp_path), kind, "command", "unified-registration"],
+                            capture_output=True, text=True, timeout=90)
+    assert result.returncode == 0, result.stdout + result.stderr
+    summary = json.loads(result.stdout)
+    if summary.get("skip"):
+        pytest.skip(summary["skip"])
+    assert summary["candidate_bound"] and len(summary["stages"]) == 6
+
+
+@pytest.mark.parametrize("mode,detail", [("unified-pending", "pending"), ("unified-drift", "drift"),
+                                         ("unified-wrong-state", "directory mismatch")])
+def test_new_task_refuses_incomplete_or_mismatched_registration(tmp_path, mode, detail):
+    if importlib.util.find_spec("temporalio") is None:
+        pytest.skip("Reference activity validation requires the optional Temporal SDK")
+    fixture = Path(__file__).parent / "fixtures/reference_acceptance.py"
+    result = subprocess.run([sys.executable, str(fixture), str(tmp_path), "repository-governance", "command", mode],
+                            capture_output=True, text=True, timeout=45)
+    assert result.returncode == 0, result.stdout + result.stderr
+    summary = json.loads(result.stdout)
+    if summary.get("skip"):
+        pytest.skip(summary["skip"])
+    assert summary["rejected"] == mode and detail in summary["detail"]
+
+
 @pytest.mark.parametrize("boundary", ["creation", "cleanup"])
 def test_first_sigterm_cannot_interrupt_supervised_cleanup(tmp_path, boundary):
     fixture = Path(__file__).parent / "fixtures/signal_windows.py"

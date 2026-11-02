@@ -10,7 +10,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from . import __version__, agent_runs, components, drafts, evaluation, kernel, memory, optimization, projects, reference, research, skill_assets, skills, tools
+from . import __version__, agent_runs, components, drafts, evaluation, kernel, memory, optimization, projects, reference, registrations, research, skill_assets, skills, tools
 from .state import State
 
 
@@ -30,6 +30,15 @@ class BindingPayload(Payload):
 
 class RevisionPayload(Payload):
     revision: int
+
+
+class RegistrationPayload(Payload):
+    definition: dict
+    revision: int = Field(strict=True, ge=0)
+
+
+class RegistrationRevisionPayload(Payload):
+    revision: int = Field(strict=True, ge=0)
 
 
 class MemoryPayload(RevisionPayload):
@@ -156,6 +165,18 @@ def create_app(home: Path | None = None) -> FastAPI:
     @application.post("/api/projects")
     def add_project(body: ProjectPayload):
         return projects.create(state, body.id, Path(body.repo))
+
+    @application.post("/api/project-registrations")
+    def register_project(body: RegistrationPayload):
+        return registrations.register(state, body.definition, body.revision)
+
+    @application.get("/api/projects/{project_id}/registration")
+    def project_registration(project_id: str):
+        return registrations.status(state, project_id)
+
+    @application.post("/api/projects/{project_id}/registration/resume")
+    def resume_registration(project_id: str, body: RegistrationRevisionPayload):
+        return registrations.resume(state, project_id, body.revision)
 
     @application.get("/api/projects/{project_id}/dashboard")
     def dashboard(project_id: str):

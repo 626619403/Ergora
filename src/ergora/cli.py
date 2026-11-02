@@ -9,7 +9,7 @@ import sys
 
 from . import __version__
 from . import reference
-from . import agent_runs, agents, evaluation, kernel, memory, optimization, projects, research, skill_assets, skills, tools
+from . import agent_runs, agents, evaluation, kernel, memory, optimization, projects, registrations, research, skill_assets, skills, tools
 from .state import State, resolve_home
 
 
@@ -33,6 +33,7 @@ def parser() -> argparse.ArgumentParser:
     legacy.add_argument("operation", choices=["info", "verify", "executor"])
     legacy.add_argument("--installation", type=Path, help="Existing v2.2 reference installation (executor only)")
     legacy.add_argument("--request", type=Path, help="Execute one envelope instead of watching the reference queue")
+    legacy.add_argument("--project", help="Use a unified project's saved execution directories")
     templates = commands.add_parser("templates", help="List or copy a reference workflow template")
     operations = templates.add_subparsers(dest="operation", required=True)
     operations.add_parser("list")
@@ -53,6 +54,14 @@ def parser() -> argparse.ArgumentParser:
     show.add_argument("id")
     configuration = operations.add_parser("config", help="Show effective bindings, sources and project revision")
     configuration.add_argument("id")
+    registration = operations.add_parser("register", help="Register a complete project and publish reference configuration")
+    registration.add_argument("definition", type=Path)
+    registration.add_argument("--revision", type=int, required=True, help="0 for a new project, otherwise its current revision")
+    registration = operations.add_parser("registration", help="Inspect publication and file consistency")
+    registration.add_argument("id")
+    registration = operations.add_parser("resume-registration", help="Resume the saved publication intent")
+    registration.add_argument("id")
+    registration.add_argument("--revision", type=int, required=True)
     bind = operations.add_parser("bind")
     bind.add_argument("id")
     bind.add_argument("layer")
@@ -202,6 +211,15 @@ def main(argv: list[str] | None = None) -> int:
                 output = backups.restore(root, args.directory, offline=args.offline)
         elif args.command == "reference":
             if args.operation == "executor":
+                if args.project:
+                    if args.installation:
+                        raise ValueError("Choose --project or --installation")
+                    saved = State(args.home).project(args.project)
+                    if "registration" not in saved or saved["registration"]["status"] != "published":
+                        raise ValueError("The project needs a published unified registration")
+                    execution = saved["registration"]["definition"]["execution"]
+                    args.installation = Path(execution["installation"])
+                    os.environ.update(AGENTFLOW_CONFIG_DIR=execution["config_directory"], AGENTFLOW_STATE_DIR=execution["state_directory"])
                 if not args.installation:
                     raise ValueError("The selectable executor requires --installation and an explicitly configured reference runtime")
                 output = reference.executor(args.installation, State(args.home).root, args.request)
@@ -232,6 +250,12 @@ def main(argv: list[str] | None = None) -> int:
                 output = state.project(args.id)
             elif args.operation == "config":
                 output = projects.effective_configuration(state.project(args.id))
+            elif args.operation == "register":
+                output = registrations.register(state, json.loads(args.definition.read_text(encoding="utf-8-sig")), args.revision)
+            elif args.operation == "registration":
+                output = registrations.status(state, args.id)
+            elif args.operation == "resume-registration":
+                output = registrations.resume(state, args.id, args.revision)
             else:
                 output = projects.bind(state, args.id, args.layer, json.loads(args.binding.read_text(encoding="utf-8-sig")), args.revision)
         elif args.command == "tools":

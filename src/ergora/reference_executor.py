@@ -15,7 +15,7 @@ import sys
 import time
 
 from agent_platform import executor as original
-from agent_platform.core import Blocked, CONFIG, STATE, read, require, settings, slug, write
+from agent_platform.core import Blocked, CONFIG, ROOT, STATE, read, require, settings, slug, write
 from dev_platform.adapter import FileAdapter, publish
 from dev_platform.contracts import canonical_sha, validate_spec
 
@@ -35,6 +35,16 @@ class Executor(original.Executor):
                     "Use the selectable executor for a new task; do not switch an already-started reference task")
             project = State(home).project(self.project["name"])
             require(Path(project["repo"]).resolve() == Path(self.project["repo"]).resolve(), "Control and reference projects must use the same Git repository")
+            if "registration" in project:
+                registration = project["registration"]
+                require(registration["status"] == "published", "Project registration is pending; resume before starting a new task")
+                execution = registration["definition"]["execution"]
+                for key, actual in (("installation", ROOT), ("config_directory", CONFIG), ("state_directory", STATE)):
+                    require(Path(execution[key]) == actual.resolve(), "Registered execution directory mismatch: " + key)
+                for relative, expected in registration["files"].items():
+                    require(canonical_sha(read(CONFIG / relative)) == canonical_sha(expected), "Registered reference configuration drift: " + relative)
+                require(self.project == registration["files"]["projects/" + project["id"] + ".json"], "Task project differs from its registered configuration")
+                require(self.spec["request"]["task_type"] in registration["definition"]["templates"], "Task template is not registered")
             roles = ("inspector", "planner", "implementer", "reviewer")
             configuration = projects.effective_configuration(project)
             self.selection = {"schema_version": 1, "reference_project": self.project["name"],

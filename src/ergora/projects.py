@@ -14,7 +14,7 @@ from .bindings import validate_binding
 from .components import DEFAULT_BINDINGS
 
 
-def create(state: State, project_id: str, repo: Path) -> dict:
+def new_document(project_id: str, repo: Path) -> dict:
     if not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}", project_id):
         raise ValueError("Project ID must use 1–64 letters, digits, underscores or hyphens")
     repo = repo.expanduser().resolve(strict=True)
@@ -24,8 +24,12 @@ def create(state: State, project_id: str, repo: Path) -> dict:
         raise ValueError("Project root must be an existing Git repository")
     if Path(result.stdout.strip()).resolve() != repo:
         raise ValueError("Choose the Git repository root")
-    document = {"schema_version": 1, "id": project_id, "repo": str(repo), "created": now(),
-                "revision": 1, "bindings": deepcopy(DEFAULT_BINDINGS)}
+    return {"schema_version": 1, "id": project_id, "repo": str(repo), "created": now(),
+            "revision": 1, "bindings": deepcopy(DEFAULT_BINDINGS)}
+
+
+def create(state: State, project_id: str, repo: Path) -> dict:
+    document = new_document(project_id, repo)
     try:
         with state.connect() as db:
             db.execute("INSERT INTO projects VALUES (?, ?)", (project_id, json.dumps(document)))
@@ -53,6 +57,10 @@ def effective_configuration(project: dict) -> dict:
         layers[layer] = resolved
     document = {"schema_version": 1, "resolution_version": 1, "scope": "project-bindings",
                 "project": {key: project[key] for key in ("id", "repo", "revision")}, "layers": layers}
+    if "registration" in project:
+        document["scope"] = "registered-project"
+        registration = project["registration"]
+        document["registration"] = {key: deepcopy(registration[key]) for key in ("definition", "sha256", "status")}
     content = json.dumps(document, sort_keys=True, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
     return {**document, "sha256": hashlib.sha256(content.encode("utf-8")).hexdigest()}
 
@@ -67,6 +75,8 @@ def bind(state: State, project_id: str, layer: str, binding: dict, expected_revi
         document = json.loads(row[0])
         if document["revision"] != expected_revision:
             raise ValueError("Project revision changed; reload before saving")
+        if document.get("registration", {}).get("status") == "pending":
+            raise ValueError("Project registration is pending; resume it before changing bindings")
         document["bindings"][layer] = binding
         document["revision"] += 1
         db.execute("UPDATE projects SET document=? WHERE id=?", (json.dumps(document), project_id))

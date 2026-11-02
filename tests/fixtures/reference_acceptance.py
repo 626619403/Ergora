@@ -1,6 +1,7 @@
 """Two backend protocol fixtures through all existing stage/evidence owners; no model calls."""
 
 import asyncio
+from copy import deepcopy
 import json
 import os
 from pathlib import Path
@@ -10,7 +11,7 @@ import sys
 import time
 import threading
 
-from ergora import agents, projects, reference
+from ergora import agents, projects, reference, registrations
 from ergora.state import State
 
 
@@ -62,12 +63,10 @@ async def main():
     check = [sys.executable, "-c", "import ast,pathlib;[ast.parse(p.read_text()) for p in pathlib.Path('{repo}/src').glob('*.py')]"]
     checks = {key: check for key in ("behavior", "architecture", "knowledge", "integration", "compatibility", "migration-rollback")}
     write(root / "checks.json", checks)
-    register("demo", repo, "github", "fixtures/demo", ["src"], root / "checks.json")
     task_input = json.loads((reference.ROOT / "platform/templates" / kind / "input.json").read_text())
     task_input.update(goal="Add a fixture module", allowed_paths=["src"],
         work_units=[{"id": "unit", "depends_on": [], "paths": ["src"], "instructions": "Add VALUE = 42 in src/new.py"}])
     write(root / "input.json", task_input)
-    create_task("demo", kind, "task-1", "1", root / "input.json")
     state = State(root / "control")
     projects.create(state, "demo", repo)
     binding = {"tool": "codex", "sandbox": "current-container"} if backend == "codex" else {
@@ -77,6 +76,28 @@ async def main():
         binding["argv"] += ["--wait-for-cancellation", str(root / "action-ready"), str(root / "late-write")]
     for role in ("inspector", "planner", "implementer", "reviewer"):
         projects.bind(state, "demo", role, binding, state.project("demo")["revision"])
+    mode = sys.argv[4] if len(sys.argv) > 4 else "legacy-registration"
+    if mode.startswith("unified"):
+        definition = {"schema_version": 1, "id": "demo", "repo": str(repo), "templates": [kind],
+                      "tracker": {"kind": "github", "project": "fixtures/demo"}, "allowed_paths": ["src"],
+                      "checks": checks, "scope_policy": {"schema_version": 1, "protected_paths": [".git"],
+                                                          "max_changed_files": 200, "max_changed_lines": 20000},
+                      "execution": {"installation": str(installation), "config_directory": str(config), "state_directory": str(runtime)}}
+        registrations.register(state, definition, state.project("demo")["revision"])
+    else:
+        register("demo", repo, "github", "fixtures/demo", ["src"], root / "checks.json")
+    create_task("demo", kind, "task-1", "1", root / "input.json")
+    if mode in ("unified-pending", "unified-drift", "unified-wrong-state"):
+        if mode == "unified-drift":
+            write(config / "policies/demo/scope.json", {"schema_version": 1, "protected_paths": []}, replace=True)
+        else:
+            project = state.project("demo")
+            if mode == "unified-pending":
+                project["registration"]["status"] = "pending"
+            else:
+                project["registration"]["definition"]["execution"]["state_directory"] = str(root / "wrong-runtime")
+            with state.connect() as db:
+                db.execute("UPDATE projects SET document=? WHERE id=?", (json.dumps(project), "demo"))
     app = DevelopmentWorkflow()
     app.spec = read(runtime / "tasks/task-1/task.spec.json")
     adapter = FileAdapter(adapter_config)
@@ -112,7 +133,18 @@ async def main():
         context = app.context(stage, expected, task_input["work_units"][0] if stage == "work:unit" else None, dependencies)
         job = await activities.submit(context)
         request = runtime / "requests/task-1" / (context["job_id"] + ".json")
-        receipt = reference.executor(installation, state.root, request)
+        if mode == "unified-registration" and stage == "inventory":
+            result = subprocess.run([sys.executable, "-m", "ergora", "--home", str(state.root), "reference", "executor",
+                                     "--project", "demo", "--request", str(request)], capture_output=True, text=True, timeout=30)
+            assert result.returncode == 0, result.stdout + result.stderr
+            receipt = json.loads(result.stdout)
+        else:
+            receipt = reference.executor(installation, state.root, request)
+        if mode in ("unified-pending", "unified-drift", "unified-wrong-state"):
+            assert receipt["state"] == "FAILED", receipt
+            assert not (runtime / "tasks/task-1/agent-bindings.json").exists()
+            print(json.dumps({"rejected": mode, "detail": receipt["detail"]}))
+            return
         assert receipt["state"] == "SUCCEEDED", receipt
         assert await activities.poll(job) == receipt
         records[stage] = receipt
@@ -127,6 +159,12 @@ async def main():
                 del selection["configuration"]
                 write(selection_path, selection, replace=True)
             frozen_selection = selection
+            if mode == "unified-registration":
+                # Existing task selections survive later registration changes.
+                replacement = deepcopy(definition)
+                replacement["templates"] = ["training-optimization"]
+                replacement["execution"]["config_directory"] = str(root / "next-config")
+                registrations.register(state, replacement, state.project("demo")["revision"])
             # Later project changes must not change the already-frozen task selection.
             projects.bind(state, "demo", "implementer", {"tool": "command", "argv": ["/missing/changed-binding"]}, state.project("demo")["revision"])
         else:

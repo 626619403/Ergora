@@ -83,9 +83,7 @@ def template_details(kind: str) -> dict:
             "input": json.loads((directory / "input.json").read_text(encoding="utf-8"))}
 
 
-def executor(installation: Path, home: Path, request: Path | None = None):
-    if sys.platform != "linux":
-        raise ValueError("The formal reference executor requires Linux; use WSL2 and a trusted Linux container")
+def validate_installation(installation: Path) -> Path:
     installation = installation.expanduser().resolve(strict=True)
     manifest = json.loads((DATA / "reference-manifest.json").read_text(encoding="utf-8"))
     for relative, expected in manifest["files"].items():
@@ -93,9 +91,97 @@ def executor(installation: Path, home: Path, request: Path | None = None):
             file = installation / relative.removeprefix("platform/")
             if not file.is_file() or file.is_symlink() or hashlib.sha256(file.read_bytes()).hexdigest() != expected:
                 raise ValueError(f"Unsupported reference runtime identity: {relative}")
+    return installation
+
+
+def executor(installation: Path, home: Path, request: Path | None = None):
+    if sys.platform != "linux":
+        raise ValueError("The formal reference executor requires Linux; use WSL2 and a trusted Linux container")
+    installation = validate_installation(installation)
     sys.path[:0] = [str(installation / "local"), str(installation / "upstream/platform")]
     from . import reference_executor
     return reference_executor.main(home, request)
+
+
+def registration_paths(project_id: str) -> tuple[str, ...]:
+    # Project ID is validated by the project owner before crossing this boundary.
+    return (f"ergora/registrations/{project_id}.json", f"policies/{project_id}/scope.json",
+            f"policies/{project_id}/execution.json", f"projects/{project_id}.json")
+
+
+def registration_io(execution: dict, project_id: str, *, files: dict | None = None,
+                    publish: bool = False, paths: list | None = None, scope: dict | None = None) -> dict:
+    """Inspect or publish only project registration files, using fixed reference code.
+
+    Separate processes avoid import-time CONFIG/STATE leaking between Web projects.
+    Reads exclude credentials and runtime settings; publication never replaces files.
+    """
+    environment = dict(os.environ, PYTHONDONTWRITEBYTECODE="1", PYTHONUTF8="1",
+                       AGENTFLOW_CONFIG_DIR=execution["config_directory"],
+                       AGENTFLOW_STATE_DIR=execution["state_directory"])
+    environment["PYTHONPATH"] = os.pathsep.join(map(str, (
+        Path(__file__).parent.parent, ROOT / "platform/local", ROOT / "platform/upstream/platform")))
+    result = subprocess.run([sys.executable, "-P", "-S", "-c",
+                             "from ergora.reference import _registration_main;_registration_main()"],
+                            input=json.dumps({"id": project_id, "files": files, "publish": publish,
+                                              "paths": paths, "scope": scope}, allow_nan=False),
+                            capture_output=True, text=True, encoding="utf-8", env=environment, timeout=30)
+    if result.returncode:
+        raise ValueError(result.stderr.strip().splitlines()[-1])
+    return json.loads(result.stdout)
+
+
+def _registration_main():
+    from agent_platform.core import CONFIG, Blocked, slug, write
+    from dev_platform import adapter
+    from dev_platform.contracts import _paths, canonical_sha
+    from harness.git_scope import validate_policy
+
+    try:
+        payload = json.load(sys.stdin)
+        project_id = slug(payload["id"])
+        if os.name == "nt":
+            adapter.read_raw = _read_windows_contract
+        if payload["paths"] is not None:
+            _paths(payload["paths"], "allowed_paths")
+            validate_policy(payload["scope"])
+        root = CONFIG.resolve()
+
+        def inspect(relative):
+            path = adapter.safe_file(root, relative)
+            try:
+                raw = adapter.read_raw(path)
+            except FileNotFoundError:
+                return None
+            return {"document": json.loads(raw), "sha256": hashlib.sha256(raw).hexdigest()}
+
+        observed = {relative: inspect(relative) for relative in registration_paths(project_id)}
+        other_projects = []
+        directory = adapter.safe_file(root, "projects")
+        for path in sorted(directory.glob("*.json")):
+            if path.name != project_id + ".json" and not path.name.endswith(".symphony.json"):
+                other_projects.append(inspect("projects/" + path.name)["document"])
+        files = payload["files"]
+        if files is not None:
+            if set(files) != set(observed):
+                raise ValueError("Registration must contain exactly the project, policies and ownership files")
+            tracker = files[f"projects/{project_id}.json"]["tracker"]
+            if any(project["tracker"] == tracker for project in other_projects):
+                raise ValueError("Another reference project already owns this tracker")
+            for relative, expected in files.items():
+                encoded = (json.dumps(expected, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode("utf-8")
+                if len(encoded) > 1_048_576:
+                    raise ValueError(f"Registration file exceeds 1 MiB read limit: {relative}")
+                current = observed[relative]
+                if current is not None and canonical_sha(current["document"]) != canonical_sha(expected):
+                    raise ValueError(f"Immutable registration conflict: {relative}")
+            if payload["publish"]:
+                # Ownership/policies first; make the runnable project visible last.
+                for relative in registration_paths(project_id):
+                    write(adapter.safe_file(root, relative), files[relative])
+        print(json.dumps({"files": observed, "other_projects": other_projects}, allow_nan=False))
+    except (OSError, ValueError, KeyError, TypeError, Blocked) as error:
+        raise SystemExit("BLOCKED: " + str(error))
 
 
 def workflow(arguments: list[str]) -> int:

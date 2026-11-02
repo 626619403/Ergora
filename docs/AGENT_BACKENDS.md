@@ -69,7 +69,7 @@ bash scripts/install-agent.sh mini-swe-agent
 
 ## 可选的正式六阶段执行桥接
 
-默认 `agentflow` 执行器保持 v2.2 行为。要使项目的角色选择作用于正式任务，先按参考手册安装、配置模型、启用可信容器执行、注册项目和可信检查，再注册同名 Ergora 项目，且二者指向同一 Git 根目录。只对新的任务启用；不要中途切换已开始的参考任务。
+默认`agentflow`执行器保持v2.2行为。要使项目的角色选择作用于正式任务，先按参考手册安装、配置模型和可信执行边界，再用[统一项目注册](PROJECTS.md)一次登记Git根、角色、模板与可信检查，并运行`ergora reference executor --project PROJECT_ID`。旧的两次注册方式继续兼容，两个同名项目必须指向相同Git根。只对新任务启用；不要中途切换已开始的参考任务。
 
 先停止原 executor，保留 Temporal、worker 等服务：
 

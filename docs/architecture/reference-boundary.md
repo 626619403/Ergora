@@ -25,6 +25,7 @@ flowchart LR
 |草稿结构校验|`reference.validate_input`；drafts、Web|专用子进程调用原make_spec；只报告结构PASS及原输入摘要，不创建正式任务或批准|
 |portable编译/转换/导出|`reference.workflow`；CLI|专用Python进程使用明确的随包路径和`-P -S`，不让业务仓库/可选site package替换原编译器；Windows有界no-follow reader patch只在此子进程|
 |原执行安装定位|`reference.executor`；CLI及隔离验收fixture|仅Linux，先核对所选安装的local/upstream Python文件身份，再加载适配；不从任意配置字符串导入执行插件|
+|项目投影读取、校验与发布|`reference.registration_io / validate_installation / registration_paths`；registrations与执行入口|固定随包代码的专用子进程，按项目只读取登记文件与其他项目tracker，不读密钥或平台配置；复用原路径/scope校验、有界no-follow读取和不可变write；Windows复用reader patch|
 |新任务角色绑定快照|`reference_executor.Executor.__init__`；原执行链|首次核对同一个Git根并冻结4角色、项目修订；后续阶段读同一`agent-bindings.json`；旧任务已有receipt时拒绝换为可选择执行器|
 |阶段Agent及原生继承hook|`reference_executor.Executor.model / receipt`|只替换生成阶段调用及actor标识；原Executor保留提交、只读检查、集成/验证、候选SHA和回执；stage_driver负责专用进程的凭据/信号处理|
 |原配置、文件、回执发布与ledger更新|`reference_executor`内的原core/FileAdapter接口|原CONFIG/STATE、claim/ledger、immutable write/publish不向应用层扩散；不逐个函数增加第二层转发；不复制原文件/SQL逻辑|
@@ -34,7 +35,7 @@ flowchart LR
 
 ## 配置与进程范围
 
-安装位置由现有`reference executor --installation`明确提供。原配置/状态由导入前的`AGENTFLOW_CONFIG_DIR / AGENTFLOW_STATE_DIR`决定，未设置时继续使用原默认目录。Ergora `--home`是控制面项目/绑定的来源，不会隐式改写原注册、adapter、凭据或服务设置。
+安装位置由`reference executor --installation`明确提供，或由`--project ID`选择统一注册保存的安装/配置/状态。原配置/状态由导入前的`AGENTFLOW_CONFIG_DIR / AGENTFLOW_STATE_DIR`决定，未设置时继续使用原默认目录。Ergora`--home`是控制项目来源。统一注册通过单向投影生成项目/策略/归属文件，保留adapter、凭据和服务设置。旧注册仍需显式导入；在途任务继续使用原runtime与冻结快照。
 
 `agent_platform.core`在导入时固定ROOT/CONFIG/STATE，`reference.executor`为单一安装的专用进程入口。它不是Web中可并行热切换多个安装/配置的服务对象；同一解释器内缓存模块不能用于切换runtime。当前HTTP没有调用它。F1/F3若接查询/命令，须在边界明确选择安装/配置/状态并隔离调用，不能把现有全局当成request-local数据。
 
