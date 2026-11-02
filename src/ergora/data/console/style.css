@@ -585,6 +585,7 @@ main {
 .check-row strong {
   font-size: 12px;
   font-weight: 550;
+  overflow-wrap: anywhere;
 }
 .badge {
   display: inline-block;
