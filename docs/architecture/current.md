@@ -175,3 +175,7 @@ F1统一注册将控制项目定义和bindings作为权威来源，reference正�
 |新 tracker/通信/会话|对应 F7/F8/D1/D2 的真实 adapter、native ID/去重/取消和授权合同|本地无工单流程继续可用；上下文消息不扩大权限|
 
 复用SQLite、Git、jsonschema、Temporal、MLflow、Cytoscape、GEPA/ReMe和各工具真实SDK。项目revision、精确候选授权、证据关联与显式采用属于Ergora规则。继续保持函数和既有Protocol，只有外部框架hook使用继承。静态边界检查运行方式及局限见[ADR 0002](decisions/0002-static-boundaries.md)。F1已完成，下一项为F2环境/服务管理，再接F3/F4正式任务与页面；完整all-in-one用户旅程仍需这些后续节点验收。
+
+## F2安装增量
+
+F2.1实施中：安装组合与工具描述共享`components.json`，`tools.installation_profiles`供CLI与只读API消费。Bash/PowerShell启动前直接读同一配方，不依赖已安装的Ergora或Web；组合仅选择现有SDK extras，默认和旧参数保持兼容。它不改项目定义、原服务或已冻结运行快照；诊断状态和服务管理分别留F2.2/F2.3验收。进度见[F2.1记录](../delivery/2026-11-03-installation-profiles.md)。

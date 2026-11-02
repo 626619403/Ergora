@@ -14,6 +14,10 @@ from .state import State
 CATALOG = components.CATALOG
 
 
+def installation_profiles() -> dict:
+    return {"schema_version": 1, **deepcopy(components.INSTALLATION_PROFILES)}
+
+
 def catalog() -> dict:
     result = {}
     for layer, choices in CATALOG.items():

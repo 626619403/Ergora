@@ -4,6 +4,8 @@ param(
     [string]$Python = $env:ERGORA_PYTHON,
     [string]$InstallRoot = $env:ERGORA_INSTALL_ROOT,
     [string]$BinDir = $env:ERGORA_BIN_DIR,
+    [Alias('Profile')]
+    [string]$InstallationProfile,
     [switch]$WithGepa,
     [switch]$WithTemporal,
     [switch]$InstallPrerequisites,
@@ -12,6 +14,14 @@ param(
 
 $ErrorActionPreference = 'Stop'
 if ($env:OS -ne 'Windows_NT') { throw 'Use scripts/install.sh on Linux.' }
+$sourceRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$manifestPath = Join-Path $sourceRoot 'src\ergora\data\components.json'
+$recipes = ([IO.File]::ReadAllText($manifestPath) | ConvertFrom-Json).installation_profiles
+if (-not $InstallationProfile) { $InstallationProfile = $recipes.default }
+if (@($recipes.profiles.PSObject.Properties.Name) -cnotcontains $InstallationProfile) {
+    throw "Unknown installation profile: $InstallationProfile. See docs/USAGE.md."
+}
+$selectedProfile = $recipes.profiles.PSObject.Properties[$InstallationProfile].Value
 
 function Invoke-Checked([string]$Executable, [string[]]$Arguments) {
     & $Executable @Arguments
@@ -50,7 +60,6 @@ if (-not $InstallRoot) { $InstallRoot = Join-Path $env:LOCALAPPDATA 'Ergora\app'
 if (-not $BinDir) { $BinDir = Join-Path $env:LOCALAPPDATA 'Ergora\bin' }
 $InstallRoot = [IO.Path]::GetFullPath($InstallRoot)
 $BinDir = [IO.Path]::GetFullPath($BinDir)
-$sourceRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $venv = Join-Path $InstallRoot 'venv'
 $venvPython = Join-Path $venv 'Scripts\python.exe'
 $entry = Join-Path $BinDir 'ergora.exe'
@@ -72,9 +81,10 @@ foreach ($name in @('ergora.cmd', 'ergora.ps1', 'ergora.bat')) {
 [IO.Directory]::CreateDirectory($InstallRoot) | Out-Null
 [IO.Directory]::CreateDirectory($BinDir) | Out-Null
 Invoke-Checked $Python ($pythonArguments + @('-m', 'venv', $venv))
-$extras = @('web')
+$extras = @($selectedProfile.extras)
 if ($WithGepa) { $extras += 'gepa' }
 if ($WithTemporal) { $extras += 'temporal' }
+$extras = @($extras | Select-Object -Unique)
 $requirement = $sourceRoot + '[' + ($extras -join ',') + ']'
 Invoke-Checked $venvPython @('-X', 'utf8', '-m', 'pip', 'install', $requirement)
 Invoke-Checked $venvPython @('-X', 'utf8', '-m', 'ergora', 'reference', 'verify')
@@ -91,5 +101,6 @@ if ($AddToPath) {
 }
 $env:Path = $BinDir + ';' + $env:Path
 Write-Host "Installed: $entry"
+Write-Host "Installed profile: $InstallationProfile (SDKs: $($extras -join ','))"
 Write-Host "Start console: & '$entry' serve"
 Write-Host 'Open http://127.0.0.1:8977. No agents, services, or GPU jobs were started.'

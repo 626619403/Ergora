@@ -26,7 +26,8 @@
 - 配置交付：F1.1 [有效绑定与运行快照](delivery/2026-11-02-project-configuration.md)完成，实现/测试`d914ea724e87495fb5efcd92e12f50b5931fc42c`已推送且远端一致。初审两项P2已修正；最终wheel222项/36子测试、18跳过，335文件×两安装/28次基础CLI、桌面及390px六页/三模板浏览器、精确两OS CI41440299977和[独立复审/最终远端核对](delivery/2026-11-02-project-configuration-review.md)通过。当时完整F1尚未完成，当前状态见下方F1阶段检查点。
 - 研究补充：LC1 [低代码编辑器研究](research/2026-11-02-low-code-editors.md)完成并随`d914ea7`推送；7个固定仓库/18份来源及官方文档复核、[独立审查](delivery/2026-11-02-low-code-editors-review.md)通过，作为F4/F6设计依据。未安装竞品或改变图形库。
 - 注册交付：F1.2已推送`a6fd291`且远端一致，最终wheel255项/36子测试、18跳过及337文件×两安装、[独立复审](delivery/2026-11-02-project-registration-review.md)及精确两OS CI41448910719通过，见[注册记录](delivery/2026-11-02-project-registration.md)。
-- F1阶段交付：单一项目及有效配置全部完成；[F1.3旧注册预览/显式采用/恢复](delivery/2026-11-02-project-import.md)及tracker合同补修已推送`4ffcfdd`且远端一致。最终wheel281项/36子测试、18跳过、337文件×两安装/8次CLI、精确两OS CI41485234297与[独立最终复核](delivery/2026-11-02-project-import-review.md)均通过，无未解决阻塞，见[F1阶段记录](delivery/2026-11-03-f1-completion.md)。下一项为F2安装、doctor与服务管理，尚未实施。
+- F1阶段交付：单一项目及有效配置全部完成；[F1.3旧注册预览/显式采用/恢复](delivery/2026-11-02-project-import.md)及tracker合同补修已推送`4ffcfdd`且远端一致。最终wheel281项/36子测试、18跳过、337文件×两安装/8次CLI、精确两OS CI41485234297与[独立最终复核](delivery/2026-11-02-project-import-review.md)均通过，无未解决阻塞，见[F1阶段记录](delivery/2026-11-03-f1-completion.md)。F2进度见下一检查点。
+- 当前动作：F2已开始，首个切片为[F2.1安装组合](delivery/2026-11-03-installation-profiles.md)，基线`b5e0183`；共享配方、两平台安装器及CLI/API发现已实现，23项定向和最终wheel288项/36子测试（18跳过）、337文件×两安装、实际Linux5次安装/22次CLI通过，独立审查中，正提交候选运行Windows及精确两OS CI；之后依次F2.2诊断、F2.3服务管理、F2.4综合验收。尚未完成完整F2。
 - 已交付平台范围：原生 Windows 控制面、CLI、项目 / 记忆 / Skill / 资料观察及支持的原生工具；完整六阶段与 Linux 专用工具走 Linux/WSL2。后续仍按实际能力逐项验收。
 - 验证：Windows / Ubuntu CI 41225920073 全部成功；Linux 完整回归 115 passed +36 subtests。两个切片最终独立审查通过；Linux 用户目录 0.2.0 升级和 314 文件身份一致。真实模型 / GPU / winget 空白系统等未验收范围保留在交付记录，不从 CI 推导。
 - 恢复要求：重读本文件及活动切片记录，对照分支、工作区和最近提交；完成核对后继续当前项，不重新做已验收的调研。

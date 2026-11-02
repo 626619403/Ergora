@@ -10,6 +10,7 @@ if _manifest["schema_version"] != 1:
     raise ValueError("Unsupported built-in component catalog version")
 LAYERS = _manifest["layers"]
 COMPONENTS = _manifest["components"]
+INSTALLATION_PROFILES = _manifest["installation_profiles"]
 ROLE_CAPABILITIES = {layer: definition["requires"] for layer, definition in LAYERS.items()
                      if definition["kind"] == "agent"}
 GENERAL_CAPABILITIES = sorted({capability for required in ROLE_CAPABILITIES.values() for capability in required})

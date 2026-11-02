@@ -41,6 +41,18 @@ def test_local_http_boundary_and_packaged_assets(console):
     assert [item["id"] for item in client.get("/api/bootstrap").json()["projects"]] == ["demo", "other"]
 
 
+def test_installation_profiles_match_cli_without_rewriting_projects(console):
+    client, state, _ = console
+    before = state.project("demo")
+    observed = client.get("/api/installation-profiles")
+    assert observed.status_code == 200
+    result = subprocess.run([sys.executable, "-m", "ergora", "tools", "profiles"],
+                            capture_output=True, text=True, encoding="utf-8", timeout=10)
+    assert result.returncode == 0, result.stderr
+    assert observed.json() == json.loads(result.stdout)
+    assert state.project("demo") == before
+
+
 def test_binding_revisions_and_cli_web_share_durable_state(console):
     client, state, repo = console
     path = "/api/projects/demo/bindings/implementer"

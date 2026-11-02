@@ -56,7 +56,13 @@ else:
 
 
 @pytest.mark.skipif(os.name == "nt", reason="Bash installer; native PowerShell installer has a Windows CI check")
-def test_installer_upgrades_symlinked_directories_and_preserves_foreign_command(tmp_path):
+@pytest.mark.parametrize("options,extras", [
+    ([], "web"),
+    (["--profile", "development"], "web,temporal"),
+    (["--profile", "research"], "web,temporal,gepa"),
+    (["--profile", "control", "--with-gepa", "--with-temporal", "--with-gepa"], "web,gepa,temporal"),
+])
+def test_installer_upgrades_symlinked_directories_and_preserves_foreign_command(tmp_path, options, extras):
     """Run the real shell entry point; only venv/package installation is substituted."""
     real_install = tmp_path / "physical-install"
     real_bin = tmp_path / "physical-bin"
@@ -68,24 +74,30 @@ def test_installer_upgrades_symlinked_directories_and_preserves_foreign_command(
     python = tmp_path / "package-installer"
     python.write_text(f"#!{sys.executable}\n" + '''
 from pathlib import Path
-import sys
+import subprocess, sys
 if sys.argv[1:3] == ["-m", "venv"]:
     directory = Path(sys.argv[3]) / "bin"
     directory.mkdir(parents=True, exist_ok=True)
     for name in ["python", "ergora"]:
         command = directory / name
-        command.write_text("#!/bin/sh\\nexit 0\\n")
+        command.write_text("#!" + sys.executable + "\\nimport json,os,sys\\nwith open(os.environ['ERGORA_TEST_INSTALL_LOG'],'a') as log: log.write(json.dumps(sys.argv[1:])+'\\\\n')\\n")
         command.chmod(0o755)
+else:
+    raise SystemExit(subprocess.call([sys.executable, *sys.argv[1:]]))
 ''')
     python.chmod(0o755)
+    log = tmp_path / "install.jsonl"
     env = dict(os.environ, ERGORA_PYTHON=str(python), ERGORA_INSTALL_ROOT=str(install_link),
-               ERGORA_BIN_DIR=str(bin_link))
+               ERGORA_BIN_DIR=str(bin_link), ERGORA_TEST_INSTALL_LOG=str(log))
     installer = Path(__file__).resolve().parents[1] / "scripts/install.sh"
     for _ in range(2):
-        result = subprocess.run(["bash", str(installer)], env=env, capture_output=True, text=True,
+        result = subprocess.run(["bash", str(installer), *options], env=env, capture_output=True, text=True,
                                 timeout=10)
         assert result.returncode == 0, result.stdout + result.stderr
         assert (bin_link / "ergora").resolve() == real_install / "venv/bin/ergora"
+    calls = [json.loads(line) for line in log.read_text().splitlines()]
+    requirement = str(installer.parent.parent) + "[" + extras + "]"
+    assert calls.count(["-m", "pip", "install", requirement]) == 2
 
     entry = bin_link / "ergora"
     entry.unlink()
@@ -95,3 +107,16 @@ if sys.argv[1:3] == ["-m", "venv"]:
     assert result.returncode == 1
     assert "belongs to another installation" in result.stderr
     assert entry.read_text() == "another application's command\n"
+
+
+@pytest.mark.skipif(os.name == "nt", reason="Bash argument validation; PowerShell acceptance runs on Windows")
+@pytest.mark.parametrize("options", [["--profile"], ["--profile", "unknown-profile"]])
+def test_invalid_installation_profile_creates_no_installation(tmp_path, options):
+    install, commands = tmp_path / "app", tmp_path / "commands"
+    env = dict(os.environ, ERGORA_PYTHON=sys.executable, ERGORA_INSTALL_ROOT=str(install),
+               ERGORA_BIN_DIR=str(commands))
+    installer = Path(__file__).resolve().parents[1] / "scripts/install.sh"
+    result = subprocess.run(["bash", str(installer), *options], env=env, capture_output=True,
+                            text=True, timeout=10)
+    assert result.returncode != 0 and "profile" in result.stderr.lower()
+    assert not install.exists() and not commands.exists()

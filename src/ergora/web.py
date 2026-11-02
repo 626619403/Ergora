@@ -166,6 +166,10 @@ def create_app(home: Path | None = None) -> FastAPI:
                 "reference_supported": sys.platform == "linux",
                 "boundary": "local trusted-user control plane"}
 
+    @application.get("/api/installation-profiles")
+    def installation_profiles():
+        return tools.installation_profiles()
+
     @application.post("/api/projects")
     def add_project(body: ProjectPayload):
         return projects.create(state, body.id, Path(body.repo))

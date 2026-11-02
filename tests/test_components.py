@@ -12,6 +12,21 @@ from ergora import agents, components, projects, reference, tools
 from ergora.state import State
 
 
+def test_installation_profiles_are_discoverable_without_creating_state(tmp_path):
+    expected = {"control": ["web"], "development": ["web", "temporal"],
+                "research": ["web", "temporal", "gepa"]}
+    view = tools.installation_profiles()
+    assert view["default"] == "control" and view["scope"] == "sdk-installation-recipes"
+    assert {name: recipe["extras"] for name, recipe in view["profiles"].items()} == expected
+    home = tmp_path / "not-created"
+    result = subprocess.run([sys.executable, "-m", "ergora", "--home", str(home), "tools", "profiles"],
+                            capture_output=True, text=True, encoding="utf-8", timeout=10)
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout) == view and not home.exists()
+    view["profiles"]["control"]["extras"].append("not-a-profile-extra")
+    assert tools.installation_profiles()["profiles"]["control"]["extras"] == ["web"]
+
+
 def test_catalog_preserves_legacy_fields_and_returns_isolated_descriptions():
     baseline = json.loads((Path(__file__).parent / "fixtures/components-v0_2_0.json").read_text(encoding="utf-8"))["catalog"]
     catalog = tools.catalog()

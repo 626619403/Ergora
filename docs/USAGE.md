@@ -26,7 +26,33 @@ python3 -m venv .venv
 .venv/bin/ergora serve
 ```
 
-`bash scripts/install.sh --with-gepa --with-temporal` 安装可选 GEPA 和 Temporal SDK；外部服务与 Agent CLI 仍由用户配置。SDK 存在不代表服务可连接、工具已认证或效果已经验证。源码分支尚未发布时，先切换到维护者提供的功能分支。
+### 选择安装组合
+
+默认组合为`control`。可在源码目录运行`bash scripts/install.sh --profile development`或`--profile research`；Windows使用`-Profile`，见[Windows手册](WINDOWS.md)。
+
+|组合|安装的SDK|另需配置|
+|---|---|---|
+|`control`|Web控制台|所选Agent CLI及认证；本地项目可先用SQLite与手动操作|
+|`development`|Web、Temporal|完整六阶段需Linux/WSL2参考运行时、服务及Agent|
+|`research`|Web、Temporal、GEPA|评价器、提案器、所选资料/实验服务；GPU工具按任务安装|
+
+安装后运行`ergora tools profiles`查看同源配方；本地API为`GET /api/installation-profiles`。该描述是安装配方，实际状态另看`ergora tools doctor PROJECT`及任务验收。安装组合不启动服务、登录模型或执行训练。SDK存在不代表服务可连接、工具已认证或效果已经验证。
+
+原有`--with-gepa`、`--with-temporal`仍可使用，按集合添加到所选组合，例如`bash scripts/install.sh --profile development --with-gepa`。在同一目录重跑安装器可升级或补装；改回较小组合不会自动卸载已装SDK。源码特性尚未发布时，先切换到维护者提供的功能分支。
+
+### 准备离线依赖
+
+在联网环境为目标OS、Python版本和架构准备全部构建/运行wheel，再在同类环境安装。以下命令在源码目录执行，缓存目录可自行指定：
+
+```bash
+mkdir -p "$HOME/.local/share/ergora-tools/wheels"
+python3 -m pip wheel --wheel-dir "$HOME/.local/share/ergora-tools/wheels" \
+  '.[web,temporal,gepa]' setuptools wheel
+PIP_NO_INDEX=1 PIP_FIND_LINKS="$HOME/.local/share/ergora-tools/wheels" \
+  bash scripts/install.sh --profile research
+```
+
+安装器继续通过pip读取本地源码和缓存。缺少兼容wheel或构建依赖时，pip会明确失败，补齐缓存后重试。离线缓存不包含外部Agent、参考服务二进制、系统包或模型；它们按各自说明另行准备。Windows也使用pip的`PIP_NO_INDEX`/`PIP_FIND_LINKS`环境变量及适合Windows的wheel。
 
 ## 升级与持久数据
 

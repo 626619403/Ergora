@@ -740,5 +740,46 @@
       },
       "platform_note": "Requires Linux; use WSL2"
     }
+  },
+  "installation_profiles": {
+    "scope": "sdk-installation-recipes",
+    "default": "control",
+    "profiles": {
+      "control": {
+        "title": "轻量控制面",
+        "extras": [
+          "web"
+        ],
+        "description": "本地CLI与图形控制台，项目、记忆、Skill及手动资料研究。",
+        "requirements": [
+          "Python 3.11+、Git；Agent CLI按项目另行安装与认证。"
+        ]
+      },
+      "development": {
+        "title": "正式开发控制面",
+        "extras": [
+          "web",
+          "temporal"
+        ],
+        "description": "轻量控制面及Temporal SDK，为持久工作流配置客户端能力。",
+        "requirements": [
+          "完整六阶段执行使用Linux/WSL2中的参考运行时。",
+          "Temporal服务、参考组件和所选Agent需单独安装配置。"
+        ]
+      },
+      "research": {
+        "title": "实验与改进控制面",
+        "extras": [
+          "web",
+          "temporal",
+          "gepa"
+        ],
+        "description": "开发控制面及GEPA SDK，支持有界资料调度与Skill候选优化。",
+        "requirements": [
+          "需单独提供评价器、提案器和所选外部服务。",
+          "GPU、ForgeKernel及训练运行时按工作负载另行配置。"
+        ]
+      }
+    }
   }
 }

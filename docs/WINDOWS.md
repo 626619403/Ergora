@@ -43,10 +43,14 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1 -I
 可选参数：
 
 ```powershell
+.\scripts\install.ps1 -Profile research -AddToPath
+# 旧参数仍可叠加到所选组合
 .\scripts\install.ps1 -WithGepa -WithTemporal -AddToPath
 # 指定已有的解释器及独立安装目录
 .\scripts\install.ps1 -Python 'C:\Path\To\python.exe' -InstallRoot "$HOME\Apps\Ergora" -BinDir "$HOME\bin"
 ```
+
+`-Profile`是`-InstallationProfile`的别名，可选`control`（默认）、`development`、`research`。两平台消费同一[安装组合](USAGE.md#选择安装组合)：只安装SDK，完整六阶段仍在Linux/WSL2运行。重跑安装器保留独立data目录；改回较小组合不会卸载已装SDK。安装后用`ergora tools profiles`查看配方，认证、连接及任务条件需另行检查。
 
 默认目录：
 

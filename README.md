@@ -17,6 +17,8 @@ bash scripts/install.sh
 
 以上是 Linux 的 Git / Python 3.11+ 安装路径；Windows 使用 [PowerShell 安装器](docs/WINDOWS.md)。打开 `http://127.0.0.1:8977`，注册已有仓库即可使用。网页资源随包安装，无需 Node 构建或外部工单。可选工具有各自的安装、认证与服务要求，见 [使用手册](docs/USAGE.md)。
 
+安装组合可选`--profile control`（默认Web控制面）、`development`（加Temporal SDK）或`research`（再加GEPA SDK）；Windows使用`-Profile`。运行`ergora tools profiles`查看配方及外部要求。组合只选择SDK，Agent和后台服务按需另配，详见[组合与离线安装](docs/USAGE.md#选择安装组合)。
+
 ## 用来做什么
 
 |场景|模板|提供的工作方式|

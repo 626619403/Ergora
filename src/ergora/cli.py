@@ -75,6 +75,7 @@ def parser() -> argparse.ArgumentParser:
     tool = commands.add_parser("tools", help="List supported tools or check project availability")
     operations = tool.add_subparsers(dest="operation", required=True)
     operations.add_parser("list")
+    operations.add_parser("profiles", help="Describe SDK installation combinations and their external requirements")
     doctor = operations.add_parser("doctor")
     doctor.add_argument("project")
     agent = commands.add_parser("agent", help="Invoke a configured tool, independently of formal workflow acceptance")
@@ -274,7 +275,10 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 output = projects.bind(state, args.id, args.layer, json.loads(args.binding.read_text(encoding="utf-8-sig")), args.revision)
         elif args.command == "tools":
-            output = tools.catalog() if args.operation == "list" else tools.doctor(State(args.home), args.project)
+            if args.operation == "profiles":
+                output = tools.installation_profiles()
+            else:
+                output = tools.catalog() if args.operation == "list" else tools.doctor(State(args.home), args.project)
         elif args.command == "agent":
             state = State(args.home)
             if args.operation == "runs":
