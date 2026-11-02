@@ -43,3 +43,15 @@ F2.1使用现有组件描述的新增安装配方：control=web，development=we
 当前需求与实现已自查，准备新的fresh-context独立审查。Windows真实PowerShell5.1、精确两OS CI、最终提交/远端仍待；不将本地结果套用到未运行的平台。不启动或升级已有用户服务，不变更已有用户配置。本切片不实现F2.2/F2.3，也不标为完整F2完成。
 
 独立审查已启动（新的`/root/f2_profiles_review`），源码/测试冻结；先提交候选以运行真实Windows和两OS CI，与审查并行。候选推送不代表本切片完成；发现问题仍修正并重验，最终审查报告与精确候选CI将单独收口。
+
+候选实现/测试提交`8201c5d3fc7720defad1d8372d1408afc8005278`已推送`refactor/architecture-foundations`，远端SHA一致。[精确CI41495971680](https://github.com/626619403/Ergora/actions/runs/41495971680)运行中，官方页面证据保存于`.ergora/checks/f2-profiles/ci/`。独立审查者已另核337资源/全部安装、基础依赖CLI与当前差异，源码结论待正式报告；候选提交后的增量仅进度文档。
+
+精确跨平台CI通过：[41495971680](https://github.com/626619403/Ergora/actions/runs/41495971680)绑定完整候选`8201c5d3fc7720defad1d8372d1408afc8005278`。Windows job125450887517 的wheel安装/冻结身份/适用回归/真实PowerShell5.1安装升级四步骤均成功；Ubuntu job125450887768前三项均成功。已核官方HTML的completed/success、完整SHA与日志URL，来源SHA在`ci/ci-html-status.json`。独立源码/维护性审查报告已写，范围内无findings；原审查者正在补核Git归档、远端及当前CI最终身份，之后关闭F2.1；完整F2仍待后续节点。
+
+## 最终交付与下一项
+
+F2.1已完成。[独立最终复核](2026-11-03-installation-profiles-review.md)确认需求、结构与维护性通过，无findings；Git归档的源码/全部脚本/测试/CI/打包身份、337包资源及各安装、远端完整SHA与精确两OS CI已独立核齐。最终运行/测试为`8201c5d3fc7720defad1d8372d1408afc8005278`，wheel SHA256仍为`44ab7d26ccd9ef5b79840e75bf7ffca1ab12da152a997cfb8e2dc6177ed2a934`，本地最终回归288 passed/18 skipped/36 subtests；Windows/Ubuntu CI41495971680成功。Windows实际验收覆盖control→research→research叠加旧参数，Linux单列全组合/降组合与项目配置保持；不扩称Windows development单独安装、模型/GPU或外部服务效果实测。
+
+收尾仅更新docs与该审查报告，保持上述源码/安装器/测试/CI/打包身份；手册已同步组合、旧参数、离线缓存与降组合不卸载说明。下一项F2.2整理tools.doctor及agents/kernel探测字段，形成兼容的版本/认证/连接/任务可用性结果与修复指引；默认不调用模型，主动探测需有界且显式。F2.3服务操作和F2.4综合验收未实施，完整F2仍未完成。公开使用入口为`ergora tools profiles`及[安装手册](../USAGE.md#选择安装组合)。
+
+收尾静态检查：相对最终运行/测试提交仅docs差异，9份当前文档/手册的215个本地链接及diff检查通过；源码验收身份保持不变。
