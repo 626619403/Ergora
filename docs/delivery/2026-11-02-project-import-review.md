@@ -4,7 +4,7 @@
 
 ## 结论
 
-- **需求符合性：当前 tracker 补修的源码及本地包验收复核通过，最终提交/远端与精确 CI 待核。** 容量兼容 P2 及收口补查发现的 tracker 末尾换行 P2 均已修正并独立复核关闭，当前无未解决的源码阻塞。此前 `62c4d69` 的提交、包、回归、两 OS CI 与远端身份已核对，但仅保留其历史范围，不用于证明新 schema；补修后的新包、281 项完整回归及独立 CLI 旅程已有单独证据。
+- **需求符合性：F1.3 及 tracker 补修最终交付复核通过。** 容量兼容 P2 及 tracker 末尾换行 P2 均已修正并独立复核关闭。最终提交 `4ffcfdde0c728cf5904690decd165e26e1a9bb7d`、新包、281 项完整回归、独立 CLI 旅程、远端及精确两 OS CI 已逐一核对，当前无未解决阻塞。此前 `62c4d69` 的结果仅保留其历史范围，未用于替代补修后的证据。
 - **结构与维护性：通过。** 项目、注册、reference 文件边界的所有权清楚；导入实际复用原 `_prepare / _reserve / _finish / resume`，未新增持久表、依赖、插件、通用引擎或第二条项目写入链。没有要求额外拆文件或引入抽象的依据。
 
 原始要求见[详细计划 F1](../plans/2026-11-01-all-in-one.md#f1-单一项目及有效配置)及[F1.3 交付记录](2026-11-02-project-import.md)。已审范围包括默认只读预览、JSON Pointer 差异、完整规范化定义及目标控制目录/修订绑定、原字节与投影语义摘要、携带预览摘要的显式采用、旧文件保持、缺失策略/归属记录补建、跨资源中断/恢复以及 CLI/API 共用入口。
@@ -80,13 +80,13 @@
 
 ## Tracker 输入合同补修复核（2026-11-03）
 
-**P2：注册接受原执行合同拒绝的末尾 LF，源码修正及本地包验收已复核，最终提交/CI 待补。** 实现者在收口检查中报告该边界，审查者独立复现。`project-registration-v1.json:26` 的原 `tracker.project` pattern 使用 `$`；Python/jsonschema 可在单个末尾 LF 之前匹配结束，因此 `local/demo\n` 能通过新注册的共享 schema 和旧注册导入校验。`_prepare` 的 traversal/GitHub 段数检查不能排除该值。新注册可到 published，旧导入可生成预览，但后续 `create_task` 的原合同校验在 `dev_platform.contracts.py:140` 使用 `re.fullmatch` 报 `Invalid tracker project`，形成已登记却不可执行的配置。
+**P2：注册接受原执行合同拒绝的末尾 LF，已修正并完成最终交付复核。** 实现者在收口检查中报告该边界，审查者独立复现。`project-registration-v1.json:26` 的原 `tracker.project` pattern 使用 `$`；Python/jsonschema 可在单个末尾 LF 之前匹配结束，因此 `local/demo\n` 能通过新注册的共享 schema 和旧注册导入校验。`_prepare` 的 traversal/GitHub 段数检查不能排除该值。新注册可到 published，旧导入可生成预览，但后续 `create_task` 的原合同校验在 `dev_platform.contracts.py:140` 使用 `re.fullmatch` 报 `Invalid tracker project`，形成已登记却不可执行的配置。
 
 最小修正只在同一 `tracker.project` schema 增加标准 JSON Schema `not: {pattern: "\\s"}`，不剥除输入、不复制校验函数、不改变版本、投影内容、DB 或冻结代码。`_LEGACY_PROJECT_SCHEMA` 复用同一 tracker 属性，注册与旧导入因此在各自已有输入边界一起拒绝。原允许字符本来不含空白，正常标识集合保持不变；这项约束使注册输入与已有执行合同一致。
 
 已读取 `tracker-before-fix.log`：新注册与旧导入的两项 `tracker-newline` 参数化回归均因 DID NOT RAISE 失败；`tracker-fix.log` 同两例为 **2 passed**。测试加入原有公开入口/无落库的回归表，复用既有 fixtures，没有另起测试框架。审查者用 `git show 62c4d69` 的原 schema 确认 LF 被接受，直接调用冻结 `validate_task` 确认其拒绝，再对实际修正版共享 schema 做 **13 个只读内存边界检查**：正常多级/标点标识、300/301 长度、LF/CRLF/tab/空格/Unicode 空白与非 ASCII 输入，结果均与原 fullmatch 词法域一致；也确认注册与 legacy schema 确实复用同一个 tracker 属性。修正后的 JSON/测试 AST 解析及 `git diff --check` 通过。
 
-本次实际源码/测试增量只有共享 schema 与两项参数化测试，上表已更新这两份身份并新增 schema 行；六份其他运行/测试文件保持先前身份。**此补修的需求与维护性在所审源码范围通过，无未解决源码 finding。** 旧 `62c4d69`、`6d1ef44…` 包、279 项及 CI 41480569812 保留其原范围；补修后的本地新包验收见下，新提交/远端及精确两 OS CI 仍须另行核对。
+本次实际源码/测试增量只有共享 schema 与两项参数化测试，上表已更新这两份身份并新增 schema 行；六份其他运行/测试文件保持先前身份。**此补修的需求与维护性在所审源码范围通过，无未解决源码 finding。** 旧 `62c4d69`、`6d1ef44…` 包、279 项及 CI 41480569812 保留其原范围；补修后的本地新包及最终提交/远端/精确 CI 分别在下文单独复核。
 
 ### Tracker 补修包本地验收补核
 
@@ -96,4 +96,21 @@
 
 已读新的 `tracker-base-journey.py / .log / .json`，独立工作目录和移除 PYTHONPATH 的环境避免混用前一候选，log 与 JSON 均为 **8 次 CLI 操作**且 `source_bytes_preserved: true`。审查者另以 SQLite `mode=ro` 读取该旅程的最终项目及原恢复意图，核对 published、revision=2、reviewer 变更、4 份投影语义一致；两份采用源文件的当前原字节 SHA 均与批准意图一致，预览 SHA 和最终有效配置 SHA 也与旅程结果吻合。这些检查未写运行状态或重跑 CLI。
 
-**新包本地证据复核通过；本次尚未给出最终交付通过。** 待新实现提交、远端身份及绑定该提交的精确两 OS CI 到齐后，再关闭最终交付；历史 62c 的 279 项和 CI 结论不替代这三项。
+**该次新包本地证据复核通过，当时尚未给出最终交付通过。** 后续新实现提交、远端及精确两 OS CI 的独立核对见下节；历史 62c 的 279 项和 CI 结论不替代这些证据。
+
+## Tracker 补修最终交付复核（2026-11-03）
+
+**需求符合性与结构/维护性最终均通过，无未解决阻塞 finding。** 最终实现/测试提交为 [`4ffcfdde0c728cf5904690decd165e26e1a9bb7d`](https://github.com/626619403/Ergora/commit/4ffcfdde0c728cf5904690decd165e26e1a9bb7d)。审查者再次独立执行 `git ls-remote origin refs/heads/refactor/architecture-foundations`，远端输出同一完整 SHA；复核时 `src / tests / .github / pyproject.toml` 相对该提交无差异，剩余修改仅为计划、阶段及架构状态文档。
+
+逐一将上表 **8 项** SHA-256 与该提交的 `git show` 及当前文件比较，全部一致；以提交 Git 归档计算的 **337 份包文件**也与源码、`4fa5adac91721adfd6e274a544336d492800494b82339658d321ff63d0b9dd63` wheel、开发安装和独立基础安装完全一致。上节的 **281 passed / 18 skipped / 36 subtests passed、PASS 283 文件及独立 8 次 CLI 旅程**因此绑定到本次实际交付源码，没有沿用 tracker 补修前的 279 项结果。
+
+本次精确 [CI 41485234297](https://github.com/626619403/Ergora/actions/runs/41485234297) 的证据单独位于 `.ergora/checks/f1-import/tracker-ci/`。审查者独立解析选择元数据、run HTML 与两个 job HTML，逐份核对四个来源文件的大小和 SHA 与 `ci-html-status.json` 一致；该 manifest 的 SHA-256 为 `e29efffd1b09fbce32fd85c952358f3c27173d50ee32a2871f69890646728f05`。完整提交 SHA、目标分支与 `.github/workflows/portability.yml` 均匹配，run 为 Success。
+
+|Job|平台|已核对成功的实际必需步骤|
+|---|---|---|
+|[125413705473](https://github.com/626619403/Ergora/actions/runs/41485234297/job/125413705473)|Windows / Python 3.12|Build and install wheel；Packaged reference identity；Native application regression；Windows PowerShell 5.1 installer and upgrade|
+|[125413706105](https://github.com/626619403/Ergora/actions/runs/41485234297/job/125413706105)|Ubuntu / Python 3.11|Build and install wheel；Packaged reference identity；Native application regression|
+
+上述每项均为 completed/success，日志 URL 均绑定完整 `4ffcfdde0c728cf5904690decd165e26e1a9bb7d` 和各自 job ID。审查者另直接读取官方实时 run 与两个 job 页面，得到相同结果，未借用旧 62c 的 run/job；本轮仍未另外下载完整 CI 原始日志或重复运行长回归。
+
+容量与 tracker 两项 P2 均关闭，F1.3 的实现、验证、独立审查及提交/远端交付条件已核齐；完整 F1 可由阶段/计划收口记录同步关闭，无需递归审查状态补记。真实模型、GPU、外部服务效果及后续 F2/F3/F4 能力的未验证/未实施边界保持原范围，Windows 结果仅证明其适用原生支持范围。

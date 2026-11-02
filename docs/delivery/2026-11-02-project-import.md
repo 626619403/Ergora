@@ -43,3 +43,9 @@ F1.3已实现，审查发现的容量兼容P2已修正并源码复核关闭，�
 补修安装与基础旅程（2026-11-03）：新非editable wheel SHA256为`4fa5adac91721adfd6e274a544336d492800494b82339658d321ff63d0b9dd63`，源码/wheel/开发及基础安装337文件一致。`tracker-base-journey.log/json`记录独立基础环境8次CLI、原字节保持、绑定修订和状态一致。原审查者已完成schema最小修正及13个独立词法边界复核，两项源码P2均关闭。补修后的完整回归进行中，提交/远端及精确两OS CI待核，不能沿用62c结果。
 
 补修完整本地验收：`tracker-wheel-regression.log`最终为281 passed、18 skipped、36 subtests passed，147.11秒；从已安装的新wheel执行，PYTHONPATH仅选冻结upstream。`tracker-reference-verify.log`确认283冻结文件PASS且未启动runtime。当前源码/测试相对62c仅共享schema和两条参数化回归变化，独立审查的修正结论保持，包/安装/回归证据已交原审查者复核；新提交精确两OS CI与最终远端复核待完成。
+
+Tracker补修实现/测试提交`4ffcfdde0c728cf5904690decd165e26e1a9bb7d`已推送`refactor/architecture-foundations`，远端完整SHA一致。[新精确CI41485234297](https://github.com/626619403/Ergora/actions/runs/41485234297)进行中，证据独立保存在`.ergora/checks/f1-import/tracker-ci/`，未覆盖62c历史CI页面。独立审查者已核对当前337包文件、两安装、281项/283冻结身份及8次CLI；剩余为新提交/远端与实际CI步骤的最终交付复核。
+
+补修精确CI验收：[41485234297](https://github.com/626619403/Ergora/actions/runs/41485234297)为Success，完整绑定`4ffcfdde0c728cf5904690decd165e26e1a9bb7d`。Windows job125413705473的wheel安装、冻结身份、适用回归与PowerShell5.1安装升级均成功；Ubuntu job125413706105前三项均成功。依据官方HTML的completed/success及含完整提交/job ID的日志URL，来源SHA保存在`tracker-ci/ci-html-status.json`，未借用62c。已交原独立审查者核对最终源码归档、包/两安装、远端和精确CI，待其结论后关闭F1。
+
+最终交付复核与F1收口：原fresh-context审查者独立核对`4ffcfdde0c728cf5904690decd165e26e1a9bb7d`的8项运行/测试身份及337份Git归档文件，与源码、新wheel和两安装一致；远端SHA与官方实时CI的两job/实际步骤也独立核对通过。[最终审查结论](2026-11-02-project-import-review.md)为需求/结构/维护性及交付均通过，容量和tracker两项P2关闭，无未解决阻塞。F1.1/F1.2/F1.3现已全部完成，阶段报告、计划和当前架构同步关闭，下一项为F2。后续收尾只改docs，不变更上述验收源码；真实模型/GPU/外部服务与F2–F4未验边界保持原范围。

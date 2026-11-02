@@ -1,6 +1,6 @@
 # 当前架构与扩展边界
 
-2026-11-03，R8后的当前导航，加入F1项目定义、有效绑定、快照及单向投影（F1.1/F1.2已交付；F1.3候选62c验收及精确两OS CI通过，tracker补修完整包/源码复核通过，新提交精确CI待核）。历史 [A1 审计](2026-11-01-audit.md)及[R8记录](../delivery/2026-11-02-refactoring-exit.md)保留原身份与范围；新行为验收见[F1记录](../delivery/2026-11-02-project-configuration.md)。设计约束见 [ADR 0001](decisions/0001-refactoring-foundations.md) / [0002](decisions/0002-static-boundaries.md)。
+2026-11-03，R8后的当前导航，加入F1项目定义、有效绑定、快照及单向投影。F1.1/F1.2/F1.3全部交付；最终运行/测试提交`4ffcfdd`的本地验收、精确两OS CI及独立最终复核通过，详见[F1阶段验收](../delivery/2026-11-03-f1-completion.md)。历史[A1审计](2026-11-01-audit.md)及[R8记录](../delivery/2026-11-02-refactoring-exit.md)保留原身份与范围。设计约束见[ADR0001](decisions/0001-refactoring-foundations.md)/[0002](decisions/0002-static-boundaries.md)。
 
 ## 模块与依赖
 
@@ -174,4 +174,4 @@ F1统一注册将控制项目定义和bindings作为权威来源，reference正�
 |新模板、阶段或通用低代码|目前只有3个固定模板及受约束输入草稿；新模板/合同需显式实现和验收|F6才扩展描述/编辑；不能承诺现有任意配置可增删可信阶段|
 |新 tracker/通信/会话|对应 F7/F8/D1/D2 的真实 adapter、native ID/去重/取消和授权合同|本地无工单流程继续可用；上下文消息不扩大权限|
 
-复用SQLite、Git、jsonschema、Temporal、MLflow、Cytoscape、GEPA/ReMe和各工具真实SDK。项目revision、精确候选授权、证据关联与显式采用属于Ergora规则。继续保持函数和既有Protocol，只有外部框架hook使用继承。静态边界检查运行方式及局限见[ADR 0002](decisions/0002-static-boundaries.md)。F1完成后进入F2环境/服务管理，再接F3/F4正式任务与页面；完整all-in-one用户旅程仍需这些后续节点验收。
+复用SQLite、Git、jsonschema、Temporal、MLflow、Cytoscape、GEPA/ReMe和各工具真实SDK。项目revision、精确候选授权、证据关联与显式采用属于Ergora规则。继续保持函数和既有Protocol，只有外部框架hook使用继承。静态边界检查运行方式及局限见[ADR 0002](decisions/0002-static-boundaries.md)。F1已完成，下一项为F2环境/服务管理，再接F3/F4正式任务与页面；完整all-in-one用户旅程仍需这些后续节点验收。
