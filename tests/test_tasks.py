@@ -25,12 +25,22 @@ def task_store(registration, tmp_path):
     input_file = tmp_path / 'input.json'
     environment = dict(os.environ, AGENTFLOW_CONFIG_DIR=execution['config_directory'],
                        AGENTFLOW_STATE_DIR=execution['state_directory'],
-                       PYTHONPATH=os.pathsep.join(str(reference.ROOT / 'platform' / p) for p in ('local', 'upstream/platform')))
+                       PYTHONPATH=os.pathsep.join([str(Path(reference.__file__).parent.parent),
+                           *(str(reference.ROOT / 'platform' / p) for p in ('local', 'upstream/platform'))]))
     for task_id, template in [('first', 'repository-governance'), ('second', 'large-change')]:
         inputs['risk'] = 'high' if template == 'large-change' else 'standard'
         input_file.write_text(json.dumps(inputs), encoding='utf-8')
         result = subprocess.run([sys.executable, '-P', '-S', '-c',
-            'import sys;from pathlib import Path;from agent_platform.projects import create_task;create_task("demo",sys.argv[1],sys.argv[2],"1",Path(sys.argv[3]))',
+            '''import os, sys
+from pathlib import Path
+from dev_platform import adapter, portable
+if os.name == 'nt':
+    from ergora.reference import _read_windows_contract
+    portable._read_bytes = _read_windows_contract
+    adapter.read_raw = _read_windows_contract
+from agent_platform.projects import create_task
+create_task("demo", sys.argv[1], sys.argv[2], "1", Path(sys.argv[3]))
+''',
             template, task_id, str(input_file)], env=environment, capture_output=True, text=True, encoding='utf-8', timeout=20)
         assert result.returncode == 0, result.stderr
     return state, Path(execution['state_directory']) / 'tasks'

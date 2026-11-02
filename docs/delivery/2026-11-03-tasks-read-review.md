@@ -42,3 +42,15 @@
 - 独立执行 `PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m pytest -q tests/test_tasks.py -p no:cacheprovider`：26 passed，12.68 秒；显式选择当前源码，未误用旧安装。`git diff --check` 通过。
 
 `df9c…` 包的完整回归后来记录为 347 passed、19 skipped、36 subtests passed（181.60 秒），该身份已被源码修正取代，保留为历史。待作者统一重包后，再核对实际包/源码身份、适用完整回归、旧任务只读复验、新性能与精确两 OS CI；当前不把这些待补项目写成通过。
+
+### 最终候选本地归档复核
+
+最终生产/测试候选为 `13e9f33623c5811547bdb43d3b2b0218b62ffda2`。独立核对当前 HEAD 与本地远端跟踪引用均指向该提交，提交所含生产源码和测试 SHA256 与上述源码复审一致；生产源码未在复审后变化。最终本地归档通过，无新增 finding；精确两 OS CI 仍单独待核实。
+
+- 独立重算 `.ergora/checks/f3-tasks-read/review-fixed-dist/ergora-0.2.0-py3-none-any.whl` 的 SHA256 为 `2fa1915726503715d312e839c7d0672165503c7f855b23ecdb77c7bdd29da3e7`，逐文件核对源码、wheel、`.venv-dev` 及 `base-venv` 各 339 个文件完全一致，且匹配 `review-fixed-package-identity.json`。独立执行已安装 `reference.verify()` 为 PASS / 283 文件；基线至候选的冻结 reference diff 为空。
+- 审阅最终 build/install 日志：该 wheel 已装入 Linux Python 3.11.15 的开发环境及 Python 3.12.3 的基础环境。独立基础环境探针确认 `tasks.__file__` 来自该非 editable 安装，`fastapi`、`temporalio`、`gepa` 均不可导入。
+- `review-fixed-wheel-regression.log` 完整记录 **350 passed、19 skipped、36 subtests passed，182.00 秒**，只含已知 Starlette deprecation warning。该日志 SHA256 为 `5f283b2852de53ad3be174f7e060ca50d92c4594e4ca7d1ad5dee736d14d20d1`。此处审阅作者最终包回归记录，未另跑整套回归；此前独立 26 项及边界探针继续绑定相同源码身份。
+- 审阅 `review-fixed-performance.py/json/log` 并核对 JSON 与日志相等、实际 fixture 目录为 1000 项。脚本每次断言 `inspected_entries == 100`，20 次查询中位 **396.7 ms**、最大 **600.8 ms**、最大 JSON **45,975 B**；十页恰好取得 1000 个唯一任务。每页仍 O(N) 流式枚举全部名称，测量仅覆盖该规模及本地缓存条件；客户端 peak RSS 高水位增量 0 不等于零分配，也不说明子进程峰值。未把与旧包的耗时差异解释为性能收益或回退。
+- 审阅 `review-fixed-legacy-journey.py/json/log` 并核对 JSON 与日志相等：最终基础安装读取 `repository-governance` 与 `large-change` 两个真实旧任务，返回 spec 及冻结绑定、`runtime_status=not_queried`；所检查顶层任务文件前后摘要一致。脚本只复制项目/策略输入到独立控制目录并显式采用，读取原 task store；未从该旅程推导实时状态、模型效果或新的六阶段验收。审查者本轮未重跑涉及实际旧任务的旅程。
+
+本轮读取的 CI 归档 `ci/ci-html-run-selection.json` 对应 [Portability 41519399689](https://github.com/626619403/Ergora/actions/runs/41519399689)，原始 commit 链接精确匹配 `13e9f33623c5811547bdb43d3b2b0218b62ffda2`；当时为 `WORKFLOW_RUN_STATUS_IN_PROGRESS`。已读该提交的 workflow：Ubuntu/Python 3.11 与 Windows/Python 3.12 均构建非 editable wheel、核对冻结参考并运行适用回归，Windows 另验 PowerShell 5.1 安装升级。**最终本地证据已通过；两平台结果尚未据此宣称通过，F3.1 交付状态需待精确 CI 结果后收口。**
