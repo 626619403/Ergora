@@ -90,6 +90,31 @@ def test_holdout_regression_partial_evidence_and_mutation_are_rejected(skill_pro
         skills.get(state, "demo", candidate["digest"])
 
 
+def test_missing_selected_asset_is_rejected_before_agent_or_evaluator_runs(skill_project):
+    state, _, _, baseline, suite = skill_project
+    Path(baseline["path"], "SKILL.md").unlink()
+    with pytest.raises(ValueError, match="content changed"):
+        tools.run_agent(state, "demo", "implementer", "Use selected context", skill_names=["test-skill"])
+    with pytest.raises(ValueError, match="content changed"):
+        evaluation.evaluate(state, "demo", baseline["digest"], suite["digest"])
+    assert tools.runs(state, "demo") == []
+    assert evaluation.listing(state, "demo")["runs"] == []
+
+
+def test_adoption_rejects_evidence_from_a_different_suite(skill_project):
+    state, _, source, baseline, suite = skill_project
+    (source / "SKILL.md").write_text((source / "SKILL.md").read_text().replace("BASELINE", "IMPROVED"))
+    candidate = skills.import_bundle(state, "demo", source)
+    manifest = {key: value for key, value in suite["manifest"].items() if key not in ("file_sha256", "path_bindings")}
+    manifest["minimum_gain"] = .2
+    other_suite = evaluation.register(state, "demo", manifest)
+    base_run = evaluation.evaluate(state, "demo", baseline["digest"], suite["digest"])
+    candidate_run = evaluation.evaluate(state, "demo", candidate["digest"], other_suite["digest"])
+    with pytest.raises(ValueError, match="same frozen evaluation suite"):
+        skills.adopt(state, "demo", base_run["id"], candidate_run["id"], 1, "Different evidence")
+    assert skills.versions(state, "demo")["active"][0]["digest"] == baseline["digest"]
+
+
 def test_skill_symlinks_and_malformed_evaluator_output_fail_visibly(skill_project):
     state, repo, source, baseline, suite = skill_project
     source.joinpath("secret-link").symlink_to(repo / "evaluate.py")

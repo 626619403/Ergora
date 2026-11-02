@@ -8,7 +8,7 @@ import sqlite3
 import subprocess
 
 from .state import State, now
-from .tools import validate_binding
+from .bindings import validate_binding
 from .components import DEFAULT_BINDINGS
 
 

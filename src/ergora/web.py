@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from . import __version__, components, drafts, evaluation, kernel, memory, optimization, projects, reference, research, skills, tools
+from . import __version__, agent_runs, components, drafts, evaluation, kernel, memory, optimization, projects, reference, research, skill_assets, skills, tools
 from .state import State
 
 
@@ -162,8 +162,8 @@ def create_app(home: Path | None = None) -> FastAPI:
     @application.get("/api/projects/{project_id}/dashboard")
     def dashboard(project_id: str):
         return {"project": state.project(project_id), "tools": tools.doctor(state, project_id),
-                "agent_runs": tools.runs(state, project_id), "memories": memory.records(state, project_id),
-                "skills": skills.versions(state, project_id), "evaluations": evaluation.listing(state, project_id),
+                "agent_runs": agent_runs.runs(state, project_id), "memories": memory.records(state, project_id),
+                "skills": skill_assets.versions(state, project_id), "evaluations": evaluation.listing(state, project_id),
                 "optimizations": optimization.listing(state, project_id), "research": research.listing(state, project_id),
                 "drafts": drafts.listing(state, project_id), "kernel_runs": kernel.listing(state, project_id)}
 
@@ -173,7 +173,7 @@ def create_app(home: Path | None = None) -> FastAPI:
 
     @application.post("/api/projects/{project_id}/agent-runs")
     def agent_run(project_id: str, body: AgentPayload):
-        return tools.run_agent(state, project_id, body.role, body.prompt, body.timeout, body.skills, body.recall, body.template)
+        return agent_runs.run_agent(state, project_id, body.role, body.prompt, body.timeout, body.skills, body.recall, body.template)
 
     @application.post("/api/projects/{project_id}/kernel-runs")
     def kernel_create(project_id: str, body: KernelPayload):
@@ -185,7 +185,7 @@ def create_app(home: Path | None = None) -> FastAPI:
 
     @application.get("/api/projects/{project_id}/agent-runs/{run_id}/output")
     def agent_output(project_id: str, run_id: str):
-        return tools.output(state, project_id, run_id)
+        return agent_runs.output(state, project_id, run_id)
 
     @application.post("/api/projects/{project_id}/memories")
     def save_memory(project_id: str, body: MemoryPayload):
@@ -213,11 +213,11 @@ def create_app(home: Path | None = None) -> FastAPI:
 
     @application.post("/api/projects/{project_id}/skills/import")
     def import_skill(project_id: str, body: ImportPayload):
-        return skills.import_bundle(state, project_id, Path(body.directory), body.hypothesis)
+        return skill_assets.import_bundle(state, project_id, Path(body.directory), body.hypothesis)
 
     @application.get("/api/projects/{project_id}/skills/diff")
     def skill_diff(project_id: str, baseline: str, candidate: str):
-        before, after = skills.get(state, project_id, baseline), skills.get(state, project_id, candidate)
+        before, after = skill_assets.get(state, project_id, baseline), skill_assets.get(state, project_id, candidate)
         before_text = (Path(before["path"]) / "SKILL.md").read_text(encoding="utf-8")
         after_text = (Path(after["path"]) / "SKILL.md").read_text(encoding="utf-8")
         changed = [name for name in sorted(set(before["files"]) | set(after["files"])) if before["files"].get(name) != after["files"].get(name)]
@@ -230,7 +230,7 @@ def create_app(home: Path | None = None) -> FastAPI:
 
     @application.post("/api/projects/{project_id}/skills/rollback")
     def rollback_skill(project_id: str, body: RollbackPayload):
-        return skills.rollback(state, project_id, body.name, body.digest, body.revision, body.reason)
+        return skill_assets.rollback(state, project_id, body.name, body.digest, body.revision, body.reason)
 
     @application.post("/api/projects/{project_id}/evaluations/suites")
     def register_suite(project_id: str, body: dict = Body(...)):

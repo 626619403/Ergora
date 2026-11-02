@@ -8,7 +8,7 @@ import re
 import time
 import uuid
 
-from . import contracts, processes, skills
+from . import contracts, processes, skill_assets
 from .state import State, now
 
 
@@ -94,7 +94,7 @@ def listing(state: State, project_id: str) -> dict:
 
 def evaluate(state: State, project_id: str, digest: str, suite_digest: str, case_ids: list[str] | None = None,
              deadline: float | None = None, remaining_cost: float | None = None) -> dict:
-    candidate = skills.get(state, project_id, digest)
+    candidate = skill_assets.get(state, project_id, digest)
     specification = suite(state, project_id, suite_digest)["manifest"]
     cost_limit = specification["max_reported_cost"]
     if remaining_cost is not None:
@@ -148,7 +148,7 @@ def evaluate(state: State, project_id: str, digest: str, suite_digest: str, case
             document["error"] = f"Case {case['id']}: {error}"
             break
     try:
-        skills.get(state, project_id, digest)
+        skill_assets.get(state, project_id, digest)
         suite(state, project_id, suite_digest)
     except (ValueError, OSError) as error:
         document.update(status="failed", error=str(error))
@@ -173,7 +173,7 @@ def compare(state: State, project_id: str, baseline_run: str, candidate_run: str
         raise ValueError("Compare the same skill name against the same frozen evaluation suite")
     specification = suite(state, project_id, candidate["suite"])["manifest"]
     for run in (baseline, candidate):
-        skills.get(state, project_id, run["skill"])
+        skill_assets.get(state, project_id, run["skill"])
     reasons = []
     if baseline["skill"] == candidate["skill"]:
         reasons.append("Candidate content is identical to the baseline")

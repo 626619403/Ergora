@@ -18,6 +18,24 @@ FIXTURES = Path(__file__).parent / "fixtures/compatibility-v0_2_0"
 IDENTITIES = json.loads((FIXTURES / "identities.json").read_text(encoding="utf-8"))
 
 
+def test_legacy_python_entry_points_share_the_actual_owners():
+    from ergora import agent_runs, bindings, skill_assets
+
+    for name in ("digest_tree", "metadata", "import_bundle", "get", "versions", "export", "rollback"):
+        assert getattr(skills, name) is getattr(skill_assets, name)
+    for name in ("run_agent", "runs", "output"):
+        assert getattr(tools, name) is getattr(agent_runs, name)
+    assert tools.validate_binding is bindings.validate_binding
+
+
+def test_asset_and_invocation_consumers_import_without_compatibility_facades():
+    subprocess.run(
+        [sys.executable, "-c", "import sys;from ergora import agent_runs,backups,evaluation,optimization,projects;"
+         "assert not {'ergora.skills','ergora.tools'}.intersection(sys.modules)"],
+        capture_output=True, text=True, encoding="utf-8", check=True,
+    )
+
+
 def test_distinct_json_identity_vectors_are_preserved(tmp_path):
     payload = IDENTITIES["payload"]
     assert evaluation.manifest_sha256(payload) == IDENTITIES["evaluation_sha256"]

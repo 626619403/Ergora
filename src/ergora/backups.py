@@ -10,7 +10,7 @@ import stat
 import sys
 import tempfile
 
-from . import contracts, skills
+from . import contracts, skill_assets
 from .state import SCHEMA_VERSION, file_lock, now
 
 
@@ -92,7 +92,7 @@ def _check_assets(db: sqlite3.Connection, data: Path, original_home: Path) -> di
                 relative = Path(document["path"]).relative_to(original_home).as_posix()
             except ValueError as error:
                 raise ValueError("Skill asset path does not belong to the recorded state home") from error
-            actual, _ = skills.digest_tree(data / _relative(relative))
+            actual, _ = skill_assets.digest_tree(data / _relative(relative))
             if actual != row["digest"] or document["digest"] != row["digest"]:
                 raise ValueError(f"Skill asset identity does not match database: {relative}")
             checked["skills"] += 1

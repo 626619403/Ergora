@@ -10,7 +10,7 @@ import tempfile
 import time
 import uuid
 
-from . import evaluation, processes, skills
+from . import evaluation, processes, skill_assets
 from .state import State, now
 
 
@@ -34,7 +34,7 @@ def optimize(state: State, project_id: str, baseline_digest: str, suite_digest: 
     from gepa.core.adapter import EvaluationBatch
     from gepa.utils.stop_condition import TimeoutStopCondition
 
-    baseline = skills.get(state, project_id, baseline_digest)
+    baseline = skill_assets.get(state, project_id, baseline_digest)
     specification = evaluation.suite(state, project_id, suite_digest)["manifest"]
     visible = {case["id"]: case for case in specification["cases"] if case["split"] != "holdout"}
     train = [case["id"] for case in visible.values() if case["split"] == "train"]
@@ -82,7 +82,7 @@ def optimize(state: State, project_id: str, baseline_digest: str, suite_digest: 
                     bundle = Path(temporary) / baseline["name"]
                     shutil.copytree(baseline["path"], bundle)
                     (bundle / "SKILL.md").write_text(text, encoding="utf-8", newline="\n")
-                    imported = skills.import_bundle(state, project_id, bundle, f"GEPA search {run_id}", parents.get(text_sha, baseline_digest))
+                    imported = skill_assets.import_bundle(state, project_id, bundle, f"GEPA search {run_id}", parents.get(text_sha, baseline_digest))
             except (ValueError, OSError) as error:
                 outputs = [{"input": visible[case_id]["input"], "feedback": str(error), "score": 0.0} for case_id in batch]
                 (directory / f"invalid-{document['metric_calls']}.txt").write_text(text, encoding="utf-8", newline="\n")

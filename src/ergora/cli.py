@@ -9,7 +9,7 @@ import sys
 
 from . import __version__
 from . import reference
-from . import agents, evaluation, kernel, memory, optimization, projects, research, skills, tools
+from . import agent_runs, agents, evaluation, kernel, memory, optimization, projects, research, skill_assets, skills, tools
 from .state import State, resolve_home
 
 
@@ -235,11 +235,11 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "agent":
             state = State(args.home)
             if args.operation == "runs":
-                output = tools.runs(state, args.project)
+                output = agent_runs.runs(state, args.project)
             elif args.operation == "output":
-                output = tools.output(state, args.project, args.id)
+                output = agent_runs.output(state, args.project, args.id)
             else:
-                output = tools.run_agent(state, args.project, args.role, args.prompt.read_text(encoding="utf-8-sig"), args.timeout, args.skill, args.recall, args.template)
+                output = agent_runs.run_agent(state, args.project, args.role, args.prompt.read_text(encoding="utf-8-sig"), args.timeout, args.skill, args.recall, args.template)
             print(json.dumps(output, ensure_ascii=False, indent=2))
             return 0 if args.operation != "run" or output["status"] == "succeeded" else 1
         elif args.command == "kernel":
@@ -272,15 +272,15 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "skill":
             state = State(args.home)
             if args.operation == "import":
-                output = skills.import_bundle(state, args.project, args.directory, args.hypothesis)
+                output = skill_assets.import_bundle(state, args.project, args.directory, args.hypothesis)
             elif args.operation == "list":
-                output = skills.versions(state, args.project)
+                output = skill_assets.versions(state, args.project)
             elif args.operation == "export":
-                output = skills.export(state, args.project, args.digest, args.destination)
+                output = skill_assets.export(state, args.project, args.digest, args.destination)
             elif args.operation == "adopt":
                 output = skills.adopt(state, args.project, args.baseline_run, args.candidate_run, args.revision, args.reason)
             elif args.operation == "rollback":
-                output = skills.rollback(state, args.project, args.name, args.digest, args.revision, args.reason)
+                output = skill_assets.rollback(state, args.project, args.name, args.digest, args.revision, args.reason)
             elif args.operation == "optimizations":
                 output = optimization.listing(state, args.project)
             else:

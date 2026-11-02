@@ -78,17 +78,22 @@ Ergora 控制台提供项目总览、工具绑定、记忆修订、候选比较 
 
 ```text
 src/ergora/
-├── projects.py / tools.py          项目修订、工具绑定与独立调用
+├── projects.py / bindings.py       项目修订与各层绑定校验
+├── components.py / tools.py        组件描述、工具目录与就绪检查
+├── agent_runs.py                   独立 Agent 上下文、调用与运行记录
 ├── agents.py / reference_executor.py 原生 Agent 适配与可选六阶段桥接
 ├── kernel.py / data/drivers/        原生 Forge campaign 与独立 SDK 驱动
 ├── memory.py / state.py            项目记忆、来源与持久状态
-├── skills.py / evaluation.py       版本资产、固定评价与采用回退
+├── skill_assets.py / skills.py     版本资产/头事务/回退与评价后采用
+├── evaluation.py                  固定评价集、可信评分与比较
 ├── optimization.py                可选 GEPA 候选搜索
 ├── research.py / scheduling.py     有界资料观察与 Temporal 适配
 ├── reference.py / drafts.py        冻结参考合同与可编辑输入草稿
 ├── cli.py / web.py                 共用业务逻辑的两个入口
 └── data/console/                   随包页面、样式、图组件与许可证
 ```
+
+CLI 与 API 直接共用用例；评价和搜索只依赖 Skill 资产，采用用例协调比较与原子版本头更新。旧 `tools.run_agent/runs/output/validate_binding` 及 `skills` 资产 Python 入口仍可使用，指向同一实现。职责和兼容边界见 [R4 记录](docs/delivery/2026-11-02-application-use-cases.md)。
 
 以下是**安装后参考实现**的目录，亦对应完整部署包的 `platform/`：
 
