@@ -19,7 +19,7 @@ from agent_platform.core import Blocked, CONFIG, ROOT, STATE, read, require, set
 from dev_platform.adapter import FileAdapter, publish
 from dev_platform.contracts import canonical_sha, validate_spec
 
-from . import agents, components, projects
+from . import agents, bindings, projects
 from .state import State
 
 
@@ -45,16 +45,8 @@ class Executor(original.Executor):
                     require(canonical_sha(read(CONFIG / relative)) == canonical_sha(expected), "Registered reference configuration drift: " + relative)
                 require(self.project == registration["files"]["projects/" + project["id"] + ".json"], "Task project differs from its registered configuration")
                 require(self.spec["request"]["task_type"] in registration["definition"]["templates"], "Task template is not registered")
-            roles = ("inspector", "planner", "implementer", "reviewer")
             configuration = projects.effective_configuration(project)
-            self.selection = {"schema_version": 1, "reference_project": self.project["name"],
-                              "project_revision": project["revision"],
-                              "bindings": {role: configuration["layers"][role]["binding"] for role in roles},
-                              "configuration": configuration}
-            for role, binding in self.selection["bindings"].items():
-                agents.validate_binding(role, binding)
-                if components.COMPONENTS[binding["tool"]]["implementation"] == "command":
-                    require(binding.get("protocol") == "stage-json-v1", "Formal command agents require stage-json-v1")
+            self.selection = bindings.development_snapshot(project, configuration)
             write(snapshot, self.selection)
 
     def model(self, names: list[str], *, review: bool = False) -> dict:

@@ -80,7 +80,7 @@ def parser() -> argparse.ArgumentParser:
     doctor.add_argument("project")
     doctor.add_argument("--probe", action="store_true", help="Explicit local version/credential status and TCP probes; never calls a model")
     doctor.add_argument("--timeout", type=int, default=5, help="Total active probe budget in seconds (1–30)")
-    task = commands.add_parser("task", help="Read existing formal development task contracts")
+    task = commands.add_parser("task", help="Preview, create, recover and read formal development task contracts")
     operations = task.add_subparsers(dest="operation", required=True)
     listing = operations.add_parser("list")
     listing.add_argument("project")
@@ -89,6 +89,20 @@ def parser() -> argparse.ArgumentParser:
     show_task = operations.add_parser("show")
     show_task.add_argument("project")
     show_task.add_argument("task_id")
+    for name in ("preview", "create"):
+        operation = operations.add_parser(name)
+        operation.add_argument("project")
+        operation.add_argument("--definition", type=Path, required=True)
+        operation.add_argument("--revision", type=int, required=True)
+        if name == "create":
+            operation.add_argument("--preview-sha256", required=True)
+    for name in ("creation", "resume-create"):
+        operation = operations.add_parser(name)
+        operation.add_argument("project")
+        operation.add_argument("task_id")
+        if name == "resume-create":
+            operation.add_argument("--revision", type=int, required=True)
+            operation.add_argument("--intent-sha256", required=True)
     service = commands.add_parser("services", help="Explicit selected-service Supervisor operations (Linux/WSL2)")
     operations = service.add_subparsers(dest="operation", required=True)
     status = operations.add_parser("status")
@@ -311,8 +325,18 @@ def main(argv: list[str] | None = None) -> int:
                 output = tools.catalog() if args.operation == "list" else tools.doctor(State(args.home), args.project, probe=args.probe, timeout=args.timeout)
         elif args.command == "task":
             state = State(args.home)
-            output = (tasks.listing(state, args.project, limit=args.limit, after=args.after)
-                      if args.operation == "list" else tasks.show(state, args.project, args.task_id))
+            if args.operation == "list":
+                output = tasks.listing(state, args.project, limit=args.limit, after=args.after)
+            elif args.operation == "show":
+                output = tasks.show(state, args.project, args.task_id)
+            elif args.operation == "creation":
+                output = tasks.creation(state, args.project, args.task_id)
+            elif args.operation == "resume-create":
+                output = tasks.resume_create(state, args.project, args.task_id, args.revision, args.intent_sha256)
+            else:
+                definition = json.loads(args.definition.read_text(encoding="utf-8-sig"))
+                output = (tasks.preview(state, args.project, definition, args.revision) if args.operation == "preview"
+                          else tasks.create(state, args.project, definition, args.revision, args.preview_sha256))
         elif args.command == "services":
             state = State(args.home)
             if args.operation == "status":

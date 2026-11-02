@@ -4,7 +4,7 @@
 
 ## 模块与依赖
 
-自有Python仍为单包`ergora`，30个顶层文件（含两个包入口）；F1.2增加完整注册用例`registrations`，F2.3增加显式服务用例`services`，F3.1增加项目范围的正式任务查询`tasks`。没有为层级增加空子包、通用Agent基类或插件容器。下图表示当前调用方向，组合节点内的模块并非互相依赖；精确导入由静态检查和源码确定。
+自有Python仍为单包`ergora`，31个顶层文件（含两个包入口）；F1.2增加完整注册用例`registrations`，F2.3增加显式服务用例`services`，F3.1增加项目范围的正式任务查询`tasks`，F3.2在同一用例接入预览/创建/恢复，专用`reference_task_creation`拥有原生编译/发布生命周期。没有为层级增加空子包、通用Agent基类或插件容器。下图表示当前调用方向，组合节点内的模块并非互相依赖；精确导入由静态检查和源码确定。
 
 ```mermaid
 flowchart TB
@@ -17,6 +17,7 @@ flowchart TB
   Web --> Services
   CLI --> Tasks[tasks]
   Web --> Tasks
+  Tasks --> Bindings
   Tasks --> Ref
   Services --> Registration
   Services --> Ref
@@ -36,6 +37,8 @@ flowchart TB
   Uses --> Ref
   CLI --> Ref
   Web --> Ref
+  Ref --> Creation[reference_task_creation 专用子进程]
+  Creation --> Foundations
   Ref --> Bridge[reference_executor → stage_driver subprocess]
   Bridge --> Native
   Query --> Foundations[components / contracts / state]
@@ -53,13 +56,14 @@ flowchart TB
 |项目与绑定事务|`projects.create / bind / effective_configuration`、`components.resolve_binding`、`bindings.validate_binding`；CLI/Web/调用与执行桥|Git根、项目revision与能力拒绝；轻量项目保持兼容，统一项目附定义/发布状态|
 |完整注册、旧注册采用与跨资源恢复|`registrations.register / preview_import / apply_import / resume / status`；CLI/Web|复用基础项目与绑定校验，保存before/after意图及pending状态；显式采用绑定预览/源字节身份并保持旧文件；reference仅拥有投影布局、原校验和不覆盖发布，不反向写控制项目|
 |正式任务本地合同查询|`tasks.listing / show` → `reference.task_files`；CLI/API|固定子进程复用原合同与有界文件读取、项目/目录/基线/tracker归属、不透明分页游标；不查询Temporal或推断运行成功，不新增索引/调度器|
+|正式任务预览、创建与恢复|`tasks.preview / create / creation / resume_create` → `reference.task_creation` → 专用`reference_task_creation`；CLI/API|复用原create_task/portable及write，预览绑定项目修订和完整快照；先持久意图再发布原文件；按原意图恢复，不启动workflow，不接管legacy或复制调度器|
 |本地服务运维|`services.status / control / logs`；CLI/API|复制原 Supervisor 定义并关闭自动启动；所选服务、当前修订及停止确认；共享执行目录/控制库归属；有界日志与原生游标，未确认不报告成功|
 |独立 Agent 调用|`agent_runs.run_agent / runs / output`；CLI/Web|冻结有效绑定视图、所选 Skill/记忆上下文及归档；普通调用成功不产生正式任务通过|
 |原生 Agent/Forge|`agents.invoke`、`kernel.create / operate`；独立调用、参考阶段/页面|既有 CLI/SDK 协议；Forge campaign 完成不等于可信训练采用，未知结果先对账|
 |Skill 资产、评价、采用和搜索|`skill_assets`、`evaluation`、`skills.adopt`、`optimization.optimize`；CLI/Web|资产与评价不反向导入采用；GEPA 搜索复用评价，不拥有评分/采用权限|
 |记忆与资料|`memory`、`research`；CLI/Web，`scheduling` 调用 research|SQLite canonical / ReMe 投影；来源快照、预算、取消及人工审阅，资料不自动成为有效记忆|
 |存储升级与离线恢复|`State`、`backups.create / verify / restore`；所有域及 CLI|集中 16 表、schema v1、有序迁移和旧 writer fence；领域保留查询/事务，恢复核对库和文件|
-|参考资源、编译与执行桥|`reference`、`reference_executor`、`stage_driver`；CLI/Web/drafts/agent_runs|资源查询与正式执行分开；执行器限专用 Linux 进程，不把原导入全局当 Web request-local|
+|参考资源、编译与执行桥|`reference`、`reference_task_creation`、`reference_executor`、`stage_driver`；CLI/Web/drafts/agent_runs|资源查询与正式执行分开；执行器限专用 Linux 进程，不把原导入全局当 Web request-local|
 |交互与传输|`cli`、`web`、`data/console`|调用现有用例；可选 Web/Temporal 延迟导入；UI 不拥有正式任务状态|
 
 Python 导入图包含函数内延迟导入，当前无环。`reference.executor` 动态加载执行桥，`stage_driver` 通过子进程运行，`data/drivers` 在独立 SDK 环境调用；这些运行边不能仅由顶层 import 推断。完整参考边界及退出条件见 [reference 文档](reference-boundary.md)，进程结果/产物/平台矩阵见 [运行契约](2026-11-02-runtime-contracts.md)。
@@ -87,17 +91,20 @@ flowchart LR
 
 独立调用的当前路径：`CLI/HTTP → agent_runs.run_agent → 项目/绑定 + 活动 Skill/记忆快照 → agents.invoke → processes.run → 归档与 agent_runs`。Skill 采用的路径：`CLI/HTTP → skills.adopt → evaluation.compare → skill_assets.get/move_head`，采用事务同时检查旧 revision 和精确基线 digest；没有另一条可绕过评价的“采用”用例。
 
-两个开发模板的正式任务仍通过原 `agentflow`：
+两个开发模板通过主入口 `task preview/create` 创建合同，启动/批准/导出仍通过原 `agentflow`：
 
 ```mermaid
 sequenceDiagram
   actor User as 操作者
+  participant Create as Ergora task preview/create
   participant Entry as agentflow CLI
   participant Runtime as DevelopmentTransport / Temporal
   participant Files as FileAdapter / ledger / receipts
   participant Executor as 原 Executor + 可选 Ergora 角色桥
-  User->>Entry: create / start（固定输入和任务 ID）
-  Entry->>Runtime: 编译 spec / start
+  User->>Create: 审阅预览后创建（精确摘要/修订）
+  Create->>Files: 保存意图、原生合同及冻结角色
+  User->>Entry: start（原任务 ID）
+  Entry->>Runtime: start（原 spec）
   Runtime->>Files: inspect / plan
   Files->>Executor: 阶段请求
   Executor-->>Files: 精确候选、检查与阶段产物
@@ -110,7 +117,7 @@ sequenceDiagram
   User->>Entry: export 到候选分支
 ```
 
-执行桥只替换生成阶段的Agent，原执行器仍拥有候选SHA、只读检查、提交和回执。默认值或项目绑定变化不修改在途任务的`agent-bindings.json`。取消是意图，`CANCEL_UNCONFIRMED / NEEDS_RECONCILIATION`保持可见，不能删ledger后重跑。F1已统一项目配置与投影；正式任务API/页面仍由F3/F4接入。
+执行桥只替换生成阶段的Agent，原执行器仍拥有候选SHA、只读检查、提交和回执。默认值或项目绑定变化不修改在途任务的`agent-bindings.json`。取消是意图，`CANCEL_UNCONFIRMED / NEEDS_RECONCILIATION`保持可见，不能删ledger后重跑。F1已统一项目配置与投影；F3.1/F3.2提供本地合同读写API，运行操作/正式页面仍由F3.3/F4接入。
 
 训练保持独立的 workload/baseline/manifest/runner/evidence：`prepare → start（控制排队）→ 操作者 run-local + manifest SHA → 可信统计门禁 → owner evidence SHA → 集成/复验任务`。control worker 不自动启动训练；Forge 只生成原生候选。R8 的 fixture 只检验协议，真实模型/GPU效果以各次实测记录为准。
 
@@ -136,6 +143,7 @@ flowchart LR
 |evaluation / optimization|`evaluation_suites`、`evaluations`、`optimizations`；suite/run/proposal 文件|固定评分输入与成本、候选关系；生成器不改可信评分|
 |research / drafts / kernel|`research_runs`、`source_snapshots`、`source_heads`、`research_proposals`、`drafts`、`kernel_runs`；来源与原生产物|预算/取消、资料/草稿 revision、Forge 原生 ID 与未知状态|
 |State / backups|schema 版本、迁移前 DB 快照、完整离线备份清单|DDL/锁/版本拒绝；DB 快照不等于完整文件备份|
+|正式任务创建意图/回执|登记执行状态目录的`ergora/task-creations/`；原`tasks/`七份合同|意图先于原生发布，同ID跨进程锁；恢复固定内容及旧绑定；不从发布回执推导运行状态|
 |原 runtime / executor / runner|原配置、任务文件、ingress leases、jobs ledger、Git/产物；Temporal history|正式阶段、批准、候选与取消事实；不搬迁在途 history|
 
 F1统一注册将控制项目定义和bindings作为权威来源，reference正式注册/策略是不可变单向投影；旧注册经只读预览、差异与显式采用接入，轻量项目和旧参考入口保持兼容。CLI/env路径、模板输入和SDK原生设置仍按域归属，没有新增双向同步器。pending项目与before/after意图协调跨资源恢复，published状态和实际文件一致性分别查询。凭据值继续由运行环境/工具认证提供，不进入分享定义。详见[项目手册](../PROJECTS.md)、[状态迁移](state-migrations.md)与[参考配置范围](reference-boundary.md#配置与进程范围)。
@@ -184,7 +192,7 @@ F1统一注册将控制项目定义和bindings作为权威来源，reference正�
 |新模板、阶段或通用低代码|目前只有3个固定模板及受约束输入草稿；新模板/合同需显式实现和验收|F6才扩展描述/编辑；不能承诺现有任意配置可增删可信阶段|
 |新 tracker/通信/会话|对应 F7/F8/D1/D2 的真实 adapter、native ID/去重/取消和授权合同|本地无工单流程继续可用；上下文消息不扩大权限|
 
-复用SQLite、Git、jsonschema、Temporal、MLflow、Cytoscape、GEPA/ReMe和各工具真实SDK。项目revision、精确候选授权、证据关联与显式采用属于Ergora规则。继续保持函数和既有Protocol，只有外部框架hook使用继承。静态边界检查运行方式及局限见[ADR 0002](decisions/0002-static-boundaries.md)。F1已完成，下一项为F2环境/服务管理，再接F3/F4正式任务与页面；完整all-in-one用户旅程仍需这些后续节点验收。
+复用SQLite、Git、jsonschema、Temporal、MLflow、Cytoscape、GEPA/ReMe和各工具真实SDK。项目revision、精确候选授权、证据关联与显式采用属于Ergora规则。继续保持函数和既有Protocol，只有外部框架hook使用继承。静态边界检查运行方式及局限见[ADR 0002](decisions/0002-static-boundaries.md)。F1/F2已完成，当前接入F3正式任务读写，再接运行操作/F4页面；完整all-in-one用户旅程仍需这些后续节点验收。
 
 ## F2安装增量
 

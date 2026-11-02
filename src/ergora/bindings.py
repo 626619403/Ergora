@@ -7,6 +7,21 @@ from . import agents, components, contracts, kernel
 from .components import CATALOG
 
 
+def development_snapshot(project: dict, configuration: dict) -> dict:
+    """Freeze the four selectable development roles under one effective configuration."""
+    roles = ("inspector", "planner", "implementer", "reviewer")
+    selection = {"schema_version": 1, "reference_project": project["id"],
+                 "project_revision": project["revision"],
+                 "bindings": {role: configuration["layers"][role]["binding"] for role in roles},
+                 "configuration": configuration}
+    for role, binding in selection["bindings"].items():
+        agents.validate_binding(role, binding)
+        if components.COMPONENTS[binding["tool"]]["implementation"] == "command":
+            if binding.get("protocol") != "stage-json-v1":
+                raise ValueError("Formal command agents require stage-json-v1")
+    return selection
+
+
 def validate_binding(layer: str, binding: dict) -> None:
     if layer not in CATALOG or not isinstance(binding, dict) or binding.get("tool") not in CATALOG[layer]:
         raise ValueError(f"Unsupported layer/tool: {layer}; choices: {CATALOG.get(layer, [])}")

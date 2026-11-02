@@ -72,7 +72,7 @@ flowchart LR
 |训练证据比较|perfctl + 可信 runner|重新计算统计与门禁；项目负责实际训练环境|
 |安装与依赖|Bash、uv、Python、Node.js|安装器固定工具版本与 Python 依赖|
 
-已有统一注册项目可运行 `ergora task list PROJECT` / `ergora task show PROJECT TASK_ID` 读取正式开发任务的冻结合同与绑定，详见[只读任务入口](docs/USAGE.md#读取正式任务合同)。该入口不查询Temporal运行状态；创建、批准及导出继续使用参考CLI。
+已有统一注册项目可运行 `ergora task list PROJECT` / `ergora task show PROJECT TASK_ID` 读取正式开发任务的冻结合同与绑定，详见[只读任务入口](docs/USAGE.md#读取正式任务合同)。该入口不查询Temporal运行状态；可用 `task preview/create/creation/resume-create` [显式创建和恢复任务](docs/USAGE.md#预览与创建正式任务)，提交、批准及导出继续使用参考CLI。
 
 Ergora 控制台提供项目总览、工具绑定、记忆修订、候选比较 / 评价 / 采用、资料提案和受约束的工作单元关系编辑。正式任务的运行历史、审批和训练观测继续使用参考 CLI、Temporal UI 和 MLflow；页面不会自行产生正式验收状态。
 
@@ -83,7 +83,7 @@ Ergora 控制台提供项目总览、工具绑定、记忆修订、候选比较 
 ```text
 src/ergora/
 ├── projects.py / registrations.py / bindings.py 项目修订、统一注册与绑定校验
-├── tasks.py / services.py          正式任务合同查询、显式服务运维
+├── tasks.py / services.py          正式任务预览/创建/恢复/查询、显式服务运维
 ├── components.py / tools.py        组件描述、工具目录与就绪检查
 ├── agent_runs.py                   独立 Agent 上下文、调用与运行记录
 ├── agents.py / reference_executor.py 原生 Agent 适配与可选六阶段桥接

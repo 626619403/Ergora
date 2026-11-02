@@ -1,9 +1,14 @@
 """Project-scoped formal task use cases; the native runtime remains authoritative."""
 
+import json
 from pathlib import Path
+import re
 
-from . import reference
+from . import bindings, contracts, projects, reference
 from .state import State
+
+
+_DEFINITION = json.loads((Path(__file__).parent / 'data/schemas/task-definition-v1.json').read_text(encoding='utf-8'))
 
 
 def _project(state: State, project_id: str) -> dict:
@@ -13,6 +18,65 @@ def _project(state: State, project_id: str) -> dict:
         raise ValueError('Formal tasks require a published unified project registration')
     reference.validate_installation(Path(registration['definition']['execution']['installation']))
     return project
+
+
+def _revision(project: dict, expected_revision: int) -> None:
+    if type(expected_revision) is not int or expected_revision < 1:
+        raise ValueError('Expected project revision must be a positive integer')
+    if project['revision'] != expected_revision:
+        raise ValueError('Project revision changed; reload before creating a task')
+
+
+def _definition(project: dict, definition: dict) -> dict:
+    contracts.validate(definition, _DEFINITION, 'Task definition')
+    if definition['task_type'] not in project['registration']['definition']['templates']:
+        raise ValueError('Task template is not registered for this project')
+    if len(json.dumps(definition, ensure_ascii=False, allow_nan=False).encode('utf-8')) > 1_048_576:
+        raise ValueError('Task definition exceeds 1 MiB')
+    return {'definition': definition,
+            'selection': bindings.development_snapshot(project, projects.effective_configuration(project))}
+
+
+def _digest(value: str, name: str) -> None:
+    if not isinstance(value, str) or not re.fullmatch('[0-9a-f]{64}', value):
+        raise ValueError(name + ' must be a SHA256 digest')
+
+
+def preview(state: State, project_id: str, definition: dict, expected_revision: int) -> dict:
+    """Compile in temporary storage and return the exact proposed task and bindings."""
+    project = _project(state, project_id)
+    _revision(project, expected_revision)
+    return reference.task_creation(project, state.root, 'preview', _definition(project, definition))
+
+
+def create(state: State, project_id: str, definition: dict, expected_revision: int, preview_sha256: str) -> dict:
+    """Publish only an explicitly previewed immutable task, after saving its intent."""
+    _digest(preview_sha256, 'Preview')
+    # Binding and registration writers use the same SQLite write reservation.
+    # Hold it through publication so an approved revision cannot change halfway.
+    with state.connect() as db:
+        db.execute('BEGIN IMMEDIATE')
+        project = _project(state, project_id)
+        _revision(project, expected_revision)
+        return reference.task_creation(project, state.root, 'create',
+                                       {**_definition(project, definition), 'preview_sha256': preview_sha256})
+
+
+def creation(state: State, project_id: str, task_id: str) -> dict:
+    """Inspect the saved creation intent and native files, without querying execution."""
+    project = _project(state, project_id)
+    return reference.task_creation(project, state.root, 'status', {'task_id': task_id})
+
+
+def resume_create(state: State, project_id: str, task_id: str, expected_revision: int, intent_sha256: str) -> dict:
+    """Finish the original saved publication without recompiling or changing its bindings."""
+    _digest(intent_sha256, 'Intent')
+    with state.connect() as db:
+        db.execute('BEGIN IMMEDIATE')
+        project = _project(state, project_id)
+        _revision(project, expected_revision)
+        return reference.task_creation(project, state.root, 'resume',
+                                       {'task_id': task_id, 'intent_sha256': intent_sha256})
 
 
 def listing(state: State, project_id: str, *, limit: int = 50, after: str | None = None) -> dict:

@@ -132,7 +132,48 @@ ergora task show my-project TASK_ID
 
 同源API为 `GET /api/projects/ID/tasks?limit=50&after=CURSOR` 和 `GET /api/projects/ID/tasks/TASK_ID`。默认每页校验50个候选目录项，可设1–100；原样使用返回的不透明ASCII游标 `next_after` 继续，直到其为null；游标不是任务ID或文件路径。每页流式枚举全部目录名再选取候选窗口，因此枚举时间随任务数增加；`inspected_entries`只计该页校验项数。其他项目或损坏目录可能产生空页，仍应沿游标前进。`items`只包含匹配该项目/Git根/tracker并通过合同结构与摘要校验的任务；归属已确认但合同损坏的条目进入 `errors`，不能判断归属的条目只计入 `unreadable_count`。
 
-详情返回原始spec、冻结项目、可选的 `agent_bindings` 及其文件SHA256。`project_revision`是当前控制项目修订，冻结绑定中的 `project_revision`属于任务开始时的快照。`runtime_status: not_queried`表示没有访问Temporal；本地文件存在不代表任务开始、完成或验收通过。查询不安装SDK、启动服务、提交任务或写回旧记录；创建、实时状态、批准、取消和导出仍按[正式执行手册](AGENT_BACKENDS.md)使用原参考入口。Linux/Windows均可读取本机可访问的执行目录，完整六阶段执行需要Linux/WSL2。
+详情返回原始spec、冻结项目、可选的 `agent_bindings` 及其文件SHA256。`project_revision`是当前控制项目修订，冻结绑定中的 `project_revision`属于创建或首次执行时的快照。`runtime_status: not_queried`表示没有访问Temporal；本地文件存在不代表任务开始、完成或验收通过。查询不安装SDK、启动服务、提交任务或写回旧记录；实时状态、批准、取消和导出仍按[正式执行手册](AGENT_BACKENDS.md)使用原参考入口。Linux/Windows均可读取本机可访问的执行目录，完整六阶段执行需要Linux/WSL2。
+
+### 预览与创建正式任务
+
+统一注册项目可在无Temporal/Web SDK的基础安装中编译和保存两个开发模板。先保存 `task-definition.json`；`input` 使用模板的原始输入格式，具体字段和DAG仍由原编译器校验：
+
+```json
+{
+  "schema_version": 1,
+  "task_id": "example-change",
+  "task_type": "repository-governance",
+  "issue_id": "1",
+  "input": {
+    "goal": "检查并整理 src 内的模块边界",
+    "allowed_paths": ["src"],
+    "acceptance": ["保持已有行为和可信检查"],
+    "constraints": [],
+    "risk": "standard",
+    "work_units": [{"id": "inspect", "depends_on": [], "paths": ["src"], "instructions": "完成边界整理"}]
+  }
+}
+```
+
+模板可选 `repository-governance` 或 `large-change`，必须已在项目登记；大型开发按原模板设置其风险与输入。可选 `starting_sha` 是40位小写Git提交SHA，默认使用登记的基线。将以下修订替换为 `project show` 的当前值：
+
+```bash
+ergora task preview my-project --definition task-definition.json --revision 1
+# 审阅返回的 files 中完整 spec、可信策略、冻结项目及 agent-bindings。
+# 用本次输出的 preview_sha256 替换 PREVIEW_SHA：
+ergora task create my-project --definition task-definition.json --revision 1 --preview-sha256 PREVIEW_SHA
+ergora task creation my-project example-change
+# 发生中断时，用 creation 中的 intent_sha256 和当前项目修订恢复：
+ergora task resume-create my-project example-change --revision 1 --intent-sha256 INTENT_SHA
+```
+
+preview只在自动清理的临时目录调用原编译器，不写真实任务目录。摘要绑定控制目录、项目修订、登记身份、全部编译合同和角色快照；定义或绑定变化后必须重新审阅预览。create在任何原生任务文件发布前先保存完整意图，然后不可变发布七份合同，最后保存结果回执；相同请求可以幂等重试。任务ID在同一执行状态目录全局唯一，没有本工具意图的旧任务不能通过create或resume-create接管。
+
+`creation.status` 为 `not_recorded / pending / published / conflict`，只描述本地文件发布。`runtime_status: not_queried` 和 `execution_started_by_operation: false` 表示本次操作未查询或启动工作流，不能据此推断该任务的实际运行状态。合同逐文件最多1MiB；意图上限16MiB。比较使用原生规范JSON内容摘要，保留等价既有文件的字节。意图及回执位于登记的执行状态目录 `ergora/task-creations/TASK_ID.intent.json` 与 `.result.json`，必须连同原任务目录保留；Ergora控制库的单独备份不包含执行状态目录。
+
+发生中断先查creation，再以明确的原意图摘要恢复；恢复不重新编译，项目绑定改变后仍保留原角色快照。冲突文件保留并报错，不自动覆盖或重建历史。项目配置投影或执行目录发生漂移需要先修复原登记；切换执行目录不会自动迁移旧任务。写操作串行保留项目修订并持有同ID文件锁，单次原生进程预算30秒；超时后先查询原意图，不自动重试。
+
+对应API为 `POST /api/projects/ID/tasks/preview`（`definition/revision`）、`POST /api/projects/ID/tasks`（加`preview_sha256`）、`GET .../tasks/TASK_ID/creation`、`POST .../tasks/TASK_ID/resume-create`（`revision/intent_sha256`）；写请求沿用本地同源限制及 `X-Ergora-Request: 1`。预览与创建支持Linux/Windows本地文件合同；完整六阶段执行仍使用Linux/WSL2和[正式执行手册](AGENT_BACKENDS.md)。
 
 ### 显式服务管理
 
@@ -179,7 +220,7 @@ ergora agent output my-project RUN_ID
 
 `sha256` 是去掉自身字段后，对 UTF-8、排序键、紧凑分隔符、保留 Unicode 且拒绝非有限数字的 JSON 计算的 SHA-256。它标识此视图内容，不能替代正式任务、产物或可信检查的证据摘要。视图校验不调用工具；无效继承显示具体层错误，需显式保存兼容绑定；认证与可用性另看 doctor。
 
-独立Agent调用在启动工具前将该视图保存到运行记录的`configuration`，并沿用原`binding/project_revision`；新正式任务在首次接入可选执行器时把它加入`agent-bindings.json`。之后修改项目或推荐默认不会更新在途任务。旧任务没有此附加字段时继续读取原绑定快照，不补造历史来源；旧运行记录也不回写。Skill/记忆实际上下文仍单独保存在调用记录，当前快照不声明冻结所有外部工具内部行为。
+独立Agent调用在启动工具前将该视图保存到运行记录的`configuration`，并沿用原`binding/project_revision`；通过主入口创建的正式任务在创建时冻结该视图；旧创建方式在首次接入可选执行器时把它加入`agent-bindings.json`。之后修改项目或推荐默认不会更新在途任务。旧任务没有此附加字段时继续读取原绑定快照，不补造历史来源；旧运行记录也不回写。Skill/记忆实际上下文仍单独保存在调用记录，当前快照不声明冻结所有外部工具内部行为。
 
 ## 页面操作
 

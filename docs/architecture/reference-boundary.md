@@ -10,6 +10,8 @@ flowchart LR
   CLI[CLI workflow / templates] --> Ref
   Registration[CLI / Web → registrations] --> Ref
   Ref --> Resources[冻结模板 / profile / manifest]
+  Ref --> Creation[reference_task_creation 专用创建进程]
+  Creation --> Files
   Ref --> Compiler[专用编译子进程]
   Compiler --> Portable[原 portable / contracts]
   Ref --> Projection[专用注册 I/O 子进程]
@@ -26,16 +28,17 @@ flowchart LR
 |冻结资源身份|`reference.info / verify`；CLI|manifest负责283文件身份，旧HTML/zip是原分发基线；verify不启动runtime|
 |模板复制 / 角色合同 / 页面输入|`reference.copy_template / agent_contract / template_details`；CLI、Web、agent_runs|Web只取得结构化数据，不再拼接ROOT；复制保留源字节并附加角色合同；开发模板返回input，训练返回files，不将训练伪装为开发DAG|
 |草稿结构校验|`reference.validate_input`；drafts、Web|专用子进程调用原make_spec；只报告结构PASS及原输入摘要，不创建正式任务或批准|
-|portable编译/转换/导出|`reference.workflow`；CLI|专用Python进程使用明确的随包路径和`-P -S`，不让业务仓库/可选site package替换原编译器；Windows有界no-follow reader patch只在此子进程|
+|portable编译/转换/导出|`reference.workflow`；CLI|专用Python进程使用明确的随包路径和`-P -S`，不让业务仓库/可选site package替换原编译器；Windows有界no-follow reader patch只作用于相应专用子进程|
 |原执行安装定位|`reference.executor`；CLI及隔离验收fixture|仅Linux，先核对所选安装的local/upstream Python文件身份，再加载适配；不从任意配置字符串导入执行插件|
 |项目投影读取、校验与发布|`reference.registration_io / validate_installation / registration_paths`；registrations与执行入口|固定随包代码的专用子进程，按项目只读取登记文件与其他项目tracker，不读密钥或平台配置；复用原路径/scope校验、有界no-follow读取和不可变write；Windows复用reader patch|
-|新任务角色绑定快照|`reference_executor.Executor.__init__`；原执行链|首次核对同一个Git根并冻结4角色、项目修订；后续阶段读同一`agent-bindings.json`；旧任务已有receipt时拒绝换为可选择执行器|
+|新任务角色绑定快照|`bindings.development_snapshot`；tasks创建与reference_executor首次选择|复用同一快照格式冻结4角色、项目修订；执行器首次选择仍核对同一个Git根；后续阶段读同一`agent-bindings.json`；旧任务已有receipt时拒绝换为可选择执行器|
 |阶段Agent及原生继承hook|`reference_executor.Executor.model / receipt`|只替换生成阶段调用及actor标识；原Executor保留提交、只读检查、集成/验证、候选SHA和回执；stage_driver负责专用进程的凭据/信号处理|
 |原配置、文件、回执发布与ledger更新|`reference_executor`内的原core/FileAdapter接口|原CONFIG/STATE、claim/ledger、immutable write/publish不向应用层扩散；不逐个函数增加第二层转发；不复制原文件/SQL逻辑|
 |正式任务本地合同读取|`reference.task_files` → 固定只读子进程；tasks/CLI/API|按项目/Git根/tracker/基线/目录ID复用validate_spec和有界no-follow读取；每页最多100项合同检查，目录名流式枚举为O(N)，不读取日志/凭据、不连接Temporal、不推断运行终态|
-|正式任务create/start/status/result/approve/cancel/export|当前原`agentflow`、`DevelopmentTransport / Runtime / Workflow`|运行事实仍在原runtime，F3.1仅提供本地合同查询；后续F3接写操作与原生状态，不让HTTP或前端直接操作原全局/ledger|
+|正式任务预览/create/创建状态/恢复|`reference.task_creation` → 专用`reference_task_creation`；tasks/CLI/API|父进程管理临时目录及超时清理；子进程在导入前使用临时STATE复用原create_task/portable，实际发布使用登记目录；原write/安全reader、Windows适配、意图/同ID锁/结果回执集中在该边界|
+|正式任务start/status/result/approve/cancel/export|当前原`agentflow`、`DevelopmentTransport / Runtime / Workflow`|运行事实仍在原runtime，F3.1/F3.2提供本地合同查询与创建/恢复；F3.3接原生运行状态，不让HTTP或前端直接操作原全局/ledger|
 
-`reference.ROOT`仍保留给既有Python调用者和身份/兼容测试；生产布局知识只在reference模块。没有删除公共常量或改变CLI响应/退出码。`template_details`是实际Web使用的资源读取接口，没有另造模板存储层。
+`reference.ROOT`仍保留给既有Python调用者和身份/兼容测试；生产布局知识只在reference及其专用原生边界。没有删除公共常量或改变CLI响应/退出码。`template_details`是实际Web使用的资源读取接口，没有另造模板存储层。
 
 ## 配置与进程范围
 
@@ -43,7 +46,7 @@ flowchart LR
 
 `agent_platform.core`在导入时固定ROOT/CONFIG/STATE，`reference.executor`为单一安装的专用进程入口。它不是Web中可并行热切换多个安装/配置的服务对象；同一解释器内缓存模块不能用于切换runtime。当前HTTP没有调用它。F1登记I/O采用固定代码的专用子进程，明确选择配置/状态；F3若接任务查询/命令，也须隔离调用，不能把现有全局当成request-local数据。
 
-原Executor的继承和Windows reader兼容分别留在`reference_executor.py`与`reference.py`，属于现成框架/平台接口的真实变化点。编译器的`sys.path / PYTHONPATH`及私有reader知识不下放到项目/资产/Web。没有新Runtime基类、配置镜像、文件repository或与Temporal竞争的调度器。
+原编译/发布生命周期在reference_task_creation；原Executor的继承和Windows reader兼容分别留在`reference_executor.py`与`reference.py`，属于现成框架/平台接口的真实变化点。编译器的`sys.path / PYTHONPATH`及私有reader知识不下放到项目/资产/Web。没有新Runtime基类、配置镜像、文件repository或与Temporal竞争的调度器。
 
 ## 身份、恢复及迁出条件
 

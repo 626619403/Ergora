@@ -57,6 +57,20 @@ class RegistrationImportPayload(RegistrationPayload):
     preview_sha256: str = Field(pattern="^[0-9a-f]{64}$")
 
 
+class TaskDefinitionPayload(Payload):
+    definition: dict
+    revision: int = Field(strict=True, ge=1)
+
+
+class TaskCreationPayload(TaskDefinitionPayload):
+    preview_sha256: str = Field(pattern="^[0-9a-f]{64}$")
+
+
+class TaskResumePayload(Payload):
+    revision: int = Field(strict=True, ge=1)
+    intent_sha256: str = Field(pattern="^[0-9a-f]{64}$")
+
+
 class MemoryPayload(RevisionPayload):
     revision: int = 0
     text: str
@@ -227,6 +241,22 @@ def create_app(home: Path | None = None) -> FastAPI:
     @application.get("/api/projects/{project_id}/tasks")
     def formal_tasks(project_id: str, limit: int = 50, after: str | None = None):
         return tasks.listing(state, project_id, limit=limit, after=after)
+
+    @application.post("/api/projects/{project_id}/tasks/preview")
+    def preview_formal_task(project_id: str, body: TaskDefinitionPayload):
+        return tasks.preview(state, project_id, body.definition, body.revision)
+
+    @application.post("/api/projects/{project_id}/tasks")
+    def create_formal_task(project_id: str, body: TaskCreationPayload):
+        return tasks.create(state, project_id, body.definition, body.revision, body.preview_sha256)
+
+    @application.get("/api/projects/{project_id}/tasks/{task_id}/creation")
+    def formal_task_creation(project_id: str, task_id: str):
+        return tasks.creation(state, project_id, task_id)
+
+    @application.post("/api/projects/{project_id}/tasks/{task_id}/resume-create")
+    def resume_formal_task_creation(project_id: str, task_id: str, body: TaskResumePayload):
+        return tasks.resume_create(state, project_id, task_id, body.revision, body.intent_sha256)
 
     @application.get("/api/projects/{project_id}/tasks/{task_id}")
     def formal_task(project_id: str, task_id: str):
