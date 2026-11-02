@@ -21,8 +21,8 @@
 - DeepSeek参考项已在[详细计划 L1 执行清单](plans/2026-11-01-all-in-one.md#l1-deepseek-agent-管理工具调研用户追加)按DS1–DS7关联F1–F10/D3：有效配置、意图/回执、人工待办、事件/授权、可选DSH、受评价改进及隔离实测。均待对应节点实施；不整包替换当前执行链。
 - 生命周期交付：R5 [运行契约与平台生命周期](delivery/2026-11-02-runtime-contracts.md)完成并推送 `d685bb9`，远端SHA已核对；生产身份仍为 `f9a9b74`。已形成[结果/产物/平台矩阵](architecture/2026-11-02-runtime-contracts.md)，无额外源码抽取依据；Linux最终43项/5跳过、固定Forge/mini SDK及SIGINT/KILL探针、106链接/283冻结身份通过，[独立审查](delivery/2026-11-02-runtime-contracts-review.md)通过。保留mini首轮超时及未验维度。
 - 边界交付：R6 [reference访问边界](delivery/2026-11-02-reference-boundary.md)完成，运行代码`277ec1f`已推送并核对一致。Web模板读取已归入reference接口，[已有边界/退出清单](architecture/reference-boundary.md)已写；Linux206项+36子测试/18跳过、324文件×两安装/21次基础CLI、104链接/283冻结身份及精确两OS CI41388048791通过，[独立审查](delivery/2026-11-02-reference-boundary-review.md)通过；原六阶段、冻结绑定和证据身份保持。
-- 活动切片：R7 [CLI/Web与前端模块化](delivery/2026-11-02-console-modules.md)，从干净`c0ad343`开始。12个原生ES modules已移动，入口149行，草稿/epoch/图保持同一所有者；Skill diff已归入资产查询。最终包Linux206项+36子测试/18跳过、335文件×两安装、21次基础CLI/30次CLI与API对照、浏览器完整关键旅程及390px六页/图通过；原长路径溢出有基线反例，单条样式已修复。[独立审查](delivery/2026-11-02-console-modules-review.md)本地通过、无findings，提交推送和精确两OS CI复核待完成。
-- 下一动作：R7 → R8重构出口 → P0 → P1。保持现有页面、Cytoscape、异步顺序和随包资源；不为拆文件增加Node构建要求。每个节点完成后更新状态、实际检查和独立审查，再继续下一项；用户无需逐节点重复授权。不要把规划中的统一任务、低代码、会话或远端执行写成已实现。
+- 前端交付：R7 [CLI/Web与前端模块化](delivery/2026-11-02-console-modules.md)完成，实现`ad73bec`及窄屏修复`b8bee53`已分别提交推送，远端SHA一致。12模块/入口149行及资产diff已归位；最终包Linux206项+36子测试/18跳过、335×两安装、21次基础CLI/30次API对照及完整浏览器旅程/390px六页与图通过。精确候选CI41410702773两OS成功，[独立审查及最终远端复核](delivery/2026-11-02-console-modules-review.md)通过，无未解决findings。
+- 下一动作：R8重构出口 → P0 → P1。先从R7收尾提交核对Git与已完成切片，更新模块/调用/数据归属图、ADR和删除/保留清单，启用适用静态边界检查；不为目录整齐重写无反例的算法。每个节点完成后更新状态、实际检查和独立审查，再继续下一项；用户无需逐节点重复授权。不要把规划中的统一任务、低代码、会话或远端执行写成已实现。
 - 已交付平台范围：原生 Windows 控制面、CLI、项目 / 记忆 / Skill / 资料观察及支持的原生工具；完整六阶段与 Linux 专用工具走 Linux/WSL2。后续仍按实际能力逐项验收。
 - 验证：Windows / Ubuntu CI 41225920073 全部成功；Linux 完整回归 115 passed +36 subtests。两个切片最终独立审查通过；Linux 用户目录 0.2.0 升级和 314 文件身份一致。真实模型 / GPU / winget 空白系统等未验收范围保留在交付记录，不从 CI 推导。
 - 恢复要求：重读本文件及活动切片记录，对照分支、工作区和最近提交；完成核对后继续当前项，不重新做已验收的调研。

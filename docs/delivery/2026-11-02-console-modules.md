@@ -11,7 +11,7 @@
 |R7.1 前端责任拆分|原生ES modules；请求/DOM/应用状态、项目、绑定、Agent/总览、记忆、Skill、研究、工作流各归属|12模块已移动，入口149行|原生语法/导入、包/真实浏览器通过|通过|
 |R7.2 传输入口归位|Skill diff移到资产查询；CLI/API共用现有用例及错误语义|只读查询已归入skill_assets|20项定向/最终完整回归及30次CLI/API对照通过|通过|
 |R7.3 窄屏验收修复|总览长仓库路径可折行，避免撑出屏幕|单条overflow-wrap规则已加入|390px六页及图均无页面横向溢出|通过|
-|R7完整验收|非editable wheel包含全部模块；完整相关回归、窄屏/异步/冲突/同源及两OS CI，提交推送|已打包安装|最终Linux206项+36子测试/18跳过、335文件×两安装/21次基础CLI/浏览器通过；待两OS CI|本地通过，待远端复核|
+|R7完整验收|非editable wheel包含全部模块；完整相关回归、窄屏/异步/冲突/同源及两OS CI，提交推送|已打包安装并推送|最终Linux206项+36子测试/18跳过、335文件×两安装/21次基础CLI/30次API对照、浏览器及精确两OS CI通过|[通过，含最终远端复核](2026-11-02-console-modules-review.md)|
 
 ## 状态及依赖决定
 
@@ -82,6 +82,20 @@ flowchart LR
 
 ## 审查与远端状态
 
-新的fresh-context [独立审查](2026-11-02-console-modules-review.md)完成：需求本地符合性、可维护性通过，无findings；独立核对18个变更文件、335文件×源码/wheel/两安装、移动正文、Python比较AST及实际浏览器断言。源码无须修正；待分开提交职责移动与单条样式修复、推送及精确两OS CI复核，尚未将R7整体标为完成。
+新的fresh-context [独立审查](2026-11-02-console-modules-review.md)完成：需求符合性、可维护性通过，无findings；独立核对18个变更文件、335文件×源码/wheel/两安装、移动正文、Python比较AST及实际浏览器断言。源码无须修正；后续同一reviewer又独立复核下述提交分离、远端SHA及精确两OS CI，全部通过。
 
 预检查官方Actions API返回匿名限流403（不是审批拒绝）；已核对官方Actions页面的内嵌JSON包含完整commit URL和run状态，公开expanded matrix包含两个job的独立状态；后续据精确候选读取，不借用历史run。测试浏览器及两个独立loopback服务已关闭，18977/19087端口均关闭（`cleanup.json`）。实际用户环境未升级。
+
+职责移动已单独提交 **`ad73bec7c7bbdf271e18c90ce01d80e7b7423719`**；单条样式及验收文档提交 **`b8bee53bdc85a803109a9b8b804aee7408d7a535`**，二者已推送`origin/refactor/architecture-foundations`。`git ls-remote`核对远端完整SHA等于后者，推送时工作区干净；15个被审查生产文件的SHA全部保持。
+
+精确最终候选的[Portability CI 41410702773](https://github.com/626619403/Ergora/actions/runs/41410702773)为 **completed / success**：Ubuntu job **`125162845678`**、Windows job **`125162845984`**均completed/success。2026-11-02 **08:10:35 UTC**官方API恢复后的run和两个job的`head_sha`全部等于`b8bee53bdc85a803109a9b8b804aee7408d7a535`。原始`ci-run.json / ci-jobs.json` SHA256分别为`972349427905adcae50db79d0a5c32e6b2845f7af2c18e52c9052654c0677707`、`ce4dbef476c62e19899e6391ba215dc473a646472fb00144781aee0ddb416191`，摘要`ci-api-status.json`。
+
+官方HTML的完整commit URL及run状态也与API一致；最后一次expanded matrix刷新遇到SSL EOF，故最终两job结论以完整API响应为准，未拿旧running图当成功。未下载逐项Windows日志，不补造其测试项数。reviewer于08:13 UTC直接查询官方API、核对workflow与安装脚本，确认两个job及相应成功步骤、完整候选和远端身份均通过。
+
+## 完成及下一节点
+
+**R7完成。** 生产验收身份为`b8bee53bdc85a803109a9b8b804aee7408d7a535`；本次收尾只更新本报告、独立审查及计划，不改变运行代码或测试。按已有授权提交推送状态文档，继续保存真实未验范围，不重复已通过的代码检查。需要回退时按两生产提交的逆序处理；本切片没有数据迁移，不重算原证据。
+
+收尾核对：包含独立审查的四份当前Markdown共**111个本地文件链接**目标存在，空白检查通过；`git diff b8bee53 -- src tests README.md pyproject.toml .github/workflows`为空，15个受审生产文件SHA保持。记录`closure-checks.json`；只做状态/审查文档收尾，无须再次运行已通过的代码测试。
+
+下一节点R8：以此生产树和各R切片证据核对重构出口，更新完整模块/调用/状态归属图与ADR；逐项关闭已审计的删除/保留/兼容清单，评估并启用最小静态边界检查，核对包、三方向能力和跨平台支持范围。生产行为变化继续放在后续F1–F10，不把重构出口当作统一任务/低代码/远端会话已实现。
