@@ -93,7 +93,7 @@ src/ergora/
 └── data/console/                   随包页面、样式、图组件与许可证
 ```
 
-CLI 与 API 直接共用用例；评价和搜索只依赖 Skill 资产，采用用例协调比较与原子版本头更新。旧 `tools.run_agent/runs/output/validate_binding` 及 `skills` 资产 Python 入口仍可使用，指向同一实现。职责和兼容边界见 [R4 记录](docs/delivery/2026-11-02-application-use-cases.md)。
+CLI 与 API 直接共用用例；评价和搜索只依赖 Skill 资产，采用用例协调比较与原子版本头更新。旧 `tools.run_agent/runs/output/validate_binding` 及 `skills` 资产 Python 入口仍可使用，指向同一实现。[当前架构](docs/architecture/current.md) 包含模块/调用/数据图、保留与删除清单、兼容退出条件及各类功能的接入位置。
 
 以下是**安装后参考实现**的目录，亦对应完整部署包的 `platform/`：
 
