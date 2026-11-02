@@ -2,7 +2,7 @@
 
 日期：2026-11-03。审查者：fresh-context 独立 reviewer `f2_services_review`。仅获授权检查源码/证据、运行适度隔离检查及写本报告；未修改源码、安装依赖、提交、推送或操作用户运行栈。
 
-当前结论：**源码同切片复审通过，两项 P2 均已关闭，检查范围内无未解决的源码/结构 findings**。最终修正 wheel 的身份、适用完整回归、更新后的性能及精确两 OS CI 尚待独立核对；本结论不代表完整 F2.3 验收已收口。初审及修正记录如下。
+当前结论：**F2.3 独立最终审查通过，需求符合性和结构/维护性均通过，两项 P2 已关闭，检查范围内无未解决 findings**。最终包、适用完整回归、有界日志性能及完整候选的两 OS CI 已逐项核对。性能和运行结论限于记录的受控服务条件；真实服务/模型及 F2.4 综合旅程仍按后续计划验收。初审、修正和最终身份记录如下。
 
 ## 范围与身份
 
@@ -63,3 +63,29 @@ P2-2：当前 `control` 在 STOPPING 时只轮询，不再次发 `stopProcess`�
 复审检查：相同服务/架构定向首跑 **23 passed、1 skipped、1 failed**。唯一失败来自新增 UTF-8 测试一次追加 7 字节后要求 4 字节尾窗先返回前 3 字节，把 tail 合同误当顺序分页；已及时反馈，作者改为分次追加并另断言 overflow。reviewer 针对此实际修改补跑该测试，**1 passed**。此前通过的其他检查不重复扩大执行；真实停止、FIFO 和 RPC 不重放回归均已在首跑通过。当前无未解决源码或测试问题。
 
 需求及维护性复审通过；性能结论仍限于初审所述历史路径，修正后的本地读取须重测并绑定最终候选。后续只核对最终包/两安装、适用完整回归、精确两 OS CI 和交付记录；未验证范围继续保留。
+
+## 最终包与远端身份复核（CI 完成前快照）
+
+最终生产/测试候选为 `67d88eccb209ab77b31b13461ff6b237a8224e08`。reviewer 实际读取 git archive 并重新计算逐文件 SHA256，提交归档、当前源码、`utf8-final-dist` wheel、开发安装及新基础安装的 **338 文件完全一致**；两安装 `direct_url.json` 均指向该最终 wheel，没有 editable 安装记录。`services.py` 仍为已源码复审的 `0c880bed08670e61e9f1704d4929a7ee14c10de7517f518773077d35b18b1414`。最终 wheel SHA256 为 `4d9f23118c434cbf368de33da037add286de44e342f340e78f214ef17e3526fe`，与 `utf8-final-package-identity.json` 及 reviewer 的实际计算相同；冻结 manifest 的 **283 文件逐项校验通过**。wheel 元数据仍仅在 Linux dev extra 声明 Supervisor 4.3.0。
+
+reviewer 的 `git diff` 核对该候选之后无生产/测试/pyproject 漂移；`git ls-remote origin refs/heads/refactor/architecture-foundations` 实际返回完整 `67d88eccb209ab77b31b13461ff6b237a8224e08`。工作区中后续 F2.4 的计划/验收草稿属于下一切片，不纳入当前 F2.3 实现通过范围。
+
+最终证据路径位于 `.ergora/checks/f2-services/`：
+
+- `utf8-final-wheel-regression.log`：**324 passed、19 skipped、36 subtests passed**，164.58 秒；仅既有 FastAPI/Starlette 弃用警告。reviewer 核对实际日志，没有为身份核对重复完整套件。
+- `utf8-final-targeted.log`：**24 passed、1 skipped**，25.35 秒，已包含正确的 tail/overflow 和分片追加测试。
+- `utf8-final-performance.log` 与当前 `performance.json` 数字一致，已核测量脚本和最终安装身份。真实 Supervisor 4.3.0、冻结 launcher、受控无模型服务、64 MiB 稀疏 ASCII 日志；40 次 4096 字节窗口，中位 **2.478 ms**、最大 **3.625 ms**；20 次 status，中位 **2.520 ms**、最大 **2.926 ms**。客户端/daemon 峰值 RSS 增量 **792/172 KiB**，启动 **0.184 s**、shutdown 确认 **0.164 s**。该证据绑定新本地有界读取路径，支持此条件下的延迟/内存范围，不从小样本推导统计优化收益、真实 Temporal/MLflow/模型或 GPU 能力。
+- 官方 HTML 保存的 run selection 指向 [CI 41514705189](https://github.com/626619403/Ergora/actions/runs/41514705189)，分支和 commit 链接均绑定完整 `67d88ec…`；其当前保存状态为 **IN_PROGRESS**，不能记为 Ubuntu/Windows 通过。
+
+最终包、冻结参考、远端身份和本地验证记录未发现新 findings。精确两 OS CI 完成后需再核其候选 SHA 与两 job 结果，并更新本报告；真实生产服务/模型及 F2.4 综合旅程不由本切片的受控 fixture 代替。
+
+## 精确 CI 及最终收口
+
+reviewer 独立解析最终官方 GitHub HTML，重新校验 `ci-html-status.json` 记录的四份来源文件字节数及 SHA256，并核对 run、job、完成标记和各步骤日志 URL，而非只依赖摘要的 success 字段。[CI 41514705189](https://github.com/626619403/Ergora/actions/runs/41514705189) 的实际运行状态为 **Success**，绑定完整候选 `67d88eccb209ab77b31b13461ff6b237a8224e08`，两个 job 为：
+
+- [Windows job 125515156473](https://github.com/626619403/Ergora/actions/runs/41514705189/job/125515156473)，`native (windows-latest, 3.12)`：Build and install wheel、Packaged reference identity、Native application regression、Windows PowerShell 5.1 installer and upgrade，四项均 success 且已完成。
+- [Ubuntu job 125515156969](https://github.com/626619403/Ergora/actions/runs/41514705189/job/125515156969)，`native (ubuntu-latest, 3.11)`：Build and install wheel、Packaged reference identity、Native application regression，三项均 success 且已完成。
+
+七项必需步骤的日志链接全部包含完整候选 SHA 和对应 job ID；未发现失败、取消或超时步骤。API 额度受限后使用官方 HTML 作为取证来源，其摘要与实际保存内容一致。交付记录中的 job 归属笔误已修正，最终回归及 CI 结果与本次核对一致；最终候选后生产源码、测试、打包与工作流无漂移。
+
+结合先前源码复审、338 文件归档/包/两安装身份、283 冻结文件、324 项及 36 子测试本地回归和有限条件下的实际性能测量，**F2.3 独立最终审查通过，两个 P2 均关闭，无未解决 findings**。本报告只收口 F2.3，不把后续 F2.4/F3 文档准备记为已实现或已运行验收；不需要为这次审查/状态记录递归发起独立审查。
