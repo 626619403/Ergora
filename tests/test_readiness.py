@@ -147,7 +147,9 @@ def test_invalid_endpoint_does_not_fall_back_to_other_target(project, monkeypatc
 def test_whole_active_budget_includes_child_timeout(project, monkeypatch):
     state, _ = project
     monkeypatch.setattr(agents, "available", lambda *args: True)
-    monkeypatch.setattr(processes, "resolve_program", lambda *args: "codex")
+    native_resolver = processes.resolve_program
+    monkeypatch.setattr(processes, "resolve_program", lambda program, cwd:
+                        "codex" if program == "codex" else native_resolver(program, cwd))
     original = processes.run
     calls = []
     def run(argv, cwd, output, timeout):

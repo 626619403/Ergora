@@ -38,3 +38,13 @@
 地址 finding 复核又覆盖缺省端口和显式零端口：HTTP/HTTPS 无端口分别使用 80/443，裸 Temporal 地址默认 7233，显式 0 拒绝且不回退到其他目标。新增四项合同回归，当前 19 项定向通过。完整回归、wheel 与 CI 均以最终候选重新记录，不沿用前候选通过结果。
 
 审查者用原生 SDK 1.34.0 及拦截 connect 的探针核实：不带端口的裸 Temporal 主机也经 SDK 的 http:// 默认连接 80，并非本地开发服务惯用的 7233。已据此修正该回退及测试；显式配置 127.0.0.1:7233 不受影响。非 HTTP/HTTPS scheme 明确拒绝，不猜测其他目标。前一段的裸 7233 是被此证据修正的中间实现，不是最终合同。独立性能复测五次也确认 7→2 次调用，仅据此主张请求内去重。
+
+## 最终候选验收
+
+最终源码/测试 `1f78235ae6e155cc18c51d052817cdd5fa4f79d0`，最终 wheel SHA256 `bddd0b9b017d93bf6f845303796d016e2c0f2607c5d33b01eeb62e41bb6a6a11`（sdk-final-dist）。337文件在源码、wheel、开发/新基础安装一致；最终基础环境两次真实CLI和缺SDK/缺服务诊断通过。独立源码复审20项通过，两P2关闭。
+
+实际浏览器使用最终安装包：主动Codex只读检查返回版本0.166.0、credentials_present，task_availability仍not_checked。卡片/详情一致，切标签保留结果；390px无溢出；用受控延迟响应证明刷新后旧诊断不覆盖新快照。证据 browser-final.log/browser-delayed.log 及 output/playwright/f2-readiness-final-mobile.png。没有执行模型。最初默认浏览器revision缺失，改用已有headless shell配置成功，未安装新依赖。
+
+最终性能重测同一项目10ms合成探测2次、0.03184s；真实默认25次中位0.01059s、最大0.01245s（Python3.11.15）。与初测条件相同，主张仅为请求内避免重复检查；波动及源码独立复测见审查报告，不外推模型吞吐。最终完整Linux回归、精确CI41507301574、最终审查和远端身份仍在收口。
+
+最终生产包完整 Linux 回归 308 passed、18 skipped、36 subtests passed（147.74s），源码/资源身份保持。但 CI41507301574 的 Ubuntu 成功、Windows 一项超时夹具失败：测试将整个 processes.resolve_program 替换为 codex，连 Windows gate 内真实 Python 的解析也被替换，造成 not_confirmed 而非 timed_out。已把替换限定为 codex 程序，保留原 Python 解析、原超时与清理断言；这是测试夹具修复，生产包不变。后续精确测试候选重新跑两 OS CI，不使用此前失败 run 充当完成证据。
