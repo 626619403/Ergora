@@ -117,7 +117,7 @@ def test_temporal_probe_uses_the_configured_host_and_port(project, monkeypatch, 
     assert result["task_availability"] != "available" and result["authentication"] == "not_checked"
 
 
-@pytest.mark.parametrize("address,port", [("http://example.invalid", "80"), ("https://example.invalid", "443"), ("example.invalid", "7233")])
+@pytest.mark.parametrize("address,port", [("http://example.invalid", "80"), ("https://example.invalid", "443"), ("example.invalid", "80")])
 def test_temporal_probe_preserves_default_url_port(project, monkeypatch, address, port):
     state, _ = project
     monkeypatch.setattr(agents, "available", lambda *args: False)
@@ -132,10 +132,11 @@ def test_temporal_probe_preserves_default_url_port(project, monkeypatch, address
     assert len(calls) == 1 and calls[0][-2:] == ["example.invalid", port]
 
 
-def test_explicit_zero_port_does_not_fall_back_to_other_target(project, monkeypatch):
+@pytest.mark.parametrize("address", ["http://example.invalid:0", "ftp://example.invalid"])
+def test_invalid_endpoint_does_not_fall_back_to_other_target(project, monkeypatch, address):
     state, _ = project
     monkeypatch.setattr(agents, "available", lambda *args: False)
-    projects.bind(state, "demo", "scheduler", {"tool": "temporal", "address": "http://example.invalid:0",
+    projects.bind(state, "demo", "scheduler", {"tool": "temporal", "address": address,
                                               "namespace": "default", "task_queue": "fixture"}, 1)
     def unexpected(*args, **kwargs):
         pytest.fail("Do not substitute a different endpoint for explicit port 0")

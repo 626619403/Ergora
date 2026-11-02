@@ -126,9 +126,12 @@ def _probe_check(check: dict, binding: dict, repo: Path, deadline: float) -> Non
         try:
             address = binding["endpoint"] if tool == "reme" else binding["address"]
             endpoint = urlsplit(address if "://" in address else "//" + address)
+            if endpoint.scheme not in ("", "http", "https"):
+                raise ValueError("Unsupported endpoint scheme")
             port = endpoint.port
             if port is None:
-                port = {"http": 80, "https": 443}.get(endpoint.scheme, 7233 if tool == "temporal" else None)
+                # Temporal's SDK supplies http:// for a bare address; URL defaults still apply.
+                port = 443 if endpoint.scheme == "https" else 80
             if not endpoint.hostname or not port:
                 raise ValueError("Missing endpoint host/port")
         except ValueError:
