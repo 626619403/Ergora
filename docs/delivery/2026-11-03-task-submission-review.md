@@ -140,3 +140,64 @@ READONLY_FIXED_RESULT {"status": "unknown", "state_bytes_unchanged": true}
 修正新增两次有界 canonical 序列化和小型 memo；保留原 history 单次读取，memo 不增加 RPC。独立检查说明成本来源和上限，不替代最终包的真实延迟测量。SQLite 长事务与 15 秒 busy 预算的权衡已写入公开用法，本次没有据快速 fixture 宣称其跨项目并发体验无影响。
 
 修正前 e285… 的 432 项完整回归及 72 次基础旅程仅保留历史身份；本复审不将它们应用于上述新源码。修正后的最终 wheel/两安装完整身份、性能与并发测量、适用完整回归、精确候选两 OS CI、最终提交和远端身份仍待归档审计。真实服务 memo/history/原 run 的端到端行为及模型/六阶段仍按既定 F3.4 范围验收，不从受控 SDK 或本地 SDK 解码探针扩大结论。
+
+
+## 最终本地归档核对（2026-11-03）
+
+同切片追加只读归档审计。核对时 HEAD 仍为 `4148842be2227cd64f04a44ae233140af6354fb6`，23 个文件已暂存但尚未提交；本轮唯一写入为本报告，未安装、改源码/测试、重跑完整回归、提交或推送。后续 F3.3c 的新设计记录及 runtime 文档链接只作为下一切片计划，不是本段的新生产能力。
+
+**最终本地核对通过，无新增 finding。** 已关闭的 P1/P2 保持关闭；源码、最终 wheel、两套非 editable 安装及本地归档证据的身份一致。精确两 OS CI、最终提交和远端 SHA 仍待下一次核对。
+
+独立读取 `review-fixed-verify-package.py` 后，另在内存运行只读校验，没有执行会重写归档的作者脚本。重新计算全部包文件，确认 **343 文件在源码、wheel、开发安装和无 SDK 基础安装之间逐字节一致**；归档 `review-fixed-package-identity.json` 的全部摘要也一致。最终 wheel 为：
+
+```text
+review-fixed-dist/ergora-0.2.0-py3-none-any.whl
+SHA256 f8d92f51317a3b3d6f7466ab1bc38b97a4bd4de6658ab06358580bf1d735c44e
+```
+
+前两轮记录的 9 个相关源码/测试身份重新计算后未变，且暂存内容一致。本次变更的 12 个源码/测试文件（7 个生产文件、5 个测试/fixture 文件）均与暂存内容一致；以相对路径为键、文件 SHA256 为值，按 `sort_keys=True,separators=(',', ':')` 序列化后的聚合 SHA256 为 `0735c39c30a387d68b13110f507823731f11fc696a90c233a4d18498b4fbcdc1`。冻结目录无差异，基础安装的 `reference.verify()` 仍为 PASS / 283 文件。`git diff 4148842 --check` 通过。
+
+已读取完整 `review-fixed-wheel-regression.log`，末尾为 **441 passed、19 skipped、36 subtests passed，397.38 秒**，仅已有 Starlette 测试客户端弃用警告。该最终包回归独立于先前 432 项初版回归；本次仅审计归档，没有重新执行全量。
+
+### 72 次基础 CLI 旅程与测量范围
+
+已读取 `review-fixed-journey-performance.py/json/log`；JSON 与日志中的完整结果一致。另从 72 条原始命令记录重新分组和计算各组中位数/最大值，确认每模板 36 条命令，其中 30 条为每操作各 10 次顺序重复。独立查看两份原生调用事件，均为 `doctor → connect → describe → start`，各仅 1 次 start/doctor，没有阶段 requests/receipts。脚本在重复操作前后对整个执行状态树按文件 SHA 核对，断言通过；重复命令返回原回执，任务与操作字节保持。
+
+|模板|submission 中位 ms|重复 start 中位 ms|重复 resume-start 中位 ms|
+|---|---:|---:|---:|
+|repository-governance|1068.34|1000.21|1024.68|
+|large-change|1068.74|1066.56|1079.09|
+
+基础控制面为 Python 3.12.3 的独立非 editable 安装。另实际执行只读导入检查，确认 FastAPI、Temporal、GEPA 均缺失；提交子进程由登记运行时的 `.venv` 指向开发解释器，控制面不导入 SDK。未初始化完整原生解释器时，两模板均明确拒绝；配置解释器后首次 start 使用受控 SDK fixture，之后 60 次重复操作走真实本地生产入口、读取既有回执，没有 RPC。
+
+上述中位数包含 CLI、本地预检、子进程及 SDK 启动成本，测量期间另有完整回归并行运行；不是纯存储/RPC 延迟、吞吐或优化收益。首次受控派发约 1.34 / 1.31 秒只证明该 fixture 协议路径，不证明真实服务或模型性能。跨项目写锁超过 15 秒的争用体验未实测，公开记录中的该限制保持有效。
+
+最终本地发行、适用回归及这组有限性能证据已核对。真实服务 memo/history/run 的端到端行为、真实模型、六阶段、批准/取消及分支导出仍没有由本次本地归档取得新验收，继续按 F3.3c/F3.4 分段负责；未从 CI 待办或受控 SDK 结果扩大范围。
+
+
+## 最终精确 CI、远端身份与锁争用归档复核（2026-11-03）
+
+同切片独立复核最终候选 **`97567b984522cb2cf1da192787f5501e25b838c5`** 和 [CI 41566783007](https://github.com/626619403/Ergora/actions/runs/41566783007)。本轮仅追加本报告、读取归档及查询远端，没有修改生产/测试、安装、重跑完整测试、提交或推送。
+
+读取 `ci/fetch-ci.py`、`ci/verify-ci.py` 后，另写仅在内存运行的 HTML parser 复核原始页面，没有执行会更新归档的作者脚本。从 `ci-actions.html` 的原始 application/json 数据重新选择 `.github/workflows/portability.yml`、完整候选 SHA 和工作分支，所得 run 与保存的 selection 完全一致，状态为 completed/success；原始 run 页面显示 Success，commit 链接精确指向上述候选。
+
+|实际 runner / Python|Job|已完成且 success 的必需步骤|
+|---|---|---|
+|windows-latest / 3.12|[125690118663](https://github.com/626619403/Ergora/actions/runs/41566783007/job/125690118663)|Build and install wheel；Packaged reference identity；Native application regression；Windows PowerShell 5.1 installer and upgrade|
+|ubuntu-latest / 3.11|[125690119230](https://github.com/626619403/Ergora/actions/runs/41566783007/job/125690119230)|Build and install wheel；Packaged reference identity；Native application regression|
+
+两个 job 原始页面都具有对应 selectedJobId；每个必需步骤的完成标志及日志 URL 均绑定相同完整候选和对应 job ID，两个 Complete job 也已完成并为 success。没有 failure/cancelled/timed_out 步骤。重新计算 selection、run、两份 job 原始归档的字节数与 SHA256，全部匹配 `ci-html-status.json` 的四份来源身份。结论来自官方 HTML 原始归档，未从摘要 success 字段直接推导，也未要求在公共 API 限流后重复请求 API。
+
+独立从 `git show` 读取候选的 12 个变更源码/测试文件并重新计算聚合身份，仍为 `0735c39c30a387d68b13110f507823731f11fc696a90c233a4d18498b4fbcdc1`；当前相对该候选的 src、tests、pyproject 和 workflow 差异为空。最终 wheel 重新计算仍为 `f8d92f51317a3b3d6f7466ab1bc38b97a4bd4de6658ab06358580bf1d735c44e`。本地此前核对的 343 文件、441 项回归与 72 次基础旅程因此仍适用于此生产/测试候选。
+
+独立执行 `git ls-remote origin refs/heads/refactor/architecture-foundations`，返回 **`97567b984522cb2cf1da192787f5501e25b838c5`**。精确 CI 候选、已审代码/测试、发行包及核对时远端身份一致；此时后续未提交变化仅为文档和下一切片设计，不构成已验收的新运行能力。
+
+### 全库写锁的已知性能限制与后续责任
+
+已读取 `lock-contention.py/json/log`，确认脚本使用最终包、实际 State/项目写者和同一个控制库，在原 SDK connect 入口注入 18 秒 await 延迟，无真实 RPC 或模型。JSON 与日志结果完全一致：提交 timeout 为 25 秒，另一项目写者在 **15035.54 ms** 后收到 `OperationalError: database is locked`，失败时 revision 保持 1；提交最终 submitted，随后显式同修订重试更新到 2，总耗时 **19600.94 ms**。另以 SQLite `mode=ro` 读取保留的验收库，确认重试后的实际 revision 为 2。本轮没有重跑会写验收目录的探针，也没有把归档中的失败前 revision 当作新的独立运行观测。
+
+这是当前全库写保留对其他项目的可达性能/交互限制，**尚未优化**，不是 72 次快速本地路径已消除争用的证明。数据和修订一致性保持，也没有自动重发未知提交；但不能宣称跨项目写入可及时完成。先前“争用未实测”的保留项现由上述量化证据更新，不能将它继续描述为未知影响。
+
+核对 PLAN、总计划 F3 与活动交付记录：**F3.3d 已列为 F3.4 前的 P0 跟进**，在保存不可变操作意图前保留当前 revision，随后远程等待只持原任务锁；需要另切片验收跨项目写入、同任务并发/不重复、准备与派发中断及修订漂移，不能直接提前释放锁而失去授权快照。责任与验收边界已明确记录，本复核没有将这项未完成工作标为解决。
+
+**F3.3b 的提交/恢复正确性、发行身份及精确两平台 CI 最终独立核对通过；P1/P2 均关闭。** 全库锁限制按 F3.3d 继续负责；真实服务 memo/history/run、模型、六阶段、批准/取消及导出仍须 F3.3c/F3.4 的实际证据。完整 F3 尚未完成，本轮未扩大这些验收范围。

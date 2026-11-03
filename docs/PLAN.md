@@ -37,6 +37,8 @@
 - 原生任务状态：在F3.2精确CI独立收口期间，[F3.3a](delivery/2026-11-03-task-runtime.md)已实现只读task status CLI/API，26项原Transport/SDK协议定向通过；原始spec、run ID及未知/未确认终态均保留。独立源码审查及342文件×两安装、真实服务NOT_FOUND/旧文件不变/无SDK指导通过；完整包回归及精确CI/最终审计待完成（真实存在run的查询留待F3.4）；F3.3b提交和F3.3c批准/取消尚未实施。
 - 原生状态交付：F3.3a[记录](delivery/2026-11-03-task-runtime.md)完成，生产/测试889d9b49已推送且远端一致；816b…wheel342文件×两安装/冻结283、Linux396项/36子测试（19跳过）、实际旧任务NOT_FOUND只读旅程及精确两OS CI41528801888和[独立最终审查](delivery/2026-11-03-task-runtime-read-review.md)通过。真实存在run留待F3.4；当前推进[F3.3b显式提交/恢复](delivery/2026-11-03-task-submission.md)，之后批准/取消和综合旅程，完整F3尚未完成。
 - 任务提交实施：F3.3b[记录](delivery/2026-11-03-task-submission.md)已接CLI/API、创建所有者复用、原准入及写前dispatch检查点；首轮定向/初版发行验证已通过；独立审计两项P1/P2已修源码（竞争归属memo/严格原history JSON），71项源码定向及独立复审通过，两finding关闭；最终f8d92f…包343文件×两安装、441项/36子测试（19跳过）和72次无SDK基础CLI旅程通过，最终归档/精确CI核对中。未知NOT_FOUND不重发，不标完整F3完成。
+- 任务提交交付：F3.3b[记录](delivery/2026-11-03-task-submission.md)完成，97567b9已推送且远端一致；最终f8d92f…包343文件×两安装/冻结283、Linux441项/36子测试（19跳过）、72次无SDK基础CLI/限定性能、精确两OSCI41566783007及[独立最终审查](delivery/2026-11-03-task-submission-review.md)通过。两finding关闭；当前进入[F3.3c1精确批准](delivery/2026-11-03-task-decisions.md)，c2取消、d锁改进及F3.4旅程待完成。
+- 并发跟进：F3.3b最终包的真实共享SQLite锁探针（受控connect延迟18秒）确认其他项目写者15.04秒busy失败、无部分写入，提交后明确重试成功；已将F3.3d修订保留/远程等待分段列入F3.4前P0，保持不可变意图及同任务锁，不凭快速fixture声称无并发影响。
 - 已交付平台范围：原生 Windows 控制面、CLI、项目 / 记忆 / Skill / 资料观察及支持的原生工具；完整六阶段与 Linux 专用工具走 Linux/WSL2。后续仍按实际能力逐项验收。
 - 验证：Windows / Ubuntu CI 41225920073 全部成功；Linux 完整回归 115 passed +36 subtests。两个切片最终独立审查通过；Linux 用户目录 0.2.0 升级和 314 文件身份一致。真实模型 / GPU / winget 空白系统等未验收范围保留在交付记录，不从 CI 推导。
 - 恢复要求：重读本文件及活动切片记录，对照分支、工作区和最近提交；完成核对后继续当前项，不重新做已验收的调研。

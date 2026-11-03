@@ -24,3 +24,12 @@ history查询必须有总预算，不能加载无界历史或因分页未找到�
 - 使用真实原authorize、workflow信号handler/Transport和可控SDK验证被接受、被拒绝及未知；不能把fixture成功当模型或实际服务验收。
 - 取消的running、已terminal、信号丢响应、连接失败、fence未确认及真实外部对账分别记录。性能测量注明CLI启动/SDK/网络/历史范围与分页上限。
 - 最终非editable包/两安装/冻结283文件、相关回归与精确两OSCI各自验收。每段更新PLAN、交付记录和独立审查，再提交推送。
+
+
+## 原生接口探针与实施选择
+
+已在隔离目录实际调用原FileAdapter.authorize和两个workflow信号handler，无Temporal服务/模型：有效human/owner回执通过，expired/revoked/agent/错误role/错误plan五类被原校验器拒绝；approve_plan接收原receipt ID，request_cancel在附加操作摘要时保留原原因并忽略额外关联字段。原始contracts-probe.py/json/log在.ergora/checks/f3-task-decisions/，不是实际信号投递或授权activity验收。SDK1.34支持固定run的signal与分页fetch_history_events；后续恢复使用流式分页、总预算，只在原run历史有精确原信号身份时补投递回执。
+
+F3.3c1拟使用调用者提供的decision_id（合法稳定标识）区分多次明确owner决策，避免过期/撤销后把新的批准悄悄塞进旧意图。CLI approve需要--decision-id，读取/恢复携带相同ID；API以tasks/TASK_ID/approvals/DECISION_ID限定资源。重复同ID只读取原意图/回执；不同ID必须重新提供当前revision、原run、精确plan及确认，生成新的owner回执，而不是自动续期原批准。
+
+审批入口采用两个明确阶段：在当前项目revision保留和非阻塞原任务锁下仅保存不可变意图（无网络）；释放控制库写保留后，以原任务锁执行精确run/plan检查、原回执发布和信号。阶段间中断留下prepared；若其他明确resume先取得任务锁，原调用只能读取其结果/未知状态，不重复信号。准备阶段遇任务忙应明确失败，不能持全库锁等待长远程操作。此处直接采用F3.3d要求，B提交的长锁迁移仍需独立完成，不能从新审批设计推导已修复旧提交。
