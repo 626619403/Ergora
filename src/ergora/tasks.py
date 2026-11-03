@@ -142,8 +142,9 @@ def approve(state: State, project_id: str, task_id: str, decision_id: str, expec
     """Freeze an explicit owner decision, then signal its exact run and plan once."""
     _run_id(run_id)
     _digest(plan_sha256, 'Plan')
-    project, prepared = _approval_prepare(state, project_id, task_id, decision_id, expected_revision,
-                                         'prepare', {'run_id': run_id, 'plan_sha256': plan_sha256}, confirm, timeout)
+    project, prepared = _decision_prepare(state, project_id, expected_revision, reference.task_approval, 'prepare',
+                                         {'task_id': task_id, 'decision_id': decision_id,
+                                          'run_id': run_id, 'plan_sha256': plan_sha256}, confirm, timeout)
     if not prepared['created']:
         return prepared['approval']
     return reference.task_approval(project, state.root, 'dispatch',
@@ -155,8 +156,9 @@ def resume_approve(state: State, project_id: str, task_id: str, decision_id: str
                    intent_sha256: str, *, confirm: bool = False, timeout: int = 20) -> dict:
     """Continue an undispatched decision or find its signal in the original run's history."""
     _digest(intent_sha256, 'Intent')
-    project, prepared = _approval_prepare(state, project_id, task_id, decision_id, expected_revision,
-                                         'prepare-resume', {'intent_sha256': intent_sha256}, confirm, timeout)
+    project, prepared = _decision_prepare(state, project_id, expected_revision, reference.task_approval, 'prepare-resume',
+                                         {'task_id': task_id, 'decision_id': decision_id,
+                                          'intent_sha256': intent_sha256}, confirm, timeout)
     if prepared['status'] == 'requested':
         return prepared
     return reference.task_approval(project, state.root, 'resume',
@@ -164,20 +166,56 @@ def resume_approve(state: State, project_id: str, task_id: str, decision_id: str
                                     'intent_sha256': intent_sha256}, timeout=timeout)
 
 
-def _approval_prepare(state: State, project_id: str, task_id: str, decision_id: str, expected_revision: int,
+def cancellation(state: State, project_id: str, task_id: str, request_id: str) -> dict:
+    """Read a durable cancellation request without querying or signaling its run."""
+    project = _project(state, project_id)
+    return reference.task_cancellation(project, state.root, 'status',
+                                       {'task_id': task_id, 'request_id': request_id}, timeout=20)
+
+
+def cancel(state: State, project_id: str, task_id: str, request_id: str, expected_revision: int,
+           *, run_id: str, reason: str, confirm: bool = False, timeout: int = 20) -> dict:
+    """Request cooperative cancellation once, or record an already-closed run."""
+    _run_id(run_id)
+    if not isinstance(reason, str) or not reason.strip() or len(reason) > 1000:
+        raise ValueError('Cancellation requires a nonempty reason of at most 1000 characters')
+    project, prepared = _decision_prepare(state, project_id, expected_revision, reference.task_cancellation, 'prepare',
+                                         {'task_id': task_id, 'request_id': request_id,
+                                          'run_id': run_id, 'reason': reason}, confirm, timeout)
+    if not prepared['created']:
+        return prepared['cancellation']
+    return reference.task_cancellation(project, state.root, 'dispatch',
+                                       {'task_id': task_id, 'request_id': request_id,
+                                        'intent_sha256': prepared['cancellation']['intent_sha256']}, timeout=timeout)
+
+
+def resume_cancel(state: State, project_id: str, task_id: str, request_id: str, expected_revision: int,
+                   intent_sha256: str, *, confirm: bool = False, timeout: int = 20) -> dict:
+    """Continue only an undispatched request; unknown delivery needs original history."""
+    _digest(intent_sha256, 'Intent')
+    project, prepared = _decision_prepare(state, project_id, expected_revision, reference.task_cancellation, 'prepare-resume',
+                                         {'task_id': task_id, 'request_id': request_id,
+                                          'intent_sha256': intent_sha256}, confirm, timeout)
+    if prepared['status'] in ('requested', 'already_closed'):
+        return prepared
+    return reference.task_cancellation(project, state.root, 'resume',
+                                       {'task_id': task_id, 'request_id': request_id,
+                                        'intent_sha256': intent_sha256}, timeout=timeout)
+
+
+def _decision_prepare(state: State, project_id: str, expected_revision: int, native_operation,
                        operation: str, payload: dict, confirm: bool, timeout: int) -> tuple[dict, dict]:
     if confirm is not True:
-        raise ValueError('Owner approval requires explicit confirmation of the exact plan and original run')
+        raise ValueError('Task decision requires explicit confirmation of the original run and operation')
     if type(timeout) is not int or not 1 <= timeout <= 60:
-        raise ValueError('Task approval timeout must be 1–60 seconds')
+        raise ValueError('Task decision timeout must be 1–60 seconds')
     # Only local intent preparation retains the project revision. The long
     # native phase is authorized by that frozen intent, under its task lock.
     with state.connect() as db:
         db.execute('BEGIN IMMEDIATE')
         project = _project(state, project_id)
         _revision(project, expected_revision)
-        prepared = reference.task_approval(project, state.root, operation,
-                                            {'task_id': task_id, 'decision_id': decision_id, **payload}, timeout=timeout)
+        prepared = native_operation(project, state.root, operation, payload, timeout=timeout)
     return project, prepared
 
 

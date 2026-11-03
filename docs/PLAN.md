@@ -41,7 +41,7 @@
 - 并发跟进：F3.3b最终包的真实共享SQLite锁探针（受控connect延迟18秒）确认其他项目写者15.04秒busy失败、无部分写入，提交后明确重试成功；已将F3.3d修订保留/远程等待分段列入F3.4前P0，保持不可变意图及同任务锁，不凭快速fixture声称无并发影响。
 - 精确批准实施：F3.3c1[记录](delivery/2026-11-03-task-approval.md)已实现CLI/API、稳定decision ID、原owner回执与原run精确signal/history恢复。首轮105项及NOT_FOUND补充7项定向、独立6项/4个真实SDK内存分页探针和[源码审查](delivery/2026-11-03-task-approval-review.md)通过，无finding；最终053212…wheel344文件×两安装/冻结283、Linux477项/36子测试（19跳过）、86CLI与18秒并发探针通过；精确两OS CI和最终审计待完成。准备意图与远程阶段分段，不把requested当批准已采用；c2取消、d提交锁迁移及F3.4仍待完成。
 - 精确批准交付：F3.3c1[记录](delivery/2026-11-03-task-approval.md)完成，b3b7d65已推送且独立远端SHA一致；最终053212…wheel344文件×两安装/冻结283、Linux477项/36子测试（19跳过）、86CLI/18秒并发、精确两OS CI41572513289及[独立最终核对](delivery/2026-11-03-task-approval-review.md)通过，无未解决finding。当前c2取消实施，d锁迁移及F3.4仍待完成。
-- 取消实施：F3.3c2[记录](delivery/2026-11-03-task-cancellation.md)已接CLI/API、原Transport.cancel的实际signal检查点、稳定request ID和原history操作SHA对账；原spec/memo/已提交读取及流式history与c1实际共用。六种闭合状态明确不发新信号，不把requested或already_closed当外部已停；首轮源码联合检查进行中，新的独立审计和发行验收待完成。
+- 取消实施：F3.3c2[记录](delivery/2026-11-03-task-cancellation.md)已接CLI/API、原Transport.cancel的实际signal检查点、稳定request ID和原history操作SHA对账；原spec/memo/已提交读取及流式history与c1实际共用。六种闭合状态明确不发新信号，不把requested或already_closed当外部已停；首轮152项、独立5个SDK分页/21类journal及源码审查通过，无finding；345文件×两安装/冻结283、90CLI和18秒并发、最终Linux522项/36子测试（19跳过）均通过，最终独立核对及精确CI待完成。
 - 已交付平台范围：原生 Windows 控制面、CLI、项目 / 记忆 / Skill / 资料观察及支持的原生工具；完整六阶段与 Linux 专用工具走 Linux/WSL2。后续仍按实际能力逐项验收。
 - 验证：Windows / Ubuntu CI 41225920073 全部成功；Linux 完整回归 115 passed +36 subtests。两个切片最终独立审查通过；Linux 用户目录 0.2.0 升级和 314 文件身份一致。真实模型 / GPU / winget 空白系统等未验收范围保留在交付记录，不从 CI 推导。
 - 恢复要求：重读本文件及活动切片记录，对照分支、工作区和最近提交；完成核对后继续当前项，不重新做已验收的调研。

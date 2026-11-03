@@ -19,6 +19,9 @@ flowchart LR
   Ref --> Approval[reference_task_approval 专用审批进程]
   Approval --> Submission
   Approval --> Transport
+  Ref --> Cancellation[reference_task_cancellation 专用取消进程]
+  Cancellation --> Submission
+  Cancellation --> Transport
   Ref --> Compiler[专用编译子进程]
   Compiler --> Portable[原 portable / contracts]
   Ref --> Projection[专用注册 I/O 子进程]
@@ -46,7 +49,8 @@ flowchart LR
 |正式任务原生运行状态|`reference.task_runtime_status` → 专用`reference_task_runtime`；tasks/CLI/API|登记安装的原Transport.lookup/poll核对原始spec并固定run ID；明确SDK/网络预算和not-found/错误区别，不start/signal/改lease/ledger|
 |正式任务start/本地提交状态/原ID恢复|`reference.task_submission` → 专用`reference_task_submission`；tasks/CLI/API|创建所有者校验七合同；完整原生环境复用原task_action，窄Transport继承只保存dispatch检查点；未知禁止重新start，既有run持久拒绝；原生依赖/全局不进入Web|
 |精确plan批准/投递读取/恢复|`reference.task_approval` → 专用`reference_task_approval`；tasks/CLI/API|复用原创建/提交所有者、严格spec/memo/固定run、原owner receipt和approve_plan；无网络准备后释放控制库，未知只核原history；不新增授权状态机|
-|正式任务result/cancel/export|当前原`agentflow`、`DevelopmentTransport / Runtime / Workflow`|运行事实仍在原runtime，F3.1/F3.2提供本地合同查询与创建/恢复；F3.3a只读查询原生状态，F3.3b接提交/原ID恢复，F3.3c1接精确批准/投递恢复，F3.3c2接取消，不让HTTP或前端直接操作原全局/ledger|
+|取消请求/本地记录/投递恢复|`reference.task_cancellation` → 专用`reference_task_cancellation`；tasks/CLI/API|复用原Transport.cancel、严格原spec/memo/run，实际signal前检查点及操作SHA；闭合明确无信号，unknown仅核分页history，不接管fence/租约|
+|正式任务result/export|当前原`agentflow`、`DevelopmentTransport / Runtime / Workflow`|运行事实仍在原runtime，F3.1/F3.2提供本地合同查询与创建/恢复；F3.3a只读查询原生状态，F3.3b接提交/原ID恢复，F3.3c1接精确批准/投递恢复，F3.3c2接取消，不让HTTP或前端直接操作原全局/ledger|
 
 `reference.ROOT`仍保留给既有Python调用者和身份/兼容测试；生产布局知识只在reference及其专用原生边界。没有删除公共常量或改变CLI响应/退出码。`template_details`是实际Web使用的资源读取接口，没有另造模板存储层。
 

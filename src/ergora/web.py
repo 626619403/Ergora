@@ -89,8 +89,16 @@ class TaskApprovePayload(Payload):
     timeout: int = Field(default=20, strict=True, ge=1, le=60)
 
 
-class TaskResumeApprovalPayload(TaskResumeStartPayload):
+class TaskResumeDecisionPayload(TaskResumeStartPayload):
     confirm: bool = Field(strict=True)
+
+
+class TaskCancelPayload(Payload):
+    revision: int = Field(strict=True, ge=1)
+    run_id: str = Field(min_length=1, max_length=128)
+    reason: str = Field(min_length=1, max_length=1000)
+    confirm: bool = Field(strict=True)
+    timeout: int = Field(default=20, strict=True, ge=1, le=60)
 
 
 class MemoryPayload(RevisionPayload):
@@ -306,9 +314,23 @@ def create_app(home: Path | None = None) -> FastAPI:
                              run_id=body.run_id, plan_sha256=body.plan_sha256, confirm=body.confirm, timeout=body.timeout)
 
     @application.post("/api/projects/{project_id}/tasks/{task_id}/approvals/{decision_id}/resume")
-    def resume_formal_task_approval(project_id: str, task_id: str, decision_id: str, body: TaskResumeApprovalPayload):
+    def resume_formal_task_approval(project_id: str, task_id: str, decision_id: str, body: TaskResumeDecisionPayload):
         return tasks.resume_approve(state, project_id, task_id, decision_id, body.revision,
                                     body.intent_sha256, confirm=body.confirm, timeout=body.timeout)
+
+    @application.get("/api/projects/{project_id}/tasks/{task_id}/cancellations/{request_id}")
+    def formal_task_cancellation(project_id: str, task_id: str, request_id: str):
+        return tasks.cancellation(state, project_id, task_id, request_id)
+
+    @application.post("/api/projects/{project_id}/tasks/{task_id}/cancellations/{request_id}")
+    def cancel_formal_task(project_id: str, task_id: str, request_id: str, body: TaskCancelPayload):
+        return tasks.cancel(state, project_id, task_id, request_id, body.revision,
+                            run_id=body.run_id, reason=body.reason, confirm=body.confirm, timeout=body.timeout)
+
+    @application.post("/api/projects/{project_id}/tasks/{task_id}/cancellations/{request_id}/resume")
+    def resume_formal_task_cancellation(project_id: str, task_id: str, request_id: str, body: TaskResumeDecisionPayload):
+        return tasks.resume_cancel(state, project_id, task_id, request_id, body.revision,
+                                   body.intent_sha256, confirm=body.confirm, timeout=body.timeout)
 
     @application.get("/api/projects/{project_id}/tasks/{task_id}")
     def formal_task(project_id: str, task_id: str):

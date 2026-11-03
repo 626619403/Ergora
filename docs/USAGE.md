@@ -207,7 +207,7 @@ ergora task resume-start my-project TASK_ID --revision 1 --intent-sha256 SUBMISS
 
 意图、派发检查点、回执及适用的所有权拒绝记录位于执行状态目录`ergora/task-submissions/TASK_ID.{intent,attempt,result,rejection}.json`，必须与创建记录、任务目录和原运行状态一起保留。变更操作保留项目修订并共享创建的同ID锁；1–60秒timeout约束客户端工作，父进程另留5秒启动/回收，预检另计。超时只回收提交客户端，实际Agent由持久执行器拥有，不能据此判断已停机。完整环境缺失时明确报错；不自动启动服务或修改执行权限。
 
-API：`POST .../tasks/TASK_ID/start`正文为`revision/creation_sha256/timeout`，`GET .../tasks/TASK_ID/submission`，`POST .../tasks/TASK_ID/resume-start`正文为`revision/intent_sha256/timeout`；写请求沿用同源保护及`X-Ergora-Request: 1`。项目修订保留使用控制库写锁，网络等待期间其他写者会串行等待；超过现有15秒busy预算可能明确失败，应在操作结束后重新读取修订再决定重试，不自动重发未知提交。HTTP成功响应仍须检查status，unknown/rejected不能当作提交成功。取消、导出暂使用参考命令，后续分别接入。
+API：`POST .../tasks/TASK_ID/start`正文为`revision/creation_sha256/timeout`，`GET .../tasks/TASK_ID/submission`，`POST .../tasks/TASK_ID/resume-start`正文为`revision/intent_sha256/timeout`；写请求沿用同源保护及`X-Ergora-Request: 1`。项目修订保留使用控制库写锁，网络等待期间其他写者会串行等待；超过现有15秒busy预算可能明确失败，应在操作结束后重新读取修订再决定重试，不自动重发未知提交。HTTP成功响应仍须检查status，unknown/rejected不能当作提交成功。导出暂使用参考命令，后续接入。
 
 ### 批准精确计划与恢复投递
 
@@ -229,6 +229,26 @@ decision ID是本次owner决策的稳定标识。重复同ID只读取原记录�
 审批操作记录位于执行状态目录`ergora/task-approvals/TASK_ID/DECISION_ID.{intent,attempt,result}.json`，原owner回执在`approvals/owner-UUID.json`；必须与原任务、创建和提交记录一起保留。准备意图时保留项目revision且非阻塞获取原任务锁；网络阶段已释放控制库写锁，只持同任务锁。准备和网络各有1–60秒预算，父进程各另留5秒，本地预检另计；超时后先读记录再决定恢复。
 
 API：GET/POST `.../tasks/TASK_ID/approvals/DECISION_ID`，POST正文为`revision/run_id/plan_sha256/confirm/timeout`；POST同路径`/resume`正文为`revision/intent_sha256/confirm/timeout`。`confirm`必须为true；写请求沿用同源保护及`X-Ergora-Request: 1`。旧参考入口创建/启动的任务继续由原CLI管理，本入口不会采用旧运行。
+
+### 请求取消与恢复未知投递
+
+统一创建且已保存原提交回执的任务，可固定原run请求协作取消。与批准入口相同，使用当前项目修订、稳定请求ID和明确确认；原因非空且最多1000字符：
+
+```bash
+ergora task cancel my-project TASK_ID --request-id stop-one --revision 1 --run-id RUN_ID --reason 'Owner requested stop' --confirm --timeout 20
+ergora task cancellation my-project TASK_ID stop-one
+# 中断后先读cancellation，用其原intent_sha256恢复同一请求：
+ergora task resume-cancel my-project TASK_ID stop-one --revision 1 --intent-sha256 CANCELLATION_SHA --confirm --timeout 20
+ergora task status my-project TASK_ID --run-id RUN_ID --timeout 20
+```
+
+`cancellation`只检查本地记录，不连接Temporal。`prepared`尚无派发检查点，明确恢复可继续原cancel；`unknown`已有检查点但投递未确认，只能沿原run history核对包含本次操作SHA的完整signal，不能凭相同原因认领其他请求，也不会重发。重复同ID保留原原因/actor，不生成第二个请求；不要用换ID来绕过未知，先核原运行和外部作业事实。
+
+`requested`和`cancel_requested: true`仅表示signal已应答或原history有对应事件。`already_closed`表示原run在本次检查时已闭合，`cancel_requested: false`、`signal_delivery: not_sent`明确本次没有新信号；重复读取是已保存事实，不是新的实时查询。两种状态的CLI变更返回0，仍须核对状态字段。`cancellation_confirmed: null`和`execution_success: null`不表示已停机；用`task status --run-id`核对原phase/outcome。CANCEL_UNCONFIRMED/NEEDS_RECONCILIATION要继续按原fence和外部作业对账，不能删ledger、terminate或自动释放未确认租约。
+
+意图/attempt/result位于执行状态目录`ergora/task-cancellations/TASK_ID/REQUEST_ID.*.json`，须与原任务、创建及提交记录保留。准备阶段在当前revision下非阻塞获取原任务锁，远程阶段已释放控制库写锁；每阶段1–60秒预算，父进程各另留5秒，本地预检另计。Windows使用已登记Linux/WSL2完整运行时；该本地入口不是团队权限系统。
+
+API为GET/POST `.../tasks/TASK_ID/cancellations/REQUEST_ID`，POST正文`revision/run_id/reason/confirm/timeout`；POST同路径`/resume`使用`revision/intent_sha256/confirm/timeout`。严格确认必须为true，写请求沿用同源保护及`X-Ergora-Request: 1`。旧入口任务仍由原CLI管理。
 
 ### 显式服务管理
 

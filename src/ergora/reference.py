@@ -353,6 +353,11 @@ def task_approval(project: dict, home: Path, operation: str, payload: dict, *, t
     return _task_operation(project, home, 'approval', operation, payload, timeout)
 
 
+def task_cancellation(project: dict, home: Path, operation: str, payload: dict, *, timeout: int) -> dict:
+    """Use the native cancellation guard and preserve signal delivery uncertainty."""
+    return _task_operation(project, home, 'cancellation', operation, payload, timeout)
+
+
 def _task_operation(project: dict, home: Path, component: str, operation: str, payload: dict, timeout: int) -> dict:
     if sys.platform != 'linux':
         raise ValueError(f'Formal task {component} requires Linux; use the registered Linux runtime in WSL2')

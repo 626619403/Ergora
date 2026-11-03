@@ -135,6 +135,25 @@ def parser() -> argparse.ArgumentParser:
             operation.add_argument("--intent-sha256", required=True)
             operation.add_argument("--confirm", action="store_true", required=True)
             operation.add_argument("--timeout", type=int, default=20)
+    cancelling = operations.add_parser("cancel", help="Request cooperative cancellation for the original native run")
+    cancelling.add_argument("project")
+    cancelling.add_argument("task_id")
+    cancelling.add_argument("--request-id", required=True)
+    cancelling.add_argument("--revision", type=int, required=True)
+    cancelling.add_argument("--run-id", required=True)
+    cancelling.add_argument("--reason", required=True)
+    cancelling.add_argument("--confirm", action="store_true", required=True)
+    cancelling.add_argument("--timeout", type=int, default=20)
+    for name in ("cancellation", "resume-cancel"):
+        operation = operations.add_parser(name)
+        operation.add_argument("project")
+        operation.add_argument("task_id")
+        operation.add_argument("request_id")
+        if name == "resume-cancel":
+            operation.add_argument("--revision", type=int, required=True)
+            operation.add_argument("--intent-sha256", required=True)
+            operation.add_argument("--confirm", action="store_true", required=True)
+            operation.add_argument("--timeout", type=int, default=20)
     service = commands.add_parser("services", help="Explicit selected-service Supervisor operations (Linux/WSL2)")
     operations = service.add_subparsers(dest="operation", required=True)
     status = operations.add_parser("status")
@@ -385,6 +404,16 @@ def main(argv: list[str] | None = None) -> int:
                                                args.intent_sha256, confirm=args.confirm, timeout=args.timeout))
                 print(json.dumps(output, ensure_ascii=False, indent=2))
                 return 0 if output["status"] == "requested" else 1
+            elif args.operation == "cancellation":
+                output = tasks.cancellation(state, args.project, args.task_id, args.request_id)
+            elif args.operation in ("cancel", "resume-cancel"):
+                output = (tasks.cancel(state, args.project, args.task_id, args.request_id, args.revision,
+                                       run_id=args.run_id, reason=args.reason, confirm=args.confirm, timeout=args.timeout)
+                          if args.operation == "cancel" else
+                          tasks.resume_cancel(state, args.project, args.task_id, args.request_id, args.revision,
+                                              args.intent_sha256, confirm=args.confirm, timeout=args.timeout))
+                print(json.dumps(output, ensure_ascii=False, indent=2))
+                return 0 if output["status"] in ("requested", "already_closed") else 1
             else:
                 definition = json.loads(args.definition.read_text(encoding="utf-8-sig"))
                 output = (tasks.preview(state, args.project, definition, args.revision) if args.operation == "preview"

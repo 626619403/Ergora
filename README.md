@@ -72,7 +72,7 @@ flowchart LR
 |训练证据比较|perfctl + 可信 runner|重新计算统计与门禁；项目负责实际训练环境|
 |安装与依赖|Bash、uv、Python、Node.js|安装器固定工具版本与 Python 依赖|
 
-已有统一注册项目可运行 `ergora task list PROJECT` / `ergora task show PROJECT TASK_ID` 读取正式开发任务的冻结合同与绑定，详见[只读任务入口](docs/USAGE.md#读取正式任务合同)。该入口不查询Temporal运行状态；可用 `task preview/create/creation/resume-create` [显式创建和恢复任务](docs/USAGE.md#预览与创建正式任务)，`task status` [只读查询原生运行事实](docs/USAGE.md#查询正式任务运行状态)，`task start/submission/resume-start` [显式提交与恢复](docs/USAGE.md#提交正式任务与恢复未知结果)，`task approve/approval/resume-approve` [批准精确计划并恢复投递](docs/USAGE.md#批准精确计划与恢复投递)；取消和导出继续使用参考CLI。
+已有统一注册项目可运行 `ergora task list PROJECT` / `ergora task show PROJECT TASK_ID` 读取正式开发任务的冻结合同与绑定，详见[只读任务入口](docs/USAGE.md#读取正式任务合同)。该入口不查询Temporal运行状态；可用 `task preview/create/creation/resume-create` [显式创建和恢复任务](docs/USAGE.md#预览与创建正式任务)，`task status` [只读查询原生运行事实](docs/USAGE.md#查询正式任务运行状态)，`task start/submission/resume-start` [显式提交与恢复](docs/USAGE.md#提交正式任务与恢复未知结果)，`task approve/approval/resume-approve` [批准精确计划并恢复投递](docs/USAGE.md#批准精确计划与恢复投递)，`task cancel/cancellation/resume-cancel` [请求取消和核对投递](docs/USAGE.md#请求取消与恢复未知投递)；导出继续使用参考CLI。
 
 Ergora 控制台提供项目总览、工具绑定、记忆修订、候选比较 / 评价 / 采用、资料提案和受约束的工作单元关系编辑。正式任务的运行历史、审批和训练观测继续使用参考 CLI、Temporal UI 和 MLflow；页面不会自行产生正式验收状态。
 

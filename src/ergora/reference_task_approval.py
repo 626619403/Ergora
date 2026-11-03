@@ -11,6 +11,7 @@ import time
 import uuid
 
 from .reference_task_submission import _Submission
+from .reference_task_runtime import find_signal_event
 from .state import file_lock
 
 
@@ -27,12 +28,7 @@ class _Approval:
         self.result_path = self.creation.path(prefix + '.result.json')
 
     def prepare(self) -> None:
-        self.submission.prepare()
-        self.start_intent = self.submission.load()
-        status = self.submission.status(self.start_intent)
-        if status['status'] != 'submitted':
-            raise ValueError('Approval requires the original recorded submission; inspect task submission first')
-        self.run_id = status['run_id']
+        self.start_intent, self.run_id = self.submission.submitted()
         self.spec = self.submission.spec
 
     @staticmethod
@@ -130,16 +126,10 @@ class _Approval:
 
     async def reconcile(self, intent: dict) -> dict:
         handle, _, converter = await self.submission.lookup_run(self.start_intent, intent['run_id'])
-        async for event in handle.fetch_history_events(page_size=100, rpc_timeout=timedelta(seconds=20)):
-            if not event.HasField('workflow_execution_signaled_event_attributes'):
-                continue
-            signal = event.workflow_execution_signaled_event_attributes
-            if signal.signal_name != 'approve_plan':
-                continue
-            values = await converter.decode(signal.input.payloads, [dict])
-            if self.sha(values) == self.sha([self.signal(intent)]):
-                self.core.write(self.result_path, self.receipt(intent, 'history', event.event_id))
-                return self.status(intent)
+        event_id = await find_signal_event(handle, converter, 'approve_plan', self.signal(intent))
+        if event_id is not None:
+            self.core.write(self.result_path, self.receipt(intent, 'history', event_id))
+            return self.status(intent)
         return {**self.status(intent), 'reconciliation': 'signal_not_found',
                 'instruction': 'Delivery remains uncertain; query the original run, do not resend this decision'}
 

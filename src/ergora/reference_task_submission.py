@@ -48,6 +48,15 @@ class _Submission:
             raise ValueError('Submission records have no original intent; reconcile before starting')
         return record
 
+    def submitted(self) -> tuple[dict, str]:
+        """Load the immutable original submission required for run-bound decisions."""
+        self.prepare()
+        intent = self.load()
+        status = self.status(intent)
+        if status['status'] != 'submitted':
+            raise ValueError('Operation requires the original recorded submission; inspect task submission first')
+        return intent, status['run_id']
+
     def attempt(self, intent: dict) -> dict:
         return {'schema_version': 1, 'intent_sha256': self.sha(intent),
                 'workflow_id': intent['workflow_id'], 'spec_sha256': intent['spec_sha256']}
@@ -162,12 +171,15 @@ class _Submission:
         client = await connect()
         transport = DevelopmentTransport(VerifiedSpecClient(client, self.spec), task_queue())
         handle, description = await transport.lookup(self.spec, run_id)
+        await self.verify_run_owner(intent, description)
+        return handle, description, client.data_converter
+
+    async def verify_run_owner(self, intent: dict, description) -> None:
         # Memo is decoded from the describe response, with no extra RPC. The
         # fixed native workflow never upserts it. This associates recovery with
         # our original start even if saving a known conflict's rejection failed.
         if (await description.memo()).get(_MEMO_KEY) != self.sha(intent):
             raise ValueError('Workflow has no matching submission memo; its ownership remains unconfirmed')
-        return handle, description, client.data_converter
 
     async def reconcile(self, intent: dict) -> dict:
         from dev_platform.runtime import RuntimeNotFound

@@ -1,6 +1,6 @@
 # F3.3c：精确批准、取消与原运行对账
 
-日期：2026-11-03。本文件保留决策设计；c1精确批准现已实现、定向验证，独立审查和最终发行待完成，见[批准记录](2026-11-03-task-approval.md)。c2取消尚待实施。F3.3b已完成修正版发行/CI收口，依赖其精确创建/提交意图、原run回执、严格原始输入与memo归属校验。
+日期：2026-11-03。本文件保留决策设计；c1精确批准现已完成发行、精确CI和独立最终核对，见[批准记录](2026-11-03-task-approval.md)。c2取消已进入独立源码验证/审查，见[取消记录](2026-11-03-task-cancellation.md)。F3.3b已完成修正版发行/CI收口，依赖其精确创建/提交意图、原run回执、严格原始输入与memo归属校验。
 
 ## 分段
 
@@ -38,4 +38,4 @@ F3.3c1拟使用调用者提供的decision_id（合法稳定标识）区分多次
 
 原`DevelopmentTransport.cancel`先按固定run核原spec，仅在description为RUNNING时发送`request_cancel`；已闭合时直接返回None。统一入口不能仅凭该返回值报告“已发送取消”。本段将复用原cancel，通过专用边界识别实际信号调用、保存写前attempt并附加已探针确认兼容的`ergora_operation_sha256`关联字段；原handler保留request/reason语义。已闭合回执必须明确没有新信号，且不把Temporal闭合推导为外部进程已停。
 
-预定CLI为`task cancel ... --request-id ID --revision N --run-id RUN_ID --reason TEXT --confirm`、`task cancellation ... ID`、`task resume-cancel ... ID --revision N --intent-sha256 SHA --confirm`；API资源为`tasks/TASK_ID/cancellations/REQUEST_ID`及`/resume`。request ID表示稳定取消请求，原因沿原限制非空且最多1000字符。意图固定原run/提交/spec/原因/actor，重复请求不改变原因或重发；prepared明确恢复，unknown仅在原run history匹配包含本次操作SHA的精确payload后补投递回执。CANCEL_UNCONFIRMED/NEEDS_RECONCILIATION及原fence/租约的责任保持不变。上述仍是实施设计，尚无c2生产代码或验收结论。
+预定CLI为`task cancel ... --request-id ID --revision N --run-id RUN_ID --reason TEXT --confirm`、`task cancellation ... ID`、`task resume-cancel ... ID --revision N --intent-sha256 SHA --confirm`；API资源为`tasks/TASK_ID/cancellations/REQUEST_ID`及`/resume`。request ID表示稳定取消请求，原因沿原限制非空且最多1000字符。意图固定原run/提交/spec/原因/actor，重复请求不改变原因或重发；prepared明确恢复，unknown仅在原run history匹配包含本次操作SHA的精确payload后补投递回执。CANCEL_UNCONFIRMED/NEEDS_RECONCILIATION及原fence/租约的责任保持不变。以上设计现已在c2工作区实现、首轮联合源码152项通过；独立审计和最终发行仍待完成，具体状态以取消记录为准。
