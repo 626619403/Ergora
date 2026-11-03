@@ -154,6 +154,24 @@ def parser() -> argparse.ArgumentParser:
             operation.add_argument("--intent-sha256", required=True)
             operation.add_argument("--confirm", action="store_true", required=True)
             operation.add_argument("--timeout", type=int, default=20)
+    exporting = operations.add_parser("export", help="Export an exact reviewed candidate to a local branch")
+    exporting.add_argument("project")
+    exporting.add_argument("task_id")
+    exporting.add_argument("--revision", type=int, required=True)
+    exporting.add_argument("--run-id", required=True)
+    exporting.add_argument("--candidate-sha", required=True)
+    exporting.add_argument("--branch", required=True)
+    exporting.add_argument("--confirm", action="store_true", required=True)
+    exporting.add_argument("--timeout", type=int, default=20)
+    for name in ("export-status", "resume-export"):
+        operation = operations.add_parser(name)
+        operation.add_argument("project")
+        operation.add_argument("task_id")
+        if name == "resume-export":
+            operation.add_argument("--revision", type=int, required=True)
+            operation.add_argument("--intent-sha256", required=True)
+            operation.add_argument("--confirm", action="store_true", required=True)
+            operation.add_argument("--timeout", type=int, default=20)
     service = commands.add_parser("services", help="Explicit selected-service Supervisor operations (Linux/WSL2)")
     operations = service.add_subparsers(dest="operation", required=True)
     status = operations.add_parser("status")
@@ -394,6 +412,17 @@ def main(argv: list[str] | None = None) -> int:
                           tasks.resume_start(state, args.project, args.task_id, args.revision, args.intent_sha256, timeout=args.timeout))
                 print(json.dumps(output, ensure_ascii=False, indent=2))
                 return 0 if output["status"] == "submitted" else 1
+            elif args.operation == "export-status":
+                output = tasks.export_status(state, args.project, args.task_id)
+            elif args.operation in ("export", "resume-export"):
+                output = (tasks.export(state, args.project, args.task_id, args.revision,
+                                       run_id=args.run_id, candidate_sha=args.candidate_sha, branch=args.branch,
+                                       confirm=args.confirm, timeout=args.timeout)
+                          if args.operation == "export" else
+                          tasks.resume_export(state, args.project, args.task_id, args.revision,
+                                              args.intent_sha256, confirm=args.confirm, timeout=args.timeout))
+                print(json.dumps(output, ensure_ascii=False, indent=2))
+                return 0 if output["status"] == "exported" else 1
             elif args.operation == "approval":
                 output = tasks.approval(state, args.project, args.task_id, args.decision_id)
             elif args.operation in ("approve", "resume-approve"):

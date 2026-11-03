@@ -358,6 +358,11 @@ def task_cancellation(project: dict, home: Path, operation: str, payload: dict, 
     return _task_operation(project, home, 'cancellation', operation, payload, timeout)
 
 
+def task_export(project: dict, home: Path, operation: str, payload: dict, *, timeout: int) -> dict:
+    """Export the original run's candidate through its recoverable native boundary."""
+    return _task_operation(project, home, 'export', operation, payload, timeout)
+
+
 def _task_operation(project: dict, home: Path, component: str, operation: str, payload: dict, timeout: int) -> dict:
     if sys.platform != 'linux':
         raise ValueError(f'Formal task {component} requires Linux; use the registered Linux runtime in WSL2')

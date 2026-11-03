@@ -101,6 +101,15 @@ class TaskCancelPayload(Payload):
     timeout: int = Field(default=20, strict=True, ge=1, le=60)
 
 
+class TaskExportPayload(Payload):
+    revision: int = Field(strict=True, ge=1)
+    run_id: str = Field(min_length=1, max_length=128)
+    candidate_sha: str = Field(pattern="^(?:[0-9a-f]{40}|[0-9a-f]{64})$")
+    branch: str = Field(min_length=1, max_length=1024)
+    confirm: bool = Field(strict=True)
+    timeout: int = Field(default=20, strict=True, ge=1, le=60)
+
+
 class MemoryPayload(RevisionPayload):
     revision: int = 0
     text: str
@@ -331,6 +340,21 @@ def create_app(home: Path | None = None) -> FastAPI:
     def resume_formal_task_cancellation(project_id: str, task_id: str, request_id: str, body: TaskResumeDecisionPayload):
         return tasks.resume_cancel(state, project_id, task_id, request_id, body.revision,
                                    body.intent_sha256, confirm=body.confirm, timeout=body.timeout)
+
+    @application.get("/api/projects/{project_id}/tasks/{task_id}/export")
+    def formal_task_export(project_id: str, task_id: str):
+        return tasks.export_status(state, project_id, task_id)
+
+    @application.post("/api/projects/{project_id}/tasks/{task_id}/export")
+    def export_formal_task(project_id: str, task_id: str, body: TaskExportPayload):
+        return tasks.export(state, project_id, task_id, body.revision, run_id=body.run_id,
+                            candidate_sha=body.candidate_sha, branch=body.branch,
+                            confirm=body.confirm, timeout=body.timeout)
+
+    @application.post("/api/projects/{project_id}/tasks/{task_id}/export/resume")
+    def resume_formal_task_export(project_id: str, task_id: str, body: TaskResumeDecisionPayload):
+        return tasks.resume_export(state, project_id, task_id, body.revision, body.intent_sha256,
+                                   confirm=body.confirm, timeout=body.timeout)
 
     @application.get("/api/projects/{project_id}/tasks/{task_id}")
     def formal_task(project_id: str, task_id: str):

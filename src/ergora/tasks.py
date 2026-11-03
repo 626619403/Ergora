@@ -211,6 +211,41 @@ def resume_cancel(state: State, project_id: str, task_id: str, request_id: str, 
                                         'intent_sha256': intent_sha256}, timeout=timeout)
 
 
+def export_status(state: State, project_id: str, task_id: str) -> dict:
+    """Read the saved local export, without querying the run or changing Git refs."""
+    project = _project(state, project_id)
+    return reference.task_export(project, state.root, 'status', {'task_id': task_id}, timeout=20)
+
+
+def export(state: State, project_id: str, task_id: str, expected_revision: int,
+           *, run_id: str, candidate_sha: str, branch: str, confirm: bool = False, timeout: int = 20) -> dict:
+    """Confirm one original run, candidate and target branch before local export."""
+    _run_id(run_id)
+    if not isinstance(candidate_sha, str) or not re.fullmatch(r'(?:[0-9a-f]{40}|[0-9a-f]{64})', candidate_sha):
+        raise ValueError('Export requires the exact full candidate commit SHA')
+    if not isinstance(branch, str) or not 1 <= len(branch) <= 1024:
+        raise ValueError('Export requires a nonempty branch of at most 1024 characters')
+    project, prepared = _decision_prepare(state, project_id, expected_revision, reference.task_export, 'prepare',
+                                         {'task_id': task_id, 'run_id': run_id,
+                                          'candidate_sha': candidate_sha, 'branch': branch}, confirm, timeout)
+    if not prepared['created']:
+        return prepared['export']
+    return reference.task_export(project, state.root, 'dispatch',
+                                 {'task_id': task_id, 'intent_sha256': prepared['export']['intent_sha256']}, timeout=timeout)
+
+
+def resume_export(state: State, project_id: str, task_id: str, expected_revision: int,
+                  intent_sha256: str, *, confirm: bool = False, timeout: int = 20) -> dict:
+    """Continue only a prepared export; uncertain changes require its existing ref."""
+    _digest(intent_sha256, 'Intent')
+    project, prepared = _decision_prepare(state, project_id, expected_revision, reference.task_export, 'prepare-resume',
+                                         {'task_id': task_id, 'intent_sha256': intent_sha256}, confirm, timeout)
+    if prepared['status'] == 'exported':
+        return prepared
+    return reference.task_export(project, state.root, 'resume',
+                                 {'task_id': task_id, 'intent_sha256': intent_sha256}, timeout=timeout)
+
+
 def _decision_prepare(state: State, project_id: str, expected_revision: int, native_operation,
                        operation: str, payload: dict, confirm: bool, timeout: int) -> tuple[dict, dict]:
     if confirm is not True:
