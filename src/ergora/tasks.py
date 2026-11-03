@@ -123,11 +123,19 @@ def _submission(state: State, project_id: str, task_id: str, expected_revision: 
                 operation: str, payload: dict, timeout: int) -> dict:
     if type(timeout) is not int or not 1 <= timeout <= 60:
         raise ValueError('Task submission timeout must be 1–60 seconds')
-    with state.connect() as db:
-        db.execute('BEGIN IMMEDIATE')
-        project = _project(state, project_id)
-        _revision(project, expected_revision)
-        return reference.task_submission(project, state.root, operation, {'task_id': task_id, **payload}, timeout=timeout)
+    project, prepared = _native_prepare(state, project_id, expected_revision, reference.task_submission,
+                                        'prepare' if operation == 'start' else 'prepare-resume',
+                                        {'task_id': task_id, **payload}, timeout)
+    if operation == 'start':
+        status = prepared['submission']
+        if not prepared['created']:
+            return status
+    else:
+        status = prepared
+        if status['status'] in ('submitted', 'rejected'):
+            return status
+    return reference.task_submission(project, state.root, 'dispatch' if operation == 'start' else 'resume',
+                                     {'task_id': task_id, 'intent_sha256': status['intent_sha256']}, timeout=timeout)
 
 
 def approval(state: State, project_id: str, task_id: str, decision_id: str) -> dict:
@@ -209,6 +217,11 @@ def _decision_prepare(state: State, project_id: str, expected_revision: int, nat
         raise ValueError('Task decision requires explicit confirmation of the original run and operation')
     if type(timeout) is not int or not 1 <= timeout <= 60:
         raise ValueError('Task decision timeout must be 1–60 seconds')
+    return _native_prepare(state, project_id, expected_revision, native_operation, operation, payload, timeout)
+
+
+def _native_prepare(state: State, project_id: str, expected_revision: int, native_operation,
+                     operation: str, payload: dict, timeout: int) -> tuple[dict, dict]:
     # Only local intent preparation retains the project revision. The long
     # native phase is authorized by that frozen intent, under its task lock.
     with state.connect() as db:

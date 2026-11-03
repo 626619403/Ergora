@@ -197,17 +197,16 @@ class _Submission:
         if operation == 'status':
             self.prepare()
             return self.status(self.load())
-        # Share creation's per-task lock so publication and native operations
-        # cannot observe one another halfway. Project revision is reserved by
-        # the parent use case; all native writes belong to this client process.
-        with file_lock(self.creation.lock_path):
+        preparing = operation in ('prepare', 'prepare-resume')
+        # Never wait for a remote task lock while the parent reserves the DB.
+        with file_lock(self.creation.lock_path, blocking=not preparing):
             self.prepare()
             intent = self.load()
-            if operation == 'start':
+            if operation == 'prepare':
                 if self.payload['creation_sha256'] != self.expected['creation_sha256']:
                     raise ValueError('Creation intent digest changed; inspect creation before starting')
                 if intent is not None:
-                    return self.status(intent)
+                    return {'created': False, 'submission': self.status(intent)}
                 for path in (self.creation.target / 'cli-ingress.json',
                              self.creation.path('requests/' + self.creation.task_id),
                              self.creation.path('receipts/' + self.creation.task_id)):
@@ -215,16 +214,18 @@ class _Submission:
                         raise ValueError('Native admission or stage records already exist; legacy runs cannot be adopted')
                 intent = self.expected
                 self.core.write(self.intent_path, intent)
-            elif operation == 'resume':
-                if intent is None or self.payload['intent_sha256'] != self.sha(intent):
-                    raise ValueError('Resume requires the exact original submission intent digest')
-                status = self.status(intent)
-                if status['status'] in ('submitted', 'rejected'):
-                    return status
-                if status['attempt_saved']:
-                    return await self.reconcile(intent)
-            else:
+                return {'created': True, 'submission': self.status(intent)}
+            if intent is None or self.payload['intent_sha256'] != self.sha(intent):
+                raise ValueError('Resume requires the exact original submission intent digest')
+            status = self.status(intent)
+            if operation == 'prepare-resume':
+                return status
+            if operation not in ('dispatch', 'resume'):
                 raise ValueError('Unsupported task submission operation')
+            if status['status'] in ('submitted', 'rejected'):
+                return status
+            if status['attempt_saved']:
+                return await self.reconcile(intent) if operation == 'resume' else status
             return await self.dispatch(intent)
 
 
@@ -234,7 +235,7 @@ def main() -> None:
 
     try:
         payload = json.load(sys.stdin)
-        if payload['operation'] != 'status':
+        if payload['operation'] not in ('status', 'prepare', 'prepare-resume'):
             os.environ.update(environment())
         result = asyncio.run(asyncio.wait_for(_Submission(payload).run(), payload['timeout']))
         print(json.dumps(result, ensure_ascii=False, allow_nan=False))

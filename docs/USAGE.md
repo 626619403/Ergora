@@ -171,7 +171,7 @@ preview只在自动清理的临时目录调用原编译器，不写真实任务�
 
 `creation.status` 为 `not_recorded / pending / published / conflict`，只描述本地文件发布。`runtime_status: not_queried` 和 `execution_started_by_operation: false` 表示本次操作未查询或启动工作流，不能据此推断该任务的实际运行状态。合同逐文件最多1MiB；意图上限16MiB。比较使用原生规范JSON内容摘要，保留等价既有文件的字节。意图及回执位于登记的执行状态目录 `ergora/task-creations/TASK_ID.intent.json` 与 `.result.json`，必须连同原任务目录保留；Ergora控制库的单独备份不包含执行状态目录。
 
-发生中断先查creation，再以明确的原意图摘要恢复；恢复不重新编译，项目绑定改变后仍保留原角色快照。冲突文件保留并报错，不自动覆盖或重建历史。项目配置投影或执行目录发生漂移需要先修复原登记；切换执行目录不会自动迁移旧任务。写操作串行保留项目修订并持有同ID文件锁，单次原生进程预算30秒；超时后先查询原意图，不自动重试。
+发生中断先查creation，再以明确的原意图摘要恢复；恢复不重新编译，项目绑定改变后仍保留原角色快照。冲突文件保留并报错，不自动覆盖或重建历史。项目配置投影或执行目录发生漂移需要先修复原登记；切换执行目录不会自动迁移旧任务。写操作串行保留项目修订并非阻塞取得同ID文件锁，任务正忙时明确返回busy；单次原生进程预算30秒；超时后先查询原意图，不自动重试。
 
 对应API为 `POST /api/projects/ID/tasks/preview`（`definition/revision`）、`POST /api/projects/ID/tasks`（加`preview_sha256`）、`GET .../tasks/TASK_ID/creation`、`POST .../tasks/TASK_ID/resume-create`（`revision/intent_sha256`）；写请求沿用本地同源限制及 `X-Ergora-Request: 1`。预览与创建支持Linux/Windows本地文件合同；完整六阶段执行仍使用Linux/WSL2和[正式执行手册](AGENT_BACKENDS.md)。
 
@@ -205,9 +205,9 @@ ergora task resume-start my-project TASK_ID --revision 1 --intent-sha256 SUBMISS
 
 先保存不可变意图，再走原准入/claim；实际start之前保存attempt，最后保存原生回执。prepared可通过明确resume重走准入、复用同一租约；unknown只能沿原workflow ID查询原始输入并补回执，即使NOT_FOUND也不能重发。检查点写入后、实际RPC前崩溃也保留unknown，需人工对账。发现既有run时拒绝接管，后续历史消失也不会自动重新开始。原start在Temporal memo中关联本次提交意图摘要，未知恢复还会核对该标记；没有或不同的标记不能被采用为本次提交。提交竞争返回AlreadyStarted会持久拒绝，不采用其他入口的run。原始输入按规范JSON摘要精确比较，true/1/1.0不混淆。原始输入不一致、RPC失败、合同/登记漂移均明确报错，不换任务ID绕过未知状态，不释放租约。已保存回执的重复操作继续返回原run ID。
 
-意图、派发检查点、回执及适用的所有权拒绝记录位于执行状态目录`ergora/task-submissions/TASK_ID.{intent,attempt,result,rejection}.json`，必须与创建记录、任务目录和原运行状态一起保留。变更操作保留项目修订并共享创建的同ID锁；1–60秒timeout约束客户端工作，父进程另留5秒启动/回收，预检另计。超时只回收提交客户端，实际Agent由持久执行器拥有，不能据此判断已停机。完整环境缺失时明确报错；不自动启动服务或修改执行权限。
+意图、派发检查点、回执及适用的所有权拒绝记录位于执行状态目录`ergora/task-submissions/TASK_ID.{intent,attempt,result,rejection}.json`，必须与创建记录、任务目录和原运行状态一起保留。准备阶段在当前项目修订保留下非阻塞取得原同ID锁，仅保存意图；随后释放控制库写锁，网络阶段只持原任务锁。1–60秒timeout分别约束准备和网络阶段，父进程各另留5秒启动/回收，预检另计。超时只回收提交客户端，实际Agent由持久执行器拥有，不能据此判断已停机。完整环境缺失时明确报错；不自动启动服务或修改执行权限。
 
-API：`POST .../tasks/TASK_ID/start`正文为`revision/creation_sha256/timeout`，`GET .../tasks/TASK_ID/submission`，`POST .../tasks/TASK_ID/resume-start`正文为`revision/intent_sha256/timeout`；写请求沿用同源保护及`X-Ergora-Request: 1`。项目修订保留使用控制库写锁，网络等待期间其他写者会串行等待；超过现有15秒busy预算可能明确失败，应在操作结束后重新读取修订再决定重试，不自动重发未知提交。HTTP成功响应仍须检查status，unknown/rejected不能当作提交成功。导出暂使用参考命令，后续接入。
+API：`POST .../tasks/TASK_ID/start`正文为`revision/creation_sha256/timeout`，`GET .../tasks/TASK_ID/submission`，`POST .../tasks/TASK_ID/resume-start`正文为`revision/intent_sha256/timeout`；写请求沿用同源保护及`X-Ergora-Request: 1`。同任务并发准备或创建/恢复创建遇活跃任务锁时及时报busy；并发读取也可能取得prepared/unknown快照；无需等待另一请求完成才返回。操作结束后读取submission及当前项目修订，再决定是否明确resume；重复start不隐式重试未派发准入，unknown不重发。其他项目不会因本次网络等待而被持续占用控制库写锁。HTTP成功响应仍须检查status，unknown/rejected不能当作提交成功。导出暂使用参考命令，后续接入。
 
 ### 批准精确计划与恢复投递
 

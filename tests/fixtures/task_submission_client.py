@@ -1,5 +1,6 @@
 """Run native admission and transport against a durable, controllable SDK port."""
 
+import asyncio
 import io
 import json
 import os
@@ -35,6 +36,10 @@ def report():
 
 
 doctor.report = report
+if scenario == 'environment-blocked':
+    def denied_environment():
+        raise core.Blocked('Fixture connection environment denied')
+    core.environment = denied_environment
 if scenario == 'spec-read-drift':
     original_spec = core.task_spec
     def drifted_spec(task_id):
@@ -99,6 +104,8 @@ class Client:
 
 async def connect():
     log('connect')
+    if scenario == 'slow-connect':
+        await asyncio.sleep(3)
     if scenario == 'connect-blocked':
         raise OSError('Fixture Temporal service is offline')
     return Client()

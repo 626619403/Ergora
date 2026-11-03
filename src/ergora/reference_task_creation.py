@@ -233,7 +233,8 @@ class _Creation:
         elif operation != 'resume':
             raise ValueError('Unsupported task creation operation')
         self.lock_path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        with file_lock(self.lock_path):
+        # Publication must not wait for a remote operation while holding the control DB.
+        with file_lock(self.lock_path, blocking=False):
             saved = self.load()
             if operation == 'resume':
                 if saved is None:

@@ -149,9 +149,22 @@ def test_each_interruption_recovers_without_reissuing_uncertain_start(submitted_
 
 
 def test_parallel_and_lost_parent_response_keep_the_original_receipt(submitted_creation,native_client,monkeypatch):
+    def concurrent_start(_):
+        try:
+            return _start(submitted_creation)
+        except ValueError as error:
+            assert any(part in str(error) for part in ('temporarily unavailable','locked','would block'))
+            return None
     with ThreadPoolExecutor(max_workers=2) as pool:
-        outcomes=list(pool.map(lambda _: _start(submitted_creation),range(2)))
-    assert outcomes[0]==outcomes[1] and _calls(submitted_creation).count('start')==1
+        outcomes=list(pool.map(concurrent_start,range(2)))
+    completed=_status(submitted_creation)
+    assert completed['status']=='submitted' and _calls(submitted_creation).count('start')==1
+    assert any(result is not None and result['status']=='submitted' for result in outcomes)
+    for observed in filter(None,outcomes):
+        assert observed['status'] in ('prepared','unknown','submitted')
+        assert observed['intent_sha256']==completed['intent_sha256']
+        assert observed['run_id'] in (None,completed['run_id'])
+    assert _start(submitted_creation)==completed
     original=reference.subprocess.run
     def lost(argv,**kwargs):
         result=original(argv,**kwargs)
@@ -163,7 +176,7 @@ def test_parallel_and_lost_parent_response_keep_the_original_receipt(submitted_c
     with pytest.raises(ValueError,match='process timed out'):
         _start(submitted_creation)
     monkeypatch.setattr(reference.subprocess,'run',original)
-    assert _resume(submitted_creation)==outcomes[0]
+    assert _resume(submitted_creation)==completed
     assert _calls(submitted_creation).count('start')==1
 
 

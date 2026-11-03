@@ -74,7 +74,7 @@ flowchart TB
 |Skill 资产、评价、采用和搜索|`skill_assets`、`evaluation`、`skills.adopt`、`optimization.optimize`；CLI/Web|资产与评价不反向导入采用；GEPA 搜索复用评价，不拥有评分/采用权限|
 |记忆与资料|`memory`、`research`；CLI/Web，`scheduling` 调用 research|SQLite canonical / ReMe 投影；来源快照、预算、取消及人工审阅，资料不自动成为有效记忆|
 |存储升级与离线恢复|`State`、`backups.create / verify / restore`；所有域及 CLI|集中 16 表、schema v1、有序迁移和旧 writer fence；领域保留查询/事务，恢复核对库和文件|
-|正式任务提交及原身份恢复|`tasks.start / submission / resume_start` → `reference.task_submission` → 专用`reference_task_submission`；CLI/API|复用创建所有者及原doctor/策略/claim/Transport；意图先于副作用、attempt先于原start；未知只查询原始spec并核SDK memo归属后补原run回执，拒绝接管旧运行；完整参考运行时负责依赖|
+|正式任务提交及原身份恢复|`tasks.start / submission / resume_start` → `reference.task_submission` → 专用`reference_task_submission`；CLI/API|复用创建所有者及原doctor/策略/claim/Transport；短revision保留下非阻塞保存意图，释放控制库后才原准入/RPC；意图先于副作用、attempt先于原start，阶段间中断可恢复；未知只查询原始spec并核SDK memo归属后补原run回执，拒绝接管旧运行；完整参考运行时负责依赖|
 |精确计划批准和原history投递恢复|`tasks.approve / approval / resume_approve` → `reference.task_approval` → 专用`reference_task_approval`；CLI/API|准备意图时保留revision且非阻塞任务锁；释放控制库后核原run/spec/memo/plan，复用原owner回执与signal；未知只读分页history，requested不代表授权采纳|
 |取消请求和原history投递恢复|`tasks.cancel / cancellation / resume_cancel` → `reference.task_cancellation` → 专用`reference_task_cancellation`；CLI/API|复用原Transport.cancel的RUNNING守卫及协作signal；稳定request ID/原因/actor，写前attempt和操作SHA关联；闭合明确不发新信号，unknown不重发且不声称外部已停|
 |参考资源、编译与执行桥|`reference`、`reference_task_creation`、`reference_task_runtime`、`reference_task_submission`、`reference_task_approval`、`reference_task_cancellation`、`reference_executor`、`stage_driver`；CLI/Web/drafts/agent_runs|资源查询与正式执行分开；执行器限专用 Linux 进程，不把原导入全局当 Web request-local|
