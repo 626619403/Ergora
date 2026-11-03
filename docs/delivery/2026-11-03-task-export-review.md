@@ -4,9 +4,9 @@
 
 ## 结论与状态
 
-- **需求符合性：修正后的源码及下文已核对的最终发行证据通过，本地完整回归待完成。** 初审确认一项 HEAD 保持缺陷，修正后独立复核关闭；未发现其他未解决的源码正确性问题。此结论不等于 F3.4a 已交付，也不验收 F3.4b 的终态外部对账或 F3.4c/d 的真实六阶段旅程。
+- **需求符合性：F3.4a 范围验收通过。** 初审确认一项 HEAD 保持缺陷，修正后独立复核关闭；最终发行、完整本地回归、兼容/限定性能、精确两 OS CI 与源码远端身份均已独立核对，无未解决 finding。本结论不验收 F3.4b 的终态外部对账或 F3.4c/d 的真实六阶段旅程。
 - **可维护性：源码范围通过，无未解决的结构、复用或资源生命周期 finding。** 新文件有实际 CLI/API 消费者；Git 交互事务和预算清理留在导出所有者内，未扩建通用 runner 或第二套运行/审查状态机。
-- 最终非 editable 发行及两安装身份、基础两模板 CLI/升级兼容与性能证据、精确两 OS CI 和源码候选远端 SHA 已完成下文独立核对。本地完整回归和之后的最终文档交接仍待收口，不能从其他检查代推通过。
+- 最终非 editable 发行及两安装的 346 文件一致，完整本地回归 **591 passed、19 skipped、36 subtests passed**；精确 CI `41589227955` 成功。远端文档提交 `1093d50` 包含已验收源码 `ef8068a`，八项源码/测试与运行包身份保持。后续真实六阶段及外部对账仍按 F3.4b–e 单独验收。
 
 ## 确认发现与处理
 
@@ -105,8 +105,20 @@ D 兼容证据按两步核对：固定 D 先生成两模板十态，再由**首�
 
 本次证据方法是官方 GitHub HTML 核对，没有虚构本次 API 请求失败。审查者另执行新的只读 `git ls-remote`，确认 origin 为预期 Ergora GitHub 仓库，`refs/heads/refactor/architecture-foundations` 精确指向 `ef8068a754446ae8da85fc25e8515f6acce60250`。独立证据为 `reviewer/ci-remote-check.py/json/log` 和 `reviewer/remote-head.txt`；它证明该源码候选的远端身份，不预先证明之后的文档提交。
 
-### 文档与尚待收口
+### 文档与阶段边界
 
 USAGE 的命令、API 路径、严格确认、unknown 不重新 fetch/创建、租约和备份边界均与实现一致；两份架构图和职责表接入实际新模块，没有将终态外部对账标为已实现。交付记录已区分初候选与最终包、首次恢复与原地重复，以及真实执行与端口 fixture。
 
-**本地最终 wheel 完整回归仍在运行，尚无终结结果。** 已核对 `wheel-regression-command.json` 使用最终 wheel 身份和已安装包路径范围，但不从进度点或精确 CI 成功推导该运行通过。取得完整回归终结证据后仍需复核，再完成最终文档交接；当前源码/可维护性结论无新增未解决 finding。
+上一轮追加审查时，本地完整回归仍在运行，因此当时保留 pending，没有从进度点或精确 CI 成功推导通过。其最终终结核对如下。
+
+## 最终终结核对
+
+审查者已读取最终 `wheel-regression.log` 和完成后的 `wheel-regression-command.json`，确认精确最终非 editable wheel、八文件身份和实际命令一致：**591 passed、19 skipped、36 subtests passed、1 个已有 Starlette/httpx 弃用 warning**，pytest 耗时 1801.14 秒，wrapper 退出码 0、耗时 1801.779 秒。该结果来自完整终结日志，而非第一候选的中断运行或源码定向检查；本次审查未重跑测试。
+
+终结时再次独立计算最终 wheel、源码、两安装和最新远端提交的包归档摘要，**346 文件逐项一致**；八个生产/测试文件在已验收源码提交、工作区和远端提交中的 SHA 全部相等。wheel 仍为 `7c1fa4bfe066a42eb89e612a2fc9c6234f26b4722c55c8333cbf2fcf00175477`，八文件聚合身份仍为 `7238c7fec9ffb664bed1dfe80bfd812721eb864960dbf8e55d1e4f4a8911e3e3`。
+
+新的只读 `git ls-remote` 返回 [1093d5066b48d924e5ce4b2ff950a9ffddb7a685](https://github.com/626619403/Ergora/commit/1093d5066b48d924e5ce4b2ff950a9ffddb7a685)。独立祖先检查确认 `ef8068a754446ae8da85fc25e8515f6acce60250` 已包含在该远端分支；两提交之间的变更全部属于 `docs/`，没有误将后续文档提交当作新的生产实现或要求它继承新的运行验收。此前已独立通过的精确 CI 仍绑定 `ef8068a` 源码提交。
+
+终结脚本和原始结果在 `.ergora/checks/f3-task-export/reviewer/final-closure-check.py/json/log`，最新远端记录为 `reviewer/final-remote-head.txt`。JSON 同时固定了完整回归日志和完成命令记录的 SHA256，便于后续身份核对。
+
+**需求符合性与可维护性最终均通过，R1 已关闭，无未解决的阻塞 finding；F3.4a 可收口。** 尚未验收的 F3.4b 外部终态/fence 对账、F3.4c/d 真实模型/两模板六阶段和受控 worker 重启仍保留。工作区新增的 b 调查文档不在本次 a 生产实现范围，不能据此宣称 b 已实现。

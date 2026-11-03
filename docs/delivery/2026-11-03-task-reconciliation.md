@@ -1,6 +1,6 @@
 # F3.4b：终态后外部 fence 对账的实施前调查
 
-日期：2026-11-03。本节点尚未开始生产实现；当前活动仍为[F3.4a最终验收](2026-11-03-task-export.md)，不是本节点已通过的声明。范围沿[F3.4总设计](2026-11-03-formal-task-acceptance.md)：明确写操作核原任务/run与实际外部事实，不改原workflow终态，不删除ledger，不以取消请求或空目录推断外部进程已停。
+日期：2026-11-03。F3.4a已独立验收完成；本节点进入b1只读证据接口的准备实施，尚无本节点生产实现或验收结论。范围沿[F3.4总设计](2026-11-03-formal-task-acceptance.md)：明确写操作核原任务/run与实际外部事实，不改原workflow终态，不删除ledger，不以取消请求或空目录推断外部进程已停。
 
 ## 已核实的原生接口
 
@@ -20,3 +20,20 @@
 2. 明确仅在原run已闭合后允许本操作；准备仍用当前revision/严格confirm和原task非阻塞锁，退出共享DB后才查询/发布fence，GET保持只读。
 3. 若证据充分，保存真实原workflow结果与本次外部核对事实两份身份，以原IngressLeases合同决定释放；不伪造新的workflow状态。先调查现有可复用持久记录，再决定最小的意图/检查点/回执，未知恢复依原fence的不可变幂等语义处理。
 4. 本节点须独立源码/异常/资源/最终发行审查；新两模板真实六阶段和worker重启仍分别由F3.4c/d/e验收，不因这项adapter探针通过而接管。
+
+
+## SDK与目录来源补核
+
+已安装Temporalio1.34.0的真实protobuf/默认converter离线往返通过（history-shape-probe.py/json/log）：dev_submit对应activity_task_scheduled_event_attributes、activity_type.name、activity_id及单个context输入payload，规范context摘要保持。原workflow.call以单个dict调用活动，context包含原spec/request/profile/stage，job_id由task+stage摘要稳定生成。该探针没有查询真实服务history；实现应使用lookup_run返回的实际SDK converter，而非硬编码默认codec，并对分页/完整历史及任务身份另验。
+
+原setup.initialize默认将五类adapter根置于STATE子目录；已有adapter.json不覆写。原doctor检查模型、边界和端口等，但不证明adapter根与登记STATE一致。因此不能把doctor曾通过当作根归属证据。准备限定受支持的参考目录布局并校验原job证据，对其他根显式拒绝/保留未知；不自动猜根或把丢失请求视为未启动。还需考虑task级fence对后续不同run的作用范围；原run已闭合并不能授权停止同workflow ID的另一在途run，实施前应核当前run归属或明确拒绝这种情况。
+
+
+## 最小实施子节点
+
+|子节点|范围|验收及依赖|
+|---|---|---|
+|b1 原run外部证据只读视图|CLI `task external-status PROJECT TASK --run-id RUN --timeout 20`及同源GET external-status；原提交/spec/memo/run/闭合history，按原FileAdapter校验请求/可信终态回执和既有fence，明确缺失/冲突/未知；不发布fence、不释放租约、不另存运行状态|真实目录/原history身份反例、根漂移、已知job丢失、未知/损坏receipt、重复/截断history、并发读取、CLI/API一致、缺SDK环境；独立结构/性能/最终发行审查|
+|b2 明确终态外部对账|复用b1证据边界；当前revision/confirm/原task锁，短DB准备后不可变意图/检查点，显式原fence与真实外部证据，沿原IngressLeases适用释放；原workflow结果保持|未知不虚假释放，正确幂等与中断恢复、额外run/错误scope拒绝、实际进程/原ID验收；独立新审查。b1完成后实施|
+
+b1仅新增读取接口；完整F3.4b仍等待b2，不以GET已能读证据代替显式对账闭环。当前无生产修改；准备先固定原history与文件绑定合同，再写源码及有意义的反例。

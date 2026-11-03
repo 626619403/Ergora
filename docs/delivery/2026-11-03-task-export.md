@@ -1,6 +1,6 @@
 # F3.4a：固定原运行与精确候选的可恢复本地导出
 
-日期：2026-11-03。实现基线`722a3cb392dd5be03964845fa7d35c8c1bc90d1f`，生产基线为已独立验收的765c39a。当前源码修正已独立复审，最终发行及CI验收中；完整状态以末尾记录为准。依赖[F3.4总设计](2026-11-03-formal-task-acceptance.md)和已通过的D短事务边界。
+日期：2026-11-03。实现基线`722a3cb392dd5be03964845fa7d35c8c1bc90d1f`，生产基线为已独立验收的765c39a。本切片已完成：源码、最终发行、本地完整回归、精确两OS CI及远端均已独立核对。依赖[F3.4总设计](2026-11-03-formal-task-acceptance.md)和已通过的D短事务边界。
 
 ## 接口与所有权
 
@@ -94,3 +94,21 @@ HEAD/路径/超时定向7 passed（47.81秒）；独立原反例及当前/关联
 
 
 精确[CI41589227955](https://github.com/626619403/Ergora/actions/runs/41589227955)已成功：Ubuntu job125761835523的构建安装/冻结身份/完整原生回归三必需步骤，Windows job125761835367另加PowerShell5.1安装升级共四必需步骤均success；run页面与各步骤log URL均匹配完整ef8068a提交。ci/ci-html-status.json与两份job/原run HTML保留来源哈希；只读远端仍为完整ef8068a。最后仍待本地完整发行回归终结及同一独立审查者终结核对，当前不标记完成。
+
+
+## 最终完整发行回归
+
+最终7c1fa4…非editable包通过适用Linux完整回归：**591 passed、19 skipped、36 subtests passed、1个已有Starlette/httpx弃用warning，1801.14秒**。wrapper保存退出码0、1801.779秒；原始wheel-regression.log及wheel-regression-command.json固定8文件7238c7fe…与最终wheel。应用来自安装包，PYTHONPATH只提供冻结参考平台；运行中仅文档变更，生产/测试身份保持。结束后再次重算346文件×源码/wheel/两安装一致。
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src/ergora/data/reference/platform/upstream/platform .venv-dev/bin/python -B -m pytest -q --tb=short -p no:cacheprovider --basetemp=.ergora/checks/f3-task-export/final-wheel-fixtures tests src/ergora/data/reference/platform/upstream/platform/tests/test_contracts.py src/ergora/data/reference/platform/upstream/platform/tests/test_portable.py src/ergora/data/reference/platform/upstream/platform/tests/test_workflow.py::AdapterTests src/ergora/data/reference/platform/upstream/platform/tests/test_runtime.py
+```
+
+公开手册、架构、进度与独立源码/阶段报告已随文档1093d50推送；它不改变ef8068a生产/测试或精确CI。最终本地终结独立核对待审查报告确认，确认后文档收口并进入[F3.4b](2026-11-03-task-reconciliation.md)。本段不将协议fixture当作真实模型/新六阶段验收。
+
+
+## 最终收口
+
+F3.4a完成。生产/测试`ef8068a754446ae8da85fc25e8515f6acce60250`、7c1fa4…wheel及8文件7238c7fe…保持；346文件×源码/包/两安装/提交归档、冻结283、591项/19跳过/36子测试、74CLI、旧D十态/六历史/两份旧导出回执、18秒并发及精确两OS CI41589227955全部通过。[独立终结审查](2026-11-03-task-export-review.md)再次核完整日志、原命令退出码、包及源码/远端归档，R1已关闭，无未解决finding。来源摘要见reviewer/final-closure-check.*。
+
+独立只读远端为文档`1093d5066b48d924e5ce4b2ff950a9ffddb7a685`，已验收ef8068a是其祖先，间隔仅docs变更；本次收口文档沿同一已授权分支推送，不改变运行代码或重开重复CI。先前pending保留过程记录，以本节为当前状态。下一项为[F3.4b终态外部对账](2026-11-03-task-reconciliation.md)：先只读原history和外部证据，再接明确fence及适用租约释放。两模板新真实六阶段/重启异常仍属于后续c/d/e，完整F3尚未完成。
