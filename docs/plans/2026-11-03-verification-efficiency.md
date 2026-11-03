@@ -8,6 +8,7 @@
 |V1 纯输入与集成分层|timeout/严格confirm/完整SHA等在读取项目之前拒绝的矩阵用轻量边界spy；每命令保留真实任务拒绝与CLI/API接线；B1复用已提交任务基底，避免无关bare候选Git；核测试SQLite连接显式关闭|逐案例语义清单保持；原错误、严格类型与未触达项目/原生边界断言；真实拒绝用例文件/journal/租约/RPC不变；同环境原三个节点setup/call对比。不同原run、陈旧revision及Git分支语法仍真实集成|[完成](../delivery/2026-11-03-verification-input-layers.md)；36例并集、29轻量/91首轮及修后12项通过；4e01a4e已推送、精确两OS CI41605898404及独立最终CI/身份/实时远端均通过，finding关闭|
 |V2 Linux用例提前跳过|将真正Linux专用用例的skip放在fixture前；跨平台输入与Linux/WSL2提示继续执行|115测试/152顶层函数AST、323案例/fixture集合保持；40定向通过，非Linux条件setup探针218跳过/0重型setup；精确Windows/Ubuntu完整CI|[完成](../delivery/2026-11-03-platform-test-scheduling.md)；4a6d3d5独立提交、d558885共同推送，精确两OS CI41612623462及独立最终源码/CI/实时远端通过，无findings；Windows步骤390→212秒仅为两次运行观察|
 |V3 CI过时运行与触发|先为同分支/PR、同类事件设置concurrency和cancel-in-progress；读取实际push/PR运行后再决定是否拆触发职责|最新候选两OS必需步骤完整通过；不同事件不互相取消必需门禁；记录分支HEAD与PR合并树区别|[完成](../delivery/2026-11-03-ci-scheduling.md)：仅新增concurrency，原配置/触发保持；d558885已推送、精确两OS CI41612623462及独立最终提交/CI/实时远端复核通过，无findings；未演练真实重叠取消|
+|V4 超时可定位性|F4.1 Linux实测20分钟取消后，将pytest逐例进度即时写入CI日志，仅保留3500字符错误尾部；保留两OS、所有原套件、退出码和20分钟上限|同一实际workflow代码的成功/失败/信号退出及结束前可见进度探针；精确两OSCI，取消历史不得记为通过|[源码/探针及独立复核通过](../delivery/2026-11-04-ci-regression-progress.md)；尾部字符P2关闭，提交/精确CI待收口，不直接扩大超时或删测试|
 
 在下一次本来就需要的完整回归中记录`--durations=20`，供后续定位使用；不为取得列表额外重跑一次全套。F3.4b1已采用“本地受影响包定向＋无SDK基础CLI＋精确两OS完整CI”；功能或测试变化才重验相应边界，文档状态提交保留已验证生产身份。
 

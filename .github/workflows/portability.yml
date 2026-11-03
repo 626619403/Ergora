@@ -53,17 +53,20 @@ jobs:
               suites += ['src/ergora/data/reference/platform/upstream/platform/tests/test_portable.py']
               suites += ['src/ergora/data/reference/platform/upstream/platform/tests/test_workflow.py::AdapterTests',
                          'src/ergora/data/reference/platform/upstream/platform/tests/test_runtime.py']
-          result = subprocess.run([sys.executable, '-m', 'pytest', '-q', '--tb=short', '--durations=20', *suites],
-              stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding='utf-8', env=environment)
-          print(result.stdout, flush=True)
-          if result.returncode:
-              details = result.stdout[-3500:].replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
-              print(f'::error title=Native regression::{details}', flush=True)
-              for line in result.stdout.splitlines():
+          tail = ''
+          with subprocess.Popen([sys.executable, '-u', '-m', 'pytest', '-v', '--tb=short', '--durations=20', *suites],
+                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding='utf-8', env=environment) as process:
+              for line in process.stdout:
+                  print(line, end='', flush=True)
+                  tail = (tail + line)[-3500:]
                   if line.startswith('FAILED '):
-                      detail = line[:3000].replace('%', '%25')
+                      detail = line.rstrip()[:3000].replace('%', '%25')
                       print(f'::error title=Failed test::{detail}', flush=True)
-          raise SystemExit(result.returncode)
+              returncode = process.wait()
+          if returncode:
+              details = tail.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+              print(f'::error title=Native regression::{details}', flush=True)
+          raise SystemExit(returncode)
       - name: Windows PowerShell 5.1 installer and upgrade
         if: runner.os == 'Windows' && !cancelled()
         shell: powershell

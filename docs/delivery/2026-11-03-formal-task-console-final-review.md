@@ -8,11 +8,11 @@
 
 可维护性：**通过，无阻塞 finding**。页面归属、共享能力复用、请求隔离和成本边界与现有轻量前端一致；没有新增状态机、通用框架、依赖或构建链。
 
-这是提交前的代码与本地证据结论。当前候选提交、精确两 OS CI 和远端身份仍待实施者完成，再由本报告同片续核；此时不把 F4.1 标为完整交付。完整创建/提交、批准/取消/对账/导出页面及有界运行日志仍归 F4.2–F4.4，未实施；完整 F4/F5/G0 未完成。
+首次结论基于提交前的代码与本地证据。2026-11-04 同片续核确认 F4.1 提交 `11e89cf44eb29fe9064bd0015417cf6bc54fdc5e` 与原包相符，实时远端一致；精确两 OS CI 为 Cancelled，Linux 回归未完成，因此 **F4.1 仍未完整交付**。完整创建/提交、批准/取消/对账/导出页面及有界运行日志归 F4.2–F4.4；本次不审查随后开始的 F4.2a 工作区改动，完整 F4/F5/G0 未完成。
 
 ## 实际范围与候选身份
 
-检查时基线与 HEAD 为 `2add1bf3435738509462e6978d7f83742422ea6f`，分支 `refactor/architecture-foundations`，变更尚未提交。依据 `git diff`、status 与全部未跟踪源码，而非仅依据作者列举。
+首次检查时基线与 HEAD 为 `2add1bf3435738509462e6978d7f83742422ea6f`，分支 `refactor/architecture-foundations`，变更尚未提交。依据 `git diff`、status 与全部未跟踪源码，而非仅依据作者列举；提交后的精确身份见末节。
 
 - 生产文件：`src/ergora/data/console/` 下的 `app.js`、`index.html`、`overview.js`、`style.css`、`workflow.js` 和完整新文件 `tasks.js`。
 - 文档：README、PLAN、USAGE、architecture/current、详细计划、作者记录及初审报告。本报告是额外审查记录。
@@ -58,10 +58,27 @@ README、USAGE、当前架构和活动记录对只读范围、状态归属及后
 
 final-shutdown 的命令、脚本与结果明确核 5 个原 run 为 COMPLETED、最新 run 未变化、无 RUNNING workflow；正式 shutdown 返回 confirmed，随后 daemon not_running、socket/PID 消失，Temporal SQLite 保留。执行环境恢复时失效标记的 PID 不存在、socket 拒绝、inode/属主复核，以及 final-lifecycle 的 7233/8987 连接拒绝有各自记录；不是用 F3 旧停栈记录代替本次收尾。该状态来自保留的原始证据，审查者没有启停或查询服务。
 
-首包 targeted-command/log 为原三个文件 44 passed、1 个既有 warning，pytest 43.47 秒；只作为相同后端消费者的历史定向结果，不声称验证最终 DOM。F3 的 711 项及其旧 CI 同样只保留原身份。最终候选 CI 尚未取得，不能据上述历史结果推导。
+首包 targeted-command/log 为原三个文件 44 passed、1 个既有 warning，pytest 43.47 秒；只作为相同后端消费者的历史定向结果，不声称验证最终 DOM。F3 的 711 项及其旧 CI 同样只保留原身份。首次本地审查时最终候选 CI 尚未取得，不能据上述历史结果推导；随后取得的实际结果见末节。
 
 ## 审查动作、限制与待续核
 
-实际执行了 Git 范围/差异检查、348 文件与两安装字节核对、冻结 283 身份比较、13 个 ES 模块 Node 语法解析、git diff --check、416 文件三方 hash 比较，以及上述脚本/原输出/结果静态核算。审查核算只写本片私有 `final-reviewer/`；没有运行测试、模型、构建、安装、HTTP、浏览器或服务控制，没有改源码、提交、推送或打开凭据。
+实际执行了 Git 范围/差异检查、348 文件与两安装字节核对、冻结 283 身份比较、13 个 ES 模块 Node 语法解析、git diff --check、416 文件三方 hash 比较，以及上述脚本/原输出/结果静态核算；包含本报告的 8 份变更 Markdown 共 305 个本地链接/锚点通过。审查核算只写本片私有 `final-reviewer/`；没有运行测试、模型、构建、安装、HTTP、浏览器或服务控制，没有改源码、提交、推送或打开凭据。
 
-没有新增阻塞 finding。下一步由实施者重核包含本报告的当前文档链接与差异、提交并推送精确候选，保存两 OS CI 和实时远端 SHA；随后同片补记最终身份复核，再关闭 F4.1。F4.2 的新行为须使用下一位全新上下文审查者。
+没有新增阻塞 finding。首次审查待续核的提交和远端身份现已核对；两 OS 验收仍缺 Linux 回归成功证据，不能关闭 F4.1。后续 CI 或修正按精确身份继续记录；F4.2 的新行为须使用下一位全新上下文审查者。
+
+## 2026-11-04 同片提交、远端及精确 CI 续核
+
+审查者只读检查提交 `11e89cf44eb29fe9064bd0015417cf6bc54fdc5e`，其父提交为原基线 `2add1bf3435738509462e6978d7f83742422ea6f`。该提交实际包含 14 个文件：6 个 console 资产和 8 份 Markdown，没有 Python、测试、依赖、CI 或冻结 reference 改动。通过 git ls-tree/cat-file 读取提交内全部 348 个 package blob，再独立计算 SHA256，与原 `3f287ecebdf37324a7960661f65e07a9713cfc1d277aa439e01370b25f044021` wheel、package-identity 和首次审查资产身份全部相符；其中冻结 reference 为 283 文件。两份安装与本地验收仍绑定这个原包，不能改绑到当前工作区。
+
+本轮实际执行 `git ls-remote origin refs/heads/refactor/architecture-foundations`，返回同一完整 `11e89cf44eb29fe9064bd0015417cf6bc54fdc5e`，提交与当时实时远端一致。工作区的 tasks.js/style.css 后续差异属于 F4.2a，未读作 F4.1 候选，也没有要求它们与旧包相等。
+
+精确 [Portability run 41662193234](https://github.com/626619403/Ergora/actions/runs/41662193234) 的官方 HTML 与 selection 记录均指向该完整提交；run 最终状态是 **Cancelled**。审查者直接读取原 HTML，而没有执行假定 Success 的 verify-ci.py。run 列出的两个 job ID 与各自 HTML 的 selectedJobId 一致，各已成功步骤的 log URL 绑定同一完整提交。
+
+|精确 job|官方记录与可得结论|
+|---|---|
+|[Windows / Python 3.12，126007988855](https://github.com/626619403/Ergora/actions/runs/41662193234/job/126007988855)|job succeeded；Build and install wheel、Packaged reference identity、Native application regression、Windows PowerShell 5.1 installer and upgrade 全部 success。Windows 必要步骤通过。|
+|[Ubuntu / Python 3.11，126007988217](https://github.com/626619403/Ergora/actions/runs/41662193234/job/126007988217)|job cancelled；构建安装和冻结身份步骤 success。官方 annotation 为 “The job has exceeded the maximum execution time of 20m0s”；Native application regression 的 data-conclusion 为 null，没有成功结论，回归未完成。|
+
+上述证据位于本片私有 ci/ci-html-run-selection.json、ci-run-latest.html 和两份 ci-job HTML。原 run HTML SHA256 为 `0c9778443678e63b2449fd736732ec4d0ac33baaf3310305c969e22d253de84a`，Linux job HTML 为 `eeadf5578ad71d523eec83572b65a201e3b0db35d43b18bfae02b4c18127c210`，Windows job HTML 为 `7c25c96e46a5dca712a3e568fb5d801e38f9d0aa8a0eaccee1062f5b1f443892`。超时注释不能确定具体耗时测试或产品缺陷原因；本报告不补造 Linux 测试数量或通过结果，也不使用仍在诊断中的 local-regression.log 作通过证据。
+
+本轮仅增加 Git blob/hash、官方 CI HTML 和实时远端的只读核对，写入只限本报告；没有运行测试、模型、构建、安装、服务或提交推送。源码/本地验收与可维护性结论保持通过，R1–R3 保持关闭；**精确两 OS 验收未通过，F4.1 完整交付继续待定**。本次状态补记不审查 F4.2a，也不重复启动本地服务。
