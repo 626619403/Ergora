@@ -1,6 +1,6 @@
 # F3：正式开发任务CLI/API阶段收口
 
-日期2026-11-03，分支refactor/architecture-foundations。本记录为F3.4e，生产/测试基线与最终身份均为`7139d1a85cdce13689d75471620da8dd143156a8`；后续仅更新文档，不重建或复跑同一候选的完整回归。c正常旅程[独立审查](2026-11-03-formal-task-normal-review.md)与d异常/恢复[独立审查](2026-11-03-formal-task-recovery-review.md)均通过，各一项证据范围P2已修正复核关闭，无未解决findings。本阶段[新独立综合审查](2026-11-03-f3-completion-review.md)需求与可维护性均通过、无新增findings；提交推送与远端核对后登记完整F3完成。
+日期2026-11-03，分支refactor/architecture-foundations。本记录为F3.4e，生产/测试基线与最终身份均为`7139d1a85cdce13689d75471620da8dd143156a8`；后续仅更新文档，不重建或复跑同一候选的完整回归。c正常旅程[独立审查](2026-11-03-formal-task-normal-review.md)与d异常/恢复[独立审查](2026-11-03-formal-task-recovery-review.md)均通过，各一项证据范围P2已修正复核关闭，无未解决findings。本阶段[新独立综合审查](2026-11-03-f3-completion-review.md)需求与可维护性均通过、无新增findings；文档已提交推送`449a5be9f20d5d6b1789e178725b4b7d690e4261`，git ls-remote实时核对一致，完整F3完成。
 
 ## 交付与责任
 
@@ -41,4 +41,4 @@ e只做文档/链接/CLI帮助、生产/测试与源码/wheel/两安装身份重
 
 实测仅覆盖当前可信Linux容器中的小演示、所选Codex及原native协议；完整执行的真实Windows/WSL2、真实GitHub/GitLab收发、任意远端隔离、主机掉电/跨机接管、大产物/大量任务/持续吞吐、GPU质量/性能和provider真实费用不在本F3验收中。正常HTTP前后只对实际104文件做字节快照，批准journal/owner回执未纳入该前后对照。c/d和b2性能只按原条件记录，不推导优化比例或服务SLA。
 
-剩余动作：提交并推送当前工作分支并核远端；之后进入F4页面。不会合并main、强推或创建PR/MR。
+下一项为[F4正式任务页面](2026-11-03-formal-task-console.md)，先接只读任务/原运行检查器，再接显式写操作与有界观察。F3没有合并main、强推或创建PR/MR。

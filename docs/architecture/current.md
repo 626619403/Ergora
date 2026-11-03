@@ -1,6 +1,6 @@
 # 当前架构与扩展边界
 
-2026-11-03，R8后的当前导航，覆盖F1项目定义、F2安装/运维与F3正式任务CLI/API生命周期；F3阶段综合收口正在核对，页面接入归F4。F1.1/F1.2/F1.3全部交付；最终运行/测试提交`4ffcfdd`的本地验收、精确两OS CI及独立最终复核通过，详见[F1阶段验收](../delivery/2026-11-03-f1-completion.md)。历史[A1审计](2026-11-01-audit.md)及[R8记录](../delivery/2026-11-02-refactoring-exit.md)保留原身份与范围。设计约束见[ADR0001](decisions/0001-refactoring-foundations.md)/[0002](decisions/0002-static-boundaries.md)。
+2026-11-03，R8后的当前导航，覆盖F1项目定义、F2安装/运维与F3正式任务CLI/API生命周期；F3已通过[阶段验收](../delivery/2026-11-03-f3-completion.md)，页面接入归F4。F1.1/F1.2/F1.3全部交付；最终运行/测试提交`4ffcfdd`的本地验收、精确两OS CI及独立最终复核通过，详见[F1阶段验收](../delivery/2026-11-03-f1-completion.md)。历史[A1审计](2026-11-01-audit.md)及[R8记录](../delivery/2026-11-02-refactoring-exit.md)保留原身份与范围。设计约束见[ADR0001](decisions/0001-refactoring-foundations.md)/[0002](decisions/0002-static-boundaries.md)。
 
 ## 模块与依赖
 

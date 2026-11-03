@@ -151,3 +151,7 @@ S0–S10 后续范围现在由 S11 详细计划承接；尚未测得收益的优
 最近完成：[F3.4b2显式终态外部对账](delivery/2026-11-03-task-reconciliation-write.md)，生产/测试`7139d1a85cdce13689d75471620da8dd143156a8`已推送且独立实时远端一致。最终c741…wheel347文件×源码/两安装/冻结283通过；Linux711项/36子测试（19跳过）、无SDK两模板27CLI与18秒并发边界通过；精确两OS CI41621015706及[独立最终发行/CI/远端审查](delivery/2026-11-03-task-reconciliation-write-review.md)通过，0 findings。原CANCEL_UNCONFIRMED保留，不改变b1只读合同或宣称完整F3完成。
 
 当前实施：[F3.4c/d真实服务旅程](delivery/2026-11-03-formal-task-journeys.md)，使用相同最终包、新独立持久运行栈和两个新业务repo。两任务经过真实Codex inventory/plan，错误计划批准无信号、正确计划各一个信号；均完成六阶段进入REVIEW_READY，固定原run与精确候选。完整history302/326事件、7/6原job与产物身份、正式候选导出/独立worktree可信检查及4/11项测试、两次HTTP/CLI重开44请求均通过；c新独立审查通过，快照范围P2已修正关闭。b2文档已推送a170dd1且远端一致。d两新任务已通过真实worker停止期间取消/重开、8个直接采样的helper/child/driver/timeout进程消失、原CANCEL_UNCONFIRMED保持与显式对账释放、13HTTP重开；另实测baseline检查失败阻断和只读monitor两种126拒绝。d独立审查通过、timeout/monitor范围P2已修正关闭；[e阶段收口](delivery/2026-11-03-f3-completion.md)已更新README统一旅程、公开使用/训练手册及当前架构/导航。347包文件/两非editable安装/冻结283及README命令parser核对通过，本地链接/锚点已重核通过；核5原run闭合且无运行workflow后已正式shutdown本次专用栈，持久数据保留。[新独立综合审计](delivery/2026-11-03-f3-completion-review.md)需求/可维护性均通过、无新增findings；当前提交推送和远端核对后登记完整F3完成，再进入F4页面。
+
+最近完成：[完整F3 CLI/API](delivery/2026-11-03-f3-completion.md)已收口，c/d与e三份新独立审查均通过，证据范围P2均关闭；当前源码/测试7139、同一347文件最终包711回归/精确两OS CI身份保持。文档已推送449a5be9f20d5d6b1789e178725b4b7d690e4261且实时远端一致；五原run闭合、专用栈正式shutdown及持久数据保留已核。
+
+下一可执行项：[F4.1正式任务只读页面](delivery/2026-11-03-formal-task-console.md)。先复用现有分页/详情/submission/status API接正式任务导航和原run检查器，再分片创建/提交、人工待办/精确写操作及有界运行观察。F4.1调查完成、开始实现；完整F4/F5/G0仍未完成。恢复时先读本片记录和Git，不将F3的历史711回归套用于新UI候选。
