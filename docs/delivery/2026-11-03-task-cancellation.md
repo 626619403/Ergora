@@ -1,6 +1,6 @@
 # F3.3c2：固定原运行的取消请求与投递对账
 
-日期：2026-11-03。设计基线`b3b7d655fe4a61ecfe6bc77258c9b8f416b5424b`，分支`refactor/architecture-foundations`。当前为c1之后的工作区实现记录，生产代码尚未随c1收口文档发布；已实现、首轮源码联合检查152项通过；尚无本段独立审查或发行验收结论。依赖c1原运行所有权和两阶段意图边界；c1已推送、精确两OS CI41572513289及独立CI/远端核对通过，见[批准记录](2026-11-03-task-approval.md)。
+日期：2026-11-03。设计基线`b3b7d655fe4a61ecfe6bc77258c9b8f416b5424b`，分支`refactor/architecture-foundations`。生产/测试`c3113ad119c72ed933876ddae95d3c849c804852`已推送；首轮源码152项、最终包522项/36子测试、345文件×两安装/冻结283、90CLI/18秒并发及独立最终本地核对通过。精确两OS CI41576751862及独立最终CI/远端审计通过，本切片完成；不标整个F3完成。
 
 ## 原行为、目标与范围
 
@@ -43,7 +43,7 @@
 PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src .venv-dev/bin/python -B -m pytest -q --tb=short -p no:cacheprovider tests/test_task_cancellation.py tests/test_task_approval.py tests/test_task_submission.py tests/test_task_runtime.py tests/test_architecture_boundaries.py
 ```
 
-原始输出`.ergora/checks/f3-task-cancellation/source-first.log`，当前仍运行，无最终结果。开发安装仍为c1 wheel；本命令明确使用src验证c2。夹具实际调用原Transport.cancel和request_cancel handler，只替换网络/doctor外部依赖及定点文件失败；覆盖六种闭合状态、闭合回执写中断、已提交/原run/spec/memo、未知精确操作SHA、丢应答、不重发和CLI/API。不是实际服务/外部作业停机验证。公开手册、当前架构图已按此接口同步，git diff --check通过。
+原始输出`.ergora/checks/f3-task-cancellation/source-first.log`，首轮最终结果为152 passed，详见后续结果。开发安装仍为c1 wheel；本命令明确使用src验证c2。夹具实际调用原Transport.cancel和request_cancel handler，只替换网络/doctor外部依赖及定点文件失败；覆盖六种闭合状态、闭合回执写中断、已提交/原run/spec/memo、未知精确操作SHA、丢应答、不重发和CLI/API。不是实际服务/外部作业停机验证。公开手册、当前架构图已按此接口同步，git diff --check通过。
 
 待首轮结论及反例补核后，开展新的fresh-context结构/性能审计，再构建最终包、基础两模板旅程/18秒延迟并发和限定性能、完整发行回归/精确两OSCI，分别独立核对、更新计划并提交推送。
 
@@ -54,7 +54,7 @@ PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src .venv-dev/bin/python -B -m pytest -q --
 
 当前C2候选wheel SHA256 `4abad37df7b16992dd897d524e67e7d47c538bd43dca915e070cb81a4a5078d4`，345文件×源码/wheel/开发及基础两安装完全一致，冻结283通过，package-identity.json。开发安装Python3.11.15含SDK，基础安装Python3.12.11仅必需依赖；离线安装使用已有缓存，无新依赖。C1最终独立核对已经完成，其053212…wheel和既有证据保留；本次开发环境现已切换C2，不能再把当前工作区/安装误当C1。
 
-新的fresh-context审查`f3_task_cancellation_review`进行中，尚无最终结论。最终非editable完整回归与基础两模板旅程正在运行（wheel-regression.log、journey-performance.py/log）；后续18秒并发、独立本地核对、精确CI/远端和最终审计待完成，不标C2完成。
+新的fresh-context审查`f3_task_cancellation_review`及最终本地核对已通过，无finding。发行初次安装时，非editable完整回归与基础两模板旅程尚在运行（wheel-regression.log、journey-performance.py/log）；后续18秒并发、独立本地核对、精确CI/远端和最终审计待完成，不标C2完成。
 
 
 ## 独立源码审查与发行旅程
@@ -69,7 +69,7 @@ fresh-context审查者`f3_task_cancellation_review`已完成[源码/结构审查
 
 隔离实际State/SQLite/原任务锁探针（lock-contention.py/json/log）：受控connect延迟18秒、取消预算25秒时，其他项目写者20.26ms完成；同任务第二prepare846.56ms内明确拒绝，随后其他项目可写至revision3；均在原远程结果前完成，总19774.38ms。不是实际RPC/模型，不把它当旧b提交长锁已修；旧路径d的[调查设计](2026-11-03-task-submission-locks.md)已准备，待c2收口后实施。
 
-完整发行回归、上述新并发证据的最终独立核对，以及精确CI/远端/最终审计仍待完成。
+完整发行与上述新并发证据的独立最终本地核对已通过；精确CI/远端/最终审计仍待完成。
 
 
 ## 完整发行回归
@@ -81,3 +81,17 @@ PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src/ergora/data/reference/platform/upstream
 ```
 
 PYTHONPATH仅提供原reference平台，应用实际来自已安装C2 wheel；未在本次完整回归中从src加载应用。11项源码/测试身份自独立源码审查后未变。将提交推送该候选以触发精确两OS CI，并请原审查者核对最终本地发行和后续精确CI/远端；此处不预认最后门禁，不标C2完成。真实外部作业/fence和新六阶段继续留在F3.4。
+
+
+## 已推送与独立本地收口
+
+候选c3113ad已推送，远端SHA记录在ci/remote-head.txt；[精确CI41576751862](https://github.com/626619403/Ergora/actions/runs/41576751862)正在运行，尚未接受其结论。原审查者已从精确提交git archive、源码、4abad37…wheel和两安装独立重算345项，全部一致且非editable；实际两Python版本/基础缺SDK、冻结283、完整522/19/36/832.89秒原始日志/命令、90CLI及18秒脚本/JSON/log均独立核对通过，无新增finding，见审查报告“最终本地发行核对”。
+
+后续F3.3d可在此固定源码/本地审计基线上推进，工作区改变不影响C2的精确提交/发行证据；C2的最终CI/远端仍须独立收口，不能由d结果替代。
+
+
+## 最终收口
+
+C2生产/测试`c3113ad119c72ed933876ddae95d3c849c804852`已推送并完成全部本切片门禁。精确CI41576751862成功：Ubuntu job125721921231三项必需步骤、Windows job125721920856四项必需步骤均为success。原审查者独立解析原始run/job HTML、候选提交/日志URL和来源哈希，并再次只读核对远端完整SHA一致；[最终审查](2026-11-03-task-cancellation-review.md#精确-ci-与远端最终核对c3113ad)通过，无未解决finding。
+
+前文过程中的pending记录保留其当时语义，此处为最终状态。C2最终包4abad37…、345文件×两安装/冻结283、522项/19跳过/36子测试、90CLI、18秒并发及其独立本地核对均已通过。D源码工作区不参与本C2身份核验。下一项为D提交锁分段及其独立发行/性能门禁，随后F3.4真实两模板六阶段/导出/重启/异常旅程。

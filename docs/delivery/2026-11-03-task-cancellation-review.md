@@ -61,3 +61,46 @@ prepare 在当前 revision 的控制库写保留下，只执行本地合同读�
 重复样本最大 1332.02ms，含 CLI/原生子进程启动、SDK 导入和合同校验，与完整回归并行。该测量限定于本地重复路径，没有网络/模型性能结论，也没有同条件旧功能基线。候选 11 文件身份与本报告摘要完全一致。
 
 审查截止时，作者的最终包完整回归和 18 秒延迟并发探针仍在执行；精确两 OS CI、最终独立核对、提交及远端身份也待完成。旧提交的全库锁迁移仍归 F3.3d。真实 Temporal 服务历史/权限/保留期、worker 和外部作业停机、原 fence/租约终态、两模板六阶段/导出/重启综合旅程归 F3.4；受控网络端口、直接 handler 和内存 SDK 探针均不替代这些检查。当前没有阻塞源码审查的 finding；以上未验项仍是所属节点的验收条件。
+
+## 最终本地发行复核：c3113ad
+
+2026-11-03，由同一独立审查上下文核对最终本地候选 `c3113ad119c72ed933876ddae95d3c849c804852`。直接父提交为仅 c1 文档的 `3c5d91a44b00f973700d737d6e86aaf0ca59e97b`，生产源码基线仍为 `b3b7d65`。本轮授权只读核对最终本地工件并追加本报告；没有重跑全套、安装、修改源码或推送。
+
+**最终本地发行核对通过，无新增 finding。** 下列已完成证据替代前文当时尚待完成的本地项；精确两 OS CI 与远端核对继续单独验收。
+
+独立读取候选的 Git archive，按相对文件名和 SHA256 重算全部 345 个生产/资源文件，与当前 `src/ergora`、候选 wheel、开发安装和基础安装逐项一致，额外文件/缺失文件均参与比较，仅排除字节码缓存。11 项已审源码/测试同时与提交、当前字节及 `candidate-source-identity.json` 逐项一致，聚合仍为 `b215f9553a3ba8ac716b70bd86ecf285af7eb1d3c0fc6e92956078dd023255bd`。wheel 完整 SHA256 仍为 `4abad37df7b16992dd897d524e67e7d47c538bd43dca915e070cb81a4a5078d4`。此处独立计算，没有调用会改写作者摘要的 `verify-package.py`。
+
+分别在两个已安装解释器下确认实际导入路径、发行安装元数据与依赖可用性：开发环境 Python 3.11.15 含 FastAPI/Temporal/GEPA；基础环境 Python 3.12.11 三者均缺。两者均从 wheel 非 editable 安装，各自 `reference.verify()` 为 PASS、冻结 283 文件、原 source zip SHA `8018be5094623ca0646d28d3671daaf7ac60774280eefc1c5c023bc19dc5c760`。没有将两个 Python 版本合写为同一环境。
+
+已核 `wheel-regression.log` 与 `wheel-regression-command.json`：退出码记录为 0，最终 **522 passed、19 skipped、36 subtests passed、1 个已有 Starlette/httpx 弃用 warning，832.89 秒**。实际命令为：
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src/ergora/data/reference/platform/upstream/platform .venv-dev/bin/python -B -m pytest -q --tb=short -p no:cacheprovider tests src/ergora/data/reference/platform/upstream/platform/tests/test_contracts.py src/ergora/data/reference/platform/upstream/platform/tests/test_portable.py src/ergora/data/reference/platform/upstream/platform/tests/test_workflow.py::AdapterTests src/ergora/data/reference/platform/upstream/platform/tests/test_runtime.py
+```
+
+PYTHONPATH 只提供原 reference 平台；仓库没有 pytest 配置或 conftest 将顶层 src 注入应用路径。以相同 PYTHONPATH 独立核对应用实际导入来自开发安装的 `site-packages/ergora`，安装内容已与候选逐文件核同。该发行回归与先前显式 `PYTHONPATH=src` 的 152 项源码检查身份不同，不混用两次结果。
+
+已读 `lock-contention.py/json/log`，JSON 与原始 stdout 完全一致，wheel 与安装路径绑定本候选。脚本使用实际 State、共享 SQLite、另一项目的真实 bind 写者和原任务文件锁；只在受控 SDK connect 端口加入 18 秒等待，取消预算 25 秒。另一项目写者 **20.26ms** 完成到 revision 2；同任务第二个 prepare **846.56ms** 内明确返回 errno 11 busy，之后另一项目继续写到 revision 3。脚本分别断言写者和同任务拒绝均早于原远程结果；总时长 **19774.38ms**，原请求为 requested，确认字段仍为 null。数据支持本取消入口没有持控制库写锁等待该远程阶段；没有证明真实 RPC 延迟/模型收益，也没有修复旧 b 提交路径。
+
+此前已核的 `journey-performance.py/json/log` 未改；再次确认候选 SHA、90 次 CLI、两模板各三项本地操作各 10 样本、每模板一次 start/两次 signal 与已记数值一致。最终 README、USAGE、PROJECTS、AGENT_BACKENDS 和当前架构仍将 requested/already_closed 与外部停机分开；PLAN 和详细节点表没有提前把 c2 的最终 CI 标为完成，d 保持调查设计、F3.4 保持待实施。交付记录较早段落仍保留过程中的 pending 描述，已提示作者在最终收口时同步当前摘要；不影响本地工件结论。
+
+最终提交 `git diff --check` 通过。范围内没有未解决的源码/发行阻塞 finding；精确两 OS CI、远端分支身份和最后状态提交尚未在本轮核验。真实 Temporal/外部作业停止、fence/租约终态、新两模板六阶段/导出/重启与 F3.3d 的既有边界不变。
+
+## 精确 CI 与远端最终核对：c3113ad
+
+2026-11-03，同一独立审查上下文仅对固定候选 `c3113ad119c72ed933876ddae95d3c849c804852` 完成最后只读核对。当前工作区已开始 F3.3d，任务/提交源码有未提交修改；本轮从 `git show c3113ad:...` 核查 C2 的 11 项已审身份，聚合仍为 `b215f955…`，并确认原 `4abad37…` wheel 未变，没有把 D 工作区或之后的安装作为 C2 证据。此前最终本地发行结论继续有效；本轮没有重跑全套、安装、编辑源码、提交或推送。
+
+**C2 的精确 CI 与远端核对通过，范围内无未解决 finding。** 独立解析 `.ergora/checks/f3-task-cancellation/ci/` 内官方原始 `ci-run-latest.html` 和两个 job HTML：run 页面完整提交链接为本候选，状态为 Success，关联 job 集合恰为以下两个；job 页面自身的 selectedJobId、矩阵标题和每个必需步骤的日志 URL 均绑定正确 job 与完整候选提交。随后才核对 selection JSON 与 `ci-html-status.json` 的来源哈希一致，没有仅采用作者摘要。
+
+|精确 CI 41576751862|必需步骤|原 HTML 结论|
+|---|---|---|
+|[Ubuntu 3.11 / job 125721921231](https://github.com/626619403/Ergora/actions/runs/41576751862/job/125721921231)|Build and install wheel；Packaged reference identity；Native application regression|全部 success，Complete job success|
+|[Windows 3.12 / job 125721920856](https://github.com/626619403/Ergora/actions/runs/41576751862/job/125721920856)|上述三项；Windows PowerShell 5.1 installer and upgrade|全部 success，Complete job success|
+
+两个 job 都没有 failure/cancelled/timed_out 步骤。Ubuntu 的 Windows PowerShell 步骤按条件 skipped；该步骤在 Windows 实际 success。固定候选的 `.github/workflows/portability.yml` 与上述矩阵/步骤一致：从 wheel 安装，验证打包 reference 身份，执行该系统适用回归；Linux 另执行原平台 portable/adapter/runtime 检查。此处核验的是官方 HTML 的步骤结论，未下载完整 CI 日志，不把本地 522 项计数移作两 OS 的实际计数，也不把 Windows 兼容检查当原生正式取消运行支持；正式执行仍按手册走 Linux/WSL2。
+
+原始 HTML 身份分别为：run `8744e8d3b344fc2a9b72505acbb70df635264b89ad9d80d044eadc0188c269b8`；Ubuntu job `7ff4c9648a6f3082d52eab6c5e3a14c31521a5c1657ae4e0eb074aa9f61be41b`；Windows job `27d6f05335f069025af35a13d7d3068c96b39124f78c419da1afefdc3b00b3a6`。精确运行见 [CI 41576751862](https://github.com/626619403/Ergora/actions/runs/41576751862)。
+
+确认 origin 为 `https://github.com/626619403/Ergora.git` 后，独立执行 `git ls-remote --heads origin refs/heads/refactor/architecture-foundations`，退出 0，返回 `c3113ad119c72ed933876ddae95d3c849c804852`；与已保存 `ci/remote-head.txt`、本地固定候选和精确 CI 完全一致。该结论绑定核验时点，不预认后续状态文档或 D 提交的远端身份。
+
+至此 C2 的已审源码、最终本地发行、精确两 OS CI 和候选远端身份均已独立核同。F3.3d 的旧提交锁迁移，以及 F3.4 的真实服务/外部作业停机、fence/租约终态、两模板六阶段/导出/重启验收仍是后续范围，不由本次成功继承通过。
