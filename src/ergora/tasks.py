@@ -97,6 +97,15 @@ def status(state: State, project_id: str, task_id: str, *, run_id: str | None = 
             **reference.task_runtime_status(project, task['spec'], run_id=run_id, timeout=timeout)}
 
 
+def external_status(state: State, project_id: str, task_id: str, *, run_id: str, timeout: int = 20) -> dict:
+    """Read the closed original run's job/receipt/fence evidence without mutations."""
+    _run_id(run_id)
+    if type(timeout) is not int or not 1 <= timeout <= 60:
+        raise ValueError('External evidence query timeout must be 1–60 seconds')
+    project = _project(state, project_id)
+    return reference.task_external_status(project, state.root, {'task_id': task_id, 'run_id': run_id}, timeout=timeout)
+
+
 def submission(state: State, project_id: str, task_id: str) -> dict:
     """Inspect local submission facts without connecting to Temporal or reissuing work."""
     project = _project(state, project_id)

@@ -363,6 +363,11 @@ def task_export(project: dict, home: Path, operation: str, payload: dict, *, tim
     return _task_operation(project, home, 'export', operation, payload, timeout)
 
 
+def task_external_status(project: dict, home: Path, payload: dict, *, timeout: int) -> dict:
+    """Inspect original-run external evidence through the registered native process."""
+    return _task_operation(project, home, 'reconciliation', 'inspect', payload, timeout)
+
+
 def _task_operation(project: dict, home: Path, component: str, operation: str, payload: dict, timeout: int) -> dict:
     if sys.platform != 'linux':
         raise ValueError(f'Formal task {component} requires Linux; use the registered Linux runtime in WSL2')

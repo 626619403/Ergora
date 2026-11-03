@@ -154,6 +154,11 @@ def parser() -> argparse.ArgumentParser:
             operation.add_argument("--intent-sha256", required=True)
             operation.add_argument("--confirm", action="store_true", required=True)
             operation.add_argument("--timeout", type=int, default=20)
+    external = operations.add_parser("external-status", help="Inspect a closed original run's external job evidence")
+    external.add_argument("project")
+    external.add_argument("task_id")
+    external.add_argument("--run-id", required=True)
+    external.add_argument("--timeout", type=int, default=20)
     exporting = operations.add_parser("export", help="Export an exact reviewed candidate to a local branch")
     exporting.add_argument("project")
     exporting.add_argument("task_id")
@@ -412,6 +417,8 @@ def main(argv: list[str] | None = None) -> int:
                           tasks.resume_start(state, args.project, args.task_id, args.revision, args.intent_sha256, timeout=args.timeout))
                 print(json.dumps(output, ensure_ascii=False, indent=2))
                 return 0 if output["status"] == "submitted" else 1
+            elif args.operation == "external-status":
+                output = tasks.external_status(state, args.project, args.task_id, run_id=args.run_id, timeout=args.timeout)
             elif args.operation == "export-status":
                 output = tasks.export_status(state, args.project, args.task_id)
             elif args.operation in ("export", "resume-export"):
