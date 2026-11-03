@@ -6,7 +6,7 @@
 
 - **源码需求符合性：通过。** 在本次检查范围内无可复现的 correctness finding，无阻塞项。显式 fence、独立清理证据、精确原 claim 释放、原 outcome 保留和按原意图恢复形成闭环。
 - **结构与可维护性：通过。** 现有所有者和原接口复用合理；未发现应删除的生产守卫、重复测试或新增 CI。性能结论仅限下述代码成本与实际隔离测量。
-- **发行验收：尚未完成。** 已独立核实当前 wheel/源码/两安装身份及 CLI 旅程留存事实；完整最终包回归、精确两 OS CI 和最终提交/远端身份核对仍待完成。本报告不把源码通过等同于 b2 或完整 F3 交付完成。
+- **最终发行验收：通过，b2 满足收口。** 最终包完整回归、精确两 OS CI、候选源码/包/两安装与实时远端身份均已独立只读复核，详见末节。完整 F3 仍等待 c/d/e，不承接这些真实运行的验收结论。
 
 ## 审查身份与范围
 
@@ -54,4 +54,25 @@ PYTHONPATH=src PYTHONDONTWRITEBYTECODE=1 .venv-dev/bin/python -m pytest -q --tb=
 
 文件协议仍以可信执行器遵守 task fence、独立 walltime 和不可复用 task ID 为条件；本地 task 锁无法原子占有远端 workflow ID。源码保留发布前后对已知后继的检查，文档明确此边界。可控 RPC 与异常注入不替代真实 workflow/模型、系统进程已停或操作系统掉电持久性的证明。真实两模板六阶段、取消进程与 worker 重启仍归 F3.4c/d/e；本次未运行它们，也未自行运行完整发行回归或两 OS CI。
 
-当前无阻塞 finding，无需源码修正。下一步按原计划收齐固定候选完整包回归、精确两 OS CI 及最终本地/远端身份审查，再登记 b2 完成。
+初轮审查无阻塞 finding，无需源码修正。其时待验的最终包回归、精确两 OS CI 和最终身份已在下节收齐。
+
+## 最终发行、CI 与远端只读复核
+
+2026-11-03 追加最终复核。最终生产/测试候选为 [`7139d1a85cdce13689d75471620da8dd143156a8`](https://github.com/626619403/Ergora/commit/7139d1a85cdce13689d75471620da8dd143156a8)。重新读取该提交的 8 份生产/测试 blob、当前文件、candidate-identity 及初轮 review-source-identity，全部 SHA 相同。基线到候选的冻结参考目录无差异；工作区增量属于文档状态和后续 c/d 旅程记录，没有生产/测试改动。
+
+重新计算 wheel `c7411ae956108c2e23544fd476c0106e95b65a1d77a3a19c20a14caa3f5f8ceb` 及其 347 个包文件，与源码、完整开发安装和独立基础安装一致。两解释器实际导入均来自 `site-packages/ergora`，分发元数据的非 editable wheel 摘要也匹配；开发 Python 3.11.15/35 个分发包，基础 Python 3.12.3/9 个分发包，当前版本列表与 environment-v1 原记录一致。
+
+最终包原始回归命令覆盖 `tests`、原 contracts/portable、workflow AdapterTests 和 runtime；PYTHONPATH 仅为原 vendored platform 路径，没有加入 `src` 应用目录。实际 exit code 0，日志完整结束为 **711 passed、19 skipped、36 subtests passed、1 warning，1722.63 秒**；唯一警告为既有 StarletteDeprecationWarning。已检查原命令、运行器、环境记录和完整日志，没有重跑测试或安装。原始证据为 `packaged-regression-v1-command.json/log` 和 `environment-v1.json`，本次校验保存了它们的字节数与 SHA。
+
+独立重新请求 [官方 CI 41621015706](https://github.com/626619403/Ergora/actions/runs/41621015706) 及两个官方 job 页面，均 HTTP 200，run 状态 Success，提交链接和全部必需步骤 log URL 绑定完整候选 SHA：
+
+|官方 job|必需步骤与结论|
+|---|---|
+|[Ubuntu / Python 3.11，125866432315](https://github.com/626619403/Ergora/actions/runs/41621015706/job/125866432315)|Build and install wheel、Packaged reference identity、Native application regression：全部 success|
+|[Windows / Python 3.12，125866432579](https://github.com/626619403/Ergora/actions/runs/41621015706/job/125866432579)|上述三项，加 Windows PowerShell 5.1 installer and upgrade：全部 success|
+
+同时核对候选的 portability workflow：Linux 运行应用及适用的原生套件；Windows 运行其适用范围，Linux 专属测试沿原 skip 合同。两 OS 结论依据官方完成状态、各必需步骤及精确 SHA，不把本地 711 项计数套用于 Windows，也不把可控 RPC 扩大为真实服务/模型验收。
+
+独立 `git ls-remote --heads origin refs/heads/refactor/architecture-foundations` 在 **2026-11-03 10:57:23 UTC** 返回原候选 `7139d1a85cdce13689d75471620da8dd143156a8`。实时官方 HTML、远端原输出、重新核算的身份与原始证据摘要分别保存在 [final-live-sources.json](../../.ergora/checks/f3-task-reconciliation-write/reviewer/final-live-sources.json)、[final-live-remote.txt](../../.ergora/checks/f3-task-reconciliation-write/reviewer/final-live-remote.txt)、[final-review.json](../../.ergora/checks/f3-task-reconciliation-write/reviewer/final-review.json)；可复查校验器为 [final-verify.py](../../.ergora/checks/f3-task-reconciliation-write/reviewer/final-verify.py)。大体积原始记录保留在私有 checks 目录。
+
+**最终判断：b2 源码、结构、发行和候选身份门禁全部满足，无未解决 finding，可以登记本切片完成。** 后续 c/d 已启动的两条真实 run 未纳入本次验收；真实模型、两模板六阶段、取消进程、worker 重启及完整 F3 综合收口仍由 c/d/e 自行提供证据。可信文件协议、本地锁、task ID 不可复用和大产物性能的前述边界保持。

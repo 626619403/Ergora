@@ -1,6 +1,6 @@
 # F3.4b2：显式终态外部对账
 
-日期：2026-11-03。基线 `bca8c6eefcbeec6f67b7d78bc033f7e5ad95d9ba`，分支 `refactor/architecture-foundations`。前置 [b1](2026-11-03-task-external-status.md) 与[调查](2026-11-03-task-reconciliation.md)已完成。本切片进入实现，验证、独立审查和推送尚未完成；完整 F3 仍有 c/d/e。
+日期：2026-11-03。基线 `bca8c6eefcbeec6f67b7d78bc033f7e5ad95d9ba`，分支 `refactor/architecture-foundations`。前置 [b1](2026-11-03-task-external-status.md) 与[调查](2026-11-03-task-reconciliation.md)已完成。本切片已完成实现、验证、独立最终审查和推送；完整 F3 仍有 c/d/e。
 
 ## 行为和公共接口
 
@@ -48,4 +48,12 @@
 
 治理模板4次受控connect各4.5秒、原生预算25秒；另一项目SQLite写入19.92毫秒成功，同task操作1090.03毫秒明确busy，均在对账完成前；整个恢复20093.78毫秒。两模板本地状态3次样本中位1016.68/1088.33毫秒、最大1017.54/1116.69毫秒，含CLI/原生进程/SDK导入并与全回归并发。仅说明所测隔离/资源边界，不推导真实网络或启动性能收益。
 
-最终安装包完整回归正在执行；精确两OS CI及独立最终发行/远端核对尚未完成，b2仍不能标完成。
+最终候选完整发行回归已完成，结果与身份如下；b2满足收口，完整F3继续等待c/d/e。
+
+## 最终交付
+
+生产/测试 [`7139d1a85cdce13689d75471620da8dd143156a8`](https://github.com/626619403/Ergora/commit/7139d1a85cdce13689d75471620da8dd143156a8)已推送当前分支。最终非editable wheel仍为上述c741…，347个包文件与源码、两安装一致，冻结283文件和依赖保持。最终完整Linux回归 **711 passed、19 skipped、36 subtests passed**（1722.63秒），唯一警告为既有Starlette弃用提示。原始命令/环境/日志为私有检查目录的`packaged-regression-v1-command.json`、`environment-v1.json`和`packaged-regression-v1.log`；应用实际由site-packages加载，PYTHONPATH仅加入原vendored platform。
+
+[精确CI41621015706](https://github.com/626619403/Ergora/actions/runs/41621015706)的Ubuntu三项、Windows四项必需步骤全部success，官方run/job页面与每项日志URL均绑定完整候选SHA。没有将Linux711项计数套用于Windows。[独立终审](2026-11-03-task-reconciliation-write-review.md)重新核官方页面、全部包/源码/安装身份、原回归证据和实时远端，结论通过，**无未解决finding**，不需要再次改生产或测试。
+
+c/d真实服务旅程已另开[独立记录](2026-11-03-formal-task-journeys.md)，不计入本b2验收；下一项为两模板正常六阶段、候选导出/复验及取消/重启异常恢复。
