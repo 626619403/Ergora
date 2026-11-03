@@ -59,3 +59,5 @@ b2尚未实施；需独立记录具体字段/恢复合同与有意义的中断�
 `_Inspection`实例已经持有原submission/creation/spec/adapter，`run()`返回原outcome、history job集合摘要及逐job文件事实；原FileAdapter.fence只需要原task_id/request_sha256。b2可组合这个实际所有者并在发布后重验，不必另抄history/receipt算法、暴露新通用插件层或为了发布fence重复构造另一套上下文。持久读取/路径/尺寸和task锁应复用`_Creation`已有接口；是否新增私有协调类只按本操作的完整恢复算法所有权决定，不虚构第二调用者。
 
 原fence按task/request发布，不含run ID；本地task锁只串行遵循本协议的控制路径，不能声称原子占有远端workflow ID。实施仍须保留“原已提交闭合run且没有已知后继”的前置检查、发布后复核及冲突保持未知/不释放，并明确原task ID不可被绕过本协议的其他客户端重用。这里没有实施b2、修改冻结文件或验证新的外部清理结果；具体公共字段和恢复检查点仍由下一功能切片固定。
+
+上述为实施前调查快照；当前 [b2实现与验收记录](2026-11-03-task-reconciliation-write.md)已固定公共接口和四份恢复记录，并进入实现/发行审查，不继承调查探针的验收结论。

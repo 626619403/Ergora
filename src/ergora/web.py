@@ -81,12 +81,15 @@ class TaskResumeStartPayload(TaskResumePayload):
     timeout: int = Field(default=20, strict=True, ge=1, le=60)
 
 
-class TaskApprovePayload(Payload):
+class TaskRunDecisionPayload(Payload):
     revision: int = Field(strict=True, ge=1)
     run_id: str = Field(min_length=1, max_length=128)
-    plan_sha256: str = Field(pattern="^[0-9a-f]{64}$")
     confirm: bool = Field(strict=True)
     timeout: int = Field(default=20, strict=True, ge=1, le=60)
+
+
+class TaskApprovePayload(TaskRunDecisionPayload):
+    plan_sha256: str = Field(pattern="^[0-9a-f]{64}$")
 
 
 class TaskResumeDecisionPayload(TaskResumeStartPayload):
@@ -300,6 +303,20 @@ def create_app(home: Path | None = None) -> FastAPI:
     @application.get("/api/projects/{project_id}/tasks/{task_id}/external-status")
     def formal_task_external_status(project_id: str, task_id: str, run_id: str, timeout: int = 20):
         return tasks.external_status(state, project_id, task_id, run_id=run_id, timeout=timeout)
+
+    @application.get("/api/projects/{project_id}/tasks/{task_id}/reconciliation")
+    def formal_task_reconciliation(project_id: str, task_id: str):
+        return tasks.reconciliation(state, project_id, task_id)
+
+    @application.post("/api/projects/{project_id}/tasks/{task_id}/reconcile")
+    def reconcile_formal_task(project_id: str, task_id: str, body: TaskRunDecisionPayload):
+        return tasks.reconcile(state, project_id, task_id, body.revision,
+                               run_id=body.run_id, confirm=body.confirm, timeout=body.timeout)
+
+    @application.post("/api/projects/{project_id}/tasks/{task_id}/resume-reconcile")
+    def resume_formal_task_reconciliation(project_id: str, task_id: str, body: TaskResumeDecisionPayload):
+        return tasks.resume_reconcile(state, project_id, task_id, body.revision,
+                                      body.intent_sha256, confirm=body.confirm, timeout=body.timeout)
 
     @application.post("/api/projects/{project_id}/tasks/{task_id}/resume-create")
     def resume_formal_task_creation(project_id: str, task_id: str, body: TaskResumePayload):

@@ -16,11 +16,16 @@ from temporalio.converter import DataConverter, PayloadCodec
 from temporalio.service import RPCError, RPCStatusCode
 
 from dev_platform import connection
+from dev_platform.adapter import FileAdapter
+from dev_platform.ingress import IngressLeases
+from agent_platform import core
 from ergora.reference_task_reconciliation import main
 
 payload = json.load(sys.stdin)
 sys.stdin = io.StringIO(json.dumps(payload))
 scenario = os.environ.get('ERGORA_TEST_EXTERNAL_SCENARIO', 'normal')
+reconciliation_scenario = os.environ.get('ERGORA_TEST_RECONCILIATION_SCENARIO', 'normal')
+fenced = False
 root = Path(payload['project']['registration']['definition']['execution']['state_directory']) / 'sdk-fixture'
 
 
@@ -133,7 +138,8 @@ class Client:
 
     def get_workflow_handle(self, workflow_id, *, run_id, result_type):
         assert workflow_id == 'dev-task/' + payload['task_id'] and result_type is dict
-        latest = 'successor-run' if scenario == 'successor-run' else saved()['run_id']
+        successor = scenario == 'successor-run' or reconciliation_scenario == 'successor-after-fence' and fenced
+        latest = 'successor-run' if successor else saved()['run_id']
         return Handle(run_id or latest)
 
 
@@ -147,4 +153,62 @@ async def connect():
 
 
 connection.connect = connect
+
+
+def interrupt(event):
+    if reconciliation_scenario == event:
+        raise OSError('Fixture reconciliation interruption: ' + event)
+
+
+original_write, original_fence, original_release = core.write, FileAdapter.fence, IngressLeases.release
+
+
+def write(path, value, **kwargs):
+    phase = Path(path).name.split('.')[-2]
+    if Path(path).parent.name == 'task-reconciliations':
+        interrupt('before-' + phase)
+        original_write(path, value, **kwargs)
+        interrupt('after-' + phase)
+    else:
+        original_write(path, value, **kwargs)
+
+
+async def fence(self, context):
+    global fenced
+    log('reconciliation-fence')
+    interrupt('before-fence')
+    result = await original_fence(self, context)
+    fenced = True
+    if reconciliation_scenario == 'orphan-after-fence':
+        (root.parent / 'receipts/new-task/orphan.json').write_text('{"job_id":"orphan"}')
+    if reconciliation_scenario == 'outcome-after-fence':
+        path = root / 'outcome.json'
+        path.write_text(json.dumps({**json.loads(path.read_text()), 'detail': 'Changed during fence publication'}))
+    interrupt('after-fence')
+    return result
+
+
+class ReleaseCommit:
+    def __init__(self, db):
+        self.original = db
+
+    def __getattr__(self, name):
+        return getattr(self.original, name)
+
+    def commit(self):
+        interrupt('before-release-commit')
+        self.original.commit()
+        interrupt('after-release-commit')
+
+
+def release(self, *args, **kwargs):
+    log('reconciliation-release')
+    self.db = ReleaseCommit(self.db)
+    try:
+        return original_release(self, *args, **kwargs)
+    finally:
+        self.db = self.db.original
+
+
+core.write, FileAdapter.fence, IngressLeases.release = write, fence, release
 main()

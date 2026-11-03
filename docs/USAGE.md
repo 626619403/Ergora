@@ -264,7 +264,28 @@ API：`GET /api/projects/PROJECT_ID/tasks/TASK_ID/external-status?run_id=RUN_ID&
 
 仅在完整历史对应的全部请求和可信终态回执均匹配、没有额外作业且已有正确fence时，`external_confirmed`为true。requests和receipts两类job目录均参与检查；无法绑定原history的孤立回执不支持确认。FAILED/CANCELLED回执也是外部作业终止证据，不能据此推断开发成功。这是可信文件协议的当前快照，依赖执行器按原协议发布回执和遵守fence，不代替操作系统进程检查。缺目录不会把已知历史job变成零作业通过。
 
-查询不保存本工具运行记录、不发布fence或释放租约，`lease_released_by_operation: false`、`execution_success: null`。CLI返回0只表示查询成功，务必检查external_confirmed和未决项。未确认时保留原任务、运行目录及租约，先沿原ID补齐证据；显式终态对账另行提供。
+查询不保存本工具运行记录、不发布fence或释放租约，`lease_released_by_operation: false`、`execution_success: null`。CLI返回0只表示查询成功，务必检查external_confirmed和未决项。未确认时保留原任务、运行目录及租约，先沿原ID补齐证据。
+
+### 显式终态对账与工单租约释放
+
+原运行闭合后，使用当前项目修订和固定原run明确授权fence及外部清理核对：
+
+```bash
+ergora task reconcile my-project TASK_ID --revision 1 --run-id RUN_ID --confirm --timeout 20
+ergora task reconciliation my-project TASK_ID
+# 中断或补齐原可信回执后，使用上条返回的原intent_sha256恢复：
+ergora task resume-reconcile my-project TASK_ID --revision 1 --intent-sha256 RECONCILIATION_SHA --confirm --timeout 20
+```
+
+只接管本控制目录统一创建、保存原提交回执且保留原`local-cli`工单归属的任务。对账前后都核原run仍是当前run、完整原history及登记adapter目录；额外请求/孤立回执会阻止接管该scope。发布原不可变fence后，须逐一确认所有历史job的原请求、可信终态回执及哈希产物；缺失/损坏证据保持unknown并保留租约。可信执行器仍须遵守fence和独立walltime；这份文件协议证据不能代替系统进程扫描。所有协调者必须保持task ID不可复用，不能在协议外为同task启动新run。
+
+`reconciliation`只读本地记录，不查远端、不发布fence或释放租约。`prepared`尚未保存写前检查点；`unknown`已保存原outcome/history身份但没有完整清理证据；`confirmed`已保存清理证据但释放回执尚未保存；只有`reconciled`表示租约已按精确原claim释放且回执已保存。恢复会重验原事实，按同一fence/证据摘要幂等推进。重复reconcile返回已保存状态，明确resume-reconcile才继续未完成操作。已完成回执是历史事实，实时外部状态继续使用external-status。
+
+`original_outcome`保持真实原结果：即使原结果是CANCEL_UNCONFIRMED，本次确认清理也不会把它改成BLOCKED或开发成功。`execution_success: null`不推断候选是否通过。原native release适用时保留原outcome摘要，其余闭合清理使用独立清理evidence摘要，不能手改owner/ledger或删证据绕过冲突。CLI变更只在reconciled时返回0；HTTP成功也须检查status。
+
+API：GET `.../tasks/TASK_ID/reconciliation`、POST `.../tasks/TASK_ID/reconcile`（`revision/run_id/confirm/timeout`）、POST `.../tasks/TASK_ID/resume-reconcile`（`revision/intent_sha256/confirm/timeout`）。confirm严格为true，写请求沿用同源保护及`X-Ergora-Request: 1`。Linux/WSL2使用登记完整运行时；每阶段1–60秒，父进程另留5秒，本地预检另计。原任务锁保护同task，远程阶段不持控制库写锁。
+
+执行状态目录`ergora/task-reconciliations/TASK_ID.{intent,attempt,evidence,result}.json`须与原任务/创建/提交、请求/回执/产物/fence及`ingress/leases.sqlite3`一起备份。证据或数据库丢失时保留未知，不通过新建ledger重建所有权。
 
 ### 导出精确候选与恢复回执
 

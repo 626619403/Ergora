@@ -23,10 +23,11 @@ flowchart LR
   Cancellation --> Submission
   Cancellation --> Transport
   Ref --> Export[reference_task_export 专用导出进程]
-  Ref --> ExternalStatus[reference_task_reconciliation 原run外部证据只读进程]
+  Ref --> ExternalStatus[reference_task_reconciliation 证据查询与显式对账]
   ExternalStatus --> Submission
   ExternalStatus --> Transport
   ExternalStatus --> Adapter[原FileAdapter 请求/回执/产物/fence]
+  ExternalStatus --> Ingress[原IngressLeases 精确claim释放]
   Export --> Submission
   Export --> Transport
   Export --> Git[Git ref事务 / 原ingress.release]
@@ -60,7 +61,8 @@ flowchart LR
 |取消请求/本地记录/投递恢复|`reference.task_cancellation` → 专用`reference_task_cancellation`；tasks/CLI/API|复用原Transport.cancel、严格原spec/memo/run，实际signal前检查点及操作SHA；闭合明确无信号，unknown仅核分页history，不接管fence/租约|
 |精确候选导出/本地回执/恢复|`reference.task_export` → 专用`reference_task_export`；tasks/CLI/API|原提交固定spec/memo/run，原REVIEW_READY结果核精确candidate；写前attempt、异步Git对象fetch与条件事务，原ingress.release和export.json；unknown只核实际ref补回执，不fetch/创建；不checkout/merge/push|
 |原run外部证据查询|`reference.task_external_status` → 专用`reference_task_reconciliation`；tasks/CLI/API|原创建/提交归属、固定闭合run与最新run检查；连续全history按真实converter还原job，绑定登记STATE五根和原FileAdapter/poll；缺失/额外/无效证据保持未决；GET不发布fence、不保存运行记录或释放租约|
-|正式任务运行结果|原`DevelopmentTransport / Runtime / Workflow`；`tasks.status`只读返回原outcome|运行事实与可信验收仍在原runtime；result若释放适用租约是明确写操作，不能塞入只读GET；显式终态外部fence对账仍属F3.4b2|
+|原run显式外部对账/本地记录/恢复|`reference.task_reconciliation` → 同一专用进程；tasks/CLI/API|组合原Inspection；短revision事务只保存意图，远程前保存原outcome/history检查点；原fence发布后重验完整history/两目录/可信证据，持久清理evidence后由原IngressLeases释放精确原claim；恢复保持原摘要/原run，GET只读本地记录|
+|正式任务运行结果|原`DevelopmentTransport / Runtime / Workflow`；`tasks.status`只读返回原outcome|运行事实与可信验收仍在原runtime；显式终态对账保存独立清理事实，原CANCEL_UNCONFIRMED等结果保持；适用租约释放只在明确写操作中执行|
 
 `reference.ROOT`仍保留给既有Python调用者和身份/兼容测试；生产布局知识只在reference及其专用原生边界。没有删除公共常量或改变CLI响应/退出码。`template_details`是实际Web使用的资源读取接口，没有另造模板存储层。
 

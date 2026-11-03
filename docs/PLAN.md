@@ -147,3 +147,5 @@ S0–S10 后续范围现在由 S11 详细计划承接；尚未测得收益的优
 最近完成：[V1测试输入分层](delivery/2026-11-03-verification-input-layers.md)及[V2平台提前跳过](delivery/2026-11-03-platform-test-scheduling.md)/[V3过时CI取消](delivery/2026-11-03-ci-scheduling.md)。原36反例语义保持、29轻量/91首轮及修后12项通过；V2的115测试/152顶层函数AST、323案例/fixture保持，40项定向通过。V1的4e01a4e/CI41605898404和V2/V3共同d558885/CI41612623462均已推送并通过两OS及各自最终独立提交/CI/实时远端审查，无未解决findings。Windows步骤390→212秒仅记两次运行观察；真实重叠取消未演练。下一可执行项：[F3.4b2显式外部对账](delivery/2026-11-03-task-reconciliation.md)的检查点/fence/适用释放，再做c/d/e真实两模板正常/重启异常验收后进入F4页面，完整F3仍未完成。
 
 用户新增并行审计：[测试与CI审计](delivery/2026-11-03-verification-redundancy-review.md)已形成，实测纯输入用例的重型初始化成本，并核实Linux晚跳过和CI重叠触发条件；没有建议删除的生产守卫。后续[V1–V3成本跟进](plans/2026-11-03-verification-efficiency.md)按输入/集成分层、平台提前跳过、CI过时运行分切片验收；不因“重复”直接删除故障反例或放宽门禁，V1已完成；V2/V3亦已完成：已推送d558885，精确两OS CI41612623462及各自最终独立复核通过。
+
+当前实施：[F3.4b2显式终态外部对账](delivery/2026-11-03-task-reconciliation-write.md)已实现 CLI/API、本地四份不可变记录、原 outcome/清理证据分离和原 claim 精确释放。65项输入/读取、修后9项及journal恢复1项通过，347文件×两安装/27CLI与18秒并发边界通过；[独立源码/结构审查](delivery/2026-11-03-task-reconciliation-write-review.md)及5项独立恢复边界通过，无findings。首轮锁提示测试断言已修，完整包回归/精确CI及最终审计待收口；尚未交付，不改变 b1 的只读合同。完成后继续 c/d/e。

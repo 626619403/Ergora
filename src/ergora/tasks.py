@@ -112,6 +112,37 @@ def submission(state: State, project_id: str, task_id: str) -> dict:
     return reference.task_submission(project, state.root, 'status', {'task_id': task_id}, timeout=20)
 
 
+def reconciliation(state: State, project_id: str, task_id: str) -> dict:
+    """Read saved cleanup evidence without querying the run, fencing or releasing."""
+    project = _project(state, project_id)
+    return reference.task_reconciliation(project, state.root, 'status', {'task_id': task_id}, timeout=20)
+
+
+def reconcile(state: State, project_id: str, task_id: str, expected_revision: int,
+              *, run_id: str, confirm: bool = False, timeout: int = 20) -> dict:
+    """Fence a closed original run and release only its confirmed external cleanup."""
+    _run_id(run_id)
+    project, prepared = _decision_prepare(state, project_id, expected_revision, reference.task_reconciliation, 'prepare',
+                                         {'task_id': task_id, 'run_id': run_id}, confirm, timeout)
+    if not prepared['created']:
+        return prepared['reconciliation']
+    return reference.task_reconciliation(project, state.root, 'dispatch',
+                                         {'task_id': task_id, 'intent_sha256': prepared['reconciliation']['intent_sha256']},
+                                         timeout=timeout)
+
+
+def resume_reconcile(state: State, project_id: str, task_id: str, expected_revision: int,
+                     intent_sha256: str, *, confirm: bool = False, timeout: int = 20) -> dict:
+    """Resume the original immutable fence and cleanup release after interruption."""
+    _digest(intent_sha256, 'Intent')
+    project, prepared = _decision_prepare(state, project_id, expected_revision, reference.task_reconciliation, 'prepare-resume',
+                                         {'task_id': task_id, 'intent_sha256': intent_sha256}, confirm, timeout)
+    if prepared['status'] == 'reconciled':
+        return prepared
+    return reference.task_reconciliation(project, state.root, 'resume',
+                                         {'task_id': task_id, 'intent_sha256': intent_sha256}, timeout=timeout)
+
+
 def start(state: State, project_id: str, task_id: str, expected_revision: int,
           creation_sha256: str, *, timeout: int = 20) -> dict:
     """Submit an explicitly identified creation once through the original admission."""

@@ -159,6 +159,22 @@ def parser() -> argparse.ArgumentParser:
     external.add_argument("task_id")
     external.add_argument("--run-id", required=True)
     external.add_argument("--timeout", type=int, default=20)
+    reconciling = operations.add_parser("reconcile", help="Confirm a closed original run's external cleanup and ingress release")
+    reconciling.add_argument("project")
+    reconciling.add_argument("task_id")
+    reconciling.add_argument("--revision", type=int, required=True)
+    reconciling.add_argument("--run-id", required=True)
+    reconciling.add_argument("--confirm", action="store_true", required=True)
+    reconciling.add_argument("--timeout", type=int, default=20)
+    for name in ("reconciliation", "resume-reconcile"):
+        operation = operations.add_parser(name)
+        operation.add_argument("project")
+        operation.add_argument("task_id")
+        if name == "resume-reconcile":
+            operation.add_argument("--revision", type=int, required=True)
+            operation.add_argument("--intent-sha256", required=True)
+            operation.add_argument("--confirm", action="store_true", required=True)
+            operation.add_argument("--timeout", type=int, default=20)
     exporting = operations.add_parser("export", help="Export an exact reviewed candidate to a local branch")
     exporting.add_argument("project")
     exporting.add_argument("task_id")
@@ -419,6 +435,16 @@ def main(argv: list[str] | None = None) -> int:
                 return 0 if output["status"] == "submitted" else 1
             elif args.operation == "external-status":
                 output = tasks.external_status(state, args.project, args.task_id, run_id=args.run_id, timeout=args.timeout)
+            elif args.operation == "reconciliation":
+                output = tasks.reconciliation(state, args.project, args.task_id)
+            elif args.operation in ("reconcile", "resume-reconcile"):
+                output = (tasks.reconcile(state, args.project, args.task_id, args.revision,
+                                          run_id=args.run_id, confirm=args.confirm, timeout=args.timeout)
+                          if args.operation == "reconcile" else
+                          tasks.resume_reconcile(state, args.project, args.task_id, args.revision,
+                                                 args.intent_sha256, confirm=args.confirm, timeout=args.timeout))
+                print(json.dumps(output, ensure_ascii=False, indent=2))
+                return 0 if output["status"] == "reconciled" else 1
             elif args.operation == "export-status":
                 output = tasks.export_status(state, args.project, args.task_id)
             elif args.operation in ("export", "resume-export"):

@@ -50,10 +50,11 @@ flowchart TB
   Cancellation --> Submission
   Cancellation --> Temporal
   Ref --> Export[reference_task_export 专用导出进程]
-  Ref --> ExternalStatus[reference_task_reconciliation 原run外部证据只读进程]
+  Ref --> ExternalStatus[reference_task_reconciliation 证据查询与显式对账]
   ExternalStatus --> Submission
   ExternalStatus --> Temporal
   ExternalStatus --> Adapter[原FileAdapter 请求/回执/产物/fence]
+  ExternalStatus --> Ingress[原IngressLeases 精确claim释放]
   Export --> Submission
   Export --> Temporal
   Export --> Git[Git ref事务 / 原ingress.release]
@@ -87,6 +88,7 @@ flowchart TB
 |取消请求和原history投递恢复|`tasks.cancel / cancellation / resume_cancel` → `reference.task_cancellation` → 专用`reference_task_cancellation`；CLI/API|复用原Transport.cancel的RUNNING守卫及协作signal；稳定request ID/原因/actor，写前attempt和操作SHA关联；闭合明确不发新信号，unknown不重发且不声称外部已停|
 |精确候选本地导出与回执恢复|`tasks.export / export_status / resume_export` → `reference.task_export` → 专用`reference_task_export`；CLI/API|复用原提交/spec/memo/run及REVIEW_READY结果；短revision准备后仅task锁，写前attempt固定outcome，Git事务保护已有分支/符号引用；unknown只核ref不重复写入；原租约/原生export回执沿原所有者|
 |原run外部作业证据|`tasks.external_status` → `reference.task_external_status` → 专用`reference_task_reconciliation`；CLI/API|复用原提交/spec/memo/SDK converter，完整连续闭合history逐项核请求和原FileAdapter可信终态回执/产物；已有fence与未决项另报；不写本工具记录、不发布fence或释放租约|
+|原run显式清理对账/本地记录/恢复|`tasks.reconcile / reconciliation / resume_reconcile` → `reference.task_reconciliation` → 同一专用进程；CLI/API|组合原只读检查所有者，短revision准备后仅task锁；原outcome/history检查点先于原fence，发布后完整重验；清理evidence先于原IngressLeases精确释放，SQLite提交后result；不改原outcome/复用task ID，GET只读本地记录|
 |参考资源、编译与执行桥|`reference`、`reference_task_creation`、`reference_task_runtime`、`reference_task_submission`、`reference_task_approval`、`reference_task_cancellation`、`reference_task_export`、`reference_task_reconciliation`、`reference_executor`、`stage_driver`；CLI/Web/drafts/agent_runs|资源查询与正式执行分开；执行器限专用 Linux 进程，不把原导入全局当 Web request-local|
 |交互与传输|`cli`、`web`、`data/console`|调用现有用例；可选 Web/Temporal 延迟导入；UI 不拥有正式任务状态|
 
@@ -170,6 +172,7 @@ flowchart LR
 |State / backups|schema 版本、迁移前 DB 快照、完整离线备份清单|DDL/锁/版本拒绝；DB 快照不等于完整文件备份|
 |正式任务创建意图/回执|登记执行状态目录的`ergora/task-creations/`；原`tasks/`七份合同|意图先于原生发布，同ID跨进程锁；恢复固定内容及旧绑定；不从发布回执推导运行状态|
 |正式任务操作意图/检查点/回执|执行状态目录`ergora/task-submissions / task-approvals / task-cancellations / task-exports`；原owner与export文件|固定创建/原提交/run，attempt先于外部变更；未知只核原history/实际分支，不能将请求回执作为六阶段成功；随执行目录备份|
+|显式终态外部清理证据|执行状态目录`ergora/task-reconciliations/`四份不可变JSON；原`cli-ingress.json`与租约库|保存原outcome和独立清理事实；缺历史job/可信回执/产物不释放，原native适用时保持原outcome释放摘要，其他闭合清理使用evidence摘要；与执行目录及ledger联合备份|
 |原 runtime / executor / runner|原配置、任务文件、ingress leases、jobs ledger、Git/产物；Temporal history|正式阶段、批准、候选与取消事实；不搬迁在途 history|
 
 F1统一注册将控制项目定义和bindings作为权威来源，reference正式注册/策略是不可变单向投影；旧注册经只读预览、差异与显式采用接入，轻量项目和旧参考入口保持兼容。CLI/env路径、模板输入和SDK原生设置仍按域归属，没有新增双向同步器。pending项目与before/after意图协调跨资源恢复，published状态和实际文件一致性分别查询。凭据值继续由运行环境/工具认证提供，不进入分享定义。详见[项目手册](../PROJECTS.md)、[状态迁移](state-migrations.md)与[参考配置范围](reference-boundary.md#配置与进程范围)。

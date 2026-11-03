@@ -368,6 +368,11 @@ def task_external_status(project: dict, home: Path, payload: dict, *, timeout: i
     return _task_operation(project, home, 'reconciliation', 'inspect', payload, timeout)
 
 
+def task_reconciliation(project: dict, home: Path, operation: str, payload: dict, *, timeout: int) -> dict:
+    """Reconcile the original closed run through its durable native boundary."""
+    return _task_operation(project, home, 'reconciliation', operation, payload, timeout)
+
+
 def _task_operation(project: dict, home: Path, component: str, operation: str, payload: dict, timeout: int) -> dict:
     if sys.platform != 'linux':
         raise ValueError(f'Formal task {component} requires Linux; use the registered Linux runtime in WSL2')

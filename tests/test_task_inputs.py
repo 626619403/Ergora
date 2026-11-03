@@ -14,6 +14,8 @@ _ARGUMENTS = {
     'export': {'expected_revision': 1, 'run_id': 'original-run', 'candidate_sha': 'a' * 40,
                'branch': 'agent/exported', 'confirm': True},
     'external_status': {'run_id': 'original-run'},
+    'reconcile': {'expected_revision': 1, 'run_id': 'original-run', 'confirm': True},
+    'resume_reconcile': {'expected_revision': 1, 'intent_sha256': 'a' * 64, 'confirm': True},
 }
 
 _CASES = [
@@ -46,6 +48,14 @@ _CASES = [
     ('external_status', {'timeout': True}, 'timeout'),
     ('external_status', {'timeout': 0}, 'timeout'),
     ('external_status', {'timeout': 61}, 'timeout'),
+    ('reconcile', {'run_id': ''}, 'Run ID'),
+    ('reconcile', {'confirm': 1}, 'confirmation'),
+    ('reconcile', {'confirm': False}, 'confirmation'),
+    ('reconcile', {'timeout': True}, 'timeout'),
+    ('reconcile', {'timeout': 61}, 'timeout'),
+    ('resume_reconcile', {'intent_sha256': 'bad'}, 'SHA256'),
+    ('resume_reconcile', {'confirm': 1}, 'confirmation'),
+    ('resume_reconcile', {'timeout': 0}, 'timeout'),
 ]
 
 
