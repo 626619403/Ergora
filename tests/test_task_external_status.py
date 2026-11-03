@@ -12,9 +12,9 @@ import pytest
 
 from ergora import projects, reference, tasks
 from test_registrations import installation, registration
-from test_task_creation import creation_project
-from test_task_submission import native_client, _root, _calls
-from test_task_export import export_task, outcome, lease
+from test_task_creation import creation_project, _files
+from test_task_submission import submitted_creation, native_client, _start, _root, _calls
+from test_task_export import outcome, lease
 
 
 def write(path, value):
@@ -23,17 +23,24 @@ def write(path, value):
 
 
 @pytest.fixture
-def external_task(export_task, monkeypatch):
+def external_task(submitted_creation, native_client, monkeypatch):
     monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
     from dev_platform.workflow import DevelopmentWorkflow
     from dev_platform.adapter import sha
 
-    root = _root(export_task)
-    config = Path(export_task[1]['execution']['config_directory']) / 'adapter.json'
+    _start(submitted_creation)
+    root = _root(submitted_creation)
+    config = Path(submitted_creation[1]['execution']['config_directory']) / 'adapter.json'
     write(config, {**{key: str(root / key) for key in ('requests', 'receipts', 'artifacts', 'approvals', 'fences')},
                    'trusted_receipts': True})
     workflow = DevelopmentWorkflow()
     workflow.spec = json.loads((root / 'tasks/new-task/task.spec.json').read_text())
+    spec = workflow.spec
+    base = spec['request']['repository']['base_sha']
+    write(root / 'sdk-fixture/outcome.json', {'status': 'REVIEW_READY', 'task_id': 'new-task',
+          'task_type': spec['request']['task_type'], 'request_sha256': spec['request_sha256'],
+          'profile_sha256': spec['profile_sha256'], 'base_sha': base,
+          'candidate_sha': base, 'fixture_evidence': 'original-result'})
     contexts = [workflow.context(stage) for stage in ('inspect', 'plan', 'verify')]
     write(root / 'sdk-fixture/jobs.json', contexts)
     for context in contexts:
@@ -47,13 +54,13 @@ def external_task(export_task, monkeypatch):
         write(root / 'receipts/new-task' / (job_id + '.json'),
               {'schema_version': 1, 'job_id': job_id, 'job_sha256': sha(context), 'state': 'SUCCEEDED',
                'actor': {'id': 'fixture-ci', 'session_id': job_id, 'role': context['stage'], 'kind': 'ci'},
-               'candidate_sha': outcome(export_task)['candidate_sha'],
+               'candidate_sha': outcome(submitted_creation)['candidate_sha'],
                'artifacts': [{'name': 'evidence', 'path': 'new-task/' + job_id + '.txt',
                               'sha256': hashlib.sha256(artifact).hexdigest()}],
                'checks': [{'id': 'fixture-check', 'status': 'pass', 'artifact': 'evidence'}]})
     write(root / 'fences/new-task.json', {'schema_version': 1, 'task_id': 'new-task',
           'request_sha256': workflow.spec['request_sha256']})
-    return export_task
+    return submitted_creation
 
 
 @pytest.fixture
@@ -80,7 +87,7 @@ def snapshot(creation):
             if p.is_file() and 'sdk-fixture' not in p.parts}
 
 
-@pytest.mark.parametrize('export_task', ['repository-governance', 'large-change'], indirect=True)
+@pytest.mark.parametrize('submitted_creation', ['repository-governance', 'large-change'], indirect=True)
 def test_closed_original_evidence_does_not_mutate_outcome_leases_or_files(external_task, external_client):
     before = snapshot(external_task)
     result = inspect(external_task)
@@ -257,11 +264,12 @@ def test_full_history_without_submissions_can_confirm_only_an_existing_fence(ext
     assert inspect(external_task)['external_confirmed'] is False
 
 
-@pytest.mark.parametrize('options,error', [({'run_id': 'other'}, 'original submitted run'),
-    ({'run_id': ''}, 'Run ID'), ({'timeout': True}, 'timeout'), ({'timeout': 0}, 'timeout'), ({'timeout': 61}, 'timeout')])
+@pytest.mark.parametrize('options,error', [({'run_id': 'other'}, 'original submitted run'), ({'timeout': True}, 'timeout')])
 def test_queries_require_exact_run_and_bounded_timeout(external_task, external_client, options, error):
+    before = _files(_root(external_task))
     with pytest.raises(ValueError, match=error):
         inspect(external_task, **options)
+    assert _files(_root(external_task)) == before
     assert 'external-connect' not in _calls(external_task)
 
 

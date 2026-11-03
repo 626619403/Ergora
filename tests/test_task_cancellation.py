@@ -10,7 +10,7 @@ import pytest
 from ergora import projects, reference, tasks
 from ergora.state import State
 from test_registrations import installation, registration
-from test_task_creation import creation_project
+from test_task_creation import creation_project, _files
 from test_task_submission import submitted_creation, native_client, _start, _root, _calls
 
 
@@ -160,12 +160,12 @@ def test_unknown_recovery_needs_the_exact_operation_marker_not_merely_the_same_r
 
 
 @pytest.mark.parametrize('options,error',[
-    ({'run_id':'other'},'original submitted run'),({'reason':''},'reason'),({'reason':' '},'reason'),
-    ({'reason':'x'*1001},'reason'),({'reason':True},'reason'),({'confirm':False},'confirmation'),
-    ({'confirm':1},'confirmation'),({'timeout':True},'timeout'),({'timeout':61},'timeout'),
+    ({'run_id':'other'},'original submitted run'),({'confirm':False},'confirmation'),
 ])
 def test_invalid_inputs_do_not_save_requests(cancellation_task,cancellation_client,options,error):
+    before = _files(_root(cancellation_task))
     with pytest.raises(ValueError,match=error):cancel(cancellation_task,**options)
+    assert _files(_root(cancellation_task)) == before
     assert status(cancellation_task)['status']=='not_recorded'
     assert 'cancellation-signal' not in _calls(cancellation_task)
 

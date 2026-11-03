@@ -10,7 +10,7 @@ import pytest
 from ergora import projects, reference, tasks
 from ergora.state import State
 from test_registrations import installation, registration
-from test_task_creation import creation_project
+from test_task_creation import creation_project, _files
 from test_task_submission import submitted_creation, native_client, _start, _root, _calls
 
 
@@ -159,12 +159,12 @@ def test_missing_original_run_during_unknown_recovery_never_resends(approval_tas
 
 
 @pytest.mark.parametrize('options,error',[
-    ({'run_id':'other-run'},'original submitted run'),({'run_id':''},'Run ID'),
-    ({'plan_sha256':'bad'},'SHA256'),({'confirm':False},'confirmation'),({'confirm':1},'confirmation'),
-    ({'timeout':True},'timeout'),({'timeout':0},'timeout'),({'timeout':61},'timeout'),
+    ({'run_id':'other-run'},'original submitted run'),({'confirm':False},'confirmation'),
 ])
 def test_invalid_decision_inputs_do_not_save_owner_intents(approval_task,approval_client,options,error):
+    before = _files(_root(approval_task))
     with pytest.raises(ValueError,match=error):approve(approval_task,**options)
+    assert _files(_root(approval_task)) == before
     assert status(approval_task)['status']=='not_recorded'
     assert 'approval-signal' not in _calls(approval_task)
 

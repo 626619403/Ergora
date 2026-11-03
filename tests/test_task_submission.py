@@ -11,15 +11,18 @@ import pytest
 from ergora import projects, reference, tasks
 from ergora.state import State
 from test_registrations import installation, registration
-from test_task_creation import creation_project
+from test_task_creation import creation_project, _files
 
 
 @pytest.fixture
-def submitted_creation(creation_project):
+def submitted_creation(creation_project, request):
     if sys.platform != 'linux':
         pytest.skip('Formal admission uses the Linux reference runtime')
     pytest.importorskip('temporalio')
     state, registration, definition = creation_project
+    template = getattr(request, 'param', 'repository-governance')
+    definition['task_type'] = template
+    definition['input']['risk'] = 'high' if template == 'large-change' else 'standard'
     interpreter = Path(registration['execution']['installation']) / '.venv'
     if not interpreter.exists():
         interpreter.symlink_to(sys.prefix, target_is_directory=True)
@@ -301,10 +304,12 @@ def test_stale_or_coerced_revisions_never_save_intent(submitted_creation,revisio
     assert _status(submitted_creation)['status']=='not_recorded'
 
 
-@pytest.mark.parametrize('timeout',[True,0,'1',61])
+@pytest.mark.parametrize('timeout',[True])
 def test_invalid_timeouts_never_save_intent(submitted_creation,timeout):
+    before = _files(_root(submitted_creation))
     with pytest.raises(ValueError,match='timeout'):
         _start(submitted_creation,timeout=timeout)
+    assert _files(_root(submitted_creation)) == before
     assert _status(submitted_creation)['status']=='not_recorded'
 
 

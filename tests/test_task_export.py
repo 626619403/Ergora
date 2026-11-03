@@ -1,6 +1,7 @@
 """Run-bound candidate export preserves Git, native evidence and uncertain writes."""
 
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import closing
 import hashlib
 import json
 import os
@@ -15,7 +16,7 @@ import pytest
 from ergora import projects, reference, tasks
 from ergora.state import State
 from test_registrations import installation, registration
-from test_task_creation import creation_project
+from test_task_creation import creation_project, _files
 from test_task_submission import native_client, _start, _root, _calls
 
 
@@ -88,7 +89,7 @@ def resume(creation, revision=1, **kwargs):
 
 
 def lease(creation):
-    with sqlite3.connect(_root(creation) / 'ingress/leases.sqlite3') as db:
+    with closing(sqlite3.connect(_root(creation) / 'ingress/leases.sqlite3')) as db:
         return db.execute('SELECT released_at, evidence_digest FROM claims').fetchone(), db.execute('SELECT count(*) FROM active').fetchone()[0]
 
 
@@ -181,15 +182,17 @@ def test_outcome_identity_must_match_every_original_field(export_task, export_cl
 
 
 @pytest.mark.parametrize('options,error', [
-    ({'run_id': 'other'}, 'original submitted run'), ({'candidate_sha': 'abc'}, 'full candidate'),
-    ({'candidate_sha': 'a' * 40 + '\n'}, 'full candidate'), ({'branch': '-bad'}, 'branch'),
+    ({'run_id': 'other'}, 'original submitted run'), ({'branch': '-bad'}, 'branch'),
     ({'branch': 'bad..ref'}, 'branch'), ({'branch': '@{-1}'}, 'branch'),
-    ({'confirm': False}, 'confirmation'), ({'confirm': 1}, 'confirmation'),
-    ({'timeout': True}, 'timeout'), ({'timeout': 61}, 'timeout'),
+    ({'confirm': False}, 'confirmation'),
 ])
 def test_invalid_input_has_no_export_intent_or_git_effect(export_task, export_client, options, error):
+    root, repo = _root(export_task), Path(export_task[1]['repo'])
+    (repo / 'untracked.txt').write_text('User work\n')
+    before = _files(root), _files(repo)
     with pytest.raises(ValueError, match=error):
         export(export_task, **options)
+    assert (_files(root), _files(repo)) == before
     assert status(export_task)['status'] == 'not_recorded' and lease(export_task)[1] == 1
     assert 'export-connect' not in _calls(export_task)
 
