@@ -7,47 +7,68 @@ import { toolsView } from "./tools.js";
 import { memoryView } from "./memory.js";
 import { skillsView } from "./skills.js";
 import { researchView } from "./research.js";
+import { tasksView } from "./tasks.js";
 import { workflowView, resetWorkflow, disposeGraph, drawGraph } from "./workflow.js";
 
 let refreshSequence = 0;
+let refreshing = false;
+let refreshError = "";
+const savedTab = sessionStorage.getItem("ergora-tab");
+if ([...document.querySelectorAll("[data-tab]")].some((item) => item.dataset.tab === savedTab))
+  app.tab = savedTab;
 
 async function refresh(expectedProject) {
   if (expectedProject && app.project !== expectedProject) return;
   const sequence = ++refreshSequence;
-  const bootstrap = await api("/api/bootstrap");
-  if (sequence !== refreshSequence) return;
-  app.bootstrap = bootstrap;
-  app.layers = Object.fromEntries(
-    Object.entries(bootstrap.layers)
-      .sort(([, left], [, right]) => left.display_order - right.display_order)
-      .map(([layer, definition]) => [layer, [definition.title, definition.description, definition.icon]]),
-  );
-  app.agentRoles = Object.entries(bootstrap.layers)
-    .filter(([, definition]) => definition.kind === "agent")
-    .map(([layer]) => layer);
-  if (!bootstrap.projects.some((project) => project.id === app.project))
-    app.project = bootstrap.projects[0]?.id || null;
-  const projectId = app.project;
-  const data = projectId
-    ? await api(`/api/projects/${encodeURIComponent(projectId)}/dashboard`)
-    : null;
-  if (sequence !== refreshSequence || app.project !== projectId) return;
-  app.data = data;
-  sessionStorage.setItem("ergora-project", projectId || "");
-  $("#version").textContent = `Ergora ${bootstrap.version}`;
-  $("#project-title").textContent = projectId || "选择项目";
-  $("#project-select").replaceChildren(
-    ...(bootstrap.projects.length
-      ? bootstrap.projects.map((project) =>
-          node(
-            "option",
-            { value: project.id, selected: project.id === projectId },
-            project.id,
-          ),
-        )
-      : [node("option", {}, "先注册一个项目")]),
-  );
-  render();
+  refreshing = true;
+  refreshError = "";
+  if (app.data?.project.id !== app.project) {
+    app.data = null;
+    render();
+  }
+  try {
+    const bootstrap = await api("/api/bootstrap");
+    if (sequence !== refreshSequence) return;
+    app.bootstrap = bootstrap;
+    app.layers = Object.fromEntries(
+      Object.entries(bootstrap.layers)
+        .sort(([, left], [, right]) => left.display_order - right.display_order)
+        .map(([layer, definition]) => [layer, [definition.title, definition.description, definition.icon]]),
+    );
+    app.agentRoles = Object.entries(bootstrap.layers)
+      .filter(([, definition]) => definition.kind === "agent")
+      .map(([layer]) => layer);
+    if (!bootstrap.projects.some((project) => project.id === app.project))
+      app.project = bootstrap.projects[0]?.id || null;
+    const projectId = app.project;
+    const data = projectId
+      ? await api(`/api/projects/${encodeURIComponent(projectId)}/dashboard`)
+      : null;
+    if (sequence !== refreshSequence || app.project !== projectId) return;
+    app.data = data;
+    sessionStorage.setItem("ergora-project", projectId || "");
+    $("#version").textContent = `Ergora ${bootstrap.version}`;
+    $("#project-title").textContent = projectId || "选择项目";
+    $("#project-select").replaceChildren(
+      ...(bootstrap.projects.length
+        ? bootstrap.projects.map((project) =>
+            node(
+              "option",
+              { value: project.id, selected: project.id === projectId },
+              project.id,
+            ),
+          )
+        : [node("option", {}, "先注册一个项目")]),
+    );
+    refreshing = false;
+    render();
+  } catch (error) {
+    if (sequence !== refreshSequence) return;
+    refreshing = false;
+    refreshError = error.message;
+    render();
+    throw error;
+  }
 }
 function helpDialog() {
   modal("从项目开始", [
@@ -64,7 +85,7 @@ function helpDialog() {
     node(
       "p",
       {},
-      "3. 工作流设计保存任务输入草稿。下载 input.json 后，使用参考编译器和六阶段运行时执行；草稿校验成功只证明输入满足合同。",
+      "3. 工作流设计保存任务输入草稿；正式任务页读取冻结合同和指定run的原状态。创建、提交、批准及导出使用ergora task统一CLI，操作说明见docs/USAGE.md；草稿校验不代表正式任务已创建或通过。",
     ),
     pre(
       "ergora --help\nergora tools list\nergora reference info\nergora templates copy training-optimization ./training-task",
@@ -83,12 +104,21 @@ function helpDialog() {
 }
 function render() {
   disposeGraph();
+  sessionStorage.setItem("ergora-tab", app.tab);
   document
     .querySelectorAll("[data-tab]")
     .forEach((item) =>
       item.classList.toggle("active", item.dataset.tab === app.tab),
     );
   if (!app.data) {
+    if (refreshing || refreshError) {
+      $("#main").replaceChildren(heading(
+        refreshError ? "无法读取工作空间" : "正在读取工作空间",
+        refreshError || `正在读取 ${app.project || "项目列表"}…`,
+        refreshError ? button("重试", () => refresh()) : null,
+      ));
+      return;
+    }
     $("#main").replaceChildren(
       node(
         "div",
@@ -114,6 +144,7 @@ function render() {
     memory: memoryView,
     skills: skillsView,
     research: researchView,
+    tasks: tasksView,
     workflow: workflowView,
   };
   $("#main").replaceChildren(...views[app.tab](data, base, { refresh, render }));
@@ -137,13 +168,4 @@ $("#refresh").addEventListener("click", () =>
 );
 $("#add-project").addEventListener("click", () => projectDialog(refresh));
 $("#help").addEventListener("click", helpDialog);
-refresh().catch((error) => {
-  $("#main").replaceChildren(
-    heading(
-      "无法读取工作空间",
-      error.message,
-      button("重试", () => refresh()),
-    ),
-  );
-  notify(error.message, true);
-});
+refresh().catch((error) => notify(error.message, true));

@@ -221,7 +221,7 @@ export function workflowView(data, base, { refresh, render }) {
       `${base}/drafts${save ? "" : "/validate"}`,
       payload,
     );
-    if (app.project !== data.project.id) return;
+    if (app.project !== data.project.id || app.data?.project.id !== data.project.id) return;
     if (save) {
       // The server saved this snapshot even if the user has since edited it.
       app.data.drafts = app.data.drafts.filter(

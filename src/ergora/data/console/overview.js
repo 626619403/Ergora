@@ -91,6 +91,10 @@ export function overview(data, base, { refresh, render }) {
           "○ 这是协议阶段说明。正式执行和验收状态由参考运行时产生。",
         ),
         row(
+          button("查看正式任务", () => {
+            app.tab = "tasks";
+            render();
+          }),
           button("设计工作单元", () => {
             app.tab = "workflow";
             render();
