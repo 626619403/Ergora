@@ -1,6 +1,6 @@
 # F3.3d：提交意图准备与长远程等待分段
 
-日期：2026-11-03。当前源码实现与独立修正完成，最终发行验收进行中。依赖已固定并完成独立本地审计的c2生产/测试`c3113ad119c72ed933876ddae95d3c849c804852`；c2源码/测试身份`b215f9553a3ba8ac716b70bd86ecf285af7eb1d3c0fc6e92956078dd023255bd`、发行候选`4abad37…`；c2最终本地/精确CI/远端均已独立核对通过。d可并行实施但必须分开核验，不把c2证据当d验收。
+日期：2026-11-03。本切片已完成：源码/独立修正、最终发行、精确两OS CI和远端均已独立核对通过。依赖已固定并完成独立本地审计的c2生产/测试`c3113ad119c72ed933876ddae95d3c849c804852`；c2源码/测试身份`b215f9553a3ba8ac716b70bd86ecf285af7eb1d3c0fc6e92956078dd023255bd`、发行候选`4abad37…`；c2最终本地/精确CI/远端均已独立核对通过。d可并行实施但必须分开核验，不把c2证据当d验收。
 
 ## 已实测问题与目标
 
@@ -85,3 +85,28 @@ sequenceDiagram
 辅助v2在unknown的临时reconciliation/instruction字段与仅本地持久状态做全等时失败；没有生产代码变更。最终v3只在该返回值比较中排除这两个瞬时查询字段，保留未知、零start和全部原字节断言，并重新使用固定C2生成的新样本。v1/v2失败日志保留，不能算作通过。
 
 完整非editable回归仍在运行。准备将已独立源码审查的精确候选提交推送以并行触发两OS CI；该候选不提前标记D完成，最终本地回归及独立CI/远端均待收口。下一F3.4已按[出口与综合验收设计](2026-11-03-formal-task-acceptance.md)拆为a候选导出、b终态外部对账、c正常旅程、d异常恢复、e阶段收口，尚未开始实现。
+
+
+## 精确候选已推送
+
+D生产/测试候选`765c39a512796686085ed27ed3b8ef7686a4b676`已提交并推送，远端完整SHA一致，精确CI41580249518进行中。提交归档的345文件与候选源码/wheel/两安装一致，六文件聚合仍7aface07…；全部docs的654个相对文件链接存在，git diff --check通过。完整发行回归尚未结束，不能因推送或CI启动标记D完成；仍待最终本地及精确CI/远端独立复核。
+
+
+## 完整非editable发行回归
+
+最终c774ba…包、精确生产/测试765c39a的适用Linux完整回归通过：**528 passed、19 skipped、36 subtests passed、1个已有Starlette/httpx弃用warning，941.39秒**。命令和退出码0见wheel-regression-command.json，原始wheel-regression.log。PYTHONPATH仅提供冻结参考平台，应用来自开发环境的非editable D wheel；六文件源码/测试身份及345文件安装/提交归档保持。
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src/ergora/data/reference/platform/upstream/platform .venv-dev/bin/python -B -m pytest -q --tb=short -p no:cacheprovider tests src/ergora/data/reference/platform/upstream/platform/tests/test_contracts.py src/ergora/data/reference/platform/upstream/platform/tests/test_portable.py src/ergora/data/reference/platform/upstream/platform/tests/test_workflow.py::AdapterTests src/ergora/data/reference/platform/upstream/platform/tests/test_runtime.py
+```
+
+精确两OS CI41580249518及最后独立本地/CI/远端核对继续待完成，不把本地通过推导为真实服务/模型或F3.4通过。
+
+
+## 最终收口
+
+F3.3d完成。生产/测试`765c39a512796686085ed27ed3b8ef7686a4b676`已推送且独立远端SHA一致；最终c774ba…wheel345文件×源码/提交归档/两安装、冻结283、528项/19跳过/36子测试、72CLI、18秒并发及旧B/C1/C2/固定C2十态升级全部通过。[精确CI41580249518](https://github.com/626619403/Ergora/actions/runs/41580249518)的Ubuntu job125733146941三必需步骤、Windows job125733146622四必需步骤均成功。
+
+同一独立审查者已重新核归档/实际安装导入/完整日志与退出码、原始CI run/job HTML和精确提交/日志URL、五份来源哈希及只读远端，全部通过；[审查报告](2026-11-03-task-submission-locks-review.md)无未解决finding，初审相邻创建锁P1已关闭。前文pending仅保留当时过程，以本节为当前状态。
+
+本切片证明长远程等待不保留共享控制库写锁，原任务/修订授权/意图/spec/memo/run/未知不重发保持；初次提交观察代价约0.79–0.97秒的范围及测量限制保留。未改变实际用户服务、原冻结283内容或既有业务任务；没有真实服务/模型吞吐或新六阶段验收结论。下一项为F3.4a候选导出实现，之后终态对账和新两模板正常/异常综合旅程。

@@ -93,3 +93,31 @@ normal 保持 submitted；doctor-blocked 的 prepared 明确恢复为 submitted�
 ### 当前仍待
 
 完整非 editable 发行回归的 `wheel-regression-command.json` 当次 exit_code 仍为 null，原日志仍在输出，本节没有预认通过。D 精确两 OS CI、最终提交及远端 SHA 复核也待完成；源代码若再变化，须重新绑定受影响证据。完整回归结束后另行追加本地最终结论，精确 CI 到齐再追加远端结论。F3.4 真实新六阶段/导出/重启继续独立验收。
+
+
+## 最终本地发行复核
+
+本节覆盖上一节等待中的完整发行回归。精确生产/测试提交为 `765c39a512796686085ed27ed3b8ef7686a4b676`，父提交 `e590af47c235dc488e25e7d0b270f96a362db403` 仅为 C2 文档收口；D 运行源码基线仍为固定 C2 `c3113ad119c72ed933876ddae95d3c849c804852`。
+
+独立重新读取 git archive，提交内 **345 个应用/资源文件**与已核 D wheel 清单逐项相同；六份源码/测试在提交和工作区的 SHA256 均匹配原候选，聚合身份保持 `7aface07…`。应用、测试和 CI 配置相对该提交没有后续差异，当前只新增文档状态及下一切片设计备注。没有重跑完整回归或重新安装。
+
+直接读原 `wheel-regression.log` 和 `wheel-regression-command.json`：退出码 **0**，最终 **528 passed、19 skipped、36 subtests passed、1 个已有 Starlette/httpx 弃用 warning，941.39 秒**。命令的 PYTHONPATH 只提供原 reference platform；检查项目 pytest 配置及测试路径调整后，再使用完全相同环境确认实际 tasks/reference 均从 `.venv-dev/lib/python3.11/site-packages/ergora` 导入，应用 src 未加入导入路径。该安装已与最终非 editable wheel `c774ba4f3eb1d8d553f86253cc23954c33404fe0eaec10f5106597d54a4d38bf` 全量匹配。
+
+本地发行结论：**通过，无新增 findings**。源码、六文件测试身份、提交归档、原 wheel、两安装、完整回归、基础旅程、升级恢复和限定并发/性能证据形成同一候选链。独立归档/导入/日志摘要核对为 `reviewer/final-local-recheck.json`；不由这些本地证据推导真实服务或 F3.4 已完成。
+
+## 最终精确 CI 与远端核对
+
+独立直接解析原官方 GitHub `ci-actions.html` 的 embedded selection、`ci-run-latest.html` 及两份 `ci-job-*.html`，并重新计算五份来源的字节数/SHA256；作者摘要列出的四份来源也逐项一致。Portability 工作流、分支和完整候选 SHA 均匹配；原 run 页面 Status 为 **Success**。工作流本身与精确提交中的 `.github/workflows/portability.yml` 相同。
+
+精确运行 [41580249518](https://github.com/626619403/Ergora/actions/runs/41580249518) 的矩阵与必需步骤如下，均从原 check-step 属性读取：
+
+|矩阵/原 job|wheel 构建安装|冻结包身份|应用回归|Windows PowerShell 5.1 安装/升级|
+|---|---|---|---|---|
+|[Ubuntu / Python 3.11 / 125733146941](https://github.com/626619403/Ergora/actions/runs/41580249518/job/125733146941)|success|success|success|按工作流条件 skipped|
+|[Windows / Python 3.12 / 125733146622](https://github.com/626619403/Ergora/actions/runs/41580249518/job/125733146622)|success|success|success|success|
+
+两份 job 的 selectedJobId、矩阵名称及必需步骤完成属性相符；所有必需步骤的原 data-log-url 都绑定 `/commit/765c39a512796686085ed27ed3b8ef7686a4b676/checks/对应job/logs/对应step`，没有失败、取消或超时步骤。核查依据是官方原 HTML 状态、原日志链接和工作流命令；没有另行下载完整远端 job 文本，不给 Windows 推定本地 Linux 的测试数量。
+
+另独立执行只读 `git ls-remote origin refs/heads/refactor/architecture-foundations`，实际返回完整 `765c39a512796686085ed27ed3b8ef7686a4b676`，与候选、CI 和已验本地发行一致。原始远端输出记在 `reviewer/remote-head-independent.txt`；完整独立解析和来源哈希记在 `reviewer/final-ci-recheck.json`。
+
+**F3.3d 最终独立结论：要求符合性、结构/可维护性、限定性能、适用发行及精确两 OS CI/远端核对通过；初审 P1 已关闭，范围内无未解决 findings。** D 的本轮门禁均已具备实际证据。后续仅文档收口不改变生产身份；F3.4a 的候选导出与 Git CAS 竞争备注属于下一切片设计，尚未实现，不计入本 D 验收。真实新六阶段/导出/重启及外部终态对账仍按 F3.4 单独实施和验收。
