@@ -57,7 +57,7 @@ def test_application_modules_do_not_import_entry_points(local_dependencies):
 def test_reference_internals_are_imported_only_at_the_boundary(module_imports):
     internal_roots = ("agent_platform", "dev_platform", "ergora.data.reference")
     for module, names in module_imports.items():
-        if module not in {"reference", "reference_executor", "reference_task_creation", "reference_task_runtime"}:
+        if module not in {"reference", "reference_executor", "reference_task_creation", "reference_task_runtime", "reference_task_submission"}:
             internals = {name for name in names
                          if any(name == root or name.startswith(root + ".") for root in internal_roots)}
             assert not internals, (module, internals)

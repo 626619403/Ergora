@@ -12,7 +12,7 @@
 |---|---|---|
 |F3.3a|只读原生运行状态；CLI/API同源|published项目的本地spec先由既有reader验证，再经固定专用进程调用原Transport.lookup/poll；返回workflow/run ID、request/profile身份及原始phase/status/outcome。显式run ID原样沿用；未指定时查询原workflow ID并返回查得的run ID。只有原生NOT_FOUND可报不存在，连接/认证/超时/输入冲突明确报错；不从本地文件或服务进程状态补造运行结果。可选SDK缺失提示安装。旧正式任务可只读；不写任务/ledger/配置，不调用start/signal/cancel。|
 |F3.3b|[显式提交与原ID对账](2026-11-03-task-submission.md)|当前项目revision及精确创建意图/原spec准入；复用原doctor/可信检查/IngressLeases/Transport.start。任何外部调用前保存不可变操作意图，结果绑定原workflow/run ID。丢响应/超时保留unknown，按原ID查原始输入后恢复；不能换任务ID或重启已关闭workflow。旧在途任务不隐式接管。|
-|F3.3c|精确计划批准、取消及恢复|批准必须绑定同一任务spec、原run ID、当前plan SHA和明确owner决策；沿用原批准receipt/信号，持久意图与结果分别记录。取消必须有原因及明确确认，信号成功只记请求已发出；CANCEL_UNCONFIRMED/NEEDS_RECONCILIATION及原外部进程对账保持可见。不得用terminate、删ledger或重提交来掩盖未知。|
+|F3.3c|[精确计划批准、取消及恢复](2026-11-03-task-decisions.md)|批准必须绑定同一任务spec、原run ID、当前plan SHA和明确owner决策；沿用原批准receipt/信号，持久意图与结果分别记录。取消必须有原因及明确确认，信号成功只记请求已发出；CANCEL_UNCONFIRMED/NEEDS_RECONCILIATION及原外部进程对账保持可见。不得用terminate、删ledger或重提交来掩盖未知。|
 
 各段为完整可审查切片，分别做fresh-context结构/性能审计。F3.3a仅是读接口，不代表提交、批准、取消已交付；F3.4才做两模板新的完整六阶段和分支导出/异常重启综合验收。
 

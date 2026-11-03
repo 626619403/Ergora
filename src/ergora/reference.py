@@ -343,6 +343,35 @@ def task_runtime_status(project: dict, spec: dict, *, run_id: str | None, timeou
     return json.loads(result.stdout)
 
 
+def task_submission(project: dict, home: Path, operation: str, payload: dict, *, timeout: int) -> dict:
+    """Use the registered full runtime for native admission and its local journal."""
+    if sys.platform != 'linux':
+        raise ValueError('Formal task submission requires Linux; use the registered Linux runtime in WSL2')
+    execution = project['registration']['definition']['execution']
+    installation = Path(execution['installation'])
+    interpreter = installation / '.venv/bin/python'
+    if not interpreter.is_file():
+        raise ValueError('Selected reference runtime is incomplete; install its full Linux environment before task submission')
+    environment = dict(os.environ, PYTHONDONTWRITEBYTECODE='1', PYTHONUTF8='1',
+                       AGENTFLOW_CONFIG_DIR=execution['config_directory'],
+                       AGENTFLOW_STATE_DIR=execution['state_directory'])
+    environment['PYTHONPATH'] = os.pathsep.join(map(str, (
+        Path(__file__).parent.parent, installation / 'local', installation / 'upstream/platform')))
+    try:
+        result = subprocess.run([str(interpreter), '-P', '-c',
+                                 'from ergora.reference_task_submission import main;main()'],
+                                input=json.dumps({'project': project, 'control_home': str(home), 'operation': operation,
+                                                  'timeout': timeout, **payload}, allow_nan=False),
+                                capture_output=True, text=True, encoding='utf-8', env=environment, timeout=timeout + 5)
+    except subprocess.TimeoutExpired as error:
+        raise ValueError('Task submission process timed out; inspect task submission and resume its original intent') from error
+    if result.returncode:
+        lines = result.stderr.strip().splitlines()
+        detail = lines[-1] if lines else f'Native submission process exited with status {result.returncode}'
+        raise ValueError(detail + '; inspect task submission before any recovery')
+    return json.loads(result.stdout)
+
+
 def _task_files_main():
     import base64
     import heapq

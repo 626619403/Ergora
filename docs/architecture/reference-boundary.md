@@ -14,6 +14,8 @@ flowchart LR
   Creation --> Files
   Ref --> RuntimeQuery[reference_task_runtime 专用查询进程]
   RuntimeQuery --> Transport[原 DevelopmentTransport / Temporal]
+  Ref --> Submission[reference_task_submission 专用提交进程]
+  Submission --> Transport
   Ref --> Compiler[专用编译子进程]
   Compiler --> Portable[原 portable / contracts]
   Ref --> Projection[专用注册 I/O 子进程]
@@ -39,7 +41,8 @@ flowchart LR
 |正式任务本地合同读取|`reference.task_files` → 固定只读子进程；tasks/CLI/API|按项目/Git根/tracker/基线/目录ID复用validate_spec和有界no-follow读取；每页最多100项合同检查，目录名流式枚举为O(N)，不读取日志/凭据、不连接Temporal、不推断运行终态|
 |正式任务预览/create/创建状态/恢复|`reference.task_creation` → 专用`reference_task_creation`；tasks/CLI/API|父进程管理临时目录及超时清理；子进程在导入前使用临时STATE复用原create_task/portable，实际发布使用登记目录；原write/安全reader、Windows适配、意图/同ID锁/结果回执集中在该边界|
 |正式任务原生运行状态|`reference.task_runtime_status` → 专用`reference_task_runtime`；tasks/CLI/API|登记安装的原Transport.lookup/poll核对原始spec并固定run ID；明确SDK/网络预算和not-found/错误区别，不start/signal/改lease/ledger|
-|正式任务start/result/approve/cancel/export|当前原`agentflow`、`DevelopmentTransport / Runtime / Workflow`|运行事实仍在原runtime，F3.1/F3.2提供本地合同查询与创建/恢复；F3.3a只读查询原生状态，F3.3b/F3.3c再接变更操作，不让HTTP或前端直接操作原全局/ledger|
+|正式任务start/本地提交状态/原ID恢复|`reference.task_submission` → 专用`reference_task_submission`；tasks/CLI/API|创建所有者校验七合同；完整原生环境复用原task_action，窄Transport继承只保存dispatch检查点；未知禁止重新start，既有run持久拒绝；原生依赖/全局不进入Web|
+|正式任务result/approve/cancel/export|当前原`agentflow`、`DevelopmentTransport / Runtime / Workflow`|运行事实仍在原runtime，F3.1/F3.2提供本地合同查询与创建/恢复；F3.3a只读查询原生状态，F3.3b接提交/原ID恢复，F3.3c接批准/取消，不让HTTP或前端直接操作原全局/ledger|
 
 `reference.ROOT`仍保留给既有Python调用者和身份/兼容测试；生产布局知识只在reference及其专用原生边界。没有删除公共常量或改变CLI响应/退出码。`template_details`是实际Web使用的资源读取接口，没有另造模板存储层。
 

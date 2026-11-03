@@ -4,6 +4,29 @@ import asyncio
 import json
 import os
 import sys
+from types import SimpleNamespace
+
+
+class VerifiedSpecClient:
+    """Keep native lookup's history read while requiring exact original JSON."""
+
+    def __init__(self, client, spec: dict):
+        self.original = client
+        self.spec = spec
+        # The description returned by the SDK keeps its own real converter;
+        # only the transport's explicit original-input decode uses this port.
+        self.data_converter = SimpleNamespace(decode=self.decode_spec)
+
+    def __getattr__(self, name):
+        return getattr(self.original, name)
+
+    async def decode_spec(self, *args, **kwargs):
+        from dev_platform.contracts import canonical_sha
+
+        values = await self.original.data_converter.decode(*args, **kwargs)
+        if canonical_sha(values) != canonical_sha([self.spec]):
+            raise ValueError('Workflow ID collision: original task spec differs in JSON identity')
+        return values
 
 
 async def _status(payload: dict) -> dict:
@@ -13,7 +36,7 @@ async def _status(payload: dict) -> dict:
 
     spec = payload['spec']
     identity = {'workflow_id': workflow_id(spec), 'run_id': payload['run_id']}
-    runtime = DevelopmentTransport(await connect(), task_queue())
+    runtime = DevelopmentTransport(VerifiedSpecClient(await connect(), spec), task_queue())
     try:
         observed = await runtime.poll(spec, payload['run_id'])
     except RuntimeNotFound:

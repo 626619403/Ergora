@@ -71,6 +71,16 @@ class TaskResumePayload(Payload):
     intent_sha256: str = Field(pattern="^[0-9a-f]{64}$")
 
 
+class TaskStartPayload(Payload):
+    revision: int = Field(strict=True, ge=1)
+    creation_sha256: str = Field(pattern="^[0-9a-f]{64}$")
+    timeout: int = Field(default=20, strict=True, ge=1, le=60)
+
+
+class TaskResumeStartPayload(TaskResumePayload):
+    timeout: int = Field(default=20, strict=True, ge=1, le=60)
+
+
 class MemoryPayload(RevisionPayload):
     revision: int = 0
     text: str
@@ -261,6 +271,18 @@ def create_app(home: Path | None = None) -> FastAPI:
     @application.post("/api/projects/{project_id}/tasks/{task_id}/resume-create")
     def resume_formal_task_creation(project_id: str, task_id: str, body: TaskResumePayload):
         return tasks.resume_create(state, project_id, task_id, body.revision, body.intent_sha256)
+
+    @application.post("/api/projects/{project_id}/tasks/{task_id}/start")
+    def start_formal_task(project_id: str, task_id: str, body: TaskStartPayload):
+        return tasks.start(state, project_id, task_id, body.revision, body.creation_sha256, timeout=body.timeout)
+
+    @application.get("/api/projects/{project_id}/tasks/{task_id}/submission")
+    def formal_task_submission(project_id: str, task_id: str):
+        return tasks.submission(state, project_id, task_id)
+
+    @application.post("/api/projects/{project_id}/tasks/{task_id}/resume-start")
+    def resume_formal_task_start(project_id: str, task_id: str, body: TaskResumeStartPayload):
+        return tasks.resume_start(state, project_id, task_id, body.revision, body.intent_sha256, timeout=body.timeout)
 
     @application.get("/api/projects/{project_id}/tasks/{task_id}")
     def formal_task(project_id: str, task_id: str):

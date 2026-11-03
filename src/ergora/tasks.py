@@ -24,7 +24,7 @@ def _revision(project: dict, expected_revision: int) -> None:
     if type(expected_revision) is not int or expected_revision < 1:
         raise ValueError('Expected project revision must be a positive integer')
     if project['revision'] != expected_revision:
-        raise ValueError('Project revision changed; reload before creating a task')
+        raise ValueError('Project revision changed; reload before the task operation')
 
 
 def _definition(project: dict, definition: dict) -> dict:
@@ -90,6 +90,39 @@ def status(state: State, project_id: str, task_id: str, *, run_id: str | None = 
     return {'project': project_id, 'project_revision': project['revision'], 'task_id': task_id,
             'request_sha256': task['spec']['request_sha256'], 'profile_sha256': task['spec']['profile_sha256'],
             **reference.task_runtime_status(project, task['spec'], run_id=run_id, timeout=timeout)}
+
+
+def submission(state: State, project_id: str, task_id: str) -> dict:
+    """Inspect local submission facts without connecting to Temporal or reissuing work."""
+    project = _project(state, project_id)
+    return reference.task_submission(project, state.root, 'status', {'task_id': task_id}, timeout=20)
+
+
+def start(state: State, project_id: str, task_id: str, expected_revision: int,
+          creation_sha256: str, *, timeout: int = 20) -> dict:
+    """Submit an explicitly identified creation once through the original admission."""
+    _digest(creation_sha256, 'Creation')
+    return _submission(state, project_id, task_id, expected_revision, 'start',
+                       {'creation_sha256': creation_sha256}, timeout)
+
+
+def resume_start(state: State, project_id: str, task_id: str, expected_revision: int,
+                 intent_sha256: str, *, timeout: int = 20) -> dict:
+    """Resume a pre-dispatch intent or reconcile uncertain dispatch by its original ID."""
+    _digest(intent_sha256, 'Intent')
+    return _submission(state, project_id, task_id, expected_revision, 'resume',
+                       {'intent_sha256': intent_sha256}, timeout)
+
+
+def _submission(state: State, project_id: str, task_id: str, expected_revision: int,
+                operation: str, payload: dict, timeout: int) -> dict:
+    if type(timeout) is not int or not 1 <= timeout <= 60:
+        raise ValueError('Task submission timeout must be 1–60 seconds')
+    with state.connect() as db:
+        db.execute('BEGIN IMMEDIATE')
+        project = _project(state, project_id)
+        _revision(project, expected_revision)
+        return reference.task_submission(project, state.root, operation, {'task_id': task_id, **payload}, timeout=timeout)
 
 
 def listing(state: State, project_id: str, *, limit: int = 50, after: str | None = None) -> dict:

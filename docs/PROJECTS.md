@@ -73,7 +73,7 @@ ergora project resume-registration my-project --revision CURRENT_REVISION
 ergora reference executor --project my-project
 ```
 
-只对新任务启用选择式执行器，不要与原执行器同时运行。新任务核对发布状态、目录和投影后冻结有效配置；已有任务继续使用原绑定快照。完整批准、六阶段与证据要求见[Agent手册](AGENT_BACKENDS.md)。统一入口可先[读取已有正式任务](USAGE.md#读取正式任务合同)的合同和冻结绑定；任务预览、创建和中断恢复使用[统一创建入口](USAGE.md#预览与创建正式任务)，`task status`可[查询原生运行状态](USAGE.md#查询正式任务运行状态)，提交和批准继续使用下述参考命令。正式运行页面另行接入。
+只对新任务启用选择式执行器，不要与原执行器同时运行。新任务核对发布状态、目录和投影后冻结有效配置；已有任务继续使用原绑定快照。完整批准、六阶段与证据要求见[Agent手册](AGENT_BACKENDS.md)。统一入口可先[读取已有正式任务](USAGE.md#读取正式任务合同)的合同和冻结绑定；任务预览、创建和中断恢复使用[统一创建入口](USAGE.md#预览与创建正式任务)，`task status`可[查询原生运行状态](USAGE.md#查询正式任务运行状态)，提交使用[统一提交与恢复入口](USAGE.md#提交正式任务与恢复未知结果)，批准继续使用下述参考命令。正式运行页面另行接入。
 
 切换执行配置目录后，旧任务仍需原配置/状态和安装；重启旧执行器时显式设置原`AGENTFLOW_CONFIG_DIR`、`AGENTFLOW_STATE_DIR`并用`--installation`。`--project`选择当前登记的目录，不自动迁移旧任务或服务。
 

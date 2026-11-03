@@ -55,7 +55,8 @@ def test_only_authoritative_not_found_is_absence(task_store, runtime_client):
         tasks.status(state,'demo','first')
 
 
-@pytest.mark.parametrize('scenario,error', [('collision','collision'),('connection-failed','connection failure'),('timeout','timed out')])
+@pytest.mark.parametrize('scenario,error', [('collision','collision'),('boolean-collision','JSON identity'),
+    ('float-collision','JSON identity'),('connection-failed','connection failure'),('timeout','timed out')])
 def test_runtime_errors_do_not_fall_back_to_compiled_or_retry(task_store, runtime_client, scenario, error):
     state,_=task_store
     runtime_client(scenario)

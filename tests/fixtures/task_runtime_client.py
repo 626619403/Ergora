@@ -61,6 +61,10 @@ async def connect():
     original = deepcopy(spec)
     if scenario == 'collision':
         original['request']['input']['goal'] = 'Another admitted spec'
+    elif scenario == 'boolean-collision':
+        original['profile']['schema_version'] = True
+    elif scenario == 'float-collision':
+        original['profile']['schema_version'] = 1.0
     return SimpleNamespace(get_workflow_handle=handle,
                            data_converter=SimpleNamespace(decode=AsyncMock(return_value=[original])))
 

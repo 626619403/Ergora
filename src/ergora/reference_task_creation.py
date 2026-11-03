@@ -18,7 +18,7 @@ _INTENT_LIMIT = 16 * _FILE_LIMIT
 class _Creation:
     """Own the original creation snapshot and its recoverable immutable publication."""
 
-    def __init__(self, payload: dict, temporary: Path):
+    def __init__(self, payload: dict):
         from agent_platform import core
         from dev_platform import adapter, portable
         from dev_platform.contracts import canonical_sha
@@ -39,7 +39,6 @@ class _Creation:
         for directory in (self.root, self.config):
             if not directory.is_absolute() or directory.resolve() != directory:
                 raise ValueError('Execution directories must retain their registered canonical paths')
-        self.temporary = temporary
         self.task_id = core.slug(payload['task_id'] if 'task_id' in payload else payload['definition']['task_id'])
         self.target = self.path('tasks/' + self.task_id)
         prefix = 'ergora/task-creations/' + self.task_id
@@ -85,17 +84,17 @@ class _Creation:
         if marker['control_home'] != self.payload['control_home']:
             raise ValueError('Registered project belongs to another control directory')
 
-    def compile(self) -> dict:
+    def compile(self, temporary: Path) -> dict:
         from agent_platform.projects import check_task_type, create_task
 
         self.check_registration()
         definition = self.payload['definition']
         check_task_type(self.project['id'], definition['task_type'])
-        input_path = self.temporary / 'input.json'
+        input_path = temporary / 'input.json'
         self.core.write(input_path, definition['input'])
         create_task(self.project['id'], definition['task_type'], self.task_id, definition['issue_id'],
                     input_path, definition.get('starting_sha'))
-        files = {name: self.document(self.temporary / 'tasks' / self.task_id / name)
+        files = {name: self.document(temporary / 'tasks' / self.task_id / name)
                  for name in _FILES if name != 'agent-bindings.json'}
         files['agent-bindings.json'] = self.payload['selection']
         record = {'schema_version': 1, 'control_home': self.payload['control_home'],
@@ -161,6 +160,16 @@ class _Creation:
             self.validate_record(record)
         return record
 
+    def published(self) -> dict:
+        """Validate this control's complete creation before native operations."""
+        self.check_registration()
+        record = self.load()
+        if record is None:
+            raise ValueError('No saved creation intent; legacy tasks cannot be adopted by runtime operations')
+        if self.status(record)['status'] != 'published':
+            raise ValueError('Task creation is incomplete or conflicted; inspect creation and resume-create first')
+        return record
+
     def file_states(self, record: dict) -> dict:
         states = {}
         for filename in _FILES:
@@ -210,10 +219,10 @@ class _Creation:
         self.core.write(self.result_path, self.receipt(record))
         return self.status(record)
 
-    def run(self) -> dict:
+    def run(self, temporary: Path) -> dict:
         operation = self.payload['operation']
         if operation in ('preview', 'create'):
-            record = self.compile()
+            record = self.compile(temporary)
             if operation == 'preview':
                 return {**record, 'preview_sha256': self.sha(record), 'status': 'preview',
                         'runtime_status': 'not_queried', 'execution_started_by_operation': False}
@@ -247,7 +256,7 @@ def main() -> None:
     # ephemeral storage, including cleanup after a forced process termination.
     from agent_platform.core import Blocked, STATE
     try:
-        result = _Creation(payload, STATE).run()
+        result = _Creation(payload).run(STATE)
         print(json.dumps(result, ensure_ascii=False, allow_nan=False))
     except (OSError, ValueError, KeyError, TypeError, Blocked) as error:
         raise SystemExit('BLOCKED: ' + str(error))

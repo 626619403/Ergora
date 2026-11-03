@@ -108,6 +108,14 @@ def parser() -> argparse.ArgumentParser:
         if name == "resume-create":
             operation.add_argument("--revision", type=int, required=True)
             operation.add_argument("--intent-sha256", required=True)
+    for name in ("start", "submission", "resume-start"):
+        operation = operations.add_parser(name)
+        operation.add_argument("project")
+        operation.add_argument("task_id")
+        if name != "submission":
+            operation.add_argument("--revision", type=int, required=True)
+            operation.add_argument("--timeout", type=int, default=20)
+            operation.add_argument("--creation-sha256" if name == "start" else "--intent-sha256", required=True)
     service = commands.add_parser("services", help="Explicit selected-service Supervisor operations (Linux/WSL2)")
     operations = service.add_subparsers(dest="operation", required=True)
     status = operations.add_parser("status")
@@ -340,6 +348,14 @@ def main(argv: list[str] | None = None) -> int:
                 output = tasks.creation(state, args.project, args.task_id)
             elif args.operation == "resume-create":
                 output = tasks.resume_create(state, args.project, args.task_id, args.revision, args.intent_sha256)
+            elif args.operation == "submission":
+                output = tasks.submission(state, args.project, args.task_id)
+            elif args.operation in ("start", "resume-start"):
+                output = (tasks.start(state, args.project, args.task_id, args.revision, args.creation_sha256, timeout=args.timeout)
+                          if args.operation == "start" else
+                          tasks.resume_start(state, args.project, args.task_id, args.revision, args.intent_sha256, timeout=args.timeout))
+                print(json.dumps(output, ensure_ascii=False, indent=2))
+                return 0 if output["status"] == "submitted" else 1
             else:
                 definition = json.loads(args.definition.read_text(encoding="utf-8-sig"))
                 output = (tasks.preview(state, args.project, definition, args.revision) if args.operation == "preview"
