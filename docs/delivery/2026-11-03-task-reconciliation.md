@@ -36,4 +36,18 @@
 |b1 原run外部证据只读视图|CLI `task external-status PROJECT TASK --run-id RUN --timeout 20`及同源GET external-status；原提交/spec/memo/run/闭合history，按原FileAdapter校验请求/可信终态回执和既有fence，明确缺失/冲突/未知；不发布fence、不释放租约、不另存运行状态|真实目录/原history身份反例、根漂移、已知job丢失、未知/损坏receipt、重复/截断history、并发读取、CLI/API一致、缺SDK环境；独立结构/性能/最终发行审查|
 |b2 明确终态外部对账|复用b1证据边界；当前revision/confirm/原task锁，短DB准备后不可变意图/检查点，显式原fence与真实外部证据，沿原IngressLeases适用释放；原workflow结果保持|未知不虚假释放，正确幂等与中断恢复、额外run/错误scope拒绝、实际进程/原ID验收；独立新审查。b1完成后实施|
 
-b1仅新增读取接口；完整F3.4b仍等待b2，不以GET已能读证据代替显式对账闭环。当前无生产修改；准备先固定原history与文件绑定合同，再写源码及有意义的反例。
+b1仅新增读取接口；完整F3.4b仍等待b2，不以GET已能读证据代替显式对账闭环。当前[b1实现与验收](2026-11-03-task-external-status.md)已接CLI/API和专用原生证据读取，连续历史/可信文件反例及P1孤立回执修正独立复审通过；a2349e8最终包59项/27CLI、精确两OS CI41597961138与独立最终审计均通过，b1已完成；本调查记录不替代该子节点的当前证据。
+
+## b2原租约合同补核与实施顺序
+
+在b1最终CI等待期间，只读核对原`agent_platform.ingress.release`及`dev_platform.ingress.IngressLeases`：前者仅允许REVIEW_READY或BLOCKED且原fence.confirmed；后者的合同允许协调者先保存自己的持久“已确认清理”证据再释放。release严格匹配tracker/owner/task/spec和证据SHA，重复释放必须使用原证据SHA，已释放claim不可重新打开。由此，b2不必改写原CANCEL_UNCONFIRMED为BLOCKED，也不需要复制SQL或新建租约库。
+
+下一切片先落实以下闭环，再补c/d真实服务旅程：
+
+1. CLI/API的明确对账/本地状态/按原意图恢复，复用既有revision/confirm、原task非阻塞锁及短准备事务；固定原创建/提交/run和本地owner，不发新workflow/signal，不重跑Agent或质量检查。
+2. 组合b1的完整历史与两类job目录证据。原run须闭合且仍为当前run，根和scope冲突须在fence前拒绝；写前保存绑定原history job集合及原outcome的检查点。
+3. 复用原FileAdapter的不可变fence发布，不采纳其空目录confirmed作为完整确认；发布后按b1的已知job、额外请求/孤立回执和可信回执/产物重新核对。缺失或损坏证据不释放租约。
+4. 证据完整后先持久保存真实原outcome与本次独立外部清理事实两份身份，再沿原IngressLeases合同释放。原native release本就适用时保留其证据SHA和幂等规则；其他闭合清理使用本工具已保存证据。验证原cli-ingress归属，不能通过删owner/ledger或伪造结果规避。
+5. 恢复必须核原run/history/outcome、原fence和已保存检查点，严格处理发布前后、证据保存前后、SQLite提交前后及丢父响应；明确原不可变fence的幂等范围和人工修改冲突，不能凭本地prepared/requested宣称外部已停。GET本地状态及external-status均保持只读。
+
+b2尚未实施；需独立记录具体字段/恢复合同与有意义的中断、错误scope、其他run、缺失/孤立证据及跨项目并发反例。此处是原接口可复用性调查，不把b1的包/fixture或旧L0结果转作b2实际通过。

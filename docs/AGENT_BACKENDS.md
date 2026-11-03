@@ -91,6 +91,8 @@ ergora reference executor --installation "$HOME/multi-agent-platform"
 
 新任务首次处理时将角色工具与项目修订写入原任务持久目录的 `agent-bindings.json`；恢复继续用这份选择。实现者和审查者使用不同角色身份、新会话、精确候选提交及原有工作区变化检测。正式阶段结束前清理并回收其派生进程，再执行原监控的只读变化检查；精确使用参考配置的 Codex 可执行路径。未知外部进程结果继续由参考监控对账；缺少能力、结果结构错误、命令失败或只读阶段改动都不能通过。Agent 的 `model-log` 和 `agent-selection` 附在原回执证据中。
 
+统一入口的[外部证据查询](USAGE.md#核对闭合运行的外部作业证据)将原run完整历史中的dev_submit与可信FileAdapter请求/回执逐项对应。每个已知job即使请求丢失仍保留为未决；没有正确fence、存在额外请求/孤立回执、无效回执或产物摘要错误时不会报告外部已确认。只读查询不修改原outcome、不发布fence、不释放租约，外部终止证据和六阶段质量结果分别保留。
+
 新记录还保存`configuration`有效绑定视图，含每层来源、校验结果、项目修订和内容摘要；`ergora project config PROJECT_ID`可查看当前值。旧任务没有此附加字段时仍使用原绑定快照，不重建历史配置。视图范围与独立调用的上下文区别见[有效绑定与运行快照](USAGE.md#有效绑定与运行快照)。
 
 需要长期运行时，在 `~/.config/multi-agent-platform/supervisor.d/executor.ini` 中把该 program 的 `command` 改为 Ergora 可执行文件绝对路径、`reference executor --installation ...`，保留 stopasgroup/killasgroup。再用 supervisorctl `reread` / `update`。初始化参考发行可能重新生成该文件，升级后应核对。不要同时运行新旧两个 executor。

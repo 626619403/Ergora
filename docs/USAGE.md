@@ -250,6 +250,22 @@ ergora task status my-project TASK_ID --run-id RUN_ID --timeout 20
 
 API为GET/POST `.../tasks/TASK_ID/cancellations/REQUEST_ID`，POST正文`revision/run_id/reason/confirm/timeout`；POST同路径`/resume`使用`revision/intent_sha256/confirm/timeout`。严格确认必须为true，写请求沿用同源保护及`X-Ergora-Request: 1`。旧入口任务仍由原CLI管理。
 
+### 核对闭合运行的外部作业证据
+
+统一创建并保存原提交回执的任务，可用固定的原run读取完整历史、原作业请求、可信终态回执和已有fence：
+
+```bash
+ergora task external-status my-project TASK_ID --run-id RUN_ID --timeout 20
+```
+
+API：`GET /api/projects/PROJECT_ID/tasks/TASK_ID/external-status?run_id=RUN_ID&timeout=20`。原run必须已闭合，且仍是该workflow ID的最新run；不支持continued-as-new或其他后续run。使用登记Linux/WSL2完整运行时，预算1–60秒，父进程另留5秒，本地合同预检另计。
+
+`original_outcome`保留原工作流结果；失败、取消、终止或超时的Temporal run没有结果时为null。`jobs`逐项列出原历史job、请求与回执状态及摘要；`unresolved_jobs`包含缺少请求、缺少或损坏回执以及额外请求/孤立回执。错误根、冲突请求、错误fence或不完整历史会明确拒绝。只支持登记执行状态目录下的requests/receipts/artifacts/approvals/fences布局。
+
+仅在完整历史对应的全部请求和可信终态回执均匹配、没有额外作业且已有正确fence时，`external_confirmed`为true。requests和receipts两类job目录均参与检查；无法绑定原history的孤立回执不支持确认。FAILED/CANCELLED回执也是外部作业终止证据，不能据此推断开发成功。这是可信文件协议的当前快照，依赖执行器按原协议发布回执和遵守fence，不代替操作系统进程检查。缺目录不会把已知历史job变成零作业通过。
+
+查询不保存本工具运行记录、不发布fence或释放租约，`lease_released_by_operation: false`、`execution_success: null`。CLI返回0只表示查询成功，务必检查external_confirmed和未决项。未确认时保留原任务、运行目录及租约，先沿原ID补齐证据；显式终态对账另行提供。
+
 ### 导出精确候选与恢复回执
 
 仅适用于统一创建且已保存提交回执的任务。先用`task status --run-id RUN_ID`核对原运行已完成且outcome为`REVIEW_READY`，审阅其确切candidate与可信检查/独立审查证据，然后明确指定本地目标分支：
