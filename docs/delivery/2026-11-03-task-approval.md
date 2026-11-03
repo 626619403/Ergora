@@ -1,6 +1,6 @@
 # F3.3c1：原运行的精确计划批准
 
-日期：2026-11-03。分支`refactor/architecture-foundations`，源码基线`d47e97b172c425b2400465593dae6916f225c30d`。当前已实现、定向/完整发行回归和独立源码审查通过；精确两OS CI及最终独立核对尚待完成，不标整个F3完成。原始需求和c2取消边界见[决策设计](2026-11-03-task-decisions.md)。
+日期：2026-11-03。分支`refactor/architecture-foundations`，源码基线`d47e97b172c425b2400465593dae6916f225c30d`。本切片已完成：b3b7d65已推送、最终本地发行和精确两OS CI及独立最终审查通过，不标整个F3完成。原始需求和c2取消边界见[决策设计](2026-11-03-task-decisions.md)。
 
 ## 行为与所有权
 
@@ -53,3 +53,12 @@ fresh-context审查者`f3_task_approval_review`已完成[独立报告](2026-11-0
 最终053212…候选wheel的适用Linux完整回归通过：**477 passed、19 skipped、36 subtests passed、1个FastAPI客户端弃用警告，566.19秒**，原始wheel-regression.log；命令与CI一致地增加原合同、portable、AdapterTests和runtime套件，PYTHONPATH只指向原reference平台，不指向src/ergora，实际应用来自非editable安装。完整回归没有失败，未扩张真实服务/模型结论。
 
 源码审查后9项源码/测试聚合身份未变。将提交推送该已验证候选以触发精确两OSCI，并请原审查者分别核对最终本地证据和精确提交/CI/远端；此处尚未宣称最终完成。下一切片c2的原cancel已核接口及稳定request ID设计保存在[决策设计](2026-11-03-task-decisions.md#f33c2下一切片的已核接口)，尚未写c2生产代码。
+
+
+## 最终收口
+
+F3.3c1完成。生产/测试`b3b7d655fe4a61ecfe6bc77258c9b8f416b5424b`已推送并由审查者独立核对远端SHA一致；[精确CI41572513289](https://github.com/626619403/Ergora/actions/runs/41572513289)Ubuntu125708461054三必需步骤、Windows125708461321四必需步骤均成功。审查者独立实时核官方页面及原始缓存、日志URL的完整提交归属，已在[最终报告](2026-11-03-task-approval-review.md#精确-ci-与远端最终复核)记录，无新增或未解决finding。
+
+最终053212…包344文件×提交/源码/wheel/两安装及冻结283、Linux477项/36子测试（19跳过）、86次基础CLI/限定性能和18秒延迟并发分别验收，独立复核通过。首次推送时临时SSH覆盖仓库已有认证代理导致407，移除覆盖后按既有配置推送成功；不是自动审批拒绝或权限扩张，不需要更改用户认证配置。
+
+下一项c2取消已进入独立源码切片，尚未发行验收；旧b提交长锁由d迁移，真实服务授权/history/memo与两模板六阶段/导出/重启由F3.4完成。c1收口不替代这些范围。后续文档提交只记录收口/下一切片，运行代码的精确CI身份仍是b3b7d65。

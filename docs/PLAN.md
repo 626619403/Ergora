@@ -40,6 +40,8 @@
 - 任务提交交付：F3.3b[记录](delivery/2026-11-03-task-submission.md)完成，97567b9已推送且远端一致；最终f8d92f…包343文件×两安装/冻结283、Linux441项/36子测试（19跳过）、72次无SDK基础CLI/限定性能、精确两OSCI41566783007及[独立最终审查](delivery/2026-11-03-task-submission-review.md)通过。两finding关闭；当前进入[F3.3c1精确批准](delivery/2026-11-03-task-decisions.md)，c2取消、d锁改进及F3.4旅程待完成。
 - 并发跟进：F3.3b最终包的真实共享SQLite锁探针（受控connect延迟18秒）确认其他项目写者15.04秒busy失败、无部分写入，提交后明确重试成功；已将F3.3d修订保留/远程等待分段列入F3.4前P0，保持不可变意图及同任务锁，不凭快速fixture声称无并发影响。
 - 精确批准实施：F3.3c1[记录](delivery/2026-11-03-task-approval.md)已实现CLI/API、稳定decision ID、原owner回执与原run精确signal/history恢复。首轮105项及NOT_FOUND补充7项定向、独立6项/4个真实SDK内存分页探针和[源码审查](delivery/2026-11-03-task-approval-review.md)通过，无finding；最终053212…wheel344文件×两安装/冻结283、Linux477项/36子测试（19跳过）、86CLI与18秒并发探针通过；精确两OS CI和最终审计待完成。准备意图与远程阶段分段，不把requested当批准已采用；c2取消、d提交锁迁移及F3.4仍待完成。
+- 精确批准交付：F3.3c1[记录](delivery/2026-11-03-task-approval.md)完成，b3b7d65已推送且独立远端SHA一致；最终053212…wheel344文件×两安装/冻结283、Linux477项/36子测试（19跳过）、86CLI/18秒并发、精确两OS CI41572513289及[独立最终核对](delivery/2026-11-03-task-approval-review.md)通过，无未解决finding。当前c2取消实施，d锁迁移及F3.4仍待完成。
+- 取消实施：F3.3c2[记录](delivery/2026-11-03-task-cancellation.md)已接CLI/API、原Transport.cancel的实际signal检查点、稳定request ID和原history操作SHA对账；原spec/memo/已提交读取及流式history与c1实际共用。六种闭合状态明确不发新信号，不把requested或already_closed当外部已停；首轮源码联合检查进行中，新的独立审计和发行验收待完成。
 - 已交付平台范围：原生 Windows 控制面、CLI、项目 / 记忆 / Skill / 资料观察及支持的原生工具；完整六阶段与 Linux 专用工具走 Linux/WSL2。后续仍按实际能力逐项验收。
 - 验证：Windows / Ubuntu CI 41225920073 全部成功；Linux 完整回归 115 passed +36 subtests。两个切片最终独立审查通过；Linux 用户目录 0.2.0 升级和 314 文件身份一致。真实模型 / GPU / winget 空白系统等未验收范围保留在交付记录，不从 CI 推导。
 - 恢复要求：重读本文件及活动切片记录，对照分支、工作区和最近提交；完成核对后继续当前项，不重新做已验收的调研。
@@ -133,4 +135,4 @@ S0–S10 后续范围现在由 S11 详细计划承接；尚未测得收益的优
 - P1：低代码、逐项目工单、真实可选 harness/会话、训练实验与受评估的持续改进。
 - P2/P3：通信、远端隔离、搜索/格式互操作、多用户与规模化，按固定版本和真实需求分阶段验证，不进入默认必装。
 
-每次上下文压缩、换机、节点切换后，重读本文件、详细节点及其交付记录，核对 Git 后从未完成项继续。M1/M2/A1/A2/R1–R8/L0/L1/F1/F2 已完成；当前实施F3.3c1；尚无实际业务用户数据迁移，各 M/A/R/F 节点只以登记表和交付证据为准。
+每次上下文压缩、换机、节点切换后，重读本文件、详细节点及其交付记录，核对 Git 后从未完成项继续。M1/M2/A1/A2/R1–R8/L0/L1/F1/F2 已完成；当前实施F3.3c2；尚无实际业务用户数据迁移，各 M/A/R/F 节点只以登记表和交付证据为准。
