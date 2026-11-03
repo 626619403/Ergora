@@ -14,6 +14,9 @@ from test_registrations import installation, registration
 from test_task_creation import creation_project, _files
 
 
+pytestmark = pytest.mark.skipif(sys.platform != 'linux', reason='Formal task operations use Linux/WSL2')
+
+
 @pytest.fixture
 def submitted_creation(creation_project, request):
     if sys.platform != 'linux':
@@ -267,18 +270,6 @@ def test_unknown_recovery_refuses_a_different_submission_memo(submitted_creation
         _resume(submitted_creation)
     assert _status(submitted_creation)['status']=='unknown'
     assert 'start' not in _calls(submitted_creation)
-
-
-def test_submission_requires_the_registered_full_linux_environment(creation_project,monkeypatch):
-    state,registration,definition=creation_project
-    monkeypatch.setattr(reference.sys,'platform','win32')
-    with pytest.raises(ValueError,match='WSL2'):
-        tasks.submission(state,'demo','new-task')
-    monkeypatch.setattr(reference.sys,'platform','linux')
-    original=Path.is_file
-    monkeypatch.setattr(Path,'is_file',lambda path:False if path.name=='python' else original(path))
-    with pytest.raises(ValueError,match='full Linux environment'):
-        tasks.submission(state,'demo','new-task')
 
 
 def test_reconciliation_requires_original_history_and_does_not_release_or_restart(submitted_creation,native_client,monkeypatch):

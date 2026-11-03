@@ -20,6 +20,9 @@ from test_task_creation import creation_project, _files
 from test_task_submission import native_client, _start, _root, _calls
 
 
+pytestmark = pytest.mark.skipif(sys.platform != 'linux', reason='Formal task operations use Linux/WSL2')
+
+
 def git(repo, *args, stdin=None, check=True):
     env = dict(os.environ, GIT_AUTHOR_NAME='Fixture', GIT_AUTHOR_EMAIL='fixture@example.test',
                GIT_COMMITTER_NAME='Fixture', GIT_COMMITTER_EMAIL='fixture@example.test')

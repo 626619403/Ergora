@@ -17,6 +17,9 @@ from test_task_submission import submitted_creation, native_client, _start, _roo
 from test_task_export import outcome, lease
 
 
+pytestmark = pytest.mark.skipif(sys.platform != 'linux', reason='Formal task operations use Linux/WSL2')
+
+
 def write(path, value):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(value), encoding='utf-8')
@@ -309,13 +312,3 @@ def test_query_timeout_and_slow_rpc_do_not_reserve_the_shared_database(external_
     with pytest.raises(ValueError, match='timed out; no fence or lease was changed'):
         inspect(external_task, timeout=1)
     assert snapshot(external_task) == before and lease(external_task)[1] == 1
-
-
-def test_missing_full_runtime_has_actionable_guidance(creation_project):
-    state, registration, _ = creation_project
-    if sys.platform == 'linux':
-        runtime = Path(registration['execution']['installation']) / '.venv'
-        if runtime.is_symlink():
-            runtime.unlink()
-    with pytest.raises(ValueError, match='full Linux environment|requires Linux.*WSL2'):
-        tasks.external_status(state, 'demo', 'new-task', run_id='original-run')

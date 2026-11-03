@@ -3,6 +3,7 @@
 from concurrent.futures import ThreadPoolExecutor
 import json
 from pathlib import Path
+import sys
 import time
 
 import pytest
@@ -12,6 +13,9 @@ from ergora.state import State
 from test_registrations import installation, registration
 from test_task_creation import creation_project, _files
 from test_task_submission import submitted_creation, native_client, _start, _root, _calls
+
+
+pytestmark = pytest.mark.skipif(sys.platform != 'linux', reason='Formal task operations use Linux/WSL2')
 
 
 @pytest.fixture

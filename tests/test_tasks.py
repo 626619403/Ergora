@@ -12,6 +12,7 @@ import pytest
 from ergora import projects, reference, registrations, tasks
 from ergora.state import State
 from test_registrations import installation, registration
+from test_task_creation import creation_project
 
 
 @pytest.fixture
@@ -220,3 +221,25 @@ def test_reader_failures_are_actionable_without_retries(task_store, monkeypatch,
     with pytest.raises(ValueError, match='Task contract reader'):
         tasks.listing(state, 'demo')
     assert len(calls) == 1
+
+
+def test_submission_requires_the_registered_full_linux_environment(creation_project,monkeypatch):
+    state,registration,definition=creation_project
+    monkeypatch.setattr(reference.sys,'platform','win32')
+    with pytest.raises(ValueError,match='WSL2'):
+        tasks.submission(state,'demo','new-task')
+    monkeypatch.setattr(reference.sys,'platform','linux')
+    original=Path.is_file
+    monkeypatch.setattr(Path,'is_file',lambda path:False if path.name=='python' else original(path))
+    with pytest.raises(ValueError,match='full Linux environment'):
+        tasks.submission(state,'demo','new-task')
+
+
+def test_missing_full_runtime_has_actionable_guidance(creation_project):
+    state, registration, _ = creation_project
+    if sys.platform == 'linux':
+        runtime = Path(registration['execution']['installation']) / '.venv'
+        if runtime.is_symlink():
+            runtime.unlink()
+    with pytest.raises(ValueError, match='full Linux environment|requires Linux.*WSL2'):
+        tasks.external_status(state, 'demo', 'new-task', run_id='original-run')
