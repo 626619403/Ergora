@@ -22,6 +22,10 @@ flowchart LR
   Ref --> Cancellation[reference_task_cancellation 专用取消进程]
   Cancellation --> Submission
   Cancellation --> Transport
+  Ref --> Export[reference_task_export 专用导出进程]
+  Export --> Submission
+  Export --> Transport
+  Export --> Git[Git ref事务 / 原ingress.release]
   Ref --> Compiler[专用编译子进程]
   Compiler --> Portable[原 portable / contracts]
   Ref --> Projection[专用注册 I/O 子进程]
@@ -50,7 +54,8 @@ flowchart LR
 |正式任务start/本地提交状态/原ID恢复|`reference.task_submission` → 专用`reference_task_submission`；tasks/CLI/API|创建所有者校验七合同；完整原生环境复用原task_action，短revision事务只做本地prepare，网络阶段仅持task锁；窄Transport继承只保存dispatch检查点，unknown禁止重新start，既有run持久拒绝；原生依赖/全局不进入Web|
 |精确plan批准/投递读取/恢复|`reference.task_approval` → 专用`reference_task_approval`；tasks/CLI/API|复用原创建/提交所有者、严格spec/memo/固定run、原owner receipt和approve_plan；无网络准备后释放控制库，未知只核原history；不新增授权状态机|
 |取消请求/本地记录/投递恢复|`reference.task_cancellation` → 专用`reference_task_cancellation`；tasks/CLI/API|复用原Transport.cancel、严格原spec/memo/run，实际signal前检查点及操作SHA；闭合明确无信号，unknown仅核分页history，不接管fence/租约|
-|正式任务result/export|当前原`agentflow`、`DevelopmentTransport / Runtime / Workflow`|运行事实仍在原runtime，F3.1/F3.2提供本地合同查询与创建/恢复；F3.3a只读查询原生状态，F3.3b接提交/原ID恢复，F3.3c1接精确批准/投递恢复，F3.3c2接取消，不让HTTP或前端直接操作原全局/ledger|
+|精确候选导出/本地回执/恢复|`reference.task_export` → 专用`reference_task_export`；tasks/CLI/API|原提交固定spec/memo/run，原REVIEW_READY结果核精确candidate；写前attempt、异步Git对象fetch与条件事务，原ingress.release和export.json；unknown只核实际ref补回执，不fetch/创建；不checkout/merge/push|
+|正式任务运行结果|原`DevelopmentTransport / Runtime / Workflow`；`tasks.status`只读返回原outcome|运行事实与可信验收仍在原runtime；result若释放适用租约是明确写操作，不能塞入只读GET；终态外部fence对账仍属F3.4b|
 
 `reference.ROOT`仍保留给既有Python调用者和身份/兼容测试；生产布局知识只在reference及其专用原生边界。没有删除公共常量或改变CLI响应/退出码。`template_details`是实际Web使用的资源读取接口，没有另造模板存储层。
 

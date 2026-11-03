@@ -132,7 +132,7 @@ ergora task show my-project TASK_ID
 
 同源API为 `GET /api/projects/ID/tasks?limit=50&after=CURSOR` 和 `GET /api/projects/ID/tasks/TASK_ID`。默认每页校验50个候选目录项，可设1–100；原样使用返回的不透明ASCII游标 `next_after` 继续，直到其为null；游标不是任务ID或文件路径。每页流式枚举全部目录名再选取候选窗口，因此枚举时间随任务数增加；`inspected_entries`只计该页校验项数。其他项目或损坏目录可能产生空页，仍应沿游标前进。`items`只包含匹配该项目/Git根/tracker并通过合同结构与摘要校验的任务；归属已确认但合同损坏的条目进入 `errors`，不能判断归属的条目只计入 `unreadable_count`。
 
-详情返回原始spec、冻结项目、可选的 `agent_bindings` 及其文件SHA256。`project_revision`是当前控制项目修订，冻结绑定中的 `project_revision`属于创建或首次执行时的快照。`runtime_status: not_queried`表示没有访问Temporal；本地文件存在不代表任务开始、完成或验收通过。查询不安装SDK、启动服务、提交任务或写回旧记录；批准、取消和导出仍按[正式执行手册](AGENT_BACKENDS.md)使用原参考入口。Linux/Windows均可读取本机可访问的执行目录，完整六阶段执行需要Linux/WSL2。
+详情返回原始spec、冻结项目、可选的 `agent_bindings` 及其文件SHA256。`project_revision`是当前控制项目修订，冻结绑定中的 `project_revision`属于创建或首次执行时的快照。`runtime_status: not_queried`表示没有访问Temporal；本地文件存在不代表任务开始、完成或验收通过。合同查询不安装SDK、启动服务、提交任务或写回旧记录；统一创建/提交的任务使用下文的明确批准、取消与导出入口，旧入口任务继续按[正式执行手册](AGENT_BACKENDS.md)管理。Linux/Windows均可读取本机可访问的执行目录，完整六阶段执行需要Linux/WSL2。
 
 ### 预览与创建正式任务
 
@@ -207,7 +207,7 @@ ergora task resume-start my-project TASK_ID --revision 1 --intent-sha256 SUBMISS
 
 意图、派发检查点、回执及适用的所有权拒绝记录位于执行状态目录`ergora/task-submissions/TASK_ID.{intent,attempt,result,rejection}.json`，必须与创建记录、任务目录和原运行状态一起保留。准备阶段在当前项目修订保留下非阻塞取得原同ID锁，仅保存意图；随后释放控制库写锁，网络阶段只持原任务锁。1–60秒timeout分别约束准备和网络阶段，父进程各另留5秒启动/回收，预检另计。超时只回收提交客户端，实际Agent由持久执行器拥有，不能据此判断已停机。完整环境缺失时明确报错；不自动启动服务或修改执行权限。
 
-API：`POST .../tasks/TASK_ID/start`正文为`revision/creation_sha256/timeout`，`GET .../tasks/TASK_ID/submission`，`POST .../tasks/TASK_ID/resume-start`正文为`revision/intent_sha256/timeout`；写请求沿用同源保护及`X-Ergora-Request: 1`。同任务并发准备或创建/恢复创建遇活跃任务锁时及时报busy；并发读取也可能取得prepared/unknown快照；无需等待另一请求完成才返回。操作结束后读取submission及当前项目修订，再决定是否明确resume；重复start不隐式重试未派发准入，unknown不重发。其他项目不会因本次网络等待而被持续占用控制库写锁。HTTP成功响应仍须检查status，unknown/rejected不能当作提交成功。导出暂使用参考命令，后续接入。
+API：`POST .../tasks/TASK_ID/start`正文为`revision/creation_sha256/timeout`，`GET .../tasks/TASK_ID/submission`，`POST .../tasks/TASK_ID/resume-start`正文为`revision/intent_sha256/timeout`；写请求沿用同源保护及`X-Ergora-Request: 1`。同任务并发准备或创建/恢复创建遇活跃任务锁时及时报busy；并发读取也可能取得prepared/unknown快照；无需等待另一请求完成才返回。操作结束后读取submission及当前项目修订，再决定是否明确resume；重复start不隐式重试未派发准入，unknown不重发。其他项目不会因本次网络等待而被持续占用控制库写锁。HTTP成功响应仍须检查status，unknown/rejected不能当作提交成功。
 
 ### 批准精确计划与恢复投递
 
@@ -249,6 +249,25 @@ ergora task status my-project TASK_ID --run-id RUN_ID --timeout 20
 意图/attempt/result位于执行状态目录`ergora/task-cancellations/TASK_ID/REQUEST_ID.*.json`，须与原任务、创建及提交记录保留。准备阶段在当前revision下非阻塞获取原任务锁，远程阶段已释放控制库写锁；每阶段1–60秒预算，父进程各另留5秒，本地预检另计。Windows使用已登记Linux/WSL2完整运行时；该本地入口不是团队权限系统。
 
 API为GET/POST `.../tasks/TASK_ID/cancellations/REQUEST_ID`，POST正文`revision/run_id/reason/confirm/timeout`；POST同路径`/resume`使用`revision/intent_sha256/confirm/timeout`。严格确认必须为true，写请求沿用同源保护及`X-Ergora-Request: 1`。旧入口任务仍由原CLI管理。
+
+### 导出精确候选与恢复回执
+
+仅适用于统一创建且已保存提交回执的任务。先用`task status --run-id RUN_ID`核对原运行已完成且outcome为`REVIEW_READY`，审阅其确切candidate与可信检查/独立审查证据，然后明确指定本地目标分支：
+
+```bash
+ergora task export my-project TASK_ID --revision 1 --run-id RUN_ID --candidate-sha CANDIDATE_SHA --branch agent/TASK_ID --confirm --timeout 20
+ergora task export-status my-project TASK_ID
+# 中断后先查export-status，以原intent_sha256和当前项目修订恢复：
+ergora task resume-export my-project TASK_ID --revision 1 --intent-sha256 EXPORT_SHA --confirm --timeout 20
+```
+
+一个任务保存一个不可变导出目标。重复export只返回原记录，不能更换run、candidate或branch。`prepared`表示尚无写前检查点，可明确resume继续；`unknown`表示已保存原结果摘要，恢复只核对原run/outcome及实际分支，不能重新fetch或创建。分支不存在时返回`unknown/branch_not_found`，避免复活人工删除的分支；保持原记录并人工对账。已有分支指向不同commit、原结果变化或记录冲突均明确拒绝。
+
+Git只抓取对象，不写FETCH_HEAD，不checkout、merge或推送。目标分支通过Git条件事务创建；已有正确candidate可接受，其他已有分支和符号引用保持。确认分支后沿原规则释放适用工单租约，写原格式`tasks/TASK_ID/export.json`及本工具回执。`exported`表示已保存该导出事实，`checked_out: false`、`merged: false`，后续仍须按项目策略审查合入。重复终态读取不会实时核查之后的人工分支修改。
+
+`export-status`只读本地记录，不连接Temporal或释放租约。意图、写前检查点和回执位于执行状态目录`ergora/task-exports/TASK_ID.{intent,attempt,result}.json`，须与原创建、提交、任务、工作区及租约记录一起备份；不能只备份控制库。准备时严格核当前revision/confirm并非阻塞取原任务锁，网络/Git阶段已释放控制库写锁。每阶段1–60秒预算，父进程另留5秒，预检另计；超时后先读记录，实际是否写入仍以原分支和检查点对账。Linux/WSL2使用登记的完整运行时，旧入口导出不隐式接管。
+
+API：GET/POST `.../tasks/TASK_ID/export`，POST正文为`revision/run_id/candidate_sha/branch/confirm/timeout`；POST同路径`/resume`使用`revision/intent_sha256/confirm/timeout`。写请求沿用同源保护及`X-Ergora-Request: 1`，confirm必须为true。CLI变更只在exported时返回0，HTTP成功也须检查status。
 
 ### 显式服务管理
 

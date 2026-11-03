@@ -4,7 +4,7 @@
 
 ## 模块与依赖
 
-自有Python仍为单包`ergora`，35个顶层文件（含两个包入口）；F1.2增加完整注册用例`registrations`，F2.3增加显式服务用例`services`，F3.1增加项目范围的正式任务查询`tasks`，F3.2在同一用例接入预览/创建/恢复，专用`reference_task_creation`拥有原生编译/发布生命周期。没有为层级增加空子包、通用Agent基类或插件容器。下图表示当前调用方向，组合节点内的模块并非互相依赖；精确导入由静态检查和源码确定。
+自有Python仍为单包`ergora`，36个顶层文件（含两个包入口）；F1.2增加完整注册用例`registrations`，F2.3增加显式服务用例`services`，F3.1增加项目范围的正式任务查询`tasks`，F3.2在同一用例接入预览/创建/恢复，专用`reference_task_creation`拥有原生编译/发布生命周期。没有为层级增加空子包、通用Agent基类或插件容器。下图表示当前调用方向，组合节点内的模块并非互相依赖；精确导入由静态检查和源码确定。
 
 ```mermaid
 flowchart TB
@@ -49,6 +49,10 @@ flowchart TB
   Ref --> Cancellation[reference_task_cancellation 专用取消进程]
   Cancellation --> Submission
   Cancellation --> Temporal
+  Ref --> Export[reference_task_export 专用导出进程]
+  Export --> Submission
+  Export --> Temporal
+  Export --> Git[Git ref事务 / 原ingress.release]
   Ref --> Bridge[reference_executor → stage_driver subprocess]
   Bridge --> Native
   Query --> Foundations[components / contracts / state]
@@ -77,7 +81,8 @@ flowchart TB
 |正式任务提交及原身份恢复|`tasks.start / submission / resume_start` → `reference.task_submission` → 专用`reference_task_submission`；CLI/API|复用创建所有者及原doctor/策略/claim/Transport；短revision保留下非阻塞保存意图，释放控制库后才原准入/RPC；意图先于副作用、attempt先于原start，阶段间中断可恢复；未知只查询原始spec并核SDK memo归属后补原run回执，拒绝接管旧运行；完整参考运行时负责依赖|
 |精确计划批准和原history投递恢复|`tasks.approve / approval / resume_approve` → `reference.task_approval` → 专用`reference_task_approval`；CLI/API|准备意图时保留revision且非阻塞任务锁；释放控制库后核原run/spec/memo/plan，复用原owner回执与signal；未知只读分页history，requested不代表授权采纳|
 |取消请求和原history投递恢复|`tasks.cancel / cancellation / resume_cancel` → `reference.task_cancellation` → 专用`reference_task_cancellation`；CLI/API|复用原Transport.cancel的RUNNING守卫及协作signal；稳定request ID/原因/actor，写前attempt和操作SHA关联；闭合明确不发新信号，unknown不重发且不声称外部已停|
-|参考资源、编译与执行桥|`reference`、`reference_task_creation`、`reference_task_runtime`、`reference_task_submission`、`reference_task_approval`、`reference_task_cancellation`、`reference_executor`、`stage_driver`；CLI/Web/drafts/agent_runs|资源查询与正式执行分开；执行器限专用 Linux 进程，不把原导入全局当 Web request-local|
+|精确候选本地导出与回执恢复|`tasks.export / export_status / resume_export` → `reference.task_export` → 专用`reference_task_export`；CLI/API|复用原提交/spec/memo/run及REVIEW_READY结果；短revision准备后仅task锁，写前attempt固定outcome，Git事务保护已有分支/符号引用；unknown只核ref不重复写入；原租约/原生export回执沿原所有者|
+|参考资源、编译与执行桥|`reference`、`reference_task_creation`、`reference_task_runtime`、`reference_task_submission`、`reference_task_approval`、`reference_task_cancellation`、`reference_task_export`、`reference_executor`、`stage_driver`；CLI/Web/drafts/agent_runs|资源查询与正式执行分开；执行器限专用 Linux 进程，不把原导入全局当 Web request-local|
 |交互与传输|`cli`、`web`、`data/console`|调用现有用例；可选 Web/Temporal 延迟导入；UI 不拥有正式任务状态|
 
 Python 导入图包含函数内延迟导入，当前无环。`reference.executor` 动态加载执行桥，`stage_driver` 通过子进程运行，`data/drivers` 在独立 SDK 环境调用；这些运行边不能仅由顶层 import 推断。完整参考边界及退出条件见 [reference 文档](reference-boundary.md)，进程结果/产物/平台矩阵见 [运行契约](2026-11-02-runtime-contracts.md)。
@@ -159,6 +164,7 @@ flowchart LR
 |research / drafts / kernel|`research_runs`、`source_snapshots`、`source_heads`、`research_proposals`、`drafts`、`kernel_runs`；来源与原生产物|预算/取消、资料/草稿 revision、Forge 原生 ID 与未知状态|
 |State / backups|schema 版本、迁移前 DB 快照、完整离线备份清单|DDL/锁/版本拒绝；DB 快照不等于完整文件备份|
 |正式任务创建意图/回执|登记执行状态目录的`ergora/task-creations/`；原`tasks/`七份合同|意图先于原生发布，同ID跨进程锁；恢复固定内容及旧绑定；不从发布回执推导运行状态|
+|正式任务操作意图/检查点/回执|执行状态目录`ergora/task-submissions / task-approvals / task-cancellations / task-exports`；原owner与export文件|固定创建/原提交/run，attempt先于外部变更；未知只核原history/实际分支，不能将请求回执作为六阶段成功；随执行目录备份|
 |原 runtime / executor / runner|原配置、任务文件、ingress leases、jobs ledger、Git/产物；Temporal history|正式阶段、批准、候选与取消事实；不搬迁在途 history|
 
 F1统一注册将控制项目定义和bindings作为权威来源，reference正式注册/策略是不可变单向投影；旧注册经只读预览、差异与显式采用接入，轻量项目和旧参考入口保持兼容。CLI/env路径、模板输入和SDK原生设置仍按域归属，没有新增双向同步器。pending项目与before/after意图协调跨资源恢复，published状态和实际文件一致性分别查询。凭据值继续由运行环境/工具认证提供，不进入分享定义。详见[项目手册](../PROJECTS.md)、[状态迁移](state-migrations.md)与[参考配置范围](reference-boundary.md#配置与进程范围)。
