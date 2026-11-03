@@ -154,21 +154,29 @@ class _Submission:
         self.core.write(self.result_path, self.receipt(intent, observed['run_id']))
         return self.status(intent)
 
-    async def reconcile(self, intent: dict) -> dict:
+    async def lookup_run(self, intent: dict, run_id: str | None = None):
+        """Return the verified original run and its actual SDK payload converter."""
         from dev_platform.connection import connect, task_queue
-        from dev_platform.runtime import DevelopmentTransport, RuntimeNotFound
+        from dev_platform.runtime import DevelopmentTransport
 
-        transport = DevelopmentTransport(VerifiedSpecClient(await connect(), self.spec), task_queue())
-        try:
-            _, description = await transport.lookup(self.spec)
-        except RuntimeNotFound:
-            return {**self.status(intent), 'reconciliation': 'not_found',
-                    'instruction': 'Dispatch remains uncertain; do not resubmit or change the task ID to bypass it'}
+        client = await connect()
+        transport = DevelopmentTransport(VerifiedSpecClient(client, self.spec), task_queue())
+        handle, description = await transport.lookup(self.spec, run_id)
         # Memo is decoded from the describe response, with no extra RPC. The
         # fixed native workflow never upserts it. This associates recovery with
         # our original start even if saving a known conflict's rejection failed.
         if (await description.memo()).get(_MEMO_KEY) != self.sha(intent):
             raise ValueError('Workflow has no matching submission memo; its ownership remains unconfirmed')
+        return handle, description, client.data_converter
+
+    async def reconcile(self, intent: dict) -> dict:
+        from dev_platform.runtime import RuntimeNotFound
+
+        try:
+            _, description, _ = await self.lookup_run(intent)
+        except RuntimeNotFound:
+            return {**self.status(intent), 'reconciliation': 'not_found',
+                    'instruction': 'Dispatch remains uncertain; do not resubmit or change the task ID to bypass it'}
         self.core.write(self.result_path, self.receipt(intent, description.run_id))
         return self.status(intent)
 

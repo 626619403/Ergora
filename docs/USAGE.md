@@ -207,7 +207,28 @@ ergora task resume-start my-project TASK_ID --revision 1 --intent-sha256 SUBMISS
 
 意图、派发检查点、回执及适用的所有权拒绝记录位于执行状态目录`ergora/task-submissions/TASK_ID.{intent,attempt,result,rejection}.json`，必须与创建记录、任务目录和原运行状态一起保留。变更操作保留项目修订并共享创建的同ID锁；1–60秒timeout约束客户端工作，父进程另留5秒启动/回收，预检另计。超时只回收提交客户端，实际Agent由持久执行器拥有，不能据此判断已停机。完整环境缺失时明确报错；不自动启动服务或修改执行权限。
 
-API：`POST .../tasks/TASK_ID/start`正文为`revision/creation_sha256/timeout`，`GET .../tasks/TASK_ID/submission`，`POST .../tasks/TASK_ID/resume-start`正文为`revision/intent_sha256/timeout`；写请求沿用同源保护及`X-Ergora-Request: 1`。项目修订保留使用控制库写锁，网络等待期间其他写者会串行等待；超过现有15秒busy预算可能明确失败，应在操作结束后重新读取修订再决定重试，不自动重发未知提交。HTTP成功响应仍须检查status，unknown/rejected不能当作提交成功。批准、取消、导出暂使用参考命令，后续分别接入。
+API：`POST .../tasks/TASK_ID/start`正文为`revision/creation_sha256/timeout`，`GET .../tasks/TASK_ID/submission`，`POST .../tasks/TASK_ID/resume-start`正文为`revision/intent_sha256/timeout`；写请求沿用同源保护及`X-Ergora-Request: 1`。项目修订保留使用控制库写锁，网络等待期间其他写者会串行等待；超过现有15秒busy预算可能明确失败，应在操作结束后重新读取修订再决定重试，不自动重发未知提交。HTTP成功响应仍须检查status，unknown/rejected不能当作提交成功。取消、导出暂使用参考命令，后续分别接入。
+
+### 批准精确计划与恢复投递
+
+仅适用于统一创建且已保存原提交回执的任务，运行环境与提交入口相同。先用`task status --run-id RUN_ID`审阅当前计划；原状态必须是`AWAITING_PLAN_APPROVAL`。用当前项目修订、原run ID及实际plan SHA明确批准：
+
+```bash
+ergora task approve my-project TASK_ID --decision-id owner-one --revision 1 --run-id RUN_ID --plan-sha256 PLAN_SHA --confirm --timeout 20
+ergora task approval my-project TASK_ID owner-one
+# 中断后先读approval，再用原intent_sha256和当前项目修订恢复：
+ergora task resume-approve my-project TASK_ID owner-one --revision 1 --intent-sha256 APPROVAL_SHA --confirm --timeout 20
+```
+
+decision ID是本次owner决策的稳定标识。重复同ID只读取原记录，不重发、不修改plan或延长24小时有效期。计划更新、原决策过期或撤销后，应审阅当前计划并使用新decision ID明确作出新决策。原角色快照不随项目绑定变化；此本地入口使用当前Linux用户作为owner actor，不提供团队身份认证。
+
+`approval`只读本地记录，不连接Temporal。状态为`not_recorded / prepared / unknown / requested`：prepared尚无信号检查点，可明确恢复；unknown已保存attempt，恢复只能在原run的分页history中核对精确request/plan/receipt，不重发。未找到信号或原run不可用时保留未知，应继续沿原ID对账。owner回执被撤销或更改时原意图不再可派发。
+
+`requested`只说明SDK已应答信号，或原history有对应事件；`approval_accepted: null`、`execution_success: null`不是批准采用或六阶段成功。工作流仍按原授权规则检查owner/expiry/revocation/精确计划，用`task status --run-id RUN_ID`核对实际进度。CLI变更仅在requested时返回0；HTTP成功响应也须检查status。
+
+审批操作记录位于执行状态目录`ergora/task-approvals/TASK_ID/DECISION_ID.{intent,attempt,result}.json`，原owner回执在`approvals/owner-UUID.json`；必须与原任务、创建和提交记录一起保留。准备意图时保留项目revision且非阻塞获取原任务锁；网络阶段已释放控制库写锁，只持同任务锁。准备和网络各有1–60秒预算，父进程各另留5秒，本地预检另计；超时后先读记录再决定恢复。
+
+API：GET/POST `.../tasks/TASK_ID/approvals/DECISION_ID`，POST正文为`revision/run_id/plan_sha256/confirm/timeout`；POST同路径`/resume`正文为`revision/intent_sha256/confirm/timeout`。`confirm`必须为true；写请求沿用同源保护及`X-Ergora-Request: 1`。旧参考入口创建/启动的任务继续由原CLI管理，本入口不会采用旧运行。
 
 ### 显式服务管理
 

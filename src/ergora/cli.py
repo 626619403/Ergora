@@ -116,6 +116,25 @@ def parser() -> argparse.ArgumentParser:
             operation.add_argument("--revision", type=int, required=True)
             operation.add_argument("--timeout", type=int, default=20)
             operation.add_argument("--creation-sha256" if name == "start" else "--intent-sha256", required=True)
+    approving = operations.add_parser("approve", help="Record an explicit owner decision for the exact native run and plan")
+    approving.add_argument("project")
+    approving.add_argument("task_id")
+    approving.add_argument("--decision-id", required=True)
+    approving.add_argument("--revision", type=int, required=True)
+    approving.add_argument("--run-id", required=True)
+    approving.add_argument("--plan-sha256", required=True)
+    approving.add_argument("--confirm", action="store_true", required=True)
+    approving.add_argument("--timeout", type=int, default=20)
+    for name in ("approval", "resume-approve"):
+        operation = operations.add_parser(name)
+        operation.add_argument("project")
+        operation.add_argument("task_id")
+        operation.add_argument("decision_id")
+        if name == "resume-approve":
+            operation.add_argument("--revision", type=int, required=True)
+            operation.add_argument("--intent-sha256", required=True)
+            operation.add_argument("--confirm", action="store_true", required=True)
+            operation.add_argument("--timeout", type=int, default=20)
     service = commands.add_parser("services", help="Explicit selected-service Supervisor operations (Linux/WSL2)")
     operations = service.add_subparsers(dest="operation", required=True)
     status = operations.add_parser("status")
@@ -356,6 +375,16 @@ def main(argv: list[str] | None = None) -> int:
                           tasks.resume_start(state, args.project, args.task_id, args.revision, args.intent_sha256, timeout=args.timeout))
                 print(json.dumps(output, ensure_ascii=False, indent=2))
                 return 0 if output["status"] == "submitted" else 1
+            elif args.operation == "approval":
+                output = tasks.approval(state, args.project, args.task_id, args.decision_id)
+            elif args.operation in ("approve", "resume-approve"):
+                output = (tasks.approve(state, args.project, args.task_id, args.decision_id, args.revision,
+                                        run_id=args.run_id, plan_sha256=args.plan_sha256, confirm=args.confirm, timeout=args.timeout)
+                          if args.operation == "approve" else
+                          tasks.resume_approve(state, args.project, args.task_id, args.decision_id, args.revision,
+                                               args.intent_sha256, confirm=args.confirm, timeout=args.timeout))
+                print(json.dumps(output, ensure_ascii=False, indent=2))
+                return 0 if output["status"] == "requested" else 1
             else:
                 definition = json.loads(args.definition.read_text(encoding="utf-8-sig"))
                 output = (tasks.preview(state, args.project, definition, args.revision) if args.operation == "preview"

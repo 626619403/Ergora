@@ -81,6 +81,18 @@ class TaskResumeStartPayload(TaskResumePayload):
     timeout: int = Field(default=20, strict=True, ge=1, le=60)
 
 
+class TaskApprovePayload(Payload):
+    revision: int = Field(strict=True, ge=1)
+    run_id: str = Field(min_length=1, max_length=128)
+    plan_sha256: str = Field(pattern="^[0-9a-f]{64}$")
+    confirm: bool = Field(strict=True)
+    timeout: int = Field(default=20, strict=True, ge=1, le=60)
+
+
+class TaskResumeApprovalPayload(TaskResumeStartPayload):
+    confirm: bool = Field(strict=True)
+
+
 class MemoryPayload(RevisionPayload):
     revision: int = 0
     text: str
@@ -283,6 +295,20 @@ def create_app(home: Path | None = None) -> FastAPI:
     @application.post("/api/projects/{project_id}/tasks/{task_id}/resume-start")
     def resume_formal_task_start(project_id: str, task_id: str, body: TaskResumeStartPayload):
         return tasks.resume_start(state, project_id, task_id, body.revision, body.intent_sha256, timeout=body.timeout)
+
+    @application.get("/api/projects/{project_id}/tasks/{task_id}/approvals/{decision_id}")
+    def formal_task_approval(project_id: str, task_id: str, decision_id: str):
+        return tasks.approval(state, project_id, task_id, decision_id)
+
+    @application.post("/api/projects/{project_id}/tasks/{task_id}/approvals/{decision_id}")
+    def approve_formal_task(project_id: str, task_id: str, decision_id: str, body: TaskApprovePayload):
+        return tasks.approve(state, project_id, task_id, decision_id, body.revision,
+                             run_id=body.run_id, plan_sha256=body.plan_sha256, confirm=body.confirm, timeout=body.timeout)
+
+    @application.post("/api/projects/{project_id}/tasks/{task_id}/approvals/{decision_id}/resume")
+    def resume_formal_task_approval(project_id: str, task_id: str, decision_id: str, body: TaskResumeApprovalPayload):
+        return tasks.resume_approve(state, project_id, task_id, decision_id, body.revision,
+                                    body.intent_sha256, confirm=body.confirm, timeout=body.timeout)
 
     @application.get("/api/projects/{project_id}/tasks/{task_id}")
     def formal_task(project_id: str, task_id: str):

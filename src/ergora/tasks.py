@@ -42,6 +42,11 @@ def _digest(value: str, name: str) -> None:
         raise ValueError(name + ' must be a SHA256 digest')
 
 
+def _run_id(value: str) -> None:
+    if not isinstance(value, str) or not 1 <= len(value) <= 128 or value.strip() != value:
+        raise ValueError('Run ID must be a nonempty opaque identifier of at most 128 characters')
+
+
 def preview(state: State, project_id: str, definition: dict, expected_revision: int) -> dict:
     """Compile in temporary storage and return the exact proposed task and bindings."""
     project = _project(state, project_id)
@@ -83,8 +88,8 @@ def status(state: State, project_id: str, task_id: str, *, run_id: str | None = 
     """Read verified native execution facts; absence and transport errors stay distinct."""
     if type(timeout) is not int or not 1 <= timeout <= 60:
         raise ValueError('Task runtime query timeout must be 1–60 seconds')
-    if run_id is not None and (not isinstance(run_id, str) or not 1 <= len(run_id) <= 128 or run_id.strip() != run_id):
-        raise ValueError('Run ID must be a nonempty opaque identifier of at most 128 characters')
+    if run_id is not None:
+        _run_id(run_id)
     project = _project(state, project_id)
     task = reference.task_files(project, task_id=task_id)
     return {'project': project_id, 'project_revision': project['revision'], 'task_id': task_id,
@@ -123,6 +128,57 @@ def _submission(state: State, project_id: str, task_id: str, expected_revision: 
         project = _project(state, project_id)
         _revision(project, expected_revision)
         return reference.task_submission(project, state.root, operation, {'task_id': task_id, **payload}, timeout=timeout)
+
+
+def approval(state: State, project_id: str, task_id: str, decision_id: str) -> dict:
+    """Read one durable owner decision without querying or signaling the workflow."""
+    project = _project(state, project_id)
+    return reference.task_approval(project, state.root, 'status',
+                                   {'task_id': task_id, 'decision_id': decision_id}, timeout=20)
+
+
+def approve(state: State, project_id: str, task_id: str, decision_id: str, expected_revision: int,
+            *, run_id: str, plan_sha256: str, confirm: bool = False, timeout: int = 20) -> dict:
+    """Freeze an explicit owner decision, then signal its exact run and plan once."""
+    _run_id(run_id)
+    _digest(plan_sha256, 'Plan')
+    project, prepared = _approval_prepare(state, project_id, task_id, decision_id, expected_revision,
+                                         'prepare', {'run_id': run_id, 'plan_sha256': plan_sha256}, confirm, timeout)
+    if not prepared['created']:
+        return prepared['approval']
+    return reference.task_approval(project, state.root, 'dispatch',
+                                   {'task_id': task_id, 'decision_id': decision_id,
+                                    'intent_sha256': prepared['approval']['intent_sha256']}, timeout=timeout)
+
+
+def resume_approve(state: State, project_id: str, task_id: str, decision_id: str, expected_revision: int,
+                   intent_sha256: str, *, confirm: bool = False, timeout: int = 20) -> dict:
+    """Continue an undispatched decision or find its signal in the original run's history."""
+    _digest(intent_sha256, 'Intent')
+    project, prepared = _approval_prepare(state, project_id, task_id, decision_id, expected_revision,
+                                         'prepare-resume', {'intent_sha256': intent_sha256}, confirm, timeout)
+    if prepared['status'] == 'requested':
+        return prepared
+    return reference.task_approval(project, state.root, 'resume',
+                                   {'task_id': task_id, 'decision_id': decision_id,
+                                    'intent_sha256': intent_sha256}, timeout=timeout)
+
+
+def _approval_prepare(state: State, project_id: str, task_id: str, decision_id: str, expected_revision: int,
+                       operation: str, payload: dict, confirm: bool, timeout: int) -> tuple[dict, dict]:
+    if confirm is not True:
+        raise ValueError('Owner approval requires explicit confirmation of the exact plan and original run')
+    if type(timeout) is not int or not 1 <= timeout <= 60:
+        raise ValueError('Task approval timeout must be 1–60 seconds')
+    # Only local intent preparation retains the project revision. The long
+    # native phase is authorized by that frozen intent, under its task lock.
+    with state.connect() as db:
+        db.execute('BEGIN IMMEDIATE')
+        project = _project(state, project_id)
+        _revision(project, expected_revision)
+        prepared = reference.task_approval(project, state.root, operation,
+                                            {'task_id': task_id, 'decision_id': decision_id, **payload}, timeout=timeout)
+    return project, prepared
 
 
 def listing(state: State, project_id: str, *, limit: int = 50, after: str | None = None) -> dict:

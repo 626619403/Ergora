@@ -1,6 +1,6 @@
 # F3.3c：精确批准、取消与原运行对账
 
-日期：2026-11-03。当前为下一切片调查/设计，不是实现或验收结论。F3.3b正在完成修正版发行/CI收口，依赖其精确创建/提交意图、原run回执、严格原始输入与memo归属校验。
+日期：2026-11-03。本文件保留决策设计；c1精确批准现已实现、定向验证，独立审查和最终发行待完成，见[批准记录](2026-11-03-task-approval.md)。c2取消尚待实施。F3.3b已完成修正版发行/CI收口，依赖其精确创建/提交意图、原run回执、严格原始输入与memo归属校验。
 
 ## 分段
 
@@ -33,3 +33,9 @@ history查询必须有总预算，不能加载无界历史或因分页未找到�
 F3.3c1拟使用调用者提供的decision_id（合法稳定标识）区分多次明确owner决策，避免过期/撤销后把新的批准悄悄塞进旧意图。CLI approve需要--decision-id，读取/恢复携带相同ID；API以tasks/TASK_ID/approvals/DECISION_ID限定资源。重复同ID只读取原意图/回执；不同ID必须重新提供当前revision、原run、精确plan及确认，生成新的owner回执，而不是自动续期原批准。
 
 审批入口采用两个明确阶段：在当前项目revision保留和非阻塞原任务锁下仅保存不可变意图（无网络）；释放控制库写保留后，以原任务锁执行精确run/plan检查、原回执发布和信号。阶段间中断留下prepared；若其他明确resume先取得任务锁，原调用只能读取其结果/未知状态，不重复信号。准备阶段遇任务忙应明确失败，不能持全库锁等待长远程操作。此处直接采用F3.3d要求，B提交的长锁迁移仍需独立完成，不能从新审批设计推导已修复旧提交。
+
+## F3.3c2下一切片的已核接口
+
+原`DevelopmentTransport.cancel`先按固定run核原spec，仅在description为RUNNING时发送`request_cancel`；已闭合时直接返回None。统一入口不能仅凭该返回值报告“已发送取消”。本段将复用原cancel，通过专用边界识别实际信号调用、保存写前attempt并附加已探针确认兼容的`ergora_operation_sha256`关联字段；原handler保留request/reason语义。已闭合回执必须明确没有新信号，且不把Temporal闭合推导为外部进程已停。
+
+预定CLI为`task cancel ... --request-id ID --revision N --run-id RUN_ID --reason TEXT --confirm`、`task cancellation ... ID`、`task resume-cancel ... ID --revision N --intent-sha256 SHA --confirm`；API资源为`tasks/TASK_ID/cancellations/REQUEST_ID`及`/resume`。request ID表示稳定取消请求，原因沿原限制非空且最多1000字符。意图固定原run/提交/spec/原因/actor，重复请求不改变原因或重发；prepared明确恢复，unknown仅在原run history匹配包含本次操作SHA的精确payload后补投递回执。CANCEL_UNCONFIRMED/NEEDS_RECONCILIATION及原fence/租约的责任保持不变。上述仍是实施设计，尚无c2生产代码或验收结论。

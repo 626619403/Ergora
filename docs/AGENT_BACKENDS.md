@@ -14,7 +14,7 @@ Codex / Claude Code 的首次安装、认证和官方入口见 [安装手册](US
 
 绑定后可运行 `ergora tools doctor PROJECT`；主动版本/凭据/TCP 检查使用 `--probe --timeout 5`。分项含义、预算和修复入口见[诊断说明](USAGE.md#诊断与修复)。Codex 凭据存在与真实模型任务通过分别记录，不据此宣称 Agent 已验收。
 
-Linux 统一注册项目可通过[显式服务入口](USAGE.md#显式服务管理)启动所选 `temporal/worker/executor`。服务只在明确选择后启动；停止需确认且等待真实状态，原运行栈不会自动接管。托管 executor 使用此控制目录中的冻结角色快照。 已有正式开发任务可以通过 `ergora task list PROJECT` / `task show PROJECT TASK_ID` [读取冻结合同](USAGE.md#读取正式任务合同)；此查询不推断Temporal实时状态，主入口也支持[预览、创建和恢复](USAGE.md#预览与创建正式任务)，在创建时冻结角色配置；`task status`提供[原生运行状态查询](USAGE.md#查询正式任务运行状态)，提交使用[统一提交与恢复入口](USAGE.md#提交正式任务与恢复未知结果)，批准仍使用本手册的参考命令。
+Linux 统一注册项目可通过[显式服务入口](USAGE.md#显式服务管理)启动所选 `temporal/worker/executor`。服务只在明确选择后启动；停止需确认且等待真实状态，原运行栈不会自动接管。托管 executor 使用此控制目录中的冻结角色快照。 已有正式开发任务可以通过 `ergora task list PROJECT` / `task show PROJECT TASK_ID` [读取冻结合同](USAGE.md#读取正式任务合同)；此查询不推断Temporal实时状态，主入口也支持[预览、创建和恢复](USAGE.md#预览与创建正式任务)，在创建时冻结角色配置；`task status`提供[原生运行状态查询](USAGE.md#查询正式任务运行状态)，提交使用[统一提交与恢复入口](USAGE.md#提交正式任务与恢复未知结果)，批准使用[精确计划批准入口](USAGE.md#批准精确计划与恢复投递)；旧入口创建的任务继续使用本手册的参考命令。
 
 `control`、`development`、`research`是控制面SDK的[安装组合](USAGE.md#选择安装组合)，不安装或选择某个Agent。Codex/Claude仍按本手册配置；mini-swe-agent和ForgeKernel继续用下文固定源码安装器。更换组合不修改已有项目绑定。
 
