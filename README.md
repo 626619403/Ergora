@@ -72,9 +72,9 @@ flowchart LR
 |训练证据比较|perfctl + 可信 runner|重新计算统计与门禁；项目负责实际训练环境|
 |安装与依赖|Bash、uv、Python、Node.js|安装器固定工具版本与 Python 依赖|
 
-已有统一注册项目可运行 `ergora task list PROJECT` / `ergora task show PROJECT TASK_ID` 读取正式开发任务的冻结合同与绑定，详见[只读任务入口](docs/USAGE.md#读取正式任务合同)。该入口不查询Temporal运行状态；可用 `task preview/create/creation/resume-create` [显式创建和恢复任务](docs/USAGE.md#预览与创建正式任务)，`task status` [只读查询原生运行事实](docs/USAGE.md#查询正式任务运行状态)，`task start/submission/resume-start` [显式提交与恢复](docs/USAGE.md#提交正式任务与恢复未知结果)，`task approve/approval/resume-approve` [批准精确计划并恢复投递](docs/USAGE.md#批准精确计划与恢复投递)，`task cancel/cancellation/resume-cancel` [请求取消和核对投递](docs/USAGE.md#请求取消与恢复未知投递)；导出继续使用参考CLI。
+已有统一注册项目可运行 `ergora task list PROJECT` / `ergora task show PROJECT TASK_ID` 读取正式开发任务的冻结合同与绑定，详见[只读任务入口](docs/USAGE.md#读取正式任务合同)。该入口不查询Temporal运行状态；可用 `task preview/create/creation/resume-create` [显式创建和恢复任务](docs/USAGE.md#预览与创建正式任务)，`task status` [只读查询原生运行事实](docs/USAGE.md#查询正式任务运行状态)，`task start/submission/resume-start` [显式提交与恢复](docs/USAGE.md#提交正式任务与恢复未知结果)，`task approve/approval/resume-approve` [批准精确计划并恢复投递](docs/USAGE.md#批准精确计划与恢复投递)，`task cancel/cancellation/resume-cancel` [请求取消和核对投递](docs/USAGE.md#请求取消与恢复未知投递)；`task external-status/reconcile/reconciliation/resume-reconcile`[核对并恢复外部清理](docs/USAGE.md#显式终态对账与工单租约释放)，`task export/export-status/resume-export`[导出精确候选](docs/USAGE.md#导出精确候选与恢复回执)。
 
-Ergora 控制台提供项目总览、工具绑定、记忆修订、候选比较 / 评价 / 采用、资料提案和受约束的工作单元关系编辑。正式任务的运行历史、审批和训练观测继续使用参考 CLI、Temporal UI 和 MLflow；页面不会自行产生正式验收状态。
+Ergora 控制台提供项目总览、工具绑定、记忆修订、候选比较 / 评价 / 采用、资料提案和受约束的工作单元关系编辑。正式任务的创建、六阶段状态、计划批准、取消、对账和候选导出使用统一 CLI/API；控制台的正式任务页面尚在计划中。完整历史和训练观测可使用 Temporal UI 和 MLflow。
 
 ## 源码组织
 
@@ -83,7 +83,7 @@ Ergora 控制台提供项目总览、工具绑定、记忆修订、候选比较 
 ```text
 src/ergora/
 ├── projects.py / registrations.py / bindings.py 项目修订、统一注册与绑定校验
-├── tasks.py / services.py          正式任务预览/创建/恢复/查询、显式服务运维
+├── tasks.py / services.py          正式任务生命周期/原ID恢复/精确导出、显式服务运维
 ├── components.py / tools.py        组件描述、工具目录与就绪检查
 ├── agent_runs.py                   独立 Agent 上下文、调用与运行记录
 ├── agents.py / reference_executor.py 原生 Agent 适配与可选六阶段桥接
@@ -225,81 +225,75 @@ agentflow doctor
 
 ## 首个开发任务
 
-下面使用本地入口，准备好模型与执行环境后即可接入自己的 Git 仓库。所有项目名、目录、工单编号和摘要都应替换为实际值。
+以下使用统一入口，适用于已经安装完整参考环境并配置模型的Linux/WSL2可信执行容器。Windows原生可处理本地合同；执行范围见[Windows手册](docs/WINDOWS.md)。项目必须是已有提交的Git仓库，配置、state和控制数据放持久目录，位于业务仓库之外。
 
-参考任务 CLI 从当前 shell 读取 Temporal 连接。使用上述本机开发服务时，在运行 `task` 命令的 shell 中设置：
+### 1. 登记项目和角色
 
-```bash
-export TEMPORAL_ADDRESS=127.0.0.1:7233
-export TEMPORAL_NAMESPACE=default
-export TEMPORAL_LOCAL_DEV=1
-```
-
-`TEMPORAL_LOCAL_DEV=1` 仅用于 loopback 开发服务；生产服务按其认证配置连接。参考生成的 `env.sh` 当前不导出这三项。
-
-### 1. 准备项目与可信检查
-
-项目必须是已有提交的 Git 仓库。先提交需要作为任务基线的准备内容；注册会记录当时的 HEAD。复制模板到尚不存在的目录：
+按[项目定义手册](docs/PROJECTS.md#统一注册)准备`project.json`，包含业务Git根、模板、执行目录、tracker、允许路径和项目自己的可信检查。治理需要behavior/architecture/knowledge；大型改动另需integration/compatibility/migration-rollback。检查使用argv和实际解释器绝对路径，`{repo}`代表待验checkout；空命令或示例PASS不能代替项目验收。
 
 ```bash
-agentflow templates copy repository-governance \
-  "$HOME/projects/my-project/workflow-governance"
+ergora project register project.json --revision 0
+ergora project config my-project
+ergora tools doctor my-project --probe
 ```
 
-填写模板的 `input.json`：`goal`、`allowed_paths`、`acceptance`、`constraints`、`risk`、`work_units`。每个工作单元声明 `id`、`depends_on`、`paths`、`instructions`。任务路径必须位于项目授权范围内。
+角色可分别绑定Codex、Claude Code、受支持的mini或结构化命令，见[Agent手册](docs/AGENT_BACKENDS.md)。每次保存会增加项目revision，后续命令使用`project show`的当前值。一个业务项目对应自己的tracker命名空间，候选分支用于代码隔离。
 
-由维护者提供项目自己的 `checks.json`，键为检查 ID，值为**非空 argv 数组**。治理任务需要 `behavior`、`architecture`、`knowledge`；大型变更额外需要 `integration`、`compatibility`、`migration-rollback`。`scope` 和 `baseline-regression` 由执行器处理。
-
-检查命令应调用项目实际环境，参数可用 `{repo}` 指向待验 checkout；worktree 不会复制被 Git 忽略的 `.venv`，因此解释器应使用正确的绝对路径。示例 PASS、空命令或通用 lint 不能代替项目验收。
-
-### 2. 注册、创建并启动
+统一入口从登记执行环境读取Temporal配置；直接调用旧参考CLI时需在当前shell显式配置Temporal连接，见[使用手册](docs/USAGE.md#旧参考-cli-与统一入口)。先确认旧Supervisor栈已停止且socket/PID已退出，再显式管理当前注册的运行栈：
 
 ```bash
-agentflow project add my-project \
-  --repo "$HOME/projects/my-project" \
-  --tracker local --project local/my-project \
-  --allowed-path src --allowed-path tests --allowed-path docs \
-  --allowed-path AGENTS.md --allowed-path ARCHITECTURE.md \
-  --checks-json "$HOME/projects/my-project/checks.json"
-
-agentflow task create --project my-project --type repository-governance \
-  --id my-project-123-r1 --issue 123 \
-  --input "$HOME/projects/my-project/workflow-governance/input.json"
-agentflow task start my-project-123-r1
-agentflow task status my-project-123-r1
+ergora services start my-project temporal worker executor --revision CURRENT_REVISION --timeout 30
 ```
 
-`local` 工单编号仅作本地关联。`task create` 编译并冻结任务，`task start` 才启动流程。修改冻结输入需要新的任务修订 ID。
+一个执行state目录共享一套服务。不要同时运行新旧两个executor；版本、进程运行、认证和真实任务通过分别核对。
 
-### 3. 人工批准计划
+### 2. 预览、创建和提交
 
-状态到达 `AWAITING_PLAN_APPROVAL` 后，阅读 `~/.local/state/multi-agent-platform/artifacts/任务ID/` 中的计划、所有权和回滚材料，确认后使用状态返回的精确摘要：
+从`ergora templates copy repository-governance ./workflow-governance`取得模板，将真实输入装入[task-definition.json](docs/USAGE.md#预览与创建正式任务)的`input`字段，并填写新task ID、模板和正整数工单编号。审阅预览的路径、工作单元、绑定和基线后使用其摘要：
 
 ```bash
-agentflow task approve my-project-123-r1 --plan-sha256 PLAN_SHA256
-agentflow task status my-project-123-r1
+ergora task preview my-project --definition task-definition.json --revision CURRENT_REVISION
+ergora task create my-project --definition task-definition.json --revision CURRENT_REVISION --preview-sha256 PREVIEW_SHA
+ergora task start my-project TASK_ID --revision CURRENT_REVISION --creation-sha256 CREATION_SHA
+ergora task status my-project TASK_ID --run-id RUN_ID
 ```
 
-`PLAN_SHA256` 必须替换为实际值。批准后，工作单元实现、集成、命令验证与独立审查继续执行。
+`CREATION_SHA`取创建回执的intent_sha256，`RUN_ID`取提交回执。创建只冻结合同，submitted只证明保存了原run；六阶段成功以原结果为准。重复start返回同一原记录；超时先查submission，再按原intent摘要恢复，unknown不能重发或换ID绕过。
 
-### 4. 审阅结果并导出分支
+### 3. 审阅并批准精确计划
+
+原phase到达AWAITING_PLAN_APPROVAL后，在登记state的`artifacts/TASK_ID/`审阅execution-plan、ownership-map和rollback-plan；核对计划的工作单元、范围与风险，再使用原状态的plan SHA：
 
 ```bash
-agentflow task result my-project-123-r1
-# 仅 REVIEW_READY 结果可以导出
-agentflow task export my-project-123-r1 --branch agent/123-description
+ergora task approve my-project TASK_ID --revision CURRENT_REVISION --decision-id owner-one --run-id RUN_ID --plan-sha256 PLAN_SHA --confirm
+ergora task status my-project TASK_ID --run-id RUN_ID
 ```
 
-`result` 在结果未产生时会等待；查看进度用 `status`。导出在业务仓库创建分支，之后由维护者审阅、按当前目标分支复验，并按项目流程推送和创建 PR/MR。
+requested仅表示投递事实。工作流按原owner/过期/撤销和精确计划规则决定是否继续work → integrate → verify → review。
 
-需要中止时：
+### 4. 审阅结果、导出和异常恢复
+
+原run闭合且outcome为REVIEW_READY后，核对候选、可信检查和独立审查都指向同一个candidate，再明确导出本地分支：
 
 ```bash
-agentflow task cancel my-project-123-r1 --reason '说明原因'
-agentflow task result my-project-123-r1
+ergora task export my-project TASK_ID --revision CURRENT_REVISION --run-id RUN_ID --candidate-sha CANDIDATE_SHA --branch agent/TASK_ID --confirm
+ergora task export-status my-project TASK_ID
 ```
 
-取消请求仍需核对最终作业状态。遇到 `NEEDS_RECONCILIATION` 或未知结果时，检查原任务的进程、回执和产物，沿用原 ID 对账。
+导出不checkout、merge或推送。维护者在独立worktree复验后，按当前目标分支和项目策略处理PR/MR或采用；普通agent调用和原生生成器报告不能替代这一步。
+
+需要中止时，用稳定request ID请求协作取消，再查询原run：
+
+```bash
+ergora task cancel my-project TASK_ID --revision CURRENT_REVISION --request-id stop-one --run-id RUN_ID --reason '停止本任务' --confirm
+ergora task status my-project TASK_ID --run-id RUN_ID
+ergora task external-status my-project TASK_ID --run-id RUN_ID
+# 仅原run已闭合、外部事实可核时明确执行：
+ergora task reconcile my-project TASK_ID --revision CURRENT_REVISION --run-id RUN_ID --confirm
+ergora task reconciliation my-project TASK_ID
+```
+
+取消信号不等于进程已停。原CANCEL_UNCONFIRMED与后续已确认清理是两份事实；对账不改写原结果，缺证据保持未知和租约。中断恢复、返回状态和备份范围见[完整操作说明](docs/USAGE.md#正式任务的操作顺序与恢复)。旧入口创建的任务继续由原agentflow管理，不隐式迁移在途history。
 
 ## 工单、搜索与训练
 

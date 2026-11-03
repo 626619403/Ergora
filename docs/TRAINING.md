@@ -28,6 +28,12 @@ init / runner-add → prepare → worker-start → start
 
 `run-local` 逐实验显式执行；没有常驻训练队列消费者。审批、结果、取消和恢复沿用原实验身份。未知结果需要对账，不直接用新 ID 重跑。候选模型或 Agent 的报告不能替代可信 runner 的验证；实验失败和负结果也要保存。
 
+## 将实验候选交给开发任务
+
+训练证据已按原evidence SHA获准后，在同一业务项目使用repository-governance或large-change创建集成/复验任务；先通过`project register`登记相应开发模板、路径和可信检查。按[正式任务旅程](../README.md#首个开发任务)预览、创建、提交、批准精确计划，再用原run结果核对verification/review与candidate并导出本地分支。训练批准、开发计划批准和业务合入分别保留原证据，不能互相替代。
+
+`ergora task cancel/reconcile`仅处理统一创建/提交的开发任务。训练实验、Forge campaign及远端作业仍使用各自原生ID、取消和恢复协议；开发task的外部已确认不证明GPU/远端实验已停止。正式开发与训练若共享执行state，停止worker/执行栈之前先核对其全部在途作业；只关闭控制台不表示外部作业已取消。
+
 ## 记忆、Skill 与资料
 
 - 将已核对的项目约定保存为带来源和修订的记忆；`ergora agent run --recall QUERY` 将所选项目记忆作为可核对的观察传入。

@@ -121,6 +121,43 @@ claude
 
 `credentials_present` 只表示 CLI/环境有凭据，不证明账号、额度或模型可用；`tcp_reachable` 只证明传输可达，不证明服务协议、授权、命名空间或 worker 就绪。`not_checked`、`not_confirmed`、超时和预算耗尽均不能当作通过。自定义命令不会被 doctor 执行，Claude/mini/GEPA/Forge 的认证及真实任务仍需按修复指引显式验收；Forge 版本必须符合固定提交。`task_availability: available` 仅表示 SQLite/手动操作等本地前置条件可用，不是正式六阶段验收。原始探测输出不返回、不持久保留，只返回版本号或状态。
 
+### 正式任务的操作顺序与恢复
+
+首次使用按[README完整旅程](../README.md#首个开发任务)和[项目定义](PROJECTS.md)准备真实Git基线、可信检查与已认证角色，然后使用下列顺序。正式开发需要所登记Linux/WSL2完整执行器；页面中的工作流草稿尚不等于已创建的正式任务。
+
+```text
+project register → 选择角色/核revision → services start所选栈
+→ task preview → 审阅摘要 → task create → task start
+→ inventory/plan → status固定原run → 审阅实际计划 → approve精确plan
+→ work/integrate/verify/review → 原outcome
+→ REVIEW_READY：审阅精确candidate/检查/review → export本地分支 → 独立复验/人工合入
+→ 阻塞或取消：核原run闭合 → external-status → 明确reconcile → 按原intent恢复
+```
+
+保存task ID、创建/提交intent SHA和原workflow/run ID；所有写命令使用当前项目revision，批准另带稳定decision ID及精确plan SHA，取消带稳定request ID。HTTP 200、CLI 0或requested是对应操作回执，六阶段是否通过由原outcome和候选证据决定。页面关闭或CLI进程结束后，可用同一`--home`和登记的执行目录继续查询；不得复用task ID绕过旧记录。
+
+|中断位置|先读|允许的下一步|
+|---|---|---|
+|任务合同发布|`task creation PROJECT TASK`|以原intent SHA运行resume-create；冲突文件先核对|
+|提交结果不明|`task submission PROJECT TASK`|resume-start核原spec/memo/run；unknown只查询，不重新提交|
+|批准或取消投递不明|`task approval PROJECT TASK DECISION` / `task cancellation PROJECT TASK REQUEST`|resume-approve/resume-cancel核原操作SHA与history；无匹配信号保持未知|
+|闭合但外部未确认|`task status --run-id`及`task external-status --run-id`|保留原结果/请求/回执/产物/fence；明确reconcile，未完成则resume-reconcile|
+|候选导出中断|`task export-status PROJECT TASK`|resume-export核原结果和实际ref；unknown不重fetch或复活已删分支|
+
+备份必须联合保存控制`ERGORA_HOME`、登记的CONFIG/STATE、业务Git仓库、Temporal持久数据及实际工具认证；控制SQLite备份不包含原任务/history/候选/租约。执行STATE中的`tasks/`、`ergora/task-*`、requests/receipts/artifacts/approvals/fences、workspaces、进程记录及ledger均属于恢复证据。先停止相关写者并核在途外部作业，再按[备份说明](#升级与持久数据)操作。
+
+### 旧参考 CLI 与统一入口
+
+统一`ergora task`从所登记参考环境读取Temporal配置，旧`agentflow task`从当前shell读取连接。本机loopback开发服务的旧命令可显式设置：
+
+```bash
+export TEMPORAL_ADDRESS=127.0.0.1:7233
+export TEMPORAL_NAMESPACE=default
+export TEMPORAL_LOCAL_DEV=1
+```
+
+LOCAL_DEV仅适用于loopback开发服务，其他服务按自己的认证配置连接。两种入口的任务归属不同；旧任务保持原配置/STATE和原CLI，不能通过统一命令隐式接管。Supervisor管理也是按执行state区分，停当前共享栈会影响其所有项目。
+
 ### 读取正式任务合同
 
 先完成[统一项目注册](PROJECTS.md)，执行目录已有的开发任务可直接从主入口读取：

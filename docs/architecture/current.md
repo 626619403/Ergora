@@ -1,6 +1,6 @@
 # 当前架构与扩展边界
 
-2026-11-03，R8后的当前导航，加入F1项目定义、有效绑定、快照及单向投影。F1.1/F1.2/F1.3全部交付；最终运行/测试提交`4ffcfdd`的本地验收、精确两OS CI及独立最终复核通过，详见[F1阶段验收](../delivery/2026-11-03-f1-completion.md)。历史[A1审计](2026-11-01-audit.md)及[R8记录](../delivery/2026-11-02-refactoring-exit.md)保留原身份与范围。设计约束见[ADR0001](decisions/0001-refactoring-foundations.md)/[0002](decisions/0002-static-boundaries.md)。
+2026-11-03，R8后的当前导航，覆盖F1项目定义、F2安装/运维与F3正式任务CLI/API生命周期；F3阶段综合收口正在核对，页面接入归F4。F1.1/F1.2/F1.3全部交付；最终运行/测试提交`4ffcfdd`的本地验收、精确两OS CI及独立最终复核通过，详见[F1阶段验收](../delivery/2026-11-03-f1-completion.md)。历史[A1审计](2026-11-01-audit.md)及[R8记录](../delivery/2026-11-02-refactoring-exit.md)保留原身份与范围。设计约束见[ADR0001](decisions/0001-refactoring-foundations.md)/[0002](decisions/0002-static-boundaries.md)。
 
 ## 模块与依赖
 
@@ -117,14 +117,14 @@ flowchart LR
 
 独立调用的当前路径：`CLI/HTTP → agent_runs.run_agent → 项目/绑定 + 活动 Skill/记忆快照 → agents.invoke → processes.run → 归档与 agent_runs`。Skill 采用的路径：`CLI/HTTP → skills.adopt → evaluation.compare → skill_assets.get/move_head`，采用事务同时检查旧 revision 和精确基线 digest；没有另一条可绕过评价的“采用”用例。
 
-两个开发模板通过主入口创建、提交和批准，导出仍使用原`agentflow`；正式阶段继续由原工作流拥有：
+两个开发模板的创建、提交、批准、取消、终态对账与候选导出均使用主入口；正式阶段及结果继续由原工作流拥有：
 
 ```mermaid
 sequenceDiagram
   actor User as 操作者
   participant Create as Ergora task preview/create
   participant Entry as Ergora task start/approve
-  participant Export as agentflow export
+  participant Export as Ergora task export/reconcile
   participant Runtime as DevelopmentTransport / Temporal
   participant Files as FileAdapter / ledger / receipts
   participant Executor as 原 Executor + 可选 Ergora 角色桥
@@ -141,10 +141,20 @@ sequenceDiagram
   Runtime->>Files: work → integrate → verify → review
   Files->>Executor: 可信检查、独立审查
   Runtime-->>User: REVIEW_READY / 阻塞或未知事实
-  User->>Export: export 到候选分支
+  alt 原outcome为REVIEW_READY
+    User->>Export: 精确run/candidate/分支/修订/确认
+    Export->>Runtime: 核原run/outcome
+    Export->>Files: Git条件ref事务、原claim释放及导出回执
+    Export-->>User: exported，维护者另行复验/合入
+  else 原run闭合但外部尚未确认
+    User->>Export: 明确reconcile原run
+    Export->>Runtime: 原完整history/spec/memo
+    Export->>Files: 原fence、逐job可信证据、独立清理记录/精确释放
+    Export-->>User: reconciled或未知，原outcome保持
+  end
 ```
 
-执行桥只替换生成阶段的Agent，原执行器仍拥有候选SHA、只读检查、提交和回执。默认值或项目绑定变化不修改在途任务的`agent-bindings.json`。取消是意图，`CANCEL_UNCONFIRMED / NEEDS_RECONCILIATION`保持可见，不能删ledger后重跑。F1已统一项目配置与投影；F3.1/F3.2提供本地合同读写API，F3.3a提供原生状态查询；F3.3b提供单次提交和原ID恢复；F3.3c1提供精确批准和投递恢复，F3.3c2提供原运行取消请求/投递对账，正式页面仍由F4接入。
+执行桥只替换生成阶段的Agent，原执行器仍拥有候选SHA、只读检查、提交和回执。默认值或项目绑定变化不修改在途任务的`agent-bindings.json`。取消是意图，`CANCEL_UNCONFIRMED / NEEDS_RECONCILIATION`保持可见，不能删ledger后重跑。F1已统一项目配置与投影；F3.1/F3.2提供本地合同读写API，F3.3a提供原生状态查询；F3.3b提供单次提交和原ID恢复；F3.3c1提供精确批准和投递恢复，F3.3c2提供原运行取消请求/投递对账，F3.4提供精确候选导出与只读外部证据/显式清理对账；正式页面仍由F4接入。
 
 训练保持独立的 workload/baseline/manifest/runner/evidence：`prepare → start（控制排队）→ 操作者 run-local + manifest SHA → 可信统计门禁 → owner evidence SHA → 集成/复验任务`。control worker 不自动启动训练；Forge 只生成原生候选。R8 的 fixture 只检验协议，真实模型/GPU效果以各次实测记录为准。
 
