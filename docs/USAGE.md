@@ -154,6 +154,8 @@ project register → 选择角色/核revision → services start所选栈
 |---|---|---|
 |原合同、创建/提交/批准/取消/对账/导出记录|无需启动执行服务|读取持久文件；历史回执不证明当前Git分支、外部进程或实时运行状态|
 |已闭合原run状态/结果，原事件及job回执/文本材料|Temporal；无需启动worker/executor|固定原run及证据摘要；事件/job读取也适用于运行中原run，材料还要求原可信产物目录可读|
+|闭合run的证据索引、预算事实与交接包收集|Temporal、登记的Linux/WSL2完整运行时及原材料；无需worker/executor|原run闭合且无后继，沿原合同/回执核材料；连接失败不返回部分完整索引或交接包|
+|已保存交接包的`handoff verify`|无需在线服务、控制库或Temporal SDK|Windows/Linux基础安装可离线核包内字节及声明的身份；来源认证、完整history与候选复验另核|
 |运行中原run的阶段/状态查询|Temporal及可响应workflow query的worker|`task status`在RUNNING时调用workflow query；只有Temporal在线可能查询失败|
 |继续正式阶段及真实Agent调用|Temporal、对应worker/executor及所选工具认证|投递回执与实际完成分别核查；启动服务不会自动补发未知操作|
 |显式服务启动/退出和日志|Linux/WSL2完整参考安装及Supervisor|由统一入口管理本执行目录所属栈；共享目录的项目共享服务|

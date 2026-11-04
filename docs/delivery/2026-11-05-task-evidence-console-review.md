@@ -46,3 +46,26 @@
 ## 剩余交付
 
 没有阻塞 finding。已有静态记录仅绑定本报告前的 9 份文档、337 个本地链接/锚点和 30 条 README parser 命令；加入本报告、审查状态和最终记账后，应刷新完整清单并重做最终静态检查。随后绑定本片精确提交及其 Git 归档与最终包的一致性，普通推送并核实时远端；取得该提交自己的 Ubuntu/Windows 必要 CI 步骤原证据，再登记同片最终独立终结。F5.3b 的 CI 不替代这些步骤，当前不能登记 F5.4 精确交付完成。F5.5 综合收口及完整 F5/G0 仍待后续验收。
+
+## 精确提交、发行、静态与远端复核
+
+2026-11-05，同一独立审查者从 Git 对象核候选 `4c87c2a4d37e567c3e7330bb66d6b0ab086655cc`，唯一父提交为原基线 `bde57e17d84a0063683be9c5c34392072b255853`。`diff-tree` 正好 13 个变更文件，逐项重算提交 blob SHA，全部等于 `final-review-scope.json`；其 tracked 部分逐字等于 `final-review-tracked.diff`。相对初审仅补入本报告和四份文档的本地审查/静态状态，三个生产文件仍为已审身份。正在开展的 F5.5 工作树文档与运行证据没有计入本轮复核。
+
+独立在内存读取精确提交的 Git archive，352 个包资源逐项等于原最终 `f644858498143dc077bf77114235f9896d01f5da6b008dd984684b5a2c521166` wheel 及其身份表，并重新核 wheel 实际字节摘要。另从该提交文档对象核对全部 10 份 Markdown 的 344 个本地链接/锚点，并使用已核同包的基础安装 parser 解析提交 README 的 30 条命令，全部通过；`static-documents.json` 的文档摘要、数量和命令列表与精确提交相同。没有使用后续工作树文件，也未执行这些示例命令。
+
+读取实际普通 push 的命令、退出码及 stdout/stderr，确认原基线正常快进到候选，退出 0，没有 `--force` 或强制 refspec；每命令传输配置不改变 ref 更新语义。审查者另于 `2026-11-04 23:00:35 UTC` 执行只读实时 `ls-remote`，远端 `refactor/architecture-foundations` 完整 SHA 仍为该候选。本轮只追加原报告，没有执行提交、推送、安装、服务启停或测试矩阵。
+
+**精确提交、最终包、提交文档静态检查及普通推送/实时远端通过，无新增 finding。该候选自己的双 OS CI 尚未在本轮核定，完整终结继续待验。** 前片 CI 不归给本片；取得精确候选的 run/job 原证据后再登记同片最终结论。
+
+## 精确 CI 与同片最终终结
+
+2026-11-05，同一独立审查者完成本片剩余验收。再次从 Git 对象重算候选 `4c87c2a4d37e567c3e7330bb66d6b0ab086655cc` 的 13 个变更文件摘要，全部仍与最终清单一致，唯一父提交保持原基线。F5.5 的工作树文档和新恢复验收不计入本片。
+
+重算 `ci-html-status.json` 所列 6 份源文件（官方 HTML/JSON 及 run 选择记录）的字节数与 SHA，全部吻合；独立解析 actions 行、run 页面、job groups 和两个 job 原页面，核对精确提交、workflow、平台及必要步骤。原 `ci-fetch-final`、`ci-verify-final` 命令均退出 0。审查者另于 `2026-11-04 23:12:07 UTC` 前从 GitHub 重新只读取得本 run 及两 job 官方 HTML，确认相同结果：[Portability 41929749342](https://github.com/626619403/Ergora/actions/runs/41929749342) 为 `Success`，完整 commit 为本候选，workflow 为 `.github/workflows/portability.yml`。
+
+- [Ubuntu job 126923339906](https://github.com/626619403/Ergora/actions/runs/41929749342/job/126923339906)：Ubuntu/Python 3.11，构建安装、包身份和原生回归三个必要步骤全部完成且 `success`。
+- [Windows job 126923340378](https://github.com/626619403/Ergora/actions/runs/41929749342/job/126923340378)：Windows/Python 3.12，构建安装、包身份、原生回归和 PowerShell 5.1 安装升级四个必要步骤全部完成且 `success`。
+
+两 job 的平台名与内嵌 `selectedJobId` 一致；各必要步骤有完成标记，日志 URL 均包含完整候选 SHA 和对应 check/job ID，未见失败、取消或超时步骤。Ubuntu 上 Windows 专用步骤按既有条件跳过。精确提交关联由 run 的提交链接及 job 每步日志 URL 共同确认，job 页面没有另外的提交锚链接。审查者于 `2026-11-04 23:10:39 UTC` 另行只读实时 `ls-remote`，确认远端 `refactor/architecture-foundations` 完整 SHA 仍为本候选。
+
+结合前述本地需求/结构与性能边界、材料及资源生命周期验收、包与 Git 归档一致、最终静态检查和普通推送证据，**F5.4 需求符合性、可维护性及精确发行/双 OS CI/远端验收全部通过，无未解决 finding，可登记本片完成。** 本轮只追加原报告，未执行代码修改、安装、服务启停、测试矩阵、提交或推送；没有仅采信作者汇总，也没有继承 F5.3b 的 CI 结论。F5.5 综合收口及完整 F5/G0 继续按各自范围验收。

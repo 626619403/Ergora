@@ -8,6 +8,8 @@ Ergora 0.2 提供原生 Windows CLI 和本地图形控制台，与 Linux 使用�
 |---|---|---|
 |CLI、网页、项目注册与分层工具选择|支持|支持|
 |三个模板的复制、角色合同、工作单元 DAG 与输入编译|支持|支持|
+|交接包离线核对|基础CLI支持，无需在线服务或SDK|支持|
+|闭合原run证据索引、预算与交接收集|在WSL2/Linux中的Ergora入口操作|需登记完整参考运行时、Temporal和原材料|
 |Codex / Claude Code 独立角色调用|原生 `.exe`，认证由各工具完成|Linux CLI|
 |自定义 Agent、evaluator、GEPA proposer|原生程序或显式解释器；使用 argv 和 UTF-8 stdin|Linux 程序|
 |SQLite 记忆、Skill 版本、评价、采用和回退|支持|支持|
@@ -19,7 +21,7 @@ Ergora 0.2 提供原生 Windows CLI 和本地图形控制台，与 Linux 使用�
 
 ## 安装控制面
 
-已有 Python 3.11+、Git 时，在普通 PowerShell 中执行。以下使用 Windows 功能分支，合并或发布后可改用相应版本：
+已有 Python 3.11+、Git 时，在普通 PowerShell 中执行。以下从main安装；尚未发布的源码特性使用维护者提供的功能分支：
 
 ```powershell
 New-Item -ItemType Directory -Force "$HOME\source" | Out-Null
@@ -110,6 +112,16 @@ ergora agent runs my-project
 最后一条调用会使用已认证的模型，可能产生费用；首次操作也可只使用页面配置与 `doctor`。成功调用仅表示进程与所需输出结构通过，不等于正式流程的候选验收。详细页面操作见 [日常使用手册](USAGE.md#页面操作)，训练边界见 [训练手册](TRAINING.md)。
 
 Windows 命令与资料抓取使用 Job Object 管理生命周期：超时、取消或控制器关闭时停止其本地后代。它不限制该用户的文件、网络访问，不提供每 Agent 的安全沙箱；远程 API 请求和外部计算服务的取消仍由对应服务负责。应用以普通用户、可信项目方式运行。CLI 前台任务可用 Ctrl+C；资料观察也可从页面请求取消并核对终态。
+
+## 接收交接包并离线核对
+
+将发送者导出的ZIP和独立取得的预期SHA保存到本机，在PowerShell执行：
+
+```powershell
+ergora handoff verify .\task-handoff.zip --sha256 EXPECTED_PACKET_SHA256
+```
+
+基础安装即可核包，无需启动控制台、Temporal或模型，也不提取或执行材料。`verified`表示包内字节与声明的合同/回执/材料关系相符；来源未认证、执行成功未推断，原取消结果保持。整包自带摘要不证明来源，候选代码与原history另核。格式、限额及Linux侧收集见[交接手册](USAGE.md#收集与离线核对交接包)。
 
 ## WSL2 完整流程
 
