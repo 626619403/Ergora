@@ -44,3 +44,31 @@
 ## 交付边界
 
 本地功能、结构/复用、必要守卫及测试成本范围内无 finding；本片验收可进入正常提交交付。仍需绑定精确提交重核最终文档/包身份，完成正常推送、实时远端核对、精确双 OS CI 和同片终结复核。前片 F5.0 的通过不替代这些项；F5.2 预算、F5.3 归档、F5.4 页面及完整 F5/G0 不在本审查完成范围。
+
+## 精确提交、发行、静态与实时远端续核
+
+日期：2026-11-05，同一独立审查者续核。精确候选为 `2c0ddbccd25dda66d971eadd6770b61877c83bb7`，唯一父提交为 `da80e777f9ccb1caf6de54f66d245669d953b8d2`。本节只使用该候选的 Git 内容及原发行/交付证据；后续工作树与 F5.2 不归入本片。
+
+- **精确范围及提交通过。** 独立读取 Git 父子关系、17 个变更路径和全部 blob，逐项 SHA256 等于 `staged-scope.json`，路径集合也与 `commit-command.json` 完全一致。新增测试保持上文已审摘要；六个生产文件保持原审及发行身份。原 `commit.stdout` / `commit.stderr`、exit0、完整 HEAD 均已核；精确父子 `git diff --check` 独立通过。
+- **精确发行身份通过。** 独立在内存解析候选 `git archive`，350 份应用资源的完整路径及字节摘要等于实际 wheel、两处 noneditable 安装及 `package-identity.json`。实际 wheel SHA256 仍为 `9e3caeb50dc327109d06025933cdd83fff629681ea9c91f7476c8b5d3eabcf74`，与 `commit-package-identity.json` 相符。没有重新构建或安装。
+- **最终静态文档通过。** 候选中的十份 Markdown blob SHA256 全部等于 `static-documents.json` 和 staged scope。审查者另从候选的内存归档重核本地链接/锚点，实际 331 条、零 missing；使用同源已核发行的 CLI parser 重新解析该候选 README 的 28 条命令，命令内容及数量与记录一致。没有运行这些命令对应的任务操作，也未覆盖作者证据。
+- **普通快进推送及实时远端通过。** 已核 `push-remote-identity.json`、原 remote 前后 stdout/stderr、`push-rsa.stdout` / `push-rsa.stderr`：原推送 exit0，快进 `da80e77..2c0ddbc`，前后完整远端身份吻合。此前默认代理 HTTP407 为独立的只读预检失败，原日志及修正记录保留，没有归成推送通过。审查者于 `2026-11-04 21:00:42 UTC` 使用现有 RSA/CONNECT 传输及仅本次命令的 URL 改写，独立执行只读 `git ls-remote --exit-code origin refs/heads/refactor/architecture-foundations`；exit0、stderr 为空，实时远端返回完整 `2c0ddbccd25dda66d971eadd6770b61877c83bb7`。没有读取或输出私钥内容、修改 Git 配置或推送。
+
+**本片源码/本地验收、精确提交与原发行身份、最终静态文档、普通推送及独立实时远端复核通过，无新增 finding。精确双 OS CI 尚未核验，F5.1 仍保留该项与同片最终终结，暂不登记完整交付完成。** 本次仅追加本报告，没有重复重型套件或三 run 验收，没有启动服务、执行模型或修改源码。
+
+## 精确 CI 与同片最终终结
+
+日期：2026-11-05，同一独立审查者续核。精确候选仍为 `2c0ddbccd25dda66d971eadd6770b61877c83bb7`；官方 [Portability CI 41911536059](https://github.com/626619403/Ergora/actions/runs/41911536059) 已完成并显示 **Success**。当前 F5.2 生产/测试工作树与其新发行不归入此次验收。
+
+已读取 `fetch-ci.py` / `verify-ci.py` 及保存的官方 actions、run、两 job HTML、job-groups JSON、selection/status JSON，另以只读内存解析核验，未运行会覆盖原证据的脚本。六份原来源的实际字节数和 SHA256 全部等于 `ci-html-status.json`；actions 中精确候选行及其摘要、run ID、完整 commit 链接和 portability workflow 链接相符。run 为 Success，两 job 的页面平台名称、`selectedJobId`、必要步骤的 completed/conclusion 和含完整候选 SHA/job ID 的 log URL 均逐项吻合。
+
+|平台与精确 job|独立核实的必要步骤|
+|---|---|
+|[Ubuntu / Python3.11，126860081709](https://github.com/626619403/Ergora/actions/runs/41911536059/job/126860081709)|Build and install wheel、Packaged reference identity、Native application regression 均 completed / success|
+|[Windows / Python3.12，126860081963](https://github.com/626619403/Ergora/actions/runs/41911536059/job/126860081963)|上述三步及 Windows PowerShell 5.1 installer and upgrade 均 completed / success|
+
+全部实际 check-step 无 failure/cancelled/timed_out；Ubuntu 的 Windows 专用步骤按原条件 skipped，Windows 该步骤成功。已独立读取精确提交的原 workflow，并核它相对父提交没有变更：Native application regression 仍执行全量 `tests` 及各平台适用的冻结参考套件，双 OS 矩阵和 20 分钟上限保持。本审查未下载逐行测试日志或推造具体用例计数，也未重复本地套件或三 run/服务验收。
+
+审查者另于 `2026-11-04 21:13:47 UTC` 使用既有 RSA/CONNECT 配置执行只读实时远端查询，exit0、stderr 为空，分支仍精确返回完整 `2c0ddbccd25dda66d971eadd6770b61877c83bb7`。没有推送、修改 Git 配置或源码。
+
+**最终结论：F5.1 需求符合性与可维护性通过；源码及本地验收、精确提交/原包身份/最终静态文档、普通推送/实时远端和精确双 OS CI 的同片复核全部通过，无未解决 finding 或本片剩余验收项，F5.1 可登记完成。** 本节关闭上文按当时状态保留的 CI 待验项；本次唯一写入为追加原审查报告。F5.2 及后续 F5/G0 的范围、包、CI 与独立审查仍分别验收。

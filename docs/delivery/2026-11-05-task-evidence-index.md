@@ -1,6 +1,6 @@
 # F5.1：原任务证据引用索引
 
-日期：2026-11-05。状态：已在六个现有生产所有者接通索引，源码合同/SDK/架构43项定向通过；发行包及三个原run只读验收已通过，[新的独立本地审查](2026-11-05-task-evidence-index-review.md)通过，无未解决finding；精确交付待完成。源码基线`da80e777f9ccb1caf6de54f66d245669d953b8d2`，前置F5.0本地审查/包/代表回归通过且已推送，精确CI41906996732进行中；不提前登记前片或本片完成。总体边界见[F5计划](../plans/2026-11-05-evidence-handoff.md)。
+日期：2026-11-05。状态：完成；源码/最终包/三原run只读验收、新独立审查、精确`2c0ddbccd25dda66d971eadd6770b61877c83bb7`普通推送/实时远端及双OS CI41911536059均已通过。[同片独立终结](2026-11-05-task-evidence-index-review.md#精确-ci-与同片最终终结)无未解决finding。源码基线`da80e777f9ccb1caf6de54f66d245669d953b8d2`；历史逐步状态保留各自范围。总体边界见[F5计划](../plans/2026-11-05-evidence-handoff.md)。
 
 ## 入口与事实
 
@@ -49,3 +49,7 @@
 前后139原证据文件、三完整history/outcome、两repo的文件/HEAD/refs/worktrees及三claim/零active lease逐项完全相同。私有证据为`native-before.json`/`native-after-verified.json`、`original-index-verified.json`、逐runCLI/API和真实`*-command.json/.log`；数据不提交公开仓库。正式shutdown已confirmed，两个本片专用进程已退出、服务端口关闭、三个持久数据库保留；最终离线重算139文件/租约保持，四服务端口关闭且未启动外部HTTP；新独立审查、精确提交推送/双OS CI待分别收口。
 
 独立本地终结：新的fresh-context审查已核源码所有权/必要守卫/测试、350资源/两安装/冻结283、三原run材料与前后不变及正式shutdown，需求和可维护性均通过，无未解决finding。下一精确提交、Git archive同包核验、正常RSA推送、精确双OS CI与同片最终续核；完整F5仍待后续切片。
+
+精确候选`2c0ddbccd25dda66d971eadd6770b61877c83bb7`已提交并普通快进RSA推送，实时远端一致；Git archive350资源逐项等于9e3cae包。提交前10份文档331本地链接/锚点及README28命令通过。默认nc代理407只发生于只读预检，未发推送；复用已有CONNECT脚本后成功，认证值未进入argv/公开文件。精确双OS CI与同片提交/CI终结待核；本片数据服务已退出。
+
+完整F5.1收口：精确CI41911536059的Ubuntu126860081709及Windows126860081963全部必要步骤成功；同片独立审查已核原官方HTML/完整commit及log URL、未改的全量workflow接线和实时RSA远端，无未解决finding或本片剩余验收。F5.1完成，F5.2–5及G0仍分别推进。

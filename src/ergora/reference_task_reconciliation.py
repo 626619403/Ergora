@@ -23,21 +23,29 @@ class _Inspection:
             raise ValueError('External evidence must pin the original submitted run ID')
         self.adapter = self.creation.file_adapter()
 
-    async def jobs(self, handle, converter, temporal_status: str) -> dict:
+    async def jobs(self, handle, converter, temporal_status: str, *, usage: dict | None = None) -> dict:
         from dev_platform.adapter import identifier
 
         terminal = {'COMPLETED': 'completed', 'FAILED': 'failed', 'CANCELED': 'canceled',
                     'TERMINATED': 'terminated', 'TIMED_OUT': 'timed_out'}[temporal_status]
         terminal_field = 'workflow_execution_' + terminal + '_event_attributes'
-        jobs, next_event_id, last = {}, 1, None
+        jobs, next_event_id, first, last = {}, 1, None, None
         async for event in handle.fetch_history_events(page_size=100, rpc_timeout=timedelta(seconds=20)):
             if (event.event_id != next_event_id
                     or next_event_id == 1 and not event.HasField('workflow_execution_started_event_attributes')):
                 raise ValueError('External evidence requires the complete original run history')
             next_event_id += 1
+            if usage is not None:
+                if first is None:
+                    first = event
+                usage['events'] += 1
+                usage['recorded_activity_starts'] += int(event.HasField('activity_task_started_event_attributes'))
+                usage['signal_events'] += int(event.HasField('workflow_execution_signaled_event_attributes'))
             last = event
             if not event.HasField('activity_task_scheduled_event_attributes'):
                 continue
+            if usage is not None:
+                usage['scheduled_activities'] += 1
             scheduled = event.activity_task_scheduled_event_attributes
             if scheduled.activity_type.name != 'dev_submit':
                 continue
@@ -62,6 +70,19 @@ class _Inspection:
                 jobs[job_id] = {**job, 'history_event_ids': [event.event_id]}
         if last is None or not last.HasField(terminal_field):
             raise ValueError('External evidence history lacks its original terminal event')
+        if usage is not None:
+            has_times = first.HasField('event_time') and last.HasField('event_time')
+            seconds = ((last.event_time.ToNanoseconds() - first.event_time.ToNanoseconds()) / 1_000_000_000
+                       if has_times else None)
+            usage.update(dev_submit_events=sum(len(job['history_event_ids']) for job in jobs.values()),
+                         unique_jobs=len(jobs),
+                         workflow_span={'state': 'not_recorded' if seconds is None else
+                                        'invalid_timestamps' if seconds < 0 else 'recorded',
+                             'source': 'original_run_history', 'start_event_id': first.event_id,
+                             'close_event_id': last.event_id,
+                             'started_at': first.event_time.ToJsonString() if first.HasField('event_time') else None,
+                             'closed_at': last.event_time.ToJsonString() if last.HasField('event_time') else None,
+                             'value': seconds if seconds is not None and seconds >= 0 else None, 'unit': 'seconds'})
         return jobs
 
     async def files(self, jobs: dict, *, include_receipts: bool = False) -> dict:
@@ -123,8 +144,9 @@ class _Inspection:
             if (not isinstance(outcome, dict) or outcome.get('task_id') != self.creation.task_id
                     or outcome.get('request_sha256') != self.spec['request_sha256']):
                 raise ValueError('Original closed outcome differs from the recorded task request')
-        jobs = await self.jobs(handle, converter, temporal_status)
         indexed = self.payload['operation'] == 'inspect-index'
+        usage = {'events': 0, 'scheduled_activities': 0, 'recorded_activity_starts': 0, 'signal_events': 0} if indexed else None
+        jobs = await self.jobs(handle, converter, temporal_status, usage=usage)
         result = {'schema_version': 1, 'project': self.creation.project['id'],
                 'project_revision': self.creation.project['revision'], 'task_id': self.creation.task_id,
                 'workflow_id': self.intent['workflow_id'], 'run_id': self.run_id, 'runtime_status': 'queried',
@@ -135,6 +157,11 @@ class _Inspection:
                 'lease_released_by_operation': False, 'execution_success': None}
         if indexed:
             selection = self.submission.creation_record['files']['agent-bindings.json']
+            profile = self.spec['profile']
+            usage.update(source='original_run_history', configured_work_units=len(self.spec['request']['input']['work_units']))
+            usage.update({name: {'state': 'not_recorded', 'value': None, 'unit': unit, 'source': None}
+                          for name, unit in (('model_calls', 'calls'), ('tokens', 'tokens'), ('cost', 'currency'))})
+            usage['cost']['currency'] = None
             for job in result['jobs']:
                 key = {'verify': 'verification', 'review': 'review'}.get(job['stage'])
                 recorded = outcome.get(key) if outcome is not None and key is not None else None
@@ -148,6 +175,10 @@ class _Inspection:
                           'submission_sha256': self.sha(self.intent), 'agent_bindings': selection,
                           'agent_bindings_sha256': self.sha(selection)},
                 original_outcome_sha256=self.sha(outcome) if outcome is not None else None,
+                budget={'source': 'frozen_task_spec.profile', 'profile_sha256': self.spec['profile_sha256'],
+                        'scope': 'workflow_admission_and_waiting', 'limits': profile['limits'],
+                        **{key: profile[key] for key in ('stage_timeout_seconds', 'approval_timeout_seconds', 'poll_seconds')}},
+                usage=usage,
                 published_evidence='verified' if not result['unresolved_jobs'] else 'incomplete',
                 context_snapshots={key: {'state': 'not_recorded'} for key in
                                    ('evaluations', 'skills', 'memories', 'source_adoptions')},

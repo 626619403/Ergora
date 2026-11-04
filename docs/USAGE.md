@@ -402,6 +402,10 @@ API：`GET /api/projects/PROJECT_ID/tasks/TASK_ID/evidence?run_id=RUN_ID&timeout
 
 索引限1 MiB响应，但仍扫描完整原history，并通过FileAdapter读取和核对每份产物（每份最多16 MiB）；它不限制总IO或总内存到1 MiB。结果是当前材料观察，后续读取仍须重新核验。`context_snapshots`中的评价集、Skill、记忆及来源采用快照若未被原任务记录，均为`not_recorded`，不会用当前配置补写历史。查询不启动服务、不执行模型、不写fence、不释放租约或修改Git ref。
 
+`budget`读取同一冻结profile的`limits`、阶段等待、人工批准等待和轮询间隔，附原profile SHA及`workflow_admission_and_waiting`范围。`max_parallel_units`约束work单元调度，不是所有外部进程的全局并发上限。stage期限从原dev_submit返回后建立，并在空回执poll后检查；它不保证外部进程硬截止，也不是任务总时长或费用上限。历史执行器的独立walltime不能从当前配置补造。
+
+`usage`列出完整原history的事件数、activity调度、实际记录的activity-start、signal、dev_submit事件数和不同job数，并给出冻结request的work单元数。SDK会合并部分重试历史，因此这些计数不能推导全部重试、模型调用或计费。`workflow_span`按原首/终事件的Timestamp计算秒数并附event引用，包含排队、人工等待、并发和服务停止时间；它不是模型运行时长或job时长之和。缺时间戳为`not_recorded`，反向为`invalid_timestamps`且值null，真实零跨度才为0。`model_calls/tokens/cost`没有按原job验证的结构化用量来源时均为`not_recorded/value: null`，费用币种和来源亦null；不从材料文本或当前价格表自动推估。
+
 ### 核对闭合运行的外部作业证据
 
 统一创建并保存原提交回执的任务，可用固定的原run读取完整历史、原作业请求、可信终态回执和已有fence：

@@ -24,6 +24,15 @@ def closed_evidence(original_job, converter, monkeypatch):
     from temporalio.client import WorkflowExecutionStatus
 
     data = original_job
+    data.spec['profile'].update(limits={'max_work_units': 4, 'max_parallel_units': 2},
+                               stage_timeout_seconds=180, approval_timeout_seconds=1200, poll_seconds=5)
+    data.spec['request'] = {'input': {'work_units': [{'id': 'one'}, {'id': 'two'}]}}
+    data.context['spec'] = deepcopy(data.spec)
+    digest = data.creation.sha(data.context)
+    data.write(data.envelope_path, {'schema_version': 1, 'job_id': data.context['job_id'],
+                                    'job_sha256': digest, 'context': data.context})
+    data.receipt['job_sha256'] = digest
+    data.save_receipt()
     data.contexts = [data.context]
     data.outcome = {'status': 'REVIEW_READY', 'task_id': data.creation.task_id,
                     'request_sha256': data.spec['request_sha256'], 'candidate_sha': 'a' * 40}
@@ -31,6 +40,7 @@ def closed_evidence(original_job, converter, monkeypatch):
     data.selection = {'reference_project': 'demo', 'project_revision': 2, 'bindings': {'reviewer': {'tool': 'codex'}}}
     data.description = SimpleNamespace(status=WorkflowExecutionStatus.COMPLETED, run_id='original-run')
     data.lookup_ids, data.successor, data.history = [], False, 'normal'
+    data.extra_events, data.event_times = [], {}
 
     class Handle:
         async def fetch_history_events(self, **kwargs):
@@ -45,9 +55,17 @@ def closed_evidence(original_job, converter, monkeypatch):
                 values = [context, context] if data.history == 'multiple' else [context]
                 event.activity_task_scheduled_event_attributes.input.payloads.extend(await converter.encode(values))
                 events.append(event)
+            for extra in data.extra_events:
+                event = deepcopy(extra)
+                event.event_id = len(events) + 1
+                events.append(event)
             end = HistoryEvent(event_id=len(events) + 1)
-            end.workflow_execution_completed_event_attributes.SetInParent()
+            terminal = {'COMPLETED': 'completed', 'FAILED': 'failed', 'CANCELED': 'canceled'}[data.description.status.name]
+            getattr(end, 'workflow_execution_' + terminal + '_event_attributes').SetInParent()
             events.append(end)
+            for event in events:
+                if event.event_id in data.event_times:
+                    event.event_time.FromJsonString(data.event_times[event.event_id])
             if data.history == 'gap':
                 events.pop(0)
             elif data.history == 'no-terminal':
@@ -194,6 +212,7 @@ def test_cancelled_domain_result_and_legacy_external_response_keep_their_origina
     assert indexed['published_evidence'] == 'verified' and indexed['execution_success'] is None
     assert set(legacy['jobs'][0]) == {'job_id', 'stage', 'job_sha256', 'request_state', 'receipt_state', 'receipt_sha256'}
     assert 'contract' not in legacy and 'read_only' not in legacy
+    assert 'budget' not in legacy and 'usage' not in legacy
     assert indexed['history_jobs_sha256'] == legacy['history_jobs_sha256']
 
 
@@ -204,6 +223,76 @@ def test_oversized_index_is_rejected_without_a_partial_response(closed_evidence)
     with pytest.raises(ValueError, match='Task evidence index exceeds'):
         inspect(data)
     assert snapshot(data.creation.root) == before
+
+
+def test_budget_uses_the_frozen_profile_without_inventing_process_or_monetary_limits(closed_evidence):
+    data = closed_evidence
+    before = snapshot(data.creation.root)
+    result = inspect(data)
+    assert result['budget'] == {'source': 'frozen_task_spec.profile', 'profile_sha256': data.spec['profile_sha256'],
+        'scope': 'workflow_admission_and_waiting', 'limits': {'max_work_units': 4, 'max_parallel_units': 2},
+        'stage_timeout_seconds': 180, 'approval_timeout_seconds': 1200, 'poll_seconds': 5}
+    assert result['usage']['configured_work_units'] == 2
+    for name, unit in [('model_calls', 'calls'), ('tokens', 'tokens'), ('cost', 'currency')]:
+        expected = {'state': 'not_recorded', 'value': None, 'unit': unit, 'source': None}
+        if name == 'cost':
+            expected['currency'] = None
+        assert result['usage'][name] == expected
+    assert result['execution_success'] is None and snapshot(data.creation.root) == before
+
+
+def test_usage_counts_history_events_and_distinct_jobs_without_inferring_model_attempts(closed_evidence):
+    from temporalio.api.history.v1 import HistoryEvent
+
+    data = closed_evidence
+    data.contexts.append(deepcopy(data.context))
+    poll, started, first_signal, second_signal = [HistoryEvent() for _ in range(4)]
+    poll.activity_task_scheduled_event_attributes.activity_type.name = 'dev_poll'
+    started.activity_task_started_event_attributes.attempt = 3
+    first_signal.workflow_execution_signaled_event_attributes.signal_name = 'approve_plan'
+    second_signal.workflow_execution_signaled_event_attributes.signal_name = 'request_cancel'
+    data.extra_events = [poll, started, first_signal, second_signal]
+    data.event_times = {1: '2026-11-01T00:00:00Z', 8: '2026-11-01T00:01:30.5Z'}
+    result = inspect(data)
+    usage = result['usage']
+    assert {key: usage[key] for key in ('events', 'scheduled_activities', 'recorded_activity_starts',
+        'signal_events', 'dev_submit_events', 'unique_jobs')} == {'events': 8, 'scheduled_activities': 3,
+        'recorded_activity_starts': 1, 'signal_events': 2, 'dev_submit_events': 2, 'unique_jobs': 1}
+    assert usage['source'] == 'original_run_history'
+    assert usage['workflow_span'] == {'state': 'recorded', 'source': 'original_run_history',
+        'start_event_id': 1, 'close_event_id': 8, 'started_at': '2026-11-01T00:00:00Z',
+        'closed_at': '2026-11-01T00:01:30.500Z', 'value': 90.5, 'unit': 'seconds'}
+    assert usage['model_calls']['value'] is None and usage['tokens']['value'] is None
+    assert result['jobs'][0]['history_event_ids'] == [2, 3]
+
+
+@pytest.mark.parametrize('times,state,value', [
+    ({}, 'not_recorded', None), ({1: '2026-11-01T00:00:00Z'}, 'not_recorded', None),
+    ({3: '2026-11-01T00:00:00Z'}, 'not_recorded', None),
+    ({1: '2026-11-01T00:00:01Z', 3: '2026-11-01T00:00:00Z'}, 'invalid_timestamps', None),
+    ({1: '2026-11-01T00:00:00Z', 3: '2026-11-01T00:00:00Z'}, 'recorded', 0.0),
+])
+def test_usage_preserves_missing_reversed_and_real_zero_timestamp_facts(closed_evidence, times, state, value):
+    data = closed_evidence
+    data.event_times = times
+    before = snapshot(data.creation.root)
+    result = inspect(data)
+    assert result['usage']['workflow_span']['state'] == state
+    assert result['usage']['workflow_span']['value'] == value
+    assert result['usage']['cost']['value'] is None
+    assert snapshot(data.creation.root) == before
+
+
+def test_failed_temporal_run_retains_no_outcome_and_unknown_model_usage(closed_evidence):
+    from temporalio.client import WorkflowExecutionStatus
+
+    data = closed_evidence
+    data.description.status = WorkflowExecutionStatus.FAILED
+    result = inspect(data)
+    assert result['original_outcome'] is result['original_outcome_sha256'] is None
+    assert result['temporal_status'] == 'FAILED'
+    assert result['usage']['events'] == 3 and result['usage']['model_calls']['value'] is None
+    assert result['jobs'][0]['outcome_reference_state'] == 'not_recorded'
 
 
 def test_cli_and_api_forward_one_read_only_index_request(tmp_path, monkeypatch, capsys):

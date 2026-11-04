@@ -308,6 +308,8 @@ ergora task evidence my-project TASK_ID --run-id RUN_ID --timeout 20
 
 该[只读证据索引](docs/USAGE.md#读取闭合运行的证据索引)区分材料字节核验、原结果引用和外部清理；缺失材料保持未确认，未记录的Skill/记忆等快照明确显示`not_recorded`。索引不携带材料正文，全文仍从原job入口按需读取。
 
+索引同时列出冻结工作流预算、原history调度计数和服务跨度；这些事实不等于模型计费。没有结构化来源的模型调用、token和费用保持未知，不显示为零。
+
 ## 工单、搜索与训练
 
 **工单按业务项目接入。** 注册时选择 `--tracker github` 或 `--tracker gitlab`，并指定该项目自己的远程标识。以 GitLab 为例，完成对应注册后：

@@ -1,12 +1,12 @@
 # Ergora 下一阶段计划与进度
 
-> 最新状态（2026-11-05）：完整[F4正式任务页面](delivery/2026-11-05-f4-completion.md)已完成。最后生产77b334c/350资源43e121包及精确双OS CI41896900471通过；综合156GET恢复/离线/仅Temporal重开、两候选复验、139文件/三history/outcome/refs/leases保持和最终服务/HTTP/浏览器退出已验。[独立综合终结](delivery/2026-11-05-f4-completion-review.md)关闭两文档P2、340本地链接/27命令、纯文档f2b93d4正常推送及独立实时远端全部通过。[F5.0原单参数history完整性](delivery/2026-11-05-original-payload-boundaries.md)已完成，当前推进[F5.1证据索引](delivery/2026-11-05-task-evidence-index.md)；完整F5/G0仍未完成。
+> 最新状态（2026-11-05）：完整[F4正式任务页面](delivery/2026-11-05-f4-completion.md)已完成。最后生产77b334c/350资源43e121包及精确双OS CI41896900471通过；综合156GET恢复/离线/仅Temporal重开、两候选复验、139文件/三history/outcome/refs/leases保持和最终服务/HTTP/浏览器退出已验。[独立综合终结](delivery/2026-11-05-f4-completion-review.md)关闭两文档P2、340本地链接/27命令、纯文档f2b93d4正常推送及独立实时远端全部通过。[F5.0原单参数history完整性](delivery/2026-11-05-original-payload-boundaries.md)已完成，[F5.1证据索引](delivery/2026-11-05-task-evidence-index.md)亦已完成，当前推进[F5.2预算与用量事实](delivery/2026-11-05-task-usage-facts.md)；完整F5/G0仍未完成。
 
 本文件是项目执行与上下文恢复入口。最后更新：2026-11-05。S0–S10 及 A0 计划已交付；用户已批准开始主线合入、审计、渐进重构与按优先级补齐功能，并要求每完成一步更新文档。各阶段详细计划只在对应链接内维护节点状态。
 
 持续执行要求：用户已授权睡眠期间沿既有计划连续推进，无需每个子节点等待回复。每个完整切片均使用新的独立审查上下文；每个大节点额外核查代码结构、复用及性能，性能结论绑定实际测量条件。实现、验证、审查和提交推送分别记账，完成后继续下一项；权限或外部条件受限的维度明确记录，不阻断可独立工作。
 
-下一可执行项：[F5.1证据索引](delivery/2026-11-05-task-evidence-index.md)已接通六个既有生产所有者，源码43项/包内23项及旧代表4项通过，350资源/两noneditable安装/283冻结身份通过；三CLI/五ASGI GET原run只读对照、139文件/history/refs/leases不变及专用服务正式退出通过。[新的独立本地审查](delivery/2026-11-05-task-evidence-index-review.md)通过，无未解决finding；精确提交推送和双OS CI待完成。前置[F5.0](delivery/2026-11-05-original-payload-boundaries.md)已完成：da80e777正常推送、精确两OS CI41906996732及[同片独立终结](delivery/2026-11-05-original-payload-boundaries-review.md#精确-ci-与同片最终终结)全部通过，无未解决finding；本片不继承前片包或CI为自己验收。完成F5.1后推进[F5.2预算与用量事实](plans/2026-11-05-evidence-handoff.md)，完整F5/G0仍未完成。
+下一可执行项：[F5.2预算与用量事实](delivery/2026-11-05-task-usage-facts.md)在一个既有生产所有者实现，源码51项/包内31项/旧代表4项、350资源/两noneditable安装/283冻结、三原run预算及SDK事件/Timestamp/材料CLI/API对照、139文件/history/Git/leases不变和专用服务正式退出均通过。[新的独立本地审查](delivery/2026-11-05-task-usage-facts-review.md)通过，无未解决finding；精确提交推送、双OS CI及同片终结待完成。前置[F5.1](delivery/2026-11-05-task-evidence-index.md)已完整完成：2c0ddbc正常推送、精确双OS CI41911536059及[同片独立终结](delivery/2026-11-05-task-evidence-index-review.md#精确-ci-与同片最终终结)通过；F5.0此前亦已完成。每片保留独立包和CI身份，不混归结果；之后按[F5计划](plans/2026-11-05-evidence-handoff.md)推进受约束交接包与页面，完整F5/G0仍未完成。
 
 ## 当前检查点
 
