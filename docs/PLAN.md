@@ -1,6 +1,6 @@
 # Ergora 下一阶段计划与进度
 
-> 最新状态（2026-11-04）：F4.3b已完成，c54230e精确双OS CI41797567476及独立终结审查通过。当前[F4.3c1取消页面](delivery/2026-11-04-task-cancellation-console.md)本地验收及[新独立审查](delivery/2026-11-04-task-cancellation-console-review.md)通过、无未解决findings：独立a4081f包348文件/两安装/冻结283、四段浏览器118请求/11POST（10受控、1真实）、实际丢回复/原ID恢复与迟到边界通过；唯一取消信号/104原文件保持，专用executor已恢复并发布fence拒绝的CANCELLED回执，原CANCEL_UNCONFIRMED保持。提交/精确CI及终结审查待完成，之后c2外部对账页面。完整F4/F5/G0未完成。本条优先于下方历史快照。
+> 最新状态（2026-11-04）：F4.3c1[取消页面](delivery/2026-11-04-task-cancellation-console.md)完成：759c27e精确双OS CI41808523543及独立终结复核通过。当前[c2外部证据/对账页面](delivery/2026-11-04-task-reconciliation-console.md)本地验收和[新独立审查](delivery/2026-11-04-task-reconciliation-console-review.md)通过：3b9c包348资源/两安装/冻结283，四段浏览器139请求/10POST（9受控、1真实），丢回复/原任务恢复；127原文件/三原history/outcome保持，仅四份新增证据与精确新演示原claim释放。耗时范围Low已修正关闭，无未解决findings。正在提交/精确CI，随后d候选导出；完整F4/F5/G0未完成。本条优先于下方历史快照。
 
 本文件是项目执行与上下文恢复入口。最后更新：2026-11-04。S0–S10 及 A0 计划已交付；用户已批准开始主线合入、审计、渐进重构与按优先级补齐功能，并要求每完成一步更新文档。各阶段详细计划只在对应链接内维护节点状态。
 

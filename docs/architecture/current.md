@@ -114,7 +114,7 @@ flowchart LR
   API[api.js] --> HTTP[web.py]
 ```
 
-视图通过明确的 `refresh/render` 回调组合，不反向导入入口。`state.js` 只有 UI 选择、后台快照和显示元数据；草稿编辑身份、revision、图和 kernel 请求身份同属 `workflow.js`。`tasks.js`拥有正式任务分页、冻结详情、固定原run查询，以及F4.2a的局部预览/创建/原ID查询恢复及提交检查对话框；F4.3b沿同一详情所有者新增完整计划审阅、按稳定decision检查/显式批准/原意图恢复，复用原plan/approval API，写前保存选择、锁定输入，完整材料或原记录缺失时不提供确认。已有decision单独查看，requested不当批准采纳。F4.3c1沿同一所有者接取消记录读取/明确请求/原意图恢复，固定原run与request ID，requested/already_closed不提供再投递，也不当运行或外部清理完成；共13个前端模块，复用原tasks API。对话框结果检查页面/详情归属、内容连接、open状态和请求代际，编辑废弃预览，创建发出前保存原ID选择，未知回复不自动重发。浏览器会话只存项目/页面/任务/run/decision/cancel-request选择，服务端继续拥有创建和执行事实；项目切换同步移除旧快照/视图，刷新代际和查询序号使旧响应失效。同项目刷新保留快照，工作流保存回包也检查实际快照项目。外部对账/导出页面、有界运行日志、任意角色关系编辑和原生交互会话恢复尚待后续切片。
+视图通过明确的 `refresh/render` 回调组合，不反向导入入口。`state.js` 只有 UI 选择、后台快照和显示元数据；草稿编辑身份、revision、图和 kernel 请求身份同属 `workflow.js`。`tasks.js`拥有正式任务分页、冻结详情、固定原run查询，以及F4.2a的局部预览/创建/原ID查询恢复及提交检查对话框；F4.3b沿同一详情所有者新增完整计划审阅、按稳定decision检查/显式批准/原意图恢复，复用原plan/approval API，写前保存选择、锁定输入，完整材料或原记录缺失时不提供确认。已有decision单独查看，requested不当批准采纳。F4.3c1沿同一所有者接取消记录读取/明确请求/原意图恢复，固定原run与request ID，requested/already_closed不提供再投递，也不当运行或外部清理完成；F4.3c2在同一详情中独立读取外部证据和原对账记录，沿原intent明确对账/恢复；写开始使旧观察失效，仅reconciled表示原租约释放回执保存，原outcome保持。共13个前端模块，复用原tasks API。对话框结果检查页面/详情归属、内容连接、open状态和请求代际，编辑废弃预览，创建发出前保存原ID选择，未知回复不自动重发。浏览器会话只存项目/页面/任务/run/decision/cancel-request选择，服务端继续拥有创建和执行事实；项目切换同步移除旧快照/视图，刷新代际和查询序号使旧响应失效。同项目刷新保留快照，工作流保存回包也检查实际快照项目。候选导出页面、有界运行日志、任意角色关系编辑和原生交互会话恢复尚待后续切片。
 
 ## 调用与数据归属
 
@@ -157,7 +157,7 @@ sequenceDiagram
   end
 ```
 
-执行桥只替换生成阶段的Agent，原执行器仍拥有候选SHA、只读检查、提交和回执。默认值或项目绑定变化不修改在途任务的`agent-bindings.json`。取消是意图，`CANCEL_UNCONFIRMED / NEEDS_RECONCILIATION`保持可见，不能删ledger后重跑。F1已统一项目配置与投影；F3.1/F3.2提供本地合同读写API，F3.3a提供原生状态查询；F3.3b提供单次提交和原ID恢复；F3.3c1提供精确批准和投递恢复，F3.3c2提供原运行取消请求/投递对账，F3.4提供精确候选导出与只读外部证据/显式清理对账。F4.1页面接入只读合同/提交回执及原run查询，F4.2a接入预览/明确创建/原ID恢复；F4.2b在任务详情重新读取原创建/提交记录后，明确start或resume原意图；批准、取消等写操作继续由CLI/API执行。
+执行桥只替换生成阶段的Agent，原执行器仍拥有候选SHA、只读检查、提交和回执。默认值或项目绑定变化不修改在途任务的`agent-bindings.json`。取消是意图，`CANCEL_UNCONFIRMED / NEEDS_RECONCILIATION`保持可见，不能删ledger后重跑。F1已统一项目配置与投影；F3.1/F3.2提供本地合同读写API，F3.3a提供原生状态查询；F3.3b提供单次提交和原ID恢复；F3.3c1提供精确批准和投递恢复，F3.3c2提供原运行取消请求/投递对账，F3.4提供精确候选导出与只读外部证据/显式清理对账。F4.1页面接入只读合同/提交回执及原run查询，F4.2a接入预览/明确创建/原ID恢复；F4.2b在任务详情重新读取原创建/提交记录后，明确start或resume原意图；F4.3b/c页面沿既有用例提供计划审阅/明确批准、取消与闭合原run外部证据/显式对账，原记录及意图恢复仍由后端拥有；候选导出页面待下一切片。
 
 训练保持独立的 workload/baseline/manifest/runner/evidence：`prepare → start（控制排队）→ 操作者 run-local + manifest SHA → 可信统计门禁 → owner evidence SHA → 集成/复验任务`。control worker 不自动启动训练；Forge 只生成原生候选。R8 的 fixture 只检验协议，真实模型/GPU效果以各次实测记录为准。
 

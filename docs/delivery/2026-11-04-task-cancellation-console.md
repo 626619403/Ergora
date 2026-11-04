@@ -1,6 +1,6 @@
 # F4.3c1：网页取消与原请求恢复
 
-日期：2026-11-04。状态：页面实现、本片独立发行身份及本地浏览器/真实取消验收、新fresh-context独立审查均已通过，提交推送与精确CI待完成。本片接续已交付F4.3b的计划审阅/批准；两个切片的包、浏览器证据及CI分别登记。
+日期：2026-11-04。状态：完成。页面、本片独立发行/浏览器/真实取消验收及新fresh-context审查通过；759c27e已推送，精确双OS CI41808523543及同片独立终结复核通过，无未解决findings。本片接续已交付F4.3b的计划审阅/批准；两个切片的包、浏览器证据及CI分别登记。
 
 ## 范围与现有所有者
 
@@ -63,3 +63,7 @@
 [新fresh-context报告](2026-11-04-task-cancellation-console-review.md)需求符合性、可维护性均通过，无未解决findings。审查者实际重哈希348源码/wheel/两安装、104旧文件及原112history，直接只读SDK核三原run的329/348/112事件与唯一预期信号，并核取消GET与浏览器原record一致。守卫对应已演练的生命周期边界，没有新增通用框架或test/CI；性能结论限于实际请求数和无后台轮询，不声称测得全局优化。审查时指出F4总览两处过时状态，已在本地修正并独立复读确认。
 
 四段浏览器完成后的`post-browser-invariants.json`另核无运行workflow、两个旧run各一个approve_plan、新run一个request_cancel及完整112history不变、新取消目录只有原ID三份journal、104旧文件不变、executor RUNNING。提交仅携带取消页面及相关文档（含B最终CI归档）；精确包/提交身份、推送、CI及同片终结复核仍分别登记，不先标完整F4完成。
+
+提交/推送检查点：12文件提交`759c27ed06b781ca768a53c1e9e8c0eb1377e296`已推送工作分支，实时SSH读取远端一致；348提交归档资源与已验a4081f包一致。提交前10份Markdown/320链接锚点及27条README命令通过。精确[CI41808523543](https://github.com/626619403/Ergora/actions/runs/41808523543)已取得，当前In progress，未继承B为通过；同片审查者继续固定本提交核包/远端及CI。下一[c2外部对账页面](2026-11-04-task-reconciliation-console.md)独立实施，不混入本提交身份。
+
+最终交付：同一精确CI已Success，Ubuntu job126501521848的wheel构建/安装、冻结reference身份、原生回归与Windows job126501522208的相同步骤及PowerShell5.1安装/升级全部成功。原HTML/selection/groups/verify脚本在本片`ci/`，`ci-verification-command.json`实际exit0。原审查者独立核完整commit、两job的selectedJobId/矩阵、唯一必需step及完整log URL，再核固定提交348资源=原包/两安装、实时SSH远端仍为759c27e，终结需求/可维护性均通过，无未解决findings。只关闭c1；c2与候选导出、F4.4仍各自实施验收，未合并main。

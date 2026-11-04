@@ -575,6 +575,115 @@ export function tasksView(data, base) {
       if (requestInput.value) await read();
     }
 
+    async function reconciliationDialog(runId = null, selectedRunSequence = null) {
+      if (!view.isConnected || sequence !== detailSequence ||
+          runId && selectedRunSequence !== runSequence) return;
+      const observations = node("div", {});
+      const result = node("div", { "aria-live": "polite" });
+      let readingSequence = 0;
+      let writing = false;
+      let observation = null;
+      const readButton = button(runId ? "重新读取外部证据与原对账记录" : "重新读取原对账记录", read);
+      const content = node("div", {},
+        node("p", {}, "读取不发布fence或释放租约。明确对账会重验原运行、建立或复用同一fence，只有外部作业全部确认后才释放原工单租约。关闭页面不撤销已发出的操作。"),
+        runId ? facts([["本次选择的原 run ID", runId]]) : null,
+        row(readButton), observations, result,
+      );
+      const active = () => view.isConnected && sequence === detailSequence &&
+        content.isConnected && $("#dialog").open && (!runId || selectedRunSequence === runSequence);
+      const current = (reading) => active() && reading === readingSequence;
+
+      function show(record, reading) {
+        const descriptions = {
+          not_recorded: "尚无原对账意图。从已查询的闭合原运行进入并读到外部证据后，才可明确发起对账。",
+          prepared: "原意图已保存，尚无写前检查点。明确恢复将重验同一原运行和claim。",
+          unknown: "原对账尚未取得完整清理证据。请保留原意图，取得可信终态回执后再明确恢复。",
+          confirmed: "原清理证据已保存，租约释放回执尚未保存。请按原意图明确恢复。",
+          reconciled: "原清理证据及租约释放回执已保存。这是历史记录，实时外部状态需另行读取。",
+        };
+        const canRequest = runId && observation && record.status === "not_recorded";
+        const canResume = ["prepared", "unknown", "confirmed"].includes(record.status);
+        result.replaceChildren(panel(`对账记录：${record.status}`, descriptions[record.status],
+          facts([
+            ["项目当前修订", record.project_revision], ["原 run ID", record.run_id],
+            ["原意图 SHA256", record.intent_sha256], ["原 Temporal 状态", record.temporal_status],
+            ["原结果", record.original_outcome?.status], ["原清理证据 SHA256", record.evidence_sha256],
+            ["租约释放依据 SHA256", record.release_evidence_sha256],
+            ["原清理证据已确认", record.external_confirmed == null ? "未知" : record.external_confirmed ? "是" : "否"],
+            ["原租约已释放", record.lease_released == null ? "未知" : record.lease_released ? "是" : "否"],
+            ["开发成功", record.execution_success == null ? "未知" : record.execution_success ? "是" : "否"],
+          ]),
+          disclosure("完整原对账记录", record),
+          canRequest || canResume ? form([], canRequest ? "确认外部对账并释放原租约" : "确认恢复原对账意图", async () => {
+            if (!current(reading) || writing) return;
+            writing = true;
+            readButton.disabled = true;
+            observation = null;
+            observations.replaceChildren(empty("本次对账可能改变fence或租约；先前观察已失效，实时外部状态需重新明确读取。"));
+            result.replaceChildren(empty("正在处理原对账意图；回复未知时先读取原记录，关闭页面不撤销操作。"));
+            try {
+              const observed = await api(`${path}/${canRequest ? "reconcile" : "resume-reconcile"}`, {
+                revision: record.project_revision, confirm: true, timeout: 20,
+                ...(canRequest ? { run_id: runId } : { intent_sha256: record.intent_sha256 }),
+              });
+              if (current(reading)) show(observed, reading);
+            } catch (error) {
+              if (current(reading)) result.replaceChildren(panel("对账结果尚未确认", error.message,
+                node("p", {}, "先读取此原任务的对账记录，再决定是否恢复。没有回复不证明未建立fence或未释放租约。")));
+            } finally {
+              writing = false;
+              if (active()) readButton.disabled = false;
+            }
+          }) : null,
+          button("返回原任务与运行", () => {
+            if (!current(reading)) return;
+            sessionStorage.setItem(runKey, record.run_id);
+            $("#dialog").close();
+            inspect(taskId);
+          }),
+        ));
+      }
+
+      async function read() {
+        if (!active() || writing) return;
+        const reading = ++readingSequence;
+        observation = null;
+        result.replaceChildren(empty("正在读取原对账记录…"));
+        observations.replaceChildren(runId ? empty("正在只读核对原运行的外部证据…") : empty("这里只读本地原记录；实时外部证据请返回查询闭合原run后单独读取。"));
+        const [savedRecord, external] = await Promise.allSettled([
+          api(`${path}/reconciliation`),
+          runId ? api(`${path}/external-status?${new URLSearchParams({ run_id: runId, timeout: "20" })}`) : Promise.resolve(null),
+        ]);
+        if (!current(reading)) return;
+        if (runId) {
+          if (external.status === "fulfilled") {
+            observation = external.value;
+            observations.replaceChildren(panel("本轮只读外部证据", "本次读取没有释放租约，也不改写原workflow结果。",
+              facts([
+                ["原 run ID", observation.run_id], ["原 Temporal 状态", observation.temporal_status],
+                ["原结果", observation.original_outcome?.status], ["History job SHA256", observation.history_jobs_sha256],
+                ["当前外部已确认", observation.external_confirmed ? "是" : "否"],
+                ["Fence 状态", observation.fence.state], ["Fence SHA256", observation.fence.sha256],
+                ["未确认 Job", observation.unresolved_jobs.join("、") || "无"],
+                ["原运行外的 Job", observation.unexpected_jobs.join("、") || "无"],
+              ]),
+              table(["阶段", "Job ID", "请求", "回执", "Job SHA256", "回执 SHA256"], observation.jobs.map((job) => [
+                job.stage, job.job_id, job.request_state, job.receipt_state, job.job_sha256, job.receipt_sha256 ?? "未记录",
+              ])),
+              disclosure("完整本轮外部证据", observation),
+            ));
+          } else observations.replaceChildren(panel("外部证据读取失败", external.reason.message,
+            node("p", {}, "不能在此发起新对账；已有原意图仍可从本地记录查看并明确恢复。")));
+        }
+        if (savedRecord.status === "fulfilled") show(savedRecord.value, reading);
+        else result.replaceChildren(panel("原对账记录读取失败", savedRecord.reason.message,
+          node("p", {}, "记录未读成功，不提供对账或恢复确认。")));
+      }
+
+      modal(runId ? "外部证据与对账" : "检查原对账记录与恢复", content);
+      await read();
+    }
+
     function submissionDialog() {
       let readingSequence = 0;
       const result = node("div", { "aria-live": "polite" });
@@ -691,6 +800,7 @@ export function tasksView(data, base) {
         button("检查提交与恢复", submissionDialog),
         saved?.status === "submitted" ? button("按原 ID 检查批准记录", () => approvalDialog()) : null,
         saved?.status === "submitted" ? button("按原 ID 检查取消记录", () => cancellationDialog()) : null,
+        saved?.status === "submitted" ? button("检查原对账记录与恢复", () => reconciliationDialog()) : null,
       ),
       panel("原生运行", "按固定run读取。关闭页面不会取消任务；取消后的外部清理需另行对账。",
         form([runField], "读取原运行", async (values) => {
@@ -725,6 +835,8 @@ export function tasksView(data, base) {
               }, "primary") : null,
             !observed.terminal && observed.runtime_status === "queried"
               ? button("请求取消此运行", () => cancellationDialog(observed.run_id, reading)) : null,
+            observed.terminal && observed.runtime_status === "queried"
+              ? button("外部证据与对账", () => reconciliationDialog(observed.run_id, reading)) : null,
             node("div", { className: "stage-strip", "aria-label": "六阶段位置" }, stages.map((stage) =>
               node("span", { className: currentStage === stage ? "current" : null }, stage))),
             observed.status ? facts([
