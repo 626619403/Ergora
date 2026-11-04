@@ -171,9 +171,9 @@ export function modal(title, content) {
   );
   dialog.showModal();
 }
-export function download(name, content) {
+export function download(name, content, mediaType = "text/plain;charset=utf-8") {
   const url = URL.createObjectURL(
-    new Blob([content], { type: "text/plain;charset=utf-8" }),
+    new Blob([content], { type: mediaType }),
   );
   const link = node("a", { href: url, download: name });
   link.click();

@@ -1,4 +1,4 @@
-export async function api(path, body, method = "POST") {
+export async function api(path, body, method = "POST", decode) {
   const options =
     body === undefined
       ? {}
@@ -11,14 +11,13 @@ export async function api(path, body, method = "POST") {
           body: JSON.stringify(body),
         };
   const response = await fetch(path, options);
+  if (response.ok) return decode ? decode(response) : response.json();
   const result = await response.json();
-  if (!response.ok)
-    throw new Error(
-      result.error ||
-        (typeof result.detail === "string"
-          ? result.detail
-          : JSON.stringify(result.detail)) ||
-        `HTTP ${response.status}`,
-    );
-  return result;
+  throw new Error(
+    result.error ||
+      (typeof result.detail === "string"
+        ? result.detail
+        : JSON.stringify(result.detail)) ||
+      `HTTP ${response.status}`,
+  );
 }

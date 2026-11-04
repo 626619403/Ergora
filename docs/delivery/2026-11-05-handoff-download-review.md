@@ -41,3 +41,26 @@ HTTP 约 1.59–1.88 秒、离线约 0.22–1.02 秒的记录只覆盖本次 11�
 ## 剩余交付
 
 提交前刷新完整清单和文档链接/命令检查，绑定 b 的精确提交及 Git 归档与最终包身份，普通推送并核实时远端；完成该提交自己的 Ubuntu/Windows 必要 CI 步骤，再由同片审查登记最终终结。a 的独立终结单独保留；F5.4 页面及完整 F5/G0 不在本报告关闭。
+
+## 精确提交、发行、静态与远端复核
+
+2026-11-05，同一独立审查者从 Git 对象核候选 `bde57e17d84a0063683be9c5c34392072b255853`，唯一父提交为原基线 `87538b3dcafb13ca5bbc8191f84e5a4b0fbf0083`。`diff-tree` 正好 12 文件，逐项重算提交 blob SHA，全部等于刷新后的 `final-review-scope.json`；其 tracked 部分逐字等于 `final-review-tracked.diff`。前述进度记账漂移已纳入最终清单，生产和新测试仍为已审身份。后续 F5.4 工作树不计入此次提交复核。
+
+独立在内存读取精确提交的 Git archive，352 个包资源逐项等于原最终 `54548bc34aeb8cf7d9f55a62cbf3d1ef3f27695f5880afe5898fd99ec53095ae` wheel 及其身份表。另从该提交文档对象核对全部 10 份 Markdown 的 346 个本地链接/锚点，并使用已核同包的最终安装 parser 解析提交 README 的 30 条命令，全部通过；`static-documents.json` 中的文档 SHA、数量和命令列表与精确提交一致，没有借用后续工作树文件。
+
+读取实际普通 push 的命令、退出码及 stdout/stderr，确认原基线正常快进到候选，没有 `--force` 或强制 refspec。传输配置不改变 ref 更新语义。审查者另于 `2026-11-04 22:26:40 UTC` 执行只读实时 `ls-remote`，远端 `refactor/architecture-foundations` 完整 SHA 仍为该候选。本轮没有执行提交、推送、安装、服务启动或测试矩阵。
+
+**精确提交、最终包、提交文档静态检查及普通推送/实时远端通过，无新增 finding。b 的精确双 OS CI 尚未在本轮核定，完整终结继续待验。** 前片 a 的 CI 不归给 b；待取得该候选自己的 run/job 原证据后再登记同片最终结论。
+
+## 精确 CI 与同片最终终结
+
+2026-11-05，同一独立审查者完成本片剩余验收。再次从 Git 对象重算候选 `bde57e17d84a0063683be9c5c34392072b255853` 的 12 个变更文件摘要，全部仍与最终清单一致，唯一父提交保持原基线。未将后续 F5.4 的未提交页面、文档或运行证据计入本片。
+
+先重算 `ci-html-status.json` 所列 6 份官方原始 HTML/JSON 的字节数与 SHA，全部吻合；独立解析原页面，核对 actions 行、run selection、job groups、精确提交链接及 workflow。另在 `2026-11-04 22:40:31 UTC` 前从 GitHub 重新只读取得本 run 及两个 job 的官方 HTML，确认相同结论：[Portability 41925067903](https://github.com/626619403/Ergora/actions/runs/41925067903) 为 `Success`，完整 commit 为本候选，workflow 为 `.github/workflows/portability.yml`。
+
+- [Windows job 126907187498](https://github.com/626619403/Ergora/actions/runs/41925067903/job/126907187498)：Windows/Python 3.12，构建安装、包身份、原生回归及 PowerShell 5.1 安装升级四个必要步骤全部完成且 `success`。
+- [Ubuntu job 126907188269](https://github.com/626619403/Ergora/actions/runs/41925067903/job/126907188269)：Ubuntu/Python 3.11，构建安装、包身份及原生回归三个必要步骤全部完成且 `success`。
+
+每个 job 的平台名与内嵌 `selectedJobId` 相符；各必要步骤均有完成标记，其日志 URL 包含完整候选 SHA 及对应 check/job ID，未见失败、取消或超时步骤。结论来自原页面和独立实时读取，没有仅采信作者汇总，也不继承 a 片 CI。审查者另于 `2026-11-04 22:40:32 UTC` 只读实时 `ls-remote`，确认远端 `refactor/architecture-foundations` 完整 SHA 仍为本候选。
+
+结合前述本地需求/资源生命周期验收、包与 Git 归档一致、最终静态检查及普通推送证据，**F5.3b 需求符合性、可维护性及精确发行/双 OS CI/远端验收全部通过，无未解决 finding，可登记本片完成。** 本轮未安装、启动服务、运行测试矩阵、提交或推送，仅追加原片终结记账。F5.4 页面及完整 F5/G0 继续按其各自范围验收。

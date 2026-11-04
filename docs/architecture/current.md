@@ -1,6 +1,6 @@
 # 当前架构与扩展边界
 
-2026-11-05，R8后的当前导航，覆盖F1项目定义、F2安装/运维、F3正式任务CLI/API生命周期与F4网页消费者。F3已通过[阶段验收](../delivery/2026-11-03-f3-completion.md)，F4的创建/原ID恢复、原运行/计划/批准/取消/对账/导出及有界事件/job文本均已实现，[完整页面收口](../delivery/2026-11-05-f4-completion.md)的恢复与服务退出验收单独登记。F5.1只读证据索引与F5.2预算/用量事实CLI/API均已交付；F5.3a原生交接包及离线校验已实现，验收单独登记，F5.3b显式HTTP下载已实现，发行与真实下载验收单独登记，页面待后续；完整F5及G0尚未完成。历史[A1审计](2026-11-01-audit.md)及[R8记录](../delivery/2026-11-02-refactoring-exit.md)保留原身份与范围。设计约束见[ADR0001](decisions/0001-refactoring-foundations.md)/[0002](decisions/0002-static-boundaries.md)。
+2026-11-05，R8后的当前导航，覆盖F1项目定义、F2安装/运维、F3正式任务CLI/API生命周期与F4网页消费者。F3已通过[阶段验收](../delivery/2026-11-03-f3-completion.md)，F4的创建/原ID恢复、原运行/计划/批准/取消/对账/导出及有界事件/job文本均已实现，[完整页面收口](../delivery/2026-11-05-f4-completion.md)的恢复与服务退出验收单独登记。F5.1只读证据索引与F5.2预算/用量事实CLI/API均已交付；F5.3a原生交接包及离线校验已实现，验收单独登记，F5.3b显式HTTP下载已实现，发行与真实下载验收单独登记，F5.4页面已在原任务详情接线，发行/浏览器及独立审查单独登记；完整F5及G0尚未完成。历史[A1审计](2026-11-01-audit.md)及[R8记录](../delivery/2026-11-02-refactoring-exit.md)保留原身份与范围。设计约束见[ADR0001](decisions/0001-refactoring-foundations.md)/[0002](decisions/0002-static-boundaries.md)。
 
 ## 模块与依赖
 
@@ -105,6 +105,7 @@ flowchart TB
 |原run只读证据引用索引|`tasks.evidence` → `reference.task_evidence` → 同一专用进程的`inspect-index`；CLI/GET API|复用一次闭合history及FileAdapter核验；返回原创建/spec/Agent绑定摘要、调度event引用及已核回执，不复制正文。原outcome显式回执引用与材料字节验证分别陈述，未记录上下文不补造；1 MiB响应不等于总IO上限，旧external-status/对账输出保持|
 |原run离线材料交接|`tasks.handoff` → `reference.task_handoff` → 同一原生索引所有者的`export-handoff` → `handoff.create`；CLI另直接消费`handoff.verify`|FileAdapter受限读取回调只提供原回执材料；ZIP仅manifest及去重blob，同目录仅创建发布。离线验证不导入State/SDK或执行材料，核字节及声明的内部身份，不认证来源或历史计数|
 |显式HTTP交接下载|POST任务`/handoff` → 同一`tasks.handoff`|严格正文只有原run/timeout，无服务器路径；Web在每请求私有临时目录选择输出、受限读回并核响应SHA，清理后以固定attachment返回ZIP。格式/材料校验不复制到Web，缓冲内存与发送生命周期由传输端负责；不改变执行或ownership，不新增持久下载记录|
+|证据/预算/交接网页|现有`tasks.js`详情 → 同一GET索引/POST包；`api.js`共用错误处理、可选成功解码，`ui.download`接收可选MIME|打开不收集；busy串行、原view/detail/run及弹窗连接隔离迟到响应。job目录每页20项，正文复用原job窗口；包响应SHA核后才交给浏览器。无新控制器/状态库/下载账本，材料和结果语义仍在后端所有者|
 |原预算与有来源的用量事实|同一`inspect-index`的`budget/usage`；CLI/GET API|冻结profile给工作流准入/等待策略，不冒充外部进程硬限；原history单次扫描累计事件/调度及首终Timestamp跨度，不另建账本或额外RPC。记录的activity-start不等于全部尝试或模型调用；模型次数/token/费用无结构化来源保持null，旧操作输出不增加字段|
 |原run显式清理对账/本地记录/恢复|`tasks.reconcile / reconciliation / resume_reconcile` → `reference.task_reconciliation` → 同一专用进程；CLI/API|组合原只读检查所有者，短revision准备后仅task锁；原outcome/history检查点先于原fence，发布后完整重验；清理evidence先于原IngressLeases精确释放，SQLite提交后result；不改原outcome/复用task ID，GET只读本地记录|
 |参考资源、编译与执行桥|`reference`、`reference_task_creation`、`reference_task_runtime`、`reference_task_events`、`reference_task_evidence`、`reference_task_submission`、`reference_task_approval`、`reference_task_cancellation`、`reference_task_export`、`reference_task_reconciliation`、`reference_executor`、`stage_driver`；CLI/Web/drafts/agent_runs|资源查询与正式执行分开；执行器限专用 Linux 进程，不把原导入全局当 Web request-local|

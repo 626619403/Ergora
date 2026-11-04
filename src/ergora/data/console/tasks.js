@@ -1,6 +1,6 @@
 import { api } from "./api.js";
 import {
-  $, node, button, pre, heading, panel, empty, row, field, select, badge, form, modal, table,
+  $, node, button, pre, heading, panel, empty, row, field, select, badge, form, modal, table, download,
 } from "./ui.js";
 import { stages } from "./state.js";
 
@@ -446,6 +446,142 @@ export function tasksView(data, base) {
       readIndex();
     }
 
+
+    function evidenceDialog(runId, selectedRunSequence) {
+      if (!view.isConnected || sequence !== detailSequence || selectedRunSequence !== runSequence) return;
+      let busy = false;
+      const message = node("div", { "aria-live": "polite" });
+      const observation = node("div", {});
+      const collected = node("div", {});
+      const readButton = button("读取证据索引", readIndex);
+      const collectButton = button("收集并下载交接包", collect);
+      const content = node("div", {},
+        facts([["任务 ID", taskId], ["原 run ID", runId]]),
+        node("p", {}, "按需读取原闭合运行。打开此窗口不会收集材料；索引与下载分别操作，无需先读取索引。材料校验、原结果、候选审查和外部清理各自独立。"),
+        row(readButton, collectButton), message, collected, observation,
+      );
+      const active = () => view.isConnected && sequence === detailSequence &&
+        selectedRunSequence === runSequence && content.isConnected && $("#dialog").open;
+      const setBusy = (value) => {
+        busy = value;
+        readButton.disabled = value;
+        collectButton.disabled = value;
+      };
+
+      function showIndex(index) {
+        const usage = index.usage;
+        const budget = index.budget;
+        const span = usage.workflow_span;
+        let page = 0;
+        const jobs = node("div", {});
+        const pageNote = node("p", { className: "form-note" });
+        const previous = button("上一页原job", () => { page--; showJobs(); });
+        const next = button("下一页原job", () => { page++; showJobs(); });
+        function showJobs() {
+          jobs.replaceChildren(table(["阶段 / 原job", "请求", "回执", "原结果引用", "材料"],
+            index.jobs.slice(page * 20, (page + 1) * 20).map((job) => [
+              node("div", {}, node("p", {}, job.stage), node("p", {}, job.job_id),
+                button("原job回执与材料", () => {
+                  if (active()) jobDialog(runId, job.history_event_ids[0], selectedRunSequence);
+                })),
+              job.request_state, job.receipt_state, job.outcome_reference_state,
+              job.receipt?.artifacts.length ?? "无可验证回执",
+            ])));
+          pageNote.textContent = `第 ${page + 1} 页 · 共 ${index.jobs.length} 个原job · 每页最多20项`;
+          previous.disabled = page === 0;
+          next.disabled = (page + 1) * 20 >= index.jobs.length;
+        }
+        showJobs();
+        observation.replaceChildren(
+          panel("原结果与材料观察", "verified只表示当前发布材料完整且摘要可核；SUCCEEDED回执不等于原workflow采用，matches表示该回执与原outcome引用一致。外部清理需另核原对账。",
+            facts([
+              ["原服务状态", index.temporal_status], ["原业务结果", index.original_outcome?.status ?? "未记录业务结果"],
+              ["候选提交", index.original_outcome?.candidate_sha], ["发布材料完整性", index.published_evidence],
+              ["未决job数量", index.unresolved_jobs.length], ["额外job数量", index.unexpected_jobs.length],
+              ["外部协议证据确认", index.external_confirmed ? "已确认" : "未确认"],
+              ["本次读取释放租约", String(index.lease_released_by_operation)],
+              ["执行成功推断", index.execution_success === null ? "未知（未推断）" : String(index.execution_success)],
+              ["原请求 SHA256", index.request_sha256], ["原profile SHA256", index.profile_sha256],
+              ["原history jobs SHA256", index.history_jobs_sha256], ["原结果 SHA256", index.original_outcome_sha256],
+            ]), disclosure("完整原结果", index.original_outcome)),
+          panel("冻结预算", "这些是工作流准入与等待策略，不是外部进程运行时间、模型调用或费用的硬上限。",
+            facts([
+              ["来源", budget.source], ["适用范围", budget.scope],
+              ["最大工作单元数", budget.limits.max_work_units], ["最大并行单元数", budget.limits.max_parallel_units],
+              ["阶段等待上限（秒）", budget.stage_timeout_seconds], ["批准等待上限（秒）", budget.approval_timeout_seconds],
+              ["轮询间隔（秒）", budget.poll_seconds],
+            ])),
+          panel("原history用量事实", "调度事件、活动start及独立job不是模型调用次数，也不能作为重试或计费量。服务跨度包含等待、并发及调度时间。",
+            facts([
+              ["计数来源", usage.source], ["history事件数", usage.events],
+              ["活动调度数", usage.scheduled_activities], ["已记录活动start数", usage.recorded_activity_starts],
+              ["信号事件数", usage.signal_events], ["dev_submit调度数", usage.dev_submit_events],
+              ["独立job数", usage.unique_jobs], ["合同工作单元数", usage.configured_work_units],
+              ["跨度状态", span.state], ["跨度来源", span.source],
+              ["起始事件 / 时间", `${span.start_event_id} / ${span.started_at ?? "未记录"}`],
+              ["闭合事件 / 时间", `${span.close_event_id} / ${span.closed_at ?? "未记录"}`],
+              ["服务history跨度", span.value === null ? "未知" : `${span.value} ${span.unit}`],
+            ]),
+            table(["用量", "值", "单位", "记录状态", "来源"],
+              [["模型调用", usage.model_calls], ["Token", usage.tokens], ["费用", usage.cost]].map(([name, metric]) =>
+                [name, metric.value ?? "未知", metric.currency ?? metric.unit, metric.state, metric.source ?? "未记录"])),
+            disclosure("冻结预算与完整用量来源", { budget, usage })),
+          panel("原上下文关联", "未记录的评价、Skill、记忆或来源采用不会用当前项目配置补写。",
+            facts(Object.entries(index.context_snapshots).map(([name, value]) => [name, value.state]))),
+          panel("原job与回执", "只显示本页目录。明确打开原job后才读取回执；选择材料后仍需点击读取文本窗口。",
+            jobs, pageNote, row(previous, next)),
+          disclosure("完整只读索引与冻结合同", index),
+        );
+      }
+
+      async function readIndex() {
+        if (!active() || busy) return;
+        setBusy(true);
+        message.replaceChildren(empty("正在读取并核对原证据索引…"));
+        try {
+          const query = new URLSearchParams({ run_id: runId, timeout: "20" });
+          const index = await api(`${path}/evidence?${query}`);
+          if (!active()) return;
+          showIndex(index);
+          message.replaceChildren(empty("索引读取完成。这是本次只读观察，材料正文尚未读取。"));
+          readButton.textContent = "重新读取证据索引";
+        } catch (error) {
+          if (active()) message.replaceChildren(panel("证据索引读取失败", error.message,
+            node("p", {}, "先前观察如有则保留，不能视为本次已核。可明确重新读取。")));
+        } finally {
+          setBusy(false);
+        }
+      }
+
+      async function collect() {
+        if (!active() || busy) return;
+        setBusy(true);
+        message.replaceChildren(empty("正在收集原回执引用的材料；关闭或切换窗口后不交付迟到下载…"));
+        try {
+          const packet = await api(`${path}/handoff`, { run_id: runId, timeout: 20 }, "POST", async (response) => {
+            const bytes = await response.arrayBuffer();
+            const digest = await crypto.subtle.digest("SHA-256", bytes);
+            const sha256 = Array.from(new Uint8Array(digest), (value) => value.toString(16).padStart(2, "0")).join("");
+            if (sha256 !== response.headers.get("X-Ergora-Handoff-SHA256"))
+              throw new Error("交接包响应摘要不匹配；未触发下载。请重新收集并独立核对来源。");
+            return { bytes, sha256 };
+          });
+          if (!active()) return;
+          download("ergora-handoff.zip", packet.bytes, "application/zip");
+          collected.replaceChildren(panel("已交给浏览器下载", "请在浏览器确认保存位置；此处不证明文件已落盘。摘要只核本次响应字节，不认证来源，不推断执行成功，也不改变原取消结果。",
+            facts([["整包 SHA256", packet.sha256], ["响应字节数", packet.bytes.byteLength]]),
+            pre(`ergora handoff verify ergora-handoff.zip --sha256 ${packet.sha256}`)));
+          message.replaceChildren(empty("已核响应字节摘要；可在独立环境使用上方命令离线核包。"));
+        } catch (error) {
+          if (active()) message.replaceChildren(panel("交接包下载失败", error.message,
+            node("p", {}, "本次未触发下载。关闭窗口不会取消服务器已发出的收集请求，重新操作需明确点击。")));
+        } finally {
+          setBusy(false);
+        }
+      }
+
+      modal("证据、预算与交接", content);
+    }
 
     function eventsDialog(runId, selectedRunSequence) {
       if (!view.isConnected || sequence !== detailSequence || selectedRunSequence !== runSequence) return;
@@ -1134,6 +1270,8 @@ export function tasksView(data, base) {
               }, "primary") : null,
             !observed.terminal && observed.runtime_status === "queried"
               ? button("请求取消此运行", () => cancellationDialog(observed.run_id, reading)) : null,
+            observed.terminal && observed.runtime_status === "queried"
+              ? button("证据、预算与交接", () => evidenceDialog(observed.run_id, reading)) : null,
             observed.terminal && observed.runtime_status === "queried"
               ? button("外部证据与对账", () => reconciliationDialog(observed.run_id, reading)) : null,
             observed.terminal && observed.runtime_status === "queried" && observed.outcome?.status === "REVIEW_READY"
