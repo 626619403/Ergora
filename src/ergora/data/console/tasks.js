@@ -463,6 +463,118 @@ export function tasksView(data, base) {
       if (decisionInput.value) await read();
     }
 
+    async function cancellationDialog(runId = null, selectedRunSequence = null) {
+      if (!view.isConnected || sequence !== detailSequence ||
+          runId && selectedRunSequence !== runSequence) return;
+      const requestKey = `ergora-cancel:${data.project.id}:${taskId}`;
+      const requestField = field("取消请求 ID（用于恢复）", "request_id",
+        sessionStorage.getItem(requestKey) || "", "text", {
+          required: true, maxlength: 80, autocomplete: "off",
+        });
+      const requestInput = requestField.querySelector("input");
+      const result = node("div", { "aria-live": "polite" });
+      let readingSequence = 0;
+      let writing = false;
+      const reader = form([requestField], "读取取消记录", read);
+      const readButton = reader.querySelector('button[type="submit"]');
+      const content = node("div", {},
+        node("p", {}, "取消是协作请求；投递回执不确认运行或外部作业已停止。请保留原请求 ID，先读取原记录，再明确请求或恢复。关闭页面不撤销已发出的操作。"),
+        runId ? facts([["本次选择的原 run ID", runId]]) : null,
+        reader, result,
+      );
+      const active = () => view.isConnected && sequence === detailSequence &&
+        content.isConnected && $("#dialog").open && (!runId || selectedRunSequence === runSequence);
+      const current = (reading) => active() && reading === readingSequence;
+      requestInput.addEventListener("input", () => {
+        readingSequence++;
+        result.replaceChildren(empty("取消请求 ID已更改，请重新读取原记录。"));
+      });
+
+      function show(record, reading, requestId) {
+        const descriptions = {
+          not_recorded: "此 ID没有取消记录。从已查询的原运行进入时，可填写原因并明确请求取消。",
+          prepared: "原取消意图已保存，尚无信号检查点；明确恢复可能首次投递原请求。",
+          unknown: "原投递结果尚未确认。恢复只在原run核对精确信号，不重新发信号。",
+          requested: "原取消信号投递事实已保存；运行终态和外部清理仍需分别核对。",
+          already_closed: "原运行在发送前已闭合，本次没有投递取消信号。此记录不确认外部作业已清理。",
+        };
+        const canRequest = runId && record.status === "not_recorded";
+        const canResume = ["prepared", "unknown"].includes(record.status);
+        const action = canRequest ? "确认请求取消此运行"
+          : record.status === "prepared" ? "确认恢复原取消意图" : "确认核对原取消信号";
+        result.replaceChildren(panel(`取消记录：${record.status}`, descriptions[record.status],
+          facts([
+            ["取消请求 ID", requestId], ["项目当前修订", record.project_revision],
+            ["原 run ID", record.run_id], ["原取消原因", record.reason],
+            ["原意图 SHA256", record.intent_sha256], ["信号投递依据", record.signal_delivery],
+            ["原信号恢复查询", record.reconciliation], ["发送时已闭合状态", record.temporal_status],
+            ["取消请求投递", record.cancel_requested == null ? "未知" : record.cancel_requested ? "是" : "否"],
+            ["取消已确认", record.cancellation_confirmed == null ? "未确认" : record.cancellation_confirmed ? "是" : "否"],
+          ]),
+          disclosure("完整原取消记录", record),
+          canRequest || canResume ? form(canRequest ? [field("取消原因", "reason", "", "textarea", {
+            required: true, maxlength: 1000,
+          })] : [], action, async (values) => {
+            if (!current(reading) || writing) return;
+            writing = true;
+            requestInput.readOnly = true;
+            readButton.disabled = true;
+            sessionStorage.setItem(requestKey, requestId);
+            result.replaceChildren(empty(`正在处理原取消请求 ${requestId}；回复未知时先读取原记录，关闭页面不取消本次操作。`));
+            try {
+              const observed = await api(`${path}/cancellations/${encodeURIComponent(requestId)}${canRequest ? "" : "/resume"}`, {
+                revision: record.project_revision, confirm: true, timeout: 20,
+                ...(canRequest ? { run_id: runId, reason: values.get("reason") }
+                  : { intent_sha256: record.intent_sha256 }),
+              });
+              if (current(reading)) show(observed, reading, requestId);
+            } catch (error) {
+              if (current(reading)) result.replaceChildren(panel("取消结果尚未确认", error.message,
+                node("p", {}, `原请求 ID：${requestId}。先读原记录，再决定是否恢复；不要改用新 ID绕过未知投递。`),
+                button("重新读取原取消记录", read),
+              ));
+            } finally {
+              writing = false;
+              if (active()) {
+                requestInput.readOnly = false;
+                readButton.disabled = false;
+              }
+            }
+          }) : null,
+          row(
+            button("重新读取原取消记录", read),
+            ["requested", "already_closed"].includes(record.status) ? button("返回原任务与运行", () => {
+              if (!current(reading)) return;
+              sessionStorage.setItem(runKey, record.run_id);
+              $("#dialog").close();
+              inspect(taskId);
+            }) : null,
+          ),
+        ));
+      }
+
+      async function read() {
+        if (!active() || writing) return;
+        const requestId = requestInput.value;
+        if (!requestInput.reportValidity()) return;
+        const reading = ++readingSequence;
+        sessionStorage.setItem(requestKey, requestId);
+        result.replaceChildren(empty(`正在读取原取消请求 ${requestId}…`));
+        try {
+          const record = await api(`${path}/cancellations/${encodeURIComponent(requestId)}`);
+          if (current(reading)) show(record, reading, requestId);
+        } catch (error) {
+          if (current(reading)) result.replaceChildren(panel("取消记录读取失败", error.message,
+            node("p", {}, `原请求 ID：${requestId}。记录未读成功，不提供请求或恢复确认。`),
+            button("重新读取原取消记录", read),
+          ));
+        }
+      }
+
+      modal(runId ? "请求取消原运行" : "按原 ID 检查取消记录", content);
+      if (requestInput.value) await read();
+    }
+
     function submissionDialog() {
       let readingSequence = 0;
       const result = node("div", { "aria-live": "polite" });
@@ -578,6 +690,7 @@ export function tasksView(data, base) {
           : node("p", { className: "task-error" }, `提交回执读取失败：${submission.reason.message}`),
         button("检查提交与恢复", submissionDialog),
         saved?.status === "submitted" ? button("按原 ID 检查批准记录", () => approvalDialog()) : null,
+        saved?.status === "submitted" ? button("按原 ID 检查取消记录", () => cancellationDialog()) : null,
       ),
       panel("原生运行", "按固定run读取。关闭页面不会取消任务；取消后的外部清理需另行对账。",
         form([runField], "读取原运行", async (values) => {
@@ -610,6 +723,8 @@ export function tasksView(data, base) {
                 if (!view.isConnected || sequence !== detailSequence || reading !== runSequence) return;
                 return approvalDialog({ run_id: observed.run_id, plan_sha256: observed.status.plan_sha256 }, reading);
               }, "primary") : null,
+            !observed.terminal && observed.runtime_status === "queried"
+              ? button("请求取消此运行", () => cancellationDialog(observed.run_id, reading)) : null,
             node("div", { className: "stage-strip", "aria-label": "六阶段位置" }, stages.map((stage) =>
               node("span", { className: currentStage === stage ? "current" : null }, stage))),
             observed.status ? facts([

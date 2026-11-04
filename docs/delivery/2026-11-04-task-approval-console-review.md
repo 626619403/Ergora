@@ -44,3 +44,34 @@
 本轮只写本报告；未安装、提交、推送、批准、取消或恢复任何运行，未重跑重型回归或整段浏览器旅程。实际页面验收依据经核实的原脚本/日志/响应及截图，实时 SDK 核验只读且有事件/时间上限。非 Chromium 浏览器、Windows页面运行、大规模同时操作及最大材料渲染延迟未另测，不据当前证据推导性能保证。
 
 下一步应提交上述精确范围，再由同一审查者核提交树/最终包身份、精确双OS必要CI步骤及实时远端。取消、外部清理、导出、F4.4和完整F4继续按各自切片验收；两演示run的 REVIEW_READY 事实不关闭这些后续责任。
+
+## 提交身份追加复核
+
+2026-11-04，同一审查者只读复核已推送候选 `c54230eb8a6d3468ef33e6365c874a4e3a2407d6`，唯一父提交为原基线 `14100cd8d9efca270e0a93d9a6c1b77fde9ed66c`。
+
+- `git show` / `diff-tree` 确认为12文件：两个生产JS和十份范围内文档（含本审查报告），与上述审查相符；无测试、CI、Python或依赖改动。直接核提交树，下一片取消计划未进入该提交。
+- 08:17:37 UTC以 `git archive` 在内存读取提交文件、独立重算全部348个包文件：与最终4fcdb979…wheel、`package-identity.json`及两份保留 non editable 安装逐项一致；实际 direct_url 及283冻结文件身份保持。没有把当前或随后实施的取消页面工作树源码纳入B比较。
+- 审查者实际执行 `git ls-remote origin refs/heads/refactor/architecture-foundations`，实时返回完整 `c54230eb8a6d3468ef33e6365c874a4e3a2407d6`，本次远端身份一致。
+- 已读精确提交的 `portability.yml`，核 Ubuntu/Python3.11 与 Windows/Python3.12矩阵、20分钟界限、构建安装/冻结身份/原生回归及Windows专用安装升级步骤。
+- 直接读取本片 `ci/` 保存的官方run HTML，完整候选提交链接匹配，[CI41797567476](https://github.com/626619403/Ergora/actions/runs/41797567476)实际可见 `Status` 为 **In progress**；首份job groups仅显示Ubuntu126465188976进行中，`totalCount=2/hasMore=true`。这些初始材料不能证明两OS或必要步骤最终成功，CI继续待办，未继承前片A的成功。
+
+本阶段结论为精确提交、已验包/两安装与当次实时远端复核通过，无新增findings；精确CI及最终远端终结复核待后续。未重跑重型测试、安装或操作原run。
+
+## 精确CI与远端终结复核
+
+2026-11-04 08:30:24 UTC，同一审查者独立解析本片 `ci/` 更新保存的官方run及两个job原HTML，复核固定候选 `c54230eb8a6d3468ef33e6365c874a4e3a2407d6` 的 [CI41797567476](https://github.com/626619403/Ergora/actions/runs/41797567476)，没有仅依据作者的 `ci-html-status.json` 或命令exit0作结论。
+
+run页存在完整候选提交链接，实际可见 `Status` 为 **Success**；两个job页的JSON props分别包含预期 `selectedJobId`，可见矩阵名称对应精确提交内的workflow。下表每个必要步骤都恰有一条 `check-step`，具有 `data-conclusion=success`、`data-job-completed`，且 `data-log-url`逐字等于 `/626619403/Ergora/commit/c54230eb8a6d3468ef33e6365c874a4e3a2407d6/checks/JOB_ID/logs/N`。
+
+|实际矩阵/job|必要步骤及精确日志序号|结果|
+|---|---|---|
+|Windows / Python3.12，[126465188338](https://github.com/626619403/Ergora/actions/runs/41797567476/job/126465188338)|Build and install wheel:4；Packaged reference identity:5；Native application regression:6；Windows PowerShell 5.1 installer and upgrade:7|全部 success/completed|
+|Ubuntu / Python3.11，[126465188976](https://github.com/626619403/Ergora/actions/runs/41797567476/job/126465188976)|Build and install wheel:4；Packaged reference identity:5；Native application regression:6|全部 success/completed|
+
+两job全部步骤均无failure/cancelled/timed_out；Ubuntu的Windows专用安装步骤按原条件skipped。官方job groups的单页仍为 `hasMore=true`，本次以两个选中job的原HTML分别证明双OS，未将该单页当作完整矩阵证据。未下载逐例日志正文，不从步骤状态新增测试数量、耗时或性能结论。
+
+独立重算原HTML摘要并与保存摘要交叉比对一致：run为 `353ee44e09f47e910c7e161cc290ad104afb7e5ec138843dd3704f86b7f4d027`；Windows为 `b4cf2af6ceb2de27cbac9bf664755bdc19d1f0b016c04c08fd5cab548d6589a3`；Ubuntu为 `3af44107ea1118f307be96e92d2a0feea26e606397aa87cb78f35a6ba1b00785`。前段首次In progress记录保留其当时观察，不改写为早期已成功。
+
+终结时审查者再次实际执行 `git ls-remote origin refs/heads/refactor/architecture-foundations`，实时返回完整 `c54230eb8a6d3468ef33e6365c874a4e3a2407d6`；`git show`再核其唯一父提交仍为原14100cd。精确提交348文件/4fcdb979…wheel/两安装/283冻结身份已在提交阶段独立闭合，本轮CI严格绑定同一个不可变提交。后续取消页面工作树未参加本片源码或CI身份比较，也未由本审查者兼作下一片实现审查。
+
+**终结结论：F4.3b需求符合性与可维护性均通过，精确提交、实际双OS必要步骤及实时远端已闭合，无未解决findings。** 本轮仅追加本报告、只读核验，未更改源码/CI、安装、重跑测试或发送信号。完整F4以及取消、外部清理、导出和F4.4继续按各自切片验收。
