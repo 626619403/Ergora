@@ -106,6 +106,15 @@ def external_status(state: State, project_id: str, task_id: str, *, run_id: str,
     return reference.task_external_status(project, state.root, {'task_id': task_id, 'run_id': run_id}, timeout=timeout)
 
 
+def evidence(state: State, project_id: str, task_id: str, *, run_id: str, timeout: int = 20) -> dict:
+    """Index a closed original run's contracts, published receipts and artifact references."""
+    _run_id(run_id)
+    if type(timeout) is not int or not 1 <= timeout <= 60:
+        raise ValueError('Task evidence index query timeout must be 1–60 seconds')
+    project = _project(state, project_id)
+    return reference.task_evidence(project, state.root, {'task_id': task_id, 'run_id': run_id}, timeout=timeout)
+
+
 def events(state: State, project_id: str, task_id: str, *, run_id: str,
            limit: int = 20, after: str | None = None, timeout: int = 20) -> dict:
     """Read one bounded page of original-run metadata without returning payloads."""

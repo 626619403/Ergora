@@ -300,6 +300,14 @@ ergora task reconciliation my-project TASK_ID
 
 取消信号不等于进程已停。原CANCEL_UNCONFIRMED与后续已确认清理是两份事实；对账不改写原结果，缺证据保持未知和租约。中断恢复、返回状态和备份范围见[完整操作说明](docs/USAGE.md#正式任务的操作顺序与恢复)。旧入口创建的任务继续由原agentflow管理，不隐式迁移在途history。
 
+原run闭合后，可集中核对冻结合同、Agent绑定、原job回执及产物引用：
+
+```bash
+ergora task evidence my-project TASK_ID --run-id RUN_ID --timeout 20
+```
+
+该[只读证据索引](docs/USAGE.md#读取闭合运行的证据索引)区分材料字节核验、原结果引用和外部清理；缺失材料保持未确认，未记录的Skill/记忆等快照明确显示`not_recorded`。索引不携带材料正文，全文仍从原job入口按需读取。
+
 ## 工单、搜索与训练
 
 **工单按业务项目接入。** 注册时选择 `--tracker github` 或 `--tracker gitlab`，并指定该项目自己的远程标识。以 GitLab 为例，完成对应注册后：

@@ -54,14 +54,17 @@ class _Inspection:
                 raise ValueError('Original history job context differs from the recorded task spec')
             job_id = identifier(context['job_id'])
             job = {'task_id': self.creation.task_id, 'job_id': job_id, 'job_sha256': self.sha(context), 'context': context}
-            if job_id in jobs and self.sha(jobs[job_id]) != self.sha(job):
-                raise ValueError('Original history contains conflicting contexts for the same job')
-            jobs[job_id] = job
+            if job_id in jobs:
+                if jobs[job_id]['job_sha256'] != job['job_sha256']:
+                    raise ValueError('Original history contains conflicting contexts for the same job')
+                jobs[job_id]['history_event_ids'].append(event.event_id)
+            else:
+                jobs[job_id] = {**job, 'history_event_ids': [event.event_id]}
         if last is None or not last.HasField(terminal_field):
             raise ValueError('External evidence history lacks its original terminal event')
         return jobs
 
-    async def files(self, jobs: dict) -> dict:
+    async def files(self, jobs: dict, *, include_receipts: bool = False) -> dict:
         from dev_platform.adapter import identifier
 
         actual = set()
@@ -83,6 +86,7 @@ class _Inspection:
             observation = {'job_id': job_id, 'stage': job['context']['stage'], 'job_sha256': job['job_sha256'],
                            'request_state': 'matches' if envelope is not None else 'missing',
                            'receipt_state': 'missing', 'receipt_sha256': None}
+            receipt = None
             try:
                 receipt = await self.adapter.poll(job)
                 if receipt is not None:
@@ -91,6 +95,9 @@ class _Inspection:
                 observation.update(receipt_state='invalid', receipt_error=str(error)[:1500])
             if envelope is None or observation['receipt_state'] in ('missing', 'invalid'):
                 unresolved.add(job_id)
+            if include_receipts:
+                observation.update(history_event_ids=job['history_event_ids'],
+                                   receipt=receipt if observation['receipt_state'] not in ('missing', 'invalid') else None)
             observations.append(observation)
         fence_path = self.adapter.path('fences', self.creation.task_id + '.json')
         fence = self.creation.optional(fence_path)
@@ -117,13 +124,36 @@ class _Inspection:
                     or outcome.get('request_sha256') != self.spec['request_sha256']):
                 raise ValueError('Original closed outcome differs from the recorded task request')
         jobs = await self.jobs(handle, converter, temporal_status)
-        return {'schema_version': 1, 'project': self.creation.project['id'],
+        indexed = self.payload['operation'] == 'inspect-index'
+        result = {'schema_version': 1, 'project': self.creation.project['id'],
                 'project_revision': self.creation.project['revision'], 'task_id': self.creation.task_id,
                 'workflow_id': self.intent['workflow_id'], 'run_id': self.run_id, 'runtime_status': 'queried',
                 'terminal': True, 'temporal_status': temporal_status, 'original_outcome': outcome,
                 'history_jobs_sha256': self.sha([{'job_id': key, 'job_sha256': value['job_sha256']}
                                                for key, value in sorted(jobs.items())]),
-                **await self.files(jobs), 'lease_released_by_operation': False, 'execution_success': None}
+                **await self.files(jobs, include_receipts=indexed),
+                'lease_released_by_operation': False, 'execution_success': None}
+        if indexed:
+            selection = self.submission.creation_record['files']['agent-bindings.json']
+            for job in result['jobs']:
+                key = {'verify': 'verification', 'review': 'review'}.get(job['stage'])
+                recorded = outcome.get(key) if outcome is not None and key is not None else None
+                job['outcome_reference_state'] = ('not_recorded' if recorded is None else
+                    'unavailable' if job['receipt'] is None else
+                    'matches' if self.sha(recorded) == job['receipt_sha256'] else 'differs')
+            result.update(read_only=True, index_type='original-task-evidence',
+                request_sha256=self.spec['request_sha256'], profile_sha256=self.spec['profile_sha256'],
+                contract={'spec': self.spec, 'spec_sha256': self.sha(self.spec),
+                          'creation_sha256': self.intent['creation_sha256'],
+                          'submission_sha256': self.sha(self.intent), 'agent_bindings': selection,
+                          'agent_bindings_sha256': self.sha(selection)},
+                original_outcome_sha256=self.sha(outcome) if outcome is not None else None,
+                published_evidence='verified' if not result['unresolved_jobs'] else 'incomplete',
+                context_snapshots={key: {'state': 'not_recorded'} for key in
+                                   ('evaluations', 'skills', 'memories', 'source_adoptions')},
+                artifact_limit_bytes=16_777_216, response_limit_bytes=1_048_576)
+            self.creation.check_size(result, 1_048_576, 'Task evidence index')
+        return result
 
 
 class _Reconciliation:
@@ -314,11 +344,12 @@ def main() -> None:
         operation = payload['operation']
         if operation not in ('status', 'prepare', 'prepare-resume'):
             os.environ.update(environment())
-        owner = _Inspection(payload) if operation == 'inspect' else _Reconciliation(payload)
+        owner = _Inspection(payload) if operation in ('inspect', 'inspect-index') else _Reconciliation(payload)
         result = asyncio.run(asyncio.wait_for(owner.run(), payload['timeout']))
         print(json.dumps(result, ensure_ascii=False, allow_nan=False))
     except TimeoutError as error:
-        message = ('External evidence query timed out; no fence or lease was changed' if operation == 'inspect' else
+        message = ('Task evidence index query timed out; no fence or lease was changed' if operation == 'inspect-index' else
+                   'External evidence query timed out; no fence or lease was changed' if operation == 'inspect' else
                    'Reconciliation timed out; inspect task reconciliation and resume its original intent')
         raise SystemExit('BLOCKED: ' + message) from error
     except RuntimeNotFound as error:

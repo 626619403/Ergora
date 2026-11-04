@@ -321,6 +321,10 @@ def create_app(home: Path | None = None) -> FastAPI:
     def formal_task_external_status(project_id: str, task_id: str, run_id: str, timeout: int = 20):
         return tasks.external_status(state, project_id, task_id, run_id=run_id, timeout=timeout)
 
+    @application.get("/api/projects/{project_id}/tasks/{task_id}/evidence")
+    def formal_task_evidence(project_id: str, task_id: str, run_id: str, timeout: int = 20):
+        return tasks.evidence(state, project_id, task_id, run_id=run_id, timeout=timeout)
+
     @application.get("/api/projects/{project_id}/tasks/{task_id}/reconciliation")
     def formal_task_reconciliation(project_id: str, task_id: str):
         return tasks.reconciliation(state, project_id, task_id)

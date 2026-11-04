@@ -386,6 +386,22 @@ ergora task status my-project TASK_ID --run-id RUN_ID --timeout 20
 
 API为GET/POST `.../tasks/TASK_ID/cancellations/REQUEST_ID`，POST正文`revision/run_id/reason/confirm/timeout`；POST同路径`/resume`使用`revision/intent_sha256/confirm/timeout`。严格确认必须为true，写请求沿用同源保护及`X-Ergora-Request: 1`。旧入口任务仍由原CLI管理。
 
+### 读取闭合运行的证据索引
+
+统一创建并保存原提交回执的任务，在原run闭合且没有后继运行后可集中读取证据引用：
+
+```bash
+ergora task evidence my-project TASK_ID --run-id RUN_ID --timeout 20
+```
+
+API：`GET /api/projects/PROJECT_ID/tasks/TASK_ID/evidence?run_id=RUN_ID&timeout=20`。使用登记Linux/WSL2完整运行时；查询预算1–60秒，父进程另留5秒，本地合同预检另计。超时、超大响应或错误归属会明确失败，不返回部分完整索引。
+
+`contract`固定原创建/提交摘要、spec及Agent绑定快照；`original_outcome`和其摘要保留原结果。`jobs`列出原调度事件ID、context摘要、请求/回执状态和完整已核回执；回执中包含actor、候选、checks和材料的name/path/SHA，不返回材料正文。需要正文时，从所列调度事件使用[原job读取入口](#读取原job回执与文本证据)。
+
+`published_evidence: verified`只表示本次检查的全部原请求/已发布回执及产物字节完整匹配。它不代表检查通过、独立审查通过或任务可合入；`execution_success`保持null。只有原outcome显式保存的verification/review回执会与对应job逐项比较，`outcome_reference_state`显示`matches/differs/unavailable`；其他阶段显示`not_recorded`，不能从文件存在推断已采用。缺失或坏回执/产物使`published_evidence`为`incomplete`，错误请求、fence、根或history则明确拒绝。外部清理由独立的`external_confirmed/fence/unresolved_jobs`说明；正常任务没有fence也可拥有完整材料，取消任务仍保留原CANCEL_UNCONFIRMED。
+
+索引限1 MiB响应，但仍扫描完整原history，并通过FileAdapter读取和核对每份产物（每份最多16 MiB）；它不限制总IO或总内存到1 MiB。结果是当前材料观察，后续读取仍须重新核验。`context_snapshots`中的评价集、Skill、记忆及来源采用快照若未被原任务记录，均为`not_recorded`，不会用当前配置补写历史。查询不启动服务、不执行模型、不写fence、不释放租约或修改Git ref。
+
 ### 核对闭合运行的外部作业证据
 
 统一创建并保存原提交回执的任务，可用固定的原run读取完整历史、原作业请求、可信终态回执和已有fence：

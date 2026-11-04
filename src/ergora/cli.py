@@ -182,6 +182,11 @@ def parser() -> argparse.ArgumentParser:
     external.add_argument("task_id")
     external.add_argument("--run-id", required=True)
     external.add_argument("--timeout", type=int, default=20)
+    evidence = operations.add_parser("evidence", help="Index original contracts, published receipts and artifact references")
+    evidence.add_argument("project")
+    evidence.add_argument("task_id")
+    evidence.add_argument("--run-id", required=True)
+    evidence.add_argument("--timeout", type=int, default=20)
     reconciling = operations.add_parser("reconcile", help="Confirm a closed original run's external cleanup and ingress release")
     reconciling.add_argument("project")
     reconciling.add_argument("task_id")
@@ -468,6 +473,8 @@ def main(argv: list[str] | None = None) -> int:
                 return 0 if output["status"] == "submitted" else 1
             elif args.operation == "external-status":
                 output = tasks.external_status(state, args.project, args.task_id, run_id=args.run_id, timeout=args.timeout)
+            elif args.operation == "evidence":
+                output = tasks.evidence(state, args.project, args.task_id, run_id=args.run_id, timeout=args.timeout)
             elif args.operation == "reconciliation":
                 output = tasks.reconciliation(state, args.project, args.task_id)
             elif args.operation in ("reconcile", "resume-reconcile"):

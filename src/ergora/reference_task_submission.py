@@ -30,6 +30,7 @@ class _Submission:
         from dev_platform.workflow import workflow_id
 
         record = self.creation.published()
+        self.creation_record = record
         self.spec = record['files']['task.spec.json']
         self.expected = {'schema_version': 1, 'operation': 'start',
                          'control_home': record['control_home'], 'project': record['project'],
