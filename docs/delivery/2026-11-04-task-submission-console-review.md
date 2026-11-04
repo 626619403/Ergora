@@ -61,4 +61,29 @@
 
 ## 剩余验收
 
-刷新包含本报告续核段的最终文档身份记录，再核精确提交范围、CI及实时远端。首包862的真实拒绝与终包541的受控状态/迟到、真实旧修订拒绝继续分别记账；不将后续F4.2c真实组合旅程提前计入本片。
+精确候选CI及实时远端仍待独立终结核对。首包862的真实拒绝与终包541的受控状态/迟到、真实旧修订拒绝继续分别记账；不将后续F4.2c真实组合旅程提前计入本片。
+
+## 精确提交身份续核：通过，CI待定
+
+已只读核对`f54c077f3f61dc5020147975dc34872dbabbe0e7`，父提交为完整`e63bc8ba9366b9ec798712fb402722f952f990a9`。范围正好11文件：tasks/app两份生产文件和9份公开Markdown，没有私有checks、截图、配置、Python、测试或依赖改动。
+
+审查者重新计算终包541完整SHA，将该提交的348个包Git blob及wheel内容逐一与终版manifest比较，零差异；tasks/app仍为报告中的两项完整身份。另读取本片独立保存的`check-documents.py`及`static-documents.json`：UTC04:19:03记录15份Markdown、339链接/锚点、26命令、missing为空；15个提交文档Git blob的SHA均与该记录一致。该核对固定使用精确提交，不依赖随后F4.2c工作区状态。
+
+根代理已报告推送及实时远端查询成功；本轮审查者没有执行联网查询，精确CI材料尚未提供。源码、本地验收及提交范围无未解决finding。本段是提交之后的审查状态记录，不属于上述f54的文档身份快照。
+
+## 精确CI及实时远端终结：通过
+
+同一独立审查者于2026-11-04完成终结核对。本段取代前文在各历史时点的CI待定状态，保留原有身份与验证范围。候选固定为`f54c077f3f61dc5020147975dc34872dbabbe0e7`；后续F4.2c文档和PLAN记账未混入该候选。
+
+已读本片`ci/`内fetch/verify脚本、selection/status及官方actions、run、job-group和两份job原HTML，独立重算6份来源文件的字节数与SHA，均与status记录一致。独立解析原HTML确认[run41772980312](https://github.com/626619403/Ergora/actions/runs/41772980312)的完整候选commit链接及Portability动作行对应同一run，整体Status为Success。
+
+|原job|独立核对的必要步骤|
+|---|---|
+|Windows 3.12，`126386731279`|Build and install wheel、Packaged reference identity、Native application regression、Windows PowerShell 5.1 installer and upgrade全部success且completed。|
+|Ubuntu 3.11，`126386731612`|Build and install wheel、Packaged reference identity、Native application regression全部success且completed。Windows安装步骤依该精确提交的workflow条件skipped。|
+
+两份job页的`selectedJobId`分别为对应原job，summaryHref均指向原run；所有必要步骤的data-log-url均含完整`/commit/f54c077f3f61dc5020147975dc34872dbabbe0e7/checks/<对应job>/logs/`，没有混入其他提交或job。审查者独立解析输出为`a693c8`，来源hash核算输出为`f08cee`。
+
+审查者实际执行只读`git ls-remote --refs origin refs/heads/refactor/architecture-foundations`：UTC2026-11-04 04:46:52.528296至04:46:53.889660，exit0、stderr为空，返回完整`f54c077f3f61dc5020147975dc34872dbabbe0e7`及该分支名，原工具输出`261a57`。本轮未运行应用、浏览器、测试、构建、安装或服务，未改生产、其他文档或私有原材料。
+
+F4.2b的源码、可维护性、本地验收、精确提交身份、CI及实时远端独立审查全部通过，0未解决finding。本结论只关闭F4.2b的审查门禁，不将首包拒绝或终包fixture扩为真实成功提交组合旅程；F4.2c和完整F4继续按各自计划验收。
