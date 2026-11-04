@@ -358,6 +358,11 @@ def task_plan(project: dict, home: Path, payload: dict, *, timeout: int) -> dict
     return _task_operation(project, home, 'approval', 'inspect-plan', payload, timeout)
 
 
+def task_events(project: dict, home: Path, payload: dict, *, timeout: int) -> dict:
+    """Read bounded original-run metadata through its native query entry."""
+    return _task_operation(project, home, 'events', 'inspect-events', payload, timeout)
+
+
 def task_cancellation(project: dict, home: Path, operation: str, payload: dict, *, timeout: int) -> dict:
     """Use the native cancellation guard and preserve signal delivery uncertainty."""
     return _task_operation(project, home, 'cancellation', operation, payload, timeout)
@@ -379,6 +384,7 @@ def task_reconciliation(project: dict, home: Path, operation: str, payload: dict
 
 
 def _task_operation(project: dict, home: Path, component: str, operation: str, payload: dict, timeout: int) -> dict:
+    inspection = {'inspect-plan': 'Plan', 'inspect-events': 'Task event'}.get(operation)
     if sys.platform != 'linux':
         raise ValueError(f'Formal task {component} requires Linux; use the registered Linux runtime in WSL2')
     execution = project['registration']['definition']['execution']
@@ -398,13 +404,13 @@ def _task_operation(project: dict, home: Path, component: str, operation: str, p
                                                   'timeout': timeout, **payload}, allow_nan=False),
                                 capture_output=True, text=True, encoding='utf-8', env=environment, timeout=timeout + 5)
     except subprocess.TimeoutExpired as error:
-        if operation == 'inspect-plan':
-            raise ValueError('Plan inspection process timed out; query the original run before inspecting again') from error
+        if inspection:
+            raise ValueError(inspection + ' inspection process timed out; query the original run before inspecting again') from error
         raise ValueError(f'Task {component} process timed out; inspect task {component} and resume its original intent') from error
     if result.returncode:
         lines = result.stderr.strip().splitlines()
         detail = lines[-1] if lines else f'Native {component} process exited with status {result.returncode}'
-        if operation == 'inspect-plan':
+        if inspection:
             raise ValueError(detail)
         raise ValueError(detail + f'; inspect task {component} before any recovery')
     return json.loads(result.stdout)

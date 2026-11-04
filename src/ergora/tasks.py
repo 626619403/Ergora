@@ -106,6 +106,21 @@ def external_status(state: State, project_id: str, task_id: str, *, run_id: str,
     return reference.task_external_status(project, state.root, {'task_id': task_id, 'run_id': run_id}, timeout=timeout)
 
 
+def events(state: State, project_id: str, task_id: str, *, run_id: str,
+           limit: int = 20, after: str | None = None, timeout: int = 20) -> dict:
+    """Read one bounded page of original-run metadata without returning payloads."""
+    _run_id(run_id)
+    if type(limit) is not int or not 1 <= limit <= 100:
+        raise ValueError('Task event limit must be 1–100')
+    if type(timeout) is not int or not 1 <= timeout <= 60:
+        raise ValueError('Task event query timeout must be 1–60 seconds')
+    if after is not None and (not isinstance(after, str) or not 1 <= len(after) <= 8192):
+        raise ValueError('Invalid task event cursor')
+    project = _project(state, project_id)
+    return reference.task_events(project, state.root, {'task_id': task_id, 'run_id': run_id,
+                                 'limit': limit, 'after': after}, timeout=timeout)
+
+
 def submission(state: State, project_id: str, task_id: str) -> dict:
     """Inspect local submission facts without connecting to Temporal or reissuing work."""
     project = _project(state, project_id)

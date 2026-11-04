@@ -258,6 +258,22 @@ ergora task status my-project TASK_ID --run-id RUN_ID --timeout 20
 
 `terminal: true`只表示Temporal运行已闭合；outcome仍可能是CANCEL_UNCONFIRMED，或phase为NEEDS_RECONCILIATION，均须沿原ID对账。该入口使用登记的参考环境连接规则（目前是本机127.0.0.1:7233/default），项目scheduler绑定的地址/队列只用于资料研究调度。1–60秒timeout约束网络查询；子进程另留5秒启动/回收预算，本地合同预检和安装身份检查另计。SDK缺失会明确提示，不自动安装或从本地COMPILED/服务RUNNING推断运行状态。完整六阶段执行仍使用Linux/WSL2。
 
+### 分段读取原运行事件
+
+对统一创建且已保存原提交回执的任务，固定该回执的run ID，读取事件元数据：
+
+```bash
+ergora task events my-project TASK_ID --run-id RUN_ID --limit 20 --timeout 20
+# 仅在需要继续时，将上次返回的next_after原样传入：
+ergora task events my-project TASK_ID --run-id RUN_ID --limit 20 --after CURSOR --timeout 20
+```
+
+同源只读API为`GET /api/projects/ID/tasks/TASK_ID/events?run_id=RUN_ID&limit=20&after=CURSOR&timeout=20`，首次省略after。该入口使用上述Linux/WSL2参考运行时和原提交/spec/memo验证，不跟随其他run。返回事件ID、类型、时间和适用的activity/scheduled_event/signal关联字段，不返回原始输入、prompt、result或payload；事件投影不解码payload，原身份验证仍需解码启动spec。`read_only: true`、`execution_success: null`明确这只是事实片段。没有原生run时返回`runtime_status: not_found`；连接、超时、错误归属或游标错误明确失败，不自动重试或重发任务。
+
+原验证完成后每次读取一个事件SDK物理页、返回最多limit条（1–100，默认20），不是保证每次填满limit；整个请求另有原运行describe及启动前缀读取，不等于一次RPC。Temporal的物理页大小是建议值，可能超出请求条数；游标保留该页未读位置，下一次先继续剩余内容。`next_after`是绑定原提交/run的只读导航信息，不是授权或完整history证明，不能跨run使用。显示limit可以调整；SDK页大小保持原游标的值。总JSON响应最多1 MiB；SDK接收物理页的网络内存不受此响应上限约束。timeout为1–60秒墙钟预算，父进程另留5秒启动/回收，预检另计。
+
+`has_more`表示已知还有未读内容，`at_current_end`只表示读至本次可见尾部。RUNNING即使暂时无新事件仍保留next_after，稍后由用户显式读取；终态读至尾部才返回null。事件片段不证明六阶段完成、候选通过或外部进程已停；继续通过原status/outcome和外部对账核实这些事实。当前CLI/API可用，页面入口另行交付。
+
 ### 提交正式任务与恢复未知结果
 
 在Linux/WSL2安装完整参考运行时并初始化所登记的配置，使用该运行时的`.venv/bin/python`执行准入。控制面无需安装全部执行依赖；实际提交仍须通过原doctor、可信检查和工单租约，所选服务及模型须就绪。此入口仅接受通过统一入口完整创建的任务，保留其原spec和角色快照。

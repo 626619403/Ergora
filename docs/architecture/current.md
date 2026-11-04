@@ -4,7 +4,7 @@
 
 ## 模块与依赖
 
-自有Python仍为单包`ergora`，37个顶层文件（含两个包入口）；F1.2增加完整注册用例`registrations`，F2.3增加显式服务用例`services`，F3.1增加项目范围的正式任务查询`tasks`，F3.2在同一用例接入预览/创建/恢复，专用`reference_task_creation`拥有原生编译/发布生命周期。没有为层级增加空子包、通用Agent基类或插件容器。下图表示当前调用方向，组合节点内的模块并非互相依赖；精确导入由静态检查和源码确定。
+自有Python仍为单包`ergora`，38个顶层文件（含两个包入口）；F1.2增加完整注册用例`registrations`，F2.3增加显式服务用例`services`，F3.1增加项目范围的正式任务查询`tasks`，F3.2在同一用例接入预览/创建/恢复，专用`reference_task_creation`拥有原生编译/发布生命周期，F4.4的`reference_task_events`拥有原运行有界事件查询。没有为层级增加空子包、通用Agent基类或插件容器。下图表示当前调用方向，组合节点内的模块并非互相依赖；精确导入由静态检查和源码确定。
 
 ```mermaid
 flowchart TB
@@ -41,6 +41,9 @@ flowchart TB
   Creation --> Foundations
   Ref --> RuntimeQuery[reference_task_runtime 专用查询进程]
   RuntimeQuery --> Temporal[原 DevelopmentTransport / Temporal]
+  Ref --> Events[reference_task_events 专用事件查询进程]
+  Events --> Submission
+  Events --> Temporal
   Ref --> Submission[reference_task_submission 专用提交进程]
   Submission --> Temporal
   Ref --> Approval[reference_task_approval 专用审批进程]
@@ -77,6 +80,7 @@ flowchart TB
 |正式任务本地合同查询|`tasks.listing / show` → `reference.task_files`；CLI/API|固定子进程复用原合同与有界文件读取、项目/目录/基线/tracker归属、不透明分页游标；不查询Temporal或推断运行成功，不新增索引/调度器|
 |正式任务预览、创建与恢复|`tasks.preview / create / creation / resume_create` → `reference.task_creation` → 专用`reference_task_creation`；CLI/API|复用原create_task/portable及write，预览绑定项目修订和完整快照；先持久意图再发布原文件；按原意图恢复，不启动workflow，不接管legacy或复制调度器|
 |正式任务原生运行状态|`tasks.status` → `reference.task_runtime_status` → 专用`reference_task_runtime`；CLI/API|可选SDK只在专用进程导入；使用登记安装原Transport及共享VerifiedSpecClient严格核原始spec JSON/固定run ID，保留not-found/RPC错误/未知结果，不写本地状态或释放租约|
+|原运行的有界事件片段|`tasks.events` → `reference.task_events` → 专用`reference_task_events`；CLI/GET API|复用原提交/spec/memo固定run；单SDK物理页及页内游标，1–100事件/1 MiB响应/显式继续，事件投影不解码payload或持久化执行账本；查询模块依赖submission，避免runtime验证所有者反向导入submission|
 |本地服务运维|`services.status / control / logs`；CLI/API|复制原 Supervisor 定义并关闭自动启动；所选服务、当前修订及停止确认；共享执行目录/控制库归属；有界日志与原生游标，未确认不报告成功|
 |独立 Agent 调用|`agent_runs.run_agent / runs / output`；CLI/Web|冻结有效绑定视图、所选 Skill/记忆上下文及归档；普通调用成功不产生正式任务通过|
 |原生 Agent/Forge|`agents.invoke`、`kernel.create / operate`；独立调用、参考阶段/页面|既有 CLI/SDK 协议；Forge campaign 完成不等于可信训练采用，未知结果先对账|
@@ -90,7 +94,7 @@ flowchart TB
 |精确候选本地导出与回执恢复|`tasks.export / export_status / resume_export` → `reference.task_export` → 专用`reference_task_export`；CLI/API|复用原提交/spec/memo/run及REVIEW_READY结果；短revision准备后仅task锁，写前attempt固定outcome，Git事务保护已有分支/符号引用；unknown只核ref不重复写入；原租约/原生export回执沿原所有者|
 |原run外部作业证据|`tasks.external_status` → `reference.task_external_status` → 专用`reference_task_reconciliation`；CLI/API|复用原提交/spec/memo/SDK converter，完整连续闭合history逐项核请求和原FileAdapter可信终态回执/产物；已有fence与未决项另报；不写本工具记录、不发布fence或释放租约|
 |原run显式清理对账/本地记录/恢复|`tasks.reconcile / reconciliation / resume_reconcile` → `reference.task_reconciliation` → 同一专用进程；CLI/API|组合原只读检查所有者，短revision准备后仅task锁；原outcome/history检查点先于原fence，发布后完整重验；清理evidence先于原IngressLeases精确释放，SQLite提交后result；不改原outcome/复用task ID，GET只读本地记录|
-|参考资源、编译与执行桥|`reference`、`reference_task_creation`、`reference_task_runtime`、`reference_task_submission`、`reference_task_approval`、`reference_task_cancellation`、`reference_task_export`、`reference_task_reconciliation`、`reference_executor`、`stage_driver`；CLI/Web/drafts/agent_runs|资源查询与正式执行分开；执行器限专用 Linux 进程，不把原导入全局当 Web request-local|
+|参考资源、编译与执行桥|`reference`、`reference_task_creation`、`reference_task_runtime`、`reference_task_events`、`reference_task_submission`、`reference_task_approval`、`reference_task_cancellation`、`reference_task_export`、`reference_task_reconciliation`、`reference_executor`、`stage_driver`；CLI/Web/drafts/agent_runs|资源查询与正式执行分开；执行器限专用 Linux 进程，不把原导入全局当 Web request-local|
 |交互与传输|`cli`、`web`、`data/console`|调用现有用例；可选 Web/Temporal 延迟导入；UI 不拥有正式任务状态|
 
 Python 导入图包含函数内延迟导入，当前无环。`reference.executor` 动态加载执行桥，`stage_driver` 通过子进程运行，`data/drivers` 在独立 SDK 环境调用；这些运行边不能仅由顶层 import 推断。完整参考边界及退出条件见 [reference 文档](reference-boundary.md)，进程结果/产物/平台矩阵见 [运行契约](2026-11-02-runtime-contracts.md)。

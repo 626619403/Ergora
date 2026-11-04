@@ -1,6 +1,6 @@
 # Ergora 下一阶段计划与进度
 
-> 最新状态（2026-11-04）：[F4.3c2对账页面](delivery/2026-11-04-task-reconciliation-console.md)本地验收/独立及精确提交审查通过，401bacb归档348资源=3b9c包；SSH推送认证失败，远端精确CI/终结待完成。当前[d候选导出](delivery/2026-11-04-task-export-console.md)本地通过：独立2d1b包348资源/两安装/冻结283/13语法/架构8项，四段浏览器174请求/14POST（12拦截、2真实）；两原候选各一次新本地ref，丢回复/清选择恢复，131原文件/三原history/outcome/原HEAD工作区保持，仅8新增导出文件及两个原claim释放，现3claim/0active。[新独立本地审查](delivery/2026-11-04-task-export-console-review.md)通过，无findings；正在提交/包核对，远端/精确CI待认证恢复。下一F4.4a1有界事件接口，SDK实测及a1/a2/b/c分片已写详细计划；完整F4/F5/G0未完成。本条优先于下方历史快照。
+> 最新状态（2026-11-04）：[c2对账](delivery/2026-11-04-task-reconciliation-console.md)401bacb已通过RSA推送、精确双OS CI41819895815及原审查者终结，报告已归档。[d导出](delivery/2026-11-04-task-export-console.md)a6ef6e3已推送并核实时远端及精确双OS CI41834815428，同片终结复核中。当前[F4.4a1事件CLI/API](delivery/2026-11-04-task-events.md)源码/非editable包各69项、4既有边界、349资源两安装和29次真实只读分页通过；329/348事件无漏重，139文件/三history/outcome/refs/leases保持。[新独立审查](delivery/2026-11-04-task-events-review.md)及三处文案复核通过，另复跑69项。下一精确提交/CI，再a2事件页面；完整F4/F5/G0未完成。本条优先于下方历史快照。
 
 本文件是项目执行与上下文恢复入口。最后更新：2026-11-04。S0–S10 及 A0 计划已交付；用户已批准开始主线合入、审计、渐进重构与按优先级补齐功能，并要求每完成一步更新文档。各阶段详细计划只在对应链接内维护节点状态。
 

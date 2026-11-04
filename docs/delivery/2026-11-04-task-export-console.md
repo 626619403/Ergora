@@ -58,3 +58,9 @@
 新的fresh-context审查者先核原diff与调用/原生状态机，需求及可维护性本地审查通过，无findings。独立重算348包/源码/两安装、283冻结，原131文件/8新增、两个repo原HEAD/工作区/其他ref、原claim精确释放，并只读重取三条完整history/outcome与基线全等；四段CLI嵌入脚本/Result逐项相等，174请求/14POST范围保持。审查另作两次明确GET取原exported/not_queried回执，分别3.057/1.590秒，这两次不计入浏览器174请求，也不当作受控性能基准。
 
 下一保存最终文档/README命令检查结果，提交本片并核归档=2d1b原包；GitHub SSH恢复前仍不能声称远端或精确双OS CI通过。后续F4.4按a1/a2/b/c分别实施与新审查，不以本片审查批准其代码。
+
+## RSA恢复后的远端交付
+
+精确D提交`a6ef6e3bcb07ccad5fc259962b639ccc89f7fb81`已通过RSA正常推送，push-d-rsa退出0；15:30 UTC实时ls-remote完整SHA一致。先取得C2精确双OS CI及原审查者终结后才推D，没有包含下一events的未提交源码。
+
+官方[CI41834815428](https://github.com/626619403/Ergora/actions/runs/41834815428)成功：Windows126590891921、Ubuntu126590892485的wheel/冻结身份/原生回归均通过，Windows PowerShell 5.1安装升级亦通过。原HTML的完整commit/selected job/必要步骤日志URL已由verify-exact-ci核验exit0；原D审查者正同片独立终结。没有重放导出、对账或模型调用，完整F4仍未完成。

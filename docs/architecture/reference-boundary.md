@@ -14,6 +14,9 @@ flowchart LR
   Creation --> Files
   Ref --> RuntimeQuery[reference_task_runtime 专用查询进程]
   RuntimeQuery --> Transport[原 DevelopmentTransport / Temporal]
+  Ref --> Events[reference_task_events 专用事件查询进程]
+  Events --> Submission
+  Events --> Transport
   Ref --> Submission[reference_task_submission 专用提交进程]
   Submission --> Transport
   Ref --> Approval[reference_task_approval 专用审批进程]
@@ -56,6 +59,7 @@ flowchart LR
 |正式任务本地合同读取|`reference.task_files` → 固定只读子进程；tasks/CLI/API|按项目/Git根/tracker/基线/目录ID复用validate_spec和有界no-follow读取；每页最多100项合同检查，目录名流式枚举为O(N)，不读取日志/凭据、不连接Temporal、不推断运行终态|
 |正式任务预览/create/创建状态/恢复|`reference.task_creation` → 专用`reference_task_creation`；tasks/CLI/API|父进程管理临时目录及超时清理；子进程在导入前使用临时STATE复用原create_task/portable，实际发布使用登记目录；原write/安全reader、Windows适配、意图/同ID非阻塞锁/结果回执集中在该边界|
 |正式任务原生运行状态|`reference.task_runtime_status` → 专用`reference_task_runtime`；tasks/CLI/API|登记安装的原Transport.lookup/poll核对原始spec并固定run ID；明确SDK/网络预算和not-found/错误区别，不start/signal/改lease/ledger|
+|原运行有界事件读取|`reference.task_events` → 专用`reference_task_events`；tasks/CLI/GET API|复用原submission/spec/memo；原验证后单SDK物理页及页内位置游标，1–100条/1 MiB响应、显式继续和live尾部保留；事件投影不解码payload，不写执行账本|
 |正式任务start/本地提交状态/原ID恢复|`reference.task_submission` → 专用`reference_task_submission`；tasks/CLI/API|创建所有者校验七合同；完整原生环境复用原task_action，短revision事务只做本地prepare，网络阶段仅持task锁；窄Transport继承只保存dispatch检查点，unknown禁止重新start，既有run持久拒绝；原生依赖/全局不进入Web|
 |精确plan批准/投递读取/恢复|`reference.task_approval` → 专用`reference_task_approval`；tasks/CLI/API|复用原创建/提交所有者、严格spec/memo/固定run、原owner receipt和approve_plan；无网络准备后释放控制库，未知只核原history；不新增授权状态机|
 |取消请求/本地记录/投递恢复|`reference.task_cancellation` → 专用`reference_task_cancellation`；tasks/CLI/API|复用原Transport.cancel、严格原spec/memo/run，实际signal前检查点及操作SHA；闭合明确无信号，unknown仅核分页history，不接管fence/租约|

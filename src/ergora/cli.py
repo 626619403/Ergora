@@ -94,6 +94,13 @@ def parser() -> argparse.ArgumentParser:
     status_task.add_argument("task_id")
     status_task.add_argument("--run-id", help="Pin a previously observed native run ID")
     status_task.add_argument("--timeout", type=int, default=20)
+    events = operations.add_parser("events", help="Read bounded original-run event metadata without raw payloads")
+    events.add_argument("project")
+    events.add_argument("task_id")
+    events.add_argument("--run-id", required=True)
+    events.add_argument("--limit", type=int, default=20)
+    events.add_argument("--after", help="Continue using the returned original-run event cursor")
+    events.add_argument("--timeout", type=int, default=20)
     for name in ("preview", "create"):
         operation = operations.add_parser(name)
         operation.add_argument("project")
@@ -427,6 +434,9 @@ def main(argv: list[str] | None = None) -> int:
                 output = tasks.show(state, args.project, args.task_id)
             elif args.operation == "status":
                 output = tasks.status(state, args.project, args.task_id, run_id=args.run_id, timeout=args.timeout)
+            elif args.operation == "events":
+                output = tasks.events(state, args.project, args.task_id, run_id=args.run_id,
+                                      limit=args.limit, after=args.after, timeout=args.timeout)
             elif args.operation == "plan":
                 output = tasks.plan(state, args.project, args.task_id, run_id=args.run_id,
                                     plan_sha256=args.plan_sha256, timeout=args.timeout)

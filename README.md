@@ -260,6 +260,8 @@ ergora task status my-project TASK_ID --run-id RUN_ID
 
 `CREATION_SHA`取创建回执的intent_sha256，`RUN_ID`取提交回执。创建只冻结合同，submitted只证明保存了原run；六阶段成功以原结果为准。重复start返回同一原记录；超时先查submission，再按原intent摘要恢复，unknown不能重发或换ID绕过。
 
+需要查看过程时，用`ergora task events my-project TASK_ID --run-id RUN_ID --limit 20`[分段读取原运行事件](docs/USAGE.md#分段读取原运行事件)，再按返回的next_after显式继续；事件只含元数据，不附原始payload，也不代替原结果。
+
 ### 3. 审阅并批准精确计划
 
 原phase到达AWAITING_PLAN_APPROVAL后，使用原状态的plan SHA读取完整计划材料；审阅execution-plan、ownership-map和rollback-plan中的工作单元、范围与风险，再明确批准同一计划：
