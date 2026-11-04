@@ -684,6 +684,95 @@ export function tasksView(data, base) {
       await read();
     }
 
+    async function exportDialog(candidate = null, selectedRunSequence = null) {
+      if (!view.isConnected || sequence !== detailSequence ||
+          candidate && selectedRunSequence !== runSequence) return;
+      const result = node("div", { "aria-live": "polite" });
+      let readingSequence = 0;
+      let writing = false;
+      const readButton = button("重新读取原导出记录", read);
+      const content = node("div", {},
+        node("p", {}, "导出将原候选保存到登记仓库的本地分支，不checkout、merge或推送。先读原记录，再明确确认；关闭页面不会撤销已发操作，回复未知时先读原记录。"),
+        candidate ? facts([["本次选择的原 run ID", candidate.run_id],
+          ["本次选择的精确候选", candidate.candidate_sha]]) : null,
+        row(readButton), result,
+      );
+      const active = () => view.isConnected && sequence === detailSequence &&
+        content.isConnected && $("#dialog").open && (!candidate || selectedRunSequence === runSequence);
+      const current = (reading) => active() && reading === readingSequence;
+
+      function show(record, reading) {
+        const descriptions = {
+          not_recorded: "尚无原导出意图。从已查询的REVIEW_READY原运行进入时，可填写目标分支并明确导出固定候选。",
+          prepared: "原导出意图已保存，尚无写前检查点；明确恢复可能首次创建原目标分支。",
+          unknown: "原导出结果尚未确认。恢复只核原分支；分支不存在时保持未知，不隐式重新创建。",
+          exported: "原导出回执已保存。这是历史事实，不证明当前分支仍指向原候选；维护者仍需复验。",
+        };
+        const canExport = candidate && record.status === "not_recorded";
+        const canResume = ["prepared", "unknown"].includes(record.status);
+        const action = canExport ? "确认导出此候选至本地分支"
+          : record.status === "prepared" ? "确认恢复原导出意图" : "确认核对原导出分支";
+        result.replaceChildren(panel(`导出记录：${record.status}`, descriptions[record.status],
+          facts([
+            ["项目当前修订", record.project_revision], ["原 run ID", record.run_id],
+            ["原意图 SHA256", record.intent_sha256], ["原候选提交", record.candidate_sha],
+            ["原目标仓库", record.repo], ["原目标分支", record.branch],
+            ["原分支核对", record.reconciliation], ["恢复说明", record.instruction],
+            ["原租约已释放", record.lease_released == null ? "未知" : record.lease_released ? "是" : "否"],
+            ["已切换工作区", record.checked_out ? "是" : "否"], ["已合并", record.merged ? "是" : "否"],
+            ["开发成功", record.execution_success == null ? "未知" : record.execution_success ? "是" : "否"],
+          ]),
+          disclosure("完整原导出记录", record),
+          candidate && record.status !== "not_recorded"
+            ? node("p", {}, "此任务已有原目标；恢复只沿原意图，不用本次选择覆盖它。") : null,
+          canExport || canResume ? form(canExport ? [field("目标本地分支", "branch", "", "text", {
+            required: true, maxlength: 1024, autocomplete: "off",
+          })] : [], action, async (values) => {
+            if (!current(reading) || writing) return;
+            writing = true;
+            readButton.disabled = true;
+            result.replaceChildren(empty("正在处理原候选导出；回复未知时先读取原记录，关闭页面不撤销操作。"));
+            try {
+              const observed = await api(`${path}/export${canExport ? "" : "/resume"}`, {
+                revision: record.project_revision, confirm: true, timeout: 20,
+                ...(canExport ? { ...candidate, branch: values.get("branch") }
+                  : { intent_sha256: record.intent_sha256 }),
+              });
+              if (current(reading)) show(observed, reading);
+            } catch (error) {
+              if (current(reading)) result.replaceChildren(panel("导出结果尚未确认", error.message,
+                node("p", {}, "先读取此原任务的导出记录，再决定是否恢复。没有回复不证明未创建分支或未释放租约，请保留原候选和分支。")));
+            } finally {
+              writing = false;
+              if (active()) readButton.disabled = false;
+            }
+          }) : null,
+          button("返回原任务与运行", () => {
+            if (!current(reading)) return;
+            sessionStorage.setItem(runKey, record.run_id);
+            $("#dialog").close();
+            inspect(taskId);
+          }),
+        ));
+      }
+
+      async function read() {
+        if (!active() || writing) return;
+        const reading = ++readingSequence;
+        result.replaceChildren(empty("正在读取原导出记录…"));
+        try {
+          const record = await api(`${path}/export`);
+          if (current(reading)) show(record, reading);
+        } catch (error) {
+          if (current(reading)) result.replaceChildren(panel("原导出记录读取失败", error.message,
+            node("p", {}, "记录未读成功，不提供导出或恢复确认。")));
+        }
+      }
+
+      modal(candidate ? "导出精确候选" : "检查原导出记录与恢复", content);
+      await read();
+    }
+
     function submissionDialog() {
       let readingSequence = 0;
       const result = node("div", { "aria-live": "polite" });
@@ -801,6 +890,7 @@ export function tasksView(data, base) {
         saved?.status === "submitted" ? button("按原 ID 检查批准记录", () => approvalDialog()) : null,
         saved?.status === "submitted" ? button("按原 ID 检查取消记录", () => cancellationDialog()) : null,
         saved?.status === "submitted" ? button("检查原对账记录与恢复", () => reconciliationDialog()) : null,
+        saved?.status === "submitted" ? button("检查原导出记录与恢复", () => exportDialog()) : null,
       ),
       panel("原生运行", "按固定run读取。关闭页面不会取消任务；取消后的外部清理需另行对账。",
         form([runField], "读取原运行", async (values) => {
@@ -837,6 +927,9 @@ export function tasksView(data, base) {
               ? button("请求取消此运行", () => cancellationDialog(observed.run_id, reading)) : null,
             observed.terminal && observed.runtime_status === "queried"
               ? button("外部证据与对账", () => reconciliationDialog(observed.run_id, reading)) : null,
+            observed.terminal && observed.runtime_status === "queried" && observed.outcome?.status === "REVIEW_READY"
+              ? button("导出精确候选", () => exportDialog({ run_id: observed.run_id,
+                candidate_sha: observed.outcome.candidate_sha }, reading), "primary") : null,
             node("div", { className: "stage-strip", "aria-label": "六阶段位置" }, stages.map((stage) =>
               node("span", { className: currentStage === stage ? "current" : null }, stage))),
             observed.status ? facts([
