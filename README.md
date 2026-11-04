@@ -74,7 +74,7 @@ flowchart LR
 
 已有统一注册项目可运行 `ergora task list PROJECT` / `ergora task show PROJECT TASK_ID` 读取正式开发任务的冻结合同与绑定，详见[只读任务入口](docs/USAGE.md#读取正式任务合同)。该入口不查询Temporal运行状态；可用 `task preview/create/creation/resume-create` [显式创建和恢复任务](docs/USAGE.md#预览与创建正式任务)，`task status` [只读查询原生运行事实](docs/USAGE.md#查询正式任务运行状态)，`task start/submission/resume-start` [显式提交与恢复](docs/USAGE.md#提交正式任务与恢复未知结果)，`task approve/approval/resume-approve` [批准精确计划并恢复投递](docs/USAGE.md#批准精确计划与恢复投递)，`task cancel/cancellation/resume-cancel` [请求取消和核对投递](docs/USAGE.md#请求取消与恢复未知投递)；`task external-status/reconcile/reconciliation/resume-reconcile`[核对并恢复外部清理](docs/USAGE.md#显式终态对账与工单租约释放)，`task export/export-status/resume-export`[导出精确候选](docs/USAGE.md#导出精确候选与恢复回执)。
 
-Ergora 控制台提供项目总览、工具绑定、记忆修订、候选比较 / 评价 / 采用、资料提案和受约束的工作单元关系编辑。[正式任务页](docs/USAGE.md#正式任务页面)可从已保存草稿或登记模板预览并明确创建合同，按原ID读取/恢复发布；也可分页读取冻结角色及工作单元，查询固定原run的阶段、候选和结果。提交运行、计划批准、取消、对账和导出使用统一 CLI/API。完整历史和训练观测可使用 Temporal UI 和 MLflow。
+Ergora 控制台提供项目总览、工具绑定、记忆修订、候选比较 / 评价 / 采用、资料提案和受约束的工作单元关系编辑。[正式任务页](docs/USAGE.md#正式任务页面)可从已保存草稿或登记模板预览并明确创建合同，按原ID读取/恢复发布；检查原提交记录后明确提交或恢复原意图，查询固定原run的阶段、候选和结果。计划批准、取消、对账和导出使用统一 CLI/API。完整历史和训练观测可使用 Temporal UI 和 MLflow。
 
 ## 源码组织
 

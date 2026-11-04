@@ -325,6 +325,94 @@ export function tasksView(data, base) {
       runSequence++;
       runtime.replaceChildren(empty("run ID已更改，请重新查询。"));
     });
+
+    function submissionDialog() {
+      let readingSequence = 0;
+      const result = node("div", { "aria-live": "polite" });
+      const content = node("div", {},
+        node("p", {}, "先读取本地创建与提交记录，再明确提交或恢复。关闭页面不会撤销已经发出的操作，未知结果不能直接重发。"),
+        result,
+      );
+      const active = () => view.isConnected && sequence === detailSequence &&
+        content.isConnected && $("#dialog").open;
+      const current = (reading) => active() && reading === readingSequence;
+
+      function showSubmission(creation, record, reading) {
+        const descriptions = {
+          not_recorded: "没有统一提交记录。确认后沿原生准入提交此冻结合同一次。",
+          prepared: "原提交意图已保存，尚无派发检查点。明确恢复后，由原生流程决定是否继续首次派发。",
+          unknown: "派发结果尚未确认。恢复只核对原工作流，不重新发起start；not_found仍不证明从未提交。",
+          submitted: "本地回执已保存原run；这不代表六阶段完成。请按原run单独查询运行状态。",
+          rejected: "原提交归属已被拒绝。请核对冲突记录，页面不会覆盖、重提或更换任务ID。",
+        };
+        const canStart = creation.status === "published" && record.status === "not_recorded";
+        const canResume = creation.status === "published" && ["prepared", "unknown"].includes(record.status);
+        if (record.status === "submitted") sessionStorage.setItem(runKey, record.run_id);
+        result.replaceChildren(panel(`提交记录：${record.status}`, descriptions[record.status],
+          facts([
+            ["任务 ID", taskId], ["项目当前修订", creation.project_revision],
+            ["创建状态", creation.status], ["原创建修订", creation.created_revision],
+            ["原创建意图 SHA256", creation.intent_sha256],
+            ["请求 SHA256", task.request_sha256], ["合同文件 SHA256", task.spec_file_sha256],
+            ["原提交意图 SHA256", record.intent_sha256], ["原提交修订", record.submitted_revision],
+            ["工作流 ID", record.workflow_id], ["原 run ID", record.run_id],
+            ["原工作流恢复查询", record.reconciliation],
+            ["归属拒绝原因", record.reason], ["冲突 run ID", record.conflicting_run_id],
+          ]),
+          disclosure("完整创建记录与冻结角色", creation),
+          disclosure("冻结合同、输入与验收", task.spec),
+          disclosure("完整本地提交记录", record),
+          creation.status !== "published" ? empty("创建尚未完整发布；请先按原ID检查创建记录，不能提交运行。") : null,
+          canStart || canResume ? form([], canStart ? "确认提交此冻结任务" : "确认恢复原提交意图", async () => {
+            if (!current(reading)) return;
+            result.replaceChildren(empty(`正在处理 ${taskId} 的原提交；关闭页面不取消操作。回复未知时先重新读取原记录。`));
+            let observed;
+            try {
+              observed = await api(`${path}/${canStart ? "start" : "resume-start"}`, {
+                revision: creation.project_revision, timeout: 20,
+                ...(canStart ? { creation_sha256: creation.intent_sha256 }
+                  : { intent_sha256: record.intent_sha256 }),
+              });
+            } catch (error) {
+              if (current(reading)) result.replaceChildren(panel("提交结果尚未确认", error.message,
+                node("p", {}, `请保留原任务 ID：${taskId}。先重新读取原提交记录；不要更换ID或重发start。`),
+                button("重新读取原提交记录", read),
+              ));
+              return;
+            }
+            if (current(reading)) showSubmission(creation, observed, reading);
+          }) : null,
+          row(
+            button("重新读取原提交记录", read),
+            record.status === "submitted" ? button("查看原任务与运行", () => {
+              if (!current(reading)) return;
+              $("#dialog").close();
+              inspect(taskId);
+            }) : null,
+          ),
+        ));
+      }
+
+      async function read() {
+        if (!active()) return;
+        const reading = ++readingSequence;
+        result.replaceChildren(empty(`正在读取 ${taskId} 的原创建与提交记录…`));
+        let creation, record;
+        try {
+          [creation, record] = await Promise.all([api(`${path}/creation`), api(`${path}/submission`)]);
+        } catch (error) {
+          if (current(reading)) result.replaceChildren(panel("提交检查读取失败", error.message,
+            node("p", {}, `原任务 ID：${taskId}。两份记录未完整读取，不提供写入确认。`),
+            button("重新读取原提交记录", read),
+          ));
+          return;
+        }
+        if (current(reading)) showSubmission(creation, record, reading);
+      }
+      modal("检查提交与恢复", content);
+      read();
+    }
+
     detail.replaceChildren(
       panel(taskId, input.goal,
         row(badge(request.task_type), badge("冻结合同 · 本地读取")),
@@ -351,6 +439,7 @@ export function tasksView(data, base) {
       panel("本地提交回执", "回执记录操作事实；submitted不代表六阶段通过。",
         saved ? disclosure(`提交状态：${saved.status}`, saved)
           : node("p", { className: "task-error" }, `提交回执读取失败：${submission.reason.message}`),
+        button("检查提交与恢复", submissionDialog),
       ),
       panel("原生运行", "按固定run读取。关闭页面不会取消任务；取消后的外部清理需另行对账。",
         form([runField], "读取原运行", async (values) => {

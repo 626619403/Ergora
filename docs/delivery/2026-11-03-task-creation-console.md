@@ -1,6 +1,6 @@
 # F4.2a：正式任务预览、创建与原 ID 恢复
 
-日期：2026-11-03起，2026-11-04续。状态：页面、包身份、两模板正常/丢回复/迟到、初包真实部分发布恢复、文件及额外只读入口已验证；独立本地审查通过，待提交推送及精确CI。前置 [F4.1 只读控制台](2026-11-03-formal-task-console.md)已完成；其原候选 `11e89cf` 的 Linux CI 超时取消保留，[V4](2026-11-04-ci-regression-progress.md)候选`2137a95418879d48cce557016caa5c7f0d6a6a1b`保持同一应用树，新精确CI41679431542两OS通过。本文是本片的实施与恢复入口，实际进度由 [PLAN](../PLAN.md) 记录。
+日期：2026-11-03起，2026-11-04续。状态：F4.2a完成，已推送e63bc8b且精确CI与独立终结审查通过。前置 [F4.1 只读控制台](2026-11-03-formal-task-console.md)已完成；其原候选 `11e89cf` 的 Linux CI 超时取消保留，[V4](2026-11-04-ci-regression-progress.md)候选`2137a95418879d48cce557016caa5c7f0d6a6a1b`保持同一应用树，新精确CI41679431542两OS通过。本文是本片的实施与恢复入口，实际进度由 [PLAN](../PLAN.md) 记录。
 
 ## 行为和范围
 
@@ -69,3 +69,7 @@ F4.2b 再接提交、submission 与 resume-start；本片不接批准、取消�
 `browser-final-readback`已在重新打开的浏览器会话取得7真实GET/0POST：实际不完整conflict合同的错误面板保留原ID，按钮打开readonly原ID查询，实际conflict无resume；原pending已published且冻结修订1/当前2和旧reviewer保持，app新帮助文案在实际DOM中可见，0pageerror。没有重跑已成功的正常/丢回复/迟到旅程，也未把最终只读检查写成重新执行初包恢复。
 
 当前文档终核为13份Markdown328本地链接/锚点及26条README命令parser通过，`git diff --check`通过；脚本和原结果复用F4.1 checks下的`check-documents.py`/`static-documents.json`，不改写F4.1历史计数。当前独立续核及本片提交推送/精确CI尚待收口。此前自动审批服务deadline阻止的命令保留未执行范围；仅以成功工具原输出和产物登记新检查，不追溯改写。F4.2b提交执行和F4.2c组合验收未实现，不把当前创建页面写成完整F4交付。
+
+最终交付：14文件提交`e63bc8ba9366b9ec798712fb402722f952f990a9`已推送且实时远端一致，生产三文件/文档11文件，无Python/测试/依赖/CI变化。首次SSH传输关闭后明确重核远端仍2137，再一次显式重推成功。精确[CI41763676211](https://github.com/626619403/Ergora/actions/runs/41763676211)两OS全部必要步骤success；本片ci/保存官方run、job-group和两job HTML、selection/status及实际取证脚本。GitHub此次列表由server HTML及独立job-group返回，旧JSON脚本not_listed和辅助解析失败均保留为未通过尝试，不当作未触发CI。最终verify实际exit0，selectedJobId和精确提交log URL均核。
+
+[独立终结审查](2026-11-04-task-creation-console-review.md)已核14文件、348 Git blob=421c81包、13提交文档=终版静态身份、两job原步骤和实时远端，0未解决finding；F4.2a完成。下一项为[F4.2b明确提交与恢复](2026-11-04-task-submission-console.md)，之后F4.2c；完整F4未完成。
