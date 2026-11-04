@@ -353,6 +353,11 @@ def task_approval(project: dict, home: Path, operation: str, payload: dict, *, t
     return _task_operation(project, home, 'approval', operation, payload, timeout)
 
 
+def task_plan(project: dict, home: Path, payload: dict, *, timeout: int) -> dict:
+    """Inspect the pending plan through the existing native approval boundary."""
+    return _task_operation(project, home, 'approval', 'inspect-plan', payload, timeout)
+
+
 def task_cancellation(project: dict, home: Path, operation: str, payload: dict, *, timeout: int) -> dict:
     """Use the native cancellation guard and preserve signal delivery uncertainty."""
     return _task_operation(project, home, 'cancellation', operation, payload, timeout)
@@ -393,10 +398,14 @@ def _task_operation(project: dict, home: Path, component: str, operation: str, p
                                                   'timeout': timeout, **payload}, allow_nan=False),
                                 capture_output=True, text=True, encoding='utf-8', env=environment, timeout=timeout + 5)
     except subprocess.TimeoutExpired as error:
+        if operation == 'inspect-plan':
+            raise ValueError('Plan inspection process timed out; query the original run before inspecting again') from error
         raise ValueError(f'Task {component} process timed out; inspect task {component} and resume its original intent') from error
     if result.returncode:
         lines = result.stderr.strip().splitlines()
         detail = lines[-1] if lines else f'Native {component} process exited with status {result.returncode}'
+        if operation == 'inspect-plan':
+            raise ValueError(detail)
         raise ValueError(detail + f'; inspect task {component} before any recovery')
     return json.loads(result.stdout)
 

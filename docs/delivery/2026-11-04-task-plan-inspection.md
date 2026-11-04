@@ -1,6 +1,6 @@
 # F4.3a：原运行待批计划的有界读取
 
-日期：2026-11-04。状态：设计与调用链已核，尚未实现。前置为[F4.2c真实组合旅程](2026-11-04-task-console-journeys.md)；该片仍待独立收口。本片只提供后续页面需要的只读材料，不发批准信号。
+日期：2026-11-04。状态：首轮CLI/API与专用只读实现已写，源码/发行身份/两真实run只读验收已通过，[新的独立本地审查](2026-11-04-task-plan-inspection-review.md)已归档且无finding；提交推送和精确两OS CI尚未完成。前置为[F4.2c真实组合旅程](2026-11-04-task-console-journeys.md)，已独立收口并推送581144c。本片只提供后续页面需要的只读材料，不发批准信号。
 
 ## 已核现状与目标
 
@@ -23,3 +23,40 @@
 4. 完成最小完整实现/本地验证并记账后，新的fresh-context审查者检查正确性、所有权、复用、必要守卫及有界成本。修正后再提交推送、核精确两OS CI和远端，最后更新完成状态。
 
 私有运行材料使用本片独立checks目录；前置组合旅程保留自己的脚本、快照和独立结论。完整F4仍待F4.3剩余操作及F4.4综合出口。
+
+## 实施检查点
+
+恢复后核对基线`581144c3d6205bb400577a79b694f53a8638cf15`与实时远端一致。已修改tasks/reference/专用approval边界/CLI/Web五个生产文件，在既有模块内实现只读材料算法；新增轻量`tests/test_task_plan.py`，实际SDK分页和codec只替换不可控传输与提交预检，文件安全读取与规范JSON摘要保留真实实现。主入口在环境加载前确定操作身份，保证环境超时也返回正确只读错误。公开使用说明已同步；测试结果见下方，发行身份、两原run只读验收、独立审查及提交CI仍未完成。
+
+首轮32项以内轻量检查的历史失败已保留：第一轮26通过/2失败，真实SDK按类型提示忽略额外payload的情况已在解码前核单payload；目录读取依现有原语拒绝，测试接受其实际OSError。第二轮29通过/3失败仅因主入口测试未加入local包路径，已修夹具路径。当前运行计划/批准/运行/架构联合定向；不把失败轮记通过。README、使用手册和当前架构已同步读取顺序、回执摘要与读取界限。
+
+## 已执行验证
+
+- 源码联合定向：`env PYTHONPATH=src .venv-dev/bin/python -m pytest -q tests/test_task_plan.py tests/test_task_approval.py tests/test_task_runtime.py tests/test_architecture_boundaries.py --tb=short`实际exit0，90 passed/1既有依赖弃用warning，266.68秒。新读取32项为轻量文件/真实SDK消息与分页检查；共享审批/原运行合同沿用原集成夹具。只证明本片定向范围，不代替当前完整回归或精确CI。
+- 文档初核：7文件303本地链接/锚点、27条README命令parser通过；后续记录更新后会重核。
+- 正在构建非editable wheel并离线安装到开发及无Temporal SDK的基础Web环境；原生SDK仍由登记的Linux运行时提供。真实两run只读CLI/HTTP验收待该包完成。新的独立审查已启动，报告与终结结论待补；不提前记通过。
+
+最终初包SHA256为`4160cfdd64a69e0dbb713bda584a57c2cfad939eb1895c28d055836a62c90037`，348源码/wheel/两非editable安装逐文件一致、冻结283保持；基础Web环境无Temporal SDK、独立reference verify为PASS。安装包的新读取合同32项通过（1.93秒，1依赖warning）。真实验收脚本的首轮端口占用，以及第二轮误用POST专属路径作GET就绪探针的405，均已保留脚本与原日志；前者未启动服务，后者在finally显式停止并等待本次HTTP退出，两轮均未批准/取消或操作任务文件。脚本已改为空闲端口及既有GET bootstrap路由，第三轮实际材料验收进行中，尚未计通过。
+
+真实验收追加历史：第三轮在旧`task status`的无SDK调用者明确拒绝（exit2），未调用plan；已保留该轮并用有SDK开发安装查询status，新plan与HTTP仍从无SDK基础安装调用。第四轮治理模板CLI/API及三材料字节/摘要已实际相同，错误run也已被正确拒绝，但脚本误期望exit1，实际CLI异常合同为exit2而退出；脚本/响应/日志已保留，不将该轮计完整通过。未为验收更改生产接口或旧退出码。第五轮按实际契约执行两模板与终核；完整通过结果在下方单独登记。
+
+## 最终本地验收
+
+最终wheel为上述4160cfdd…，没有为验收脚本失败修改生产或旧CLI契约。`native-acceptance-v5`实际exit0，16.69秒。原始材料位于本片独立私有checks目录，不覆盖前片证据。
+
+|检查|实际结果与范围|
+|---|---|
+|源码联合定向|90 passed/1依赖warning，266.68秒；新读取、原批准/运行及架构边界|
+|最终wheel合同|32 passed/1依赖warning，1.93秒；非editable安装加载|
+|包与冻结身份|348源码/wheel/两安装逐文件一致，283冻结资源不变；基础Web无SDK，reference verify PASS|
+|治理模板只读|CLI/API完全相同，三材料6849字节与原artifact相同；响应9412字节|
+|大型开发只读|CLI/API完全相同，三材料7889字节与原artifact相同；响应10403字节|
+|错误身份|两模板wrong-run均CLI exit2，wrong-plan均HTTP400；明确拒绝，不写decision|
+|原证据|54选定原文件前后相同且等于F4.2c归档；两原history各112连续事件、零signal，plan context均event56|
+|HTTP与保留栈|本片测试HTTP已请求SIGTERM、wait返回-15，PID消失/端口关闭；原Supervisor及五服务RUNNING、training-worker STOPPED，留供紧接页面验收|
+
+本机两次CLI为1.70/1.39秒，HTTP为1.169/1.173秒，仅说明本次112事件小任务的读取观察；不据此声称规模化性能。生产实现流式读取history前缀，找到plan便停止；文本和总响应均有明确上限。未物化完整history或引入缓存/新索引。
+
+新的fresh-context审查者已独立跑32项轻量检查、重算包348/冻结283身份，并直接只读连接两原run核原spec/memo、当前待批phase/plan、history及零signal；同时核作者CLI/API原响应和54文件快照。需求与可维护性本地范围无finding，[正式报告](2026-11-04-task-plan-inspection-review.md)已归档；提交身份、精确CI和实时远端仍待后续核对。当前未批准、取消、执行后四阶段或实现网页批准，不标完整F4完成。
+
+提交前静态终核通过：本片八份Markdown、315个本地链接/锚点及27条README CLI parser命令；未改CI或原测试。后续只待本片提交、推送、精确两OS CI及同一审查者的最终身份复核，当前本地实现完整可审。

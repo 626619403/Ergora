@@ -262,14 +262,15 @@ ergora task status my-project TASK_ID --run-id RUN_ID
 
 ### 3. 审阅并批准精确计划
 
-原phase到达AWAITING_PLAN_APPROVAL后，在登记state的`artifacts/TASK_ID/`审阅execution-plan、ownership-map和rollback-plan；核对计划的工作单元、范围与风险，再使用原状态的plan SHA：
+原phase到达AWAITING_PLAN_APPROVAL后，使用原状态的plan SHA读取完整计划材料；审阅execution-plan、ownership-map和rollback-plan中的工作单元、范围与风险，再明确批准同一计划：
 
 ```bash
+ergora task plan my-project TASK_ID --run-id RUN_ID --plan-sha256 PLAN_SHA
 ergora task approve my-project TASK_ID --revision CURRENT_REVISION --decision-id owner-one --run-id RUN_ID --plan-sha256 PLAN_SHA --confirm
 ergora task status my-project TASK_ID --run-id RUN_ID
 ```
 
-requested仅表示投递事实。工作流按原owner/过期/撤销和精确计划规则决定是否继续work → integrate → verify → review。
+`plan`只读原run的已接受计划回执及冻结profile要求的文本；plan SHA绑定整个回执，不是单个文本摘要。每份文本最多256 KiB、总响应最多1 MiB，缺失、损坏或超限会明确报错。requested仅表示投递事实。工作流按原owner/过期/撤销和精确计划规则决定是否继续work → integrate → verify → review。
 
 ### 4. 审阅结果、导出和异常恢复
 

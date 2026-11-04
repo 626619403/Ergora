@@ -185,6 +185,17 @@ def approval(state: State, project_id: str, task_id: str, decision_id: str) -> d
                                    {'task_id': task_id, 'decision_id': decision_id}, timeout=20)
 
 
+def plan(state: State, project_id: str, task_id: str, *, run_id: str, plan_sha256: str, timeout: int = 20) -> dict:
+    """Read bounded review materials for the original run's exact pending plan."""
+    _run_id(run_id)
+    _digest(plan_sha256, 'Plan')
+    if type(timeout) is not int or not 1 <= timeout <= 60:
+        raise ValueError('Plan inspection timeout must be 1–60 seconds')
+    project = _project(state, project_id)
+    return reference.task_plan(project, state.root, {'task_id': task_id, 'run_id': run_id,
+                                                    'plan_sha256': plan_sha256}, timeout=timeout)
+
+
 def approve(state: State, project_id: str, task_id: str, decision_id: str, expected_revision: int,
             *, run_id: str, plan_sha256: str, confirm: bool = False, timeout: int = 20) -> dict:
     """Freeze an explicit owner decision, then signal its exact run and plan once."""

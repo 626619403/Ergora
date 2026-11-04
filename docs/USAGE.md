@@ -260,9 +260,24 @@ ergora task resume-start my-project TASK_ID --revision 1 --intent-sha256 SUBMISS
 
 API：`POST .../tasks/TASK_ID/start`正文为`revision/creation_sha256/timeout`，`GET .../tasks/TASK_ID/submission`，`POST .../tasks/TASK_ID/resume-start`正文为`revision/intent_sha256/timeout`；写请求沿用同源保护及`X-Ergora-Request: 1`。同任务并发准备或创建/恢复创建遇活跃任务锁时及时报busy；并发读取也可能取得prepared/unknown快照；无需等待另一请求完成才返回。操作结束后读取submission及当前项目修订，再决定是否明确resume；重复start不隐式重试未派发准入，unknown不重发。其他项目不会因本次网络等待而被持续占用控制库写锁。HTTP成功响应仍须检查status，unknown/rejected不能当作提交成功。
 
+### 读取待批计划材料
+
+仅适用于统一创建且已保存原提交回执的任务，运行环境与提交入口相同。先用`task status --run-id RUN_ID`查询原状态，取得`AWAITING_PLAN_APPROVAL`的实际plan SHA，再读取对应材料：
+
+```bash
+ergora task status my-project TASK_ID --run-id RUN_ID
+ergora task plan my-project TASK_ID --run-id RUN_ID --plan-sha256 PLAN_SHA --timeout 20
+```
+
+`plan`核对原提交run/spec/memo、当前待批phase与所选plan SHA，从原history定位plan job并核对请求envelope和已接受receipt。plan SHA是整个回执的规范JSON摘要，不是execution-plan文件摘要。`materials`按冻结profile返回完整UTF-8文本及各自的`name/sha256/bytes`；两个开发模板均提供execution-plan、ownership-map和rollback-plan。响应同时保留原run、请求、profile、回执及history事件身份，供审阅工作单元、范围、风险与回退措施。
+
+每份材料最多256 KiB，总JSON响应最多1 MiB；缺材料、摘要不符、非UTF-8、路径不安全或超限时拒绝读取，不截断成貌似完整的计划。`--timeout`为1–60秒，父进程另留5秒启动/回收，本地预检另计。此操作不持控制库写锁、不创建decision或owner回执、不发信号。返回值是读取时快照；批准前仍由服务端再次核对原运行当前状态。
+
+API：GET `.../tasks/TASK_ID/plan?run_id=RUN_ID&plan_sha256=PLAN_SHA&timeout=20`。当前计划读取使用CLI/API，网页材料与批准入口随后接入；网络失败或计划已不再待批时，沿原ID重新查询status，不创建替代任务。
+
 ### 批准精确计划与恢复投递
 
-仅适用于统一创建且已保存原提交回执的任务，运行环境与提交入口相同。先用`task status --run-id RUN_ID`审阅当前计划；原状态必须是`AWAITING_PLAN_APPROVAL`。用当前项目修订、原run ID及实际plan SHA明确批准：
+先按上节读取并审阅完整材料，再用当前项目修订、原run ID及该plan SHA明确批准：
 
 ```bash
 ergora task approve my-project TASK_ID --decision-id owner-one --revision 1 --run-id RUN_ID --plan-sha256 PLAN_SHA --confirm --timeout 20

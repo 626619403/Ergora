@@ -3,6 +3,7 @@
 import asyncio
 from datetime import timedelta
 import getpass
+import hashlib
 import json
 import os
 import re
@@ -13,6 +14,81 @@ import uuid
 from .reference_task_submission import _Submission
 from .reference_task_runtime import find_signal_event
 from .state import file_lock
+
+
+async def _plan(payload: dict) -> dict:
+    from dev_platform.adapter import identifier
+    from dev_platform.workflow import DevelopmentWorkflow
+
+    submission = _Submission(payload)
+    intent, run_id = submission.submitted()
+    creation, spec = submission.creation, submission.spec
+    if payload['run_id'] != run_id:
+        raise ValueError('Plan inspection must pin the original submitted run ID')
+    handle, description, converter = await submission.lookup_run(intent, run_id)
+    if description.status.name != 'RUNNING':
+        raise ValueError('Plan inspection requires an original run awaiting an owner decision')
+    status = await handle.query(DevelopmentWorkflow.status, rpc_timeout=timedelta(seconds=20))
+    if (status['phase'] != 'AWAITING_PLAN_APPROVAL' or status['request_sha256'] != spec['request_sha256']
+            or status['plan_sha256'] != payload['plan_sha256']):
+        raise ValueError('Plan inspection requires the exact plan currently awaiting an owner decision')
+
+    next_event = 1
+    async for event in handle.fetch_history_events(page_size=100, rpc_timeout=timedelta(seconds=20)):
+        if (event.event_id != next_event
+                or next_event == 1 and not event.HasField('workflow_execution_started_event_attributes')):
+            raise ValueError('Plan inspection requires the original history prefix')
+        next_event += 1
+        if not event.HasField('activity_task_scheduled_event_attributes'):
+            continue
+        scheduled = event.activity_task_scheduled_event_attributes
+        if scheduled.activity_type.name != 'dev_submit':
+            continue
+        if len(scheduled.input.payloads) != 1:
+            raise ValueError('Original plan history has no single job context')
+        values = await converter.decode(scheduled.input.payloads, [dict])
+        if len(values) != 1 or not isinstance(values[0], dict):
+            raise ValueError('Original plan history has no single job context')
+        context = values[0]
+        if context.get('stage') != 'plan':
+            continue
+        if (context['task_id'] != creation.task_id or context['request_sha256'] != spec['request_sha256']
+                or context['profile_sha256'] != spec['profile_sha256'] or creation.sha(context['spec']) != creation.sha(spec)):
+            raise ValueError('Original plan history differs from the recorded task spec')
+        job_id = identifier(context['job_id'])
+        break
+    else:
+        raise ValueError('Original history has no submitted plan job')
+
+    job_sha = creation.sha(context)
+    envelope = creation.document(creation.path('requests/' + creation.task_id + '/' + job_id + '.json'))
+    if creation.sha(envelope) != creation.sha({'schema_version': 1, 'job_id': job_id,
+                                             'job_sha256': job_sha, 'context': context}):
+        raise ValueError('Plan request envelope differs from its original history context')
+    receipt = creation.document(creation.path('receipts/' + creation.task_id + '/' + job_id + '.json'))
+    # The native workflow hashes its accepted receipt, not an individual plan text.
+    # That digest also binds metadata we do not display or revalidate here.
+    if (creation.sha(receipt) != payload['plan_sha256'] or receipt['job_id'] != job_id
+            or receipt['job_sha256'] != job_sha or receipt['state'] != 'SUCCEEDED'):
+        raise ValueError('Plan receipt differs from the exact pending plan or its original job')
+    artifacts = {artifact['name']: artifact for artifact in receipt['artifacts']}
+    materials = []
+    for name in spec['profile']['artifacts_by_stage']['plan']:
+        if name not in artifacts:
+            raise ValueError('Plan receipt is missing a required review artifact: ' + name)
+        artifact = artifacts[name]
+        raw = creation.adapter.read_raw(creation.path('artifacts/' + artifact['path']), 262_144)
+        if hashlib.sha256(raw).hexdigest() != artifact['sha256']:
+            raise ValueError('Plan artifact bytes do not match their receipt digest: ' + name)
+        materials.append({'name': name, 'sha256': artifact['sha256'], 'bytes': len(raw), 'text': raw.decode('utf-8')})
+    result = {'schema_version': 1, 'project': creation.project['id'], 'project_revision': creation.project['revision'],
+              'task_id': creation.task_id, 'workflow_id': intent['workflow_id'], 'run_id': run_id,
+              'request_sha256': spec['request_sha256'], 'profile_sha256': spec['profile_sha256'],
+              'runtime_status': 'queried', 'phase': status['phase'], 'plan_sha256': payload['plan_sha256'],
+              'history_plan_event_id': event.event_id, 'job_sha256': job_sha, 'receipt': receipt,
+              'materials': materials, 'artifact_limit_bytes': 262_144, 'read_only': True}
+    creation.check_size(result, 1_048_576, 'Plan inspection')
+    return result
 
 
 class _Approval:
@@ -170,22 +246,30 @@ class _Approval:
 
 
 def main() -> None:
-    """Only the network phase holds a task lock; it never holds the control DB."""
+    """Approval locks only its network phase; plan inspection is read-only."""
     from agent_platform.core import Blocked, environment
     from dev_platform.runtime import RuntimeNotFound
     from temporalio.service import RPCError
 
+    inspecting = False
     try:
         payload = json.load(sys.stdin)
+        inspecting = payload['operation'] == 'inspect-plan'
         if payload['operation'] not in ('status', 'prepare', 'prepare-resume'):
             os.environ.update(environment())
-        result = asyncio.run(asyncio.wait_for(_Approval(payload).run(), payload['timeout']))
+        operation = _plan(payload) if inspecting else _Approval(payload).run()
+        result = asyncio.run(asyncio.wait_for(operation, payload['timeout']))
         print(json.dumps(result, ensure_ascii=False, allow_nan=False))
     except TimeoutError as error:
+        if inspecting:
+            raise SystemExit('BLOCKED: Plan inspection timed out; query the original run before inspecting again') from error
         raise SystemExit('BLOCKED: Approval timed out; inspect the original decision ID and resume its saved intent') from error
     except RuntimeNotFound as error:
+        if inspecting:
+            raise SystemExit('BLOCKED: Original plan run was not found; preserve the run ID and query its status') from error
         raise SystemExit('BLOCKED: Original approval run was not found; preserve this decision and reconcile the original run') from error
     except RPCError as error:
-        raise SystemExit('BLOCKED: Approval RPC failed: ' + error.status.name) from error
+        name = 'Plan inspection' if inspecting else 'Approval'
+        raise SystemExit('BLOCKED: ' + name + ' RPC failed: ' + error.status.name) from error
     except (OSError, ValueError, KeyError, TypeError, ImportError, Blocked) as error:
         raise SystemExit('BLOCKED: ' + str(error))

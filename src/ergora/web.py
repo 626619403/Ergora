@@ -300,6 +300,10 @@ def create_app(home: Path | None = None) -> FastAPI:
     def formal_task_status(project_id: str, task_id: str, run_id: str | None = None, timeout: int = 20):
         return tasks.status(state, project_id, task_id, run_id=run_id, timeout=timeout)
 
+    @application.get("/api/projects/{project_id}/tasks/{task_id}/plan")
+    def formal_task_plan(project_id: str, task_id: str, run_id: str, plan_sha256: str, timeout: int = 20):
+        return tasks.plan(state, project_id, task_id, run_id=run_id, plan_sha256=plan_sha256, timeout=timeout)
+
     @application.get("/api/projects/{project_id}/tasks/{task_id}/external-status")
     def formal_task_external_status(project_id: str, task_id: str, run_id: str, timeout: int = 20):
         return tasks.external_status(state, project_id, task_id, run_id=run_id, timeout=timeout)

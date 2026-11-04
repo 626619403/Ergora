@@ -116,6 +116,12 @@ def parser() -> argparse.ArgumentParser:
             operation.add_argument("--revision", type=int, required=True)
             operation.add_argument("--timeout", type=int, default=20)
             operation.add_argument("--creation-sha256" if name == "start" else "--intent-sha256", required=True)
+    plan = operations.add_parser("plan", help="Read bounded materials for an exact pending plan without approving it")
+    plan.add_argument("project")
+    plan.add_argument("task_id")
+    plan.add_argument("--run-id", required=True)
+    plan.add_argument("--plan-sha256", required=True)
+    plan.add_argument("--timeout", type=int, default=20)
     approving = operations.add_parser("approve", help="Record an explicit owner decision for the exact native run and plan")
     approving.add_argument("project")
     approving.add_argument("task_id")
@@ -421,6 +427,9 @@ def main(argv: list[str] | None = None) -> int:
                 output = tasks.show(state, args.project, args.task_id)
             elif args.operation == "status":
                 output = tasks.status(state, args.project, args.task_id, run_id=args.run_id, timeout=args.timeout)
+            elif args.operation == "plan":
+                output = tasks.plan(state, args.project, args.task_id, run_id=args.run_id,
+                                    plan_sha256=args.plan_sha256, timeout=args.timeout)
             elif args.operation == "creation":
                 output = tasks.creation(state, args.project, args.task_id)
             elif args.operation == "resume-create":
