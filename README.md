@@ -310,6 +310,15 @@ ergora task evidence my-project TASK_ID --run-id RUN_ID --timeout 20
 
 索引同时列出冻结工作流预算、原history调度计数和服务跨度；这些事实不等于模型计费。没有结构化来源的模型调用、token和费用保持未知，不显示为零。
 
+需要交给其他人复查时，显式收集到新文件，再在任一基础安装中离线验证：
+
+```bash
+ergora task handoff my-project TASK_ID --run-id RUN_ID --output ./task-handoff.zip --timeout 20
+ergora handoff verify ./task-handoff.zip --sha256 EXPECTED_PACKET_SHA256
+```
+
+[交接包说明](docs/USAGE.md#收集与离线核对交接包)列出收集范围和限额。它包含冻结索引及回执指定材料，失败或取消原结果保持；离线验证支持Windows、无需SDK或服务，不创建控制库，也不执行材料。`EXPECTED_PACKET_SHA256`应从独立渠道取得，也可省略该参数进行内部校验。摘要匹配只证明字节和声明的内部身份关系，`origin_authenticated: false`、`execution_success: null`；来源认证、候选代码复验和合入仍须另行完成。
+
 ## 工单、搜索与训练
 
 **工单按业务项目接入。** 注册时选择 `--tracker github` 或 `--tracker gitlab`，并指定该项目自己的远程标识。以 GitLab 为例，完成对应注册后：

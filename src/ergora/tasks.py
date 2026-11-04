@@ -115,6 +115,17 @@ def evidence(state: State, project_id: str, task_id: str, *, run_id: str, timeou
     return reference.task_evidence(project, state.root, {'task_id': task_id, 'run_id': run_id}, timeout=timeout)
 
 
+def handoff(state: State, project_id: str, task_id: str, *, run_id: str, output: Path, timeout: int = 20) -> dict:
+    """Export verified original materials; leave task execution and ownership intact."""
+    _run_id(run_id)
+    if type(timeout) is not int or not 1 <= timeout <= 60:
+        raise ValueError('Task handoff timeout must be 1–60 seconds')
+    project = _project(state, project_id)
+    return reference.task_handoff(project, state.root,
+                                  {'task_id': task_id, 'run_id': run_id, 'output': str(output.expanduser().absolute())},
+                                  timeout=timeout)
+
+
 def events(state: State, project_id: str, task_id: str, *, run_id: str,
            limit: int = 20, after: str | None = None, timeout: int = 20) -> dict:
     """Read one bounded page of original-run metadata without returning payloads."""

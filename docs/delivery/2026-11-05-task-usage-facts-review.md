@@ -42,3 +42,28 @@
 ## 剩余验收
 
 本报告通过本地实现与证据审查，不标记完整F5.2交付完成。F5.2精确提交、普通推送、实时远端、双OS CI及同片最终复核尚待实际结果；F5.1的精确CI保持独立身份。最终文档状态与链接应随归档再核，后续F5.3及完整F5/G0不在本次通过范围。
+
+## 精确提交、归档与推送续核
+
+2026-11-05续核：精确候选`bb4e4617a6f412b7d2ec94e9433fcc4c6e8147f7`的唯一父提交为原基线`2c0ddbccd25dda66d971eadd6770b61877c83bb7`。独立核12文件实际Git范围与`staged-scope.json`逐文件SHA256完全一致；生产/测试仍仅原两文件，blob分别保持上述`4d0e7e…`/`78946d…`身份。其余为本片文档与前片终结归档，没有CI/依赖或后续F5.3生产变更。
+
+审查者重新读取该精确提交的Git archive并与原wheel逐文件比较：350资源完全相同，wheel仍为`17cd87edef513cce25df4546a2d031fa4c92c642fe69596d3af8853b2fbcbd07`。核提交前最终静态命令exit0及原日志，10份文档内容SHA256全部匹配该提交，335本地链接/锚点无缺失，28条README命令parser通过；不将静态检查算作运行验收。
+
+已核提交exit0、推送前后原stdout及推送exit0记录：远端从唯一父提交快进到候选，输出为`2c0ddbc..bb4e461`，没有forced-update。另于`2026-11-04T21:20:35Z`独立只读`git ls-remote`核GitHub的`refs/heads/refactor/architecture-foundations`，实时返回完整`bb4e4617a6f412b7d2ec94e9433fcc4c6e8147f7`；复用既有RSA/CONNECT连接元数据，没有推送或修改Git配置。
+
+精确提交、发行身份、最终静态与普通快进/实时远端续核通过，无新增finding。精确F5.2双OS CI尚未完成，仍待原HTML/JSON和同片最终复核；本次没有重跑重型套件、安装或服务，也不把F5.1 CI41911536059归作F5.2验收。当前后续状态文档变化不替代该精确提交身份。
+
+## 精确CI与同片最终终结
+
+2026-11-05最终续核：精确候选`bb4e4617a6f412b7d2ec94e9433fcc4c6e8147f7`的[Portability CI41914631896](https://github.com/626619403/Ergora/actions/runs/41914631896)已成功。审查者独立解析已存官方actions/run/job HTML及job-groups，核6份原证据的字节数/SHA256与`ci-html-status.json`一致，完整commit/workflow链接、run ID、各selectedJobId和必要步骤的精确commit日志URL相互对应：
+
+|环境|精确job|已完成且success的必要步骤|
+|---|---|---|
+|Ubuntu / Python3.11|[126870927405](https://github.com/626619403/Ergora/actions/runs/41914631896/job/126870927405)|Build and install wheel；Packaged reference identity；Native application regression|
+|Windows / Python3.12|[126870927806](https://github.com/626619403/Ergora/actions/runs/41914631896/job/126870927806)|上述三步；Windows PowerShell 5.1 installer and upgrade|
+
+两job未见failure/cancelled/timed_out步骤。另于`2026-11-04T21:30:48Z`独立只读GET官方精确run页面，实时Status仍为Success并链接完整候选及原workflow；`21:30:50Z`独立`ls-remote`再次确认远端目标分支仍为完整`bb4e4617a6f412b7d2ec94e9433fcc4c6e8147f7`。
+
+本次重新核该Git对象的唯一父提交、原生产/测试blob SHA256及350资源Git archive与原`17cd87…`wheel身份，全部保持。CI workflow相对父提交未变；精确CI补齐原有完整矩阵验收，不重算或混归前片结果，也不将必要步骤成功扩写为原HTML未提供的逐例计数。本次没有重跑矩阵、安装或服务，没有修改源码、提交或推送。
+
+F5.2需求符合性、可维护性及同片最终交付审查全部通过，无未解决finding；前述精确CI待验项已关闭。本片可以关闭。当前工作树的F5.3新文件未纳入上述Git/包/CI身份或审查，完整F5/G0仍须按各自切片继续验收。

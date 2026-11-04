@@ -406,6 +406,27 @@ API：`GET /api/projects/PROJECT_ID/tasks/TASK_ID/evidence?run_id=RUN_ID&timeout
 
 `usage`列出完整原history的事件数、activity调度、实际记录的activity-start、signal、dev_submit事件数和不同job数，并给出冻结request的work单元数。SDK会合并部分重试历史，因此这些计数不能推导全部重试、模型调用或计费。`workflow_span`按原首/终事件的Timestamp计算秒数并附event引用，包含排队、人工等待、并发和服务停止时间；它不是模型运行时长或job时长之和。缺时间戳为`not_recorded`，反向为`invalid_timestamps`且值null，真实零跨度才为0。`model_calls/tokens/cost`没有按原job验证的结构化用量来源时均为`not_recorded/value: null`，费用币种和来源亦null；不从材料文本或当前价格表自动推估。
 
+### 收集与离线核对交接包
+
+原run闭合且上述索引的材料完整时，可显式收集到新的本地文件。使用登记Linux/WSL2完整运行时，不启动worker或重新运行agent：
+
+```bash
+ergora task handoff my-project TASK_ID --run-id RUN_ID --output ./task-handoff.zip --timeout 20
+```
+
+收集只读取原索引和回执引用的产物，不扫描环境、凭据、任意用户目录或整个仓库。缺失/坏材料或额外job会拒绝收集；原业务失败、取消不妨碍交接完整材料，不会被改写成成功。文件以同目录临时文件完成后仅创建发布，目标已存在时拒绝覆盖；需要支持硬链接的本地文件系统。正常异常会清理临时文件，进程被强制中止时须先检查目标及同目录`.ergora-handoff-*`残留，确认没有仍在运行的收集进程后再处理。查询预算1–60秒、父进程另5秒；超时不保证文件尚未发布，先核已有目标，不能盲目覆盖。
+
+接收者只需基础`ergora`安装，可在Windows原生或Linux上运行，无控制库、SDK或在线服务：
+
+```bash
+ergora handoff verify ./task-handoff.zip
+ergora handoff verify ./task-handoff.zip --sha256 EXPECTED_PACKET_SHA256
+```
+
+`--sha256`可选，接受独立取得的整包64位小写hex摘要；匹配时`external_sha256: matches`，未提供时`not_recorded`。成功输出`status: verified`、包/manifest摘要、项目/原run/候选引用及原outcome。`verification_scope: packet_bytes_and_declared_internal_identities`仅证明包内字节、摘要和声明的spec/request/profile/绑定、job/回执/材料关系相符；`origin_authenticated: false`和`execution_success: null`保持。包未携完整创建/提交意图、服务history、context或Git对象，其SHA只是引用；不能离线认证原执行者、验证history计数、审查独立性、重演执行或复验候选代码。外部SHA也不自行构成签名或来源认证。
+
+v1使用标准ZIP_STORED、UTF-8 JSON、SHA256及公开[版本化schema](../src/ergora/data/schemas/task-handoff-v1.json)，只含`manifest.json`与按摘要去重的`blobs/SHA256`。manifest最多1 MiB、每blob16 MiB、去重材料总64 MiB、4096成员/整包72 MiB；重复、多余、缺失、非规范路径、链接、加密或压缩成员明确拒绝。验证直接读取成员，不提取或执行。限额不把ZIP库峰值内存或原索引的完整history/逐材料读取成本限制到1 MiB。交接包用于材料复查，不替代原执行目录、Git及租约库的联合备份；本地路径输出和传输另由操作者选择。
+
 ### 核对闭合运行的外部作业证据
 
 统一创建并保存原提交回执的任务，可用固定的原run读取完整历史、原作业请求、可信终态回执和已有fence：

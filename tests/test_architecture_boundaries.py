@@ -40,7 +40,7 @@ def test_control_plane_import_graph_is_acyclic(local_dependencies):
 
 
 @pytest.mark.parametrize("module,allowed", [
-    ("components", set()), ("contracts", set()), ("state", set()),
+    ("components", set()), ("contracts", set()), ("state", set()), ("handoff", {"contracts"}),
     ("windows_job", set()), ("processes", {"windows_job"}),
 ])
 def test_foundations_do_not_depend_on_application_modules(local_dependencies, module, allowed):

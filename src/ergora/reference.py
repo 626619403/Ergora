@@ -388,6 +388,11 @@ def task_evidence(project: dict, home: Path, payload: dict, *, timeout: int) -> 
     return _task_operation(project, home, 'reconciliation', 'inspect-index', payload, timeout)
 
 
+def task_handoff(project: dict, home: Path, payload: dict, *, timeout: int) -> dict:
+    """Collect original published evidence into the explicitly selected new file."""
+    return _task_operation(project, home, 'reconciliation', 'export-handoff', payload, timeout)
+
+
 def task_reconciliation(project: dict, home: Path, operation: str, payload: dict, *, timeout: int) -> dict:
     """Reconcile the original closed run through its durable native boundary."""
     return _task_operation(project, home, 'reconciliation', operation, payload, timeout)
@@ -395,7 +400,7 @@ def task_reconciliation(project: dict, home: Path, operation: str, payload: dict
 
 def _task_operation(project: dict, home: Path, component: str, operation: str, payload: dict, timeout: int) -> dict:
     inspection = {'inspect-plan': 'Plan', 'inspect-events': 'Task event', 'inspect-job': 'Job evidence',
-                  'inspect-index': 'Task evidence index'}.get(operation)
+                  'inspect-index': 'Task evidence index', 'export-handoff': 'Task handoff'}.get(operation)
     if sys.platform != 'linux':
         raise ValueError(f'Formal task {component} requires Linux; use the registered Linux runtime in WSL2')
     execution = project['registration']['definition']['execution']
@@ -415,6 +420,8 @@ def _task_operation(project: dict, home: Path, component: str, operation: str, p
                                                   'timeout': timeout, **payload}, allow_nan=False),
                                 capture_output=True, text=True, encoding='utf-8', env=environment, timeout=timeout + 5)
     except subprocess.TimeoutExpired as error:
+        if operation == 'export-handoff':
+            raise ValueError('Task handoff process timed out; inspect the output file before collecting again') from error
         if inspection:
             raise ValueError(inspection + ' inspection process timed out; query the original run before inspecting again') from error
         raise ValueError(f'Task {component} process timed out; inspect task {component} and resume its original intent') from error

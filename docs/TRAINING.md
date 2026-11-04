@@ -32,6 +32,8 @@ init / runner-add → prepare → worker-start → start
 
 训练证据已按原evidence SHA获准后，在同一业务项目使用repository-governance或large-change创建集成/复验任务；先通过`project register`登记相应开发模板、路径和可信检查。按[正式任务旅程](../README.md#首个开发任务)预览、创建、提交、批准精确计划，再用原run结果核对verification/review与candidate并导出本地分支。训练批准、开发计划批准和业务合入分别保留原证据，不能互相替代。
 
+开发集成/复验任务闭合后，可按[交接包说明](USAGE.md#收集与离线核对交接包)收集它的冻结索引及回执指定材料，供无服务环境离线核字节。该包不自动收集独立训练实验的数据、checkpoint或完整统计来源；训练证据、原批准SHA及复现实验仍按本手册保存。
+
 `ergora task cancel/reconcile`仅处理统一创建/提交的开发任务。训练实验、Forge campaign及远端作业仍使用各自原生ID、取消和恢复协议；开发task的外部已确认不证明GPU/远端实验已停止。正式开发与训练若共享执行state，停止worker/执行栈之前先核对其全部在途作业；只关闭控制台不表示外部作业已取消。
 
 ## 记忆、Skill 与资料

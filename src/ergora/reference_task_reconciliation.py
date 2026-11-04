@@ -5,6 +5,7 @@ from contextlib import closing
 from datetime import timedelta
 import json
 import os
+from pathlib import Path
 import re
 import sys
 
@@ -144,7 +145,7 @@ class _Inspection:
             if (not isinstance(outcome, dict) or outcome.get('task_id') != self.creation.task_id
                     or outcome.get('request_sha256') != self.spec['request_sha256']):
                 raise ValueError('Original closed outcome differs from the recorded task request')
-        indexed = self.payload['operation'] == 'inspect-index'
+        indexed = self.payload['operation'] in ('inspect-index', 'export-handoff')
         usage = {'events': 0, 'scheduled_activities': 0, 'recorded_activity_starts': 0, 'signal_events': 0} if indexed else None
         jobs = await self.jobs(handle, converter, temporal_status, usage=usage)
         result = {'schema_version': 1, 'project': self.creation.project['id'],
@@ -184,6 +185,14 @@ class _Inspection:
                                    ('evaluations', 'skills', 'memories', 'source_adoptions')},
                 artifact_limit_bytes=16_777_216, response_limit_bytes=1_048_576)
             self.creation.check_size(result, 1_048_576, 'Task evidence index')
+        if self.payload['operation'] == 'export-handoff':
+            from dev_platform.adapter import read_raw
+            from . import handoff
+
+            def read_artifact(artifact):
+                return read_raw(self.adapter.path('artifacts', artifact['path']), handoff.BLOB_LIMIT)
+
+            return handoff.create(result, read_artifact, Path(self.payload['output']))
         return result
 
 
@@ -375,11 +384,12 @@ def main() -> None:
         operation = payload['operation']
         if operation not in ('status', 'prepare', 'prepare-resume'):
             os.environ.update(environment())
-        owner = _Inspection(payload) if operation in ('inspect', 'inspect-index') else _Reconciliation(payload)
+        owner = _Inspection(payload) if operation in ('inspect', 'inspect-index', 'export-handoff') else _Reconciliation(payload)
         result = asyncio.run(asyncio.wait_for(owner.run(), payload['timeout']))
         print(json.dumps(result, ensure_ascii=False, allow_nan=False))
     except TimeoutError as error:
-        message = ('Task evidence index query timed out; no fence or lease was changed' if operation == 'inspect-index' else
+        message = ('Task handoff timed out; inspect the output file before collecting again' if operation == 'export-handoff' else
+                   'Task evidence index query timed out; no fence or lease was changed' if operation == 'inspect-index' else
                    'External evidence query timed out; no fence or lease was changed' if operation == 'inspect' else
                    'Reconciliation timed out; inspect task reconciliation and resume its original intent')
         raise SystemExit('BLOCKED: ' + message) from error

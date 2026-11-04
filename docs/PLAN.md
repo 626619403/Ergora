@@ -1,12 +1,12 @@
 # Ergora 下一阶段计划与进度
 
-> 最新状态（2026-11-05）：完整[F4正式任务页面](delivery/2026-11-05-f4-completion.md)已完成。最后生产77b334c/350资源43e121包及精确双OS CI41896900471通过；综合156GET恢复/离线/仅Temporal重开、两候选复验、139文件/三history/outcome/refs/leases保持和最终服务/HTTP/浏览器退出已验。[独立综合终结](delivery/2026-11-05-f4-completion-review.md)关闭两文档P2、340本地链接/27命令、纯文档f2b93d4正常推送及独立实时远端全部通过。[F5.0原单参数history完整性](delivery/2026-11-05-original-payload-boundaries.md)已完成，[F5.1证据索引](delivery/2026-11-05-task-evidence-index.md)亦已完成，当前推进[F5.2预算与用量事实](delivery/2026-11-05-task-usage-facts.md)；完整F5/G0仍未完成。
+> 最新状态（2026-11-05）：完整[F4正式任务页面](delivery/2026-11-05-f4-completion.md)、[F5.0原单参数history完整性](delivery/2026-11-05-original-payload-boundaries.md)、[F5.1证据索引](delivery/2026-11-05-task-evidence-index.md)及[F5.2预算与用量事实](delivery/2026-11-05-task-usage-facts.md)均已完成。F5.2精确bb4e461、17cd87包、双OS CI41914631896及[同片独立终结](delivery/2026-11-05-task-usage-facts-review.md#精确ci与同片最终终结)通过，无未解决finding。当前实施[F5.3受约束交接包](delivery/2026-11-05-task-handoff.md)，完整F5/G0仍未完成。
 
 本文件是项目执行与上下文恢复入口。最后更新：2026-11-05。S0–S10 及 A0 计划已交付；用户已批准开始主线合入、审计、渐进重构与按优先级补齐功能，并要求每完成一步更新文档。各阶段详细计划只在对应链接内维护节点状态。
 
 持续执行要求：用户已授权睡眠期间沿既有计划连续推进，无需每个子节点等待回复。每个完整切片均使用新的独立审查上下文；每个大节点额外核查代码结构、复用及性能，性能结论绑定实际测量条件。实现、验证、审查和提交推送分别记账，完成后继续下一项；权限或外部条件受限的维度明确记录，不阻断可独立工作。
 
-下一可执行项：[F5.2预算与用量事实](delivery/2026-11-05-task-usage-facts.md)在一个既有生产所有者实现，源码51项/包内31项/旧代表4项、350资源/两noneditable安装/283冻结、三原run预算及SDK事件/Timestamp/材料CLI/API对照、139文件/history/Git/leases不变和专用服务正式退出均通过。[新的独立本地审查](delivery/2026-11-05-task-usage-facts-review.md)通过，无未解决finding；精确提交推送、双OS CI及同片终结待完成。前置[F5.1](delivery/2026-11-05-task-evidence-index.md)已完整完成：2c0ddbc正常推送、精确双OS CI41911536059及[同片独立终结](delivery/2026-11-05-task-evidence-index-review.md#精确-ci-与同片最终终结)通过；F5.0此前亦已完成。每片保留独立包和CI身份，不混归结果；之后按[F5计划](plans/2026-11-05-evidence-handoff.md)推进受约束交接包与页面，完整F5/G0仍未完成。
+下一可执行项：[F5.3受约束交接包](delivery/2026-11-05-task-handoff.md)的a原生/离线已实现，最终cdf4ab包352资源/两安装/283冻结、103项定向、三原run共43材料导出/无SDK基础离线核验及139文件/history/Git/leases不变通过，正式服务退出/离线重核通过；初审两P2已修、同片独立复核通过，无未解决finding；精确提交/推送/CI尚待完成。之后以独立F5.3b接HTTP下载，再F5.4页面。前置F5.2完成：源码51项/包内31项/旧代表4项、350资源/两noneditable安装/283冻结、三原run预算及SDK事件/Timestamp/材料CLI/API对照、139文件/history/Git/leases不变和正式退出通过；精确bb4e461正常推送、350归档=17cd87包、精确双OS CI41914631896及新的独立本地/同片最终审查通过。每片保留独立包和CI身份，不混归结果；完整F5/G0仍未完成。
 
 ## 当前检查点
 
@@ -193,3 +193,5 @@ F4.3b独立本地审查通过：新fresh-context报告已归档，348文件/两�
 最新推进：B已提交并推送c54230eb8a6d3468ef33e6365c874a4e3a2407d6，归档348=最终4fcdb9包，同片独立提交/包/实时远端复核通过。精确CI41797567476仍In progress，待必要步骤及终结审查。下一[F4.3c1取消页面](delivery/2026-11-04-task-cancellation-console.md)首轮消费者已实现，尚待语法/独立构建/浏览器和新审查；C与B保留不同发行身份。
 
 B完成/C1当前：B已获精确双OS CI41797567476和原审查者终结核原HTML/实时远端，无findings。C1首包a4081f8d的348文件/两noneditable安装/冻结283、基础无SDK和tasks语法通过；两模板受控取消浏览器40页面请求/6拦截POST、另2辅助GET、零转发/零pageerror通过，未记真实取消。下一验证迟到/失败与独立新任务真实取消及原ID恢复，之后新fresh-context审查、提交/精确CI。
+
+F5.3a本地检查点：原生收集/无State离线验证已接线；修正首轮控制Python3.11/原生3.12的schema二进制依赖耦合，外来manifest入口才加载StrictValidator，收集端保留原生完整性与字节重核。最终352资源2a0f829包、97项定向及三个原run/43份材料逐字节对照通过；前后139文件/三history/outcome/两repo/claims/leases相同，正式退出与独立审查及精确交付收口中。HTTP下载、页面、完整F5/G0尚未完成。

@@ -96,6 +96,69 @@ def inspect(data, **changes):
     return asyncio.run(reference_task_reconciliation._Inspection({**data.payload, **changes}).run())
 
 
+@pytest.fixture
+def handoff_evidence(closed_evidence):
+    data = closed_evidence
+    data.spec['request']['task_id'] = data.creation.task_id
+    data.spec.update(request_sha256=data.creation.sha(data.spec['request']),
+                     profile_sha256=data.creation.sha(data.spec['profile']))
+    data.context.update(request_sha256=data.spec['request_sha256'], profile_sha256=data.spec['profile_sha256'],
+                        spec=deepcopy(data.spec))
+    digest = data.creation.sha(data.context)
+    data.receipt['job_sha256'] = digest
+    data.write(data.envelope_path, {'schema_version': 1, 'job_id': data.context['job_id'],
+                                   'job_sha256': digest, 'context': data.context})
+    data.save_receipt()
+    data.outcome['request_sha256'] = data.spec['request_sha256']
+    return data
+
+
+def test_native_handoff_collects_from_original_file_adapter_without_task_writes(handoff_evidence, tmp_path):
+    from ergora import handoff
+
+    data = handoff_evidence
+    target = tmp_path / 'collected.zip'
+    before = snapshot(data.creation.root)
+    result = inspect(data, operation='export-handoff', output=str(target))
+    assert result['status'] == 'exported' and result['artifacts'] == 3
+    verified = handoff.verify(target, sha256=result['sha256'])
+    assert verified['original_outcome'] == data.outcome
+    assert verified['origin_authenticated'] is False and verified['execution_success'] is None
+    target.unlink()
+    assert snapshot(data.creation.root) == before
+
+
+def test_incomplete_native_material_cannot_publish_a_handoff(handoff_evidence, tmp_path):
+    data = handoff_evidence
+    data.receipt_path.unlink()
+    before = snapshot(data.creation.root)
+    target = tmp_path / 'incomplete.zip'
+    with pytest.raises(ValueError, match='complete verified original materials'):
+        inspect(data, operation='export-handoff', output=str(target))
+    assert not target.exists() and snapshot(data.creation.root) == before
+
+
+def test_handoff_cli_keeps_explicit_run_output_and_read_only_error_handling(tmp_path, monkeypatch, capsys):
+    from ergora import cli
+
+    seen = []
+    monkeypatch.setattr(tasks, '_project', lambda state, project: {'id': project})
+    def native(project, home, payload, *, timeout):
+        seen.append((project, home, payload, timeout))
+        return {'status': 'exported'}
+    monkeypatch.setattr(reference, 'task_handoff', native)
+    path = tmp_path / 'explicit.zip'
+    args = ['--home', str(tmp_path / 'control'), 'task', 'handoff', 'demo', 'task-one',
+            '--run-id', 'original-run', '--output', str(path), '--timeout', '9']
+    assert cli.main(args) == 0
+    assert json.loads(capsys.readouterr().out)['status'] == 'exported'
+    assert seen[0] == ({'id': 'demo'}, tmp_path / 'control',
+                      {'task_id': 'task-one', 'run_id': 'original-run', 'output': str(path)}, 9)
+    with pytest.raises(ValueError, match='1–60 seconds'):
+        tasks.handoff(SimpleNamespace(root=tmp_path), 'demo', 'task-one', run_id='original-run', output=path, timeout=61)
+    assert len(seen) == 1
+
+
 def test_original_contract_snapshot_and_published_references_are_read_only(closed_evidence):
     data = closed_evidence
     before = snapshot(data.creation.root)
@@ -322,7 +385,8 @@ def test_cli_and_api_forward_one_read_only_index_request(tmp_path, monkeypatch, 
 
 @pytest.mark.parametrize('failure,message', [('timeout', 'index query timed out'),
                                           ('rpc', 'RPC failed: UNAVAILABLE')])
-def test_index_errors_do_not_offer_write_recovery(closed_evidence, monkeypatch, failure, message):
+@pytest.mark.parametrize('operation', ['inspect-index', 'export-handoff'])
+def test_index_errors_do_not_offer_write_recovery(closed_evidence, monkeypatch, failure, message, operation):
     monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/local'))
     from agent_platform import core
     from temporalio.service import RPCError, RPCStatusCode
@@ -333,6 +397,9 @@ def test_index_errors_do_not_offer_write_recovery(closed_evidence, monkeypatch, 
             raise TimeoutError()
         raise RPCError('unavailable', RPCStatusCode.UNAVAILABLE, b'')
     monkeypatch.setattr(reference_task_reconciliation._Inspection, 'run', fail)
+    closed_evidence.payload['operation'] = operation
+    if operation == 'export-handoff' and failure == 'timeout':
+        message = 'inspect the output file'
     monkeypatch.setattr(sys, 'stdin', io.StringIO(json.dumps(closed_evidence.payload)))
     with pytest.raises(SystemExit, match=message) as result:
         reference_task_reconciliation.main()

@@ -1,6 +1,6 @@
 # F5.2：冻结预算与原history用量事实
 
-日期：2026-11-05。状态：在一个既有生产所有者完成首轮实现，源码51项定向通过；独立包及三个原runCLI/API对照通过，前后不变及正式退出已通过，[新的独立本地审查](2026-11-05-task-usage-facts-review.md)通过，无未解决finding；精确交付待收口。源码基线`2c0ddbccd25dda66d971eadd6770b61877c83bb7`，F5.1本地验收/新独立审查通过且已正常推送；其精确双OS CI41911536059及同片独立终结现已通过，前置F5.1完成。来源：[F5分片计划](../plans/2026-11-05-evidence-handoff.md)。本片可独立实施，前片CI终结前不推下一生产候选。
+日期：2026-11-05。状态：在一个既有生产所有者完成首轮实现，源码51项定向通过；独立包及三个原runCLI/API对照通过，前后不变及正式退出已通过，[新的独立本地审查](2026-11-05-task-usage-facts-review.md)通过，无未解决finding；精确bb4e461及双OS CI41914631896同片终结亦通过，本片完成。源码基线`2c0ddbccd25dda66d971eadd6770b61877c83bb7`，F5.1本地验收/新独立审查通过且已正常推送；其精确双OS CI41911536059及同片独立终结现已通过，前置F5.1完成。来源：[F5分片计划](../plans/2026-11-05-evidence-handoff.md)。本片可独立实施，前片CI终结前不推下一生产候选。
 
 ## 事实与合同
 
@@ -47,3 +47,7 @@
 本地三CLI约1.74–1.93秒、ASGI端点1.51–1.55秒，CLI16672–33427字节，仅当前小规模运行的整体观察；无额外history RPC或新持久缓存，未声称吞吐/内存或性能提升。私有`original-usage-verified.json`/逐runCLI与API、`original-usage-command.json/.log`保留确切命令/结果；前后139原文件、三完整history/outcome、两repo文件/HEAD/refs/worktrees及三claim/零active lease完全相同。正式shutdown confirmed、两个专用进程退出、四端口关闭、三个持久数据库保留；最终离线重算139文件/leases仍不变，未启动外部HTTP。新的独立本地审查和精确提交推送/CI待收口。
 
 新的fresh-context独立本地审查已通过：源码/必要守卫与测试、350资源/两安装/冻结283、三原run计数/纳秒跨度及139文件/Git/leases不变/正式服务退出均独立核实，无未解决finding。下一完成精确提交/正常推送、Git archive同包核验、精确双OS CI和同片终结；不继承前片CI结果。
+
+精确候选`bb4e4617a6f412b7d2ec94e9433fcc4c6e8147f7`已普通快进RSA推送，实时远端一致；350 Git archive逐项等于17cd87包。提交前10文档335本地链接/锚点及README28条parser命令通过。下一精确双OS CI及同片提交/CI终结；不以F5.1 CI41911536059替代本片结果。
+
+精确双OS CI41914631896完成：Ubuntu job126870927405、Windows job126870927806必要步骤全部成功。[同片独立最终终结](2026-11-05-task-usage-facts-review.md#精确ci与同片最终终结)重核原HTML、精确提交/350归档=原包与实时远端，无未解决finding，F5.2完成。后续F5.3另片验收。

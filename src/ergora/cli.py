@@ -18,6 +18,11 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--version", action="version", version=__version__)
     result.add_argument("--home", type=Path, help="Persistent state directory (default: ERGORA_HOME, LocalAppData on Windows, or XDG data)")
     commands = result.add_subparsers(dest="command", required=True)
+    handoff = commands.add_parser("handoff", help="Verify portable evidence without services or local state")
+    operations = handoff.add_subparsers(dest="operation", required=True)
+    verify = operations.add_parser("verify")
+    verify.add_argument("path", type=Path)
+    verify.add_argument("--sha256", help="Independently obtained whole-packet SHA256")
     maintenance = commands.add_parser("state", help="Inspect, back up, verify or restore offline local state")
     operations = maintenance.add_subparsers(dest="operation", required=True)
     operations.add_parser("info")
@@ -187,6 +192,12 @@ def parser() -> argparse.ArgumentParser:
     evidence.add_argument("task_id")
     evidence.add_argument("--run-id", required=True)
     evidence.add_argument("--timeout", type=int, default=20)
+    handoff = operations.add_parser("handoff", help="Collect a closed original run's published evidence into a new ZIP")
+    handoff.add_argument("project")
+    handoff.add_argument("task_id")
+    handoff.add_argument("--run-id", required=True)
+    handoff.add_argument("--output", type=Path, required=True)
+    handoff.add_argument("--timeout", type=int, default=20)
     reconciling = operations.add_parser("reconcile", help="Confirm a closed original run's external cleanup and ingress release")
     reconciling.add_argument("project")
     reconciling.add_argument("task_id")
@@ -365,7 +376,11 @@ def main(argv: list[str] | None = None) -> int:
         return reference.workflow(argv[1:])
     args = parser().parse_args(argv)
     try:
-        if args.command == "state":
+        if args.command == "handoff":
+            from . import handoff
+
+            output = handoff.verify(args.path, sha256=args.sha256)
+        elif args.command == "state":
             from . import backups
 
             root = resolve_home(args.home)
@@ -475,6 +490,9 @@ def main(argv: list[str] | None = None) -> int:
                 output = tasks.external_status(state, args.project, args.task_id, run_id=args.run_id, timeout=args.timeout)
             elif args.operation == "evidence":
                 output = tasks.evidence(state, args.project, args.task_id, run_id=args.run_id, timeout=args.timeout)
+            elif args.operation == "handoff":
+                output = tasks.handoff(state, args.project, args.task_id, run_id=args.run_id,
+                                       output=args.output, timeout=args.timeout)
             elif args.operation == "reconciliation":
                 output = tasks.reconciliation(state, args.project, args.task_id)
             elif args.operation in ("reconcile", "resume-reconcile"):
