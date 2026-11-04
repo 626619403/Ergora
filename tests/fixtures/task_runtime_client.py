@@ -37,7 +37,7 @@ class Handle:
     async def fetch_history_events(self, **kwargs):
         assert kwargs['page_size'] == 1
         yield SimpleNamespace(HasField=lambda field: field == 'workflow_execution_started_event_attributes',
-                              workflow_execution_started_event_attributes=SimpleNamespace(input=SimpleNamespace(payloads=[])))
+                              workflow_execution_started_event_attributes=SimpleNamespace(input=SimpleNamespace(payloads=['spec'])))
 
     async def query(self, query, **kwargs):
         return {'phase': 'AWAITING_PLAN_APPROVAL', 'request_sha256': spec['request_sha256'], 'plan_sha256': 'a'*64}

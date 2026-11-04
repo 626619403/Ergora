@@ -63,7 +63,8 @@ async def events():
         scheduled = event.activity_task_scheduled_event_attributes
         scheduled.activity_id = str(event.event_id)
         scheduled.activity_type.name = 'dev_submit'
-        scheduled.input.payloads.extend(await converter.encode([context]))
+        scheduled.input.payloads.extend(await converter.encode(
+            [context, context] if scenario == 'history-multiple-contexts' else [context]))
         result.append(event)
     end = HistoryEvent(event_id=len(result) + 1)
     status = saved().get('status', 'COMPLETED')

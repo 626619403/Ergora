@@ -111,6 +111,7 @@ def test_closed_original_evidence_does_not_mutate_outcome_leases_or_files(extern
     ('history-gap', 'complete original run history'), ('history-no-start', 'complete original run history'),
     ('history-no-terminal', 'terminal event'), ('history-wrong-terminal', 'terminal event'),
     ('history-empty', 'terminal event'), ('history-rpc-unavailable', 'RPC failed: UNAVAILABLE'),
+    ('history-multiple-contexts', 'single context'),
     ('wrong-spec', 'original task spec'), ('wrong-memo', 'matching submission memo'),
     ('successor-run', 'different run'), ('not-found', 'run was not found'),
     ('rpc-unavailable', 'RPC failed: UNAVAILABLE'), ('offline', 'offline'),

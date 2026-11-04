@@ -56,3 +56,16 @@ B2精确[CI41896900471](https://github.com/626619403/Ergora/actions/runs/4189690
 文档静态原记录在本报告落盘前覆盖九文档327个本地链接/锚点和27条README parser命令，作者随后还细化了概述措辞；最终应在本报告及状态更新完成后重核并保存精确文档身份。审查者当前 `git diff --check`通过；本地实现和组合验收结论不依赖再触发纯文档CI。
 
 下一步仅为本片最终文档静态检查、正常纯文档提交推送、提交范围/资源身份及实时远端同片续核。完成后才能登记完整F4终结。Windows完整Linux执行栈、真实GPU、远端GitLab工单及F5/G0等未验/未实现责任保持原范围，不由此报告补成通过。
+
+## 精确文档提交、包与实时远端终结
+
+日期：2026-11-05，同一独立审查者续核。本节关闭上文保留的C交付待验项，精确候选为 `f2b93d4daba751a707af43755f2dd30fc19c74f8`，唯一父提交为原生产/测试基线 `77b334c62346f92868c22c067949b0caf2d74d48`；后续F5的任何工作树或提交变化均不归入本片。
+
+- **精确范围与文档身份通过。** 独立读取Git提交，十文件全部是本报告已列的Markdown；源码、依赖、测试、CI、schema没有变化。逐一重算该提交的十份blob SHA，全部等于 `staged-scope.json` 和最终 `static-documents.json`。已读 `commit-command.json`、原stdout/stderr，实际commit exit0，`77b334c..f2b93d4` 的 `git diff --check`另行独立通过。
+- **最终静态验收通过。** 原 `static-documents-command.json` exit0；审查者另以精确f2b93d4的Git树及文档内容核全部本地链接/锚点，实际340条、零missing，并使用既有CLI parser重新解析该提交README的27条命令。数量与原记录完全相同，包含本报告及两finding的最终修正文案。这是文档与parser验收，不是另一次任务执行。
+- **原发行身份通过。** 独立从精确f2b93d4的内存Git archive提取350资源，逐项等于原manifest及实际wheel内容；wheel完整SHA仍为 `43e1211ea12c7522b928881d10b1c0497489e6a0a68930bbf86f10eb260c8ca1`，与 `commit-package-identity.json`相符。未重新构建、安装或要求未来F5源码等于C归档。
+- **正常推送及实时远端通过。** 已读 `push-remote-identity.json`、原remote-before/after和push stdout/stderr，原普通快进推送exit0，前远端为77b334c，后远端为完整f2b93d4。审查者另外使用现有RSA身份及已配置SSH传输执行只读 `git ls-remote --exit-code origin refs/heads/refactor/architecture-foundations`，独立exit0，实时远端精确返回 `f2b93d4daba751a707af43755f2dd30fc19c74f8`。未读取或输出私钥内容，也未执行推送。
+
+该提交带 `[skip ci]`，其十文件纯文档范围及生产树完全不变已由上述精确检查证明；原生产77b334c的双OS CI41896900471及B2终结仍保持原身份，不要求为同一生产树重复运行CI。此次没有启动服务、调用模型或重跑原生写/重型套件。
+
+**最终结论：F4.4c需求符合性与可维护性通过，精确提交、原包身份、最终静态文档、正常推送及实时远端同片终结通过。两项P2均已关闭，无本片未解决finding或剩余验收项，完整F4可登记完成。** 本段归档属于同片审查记账；F5、G0及其他已明确保留的支持/运行边界仍按其独立责任推进。

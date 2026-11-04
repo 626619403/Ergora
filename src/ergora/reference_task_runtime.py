@@ -16,7 +16,7 @@ async def find_signal_event(handle, converter, signal_name: str, payload: dict) 
         if not event.HasField('workflow_execution_signaled_event_attributes'):
             continue
         signal = event.workflow_execution_signaled_event_attributes
-        if signal.signal_name != signal_name:
+        if signal.signal_name != signal_name or len(signal.input.payloads) != 1:
             continue
         values = await converter.decode(signal.input.payloads, [dict])
         if canonical_sha(values) == canonical_sha([payload]):
@@ -37,10 +37,12 @@ class VerifiedSpecClient:
     def __getattr__(self, name):
         return getattr(self.original, name)
 
-    async def decode_spec(self, *args, **kwargs):
+    async def decode_spec(self, payloads, *args, **kwargs):
         from dev_platform.contracts import canonical_sha
 
-        values = await self.original.data_converter.decode(*args, **kwargs)
+        if len(payloads) != 1:
+            raise ValueError('Workflow ID collision: original task spec requires a single payload')
+        values = await self.original.data_converter.decode(payloads, *args, **kwargs)
         if canonical_sha(values) != canonical_sha([self.spec]):
             raise ValueError('Workflow ID collision: original task spec differs in JSON identity')
         return values

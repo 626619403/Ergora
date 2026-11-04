@@ -68,7 +68,7 @@ class Handle:
         log('history')
         assert kwargs['page_size'] == 1
         yield SimpleNamespace(HasField=lambda name: name == 'workflow_execution_started_event_attributes',
-                              workflow_execution_started_event_attributes=SimpleNamespace(input=SimpleNamespace(payloads=[])))
+                              workflow_execution_started_event_attributes=SimpleNamespace(input=SimpleNamespace(payloads=['spec'])))
 
 
 class Converter:

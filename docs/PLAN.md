@@ -1,10 +1,12 @@
 # Ergora 下一阶段计划与进度
 
-> 最新状态（2026-11-05）：F4各功能切片已完成；[b2日志材料页面](delivery/2026-11-05-task-job-console.md)77b334c/350归档=43e121包、精确双OS CI41896900471及同片最终独立审查全部通过。[c综合收口](delivery/2026-11-05-f4-completion.md)两候选archive/3与6类可信检查、三任务重开/离线/仅Temporal恢复三段156GET、原intent/result/spec/材料与139文件/三history/outcome/refs/leases保持全部通过；本次服务最终confirmed shutdown、遗留9HTTP/浏览器退出，持久SQLite保留。公开手册/架构已同步，[新的独立综合审查](delivery/2026-11-05-f4-completion-review.md)通过，两文档P2修正关闭；当前仅待纯文档提交推送/同片实时远端终结，完整F4尚待此交付，F5/G0未完成。
+> 最新状态（2026-11-05）：完整[F4正式任务页面](delivery/2026-11-05-f4-completion.md)已完成。最后生产77b334c/350资源43e121包及精确双OS CI41896900471通过；综合156GET恢复/离线/仅Temporal重开、两候选复验、139文件/三history/outcome/refs/leases保持和最终服务/HTTP/浏览器退出已验。[独立综合终结](delivery/2026-11-05-f4-completion-review.md)关闭两文档P2、340本地链接/27命令、纯文档f2b93d4正常推送及独立实时远端全部通过。当前推进[F5.0原单参数history完整性](delivery/2026-11-05-original-payload-boundaries.md)，F5/G0仍未完成。
 
 本文件是项目执行与上下文恢复入口。最后更新：2026-11-05。S0–S10 及 A0 计划已交付；用户已批准开始主线合入、审计、渐进重构与按优先级补齐功能，并要求每完成一步更新文档。各阶段详细计划只在对应链接内维护节点状态。
 
 持续执行要求：用户已授权睡眠期间沿既有计划连续推进，无需每个子节点等待回复。每个完整切片均使用新的独立审查上下文；每个大节点额外核查代码结构、复用及性能，性能结论绑定实际测量条件。实现、验证、审查和提交推送分别记账，完成后继续下一项；权限或外部条件受限的维度明确记录，不阻断可独立工作。
+
+下一可执行项：[F5分片计划](plans/2026-11-05-evidence-handoff.md)已写，先[F5.0原单参数history完整性](delivery/2026-11-05-original-payload-boundaries.md)。真实SDK内存探针已复现spec/signal/job单类型hint忽略多余payload，已加入反例并修补两个既有所有者（原源码8失败/4通过，修后12全通过）；独立包350资源/两安装/冻结283及包内14项通过；过宽240本地矩阵按独立审查建议在74已完成个案后明确中止（exit2），保留原日志，另补15项代表恢复/对账/架构路径全部通过，完整矩阵交精确双OS CI。[新独立本地审查](delivery/2026-11-05-original-payload-boundaries-review.md)通过，无findings；提交/CI和同片终结待交付。F4纯文档f2b93d4的同片远端终结已通过；当前不启动旧服务或重放任务操作。
 
 ## 当前检查点
 

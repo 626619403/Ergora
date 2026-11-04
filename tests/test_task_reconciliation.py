@@ -169,6 +169,7 @@ def test_unexpected_scope_is_rejected_before_publishing_any_fence(cleanup, folde
 @pytest.mark.parametrize('scenario,error', [
     ('wrong-memo', 'matching submission memo'), ('wrong-spec', 'original task spec'),
     ('successor-run', 'different run'), ('history-gap', 'complete original run history'),
+    ('history-multiple-contexts', 'single context'),
     ('history-no-terminal', 'terminal event'), ('not-found', 'run was not found'),
     ('rpc-unavailable', 'RPC failed: UNAVAILABLE'),
 ])

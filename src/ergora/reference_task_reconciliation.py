@@ -41,6 +41,8 @@ class _Inspection:
             scheduled = event.activity_task_scheduled_event_attributes
             if scheduled.activity_type.name != 'dev_submit':
                 continue
+            if len(scheduled.input.payloads) != 1:
+                raise ValueError('Original dev_submit history has no single context')
             values = await converter.decode(scheduled.input.payloads, [dict])
             if len(values) != 1 or not isinstance(values[0], dict):
                 raise ValueError('Original dev_submit history has no single context')
