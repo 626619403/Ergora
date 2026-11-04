@@ -41,3 +41,28 @@
 ## Findings 与后续门禁
 
 范围内无 findings，无源码阻塞项或最小修复要求。本地需求及可维护性审查通过；实现者须回填本片交付与 PLAN，随后核精确 b1 提交归档与上述 350 资源身份、正常推送/实时远端及所有必要双 OS CI 步骤，由本审查者追加同片终结。当前没有 b1 精确提交/CI 完成结论；b2 网页及完整 F4/F5/G0 仍未完成。
+
+## 精确提交、发行与实时远端复核（CI 待完成）
+
+同片审查者于 2026-11-05 追加。已独立核精确提交 `1dbe969e433348eda60d6bff0271c13cd729b6ba` 及直接父提交 `8f1489cb0a85fc75ea6e6f3cbb42172ba37ba98c`。实际 18 文件包括已审 b1 Python/测试、README/USAGE/PLAN/详细计划、本片交付与审查，以及前 a2 的终结记账；后续 b2 的两个 JS 和设计记录均未混入。当前工作树已有 b2 JS，故本次直接从精确提交的内存 `git archive` 复算 350 个资源摘要，全部等于原 manifest 和实际 `087aea1838886dd12e6a5d56220dc28b6440276608b9464232527a39f738c115` wheel；未以当前 JS 工作树替代 b1 身份。
+
+已读实际 `verify-commit-package.py` 与 `commit-package-identity.json`，并独立重复上述只读归档比较。八份提交文档的实际字节 SHA 全部匹配 `static-documents.json`，其中本报告原 43 行版本 SHA 为 `76ea64cd10d24aab1e4f40bc05652b5049a0c646a17f2f16d2289120f8abb1d4`。已读 staged 检查脚本、command 和原日志，8 文档/287 本地链接及锚点/27 README parser 命令、零缺失与 exit0 一致；parser 结果不代表命令业务执行。
+
+已读 `push-b1-rsa-command.json` 及原日志：普通 `git push origin 1dbe969e…:refs/heads/refactor/architecture-foundations` exit0，原日志为 `8f1489c..1dbe969`，无强推。本审查者实际执行只读 `git ls-remote origin refs/heads/refactor/architecture-foundations`，exit0 精确返回完整 `1dbe969e433348eda60d6bff0271c13cd729b6ba`；仅在该进程环境给既有 SSH 命令追加指定 RSA 身份，未修改 Git 配置或读取/输出私钥。
+
+精确提交、原验收发行身份、正常推送及实时远端范围通过，无新增 findings；b1 精确双 OS CI 的官方原页和全部必要步骤尚待同片核对，不能以 a2 CI 替代。本次未安装、重跑测试或访问原业务运行，尚不形成完整终结通过结论。
+
+## 精确双 OS CI 与同片最终终结
+
+同片审查者于 2026-11-05 追加，本段取代前述当时的 CI 待完成状态。已读 `.ergora/checks/f4-task-job-evidence/` 中实际落盘的官方 `ci-actions.html`、`ci-run-latest.html`、两个 job HTML、job-groups 和 selection 记录；独立复算 `ci-html-status.json` 所列 6 份源文件的字节数/SHA 全部一致。actions 原行对 run `41892668276` 明确标注 `completed successfully`，同一行链接完整 B1 提交；run 原页的完整提交链接为 `1dbe969e433348eda60d6bff0271c13cd729b6ba`，Status 为 Success。已读实际验证脚本及 `verify-successful-ci-command.json` 的 exit0，另用独立 HTML 解析核下面两 job，未仅采信汇总 JSON。
+
+|精确 job|平台/解释器|必要步骤|
+|---|---|---|
+|126793909338|windows-latest / Python 3.12|Build and install wheel、Packaged reference identity、Native application regression、Windows PowerShell 5.1 installer and upgrade 全部 success|
+|126793909993|ubuntu-latest / Python 3.11|Build and install wheel、Packaged reference identity、Native application regression 全部 success；Windows installer 按平台条件 skipped|
+
+两原 job 页的 `selectedJobId` 分别精确匹配上述 ID；全部必要步骤具有完成标志，日志 URL 均绑定该完整 commit 和对应 checks/job ID。设置/checkout/Python 与收尾步骤亦成功，无失败、取消或超时步骤。已读精确 B1 提交中的 `.github/workflows/portability.yml`，矩阵和 Windows 专用步骤条件与上述结果相符；未把 Ubuntu 的条件跳过记为执行成功，也未从步骤结论推导未读取的具体测试数或性能收益。官方 run 为 [41892668276](https://github.com/626619403/Ergora/actions/runs/41892668276)。
+
+本次再次实际执行 RSA 身份下的只读 `git ls-remote`，exit0 精确返回 `1dbe969e433348eda60d6bff0271c13cd729b6ba`；既有 SSH 命令仅在进程环境追加身份，未改配置或读取/输出私钥。本地 HEAD 亦为同一完整 SHA。既有本地、350 资源/087aea wheel、精确提交及正常推送审查结论保持；本次没有重跑重型检查、访问业务运行或混入未暂存的 B2/C 文件。
+
+F4.4b1 的需求、可维护性、本地证据、精确提交/发行、双 OS CI 和实时远端同片终结通过，范围内无新增或未解决 findings。实现者可据此登记本片完成并归档此最终追加；B2/C、完整 F4/F5/G0 继续按各自范围验收。

@@ -326,6 +326,127 @@ export function tasksView(data, base) {
       runtime.replaceChildren(empty("run ID已更改，请重新查询。"));
     });
 
+    function jobDialog(runId, eventId, selectedRunSequence) {
+      if (!view.isConnected || sequence !== detailSequence || selectedRunSequence !== runSequence) return;
+      let record = null;
+      let busy = false;
+      let artifactSequence = 0;
+      let offset = 0;
+      let finished = false;
+      let failed = false;
+      const description = node("div", {});
+      const message = node("div", { "aria-live": "polite" });
+      const choice = node("div", {});
+      const textWindow = node("div", {});
+      const artifact = select([["", "选择原回执中的材料…"]], "", "artifact");
+      const indexButton = button("重新读取原job回执", readIndex);
+      const readButton = button("读取所选材料第一段", readWindow);
+      readButton.disabled = true;
+      const content = node("div", {},
+        facts([["任务 ID", taskId], ["原 run ID", runId], ["原调度事件 ID", eventId]]),
+        node("p", {}, "只读原job发布的回执与文本材料。published或SUCCEEDED不表示工作流已采用、任务成功或外部已清理；这些事实需另核原运行和候选证据。"),
+        row(indexButton), description, choice, message, textWindow,
+      );
+      const active = () => view.isConnected && sequence === detailSequence &&
+        selectedRunSequence === runSequence && content.isConnected && $("#dialog").open;
+      const updateButton = () => {
+        readButton.disabled = busy || !artifact.value || finished;
+        readButton.textContent = busy ? "正在读取材料…" : failed ? "重试原位置"
+          : finished ? "已读至材料末尾" : offset ? "读取下一段材料" : "读取所选材料第一段";
+      };
+      artifact.addEventListener("change", () => {
+        artifactSequence++;
+        offset = 0;
+        finished = false;
+        failed = false;
+        textWindow.replaceChildren();
+        message.replaceChildren(empty("已切换材料；明确读取后才会请求文本。"));
+        updateButton();
+      });
+
+      async function readIndex() {
+        if (!active() || busy) return;
+        busy = true;
+        indexButton.disabled = true;
+        message.replaceChildren(empty("正在读取原job回执…"));
+        try {
+          const query = new URLSearchParams({ run_id: runId, timeout: "20" });
+          const observed = await api(`${path}/jobs/${eventId}?${query}`);
+          if (!active()) return;
+          if (observed.runtime_status === "not_found") {
+            message.replaceChildren(panel("原运行历史未知", "未找到当前原run；不能据此判断job没有执行。"));
+            return;
+          }
+          description.replaceChildren(facts([
+            ["原 job ID", observed.job_id], ["阶段", observed.stage], ["job SHA256", observed.job_sha256],
+            ["发布回执", observed.receipt_status], ["回执 SHA256", observed.receipt_sha256],
+            ["候选提交", observed.receipt?.candidate_sha], ["回执状态", observed.receipt?.state],
+          ]));
+          if (observed.receipt_status === "missing") {
+            message.replaceChildren(empty("尚无可验证的已发布回执，稍后可手动重新读取。"));
+            return;
+          }
+          record = observed;
+          indexButton.hidden = true;
+          artifact.replaceChildren(node("option", { value: "" }, "选择原回执中的材料…"),
+            ...record.receipt.artifacts.map((item) => node("option", { value: item.name }, item.name)));
+          artifact.value = "";
+          choice.replaceChildren(node("label", {}, "原job文本材料", artifact), row(readButton),
+            node("p", { className: "form-note" }, "每次最多8192个Unicode字符，只保留当前窗口。固定本次回执SHA；回执或产物变化时停止，关闭重开可重新核目录。"),
+            disclosure("完整原job回执", record.receipt));
+          message.replaceChildren(empty("已读取原回执。选择材料后明确读取第一段。"));
+        } catch (error) {
+          if (active()) message.replaceChildren(panel("job回执读取失败", error.message));
+        } finally {
+          busy = false;
+          if (active()) indexButton.disabled = false;
+        }
+      }
+
+      async function readWindow() {
+        if (!active() || busy || finished || !artifact.value) return;
+        const reading = artifactSequence;
+        const name = artifact.value;
+        busy = true;
+        updateButton();
+        message.replaceChildren(empty("正在核对原回执并读取材料窗口…"));
+        const current = () => active() && reading === artifactSequence;
+        try {
+          const query = new URLSearchParams({ run_id: runId, artifact: name,
+            receipt_sha256: record.receipt_sha256, offset: String(offset), limit: "8192", timeout: "20" });
+          const observed = await api(`${path}/jobs/${eventId}?${query}`);
+          if (!current()) return;
+          if (observed.runtime_status === "not_found") {
+            message.replaceChildren(panel("原运行历史未知", "当前窗口只代表先前观察；原位置保留，可明确重试。"));
+            failed = true;
+            return;
+          }
+          const value = observed.artifact;
+          textWindow.replaceChildren(facts([
+            ["材料", value.name], ["完整产物 SHA256", value.sha256], ["完整产物字节数", value.bytes],
+            ["完整文本字符数", value.characters], ["本窗起始字符", value.offset], ["下一字符位置", value.next_offset],
+          ]), pre(value.text));
+          finished = value.next_offset === null;
+          offset = value.next_offset ?? offset;
+          failed = false;
+          message.replaceChildren(empty(finished ? "已读至此材料末尾。" : "这是原文本的一个窗口，可手动读取下一段。"));
+        } catch (error) {
+          if (current()) {
+            failed = true;
+            message.replaceChildren(panel("材料读取失败", error.message,
+              node("p", {}, "已读窗口和原位置保留；可明确重试，回执变化时请关闭并重新核目录。")));
+          }
+        } finally {
+          busy = false;
+          if (active()) updateButton();
+        }
+      }
+
+      modal("原job回执与文本证据", content);
+      readIndex();
+    }
+
+
     function eventsDialog(runId, selectedRunSequence) {
       if (!view.isConnected || sequence !== detailSequence || selectedRunSequence !== runSequence) return;
       let after = null;
@@ -377,6 +498,8 @@ export function tasksView(data, base) {
               event.scheduled_event_id == null ? null : `对应事件 ${event.scheduled_event_id}`,
               event.signal_name == null ? null : `Signal ${clip(event.signal_name)}`,
             ].filter(Boolean).join("；") || "—",
+            event.activity?.type === "dev_submit"
+              ? button(`原job证据 · ${event.event_id}`, () => jobDialog(runId, event.event_id, selectedRunSequence)) : "—",
           ]);
           received += rows.length;
           displayed = displayed.concat(rows).slice(-200);
@@ -384,7 +507,7 @@ export function tasksView(data, base) {
           finished = after === null;
           summary.textContent = `累计读取 ${received} 条，显示最近 ${displayed.length} 条。重新打开后从原运行第一批读取。`;
           entries.replaceChildren(displayed.length
-            ? table(["事件 ID", "类型", "时间（UTC）", "关联"], displayed)
+            ? table(["事件 ID", "类型", "时间（UTC）", "关联", "Job 证据"], displayed)
             : empty("当前没有新增事件。"));
           message.replaceChildren(
             facts([["本轮 Temporal 状态", page.temporal_status], ["原运行已闭合", page.terminal ? "是" : "否"]]),
