@@ -66,3 +66,16 @@ Python、测试、CI、依赖及冻结参考内容均无本片变更。相邻调
 - **远端交付仍未完成。** 只读核已有 C2 `ssh-diagnostic.log`，公钥 offer 后仍返回 `Permission denied (publickey)`。作者报告本轮未重试 D 的 push；本审查也未发起认证、推送或远端操作，未取得可核对的 D 远端 SHA 或精确双 OS CI。因此不能从本地提交、归档或静态成功推出远端已交付，也不能继承 C1/C2 或未来切片的 CI 结论。
 
 需求与可维护性本地通过结论保持，无新 findings。**D 当前为“本地提交/归档/最终静态复核完成，远端推送与精确双 OS CI/同片终结待完成”，未完整远端交付。** 认证恢复后仍须核正常推送、实时远端 SHA 与该精确生产提交的全部必要 CI 步骤，再追加终结结论；完整 F4/F5/G0 继续保持未完成。
+
+## 追加终结复核：D 精确远端与双 OS CI
+
+日期：2026-11-05（Asia/Shanghai；以下推送及 CI 保存记录为 2026-11-04 UTC）。同片独立审查者追加；本段更新前文“认证失败、远端/CI 待完成”的当时状态，保留原故障历史。本次仅审查 D `a6ef6e3bcb07ccad5fc259962b639ccc89f7fb81`（直接父提交 `401bacb28cf99e121357860901c4d95332417dae`），后续 events/A1 的暂存、未提交内容和未来提交不在范围。
+
+- **正常推送与实时远端通过。** 已读 `push-d-rsa-command.json` 及原日志：13:04:35 UTC 开始，普通 `git push origin a6ef6e3…:refs/heads/refactor/architecture-foundations` exit0，原日志为 `401bacb..a6ef6e3`。15:30:48 UTC 的 `remote-after-push.json` 完整 SHA 一致。审查者另执行实时 RSA `git ls-remote origin refs/heads/refactor/architecture-foundations`，独立 exit0，精确返回完整 `a6ef6e3bcb07ccad5fc259962b639ccc89f7fb81`。只在该进程环境向既有 SSH 命令追加指定 RSA 身份，没有更改 Git 配置、读取或输出私钥，也没有执行推送。
+- **官方精确 CI 身份通过。** [Portability 41834815428](https://github.com/626619403/Ergora/actions/runs/41834815428) 原 actions 行与 run HTML 均绑定完整 D 提交及 `.github/workflows/portability.yml`，原 run 显示 `Success`。审查者独立复核 actions 行指纹、完整 commit 链接、workflow 链接、两个精确 job 集合；`ci-html-status.json` 所列 6 份原始来源的字节数与 SHA256 全部相等。`fetch-exact-ci` 与 `verify-exact-ci` 原命令/日志均 exit0；未使用后续 A1 的 CI 或 helper 输出替代 D 页面身份。
+- **两个精确 job 的必要步骤通过。** Windows job [126590891921](https://github.com/626619403/Ergora/actions/runs/41834815428/job/126590891921) 的 `selectedJobId` 为 126590891921；Ubuntu job [126590892485](https://github.com/626619403/Ergora/actions/runs/41834815428/job/126590892485) 的 `selectedJobId` 为 126590892485，与原 run/job-groups 的集合一致。两 OS 的 `Build and install wheel`、`Packaged reference identity`、`Native application regression` 均 `success` 且含完成标志，日志分别绑定完整 D SHA、各自 check ID 及 `/logs/4`、`/logs/5`、`/logs/6`；Windows 的 `Windows PowerShell 5.1 installer and upgrade` 另为 `success/completed`，绑定 `/logs/7`。Ubuntu 仅按原 workflow 条件跳过 Windows 专属步骤；其余 setup/checkout/post/complete 均成功，没有 failure/cancelled/timed_out。已核 [Windows 原生回归精确日志 URL](https://github.com/626619403/Ergora/commit/a6ef6e3bcb07ccad5fc259962b639ccc89f7fb81/checks/126590891921/logs/6)、[Windows 安装升级精确日志 URL](https://github.com/626619403/Ergora/commit/a6ef6e3bcb07ccad5fc259962b639ccc89f7fb81/checks/126590891921/logs/7)及 [Ubuntu 原生回归精确日志 URL](https://github.com/626619403/Ergora/commit/a6ef6e3bcb07ccad5fc259962b639ccc89f7fb81/checks/126590892485/logs/6)。这里核验的是官方原 HTML 的步骤结论、完成标志及精确日志地址，没有把未下载的完整日志正文或未提取的用例数量记为已核。
+- **原发行身份仍通过。** 审查者再次从精确 D 的内存 `git archive` 复算，348 资源仍逐项等于原 manifest、实际 `2d1bbafb9b3d85e8b5623fe45405cc15ec3451586b9d4d2280372086f283e41b` wheel 和两份原 noneditable 安装。没有要求当前 events 工作树等于 D，也没有重建、安装、重跑重型套件或原生导出。
+
+执行边界：部分只读命令遭自动审批服务 deadline，并非安全拒绝或 CI 失败；默认 sandbox 仍有 bwrap 启动限制。原 actions/run 页面和来源摘要由审查者直接独立解析；后续 job 属性读取反复超时后，根代理按审查者指定的短 `rg` 从同一批已核 SHA 的原 HTML 提取 `selectedJobId`、步骤结论、完成标志和完整日志 URL 回传，由审查者逐项判读。job 与提交通过这些精确日志地址关联，不额外要求 job 页必须出现独立的 commit 超链接。本次没有以工具超时伪造执行成功，也没有单凭作者的 CI 摘要形成结论。
+
+**D 的需求、可维护性、本地发行与行为证据、精确提交/最终静态记录、正常推送/实时远端和精确双 OS 必要 CI 及同片终结复核均通过，无未解决 findings；F4.3d 可记为完成。** 本报告追加属于同片审查记账，不扩大原运行验收范围，也不表示后续 F4.4、完整 F4、F5 或 G0 已完成。下一 events/A1 切片须使用其独立基线、发行、验证及新的审查上下文。

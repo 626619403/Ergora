@@ -42,3 +42,17 @@ RUNNING 尾部增长只由真实 SDK 类型与假服务的轻量合同覆盖，�
 已独立读回三处修订：交付记录为4个既有生产文件加1个新增模块；架构说明限定为事件投影不解码payload；F4.4a1计划明确无应用层自动重试/轮询，SDK传输重试受RPC/墙钟约束。三项与已审实现一致，前述文案待办全部关闭，所审范围无未解决findings。
 
 本次仅核文档并追加记录，未重跑测试、安装或访问原运行。最终文档静态、精确提交/发行包及远端CI仍待单独核对。
+
+## 精确提交与远端复核（2026-11-05，CI待完成）
+
+独立核定e77edca96c9e662d9ce4d96a186e00be9d446672的20文件及树118a816ffa1aa25576191dbbb583313cb8232dd3；349个已提交资源blob身份全部匹配原wheel实际字节，events提交源码摘要保持b8ef882e。实际RSA只读ls-remote确认远端refactor/architecture-foundations精确为e77edca。没有使用A2工作树验收A1，提交/发行/实时远端范围无新增findings。
+
+CI41870385380初次官方记录仍为In progress，job列表未完整，不计通过。最终静态及精确CI待后续终结；本次未重跑测试、安装或访问原运行。
+
+## 精确CI与终结复核（2026-11-05）
+
+本审查者独立解析刷新后的官方run/job原HTML，确认[CI41870385380](https://github.com/626619403/Ergora/actions/runs/41870385380)总体Success，绑定完整提交 `e77edca96c9e662d9ce4d96a186e00be9d446672` 和精确Portability workflow。六份保存源文件的实际字节数与SHA256均逐项匹配 `ci-html-status.json`，不依赖摘要结论代替原HTML。
+
+Windows3.12 job `126715521854`、Ubuntu3.11 job `126715522289` 的selectedJobId与各自原HTML一致；构建安装wheel、包内参考身份和原生回归全部success，必要step均完成且data-log-url精确包含上述完整commit和对应check/job ID。Windows PowerShell5.1安装升级success，Ubuntu该条件步骤skipped符合精确workflow；两job无失败、取消或超时步骤。前述CI待办现关闭。
+
+再次实际以既有RSA传输只读ls-remote，远端分支仍精确为e77edca；结合此前独立核定的20文件/冻结树及349资源与原wheel字节一致，本片实现、结构、精确提交/发行/CI/实时远端的终结审查通过，无未解决findings。结论仅覆盖A1；状态追加后的最终文档静态由主agent单独收口。本次没有重跑测试、安装或业务运行。

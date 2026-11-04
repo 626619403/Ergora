@@ -85,7 +85,7 @@ function helpDialog() {
     node(
       "p",
       {},
-      "3. 工作流设计保存任务输入草稿；正式任务页可预览、明确创建、检查提交并按原意图恢复，随后读取指定run的原状态。待批时审阅完整计划并显式批准；运行中明确请求取消，按原决策或请求ID查询/恢复。闭合后可只读核外部证据，再明确对账或恢复原意图；仅reconciled表示原租约已释放且回执保存。投递、清理和开发成功分别核对。REVIEW_READY后可固定原候选明确导出本地分支，按原记录恢复；导出不checkout、merge或推送，历史回执不证明当前ref。详见docs/USAGE.md。",
+      "3. 工作流设计保存任务输入草稿；正式任务页可预览、明确创建、检查提交并按原意图恢复，随后读取指定run的原状态。可手动分批读取原运行事件，页面保留最近200条，重开后从头读取。待批时审阅完整计划并显式批准；运行中明确请求取消，按原决策或请求ID查询/恢复。闭合后可只读核外部证据，再明确对账或恢复原意图；仅reconciled表示原租约已释放且回执保存。投递、清理和开发成功分别核对。REVIEW_READY后可固定原候选明确导出本地分支，按原记录恢复；导出不checkout、merge或推送，历史回执不证明当前ref。详见docs/USAGE.md。",
     ),
     pre(
       "ergora --help\nergora tools list\nergora reference info\nergora templates copy training-optimization ./training-task",

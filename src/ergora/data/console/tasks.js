@@ -326,6 +326,90 @@ export function tasksView(data, base) {
       runtime.replaceChildren(empty("run ID已更改，请重新查询。"));
     });
 
+    function eventsDialog(runId, selectedRunSequence) {
+      if (!view.isConnected || sequence !== detailSequence || selectedRunSequence !== runSequence) return;
+      let after = null;
+      let busy = false;
+      let finished = false;
+      let received = 0;
+      let displayed = [];
+      const message = node("div", { "aria-live": "polite" });
+      const summary = node("p", { className: "form-note" });
+      const entries = node("div", {});
+      const readButton = button("读取第一批事件", read);
+      const content = node("div", {},
+        facts([["任务 ID", taskId], ["原 run ID", runId]]),
+        node("p", {}, "每次最多读取20条，保留最近200条显示记录。关联字段超长时显示前256字符与省略号。执行结果由原运行结果与候选证据确认。"),
+        row(readButton), message, summary, entries,
+      );
+      const active = () => view.isConnected && sequence === detailSequence &&
+        selectedRunSequence === runSequence && content.isConnected && $("#dialog").open;
+
+      async function read() {
+        if (!active() || busy || finished) return;
+        busy = true;
+        readButton.disabled = true;
+        readButton.textContent = "正在读取事件…";
+        message.replaceChildren(empty("正在读取原运行的当前事件片段…"));
+        const query = new URLSearchParams({ run_id: runId, limit: "20", timeout: "20" });
+        if (after !== null) query.set("after", after);
+        try {
+          const page = await api(`${path}/events?${query}`);
+          if (!active()) return;
+          if (page.runtime_status === "not_found") {
+            message.replaceChildren(panel("未找到原运行", "当前事件历史未知；已显示的片段仅代表先前观察。请核对原run与提交回执。"));
+            readButton.textContent = "重新读取原运行事件";
+            return;
+          }
+          const clip = (value) => {
+            let prefix = "";
+            let length = 0;
+            for (const character of value) {
+              if (length++ === 256) return prefix + "…";
+              prefix += character;
+            }
+            return value;
+          };
+          const rows = page.events.map((event) => [
+            event.event_id, event.type, event.time ?? "未返回",
+            [
+              event.activity ? `Activity ${clip(event.activity.id)} · ${clip(event.activity.type)}` : null,
+              event.scheduled_event_id == null ? null : `对应事件 ${event.scheduled_event_id}`,
+              event.signal_name == null ? null : `Signal ${clip(event.signal_name)}`,
+            ].filter(Boolean).join("；") || "—",
+          ]);
+          received += rows.length;
+          displayed = displayed.concat(rows).slice(-200);
+          after = page.next_after;
+          finished = after === null;
+          summary.textContent = `累计读取 ${received} 条，显示最近 ${displayed.length} 条。重新打开后从原运行第一批读取。`;
+          entries.replaceChildren(displayed.length
+            ? table(["事件 ID", "类型", "时间（UTC）", "关联"], displayed)
+            : empty("当前没有新增事件。"));
+          message.replaceChildren(
+            facts([["本轮 Temporal 状态", page.temporal_status], ["原运行已闭合", page.terminal ? "是" : "否"]]),
+            empty(page.at_current_end
+              ? page.terminal ? "已读至原运行闭合后的尾部。" : "已读至本次可见尾部，稍后可手动读取新增事件。"
+              : "还有未读事件，可继续读取下一批。"),
+          );
+          readButton.textContent = finished ? "已读至闭合尾部"
+            : page.at_current_end ? "读取新增事件" : "读取下一批事件";
+        } catch (error) {
+          if (active()) {
+            message.replaceChildren(panel("事件读取失败", error.message,
+              node("p", {}, "已读片段和原位置保留；可明确重试本批事件。")));
+            readButton.textContent = "重试原位置";
+          }
+        } finally {
+          busy = false;
+          if (active()) readButton.disabled = finished;
+        }
+      }
+
+      modal("原运行事件", content);
+      read();
+    }
+
     async function approvalDialog(pending = null, selectedRunSequence = null) {
       if (!view.isConnected || sequence !== detailSequence ||
           pending && selectedRunSequence !== runSequence) return;
@@ -918,6 +1002,8 @@ export function tasksView(data, base) {
                 ["原运行已闭合", observed.terminal ? "是" : "否"],
                 ["候选提交", state?.candidate_sha], ["计划 SHA256", state?.plan_sha256],
               ]),
+            observed.runtime_status === "queried"
+              ? button("读取原运行事件", () => eventsDialog(observed.run_id, reading)) : null,
             !observed.terminal && observed.phase === "AWAITING_PLAN_APPROVAL"
               ? button("审阅计划与批准", () => {
                 if (!view.isConnected || sequence !== detailSequence || reading !== runSequence) return;
