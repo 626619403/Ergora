@@ -21,13 +21,7 @@ class _Inspection:
         self.spec, self.sha = self.submission.spec, self.creation.sha
         if payload.get('run_id', self.run_id) != self.run_id:
             raise ValueError('External evidence must pin the original submitted run ID')
-        from dev_platform.adapter import FileAdapter
-
-        config = self.creation.document(self.creation.safe_path(self.creation.config, 'adapter.json'))
-        self.adapter = FileAdapter(config)
-        expected = {name: self.creation.path(name) for name in ('requests', 'receipts', 'artifacts', 'approvals', 'fences')}
-        if self.adapter.roots != expected:
-            raise ValueError('External evidence adapter roots differ from the registered execution state')
+        self.adapter = self.creation.file_adapter()
 
     async def jobs(self, handle, converter, temporal_status: str) -> dict:
         from dev_platform.adapter import identifier

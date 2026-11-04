@@ -276,6 +276,24 @@ ergora task events my-project TASK_ID --run-id RUN_ID --limit 20 --after CURSOR 
 
 网页在正式任务中先“读取原运行”，再点击“读取原运行事件”。打开时读取第一批，之后每次点击最多读取20条，不自动轮询或重试。页面显示累计读取数及最近200条；关联字段超过256个Unicode字符时显示省略号，完整元数据可沿CLI/API读取。运行中到达当前尾部仍可手动“读取新增事件”；终态读完后按钮停用。读取失败保留本次已读片段和原位置，明确点击重试才继续。关闭重开后从第一批读取；切换项目、任务或run后旧回复失效。显示记录只是本次观察，不作为持久证据或完整历史证明。
 
+### 读取原job回执与文本证据
+
+从上述原事件中选择Activity类型为`dev_submit`的`ACTIVITY_TASK_SCHEDULED`事件ID（不是activity ID或completed事件ID），先读取job目录。以下42只是示例，请使用实际ID：
+
+```bash
+ergora task job my-project TASK_ID --run-id RUN_ID --event-id 42 --timeout 20
+# 从返回receipt.artifacts选择名称，保留本次receipt_sha256；不要传本地路径
+ergora task job my-project TASK_ID --run-id RUN_ID --event-id 42 --artifact model-log --receipt-sha256 RECEIPT_SHA --offset 0 --limit 8192 --timeout 20
+```
+
+API为`GET /api/projects/ID/tasks/TASK_ID/jobs/42?run_id=RUN_ID&timeout=20`；文本窗口再带`artifact=model-log&receipt_sha256=RECEIPT_SHA&offset=0&limit=8192`。沿返回`artifact.next_offset`手动继续，null表示该文本的末尾。offset/limit以Unicode字符计数，不是UTF-8字节；每窗默认8192、最多16384字符，保留原全文的SHA、字节数及字符数。回执变化或产物字节变化时明确失败，不能拼接成同一份日志。产物名称只从所选原job回执匹配，不解析用户传入的路径。
+
+该读取仍固定统一任务原提交/run/spec/memo，按连续history前缀核到所选调度事件，只解码该事件的原context，再核原请求envelope与可信目录发布的回执。支持事件ID1–10000；更后的事件明确拒绝，不能据此判断没有job。RUNNING和闭合原run均可读；`runtime_status: not_found`表示当前原history未知，`receipt_status: missing`表示尚无可验证的已发布回执。没有回执时不提供日志，也不将请求目录存在当作执行完成。
+
+`receipt_status: published`只表示原job的当前发布回执通过本机可信文件适配器核对，`workflow_receipt_accepted: null`与`execution_success: null`保留未知。即使回执state为SUCCEEDED，也要通过原运行status/outcome、候选检查与外部对账核实际采用、开发结果及清理事实。此功能不改原意图、回执、claim或Git引用，不提交、重发或自动重试。
+
+沿原生适配器每份产物最多16 MiB；先核完整摘要，再严格解码所选UTF-8全文、拒绝NUL，之后返回窗口。缺失、损坏、非UTF-8、NUL、超限或不安全路径均明确失败。每次核回执会重读其全部产物摘要，所选文本还需完整读取/解码；窗口和1 MiB JSON响应上限不代表SDK物理页或总文件读取/内存的上限，没有隐藏缓存。timeout为1–60秒；协程内网络受20秒RPC及请求预算约束，同步文件读取由父进程timeout+5秒最终回收。本入口使用现有Linux/WSL2参考运行时；基础Web本身不需Temporal SDK，原生查询需要所登记完整执行环境及其SDK。环境不完整时按工具诊断页配置，不自动安装或启动服务。网页消费者另行提供。
+
 ### 提交正式任务与恢复未知结果
 
 在Linux/WSL2安装完整参考运行时并初始化所登记的配置，使用该运行时的`.venv/bin/python`执行准入。控制面无需安装全部执行依赖；实际提交仍须通过原doctor、可信检查和工单租约，所选服务及模型须就绪。此入口仅接受通过统一入口完整创建的任务，保留其原spec和角色快照。

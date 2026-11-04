@@ -101,6 +101,16 @@ def parser() -> argparse.ArgumentParser:
     events.add_argument("--limit", type=int, default=20)
     events.add_argument("--after", help="Continue using the returned original-run event cursor")
     events.add_argument("--timeout", type=int, default=20)
+    job = operations.add_parser("job", help="Read an original scheduled job's receipt and UTF-8 artifact window")
+    job.add_argument("project")
+    job.add_argument("task_id")
+    job.add_argument("--run-id", required=True)
+    job.add_argument("--event-id", type=int, required=True)
+    job.add_argument("--artifact", help="Select an artifact name from the original job receipt")
+    job.add_argument("--receipt-sha256", help="Pin the receipt observed before reading an artifact")
+    job.add_argument("--offset", type=int, default=0, help="Unicode character offset in the original text")
+    job.add_argument("--limit", type=int, default=8192, help="Maximum Unicode characters in one window (1–16384)")
+    job.add_argument("--timeout", type=int, default=20)
     for name in ("preview", "create"):
         operation = operations.add_parser(name)
         operation.add_argument("project")
@@ -437,6 +447,10 @@ def main(argv: list[str] | None = None) -> int:
             elif args.operation == "events":
                 output = tasks.events(state, args.project, args.task_id, run_id=args.run_id,
                                       limit=args.limit, after=args.after, timeout=args.timeout)
+            elif args.operation == "job":
+                output = tasks.job(state, args.project, args.task_id, run_id=args.run_id, event_id=args.event_id,
+                                   artifact=args.artifact, receipt_sha256=args.receipt_sha256,
+                                   offset=args.offset, limit=args.limit, timeout=args.timeout)
             elif args.operation == "plan":
                 output = tasks.plan(state, args.project, args.task_id, run_id=args.run_id,
                                     plan_sha256=args.plan_sha256, timeout=args.timeout)

@@ -262,6 +262,8 @@ ergora task status my-project TASK_ID --run-id RUN_ID
 
 需要查看过程时，在网页读取原运行后点击“读取原运行事件”，手动继续下一批或新增事件；页面保留最近200条，重开从头读取。也可用`ergora task events my-project TASK_ID --run-id RUN_ID --limit 20`[分段读取原运行事件](docs/USAGE.md#分段读取原运行事件)，再按返回的next_after显式继续。事件只含元数据，不附原始payload，也不代替原结果。
 
+需要查看日志或材料时，从原事件中选择Activity为`dev_submit`的调度事件，用`ergora task job my-project TASK_ID --run-id RUN_ID --event-id 42`读取原job回执；将42换成实际事件ID，再按[原job文本证据说明](docs/USAGE.md#读取原job回执与文本证据)固定回执摘要、选择产物并分窗读取。回执发布不代表工作流已采用或任务成功。
+
 ### 3. 审阅并批准精确计划
 
 原phase到达AWAITING_PLAN_APPROVAL后，使用原状态的plan SHA读取完整计划材料；审阅execution-plan、ownership-map和rollback-plan中的工作单元、范围与风险，再明确批准同一计划：

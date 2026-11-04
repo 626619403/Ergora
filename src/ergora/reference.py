@@ -363,6 +363,11 @@ def task_events(project: dict, home: Path, payload: dict, *, timeout: int) -> di
     return _task_operation(project, home, 'events', 'inspect-events', payload, timeout)
 
 
+def task_job(project: dict, home: Path, payload: dict, *, timeout: int) -> dict:
+    """Read the original scheduled job's trusted receipt and bounded text evidence."""
+    return _task_operation(project, home, 'evidence', 'inspect-job', payload, timeout)
+
+
 def task_cancellation(project: dict, home: Path, operation: str, payload: dict, *, timeout: int) -> dict:
     """Use the native cancellation guard and preserve signal delivery uncertainty."""
     return _task_operation(project, home, 'cancellation', operation, payload, timeout)
@@ -384,7 +389,7 @@ def task_reconciliation(project: dict, home: Path, operation: str, payload: dict
 
 
 def _task_operation(project: dict, home: Path, component: str, operation: str, payload: dict, timeout: int) -> dict:
-    inspection = {'inspect-plan': 'Plan', 'inspect-events': 'Task event'}.get(operation)
+    inspection = {'inspect-plan': 'Plan', 'inspect-events': 'Task event', 'inspect-job': 'Job evidence'}.get(operation)
     if sys.platform != 'linux':
         raise ValueError(f'Formal task {component} requires Linux; use the registered Linux runtime in WSL2')
     execution = project['registration']['definition']['execution']

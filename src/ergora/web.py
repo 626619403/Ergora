@@ -309,6 +309,14 @@ def create_app(home: Path | None = None) -> FastAPI:
                            after: str | None = None, timeout: int = 20):
         return tasks.events(state, project_id, task_id, run_id=run_id, limit=limit, after=after, timeout=timeout)
 
+    @application.get("/api/projects/{project_id}/tasks/{task_id}/jobs/{event_id}")
+    def formal_task_job(project_id: str, task_id: str, event_id: int, run_id: str,
+                        artifact: str | None = None, receipt_sha256: str | None = None,
+                        offset: int = 0, limit: int = 8192, timeout: int = 20):
+        return tasks.job(state, project_id, task_id, run_id=run_id, event_id=event_id,
+                         artifact=artifact, receipt_sha256=receipt_sha256, offset=offset,
+                         limit=limit, timeout=timeout)
+
     @application.get("/api/projects/{project_id}/tasks/{task_id}/external-status")
     def formal_task_external_status(project_id: str, task_id: str, run_id: str, timeout: int = 20):
         return tasks.external_status(state, project_id, task_id, run_id=run_id, timeout=timeout)

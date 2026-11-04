@@ -39,3 +39,35 @@
 本次仅只读检查源码/原始证据、复算摘要和轻量语法/空白检查，并写本报告；没有安装、重跑浏览器/模型、查询原运行、取消、导出、对账、提交或推送。默认 sandbox 的 bwrap 启动失败后使用获批只读执行；未将基础设施失败记成检查成功。
 
 没有需要修复复审的 findings。实现者须把本报告及实际结果回填本片交付记录与 PLAN，并保留“提交/精确 CI/实时远端待完成”。提交后由本审查者核精确 a2 提交与已验 wheel/资源身份、所有必要双 OS CI 步骤及实时远端，再追加同片终结结论。
+
+## 精确提交、发行与实时远端复核（CI 待完成）
+
+同片审查者于 2026-11-05 追加。已独立核定精确提交 `8f1489cb0a85fc75ea6e6f3cbb42172ba37ba98c`，直接父提交为原 e77 基线。实际 10 文件包括两个已审 JS、README/USAGE/PLAN、前 a1/d 的终结记账及本片交付/审查；后续 b1 的 Python、测试和新记录未混入。
+
+审查者从精确提交的内存 `git archive` 重新计算 349 个资源摘要，全部等于原 manifest 及实际 `0edb0516…` wheel；已提交的两个 JS 与此前审查字节相同。本报告当时的 41 行版本亦精确进入提交。八份提交文档的实际字节 SHA 全部匹配 `static-documents.json`；已读实际检查脚本、command 和 log，8 文档/201 本地链接及锚点/27 README parser 命令、零缺失的范围与 exit0 一致，未把 parser 检查称为命令业务执行。
+
+已读 `push-a2-rsa-command.json` 及原日志：普通 `git push origin 8f1489c…:refs/heads/refactor/architecture-foundations` exit0，原日志为 `e77edca..8f1489c`，无强推。本审查者另实际执行只读 `git ls-remote origin refs/heads/refactor/architecture-foundations`，exit0 精确返回完整 `8f1489cb0a85fc75ea6e6f3cbb42172ba37ba98c`；只在该进程环境给既有 SSH 命令追加指定 RSA 身份，未修改 Git 配置或读取/输出私钥。
+
+精确提交、原验收发行身份、正常推送及实时远端范围通过，无新增 findings；CI 仍待本片官方原 HTML 和必要双 OS 步骤核对。本次未安装、重跑测试或访问原业务运行，尚不形成完整终结通过结论。
+
+## 精确双 OS CI 与同片终结复核
+
+同片审查者于 2026-11-05 追加，以下官方抓取/远端记录时间为 2026-11-04 UTC，更新前文 CI 待完成的历史状态。
+
+审查者实际只读获取 [Portability 41882469707](https://github.com/626619403/Ergora/actions/runs/41882469707)：18:52:42 和 18:56:07 两次原 run HTML 均为 `Status Success`，实际链接绑定完整 `8f1489cb0a85fc75ea6e6f3cbb42172ba37ba98c` 及 `portability.yml`。job-groups 的实际返回集合为 `126758220983`、`126758221866`；各原 job 页的 selectedJobId 精确匹配，无借用 a1 或后续 b1 的 CI。
+
+- [Windows 3.12，126758220983](https://github.com/626619403/Ergora/actions/runs/41882469707/job/126758220983)：构建安装 wheel、包内参考身份、原生回归、PowerShell 5.1 安装升级全部 `success`，均存在 data-job-completed；日志 URL 分别精确绑定该完整 A2 SHA、job ID 和 `/logs/4`、`/logs/5`、`/logs/6`、`/logs/7`。setup/checkout/post/complete 亦全部成功。
+- [Ubuntu 3.11，126758221866](https://github.com/626619403/Ergora/actions/runs/41882469707/job/126758221866)：构建安装 wheel、包内参考身份、原生回归全部 `success/completed`，日志 URL 精确绑定该完整 A2 SHA、job ID 和 `/logs/4`、`/logs/5`、`/logs/6`；setup/checkout/post/complete 亦成功。仅 Windows 专属步骤 `skipped`，与审查者另读精确 A2 workflow 的 runner.os 条件一致。两 job 没有 failure、cancelled 或 timed_out 步骤。
+
+18:56:07–10 的实际源页身份如下；本次在内存直接解析官方响应，原 URL、字节数、SHA 和步骤属性保留于工具执行记录，没有把本地此前 In progress 的旧源文件称为已刷新。
+
+|官方来源|实际字节数|SHA256|
+|---|---:|---|
+|run 41882469707|163626|`88b8574cba36275e30aa72301c26c8767e6d63145a22117c513d5ad2382ddd34`|
+|job_groups_batch?attempt=1|371|`bbd3ff07323ac95c20004f94bd644904116f1b8431cdc4c7756f888c9634f6d7`|
+|Windows job 126758220983|166382|`b5c8d1ce050b6e907e84a9c0515e34eb75d576d15013a1a8661926f545224e5b`|
+|Ubuntu job 126758221866|168290|`d2a8821465563aea6dfbf72aa6f34823682d0a396223144779b71f54c865b93d`|
+
+本次核验的是官方原 HTML 的步骤结论、完成标志和精确日志地址，未下载完整日志正文或提取测试数量。首次 job-groups 读取因 Accept 头返回 HTTP400，改用 application/json 后成功；一次只读本地检查的自动审批 deadline 未执行、单次重试成功，均不视为 CI 失败或安全拒绝。没有触发 CI、重跑测试、安装或操作业务 run。
+
+审查者又于 18:56:51 实际以既有 RSA 传输只读 ls-remote，exit0，远端分支仍精确为 `8f1489cb0a85fc75ea6e6f3cbb42172ba37ba98c`。结合此前已独立核定的 10 文件提交、349 资源与原验收 wheel、真实/受控页面行为及原证据保护，**A2 的需求、可维护性、本地验收、精确提交/发行、正常推送/实时远端及精确双 OS 必要 CI 的同片终结审查通过，无未解决 findings。** 实现者另收口状态追加后的文档静态与成功源页归档；本结论只覆盖 F4.4a2，不关闭后续 b/c、完整 F4、F5 或 G0。

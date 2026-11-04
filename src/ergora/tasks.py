@@ -121,6 +121,32 @@ def events(state: State, project_id: str, task_id: str, *, run_id: str,
                                  'limit': limit, 'after': after}, timeout=timeout)
 
 
+def job(state: State, project_id: str, task_id: str, *, run_id: str, event_id: int,
+        artifact: str | None = None, receipt_sha256: str | None = None,
+        offset: int = 0, limit: int = 8192, timeout: int = 20) -> dict:
+    """Read an original scheduled job, selecting text only by its pinned receipt."""
+    _run_id(run_id)
+    if type(event_id) is not int or not 1 <= event_id <= 10_000:
+        raise ValueError('Job scheduling event ID must be 1–10000')
+    if type(offset) is not int or not 0 <= offset <= 16_777_216:
+        raise ValueError('Job artifact character offset must be 0–16777216')
+    if type(limit) is not int or not 1 <= limit <= 16_384:
+        raise ValueError('Job artifact window limit must be 1–16384 characters')
+    if type(timeout) is not int or not 1 <= timeout <= 60:
+        raise ValueError('Job evidence query timeout must be 1–60 seconds')
+    if artifact is None:
+        if receipt_sha256 is not None or offset:
+            raise ValueError('Select an artifact before pinning a receipt or character offset')
+    else:
+        if not isinstance(artifact, str) or not artifact or len(artifact) > 1024:
+            raise ValueError('Job artifact name must be 1–1024 characters')
+        _digest(receipt_sha256, 'Job receipt')
+    project = _project(state, project_id)
+    return reference.task_job(project, state.root, {'task_id': task_id, 'run_id': run_id,
+                              'event_id': event_id, 'artifact': artifact, 'receipt_sha256': receipt_sha256,
+                              'offset': offset, 'limit': limit}, timeout=timeout)
+
+
 def submission(state: State, project_id: str, task_id: str) -> dict:
     """Inspect local submission facts without connecting to Temporal or reissuing work."""
     project = _project(state, project_id)

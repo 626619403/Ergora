@@ -75,6 +75,14 @@ class _Creation:
         except FileNotFoundError:
             return None
 
+    def file_adapter(self):
+        config = self.document(self.safe_path(self.config, 'adapter.json'))
+        adapter = self.adapter.FileAdapter(config)
+        expected = {name: self.path(name) for name in ('requests', 'receipts', 'artifacts', 'approvals', 'fences')}
+        if adapter.roots != expected:
+            raise ValueError('External evidence adapter roots differ from the registered execution state')
+        return adapter
+
     def check_registration(self) -> None:
         for relative, expected in self.project['registration']['files'].items():
             actual = self.document(self.safe_path(self.config, relative))
