@@ -326,6 +326,143 @@ export function tasksView(data, base) {
       runtime.replaceChildren(empty("run ID已更改，请重新查询。"));
     });
 
+    async function approvalDialog(pending = null, selectedRunSequence = null) {
+      if (!view.isConnected || sequence !== detailSequence ||
+          pending && selectedRunSequence !== runSequence) return;
+      const decisionKey = `ergora-decision:${data.project.id}:${taskId}`;
+      const decisionField = field("决策 ID（用于恢复）", "decision_id",
+        sessionStorage.getItem(decisionKey) || "", "text", {
+          required: true, maxlength: 80, autocomplete: "off", disabled: Boolean(pending),
+        });
+      const decisionInput = decisionField.querySelector("input");
+      const materials = node("div", {}, pending ? empty("正在读取完整计划材料…") : null);
+      const result = node("div", { "aria-live": "polite" });
+      let plan = null;
+      let readingSequence = 0;
+      let writing = false;
+      const reader = form([decisionField], "读取批准记录", read);
+      const readButton = reader.querySelector('button[type="submit"]');
+      readButton.disabled = Boolean(pending);
+      const content = node("div", {},
+        node("p", {}, "请保留本次决策 ID。先读取原记录，再明确批准或恢复；关闭页面不会撤销已发出的操作，未知结果不能直接重发。"),
+        materials, reader, result,
+      );
+      const active = () => view.isConnected && sequence === detailSequence &&
+        content.isConnected && $("#dialog").open && (!pending || selectedRunSequence === runSequence);
+      const current = (reading) => active() && reading === readingSequence;
+      decisionInput.addEventListener("input", () => {
+        readingSequence++;
+        result.replaceChildren(empty("决策 ID已更改，请重新读取原记录。"));
+      });
+
+      function show(record, reading, decisionId) {
+        const descriptions = {
+          not_recorded: "此 ID没有批准记录。完整材料已读后，才能明确批准所选计划。",
+          prepared: "原批准意图已保存，尚无信号检查点；明确恢复可能首次投递原决策。",
+          unknown: "原投递结果尚未确认。恢复只在原run核对精确信号，不重新发信号。",
+          requested: "原信号投递事实已保存；这不代表批准已被采用或六阶段已完成。",
+        };
+        const canApprove = plan && record.status === "not_recorded";
+        const canResume = !plan && ["prepared", "unknown"].includes(record.status);
+        const action = canApprove ? "确认批准此计划"
+          : record.status === "prepared" ? "确认恢复原批准意图" : "确认核对原批准信号";
+        result.replaceChildren(panel(`批准记录：${record.status}`, descriptions[record.status],
+          facts([
+            ["决策 ID", decisionId], ["项目当前修订", record.project_revision],
+            ["原 run ID", record.run_id], ["计划 SHA256", record.plan_sha256 ?? plan?.plan_sha256],
+            ["原意图 SHA256", record.intent_sha256], ["Owner回执 ID", record.owner_receipt_id],
+            ["回执有效期", record.expires_at ? new Date(record.expires_at * 1000).toLocaleString() : null],
+            ["信号投递依据", record.signal_delivery], ["原信号恢复查询", record.reconciliation],
+          ]),
+          disclosure("完整原批准记录", record),
+          plan && record.status !== "not_recorded"
+            ? node("p", {}, "该 ID已有原决策。请单独查看原记录，不以当前显示的材料覆盖它。") : null,
+          canApprove || canResume ? form([], action, async () => {
+            if (!current(reading) || writing) return;
+            writing = true;
+            decisionInput.readOnly = true;
+            readButton.disabled = true;
+            sessionStorage.setItem(decisionKey, decisionId);
+            result.replaceChildren(empty(`正在处理原决策 ${decisionId}；请保留该 ID，回复未知时先读取原记录。`));
+            try {
+              const observed = await api(`${path}/approvals/${encodeURIComponent(decisionId)}${canApprove ? "" : "/resume"}`, {
+                revision: record.project_revision, confirm: true, timeout: 20,
+                ...(canApprove ? { run_id: plan.run_id, plan_sha256: plan.plan_sha256 }
+                  : { intent_sha256: record.intent_sha256 }),
+              });
+              if (current(reading)) show(observed, reading, decisionId);
+            } catch (error) {
+              if (current(reading)) result.replaceChildren(panel("批准结果尚未确认", error.message,
+                node("p", {}, `原决策 ID：${decisionId}。先读原记录，再决定是否恢复；不要改用新 ID绕过未知结果。`),
+                button("重新读取原批准记录", read),
+              ));
+            } finally {
+              writing = false;
+              if (active()) {
+                decisionInput.readOnly = false;
+                readButton.disabled = false;
+              }
+            }
+          }) : null,
+          row(
+            button("重新读取原批准记录", read),
+            plan && record.status !== "not_recorded"
+              ? button("查看原批准记录", () => approvalDialog()) : null,
+            record.status === "requested" ? button("返回原任务与运行", () => {
+              if (!current(reading)) return;
+              sessionStorage.setItem(runKey, record.run_id);
+              $("#dialog").close();
+              inspect(taskId);
+            }) : null,
+          ),
+        ));
+      }
+
+      async function read() {
+        if (!active() || writing) return;
+        const decisionId = decisionInput.value;
+        if (!decisionInput.reportValidity()) return;
+        const reading = ++readingSequence;
+        sessionStorage.setItem(decisionKey, decisionId);
+        result.replaceChildren(empty(`正在读取原决策 ${decisionId}…`));
+        try {
+          const record = await api(`${path}/approvals/${encodeURIComponent(decisionId)}`);
+          if (current(reading)) show(record, reading, decisionId);
+        } catch (error) {
+          if (current(reading)) result.replaceChildren(panel("批准记录读取失败", error.message,
+            node("p", {}, `原决策 ID：${decisionId}。记录未读成功，不提供批准或恢复确认。`),
+            button("重新读取原批准记录", read),
+          ));
+        }
+      }
+
+      modal(pending ? "审阅计划与批准" : "按原 ID 检查批准记录", content);
+      if (pending) {
+        try {
+          const observed = await api(`${path}/plan?${new URLSearchParams({ ...pending, timeout: "20" })}`);
+          if (!active()) return;
+          plan = observed;
+          materials.replaceChildren(
+            panel("待批计划身份", "以下是原运行已接受的完整计划材料。请审阅范围、工作单元、风险和回退措施，再明确决定。",
+              facts([["原 run ID", plan.run_id], ["计划 SHA256", plan.plan_sha256],
+                ["请求 SHA256", plan.request_sha256], ["Profile SHA256", plan.profile_sha256]]),
+              disclosure("完整计划回执与身份", { ...plan, materials: undefined })),
+            ...plan.materials.map((material) => panel(material.name, `${material.bytes}字节`,
+              facts([["SHA256", material.sha256]]), pre(material.text))),
+          );
+          decisionInput.disabled = false;
+          readButton.disabled = false;
+        } catch (error) {
+          if (active()) materials.replaceChildren(panel("完整计划材料读取失败", error.message,
+            node("p", {}, "未取得完整材料，不能在此批准。请返回查询原运行；已有决策可按原 ID单独读取。"),
+            button("按原 ID 检查批准记录", () => approvalDialog()),
+          ));
+          return;
+        }
+      }
+      if (decisionInput.value) await read();
+    }
+
     function submissionDialog() {
       let readingSequence = 0;
       const result = node("div", { "aria-live": "polite" });
@@ -440,6 +577,7 @@ export function tasksView(data, base) {
         saved ? disclosure(`提交状态：${saved.status}`, saved)
           : node("p", { className: "task-error" }, `提交回执读取失败：${submission.reason.message}`),
         button("检查提交与恢复", submissionDialog),
+        saved?.status === "submitted" ? button("按原 ID 检查批准记录", () => approvalDialog()) : null,
       ),
       panel("原生运行", "按固定run读取。关闭页面不会取消任务；取消后的外部清理需另行对账。",
         form([runField], "读取原运行", async (values) => {
@@ -467,6 +605,11 @@ export function tasksView(data, base) {
                 ["原运行已闭合", observed.terminal ? "是" : "否"],
                 ["候选提交", state?.candidate_sha], ["计划 SHA256", state?.plan_sha256],
               ]),
+            !observed.terminal && observed.phase === "AWAITING_PLAN_APPROVAL"
+              ? button("审阅计划与批准", () => {
+                if (!view.isConnected || sequence !== detailSequence || reading !== runSequence) return;
+                return approvalDialog({ run_id: observed.run_id, plan_sha256: observed.status.plan_sha256 }, reading);
+              }, "primary") : null,
             node("div", { className: "stage-strip", "aria-label": "六阶段位置" }, stages.map((stage) =>
               node("span", { className: currentStage === stage ? "current" : null }, stage))),
             observed.status ? facts([

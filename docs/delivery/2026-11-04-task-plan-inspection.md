@@ -1,6 +1,6 @@
 # F4.3a：原运行待批计划的有界读取
 
-日期：2026-11-04。状态：首轮CLI/API与专用只读实现已写，源码/发行身份/两真实run只读验收已通过，[新的独立本地审查](2026-11-04-task-plan-inspection-review.md)已归档且无finding；提交推送和精确两OS CI尚未完成。前置为[F4.2c真实组合旅程](2026-11-04-task-console-journeys.md)，已独立收口并推送581144c。本片只提供后续页面需要的只读材料，不发批准信号。
+日期：2026-11-04。状态：首轮CLI/API与专用只读实现已写，源码/发行身份/两真实run只读验收已通过，[新的独立本地审查](2026-11-04-task-plan-inspection-review.md)已归档且无finding；已提交推送`14100cd8d9efca270e0a93d9a6c1b77fde9ed66c`且实时远端一致，精确两OS CI及同片独立终结复核通过，本片完成。前置为[F4.2c真实组合旅程](2026-11-04-task-console-journeys.md)，已独立收口并推送581144c。本片只提供后续页面需要的只读材料，不发批准信号。
 
 ## 已核现状与目标
 
@@ -60,3 +60,11 @@
 新的fresh-context审查者已独立跑32项轻量检查、重算包348/冻结283身份，并直接只读连接两原run核原spec/memo、当前待批phase/plan、history及零signal；同时核作者CLI/API原响应和54文件快照。需求与可维护性本地范围无finding，[正式报告](2026-11-04-task-plan-inspection-review.md)已归档；提交身份、精确CI和实时远端仍待后续核对。当前未批准、取消、执行后四阶段或实现网页批准，不标完整F4完成。
 
 提交前静态终核通过：本片八份Markdown、315个本地链接/锚点及27条README CLI parser命令；未改CI或原测试。后续只待本片提交、推送、精确两OS CI及同一审查者的最终身份复核，当前本地实现完整可审。
+
+## 提交与精确CI检查点
+
+实现/测试/文档14文件已提交推送`14100cd8d9efca270e0a93d9a6c1b77fde9ed66c`，实时远端完整SHA一致；工作区当时干净。本片精确[CI41781897332](https://github.com/626619403/Ergora/actions/runs/41781897332)已从官方完整提交行及run页面定位，初读为In progress，不能继承前片成功。之后同一审查者核精确提交、必要步骤与实时远端，才关闭本片。下一[B页面设计](2026-11-04-task-approval-console.md)已记录，尚未实现。
+
+## 最终交付
+
+`14100cd8d9efca270e0a93d9a6c1b77fde9ed66c`精确CI41781897332两OS必要步骤全部成功；Windows126415114987含PowerShell安装升级，Ubuntu126415115241含build/identity/native回归。同一独立审查者逐份核官方原HTML、完整提交与selectedJobId、全部必要步骤精确日志URL，并自行实时核远端仍为原完整SHA；[终结报告](2026-11-04-task-plan-inspection-review.md)已归档，无未解决findings，F4.3a完成。后续B本地页面与README改动不参与A的348/4160cfdd发行身份；A原wheel及两非editable安装保留。当前状态记账随下一片归档，不为纯记账重复重型CI；完整F4仍待后续页面与综合出口。

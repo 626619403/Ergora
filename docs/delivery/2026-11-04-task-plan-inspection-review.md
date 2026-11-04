@@ -2,7 +2,7 @@
 
 日期：2026-11-04。审查者：`/root/task_plan_review`，新的 fresh-context 独立上下文；以原始范围、验收和实际差异为准，核查邻近调用、实现记录与运行证据。项目和文档根分别为 Ergora 与其 `docs/`。遵循 `AGENTS.md`、maintainable-project-delivery 及 independent-review 要求。
 
-需求符合性：**本地实现与验收范围通过**。可维护性：**通过**。本次检查范围内无正确性或可维护性 findings，无待修源码阻塞。精确提交、两 OS CI 及实时远端核对尚未执行，需同片后续复核；本报告不将 F4.3a 或完整 F4 记为最终交付。
+需求符合性：**通过**。可维护性：**通过**。本次检查范围内无正确性或可维护性 findings，无待修源码阻塞。精确提交、两 OS 必要 CI 步骤及最终实时远端均已追加复核通过，见终结段；结论仅覆盖 F4.3a，不将完整 F4 或下一片页面记为完成。
 
 ## 精确范围
 
@@ -41,4 +41,32 @@
 
 ## 限制与后续
 
-本地审查未重新执行共享重型90项、完整 Linux 回归或 Windows运行；已核它们各自现有证据的实际范围，当前精确候选 CI 仍待产生。无源码 findings 不等于已提交或远端已验。最终静态文档检查、精确提交/两 OS CI/实时远端身份应在完成后补同片复核。页面材料/批准/取消/导出和后续观察仍属于各自后续切片，本次没有验证这些尚未实现的页面流程。
+本地审查未重新执行共享重型90项、完整 Linux 回归或 Windows运行；已核它们各自现有证据的实际范围，精确候选两 OS CI 最终复核见终结段。页面材料/批准/取消/导出和后续观察仍属于各自后续切片，本次没有验证这些页面流程。
+
+## 提交身份追加复核
+
+2026-11-04，同一审查者只读复核已推送候选 `14100cd8d9efca270e0a93d9a6c1b77fde9ed66c`，其唯一父提交为原精确基线 `581144c3d6205bb400577a79b694f53a8638cf15`。
+
+- `git show` / `diff-tree` 确认为14文件：五个生产文件、新测试及八份本片文档，范围与上述审查一致；没有 CI 变更。下一片 `2026-11-04-task-approval-console.md` 设计未进入该提交。
+- 逐项对提交树重新求 SHA256：全部348个 `src/ergora/` 文件等于已审4160cfdd…wheel、`package-identity.json` 与两非 editable 安装；283冻结文件身份保持。提交内新测试 SHA256 仍为 `6a9b2ae3f893de6314244eb18f32ab8527c9c3162a19fecd3b32b08427c8f41f`，没有重复运行重型测试。
+- 审查者实际执行 `git ls-remote origin refs/heads/refactor/architecture-foundations`，返回完整 `14100cd8d9efca270e0a93d9a6c1b77fde9ed66c`；该次实时远端身份一致。此时提交后工作区变更为 PLAN/本片实施记录的状态更新及下一片新设计，没有额外生产或测试差异；`git diff --check` 通过。
+- 核官方保存的完整提交行与 run HTML，[CI41781897332](https://github.com/626619403/Ergora/actions/runs/41781897332)确实绑定完整14100cd；`ci-html-run-selection.json` 观察状态为 **In progress**，当前 job groups 仅列 Linux 进行中且 `hasMore=true`。这些材料不能证明两 OS 或必要步骤最终成功，终结复核继续待办。
+
+该阶段结论为精确提交、已验包/测试身份与当次实时远端复核通过，CI 当时待办；以下终结复核补齐该项，不将早期 In progress 记录改写为成功。
+
+## 精确 CI 与远端终结复核
+
+2026-11-04，同一审查者独立复核固定 A 候选 `14100cd8d9efca270e0a93d9a6c1b77fde9ed66c` 的官方 [CI41781897332](https://github.com/626619403/Ergora/actions/runs/41781897332)。直接解析保存的官方原 run/job HTML，没有仅依据 `ci-html-status.json` 作结论：run 页包含完整候选提交链接，实际可见 `Status` 为 `Success`；两个 job 页的 `selectedJobId` 与下表一致。逐项核必要步骤只有一条记录、`data-conclusion=success`、含 `data-job-completed`，其 `data-log-url` 精确为 `/626619403/Ergora/commit/14100cd8d9efca270e0a93d9a6c1b77fde9ed66c/checks/JOB_ID/logs/N`。
+
+|实际矩阵/job|必要步骤及精确日志序号|结果|
+|---|---|---|
+|Windows / Python3.12，[126415114987](https://github.com/626619403/Ergora/actions/runs/41781897332/job/126415114987)|Build and install wheel:4；Packaged reference identity:5；Native application regression:6；Windows PowerShell 5.1 installer and upgrade:7|全部 success/completed|
+|Ubuntu / Python3.11，[126415115241](https://github.com/626619403/Ergora/actions/runs/41781897332/job/126415115241)|Build and install wheel:4；Packaged reference identity:5；Native application regression:6|全部 success/completed|
+
+已读精确提交内的 `portability.yml` 核矩阵、必要步骤和20分钟界限；Ubuntu 的 Windows PowerShell 步骤按原 `runner.os == 'Windows'` 条件跳过，两页无 failure/cancelled/timed_out 步骤。官方 jobGroups 的单页仍为 `hasMore=true`，因此没有把这一页当完整双 OS 证明，而是逐份核两个选中 job 的原 HTML。审查者首个轻量解析额外假设 job 页存在独立完整提交锚点而断言失败；核实际 DOM 后按上述步骤日志 URL 绑定完整提交，修正探针并完整重核通过，未修改生产或 CI。
+
+独立重算原材料摘要并与生成摘要交叉比对：run HTML `a4e6a4753a1eed2c812baa15c01c8b0ee89cffc6d3d3280519dcffbd88f034ec`；Windows job HTML `b7fcfa9ed6ddfae23ab45707ec1a87754c6ecf8138526c3ee695aa0587188ab4`；Ubuntu job HTML `437e8726bec51e9573982ea818aa90cfbf87cc79ae31c6df9c0b343050838e86`。完整原 HTML、选择记录、jobGroups 与摘要位于本片私有 `ci/` 子目录。未下载逐例日志正文，不从网页步骤状态新增测试数量或耗时结论。
+
+终结时再次实际执行 `git ls-remote origin refs/heads/refactor/architecture-foundations`，实时返回完整14100cd。再次以 `git show`/提交树核算 A 全部348文件：等于4160cfdd…wheel、A包身份记录及开发/base两保留 non editable 安装，283冻结身份与新测试摘要保持；五个 A Python 生产文件及该测试亦未变化。下一片 B 的未提交 `tasks.js` / README / USAGE 改动及独立6524ae…包不参与 A 身份比较，不将当前整棵工作树误记为 A。
+
+**终结结论：F4.3a 的需求符合性与可维护性均通过，精确提交、实际双 OS 必要步骤及实时远端已闭合，无未解决 findings。** 本轮仍只写本报告，未安装、重跑重型测试、变更源码、提交或发信号。完整 F4 及后续页面按各自切片继续。
