@@ -1,10 +1,10 @@
 # 当前架构与扩展边界
 
-2026-11-03，R8后的当前导航，覆盖F1项目定义、F2安装/运维与F3正式任务CLI/API生命周期；F3已通过[阶段验收](../delivery/2026-11-03-f3-completion.md)，页面接入归F4。F1.1/F1.2/F1.3全部交付；最终运行/测试提交`4ffcfdd`的本地验收、精确两OS CI及独立最终复核通过，详见[F1阶段验收](../delivery/2026-11-03-f1-completion.md)。历史[A1审计](2026-11-01-audit.md)及[R8记录](../delivery/2026-11-02-refactoring-exit.md)保留原身份与范围。设计约束见[ADR0001](decisions/0001-refactoring-foundations.md)/[0002](decisions/0002-static-boundaries.md)。
+2026-11-05，R8后的当前导航，覆盖F1项目定义、F2安装/运维、F3正式任务CLI/API生命周期与F4网页消费者。F3已通过[阶段验收](../delivery/2026-11-03-f3-completion.md)，F4的创建/原ID恢复、原运行/计划/批准/取消/对账/导出及有界事件/job文本均已实现，[完整页面收口](../delivery/2026-11-05-f4-completion.md)的恢复与服务退出验收单独登记。F5完整证据索引/成本交接与G0仍待后续。历史[A1审计](2026-11-01-audit.md)及[R8记录](../delivery/2026-11-02-refactoring-exit.md)保留原身份与范围。设计约束见[ADR0001](decisions/0001-refactoring-foundations.md)/[0002](decisions/0002-static-boundaries.md)。
 
 ## 模块与依赖
 
-自有Python仍为单包`ergora`，38个顶层文件（含两个包入口）；F1.2增加完整注册用例`registrations`，F2.3增加显式服务用例`services`，F3.1增加项目范围的正式任务查询`tasks`，F3.2在同一用例接入预览/创建/恢复，专用`reference_task_creation`拥有原生编译/发布生命周期，F4.4的`reference_task_events`拥有原运行有界事件查询。没有为层级增加空子包、通用Agent基类或插件容器。下图表示当前调用方向，组合节点内的模块并非互相依赖；精确导入由静态检查和源码确定。
+自有Python仍为单包`ergora`，39个顶层文件（含两个包入口）；F1.2增加完整注册用例`registrations`，F2.3增加显式服务用例`services`，F3.1增加项目范围的正式任务查询`tasks`，F3.2在同一用例接入预览/创建/恢复，专用`reference_task_creation`拥有原生编译/发布生命周期，F4.4的`reference_task_events`与`reference_task_evidence`分别拥有有界原事件、原job回执及文本窗口查询。没有为层级增加空子包、通用Agent基类或插件容器。下图表示当前调用方向，组合节点内的模块并非互相依赖；精确导入由静态检查和源码确定。
 
 ```mermaid
 flowchart TB
@@ -44,6 +44,10 @@ flowchart TB
   Ref --> Events[reference_task_events 专用事件查询进程]
   Events --> Submission
   Events --> Temporal
+  Ref --> JobEvidence[reference_task_evidence 原job回执/文本]
+  JobEvidence --> Submission
+  JobEvidence --> Temporal
+  JobEvidence --> Adapter
   Ref --> Submission[reference_task_submission 专用提交进程]
   Submission --> Temporal
   Ref --> Approval[reference_task_approval 专用审批进程]
@@ -81,6 +85,7 @@ flowchart TB
 |正式任务预览、创建与恢复|`tasks.preview / create / creation / resume_create` → `reference.task_creation` → 专用`reference_task_creation`；CLI/API|复用原create_task/portable及write，预览绑定项目修订和完整快照；先持久意图再发布原文件；按原意图恢复，不启动workflow，不接管legacy或复制调度器|
 |正式任务原生运行状态|`tasks.status` → `reference.task_runtime_status` → 专用`reference_task_runtime`；CLI/API|可选SDK只在专用进程导入；使用登记安装原Transport及共享VerifiedSpecClient严格核原始spec JSON/固定run ID，保留not-found/RPC错误/未知结果，不写本地状态或释放租约|
 |原运行的有界事件片段|`tasks.events` → `reference.task_events` → 专用`reference_task_events`；CLI/GET API|复用原提交/spec/memo固定run；单SDK物理页及页内游标，1–100事件/1 MiB响应/显式继续，事件投影不解码payload或持久化执行账本；查询模块依赖submission，避免runtime验证所有者反向导入submission|
+|原job发布回执与文本窗口|`tasks.job` → `reference.task_job` → 专用`reference_task_evidence`；CLI/GET API|只选原dev_submit调度事件，核连续history/context/envelope；原FileAdapter核回执及全部产物，配置/注册根验证由Creation共享给本入口与外部对账。材料按原回执名及首次receipt SHA读取；先核完整摘要/严格UTF-8，再返回字符窗口；响应上限不等于完整IO/内存上限|
 |本地服务运维|`services.status / control / logs`；CLI/API|复制原 Supervisor 定义并关闭自动启动；所选服务、当前修订及停止确认；共享执行目录/控制库归属；有界日志与原生游标，未确认不报告成功|
 |独立 Agent 调用|`agent_runs.run_agent / runs / output`；CLI/Web|冻结有效绑定视图、所选 Skill/记忆上下文及归档；普通调用成功不产生正式任务通过|
 |原生 Agent/Forge|`agents.invoke`、`kernel.create / operate`；独立调用、参考阶段/页面|既有 CLI/SDK 协议；Forge campaign 完成不等于可信训练采用，未知结果先对账|
@@ -94,7 +99,7 @@ flowchart TB
 |精确候选本地导出与回执恢复|`tasks.export / export_status / resume_export` → `reference.task_export` → 专用`reference_task_export`；CLI/API|复用原提交/spec/memo/run及REVIEW_READY结果；短revision准备后仅task锁，写前attempt固定outcome，Git事务保护已有分支/符号引用；unknown只核ref不重复写入；原租约/原生export回执沿原所有者|
 |原run外部作业证据|`tasks.external_status` → `reference.task_external_status` → 专用`reference_task_reconciliation`；CLI/API|复用原提交/spec/memo/SDK converter，完整连续闭合history逐项核请求和原FileAdapter可信终态回执/产物；已有fence与未决项另报；不写本工具记录、不发布fence或释放租约|
 |原run显式清理对账/本地记录/恢复|`tasks.reconcile / reconciliation / resume_reconcile` → `reference.task_reconciliation` → 同一专用进程；CLI/API|组合原只读检查所有者，短revision准备后仅task锁；原outcome/history检查点先于原fence，发布后完整重验；清理evidence先于原IngressLeases精确释放，SQLite提交后result；不改原outcome/复用task ID，GET只读本地记录|
-|参考资源、编译与执行桥|`reference`、`reference_task_creation`、`reference_task_runtime`、`reference_task_events`、`reference_task_submission`、`reference_task_approval`、`reference_task_cancellation`、`reference_task_export`、`reference_task_reconciliation`、`reference_executor`、`stage_driver`；CLI/Web/drafts/agent_runs|资源查询与正式执行分开；执行器限专用 Linux 进程，不把原导入全局当 Web request-local|
+|参考资源、编译与执行桥|`reference`、`reference_task_creation`、`reference_task_runtime`、`reference_task_events`、`reference_task_evidence`、`reference_task_submission`、`reference_task_approval`、`reference_task_cancellation`、`reference_task_export`、`reference_task_reconciliation`、`reference_executor`、`stage_driver`；CLI/Web/drafts/agent_runs|资源查询与正式执行分开；执行器限专用 Linux 进程，不把原导入全局当 Web request-local|
 |交互与传输|`cli`、`web`、`data/console`|调用现有用例；可选 Web/Temporal 延迟导入；UI 不拥有正式任务状态|
 
 Python 导入图包含函数内延迟导入，当前无环。`reference.executor` 动态加载执行桥，`stage_driver` 通过子进程运行，`data/drivers` 在独立 SDK 环境调用；这些运行边不能仅由顶层 import 推断。完整参考边界及退出条件见 [reference 文档](reference-boundary.md)，进程结果/产物/平台矩阵见 [运行契约](2026-11-02-runtime-contracts.md)。
@@ -118,7 +123,7 @@ flowchart LR
   API[api.js] --> HTTP[web.py]
 ```
 
-视图通过明确的 `refresh/render` 回调组合，不反向导入入口。`state.js` 只有 UI 选择、后台快照和显示元数据；草稿编辑身份、revision、图和 kernel 请求身份同属 `workflow.js`。`tasks.js`拥有正式任务分页、冻结详情、固定原run查询，以及F4.2a的局部预览/创建/原ID查询恢复及提交检查对话框；F4.3b沿同一详情所有者新增完整计划审阅、按稳定decision检查/显式批准/原意图恢复，复用原plan/approval API，写前保存选择、锁定输入，完整材料或原记录缺失时不提供确认。已有decision单独查看，requested不当批准采纳。F4.3c1沿同一所有者接取消记录读取/明确请求/原意图恢复，固定原run与request ID，requested/already_closed不提供再投递，也不当运行或外部清理完成；F4.3c2在同一详情中独立读取外部证据和原对账记录，沿原intent明确对账/恢复；写开始使旧观察失效，仅reconciled表示原租约释放回执保存，原outcome保持。共13个前端模块，复用原tasks API。对话框结果检查页面/详情归属、内容连接、open状态和请求代际，编辑废弃预览，创建发出前保存原ID选择，未知回复不自动重发。浏览器会话只存项目/页面/任务/run/decision/cancel-request选择，服务端继续拥有创建和执行事实；项目切换同步移除旧快照/视图，刷新代际和查询序号使旧响应失效。同项目刷新保留快照，工作流保存回包也检查实际快照项目。F4.3d沿同一任务详情接入精确REVIEW_READY候选导出、本地记录读取和原intent恢复，exported保持历史事实并禁止再次写入；有界运行日志、任意角色关系编辑和原生交互会话恢复尚待后续切片。
+视图通过明确的 `refresh/render` 回调组合，不反向导入入口。`state.js` 只有 UI 选择、后台快照和显示元数据；草稿编辑身份、revision、图和 kernel 请求身份同属 `workflow.js`。`tasks.js`拥有正式任务分页、冻结详情、固定原run查询，以及F4.2a的局部预览/创建/原ID查询恢复及提交检查对话框；F4.3b沿同一详情所有者新增完整计划审阅、按稳定decision检查/显式批准/原意图恢复，复用原plan/approval API，写前保存选择、锁定输入，完整材料或原记录缺失时不提供确认。已有decision单独查看，requested不当批准采纳。F4.3c1沿同一所有者接取消记录读取/明确请求/原意图恢复，固定原run与request ID，requested/already_closed不提供再投递，也不当运行或外部清理完成；F4.3c2在同一详情中独立读取外部证据和原对账记录，沿原intent明确对账/恢复；写开始使旧观察失效，仅reconciled表示原租约释放回执保存，原outcome保持。共13个前端模块，复用原tasks API。对话框结果检查页面/详情归属、内容连接、open状态和请求代际，编辑废弃预览，创建发出前保存原ID选择，未知回复不自动重发。浏览器会话只存项目/页面/任务/run/decision/cancel-request选择，服务端继续拥有创建和执行事实；项目切换同步移除旧快照/视图，刷新代际和查询序号使旧响应失效。同项目刷新保留快照，工作流保存回包也检查实际快照项目。F4.3d沿同一任务详情接入精确REVIEW_READY候选导出、本地记录读取和原intent恢复，exported保持历史事实并禁止再次写入；F4.4a/b沿同一局部所有者提供手动事件分页和原job回执/材料窗口：事件DOM保留最近200条，文本DOM只留当前8192字符，所有读取固定原run及回执身份，关闭/选择切换与迟到回复受现有作用域约束。任意角色关系编辑和原生交互会话恢复尚待后续切片。
 
 ## 调用与数据归属
 
@@ -148,6 +153,10 @@ sequenceDiagram
   Runtime->>Files: work → integrate → verify → review
   Files->>Executor: 可信检查、独立审查
   Runtime-->>User: REVIEW_READY / 阻塞或未知事实
+  User->>Entry: 明确GET原事件/选定调度事件的job材料
+  Entry->>Runtime: 核原run/history/spec/memo，保留游标
+  Entry->>Files: 原回执/产物完整摘要，固定receipt文本窗口
+  Entry-->>User: 有界只读观察，未知不当成功
   alt 原outcome为REVIEW_READY
     User->>Export: 精确run/candidate/分支/修订/确认
     Export->>Runtime: 核原run/outcome
@@ -161,7 +170,7 @@ sequenceDiagram
   end
 ```
 
-执行桥只替换生成阶段的Agent，原执行器仍拥有候选SHA、只读检查、提交和回执。默认值或项目绑定变化不修改在途任务的`agent-bindings.json`。取消是意图，`CANCEL_UNCONFIRMED / NEEDS_RECONCILIATION`保持可见，不能删ledger后重跑。F1已统一项目配置与投影；F3.1/F3.2提供本地合同读写API，F3.3a提供原生状态查询；F3.3b提供单次提交和原ID恢复；F3.3c1提供精确批准和投递恢复，F3.3c2提供原运行取消请求/投递对账，F3.4提供精确候选导出与只读外部证据/显式清理对账。F4.1页面接入只读合同/提交回执及原run查询，F4.2a接入预览/明确创建/原ID恢复；F4.2b在任务详情重新读取原创建/提交记录后，明确start或resume原意图；F4.3b/c页面沿既有用例提供计划审阅/明确批准、取消与闭合原run外部证据/显式对账，原记录及意图恢复仍由后端拥有；F4.3d页面沿原export/原intent恢复用例提供本地分支导出，不承担Git规则、执行结果或租约释放所有权。
+执行桥只替换生成阶段的Agent，原执行器仍拥有候选SHA、只读检查、提交和回执。默认值或项目绑定变化不修改在途任务的`agent-bindings.json`。取消是意图，`CANCEL_UNCONFIRMED / NEEDS_RECONCILIATION`保持可见，不能删ledger后重跑。F1已统一项目配置与投影；F3.1/F3.2提供本地合同读写API，F3.3a提供原生状态查询；F3.3b提供单次提交和原ID恢复；F3.3c1提供精确批准和投递恢复，F3.3c2提供原运行取消请求/投递对账，F3.4提供精确候选导出与只读外部证据/显式清理对账。F4.1页面接入只读合同/提交回执及原run查询，F4.2a接入预览/明确创建/原ID恢复；F4.2b在任务详情重新读取原创建/提交记录后，明确start或resume原意图；F4.3b/c页面沿既有用例提供计划审阅/明确批准、取消与闭合原run外部证据/显式对账，原记录及意图恢复仍由后端拥有；F4.3d页面沿原export/原intent恢复用例提供本地分支导出，不承担Git规则、执行结果或租约释放所有权。F4.4a/b通过同源GET查询原事件及job材料，事件与文本消费者不保存另一份权威历史；只有明确读取才查询，published/SUCCEEDED不推出workflow已采用。
 
 训练保持独立的 workload/baseline/manifest/runner/evidence：`prepare → start（控制排队）→ 操作者 run-local + manifest SHA → 可信统计门禁 → owner evidence SHA → 集成/复验任务`。control worker 不自动启动训练；Forge 只生成原生候选。R8 的 fixture 只检验协议，真实模型/GPU效果以各次实测记录为准。
 
@@ -212,7 +221,7 @@ F1统一注册将控制项目定义和bindings作为权威来源，reference正�
 |Executor 与 mini environment 继承|保留外部框架实际 hook；不建模板/Agent 继承树|R5/R6，阶段/receipt 与固定 SDK 适配检查|
 |DevelopmentRuntime / Adapter / ClusterAdapter Protocol|保留既有合同及开发/训练差异|R6；F3/F9按真实消费者接入，不新增巨型 Backend|
 |Web/CLI 共用业务|保持直接用例调用，不再抽代理服务层；只归位跨域编排/diff|R4/R7，CLI/API对照与同一拒绝语义|
-|status/list/poll 与 revision SQL 相似|保留不同事实和事务；未来汇总只读投影|R3/R5，F4/F5仍待实现，不合并状态机|
+|status/list/poll 与 revision SQL 相似|保留不同事实和事务；未来汇总只读投影|R3/R5，F4只读消费者已接入，F5汇总待实现，不合并状态机|
 
 ### 兼容入口及退出条件
 
@@ -238,7 +247,7 @@ F1统一注册将控制项目定义和bindings作为权威来源，reference正�
 |新模板、阶段或通用低代码|目前只有3个固定模板及受约束输入草稿；新模板/合同需显式实现和验收|F6才扩展描述/编辑；不能承诺现有任意配置可增删可信阶段|
 |新 tracker/通信/会话|对应 F7/F8/D1/D2 的真实 adapter、native ID/去重/取消和授权合同|本地无工单流程继续可用；上下文消息不扩大权限|
 
-复用SQLite、Git、jsonschema、Temporal、MLflow、Cytoscape、GEPA/ReMe和各工具真实SDK。项目revision、精确候选授权、证据关联与显式采用属于Ergora规则。继续保持函数和既有Protocol，只有外部框架hook使用继承。静态边界检查运行方式及局限见[ADR 0002](decisions/0002-static-boundaries.md)。F1/F2已完成，当前接入F3正式任务读写，再接运行操作/F4页面；完整all-in-one用户旅程仍需这些后续节点验收。
+复用SQLite、Git、jsonschema、Temporal、MLflow、Cytoscape、GEPA/ReMe和各工具真实SDK。项目revision、精确候选授权、证据关联与显式采用属于Ergora规则。继续保持函数和既有Protocol，只有外部框架hook使用继承。静态边界检查运行方式及局限见[ADR 0002](decisions/0002-static-boundaries.md)。F1/F2/F3已完成；F4页面消费者已接入并逐片验收，综合收口见当前交付记录。完整all-in-one新用户闭环仍需F5/G0，后续真实工具与低代码节点沿既有计划实施。
 
 ## F2安装增量
 

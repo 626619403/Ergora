@@ -146,6 +146,20 @@ project register → 选择角色/核revision → services start所选栈
 
 备份必须联合保存控制`ERGORA_HOME`、登记的CONFIG/STATE、业务Git仓库、Temporal持久数据及实际工具认证；控制SQLite备份不包含原任务/history/候选/租约。执行STATE中的`tasks/`、`ergora/task-*`、requests/receipts/artifacts/approvals/fences、workspaces、进程记录及ledger均属于恢复证据。先停止相关写者并核在途外部作业，再按[备份说明](#升级与持久数据)操作。
 
+### 服务停止后的读取与恢复
+
+已完成统一登记和完整执行环境安装时，服务是否运行与持久回执是否存在分别判断。完整正式执行使用Linux/WSL2；Windows控制面及可选工具的范围见[Windows手册](WINDOWS.md#选择运行方式)。
+
+|要读取或执行的内容|需要运行的服务|事实边界|
+|---|---|---|
+|原合同、创建/提交/批准/取消/对账/导出记录|无需启动执行服务|读取持久文件；历史回执不证明当前Git分支、外部进程或实时运行状态|
+|已闭合原run状态/结果，原事件及job回执/文本材料|Temporal；无需启动worker/executor|固定原run及证据摘要；事件/job读取也适用于运行中原run，材料还要求原可信产物目录可读|
+|运行中原run的阶段/状态查询|Temporal及可响应workflow query的worker|`task status`在RUNNING时调用workflow query；只有Temporal在线可能查询失败|
+|继续正式阶段及真实Agent调用|Temporal、对应worker/executor及所选工具认证|投递回执与实际完成分别核查；启动服务不会自动补发未知操作|
+|显式服务启动/退出和日志|Linux/WSL2完整参考安装及Supervisor|由统一入口管理本执行目录所属栈；共享目录的项目共享服务|
+
+关闭浏览器或重启HTTP后，重新选择原项目/任务并读取原记录即可恢复；清空会话选择也不会删除后端意图。run输入可从持久submission回填，批准/取消仍需保留原decision/request ID。原运行服务不可达时页面明确显示查询失败，本地回执仍可独立读取。不要把连接失败当作未提交，不换task ID重跑。检查已有闭合运行只需显式启动Temporal；恢复执行前另核所需worker、executor、工具与原意图状态，步骤见[显式服务管理](#显式服务管理)。
+
 ### 旧参考 CLI 与统一入口
 
 统一`ergora task`从所登记参考环境读取Temporal配置，旧`agentflow task`从当前shell读取连接。本机loopback开发服务的旧命令可显式设置：

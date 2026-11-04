@@ -43,3 +43,36 @@
 已审范围无阻塞或非阻塞finding；无待修源码项。本地实现、发行身份及上述真实/受控证据可以进入本片提交阶段。
 
 本片当前未提交，精确提交归档、推送后实时远端SHA、当前UI候选的官方双OS CI及同片最终复核仍待完成。b1既有回归/CI只保留其原身份与范围，不替代b2候选的精确CI。完整F4.4c组合重开/服务退出与完整F4/F5/G0均未由本审查关闭。
+
+## 提交、包与实时远端终结（2026-11-05）
+
+同一审查者续核精确候选 `77b334c62346f92868c22c067949b0caf2d74d48`。本节更新前述“未提交”的历史状态；仅完成提交、包与推送/远端部分，当前UI候选的精确官方CI仍待独立终结。
+
+- 核该提交唯一父为原基线 `1dbe969e433348eda60d6bff0271c13cd729b6ba`，共10个文件：两生产JS和八文档；逐一重算Git提交blob的SHA，与 `staged-scope.json`完全相等。两JS继续为本报告已审字节，下一C片文档未进入本提交。前片b1审查/状态归档没有变成本片生产行为。
+- 实际读取 `verify-commit-package.py`、command及log，核原命令exit0；另行在内存中重新执行 `git archive`资源提取并重算350个文件摘要，完整等于 `package-identity.json`和原43e121…wheel的实际内容。wheel完整SHA仍为 `43e1211ea12c7522b928881d10b1c0497489e6a0a68930bbf86f10eb260c8ca1`。`commit-package-identity.json`的候选与归档结论得到独立核验，未重新构建、安装或跑重型回归。
+- 核 `staged-documents-command.json` exit0、原log和 `static-documents.json`：八文档的实际提交摘要与记录完全相同，291个本地链接/锚点零missing，27条README命令通过现有CLI parser；这是静态检查，不是额外真实工作流执行。
+- 核 `push-rsa.stderr`中的正常快进 `1dbe969..77b334c`、推送exit0记录及前后原 `ls-remote`输出；另于本次审查独立运行只读 `git ls-remote --exit-code origin refs/heads/refactor/architecture-foundations`，exit0，实时远端完整SHA为 `77b334c62346f92868c22c067949b0caf2d74d48`，与本地HEAD/候选相同。
+
+提交、包与本次实时远端核对通过，无新增finding。b1的CI41892668276保持前片身份与已归档审查范围；本片尚不关闭精确双OS CI与最终交付，也不关闭F4.4c或完整F4。
+
+## 精确官方CI与最终终结（2026-11-05）
+
+同一审查者对精确提交 `77b334c62346f92868c22c067949b0caf2d74d48` 续作最终核验。本节关闭前两轮保留的b2精确CI待验项；不借用b1结果。
+
+- 官方 [Portability run 41896900471](https://github.com/626619403/Ergora/actions/runs/41896900471) 原run HTML显示 `Status: Success`，链接完整精确提交及 `portability.yml`。另从原actions HTML的服务端行解析相同commit/run/workflow，并重算该行SHA等于selection记录；没有假定actions行是内嵌workflow JSON。
+- [Windows job 126808727970](https://github.com/626619403/Ergora/actions/runs/41896900471/job/126808727970) 的原HTML明确选中该job，名称为 `native (windows-latest, 3.12)`。Build and install wheel、Packaged reference identity、Native application regression、Windows PowerShell 5.1 installer and upgrade四个必要步骤均为success且job completed；各自日志URL绑定完整候选、同一job ID及步骤4/5/6/7。
+- [Ubuntu job 126808728539](https://github.com/626619403/Ergora/actions/runs/41896900471/job/126808728539) 的原HTML明确选中该job，名称为 `native (ubuntu-latest, 3.11)`。构建安装、包参考身份和原生回归三个必要步骤均success且job completed，日志URL绑定完整候选、同一job ID及步骤4/5/6。两个job的步骤中均无failure/cancelled/timed_out。run HTML与job-groups原JSON共同给出的两个job与实际原页一致。
+- 核 `verify-successful-ci-command.json`及原log：作者实际执行的 `verify-ci.py` exit0；本审查另行解析原HTML，而非只信任汇总。独立重算下表六份源文件的原字节长度与SHA，全部等于 `ci-html-status.json`。本次核验未下载完整步骤日志，也不从成功状态推断额外测试计数。
+
+|原证据文件|字节数|SHA256|
+|---|---:|---|
+|`ci-html-run-selection.json`|493|`5d4bdc98f04b4c85f283c588494ff0673977b519971b51188de59acd254eb676`|
+|`ci-run-latest.html`|163636|`8edf4134a5275fe2704217c12c196edbd7f9aa52711ab5a53d35138b728a71d0`|
+|`ci-job-groups.json`|371|`4a5b2d0dd55cfab1d57b7a5123b5ca2c667bf3933ac636886a57e22859ec3afa`|
+|`ci-actions.html`|386818|`7400998ff96ea17ceaffd4044812bdefa23cf8bdbac6fe37a4015bd23030205c`|
+|`ci-job-126808727970.html`|166387|`174613a8f0cfa509df1de0d21fcbe433035f11d2416e471e3679f07aaa853224`|
+|`ci-job-126808728539.html`|168301|`7224a5ad983789792426690ab08c1f90fee25510cfa94a04695ec691c4c45dbb`|
+
+当前 `tasks.js`、`app.js`再次逐字节核对为已审包及上述Git提交内容，SHA继续等于本报告身份节；生产源码未变。本次显式使用既有RSA身份执行只读 `git ls-remote --exit-code origin refs/heads/refactor/architecture-foundations`，exit0，实时远端仍为完整 `77b334c62346f92868c22c067949b0caf2d74d48`。未构建、安装、重跑本地验收或开启服务。
+
+**最终结论：F4.4b2需求符合性与可维护性通过，精确提交/包/实时远端及官方双OS CI终结通过，无未解决finding或本片剩余验收项。** 后续归档本报告属于同片状态记录。F4.4c综合旅程、服务恢复/退出及完整F4/F5/G0不属于本片结论，须保留其各自独立验收和审查范围。
