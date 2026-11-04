@@ -113,7 +113,7 @@ flowchart LR
   API[api.js] --> HTTP[web.py]
 ```
 
-视图通过明确的 `refresh/render` 回调组合，不反向导入入口。`state.js` 只有 UI 选择、后台快照和显示元数据；草稿编辑身份、revision、图和 kernel 请求身份同属 `workflow.js`。F4.1新增`tasks.js`拥有正式任务分页、冻结详情与固定原run查询；共13个前端模块，复用原tasks API。浏览器会话只存项目/页面/任务/run选择，服务端继续拥有执行状态；项目切换同步移除旧快照/视图，刷新代际和查询序号使旧响应失效。同项目刷新保留快照，工作流保存回包也检查实际快照项目。正式写操作页面、有界运行日志、任意角色关系编辑和原生交互会话恢复尚待后续切片。
+视图通过明确的 `refresh/render` 回调组合，不反向导入入口。`state.js` 只有 UI 选择、后台快照和显示元数据；草稿编辑身份、revision、图和 kernel 请求身份同属 `workflow.js`。`tasks.js`拥有正式任务分页、冻结详情、固定原run查询，以及F4.2a的局部预览/创建/原ID查询恢复对话框；共13个前端模块，复用原tasks API。对话框结果检查页面/内容连接、open状态和请求代际，编辑废弃预览，创建发出前保存原ID选择，未知回复不自动重发。浏览器会话只存项目/页面/任务/run选择，服务端继续拥有创建和执行事实；项目切换同步移除旧快照/视图，刷新代际和查询序号使旧响应失效。同项目刷新保留快照，工作流保存回包也检查实际快照项目。提交/批准等运行写操作页面、有界运行日志、任意角色关系编辑和原生交互会话恢复尚待后续切片。
 
 ## 调用与数据归属
 
@@ -156,7 +156,7 @@ sequenceDiagram
   end
 ```
 
-执行桥只替换生成阶段的Agent，原执行器仍拥有候选SHA、只读检查、提交和回执。默认值或项目绑定变化不修改在途任务的`agent-bindings.json`。取消是意图，`CANCEL_UNCONFIRMED / NEEDS_RECONCILIATION`保持可见，不能删ledger后重跑。F1已统一项目配置与投影；F3.1/F3.2提供本地合同读写API，F3.3a提供原生状态查询；F3.3b提供单次提交和原ID恢复；F3.3c1提供精确批准和投递恢复，F3.3c2提供原运行取消请求/投递对账，F3.4提供精确候选导出与只读外部证据/显式清理对账。F4.1页面接入只读合同/提交回执及原run查询，写操作继续由CLI/API执行。
+执行桥只替换生成阶段的Agent，原执行器仍拥有候选SHA、只读检查、提交和回执。默认值或项目绑定变化不修改在途任务的`agent-bindings.json`。取消是意图，`CANCEL_UNCONFIRMED / NEEDS_RECONCILIATION`保持可见，不能删ledger后重跑。F1已统一项目配置与投影；F3.1/F3.2提供本地合同读写API，F3.3a提供原生状态查询；F3.3b提供单次提交和原ID恢复；F3.3c1提供精确批准和投递恢复，F3.3c2提供原运行取消请求/投递对账，F3.4提供精确候选导出与只读外部证据/显式清理对账。F4.1页面接入只读合同/提交回执及原run查询，F4.2a接入预览/明确创建/原ID恢复；运行写操作继续由CLI/API执行。
 
 训练保持独立的 workload/baseline/manifest/runner/evidence：`prepare → start（控制排队）→ 操作者 run-local + manifest SHA → 可信统计门禁 → owner evidence SHA → 集成/复验任务`。control worker 不自动启动训练；Forge 只生成原生候选。R8 的 fixture 只检验协议，真实模型/GPU效果以各次实测记录为准。
 

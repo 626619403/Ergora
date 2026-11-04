@@ -1,6 +1,6 @@
 # F4.2a：正式任务预览、创建与原 ID 恢复
 
-日期：2026-11-03。状态：页面首轮实现完成，验证和独立审查待进行。前置为 [F4.1 只读控制台](2026-11-03-formal-task-console.md)，其生产候选为 `11e89cf44eb29fe9064bd0015417cf6bc54fdc5e`；该次 CI 的 Windows 成功，Linux 超过20分钟被取消，正另行核查，未记作通过。本文是本片的实施与恢复入口，实际进度由 [PLAN](../PLAN.md) 记录。
+日期：2026-11-03起，2026-11-04续。状态：页面、包身份、两模板正常/丢回复/迟到、初包真实部分发布恢复、文件及额外只读入口已验证；独立本地审查通过，待提交推送及精确CI。前置 [F4.1 只读控制台](2026-11-03-formal-task-console.md)已完成；其原候选 `11e89cf` 的 Linux CI 超时取消保留，[V4](2026-11-04-ci-regression-progress.md)候选`2137a95418879d48cce557016caa5c7f0d6a6a1b`保持同一应用树，新精确CI41679431542两OS通过。本文是本片的实施与恢复入口，实际进度由 [PLAN](../PLAN.md) 记录。
 
 ## 行为和范围
 
@@ -41,4 +41,31 @@ F4.2b 再接提交、submission 与 resume-start；本片不接批准、取消�
 
 首轮源码只修改 `tasks.js` 和任务表单的局部 CSS。页面所有者内增加预览/明确创建、创建状态展示及按原 ID 读取/恢复；复用已有模板、草稿和四个创建 API。编辑废弃预览，已发出创建后锁定编辑，错误只提供原 ID 查询入口；未自动启动运行。结果受页面、对话框内容连接状态、dialog.open 和本次请求序号约束。已发布结果刷新任务选择/列表与详情。仅训练项目明确提示使用独立入口。
 
-尚未构建本片包、执行真实浏览器或恢复旅程，尚未独立审查或提交推送。F4.1 的已安装包保持原身份，另作 CI 超时本地诊断；不能将其旧 DOM 或后端结果作为本片验证。
+上述为首轮检查点。后续补充创建发出前保存原任务选择、合同未完整读取时的原ID查询入口，保证重载后还能查原记录；app使用指南、README、USAGE和当前架构已同步。生产范围为`tasks.js`、局部CSS及app帮助文案；没有Python、测试、依赖、CI或冻结reference改动。源码比较基线为`2137a95418879d48cce557016caa5c7f0d6a6a1b`，V4与本片保持独立提交。
+
+## 实际验证与身份
+
+私有原始材料位于`.ergora/checks/f4-task-creation-console/`。独立持久控制/配置/执行目录中注册两个新项目：开发项目允许两开发模板，训练项目只允许训练模板。只读复用已核参考安装；未复制凭据、启用执行、启动Temporal/worker/executor或调用模型。可信fixture检查只配置，不将其算作六阶段验收。
+
+初包保存在`initial-dist/`，身份JSON为checks根目录的`initial-package-identity.json`，与当时基础安装逐文件一致；其浏览器材料保留以下范围，未改写为最终候选重新执行：
+
+|材料|结果与范围|
+|---|---|
+|browser-normal|34页面请求含3真实预览/2真实创建，另2只读辅助检查；两模板快照=服务端、编辑清确认、发布不启动、选择重载、390px页面/弹窗无溢出、0 pageerror|
+|browser-duplicate-stale-preview|6请求/3 POST；显式重复创建返回同一原意图，另保留修订1预览供后续旧revision验证|
+|prepare-recovery / recovery-environment|在独立原生子进程中受控中断真实发布，保存原意图及3份合同；另一个任务修改一份实际文件形成conflict，再将项目reviewer绑定变为修订2。不是HTML模拟状态|
+|browser-recovery-real|20请求/2 POST；旧revision创建400且锁定表单，按原IDnot_recorded；真实pending沿原意图发布，当前修订2/原创建修订1及旧角色保持；实际conflict不提供恢复/覆盖；重载恢复选中新任务，0 pageerror|
+
+首个正常脚本在实际发布治理任务后，错误地在打开的modal外等待不可见标题而超时；原脚本/CLI/命令保存在`initial-normal-attempt/`。修正等待顺序并在新浏览器会话使用新ID取得上述正常结果，没有删除原已发布任务或把失败当成功。
+
+包含原ID重载保护及帮助文案的新包SHA256为`421c81f203292610173a0885163c15297e018df93b11c805adede1f5328ed7b7`；348文件=源码=wheel=开发/基础两非editable安装，冻结283及13模块语法通过。`package.py`保留构建/安装/语法实际命令和原始日志。`browser-normal-final`在此包重跑两模板：34请求含3预览/2创建、另2只读检查，当前冻结修订2，两份完整预览与服务端一致，390px页面390/弹窗352均无横向溢出、0 pageerror。
+
+最终包还完成`browser-lost-response`：8页面请求/2POST，`route.fetch`真实发布后`route.abort`丢失回复；仅一次create，reload保留原ID，GET查回同intent的published。`browser-late`为14请求/5POST：真实preview回包持留时编辑，旧确认不恢复；关闭/替换对话框后旧preview不覆盖lookup；真实create已published后持留回复，切训练项目并打开新提示，再释放旧回复，不改项目或新提示，返回原项目仍可查同intent。均0pageerror。最终normal/lost/late合计56页面请求/12POST，未混入初包计数。
+
+桌面治理、390px大型任务和原ID丢回复恢复截图已实际查看，中文可读、可见区域无横向问题；长表单截图位于对话框中部滚动位置，不声称整份表单同时可见。[独立源码/合同/维护/成本审查](2026-11-04-task-creation-console-review.md)无高置信finding，报告已落盘。
+
+工具部分恢复后，`verify-created.py`已实际执行并保存`verified-created.json`：9份intent中8份published，七文件内容及result的原intent/compiled/各文件canonical SHA逐项一致；1份conflict保留task.json真实差异及其余2匹配/4缺失，无result。35份中断前既有文件与F3原416文件字节SHA保持，原pending冻结修订1及旧reviewer保持。最终421c81包348文件再次核源码/wheel/两安装一致。此为只读静态核算，不是执行验收。
+
+`browser-final-readback`已在重新打开的浏览器会话取得7真实GET/0POST：实际不完整conflict合同的错误面板保留原ID，按钮打开readonly原ID查询，实际conflict无resume；原pending已published且冻结修订1/当前2和旧reviewer保持，app新帮助文案在实际DOM中可见，0pageerror。没有重跑已成功的正常/丢回复/迟到旅程，也未把最终只读检查写成重新执行初包恢复。
+
+当前文档终核为13份Markdown328本地链接/锚点及26条README命令parser通过，`git diff --check`通过；脚本和原结果复用F4.1 checks下的`check-documents.py`/`static-documents.json`，不改写F4.1历史计数。当前独立续核及本片提交推送/精确CI尚待收口。此前自动审批服务deadline阻止的命令保留未执行范围；仅以成功工具原输出和产物登记新检查，不追溯改写。F4.2b提交执行和F4.2c组合验收未实现，不把当前创建页面写成完整F4交付。

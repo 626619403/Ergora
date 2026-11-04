@@ -85,7 +85,7 @@ function helpDialog() {
     node(
       "p",
       {},
-      "3. 工作流设计保存任务输入草稿；正式任务页读取冻结合同和指定run的原状态。创建、提交、批准及导出使用ergora task统一CLI，操作说明见docs/USAGE.md；草稿校验不代表正式任务已创建或通过。",
+      "3. 工作流设计保存任务输入草稿；正式任务页可预览、明确创建及按原ID恢复合同，并读取指定run的原状态。提交运行、批准及导出使用ergora task统一CLI，操作说明见docs/USAGE.md；草稿校验不代表正式任务已创建或通过。",
     ),
     pre(
       "ergora --help\nergora tools list\nergora reference info\nergora templates copy training-optimization ./training-task",

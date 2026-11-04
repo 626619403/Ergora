@@ -82,3 +82,15 @@ final-shutdown 的命令、脚本与结果明确核 5 个原 run 为 COMPLETED�
 上述证据位于本片私有 ci/ci-html-run-selection.json、ci-run-latest.html 和两份 ci-job HTML。原 run HTML SHA256 为 `0c9778443678e63b2449fd736732ec4d0ac33baaf3310305c969e22d253de84a`，Linux job HTML 为 `eeadf5578ad71d523eec83572b65a201e3b0db35d43b18bfae02b4c18127c210`，Windows job HTML 为 `7c25c96e46a5dca712a3e568fb5d801e38f9d0aa8a0eaccee1062f5b1f443892`。超时注释不能确定具体耗时测试或产品缺陷原因；本报告不补造 Linux 测试数量或通过结果，也不使用仍在诊断中的 local-regression.log 作通过证据。
 
 本轮仅增加 Git blob/hash、官方 CI HTML 和实时远端的只读核对，写入只限本报告；没有运行测试、模型、构建、安装、服务或提交推送。源码/本地验收与可维护性结论保持通过，R1–R3 保持关闭；**精确两 OS 验收未通过，F4.1 完整交付继续待定**。本次状态补记不审查 F4.2a，也不重复启动本地服务。
+
+## 2026-11-04 同源有效CI最终续核：F4.1通过
+
+以下为原独立审查者`/root/formal_task_console_final_review`的最终续核，由根代理归档。审查者两次报告更新在执行前遭自动审批服务deadline，原待定结论保留为历史，不冒称当时已更新。
+
+生产提交为`11e89cf44eb29fe9064bd0015417cf6bc54fdc5e`，同源CI候选为`2137a95418879d48cce557016caa5c7f0d6a6a1b`。审查者直接读取完整Git diff stat和实际workflow差异：仅CI日志包装及7份文档共8文件，应用/测试树不变，套件/矩阵/20分钟/退出码保持。结合前次独立348文件核算，仍绑定原`3f287ecebdf37324a7960661f65e07a9713cfc1d277aa439e01370b25f044021`包及冻结283；V4独立审查者另成功重核348 Git blob与旧wheel/manifest一致，原输出`3b376f`。当前F4.2a源码及安装不参与本片。
+
+本审查者通过只读网页直接打开官方[run41679431542](https://github.com/626619403/Ergora/actions/runs/41679431542)及两job：run为Success，[Ubuntu126068814666](https://github.com/626619403/Ergora/actions/runs/41679431542/job/126068814666)和[Windows126068815158](https://github.com/626619403/Ergora/actions/runs/41679431542/job/126068815158)均succeeded。保存的selection/status绑定完整2137；Ubuntu构建安装/冻结身份/原生回归三项success，Windows另含PowerShell安装升级共四项success。V4审查者另直读selectedJobId及step log URL绑定各job和2137。
+
+原HTML位于私有`ci-regression-progress/ci/`；已读身份记录中的run SHA为`c8604f4a5eea7338669bf8420e7bc4b492a07f37617e40c77769d2d8027c1aac`，Ubuntu为`45da850d4a9ea650d2432a32fc14a89b7cd3179cac9853082b7ffe336440cbb1`，Windows为`69f17a611be5113ef3e2e4ff9237bf61915490914008534d8723cd3cae273878`，本审查者本轮重hash脚本未执行，不记为亲算。live远端由V4审查者实际查询，退出0返回完整2137，输出`8056fc`，精确UTC未记录；本审查者自己的两次查询审批超时，未冒称成功。
+
+旧CI41662193234仍为Linux超时取消；新CI补同源门禁，不证明旧超时根因或性能提升。原浏览器、416文件及停栈证据保持原身份。R1–R3关闭，0未解决findings，F4.1完整验收通过；F4.2a及完整F4不在此完成结论内。本轮未运行测试、模型、构建、安装、服务或提交推送。

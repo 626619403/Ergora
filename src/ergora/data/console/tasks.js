@@ -1,6 +1,6 @@
 import { api } from "./api.js";
 import {
-  node, button, pre, heading, panel, empty, row, field, badge, form, table,
+  $, node, button, pre, heading, panel, empty, row, field, select, badge, form, modal, table,
 } from "./ui.js";
 import { stages } from "./state.js";
 
@@ -41,6 +41,212 @@ export function tasksView(data, base) {
       row(previous, next, button("重新读取列表", () => { pageIndex = 0; loadPage(); }))),
     detail,
   );
+  title.append(row(
+    button("预览与创建", () => creationDialog(), "primary"),
+    button("按 ID 读取创建记录", () => creationLookup()),
+  ));
+
+  function selectPublished(record) {
+    if (record.status !== "published") return;
+    inspect(record.task_id);
+    pageIndex = 0;
+    loadPage();
+  }
+
+  function creationRecord(record, target, active) {
+    const descriptions = {
+      not_recorded: "没有统一创建记录；目录存在也不能证明创建成功，旧任务不由恢复入口接管。",
+      pending: "原意图已保存，合同尚未完整发布。恢复将沿用原冻结内容和角色。",
+      published: "冻结合同已完整发布；创建操作没有提交运行。",
+      conflict: "现有合同与原意图冲突。请检查原文件；页面不会覆盖冲突内容。",
+    };
+    target.replaceChildren(panel(`创建记录：${record.status}`, descriptions[record.status],
+      facts([
+        ["任务 ID", record.task_id], ["项目当前修订", record.project_revision],
+        ["原创建修订", record.created_revision], ["原意图 SHA256", record.intent_sha256],
+        ["编译结果 SHA256", record.compiled_sha256],
+      ]),
+      disclosure("完整创建记录与冻结角色", record),
+      record.status === "pending" ? form([], "确认恢复原创建", async () => {
+        if (!active()) return;
+        let resumed;
+        try {
+          resumed = await api(`${base}/tasks/${encodeURIComponent(record.task_id)}/resume-create`, {
+            revision: record.project_revision, intent_sha256: record.intent_sha256,
+          });
+        } catch (error) {
+          if (active()) creationUnknown(record.task_id, error, target, active);
+          return;
+        }
+        if (!active()) return;
+        creationRecord(resumed, target, active);
+        selectPublished(resumed);
+      }) : null,
+      row(
+        button("重新读取原创建记录", () => {
+          if (active()) creationLookup(record.task_id);
+        }),
+        record.status === "published" ? button("查看正式任务", () => {
+          if (!active()) return;
+          $("#dialog").close();
+          inspect(record.task_id);
+        }) : null,
+      ),
+    ));
+  }
+
+  function creationUnknown(taskId, error, target, active) {
+    target.replaceChildren(panel("操作结果尚未确认", error.message,
+      node("p", {}, `请保留原任务 ID：${taskId}。先读取原创建记录，再决定是否恢复；不要据此更换 ID 或重发创建。`),
+      button("按原 ID 读取创建记录", () => {
+        if (active()) creationLookup(taskId);
+      }),
+    ));
+  }
+
+  function creationLookup(taskId = "") {
+    let sequence = 0;
+    const result = node("div", { "aria-live": "polite" });
+    const idField = field("原任务 ID", "task_id", taskId, "text", {
+      required: true, maxlength: 80, autocomplete: "off", readonly: taskId ? true : null,
+    });
+    const content = node("div", {},
+      node("p", {}, "未完整发布的任务可能不在列表中。此入口只读创建记录，不查询或启动执行。"),
+      form([idField], "读取创建记录", async (values) => {
+        if (!active()) return;
+        const reading = ++sequence;
+        result.replaceChildren(empty("正在读取原创建记录…"));
+        try {
+          const record = await api(`${base}/tasks/${encodeURIComponent(values.get("task_id"))}/creation`);
+          if (current(reading)) creationRecord(record, result, () => current(reading));
+        } catch (error) {
+          if (current(reading)) result.replaceChildren(panel("创建记录读取失败", error.message));
+        }
+      }), result,
+    );
+    const active = () => view.isConnected && content.isConnected && $("#dialog").open;
+    const current = (reading) => active() && reading === sequence;
+    idField.addEventListener("input", () => { sequence++; result.replaceChildren(); });
+    modal("按原 ID 读取与恢复创建", content);
+  }
+
+  function creationDialog() {
+    const kinds = data.project.registration.definition.templates.filter((kind) =>
+      ["repository-governance", "large-change"].includes(kind));
+    if (!kinds.length) {
+      modal("没有已登记的开发模板", node("p", {}, "此项目使用独立训练合同；请使用工作流设计中的训练优化入口。"));
+      return;
+    }
+    const kind = select(kinds, kinds[0], "task_type");
+    const draft = select([
+      ["", "选择已保存草稿…"],
+      ...data.drafts.filter((item) => kinds.includes(item.kind)).map((item) =>
+        [item.id, `${item.id} · ${item.kind} · r${item.revision}`]),
+    ], "", "saved_draft");
+    const inputField = field("完整任务输入 JSON", "input", "", "textarea", {
+      required: true, className: "workflow-json", spellcheck: "false",
+    });
+    const input = inputField.querySelector("textarea");
+    const result = node("div", { "aria-live": "polite" });
+    let sequence = 0;
+    let creationLocked = false;
+    const fields = node("fieldset", { className: "task-creation-fields" },
+      node("label", {}, "已登记开发模板", kind),
+      row(button("载入所选模板", loadTemplate), node("label", {}, "从草稿载入输入", draft)),
+      field("新任务 ID", "task_id", "", "text", { required: true, maxlength: 80, autocomplete: "off" }),
+      field("工单编号或本地标识", "issue_id", "", "text", { required: true, maxlength: 160 }),
+      field("起始提交 SHA（可选，留空使用登记基线）", "starting_sha", "", "text", { maxlength: 40 }),
+      inputField,
+    );
+    const editor = form([fields], "预览冻结合同", async (values) => {
+      if (!active() || creationLocked) return;
+      const reading = ++sequence;
+      result.replaceChildren(empty("正在编译预览…"));
+      let snapshot;
+      try {
+        const definition = {
+          schema_version: 1, task_id: values.get("task_id"), task_type: values.get("task_type"),
+          issue_id: values.get("issue_id"), input: JSON.parse(values.get("input")),
+        };
+        if (values.get("starting_sha")) definition.starting_sha = values.get("starting_sha");
+        snapshot = await api(`${base}/tasks/preview`, { definition, revision: data.project.revision });
+      } catch (error) {
+        if (current(reading)) result.replaceChildren(panel("预览失败", error.message));
+        return;
+      }
+      if (!current(reading)) return;
+      const bindings = snapshot.files["agent-bindings.json"];
+      result.replaceChildren(panel("审阅冻结预览", "确认后只发布此合同，启动运行另行操作。",
+        facts([
+          ["项目修订", snapshot.project_revision], ["任务 ID", snapshot.definition.task_id],
+          ["模板", snapshot.definition.task_type], ["工单", snapshot.definition.issue_id],
+          ["基线提交", snapshot.files["task.spec.json"].request.repository.base_sha],
+          ["预览 SHA256", snapshot.preview_sha256],
+        ]),
+        table(["冻结角色", "工具", "模型"], Object.entries(bindings.bindings).map(([role, binding]) =>
+          [role, binding.tool, binding.model ?? "未指定"])),
+        disclosure("完整服务端预览与冻结文件", snapshot),
+        form([], "确认创建冻结合同", async () => {
+          if (!current(reading) || creationLocked) return;
+          creationLocked = true;
+          // Keep the original ID across reloads even if the publication reply is lost.
+          sessionStorage.setItem(selectionKey, snapshot.definition.task_id);
+          fields.disabled = true;
+          editor.querySelector('button[type="submit"]').disabled = true;
+          result.replaceChildren(empty(`正在创建 ${snapshot.definition.task_id}；请保留此原任务 ID。关闭页面不会撤销已发出的操作。`));
+          let record;
+          try {
+            record = await api(`${base}/tasks`, {
+              definition: snapshot.definition, revision: snapshot.project_revision,
+              preview_sha256: snapshot.preview_sha256,
+            });
+          } catch (error) {
+            if (current(reading)) creationUnknown(snapshot.definition.task_id, error, result, () => current(reading));
+            return;
+          }
+          if (!current(reading)) return;
+          creationRecord(record, result, () => current(reading));
+          selectPublished(record);
+        }),
+      ));
+    });
+    const content = node("div", {},
+      node("p", {}, "载入模板或兼容的已保存草稿，再编辑输入。修改字段会废弃旧预览；训练优化使用独立入口。"),
+      editor, result,
+    );
+    const active = () => view.isConnected && content.isConnected && $("#dialog").open;
+    const current = (reading) => active() && reading === sequence;
+    function invalidate() {
+      sequence++;
+      result.replaceChildren(empty("输入已更改，请重新预览后确认。"));
+    }
+    async function loadTemplate() {
+      if (!active() || creationLocked) return;
+      invalidate();
+      const reading = sequence;
+      input.value = "";
+      draft.value = "";
+      result.replaceChildren(empty("正在读取模板…"));
+      try {
+        const template = await api(`/api/templates/${encodeURIComponent(kind.value)}`);
+        if (!current(reading)) return;
+        input.value = JSON.stringify(template.input, null, 2);
+        result.replaceChildren(empty("已载入模板输入，请填写任务标识并审阅。"));
+      } catch (error) {
+        if (current(reading)) result.replaceChildren(panel("模板读取失败", error.message));
+      }
+    }
+    kind.addEventListener("change", () => { draft.value = ""; input.value = ""; });
+    draft.addEventListener("change", () => {
+      const saved = data.drafts.find((item) => item.id === draft.value);
+      if (!saved) return;
+      kind.value = saved.kind;
+      input.value = JSON.stringify(saved.input, null, 2);
+    });
+    editor.addEventListener("input", invalidate);
+    editor.addEventListener("change", invalidate);
+    modal("预览与创建正式任务", content);
+  }
 
   function renderPage() {
     previous.disabled = pageIndex === 0;
@@ -98,7 +304,8 @@ export function tasksView(data, base) {
     const [contract, submission] = await Promise.allSettled([api(path), api(`${path}/submission`)]);
     if (!view.isConnected || sequence !== detailSequence) return;
     if (contract.status === "rejected") {
-      detail.replaceChildren(panel("任务合同读取失败", contract.reason.message,
+      detail.replaceChildren(panel("任务合同读取失败", `${taskId} · ${contract.reason.message}`,
+        button("按原 ID 读取创建记录", () => creationLookup(taskId)),
         button("重试任务详情", () => inspect(taskId))));
       return;
     }

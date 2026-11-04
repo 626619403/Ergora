@@ -53,3 +53,11 @@
 |记录|通过范围内的证据核查；新旧探针身份分开，Linux 诊断与精确 CI 区分明确|
 
 当前无未解决源码 findings。源码审查通过不等于 V4 或 F4.1 全部验收完成：精确候选的两 OS CI、提交范围及远端身份仍须由作者实际核对。作者新增的原 F4.1 安装包 Linux 711 passed / 19 skipped / 36 subtests、2550.05 秒、exit0 诊断结果，本次只核其记录范围，未独立复验完整套件或安装包身份；它不能替代 CI，也不能验收工作区 F4.2a 页面。旧超时根因仍未由本片证明解决。
+
+## 最终提交与发行续核：通过
+
+以下结论由原独立审查者 `/root/ci_regression_progress_review` 于2026-11-04提供，根代理归档；审查者自身两次报告补丁及最小追加均在执行前遭自动审批服务deadline，未误记为写入成功。
+
+最终提交`2137a95418879d48cce557016caa5c7f0d6a6a1b`仅含workflow和7份文档；相对`11e89cf`应用/测试差异为空。官方[CI41679431542](https://github.com/626619403/Ergora/actions/runs/41679431542)绑定精确提交，Ubuntu三项、Windows四项必要步骤均success；平台、selectedJobId及精确日志URL已独立核对。审查者实时`git ls-remote --exit-code origin refs/heads/refactor/architecture-foundations`退出0，远端为完整2137a95；精确UTC未记录，不补造。旧3f287e wheel的348个文件与该提交Git blob及manifest SHA逐项一致。
+
+原始成功工具输出标识：远端`8056fc`、348文件比对`3b376f`、步骤与日志链接`15a212`、job绑定`d6bdf8`、平台`3050cf`。此次只读取证，未执行应用或测试。V4终结审查通过，0未解决findings；新CI补齐同源门禁，不证明旧超时根因或真实套件性能改进，也不验收F4.2a DOM。
