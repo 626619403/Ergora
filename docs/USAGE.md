@@ -427,6 +427,8 @@ ergora handoff verify ./task-handoff.zip --sha256 EXPECTED_PACKET_SHA256
 
 v1使用标准ZIP_STORED、UTF-8 JSON、SHA256及公开[版本化schema](../src/ergora/data/schemas/task-handoff-v1.json)，只含`manifest.json`与按摘要去重的`blobs/SHA256`。manifest最多1 MiB、每blob16 MiB、去重材料总64 MiB、4096成员/整包72 MiB；重复、多余、缺失、非规范路径、链接、加密或压缩成员明确拒绝。验证直接读取成员，不提取或执行。限额不把ZIP库峰值内存或原索引的完整history/逐材料读取成本限制到1 MiB。交接包用于材料复查，不替代原执行目录、Git及租约库的联合备份；本地路径输出和传输另由操作者选择。
 
+HTTP客户端可显式`POST /api/projects/PROJECT_ID/tasks/TASK_ID/handoff`，JSON正文为`{"run_id":"RUN_ID","timeout":20}`；沿用同源及`X-Ergora-Request: 1`，不接受服务器源/输出路径等额外字段。成功返回`application/zip`和固定attachment名称`ergora-handoff.zip`，`X-Ergora-Handoff-SHA256`为本次响应字节的整包摘要。服务端在私有临时目录调用同一收集用例，受限读回并核SHA后先清理临时目录，再发送响应；普通失败也清理，不启动服务或更改原任务。下载位置由客户端选择，客户端须避免覆盖需保留的本地文件。该入口缓冲最多72 MiB包字节，有额外内存成本，不是流式下载；强制进程终止的残留按运维方式处理。响应摘要便于比对本次下载，不是签名；需要独立期望SHA时须从另外的可信渠道取得。
+
 ### 核对闭合运行的外部作业证据
 
 统一创建并保存原提交回执的任务，可用固定的原run读取完整历史、原作业请求、可信终态回执和已有fence：

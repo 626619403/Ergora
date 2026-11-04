@@ -39,3 +39,26 @@
 核对最终离线脚本、逐命令输出及 `final-offline-packets.json` 后，审查者另用最终无 Temporal/FastAPI/Uvicorn 的基础 CLI、独立临时 `--home` 重核原三个包；三次退出 0、外部 SHA matches、指定控制目录均未创建。两正常原结果和取消原结果保持，23/19/1 个 blob 及 105296/156248/59 字节保持；逐 blob 再与原文件核对，共 43 份材料一致，整包 SHA 亦保持。再次重算当前 139 个原文件，与初审 before 摘要仍完全相同。没有重复安装、运行宽矩阵、开启服务或 SDK 会话。
 
 本地源码/格式与受影响证据验收已足够，没有新增结构、性能或冗余验证 finding。尚待更新最终状态并终核文档、创建精确提交和普通推送、核实时远端及该提交的完整双 OS CI，再由同片独立审查登记终结；本次未实际运行 Windows，不以历史 CI 代替。HTTP 下载与页面仍分别属于后续切片，完整 F5.3/F5/G0 未由此次复核关闭。
+
+## 精确提交、发行与远端复核
+
+2026-11-05，同一独立审查者从 Git 对象核对候选 `87538b3dcafb13ca5bbc8191f84e5a4b0fbf0083`，唯一父提交为原基线 `bb4e4617a6f412b7d2ec94e9433fcc4c6e8147f7`。`diff-tree` 正好 20 个文件，逐一读取提交 blob 并重算 SHA，全部等于 `staged-scope.json`；没有私有证据、运行数据或后续 HTTP 文件。审查时工作树新增的 F5.3b 文档不计入本片。
+
+独立在内存读取该提交的 `git archive` 并对全部 352 个包资源重算摘要，逐文件等于已经复核的 `cdf4ab628a8856ee39c30d6e1857f243c3a5c718ee209371162e8d79f6ee3c0c` 最终 wheel 和其身份表。实际提交未遗漏新增 schema/模块；测试 blob 也与修后复核身份相符。再次从精确 Git 文档对象检查本片 11 份 Markdown 的 348 个本地链接/锚点，并用最终安装的 parser 解析提交 README 的 30 条命令，全部通过；作者 precommit 记录中的文档 SHA、数量及命令列表均与该提交相符，没有借用后续工作树内容。
+
+核对实际 commit/push 命令、退出码及 stdout/stderr：普通 `git push origin HEAD:refs/heads/refactor/architecture-foundations` 成功，没有 `--force` 或强制 refspec，远端由原父提交正常快进到候选。传输层 URL/SSH 配置不改变 ref 更新语义。审查者另在 `2026-11-04 22:03:48 UTC` 执行只读实时 `ls-remote`，该远端分支完整 SHA 为 `87538b3dcafb13ca5bbc8191f84e5a4b0fbf0083`，与候选一致。本次没有执行提交、推送、安装、服务启动或宽矩阵。
+
+**精确提交、包、最终静态与普通推送/实时远端均通过，无新增 finding；完整 CI 验收仍待终结。** 已直接读取官方 run/job HTML，确认 [Portability 41921284766](https://github.com/626619403/Ergora/actions/runs/41921284766) 的完整 commit 链接和 workflow 均绑定本候选。此时 run 为 `In progress`；已取得的 Ubuntu job `126894160730` 的构建/安装与包身份步骤成功，原生回归尚未给出成功结论，另一 OS 亦未在本轮完整核定。不能从本地 103 项、前片 CI 或单个已成功步骤推导双 OS 通过。待该精确 run 两 OS 的全部必要步骤结束后，再独立核原 HTML、selected job ID 和完整候选日志 URL，登记同片最终终结；F5.3b 继续按独立切片验收。
+
+## 精确 CI 与同片最终终结
+
+2026-11-05，同一独立审查者完成剩余 CI 验收。再次从 Git 对象核 20 个提交文件和唯一原父提交，全部 blob 摘要仍与本片清单一致；352 个 Git 归档资源逐项等于最终 `cdf4ab628a8856ee39c30d6e1857f243c3a5c718ee209371162e8d79f6ee3c0c` wheel。未把 F5.3b 的当前工作树源码、测试或文档算入 F5.3a。
+
+先重算 `ci-html-status.json` 所列官方原始 HTML/JSON 的字节数与 SHA，全部一致；独立解析这些原页面后，另在 `2026-11-04 22:16:21 UTC` 前从 GitHub 重新只读取得本 run 和两个 job 的官方 HTML，核得相同成功结论：[Portability 41921284766](https://github.com/626619403/Ergora/actions/runs/41921284766) 为 `Success`，完整 commit 链接为 `87538b3dcafb13ca5bbc8191f84e5a4b0fbf0083`，workflow 为 `.github/workflows/portability.yml`。没有仅采信作者汇总 JSON。
+
+- [Windows job 126894160085](https://github.com/626619403/Ergora/actions/runs/41921284766/job/126894160085)：Windows/Python 3.12，构建安装、包身份、原生回归及 PowerShell 5.1 安装升级步骤全部 `completed-success`。
+- [Ubuntu job 126894160730](https://github.com/626619403/Ergora/actions/runs/41921284766/job/126894160730)：Ubuntu/Python 3.11，构建安装、包身份及原生回归步骤全部 `completed-success`。
+
+两 job 的页面平台名、内嵌 `selectedJobId`、必要步骤的完成标记及成功结论逐项相符；每个必要步骤的日志 URL 都包含完整候选 SHA 和对应 check/job ID，未见失败、取消或超时步骤。本结论绑定该精确 run，不继承前片 CI，也不延伸到 F5.3b。
+
+审查者另于 `2026-11-04 22:15:50 UTC` 只读实时 `ls-remote` 再确认远端 `refactor/architecture-foundations` 完整 SHA 仍为本候选。结合前述普通推送、精确文档终核、两项 finding 修后复核、真实收集与最终 reader 兼容、原材料及执行状态保持证据，**F5.3a 需求符合性、可维护性及精确发行/双 OS CI/远端验收全部通过，无未解决 finding，可登记本片完成**。本轮未运行安装、服务或测试矩阵，未修改源码、提交或推送；本终结段为原片记账。F5.3b HTTP 下载须完成自己的新独立审查和精确交付，完整 F5.3/F5/G0 仍不由本片关闭。

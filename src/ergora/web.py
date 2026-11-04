@@ -1,16 +1,18 @@
 """Local control plane. All state transitions use the same application functions as the CLI."""
 
+import hashlib
 import sys
+import tempfile
 from pathlib import Path
 from typing import Literal
 
 from fastapi import Body, FastAPI, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from . import __version__, agent_runs, components, drafts, evaluation, kernel, memory, optimization, projects, reference, registrations, research, services, tasks, skill_assets, skills, tools
+from . import __version__, agent_runs, components, drafts, evaluation, handoff, kernel, memory, optimization, projects, reference, registrations, research, services, tasks, skill_assets, skills, tools
 from .state import State
 
 
@@ -110,6 +112,11 @@ class TaskExportPayload(Payload):
     candidate_sha: str = Field(pattern="^(?:[0-9a-f]{40}|[0-9a-f]{64})$")
     branch: str = Field(min_length=1, max_length=1024)
     confirm: bool = Field(strict=True)
+    timeout: int = Field(default=20, strict=True, ge=1, le=60)
+
+
+class TaskHandoffPayload(Payload):
+    run_id: str = Field(min_length=1, max_length=128)
     timeout: int = Field(default=20, strict=True, ge=1, le=60)
 
 
@@ -324,6 +331,23 @@ def create_app(home: Path | None = None) -> FastAPI:
     @application.get("/api/projects/{project_id}/tasks/{task_id}/evidence")
     def formal_task_evidence(project_id: str, task_id: str, run_id: str, timeout: int = 20):
         return tasks.evidence(state, project_id, task_id, run_id=run_id, timeout=timeout)
+
+    @application.post("/api/projects/{project_id}/tasks/{task_id}/handoff")
+    def download_formal_task_handoff(project_id: str, task_id: str, body: TaskHandoffPayload):
+        with tempfile.TemporaryDirectory(prefix='ergora-handoff-') as directory:
+            output = Path(directory) / 'handoff.zip'
+            metadata = tasks.handoff(state, project_id, task_id, run_id=body.run_id,
+                                     output=output, timeout=body.timeout)
+            with output.open('rb') as stream:
+                raw = stream.read(handoff.PACKET_LIMIT + 1)
+            if len(raw) > handoff.PACKET_LIMIT:
+                raise ValueError('Handoff download exceeds 72 MiB')
+            digest = hashlib.sha256(raw).hexdigest()
+            if digest != metadata['sha256']:
+                raise ValueError('Handoff download bytes changed after collection')
+        return Response(raw, media_type='application/zip', headers={
+            'Content-Disposition': 'attachment; filename="ergora-handoff.zip"',
+            'X-Ergora-Handoff-SHA256': digest})
 
     @application.get("/api/projects/{project_id}/tasks/{task_id}/reconciliation")
     def formal_task_reconciliation(project_id: str, task_id: str):
