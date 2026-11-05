@@ -14,8 +14,8 @@
 
 |节点|行为和已有入口|验收与收口|状态|
 |---|---|---|---|
-|G0.1 全新安装/登记/无模型旅程|公开Bash development安装、独立基础接收者、原生init/模型元数据/可信容器显式enable；两新Git根各一次project register，模板copy、有效配置、doctor与services status|352资源/283冻结及实际非editable；新库/配置归属，未启动服务/模型；preview→审阅→create及同意图重复、旧revision拒绝；服务缺失start失败后按原intent查询/恢复，不重复发任务；本地合同/创建可离线读；新HTTP/页面/390px正常。新审查者/文档普通提交推送/实时远端终结|安装/352与283身份、两项目单次登记/CLI、14交互GET/零POST/390px、新旧数据保持及正式退出本地通过；[新独立审查通过](../delivery/2026-11-05-new-user-onboarding-review.md)，精确交付待完成|
-|G0.2 全新业务正常与异常|显式管理新Temporal/worker/executor/a2a；两个开发模板使用真实Codex完成六阶段，由主入口读计划/批准、查候选/审查、导出/核证据/下载；HTTP重启及重复操作；一额外取消任务|固定原task/creation/submission/workflow/run/decision/candidate身份，重复不增加workflow/信号；两REVIEW_READY与精确可信检查/独立审查相符；候选独立worktree复验，取消未知保持并显式对账；错误复制ZIP/SHA拒绝、原材料不变。真实provider费用未知明确保留；新独立审查及精确交付|待G0.1|
+|G0.1 全新安装/登记/无模型旅程|公开Bash development安装、独立基础接收者、原生init/模型元数据/可信容器显式enable；两新Git根各一次project register，模板copy、有效配置、doctor与services status|352资源/283冻结及实际非editable；新库/配置归属，未启动服务/模型；preview→审阅→create及同意图重复、旧revision拒绝；服务缺失start失败后按原intent查询/恢复，不重复发任务；本地合同/创建可离线读；新HTTP/页面/390px正常。新审查者/文档普通提交推送/实时远端终结|完成：本地验收、纯文档18ed62e/371链接/30命令/352资源、普通push及[同片独立终结](../delivery/2026-11-05-new-user-onboarding-review.md#精确提交与同片最终终结)通过|
+|G0.2 全新业务正常与异常|显式管理新Temporal/worker/executor/a2a；两个开发模板使用真实Codex完成六阶段，由主入口读计划/批准、查候选/审查、导出/核证据/下载；HTTP重启及重复操作；一额外取消任务|固定原task/creation/submission/workflow/run/decision/candidate身份，重复不增加workflow/信号；两REVIEW_READY与精确可信检查/独立审查相符；候选独立worktree复验，取消未知保持并显式对账；错误复制ZIP/SHA拒绝、原材料不变。真实provider费用未知明确保留；新独立审查及精确交付|[本地验收通过](../delivery/2026-11-05-new-user-journeys.md)：两真实六阶段/候选复验、取消/对账、三包下载/离线/六错误拒绝、正式退出与新旧数据保持；[新独立审查](../delivery/2026-11-05-new-user-journeys-review.md)通过，P2用量文案已关闭；精确交付待完成|
 |G0.3 综合门禁/公开流程|公开手册按实际摩擦修正，比较A2步骤/注册/人工配置面；新基础接收者离线核交接，所有owned服务正式退出且持久库保留；重核旧状态|分别记录Linux新应用/新数据、复用OS工具、Windows精确CI支持子集，未做本机Windows/空OS/远程tracker/GPU不推断通过；完整G0新的综合审查、普通提交推送/远端终结；然后F6.1|待G0.2|
 
 跨分片使用同一新持久数据旅程；后一片只增加新阶段证据，前片记录不覆盖。修复产品缺陷时先写独立最小子片，必要合同回归/新包/相应精确CI及审查；纯文档/验收不重跑无变更的重型Python/多OS矩阵。

@@ -1,12 +1,12 @@
 # Ergora 下一阶段计划与进度
 
-> 最新状态（2026-11-05）：完整F1–F5已完成。G0.1新安装/登记/无模型旅程与[新独立审查](delivery/2026-11-05-new-user-onboarding-review.md)通过，无未解决finding，纯文档精确交付收口中；最后生产身份4c87c2a/f644858包/精确双OS CI41929749342保持。G0.2真实任务尚未开始，完整G0尚未完成。
+> 最新状态（2026-11-05）：完整F1–F5、G0.1已完成。G0.1纯文档18ed62e普通推送及[同片独立实时远端终结](delivery/2026-11-05-new-user-onboarding-review.md#精确提交与同片最终终结)通过，无未解决finding；最后生产身份4c87c2a/f644858包/精确双OS CI41929749342保持。当前[G0.2真实旅程](delivery/2026-11-05-new-user-journeys.md)本地验收/新独立审查通过，P2用量文案已关闭；精确交付待完成；完整G0尚未完成。
 
 本文件是项目执行与上下文恢复入口。最后更新：2026-11-05。S0–S10 及 A0 计划已交付；用户已批准开始主线合入、审计、渐进重构与按优先级补齐功能，并要求每完成一步更新文档。各阶段详细计划只在对应链接内维护节点状态。
 
 持续执行要求：用户已授权睡眠期间沿既有计划连续推进，无需每个子节点等待回复。每个完整切片均使用新的独立审查上下文；每个大节点额外核查代码结构、复用及性能，性能结论绑定实际测量条件。实现、验证、审查和提交推送分别记账，完成后继续下一项；权限或外部条件受限的维度明确记录，不阻断可独立工作。
 
-下一可执行项：依[G0分片计划](plans/2026-11-05-new-user-acceptance.md)完成G0.1纯文档精确交付与原审查者终结；本地新安装/单次登记/无模型CLI与浏览器/数据保持/正式退出及独立审查均已通过。随后G0.2按原prepared意图实际恢复六阶段与取消/重开，G0.3综合收口。无系统包权限不尝试apt/sudo；已有OS工具/缓存/认证与全新数据分别记账，不宣称空OS或本机Windows通过。公开完整启动示例补回原准入必需的本地a2a，后续F7评估其耦合；不改冻结准入。
+下一可执行项：G0.2新独立审查、静态核对与精确文档普通提交推送/终结；随后G0.3修正正常关闭公开流程、计数和综合收口。真实两模板六阶段/候选独立复验、额外取消/精确原信号/显式对账、三包下载/离线/六错误拒绝、正式退出和新旧数据保持均已本地通过。无系统包权限不尝试apt/sudo；保留空OS/本机Windows/远程tracker/GPU未验范围，冻结准入不改。
 
 ## 当前检查点
 
@@ -229,3 +229,27 @@ G0.1无模型CLI旅程通过：两新Git根各一次register、一次角色选�
 G0.1本地验收完成：新浏览器交互14 GET/零POST/零pageerror、桌面与390px及原prepared恢复窗口通过；两status400使用明确测试opaque值，无真实run观察或派发。owned浏览器close/HTTP有序SIGTERM（实际shell143）、五端口关/新control库保留；两新repo/任务意图与旧139文件/Git/claims保持，最终verifier exit0。HTTP provider手工选项与medium/600秒/并行2仅元数据、零模型，配置面已记账。下一新的独立审查、静态文档核对与纯文档提交推送；G0.2尚未开始。
 
 G0.1新独立本地审查通过：原11文档与静态368链接/30命令、现存包/新依赖及二进制、新旧数据/真实命令/代表截图/正式退出均独立核实，需求和可维护性无findings。原系统包预检失败、辅助首轮exit1、HTTP143和opaque probe边界保留。下一刷新包含报告的scope/静态结果、纯文档普通提交推送与同片实时远端终结；尚未启动G0.2服务/模型。
+
+G0.1完成：精确18ed62e/唯一父cd0b5a0/12纯文档、371链接/30命令、352资源与新安装一致及普通push exit0通过；同一审查者00:04:59 UTC另行核远端完整SHA并终结，无findings。下一G0.2具体记录已发布，沿同一新数据及两原prepared恢复；本片终结追加随G0.2归档，尚无新模型结果。
+
+G0.2服务已就绪：重核G0.1原文件与四端口后，公开services start显式启动Temporal/worker/executor/a2a，实际exit0及原doctor ready_for_real_tasks=true，MLflow仍停；完整辅助20.56秒。尚无workflow或模型结果，下一按两原prepared SHA执行resume-start并固定实际run，不能以服务RUNNING宣称六阶段通过。
+
+G0.2两原意图已恢复：两次公开resume-start均exit0/submitted，保留G0.1原creation/submission SHA；实际governance run 01a1a909-7372-7418-8529-e09c76d1c1d7、large run 01a1a909-7dec-74f5-92f9-7fdbca8bc0ff，已保存原回执。当前执行inventory/plan，尚未发批准或确认六阶段成功；下一原ID核计划/history/spec/memo并审阅。
+
+G0.2待批计划核验通过：两run各连续112事件/零signal及真实Codex inventory+plan SUCCEEDED，spec/memo/request/receipt/产物身份一致；CLI与网页完整材料相同，浏览器16 GET/零POST/390px通过。已完整审阅6份计划/所有权/回退原文及范围/可信检查/覆盖缺口，审阅理由保存。下一正式重开HTTP并沿原ID批准精确SHA，尚未执行work或宣称候选通过。
+
+G0.2 HTTP恢复通过：owned初轮正常SIGTERM/真实shell143/临时根空，显式同一来源新PID的bootstrap200；同一浏览器reload后19 GET/零POST，原run选择及完整计划回执保持，390px通过。下一按已完整审阅的两精确SHA批准；一项真实回包丢弃后的原decision只读恢复纳入本次验收，不模拟成功或重发。
+
+G0.2批准/幂等通过：页面35请求/2真实POST，各原run仅一次owner-g0-one；一真实成功回包丢弃后reload按原decision读回requested，无重发。4条重复CLI start/approve exit0且原记录/18文件不变；原history前112事件保持、各恰event113精确approve_plan及唯一原run，owner/intent/attempt/result绑定通过。后续真实work/verify/review只读观察中，候选复验、取消和交接尚待。
+
+G0.2两真实六阶段通过：原history324/337事件、7/6 job与5/4真实Codex模型job，COMPLETED/outcome REVIEW_READY；候选44d697f/68ff73c，治理5/大型8检查及同候选独立review pass，原材料和证据摘要完整核实。首轮辅助提前检查零租约exit1保留；按公开external-status/显式reconcile后，逐字未改脚本r2 exit0、2 claims/0 active，原结果不变。下一候选分支/独立worktree复验、额外取消与交接，未登记完整G0.2完成。
+
+G0.2候选独立复验通过：两次公开export exit0/exported、各agent/原task分支精确指向44d697f/68ff73c，源HEAD仍基线、未checkout/merge；操作者新detached worktree的9条原可信检查全过且脚本SHA/候选干净保持。下一单独取消任务与真实进程/外部对账，随后本次新证据/预算/ZIP离线与下载，最后新独立审查。
+
+G0.2取消通过：新cancel run 01a1a91a-ed65-7b18-abda-7f65e1da5bc2在实际selected进程存活时发一次稳定取消；监控器fence/nonzero终态、原进程组停/monitor退出，35原事件恰一request_cancel且零批准。COMPLETED/CANCEL_UNCONFIRMED保持，公开外部核对/显式reconcile后3 claims/0 active。辅助首轮末尾字段误用KeyError/exit1保留；r2按冻结spec核request SHA，只读回4条成功命令而不重复写，完整核验exit0。下一三本次原run的证据/预算/交接与退出，再新独立审查和精确交付。
+
+G0.2新交接通过：CLI/网页三包一致，浏览器36请求/3真实下载POST/零pageerror、390px与按需窗口通过；45原材料引用/SHA一致。无SDK接收者三包exit0、六项错误SHA/CRC有效复制包篡改明确拒绝，原结果/未知量保持、未创建control库。下一正式退出owned服务、无服务核包和新旧数据终核，然后新独立审查与精确文档交付。
+
+G0.2本地收口：三原history324/337/35保持、零running/3 claims/0 active；owned浏览器close、HTTP有序SIGTERM/实际shell143、专用Supervisor公开shutdown及5进程退出通过，五端口关/临时根空/三库保留。全离线三包再核exit0，新152文件/Git与旧139文件/Git/leases保持，原Supervisor ini不变。下一新的独立审查与精确文档交付，然后G0.3。
+
+G0.2新独立本地审查通过：[报告](delivery/2026-11-05-new-user-journeys-review.md)独立核两真实六阶段/原信号/候选与检查、取消进程/原未知、45材料及三包/六项拒绝、152新/139旧数据和正式退出；另九次无SDK核验均符合预期。唯一P2用量表述已文档修正并同片复核关闭：原CLI自报usage不等于正式索引已归一化或完整计费。下一最终静态/scope、纯文档普通提交推送和同片精确终结，然后G0.3。
