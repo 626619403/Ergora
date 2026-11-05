@@ -1,6 +1,6 @@
 # V5：纯文档push与完整回归分流
 
-日期：2026-11-05。状态：已实施一行workflow配置，本地静态核对及[新的独立审查](2026-11-05-ci-document-scope-review.md)通过；真实触发与精确交付待完成。基线为G0精确`73cd3cee8fe893b9342dcafcf0fa5cf3d9389cbe`；生产代码、测试套件、依赖及352资源保持。
+日期：2026-11-05。状态：已实施一行workflow配置，本地静态核对及[新的独立审查](2026-11-05-ci-document-scope-review.md)通过；精确push及实际CI/文档窗口通过，[同片独立终结](2026-11-05-ci-document-scope-review.md)通过，V5完成。基线为G0精确`73cd3cee8fe893b9342dcafcf0fa5cf3d9389cbe`；生产代码、测试套件、依赖及352资源保持。
 
 ## 行为与边界
 
@@ -29,3 +29,7 @@ GitHub官方[工作流语法](https://docs.github.com/en/actions/reference/workf
 普通提交`51284fd87943c426b5420a9782483cdadc3e3e44`（唯一父`73cd3ce`）包含8文件，其中生产/测试/包依赖均未变；普通push exit0，01:42:45 UTC远端完整SHA相同。352归档资源同原已验收安装，最终7文档258链接/30条parser及diff检查通过。公开官方HTML实际选择精确Portability run `41950353820`；当前仍In progress，不能据此记必要步骤全过。
 
 下一提交仅记录这些交付事实并作为docs-only push事件，观察其后明确时间窗口内的公开Actions列表及原run；没有新测试或模型请求。矩阵结束后再核全部必要步骤与同片独立终结。
+
+实际Portability `41950353820`现已Success，精确源码为51284fd；Ubuntu job126992566188与Windows job126992566519的wheel安装、包身份、原生回归及Windows安装升级必要步骤逐项success，日志URL绑定完整commit。后续纯文档提交`df0a908893970d12208b3a2026d19b4591f83989`唯一父51284fd，仅改本记录与PLAN，普通push exit0且01:55:21 UTC远端同SHA。公开Actions列表01:57:07及01:59:09 UTC两次HTTP200，仍显示原51284fd运行，均没有df0a908行；这是明确窗口观察，不能推广为永久不存在或真实PR/required-check验收。原矩阵实际完成，未被这个文档push取消。原HTML/SHA及逐步核验在同片私有证据中，下一原独立审查者终核。
+
+原fresh-context审查者已独立核原证据与两个精确提交/父节点/包资源；2026-11-05 02:03:23 UTC另行实时ls-remote核df0a908一致并追加终结，无未解决finding，V5完成。状态和原报告终结随下一F6归档，不重跑不变的本地全套或模型。

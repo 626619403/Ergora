@@ -43,3 +43,17 @@
 实施者应将本报告及审查状态纳入最终scope／静态清单，普通提交推送含workflow的精确候选，核实际自动run、对应源码完整SHA和原必要步骤；随后用仅文档提交观察公开Actions事件窗口，保存查询方式、时间和实际结果。查询失败或窗口内未见run不能写为永久不存在。若外部读取受限，明确保留未验事实，不以修改认证／branch protection替代证据。
 
 取得这些证据后由同一审查者终核精确提交／实时远端及实际Actions事实，才能登记V5完整完成。当前无成功Actions观察结果可供本审查核验；没有将其推断为CI未触发。F6独立原型及后续审查属于另一切片，不在本次范围。
+
+## 精确提交与同片最终终结
+
+2026-11-05，同一审查者独立核Git对象：实现提交`51284fd87943c426b5420a9782483cdadc3e3e44`唯一父为原基线`73cd3cee8fe893b9342dcafcf0fa5cf3d9389cbe`，完整8文件及各blob SHA256逐项等于`final-scope.json`，原tracked部分逐字等于`final-tracked.diff`。初审后仅补原报告及状态说明，workflow仍是原已审一行过滤；追加终结前原报告字节保持。后续文档提交`df0a908893970d12208b3a2026d19b4591f83989`唯一父为51284fd，恰含PLAN及本片交付记录两份Markdown，摘要等于`docs-only/scope.json`；未改变workflow或运行路径。两个精确提交各自Git archive内352资源均逐项等于原包身份表，没有借用后续工作树替代提交内容。
+
+独立核两次普通push的实际exit0原记录、正常前后提交范围、`HEAD`到原工作分支及无force参数；原ls-remote回执分别绑定实现和文档候选。审查者复用既有授权的每命令传输设置，于 **2026-11-05 02:03:23.175189 UTC** 另行只读实时ls-remote，实际exit0，远端`refactor/architecture-foundations`完整SHA为`df0a908893970d12208b3a2026d19b4591f83989`，与精确候选一致。未输出或落盘传输命令及凭据。
+
+独立重核`ci-html-status.json`六份来源的字节数／SHA256，并解析原官方列表、run和两个job HTML：[Portability 41950353820](https://github.com/626619403/Ergora/actions/runs/41950353820)确为`Triggered via push`且`Success`，对应完整51284fd源码和原workflow路径。Ubuntu job`126992566188`／Windows job`126992566519`的selectedJobId、矩阵名称、wheel安装、包身份、原生回归及Windows安装升级必要步骤均逐项核实为success／completed，实际日志URL绑定51284fd完整SHA和各自job；未见failure／cancelled／timed_out步骤。原矩阵已成功结束，没有将初始In progress或历史生产CI充作本次通过。
+
+文档候选普通push回执时间为01:55:21 UTC。独立核`docs-only/window-summary.json`及两份原官方HTML／观察记录的摘要：**01:57:07.628016及01:59:09.383829 UTC** 两次HTTP200的分支Actions列表各含25行，均未见df0a908提交行，均保留51284fd的原Portability run。结合精确两文档集合与已核原生过滤语义，这是本次有限窗口内符合预期的观察；不能证明未来永久不存在run，也不能替代真实PR／manual／branch protection验收。原矩阵实际成功，未因这次文档push被取消。
+
+终结前核最终静态记录实际exit0，7文档258本地链接／锚点和30条README parser命令的摘要绑定当前记录，`git diff --check`通过。提交后两文档仅追加实际CI／窗口结果与阶段状态，未扩大本片运行变更。F6独立原型的进度记账不构成本审查对其功能、CSP方案或性能的通过，须另片验收。
+
+**V5需求符合性、可维护性及精确交付全部通过，无未解决finding，可登记完成。** 本次只追加本报告；未提交、推送、安装、重跑G0／模型／本地重型矩阵、访问受限REST或改变远端规则。PR和手动入口未过滤是配置核实，实际远端规则、大diff的3,000文件窗口／1,000提交及超时语义、复杂重命名等未验范围保持；后续状态归档不需递归审查。

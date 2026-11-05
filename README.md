@@ -152,6 +152,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1 -A
 
 开发检查：安装 `.[dev,web,gepa,temporal]` 后运行 `python -m pytest tests`；真实 Temporal 回归需通过 `ERGORA_TEMPORAL_TEST_ADDRESS` 明确指定隔离服务，否则跳过。`ergora workflow` 直接调用随包的原合同编译器，支持 `compile`、`validate`、`convert-v2`、`export-v2`，不自动安装或启动执行服务。
 
+开发者可用独立的[图与表单比较例子](examples/editor-comparison/README.md)复现技术选型。Node仅用于该例子构建，默认安装保持原要求；例子只编辑试验草稿，正式功能状态见[实施计划](docs/PLAN.md)。
+
 统一注册项目可用 `ergora services status/start/stop/logs/shutdown` 显式管理 Linux/WSL2 中的所选 Supervisor 服务。版本/凭据/TCP 诊断和服务进程状态分别报告；停止需确认，未确认的结果先对账。命令、共享服务栈与日志游标见[使用手册](docs/USAGE.md#显式服务管理)。
 
 新入口也支持注册自己的 Git 项目并按角色调用工具：

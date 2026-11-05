@@ -257,10 +257,12 @@ F1统一注册将控制项目定义和bindings作为权威来源，reference正�
 |新模板、阶段或通用低代码|目前只有3个固定模板及受约束输入草稿；新模板/合同需显式实现和验收|F6才扩展描述/编辑；不能承诺现有任意配置可增删可信阶段|
 |新 tracker/通信/会话|对应 F7/F8/D1/D2 的真实 adapter、native ID/去重/取消和授权合同|本地无工单流程继续可用；上下文消息不扩大权限|
 
-复用SQLite、Git、jsonschema、Temporal、MLflow、Cytoscape、GEPA/ReMe和各工具真实SDK。项目revision、精确候选授权、证据关联与显式采用属于Ergora规则。继续保持函数和既有Protocol，只有外部框架hook使用继承。静态边界检查运行方式及局限见[ADR 0002](decisions/0002-static-boundaries.md)。F1/F2/F3已完成；F4页面消费者已接入并逐片验收，综合收口见当前交付记录。完整all-in-one新用户闭环仍需F5/G0，后续真实工具与低代码节点沿既有计划实施。
+复用SQLite、Git、jsonschema、Temporal、MLflow、Cytoscape、GEPA/ReMe和各工具真实SDK。项目revision、精确候选授权、证据关联与显式采用属于Ergora规则。继续保持函数和既有Protocol，只有外部框架hook使用继承。静态边界检查运行方式及局限见[ADR 0002](decisions/0002-static-boundaries.md)。F1/F2/F3已完成；F4页面消费者已接入并逐片验收，综合收口见当前交付记录。完整F5及G0新用户闭环已按各自记录交付，后续真实工具与低代码节点沿既有计划实施。
 
 ## F2安装增量
 
 F2.1已交付（运行/测试`8201c5d`，本地/精确两OS CI及独立最终复核通过）：安装组合与工具描述共享`components.json`，`tools.installation_profiles`供CLI与只读API消费。Bash/PowerShell启动前直接读同一配方，不依赖已安装的Ergora或Web；组合仅选择现有SDK extras，默认和旧参数保持兼容。它不改项目定义、原服务或已冻结运行快照；诊断状态和服务管理分别留F2.2/F2.3验收。进度见[F2.1记录](../delivery/2026-11-03-installation-profiles.md)。
 
 F2.2诊断增量复用 `tools.doctor` → CLI/dashboard/主动POST：本地探测和主动版本/凭据/TCP检查分开；单次请求按有效绑定复用结果，不跨请求缓存。主动探测共用预算，使用现有进程树清理，原始输出不保留；配置摘要绑定诊断，页面仅保存当前服务器快照，刷新/切项目后迟到结果不回写。诊断不产生正式任务验收；状态/修复说明见[使用手册](../USAGE.md#诊断与修复)。
+
+F6.1以独立[开发者原型](../../examples/editor-comparison/README.md)实际比较三种图/表单栈，默认生产模块及包资源未替换；[ADR0003](decisions/0003-workflow-editor-stack.md)保留Cytoscape/原生模块，下一F6.2在原workflow所有者补统一编辑状态、有限命令、撤销重做与修订处理。schema渲染和布局不拥有领域校验或执行授权；JSON Forms默认Ajv/CSP失败及官方NoValidation试验分别记账。
