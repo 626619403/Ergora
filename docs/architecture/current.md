@@ -166,12 +166,12 @@ sequenceDiagram
   Entry->>Runtime: 核原run/history/spec/memo，保留游标
   Entry->>Files: 原回执/产物完整摘要，固定receipt文本窗口
   Entry-->>User: 有界只读观察，未知不当成功
-  alt 原outcome为REVIEW_READY
+  alt 原outcome为REVIEW_READY且选择导出
     User->>Export: 精确run/candidate/分支/修订/确认
     Export->>Runtime: 核原run/outcome
     Export->>Files: Git条件ref事务、原claim释放及导出回执
     Export-->>User: exported，维护者另行复验/合入
-  else 原run闭合但外部尚未确认
+  else 选择对账关闭原run（含暂不导出的正常任务）
     User->>Export: 明确reconcile原run
     Export->>Runtime: 原完整history/spec/memo
     Export->>Files: 原fence、逐job可信证据、独立清理记录/精确释放

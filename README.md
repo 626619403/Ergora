@@ -285,7 +285,9 @@ ergora task export my-project TASK_ID --revision CURRENT_REVISION --run-id RUN_I
 ergora task export-status my-project TASK_ID
 ```
 
-导出不checkout、merge或推送。维护者在独立worktree复验后，按当前目标分支和项目策略处理PR/MR或采用；普通agent调用和原生生成器报告不能替代这一步。
+导出不checkout、merge或推送，并沿原规则释放适用工单租约，回执中的`lease_released`记录本次事实。维护者在独立worktree复验后，按当前目标分支和项目策略处理PR/MR或采用；普通agent调用和原生生成器报告不能替代这一步。
+
+`REVIEW_READY`本身不会自动释放租约。暂不导出时，先以`task external-status`核原run的全部作业/回执和未决项，再明确`task reconcile`；正常任务也适用这条[关闭流程](docs/USAGE.md#正常任务完成后的关闭)。缺少fence可能使只读检查尚未external_confirmed，对账会发布fence后重新核验，缺失或冲突证据仍保留未知和租约。不要通过删除数据库、直接改claim或关闭HTTP代替对账。
 
 需要中止时，用稳定request ID请求协作取消，再查询原run：
 

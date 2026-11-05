@@ -1,6 +1,6 @@
 # G0.2：全新数据的真实六阶段、恢复与交接
 
-日期：2026-11-05。状态：两原run六阶段、候选独立复验、额外取消与显式对账、三份页面下载/无SDK核包及六项错误包拒绝均通过；服务退出及新旧数据终核通过；新的独立审查通过，P2用量文案已关闭；精确交付尚待。
+日期：2026-11-05。状态：两原run六阶段、候选独立复验、额外取消与显式对账、三份页面下载/无SDK核包及六项错误包拒绝均通过；服务退出及新旧数据终核通过；新的独立审查通过，P2用量文案已关闭；精确交付已终结，纯文档82f69cd已普通推送。
 
 沿G0.1全新持久环境与两个revision2项目，不再次注册、不导入旧run。使用公开services start显式启动Temporal/worker/executor/a2a，不启MLflow；以两原prepared意图SHA执行resume-start并固定返回run。模型选择Codex/gpt-6.1-sol/medium，阶段墙钟600秒、执行器并行2，正式索引未记录的token/费用不补零。当前可信容器与本机用户为执行边界。
 
@@ -69,7 +69,7 @@ HTTP正式关闭重开后读原run/决定，重复start/approve不新增workflow
 
 退出前只读核三原history仍为324/337/35事件、原outcome逐字段保持，实际零running workflow、3 claims/0 active lease。owned浏览器公开close exit0；HTTP核原PID/用户/命令/start身份后SIGTERM，有序shutdown且真实工具session5616的shell143已取回，请求临时根为空。公开services shutdown（revision2/confirm）exit0/confirmed，5个owned Supervisor及服务进程均退出、socket/PID文件移除；四执行端口及本轮HTTP端口关闭，没有处理其他片HTTP。
 
-关闭后同一无SDK接收者三包再verify exit0，没有启动服务或创建control库。新152文件及导出后的Git refs/worktrees、可信检查脚本保持；旧139文件、旧两repo的文件/HEAD/refs/worktrees及3 claims/0 active保持。新Temporal、租约和control三库非空保留，Supervisor ini与G0.1原SHA相同。私有`before-shutdown-verified.json`、`shutdown-verified.json`、`http-lifecycle.json`、`final-offline-verified.json`及原命令保存。未重复模型、改任务结果或重跑未变多OS矩阵。
+关闭后同一无SDK接收者三包再verify exit0，没有启动服务或创建control库。新152文件及导出后的Git refs/worktrees、可信检查脚本保持；旧139文件、旧两repo的文件/HEAD/refs/worktrees及3 claims/0 active保持。新Temporal、租约和control三库非空保留，Supervisor ini与G0.1原SHA相同。私有`before-shutdown-verified.json`、`shutdown-verified.json`、`http-lifecycle.json`、`final-offline-verified.json`及原命令保存。未重复模型、改任务结果或主动重跑未变多OS矩阵。
 
 ## 交付范围与剩余事项
 
@@ -80,3 +80,5 @@ HTTP正式关闭重开后读原run/决定，重复start/approve不新增workflow
 ## 审查修正：用量事实的三种来源
 
 独立审查指出原“真实token/费用仍未知”文案过宽。9份成功Codex的model-log包含真实turn.completed.usage事件；这是CLI自报用量。正式证据索引尚未按原job归一化这些字段，model_calls/tokens/cost仍为not_recorded/null，不用文本或当前价格表反填历史索引。原日志的CLI自报、正式索引记录与完整/计费消耗分别陈述；未覆盖取消期间消耗，金额也没有账单来源，仍未知。cached/input/output/reasoning各字段可能存在包含关系，不相加成所谓总成本。本次只澄清文档，不改产品、原日志/回执或未知语义；同片复核通过，P2关闭。
+
+精确交付完成：82f69cde5e4d54c8ac3c2dd18ed045c00411c293唯一父18ed62e，仅7文档；最终247链接/30命令和352资源核对通过。完整SHA的普通push实际exit0，原远端父→候选；同片独立审查者于2026-11-05 01:06:25 UTC实时核远端一致并终结，无未解决finding。首轮辅助误传缩写SHA，在完整身份前置断言处exit1且未发起网络，完整SHA后成功，原失败保留。终结追加随G0.3归档，完整G0仍待综合收口。

@@ -130,7 +130,8 @@ project register → 选择角色/核revision → services start所选栈
 → task preview → 审阅摘要 → task create → task start
 → inventory/plan → status固定原run → 审阅实际计划 → approve精确plan
 → work/integrate/verify/review → 原outcome
-→ REVIEW_READY：审阅精确candidate/检查/review → export本地分支 → 独立复验/人工合入
+→ REVIEW_READY：审阅精确candidate/检查/review → export本地分支并核租约回执 → 独立复验/人工合入
+   暂不导出：external-status → 明确reconcile（原结果/候选保持）
 → 阻塞或取消：核原run闭合 → external-status → 明确reconcile → 按原intent恢复
 ```
 
@@ -456,6 +457,20 @@ API：`GET /api/projects/PROJECT_ID/tasks/TASK_ID/external-status?run_id=RUN_ID&
 仅在完整历史对应的全部请求和可信终态回执均匹配、没有额外作业且已有正确fence时，`external_confirmed`为true。requests和receipts两类job目录均参与检查；无法绑定原history的孤立回执不支持确认。FAILED/CANCELLED回执也是外部作业终止证据，不能据此推断开发成功。这是可信文件协议的当前快照，依赖执行器按原协议发布回执和遵守fence，不代替操作系统进程检查。缺目录不会把已知历史job变成零作业通过。
 
 查询不保存本工具运行记录、不发布fence或释放租约，`lease_released_by_operation: false`、`execution_success: null`。CLI返回0只表示查询成功，务必检查external_confirmed和未决项。未确认时保留原任务、运行目录及租约，先沿原ID补齐证据。
+
+### 正常任务完成后的关闭
+
+`REVIEW_READY`表示原候选通过了工作流要求的验证和审查，workflow闭合不会自动释放工单租约。准备采用候选时，按[候选导出](#导出精确候选与恢复回执)明确导出并核回执；该入口沿原规则释放适用租约。暂不导出或只需结束本次任务时，也可先核证据，再明确对账：
+
+```bash
+ergora task external-status my-project TASK_ID --run-id RUN_ID --timeout 20
+ergora task reconcile my-project TASK_ID --revision CURRENT_REVISION --run-id RUN_ID --confirm --timeout 20
+ergora task reconciliation my-project TASK_ID
+```
+
+先确认原run闭合、原job与可信终态回执/产物完整，无额外或未解决job。没有正确fence时，首次只读检查的external_confirmed可能仍为false；它不发布fence，也不释放租约。明确reconcile才建立原执行屏障、重新核对并释放精确claim。缺证据时保持unknown；外部进程是否已停止仍按实际执行器核对，可信文件回执不能代替操作系统检查。
+
+对账保留正常REVIEW_READY及精确候选，不合并或删除分支；之后仍可明确导出同一候选。只有reconciled表示本次租约释放及回执已保存，中断按下节原intent恢复。下载交接包、关闭浏览器/HTTP或停止服务都不释放租约；停止共享栈前逐一核对其项目的在途任务和外部作业，再按[服务管理](#显式服务管理)退出并备份持久目录。
 
 ### 显式终态对账与工单租约释放
 
