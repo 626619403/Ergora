@@ -14,7 +14,7 @@ Codex / Claude Code 的首次安装、认证和官方入口见 [安装手册](US
 
 绑定后可运行 `ergora tools doctor PROJECT`；主动版本/凭据/TCP 检查使用 `--probe --timeout 5`。分项含义、预算和修复入口见[诊断说明](USAGE.md#诊断与修复)。Codex 凭据存在与真实模型任务通过分别记录，不据此宣称 Agent 已验收。
 
-Linux 统一注册项目可通过[显式服务入口](USAGE.md#显式服务管理)启动所选 `temporal/worker/executor`。服务只在明确选择后启动；停止需确认且等待真实状态，原运行栈不会自动接管。托管 executor 使用此控制目录中的冻结角色快照。 已有正式开发任务可以通过 `ergora task list PROJECT` / `task show PROJECT TASK_ID` [读取冻结合同](USAGE.md#读取正式任务合同)；此查询不推断Temporal实时状态，主入口也支持[预览、创建和恢复](USAGE.md#预览与创建正式任务)，在创建时冻结角色配置；`task status`提供[原生运行状态查询](USAGE.md#查询正式任务运行状态)，提交使用[统一提交与恢复入口](USAGE.md#提交正式任务与恢复未知结果)，批准使用[精确计划批准入口](USAGE.md#批准精确计划与恢复投递)，取消使用[原运行取消入口](USAGE.md#请求取消与恢复未知投递)，导出使用[精确候选出口](USAGE.md#导出精确候选与恢复回执)；旧入口创建的任务继续使用本手册的参考命令。
+Linux 统一注册项目可通过[显式服务入口](USAGE.md#显式服务管理)启动所选 `temporal/worker/executor/a2a`。服务只在明确选择后启动；停止需确认且等待真实状态，原运行栈不会自动接管。托管 executor 使用此控制目录中的冻结角色快照。 已有正式开发任务可以通过 `ergora task list PROJECT` / `task show PROJECT TASK_ID` [读取冻结合同](USAGE.md#读取正式任务合同)；此查询不推断Temporal实时状态，主入口也支持[预览、创建和恢复](USAGE.md#预览与创建正式任务)，在创建时冻结角色配置；`task status`提供[原生运行状态查询](USAGE.md#查询正式任务运行状态)，提交使用[统一提交与恢复入口](USAGE.md#提交正式任务与恢复未知结果)，批准使用[精确计划批准入口](USAGE.md#批准精确计划与恢复投递)，取消使用[原运行取消入口](USAGE.md#请求取消与恢复未知投递)，导出使用[精确候选出口](USAGE.md#导出精确候选与恢复回执)；旧入口创建的任务继续使用本手册的参考命令。
 
 `control`、`development`、`research`是控制面SDK的[安装组合](USAGE.md#选择安装组合)，不安装或选择某个Agent。Codex/Claude仍按本手册配置；mini-swe-agent和ForgeKernel继续用下文固定源码安装器。更换组合不修改已有项目绑定。
 
@@ -95,7 +95,7 @@ ergora reference executor --installation "$HOME/multi-agent-platform"
 
 新记录还保存`configuration`有效绑定视图，含每层来源、校验结果、项目修订和内容摘要；`ergora project config PROJECT_ID`可查看当前值。旧任务没有此附加字段时仍使用原绑定快照，不重建历史配置。视图范围与独立调用的上下文区别见[有效绑定与运行快照](USAGE.md#有效绑定与运行快照)。
 
-统一注册项目需要长期运行时，优先用`ergora services start PROJECT temporal worker executor --revision N`管理所选栈，不必手改ini。以下仅适用于保留原Supervisor的旧部署：在 `~/.config/multi-agent-platform/supervisor.d/executor.ini` 中把该 program 的 `command` 改为 Ergora 可执行文件绝对路径、`reference executor --installation ...`，保留 stopasgroup/killasgroup。再用 supervisorctl `reread` / `update`。初始化参考发行可能重新生成该文件，升级后应核对。不要同时运行新旧两个 executor。
+统一注册项目需要长期运行时，优先用`ergora services start PROJECT temporal worker executor a2a --revision N`管理所选栈，不必手改ini。以下仅适用于保留原Supervisor的旧部署：在 `~/.config/multi-agent-platform/supervisor.d/executor.ini` 中把该 program 的 `command` 改为 Ergora 可执行文件绝对路径、`reference executor --installation ...`，保留 stopasgroup/killasgroup。再用 supervisorctl `reread` / `update`。初始化参考发行可能重新生成该文件，升级后应核对。不要同时运行新旧两个 executor。
 
 桥接沿用参考配置中的 Codex TOML 和 API 变量。参考监控的凭据白名单不会传递任意 shell 变量；其他 provider 可使用工具自己的持久登录，或参考 `credentials.json` 的 0600 凭据映射。模板、项目绑定与仓库中只保存凭据变量名/元数据。独立调用的活动 Skill/记忆选项不会自动改写正式任务的上下文。
 

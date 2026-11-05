@@ -242,10 +242,10 @@ ergora tools doctor my-project --probe
 统一入口从登记执行环境读取Temporal配置；直接调用旧参考CLI时需在当前shell显式配置Temporal连接，见[使用手册](docs/USAGE.md#旧参考-cli-与统一入口)。先确认旧Supervisor栈已停止且socket/PID已退出，再显式管理当前注册的运行栈：
 
 ```bash
-ergora services start my-project temporal worker executor --revision CURRENT_REVISION --timeout 30
+ergora services start my-project temporal worker executor a2a --revision CURRENT_REVISION --timeout 30
 ```
 
-一个执行state目录共享一套服务。不要同时运行新旧两个executor；版本、进程运行、认证和真实任务通过分别核对。
+一个执行state目录共享一套服务。当前参考提交准入还要求本地A2A在线，即使任务从本地CLI提交也需显式启动；MLflow仅作观测时可后配。不要同时运行新旧两个executor；版本、进程运行、认证和真实任务通过分别核对。
 
 ### 2. 预览、创建和提交
 

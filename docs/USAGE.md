@@ -509,7 +509,7 @@ ergora services stop my-project worker temporal --revision 1 --confirm --timeout
 ergora services shutdown my-project --revision 1 --confirm --timeout 30
 ```
 
-可选服务为 `temporal`、`mlflow`、`worker`、`executor`、`a2a`、`training-worker`，只启动列出的服务，不自动补依赖或启动研究。正式开发需要显式启动 `executor` 并完成原执行准入；托管 executor 使用同一 Ergora 控制目录的选择式执行器。Supervisor 的 `RUNNING` 仅代表进程状态，服务协议、worker/队列、模型与任务仍分别验收。停止和 shutdown 必须确认；1–60 秒的控制等待时限从注册预检后计算。`outcome: unconfirmed` 表示操作可能继续进行，应查状态对账；未确认 STOPPED 前不重启，CLI 对失败/未确认返回非零。
+可选服务为 `temporal`、`mlflow`、`worker`、`executor`、`a2a`、`training-worker`，只启动列出的服务，不自动补依赖或启动研究。完整正式开发可用`ergora services start my-project temporal worker executor a2a --revision 1 --timeout 30`显式启动所需服务；当前参考提交准入要求Temporal与本地A2A监听，worker/executor负责实际阶段，MLflow可按观测需要另启。托管 executor 使用同一 Ergora 控制目录的选择式执行器。Supervisor 的 `RUNNING` 仅代表进程状态，服务协议、worker/队列、模型与任务仍分别验收。停止和 shutdown 必须确认；1–60 秒的控制等待时限从注册预检后计算。`outcome: unconfirmed` 表示操作可能继续进行，应查状态对账；未确认 STOPPED 前不重启，CLI 对失败/未确认返回非零。
 
 首次 start 在执行状态目录下创建 `ergora-services/`，记录控制目录归属、独立 socket 及配置，复制原 Supervisor 程序定义并关闭全部 autostart，原 ini 保持不变。原 Supervisor socket 仍存在时拒绝接管：先通过原 `agentflow services stop` 停止并核对原栈，再使用新入口；陈旧 socket/PID 也需先对账。注册投影漂移、控制目录归属冲突或过长 Unix socket 路径会明确报错，后者应选择较短的持久 execution state 目录。软件升级前先 shutdown 托管栈，升级后按原参数显式启动。
 
