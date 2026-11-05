@@ -3,6 +3,7 @@ name: Portability
 on:
   push:
     branches: ["feat/windows-support", "feat/evolution-console", "refactor/**", "main", "master"]
+    paths-ignore: ["docs/**.md", "README.md", "AGENTS.md"]
   pull_request:
   workflow_dispatch:
 
