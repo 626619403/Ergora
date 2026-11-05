@@ -23,3 +23,9 @@ GitHub官方[工作流语法](https://docs.github.com/en/actions/reference/workf
 若无法读取Actions或远端设置，明确保留实测范围，不用无权限操作强行配置认证。原公开CI支持子集、G0真实旅程和本片触发验证不互相替代。随后继续F6.1原型；回退是删除这一行push过滤，原测试和执行合同不变。
 
 独立审查已核原7文件身份、完整YAML等价性、256链接及30条实际CLI parser命令，无实现finding。公开Actions REST只读查询实际返回HTTP403 rate limit exceeded（辅助命令exit1），不作为未触发证据；后续改用公开官方HTML观察，不配置新认证。
+
+## 精确提交与事件观察中
+
+普通提交`51284fd87943c426b5420a9782483cdadc3e3e44`（唯一父`73cd3ce`）包含8文件，其中生产/测试/包依赖均未变；普通push exit0，01:42:45 UTC远端完整SHA相同。352归档资源同原已验收安装，最终7文档258链接/30条parser及diff检查通过。公开官方HTML实际选择精确Portability run `41950353820`；当前仍In progress，不能据此记必要步骤全过。
+
+下一提交仅记录这些交付事实并作为docs-only push事件，观察其后明确时间窗口内的公开Actions列表及原run；没有新测试或模型请求。矩阵结束后再核全部必要步骤与同片独立终结。
