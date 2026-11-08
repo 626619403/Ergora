@@ -1,6 +1,6 @@
 # AC3c.3 / CR1：版本化Temporal输入与六阶段继承
 
-日期：2026-11-09。状态：WI1–3已实现并验证；R4源码/安装包各91项、双版本SDK及四类坏输入永久拒绝通过，自身模板真实审查approve，新独立最终复核与精确交付待完成。基线e9c3484fbfa0cfb8cf0737c4d930b5ec176992d3。前片AC3c.2已获双OS CI42529979473及22:35:26 UTC独立远端终结，本片不能把前片包365身份视为新片验证。
+日期：2026-11-09。状态：WI1–4完成，精确77f93302c53f2d619bf7f84ff9dd23905f754b41、双OS CI42532654631及独立即时远端终结均通过。R4源码/安装包各91项、双版本SDK及四类坏输入永久拒绝、自身approve与新独立两轴终核保持原记录。基线e9c3484fbfa0cfb8cf0737c4d930b5ec176992d3。
 
 本片只实现新版Workflow入口和原始输入/投影适配；正式v2 start/status拒绝保持，worker/批准/真实executor留CR2/3。新增reference_workflows在原reference边界拥有WorkflowInput ABC及局部两版本映射；LegacyInput和CompositionInput通过同一entrypoint/start interface交付原始payload。VerifiedSpecClient从原始单payload核完整JSON身份，核准后才向原DevelopmentTransport返回legacy投影；新start也由同一输入合同选择入口，不能先解包丢弃组合身份。
 
@@ -9,7 +9,7 @@ CompositionDevelopmentWorkflow继承原DevelopmentWorkflow的六阶段、工作�
 - [x] WI1：原始输入/投影共有合同、显式新Workflow，旧入口兼容及原始JSON身份/容量检查。
 - [x] WI2：SDK注册/信号继承、原有runtime/单payload/提交定向回归、非editable包及365→366资源与283冻结身份。
 - [x] WI3：本地真实Temporal与明确合成控制活动，核原始payload/每阶段context/计划等待及继承信号、旧新两类型；不能当完整真实Agent/可信候选验收。
-- [ ] WI4：新fresh-context独立结构/需求审查、Ergora自身模板真实审查，精确普通提交/必要CI及远端终结；前片CI先完成，再推下一候选。
+- [x] WI4：新fresh-context独立结构/需求审查、Ergora自身模板真实审查，精确普通提交/必要CI及远端终结；前片CI先完成，再推下一候选。
 
 实际完整v2正式批准/执行仍在[父计划](2026-11-09-composition-runtime.md)CR2/3，原verify写legacy spec路径的问题必须解决后才开放。没有修改冻结参考或增加新的服务/依赖。
 
@@ -30,3 +30,5 @@ R4最终：五套源码91 passed（46.31秒）及同五套非editable安装包91
 R4真实自身structure-review＋任务MCP 132.03秒approve，完整读取50,938字节受保护附件，保护源码、完整prompt/输入、DB/result身份已由调用脚本核对。公开保存[最终身份](evidence/2026-11-09-cr1-self-review-identity.json)、[原始结果](evidence/2026-11-09-cr1-self-review-result.json)及[R2–4完整判定历史](evidence/2026-11-09-cr1-self-review-history.json)；R2/R3的request-changes保持。最终fresh-context审查仍须独立核这些原始交付证据与修正，不能以此approve替代。
 
 新的[独立最终本地审查](2026-11-09-composition-workflow-inputs-review.md)通过：Standards/Spec无未解决finding，ST1/SP1/SP2均关闭；实际R4包/原history/全部真实MCP读取、完整输入/prompt/DB/result与公开三份原始证明分别核实。14文件精确交付、必要双OS CI及即时远端仍待完成；WI4先完成本地审查，不预勾整个交付。
+
+精确交付最终完成：14文件候选`77f93302c53f2d619bf7f84ff9dd23905f754b41`普通推送，官方[CI42532654631](https://github.com/626619403/Ergora/actions/runs/42532654631)的Windows128890052478与Ubuntu128890052698全部七项必要步骤成功；原独立者23:08:01.795165 UTC即时SSH远端核同完整SHA，并在原审查报告追加终结。WI4及CR1完成，状态归档随CR2a，下一CR2a worker/CR2b提交与CR3可信执行；这里的合成协议旅程仍不作为正式v2执行验收。

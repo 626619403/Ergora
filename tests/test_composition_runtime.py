@@ -35,9 +35,9 @@ def test_each_input_version_starts_its_registered_entrypoint_with_the_complete_o
     selected = execution_input(document)
     native = SimpleNamespace(start_workflow=AsyncMock(return_value='native-handle'))
     client = VerifiedSpecClient(native, document)
-    assert asyncio.run(client.start_workflow(None, original_input['legacy_spec'], id='original-id')) == 'native-handle'
+    assert asyncio.run(client.start_workflow(None, original_input['legacy_spec'], id='original-id', task_queue='original-queue')) == 'native-handle'
     assert native.start_workflow.call_args.args == (selected.entrypoint, document)
-    assert native.start_workflow.call_args.kwargs == {'id': 'original-id'}
+    assert native.start_workflow.call_args.kwargs == {'id': 'original-id', 'task_queue': 'original-queue' + ('.composition-v2' if version == 2 else '')}
     contract = _Definition.must_from_run_fn(selected.entrypoint)
     assert contract.name == ('ErgoraCompositionWorkflowV2' if version == 2 else 'DevelopmentWorkflow')
     assert set(contract.signals) == {'approve_plan', 'request_cancel'} and set(contract.queries) == {'status'}

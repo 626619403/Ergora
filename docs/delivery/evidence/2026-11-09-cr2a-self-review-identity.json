@@ -1,0 +1,33 @@
+{
+  "checked_at": "2026-11-08T23:23:37.122840+00:00",
+  "source": {
+    "src/ergora/reference_workflows.py": "f83ae9b0855b310e73761dea900e6b4ee906fb54562d4b69a9524f70b293aaea",
+    "src/ergora/reference_worker.py": "8551f6dcd5202cc101a015cbdc19352847a55fe752870e95bde39bb832daab10",
+    "src/ergora/services.py": "9d7ffa3a06384acff2802f5934c03f1bb6469ff84bbe2ea609602e6f7522bdb9",
+    "src/ergora/reference.py": "65d8301c9e01433baeefef47dc0fd1427dfd38f80c501c56918c1086e40af6e6",
+    "tests/test_composition_workers.py": "6c5f7c0d221b151a1b0531bf12289e043f948fd8336110e215c167f32de7c5be",
+    "tests/test_reference.py": "80d90443e5f061fb9d8a2d5a82e9136af21c62bcb88ccc41810922cda88628cb",
+    "tests/test_composition_runtime.py": "ec47bd4a832fdf859cbdcd301d9d8c56d1aefd9577185400f1c78ad5561f415f",
+    "src/ergora/data/reference/platform/upstream/platform/dev_platform/workflow.py": "20885f21f56d6b7c3ada8d32981ff3bfc35b6620dcd5ae2c6155547f15370ff5",
+    "src/ergora/data/reference/platform/upstream/platform/dev_platform/activities.py": "c6b2864e57303a43483a78e3e7f2ab4339b0118b1fb695fbeee0157abfd5edf4",
+    "src/ergora/data/reference/platform/upstream/platform/dev_platform/adapter.py": "fe9e1dc4fb97fadfcac19c6291e2eb1402ce700672237ee1a4458981defb2858",
+    "src/ergora/data/reference/platform/local/agent_platform/core.py": "45a6fbc23e70faba7a3cc5ef9133cef31346500f50ba6398c06c2e49560bda4c",
+    "src/ergora/data/reference/platform/local/agent_platform/service.py": "fe18e38b451df212c5022458a34ef6c0f14305a6b41e1c1ca2be40f546ad8177"
+  },
+  "backend": "codex",
+  "inference_model": "gpt-6.1-sol",
+  "reasoning_effort": "high",
+  "run_id": "7f4f9f5687a1453792d2b581a09d1cf2",
+  "status": "succeeded",
+  "exit_code": 0,
+  "seconds": 114.75669660093263,
+  "input_digest": "1fd92fe3eae68ffe5331c01181b750d29616b397f4aad8001df5a5cfc9627019",
+  "prompt_sha256": "715f0b406800dd8ddbf1af8347d947eeb92bb6f7a8ad23f6f46d05ee38b7a6bb",
+  "attachment_bytes": 69386,
+  "attachment_sha256": "0049457c0b3d9c48bfd0d4c819015001744ff996096619b7cdeec60c614af2c0",
+  "manifest_digest": "c1c28f452a7b3858ab8336771e825aa66e778aa084008e39f569ea65db28a7a9",
+  "original_definition_libraries_removed": true,
+  "scope": "Real configured hosted model through installed Ergora structure-review template from a complete static manifest and task MCP; provided source only, no formal approval or OS isolation.",
+  "decision": "request-changes",
+  "result_sha256": "33c5c7141f12658bdf642151a171ac221383ed8352ab987065d35717bee0f99a"
+}

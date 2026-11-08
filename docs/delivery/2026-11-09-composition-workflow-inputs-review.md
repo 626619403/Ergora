@@ -89,3 +89,24 @@ R3 实际 run `a2589de162294e538e547cd725cccca8`，153.57 秒，**request-change
 CR2 下一步的独立队列/`requests-composition-v2` 路径和同版本 fence 扫描已明确列为待实施；不把这些设计文字当当前接线。CR1 本地出口通过后，尚须普通精确提交推送、新候选必要双 OS CI 与同片即时远端核验。完整 worker、可信 executor/owner 批准、verify 投影迁移及 AC4 按后片验收；本次未重启服务、调用模型、安装依赖、修改生产/测试或进行远端写操作。
 
 最终本地计数：**Standards 原 1 项 P3 已关闭；Spec 原 2 项 P2 已关闭，两轴均无未解决 finding。**
+
+## 精确候选与同片交付终结
+
+本审查者继续核对已普通推送的固定候选 **`77f93302c53f2d619bf7f84ff9dd23905f754b41`**，唯一父为原基线 `e9c3484fbfa0cfb8cf0737c4d930b5ec176992d3`。CR2 已在本地推进，本轮只读取固定候选 Git 对象及原 R4 证据，没有将当前工作树的新运行桥实现计入 CR1。
+
+[最终 14 文件 scope](../../.ergora/checks/ac3c3-runtime/review-final-scope.json) SHA256 为 **`5f5d71c734a38dfe37483171261a4b29e02e2b0e4afaf92232be9598951f14e6`**。提交相对唯一父的文件集合精确等于 14 项，全部 blob ID 和内容 SHA256 与范围记录相同；本报告在候选中的版本仍保留当时的本地出口及待交付状态。本次终结追加归原片归档，不改变候选身份。
+
+从候选 `git archive` 直接取得的 **366 个包文件**，逐项与保存的最终 R4 wheel、非 editable 安装及身份记录完全相同；wheel SHA256 仍为 **`bfd98f933ba6622ca6d9d4caf6705174f1ec706a5fcf552a474c6d58daf105bb`**。283 冻结文件逐项等于 manifest 和原基线 Git 对象。七个实际自身审查保护文件均与候选对象相同，六份 Markdown 的最终静态摘要也逐项绑定候选，**265 本地链接 / 75 CLI parser / 零缺失**保持。父→候选 `git diff --check` 通过。见 [固定 Git 对象核验](../../.ergora/checks/ac3c3-runtime/reviewer-r1/final-git-object-results.json)。
+
+独立重新 GET 官方 [Portability CI 42532654631](https://github.com/626619403/Ergora/actions/runs/42532654631)、完整作业批次及两个作业页面。运行绑定完整候选和 `portability.yml`；批次为 **`totalCount=2 / hasMore=false`**，没有以页面先显示的单个作业代表整批。最终整体 **Success**；[Ubuntu / Python 3.11 作业 128890052698](https://github.com/626619403/Ergora/actions/runs/42532654631/job/128890052698) 与 [Windows / Python 3.12 作业 128890052478](https://github.com/626619403/Ergora/actions/runs/42532654631/job/128890052478) 均为 **completed/success**，未发现失败、取消或超时步骤。候选 workflow 所需七项步骤逐项核对如下：
+
+|必要步骤|Ubuntu|Windows|
+|---|---|---|
+|Build and install wheel|[success](https://github.com/626619403/Ergora/commit/77f93302c53f2d619bf7f84ff9dd23905f754b41/checks/128890052698/logs/4)|[success](https://github.com/626619403/Ergora/commit/77f93302c53f2d619bf7f84ff9dd23905f754b41/checks/128890052478/logs/4)|
+|Packaged reference identity|[success](https://github.com/626619403/Ergora/commit/77f93302c53f2d619bf7f84ff9dd23905f754b41/checks/128890052698/logs/5)|[success](https://github.com/626619403/Ergora/commit/77f93302c53f2d619bf7f84ff9dd23905f754b41/checks/128890052478/logs/5)|
+|Native application regression|[success](https://github.com/626619403/Ergora/commit/77f93302c53f2d619bf7f84ff9dd23905f754b41/checks/128890052698/logs/6)|[success](https://github.com/626619403/Ergora/commit/77f93302c53f2d619bf7f84ff9dd23905f754b41/checks/128890052478/logs/6)|
+|Windows PowerShell 5.1 installer and upgrade|—|[success](https://github.com/626619403/Ergora/commit/77f93302c53f2d619bf7f84ff9dd23905f754b41/checks/128890052478/logs/7)|
+
+完整官方页面、批次、各内容 SHA256、步骤完成时间及各轮进行中观察均独立保存。最终 [CI 与远端回执](../../.ergora/checks/ac3c3-runtime/reviewer-r1/ci-42532654631/final.json) 的官方核验结束于 **2026-11-08 23:07:57.599879 UTC**；**23:07:57.600222 UTC** 随即启动只读 SSH `git ls-remote`，于 **23:08:01.795165 UTC** 收到 `exit 0`：`refs/heads/refactor/architecture-foundations` 返回完整 **`77f93302c53f2d619bf7f84ff9dd23905f754b41`**，与候选一致。连接配置及凭据未写入公开回执。本次核官方步骤状态与完整候选日志链接；未取得的日志正文没有被用于推导额外测试项数。
+
+**CR1 精确交付终结通过；Standards / Spec 通过，三项 finding 全部关闭。** 本轮没有提交、推送、安装、模型调用或应用套件重跑。完整正式 v2 worker、executor、owner 批准、verify 迁移及后续嵌套执行继续按 CR2/3/4 与 AC4 各自范围验收，不从本候选继承未实施能力。

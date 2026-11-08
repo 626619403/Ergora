@@ -138,6 +138,8 @@ def _prepare(state: State, execution: dict, folder: Path, identity: dict) -> Pat
         if name == "executor":
             command = [sys.executable, "-m", "ergora", "--home", str(state.root), "reference", "executor",
                        "--installation", execution["installation"]]
+        elif name == "worker":
+            command = reference.worker_command(Path(execution["installation"]))
         output[section]["command"] = shlex.join(command).replace("%", "%%")
         output[section]["directory"] = execution["installation"]
     content = io.StringIO()

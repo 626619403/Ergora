@@ -6,6 +6,8 @@
 
 AC3c.2的`task_envelopes`保存版本化正式信封，完整静态包、成员选择与原`legacy_spec`共同参与身份；历史读取不依赖当前后端目录。AC3c.3/CR1新增可选SDK边界`reference_workflows`，通过局部`WorkflowInput`接口选择原入口或`ErgoraCompositionWorkflowV2`；新版继承原六阶段，只在stage context附完整信封，并使用专用`ergora_composition_submit`活动，避免旧worker派成单Agent请求。`VerifiedSpecClient`先核原始单payload的完整JSON身份，再向原Transport交付兼容投影。正式v2 start/status仍拒绝，worker、批准和executor接线在[后续运行桥](../delivery/2026-11-09-composition-runtime.md)，不能把SDK合成活动旅程当正式执行验收。
 
+CR2a在同一版本所有者增加双队列/请求根与活动构造；`reference_worker`通过原生SDK同时管理两个Worker，Supervisor消费`reference.worker_command`。v2使用`.composition-v2`队列与`requests-composition-v2`目录，原poll/authorize/fence依队列绑定各自FileAdapter，避免旧worker漏查新版请求；submit沿CR1名称，旧history不换协议。实际接线/包与独立出口见[worker记录](../delivery/2026-11-09-composition-workers.md)，原生bootstrap只解析选中的Ergora包供SDK沙箱重新导入，其余依赖保持所选原生环境；停止信号覆盖连接和完整Worker清理。独立原生双队列验证不等于Supervisor完整栈或正式v2启动已开放。
+
 ## 模块与依赖
 
 自有Python仍为单包`ergora`；F1.2增加完整注册用例`registrations`，F2.3增加显式服务用例`services`，F3.1增加项目范围的正式任务查询`tasks`，F3.2在同一用例接入预览/创建/恢复，专用`reference_task_creation`拥有原生编译/发布生命周期，F4.4的`reference_task_events`与`reference_task_evidence`分别拥有有界原事件、原job回执及文本窗口查询。F5.3的`handoff`只依赖合同基础库，拥有受限ZIP格式及离线内部身份校验；原生收集和CLI验证分别消费它。AC2为四种既有后端增加局部`AgentBackend` ABC及工厂；没有为每种专长创建Python类、空子包或通用插件容器。下图表示当前调用方向，组合节点内的模块并非互相依赖；精确导入由静态检查和源码确定。

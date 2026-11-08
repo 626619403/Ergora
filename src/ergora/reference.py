@@ -105,6 +105,14 @@ def executor(installation: Path, home: Path, request: Path | None = None):
     return reference_executor.main(home, request)
 
 
+def worker_command(installation: Path) -> list[str]:
+    """Run versioned workers with the selected native SDK and this package's code."""
+    bootstrap = (f'import sys;sys.path.insert(0,{str(Path(__file__).parent.parent)!r});'
+                 'import ergora;sys.path.pop(0);'
+                 f'from ergora.reference_worker import main;main({str(installation)!r})')
+    return [str(installation / '.venv/bin/python'), '-P', '-c', bootstrap]
+
+
 def registration_paths(project_id: str) -> tuple[str, ...]:
     # Project ID is validated by the project owner before crossing this boundary.
     return (f"ergora/registrations/{project_id}.json", f"policies/{project_id}/scope.json",

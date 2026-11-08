@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -50,3 +51,21 @@ def test_workflow_help_is_forwarded(tmp_path):
     )
     assert result.returncode == 0, result.stderr
     assert "compile" in result.stdout
+
+
+def test_worker_bootstrap_loads_ergora_without_shadowing_native_dependencies(tmp_path, monkeypatch):
+    control = tmp_path / 'control'
+    package = control / 'ergora'
+    package.mkdir(parents=True)
+    (package / '__init__.py').write_text('')
+    (package / 'reference_worker.py').write_text('def main(installation):\n import native_sdk_probe\n print(native_sdk_probe.origin)\n')
+    (control / 'native_sdk_probe.py').write_text("origin = 'control-shadow'")
+    native = tmp_path / 'native-libraries'
+    native.mkdir()
+    (native / 'native_sdk_probe.py').write_text("origin = 'native-selected'")
+    monkeypatch.setattr(reference, '__file__', str(package / 'reference.py'))
+    command = reference.worker_command(tmp_path / 'installation')
+    result = subprocess.run([sys.executable, *command[1:]], env={**os.environ, 'PYTHONPATH': str(native)},
+                            capture_output=True, text=True, timeout=10)
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.strip() == 'native-selected'
