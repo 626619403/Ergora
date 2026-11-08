@@ -9,7 +9,7 @@ import sys
 
 from . import __version__
 from . import reference
-from . import agent_definitions, agent_runs, agents, evaluation, kernel, memory, optimization, projects, registrations, research, services, tasks, skill_assets, skills, tools
+from . import agent_definitions, agent_runs, agents, definition_bundles, evaluation, kernel, memory, optimization, projects, registrations, research, services, tasks, skill_assets, skills, tools, workflow_definitions
 from .state import State, resolve_home
 
 
@@ -49,6 +49,24 @@ def parser() -> argparse.ArgumentParser:
     contract.add_argument("kind", choices=reference.TEMPLATES)
     workflow = commands.add_parser("workflow", add_help=False, help="Run the existing portable-contract compiler")
     workflow.add_argument("arguments", nargs=argparse.REMAINDER)
+    composition = commands.add_parser("composition", help="Check and preview static nested definitions; does not execute or authorize")
+    operations = composition.add_subparsers(dest="operation", required=True)
+    for name in ("check", "import"):
+        operation = operations.add_parser(name)
+        operation.add_argument("directory", type=Path)
+        if name == "check":
+            operation.add_argument("--material", action="store_true")
+    operations.add_parser("list")
+    for name in ("show", "export", "preview"):
+        operation = operations.add_parser(name)
+        operation.add_argument("id")
+        operation.add_argument("version")
+        if name == "show":
+            operation.add_argument("--material", action="store_true")
+        elif name == "export":
+            operation.add_argument("directory", type=Path)
+        else:
+            operation.add_argument("--grant", type=Path, required=True, help="Explicit JSON preview permissions and global limits")
     project = commands.add_parser("project", help="Register a project and choose layer tools")
     operations = project.add_subparsers(dest="operation", required=True)
     create = operations.add_parser("add")
@@ -565,6 +583,22 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 output = services.control(state, args.project, args.operation, getattr(args, "names", []), args.revision,
                                           confirm=getattr(args, "confirm", False), timeout=args.timeout)
+        elif args.command == "composition":
+            if args.operation == "check":
+                output = workflow_definitions.inspect_bundle(args.directory, material=args.material)
+            elif args.operation == "preview":
+                output = workflow_definitions.preview(resolve_home(args.home), args.id, args.version,
+                                                       definition_bundles.read_json(args.grant))
+            else:
+                state = State(args.home)
+                if args.operation == "import":
+                    output = workflow_definitions.import_bundle(state, args.directory)
+                elif args.operation == "list":
+                    output = workflow_definitions.definitions(state)
+                elif args.operation == "show":
+                    output = workflow_definitions.get(state, args.id, args.version, material=args.material)
+                else:
+                    output = workflow_definitions.export(state, args.id, args.version, args.directory)
         elif args.command == "agent":
             if args.operation == "definition" and args.definition_operation == "check":
                 output = agent_definitions.inspect_bundle(args.directory, material=args.material)

@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "id": "structure-review",
+  "version": "1.0.0",
+  "description": "Review module ownership, dependencies and extension seams.",
+  "resources": [
+    {
+      "id": "structure-review-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "7ff70d556ed41dae0e6e3798dc9f21ae821accfb7a25f3fed7788e277b24fbaa"
+    }
+  ],
+  "permissions": {
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "write": [],
+    "shell": false,
+    "network": []
+  },
+  "limits": {
+    "depth": 8,
+    "instances": 128,
+    "concurrency": 4,
+    "material_bytes": 262144
+  },
+  "inputs": [
+    "task"
+  ],
+  "outputs": {
+    "findings": {
+      "node": "review",
+      "output": "result"
+    }
+  },
+  "nodes": [
+    {
+      "id": "review",
+      "ref": {
+        "kind": "agent",
+        "id": "architecture-reviewer",
+        "version": "1.0.0",
+        "digest": "1086c3d3c93c0052a7223466ec82bd201ac8e9f6ccb4dfbbeba3c3b84b1fe00e"
+      },
+      "role": "reviewer",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      }
+    }
+  ]
+}

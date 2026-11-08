@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "id": "correctness-review",
+  "version": "1.0.0",
+  "description": "Review requirements and reachable behavioral failures.",
+  "resources": [
+    {
+      "id": "correctness-review-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "b877c0e5996c10b4107b0cb67b0152e1ac9c4c739f6b1fcb865fab83461ca234"
+    }
+  ],
+  "permissions": {
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "write": [],
+    "shell": false,
+    "network": []
+  },
+  "limits": {
+    "depth": 8,
+    "instances": 128,
+    "concurrency": 4,
+    "material_bytes": 262144
+  },
+  "inputs": [
+    "task"
+  ],
+  "outputs": {
+    "findings": {
+      "node": "review",
+      "output": "result"
+    }
+  },
+  "nodes": [
+    {
+      "id": "review",
+      "ref": {
+        "kind": "agent",
+        "id": "correctness-reviewer",
+        "version": "1.0.0",
+        "digest": "fdb05a20cebceb792d8fcdf614200ba6144e2d1de64ca2813a96ffbe2a9a4205"
+      },
+      "role": "reviewer",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      }
+    }
+  ]
+}

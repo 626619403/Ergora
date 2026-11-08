@@ -1,6 +1,6 @@
 # ADR0005：可嵌套工作流与祖先资源继承
 
-日期：2026-11-08。状态：设计提案，尚未实现；按[AC计划](../../plans/2026-11-08-agent-composition.md)中的AC0b、AC3d和AC4d分片交付。补充[ADR0004](0004-agent-composition.md)，不将已有成员组合等同子工作流。实现依据和一手来源见[嵌套工作流研究](../../research/2026-11-08-nested-workflows.md)。
+日期：2026-11-08。状态：已采纳，AC3d静态包/继承编译已本地实现并验证，r2独立修正复核通过，最终交付进行中；实际资源装载、准入、冻结及嵌套执行仍待AC3b/c/4。按[AC计划](../../plans/2026-11-08-agent-composition.md)中的AC0b、AC3d和AC4d分片交付。补充[ADR0004](0004-agent-composition.md)，不将已有成员组合等同子工作流。实现依据和一手来源见[嵌套工作流研究](../../research/2026-11-08-nested-workflows.md)。
 
 ## 需求与当前差距
 

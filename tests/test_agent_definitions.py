@@ -12,7 +12,7 @@ import sys
 import pytest
 
 from ergora import agent_definitions as definitions
-from ergora import backups, contracts, projects, skill_assets
+from ergora import backups, contracts, definition_bundles, projects, skill_assets
 from ergora.state import State
 
 
@@ -148,7 +148,7 @@ def test_copy_failure_and_failed_reference_publication_can_retry_without_partial
         (Path(destination) / "agent.json").write_text("{}", encoding="utf-8")
         raise OSError("interrupted copy")
     with monkeypatch.context() as patch:
-        patch.setattr(definitions.shutil, "copytree", fail_copy)
+        patch.setattr(definition_bundles.shutil, "copytree", fail_copy)
         with pytest.raises(OSError, match="interrupted"):
             definitions.import_bundle(state, bundle)
     assert not (state.root / "agent-definitions/index.json").exists()
@@ -208,7 +208,7 @@ def test_source_change_during_copy_does_not_publish_a_different_recipe(bundle, t
         if Path(source) == bundle:
             revise(Path(target), lambda item: item.update(description="Different copy"))
         return result
-    monkeypatch.setattr(definitions.shutil, "copytree", change_copy)
+    monkeypatch.setattr(definition_bundles.shutil, "copytree", change_copy)
     with pytest.raises(ValueError, match="source changed"):
         definitions.import_bundle(state, bundle)
     assert not (state.root / "agent-definitions/index.json").exists()

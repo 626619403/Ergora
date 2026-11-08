@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "id": "test-value-reviewer",
+  "version": "1.0.0",
+  "description": "Review the value and cost of tests, CI, assertions and defensive control flow.",
+  "roles": [
+    "reviewer"
+  ],
+  "specialties": [
+    "test-value"
+  ],
+  "backend": {
+    "tool": "codex"
+  },
+  "resources": [
+    {
+      "id": "test-value-reviewer-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "f0fc6bbc738d652c51de2c2a9ed0825bd9de5f0e377656e15cf97daa1f68ab8f"
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "id": "kernel-delivery",
+  "version": "1.0.0",
+  "description": "Preview a kernel implementation followed by parallel independent review.",
+  "resources": [
+    {
+      "id": "kernel-delivery-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "5eb3b16a925279f9d60bb258d167c0ee81330b0a324ad5eef5ba3630acb7eb15"
+    }
+  ],
+  "permissions": {
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "write": [
+      "workspace"
+    ],
+    "shell": true,
+    "network": []
+  },
+  "limits": {
+    "depth": 8,
+    "instances": 128,
+    "concurrency": 4,
+    "material_bytes": 262144
+  },
+  "inputs": [
+    "task"
+  ],
+  "outputs": {
+    "reviews": {
+      "node": "review",
+      "output": "findings"
+    }
+  },
+  "nodes": [
+    {
+      "id": "implement",
+      "ref": {
+        "kind": "agent",
+        "id": "kernel-implementer",
+        "version": "1.0.0",
+        "digest": "9da2fb8d8e9638e5872c9f16b901fea04fd3ec7d88199d1f36aa68071c83c695"
+      },
+      "role": "implementer",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [
+          "workspace"
+        ],
+        "shell": true,
+        "network": []
+      }
+    },
+    {
+      "id": "review",
+      "ref": {
+        "kind": "workflow",
+        "id": "parallel-review",
+        "version": "1.0.0",
+        "digest": "9d4f4858ed6abc533e8d675ac3f1a3132b3acded5b2a96f0a1428ecd452cabde"
+      },
+      "depends_on": [
+        "implement"
+      ],
+      "inputs": {
+        "task": {
+          "node": "implement",
+          "output": "result"
+        }
+      }
+    }
+  ]
+}

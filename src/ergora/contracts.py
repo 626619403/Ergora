@@ -28,6 +28,9 @@ EVALUATION_RESULT = json.loads((_SCHEMAS / "evaluation-result-v1.json").read_tex
 STATE_BACKUP = json.loads((_SCHEMAS / "state-backup-v1.json").read_text(encoding="utf-8"))
 AGENT_DEFINITION = json.loads((_SCHEMAS / "agent-definition-v1.json").read_text(encoding="utf-8"))
 
+WORKFLOW_DEFINITION = json.loads((_SCHEMAS / "workflow-definition-v1.json").read_text(encoding="utf-8"))
+COMPOSITION_GRANT = {"$defs": WORKFLOW_DEFINITION["$defs"], "$ref": "#/$defs/grant"}
+
 
 def validate(value, schema: dict, context: str) -> None:
     error = next(StrictValidator(schema).iter_errors(value), None)

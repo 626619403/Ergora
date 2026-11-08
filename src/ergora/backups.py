@@ -10,7 +10,7 @@ import stat
 import sys
 import tempfile
 
-from . import agent_definitions, contracts, skill_assets
+from . import agent_definitions, contracts, skill_assets, workflow_definitions
 from .asset_trees import is_link as _is_link
 from .state import SCHEMA_VERSION, file_lock, now
 
@@ -76,7 +76,8 @@ def info(root: Path) -> dict:
 
 def _check_assets(db: sqlite3.Connection, data: Path, original_home: Path) -> dict:
     tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-    checked = {"skills": 0, "source_snapshots": 0, "agent_definitions": agent_definitions.verify_store(data)}
+    checked = {"skills": 0, "source_snapshots": 0, "agent_definitions": agent_definitions.verify_store(data),
+               "workflow_definitions": workflow_definitions.verify_store(data)}
     if "skill_versions" in tables:
         for row in db.execute("SELECT digest,document FROM skill_versions"):
             document = json.loads(row["document"])

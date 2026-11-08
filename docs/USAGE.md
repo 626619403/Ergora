@@ -604,3 +604,7 @@ ssh -L 8977:127.0.0.1:8977 user@server
 应用在前台运行；Linux / WSL2 可用 Supervisor 管理 `ergora serve` 及各项目的 `ergora research worker PROJECT`，Windows 原生先使用前台终端。安装不自动后台执行任务、调用模型或启动研究。停止写入后备份完整 `ERGORA_HOME` 以及业务 Git 仓库；恢复时核对仓库实际路径和工具登录。记忆删除不会清除独立备份及过去归档的调用输入。
 
 开发和换机继续工作时，先读 [PLAN.md](PLAN.md)、当前活动切片的 `docs/delivery/` 记录，再检查分支、`git status` 与最近提交。测试默认不调用付费模型；外部服务和 GPU 的效果验收单独记录。
+
+## 可嵌套工作流定义
+
+基础安装可使用`ergora composition`检查、导入、分享与预览版本化Agent/子工作流DAG。叶子预览包含全部祖先静态材料、权限链、具名端口和全局预算；示例、操作顺序及范围见[工作流组合手册](WORKFLOW_DEFINITIONS.md)。此入口不启动Agent，不替代正式六阶段或批准；实际嵌套运行与页面仍沿实施计划推进。

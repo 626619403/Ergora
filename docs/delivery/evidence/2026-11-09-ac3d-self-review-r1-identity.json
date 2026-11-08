@@ -1,0 +1,52 @@
+{
+  "checked_at": "2026-11-08T17:07:55.273583+00:00",
+  "tool": "ergora agent run",
+  "backend": "claude-code",
+  "template": "repository-governance",
+  "role": "reviewer",
+  "source_manifest_sha256": "5a4b87a7bb48e0fdecc8e5d192e191749a91712227285b43e4e818e20bee2479",
+  "source_files": {
+    "src/ergora/agent_definitions.py": "5b7e6dfc712d29a7f16212083078b1f42f7ea7323919a1b35e3025de241f92d5",
+    "src/ergora/backups.py": "e0d266a8093ad6ae396264ac6c78da1e1c60b1149c865319b1373dda846091da",
+    "src/ergora/cli.py": "0b90545f845c2db9345e4941861fb211eb9ae2122bfbc19334e75953df72687a",
+    "src/ergora/contracts.py": "e6868634988052fb2d00dc39dde37260aab73447bba86de49379d4009432acf6",
+    "tests/test_agent_definitions.py": "0aa0963358ed15c6686490564d28cc4e7630840bde9b9725818818ac3f1761c9",
+    "examples/composition/README.md": "ba0efbafaece828bef5c4f3e47031ae57547e3f10ac4285ba6c8b088281001e5",
+    "examples/composition/agents/correctness-reviewer/agent.json": "4aec4881ede84618a5c96e93a48f4c17638b69827d76f8ac86019286fd442c7b",
+    "examples/composition/agents/correctness-reviewer/instructions.md": "9d0dd7e1b7d998cbfccb5aeab1a5fb4525a5caceaa97e7abb725bf1d27dcbdaf",
+    "examples/composition/agents/test-value-reviewer/agent.json": "52e6e683bc4cabfc1a1df68741c9070dc4a4896b986a33eecb033aa1c9f59d79",
+    "examples/composition/agents/test-value-reviewer/instructions.md": "f0fc6bbc738d652c51de2c2a9ed0825bd9de5f0e377656e15cf97daa1f68ab8f",
+    "examples/composition/correctness-review/instructions.md": "b877c0e5996c10b4107b0cb67b0152e1ac9c4c739f6b1fcb865fab83461ca234",
+    "examples/composition/correctness-review/workflow.json": "ec647f35ba7f211f5e52ff83439e96c7d2908e5baf0a1b041df2cd6ec530c9f6",
+    "examples/composition/kernel-delivery/instructions.md": "5eb3b16a925279f9d60bb258d167c0ee81330b0a324ad5eef5ba3630acb7eb15",
+    "examples/composition/kernel-delivery/workflow.json": "1999a3d3dee265803c3e5806993c9692586ffd72c76476cf7f652f51181374ba",
+    "examples/composition/parallel-review/instructions.md": "8c3bd575f02bef3638b0bd25ca2922161577bdaec7793e667d59f7404dc27b04",
+    "examples/composition/parallel-review/workflow.json": "f37d2257264a58802b39e4e0a0bcb9e6f469993ec52ca69e0b70fcd1ab61a006",
+    "examples/composition/preview-grant.json": "2dcd5ef0479b94feaa8d8ed6061c5ac56eb39c67a531409a9371e6d147616a09",
+    "examples/composition/structure-review/instructions.md": "7ff70d556ed41dae0e6e3798dc9f21ae821accfb7a25f3fed7788e277b24fbaa",
+    "examples/composition/structure-review/workflow.json": "4ea35bede20bfe2ceffd4711735e580865cc3a4c66d6ff9459ad8aa65f7c346c",
+    "examples/composition/test-value-review/instructions.md": "61a5f85b066b8135689689354addaf972be3d5d2c430a8cc97dc0b47fd7a3240",
+    "examples/composition/test-value-review/workflow.json": "53ae0a466c075466a16b8efae05c88ae6516ed907bace525428be48f81a2af39",
+    "src/ergora/data/schemas/workflow-definition-v1.json": "03d21a8dbf2fff7a058ab136b5ab37d3816c6d72428b578a7d56ae89d6922d2b",
+    "src/ergora/definition_bundles.py": "3e10d7c067ae341540e80e2260e7c8d2c90d76fb134433f82a3165dee1dc595d",
+    "src/ergora/workflow_definitions.py": "decf80c3d9cad9a20da86388e4e40cf820c11577085d5243066b663915ae7db2",
+    "tests/test_workflow_definitions.py": "8e213afd6077203d3f5a6885cbd3fe669e6f629d3eba0e090bc211f7a3a2e7de"
+  },
+  "prompt_sha256": "172cde896c99916e6032fd942bb7b6b1da5a5fcc5bccda556076a5b20bb6988c",
+  "source_unchanged": true,
+  "attempts": [
+    {
+      "backend": "claude-code",
+      "exit_code": 0,
+      "status": "succeeded",
+      "run_id": "8841724392044f9d9f060cae38782abb",
+      "error": null
+    }
+  ],
+  "exit_code": 0,
+  "status": "succeeded",
+  "run_id": "8841724392044f9d9f060cae38782abb",
+  "result_sha256": "0e9308413550bc5a69245afe9a251d1699524b1feaf7f8a341c5b36d2e0b1cd0",
+  "scope": "Independent structured reviewer invocation, not formal workflow acceptance or automatic composition runtime loading.",
+  "decision": "approve"
+}

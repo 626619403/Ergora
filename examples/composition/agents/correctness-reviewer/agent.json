@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "id": "correctness-reviewer",
+  "version": "1.0.0",
+  "description": "Review the exact candidate against its requirements and behavioral contracts.",
+  "roles": [
+    "reviewer"
+  ],
+  "specialties": [
+    "correctness"
+  ],
+  "backend": {
+    "tool": "claude-code"
+  },
+  "resources": [
+    {
+      "id": "correctness-reviewer-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "9d0dd7e1b7d998cbfccb5aeab1a5fb4525a5caceaa97e7abb725bf1d27dcbdaf"
+    }
+  ]
+}

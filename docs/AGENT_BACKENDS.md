@@ -55,6 +55,8 @@ ergora agent output self-review RUN_ID
 
 `review-request.md`写明原始需求、精确候选SHA；未提交内容另列完整差异、新文件及摘要。提供真实验证命令、结果和未验范围，并指定只读检查范围。需要专长提示时，可从[定义库](AGENT_DEFINITIONS.md)的`show --material`取得正文，显式加入请求；当前不会自动装载定义或继承资源。后端继续使用自己的登录与环境变量，不在请求中放密钥。
 
+只读范围应允许该后端实际具备的读取方式：Codex通常通过只读shell命令检查源码，Claude可用Read/Grep/Glob。不要同时禁止所有命令又只列出另一后端的专有工具；也可随请求附入新文件全文，并核对输入摘要。切换后端后重新确认材料确实可读，不能把“无法完成检查”的request-changes当成已确认的源码缺陷。
+
 此模板要求`review-report`、`handoff`和明确的`approve/request-changes`。查看运行记录中的原始结构化result及摘要，逐项处理finding；进程成功、结构合格和审查通过分别核对。失败/超时不视为通过，同后端回退保留原因；单次独立调用不产生正式workflow批准或可信验收。
 
 ### 自定义命令
