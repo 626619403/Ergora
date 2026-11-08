@@ -6,19 +6,29 @@ from . import agents, contracts, definition_bundles
 from .state import State
 
 
-def inspect_bundle(source: Path, *, material: bool = False) -> dict:
-    """Read and verify all content, without invoking any backend or bundled script."""
-    document = definition_bundles.inspect_bundle(source, "agent.json", contracts.AGENT_DEFINITION, "Agent", material=material)
+def _inspect_bundle(source: Path, *, material: bool = False) -> dict:
+    return definition_bundles.inspect_bundle(source, "agent.json", contracts.AGENT_DEFINITION, "Agent", material=material)
+
+
+def validate_admission(document: dict) -> None:
+    """Apply today's role/backend contract to an already integrity-checked package."""
     definition = document["definition"]
     for role in definition["roles"]:
         if role not in agents.ROLE_CAPABILITIES:
             raise ValueError(f"Unknown agent role: {role}")
         agents.validate_binding(role, definition["backend"])
+
+
+def inspect_bundle(source: Path, *, material: bool = False) -> dict:
+    """Verify content and current admission, without invoking a backend or script."""
+    document = _inspect_bundle(source, material=material)
+    validate_admission(document)
     return document
 
 
 def library(root: Path) -> definition_bundles.DefinitionLibrary:
-    return definition_bundles.DefinitionLibrary(root, "agent", contracts.AGENT_DEFINITION, inspect_bundle)
+    return definition_bundles.DefinitionLibrary(root, "agent", contracts.AGENT_DEFINITION, _inspect_bundle,
+                                              import_inspector=inspect_bundle)
 
 
 def import_bundle(state: State, source: Path) -> dict:

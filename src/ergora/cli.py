@@ -279,7 +279,7 @@ def parser() -> argparse.ArgumentParser:
         if name == "check":
             operation.add_argument("--material", action="store_true", help="Include full instruction, context and SKILL.md text")
     listing = definitions.add_parser("list")
-    listing.add_argument("--role", choices=list(agents.ROLE_CAPABILITIES))
+    listing.add_argument("--role", help="Filter stored role labels, including roles no longer available for execution")
     listing.add_argument("--specialty")
     for name in ("show", "export"):
         operation = definitions.add_parser(name)

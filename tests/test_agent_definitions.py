@@ -12,7 +12,7 @@ import sys
 import pytest
 
 from ergora import agent_definitions as definitions
-from ergora import backups, contracts, definition_bundles, projects, skill_assets
+from ergora import agents, backups, contracts, definition_bundles, projects, skill_assets
 from ergora.state import State
 
 
@@ -258,6 +258,47 @@ def test_offline_restore_preserves_definitions_resources_and_exact_references(bu
     assert definitions.get(restored, "kernel-implementer", "1.0.0", material=True) == before
     assert definitions.verify_store(restored.root) == 2
     assert definitions.get(restored, "kernel-implementer", "1.0.0")["digest"] == first["digest"]
+
+
+@pytest.mark.parametrize("policy_change", ["removed-role", "removed-backend", "stricter-binding"])
+def test_historical_assets_survive_current_admission_changes(bundle, tmp_path, monkeypatch, capsys, policy_change):
+    from ergora.cli import main
+
+    state = State(tmp_path / "state")
+    original = definitions.import_bundle(state, bundle)
+    expected = definitions.get(state, "kernel-implementer", "1.0.0", material=True)
+    listing = definitions.definitions(state)
+    index = (state.root / "agent-definitions/index.json").read_bytes()
+    if policy_change == "removed-role":
+        monkeypatch.setattr(agents, "ROLE_CAPABILITIES", {key: value for key, value in agents.ROLE_CAPABILITIES.items()
+                                                       if key != "implementer"})
+    elif policy_change == "removed-backend":
+        monkeypatch.setattr(agents, "CHOICES", {**agents.CHOICES, "implementer": ["command"]})
+    else:
+        def reject(role, binding, **kwargs):
+            raise ValueError("Current policy rejects this binding")
+        monkeypatch.setattr(agents, "validate_binding", reject)
+    assert definitions.get(state, "kernel-implementer", "1.0.0", material=True) == expected
+    assert definitions.definitions(state) == listing and definitions.verify_store(state.root) == 1
+    assert main(["--home", str(state.root), "agent", "definition", "list", "--role", "implementer"]) == 0
+    assert json.loads(capsys.readouterr().out) == listing
+    exported = tmp_path / "export"
+    assert definitions.export(state, "kernel-implementer", "1.0.0", exported)["digest"] == original["digest"]
+    assert skill_assets.digest_tree(exported)[0] == original["digest"]
+    # Public checks and both import entry points still apply current policy, even for identical content.
+    for operation in (lambda: definitions.inspect_bundle(bundle),
+                      lambda: definitions.import_bundle(state, bundle),
+                      lambda: definitions.library(state.root).import_bundle(exported)):
+        with pytest.raises(ValueError):
+            operation()
+    assert (state.root / "agent-definitions/index.json").read_bytes() == index
+    archive = tmp_path / "backup"
+    snapshot = backups.create(state.root, archive, offline=True)
+    assert backups.verify(archive)["manifest_sha256"] == snapshot["manifest_sha256"]
+    state.root.rename(tmp_path / "kept-original")
+    backups.restore(state.root, archive, offline=True)
+    assert definitions.get(state, "kernel-implementer", "1.0.0", material=True) == expected
+    assert (state.root / "agent-definitions/index.json").read_bytes() == index
 
 
 @pytest.mark.skipif(os.name == "nt", reason="POSIX symlinks and FIFO; Windows junction covered separately")

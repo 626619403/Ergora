@@ -1,0 +1,33 @@
+{
+  "baseline": "460702f9866080756883501eefc5132b8a345a38",
+  "initial_baseline": "833d46fd42e2064f8417f30b430c44069ac03a61",
+  "source_files": {
+    "src/ergora/agent_definitions.py": "d53c9650ceb888e09665e78fc46e403373a4a32b3b4f2870ca9b222d12bfcf54",
+    "src/ergora/definition_bundles.py": "3306a065e785ba2d6cca1df89c3d02f4bb8c1a2b2a3f3b2c9fccefc578effcc5",
+    "src/ergora/workflow_definitions.py": "47df05926a5e28748c7ca5426ac05ad0f2b3d6da7f41ee0f11dee88d61afd0c5",
+    "src/ergora/cli.py": "3d21f1f09296a4aa68067f0080f54235ac4fbceba88897381ae4b4a6b85b99fb",
+    "tests/test_agent_definitions.py": "e706d7dd3f40fcab04af3983f0505b8c4444ab8ecaa36342927e9cbec5016d97",
+    "tests/test_workflow_definitions.py": "2d32c10813225ae30881b94ea4a954d5e697e1d541c1379701d6d89c8ef4620a"
+  },
+  "package_files": 359,
+  "frozen_files": 283,
+  "wheel_sha256": "f08d482d52b4dd11f691cf1d7d08d4dd502d45be7e3cd842f4ad502f582219bb",
+  "source_tests": {
+    "passed": 140,
+    "skipped": 2,
+    "python": "3.11.15",
+    "suites": [
+      "test_agent_definitions.py",
+      "test_workflow_definitions.py",
+      "test_state_backups.py",
+      "test_schema_contracts.py"
+    ]
+  },
+  "wheel_tests": {
+    "passed": 140,
+    "skipped": 2,
+    "python": "3.12.3",
+    "same_suites_as_source": true
+  },
+  "scope": "Historical local package integrity and recursive backup verification separated from current admission. No native loading or formal execution."
+}

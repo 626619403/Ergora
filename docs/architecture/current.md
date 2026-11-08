@@ -95,6 +95,8 @@ flowchart TB
 
 `state`、`components`、`contracts`、`asset_trees` 和 `windows_job` 不导入其他自有模块；`processes` 只依赖 `windows_job`。这些底层模块不读具体项目用例。`backups` 依赖 `contracts / skill_assets / agent_definitions / workflow_definitions / asset_trees / state`，`scheduling` 依赖 `research / state`，不互相依赖。图中`Definitions → Native`只消费职能/后端校验，不启动后端；两类定义库通过`definition_bundles`复用Skill metadata与原子版本发布；Skill和定义树复用同一摘要实现。工作流编译只消费定义与显式grant，不调用Agent或调度器。`research` 为抓取监控直接消费 Windows Job，普通命令走 `processes`；二者生命周期不同。
 
+AC3b.1将历史完整性与当前后端准入分开：`DefinitionLibrary`的历史读取/导出只用静态inspector，新的导入在源包和暂存副本使用import inspector；Agent拥有当前角色/binding校验，Workflow在新导入/preview的递归解析中消费它。完整备份仍核图、资源、权限/预算及全部精确引用，但不要求旧后端仍可准入。不新增可跳过验证的CLI或历史重写，真实执行装载与批准仍待后续切片。
+
 |责任|当前所有者与实际入口|保留的边界|
 |---|---|---|
 |组件、默认值、平台、字段和安装配方身份|`data/components.json` → `components`；agents/bindings/projects/tools、Web bootstrap、SDK 安装器|描述不制造执行能力；probe/认证/连通/任务验收分开|

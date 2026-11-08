@@ -10,7 +10,7 @@ import sys
 
 import pytest
 
-from ergora import agent_definitions, backups, contracts, skill_assets, workflow_definitions as workflows
+from ergora import agent_definitions, agents, backups, contracts, skill_assets, workflow_definitions as workflows
 from ergora.asset_trees import digest_tree
 from ergora.state import State
 
@@ -344,6 +344,48 @@ def test_failed_first_workflow_publication_leaves_no_library_and_can_retry(base,
     assert backups.create(state.root, directory / "after-interruption", offline=True)["workflow_definitions"] == 0
     first = workflows.import_bundle(state, source)
     assert workflows.import_bundle(state, source) == first
+
+
+@pytest.mark.parametrize("damage", ["missing", "changed"])
+def test_nested_history_is_readable_but_new_admission_is_rejected_after_policy_change(base, monkeypatch, damage):
+    state, agent, directory = base
+    sub = imported(base, definition("sub", [leaf("review", agent)]), "Child instructions.\n")
+    outer = imported(base, definition("outer", [child("child", ref(sub, "workflow"))]), "Parent instructions.\n")
+    expected = workflows.get(state, "outer", "1.0.0", material=True)
+    listing = workflows.definitions(state)
+    workflows.preview(state.root, "outer", "1.0.0", grant())
+    indexes = {kind: (state.root / f"{kind}-definitions/index.json").read_bytes() for kind in ("agent", "workflow")}
+    def reject(role, binding, **kwargs):
+        raise ValueError("Current policy rejects this binding")
+    monkeypatch.setattr(agents, "validate_binding", reject)
+    assert workflows.get(state, "outer", "1.0.0", material=True) == expected
+    assert workflows.definitions(state) == listing and workflows.verify_store(state.root) == 2
+    exported = directory / "export"
+    assert workflows.export(state, "outer", "1.0.0", exported)["digest"] == outer["digest"]
+    assert digest_tree(exported)[0] == outer["digest"]
+    for operation in (lambda: workflows.preview(state.root, "outer", "1.0.0", grant()),
+                      lambda: workflows.import_bundle(state, exported),
+                      lambda: workflows.library(state.root).import_bundle(exported)):
+        with pytest.raises(ValueError, match="Current policy"):
+            operation()
+    archive = directory / "backup"
+    assert backups.create(state.root, archive, offline=True)["workflow_definitions"] == 2
+    backups.verify(archive)
+    state.root.rename(directory / "kept-original")
+    backups.restore(state.root, archive, offline=True)
+    assert workflows.get(state, "outer", "1.0.0", material=True) == expected
+    assert all((state.root / f"{kind}-definitions/index.json").read_bytes() == content for kind, content in indexes.items())
+    with pytest.raises(ValueError, match="Current policy"):
+        workflows.preview(state.root, "outer", "1.0.0", grant())
+    # A removed backend does not hide damage in the retained reference tree.
+    stored = agent_definitions.get(state, agent["id"], agent["version"])
+    if damage == "missing":
+        shutil.rmtree(stored["path"])
+    else:
+        (Path(stored["path"]) / "instructions.md").write_text("Changed historical content", encoding="utf-8")
+    with pytest.raises((OSError, ValueError)) as failure:
+        backups.create(state.root, directory / "corrupt-backup", offline=True)
+    assert "Current policy" not in str(failure.value) and not (directory / "corrupt-backup").exists()
 
 
 def test_cli_check_and_failed_preview_do_not_create_state(tmp_path):

@@ -94,7 +94,17 @@ def inspect_bundle(source: Path, *, material: bool = False) -> dict:
 
 
 def library(root: Path) -> definition_bundles.DefinitionLibrary:
-    return definition_bundles.DefinitionLibrary(root, "workflow", contracts.WORKFLOW_DEFINITION, inspect_bundle)
+    def checked(path, *, material=False):
+        document = inspect_bundle(path, material=True)
+        definition = document["definition"]
+        grant = {"schema_version": 1, "permissions": definition["permissions"], "limits": definition["limits"]}
+        _Compilation(root, grant, agent_admission=agent_definitions.validate_admission).compile(document)
+        if not material:
+            for resource in document["resources"]:
+                del resource["text"]
+        return document
+    return definition_bundles.DefinitionLibrary(root, "workflow", contracts.WORKFLOW_DEFINITION, inspect_bundle,
+                                              import_inspector=checked)
 
 
 def _reference(document: dict, kind: str) -> dict:
@@ -147,10 +157,11 @@ def _readable(materials: list[dict], permissions: dict, path: str) -> None:
 class _Compilation:
     """One bounded traversal owns reference, graph, inheritance and budget checks."""
 
-    def __init__(self, root: Path, grant: dict):
+    def __init__(self, root: Path, grant: dict, *, agent_admission=None):
         contracts.validate(grant, contracts.COMPOSITION_GRANT, "Composition preview grant")
         _permissions(grant["permissions"])
         self.root, self.grant = root, grant
+        self.agent_admission = agent_admission
         self.documents, self.instances = {}, []
         self.total = {"path": "project", "limits": grant["limits"], "depth": 0, "instances": 0, "material_bytes": 0}
 
@@ -161,6 +172,8 @@ class _Compilation:
             document = source.get(reference["id"], reference["version"], material=material)
             if document["digest"] != reference["digest"]:
                 raise ValueError(f"Definition reference digest mismatch: {reference['id']}@{reference['version']}")
+            if reference["kind"] == "agent" and self.agent_admission is not None:
+                self.agent_admission(document)
             self.documents[key] = document
         return self.documents[key]
 
@@ -275,16 +288,7 @@ class _Compilation:
 
 
 def import_bundle(state: State, source: Path) -> dict:
-    def checked(path, *, material=False):
-        document = inspect_bundle(path, material=True)
-        definition = document["definition"]
-        grant = {"schema_version": 1, "permissions": definition["permissions"], "limits": definition["limits"]}
-        _Compilation(state.root, grant).compile(document)
-        if not material:
-            for resource in document["resources"]:
-                del resource["text"]
-        return document
-    return definition_bundles.DefinitionLibrary(state.root, "workflow", contracts.WORKFLOW_DEFINITION, checked).import_bundle(source)
+    return library(state.root).import_bundle(source)
 
 
 def get(state: State, identity: str, version: str, *, material: bool = False) -> dict:
@@ -302,13 +306,13 @@ def export(state: State, identity: str, version: str, destination: Path) -> dict
 def preview(root: Path, identity: str, version: str, grant: dict) -> dict:
     """Read a library without constructing State or changing any project configuration."""
     document = library(root).get(identity, version, material=True)
-    return _Compilation(root, grant).compile(document)
+    return _Compilation(root, grant, agent_admission=agent_definitions.validate_admission).compile(document)
 
 
 def verify_store(root: Path) -> int:
     documents = library(root).documents()
     for document in documents:
         definition = document["definition"]
-        preview(root, definition["id"], definition["version"],
-                {"schema_version": 1, "permissions": definition["permissions"], "limits": definition["limits"]})
+        grant = {"schema_version": 1, "permissions": definition["permissions"], "limits": definition["limits"]}
+        _Compilation(root, grant).compile(library(root).get(definition["id"], definition["version"], material=True))
     return len(documents)

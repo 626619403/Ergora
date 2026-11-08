@@ -83,10 +83,11 @@ def inspect_bundle(source: Path, filename: str, schema: dict, label: str, *, mat
 
 
 class DefinitionLibrary:
-    """Own publication and identity; the supplied inspector owns definition semantics."""
+    """Verify historical identity; admit imports before publishing immutable objects."""
 
-    def __init__(self, root: Path, kind: str, schema: dict, inspector):
+    def __init__(self, root: Path, kind: str, schema: dict, inspector, *, import_inspector=None):
         self.root, self.kind, self.schema, self.inspect = root, kind, schema, inspector
+        self.inspect_import = import_inspector or inspector
         self.label = kind.capitalize()
         self.store = root / f"{kind}-definitions"
         self.index_schema = {
@@ -125,11 +126,11 @@ class DefinitionLibrary:
             path.replace(store / "index.json")
 
     def import_bundle(self, source: Path) -> dict:
-        original = self.inspect(source)
+        original = self.inspect_import(source)
         with tempfile.TemporaryDirectory(prefix=f".{self.kind}-import-", dir=self.root) as temporary:
             copy = Path(temporary) / "bundle"
             shutil.copytree(original["path"], copy, symlinks=True)
-            staged = self.inspect(copy)
+            staged = self.inspect_import(copy)
             if staged["digest"] != original["digest"]:
                 raise ValueError(f"{self.label} source changed while importing; retry a stable source")
             definition = staged["definition"]
