@@ -125,3 +125,39 @@ SP-2：同文件第32行现验证DNS/IP及规范authority。原通配符、空�
 r2本地原始证据为`.ergora/checks/ac3d-workflows/r2-source-tests.log`、`r2-wheel-tests.log`、`package-identities.json`、`r2-cli-journey.json`及其逐命令输出、`r2-preview-performance.json`。待验项仍为r2自身真实reviewer、必要双OS CI及精确候选/远端终结；实际装载、权限强制和持久执行继续按后续切片验收。
 
 r2两轴计数：Standards 0项未解决（ST-1已关闭）；Spec 0项未解决（SP-1/SP-2已关闭），无新增finding。
+
+## WD5最终范围与自身审查核证（2026-11-09）
+
+**WD5本地证据及同片独立复核通过，无新增finding；Standards与Spec均无未解决项。** 上文r2时尚在途的自身审查现已有实际回执；WD6普通提交/推送、必要双OS CI及精确候选/远端终结仍待后续核证。
+
+2026-11-08 17:41:44 UTC，协调者独立核对`.ergora/checks/ac3d-workflows/review-final-scope.json`全部44项逐字匹配。scope SHA256为`8da22fb5dbe60e629754df59305b19f64ee7c1bc121ee48065f96a38a7dfe782`，`review-final-tracked.diff` SHA256为`91c6ef93c402d243dc3c160adacfeba5fff0c7f06d57df8b53aa482450ff7208`，后者与当时限定范围的实时`git diff`字节一致。基线/HEAD仍为`9bb84c6437bd4b38f928defcaad0ec678fa24a5e`，分支`refactor/architecture-foundations`，尚未提交。
+
+相较r2的38项，新增`docs/AGENT_BACKENDS.md`、可分享本地身份JSON、r2自身审查的结果/身份JSON、r3自身审查的结果/身份JSON，共6项；其余增量是计划、ADR、交付及本报告的状态记录。源码、测试、schema和示例均与已复核r2相同，未重跑无关测试。新增手册说明按实际后端允许只读检查方式；AC3b细分计划仍明确后续责任，没有将静态预览升级为运行能力。
+
+### r3真实输入与回执
+
+实际调用沿现有`ergora agent run`、`repository-governance`模板和reviewer角色，后端为Codex；未独立识别其默认模型。run `5abc348026a94c20a367199479c2cfcd`于2026-11-08 17:36:20 UTC完成，CLI与SQLite运行记录逐字一致，原生returncode 0、status succeeded，结构化decision approve，无新增finding或建议。
+
+独立读取实际协议目录、运行数据库、CLI原始输出及[公开结果](evidence/2026-11-09-ac3d-self-review-r3-result.json)/[增强身份](evidence/2026-11-09-ac3d-self-review-r3-identity.json)，核得：
+
+- 25项保护源码/测试/示例均与当前文件及manifest匹配，manifest SHA256重新计算一致。4份关键新文件在实际任务文本内各有完整正文，逐字等于当前文件。
+- 原任务文本124,278字节，SHA256 `cbc3c3f91102edf46594c7beb443caf35b6f6b123f7141b4e288283ea605421e`；最终交付125,097字节，SHA256 `68f0436d675b70c03f6c2e4cf49656d21345d9404fbb53d5aae239c028cdcd4c`。两者之差逐字等于`agent_runs`按实际模板添加的reviewer要求及result schema，结构化结果亦通过该schema校验。
+- 公开结果与运行记录指向的原始result及本地留存result逐字一致，SHA256 `b0ec8904661ed4f28bfc5cab8bf7e98a48104420a178d485e5a6222664783883`。
+
+审查报告声明实时git diff/log及独立hash命令遇沙箱挂载错误；原生事件也保留`bwrap: Failed to make / slave: Permission denied`。不能将这次调用描述为所有命令通过，也不以它证明OS隔离。协调者另外直接核对了44项实际文件、实时tracked diff及上述协议身份，未把审查者依赖manifest的身份判断当作独立hash执行。该调用没有重跑项目测试，不替代原fresh-context两轴及源码/包/恢复证据。
+
+### 历史结果与交付边界
+
+r1旧快照approve仍保留其漏掉SP-1/SP-2的事实。独立核对r2运行数据库与[原始结果](evidence/2026-11-09-ac3d-self-review-r2-result.json)/[身份](evidence/2026-11-09-ac3d-self-review-r2-identity.json)：Claude run `2fad7f1f057545de95a706d44f7a157e`为timed_out、returncode -9；Codex回退run `f5b368d0b4ab4679be5f907151c4e980`为succeeded、returncode 0、request-changes。它因任务文本限制而未能完成新文件检查，没有建立源码finding，未当作通过。r3修正的是检查输入与读取方式，生产实现未变。
+
+[可分享本地身份](evidence/2026-11-09-ac3d-local-identity.json)与实际最终包、26次CLI及性能原始记录一致，未将r1扩大回归与r2受影响检查混加。最终包仍为`fa3bc27cf5cfc73f6f6412f6ba20cc220af380fd2b9eef80353bf326a3a33ccf`，前节独立核验的144/2、359/283及完整恢复预览证据保持原范围。此时未提交，尚无本候选CI或远端终结结论。
+
+WD5两轴计数：Standards 0项未解决；Spec 0项未解决；原3项均关闭，无新增finding。下一核普通提交的完整Git对象、必要双OS CI及即时远端身份。
+
+2026-11-08 17:45:03 UTC补核：`git diff --check`及20文档、362链接、57 CLI parser均通过；检查脚本禁止落盘。除本报告追加外，其余43项仍与固定final scope匹配。公开本地身份与r3保护源码清单逐项相同。
+
+## WD6候选Git对象核证
+
+2026-11-08 17:45:48 UTC独立核候选`833d46fd42e2064f8417f30b430c44069ac03a61`：唯一父为`9bb84c6437bd4b38f928defcaad0ec678fa24a5e`，变更路径恰为固定44项，每个Git对象内容均逐字匹配上述final scope，没有漂移。另从候选Git archive读取`src/ergora`全部359文件，其完整身份表与已验r2 wheel `fa3bc27cf5cfc73f6f6412f6ba20cc220af380fd2b9eef80353bf326a3a33ccf`一致。
+
+候选含的是stage前的本报告版本；本次WD5核证及后续Git/CI/远端记录属于随后同片状态归档，不改变已审源码。后续若开始AC3b工作树，AC3d仅按此固定候选验收。此次尚未登记push成功、必要双OS CI或即时远端终结。

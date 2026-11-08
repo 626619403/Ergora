@@ -28,7 +28,7 @@ def ref(document, kind):
 def write_bundle(path, definition, text=None):
     path.mkdir(parents=True, exist_ok=True)
     if text is not None:
-        (path / "instructions.md").write_text(text, encoding="utf-8")
+        (path / "instructions.md").write_bytes(text.encode("utf-8"))
         definition["resources"] = [{"id": definition["id"] + "-instructions", "kind": "instructions",
                                      "path": "instructions.md", "sha256": hashlib.sha256(text.encode()).hexdigest()}]
     (path / "workflow.json").write_text(json.dumps(definition, indent=2) + "\n", encoding="utf-8")

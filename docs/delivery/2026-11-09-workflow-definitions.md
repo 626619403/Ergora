@@ -80,3 +80,11 @@ r3只修正自身审查输入：继续使用Ergora repository-governance reviewe
 r3 Codex run `5abc348026a94c20a367199479c2cfcd`于2026-11-08 17:36:20 UTC完成，CLI/原生returncode均0、succeeded、decision approve，无新增finding或建议。原样[结果](evidence/2026-11-09-ac3d-self-review-r3-result.json)及[核验身份](evidence/2026-11-09-ac3d-self-review-r3-identity.json)保留，结果SHA256 `b0ec8904661ed4f28bfc5cab8bf7e98a48104420a178d485e5a6222664783883`。2026-11-08 17:39:53 UTC核实际SQLite回执、原始结果逐字、25项保护文件与输入manifest一致；实际交付prompt包含任务全文及模板role合同，共125,097字节，SHA256 `68f0436d675b70c03f6c2e4cf49656d21345d9404fbb53d5aae239c028cdcd4c`。任务文本自身SHA与附加合同后的SHA分别保存，未推断默认模型身份。
 
 审查者确实读取了源码，但报告声明git diff/log及独立hash命令遇沙箱挂载错误，身份判断依赖提供的manifest及证据；主代理已独立核保护文件和实际协议身份。该普通只读调用没有运行项目测试，不能替代fresh-context两轴独立复核、正式工作流批准或后端OS隔离。r1、r2失败/限制原记录不改；WD5完成，下一WD6完整scope、普通提交/推送、精确双OS CI及同片独立远端终结。
+
+WD6在途：普通候选`833d46fd42e2064f8417f30b430c44069ac03a61`推送exit0，2026-11-08 17:45:07 UTC远端同完整SHA。独立者核44个Git对象逐字匹配final scope，候选359文件与已验r2包身份一致。精确Portability CI42506504390已选中，Ubuntu/Windows两job在途；不预记通过。下一片AC3b.1可在本地推进，但其源码不计入本候选，下一生产推送等本片CI终结。
+
+## WD6首次CI与Windows修正
+
+CI42506504390原候选833d46f实际失败：Ubuntu必要三步骤success；Windows构建、283身份和PowerShell安装/升级success，但应用回归3 failed、554 passed、448 skipped、16 subtests。三失败均来自新增测试`write_bundle`将含LF的instructions用默认newline写入，在Windows变成CRLF，而资源SHA按原LF计算，因而在进入预期行为前被正确拒绝。失败不是生产代码丢失内容；不关闭Windows测试，也不在生产中归一化身份。
+
+最小修正仅把该夹具改为UTF-8精确字节写入；其余生产与冻结283不变。原CI完整官方页面/失败注释留在忽略目录`ci-r1/`，下一对固定原候选加此单行的隔离源码运行相关合同，同片独立复核，再普通修复提交及新的精确双OS CI。AC3b.1未提交改动不混入修复候选。
