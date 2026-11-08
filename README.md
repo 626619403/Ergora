@@ -89,6 +89,7 @@ src/ergora/
 ├── agent_definitions.py / workflow_definitions.py 静态专家库与嵌套工作流预览
 ├── definition_bundles.py / asset_trees.py 完整资源包、不可变版本与树身份
 ├── agents.py / agent_backends.py   Agent兼容入口、原生后端合同与局部实现
+├── task_mcp.py                     每调用固定资源投影、官方MCP SDK与连接回执
 ├── reference_executor.py / stage_driver.py 可选六阶段桥接与专用进程入口
 ├── kernel.py / data/drivers/        原生 Forge campaign 与独立 SDK 驱动
 ├── memory.py / state.py            项目记忆、来源与持久状态
@@ -157,7 +158,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1 -A
 
 开发者可用独立的[图与表单比较例子](examples/editor-comparison/README.md)复现技术选型。Node仅用于该例子构建，默认安装保持原要求；例子只编辑试验草稿，正式功能状态见[实施计划](docs/PLAN.md)。
 
-基础安装还可检查和预览[可嵌套工作流定义](docs/WORKFLOW_DEFINITIONS.md)：精确引用专家或子模板，表达串并行/all-join，完整累加祖先材料并校验整链权限与总预算。当前`composition`不调用模型或授予执行权限；正式运行继续使用六阶段，静态图接入运行和页面沿计划推进。
+基础安装还可检查和预览[可嵌套工作流定义](docs/WORKFLOW_DEFINITIONS.md)：精确引用专家或子模板，表达串并行/all-join，完整累加祖先材料并校验整链权限与总预算。可显式准备并调用单个叶子；默认text-only，Linux的task-mcp可按授权URI读取固定Skill附件。完整嵌套调度及正式批准沿计划接入，正式开发仍使用六阶段。
 
 统一注册项目可用 `ergora services status/start/stop/logs/shutdown` 显式管理 Linux/WSL2 中的所选 Supervisor 服务。版本/凭据/TCP 诊断和服务进程状态分别报告；停止需确认，未确认的结果先对账。命令、共享服务栈与日志游标见[使用手册](docs/USAGE.md#显式服务管理)。
 
@@ -408,7 +409,7 @@ agentflow verify
 
 三个模板的角色现可独立于工具选择；[选型调研](docs/research/2026-10-31-template-agents.md) 说明首批适配和未接入工具的优缺点。ForgeKernel 作为可选原生候选生成工具，其内部 judge 不替代可信训练门禁；模型质量和 GPU 性能比较需要真实项目证据。固定官方版本及实际检查范围记录在 [计划](docs/PLAN.md) 和各切片交付记录。
 
-当前每个角色仍只绑定一个工具。[专长Agent定义库](docs/AGENT_DEFINITIONS.md)已提供静态包检查、版本化导入、筛选、查看和导出，含kernel执行者与架构审查者示例；尚未接入实际角色调用。[Agent组合设计](docs/architecture/decisions/0004-agent-composition.md)随后将定义与模板成员组合，并优先选择不同的执行/审查后端。[嵌套工作流设计](docs/architecture/decisions/0005-composable-workflows.md)描述可复用子模板的串行/并行汇合，祖先Skill/上下文完整继承及父子权限修订；这些运行语义尚未实现。[框架与论文对照](docs/research/2026-11-08-agent-composition.md)及[分片计划](docs/plans/2026-11-08-agent-composition.md)记录依据和验收顺序。
+当前每个角色仍只绑定一个工具。[专长Agent定义库](docs/AGENT_DEFINITIONS.md)已提供静态包检查、版本化导入、筛选、查看和导出，含kernel执行者与架构审查者示例；可通过composition准备完整输入并显式调用独立叶子；尚未接入正式六阶段的多成员调用。[Agent组合设计](docs/architecture/decisions/0004-agent-composition.md)随后将定义与模板成员组合，并优先选择不同的执行/审查后端。[嵌套工作流设计](docs/architecture/decisions/0005-composable-workflows.md)描述可复用子模板的串行/并行汇合，祖先Skill/上下文完整继承及父子权限修订；这些运行语义尚未实现。[框架与论文对照](docs/research/2026-11-08-agent-composition.md)及[分片计划](docs/plans/2026-11-08-agent-composition.md)记录依据和验收顺序。
 
 ## 项目状态与许可
 

@@ -1,12 +1,13 @@
 """Independent Agent invocations, frozen context and durable run records."""
 
+import asyncio
 import hashlib
 import json
 from pathlib import Path
 import shutil
 import uuid
 
-from . import agent_backends, agent_definitions, agents, contracts, projects, workflow_definitions
+from . import agent_backends, agent_definitions, agents, contracts, projects, task_mcp, workflow_definitions
 from .bindings import validate_binding
 from .state import State, now
 
@@ -71,15 +72,16 @@ def run_agent(state: State, project_id: str, role: str, prompt: str, timeout: in
 
 def run_input(state: State, project_id: str, source: Path, timeout: int = 300, *,
               backend: str | None = None, model: str | None = None, reason: str | None = None,
-              codex_config: Path | None = None) -> dict:
-    """Explicit independent text-only call; no workflow ports or formal approval."""
+              codex_config: Path | None = None, mode: str = "text-only") -> dict:
+    """Explicit independent restricted call; no workflow ports or formal approval."""
     contracts.validate(timeout, {"type": "integer", "minimum": 1, "maximum": 3600}, "Agent timeout")
+    contracts.validate(mode, {"enum": ["text-only", "task-mcp"]}, "Composition call mode")
     project = state.project(project_id)
     prepared = workflow_definitions.inspect_input(source, material=True)
     leaf = next(item for item in prepared["composition"]["instances"] if item["path"] == prepared["request"]["instance"])
     permissions = leaf["permissions"]
     if permissions["write"] or permissions["shell"] or permissions["network"]:
-        raise ValueError("Text-only calls cannot satisfy write, shell or network requests; use a read-only leaf")
+        raise ValueError(f"{'Text-only' if mode == 'text-only' else 'Task MCP'} calls cannot satisfy write, shell or network requests; use a read-only leaf")
     reference = leaf["ref"]
     definition = agent_definitions.library(Path(prepared["path"]) / "assets").get(reference["id"], reference["version"])
     agent_definitions.validate_admission(definition)
@@ -89,7 +91,9 @@ def run_input(state: State, project_id: str, source: Path, timeout: int = 300, *
     agents.validate_binding(leaf["role"], binding, formal=True)
     adapter = agent_backends.for_binding(binding)
     adapter.check_invocation()
-    adapter.check_text_only()
+    adapter.check_mode(mode)
+    if mode == "task-mcp":
+        task_mcp.check_available()
     run_id = uuid.uuid4().hex
     output = state.root / "runs" / run_id
     snapshot = output.with_name(run_id + ".input")
@@ -104,9 +108,9 @@ def run_input(state: State, project_id: str, source: Path, timeout: int = 300, *
                 "prompt_sha256": prepared["request"]["prompt_sha256"],
                 "context": {"resources": [{key: value for key, value in resource.items() if key != "text"}
                                           for resource in leaf["resources"]]},
-                "policy": {"mode": "text-only", "requested_permissions": permissions,
-                    "model_tools": "no file, shell, web or MCP tools; native response/interaction tools may remain",
-                    "resources": "complete inline instructions/context; Skill attachments unavailable to this mode",
+                "policy": {"mode": mode, "requested_permissions": permissions,
+                    "model_tools": "explicit task MCP list/read; native MCP discovery and response/interaction tools may remain" if mode == "task-mcp" else "no file, shell, web or MCP tools; native response/interaction tools may remain",
+                    "resources": "complete inline instructions/context; declared fixed resources via MCP" if mode == "task-mcp" else "complete inline instructions/context; Skill attachments unavailable to this mode",
                     "ambient_configuration": "disabled by native CLI options", "host_isolation": "not provided"},
                 "formal_execution_authorized": False}
     _store(state, document)
@@ -116,12 +120,27 @@ def run_input(state: State, project_id: str, source: Path, timeout: int = 300, *
         saved = workflow_definitions.inspect_input(snapshot, material=True)
         if saved["digest"] != prepared["digest"]:
             raise ValueError("Composition input changed while copying the run snapshot")
-        document.update(input_path=str(snapshot), status="running")
+        document.update(input_path=str(snapshot))
+        native_mcp = None
+        if mode == "task-mcp":
+            scope = task_mcp.freeze(saved, run_id, output.with_name(run_id + ".scope.json"))
+            document["task_mcp"] = {"scope": scope}
+            _store(state, document)
+            preflight = task_mcp.launch(scope, output.with_name(run_id + ".mcp-preflight.jsonl"))
+            document["task_mcp"]["preflight"] = asyncio.run(task_mcp.probe(preflight, output.with_name(run_id + ".mcp-preflight.stderr")))
+            native_audit = output.with_name(run_id + ".mcp-native.jsonl")
+            native_mcp = task_mcp.launch(scope, native_audit)
+        document["status"] = "running"
         _store(state, document)
         working = output.with_name(run_id + ".cwd")
         working.mkdir(mode=0o700)
         document.update(agents.invoke(binding, leaf["role"], saved["prompt"], working, output, timeout,
-            agents.result_schema(["response"], leaf["role"] == "reviewer"), codex_config=codex_config, text_only=True))
+            agents.result_schema(["response"], leaf["role"] == "reviewer"), codex_config=codex_config, mode=mode, task_mcp=native_mcp))
+        if mode == "task-mcp" and document["status"] == "succeeded":
+            document["task_mcp"]["native"] = task_mcp.verify_native(native_audit, scope["sha256"])
+    except KeyboardInterrupt:
+        # SDK preflight runs before the native process owner handles Ctrl+C.
+        document.update(status="cancelled", error="Agent preparation or invocation interrupted")
     except (OSError, ValueError) as error:
         document.update(status="failed", error=str(error))
     document["finished"] = now()

@@ -75,10 +75,11 @@ def parser() -> argparse.ArgumentParser:
     verify_input = operations.add_parser("verify-input")
     verify_input.add_argument("directory", type=Path)
     verify_input.add_argument("--material", action="store_true")
-    run_input = operations.add_parser("run-input", help="Independent text-only leaf call; no ports, MCP or formal approval")
+    run_input = operations.add_parser("run-input", help="Independent restricted leaf call; no workflow ports or formal approval")
     run_input.add_argument("project")
     run_input.add_argument("directory", type=Path)
     run_input.add_argument("--timeout", type=int, default=300)
+    run_input.add_argument("--mode", choices=("text-only", "task-mcp"), default="text-only")
     run_input.add_argument("--backend", choices=("codex", "claude-code"))
     run_input.add_argument("--model")
     run_input.add_argument("--backend-reason")
@@ -614,7 +615,7 @@ def main(argv: list[str] | None = None) -> int:
                 output = workflow_definitions.inspect_input(args.directory, material=args.material)
             elif args.operation == "run-input":
                 output = agent_runs.run_input(State(args.home), args.project, args.directory, args.timeout,
-                    backend=args.backend, model=args.model, reason=args.backend_reason, codex_config=args.codex_config)
+                    backend=args.backend, model=args.model, reason=args.backend_reason, codex_config=args.codex_config, mode=args.mode)
             else:
                 state = State(args.home)
                 if args.operation == "import":

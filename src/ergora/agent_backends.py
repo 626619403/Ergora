@@ -11,6 +11,13 @@ import tomllib
 from . import components, contracts, processes
 
 
+def _events(output: Path):
+    with (output / "stdout.txt").open(encoding="utf-8") as stream:
+        for line in stream:
+            if line.strip():
+                yield json.loads(line)
+
+
 @dataclass(frozen=True)
 class Invocation:
     role: str
@@ -19,13 +26,14 @@ class Invocation:
     protocol: Path
     timeout: int
     schema: dict | None
-    text_only: bool = False
+    mode: str = "native"
+    task_mcp: dict | None = None
 
 
 class AgentBackend(ABC):
     authentication = "not_checked"
     guidance: tuple[str, ...] = ()
-    supports_text_only = False
+    invocation_modes = ("native",)
 
     def __init__(self, binding: dict, options: dict):
         self.binding = binding
@@ -48,15 +56,15 @@ class AgentBackend(ABC):
     def check_invocation(self) -> None:
         """Reject unsupported runtime modes before creating protocol files."""
 
-    def check_text_only(self) -> None:
-        if not self.supports_text_only:
-            raise ValueError(f"{self.binding['tool']} does not support text-only composition calls")
+    def check_mode(self, mode: str) -> None:
+        if mode not in self.invocation_modes:
+            raise ValueError(f"{self.binding['tool']} does not support {mode} composition calls")
 
     @abstractmethod
     def command(self, request: Invocation) -> tuple[list[str], str]:
         """Prepare the native command and stdin in an existing protocol directory."""
 
-    def read_result(self, output: Path, protocol: Path) -> dict:
+    def read_result(self, output: Path, request: Invocation) -> dict:
         return json.loads((output / "stdout.txt").read_text(encoding="utf-8"))
 
     def diagnostics(self) -> dict:
@@ -70,7 +78,7 @@ class AgentBackend(ABC):
 
 
 class CodexBackend(AgentBackend):
-    supports_text_only = True
+    invocation_modes = ("native", "text-only", "task-mcp")
     guidance = ("Use codex login, then tools doctor PROJECT --probe; stored credentials do not verify account access or quota.",)
 
     def executable(self) -> str:
@@ -86,9 +94,9 @@ class CodexBackend(AgentBackend):
         if self.options.get("config") is not None:
             options += ["--ignore-user-config", "--ignore-rules", "--disable", "plugins", "--disable", "apps"]
             config = tomllib.loads(Path(self.options["config"]).read_text(encoding="utf-8"))
-        if request.text_only:
+        if request.mode != "native":
             if self.options.get("arguments"):
-                raise ValueError("Text-only composition calls do not accept additional native arguments")
+                raise ValueError("Restricted composition calls do not accept additional native arguments")
             options = ["--ignore-user-config", "--ignore-rules", "--strict-config", "--skip-git-repo-check"]
             config = {key: value for key, value in config.items() if key in (
                 "model", "model_provider", "model_reasoning_effort", "service_tier", "model_providers")}
@@ -104,6 +112,10 @@ class CodexBackend(AgentBackend):
                 "features.plugins": False, "features.memories": False, "features.skill_mcp_dependency_install": False,
                 "skills.include_instructions": False, "skills.bundled.enabled": False,
                 "web_search": "disabled", "project_doc_max_bytes": 0})
+            if request.task_mcp is not None:
+                config["mcp_servers"] = {"ergora_task": {**request.task_mcp,
+                    "enabled_tools": ["list", "read"], "required": True,
+                    "startup_timeout_sec": 15, "tool_timeout_sec": 15}}
 
         def add(table, prefix=""):
             for key, value in table.items():
@@ -118,7 +130,7 @@ class CodexBackend(AgentBackend):
                     options.extend(["-c", name + "=" + encoded])
 
         add(config)
-        sandbox = "read-only" if request.text_only else self.binding.get(
+        sandbox = "read-only" if request.mode != "native" else self.binding.get(
             "sandbox", "read-only" if request.role != "implementer" else "workspace-write")
         sandbox = "danger-full-access" if sandbox == "current-container" else sandbox
         argv = [self.options.get("executable", "codex"), "exec", "--ephemeral", "--sandbox", sandbox, "--json", *options]
@@ -129,8 +141,14 @@ class CodexBackend(AgentBackend):
                      "--output-last-message", str(request.protocol / "result.json")]
         return [*argv, "-"], request.prompt
 
-    def read_result(self, output: Path, protocol: Path) -> dict:
-        return json.loads((protocol / "result.json").read_text(encoding="utf-8"))
+    def read_result(self, output: Path, request: Invocation) -> dict:
+        if request.mode == "task-mcp":
+            for event in _events(output):
+                item = event.get("item", {})
+                if (event.get("type") == "item.completed" and item.get("type") == "mcp_tool_call"
+                        and item.get("server") == "ergora_task" and item.get("error") is not None):
+                    raise ValueError("Required task MCP transport failed; see native stdout.txt")
+        return json.loads((request.protocol / "result.json").read_text(encoding="utf-8"))
 
     def probe_commands(self, cwd: Path) -> list[tuple[str, list[str]]]:
         program = processes.resolve_program(self.executable(), cwd)
@@ -138,17 +156,24 @@ class CodexBackend(AgentBackend):
 
 
 class ClaudeCodeBackend(AgentBackend):
-    supports_text_only = True
-    guidance = ("Use claude auth login; authentication is not checked by this driver.",)
+    invocation_modes = ("native", "text-only", "task-mcp")
+    guidance = ("Use claude auth login; authentication is not checked by this driver.",
+                "Task MCP uses --bare: configure its supported API environment credentials; stored OAuth/keychain credentials are not read.")
 
     def executable(self) -> str:
         return "claude"
 
     def command(self, request: Invocation) -> tuple[list[str], str]:
         argv = ["claude", "--print", "--output-format", "json", "--no-session-persistence"]
-        if request.text_only:
-            argv += ["--setting-sources", "", "--restricted", "--safe-mode", "--tools", "",
-                     "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}', "--max-turns", "3"]
+        if request.mode != "native":
+            servers = {} if request.task_mcp is None else {"ergora_task": {"type": "stdio", **request.task_mcp}}
+            argv += ["--setting-sources", "", "--restricted", "--tools", "", "--strict-mcp-config",
+                     "--mcp-config", json.dumps({"mcpServers": servers}), "--max-turns", "24" if servers else "3"]
+            if servers:
+                argv[argv.index("--output-format") + 1] = "stream-json"
+                argv += ["--verbose", "--bare", "--allowedTools", "mcp__ergora_task__list", "mcp__ergora_task__read"]
+            else:
+                argv += ["--safe-mode"]
         elif request.role != "implementer":
             argv += ["--tools", "Read,Grep,Glob", "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}']
         if "model" in self.binding:
@@ -157,8 +182,26 @@ class ClaudeCodeBackend(AgentBackend):
             argv += ["--json-schema", json.dumps(request.schema)]
         return argv, request.prompt
 
-    def read_result(self, output: Path, protocol: Path) -> dict:
-        result = super().read_result(output, protocol)
+    def read_result(self, output: Path, request: Invocation) -> dict:
+        if request.mode == "task-mcp":
+            calls, result = set(), None
+            for event in _events(output):
+                if event.get("type") in ("assistant", "user"):
+                    for block in event["message"]["content"]:
+                        if block.get("type") == "tool_use" and block.get("name") in (
+                                "mcp__ergora_task__list", "mcp__ergora_task__read"):
+                            calls.add(block["id"])
+                        if (block.get("type") == "tool_result" and block.get("tool_use_id") in calls
+                                and block.get("is_error") and not isinstance(event.get("tool_use_result"), dict)):
+                            # Server CallToolResult errors remain recoverable; native
+                            # connection failures have no server result payload.
+                            raise ValueError("Required task MCP transport failed; see native stdout.txt")
+                elif event.get("type") == "result":
+                    result = event
+            if result is None:
+                raise ValueError("Claude Code stream has no terminal result")
+        else:
+            result = super().read_result(output, request)
         if result.get("is_error"):
             raise ValueError("Claude Code reported an error")
         return result.get("structured_output")

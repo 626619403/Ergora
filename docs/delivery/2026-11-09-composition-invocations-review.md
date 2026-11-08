@@ -174,3 +174,28 @@ C4只在既有结构化结果错误处理中加入 `RecursionError`。独立真�
 - 从原任务正文提取五份完整文件，逐份SHA与该轮所给身份相同；CLI另提供变更上下文及完整文件身份。最终所有生产SHA与审查时相同。最终测试与模型收到的旧测试严格只差同一行两处 `2000 → 10000`，没有偷偷继承未审查的生产改动。
 
 上述最终回执核验证据另存 `reviewer-r3-final-receipt.json`。R3包360/283身份、真实进程递归失败持久化和Windows argv分界已在前段独立核过，最终生产未变，不重复启动模型或重跑整套。下一按新候选实际提交身份核双OS必要CI、Windows真实字节/argv回归和远端一致性，再按原计划进入最小任务MCP。
+
+## 候选Git对象与推送身份核验
+
+普通候选为 `8208efa36cb9c76344d10d6789702e5bcc654ade`，已独立核唯一父提交为 `eee09efcba093839dba5407c474a7a5b46a3a2a0`，与 `candidate.json` 所列15项变更集合完全一致。集合为R3冻结11项、本报告和前片3项状态归档，没有隐含的后片实现。
+
+本轮全部包/源码身份从固定Git blob读取，未使用已经开始AC3b.3实现的工作区。与R3最终清单比较，9项内容逐字相同；PLAN及本片交付记录的原SHA都能匹配候选文件的严格前缀，新增后缀仅追加本地独立结论和下一交付步骤。最终测试和生产源码保持复核身份。两份MCP后片文档在候选树内不存在。
+
+独立以 `git cat-file --batch` 读取360个候选包文件，逐份与保存的R3 wheel及身份清单比SHA，一致；wheel仍为 `ea7f45f3818e23f08b1da86b40420bdf6f9f0ee88b8f5d9d4dce9d3932eef961`。再读取候选自身reference-manifest，283份冻结内容在候选Git对象与wheel中均符合原SHA。证据为 `reviewer-candidate-object-check.json`。
+
+作者普通推送回执 `push-remote-identity.json` 记19:38:33 UTC远端一致。审查者随后独立以origin原生HTTPS进行只读 `git ls-remote`，**2026-11-08 19:42:05.550867 UTC** 实际分支 `refs/heads/refactor/architecture-foundations` 仍指向完整 `8208efa36cb9c76344d10d6789702e5bcc654ade`。此前默认SSH查询退出128、SSH443连接超时；HTTPS查询成功，不把失败尝试算作身份通过。独立回执保存为 `reviewer-candidate-remote-check.json`。
+
+本轮候选范围/包/即时远端核验通过，无新增finding。精确候选双OS CI及原生Windows终结尚待实际结果，未登记IV4或本片最终交付完成；不继承前片eee的CI结论。
+
+## 精确候选CI与独立终结
+
+审查者独立抓取[官方run 42516045882](https://github.com/626619403/Ergora/actions/runs/42516045882)及两个作业页面，run状态为Success，完整提交链接为 `8208efa36cb9c76344d10d6789702e5bcc654ade`。逐页核对selectedJobId、矩阵名称、完成状态，以及必要步骤日志URL内的完整候选SHA和job ID。再从run页面提供的job_groups_batch接口以 `attempt=1&batch=0&size=200` 独立读取全部作业：totalCount为2、hasMore为false，两项均completed/success。
+
+- [Windows / Python3.12，job 128839172613](https://github.com/626619403/Ergora/actions/runs/42516045882/job/128839172613)：Build and install wheel、Packaged reference identity、Native application regression、Windows PowerShell 5.1 installer and upgrade四项均success。
+- [Ubuntu / Python3.11，job 128839172876](https://github.com/626619403/Ergora/actions/runs/42516045882/job/128839172876)：前三项均success；Windows专用安装步骤按条件skipped。
+
+固定候选Git对象中的 `.github/workflows/portability.yml` 确实运行完整tests目录，候选 `tests/test_composition_invocations.py` 中真实原生进程的混合换行UTF-8 stdin字节测试、选中可执行文件与command.json argv一致性测试均无跳过标记，10,000层JSON失败持久化反例也在该套件中。该次原生Windows成功补齐此前平台回归缺口；证据范围为这些应用回归和安装升级，Windows真实托管Codex/Claude任务仍不在本次验证内。独立汇总、原始HTML/完整作业列表及哈希保存在 `.ergora/checks/ac3b2-invocations/reviewer-final-ci-verified.json` 及其所列来源；R3保存wheel SHA256再次核实一致。
+
+完成上述CI核验后，审查者于 **2026-11-08 20:04:45.210152 UTC** 再次以origin原生HTTPS执行只读 `git ls-remote`，分支 `refs/heads/refactor/architecture-foundations` 即时指向完整 `8208efa36cb9c76344d10d6789702e5bcc654ade`，退出0且精确匹配。最终回执为 `reviewer-final-closeout-remote-check.json`。
+
+**AC3b.2b独立最终复核通过：C1、C2、S1、C3、C4全部关闭，已检查范围内无未解决finding。** 此结论绑定上述候选Git对象、本地R3证据、该候选双OS成功CI及最终即时远端身份；原R1/R2/R3失败、静态模型审查限制和检查边界全部保留。正在推进的MCP后片工作区实现与文档继续排除本片。

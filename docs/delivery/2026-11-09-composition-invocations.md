@@ -76,3 +76,7 @@ r3源码Python3.11的六套进程重点检查47 passed/16 skipped；安装包Pyt
 随后只将深JSON夹具由2,000改10,000层，Python3.11源码和Python3.12安装包的该例各1 passed；无需重跑已经通过的其他46项。生产源码保持真实自审及wheel身份，r3 wheel SHA256 `ea7f45f3818e23f08b1da86b40420bdf6f9f0ee88b8f5d9d4dce9d3932eef961`。因此当前六套的47项均有通过证据，Python3.12最初1失败及修正重验单独保留，不把分段结果写成另一次整套47通过。独立R3另用真实native夹具核CLI1/failed/finished及实际Windows命令记录分界，机制探针不冒充原生Windows。下一独立最终scope核对、普通候选推送及自身CI。
 
 新独立R3最终本地复核通过：5项历史finding全部关闭，11项scope/差异/真实字节与回执独立核一致，无新finding；下一仅普通候选交付、自身双OS CI及独立即时远端终结。两份MCP后片文档不进入本候选。
+
+候选`8208efa36cb9c76344d10d6789702e5bcc654ade`普通push exit0，2026-11-08 19:38:33 UTC远端完整SHA一致，唯一父eee09ef；自身双OS CI及独立即时远端终结仍待验。后片会改变工作树，后续本片核验固定Git对象/r3安装包身份。
+
+最终精确CI与远端终结完成：官方Portability42516045882对应8208efa完整候选，Windows四项与Ubuntu三项必要步骤均success。原独立者另核完整totalCount=2/hasMore=false作业批次及两个官方job页面，于2026-11-08 20:04:45 UTC实际ls-remote核远端完整SHA一致，五项finding全部关闭。原生产/测试与真实自审身份保持；此状态追加归原切片。

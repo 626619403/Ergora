@@ -2,7 +2,7 @@
 
 工作流包把精确版本的专家或子工作流组合成有界 DAG。可以单独使用结构审查模板，也可以把结构、正确性、测试价值三个模板并行组合，再串接执行模板。结构父链决定继承；工作依赖只通过具名端口传递数据。
 
-`composition` 提供静态检查、不可覆盖的版本库、完整预览与显式单叶调用。预览不调用模型；`run-input` 可将准备好的输入交给所选后端。正式开发按[六阶段流程](USAGE.md#正式任务的操作顺序与恢复)执行。文件工具/MCP、批准链和 Temporal 嵌套执行沿[AC计划](plans/2026-11-08-agent-composition.md)继续接入。
+`composition` 提供静态检查、不可覆盖的版本库、完整预览与显式单叶调用。预览不调用模型；`run-input` 可将准备好的输入交给所选后端。正式开发按[六阶段流程](USAGE.md#正式任务的操作顺序与恢复)执行。固定资源MCP见下文；项目文件工具、批准链和 Temporal 嵌套执行沿[AC计划](plans/2026-11-08-agent-composition.md)继续接入。
 
 ## 运行示例
 
@@ -127,10 +127,33 @@ ergora agent output my-project RUN_ID
 
 默认采用叶子精确定义的后端；`--backend`和`--model`仅覆盖本次调用。跨后端时重新选择model，不沿用另一后端的model名。执行/审查应尽量选择不同后端；Claude不可用时可显式选Codex/ChatGPT，并用`--backend-reason`记录原因。不会在失败后暗中重试另一后端。超时为1–3600秒；成功返回0，模型失败/超时/启动配置或结构错误返回1，输入包或模式准入错误返回2。
 
-当前模式为 `text-only`。完整祖先指令、上下文、Skill的`SKILL.md`和原任务进入模型；Skill附件仍保存在快照中，但本模式没有文件/命令/网页/MCP工具，不能按路径读取其他资料或编辑项目。提供审查任务时应把候选代码及必要证据放入任务正文。请求write、shell或工具network权限的叶子会在调用前拒绝；例如示例执行叶子不能通过本模式运行。原生结构化响应工具或交互工具可能保留。
+默认模式为 `text-only`。完整祖先指令、上下文、Skill的`SKILL.md`和原任务进入模型；Skill附件仍保存在快照中，但本模式没有文件/命令/网页/MCP工具，不能按路径读取其他资料或编辑项目。提供审查任务时应把候选代码及必要证据放入任务正文。请求write、shell或工具network权限的叶子会在调用前拒绝；例如示例执行叶子不能通过本模式运行。原生结构化响应工具或交互工具可能保留。
 
 运行使用新空cwd、原生CLI的规则/工具关闭选项和独立会话。它们约束模型可使用的工具，不提供OS/网络隔离；用户进程及模型服务本身的通信不受此模式隔离。后端不支持所需选项时明确失败。Codex可通过`--codex-config`显式提供推理配置：只消费model/provider/推理强度/service tier及provider的URL、凭据环境变量引用等字段；其中的工具、MCP、Skill、审批和sandbox设置不会覆盖此模式。使用Codex原生登录时可省略该文件；Claude使用原生认证或对应环境变量。不要把密钥写进定义或任务正文。
 
 每次运行在State的`runs/`下保存经过完整核验的输入副本、新空工作目录、完整prompt、实际argv、stdout/stderr和结构化结果，复用原Agent运行列表/输出及完整备份。记录绑定输入摘要、项目修订、请求/实际binding和覆盖原因。运行列表只带资源身份及来源，完整正文可对返回的`input_path`使用`composition verify-input --material`按需核读。读取返回的`result`文件可查看`summary`、`artifacts.response`；审查者另有`approve/request-changes`。进程成功和审查approve分别判断。
 
-单叶调用的任务由操作者提供，图前驱和端口没有执行；原输入仍为`execution_authorized: false`，本次调用也不创建正式候选/批准。完整工作流调度、任务MCP/附件投影和真实强制能力继续按AC3b.3/4、AC3c/4接入。
+单叶调用的任务由操作者提供，图前驱和端口没有执行；原输入仍为`execution_authorized: false`，本次调用也不创建正式候选/批准。完整工作流调度、正式批准和其他强制能力继续按AC3b.4、AC3c/4接入。
+
+
+## 通过任务 MCP 读取固定附件
+
+在Linux/WSL2中，用运行Ergora的同一个Python环境安装可选依赖。仓库根下执行：
+
+```bash
+python -m pip install '.[task-mcp]'
+ergora composition run-input my-project ./prepared-review --mode task-mcp --backend codex --codex-config /PATH/TO/codex.toml --timeout 300
+ergora composition run-input my-project ./prepared-review --mode task-mcp --backend claude-code --timeout 300
+```
+
+此模式保持完整祖先指令、上下文和Skill说明的内联交付，另向模型提供`ergora_task`服务的`list`、`read`工具。先`list`查看虚拟URI，再`read`读取本叶子全部结构祖先及自身声明的资料和Skill附件。普通正文仅开放声明的文件；Skill开放其固定完整目录。它不开放兄弟模板、未声明的同目录文件、整个输入资产库或项目实时文件。资料不作为可执行程序运行；写、shell及工具network请求继续在调用前拒绝。
+
+每次调用生成独立的[task-mcp-scope v1](../src/ergora/data/schemas/task-mcp-scope-v1.json)，保存原始字节、摘要及来源，最多10MB/500文件，完整序列化scope最多16MB；超限拒绝。服务核验scope后只查询内存，不把模型提供的URI当作宿主路径。Linux的固定资源读取逐级使用不跟随链接的文件描述符，拒绝symlink/hardlink/特殊文件；当前Windows新模式会给出Linux/WSL2指引，既有Windows功能继续可用。
+
+`list(path="",offset=0,max_entries=100)`按授权URI分页，每页条目元数据最多约64KiB；`read(path,offset=0,max_bytes=65536)`按字节分页。返回文件大小、SHA256和`next_offset`；可解码块为UTF-8，二进制或跨编码边界为明确base64。继续请求`next_offset`可取得完整内容，不以一次工具响应代表整个目录或文件。
+
+MCP配置只在本次调用生成。Codex只选择该server的两工具，native MCP资源发现/响应或交互入口可能保留；服务不注册额外resources/templates/prompts。Claude使用`--bare --restricted`、空native工具及strict显式MCP；bare模式只使用其支持的API环境认证，不读取常规OAuth/keychain。需要OAuth登录的用户可继续使用text-only，或为该模式设置后端支持的API环境变量；无需把密钥放入定义、scope或聊天。不同后端不会自动共享模型名或认证。
+
+运行记录的`task_mcp`包含固定scope身份、预检结果和本次native连接回执。预检与native回执分开；后者必须是该scope的实际SDK成功`tools/list`且工具恰为list/read。旧握手及新版无握手请求分别记录实际协议和`handshake_observed`；没有真实服务回执时，即使最终模型JSON成功也登记失败。scope与回执跟随State完整备份，运行列表继续只显示摘要；这不提供OS隔离，也不扩张模板或项目授权。
+
+运行还检查本次原生后端已经报告的任务MCP传输错误：即使模型随后重连并返回合格结果，该次运行仍记为failed，保留原始stdout。未知资源或非法URI等服务端领域拒绝允许模型纠正后继续；它们不等于连接失效。Claude在此模式保存stream-json原始事件并提取最终结构结果，普通native/text-only输出处理保持。此检查不提供持续heartbeat，不能检测没有后续调用且无原生错误事件的静默失联。

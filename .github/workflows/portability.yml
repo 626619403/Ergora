@@ -39,7 +39,7 @@ jobs:
         run: |
           python -m pip install build
           python -m build --wheel
-          python -m pip install "$(python -c 'import glob; print(glob.glob("dist/*.whl")[0])')[dev,web,gepa,temporal]"
+          python -m pip install "$(python -c 'import glob; print(glob.glob("dist/*.whl")[0])')[dev,web,gepa,temporal,task-mcp]"
       - name: Packaged reference identity
         run: python -m ergora reference verify
       - name: Native application regression
