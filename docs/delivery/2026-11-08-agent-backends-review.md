@@ -54,3 +54,15 @@ doctor 的 command 后端不产生任意 argv 探测；请求内按完整绑定�
 独立核最终源码、wheel ZIP 与非 editable 安装353个文件逐字一致，283冻结文件继续匹配 manifest；`independent-final-identities.json` 记录最终 wheel SHA256 `14eb4dca11f798daa06aa8064321fc845b0772f9eac0e43f56f802215f883ffe`。独立比较两包确认只有 `registrations.py`、README说明对应的 METADATA 和 RECORD 变化。因此初版后端探测和生命周期证据仅延续到字节未变的实现，注册变化由上述修后检查另行覆盖。
 
 本地实现及独立复核可收口。前述未验范围保持；本候选普通提交推送、最终文档身份及精确双 OS CI/远端终结仍待后续登记，不从本次本地通过推导远端验收。
+
+## 固定候选、CI与即时远端终结
+
+2026-11-08，同一独立审查者继续核固定候选 `cc7f95f8ab1a696f2f0df2f8216e23b383011b35`。其唯一父提交为 `556410a7a482b11172bc5f66779dc6463fa0322f`；15个提交文件逐项匹配 `final-scope.json`，原 tracked 差异精确匹配归档，源码与测试保持修后身份。14:58:34 UTC已核最终7份文档、267本地链接及30条 parser 的身份和处置记录；独立输入副本在 `.ergora/checks/ac2-backends/independent-final-inputs/`，初版记录未覆盖。
+
+独立于作者的汇总，15:13 UTC实际只读 GET 官方 [CI42492287287](https://github.com/626619403/Ergora/actions/runs/42492287287) 的 run、两个 job 和明确 `attempt=1&batch=0&size=200` 批次。run 为 Success，批次 `hasMore=false` 且完整列出两项 completed/success 作业。Ubuntu `128767072083` 的构建安装 wheel、包内参考身份、原生应用回归三个必要步骤全部 success；Windows `128767072294` 的同三项及 PowerShell 5.1 安装升级四个必要步骤全部 success。各步骤均有完成标记，日志 URL 绑定完整候选 SHA 和对应 job；未见失败、取消或超时步骤。证据为该目录内 `independent-live-fetches.json`、`independent-ci-verification.json` 及原始页面；未下载测试日志或重跑行为矩阵。
+
+取证过程的局限已核清：作者首次所记“辅助脚本已增加批次大小”实际未生效，原默认响应仍为 `hasMore=true`。作者已明确纠正并保存前态；独立复取和作者实际修正后的完整批次均为两项、无后续页。未把不完整批次、无认证 API403 或空日志链接误取的主页当通过证据。此处只修取证辅助流程及记录，仓库 CI 工作流未改。
+
+**15:14:45 UTC 独立 `git ls-remote` exit0，远端 `refs/heads/refactor/architecture-foundations` 精确为 `cc7f95f8ab1a696f2f0df2f8216e23b383011b35`。** SSH设置仅在进程内读取既有配置，未打印、修改或推送；记录为 `independent-remote-verification.json`。候选之后的工作树仅有三份已告知的状态/计划文档追加；AC3a备份恢复后的定义/资源身份要求仍是待实施验收，未混入新生产代码。
+
+**固定候选、必要双 OS CI及即时远端终结通过，无新增 finding；R-1保持关闭，AC2可完整关闭。** 本候选CI补足其配置范围内的 Windows 原生回归和安装升级步骤；真实模型、认证、MCP装载、权限强制、固定 SDK、嵌套恢复及性能等未验范围仍保留。后续状态归档不改变本次固定生产候选与原证据范围。
