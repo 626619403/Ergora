@@ -203,7 +203,7 @@ flowchart LR
 |---|---|---|
 |projects / agent_runs|`projects`、`agent_runs`；`runs/`|项目/binding 修订、独立调用上下文与结果；F1.1新调用附加版本化有效绑定视图，旧文档不回写|
 |memory|`memories`、`memory_mirrors`|来源、修订、删除；投影同步不改变 canonical|
-|skill_assets|`skill_versions`、`skill_heads`、`skill_events`；`skills/`|不可变树身份、活动头及采用/回退历史|
+|skill_assets|`skill_versions`、`skill_heads`、`skill_events`；`skills/`|完整树在同父目录暂存/核身份，同digest文件锁与原子发布先于事务登记；未登记残树可恢复，已登记损坏拒绝覆盖；活动头及采用/回退历史不变|
 |evaluation / optimization|`evaluation_suites`、`evaluations`、`optimizations`；suite/run/proposal 文件|固定评分输入与成本、候选关系；生成器不改可信评分|
 |research / drafts / kernel|`research_runs`、`source_snapshots`、`source_heads`、`research_proposals`、`drafts`、`kernel_runs`；来源与原生产物|预算/取消、资料/草稿 revision、Forge 原生 ID 与未知状态|
 |State / backups|schema 版本、迁移前 DB 快照、完整离线备份清单|DDL/锁/版本拒绝；DB 快照不等于完整文件备份|

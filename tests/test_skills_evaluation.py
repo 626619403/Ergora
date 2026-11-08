@@ -2,8 +2,10 @@ import json
 import os
 import math
 from pathlib import Path
+import shutil
 import subprocess
 import sys
+import time
 
 import pytest
 
@@ -99,6 +101,115 @@ def test_missing_selected_asset_is_rejected_before_agent_or_evaluator_runs(skill
         evaluation.evaluate(state, "demo", baseline["digest"], suite["digest"])
     assert tools.runs(state, "demo") == []
     assert evaluation.listing(state, "demo")["runs"] == []
+
+
+def test_skill_import_recovers_unregistered_partial_tree_and_preserves_valid_publication(skill_project):
+    state, _, source, _, _ = skill_project
+    (source / "reference.txt").write_text("Complete resource\n")
+    digest, _ = skills.digest_tree(source)
+    destination = state.root / "skills" / "other" / digest / source.name
+    destination.mkdir(parents=True)
+    shutil.copy2(source / "SKILL.md", destination / "SKILL.md")
+
+    imported = skills.import_bundle(state, "other", source)
+    assert skills.get(state, "other", digest) == imported
+    assert (destination / "reference.txt").read_bytes() == (source / "reference.txt").read_bytes()
+    timestamps = {p.name: p.stat().st_mtime_ns for p in destination.iterdir()}
+    assert skills.import_bundle(state, "other", source, "Repeated import") == imported
+    assert {p.name: p.stat().st_mtime_ns for p in destination.iterdir()} == timestamps
+    stored = skills.versions(state, "other")
+    assert len(stored["versions"]) == len(stored["active"]) == len(stored["history"]) == 1
+
+
+@pytest.mark.parametrize("boundary", ["copy", "publication"])
+def test_interrupted_skill_import_retries_without_partial_registration(skill_project, monkeypatch, boundary):
+    state, _, source, _, _ = skill_project
+    (source / "reference.txt").write_text("Complete resource\n")
+    digest, _ = skills.digest_tree(source)
+    destination = state.root / "skills" / "other" / digest / source.name
+    with monkeypatch.context() as patch:
+        if boundary == "copy":
+            def interrupted_copy(src, dst, **kwargs):
+                Path(dst).mkdir(parents=True)
+                shutil.copy2(Path(src) / "SKILL.md", Path(dst) / "SKILL.md")
+                raise OSError("Injected copy interruption")
+            patch.setattr(shutil, "copytree", interrupted_copy)
+        else:
+            rename = Path.rename
+            def interrupted_publication(path, target):
+                result = rename(path, target)
+                if Path(target) == destination:
+                    raise OSError("Injected publication interruption")
+                return result
+            patch.setattr(Path, "rename", interrupted_publication)
+        with pytest.raises(OSError, match="Injected"):
+            skills.import_bundle(state, "other", source)
+    assert skills.versions(state, "other") == {"versions": [], "active": [], "history": []}
+    assert destination.exists() == (boundary == "publication")
+    imported = skills.import_bundle(state, "other", source)
+    assert skills.get(state, "other", digest) == imported
+    stored = skills.versions(state, "other")
+    assert len(stored["versions"]) == len(stored["active"]) == len(stored["history"]) == 1
+
+
+@pytest.mark.parametrize("damage", ["modified", "missing"])
+def test_skill_import_refuses_to_replace_registered_evidence(skill_project, damage):
+    state, _, source, baseline, _ = skill_project
+    destination = Path(baseline["path"])
+    if damage == "modified":
+        (destination / "SKILL.md").write_text("Changed evidence\n")
+    else:
+        shutil.rmtree(destination)
+    before = skills.versions(state, "demo")
+    with pytest.raises(ValueError, match="content changed"):
+        skills.import_bundle(state, "demo", source)
+    assert skills.versions(state, "demo") == before
+    if damage == "modified":
+        assert (destination / "SKILL.md").read_text() == "Changed evidence\n"
+    else:
+        assert not destination.exists()
+
+
+def test_concurrent_skill_imports_publish_one_complete_version(skill_project, tmp_path):
+    state, _, source, _, _ = skill_project
+    (source / "reference.txt").write_text("Complete resource\n" * 10000)
+    digest, _ = skills.digest_tree(source)
+    start = tmp_path / "start"
+    script = """import json,sys,time
+from pathlib import Path
+from ergora import skills
+from ergora.state import State
+state = State(Path(sys.argv[1]))
+Path(sys.argv[3]).touch()
+while not Path(sys.argv[4]).exists():
+    time.sleep(.01)
+print(json.dumps(skills.import_bundle(state, 'other', Path(sys.argv[2]))))
+"""
+    ready = [tmp_path / f"ready-{i}" for i in range(4)]
+    children = []
+    try:
+        for path in ready:
+            children.append(subprocess.Popen([sys.executable, "-c", script, str(state.root), str(source), str(path), str(start)],
+                                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True))
+        deadline = time.monotonic() + 15
+        while not all(path.exists() for path in ready) and time.monotonic() < deadline:
+            time.sleep(.01)
+        assert all(path.exists() for path in ready), "Import processes did not become ready"
+        start.touch()
+        results = []
+        for child in children:
+            stdout, stderr = child.communicate(timeout=20)
+            assert child.returncode == 0, stdout + stderr
+            results.append(json.loads(stdout))
+    finally:
+        for child in children:
+            if child.poll() is None:
+                child.kill()
+            child.wait(timeout=5)
+    assert all(result == results[0] for result in results)
+    assert skills.get(state, "other", digest) == results[0]
+    stored = skills.versions(state, "other")
+    assert len(stored["versions"]) == len(stored["active"]) == len(stored["history"]) == 1
 
 
 def test_adoption_rejects_evidence_from_a_different_suite(skill_project):

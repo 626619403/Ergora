@@ -11,7 +11,7 @@ import tempfile
 
 import yaml
 
-from .state import State, now
+from .state import State, file_lock, now
 
 
 def digest_tree(directory: Path) -> tuple[str, dict]:
@@ -87,9 +87,9 @@ def import_bundle(state: State, project_id: str, source: Path, hypothesis: str =
     state.project(project_id)
     source = source.expanduser().resolve(strict=True)
     original_digest, _ = digest_tree(source)
-    staging = state.root / "imports"
-    staging.mkdir(exist_ok=True)
-    with tempfile.TemporaryDirectory(dir=staging) as temporary:
+    publication = state.root / "skills" / project_id / original_digest
+    publication.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=".import-", dir=publication) as temporary:
         copy = Path(temporary) / "bundle"
         shutil.copytree(source, copy, symlinks=True)
         digest, files = digest_tree(copy)
@@ -100,24 +100,30 @@ def import_bundle(state: State, project_id: str, source: Path, hypothesis: str =
             raise ValueError("Source directory name must match the skill name")
         if parent is not None and get(state, project_id, parent)["name"] != meta["name"]:
             raise ValueError("Candidate parent belongs to a different skill")
-        destination = state.root / "skills" / project_id / digest / meta["name"]
-        if not destination.exists():
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copytree(copy, destination)
-    with state.connect() as db:
-        db.execute("BEGIN IMMEDIATE")
-        previous = db.execute("SELECT digest FROM skill_heads WHERE project=? AND name=?", (project_id, meta["name"])).fetchone()
-        existing = db.execute("SELECT document FROM skill_versions WHERE project=? AND digest=?", (project_id, digest)).fetchone()
-        if existing:
-            return json.loads(existing[0])
-        document = {**meta, "project": project_id, "digest": digest, "path": str(destination), "files": files,
-                    "parent": parent or (previous[0] if previous else None), "hypothesis": hypothesis,
-                    "source": str(source), "created": now()}
-        db.execute("INSERT INTO skill_versions VALUES (?, ?, ?)", (project_id, digest, json.dumps(document)))
-        if previous is None:
-            db.execute("INSERT INTO skill_heads VALUES (?, ?, ?, 1)", (project_id, meta["name"], digest))
-            event = {"action": "baseline", "to": digest, "reason": "Initial imported baseline; not a measured improvement", "at": now()}
-            db.execute("INSERT INTO skill_events VALUES (?, ?, ?)", (project_id, meta["name"], json.dumps(event)))
+        destination = publication / meta["name"]
+        with file_lock(publication / ".import.lock"), state.connect() as db:
+            db.execute("BEGIN IMMEDIATE")
+            existing = db.execute("SELECT document FROM skill_versions WHERE project=? AND digest=?", (project_id, digest)).fetchone()
+            actual = digest_tree(destination)[0] if destination.exists() else None
+            if actual != digest:
+                if existing:
+                    raise ValueError("Stored skill content changed; refuse to replace registered evidence")
+                # Only an unregistered orphan can be replaced. The verified copy
+                # shares its parent filesystem so readers never see a partial tree.
+                if destination.exists():
+                    shutil.rmtree(destination)
+                copy.rename(destination)
+            if existing:
+                return json.loads(existing[0])
+            previous = db.execute("SELECT digest FROM skill_heads WHERE project=? AND name=?", (project_id, meta["name"])).fetchone()
+            document = {**meta, "project": project_id, "digest": digest, "path": str(destination), "files": files,
+                        "parent": parent or (previous[0] if previous else None), "hypothesis": hypothesis,
+                        "source": str(source), "created": now()}
+            db.execute("INSERT INTO skill_versions VALUES (?, ?, ?)", (project_id, digest, json.dumps(document)))
+            if previous is None:
+                db.execute("INSERT INTO skill_heads VALUES (?, ?, ?, 1)", (project_id, meta["name"], digest))
+                event = {"action": "baseline", "to": digest, "reason": "Initial imported baseline; not a measured improvement", "at": now()}
+                db.execute("INSERT INTO skill_events VALUES (?, ?, ?)", (project_id, meta["name"], json.dumps(event)))
     return document
 
 

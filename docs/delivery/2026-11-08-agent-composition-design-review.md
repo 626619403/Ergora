@@ -66,3 +66,44 @@ Q-2公开手册修正可在文档范围关闭：[INTEGRATIONS](../INTEGRATIONS.m
 本报告是唯一写入文件。上述静态计数针对表内冻结的12文件，不包含本报告或随后状态追加。AC0归档仍需主代理同步处置和状态、刷新最终完整范围/静态，再按既有计划完成普通提交推送及远端核对；无新增阻塞finding。
 
 两轴计数：Standards 0；Spec 0。旧源码S-1/Q-1保持待AC1，Q-2文档修正已核。
+
+## AC0普通候选身份及归档复核
+
+2026-11-08，同一评审者从Git对象固定核对普通候选`0f8e2a98dbfa42ea96657ef80fbf2bc356f57abe`。**候选身份、最终静态和审查后状态归档通过；精确CI仍待实际步骤核对，AC0交付终结暂保留pending。** 工作树随后开展的AC1.1代码不在本次范围。
+
+候选唯一父为`b1dbe48a1b14e8e2ec59d4f44e30b2ea367fa1fe`，恰改15文件，集合及每个blob的bytes/SHA均等于本地`final-scope.json`。清单2,720字节，SHA256为`10e322b80fdb899cf0d31d45c7b05ce585e11d0c0dd92203b0345c3111c8c011`。`final-tracked.diff`仅捕获原已跟踪的8文件，30,347字节，SHA256为`fa877548e147e4a81d00db962a2a0671e7fe68f351bed4797eae4f26fceb1eb5`，逐字等于这8文件的实际Git差异；另7个新增文件从候选对象逐项核身份和内容。`src/`、依赖、tests和CI相对唯一父无差异。
+
+与首轮审查相比，README、INTEGRATIONS、当前架构、ADR0004、研究正文、来源JSON及原F6评审追加保持首轮字节身份。本报告在候选中为原8,958字节，SHA256仍为`ae54ad88dd0ae9040949ad05acf7bbc6ae2b20025218f21a1ee7c8998dee7851`。其余变化逐项核为Q-2关闭、独立设计审查和F6.1终结、静态及交付状态的归档；六阶段、权限/资源准入、互补分工和后端策略没有改变。
+
+共享源码报告仅修改作者回应中的Q-2关闭状态并追加归档；将这些状态变化逆向还原后，原32,191字节的完整SHA与首轮一致，原独立工作区保留。AC计划的状态行和末尾记录以同法还原为首轮10,165字节/SHA；三个既有计划的首轮内容从基线加原diff在内存重建，摘要一致，再逐项比较候选追加。新F6终结报告已全文读取，其结论绑定b1/原CI，主代理据此更新F6交付记录和节点；它没有扩大本AC0或新组合的实施状态。
+
+独立从候选对象重算14份Markdown的434本地文件/锚点，缺失为0；30条README命令与最终静态记录相同并通过parser，parser源码字节与候选一致；22份缓存来源身份匹配候选来源JSON，`git diff --check b1dbe48… 0f8e2a9…`通过。最终`static-documents.json`的14文档集合及全部摘要均等于候选blob，文件4,150字节/SHA256 `d8b8d98f0a8c681e9b8df7f4a1bdb92ad6f3fae9f61ef847dc9f59126209616b`。这些计数绑定候选中尚未追加本节的报告版本。
+
+已读主代理普通push/远端原记录：exit0，2026-11-08 13:02:35.595869 UTC远端分支为完整0f8候选。该时点属于主代理记录，本节尚未作新的独立即时远端查询。来源JSON在原push检查范围内，当前没有据Markdown过滤或其他候选的成功推断本候选CI成功。取得该候选两OS实际必要步骤及后续独立核对后，再追加同片终结。范围内无新增Standards或Spec finding。
+
+## AC0精确CI、独立远端与完整终结
+
+2026-11-08，同一评审者继续固定`0f8e2a98dbfa42ea96657ef80fbf2bc356f57abe`，重新从Git对象核15文件集合及全部blob身份，仍与上述final-scope一致。**需求符合性、可维护性、普通候选身份、最终静态、精确双OS必要CI步骤及独立即时远端核对均通过；AC0研究/设计/文档片可登记完成，无新增finding或未解决交付阻塞项。** 上节CI pending现由以下实际证据关闭。
+
+本次直接解析官方最终run/job HTML，并对照候选内`.github/workflows/portability.yml`，没有仅采用主代理汇总JSON或总体Success。`ci-html-status.json`所列6份来源的bytes/SHA全部重算一致；三个关键原页面为：
+
+|来源|字节数|SHA256|
+|---|---:|---|
+|`ci-run-latest.html`|157,527|`04e831df7997443bdaf13bc3db92778f0a87c0bb56e0da7682c9a5231d87d0ea`|
+|`ci-job-128738902396.html`|160,168|`0ed5d220cdaba65ab33a23076d44f085751b6b0654eb8b28c2386f3e94e27122`|
+|`ci-job-128738902829.html`|162,076|`7a38efa18151131a76729b23ac130acf096339ccc50450c45676dbc70b4a27fc`|
+
+[Portability 42483036401](https://github.com/626619403/Ergora/actions/runs/42483036401)的原run页面含精确候选commit链接及Success；run选择原记录同时绑定完整候选、run ID及该workflow。两个job均有各自的最终HTML、对应`selectedJobId`及run引用。逐项核`check-step`状态、完成标记和成功步骤日志URL，结果为：
+
+|必要步骤|[Windows / Python 3.12 · 128738902396](https://github.com/626619403/Ergora/actions/runs/42483036401/job/128738902396)|[Ubuntu / Python 3.11 · 128738902829](https://github.com/626619403/Ergora/actions/runs/42483036401/job/128738902829)|
+|---|---|---|
+|4 · Build and install wheel|success|success|
+|5 · Packaged reference identity|success|success|
+|6 · Native application regression|success|success|
+|7 · Windows PowerShell 5.1 installer and upgrade|success|skipped，符合候选的Windows条件|
+
+每个必要成功步骤的原日志URL均精确为`/626619403/Ergora/commit/0f8e2a98dbfa42ea96657ef80fbf2bc356f57abe/checks/<对应job>/logs/<对应步骤号>`。Windows全部10项success；Ubuntu9项success，仅上述Windows专用项skipped，无失败、取消或超时。已读`verify-ci.py`的逻辑，未执行其写JSON动作；本次没有重跑CI或逐条下载全部控制台日志。
+
+随后复用已授权的`push.py`每命令SSH设置，独立实际执行只读`ls-remote`，exit0、耗时4.499秒。**2026-11-08 13:20:13.555710 UTC**返回`refs/heads/refactor/architecture-foundations`的完整SHA为`0f8e2a98dbfa42ea96657ef80fbf2bc356f57abe`，与固定候选一致。认证值仅在内存供该命令使用，未输出、落盘或修改；未推送、强推或更改配置。这是该明确时点的远端事实。
+
+本次唯一写入为本报告的同片追加，候选中原报告与上节复核记录均保留。AC1.1工作树代码没有进入本次检查、静态或CI结论；S-1/Q-1仍由其各自实现片修复及审查。新组合、真实MCP/Skill装载、不同后端质量/速度、GPU及其他前述未验范围继续由AC后续节点承担，AC0完成不变更这些实施状态。

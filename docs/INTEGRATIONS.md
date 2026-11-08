@@ -63,6 +63,8 @@ ReMe workspace 在相同端点被清空或迁移重建后，执行 `ergora memor
 
 导入遵循 [Agent Skills](https://agentskills.io/specification) 的目录：`my-skill/SKILL.md`，YAML frontmatter 包含 `name: my-skill` 与 `description`，其余脚本、参考资料和资源随完整目录定址。导入拒绝 symlink / `.git`，限 500 文件 / 10 MB。首个同名导入是明确的初始 baseline；后续导入只创建候选，不替换活动版本。
 
+导入先核完整副本，再发布并登记；同项目同版本的并发或中断重试保持幂等。未登记残树可从已核来源恢复；已登记版本若缺失或内容被改，导入和读取会拒绝使用或覆盖它，应从可信备份恢复并复核证据。重复导入不是修复已登记证据的操作。
+
 ```bash
 ergora skill import my-project ./my-skill
 ergora skill list my-project
