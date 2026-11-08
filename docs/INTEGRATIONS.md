@@ -6,7 +6,9 @@ Ergora 的工具绑定由具体消费者读取。默认 `agentflow` 参考执行
 
 绑定 `{"tool":"codex","model":"MODEL_ID"}` 或 `{"tool":"claude-code","model":"MODEL_ID"}`。模型字段可省略以采用工具自身配置；认证沿用工具自己的环境/登录。自有工具使用 `{"tool":"command","argv":["/path/to/tool","arg"]}`，提示作为 stdin，工作目录是注册的项目根，命令无 shell 拼接。相对可执行路径相对项目根。
 
-`ergora agent run` 每次启动独立进程。Codex 使用 ephemeral 会话，reviewer 使用 read-only sandbox；Claude reviewer 限制内建读取工具并使用严格空 MCP 配置。它们仍受工具自身实现和用户环境影响，不是操作系统隔离证明。新入口不会为了执行成功自动取消 sandbox。
+`ergora agent run` 每次启动独立进程。Codex 使用 ephemeral 会话，reviewer **默认**使用 read-only sandbox；保存的 binding 可显式覆盖为其他受支持的 sandbox，Linux 的 `current-container` 使用当前可信容器和用户权限。调用前用 `ergora project config PROJECT` 核对 reviewer 的有效 binding 与来源，调用记录也保存该 binding 和配置快照。Claude reviewer 限制内建读取工具并使用严格空 MCP 配置。这些限制仍受工具实现和实际用户/容器环境影响，不是操作系统隔离证明；新入口不会为了执行成功自动取消 sandbox。
+
+普通 `agent run` 在注册项目目录中调用工具，没有正式工作流的外层 checkout/HEAD 前后监控。正式六阶段另外校验只读阶段未改候选工作区，并核对候选与独立审查证据。独立进程、后端的只读设置、正式候选门禁和操作系统隔离应分别判断，不能将其中任意一项解释为其他几项已经成立。
 
 退出码、超时和 SIGINT 取消均留存；同进程组后代在命令结束时清理。工具须以受控前台命令运行。机器故障后的遗留 running 不是可靠恢复终态，需操作者对账；正式工作流恢复沿用参考 Temporal。返回 succeeded 只证明命令退出成功，不代表正式代码审查通过。
 

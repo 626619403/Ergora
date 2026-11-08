@@ -1,5 +1,7 @@
 # 当前架构与扩展边界
 
+2026-11-08补充：当前源码仍是单角色单binding的实现。[完整快照评审及处置](../delivery/2026-11-08-agent-composition-review.md)记录现有缺陷与组合能力差距；[ADR0004](decisions/0004-agent-composition.md)描述职能、专长化Agent定义、模板成员和后端分离的目标设计，尚未实现，不替代下方真实调用关系。实施顺序在[AC计划](../plans/2026-11-08-agent-composition.md)维护。
+
 2026-11-05，R8后的当前导航，覆盖F1项目定义、F2安装/运维、F3正式任务CLI/API生命周期与F4网页消费者。F3已通过[阶段验收](../delivery/2026-11-03-f3-completion.md)，F4的创建/原ID恢复、原运行/计划/批准/取消/对账/导出及有界事件/job文本均已实现，[完整页面收口](../delivery/2026-11-05-f4-completion.md)的恢复与服务退出验收单独登记。F5.1只读证据索引与F5.2预算/用量事实CLI/API均已交付；F5.3a原生交接包及离线校验已实现，验收单独登记，F5.3b显式HTTP下载已实现，发行与真实下载验收单独登记，F5.4页面的发行/浏览器及独立审查、精确提交/双OS CI和同片终结通过；F5.5实际服务恢复组合、新综合独立审查与纯文档精确交付/远端终结通过，完整F5完成；G0全新用户旅程独立进行。历史[A1审计](2026-11-01-audit.md)及[R8记录](../delivery/2026-11-02-refactoring-exit.md)保留原身份与范围。设计约束见[ADR0001](decisions/0001-refactoring-foundations.md)/[0002](decisions/0002-static-boundaries.md)。
 
 ## 模块与依赖

@@ -1,0 +1,265 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-08",
+  "project_source_commit": "b1dbe48a1b14e8e2ec59d4f44e30b2ea367fa1fe",
+  "method": "官方文档与固定源码定向核对；六篇论文正文方法/实验条件/限制定向阅读；未运行竞品或复现论文；hash只固定取得的字节，不证明已逐行阅读。原始缓存不入Git。",
+  "sources": [
+    {
+      "id": "mast",
+      "url": "https://arxiv.org/html/2503.13657v3",
+      "resolved_url": "https://arxiv.org/html/2503.13657v3",
+      "bytes": 1780114,
+      "sha256": "252e1c7721675e902c6ebd8f757134830ff99ef4258898935923e6164fb80183",
+      "status": "readable",
+      "kind": "paper",
+      "read_scope": "正文3–5；附录A/G/H的分类、干预与限制段"
+    },
+    {
+      "id": "agentprune",
+      "url": "https://arxiv.org/html/2410.02506v1",
+      "resolved_url": "https://arxiv.org/html/2410.02506v1",
+      "bytes": 628019,
+      "sha256": "8ee4b90b2470c9440debafa5909c7dfd20ac6a6ad6822fc7d2e12d3e047e15c6",
+      "status": "readable",
+      "kind": "paper",
+      "read_scope": "正文2–4，含3.4适用条件与成本"
+    },
+    {
+      "id": "aflow",
+      "url": "https://arxiv.org/html/2410.10762v4",
+      "resolved_url": "https://arxiv.org/html/2410.10762v4",
+      "bytes": 1525327,
+      "sha256": "69d7f1a94bdefa80ff832fc40984d6301ce8bbc6671bbe35c14e94e29670bc6f",
+      "status": "readable",
+      "kind": "paper",
+      "read_scope": "正文3–5；附录A的算子/代码映射及G"
+    },
+    {
+      "id": "puppeteer",
+      "url": "https://arxiv.org/html/2505.19591v2",
+      "resolved_url": "https://arxiv.org/html/2505.19591v2",
+      "bytes": 341367,
+      "sha256": "9c43d6a2fda0bd8aa6772b64fd4f7c8e56d75dd5e0111daca30b89b546b4da54",
+      "status": "readable",
+      "kind": "paper",
+      "read_scope": "正文2–3；附录B–D"
+    },
+    {
+      "id": "deepseek-mirror",
+      "url": "https://offloop.org/zh-CN/learn/exploring-deepseek-super-agent-design",
+      "resolved_url": "https://offloop.org/zh-CN/learn/exploring-deepseek-super-agent-design",
+      "bytes": 505559,
+      "sha256": "12a312200c00b5b99af876ae4d31e53cc6f713a6a20019cc6f56686eccf48cf0",
+      "status": "readable",
+      "kind": "secondary-article",
+      "read_scope": "正文设计、简化实验条件、开放问题；未独立确认与官方原文逐字一致"
+    },
+    {
+      "id": "openai-agents-doc",
+      "url": "https://openai.github.io/openai-agents-python/agents/",
+      "resolved_url": "https://openai.github.io/openai-agents-python/agents/",
+      "bytes": 144883,
+      "sha256": "30629f9518dbf89441ee55606df2af2d31b1e6c8039a15b9a0dbf253d53be3be",
+      "status": "readable",
+      "kind": "official-documentation",
+      "read_scope": "Agent基本字段、运行/context区分；非SDK完整验收"
+    },
+    {
+      "id": "langgraph-doc",
+      "url": "https://docs.langchain.com/oss/python/langgraph/graph-api",
+      "resolved_url": "https://docs.langchain.com/oss/python/langgraph/graph-api",
+      "bytes": 845826,
+      "sha256": "d6a51177f45e2b7e5ada0743fbff283e58785e6a5d85c91f2dfe28ad3cfbe580",
+      "status": "readable",
+      "kind": "official-documentation",
+      "read_scope": "State/node/edge与compile/context区分；非运行验证"
+    },
+    {
+      "id": "crewai-agents-doc",
+      "url": "https://docs.crewai.com/en/concepts/agents",
+      "resolved_url": "https://docs.crewai.com/v1.15.37/en/concepts/agents",
+      "bytes": 778972,
+      "sha256": "b974717feec489c039ea2aa8a3e00984e65e0010d34eb4029ae6226cb0b8cd77",
+      "status": "readable",
+      "kind": "official-documentation",
+      "read_scope": "角色/目标/配置入口；部分字段与固定HEAD存在版本差异，以源码为准"
+    },
+    {
+      "id": "adk-workflows",
+      "url": "https://adk.dev/workflows/",
+      "resolved_url": "https://adk.dev/workflows/",
+      "bytes": 118739,
+      "sha256": "a312b2fe7471438e050010b7cf7e2adc4fab1a3de33e8e5d0e12066af5ab89a7",
+      "status": "retrieved",
+      "kind": "official-documentation",
+      "read_scope": "旧multi-agents地址转向workflows；核心结论来自固定Python源码"
+    },
+    {
+      "id": "judge",
+      "url": "https://arxiv.org/html/2306.05685v4",
+      "resolved_url": "https://arxiv.org/html/2306.05685v4",
+      "bytes": 248401,
+      "sha256": "a1768d348815995e70fe3c49c1164e220a74fbd2c35211cffea1861b6ed4e30f",
+      "status": "retrieved",
+      "kind": "paper",
+      "read_scope": "正文3.1–3.4；4的实验设置；self-enhancement结论的保留"
+    },
+    {
+      "id": "cordis-paper",
+      "url": "https://arxiv.org/pdf/2608.25512v1",
+      "resolved_url": "https://arxiv.org/pdf/2608.25512v1",
+      "bytes": 2284543,
+      "sha256": "390775dbc9debdcf2ed1b076eed013387ca057630be3cb594617b2b742e48cf0",
+      "status": "retrieved",
+      "kind": "paper",
+      "read_scope": "正文1、5.1.1、5.2热重载段、6.1–6.5；PDF抽取通过网页工具，未逐页复核92页证明"
+    },
+    {
+      "repo": "openai/openai-agents-python",
+      "commit": "27c75c5f9c5fd957d28c04fb7e9eeacaad4630a9",
+      "path": "src/agents/agent.py",
+      "url": "https://raw.githubusercontent.com/openai/openai-agents-python/27c75c5f9c5fd957d28c04fb7e9eeacaad4630a9/src/agents/agent.py",
+      "bytes": 54939,
+      "sha256": "3565a5b23dd5364afc6ad5b7fdd50ab9e43a8aaaad6c2cbc0f580d4000e5b11a",
+      "status": "retrieved",
+      "kind": "official-code",
+      "read_scope": "定向读取Agent定义、构造、成员/状态/调用合同；未等深逐行审计全部文件"
+    },
+    {
+      "repo": "google/adk-python",
+      "commit": "1cb926d5b8d702261ec82a26d3f1c4296e0db7d7",
+      "path": "src/google/adk/agents/base_agent.py",
+      "url": "https://raw.githubusercontent.com/google/adk-python/1cb926d5b8d702261ec82a26d3f1c4296e0db7d7/src/google/adk/agents/base_agent.py",
+      "bytes": 27930,
+      "sha256": "1def517c496901dccb58dbb342eecccd6b54788ca12364770b1d1f83d23d504c",
+      "status": "retrieved",
+      "kind": "official-code",
+      "read_scope": "定向读取Agent定义、构造、成员/状态/调用合同；未等深逐行审计全部文件"
+    },
+    {
+      "repo": "google/adk-python",
+      "commit": "1cb926d5b8d702261ec82a26d3f1c4296e0db7d7",
+      "path": "src/google/adk/agents/llm_agent.py",
+      "url": "https://raw.githubusercontent.com/google/adk-python/1cb926d5b8d702261ec82a26d3f1c4296e0db7d7/src/google/adk/agents/llm_agent.py",
+      "bytes": 51405,
+      "sha256": "4c1b3100f2926c6d4d764749fb46435240e21f9744d5df4e48e0dfaea72f5e5c",
+      "status": "retrieved",
+      "kind": "official-code",
+      "read_scope": "定向读取Agent定义、构造、成员/状态/调用合同；未等深逐行审计全部文件"
+    },
+    {
+      "repo": "google/adk-python",
+      "commit": "1cb926d5b8d702261ec82a26d3f1c4296e0db7d7",
+      "path": "src/google/adk/agents/parallel_agent.py",
+      "url": "https://raw.githubusercontent.com/google/adk-python/1cb926d5b8d702261ec82a26d3f1c4296e0db7d7/src/google/adk/agents/parallel_agent.py",
+      "bytes": 9196,
+      "sha256": "10b7613bb2d6f647fb8d03849162956e268d441d1c3414f795eb2fffd6d3f613",
+      "status": "retrieved",
+      "kind": "official-code",
+      "read_scope": "定向读取Agent定义、构造、成员/状态/调用合同；未等深逐行审计全部文件"
+    },
+    {
+      "repo": "langchain-ai/langgraph",
+      "commit": "e5e37b5d70dbfd93c7006bd90a658c6179a95946",
+      "path": "libs/langgraph/langgraph/graph/state.py",
+      "url": "https://raw.githubusercontent.com/langchain-ai/langgraph/e5e37b5d70dbfd93c7006bd90a658c6179a95946/libs/langgraph/langgraph/graph/state.py",
+      "bytes": 76310,
+      "sha256": "d8c8021a93a8fc895d62335a9482e50d51353343bf885901e6487611dcd0d212",
+      "status": "retrieved",
+      "kind": "official-code",
+      "read_scope": "定向读取Agent定义、构造、成员/状态/调用合同；未等深逐行审计全部文件"
+    },
+    {
+      "repo": "microsoft/autogen",
+      "commit": "d07c667a3239ea4ab7af62a53b0f4ff205a1f23d",
+      "path": "python/packages/autogen-agentchat/src/autogen_agentchat/agents/_assistant_agent.py",
+      "url": "https://raw.githubusercontent.com/microsoft/autogen/d07c667a3239ea4ab7af62a53b0f4ff205a1f23d/python/packages/autogen-agentchat/src/autogen_agentchat/agents/_assistant_agent.py",
+      "bytes": 78803,
+      "sha256": "c0e578fc34be40f46f8e36a91b53fb27cf5ff454f4efb3f4ea5dc1e32d0048c1",
+      "status": "retrieved",
+      "kind": "official-code",
+      "read_scope": "定向读取Agent定义、构造、成员/状态/调用合同；未等深逐行审计全部文件"
+    },
+    {
+      "repo": "microsoft/autogen",
+      "commit": "d07c667a3239ea4ab7af62a53b0f4ff205a1f23d",
+      "path": "python/packages/autogen-agentchat/src/autogen_agentchat/teams/_group_chat/_base_group_chat.py",
+      "url": "https://raw.githubusercontent.com/microsoft/autogen/d07c667a3239ea4ab7af62a53b0f4ff205a1f23d/python/packages/autogen-agentchat/src/autogen_agentchat/teams/_group_chat/_base_group_chat.py",
+      "bytes": 38510,
+      "sha256": "3a50976a393dbe0aaa27b3fa72517a4b89c70437c237865463a2b87c38ce8134",
+      "status": "retrieved",
+      "kind": "official-code",
+      "read_scope": "定向读取Agent定义、构造、成员/状态/调用合同；未等深逐行审计全部文件"
+    },
+    {
+      "repo": "crewAIInc/crewAI",
+      "commit": "2fba413623a60d7a2f24a7d21685bbcd8dd45a4f",
+      "path": "lib/crewai/src/crewai/agent/core.py",
+      "url": "https://raw.githubusercontent.com/crewAIInc/crewAI/2fba413623a60d7a2f24a7d21685bbcd8dd45a4f/lib/crewai/src/crewai/agent/core.py",
+      "bytes": 95193,
+      "sha256": "79156e3734db6ed3cbdef758a93283a814bb2424a40257473eaa307809ff548b",
+      "status": "retrieved",
+      "kind": "official-code",
+      "read_scope": "定向读取Agent定义、构造、成员/状态/调用合同；未等深逐行审计全部文件"
+    },
+    {
+      "id": "agentscope-config",
+      "url": "https://raw.githubusercontent.com/agentscope-ai/agentscope/782bd43f9f61788a1901fcc4e5486758491d387f/src/agentscope/agent/_config.py",
+      "bytes": 18297,
+      "sha256": "42d83469cd3ea6daf427366830a9a0f01e0bb75fcd9e024e7a6ebd86cfe926ae",
+      "status": "retrieved",
+      "kind": "official-code",
+      "repo": "agentscope-ai/agentscope",
+      "commit": "782bd43f9f61788a1901fcc4e5486758491d387f",
+      "read_scope": "Agent构造与配置分组；TeamMember/TeamPipeline合同与上下文/串并行说明"
+    },
+    {
+      "id": "agentscope-agent",
+      "url": "https://raw.githubusercontent.com/agentscope-ai/agentscope/782bd43f9f61788a1901fcc4e5486758491d387f/src/agentscope/agent/_agent.py",
+      "bytes": 159544,
+      "sha256": "6b0492b4eec83d3a0e5afa3b146bec239382ad3dd223d2fead798ae76ea4edda",
+      "status": "retrieved",
+      "kind": "official-code",
+      "repo": "agentscope-ai/agentscope",
+      "commit": "782bd43f9f61788a1901fcc4e5486758491d387f",
+      "read_scope": "Agent构造与配置分组；TeamMember/TeamPipeline合同与上下文/串并行说明"
+    },
+    {
+      "id": "agentscope-team",
+      "url": "https://raw.githubusercontent.com/agentscope-ai/agentscope/782bd43f9f61788a1901fcc4e5486758491d387f/src/agentscope/pipeline/_team_pipeline.py",
+      "bytes": 17265,
+      "sha256": "3292d2a36575106b11217e22d4e7faabf5a308b3040cdbe9167e87b226d0ea23",
+      "status": "retrieved",
+      "kind": "official-code",
+      "repo": "agentscope-ai/agentscope",
+      "commit": "782bd43f9f61788a1901fcc4e5486758491d387f",
+      "read_scope": "Agent构造与配置分组；TeamMember/TeamPipeline合同与上下文/串并行说明"
+    }
+  ],
+  "prior_fixed_evidence": [
+    {
+      "manifest": "2026-11-02-deepseek-agents.json",
+      "use": "复用原50文件固定源码研究，未换HEAD或再次运行"
+    },
+    {
+      "manifest": "2026-10-31-template-agents.json",
+      "use": "复用OpenHands/ForgeKernel/KDA的固定研究与已有支持限制"
+    }
+  ],
+  "unavailable_sources": [
+    {
+      "url": "https://zhuanlan.zhihu.com/p/2099987320443237060",
+      "status": "HTTP 403 via web open",
+      "fallback": "可访问转载仅作辅助；官方原型与固定源码交叉核对"
+    },
+    {
+      "url": "https://mp.weixin.qq.com/s/zoS7GlReWPhfCjENGxXCdg",
+      "status": "web open未取得正文"
+    }
+  ],
+  "version_mismatches": [
+    "AgentScope当前文档仍有ReActAgent，固定HEAD使用Agent；不将旧教程接口作为当前源码API。",
+    "Google multi-agents地址有HTML重定向至workflows；保存最终正文来源。",
+    "CrewAI文档仍列code execution配置，固定源码已弃用；本轮不据此宣称可用。"
+  ]
+}

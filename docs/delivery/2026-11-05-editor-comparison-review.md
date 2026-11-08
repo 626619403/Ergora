@@ -87,3 +87,17 @@ F6-02 仅在图 `update()` 重建前清除 `source`，生命周期边界正确�
 `static-after-fixes.json`记录13文档347链接/30parser，但PLAN、F6计划、交付三份SHA早于新scope的后续状态追加，不能冒称覆盖新scope逐字身份。应在本节追加后运行最终静态并刷新scope。默认沙箱仍实际报bwrap挂载权限失败，多项只读自动审批连续超时，包括原生sha256sum；超时没有风险否决理由，不是产品失败。未完成的候选身份、实际资产/库及原回执核对保留为终结前条件。
 
 后续须从普通精确提交的实际Git对象核文件、唯一父节点和source/build身份，补齐上述未验项，再核实时远端及该候选自动CI必要步骤。当前尚无这些终结证据。F6.2/F6.3、容量/其他OS等原未验边界继续保持；本次仅追加报告，未安装、启动服务、改源、提交或推送。
+
+## 固定候选身份与 CI 待终结
+
+2026-11-05，独立核固定普通候选 `b1dbe48a1b14e8e2ec59d4f44e30b2ea367fa1fe`。**本地需求、可维护性和精确候选身份通过，两项P2保持关闭；CI具体必要步骤仍pending，F6.1尚未全部终结。** 没有将未来HEAD或下一片计划当作本片候选。
+
+07:15:07 UTC实际核Git对象：唯一父为原df0a908，恰改26文件，集合及每个blob的bytes/SHA逐项等于candidate-scope；清单自身SHA256为`c47c3c144ca8444d64454e92ceb74f319442c7e0668cb3aa3f40ccc8de70fc7d`。15例子源码全等修后验收记录，src/tests/pyproject/.github相对唯一父无差异。候选初审报告前11,848字节摘要仍等原f96efc8，历史未改。最终static-after-fixes的SHA等候选绑定值`32e5053f58b1355301a1132bd79d55f0db5dd5b641b85dfc4123d9f75787d5c6`，13文档摘要逐一等候选blob、347链接无缺失/30parser。它是复审后实际重跑的新记录；旧同名静态文件的历史叙述不代表旧字节仍在。
+
+上轮其余未验现已补齐：实际13资产bytes/SHA及完整许可等修后记录；两库immutable只读摘要/16表计数相符，旧六份r2及两模板摘要保持、新库零草稿/Agent。green原stdout的Result等保存JSON，实际命令脚本相同、exit0、18请求/2校验POST、零pageerror。新venv实际配置为Python3.12.3且不继承system-site-packages；owned PID3148771消失、8981拒绝连接。未安装、启动服务、重跑浏览器或写数据库。
+
+读取07:00:49 UTC普通push回执exit0、远端df0a908→b1dbe48；审查者复用已授权的每命令SSH设置，于 **2026-11-05 07:26:47.876834 UTC** 独立实际ls-remote exit0，分支完整SHA为b1dbe48，与候选一致。没有输出或落盘认证设置、读取私钥内容或修改认证配置；此为该明确时点事实，不推断未来分支不会继续提交。
+
+官方 [Portability 41984232370](https://github.com/626619403/Ergora/actions/runs/41984232370) 原run HTML含精确b1dbe48完整SHA及Success，163,665字节，独立SHA256为`6c0200d85d6611887194c271e7ffc5cea5115f5f1b64c88f58c6007e46e825a0`。Ubuntu原HTML为168,329字节、SHA256 `14c81c7b575072a37df84fa3f1a30d5d92be4fad2d0b2cb3d90799fa1754ec28`，selectedJobId127101114113，包含精确候选/run。jobGroups记此Ubuntu completed/success，也明确totalCount=2、hasMore=true；一项可见不等于Windows未运行。
+
+**尚待两个job的实际必要步骤核对，尤其Windows。** 已读候选Ubuntu3.11/Windows3.12矩阵和wheel安装、包身份、原生回归、Windows安装升级步骤；尚未读到Windows最终job HTML，具体步骤只读定位连续自动审批超时。没有用总体Success或配置推断逐项通过。取得最终两job证据后再追加完整终结；当前无新增代码finding，但精确CI验收仍pending。本次只追加报告，未重跑CI、改规则、提交或推送。
