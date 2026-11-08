@@ -1,14 +1,18 @@
 """Project-scoped formal task use cases; the native runtime remains authoritative."""
 
+import base64
+import hashlib
 import json
 from pathlib import Path
 import re
 
-from . import bindings, contracts, projects, reference
+from . import agent_backends, agents, bindings, contracts, projects, reference, workflow_definitions
+from .asset_trees import inventory_tree
 from .state import State
 
 
-_DEFINITION = json.loads((Path(__file__).parent / 'data/schemas/task-definition-v1.json').read_text(encoding='utf-8'))
+_DEFINITIONS = {version: json.loads((Path(__file__).parent / f'data/schemas/task-definition-v{version}.json').read_text(encoding='utf-8'))
+                for version in (1, 2)}
 
 
 def _project(state: State, project_id: str) -> dict:
@@ -28,13 +32,86 @@ def _revision(project: dict, expected_revision: int) -> None:
 
 
 def _definition(project: dict, definition: dict) -> dict:
-    contracts.validate(definition, _DEFINITION, 'Task definition')
+    schema = _DEFINITIONS[2] if isinstance(definition, dict) and definition.get('schema_version') == 2 else _DEFINITIONS[1]
+    contracts.validate(definition, schema, 'Task definition')
     if definition['task_type'] not in project['registration']['definition']['templates']:
         raise ValueError('Task template is not registered for this project')
     if len(json.dumps(definition, ensure_ascii=False, allow_nan=False).encode('utf-8')) > 1_048_576:
         raise ValueError('Task definition exceeds 1 MiB')
-    return {'definition': definition,
-            'selection': bindings.development_snapshot(project, projects.effective_configuration(project))}
+    selection = bindings.development_snapshot(project, projects.effective_configuration(project))
+    return {'definition': definition, 'selection': selection,
+            **({'composition': _composition(definition, selection)} if definition['schema_version'] == 2 else {})}
+
+
+def _composition(definition: dict, selection: dict) -> dict:
+    option = definition['composition']
+    source = Path(option['manifest']).expanduser().absolute()
+    checked = workflow_definitions.inspect_manifest(source, material=True)
+    if checked['digest'] != option['manifest_digest']:
+        raise ValueError('Selected composition manifest digest changed')
+    reference = checked['manifest']['root']
+    graph = workflow_definitions.preview(source / 'assets', reference['id'], reference['version'], checked['manifest']['grant'])
+    if graph != checked['composition']:
+        raise ValueError('Composition manifest changed during formal admission')
+    instances = {item['path']: item for item in graph['instances']}
+    position = option['review_instance']
+    if (position not in instances or instances[position]['kind'] != 'workflow'
+            or set(instances[position]['inputs']) != {'task'}):
+        raise ValueError('Select a Workflow instance with a single task input for the review stage')
+    # Expanded input names are relative to the immediate structural parent.
+    # The formal review stage supplies only the root task, never sibling results.
+    ancestor, port = instances[position], 'task'
+    while True:
+        origin = ancestor['inputs'][port]
+        if ancestor['depends_on'] or 'node' in origin:
+            raise ValueError('Selected review subtree cannot depend on an unexecuted external node')
+        port = origin['input']
+        if ancestor['parent'] is None:
+            if port != 'task':
+                raise ValueError('Selected review subtree must resolve to the root task input')
+            break
+        ancestor = instances[ancestor['parent']]
+    leaves = {path: item for path, item in instances.items() if item['kind'] == 'agent' and path.startswith(position + '/')}
+    overrides = option.get('backend_overrides', {})
+    if not leaves or set(overrides) - leaves.keys():
+        raise ValueError('Composition backend overrides must select existing review members')
+    members = {}
+    implementer = selection['bindings']['implementer']['tool']
+    diversity = option.get('diversity', {'policy': 'prefer-distinct'})
+    same = []
+    for path, leaf in leaves.items():
+        if leaf['role'] != 'reviewer':
+            raise ValueError('Formal composition currently selects only reviewer leaves')
+        if leaf['permissions']['write'] or leaf['permissions']['shell'] or leaf['permissions']['network']:
+            raise ValueError('Formal review composition requires read-only leaves without shell or network tools')
+        override = overrides.get(path)
+        binding = dict(override['binding'] if override else leaf['backend_request'])
+        agents.validate_binding('reviewer', binding, formal=True)
+        backend = agent_backends.for_binding(binding)
+        backend.check_mode(option['mode'])
+        policy = backend.composition_policy(option['mode'])
+        if binding['tool'] == implementer:
+            same.append(path)
+        members[path] = {'role': 'reviewer', 'binding': binding, 'requested_binding': leaf['backend_request'],
+            'backend_reason': override['reason'] if override else 'definition-selected backend',
+            'mode': option['mode'], 'policy': policy}
+    if same and diversity['policy'] == 'require-distinct':
+        raise ValueError('Review members require a backend different from the implementer: ' + ', '.join(same))
+    if same and diversity['policy'] == 'prefer-distinct' and not diversity.get('reason', '').strip():
+        raise ValueError('Same-backend review under prefer-distinct requires an explicit diversity reason')
+    digest, files, _ = inventory_tree(source, label='Composition manifest', max_directories=1000, max_depth=48)
+    snapshot = {'digest': digest, 'files': {}}
+    for name, item in files.items():
+        content = (source / name).read_bytes()
+        if hashlib.sha256(content).hexdigest() != item['sha256']:
+            raise ValueError('Composition manifest changed while freezing its bytes')
+        snapshot['files'][name] = {'content_base64': base64.b64encode(content).decode('ascii'),
+                                  'executable_bits': item['executable_bits']}
+    if digest != checked['digest'] or inventory_tree(source, label='Composition manifest', max_directories=1000, max_depth=48)[0] != digest:
+        raise ValueError('Composition manifest changed while freezing its complete tree')
+    return {'manifest': snapshot, 'root': graph['root'], 'preview_sha256': graph['preview_sha256'],
+            'review_instance': position, 'members': members,
+            'diversity': {**diversity, 'implementer_backend': implementer, 'same_backend_members': same}}
 
 
 def _digest(value: str, name: str) -> None:
@@ -92,6 +169,8 @@ def status(state: State, project_id: str, task_id: str, *, run_id: str | None = 
         _run_id(run_id)
     project = _project(state, project_id)
     task = reference.task_files(project, task_id=task_id)
+    if 'composition' in task:
+        raise ValueError('Composition task execution requires the versioned runtime bridge; not available yet')
     return {'project': project_id, 'project_revision': project['revision'], 'task_id': task_id,
             'request_sha256': task['spec']['request_sha256'], 'profile_sha256': task['spec']['profile_sha256'],
             **reference.task_runtime_status(project, task['spec'], run_id=run_id, timeout=timeout)}

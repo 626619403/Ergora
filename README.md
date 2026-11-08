@@ -409,7 +409,7 @@ agentflow verify
 
 三个模板的角色现可独立于工具选择；[选型调研](docs/research/2026-10-31-template-agents.md) 说明首批适配和未接入工具的优缺点。ForgeKernel 作为可选原生候选生成工具，其内部 judge 不替代可信训练门禁；模型质量和 GPU 性能比较需要真实项目证据。固定官方版本及实际检查范围记录在 [计划](docs/PLAN.md) 和各切片交付记录。
 
-当前每个角色仍只绑定一个工具。[专长Agent定义库](docs/AGENT_DEFINITIONS.md)已提供静态包检查、版本化导入、筛选、查看和导出，含kernel执行者与架构审查者示例；可通过composition准备完整输入并显式调用独立叶子；尚未接入正式六阶段的多成员调用。[Agent组合设计](docs/architecture/decisions/0004-agent-composition.md)随后将定义与模板成员组合，并优先选择不同的执行/审查后端。[嵌套工作流设计](docs/architecture/decisions/0005-composable-workflows.md)描述可复用子模板的串行/并行汇合，祖先Skill/上下文完整继承及父子权限修订；这些运行语义尚未实现。[框架与论文对照](docs/research/2026-11-08-agent-composition.md)及[分片计划](docs/plans/2026-11-08-agent-composition.md)记录依据和验收顺序。
+当前每个角色仍只绑定一个工具。[专长Agent定义库](docs/AGENT_DEFINITIONS.md)已提供静态包检查、版本化导入、筛选、查看和导出，含kernel执行者与架构审查者示例；可通过composition准备完整输入并显式调用独立叶子；可用显式v2正式任务定义[冻结完整审查组合](docs/USAGE.md#为正式任务冻结审查组合)，支持创建/恢复和只读查看；正式六阶段的多成员调用尚未接入，v2启动会明确拒绝。[Agent组合设计](docs/architecture/decisions/0004-agent-composition.md)随后将定义与模板成员组合，并优先选择不同的执行/审查后端。[嵌套工作流设计](docs/architecture/decisions/0005-composable-workflows.md)描述可复用子模板的串行/并行汇合，祖先Skill/上下文完整继承及父子权限修订；这些运行语义尚未实现。[框架与论文对照](docs/research/2026-11-08-agent-composition.md)及[分片计划](docs/plans/2026-11-08-agent-composition.md)记录依据和验收顺序。
 
 ## 项目状态与许可
 

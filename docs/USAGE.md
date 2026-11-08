@@ -261,6 +261,39 @@ preview只在自动清理的临时目录调用原编译器，不写真实任务�
 
 对应API为 `POST /api/projects/ID/tasks/preview`（`definition/revision`）、`POST /api/projects/ID/tasks`（加`preview_sha256`）、`GET .../tasks/TASK_ID/creation`、`POST .../tasks/TASK_ID/resume-create`（`revision/intent_sha256`）；写请求沿用本地同源限制及 `X-Ergora-Request: 1`。预览与创建支持Linux/Windows本地文件合同；完整六阶段执行仍使用Linux/WSL2和[正式执行手册](AGENT_BACKENDS.md)。
 
+### 为正式任务冻结审查组合
+
+原`schema_version: 1`继续使用四角色绑定和完整六阶段。新`schema_version: 2`支持预览、创建、发布恢复、列表和详情：它冻结完整静态组合包及每成员后端，尚未接入正式执行桥，因此`task start/status`明确拒绝该版本。旧运行器也拒绝新信封，避免静默执行旧单审查者流程。
+
+先按[完整组合包说明](WORKFLOW_DEFINITIONS.md#保存和分享完整组合)准备manifest，并用`verify-manifest`取得其`digest`。在原任务定义中将`schema_version`改为2，增加下列`composition`字段，其他输入保持原模板格式：
+
+```json
+{
+  "manifest": "/absolute/path/to/review-manifest",
+  "manifest_digest": "REPLACE_WITH_THE_VERIFIED_DIGEST",
+  "review_instance": "root",
+  "mode": "task-mcp",
+  "backend_overrides": {
+    "root/review": {
+      "binding": {"tool": "codex"},
+      "reason": "Claude不可用，选择已配置的Codex/ChatGPT"
+    }
+  },
+  "diversity": {
+    "policy": "prefer-distinct",
+    "reason": "当前只有Codex可用，接受执行和审查共享后端"
+  }
+}
+```
+
+此例用于`structure-review`包；其他包应填写其真实成员路径。`manifest`是运行CLI或HTTP服务的机器上的本地路径，推荐绝对路径。首次只接受单`task`输入且不依赖未执行外部节点的review工作流子树，所有叶子必须是只读reviewer。`mode`可选`text-only`或`task-mcp`，保存能力合同不证明CLI、认证、SDK或服务已经可用。
+
+不提供覆盖时使用定义指定的后端；覆盖按实例路径逐个选择并记录原因。`prefer-distinct`为默认策略，与implementer同后端时必须填写`diversity.reason`；`require-distinct`直接拒绝相同后端，`allow-same`允许。同后端判断比较工具实现，不代表不同工具的模型错误互相独立。密钥继续由环境变量或受保护的本机认证提供，不写入定义。
+
+沿上一节相同的`task preview/create/creation/resume-create`命令和API操作；预览的`files.task.spec.json`是显式版本化信封，其`legacy_spec`保存未改的原六阶段投影。`composition.manifest`携带完整文件字节与可执行位，信封SHA同时绑定静态图、祖先材料、成员、政策和多样性决定。创建后移除源manifest或修改活动库/项目绑定，不影响保存的原意图和发布恢复；查看列表/详情可读组合摘要和`runtime_supported: false`。
+
+完整组合包导出仍支持10 MB/500文件；正式任务的内联信封沿原逐文件1 MiB和总意图16 MiB上限，base64及图中完整正文也计入。过大时预览明确拒绝，须拆小组合，不能截断继承材料。保存与备份范围仍是登记执行状态目录中的任务七份合同、完整意图及结果回执；单独备份控制库不包含它们。正式批准及串并行调度在版本化运行桥完成后另行启用。
+
 ### 查询正式任务运行状态
 
 安装development组合或 `ergora[temporal]`，并准备所登记的参考运行时。通过CLI或 `GET /api/projects/ID/tasks/TASK_ID/status?run_id=RUN_ID&timeout=20` 只读查询原生运行事实：

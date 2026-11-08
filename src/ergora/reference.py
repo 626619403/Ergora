@@ -440,6 +440,7 @@ def _task_files_main():
     from agent_platform.core import STATE, Blocked, slug
     from dev_platform import adapter
     from dev_platform.contracts import validate_spec
+    from . import task_envelopes
 
     try:
         payload = json.load(sys.stdin)
@@ -483,6 +484,8 @@ def _task_files_main():
             if not owns(project):
                 raise ValueError('Task does not belong to the selected project and Git repository')
             spec, file_sha = document(task_id, 'task.spec.json')
+            envelope = spec
+            spec, composition = task_envelopes.unwrap(envelope)
             validate_spec(spec)
             request = spec['request']
             if request['task_id'] != task_id:
@@ -496,6 +499,8 @@ def _task_files_main():
                     'goal': request['input']['goal'][:200], 'tracker': request['tracker'],
                     'request_sha256': spec['request_sha256'], 'profile_sha256': spec['profile_sha256'],
                     'spec_file_sha256': file_sha, 'runtime_status': 'not_queried'}
+            if composition is not None:
+                item['composition'] = task_envelopes.summary(envelope)
             if detail:
                 snapshot = adapter.safe_file(root, 'tasks/' + task_id + '/agent-bindings.json')
                 bindings, bindings_sha = document(task_id, 'agent-bindings.json') if snapshot.exists() else (None, None)
@@ -503,6 +508,8 @@ def _task_files_main():
                     raise ValueError('Frozen agent snapshot project mismatch')
                 item.update(spec=spec, frozen_project=project, agent_bindings=bindings,
                             agent_bindings_file_sha256=bindings_sha)
+                if composition is not None:
+                    item['admission_envelope'] = envelope
             return item
 
         if payload['task_id'] is not None:

@@ -1,0 +1,116 @@
+[
+  {
+    "revision": "R1",
+    "identity": {
+      "checked_at": "2026-11-08T21:51:35.115101+00:00",
+      "source": {
+        "src/ergora/task_envelopes.py": "2d486523880e710e5da8163a34dd5b34ce65c8cfbb4bf085307c6806516abcfe",
+        "src/ergora/tasks.py": "56be2057cf4ccf7e089f5512a6d8749bcc4169c21cf08cacbabbd030d91c9015",
+        "src/ergora/reference_task_creation.py": "1401cd9e5983f3241468b34245df9b23c6c5596a538d41c5b3b372adffd8c4ac",
+        "src/ergora/reference_task_submission.py": "60f0ee8b8fc3876dc9b6ad4a9c4ea63933b57593eaf6b3a8ef83e8407a6e8ff8",
+        "src/ergora/reference.py": "27f0e07d6de5ff0fdbd03a430e62dfb785daf80992ae24cd08ac0a056bea3bd4",
+        "src/ergora/data/schemas/task-definition-v2.json": "e5a10ff81db314874e36837e10ff89fe16fe8b6dae198d68236470a80d539a91",
+        "tests/test_composition_tasks.py": "1ddcd950ef9ecc1e3955f451644f10c5e60d6593229672ca521796c91693689f"
+      },
+      "backend": "codex",
+      "inference_model": "gpt-6.1-sol",
+      "reasoning_effort": "high",
+      "run_id": "7f62583e5343476bad188acec8e2f91a",
+      "status": "succeeded",
+      "exit_code": 0,
+      "seconds": 179.49122950294986,
+      "input_digest": "2308fcafe2e7e62f8ff00ca18f947c79fdb197e34dcb7318bf3056ceef961dda",
+      "prompt_sha256": "ddc91cb50ecd07abaf425735bec81956c94d53c1df661818e5b798f12121ad9e",
+      "attachment_bytes": 54297,
+      "attachment_sha256": "a7e62e9fcd65180aef7b8500cb2a478ea7705e475c887c29c684242cd95295ec",
+      "manifest_digest": "c1bf01cbaa81efc669501d5d151a6a2e150842b4187e5f157ff4736270e54eb7",
+      "original_definition_libraries_removed": true,
+      "scope": "Real configured hosted model through installed Ergora structure-review template from a complete static manifest and task MCP; provided source only, no formal approval or OS isolation.",
+      "decision": "request-changes",
+      "result_sha256": "107f2bd20af548a68756f29465fe88c17a8c1a4cd0cb4eff074c0ed0b5575c34"
+    },
+    "result": {
+      "artifacts": {
+        "response": "Reviewed candidate attachment SHA256 a7e62e9fcd65180aef7b8500cb2a478ea7705e475c887c29c684242cd95295ec, all 54,297 bytes through next_offset=null. Findings apply only to its supplied files and changed hunks.\n\n## Standards\n\n- **[P2, blocking] Validate persisted member values before exposing them.** `src/ergora/task_envelopes.py:56–67` checks composition keys and member names but never validates member values or diversity contents. With an otherwise valid manifest and recomputed envelope checksum, a member value of `null`, an unsupported mode, or an invalid binding passes `unwrap`. The reader in `src/ergora/reference.py` then exposes that data through show/list as a verified composition summary. Smallest correction: validate serialized member/diversity shapes, supported values, and internal relationships at the standard-library envelope boundary. Keep graph, permission, and current backend admission in their existing application owners.\n\n## Spec\n\n- **[P2, blocking] Bind recovery to the complete saved selection.** `src/ergora/reference_task_creation.py:152–155` compares only manifest digest and review_instance against the saved definition. A pending intent whose definition specifies a different mode, backend override/reason, or diversity decision from its otherwise well-formed envelope passes `validate_record`. If the inspected intent digest is supplied to resume, publication proceeds with contradictory selection records. Smallest correction: compare each frozen member’s mode and selected binding/reason with the saved definition and frozen graph, and check diversity against the saved implementer snapshot. Perform these comparisons entirely from saved bytes so source deletion and later project binding changes remain supported.\n\n## Evidence gaps\n\n`tasks.py:61–62` checks only the selected workflow’s direct dependencies and inputs. A deeper subtree may inherit a task input originating from an external ancestor node. The supplied attachment omits the preview implementation, so I cannot establish whether it already resolves that chain. Verify transitive closure in the existing graph owner; do not add a second resolver here.\n\nThe original permission, backend, and preview implementations were not supplied, so their enforcement—including the current project ceiling—remains unverified. I ran no tests and make no whole-repository or independently verified execution claims."
+      },
+      "decision": "request-changes",
+      "summary": "Request changes: persisted v2 member validation and recovery selection consistency are incomplete."
+    }
+  },
+  {
+    "revision": "R2",
+    "identity": {
+      "checked_at": "2026-11-08T22:02:30.586930+00:00",
+      "source": {
+        "src/ergora/task_envelopes.py": "b34f6468660f71a5ee632fc983af3ce5a5710fb17d8ea6a42cc139cbf5057de8",
+        "src/ergora/tasks.py": "4636b857a0fdc621a8b367211bd6e151cd1f9911b117b098c4299b26ef1f98c5",
+        "src/ergora/reference_task_creation.py": "8defb61fc1eb939785084d583ad0c29785ea3ab3fb5a917632761f3ad4b51188",
+        "src/ergora/reference_task_submission.py": "60f0ee8b8fc3876dc9b6ad4a9c4ea63933b57593eaf6b3a8ef83e8407a6e8ff8",
+        "src/ergora/reference.py": "27f0e07d6de5ff0fdbd03a430e62dfb785daf80992ae24cd08ac0a056bea3bd4",
+        "src/ergora/data/schemas/task-definition-v2.json": "e5a10ff81db314874e36837e10ff89fe16fe8b6dae198d68236470a80d539a91",
+        "tests/test_composition_tasks.py": "44aada7fefda2ce919e12627529a352237b4609c96eab72ea5065a539dc08d99"
+      },
+      "backend": "codex",
+      "inference_model": "gpt-6.1-sol",
+      "reasoning_effort": "high",
+      "run_id": "a3e54e887d3c48669e2d5cb086da4433",
+      "status": "succeeded",
+      "exit_code": 0,
+      "seconds": 182.23683647206053,
+      "input_digest": "1178c28d24ef9b53982e0c98e6c628fa9cb3de245bd5013391486026a5978787",
+      "prompt_sha256": "a026e1f784b9cf46cd918677e54b36ec465730d0709e508d24f08cfae953e3dd",
+      "attachment_bytes": 82359,
+      "attachment_sha256": "fe969bb5e8ddaefa9bea8092bba83a21349b1d434b219950915705dd8b98ecc1",
+      "manifest_digest": "047f2a852df0a95443e23beeab31fba152c33ba2f720c19d046d8c84df676159",
+      "original_definition_libraries_removed": true,
+      "scope": "Real configured hosted model through installed Ergora structure-review template from a complete static manifest and task MCP; provided source only, no formal approval or OS isolation.",
+      "decision": "request-changes",
+      "result_sha256": "ea2e588cfd267fab6be51191729012613bab898be92e47ca89aa391d7c654652"
+    },
+    "result": {
+      "artifacts": {
+        "response": "Reviewed the complete attachment through next_offset=null. Candidate attachment SHA256: fe969bb5e8ddaefa9bea8092bba83a21349b1d434b219950915705dd8b98ecc1. Locations below refer to its labeled source files.\n\nStandards findings\n\n[P2, blocking] Persisted member validation accepts selections rejected by creation admission — src/ergora/task_envelopes.py:46 and :90; src/ergora/reference_task_creation.py:183.\n\nReachable scenario: after intent-only interruption, change a member binding and its matching saved definition override to {\"tool\":\"command\",\"command\":[\"echo\"]}, then recompute the envelope digest and supply the resulting intent digest. _binding accepts any nonempty tool and arbitrary extra fields; recovery only compares the binding with the saved override. This bypasses the formal binding validation performed at tasks.py:89. Likewise, the policy check accepts arbitrary capability contents as long as capabilities is a dictionary.\n\nConsequence: recovery can publish a formal admission containing backend or capability selections that never passed this slice’s admission rules. Execution remains unsupported; this finding does not imply commands execute.\n\nSmallest correction: define and validate the stable, versioned persisted binding and capability-policy shapes at the standard-library boundary, including the supported backend variants. Keep current graph and permission admission in its existing owner and avoid consulting mutable catalogs during recovery.\n\nSpec findings\n\n[P2, blocking] Recovery can publish contracts exceeding the retained 1 MiB bound — src/ergora/reference_task_creation.py:117 and :190.\n\nReachable scenario: an intent-only interrupted creation is restored with a member backend_reason exceeding 1 MiB and an identical reason in the saved definition override, with consistent envelope and intent digests. The aggregate intent can remain below 16 MiB. load validates consistency but never invokes the per-file check_size calls used by compile.\n\nConsequence: resume can write the oversized task.spec.json and receipt, then fail when status reads that file through the 1 MiB boundary. Subsequent inspection and recovery also fail on the published file. The formal bound is enforced after publication through a read failure instead of before mutation.\n\nSmallest correction: apply the existing per-file serialization-size checks in shared record validation before publication, covering both compilation and loaded recovery records. Retain the aggregate intent bound and reject oversized material without truncation.\n\nEvidence limits: inspection covered only the supplied complete files and changed hunks. Graph/permission/backend implementations and the original engine were not supplied. No tests were run; reported suite, installation, CLI, and API results were not independently verified."
+      },
+      "decision": "request-changes",
+      "summary": "Request changes: persisted validation still accepts inadmissible member selections, and recovery bypasses individual contract-size checks."
+    }
+  },
+  {
+    "revision": "R3",
+    "identity": {
+      "checked_at": "2026-11-08T22:08:54.799021+00:00",
+      "source": {
+        "src/ergora/task_envelopes.py": "44debd177e3c456fe8f8df3705be40cf2d50f25567dac885b37dd290a311c79c",
+        "src/ergora/tasks.py": "4636b857a0fdc621a8b367211bd6e151cd1f9911b117b098c4299b26ef1f98c5",
+        "src/ergora/reference_task_creation.py": "2789c674551582002ed376a9026daa76e8fa68f48548d520e27525b5bb9d1ee4",
+        "src/ergora/reference_task_submission.py": "60f0ee8b8fc3876dc9b6ad4a9c4ea63933b57593eaf6b3a8ef83e8407a6e8ff8",
+        "src/ergora/reference.py": "27f0e07d6de5ff0fdbd03a430e62dfb785daf80992ae24cd08ac0a056bea3bd4",
+        "src/ergora/data/schemas/task-definition-v2.json": "e5a10ff81db314874e36837e10ff89fe16fe8b6dae198d68236470a80d539a91",
+        "tests/test_composition_tasks.py": "c2aa2a0bd44cc1bd1f1e1f80a1e6c214c574eed058f0daf20d432e643e3039ce"
+      },
+      "backend": "codex",
+      "inference_model": "gpt-6.1-sol",
+      "reasoning_effort": "high",
+      "run_id": "75c7fcd41f494941bcd30aa9a439167d",
+      "status": "succeeded",
+      "exit_code": 0,
+      "seconds": 127.2984953573905,
+      "input_digest": "b8342699ea9aeb8ac1463507b3b3fc05634e5cf41825e270aa1fbf3e17619526",
+      "prompt_sha256": "6d96b1d02bf95efb6dcc5e59f7a79ea0be75fd780fb2d7b32e8c6f98b8bc896f",
+      "attachment_bytes": 86018,
+      "attachment_sha256": "c516f0b13e90408c3b4fe7478ec1e79aa2f929d7303df8c65459ac97b5e7c628",
+      "manifest_digest": "2ffd74aafa0bf001ef94ebaafd0c164a6da5c6b4ab825d0cd6e3029494bf0657",
+      "original_definition_libraries_removed": true,
+      "scope": "Real configured hosted model through installed Ergora structure-review template from a complete static manifest and task MCP; provided source only, no formal approval or OS isolation.",
+      "decision": "request-changes",
+      "result_sha256": "b9b084f3c143ec62d5cd507660bc1bde167881cd3e1f1e4115fd3ee80fc165b7"
+    },
+    "result": {
+      "artifacts": {
+        "response": "Candidate: attachment SHA256 c516f0b13e90408c3b4fe7478ec1e79aa2f929d7303df8c65459ac97b5e7c628, read completely through next_offset=null.\n\nStandards: No separate blocking ownership finding established in the supplied source. Application admission and standard-library record validation remain separate. Implementations of imported graph, permission and backend owners were not supplied, so their internal contracts remain unverified.\n\nSpec — [P2] Validate the complete persisted policy shape. Location: src/ergora/task_envelopes.py:60–78 (candidate SHA256 44debd177e3c456fe8f8df3705be40cf2d50f25567dac885b37dd290a311c79c). `_policy` checks every capability's status, but only some entries receive complete shape validation. For example, replacing `backend_sandbox` with `{\"status\":\"enforced\",\"command\":[\"sh\"]}` passes all shown checks. Additional top-level policy fields also pass.\n\nReachable scenario: modify that field in an interrupted v2 intent and recompute the envelope digest, then resume with the matching intent digest. `_Creation.validate_record` calls this validator but performs no further policy-shape check, so recovery can publish the malformed policy. The reader likewise accepts and exposes it through `unwrap` and `summary`.\n\nConsequence: the promised restricted persisted shape still permits forbidden command fields and unsupported capability claims. This is a record-validation defect; the shown v2 runtime rejection prevents claiming an execution bypass.\n\nSmallest correction: enforce allowed keys and value types for the policy object and every capability record, rejecting command fields and executable capability additions. Keep this structural validation standard-library-only and independent of mutable backend admission.\n\nEvidence limits: source inspection only; no tests were run and no whole-repository inspection was performed."
+      },
+      "decision": "request-changes",
+      "summary": "Request changes: persisted capability-policy validation still accepts forbidden command fields."
+    }
+  }
+]

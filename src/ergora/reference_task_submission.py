@@ -27,9 +27,11 @@ class _Submission:
         self.rejection_path = self.creation.path(prefix + '.rejection.json')
 
     def prepare(self) -> None:
+        record = self.creation.published()
+        if record['schema_version'] == 2:
+            raise ValueError('Composition task submission requires the versioned runtime bridge; not available yet')
         from dev_platform.workflow import workflow_id
 
-        record = self.creation.published()
         self.creation_record = record
         self.spec = record['files']['task.spec.json']
         self.expected = {'schema_version': 1, 'operation': 'start',

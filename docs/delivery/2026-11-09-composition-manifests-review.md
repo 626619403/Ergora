@@ -1,6 +1,6 @@
 # AC3c.1 完整静态组合包独立审查
 
-日期：2026-11-09。轮次：R1 初审及同片 R2 复核。**R2 两轴本地审查通过，CM-SP1 / P2 已关闭，范围内无未解决 finding。** 下文保留 R1 需修改结论及原始发现。普通精确交付、本候选必要 CI 与即时远端核对尚未完成。
+日期：2026-11-09。轮次：R1 初审、同片 R2 复核及精确交付终结。**R2 两轴审查通过，CM-SP1 / P2 已关闭；候选 `539163e` 的必要双 OS CI 与21:50:52 UTC即时远端核对通过，范围内无未解决 finding。** 下文保留 R1 需修改结论及各轮原始范围。
 
 ## 审查身份与固定范围
 
@@ -120,3 +120,26 @@ R1→R2 只有下列四项内容变化，其余八项逐字保持：
 R2 本地最终结论：Standards 0 项；Spec 原1项 P2已关闭、0项未解决，范围内无新增 finding。原生 Windows、其他平台、正式批准/嵌套运行等未验维度仍按上文保留。下一步为本片精确提交/普通推送后核必要 CI 和即时远端；本地结论不等待尚未创建的 CI，也不以本地结论冒称远端终结。
 
 最终本地静态核对：本片六份 Markdown 加本审查报告共7份，287个本地链接/锚点及75条既有手册 CLI parser 通过，范围内 `git diff --check` 通过。公共自身身份/结构结果另逐项与原始运行记录及实际结果 JSON 相同。该检查只证明链接、解析与归档身份，不扩大运行验收。
+
+## 精确候选与同片交付终结
+
+原协调者继续核验普通推送候选 **`539163e6f93539d7939181bc2ec7b7a60bd82bc4`**，唯一父为原基线 `582b16a4fba75a7e52f5d2f8287499de21ad9cf4`。后片已在工作树开始，但本次只读固定 Git 对象、R2旧 wheel/安装与快照，没有从当前源码继承结论。
+
+[最终19文件 scope](../../.ergora/checks/ac3c1-manifests/r2/review-final-scope.json) SHA256 为 `c9dbed3dd9fa84fed4cc62f99bd8393fbeefa2637838fb4ef0181f2e2cdf690e`。[独立候选核验](../../.ergora/checks/ac3c1-manifests/reviewer-r1/final-candidate-identity.json)确认：提交相对父的文件集合精确等于这19项，每项 blob ID 与内容 SHA256均一致；原12实现/文档、两份前片状态归档、本报告及两轮四份自身审查 JSON全部在内，下一片 `composition-admission.md` 未提交。候选 `src/ergora` 的363文件与已验R2 wheel/安装目录逐字一致，wheel仍为 `cd52801bda47ad5c44753a8e432549c58c40a7e1b8c0ff2562b7d85279bdcdf9`；四份公开自身 JSON逐项等于原运行回执。精确父→候选的 `git diff --check` 通过。
+
+最终交付静态记录为 **9 Markdown / 310本地链接 / 75条 CLI parser，零缺失**。独立将该记录的9项文档 SHA全部与候选 Git 内容比较一致，见[静态身份](../../.ergora/checks/ac3c1-manifests/reviewer-r1/final-static-identity.json)。这轮加入的两份前片归档与此前7份本地检查分开记账；后片工作树文档不在该证据内。
+
+21:50:52 UTC，独立重新 GET 官方 [Portability CI 42526062730](https://github.com/626619403/Ergora/actions/runs/42526062730)及两作业页面，完整批次 `totalCount=2 / hasMore=false`。运行整体 **Success**；[Ubuntu/Python3.11 作业128869824543](https://github.com/626619403/Ergora/actions/runs/42526062730/job/128869824543)和[Windows/Python3.12 作业128869824721](https://github.com/626619403/Ergora/actions/runs/42526062730/job/128869824721)均为 `completed/success`，无失败/取消/超时步骤，七项必要步骤均完成且为success。逐项核对官方步骤日志链接绑定同一完整候选：
+
+|必要步骤|Ubuntu|Windows|
+|---|---|---|
+|Build and install wheel|[success](https://github.com/626619403/Ergora/commit/539163e6f93539d7939181bc2ec7b7a60bd82bc4/checks/128869824543/logs/4)|[success](https://github.com/626619403/Ergora/commit/539163e6f93539d7939181bc2ec7b7a60bd82bc4/checks/128869824721/logs/4)|
+|Packaged reference identity|[success](https://github.com/626619403/Ergora/commit/539163e6f93539d7939181bc2ec7b7a60bd82bc4/checks/128869824543/logs/5)|[success](https://github.com/626619403/Ergora/commit/539163e6f93539d7939181bc2ec7b7a60bd82bc4/checks/128869824721/logs/5)|
+|Native application regression|[success](https://github.com/626619403/Ergora/commit/539163e6f93539d7939181bc2ec7b7a60bd82bc4/checks/128869824543/logs/6)|[success](https://github.com/626619403/Ergora/commit/539163e6f93539d7939181bc2ec7b7a60bd82bc4/checks/128869824721/logs/6)|
+|Windows PowerShell 5.1 installer and upgrade|仅Windows必需|[success](https://github.com/626619403/Ergora/commit/539163e6f93539d7939181bc2ec7b7a60bd82bc4/checks/128869824721/logs/7)|
+
+官方完整页面、作业批次、内容 SHA及结果保存在[最终独立 CI 证据](../../.ergora/checks/ac3c1-manifests/reviewer-r1/ci-42526062730/final.json)。这是官方完成状态与精确日志链接核验，没有从未取得的日志正文推导额外测试计数。首次调用中误填 SHA的本地取证失败不是该候选的CI结果；进行中的早期观察分别保留，均未算成功。
+
+完成上述官方核验后，**2026-11-08 21:50:52.632481 UTC**立即只读 `ls-remote`：`refs/heads/refactor/architecture-foundations` 返回完整 **`539163e6f93539d7939181bc2ec7b7a60bd82bc4`**，与候选一致，回执位于同一 final.json。审查者没有提交、推送或改动生产/测试。
+
+本片精确交付终结通过，CM-SP1已关闭，无新增 finding。此次报告追加只归档同片证据；未验的正式创建/批准、嵌套执行、其他平台及模型效果仍保留原范围，不继承为后片实现结论。

@@ -1,12 +1,12 @@
 # AC3c：组合清单与正式任务身份
 
-日期：2026-11-09。状态：AC3c.1实现、最终发行及新独立复审/真实自身审查通过，普通精确交付/必要CI待验；后续正式身份切片尚未实现。本片依赖AC3b.4；不把静态组合或独立单叶调用登记为正式批准。
+日期：2026-11-09。状态：AC3c.1完整完成：539163e精确候选、最终发行/新独立复审/真实自身再审、双OS CI42526062730及独立远端终结均通过；后续正式身份切片各自验收。本片依赖AC3b.4；不把静态组合或独立单叶调用登记为正式批准。
 
 ## 原始要求与已有事实
 
 用户要求可复用嵌套模板、完整祖先Skill/上下文继承、逐级权限上限、不同职能/专长/后端及可恢复的串并行工作流。创建/批准必须冻结实际定义和授权，修改活动库不得改变已批准任务。沿[ADR0004](../architecture/decisions/0004-agent-composition.md)和[ADR0005](../architecture/decisions/0005-composable-workflows.md)实施，保留既有六阶段和可信检查。
 
-现有`workflow_definitions`已拥有有界展开、完整材料、精确引用、原子完整输入发布及历史完整性核验；`agent_runs`提供独立调用的当前准入与后端能力合同。正式任务当前只接受task-definition-v1，`tasks._definition`冻结四角色binding；`reference_task_creation._Creation`发布八份原生文件，其意图/回执被提交和批准链共同核对。Temporal原输入及`DevelopmentWorkflow.context`仍只有冻结legacy spec；不能向旧spec偷加字段。
+现有`workflow_definitions`已拥有有界展开、完整材料、精确引用、原子完整输入发布及历史完整性核验；`agent_runs`提供独立调用的当前准入与后端能力合同。正式任务当前只接受task-definition-v1，`tasks._definition`冻结四角色binding；`reference_task_creation._Creation`发布七份原生文件，其意图/回执被提交和批准链共同核对。Temporal原输入及`DevelopmentWorkflow.context`仍只有冻结legacy spec；不能向旧spec偷加字段。
 
 `_Submission.expected`已经绑定creation摘要，远端memo绑定submission摘要；`_Approval`又绑定原submission/run及原计划回执。这个链可复用，但不能仅把一个新JSON放进任务目录就声称运行已固定组合。执行端还必须核对同一个清单，任务原始输入/作业上下文/实际调用均需带相应身份。
 
@@ -32,7 +32,7 @@
 - [x] CM1：版本化manifest schema及原完整输入核验/发布所有者的最小复用。
 - [x] CM2：CLI prepare-manifest / verify-manifest及公开使用说明，保持无模型/服务副作用和历史完整性。
 - [x] CM3：独立于源库的完整嵌套/祖先资源、备份恢复、篡改/多余资产拒绝及发布中断；旧完整输入回归。
-- [ ] CM4：非editable包/真实CLI、新fresh-context审查、工具自身真实模板审查和普通精确交付/必要CI。
+- [x] CM4：非editable包/真实CLI、新fresh-context审查、工具自身真实模板审查和普通精确交付/必要CI。
 
 静态manifest字段只包含根精确引用、grant、完整图摘要及未授权标识；图内已有稳定实例、端口装配来源、全部资源/提示/权限/预算。未来正式准入再冻结实际后端policy与运行信封。两个格式沿同一完整资产核验/发布路径，临时目录仍在目标父目录下清理，不将运行数据保存到系统tmp。
 
@@ -59,3 +59,5 @@ R2最终本地五套148 passed/零skip（19.54秒），363/283身份保持。真
 ## 本地独立出口
 
 [fresh-context两轴及协调审查](2026-11-09-composition-manifests-review.md)在R2均通过，CM-SP1关闭，无新增finding。独立新包五种内部/深层/..及symlink别名输出均在写前拒绝，源整树和digest保持；外部输出成功。12文件最终快照、363包身份和283冻结身份重核通过；原生R1/R2附件54,818/55,711字节均完整读取到next_offset=null，输入/prompt/结构结果及只读SQLite原回执独立一致。原R1失败与R2通过保留各自范围，未重复调用模型。下一普通提交/自身双OS CI及同片即时远端终结；CM4只待远端部分。
+
+AC3c.1终结：原独立者核精确539163e的19个Git对象、363包/283冻结身份、完整两作业列表与七项必要CI步骤success，21:50:52 UTC即时只读远端同完整SHA；原P2关闭、无新增finding。详见[原审查报告](2026-11-09-composition-manifests-review.md)。本次仅状态归档，不改变已验证生产身份。

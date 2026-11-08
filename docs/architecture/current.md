@@ -296,3 +296,7 @@ F6.1以独立[开发者原型](../../examples/editor-comparison/README.md)实际
 现有`agent_backends.py`提供`AgentBackend` ABC和四种实现；`Invocation`只传递本次调用的职能、正文、工作目录、协议目录、时限与结果schema，不承载领域成员或运行状态。`agents.invoke`保留旧参数并将Codex专用覆盖项交给该实现，正式`stage_driver`仅转交冻结配置、凭据环境和取消信号。`tools`调用同一实现的诊断/固定探测命令，仍统一管理请求预算、去重和输出脱敏。
 
 新增后端时，实现执行文件选择和原生命令；按实际差异实现结果提取、平台拒绝、可用性、正式配置核验及不调用模型的诊断。将实现登记到本模块`_BACKENDS`，再在`components.json`声明公开配置schema、能力、平台和安装配方；上层无需新增厂商分支。运行所需的静态资源和权限装载仍属AC3，不能仅登记一个字段就宣称支持。用原入口验证结构化结果、错误退出、取消和真实支持范围；不能把执行文件存在当认证或任务通过。
+
+## 组合任务信封
+
+显式task-definition-v2由tasks应用所有者核完整manifest和当前准入、选择review子图与每成员后端；标准库task_envelopes只拥有新信封摘要、完整文件字节身份和只读投影。reference_task_creation在原-S桥中发布同七文件/完整意图，task.spec.json改为新信封，compiled.json保留原六阶段投影；原只读reader核信封后展示投影及组合身份。旧运行器和未接新桥的正式提交拒绝新格式。新能力没有更改旧spec、283冻结文件、存储schema或Temporal历史，实际运行支持留AC3c.3/4。

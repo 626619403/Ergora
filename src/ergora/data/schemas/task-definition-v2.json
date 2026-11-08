@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "task_id",
+    "task_type",
+    "issue_id",
+    "input",
+    "composition"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 2
+    },
+    "task_id": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"
+    },
+    "task_type": {
+      "enum": [
+        "repository-governance",
+        "large-change"
+      ]
+    },
+    "issue_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160
+    },
+    "starting_sha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "input": {
+      "type": "object"
+    },
+    "composition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "manifest",
+        "manifest_digest",
+        "review_instance",
+        "mode"
+      ],
+      "properties": {
+        "manifest": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
+        },
+        "manifest_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "review_instance": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "mode": {
+          "enum": [
+            "text-only",
+            "task-mcp"
+          ]
+        },
+        "backend_overrides": {
+          "type": "object",
+          "maxProperties": 128,
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "binding",
+              "reason"
+            ],
+            "properties": {
+              "binding": {
+                "type": "object"
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2000,
+                "pattern": "\\S"
+              }
+            }
+          }
+        },
+        "diversity": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "policy"
+          ],
+          "properties": {
+            "policy": {
+              "enum": [
+                "prefer-distinct",
+                "require-distinct",
+                "allow-same"
+              ]
+            },
+            "reason": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000,
+              "pattern": "\\S"
+            }
+          }
+        }
+      }
+    }
+  },
+  "title": "Ergora formal task with a frozen review composition"
+}

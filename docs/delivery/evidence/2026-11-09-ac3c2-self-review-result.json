@@ -1,0 +1,7 @@
+{
+  "artifacts": {
+    "response": "Candidate attachment SHA256: 5efb67acb97e83a2bd3ea31ed5ef3025589828406ca8049bd8d13c2da03c0798. Read completely through next_offset=null.\n\nStandards findings: None blocking. Application admission, persisted-envelope validation, and native publication have distinct ownership. Recovery validates saved structure without treating archived backend metadata as current authorization.\n\nSpec findings: None blocking in the supplied paths. The v2 envelope preserves the legacy projection, freezes manifest bytes and selections, checks recovery publication sizes, and explicitly rejects unsupported start/status operations.\n\nEvidence limits: Reviewed only the supplied full files and baseline-relative hunks. Referenced graph, permission, backend, and frozen-reference implementations were not supplied for independent inspection. No tests were run; reported execution results remain operator-provided evidence."
+  },
+  "decision": "approve",
+  "summary": "No blocking correctness or maintainability defects found in the supplied candidate."
+}
