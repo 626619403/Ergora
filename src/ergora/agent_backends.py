@@ -18,6 +18,33 @@ def _events(output: Path):
                 yield json.loads(line)
 
 
+def _restricted_policy(mode: str, native_tools: list[str], credentials: str, sandbox: dict) -> dict:
+    task = mode == "task-mcp"
+    return {"mode": mode,
+        "basis": "Backend implementation contract; installed CLI, authentication and provider capacity have not been probed",
+        "model_tools": ("explicit task MCP list/read; " if task else "no file, shell, web or MCP tools; ") +
+                       "native response/interaction tools may remain",
+        "native_companion_tools": native_tools,
+        "resources": "complete inline instructions/context; declared fixed resources via MCP" if task else
+                     "complete inline instructions/context; Skill attachments unavailable to this mode",
+        "ambient_configuration": "disabled by native CLI options",
+        "authentication": credentials, "host_isolation": "not provided",
+        "capabilities": {
+            "inline_material": {"status": "enforced", "effective": "complete inherited instructions/context and operator prompt",
+                                "scope": "byte delivery, not model understanding or a provider context-window guarantee"},
+            "fixed_resource_read": {"status": "enforced" if task else "unsupported",
+                                    "effective": "selected structural chain's declared fixed resources" if task else []},
+            "workspace_read": {"status": "unsupported", "effective": []},
+            "write": {"status": "unsupported", "effective": []},
+            "shell": {"status": "unsupported", "effective": False},
+            "tool_network_origins": {"status": "unsupported", "effective": []},
+            "task_mcp": {"status": "enforced" if task else "unsupported", "tools": ["list", "read"] if task else []},
+            "external_mcp": {"status": "unsupported", "effective": []},
+            "backend_sandbox": sandbox,
+            "host_isolation": {"status": "unsupported", "effective": "trusted user/process boundary"}},
+        "infrastructure": "Inference HTTP, stdio subprocesses, logs and State writes remain trusted infrastructure"}
+
+
 @dataclass(frozen=True)
 class Invocation:
     role: str
@@ -60,6 +87,10 @@ class AgentBackend(ABC):
         if mode not in self.invocation_modes:
             raise ValueError(f"{self.binding['tool']} does not support {mode} composition calls")
 
+    def composition_policy(self, mode: str) -> dict:
+        """Describe an admitted restricted mode; declaring its name is insufficient."""
+        raise ValueError(f"{self.binding['tool']} has no composition capability contract for {mode}")
+
     @abstractmethod
     def command(self, request: Invocation) -> tuple[list[str], str]:
         """Prepare the native command and stdin in an existing protocol directory."""
@@ -84,17 +115,28 @@ class CodexBackend(AgentBackend):
     def executable(self) -> str:
         return "codex"
 
+    def composition_policy(self, mode: str) -> dict:
+        self._options(mode)
+        native = ["request_user_input"]
+        if mode == "task-mcp":
+            native += ["list_mcp_resources", "list_mcp_resource_templates", "read_mcp_resource"]
+        return _restricted_policy(mode, native,
+            "Codex login or explicit inference provider environment credential references; not checked",
+            {"status": "advisory", "requested": self.binding.get("sandbox"), "effective": "read-only",
+             "scope": "Codex CLI request; does not establish host isolation"})
+
     def check_invocation(self) -> None:
         if sys.platform != "linux" and self.binding.get("sandbox") == "current-container":
             raise ValueError("current-container requires the trusted Linux container configuration; use the native Codex sandbox on Windows")
 
-    def command(self, request: Invocation) -> tuple[list[str], str]:
+    def _options(self, mode: str, task_mcp: dict | None = None) -> list[str]:
+        """Parse the same inference options for model-free admission and command construction."""
         options = list(self.options.get("arguments") or [])
         config = {}
         if self.options.get("config") is not None:
             options += ["--ignore-user-config", "--ignore-rules", "--disable", "plugins", "--disable", "apps"]
             config = tomllib.loads(Path(self.options["config"]).read_text(encoding="utf-8"))
-        if request.mode != "native":
+        if mode != "native":
             if self.options.get("arguments"):
                 raise ValueError("Restricted composition calls do not accept additional native arguments")
             options = ["--ignore-user-config", "--ignore-rules", "--strict-config", "--skip-git-repo-check"]
@@ -112,8 +154,8 @@ class CodexBackend(AgentBackend):
                 "features.plugins": False, "features.memories": False, "features.skill_mcp_dependency_install": False,
                 "skills.include_instructions": False, "skills.bundled.enabled": False,
                 "web_search": "disabled", "project_doc_max_bytes": 0})
-            if request.task_mcp is not None:
-                config["mcp_servers"] = {"ergora_task": {**request.task_mcp,
+            if task_mcp is not None:
+                config["mcp_servers"] = {"ergora_task": {**task_mcp,
                     "enabled_tools": ["list", "read"], "required": True,
                     "startup_timeout_sec": 15, "tool_timeout_sec": 15}}
 
@@ -124,12 +166,16 @@ class CodexBackend(AgentBackend):
                     add(value, name + ".")
                 elif name != "approval_policy" and not name.startswith("sandbox_"):
                     try:
-                        encoded = json.dumps(value)
-                    except TypeError as error:
+                        encoded = json.dumps(value, allow_nan=False)
+                    except (TypeError, ValueError) as error:
                         raise ValueError(f"Codex configuration field is not JSON-compatible: {name}") from error
                     options.extend(["-c", name + "=" + encoded])
 
         add(config)
+        return options
+
+    def command(self, request: Invocation) -> tuple[list[str], str]:
+        options = self._options(request.mode, request.task_mcp)
         sandbox = "read-only" if request.mode != "native" else self.binding.get(
             "sandbox", "read-only" if request.role != "implementer" else "workspace-write")
         sandbox = "danger-full-access" if sandbox == "current-container" else sandbox
@@ -162,6 +208,13 @@ class ClaudeCodeBackend(AgentBackend):
 
     def executable(self) -> str:
         return "claude"
+
+    def composition_policy(self, mode: str) -> dict:
+        credentials = ("Bare mode API environment credentials; stored OAuth/keychain are not read" if mode == "task-mcp" else
+                       "Native Claude authentication or its supported environment credentials; not checked")
+        return _restricted_policy(mode, ["StructuredOutput"], credentials,
+            {"status": "unsupported", "requested": None, "effective": None,
+             "scope": "Native tools are disabled; this mode does not request an OS sandbox"})
 
     def command(self, request: Invocation) -> tuple[list[str], str]:
         argv = ["claude", "--print", "--output-format", "json", "--no-session-persistence"]

@@ -55,6 +55,7 @@ def prepared(tmp_path):
 def test_call_persists_complete_snapshot_and_explicit_backend_without_ambient_tools(prepared, tmp_path, monkeypatch, capsys, backend):
     state, repo, source = prepared()
     original = workflows.inspect_input(source, material=True)
+    admitted = agent_runs.check_input(state, "demo", source, backend=backend, model="fixture-model", reason="Explicit test selection")
     config = tmp_path / "native.toml"
     config.write_text('model_provider="fixture"\napproval_policy="never"\nsandbox_mode="danger-full-access"\n'
         '[features]\nshell_tool=true\n[model_providers.fixture]\nname="Fixture"\n'
@@ -89,6 +90,7 @@ def test_call_persists_complete_snapshot_and_explicit_backend_without_ambient_to
     run = json.loads(capsys.readouterr().out)
     assert run["status"] == "succeeded" and run["requested_binding"] == {"tool": "codex"}
     assert run["backend_reason"] == "Explicit test selection" and run["formal_execution_authorized"] is False
+    assert run["policy"] == admitted["policy"] and run["binding"] == admitted["binding"]
     assert all("text" not in resource and resource["sources"] for resource in run["context"]["resources"])
     assert json.loads(Path(run["result"]).read_text()) == result
     assert workflows.inspect_input(source)["digest"] == original["digest"]
@@ -104,16 +106,18 @@ def test_call_persists_complete_snapshot_and_explicit_backend_without_ambient_to
 @pytest.mark.parametrize("permission", [("write", ["workspace"]), ("shell", True), ("network", ["https://example.com"])])
 def test_text_only_refuses_unsupported_permissions_before_creating_a_run(prepared, permission):
     state, _, source = prepared(permission=permission)
-    with pytest.raises(ValueError, match="Text-only"):
-        agent_runs.run_input(state, "demo", source)
+    for operation in (agent_runs.check_input, agent_runs.run_input):
+        with pytest.raises(ValueError, match="Text-only"):
+            operation(state, "demo", source)
     assert agent_runs.runs(state, "demo") == [] and not (state.root / "runs").exists()
 
 
 def test_command_cannot_claim_text_only_capability(prepared):
     state, _, source = prepared(binding={"tool": "command", "argv": ["must-not-run"], "protocol": "stage-json-v1",
                                          "capabilities": agents.GENERAL_CAPABILITIES})
-    with pytest.raises(ValueError, match="does not support text-only"):
-        agent_runs.run_input(state, "demo", source)
+    for operation in (agent_runs.check_input, agent_runs.run_input):
+        with pytest.raises(ValueError, match="does not support text-only"):
+            operation(state, "demo", source)
     assert agent_runs.runs(state, "demo") == []
 
 
@@ -123,20 +127,45 @@ def test_historical_input_does_not_bypass_current_admission_when_overriding_back
         raise ValueError("Current policy rejects this definition")
     monkeypatch.setattr(agents, "validate_binding", reject)
     assert workflows.inspect_input(source)["request"]["execution_authorized"] is False
-    with pytest.raises(ValueError, match="Current policy"):
-        agent_runs.run_input(state, "demo", source, backend="claude-code")
+    for operation in (agent_runs.check_input, agent_runs.run_input):
+        with pytest.raises(ValueError, match="Current policy"):
+            operation(state, "demo", source, backend="claude-code")
     assert agent_runs.runs(state, "demo") == []
 
 
-@pytest.mark.parametrize("content,error", [("model_providers=[]\n", "TOML tables"), ("model=2026-11-09\n", "JSON-compatible")])
-def test_invalid_inference_config_has_a_durable_readable_failure_without_calling_model(prepared, tmp_path, monkeypatch, content, error):
+def test_declared_sandbox_is_visible_but_cannot_expand_restricted_call_tools(prepared, tmp_path, monkeypatch):
+    state, _, source = prepared(binding={"tool": "codex", "sandbox": "workspace-write"})
+    admitted = agent_runs.check_input(state, "demo", source)
+    sandbox = admitted["policy"]["capabilities"]["backend_sandbox"]
+    assert sandbox["requested"] == "workspace-write" and sandbox["effective"] == "read-only" and sandbox["status"] == "advisory"
+    result = {"summary": "Reviewed", "artifacts": {"response": "Evidence"}, "decision": "approve"}
+
+    def native(argv, cwd, output, *args, **kwargs):
+        assert argv[argv.index("--sandbox") + 1] == "read-only"
+        settings = dict(argv[i + 1].split("=", 1) for i, item in enumerate(argv) if item == "-c")
+        assert settings["features.shell_tool"] == "false"
+        Path(argv[argv.index("--output-last-message") + 1]).write_text(json.dumps(result), encoding="utf-8")
+        output.mkdir()
+        return {"status": "succeeded", "returncode": 0, "output": str(output)}
+
+    monkeypatch.setattr(processes, "run", native)
+    run = agent_runs.run_input(state, "demo", source)
+    assert run["status"] == "succeeded" and run["policy"] == admitted["policy"]
+
+
+@pytest.mark.parametrize("mode", ["text-only", "task-mcp"])
+@pytest.mark.parametrize("content,error", [("model_providers=[]\n", "TOML tables"), ("model=2026-11-09\n", "JSON-compatible"),
+                                         ("model=nan\n", "JSON-compatible"), ("model=inf\n", "JSON-compatible"),
+                                         ("model=-inf\n", "JSON-compatible")])
+def test_invalid_inference_config_rejects_check_and_run_before_side_effects(prepared, tmp_path, monkeypatch, content, error, mode):
     state, _, source = prepared()
     config = tmp_path / "invalid.toml"
     config.write_text(content, encoding="utf-8")
     monkeypatch.setattr(processes, "run", lambda *a, **k: pytest.fail("Invalid inference config must not call model"))
-    run = agent_runs.run_input(state, "demo", source, codex_config=config)
-    assert run["status"] == "failed" and run["finished"] and error in run["error"]
-    assert run == agent_runs.runs(State(state.root), "demo")[0]
+    for operation in (agent_runs.check_input, agent_runs.run_input):
+        with pytest.raises(ValueError, match=error):
+            operation(state, "demo", source, codex_config=config, mode=mode)
+    assert agent_runs.runs(State(state.root), "demo") == [] and not (state.root / "runs").exists()
 
 
 def test_native_stdin_matches_saved_prompt_bytes_with_unicode_and_mixed_newlines(tmp_path):

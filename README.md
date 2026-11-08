@@ -154,11 +154,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1 -A
 
 空环境可加 `-InstallPrerequisites` 通过 winget 安装缺失的 Python / Git。安装、认证、目录、升级及功能范围见 [Windows 手册](docs/WINDOWS.md)。原生支持项目、模板设计、角色调用、记忆与持续改进；完整六阶段参考执行器、mini-swe-agent 驱动和 ForgeKernel 使用 WSL2/Linux，正式执行器还要求可信 Linux 容器。旧 HTML 保持 Linux v2.2 内容。
 
-开发检查：安装 `.[dev,web,gepa,temporal]` 后运行 `python -m pytest tests`；真实 Temporal 回归需通过 `ERGORA_TEMPORAL_TEST_ADDRESS` 明确指定隔离服务，否则跳过。`ergora workflow` 直接调用随包的原合同编译器，支持 `compile`、`validate`、`convert-v2`、`export-v2`，不自动安装或启动执行服务。
+开发检查：安装 `.[dev,web,gepa,temporal,task-mcp]` 后运行 `python -m pytest tests`；真实 Temporal 回归需通过 `ERGORA_TEMPORAL_TEST_ADDRESS` 明确指定隔离服务，否则跳过。`ergora workflow` 直接调用随包的原合同编译器，支持 `compile`、`validate`、`convert-v2`、`export-v2`，不自动安装或启动执行服务。
 
 开发者可用独立的[图与表单比较例子](examples/editor-comparison/README.md)复现技术选型。Node仅用于该例子构建，默认安装保持原要求；例子只编辑试验草稿，正式功能状态见[实施计划](docs/PLAN.md)。
 
-基础安装还可检查和预览[可嵌套工作流定义](docs/WORKFLOW_DEFINITIONS.md)：精确引用专家或子模板，表达串并行/all-join，完整累加祖先材料并校验整链权限与总预算。可显式准备并调用单个叶子；默认text-only，Linux的task-mcp可按授权URI读取固定Skill附件。完整嵌套调度及正式批准沿计划接入，正式开发仍使用六阶段。
+基础安装还可检查和预览[可嵌套工作流定义](docs/WORKFLOW_DEFINITIONS.md)：精确引用专家或子模板，表达串并行/all-join，完整累加祖先材料并校验整链权限与总预算。可显式准备并调用单个叶子；默认text-only，Linux的task-mcp可按授权URI读取固定Skill附件。调用前用`ergora composition check-input PROJECT DIRECTORY`查看完整祖先权限链与实际能力合同，不会启动模型或服务；真实调用会重新准入并保存同结构报告。完整嵌套调度及正式批准沿计划接入，正式开发仍使用六阶段。
 
 统一注册项目可用 `ergora services status/start/stop/logs/shutdown` 显式管理 Linux/WSL2 中的所选 Supervisor 服务。版本/凭据/TCP 诊断和服务进程状态分别报告；停止需确认，未确认的结果先对账。命令、共享服务栈与日志游标见[使用手册](docs/USAGE.md#显式服务管理)。
 

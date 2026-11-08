@@ -136,6 +136,23 @@ ergora agent output my-project RUN_ID
 单叶调用的任务由操作者提供，图前驱和端口没有执行；原输入仍为`execution_authorized: false`，本次调用也不创建正式候选/批准。完整工作流调度、正式批准和其他强制能力继续按AC3b.4、AC3c/4接入。
 
 
+## 调用前查看能力与权限
+
+在实际调用前，可以先检查同一输入、后端及模式：
+
+```bash
+ergora composition check-input my-project ./prepared-review
+ergora composition check-input my-project ./prepared-review --mode task-mcp --backend codex
+ergora composition check-input my-project ./prepared-review --mode task-mcp --backend codex --codex-config /PATH/TO/codex.toml
+ergora composition check-input my-project ./prepared-review --mode task-mcp --backend claude-code --backend-reason "Independent review backend"
+```
+
+该命令和`run-input`共用当前准入。结果的`policy.permission_ceilings`按所供grant、root到leaf列出整条结构权限链，`requested_permissions`是叶子请求，`context.resources`保留全部祖先/自身资源来源。read路径是许可上限；列出workspace不会自动提供项目文件工具。完整内联材料和固定附件的支持分别展示，text-only不会声称附件可读。
+
+`policy.capabilities`把支持范围分为`enforced`（可信CLI/任务URI服务实现的机制）、`advisory`（请求/提示，未提供强制保证）及`unsupported`（没有对应能力）。Codex实际传read-only请求，但不因此宣称宿主隔离；Claude关闭native工具，没有额外请求OS sandbox。任务MCP只提供固定声明资料的list/read；实时workspace、写、shell、工具network origin及外部MCP继续不支持。基础设施推理HTTP、stdio进程、日志/状态写入仍存在。
+
+这是实现合同和本次准入报告，不启动server/模型、不创建运行，也不检查CLI版本或认证。使用Codex的`--codex-config`时，检查和运行共用推理字段解析；文件不可读、无效TOML、不合法provider表或不能编码的字段在建立运行前拒绝。它不验证提供商是否接受配置、模型是否可用或容量是否足够；Claude忽略该Codex专用选项。task-mcp只检查Linux及SDK顶层存在，真正SDK兼容/连接在运行时预检。检查成功不等于正式批准，`formal_execution_authorized`仍为false。实际运行重新执行准入并保存同结构`policy`，不会把先前检查结果当成授权票据。
+
 ## 通过任务 MCP 读取固定附件
 
 在Linux/WSL2中，用运行Ergora的同一个Python环境安装可选依赖。仓库根下执行：

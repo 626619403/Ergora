@@ -167,3 +167,5 @@ ergora kernel run my-project CAMPAIGN_ID --timeout 3600
 当前表单支持 string、number、integer、array 和 enum。`x-ergora-*` 字段仅提供表单的枚举标签、平台默认值、项目 task queue 默认值及输入步长。配置描述不注入已保存绑定或运行快照，也不改变 Agent 的运行默认值。核心使用同一配置的 JSON Schema 做结构校验，既有角色、路径、URL 和可信门禁继续由业务所有者负责；具体类型、错误路径及兼容规则见 [合同与身份](architecture/contracts-and-identities.md)。目录不加载用户提供的 Python 插件，配置中也不保存密钥值。
 
 独立组合叶子的默认text-only及可选task-mcp模式见[工作流手册](WORKFLOW_DEFINITIONS.md#通过任务-mcp-读取固定附件)。后者只读选中叶子/祖先固定资源，不继承ambient工具；原生工具表、Claude bare认证差异和Linux支持范围均按该模式处理。普通agent run及正式stage不自动采用此模式。
+
+独立组合调用前可用`composition check-input`查看[能力及权限链](WORKFLOW_DEFINITIONS.md#调用前查看能力与权限)。报告由当前后端合同与原准入共同生成；它不探测认证或启动服务，实际调用会重新准入并保存相同结构的policy。新增受限后端需实现自己的composition_policy，不能只声明模式名称。

@@ -339,3 +339,39 @@ def test_interrupt_during_preflight_is_a_durable_cancelled_run(scoped, monkeypat
     run = json.loads(capsys.readouterr().out)
     assert run["status"] == "cancelled" and run["finished"]
     assert run == agent_runs.runs(State(state.root), "demo")[0]
+
+
+@pytest.mark.parametrize("backend", ["codex", "claude-code"])
+@pytest.mark.parametrize("mode", ["text-only", "task-mcp"])
+def test_capability_check_has_complete_ceilings_and_resources_without_starting_a_run(scoped, monkeypatch, capsys, backend, mode):
+    state, prepared, _ = scoped
+    revision = state.project("demo")["revision"]
+
+    def not_called(*args, **kwargs):
+        pytest.fail("Admission must not freeze scope, probe servers or invoke a model")
+
+    monkeypatch.setattr(task_mcp, "freeze", not_called)
+    monkeypatch.setattr(task_mcp, "probe", not_called)
+    monkeypatch.setattr(agents, "invoke", not_called)
+    assert main(["--home", str(state.root), "composition", "check-input", "demo", prepared["path"],
+                 "--mode", mode, "--backend", backend, "--model", "selected-model", "--backend-reason", "Review diversity"]) == 0
+    admission = json.loads(capsys.readouterr().out)
+    policy = admission["policy"]
+    assert admission["kind"] == "composition-admission" and admission["formal_execution_authorized"] is False
+    assert admission["binding"] == {"tool": backend, "model": "selected-model"} and admission["backend_reason"] == "Review diversity"
+    assert policy["requested_permissions"] == READ
+    assert [item["path"] for item in policy["permission_ceilings"]] == ["supplied-grant", "root", "root/inner", "root/inner/review"]
+    assert all(item["permissions"] == READ for item in policy["permission_ceilings"])
+    capabilities = policy["capabilities"]
+    assert capabilities["fixed_resource_read"]["status"] == ("enforced" if mode == "task-mcp" else "unsupported")
+    assert capabilities["task_mcp"]["tools"] == (["list", "read"] if mode == "task-mcp" else [])
+    assert all(capabilities[name]["status"] == "unsupported" for name in (
+        "workspace_read", "write", "shell", "tool_network_origins", "external_mcp", "host_isolation"))
+    if backend == "claude-code" and mode == "task-mcp":
+        assert "OAuth/keychain are not read" in policy["authentication"]
+    assert capabilities["backend_sandbox"]["status"] == ("advisory" if backend == "codex" else "unsupported")
+    assert {source["instance"] for resource in admission["context"]["resources"] for source in resource["sources"]} == {
+        "root", "root/inner", "root/inner/review"}
+    assert all("text" not in resource for resource in admission["context"]["resources"])
+    assert agent_runs.runs(state, "demo") == [] and not (state.root / "runs").exists()
+    assert state.project("demo")["revision"] == revision

@@ -1,0 +1,45 @@
+{
+  "checked_at": "2026-11-08T21:01:25.233022+00:00",
+  "source": {
+    "src/ergora/agent_backends.py": "013392acce6b923fad050e0533a18c2414548e3be8389487ab377e0aafd043e3",
+    "src/ergora/agent_runs.py": "8720a282ce72ae12b4547a24b138ffee41691ec0e8e471bc89ff39fafe7cfea5",
+    "src/ergora/cli.py": "3ea8d14143019517c5f7e19b50b83bbc46e98c63e3385f2087678c5139526eb4",
+    "tests/test_composition_invocations.py": "fbac1f8269f80e8d88efe704de4c50a7f75e07489b312be36440e45d378091b2",
+    "tests/test_task_mcp.py": "e4e8499fbb42fedc528263069fe45990d66d2d7a23b0ef02a27c6ac652a55e93"
+  },
+  "backend": "codex",
+  "inference_model": "gpt-6.1-sol",
+  "reasoning_effort": "high",
+  "run_id": "cc5c5236a81c4b129edbd276e4c7ffa0",
+  "status": "succeeded",
+  "exit_code": 0,
+  "seconds": 110.33652704581618,
+  "input_digest": "a963b348c4fe97fdf40a0bc76f7340d93fd066be5b07f0502538790e6a2de894",
+  "prompt_sha256": "4e21011e47230c2da825f05cb86b35a501a723309b47f3d9be5c514b699bc52d",
+  "attachment_bytes": 52413,
+  "attachment_sha256": "af043a783def152edbab4f987141a1f2315b908b437aebe3a557e0b855646f27",
+  "scope": "Real configured hosted model through installed Ergora structure-review template and task MCP; provided source only, no formal approval or OS isolation.",
+  "decision": "approve",
+  "result_sha256": "42fbfcac5a9a188e645f13e04abfc0abe86d0933fdd36d8771dccbd5ec3ea796",
+  "tool": "ergora composition check-input / run-input",
+  "template": "structure-review",
+  "role": "reviewer",
+  "mode": "task-mcp",
+  "source_unchanged": true,
+  "prior_attempts": [
+    {
+      "run_id": "f65f24b2d4ee4c9ea1192ad9c2e73a4c",
+      "status": "succeeded",
+      "decision": "request-changes",
+      "seconds": 95.46936260676011,
+      "attachment_sha256": "5ab003f2c54b53cfbd4cd4dd74c80f5c65b8452bcb8a915f2f476aedd56f9f20"
+    },
+    {
+      "run_id": "b38ef6190f9f4fdd847187946c5d462e",
+      "status": "succeeded",
+      "decision": "request-changes",
+      "seconds": 127.68595540011302,
+      "attachment_sha256": "5fdf600f70a4bb8c46ef6af1a46a5350d4c13bd1a22c78bd37d5a76fb3fffe79"
+    }
+  ]
+}

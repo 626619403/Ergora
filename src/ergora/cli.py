@@ -75,15 +75,19 @@ def parser() -> argparse.ArgumentParser:
     verify_input = operations.add_parser("verify-input")
     verify_input.add_argument("directory", type=Path)
     verify_input.add_argument("--material", action="store_true")
-    run_input = operations.add_parser("run-input", help="Independent restricted leaf call; no workflow ports or formal approval")
-    run_input.add_argument("project")
-    run_input.add_argument("directory", type=Path)
-    run_input.add_argument("--timeout", type=int, default=300)
-    run_input.add_argument("--mode", choices=("text-only", "task-mcp"), default="text-only")
-    run_input.add_argument("--backend", choices=("codex", "claude-code"))
-    run_input.add_argument("--model")
-    run_input.add_argument("--backend-reason")
-    run_input.add_argument("--codex-config", type=Path, help="Inference settings only; native tool and permission settings are ignored")
+    for name in ("check-input", "run-input"):
+        operation = operations.add_parser(name, help="Check current leaf capabilities" if name == "check-input" else
+                                         "Independent restricted leaf call; no workflow ports or formal approval")
+        operation.add_argument("project")
+        operation.add_argument("directory", type=Path)
+        operation.add_argument("--mode", choices=("text-only", "task-mcp"), default="text-only")
+        operation.add_argument("--backend", choices=sorted({tool for choices in agents.CHOICES.values() for tool in choices}),
+                               help="Registered Agent backend; unsupported role/mode/configuration fails admission")
+        operation.add_argument("--model")
+        operation.add_argument("--backend-reason")
+        operation.add_argument("--codex-config", type=Path, help="Inference settings only; native tool and permission settings are ignored")
+        if name == "run-input":
+            operation.add_argument("--timeout", type=int, default=300)
     project = commands.add_parser("project", help="Register a project and choose layer tools")
     operations = project.add_subparsers(dest="operation", required=True)
     create = operations.add_parser("add")
@@ -613,6 +617,9 @@ def main(argv: list[str] | None = None) -> int:
                     definition_bundles.read_json(args.grant), task, args.directory, args.max_prompt_bytes)
             elif args.operation == "verify-input":
                 output = workflow_definitions.inspect_input(args.directory, material=args.material)
+            elif args.operation == "check-input":
+                output = agent_runs.check_input(State(args.home), args.project, args.directory,
+                    backend=args.backend, model=args.model, reason=args.backend_reason, mode=args.mode, codex_config=args.codex_config)
             elif args.operation == "run-input":
                 output = agent_runs.run_input(State(args.home), args.project, args.directory, args.timeout,
                     backend=args.backend, model=args.model, reason=args.backend_reason, codex_config=args.codex_config, mode=args.mode)

@@ -126,3 +126,26 @@ r5 真实再审已完成，独立审查者直接核查其原始回执，结果�
 R3 后三份计划／交付文档仅追加本地终结状态，已核表述与实际证据一致，仍保留 TM4 的精确交付／自身 CI 待办。最终本地范围为原 16 文件、本报告及前片两份状态归档，共 19 文件，后片能力文档排除；本报告最终追加后需刷新其清单 SHA。
 
 **本地终结结论：Standards 通过，Spec 通过；SP-1／SP-2／SP-3 及首轮模型发现全部关闭，范围内无新增 finding。** 后续仅待最终 Git 候选、自身必要 CI 和同片远端终结核验，不将本地结论扩大为完整远端交付。
+
+## 精确候选对象核验
+
+2026-11-08 20:33:34 UTC，独立检查普通候选 `ce4fc4b26c783431ba1c9aa7f8a0875b2ff88954`，其唯一父提交为原基线 `8208efa36cb9c76344d10d6789702e5bcc654ade`。实际提交差异正好 19 文件，各 Git blob 的 SHA256 与最终 scope 清单逐项一致。
+
+直接从该固定候选 Git 对象读取全部 **362 生产文件**，与最终 r5 wheel、非 editable 安装及已记录包清单逐字节一致；**283 冻结文件**的 Git blob 与父提交均未改变。r5 wheel SHA256 仍为 `2c4ae9de9038b1a5cf6e24322b145751deae8cb797e7e0511ed170204136480f`。后片 `composition-capabilities` 文档不在候选 Git 树内。该核查使用固定提交对象，不使用随后推进其他切片的工作树替代候选身份。
+
+检查脚本和记录见 [candidate.py](../../.ergora/checks/ac3b3-task-mcp/reviewer-r3/candidate.py)、[candidate.json](../../.ergora/checks/ac3b3-task-mcp/reviewer-r3/candidate.json)。本追加属于审查状态归档，不改变上述已执行候选；其自身 CI 和远端终结仍待具体 run／远端回执。
+
+## 候选自身 CI 与远端独立终结
+
+2026-11-08 20:51:32 UTC，审查者独立重新抓取官方 [run 42520599054](https://github.com/626619403/Ergora/actions/runs/42520599054)、两个 job 页面及由该 run 的 `jobGroupsFetchUrl` 取得的完整批次（`batch=0&size=200`）。run 状态为 `Success`，提交链接绑定完整候选 `ce4fc4b26c783431ba1c9aa7f8a0875b2ff88954`。完整批次 `totalCount=2`、`hasMore=false`，实际 job ID 精确等于下表两个，没有遗漏后续批次。
+
+| 官方作业 | 必需步骤的独立结果 |
+| --- | --- |
+| [Ubuntu / Python 3.11，128853027038](https://github.com/626619403/Ergora/actions/runs/42520599054/job/128853027038) | `Build and install wheel`、`Packaged reference identity`、`Native application regression` 全部成功 |
+| [Windows / Python 3.12，128853027108](https://github.com/626619403/Ergora/actions/runs/42520599054/job/128853027108) | 上述三步及 `Windows PowerShell 5.1 installer and upgrade` 全部成功 |
+
+各必需 `check-step` 均为 `data-conclusion=success` 且存在 `data-job-completed`，其 `data-log-url` 精确绑定该完整候选及对应 job ID；两页均未出现失败、取消或超时步骤。原始官方页面、完整批次及其 SHA256 保存在个人证据目录，检查脚本为 [ci.py](../../.ergora/checks/ac3b3-task-mcp/reviewer-r3/ci.py)，结构结果为 [ci/result.json](../../.ergora/checks/ac3b3-task-mcp/reviewer-r3/ci/result.json)。没有使用父代理下载的页面代替独立抓取。
+
+紧接官方 CI 校验，以既有逐命令 SSH 传输执行只读 `git ls-remote`；2026-11-08 20:51:32 UTC 返回 `refs/heads/refactor/architecture-foundations` 精确指向 `ce4fc4b26c783431ba1c9aa7f8a0875b2ff88954`。本次未修改 Git 配置、提交或推送，也未使用后片工作树替代固定候选对象。SSH 命令及凭据未输出或另存。
+
+**最终结论：Standards 通过，Spec 通过；全部已知 finding 关闭，固定候选自身 CI 与即时远端核验完成。** Windows CI 证明既有应用回归及安装／升级路径通过；本片模式验收环境为 Linux，`task-mcp` 在原生 Windows 仍明确拒绝并引导 Linux／WSL2，不据双 OS CI 扩大已验范围。本追加为执行后审查归档，不属于上述已执行候选的 Git 树。

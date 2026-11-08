@@ -70,11 +70,9 @@ def run_agent(state: State, project_id: str, role: str, prompt: str, timeout: in
     return document
 
 
-def run_input(state: State, project_id: str, source: Path, timeout: int = 300, *,
-              backend: str | None = None, model: str | None = None, reason: str | None = None,
-              codex_config: Path | None = None, mode: str = "text-only") -> dict:
-    """Explicit independent restricted call; no workflow ports or formal approval."""
-    contracts.validate(timeout, {"type": "integer", "minimum": 1, "maximum": 3600}, "Agent timeout")
+def _admit_input(state: State, project_id: str, source: Path, *, backend: str | None,
+                 model: str | None, reason: str | None, mode: str, codex_config: Path | None) -> tuple[dict, dict]:
+    """One current admission produces both the preview and the persisted call contract."""
     contracts.validate(mode, {"enum": ["text-only", "task-mcp"]}, "Composition call mode")
     project = state.project(project_id)
     prepared = workflow_definitions.inspect_input(source, material=True)
@@ -89,30 +87,57 @@ def run_input(state: State, project_id: str, source: Path, timeout: int = 300, *
     if model is not None:
         binding["model"] = model
     agents.validate_binding(leaf["role"], binding, formal=True)
-    adapter = agent_backends.for_binding(binding)
+    adapter = agent_backends.for_binding(binding, {"codex": {"config": codex_config}})
     adapter.check_invocation()
     adapter.check_mode(mode)
+    policy = adapter.composition_policy(mode)
     if mode == "task-mcp":
         task_mcp.check_available()
+    chain = []
+    path = leaf["path"]
+    instances = {item["path"]: item for item in prepared["composition"]["instances"]}
+    while path is not None:
+        item = instances[path]
+        chain.append({"path": path, "permissions": item["permissions"]})
+        path = item["parent"]
+    policy.update(requested_permissions=permissions,
+                  permission_ceilings=[{"path": "supplied-grant", "permissions": prepared["request"]["grant"]["permissions"]},
+                                       *reversed(chain)],
+                  read_scope_semantics="Permission paths are upper bounds; only declared fixed resources are provided",
+                  sdk_check="top-level package presence only; actual compatibility/readiness checked during run" if mode == "task-mcp" else "not required")
+    return prepared, {"schema_version": 1, "kind": "composition-admission", "project": project_id,
+        "project_revision": project["revision"], "role": leaf["role"], "binding": binding,
+        "requested_binding": leaf["backend_request"], "backend_reason": reason or (
+            "operator-selected override" if backend or model else "definition-selected backend"),
+        "input_digest": prepared["digest"], "input_request": prepared["request"],
+        "prompt_sha256": prepared["request"]["prompt_sha256"],
+        "context": {"resources": [{key: value for key, value in resource.items() if key != "text"}
+                                  for resource in leaf["resources"]]},
+        "policy": policy, "formal_execution_authorized": False}
+
+
+def check_input(state: State, project_id: str, source: Path, *, backend: str | None = None,
+                model: str | None = None, reason: str | None = None, mode: str = "text-only",
+                codex_config: Path | None = None) -> dict:
+    """Current admission only: no model, server, run record or formal authorization."""
+    _, document = _admit_input(state, project_id, source, backend=backend, model=model, reason=reason, mode=mode,
+                               codex_config=codex_config)
+    return document
+
+
+def run_input(state: State, project_id: str, source: Path, timeout: int = 300, *,
+              backend: str | None = None, model: str | None = None, reason: str | None = None,
+              codex_config: Path | None = None, mode: str = "text-only") -> dict:
+    """Explicit independent restricted call; no workflow ports or formal approval."""
+    contracts.validate(timeout, {"type": "integer", "minimum": 1, "maximum": 3600}, "Agent timeout")
+    prepared, document = _admit_input(state, project_id, source, backend=backend, model=model, reason=reason, mode=mode,
+                                      codex_config=codex_config)
     run_id = uuid.uuid4().hex
     output = state.root / "runs" / run_id
     snapshot = output.with_name(run_id + ".input")
     if snapshot.resolve().is_relative_to(Path(prepared["path"]).resolve()):
         raise ValueError("Run storage cannot be inside the prepared input directory")
-    document = {"schema_version": 1, "kind": "composition-agent-run", "id": run_id, "project": project_id,
-                "project_revision": project["revision"], "role": leaf["role"], "binding": binding,
-                "requested_binding": leaf["backend_request"], "backend_reason": reason or (
-                    "operator-selected override" if backend or model else "definition-selected backend"),
-                "started": now(), "status": "preparing", "template": None,
-                "input_digest": prepared["digest"], "input_request": prepared["request"],
-                "prompt_sha256": prepared["request"]["prompt_sha256"],
-                "context": {"resources": [{key: value for key, value in resource.items() if key != "text"}
-                                          for resource in leaf["resources"]]},
-                "policy": {"mode": mode, "requested_permissions": permissions,
-                    "model_tools": "explicit task MCP list/read; native MCP discovery and response/interaction tools may remain" if mode == "task-mcp" else "no file, shell, web or MCP tools; native response/interaction tools may remain",
-                    "resources": "complete inline instructions/context; declared fixed resources via MCP" if mode == "task-mcp" else "complete inline instructions/context; Skill attachments unavailable to this mode",
-                    "ambient_configuration": "disabled by native CLI options", "host_isolation": "not provided"},
-                "formal_execution_authorized": False}
+    document.update(kind="composition-agent-run", id=run_id, started=now(), status="preparing", template=None)
     _store(state, document)
     try:
         snapshot.parent.mkdir(parents=True, exist_ok=True)
@@ -134,8 +159,8 @@ def run_input(state: State, project_id: str, source: Path, timeout: int = 300, *
         _store(state, document)
         working = output.with_name(run_id + ".cwd")
         working.mkdir(mode=0o700)
-        document.update(agents.invoke(binding, leaf["role"], saved["prompt"], working, output, timeout,
-            agents.result_schema(["response"], leaf["role"] == "reviewer"), codex_config=codex_config, mode=mode, task_mcp=native_mcp))
+        document.update(agents.invoke(document["binding"], document["role"], saved["prompt"], working, output, timeout,
+            agents.result_schema(["response"], document["role"] == "reviewer"), codex_config=codex_config, mode=mode, task_mcp=native_mcp))
         if mode == "task-mcp" and document["status"] == "succeeded":
             document["task_mcp"]["native"] = task_mcp.verify_native(native_audit, scope["sha256"])
     except KeyboardInterrupt:
