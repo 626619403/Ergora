@@ -1,6 +1,6 @@
 # AC：完整评审、专长化Agent库与模板组合
 
-日期：2026-11-08。当前项：AC1.1精确交付，随后AC1.2。研究固定源码`b1dbe48a1b14e8e2ec59d4f44e30b2ea367fa1fe`，AC0交付`0f8e2a98dbfa42ea96657ef80fbf2bc356f57abe`，分支`refactor/architecture-foundations`。恢复上下文先读[总计划](../PLAN.md)、本表、共享报告和Git实际状态，不按历史快照推断新功能完成。
+日期：2026-11-08。当前项：AC1.2普通精确交付及自身CI，AC1.1已完整终结。研究固定源码`b1dbe48a1b14e8e2ec59d4f44e30b2ea367fa1fe`，AC0交付`0f8e2a98dbfa42ea96657ef80fbf2bc356f57abe`，分支`refactor/architecture-foundations`。恢复上下文先读[总计划](../PLAN.md)、本表、共享报告和Git实际状态，不按历史快照推断新功能完成。
 
 ## 目标和边界
 
@@ -13,8 +13,8 @@
 |节点 / 优先级|范围与已有所有者|可验收出口|当前状态|
 |---|---|---|---|
 |AC0 / 前置|全面独立源码评审；主代理并行核真实review流程、成熟框架和相关论文；整理设计与旧计划差异|共享报告有独立结果和逐项处置，来源/限制可核，设计明确当前/未来；新设计文档经fresh-context审查后普通提交推送|完成：0f8e2a9普通推送/远端一致，15文件/434链接/30 parser/22来源、精确双OS CI42483036401与新独立终结通过；未实现新组合|
-|AC1.1 / P0缺陷|Skill完整树发布：`skill_assets.import_bundle`，复用原State/文件锁，不改评价算法|中断copy后重试不会登记残树；并发同digest幂等；已有完整树不变；DB/head/event只指向核过完整内容。原GET篡改拒绝保留|[修复切片](../delivery/2026-11-08-skill-publication.md)与[新独立审查](../delivery/2026-11-08-skill-publication-review.md)通过；源码32/5skip、包内18/零skip、352/283身份及独立五退出窗口通过；普通精确交付/CI待完成|
-|AC1.2 / P0缺陷|已固定模板instructions真正进入正式stage prompt，归reference访问/执行桥；不改冻结文件|两开发模板的真实生成prompt含对应固定正文及摘要；缺失/篡改明确失败；不读取最新活动版本代替旧任务；原候选/审批/检查合同保持|待实现；需先明确compiled身份与旧任务兼容路径|
+|AC1.1 / P0缺陷|Skill完整树发布：`skill_assets.import_bundle`，复用原State/文件锁，不改评价算法|中断copy后重试不会登记残树；并发同digest幂等；已有完整树不变；DB/head/event只指向核过完整内容。原GET篡改拒绝保留|[修复切片](../delivery/2026-11-08-skill-publication.md)与[新独立审查](../delivery/2026-11-08-skill-publication-review.md)通过；bf99bd4普通推送、自身CI42484784168双OS必要步骤及13:42:06 UTC独立远端终结均通过，源码32/5skip、包内18/零skip、352/283身份及独立五退出窗口通过；S-1关闭|
+|AC1.2 / P0缺陷|已固定模板instructions真正进入正式stage prompt，归reference访问/执行桥；不改冻结文件|两开发模板的真实生成prompt含对应固定正文及摘要；缺失/篡改明确失败；不读取最新活动版本代替旧任务；原候选/审批/检查合同保持|[本地实现](../delivery/2026-11-08-template-instructions.md)、源码104项及非editable包8项/零skip、352/283身份通过；新独立两轴本地审查通过，另4例及两深层篡改拒绝通过；精确交付/自身CI待完成，AC1.1已独立完整终结|
 |AC1.3 / P0表述|独立审查的默认只读与显式override在公开手册中准确表达|读者可判断普通`agent run`、正式stage与当前容器三类实际限制；不把配置或fresh进程当OS保证|修正及[新独立设计审查](../delivery/2026-11-08-agent-composition-design-review.md)通过，Q-2关闭；随AC0普通交付|
 |AC2 / P1基础|Agent后端局部adapter与共有Protocol/ABC；保留`agents.invoke`等兼容入口|Codex/Claude/mini/command构造、解析和诊断由本实现拥有；上层不按厂商重复分派；现有输入/输出/退出/取消行为不变；真实支持差异可见|待实现；只做所有权重构，不同时新增多成员语义|
 |AC3a / P1定义|AgentDefinition包/schema、专长/提示/资源与内容定址导入；复用Skill资产和合同校验|可保存kernel执行者、架构审查者等少量互补定义，同一后端可建多个定义；未知版本/越界资源/缺失摘要拒绝；导入不执行；每字段有实际消费者|待实现；不创建每定义一Python类|

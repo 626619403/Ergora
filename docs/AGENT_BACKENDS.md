@@ -91,6 +91,8 @@ ergora reference executor --installation "$HOME/multi-agent-platform"
 
 新任务首次处理时将角色工具与项目修订写入原任务持久目录的 `agent-bindings.json`；恢复继续用这份选择。实现者和审查者使用不同角色身份、新会话、精确候选提交及原有工作区变化检测。正式阶段结束前清理并回收其派生进程，再执行原监控的只读变化检查；精确使用参考配置的 Codex 可执行路径。未知外部进程结果继续由参考监控对账；缺少能力、结果结构错误、命令失败或只读阶段改动都不能通过。Agent 的 `model-log` 和 `agent-selection` 附在原回执证据中。
 
+桥接的模型阶段会核验本任务保存的 `compiled.json` 与stage合同，从该快照加载完整模板说明，并将说明摘要记入 `agent-selection`。快照缺失、被改或属于另一任务时明确失败；不会改用活动包。已有任务不因源包删除而换说明，安装profile本身漂移仍按原规则拒绝。此行为属于Ergora桥接；直接 `agentflow` 入口保留原v2.2行为。
+
 统一入口的[外部证据查询](USAGE.md#核对闭合运行的外部作业证据)将原run完整历史中的dev_submit与可信FileAdapter请求/回执逐项对应。每个已知job即使请求丢失仍保留为未决；没有正确fence、存在额外请求/孤立回执、无效回执或产物摘要错误时不会报告外部已确认。只读查询不修改原outcome、不发布fence、不释放租约，外部终止证据和六阶段质量结果分别保留。 正常REVIEW_READY也不会因workflow闭合自动释放租约：导出沿原规则处理，暂不导出时使用[正常任务关闭流程](USAGE.md#正常任务完成后的关闭)。需要写入fence和释放精确原claim时，显式使用[reconcile/reconciliation/resume-reconcile](USAGE.md#显式终态对账与工单租约释放)；它保存原outcome与独立清理evidence，原CANCEL_UNCONFIRMED保持，缺证据不释放。
 
 新记录还保存`configuration`有效绑定视图，含每层来源、校验结果、项目修订和内容摘要；`ergora project config PROJECT_ID`可查看当前值。旧任务没有此附加字段时仍使用原绑定快照，不重建历史配置。视图范围与独立调用的上下文区别见[有效绑定与运行快照](USAGE.md#有效绑定与运行快照)。

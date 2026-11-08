@@ -73,3 +73,44 @@
 本次仅新增本报告及获准的本片忽略证据，未修改生产/测试/依赖/CI、旧审查文字、实际用户库或Git/外部状态；未安装依赖、运行重型全套、真实模型/GPU/服务或原生Windows。进程退出探针不证明断电持久性，也不证明恶意同用户隔离、特殊文件系统或跨机器并发支持。
 
 未解决源码阻塞finding为0。主代理仍需归档本审查和S-1处置、刷新包含报告的最终scope/文档静态，完成普通精确候选提交推送、该候选双OS必要CI和同片远端终核后，才能登记完整AC1.1交付完成；AC0独立收口及Q-1后续切片分别保持原责任。
+
+## AC1.1普通候选身份及状态归档复核
+
+2026-11-08，同一评审者固定读取Git候选`bf99bd47220572fd721546a2eeb5b1b2739a57b5`，未使用随后AC1.2工作树作为本片源码。**普通候选身份、最终静态及审查后状态归档通过；本候选自身精确CI和独立即时远端终结仍待核对。** 范围内无新增Spec或Standards finding。
+
+候选唯一父为`0f8e2a98dbfa42ea96657ef80fbf2bc356f57abe`，恰改11文件。全部候选blob的bytes/SHA与本地`final-scope.json`一致；清单1,974字节，SHA256 `02c8b5316bddc24d65a62fbde9af2a3fff6568f0470dd4373719a822b1cd1a63`。`final-tracked.diff`只捕获原已跟踪的9文件，为36,600字节，SHA256 `be42d27a037ac725cce0a91dd1bdffdfb1f215d20f5f1e6adfaae70e707c59da`，逐字等于这9文件的实际Git对象差异；两个新增文件为本报告和本片交付记录，均另从候选对象核对。
+
+生产`skill_assets.py`和测试`test_skills_evaluation.py`继续保持首轮表内完整SHA，INTEGRATIONS和当前架构也保持首轮身份。独立将候选内352个包文件逐字对照原`56c5ab1a6baaf31deb3e30927d4900ce8f7f1be5e7d0633fa7c71d09793dd89d` wheel及实际非editable安装，全部相同；没有将新工作树测试或别的候选结果沿用到本片。本报告在候选中为原10,062字节，SHA256仍为`80f353029175fa9b4b8518ddb85bd95544b005c947c1265ea3c977442b23bdb4`，原文保持。
+
+其余文档差异逐项核为本片新审查/探针与静态结果归档、S-1作者回应、AC0原独立审查者的完整终结及计划状态更新。AC0原审查文字仅追加；共享源码报告只改S-1作者处置并追加AC0交付状态，原finding和Q-1保持。候选内本片交付记录再次全文读取；它明确保留原build环境失败、评审setup错误、硬退出残留暂存目录及断电/Windows/性能未验范围。AC0的`42483036401`及其独立终结仅作为AC0状态依据，不作为本候选CI通过。
+
+从固定Git对象重新解析9份Markdown，328个本地文件/锚点缺失为0；30条候选README命令通过parser，所用安装包已确认逐字等于候选源码。最终`static-documents.json`的9文档集合及全部摘要与候选相同，文件3,565字节，SHA256 `3289995616f4f1ca13c8c938fa067ee729db0994e69aa9631f7b94c9802d4535`。`git diff --check 0f8e2a9… bf99bd4…`通过。上述计数不包含本节追加，没有重跑已通过且源码身份不变的行为检查。
+
+已读主代理原push、`ls-remote` stdout/stderr及命令退出记录：普通push exit0，远端从0f8前进到完整bf99候选，`push-remote-identity.json`记录于2026-11-08 13:24:09.847526 UTC，远端同SHA。本节尚未另作独立即时远端查询，也没有确认AC1.1自身CI结果；取得该候选双OS实际必要步骤后再进行同片终结。唯一公开写入为本报告追加，其余检查只读固定对象和既有证据。
+
+## AC1.1精确CI、独立远端与完整终结
+
+2026-11-08，同一评审者继续固定`bf99bd47220572fd721546a2eeb5b1b2739a57b5`，再次从Git对象核唯一父0f8及11文件集合、全部blob的bytes/SHA，仍与上述final-scope相同；候选中原报告全文保持。**需求符合性、可维护性、普通候选身份、最终静态、该候选自身双OS必要CI及独立即时远端核对均通过；AC1.1可登记完整完成，无新增finding或未解决交付阻塞项。** 上节CI和远端pending由本节实际证据关闭。
+
+本次直接解析官方run/job原HTML，并对照固定候选的`.github/workflows/portability.yml`，没有只采用主代理汇总JSON或总体Success。`ci-html-status.json`列出的6份来源逐一重算bytes/SHA，全部一致；三个关键原页面为：
+
+|来源|字节|SHA256|
+|---|---:|---|
+|`ci-run-latest.html`|157493|`196a1379227e20686598e011b343d0a9f4ab56c9228e1feb2075c81fe8cef331`|
+|`ci-job-128744183496.html`|160122|`5c7179528f422358e744f969ba55eccd6d6e3d125b2727d8e044a544f166df76`|
+|`ci-job-128744183793.html`|162041|`1b63257f86ca2e049e15cc8b1b7205c62fdbdac0976f401006fab1931dd86cb1`|
+
+[Portability 42484784168](https://github.com/626619403/Ergora/actions/runs/42484784168)的原run页实际含完整bf99候选commit链接、对应workflow链接及Success；run选择记录同时绑定该完整候选、run ID与workflow。两个job分别核自己的`selectedJobId`、平台/Python名称、步骤完成标记和成功日志URL，结果为：
+
+|必要步骤|[Windows / Python 3.12 · 128744183496](https://github.com/626619403/Ergora/actions/runs/42484784168/job/128744183496)|[Ubuntu / Python 3.11 · 128744183793](https://github.com/626619403/Ergora/actions/runs/42484784168/job/128744183793)|
+|---|---|---|
+|4 · Build and install wheel|success|success|
+|5 · Packaged reference identity|success|success|
+|6 · Native application regression|success|success|
+|7 · Windows PowerShell 5.1 installer and upgrade|success|skipped，符合候选的Windows条件|
+
+每个必要成功步骤的原日志URL均精确等于`/626619403/Ergora/commit/bf99bd47220572fd721546a2eeb5b1b2739a57b5/checks/<对应job>/logs/<对应步骤号>`；Windows全部10项success，Ubuntu9项success且仅Windows专用项skipped，无失败、取消或超时。已读原`verify-ci.py`，另用独立只读解析核上述事实，未执行它的JSON写入动作；没有重跑CI、重型测试或逐条下载全部控制台日志。
+
+随后按既有`push.py`方法仅在内存读取已授权SSH配置，独立实际执行只读`ls-remote`，exit0、耗时4.110秒。**2026-11-08 13:42:06.761773 UTC**返回`refs/heads/refactor/architecture-foundations`的完整SHA为`bf99bd47220572fd721546a2eeb5b1b2739a57b5`，与固定候选一致。未输出或写入认证值，未推送、强推或执行配置写入；这是该明确时点的远端事实。
+
+本次仅追加本报告；旧审查及上节历史pending记录均保留。AC1.2工作树、其并行评审和数据完全排除；AC0的CI没有替代本候选CI。断电持久性、恶意同用户强隔离、自动暂存垃圾回收、实际模型/GPU或额外平台能力仍未由本片证明，既有六阶段、候选绑定证据及平台支持边界不变。后续仅需将本节和AC1.1完成状态按原流程归档。

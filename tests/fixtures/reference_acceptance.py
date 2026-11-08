@@ -2,6 +2,7 @@
 
 import asyncio
 from copy import deepcopy
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -95,6 +96,23 @@ async def main():
     else:
         register("demo", repo, "github", "fixtures/demo", ["src"], root / "checks.json")
     create_task("demo", kind, "task-1", "1", root / "input.json")
+    compiled_path = runtime / "tasks/task-1/compiled.json"
+    compiled = read(compiled_path)
+    instructions = compiled["package"]["templates"]["instructions.md"]
+    instructions_sha = compiled["spec"]["profile"]["template_files"]["instructions.md"]
+    if mode == "instructions-missing":
+        compiled_path.unlink()
+    elif mode == "instructions-tampered":
+        compiled["package"]["templates"]["instructions.md"] += "\nChanged instructions\n"
+        write(compiled_path, compiled, replace=True)
+    elif mode == "instructions-cross-task":
+        from dev_platform.portable import compile_task
+        task = deepcopy(compiled["task"])
+        task["task_id"] = "another-task"
+        wrong = compile_task(task, compiled["package"], compiled["policy"], compiled["binding"])
+        write(compiled_path, wrong, replace=True)
+    elif mode == "instructions-frozen-source":
+        shutil.rmtree(installation / "upstream/platform/portable/packages" / kind)
     if mode in ("unified-pending", "unified-drift", "unified-wrong-state"):
         if mode == "unified-drift":
             write(config / "policies/demo/scope.json", {"schema_version": 1, "protected_paths": []}, replace=True)
@@ -148,6 +166,11 @@ async def main():
             receipt = json.loads(result.stdout)
         else:
             receipt = reference.executor(installation, state.root, request)
+        if mode in ("instructions-missing", "instructions-tampered", "instructions-cross-task"):
+            assert receipt["state"] == "FAILED", receipt
+            assert not (runtime / "workspaces/task-1/jobs" / context["job_id"] / "selected-agent/request.json").exists()
+            print(json.dumps({"rejected": mode, "detail": receipt["detail"]}))
+            return
         if mode in ("unified-pending", "unified-drift", "unified-wrong-state"):
             assert receipt["state"] == "FAILED", receipt
             assert not (runtime / "tasks/task-1/agent-bindings.json").exists()
@@ -155,6 +178,17 @@ async def main():
             return
         assert receipt["state"] == "SUCCEEDED", receipt
         assert await activities.poll(job) == receipt
+        if stage not in ("integrate", "verify"):
+            protocol = runtime / "workspaces/task-1/jobs" / context["job_id"] / "selected-agent/request.json"
+            invocation = read(protocol)
+            sent = (Path(invocation["output"]) / "stdin.txt").read_text()
+            if backend == "command":
+                sent = json.loads(sent)["prompt"]
+            payload = json.loads(sent.splitlines()[-1])
+            assert payload["template_instructions"] == {"content": instructions, "sha256": instructions_sha}
+            selection = read(runtime / "artifacts" / next(a["path"] for a in receipt["artifacts"] if a["name"] == "agent-selection"))
+            assert selection["template_instructions_sha256"] == instructions_sha
+            assert selection["prompt_sha256"] == hashlib.sha256(sent.encode()).hexdigest()
         records[stage] = receipt
         app.results[stage] = receipt
         selection_path = runtime / "tasks/task-1/agent-bindings.json"
@@ -194,7 +228,8 @@ async def main():
     assert records["review"]["actor"]["session_id"] != records["work:unit"]["actor"]["session_id"]
     assert records["review"]["actor"]["id"] == backend + ":reviewer"
     assert set(app.spec["profile"]["required_checks"]) == {check["id"] for check in records["verify"]["checks"]}
-    print(json.dumps({"template": kind, "backend": backend, "stages": list(records), "candidate_bound": True}))
+    print(json.dumps({"template": kind, "backend": backend, "stages": list(records), "candidate_bound": True,
+                      "template_instructions_bound": True}))
 
 
 if __name__ == "__main__":

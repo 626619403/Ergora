@@ -1,6 +1,6 @@
 # AC1.1：Skill完整树发布与中断恢复
 
-日期：2026-11-08。状态：实现、本地定向/非editable包验证及[新独立审查](2026-11-08-skill-publication-review.md)通过，精确交付待完成。基线`0f8e2a98dbfa42ea96657ef80fbf2bc356f57abe`，分支`refactor/architecture-foundations`。需求来自[完整源码评审S-1](2026-11-08-agent-composition-review.md)及[AC计划](../plans/2026-11-08-agent-composition.md)。AC0的精确CI独立收口，不将其当作本片验证。
+日期：2026-11-08。状态：完整完成。候选`bf99bd47220572fd721546a2eeb5b1b2739a57b5`的本地/非editable包验证、普通推送、自身双OS CI及[同片独立终结](2026-11-08-skill-publication-review.md#ac11精确ci独立远端与完整终结)全部通过。基线`0f8e2a98dbfa42ea96657ef80fbf2bc356f57abe`，分支`refactor/architecture-foundations`。需求来自[完整源码评审S-1](2026-11-08-agent-composition-review.md)及[AC计划](../plans/2026-11-08-agent-composition.md)。后文保留各步骤当时的状态和原始限制，不将AC0的CI当作本片验证。
 
 ## 要修复的行为
 
@@ -19,7 +19,7 @@
 |已登记树被改/缺失时导入拒绝，原证据/DB不改；原GET篡改拒绝保留|两种损坏检查及既有GET/Agent/evaluator拒绝通过|
 |多个独立进程导入相同digest幂等，最终仅一个版本/活动头/事件|四个实际Python进程同步进入导入，原生锁/DB/文件结果通过|
 |既有Skill/评价/采用、状态与架构定向检查，冻结身份和diff|源码32 passed/5可选GEPA skipped；新独立包Skill全18 passed，无skip，283身份及diff通过|
-|新的fresh-context独立审查、普通提交推送、精确双OS CI/远端|独立需求/可维护性审查无finding，另6例及5真实退出窗口通过；普通精确提交/推送/CI与终结待完成|
+|新的fresh-context独立审查、普通提交推送、精确双OS CI/远端|独立需求/可维护性审查无finding，另6例及5真实退出窗口通过；bf99普通推送、自身CI42484784168双OS必要步骤及独立远端终结全部通过|
 
 仅使用隔离测试State和fixture项目，不迁移或修复实际用户库。故障注入、真实进程并发与本地平台检查各自记账；没有证据前不宣称Windows行为、断电持久性或性能收益。
 
@@ -47,3 +47,7 @@
 原审查者首轮basetemp父目录未创建导致setup exit1，未触达产品；其正确复跑6 passed/7.54秒及原失败分别保留。额外探针只在忽略目录，不新增永久CI或重复测试。硬退出可以遗留不被重试消费的`.import-*`暂存树；本片不加垃圾回收器，也不据此宣称断电持久性。S-1的本地修复/审查已满足，完整节点仍待普通精确交付及本候选CI终结。
 
 最终归档范围11文件，其中9 Markdown/328本地链接锚点无缺失、30 README parser及diff通过；生产/测试SHA仍与独立审查及已安装包一致。AC0原独立报告追加和主代理S-1回应仅为原片/本片状态归档，原独立结论完整保留。下一普通候选提交推送、精确双OS CI和同片终核，不主动重复已通过的源码/包检查。
+
+## 精确交付终结
+
+候选bf99已普通push exit0；自身[CI42484784168](https://github.com/626619403/Ergora/actions/runs/42484784168)的Windows128744183496四个必要步骤、Ubuntu128744183793三个必要步骤均实际success，Ubuntu的Windows-only步骤skipped。原独立评审者再次核固定候选/11文件、官方原HTML的精确commit/步骤日志URL，并于2026-11-08 13:42:06 UTC独立只读查询远端，完整SHA仍为bf99。两轴无新增finding，S-1及AC1.1完整关闭；原始失败、未验范围和审查文字保持。AC1.2及新Agent组合分别验收，不继承本候选CI。

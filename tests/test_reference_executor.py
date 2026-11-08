@@ -23,6 +23,36 @@ def test_existing_six_stage_contract_consumes_selectable_agent_evidence(tmp_path
         pytest.skip(summary["skip"])
     assert summary["candidate_bound"] is True
     assert len(summary["stages"]) == 6
+    assert summary["template_instructions_bound"] is True
+
+
+@pytest.mark.parametrize("mode,detail", [("instructions-missing", "compiled.json"),
+                                        ("instructions-tampered", "Compiled digest mismatch"),
+                                        ("instructions-cross-task", "Compiled task differs")])
+def test_template_instructions_fail_closed_before_agent_invocation(tmp_path, mode, detail):
+    if importlib.util.find_spec("temporalio") is None:
+        pytest.skip("Reference activity validation requires the optional Temporal SDK")
+    fixture = Path(__file__).parent / "fixtures/reference_acceptance.py"
+    result = subprocess.run([sys.executable, str(fixture), str(tmp_path), "repository-governance", "command", mode],
+                            capture_output=True, text=True, timeout=45)
+    assert result.returncode == 0, result.stdout + result.stderr
+    summary = json.loads(result.stdout)
+    if summary.get("skip"):
+        pytest.skip(summary["skip"])
+    assert summary["rejected"] == mode and detail in summary["detail"]
+
+
+def test_task_keeps_template_instructions_when_source_package_is_unavailable(tmp_path):
+    if importlib.util.find_spec("temporalio") is None:
+        pytest.skip("Reference activity validation requires the optional Temporal SDK")
+    fixture = Path(__file__).parent / "fixtures/reference_acceptance.py"
+    result = subprocess.run([sys.executable, str(fixture), str(tmp_path), "large-change", "command", "instructions-frozen-source"],
+                            capture_output=True, text=True, timeout=90)
+    assert result.returncode == 0, result.stdout + result.stderr
+    summary = json.loads(result.stdout)
+    if summary.get("skip"):
+        pytest.skip(summary["skip"])
+    assert summary["candidate_bound"] and len(summary["stages"]) == 6 and summary["template_instructions_bound"]
 
 
 def test_cancellation_reaps_same_group_children_ignoring_sigterm(tmp_path):
