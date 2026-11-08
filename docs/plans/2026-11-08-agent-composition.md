@@ -1,6 +1,6 @@
 # AC：完整评审、专长化Agent库与可嵌套工作流
 
-日期：2026-11-08。当前项：下一AC2局部后端adapter，尚未实现；AC0b与完整AC1已终结。研究固定源码`b1dbe48a1b14e8e2ec59d4f44e30b2ea367fa1fe`，AC0交付`0f8e2a98dbfa42ea96657ef80fbf2bc356f57abe`，分支`refactor/architecture-foundations`。恢复上下文先读[总计划](../PLAN.md)、本表、共享报告和Git实际状态，不按历史快照推断新功能完成。
+日期：2026-11-08。当前项：AC2本地实现/定向验证及新独立复审通过，精确交付待完成；AC0b与完整AC1已终结。研究固定源码`b1dbe48a1b14e8e2ec59d4f44e30b2ea367fa1fe`，AC0交付`0f8e2a98dbfa42ea96657ef80fbf2bc356f57abe`，分支`refactor/architecture-foundations`。恢复上下文先读[总计划](../PLAN.md)、本表、共享报告和Git实际状态，不按历史快照推断新功能完成。
 
 ## 目标和边界
 
@@ -19,7 +19,7 @@
 |AC1.1 / P0缺陷|Skill完整树发布：`skill_assets.import_bundle`，复用原State/文件锁，不改评价算法|中断copy后重试不会登记残树；并发同digest幂等；已有完整树不变；DB/head/event只指向核过完整内容。原GET篡改拒绝保留|[修复切片](../delivery/2026-11-08-skill-publication.md)与[新独立审查](../delivery/2026-11-08-skill-publication-review.md)通过；bf99bd4普通推送、自身CI42484784168双OS必要步骤及13:42:06 UTC独立远端终结均通过，源码32/5skip、包内18/零skip、352/283身份及独立五退出窗口通过；S-1关闭|
 |AC1.2 / P0缺陷|已固定模板instructions真正进入正式stage prompt，归reference访问/执行桥；不改冻结文件|两开发模板的真实生成prompt含对应固定正文及摘要；缺失/篡改明确失败；不读取最新活动版本代替旧任务；原候选/审批/检查合同保持|[本地实现](../delivery/2026-11-08-template-instructions.md)、源码104项及非editable包8项/零skip、352/283身份通过；新独立两轴本地审查通过，另4例及两深层篡改拒绝通过；b01a594普通推送、自身CI42486825163双OS必要步骤及14:08:23 UTC同片独立远端终结均通过，Q-1关闭|
 |AC1.3 / P0表述|独立审查的默认只读与显式override在公开手册中准确表达|读者可判断普通`agent run`、正式stage与当前容器三类实际限制；不把配置或fresh进程当OS保证|修正及[新独立设计审查](../delivery/2026-11-08-agent-composition-design-review.md)通过，Q-2关闭；随AC0普通交付|
-|AC2 / P1基础|Agent后端局部adapter与共有Protocol/ABC；保留`agents.invoke`等兼容入口|Codex/Claude/mini/command构造、解析和诊断由本实现拥有；上层不按厂商重复分派；现有输入/输出/退出/取消行为不变；真实支持差异可见|待实现；只做所有权重构，不同时新增多成员语义|
+|AC2 / P1基础|Agent后端局部adapter与共有Protocol/ABC；保留`agents.invoke`等兼容入口|Codex/Claude/mini/command构造、解析和诊断由本实现拥有；上层不按厂商重复分派；现有输入/输出/退出/取消行为不变；真实支持差异可见|[实现/源码定向通过](../delivery/2026-11-08-agent-backends.md)：125项/12跳过，353包/283冻结身份及静态通过；新包50项/零skip通过，新独立审查R-1注册重复判断已修，受影响源码69项/最终353及283通过，最终包17项/零skip和独立复核通过，R-1关闭；精确交付待完成|
 |AC3a / P1定义|AgentDefinition包/schema、专长/提示/资源与内容定址导入；复用Skill资产和合同校验|可保存kernel执行者、架构审查者等少量互补定义，同一后端可建多个定义；未知版本/越界资源/缺失摘要拒绝；导入不执行；每字段有实际消费者|待实现；不创建每定义一Python类|
 |AC3d / P1工作流定义|WorkflowDefinition版本化包/schema；节点引用Agent或子工作流，显式依赖/具名端口；祖先资源及权限解析|结构父链与依赖前驱分开；引用环/图环/深度/并发预算/资源ID版本冲突明确拒绝；资源root→leaf完整累加，子权限不越父级；父/子共同调整以一个新修订保存，旧修订不变|待实现；先静态有界DAG，不照搬LangGraph Python builder为所谓JSON标准|
 |AC3b / P1准入|项目/角色/adapter的权限能力与MCP/Skill装载矩阵；原stage_driver专用配置|请求/有效授权/真实enforced范围分开；所有祖先声明的Skill指令/上下文在叶子前完整装载，容量不足拒绝；MCP资源继承不扩大工具权限；至少Codex与Claude有真实装载/拒绝证据，密钥不进定义/报告|待实现；消费AC3d继承结果，D1的最小任务MCP子集前移，通用MCP网关仍后置|

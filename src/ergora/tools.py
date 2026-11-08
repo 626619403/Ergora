@@ -13,7 +13,7 @@ from urllib.parse import urlsplit
 from pathlib import Path
 import sys
 
-from . import agents, components, kernel, processes, projects
+from . import agent_backends, agents, components, kernel, processes, projects
 from .agent_runs import output as output, run_agent as run_agent, runs as runs
 from .bindings import validate_binding as validate_binding
 from .state import State
@@ -70,14 +70,7 @@ def _local_check(binding: dict, repo: Path) -> dict:
                      authentication="not_required", connectivity="local", task_availability="available")
     elif component["kind"] == "agent":
         check.update(installed=agents.available(binding, repo), runtime="ergora-agent-invocation")
-        check["remediation"].append("Run an explicitly budgeted agent invocation to verify the selected model and task; doctor never calls a model.")
-        if component["implementation"] == "codex":
-            check["remediation"].append("Use codex login, then tools doctor PROJECT --probe; stored credentials do not verify account access or quota.")
-        elif component["implementation"] == "claude-code":
-            check["remediation"].append("Use claude auth login; authentication is not checked by this driver.")
-        elif component["implementation"] == "command":
-            check["authentication"] = "external"
-            check["remediation"].append("Verify the configured command's credentials and protocol separately; doctor does not execute arbitrary argv.")
+        check.update(agent_backends.for_binding(binding).diagnostics())
     elif tool == "forgekernel":
         check.update(kernel.available(binding), runtime="native ForgeKernel campaign; candidate only")
         check["remediation"].append("Use the pinned Forge installer, verify its task, Claude credentials and GPU, then evaluate the candidate independently.")
@@ -108,20 +101,13 @@ def _local_check(binding: dict, repo: Path) -> dict:
 
 def _probe_check(check: dict, binding: dict, repo: Path, deadline: float) -> None:
     tool = binding["tool"]
-    implementation = components.COMPONENTS[tool]["implementation"]
     commands = []
-    if check["installed"] and check["supported"] and implementation in ("codex", "claude-code"):
+    if check["installed"] and check["supported"] and components.COMPONENTS[tool]["kind"] == "agent":
         try:
-            program = processes.resolve_program(agents.executable(binding), repo)
+            commands = agent_backends.for_binding(binding).probe_commands(repo)
         except (OSError, ValueError):
             check.update(installed=False, probe_status="failed", task_availability="blocked")
             return
-        commands.append(("version", [program, "--version"]))
-        if implementation == "codex":
-            commands.append(("authentication", [program, "login", "status"]))
-    elif check["installed"] and implementation == "mini-swe-agent":
-        commands.append(("version", [binding.get("python", sys.executable), "-c",
-            "from importlib.metadata import version; print(version('mini-swe-agent'))"]))
     elif tool in ("reme", "temporal"):
         try:
             address = binding["endpoint"] if tool == "reme" else binding["address"]

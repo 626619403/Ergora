@@ -10,7 +10,7 @@ import subprocess
 import tempfile
 import uuid
 
-from . import components, contracts, projects, reference
+from . import agents, components, contracts, projects, reference
 from .bindings import validate_binding
 from .state import State, file_lock
 
@@ -75,10 +75,7 @@ def _prepare(state: State, definition: dict, before: dict | None) -> dict:
         contract = reference.agent_contract(template)
         for role in contract["agents"]:
             binding = components.resolve_binding(project, role)["binding"]
-            validate_binding(role, binding)
-            if template != "training-optimization" and components.COMPONENTS[binding["tool"]]["implementation"] == "command":
-                if binding.get("protocol") != "stage-json-v1":
-                    raise ValueError("Formal command agents require stage-json-v1")
+            agents.validate_binding(role, binding, formal=template != "training-optimization")
         if template != "training-optimization":
             required = set(contract["acceptance"]["required_checks"]) - {"scope", "baseline-regression"}
             missing = required - set(selected["checks"])

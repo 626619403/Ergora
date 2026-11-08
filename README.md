@@ -86,7 +86,8 @@ src/ergora/
 ├── tasks.py / services.py          正式任务生命周期/原ID恢复/精确导出、显式服务运维
 ├── components.py / tools.py        组件描述、工具目录与就绪检查
 ├── agent_runs.py                   独立 Agent 上下文、调用与运行记录
-├── agents.py / reference_executor.py 原生 Agent 适配与可选六阶段桥接
+├── agents.py / agent_backends.py   Agent兼容入口、原生后端合同与局部实现
+├── reference_executor.py / stage_driver.py 可选六阶段桥接与专用进程入口
 ├── kernel.py / data/drivers/        原生 Forge campaign 与独立 SDK 驱动
 ├── memory.py / state.py            项目记忆、来源与持久状态
 ├── skill_assets.py / skills.py     版本资产/头事务/回退与评价后采用

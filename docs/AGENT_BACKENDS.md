@@ -135,6 +135,8 @@ ergora kernel run my-project CAMPAIGN_ID --timeout 3600
 
 完整选型与未接入工具见 [三模板调研](research/2026-10-31-template-agents.md)。
 
+新增后端的代码入口是`agent_backends.py`的共有`AgentBackend`合同及本地映射；命令、结果提取、后端专用配置和诊断归各实现，公开配置schema与能力仍只在`components.json`声明。`agents`、正式阶段和doctor复用这些实现，进程监控与取消由`processes`管理。接入步骤和调用关系见[当前架构](architecture/current.md#agent后端接入)。新增专长定义、模板成员和嵌套资源继承仍按[AC计划](plans/2026-11-08-agent-composition.md)实施。
+
 ## 维护内置组件描述
 
 源码中的 `src/ergora/data/components.json` 是内置角色与工具目录的来源，目录版本为 `schema_version: 1`。角色保存能力要求、显示信息和新项目默认绑定；组件保存已实现的驱动名称、能力、操作、平台、探测方式、配置字段及安装来源。`ergora tools list` 和 Web bootstrap 返回这些描述，绑定表单按字段生成。ForgeKernel 与 mini 的安装器也从此文件读取固定源码和提交。

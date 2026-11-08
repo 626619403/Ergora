@@ -10,7 +10,7 @@ import time
 
 import pytest
 
-from ergora import agents, kernel, projects, reference, tools
+from ergora import agents, kernel, processes, projects, reference, tools
 from ergora.state import State
 
 
@@ -80,6 +80,74 @@ def test_native_structured_output_normalization_uses_actual_process(tmp_path, mo
                            agents.result_schema(["review-report"], True))
     assert result["status"] == "succeeded"
     assert json.loads(Path(result["result"]).read_text())["decision"] == "approve"
+
+
+def test_formal_codex_config_cannot_override_role_sandbox(tmp_path, monkeypatch):
+    config = tmp_path / "codex.toml"
+    config.write_text('approval_policy = "never"\nsandbox_mode = "danger-full-access"\n'
+                      'model = "config-model"\n[sandbox_workspace_write]\nnetwork_access = true\n'
+                      '[model_providers.fixture]\nbase_url = "https://example.invalid/v1"\n', encoding="utf-8")
+    options = ["--skip-git-repo-check"]
+    schema = agents.result_schema(["review-report"], True)
+
+    def run(argv, cwd, output, timeout, stdin, env, **kwargs):
+        assert argv[0] == "configured-codex" and stdin == "Review exact candidate"
+        assert argv[argv.index("--sandbox") + 1] == "read-only"
+        assert "--ignore-user-config" in argv and "--ignore-rules" in argv
+        assert [argv[i + 1] for i, value in enumerate(argv) if value == "--disable"] == ["plugins", "apps"]
+        settings = [argv[i + 1] for i, value in enumerate(argv) if value == "-c"]
+        assert settings == ['model="config-model"', 'model_providers.fixture.base_url="https://example.invalid/v1"']
+        assert argv[argv.index("--model") + 1] == "binding-model"
+        output.mkdir()
+        Path(argv[argv.index("--output-last-message") + 1]).write_text(json.dumps(
+            {"summary": "reviewed", "artifacts": {"review-report": "candidate evidence"}, "decision": "approve"}))
+        return {"status": "succeeded", "returncode": 0}
+
+    monkeypatch.setattr(processes, "run", run)
+    result = agents.invoke({"tool": "codex", "model": "binding-model"}, "reviewer", "Review exact candidate",
+                           tmp_path, tmp_path / "output", 5, schema, codex_bin="configured-codex",
+                           codex_options=options, codex_config=config)
+    assert result["status"] == "succeeded" and options == ["--skip-git-repo-check"]
+
+
+@pytest.mark.parametrize("payload", [
+    {"is_error": True, "subtype": "success", "structured_output": {
+        "summary": "claim", "artifacts": {"review-report": "claim"}, "decision": "approve"}},
+    {"is_error": False},
+    {"is_error": False, "structured_output": {"summary": "incomplete"}},
+])
+def test_claude_exit_zero_is_insufficient_for_structured_acceptance(tmp_path, monkeypatch, payload):
+    def run(argv, cwd, output, *args, **kwargs):
+        output.mkdir()
+        (output / "stdout.txt").write_text(json.dumps(payload), encoding="utf-8")
+        return {"status": "succeeded", "returncode": 0}
+
+    monkeypatch.setattr(processes, "run", run)
+    result = agents.invoke({"tool": "claude-code"}, "reviewer", "Review", tmp_path,
+                           tmp_path / "output", 5, agents.result_schema(["review-report"], True))
+    assert result["status"] == "failed" and "Invalid structured agent result" in result["error"]
+    assert not (tmp_path / "output/result.json").exists()
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="mini-swe-agent driver requires Linux/bash")
+def test_mini_invocation_keeps_selected_interpreter_and_request(tmp_path, monkeypatch):
+    selected = {"tool": "mini-swe-agent", "model": "fixture/model", "python": "selected-python",
+                "step_limit": 4, "cost_limit": 1}
+
+    def run(argv, cwd, output, timeout, stdin, env, **kwargs):
+        assert argv[0] == "selected-python" and Path(argv[1]).name == "mini.py" and stdin == ""
+        request = json.loads(Path(argv[2]).read_text())
+        assert request["binding"] == selected and request["cwd"] == str(tmp_path)
+        assert request["timeout"] == timeout == 7 and request["prompt"] == "Implement"
+        assert Path(request["trajectory"]).parent == Path(argv[2]).parent
+        output.mkdir()
+        (output / "stdout.txt").write_text('{"summary":"candidate","artifacts":{"change-summary":"evidence"}}')
+        return {"status": "succeeded", "returncode": 0}
+
+    monkeypatch.setattr(processes, "run", run)
+    result = agents.invoke(selected, "implementer", "Implement", tmp_path, tmp_path / "output", 7,
+                           agents.result_schema(["change-summary"]))
+    assert result["status"] == "succeeded"
 
 
 def test_forge_native_cpu_campaign_and_scope(tmp_path):

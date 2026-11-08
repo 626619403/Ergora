@@ -1,12 +1,12 @@
 # 当前架构与扩展边界
 
-2026-11-08补充：当前源码仍是单角色单binding的实现。[完整快照评审及处置](../delivery/2026-11-08-agent-composition-review.md)记录现有缺陷与组合能力差距；[ADR0004](decisions/0004-agent-composition.md)描述职能、专长化Agent定义、模板成员和后端分离的目标设计，尚未实现，不替代下方真实调用关系。实施顺序在[AC计划](../plans/2026-11-08-agent-composition.md)维护。
+2026-11-08补充：当前源码仍是单角色单binding的实现。[完整快照评审及处置](../delivery/2026-11-08-agent-composition-review.md)记录现有缺陷与组合能力差距；[ADR0004](decisions/0004-agent-composition.md)描述职能、专长化Agent定义、模板成员和后端分离的目标设计；AC2已整理后端适配器，定义/成员/权限组合尚未实现，不替代下方真实调用关系。实施顺序在[AC计划](../plans/2026-11-08-agent-composition.md)维护。
 
 2026-11-05，R8后的当前导航，覆盖F1项目定义、F2安装/运维、F3正式任务CLI/API生命周期与F4网页消费者。F3已通过[阶段验收](../delivery/2026-11-03-f3-completion.md)，F4的创建/原ID恢复、原运行/计划/批准/取消/对账/导出及有界事件/job文本均已实现，[完整页面收口](../delivery/2026-11-05-f4-completion.md)的恢复与服务退出验收单独登记。F5.1只读证据索引与F5.2预算/用量事实CLI/API均已交付；F5.3a原生交接包及离线校验已实现，验收单独登记，F5.3b显式HTTP下载已实现，发行与真实下载验收单独登记，F5.4页面的发行/浏览器及独立审查、精确提交/双OS CI和同片终结通过；F5.5实际服务恢复组合、新综合独立审查与纯文档精确交付/远端终结通过，完整F5完成；G0全新用户旅程独立进行。历史[A1审计](2026-11-01-audit.md)及[R8记录](../delivery/2026-11-02-refactoring-exit.md)保留原身份与范围。设计约束见[ADR0001](decisions/0001-refactoring-foundations.md)/[0002](decisions/0002-static-boundaries.md)。
 
 ## 模块与依赖
 
-自有Python仍为单包`ergora`，40个顶层文件（含两个包入口）；F1.2增加完整注册用例`registrations`，F2.3增加显式服务用例`services`，F3.1增加项目范围的正式任务查询`tasks`，F3.2在同一用例接入预览/创建/恢复，专用`reference_task_creation`拥有原生编译/发布生命周期，F4.4的`reference_task_events`与`reference_task_evidence`分别拥有有界原事件、原job回执及文本窗口查询。F5.3的`handoff`只依赖合同基础库，拥有受限ZIP格式及离线内部身份校验；原生收集和CLI验证分别消费它。没有为层级增加空子包、通用Agent基类或插件容器。下图表示当前调用方向，组合节点内的模块并非互相依赖；精确导入由静态检查和源码确定。
+自有Python仍为单包`ergora`；F1.2增加完整注册用例`registrations`，F2.3增加显式服务用例`services`，F3.1增加项目范围的正式任务查询`tasks`，F3.2在同一用例接入预览/创建/恢复，专用`reference_task_creation`拥有原生编译/发布生命周期，F4.4的`reference_task_events`与`reference_task_evidence`分别拥有有界原事件、原job回执及文本窗口查询。F5.3的`handoff`只依赖合同基础库，拥有受限ZIP格式及离线内部身份校验；原生收集和CLI验证分别消费它。AC2为四种既有后端增加局部`AgentBackend` ABC及工厂；没有为每种专长创建Python类、空子包或通用插件容器。下图表示当前调用方向，组合节点内的模块并非互相依赖；精确导入由静态检查和源码确定。
 
 ```mermaid
 flowchart TB
@@ -32,7 +32,10 @@ flowchart TB
   Uses --> Bindings
   Bindings --> Native[agents / kernel]
   Uses --> Native
-  Native --> Processes[processes → windows_job]
+  Native --> Backends[agent_backends / 四种原生后端]
+  Query --> Backends
+  Backends --> Processes[processes → windows_job]
+  Native --> Processes
   CLI --> Optional[scheduling / backups]
   Optional --> Research[research / skill_assets]
   Query --> Ref[reference]
@@ -94,7 +97,8 @@ flowchart TB
 |原job发布回执与文本窗口|`tasks.job` → `reference.task_job` → 专用`reference_task_evidence`；CLI/GET API|只选原dev_submit调度事件，核连续history/context/envelope；原FileAdapter核回执及全部产物，配置/注册根验证由Creation共享给本入口与外部对账。材料按原回执名及首次receipt SHA读取；先核完整摘要/严格UTF-8，再返回字符窗口；响应上限不等于完整IO/内存上限|
 |本地服务运维|`services.status / control / logs`；CLI/API|复制原 Supervisor 定义并关闭自动启动；所选服务、当前修订及停止确认；共享执行目录/控制库归属；有界日志与原生游标，未确认不报告成功|
 |独立 Agent 调用|`agent_runs.run_agent / runs / output`；CLI/Web|冻结有效绑定视图、所选 Skill/记忆上下文及归档；普通调用成功不产生正式任务通过|
-|原生 Agent/Forge|`agents.invoke`、`kernel.create / operate`；独立调用、参考阶段/页面|既有 CLI/SDK 协议；Forge campaign 完成不等于可信训练采用，未知结果先对账|
+|原生 Agent后端|`agents.invoke` → `agent_backends.for_binding`及`AgentBackend`；`tools`复用同一诊断/探测|公开配置仍归components，后端拥有本实现命令、配置及结果提取；通用schema/摘要归agents，进程/取消归processes；成功不等于可信验收|
+|Forge候选|`kernel.create / operate`；独立调用、参考阶段/页面|既有SDK协议；campaign完成不等于可信训练采用，未知结果先对账|
 |Skill 资产、评价、采用和搜索|`skill_assets`、`evaluation`、`skills.adopt`、`optimization.optimize`；CLI/Web|资产与评价不反向导入采用；GEPA 搜索复用评价，不拥有评分/采用权限|
 |记忆与资料|`memory`、`research`；CLI/Web，`scheduling` 调用 research|SQLite canonical / ReMe 投影；来源快照、预算、取消及人工审阅，资料不自动成为有效记忆|
 |存储升级与离线恢复|`State`、`backups.create / verify / restore`；所有域及 CLI|集中 16 表、schema v1、有序迁移和旧 writer fence；领域保留查询/事务，恢复核对库和文件|
@@ -270,3 +274,9 @@ F2.2诊断增量复用 `tools.doctor` → CLI/dashboard/主动POST：本地探�
 F6.1以独立[开发者原型](../../examples/editor-comparison/README.md)实际比较三种图/表单栈，默认生产模块及包资源未替换；[ADR0003](decisions/0003-workflow-editor-stack.md)保留Cytoscape/原生模块，下一F6.2在原workflow所有者补统一编辑状态、有限命令、撤销重做与修订处理。schema渲染和布局不拥有领域校验或执行授权；JSON Forms默认Ajv/CSP失败及官方NoValidation试验分别记账。
 
 用户进一步要求可嵌套的工作流模板：执行子图与并行结构/正确性/冗余检查子图可串接，各实例完整继承当前路径全部祖先Skill指令和上下文，资源累加而权限不越父级，父/子权限可共同存为新修订。这些是[ADR0005](decisions/0005-composable-workflows.md)及AC0b/AC3d/AC4d的目标，当前`drafts`和固定六阶段运行器没有这些语义；现有工作单元DAG、Agent单binding及AC1.2固定正文加载分别保留原范围。
+
+## Agent后端接入
+
+现有`agent_backends.py`提供`AgentBackend` ABC和四种实现；`Invocation`只传递本次调用的职能、正文、工作目录、协议目录、时限与结果schema，不承载领域成员或运行状态。`agents.invoke`保留旧参数并将Codex专用覆盖项交给该实现，正式`stage_driver`仅转交冻结配置、凭据环境和取消信号。`tools`调用同一实现的诊断/固定探测命令，仍统一管理请求预算、去重和输出脱敏。
+
+新增后端时，实现执行文件选择和原生命令；按实际差异实现结果提取、平台拒绝、可用性、正式配置核验及不调用模型的诊断。将实现登记到本模块`_BACKENDS`，再在`components.json`声明公开配置schema、能力、平台和安装配方；上层无需新增厂商分支。运行所需的静态资源和权限装载仍属AC3，不能仅登记一个字段就宣称支持。用原入口验证结构化结果、错误退出、取消和真实支持范围；不能把执行文件存在当认证或任务通过。

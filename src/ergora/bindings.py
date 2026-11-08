@@ -15,10 +15,7 @@ def development_snapshot(project: dict, configuration: dict) -> dict:
                  "bindings": {role: configuration["layers"][role]["binding"] for role in roles},
                  "configuration": configuration}
     for role, binding in selection["bindings"].items():
-        agents.validate_binding(role, binding)
-        if components.COMPONENTS[binding["tool"]]["implementation"] == "command":
-            if binding.get("protocol") != "stage-json-v1":
-                raise ValueError("Formal command agents require stage-json-v1")
+        agents.validate_binding(role, binding, formal=True)
     return selection
 
 

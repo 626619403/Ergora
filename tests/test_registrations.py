@@ -56,6 +56,15 @@ def test_registration_publishes_three_templates_and_readonly_effective_view(regi
     assert registrations.resume(state, "demo", 2)["revision"] == 2
 
 
+def test_training_only_registration_keeps_plain_command_bindings(registration):
+    state, definition = registration
+    definition["templates"] = ["training-optimization"]
+    definition["bindings"] = {"experiment-planner": {"tool": "command", "argv": ["external-tool"]}}
+    registered = registrations.register(state, definition, 0)
+    assert registered["registration"]["status"] == "published"
+    assert registered["bindings"]["experiment-planner"] == definition["bindings"]["experiment-planner"]
+
+
 @pytest.mark.parametrize("mutation,error", [
     (lambda d: d.update(schema_version=True), "schema_version"),
     (lambda d: d.update(unknown=True), "Additional properties"),
