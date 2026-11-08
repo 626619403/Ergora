@@ -28,8 +28,11 @@ class VerifiedSpecClient:
     """Keep native lookup's history read while requiring exact original JSON."""
 
     def __init__(self, client, spec: dict):
+        from .reference_workflows import execution_input
+
         self.original = client
-        self.spec = spec
+        self.input = execution_input(spec)
+        self.spec = self.input.spec
         # The description returned by the SDK keeps its own real converter;
         # only the transport's explicit original-input decode uses this port.
         self.data_converter = SimpleNamespace(decode=self.decode_spec)
@@ -43,9 +46,16 @@ class VerifiedSpecClient:
         if len(payloads) != 1:
             raise ValueError('Workflow ID collision: original task spec requires a single payload')
         values = await self.original.data_converter.decode(payloads, *args, **kwargs)
-        if canonical_sha(values) != canonical_sha([self.spec]):
+        if canonical_sha(values) != canonical_sha([self.input.document]):
             raise ValueError('Workflow ID collision: original task spec differs in JSON identity')
-        return values
+        return [self.spec]
+
+    async def start_workflow(self, _run, spec: dict, **options):
+        from dev_platform.contracts import canonical_sha
+
+        if canonical_sha(spec) != canonical_sha(self.spec):
+            raise ValueError('Workflow input differs from the original six-stage projection')
+        return await self.input.start(self.original, **options)
 
 
 async def _status(payload: dict) -> dict:

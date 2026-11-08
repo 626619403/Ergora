@@ -1,6 +1,6 @@
 # AC3c.2 正式组合任务信封独立审查
 
-最新本地结论：**固定 R4 范围内 Standards / Spec 均通过，五项 finding 全部关闭，无新增实证缺陷。** 已核 R4 安装包、历史恢复、标准库边界及真实自身审查的原生完整 MCP 读取/输入/结果身份。最终提交范围、普通提交推送、本片新 CI 和独立远端终结尚待形成并另行核验；以下保留 R1–R3 原发现及证据，不覆盖历史结论。
+最新结论：**Standards / Spec 均通过，五项 finding 全部关闭；候选 `e9c3484` 的精确 21 文件交付、必要双 OS CI 42529979473 及 22:35:26 UTC 即时独立远端终结均通过，无新增实证缺陷。** 已核 R4 安装包、历史恢复、标准库边界及真实自身审查的原生完整 MCP 读取/输入/结果身份。以下保留 R1–R3 原发现及各轮原始结论；后片 CR1 工作树改动不在本候选范围。
 
 日期：2026-11-09。R1 本地结论（自身审查补证核验后）：**Standards 有 1 项 P2；Spec 有 2 项 P2，需修正后同片复核。** 本报告不等待尚未形成的本片 CI，也不将前片 CI 当成本片验收。
 
@@ -182,3 +182,28 @@ R3 修正新增的是同一 stdlib 格式所有者内的检查；没有新增完
 作者 R4 安装包日志为 **46 passed / 零 skip，19.92 秒**，本审查者已读取终结摘要；作者另报告 R4 源码新增片 37 passed。R4 改动限于原 policy 格式校验及两条真实坏字段回归，未因其重复原未变运行套；R2 六套 165 项、R3 四套 100 项和 18 CLI / 5 ASGI 分别保留原包身份。本审查者实际执行的是各轮所链接的受限离线探针、身份比较、stdlib 解包及本节原始收据核对，没有重跑 pytest、CLI/API 旅程、模型、服务、原生 Windows 或 CI。
 
 **本地出口：固定 R4 范围内 Standards / Spec 通过，五项 finding 全部关闭。** 最终 scope/普通提交推送、新双 OS CI 和即时独立远端终结仍待各自实际证据；当前本地结论不等待尚未创建的 CI，也不借用前片 CI 代替本片验收。形成后可在原报告追加，不回写历史 verdict。
+
+## 精确候选与同片交付终结
+
+本审查者继续核对普通推送候选 **`e9c3484fbfa0cfb8cf0737c4d930b5ec176992d3`**，唯一父为原基线 `539163e6f93539d7939181bc2ec7b7a60bd82bc4`。后片 CR1 已在工作树推进，本次仅从候选 Git 对象取得源内容，没有重比当前工作树包，也没有将新增 runtime 模块、测试或文档混入 e9 候选。
+
+[最终 21 文件 scope](../../.ergora/checks/ac3c2-admission/review-final-scope.json) SHA256 为 `9588fe9adba2a4f20d7a286a2419d04d0bd4e88969a34ff5ac7d98f65fc1b6ba`。独立逐项核对提交相对唯一父的文件集合精确等于 21 项，全部 blob ID 与内容 SHA256 匹配；原 15 文件、两份前片状态归档、本报告和三份公开自身审查 JSON 均在内，后片 `composition-runtime.md` 明确排除。两份前片归档只记其已形成的 CI/远端终结和七文件文字纠正，没有改变本片运行范围。精确父→候选 `git diff --check` 通过。
+
+从固定候选 `git archive` 取得的 `src/ergora` 共 365 文件，逐项与保存的 R4 wheel、安装目录及包身份记录比较，内容全同；wheel SHA256 仍为 `6f3e2b168c3f2392e2c9dc6a9623c000c6749732f5b018fe852bca2a9dbb7f6f`。283 个冻结参考文件保持、相对父无差异；七个受保护生产/schema/测试文件与 R4 真实自身审查身份一致，三份公开收据与此前独立核过的原始结果一致。见 [Git 对象核验](../../.ergora/checks/ac3c2-admission/reviewer-r1/final-git-object-results.json)。
+
+最终静态归档为 **11 Markdown / 495 本地链接 / 75 条 CLI parser，零缺失**；独立将这 11 份记录的文档 SHA256 全部与候选对象核对一致。495 是本报告加入 R4 证据链接后的最终记录，先前 483 计数属于更早文档字节。该结论不覆盖后片工作树文档，本次也未重跑应用测试或模型。
+
+独立重新 GET 官方 [Portability CI 42529979473](https://github.com/626619403/Ergora/actions/runs/42529979473)、完整作业批次与两个作业页面，批次为 `totalCount=2 / hasMore=false`。整体 **Success**；[Ubuntu / Python 3.11 作业 128881800476](https://github.com/626619403/Ergora/actions/runs/42529979473/job/128881800476) 和 [Windows / Python 3.12 作业 128881800837](https://github.com/626619403/Ergora/actions/runs/42529979473/job/128881800837) 均为 `completed/success`，无失败、取消或超时步骤。候选中的 portability workflow 对应以下七项必要步骤，官方完成状态和日志链接均绑定完整 `e9c3484fbfa0cfb8cf0737c4d930b5ec176992d3`：
+
+|必要步骤|Ubuntu|Windows|
+|---|---|---|
+|Build and install wheel|[success](https://github.com/626619403/Ergora/commit/e9c3484fbfa0cfb8cf0737c4d930b5ec176992d3/checks/128881800476/logs/4)|[success](https://github.com/626619403/Ergora/commit/e9c3484fbfa0cfb8cf0737c4d930b5ec176992d3/checks/128881800837/logs/4)|
+|Packaged reference identity|[success](https://github.com/626619403/Ergora/commit/e9c3484fbfa0cfb8cf0737c4d930b5ec176992d3/checks/128881800476/logs/5)|[success](https://github.com/626619403/Ergora/commit/e9c3484fbfa0cfb8cf0737c4d930b5ec176992d3/checks/128881800837/logs/5)|
+|Native application regression|[success](https://github.com/626619403/Ergora/commit/e9c3484fbfa0cfb8cf0737c4d930b5ec176992d3/checks/128881800476/logs/6)|[success](https://github.com/626619403/Ergora/commit/e9c3484fbfa0cfb8cf0737c4d930b5ec176992d3/checks/128881800837/logs/6)|
+|Windows PowerShell 5.1 installer and upgrade|仅 Windows 必需|[success](https://github.com/626619403/Ergora/commit/e9c3484fbfa0cfb8cf0737c4d930b5ec176992d3/checks/128881800837/logs/7)|
+
+官方完整页面、批次、内容 SHA256 及每次观察保存在 [最终独立 CI 证据](../../.ergora/checks/ac3c2-admission/reviewer-r1/ci-42529979473/final.json)。早期进行中状态分别保留，仅在完整运行及全部必要步骤完成后登记成功。本次核官方步骤状态与精确日志链接；测试项数继续使用此前各包有原始摘要的记录，没有从未取得的日志正文推导额外计数。
+
+完成上述官方核验后，**2026-11-08 22:35:26.421862 UTC** 随即只读 `git ls-remote`：`refs/heads/refactor/architecture-foundations` 返回完整 **`e9c3484fbfa0cfb8cf0737c4d930b5ec176992d3`**，与候选一致；回执在同一 final.json。审查者未提交、推送或改动生产/测试。
+
+**AC3c.2 精确交付终结通过，五项 finding 关闭，范围内无新增 finding。** 本次报告追加归档同片证据；正式 v2 执行/批准桥、嵌套运行及后片 CR1 继续按各自范围验收，不从本候选继承实现结论。

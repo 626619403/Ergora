@@ -101,6 +101,8 @@ def _policy(value: dict, mode: str) -> None:
 
 def unwrap(document: dict) -> tuple[dict, dict | None]:
     """Return the legacy projection and its explicit admission; v1 stays untouched."""
+    if not isinstance(document, dict):
+        raise ValueError('Formal task input must be a JSON object')
     if document.get('kind') != _KIND and 'schema_version' not in document:
         return document, None
     if (set(document) != {'schema_version', 'kind', 'legacy_spec', 'composition', 'sha256'}
@@ -113,10 +115,18 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
     if not isinstance(composition, dict) or set(composition) != {'manifest', 'root', 'preview_sha256', 'review_instance', 'members', 'diversity'}:
         raise ValueError('Invalid formal composition selection')
     manifest_identity(composition['manifest'])
-    graph = json.loads(base64.b64decode(composition['manifest']['files']['composition.json']['content_base64'], validate=True))
+    try:
+        graph = json.loads(base64.b64decode(composition['manifest']['files']['composition.json']['content_base64'], validate=True))
+    except RecursionError as error:
+        raise ValueError('Frozen composition JSON exceeds the decoder nesting limit') from error
     if graph['root'] != composition['root'] or graph['preview_sha256'] != composition['preview_sha256']:
         raise ValueError('Formal composition identity differs from its frozen graph')
-    instances = {item['path']: item for item in graph['instances']}
+    instances = {}
+    for item in graph['instances']:
+        path = item['path']
+        if not isinstance(path, str) or not path or path in instances:
+            raise ValueError('Formal composition instance paths must be nonempty unique strings')
+        instances[path] = item
     position = composition['review_instance']
     if not isinstance(position, str) or position not in instances or instances[position]['kind'] != 'workflow':
         raise ValueError('Invalid formal composition review subtree')

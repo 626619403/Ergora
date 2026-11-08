@@ -4,6 +4,8 @@
 
 2026-11-05，R8后的当前导航，覆盖F1项目定义、F2安装/运维、F3正式任务CLI/API生命周期与F4网页消费者。F3已通过[阶段验收](../delivery/2026-11-03-f3-completion.md)，F4的创建/原ID恢复、原运行/计划/批准/取消/对账/导出及有界事件/job文本均已实现，[完整页面收口](../delivery/2026-11-05-f4-completion.md)的恢复与服务退出验收单独登记。F5.1只读证据索引与F5.2预算/用量事实CLI/API均已交付；F5.3a原生交接包及离线校验已实现，验收单独登记，F5.3b显式HTTP下载已实现，发行与真实下载验收单独登记，F5.4页面的发行/浏览器及独立审查、精确提交/双OS CI和同片终结通过；F5.5实际服务恢复组合、新综合独立审查与纯文档精确交付/远端终结通过，完整F5完成；G0全新用户旅程独立进行。历史[A1审计](2026-11-01-audit.md)及[R8记录](../delivery/2026-11-02-refactoring-exit.md)保留原身份与范围。设计约束见[ADR0001](decisions/0001-refactoring-foundations.md)/[0002](decisions/0002-static-boundaries.md)。
 
+AC3c.2的`task_envelopes`保存版本化正式信封，完整静态包、成员选择与原`legacy_spec`共同参与身份；历史读取不依赖当前后端目录。AC3c.3/CR1新增可选SDK边界`reference_workflows`，通过局部`WorkflowInput`接口选择原入口或`ErgoraCompositionWorkflowV2`；新版继承原六阶段，只在stage context附完整信封，并使用专用`ergora_composition_submit`活动，避免旧worker派成单Agent请求。`VerifiedSpecClient`先核原始单payload的完整JSON身份，再向原Transport交付兼容投影。正式v2 start/status仍拒绝，worker、批准和executor接线在[后续运行桥](../delivery/2026-11-09-composition-runtime.md)，不能把SDK合成活动旅程当正式执行验收。
+
 ## 模块与依赖
 
 自有Python仍为单包`ergora`；F1.2增加完整注册用例`registrations`，F2.3增加显式服务用例`services`，F3.1增加项目范围的正式任务查询`tasks`，F3.2在同一用例接入预览/创建/恢复，专用`reference_task_creation`拥有原生编译/发布生命周期，F4.4的`reference_task_events`与`reference_task_evidence`分别拥有有界原事件、原job回执及文本窗口查询。F5.3的`handoff`只依赖合同基础库，拥有受限ZIP格式及离线内部身份校验；原生收集和CLI验证分别消费它。AC2为四种既有后端增加局部`AgentBackend` ABC及工厂；没有为每种专长创建Python类、空子包或通用插件容器。下图表示当前调用方向，组合节点内的模块并非互相依赖；精确导入由静态检查和源码确定。
@@ -59,6 +61,9 @@ flowchart TB
   Creation --> Foundations
   Ref --> RuntimeQuery[reference_task_runtime 专用查询进程]
   RuntimeQuery --> Temporal[原 DevelopmentTransport / Temporal]
+  RuntimeQuery --> WorkflowInputs[reference_workflows 版本入口与完整原始输入]
+  WorkflowInputs --> Envelopes[task_envelopes 标准库历史合同]
+  WorkflowInputs --> Temporal
   Ref --> Events[reference_task_events 专用事件查询进程]
   Events --> Submission
   Events --> Temporal

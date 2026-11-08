@@ -1,0 +1,28 @@
+{
+  "checked_at": "2026-11-08T22:50:18.947236+00:00",
+  "source": {
+    "src/ergora/reference_workflows.py": "2bda9d265be8da6933ebdb03a6c1a77cfbbfcd0f81b565cab6f263eddce1cd9f",
+    "src/ergora/reference_task_runtime.py": "786ec943a8a5ae3e15a7d1f0792b17855e89ee7b47441ae5b25f94273c76db9b",
+    "src/ergora/task_envelopes.py": "c96c0cdd509f5af6e81781eff81e7d7ac32f3a5a5ead2048f1776bba4b59cd10",
+    "tests/test_composition_runtime.py": "46dd5782caa9c85ee45414d2ea040dd52fdce6a76f0e941830218e572078fec2",
+    "src/ergora/data/reference/platform/upstream/platform/dev_platform/workflow.py": "20885f21f56d6b7c3ada8d32981ff3bfc35b6620dcd5ae2c6155547f15370ff5",
+    "src/ergora/data/reference/platform/upstream/platform/dev_platform/runtime.py": "79ea893830b63d39e3def64ebb91bf59fc7d9f553f86382547596123716034c1",
+    "src/ergora/data/reference/platform/upstream/platform/dev_platform/activities.py": "c6b2864e57303a43483a78e3e7f2ab4339b0118b1fb695fbeee0157abfd5edf4"
+  },
+  "backend": "codex",
+  "inference_model": "gpt-6.1-sol",
+  "reasoning_effort": "high",
+  "run_id": "c8effe5eccad46b49b0a709e7c09e4f3",
+  "status": "succeeded",
+  "exit_code": 0,
+  "seconds": 132.02651479560882,
+  "input_digest": "842f86ed98f8afab23850072efc44c3341dedbc558f275cd7b7c350252cec782",
+  "prompt_sha256": "049265932388449f50d2e095ce937ca31eb51494a23f99638898cb048a1f6012",
+  "attachment_bytes": 50938,
+  "attachment_sha256": "c0285e261a3de5f61bd9253780c03663ea5fb9499a5124dce83cb2d6ad8aae6a",
+  "manifest_digest": "8b032b1123c47c5b2444c630c6d78edd4e4edb88f8c5e8fc3d492377d00335c6",
+  "original_definition_libraries_removed": true,
+  "scope": "Real configured hosted model through installed Ergora structure-review template from a complete static manifest and task MCP; provided source only, no formal approval or OS isolation.",
+  "decision": "approve",
+  "result_sha256": "a07fcc7845966405418e48afd900fcc1a7f740ddb0e2eb8a93c62aefef6062b2"
+}
