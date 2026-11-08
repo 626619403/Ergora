@@ -268,3 +268,5 @@ F2.1已交付（运行/测试`8201c5d`，本地/精确两OS CI及独立最终复
 F2.2诊断增量复用 `tools.doctor` → CLI/dashboard/主动POST：本地探测和主动版本/凭据/TCP检查分开；单次请求按有效绑定复用结果，不跨请求缓存。主动探测共用预算，使用现有进程树清理，原始输出不保留；配置摘要绑定诊断，页面仅保存当前服务器快照，刷新/切项目后迟到结果不回写。诊断不产生正式任务验收；状态/修复说明见[使用手册](../USAGE.md#诊断与修复)。
 
 F6.1以独立[开发者原型](../../examples/editor-comparison/README.md)实际比较三种图/表单栈，默认生产模块及包资源未替换；[ADR0003](decisions/0003-workflow-editor-stack.md)保留Cytoscape/原生模块，下一F6.2在原workflow所有者补统一编辑状态、有限命令、撤销重做与修订处理。schema渲染和布局不拥有领域校验或执行授权；JSON Forms默认Ajv/CSP失败及官方NoValidation试验分别记账。
+
+用户进一步要求可嵌套的工作流模板：执行子图与并行结构/正确性/冗余检查子图可串接，各实例完整继承当前路径全部祖先Skill指令和上下文，资源累加而权限不越父级，父/子权限可共同存为新修订。这些是[ADR0005](decisions/0005-composable-workflows.md)及AC0b/AC3d/AC4d的目标，当前`drafts`和固定六阶段运行器没有这些语义；现有工作单元DAG、Agent单binding及AC1.2固定正文加载分别保留原范围。

@@ -403,7 +403,7 @@ agentflow verify
 
 三个模板的角色现可独立于工具选择；[选型调研](docs/research/2026-10-31-template-agents.md) 说明首批适配和未接入工具的优缺点。ForgeKernel 作为可选原生候选生成工具，其内部 judge 不替代可信训练门禁；模型质量和 GPU 性能比较需要真实项目证据。固定官方版本及实际检查范围记录在 [计划](docs/PLAN.md) 和各切片交付记录。
 
-当前每个角色仍只绑定一个工具。后续[Agent组合设计](docs/architecture/decisions/0004-agent-composition.md)将职能、专长化Agent定义、模板成员与后端分开，使kernel执行者、架构审查者等可按任务互补组合，并优先选择不同的执行/审查后端；这些新增语义尚未实现。[框架与论文对照](docs/research/2026-11-08-agent-composition.md)及[分片计划](docs/plans/2026-11-08-agent-composition.md)记录了依据、现有缺陷和验收顺序。
+当前每个角色仍只绑定一个工具。后续[Agent组合设计](docs/architecture/decisions/0004-agent-composition.md)将职能、专长化Agent定义、模板成员与后端分开，使kernel执行者、架构审查者等可按任务互补组合，并优先选择不同的执行/审查后端。[嵌套工作流设计](docs/architecture/decisions/0005-composable-workflows.md)进一步支持可复用子模板的串行/并行汇合，祖先Skill/上下文完整继承及父子权限修订；这些新增语义尚未实现。[框架与论文对照](docs/research/2026-11-08-agent-composition.md)及[分片计划](docs/plans/2026-11-08-agent-composition.md)记录了依据、现有缺陷和验收顺序。
 
 ## 项目状态与许可
 

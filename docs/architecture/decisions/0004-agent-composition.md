@@ -1,6 +1,6 @@
 # ADR0004：职能、专长化Agent定义、模板成员与后端分开
 
-日期：2026-11-08。状态：设计提案，按[AC计划](../../plans/2026-11-08-agent-composition.md)分片实施；不是当前发行已支持的配置格式。依据：[实现与论文对照](../../research/2026-11-08-agent-composition.md)和[完整快照独立评审](../../delivery/2026-11-08-agent-composition-review.md)。保留[ADR0001](0001-refactoring-foundations.md)的兼容与可信执行约束、[ADR0003](0003-workflow-editor-stack.md)的前端选型。
+日期：2026-11-08。状态：设计提案，按[AC计划](../../plans/2026-11-08-agent-composition.md)分片实施；不是当前发行已支持的配置格式。依据：[实现与论文对照](../../research/2026-11-08-agent-composition.md)和[完整快照独立评审](../../delivery/2026-11-08-agent-composition-review.md)。用户随后明确的可嵌套串并行工作流、所有祖先Skill/上下文强继承和父子权限修订在[ADR0005](0005-composable-workflows.md)补充，不能由本ADR的成员组合推断已经支持。保留[ADR0001](0001-refactoring-foundations.md)的兼容与可信执行约束、[ADR0003](0003-workflow-editor-stack.md)的前端选型。
 
 ## 问题
 
@@ -16,6 +16,7 @@
 |---|---|---|
 |RoleSpec，职能合同|角色ID、允许的stage、必需输入/产物、actor kind、职责下限和独立性约束|厂商实现、凭据、具体个人能力；“监管者”不因此获得可信批准权。|
 |AgentDefinition，专长化定义|稳定ID/版本、可承担职能、specialties、提示与参考资料、Skill/MCP请求、后端binding和预算默认值|共享会话、当前任务状态；specialties只供发现/匹配，不当权限或能力证明。|
+|WorkflowDefinition，可组合工作流定义|可复用静态有界子图、具名输入/输出、Agent/子工作流引用、本模板资源与权限；祖先继承及汇合按ADR0005|模板引用不等于共享运行实例；不能绕过可信阶段或将资源累加当权限扩张。|
 |MemberAssignment，模板成员分配|模板内稳定member ID、role、AgentDefinition引用、职责/覆盖标准、工作范围、显式协作模式及允许的有限覆盖|重复保存工具实现、任意嵌入可执行配置、批准后任意改成员。|
 |AgentRun，实际运行|本次member/attempt ID、定义和有效配置摘要、backend/version、原生session/进程ID、参与/委派来源、结果/usage/证据|从显示名称推导作者身份、用进程exit0冒充审查通过。|
 |BackendAdapter，后端实现|同一构造/调用合同，封装原生工具配置、真实能力、装载、结果解析和取消/恢复差异|决定领域角色、批准计划、生成可信验收结果或泄漏厂商分支到上层。|
@@ -50,7 +51,7 @@ flowchart TD
 |大型变更|分工作单元执行者、API兼容审查者、架构审查者、可选进展监管者|以已批准scope和DAG分工，汇总兼容与结构finding；监管者给建议，不替代可信集成。|
 |训练优化|实验设计者、kernel/CUDA/Triton专家、测量分析者、正确性/复现审查者|专家配置可以选择KDA/KernelWiki等已核来源Skill；Forge原生候选生成与可信runner/compare/gate仍分别执行。|
 
-以上是目标组合，不是已发版的Agent库。首先交付少量有实际消费者的定义，再用任务对照评价；不把所有已安装Skill全部塞给每个Agent。
+以上是目标组合，不是已发版的Agent库。首先交付少量有实际消费者的定义，再用任务对照评价；不把所有已安装Skill全部塞给每个Agent。显式声明在父模板中的Skill与上下文则按ADR0005完整继承到后代调用，不能以按需检索代替用户要求的强装载。
 
 关系明确分为：工作依赖`depends_on`、具名产物交接、受限委派、审查/独立性要求、授权/资源请求。UI可以分别投影这些关系；图的一条线不能同时表示权限和数据流。
 

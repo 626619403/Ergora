@@ -65,3 +65,44 @@ env -u PYTHONPATH PYTHONDONTWRITEBYTECODE=1 \
 未验：真实模型遵循说明的质量/速度，Claude/mini 的本片实际进程旅程，真实 Temporal 服务端完整运行，新组合与训练执行，原生 Windows 正式执行，安装 profile 漂移的新增动态反例，恶意同用户隔离，长任务并发/资源上限，以及 AC1.2 尚不存在的精确候选、远端 CI 和推送终结。未逐行审计所有 vendor 或所有历史测试。上述“无 finding”仅适用于本报告所列切片及实读相邻路径。
 
 本次唯一项目写入为本报告；生产、测试、依赖、CI、前片报告及既有证据均未修改，没有提交或推送。候选提交后需由同一评审者固定 Git 对象核本片最终身份、状态归档和自身 CI/远端事实；后续新行为切片使用新独立评审上下文。
+
+## AC1.2 普通候选身份与最终归档复核
+
+2026-11-08 13:52 UTC，同一评审者固定读取候选 `b01a59493709e3f49b92596e65500da831612703`，唯一父为 `bf99bd47220572fd721546a2eeb5b1b2739a57b5`。**候选身份、最终静态及状态归档通过，两轴无新增 finding；本候选自身 CI 和独立即时远端终核仍待完成。** 未使用下一片工作树或前片 CI 代替本候选证据。
+
+候选恰改 12 文件，全部 blob 的 bytes/SHA 均与 `final-scope.json` 相同；该清单 2,360 字节、SHA256 `85254f9d23f4219fcdeeb5dff566d09e6373923e91d39ebf76dd9175d01e9167`。`final-tracked.diff` 为其中 10 个原 tracked 文件的差异，40,487 字节、SHA256 `8acbb6b39c865af2ceedfcb297ced227f068039f6261eec47246bea3d25bf7d2`，逐字等于实际 Git 对象差异；两个新增文档另核候选 blob。候选内本报告仍为首轮 8,810 字节、SHA256 `f02de3b6b983641690a24ee15c8dcf5498a5b301ee9a3337fc3e965bcc661371`，原结论保持，本节为后续追加。
+
+三份生产/测试文件保持首轮表内 SHA。另从候选 Git archive 逐字比对全部 352 个包文件与原 `9cb4793a794d5f85c022c3771c16ee28935b2a1d37f6374226711375058eaaf6` wheel、实际非 editable 安装，全部一致；283 个冻结文件摘要也全部通过。没有重跑源码身份未变的行为矩阵。
+
+从固定 Git 对象独立重核 9 份 Markdown、248 个本地文件/锚点及 30 条 README parser 命令，均通过；最终 `static-documents.json` 的文档摘要和命令集合与候选完全一致。该记录 3,578 字节、SHA256 `29dbc9848fc08b13d55a9cc7b7fcb77510e947844dbd6556ed3276ec68ec6168`。固定两提交间 `git diff --check` 通过，计数不包含本节。
+
+最终文档差异实核为本片审查处置、计划状态及 AC1.1 交付/独立终结归档。共享报告的原独立评审区逐字保持，仅主代理回应更新；前片独立报告保留原文并追加。新增嵌套工作流研究文件未进入该 12 文件候选，没有将后续设计登记为本片实现。
+
+已读原普通 push 命令及 stdout/stderr：exit0，远端从 bf99 前进到完整 b01 候选；`push-remote-identity.json` 记录在 2026-11-08 13:50:06.173096 UTC 远端同 SHA。此处核的是既有推送记录，尚未独立发起即时远端查询，也未确认 AC1.2 自身双 OS 必要 CI 步骤；取得这些实际证据后再同片终结。本轮仅追加本报告，未改既有证据、源码、测试或其他报告，未提交、推送或重跑 CI。
+
+## AC1.2 精确 CI、独立远端与完整终结
+
+2026-11-08，同一评审者继续固定 `b01a59493709e3f49b92596e65500da831612703`，再核唯一父与 12 个候选 blob，均与上述 final-scope 相同。**需求符合性、可维护性、候选身份、最终静态、自身双 OS 必要 CI 及独立即时远端核对全部通过；Q-1 和 AC1.2 可完整关闭，无新增 finding 或未解决交付阻塞项。** 上节 CI/远端 pending 由本节实际证据关闭。
+
+直接解析缓存官方原 HTML，`ci-html-status.json` 引用的六份来源 bytes/SHA 全部一致；并独立即时 GET 官方 run 与两个 job，均 HTTP 200。缓存及在线页面均核到完整 b01 commit 链接、Portability workflow 链接、Success、精确 job ID/平台及各必要步骤完成标记。没有仅采用汇总 JSON 或总体 Success。对照候选 `.github/workflows/portability.yml`，实际结果为：
+
+|必要步骤|[Ubuntu / Python 3.11 · 128750410594](https://github.com/626619403/Ergora/actions/runs/42486825163/job/128750410594)|[Windows / Python 3.12 · 128750410829](https://github.com/626619403/Ergora/actions/runs/42486825163/job/128750410829)|
+|---|---|---|
+|4 · Build and install wheel|success|success|
+|5 · Packaged reference identity|success|success|
+|6 · Native application regression|success|success|
+|7 · Windows PowerShell 5.1 installer and upgrade|skipped，符合 Windows 条件|success|
+
+每个必要成功步骤的原日志 URL 精确等于 `/626619403/Ergora/commit/b01a59493709e3f49b92596e65500da831612703/checks/<对应 job>/logs/<对应步骤号>`。Windows 全部 10 项 success；Ubuntu 9 项 success，仅 Windows 专用项 skipped，无失败、取消或超时。[本候选 run 42486825163](https://github.com/626619403/Ergora/actions/runs/42486825163)的本轮在线原页面身份为：
+
+|在线页面|字节|SHA256|
+|---|---:|---|
+|run|157507|`f80d25d2275b5ed25f143b67f32a5b697e9fc1c2afe45f01f59467eeddd61742`|
+|Ubuntu job|162056|`27182caf68233b458a0ebc3410711073c499b233ea18f4a68844ebaa721280e3`|
+|Windows job|160148|`ac9e3273c2dff4091399c70d0020626a614ba11210b687c89655537e6849a5c1`|
+
+首轮自写解析器将 selection 中的完整 GitHub URL 误按相对 URL 校验而退出；修正解析后缓存及在线检查全部通过。这是评审脚本的检查错误，未触达产品执行。未运行作者会覆写 JSON 的 verify 脚本，也未逐条下载完整控制台日志或重跑 CI/行为矩阵。
+
+另按既有 `push.py` 方法仅在内存读取已授权 SSH 配置，独立实际执行只读 `ls-remote`，exit0、耗时 4.398 秒。**2026-11-08 14:08:23.545730 UTC**，`refs/heads/refactor/architecture-foundations` 返回完整 `b01a59493709e3f49b92596e65500da831612703`，与固定候选一致；未输出认证值、推送或写配置。这是该明确时点的远端事实。
+
+本轮仅追加本报告，原结论和历史 pending 保持。AC0b 研究/设计及下一片工作树排除，真实模型/训练、原生 Windows 正式执行、强隔离与长任务资源等原未验范围保持。结合 [AC1.1 自身独立终结](2026-11-08-skill-publication-review.md)和 [AC1.3 文档独立结论](2026-11-08-agent-composition-design-review.md)，计划可汇总登记完整 AC1；本报告独立终结的是 AC1.2，未重新执行前两片验证。

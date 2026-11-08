@@ -1,6 +1,6 @@
 # AC1.2：已固定模板说明进入正式提示
 
-日期：2026-11-08。状态：实现、源码104项、非editable包8项及[新独立审查](2026-11-08-template-instructions-review.md)本地通过，普通精确交付及自身CI待完成。基线`bf99bd47220572fd721546a2eeb5b1b2739a57b5`，分支`refactor/architecture-foundations`。问题来自[完整源码评审Q-1](2026-11-08-agent-composition-review.md)，顺序见[AC计划](../plans/2026-11-08-agent-composition.md)。AC1.1已按自身CI与独立远端终结，不用其结果替代本片。
+日期：2026-11-08。状态：完整完成。候选`b01a59493709e3f49b92596e65500da831612703`的源码104项、非editable包8项、普通推送、自身双OS CI及[同片独立终结](2026-11-08-template-instructions-review.md)全部通过，Q-1关闭。基线`bf99bd47220572fd721546a2eeb5b1b2739a57b5`，分支`refactor/architecture-foundations`。问题来自[完整源码评审Q-1](2026-11-08-agent-composition-review.md)，顺序见[AC计划](../plans/2026-11-08-agent-composition.md)。后文保留步骤当时状态，不用AC1.1结果替代本片。
 
 ## 范围与合同
 
@@ -20,7 +20,7 @@ Ergora正式selectable executor目前只将通用约束、spec和依赖材料发
 |缺失快照、修改正文、借用另一任务的有效编译材料，均失败且未启动Agent进程|源码三种拒绝/无Agent请求检查通过|
 |创建后源包不可用仍从该任务快照完成原六阶段；旧binding快照保持可用|源码保存后删除portable源包，完整六阶段通过；原legacy绑定/统一注册检查通过|
 |原可信检查、计划批准、候选/作者/session、只读监控、取消及283身份保持|源码原执行器全文件及task_inputs/original_payloads/架构104项通过；283文件源码/wheel/安装身份通过|
-|当前源码/非editable包、新fresh-context审查、普通精确交付/CI|本地源码、包及新独立两轴审查通过；提交推送/自身CI与同片终结待完成|
+|当前源码/非editable包、新fresh-context审查、普通精确交付/CI|本地源码、包、新独立两轴审查、b01普通推送、自身CI42486825163双OS必要步骤及同片独立远端终结全部通过|
 
 所有运行使用隔离fixture/State和确定性进程，不调用真实模型、服务或用户任务；如需真实模型验证另记，不将fixture成功当质量评价。只有本片通过的检查才归入本片，不借用AC1.1或研究CI结论。
 
@@ -39,3 +39,9 @@ Ergora正式selectable executor目前只将通用约束、spec和依赖材料发
 已完整读取新fresh-context[评审](2026-11-08-template-instructions-review.md)，需求符合性与可维护性在本地范围内均通过，没有新增finding。评审者从原Q-1及实际差异核compiled/spec/prompt/回执的完整链，复用已有校验和执行所有者的做法得到保留；没有证据要求新增公共helper、缓存或删减本片四种不同合同反例。
 
 评审者在原非editable环境独立复跑三项拒绝和删源包后六阶段：4 passed/零skip，11.80秒；另在内存重算外层及组件摘要的两种篡改均按固定profile拒绝。它独立重核352文件/283身份、首轮203本地链接/30 parser，并准确区分作者104/8项与自身4项。主代理接受结论，原生产/测试身份不改；待归档最终静态和scope后普通提交推送，取得自身双OS CI及同片精确终结再关闭Q-1。新嵌套工作流研究属于后续设计，不扩本片源码或验收范围。
+
+普通候选`b01a59493709e3f49b92596e65500da831612703`已提交并push exit0，2026-11-08 13:50:06 UTC远端同SHA。最终12文件/9 Markdown、248本地链接/30parser通过；同一独立者固定Git对象核唯一父bf99、12文件、352/283身份及全部归档，无新增finding。自身CI42486825163仍在途，待双OS必要步骤和独立即时远端终结；没有把AC1.1或设计研究结果作为本候选通过。
+
+## 精确交付终结
+
+自身[CI42486825163](https://github.com/626619403/Ergora/actions/runs/42486825163)已Success，Ubuntu128750410594三个必要步骤及Windows128750410829四个必要步骤均实际success。原独立者重核官方run/job原HTML，另即时GET均HTTP200、步骤日志URL绑定完整b01，并于2026-11-08 14:08:23 UTC独立只读查询远端同完整SHA。两轴无新增finding，Q-1及AC1.2完整关闭。结合AC1.1和AC1.3各自独立交付，完整AC1完成；祖先强继承、新定义/子工作流、真实模型质量及训练等未验范围继续按后续计划处理。
