@@ -114,3 +114,26 @@ R-1的500/32限额仅由Agent检查入口启用，旧Skill的读取及备份不�
 新增[自身仓库审查用法](../AGENT_BACKENDS.md#用-ergora-审查自己的仓库)与实际CLI及 `agent_runs` / 后端行为一致；区分进程成功、结构合法、decision和正式workflow验收，明确专家材料需显式加入。该用户要求已获真实成功回执，独立fresh-context审查保持独立记录。精确候选普通提交/推送、必要CI及即时远端终结仍未核验，不标完整AC3a交付完成。
 
 随后核对作者的逐项处置：S2已补公开手册的跨系统执行位限制，保留原Skill身份算法；S1和S3的后续准入/冲突/错误语义职责分别记账，不为本片扩写执行能力。新保存的[完整自审报告](2026-11-09-ac3a-self-review.md)、[结构化result](evidence/2026-11-09-ac3a-self-review-result.json)及[身份记录](evidence/2026-11-09-ac3a-self-review-identity.json)已独立核验：result原字节与真实运行相同，请求和实际交付prompt摘要均匹配，报告及handoff完整保留，16项受保护文件仍匹配。独立只读重跑文档脚本得到16份文档、294个本地链接、43条CLI parser全部通过，`git diff --check`通过；该计数对应此段追加前的检查。最终本地发行及用户追加的实际模板审查可通过，尚待精确提交/CI/远端终结。
+
+## 精确本地候选对象核对
+
+2026-11-08 16:11:38 UTC独立核验候选 `03ae7520c657773e7083cb24b8ef7ce9e77433a6`，唯一父提交为原基线 `deace5b51681338d66bbfbe31ddeff0e114e10dc`。该提交恰好包含final-scope清单的28份变更文件；逐份 `git show <candidate>:<path>` 的原字节哈希与清单和当时工作树全部一致，核验时工作树干净。生产/测试/示例仍为通过r2源码、最终包和实际自身审查的原内容。
+
+候选Git对象内的自身审查result仍为原始 `35521b7e…932b32` 字节，身份记录的16份保护文件逐项匹配，模型报告和handoff原文均完整保留。AC3b已明确任何catalog收紧前完成历史完整性/当前准入分离，AC3d已明确同名Skill的实际加载冲突，公开手册的执行位限制也在候选内。状态归档未将静态定义库或普通reviewer调用写成正式运行支持。
+
+本轮独立只读静态复核为16份文档、297个链接、43条CLI parser全部通过；精确基线→候选的diff检查通过。无新增finding。普通推送进行中，尚未核精确远端及该候选必要CI；此节不提前关闭完整交付。该追加本身属于后续审查归档，不改变已固定候选内容。
+
+## 同片终结：官方CI与即时远端
+
+2026-11-08 16:31:03.527783 UTC，独立重新GET GitHub官方run和两份job页面，未以作者缓存摘要代替实时读取：[Portability 42498512673](https://github.com/626619403/Ergora/actions/runs/42498512673)明确绑定完整候选 `03ae7520c657773e7083cb24b8ef7ce9e77433a6`、正确workflow及Success状态。官方job完整批次为size200、totalCount2、hasMore=false；两项均completed/success。
+
+|精确job|必要步骤与结果|
+|---|---|
+|[Ubuntu 3.11 / 128785966185](https://github.com/626619403/Ergora/actions/runs/42498512673/job/128785966185)|Build and install wheel、Packaged reference identity、Native application regression均success。|
+|[Windows 3.12 / 128785966430](https://github.com/626619403/Ergora/actions/runs/42498512673/job/128785966430)|上述三项及Windows PowerShell 5.1 installer and upgrade均success。|
+
+每个必要步骤均有completed标记，日志URL均包含同一完整候选及各自精确job ID，无failure/cancelled/timed_out步骤。另读候选内workflow，确认回归确实选择全部 `tests`、适用reference测试及Windows安装升级检查；未把后续别的候选CI替代本片。原本地未做原生Windows检查的事实保留，新增通过范围来自此官方Windows job；不扩展为模型、GPU、权限或后续组合能力验收。
+
+2026-11-08 16:31:05.455580 UTC，独立执行只读 `git ls-remote`，沿既有内存SSH配置引用、未打印敏感字段，exit0；`refs/heads/refactor/architecture-foundations`即时远端SHA为 `03ae7520c657773e7083cb24b8ef7ce9e77433a6`，与精确候选一致。普通push记录为16:10:22 UTC exit0，远端从唯一父基线前进至该候选；本次实时核验独立于该历史记录。
+
+终结时工作树的生产、测试、示例对候选无差异；后续仅AC3a审查/状态归档及明确未实现的下一片准备文档，不属于该实现候选，不递归触发新实现审查。三项P2保持关闭，原失败、初版与修后实际检查分别保留，无新增finding。完整AC3a现可关闭；尚未实现的AC3d/3b/3c/4能力仍按原计划验收。
