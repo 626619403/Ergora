@@ -19,11 +19,13 @@ class Invocation:
     protocol: Path
     timeout: int
     schema: dict | None
+    text_only: bool = False
 
 
 class AgentBackend(ABC):
     authentication = "not_checked"
     guidance: tuple[str, ...] = ()
+    supports_text_only = False
 
     def __init__(self, binding: dict, options: dict):
         self.binding = binding
@@ -46,6 +48,10 @@ class AgentBackend(ABC):
     def check_invocation(self) -> None:
         """Reject unsupported runtime modes before creating protocol files."""
 
+    def check_text_only(self) -> None:
+        if not self.supports_text_only:
+            raise ValueError(f"{self.binding['tool']} does not support text-only composition calls")
+
     @abstractmethod
     def command(self, request: Invocation) -> tuple[list[str], str]:
         """Prepare the native command and stdin in an existing protocol directory."""
@@ -64,6 +70,7 @@ class AgentBackend(ABC):
 
 
 class CodexBackend(AgentBackend):
+    supports_text_only = True
     guidance = ("Use codex login, then tools doctor PROJECT --probe; stored credentials do not verify account access or quota.",)
 
     def executable(self) -> str:
@@ -75,20 +82,44 @@ class CodexBackend(AgentBackend):
 
     def command(self, request: Invocation) -> tuple[list[str], str]:
         options = list(self.options.get("arguments") or [])
+        config = {}
         if self.options.get("config") is not None:
             options += ["--ignore-user-config", "--ignore-rules", "--disable", "plugins", "--disable", "apps"]
             config = tomllib.loads(Path(self.options["config"]).read_text(encoding="utf-8"))
+        if request.text_only:
+            if self.options.get("arguments"):
+                raise ValueError("Text-only composition calls do not accept additional native arguments")
+            options = ["--ignore-user-config", "--ignore-rules", "--strict-config", "--skip-git-repo-check"]
+            config = {key: value for key, value in config.items() if key in (
+                "model", "model_provider", "model_reasoning_effort", "service_tier", "model_providers")}
+            if "model_providers" in config:
+                if not isinstance(config["model_providers"], dict) or any(
+                        not isinstance(provider, dict) for provider in config["model_providers"].values()):
+                    raise ValueError("Codex inference providers must be TOML tables")
+                config["model_providers"] = {name: {key: value for key, value in provider.items() if key in (
+                    "name", "base_url", "env_key", "wire_api", "requires_openai_auth", "env_http_headers")}
+                    for name, provider in config["model_providers"].items()}
+            config.update({"features.shell_tool": False, "features.goals": False, "features.hooks": False,
+                "features.view_image": False, "features.multi_agent": False, "features.apps": False,
+                "features.plugins": False, "features.memories": False, "features.skill_mcp_dependency_install": False,
+                "skills.include_instructions": False, "skills.bundled.enabled": False,
+                "web_search": "disabled", "project_doc_max_bytes": 0})
 
-            def add(table, prefix=""):
-                for key, value in table.items():
-                    name = prefix + key
-                    if isinstance(value, dict):
-                        add(value, name + ".")
-                    elif name != "approval_policy" and not name.startswith("sandbox_"):
-                        options.extend(["-c", name + "=" + json.dumps(value)])
+        def add(table, prefix=""):
+            for key, value in table.items():
+                name = prefix + key
+                if isinstance(value, dict):
+                    add(value, name + ".")
+                elif name != "approval_policy" and not name.startswith("sandbox_"):
+                    try:
+                        encoded = json.dumps(value)
+                    except TypeError as error:
+                        raise ValueError(f"Codex configuration field is not JSON-compatible: {name}") from error
+                    options.extend(["-c", name + "=" + encoded])
 
-            add(config)
-        sandbox = self.binding.get("sandbox", "read-only" if request.role != "implementer" else "workspace-write")
+        add(config)
+        sandbox = "read-only" if request.text_only else self.binding.get(
+            "sandbox", "read-only" if request.role != "implementer" else "workspace-write")
         sandbox = "danger-full-access" if sandbox == "current-container" else sandbox
         argv = [self.options.get("executable", "codex"), "exec", "--ephemeral", "--sandbox", sandbox, "--json", *options]
         if "model" in self.binding:
@@ -107,6 +138,7 @@ class CodexBackend(AgentBackend):
 
 
 class ClaudeCodeBackend(AgentBackend):
+    supports_text_only = True
     guidance = ("Use claude auth login; authentication is not checked by this driver.",)
 
     def executable(self) -> str:
@@ -114,7 +146,10 @@ class ClaudeCodeBackend(AgentBackend):
 
     def command(self, request: Invocation) -> tuple[list[str], str]:
         argv = ["claude", "--print", "--output-format", "json", "--no-session-persistence"]
-        if request.role != "implementer":
+        if request.text_only:
+            argv += ["--setting-sources", "", "--restricted", "--safe-mode", "--tools", "",
+                     "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}', "--max-turns", "3"]
+        elif request.role != "implementer":
             argv += ["--tools", "Read,Grep,Glob", "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}']
         if "model" in self.binding:
             argv += ["--model", self.binding["model"]]

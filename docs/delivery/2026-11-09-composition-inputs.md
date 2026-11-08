@@ -1,6 +1,6 @@
 # AC3b.2a：可核验的完整调用输入包
 
-日期：2026-11-09。状态：IN1–2初版源码/发行验证通过；新独立初审提出4项，r2修正后源码/发行检查通过，新独立两轴复审通过，精确交付待验。基线 `4f102da873fc19c8a805031106d7a7c4524d5908`，分支 `refactor/architecture-foundations`；前片本地门禁已通过，其精确交付单独收口。
+日期：2026-11-09。状态：IN1–4完成；新独立初审4项已修正复核，普通推送、自身双OS CI及同片独立远端收口通过。基线 `4f102da873fc19c8a805031106d7a7c4524d5908`，分支 `refactor/architecture-foundations`；前片本地门禁已通过，其精确交付单独收口。
 
 ## 本片合同
 
@@ -21,7 +21,7 @@
 - [x] IN1：输入格式、准备/核验和有界复制，内容身份及完整prompt检查。
 - [x] IN2：实际CLI及有价值拒绝/历史恢复合同、非editable包和冻结身份。
 - [x] IN3：fresh-context独立审查/处置及手册/计划。
-- [ ] IN4：精确普通提交/推送、必要双OS CI及同片远端收口。
+- [x] IN4：精确普通提交/推送、必要双OS CI及同片远端收口。
 
 ## 先行原生配置探针（不计实现）
 
@@ -53,3 +53,5 @@ Workflow源码65 passed；随后四套相关源码159 passed/2原生Windows junc
 本轮最初两次测试命令分别因误用未安装包的系统Python、备份suite文件名拼错而未收集测试；原日志 `r2-source-tests.log`、`r2-related-source-tests.log`保留排除。有效检查为 `r2-corrected-source-tests.log`／`r2-wheel-tests.log`，不把前两次当通过。尚待同片复审、精确普通提交及自身双OS CI；真实后端仍属AC3b.2b。
 
 IN3完成：[同片两轴r2复审](2026-11-09-composition-inputs-review.md)通过，四项原发现关闭，无新增finding。独立重核360/283身份、7个新增回归和平台/一致性探针；另在r2安装包独立执行3次真实CLI（prepare/verify/重复prepare，0/0/2），中文路径及BOM/CRLF字节保持。原生Windows及本片精确CI仍待验，不把分支模拟计作原生通过。下一IN4普通精确交付，随后按AC3b.2b调用切片推进。
+
+IN4完成：普通候选eee09efcba093839dba5407c474a7a5b46a3a2a0于18:45:21 UTC推送并核远端一致，固定14 Git对象/360包与已验wheel独立一致。自身CI42511562198的Windows4/Ubuntu3必要步骤全部success，原独立者19:15:31–19:15:33 UTC另GET官网核完整两job组及精确日志URL，19:16:01 UTC实际ls-remote核完整eee一致。四项发现关闭，输入包切片完成；2b新代码与该候选分开验收。

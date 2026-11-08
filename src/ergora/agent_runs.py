@@ -3,11 +3,18 @@
 import hashlib
 import json
 from pathlib import Path
+import shutil
 import uuid
 
-from . import agents, projects
+from . import agent_backends, agent_definitions, agents, contracts, projects, workflow_definitions
 from .bindings import validate_binding
 from .state import State, now
+
+
+def _store(state: State, document: dict) -> None:
+    with state.connect() as db:
+        db.execute("INSERT INTO agent_runs VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET document=excluded.document",
+                   (document["id"], document["project"], json.dumps(document)))
 
 
 def run_agent(state: State, project_id: str, role: str, prompt: str, timeout: int = 300,
@@ -52,15 +59,73 @@ def run_agent(state: State, project_id: str, role: str, prompt: str, timeout: in
                 "project_revision": project["revision"], "started": now(), "status": "running",
                 "configuration": configuration,
                 "context": context, "template": template, "prompt_sha256": hashlib.sha256(prompt.encode()).hexdigest()}
-    with state.connect() as db:
-        db.execute("INSERT INTO agent_runs VALUES (?, ?, ?)", (run_id, project_id, json.dumps(document)))
+    _store(state, document)
     try:
         document.update(agents.invoke(binding, role, prompt, Path(project["repo"]), state.root / "runs" / run_id, timeout, schema))
     except (OSError, ValueError) as error:
         document.update(status="failed", error=str(error))
     document["finished"] = now()
-    with state.connect() as db:
-        db.execute("UPDATE agent_runs SET document=? WHERE id=?", (json.dumps(document), run_id))
+    _store(state, document)
+    return document
+
+
+def run_input(state: State, project_id: str, source: Path, timeout: int = 300, *,
+              backend: str | None = None, model: str | None = None, reason: str | None = None,
+              codex_config: Path | None = None) -> dict:
+    """Explicit independent text-only call; no workflow ports or formal approval."""
+    contracts.validate(timeout, {"type": "integer", "minimum": 1, "maximum": 3600}, "Agent timeout")
+    project = state.project(project_id)
+    prepared = workflow_definitions.inspect_input(source, material=True)
+    leaf = next(item for item in prepared["composition"]["instances"] if item["path"] == prepared["request"]["instance"])
+    permissions = leaf["permissions"]
+    if permissions["write"] or permissions["shell"] or permissions["network"]:
+        raise ValueError("Text-only calls cannot satisfy write, shell or network requests; use a read-only leaf")
+    reference = leaf["ref"]
+    definition = agent_definitions.library(Path(prepared["path"]) / "assets").get(reference["id"], reference["version"])
+    agent_definitions.validate_admission(definition)
+    binding = {"tool": backend} if backend else dict(leaf["backend_request"])
+    if model is not None:
+        binding["model"] = model
+    agents.validate_binding(leaf["role"], binding, formal=True)
+    adapter = agent_backends.for_binding(binding)
+    adapter.check_invocation()
+    adapter.check_text_only()
+    run_id = uuid.uuid4().hex
+    output = state.root / "runs" / run_id
+    snapshot = output.with_name(run_id + ".input")
+    if snapshot.resolve().is_relative_to(Path(prepared["path"]).resolve()):
+        raise ValueError("Run storage cannot be inside the prepared input directory")
+    document = {"schema_version": 1, "kind": "composition-agent-run", "id": run_id, "project": project_id,
+                "project_revision": project["revision"], "role": leaf["role"], "binding": binding,
+                "requested_binding": leaf["backend_request"], "backend_reason": reason or (
+                    "operator-selected override" if backend or model else "definition-selected backend"),
+                "started": now(), "status": "preparing", "template": None,
+                "input_digest": prepared["digest"], "input_request": prepared["request"],
+                "prompt_sha256": prepared["request"]["prompt_sha256"],
+                "context": {"resources": [{key: value for key, value in resource.items() if key != "text"}
+                                          for resource in leaf["resources"]]},
+                "policy": {"mode": "text-only", "requested_permissions": permissions,
+                    "model_tools": "no file, shell, web or MCP tools; native response/interaction tools may remain",
+                    "resources": "complete inline instructions/context; Skill attachments unavailable to this mode",
+                    "ambient_configuration": "disabled by native CLI options", "host_isolation": "not provided"},
+                "formal_execution_authorized": False}
+    _store(state, document)
+    try:
+        snapshot.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(prepared["path"], snapshot, symlinks=True)
+        saved = workflow_definitions.inspect_input(snapshot, material=True)
+        if saved["digest"] != prepared["digest"]:
+            raise ValueError("Composition input changed while copying the run snapshot")
+        document.update(input_path=str(snapshot), status="running")
+        _store(state, document)
+        working = output.with_name(run_id + ".cwd")
+        working.mkdir(mode=0o700)
+        document.update(agents.invoke(binding, leaf["role"], saved["prompt"], working, output, timeout,
+            agents.result_schema(["response"], leaf["role"] == "reviewer"), codex_config=codex_config, text_only=True))
+    except (OSError, ValueError) as error:
+        document.update(status="failed", error=str(error))
+    document["finished"] = now()
+    _store(state, document)
     return document
 
 

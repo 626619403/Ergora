@@ -28,7 +28,6 @@ def resolve_program(program: str, cwd: Path) -> str:
 def _run_windows(argv, cwd, output, timeout, stdin, env):
     from .windows_job import Job
 
-    argv = [resolve_program(argv[0], cwd), *argv[1:]]
     environment = dict(os.environ if env is None else env, PYTHONUTF8="1", PYTHONIOENCODING="utf-8")
     request = json.dumps({"argv": argv, "stdin": stdin}, ensure_ascii=False)
     status = "succeeded"
@@ -100,12 +99,17 @@ def _reap_children() -> None:
 
 
 def run(argv: list[str], cwd: Path, output: Path, timeout: int, stdin: str = "",
-        env: dict | None = None, *, supervised: bool = False, lock_fd: int | None = None) -> dict:
+        env: dict | None = None, *, supervised: bool = False, lock_fd: int | None = None,
+        command_record: Path | None = None) -> dict:
     output.mkdir(parents=True, exist_ok=False, mode=0o700)
     (output / "stdin.txt").write_text(stdin, encoding="utf-8", newline="\n")
     if os.name == "nt":
         if supervised or lock_fd is not None:
             raise ValueError("Supervised reference execution requires Linux; use WSL2")
+        argv = [resolve_program(argv[0], cwd), *argv[1:]]
+    if command_record is not None:
+        command_record.write_text(json.dumps(argv), encoding="utf-8", newline="\n")
+    if os.name == "nt":
         return _run_windows(argv, cwd, output, timeout, stdin, env)
     status = "succeeded"
     if supervised:
@@ -159,5 +163,5 @@ if __name__ == "__main__":
     if os.name != "nt" or sys.argv[1:] != ["--windows-child"]:
         raise SystemExit("This entry point is the Windows command gate")
     request = json.load(sys.stdin)
-    raise SystemExit(subprocess.run(request["argv"], input=request["stdin"], text=True,
-                                    encoding="utf-8").returncode)
+    # Binary input preserves the prompt's exact UTF-8 bytes, including mixed LF/CRLF.
+    raise SystemExit(subprocess.run(request["argv"], input=request["stdin"].encode("utf-8")).returncode)

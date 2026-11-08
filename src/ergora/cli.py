@@ -49,7 +49,7 @@ def parser() -> argparse.ArgumentParser:
     contract.add_argument("kind", choices=reference.TEMPLATES)
     workflow = commands.add_parser("workflow", add_help=False, help="Run the existing portable-contract compiler")
     workflow.add_argument("arguments", nargs=argparse.REMAINDER)
-    composition = commands.add_parser("composition", help="Check and preview static nested definitions; does not execute or authorize")
+    composition = commands.add_parser("composition", help="Check nested definitions, prepare inputs or explicitly invoke a leaf")
     operations = composition.add_subparsers(dest="operation", required=True)
     for name in ("check", "import"):
         operation = operations.add_parser(name)
@@ -75,6 +75,14 @@ def parser() -> argparse.ArgumentParser:
     verify_input = operations.add_parser("verify-input")
     verify_input.add_argument("directory", type=Path)
     verify_input.add_argument("--material", action="store_true")
+    run_input = operations.add_parser("run-input", help="Independent text-only leaf call; no ports, MCP or formal approval")
+    run_input.add_argument("project")
+    run_input.add_argument("directory", type=Path)
+    run_input.add_argument("--timeout", type=int, default=300)
+    run_input.add_argument("--backend", choices=("codex", "claude-code"))
+    run_input.add_argument("--model")
+    run_input.add_argument("--backend-reason")
+    run_input.add_argument("--codex-config", type=Path, help="Inference settings only; native tool and permission settings are ignored")
     project = commands.add_parser("project", help="Register a project and choose layer tools")
     operations = project.add_subparsers(dest="operation", required=True)
     create = operations.add_parser("add")
@@ -604,6 +612,9 @@ def main(argv: list[str] | None = None) -> int:
                     definition_bundles.read_json(args.grant), task, args.directory, args.max_prompt_bytes)
             elif args.operation == "verify-input":
                 output = workflow_definitions.inspect_input(args.directory, material=args.material)
+            elif args.operation == "run-input":
+                output = agent_runs.run_input(State(args.home), args.project, args.directory, args.timeout,
+                    backend=args.backend, model=args.model, reason=args.backend_reason, codex_config=args.codex_config)
             else:
                 state = State(args.home)
                 if args.operation == "import":
@@ -735,6 +746,8 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "reference" and args.operation == "executor" and output and output["state"] != "SUCCEEDED":
             return 1
         if args.command == "services" and output.get("outcome") in ("unconfirmed", "failed"):
+            return 1
+        if args.command == "composition" and args.operation == "run-input" and output["status"] != "succeeded":
             return 1
         return 0
     except (ValueError, OSError, RuntimeError) as error:

@@ -163,3 +163,51 @@ r2 新增 CLI 原始 stdout：
 ```
 
 当前静态本地需求符合性与维护性审查通过，四项原始发现全部关闭。原生 Windows 仍待当前候选自身 CI；Linux 缺少 `renameat2`、不支持相应原语的内核/文件系统及其他平台会失败，不回退为覆盖式发布。当前候选普通提交、必要 CI、远端终结尚未核验。本片没有调用真实模型、装载 MCP、提供 OS/网络强制或接入正式批准/Temporal；后续进入 AC3b.2b 前仍须先完成最小后端能力准入。
+
+## 固定普通候选 Git 对象与最终归档核对
+
+2026-11-08 **18:47:01 UTC**，原协调者按授权只读核验本地普通候选 `eee09efcba093839dba5407c474a7a5b46a3a2a0`。唯一父提交恰为 `4f102da873fc19c8a805031106d7a7c4524d5908`；本节所有源码、测试及归档结论均来自该固定 Git 对象，不以随后 AC3b.2b 工作树或 HEAD 代替候选。
+
+[最终 scope](../../.ergora/checks/ac3b2-inputs/review-final-scope.json) SHA256 为 `b79e70c8e5c42aa669fe0c0a4324c166cdd6931d778105399b69b4390f37e7cf`。独立使用 `git diff-tree` 核得变更路径恰为清单的14项；逐一读取 `git show <candidate>:<path>` 原字节，14项 SHA256 全部与清单一致。生产的 CLI、contracts、新 schema、workflow_definitions 及工作流测试共5项保持 r2 已审身份，工作流手册也与 r2 相同。
+
+相对 r2，三份计划/交付文档仅更新本片复审状态、下一可执行项和前片交付状态；本片审查报告纳入原 r1/r2 结论，另外四份前片报告追加原片候选、失败/修复及收口归档。逐读确认没有将前片 CI、先行合成协议探针或待实现的真实调用登记成本片运行验收。
+
+|本片状态文档|候选内 SHA256|
+|---|---|
+|`docs/PLAN.md`|`90029f9e690b24c53d0777cfadaa525222b54c9a3c29ca74ad7a01cab4b05526`|
+|`docs/delivery/2026-11-09-composition-inputs.md`|`57bf370cd4cc3150a898f8f47dd68ae6b5209596e2df70ce36f34ff40117fd08`|
+|`docs/plans/2026-11-08-agent-composition.md`|`2aeb0a83631addadc484d9cf955dc9a62df73b8646183d32ba81db7c505657a2`|
+
+候选内本审查报告的 SHA256 为 `39bbdb1d1f409f7e71f3e3adf9114e2995405d11de2046bce359652a188cbc3b`；本节属于之后的同片审查归档，不改写候选报告对象。
+
+[最终 tracked diff](../../.ergora/checks/ac3b2-inputs/review-final-tracked.diff) SHA256 与 scope 的 `a994fd998d37ce242817714ec536e001c6f1fb031f48e2bc067e98df27318ceb` 一致。该 stage 前产物覆盖11个原已跟踪路径，独立比较这些路径的候选 diff 逐字节相同；三个当时新增路径——本片 delivery、审查报告及 input schema——通过上述完整14项 Git 对象检查单独覆盖。含三份新增内容的完整候选 diff 为92,652字节，SHA256 `802a9aff62d5c0511de353648836b67ed4808d9c295f0e8160c90dcd90fb9eaf`，不把它误写为 stage 前 tracked diff。
+
+独立从该候选的 `git archive` 读取 `src/ergora` 全部 **360 个文件**，与已验最终 wheel 逐文件原字节 SHA256 相同；wheel 实际 SHA256 仍为 `22ec691788490be970eab0faf97aeccc41d3f30da486c4d278e5944fdde06f16`。其中 **283 个冻结文件**同时匹配随包 manifest 与父基线 Git 对象。候选到父基线的 `git diff --check` 通过。因此 r2 已验的生产/测试内容确实进入该普通候选，最终状态归档没有引入新的生产变化。
+
+本次没有运行测试、构建、安装、push 或远端查询；只追加本报告。该候选的 push 成功、自身必要双OS CI和即时远端终结尚待独立证据，不能从本地 Git 对象或父候选的通过推导。后续本片终结继续绑定完整 `eee09efcba093839dba5407c474a7a5b46a3a2a0`，不忙轮询，也不混入下一片。
+
+## IN4 自身双OS CI与即时远端终结
+
+**AC3b.2a 完整输入包切片交付可关闭。** 固定普通候选为 `eee09efcba093839dba5407c474a7a5b46a3a2a0`，r2 两轴通过、四项原发现关闭，14项 Git 对象及360文件 wheel 对应关系沿用上一节已核身份。本次不读取或重新核验随后 AC3b.2b 工作树，不以父候选 CI 代替本候选。
+
+原协调者于2026-11-08 **19:15:31.173419–19:15:33.361353 UTC** 独立实际 GET [官方 Portability CI42511562198](https://github.com/626619403/Ergora/actions/runs/42511562198)、其 `job_groups_batch?attempt=1&batch=0&size=200` 完整列表与两个完成 job。响应均为 HTTP200；run 页面明确链接完整候选及 `.github/workflows/portability.yml`，Status 为 Success。完整 job 组 `totalCount=2`、`hasMore=false`，准确包含下表两个 job。
+
+|实际读取的 job|必要步骤及核验结果|读取完成时间（UTC）|
+|---|---|---|
+|[Windows / Python3.12](https://github.com/626619403/Ergora/actions/runs/42511562198/job/128825538423)|Build and install wheel、Packaged reference identity、Native application regression、Windows PowerShell 5.1 installer and upgrade，4项全部 success|2026-11-08 19:15:33.313294|
+|[Ubuntu / Python3.11](https://github.com/626619403/Ergora/actions/runs/42511562198/job/128825538560)|前3项全部 success|2026-11-08 19:15:33.361353|
+
+独立解析每个必要 `check-step`：全部有 `data-job-completed`，`data-conclusion=success`，且 `data-log-url` 精确绑定 `/commit/eee09efcba093839dba5407c474a7a5b46a3a2a0/checks/<对应job ID>/logs/`。两个 job 均未见 failure、cancelled 或 timed_out 步骤。此处是新实际读取的官方页面核验，不是只读取主代理已保存的 `ci-html-status.json`。
+
+本次官方实际响应的原字节身份为：
+
+|响应|字节数|SHA256|
+|---|---|---|
+|run HTML|157435|`202d03a312ff7298275f47815ad862ba89abb52392685e789fe5d6e50884b2bf`|
+|完整 job 组 JSON|700|`bae88b9b54fb965c9bc9396393a814e295716a7c50988f529e1cd44d87c02446`|
+|Windows job HTML|160069|`0238f9316f6c4e29423102ca37647da73ad4825b4d1eccd6b5059576ef8ce77f`|
+|Ubuntu job HTML|161984|`88b849479ec0fd6a453db74450df49b551c54db525dedb391a26d2fe5f7fc46e`|
+
+随后于2026-11-08 **19:16:01.038142 UTC** 实际执行 SSH `git ls-remote --refs`，returncode **0**，准确选择 `refs/heads/refactor/architecture-foundations`，返回完整 SHA **`eee09efcba093839dba5407c474a7a5b46a3a2a0`**。按授权只在该子进程环境中使用既有记录的 `ssh_command`；未输出 SSH 命令配置或密钥、未改全局配置、未执行 push。
+
+本段仅追加原报告，没有重跑测试、构建、安装或源码审查。最终需求符合性与 Standards 均无未解决 finding，本片候选、必要双OS CI及即时远端终结全部有独立实证。原生 Windows 证明范围限本候选的实际 CI 步骤；本片仍只有静态完整输入与核验，不包含模型效果、MCP装载、OS/网络强制、正式批准或Temporal嵌套执行。下一片 AC3b.2b 使用新的实现范围及 fresh-context 审查，不继承本片为真实调用通过的证据。

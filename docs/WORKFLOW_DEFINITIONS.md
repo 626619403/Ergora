@@ -2,7 +2,7 @@
 
 工作流包把精确版本的专家或子工作流组合成有界 DAG。可以单独使用结构审查模板，也可以把结构、正确性、测试价值三个模板并行组合，再串接执行模板。结构父链决定继承；工作依赖只通过具名端口传递数据。
 
-当前 `composition` 命令交付静态检查、不可覆盖的版本库和完整预览。预览不调用模型、不启动调度器、不修改项目配置，也不授予执行权限。正式开发仍按[六阶段流程](USAGE.md#正式任务的操作顺序与恢复)执行。实际资源装载、批准链和 Temporal 嵌套执行沿[AC计划](plans/2026-11-08-agent-composition.md)继续接入。
+`composition` 提供静态检查、不可覆盖的版本库、完整预览与显式单叶调用。预览不调用模型；`run-input` 可将准备好的输入交给所选后端。正式开发按[六阶段流程](USAGE.md#正式任务的操作顺序与恢复)执行。文件工具/MCP、批准链和 Temporal 嵌套执行沿[AC计划](plans/2026-11-08-agent-composition.md)继续接入。
 
 ## 运行示例
 
@@ -29,7 +29,7 @@ ergora composition export kernel-delivery 1.0.0 ./shared-kernel-delivery
 
 示例展开成10个实例：一个根、一个执行 Agent、一个总审查工作流、三个审查子工作流、三个审查 Agent 和一个 all-join。`root/implement` 在 `root/review` 前完成；总审查内三支就绪分支可并行，`root/review/gather` 等待全部三支。相同子工作流可引用多次，每次产生不同路径实例。
 
-示例 Agent 使用 Codex 与 Claude Code，预览只显示请求的后端，不检查安装或认证，不承诺模型效果或错误相互独立。改变后端应创建新的 Agent 版本、更新引用摘要并沿引用链发布新版本；实际调用仍使用现有[Agent入口](AGENT_BACKENDS.md)。
+示例 Agent 使用 Codex 与 Claude Code，预览只显示请求的后端，不检查安装或认证，不承诺模型效果或错误相互独立。持久改变后端需创建新Agent版本并更新沿途引用；单叶调用也支持明确记录的本次覆盖。项目角色调用另见[Agent入口](AGENT_BACKENDS.md)。
 
 ## 定义和数据流
 
@@ -111,4 +111,26 @@ ergora composition verify-input ./prepared-review --material
 
 `max-prompt-bytes`必须为1–1,000,000，计完整user prompt的UTF-8字节，超过就拒绝，不截断。它不证明模型token容量或后端额外系统提示能容纳。整个输入包最多10MB/500文件、1000目录和48层，复制过程中也检查；失败不发布半包。只能保存到新目录，且不能写进不可变定义库。原子不覆盖发布支持Linux（需要renameat2）与Windows；不支持时明确失败。核验前后会检查整树一致，操作者应保持输入目录稳定；此检查不隔离同用户进程。输入包摘要包括任务、组合、提示和所有资产；它证明内容一致性，不认证作者或授予执行权限。跨平台执行位及同平台保持字节的限制与定义包相同。
 
-当前格式为[composition-input v1](../src/ergora/data/schemas/composition-input-v1.json)，不改变原Agent/Workflow格式。实际后端装载、任务MCP及调用准入在后续AC3b.2b/3/4完成后接入；新运行仍须按当时规则重新准入。
+当前格式为[composition-input v1](../src/ergora/data/schemas/composition-input-v1.json)，不改变原Agent/Workflow格式。实际调用按下面的独立入口重新准入。
+
+## 调用一个准备好的叶子
+
+先[注册项目](PROJECTS.md)，并安装、认证所选的[Agent CLI](USAGE.md#安装与认证-agent-cli)。`prepared-review`沿用上面准备的完整输入包：
+
+```bash
+ergora composition run-input my-project ./prepared-review --timeout 300
+ergora composition run-input my-project ./prepared-review --backend codex --backend-reason "Selected Codex for this call" --codex-config /PATH/TO/codex.toml --timeout 300
+ergora composition run-input my-project ./prepared-review --backend claude-code --timeout 300
+ergora agent runs my-project
+ergora agent output my-project RUN_ID
+```
+
+默认采用叶子精确定义的后端；`--backend`和`--model`仅覆盖本次调用。跨后端时重新选择model，不沿用另一后端的model名。执行/审查应尽量选择不同后端；Claude不可用时可显式选Codex/ChatGPT，并用`--backend-reason`记录原因。不会在失败后暗中重试另一后端。超时为1–3600秒；成功返回0，模型失败/超时/启动配置或结构错误返回1，输入包或模式准入错误返回2。
+
+当前模式为 `text-only`。完整祖先指令、上下文、Skill的`SKILL.md`和原任务进入模型；Skill附件仍保存在快照中，但本模式没有文件/命令/网页/MCP工具，不能按路径读取其他资料或编辑项目。提供审查任务时应把候选代码及必要证据放入任务正文。请求write、shell或工具network权限的叶子会在调用前拒绝；例如示例执行叶子不能通过本模式运行。原生结构化响应工具或交互工具可能保留。
+
+运行使用新空cwd、原生CLI的规则/工具关闭选项和独立会话。它们约束模型可使用的工具，不提供OS/网络隔离；用户进程及模型服务本身的通信不受此模式隔离。后端不支持所需选项时明确失败。Codex可通过`--codex-config`显式提供推理配置：只消费model/provider/推理强度/service tier及provider的URL、凭据环境变量引用等字段；其中的工具、MCP、Skill、审批和sandbox设置不会覆盖此模式。使用Codex原生登录时可省略该文件；Claude使用原生认证或对应环境变量。不要把密钥写进定义或任务正文。
+
+每次运行在State的`runs/`下保存经过完整核验的输入副本、新空工作目录、完整prompt、实际argv、stdout/stderr和结构化结果，复用原Agent运行列表/输出及完整备份。记录绑定输入摘要、项目修订、请求/实际binding和覆盖原因。运行列表只带资源身份及来源，完整正文可对返回的`input_path`使用`composition verify-input --material`按需核读。读取返回的`result`文件可查看`summary`、`artifacts.response`；审查者另有`approve/request-changes`。进程成功和审查approve分别判断。
+
+单叶调用的任务由操作者提供，图前驱和端口没有执行；原输入仍为`execution_authorized: false`，本次调用也不创建正式候选/批准。完整工作流调度、任务MCP/附件投影和真实强制能力继续按AC3b.3/4、AC3c/4接入。

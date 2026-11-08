@@ -203,3 +203,22 @@ test_workflow_definitions.py::test_nested_history_is_readable_but_new_admission_
 |`docs/plans/2026-11-08-agent-composition.md`|`397a1a1899f96ce5422c2bab62d6cf982c4a7e8ee7473ae795abd205e8eca8c1`|
 
 候选内本报告为r2完成版本`7b6d9e9692e3e16a2ecea2b5b923d5761da8e67a85e1c7a239520f0d8d261702`；本节是提交后的同片对象核对归档，不改写候选。基线到候选的`git diff --check`通过。父候选460702f的CI/远端收口归前片单独验收；本片推送、精确必要CI和即时远端尚未独立验证，不能从父候选或本地提交推导DA4完成。之后AC3b.2a的准备或源码变化不属于此候选验收范围，后续只以固定Git对象核本片交付。
+
+## DA4独立精确交付终结
+
+核查记录时间为2026-11-08 18:46:21 UTC（实际读取时钟）。新的独立上下文`definition_admission_delivery`按AGENTS及maintainable-project-delivery读取原要求、原审身份和证据，只核固定候选`4f102da873fc19c8a805031106d7a7c4524d5908`的交付，不重新审无变化的实现。本节补齐上文当时待验的精确CI及远端证据；原Standards无finding、Spec两项经修正/有据处置关闭的结论和原始发现均保留。
+
+18:42:58 UTC实际以Git对象重核：候选唯一父为`460702f9866080756883501eefc5132b8a345a38`；`review-final-scope.json`的SHA256仍为`3818445bfafe084489190e209bab28284052902c5d275c5678fd0250a1884fdb`，`git diff-tree`变更集合与清单14项完全一致，各对象SHA256全部一致。原r2 scope及diff摘要匹配原审记录；r2到候选只有三份计划/交付状态和本报告归档变化，没有生产/测试变化。候选公开identity的六份源码/测试身份均匹配Git对象；359份候选包内文件的集合与原字节逐项等于既有最终wheel及其身份清单，283份冻结资源摘要全部匹配。wheel仍为`f08d482d52b4dd11f691cf1d7d08d4dd502d45be7e3cd842f4ad502f582219bb`，固定父到候选的`git diff --check`通过。上述比较没有以AC3b.2a/2b的新工作树生产文件代替候选。
+
+本上下文独立实际GET[官方run 42509391089](https://github.com/626619403/Ergora/actions/runs/42509391089)，确认其链接的完整提交为本候选、workflow为`portability.yml`、Status为Success；再按官网给出的JSON端点读取完整job组，`totalCount=2`且`hasMore=false`，只有下列两个job。18:45:16 UTC完成两个官方job的再次GET和必要步骤逐项解析：
+
+|官方job|实际核对的必要步骤|结论|精确日志URL中的check及序号|
+|---|---|---|---|
+|[128818937986 / Ubuntu、Python3.11](https://github.com/626619403/Ergora/actions/runs/42509391089/job/128818937986)|Build and install wheel；Packaged reference identity；Native application regression|全部success，全部有data-job-completed|`checks/128818937986/logs/4`、`5`、`6`|
+|[128818938225 / Windows、Python3.12](https://github.com/626619403/Ergora/actions/runs/42509391089/job/128818938225)|上述三项；Windows PowerShell 5.1 installer and upgrade|全部success，全部有data-job-completed|`checks/128818938225/logs/4`、`5`、`6`、`7`|
+
+七个`data-log-url`均逐项核对完整前缀`/626619403/Ergora/commit/4f102da873fc19c8a805031106d7a7c4524d5908/`及对应check ID，没有引用父候选或邻片日志；两个job的`selectedJobId`与名称也匹配，页面所有步骤没有failure/cancelled/timed_out。此次接收的Ubuntu job HTML为162094字节、SHA256 `6f5bccf199da8f04ae114140bb2d58cf4b418dace6bdef45361a612caae610fd`，Windows job HTML为160180字节、SHA256 `a526cf118d9e4837a23b2a898c9c4003d2e6bc77a031d113673d5384486d0c42`；响应在进程内解析，未覆盖作者缓存。一轮job组请求因Accept头不符返回400，未计作证据，随后按application/json成功读取完整组。job页没有单独的候选commit链接，候选绑定依据是其实际提供的精确日志URL；没有把额外链接断言失败记成CI失败，也没有声称读取了日志正文。
+
+18:43:14.750079 UTC，独立实际执行`git ls-remote --exit-code origin refs/heads/refactor/architecture-foundations`，exit 0并返回完整`4f102da873fc19c8a805031106d7a7c4524d5908`与该ref。连接选择仅经进程环境传递，未修改仓库或全局Git配置、未输出密钥。取得这份远端证据后已通知协调者解除分支等待；18:45:46.998731 UTC再次实际查询exit 0，观察到随后普通推进的`eee09efcba093839dba5407c474a7a5b46a3a2a0`。另以Git对象确认新提交唯一父为本候选、祖先检查exit 0。这是已授权的下一片推进，不改写或否定18:43:14核对的本片远端交付事实；本片结论不延伸到新提交的实现或CI。
+
+**固定候选的DA4精确交付证据通过，本核查范围内无新增finding或阻塞。** 本上下文只追加本报告，未改计划、交付记录、生产、测试、依赖或CI，未构建、安装、重跑测试、提交或推送。原生Windows行为以本候选官方必要job为证，本地Windows仍未运行；原审各阶段的实测范围和限制保持原样。

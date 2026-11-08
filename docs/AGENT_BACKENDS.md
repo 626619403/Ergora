@@ -1,6 +1,6 @@
 # 模板角色与可替换 Agent
 
-可分享的专家配方另见[专长Agent定义库](AGENT_DEFINITIONS.md)：目前支持静态导入/校验/查看，尚不改变本手册的项目角色绑定或正式调用。
+可分享的专家配方见[专长Agent定义库](AGENT_DEFINITIONS.md)，完整祖先材料的受限单叶调用见[工作流调用手册](WORKFLOW_DEFINITIONS.md#调用一个准备好的叶子)。项目角色绑定和正式六阶段继续使用本手册的入口。
 
 模板保存目标、角色、能力、产物和验收；项目保存具体工具。`ergora templates copy` 会在原文件之外附带 `agent-contract.json`，不改变冻结参考合同。查看角色：
 
