@@ -398,3 +398,210 @@ def test_cli_check_and_failed_preview_do_not_create_state(tmp_path):
     assert json.loads(checked.stdout)["resources"][0]["text"] and not absent.exists()
     missing = cli("preview", "parallel-review", "1.0.0", "--grant", str(EXAMPLES / "composition/preview-grant.json"))
     assert missing.returncode == 2 and "Unknown Workflow definition" in missing.stderr and not absent.exists()
+
+
+def test_prepared_input_retains_every_ancestor_skill_tree_and_is_independent_of_source_state(base, monkeypatch, capsys):
+    from ergora.cli import main
+
+    state, agent, directory = base
+    sub = imported(base, definition("sub", [leaf("review", agent)]), "Child instructions.\n")
+    root_source = write_bundle(directory / "outer", definition("outer", [child("child", ref(sub, "workflow"))]),
+                               "Parent instructions.\n")
+    skill = root_source / "skills/kernel-measurement"
+    shutil.copytree(EXAMPLES / "agents/kernel-implementer/skills/kernel-measurement", skill)
+    doc = json.loads((root_source / "workflow.json").read_text())
+    doc["resources"].append({"id": "parent-measurement", "kind": "skill", "path": "skills/kernel-measurement",
+                             "digest": digest_tree(skill)[0]})
+    (root_source / "workflow.json").write_text(json.dumps(doc), encoding="utf-8")
+    workflows.import_bundle(state, root_source)
+    indexes = {kind: (state.root / f"{kind}-definitions/index.json").read_bytes() for kind in ("agent", "workflow")}
+    raw_task = b"\xef\xbb\xbf" + "Check structure. 核对结构。\r\n".encode("utf-8")
+    prepared = workflows.prepare_input(state.root, "outer", "1.0.0", "root/child/review", grant(), raw_task,
+                                       directory / "prepared", 30000)
+    checked = workflows.inspect_input(directory / "prepared", material=True)
+    assert checked["request"]["execution_authorized"] is False and checked["digest"] == prepared["digest"]
+    assert checked["prompt"].index("Parent instructions.") < checked["prompt"].index("Child instructions.")
+    assert (skill / "SKILL.md").read_text() in checked["prompt"] and "Check structure. 核对结构。\r\n" in checked["prompt"]
+    assert (directory / "prepared/task.txt").read_bytes() == raw_task
+    copied_skill = next((directory / "prepared/assets/workflow-definitions/objects").glob("*/skills/kernel-measurement"))
+    assert digest_tree(copied_skill) == digest_tree(skill)
+    size = checked["request"]["prompt_bytes"]
+    assert size == len(checked["prompt"].encode("utf-8")) and size > len(checked["prompt"])
+    assert workflows.prepare_input(state.root, "outer", "1.0.0", "root/child/review", grant(), raw_task,
+                                   directory / "exact-limit", size)["request"]["prompt_bytes"] == size
+    with pytest.raises(ValueError, match="input byte limit"):
+        workflows.prepare_input(state.root, "outer", "1.0.0", "root/child/review", grant(), raw_task,
+                                directory / "over-limit", size - 1)
+    assert not (directory / "prepared/assets/ergora.sqlite3").exists()
+    task = directory / "task.txt"
+    task.write_bytes(raw_task)
+    permissions = directory / "grant.json"
+    permissions.write_text(json.dumps(grant()), encoding="utf-8")
+    assert main(["--home", str(state.root), "composition", "prepare", "outer", "1.0.0", "root/child/review",
+                 "--grant", str(permissions), "--task", str(task), "--directory", str(directory / "cli-prepared"),
+                 "--max-prompt-bytes", "30000"]) == 0
+    assert json.loads(capsys.readouterr().out)["digest"] == checked["digest"]
+    assert all((state.root / f"{kind}-definitions/index.json").read_bytes() == data for kind, data in indexes.items())
+    def reject(*args, **kwargs):
+        raise ValueError("Current policy rejects the backend")
+    monkeypatch.setattr(agents, "validate_binding", reject)
+    assert workflows.inspect_input(directory / "prepared")["digest"] == checked["digest"]
+    with pytest.raises(ValueError, match="Current policy"):
+        workflows.prepare_input(state.root, "outer", "1.0.0", "root/child/review", grant(), raw_task,
+                                directory / "denied", 30000)
+    shutil.rmtree(state.root)
+    assert main(["--home", str(state.root), "composition", "verify-input", str(directory / "cli-prepared"), "--material"]) == 0
+    assert json.loads(capsys.readouterr().out)["prompt"] == checked["prompt"] and not state.root.exists()
+
+
+@pytest.mark.parametrize("damage", ["task", "prompt", "composition", "asset", "extra", "schema"])
+def test_prepared_input_recomputes_material_instead_of_trusting_claimed_hashes(base, damage):
+    state, agent, directory = base
+    imported(base, definition("review", [leaf("review", agent)]), "Required parent instructions.\n")
+    target = directory / "prepared"
+    workflows.prepare_input(state.root, "review", "1.0.0", "root/review", grant(), b"Review.", target, 30000)
+    if damage == "task":
+        (target / "task.txt").write_bytes(b"Different task.")
+    elif damage == "prompt":
+        (target / "prompt.txt").write_bytes(b"Material silently removed.")
+        request = json.loads((target / "request.json").read_text())
+        request["prompt_sha256"] = hashlib.sha256((target / "prompt.txt").read_bytes()).hexdigest()
+        (target / "request.json").write_text(json.dumps(request), encoding="utf-8")
+    elif damage == "composition":
+        (target / "composition.json").write_bytes(b"null")
+    elif damage == "asset":
+        stored = next((target / "assets/agent-definitions/objects").glob("*/instructions.md"))
+        stored.write_bytes(b"Different historical instructions.")
+    elif damage == "extra":
+        (target / "unrelated.txt").write_bytes(b"Not part of this input")
+    else:
+        request = json.loads((target / "request.json").read_text())
+        request["schema_version"] = True
+        (target / "request.json").write_text(json.dumps(request), encoding="utf-8")
+    with pytest.raises(ValueError):
+        workflows.inspect_input(target)
+
+
+@pytest.mark.parametrize("failure", ["workflow", "missing", "capacity", "zero", "bool", "empty", "nul", "encoding", "existing", "store"])
+def test_invalid_input_never_publishes_a_partial_bundle(base, failure):
+    state, agent, directory = base
+    imported(base, definition("review", [leaf("review", agent)]))
+    selected, task, limit = "root/review", b"Review.", 30000
+    target = directory / "prepared"
+    if failure == "workflow": selected = "root"
+    elif failure == "missing": selected = "root/absent"
+    elif failure == "capacity": limit = 1
+    elif failure == "zero": limit = 0
+    elif failure == "bool": limit = True
+    elif failure == "empty": task = b" \n"
+    elif failure == "nul": task = b"bad\0task"
+    elif failure == "encoding": task = b"\xff"
+    elif failure == "existing": target.mkdir()
+    else: target = state.root / "agent-definitions/inside-library"
+    with pytest.raises(ValueError):
+        workflows.prepare_input(state.root, "review", "1.0.0", selected, grant(), task, target, limit)
+    assert target.exists() == (failure == "existing")
+    assert not list(target.parent.glob(".composition-input-*"))
+
+
+def test_input_copy_failure_cleans_the_entire_staged_bundle(base, monkeypatch):
+    state, agent, directory = base
+    imported(base, definition("review", [leaf("review", agent)]))
+    original = agent_definitions.library(state.root).__class__.import_bundle
+    def interrupted(store, source):
+        result = original(store, source)
+        if store.kind == "workflow":
+            raise OSError("interrupted input copy")
+        return result
+    monkeypatch.setattr(agent_definitions.library(state.root).__class__, "import_bundle", interrupted)
+    with pytest.raises(OSError, match="interrupted input copy"):
+        workflows.prepare_input(state.root, "review", "1.0.0", "root/review", grant(), b"Review.", directory / "prepared", 30000)
+    assert not (directory / "prepared").exists() and not list(directory.glob(".composition-input-*"))
+    assert workflows.preview(state.root, "review", "1.0.0", grant())["usage"]["instances"] == 2
+
+
+def test_input_aggregate_asset_limit_is_bounded_across_individually_valid_packages(base):
+    state, agent, directory = base
+    nodes = []
+    for number in range(3):
+        path = directory / f"agent-{number}"
+        shutil.copytree(EXAMPLES / "agents/architecture-reviewer", path)
+        (path / "attachment.bin").write_bytes(b"x" * 3_400_000)
+        doc = json.loads((path / "agent.json").read_text())
+        doc["id"] = f"reviewer-{number}"
+        (path / "agent.json").write_text(json.dumps(doc), encoding="utf-8")
+        saved = agent_definitions.import_bundle(state, path)
+        nodes.append(leaf(f"review-{number}", ref(saved, "agent")))
+    imported(base, definition("review", nodes))
+    with pytest.raises(ValueError, match="10 MB"):
+        workflows.prepare_input(state.root, "review", "1.0.0", "root/review-0", grant(), b"Review.", directory / "prepared", 30000)
+    assert not (directory / "prepared").exists() and not list(directory.glob(".composition-input-*"))
+
+
+@pytest.mark.parametrize("field,value", [("schema_version", True), ("executable", 0), ("instances", 2.0)])
+def test_input_composition_preserves_json_types(base, field, value):
+    state, agent, directory = base
+    imported(base, definition("review", [leaf("review", agent)]))
+    target = directory / "prepared"
+    workflows.prepare_input(state.root, "review", "1.0.0", "root/review", grant(), b"Review.", target, 30000)
+    path = target / "composition.json"
+    document = json.loads(path.read_text())
+    if field == "instances":
+        document["usage"][field] = value
+    else:
+        document[field] = value
+    path.write_text(json.dumps(document), encoding="utf-8")
+    with pytest.raises(ValueError, match="differs"):
+        workflows.inspect_input(target)
+
+
+def test_input_verification_rejects_index_changes_during_compilation(base, monkeypatch):
+    state, agent, directory = base
+    imported(base, definition("review", [leaf("review", agent)]))
+    target = directory / "prepared"
+    workflows.prepare_input(state.root, "review", "1.0.0", "root/review", grant(), b"Review.", target, 30000)
+    original = workflows._Compilation.compile
+    def changing(compilation, document):
+        path = target / "assets/workflow-definitions/index.json"
+        path.write_bytes(path.read_bytes() + b"\n")
+        return original(compilation, document)
+    monkeypatch.setattr(workflows._Compilation, "compile", changing)
+    with pytest.raises(ValueError, match="changed during verification"):
+        workflows.inspect_input(target)
+
+
+def test_input_publish_keeps_a_concurrently_created_empty_destination(base, monkeypatch):
+    state, agent, directory = base
+    imported(base, definition("review", [leaf("review", agent)]))
+    original = workflows._publish_input
+    created = []
+    def competing(staged, destination):
+        destination.mkdir()
+        created.append(destination.stat().st_ino)
+        original(staged, destination)
+    monkeypatch.setattr(workflows, "_publish_input", competing)
+    target = directory / "prepared"
+    with pytest.raises(FileExistsError):
+        workflows.prepare_input(state.root, "review", "1.0.0", "root/review", grant(), b"Review.", target, 30000)
+    assert target.stat().st_ino == created[0] and not list(target.iterdir())
+    assert not list(directory.glob(".composition-input-*"))
+
+
+@pytest.mark.parametrize("final_files", [500, 501])
+def test_input_file_limit_counts_published_assets_without_temporary_locks(base, final_files):
+    state, agent, directory = base
+    source = write_bundle(directory / "review", definition("review", [leaf("review", agent)]))
+    # Four input files, two library indexes, one Workflow entry and the referenced Agent tree.
+    agent_files = len(agent_definitions.get(state, agent["id"], agent["version"])["files"])
+    for number in range(final_files - 7 - agent_files):
+        (source / f"attachment-{number}.txt").write_bytes(b"")
+    workflows.import_bundle(state, source)
+    target = directory / "prepared"
+    if final_files == 500:
+        workflows.prepare_input(state.root, "review", "1.0.0", "root/review", grant(), b"Review.", target, 30000)
+        assert len(digest_tree(target)[1]) == 500
+    else:
+        with pytest.raises(ValueError, match="500 files"):
+            workflows.prepare_input(state.root, "review", "1.0.0", "root/review", grant(), b"Review.", target, 30000)
+        assert not target.exists()
+    assert not list(directory.glob(".composition-input-*"))

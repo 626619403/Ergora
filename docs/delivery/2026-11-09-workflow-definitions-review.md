@@ -161,3 +161,36 @@ WD5两轴计数：Standards 0项未解决；Spec 0项未解决；原3项均关�
 2026-11-08 17:45:48 UTC独立核候选`833d46fd42e2064f8417f30b430c44069ac03a61`：唯一父为`9bb84c6437bd4b38f928defcaad0ec678fa24a5e`，变更路径恰为固定44项，每个Git对象内容均逐字匹配上述final scope，没有漂移。另从候选Git archive读取`src/ergora`全部359文件，其完整身份表与已验r2 wheel `fa3bc27cf5cfc73f6f6412f6ba20cc220af380fd2b9eef80353bf326a3a33ccf`一致。
 
 候选含的是stage前的本报告版本；本次WD5核证及后续Git/CI/远端记录属于随后同片状态归档，不改变已审源码。后续若开始AC3b工作树，AC3d仅按此固定候选验收。此次尚未登记push成功、必要双OS CI或即时远端终结。
+
+## WD6首次CI失败与Windows夹具修正复核
+
+原候选`833d46fd42e2064f8417f30b430c44069ac03a61`的[Portability CI42506504390](https://github.com/626619403/Ergora/actions/runs/42506504390)实际失败，不能因WD5本地通过而关闭WD6。协调者只读解析保存的官方run/job页面、jobGroups和Windows失败annotations：Ubuntu job为success，Windows job为failure；Windows回归为**3 failed、554 passed、448 skipped、16 subtests passed**。保存位置为`.ergora/checks/ac3d-workflows/ci-r1/`。
+
+三项失败均位于原工作流测试：重复引用及祖先来源、收窄权限不能删除继承材料、版本导出和完整备份。官方annotations分别显示`sub-instructions`、`inherited-instructions`、`review-instructions`的resource SHA mismatch；其中收窄权限测试因提前遇到该错误，未到达其原本断言的“Required inherited resource is not readable”。
+
+根因已独立确认：[test_workflow_definitions.py](../../tests/test_workflow_definitions.py)的`write_bundle`将含LF的字符串用默认newline的`write_text`写出，而声明的SHA按原字符串UTF-8字节计算。Windows将换行写为CRLF，因此资源校验按实际字节正确拒绝。协调者用标准库内存文本流显式模拟CRLF翻译，复现旧写法SHA不符，并验证精确UTF-8字节与声明SHA一致。JSON文件自身仍按实际包树计身份，无此预先声明正文SHA的问题。
+
+建议修正通过本地独立复核：仅将该instructions写入改为`write_bytes(text.encode("utf-8"))`。`.ergora/checks/ac3d-workflows/portability-test-fixed.py`与固定833d测试对象严格相差这一行，SHA256为`5c8de4dfe017b353ca2d486c551463015740c7f1fbd710fc124848cce3266c0f`。不需要修改生产读取、摘要算法或283冻结内容。
+
+隔离树`portability-source/`的699个受版本控制文件逐项与833d比较，唯一差异为上述测试文件，且等于待stage的固定blob；没有混入AC3b变更或额外非cache文件。作者原隔离日志为44 passed/2.42秒；协调者另用显式隔离源码路径、禁止cache，在该树独立重跑原工作流套：**44 passed/1.83秒**。这是Linux定向验证，尚不能替代新的Windows CI。
+
+交付记录如实保留首轮失败、夹具根因、单行修正和AC3b隔离边界，无新增生产finding。支持将固定原测试加该单行及两篇原片报告作同片普通修复提交；下一核新提交的精确Git对象、完整双OS必要步骤与即时远端身份，未登记修正后Windows或完整AC3d完成。
+
+## WD6最终双OS CI与即时远端终结
+
+**AC3d完整交付可关闭。** 原ST-1、SP-1、SP-2均已关闭，Windows夹具修正通过新候选实际双OS验收，无新增finding。首轮失败、各次自身审查结果及其限制保留原记录。
+
+2026-11-08 18:13:35 UTC独立核修复候选`460702f9866080756883501eefc5132b8a345a38`：唯一父为`833d46fd42e2064f8417f30b430c44069ac03a61`，恰有3个变更路径——原工作流测试、本片交付记录、本审查报告。测试Git对象SHA256为`5c8de4dfe017b353ca2d486c551463015740c7f1fbd710fc124848cce3266c0f`，与已审固定blob逐字相同，严格只有上述一行修正。候选`src/ergora`全部359个文件的身份表与已验r2 wheel `fa3bc27cf5cfc73f6f6412f6ba20cc220af380fd2b9eef80353bf326a3a33ccf`一致，未包含AC3b.1生产或新增测试。核验时本地HEAD `4f102da873fc19c8a805031106d7a7c4524d5908`不是本次验收候选。
+
+协调者于2026-11-08 **18:17:19–21 UTC实际GET**[官方CI42507828386](https://github.com/626619403/Ergora/actions/runs/42507828386)的完成run、完整job列表及两个完成job。run为Success，完整列表`hasMore=false`、`totalCount=2`；两job均completed/success。
+
+|实际读取的job|必要步骤及结果|完成页面读取时间（UTC）|
+|---|---|---|
+|[Ubuntu / Python3.11](https://github.com/626619403/Ergora/actions/runs/42507828386/job/128814198582)|Build and install wheel、Packaged reference identity、Native application regression，3项全success|2026-11-08 18:17:21.900397|
+|[Windows / Python3.12](https://github.com/626619403/Ergora/actions/runs/42507828386/job/128814198683)|上述3项及Windows PowerShell 5.1 installer and upgrade，4项全success|2026-11-08 18:17:21.888948|
+
+逐项核验必要步骤有完成标记，全部step log URL绑定完整`460702f9866080756883501eefc5132b8a345a38`及对应job ID；无failure/cancelled/timed_out步骤。实际响应SHA256：run HTML `c01fa01124d3b0898f9f4dcb1e92480d5ada8f21a6f9403c56158a5cfb65d1b1`，完整job列表 `1df77382cc2913dd75ef4e0c31a66f340b5c466891baa3b54a8da1d1eee94e7d`，Ubuntu HTML `88962d5cd2aa77cd76e775975991f83bf2c5f20c1b92cbebbe57a860f470515e`，Windows HTML `a59259718e075b96be9d3d1b86ee37320747a4f1e50ecf1612a9e68e7722db09`。
+
+随后于2026-11-08 **18:17:26.050635 UTC**实际执行RSA `git ls-remote`，returncode 0，核得`refs/heads/refactor/architecture-foundations`恰为`460702f9866080756883501eefc5132b8a345a38`。SSH配置只在进程内读取，未输出私钥或SSH命令配置，未执行push。
+
+本段为原切片最终状态归档。AC3d验收仍限静态定义、完整继承编译、不可变库及备份/预览合同；实际资源装载、权限强制、正式manifest准入和持久嵌套执行继续归后续AC3b/c/4。最终两轴：Standards 0项未解决，Spec 0项未解决；普通候选、必要双OS CI及同片即时远端终结全部具备实证。

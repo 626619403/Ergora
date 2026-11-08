@@ -187,3 +187,19 @@ test_workflow_definitions.py::test_nested_history_is_readable_but_new_admission_
 结果5 passed。该次专门核最终安装包的CLI历史筛选、当前准入、完整备份恢复及递归损坏拒绝；没有安装或构建新环境，没有重跑无关全套。协调者`git diff --check 460702f9866080756883501eefc5132b8a345a38`通过。
 
 本地可维护性及需求复核现可通过；Standards当前0项，Spec原2项均已关闭、当前0项未解决。没有算法或性能新声明，未额外跑模型/基准。原生Windows本地运行、本片精确普通提交、必要双OS CI及即时远端终结仍待后续证据；前片460702f的CI不替代本片DA4验收。
+
+## 精确本地候选Git对象核对
+
+2026-11-08 18:14:24 UTC，协调者独立核对已建立的普通提交`4f102da873fc19c8a805031106d7a7c4524d5908`，唯一父为`460702f9866080756883501eefc5132b8a345a38`。最终清单`.ergora/checks/ac3b1-admission/review-final-scope.json`的SHA256为`3818445bfafe084489190e209bab28284052902c5d275c5678fd0250a1884fdb`。
+
+实际使用`git diff-tree`确认候选变更集合恰为清单的14项，没有遗漏新文件或额外对象；逐项读取`git show <candidate>:<path>`原字节，其SHA256与最终清单全部一致。候选内公开identity的六份生产/测试SHA均匹配Git对象。再用`git ls-tree`及`git cat-file --batch`读取候选全部359份包内对象，文件集合和原字节与最终wheel逐项相同；wheel仍为`f08d482d52b4dd11f691cf1d7d08d4dd502d45be7e3cd842f4ad502f582219bb`，故已验源码/安装包行为对应的生产内容确实进入此候选。没有重新跑无变化的测试、构建或安装。
+
+相对固定r2输入，只有本报告的r2审查归档，以及下列三份计划/交付完成状态变化；逐读确认没有新增行为或扩大已验结论：
+
+|状态文档|候选内SHA256|
+|---|---|
+|`docs/PLAN.md`|`81b048694e705f879df11b47b22bdd0ef7fd085669995ed6a95e08c4e61fb845`|
+|`docs/delivery/2026-11-09-definition-admission.md`|`296da534c7f36ebefdc42e48b4849f2683a724573b1d8353672e782d81cb93cd`|
+|`docs/plans/2026-11-08-agent-composition.md`|`397a1a1899f96ce5422c2bab62d6cf982c4a7e8ee7473ae795abd205e8eca8c1`|
+
+候选内本报告为r2完成版本`7b6d9e9692e3e16a2ecea2b5b923d5761da8e67a85e1c7a239520f0d8d261702`；本节是提交后的同片对象核对归档，不改写候选。基线到候选的`git diff --check`通过。父候选460702f的CI/远端收口归前片单独验收；本片推送、精确必要CI和即时远端尚未独立验证，不能从父候选或本地提交推导DA4完成。之后AC3b.2a的准备或源码变化不属于此候选验收范围，后续只以固定Git对象核本片交付。

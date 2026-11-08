@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Ergora prepared composition leaf input v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "kind", "execution_authorized", "root", "instance", "grant", "input_origin", "task_sha256", "preview_sha256", "prompt_sha256", "prompt_bytes", "max_prompt_bytes"],
+  "properties": {
+    "schema_version": {"type": "integer", "const": 1},
+    "kind": {"const": "composition-input"},
+    "execution_authorized": {"type": "boolean", "const": false},
+    "root": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "id", "version", "digest"],
+      "properties": {"kind": {"const": "workflow"}, "id": {"type": "string"}, "version": {"type": "string"}, "digest": {"$ref": "#/$defs/digest"}}
+    },
+    "instance": {"type": "string", "maxLength": 1100, "pattern": "^root(?:/[a-z0-9]+(?:-[a-z0-9]+)*)+$"},
+    "grant": {"type": "object", "description": "Validated by the composition grant contract before compilation."},
+    "input_origin": {"const": "operator-supplied"},
+    "task_sha256": {"$ref": "#/$defs/digest"},
+    "preview_sha256": {"$ref": "#/$defs/digest"},
+    "prompt_sha256": {"$ref": "#/$defs/digest"},
+    "prompt_bytes": {"$ref": "#/properties/max_prompt_bytes"},
+    "max_prompt_bytes": {"type": "integer", "minimum": 1, "maximum": 1000000}
+  },
+  "$defs": {"digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+}

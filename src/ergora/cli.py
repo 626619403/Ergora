@@ -9,7 +9,7 @@ import sys
 
 from . import __version__
 from . import reference
-from . import agent_definitions, agent_runs, agents, definition_bundles, evaluation, kernel, memory, optimization, projects, registrations, research, services, tasks, skill_assets, skills, tools, workflow_definitions
+from . import agent_definitions, agent_runs, agents, contracts, definition_bundles, evaluation, kernel, memory, optimization, projects, registrations, research, services, tasks, skill_assets, skills, tools, workflow_definitions
 from .state import State, resolve_home
 
 
@@ -57,7 +57,7 @@ def parser() -> argparse.ArgumentParser:
         if name == "check":
             operation.add_argument("--material", action="store_true")
     operations.add_parser("list")
-    for name in ("show", "export", "preview"):
+    for name in ("show", "export", "preview", "prepare"):
         operation = operations.add_parser(name)
         operation.add_argument("id")
         operation.add_argument("version")
@@ -67,6 +67,14 @@ def parser() -> argparse.ArgumentParser:
             operation.add_argument("directory", type=Path)
         else:
             operation.add_argument("--grant", type=Path, required=True, help="Explicit JSON preview permissions and global limits")
+            if name == "prepare":
+                operation.add_argument("instance", help="Exact Agent leaf path from composition preview")
+                operation.add_argument("--task", type=Path, required=True, help="Operator-supplied UTF-8 task; does not execute workflow ports")
+                operation.add_argument("--directory", type=Path, required=True, help="New complete input bundle directory")
+                operation.add_argument("--max-prompt-bytes", type=int, required=True, help="Complete user prompt limit; not a model token guarantee")
+    verify_input = operations.add_parser("verify-input")
+    verify_input.add_argument("directory", type=Path)
+    verify_input.add_argument("--material", action="store_true")
     project = commands.add_parser("project", help="Register a project and choose layer tools")
     operations = project.add_subparsers(dest="operation", required=True)
     create = operations.add_parser("add")
@@ -589,6 +597,13 @@ def main(argv: list[str] | None = None) -> int:
             elif args.operation == "preview":
                 output = workflow_definitions.preview(resolve_home(args.home), args.id, args.version,
                                                        definition_bundles.read_json(args.grant))
+            elif args.operation == "prepare":
+                with args.task.open("rb") as source:
+                    task = source.read(contracts.COMPOSITION_INPUT["properties"]["max_prompt_bytes"]["maximum"] + 1)
+                output = workflow_definitions.prepare_input(resolve_home(args.home), args.id, args.version, args.instance,
+                    definition_bundles.read_json(args.grant), task, args.directory, args.max_prompt_bytes)
+            elif args.operation == "verify-input":
+                output = workflow_definitions.inspect_input(args.directory, material=args.material)
             else:
                 state = State(args.home)
                 if args.operation == "import":
