@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Ergora complete static composition manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "kind", "execution_authorized", "root", "grant", "preview_sha256"],
+  "properties": {
+    "schema_version": {"type": "integer", "const": 1},
+    "kind": {"const": "composition-manifest"},
+    "execution_authorized": {"type": "boolean", "const": false},
+    "root": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "id", "version", "digest"],
+      "properties": {
+        "kind": {"const": "workflow"},
+        "id": {"type": "string"},
+        "version": {"type": "string"},
+        "digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "grant": {"type": "object", "description": "Validated by the composition grant contract before compilation."},
+    "preview_sha256": {"$ref": "#/$defs/digest"}
+  },
+  "$defs": {"digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}
+}

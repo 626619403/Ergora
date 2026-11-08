@@ -1,0 +1,7 @@
+{
+  "artifacts": {
+    "response": "Candidate: attachment SHA-256 `8d0c8cf39865b4d1208fab2075adb911a015a6efcf6f69eddd41fa672d1bfd21`, read completely through `next_offset=null`.\n\nStandards: No blocking ownership or dependency findings. The candidate shares compilation, complete-tree verification and atomic publication between both formats, while keeping historical verification separate from current admission.\n\nSpec — [P2] Reject output destinations inside the source manifest. Location: `src/ergora/workflow_definitions.py:492`, with destination checks at line 430. Given a valid manifest at `frozen`, preparing a selected leaf into `frozen/review-input` passes the guards because they exclude only the embedded definition libraries. Publication succeeds, but the added files make `inspect_manifest(frozen)` reject the original package as containing undeclared files. This violates preservation of the frozen static package. Before creating directories or staging files, reject a resolved destination within the resolved source manifest directory. Add a regression case that confirms rejection leaves the source digest unchanged and the manifest verifiable.\n\nEvidence limits: Source review only; no tests executed. The attachment omits implementations of the definition libraries, tree inventory, backups and runtime leaf consumers, so their internal behavior was not independently inspected."
+  },
+  "decision": "request-changes",
+  "summary": "Request changes: preparing an input inside its source manifest succeeds but invalidates that manifest."
+}

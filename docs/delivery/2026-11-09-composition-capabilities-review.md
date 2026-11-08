@@ -76,3 +76,26 @@ R2 scope 的配置前移版本，diff 为 `9e7bab85a54052ba7f9e2fb1afaeda136dfa9
 原输入和运行快照重验、完整 prompt／实际 stdin、CLI JSON／只读 SQLite、检查／运行 policy、scope／native receipt 及结果文件摘要逐项一致。原生 argv 确为 read-only，关闭 shell，任务工具恰为 list／read；预检与 native 两个已记录服务 PID 在审查时均已退出。原报告明确仅审供应源码，CLI 与 task-mcp 测试为上下文 diff，未执行测试，也没有检查未供应的旧实现；其 approve 不替代本独立调用链审查或本片 CI。
 
 **本地终结：Standards 通过，Spec 通过；SP-1／P2 已关闭，采纳的配置前移调整已落实，无未解决阻塞 finding。** 本片精确 Git 候选、自身必要 CI 和即时远端终结仍须后续独立核验；原生 Windows 新模式、认证／provider 容量、OS 隔离、正式批准和完整嵌套执行均未扩大为已验。下一动作是本片最终 scope／静态与普通精确交付，不等待尚未创建的 CI 才给本地结论。
+
+## 精确候选 Git 对象核验
+
+2026-11-08 21:10:00 UTC，独立核固定候选 `582b16a4fba75a7e52f5d2f8287499de21ad9cf4`，唯一父提交为原基线 `ce4fc4b26c783431ba1c9aa7f8a0875b2ff88954`。实际差异正好十五文件，全部 Git blob SHA256 与 [final scope](../../.ergora/checks/ac3b4-capabilities/review-final-scope.json) 一致。保存的 tracked diff 覆盖原十一份跟踪文件，另四份当时未跟踪的新文档／公开 JSON 均已从候选读取全文 blob 核对；没有把十一文件 diff 当成完整十五文件。独立完整候选 diff SHA256 为 `7730dc5cbff999c7cbfac4c89283eaa57d9fe575b3090fa1a255264004656746`。
+
+直接从该固定 Git 对象读取全部 **362 生产文件**，与最终 `efe09b026a4ebe471aeb6d11e7901f6355c771d2dedbbe20443e9dcadccf2f26` wheel 和个人冻结安装副本逐字一致。按候选 `reference-manifest.json` 逐项核 **283 冻结文件**，均符合 manifest 且与父提交字节一致。候选公开自审身份／结果 JSON 与已核 r4 原始回执一致。后片 `composition-manifests` 准备文档确实不在候选树内。
+
+可核结果见 [candidate verification](../../.ergora/checks/ac3b4-capabilities/reviewer-r1/candidate-582b16a.json)。该检查不使用后续工作树作为候选证据，也未提交或推送。Standards／Spec 本地结论保持通过；候选自身 CI 和即时远端终结尚待对应 run／远端回执。本追加属于原片审查状态归档，不属于上述已创建候选的 Git 树。
+
+## 候选自身 CI 与即时远端独立终结
+
+2026-11-08 21:21:05 UTC，独立重新抓取官方 [run 42523659092](https://github.com/626619403/Ergora/actions/runs/42523659092)、精确两个 job 页面，并从该 run 的 `jobGroupsFetchUrl` 取得完整批次（`batch=0&size=200`）。run 整体状态为 `Success`，提交链接绑定完整候选 `582b16a4fba75a7e52f5d2f8287499de21ad9cf4`，workflow 为 `portability.yml`。完整批次 `totalCount=2`、`hasMore=false`，实际 job ID 正好为下表两项，没有遗漏后续批次；使用的是独立直接抓取，未用父代理先前下载的页面替代。
+
+| 官方作业 | 必要步骤的独立结果 |
+| --- | --- |
+| [Windows／Python 3.12，128862379653](https://github.com/626619403/Ergora/actions/runs/42523659092/job/128862379653) | `Build and install wheel`、`Packaged reference identity`、`Native application regression`、`Windows PowerShell 5.1 installer and upgrade` 全部成功 |
+| [Ubuntu／Python 3.11，128862379855](https://github.com/626619403/Ergora/actions/runs/42523659092/job/128862379855) | 上述构建、参考身份和应用回归三项全部成功 |
+
+各必要 `check-step` 均为 `data-conclusion=success` 且有 `data-job-completed`，`data-log-url` 精确绑定该完整候选与对应 job ID；两页没有失败、取消或超时步骤。原始官方页面、完整批次及各自 SHA256 随个人证据保存，结构结果见 [CI final](../../.ergora/checks/ac3b4-capabilities/reviewer-r1/ci-42523659092/final.json)。此前进行中回执分别保留，没有把步骤先成功当作整体 CI 已完成。
+
+紧接上述成功核验，使用既有逐命令 SSH 传输执行只读 `git ls-remote`；**2026-11-08 21:21:05.510377 UTC** 返回 `refs/heads/refactor/architecture-foundations` 精确指向完整候选 `582b16a4fba75a7e52f5d2f8287499de21ad9cf4`。本次没有修改 Git 配置、提交或推送，SSH 命令及凭据未打印或另存，也未使用后片已变化的 `workflow_definitions`／CLI／schema／测试工作树推断该候选源码身份。
+
+**最终结论：Standards 通过，Spec 通过；全部已知 finding 关闭，固定候选自身双 OS 必要 CI 与即时远端终结核验完成，本片可收口。** 双 OS CI 覆盖候选的应用回归和安装路径；本片 task-mcp 运行验收仍限 Linux，原生 Windows 仍明确拒绝并引导 WSL2，认证／容量、OS 隔离、正式批准及完整嵌套调度没有扩大为已验。本追加是执行后的原片审查归档，不属于上述已执行候选的 Git 树。

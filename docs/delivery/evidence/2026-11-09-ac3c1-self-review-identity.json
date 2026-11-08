@@ -1,0 +1,27 @@
+{
+  "checked_at": "2026-11-08T21:27:07.314638+00:00",
+  "backend": "codex",
+  "inference_model": "gpt-6.1-sol",
+  "reasoning_effort": "high",
+  "run_id": "0be590bd3977446980cb468db23254ce",
+  "status": "succeeded",
+  "exit_code": 0,
+  "seconds": 123.88852629205212,
+  "input_digest": "7a7e628116063ffbfa8d6f983ac9a4e77e07ed030bc42a4be7f3348ccf31ba0f",
+  "prompt_sha256": "24b6923a6824f0e26c0c96b4903634b6f26d8e8b9956df750385e85957fe62e5",
+  "attachment_bytes": 55711,
+  "attachment_sha256": "12e6a49dae6fea56f149e938bdbd48a28d31694a80ede6ea70cbbf47587f8ee4",
+  "manifest_digest": "57147abe2ebc543eb23ee3594d3c8d2c40b92f575ca9aa1af555771b6a59ca1e",
+  "original_definition_libraries_removed": true,
+  "scope": "Real configured hosted model through installed Ergora structure-review template from a complete static manifest and task MCP; provided source only, no formal approval or OS isolation.",
+  "decision": "approve",
+  "result_sha256": "7d2410d57ebd54c862cdea042bd23e0a94c8dfccc5dd31e9330c8c1745545b13",
+  "source": {
+    "src/ergora/workflow_definitions.py": "c0228d028b82b7bac8689fee0a86f0d86ed1d62bebc1d3e2b8ef23bf65125d58",
+    "src/ergora/contracts.py": "ae779bd3b50005253a479203cea1c76cedcf81188ab8967050c2c3d4f61b2a55",
+    "src/ergora/cli.py": "882a081d7b517f7236806ffc814f989180e3a56500965b46988ca9ed2da1914a",
+    "src/ergora/data/schemas/composition-manifest-v1.json": "da0e8a925cf9193f30645085d6d4802634a3ac007d420424e4ec6e200874d136",
+    "tests/test_composition_manifests.py": "550c546abc42d03fa72e6520597f6f3c9c355dd2e8a024145ed64c1369b48c8a",
+    "tests/test_workflow_definitions.py": "d27cd5834a014f3f3bba95abe27979a9085eed9c58f809007a921dce18e64383"
+  }
+}

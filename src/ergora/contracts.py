@@ -31,6 +31,7 @@ AGENT_DEFINITION = json.loads((_SCHEMAS / "agent-definition-v1.json").read_text(
 WORKFLOW_DEFINITION = json.loads((_SCHEMAS / "workflow-definition-v1.json").read_text(encoding="utf-8"))
 COMPOSITION_GRANT = {"$defs": WORKFLOW_DEFINITION["$defs"], "$ref": "#/$defs/grant"}
 COMPOSITION_INPUT = json.loads((_SCHEMAS / "composition-input-v1.json").read_text(encoding="utf-8"))
+COMPOSITION_MANIFEST = json.loads((_SCHEMAS / "composition-manifest-v1.json").read_text(encoding="utf-8"))
 
 
 def validate(value, schema: dict, context: str) -> None:

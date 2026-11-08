@@ -345,24 +345,32 @@ def _input_fields(composition: dict, instance: str, task: bytes, max_prompt_byte
     return document, prompt
 
 
-def inspect_input(source: Path, *, material: bool = False) -> dict:
-    """Verify a saved input and all its assets without today's backend admission."""
+def _manifest_fields(composition: dict) -> dict:
+    return {"schema_version": 1, "kind": "composition-manifest", "execution_authorized": False,
+            "root": composition["root"], "grant": composition["grant"], "preview_sha256": composition["preview_sha256"]}
+
+
+def _inspect_snapshot(source: Path, *, leaf_input: bool, material: bool) -> dict:
+    """One complete-tree verifier for a static graph and its prepared leaf inputs."""
     source = source.expanduser().absolute()
-    before = inventory_tree(source, label="Composition input", max_directories=1000, max_depth=48)
+    before = inventory_tree(source, label="Composition bundle", max_directories=1000, max_depth=48)
     digest, files, _ = before
-    required = {"request.json", "composition.json", "task.txt", "prompt.txt"}
+    filename = "request.json" if leaf_input else "manifest.json"
+    required = {filename, "composition.json", *(["task.txt", "prompt.txt"] if leaf_input else [])}
     if not required.issubset(files):
-        raise ValueError("Composition input requires request.json, composition.json, task.txt and prompt.txt")
-    request = definition_bundles.read_json(source / "request.json", files["request.json"]["sha256"])
-    contracts.validate(request, contracts.COMPOSITION_INPUT, "Composition input")
+        raise ValueError("Composition bundle requires " + ", ".join(sorted(required)))
+    request = definition_bundles.read_json(source / filename, files[filename]["sha256"])
+    contracts.validate(request, contracts.COMPOSITION_INPUT if leaf_input else contracts.COMPOSITION_MANIFEST, "Composition bundle")
     assets = source / "assets"
     root = request["root"]
     document = library(assets).get(root["id"], root["version"], material=True)
     composition = _Compilation(assets, request["grant"]).compile(document)
     stored = definition_bundles.read_json(source / "composition.json", files["composition.json"]["sha256"])
-    expected, prompt = _input_fields(composition, request["instance"], (source / "task.txt").read_bytes(), request["max_prompt_bytes"])
-    if _encoded(stored) != _encoded(composition) or _encoded(request) != _encoded(expected) or (source / "prompt.txt").read_bytes() != prompt:
-        raise ValueError("Composition input differs from its complete stored material, task or prompt")
+    expected, prompt = (_input_fields(composition, request["instance"], (source / "task.txt").read_bytes(), request["max_prompt_bytes"])
+                        if leaf_input else (_manifest_fields(composition), None))
+    if (_encoded(stored) != _encoded(composition) or _encoded(request) != _encoded(expected) or
+            (leaf_input and (source / "prompt.txt").read_bytes() != prompt)):
+        raise ValueError("Composition bundle differs from its complete stored material, task or prompt")
     wanted = {(item["ref"]["kind"], item["ref"]["id"], item["ref"]["version"], item["ref"]["digest"])
               for item in composition["instances"] if "ref" in item}
     actual = set()
@@ -373,54 +381,61 @@ def inspect_input(source: Path, *, material: bool = False) -> dict:
             for name, details in item["files"].items():
                 path = (Path(item["path"]) / name).relative_to(source).as_posix()
                 if files.get(path) != details:
-                    raise ValueError(f"Composition input asset changed during verification: {path}")
+                    raise ValueError(f"Composition bundle asset changed during verification: {path}")
                 required.add(path)
     if actual != wanted or set(files) != required:
-        raise ValueError("Composition input contains unreferenced assets or undeclared files")
-    for name, data in (("task.txt", (source / "task.txt").read_bytes()), ("prompt.txt", prompt)):
+        raise ValueError("Composition bundle contains unreferenced assets or undeclared files")
+    for name, data in ((("task.txt", (source / "task.txt").read_bytes()), ("prompt.txt", prompt)) if leaf_input else []):
         if hashlib.sha256(data).hexdigest() != files[name]["sha256"]:
-            raise ValueError(f"Composition input changed during verification: {name}")
-    if inventory_tree(source, label="Composition input", max_directories=1000, max_depth=48) != before:
-        raise ValueError("Composition input changed during verification; retry a stable directory")
-    return {"digest": digest, "request": request, "path": str(source),
-            **({"composition": composition, "prompt": prompt.decode("utf-8")} if material else {})}
+            raise ValueError(f"Composition bundle changed during verification: {name}")
+    if inventory_tree(source, label="Composition bundle", max_directories=1000, max_depth=48) != before:
+        raise ValueError("Composition bundle changed during verification; retry a stable directory")
+    return {"digest": digest, "request" if leaf_input else "manifest": request, "path": str(source),
+            **({"composition": composition} if material else {}),
+            **({"prompt": prompt.decode("utf-8")} if material and leaf_input else {})}
 
 
-def _publish_input(staged: Path, destination: Path) -> None:
+def inspect_input(source: Path, *, material: bool = False) -> dict:
+    """Verify a saved input and all its assets without today's backend admission."""
+    return _inspect_snapshot(source, leaf_input=True, material=material)
+
+
+def inspect_manifest(source: Path, *, material: bool = False) -> dict:
+    """Verify a complete static graph; no current admission, model or authorization."""
+    return _inspect_snapshot(source, leaf_input=False, material=material)
+
+
+def _publish_bundle(staged: Path, destination: Path) -> None:
     """Publish once without replacing even a concurrently created empty directory."""
     if os.name == "nt":
         staged.rename(destination)
     elif sys.platform == "linux":
         rename = getattr(ctypes.CDLL(None, use_errno=True), "renameat2", None)
         if rename is None:
-            raise ValueError("Atomic composition input publication requires Linux renameat2 or Windows")
+            raise ValueError("Atomic composition publication requires Linux renameat2 or Windows")
         rename.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint]
         rename.restype = ctypes.c_int
         if rename(-100, os.fsencode(staged), -100, os.fsencode(destination), 1) != 0:  # AT_FDCWD, RENAME_NOREPLACE
             code = ctypes.get_errno()
             raise OSError(code, os.strerror(code), str(destination))
     else:
-        raise ValueError("Atomic composition input publication is supported on Linux and Windows")
+        raise ValueError("Atomic composition publication is supported on Linux and Windows")
 
 
-def prepare_input(root: Path, identity: str, version: str, instance: str, grant: dict, task: bytes,
-                  destination: Path, max_prompt_bytes: int) -> dict:
-    """Atomically export a complete, bounded, operator-supplied leaf input; never run it."""
-    composition = preview(root, identity, version, grant)
-    request, prompt = _input_fields(composition, instance, task, max_prompt_bytes)
+def _prepare_bundle(root: Path, composition: dict, destination: Path, documents: dict[str, bytes], inspector) -> dict:
+    """Publish precisely the graph's referenced assets and format-specific materials once."""
     destination = destination.expanduser().absolute()
     if destination.exists() or destination.is_symlink():
-        raise ValueError("Choose a new composition input directory")
+        raise ValueError("Choose a new composition bundle directory")
     for store in (agent_definitions.library(root), library(root)):
         if destination.resolve().is_relative_to(store.store.resolve()):
-            raise ValueError("Composition input cannot be written inside an immutable definition library")
+            raise ValueError("Composition bundle cannot be written inside an immutable definition library")
     destination.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix=".composition-input-", dir=destination.parent) as temporary:
+    with tempfile.TemporaryDirectory(prefix=".composition-bundle-", dir=destination.parent) as temporary:
         staged = Path(temporary) / "bundle"
         assets = staged / "assets"
         assets.mkdir(parents=True, mode=0o700)
-        for name, content in (("request.json", _encoded(request)), ("composition.json", _encoded(composition)),
-                              ("task.txt", task), ("prompt.txt", prompt)):
+        for name, content in {"composition.json": _encoded(composition), **documents}.items():
             (staged / name).write_bytes(content)
         # Agents first, then children before parents. Repeated instances keep their own paths in composition.json.
         instances = [item for item in composition["instances"] if item["kind"] == "agent"]
@@ -442,9 +457,39 @@ def prepare_input(root: Path, identity: str, version: str, instance: str, grant:
             copied.add(key)
             # This private staging library has one writer; locks are not published input assets.
             (assets / f".{target.kind}-definitions.lock").unlink()
-            inventory_tree(staged, label="Composition input", max_directories=1000, max_depth=48)
-        verified = inspect_input(staged)
+            inventory_tree(staged, label="Composition bundle", max_directories=1000, max_depth=48)
+        verified = inspector(staged)
         if destination.exists() or destination.is_symlink():
-            raise ValueError("Composition input destination appeared; it was not replaced")
-        _publish_input(staged, destination)
+            raise ValueError("Composition bundle destination appeared; it was not replaced")
+        _publish_bundle(staged, destination)
     return {**verified, "path": str(destination)}
+
+
+def prepare_input(root: Path, identity: str, version: str, instance: str, grant: dict, task: bytes,
+                  destination: Path, max_prompt_bytes: int) -> dict:
+    """Atomically export a complete, bounded, operator-supplied leaf input; never run it."""
+    composition = preview(root, identity, version, grant)
+    request, prompt = _input_fields(composition, instance, task, max_prompt_bytes)
+    return _prepare_bundle(root, composition, destination,
+        {"request.json": _encoded(request), "task.txt": task, "prompt.txt": prompt}, inspect_input)
+
+
+def prepare_manifest(root: Path, identity: str, version: str, grant: dict, destination: Path) -> dict:
+    """Freeze the complete static composition without inventing future input/port values."""
+    composition = preview(root, identity, version, grant)
+    return _prepare_bundle(root, composition, destination, {"manifest.json": _encoded(_manifest_fields(composition))}, inspect_manifest)
+
+
+def prepare_input_from_manifest(source: Path, instance: str, task: bytes, destination: Path, max_prompt_bytes: int) -> dict:
+    """Use a complete static package only after fresh admission of its original graph."""
+    checked = inspect_manifest(source, material=True)
+    if destination.expanduser().resolve().is_relative_to(Path(checked["path"]).resolve()):
+        raise ValueError("Composition input cannot be written inside its source manifest")
+    root = Path(checked["path"]) / "assets"
+    reference = checked["manifest"]["root"]
+    composition = preview(root, reference["id"], reference["version"], checked["manifest"]["grant"])
+    if _encoded(composition) != _encoded(checked["composition"]):
+        raise ValueError("Composition manifest changed before input admission")
+    request, prompt = _input_fields(composition, instance, task, max_prompt_bytes)
+    return _prepare_bundle(root, composition, destination,
+        {"request.json": _encoded(request), "task.txt": task, "prompt.txt": prompt}, inspect_input)

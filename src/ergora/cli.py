@@ -57,7 +57,7 @@ def parser() -> argparse.ArgumentParser:
         if name == "check":
             operation.add_argument("--material", action="store_true")
     operations.add_parser("list")
-    for name in ("show", "export", "preview", "prepare"):
+    for name in ("show", "export", "preview", "prepare", "prepare-manifest"):
         operation = operations.add_parser(name)
         operation.add_argument("id")
         operation.add_argument("version")
@@ -72,9 +72,18 @@ def parser() -> argparse.ArgumentParser:
                 operation.add_argument("--task", type=Path, required=True, help="Operator-supplied UTF-8 task; does not execute workflow ports")
                 operation.add_argument("--directory", type=Path, required=True, help="New complete input bundle directory")
                 operation.add_argument("--max-prompt-bytes", type=int, required=True, help="Complete user prompt limit; not a model token guarantee")
-    verify_input = operations.add_parser("verify-input")
-    verify_input.add_argument("directory", type=Path)
-    verify_input.add_argument("--material", action="store_true")
+            elif name == "prepare-manifest":
+                operation.add_argument("--directory", type=Path, required=True, help="New complete static composition directory")
+    for name in ("verify-input", "verify-manifest"):
+        operation = operations.add_parser(name)
+        operation.add_argument("directory", type=Path)
+        operation.add_argument("--material", action="store_true")
+    from_manifest = operations.add_parser("prepare-from-manifest", help="Prepare an independent leaf input from a verified static package")
+    from_manifest.add_argument("manifest", type=Path)
+    from_manifest.add_argument("instance", help="Exact Agent leaf path from the static composition")
+    from_manifest.add_argument("--task", type=Path, required=True, help="Operator-supplied UTF-8 task; workflow ports remain unexecuted")
+    from_manifest.add_argument("--directory", type=Path, required=True, help="New complete input bundle directory")
+    from_manifest.add_argument("--max-prompt-bytes", type=int, required=True, help="Complete user prompt limit; not a model token guarantee")
     for name in ("check-input", "run-input"):
         operation = operations.add_parser(name, help="Check current leaf capabilities" if name == "check-input" else
                                          "Independent restricted leaf call; no workflow ports or formal approval")
@@ -610,13 +619,20 @@ def main(argv: list[str] | None = None) -> int:
             elif args.operation == "preview":
                 output = workflow_definitions.preview(resolve_home(args.home), args.id, args.version,
                                                        definition_bundles.read_json(args.grant))
-            elif args.operation == "prepare":
+            elif args.operation == "prepare-manifest":
+                output = workflow_definitions.prepare_manifest(resolve_home(args.home), args.id, args.version,
+                    definition_bundles.read_json(args.grant), args.directory)
+            elif args.operation in ("prepare", "prepare-from-manifest"):
                 with args.task.open("rb") as source:
                     task = source.read(contracts.COMPOSITION_INPUT["properties"]["max_prompt_bytes"]["maximum"] + 1)
-                output = workflow_definitions.prepare_input(resolve_home(args.home), args.id, args.version, args.instance,
+                output = (workflow_definitions.prepare_input(resolve_home(args.home), args.id, args.version, args.instance,
                     definition_bundles.read_json(args.grant), task, args.directory, args.max_prompt_bytes)
+                    if args.operation == "prepare" else workflow_definitions.prepare_input_from_manifest(
+                        args.manifest, args.instance, task, args.directory, args.max_prompt_bytes))
             elif args.operation == "verify-input":
                 output = workflow_definitions.inspect_input(args.directory, material=args.material)
+            elif args.operation == "verify-manifest":
+                output = workflow_definitions.inspect_manifest(args.directory, material=args.material)
             elif args.operation == "check-input":
                 output = agent_runs.check_input(State(args.home), args.project, args.directory,
                     backend=args.backend, model=args.model, reason=args.backend_reason, mode=args.mode, codex_config=args.codex_config)

@@ -1,6 +1,6 @@
 # 当前架构与扩展边界
 
-2026-11-08补充：实际调用仍为单角色单binding。[完整快照评审及处置](../delivery/2026-11-08-agent-composition-review.md)记录组合能力差距；[ADR0004](decisions/0004-agent-composition.md)描述职能、专家定义、模板成员和后端分离的设计。AC2已整理后端适配器；AC3a增加[静态定义库](../AGENT_DEFINITIONS.md)，由CLI检查/导入/查看/导出，备份核完整引用。AC3d新增[静态工作流编译](../WORKFLOW_DEFINITIONS.md)，解析嵌套DAG、完整祖先资源、权限请求链和全局预算；两个库共用`definition_bundles`，备份还核递归引用。定义尚未接入调用，实际装载、准入与嵌套执行仍待实现。实施顺序在[AC计划](../plans/2026-11-08-agent-composition.md)维护。
+2026-11-09补充：正式六阶段仍为单角色单binding。[完整快照评审及处置](../delivery/2026-11-08-agent-composition-review.md)记录组合能力差距；[ADR0004](decisions/0004-agent-composition.md)和[ADR0005](decisions/0005-composable-workflows.md)定义后续运行模型。AC2整理后端适配器；AC3a/d提供[专家库](../AGENT_DEFINITIONS.md)和[嵌套图/继承编译](../WORKFLOW_DEFINITIONS.md)。AC3b已经提供完整叶子输入、受限真实调用、只读任务MCP及共用能力准入；调用前的check-input不建立run或服务。当前AC3c.1增加可携带静态manifest及从包重新准入生成叶子输入，包完整性与当前可调用性分开；静态包不包含未来父结果或正式批准。多成员及Temporal嵌套执行按[AC计划](../plans/2026-11-08-agent-composition.md)后续接入，已有完整输入和六阶段格式保持。
 
 2026-11-05，R8后的当前导航，覆盖F1项目定义、F2安装/运维、F3正式任务CLI/API生命周期与F4网页消费者。F3已通过[阶段验收](../delivery/2026-11-03-f3-completion.md)，F4的创建/原ID恢复、原运行/计划/批准/取消/对账/导出及有界事件/job文本均已实现，[完整页面收口](../delivery/2026-11-05-f4-completion.md)的恢复与服务退出验收单独登记。F5.1只读证据索引与F5.2预算/用量事实CLI/API均已交付；F5.3a原生交接包及离线校验已实现，验收单独登记，F5.3b显式HTTP下载已实现，发行与真实下载验收单独登记，F5.4页面的发行/浏览器及独立审查、精确提交/双OS CI和同片终结通过；F5.5实际服务恢复组合、新综合独立审查与纯文档精确交付/远端终结通过，完整F5完成；G0全新用户旅程独立进行。历史[A1审计](2026-11-01-audit.md)及[R8记录](../delivery/2026-11-02-refactoring-exit.md)保留原身份与范围。设计约束见[ADR0001](decisions/0001-refactoring-foundations.md)/[0002](decisions/0002-static-boundaries.md)。
 
@@ -38,6 +38,8 @@ flowchart TB
   Uses --> Assets[skill_assets / evaluation]
   Query --> Bindings[bindings]
   Uses --> Bindings
+  Uses --> Composition
+  Uses --> TaskMCP[task_mcp 官方SDK及固定资源URI]
   Bindings --> Native[agents / kernel]
   Uses --> Native
   Native --> Backends[agent_backends / 四种原生后端]
@@ -93,7 +95,7 @@ flowchart TB
   Native --> Foundations
 ```
 
-`state`、`components`、`contracts`、`asset_trees` 和 `windows_job` 不导入其他自有模块；`processes` 只依赖 `windows_job`。这些底层模块不读具体项目用例。`backups` 依赖 `contracts / skill_assets / agent_definitions / workflow_definitions / asset_trees / state`，`scheduling` 依赖 `research / state`，不互相依赖。图中`Definitions → Native`只消费职能/后端校验，不启动后端；两类定义库通过`definition_bundles`复用Skill metadata与原子版本发布；Skill和定义树复用同一摘要实现。工作流编译只消费定义与显式grant，不调用Agent或调度器。`research` 为抓取监控直接消费 Windows Job，普通命令走 `processes`；二者生命周期不同。
+`state`、`components`、`contracts`、`asset_trees` 和 `windows_job` 不导入其他自有模块；`processes` 只依赖 `windows_job`。这些底层模块不读具体项目用例。`backups` 依赖 `contracts / skill_assets / agent_definitions / workflow_definitions / asset_trees / state`，`scheduling` 依赖 `research / state`，不互相依赖。图中`Definitions → Native`只消费职能/后端校验，不启动后端；两类定义库通过`definition_bundles`复用Skill metadata与原子版本发布；Skill和定义树复用同一摘要实现。工作流编译只消费定义与显式grant，不调用Agent或调度器。完整图和叶子输入在同一所有者共用快照核验/原子发布；agent_runs的独立调用消费已核叶子，后端各自拥有真实能力描述和原生MCP配置，task_mcp只向专用子进程提供已冻结的声明资源。`research` 为抓取监控直接消费 Windows Job，普通命令走 `processes`；二者生命周期不同。
 
 AC3b.1将历史完整性与当前后端准入分开：`DefinitionLibrary`的历史读取/导出只用静态inspector，新的导入在源包和暂存副本使用import inspector；Agent拥有当前角色/binding校验，Workflow在新导入/preview的递归解析中消费它。完整备份仍核图、资源、权限/预算及全部精确引用，但不要求旧后端仍可准入。不新增可跳过验证的CLI或历史重写，真实执行装载与批准仍待后续切片。
 

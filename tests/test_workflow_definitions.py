@@ -501,7 +501,7 @@ def test_invalid_input_never_publishes_a_partial_bundle(base, failure):
     with pytest.raises(ValueError):
         workflows.prepare_input(state.root, "review", "1.0.0", selected, grant(), task, target, limit)
     assert target.exists() == (failure == "existing")
-    assert not list(target.parent.glob(".composition-input-*"))
+    assert not list(target.parent.glob(".composition-bundle-*"))
 
 
 def test_input_copy_failure_cleans_the_entire_staged_bundle(base, monkeypatch):
@@ -516,7 +516,7 @@ def test_input_copy_failure_cleans_the_entire_staged_bundle(base, monkeypatch):
     monkeypatch.setattr(agent_definitions.library(state.root).__class__, "import_bundle", interrupted)
     with pytest.raises(OSError, match="interrupted input copy"):
         workflows.prepare_input(state.root, "review", "1.0.0", "root/review", grant(), b"Review.", directory / "prepared", 30000)
-    assert not (directory / "prepared").exists() and not list(directory.glob(".composition-input-*"))
+    assert not (directory / "prepared").exists() and not list(directory.glob(".composition-bundle-*"))
     assert workflows.preview(state.root, "review", "1.0.0", grant())["usage"]["instances"] == 2
 
 
@@ -535,7 +535,7 @@ def test_input_aggregate_asset_limit_is_bounded_across_individually_valid_packag
     imported(base, definition("review", nodes))
     with pytest.raises(ValueError, match="10 MB"):
         workflows.prepare_input(state.root, "review", "1.0.0", "root/review-0", grant(), b"Review.", directory / "prepared", 30000)
-    assert not (directory / "prepared").exists() and not list(directory.glob(".composition-input-*"))
+    assert not (directory / "prepared").exists() and not list(directory.glob(".composition-bundle-*"))
 
 
 @pytest.mark.parametrize("field,value", [("schema_version", True), ("executable", 0), ("instances", 2.0)])
@@ -573,18 +573,18 @@ def test_input_verification_rejects_index_changes_during_compilation(base, monke
 def test_input_publish_keeps_a_concurrently_created_empty_destination(base, monkeypatch):
     state, agent, directory = base
     imported(base, definition("review", [leaf("review", agent)]))
-    original = workflows._publish_input
+    original = workflows._publish_bundle
     created = []
     def competing(staged, destination):
         destination.mkdir()
         created.append(destination.stat().st_ino)
         original(staged, destination)
-    monkeypatch.setattr(workflows, "_publish_input", competing)
+    monkeypatch.setattr(workflows, "_publish_bundle", competing)
     target = directory / "prepared"
     with pytest.raises(FileExistsError):
         workflows.prepare_input(state.root, "review", "1.0.0", "root/review", grant(), b"Review.", target, 30000)
     assert target.stat().st_ino == created[0] and not list(target.iterdir())
-    assert not list(directory.glob(".composition-input-*"))
+    assert not list(directory.glob(".composition-bundle-*"))
 
 
 @pytest.mark.parametrize("final_files", [500, 501])
@@ -604,4 +604,4 @@ def test_input_file_limit_counts_published_assets_without_temporary_locks(base, 
         with pytest.raises(ValueError, match="500 files"):
             workflows.prepare_input(state.root, "review", "1.0.0", "root/review", grant(), b"Review.", target, 30000)
         assert not target.exists()
-    assert not list(directory.glob(".composition-input-*"))
+    assert not list(directory.glob(".composition-bundle-*"))

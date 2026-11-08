@@ -158,7 +158,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1 -A
 
 开发者可用独立的[图与表单比较例子](examples/editor-comparison/README.md)复现技术选型。Node仅用于该例子构建，默认安装保持原要求；例子只编辑试验草稿，正式功能状态见[实施计划](docs/PLAN.md)。
 
-基础安装还可检查和预览[可嵌套工作流定义](docs/WORKFLOW_DEFINITIONS.md)：精确引用专家或子模板，表达串并行/all-join，完整累加祖先材料并校验整链权限与总预算。可显式准备并调用单个叶子；默认text-only，Linux的task-mcp可按授权URI读取固定Skill附件。调用前用`ergora composition check-input PROJECT DIRECTORY`查看完整祖先权限链与实际能力合同，不会启动模型或服务；真实调用会重新准入并保存同结构报告。完整嵌套调度及正式批准沿计划接入，正式开发仍使用六阶段。
+基础安装还可检查和预览[可嵌套工作流定义](docs/WORKFLOW_DEFINITIONS.md)：精确引用专家或子模板，表达串并行/all-join，完整累加祖先材料并校验整链权限与总预算。`prepare-manifest`可携带完整图和全部资产，接收者独立核验后用`prepare-from-manifest`生成叶子输入。可显式准备并调用单个叶子；默认text-only，Linux的task-mcp可按授权URI读取固定Skill附件。调用前用`ergora composition check-input PROJECT DIRECTORY`查看完整祖先权限链与实际能力合同，不会启动模型或服务；真实调用会重新准入并保存同结构报告。完整嵌套调度及正式批准沿计划接入，正式开发仍使用六阶段。
 
 统一注册项目可用 `ergora services status/start/stop/logs/shutdown` 显式管理 Linux/WSL2 中的所选 Supervisor 服务。版本/凭据/TCP 诊断和服务进程状态分别报告；停止需确认，未确认的结果先对账。命令、共享服务栈与日志游标见[使用手册](docs/USAGE.md#显式服务管理)。
 

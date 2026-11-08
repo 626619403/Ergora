@@ -1,0 +1,7 @@
+{
+  "artifacts": {
+    "response": "Reviewed the complete candidate attachment through next_offset=null, SHA-256 12e6a49dae6fea56f149e938bdbd48a28d31694a80ede6ea70cbbf47587f8ee4.\n\nStandards: No blocking findings. _Compilation retains ownership of graph, inheritance, permission and budget checks. Both package formats share _inspect_snapshot and _prepare_bundle; the supplied paths introduce no second resource/permission validator or plugin registry.\n\nSpec: No blocking findings established. The R1 fix at src/ergora/workflow_definitions.py:485–487 compares resolved source and destination paths before staging or parent-directory creation, addressing both supplied destination scenarios. Historical verification omits current admission; new preparation uses preview to recheck admission. From-manifest compares the admitted graph with the verified graph, then produces the existing leaf-input format. The supplied CLI branches avoid State construction.\n\nEvidence limits: This was source inspection only. I did not execute tests or inspect the whole repository. Implementations of imported library, asset-tree, backup and runtime helpers were not supplied, so their internal guarantees and the reported execution results remain independently unverified."
+  },
+  "decision": "approve",
+  "summary": "Approve: no blocking correctness or maintainability findings in the supplied candidate."
+}
