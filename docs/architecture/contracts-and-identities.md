@@ -9,6 +9,7 @@ R2 的所有权说明。共享结构按 JSON Schema Draft 2020-12 描述，核�
 |内置层与组件目录|`data/components.json`，目录 `schema_version: 1`；configuration 按 Draft 2020-12 解释|`components` 负责内置目录/显示投影；不运行外部插件|
 |角色与支持工具绑定|上述 configuration；绑定沿用现有无独立版本的 `{tool, ...}` 格式，位于 project v1|`agents` 负责角色/能力；`tools` 负责支持层与 ReMe URL/变量名；`kernel` 负责原生绝对路径；三者调用同一结构校验|
 |Agent 结构化结果|`agents.result_schema` 生成所选模板角色的必需 artifacts 和审查 decision；命令信封沿用 `stage-json-v1`|`agents.validate_result` 使用同一份 schema 验证实际输出，非空白 summary/artifacts 和拒绝额外字段保持；进程成功不是正式验收|
+|静态Agent定义包|`data/schemas/agent-definition-v1.json`，严格整数版本1；索引由定义库所有者校验|`agent_definitions`核职能/后端、包内资源与精确版本；备份核索引→对象→资源，不新建DB表或运行准入|
 |评价输入|`data/schemas/evaluation-manifest-v1.json`|`evaluation.register` 负责版本、case 安全 ID/唯一性/三个 split、可信文件解析和指纹；不允许额外顶层/case 字段|
 |evaluator 响应|`data/schemas/evaluation-result-v1.json`，结果本身不新增版本字段|`evaluation.evaluate` 要求有限 score/cost、bool passed、string feedback；沿用旧行为接受并忽略附加上游字段，预算和候选绑定仍由评价所有者负责|
 |离线控制面备份|`data/schemas/state-backup-v1.json`，严格整数版本 1|`backups` 负责库/文件/Skill/来源身份核对及同平台原 home 恢复；CLI state 入口不先创建或迁移 State|
@@ -30,6 +31,7 @@ R2 的所有权说明。共享结构按 JSON Schema Draft 2020-12 描述，核�
 |评价 manifest|`evaluation.manifest_sha256`：`json.dumps(sort_keys=True, ensure_ascii=False, allow_nan=False)` 后 UTF-8 / SHA-256，保留默认空格|原 `_sha` 仅改为语义名称；旧评价 suite 的摘要和候选证据须保持|
 |reference canonical JSON|冻结 `dev_platform.contracts.canonical_sha` / adapter sha：排序、UTF-8、不转义 Unicode、紧凑分隔符、拒绝 NaN|原编译、request、profile、批准及回执使用此身份，不与评价摘要合并|
 |Skill 目录|`skills.digest_tree`：排序相对路径；逐文件内容 SHA 和 executable bits；文件清单沿用原排序 JSON编码再 SHA-256|脚本执行位与内容共同构成资产；不能只 hash SKILL.md 或把不同换行/字节归一化|
+|静态Agent包|共享`asset_trees.digest_tree`，使用原Skill目录算法，包含agent.json及所有普通附件；文件资源另核原字节SHA256，Skill核完整目录摘要|精确ID/版本指向固定包摘要，不通过JSON重编码合并不同包，也不把资源可读性当成权限/运行证据|
 |Agent 结果 / prompt / 文件产物|原所有者对实际固定字节计算 SHA；结果沿用排序、保留 Unicode 的 JSON|是不同用途的实际内容身份，不做统一的“自动标准化”|
 |离线备份清单|`backups.verify` 对 manifest.json 原 UTF-8 字节 SHA-256；文件清单各自记录实际字节、大小和文件模式|清单身份绑定这一份快照；不重写其中引用的旧 Skill / 评价 / 正式证据摘要|
 |项目登记、投影与导入预览|排序、UTF8、不转义Unicode、紧凑分隔符、拒绝NaN的JSON/SHA256；登记摘要绑定id/repo/规范化定义，预览另绑定control_home/revision/绑定/差异/源SHA及投影摘要|bindings仅由项目顶层拥有；旧文件SHA另按原字节计算，空白变化也使导入预览失效；不重编码旧文件以制造一致性|

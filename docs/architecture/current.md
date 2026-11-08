@@ -1,6 +1,6 @@
 # 当前架构与扩展边界
 
-2026-11-08补充：当前源码仍是单角色单binding的实现。[完整快照评审及处置](../delivery/2026-11-08-agent-composition-review.md)记录现有缺陷与组合能力差距；[ADR0004](decisions/0004-agent-composition.md)描述职能、专长化Agent定义、模板成员和后端分离的目标设计；AC2已整理后端适配器，定义/成员/权限组合尚未实现，不替代下方真实调用关系。实施顺序在[AC计划](../plans/2026-11-08-agent-composition.md)维护。
+2026-11-08补充：实际调用仍为单角色单binding。[完整快照评审及处置](../delivery/2026-11-08-agent-composition-review.md)记录组合能力差距；[ADR0004](decisions/0004-agent-composition.md)描述职能、专家定义、模板成员和后端分离的设计。AC2已整理后端适配器；AC3a增加[静态定义库](../AGENT_DEFINITIONS.md)，由CLI检查/导入/查看/导出，备份核完整引用。定义尚未接入调用，成员/继承/权限组合仍待实现。实施顺序在[AC计划](../plans/2026-11-08-agent-composition.md)维护。
 
 2026-11-05，R8后的当前导航，覆盖F1项目定义、F2安装/运维、F3正式任务CLI/API生命周期与F4网页消费者。F3已通过[阶段验收](../delivery/2026-11-03-f3-completion.md)，F4的创建/原ID恢复、原运行/计划/批准/取消/对账/导出及有界事件/job文本均已实现，[完整页面收口](../delivery/2026-11-05-f4-completion.md)的恢复与服务退出验收单独登记。F5.1只读证据索引与F5.2预算/用量事实CLI/API均已交付；F5.3a原生交接包及离线校验已实现，验收单独登记，F5.3b显式HTTP下载已实现，发行与真实下载验收单独登记，F5.4页面的发行/浏览器及独立审查、精确提交/双OS CI和同片终结通过；F5.5实际服务恢复组合、新综合独立审查与纯文档精确交付/远端终结通过，完整F5完成；G0全新用户旅程独立进行。历史[A1审计](2026-11-01-audit.md)及[R8记录](../delivery/2026-11-02-refactoring-exit.md)保留原身份与范围。设计约束见[ADR0001](decisions/0001-refactoring-foundations.md)/[0002](decisions/0002-static-boundaries.md)。
 
@@ -26,6 +26,10 @@ flowchart TB
   Services --> Supervisor[Supervisor Unix RPC / native launcher]
   Registration --> Ref
   CLI --> Uses[agent_runs / skills / optimization]
+  CLI --> Definitions[agent_definitions 静态专家库]
+  Definitions --> Native
+  Definitions --> Tree[asset_trees 完整树身份]
+  Definitions --> Assets
   Web --> Uses
   Uses --> Assets[skill_assets / evaluation]
   Query --> Bindings[bindings]
@@ -38,6 +42,8 @@ flowchart TB
   Native --> Processes
   CLI --> Optional[scheduling / backups]
   Optional --> Research[research / skill_assets]
+  Optional --> Definitions
+  Assets --> Tree
   Query --> Ref[reference]
   Uses --> Ref
   CLI --> Ref
@@ -82,7 +88,7 @@ flowchart TB
   Native --> Foundations
 ```
 
-`state`、`components`、`contracts` 和 `windows_job` 不导入其他自有模块；`processes` 只依赖 `windows_job`。这些底层模块不读具体项目用例。`backups` 自身依赖 `contracts / skill_assets / state`，`scheduling` 依赖 `research / state`，不互相依赖。`research` 为抓取监控直接消费 Windows Job，普通命令走 `processes`；二者生命周期不同。
+`state`、`components`、`contracts`、`asset_trees` 和 `windows_job` 不导入其他自有模块；`processes` 只依赖 `windows_job`。这些底层模块不读具体项目用例。`backups` 依赖 `contracts / skill_assets / agent_definitions / asset_trees / state`，`scheduling` 依赖 `research / state`，不互相依赖。图中`Definitions → Native`只消费职能/后端校验，不启动后端；定义库复用Skill metadata，Skill和定义树复用同一摘要实现。`research` 为抓取监控直接消费 Windows Job，普通命令走 `processes`；二者生命周期不同。
 
 |责任|当前所有者与实际入口|保留的边界|
 |---|---|---|
@@ -97,6 +103,7 @@ flowchart TB
 |原job发布回执与文本窗口|`tasks.job` → `reference.task_job` → 专用`reference_task_evidence`；CLI/GET API|只选原dev_submit调度事件，核连续history/context/envelope；原FileAdapter核回执及全部产物，配置/注册根验证由Creation共享给本入口与外部对账。材料按原回执名及首次receipt SHA读取；先核完整摘要/严格UTF-8，再返回字符窗口；响应上限不等于完整IO/内存上限|
 |本地服务运维|`services.status / control / logs`；CLI/API|复制原 Supervisor 定义并关闭自动启动；所选服务、当前修订及停止确认；共享执行目录/控制库归属；有界日志与原生游标，未确认不报告成功|
 |独立 Agent 调用|`agent_runs.run_agent / runs / output`；CLI/Web|冻结有效绑定视图、所选 Skill/记忆上下文及归档；普通调用成功不产生正式任务通过|
+|静态专长Agent定义库|`agent_definitions.inspect_bundle / import_bundle / get / definitions / export`；CLI，`backups`另调用`verify_store`|完整资源与不可变精确版本，导入不执行；无活动头、DB新表或运行准入，后续成员/继承通过新合同接入|
 |原生 Agent后端|`agents.invoke` → `agent_backends.for_binding`及`AgentBackend`；`tools`复用同一诊断/探测|公开配置仍归components，后端拥有本实现命令、配置及结果提取；通用schema/摘要归agents，进程/取消归processes；成功不等于可信验收|
 |Forge候选|`kernel.create / operate`；独立调用、参考阶段/页面|既有SDK协议；campaign完成不等于可信训练采用，未知结果先对账|
 |Skill 资产、评价、采用和搜索|`skill_assets`、`evaluation`、`skills.adopt`、`optimization.optimize`；CLI/Web|资产与评价不反向导入采用；GEPA 搜索复用评价，不拥有评分/采用权限|

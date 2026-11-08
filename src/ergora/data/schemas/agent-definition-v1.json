@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Ergora static AgentDefinition bundle v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "id", "version", "description", "roles", "specialties", "backend", "resources"],
+  "properties": {
+    "schema_version": {"type": "integer", "const": 1},
+    "id": {"$ref": "#/$defs/id"},
+    "version": {"type": "string", "maxLength": 64, "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"},
+    "description": {"type": "string", "minLength": 1, "maxLength": 1024, "pattern": "\\S"},
+    "roles": {"type": "array", "minItems": 1, "maxItems": 16, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+    "specialties": {"type": "array", "minItems": 1, "maxItems": 32, "uniqueItems": true, "items": {"$ref": "#/$defs/id"}},
+    "backend": {"type": "object", "description": "Validated by the existing role/backend configuration contract."},
+    "resources": {
+      "type": "array", "minItems": 1, "maxItems": 64,
+      "contains": {"properties": {"kind": {"const": "instructions"}}, "required": ["kind"]},
+      "minContains": 1, "maxContains": 1,
+      "items": {"oneOf": [{"$ref": "#/$defs/text"}, {"$ref": "#/$defs/skill"}]}
+    }
+  },
+  "$defs": {
+    "id": {"type": "string", "maxLength": 64, "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"},
+    "path": {"type": "string", "minLength": 1, "maxLength": 512},
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "text": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "kind", "path", "sha256"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"}, "kind": {"enum": ["instructions", "context"]},
+        "path": {"$ref": "#/$defs/path"}, "sha256": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "skill": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "kind", "path", "digest"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"}, "kind": {"const": "skill"},
+        "path": {"$ref": "#/$defs/path"}, "digest": {"$ref": "#/$defs/digest"}
+      }
+    }
+  }
+}

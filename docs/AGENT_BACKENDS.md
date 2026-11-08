@@ -1,5 +1,7 @@
 # 模板角色与可替换 Agent
 
+可分享的专家配方另见[专长Agent定义库](AGENT_DEFINITIONS.md)：目前支持静态导入/校验/查看，尚不改变本手册的项目角色绑定或正式调用。
+
 模板保存目标、角色、能力、产物和验收；项目保存具体工具。`ergora templates copy` 会在原文件之外附带 `agent-contract.json`，不改变冻结参考合同。查看角色：
 
 ```bash
@@ -37,6 +39,23 @@ ergora agent output my-project RUN_ID
 ```
 
 `--template` 要求该角色的真实结构化产物；不指定时保持普通文本调用。两者都不等于正式验收。Codex 默认使用角色对应的 CLI sandbox。若系统不支持该 sandbox，可在已经明确接受当前容器/用户边界后，显式设置 `"sandbox":"current-container"`；不会自动降级。Claude Code 使用自己的认证，其审查/提案角色限制到 Read/Grep/Glob，关闭会话持久化与额外 MCP 配置。默认审查仍为 Codex。
+
+### 用 Ergora 审查自己的仓库
+
+可以为本仓库或其他代码库登记一个审查项目，并给 reviewer 选择与实际作者不同的可用后端。例如把 `reviewer.json` 写为 `{"tool":"claude-code"}`，然后运行：
+
+```bash
+ergora project add self-review --repo /PATH/TO/REPOSITORY
+ergora project show self-review
+ergora project bind self-review reviewer --binding reviewer.json --revision CURRENT_REVISION
+ergora agent run self-review reviewer --prompt review-request.md --template repository-governance --timeout 900
+ergora agent runs self-review
+ergora agent output self-review RUN_ID
+```
+
+`review-request.md`写明原始需求、精确候选SHA；未提交内容另列完整差异、新文件及摘要。提供真实验证命令、结果和未验范围，并指定只读检查范围。需要专长提示时，可从[定义库](AGENT_DEFINITIONS.md)的`show --material`取得正文，显式加入请求；当前不会自动装载定义或继承资源。后端继续使用自己的登录与环境变量，不在请求中放密钥。
+
+此模板要求`review-report`、`handoff`和明确的`approve/request-changes`。查看运行记录中的原始结构化result及摘要，逐项处理finding；进程成功、结构合格和审查通过分别核对。失败/超时不视为通过，同后端回退保留原因；单次独立调用不产生正式workflow批准或可信验收。
 
 ### 自定义命令
 

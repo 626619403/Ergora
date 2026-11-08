@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "architecture-reviewer",
+  "version": "1.0.0",
+  "description": "Independent architecture and maintainability review of an exact candidate.",
+  "roles": [
+    "reviewer"
+  ],
+  "specialties": [
+    "architecture",
+    "module-ownership"
+  ],
+  "backend": {
+    "tool": "codex"
+  },
+  "resources": [
+    {
+      "id": "initial-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "a54ab695dbf1a14abd28cad2a0a9c237ceb0352038cce907e9f37fbdb008e7ee"
+    },
+    {
+      "id": "review-scope",
+      "kind": "context",
+      "path": "context/review-scope.md",
+      "sha256": "788ff1e1a213790c76b62daee116a700d20e28d4a4c36b4b211d428d04e31024"
+    },
+    {
+      "id": "architecture-evidence",
+      "kind": "skill",
+      "path": "skills/architecture-evidence",
+      "digest": "8d4ee3113a34a896544baf91c7afa20f281b90ba700054afb548f4d2e245dcfa"
+    }
+  ]
+}

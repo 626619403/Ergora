@@ -1,35 +1,16 @@
 """Agent Skills assets, content identities and atomic version-head history."""
 
 import difflib
-import hashlib
 import json
 from pathlib import Path
 import re
 import shutil
-import stat
 import tempfile
 
 import yaml
 
 from .state import State, file_lock, now
-
-
-def digest_tree(directory: Path) -> tuple[str, dict]:
-    files = {}
-    total = 0
-    for path in sorted(directory.rglob("*")):
-        if path.is_symlink() or ".git" in path.relative_to(directory).parts:
-            raise ValueError("Skill bundles cannot contain symlinks or .git")
-        if path.is_file():
-            total += path.stat().st_size
-            if total > 10_000_000 or len(files) >= 500:
-                raise ValueError("Skill bundle exceeds 10 MB / 500 files")
-            files[path.relative_to(directory).as_posix()] = {
-                "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
-                "executable_bits": stat.S_IMODE(path.stat().st_mode) & 0o111,
-            }
-    digest = hashlib.sha256(json.dumps(files, sort_keys=True).encode()).hexdigest()
-    return digest, files
+from .asset_trees import digest_tree
 
 
 def metadata(directory: Path) -> dict:

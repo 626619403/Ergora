@@ -9,7 +9,7 @@ import sys
 
 from . import __version__
 from . import reference
-from . import agent_runs, agents, evaluation, kernel, memory, optimization, projects, registrations, research, services, tasks, skill_assets, skills, tools
+from . import agent_definitions, agent_runs, agents, evaluation, kernel, memory, optimization, projects, registrations, research, services, tasks, skill_assets, skills, tools
 from .state import State, resolve_home
 
 
@@ -253,6 +253,24 @@ def parser() -> argparse.ArgumentParser:
     logs.add_argument("--stderr", action="store_true")
     agent = commands.add_parser("agent", help="Invoke a configured tool, independently of formal workflow acceptance")
     operations = agent.add_subparsers(dest="operation", required=True)
+    definition = operations.add_parser("definition", help="Check and share static specialist recipes; importing never executes them")
+    definitions = definition.add_subparsers(dest="definition_operation", required=True)
+    for name in ("check", "import"):
+        operation = definitions.add_parser(name)
+        operation.add_argument("directory", type=Path)
+        if name == "check":
+            operation.add_argument("--material", action="store_true", help="Include full instruction, context and SKILL.md text")
+    listing = definitions.add_parser("list")
+    listing.add_argument("--role", choices=list(agents.ROLE_CAPABILITIES))
+    listing.add_argument("--specialty")
+    for name in ("show", "export"):
+        operation = definitions.add_parser(name)
+        operation.add_argument("id")
+        operation.add_argument("version")
+        if name == "export":
+            operation.add_argument("directory", type=Path)
+        else:
+            operation.add_argument("--material", action="store_true")
     run = operations.add_parser("run")
     run.add_argument("project")
     run.add_argument("role", choices=list(agents.ROLE_CAPABILITIES))
@@ -548,13 +566,25 @@ def main(argv: list[str] | None = None) -> int:
                 output = services.control(state, args.project, args.operation, getattr(args, "names", []), args.revision,
                                           confirm=getattr(args, "confirm", False), timeout=args.timeout)
         elif args.command == "agent":
-            state = State(args.home)
-            if args.operation == "runs":
-                output = agent_runs.runs(state, args.project)
-            elif args.operation == "output":
-                output = agent_runs.output(state, args.project, args.id)
+            if args.operation == "definition" and args.definition_operation == "check":
+                output = agent_definitions.inspect_bundle(args.directory, material=args.material)
             else:
-                output = agent_runs.run_agent(state, args.project, args.role, args.prompt.read_text(encoding="utf-8-sig"), args.timeout, args.skill, args.recall, args.template)
+                state = State(args.home)
+                if args.operation == "definition":
+                    if args.definition_operation == "import":
+                        output = agent_definitions.import_bundle(state, args.directory)
+                    elif args.definition_operation == "list":
+                        output = agent_definitions.definitions(state, role=args.role, specialty=args.specialty)
+                    elif args.definition_operation == "show":
+                        output = agent_definitions.get(state, args.id, args.version, material=args.material)
+                    else:
+                        output = agent_definitions.export(state, args.id, args.version, args.directory)
+                elif args.operation == "runs":
+                    output = agent_runs.runs(state, args.project)
+                elif args.operation == "output":
+                    output = agent_runs.output(state, args.project, args.id)
+                else:
+                    output = agent_runs.run_agent(state, args.project, args.role, args.prompt.read_text(encoding="utf-8-sig"), args.timeout, args.skill, args.recall, args.template)
             print(json.dumps(output, ensure_ascii=False, indent=2))
             return 0 if args.operation != "run" or output["status"] == "succeeded" else 1
         elif args.command == "kernel":

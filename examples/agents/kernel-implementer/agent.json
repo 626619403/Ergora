@@ -1,0 +1,38 @@
+{
+  "schema_version": 1,
+  "id": "kernel-implementer",
+  "version": "1.0.0",
+  "description": "Kernel implementation and measured numerical/performance comparison.",
+  "roles": [
+    "implementer",
+    "kernel-tuner"
+  ],
+  "specialties": [
+    "cuda",
+    "triton",
+    "kernel-performance"
+  ],
+  "backend": {
+    "tool": "codex"
+  },
+  "resources": [
+    {
+      "id": "initial-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "6b94f24b604148cf9ca2a2ef828930349051ed58530a7f538ff18e76732036b9"
+    },
+    {
+      "id": "measurement",
+      "kind": "context",
+      "path": "context/measurement.md",
+      "sha256": "a399f1a18e4ee90a19f8e431d40e9ebede1ca8e48c2d6cb9cefe76adce0ecc14"
+    },
+    {
+      "id": "kernel-measurement",
+      "kind": "skill",
+      "path": "skills/kernel-measurement",
+      "digest": "8f22ae3cc9e5a9d5c40cd96a6ccbf65a4ffa05db3c5a576459db10c771dfa878"
+    }
+  ]
+}

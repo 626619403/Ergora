@@ -10,7 +10,8 @@ import stat
 import sys
 import tempfile
 
-from . import contracts, skill_assets
+from . import agent_definitions, contracts, skill_assets
+from .asset_trees import is_link as _is_link
 from .state import SCHEMA_VERSION, file_lock, now
 
 
@@ -23,12 +24,6 @@ def _relative(value: str) -> Path:
             not path.parts or any(part in (".", "..") for part in path.parts) or "\\" in value or "\0" in value):
         raise ValueError(f"Unsafe state backup path: {value!r}")
     return Path(*path.parts)
-
-
-def _is_link(path: Path) -> bool:
-    details = path.lstat()
-    return stat.S_ISLNK(details.st_mode) or bool(
-        getattr(details, "st_file_attributes", 0) & getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0))
 
 
 def _inventory(root: Path, exclusions=frozenset()) -> tuple[dict, list[str]]:
@@ -81,7 +76,7 @@ def info(root: Path) -> dict:
 
 def _check_assets(db: sqlite3.Connection, data: Path, original_home: Path) -> dict:
     tables = {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")}
-    checked = {"skills": 0, "source_snapshots": 0}
+    checked = {"skills": 0, "source_snapshots": 0, "agent_definitions": agent_definitions.verify_store(data)}
     if "skill_versions" in tables:
         for row in db.execute("SELECT digest,document FROM skill_versions"):
             document = json.loads(row["document"])
