@@ -146,3 +146,38 @@ R3 真实自身模板在 **114.76 秒**结束，原始结果仍为 **request-cha
 [公开最终身份](evidence/2026-11-09-cr2a-self-review-identity.json) 与原 R3 record 字节全同，[公开原始结果](evidence/2026-11-09-cr2a-self-review-result.json) 与实际最终 result 文件字节全同；[公开历史](evidence/2026-11-09-cr2a-self-review-history.json) 的 R1/R3 两条与原轮 JSON 全同，保留两次 request-changes 及精确输入身份。
 
 **本地 Standards / Spec 通过，无未解决的阻塞 finding。** 这证明本片版本 worker 接线、保留的六阶段合同及已列本地协议/审查证据；正式 v2 start/status 仍拒绝。Agent、可信候选执行、CR2b/CR3、Supervisor 新 worker 完整栈及 CR4 继续独立验收。最终 scope/静态文档、普通精确提交推送、必要双 OS CI 和即时远端终结尚需同片记录；本节未提前登记远端完成。
+
+## 不同后端实际尝试的补充归档
+
+源码/测试保持 R3。本轮只核运行事实与归档，未重新审查生产或运行测试。只读 Claude 认证状态命令 exit 0，显示 `logged_in=true`、`auth_method=api_key` 及凭据引用存在；这项检查只证明认证配置存在。
+
+随后通过已安装 Ergora 的 structure-review / task-MCP 实际尝试 `claude-code`：run **`9672ad4094d04f8f8c26a9db6ebc51ff`**，**8.45 秒 failed / exit 1**。其 12 个保护文件身份及 **69,386 字节**附件与 R3 Codex 审查相同；本次 input digest 为 `45460b64be20b0633d112a077aa4b7f69ccab9689b3518f10b63b20281d3500d`，prompt SHA256 为 `3488f13f79b6ecbccb071065054726630636fcae1ec96da9b1a5ab6af31c5681`，已核原输入、保存副本及 protocol prompt。
+
+独立核 SQLite run document 与实际 `claude.stdout` 完全相同；原生返回为 HTTP 400 Bedrock `ValidationException: messages.1: system content must contain at least one block`。原生最终事件 `is_error=true`，input/output/cache tokens 均为 0，`modelUsage={}`；未生成最终审查结果文件，**无模型判定**。认证存在不能证明该网关调用可用，未登记 Claude 审查通过。
+
+[公开历史](evidence/2026-11-09-cr2a-self-review-history.json) 的 `r3-claude` 条完整保留原 failed identity 全部字段，并另外标明零 token、HTTP 400、无模型判定和既有用户授权的 Codex/ChatGPT 回退。该条与私有原记录逐字段一致；原 Codex 结果及独立 S4 处置继续保留。没有修改外部网关或扩展本片源码，既有两轴本地通过结论保持。
+
+## 精确候选与 ST3 — P2：原生文件旅程未限定 Linux/WSL2
+
+首次已推送候选为 **`c36bcdc028def80429f674d250ee65838d2adc73`**，直接父提交为上述 `77f93302c53f2d619bf7f84ff9dd23905f754b41`，共 20 个文件。审查者从该提交的 Git archive 独立核定最终 scope 的逐文件身份；scope SHA256 为 `bb4722c19ffa5ba422facf1111c8c7a89a01ebdb0198553d975d57c7044cc12b`。其中 367 个包文件仍等于 R3 wheel/安装身份、283 个冻结文件等于基线、12 个自身审查保护文件等于 R3。候选静态检查覆盖 9 份 Markdown、358 个本地链接/锚点及 75 条 CLI parser 示例，缺失为零，`git diff --check` 通过。提交内本报告 SHA256 为 `4d8e117605ac773230ac6ab8043f5b60099dbf926b09b3296e56ec146bc06109`；后加 Claude 归档及当前 CR2b 工作区不得反向作为该提交的内容证据。
+
+位置：[test_composition_workers.py:18](../../tests/test_composition_workers.py#L18)。新增 `test_each_version_publishes_and_fences_only_its_own_requests` 的两个 version 参数直接走冻结 FileAdapter 的安全文件读取；`read_json` 调用 `read_raw`，后者在冻结 `dev_platform/adapter.py:62` 使用 `os.O_NOFOLLOW`。该接口属于 Linux/WSL2 原生文件执行语义，Windows 没有这个标志；本测试未提前限定平台。其他命令、包身份、准入拒绝和注入的生命周期测试没有这一要求。
+
+独立隔离探针先用 R3 实际安装适配器读取已保存请求成功，再仅在子进程中临时删除 `os.O_NOFOLLOW`，相同读取立即得到 `AttributeError: module 'os' has no attribute 'O_NOFOLLOW'`；随后恢复属性。未修改冻结实现、生产代码、测试或请求文件。原有 `tests/test_tasks.py` 的 Windows reader 替换只存在于其自己的子进程，不能覆盖这里的直接调用。
+
+随后读取 [c36 的正式 Portability 运行](https://github.com/626619403/Ergora/actions/runs/42535845046)，没有用探针预测代替 CI。**2026-11-08 23:45:13 UTC** 新鲜 GET 的完整 job-groups 为 `totalCount=2`、`hasMore=false`；Windows/Python 3.12 job `128899838743` 已 completed/failure。官方公开 annotations 进一步明确两个参数 `[1]`、`[2]` 都在测试第 36 行经冻结 adapter 第 62 行触发同一 `O_NOFOLLOW` AttributeError，实际摘要为 **2 failed, 681 passed, 481 skipped, 16 subtests passed，335.94 秒**。该次 job 页面 SHA256 为 `c90a02190967800246f02d6a276a9cd05d7258edef0aabd1318bfc801cd5ba5a`。
+
+| Windows 必要步骤 | c36 实际结论及完成时刻（UTC） |
+| --- | --- |
+| Build and install wheel | success，2026-11-08 23:35:39 |
+| Packaged reference identity | success，2026-11-08 23:35:41 |
+| Native application regression | **failure**，2026-11-08 23:41:18；[精确提交绑定日志](https://github.com/626619403/Ergora/commit/c36bcdc028def80429f674d250ee65838d2adc73/checks/128899838743/logs/6) |
+| Windows PowerShell 5.1 installer and upgrade | success，2026-11-08 23:42:08 |
+
+同一时点 Ubuntu/Python 3.11 job `128899838545` 仍 in_progress，前两步已成功，不能登记整次 CI 完成。**ST3 作为 Standards 的 P2 同片阻塞打开**；R3 本地两轴通过保留为历史，不能据此宣称精确双 OS 交付完成。最小修正是在这一参数化文件旅程执行昂贵 fixture 之前增加明确 Linux/WSL2 平台跳过，保留其余跨平台测试与冻结/生产语义。修正候选的精确范围、完整双 OS CI、即时远端 SHA 与最终 finding 关闭另行追加；当前没有提前通过。
+
+### ST3 最小修正的独立复核
+
+实施者以 c36 为基础隔离暂存该测试，未把当前 CR2b 工作区改动加入：新测试 blob SHA256 为 **`8a62bf811bac9c86dc390be1b2c49a3890b739cdc43f179c7f49c6b41660a180`**。审查者读取 `git show :tests/test_composition_workers.py`，确认差异仅为 `import sys` 和上述单个参数化函数前的 `@pytest.mark.skipif(sys.platform != 'linux', reason='Native FileAdapter file semantics require Linux/WSL2')`。移除这两项后，整份 AST 与 c36 完全相同；没有跳过整个模块，准入拒绝与生命周期等跨平台测试保留。
+
+为核实 fixture 时序，审查者把暂存 blob 的**原样 decorator AST**交给真实 pytest 内存 collector，并用可观察的 `original_input` fixture：`win32` 项为 skipped，fixture 未获取；`linux` 项实际获取 fixture 并执行 body。实际为 **1 passed, 1 skipped，0.00 秒**，仅内存探针，无测试或生产文件写入。该修正避免未受支持文件语义进入 fixture，也保留 Linux 的实际旅程。**ST3 的实现修正复核通过**；生产包身份不变，沿用已核 R3 367 文件及本地协议证据，不重复构建/重型矩阵。精确修复提交及其完整 CI/远端出口仍待后续追加。

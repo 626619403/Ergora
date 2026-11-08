@@ -4,6 +4,7 @@ import asyncio
 from copy import deepcopy
 from pathlib import Path
 import signal
+import sys
 from types import SimpleNamespace
 
 import pytest
@@ -14,6 +15,7 @@ from ergora import reference, task_envelopes
 from test_composition_runtime import original_input, composed_creation, creation_project, installation, registration
 
 
+@pytest.mark.skipif(sys.platform != 'linux', reason='Native FileAdapter file semantics require Linux/WSL2')
 @pytest.mark.parametrize('version', [1, 2])
 def test_each_version_publishes_and_fences_only_its_own_requests(original_input, tmp_path, version):
     from dev_platform.adapter import publish, read_json

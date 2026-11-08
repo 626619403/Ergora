@@ -466,3 +466,5 @@ CR2a R3最终包40ba51dc，367/283身份、源码65/1skip（34.96秒）、包65/
 CR2a R3实际自身114.76秒request-changes原件及R1历史已公开保留；其额外main前置同步停止建议按原W2合同独立核无遗留资源/持久副作用，Supervisor显式stop亦不会因-15重启，处置为nonblocking，不扩展生命周期框架。三项真实finding均关闭，当前本地终核/最终scope/普通推送及精确CI在途。
 
 CR2a本地出口：新的独立Standards/Spec通过，原三finding关闭，MCP/完整输入与公开原始证据已独立核过；S4有证据非阻塞处置。不同后端优先另实调Claude8.45秒failed（上游400空system，零token/无判定），保留失败并按授权使用Codex/ChatGPT，不阻断精确交付。20文件scope/静态及普通提交/必要双OS CI随后；下一CR2b版本化提交/证据。
+
+CR2a同片平台修正：原精确c36bcdc的CI42535845046中，Windows128899838743官方annotations记录2 failed/681 passed/481 skipped/16 subtests（335.94秒），恰为新FileAdapter两版本用例在原adapter.read_raw使用Windows不存在的os.O_NOFOLLOW；PowerShell安装步骤成功，Ubuntu终态另核。独立者在原R3隔离复现，登记ST3 P2；Linux本地65/1结果仍按其平台范围保留，不能写c36双OS通过。最小修复只给该原生文件旅程函数加提前Linux/WSL2 skip（两个参数），其余身份/命令/生命周期跨平台测试及生产代码不变；普通修复候选和自己的双OS CI需重新验证，不携带CR2b实现。
