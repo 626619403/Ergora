@@ -1,0 +1,26 @@
+{
+  "checked_at": "2026-11-09T00:21:42.775182+00:00",
+  "source": {
+    "src/ergora/reference_executor.py": "f005a9c425e1a1efc2f804e5ee1a822b4fa76dce5cea4444a187e67bbe057475",
+    "tests/fixtures/reference_acceptance.py": "3ae0b851cfdb0b878153f71b453680d6b6f42adc3452385bc9d463b77983d081",
+    "tests/test_reference_executor.py": "7b0d195a89ef00089cb286086872d867ebad7720eea3e4e8c3555c75f0107380",
+    "src/ergora/data/reference/platform/local/agent_platform/executor.py": "9c7eee11b1830577cc1a0b1bea3a2b9c1e60ef8f3e9adf9c5ef51a8a65aa9a2f",
+    "src/ergora/data/reference/platform/upstream/platform/harness/git_scope.py": "dffda7ce570dae3f0e2273ea74decb471f413209af1194b861e4803c7222c7c2"
+  },
+  "backend": "codex",
+  "inference_model": "gpt-6.1-sol",
+  "reasoning_effort": "high",
+  "run_id": "63f5eb19d9294a6bad6af0cae0e2f603",
+  "status": "succeeded",
+  "exit_code": 0,
+  "seconds": 105.42272046534345,
+  "input_digest": "b0d0da73f2dba5b4cdac4534ffbf45fbef9c15a3219db9a1049780e5931002f5",
+  "prompt_sha256": "c6ccd4ade13d1682dcc9db98bb2635a3eb6326b6e2d53f0de01b9c781f5ab2b2",
+  "attachment_bytes": 68920,
+  "attachment_sha256": "7d8a1154d5aedd51898536b3d6b5b6d2727949f90f8be0276ff95d83c8b46280",
+  "manifest_digest": "2084e472a70c957f206782d61b2ab72459409b55dd2bd4913410f0b6047669b0",
+  "original_definition_libraries_removed": true,
+  "scope": "Real configured hosted model through installed Ergora structure-review template from a complete static manifest and task MCP; provided source only, no formal approval or OS isolation.",
+  "decision": "approve",
+  "result_sha256": "3c1e7c4a5a5b88ee549ae6b276ef376ef488fbc3f93b4e513a741f89ce4c7bb6"
+}

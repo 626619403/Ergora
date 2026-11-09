@@ -1,6 +1,6 @@
 # AC3c.3 / CR2b：版本化提交与证据读取
 
-日期：2026-11-09。状态：B1–4本地实现/验证完成，B5独立终核与精确交付进行中。源码基线`c36bcdc028def80429f674d250ee65838d2adc73`；当前HEAD`25d83ec5659e1f189a1ccd50e66cfd18b8d2e2a8`仅增加前片Windows测试跳过及记录。前片双队列worker的实际SDK/文件交换结果不代表正式Agent/候选执行。本片不更改冻结283文件，不新增调度器、账本或协议参数。
+日期：2026-11-09。状态：B1–5精确交付完成，候选8151a1c。源码基线`c36bcdc028def80429f674d250ee65838d2adc73`；前片`25d83ec5659e1f189a1ccd50e66cfd18b8d2e2a8`仅增加前片Windows测试跳过及记录。前片双队列worker的实际SDK/文件交换结果不代表正式Agent/候选执行。本片不更改冻结283文件，不新增调度器、账本或协议参数。
 
 ## 范围与所有者
 
@@ -16,7 +16,7 @@
 - [x] B2实现：原提交身份保留完整document、原cli准入仍使用已核legacy；v2公开保护继续拒绝，旧提交/恢复/attempt/memo语义保持。
 - [x] B3实现：计划、job和closed-run真实SDK消息/文件读取按同版本选名/路径，完整admission与原意图绑定；最终R3真实服务/两版本读者与历史重放通过，范围见下方证据。
 - [x] B4：源码/最终非editable包/冻结身份、受影响有价值回归及真实SDK协议旅程；合成证据范围明确。
-- [ ] B5：新fresh-context两轴审查、实际自身模板调用、普通精确提交推送及必要CI/独立终结。
+- [x] B5：新fresh-context两轴审查、实际自身模板调用、普通精确提交推送及必要CI/独立终结。
 
 正式只读review leaf的动态材料、实际Agent调用和可信verify投影归CR3；完整Supervisor栈/原始批准及故障恢复归CR4。SDK合成成功不能代替其验收。
 
@@ -32,3 +32,5 @@
 - R3真实Temporal/原生SDK旅程16.017秒通过：完整正式创建文档/memo与原始payload绑定，两版本各读取待批准plan的三份材料、选定job已发布receipt及closed-run六份匹配作业；各自队列/请求根、旧worker不消费v2、六阶段原协议、未终结新版取消和五份history重放保持。专用worker和服务均exit0、端口关闭。外部产物/收据/owner是合成协议材料，不代表真实模型或可信候选执行。
 
 原验证探针曾因未配置adapter.json、未指定本地Temporal连接模式或漏传原reader参数而失败；各次原日志/服务清理均保留，修的是探针装配，无产品改动。最后成功材料在忽略的`.ergora/checks/ac3c3-transport/r3/`；真实模型原件在r2。最终新独立审查、固定scope/静态及普通提交推送/自身必要CI待收口，CR3另片推进。
+
+精确交付：`8151a1c674fd6c664b4ce6aeba11a5fdf12be426`，29文件；[自身双OS CI42538555105](https://github.com/626619403/Ergora/actions/runs/42538555105)七必要步骤均success。原审查者于2026-11-09 00:20:12.521999 UTC即时SSH核远端同SHA，见[独立终核](2026-11-09-composition-transport-review.md#双-os-ci-与即时远端终结)。此前“待收口”为当时快照；不把后续CR3源码纳入本片身份。

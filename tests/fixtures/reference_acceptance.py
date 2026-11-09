@@ -18,6 +18,7 @@ from ergora.state import State
 
 async def main():
     root, kind, backend = Path(sys.argv[1]), sys.argv[2], sys.argv[3]
+    mode = sys.argv[4] if len(sys.argv) > 4 else "legacy-registration"
     installation = root / "installation"
     for part in ("local", "upstream/platform"):
         shutil.copytree(reference.ROOT / "platform" / part, installation / part)
@@ -62,6 +63,8 @@ async def main():
     git(repo, "add", ".")
     git(repo, "commit", "-m", "fixture baseline")
     check = [sys.executable, "-c", "import ast,pathlib;[ast.parse(p.read_text()) for p in pathlib.Path('{repo}/src').glob('*.py')]"]
+    if mode == 'verify-command-failure':
+        check[-1] += '; assert not pathlib.Path(' + repr(str(root / 'fail-verify')) + ').exists()'
     checks = {key: check for key in ("behavior", "architecture", "knowledge", "integration", "compatibility", "migration-rollback")}
     write(root / "checks.json", checks)
     task_input = json.loads((reference.ROOT / "platform/templates" / kind / "input.json").read_text())
@@ -77,7 +80,6 @@ async def main():
         binding["argv"] += ["--wait-for-cancellation", str(root / "action-ready"), str(root / "late-write")]
     for role in ("inspector", "planner", "implementer", "reviewer"):
         projects.bind(state, "demo", role, binding, state.project("demo")["revision"])
-    mode = sys.argv[4] if len(sys.argv) > 4 else "legacy-registration"
     if mode.startswith("unified") or mode == "imported-registration":
         definition = {"schema_version": 1, "id": "demo", "repo": str(repo), "templates": [kind],
                       "tracker": {"kind": "github", "project": "fixtures/demo"}, "allowed_paths": ["src"],
@@ -132,6 +134,21 @@ async def main():
     records = {}
     frozen_selection = None
     starting = app.spec["request"]["repository"]["starting_sha"]
+    wrapper = None
+    if mode == 'verify-wrapper':
+        from ergora import agent_definitions, task_envelopes, tasks, workflow_definitions
+
+        examples = Path(__file__).resolve().parents[2] / 'examples'
+        agent_definitions.import_bundle(state, examples / 'agents/architecture-reviewer')
+        workflow_definitions.import_bundle(state, examples / 'composition/structure-review')
+        manifest_path = root / 'manifest'
+        manifest = workflow_definitions.prepare_manifest(state.root, 'structure-review', '1.0.0',
+            read(examples / 'composition/preview-grant.json'), manifest_path)
+        composition = tasks._composition({'composition': {'manifest': str(manifest_path),
+            'manifest_digest': manifest['digest'], 'review_instance': 'root', 'mode': 'text-only'}},
+            {'bindings': {'implementer': binding}})
+        write(runtime / 'tasks/task-1/task.spec.json', task_envelopes.wrap(app.spec, composition), replace=True)
+        wrapper = (runtime / 'tasks/task-1/task.spec.json').read_bytes()
     if cancellation:
         context = app.context("inventory", starting, dependencies={})
         job = await activities.submit(context)
@@ -159,6 +176,35 @@ async def main():
         context = app.context(stage, expected, task_input["work_units"][0] if stage == "work:unit" else None, dependencies)
         job = await activities.submit(context)
         request = runtime / "requests/task-1" / (context["job_id"] + ".json")
+        if stage == 'verify':
+            if mode in ('verify-scope-mismatch', 'verify-scope-header'):
+                scope_file = runtime / 'workspaces/task-1/jobs' / context['job_id'] / 'output/scope.json'
+                scope = {'status': 'PASS', 'candidate_sha': '0' * 40}
+                if mode == 'verify-scope-header':
+                    from dev_platform.contracts import canonical_sha
+
+                    scope.update(schema_version=1, check='scope', task_id='task-1',
+                        candidate_sha=expected, request_sha256=app.spec['request_sha256'],
+                        profile_sha256=app.spec['profile_sha256'], spec_sha256=canonical_sha(app.spec),
+                        policy_sha256=canonical_sha(read(config / 'policies/demo/scope.json')),
+                        base_sha=app.spec['request']['repository']['base_sha'])
+                write(scope_file, scope)
+            elif mode == 'verify-baseline-drift':
+                write(runtime / 'tasks/task-1/baseline-checks.json', {}, replace=True)
+            elif mode == 'verify-command-failure':
+                (root / 'fail-verify').write_text('Trusted check now fails\n')
+            elif mode == 'verify-scope-recovery':
+                policy_path = config / 'policies/demo/scope.json'
+                policy = read(policy_path)
+                policy['protected_paths'].append('src/new.py')
+                write(policy_path, policy, replace=True)
+                from ergora.reference_executor import Executor
+
+                # Simulate interruption after error artifacts, before publishing
+                # the receipt: rerunning the same envelope must be idempotent.
+                first = Executor(read(request), state.root).execute()
+                second = Executor(read(request), state.root).execute()
+                assert first == second and first['state'] == 'FAILED'
         if mode in ("unified-registration", "imported-registration") and stage == "inventory":
             result = subprocess.run([sys.executable, "-m", "ergora", "--home", str(state.root), "reference", "executor",
                                      "--project", "demo", "--request", str(request)], capture_output=True, text=True, timeout=30)
@@ -166,6 +212,17 @@ async def main():
             receipt = json.loads(result.stdout)
         else:
             receipt = reference.executor(installation, state.root, request)
+        if stage == 'verify' and mode in ('verify-scope-mismatch', 'verify-scope-header', 'verify-baseline-drift', 'verify-command-failure', 'verify-scope-recovery'):
+            assert receipt['state'] == 'FAILED', receipt
+            assert not receipt['checks']
+            assert receipt['candidate_sha'] == records['integrate']['candidate_sha']
+            assert await activities.poll(job) == receipt
+            print(json.dumps({'rejected': mode, 'detail': receipt['detail']}))
+            return
+        if stage == 'verify' and wrapper is not None:
+            assert (runtime / 'tasks/task-1/task.spec.json').read_bytes() == wrapper
+            projection = runtime / 'workspaces/task-1/jobs' / context['job_id'] / 'output/task.legacy-spec.json'
+            assert read(projection) == app.spec
         if mode in ("instructions-missing", "instructions-tampered", "instructions-cross-task"):
             assert receipt["state"] == "FAILED", receipt
             assert not (runtime / "workspaces/task-1/jobs" / context["job_id"] / "selected-agent/request.json").exists()
@@ -228,6 +285,8 @@ async def main():
     assert records["review"]["actor"]["session_id"] != records["work:unit"]["actor"]["session_id"]
     assert records["review"]["actor"]["id"] == backend + ":reviewer"
     assert set(app.spec["profile"]["required_checks"]) == {check["id"] for check in records["verify"]["checks"]}
+    if wrapper is not None:
+        assert (runtime / 'tasks/task-1/task.spec.json').read_bytes() == wrapper
     print(json.dumps({"template": kind, "backend": backend, "stages": list(records), "candidate_bound": True,
                       "template_instructions_bound": True}))
 

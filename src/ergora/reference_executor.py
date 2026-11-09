@@ -11,16 +11,18 @@ import hashlib
 import json
 import logging
 from pathlib import Path
+import subprocess
 import sys
+import tempfile
 import time
 
 from agent_platform import executor as original
-from agent_platform.core import Blocked, CONFIG, ROOT, STATE, read, require, settings, slug, write
+from agent_platform.core import Blocked, CONFIG, PYTHON, ROOT, STATE, UPSTREAM, environment, read, require, settings, slug, write
 from dev_platform.adapter import FileAdapter, publish
 from dev_platform.contracts import canonical_sha, validate_spec
 from dev_platform.portable import validate_compiled
 
-from . import agents, bindings, projects
+from . import agents, bindings, projects, task_envelopes
 from .state import State
 
 
@@ -49,6 +51,60 @@ class Executor(original.Executor):
             configuration = projects.effective_configuration(project)
             self.selection = bindings.development_snapshot(project, configuration)
             write(snapshot, self.selection)
+
+    def _verify(self) -> None:
+        """Use a separate projection; the published task may be a sealed v2 input."""
+        document = read(STATE / 'tasks' / self.task_id / 'task.spec.json')
+        projection, _ = task_envelopes.unwrap(document)
+        require(canonical_sha(projection) == canonical_sha(self.spec), 'Published task differs from the verification spec')
+        spec_path = self.scratch / 'task.legacy-spec.json'
+        write(spec_path, self.spec)
+        scope_file = self.scratch / 'scope.json'
+        policy_path = CONFIG / 'policies' / self.project['name'] / 'scope.json'
+        # The harness requires a new output. Recompute even on recovery, then
+        # let the existing immutable publisher compare the entire saved report.
+        with tempfile.TemporaryDirectory(prefix='.scope-', dir=self.scratch) as temporary:
+            output = Path(temporary) / 'scope.json'
+            command = [str(PYTHON), str(UPSTREAM / 'platform/harness/git_scope.py'), '--repo', str(self.checkout),
+                       '--candidate', self.candidate, '--spec', str(spec_path), '--policy', str(policy_path),
+                       '--out', str(output)]
+            try:
+                result = subprocess.run(command, capture_output=True, text=True, timeout=60, env=environment())
+                scope = read(output)
+                write(scope_file, scope)
+            except (OSError, subprocess.SubprocessError) as error:
+                # Immutable failure evidence must survive a retry with a new
+                # temporary report path, including launch/read/timeout errors.
+                raise Blocked(str(error).replace(temporary, str(self.scratch))) from error
+        require(result.returncode == 0, 'Candidate scope gate failed; inspect ' + str(scope_file))
+        results = self.commands('verify')
+        baseline = read(STATE / 'tasks' / self.task_id / 'baseline-checks.json')
+        require(set(baseline) == set(results), 'Trusted check commands changed during the task')
+        report = {'candidate_sha': self.candidate, 'scope': scope, 'commands': results,
+                  'baseline_commands': baseline, 'baseline_regression': all(v['exit_code'] == 0 for v in results.values())}
+        self.artifact('check-results', report)
+        require(scope['status'] == 'PASS', 'Scope evidence does not pass')
+        require(report['baseline_regression'], 'Final candidate check failed; baseline debt needs an explicit project policy')
+        self.checks = [{'id': name, 'status': 'pass', 'artifact': 'check-results'}
+                       for name in self.spec['profile']['required_checks']]
+
+    def execute(self) -> dict:
+        # The frozen implementation has no verification hook. Migrate only
+        # this stage; all other scheduling and stage algorithms stay inherited.
+        if self.stage != 'verify':
+            return super().execute()
+        try:
+            from agent_platform.projects import check_task_type
+
+            check_task_type(self.project['name'], self.request['task_type'])
+            probe = self.sandbox.probe()
+            require(probe['available'], 'Execution prerequisites are incomplete: ' + probe.get('detail', ''))
+            self.prepare()
+            self._verify()
+            return self.receipt('SUCCEEDED', 'Stage completed with real command/model evidence')
+        except (Blocked, OSError, ValueError, KeyError, subprocess.SubprocessError) as error:
+            self.artifact('executor-error', {'error_type': type(error).__name__, 'detail': str(error)[:4000]})
+            return self.receipt('CANCELLED' if self.fence.exists() else 'FAILED', str(error)[:1500])
 
     def model(self, names: list[str], *, review: bool = False) -> dict:
         role = self.spec["profile"]["roles"][self.stage]

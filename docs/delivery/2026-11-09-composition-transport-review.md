@@ -2,11 +2,11 @@
 
 日期：2026-11-09。审查者：fresh-context agent `composition_transport_review`，未参与实现；独立读取原始范围、完整 tracked diff、两新增源码/测试及相邻实际调用链。依据项目 [AGENTS.md](../../AGENTS.md)、[PLAN](../PLAN.md)、[本片交付记录](2026-11-09-composition-transport.md) 和 maintainable-project-delivery / codebase-design 技能分别评估 Standards 与 Spec。仅写本报告，未改生产或测试代码、提交、安装依赖或启动外部服务。
 
-**本地出口结论：Standards / Spec 均通过，唯一 P3 冗余检查已修复并复核，无未解决 finding。最终 R3 包身份、真实 Temporal/SDK 原件和五份 history 的独立离线重放已核通过；B5 的精确提交、自己的必要 CI 与实时远端出口仍待后续同片终结，当前不登记完整 CR2b 精确交付完成。** CR3 的真实 Agent、动态审查材料和可信 verify 投影不在本片。
+**最终结论：Standards / Spec 均通过，唯一 P3 冗余检查已修复并复核，无未解决 finding。最终 R3 包身份、真实 Temporal/SDK 原件和五份 history 的独立离线重放已核通过；精确候选 `8151a1c674fd6c664b4ce6aeba11a5fdf12be426` 的双 OS 必要 CI 及 2026-11-09 00:20:12 UTC 实时远端终结通过，CR2b 精确交付完成。** CR3 的真实 Agent、动态审查材料和可信 verify 投影不在本片。
 
 ## 审查身份与范围
 
-原基线为 `c36bcdc028def80429f674d250ee65838d2adc73`；审查开始及当前 HEAD 为 `25d83ec5659e1f189a1ccd50e66cfd18b8d2e2a8`。后者只含前片 Windows 文件旅程提前跳过及记录；本片实现仍为未提交工作区。已读全部 `git diff HEAD`，包括前片状态追加；不把这些追加当作本片执行证据。
+原基线为 `c36bcdc028def80429f674d250ee65838d2adc73`；初审及本地出口核验时 HEAD 为 `25d83ec5659e1f189a1ccd50e66cfd18b8d2e2a8`。后者只含前片 Windows 文件旅程提前跳过及记录；该阶段本片实现仍为未提交工作区。已读当时全部 `git diff HEAD`，包括前片状态追加；不把这些追加当作本片执行证据。后续固定候选和远端终结另见末两节。
 
 生产范围共十文件：新增 [reference_inputs.py](../../src/ergora/reference_inputs.py)，修改 [reference_workflows.py](../../src/ergora/reference_workflows.py)、[reference_worker.py](../../src/ergora/reference_worker.py)、[task_envelopes.py](../../src/ergora/task_envelopes.py) 和 `reference_task_{creation,submission,runtime,approval,evidence,reconciliation}.py`。测试范围共九文件：新增 [test_composition_transport.py](../../tests/test_composition_transport.py)，修改 `test_architecture_boundaries.py`、`test_composition_runtime.py`、`test_composition_workers.py`、`test_original_payloads.py`、`test_reference.py`、`test_task_evidence_index.py`、`test_task_job_evidence.py`、`test_task_plan.py`。另读冻结 native 的 CLI/contract/transport/adapter/activity/workflow 和公开 tasks/reference 入口，确认消费者实际行为。
 
@@ -80,7 +80,7 @@ R2 的 `reference_workflows.py:21` 调用 `matches_context(spec, context, contex
 
 审查者从原 stdout MCP item 读取实际三页，offset 为 **0 / 18000 / 36000**，next_offset 为 **18000 / 36000 / null**；拼接后的 UTF-8 字节逐字等于附件且 SHA 一致。原生 MCP 日志确认 list 及四次 read（含技能正文）成功，未依赖结果文本自报“已读完整”。另核固定 input digest、protocol prompt SHA、结果 SHA、公开判定正文及 SQLite 只读连接中的唯一原 run，与原 codex.stdout 一致。
 
-此 approve 精确绑定 ST1 删除前 R2。模型自己明确只收到部分所有者的差异上下文、未独立执行测试或验证完整 native/replay 合同；这些限制完整保留。本次 fresh-context 审查另读完整源码和相邻 native 调用链，ST1 后源码差异已独立复核。R3 的发行、拒绝检查和真实 SDK 原件有独立复核，未移记为模型在 R3 重审；普通提交、自己的必要 CI 与实时远端终结仍需后续记录。
+此 approve 精确绑定 ST1 删除前 R2。模型自己明确只收到部分所有者的差异上下文、未独立执行测试或验证完整 native/replay 合同；这些限制完整保留。本次 fresh-context 审查另读完整源码和相邻 native 调用链，ST1 后源码差异已独立复核。R3 的发行、拒绝检查和真实 SDK 原件有独立复核，未移记为模型在 R3 重审；精确提交、自己的必要 CI 与实时远端终结见末两节。
 
 ## 最终 R3 运行原件与本地出口
 
@@ -99,3 +99,37 @@ R2 的 `reference_workflows.py:21` 调用 `matches_context(spec, context, contex
 两正常 run 各六个阶段为 inventory、plan、work:one、integrate、verify、review；分别使用 `development-tasks` / `development-tasks.composition-v2` 和 `requests` / `requests-composition-v2`。完整 v2 document、原 intent memo、每份 admission、队列及文件目录一致。pending 原 history 恰一 `request_cancel`，fence 的唯一 unresolved job 与原 CANCEL_UNCONFIRMED 保持，未虚构外部终止确认。
 
 检查前后 **76 份 runtime 文件的 SHA 全部保持**。原件两 owned 进程 exit 0；审查者另查两 PID 均消失、7233 / 8233 端口均关闭。R3 源码/测试仍为本报告身份表；新增 CR3 文档只作为下一片计划，没有 CR3 实现或验收结论。本地两轴审查至此完成，可固定本片精确候选；其必要 CI 和远端终结需继续记录，不能从前片继承。
+
+## 精确候选 Git 对象复核
+
+候选为 **`8151a1c674fd6c664b4ce6aeba11a5fdf12be426`**，唯一父为 **`25d83ec5659e1f189a1ccd50e66cfd18b8d2e2a8`**。审查者在候选提交后首次检查工作区为 clean，随后直接读取固定 Git 对象，未以继续开发的 CR3 工作区作为候选来源。
+
+独立核该提交 **29 文件**的每一 blob，逐项等于 `.ergora/checks/ac3c3-transport/r3/review-scope.json`；其中十九份生产/测试文件仍为本报告 `d345…8b8` 身份。提交中原审查报告 SHA256 为 **`1f00ebcf86372ce7e2782067c72c7c874bb3f5d033356080e840cd4c5a42ea79`**，本节属于提交后同片终结追加，不反向改变被验候选。
+
+另从候选 Git archive 在内存重算全套 **368 源码/数据文件**，逐项等于最终 R3 包身份；**283 冻结文件**的摘要与原 manifest 及 c36 保持。候选未改 CI 配置。八份 Markdown 的提交 blob 与最终静态记录一致；审查者基于该固定 Git 树，独立核 **305 个本地链接/锚点、75 条 CLI parser 命令**，零缺失。CR3 的 24 行文档只有范围与待验节点，没有混入其实现。
+
+已在官方公开 Actions 页定位本候选自己的 [Portability run 42538555105](https://github.com/626619403/Ergora/actions/runs/42538555105)，完整提交身份与 push 事件一致。首次远端只读 `git ls-remote` 已看到本候选；两 OS CI 及其成功后的即时远端终结如下。
+
+## 双 OS CI 与即时远端终结
+
+**2026-11-09 00:20:10 UTC** 新鲜读取官方 run、完整 job groups 及两 job 页面，四次均 HTTP 200：run 为 **Success**，两 job 均 **completed / success**。完整 groups 使用 `job_groups_batch?attempt=1&batch=0&size=200`，确认 totalCount=2、hasMore=false，未以默认只返回一个 group 的响应代替完整矩阵。
+
+两 OS 的七项必要步骤逐项核为 success；各页的 `data-log-url` 都绑定完整 `8151a1c674fd6c664b4ce6aeba11a5fdf12be426` 提交，完成时间如下。
+
+| Job | Build/install | Packaged identity | Native regression | PowerShell installer/upgrade |
+|---|---|---|---|---|
+| [Ubuntu / Python 3.11，128908185091](https://github.com/626619403/Ergora/actions/runs/42538555105/job/128908185091) | success，00:08:40 UTC | success，00:08:41 UTC | success，00:17:57 UTC | 此 OS 无此必要步骤 |
+| [Windows / Python 3.12，128908185246](https://github.com/626619403/Ergora/actions/runs/42538555105/job/128908185246) | success，00:09:21 UTC | success，00:09:23 UTC | success，00:15:16 UTC | success，00:16:09 UTC |
+
+原生回归的精确日志入口为 [Ubuntu step 6](https://github.com/626619403/Ergora/commit/8151a1c674fd6c664b4ce6aeba11a5fdf12be426/checks/128908185091/logs/6)、[Windows step 6](https://github.com/626619403/Ergora/commit/8151a1c674fd6c664b4ce6aeba11a5fdf12be426/checks/128908185246/logs/6)；[Windows step 7](https://github.com/626619403/Ergora/commit/8151a1c674fd6c664b4ce6aeba11a5fdf12be426/checks/128908185246/logs/7)对应安装/升级。公开可读页面提供步骤结论与时间，没有完整 pytest 摘要，本报告不推算 CI 测试总数。
+
+本次官方响应 SHA256：
+
+- run：`79a257104dc8b2defe6cd8a693388d453d2362e8b3cd30ffd47ba70561606585`。
+- 完整 groups：`ccc6ad33f878b6f49e035581a4127b7f24e60b670a9043f589c98018ea054ee9`。
+- Ubuntu job：`e7a339589c9c8c5fbf7e81d157517b47e55d4d7faf9b3404e228af96735a0dfb`。
+- Windows job：`8c3f5829dd8dd338e20bfbd49008134f6420a45c784a14fbbc16248247ac7425`。
+
+四项官方核验结束后，审查者于 **00:20:10.948677 UTC** 立即执行只读 SSH `git ls-remote origin refs/heads/refactor/architecture-foundations`，于 **00:20:12.521999 UTC** 得到 exit 0，远端精确为 **`8151a1c674fd6c664b4ce6aeba11a5fdf12be426`**。这是本候选 CI 成功后的即时远端事实。
+
+**本片 B5 及 CR2b 精确交付完成，Standards / Spec 无未解决 finding。** 本节仅追加原片审查状态，不把后续 CR3 工作区变更纳入 815 的包或 CI 身份，也不扩大合成 SDK 协议和 R2 自身模板审查的证据范围。
