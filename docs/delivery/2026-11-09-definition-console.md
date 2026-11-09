@@ -70,3 +70,7 @@ R4非editable wheel SHA `7c122ff9979b224bfbcf67defea1dadf935a6609043039628e2f343
 [新fresh-context独立终核](2026-11-09-definition-console-review.md)及分别独立Spec/Standards复核通过，C1-S1关闭、开放finding0。主审核24文件完整范围、R4源码/wheel/install435及283固定Git blob、全部实际浏览器/原红/修后绿、下载/重启/清理、五JSON/两截图逐项脱敏；实际自身模板的原manifest/input/run与原MCP流均核原件，未重复运行模型或全组测试。
 
 冻结快照后仅本报告/计划和审查报告允许状态增量，源码、测试和公开原件不漂移。最终静态 **11份Markdown/208个本地链接和锚点/94条命令parser通过**，diff检查通过。C1本地出口完成，准备普通提交推送及本候选自己的必要CI/明确HTTPS远端核验；AC5整体、C2–C6、F7–F10/G1与训练闭环不提前标记完成。
+
+## 自己的 CI 终态
+
+61ccc2c 的 [CI42612128319](https://github.com/626619403/Ergora/actions/runs/42612128319) 已终态 Failure，Windows 四必要步骤通过，Ubuntu 研究超时测试的耗时浮点精确比较失败；实际 timed_out 正确。原独立 HTTPS 已核同完整 SHA，原失败保持，[仅测试精度修正](2026-11-09-deadline-precision.md)单独取得自己的新候选门禁，不将本地验收改写为原 CI 成功。C2 产品改动仍留本地。

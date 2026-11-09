@@ -187,7 +187,8 @@ def test_wall_deadline_covers_response_headers(source_project, monkeypatch):
             assert started.wait(timeout=10)
             clock.value += 30
             result = slow.result(timeout=10)
-            assert result["status"] == "timed_out" and result["elapsed_seconds"] == 30
+            assert result["status"] == "timed_out"
+            assert result["elapsed_seconds"] == pytest.approx(30)
         finally:
             release.set()
 

@@ -77,3 +77,30 @@ HTTP 重启前后 argv、端口和控制目录相同，PID/starttime 已更换�
 本报告追加后的静态复核为 **11 份 Markdown、208 个本地链接/锚点、94 条 CLI parser 命令通过**；结果另存本片 `independent/`，没有覆盖模型附件所用的历史静态原件。此项不替代应用或平台运行验收。
 
 最终计数：Standards **0 开放 finding**；Spec **0 开放 finding**；两轴原最高 **P2（C1-S1）均已关闭**。
+
+## 精确交付首次独立采样：CI 待终态
+
+本节更新上文本地终核时尚待的提交和远端状态。固定候选为 `61ccc2cce8bfcc3a46b4a069c78ea660f76063d9`，唯一父对象为 `d7ad71d37a1a3223b0cab3c93cbad1b522320377`，提交恰 24 文件，范围与原 acceptance 清单完全相同。相对该清单仅 PLAN、本片计划/交付和本审查报告四份已授权状态增量；对独立本地最终快照则仅前三份状态文档变化。原源码、测试和七份公开原件未漂移。
+
+本次从固定 Git 对象提取 **435 个包文件**，与保留 R4 wheel、非 editable 安装及原身份表逐字相同；wheel SHA256 仍为 `7c122ff9979b224bfbcf67defea1dadf935a6609043039628e2f3431f9c89b63`。**283 个冻结 Git 条目**与父对象逐字相同，21 份自身模板源身份也与该候选相同；portability workflow 未变化。后续 C2 工作树不参与本次对象验收，没有重新运行测试、模型、浏览器、安装或服务。
+
+**2026-11-09 11:53:10.332752 UTC**，独立读取官方 Actions 和 run 原页，确认[本候选自己的 Portability run 42612128319](https://github.com/626619403/Ergora/actions/runs/42612128319) 绑定完整候选和工作流，但状态仍为 **In progress**。本轮仅采样一次，未轮询、取消或重跑，不将必要步骤记为通过。
+
+**2026-11-09 11:53:51.022666→11:53:52.453036 UTC**，主审在已确认不属于 Git 仓库的目录清除继承的 Git 环境覆盖，禁用 system/global 配置及凭据助手，并禁用 SSH/HTTP 协议，对明确 `https://github.com/626619403/Ergora.git` 执行只读 `ls-remote`。原 trace 确认实际使用 `git-remote-https`，没有 SSH rewrite；远端 `refs/heads/refactor/architecture-foundations` 返回完整 SHA **`61ccc2cce8bfcc3a46b4a069c78ea660f76063d9`**。
+
+固定对象/R4 保留包和明确 HTTPS 门禁已通过；**本候选自己的双 OS 七个必要步骤仍待终态，精确交付尚未终结**。本次原对象、官方页面、HTTPS trace/回执及汇总分别保存在本片私有 `independent/commit-closure/`，`closure-sample.json` 固定此次原件身份；后续采样不得覆盖本次非终态证据。
+
+## 精确交付复采：CI 失败，未终结
+
+**2026-11-09 12:06:34.406607 UTC**，对同一固定候选 `61ccc2cce8bfcc3a46b4a069c78ea660f76063d9` 的官方新采样确认 run 42612128319 已为 **Failure 终态**。沿该原页取尽 job-group，确认两份实际 job、`selectedJobId`、完整候选 check/log URL 与 `job-completed` 标记；七个必要步骤中六项成功，一项失败：
+
+|官方 job|Build and install wheel|Packaged reference identity|Native application regression|Windows PowerShell 5.1 installer and upgrade|
+|---|---|---|---|---|
+|[Ubuntu 3.11，129142925279](https://github.com/626619403/Ergora/actions/runs/42612128319/job/129142925279)|success|success|[failure](https://github.com/626619403/Ergora/commit/61ccc2cce8bfcc3a46b4a069c78ea660f76063d9/checks/129142925279/logs/6)|平台条件不适用|
+|[Windows 3.12，129142925775](https://github.com/626619403/Ergora/actions/runs/42612128319/job/129142925775)|success|success|success|success|
+
+Ubuntu 官方失败 annotation 指向 `tests/test_research.py:190` 的 `test_wall_deadline_covers_response_headers`：状态确为 `timed_out`，但断言期望 `elapsed_seconds == 30`，实际为 `29.99999999999997`。该组汇总为 **1 failed、1304 passed、84 skipped、36 subtests passed / 838.44 秒**。本次只记录原 CI 事实，没有据此假定更深根因、修改测试/产品或发起重跑。
+
+此前固定对象、R4 包及明确 HTTPS 读取的通过证据继续保留；本次排除全部 C2 工作树，没有以新工作树验证旧包。独立原页、两 job、完整组列表及终态汇总另存 `independent/commit-closure/snapshot-02/`，`closure-terminal-failure.json` 固定身份，首次 In progress 采样未覆盖。
+
+**C1 本地两轴结论及 C1-S1 关闭保持，但候选 61ccc2c 的必要 CI 门禁失败，精确交付不能终结。** 未取消或重跑 CI，未重新运行模型、服务、安装或测试；后续修正须保留本次失败，并验其自己的精确候选。
