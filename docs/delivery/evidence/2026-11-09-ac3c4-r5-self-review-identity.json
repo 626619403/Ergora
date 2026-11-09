@@ -1,0 +1,25 @@
+{
+  "checked_at": "2026-11-09T02:47:13.782186+00:00",
+  "source": {
+    "docs/BACKUP_RECOVERY.md": "8c6ff8bd0ca587a4e18b36a154098b6f085226ea1e8d31a7d81c0998e47b8672",
+    "src/ergora/state.py": "2ed2dd4f719f593f5bfb6e7e83462118465b27c114b91ddbb88ef4ef7e13db18",
+    "src/ergora/services.py": "9d7ffa3a06384acff2802f5934c03f1bb6469ff84bbe2ea609602e6f7522bdb9",
+    "src/ergora/reference_task_submission.py": "f5fcd8bb17481925f407f51bb9aa38fc69b0e643cc4ccfec3b07b1fbe1bc3426"
+  },
+  "backend": "codex",
+  "inference_model": "gpt-6.1-sol",
+  "reasoning_effort": "high",
+  "run_id": "80e4cb76640c47d8ac73564fbbd64569",
+  "status": "succeeded",
+  "exit_code": 0,
+  "seconds": 96.92013340210542,
+  "input_digest": "67d16f30f7febac693c999affa50a5fe6f3985f79b0302dd0c4864c7b0a07daa",
+  "prompt_sha256": "2dd4c1513cc9e29ce13a96a1260b42e6972152a3381a4d4ed4081386e1e56ca3",
+  "attachment_bytes": 46348,
+  "attachment_sha256": "afc1f979acce4a9b500be59fda45641c0da31fdf9e5e2edffe555a72bfd37ac4",
+  "manifest_digest": "d8838304a2adbcfd066e489daf8efa433ba1dec4b64fa480e97cf45f931a063e",
+  "original_definition_libraries_removed": true,
+  "scope": "Actual configured hosted Codex through installed Ergora structure-review and task-MCP; supplied sources and recorded checks, no claim model executed tests or audited absent dependencies.",
+  "decision": "approve",
+  "result_sha256": "9e18d92d878d01a669d55713795cdc3f60f3a4ba319ac3fadb1447f9aacc6577"
+}

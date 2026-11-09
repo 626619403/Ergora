@@ -145,7 +145,7 @@ project register → 选择角色/核revision → services start所选栈
 |闭合但外部未确认|`task status --run-id`及`task external-status --run-id`|保留原结果/请求/回执/产物/fence；明确reconcile，未完成则resume-reconcile|
 |候选导出中断|`task export-status PROJECT TASK`|resume-export核原结果和实际ref；unknown不重fetch或复活已删分支|
 
-备份必须联合保存控制`ERGORA_HOME`、登记的CONFIG/STATE、业务Git仓库、Temporal持久数据及实际工具认证；控制SQLite备份不包含原任务/history/候选/租约。执行STATE中的`tasks/`、`ergora/task-*`、requests/receipts/artifacts/approvals/fences、workspaces、进程记录及ledger均属于恢复证据。先停止相关写者并核在途外部作业，再按[备份说明](#升级与持久数据)操作。
+备份必须联合保存控制`ERGORA_HOME`、登记的CONFIG/STATE、业务Git仓库、Temporal持久数据及实际工具认证；控制SQLite备份不包含原任务/history/候选/租约。执行STATE中的`tasks/`、`ergora/task-*`、requests/receipts/artifacts/approvals/fences、workspaces、进程记录及ledger均属于恢复证据。先停止相关写者并核在途外部作业，再按[备份说明](#升级与持久数据)操作。 完整同平台、原路径的离线操作及启动前核对见[联合备份与恢复手册](BACKUP_RECOVERY.md)。
 
 ### 服务停止后的读取与恢复
 

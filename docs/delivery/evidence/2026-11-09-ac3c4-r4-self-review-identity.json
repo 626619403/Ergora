@@ -1,0 +1,30 @@
+{
+  "checked_at": "2026-11-09T02:44:02.813138+00:00",
+  "source": {
+    "docs/BACKUP_RECOVERY.md": "9f023cb3be4d4888d45d7e726594b3457d60aefceec4743c95b56ad2a505602e",
+    "src/ergora/backups.py": "e0d266a8093ad6ae396264ac6c78da1e1c60b1149c865319b1373dda846091da",
+    "src/ergora/services.py": "9d7ffa3a06384acff2802f5934c03f1bb6469ff84bbe2ea609602e6f7522bdb9",
+    "src/ergora/reference_task_reconciliation.py": "a65c9b53b17e797bea48920cd0fdf2d85902ebb0b2394e269625d46c7bbbab95",
+    "src/ergora/reference_task_submission.py": "f5fcd8bb17481925f407f51bb9aa38fc69b0e643cc4ccfec3b07b1fbe1bc3426",
+    ".ergora/checks/ac3c4-recovery/r2/recovery.py": "00b1a56852992a341286abf5bf0cd117ac13cd1ae1a762cdc5719116c303c658",
+    ".ergora/checks/ac3c4-recovery/r4/continuation.py": "8f2143afab2cad1615fd62db6a55ccc9189b2873acc4bd185af5264ace899027",
+    ".ergora/checks/ac3c4-recovery/r4/observe-processes.py": "197a5cbcc9ac345423f1f35bcf39aa537068d8765c8657dc316b7a7d2ab880c1",
+    ".ergora/checks/ac3c4-recovery/r4/check-identities.py": "0bf9ff99c5ace7b7814070d662fd63bd8589057b2ceb5ec6321cf6a0dc7d561e"
+  },
+  "backend": "codex",
+  "inference_model": "gpt-6.1-sol",
+  "reasoning_effort": "high",
+  "run_id": "9766f7805b2e4380ba6feb74672ee785",
+  "status": "succeeded",
+  "exit_code": 0,
+  "seconds": 166.2325467672199,
+  "input_digest": "e864d79b8b6e4a80a1a71b8b7faf1825d10639d00539036c9cb57ee47b1a4ed2",
+  "prompt_sha256": "5ba71dad644d01236266572c17a1b3635d7a522c9efd40af5c31c38d3aeae8e6",
+  "attachment_bytes": 107106,
+  "attachment_sha256": "325bbd3edb738b52ac9fcbc945e7344e1e3126957600134b1e39d28124d17a6c",
+  "manifest_digest": "58f1f71243e81b043c102aa727d4d95b83ee98dda3d38e977696b2422241a7dc",
+  "original_definition_libraries_removed": true,
+  "scope": "Actual configured hosted Codex through installed Ergora structure-review and task-MCP; supplied sources and recorded checks, no claim model executed tests or audited absent dependencies.",
+  "decision": "request-changes",
+  "result_sha256": "d4587472ea116d085c91e0feb175d6d6fe24df0c5d7e3b514d3ff967063aa0d6"
+}

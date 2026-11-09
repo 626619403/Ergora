@@ -1,0 +1,127 @@
+{
+  "checked_at": "2026-11-09T02:40:13.180235+00:00",
+  "seconds": 44.471737006213516,
+  "baseline": "cee213a581895d491c1cd41b5fe79b23bfd09b59",
+  "external_archive_sha256": "3a52f9276228f4806a9d6fdd6b2df4569e979375654fab2ef0acc88dd278f8de",
+  "external_archive_bytes": 11489280,
+  "external_entries": 1992,
+  "control_manifest_sha256": "912ce5282e4f47d59acaa8e3337193ca6eff17d762778f8e4ea07932fa05512b",
+  "control_files": 71,
+  "same_path_restore": true,
+  "offline_restore_evidence": "r2 original CLI/tar plus exact full-tree/five-database/32-Git snapshots; r4 completes online checks with correct fence semantics and protected-only online inventory; r3 valid original histories retained",
+  "kept_originals": true,
+  "external_tree_restored_exactly": true,
+  "offline_databases_equal": true,
+  "database_count": 5,
+  "git_trees_unchanged": 32,
+  "frozen_reference_files": 283,
+  "dependencies": {
+    "installation/.venv": {
+      "linked_target_available": true,
+      "external_target_in_archive": false
+    },
+    "installation/bin/temporal": {
+      "linked_target_available": true,
+      "external_target_in_archive": false,
+      "sha256": "712217694cac9f786a72d4b6c876cd15f3dcf1bf31434d9fed6af25242a327a0"
+    },
+    "installation/bin/symphony": {
+      "linked_target_available": true,
+      "external_target_in_archive": false,
+      "sha256": "08d7aac26747fdc14022ade870cf7e530a6343ab92a040f39a4294b27a0cd5af"
+    }
+  },
+  "records": {
+    "resumed-v2": {
+      "task_id": "resumed-v2-public",
+      "run_id": "01a1be10-1f37-7b2a-95a0-f3519e5ef4f9",
+      "phase": "REVIEW_READY",
+      "candidate_sha": "b37b278189c8b0b3f0cdd1ef101d891311c15b4f",
+      "status_unchanged": true,
+      "same_submission": true,
+      "external_confirmed": false,
+      "original_fence_state": "not_recorded",
+      "history": {
+        "old_events": 161,
+        "events": 161,
+        "old_prefix_preserved": true,
+        "sha256": "b3d379108a592f6e4bd5c2af0d633ca8c37a7cc9e8d27172ecab539266417911",
+        "replay": "passed",
+        "queue": "development-tasks.composition-v2"
+      }
+    },
+    "rejected-v2": {
+      "task_id": "rejected-v2-public",
+      "run_id": "01a1be11-dc1c-70c8-8efa-cb273070aa1f",
+      "phase": "BLOCKED",
+      "candidate_sha": "10b493ad98b4dbb2fa10835c77a870541e97341a",
+      "status_unchanged": true,
+      "same_submission": true,
+      "external_confirmed": true,
+      "original_fence_state": "matches",
+      "history": {
+        "old_events": 167,
+        "events": 167,
+        "old_prefix_preserved": true,
+        "sha256": "d0be325a3f6596c5cbe349cd11678cb22e3d52dc63e77699f4b873a302ee2726",
+        "replay": "passed",
+        "queue": "development-tasks.composition-v2"
+      }
+    },
+    "cancelled-v2": {
+      "task_id": "cancelled-v2-public",
+      "run_id": "01a1be13-648f-7f1e-b1d8-89b25943f6fb",
+      "phase": "CANCEL_UNCONFIRMED",
+      "candidate_sha": "73d671bfb9140b2a1ee1256373e53cbc57d81853",
+      "status_unchanged": true,
+      "same_submission": true,
+      "external_confirmed": true,
+      "original_fence_state": "matches",
+      "history": {
+        "old_events": 162,
+        "events": 162,
+        "old_prefix_preserved": true,
+        "sha256": "9025f0059cab3796e5de6ca772c0af5a7b2fb02bca3a95e53d91ff3640da04f9",
+        "replay": "passed",
+        "queue": "development-tasks.composition-v2"
+      }
+    },
+    "legacy-v1": {
+      "task_id": "legacy-v1-public",
+      "run_id": "01a1be14-fba6-7ea5-9eae-b1c255386f8a",
+      "phase": "REVIEW_READY",
+      "candidate_sha": "939ad4a90afee369649469daa8435ecd4a7bf019",
+      "status_unchanged": true,
+      "same_submission": true,
+      "external_confirmed": false,
+      "original_fence_state": "not_recorded",
+      "history": {
+        "old_events": 161,
+        "events": 161,
+        "old_prefix_preserved": true,
+        "sha256": "dacf672b2fb0f7dd5ee5331037b44880f6429c58e8cb94c871fce43f2d607feb",
+        "replay": "passed",
+        "queue": "development-tasks"
+      }
+    }
+  },
+  "service_operations": [
+    {
+      "action": "start",
+      "outcome": "confirmed",
+      "daemon": "running"
+    },
+    {
+      "action": "start",
+      "outcome": "confirmed",
+      "daemon": "running"
+    },
+    {
+      "action": "shutdown",
+      "outcome": "confirmed",
+      "daemon": "not_running"
+    }
+  ],
+  "service_ports_closed": true,
+  "scope": "Offline same-platform same-path joint restore; original control backup and GNU tar, real original Supervisor/Temporal/dual workers/scanner; prior deterministic protocols, external venv/tool targets retained and checked, no cross-machine/environment reconstruction, model quality, online snapshot or OS isolation claim."
+}

@@ -62,3 +62,17 @@
 记录与限制：已核 `docs/USAGE.md` 对完整取消信封及外部确认的说明，PLAN/本片记录分别保留实现、验收、审查和待交付状态。`git diff --check` 通过；本审查只读重核最终 8 份 Markdown/91 本地链接无缺失，另核实现者 75 条 CLI parser 记录。文档链接/parser 是静态检查，不是运行验收。普通提交、自己的必要 CI 及即时远端精确终结由后续交付记录，本报告只给本地两轴结论，未借用 CR3c 的 CI。
 
 确定性协议 Agent 只证明协议、资源生命周期与可信执行契约；test-operator 是原 owner 合同身份，不推导真实业务人工验收或模型质量。Claude 不可用按用户授权回退，不声称模型错误独立。本轮没有重新验全部祖先权限/资源矩阵或未提供平台；多成员/嵌套仍属 AC4，完整联合备份恢复仍属 AC3c.4。范围内无其他实证 correctness 或 maintainability finding。
+
+## 提交后独立终核：2026-11-09 02:41 UTC
+
+- 固定 CR4 提交为 **`cee213a581895d491c1cd41b5fe79b23bfd09b59`**，父提交 `8948335ee2b2737bd8cc53e5c33f1fdd2f35ea94`，分支 `refactor/architecture-foundations`。已独立将 `git diff-tree` 的精确 **16 文件**与 `r3/review-scope.json` 比对，并对每个 `git show <commit>:<path>` 重算 SHA-256，全部一致。提交中的生产树仍匹配上述实际新 wheel，依赖、CI 与冻结文件均无差异；该提交中的本报告 SHA-256 为 `43c50ada4fd72c6962c9c01e896345b50c505108e85890c78df734cfad7f792f`。
+- 本片自己的 [Portability run 42551052990](https://github.com/626619403/Ergora/actions/runs/42551052990) 于 **02:41:48.705871 UTC** 独立读取为 **Success**。初始官方 REST jobs 返回的两 job `head_sha` 均为上述完整 CR4 SHA；后续 REST 遇到 HTTP 403 rate limit，最终结论由官方 run 页面及两个固定 job 页面直接读取。每个必要 step 均为 `success`、job 已完成，日志 URL 均指向该 CR4 commit 与对应 job；未见失败、取消或超时 step。未用只返回首项的 job 分页响应代替完整矩阵。
+
+|必要 job|独立核验的成功步骤|
+|---|---|
+|[native (ubuntu-latest, 3.11), 128946493666](https://github.com/626619403/Ergora/actions/runs/42551052990/job/128946493666)|Build and install wheel；Packaged reference identity；Native application regression|
+|[native (windows-latest, 3.12), 128946493982](https://github.com/626619403/Ergora/actions/runs/42551052990/job/128946493982)|Build and install wheel；Packaged reference identity；Native application regression；Windows PowerShell 5.1 installer and upgrade|
+
+- CI 读到成功后立即于 **02:41:48.877781 UTC** 发起显式 HTTPS 远端核验，**02:41:50.465610 UTC** 完成，exit 0、stderr 为空：`https://github.com/626619403/Ergora.git` 的 `refs/heads/refactor/architecture-foundations` 精确返回 **`cee213a581895d491c1cd41b5fe79b23bfd09b59`**。实际以 `/` 为工作目录、清除继承的全部 `GIT_*` 环境、设置 `GIT_CONFIG_GLOBAL=/dev/null`、`GIT_CONFIG_NOSYSTEM=1`、`GIT_TERMINAL_PROMPT=0`，执行 `git -c protocol.ssh.allow=never ls-remote --exit-code` 加上述公开 HTTPS URL 与精确 ref，排除工作区及全局 HTTPS→SSH rewrite 的影响；未将 SSH 结果冒充 HTTPS。
+
+本片需求符合性与可维护性均通过，固定提交、自己的必要 CI 和即时远端身份已闭合。此节为 CR4 提交后的同片记账，供后续普通提交携带；并不声称这段追加已包含于上述 CR4 固定对象，也不将当前 AC3c.4 工作区变更纳入本次审查。
