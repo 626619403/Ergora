@@ -111,3 +111,36 @@ worker 停启旅程保留前六份原请求；worker 停止时首审完成，没
 评审追加后独立执行现有静态检查：**11 份 Markdown、208 个本地链接 / 锚点、82 条现有 CLI parser** 通过，`git diff --check` 通过；原件为 `independent/static-documents.json` / `.log`。这里只检查文档与参数解析，不替代应用测试。
 
 **本地最终计数：RD-1 已关闭；Spec 0 未解决实证源码 finding，Standards 0 未解决实证标准 finding；剩余本地阻塞为 0。** 八份公开证据与保留的包、旅程、日志、模型原结果及源码身份均核对一致，模型保留的性能建议仍非阻塞。剩余仅为普通提交后该精确候选、自己的必要 CI 与明确 HTTPS 远端身份；这些交付门禁不包含在本地通过结论中。
+
+## 精确提交对象与交付终核
+
+已从 Git 对象独立核定普通交付提交 **`0fd881e4f21d2814eaf7ce0db47a7fd3c28c4144`**，唯一父提交为 `e9b682c4be4f19aa11aca4717a7f6d86050278ed`，实际变更恰为本片 **34 文件**。提交前最终完整 scope JSON / diff 的 SHA256 分别为 `59d0a26ed97f2d8b9855f666c0ebfd179ec6392b0e3676d5caf77608adaf3c3b` / `3a33d353620c9e56663de98b445c481e7b39fd14ad011ba6092d7f993392d2ea`；34 个 Git blob 均匹配逐文件记录。最终收口只登记已通过的本地门禁，没有改变已审生产候选。对象 diff SHA256 为 `b20ceb7c4c16b4ad6cc76046ea27b472f634349632977235aaed85ea002c24d0`；虽然固定 diff 把新增文件排在 tracked 文件之后，各文件的 34 段差异与对象 diff **逐字节相同**。
+
+提交内本报告 SHA256 为 `b8d738baee9270e356c5b109a94e805a6017909685c1ccff5cfe72bc115865cb`，与独立批准稿逐字节相同。另以固定提交的全部 `src/ergora` blob、原 R2 wheel 和非 editable 安装重新比较 **372 文件**，完全一致；wheel 仍为 `1d266efb0329f267383ba3abc295c7bf6421f1c3a8012a2d220dd7dae05a629b`。**283 份冻结文件**同时与父提交原 Git blob 及 manifest 相同；模型复审记录中的 **37 份源码**也全部匹配该提交，原 approve 结果 SHA 保持。此前本地运行证据由此绑定到本次精确提交，无需重跑服务或模型。独立对象记录为 `.ergora/checks/ac4-dag-runtime/independent/delivery-0fd-objects.json` / `.log` / `delivery-0fd-object.diff`。
+
+直接读取此固定提交的文档及目标对象，独立检查 **11 份 Markdown、209 个本地文件 / 锚点、82 条 CLI parser** 全部通过，固定对象 `git diff --check` 通过；没有使用下一纯设计片的工作树文档替代被核对象。
+
+### 本提交自己的必要 CI
+
+本提交的 `.github/workflows/portability.yml` 与父提交相同，SHA256 为 `81c168fdb140f44ccfdca497003e452355c9164a6ed6f8dfb8fa31729a1943ca`。本次变更包含生产代码，使用本提交自己的 [Portability CI42584734023](https://github.com/626619403/Ergora/actions/runs/42584734023)，没有引用前片 CI。
+
+评审者于 **2026-11-09 08:39:30.590626—08:39:33.254543 UTC** 重新读取官方 run 页面、完整 job-group 结果和两个 job 页面，均 HTTP 200。run 绑定完整提交 SHA；job-group 明确共 2 项、`hasMore=false`，两项均 completed / success。逐项核对官方步骤结论、完成标记和日志 URL 中的完整提交 / job 身份，**七个必要步骤全部 success**：
+
+|实际矩阵 job|必要步骤|
+|---|---|
+|Windows latest / Python 3.12，job `129051722739`|Build and install wheel；Packaged reference identity；Native application regression；Windows PowerShell 5.1 installer and upgrade|
+|Ubuntu latest / Python 3.11，job `129051723435`|Build and install wheel；Packaged reference identity；Native application regression|
+
+此处核验官方结果及精确日志 URL，没有冒称逐页读取全部测试日志。原 HTML / JSON 响应、UTC 时间、字节数和 SHA 保留在 `independent/delivery-0fd-ci-*`；汇总为 `independent/delivery-0fd-ci.json` / `.log`。作者原 HTML 的字节与所列 SHA 也已核对一致。
+
+### 明确 HTTPS 即时远端身份
+
+完成上述对象及 CI 核验后，评审者从仓库外 `/tmp` 独立执行：移除继承的全部 `GIT_*` 变量，禁用系统 / 全局 Git 配置，关闭 credential helper / askpass，并检查有效配置仅含命令行条目、没有 URL insteadOf / pushInsteadOf 重写。实际命令为：
+
+```text
+/usr/bin/git -c credential.helper= -c core.askpass= ls-remote --exit-code https://github.com/626619403/Ergora.git refs/heads/refactor/architecture-foundations
+```
+
+请求于 **2026-11-09 08:40:37.510803 UTC** 开始，**08:40:39.414164 UTC** 完成，**exit 0、stderr 零字节**。stdout 恰为完整提交 `0fd881e4f21d2814eaf7ce0db47a7fd3c28c4144`、TAB、`refs/heads/refactor/architecture-foundations` 和换行，共 86 字节，SHA256 为 `7e590817a7eaf37bf078b232235442a4f9e9edf318c762950f171ec19d2c5d8e`。原件为 `independent/delivery-0fd-remote.json` / `.stdout` / `.stderr` / `.config`。没有用 SSH、remote 别名、本地 tracking ref 或作者较早的远端读取替代此次核验。
+
+**本片 Spec、Standards、本地运行证据、精确提交对象、自己的双 OS 必要 CI 及明确 HTTPS 即时远端身份均通过；RD-1 关闭，剩余交付阻塞为 0。** 此段为该固定提交交付后的终核记账，未声称追加正文已存在于 `0fd881e`；下一设计片的六份工作树 Markdown 不属于本次批准对象。
