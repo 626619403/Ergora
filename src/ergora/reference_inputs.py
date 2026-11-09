@@ -142,7 +142,32 @@ class ReviewRequirementsInput(CompositionInput):
         return ReviewRequirementsActivities(cls.adapter(config))
 
 
-_INPUTS = {1: LegacyInput, 2: CompositionInput, 3: ReviewRequirementsInput}
+class ReviewDAGInput(ReviewRequirementsInput):
+    version = 4
+    queue_suffix = '.composition-v4'
+    requests_suffix = '-composition-v4'
+    submit_activity = task_envelopes.DAG_SUBMIT
+
+    @classmethod
+    def workflow_type(cls):
+        from .reference_workflows import ReviewDAGWorkflow
+
+        return ReviewDAGWorkflow
+
+    @classmethod
+    def adapter(cls, config: dict):
+        from .reference_workflows import ReviewDAGAdapter
+
+        return ReviewDAGAdapter({**config, 'requests': str(cls.request_root(Path(config['requests'])))})
+
+    @classmethod
+    def activities(cls, config: dict):
+        from .reference_workflows import ReviewDAGActivities
+
+        return ReviewDAGActivities(cls.adapter(config))
+
+
+_INPUTS = {1: LegacyInput, 2: CompositionInput, 3: ReviewRequirementsInput, 4: ReviewDAGInput}
 
 
 def workers(client, queue: str, config: dict) -> list:

@@ -8,11 +8,15 @@ import base64
 import hashlib
 import json
 
+from .review_dags import ReviewDAG
+
 
 _KIND = 'composition-task-admission'
 COMPOSITION_SUBMIT = 'ergora_composition_submit'
 REQUIREMENTS_SUBMIT = 'ergora_requirements_submit'
 REQUIREMENTS_POLL = 'ergora_requirements_poll'
+DAG_SUBMIT = 'ergora_review_dag_submit'
+DAG_POLL = 'ergora_review_dag_poll'
 
 
 def identity(value: dict) -> str:
@@ -54,7 +58,8 @@ def manifest_identity(snapshot: dict) -> str:
 
 
 def wrap(spec: dict, composition: dict) -> dict:
-    version = 3 if any('review_requirement' in member for member in composition['members'].values()) else 2
+    version = (4 if 'review_protocol' in composition else
+               3 if any('review_requirement' in member for member in composition['members'].values()) else 2)
     value = {'schema_version': version, 'kind': _KIND, 'legacy_spec': spec, 'composition': composition}
     return {**value, 'sha256': identity(value)}
 
@@ -115,7 +120,7 @@ def _policy(value: dict, mode: str) -> None:
         raise ValueError('Formal composition capabilities differ from their restricted mode')
 
 
-def _manifest_graph(snapshot: dict) -> dict:
+def manifest_graph(snapshot: dict) -> dict:
     try:
         return json.loads(base64.b64decode(snapshot['files']['composition.json']['content_base64'], validate=True))
     except RecursionError as error:
@@ -129,7 +134,14 @@ def review_members(composition: dict) -> dict:
     the executor share this narrower support contract; backend/resource checks
     still belong to the actual execution admission.
     """
-    graph = _manifest_graph(composition['manifest'])
+    graph = manifest_graph(composition['manifest'])
+    if composition.get('review_protocol') == 'dag-v1':
+        dag = ReviewDAG(graph, composition['review_instance'])
+        if not any(member['review_requirement'] == 'required' for member in composition['members'].values()):
+            raise ValueError('Formal review requires at least one required reviewer')
+        for path in dag.members:
+            dag.input_ports(path)
+        return dag.members
     if graph['schema_version'] != 1:
         if (graph['schema_version'] != 2
                 or any(member.get('review_requirement') not in ('required', 'advisory')
@@ -236,18 +248,22 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
     if document.get('kind') != _KIND and 'schema_version' not in document:
         return document, None
     if (set(document) != {'schema_version', 'kind', 'legacy_spec', 'composition', 'sha256'}
-            or type(document['schema_version']) is not int or document['schema_version'] not in (2, 3)
+            or type(document['schema_version']) is not int or document['schema_version'] not in (2, 3, 4)
             or document['kind'] != _KIND):
         raise ValueError('Unsupported formal task admission envelope')
     if document['sha256'] != identity({key: value for key, value in document.items() if key != 'sha256'}):
         raise ValueError('Formal task admission envelope digest mismatch')
     composition = document['composition']
-    if not isinstance(composition, dict) or set(composition) != {'manifest', 'root', 'preview_sha256', 'review_instance', 'members', 'diversity'}:
+    fields = {'manifest', 'root', 'preview_sha256', 'review_instance', 'members', 'diversity'}
+    if document['schema_version'] == 4:
+        fields.add('review_protocol')
+    if (not isinstance(composition, dict) or set(composition) != fields
+            or (document['schema_version'] == 4 and composition['review_protocol'] != 'dag-v1')):
         raise ValueError('Invalid formal composition selection')
     manifest_identity(composition['manifest'])
-    graph = _manifest_graph(composition['manifest'])
-    requirements = document['schema_version'] == 3
-    if requirements and graph['schema_version'] != 2:
+    graph = manifest_graph(composition['manifest'])
+    requirements = document['schema_version'] in (3, 4)
+    if document['schema_version'] == 3 and graph['schema_version'] != 2:
         raise ValueError('Formal v3 admission requires a versioned review requirements graph')
     if graph['root'] != composition['root'] or graph['preview_sha256'] != composition['preview_sha256']:
         raise ValueError('Formal composition identity differs from its frozen graph')
@@ -296,6 +312,8 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
             or (same and diversity['policy'] == 'require-distinct')
             or (same and diversity['policy'] == 'prefer-distinct' and not diversity.get('reason'))):
         raise ValueError('Formal composition diversity differs from its selected member backends')
+    if document['schema_version'] == 4:
+        review_members(composition)
     return document['legacy_spec'], composition
 
 
@@ -310,4 +328,5 @@ def summary(document: dict) -> dict:
         supported = True
     return {'envelope_sha256': document['sha256'], 'manifest_digest': composition['manifest']['digest'],
             'root': composition['root'], 'review_instance': composition['review_instance'],
+            **({'review_protocol': composition['review_protocol']} if 'review_protocol' in composition else {}),
             'members': composition['members'], 'diversity': composition['diversity'], 'runtime_supported': supported}

@@ -41,14 +41,17 @@ def test_control_plane_import_graph_is_acyclic(local_dependencies):
 
 
 @pytest.mark.parametrize("module,allowed", [
-    ("components", set()), ("contracts", set()), ("state", set()), ("task_envelopes", set()),
+    ("components", set()), ("contracts", set()), ("state", set()),
+    ("review_dags", set()), ("task_envelopes", {"review_dags"}),
     ("handoff", {"contracts", "task_envelopes"}),
     ("windows_job", set()), ("processes", {"windows_job"}),
 ])
 def test_foundations_do_not_depend_on_application_modules(local_dependencies, module_imports, module, allowed):
     assert local_dependencies[module] <= allowed
-    if module == 'task_envelopes':
-        assert {name.split('.')[0] for name in module_imports[module]} <= sys.stdlib_module_names
+    if module in {"review_dags", "task_envelopes"}:
+        external_roots = {name.split(".")[0] for name in module_imports[module]
+                          if not name.startswith("ergora.")}
+        assert external_roots <= sys.stdlib_module_names
 
 
 def test_application_modules_do_not_import_entry_points(local_dependencies):
@@ -61,7 +64,7 @@ def test_application_modules_do_not_import_entry_points(local_dependencies):
 def test_reference_internals_are_imported_only_at_the_boundary(module_imports):
     internal_roots = ("agent_platform", "dev_platform", "ergora.data.reference")
     for module, names in module_imports.items():
-        if module not in {"reference", "reference_executor", "reference_task_creation", "reference_task_runtime", "reference_workflows", "reference_inputs", "reference_worker", "reference_task_events", "reference_task_evidence", "reference_task_submission", "reference_task_approval", "reference_task_cancellation", "reference_task_export", "reference_task_reconciliation"}:
+        if module not in {"reference", "reference_executor", "reference_task_creation", "reference_task_runtime", "reference_workflows", "reference_inputs", "reference_worker", "reference_review_opinions", "reference_task_events", "reference_task_evidence", "reference_task_submission", "reference_task_approval", "reference_task_cancellation", "reference_task_export", "reference_task_reconciliation"}:
             internals = {name for name in names
                          if any(name == root or name.startswith(root + ".") for root in internal_roots)}
             assert not internals, (module, internals)

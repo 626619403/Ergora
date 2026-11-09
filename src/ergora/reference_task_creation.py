@@ -178,6 +178,7 @@ class _Creation:
                                'same_backend_members': sorted(composition['diversity']['same_backend_members'])}
             if (composition['manifest']['digest'] != option['manifest_digest']
                     or composition['review_instance'] != option['review_instance']
+                    or composition.get('review_protocol') != option.get('review_protocol')
                     or overrides.keys() - composition['members'].keys() or saved_diversity != diversity):
                 raise ValueError('Creation intent composition differs from its saved selection')
             for path, member in composition['members'].items():

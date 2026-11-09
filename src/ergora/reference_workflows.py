@@ -3,18 +3,18 @@
 import asyncio
 from contextlib import AsyncExitStack
 from datetime import timedelta
-import hashlib
 import json
-import re
 
 from temporalio import activity, workflow
 from temporalio.exceptions import ApplicationError
 
 with workflow.unsafe.imports_passed_through():
-    from dev_platform.activities import Activities, require
-    from dev_platform.adapter import FileAdapter, ContractViolation, read_raw
+    from dev_platform.activities import Activities
+    from dev_platform.adapter import FileAdapter, ContractViolation
     from dev_platform.workflow import DevelopmentWorkflow, StopWork
     from ergora import task_envelopes
+    from ergora.review_dags import ReviewDAG
+    from ergora.reference_review_opinions import review_observation
 
 
 class CompositionAdapter(FileAdapter):
@@ -132,6 +132,7 @@ class ReviewRequirementsAdapter(CompositionAdapter):
     envelope_version = 3
 
 
+
 class ReviewRequirementsActivities(CompositionActivities):
     @activity.defn(name=task_envelopes.REQUIREMENTS_SUBMIT)
     async def submit(self, context: dict) -> dict:
@@ -146,47 +147,7 @@ class ReviewRequirementsActivities(CompositionActivities):
                 receipt = await self.adapter.poll(job)
             if receipt is None:
                 return None
-            # FileAdapter has verified terminal structure, job identity and every
-            # artifact's bytes. A failed process alone is never a review opinion.
-            artifacts = {item['name']: item for item in receipt['artifacts']}
-            if 'composition-review-decision' not in artifacts:
-                require(receipt['state'] != 'SUCCEEDED', 'Successful review is missing its trusted decision')
-                return {'receipt': receipt, 'review_decision': None}
-
-            def document(name):
-                item = artifacts[name]
-                raw = read_raw(self.adapter.path('artifacts', item['path']), 16_777_216)
-                require(hashlib.sha256(raw).hexdigest() == item['sha256'], 'Review opinion artifact changed while reading')
-                return json.loads(raw)
-
-            decision = document('composition-review-decision')
-            context = job['context']
-            actor = receipt['actor']
-            expected = {'schema_version': 1, 'kind': 'formal-review-decision',
-                'job_id': job['job_id'], 'job_sha256': job['job_sha256'],
-                'candidate_sha': context['expected_candidate_sha']}
-            require(isinstance(decision, dict) and type(decision.get('schema_version')) is int
-                    and set(decision) == expected.keys() | {'decision', 'result_sha256'}
-                    and all(decision[key] == value for key, value in expected.items()), 'Review decision binding mismatch')
-            require(decision['decision'] in ('approve', 'request-changes'), 'Invalid trusted review opinion')
-            require(isinstance(decision['result_sha256'], str) and re.fullmatch(r'[a-f0-9]{64}', decision['result_sha256']),
-                    'Invalid model result digest in trusted review opinion')
-            approved = decision['decision'] == 'approve'
-            require(receipt['state'] == ('SUCCEEDED' if approved else 'FAILED'), 'Review opinion differs from its original terminal state')
-            require(actor['role'] == 'reviewer' and actor['kind'] == 'agent', 'Unexpected review executor role/kind')
-            require(receipt['candidate_sha'] == context['expected_candidate_sha'], 'Review opinion candidate mismatch')
-            require(actor['id'] not in context['author_ids'] and actor['session_id'] not in context['author_sessions'],
-                    'Review opinion requires an independent principal and session')
-            required = set(context['spec']['profile']['artifacts_by_stage']['review'])
-            require(required <= artifacts.keys(), 'Missing required review artifacts')
-            checks = {check['id']: check['status'] for check in receipt.get('checks', [])}
-            require(checks.get('independent-review') == ('pass' if approved else 'fail')
-                    and all(status == 'pass' for name, status in checks.items() if name != 'independent-review'),
-                    'Review checks differ from the trusted opinion')
-            invocation = document('composition-invocation')
-            require(invocation['status'] == 'succeeded' and invocation['result_sha256'] == decision['result_sha256'],
-                    'Review opinion differs from the actual successful model result')
-            return {'receipt': receipt, 'review_decision': decision['decision']}
+            return review_observation(self.adapter, job, receipt)
         except (ContractViolation, KeyError, TypeError, ValueError) as error:
             raise ApplicationError(str(error), type='ContractViolation', non_retryable=True) from error
 
@@ -243,6 +204,89 @@ class ReviewRequirementsWorkflow(CompositionDevelopmentWorkflow):
             reference.update(review_requirement=self.admission['composition']['members'][path]['review_requirement'],
                              decision=self.review_decisions[path])
         return aggregate
+
+    @workflow.run
+    async def run(self, document: dict) -> dict:
+        return await self._run_document(document)
+
+
+class ReviewDAGAdapter(ReviewRequirementsAdapter):
+    envelope_version = 4
+
+
+class ReviewDAGActivities(ReviewRequirementsActivities):
+    @activity.defn(name=task_envelopes.DAG_SUBMIT)
+    async def submit(self, context: dict) -> dict:
+        return await super().submit(context)
+
+    @activity.defn(name=task_envelopes.DAG_POLL)
+    async def poll(self, job: dict) -> dict | None:
+        return await super().poll(job)
+
+
+@workflow.defn(name='ErgoraCompositionWorkflowV4')
+class ReviewDAGWorkflow(ReviewRequirementsWorkflow):
+    """Schedule original leaf stages when their frozen control predecessors finish."""
+
+    envelope_version = 4
+    operations = {'dev_submit': task_envelopes.DAG_SUBMIT, 'dev_poll': task_envelopes.DAG_POLL}
+
+    def context(self, stage, expected_sha=None, unit=None, dependencies=None):
+        context = super().context(stage, expected_sha, unit, dependencies)
+        if stage.startswith('review:'):
+            composition = self.admission['composition']
+            dag = ReviewDAG(task_envelopes.manifest_graph(composition['manifest']), composition['review_instance'])
+            ports = dag.input_ports(stage.removeprefix('review:'))
+            context['review_ports'] = {'schema_version': 1, 'kind': 'formal-review-ports', 'ports': ports,
+                'producers': {path: self.results['review:' + path] for path in ports['sources']}}
+            if len(json.dumps(context, ensure_ascii=False, sort_keys=True, separators=(',', ':'),
+                              allow_nan=False).encode('utf-8')) > 1_000_000:
+                raise StopWork('Complete review DAG context exceeds 1,000,000 bytes; split the task')
+        return context
+
+    async def stage(self, stage, expected_sha=None, unit=None, dependencies=None):
+        if stage != 'review':
+            return await super().stage(stage, expected_sha, unit, dependencies)
+        composition = self.admission['composition']
+        dag = ReviewDAG(task_envelopes.manifest_graph(composition['manifest']), composition['review_instance'])
+        scopes = {scope['path']: asyncio.Semaphore(scope['limit'])
+                  for leaf in dag.members.values() for scope in leaf['concurrency_scopes']}
+        remaining, completed, running, sessions = set(dag.members), set(), {}, set()
+
+        async def review(path):
+            async with AsyncExitStack() as stack:
+                for scope in reversed(dag.members[path]['concurrency_scopes']):
+                    await stack.enter_async_context(scopes[scope['path']])
+                return await self.stage('review:' + path, expected_sha, unit, dependencies)
+
+        try:
+            while remaining or running:
+                if self.cancel_reason:
+                    raise StopWork(self.cancel_reason)
+                for path in sorted(remaining):
+                    if set(dag.predecessors[path]) <= completed:
+                        running[path] = asyncio.create_task(review(path))
+                        remaining.remove(path)
+                await workflow.wait(running.values(), return_when=asyncio.FIRST_COMPLETED)
+                for path in sorted(list(running)):
+                    if running[path].done():
+                        receipt = await running.pop(path)
+                        if self.cancel_reason:
+                            raise StopWork(self.cancel_reason)
+                        session = receipt['actor']['session_id']
+                        if session in sessions:
+                            raise StopWork('Composition reviewers must use distinct independent sessions')
+                        sessions.add(session)
+                        completed.add(path)
+            aggregate = self._aggregate(expected_sha, dag.members,
+                [self.results['review:' + path] for path in dag.members])
+            self.results['review'] = aggregate
+            return aggregate
+        finally:
+            for task in running.values():
+                task.cancel()
+            if running:
+                await asyncio.gather(*running.values(), return_exceptions=True)
 
     @workflow.run
     async def run(self, document: dict) -> dict:

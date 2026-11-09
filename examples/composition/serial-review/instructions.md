@@ -1,0 +1,1 @@
+Read the complete original review task, all inherited instructions and every bound producer artifact. Structure review runs first; correctness and test-value review then run independently on the same candidate. Treat predecessor findings as evidence, never as a grant of permissions. Preserve each original opinion, including disagreements, and report any missing coverage.

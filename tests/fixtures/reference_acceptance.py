@@ -129,10 +129,23 @@ async def main():
         workflow_source = root / 'workflow-source'
         shutil.copytree(examples / 'composition/structure-review', workflow_source)
         graph_definition = read(workflow_source / 'workflow.json')
-        if mode.startswith('composition-requirements-'):
+        if mode.startswith('composition-requirements-') or mode == 'composition-no-worker-sdk-v3':
             graph_definition['schema_version'] = 2
             graph_definition['nodes'][0]['review_requirement'] = 'required'
             graph_definition['nodes'].append({'id': 'gather', 'join': 'all', 'depends_on': ['review']})
+            graph_definition['outputs'] = {'result': {'node': 'gather', 'output': 'result'}}
+        elif mode.startswith('composition-dag-'):
+            first = graph_definition['nodes'][0]
+            first['review_requirement'] = 'advisory'
+            graph_definition['schema_version'] = 2
+            for number in range(1, 5 if mode.endswith('-capacity') else 3):
+                node = deepcopy(first)
+                previous = 'review' if number == 1 or not mode.endswith('-capacity') else f'review-{number - 1}'
+                node.update(id=f'review-{number}', review_requirement='required', depends_on=[previous],
+                            inputs={'task': {'node': previous, 'output': 'result'}})
+                graph_definition['nodes'].append(node)
+            graph_definition['nodes'].append({'id': 'gather', 'join': 'all',
+                'depends_on': [node['id'] for node in graph_definition['nodes'][1:]]})
             graph_definition['outputs'] = {'result': {'node': 'gather', 'output': 'result'}}
         elif mode == 'composition-multiple':
             another = deepcopy(graph_definition['nodes'][0])
@@ -148,6 +161,10 @@ async def main():
         task_definition = {'schema_version': 2, 'task_id': 'task-1', 'task_type': kind, 'issue_id': '1', 'input': task_input,
             'composition': {'manifest': str(manifest_path), 'manifest_digest': manifest['digest'],
                             'review_instance': 'root', 'mode': 'task-mcp' if mode == 'composition-task-mcp' else 'text-only'}}
+        if mode.startswith('composition-dag-'):
+            task_definition['composition'].update(review_protocol='dag-v1', backend_overrides={
+                'root/review': {'binding': {'tool': 'codex', 'model': 'fixture-reject'},
+                                'reason': 'Transport the original advisory failed receipt without changing its opinion'}})
         if mode in ('composition-review-reject', 'composition-review-timeout', 'composition-review-cancel',
                     'composition-requirements-reject', 'composition-requirements-mutate'):
             model = 'fixture-' + mode.rsplit('-', 1)[1]
@@ -280,7 +297,14 @@ async def main():
                         {'work:unit': records['work:unit']} if stage == 'integrate' else
                         {'integration': records['integrate']} if stage == 'verify' else
                         {'verification': records['verify'], 'plan': records['plan']} if stage == 'review' else {})
-        actual_stage = 'review:root/review' if stage == 'review' and mode.startswith('composition-requirements-') else stage
+        if stage == 'review' and mode.startswith('composition-dag-'):
+            from review_dag_acceptance import exercise
+
+            print(json.dumps(await exercise(root, mode.removeprefix('composition-dag-'), app, activities,
+                installation, state, runtime, requests, dependencies, expected)))
+            return
+        actual_stage = ('review:root/review' if stage == 'review' and
+            (mode.startswith('composition-requirements-') or mode == 'composition-no-worker-sdk-v3') else stage)
         context = app.context(actual_stage, expected, task_input["work_units"][0] if stage == "work:unit" else None, dependencies)
         job = await activities.submit(context)
         request = requests / "task-1" / (context["job_id"] + ".json")
@@ -324,6 +348,18 @@ async def main():
                 return
             raise AssertionError('Invalid composition admission was accepted')
         if stage == 'review' and composition_mode:
+            if mode.startswith('composition-no-worker-sdk-'):
+                import importlib.abc
+
+                class NoWorkerSDK(importlib.abc.MetaPathFinder):
+                    def find_spec(self, fullname, path=None, target=None):
+                        if fullname == 'ergora.reference_workflows' or fullname == 'temporalio' or fullname.startswith('temporalio.'):
+                            raise ModuleNotFoundError('Optional worker SDK is deliberately unavailable: ' + fullname)
+
+                for name in list(sys.modules):
+                    if name == 'ergora.reference_workflows' or name == 'temporalio' or name.startswith('temporalio.'):
+                        del sys.modules[name]
+                sys.meta_path.insert(0, NoWorkerSDK())
             if mode == 'composition-replace-object':
                 mirror = runtime / 'workspaces/task-1/repo.git'
                 original = git(mirror, 'rev-parse', starting + ':src/removed.txt').stdout.strip()
@@ -397,7 +433,7 @@ async def main():
                 # the production monitor's environment allowlist unchanged.
                 codex.write_text(f"#!{sys.executable}\nimport runpy,sys\nsys.argv.extend(['--fixture-checkout',{str(target)!r}])\nrunpy.run_path({str(fixture)!r},run_name='__main__')\n")
             receipt = reference.executor(installation, state.root, request)
-        if stage == 'review' and mode.startswith('composition-requirements-'):
+        if stage == 'review' and (mode.startswith('composition-requirements-') or mode == 'composition-no-worker-sdk-v3'):
             if mode.endswith('-mutate'):
                 assert receipt['state'] == 'FAILED', receipt
                 assert await activities.poll(job) == {'receipt': receipt, 'review_decision': None}

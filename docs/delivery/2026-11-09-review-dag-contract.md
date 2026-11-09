@@ -27,3 +27,5 @@
 [新独立设计评审](2026-11-09-review-dag-contract-review.md) Spec/Standards通过，DG-1/2关闭，terminal-only Inspection适用边界已澄清；没有新增生产bug或要求新的网络/账本能力。完整scope为7份Markdown，含前片精确提交/CI/远端终结记账；没有生产/schema/依赖/CI变更。最终链接与现有CLI parser静态核验另按实际结果登记，不为文档变更重跑应用套件或模型。下一个实现候选为AC4.3b，仍须自身模板及全新独立实现审查。
 
 最终静态核验 **7份Markdown、102本地链接/锚点、79条已有CLI parser**通过，`git diff --check`通过。原件在`.ergora/checks/ac4-dag-contract/static-documents.json`；新独立者另核7份/100链接（最终两条互链加入前）通过。当前提交全为文档，按现有Portability的Markdown路径过滤不要求另跑应用CI，未借前片CI声称本片新功能通过。普通交付与精确远端另核。
+
+本片已精确交付`e9b682c4be4f19aa11aca4717a7f6d86050278ed`（7文档）。同一独立者从Git对象逐份核原批准稿与完整清单，102链接/锚点通过，原CI的Markdown过滤适用；随后2026-11-09 07:09:15.760037 UTC明确HTTPS读取返回同完整SHA。完整终结见[独立报告](2026-11-09-review-dag-contract-review.md#精确提交对象及文档门禁终核)，后片WIP未纳入本片。

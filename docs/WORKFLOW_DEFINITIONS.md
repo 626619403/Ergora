@@ -2,7 +2,7 @@
 
 工作流包把精确版本的专家或子工作流组合成有界 DAG。可以单独使用结构审查模板，也可以把结构、正确性、测试价值三个模板并行组合，再串接执行模板。结构父链决定继承；工作依赖只通过具名端口传递数据。
 
-`composition` 提供静态检查、不可覆盖的版本库、完整预览、可携带的静态组合包与显式单叶调用。预览不调用模型；`run-input` 可将准备好的输入交给所选后端。正式开发按[六阶段流程](USAGE.md#正式任务的操作顺序与恢复)执行，审查阶段可运行嵌套的只读并行分支并作必需all-join汇合，具体配置见[正式审查组合](USAGE.md#为正式任务冻结审查组合)。运行态前驱输出和通用串行图沿[AC计划](plans/2026-11-08-agent-composition.md)继续接入。
+`composition` 提供静态检查、不可覆盖的版本库、完整预览、可携带的静态组合包与显式单叶调用。预览不调用模型；`run-input` 可将准备好的输入交给所选后端。正式开发按[六阶段流程](USAGE.md#正式任务的操作顺序与恢复)执行，审查阶段可运行嵌套的只读串并行分支并作显式all-join汇合，具体配置见[正式审查组合](USAGE.md#为正式任务冻结审查组合)。只读审查的数据端口见[正式DAG协议](#正式只读审查的数据端口)；写执行者分配沿[AC计划](plans/2026-11-08-agent-composition.md)继续接入。
 
 ## 运行示例
 
@@ -63,7 +63,7 @@ ergora composition prepare-from-manifest ./kernel-delivery-manifest root/review/
 |---|---|
 |`schema_version`、`id`、`version`、`description`|版本库与CLI展示；格式版本为严格整数1或2，小写 kebab ID、数字三段精确版本，无隐式 latest。|
 |`resources`|有序本地 instructions/context/Skill；可以为空。复用 Agent 的资源格式和完整摘要检查。|
-|`inputs`|输入端口名称数组；静态检查映射，正式只读审查当前将根task沿祖先直映至各叶，前驱输出仍未执行。|
+|`inputs`|输入端口名称数组；静态检查映射，正式`dag-v1`按冻结绑定投影根task或已完成前驱的具名输出。|
 |`outputs`|输出端口→来源绑定，来源为自身输入或本图节点输出。|
 |`nodes`|Agent引用、Workflow引用、all-join；决定结构实例和本地图。|
 |`permissions`|本工作流的请求/子级上限；整条结构祖先链与项目grant检查。|
@@ -92,13 +92,31 @@ ergora composition prepare-manifest review-requirements 1.0.0 --grant examples/c
 
 正式开发可使用此组合，配置方式见[冻结审查组合](USAGE.md#为正式任务冻结审查组合)。组合至少包含一名必需审查者；所有必需和建议分支都必须完成。新职责图的选定输出必须指向覆盖全部成员的显式all-join，即使只有一个成员也相同；旧v1单叶图保持原运行合同。可信运行器核对同一候选、独立会话、完整产物和实际模型意见后，才允许建议 `request-changes` 随原 finding 一起进入汇合。其原回执保持 `FAILED`，汇合记录职责与意见；必需请求修改、运行失败、缺失、超时、合同破坏或未确认清理仍阻塞。单独 `run-input` 调用选定叶子，不聚合工作流或产生正式批准。
 
+## 正式只读审查的数据端口
+
+[serial-review](../examples/composition/serial-review/workflow.json) 复用三份独立子模板：先完成结构审查，再并行运行正确性与测试价值审查，最后显式all-join。导入本手册开头的专家与三份子模板后：
+
+```bash
+ergora composition import examples/composition/serial-review
+ergora composition prepare-manifest serial-review 1.0.0 --grant examples/composition/preview-grant.json --directory ./serial-review-manifest
+ergora composition verify-manifest ./serial-review-manifest
+```
+
+在用户任务定义v2的`composition`中显式设置`review_protocol: "dag-v1"`并填写这份manifest的路径和digest，再按[正式任务顺序](USAGE.md#正式任务的操作顺序与恢复)预览、创建、启动和批准计划。保存的正式信封为v4，使用独立queue/request-root；没有该字段的任务保持原v2/v3合同，不自动升级。它仍是原六阶段中的review，不另外执行inventory、计划或verify。所有成员是只读reviewer，至少一名required；执行者分配暂不在此入口内。
+
+结构parent决定祖先资源和权限，`depends_on`只决定先后，`inputs/outputs`决定具体数据来源。只有控制依赖的审查意见仍进入最终聚合，但不会自动成为下游的提示或Skill。嵌套Workflow必须等其全部节点完成才发布具名输出；它可以有多输出。选定review子树只有一个终结输出，投影链终点必须为显式all-join，完成依赖的传递覆盖须包含每名审查者（包括串行上游）。
+
+每个输入用`bindings`映射到`task`或稳定的`实例路径#端口`；`values`表保存唯一值，join的值引用每个直接依赖的全部具名输出，重复模板实例保留各自路径。模型实际输入中的`review_inputs.results`为所有被绑定的审查来源提供原stage、回执与摘要、全部原产物正文；原request/context/receipt/claim、候选和实际读取SHA在调用前核验。建议request-changes可以流入下游，保留FAILED原件；运行失败不能提供合格端口值。
+
+动态端口与前驱正文完整内联到实际prompt；task-mcp仍只开放本叶结构祖先及自身的固定资源，不自动开放兄弟或前驱的宿主文件。全部祖先材料与前驱原产物共同计入1,000,000字节完整输入限额。共享表避免相同join值递归展开，但不同审计产物内部的正文仍可能重复，因此长审计链可能提前超限；此时明确停止，不截断或省略材料。跨成员会话隔离、祖先并发限额、取消、未知对账与原history恢复沿原运行所有者处理。
+
 ## 完整继承与冲突
 
 每个叶子按 root→parent→自身的顺序拼装全部祖先 Skill 指令与上下文，以及各层初始指令。组合模板本身不额外调用模型。预览给出每份正文、内容身份、全部来源、完整拼装正文和 SHA；Skill 的必读正文是 `SKILL.md`，目录里的脚本和其他附件仍属于按需资源。
 
 相同逻辑资源ID对应不同内容或种类会拒绝。同名Skill按实际frontmatter加载名称检查，不同树拒绝；同名同树可合并，但保留全部逻辑ID与来源，并检查每个来源都可读。不会用最后写入覆盖祖先。兄弟和前驱的Skill不会成为继承材料，前驱只有端口数据；重复引用不共享可变会话。
 
-静态材料完整交付预览不证明模型理解、遵从或已实际读到。实际调用固定原实例和本次任务正文，再检查完整输入容量并保留装载证据；不足时拒绝，不静默截断。前驱端口的动态输出仍在后续计划中。
+静态材料完整交付预览不证明模型理解、遵从或已实际读到。实际调用固定原实例和本次任务正文，再检查完整输入容量并保留装载证据；不足时拒绝，不静默截断。正式`dag-v1`会将明确绑定的前驱原产物完整加入实际输入；单独`run-input`仍只调用一个叶子。
 
 ## 权限路径和预算
 

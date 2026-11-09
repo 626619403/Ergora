@@ -1,8 +1,30 @@
 # 当前架构与扩展边界
 
+AC4.3b 为显式`review_protocol: dag-v1`接入正式信封v4。`review_dags`只从唯一冻结图推导叶子依赖与稳定端口共享表，由信封准入、原Workflow和Executor共同消费；v4 Workflow按已完成前驱释放叶子，并继续使用所有结构祖先并发限额。原Executor通过版本Input的请求根核前驱原request/context/receipt/claim、候选与实际产物字节，再把完整正文放入实际prompt；共同可信意见读取归不依赖Temporal的`reference_review_opinions`，原活动与Executor直接调用。结构继承不随数据依赖扩张，原v1/v2/v3字节、形状与路由保留；只读DAG不包含写执行者分配。实现与各候选验收状态见[运行记录](../delivery/2026-11-09-review-dag-runtime.md)，用法见[端口手册](../WORKFLOW_DEFINITIONS.md#正式只读审查的数据端口)。
+
+```mermaid
+flowchart LR
+  Define[原定义库/manifest] --> DAG[review_dags: 依赖与端口数据]
+  Define --> Envelope[task_envelopes: 显式v4身份]
+  DAG --> Envelope
+  Envelope --> Input[WorkflowInput: 队列与请求根]
+  Input --> Flow[原六阶段 / v4 review调度]
+  DAG --> Flow
+  Flow --> Job[原stage/job/context]
+  Job --> Executor[原Executor / monitor]
+  DAG --> Executor
+  Receipt[前驱原请求 / receipt / claim] --> Executor
+  Opinion[共用可信意见读取 / 无SDK] --> Executor
+  Opinion --> Poll[原FileAdapter / poll活动]
+  Executor --> Prompt[完整祖先 / 候选 / 前驱原件]
+  Prompt --> Agent[实例所选后端]
+  Agent --> Poll
+  Poll --> Flow
+```
+
 AC4.2a 的 WorkflowDefinition v2 在 reviewer 实例上声明 `review_requirement`，原编译器将其投影到预览v2。AC4.2b 的正式信封v3冻结所有叶子的必需/建议职责，通过 `WorkflowInput` 的局部注册选择专用队列、请求目录及活动；原v1/v2身份和历史不换协议。可信Executor从已核模型结果发布绑定原job/candidate/调用摘要的意见产物，原request-changes回执保持FAILED。专用poll复用FileAdapter核全部原件，再核意见合同；原六阶段中的并行审查仅允许合格建议意见继续，必需拒绝、运行失败及取消仍走原stop/fence。聚合v2逐成员保留职责、意见与原收据引用，至少一名必需审查者且全部分支完成。不新增调度器或账本。全v1定义/预览与AgentDefinition格式保持；旧v1审查叶子在新组合中仍为必需。格式与使用见[工作流手册](../WORKFLOW_DEFINITIONS.md#必需与建议审查的静态声明)，实际验证状态见[本片记录](../delivery/2026-11-09-advisory-runtime.md)。
 
-2026-11-09补充：原v1六阶段继续使用单角色绑定；v2在同一六阶段的review内支持单叶或多个嵌套只读审查分支，经显式必需all-join汇合。AC2的局部后端适配器与AC3a/d的[专家库](../AGENT_DEFINITIONS.md)、[嵌套图/继承编译](../WORKFLOW_DEFINITIONS.md)保持职责分离。完整叶子输入、只读任务MCP与共同能力准入由AC3b拥有；完整静态manifest、正式信封及原运行身份由AC3c拥有。AC4.1复用同一Temporal与执行账本：稳定实例路径映射各自stage/job，祖先共享配额控制并发，汇合只引用原收据，不新增模型批准或调度器。通用串行依赖、写执行者分配与页面仍按[AC计划](../plans/2026-11-08-agent-composition.md)推进，实际验收状态见[本片记录](../delivery/2026-11-09-parallel-reviews.md)。
+2026-11-09补充：原v1六阶段继续使用单角色绑定；v2在同一六阶段的review内支持单叶或多个嵌套只读审查分支，经显式必需all-join汇合。AC2的局部后端适配器与AC3a/d的[专家库](../AGENT_DEFINITIONS.md)、[嵌套图/继承编译](../WORKFLOW_DEFINITIONS.md)保持职责分离。完整叶子输入、只读任务MCP与共同能力准入由AC3b拥有；完整静态manifest、正式信封及原运行身份由AC3c拥有。AC4.1复用同一Temporal与执行账本：稳定实例路径映射各自stage/job，祖先共享配额控制并发，汇合只引用原收据，不新增模型批准或调度器。当时未接入的串行端口已由上文AC4.3b接线；写执行者分配与页面仍按[AC计划](../plans/2026-11-08-agent-composition.md)推进，实际验收状态见[本片记录](../delivery/2026-11-09-parallel-reviews.md)。
 
 2026-11-05，R8后的当前导航，覆盖F1项目定义、F2安装/运维、F3正式任务CLI/API生命周期与F4网页消费者。F3已通过[阶段验收](../delivery/2026-11-03-f3-completion.md)，F4的创建/原ID恢复、原运行/计划/批准/取消/对账/导出及有界事件/job文本均已实现，[完整页面收口](../delivery/2026-11-05-f4-completion.md)的恢复与服务退出验收单独登记。F5.1只读证据索引与F5.2预算/用量事实CLI/API均已交付；F5.3a原生交接包及离线校验已实现，验收单独登记，F5.3b显式HTTP下载已实现，发行与真实下载验收单独登记，F5.4页面的发行/浏览器及独立审查、精确提交/双OS CI和同片终结通过；F5.5实际服务恢复组合、新综合独立审查与纯文档精确交付/远端终结通过，完整F5完成；G0全新用户旅程独立进行。历史[A1审计](2026-11-01-audit.md)及[R8记录](../delivery/2026-11-02-refactoring-exit.md)保留原身份与范围。设计约束见[ADR0001](decisions/0001-refactoring-foundations.md)/[0002](decisions/0002-static-boundaries.md)。
 

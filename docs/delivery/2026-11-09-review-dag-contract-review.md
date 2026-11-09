@@ -80,3 +80,25 @@
 5. 最终非 editable 包、283 冻结文件、真实 CLI/Supervisor/Temporal/evidence/离线 handoff、旧历史重放与进程清理；本片自己的真实模板审查和**新的** fresh-context 实现评审，普通交付后另核自己的 CI 与精确远端。
 
 本报告及其发现处置属于 AC4.3a，不触发递归审查；后片实现需要新的审查者。
+
+## 精确提交对象及文档门禁终核
+
+已从 Git 对象独立核定本片提交 **`e9b682c4be4f19aa11aca4717a7f6d86050278ed`**，唯一父提交为固定基线 `91b09683aac9481d07a6cd1d2ea8da9777b25563`。实际变更恰为上文 7 份 Markdown；各对象的字节数与 SHA256 全部等于作者 `scope-precommit.json`，该记录 SHA256 为 `e6cf169818ce8c3843b248956b1bf8fd44e54340aa0b628b6be19785f9db6299`。实际 Git 对象 diff SHA256 为 `df328ea0af47dc9b61021b7046020b8f427f1182e78d37bb63c2885955eb03bf`。作者 `scope-precommit.diff` 只含当时 4 份 tracked 文档，各段逐字节等于对象 diff；另外 3 份新增文档已由 Git 对象及完整 JSON 清单逐份核验，没有把这个 tracked-only diff 冒称为完整 7 文件差异。
+
+提交内本评审报告 SHA256 为 `21584a305fd890c99b2dafc35f50e17c7977d8ba1309e2acfe65a3a98260540b`，逐字节等于独立批准稿。合同对象 SHA256 为 `1ba55e4ca5a9b0b38212b9d5a04242cc9745f18a0fb4c885cdf441f236fbca9b`；只将第 3 行“设计在途”登记为“设计门禁通过”，并在第 75 行追加本评审链接与 DG-1/2 关闭状态。将这两行还原后，SHA256 恰为上文独立批准合同的 `ce9d5a37fa0c398cce2c7223c915ede5fd9c83d53684beaffd478a5f406d873e`；合同语义没有扩大。
+
+两份计划及本片交付记录的门禁、下一步与静态结果记账已逐行检查；前片交付/评审记录仍只登记前片精确对象、自己的 CI 与远端身份。作者最终静态原件 SHA256 为 `e6e24f6c9f9f1cbc2942f20c844c64813e4b5979b286990fc4d2f6583517f3ce`，记录 **7 文档、102 个本地链接/锚点、79 条已有 CLI parser** 通过。该静态记录的 6 份文档哈希等于提交对象；剩余本片交付记录仅追加最终静态成功段，去掉该段可逐字节恢复其记录哈希。另直接读取固定提交对象及其目标文件，独立检查全部 **102 个相对文件/锚点**通过，文本结尾及空白检查通过，没有读取后片 WIP 替代被核对象。
+
+## 本次 push 的 CI 适用范围及即时 HTTPS 远端
+
+固定提交的 `.github/workflows/portability.yml` 与其父提交逐字节相同，SHA256 为 `81c168fdb140f44ccfdca497003e452355c9164a6ed6f8dfb8fa31729a1943ca`。实际普通 push 分支属于 `refactor/**`，但全部 7 个路径都命中该 workflow 的 `paths-ignore: ["docs/**.md", "README.md", "AGENTS.md"]`。因此本次纯 Markdown push 不要求新的 Portability 应用 CI；没有将父提交的 CI42574624398 成功替代本提交结果，也没有宣称本片跑过新的应用 CI。PR 或手动 dispatch 仍按原 workflow 各自规则处理。
+
+本地对象、批准稿和路径过滤断言于 **2026-11-09 07:09:14.567406 UTC** 完成。随后从仓库外目录执行，移除继承的 `GIT_*` 配置变量、关闭全局/系统 Git 配置及凭据 helper，并核有效配置没有 URL insteadOf/pushInsteadOf 规则；使用明确 HTTPS URL 和完整分支引用：
+
+```text
+git -c credential.helper= -c core.askpass= ls-remote --exit-code https://github.com/626619403/Ergora.git refs/heads/refactor/architecture-foundations
+```
+
+查询于 **07:09:14.569443 UTC** 开始，**07:09:15.760037 UTC** 完成，exit 0、stderr 零字节；stdout 恰为 `e9b682c4be4f19aa11aca4717a7f6d86050278ed`、一个 TAB、`refs/heads/refactor/architecture-foundations` 和换行。stdout SHA256 为 `540190b7209ba7a717a135b43ecdca9769d88a03722316c884c53ea3ec51c320`。没有使用 remote 别名或本地 tracking ref 代替该次远端读取。
+
+最终 **Spec、Standards 设计门禁、精确提交对象、适用的文档检查及即时 HTTPS 远端身份均通过**。本次追加属于该固定提交交付后的终核记账，不冒称追加正文已存在于被核提交；后片 AC4.3b 的本地文档或实现 WIP 不在本片批准范围内。

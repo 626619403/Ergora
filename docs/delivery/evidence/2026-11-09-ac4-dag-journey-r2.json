@@ -1,0 +1,80 @@
+{
+  "checked_at": "2026-11-09T07:54:51.765909+00:00",
+  "seconds": 464.97338132560253,
+  "records": {
+    "dag-resumed-v4": {
+      "task_id": "dag-resumed-v4-public",
+      "run_id": "01a1bf46-93aa-7da4-bba3-72b276fa03ec",
+      "recovery": {
+        "first_six_requests_unchanged": true,
+        "only_original_first_call_while_worker_stopped": true
+      },
+      "outcome": "REVIEW_READY",
+      "review_jobs": {
+        "review:root/test-value/review": "SUCCEEDED",
+        "review:root/correctness/review": "SUCCEEDED",
+        "review:root/structure/review": "FAILED"
+      },
+      "history": {
+        "sha256": "f76d2978b18e14d549fc9b2596c02a85f8992b68e0f375829395fe5b858dd972",
+        "events": 195,
+        "replay": "passed"
+      },
+      "handoff_sha256": "29baaa2706a6e1867fbea0acdc7aed29302c986a262e362e23601213c0573da6"
+    },
+    "dag-required-v4": {
+      "task_id": "dag-required-v4-public",
+      "run_id": "01a1bf48-6e51-7362-8f1f-bff778522ede",
+      "outcome": "BLOCKED",
+      "review_jobs": {
+        "review:root/test-value/review": "SUCCEEDED",
+        "review:root/correctness/review": "FAILED",
+        "review:root/structure/review": "SUCCEEDED"
+      },
+      "history": {
+        "sha256": "7b507b81fbdc819f6befebeb613bfadcd048a8df83574804869a4a8658a5f910",
+        "events": 201,
+        "replay": "passed"
+      },
+      "handoff_sha256": "7759611ae03ed668ae6a8445a9cf738c5a56e860d03d9ece10fe485e0bdb9f42"
+    },
+    "dag-operational-v4": {
+      "task_id": "dag-operational-v4-public",
+      "run_id": "01a1bf4a-4088-738a-ada9-7dcb1ca240a9",
+      "outcome": "BLOCKED",
+      "review_jobs": {
+        "review:root/structure/review": "FAILED"
+      },
+      "history": {
+        "sha256": "6065224846beb7f5380fce43f9b8271d121dab0de16155585936a105773fbd24",
+        "events": 167,
+        "replay": "passed"
+      },
+      "handoff_sha256": "1d40608c7b2256789399e08d1d1eee6e7ea157ced12eb5baf26906d57d7a2761"
+    },
+    "dag-cancelled-v4": {
+      "task_id": "dag-cancelled-v4-public",
+      "run_id": "01a1bf4b-d90f-7602-b018-4b50a321e9a9",
+      "outcome": "CANCEL_UNCONFIRMED",
+      "review_jobs": {
+        "review:root/structure/review": "CANCELLED"
+      },
+      "history": {
+        "sha256": "2f9dd1f104d724acad9c529d6e19754c64158f64e6dad1dc71cf785b268dd761",
+        "events": 162,
+        "replay": "passed"
+      },
+      "handoff_sha256": "022fecc7cf794da6ce9bd57951bc6ffceab17bb3398bd3a85566eaa403b9a130"
+    }
+  },
+  "ports_closed": true,
+  "databases_retained": true,
+  "scope": "Installed CLI/Supervisor/Temporal/scanner; nested serial producer and two parallel consumers, complete original failed advisory evidence, worker-only recovery, required/operational failures, serial cancellation/fence/reconcile, history replay and offline handoffs. Deterministic backend protocols; no model quality or complete process-crash recovery claim.",
+  "observations": {
+    "original_pid_starttimes": 128,
+    "remaining_live": 0,
+    "sha256": "728b28eaecc54e821139a5b47ff9faed9d8beb099f61589af77a336a9d135ee6",
+    "scope": "Observed original Supervisor daemon PID/starttime and recursive descendants, including surviving reparented processes already observed; sampling cannot establish every short-lived process was seen."
+  },
+  "acceptance_script_sha256": "60ebd4596405bcbd505cec8f2bbda84af61bbd0ffe0ce408daaf3631aa6a106b"
+}

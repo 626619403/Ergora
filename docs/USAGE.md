@@ -310,13 +310,21 @@ ergora composition verify-manifest ./review-requirements-manifest
 
 所有分支仍须完成并进入显式all-join；这种新职责图即使只有一名审查者也须声明汇合，输出直接转发task或叶子result不获正式运行支持。旧v1图的单叶行为保持。建议成员的合格`request-changes`保留原`FAILED`回执及finding，可信聚合v2逐成员记录`review_requirement`、`decision`和原收据引用；只在必需成员全部批准且其他合同满足时到达`REVIEW_READY`。建议成员的进程失败、候选不符、证据缺失、会话复用、超时或取消仍阻塞并沿原fence/对账处理。原始意见不会因汇合而被改为批准。
 
+需要先结构审查、再并行进行正确性和测试价值审查时，导入[serial-review](WORKFLOW_DEFINITIONS.md#正式只读审查的数据端口)，准备其完整manifest，并在同一任务定义的`composition`里增加：
+
+```json
+"review_protocol": "dag-v1"
+```
+
+将manifest路径和digest换成本次结果，成员路径仍为`root/structure/review`、`root/correctness/review`、`root/test-value/review`，后端覆盖仍按这些路径填写。这个明确选择保存为正式信封v4；没有字段的旧任务仍使用原v2/v3。前驱完成后，下游才获得其全部原产物，独立就绪分支受祖先限额调度；只配置depends_on而没有端口绑定时不会自动传入前驱正文。三个结构父模板的Skill、MCP和权限不会通过数据箭头互相继承。所选review子树须为单task输入、单终结输出，终点是完整传递覆盖的显式all-join；支持嵌套多具名输出，所有叶子仍为只读reviewer。
+
 不提供覆盖时使用定义指定的后端；覆盖按实例路径逐个选择并记录原因。`prefer-distinct`为默认策略，与implementer同后端时必须填写`diversity.reason`；`require-distinct`直接拒绝相同后端，`allow-same`允许。同后端判断比较工具实现，不代表不同工具的模型错误互相独立。密钥继续由环境变量或受保护的本机认证提供，不写入定义。
 
 沿上一节相同的预览/创建命令和API操作，再按[正式任务顺序](#正式任务的操作顺序与恢复)使用`task start/submission/resume-start/status/plan/approve`。预览的`files.task.spec.json`是显式版本化信封，其`legacy_spec`保存未改的原六阶段投影。`composition.manifest`携带完整文件字节与可执行位，信封SHA同时绑定静态图、祖先材料、成员、政策和多样性决定。创建后移除源manifest或修改活动库/项目绑定，不影响保存的原意图和发布恢复；`runtime_supported`只表示当前运行桥支持该静态形状；它不检查认证、模型、SDK或服务就绪，不代表运行成功。
 
-组合任务按正式信封版本使用独立的composition-v2或composition-v3队列与请求目录，六阶段、计划批准、候选验证及收据仍由原有所有者处理。旧worker不能接管v3；升级时停止旧worker/executor并由本版`services`重启，保留原history与状态目录。每阶段绑定完整原信封；状态和恢复核对原Temporal输入，不能用相同legacy投影替换不同manifest。审查调用保存完整祖先材料、原模板指令、批准计划和验证产物，以及任务与叶子共同读取范围内的base/candidate源码和diff。源码、依赖摘要、调用及结果均绑定同一候选；原monitor继续负责超时和取消。只读工具配置不等于操作系统隔离。组合任务的取消也核完整原信封，沿同一`cancel/cancellation/resume-cancel`和原signal恢复；`requested`仍只是投递事实，外部终态与租约按原`external-status/reconcile`核对，清理后保留原outcome。
+组合任务按正式信封版本使用独立的composition-v2、composition-v3或composition-v4队列与请求目录，六阶段、计划批准、候选验证及收据仍由原有所有者处理。旧worker不能接管更新版本；升级时停止旧worker/executor并由本版`services`重启，保留原history与状态目录。每阶段绑定完整原信封；状态和恢复核对原Temporal输入，不能用相同legacy投影替换不同manifest。审查调用保存完整祖先材料、原模板指令、批准计划和验证产物，以及任务与叶子共同读取范围内的base/candidate源码和diff。源码、依赖摘要、调用及结果均绑定同一候选；原monitor继续负责超时和取消。只读工具配置不等于操作系统隔离。组合任务的取消也核完整原信封，沿同一`cancel/cancellation/resume-cancel`和原signal恢复；`requested`仍只是投递事实，外部终态与租约按原`external-status/reconcile`核对，清理后保留原outcome。
 
-完整组合包导出仍支持10 MB/500文件；正式任务的内联信封沿原逐文件1 MiB和总意图16 MiB上限，base64及图中完整正文也计入。原stage context和每成员的完整审查输入各有1,000,000字节上限，动态源码、依赖正文和全部祖先提示一并计入，超限明确拒绝。保存与备份范围仍是登记执行状态目录中的任务七份合同、完整意图及结果回执；单独备份控制库不包含它们。运行态前驱输出和通用串行执行模板仍沿计划接入；`kernel-delivery`目前只能静态预览，不能把manifest当作全部节点已执行。
+完整组合包导出仍支持10 MB/500文件；正式任务的内联信封沿原逐文件1 MiB和总意图16 MiB上限，base64及图中完整正文也计入。原stage context和每成员的完整审查输入各有1,000,000字节上限，动态源码、依赖正文和全部祖先提示一并计入，超限明确拒绝。保存与备份范围仍是登记执行状态目录中的任务七份合同、完整意图及结果回执；单独备份控制库不包含它们。只读DAG的前驱原产物完整内联、原请求/回执/claim与实际正文在下游调用前核验；共享端口表避免递归展开，但长审计链仍可能因完整正文超限而拒绝。写执行者分配仍沿计划接入；`kernel-delivery`目前只能静态预览，不能把manifest当作全部节点已执行。
 
 ### 查询正式任务运行状态
 

@@ -95,8 +95,10 @@ def _composition(definition: dict, selection: dict) -> dict:
         members[path] = {'role': 'reviewer', 'binding': binding, 'requested_binding': leaf['backend_request'],
             'backend_reason': override['reason'] if override else 'definition-selected backend',
             'mode': option['mode'], 'policy': policy,
-            **({'review_requirement': leaf.get('review_requirement', 'required')} if graph['schema_version'] == 2 else {})}
-    if graph['schema_version'] == 2 and not any(member['review_requirement'] == 'required' for member in members.values()):
+            **({'review_requirement': leaf.get('review_requirement', 'required')}
+               if graph['schema_version'] == 2 or 'review_protocol' in option else {})}
+    if ((graph['schema_version'] == 2 or 'review_protocol' in option)
+            and not any(member['review_requirement'] == 'required' for member in members.values())):
         raise ValueError('Formal review requires at least one required reviewer')
     if same and diversity['policy'] == 'require-distinct':
         raise ValueError('Review members require a backend different from the implementer: ' + ', '.join(same))
@@ -112,9 +114,15 @@ def _composition(definition: dict, selection: dict) -> dict:
                                   'executable_bits': item['executable_bits']}
     if digest != checked['digest'] or inventory_tree(source, label='Composition manifest', max_directories=1000, max_depth=48)[0] != digest:
         raise ValueError('Composition manifest changed while freezing its complete tree')
-    return {'manifest': snapshot, 'root': graph['root'], 'preview_sha256': graph['preview_sha256'],
+    composition = {'manifest': snapshot, 'root': graph['root'], 'preview_sha256': graph['preview_sha256'],
             'review_instance': position, 'members': members,
+            **({'review_protocol': option['review_protocol']} if 'review_protocol' in option else {}),
             'diversity': {**diversity, 'implementer_backend': implementer, 'same_backend_members': same}}
+    if 'review_protocol' in option:
+        from .task_envelopes import review_members
+
+        review_members(composition)
+    return composition
 
 
 def _digest(value: str, name: str) -> None:
