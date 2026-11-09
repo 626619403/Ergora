@@ -53,6 +53,8 @@ def _composition(definition: dict, selection: dict) -> dict:
     graph = workflow_definitions.preview(source / 'assets', reference['id'], reference['version'], checked['manifest']['grant'])
     if graph != checked['composition']:
         raise ValueError('Composition manifest changed during formal admission')
+    if graph['schema_version'] != 1:
+        raise ValueError('Formal tasks do not yet support review requirements in composition preview v2')
     instances = {item['path']: item for item in graph['instances']}
     position = option['review_instance']
     if (position not in instances or instances[position]['kind'] != 'workflow'

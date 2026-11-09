@@ -1,0 +1,93 @@
+{
+  "schema_version": 2,
+  "id": "review-requirements",
+  "version": "1.0.0",
+  "description": "Static required structure review and advisory test-value review; formal advisory execution is pending.",
+  "resources": [],
+  "permissions": {
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "write": [],
+    "shell": false,
+    "network": []
+  },
+  "limits": {
+    "depth": 8,
+    "instances": 128,
+    "concurrency": 4,
+    "material_bytes": 262144
+  },
+  "inputs": [
+    "task"
+  ],
+  "outputs": {
+    "findings": {
+      "node": "gather",
+      "output": "result"
+    }
+  },
+  "nodes": [
+    {
+      "id": "structure",
+      "ref": {
+        "kind": "agent",
+        "id": "architecture-reviewer",
+        "version": "1.0.0",
+        "digest": "1086c3d3c93c0052a7223466ec82bd201ac8e9f6ccb4dfbbeba3c3b84b1fe00e"
+      },
+      "role": "reviewer",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      },
+      "review_requirement": "required"
+    },
+    {
+      "id": "test-value",
+      "ref": {
+        "kind": "agent",
+        "id": "test-value-reviewer",
+        "version": "1.0.0",
+        "digest": "3fa9d04460445a564f51ac53e6d421188c000093c8a429e2729898c101229015"
+      },
+      "role": "reviewer",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      },
+      "review_requirement": "advisory"
+    },
+    {
+      "id": "gather",
+      "join": "all",
+      "depends_on": [
+        "structure",
+        "test-value"
+      ]
+    }
+  ]
+}

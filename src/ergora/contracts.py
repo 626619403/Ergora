@@ -29,6 +29,8 @@ STATE_BACKUP = json.loads((_SCHEMAS / "state-backup-v1.json").read_text(encoding
 AGENT_DEFINITION = json.loads((_SCHEMAS / "agent-definition-v1.json").read_text(encoding="utf-8"))
 
 WORKFLOW_DEFINITION = json.loads((_SCHEMAS / "workflow-definition-v1.json").read_text(encoding="utf-8"))
+WORKFLOW_DEFINITIONS = {1: WORKFLOW_DEFINITION,
+                        2: json.loads((_SCHEMAS / "workflow-definition-v2.json").read_text(encoding="utf-8"))}
 COMPOSITION_GRANT = {"$defs": WORKFLOW_DEFINITION["$defs"], "$ref": "#/$defs/grant"}
 COMPOSITION_INPUT = json.loads((_SCHEMAS / "composition-input-v1.json").read_text(encoding="utf-8"))
 COMPOSITION_MANIFEST = json.loads((_SCHEMAS / "composition-manifest-v1.json").read_text(encoding="utf-8"))

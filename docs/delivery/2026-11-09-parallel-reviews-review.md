@@ -89,3 +89,26 @@
 最终安装包的只读文档检查为 **13 份 Markdown、342 个本地链接及锚点、零缺失**；README、Agent/Workflow 手册及自身模板示例的 **75 条公开命令**通过当前 CLI parser，另独立核新增 USAGE 的 **2 条 parallel-review 准备/验证命令**通过。`git diff --check` 通过。原失败、R3/R4/R5 执行身份及 Windows 原生未验范围保持，未因文档收口而重跑已成功副作用或宽测试矩阵。
 
 **最终本地需求符合性：通过；维护性：通过。** AC4-1 至 AC4-4 已关闭，自身真实模板建议已处置，没有开放 finding；可按这 29 文件的固定范围进入普通提交。精确提交对象、该提交自己的必要双 OS CI 和实时 HTTPS 远端身份尚未执行或终核，不预记交付门禁通过。
+
+## 普通提交身份与自己的 CI
+
+独立 `rev-parse` 得普通提交 `f9f4fc01546aa065f2fe32294a28c31387b2cf56`，唯一父提交为固定基线 `4538f4e44a3c301aedde570e130a342bc1c55714`。从 Git 提交对象逐份读取全部 **29 文件**，字节 SHA 均与实现者冻结的 `review-scope.json` 相同，完整对象范围无增减，冻结目录相对父提交没有 diff。该 scope 原文件 SHA 为 `b9e9d63315c7c370519d87b6dfdef4e197a1c8c6202d235313145605bc724d39`。
+
+2026-11-09 04:48:27.540035 UTC 的独立 REST API 首读为 **403 rate limit**，280 字节响应 SHA 为 `cab107d310af6137d3ca21f7de123c972a91cb1cbd91e2f58f61fe192ba31735`，保留原失败而转用官方 HTML。随后直接读取该提交自己的[Portability 42563729227](https://github.com/626619403/Ergora/actions/runs/42563729227)，核 run 页明确链接完整提交及 `.github/workflows/portability.yml`；04:49:19.388114 UTC 尚为 In progress，Ubuntu job `128985557789` 的 wheel 与 identity 已成功、应用回归在途。这是中间观察，不预记 Windows、七必要步骤或精确远端终结成功。
+
+## 精确 CI 与即时 HTTPS 远端终结
+
+原 `job_groups_batch?attempt=1` 响应仅返回 Ubuntu，且明确 `totalCount: 2 / hasMore: true`；这属于读取只取了首批，不能由此推断 Windows 未调度。试加 `page=2` 仍返回同一首批。审查者读官方 `actions-run-jobs-list` 所引用脚本，核实际分页参数为 `batch` / `size`，再用 `batch=0&size=200` 取齐两作业，返回 `totalCount: 2 / hasMore: false`。上述分页限制和 API 403 均保留；没有重跑或替换 CI。
+
+**2026-11-09 05:02:56.122194 UTC**，独立直接读取原 run `42563729227` 的官方 run 页、完整 job groups 和两 job 页，整体为 **Success**。从该提交自身 workflow 对照矩阵及步骤，核以下 **七个必要步骤全部 success**，每条步骤有 `data-job-completed`，原 logs URL 均包含完整提交 `f9f4fc01546aa065f2fe32294a28c31387b2cf56` 及相应 job ID；没有 failure、cancelled 或 timed_out 步骤：
+
+|原作业|必要步骤|最终结论|
+|---|---|---|
+|[Ubuntu / Python 3.11，128985557789](https://github.com/626619403/Ergora/actions/runs/42563729227/job/128985557789)|Build and install wheel；Packaged reference identity；Native application regression|3 项全部 success|
+|[Windows / Python 3.12，128985558051](https://github.com/626619403/Ergora/actions/runs/42563729227/job/128985558051)|Build and install wheel；Packaged reference identity；Native application regression；Windows PowerShell 5.1 installer and upgrade|4 项全部 success|
+
+这一轮独立官方读取的 run 页为 157579 字节，SHA `138729b3e808c37980462fbbea6b854c4b6724e3a12502bfbb063c3ec8a6c6d6`；完整 job groups 为 700 字节，SHA `2bed0c95fec63e3dc306f3c58677f2aa2cb02d944bbca8565963b5b2b90d50cf`。Ubuntu/Windows 原 job 页 SHA 分别为 `ed9241f94378b6d5088e19cfccda13cec2273757c96606abe3332603a0644ae5`、`b3d4c9b0f93c8cbac723829c9f38c38b5e677fdcb3960d9bde0c2ed80d496211`。原运行未重试，未沿用父提交或后续候选的 CI。Windows 这里证明原生应用回归与安装升级 CI，不扩为 Windows 的真实三审查协议旅程。
+
+七项核完后，在**同一独立脚本中立即**执行 `git ls-remote --exit-code https://github.com/626619403/Ergora.git refs/heads/refactor/architecture-foundations`，以无仓库目录和禁用全局/系统 Git 配置避免 URL 被隐式改写，使用明确 HTTPS 传输。**2026-11-09 05:02:58.894557 UTC** 命令 exit 0、stderr 空，远端分支返回完整 SHA **`f9f4fc01546aa065f2fe32294a28c31387b2cf56`**，与已核 29 份对象的本片普通提交相同。
+
+**AC4.1 本片最终结论：本地需求符合性、维护性、自己的必要双 OS CI 和即时精确远端身份均通过。** 四项原 finding 及自身模板建议已关闭，历史失败与未验范围保持；通用串行、建议性审查、写分配、三领域组合、页面和完整 AC6 仍属后片。本报告这一终结追加不回写原提交对象或模型输入身份，后续状态归档另按其实际提交记账。

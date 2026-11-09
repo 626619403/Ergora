@@ -16,8 +16,10 @@
 1. 当前[CR5研究HTTP回归信号](delivery/2026-11-09-research-deadline-regression.md)：原a4cc自己的CI42557137619最终失败，Windows成功抓取后2.281秒超过测试1.8秒阈值；原失败保留。最终父端固定时钟/真实响应头started精确预算与release前重定向事实检查已通过：11passed/1skip、延迟探针2passed、三个实际mutant均红、369/283身份保持；[新独立两轴复核](delivery/2026-11-09-research-deadline-regression-review.md)通过、CR5-1关闭。4538f4e精确8文件普通交付，自己的CI42559480219双OS七必要步骤成功；独立04:14:59.894943 UTC明确HTTPS远端同完整SHA。
 2. [AC3c.4联合备份/同路径恢复](delivery/2026-11-09-composition-recovery.md)R2离线原控制+tar恢复/1,992项/五库/32Git及R4在线44.47秒/四原run/history/replay与scanner保持通过；自身模板首审166.23秒发现home限定问题，修后96.92秒approve；独立本地两轴通过、AR-1/AR-2关闭，10文档/208链接/79 parser通过。a4cc0b2普通推送/16对象及03:50:16 UTC明确HTTPS远端身份通过；原CI七必要步骤六成功一失败，不能记精确交付门禁通过，CR5结果不替代其原身份。
 3. CR3c自己的CI/远端已完成；后片普通推送仍核自己的必要CI，不取消前片在途CI，不沿用旧身份。
-4. 已登记[AC4.1必需并行审查](delivery/2026-11-09-parallel-reviews.md)有限合同，本地开始实现三嵌套只读分支/all-join、稳定路径作业及可信原件汇合；本地包124passed/81.36秒、369/283身份通过，新独立4项finding已在最终包反例复核关闭；R4继续旅程228.31秒完成三分支/worker原run继续、拒绝/取消/fence及3history/包核验，R5最终包62行为/10架构检查、369/283身份和15.01秒仅开Temporal的原件重放/读取通过。自身真实模板135.07秒approve，一项stdlib门禁建议已修、10项复核通过；新独立已核自身模板连续8页/231383字节至null、建议处置和29文件/文档scope通过；精确提交/CI/远端待核。前片CR5精确终结。其后按[AC逐片计划](plans/2026-11-08-agent-composition.md)继续建议审查、串行依赖/执行者分配、三模板、AC5页面、AC6旅程，不将本片当全部AC4。
+4. [AC4.1必需并行审查](delivery/2026-11-09-parallel-reviews.md)已精确交付 `f9f4fc01546aa065f2fe32294a28c31387b2cf56`（29文件）；自己的[双OS CI42563729227](https://github.com/626619403/Ergora/actions/runs/42563729227)七必要步骤全部成功，独立2026-11-09 05:02:58.894557 UTC明确HTTPS核远端同SHA。[新独立终结](delivery/2026-11-09-parallel-reviews-review.md)保留原API限流及分页限制。当前进入[AC4.2a版本化审查职责](delivery/2026-11-09-review-requirements.md)：静态实现、最终包191通过/1跳过、370/283身份及11项公开CLI静态操作通过；自身结构模板129.32秒approve，[新独立两轴](delivery/2026-11-09-review-requirements-review.md)及独立原生拒绝反例通过；本片精确提交/CI/远端待核。其后依次接可信建议运行、串行端口/执行者分配、三模板、AC5页面及AC6旅程。
 5. 继续[总实施计划](plans/2026-11-01-all-in-one.md#5-执行节点及进度登记)剩余F6–F10、G1与按实际需要接入的D/X项；公共发行PUB1仍含维护者许可证选择。
+
+AC4.2a 本地实现/最终包/公开CLI/自身模板及新独立两轴通过，精确普通交付待核；随后以 AC4.2b 接可信运行。建议意见、执行失败和清理未知保持不同语义；静态支持不能当作建议运行验收。
 
 ## 持续执行与验收规则
 

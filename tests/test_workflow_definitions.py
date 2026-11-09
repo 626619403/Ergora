@@ -68,14 +68,15 @@ def imported(base, document, text=None):
 
 
 def test_examples_expand_serial_and_parallel_all_join_without_dependency_inheritance(tmp_path):
-    contracts.StrictValidator.check_schema(contracts.WORKFLOW_DEFINITION)
+    for schema in contracts.WORKFLOW_DEFINITIONS.values():
+        contracts.StrictValidator.check_schema(schema)
     contracts.StrictValidator.check_schema(contracts.COMPOSITION_GRANT)
     state = State(tmp_path / "state")
     for source in sorted((EXAMPLES / "agents").iterdir()):
         agent_definitions.import_bundle(state, source)
     for source in sorted((EXAMPLES / "composition/agents").iterdir()):
         agent_definitions.import_bundle(state, source)
-    for name in ("structure-review", "correctness-review", "test-value-review", "parallel-review", "kernel-delivery"):
+    for name in ("structure-review", "correctness-review", "test-value-review", "parallel-review", "kernel-delivery", "review-requirements"):
         workflows.import_bundle(state, EXAMPLES / "composition" / name)
     permissions = json.loads((EXAMPLES / "composition/preview-grant.json").read_text())
     result = workflows.preview(state.root, "kernel-delivery", "1.0.0", permissions)
@@ -95,6 +96,74 @@ def test_examples_expand_serial_and_parallel_all_join_without_dependency_inherit
             for resource in item["resources"]:
                 assert resource["text"] in item["prompt"]
     assert workflows.preview(state.root, "kernel-delivery", "1.0.0", permissions) == result
+    new = workflows.preview(state.root, "review-requirements", "1.0.0", permissions)
+    assert new["schema_version"] == 2
+    assert {item["path"]: item["review_requirement"] for item in new["instances"] if item["kind"] == "agent"} == {
+        "root/structure": "required", "root/test-value": "advisory"}
+
+
+def test_review_requirement_belongs_to_each_versioned_instance_and_survives_nested_freezing(base):
+    state, agent, directory = base
+    original = imported(base, definition("expert-review", [leaf("review", agent)]))
+    before = workflows.preview(state.root, "expert-review", "1.0.0", grant())
+    doc = definition("expert-review", [
+        {**leaf("required", agent), "review_requirement": "required"},
+        {**leaf("advice", agent), "review_requirement": "advisory"},
+        {"id": "gather", "join": "all", "depends_on": ["required", "advice"]}])
+    doc.update(schema_version=2, version="2.0.0")
+    updated = imported(base, doc)
+    outer = definition("nested-requirements", [child("one", ref(updated, "workflow")),
+                                                child("two", ref(updated, "workflow"))])
+    imported(base, outer)
+    preview = workflows.preview(state.root, "nested-requirements", "1.0.0", grant())
+    assert preview["schema_version"] == 2
+    members = {item["path"]: item for item in preview["instances"] if item["kind"] == "agent"}
+    assert {path: item["review_requirement"] for path, item in members.items()} == {
+        "root/one/advice": "advisory", "root/one/required": "required",
+        "root/two/advice": "advisory", "root/two/required": "required"}
+    assert all(item["ref"] == agent and item["permissions"] == READ for item in members.values())
+    assert workflows.preview(state.root, "expert-review", "1.0.0", grant()) == before
+    assert before["schema_version"] == 1 and "review_requirement" not in before["instances"][-1]
+    assert workflows.get(state, "expert-review", "1.0.0")["digest"] == original["digest"]
+    manifest = workflows.prepare_manifest(state.root, "nested-requirements", "1.0.0", grant(), directory / "manifest")
+    exported = workflows.export(state, "expert-review", "2.0.0", directory / "export-v2")
+    assert exported["digest"] == updated["digest"]
+    assert workflows.inspect_bundle(Path(exported["destination"]))["definition"] == doc
+    archive = directory / "requirements-backup"
+    assert backups.create(state.root, archive, offline=True)["workflow_definitions"] == 3
+    shutil.rmtree(state.root)
+    assert workflows.inspect_manifest(Path(manifest["path"]), material=True)["composition"] == preview
+    backups.restore(state.root, archive, offline=True)
+    assert workflows.preview(state.root, "nested-requirements", "1.0.0", grant()) == preview
+    assert workflows.preview(state.root, "expert-review", "1.0.0", grant()) == before
+
+
+@pytest.mark.parametrize("failure", ["v1-field", "missing", "invalid", "non-reviewer", "workflow", "join", "unknown-version"])
+def test_review_requirement_is_explicit_and_only_valid_on_v2_reviewer_instances(base, failure):
+    state, agent, directory = base
+    node = {**leaf("review", agent), "review_requirement": "advisory"}
+    doc = definition("bad-requirement", [node])
+    doc["schema_version"] = 2
+    if failure == "v1-field":
+        doc["schema_version"] = 1
+    elif failure == "missing":
+        del doc["nodes"][0]["review_requirement"]
+    elif failure == "invalid":
+        doc["nodes"][0]["review_requirement"] = "ignore-errors"
+    elif failure == "non-reviewer":
+        doc["nodes"][0]["role"] = "implementer"
+    elif failure == "workflow":
+        sub = imported(base, definition("sub", [leaf("review", agent)]))
+        doc["nodes"] = [{**child("review", ref(sub, "workflow")), "review_requirement": "advisory"}]
+    elif failure == "join":
+        doc["nodes"].append({"id": "gather", "join": "all", "depends_on": ["review"],
+                             "review_requirement": "advisory"})
+    else:
+        doc["schema_version"] = 3
+    registered = workflows.definitions(state)
+    with pytest.raises(ValueError, match="Workflow definition"):
+        workflows.import_bundle(state, write_bundle(directory / "invalid", doc))
+    assert workflows.definitions(state) == registered
 
 
 def test_repeated_references_are_distinct_instances_and_preserve_ancestor_sources(base):

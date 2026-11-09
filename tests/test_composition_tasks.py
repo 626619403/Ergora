@@ -12,6 +12,7 @@ import sys
 import pytest
 
 from ergora import agent_definitions, contracts, projects, reference, task_envelopes, tasks, workflow_definitions as workflows
+from ergora.asset_trees import inventory_tree
 from test_registrations import installation, registration
 from test_task_creation import creation_project, _inject, _files
 from test_task_runtime import runtime_client
@@ -71,6 +72,35 @@ def test_preview_and_creation_freeze_a_new_envelope_with_the_unchanged_legacy_pr
     shutil.rmtree(state.root / 'workflow-definitions')
     assert tasks.resume_create(state, 'demo', task['task_id'], 1, created['intent_sha256']) == created
     assert tasks.creation(state, 'demo', task['task_id']) == created and _files(root) == original
+
+
+def test_v2_review_requirements_are_readable_but_cannot_enter_the_legacy_formal_runtime(composed_creation, tmp_path):
+    state, registration, task = composed_creation
+    old = tasks.preview(state, 'demo', task, 1)['files']['task.spec.json']
+    agent = agent_definitions.get(state, 'architecture-reviewer', '1.0.0')
+    doc = definition('new-requirement', [{**leaf('review', ref(agent, 'agent')), 'review_requirement': 'advisory'}])
+    doc['schema_version'] = 2
+    workflows.import_bundle(state, write_bundle(tmp_path / 'new-review', doc))
+    saved = workflows.prepare_manifest(state.root, doc['id'], doc['version'], grant(), tmp_path / 'new-manifest')
+    task['composition'].update(manifest=saved['path'], manifest_digest=saved['digest'])
+    root = Path(registration['execution']['state_directory'])
+    with pytest.raises(ValueError, match='do not yet support review requirements'):
+        tasks.preview(state, 'demo', task, 1)
+    assert not root.exists()
+    # Even a separately supplied sealed envelope cannot bypass the native shape gate.
+    carried = deepcopy(old)
+    source = Path(saved['path'])
+    digest, inventory, _ = inventory_tree(source, label='Test manifest', max_directories=1000, max_depth=48)
+    manifest = workflows.inspect_manifest(source)['manifest']
+    carried['composition'].update(manifest={'digest': digest, 'files': {
+        name: {'content_base64': base64.b64encode((source / name).read_bytes()).decode(),
+               'executable_bits': item['executable_bits']} for name, item in inventory.items()}},
+        root=manifest['root'], preview_sha256=manifest['preview_sha256'])
+    carried['sha256'] = task_envelopes.identity({key: value for key, value in carried.items() if key != 'sha256'})
+    task_envelopes.unwrap(carried)
+    assert task_envelopes.summary(carried)['runtime_supported'] is False
+    with pytest.raises(ValueError, match='do not yet support review requirements'):
+        task_envelopes.review_members(carried['composition'])
 
 
 @pytest.mark.parametrize('loss', ['agent-bindings.json', 'task.spec.json'])

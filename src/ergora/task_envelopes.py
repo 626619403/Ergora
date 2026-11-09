@@ -126,7 +126,10 @@ def review_members(composition: dict) -> dict:
     the executor share this narrower support contract; backend/resource checks
     still belong to the actual execution admission.
     """
-    instances = {item['path']: item for item in _manifest_graph(composition['manifest'])['instances']}
+    graph = _manifest_graph(composition['manifest'])
+    if graph['schema_version'] != 1:
+        raise ValueError('Formal tasks do not yet support review requirements in composition preview v2')
+    instances = {item['path']: item for item in graph['instances']}
     members = {path: instances[path] for path in sorted(composition['members'])}
     for leaf in members.values():
         if (leaf['role'] != 'reviewer' or leaf['permissions']['write']

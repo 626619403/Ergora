@@ -57,11 +57,11 @@ ergora composition prepare-from-manifest ./kernel-delivery-manifest root/review/
 
 ## 定义和数据流
 
-包入口是 `workflow.json`，格式见[schema v1](../src/ergora/data/schemas/workflow-definition-v1.json)。只接受 JSON，UTF-8 可带 BOM；重复 JSON key 和未知字段拒绝。包树与资源遵循[Agent包](AGENT_DEFINITIONS.md#资源和存储边界)的摘要、路径、大小、目录限制及同平台恢复合同。
+包入口是 `workflow.json`，格式见 [schema v1](../src/ergora/data/schemas/workflow-definition-v1.json) 和 [schema v2](../src/ergora/data/schemas/workflow-definition-v2.json)。只接受 JSON，UTF-8 可带 BOM；重复 JSON key 和未知字段拒绝。包树与资源遵循[Agent包](AGENT_DEFINITIONS.md#资源和存储边界)的摘要、路径、大小、目录限制及同平台恢复合同。
 
 |字段|消费者与含义|
 |---|---|
-|`schema_version`、`id`、`version`、`description`|版本库与CLI展示；严格整数1、小写 kebab ID、数字三段精确版本，无隐式 latest。|
+|`schema_version`、`id`、`version`、`description`|版本库与CLI展示；格式版本为严格整数1或2，小写 kebab ID、数字三段精确版本，无隐式 latest。|
 |`resources`|有序本地 instructions/context/Skill；可以为空。复用 Agent 的资源格式和完整摘要检查。|
 |`inputs`|输入端口名称数组；静态检查映射，正式只读审查当前将根task沿祖先直映至各叶，前驱输出仍未执行。|
 |`outputs`|输出端口→来源绑定，来源为自身输入或本图节点输出。|
@@ -74,6 +74,23 @@ Agent／Workflow引用必须有 `kind`、`id`、`version`、`digest`。`digest` 
 绑定只能是 `{"input":"task"}` 或 `{"node":"implement","output":"result"}`。节点引用另一节点的结果时，必须将它列为直接依赖；不会由引用隐式添加依赖。没有 Python 表达式、任意脚本或循环。端口值是待执行阶段消费的不透明数据，静态检查不证明候选、审查 decision 或领域产物可信。
 
 `{"id":"gather","join":"all","depends_on":["structure","correctness","test-value"]}` 声明汇合，输出 `result` 的目标语义为每个依赖分支的全部具名输出映射。汇合是等待所有列出分支的数据屏障。正式只读并行审查要求根输出指向覆盖全部叶子的显式all-join；原可信运行器核每个必需分支的候选、会话与收据后才生成聚合引用。静态all-join本身不是多数票或人工批准。
+
+## 必需与建议审查的静态声明
+
+WorkflowDefinition v2 在每个 `role: reviewer` 的 Agent 节点上要求显式 `review_requirement: required` 或 `advisory`。这是工作流实例的职责，同一专家可以在不同节点承担不同职责；AgentDefinition 仍使用 v1。其他角色、子工作流引用及 join 不接受该字段。要改变嵌套审查叶子的职责，保存新的子定义版本并沿父链更新精确引用。权限、Skill 与上下文继承规则保持。
+
+例如 [review-requirements](../examples/composition/review-requirements/workflow.json) 把结构审查设为必需、测试价值审查设为建议：
+
+```bash
+ergora composition check examples/composition/review-requirements
+ergora composition import examples/composition/review-requirements
+ergora composition preview review-requirements 1.0.0 --grant examples/composition/preview-grant.json
+ergora composition prepare-manifest review-requirements 1.0.0 --grant examples/composition/preview-grant.json --directory ./review-requirements-manifest
+```
+
+先导入本手册开头的结构审查者与测试价值审查者即可。预览在各叶子显示声明；只要递归引用中包含 v2 定义，`composition-preview.schema_version` 就为 2，完整包和备份保留原身份。全 v1 组合保持原预览版本及字节，历史成员不会被活动模板降级。
+
+当前新增范围是静态定义、预览、固定输入和备份。**正式开发运行暂时拒绝预览 v2**；不能通过该字段绕过旧必需审查门禁。建议审查的可信运行沿 AC4.2b 接入，届时须保留原意见并区分建议 `request-changes` 与运行/合同/清理失败，不能把失败改成批准。独立的 `run-input` 可调用选定叶子，但不会据此聚合工作流或产生正式批准。
 
 ## 完整继承与冲突
 
@@ -135,7 +152,7 @@ ergora composition verify-input ./prepared-review --material
 
 `max-prompt-bytes`必须为1–1,000,000，计完整user prompt的UTF-8字节，超过就拒绝，不截断。它不证明模型token容量或后端额外系统提示能容纳。整个输入包最多10MB/500文件、1000目录和48层，复制过程中也检查；失败不发布半包。只能保存到新目录，且不能写进不可变定义库。原子不覆盖发布支持Linux（需要renameat2）与Windows；不支持时明确失败。核验前后会检查整树一致，操作者应保持输入目录稳定；此检查不隔离同用户进程。输入包摘要包括任务、组合、提示和所有资产；它证明内容一致性，不认证作者或授予执行权限。跨平台执行位及同平台保持字节的限制与定义包相同。
 
-当前格式为[composition-input v1](../src/ergora/data/schemas/composition-input-v1.json)，不改变原Agent/Workflow格式。实际调用按下面的独立入口重新准入。
+输入元数据使用 [composition-input v1](../src/ergora/data/schemas/composition-input-v1.json)，包内保留所引用 Agent v1 及 Workflow v1/v2 的原格式。实际调用按下面的独立入口重新准入。
 
 ## 调用一个准备好的叶子
 

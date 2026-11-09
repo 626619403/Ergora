@@ -23,4 +23,6 @@ flowchart LR
 
 修改任何包应增加版本，刷新本地资源摘要、包digest及上层引用，再发布新的根。使用[示例grant](preview-grant.json)可查看全部10个结构实例及完整静态prompt；grant是预览输入，不是项目授权记录。正式交付仍须原六阶段与可信检查。
 
+[review-requirements](review-requirements/workflow.json) 是独立的 WorkflowDefinition v2 示例：结构专家必需、测试价值专家建议，职责属于节点实例。导入相应 Agent 后可检查、预览、冻结和分享；[格式与命令](../../docs/WORKFLOW_DEFINITIONS.md#必需与建议审查的静态声明)说明边界。当前正式任务拒绝该预览版本，可信建议审查运行仍待接入；已有 v1 示例保持。
+
 使用`composition prepare-manifest`可一次保存整棵组合及全部资源，分享整个目录后直接`verify-manifest`；接收者用`prepare-from-manifest`准备所选叶子的完整输入。命令、权限与容量限制见[保存和分享完整组合](../../docs/WORKFLOW_DEFINITIONS.md#保存和分享完整组合)。

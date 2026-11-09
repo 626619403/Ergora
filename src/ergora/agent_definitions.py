@@ -7,7 +7,7 @@ from .state import State
 
 
 def _inspect_bundle(source: Path, *, material: bool = False) -> dict:
-    return definition_bundles.inspect_bundle(source, "agent.json", contracts.AGENT_DEFINITION, "Agent", material=material)
+    return definition_bundles.inspect_bundle(source, "agent.json", {1: contracts.AGENT_DEFINITION}, "Agent", material=material)
 
 
 def validate_admission(document: dict) -> None:

@@ -36,7 +36,7 @@ def read_json(path: Path, expected: str | None = None) -> dict:
     return json.loads(encoded.decode("utf-8-sig"), object_pairs_hook=unique)
 
 
-def inspect_bundle(source: Path, filename: str, schema: dict, label: str, *, material: bool = False) -> dict:
+def inspect_bundle(source: Path, filename: str, schemas: dict[int, dict], label: str, *, material: bool = False) -> dict:
     """Check the complete tree and declared resources without executing their content."""
     source = source.expanduser().absolute()
     digest, files, directories = inventory_tree(source, label=label, max_directories=500, max_depth=32)
@@ -50,6 +50,10 @@ def inspect_bundle(source: Path, filename: str, schema: dict, label: str, *, mat
     if filename not in files:
         raise ValueError(f"{label} bundle requires {filename}")
     definition = read_json(source / filename, files[filename]["sha256"])
+    version = definition.get("schema_version") if isinstance(definition, dict) else None
+    if type(version) is not int or version not in schemas:
+        raise ValueError(f"Unsupported {label} definition schema version: {version!r}")
+    schema = schemas[version]
     contracts.validate(definition, schema, f"{label} definition")
     resources, identities = [], set()
     for resource in definition["resources"]:

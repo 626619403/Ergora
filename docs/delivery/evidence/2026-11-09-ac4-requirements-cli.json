@@ -1,0 +1,67 @@
+{
+  "checked_at": "2026-11-09T05:06:54.998441+00:00",
+  "operations": [
+    {
+      "operation": "architecture-agent",
+      "exit_code": 0,
+      "stdout_sha256": "96517afde084b9346ccebd5a19289ecc3bdbf8e0d5096392474c1e5c4fa050a7"
+    },
+    {
+      "operation": "test-agent",
+      "exit_code": 0,
+      "stdout_sha256": "554cb94d41e7d2a2bb83e4d0b447244545a15415414ff0e4b28667b61f6b83b5"
+    },
+    {
+      "operation": "check",
+      "exit_code": 0,
+      "stdout_sha256": "4917a3450c9ec5788f2ea57da215f98a1dd622ece5fd42d216558368c0b887c6"
+    },
+    {
+      "operation": "import",
+      "exit_code": 0,
+      "stdout_sha256": "00e08135bb5105f66137b41ab7e79454ff675950567c05ddbbca9cc238da3efc"
+    },
+    {
+      "operation": "preview",
+      "exit_code": 0,
+      "stdout_sha256": "94363e14d6da199dec135364e200356e33286cd35ab074fcf1a332bc64bb470c"
+    },
+    {
+      "operation": "prepare-manifest",
+      "exit_code": 0,
+      "stdout_sha256": "57ad13e96da4c9b63c9f59b7dfdeeb35c96522326f178847bac58f318edf6731"
+    },
+    {
+      "operation": "verify-manifest",
+      "exit_code": 0,
+      "stdout_sha256": "758187667d1adbfc1c22bf5f99fd8b68e3841fb52fb4d0e69bc20aba6877aeea"
+    },
+    {
+      "operation": "prepare-input",
+      "exit_code": 0,
+      "stdout_sha256": "5cab30201dfcd6d07566026c17bf1e9e56e994b10744e9ae7a0b165ab7844880"
+    },
+    {
+      "operation": "verify-input",
+      "exit_code": 0,
+      "stdout_sha256": "138cc041c0db3f7bc58d3842509fb0baeded18a0835e0dfbd3bfa95149723d8d"
+    },
+    {
+      "operation": "import-v1",
+      "exit_code": 0,
+      "stdout_sha256": "20539b5cb55dd5250190be6e9ff3ce2b7ec0723cfb8e10b7c6282b916b359a8b"
+    },
+    {
+      "operation": "preview-v1",
+      "exit_code": 0,
+      "stdout_sha256": "3f8ba1d3a0e7bf462bd6592944c067e35c334726a489f69e4bbd57b8f7d5d7a4"
+    }
+  ],
+  "preview_sha256": "a6e4afee31e62cc28fea3cbb6ca2555d0366a22b8b9926de08d94332df6aca6a",
+  "manifest_digest": "af18bfa16f867eba7fd1d831c03a3d59f1f3c1c86398b363e6a9e55142837f9c",
+  "input_digest": "88ce03ba729e218425f9c1a078c89c6a31d1c24781f02f88cf42ff9a8c836b7e",
+  "v1_preview_sha256": "9f9e195384d7a7dff65da882d1c8fbd528b9b093587cc9deb8f7cf764b9d9219",
+  "previous_installed_v1_preview_equal": true,
+  "previous_reader_rejects_v2_manifest": true,
+  "scope": "Actual installed CLI static definition/freeze/input interfaces and comparison with the previous installed v1 compiler; no model, formal scheduling or advisory business execution."
+}

@@ -88,7 +88,7 @@ def _levels(definition: dict) -> list[list[str]]:
 
 
 def inspect_bundle(source: Path, *, material: bool = False) -> dict:
-    document = definition_bundles.inspect_bundle(source, "workflow.json", contracts.WORKFLOW_DEFINITION,
+    document = definition_bundles.inspect_bundle(source, "workflow.json", contracts.WORKFLOW_DEFINITIONS,
                                                  "Workflow", material=material)
     definition = document["definition"]
     _permissions(definition["permissions"])
@@ -169,6 +169,7 @@ class _Compilation:
         self.root, self.grant = root, grant
         self.agent_admission = agent_admission
         self.documents, self.instances = {}, []
+        self.preview_version = 1
         self.total = {"path": "project", "limits": grant["limits"], "depth": 0, "instances": 0, "material_bytes": 0}
 
     def _resolve(self, reference: dict, *, material: bool = False) -> dict:
@@ -228,6 +229,7 @@ class _Compilation:
     def _workflow(self, document: dict, path: str, inherited: list[dict], ceiling: dict,
                   scopes: list[dict], lineage: tuple, inputs: dict, dependencies: list[str]) -> None:
         definition = document["definition"]
+        self.preview_version = max(self.preview_version, definition["schema_version"])
         reference = _reference(document, "workflow")
         identity = (reference["id"], reference["version"], reference["digest"])
         if identity in lineage:
@@ -274,6 +276,8 @@ class _Compilation:
                             raise ValueError(f"Composition material_bytes budget exceeded at {child_path} (scope {active['path']})")
                     self.instances.append({"path": child_path, "parent": path, "kind": "agent", "ref": node["ref"],
                                            "role": node["role"], "backend_request": child["definition"]["backend"],
+                                           **({"review_requirement": node["review_requirement"]}
+                                              if "review_requirement" in node else {}),
                                            "depends_on": dependencies, "inputs": node["inputs"], "outputs": ["result"],
                                            "permissions": node["permissions"], "resources": selected, "prompt": prompt,
                                            "prompt_sha256": hashlib.sha256(prompt.encode("utf-8")).hexdigest(),
@@ -285,7 +289,7 @@ class _Compilation:
     def compile(self, document: dict) -> dict:
         self._workflow(document, "root", [], self.grant["permissions"], [self.total], (),
                        {name: {"input": name} for name in document["definition"]["inputs"]}, [])
-        result = {"schema_version": 1, "kind": "composition-preview", "executable": False,
+        result = {"schema_version": self.preview_version, "kind": "composition-preview", "executable": False,
                   "root": _reference(document, "workflow"), "grant": self.grant, "instances": self.instances,
                   "usage": {key: self.total[key] for key in ("instances", "material_bytes")},
                   "pending": ["project admission and approved manifest", "backend permission and resource enforcement",
