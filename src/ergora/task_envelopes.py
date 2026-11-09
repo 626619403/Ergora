@@ -112,6 +112,42 @@ def _policy(value: dict, mode: str) -> None:
         raise ValueError('Formal composition capabilities differ from their restricted mode')
 
 
+def _manifest_graph(snapshot: dict) -> dict:
+    try:
+        return json.loads(base64.b64decode(snapshot['files']['composition.json']['content_base64'], validate=True))
+    except RecursionError as error:
+        raise ValueError('Frozen composition JSON exceeds the decoder nesting limit') from error
+
+
+def review_member(composition: dict) -> str:
+    """Admit the runtime's single leaf shape without requiring SDKs or live tools.
+
+    Creation and history may retain other valid static graphs. Submission and
+    the executor share this narrower support contract; backend/resource checks
+    still belong to the actual execution admission.
+    """
+    if len(composition['members']) != 1:
+        raise ValueError('Composition execution currently requires one reviewer leaf')
+    member = next(iter(composition['members']))
+    instances = {item['path']: item for item in _manifest_graph(composition['manifest'])['instances']}
+    leaf = instances[member]
+    if (leaf['role'] != 'reviewer' or leaf['permissions']['write']
+            or leaf['permissions']['shell'] or leaf['permissions']['network']):
+        raise ValueError('Composition review requires a read-only reviewer without shell or network')
+    node, port, visited = leaf, 'task', set()
+    while True:
+        if (node['path'] in visited or set(node['inputs']) != {port} or node['depends_on']
+                or 'input' not in node['inputs'][port]):
+            raise ValueError('Composition leaf requires a direct root task input')
+        visited.add(node['path'])
+        port = node['inputs'][port]['input']
+        if node['parent'] is None:
+            if port != 'task':
+                raise ValueError('Composition leaf must resolve to the root task input')
+            return member
+        node = instances[node['parent']]
+
+
 def unwrap(document: dict) -> tuple[dict, dict | None]:
     """Return the legacy projection and its explicit admission; v1 stays untouched."""
     if not isinstance(document, dict):
@@ -128,10 +164,7 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
     if not isinstance(composition, dict) or set(composition) != {'manifest', 'root', 'preview_sha256', 'review_instance', 'members', 'diversity'}:
         raise ValueError('Invalid formal composition selection')
     manifest_identity(composition['manifest'])
-    try:
-        graph = json.loads(base64.b64decode(composition['manifest']['files']['composition.json']['content_base64'], validate=True))
-    except RecursionError as error:
-        raise ValueError('Frozen composition JSON exceeds the decoder nesting limit') from error
+    graph = _manifest_graph(composition['manifest'])
     if graph['root'] != composition['root'] or graph['preview_sha256'] != composition['preview_sha256']:
         raise ValueError('Formal composition identity differs from its frozen graph')
     instances = {}
@@ -177,8 +210,14 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
 
 
 def summary(document: dict) -> dict:
-    """Project an already verified envelope without re-decoding its full asset tree."""
+    """Summarize verified history; runtime support describes shape, not readiness."""
     composition = document['composition']
+    try:
+        review_member(composition)
+    except ValueError:
+        supported = False
+    else:
+        supported = True
     return {'envelope_sha256': document['sha256'], 'manifest_digest': composition['manifest']['digest'],
             'root': composition['root'], 'review_instance': composition['review_instance'],
-            'members': composition['members'], 'diversity': composition['diversity'], 'runtime_supported': False}
+            'members': composition['members'], 'diversity': composition['diversity'], 'runtime_supported': supported}

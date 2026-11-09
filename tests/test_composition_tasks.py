@@ -14,6 +14,8 @@ import pytest
 from ergora import agent_definitions, contracts, projects, reference, task_envelopes, tasks, workflow_definitions as workflows
 from test_registrations import installation, registration
 from test_task_creation import creation_project, _inject, _files
+from test_task_runtime import runtime_client
+from test_task_submission import native_client
 from test_workflow_definitions import EXAMPLES, child, definition, grant, leaf, ref, write_bundle
 
 
@@ -58,7 +60,7 @@ def test_preview_and_creation_freeze_a_new_envelope_with_the_unchanged_legacy_pr
     created = tasks.create(state, 'demo', task, 1, preview['preview_sha256'])
     assert created['status'] == 'published' and created['intent_sha256'] == preview['preview_sha256']
     assert created['composition']['envelope_sha256'] == envelope['sha256']
-    assert created['composition']['runtime_supported'] is False
+    assert created['composition']['runtime_supported'] is True
     shown = tasks.show(state, 'demo', task['task_id'])
     assert shown['spec'] == spec and shown['admission_envelope'] == envelope
     assert tasks.listing(state, 'demo')['items'][0]['composition'] == created['composition']
@@ -68,8 +70,6 @@ def test_preview_and_creation_freeze_a_new_envelope_with_the_unchanged_legacy_pr
     shutil.rmtree(state.root / 'workflow-definitions')
     assert tasks.resume_create(state, 'demo', task['task_id'], 1, created['intent_sha256']) == created
     assert tasks.creation(state, 'demo', task['task_id']) == created and _files(root) == original
-    with pytest.raises(ValueError, match='versioned runtime bridge'):
-        tasks.status(state, 'demo', task['task_id'])
 
 
 @pytest.mark.parametrize('loss', ['agent-bindings.json', 'task.spec.json'])
@@ -168,18 +168,76 @@ def test_changed_envelope_or_embedded_bytes_cannot_be_read_as_the_original_task(
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Native formal submission is Linux-only')
-def test_composition_submission_is_rejected_before_any_legacy_remote_or_dispatch_intent(composed_creation):
+def test_unsupported_composition_is_rejected_before_any_remote_or_dispatch_intent(composed_creation, tmp_path):
     state, registration, task = composed_creation
+    agent = agent_definitions.library(state.root).get('architecture-reviewer', '1.0.0')
+    source = write_bundle(tmp_path / 'multiple-source', definition('multiple-review', [
+        leaf('first', ref(agent, 'agent')), leaf('second', ref(agent, 'agent'))]))
+    workflows.import_bundle(state, source)
+    saved = workflows.prepare_manifest(state.root, 'multiple-review', '1.0.0', grant(), tmp_path / 'multiple-manifest')
+    task['composition'].update(manifest=saved['path'], manifest_digest=saved['digest'], backend_overrides={},
+                               diversity={'policy': 'allow-same'})
     preview = tasks.preview(state, 'demo', task, 1)
     created = tasks.create(state, 'demo', task, 1, preview['preview_sha256'])
+    assert created['composition']['runtime_supported'] is False
     root = Path(registration['execution']['state_directory'])
     runtime = Path(registration['execution']['installation']) / '.venv/bin/python'
     runtime.parent.mkdir(parents=True)
     runtime.symlink_to(sys.executable)
-    with pytest.raises(ValueError, match='versioned runtime bridge'):
+    with pytest.raises(ValueError, match='one reviewer leaf'):
         tasks.start(state, 'demo', task['task_id'], 1, created['intent_sha256'])
     assert not (root / 'ergora/task-submissions').exists()
     assert not (root / 'requests').exists() and not (root / 'receipts').exists()
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Formal admission uses the Linux reference runtime')
+@pytest.mark.parametrize('scenario', ['normal', 'lost-response'])
+def test_supported_composition_start_and_resume_preserve_the_full_original_input(composed_creation, native_client, monkeypatch, scenario):
+    pytest.importorskip('temporalio')
+    state, registration, task = composed_creation
+    root = Path(registration['execution']['state_directory'])
+    runtime = Path(registration['execution']['installation']) / '.venv'
+    if not runtime.exists():
+        runtime.symlink_to(sys.prefix, target_is_directory=True)
+    preview = tasks.preview(state, 'demo', task, 1)
+    created = tasks.create(state, 'demo', task, 1, preview['preview_sha256'])
+    document = json.loads((root / 'tasks/new-task/task.spec.json').read_bytes())
+    monkeypatch.setenv('ERGORA_TEST_SUBMISSION_SCENARIO', scenario)
+    if scenario == 'lost-response':
+        with pytest.raises(ValueError, match='timed out'):
+            tasks.start(state, 'demo', task['task_id'], 1, created['intent_sha256'])
+    else:
+        assert tasks.start(state, 'demo', task['task_id'], 1, created['intent_sha256'])['status'] == 'submitted'
+    monkeypatch.setenv('ERGORA_TEST_SUBMISSION_SCENARIO', 'normal')
+    submission = tasks.submission(state, 'demo', task['task_id'])
+    resumed = tasks.resume_start(state, 'demo', task['task_id'], 1, submission['intent_sha256'])
+    assert resumed['status'] == 'submitted' and resumed['run_id'] == 'original-run'
+    saved = json.loads((root / 'sdk-fixture/server.json').read_bytes())
+    assert saved['spec'] == document and saved['memo']['ergora.submission_sha256'] == submission['intent_sha256']
+    events = [json.loads(line)['event'] for line in (root / 'sdk-fixture/calls.jsonl').read_text().splitlines()]
+    assert events.count('start') == 1
+    assert json.loads((root / 'tasks/new-task/task.spec.json').read_bytes()) == document
+
+
+@pytest.mark.parametrize('scenario', ['running', 'not-found', 'admission-collision', 'legacy-only'])
+def test_composition_runtime_status_binds_full_history_without_mutations(composed_creation, runtime_client, scenario):
+    state, registration, task = composed_creation
+    preview = tasks.preview(state, 'demo', task, 1)
+    tasks.create(state, 'demo', task, 1, preview['preview_sha256'])
+    root = Path(registration['execution']['state_directory'])
+    document = json.loads((root / 'tasks/new-task/task.spec.json').read_bytes())
+    before = _files(root)
+    runtime_client(scenario)
+    if scenario in ('admission-collision', 'legacy-only'):
+        with pytest.raises(ValueError, match='JSON identity'):
+            tasks.status(state, 'demo', task['task_id'], run_id='pinned-run')
+    else:
+        result = tasks.status(state, 'demo', task['task_id'], run_id='pinned-run')
+        assert result['run_id'] == 'pinned-run'
+        assert result['runtime_status'] == ('not_found' if scenario == 'not-found' else 'queried')
+        if scenario == 'running':
+            assert result['status']['admission_sha256'] == document['sha256']
+    assert _files(root) == before
 
 
 def test_an_unexecuted_parent_output_cannot_be_invented_by_selecting_a_review_subtree(composed_creation):

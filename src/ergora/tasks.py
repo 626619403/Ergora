@@ -169,11 +169,9 @@ def status(state: State, project_id: str, task_id: str, *, run_id: str | None = 
         _run_id(run_id)
     project = _project(state, project_id)
     task = reference.task_files(project, task_id=task_id)
-    if 'composition' in task:
-        raise ValueError('Composition task execution requires the versioned runtime bridge; not available yet')
     return {'project': project_id, 'project_revision': project['revision'], 'task_id': task_id,
             'request_sha256': task['spec']['request_sha256'], 'profile_sha256': task['spec']['profile_sha256'],
-            **reference.task_runtime_status(project, task['spec'], run_id=run_id, timeout=timeout)}
+            **reference.task_runtime_status(project, task.get('admission_envelope', task['spec']), run_id=run_id, timeout=timeout)}
 
 
 def external_status(state: State, project_id: str, task_id: str, *, run_id: str, timeout: int = 20) -> dict:

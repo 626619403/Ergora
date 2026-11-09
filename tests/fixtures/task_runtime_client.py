@@ -14,11 +14,15 @@ from temporalio.service import RPCError, RPCStatusCode
 
 from dev_platform import connection
 from ergora.reference_task_runtime import main
+from ergora.reference_inputs import execution_input
+from ergora import task_envelopes
 
 
 payload = json.load(sys.stdin)
 sys.stdin = io.StringIO(json.dumps(payload))
-spec = payload['spec']
+document = payload['spec']
+selected = execution_input(document)
+spec = selected.spec
 scenario = os.environ['ERGORA_TEST_RUNTIME_SCENARIO']
 run_id = payload['run_id'] or 'run-1'
 queries = []
@@ -40,7 +44,8 @@ class Handle:
                               workflow_execution_started_event_attributes=SimpleNamespace(input=SimpleNamespace(payloads=['spec'])))
 
     async def query(self, query, **kwargs):
-        return {'phase': 'AWAITING_PLAN_APPROVAL', 'request_sha256': spec['request_sha256'], 'plan_sha256': 'a'*64}
+        return {'phase': 'AWAITING_PLAN_APPROVAL', 'request_sha256': spec['request_sha256'], 'plan_sha256': 'a'*64,
+                **({'admission_sha256': document['sha256']} if selected.version == 2 else {})}
 
     async def result(self, **kwargs):
         assert kwargs['follow_runs'] is False
@@ -58,13 +63,19 @@ async def connect():
         await asyncio.sleep(5)
     if scenario == 'connection-failed':
         raise RuntimeError('controlled connection failure')
-    original = deepcopy(spec)
+    original = deepcopy(document)
+    projection = original['legacy_spec'] if selected.version == 2 else original
     if scenario == 'collision':
-        original['request']['input']['goal'] = 'Another admitted spec'
+        projection['request']['input']['goal'] = 'Another admitted spec'
     elif scenario == 'boolean-collision':
-        original['profile']['schema_version'] = True
+        projection['profile']['schema_version'] = True
     elif scenario == 'float-collision':
-        original['profile']['schema_version'] = 1.0
+        projection['profile']['schema_version'] = 1.0
+    elif scenario == 'admission-collision':
+        original['composition']['members']['root/review']['backend_reason'] = 'Another selected admission'
+        original = task_envelopes.wrap(spec, original['composition'])
+    elif scenario == 'legacy-only':
+        original = spec
     return SimpleNamespace(get_workflow_handle=handle,
                            data_converter=SimpleNamespace(decode=AsyncMock(return_value=[original])))
 

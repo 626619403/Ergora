@@ -1,6 +1,6 @@
 # CR3b 正式单叶审查执行桥：独立两轴审查
 
-日期：2026-11-09。审查者：Codex fresh-context 独立审查者；未继承实现对话。固定基线为 `d8668a43abf5adcbabdf12d0ee5b1f570114262b`，检查基线至工作区的完整 tracked diff、untracked 文件正文和相关调用者。同一审查者在本片内补核修正；行为审查候选为 R4，最终 R4-final 仅清理一个 EOF 换行，源码、非 editable 发行、受影响回归和真实模型原件已独立核对，六项实证发现均已关闭。精确提交/CI/远端交付仍由实现者另行终结。
+日期：2026-11-09。审查者：Codex fresh-context 独立审查者；未继承实现对话。固定基线为 `d8668a43abf5adcbabdf12d0ee5b1f570114262b`，检查基线至工作区的完整 tracked diff、untracked 文件正文和相关调用者。同一审查者在本片内补核修正；行为审查候选为 R4，最终 R4-final 仅清理一个 EOF 换行，源码、非 editable 发行、受影响回归和真实模型原件已独立核对，六项实证发现均已关闭。精确候选 `6826047031aebddb7eb6c5fcf43cfe91ebb45ada` 的固定 Git 对象、自身双 OS CI 及即时 SSH 远端终核亦通过，见文末。
 
 审查依据：[AGENTS.md](../../AGENTS.md)、[当前计划](../PLAN.md)、[本片记录](2026-11-09-composition-review-execution.md)和[CR3 执行范围](2026-11-09-composition-executor.md)，并应用 maintainable-project-delivery 的 independent-review 与 codebase-design。检查的生产文件为 `reference_executor.py`、`reference_creation_process.py`、`reference_task_creation.py`、`reference.py`、`stage_driver.py`、`agent_runs.py`、`workflow_definitions.py`；测试为两份 executor 测试、`test_composition_manifests.py` 及 `reference_acceptance.py`、`stage_agent.py`。本片/PLAN 文档一并核对。CR3a 的原 verify 实现及其后续状态记录不是本片新生产行为。
 
@@ -44,4 +44,21 @@ R4 自身结构模板实际 **205.12 秒 / approve**，run `dee75f24f3e5419c90a9
 
 最终核本片记录、PLAN、运行桥总记录、CR3 执行范围及 AC 计划的当前状态一致；九份变更 Markdown 的 62 个本地链接（含一个锚点）有效。三轮公开自身证据与私有原件一致，历史 request-changes、旧包红例、重复场景和最终 approve 均保留真实范围。CR3a 的候选之后状态追记是原片历史交付记账，不是本片生产实现。
 
-本审查只写此报告，没有修改生产源码、依赖或提交。合成原生协议不证明模型质量；底层 input 仍是 operator-supplied/非正式授权，正式权威来自外层已核创建、job/context/candidate 与可信 receipt。公开扫描/start/status 及实际 Temporal 旅程见[下一片调查与计划](2026-11-09-composition-public-runtime.md)，Supervisor 及恢复出口沿 CR4/AC3c.4；该计划没有宣称行为已实现。Claude 回退理由是先前已保存的实际上游失败和用户明确授权，没有把同模型实调称为模型错误独立。精确提交、必要 CI 及远端终结仍需独立于本片本地审查记录。
+本审查只写此报告，没有修改生产源码、依赖或提交。合成原生协议不证明模型质量；底层 input 仍是 operator-supplied/非正式授权，正式权威来自外层已核创建、job/context/candidate 与可信 receipt。公开扫描/start/status 及实际 Temporal 旅程见[下一片调查与计划](2026-11-09-composition-public-runtime.md)，Supervisor 及恢复出口沿 CR4/AC3c.4；该计划没有宣称行为已实现。Claude 回退理由是先前已保存的实际上游失败和用户明确授权，没有把同模型实调称为模型错误独立。精确交付终核与本地行为审查分别记录如下。
+
+固定候选为 `6826047031aebddb7eb6c5fcf43cfe91ebb45ada`，父提交恰为本片基线。审查者从 Git 对象读取变更集合及原始 blob，核其恰为保存 scope 的 27 个文件，各 SHA256 全部一致；固定候选 `diff --check` 通过。固定 Git 树 `src/ergora` 完整 369 文件集合与 R4-final wheel、非 editable 安装及身份清单完全相同；最终 wheel 仍为 `bd72d38bde47930c82e7d0acaa37fb7aab1f3efc3d8ae778f3e85a180584c3ca`。固定 manifest 及 283 个 Git blob 摘要全通过，冻结目录相对父提交无变化。后片工作区变动不参与本段比较。
+
+本候选自己的 [Portability CI 42545445322](https://github.com/626619403/Ergora/actions/runs/42545445322) 为 push / attempt 1，独立 API 已核两个作业 `head_sha` 精确等于固定候选。01:32:34 UTC 起公开 API 返回 403 rate limit exceeded，停止该轮询后改用公开 Actions HTML；作业原生 step 状态及日志路径仍绑定同一完整候选，没有新增认证或修改配置。2026-11-09 **01:38:45.064259 UTC** 独立读取确认总体为 Success、两个作业 completed，七项适用必要步骤均 success：
+
+|平台 / Python|作业|适用必要步骤|必要步骤最后完成 UTC|
+|---|---|---|---|
+|Ubuntu / 3.11|[128929318653](https://github.com/626619403/Ergora/actions/runs/42545445322/job/128929318653)|构建安装、包身份、应用回归：3 项 success|2026-11-09 01:38:15|
+|Windows / 3.12|[128929318513](https://github.com/626619403/Ergora/actions/runs/42545445322/job/128929318513)|构建安装、包身份、应用回归、PowerShell 安装升级：4 项 success|2026-11-09 01:33:01|
+
+本段只记录 CI 步骤结论，不声称每个平台条件测试均实际执行。确认成功后的同一进程于 **01:38:45.064320 UTC** 立即启动默认 SSH `git ls-remote`，使用 BatchMode 与 15 秒连接超时；**01:38:46.457071 UTC** exit 0、stderr 为空，远端返回：
+
+```text
+6826047031aebddb7eb6c5fcf43cfe91ebb45ada  refs/heads/refactor/architecture-foundations
+```
+
+CR3b 要求与结构两轴、六项发现修正及固定候选精确交付终核全部通过，无剩余阻塞 finding。此段为候选提交之后的同片记录追记；结论只覆盖本片内部单叶桥，后续工作区或新候选不继承本次 CI/远端身份。

@@ -26,6 +26,7 @@ from dev_platform.portable import validate_compiled
 
 from . import agent_backends, agents, bindings, projects, task_envelopes, task_mcp, workflow_definitions
 from .reference_creation_process import task_creation
+from .reference_inputs import request_roots
 from .state import State
 
 
@@ -62,13 +63,7 @@ class Executor(original.Executor):
             with tempfile.TemporaryDirectory(prefix='ergora-composition-admission-') as temporary:
                 checked = self._manifest(Path(temporary) / 'manifest')
                 graph = checked['composition']
-            require(len(composition['members']) == 1, 'Composition execution currently requires one reviewer leaf')
-            self.member = next(iter(composition['members']))
-            instances = {item['path']: item for item in graph['instances']}
-            leaf = instances[self.member]
-            require(leaf['role'] == 'reviewer' and not leaf['permissions']['write']
-                    and not leaf['permissions']['shell'] and not leaf['permissions']['network'],
-                    'Composition review requires a read-only reviewer without shell or network')
+            self.member = task_envelopes.review_member(composition)
             selected = composition['members'][self.member]
             agents.validate_binding('reviewer', selected['binding'], formal=True)
             backend = agent_backends.for_binding(selected['binding'], {'codex': {'config': CONFIG / 'codex.toml'}})
@@ -78,17 +73,6 @@ class Executor(original.Executor):
                     'Frozen composition policy differs from the current backend contract')
             if selected['mode'] == 'task-mcp':
                 task_mcp.check_available()
-            # Only a direct root task is supplied. No sibling output or dependency
-            # is invented by treating structural ancestors as executed workflows.
-            node, port = leaf, 'task'
-            while True:
-                require(set(node['inputs']) == {port} and not node['depends_on']
-                        and 'input' in node['inputs'][port], 'Composition leaf requires a direct root task input')
-                port = node['inputs'][port]['input']
-                if node['parent'] is None:
-                    require(port == 'task', 'Composition leaf must resolve to the root task input')
-                    break
-                node = instances[node['parent']]
             self.graph = graph
         else:
             require('admission' not in context, 'Composition admission does not match the published task')
@@ -471,7 +455,7 @@ def main(home: Path, request: Path | None = None) -> dict | None:
                             write(STATE / "rejected-envelopes" / (hashlib.sha256(str(path).encode()).hexdigest() + ".json"),
                                   {"request_file": str(path), "error_type": type(error).__name__, "detail": str(error)[:4000]})
                         del active[path]
-                for path in sorted((STATE / "requests").glob("*/*.json")):
+                for path in sorted(path for root in request_roots(STATE / "requests") for path in root.glob("*/*.json")):
                     receipt = STATE / "receipts" / path.parent.name / path.name
                     rejected = STATE / "rejected-envelopes" / (hashlib.sha256(str(path).encode()).hexdigest() + ".json")
                     if path not in active and not receipt.exists() and not rejected.exists() and len(active) < settings()["max_parallel_jobs"]:

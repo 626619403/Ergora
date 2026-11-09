@@ -114,7 +114,7 @@ class CompositionInput(WorkflowInput):
         return validate_spec(self.spec)
 
     def require_submission(self) -> None:
-        raise ValueError('Composition task submission requires the versioned runtime bridge; not available yet')
+        task_envelopes.review_member(self.document['composition'])
 
 
 _INPUTS = {1: LegacyInput, 2: CompositionInput}
@@ -123,6 +123,11 @@ _INPUTS = {1: LegacyInput, 2: CompositionInput}
 def workers(client, queue: str, config: dict) -> list:
     """Register every supported version through its own construction contract."""
     return [implementation.worker(client, queue, config) for implementation in _INPUTS.values()]
+
+
+def request_roots(original: Path) -> tuple[Path, ...]:
+    """The registered input versions own the executor's request namespaces."""
+    return tuple(implementation.request_root(original) for implementation in _INPUTS.values())
 
 
 def execution_input(document: dict) -> WorkflowInput:

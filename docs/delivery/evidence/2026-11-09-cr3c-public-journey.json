@@ -1,0 +1,59 @@
+{
+  "checked_at": "2026-11-09T01:47:05.649919+00:00",
+  "seconds": 304.46930253505707,
+  "source": {
+    "src/ergora/reference_executor.py": "6d6f24f5002ac9408d237f9b59625ac75e62c554800c3d6db3f9cd127d3a4ccc",
+    "src/ergora/reference_inputs.py": "3f8ff5aba07cfe5605981470b8002aa8ef3a1484511ce760cf58f7904feebcc5",
+    "src/ergora/reference_task_runtime.py": "af253979f3cff209ba808bda8ea83108d5859e0761d93e674443bebaef1caef5",
+    "src/ergora/task_envelopes.py": "cf0133e8c822eab65531dfd21311404ac6d300ab94ccb8e3242e90671dea581e",
+    "src/ergora/tasks.py": "7bfa40f446278f1df3a6379600c62ac53281115c6fe47a97037809aed403117e"
+  },
+  "records": {
+    "governance-v2": {
+      "version": 2,
+      "task_id": "governance-v2-public",
+      "run_id": "01a1bdf8-4930-7455-b02b-9ad89d28679b",
+      "history": {
+        "workflow_type": "ErgoraCompositionWorkflowV2",
+        "original_payload_sha256": "9a08b430dd805423601428d576256e0ebfa547fffa3e30199725dfd7f9c335e3",
+        "history_sha256": "9d5a32196fbbde2b023566fdfa27fbb787567112fd0463bfe6be9e8e5de6e1c4",
+        "replay": "passed",
+        "stages": 6
+      },
+      "outcome": "REVIEW_READY",
+      "candidate_sha": "ebf5832929dd2e762fb661b4ec64f2a9c3eee274",
+      "receipt_count": 6
+    },
+    "large-v2": {
+      "version": 2,
+      "task_id": "large-v2-public",
+      "run_id": "01a1bdf9-ced1-7b1c-834c-c862faf9a5ed",
+      "history": {
+        "workflow_type": "ErgoraCompositionWorkflowV2",
+        "original_payload_sha256": "9c96808377d2c704477d6054c9e0dc9bf06e061476d7d123534c09ce7e63d83d",
+        "history_sha256": "7878bbdb0f6fe51bb920ad652084105801db029011e6f9e10ad299cc992d32a6",
+        "replay": "passed",
+        "stages": 6
+      },
+      "outcome": "REVIEW_READY",
+      "candidate_sha": "e3da23ef351e921e6a9a380b55efc8bdec47d80b",
+      "receipt_count": 6
+    },
+    "governance-v1": {
+      "version": 1,
+      "task_id": "governance-v1-public",
+      "run_id": "01a1bdfb-555d-7eeb-8f66-5ae842b8f29b",
+      "history": {
+        "workflow_type": "DevelopmentWorkflow",
+        "original_payload_sha256": "db2901a308b2ad166a84c27b70e82078d21c8619fef4037db43f46ba275b2af8",
+        "history_sha256": "a5219602e5620db5fde98b8edf3982fb494a783c37a4414b11c28484799a9620",
+        "replay": "passed",
+        "stages": 6
+      },
+      "outcome": "REVIEW_READY",
+      "candidate_sha": "35bb72dc5c4ad7c4936b879f07d4ef03ff9fb3c8",
+      "receipt_count": 6
+    }
+  },
+  "scope": "Actual installed public CLI, Temporal, versioned workers, native prerequisite/A2A checks, dual-root executor scanner, test-operator owner approvals, synthetic native/command agent protocols. No real model quality or business owner approval claim."
+}

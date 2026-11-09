@@ -15,6 +15,7 @@ from temporalio.service import RPCError, RPCStatusCode
 from agent_platform import core, doctor, projects
 from dev_platform import connection
 from ergora.reference_task_submission import _Submission, main
+from ergora.reference_inputs import execution_input
 
 
 payload = json.load(sys.stdin)
@@ -87,6 +88,9 @@ class Client:
 
     async def start_workflow(self, run, spec, **kwargs):
         log('start')
+        selected = execution_input(spec)
+        assert run is selected.entrypoint
+        assert kwargs['task_queue'] == selected.task_queue(connection.task_queue())
         assert kwargs['id'] == 'dev-task/' + payload['task_id']
         assert kwargs['id_reuse_policy'] == WorkflowIDReusePolicy.REJECT_DUPLICATE
         assert kwargs['id_conflict_policy'] == WorkflowIDConflictPolicy.FAIL

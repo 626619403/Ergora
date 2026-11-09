@@ -1,6 +1,6 @@
 # CR3b：正式单叶审查执行桥
 
-日期：2026-11-09。基线`d8668a43abf5adcbabdf12d0ee5b1f570114262b`。状态：内部实现、最终发行/边界及真实自身审查通过，独立终核通过；普通提交推送及本候选CI/远端待完成。公开v2 start/status仍关闭。前片CR3a只迁入可信verify，本片完成E1/E3的内部执行支持，E4公开入口和真实Temporal旅程另片收口。
+日期：2026-11-09。基线`d8668a43abf5adcbabdf12d0ee5b1f570114262b`。状态：内部实现、最终发行/边界、真实自身审查及独立终核通过；精确6826047普通推送、自己的双OS CI42545445322七必要步骤及2026-11-09 01:38:46.457071 UTC独立远端核同SHA已完成。此片交付时公开v2 start/status仍关闭，后续入口状态见CR3c。前片CR3a只迁入可信verify，本片完成E1/E3的内部执行支持，E4公开入口和真实Temporal旅程另片收口。
 
 ## 范围与复用
 
@@ -52,6 +52,6 @@ R3自身真实模板 **301.20秒request-changes**，[身份](evidence/2026-11-09
 
 R4真实正式task-MCP通过已隔离驱动，仍按真实模型request-changes保存外层FAILED/independent-review=fail，lower成功、native ready、全部11产物已独立重核；它证明协议与证据保持，不证明默认治理任务实现成功。真实自身结构模板 **205.12秒approve**，run `dee75f24f3e5419c90a93e3ae45c1847`；[身份](evidence/2026-11-09-cr3b-r4-self-review-identity.json)和[结果](evidence/2026-11-09-cr3b-r4-self-review-result.json)保留，5唯一页完整279029字节/首读重复一次均独立逐字节重算。原独立者逐项关闭SP1–5/M1、核20源身份及完整15份生产/冻结邻居原文与R4wheel一致，无剩余blocking finding。该审查没有运行测试或证明公开v2/Supervisor可用。
 
-[独立两轴报告](2026-11-09-composition-review-execution-review.md)核本片实际范围；后续[CR3c公开运行入口](2026-11-09-composition-public-runtime.md)接双根扫描/start/status和真实Temporal旅程。当前不将手工六阶段或真实模型正确拒绝扩大为整栈成功。普通提交、自己的必要双OS CI和即时远端身份仍需分别记录。
+[独立两轴报告](2026-11-09-composition-review-execution-review.md)核本片实际范围；后续[CR3c公开运行入口](2026-11-09-composition-public-runtime.md)接双根扫描/start/status和真实Temporal旅程。当前不将手工六阶段或真实模型正确拒绝扩大为整栈成功。后续精确提交/CI/远端终结见本记录开头及独立报告末尾；上述模型结果不被扩大为整栈成功。
 
 提交前对新文件的staged whitespace检查发现creation-process模块多一个尾空行，已仅移除该LF；R4实测/自审原件保持原身份。R4-final重新发行369文件/283冻结一致，wheel SHA `bd72d38bde47930c82e7d0acaa37fb7aab1f3efc3d8ae778f3e85a180584c3ca`，与R4包唯一源码差异为该LF，Python AST（含位置）完全相同，最终helper SHA `8e6122720bed4c53b009a828d8039f7abfd322d29b106a6d6107e684be3f0914`。独立者确认该机械差异，不重跑未变化行为的模型/fixture，也不改写原自审身份。最终静态文档9份/62链接及75条CLI parser通过。

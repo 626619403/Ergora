@@ -62,10 +62,12 @@ async def _status(payload: dict) -> dict:
     from dev_platform.connection import connect, task_queue
     from dev_platform.runtime import DevelopmentTransport, RuntimeNotFound
     from dev_platform.workflow import workflow_id
+    from .reference_inputs import execution_input
 
-    spec = payload['spec']
+    selected = execution_input(payload['spec'])
+    spec = selected.spec
     identity = {'workflow_id': workflow_id(spec), 'run_id': payload['run_id']}
-    runtime = DevelopmentTransport(VerifiedSpecClient(await connect(), spec), task_queue())
+    runtime = DevelopmentTransport(VerifiedSpecClient(await connect(), selected.document), task_queue())
     try:
         observed = await runtime.poll(spec, payload['run_id'])
     except RuntimeNotFound:
