@@ -12,13 +12,14 @@ import sys
 import time
 import threading
 
-from ergora import agents, projects, reference, registrations
+from ergora import agent_runs, agents, projects, reference, registrations
 from ergora.state import State
 
 
 async def main():
     root, kind, backend = Path(sys.argv[1]), sys.argv[2], sys.argv[3]
     mode = sys.argv[4] if len(sys.argv) > 4 else "legacy-registration"
+    composition_mode = mode.startswith("composition")
     installation = root / "installation"
     for part in ("local", "upstream/platform"):
         shutil.copytree(reference.ROOT / "platform" / part, installation / part)
@@ -52,6 +53,13 @@ async def main():
         "container_boundary": identity, "stage_walltime_seconds": 20, "max_parallel_jobs": 2,
         "codex_env_key": "ERGORA_FIXTURE_KEY", "codex_bin": str(codex), "reviewer": "codex"})
     (config / "codex.toml").write_text("")
+    if mode == 'composition-task-mcp':
+        platform = read(config / 'platform.json')
+        platform.update(codex_bin=shutil.which('codex', path=os.environ['PATH'].split(os.pathsep, 1)[1]),
+                        codex_env_key='LINGZHI_API_KEY', stage_walltime_seconds=300)
+        assert platform['codex_bin'] and os.environ.get('LINGZHI_API_KEY')
+        write(config / 'platform.json', platform, replace=True)
+        shutil.copyfile(os.environ['ERGORA_HOSTED_REVIEW_CONFIG'], config / 'codex.toml')
     adapter_config = {key: str(runtime / key) for key in ("requests", "receipts", "artifacts", "approvals", "fences")}
     adapter_config["trusted_receipts"] = True
     write(config / "adapter.json", adapter_config)
@@ -59,7 +67,21 @@ async def main():
     repo.mkdir()
     git(repo, "init")
     (repo / "src").mkdir()
-    (repo / "src/base.py").write_text("VALUE = 1\n")
+    (repo / "src/base.py").write_bytes(b"VALUE = 1\r\n" if composition_mode else b"VALUE = 1\n")
+    if mode == 'composition-import-shadowing':
+        # Candidate imports must never run inside the installed trusted driver.
+        shadow = "from pathlib import Path\nPath(" + repr(str(root / 'shadow-imported')) + ").touch()\nraise RuntimeError('candidate import executed')\n"
+        (repo / 'ergora').mkdir()
+        (repo / 'ergora/__init__.py').write_text(shadow)
+        (repo / 'json.py').write_text(shadow)
+    elif mode == 'composition-replace-object':
+        (repo / 'src/removed.txt').write_bytes(b'Original base-only material\r\n')
+    elif mode == 'composition-binary':
+        (repo / 'src/binary.bin').write_bytes(b'not text\0content')
+    elif mode == 'composition-symlink':
+        (repo / 'src/link.txt').symlink_to('base.py')
+    elif mode == 'composition-capacity':
+        (repo / 'src/complete.txt').write_text('x' * 1100000)
     git(repo, "add", ".")
     git(repo, "commit", "-m", "fixture baseline")
     check = [sys.executable, "-c", "import ast,pathlib;[ast.parse(p.read_text()) for p in pathlib.Path('{repo}/src').glob('*.py')]"]
@@ -70,6 +92,8 @@ async def main():
     task_input = json.loads((reference.ROOT / "platform/templates" / kind / "input.json").read_text())
     task_input.update(goal="Add a fixture module", allowed_paths=["src"],
         work_units=[{"id": "unit", "depends_on": [], "paths": ["src"], "instructions": "Add VALUE = 42 in src/new.py"}])
+    if mode == 'composition-replace-object':
+        task_input['work_units'][0]['instructions'] += '; fixture-delete-base-only'
     write(root / "input.json", task_input)
     state = State(root / "control")
     projects.create(state, "demo", repo)
@@ -80,7 +104,7 @@ async def main():
         binding["argv"] += ["--wait-for-cancellation", str(root / "action-ready"), str(root / "late-write")]
     for role in ("inspector", "planner", "implementer", "reviewer"):
         projects.bind(state, "demo", role, binding, state.project("demo")["revision"])
-    if mode.startswith("unified") or mode == "imported-registration":
+    if mode.startswith("unified") or mode == "imported-registration" or composition_mode:
         definition = {"schema_version": 1, "id": "demo", "repo": str(repo), "templates": [kind],
                       "tracker": {"kind": "github", "project": "fixtures/demo"}, "allowed_paths": ["src"],
                       "checks": checks, "scope_policy": {"schema_version": 1, "protected_paths": [".git"],
@@ -97,7 +121,40 @@ async def main():
             registrations.register(state, definition, state.project("demo")["revision"])
     else:
         register("demo", repo, "github", "fixtures/demo", ["src"], root / "checks.json")
-    create_task("demo", kind, "task-1", "1", root / "input.json")
+    if composition_mode:
+        from ergora import agent_definitions, tasks, workflow_definitions
+
+        examples = Path(__file__).resolve().parents[2] / 'examples'
+        agent_definitions.import_bundle(state, examples / 'agents/architecture-reviewer')
+        workflow_source = root / 'workflow-source'
+        shutil.copytree(examples / 'composition/structure-review', workflow_source)
+        graph_definition = read(workflow_source / 'workflow.json')
+        if mode == 'composition-multiple':
+            another = deepcopy(graph_definition['nodes'][0])
+            another['id'] = 'another'
+            graph_definition['nodes'].append(another)
+        elif mode == 'composition-read-scope':
+            graph_definition['nodes'][0]['permissions']['read'] = ['workspace/src/base.py', 'definitions']
+        write(workflow_source / 'workflow.json', graph_definition, replace=True)
+        workflow_definitions.import_bundle(state, workflow_source)
+        manifest_path = root / 'manifest'
+        manifest = workflow_definitions.prepare_manifest(state.root, 'structure-review', '1.0.0',
+            read(examples / 'composition/preview-grant.json'), manifest_path)
+        task_definition = {'schema_version': 2, 'task_id': 'task-1', 'task_type': kind, 'issue_id': '1', 'input': task_input,
+            'composition': {'manifest': str(manifest_path), 'manifest_digest': manifest['digest'],
+                            'review_instance': 'root', 'mode': 'task-mcp' if mode == 'composition-task-mcp' else 'text-only'}}
+        if mode in ('composition-review-reject', 'composition-review-timeout', 'composition-review-cancel'):
+            model = 'fixture-' + mode.removeprefix('composition-review-')
+            task_definition['composition']['backend_overrides'] = {
+                'root/review': {'binding': {'tool': 'codex', 'model': model}, 'reason': 'Explicit native protocol failure fixture'}}
+        revision = state.project('demo')['revision']
+        preview = tasks.preview(state, 'demo', task_definition, revision)
+        tasks.create(state, 'demo', task_definition, revision, preview['preview_sha256'])
+        shutil.rmtree(manifest_path)
+        shutil.rmtree(state.root / 'agent-definitions')
+        shutil.rmtree(state.root / 'workflow-definitions')
+    else:
+        create_task("demo", kind, "task-1", "1", root / "input.json")
     compiled_path = runtime / "tasks/task-1/compiled.json"
     compiled = read(compiled_path)
     instructions = compiled["package"]["templates"]["instructions.md"]
@@ -126,29 +183,28 @@ async def main():
                 project["registration"]["definition"]["execution"]["state_directory"] = str(root / "wrong-runtime")
             with state.connect() as db:
                 db.execute("UPDATE projects SET document=? WHERE id=?", (json.dumps(project), "demo"))
-    app = DevelopmentWorkflow()
-    app.spec = read(runtime / "tasks/task-1/task.spec.json")
-    adapter = FileAdapter(adapter_config)
-    activities = Activities(adapter)
+    if composition_mode:
+        from ergora.reference_inputs import execution_input
+        from ergora.reference_workflows import CompositionDevelopmentWorkflow
+
+        document = read(runtime / 'tasks/task-1/task.spec.json')
+        selected_input = execution_input(document)
+        app = CompositionDevelopmentWorkflow()
+        app.spec, app.admission = selected_input.spec, document
+        adapter = selected_input.adapter(adapter_config)
+        activities = selected_input.activities(adapter_config)
+        requests = selected_input.request_root(runtime / 'requests')
+        wrapper = (runtime / 'tasks/task-1/task.spec.json').read_bytes()
+    else:
+        app = DevelopmentWorkflow()
+        app.spec = read(runtime / 'tasks/task-1/task.spec.json')
+        adapter = FileAdapter(adapter_config)
+        activities = Activities(adapter)
+        requests, wrapper = runtime / 'requests', None
     await activities.validate(app.spec)
     records = {}
     frozen_selection = None
     starting = app.spec["request"]["repository"]["starting_sha"]
-    wrapper = None
-    if mode == 'verify-wrapper':
-        from ergora import agent_definitions, task_envelopes, tasks, workflow_definitions
-
-        examples = Path(__file__).resolve().parents[2] / 'examples'
-        agent_definitions.import_bundle(state, examples / 'agents/architecture-reviewer')
-        workflow_definitions.import_bundle(state, examples / 'composition/structure-review')
-        manifest_path = root / 'manifest'
-        manifest = workflow_definitions.prepare_manifest(state.root, 'structure-review', '1.0.0',
-            read(examples / 'composition/preview-grant.json'), manifest_path)
-        composition = tasks._composition({'composition': {'manifest': str(manifest_path),
-            'manifest_digest': manifest['digest'], 'review_instance': 'root', 'mode': 'text-only'}},
-            {'bindings': {'implementer': binding}})
-        write(runtime / 'tasks/task-1/task.spec.json', task_envelopes.wrap(app.spec, composition), replace=True)
-        wrapper = (runtime / 'tasks/task-1/task.spec.json').read_bytes()
     if cancellation:
         context = app.context("inventory", starting, dependencies={})
         job = await activities.submit(context)
@@ -169,13 +225,132 @@ async def main():
         assert not (root / "late-write").exists()
         print(json.dumps({"cancelled": True, "no_late_write": True}))
         return
+    def check_formal_evidence(review_receipt):
+        job_output = runtime / 'workspaces/task-1/jobs' / review_receipt['job_id']
+        call = read(job_output / 'selected-agent/formal-call.json')
+        materials = read(job_output / 'selected-agent/materials.json')
+        invocation = read(job_output / 'output/selected-agent/invocation.json')
+        assert call['candidate_sha'] == materials['candidate_sha'] == review_receipt['candidate_sha']
+        base_blob = materials['repository']['base']['files']['src/base.py']['git_object']
+        new_blob = materials['repository']['candidate']['files']['src/new.py']['git_object']
+        assert materials['repository']['blobs'][base_blob]['text'] == 'VALUE = 1\r\n'
+        assert materials['repository']['blobs'][new_blob]['text'] == 'VALUE = 42\n'
+        if mode == 'composition-replace-object':
+            removed = materials['repository']['base']['files']['src/removed.txt']['git_object']
+            assert 'src/removed.txt' not in materials['repository']['candidate']['files']
+            assert materials['repository']['blobs'][removed]['text'] == 'Original base-only material\r\n'
+            assert 'Original base-only material' in materials['repository']['diff']
+            assert 'Substituted material' not in materials['repository']['diff']
+        assert materials['template_instructions'] == {'content': instructions, 'sha256': instructions_sha}
+        assert set(materials['dependency_artifacts']['verification']) == {item['name'] for item in records['verify']['artifacts']}
+        assert set(materials['dependency_artifacts']['plan']) == {item['name'] for item in records['plan']['artifacts']}
+        assert invocation['formal_execution_authorized'] is False and invocation['status'] == 'succeeded'
+        assert invocation['input_digest'] == call['input_digest']
+        saved = workflow_definitions.inspect_input(Path(invocation['input_path']), material=True)
+        assert saved['request']['prompt_sha256'] == invocation['prompt_sha256'] == call['prompt_sha256']
+        assert saved['composition']['instances'][-1]['resources']
+        assert not (runtime / 'requests').exists()
+        assert len(agent_runs.runs(state, 'demo')) == 1
+        if mode == 'composition-task-mcp':
+            assert invocation['task_mcp']['native']['ready']
+            assert Path(invocation['task_mcp']['native']['receipt']).is_file()
+            names = {item['name'] for item in review_receipt['artifacts']}
+            assert {'composition-materials', 'composition-prompt', 'composition-mcp-scope', 'composition-mcp-audit'} <= names
+        return invocation
+
     for stage in ("inventory", "plan", "work:unit", "integrate", "verify", "review"):
+        if stage == 'review' and mode == 'composition-evidence-capacity':
+            # Simulate valid, large verifier logs under the existing adapter limits.
+            verified = records['verify']
+            for index in range(2):
+                relative = 'task-1/' + verified['job_id'] + '/large-' + str(index) + '.md'
+                raw = b'L' * 600000
+                (runtime / 'artifacts' / relative).write_bytes(raw)
+                verified['artifacts'].append({'name': 'large-' + str(index), 'path': relative,
+                                              'sha256': hashlib.sha256(raw).hexdigest()})
+            write(runtime / 'receipts/task-1' / (verified['job_id'] + '.json'), verified, replace=True)
+            adapter.verify_receipt(verified, verified)
         expected = records["integrate"]["candidate_sha"] if stage in ("verify", "review") else None
-        dependencies = {key: records[key] for key in records if key in {
-            "inventory" if stage == "plan" else "plan" if stage == "work:unit" else "work:unit" if stage == "integrate" else "integrate" if stage == "verify" else "verify"}}
+        # Preserve the frozen scheduler's actual keys and authority metadata.
+        dependencies = ({'inventory': records['inventory']} if stage == 'plan' else
+                        {'work:unit': records['work:unit']} if stage == 'integrate' else
+                        {'integration': records['integrate']} if stage == 'verify' else
+                        {'verification': records['verify'], 'plan': records['plan']} if stage == 'review' else {})
         context = app.context(stage, expected, task_input["work_units"][0] if stage == "work:unit" else None, dependencies)
         job = await activities.submit(context)
-        request = runtime / "requests/task-1" / (context["job_id"] + ".json")
+        request = requests / "task-1" / (context["job_id"] + ".json")
+        if stage == 'inventory' and mode in ('composition-missing-admission', 'composition-other-admission',
+                'composition-missing-publication', 'composition-binding-drift', 'composition-config-drift', 'composition-policy-drift', 'composition-multiple'):
+            from ergora.reference_executor import Executor
+            from ergora import task_envelopes
+            from agent_platform.core import Blocked
+
+            envelope = read(request)
+            if mode == 'composition-missing-admission':
+                del envelope['context']['admission']
+            elif mode == 'composition-other-admission':
+                changed = deepcopy(document['composition'])
+                changed['members']['root/review']['backend_reason'] = 'Different admission with the same legacy projection'
+                envelope['context']['admission'] = task_envelopes.wrap(app.spec, changed)
+            elif mode == 'composition-missing-publication':
+                (runtime / 'ergora/task-creations/task-1.result.json').unlink()
+            elif mode == 'composition-binding-drift':
+                path = runtime / 'tasks/task-1/agent-bindings.json'
+                selected = read(path)
+                selected['bindings']['reviewer']['model'] = 'drifted'
+                write(path, selected, replace=True)
+            elif mode == 'composition-config-drift':
+                write(config / 'policies/demo/execution.json', {'allowed_task_types': []}, replace=True)
+            elif mode == 'composition-policy-drift':
+                from ergora.agent_backends import CodexBackend
+                policy = CodexBackend.composition_policy
+                def changed_policy(self, selected_mode):
+                    value = policy(self, selected_mode)
+                    value['basis'] += ' changed contract'
+                    return value
+                CodexBackend.composition_policy = changed_policy
+            envelope['job_sha256'] = sha(envelope['context'])
+            write(request, envelope, replace=True)
+            try:
+                Executor(envelope, state.root)
+            except (Blocked, OSError, ValueError, KeyError) as error:
+                assert not (runtime / 'executor.sqlite3').exists() and not (runtime / 'workspaces').exists()
+                print(json.dumps({'rejected': mode, 'detail': str(error), 'before_native_side_effects': True}))
+                return
+            raise AssertionError('Invalid composition admission was accepted')
+        if stage == 'review' and composition_mode:
+            if mode == 'composition-replace-object':
+                mirror = runtime / 'workspaces/task-1/repo.git'
+                original = git(mirror, 'rev-parse', starting + ':src/removed.txt').stdout.strip()
+                replacement = subprocess.check_output(['/usr/bin/git', '-C', str(mirror), 'hash-object', '-w', '--stdin'],
+                                                       input=b'Substituted material\n').decode().strip()
+                git(mirror, 'replace', original, replacement)
+                assert git(mirror, 'cat-file', '-p', original).stdout == 'Substituted material\n'
+            elif mode == 'composition-dependency-drift':
+                artifact = records['verify']['artifacts'][0]
+                (runtime / 'artifacts' / artifact['path']).write_text('Changed verification evidence')
+            elif mode in ('composition-review-recovery', 'composition-missing-invocation'):
+                from ergora.reference_executor import Executor
+
+                first = Executor(read(request), state.root).execute()
+                if mode == 'composition-missing-invocation':
+                    missing = runtime / 'workspaces/task-1/jobs' / context['job_id'] / 'output/selected-agent/invocation.json'
+                    missing.unlink()
+                    second = Executor(read(request), state.root).execute()
+                    assert first['state'] == 'SUCCEEDED' and second['state'] == 'FAILED', (first, second)
+                    assert 'invocation evidence' in second['detail']
+                else:
+                    second = Executor(read(request), state.root).execute()
+                    assert first == second and first['state'] == 'SUCCEEDED', (first, second)
+            elif mode == 'composition-review-cancel':
+                def cancel_review():
+                    deadline = time.monotonic() + 20
+                    while not list((state.root / 'runs').glob('*.cwd/review-ready')) and time.monotonic() < deadline:
+                        time.sleep(0.02)
+                    assert list((state.root / 'runs').glob('*.cwd/review-ready'))
+                    write(runtime / 'fences/task-1.json', {'reason': 'Formal composition cancellation fixture'})
+                review_cancel_thread = threading.Thread(target=cancel_review)
+                review_cancel_thread.start()
         if stage == 'verify':
             if mode in ('verify-scope-mismatch', 'verify-scope-header'):
                 scope_file = runtime / 'workspaces/task-1/jobs' / context['job_id'] / 'output/scope.json'
@@ -212,6 +387,21 @@ async def main():
             receipt = json.loads(result.stdout)
         else:
             receipt = reference.executor(installation, state.root, request)
+        if stage == 'review' and mode in ('composition-binary', 'composition-symlink', 'composition-capacity',
+                'composition-read-scope', 'composition-dependency-drift', 'composition-evidence-capacity', 'composition-review-reject',
+                'composition-review-timeout', 'composition-review-cancel', 'composition-missing-invocation'):
+            if mode == 'composition-review-cancel':
+                review_cancel_thread.join(timeout=2)
+            assert receipt['state'] == ('CANCELLED' if mode == 'composition-review-cancel' else 'FAILED'), receipt
+            assert receipt['candidate_sha'] == records['verify']['candidate_sha']
+            if mode != 'composition-dependency-drift':
+                assert await activities.poll(job) == receipt
+            assert not any(item['status'] == 'pass' for item in receipt['checks'])
+            time.sleep(2.2 if mode == 'composition-review-cancel' else 0)
+            if mode == 'composition-review-cancel':
+                assert not list((state.root / 'runs').glob('*.cwd/late-review'))
+            print(json.dumps({'rejected': mode, 'detail': receipt['detail'], 'state': receipt['state']}))
+            return
         if stage == 'verify' and mode in ('verify-scope-mismatch', 'verify-scope-header', 'verify-baseline-drift', 'verify-command-failure', 'verify-scope-recovery'):
             assert receipt['state'] == 'FAILED', receipt
             assert not receipt['checks']
@@ -233,9 +423,18 @@ async def main():
             assert not (runtime / "tasks/task-1/agent-bindings.json").exists()
             print(json.dumps({"rejected": mode, "detail": receipt["detail"]}))
             return
+        if stage == 'review' and mode == 'composition-task-mcp' and receipt['state'] == 'FAILED':
+            assert receipt['detail'] == 'Selected reviewer requested changes', receipt
+            assert await activities.poll(job) == receipt
+            invocation = check_formal_evidence(receipt)
+            assert read(Path(invocation['result']))['decision'] == 'request-changes'
+            print(json.dumps({'template': kind, 'formal_model_invoked': True, 'mcp_ready': True,
+                'candidate_bound': True, 'decision': 'request-changes', 'workflow_succeeded': False,
+                'detail': 'Actual reviewer correctly blocks unmet acceptance; synthetic stages do not prove acceptance'}))
+            return
         assert receipt["state"] == "SUCCEEDED", receipt
         assert await activities.poll(job) == receipt
-        if stage not in ("integrate", "verify"):
+        if stage not in ("integrate", "verify") and not (composition_mode and stage == "review"):
             protocol = runtime / "workspaces/task-1/jobs" / context["job_id"] / "selected-agent/request.json"
             invocation = read(protocol)
             sent = (Path(invocation["output"]) / "stdin.txt").read_text()
@@ -283,10 +482,12 @@ async def main():
     assert candidate != starting
     assert records["verify"]["candidate_sha"] == records["review"]["candidate_sha"] == candidate
     assert records["review"]["actor"]["session_id"] != records["work:unit"]["actor"]["session_id"]
-    assert records["review"]["actor"]["id"] == backend + ":reviewer"
+    assert records["review"]["actor"]["id"] == ("codex" if composition_mode else backend) + ":reviewer"
     assert set(app.spec["profile"]["required_checks"]) == {check["id"] for check in records["verify"]["checks"]}
     if wrapper is not None:
         assert (runtime / 'tasks/task-1/task.spec.json').read_bytes() == wrapper
+        check_formal_evidence(records['review'])
+    assert not (root / 'shadow-imported').exists()
     print(json.dumps({"template": kind, "backend": backend, "stages": list(records), "candidate_bound": True,
                       "template_instructions_bound": True}))
 

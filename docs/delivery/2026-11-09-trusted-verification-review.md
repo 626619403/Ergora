@@ -1,6 +1,6 @@
 # CR3a 可信验证迁入独立审查
 
-日期：2026-11-09。审查者：`trusted_verification_review`，fresh-context；原始依据为 [CR3a 验收](2026-11-09-trusted-verification.md)、[CR3 总体要求](2026-11-09-composition-executor.md)、`AGENTS.md` 及 maintainable-project-delivery / codebase-design。基线为 `8151a1c674fd6c664b4ce6aeba11a5fdf12be426`，审查对象是未提交的本片实现及同片修正，不包含前片 CR2b 的 CI 终核。
+日期：2026-11-09。审查者：`trusted_verification_review`，fresh-context；原始依据为 [CR3a 验收](2026-11-09-trusted-verification.md)、[CR3 总体要求](2026-11-09-composition-executor.md)、`AGENTS.md` 及 maintainable-project-delivery / codebase-design。基线为 `8151a1c674fd6c664b4ce6aeba11a5fdf12be426`；初审覆盖未提交的本片实现及同片修正，固定候选交付终核见文末。不包含前片 CR2b 的 CI 终核。
 
 ## 对象与两轴结论
 
@@ -60,4 +60,27 @@
 
 wrapper fixture 使用旧六阶段活动和合成协议 Agent，只证明 verify seam 能读取完整封装并保持原字节。公开 v2 入口仍拒绝；原构造副作用前的完整准入、实际组合成员/Agent/权限/动态资源、正式 v2 运行和 CR4 整栈均不属于本片已验范围。原有取消合同的沿用已核源码与隔离终态；本审查未实测在 scope 子进程执行中发生的 OS 取消。
 
-本地最终 Standards/Spec 通过，TV-SP1 关闭，无新增未解决 finding。V4 余下普通精确推送及本片自身必要 CI/远端终结，待给出精确候选后同片补核。前片 8151a1c 的 CI 由另一审查者负责，不在这里代为宣称完成。
+本地最终 Standards/Spec 通过，TV-SP1 关闭，无新增未解决 finding。前片 8151a1c 的 CI 由另一审查者负责；本片自己的精确交付终核如下。
+
+## 固定候选、双 OS CI 与远端终核
+
+精确候选为 `d8668a43abf5adcbabdf12d0ee5b1f570114262b`，父提交为 `8151a1c674fd6c664b4ce6aeba11a5fdf12be426`。审查者从固定 Git 对象读取变更集合和 blob，核其恰为 `.ergora/checks/ac3c3-verification/r3/review-scope.json` 的 16 个文件，每个文件 SHA-256 均一致；固定候选的 `git diff --check` 通过。
+
+固定 Git 树中 `src/ergora` 的完整文件集合、R3 wheel 内 `ergora/` 的完整集合与身份清单均恰为 368 文件；逐文件字节与现存 R3 非 editable 安装一致，wheel 仍为 `5a66f3898ccfae55cd76d8563d7975373f16c4eef9a46c1b8b3b11fcf1573bff`。另从该提交读取冻结 manifest 及 283 个对应 Git blob，摘要全通过，冻结目录相对父提交无变化。本节的运行身份绑定固定 Git 对象，后片工作区变化不参与这些比较。
+
+本候选自身的 [Portability CI 42540516079](https://github.com/626619403/Ergora/actions/runs/42540516079) 为 push / attempt 1。2026-11-09 00:45:27.868343 UTC，独立公开 API 查询确认总 run 为 completed / success；两个作业的 `head_sha` 均精确等于本候选。
+
+| 平台 / Python | 作业 | 适用必要步骤 | 完成时间 UTC |
+| --- | --- | --- | --- |
+| Ubuntu / 3.11 | [128914165433](https://github.com/626619403/Ergora/actions/runs/42540516079/job/128914165433) | 构建安装、包身份、应用回归：3 项 success | 2026-11-09 00:45:06 |
+| Windows / 3.12 | [128914165589](https://github.com/626619403/Ergora/actions/runs/42540516079/job/128914165589) | 构建安装、包身份、应用回归、PowerShell 安装/升级：4 项 success | 2026-11-09 00:37:31 |
+
+七项适用必要步骤均成功；Ubuntu 的 Windows PowerShell 条件步骤按 workflow 跳过。此处记录 CI 步骤结果，不据此声称所有平台条件测试均实际执行。
+
+确认 CI 成功后于 00:45:28.678491 UTC 立即发起 SSH `git ls-remote`，默认代理返回 HTTP 407，直接连接的 22/443 端口亦超时。随后复用既有代理认证，以 SSH 443 通道及现存 GitHub host identity 核验重试；没有改 SSH 配置、写入凭据或安装工具。2026-11-09 00:48:29.338026–00:48:33.728775 UTC，SSH 只读命令 exit 0，返回：
+
+```text
+d8668a43abf5adcbabdf12d0ee5b1f570114262b  refs/heads/refactor/architecture-foundations
+```
+
+本片 V4 的独立精确终核完成，Standards / Spec 通过，TV-SP1 关闭，无未解决阻塞 finding。该结论只覆盖 CR3a；前述正式 v2、CR3b/CR4 和 OS 失败路径限制保持。本节为候选提交之后的同片审查记录追记。

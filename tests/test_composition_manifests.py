@@ -1,5 +1,7 @@
 """Complete static graphs travel independently of their source catalog or runtime."""
 
+import base64
+from copy import deepcopy
 import hashlib
 import json
 import shutil
@@ -10,6 +12,57 @@ from ergora import agent_definitions, agents, backups, contracts, workflow_defin
 from ergora.asset_trees import digest_tree
 from ergora.cli import main
 from test_workflow_definitions import EXAMPLES, base, child, definition, grant, imported, leaf, ref, write_bundle
+
+
+@pytest.fixture
+def carried_manifest(base):
+    state, agent, directory = base
+    imported(base, definition('review', [leaf('review', agent)]))
+    original = directory / 'original-manifest'
+    saved = workflows.prepare_manifest(state.root, 'review', '1.0.0', grant(), original)
+    snapshot = {'digest': saved['digest'], 'files': {
+        path.relative_to(original).as_posix(): {'content_base64': base64.b64encode(path.read_bytes()).decode(),
+                                               'executable_bits': path.stat().st_mode & 0o111}
+        for path in original.rglob('*') if path.is_file()}}
+    return snapshot, original, saved, directory
+
+
+def test_carried_manifest_is_atomic_on_interruption_and_retry_uses_the_same_bytes(carried_manifest, monkeypatch):
+    snapshot, original, saved, directory = carried_manifest
+    destination = directory / 'restored'
+    inspect = workflows.inspect_manifest
+
+    def interrupted(*args, **kwargs):
+        raise OSError('Interrupted after staging the complete carried tree')
+
+    monkeypatch.setattr(workflows, 'inspect_manifest', interrupted)
+    with pytest.raises(OSError, match='Interrupted'):
+        workflows.restore_manifest(snapshot, destination)
+    assert not destination.exists() and not list(directory.glob('.composition-restore-*'))
+    monkeypatch.setattr(workflows, 'inspect_manifest', inspect)
+    restored = workflows.restore_manifest(snapshot, destination)
+    assert restored['digest'] == saved['digest']
+    assert workflows.restore_manifest(snapshot, destination) == restored
+    assert {p.relative_to(destination): p.read_bytes() for p in destination.rglob('*') if p.is_file()} == {
+        p.relative_to(original): p.read_bytes() for p in original.rglob('*') if p.is_file()}
+    changed = deepcopy(snapshot)
+    changed['digest'] = '0' * 64
+    with pytest.raises(ValueError, match='manifest changed'):
+        workflows.restore_manifest(changed, destination)
+    assert workflows.inspect_manifest(destination)['digest'] == saved['digest']
+
+
+@pytest.mark.parametrize('damage', ['path', 'identity'])
+def test_untrusted_carried_manifest_never_publishes_outside_or_with_different_identity(carried_manifest, damage):
+    snapshot, original, saved, directory = carried_manifest
+    if damage == 'path':
+        snapshot['files']['../../escape'] = {'content_base64': base64.b64encode(b'escape').decode(), 'executable_bits': 0}
+    else:
+        snapshot['digest'] = '0' * 64
+    destination = directory / 'restored'
+    with pytest.raises(ValueError, match='relative path|manifest changed'):
+        workflows.restore_manifest(snapshot, destination)
+    assert not destination.exists() and not (directory / 'escape').exists()
 
 
 def test_manifest_preserves_all_instances_inherited_assets_and_backup_without_live_catalog(base, monkeypatch, capsys):

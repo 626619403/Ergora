@@ -71,7 +71,8 @@ def run_agent(state: State, project_id: str, role: str, prompt: str, timeout: in
 
 
 def _admit_input(state: State, project_id: str, source: Path, *, backend: str | None,
-                 model: str | None, reason: str | None, mode: str, codex_config: Path | None) -> tuple[dict, dict]:
+                 model: str | None, reason: str | None, mode: str, codex_config: Path | None,
+                 binding_override: dict | None = None) -> tuple[dict, dict]:
     """One current admission produces both the preview and the persisted call contract."""
     contracts.validate(mode, {"enum": ["text-only", "task-mcp"]}, "Composition call mode")
     project = state.project(project_id)
@@ -83,7 +84,10 @@ def _admit_input(state: State, project_id: str, source: Path, *, backend: str | 
     reference = leaf["ref"]
     definition = agent_definitions.library(Path(prepared["path"]) / "assets").get(reference["id"], reference["version"])
     agent_definitions.validate_admission(definition)
-    binding = {"tool": backend} if backend else dict(leaf["backend_request"])
+    if binding_override is not None and (backend is not None or model is not None):
+        raise ValueError("Choose a complete binding override or backend/model fields")
+    binding = dict(binding_override) if binding_override is not None else (
+        {"tool": backend} if backend else dict(leaf["backend_request"]))
     if model is not None:
         binding["model"] = model
     agents.validate_binding(leaf["role"], binding, formal=True)
@@ -127,11 +131,13 @@ def check_input(state: State, project_id: str, source: Path, *, backend: str | N
 
 def run_input(state: State, project_id: str, source: Path, timeout: int = 300, *,
               backend: str | None = None, model: str | None = None, reason: str | None = None,
-              codex_config: Path | None = None, mode: str = "text-only") -> dict:
+              codex_config: Path | None = None, mode: str = "text-only", binding_override: dict | None = None,
+              result_schema: dict | None = None, env: dict | None = None,
+              codex_bin: str = "codex", supervised: bool = False) -> dict:
     """Explicit independent restricted call; no workflow ports or formal approval."""
     contracts.validate(timeout, {"type": "integer", "minimum": 1, "maximum": 3600}, "Agent timeout")
     prepared, document = _admit_input(state, project_id, source, backend=backend, model=model, reason=reason, mode=mode,
-                                      codex_config=codex_config)
+                                      codex_config=codex_config, binding_override=binding_override)
     run_id = uuid.uuid4().hex
     output = state.root / "runs" / run_id
     snapshot = output.with_name(run_id + ".input")
@@ -160,7 +166,8 @@ def run_input(state: State, project_id: str, source: Path, timeout: int = 300, *
         working = output.with_name(run_id + ".cwd")
         working.mkdir(mode=0o700)
         document.update(agents.invoke(document["binding"], document["role"], saved["prompt"], working, output, timeout,
-            agents.result_schema(["response"], document["role"] == "reviewer"), codex_config=codex_config, mode=mode, task_mcp=native_mcp))
+            result_schema or agents.result_schema(["response"], document["role"] == "reviewer"),
+            codex_config=codex_config, mode=mode, task_mcp=native_mcp, env=env, codex_bin=codex_bin, supervised=supervised))
         if mode == "task-mcp" and document["status"] == "succeeded":
             document["task_mcp"]["native"] = task_mcp.verify_native(native_audit, scope["sha256"])
     except KeyboardInterrupt:

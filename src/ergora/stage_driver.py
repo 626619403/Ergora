@@ -3,10 +3,12 @@
 import json
 import os
 from pathlib import Path
+import shutil
 import sys
 import signal
 
-from . import agents, processes
+from . import agent_runs, agents, processes
+from .state import State
 
 
 def _cancel(_signal, _frame):
@@ -24,10 +26,24 @@ def main() -> int:
             raise ValueError("Reference credentials must have mode 0600")
         for key, value in json.loads(credentials.read_text(encoding="utf-8")).items():
             env.setdefault(key, value)
-    document = agents.invoke(request["binding"], request["role"], request["prompt"], Path(request["cwd"]),
-                             Path(request["output"]), request["timeout"], request["schema"],
-                             env=env, codex_config=request["codex_config"],
-                             codex_bin=request.get("codex_bin") or "codex", supervised=True)
+    if 'composition' in request:
+        call = request['composition']
+        document = agent_runs.run_input(State(Path(call['home'])), call['project'], Path(call['input']), request['timeout'],
+            binding_override=request['binding'], reason=call['backend_reason'], mode=call['mode'],
+            codex_config=Path(request['codex_config']), result_schema=request['schema'], env=env,
+            codex_bin=request.get('codex_bin') or 'codex', supervised=True)
+        output = Path(request['output'])
+        output.mkdir(mode=0o700)
+        (output / 'invocation.json').write_text(json.dumps(document), encoding='utf-8')
+        for stream in ('stdout.txt', 'stderr.txt', 'result.json'):
+            source = Path(document.get('output', '')) / stream
+            if 'output' in document and source.is_file():
+                shutil.copyfile(source, output / stream)
+    else:
+        document = agents.invoke(request["binding"], request["role"], request["prompt"], Path(request["cwd"]),
+                                 Path(request["output"]), request["timeout"], request["schema"],
+                                 env=env, codex_config=request["codex_config"],
+                                 codex_bin=request.get("codex_bin") or "codex", supervised=True)
     print(json.dumps(document))
     return 0 if document["status"] == "succeeded" else 1
 

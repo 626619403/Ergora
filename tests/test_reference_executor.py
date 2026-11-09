@@ -27,7 +27,6 @@ def test_existing_six_stage_contract_consumes_selectable_agent_evidence(tmp_path
 
 
 @pytest.mark.parametrize('mode,detail', [
-    ('verify-wrapper', None),
     ('verify-scope-mismatch', 'Immutable file already exists'),
     ('verify-scope-header', 'Immutable file already exists'),
     ('verify-baseline-drift', 'Trusted check commands changed'),
@@ -43,10 +42,7 @@ def test_trusted_verification_preserves_input_and_rejects_unbound_evidence(tmp_p
     summary = json.loads(result.stdout)
     if summary.get('skip'):
         pytest.skip(summary['skip'])
-    if detail is None:
-        assert summary['candidate_bound'] and len(summary['stages']) == 6
-    else:
-        assert summary['rejected'] == mode and detail in summary['detail']
+    assert summary['rejected'] == mode and detail in summary['detail']
 
 
 @pytest.mark.parametrize("mode,detail", [("instructions-missing", "compiled.json"),

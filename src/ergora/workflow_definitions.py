@@ -1,6 +1,7 @@
 """Static, bounded composition; no model calls, scheduler, or execution authorization."""
 
 from copy import deepcopy
+import base64
 import ctypes
 from graphlib import CycleError, TopologicalSorter
 import hashlib
@@ -403,6 +404,31 @@ def inspect_input(source: Path, *, material: bool = False) -> dict:
 def inspect_manifest(source: Path, *, material: bool = False) -> dict:
     """Verify a complete static graph; no current admission, model or authorization."""
     return _inspect_snapshot(source, leaf_input=False, material=material)
+
+
+def restore_manifest(snapshot: dict, destination: Path) -> dict:
+    """Publish a carried complete manifest atomically; never expose a partial tree."""
+    destination = destination.expanduser().absolute()
+    if destination.exists() or destination.is_symlink():
+        checked = inspect_manifest(destination, material=True)
+    else:
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix='.composition-restore-', dir=destination.parent) as temporary:
+            staged = Path(temporary) / 'manifest'
+            staged.mkdir(mode=0o700)
+            for name, item in snapshot['files'].items():
+                path = staged / definition_bundles.relative_path(name, 'Frozen composition')
+                path.parent.mkdir(parents=True, exist_ok=True)
+                with path.open('xb') as stream:
+                    stream.write(base64.b64decode(item['content_base64'], validate=True))
+                path.chmod(0o600 | item['executable_bits'])
+            checked = inspect_manifest(staged, material=True)
+            if checked['digest'] != snapshot['digest']:
+                raise ValueError('Frozen composition manifest changed')
+            _publish_bundle(staged, destination)
+    if checked['digest'] != snapshot['digest']:
+        raise ValueError('Frozen composition manifest changed')
+    return {**checked, 'path': str(destination)}
 
 
 def _publish_bundle(staged: Path, destination: Path) -> None:

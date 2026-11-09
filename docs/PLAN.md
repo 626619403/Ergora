@@ -5,14 +5,14 @@
 ## 当前检查点
 
 - 仓库：`626619403/Ergora`，当前工作分支`refactor/architecture-foundations`；默认分支`main`已由维护者设置。只沿已授权工作分支普通提交推送，不自动合入main或强推。
-- 最近完整交付：CR2b版本化提交/证据读取，`8151a1c674fd6c664b4ce6aeba11a5fdf12be426`，29文件；自己的[双OS CI42538555105](https://github.com/626619403/Ergora/actions/runs/42538555105)七必要步骤成功，独立2026-11-09 00:20:12.521999 UTC核远端同SHA。[记录](delivery/2026-11-09-composition-transport.md)／[独立审查](delivery/2026-11-09-composition-transport-review.md)。前片CR2a精确25d83ec/双OS CI42537178771已终结，原c36 Windows失败保留。
-- 当前未提交：CR3a可信verify有限迁入。原包wrapper/伪scope及独立TV-SP1失败恢复均有真实红例；修后源码15项通过，最终R3非editable包34项通过（113.18秒）、368/283身份保持。自身结构模板/MCP/Codex105.42秒approve，独立本地终核通过，准备普通精确交付。正式v2入口保持关闭。[本片验收与记录](delivery/2026-11-09-trusted-verification.md)。
-- 当前源码基线为8151a1c；恢复后先实际核`git status`及最近提交，再对照本片记录。历史通过不自动适用于当前工作区。
+- CR2b版本化提交/证据读取已交付，`8151a1c674fd6c664b4ce6aeba11a5fdf12be426`，29文件；自己的[双OS CI42538555105](https://github.com/626619403/Ergora/actions/runs/42538555105)七必要步骤成功，独立2026-11-09 00:20:12.521999 UTC核远端同SHA。[记录](delivery/2026-11-09-composition-transport.md)／[独立审查](delivery/2026-11-09-composition-transport-review.md)。前片CR2a精确25d83ec/双OS CI42537178771已终结，原c36 Windows失败保留。
+- CR3a可信verify已普通提交推送`d8668a43abf5adcbabdf12d0ee5b1f570114262b`；R3包34项/113.18秒、368/283身份及真实自身模板105.42秒approve，独立本地终核通过。自己的双OS CI42540516079七必要步骤成功；独立00:48:33.728775 UTC核远端同SHA，首次代理407与直连超时保留。[记录](delivery/2026-11-09-trusted-verification.md)。
+- 当前未提交：CR3b正式单叶审查接入，基线d8668a4；在原构造副作用前核完整发布创建/编译/选择，冻结完整祖先和同候选动态材料，沿原monitor调用受限叶子。原依赖shape及缺凭证恢复已修，R3新包20项原生/9 legacy及真实MCP完成；自身R3 request-changes再发现候选Python导入劫持与Git replace正文漂移。两真实旧包红例已取得，最小修正已实施，R4自身真实审查205.12秒approve；369/283身份、正式MCP正确拒绝与两组legacy各9项通过，22项原生250.68秒及独立本地终核通过，精确交付待完成，不能沿用旧通过。尚未开放公开v2入口。[本片范围与验收](delivery/2026-11-09-composition-review-execution.md)。恢复后先核实际git状态，历史通过不适用于当前工作区。
 
 ## 下一可执行项
 
-1. 完成CR3a：原/新包反例、最终源码/发行、旧两模板六阶段兼容和新的独立审查；普通精确提交推送，并核自己的必要CI。前片CI未结束时可实现下一项，避免推送新生产候选取消前片CI。
-2. 按[CR3执行计划](delivery/2026-11-09-composition-executor.md)接原创建/编译/冻结选择与首个只读review叶子，保存完整祖先资源和同候选动态输入；复用原进程monitor、可信命令与receipt。能力/权限/容量不满足时明确拒绝。
+1. CR3b最终发行、原生/MCP/自身模板与新独立本地审查已通过；普通提交推送并核自己的必要CI/远端，CR3a已精确终结。
+2. 按[CR3c公开入口](delivery/2026-11-09-composition-public-runtime.md)开放已支持的单只读review叶v2 start/status与版本双请求根扫描，通过实际Temporal/worker/常驻Executor和原owner批准；多成员/依赖输出尚不支持时明确拒绝。
 3. CR4完成真实安装包、Temporal/worker/Supervisor及正式owner批准、失败/取消/恢复和v1兼容；然后AC3c.4做完整备份恢复出口。
 4. 按[AC逐片计划](plans/2026-11-08-agent-composition.md)推进AC4多成员/可信聚合/有界嵌套串并行、三模板、AC5页面、AC6旅程。
 5. 继续[总实施计划](plans/2026-11-01-all-in-one.md#5-执行节点及进度登记)剩余F6–F10、G1与按实际需要接入的D/X项；公共发行PUB1仍含维护者许可证选择。

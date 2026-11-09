@@ -265,6 +265,8 @@ class _Creation:
                 raise ValueError('Task preview changed; inspect a fresh preview before creating')
         elif operation == 'status':
             return self.status(self.load())
+        elif operation == 'published':
+            return self.published()
         elif operation != 'resume':
             raise ValueError('Unsupported task creation operation')
         self.lock_path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
