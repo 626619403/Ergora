@@ -60,8 +60,9 @@ def _composition(definition: dict, selection: dict) -> dict:
         raise ValueError('Select a Workflow instance with a single task input for the review stage')
     # Expanded input names are relative to the immediate structural parent.
     # The formal review stage supplies only the root task, never sibling results.
+    execution = option.get('execution')
     ancestor, port = instances[position], 'task'
-    while True:
+    while execution is None:
         origin = ancestor['inputs'][port]
         if ancestor['depends_on'] or 'node' in origin:
             raise ValueError('Selected review subtree cannot depend on an unexecuted external node')
@@ -72,11 +73,30 @@ def _composition(definition: dict, selection: dict) -> dict:
             break
         ancestor = instances[ancestor['parent']]
     leaves = {path: item for path, item in instances.items() if item['kind'] == 'agent' and path.startswith(position + '/')}
+    work = None
+    if execution is not None:
+        from .review_dags import WorkDelivery
+
+        work = WorkDelivery(graph, execution, position, definition['input']['work_units'])
     overrides = option.get('backend_overrides', {})
-    if not leaves or set(overrides) - leaves.keys():
+    all_paths = leaves.keys() | (work.work.members.keys() if work else set())
+    if not leaves or set(overrides) - all_paths:
         raise ValueError('Composition backend overrides must select existing review members')
     members = {}
     implementer = selection['bindings']['implementer']['tool']
+    work_members = {}
+    if work is not None:
+        for path, leaf in work.work.members.items():
+            override = overrides.get(path)
+            binding = dict(override['binding'] if override else leaf['backend_request'])
+            agents.validate_binding('implementer', binding, formal=True)
+            backend = agent_backends.for_binding(binding)
+            backend.check_mode(execution['mode'])
+            policy = backend.composition_policy(execution['mode'])
+            work_members[path] = {'role': 'implementer', 'binding': binding,
+                'requested_binding': leaf['backend_request'], 'backend_reason': override['reason'] if override else 'definition-selected backend',
+                'mode': execution['mode'], 'policy': policy}
+    implementers = {member['binding']['tool'] for member in work_members.values()} if work else {implementer}
     diversity = option.get('diversity', {'policy': 'prefer-distinct'})
     same = []
     for path, leaf in leaves.items():
@@ -90,7 +110,7 @@ def _composition(definition: dict, selection: dict) -> dict:
         backend = agent_backends.for_binding(binding)
         backend.check_mode(option['mode'])
         policy = backend.composition_policy(option['mode'])
-        if binding['tool'] == implementer:
+        if binding['tool'] in implementers:
             same.append(path)
         members[path] = {'role': 'reviewer', 'binding': binding, 'requested_binding': leaf['backend_request'],
             'backend_reason': override['reason'] if override else 'definition-selected backend',
@@ -117,7 +137,9 @@ def _composition(definition: dict, selection: dict) -> dict:
     composition = {'manifest': snapshot, 'root': graph['root'], 'preview_sha256': graph['preview_sha256'],
             'review_instance': position, 'members': members,
             **({'review_protocol': option['review_protocol']} if 'review_protocol' in option else {}),
-            'diversity': {**diversity, 'implementer_backend': implementer, 'same_backend_members': same}}
+            **({'execution': {**execution, 'members': work_members}} if work else {}),
+            'diversity': {**diversity, **({'implementer_backends': sorted(implementers)} if work else
+                                        {'implementer_backend': implementer}), 'same_backend_members': same}}
     if 'review_protocol' in option:
         from .task_envelopes import review_members
 

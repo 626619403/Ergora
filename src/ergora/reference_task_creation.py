@@ -170,22 +170,28 @@ class _Creation:
         if composition is not None:
             option = definition['composition']
             overrides = option.get('backend_overrides', {})
+            work = composition.get('execution')
+            selected = {**composition['members'], **(work['members'] if work else {})}
             implementer = selection['bindings']['implementer']['tool']
-            same = [path for path, member in composition['members'].items() if member['binding']['tool'] == implementer]
+            tools = sorted({member['binding']['tool'] for member in work['members'].values()}) if work else [implementer]
+            same = [path for path, member in composition['members'].items() if member['binding']['tool'] in tools]
             diversity = {**option.get('diversity', {'policy': 'prefer-distinct'}),
-                         'implementer_backend': implementer, 'same_backend_members': sorted(same)}
+                         **({'implementer_backends': tools} if work else {'implementer_backend': implementer}),
+                         'same_backend_members': sorted(same)}
             saved_diversity = {**composition['diversity'],
                                'same_backend_members': sorted(composition['diversity']['same_backend_members'])}
             if (composition['manifest']['digest'] != option['manifest_digest']
                     or composition['review_instance'] != option['review_instance']
                     or composition.get('review_protocol') != option.get('review_protocol')
-                    or overrides.keys() - composition['members'].keys() or saved_diversity != diversity):
+                    or (None if work is None else {key: value for key, value in work.items() if key != 'members'}) != option.get('execution')
+                    or overrides.keys() - selected.keys() or saved_diversity != diversity):
                 raise ValueError('Creation intent composition differs from its saved selection')
-            for path, member in composition['members'].items():
+            for path, member in selected.items():
                 override = overrides.get(path)
                 binding = override['binding'] if override else member['requested_binding']
                 reason = override['reason'] if override else 'definition-selected backend'
-                if member['mode'] != option['mode'] or member['binding'] != binding or member['backend_reason'] != reason:
+                mode = option['mode'] if member['role'] == 'reviewer' else option['execution']['mode']
+                if member['mode'] != mode or member['binding'] != binding or member['backend_reason'] != reason:
                     raise ValueError('Creation intent composition member differs from its saved selection: ' + path)
 
     def load(self) -> dict | None:

@@ -1,0 +1,169 @@
+"""Original stage owners exercised with real processes and deterministic CLI protocols."""
+
+import asyncio
+from datetime import datetime, timezone
+import hashlib
+import json
+
+from ergora import agent_definitions, agent_runs, reference, workflow_definitions as workflows
+
+
+def prepare(root, state, task_input, kind, examples, mode):
+    for path in (examples / 'agents/kernel-implementer', examples / 'agents/validation-implementer',
+                 examples / 'agents/architecture-reviewer', *sorted((examples / 'composition/agents').iterdir())):
+        agent_definitions.import_bundle(state, path)
+    for name in ('structure-review', 'correctness-review', 'test-value-review', 'parallel-review', 'specialist-work', 'specialist-delivery'):
+        workflows.import_bundle(state, examples / 'composition' / name)
+    grant = json.loads((examples / 'composition/preview-grant.json').read_bytes())
+    manifest = workflows.prepare_manifest(state.root, 'specialist-delivery', '1.0.0', grant, root / 'manifest')
+    task_input['work_units'] = [
+        {'id': 'implementation', 'depends_on': [], 'paths': ['src/new.py'], 'instructions': 'Implement the fixture'},
+        {'id': 'validation', 'depends_on': ['implementation'], 'paths': ['src/validation.py'], 'instructions': 'Validate the fixture'}]
+    if mode.endswith('-scope') or mode.endswith('-commit'):
+        task_input['work_units'][0]['instructions'] += ' fixture-work-' + mode.rsplit('-', 1)[1]
+    if mode.endswith('-recovery-tamper'):
+        task_input['work_units'][0]['instructions'] += ' fixture-work-commit'
+    return {'schema_version': 2, 'task_id': 'task-1', 'task_type': kind, 'issue_id': '1', 'input': task_input,
+        'composition': {'manifest': manifest['path'], 'manifest_digest': manifest['digest'], 'review_protocol': 'dag-v1',
+            'review_instance': 'root/review', 'mode': 'text-only', 'diversity': {'policy': 'allow-same'},
+            'execution': {'protocol': 'work-units-v1', 'instance': 'root/work', 'mode': 'workspace-task-mcp',
+                'assignments': {'implementation': 'root/work/implementation', 'validation': 'root/work/validation'}},
+            'backend_overrides': {path: {'binding': {'tool': 'codex', 'sandbox': 'current-container'},
+                                        'reason': 'Explicit trusted-container protocol acceptance'}
+                                  for path in ('root/work/implementation', 'root/work/validation',
+                                               'root/review/structure/review', 'root/review/correctness/review',
+                                               'root/review/test-value/review')}}}
+
+
+async def exercise(root, case, app, activities, installation, state, runtime, requests, records):
+    from agent_platform import executor as native
+    from agent_platform.core import read
+    from dev_platform.workflow import StopWork
+    from ergora.reference_executor import Executor, process
+    from temporalio import workflow
+
+    workflow.now = lambda: datetime.now(timezone.utc)
+    jobs = {}
+
+    async def call(name, value, result_type=dict):
+        if name == 'dev_submit':
+            stage = value['stage']
+            if stage == 'work:validation' and case.startswith('source-'):
+                first = records['work:implementation']
+                if case == 'source-artifact':
+                    (runtime / 'artifacts' / first['artifacts'][0]['path']).write_bytes(b'Changed original work material')
+                else:
+                    with native.ledger() as db, db:
+                        db.execute('UPDATE jobs SET session=? WHERE id=?', ('different-original-session', first['job_id']))
+            job = await activities.submit(value)
+            jobs[stage] = job
+            path = requests / 'task-1' / (job['job_id'] + '.json')
+            if stage == 'work:implementation' and case in ('recovery-commit', 'recovery-tamper'):
+                # Crash after the actual monitored model self-commits but before
+                # the trusted caller can perform its first HEAD/path gates.
+                class BeforeHeadGate(BaseException):
+                    pass
+
+                executor = Executor(read(path), state.root)
+                original_run = executor.sandbox.run
+
+                def crash_after_model(name, *args, **kwargs):
+                    code = original_run(name, *args, **kwargs)
+                    if name.endswith('-selected'):
+                        assert code == 0
+                        raise BeforeHeadGate
+                    return code
+
+                executor.sandbox.run = crash_after_model
+                try:
+                    await asyncio.to_thread(executor.execute)
+                except BeforeHeadGate:
+                    pass
+                else:
+                    raise AssertionError('The injected pre-gate crash was not reached')
+                count = len(agent_runs.runs(state, 'demo'))
+                if case == 'recovery-tamper':
+                    selection = runtime / 'artifacts/task-1' / job['job_id'] / 'agent-selection.json'
+                    request = read(executor.scratch.parent / 'selected-agent/request.json')
+                    selection.write_text(json.dumps({'role': 'implementer', 'binding': request['binding'],
+                        'project_revision': executor.selection['project_revision'],
+                        'prompt_sha256': request['prompt_sha256'],
+                        'template_instructions_sha256': executor.spec['profile']['template_files']['instructions.md'],
+                        'result_sha256': '0' * 64}))
+                receipt = await asyncio.to_thread(process, path, state.root)
+                assert receipt['state'] == 'FAILED', receipt
+                assert len(agent_runs.runs(state, 'demo')) == count
+            elif stage == 'work:implementation' and case == 'recovery':
+                # Actual model/check/commit completed, but original receipt was
+                # not yet published. Recover that same monitored invocation.
+                first = await asyncio.to_thread(Executor(read(path), state.root).execute)
+                assert first['state'] == 'SUCCEEDED', first
+                count = len(agent_runs.runs(state, 'demo'))
+                second = await asyncio.to_thread(Executor(read(path), state.root).execute)
+                assert first == second and len(agent_runs.runs(state, 'demo')) == count
+                receipt = await asyncio.to_thread(process, path, state.root)
+                assert receipt == first
+            else:
+                receipt = await asyncio.to_thread(process, path, state.root)
+            records[stage] = receipt
+            return job
+        assert name == 'dev_poll'
+        return await activities.poll(value)
+
+    app.call = call
+    try:
+        await app.units()
+    except StopWork:
+        assert case in ('source-artifact', 'source-claim', 'scope', 'commit', 'recovery-commit', 'recovery-tamper'), (case, records)
+        stage = 'work:validation' if case.startswith('source-') else 'work:implementation'
+        receipt = records[stage]
+        assert receipt['state'] == 'FAILED' and not app.active_stages
+        if case.startswith('source-'):
+            assert not (runtime / 'workspaces/task-1/jobs' / receipt['job_id'] / 'selected-agent/request.json').exists()
+        elif case == 'scope':
+            assert 'outside approved unit' in receipt['detail']
+        elif case.startswith('recovery-'):
+            assert 'post-gate' in receipt['detail']
+        else:
+            assert 'only the trusted Executor may commit' in receipt['detail']
+        return {'case': case, 'original_owners': True, 'failed_before_successor': True, 'detail': receipt['detail']}
+    assert case in ('full', 'recovery')
+    for stage in ('work:implementation', 'work:validation'):
+        receipt = records[stage]
+        assert receipt['state'] == 'SUCCEEDED'
+        folder = runtime / 'workspaces/task-1/jobs' / receipt['job_id'] / 'selected-agent'
+        prepared = workflows.inspect_input(folder / 'input', material=True)
+        materials = read(folder / 'materials.json')
+        assert json.loads((folder / 'input/task.txt').read_text().splitlines()[-1]) == materials
+        assert materials['root_task'] == app.spec['request']
+        assert materials['effective_write_paths'] == materials['context']['unit']['paths']
+        leaf = next(item for item in prepared['composition']['instances'] if item['path'] == read(folder / 'formal-call.json')['member'])
+        assert all(resource['text'] in prepared['prompt'] for resource in leaf['resources'])
+        assert any(item['name'] == 'composition-native-command' for item in receipt['artifacts'])
+        if stage.endswith('validation'):
+            source = materials['work_inputs']['results']['root/work/implementation']
+            assert source['receipt'] == records['work:implementation']
+            assert source['artifacts'] == {item['name']: (runtime / 'artifacts' / item['path']).read_text()
+                                           for item in source['receipt']['artifacts']}
+    integration = await app.stage('integrate', dependencies={key: value for key, value in records.items() if key.startswith('work:')})
+    candidate = integration['candidate_sha']
+    verify = await app.stage('verify', candidate, dependencies={'integration': integration})
+    review = await app.stage('review', candidate, dependencies={'verification': verify, 'plan': records['plan']})
+    assert review['decision'] == 'approve' and len(review['members']) == 3
+    for path in review['members']:
+        receipt = records['review:' + path]
+        folder = runtime / 'workspaces/task-1/jobs' / receipt['job_id'] / 'selected-agent'
+        materials = read(folder / 'materials.json')
+        assert materials['root_task'] == app.spec['request']
+        assert materials['review_inputs']['results']['root/work/validation']['receipt'] == records['work:validation']
+        assert set(materials['dependency_artifacts']) == {'verification', 'plan'}
+        assert materials['candidate_sha'] == candidate
+    before = len(agent_runs.runs(state, 'demo'))
+    for stage in ('work:implementation', 'work:validation'):
+        receipt = records[stage]
+        envelope = read(requests / 'task-1' / (receipt['job_id'] + '.json'))
+        assert Executor(envelope, state.root).execute() == receipt
+    assert len(agent_runs.runs(state, 'demo')) == before == 5
+    assert len({receipt['actor']['session_id'] for receipt in records.values()}) == len(records)
+    return {'case': case, 'original_owners': True, 'candidate': candidate, 'work_calls': 2, 'review_calls': 3,
+            'complete_sources': True, 'original_call_recovery': True}

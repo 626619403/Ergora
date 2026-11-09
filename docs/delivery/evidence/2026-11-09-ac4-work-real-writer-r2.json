@@ -1,0 +1,49 @@
+{
+  "checked_at": "2026-11-09T09:33:11.973016+00:00",
+  "seconds": 76.00045996811241,
+  "returncode": 0,
+  "scope": "Installed formal v5 original Executor plus one actual Codex workspace writer with fixed MCP and complete inherited materials; second writer and three review calls are explicit deterministic protocols, not actual model quality evidence.",
+  "result": {
+    "case": "full",
+    "original_owners": true,
+    "candidate": "49b852c6be547577243ee083faef3af7fce419c5",
+    "work_calls": 2,
+    "review_calls": 3,
+    "complete_sources": true,
+    "original_call_recovery": true
+  },
+  "native": [
+    {
+      "job_id": "task-1-5ab9a1f44e56770c58a41bdd",
+      "candidate": "1e519a52046b9bcc01b39c241009c6c1f5739163",
+      "state": "SUCCEEDED",
+      "binding": {
+        "tool": "codex",
+        "sandbox": "current-container"
+      },
+      "invocation_status": "succeeded",
+      "native_events": [
+        "agent_message",
+        "command_execution",
+        "command_execution",
+        "file_change",
+        "command_execution",
+        "command_execution",
+        "agent_message"
+      ],
+      "receipt_sha256": "c6a85f6ae688be20b1675e0362f2e068abc554ed10868c89fadbe42937d391e6",
+      "call_sha256": "b2cb6d1a05da553bfb8b7d5e817bea8c720dcbccb5778177625ec5add7dfd4e6",
+      "invocation_sha256": "14aec4595878f7e67527c51a03d66f2b4f97d90ae01c56e980e5053626b6c937",
+      "mcp": {
+        "ready": true,
+        "handshake_observed": true,
+        "tools": [
+          "list",
+          "read"
+        ],
+        "receipt_sha256": "a8a9f85dccfc3923b687fbc734be06aa5c04579dc9693783f07407a5aa690cb4"
+      }
+    }
+  ],
+  "acceptance_script_sha256": "63f1b51604a2050334b1e726f99e3f50ba6b9cbee20d5cfaf716ee7d996a6117"
+}

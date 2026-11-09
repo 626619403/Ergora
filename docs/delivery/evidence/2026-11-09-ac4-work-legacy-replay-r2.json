@@ -1,0 +1,84 @@
+{
+  "checked_at": "2026-11-09T09:30:12.882492+00:00",
+  "histories": [
+    {
+      "origin": "cr4-r3/legacy-v1-public-history.json",
+      "sha256": "dacf672b2fb0f7dd5ee5331037b44880f6429c58e8cb94c871fce43f2d607feb",
+      "events": 161,
+      "replay": "passed"
+    },
+    {
+      "origin": "cr4-r3/resumed-v2-public-history.json",
+      "sha256": "b3d379108a592f6e4bd5c2af0d633ca8c37a7cc9e8d27172ecab539266417911",
+      "events": 161,
+      "replay": "passed"
+    },
+    {
+      "origin": "ac4-parallel-r3/resumed-v2-public-history.json",
+      "sha256": "ef01ec193a4ccf11a9b398c81490253012ca53689c915db2243b9528519f66f1",
+      "events": 183,
+      "replay": "passed"
+    },
+    {
+      "origin": "ac4-parallel-r3/rejected-v2-public-history.json",
+      "sha256": "ab51a55d5224255e6d5cb00242b52c38976557df63e866739510df6c73bc980b",
+      "events": 189,
+      "replay": "passed"
+    },
+    {
+      "origin": "ac4-parallel-r3/cancelled-v2-public-history.json",
+      "sha256": "81ea203be63a578adfad083d5f6d1d94d69b6ade815e37e918f1904eefb4a1bf",
+      "events": 178,
+      "replay": "passed"
+    },
+    {
+      "origin": "ac4-dag-runtime-r2/dag-resumed-v4-public-history.json",
+      "sha256": "f76d2978b18e14d549fc9b2596c02a85f8992b68e0f375829395fe5b858dd972",
+      "events": 195,
+      "replay": "passed"
+    },
+    {
+      "origin": "ac4-dag-runtime-r2/dag-required-v4-public-history.json",
+      "sha256": "7b507b81fbdc819f6befebeb613bfadcd048a8df83574804869a4a8658a5f910",
+      "events": 201,
+      "replay": "passed"
+    },
+    {
+      "origin": "ac4-dag-runtime-r2/dag-operational-v4-public-history.json",
+      "sha256": "6065224846beb7f5380fce43f9b8271d121dab0de16155585936a105773fbd24",
+      "events": 167,
+      "replay": "passed"
+    },
+    {
+      "origin": "ac4-dag-runtime-r2/dag-cancelled-v4-public-history.json",
+      "sha256": "2f9dd1f104d724acad9c529d6e19754c64158f64e6dad1dc71cf785b268dd761",
+      "events": 162,
+      "replay": "passed"
+    },
+    {
+      "origin": "ac4-advisory-r4/advisory-v3-public-history.json",
+      "sha256": "2cdca853bc0ad3b0368acc0f633411e89b074a094db3d4b14106197f0bde1fb1",
+      "events": 172,
+      "replay": "passed"
+    },
+    {
+      "origin": "ac4-advisory-r4/required-v3-public-history.json",
+      "sha256": "42bce0687d0763ab68f3dd0699b5dbf164c3a78fb8642d97974fe76484a2c543",
+      "events": 178,
+      "replay": "passed"
+    },
+    {
+      "origin": "ac4-advisory-r4/operational-v3-public-history.json",
+      "sha256": "7c06f1c9f5ef4acc8243344afe4a4972e291d0a49abbe22e4c4ebbb616338718",
+      "events": 178,
+      "replay": "passed"
+    },
+    {
+      "origin": "ac4-advisory-r4/cancelled-v3-public-history.json",
+      "sha256": "f6e5a7eec75ed2238a1ea78b8d7dfa8db86ab6ee5f299a409cc45d4e7abb4218",
+      "events": 170,
+      "replay": "passed"
+    }
+  ],
+  "scope": "Installed current package replays original v1, single v2 and parallel v2 and v3 required/advisory success/reject/error/cancel histories; no service mutation."
+}

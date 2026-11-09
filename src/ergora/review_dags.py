@@ -8,13 +8,17 @@ from graphlib import CycleError, TopologicalSorter
 import json
 
 
-class ReviewDAG:
+class StageDAG:
     """Derive one selected subtree without persisting a second execution graph."""
 
-    def __init__(self, graph: dict, selected: str):
+    def __init__(self, graph: dict, selected: str, *, role='reviewer', external=None):
         self._instances = {item['path']: item for item in graph['instances']}
         self._selected = selected
         self._aliases = {}
+        self._external = external
+        self._result_kind = 'review-result' if role == 'reviewer' else 'work-result'
+        if selected not in self._instances:
+            raise ValueError('Unknown selected stage subtree: ' + selected)
         root = self._instances[selected]
         if root['kind'] != 'workflow' or set(root['inputs']) != {'task'} or len(root['outputs']) != 1:
             raise ValueError('Review DAG requires one task input and one terminal output')
@@ -23,9 +27,14 @@ class ReviewDAG:
         if not self.members:
             raise ValueError('Review DAG requires reviewer leaves')
         for leaf in self.members.values():
-            if (leaf['role'] != 'reviewer' or leaf['permissions']['write']
+            if leaf['role'] != role:
+                raise ValueError('Stage DAG leaf has the wrong role: ' + leaf['path'])
+            if role == 'reviewer' and (leaf['permissions']['write']
                     or leaf['permissions']['shell'] or leaf['permissions']['network']):
                 raise ValueError('Review DAG requires read-only reviewers without shell or network')
+            if role == 'implementer' and (not leaf['permissions']['write']
+                    or not leaf['permissions']['shell'] or leaf['permissions']['network']):
+                raise ValueError('Work DAG requires writable shell-enabled leaves without network origins')
         scopes = {}
         for leaf in self.members.values():
             for scope in leaf['concurrency_scopes']:
@@ -37,8 +46,13 @@ class ReviewDAG:
         node, port = root, 'task'
         while True:
             origin = node['inputs'][port]
-            if node['depends_on'] or 'input' not in origin:
+            if set(node['depends_on']) - ({external._selected} if external else set()):
                 raise ValueError('Selected review DAG cannot depend on unexecuted external nodes')
+            if 'input' not in origin:
+                address = self._resolve(node['path'], port, 'input')
+                if external is None or address != external.terminal:
+                    raise ValueError('Stage input must project the selected work terminal or root task')
+                break
             port = origin['input']
             if node['parent'] is None:
                 if port != 'task':
@@ -58,7 +72,8 @@ class ReviewDAG:
                 raise ValueError('Review DAG requires nonempty all-joins')
             dependencies[path] = self._activation(path) | (children[path] if node['kind'] == 'workflow' else set())
             for dependency in dependencies[path]:
-                self._inside(dependency)
+                if dependency not in nodes:
+                    raise ValueError('Stage control dependencies must stay inside its selected subtree')
         try:
             order = tuple(TopologicalSorter(dependencies).static_order())
         except CycleError as error:
@@ -72,6 +87,7 @@ class ReviewDAG:
         self.predecessors = {path: tuple(sorted(completed[path] - {path})) for path in self.members}
         output = next(iter(root['outputs']))
         terminal = self._resolve(selected, output, 'output')
+        self.terminal = terminal
         if terminal == 'task' or self._instances[terminal.rsplit('#', 1)[0]]['kind'] != 'join':
             raise ValueError('Review DAG terminal output must project an explicit all-join')
         origin = root['outputs'][output]
@@ -81,6 +97,8 @@ class ReviewDAG:
 
     def _inside(self, path):
         if path != self._selected and not path.startswith(self._selected + '/'):
+            if self._external is not None:
+                return self._external._inside(path)
             raise ValueError('Review DAG port or dependency refers outside the selected subtree')
         if path not in self._instances:
             raise ValueError('Review DAG refers to an unknown instance')
@@ -146,7 +164,8 @@ class ReviewDAG:
                 path, port = address.rsplit('#', 1)
                 node = self._inside(path)
                 if node['kind'] == 'agent':
-                    value = {'kind': 'review-result', 'instance': path}
+                    external = self._external is not None and path in self._external.members
+                    value = {'kind': 'work-result' if external else self._result_kind, 'instance': path}
                     sources.add(path)
                 else:
                     outputs = {dependency: {name: self._resolve(dependency, name, 'output')
@@ -158,6 +177,51 @@ class ReviewDAG:
             if used > 1_000_000:
                 raise ValueError('Complete review port table exceeds 1,000,000 bytes')
             values[address] = value
-        if not sources <= set(self.predecessors[member]):
+        allowed = set(self.predecessors[member]) | (set(self._external.members) if self._external else set())
+        if not sources <= allowed:
             raise ValueError('Review DAG input requires an unfinished review producer')
         return {'bindings': bindings, 'values': dict(sorted(values.items())), 'sources': sorted(sources)}
+
+
+class ReviewDAG(StageDAG):
+    """The unchanged v4 read-only, root-task-only stage contract."""
+
+
+class WorkDelivery:
+    """Project the original units onto two disjoint stages, never schedule them."""
+
+    def __init__(self, graph: dict, execution: dict, review_instance: str, units: list[dict]):
+        self.work = StageDAG(graph, execution['instance'], role='implementer')
+        self.review = StageDAG(graph, review_instance, external=self.work)
+        work_paths, review_paths = set(self.work.members), set(self.review.members)
+        agents = {item['path'] for item in graph['instances'] if item['kind'] == 'agent'}
+        if work_paths & review_paths or work_paths | review_paths != agents:
+            raise ValueError('Work and review must cover exactly all Agent leaves without overlap')
+        self.assignments = execution['assignments']
+        original = {unit['id']: unit for unit in units}
+        if (set(self.assignments) != original.keys() or set(self.assignments.values()) != work_paths
+                or len(self.assignments) != len(work_paths)):
+            raise ValueError('Work assignments require exactly one distinct implementer instance per original unit')
+        self.units = {path: identity for identity, path in self.assignments.items()}
+        try:
+            order = tuple(TopologicalSorter({key: set(unit['depends_on']) for key, unit in original.items()}).static_order())
+        except CycleError as error:
+            raise ValueError('Original work units contain a cycle') from error
+        predecessors = {}
+        for key in order:
+            if key not in original:
+                raise ValueError('Original unit refers to an unknown dependency')
+            predecessors[key] = set(original[key]['depends_on'])
+            for parent in original[key]['depends_on']:
+                predecessors[key].update(predecessors[parent])
+            path = self.assignments[key]
+            if {self.assignments[parent] for parent in predecessors[key]} != set(self.work.predecessors[path]):
+                raise ValueError('Static work order differs from original work-unit transitive dependencies')
+            permissions = self.work.members[path]['permissions']
+            for name in original[key]['paths']:
+                wanted = 'workspace/' + name
+                if not any(wanted == prefix or wanted.startswith(prefix + '/') for prefix in permissions['write']):
+                    raise ValueError('Complete original unit paths exceed its effective Agent write ceiling: ' + key)
+            self.work.input_ports(path)
+        for path in self.review.members:
+            self.review.input_ports(path)

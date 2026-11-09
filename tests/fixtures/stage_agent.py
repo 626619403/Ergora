@@ -31,7 +31,26 @@ if '--model' in sys.argv and sys.argv[sys.argv.index('--model') + 1] in ('fixtur
     subprocess.Popen([sys.executable, '-c', child], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     time.sleep(40)
     raise SystemExit(2)
-if '"stage": "work:' in prompt:
+if 'decision' not in schema['required'] and '"kind": "formal-work-materials"' in prompt:
+    import asyncio
+    from ergora import task_mcp
+
+    settings = {sys.argv[index + 1].split('=', 1)[0]: json.loads(sys.argv[index + 1].split('=', 1)[1])
+                for index, value in enumerate(sys.argv) if value == '-c'}
+    server = {key.removeprefix('mcp_servers.ergora_task.'): value for key, value in settings.items()
+              if key.startswith('mcp_servers.ergora_task.')}
+    server = {key: value for key, value in server.items() if key in ('command', 'args', 'env')}
+    asyncio.run(task_mcp.probe(server, Path(sys.argv[sys.argv.index('--output-last-message') + 1]).with_name('fixture-mcp.stderr')))
+    payload = json.loads(prompt.splitlines()[-1])
+    unit = payload['context']['unit']
+    target = Path(unit['paths'][0]); target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text('VALUE = 42\n')
+    if 'fixture-work-scope' in unit['instructions']:
+        Path('src/outside.py').write_text('OUTSIDE = True\n')
+    if 'fixture-work-commit' in unit['instructions']:
+        subprocess.run(['git', 'add', '.'], check=True, capture_output=True)
+        subprocess.run(['git', 'commit', '-m', 'Unauthorized agent commit'], check=True, capture_output=True)
+elif 'decision' not in schema['required'] and '"stage": "work:' in prompt:
     Path("src/new.py").write_text("VALUE = 42\n")
     if 'fixture-delete-base-only' in prompt:
         Path('src/removed.txt').unlink()

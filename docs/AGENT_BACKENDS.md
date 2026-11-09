@@ -169,3 +169,10 @@ ergora kernel run my-project CAMPAIGN_ID --timeout 3600
 独立组合叶子的默认text-only及可选task-mcp模式见[工作流手册](WORKFLOW_DEFINITIONS.md#通过任务-mcp-读取固定附件)。后者只读选中叶子/祖先固定资源，不继承ambient工具；原生工具表、Claude bare认证差异和Linux支持范围均按该模式处理。普通agent run及正式stage不自动采用此模式。
 
 独立组合调用前可用`composition check-input`查看[能力及权限链](WORKFLOW_DEFINITIONS.md#调用前查看能力与权限)。报告由当前后端合同与原准入共同生成；它不探测认证或启动服务，实际调用会重新准入并保存相同结构的policy。新增受限后端需实现自己的composition_policy，不能只声明模式名称。
+
+
+## 专长工作实例的可写调用
+
+正式`work-units-v1`将每个原unit映射到冻结的implementer实例，配置和支持范围见[工作流手册](WORKFLOW_DEFINITIONS.md#专长执行者与原工作单元)。workspace-task-mcp使用同一backend Interface、固定资源服务、原生进程监督与调用记录；Codex显式开启workspace shell/file工具，关闭ambient规则、Skill、插件、hook、web和隐式子Agent。推理配置继续仅消费白名单字段。原生工具配置与无OS/网络隔离分别写入policy，不把权限提示词当强制隔离。
+
+调用证据包含原formal-call、完整输入快照与prompt、实际argv/cwd/stdin SHA、MCP原生回执、结构结果与最终原work receipt。提交和确定性检查由可信Executor完成。新workspace模式目前仅支持显式current-container的Codex/Linux/WSL2；Claude仍可使用已支持的只读审查模式，未验证的新可写组合会拒绝。旧独立read-only入口不能通过修改mode取得写权限。

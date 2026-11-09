@@ -28,10 +28,15 @@ def main() -> int:
             env.setdefault(key, value)
     if 'composition' in request:
         call = request['composition']
-        document = agent_runs.run_input(State(Path(call['home'])), call['project'], Path(call['input']), request['timeout'],
-            binding_override=request['binding'], reason=call['backend_reason'], mode=call['mode'],
-            codex_config=Path(request['codex_config']), result_schema=request['schema'], env=env,
-            codex_bin=request.get('codex_bin') or 'codex', supervised=True)
+        options = dict(codex_config=Path(request['codex_config']), result_schema=request['schema'], env=env,
+                       codex_bin=request.get('codex_bin') or 'codex', supervised=True)
+        if 'workspace_call' in call:
+            document = agent_runs.run_workspace(State(Path(call['home'])), call['project'], Path(call['input']),
+                Path(request['cwd']), json.loads(Path(call['workspace_call']).read_bytes()), request['timeout'],
+                binding=request['binding'], **options)
+        else:
+            document = agent_runs.run_input(State(Path(call['home'])), call['project'], Path(call['input']), request['timeout'],
+                binding_override=request['binding'], reason=call['backend_reason'], mode=call['mode'], **options)
         output = Path(request['output'])
         output.mkdir(mode=0o700)
         (output / 'invocation.json').write_text(json.dumps(document), encoding='utf-8')

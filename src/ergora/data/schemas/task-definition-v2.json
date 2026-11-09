@@ -114,6 +114,46 @@
               "pattern": "\\S"
             }
           }
+        },
+        "execution": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "protocol",
+            "instance",
+            "assignments",
+            "mode"
+          ],
+          "properties": {
+            "protocol": {
+              "const": "work-units-v1"
+            },
+            "instance": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2048
+            },
+            "assignments": {
+              "type": "object",
+              "minProperties": 1,
+              "maxProperties": 128,
+              "additionalProperties": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 2048
+              }
+            },
+            "mode": {
+              "const": "workspace-task-mcp"
+            }
+          }
+        }
+      },
+      "dependentSchemas": {
+        "execution": {
+          "required": [
+            "review_protocol"
+          ]
         }
       }
     }

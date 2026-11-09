@@ -109,7 +109,7 @@ class AgentBackend(ABC):
 
 
 class CodexBackend(AgentBackend):
-    invocation_modes = ("native", "text-only", "task-mcp")
+    invocation_modes = ("native", "text-only", "task-mcp", "workspace-task-mcp")
     guidance = ("Use codex login, then tools doctor PROJECT --probe; stored credentials do not verify account access or quota.",)
 
     def executable(self) -> str:
@@ -117,6 +117,21 @@ class CodexBackend(AgentBackend):
 
     def composition_policy(self, mode: str) -> dict:
         self._options(mode)
+        if mode == "workspace-task-mcp":
+            if self.binding.get("sandbox") != "current-container" or sys.platform != "linux":
+                raise ValueError("Workspace task MCP requires an explicit trusted Linux current-container binding (WSL2 uses Linux)")
+            policy = _restricted_policy("task-mcp", ["command_execution", "apply_patch", "request_user_input"],
+                "Codex inference provider environment credentials; not checked",
+                {"status": "advisory", "requested": "current-container", "effective": "current-container",
+                 "scope": "Explicit trusted current-user execution; no inter-agent OS isolation"})
+            policy.update(mode=mode, model_tools="explicit workspace shell/file tools and fixed task MCP list/read",
+                resources="complete inherited material and fixed Skill resources; original approved workspace checkout")
+            policy['capabilities'].update(
+                workspace_read={"status": "advisory", "effective": "declared read ceilings; current user can access other files"},
+                write={"status": "advisory", "effective": "unit paths; trusted executor gates final Git changes before/after checks"},
+                shell={"status": "enforced", "effective": True},
+                tool_network_origins={"status": "advisory", "effective": "no model network origins authorized; shell egress is not isolated"})
+            return policy
         native = ["request_user_input"]
         if mode == "task-mcp":
             native += ["list_mcp_resources", "list_mcp_resource_templates", "read_mcp_resource"]
@@ -149,7 +164,7 @@ class CodexBackend(AgentBackend):
                 config["model_providers"] = {name: {key: value for key, value in provider.items() if key in (
                     "name", "base_url", "env_key", "wire_api", "requires_openai_auth", "env_http_headers")}
                     for name, provider in config["model_providers"].items()}
-            config.update({"features.shell_tool": False, "features.goals": False, "features.hooks": False,
+            config.update({"features.shell_tool": mode == "workspace-task-mcp", "features.goals": False, "features.hooks": False,
                 "features.view_image": False, "features.multi_agent": False, "features.apps": False,
                 "features.plugins": False, "features.memories": False, "features.skill_mcp_dependency_install": False,
                 "skills.include_instructions": False, "skills.bundled.enabled": False,
@@ -175,8 +190,10 @@ class CodexBackend(AgentBackend):
         return options
 
     def command(self, request: Invocation) -> tuple[list[str], str]:
+        if request.mode == "workspace-task-mcp":
+            self.composition_policy(request.mode)
         options = self._options(request.mode, request.task_mcp)
-        sandbox = "read-only" if request.mode != "native" else self.binding.get(
+        sandbox = "read-only" if request.mode not in ("native", "workspace-task-mcp") else self.binding.get(
             "sandbox", "read-only" if request.role != "implementer" else "workspace-write")
         sandbox = "danger-full-access" if sandbox == "current-container" else sandbox
         argv = [self.options.get("executable", "codex"), "exec", "--ephemeral", "--sandbox", sandbox, "--json", *options]
@@ -188,7 +205,7 @@ class CodexBackend(AgentBackend):
         return [*argv, "-"], request.prompt
 
     def read_result(self, output: Path, request: Invocation) -> dict:
-        if request.mode == "task-mcp":
+        if request.mode in ("task-mcp", "workspace-task-mcp"):
             for event in _events(output):
                 item = event.get("item", {})
                 if (event.get("type") == "item.completed" and item.get("type") == "mcp_tool_call"

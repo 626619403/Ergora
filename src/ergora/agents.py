@@ -52,7 +52,7 @@ def invoke(binding: dict, role: str, prompt: str, cwd: Path, output: Path, timeo
         "arguments": codex_options, "executable": codex_bin, "config": codex_config}})
     backend.check_invocation()
     backend.check_mode(mode)
-    if (mode == "task-mcp") != (task_mcp is not None):
+    if (mode in ("task-mcp", "workspace-task-mcp")) != (task_mcp is not None):
         raise ValueError("Task MCP mode requires its explicit per-call server configuration")
     protocol = output.with_name(output.name + ".protocol")
     protocol.mkdir(parents=True, exist_ok=False, mode=0o700)

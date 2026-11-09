@@ -75,12 +75,20 @@ def _admit_input(state: State, project_id: str, source: Path, *, backend: str | 
                  binding_override: dict | None = None) -> tuple[dict, dict]:
     """One current admission produces both the preview and the persisted call contract."""
     contracts.validate(mode, {"enum": ["text-only", "task-mcp"]}, "Composition call mode")
-    project = state.project(project_id)
     prepared = workflow_definitions.inspect_input(source, material=True)
     leaf = next(item for item in prepared["composition"]["instances"] if item["path"] == prepared["request"]["instance"])
     permissions = leaf["permissions"]
     if permissions["write"] or permissions["shell"] or permissions["network"]:
         raise ValueError(f"{'Text-only' if mode == 'text-only' else 'Task MCP'} calls cannot satisfy write, shell or network requests; use a read-only leaf")
+    return prepared, _admission(state, project_id, prepared, backend=backend, model=model, reason=reason,
+        mode=mode, codex_config=codex_config, binding_override=binding_override)
+
+
+def _admission(state, project_id, prepared, *, backend, model, reason, mode, codex_config, binding_override):
+    """Share selection and evidence, while each caller owns its authority checks."""
+    project = state.project(project_id)
+    leaf = next(item for item in prepared['composition']['instances'] if item['path'] == prepared['request']['instance'])
+    permissions = leaf['permissions']
     reference = leaf["ref"]
     definition = agent_definitions.library(Path(prepared["path"]) / "assets").get(reference["id"], reference["version"])
     agent_definitions.validate_admission(definition)
@@ -95,7 +103,7 @@ def _admit_input(state: State, project_id: str, source: Path, *, backend: str | 
     adapter.check_invocation()
     adapter.check_mode(mode)
     policy = adapter.composition_policy(mode)
-    if mode == "task-mcp":
+    if mode in ("task-mcp", "workspace-task-mcp"):
         task_mcp.check_available()
     chain = []
     path = leaf["path"]
@@ -107,9 +115,10 @@ def _admit_input(state: State, project_id: str, source: Path, *, backend: str | 
     policy.update(requested_permissions=permissions,
                   permission_ceilings=[{"path": "supplied-grant", "permissions": prepared["request"]["grant"]["permissions"]},
                                        *reversed(chain)],
-                  read_scope_semantics="Permission paths are upper bounds; only declared fixed resources are provided",
-                  sdk_check="top-level package presence only; actual compatibility/readiness checked during run" if mode == "task-mcp" else "not required")
-    return prepared, {"schema_version": 1, "kind": "composition-admission", "project": project_id,
+                  read_scope_semantics=("Declared upper bounds; actual guarantees are in capabilities" if mode == "workspace-task-mcp" else
+                                        "Permission paths are upper bounds; only declared fixed resources are provided"),
+                  sdk_check="top-level package presence only; actual compatibility/readiness checked during run" if mode != "text-only" else "not required")
+    return {"schema_version": 1, "kind": "composition-admission", "project": project_id,
         "project_revision": project["revision"], "role": leaf["role"], "binding": binding,
         "requested_binding": leaf["backend_request"], "backend_reason": reason or (
             "operator-selected override" if backend or model else "definition-selected backend"),
@@ -138,6 +147,42 @@ def run_input(state: State, project_id: str, source: Path, timeout: int = 300, *
     contracts.validate(timeout, {"type": "integer", "minimum": 1, "maximum": 3600}, "Agent timeout")
     prepared, document = _admit_input(state, project_id, source, backend=backend, model=model, reason=reason, mode=mode,
                                       codex_config=codex_config, binding_override=binding_override)
+    return _run_prepared(state, prepared, document, timeout, mode=mode, codex_config=codex_config,
+        result_schema=result_schema, env=env, codex_bin=codex_bin, supervised=supervised)
+
+
+def run_workspace(state: State, project_id: str, source: Path, cwd: Path, authority: dict, timeout: int, *,
+                  binding: dict, codex_config: Path, result_schema: dict, env: dict,
+                  codex_bin: str = 'codex', supervised: bool = False) -> dict:
+    """Internal stage-driver call; only the original Executor establishes authority.
+
+    A material snapshot remains non-authorizing. There is no CLI run-input mode
+    for this operation. The original monitor owns attempts, cancellation and cwd.
+    """
+    contracts.validate(timeout, {"type": "integer", "minimum": 1, "maximum": 3600}, "Agent timeout")
+    prepared = workflow_definitions.inspect_input(source, material=True)
+    leaf = next(item for item in prepared['composition']['instances'] if item['path'] == prepared['request']['instance'])
+    if (authority.get('kind') != 'formal-workspace-call' or authority.get('schema_version') != 1
+            or authority['input_digest'] != prepared['digest']
+            or authority['prompt_sha256'] != prepared['request']['prompt_sha256']
+            or authority['member'] != leaf['path'] or authority['selection']['binding'] != binding
+            or Path(authority['checkout']).resolve() != cwd.resolve()
+            or leaf['role'] != 'implementer' or not leaf['permissions']['write']
+            or not leaf['permissions']['shell'] or leaf['permissions']['network']):
+        raise ValueError('Workspace input differs from the trusted formal work call or its supported capabilities')
+    mode = 'workspace-task-mcp'
+    document = _admission(state, project_id, prepared, backend=None, model=None,
+        reason=authority['selection']['backend_reason'], mode=mode, codex_config=codex_config, binding_override=binding)
+    if {key: document['policy'][key] for key in authority['selection']['policy']} != authority['selection']['policy']:
+        raise ValueError('Workspace policy changed from the frozen formal work call')
+    document.update(formal_call=authority, formal_execution_authorized=True)
+    return _run_prepared(state, prepared, document, timeout, mode=mode, codex_config=codex_config,
+        result_schema=result_schema, env=env, codex_bin=codex_bin, supervised=supervised, workspace=cwd)
+
+
+def _run_prepared(state, prepared, document, timeout, *, mode, codex_config, result_schema, env,
+                  codex_bin, supervised, workspace=None):
+    """One immutable snapshot, MCP lifecycle and native invocation evidence owner."""
     run_id = uuid.uuid4().hex
     output = state.root / "runs" / run_id
     snapshot = output.with_name(run_id + ".input")
@@ -153,7 +198,7 @@ def run_input(state: State, project_id: str, source: Path, timeout: int = 300, *
             raise ValueError("Composition input changed while copying the run snapshot")
         document.update(input_path=str(snapshot))
         native_mcp = None
-        if mode == "task-mcp":
+        if mode in ("task-mcp", "workspace-task-mcp"):
             scope = task_mcp.freeze(saved, run_id, output.with_name(run_id + ".scope.json"))
             document["task_mcp"] = {"scope": scope}
             _store(state, document)
@@ -163,12 +208,13 @@ def run_input(state: State, project_id: str, source: Path, timeout: int = 300, *
             native_mcp = task_mcp.launch(scope, native_audit)
         document["status"] = "running"
         _store(state, document)
-        working = output.with_name(run_id + ".cwd")
-        working.mkdir(mode=0o700)
+        working = workspace if workspace is not None else output.with_name(run_id + ".cwd")
+        if workspace is None:
+            working.mkdir(mode=0o700)
         document.update(agents.invoke(document["binding"], document["role"], saved["prompt"], working, output, timeout,
             result_schema or agents.result_schema(["response"], document["role"] == "reviewer"),
             codex_config=codex_config, mode=mode, task_mcp=native_mcp, env=env, codex_bin=codex_bin, supervised=supervised))
-        if mode == "task-mcp" and document["status"] == "succeeded":
+        if mode in ("task-mcp", "workspace-task-mcp") and document["status"] == "succeeded":
             document["task_mcp"]["native"] = task_mcp.verify_native(native_audit, scope["sha256"])
     except KeyboardInterrupt:
         # SDK preflight runs before the native process owner handles Ctrl+C.

@@ -1,0 +1,68 @@
+{
+  "schema_version": 1,
+  "id": "specialist-delivery",
+  "version": "1.0.0",
+  "description": "Map complementary specialists to original approved work units.",
+  "resources": [],
+  "permissions": {
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "write": [
+      "workspace"
+    ],
+    "shell": true,
+    "network": []
+  },
+  "limits": {
+    "depth": 8,
+    "instances": 128,
+    "concurrency": 4,
+    "material_bytes": 262144
+  },
+  "inputs": [
+    "task"
+  ],
+  "outputs": {
+    "result": {
+      "node": "review",
+      "output": "findings"
+    }
+  },
+  "nodes": [
+    {
+      "id": "work",
+      "ref": {
+        "kind": "workflow",
+        "id": "specialist-work",
+        "version": "1.0.0",
+        "digest": "2a7cf485138327034747d097647d1a19672f793278170e88ef64cdb063812d96"
+      },
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      }
+    },
+    {
+      "id": "review",
+      "ref": {
+        "kind": "workflow",
+        "id": "parallel-review",
+        "version": "1.0.0",
+        "digest": "9d4f4858ed6abc533e8d675ac3f1a3132b3acded5b2a96f0a1428ecd452cabde"
+      },
+      "depends_on": [
+        "work"
+      ],
+      "inputs": {
+        "task": {
+          "node": "work",
+          "output": "result"
+        }
+      }
+    }
+  ]
+}

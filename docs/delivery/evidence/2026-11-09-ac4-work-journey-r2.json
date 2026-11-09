@@ -1,0 +1,96 @@
+{
+  "checked_at": "2026-11-09T09:39:12.796662+00:00",
+  "seconds": 374.2709619430825,
+  "records": {
+    "work-resumed-v5": {
+      "task_id": "work-resumed-v5-public",
+      "run_id": "01a1bfa7-7e4b-77ce-b41b-521886bb49f7",
+      "recovery": {
+        "first_three_requests_unchanged": true,
+        "one_original_writer_while_worker_stopped": true
+      },
+      "outcome": "REVIEW_READY",
+      "jobs": {
+        "review:root/review/correctness/review": "SUCCEEDED",
+        "review:root/review/structure/review": "SUCCEEDED",
+        "plan": "SUCCEEDED",
+        "inventory": "SUCCEEDED",
+        "work:implementation": "SUCCEEDED",
+        "verify": "SUCCEEDED",
+        "integrate": "SUCCEEDED",
+        "work:validation": "SUCCEEDED",
+        "review:root/review/test-value/review": "SUCCEEDED"
+      },
+      "history": {
+        "sha256": "6f8ea68771a9b14a842346f789d14aa5705b4bfdd8e546b63b8617e24cfcf719",
+        "events": 206,
+        "replay": "passed"
+      },
+      "handoff_sha256": "9ab62f896b5b25552aa851ef048ae7dc4e48321abab12506cd0fea606bd79064"
+    },
+    "work-scope-v5": {
+      "task_id": "work-scope-v5-public",
+      "run_id": "01a1bfa9-59c4-71e7-bd8a-1be342c843f4",
+      "outcome": "BLOCKED",
+      "jobs": {
+        "plan": "SUCCEEDED",
+        "inventory": "SUCCEEDED",
+        "work:implementation": "FAILED"
+      },
+      "history": {
+        "sha256": "cdfb2cfa8a3093607283bded732cfcae43b9a2fdfad5f9b59a1524da30186a4c",
+        "events": 98,
+        "replay": "passed"
+      },
+      "handoff_sha256": "29050c8f329b9abd11d170f920e1e6cbb1d1ecbd124b481ee1e88eb833d80178"
+    },
+    "work-required-v5": {
+      "task_id": "work-required-v5-public",
+      "run_id": "01a1bfaa-3e4c-7975-81ab-a51090d9a0b2",
+      "outcome": "BLOCKED",
+      "jobs": {
+        "review:root/review/correctness/review": "FAILED",
+        "review:root/review/structure/review": "SUCCEEDED",
+        "plan": "SUCCEEDED",
+        "inventory": "SUCCEEDED",
+        "work:implementation": "SUCCEEDED",
+        "verify": "SUCCEEDED",
+        "integrate": "SUCCEEDED",
+        "work:validation": "SUCCEEDED",
+        "review:root/review/test-value/review": "SUCCEEDED"
+      },
+      "history": {
+        "sha256": "72f54c59a53bd16a12088c7b34e9b9802741f669740cdc906300d10bcaaae416",
+        "events": 212,
+        "replay": "passed"
+      },
+      "handoff_sha256": "494659620b75b536066f5ad1efe34ca8934fe7160991c1801b6b16b90fea2538"
+    },
+    "work-cancelled-v5": {
+      "task_id": "work-cancelled-v5-public",
+      "run_id": "01a1bfac-1185-714e-a7f1-95ffedc7f7b2",
+      "outcome": "CANCEL_UNCONFIRMED",
+      "jobs": {
+        "plan": "SUCCEEDED",
+        "inventory": "SUCCEEDED",
+        "work:implementation": "CANCELLED"
+      },
+      "history": {
+        "sha256": "d0ba32a07f9f7236d9fa7f3ef84b36468bac9f684cc9b69c403b599808c50a48",
+        "events": 93,
+        "replay": "passed"
+      },
+      "handoff_sha256": "de1b77879fb1fde74fd61c2ca1e8c1b68bd60718b8a7ae5a1f7ffbfdfef4dcef"
+    }
+  },
+  "ports_closed": true,
+  "databases_retained": true,
+  "scope": "Installed CLI/Supervisor/Temporal/scanner; two specialized writers, three reviews, original approvals/checks/commits, worker-only same-call recovery, scope and required-review failures, cancellation/fence/reconcile, complete source material, history replay and offline handoffs. Deterministic protocols do not prove model quality or every process-crash window.",
+  "observations": {
+    "original_pid_starttimes": 137,
+    "remaining_live": 0,
+    "sha256": "c32735d6afb041139c16b82241be18e40d6d61808552aa92fed431ab178b4317",
+    "scope": "Observed original Supervisor daemon PID/starttime and recursive descendants, including surviving reparented processes already observed; sampling cannot establish every short-lived process was seen."
+  },
+  "acceptance_script_sha256": "c93e34b6c135b60cd56b56fed0cf4b6bb4ef28e03c880742153a901b1cce10e8"
+}

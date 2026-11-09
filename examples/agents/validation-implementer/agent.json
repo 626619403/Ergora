@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "id": "validation-implementer",
+  "version": "1.0.0",
+  "description": "Specialist in behavioral regression coverage and reliable validation.",
+  "roles": [
+    "implementer"
+  ],
+  "specialties": [
+    "regression-testing",
+    "validation"
+  ],
+  "backend": {
+    "tool": "codex"
+  },
+  "resources": [
+    {
+      "id": "validation-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "8ab0dec1f17fb93563353fcd9f14508cd3ec34a6b967b57d9d599e8d5656cf40"
+    }
+  ]
+}

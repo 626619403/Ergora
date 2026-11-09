@@ -1,5 +1,26 @@
 # 当前架构与扩展边界
 
+AC4.3c 为显式 `composition.execution.protocol: work-units-v1` 接入正式信封 v5。`review_dags.StageDAG / WorkDelivery` 从同一冻结图投影两个互不重叠的阶段；每个原 work unit 一对一选择 implementer 实例，静态工作先后关系必须等于原 units 的传递依赖，全部 Agent 叶子都必须被 work/review 覆盖。原 `Workflow.units` 继续拥有调度，v5 在已有版本继承层核结构祖先容量；没有第二份执行图、调度器或账本。`WorkflowInput` 的局部注册同时选择 v5 队列、请求根、活动和原工作流入口，旧 v1–v4 保持原身份与历史。
+
+原 Executor 保留 checkout、依赖 commit 合并、路径门禁、确定性检查与 commit；内部 workspace 调用复用 `agent_runs` 的完整输入、固定任务 MCP、后端 Interface 和进程记录。首版要求 Linux/WSL2 上显式选择 current-container Codex，权限声明和最终 Git 门禁不等于 OS/网络隔离；公开单叶入口仍只读。work 原 request/context/claim/调用/receipt/所有产物及 commit 祖先关系由原来源拥有者核验，随后原 integrate 和 trusted verify 生成最终候选，再交全部审查者。v5 输入完整保存 manifest/祖先资源，以摘要引用原 admission 避免每代重复 base64 资产；原前驱产物不截断，超预算拒绝。
+
+恢复复用原 job/context/monitor；HEAD 偏离原调用起点时，必须核对原 Executor 在首次 HEAD 门禁之后发布的完整 `agent-selection` 及结果字节摘要，缺失或不符先拒绝并要求对账。它使用既有产物区分合法可信 commit 与 Agent 自提交的崩溃窗口，没有增加恢复 marker。实现、原反例和各候选验收状态见[工作运行记录](../delivery/2026-11-09-work-agent-runtime.md)及[独立审查](../delivery/2026-11-09-work-agent-runtime-review.md)，配置见[工作单元手册](../WORKFLOW_DEFINITIONS.md#专长执行者与原工作单元)。
+
+```mermaid
+flowchart LR
+  Definition[唯一冻结图 / manifest] --> Projection[StageDAG / WorkDelivery 数据投影]
+  Projection --> Envelope[显式 v5 / 原 unit 分配]
+  Envelope --> Units[原六阶段 / units 调度与祖先容量]
+  Units --> Executor[原 Executor / checkout / monitor]
+  Executor --> Writer[实例后端 / 完整祖先 / 固定 MCP]
+  Writer --> Gates[原路径门禁 / checks / 可信 commit]
+  Gates --> Integration[原 integrate / trusted verify]
+  Gates --> Source[核验原 work receipt / claim / 全部产物]
+  Integration --> Review[原 review DAG / 最终候选与批准计划]
+  Source --> Review
+  Review --> Join[必需与建议意见 / 原收据汇合]
+```
+
 AC4.3b 为显式`review_protocol: dag-v1`接入正式信封v4。`review_dags`只从唯一冻结图推导叶子依赖与稳定端口共享表，由信封准入、原Workflow和Executor共同消费；v4 Workflow按已完成前驱释放叶子，并继续使用所有结构祖先并发限额。原Executor通过版本Input的请求根核前驱原request/context/receipt/claim、候选与实际产物字节，再把完整正文放入实际prompt；共同可信意见读取归不依赖Temporal的`reference_review_opinions`，原活动与Executor直接调用。结构继承不随数据依赖扩张，原v1/v2/v3字节、形状与路由保留；只读DAG不包含写执行者分配。实现与各候选验收状态见[运行记录](../delivery/2026-11-09-review-dag-runtime.md)，用法见[端口手册](../WORKFLOW_DEFINITIONS.md#正式只读审查的数据端口)。
 
 ```mermaid

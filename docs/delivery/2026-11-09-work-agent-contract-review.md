@@ -63,3 +63,17 @@
 没有运行模型、服务、应用测试、安装、提交、推送或新 CI；没有将前片 CI42584734023 用作新 workspace/v5 功能证据。本片没有必须处置的开放 finding。后续真实 CLI 能力、完整材料交付、祖先限额、独立分支推进、取消/unknown、写后崩溃恢复及精确候选交付，仍按 C2–C5 取得各自证据；设计通过不替代这些验收。
 
 两轴计数：Spec 0，Standards 0；本片设计阻塞为 0。普通文档提交、适用路径过滤检查及精确 HTTPS 远端身份仍由主代理按实际结果记录。
+
+## 精确文档交付终核
+
+2026-11-09 同片接续核验普通提交 **`11a00061c0573f3d24e0402671d02acc1d1e9107`**，唯一父为 `0fd881e4f21d2814eaf7ce0db47a7fd3c28c4144`，实际变更恰为 **7 份 Markdown**。提交前最终 scope JSON / diff SHA256 为 `bfe6889e1e1b8e1d6c8b6c70867d820a03dee6e81e742603a9d8063313c8a945` / `502d9523f2b967010168c58f0e965facb9fab7f8a8266336ec55d1b994116271`；七个 Git blob 与逐文件记录全部匹配。对象 diff SHA256 为 `1834eae609812a933771785c1b35c8146b5414a6ac4c489d71ca5b65ba4503e5`，各文件差异段与提交前固定 diff 逐字节相同，仅排列顺序不同。
+
+合同的已审正文及 Linux/WSL2 平台段保持；相对平台复核稿只有开头状态与末尾评审/交付链接更新。提交内合同 SHA256 为 `4279b5dec4e4dd53b03c543feba8e557a5e4556339641b4042db930a5ad48e24`，本报告原批准稿为 `bc99830f4ff79521e17de703a96fe3de32a9d66ea3c05124c666dde1ba24400c`。新增前片 runtime review 内容只记录 `0fd881e` 的对象、自己的 CI 与明确 HTTPS 终结，没有增加 C1 行为或借其 CI 证明本设计已运行。
+
+独立从固定提交读取七份文档及链接目标，并从该 Git 对象导出私有源码快照、显式通过 PYTHONPATH 加载精确 parser，得到 **7 份 Markdown / 98 个本地链接与锚点 / 82 条现有 CLI parser 全部通过**；对象 `git diff --check` 通过。没有使用后续 C2 的工作树文档或源码替代本次对象。作者已单列旧开发安装缺少当前命令导致的首次 parser 失败；修正验证入口后使用源码 parser 通过，不是生产源码或应用测试失败。
+
+固定提交的唯一 CI 工作流 `.github/workflows/portability.yml` 与父提交相同，SHA256 为 `81c168fdb140f44ccfdca497003e452355c9164a6ed6f8dfb8fa31729a1943ca`。现有 push 的 `paths-ignore: ["docs/**.md", "README.md", "AGENTS.md"]` 覆盖本次全部七个路径，因此本次文档 push 适用原路径过滤；没有人为增加或触发应用 CI，也没有将父片 CI42584734023 当成本片新能力验收。
+
+独立明确 HTTPS 读取于 **2026-11-09 08:45:21.420359→08:45:22.908502 UTC** 完成：移除继承的全部 GIT 环境项，禁用系统/全局 Git 配置并阻止仓库配置发现，关闭 credential helper/askpass 与 HTTP 重定向；有效配置只有命令行项，无 URL insteadOf/pushInsteadOf。命令为 `/usr/bin/git -c credential.helper= -c core.askpass= -c http.followRedirects=false ls-remote --exit-code https://github.com/626619403/Ergora.git refs/heads/refactor/architecture-foundations`。结果 **exit 0，stderr 0 字节**，stdout 精确为完整 `11a00061c0573f3d24e0402671d02acc1d1e9107`、TAB、目标分支及换行，共 86 字节，SHA256 为 `8da1ad158e28cf49fb33f9bfd31f5d90362bf5f16ffb4ee7df966afdf83621c2`。
+
+本片 **Spec / Standards 设计门禁、七个精确提交对象、适用 CI 路径过滤和明确 HTTPS 远端身份均通过，剩余 C1 交付阻塞为 0**。此段是 `11a0006` 交付后的终核记账，没有声称追加正文已存在于该提交；C2–C5 运行责任保持。未运行模型、服务、应用测试、安装或 Git 发布，未修改生产或其它文档。原对象、静态和远端核验原件保存在本片独立检查目录的 `delivery-11a-*` 文件中。

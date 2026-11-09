@@ -125,55 +125,60 @@ async def main():
         from ergora import agent_definitions, tasks, workflow_definitions
 
         examples = Path(__file__).resolve().parents[2] / 'examples'
-        agent_definitions.import_bundle(state, examples / 'agents/architecture-reviewer')
-        workflow_source = root / 'workflow-source'
-        shutil.copytree(examples / 'composition/structure-review', workflow_source)
-        graph_definition = read(workflow_source / 'workflow.json')
-        if mode.startswith('composition-requirements-') or mode == 'composition-no-worker-sdk-v3':
-            graph_definition['schema_version'] = 2
-            graph_definition['nodes'][0]['review_requirement'] = 'required'
-            graph_definition['nodes'].append({'id': 'gather', 'join': 'all', 'depends_on': ['review']})
-            graph_definition['outputs'] = {'result': {'node': 'gather', 'output': 'result'}}
-        elif mode.startswith('composition-dag-'):
-            first = graph_definition['nodes'][0]
-            first['review_requirement'] = 'advisory'
-            graph_definition['schema_version'] = 2
-            for number in range(1, 5 if mode.endswith('-capacity') else 3):
-                node = deepcopy(first)
-                previous = 'review' if number == 1 or not mode.endswith('-capacity') else f'review-{number - 1}'
-                node.update(id=f'review-{number}', review_requirement='required', depends_on=[previous],
-                            inputs={'task': {'node': previous, 'output': 'result'}})
-                graph_definition['nodes'].append(node)
-            graph_definition['nodes'].append({'id': 'gather', 'join': 'all',
-                'depends_on': [node['id'] for node in graph_definition['nodes'][1:]]})
-            graph_definition['outputs'] = {'result': {'node': 'gather', 'output': 'result'}}
-        elif mode == 'composition-multiple':
-            another = deepcopy(graph_definition['nodes'][0])
-            another['id'] = 'another'
-            graph_definition['nodes'].append(another)
-        elif mode == 'composition-read-scope':
-            graph_definition['nodes'][0]['permissions']['read'] = ['workspace/src/base.py', 'definitions']
-        write(workflow_source / 'workflow.json', graph_definition, replace=True)
-        workflow_definitions.import_bundle(state, workflow_source)
-        manifest_path = root / 'manifest'
-        manifest = workflow_definitions.prepare_manifest(state.root, 'structure-review', '1.0.0',
-            read(examples / 'composition/preview-grant.json'), manifest_path)
-        task_definition = {'schema_version': 2, 'task_id': 'task-1', 'task_type': kind, 'issue_id': '1', 'input': task_input,
-            'composition': {'manifest': str(manifest_path), 'manifest_digest': manifest['digest'],
-                            'review_instance': 'root', 'mode': 'task-mcp' if mode == 'composition-task-mcp' else 'text-only'}}
-        if mode.startswith('composition-dag-'):
-            task_definition['composition'].update(review_protocol='dag-v1', backend_overrides={
-                'root/review': {'binding': {'tool': 'codex', 'model': 'fixture-reject'},
-                                'reason': 'Transport the original advisory failed receipt without changing its opinion'}})
-        if mode in ('composition-review-reject', 'composition-review-timeout', 'composition-review-cancel',
-                    'composition-requirements-reject', 'composition-requirements-mutate'):
-            model = 'fixture-' + mode.rsplit('-', 1)[1]
-            task_definition['composition']['backend_overrides'] = {
-                'root/review': {'binding': {'tool': 'codex', 'model': model}, 'reason': 'Explicit native protocol failure fixture'}}
+        if mode.startswith('composition-work-'):
+            from work_delivery_acceptance import prepare
+
+            task_definition = prepare(root, state, task_input, kind, examples, mode)
+        else:
+            agent_definitions.import_bundle(state, examples / 'agents/architecture-reviewer')
+            workflow_source = root / 'workflow-source'
+            shutil.copytree(examples / 'composition/structure-review', workflow_source)
+            graph_definition = read(workflow_source / 'workflow.json')
+            if mode.startswith('composition-requirements-') or mode == 'composition-no-worker-sdk-v3':
+                graph_definition['schema_version'] = 2
+                graph_definition['nodes'][0]['review_requirement'] = 'required'
+                graph_definition['nodes'].append({'id': 'gather', 'join': 'all', 'depends_on': ['review']})
+                graph_definition['outputs'] = {'result': {'node': 'gather', 'output': 'result'}}
+            elif mode.startswith('composition-dag-'):
+                first = graph_definition['nodes'][0]
+                first['review_requirement'] = 'advisory'
+                graph_definition['schema_version'] = 2
+                for number in range(1, 5 if mode.endswith('-capacity') else 3):
+                    node = deepcopy(first)
+                    previous = 'review' if number == 1 or not mode.endswith('-capacity') else f'review-{number - 1}'
+                    node.update(id=f'review-{number}', review_requirement='required', depends_on=[previous],
+                                inputs={'task': {'node': previous, 'output': 'result'}})
+                    graph_definition['nodes'].append(node)
+                graph_definition['nodes'].append({'id': 'gather', 'join': 'all',
+                    'depends_on': [node['id'] for node in graph_definition['nodes'][1:]]})
+                graph_definition['outputs'] = {'result': {'node': 'gather', 'output': 'result'}}
+            elif mode == 'composition-multiple':
+                another = deepcopy(graph_definition['nodes'][0])
+                another['id'] = 'another'
+                graph_definition['nodes'].append(another)
+            elif mode == 'composition-read-scope':
+                graph_definition['nodes'][0]['permissions']['read'] = ['workspace/src/base.py', 'definitions']
+            write(workflow_source / 'workflow.json', graph_definition, replace=True)
+            workflow_definitions.import_bundle(state, workflow_source)
+            manifest_path = root / 'manifest'
+            manifest = workflow_definitions.prepare_manifest(state.root, 'structure-review', '1.0.0',
+                read(examples / 'composition/preview-grant.json'), manifest_path)
+            task_definition = {'schema_version': 2, 'task_id': 'task-1', 'task_type': kind, 'issue_id': '1', 'input': task_input,
+                'composition': {'manifest': str(manifest_path), 'manifest_digest': manifest['digest'],
+                                'review_instance': 'root', 'mode': 'task-mcp' if mode == 'composition-task-mcp' else 'text-only'}}
+            if mode.startswith('composition-dag-'):
+                task_definition['composition'].update(review_protocol='dag-v1', backend_overrides={
+                    'root/review': {'binding': {'tool': 'codex', 'model': 'fixture-reject'},
+                                    'reason': 'Transport the original advisory failed receipt without changing its opinion'}})
+            if mode in ('composition-review-reject', 'composition-review-timeout', 'composition-review-cancel',
+                        'composition-requirements-reject', 'composition-requirements-mutate'):
+                model = 'fixture-' + mode.rsplit('-', 1)[1]
+                task_definition['composition']['backend_overrides'] = {
+                    'root/review': {'binding': {'tool': 'codex', 'model': model}, 'reason': 'Explicit native protocol failure fixture'}}
         revision = state.project('demo')['revision']
         preview = tasks.preview(state, 'demo', task_definition, revision)
         tasks.create(state, 'demo', task_definition, revision, preview['preview_sha256'])
-        shutil.rmtree(manifest_path)
+        shutil.rmtree(Path(task_definition['composition']['manifest']))
         shutil.rmtree(state.root / 'agent-definitions')
         shutil.rmtree(state.root / 'workflow-definitions')
     else:
@@ -280,6 +285,12 @@ async def main():
         return invocation
 
     for stage in ("inventory", "plan", "work:unit", "integrate", "verify", "review"):
+        if stage == 'work:unit' and mode.startswith('composition-work-'):
+            from work_delivery_acceptance import exercise
+
+            print(json.dumps(await exercise(root, mode.removeprefix('composition-work-'), app, activities,
+                installation, state, runtime, requests, records)))
+            return
         if stage == 'review' and mode == 'composition-evidence-capacity':
             # Simulate valid, large verifier logs under the existing adapter limits.
             verified = records['verify']

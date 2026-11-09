@@ -1,6 +1,6 @@
 # 工作流组合示例
 
-这些包演示结构继承、串行、并行与显式 all-join。完整命令和数据格式见[工作流定义手册](../../docs/WORKFLOW_DEFINITIONS.md)。基础安装即可检查／预览，无需模型密钥或服务。正式开发可[运行parallel-review并行分支或serial-review串并行分支](../../docs/USAGE.md#为正式任务冻结审查组合)；kernel-delivery的前驱输出与写执行者分配仍为静态定义。
+这些包演示结构继承、串行、并行与显式 all-join。完整命令和数据格式见[工作流定义手册](../../docs/WORKFLOW_DEFINITIONS.md)。基础安装即可检查／预览，无需模型密钥或服务。正式开发可[运行parallel-review并行分支或serial-review串并行分支](../../docs/USAGE.md#为正式任务冻结审查组合)；使用下方specialist-delivery可将两个专家分配给原工作单元，再承接总审查。kernel-delivery没有显式工作汇合，保持静态定义示例。
 
 依赖顺序：
 
@@ -27,3 +27,6 @@ flowchart LR
 [review-requirements](review-requirements/workflow.json) 是独立的 WorkflowDefinition v2 示例：结构专家必需、测试价值专家建议，职责属于节点实例。导入相应 Agent 后可检查、预览、冻结和分享；[格式与命令](../../docs/WORKFLOW_DEFINITIONS.md#必需与建议审查的静态声明)说明边界。正式任务使用v3可信建议审查，或明确选择dag-v1进入v4；建议request-changes保留FAILED原回执，运行失败仍阻塞。已有v1示例及旧任务保持原身份。
 
 使用`composition prepare-manifest`可一次保存整棵组合及全部资源，分享整个目录后直接`verify-manifest`；接收者用`prepare-from-manifest`准备所选叶子的完整输入。命令、权限与容量限制见[保存和分享完整组合](../../docs/WORKFLOW_DEFINITIONS.md#保存和分享完整组合)。
+
+
+[specialist-work](specialist-work/workflow.json) 为实现和验证分别引用 [kernel-implementer](../agents/kernel-implementer/agent.json) 与 [validation-implementer](../agents/validation-implementer/agent.json)，用显式all-join覆盖两者。[specialist-delivery](specialist-delivery/workflow.json) 串接此工作子模板与parallel-review，适用于原unit一对一分配；导入validation专家、specialist-work，再导入specialist-delivery。完整选择、原unit依赖、显式可信容器与后端覆盖见[专长执行者运行说明](../../docs/WORKFLOW_DEFINITIONS.md#专长执行者与原工作单元)。静态预览不授予写权限；正式v5仍需原owner计划批准、可信检查与commit。训练实验另交原可信runner/gate，不从本开发示例推导训练已支持。

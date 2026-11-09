@@ -13,7 +13,6 @@ with workflow.unsafe.imports_passed_through():
     from dev_platform.adapter import FileAdapter, ContractViolation
     from dev_platform.workflow import DevelopmentWorkflow, StopWork
     from ergora import task_envelopes
-    from ergora.review_dags import ReviewDAG
     from ergora.reference_review_opinions import review_observation
 
 
@@ -235,20 +234,23 @@ class ReviewDAGWorkflow(ReviewRequirementsWorkflow):
         context = super().context(stage, expected_sha, unit, dependencies)
         if stage.startswith('review:'):
             composition = self.admission['composition']
-            dag = ReviewDAG(task_envelopes.manifest_graph(composition['manifest']), composition['review_instance'])
+            dag = task_envelopes.review_dag(composition)
             ports = dag.input_ports(stage.removeprefix('review:'))
             context['review_ports'] = {'schema_version': 1, 'kind': 'formal-review-ports', 'ports': ports,
-                'producers': {path: self.results['review:' + path] for path in ports['sources']}}
+                'producers': {path: self.results[self.source_stage(path)] for path in ports['sources']}}
             if len(json.dumps(context, ensure_ascii=False, sort_keys=True, separators=(',', ':'),
                               allow_nan=False).encode('utf-8')) > 1_000_000:
                 raise StopWork('Complete review DAG context exceeds 1,000,000 bytes; split the task')
         return context
 
+    def source_stage(self, path):
+        return 'review:' + path
+
     async def stage(self, stage, expected_sha=None, unit=None, dependencies=None):
         if stage != 'review':
             return await super().stage(stage, expected_sha, unit, dependencies)
         composition = self.admission['composition']
-        dag = ReviewDAG(task_envelopes.manifest_graph(composition['manifest']), composition['review_instance'])
+        dag = task_envelopes.review_dag(composition)
         scopes = {scope['path']: asyncio.Semaphore(scope['limit'])
                   for leaf in dag.members.values() for scope in leaf['concurrency_scopes']}
         remaining, completed, running, sessions = set(dag.members), set(), {}, set()
@@ -282,6 +284,95 @@ class ReviewDAGWorkflow(ReviewRequirementsWorkflow):
                 [self.results['review:' + path] for path in dag.members])
             self.results['review'] = aggregate
             return aggregate
+        finally:
+            for task in running.values():
+                task.cancel()
+            if running:
+                await asyncio.gather(*running.values(), return_exceptions=True)
+
+    @workflow.run
+    async def run(self, document: dict) -> dict:
+        return await self._run_document(document)
+
+
+class WorkDeliveryAdapter(ReviewDAGAdapter):
+    envelope_version = 5
+
+
+class WorkDeliveryActivities(ReviewDAGActivities):
+    @activity.defn(name=task_envelopes.WORK_SUBMIT)
+    async def submit(self, context: dict) -> dict:
+        return await super().submit(context)
+
+    @activity.defn(name=task_envelopes.WORK_POLL)
+    async def poll(self, job: dict) -> dict | None:
+        return await super().poll(job)
+
+
+@workflow.defn(name='ErgoraCompositionWorkflowV5')
+class WorkDeliveryWorkflow(ReviewDAGWorkflow):
+    """Extend original unit scheduling with frozen ownership and ancestor limits."""
+
+    envelope_version = 5
+    operations = {'dev_submit': task_envelopes.WORK_SUBMIT, 'dev_poll': task_envelopes.WORK_POLL}
+
+    def source_stage(self, path):
+        execution = self.admission['composition']['execution']
+        units = {member: unit for unit, member in execution['assignments'].items()}
+        return 'work:' + units[path] if path in units else super().source_stage(path)
+
+    def context(self, stage, expected_sha=None, unit=None, dependencies=None):
+        context = super().context(stage, expected_sha, unit, dependencies)
+        if stage.startswith('work:'):
+            delivery = task_envelopes.work_delivery(self.admission['composition'], self.spec)
+            member = delivery.assignments[unit['id']]
+            ports = delivery.work.input_ports(member)
+            context['work_ports'] = {'schema_version': 1, 'kind': 'formal-work-ports', 'member': member,
+                'ports': ports, 'producers': {path: self.results[self.source_stage(path)] for path in ports['sources']}}
+            if len(json.dumps(context, ensure_ascii=False, sort_keys=True, separators=(',', ':'),
+                              allow_nan=False).encode('utf-8')) > 1_000_000:
+                raise StopWork('Complete work stage context exceeds 1,000,000 bytes; split the task')
+        return context
+
+    async def units(self):
+        # The original unit IDs, dependency commits and running tasks remain the
+        # schedule. Scope counts derive from those tasks, never another ledger.
+        delivery = task_envelopes.work_delivery(self.admission['composition'], self.spec)
+        remaining = {unit['id']: unit for unit in self.spec['request']['input']['work_units']}
+        completed, running, sessions = set(), {}, set()
+        concurrency = self.spec['profile']['limits']['max_parallel_units']
+        scopes = {key: delivery.work.members[path]['concurrency_scopes'] for key, path in delivery.assignments.items()}
+        try:
+            while remaining or running:
+                if self.cancel_reason:
+                    raise StopWork(self.cancel_reason)
+                used = {}
+                for key in running:
+                    for scope in scopes[key]:
+                        used[scope['path']] = used.get(scope['path'], 0) + 1
+                for key in sorted(list(remaining)):
+                    unit = remaining[key]
+                    if (len(running) >= concurrency or not set(unit['depends_on']) <= completed
+                            or any(used.get(scope['path'], 0) >= scope['limit'] for scope in scopes[key])):
+                        continue
+                    dependencies = {parent: self.results['work:' + parent] for parent in unit['depends_on']}
+                    running[key] = asyncio.create_task(self.stage('work:' + key, unit=unit, dependencies=dependencies))
+                    del remaining[key]
+                    for scope in scopes[key]:
+                        used[scope['path']] = used.get(scope['path'], 0) + 1
+                if not running:
+                    raise StopWork('No runnable original work unit under its frozen limits')
+                await workflow.wait(running.values(), return_when=asyncio.FIRST_COMPLETED)
+                for key in sorted(list(running)):
+                    if running[key].done():
+                        receipt = await running.pop(key)
+                        if self.cancel_reason:
+                            raise StopWork(self.cancel_reason)
+                        session = receipt['actor']['session_id']
+                        if session in sessions:
+                            raise StopWork('Work instances require distinct original sessions')
+                        sessions.add(session)
+                        completed.add(key)
         finally:
             for task in running.values():
                 task.cancel()
