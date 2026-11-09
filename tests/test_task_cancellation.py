@@ -25,7 +25,7 @@ def cancellation_task(submitted_creation,native_client):
 
 
 @pytest.fixture
-def cancellation_client(cancellation_task,monkeypatch):
+def cancellation_client(monkeypatch):
     original=reference.subprocess.run
     fixture=Path(__file__).parent/'fixtures/task_cancellation_client.py'
     def invoke(argv,**kwargs):

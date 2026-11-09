@@ -13,6 +13,7 @@ from temporalio.service import RPCError, RPCStatusCode
 
 from dev_platform import connection
 from dev_platform.workflow import DevelopmentWorkflow
+from ergora.reference_inputs import execution_input
 from ergora.reference_task_cancellation import _Cancellation, main
 
 payload=json.load(sys.stdin)
@@ -70,7 +71,7 @@ class Handle:
         assert len(body['ergora_operation_sha256'])==64
         if scenario=='signal-not-sent':raise TimeoutError('Signal delivery was interrupted')
         workflow=DevelopmentWorkflow()
-        workflow.spec=saved()['spec'];workflow.phase='WORKING'
+        workflow.spec=execution_input(saved()['spec']).spec;workflow.phase='WORKING'
         workflow.request_cancel(body)
         (root/'cancellation-handler.json').write_text(json.dumps({'reason':workflow.cancel_reason}))
         with history.open('a',encoding='utf-8') as stream:

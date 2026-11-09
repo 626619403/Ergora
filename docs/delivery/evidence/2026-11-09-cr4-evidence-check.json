@@ -1,0 +1,9 @@
+{
+  "receipt_count": 24,
+  "artifact_count": 87,
+  "owner_plan_bindings": 4,
+  "claim_count": 4,
+  "released_exact_cancelled_claim": true,
+  "remaining_active_other_claims": 3,
+  "scope": "Read-only hashes and exact plan/claim identities; complements native owner/history acceptance, not business approval or source authenticity."
+}

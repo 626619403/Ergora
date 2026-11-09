@@ -123,7 +123,7 @@ class _Cancellation:
 
                 return SimpleNamespace(signal=signal), description
 
-        runtime = RecordedCancellation(VerifiedSpecClient(await connect(), self.spec), task_queue())
+        runtime = RecordedCancellation(VerifiedSpecClient(await connect(), self.submission.input.document), task_queue())
         await runtime.cancel(self.spec, intent['run_id'], intent['reason'])
         receipt = (self.receipt(intent, 'acknowledged', None) if acknowledged else
                    self.closed_receipt(intent, runtime.description.status.name))

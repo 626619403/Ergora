@@ -1,6 +1,6 @@
 # CR3c / E4：公开单叶组合运行入口
 
-日期：2026-11-09。状态：公开入口实现、真实Temporal旅程及自身模板审查通过；最终包内134项及独立两轴本地审查通过，普通提交推送/本候选CI待终结。固定基线`6826047031aebddb7eb6c5fcf43cfe91ebb45ada`；CR3b自己的双OS CI42545445322及独立远端终结已通过。本文件不声明未验行为可用。
+日期：2026-11-09。状态：公开入口实现、真实Temporal旅程及自身模板审查通过；最终包内134项及独立两轴审查通过，精确8948335普通推送、自己的双OS CI42548357813七必要步骤和02:10:14.158015 UTC独立远端核同SHA已完成。固定基线`6826047031aebddb7eb6c5fcf43cfe91ebb45ada`；CR3b自己的双OS CI42545445322及独立远端终结已通过。本文件不声明未验行为可用。
 
 本片接通已支持形状的v2 start/status和常驻executor双请求根扫描，复用原Submission的创建核验、attempt-before-send、memo及原run恢复，复用原Temporal六阶段与受监控Executor。它不增加另一套调度或正式账本；Supervisor完整生命周期和备份出口分别仍属CR4/AC3c.4，多成员嵌套执行属AC4。
 
@@ -17,7 +17,7 @@
 - [x] P2：v2公开查询同完整历史身份，same-legacy/different-manifest拒绝；原not_found/unknown与只读行为保持，v1合同回归。
 - [x] P3：常驻双根实际消费，不重复执行，原候选/批准/receipt绑定，原型别worker不误消费；未支持形状明确失败。
 - [x] P4：非editable安装包上的真实本地Temporal/worker/常驻executor公开CLI旅程，原owner批准和原回执，至少一条v2和一条v1；模型协议合成与实际模型能力分别记账，不把fixture当真实模型。
-- [ ] P5：发行与283冻结身份、相关合同回归、fresh-context独立两轴审查、自身结构模板实际调用、普通推送及精确必要CI/远端。
+- [x] P5：发行与283冻结身份、相关合同回归、fresh-context独立两轴审查、自身结构模板实际调用、普通推送及精确必要CI/远端。
 
 每一验证结果按真实原件/源身份追加；先完成内部执行桥再开放入口，不能把先前手工调用六阶段fixture当本片Temporal验收。测试和源码范围按实际变更收敛，保持既有CI矩阵。
 
@@ -47,3 +47,7 @@ R4使用R1同一非editable安装和未变化生产源码，明确执行`python 
 新独立者已核三条完整history、原输入/类型/队列、全部65份artifact摘要、owner/human批准和157273字节MCP完整六页；源码两轴无阻塞finding。指出的旧“全部v2拒绝”及README正式批准待接入措辞已在当前架构、总/AC计划和运行桥同步收窄，历史段落保留其原范围。静态检查首轮发现新增README锚点拼写错误，修正后10份Markdown/201本地链接及75条CLI parser通过；加入最终独立报告后再核完整scope。最终fresh-context报告、普通提交/推送、自己的双OS CI/远端分别记账，不借用CR3b结果。
 
 [本片fresh-context独立报告](2026-11-09-composition-public-runtime-review.md)本地两轴与原件核验通过，范围内无剩余阻塞finding；最终静态11份Markdown/206链接及75条CLI parser通过。下一普通提交、自己的必要CI和即时远端终结。
+
+本片精确提交`8948335ee2b2737bd8cc53e5c33f1fdd2f35ea94`（22文件，父6826047）已建立，普通推送与自己的必要CI/即时远端仍跟进。最终提交前11份Markdown/207本地链接及75条CLI parser、全部staged whitespace通过，scope清单已冻结。后续CR4本地推进不修改本片生产身份，不能在本片CI未结束时推后片取消它。
+
+精确交付完成：`8948335ee2b2737bd8cc53e5c33f1fdd2f35ea94`自己的[双OS CI42548357813](https://github.com/626619403/Ergora/actions/runs/42548357813)七必要步骤全部success，独立02:10:12.011167 UTC核官方HTML后立即经fetch URL读取，02:10:14.158015 UTC核远端同SHA。固定Git对象22文件及369/283身份均由原审查者终结；后续CR4的取消路径修正属于新候选，不借用此CI。

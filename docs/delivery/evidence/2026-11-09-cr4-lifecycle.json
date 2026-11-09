@@ -1,0 +1,150 @@
+{
+  "checked_at": "2026-11-09T02:15:09.162349+00:00",
+  "seconds": 428.3513018041849,
+  "package_wheel_sha256": "aaa55f011bbc8ddcdfead0e1d59859695f07f6d7f80ddbdb309d26e37d98e703",
+  "source": {
+    "src/ergora/reference_task_cancellation.py": "19d5725d97fcb6197fd409508328335bd9e5b33e2d262289ec63dbb8c376b8fc",
+    "src/ergora/services.py": "9d7ffa3a06384acff2802f5934c03f1bb6469ff84bbe2ea609602e6f7522bdb9",
+    "src/ergora/reference_executor.py": "6d6f24f5002ac9408d237f9b59625ac75e62c554800c3d6db3f9cd127d3a4ccc",
+    "src/ergora/reference_inputs.py": "3f8ff5aba07cfe5605981470b8002aa8ef3a1484511ce760cf58f7904feebcc5",
+    "src/ergora/reference_task_runtime.py": "af253979f3cff209ba808bda8ea83108d5859e0761d93e674443bebaef1caef5",
+    "src/ergora/task_envelopes.py": "cf0133e8c822eab65531dfd21311404ac6d300ab94ccb8e3242e90671dea581e",
+    "src/ergora/tasks.py": "7bfa40f446278f1df3a6379600c62ac53281115c6fe47a97037809aed403117e"
+  },
+  "records": {
+    "resumed-v2": {
+      "version": 2,
+      "task_id": "resumed-v2-public",
+      "run_id": "01a1be10-1f37-7b2a-95a0-f3519e5ef4f9",
+      "recovery": {
+        "same_run": true,
+        "same_plan": true,
+        "same_receipts": true,
+        "start_idempotent": true,
+        "offline_failed_without_autostart": true,
+        "different_admission_rejected": true
+      },
+      "outcome": "REVIEW_READY",
+      "receipt_states": {
+        "planner:resumed-v2-public-29c77e683944f0250f07816e": "SUCCEEDED",
+        "implementer:resumed-v2-public-2b5a4e4517563ba51dd3d84f": "SUCCEEDED",
+        "inspector:resumed-v2-public-468519c303ac175bf7c8fabb": "SUCCEEDED",
+        "integrator:resumed-v2-public-65bd4e363e016ec396722c0a": "SUCCEEDED",
+        "verifier:resumed-v2-public-5ef460a3142b5ab94c4ff7a4": "SUCCEEDED",
+        "reviewer:resumed-v2-public-9d9b81bcd1772fc58658a870": "SUCCEEDED"
+      },
+      "history": {
+        "sha256": "b3d379108a592f6e4bd5c2af0d633ca8c37a7cc9e8d27172ecab539266417911",
+        "replay": "passed",
+        "events": 161,
+        "workflow_type": "ErgoraCompositionWorkflowV2"
+      }
+    },
+    "rejected-v2": {
+      "version": 2,
+      "task_id": "rejected-v2-public",
+      "run_id": "01a1be11-dc1c-70c8-8efa-cb273070aa1f",
+      "outcome": "BLOCKED",
+      "receipt_states": {
+        "inspector:rejected-v2-public-468519c303ac175bf7c8fabb": "SUCCEEDED",
+        "planner:rejected-v2-public-29c77e683944f0250f07816e": "SUCCEEDED",
+        "implementer:rejected-v2-public-2b5a4e4517563ba51dd3d84f": "SUCCEEDED",
+        "verifier:rejected-v2-public-5ef460a3142b5ab94c4ff7a4": "SUCCEEDED",
+        "reviewer:rejected-v2-public-9d9b81bcd1772fc58658a870": "FAILED",
+        "integrator:rejected-v2-public-65bd4e363e016ec396722c0a": "SUCCEEDED"
+      },
+      "history": {
+        "sha256": "d0be325a3f6596c5cbe349cd11678cb22e3d52dc63e77699f4b873a302ee2726",
+        "replay": "passed",
+        "events": 167,
+        "workflow_type": "ErgoraCompositionWorkflowV2"
+      }
+    },
+    "cancelled-v2": {
+      "version": 2,
+      "task_id": "cancelled-v2-public",
+      "run_id": "01a1be13-648f-7f1e-b1d8-89b25943f6fb",
+      "cancellation": {
+        "status": "requested",
+        "signal_delivery": "acknowledged",
+        "cancellation_confirmed": null
+      },
+      "cleanup": {
+        "no_late_write": true,
+        "external_confirmed": true,
+        "lease_released": true,
+        "original_outcome_preserved": true
+      },
+      "outcome": "CANCEL_UNCONFIRMED",
+      "receipt_states": {
+        "planner:cancelled-v2-public-29c77e683944f0250f07816e": "SUCCEEDED",
+        "implementer:cancelled-v2-public-2b5a4e4517563ba51dd3d84f": "SUCCEEDED",
+        "inspector:cancelled-v2-public-468519c303ac175bf7c8fabb": "SUCCEEDED",
+        "integrator:cancelled-v2-public-65bd4e363e016ec396722c0a": "SUCCEEDED",
+        "verifier:cancelled-v2-public-5ef460a3142b5ab94c4ff7a4": "SUCCEEDED",
+        "reviewer:cancelled-v2-public-9d9b81bcd1772fc58658a870": "CANCELLED"
+      },
+      "history": {
+        "sha256": "9025f0059cab3796e5de6ca772c0af5a7b2fb02bca3a95e53d91ff3640da04f9",
+        "replay": "passed",
+        "events": 162,
+        "workflow_type": "ErgoraCompositionWorkflowV2"
+      }
+    },
+    "legacy-v1": {
+      "version": 1,
+      "task_id": "legacy-v1-public",
+      "run_id": "01a1be14-fba6-7ea5-9eae-b1c255386f8a",
+      "outcome": "REVIEW_READY",
+      "receipt_states": {
+        "inspector:legacy-v1-public-468519c303ac175bf7c8fabb": "SUCCEEDED",
+        "planner:legacy-v1-public-29c77e683944f0250f07816e": "SUCCEEDED",
+        "integrator:legacy-v1-public-65bd4e363e016ec396722c0a": "SUCCEEDED",
+        "verifier:legacy-v1-public-5ef460a3142b5ab94c4ff7a4": "SUCCEEDED",
+        "reviewer:legacy-v1-public-9d9b81bcd1772fc58658a870": "SUCCEEDED",
+        "implementer:legacy-v1-public-2b5a4e4517563ba51dd3d84f": "SUCCEEDED"
+      },
+      "history": {
+        "sha256": "dacf672b2fb0f7dd5ee5331037b44880f6429c58e8cb94c871fce43f2d607feb",
+        "replay": "passed",
+        "events": 161,
+        "workflow_type": "DevelopmentWorkflow"
+      }
+    }
+  },
+  "service_operations": [
+    {
+      "action": "start",
+      "outcome": "confirmed",
+      "daemon": "running"
+    },
+    {
+      "action": "start",
+      "outcome": "confirmed",
+      "daemon": "running"
+    },
+    {
+      "action": "shutdown",
+      "outcome": "confirmed",
+      "daemon": "not_running"
+    },
+    {
+      "action": "start",
+      "outcome": "confirmed",
+      "daemon": "running"
+    },
+    {
+      "action": "start",
+      "outcome": "confirmed",
+      "daemon": "running"
+    },
+    {
+      "action": "shutdown",
+      "outcome": "confirmed",
+      "daemon": "not_running"
+    }
+  ],
+  "service_ports_closed": true,
+  "database_preserved": true,
+  "scope": "Real installed CLI, original Supervisor, Temporal and dual workers/scanner, explicit test-operator owner approvals, durable same-run restart, original reject/cancel/fence/reconcile and legacy compatibility; deterministic agent protocols, no actual model-quality or OS-isolation claim."
+}

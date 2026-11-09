@@ -51,3 +51,42 @@ R4 最终使用同一非 editable 安装的解释器，以 `-I -m pytest -q` 运
 文档观察已关闭：`docs/architecture/current.md`、总/AC 计划及运行桥的当前导航原先仍表示全部 v2 拒绝，`README.md:161` 还把正式批准统称为待接入；这会让用户误判已验入口，也妨碍按当前检查点恢复。最小修正已收窄到有限单叶入口及原 owner 批准，历史描述保留其原范围；审查者复核当前正文及 diff 后关闭。新增 README 锚点错误的首轮静态结果及修正后的通过分别保留。最终静态原件为 **11 份 Markdown / 206 个本地链接及锚点 / 75 条 CLI parser 通过**，普通 diff whitespace 检查通过；本报告自己的五个链接亦已核有效。
 
 审查者没有改源码、依赖、测试或提交，没有运行 pytest、安装、真实模型或服务。本地要求/结构两轴和已记录验收无剩余阻塞 finding；精确提交、自己的必要 CI 与即时远端终核待实际结果另记。完整 Supervisor 生命周期、故障/取消/恢复及备份出口仍属 CR4/AC3c.4，未完成范围不由此结论代替。
+
+
+## 提交后终核追加（2026-11-09 02:14 UTC）
+
+本追加将上文的本地两轴结论推进到本候选自身的提交、必要 CI 和即时远端身份终核；上文首轮失败、后续修正及执行限制仍按原记录保留。
+
+用 `git --no-replace-objects` 独立确认候选 `8948335ee2b2737bd8cc53e5c33f1fdd2f35ea94` 的唯一父提交是固定基线 `6826047031aebddb7eb6c5fcf43cfe91ebb45ada`。两者间恰为 **22 个文件**，每个原始 Git blob 的 SHA256 均与 R4 `review-scope.json` 相同。候选完整 `src/ergora` 树的 **369 个文件**与 R4、原 wheel 及非 editable 安装身份一致，**283 个冻结文件**逐个等于固定基线；wheel SHA256 仍为 `306677fdd8df02fbac1b862e5dec4ac6d572bd52a3d88e5ce96af8ff18e03d3a`。候选 diff whitespace 检查通过。
+
+固定候选文档与 R4 `static-documents.json` 的逐文件摘要相同，最终静态范围为 **11 份 Markdown / 207 个本地链接及锚点 / 75 条 CLI parser**，全部通过；此处 **207** 更新上文较早的 **206**。本地安装包 **134 passed / 424.33 秒 / exit 0** 仍属于此前已核的同一生产候选，无需以当前后片工作树重跑或代替其身份。
+
+在 **2026-11-09 02:14:12.695604 UTC** 独立重读 GitHub 官方 [portability run 42548357813](https://github.com/626619403/Ergora/actions/runs/42548357813)，整体为 **Success**，绑定完整候选 SHA 和 `portability.yml`。两个 job 均结束；以下七个适用必要步骤的 `data-conclusion` 均为 `success`，日志 URL 均包含本候选完整 SHA 及各自 job ID。
+
+|Job|必要步骤|完成时间（2026-11-09 UTC）|
+|---|---|---|
+|[Ubuntu / Python 3.11](https://github.com/626619403/Ergora/actions/runs/42548357813/job/128938177503)|Build and install wheel|01:58:54|
+|Ubuntu / Python 3.11|Packaged reference identity|01:58:55|
+|Ubuntu / Python 3.11|Native application regression|02:08:16|
+|[Windows / Python 3.12](https://github.com/626619403/Ergora/actions/runs/42548357813/job/128938177477)|Build and install wheel|01:59:41|
+|Windows / Python 3.12|Packaged reference identity|01:59:43|
+|Windows / Python 3.12|Native application regression|02:05:55|
+|Windows / Python 3.12|Windows PowerShell 5.1 installer and upgrade|02:06:51|
+
+该次读取的 HTML SHA256：run `ff4bbf5e24c36a6f36e767f1e42aba5bb6d494715cc0e04b75d04c2362f5a014`；Ubuntu job `5d7a94509ed3fdfd191bb5d7775053b0eb4d2992c1e928e0372a9baaadafc3c9`；Windows job `cdd3873149683ee2b79020f06be02dd31915710f880beb8794431c49ad744780`。未通过已遇限流的匿名 API 轮询，也未修改或执行会写缓存的 CI 辅助脚本。
+
+同一进程确认上述全部成功后，立即执行明确的 HTTPS 远端读取：
+
+```text
+git ls-remote https://github.com/626619403/Ergora.git refs/heads/refactor/architecture-foundations
+```
+
+开始 **02:14:12.695811 UTC**，结束 **02:14:14.105685 UTC**，exit **0**，stderr 为空；stdout 为：
+
+```text
+8948335ee2b2737bd8cc53e5c33f1fdd2f35ea94	refs/heads/refactor/architecture-foundations
+```
+
+方法更正保留如下：此前 **02:10:12.011388–02:10:14.158015 UTC** 的 `git ls-remote origin` 同样返回准确候选，但 `origin` fetch URL 为 HTTPS，不能因设置了 `GIT_SSH_COMMAND` 而称其为 SSH。随后 **02:12:35.845957–02:12:36.149384 UTC** 对 `git@github.com:626619403/Ergora.git` 的显式 SSH 读取 exit **128**，错误为 `nc: Proxy error: "HTTP/1.1 407 Proxy Authentication Required"`；一次无代理双路检查亦分别在 `github.com:22`、`ssh.github.com:443` 连接超时。未修改 SSH 配置。本片终核要求准确远端 SHA，不限定读取传输；按主代理确认，以以上重新读取 CI 后立即取得的有效 HTTPS 身份完成门槛，不将 SSH 失败写成通过。
+
+**本候选要求符合性、可维护性与交付终核均通过，无剩余阻塞 finding。** 此结论精确限定于 `8948335ee2b2737bd8cc53e5c33f1fdd2f35ea94`；后来 CR4 的文档、源码、测试及新记录工作树改动均不纳入本片审查、安装包身份或验收声明。审查者本轮只追加此报告，没有改实现、测试、依赖、配置或缓存，没有提交或推送。

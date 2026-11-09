@@ -16,6 +16,7 @@ from test_registrations import installation, registration
 from test_task_creation import creation_project, _inject, _files
 from test_task_runtime import runtime_client
 from test_task_submission import native_client
+from test_task_cancellation import cancellation_client
 from test_workflow_definitions import EXAMPLES, child, definition, grant, leaf, ref, write_bundle
 
 
@@ -238,6 +239,54 @@ def test_composition_runtime_status_binds_full_history_without_mutations(compose
         if scenario == 'running':
             assert result['status']['admission_sha256'] == document['sha256']
     assert _files(root) == before
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Formal cancellation uses the Linux reference runtime')
+@pytest.mark.parametrize('scenario', ['normal', 'lost-ack', 'admission-collision'])
+def test_composition_cancellation_preserves_full_input_and_original_signal_recovery(
+        composed_creation, native_client, cancellation_client, monkeypatch, scenario):
+    pytest.importorskip('temporalio')
+    state, registration, task = composed_creation
+    root = Path(registration['execution']['state_directory'])
+    runtime = Path(registration['execution']['installation']) / '.venv'
+    if not runtime.exists():
+        runtime.symlink_to(sys.prefix, target_is_directory=True)
+    preview = tasks.preview(state, 'demo', task, 1)
+    created = tasks.create(state, 'demo', task, 1, preview['preview_sha256'])
+    tasks.start(state, 'demo', task['task_id'], 1, created['intent_sha256'])
+    path = root / 'sdk-fixture/server.json'
+    original = json.loads(path.read_bytes())
+    if scenario == 'admission-collision':
+        other = deepcopy(original)
+        other['spec']['composition']['members']['root/review']['backend_reason'] = 'Another complete admission'
+        other['spec']['sha256'] = task_envelopes.identity({k: v for k, v in other['spec'].items() if k != 'sha256'})
+        task_envelopes.unwrap(other['spec'])
+        assert other['spec']['legacy_spec'] == original['spec']['legacy_spec']
+        path.write_text(json.dumps(other))
+    else:
+        monkeypatch.setenv('ERGORA_TEST_CANCELLATION_SCENARIO', scenario)
+    arguments = {'run_id': 'original-run', 'reason': 'Stop this exact review', 'confirm': True}
+    if scenario in ('lost-ack', 'admission-collision'):
+        with pytest.raises(ValueError, match='timed out' if scenario == 'lost-ack' else 'JSON identity'):
+            tasks.cancel(state, 'demo', task['task_id'], 'stop-review', 1, **arguments)
+    else:
+        assert tasks.cancel(state, 'demo', task['task_id'], 'stop-review', 1, **arguments)['status'] == 'requested'
+    current = tasks.cancellation(state, 'demo', task['task_id'], 'stop-review')
+    if scenario == 'admission-collision':
+        assert current['status'] == 'prepared' and not current['attempt_saved']
+    else:
+        assert current['status'] == ('unknown' if scenario == 'lost-ack' else 'requested')
+        monkeypatch.setenv('ERGORA_TEST_CANCELLATION_SCENARIO', 'normal')
+        resumed = tasks.resume_cancel(state, 'demo', task['task_id'], 'stop-review', 1,
+                                      current['intent_sha256'], confirm=True)
+        assert resumed['status'] == 'requested' and resumed['run_id'] == 'original-run'
+        assert resumed['signal_delivery'] == ('history' if scenario == 'lost-ack' else 'acknowledged')
+        assert tasks.resume_cancel(state, 'demo', task['task_id'], 'stop-review', 1,
+                                   current['intent_sha256'], confirm=True) == resumed
+        assert json.loads(path.read_bytes()) == original
+    events = [json.loads(line)['event'] for line in (root / 'sdk-fixture/calls.jsonl').read_text().splitlines()]
+    assert events.count('cancellation-signal') == (0 if scenario == 'admission-collision' else 1)
+    assert json.loads((root / 'tasks/new-task/task.spec.json').read_bytes()) == original['spec']
 
 
 def test_an_unexecuted_parent_output_cannot_be_invented_by_selecting_a_review_subtree(composed_creation):
