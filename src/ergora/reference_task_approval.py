@@ -42,7 +42,7 @@ async def _plan(payload: dict) -> dict:
         if not event.HasField('activity_task_scheduled_event_attributes'):
             continue
         scheduled = event.activity_task_scheduled_event_attributes
-        if scheduled.activity_type.name != 'dev_submit':
+        if scheduled.activity_type.name != submission.input.submit_activity:
             continue
         if len(scheduled.input.payloads) != 1:
             raise ValueError('Original plan history has no single job context')
@@ -52,8 +52,7 @@ async def _plan(payload: dict) -> dict:
         context = values[0]
         if context.get('stage') != 'plan':
             continue
-        if (context['task_id'] != creation.task_id or context['request_sha256'] != spec['request_sha256']
-                or context['profile_sha256'] != spec['profile_sha256'] or creation.sha(context['spec']) != creation.sha(spec)):
+        if (context['request_sha256'] != spec['request_sha256'] or not submission.input.matches_context(context)):
             raise ValueError('Original plan history differs from the recorded task spec')
         job_id = identifier(context['job_id'])
         break
@@ -61,7 +60,8 @@ async def _plan(payload: dict) -> dict:
         raise ValueError('Original history has no submitted plan job')
 
     job_sha = creation.sha(context)
-    envelope = creation.document(creation.path('requests/' + creation.task_id + '/' + job_id + '.json'))
+    adapter = creation.file_adapter(submission.input)
+    envelope = creation.document(adapter.path('requests', creation.task_id + '/' + job_id + '.json'))
     if creation.sha(envelope) != creation.sha({'schema_version': 1, 'job_id': job_id,
                                              'job_sha256': job_sha, 'context': context}):
         raise ValueError('Plan request envelope differs from its original history context')

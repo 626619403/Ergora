@@ -34,3 +34,5 @@ R3自身真实structure-review/任务MCP114.76秒完成，69,386字节附件全�
 最终本地出口已由[原独立审查者](2026-11-09-composition-workers-review.md)落盘：Standards/Spec通过，三项实证finding关闭，S4非阻塞处置及原两轮Codex判定不改；完整实际MCP读取、12保护文件、输入/副本/manifest/prompt/DB/result和三公开证明分别核实。另按不同后端优先实际尝试Claude Code：API认证存在，但自身task-MCP调用8.45秒以HTTP400/Bedrock空system内容校验失败，零token/无模型判定，failed identity附原判定历史。沿用户授权回退已有Codex/ChatGPT审查，不把认证存在或CLI启动当Claude审查通过。下一固定20文件scope/文档静态，普通提交推送及本候选必要双OS CI/独立即时远端；完整Supervisor栈/正式v2仍后续。
 
 CR2a同片平台修正：原精确c36bcdc的CI42535845046中，Windows128899838743官方annotations记录2 failed/681 passed/481 skipped/16 subtests（335.94秒），恰为新FileAdapter两版本用例在原adapter.read_raw使用Windows不存在的os.O_NOFOLLOW；PowerShell安装步骤成功，Ubuntu终态另核。独立者在原R3隔离复现，登记ST3 P2；Linux本地65/1结果仍按其平台范围保留，不能写c36双OS通过。最小修复只给该原生文件旅程函数加提前Linux/WSL2 skip（两个参数），其余身份/命令/生命周期跨平台测试及生产代码不变；普通修复候选和自己的双OS CI需重新验证，不携带CR2b实现。
+
+最终精确平台修正25d83ec：自身CI42537178771的Ubuntu/Windows七必要步骤全部success；独立2026-11-09 00:06:37.360 UTC只读远端同完整SHA，ST3关闭。原c36 CI真实Failure保留，生产代码仍R3身份。完整证据见[原独立报告](2026-11-09-composition-workers-review.md)。

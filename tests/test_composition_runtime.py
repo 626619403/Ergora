@@ -28,7 +28,7 @@ def original_input(composed_creation, monkeypatch):
 
 @pytest.mark.parametrize('version', [1, 2])
 def test_each_input_version_starts_its_registered_entrypoint_with_the_complete_original_payload(original_input, version):
-    from ergora.reference_workflows import execution_input
+    from ergora.reference_inputs import execution_input
     from temporalio.workflow import _Definition
 
     document = original_input if version == 2 else original_input['legacy_spec']

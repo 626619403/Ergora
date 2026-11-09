@@ -10,11 +10,24 @@ import json
 
 
 _KIND = 'composition-task-admission'
+COMPOSITION_SUBMIT = 'ergora_composition_submit'
 
 
 def identity(value: dict) -> str:
     return hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True,
         separators=(',', ':'), allow_nan=False).encode('utf-8')).hexdigest()
+
+
+def matches_context(spec: dict, context: dict, admission: dict | None = None) -> bool:
+    """Bind a stage projection to its task/profile and optional complete admission.
+
+    The original activity and persisted readers own their request-SHA checks.
+    Both the SDK publisher and versioned readers use this additional identity.
+    """
+    return (context.get('task_id') == spec['request']['task_id']
+            and context.get('profile_sha256') == spec['profile_sha256']
+            and identity(context['spec']) == identity(spec)
+            and (admission is None or identity(context.get('admission')) == identity(admission)))
 
 
 def manifest_identity(snapshot: dict) -> str:

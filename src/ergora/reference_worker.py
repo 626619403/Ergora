@@ -24,7 +24,7 @@ class _ErgoraPackage(MetaPathFinder):
 async def _serve() -> None:
     from dev_platform.adapter import load_adapter
     from dev_platform.connection import connect, task_queue
-    from .reference_workflows import workers
+    from .reference_inputs import workers
 
     config = load_adapter().config
     stopped = asyncio.Event()

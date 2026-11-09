@@ -33,7 +33,8 @@ def pending_plan(tmp_path, monkeypatch):
     creation = _Creation.__new__(_Creation)
     creation.root, creation.task_id, creation.adapter, creation.sha = tmp_path, 'task-one', adapter, canonical_sha
     creation.project = {'id': 'demo', 'revision': 3}
-    spec = {'request_sha256': 'a' * 64, 'profile_sha256': 'b' * 64,
+    creation.config = tmp_path / 'config'
+    spec = {'request': {'task_id': creation.task_id}, 'request_sha256': 'a' * 64, 'profile_sha256': 'b' * 64,
             'profile': {'artifacts_by_stage': {'plan': ['execution-plan', 'ownership-map', 'rollback-plan']}}}
     context = {'task_id': 'task-one', 'stage': 'plan', 'request_sha256': spec['request_sha256'],
                'profile_sha256': spec['profile_sha256'], 'spec': deepcopy(spec), 'job_id': 'task-one-plan'}
@@ -45,6 +46,10 @@ def pending_plan(tmp_path, monkeypatch):
         path.write_text(json.dumps(value), encoding='utf-8')
 
     data.write = write
+    write(creation.config / 'adapter.json', {
+        **{name: str(creation.path(name)) for name in ('requests', 'receipts', 'artifacts', 'approvals', 'fences')},
+        'trusted_receipts': True,
+    })
     data.receipt_path = tmp_path / 'receipts/task-one/task-one-plan.json'
     data.envelope_path = tmp_path / 'requests/task-one/task-one-plan.json'
     data.receipt = {'schema_version': 1, 'job_id': context['job_id'], 'job_sha256': canonical_sha(context),
@@ -82,9 +87,10 @@ def pending_plan(tmp_path, monkeypatch):
         result = [HistoryEvent(event_id=i) for i in range(1, 8)]
         result[0].workflow_execution_started_event_attributes.SetInParent()
         result[1].timer_started_event_attributes.SetInParent()
-        for event, name, values in ((result[2], 'dev_submit', [{'stage': 'inventory'}]),
+        submit = getattr(data, 'submit_activity', data.input.submit_activity)
+        for event, name, values in ((result[2], submit, [{'stage': 'inventory'}]),
                                     (result[3], 'dev_validate', [spec]),
-                                    (result[4], 'dev_submit', data.values if data.values is not None else [data.context])):
+                                    (result[4], submit, data.values if data.values is not None else [data.context])):
             scheduled = event.activity_task_scheduled_event_attributes
             scheduled.activity_type.name = name
             scheduled.input.payloads.extend(await converter.encode(values))
@@ -131,7 +137,12 @@ def pending_plan(tmp_path, monkeypatch):
         data.looked_up += 1
         return Handle(), data.description, converter
 
-    submission = SimpleNamespace(creation=creation, spec=spec, submitted=lambda: (intent, 'original-run'), lookup_run=lookup)
+    from ergora.reference_inputs import execution_input
+
+    data.input = execution_input(spec)
+    submission = SimpleNamespace(creation=creation, spec=spec, input=data.input,
+                                submitted=lambda: (intent, 'original-run'), lookup_run=lookup)
+    data.submission = submission
     monkeypatch.setattr(reference_task_approval, '_Submission', lambda payload: submission)
     return data
 

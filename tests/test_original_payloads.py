@@ -71,11 +71,15 @@ def test_closed_history_requires_one_original_job_context(converter, count):
     from temporalio.api.history.v1 import HistoryEvent
     from dev_platform.contracts import canonical_sha
 
-    spec = {'request_sha256': 'a' * 64, 'profile_sha256': 'b' * 64}
-    context = {'task_id': 'task-one', 'job_id': 'task-one-plan', 'stage': 'plan', 'spec': spec, **spec}
+    from ergora.reference_inputs import execution_input
+
+    spec = {'request': {'task_id': 'task-one'}, 'request_sha256': 'a' * 64, 'profile_sha256': 'b' * 64}
+    context = {'task_id': 'task-one', 'job_id': 'task-one-plan', 'stage': 'plan', 'spec': spec,
+               'request_sha256': spec['request_sha256'], 'profile_sha256': spec['profile_sha256']}
     inspection = _Inspection.__new__(_Inspection)
     inspection.creation = SimpleNamespace(task_id='task-one')
     inspection.spec, inspection.sha = spec, canonical_sha
+    inspection.submission = SimpleNamespace(input=execution_input(spec))
 
     async def read():
         start, job, end = (HistoryEvent(event_id=i) for i in (1, 2, 3))

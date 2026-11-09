@@ -22,7 +22,7 @@ class _Inspection:
         self.spec, self.sha = self.submission.spec, self.creation.sha
         if payload.get('run_id', self.run_id) != self.run_id:
             raise ValueError('External evidence must pin the original submitted run ID')
-        self.adapter = self.creation.file_adapter()
+        self.adapter = self.creation.file_adapter(self.submission.input)
 
     async def jobs(self, handle, converter, temporal_status: str, *, usage: dict | None = None) -> dict:
         from dev_platform.adapter import identifier
@@ -48,18 +48,16 @@ class _Inspection:
             if usage is not None:
                 usage['scheduled_activities'] += 1
             scheduled = event.activity_task_scheduled_event_attributes
-            if scheduled.activity_type.name != 'dev_submit':
+            if scheduled.activity_type.name != self.submission.input.submit_activity:
                 continue
             if len(scheduled.input.payloads) != 1:
-                raise ValueError('Original dev_submit history has no single context')
+                raise ValueError('Original submit history has no single context')
             values = await converter.decode(scheduled.input.payloads, [dict])
             if len(values) != 1 or not isinstance(values[0], dict):
-                raise ValueError('Original dev_submit history has no single context')
+                raise ValueError('Original submit history has no single context')
             context = values[0]
-            expected = {'task_id': self.creation.task_id, 'request_sha256': self.spec['request_sha256'],
-                        'profile_sha256': self.spec['profile_sha256']}
-            if (any(context.get(key) != value for key, value in expected.items())
-                    or self.sha(context['spec']) != self.sha(self.spec) or not isinstance(context['stage'], str)):
+            if (context.get('request_sha256') != self.spec['request_sha256']
+                    or not self.submission.input.matches_context(context) or not isinstance(context['stage'], str)):
                 raise ValueError('Original history job context differs from the recorded task spec')
             job_id = identifier(context['job_id'])
             job = {'task_id': self.creation.task_id, 'job_id': job_id, 'job_sha256': self.sha(context), 'context': context}

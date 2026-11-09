@@ -1,0 +1,32 @@
+{
+  "checked_at": "2026-11-08T23:58:33.868097+00:00",
+  "source": {
+    "src/ergora/reference_inputs.py": "9e9596551b29ac1cbdebe5e891261820f87e64136131ad45ae4db261e57db612",
+    "src/ergora/reference_workflows.py": "abc655a54b729dcce3299b4af5d588007a33251837a3a75581fb8a3b418883c3",
+    "src/ergora/task_envelopes.py": "6d4a8e8d2b2f839d96b40035939f9b22cefcb4a2996c972abf635d7cc70437f1",
+    "src/ergora/reference_task_submission.py": "f5fcd8bb17481925f407f51bb9aa38fc69b0e643cc4ccfec3b07b1fbe1bc3426",
+    "src/ergora/reference_task_creation.py": "0199ba996ceb8a4a6e15e3141d0e3aa3b32b289a0e1c860ff268172c68d629ec",
+    "src/ergora/reference_task_runtime.py": "796e4fd8df18c9e8ec3c39667be2d9dc6883475d3aba7c092f6e2baf25c173f6",
+    "src/ergora/reference_task_approval.py": "106f82510c114624a823105501ce5eaa8e9dfdcff36d7f93b912618bd815752f",
+    "src/ergora/reference_task_evidence.py": "eb968036312b647113640d8bd4ac50ac46d4c86a33129778dd7ebdd93730cbb5",
+    "src/ergora/reference_task_reconciliation.py": "a65c9b53b17e797bea48920cd0fdf2d85902ebb0b2394e269625d46c7bbbab95",
+    "src/ergora/reference_worker.py": "998242a5d35d8ebd5b0d458c55ffea46a3bf8e1db294421d149445ea6de58e65",
+    "tests/test_composition_transport.py": "cc9916b505c0284297047a808816f19820e1b2c551a99abd2c0547b074282edf"
+  },
+  "backend": "codex",
+  "inference_model": "gpt-6.1-sol",
+  "reasoning_effort": "high",
+  "run_id": "b617d2b0ad7c4f22bbdb857ba74b57bd",
+  "status": "succeeded",
+  "exit_code": 0,
+  "seconds": 173.6983383758925,
+  "input_digest": "a15016b0b327208ed898169030b8b53229098f462c142effa8d5d7f3b146b0c7",
+  "prompt_sha256": "375a14b5aab4250e38887e6183abbf1779b30693caaa90b8fa74593dd4d64476",
+  "attachment_bytes": 53021,
+  "attachment_sha256": "c42f373589f169c2daae5b103cccb6fd194162ea4c0043d8576d89330f09b325",
+  "manifest_digest": "eb07c5db764b2b795bc822aca0a26694278bce3b134237d4ac24c90db3d8a870",
+  "original_definition_libraries_removed": true,
+  "scope": "Real configured hosted model through installed Ergora structure-review template from a complete static manifest and task MCP; provided source only, no formal approval or OS isolation.",
+  "decision": "approve",
+  "result_sha256": "f55337affda45881fe100588a521f9ad82ead4358c9e089db93b56e4601a3e54"
+}

@@ -7,6 +7,7 @@ import sys
 from types import SimpleNamespace
 
 from .reference_task_creation import _Creation
+from .reference_inputs import execution_input
 from .reference_task_runtime import VerifiedSpecClient
 from .state import file_lock
 
@@ -26,20 +27,21 @@ class _Submission:
         self.result_path = self.creation.path(prefix + '.result.json')
         self.rejection_path = self.creation.path(prefix + '.rejection.json')
 
-    def prepare(self) -> None:
+    def prepare(self, *, submitting: bool = False) -> None:
         record = self.creation.published()
-        if record['schema_version'] == 2:
-            raise ValueError('Composition task submission requires the versioned runtime bridge; not available yet')
+        self.creation_record = record
+        self.input = execution_input(record['files']['task.spec.json'])
+        if submitting:
+            self.input.require_submission()
         from dev_platform.workflow import workflow_id
 
-        self.creation_record = record
-        self.spec = record['files']['task.spec.json']
+        self.spec = self.input.spec
         self.expected = {'schema_version': 1, 'operation': 'start',
                          'control_home': record['control_home'], 'project': record['project'],
                          'project_revision': self.creation.project['revision'],
                          'registration_sha256': record['registration_sha256'], 'execution': record['execution'],
                          'task_id': self.creation.task_id, 'creation_sha256': self.sha(record),
-                         'spec_sha256': self.sha(self.spec), 'workflow_id': workflow_id(self.spec)}
+                         'spec_sha256': self.sha(self.input.document), 'workflow_id': workflow_id(self.spec)}
 
     def load(self) -> dict | None:
         record = self.creation.optional(self.intent_path)
@@ -115,14 +117,17 @@ class _Submission:
         original_spec = cli.task_spec
 
         def frozen_spec(task_id):
-            spec = original_spec(task_id)
-            if operation.sha(spec) != intent['spec_sha256']:
+            document = operation.creation.document(operation.creation.target / 'task.spec.json')
+            if operation.sha(document) != intent['spec_sha256']:
+                raise ValueError('Task spec changed after submission preflight; restore the original creation')
+            spec = operation.input.admission_spec(original_spec, task_id)
+            if operation.sha(spec) != operation.sha(operation.spec):
                 raise ValueError('Task spec changed after submission preflight; restore the original creation')
             return spec
 
         class CheckpointedTransport(original):
             async def start(self, spec):
-                self.client = VerifiedSpecClient(self.client, operation.spec)
+                self.client = VerifiedSpecClient(self.client, operation.input.document)
                 # Refuse to adopt an independently started run. Once this
                 # checkpoint exists, resume must only look up, never start.
                 try:
@@ -172,7 +177,7 @@ class _Submission:
         from dev_platform.runtime import DevelopmentTransport
 
         client = await connect()
-        transport = DevelopmentTransport(VerifiedSpecClient(client, self.spec), task_queue())
+        transport = DevelopmentTransport(VerifiedSpecClient(client, self.input.document), task_queue())
         handle, description = await transport.lookup(self.spec, run_id)
         await self.verify_run_owner(intent, description)
         return handle, description, client.data_converter
@@ -198,12 +203,12 @@ class _Submission:
     async def run(self) -> dict:
         operation = self.payload['operation']
         if operation == 'status':
-            self.prepare()
+            self.prepare(submitting=True)
             return self.status(self.load())
         preparing = operation in ('prepare', 'prepare-resume')
         # Never wait for a remote task lock while the parent reserves the DB.
         with file_lock(self.creation.lock_path, blocking=not preparing):
-            self.prepare()
+            self.prepare(submitting=True)
             intent = self.load()
             if operation == 'prepare':
                 if self.payload['creation_sha256'] != self.expected['creation_sha256']:
@@ -211,7 +216,7 @@ class _Submission:
                 if intent is not None:
                     return {'created': False, 'submission': self.status(intent)}
                 for path in (self.creation.target / 'cli-ingress.json',
-                             self.creation.path('requests/' + self.creation.task_id),
+                             self.input.request_root(self.creation.path('requests')) / self.creation.task_id,
                              self.creation.path('receipts/' + self.creation.task_id)):
                     if path.exists():
                         raise ValueError('Native admission or stage records already exist; legacy runs cannot be adopted')

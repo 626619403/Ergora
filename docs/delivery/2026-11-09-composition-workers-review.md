@@ -181,3 +181,40 @@ R3 真实自身模板在 **114.76 秒**结束，原始结果仍为 **request-cha
 实施者以 c36 为基础隔离暂存该测试，未把当前 CR2b 工作区改动加入：新测试 blob SHA256 为 **`8a62bf811bac9c86dc390be1b2c49a3890b739cdc43f179c7f49c6b41660a180`**。审查者读取 `git show :tests/test_composition_workers.py`，确认差异仅为 `import sys` 和上述单个参数化函数前的 `@pytest.mark.skipif(sys.platform != 'linux', reason='Native FileAdapter file semantics require Linux/WSL2')`。移除这两项后，整份 AST 与 c36 完全相同；没有跳过整个模块，准入拒绝与生命周期等跨平台测试保留。
 
 为核实 fixture 时序，审查者把暂存 blob 的**原样 decorator AST**交给真实 pytest 内存 collector，并用可观察的 `original_input` fixture：`win32` 项为 skipped，fixture 未获取；`linux` 项实际获取 fixture 并执行 body。实际为 **1 passed, 1 skipped，0.00 秒**，仅内存探针，无测试或生产文件写入。该修正避免未受支持文件语义进入 fixture，也保留 Linux 的实际旅程。**ST3 的实现修正复核通过**；生产包身份不变，沿用已核 R3 367 文件及本地协议证据，不重复构建/重型矩阵。精确修复提交及其完整 CI/远端出口仍待后续追加。
+
+### 原 c36 CI 的真实终态
+
+**2026-11-08 23:49:51 UTC** 再次新鲜读取完整官方运行、job-groups 和两 job：run `42535845046` 已 **Failure**，两 job 均 completed，非取消。Ubuntu/Python 3.11 `128899838545` 为 **success**，Build/install 与 packaged identity 均于 23:35:09 UTC 成功，Native application regression 于 **23:49:16 UTC** 成功；三步全部带有 c36 精确提交绑定的日志地址，[原生回归步骤](https://github.com/626619403/Ergora/commit/c36bcdc028def80429f674d250ee65838d2adc73/checks/128899838545/logs/6)。Windows 的真实失败与其余三步成功仍如上表。没有读取到 Ubuntu 完整测试摘要，未推算其测试计数。
+
+该次运行页 SHA256 为 `9650988345178eef950a74d4c8d8d856173c49efed2cfe44f5cc6009705fe8b1`，完整 groups 页为 `43b7b729f573123791f388f144f4dde75ce016a9bb2a02cee1c9be7c180625a1`，Ubuntu job 页为 `89a973f6872d5ccece1f55cc2d4f2c5dfed9749172ddad24108d3f914ff59407`。本次未以“某平台通过”替代双 OS 出口，也未对失败候选登记远端通过；后续普通修复候选需拥有自己的完整成功运行。
+
+## ST3 精确修复候选
+
+普通修复提交为 **`25d83ec5659e1f189a1ccd50e66cfd18b8d2e2a8`**，直接父提交 c36。审查者独立读取 Git 对象与 archive，核定只改变 `docs/PLAN.md`、本报告、本片 worker 记录和 `tests/test_composition_workers.py` 四个文件，逐文件 SHA256 全部等于 `.ergora/checks/ac3c3-workers/ci-fix-scope.json`，该 scope SHA256 为 **`c3146a2e6a6673a1b84af20d91b19f0f27b4e45c3ce1ea4e210121209f6b94b5`**。测试为上述已独立核实的 early skip blob；生产 `src/ergora` 整树 Git OID 与 c36 完全相同：`9eef0e8bbf01e9000769d1833fc5cf0515a10089`，因此原 367 包文件/283 冻结文件及 R3 SDK 证据身份保留，当前 CR2b 未提交实现不属于该候选。
+
+基线至该候选 `git diff --check` 通过。按候选 archive 检查同九份 Markdown，为 **360 个本地链接/锚点，零缺失**；其中 19 条既有 `.ergora` 私有证据链接按本地实际文件核实，未声称它们属于 Git archive。新增加的两个本地链接均有效。九份文档及 README 的全部 fenced 内容与 c36 完全相同，原已通过 parser 的 **75 条 CLI 示例**保持，未因纯平台调度修正重复重型回归。
+
+修复提交内本报告 SHA256 为 `a123963d50943096e304b4e65f041f58a80f6926fd11f3022865e8984c730c15`，含 ST3 finding 与修正复核；原 c36 的最终 CI 状态节在提交后追加，仍是明确的状态归档。修复候选自己的 [Portability #112](https://github.com/626619403/Ergora/actions/runs/42537178771) 绑定上述完整 SHA，Ubuntu/Python 3.11 job `128903960310`、Windows/Python 3.12 job `128903960118`。当前两 OS 的 build/install 与 package identity 已成功，原生回归仍在途；最终双 OS 及即时远端结论继续等待，不提前关闭出口。
+
+
+## 最终独立出口：Standards / Spec 通过，ST3 关闭
+
+**2026-11-09 00:06:32.460153 UTC** 新鲜读取修复候选的[官方 Portability #112](https://github.com/626619403/Ergora/actions/runs/42537178771)、完整 job-groups 及两 job 页面：run **Success**，`totalCount=2`、`hasMore=false`，Ubuntu `128903960310` 与 Windows `128903960118` 均 **completed / success**。逐项核实下列全部 **7 个必要步骤**为 success、有实际完成时间，且每个 log URL 都绑定完整候选 `25d83ec5659e1f189a1ccd50e66cfd18b8d2e2a8`。两 job 全部步骤均无 failure、cancelled、timed_out 或 action_required；没有用某一步或单一 OS 的成功替代完整出口。
+
+| 平台 | 必要步骤 | 结论 | 完成时刻（UTC） | 精确提交绑定日志 |
+| --- | --- | --- | --- | --- |
+| Ubuntu / Python 3.11 | Build and install wheel | success | 2026-11-08 23:51:54 | [步骤 4](https://github.com/626619403/Ergora/commit/25d83ec5659e1f189a1ccd50e66cfd18b8d2e2a8/checks/128903960310/logs/4) |
+| Ubuntu / Python 3.11 | Packaged reference identity | success | 2026-11-08 23:51:54 | [步骤 5](https://github.com/626619403/Ergora/commit/25d83ec5659e1f189a1ccd50e66cfd18b8d2e2a8/checks/128903960310/logs/5) |
+| Ubuntu / Python 3.11 | Native application regression | success | 2026-11-09 00:06:08 | [步骤 6](https://github.com/626619403/Ergora/commit/25d83ec5659e1f189a1ccd50e66cfd18b8d2e2a8/checks/128903960310/logs/6) |
+| Windows / Python 3.12 | Build and install wheel | success | 2026-11-08 23:52:16 | [步骤 4](https://github.com/626619403/Ergora/commit/25d83ec5659e1f189a1ccd50e66cfd18b8d2e2a8/checks/128903960118/logs/4) |
+| Windows / Python 3.12 | Packaged reference identity | success | 2026-11-08 23:52:17 | [步骤 5](https://github.com/626619403/Ergora/commit/25d83ec5659e1f189a1ccd50e66cfd18b8d2e2a8/checks/128903960118/logs/5) |
+| Windows / Python 3.12 | Native application regression | success | 2026-11-08 23:56:33 | [步骤 6](https://github.com/626619403/Ergora/commit/25d83ec5659e1f189a1ccd50e66cfd18b8d2e2a8/checks/128903960118/logs/6) |
+| Windows / Python 3.12 | Windows PowerShell 5.1 installer and upgrade | success | 2026-11-08 23:57:17 | [步骤 7](https://github.com/626619403/Ergora/commit/25d83ec5659e1f189a1ccd50e66cfd18b8d2e2a8/checks/128903960118/logs/7) |
+
+该次官方页面 SHA256：run `126e142e13403b3c5a0b5096ecaac7e5b8b1f5cffea713099945667a156074db`；完整 groups `94433402f7ac1f0c2cfc7871b982288e97264fef0fcc764a104b3703d829dbb1`；Ubuntu job `ac47d973d2e1e8d7e64c5b206005d3afe599983320660823225d2246258ddbbb`；Windows job `55784e10171184a7df72201de4a7d16aedbc16aef679f750befe803578ebb9e3`。成功步骤的完整 pytest 摘要未由此次可读页面提供，因此不推算测试计数；原 c36 的真实失败计数仍按前节保留。
+
+完成上述官方核验后，审查者于 **2026-11-09 00:06:32.469133 UTC** 立即执行只读 SSH `git ls-remote`，于 **00:06:37.360137 UTC** 得到 exit 0：`refs/heads/refactor/architecture-foundations` 精确等于 **`25d83ec5659e1f189a1ccd50e66cfd18b8d2e2a8`**。该读操作不修改远端，未把先前推送回执或较早远端状态当作 CI 成功后的即时证明。
+
+**ST3 正式关闭；当前 Standards / Spec 均通过，无未解决的阻塞 finding。** 本片身份为 c36 的 20 文件实现加直接子提交 25d83ec 的四文件平台修正，生产代码仍是已独立核实的 R3 包/SDK 身份。ST1/SP1、SP2、ST2/SP3 保持关闭；S4 非阻塞且不采纳的独立理由、两轮模型原始 request-changes 与 Claude 实际失败无判定均原样保留。正式 v2 提交/reader、可信执行、Supervisor 全栈及 CR2b/CR3/CR4 继续按原范围另验。
+
+本节及原 c36 CI 最终状态是精确候选之后的审查状态归档，不改变上述已验 Git 对象；没有将当前 CR2b 工作区或本次追加文档反向纳入 25d83ec 的 CI 身份。

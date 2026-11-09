@@ -19,7 +19,7 @@ from test_composition_runtime import original_input, composed_creation, creation
 @pytest.mark.parametrize('version', [1, 2])
 def test_each_version_publishes_and_fences_only_its_own_requests(original_input, tmp_path, version):
     from dev_platform.adapter import publish, read_json
-    from ergora.reference_workflows import execution_input
+    from ergora.reference_inputs import execution_input
     from temporalio.exceptions import ApplicationError
 
     document = original_input if version == 2 else original_input['legacy_spec']
@@ -54,7 +54,7 @@ def test_each_version_publishes_and_fences_only_its_own_requests(original_input,
 
 @pytest.mark.parametrize('admission', ['legacy', 'different-projection', 'missing', 'task-id', 'profile-sha'])
 def test_composition_activity_rejects_wrong_admission_before_publication(original_input, tmp_path, admission):
-    from ergora.reference_workflows import execution_input
+    from ergora.reference_inputs import execution_input
     from temporalio.exceptions import ApplicationError
 
     selected = execution_input(original_input)
@@ -86,7 +86,7 @@ def test_composition_activity_rejects_wrong_admission_before_publication(origina
 def test_stop_covers_connection_worker_entry_and_shutdown(monkeypatch, stop_at):
     monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
     from dev_platform import adapter, connection
-    from ergora import reference_worker, reference_workflows
+    from ergora import reference_worker, reference_inputs
 
     events, handlers = [], {}
 
@@ -130,7 +130,7 @@ def test_stop_covers_connection_worker_entry_and_shutdown(monkeypatch, stop_at):
         monkeypatch.setattr(loop, 'remove_signal_handler', remove)
         monkeypatch.setattr(adapter, 'load_adapter', lambda: SimpleNamespace(config={}))
         monkeypatch.setattr(connection, 'connect', connect)
-        monkeypatch.setattr(reference_workflows, 'workers', lambda *args: [Worker('one'), Worker('two')])
+        monkeypatch.setattr(reference_inputs, 'workers', lambda *args: [Worker('one'), Worker('two')])
         await asyncio.wait_for(reference_worker._serve(), 2)
 
     asyncio.run(exercise())

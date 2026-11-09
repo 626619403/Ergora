@@ -28,7 +28,7 @@ class VerifiedSpecClient:
     """Keep native lookup's history read while requiring exact original JSON."""
 
     def __init__(self, client, spec: dict):
-        from .reference_workflows import execution_input
+        from .reference_inputs import execution_input
 
         self.original = client
         self.input = execution_input(spec)

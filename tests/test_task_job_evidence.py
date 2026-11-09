@@ -20,11 +20,6 @@ pytestmark = pytest.mark.skipif(sys.platform != 'linux', reason='Formal task ope
 def original_job(pending_plan, monkeypatch):
     data = pending_plan
     creation = data.creation
-    creation.config = creation.root / 'config'
-    data.write(creation.config / 'adapter.json', {
-        **{name: str(creation.path(name)) for name in ('requests', 'receipts', 'artifacts', 'approvals', 'fences')},
-        'trusted_receipts': True,
-    })
     data.receipt.update(actor={'id': 'trusted', 'session_id': 'job-session', 'kind': 'ci', 'role': 'planner'},
                         candidate_sha='a' * 40, checks=[])
     data.save_receipt()

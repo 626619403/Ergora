@@ -41,8 +41,8 @@ async def _job(payload: dict) -> dict:
     else:
         raise ValueError('Selected job event is absent from the currently visible original history')
     if (not event.HasField('activity_task_scheduled_event_attributes')
-            or event.activity_task_scheduled_event_attributes.activity_type.name != 'dev_submit'):
-        raise ValueError('Select an original dev_submit activity scheduling event')
+            or event.activity_task_scheduled_event_attributes.activity_type.name != submission.input.submit_activity):
+        raise ValueError(f'Select an original {submission.input.submit_activity} activity scheduling event')
     scheduled = event.activity_task_scheduled_event_attributes
     if len(scheduled.input.payloads) != 1:
         raise ValueError('Original job event has no single context')
@@ -50,14 +50,13 @@ async def _job(payload: dict) -> dict:
     if len(values) != 1 or not isinstance(values[0], dict):
         raise ValueError('Original job event has no single context')
     context = values[0]
-    if (context['task_id'] != creation.task_id or context['request_sha256'] != spec['request_sha256']
-            or context['profile_sha256'] != spec['profile_sha256'] or creation.sha(context['spec']) != creation.sha(spec)
+    if (context['request_sha256'] != spec['request_sha256'] or not submission.input.matches_context(context)
             or not isinstance(context['stage'], str)
             or context['stage'].split(':', 1)[0] not in spec['profile']['artifacts_by_stage']):
         raise ValueError('Original job event context differs from the recorded task spec')
     job_id = identifier(context['job_id'])
     job_sha = creation.sha(context)
-    adapter = creation.file_adapter()
+    adapter = creation.file_adapter(submission.input)
     envelope = creation.document(adapter.path('requests', creation.task_id + '/' + job_id + '.json'))
     if creation.sha(envelope) != creation.sha({'schema_version': 1, 'job_id': job_id,
                                              'job_sha256': job_sha, 'context': context}):

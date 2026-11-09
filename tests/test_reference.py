@@ -69,3 +69,15 @@ def test_worker_bootstrap_loads_ergora_without_shadowing_native_dependencies(tmp
                             capture_output=True, text=True, timeout=10)
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == 'native-selected'
+
+
+def test_versioned_input_contract_imports_without_sdk_or_native_modules():
+    package_parent = str(Path(reference.__file__).parent.parent)
+    script = ('import sys;sys.path.insert(0,' + repr(package_parent) + ');'
+              'from ergora.reference_inputs import execution_input,CompositionInput;'
+              'selected=execution_input({"request": {"task_id": "offline"}});'
+              'assert selected.task_queue("q")=="q";'
+              'assert CompositionInput.task_queue("q")=="q.composition-v2";'
+              'assert not any(n.split(".")[0] in ("temporalio","dev_platform","agent_platform") for n in sys.modules)')
+    result = subprocess.run([sys.executable, '-I', '-S', '-c', script], capture_output=True, text=True, timeout=10)
+    assert result.returncode == 0, result.stderr

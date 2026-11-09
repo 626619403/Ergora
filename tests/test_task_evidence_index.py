@@ -26,7 +26,7 @@ def closed_evidence(original_job, converter, monkeypatch):
     data = original_job
     data.spec['profile'].update(limits={'max_work_units': 4, 'max_parallel_units': 2},
                                stage_timeout_seconds=180, approval_timeout_seconds=1200, poll_seconds=5)
-    data.spec['request'] = {'input': {'work_units': [{'id': 'one'}, {'id': 'two'}]}}
+    data.spec['request']['input'] = {'work_units': [{'id': 'one'}, {'id': 'two'}]}
     data.context['spec'] = deepcopy(data.spec)
     digest = data.creation.sha(data.context)
     data.write(data.envelope_path, {'schema_version': 1, 'job_id': data.context['job_id'],
@@ -51,7 +51,7 @@ def closed_evidence(original_job, converter, monkeypatch):
             events = [start]
             for context in data.contexts:
                 event = HistoryEvent(event_id=len(events) + 1)
-                event.activity_task_scheduled_event_attributes.activity_type.name = 'dev_submit'
+                event.activity_task_scheduled_event_attributes.activity_type.name = getattr(data, 'submit_activity', data.input.submit_activity)
                 values = [context, context] if data.history == 'multiple' else [context]
                 event.activity_task_scheduled_event_attributes.input.payloads.extend(await converter.encode(values))
                 events.append(event)
@@ -84,10 +84,11 @@ def closed_evidence(original_job, converter, monkeypatch):
             return Handle(), SimpleNamespace(run_id='successor-run'), converter
         return Handle(), data.description, converter
 
-    submission = SimpleNamespace(creation=data.creation, spec=data.spec,
+    submission = SimpleNamespace(creation=data.creation, spec=data.spec, input=data.input,
         creation_record={'files': {'agent-bindings.json': data.selection}},
         submitted=lambda: (data.intent, 'original-run'), lookup_run=lookup)
     monkeypatch.setattr(reference_task_reconciliation, '_Submission', lambda payload: submission)
+    data.closed_submission = submission
     data.payload = {'operation': 'inspect-index', 'run_id': 'original-run', 'timeout': 20}
     return data
 
