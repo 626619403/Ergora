@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "ergora-test-value-reviewer",
+  "version": "1.0.0",
+  "description": "Review whether tests and defensive checks protect meaningful behavior at proportionate cost.",
+  "roles": [
+    "reviewer"
+  ],
+  "specialties": [
+    "regression-value",
+    "test-cost"
+  ],
+  "backend": {
+    "tool": "claude-code"
+  },
+  "resources": [
+    {
+      "id": "ergora-test-value-reviewer-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "76c7d82049d325757f516c832a07383de11e84fc94313888df963b19f7361ab8"
+    },
+    {
+      "id": "ergora-test-value-reviewer-skill",
+      "kind": "skill",
+      "path": "skills/ergora-test-value-reviewer",
+      "digest": "efa332025ec77b77ea13755880401537faacd818429080dbd10ee0ef2c2d3585"
+    }
+  ]
+}

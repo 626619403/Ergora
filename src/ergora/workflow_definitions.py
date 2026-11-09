@@ -19,6 +19,43 @@ from .asset_trees import inventory_tree
 from .state import State
 
 
+_PRESETS = Path(__file__).parent / "data/presets"
+
+
+def _preset_catalog() -> dict:
+    catalog = definition_bundles.read_json(_PRESETS / "presets.json")
+    if catalog["schema_version"] != 1:
+        raise ValueError("Unsupported bundled preset catalog version")
+    return catalog["presets"]
+
+
+def presets() -> list[dict]:
+    """List shipped recipes without creating State or probing execution tools."""
+    return [{"id": identity, "description": entry["description"], "runtime": entry["runtime"],
+             "root": _reference(inspect_bundle(_PRESETS / "workflows" / entry["root"]), "workflow")}
+            for identity, entry in _preset_catalog().items()]
+
+
+def install_preset(state: State, identity: str) -> dict:
+    """Import exact dependency versions; each existing library owns publication.
+
+    This is restartable per-definition installation, not a cross-library
+    transaction or execution authorization. It never replaces stored versions.
+    """
+    catalog = _preset_catalog()
+    if identity not in catalog:
+        raise ValueError(f"Unknown bundled composition: {identity}")
+    entry = catalog[identity]
+    imported_agents = [agent_definitions.import_bundle(state, _PRESETS / "agents" / name)
+                       for name in entry["agents"]]
+    imported_workflows = {name: import_bundle(state, _PRESETS / "workflows" / name)
+                          for name in entry["workflows"]}
+    return {"id": identity, "runtime": entry["runtime"], "execution_authorized": False,
+            "root": _reference(imported_workflows[entry["root"]], "workflow"),
+            "agents": [_reference(item, "agent") for item in imported_agents],
+            "workflows": [_reference(item, "workflow") for item in imported_workflows.values()]}
+
+
 def _encoded(value) -> bytes:
     return json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
 

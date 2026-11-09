@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "ergora-governance-mapper",
+  "version": "1.0.0",
+  "description": "Build a concise repository navigation and ownership map within the approved unit scope.",
+  "roles": [
+    "implementer"
+  ],
+  "specialties": [
+    "repository-cartography",
+    "boundary-documentation"
+  ],
+  "backend": {
+    "tool": "codex"
+  },
+  "resources": [
+    {
+      "id": "ergora-governance-mapper-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "ef4b95e41f5ee2217b1db290d2cb17c7bbd67d0656d835978cfe24e648326fab"
+    },
+    {
+      "id": "ergora-governance-mapper-skill",
+      "kind": "skill",
+      "path": "skills/ergora-governance-mapper",
+      "digest": "b0a3587ced81b7e318a0f7e55fbb35aa041c4c84acd798b320aa33cd17d6a1e3"
+    }
+  ]
+}

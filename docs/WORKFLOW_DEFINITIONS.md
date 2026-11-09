@@ -4,6 +4,33 @@
 
 `composition` 提供静态检查、不可覆盖的版本库、完整预览、可携带的静态组合包与显式单叶调用。预览不调用模型；`run-input` 可将准备好的输入交给所选后端。正式开发按[六阶段流程](USAGE.md#正式任务的操作顺序与恢复)执行，审查阶段可运行嵌套的只读串并行分支并作显式all-join汇合，具体配置见[正式审查组合](USAGE.md#为正式任务冻结审查组合)。只读审查的数据端口见[正式DAG协议](#正式只读审查的数据端口)；专长执行者分配使用下文的[work-units-v1协议](#专长执行者与原工作单元)。
 
+## 使用内置领域组合
+
+仅安装wheel即可导入默认专家及其全部子工作流，不需要先下载仓库examples，也不调用模型或启动服务：
+
+```bash
+ergora composition presets
+ergora composition install-preset repository-governance
+ergora composition install-preset large-change
+ergora composition install-preset training-optimization
+ergora composition show ergora-large-change-delivery 1.0.0 --material
+ergora agent definition show ergora-server-implementer 1.0.0 --material
+```
+
+`presets`只读发行内容，不创建State。`install-preset`沿依赖顺序导入精确版本；重复执行保持同一身份，已有同ID/version的不同内容会拒绝。各定义分别原子发布，整套安装不是跨库事务；中断后可重试。安装不改变项目绑定或权限，不安装/认证Agent CLI，也不授予执行或批准权限。新默认库的权威资源在 [data/presets](../src/ergora/data/presets/presets.json)，可以沿原export/new-version/import流程替换专家及子模板；已有examples的身份保持。
+
+|组合|根ID（当前版本1.0.0）|默认关系与使用范围|
+|---|---|---|
+|repository-governance|`ergora-governance-delivery`|知识地图、架构回归两个专家并行，再经可信integrate/verify接三审查；正式v5|
+|large-change|`ergora-large-change-delivery`|接口合同 → 服务端与客户端并行 → 集成/兼容验证 → 三审查；正式v5|
+|training-optimization|`ergora-training-proposal`|实验设计与性能分析 → kernel候选设计 → 测量复现审查；完整静态组合及可独立调用的只读提案叶|
+
+开发组合共用 `ergora-delivery-review`，它引用结构、正确性、测试价值三份可单独使用的子模板。每份专家有独立初始指令、专长和Skill，沿自己的结构父链完整装载资料。开发writer默认Codex，reviewer默认Claude Code；支持的后端可以逐实例明确覆盖。实际可用性和认证仍由调用准入核验；同后端回退需遵守所选多样性政策并记录原因。
+
+在明确的preview grant下，按[完整组合分享](#保存和分享完整组合)执行`prepare-manifest`，把上面的根ID/版本换入即可。开发正式选择沿[work-units-v1](#专长执行者与原工作单元)，使用`root/work`和`root/review`；unit ID直接映射同名叶子，例如`contract`→`root/work/contract`。原`templates copy`取得的领域input包含对应unit ID、路径和依赖；改变原units关系时，应同时修订对应工作子模板。workspace写调用仍要求每个writer显式选择可信current-container；导入组合不会自动选择此边界。
+
+训练组合的`root/analysis/design`、`root/analysis/profile`、`root/kernel`和`root/measurement/review`可按[单叶调用](#调用一个准备好的叶子)使用；操作者需要在任务文件中提供完整workload、baseline和相应前驱输出。独立`run-input`不执行图前驱。生成的提案/代码文本及模型review不是实验结果或采用批准，真实CPU/GPU、Forge候选和测量仍按[训练手册](TRAINING.md)使用原可信runner/gate。目录中的`runtime`只描述本发行支持的使用范围，不表示后端、服务或硬件已经就绪。
+
 ## 运行示例
 
 先按[使用手册](USAGE.md)安装基础 Ergora；这些命令不需要模型密钥、Web、工单或 Temporal 服务。示例文件在仓库 [examples/composition](../examples/composition/README.md)。在仓库根执行，导入依赖后再导入引用它的工作流：

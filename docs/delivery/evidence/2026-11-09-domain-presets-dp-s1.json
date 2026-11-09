@@ -1,0 +1,90 @@
+{
+  "checked_at": "2026-11-09T10:54:36.075668+00:00",
+  "finding": "DP-S1",
+  "original": {
+    "author_failed": 3,
+    "seconds": 5.45,
+    "log_sha256": "8336640ed5a26798d036e8d886cf7a5fcd03989bad1d9693fedf723dd890578d",
+    "independent_cases": {
+      "checked_at": "2026-11-09T10:43:38.456120+00:00",
+      "scope": "Installed wheel, original tasks.preview plus execution_input.require_submission on an already isolated fixture registration; no create/start/model/service calls",
+      "cases": [
+        {
+          "workflow": "ergora-structure-review",
+          "protocol": "v3",
+          "preview": "accepted",
+          "envelope_version": 3,
+          "preview_execution_started": false,
+          "submission_shape": "rejected",
+          "error": "Parallel composition review requires an explicit all-join covering every reviewer leaf"
+        },
+        {
+          "workflow": "ergora-structure-review",
+          "protocol": "dag-v1",
+          "preview": "rejected",
+          "error": "Review DAG terminal output must project an explicit all-join"
+        },
+        {
+          "workflow": "ergora-correctness-review",
+          "protocol": "v3",
+          "preview": "accepted",
+          "envelope_version": 3,
+          "preview_execution_started": false,
+          "submission_shape": "rejected",
+          "error": "Parallel composition review requires an explicit all-join covering every reviewer leaf"
+        },
+        {
+          "workflow": "ergora-correctness-review",
+          "protocol": "dag-v1",
+          "preview": "rejected",
+          "error": "Review DAG terminal output must project an explicit all-join"
+        },
+        {
+          "workflow": "ergora-test-value-review",
+          "protocol": "v3",
+          "preview": "accepted",
+          "envelope_version": 3,
+          "preview_execution_started": false,
+          "submission_shape": "rejected",
+          "error": "Parallel composition review requires an explicit all-join covering every reviewer leaf"
+        },
+        {
+          "workflow": "ergora-test-value-review",
+          "protocol": "dag-v1",
+          "preview": "rejected",
+          "error": "Review DAG terminal output must project an explicit all-join"
+        },
+        {
+          "workflow": "ergora-delivery-review",
+          "protocol": "v3",
+          "preview": "accepted",
+          "envelope_version": 3,
+          "preview_execution_started": false,
+          "submission_shape": "accepted"
+        },
+        {
+          "workflow": "ergora-delivery-review",
+          "protocol": "dag-v1",
+          "preview": "accepted",
+          "envelope_version": 4,
+          "preview_execution_started": false,
+          "submission_shape": "accepted"
+        }
+      ]
+    }
+  },
+  "fixed": {
+    "author_suite": {
+      "passed": 204,
+      "skipped": 1,
+      "log_sha256": "556d255dfec1ce683928bcad67149254ac5356f16a622be4f56ed29b6ce67c13"
+    },
+    "independent_preset_suite": {
+      "passed": 9,
+      "seconds": 26.22,
+      "log_sha256": "ab4a427656ec66a6218fe39408f75be3857d9bb8aa4cbfbe44e0cb6790e99c9d"
+    },
+    "production_changes": "Single-member all-join in three review workflows and three parent reference digests; original runtime gates, agents, instructions and Skills unchanged"
+  },
+  "scope": "Original formal admission rejection and corrected static public admission; no requests, model, service or domain-task quality claim"
+}

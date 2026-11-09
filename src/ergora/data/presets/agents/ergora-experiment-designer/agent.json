@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "ergora-experiment-designer",
+  "version": "1.0.0",
+  "description": "Propose a bounded experiment against the operator-supplied workload and accepted baseline.",
+  "roles": [
+    "experiment-planner"
+  ],
+  "specialties": [
+    "experiment-design",
+    "fixed-quality-contract"
+  ],
+  "backend": {
+    "tool": "codex"
+  },
+  "resources": [
+    {
+      "id": "ergora-experiment-designer-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "1c3642b7f24b062696f8bfe8fea89bb5def431f5c70296b884ef29e5649b2e68"
+    },
+    {
+      "id": "ergora-experiment-designer-skill",
+      "kind": "skill",
+      "path": "skills/ergora-experiment-designer",
+      "digest": "d4eca54ea1548a834cc5d89feec981dd4ac00d9df0392e4bc2076d598efe710c"
+    }
+  ]
+}

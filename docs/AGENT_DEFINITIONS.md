@@ -4,6 +4,10 @@ Agent 定义包保存一名专家的职能、专长、后端、初始指令、�
 
 项目的角色调用使用[角色绑定](AGENT_BACKENDS.md#项目选择与独立调用)。Agent定义可由[工作流定义](WORKFLOW_DEFINITIONS.md)引用、预览完整祖先链，并通过`composition run-input`显式调用固定叶子。正式六阶段可[冻结审查组合](USAGE.md#为正式任务冻结审查组合)，运行单个或显式all-join的多个嵌套只读串并行审查者；[work-units-v1](WORKFLOW_DEFINITIONS.md#专长执行者与原工作单元)还可把互补实现专家分配给原工作单元，再承接总审查。任意其他职能拓扑仍见[实施计划](plans/2026-11-08-agent-composition.md)。
 
+## 内置专家
+
+`ergora composition install-preset large-change`可一次导入该领域的独立专家及完整子工作流；治理、开发、训练的对应入口见[内置领域组合](WORKFLOW_DEFINITIONS.md#使用内置领域组合)。这些定义随wheel安装，专长由初始指令和Skill描述；不同实例仍可选不同后端，模板通过精确引用组合它们。要修改默认专家，先export，调整内容与版本，再沿父引用发布新根；不覆盖原版本。导入不证明专家效果或后端推理可用。
+
 ## 使用已有示例
 
 在仓库根目录安装 Ergora 后，无需注册项目或启动服务即可使用：

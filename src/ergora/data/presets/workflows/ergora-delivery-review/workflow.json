@@ -1,0 +1,94 @@
+{
+  "schema_version": 2,
+  "id": "ergora-delivery-review",
+  "version": "1.0.0",
+  "description": "Gather complementary reviews of the same exact verified candidate.",
+  "resources": [
+    {
+      "id": "ergora-delivery-review-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "83e867dadc6b374bd3791bcf79c87462375fff58a43b73a569d6f7b3c954e377"
+    }
+  ],
+  "permissions": {
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "write": [],
+    "shell": false,
+    "network": []
+  },
+  "limits": {
+    "depth": 8,
+    "instances": 128,
+    "concurrency": 4,
+    "material_bytes": 262144
+  },
+  "inputs": [
+    "task"
+  ],
+  "outputs": {
+    "result": {
+      "node": "gather",
+      "output": "result"
+    }
+  },
+  "nodes": [
+    {
+      "id": "structure",
+      "ref": {
+        "kind": "workflow",
+        "id": "ergora-structure-review",
+        "version": "1.0.0",
+        "digest": "996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9"
+      },
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      }
+    },
+    {
+      "id": "correctness",
+      "ref": {
+        "kind": "workflow",
+        "id": "ergora-correctness-review",
+        "version": "1.0.0",
+        "digest": "bbc2d7bb8c0ecf420bedee847763aaaf488df7b90139904eb00057b78406aa5f"
+      },
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      }
+    },
+    {
+      "id": "test-value",
+      "ref": {
+        "kind": "workflow",
+        "id": "ergora-test-value-review",
+        "version": "1.0.0",
+        "digest": "83e1cfd354d05434c4e55f728ba7c01e1dfdaf12f8461ac05c89cbb4c0855254"
+      },
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      }
+    },
+    {
+      "id": "gather",
+      "join": "all",
+      "depends_on": [
+        "structure",
+        "correctness",
+        "test-value"
+      ]
+    }
+  ]
+}

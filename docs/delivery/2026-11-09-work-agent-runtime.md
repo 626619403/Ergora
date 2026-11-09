@@ -111,3 +111,11 @@ R2 实际服务首轮已完成 owner 批准与工作调用；验收夹具把同�
 ## 最终独立本地门禁
 
 [同片独立终核](2026-11-09-work-agent-runtime-review.md)通过 Spec/Standards，历史 finding WA-S1 已关闭，新增 finding 0、本地阻塞 0。主审和两个独立轴核了 R2 安装身份、四任务原件、真实writer、自己的真实审查、旧历史、公开证据与手册；完整范围38文件，后续仅review/runtime状态记账漂移。原失败、采样/MCP范围和未证明根因分别保持。普通提交、该提交自己的必要CI和明确HTTPS远端SHA仍待取得，不能用本地门禁代替。
+
+
+已普通提交推送 `8a856f54c0e0d16b762f5c62ca1b170eca2ddd9f`，38文件；自己的双OS必要CI与明确HTTPS远端身份正在核验。没有合入main或强推。后片[内置领域专家组合](../plans/2026-11-09-domain-presets.md)开始准备，不用其后续候选替代本片CI。
+
+
+原8a自己的CI42599729729 Windows必要回归已失败（旧示例数量常数），[WA-CI1记录](2026-11-09-work-example-regression.md)保留原包红/修后54通过1skip及独立复核。最小三文件修正已本地提交 `d8fc8ef2eee64b51a9eb5fa1925734e475965785`；原CI终态前不推送以免取消在途Ubuntu，之后核修正自己的CI与明确HTTPS身份。原8a不标精确交付完成。
+
+修正候选d8现已普通推送并取得自己的[双OS CI42602114137](https://github.com/626619403/Ergora/actions/runs/42602114137) **Success终态、七必要步骤全部成功**。新的独立交付核验者复核精确三文件Git对象、原R2包372/283身份及全部精确step日志，于2026-11-09 10:53:41.016300→10:53:42.565367 UTC经明确HTTPS实读远端分支同完整SHA；[补核记录](2026-11-09-work-example-regression.md#d8fc8ef-精确交付补核通过)明确其不同于原源码审查者的身份。工作Agent纵切片及WA-CI1修正的交付门禁终结；原8a的Failure、旧本地timeout与未知根因继续保持。AC4.4后片须单独验收，不继承d8 CI。

@@ -1,0 +1,104 @@
+{
+  "schema_version": 2,
+  "id": "ergora-governance-work",
+  "version": "1.0.0",
+  "description": "Map the two original governance units to complementary experts.",
+  "resources": [
+    {
+      "id": "ergora-governance-work-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "2d6bd12d60054bfe71460b4dc0cab3c19f63390361ae459170bd3dec712c94fc"
+    }
+  ],
+  "permissions": {
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "write": [
+      "workspace"
+    ],
+    "shell": true,
+    "network": []
+  },
+  "limits": {
+    "depth": 8,
+    "instances": 128,
+    "concurrency": 4,
+    "material_bytes": 262144
+  },
+  "inputs": [
+    "task"
+  ],
+  "outputs": {
+    "result": {
+      "node": "done",
+      "output": "result"
+    }
+  },
+  "nodes": [
+    {
+      "id": "knowledge-map",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-governance-mapper",
+        "version": "1.0.0",
+        "digest": "84047c6d7a90c00288c5611df087fb2c649f1abaed2c56cb64a94ad7547efe7d"
+      },
+      "role": "implementer",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [
+          "workspace"
+        ],
+        "shell": true,
+        "network": []
+      }
+    },
+    {
+      "id": "boundary-test",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-architecture-test-author",
+        "version": "1.0.0",
+        "digest": "6b83c9f19ba646cb7624a224238aaa803e97ca88a7fad4925cb34b2c6039ea1c"
+      },
+      "role": "implementer",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [
+          "workspace"
+        ],
+        "shell": true,
+        "network": []
+      }
+    },
+    {
+      "id": "done",
+      "join": "all",
+      "depends_on": [
+        "knowledge-map",
+        "boundary-test"
+      ]
+    }
+  ]
+}

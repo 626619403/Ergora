@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "ergora-api-contract-author",
+  "version": "1.0.0",
+  "description": "Specify the approved backward-compatible interface and consumer examples.",
+  "roles": [
+    "implementer"
+  ],
+  "specialties": [
+    "api-contracts",
+    "backward-compatibility"
+  ],
+  "backend": {
+    "tool": "codex"
+  },
+  "resources": [
+    {
+      "id": "ergora-api-contract-author-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "1f8c616ccd6cdb5608c785fdf9ed782783a739d2db966a7ca9668dc8faaaca27"
+    },
+    {
+      "id": "ergora-api-contract-author-skill",
+      "kind": "skill",
+      "path": "skills/ergora-api-contract-author",
+      "digest": "d8fc66ad0f462538a4182817a8e108e907d4ec65619d6d051c4566b174427bbe"
+    }
+  ]
+}

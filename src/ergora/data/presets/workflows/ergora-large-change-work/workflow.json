@@ -1,0 +1,174 @@
+{
+  "schema_version": 2,
+  "id": "ergora-large-change-work",
+  "version": "1.0.0",
+  "description": "Project the original large-change unit dependencies onto specialized instances.",
+  "resources": [
+    {
+      "id": "ergora-large-change-work-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "fede80577421bef430eb6dd93b52b9abe3a30225ae71b47d3964c5d7081bbfad"
+    }
+  ],
+  "permissions": {
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "write": [
+      "workspace"
+    ],
+    "shell": true,
+    "network": []
+  },
+  "limits": {
+    "depth": 8,
+    "instances": 128,
+    "concurrency": 4,
+    "material_bytes": 262144
+  },
+  "inputs": [
+    "task"
+  ],
+  "outputs": {
+    "result": {
+      "node": "done",
+      "output": "result"
+    }
+  },
+  "nodes": [
+    {
+      "id": "contract",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-api-contract-author",
+        "version": "1.0.0",
+        "digest": "996348fae81cd3fc1192d49e70b9928efb3b9993b4341ce5a5cb6d8733ce16b1"
+      },
+      "role": "implementer",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [
+          "workspace"
+        ],
+        "shell": true,
+        "network": []
+      }
+    },
+    {
+      "id": "server",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-server-implementer",
+        "version": "1.0.0",
+        "digest": "b835e630d8579083b24aa03fcd41184635547768077f2f95af23f7b84d8cca99"
+      },
+      "role": "implementer",
+      "depends_on": [
+        "contract"
+      ],
+      "inputs": {
+        "task": {
+          "node": "contract",
+          "output": "result"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [
+          "workspace"
+        ],
+        "shell": true,
+        "network": []
+      }
+    },
+    {
+      "id": "client",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-client-implementer",
+        "version": "1.0.0",
+        "digest": "511b8a2d3c25e057a8ba97c9f0107e50a68f5acc847ccc1102cb5dd2a110bba4"
+      },
+      "role": "implementer",
+      "depends_on": [
+        "contract"
+      ],
+      "inputs": {
+        "task": {
+          "node": "contract",
+          "output": "result"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [
+          "workspace"
+        ],
+        "shell": true,
+        "network": []
+      }
+    },
+    {
+      "id": "implementations",
+      "join": "all",
+      "depends_on": [
+        "server",
+        "client"
+      ]
+    },
+    {
+      "id": "integration-tests",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-compatibility-validator",
+        "version": "1.0.0",
+        "digest": "ad58fd050257dfcfb3a4d3c03a4cfd40f4bc712d837743f46b0c2a45c91b37dc"
+      },
+      "role": "implementer",
+      "depends_on": [
+        "implementations"
+      ],
+      "inputs": {
+        "task": {
+          "node": "implementations",
+          "output": "result"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [
+          "workspace"
+        ],
+        "shell": true,
+        "network": []
+      }
+    },
+    {
+      "id": "done",
+      "join": "all",
+      "depends_on": [
+        "integration-tests"
+      ]
+    }
+  ]
+}

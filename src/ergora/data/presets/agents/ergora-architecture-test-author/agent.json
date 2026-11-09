@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "ergora-architecture-test-author",
+  "version": "1.0.0",
+  "description": "Implement a focused regression for the approved architecture boundary.",
+  "roles": [
+    "implementer"
+  ],
+  "specialties": [
+    "architecture-regression",
+    "validation"
+  ],
+  "backend": {
+    "tool": "codex"
+  },
+  "resources": [
+    {
+      "id": "ergora-architecture-test-author-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "e547a86d6b60640edb044f7556b6d2405f011acedb82d97b59f0d2867a5a5cf6"
+    },
+    {
+      "id": "ergora-architecture-test-author-skill",
+      "kind": "skill",
+      "path": "skills/ergora-architecture-test-author",
+      "digest": "12c22f51091413e164065e8884cb130cfe6ac54f6d2c59d25e13f9e3d25dcc96"
+    }
+  ]
+}

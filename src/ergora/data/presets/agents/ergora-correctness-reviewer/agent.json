@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "ergora-correctness-reviewer",
+  "version": "1.0.0",
+  "description": "Review the exact candidate against approved requirements and failure semantics.",
+  "roles": [
+    "reviewer"
+  ],
+  "specialties": [
+    "behavioral-correctness",
+    "failure-recovery"
+  ],
+  "backend": {
+    "tool": "claude-code"
+  },
+  "resources": [
+    {
+      "id": "ergora-correctness-reviewer-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "60e3789ed195fd8abcbb7895ee2da536e88021ca76f2d3077fc4116364bfbd79"
+    },
+    {
+      "id": "ergora-correctness-reviewer-skill",
+      "kind": "skill",
+      "path": "skills/ergora-correctness-reviewer",
+      "digest": "d64d17983c598862b57c92b6514c1244050ecf434ce6ba2dc5a63e9218adbc08"
+    }
+  ]
+}

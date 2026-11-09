@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "presets": {
+    "repository-governance": {
+      "description": "Parallel repository mapping and architecture regression, followed by complementary final review.",
+      "runtime": "development-v5",
+      "root": "ergora-governance-delivery",
+      "agents": [
+        "ergora-structure-reviewer",
+        "ergora-correctness-reviewer",
+        "ergora-test-value-reviewer",
+        "ergora-governance-mapper",
+        "ergora-architecture-test-author"
+      ],
+      "workflows": [
+        "ergora-structure-review",
+        "ergora-correctness-review",
+        "ergora-test-value-review",
+        "ergora-delivery-review",
+        "ergora-governance-work",
+        "ergora-governance-delivery"
+      ]
+    },
+    "large-change": {
+      "description": "Contract, parallel client/server, integration validation and complementary final review.",
+      "runtime": "development-v5",
+      "root": "ergora-large-change-delivery",
+      "agents": [
+        "ergora-structure-reviewer",
+        "ergora-correctness-reviewer",
+        "ergora-test-value-reviewer",
+        "ergora-api-contract-author",
+        "ergora-server-implementer",
+        "ergora-client-implementer",
+        "ergora-compatibility-validator"
+      ],
+      "workflows": [
+        "ergora-structure-review",
+        "ergora-correctness-review",
+        "ergora-test-value-review",
+        "ergora-delivery-review",
+        "ergora-large-change-work",
+        "ergora-large-change-delivery"
+      ]
+    },
+    "training-optimization": {
+      "description": "Read-only experiment, profile and kernel proposals with measurement review; trusted experiments remain separate.",
+      "runtime": "proposal-leaves",
+      "root": "ergora-training-proposal",
+      "agents": [
+        "ergora-experiment-designer",
+        "ergora-performance-analyst",
+        "ergora-kernel-designer",
+        "ergora-measurement-reviewer"
+      ],
+      "workflows": [
+        "ergora-training-analysis",
+        "ergora-measurement-review",
+        "ergora-training-proposal"
+      ]
+    }
+  }
+}

@@ -1,0 +1,73 @@
+{
+  "schema_version": 2,
+  "id": "ergora-correctness-review",
+  "version": "1.0.0",
+  "description": "Check requirements, candidate correctness and recovery.",
+  "resources": [
+    {
+      "id": "ergora-correctness-review-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "5f2ccfa00ae1bc8075d318be19c8c0a9dfc8d9e868b3c995ac34da30ba485894"
+    }
+  ],
+  "permissions": {
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "write": [],
+    "shell": false,
+    "network": []
+  },
+  "limits": {
+    "depth": 8,
+    "instances": 128,
+    "concurrency": 4,
+    "material_bytes": 262144
+  },
+  "inputs": [
+    "task"
+  ],
+  "outputs": {
+    "result": {
+      "node": "gather",
+      "output": "result"
+    }
+  },
+  "nodes": [
+    {
+      "id": "review",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-correctness-reviewer",
+        "version": "1.0.0",
+        "digest": "c90f74219843f5a0724e6c83ef531453493bd26d1d45d40ca495e0ca6bbd441b"
+      },
+      "role": "reviewer",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      },
+      "review_requirement": "required"
+    },
+    {
+      "id": "gather",
+      "join": "all",
+      "depends_on": [
+        "review"
+      ]
+    }
+  ]
+}

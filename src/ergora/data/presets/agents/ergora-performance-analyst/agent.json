@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "ergora-performance-analyst",
+  "version": "1.0.0",
+  "description": "Analyze supplied profiling evidence and design reproducible paired measurements.",
+  "roles": [
+    "performance-analyst"
+  ],
+  "specialties": [
+    "profiling",
+    "measurement-analysis"
+  ],
+  "backend": {
+    "tool": "codex"
+  },
+  "resources": [
+    {
+      "id": "ergora-performance-analyst-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "22003b55c9c6681d8293fbec3058418ea8f21e77138d2e0dd680feccef3dad06"
+    },
+    {
+      "id": "ergora-performance-analyst-skill",
+      "kind": "skill",
+      "path": "skills/ergora-performance-analyst",
+      "digest": "acd5463fe2cd17dd72e5a802017c239fda9a415ffa9a6e58581827f1015fdc7e"
+    }
+  ]
+}

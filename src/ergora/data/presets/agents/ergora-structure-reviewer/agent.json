@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "ergora-structure-reviewer",
+  "version": "1.0.0",
+  "description": "Review module boundaries and change ownership for the exact supplied candidate.",
+  "roles": [
+    "reviewer"
+  ],
+  "specialties": [
+    "architecture-review",
+    "module-ownership"
+  ],
+  "backend": {
+    "tool": "claude-code"
+  },
+  "resources": [
+    {
+      "id": "ergora-structure-reviewer-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "3cc9c450f0c03da5ea4a1434ac6182d50df6a4985cffdee2a59fe9fe477c6b43"
+    },
+    {
+      "id": "ergora-structure-reviewer-skill",
+      "kind": "skill",
+      "path": "skills/ergora-structure-reviewer",
+      "digest": "d973c911f2a49a29e517425f14a80041d6d9e067e0bdb8b38be708341ceb7de7"
+    }
+  ]
+}

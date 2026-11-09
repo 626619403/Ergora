@@ -51,3 +51,8 @@ init / runner-add → prepare → worker-start → start
 [OpenBMB/ForgeKernel](https://github.com/OpenBMB/ForgeKernel) 提供可选固定版本的原生 campaign 适配。先安装独立工具环境、配置本地任务与设备，再通过 `ergora kernel plan/prepare/status/run` 或训练页面操作。固定版本仅支持 Claude backend；计划检查与创建 campaign 不调用模型/GPU。完整配置、继续执行和结果不明时的对账步骤见 [Agent 手册](AGENT_BACKENDS.md#forgekernel-原生候选)。
 
 生成器原生报告只作为候选材料，仍需提交候选代码、冻结实验 manifest，并运行上述可信证据门禁。KDA、ForgeKernel、mini-swe-agent 等的比较和许可证见 [三模板选型](research/2026-10-31-template-agents.md)；CPU 接口验证不能证明 GPU 性能提升。
+
+
+## 可选的实验专家提案
+
+`ergora composition install-preset training-optimization`导入实验设计、性能分析、kernel设计和测量复现审查的独立专家及子模板。根为`ergora-training-proposal`，当前版本1.0.0；[完整使用范围](WORKFLOW_DEFINITIONS.md#使用内置领域组合)说明可独立调用的只读叶子及输入准备。它们的提案和审查意见供操作者据此填写原workload/baseline/experiment，保持本手册的可信runner、独立测量和原证据摘要人工批准流程。静态图没有自动运行训练实验，模型生成代码或Forge原生完成也不构成实验采用。

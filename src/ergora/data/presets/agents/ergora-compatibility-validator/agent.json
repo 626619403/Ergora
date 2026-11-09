@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "ergora-compatibility-validator",
+  "version": "1.0.0",
+  "description": "Validate the integrated server/client behavior against the fixed compatibility contract.",
+  "roles": [
+    "implementer"
+  ],
+  "specialties": [
+    "integration-validation",
+    "reversible-rollout"
+  ],
+  "backend": {
+    "tool": "codex"
+  },
+  "resources": [
+    {
+      "id": "ergora-compatibility-validator-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "69ee580d80fdde496d8b17657050c9e856db8084a6ed04f2c009cc52a0996794"
+    },
+    {
+      "id": "ergora-compatibility-validator-skill",
+      "kind": "skill",
+      "path": "skills/ergora-compatibility-validator",
+      "digest": "f68b6073b61af18b9870f0a80f807d87012137650352a44ac2ce77ad0549866a"
+    }
+  ]
+}

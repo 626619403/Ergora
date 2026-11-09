@@ -1,0 +1,66 @@
+{
+  "schema_version": 2,
+  "id": "ergora-measurement-review",
+  "version": "1.0.0",
+  "description": "Review measurement validity and reproducibility without changing the evaluation contract.",
+  "resources": [
+    {
+      "id": "ergora-measurement-review-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "10a74282241c0040284a0e61db8cdd20905313f2822db8213888c067a1b76bc1"
+    }
+  ],
+  "permissions": {
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "write": [],
+    "shell": false,
+    "network": []
+  },
+  "limits": {
+    "depth": 8,
+    "instances": 128,
+    "concurrency": 4,
+    "material_bytes": 262144
+  },
+  "inputs": [
+    "task"
+  ],
+  "outputs": {
+    "result": {
+      "node": "review",
+      "output": "result"
+    }
+  },
+  "nodes": [
+    {
+      "id": "review",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-measurement-reviewer",
+        "version": "1.0.0",
+        "digest": "eb0fb716357a60203318baa5c62f904ac87d00fd40216d197593b33fa4657302"
+      },
+      "role": "reviewer",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      },
+      "review_requirement": "required"
+    }
+  ]
+}

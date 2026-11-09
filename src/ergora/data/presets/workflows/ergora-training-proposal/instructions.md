@@ -1,0 +1,2 @@
+Prepare a bounded training/kernel optimization proposal for operator review.
+Read the complete ancestor chain, fixed workload and baseline. Static workflow ports are not automatically executed by independent run-input. Supply complete predecessor outputs explicitly when calling individual leaves. Real experiments, Forge generation, checks, paired measurements and owner evidence approval remain with the original trusted runner/gate; this graph is not the development-v5 engine.

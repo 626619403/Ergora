@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "ergora-measurement-reviewer",
+  "version": "1.0.0",
+  "description": "Review the supplied experiment proposal or original measurement evidence.",
+  "roles": [
+    "reviewer"
+  ],
+  "specialties": [
+    "measurement-validity",
+    "reproducibility"
+  ],
+  "backend": {
+    "tool": "claude-code"
+  },
+  "resources": [
+    {
+      "id": "ergora-measurement-reviewer-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "144838b2f40579ee02a367734a2d6252ad40857da6d043cee9a970243c59da6f"
+    },
+    {
+      "id": "ergora-measurement-reviewer-skill",
+      "kind": "skill",
+      "path": "skills/ergora-measurement-reviewer",
+      "digest": "c5ec90e0f5b499f886ce261a20a3303f388bcae043ee4aeed3d33af8dbfea427"
+    }
+  ]
+}

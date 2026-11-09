@@ -673,3 +673,8 @@ ssh -L 8977:127.0.0.1:8977 user@server
 ## 可嵌套工作流定义
 
 基础安装可使用`ergora composition`检查、导入、分享与预览版本化Agent/子工作流DAG。叶子预览包含全部祖先静态材料、权限链、具名端口和全局预算；示例、操作顺序及范围见[工作流组合手册](WORKFLOW_DEFINITIONS.md)。此入口不启动Agent，不替代正式六阶段或批准；实际嵌套运行与页面仍沿实施计划推进。
+
+
+## 导入领域专家组合
+
+基础安装已带治理、大型开发和训练提案的专家/子工作流默认包。运行`ergora composition presets`查看实际使用范围，`ergora composition install-preset large-change`导入全部精确依赖。详情、节点关系、独立后端选择及分享见[内置领域组合](WORKFLOW_DEFINITIONS.md#使用内置领域组合)。静态导入不选择可信容器、不启动服务或批准任务；正式开发继续走上文原任务流程。训练提案与[可信实验执行](TRAINING.md)分别使用。

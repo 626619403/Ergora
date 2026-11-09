@@ -1,0 +1,73 @@
+{
+  "schema_version": 2,
+  "id": "ergora-structure-review",
+  "version": "1.0.0",
+  "description": "Check structural ownership and stable module interfaces.",
+  "resources": [
+    {
+      "id": "ergora-structure-review-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823"
+    }
+  ],
+  "permissions": {
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "write": [],
+    "shell": false,
+    "network": []
+  },
+  "limits": {
+    "depth": 8,
+    "instances": 128,
+    "concurrency": 4,
+    "material_bytes": 262144
+  },
+  "inputs": [
+    "task"
+  ],
+  "outputs": {
+    "result": {
+      "node": "gather",
+      "output": "result"
+    }
+  },
+  "nodes": [
+    {
+      "id": "review",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-structure-reviewer",
+        "version": "1.0.0",
+        "digest": "97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c"
+      },
+      "role": "reviewer",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      },
+      "review_requirement": "required"
+    },
+    {
+      "id": "gather",
+      "join": "all",
+      "depends_on": [
+        "review"
+      ]
+    }
+  ]
+}

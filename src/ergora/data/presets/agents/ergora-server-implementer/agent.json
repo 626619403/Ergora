@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "ergora-server-implementer",
+  "version": "1.0.0",
+  "description": "Implement the server side of the frozen approved interface.",
+  "roles": [
+    "implementer"
+  ],
+  "specialties": [
+    "server-api",
+    "data-boundaries"
+  ],
+  "backend": {
+    "tool": "codex"
+  },
+  "resources": [
+    {
+      "id": "ergora-server-implementer-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "8919237421f1da203375d2eea41b7408ad48c6bd89cc2f91c7abbb6ae35e0227"
+    },
+    {
+      "id": "ergora-server-implementer-skill",
+      "kind": "skill",
+      "path": "skills/ergora-server-implementer",
+      "digest": "3a436ef997574ca8469654352666c6b4c8ae2abb8205b8004f794a2b10f072ff"
+    }
+  ]
+}

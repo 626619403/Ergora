@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "id": "ergora-client-implementer",
+  "version": "1.0.0",
+  "description": "Implement the client consumer for the approved interface and supported server versions.",
+  "roles": [
+    "implementer"
+  ],
+  "specialties": [
+    "client-api",
+    "compatibility-fallbacks"
+  ],
+  "backend": {
+    "tool": "codex"
+  },
+  "resources": [
+    {
+      "id": "ergora-client-implementer-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "43892ec96e6457ec23628156a771615b5b68d8b2d1cbab64f1e070109eaf7485"
+    },
+    {
+      "id": "ergora-client-implementer-skill",
+      "kind": "skill",
+      "path": "skills/ergora-client-implementer",
+      "digest": "ad17488baeaa212e57f97684d10298d81591170e0d00d7ac5243d7d51a7c8da4"
+    }
+  ]
+}

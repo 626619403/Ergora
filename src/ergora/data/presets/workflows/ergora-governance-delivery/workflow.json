@@ -1,0 +1,75 @@
+{
+  "schema_version": 2,
+  "id": "ergora-governance-delivery",
+  "version": "1.0.0",
+  "description": "Govern an existing repository while preserving its accepted behavior and boundary policy.",
+  "resources": [
+    {
+      "id": "ergora-governance-delivery-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "66eb88ef7aebe40cc3b46a31539b7094ecb41746940efb992d4906fa8491a418"
+    }
+  ],
+  "permissions": {
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "write": [
+      "workspace"
+    ],
+    "shell": true,
+    "network": []
+  },
+  "limits": {
+    "depth": 8,
+    "instances": 128,
+    "concurrency": 4,
+    "material_bytes": 262144
+  },
+  "inputs": [
+    "task"
+  ],
+  "outputs": {
+    "result": {
+      "node": "review",
+      "output": "result"
+    }
+  },
+  "nodes": [
+    {
+      "id": "work",
+      "ref": {
+        "kind": "workflow",
+        "id": "ergora-governance-work",
+        "version": "1.0.0",
+        "digest": "e9ee2e387eac5b34b9bbce2aef5226bb2b482392f800507e233042b3749ba70e"
+      },
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      }
+    },
+    {
+      "id": "review",
+      "ref": {
+        "kind": "workflow",
+        "id": "ergora-delivery-review",
+        "version": "1.0.0",
+        "digest": "a85e76dcd25bfddd24684b6e23ad3668097b44df0f9a7d745e387e5a841c471c"
+      },
+      "depends_on": [
+        "work"
+      ],
+      "inputs": {
+        "task": {
+          "node": "work",
+          "output": "result"
+        }
+      }
+    }
+  ]
+}

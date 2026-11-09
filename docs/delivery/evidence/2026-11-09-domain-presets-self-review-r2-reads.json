@@ -1,0 +1,14 @@
+{
+  "checked_at": "2026-11-09T10:53:53.894012+00:00",
+  "run_id": "5cc709de7a404774b9a6e66b34cc44f3",
+  "source_files": 80,
+  "source_files_still_match": true,
+  "pages": 14,
+  "continuous": true,
+  "bytes": 381146,
+  "next_offset": null,
+  "attachment_sha256": "a1d07cf9fc4ffcc77e660617b90583fd7fdf0337a141c43687d8563c491c35cf",
+  "native_stream_sha256": "034c5ac38a3901fbe0580222f04c1a3f3812c9d8d6c77f9bf248d9b822db0259",
+  "failed_reads_before_correction": 0,
+  "scope": "Native model stream contains continuous successful MCP candidate reads to null; failed URI requests remain in the original stream. No claim of actual reasoning quality."
+}

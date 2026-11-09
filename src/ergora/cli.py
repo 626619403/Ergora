@@ -51,6 +51,9 @@ def parser() -> argparse.ArgumentParser:
     workflow.add_argument("arguments", nargs=argparse.REMAINDER)
     composition = commands.add_parser("composition", help="Check nested definitions, prepare inputs or explicitly invoke a leaf")
     operations = composition.add_subparsers(dest="operation", required=True)
+    operations.add_parser("presets", help="List bundled domain recipes and their actual execution scope")
+    preset = operations.add_parser("install-preset", help="Import a bundled recipe's exact dependencies; does not authorize execution")
+    preset.add_argument("id", help="Bundled recipe ID from composition presets")
     for name in ("check", "import"):
         operation = operations.add_parser(name)
         operation.add_argument("directory", type=Path)
@@ -614,7 +617,11 @@ def main(argv: list[str] | None = None) -> int:
                 output = services.control(state, args.project, args.operation, getattr(args, "names", []), args.revision,
                                           confirm=getattr(args, "confirm", False), timeout=args.timeout)
         elif args.command == "composition":
-            if args.operation == "check":
+            if args.operation == "presets":
+                output = workflow_definitions.presets()
+            elif args.operation == "install-preset":
+                output = workflow_definitions.install_preset(State(args.home), args.id)
+            elif args.operation == "check":
                 output = workflow_definitions.inspect_bundle(args.directory, material=args.material)
             elif args.operation == "preview":
                 output = workflow_definitions.preview(resolve_home(args.home), args.id, args.version,

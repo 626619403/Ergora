@@ -369,3 +369,19 @@ F6.1以独立[开发者原型](../../examples/editor-comparison/README.md)实际
 ## 组合任务信封
 
 显式task-definition-v2由tasks应用所有者核完整manifest和当前准入、选择review子图与每成员后端；标准库task_envelopes只拥有新信封摘要、完整文件字节身份和只读投影。reference_task_creation在原-S桥中发布同七文件/完整意图，task.spec.json改为新信封，compiled.json保留原六阶段投影；原只读reader核信封后展示投影及组合身份。旧运行器和未接新桥的正式提交拒绝新格式。新能力没有更改旧spec、283冻结文件、存储schema或Temporal历史，实际运行支持留AC3c.3/4。
+
+
+## 内置领域组合
+
+`workflow_definitions.presets/install_preset`读取随wheel的`data/presets`，按依赖调用原Agent/Workflow库导入；CLI复用这些用例，未新增DB、执行格式、调度或批准所有者。开发根引用专长work子树及共用delivery-review；实际units和可信integrate/verify仍归v5原链，实例backend_overrides归原选择准入。训练根只提供proposal叶，其真实实验仍交原runner/gate及F9。具体边界见[使用说明](../WORKFLOW_DEFINITIONS.md#使用内置领域组合)与[本片记录](../delivery/2026-11-09-domain-presets.md)。
+
+```mermaid
+flowchart LR
+  Catalog[随包领域组合目录] --> Install[workflow_definitions.install_preset]
+  Install --> Agents[原AgentDefinition库]
+  Install --> Workflows[原WorkflowDefinition库]
+  Workflows --> Manifest[原完整manifest]
+  Manifest --> Dev[显式v5 / 原开发六阶段]
+  Manifest --> Proposal[训练只读提案叶]
+  Proposal --> Operator[操作者 / 原可信实验runner与gate]
+```
