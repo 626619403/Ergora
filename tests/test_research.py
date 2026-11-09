@@ -7,6 +7,7 @@ import subprocess
 import sys
 import threading
 import time
+from types import SimpleNamespace
 import uuid
 
 import pytest
@@ -52,10 +53,11 @@ def source_project(tmp_path):
                 started.set()
                 try:
                     self.wfile.write(b"HTTP/1.1 200 OK\r\n")
-                    for index in range(12):
+                    index = 0
+                    while not release.wait(timeout=.25):
                         self.wfile.write(f"X-Wait-{index}: 1\r\n".encode())
                         self.wfile.flush()
-                        time.sleep(.25)
+                        index += 1
                     self.wfile.write(b"Content-Type: text/plain\r\nContent-Length: 2\r\n\r\nok")
                 except (BrokenPipeError, ConnectionResetError):
                     pass
@@ -68,7 +70,7 @@ def source_project(tmp_path):
                 try:
                     self.wfile.write(b"x")
                     self.wfile.flush()
-                    release.wait(timeout=3)
+                    release.wait()
                     self.wfile.write(b"x" * 99999)
                 except (BrokenPipeError, ConnectionResetError):
                     pass
@@ -78,6 +80,8 @@ def source_project(tmp_path):
                 self.send_header("Location", "/page")
                 self.end_headers()
                 return
+            if self.path == "/tiny":
+                source["redirect_followed_before_release"] = not release.is_set()
             body = ("x" * 1000 if self.path == "/big" else "ok" if self.path == "/tiny" else source["text"]).encode()
             self.send_response(200)
             self.send_header("Content-Type", "text/html; charset=utf-8")
@@ -170,16 +174,37 @@ def test_protocol_failure_has_a_persisted_terminal_outcome(source_project):
     assert short["bytes"] == 5 and not short["results"]
 
 
-def test_wall_deadline_covers_headers_and_redirect_body_is_not_drained(source_project):
-    state, base, _, _, release = source_project
-    started = time.monotonic()
-    slow = research.run(state, "demo", [base + "/slow-headers"], timeout=1, allow_private=True)
-    assert slow["status"] == "timed_out" and time.monotonic() - started < 1.8
-    started = time.monotonic()
-    redirected = research.run(state, "demo", [base + "/large-redirect"], max_bytes=10, timeout=2, allow_private=True)
-    release.set()
-    assert redirected["status"] == "succeeded" and redirected["bytes"] == 2
-    assert time.monotonic() - started < 1.8
+def test_wall_deadline_covers_response_headers(source_project, monkeypatch):
+    state, base, _, started, release = source_project
+    clock = SimpleNamespace(value=time.monotonic())
+    # Only the controller's clock is fixed; spawned network children and the
+    # outer test guard keep their real clocks. Wait for actual headers first.
+    monkeypatch.setattr(research, "time", SimpleNamespace(monotonic=lambda: clock.value, time=time.time))
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        try:
+            slow = executor.submit(research.run, state, "demo", [base + "/slow-headers"],
+                                   timeout=30, allow_private=True)
+            assert started.wait(timeout=10)
+            clock.value += 30
+            result = slow.result(timeout=10)
+            assert result["status"] == "timed_out" and result["elapsed_seconds"] == 30
+        finally:
+            release.set()
+
+
+def test_redirect_body_is_not_drained(source_project):
+    state, base, source, _, release = source_project
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        try:
+            # A draining client cannot reach /tiny while the redirect body is
+            # withheld. Process startup and persistence need no speed threshold.
+            redirected = executor.submit(research.run, state, "demo", [base + "/large-redirect"],
+                                         max_bytes=10, timeout=10, allow_private=True).result(timeout=15)
+            assert redirected["status"] == "succeeded" and redirected["bytes"] == 2
+            assert redirected["results"][0]["final_url"] == base + "/tiny"
+            assert source["redirect_followed_before_release"] is True
+        finally:
+            release.set()
 
 
 def test_cancellation_interrupts_response_headers(source_project):

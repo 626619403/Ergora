@@ -72,3 +72,30 @@ R5 复审为 **96.92 秒、approve/exit 0**，run `80e4cb76640c47d8ac73564fbbd64
 最终 16 文件范围与 tracked/untracked 清单相符；十份 Markdown 的本地目标及 20 个锚点独立核无缺失，另读作者 207 链接/79 CLI parser 静态原件，四个新手册 shell block 语法通过。独立额外核五个带原 home 的 project/task/services 具体命令形式 parser 通过。JSON 可解析、公开证据与原件一致，`git diff --check` 通过。静态检查不替代运行验收；报告/计划的后续状态记账不触发递归审查。
 
 本地需求符合性与可维护性均通过，可冻结本片文档范围并普通交付。剩余为本片精确提交、自己的必要 CI 与即时远端身份核对，不能用前片 CR4 的 CI 代替；本报告未预记这些交付动作完成。
+
+## 提交后独立终核：CI 尚未闭合
+
+固定提交 `a4cc0b2b54c82ee46ff411f0232823387510de6d`，父提交 `cee213a581895d491c1cd41b5fe79b23bfd09b59`。独立将 `git diff-tree` 的精确 16 文件与 `r5/review-scope.json` 比对，再对每个 `git show <commit>:<path>` 重算 SHA-256，全部一致；所有对象均在 docs 内，src 树与父提交相同。该提交中的本报告 SHA 为 `b1ae37f3730e41ca30872284463809fb577d208d09bc6f64032b37bcdc137c70`。最终冻结时独立重核为 10 Markdown / 6 JSON、208 本地链接 / 20 锚点，无缺失；先前 207 是加上证据计数链接之前的静态原件。
+
+本片自己的 [Portability 42557137619](https://github.com/626619403/Ergora/actions/runs/42557137619) 于 **2026-11-09 03:46:49 UTC** 实时官方 run/job HTML 核为 In progress，两个 job 的名称及日志 URL 均绑定该 a4cc0b2 完整提交。按该提交的 workflow matrix 逐一读取两个固定 job，未将 jobGroups 第一页当完整矩阵。
+
+|必要 job|本次已核事实|
+|---|---|
+|[native (ubuntu-latest, 3.11), 128965292734](https://github.com/626619403/Ergora/actions/runs/42557137619/job/128965292734)|Build and install wheel、Packaged reference identity 成功；Native application regression 当时仍在途|
+|[native (windows-latest, 3.12), 128965293286](https://github.com/626619403/Ergora/actions/runs/42557137619/job/128965293286)|Build and install wheel、Packaged reference identity、Windows PowerShell 5.1 installer and upgrade 成功；Native application regression **failure**|
+
+Windows 原生回归于 03:35:18–03:41:46 UTC 运行，pytest 原件为 **1 failed、688 passed、524 skipped、16 subtests passed，387.34 秒**。唯一失败是 `tests/test_research.py:182` 的 `test_wall_deadline_covers_headers_and_redirect_body_is_not_drained`：large-redirect 已通过 succeeded/bytes==2 断言，随后墙钟断言为 `(677.281 - 675.0) < 1.8`，实际 **2.281 秒**；该 case call 共 4.02 秒。该测试和 `src/ergora/research.py` 在本片对父提交无差异，这不足以把失败归为 flaky 或已证实的本片回归。
+
+失败完整 pytest 段保留于本地 `r5/ci-job-128965293286.html`：169,703 字节、SHA `1c62edea689d49eb1dddc6bf5010f110dce8c0f6719bd0d8b310c3edfe47fd17`；原生 step 6 日志 URL 指向 `/commit/a4cc0b2b54c82ee46ff411f0232823387510de6d/checks/128965293286/logs/6`。03:45:44 UTC 的官方 REST run 与 jobs?per_page=100 均返回 HTTP 403 rate limit；03:47:58 UTC 直接读取该 step 日志 URL 返回 HTTP 404，原始网络响应留在独立只读工具记录，未冒称下载成功。随后使用官方 job HTML 中的完整 annotation 提取上述结果。
+
+本地两轴结论保持，但**交付 CI 门禁未通过，不能登记本片精确交付终结**。没有重跑绿化或修改生产/测试，成功状态之后的即时明确 HTTPS 远端终核仍待完成；此追加仅为提交后的同片事实，不声称已包含在固定 a4cc0b2 对象中。
+
+## 原候选最终 CI 与 HTTPS 身份：2026-11-09 03:50 UTC
+
+03:50:14.194911 UTC，实时官方 run 页面确认 **42557137619 最终 Failure**。Ubuntu job `128965292734` 已完成，Build and install wheel、Packaged reference identity、Native application regression 三项均为 success，所有必要步骤的日志 URL 精确绑定 a4cc0b2；Windows job `128965293286` 仍为上述原生回归 failure，其余三项必要步骤 success。完整双 OS 七必要步骤为 **六成功、一失败**，没有取消或用重跑替换这个失败。
+
+本次实时官方 run HTML 为 167,124 字节、SHA `198b7638bc490204a72c7046d7a1a1906f1e7c216329ad6fc0387ed9545b6bad`；Ubuntu job HTML 为 162,272 字节、SHA `013810ae0e2dc2db38a578a442b57ab62cb4cbb388912eaf46f722e69de35833`，与前述 Windows 原失败共同构成本候选的实际终态。
+
+紧随最终 CI 读取，**03:50:14.195249 UTC** 发起明确 HTTPS 远端读取，**03:50:16.082081 UTC** 完成：`https://github.com/626619403/Ergora.git` 的 `refs/heads/refactor/architecture-foundations` 精确返回 `a4cc0b2b54c82ee46ff411f0232823387510de6d`，exit 0、stderr 为空。执行在 `/`，清除全部继承的 `GIT_*` 环境，设置 `GIT_CONFIG_GLOBAL=/dev/null`、`GIT_CONFIG_NOSYSTEM=1`、`GIT_TERMINAL_PROMPT=0`，使用 `git -c protocol.ssh.allow=never ls-remote --exit-code` 加上述 HTTPS URL 与精确 ref，排除工作区/全局 HTTPS→SSH rewrite；不是将 SSH 结果冒称 HTTPS。
+
+**本片终核结果：提交对象与推送身份已确认，本地两轴通过，原候选 CI 门禁失败，完整交付未通过。** 已明确登记后续独立 CR5 对该测试做有限修正和新候选验收；其未来 CI 不能替换 a4cc0b2 的失败。审查者本轮仅只读核对象/官方状态/失败原件和 HTTPS 身份，并追加本报告，没有改生产/测试、重跑 CI、commit 或 push。

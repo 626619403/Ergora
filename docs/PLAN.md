@@ -13,8 +13,8 @@
 
 ## 下一可执行项
 
-1. CR4服务生命周期已精确交付；当前收口下项联合备份恢复的新独立报告、自身模板、文档scope和普通交付，不重跑已过未变行为。
-2. 当前已登记[AC3c.4联合备份/同路径恢复](delivery/2026-11-09-composition-recovery.md)范围，R2离线原控制+tar恢复/1,992项/五库/32Git及R4在线44.47秒/四原run/history/replay与scanner保持通过，原claim与取消outcome保留；自身模板首审166.23秒发现手册home限定问题，修后复审96.92秒approve；新独立本地两轴通过、AR-1/AR-2关闭，10文档/208链接/79 parser通过，精确交付在途，不把单控制库备份当整个任务可恢复。
+1. 当前[CR5研究HTTP回归信号](delivery/2026-11-09-research-deadline-regression.md)：原a4cc自己的CI42557137619最终失败，Windows成功抓取后2.281秒超过测试1.8秒阈值；原失败保留。最终父端固定时钟/真实响应头started精确预算与release前重定向事实检查已通过：11passed/1skip、延迟探针2passed、三个实际mutant均红、369/283身份保持；[新独立两轴复核](delivery/2026-11-09-research-deadline-regression-review.md)通过、CR5-1关闭（独立三倍预算已红/3项正例通过）。当前8文件普通交付/自己的双OS CI在途，不改生产预算或重试绿化。
+2. [AC3c.4联合备份/同路径恢复](delivery/2026-11-09-composition-recovery.md)R2离线原控制+tar恢复/1,992项/五库/32Git及R4在线44.47秒/四原run/history/replay与scanner保持通过；自身模板首审166.23秒发现home限定问题，修后96.92秒approve；独立本地两轴通过、AR-1/AR-2关闭，10文档/208链接/79 parser通过。a4cc0b2普通推送/16对象及03:50:16 UTC明确HTTPS远端身份通过；原CI七必要步骤六成功一失败，不能记精确交付门禁通过，CR5结果不替代其原身份。
 3. CR3c自己的CI/远端已完成；后片普通推送仍核自己的必要CI，不取消前片在途CI，不沿用旧身份。
 4. 按[AC逐片计划](plans/2026-11-08-agent-composition.md)推进AC4多成员/可信聚合/有界嵌套串并行、三模板、AC5页面、AC6旅程。
 5. 继续[总实施计划](plans/2026-11-01-all-in-one.md#5-执行节点及进度登记)剩余F6–F10、G1与按实际需要接入的D/X项；公共发行PUB1仍含维护者许可证选择。
