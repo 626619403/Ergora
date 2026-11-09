@@ -1,0 +1,38 @@
+{
+  "checked_at": "2026-11-09T05:54:17.107903+00:00",
+  "source": {
+    "src/ergora/reference_executor.py": "a4361b6dc86db09ed14a5a6f0f4d285aae91aa783d747271a7d158b5f9307619",
+    "src/ergora/reference_inputs.py": "bd22a107c07c55672667341751a7a93ca4a44751a7cdcbb0c8ea47327620826a",
+    "src/ergora/reference_workflows.py": "1fce38ebf379d4b3bf4dfb713f769880d4088e2bea1bd7c61102f05550113a3c",
+    "src/ergora/task_envelopes.py": "7d9e207b2c6dc4cfd936e10b1ac820b114a67aefc194bab7f420e242a588b41b",
+    "src/ergora/tasks.py": "bb89e25d21ae10a657f8efbc036bd6b14a5124cb406f8c13a2cbbfef4311ba1e",
+    "tests/test_advisory_reviews.py": "4cd009ad350a2465d3f28e3d7d3562f9c71f52b33387b17551ce73f1500695b2",
+    "tests/test_composition_tasks.py": "11fc6e24231f0c012f3e11e252aa6f8c88ee76aac35b4561e4a50b5a35fc582d",
+    "tests/fixtures/reference_acceptance.py": "cb692cd74493b9104e94485eda0dfc759f69cc03bdbc123342df0b37e8dbd6dd",
+    "src/ergora/stage_driver.py": "26d7d29f83d69fdce1a1e86a405a084071c60995758cfc346a9097829eb8fd6e",
+    "src/ergora/agent_runs.py": "ac418b01b8fdb9a8f59b30be07bed29eb71ba36971e1c366837ae189b52ef0ed",
+    "src/ergora/data/reference/platform/upstream/platform/dev_platform/workflow.py": "20885f21f56d6b7c3ada8d32981ff3bfc35b6620dcd5ae2c6155547f15370ff5",
+    "src/ergora/data/reference/platform/upstream/platform/dev_platform/activities.py": "c6b2864e57303a43483a78e3e7f2ab4339b0118b1fb695fbeee0157abfd5edf4",
+    "src/ergora/data/reference/platform/upstream/platform/dev_platform/adapter.py": "fe9e1dc4fb97fadfcac19c6291e2eb1402ce700672237ee1a4458981defb2858"
+  },
+  "backend": "claude-code",
+  "inference_model": "backend default; see original native stream",
+  "reasoning_effort": "backend default",
+  "run_id": "ac351859455d4ebb9443572929cd9dea",
+  "status": "failed",
+  "exit_code": 1,
+  "seconds": 12.87501777894795,
+  "input_digest": "431395b6582632fb050a29c83c3d32d48c0a81aee45f63c0a51468dbd17d3107",
+  "prompt_sha256": "8264e198063ead8cb0d2fb0fe58b022168aa88822f83347862ccd3c7f8b12d7a",
+  "attachment_bytes": 260215,
+  "attachment_sha256": "6b0b091a60d283d561d3bd19881303322f4a711eccf2e6e92a9480a747303193",
+  "manifest_digest": "9be0c1f3116ee52c4d07306453916162a1e49d542b3094e863801be91f5ffdbc",
+  "original_definition_libraries_removed": true,
+  "scope": "Actual installed Ergora structure-review + task MCP with complete supplied candidate and neighbor sources; no formal approval, test execution, model-error independence or OS isolation claim.",
+  "failure": {
+    "category": "upstream_api_error",
+    "http_status": 400,
+    "detail": "system content must contain at least one block",
+    "authentication_probe": "CLI reported loggedIn=true using api_key; this does not prove a model invocation can complete."
+  }
+}

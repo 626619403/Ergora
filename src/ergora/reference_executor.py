@@ -64,7 +64,7 @@ class Executor(original.Executor):
                 checked = self._manifest(Path(temporary) / 'manifest')
                 graph = checked['composition']
             members = task_envelopes.review_members(composition)
-            stages = {'review' if len(members) == 1 else 'review:' + path: path for path in members}
+            stages = {'review' if len(members) == 1 and document['schema_version'] == 2 else 'review:' + path: path for path in members}
             self.member = stages.get(context['stage'])
             require(not context['stage'].startswith('review') or self.member is not None,
                     'Review stage does not select an admitted composition member')
@@ -295,9 +295,11 @@ class Executor(original.Executor):
                 'prompt_sha256': call['prompt_sha256']}, selected['binding']
 
     def execute(self) -> dict:
-        # The frozen implementation has no verification hook. Migrate only
-        # this stage; all other scheduling and stage algorithms stay inherited.
-        if self.stage != 'verify':
+        # Migrate trusted verification and v3 review outcomes here; the other
+        # stage algorithms and all scheduling remain inherited.
+        requirements_review = (self.stage == 'review' and self.composition is not None
+                               and self.context['admission']['schema_version'] == 3)
+        if self.stage != 'verify' and not requirements_review:
             return super().execute()
         try:
             from agent_platform.projects import check_task_type
@@ -306,8 +308,17 @@ class Executor(original.Executor):
             probe = self.sandbox.probe()
             require(probe['available'], 'Execution prerequisites are incomplete: ' + probe.get('detail', ''))
             self.prepare()
-            self._verify()
-            return self.receipt('SUCCEEDED', 'Stage completed with real command/model evidence')
+            if self.stage == 'verify':
+                self._verify()
+                return self.receipt('SUCCEEDED', 'Stage completed with real command/model evidence')
+            result = self.model(self.spec['profile']['artifacts_by_stage']['review'], review=True)
+            approved = result['decision'] == 'approve'
+            self.checks = [{'id': 'independent-review', 'status': 'pass' if approved else 'fail', 'artifact': 'review-report'}]
+            self.artifact('composition-review-decision', {'schema_version': 1, 'kind': 'formal-review-decision',
+                'job_id': self.job_id, 'job_sha256': self.envelope['job_sha256'], 'candidate_sha': self.candidate,
+                'decision': result['decision'], 'result_sha256': self.review_result_sha256})
+            return self.receipt('SUCCEEDED' if approved else 'FAILED',
+                                'Selected reviewer approved' if approved else 'Selected reviewer requested changes')
         except (Blocked, OSError, ValueError, KeyError, subprocess.SubprocessError) as error:
             self.artifact('executor-error', {'error_type': type(error).__name__, 'detail': str(error)[:4000]})
             return self.receipt('CANCELLED' if self.fence.exists() else 'FAILED', str(error)[:1500])
@@ -373,9 +384,7 @@ Return exactly one JSON object matching result_schema; include concrete artifact
                         and invocation['prompt_sha256'] == request['prompt_sha256'],
                         'Actual review invocation differs from its frozen formal call')
                 if code == 0:
-                    require(invocation['status'] == 'succeeded'
-                            and invocation['result_sha256'] == hashlib.sha256((output / 'result.json').read_bytes()).hexdigest(),
-                            'Successful review result differs from its invocation evidence')
+                    require(invocation['status'] == 'succeeded', 'Successful review has no successful invocation')
                     if selected['mode'] == 'task-mcp':
                         mcp = invocation['task_mcp']
                         scope = read_raw(Path(mcp['scope']['path']), task_mcp.MAX_SCOPE_BYTES)
@@ -386,11 +395,16 @@ Return exactly one JSON object matching result_schema; include concrete artifact
                         self.artifact('composition-mcp-scope', json.loads(scope))
                         self.artifact('composition-mcp-audit', audit.decode('utf-8'))
         require(code == 0, f"Selected {binding['tool']} agent failed; inspect model-log and native invocation")
-        result = agents.validate_result(read(output / "result.json"), schema)
+        result_bytes = (output / 'result.json').read_bytes()
+        result_sha256 = hashlib.sha256(result_bytes).hexdigest()
+        result = agents.validate_result(json.loads(result_bytes), schema)
+        if 'composition' in request:
+            require(invocation['result_sha256'] == result_sha256, 'Successful review result differs from its invocation evidence')
+            self.review_result_sha256 = result_sha256
         self.artifact("agent-selection", {"role": role, "binding": binding,
             "project_revision": self.selection["project_revision"], "prompt_sha256": request['prompt_sha256'],
             "template_instructions_sha256": instructions["sha256"],
-            "result_sha256": hashlib.sha256((output / "result.json").read_bytes()).hexdigest()})
+            "result_sha256": result_sha256})
         for name, content in result["artifacts"].items():
             self.artifact(name, content)
         return result

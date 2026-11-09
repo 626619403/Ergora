@@ -23,6 +23,8 @@ else:
     schema = envelope["result_schema"]
     prompt = envelope["prompt"]
     mode = "command-fixture"
+if 'fixture-mutate' in sys.argv:
+    (Path(sys.argv[sys.argv.index('--fixture-checkout') + 1]) / 'src/base.py').write_text('MUTATED = True\n')
 if '--model' in sys.argv and sys.argv[sys.argv.index('--model') + 1] in ('fixture-timeout', 'fixture-cancel'):
     Path('review-ready').touch()
     child = "import signal,time;from pathlib import Path;signal.signal(signal.SIGTERM,signal.SIG_IGN);time.sleep(2);Path('late-review').touch()"

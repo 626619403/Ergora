@@ -1,8 +1,8 @@
 # 当前架构与扩展边界
 
-AC4.2a 新增 WorkflowDefinition v2 的实例级 `review_requirement`，由原完整包检查选择严格版本，原编译器投影到各 reviewer 叶子；任何递归 v2 定义使静态预览版本为 2，固定包及备份保留原内容。全 v1 定义/预览保持，AgentDefinition 与库索引不换格式。正式信封 v2 的运行仍只接受预览 v1，新图在任务准入及运行形状检查明确拒绝；可信建议审查接线属于 AC4.2b。[职责格式](../WORKFLOW_DEFINITIONS.md#必需与建议审查的静态声明)与[分片记录](../delivery/2026-11-09-review-requirements.md)区分静态声明和已执行的审查。
+AC4.2a 的 WorkflowDefinition v2 在 reviewer 实例上声明 `review_requirement`，原编译器将其投影到预览v2。AC4.2b 的正式信封v3冻结所有叶子的必需/建议职责，通过 `WorkflowInput` 的局部注册选择专用队列、请求目录及活动；原v1/v2身份和历史不换协议。可信Executor从已核模型结果发布绑定原job/candidate/调用摘要的意见产物，原request-changes回执保持FAILED。专用poll复用FileAdapter核全部原件，再核意见合同；原六阶段中的并行审查仅允许合格建议意见继续，必需拒绝、运行失败及取消仍走原stop/fence。聚合v2逐成员保留职责、意见与原收据引用，至少一名必需审查者且全部分支完成。不新增调度器或账本。全v1定义/预览与AgentDefinition格式保持；旧v1审查叶子在新组合中仍为必需。格式与使用见[工作流手册](../WORKFLOW_DEFINITIONS.md#必需与建议审查的静态声明)，实际验证状态见[本片记录](../delivery/2026-11-09-advisory-runtime.md)。
 
-2026-11-09补充：原v1六阶段继续使用单角色绑定；v2在同一六阶段的review内支持单叶或多个嵌套只读审查分支，经显式必需all-join汇合。AC2的局部后端适配器与AC3a/d的[专家库](../AGENT_DEFINITIONS.md)、[嵌套图/继承编译](../WORKFLOW_DEFINITIONS.md)保持职责分离。完整叶子输入、只读任务MCP与共同能力准入由AC3b拥有；完整静态manifest、正式信封及原运行身份由AC3c拥有。AC4.1复用同一Temporal与执行账本：稳定实例路径映射各自stage/job，祖先共享配额控制并发，汇合只引用原收据，不新增模型批准或调度器。通用串行依赖、建议性审查、写执行者分配与页面仍按[AC计划](../plans/2026-11-08-agent-composition.md)推进，实际验收状态见[本片记录](../delivery/2026-11-09-parallel-reviews.md)。
+2026-11-09补充：原v1六阶段继续使用单角色绑定；v2在同一六阶段的review内支持单叶或多个嵌套只读审查分支，经显式必需all-join汇合。AC2的局部后端适配器与AC3a/d的[专家库](../AGENT_DEFINITIONS.md)、[嵌套图/继承编译](../WORKFLOW_DEFINITIONS.md)保持职责分离。完整叶子输入、只读任务MCP与共同能力准入由AC3b拥有；完整静态manifest、正式信封及原运行身份由AC3c拥有。AC4.1复用同一Temporal与执行账本：稳定实例路径映射各自stage/job，祖先共享配额控制并发，汇合只引用原收据，不新增模型批准或调度器。通用串行依赖、写执行者分配与页面仍按[AC计划](../plans/2026-11-08-agent-composition.md)推进，实际验收状态见[本片记录](../delivery/2026-11-09-parallel-reviews.md)。
 
 2026-11-05，R8后的当前导航，覆盖F1项目定义、F2安装/运维、F3正式任务CLI/API生命周期与F4网页消费者。F3已通过[阶段验收](../delivery/2026-11-03-f3-completion.md)，F4的创建/原ID恢复、原运行/计划/批准/取消/对账/导出及有界事件/job文本均已实现，[完整页面收口](../delivery/2026-11-05-f4-completion.md)的恢复与服务退出验收单独登记。F5.1只读证据索引与F5.2预算/用量事实CLI/API均已交付；F5.3a原生交接包及离线校验已实现，验收单独登记，F5.3b显式HTTP下载已实现，发行与真实下载验收单独登记，F5.4页面的发行/浏览器及独立审查、精确提交/双OS CI和同片终结通过；F5.5实际服务恢复组合、新综合独立审查与纯文档精确交付/远端终结通过，完整F5完成；G0全新用户旅程独立进行。历史[A1审计](2026-11-01-audit.md)及[R8记录](../delivery/2026-11-02-refactoring-exit.md)保留原身份与范围。设计约束见[ADR0001](decisions/0001-refactoring-foundations.md)/[0002](decisions/0002-static-boundaries.md)。
 
@@ -19,13 +19,13 @@ flowchart LR
   Verify --> Structure[结构审查子模板]
   Verify --> Correctness[正确性审查子模板]
   Verify --> TestValue[测试价值审查子模板]
-  Structure --> Join[必需all-join / 原收据引用]
+  Structure --> Join[all-join / 职责与原收据引用]
   Correctness --> Join
   TestValue --> Join
   Join --> Ready[REVIEW_READY / 待人工合入]
 ```
 
-每条审查分支沿自己的结构父链完整加载Skill与上下文，独立会话检查同一候选。任一必需分支失败、取消或缺失都不能到达Ready；仍交原stop/fence与外部对账处理。
+每条审查分支沿自己的结构父链完整加载Skill与上下文，独立会话检查同一候选。全部分支须完成；必需请求修改或任一分支的运行失败、取消、证据缺失均不能到达Ready。建议请求修改只在可信意见合同通过后保留原回执进入汇合，其他失败仍交原stop/fence与外部对账处理。
 
 ## 模块与依赖
 

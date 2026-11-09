@@ -117,7 +117,32 @@ class CompositionInput(WorkflowInput):
         task_envelopes.review_members(self.document['composition'])
 
 
-_INPUTS = {1: LegacyInput, 2: CompositionInput}
+class ReviewRequirementsInput(CompositionInput):
+    version = 3
+    queue_suffix = '.composition-v3'
+    requests_suffix = '-composition-v3'
+    submit_activity = task_envelopes.REQUIREMENTS_SUBMIT
+
+    @classmethod
+    def workflow_type(cls):
+        from .reference_workflows import ReviewRequirementsWorkflow
+
+        return ReviewRequirementsWorkflow
+
+    @classmethod
+    def adapter(cls, config: dict):
+        from .reference_workflows import ReviewRequirementsAdapter
+
+        return ReviewRequirementsAdapter({**config, 'requests': str(cls.request_root(Path(config['requests'])))})
+
+    @classmethod
+    def activities(cls, config: dict):
+        from .reference_workflows import ReviewRequirementsActivities
+
+        return ReviewRequirementsActivities(cls.adapter(config))
+
+
+_INPUTS = {1: LegacyInput, 2: CompositionInput, 3: ReviewRequirementsInput}
 
 
 def workers(client, queue: str, config: dict) -> list:
@@ -133,4 +158,4 @@ def request_roots(original: Path) -> tuple[Path, ...]:
 def execution_input(document: dict) -> WorkflowInput:
     """Select here; transport and file readers use the same original-input interface."""
     spec, composition = task_envelopes.unwrap(document)
-    return _INPUTS[2 if composition is not None else 1](document, spec)
+    return _INPUTS[document['schema_version'] if composition is not None else 1](document, spec)

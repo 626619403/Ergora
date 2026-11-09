@@ -53,8 +53,6 @@ def _composition(definition: dict, selection: dict) -> dict:
     graph = workflow_definitions.preview(source / 'assets', reference['id'], reference['version'], checked['manifest']['grant'])
     if graph != checked['composition']:
         raise ValueError('Composition manifest changed during formal admission')
-    if graph['schema_version'] != 1:
-        raise ValueError('Formal tasks do not yet support review requirements in composition preview v2')
     instances = {item['path']: item for item in graph['instances']}
     position = option['review_instance']
     if (position not in instances or instances[position]['kind'] != 'workflow'
@@ -96,7 +94,10 @@ def _composition(definition: dict, selection: dict) -> dict:
             same.append(path)
         members[path] = {'role': 'reviewer', 'binding': binding, 'requested_binding': leaf['backend_request'],
             'backend_reason': override['reason'] if override else 'definition-selected backend',
-            'mode': option['mode'], 'policy': policy}
+            'mode': option['mode'], 'policy': policy,
+            **({'review_requirement': leaf.get('review_requirement', 'required')} if graph['schema_version'] == 2 else {})}
+    if graph['schema_version'] == 2 and not any(member['review_requirement'] == 'required' for member in members.values()):
+        raise ValueError('Formal review requires at least one required reviewer')
     if same and diversity['policy'] == 'require-distinct':
         raise ValueError('Review members require a backend different from the implementer: ' + ', '.join(same))
     if same and diversity['policy'] == 'prefer-distinct' and not diversity.get('reason', '').strip():

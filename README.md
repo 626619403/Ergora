@@ -158,7 +158,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1 -A
 
 开发者可用独立的[图与表单比较例子](examples/editor-comparison/README.md)复现技术选型。Node仅用于该例子构建，默认安装保持原要求；例子只编辑试验草稿，正式功能状态见[实施计划](docs/PLAN.md)。
 
-基础安装还可检查和预览[可嵌套工作流定义](docs/WORKFLOW_DEFINITIONS.md)：精确引用专家或子模板，表达串并行/all-join，完整累加祖先材料并校验整链权限与总预算。`prepare-manifest`可携带完整图和全部资产，接收者独立核验后用`prepare-from-manifest`生成叶子输入。可显式准备并调用单个叶子；默认text-only，Linux的task-mcp可按授权URI读取固定Skill附件。调用前用`ergora composition check-input PROJECT DIRECTORY`查看完整祖先权限链与实际能力合同，不会启动模型或服务；真实调用会重新准入并保存同结构报告。通用串行调度沿计划接入；正式开发沿原六阶段和owner批准，可运行单叶或必需all-join的多个嵌套只读审查者，v2入口见[正式任务手册](docs/USAGE.md#为正式任务冻结审查组合)。
+基础安装还可检查和预览[可嵌套工作流定义](docs/WORKFLOW_DEFINITIONS.md)：精确引用专家或子模板，表达串并行/all-join，完整累加祖先材料并校验整链权限与总预算。`prepare-manifest`可携带完整图和全部资产，接收者独立核验后用`prepare-from-manifest`生成叶子输入。可显式准备并调用单个叶子；默认text-only，Linux的task-mcp可按授权URI读取固定Skill附件。调用前用`ergora composition check-input PROJECT DIRECTORY`查看完整祖先权限链与实际能力合同，不会启动模型或服务；真实调用会重新准入并保存同结构报告。通用串行调度沿计划接入；正式开发沿原六阶段和owner批准，可运行单叶或显式all-join的多个嵌套只读审查者，分别配置必需/建议职责，入口见[正式任务手册](docs/USAGE.md#为正式任务冻结审查组合)。
 
 统一注册项目可用 `ergora services status/start/stop/logs/shutdown` 显式管理 Linux/WSL2 中的所选 Supervisor 服务。版本/凭据/TCP 诊断和服务进程状态分别报告；停止需确认，未确认的结果先对账。命令、共享服务栈与日志游标见[使用手册](docs/USAGE.md#显式服务管理)。
 
@@ -409,7 +409,7 @@ agentflow verify
 
 三个模板的角色现可独立于工具选择；[选型调研](docs/research/2026-10-31-template-agents.md) 说明首批适配和未接入工具的优缺点。ForgeKernel 作为可选原生候选生成工具，其内部 judge 不替代可信训练门禁；模型质量和 GPU 性能比较需要真实项目证据。固定官方版本及实际检查范围记录在 [计划](docs/PLAN.md) 和各切片交付记录。
 
-原v1任务每个角色绑定一个工具。[专长Agent定义库](docs/AGENT_DEFINITIONS.md)已提供静态包检查、版本化导入、筛选、查看和导出，可让同一后端具有不同专长；也可通过composition准备完整输入并显式调用独立叶子。v2正式任务可[冻结完整审查组合](docs/USAGE.md#为正式任务冻结审查组合)，选择单个或多个嵌套只读reviewer；每叶沿全部结构祖先直映根task，多分支要求覆盖全部成员的显式all-join，分别绑定后端、祖先资源、原候选及独立会话。结构、正确性与测试价值审查可同时使用，任一必需分支未通过都不会生成通过汇合。通用串行依赖、写执行者分配与建议性审查继续按[分片计划](docs/plans/2026-11-08-agent-composition.md)接入；设计依据见[Agent组合](docs/architecture/decisions/0004-agent-composition.md)、[嵌套工作流](docs/architecture/decisions/0005-composable-workflows.md)与[框架及论文对照](docs/research/2026-11-08-agent-composition.md)。
+原v1任务每个角色绑定一个工具。[专长Agent定义库](docs/AGENT_DEFINITIONS.md)已提供静态包检查、版本化导入、筛选、查看和导出，可让同一后端具有不同专长；也可通过composition准备完整输入并显式调用独立叶子。v2正式任务可[冻结完整审查组合](docs/USAGE.md#为正式任务冻结审查组合)，选择单个或多个嵌套只读reviewer；每叶沿全部结构祖先直映根task，多分支要求覆盖全部成员的显式all-join，分别绑定后端、祖先资源、原候选及独立会话。结构、正确性与测试价值审查可同时使用，任一必需分支未通过都不会生成通过汇合。必需/建议职责可由工作流实例分别声明；建议请求修改保留原FAILED回执与意见，运行失败仍阻塞。通用串行依赖与写执行者分配继续按[分片计划](docs/plans/2026-11-08-agent-composition.md)接入；设计依据见[Agent组合](docs/architecture/decisions/0004-agent-composition.md)、[嵌套工作流](docs/architecture/decisions/0005-composable-workflows.md)与[框架及论文对照](docs/research/2026-11-08-agent-composition.md)。
 
 ## 项目状态与许可
 

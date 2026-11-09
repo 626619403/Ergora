@@ -11,6 +11,8 @@ import json
 
 _KIND = 'composition-task-admission'
 COMPOSITION_SUBMIT = 'ergora_composition_submit'
+REQUIREMENTS_SUBMIT = 'ergora_requirements_submit'
+REQUIREMENTS_POLL = 'ergora_requirements_poll'
 
 
 def identity(value: dict) -> str:
@@ -52,7 +54,8 @@ def manifest_identity(snapshot: dict) -> str:
 
 
 def wrap(spec: dict, composition: dict) -> dict:
-    value = {'schema_version': 2, 'kind': _KIND, 'legacy_spec': spec, 'composition': composition}
+    version = 3 if any('review_requirement' in member for member in composition['members'].values()) else 2
+    value = {'schema_version': version, 'kind': _KIND, 'legacy_spec': spec, 'composition': composition}
     return {**value, 'sha256': identity(value)}
 
 
@@ -128,7 +131,12 @@ def review_members(composition: dict) -> dict:
     """
     graph = _manifest_graph(composition['manifest'])
     if graph['schema_version'] != 1:
-        raise ValueError('Formal tasks do not yet support review requirements in composition preview v2')
+        if (graph['schema_version'] != 2
+                or any(member.get('review_requirement') not in ('required', 'advisory')
+                       for member in composition['members'].values())):
+            raise ValueError('Formal tasks do not yet support review requirements without a v3 selection')
+        if not any(member['review_requirement'] == 'required' for member in composition['members'].values()):
+            raise ValueError('Formal review requires at least one required reviewer')
     instances = {item['path']: item for item in graph['instances']}
     members = {path: instances[path] for path in sorted(composition['members'])}
     for leaf in members.values():
@@ -147,7 +155,7 @@ def review_members(composition: dict) -> dict:
                     raise ValueError('Composition leaf must resolve to the root task input')
                 break
             node = instances[node['parent']]
-    if len(members) == 1:
+    if len(members) == 1 and graph['schema_version'] == 1:
         return members
 
     covered = {}
@@ -209,7 +217,7 @@ def outcome_reference_state(outcome: dict | None, job: dict) -> str:
     elif stage.startswith('review:'):
         aggregate = outcome.get('review')
         if aggregate is not None and aggregate.get('kind') == 'composition-review-aggregate':
-            if aggregate.get('schema_version') != 1:
+            if aggregate.get('schema_version') not in (1, 2):
                 raise ValueError('Unsupported composition review aggregate')
             reference = aggregate['members'].get(stage.removeprefix('review:'))
     if reference is None:
@@ -228,7 +236,7 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
     if document.get('kind') != _KIND and 'schema_version' not in document:
         return document, None
     if (set(document) != {'schema_version', 'kind', 'legacy_spec', 'composition', 'sha256'}
-            or type(document['schema_version']) is not int or document['schema_version'] != 2
+            or type(document['schema_version']) is not int or document['schema_version'] not in (2, 3)
             or document['kind'] != _KIND):
         raise ValueError('Unsupported formal task admission envelope')
     if document['sha256'] != identity({key: value for key, value in document.items() if key != 'sha256'}):
@@ -238,6 +246,9 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
         raise ValueError('Invalid formal composition selection')
     manifest_identity(composition['manifest'])
     graph = _manifest_graph(composition['manifest'])
+    requirements = document['schema_version'] == 3
+    if requirements and graph['schema_version'] != 2:
+        raise ValueError('Formal v3 admission requires a versioned review requirements graph')
     if graph['root'] != composition['root'] or graph['preview_sha256'] != composition['preview_sha256']:
         raise ValueError('Formal composition identity differs from its frozen graph')
     instances = {}
@@ -254,11 +265,17 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
     if not expected or not isinstance(members, dict) or set(members) != expected.keys():
         raise ValueError('Formal composition member selection differs from its review subtree')
     for path, member in members.items():
-        if (not isinstance(member, dict) or set(member) != {'role', 'binding', 'requested_binding', 'backend_reason', 'mode', 'policy'}
+        fields = {'role', 'binding', 'requested_binding', 'backend_reason', 'mode', 'policy'}
+        if requirements:
+            fields.add('review_requirement')
+        if (not isinstance(member, dict) or set(member) != fields
                 or member['role'] != 'reviewer' or expected[path]['role'] != 'reviewer'
                 or member['mode'] not in ('text-only', 'task-mcp')
                 or not isinstance(member['backend_reason'], str) or not member['backend_reason'].strip()):
             raise ValueError('Invalid formal composition member: ' + path)
+        if requirements and (member['review_requirement'] not in ('required', 'advisory')
+                or member['review_requirement'] != expected[path].get('review_requirement', 'required')):
+            raise ValueError('Formal review requirement differs from its frozen graph: ' + path)
         _binding(member['binding'])
         _binding(member['requested_binding'])
         if member['requested_binding'] != expected[path]['backend_request']:

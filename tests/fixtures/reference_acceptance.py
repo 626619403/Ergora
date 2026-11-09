@@ -129,7 +129,12 @@ async def main():
         workflow_source = root / 'workflow-source'
         shutil.copytree(examples / 'composition/structure-review', workflow_source)
         graph_definition = read(workflow_source / 'workflow.json')
-        if mode == 'composition-multiple':
+        if mode.startswith('composition-requirements-'):
+            graph_definition['schema_version'] = 2
+            graph_definition['nodes'][0]['review_requirement'] = 'required'
+            graph_definition['nodes'].append({'id': 'gather', 'join': 'all', 'depends_on': ['review']})
+            graph_definition['outputs'] = {'result': {'node': 'gather', 'output': 'result'}}
+        elif mode == 'composition-multiple':
             another = deepcopy(graph_definition['nodes'][0])
             another['id'] = 'another'
             graph_definition['nodes'].append(another)
@@ -143,8 +148,9 @@ async def main():
         task_definition = {'schema_version': 2, 'task_id': 'task-1', 'task_type': kind, 'issue_id': '1', 'input': task_input,
             'composition': {'manifest': str(manifest_path), 'manifest_digest': manifest['digest'],
                             'review_instance': 'root', 'mode': 'task-mcp' if mode == 'composition-task-mcp' else 'text-only'}}
-        if mode in ('composition-review-reject', 'composition-review-timeout', 'composition-review-cancel'):
-            model = 'fixture-' + mode.removeprefix('composition-review-')
+        if mode in ('composition-review-reject', 'composition-review-timeout', 'composition-review-cancel',
+                    'composition-requirements-reject', 'composition-requirements-mutate'):
+            model = 'fixture-' + mode.rsplit('-', 1)[1]
             task_definition['composition']['backend_overrides'] = {
                 'root/review': {'binding': {'tool': 'codex', 'model': model}, 'reason': 'Explicit native protocol failure fixture'}}
         revision = state.project('demo')['revision']
@@ -185,11 +191,9 @@ async def main():
                 db.execute("UPDATE projects SET document=? WHERE id=?", (json.dumps(project), "demo"))
     if composition_mode:
         from ergora.reference_inputs import execution_input
-        from ergora.reference_workflows import CompositionDevelopmentWorkflow
-
         document = read(runtime / 'tasks/task-1/task.spec.json')
         selected_input = execution_input(document)
-        app = CompositionDevelopmentWorkflow()
+        app = selected_input.workflow_type()()
         app.spec, app.admission = selected_input.spec, document
         adapter = selected_input.adapter(adapter_config)
         activities = selected_input.activities(adapter_config)
@@ -248,7 +252,7 @@ async def main():
         assert invocation['input_digest'] == call['input_digest']
         saved = workflow_definitions.inspect_input(Path(invocation['input_path']), material=True)
         assert saved['request']['prompt_sha256'] == invocation['prompt_sha256'] == call['prompt_sha256']
-        assert saved['composition']['instances'][-1]['resources']
+        assert next(item for item in saved['composition']['instances'] if item['path'] == call['member'])['resources']
         assert not (runtime / 'requests').exists()
         assert len(agent_runs.runs(state, 'demo')) == 1
         if mode == 'composition-task-mcp':
@@ -276,7 +280,8 @@ async def main():
                         {'work:unit': records['work:unit']} if stage == 'integrate' else
                         {'integration': records['integrate']} if stage == 'verify' else
                         {'verification': records['verify'], 'plan': records['plan']} if stage == 'review' else {})
-        context = app.context(stage, expected, task_input["work_units"][0] if stage == "work:unit" else None, dependencies)
+        actual_stage = 'review:root/review' if stage == 'review' and mode.startswith('composition-requirements-') else stage
+        context = app.context(actual_stage, expected, task_input["work_units"][0] if stage == "work:unit" else None, dependencies)
         job = await activities.submit(context)
         request = requests / "task-1" / (context["job_id"] + ".json")
         if stage == 'inventory' and mode in ('composition-missing-admission', 'composition-other-admission',
@@ -386,7 +391,40 @@ async def main():
             assert result.returncode == 0, result.stdout + result.stderr
             receipt = json.loads(result.stdout)
         else:
+            if stage == 'review' and mode == 'composition-requirements-mutate':
+                target = runtime / 'workspaces/task-1/jobs' / context['job_id'] / 'checkout'
+                # Supply the deliberate attack only in this test wrapper. Keep
+                # the production monitor's environment allowlist unchanged.
+                codex.write_text(f"#!{sys.executable}\nimport runpy,sys\nsys.argv.extend(['--fixture-checkout',{str(target)!r}])\nrunpy.run_path({str(fixture)!r},run_name='__main__')\n")
             receipt = reference.executor(installation, state.root, request)
+        if stage == 'review' and mode.startswith('composition-requirements-'):
+            if mode.endswith('-mutate'):
+                assert receipt['state'] == 'FAILED', receipt
+                assert await activities.poll(job) == {'receipt': receipt, 'review_decision': None}
+                assert 'composition-review-decision' not in {item['name'] for item in receipt['artifacts']}
+                terminal = read(runtime / 'processes' / ('af-' + job['job_id'] + '-selected') / 'terminal.json')
+                assert 'read-only changed the checkout' in terminal['detail']
+                print(json.dumps({'receipt_state': 'FAILED', 'review_decision': None,
+                    'mutation_detected': True, 'trusted_opinion_published': False}))
+                return
+            decision = 'request-changes' if mode.endswith('-reject') else 'approve'
+            assert receipt['state'] == ('FAILED' if decision == 'request-changes' else 'SUCCEEDED'), receipt
+            assert await activities.poll(job) == {'receipt': receipt, 'review_decision': decision}
+            invocation = check_formal_evidence(receipt)
+            item = next(item for item in receipt['artifacts'] if item['name'] == 'composition-review-decision')
+            opinion = read(runtime / 'artifacts' / item['path'])
+            assert opinion == {'schema_version': 1, 'kind': 'formal-review-decision',
+                'job_id': job['job_id'], 'job_sha256': job['job_sha256'],
+                'candidate_sha': records['verify']['candidate_sha'], 'decision': decision,
+                'result_sha256': invocation['result_sha256']}
+            from ergora.reference_executor import Executor
+
+            original = (runtime / 'receipts/task-1' / (job['job_id'] + '.json')).read_bytes()
+            assert Executor(read(request), state.root).execute() == receipt
+            assert (runtime / 'receipts/task-1' / (job['job_id'] + '.json')).read_bytes() == original
+            print(json.dumps({'decision': decision, 'receipt_state': receipt['state'],
+                'candidate_bound': True, 'recovery_preserved': True}))
+            return
         if stage == 'review' and mode in ('composition-binary', 'composition-symlink', 'composition-capacity',
                 'composition-read-scope', 'composition-dependency-drift', 'composition-evidence-capacity', 'composition-review-reject',
                 'composition-review-timeout', 'composition-review-cancel', 'composition-missing-invocation'):

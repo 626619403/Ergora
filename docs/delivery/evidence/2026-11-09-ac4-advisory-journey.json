@@ -1,0 +1,104 @@
+{
+  "checked_at": "2026-11-09T05:54:42.097330+00:00",
+  "seconds": 334.0935241947882,
+  "records": {
+    "advisory-v3": {
+      "version": 3,
+      "task_id": "advisory-v3-public",
+      "run_id": "01a1bed7-031d-747b-887b-37e8baf6ae39",
+      "recovery": {
+        "two_active_before_worker_stop": true,
+        "same_requests": true,
+        "receipts_completed_with_worker_stopped": true,
+        "same_two_calls": true
+      },
+      "outcome": "REVIEW_READY",
+      "review_jobs": {
+        "review:root/test-value": "FAILED",
+        "review:root/structure": "SUCCEEDED"
+      },
+      "history": {
+        "sha256": "7526f446bacc91d6c322deff9fae61638b368e78dfa06f588e055f81e49740d8",
+        "replay": "passed",
+        "events": 172,
+        "workflow_type": "ErgoraCompositionWorkflowV3"
+      },
+      "handoff_sha256": "7ab9ac3544723dc71ed4d0ccb5c930575d42eba6f4d8642db709702e81bca28f"
+    },
+    "required-v3": {
+      "version": 3,
+      "task_id": "required-v3-public",
+      "run_id": "01a1beda-abf4-7ecf-b9d1-d5739d268e8d",
+      "outcome": "BLOCKED",
+      "review_jobs": {
+        "review:root/test-value": "FAILED",
+        "review:root/structure": "FAILED"
+      },
+      "history": {
+        "sha256": "ff1ca99d8c22ad95e0c8d2fcbf7092e99cb1beaaed35971c903d79a396d7016f",
+        "replay": "passed",
+        "events": 178,
+        "workflow_type": "ErgoraCompositionWorkflowV3"
+      },
+      "handoff_sha256": "db336558167dc461e289a2bffceebf8c2926470f14952924c9b245151205822c"
+    },
+    "operational-v3": {
+      "version": 3,
+      "task_id": "operational-v3-public",
+      "run_id": "01a1bedc-41b7-7ed7-a137-199265f3d192",
+      "outcome": "BLOCKED",
+      "review_jobs": {
+        "review:root/test-value": "FAILED",
+        "review:root/structure": "SUCCEEDED"
+      },
+      "history": {
+        "sha256": "6b31071c228c5ef485a78caf79710ec1752004ee865417d18c339cb847ad1bb3",
+        "replay": "passed",
+        "events": 178,
+        "workflow_type": "ErgoraCompositionWorkflowV3"
+      },
+      "handoff_sha256": "59a6faa270ed4ba3a53c7daf2e307ea2bc8ee980c98248ce421911f07b73802e"
+    },
+    "cancelled-v3": {
+      "version": 3,
+      "task_id": "cancelled-v3-public",
+      "run_id": "01a1bedd-dbca-73bd-b86a-6c0c34040ece",
+      "outcome": "CANCEL_UNCONFIRMED",
+      "review_jobs": {
+        "review:root/test-value": "CANCELLED",
+        "review:root/structure": "SUCCEEDED"
+      },
+      "history": {
+        "sha256": "232f9600b55327004047ef8f1707b92d2ea368b9843aeb2a0fdc82b9a4e8c9d4",
+        "replay": "passed",
+        "events": 170,
+        "workflow_type": "ErgoraCompositionWorkflowV3"
+      },
+      "handoff_sha256": "3ee0df746ca14ce2cf7507a67d768bb728254e3314c572e508533a2211691460"
+    }
+  },
+  "ports_closed": true,
+  "databases_retained": true,
+  "scope": "Real installed CLI/Supervisor/Temporal/scanner, required and advisory reviews with original failed receipts, original model-protocol fixtures, worker-only recovery, rejection/cancel/fence/reconcile and indexed/offline evidence; no model quality or complete active-process crash recovery claim.",
+  "seconds_scope": "Continuation only; the first original run and its worker restart happened in the preserved initial segment.",
+  "probe_corrections": [
+    "Initial probe expected live-query status in terminal response; resumed the original run using outcome without recreating tasks or changing production.",
+    "Initial test command referenced a nonexistent suite; no-tests log retained and corrected eight-suite command passed.",
+    "Continuation observer reused the initial observer JSON output name; initial compact stdout log remains, final 88-process PID/starttime JSON is retained."
+  ],
+  "observations": {
+    "initial": {
+      "observed": 5,
+      "live": 0,
+      "waited": 8.365698158740997e-05,
+      "log_sha256": "a10754c56fb3d24375efe8d53f08c00e3d2193beb48478768532663442e93bad",
+      "scope": "Original compact observer stdout only; initial detailed PID JSON was overwritten by continuation observer."
+    },
+    "continuation": {
+      "processes": 88,
+      "remaining_live": 0,
+      "sha256": "ebaaee2b6ced860e2b6cb39623d18942d318eb7313adbb7a48c452e1b154fb39",
+      "scope": "Observed original Supervisor daemon PID/starttime and recursive descendants, including surviving reparented processes already observed; sampling cannot establish every short-lived process was seen."
+    }
+  }
+}

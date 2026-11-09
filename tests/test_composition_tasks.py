@@ -74,7 +74,39 @@ def test_preview_and_creation_freeze_a_new_envelope_with_the_unchanged_legacy_pr
     assert tasks.creation(state, 'demo', task['task_id']) == created and _files(root) == original
 
 
-def test_v2_review_requirements_are_readable_but_cannot_enter_the_legacy_formal_runtime(composed_creation, tmp_path):
+@pytest.mark.parametrize('output', ['task-forward', 'review-result', 'all-join'])
+def test_single_v3_reviewer_requires_explicit_all_join_at_submission(composed_creation, tmp_path, output):
+    from ergora.reference_inputs import execution_input
+
+    state, registration, task = composed_creation
+    agent = agent_definitions.get(state, 'architecture-reviewer', '1.0.0')
+    nodes = [{**leaf('review', ref(agent, 'agent')), 'review_requirement': 'required'}]
+    if output == 'all-join':
+        nodes.append({'id': 'gather', 'join': 'all', 'depends_on': ['review']})
+    doc = definition('single-requirement', nodes)
+    doc['schema_version'] = 2
+    if output == 'task-forward':
+        doc['outputs'] = {'result': {'input': 'task'}}
+    workflows.import_bundle(state, write_bundle(tmp_path / 'single-review', doc))
+    saved = workflows.prepare_manifest(state.root, doc['id'], doc['version'], grant(), tmp_path / 'single-manifest')
+    task['composition'].update(manifest=saved['path'], manifest_digest=saved['digest'])
+    preview = tasks.preview(state, 'demo', task, 1)
+    document = preview['files']['task.spec.json']
+    assert document['schema_version'] == 3
+    created = tasks.create(state, 'demo', task, 1, preview['preview_sha256'])
+    assert tasks.show(state, 'demo', task['task_id'])['admission_envelope'] == document
+    assert created['composition']['runtime_supported'] is (output == 'all-join')
+    selected = execution_input(document)
+    if output == 'all-join':
+        selected.require_submission()
+    else:
+        with pytest.raises(ValueError, match='explicit all-join'):
+            selected.require_submission()
+    root = Path(registration['execution']['state_directory'])
+    assert not any((root / name).exists() for name in ('ergora/task-submissions', 'requests', 'requests-composition-v3'))
+
+
+def test_advisory_only_graph_cannot_remove_the_required_formal_gate_or_upgrade_a_legacy_envelope(composed_creation, tmp_path):
     state, registration, task = composed_creation
     old = tasks.preview(state, 'demo', task, 1)['files']['task.spec.json']
     agent = agent_definitions.get(state, 'architecture-reviewer', '1.0.0')
@@ -84,7 +116,7 @@ def test_v2_review_requirements_are_readable_but_cannot_enter_the_legacy_formal_
     saved = workflows.prepare_manifest(state.root, doc['id'], doc['version'], grant(), tmp_path / 'new-manifest')
     task['composition'].update(manifest=saved['path'], manifest_digest=saved['digest'])
     root = Path(registration['execution']['state_directory'])
-    with pytest.raises(ValueError, match='do not yet support review requirements'):
+    with pytest.raises(ValueError, match='at least one required reviewer'):
         tasks.preview(state, 'demo', task, 1)
     assert not root.exists()
     # Even a separately supplied sealed envelope cannot bypass the native shape gate.

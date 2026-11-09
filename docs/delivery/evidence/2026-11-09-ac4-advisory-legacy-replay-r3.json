@@ -1,0 +1,36 @@
+{
+  "checked_at": "2026-11-09T06:04:12.439682+00:00",
+  "histories": [
+    {
+      "origin": "cr4-r3/legacy-v1-public-history.json",
+      "sha256": "dacf672b2fb0f7dd5ee5331037b44880f6429c58e8cb94c871fce43f2d607feb",
+      "events": 161,
+      "replay": "passed"
+    },
+    {
+      "origin": "cr4-r3/resumed-v2-public-history.json",
+      "sha256": "b3d379108a592f6e4bd5c2af0d633ca8c37a7cc9e8d27172ecab539266417911",
+      "events": 161,
+      "replay": "passed"
+    },
+    {
+      "origin": "ac4-parallel-r3/resumed-v2-public-history.json",
+      "sha256": "ef01ec193a4ccf11a9b398c81490253012ca53689c915db2243b9528519f66f1",
+      "events": 183,
+      "replay": "passed"
+    },
+    {
+      "origin": "ac4-parallel-r3/rejected-v2-public-history.json",
+      "sha256": "ab51a55d5224255e6d5cb00242b52c38976557df63e866739510df6c73bc980b",
+      "events": 189,
+      "replay": "passed"
+    },
+    {
+      "origin": "ac4-parallel-r3/cancelled-v2-public-history.json",
+      "sha256": "81ea203be63a578adfad083d5f6d1d94d69b6ade815e37e918f1904eefb4a1bf",
+      "events": 178,
+      "replay": "passed"
+    }
+  ],
+  "scope": "Installed current package replays original v1, single v2 and parallel v2 success/reject/cancel histories; no service mutation."
+}

@@ -1,0 +1,89 @@
+{
+  "checked_at": "2026-11-09T06:28:29.287973+00:00",
+  "seconds": 429.34302771883085,
+  "records": {
+    "advisory-v3": {
+      "version": 3,
+      "task_id": "advisory-v3-public",
+      "run_id": "01a1bef8-0a2c-7d03-b59f-c5edb69d7667",
+      "recovery": {
+        "two_active_before_worker_stop": true,
+        "same_requests": true,
+        "receipts_completed_with_worker_stopped": true,
+        "same_two_calls": true
+      },
+      "outcome": "REVIEW_READY",
+      "review_jobs": {
+        "review:root/test-value": "FAILED",
+        "review:root/structure": "SUCCEEDED"
+      },
+      "history": {
+        "sha256": "2cdca853bc0ad3b0368acc0f633411e89b074a094db3d4b14106197f0bde1fb1",
+        "replay": "passed",
+        "events": 172,
+        "workflow_type": "ErgoraCompositionWorkflowV3"
+      },
+      "handoff_sha256": "fe62b851d41e0a5086f70a55b1ba9b1c7e3ead6467cda3b181e9a2c12cb3d435"
+    },
+    "required-v3": {
+      "version": 3,
+      "task_id": "required-v3-public",
+      "run_id": "01a1bef9-a174-73c8-b093-dd0a0b483197",
+      "outcome": "BLOCKED",
+      "review_jobs": {
+        "review:root/test-value": "FAILED",
+        "review:root/structure": "FAILED"
+      },
+      "history": {
+        "sha256": "42bce0687d0763ab68f3dd0699b5dbf164c3a78fb8642d97974fe76484a2c543",
+        "replay": "passed",
+        "events": 178,
+        "workflow_type": "ErgoraCompositionWorkflowV3"
+      },
+      "handoff_sha256": "aab445a0441985da023af1d101924ff73c379e437acfc6942b7f92fdfc2e9c29"
+    },
+    "operational-v3": {
+      "version": 3,
+      "task_id": "operational-v3-public",
+      "run_id": "01a1befb-382b-76be-a39b-7435231a5716",
+      "outcome": "BLOCKED",
+      "review_jobs": {
+        "review:root/test-value": "FAILED",
+        "review:root/structure": "SUCCEEDED"
+      },
+      "history": {
+        "sha256": "7c06f1c9f5ef4acc8243344afe4a4972e291d0a49abbe22e4c4ebbb616338718",
+        "replay": "passed",
+        "events": 178,
+        "workflow_type": "ErgoraCompositionWorkflowV3"
+      },
+      "handoff_sha256": "15683a8d0b43c8728d13ce35060d8734b1af62acfa7c6e3643dc7e44b2ce1ffd"
+    },
+    "cancelled-v3": {
+      "version": 3,
+      "task_id": "cancelled-v3-public",
+      "run_id": "01a1befc-cb45-7797-84e5-e409f3651d9b",
+      "outcome": "CANCEL_UNCONFIRMED",
+      "review_jobs": {
+        "review:root/test-value": "CANCELLED",
+        "review:root/structure": "SUCCEEDED"
+      },
+      "history": {
+        "sha256": "f6e5a7eec75ed2238a1ea78b8d7dfa8db86ab6ee5f299a409cc45d4e7abb4218",
+        "replay": "passed",
+        "events": 170,
+        "workflow_type": "ErgoraCompositionWorkflowV3"
+      },
+      "handoff_sha256": "ab1a1962b9f4bef8e7fdd5d66e4f3d762c381a18d7d4436330a663344b852498"
+    }
+  },
+  "ports_closed": true,
+  "databases_retained": true,
+  "scope": "Real installed CLI/Supervisor/Temporal/scanner, required and advisory reviews with original failed receipts, original model-protocol fixtures, worker-only recovery, rejection/cancel/fence/reconcile and indexed/offline evidence; no model quality or complete active-process crash recovery claim.",
+  "observations": {
+    "processes": 129,
+    "remaining_live": 0,
+    "sha256": "9b09058fa001f4020a08e9c52ca9b65d4b130a8d084f9f93ef5fcb31857c5aa6",
+    "scope": "Observed original Supervisor daemon PID/starttime and recursive descendants, including surviving reparented processes already observed; sampling cannot establish every short-lived process was seen."
+  }
+}
