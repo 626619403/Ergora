@@ -1,0 +1,338 @@
+{
+  "empty-library": {
+    "checked_at": "2026-11-09T11:32:51.758090+00:00",
+    "seconds": 1.4842457161284983,
+    "returncode": 0,
+    "script_sha256": "29365281a0b0f88cd8148f1850ab26270ea736af8192a3d735dc3a30780eef39",
+    "log_sha256": "7c8fbe159c7646ac22b23f5d147668317d67de983388118869af442a9b130365",
+    "result": {
+      "emptyLibraryRendered": true
+    }
+  },
+  "library-journey": {
+    "checked_at": "2026-11-09T11:32:57.394815+00:00",
+    "seconds": 5.578332350123674,
+    "returncode": 0,
+    "script_sha256": "d7895f7dd34bca2788cd99f77dafd13c2bd60d042ea91b855d3ac5a8d1ab6c0a",
+    "log_sha256": "7b0ae6e6ed6d50499d155d024213129f166fd12a480ec869734c6d23898c6eb1",
+    "result": {
+      "imports": [
+        {
+          "identity": "repository-governance",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-governance-delivery",
+            "version": "1.0.0",
+            "digest": "e82c02d01d2c717a38f35f242107efce32dd873027a4a3a6fb0f18f7d1fae077"
+          }
+        },
+        {
+          "identity": "large-change",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-large-change-delivery",
+            "version": "1.0.0",
+            "digest": "25dbfff6830e4123bedbfe975c964de96b8a9ce0ed8c76e8f365fecf2f7e2cc8"
+          }
+        },
+        {
+          "identity": "training-optimization",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-training-proposal",
+            "version": "1.0.0",
+            "digest": "cf5df77249022c458f84d4e4d9964aa6448bacb1a74b9192a942da9ffcb7e438"
+          }
+        },
+        {
+          "identity": "training-optimization",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-training-proposal",
+            "version": "1.0.0",
+            "digest": "cf5df77249022c458f84d4e4d9964aa6448bacb1a74b9192a942da9ffcb7e438"
+          }
+        }
+      ],
+      "agents": 13,
+      "workflows": 11,
+      "ownResources": 2,
+      "previewSha256": "23ba4611ec03804c8cdf5f4d68125a44e333df019d0b6c4260b11a15588e5e81",
+      "instances": 19,
+      "completeMaterialVisible": true,
+      "definitionDownload": "agent.json",
+      "previewDownload": "composition-preview.json",
+      "jsonErrorRetainsText": true,
+      "permissionErrorRetainsText": true,
+      "refreshPreservesSelectionAndGrant": true,
+      "reloadPreservesLibraries": true,
+      "projects": 0,
+      "noRuntimePost": true,
+      "pageErrors": [],
+      "requests": [
+        {
+          "method": "POST",
+          "path": "/api/composition/presets/repository-governance/install"
+        },
+        {
+          "method": "GET",
+          "path": "/api/agent-definitions"
+        },
+        {
+          "method": "GET",
+          "path": "/api/workflow-definitions"
+        },
+        {
+          "method": "GET",
+          "path": "/api/composition/presets"
+        },
+        {
+          "method": "GET",
+          "path": "/api/workflow-definitions/ergora-governance-delivery/1.0.0"
+        },
+        {
+          "method": "POST",
+          "path": "/api/composition/presets/large-change/install"
+        },
+        {
+          "method": "GET",
+          "path": "/api/agent-definitions"
+        },
+        {
+          "method": "GET",
+          "path": "/api/workflow-definitions"
+        },
+        {
+          "method": "GET",
+          "path": "/api/composition/presets"
+        },
+        {
+          "method": "GET",
+          "path": "/api/workflow-definitions/ergora-large-change-delivery/1.0.0"
+        },
+        {
+          "method": "POST",
+          "path": "/api/composition/presets/training-optimization/install"
+        },
+        {
+          "method": "GET",
+          "path": "/api/agent-definitions"
+        },
+        {
+          "method": "GET",
+          "path": "/api/workflow-definitions"
+        },
+        {
+          "method": "GET",
+          "path": "/api/composition/presets"
+        },
+        {
+          "method": "GET",
+          "path": "/api/workflow-definitions/ergora-training-proposal/1.0.0"
+        },
+        {
+          "method": "POST",
+          "path": "/api/composition/presets/training-optimization/install"
+        },
+        {
+          "method": "GET",
+          "path": "/api/agent-definitions"
+        },
+        {
+          "method": "GET",
+          "path": "/api/workflow-definitions"
+        },
+        {
+          "method": "GET",
+          "path": "/api/composition/presets"
+        },
+        {
+          "method": "GET",
+          "path": "/api/workflow-definitions/ergora-training-proposal/1.0.0"
+        },
+        {
+          "method": "GET",
+          "path": "/api/agent-definitions/ergora-kernel-designer/1.0.0"
+        },
+        {
+          "method": "GET",
+          "path": "/api/workflow-definitions/ergora-large-change-delivery/1.0.0"
+        },
+        {
+          "method": "POST",
+          "path": "/api/composition/preview"
+        },
+        {
+          "method": "POST",
+          "path": "/api/composition/preview"
+        },
+        {
+          "method": "GET",
+          "path": "/api/agent-definitions"
+        },
+        {
+          "method": "GET",
+          "path": "/api/workflow-definitions"
+        },
+        {
+          "method": "GET",
+          "path": "/api/composition/presets"
+        },
+        {
+          "method": "GET",
+          "path": "/api/bootstrap"
+        },
+        {
+          "method": "GET",
+          "path": "/api/agent-definitions"
+        },
+        {
+          "method": "GET",
+          "path": "/api/workflow-definitions"
+        },
+        {
+          "method": "GET",
+          "path": "/api/composition/presets"
+        }
+      ]
+    }
+  },
+  "late-install-grant": {
+    "checked_at": "2026-11-09T11:33:00.089232+00:00",
+    "seconds": 2.635337762068957,
+    "returncode": 0,
+    "script_sha256": "55f42b59ec0454cff30e66234eae14c4a772bca2cb2c790b170e246d1b0e7c48",
+    "log_sha256": "63ec0c10892245560fcbab4602b8e35d719f6122461390524d8cd775c3966b52",
+    "result": {
+      "before": "{ held-user-edit",
+      "after": "{ held-user-edit",
+      "selected": "ergora-large-change-delivery @ 1.0.0",
+      "input_preserved": true,
+      "selection_preserved": true
+    }
+  },
+  "race-journey": {
+    "checked_at": "2026-11-09T11:33:03.306323+00:00",
+    "seconds": 3.1586394011974335,
+    "returncode": 0,
+    "script_sha256": "4bfa9e167784126cd972be77387730123f759c8e066f66d2e56f8e107d365635",
+    "log_sha256": "8b80074ec43b3427a0cb562071778016b4845017da0eb5ec4ea6023f48bb6a60",
+    "result": {
+      "staleDetailIgnored": true,
+      "stalePreviewIgnoredAfterGrantEdit": true,
+      "editEnablesPreviewDuringPendingRequest": true,
+      "lateImportRespectsNewSelection": true,
+      "failedRefreshAndRetryPreserveText": true,
+      "navigationPreservesText": true,
+      "injectedLibraryError": "C1 controlled library failure",
+      "errors": []
+    }
+  },
+  "narrow-keyboard": {
+    "checked_at": "2026-11-09T11:34:05.901029+00:00",
+    "seconds": 2.1919171111658216,
+    "returncode": 0,
+    "script_sha256": "9ca1a45394741cccc954880f618250af169d96e7cc2437d030f865076e10ee50",
+    "log_sha256": "8f32cbaab49a4d998a88050e267b9520401813e02b7825f764ac7ad71aaaae36",
+    "result": {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "dimensions": {
+        "viewport": 390,
+        "document": 390,
+        "main": 322
+      },
+      "keyboardTabToPreview": true,
+      "keyboardPreview": true,
+      "keyboardResourceExpansion": true,
+      "screenshots": [
+        "output/playwright/ac5-c1-r4-narrow.png",
+        "output/playwright/ac5-c1-r4-resources.png",
+        "output/playwright/ac5-c1-r4-desktop.png"
+      ]
+    }
+  },
+  "restart": {
+    "checked_at": "2026-11-09T11:35:02.013199+00:00",
+    "seconds": 1.7613524529151618,
+    "returncode": 0,
+    "script_sha256": "7f821568bc1b4208292ae1ff3f4b83d64a118d8e55a772df94b38d0da871d55c",
+    "log_sha256": "3ba3892374808f0e4ed9461ca9ac7baa70b2f19a6b3a1c133b1cbfea2729fc78",
+    "result": {
+      "afterHttpRestart": true,
+      "agents": 13,
+      "workflows": 11,
+      "trainingPreviewRoot": {
+        "kind": "workflow",
+        "id": "ergora-training-proposal",
+        "version": "1.0.0",
+        "digest": "cf5df77249022c458f84d4e4d9964aa6448bacb1a74b9192a942da9ffcb7e438"
+      },
+      "instances": 9,
+      "previewSha256": "f19085b4c06c91aa87a362ee3677ea4a99ceb1f203744a34618a9734690ba714",
+      "projects": 0
+    }
+  },
+  "downloads": {
+    "definition_body_equal": true,
+    "preview_equal_original_owner": true,
+    "preview_sha256": "23ba4611ec03804c8cdf5f4d68125a44e333df019d0b6c4260b11a15588e5e81",
+    "files": {
+      "ac5-composition-preview-r4.json": "f0f3553bdf51d0f6ee8803880cfff64874c7fac80f8d844658e5a6223c208f9d",
+      "ac5-agent-r4.json": "1fb502ce439bfd86feef4de7c357bbc05407a60b084d9222f80778d6442e15f3"
+    },
+    "initial_harness_error": "Passed Path to get(State,...), causing direct TypeError; corrected caller to State without product changes."
+  },
+  "http_restart": {
+    "checked_at": "2026-11-09T11:34:30.219147+00:00",
+    "old_identity_checked": true,
+    "old_port_stopped": true,
+    "same_url": true,
+    "same_control_directory": true,
+    "libraries_equal": true,
+    "agents": 13,
+    "workflows": 11,
+    "projects": 0,
+    "wheel_sha256": "7c122ff9979b224bfbcf67defea1dadf935a6609043039628e2f3431f9c89b63"
+  },
+  "cleanup": {
+    "checked_at": "2026-11-09T11:37:31.837893+00:00",
+    "starttime_checked": true,
+    "browser_closed": true,
+    "owned_port_closed": true,
+    "only_owned_process_stopped": true
+  },
+  "scope": "Actual installed Chromium UI/current Linux trusted container, no project registration, no task/service/model start from library page. Static scope only; no all-platform browser, runtime/training/GPU or C6 capacity claim.",
+  "original_failures": {
+    "C1-B1": {
+      "r1_log_sha256": "25d9e58d44320ec33488f4e19482bbd494b7fd99afcc2031077189c5ce852f78",
+      "failure": "Same original empty-library loop TimeoutError after actual detailView return-type TypeError",
+      "fixed_empty_loop": {
+        "emptyLibraryRendered": true
+      }
+    },
+    "C1-S1": {
+      "original_installed_r3": {
+        "before": "{ held-user-edit",
+        "after": "{\n  \"schema_version\": 1,\n  \"permissions\": {\n    \"read\": [\n      \"workspace\",\n      \"definitions\"\n    ],\n    \"write\": [\n      \"workspace\"\n    ],\n    \"shell\": true,\n    \"network\": []\n  },\n  \"limits\": {\n    \"depth\": 8,\n    \"instances\": 128,\n    \"concurrency\": 4,\n    \"material_bytes\": 262144\n  }\n}",
+        "selected": "ergora-governance-delivery @ 1.0.0",
+        "input_preserved": false,
+        "selection_preserved": false
+      },
+      "original_log_sha256": "e4f5f38b691c1a0939912f110c623473b8f4014c7f1f4c6c942be5397adec13d",
+      "fixed_installed_r4": {
+        "before": "{ held-user-edit",
+        "after": "{ held-user-edit",
+        "selected": "ergora-large-change-delivery @ 1.0.0",
+        "input_preserved": true,
+        "selection_preserved": true
+      }
+    }
+  },
+  "public_screenshots": {
+    "2026-11-09-definition-console-desktop.png": "5aa4529c084310ed239d807b463f601c626211d599fb978520e351749843461d",
+    "2026-11-09-definition-console-narrow.png": "723cff77fbe55238a5c695ae1adcf1af7499d4a4e6800904a0c76733eb008a95"
+  }
+}

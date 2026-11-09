@@ -9,6 +9,7 @@ import { skillsView } from "./skills.js";
 import { researchView } from "./research.js";
 import { tasksView } from "./tasks.js";
 import { workflowView, resetWorkflow, disposeGraph, drawGraph } from "./workflow.js";
+import { definitionsView } from "./definitions.js";
 
 let refreshSequence = 0;
 let refreshing = false;
@@ -110,6 +111,10 @@ function render() {
     .forEach((item) =>
       item.classList.toggle("active", item.dataset.tab === app.tab),
     );
+  if (app.tab === "definitions" && app.bootstrap) {
+    $("#main").replaceChildren(...definitionsView(render));
+    return;
+  }
   if (!app.data) {
     if (refreshing || refreshError) {
       $("#main").replaceChildren(heading(

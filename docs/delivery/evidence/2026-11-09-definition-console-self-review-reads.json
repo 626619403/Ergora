@@ -1,0 +1,95 @@
+{
+  "checked_at": "2026-11-09T11:40:01.240857+00:00",
+  "run_id": "b83d16cae6e244368f397a1f9aaa66ce",
+  "source_files": 21,
+  "source_files_still_match": true,
+  "total_candidate_read_calls": 15,
+  "continuous_complete_pass_pages": 14,
+  "preceding_probe_pages": 1,
+  "preceding_probe_bytes": 40000,
+  "bytes": 281802,
+  "next_offset": null,
+  "all_returned_pages_match_original_bytes": true,
+  "attachment_sha256": "e3e0a364befb1d7a90e610f2252c6e10e31fb52328acc0e89e2f898a5b43c8c5",
+  "native_stream_sha256": "068f7ff2e7e7b38708d169b7c2f9bcd4684e1d889528939ded09019df5b430a2",
+  "failed_reads": 1,
+  "pages": [
+    {
+      "offset": 0,
+      "bytes": 40000,
+      "next_offset": 40000
+    },
+    {
+      "offset": 0,
+      "bytes": 16000,
+      "next_offset": 16000
+    },
+    {
+      "offset": 16000,
+      "bytes": 20000,
+      "next_offset": 36000
+    },
+    {
+      "offset": 36000,
+      "bytes": 22000,
+      "next_offset": 58000
+    },
+    {
+      "offset": 58000,
+      "bytes": 22000,
+      "next_offset": 80000
+    },
+    {
+      "offset": 80000,
+      "bytes": 22000,
+      "next_offset": 102000
+    },
+    {
+      "offset": 102000,
+      "bytes": 22000,
+      "next_offset": 124000
+    },
+    {
+      "offset": 124000,
+      "bytes": 22000,
+      "next_offset": 146000
+    },
+    {
+      "offset": 146000,
+      "bytes": 22000,
+      "next_offset": 168000
+    },
+    {
+      "offset": 168000,
+      "bytes": 22000,
+      "next_offset": 190000
+    },
+    {
+      "offset": 190000,
+      "bytes": 22000,
+      "next_offset": 212000
+    },
+    {
+      "offset": 212000,
+      "bytes": 22000,
+      "next_offset": 234000
+    },
+    {
+      "offset": 234000,
+      "bytes": 22000,
+      "next_offset": 256000
+    },
+    {
+      "offset": 256000,
+      "bytes": 22000,
+      "next_offset": 278000
+    },
+    {
+      "offset": 278000,
+      "bytes": 3802,
+      "next_offset": null
+    }
+  ],
+  "initial_auditor_limit": "Original strict single-pass checker rejected a repeated offset0 probe. Its failed log is preserved. This audit validates every original page and the following full contiguous pass; no model rerun or stream editing.",
+  "scope": "Actual successful MCP candidate-byte delivery through null, not proof of reasoning quality, test execution, model-error independence, or formal owner approval."
+}

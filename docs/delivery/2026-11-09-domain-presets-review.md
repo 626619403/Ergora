@@ -61,3 +61,24 @@ Spec 子审还独立核验三套移除源库后的 manifest/input 与两开发�
 初审计数：Standards **0 finding**；Spec **1 finding，最高 P2（DP-S1）**。
 
 R2 本地复核：Standards **0 finding**；Spec **0 开放 finding，DP-S1 已关闭**。
+
+## P5 精确交付终核：通过
+
+本节更新上文本地终核时尚待的 P5 状态。独立主审仅读取固定 Git 对象、保留 R2 包/安装目录与官方交付证据，未重新委派源码审查、运行测试/模型/服务、安装、提交或推送，也未取消或重跑 CI。当前 AC5 C1 的 Web、控制台和测试工作树修改全部排除；本节不为后片候选提供验收。
+
+精确候选为 `d7ad71d37a1a3223b0cab3c93cbad1b522320377`，唯一父对象为 `d8fc8ef2eee64b51a9eb5fa1925734e475965785`，提交恰 **86 文件**，与原完整终核范围逐项相符。相对 acceptance 快照的差异仅为 PLAN、本片计划/交付记录和本审查报告四份已授权状态更新；重建快照并比较增量，源码、测试、data 与公开原件未漂移。DP-S1 原反例、R1 模型漏检及修后证据保持。
+
+从候选 Git 对象读取的 **434 个包文件**，与保留 R2 wheel 及原非 editable 安装目录逐字相同；wheel SHA256 仍为 `4f827c0d70e24299c5c2d8a65d635f3dc5d3130465d69cf3c71d2ca3fd37a66d`，**283 个冻结文件**与父对象逐字一致。本次计数为 434，未计入后片新增控制台文件。Portability workflow 也与父对象相同。
+
+独立官方新采样保存后，于 **2026-11-09 11:20:26.338964 UTC** 终核 [本候选 run 42605934103](https://github.com/626619403/Ergora/actions/runs/42605934103) 为 **Success 终态**。完整 job-group 已取尽，run 的完整 commit、workflow、两个实际 job 名称和 `selectedJobId` 相符；七个必要步骤全部 **success**，各有 `job-completed` 标记及精确候选的 check/log URL：
+
+| 官方 job / check | Build and install wheel | Packaged reference identity | Native application regression | Windows PowerShell 5.1 installer and upgrade |
+|---|---|---|---|---|
+| [Windows 3.12，129121817328](https://github.com/626619403/Ergora/commit/d7ad71d37a1a3223b0cab3c93cbad1b522320377/checks/129121817328) | [success](https://github.com/626619403/Ergora/commit/d7ad71d37a1a3223b0cab3c93cbad1b522320377/checks/129121817328/logs/4) | [success](https://github.com/626619403/Ergora/commit/d7ad71d37a1a3223b0cab3c93cbad1b522320377/checks/129121817328/logs/5) | [success](https://github.com/626619403/Ergora/commit/d7ad71d37a1a3223b0cab3c93cbad1b522320377/checks/129121817328/logs/6) | [success](https://github.com/626619403/Ergora/commit/d7ad71d37a1a3223b0cab3c93cbad1b522320377/checks/129121817328/logs/7) |
+| [Ubuntu 3.11，129121817823](https://github.com/626619403/Ergora/commit/d7ad71d37a1a3223b0cab3c93cbad1b522320377/checks/129121817823) | [success](https://github.com/626619403/Ergora/commit/d7ad71d37a1a3223b0cab3c93cbad1b522320377/checks/129121817823/logs/4) | [success](https://github.com/626619403/Ergora/commit/d7ad71d37a1a3223b0cab3c93cbad1b522320377/checks/129121817823/logs/5) | [success](https://github.com/626619403/Ergora/commit/d7ad71d37a1a3223b0cab3c93cbad1b522320377/checks/129121817823/logs/6) | 平台条件不适用 |
+
+**2026-11-09 11:19:33.587839→11:19:35.491672 UTC**，主审在仓库外禁用 system/global Git 配置、清除 Git 环境覆盖并禁用凭据助手，对 `https://github.com/626619403/Ergora.git` 明确执行只读 `ls-remote`。原 trace 确认实际使用 `git remote-https`，无 SSH rewrite；远端 `refs/heads/refactor/architecture-foundations` 返回完整 SHA **`d7ad71d37a1a3223b0cab3c93cbad1b522320377`**，与候选一致。
+
+私有对象比对、允许状态增量、此次官方原页及独立 HTTPS 结果保存在 `independent/commit-closure/`，汇总 `closure-evidence.json` 固定原件身份；没有覆盖作者早先 In progress 采样。**本候选 P5 的对象/保留包、自己的七必要 CI 与明确 HTTPS 远端门禁全部通过，AC4.4 精确交付终结。** 本节后续状态记账不改变原候选身份，也不替代 AC5、AC6 或 F9 的独立验收。
+
+本轮汇总原件 SHA256：`c8aab0797612e45b1853b7fe93881379ddb2e7915df9b514ca45a62267cdb36a`。另只读确认 HTTPS 读取所在目录不属于任何 Git 仓库，原 trace 中 `git-remote-https` 的两个 URL 参数均为上述明确 GitHub HTTPS 地址。

@@ -1,0 +1,7 @@
+{
+  "artifacts": {
+    "response": "Spec: No confirmed defects. The seven HTTP routes delegate to existing definition owners. Exact-version selection, inherited material display and downloads remain within C1. The install guard in src/ergora/data/console/definitions.js:77–85 checks both selection and preview generations, resolving the documented grant-loss race.\n\nStandards: No confirmed ownership, dependency-direction, redundant-test/CI or demonstrated performance defect. The change reuses existing libraries and UI helpers without adding validation or execution infrastructure.\n\nRead the complete 281,802-byte candidate through continuous successful task-MCP pages from offset 0 to next_offset=null, plus both instruction resources and skills. Recorded R4 evidence reports 22 passing tests, browser journeys, 435-file package identity and 283 frozen files intact. I did not execute repository code or rerun checks.\n\nReview scope is the supplied C1 source and evidence. Candidate CI and explicit HTTPS identity remain delivery gates; C2–C6 are outside this verdict."
+  },
+  "decision": "approve",
+  "summary": "Approve the supplied R4 C1 candidate; no confirmed blocking Spec or Standards defects."
+}

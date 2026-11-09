@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from . import __version__, agent_runs, components, drafts, evaluation, handoff, kernel, memory, optimization, projects, reference, registrations, research, services, tasks, skill_assets, skills, tools
+from . import __version__, agent_definitions, agent_runs, components, drafts, evaluation, handoff, kernel, memory, optimization, projects, reference, registrations, research, services, tasks, skill_assets, skills, tools, workflow_definitions
 from .state import State
 
 
@@ -196,6 +196,12 @@ class DraftPayload(RevisionPayload):
     input: dict
 
 
+class CompositionPreviewPayload(Payload):
+    id: str
+    version: str
+    grant: dict
+
+
 def create_app(home: Path | None = None) -> FastAPI:
     state = State(home)
     application = FastAPI(title="Ergora", version=__version__, docs_url=None, redoc_url=None, openapi_url="/api/openapi.json")
@@ -244,6 +250,34 @@ def create_app(home: Path | None = None) -> FastAPI:
     @application.get("/api/installation-profiles")
     def installation_profiles():
         return tools.installation_profiles()
+
+    @application.get("/api/agent-definitions")
+    def agent_library(role: str | None = None, specialty: str | None = None):
+        return agent_definitions.definitions(state, role=role, specialty=specialty)
+
+    @application.get("/api/agent-definitions/{identity}/{version}")
+    def agent_definition(identity: str, version: str):
+        return agent_definitions.get(state, identity, version, material=True)
+
+    @application.get("/api/workflow-definitions")
+    def workflow_library():
+        return workflow_definitions.definitions(state)
+
+    @application.get("/api/workflow-definitions/{identity}/{version}")
+    def workflow_definition(identity: str, version: str):
+        return workflow_definitions.get(state, identity, version, material=True)
+
+    @application.get("/api/composition/presets")
+    def composition_presets():
+        return workflow_definitions.presets()
+
+    @application.post("/api/composition/presets/{identity}/install")
+    def install_composition_preset(identity: str):
+        return workflow_definitions.install_preset(state, identity)
+
+    @application.post("/api/composition/preview")
+    def preview_composition(body: CompositionPreviewPayload):
+        return workflow_definitions.preview(state.root, body.id, body.version, body.grant)
 
     @application.post("/api/projects")
     def add_project(body: ProjectPayload):

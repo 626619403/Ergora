@@ -93,8 +93,10 @@ flowchart TB
   Registration --> Ref
   CLI --> Uses[agent_runs / skills / optimization]
   CLI --> Definitions[agent_definitions 静态专家库]
+  Web --> Definitions
   Definitions --> Native
   CLI --> Composition[workflow_definitions 静态图/继承编译]
+  Web --> Composition
   Composition --> Definitions
   Definitions --> Bundles[definition_bundles 完整资源/原子版本库]
   Composition --> Bundles
@@ -372,6 +374,8 @@ F6.1以独立[开发者原型](../../examples/editor-comparison/README.md)实际
 
 
 ## 内置领域组合
+
+AC5 C1的全局“Agent 与组合库”页面由`console/definitions.js`持有所选精确版本、上限文本及库/详情/预览请求世代；它在无项目时也可进入，项目切换不重置库。`web`的七个薄入口直接调用原Agent/Workflow定义用例，查询完整材料、显式导入preset并执行原静态preview。迟到回复不能覆盖新选择或已修改上限；预览失效后须明确重做。页面用可访问实例表和可展开全文分别呈现结构继承、先后依赖和数据端口，没有复制编译器、创建项目授权或启动Agent。定义正文下载与CLI完整包导出保持不同用途。编辑会话与嵌套图继续按[AC5分片计划](../plans/2026-11-09-composition-console.md)实施，C1不新增执行入口或数据库。
 
 `workflow_definitions.presets/install_preset`读取随wheel的`data/presets`，按依赖调用原Agent/Workflow库导入；CLI复用这些用例，未新增DB、执行格式、调度或批准所有者。开发根引用专长work子树及共用delivery-review；实际units和可信integrate/verify仍归v5原链，实例backend_overrides归原选择准入。训练根只提供proposal叶，其真实实验仍交原runner/gate及F9。具体边界见[使用说明](../WORKFLOW_DEFINITIONS.md#使用内置领域组合)与[本片记录](../delivery/2026-11-09-domain-presets.md)。
 
