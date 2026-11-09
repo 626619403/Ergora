@@ -11,6 +11,8 @@ import stat
 import tempfile
 import zipfile
 
+from .task_envelopes import outcome_reference_state
+
 MANIFEST_LIMIT = 1_048_576
 BLOB_LIMIT = 16_777_216
 PAYLOAD_LIMIT = 67_108_864
@@ -55,9 +57,7 @@ def _references(index: dict) -> dict:
                 or receipt['job_id'] != job['job_id']
                 or receipt['job_sha256'] != job['job_sha256'] or receipt['state'] != job['receipt_state']):
             raise ValueError('Handoff receipt identity differs from its indexed job')
-        key = {'verify': 'verification', 'review': 'review'}.get(job['stage'])
-        recorded = outcome.get(key) if outcome is not None and key is not None else None
-        reference = 'not_recorded' if recorded is None else 'matches' if _sha(recorded) == job['receipt_sha256'] else 'differs'
+        reference = outcome_reference_state(outcome, job)
         if job['outcome_reference_state'] != reference:
             raise ValueError('Handoff invents an original outcome receipt reference')
         names = set()

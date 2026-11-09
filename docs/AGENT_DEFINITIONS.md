@@ -2,7 +2,7 @@
 
 Agent 定义包保存一名专家的职能、专长、后端、初始指令、上下文和 Skill 资源。同一个后端可有多份互补定义；同一份定义以后也可用于多个模板。当前入口负责静态检查、导入、查看和分享，导入不运行其中的命令或脚本。
 
-项目的实际调用仍使用[角色绑定](AGENT_BACKENDS.md#项目选择与独立调用)。Agent定义可由[工作流定义](WORKFLOW_DEFINITIONS.md)引用并静态预览整条祖先链。当前尚未接入 `agent run`、正式六阶段或多成员执行；后续实际资源装载、权限与冻结见[实施计划](plans/2026-11-08-agent-composition.md)。
+项目的角色调用使用[角色绑定](AGENT_BACKENDS.md#项目选择与独立调用)。Agent定义可由[工作流定义](WORKFLOW_DEFINITIONS.md)引用、预览完整祖先链，并通过`composition run-input`显式调用固定叶子。正式六阶段可[冻结审查组合](USAGE.md#为正式任务冻结审查组合)，运行单个或显式all-join的多个嵌套只读审查者；写执行者分配与通用串行图仍见[实施计划](plans/2026-11-08-agent-composition.md)。
 
 ## 使用已有示例
 
@@ -20,7 +20,7 @@ ergora agent definition export architecture-reviewer 1.0.0 ./shared-architecture
 
 `check` 不创建或迁移 State；加 `--material` 可查看完整必读文本。`import` 把包复制到持久 State，源目录之后可移走。`show` 每次重验内容；`export` 只写新的目录，导出结果可在能保持原文件字节和执行位语义的另一环境导入。示例在仓库的 [examples/agents](../examples/agents/)，不是额外安装的系统 Skill；仅安装 wheel 的用户可从该目录获取示例包。
 
-[kernel 执行者](../examples/agents/kernel-implementer/agent.json)专注 CUDA/Triton 和测量，[架构审查者](../examples/agents/architecture-reviewer/agent.json)专注职责与依赖。两者当前都以 Codex 为默认后端，用于展示“后端相同，专家不同”；不代表实际协作中默认选择相同后端。运行时优先不同后端的策略将在成员准入切片接入。示例提示和 Skill 是起点，尚无模型效果评价。
+[kernel 执行者](../examples/agents/kernel-implementer/agent.json)专注 CUDA/Triton 和测量，[架构审查者](../examples/agents/architecture-reviewer/agent.json)专注职责与依赖。两者当前都以 Codex 为默认后端，用于展示“后端相同，专家不同”；正式审查的成员准入默认优先与执行者使用不同后端，同后端回退需记录原因，也可要求严格不同。示例提示和 Skill 是起点，尚无模型效果评价。
 
 ## 创建与修改定义
 

@@ -1,0 +1,62 @@
+{
+  "checked_at": "2026-11-09T04:37:42.337689+00:00",
+  "seconds": 15.009747960604727,
+  "records": {
+    "resumed-v2": {
+      "run_id": "01a1be8b-559e-7cfc-a6a9-9ec05170754e",
+      "outcome": "REVIEW_READY",
+      "jobs": 8,
+      "artifacts": 39,
+      "history": {
+        "events": 183,
+        "sha256": "ef01ec193a4ccf11a9b398c81490253012ca53689c915db2243b9528519f66f1",
+        "replay": "passed"
+      },
+      "packet_sha256": "e6f9dccd1ef6dd5670da17dced185ec95f74b9bea2e57c9c8a5e77568948f04c",
+      "reviews": {
+        "review:root/test-value/review": "matches",
+        "review:root/correctness/review": "matches",
+        "review:root/structure/review": "matches"
+      }
+    },
+    "rejected-v2": {
+      "run_id": "01a1be91-07e8-73d4-a6f0-36bcefc274a1",
+      "outcome": "BLOCKED",
+      "jobs": 8,
+      "artifacts": 40,
+      "history": {
+        "events": 189,
+        "sha256": "ab51a55d5224255e6d5cb00242b52c38976557df63e866739510df6c73bc980b",
+        "replay": "passed"
+      },
+      "packet_sha256": "a534b8c6fcd2a7210d7945dfc4307ab8f6fa3ad9125e69bf81fba675e16ea6d8",
+      "reviews": {
+        "review:root/test-value/review": "not_recorded",
+        "review:root/correctness/review": "not_recorded",
+        "review:root/structure/review": "not_recorded"
+      }
+    },
+    "cancelled-v2": {
+      "run_id": "01a1be92-983a-76a9-b515-48c691bf8fc1",
+      "outcome": "CANCEL_UNCONFIRMED",
+      "jobs": 8,
+      "artifacts": 37,
+      "history": {
+        "events": 178,
+        "sha256": "81ea203be63a578adfad083d5f6d1d94d69b6ade815e37e918f1904eefb4a1bf",
+        "replay": "passed"
+      },
+      "packet_sha256": "22ec1a59e112a3f8d8b56bba3ffcdbb8399c5567362e16856d9f7322b604921c",
+      "reviews": {
+        "review:root/test-value/review": "not_recorded",
+        "review:root/correctness/review": "not_recorded",
+        "review:root/structure/review": "not_recorded"
+      }
+    }
+  },
+  "immutable_original_files": 194,
+  "same_original_agent_calls": true,
+  "workers_and_executor_stayed_stopped": true,
+  "ports_closed": true,
+  "scope": "Final installed candidate reads and replays three original complete histories, verifies indexed and offline evidence, preserves all original contracts/receipts/artifacts and does not repeat calls. Prior real executions retain their R3/R4 identities."
+}

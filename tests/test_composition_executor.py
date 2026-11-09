@@ -36,7 +36,7 @@ def test_published_composition_runs_a_restricted_leaf_through_all_six_stages(tmp
     ('composition-binding-drift', 'creation is incomplete'),
     ('composition-config-drift', 'configuration drift'),
     ('composition-policy-drift', 'current backend contract'),
-    ('composition-multiple', 'one reviewer leaf'),
+    ('composition-multiple', 'explicit all-join'),
 ])
 def test_invalid_composition_is_rejected_before_the_native_constructor(tmp_path, mode, detail):
     pytest.importorskip('temporalio')

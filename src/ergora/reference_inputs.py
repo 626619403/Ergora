@@ -114,7 +114,7 @@ class CompositionInput(WorkflowInput):
         return validate_spec(self.spec)
 
     def require_submission(self) -> None:
-        task_envelopes.review_member(self.document['composition'])
+        task_envelopes.review_members(self.document['composition'])
 
 
 _INPUTS = {1: LegacyInput, 2: CompositionInput}

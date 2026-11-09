@@ -11,6 +11,7 @@ import sys
 
 from .reference_task_submission import _Submission
 from .state import file_lock
+from .task_envelopes import outcome_reference_state
 
 
 class _Inspection:
@@ -162,11 +163,7 @@ class _Inspection:
                           for name, unit in (('model_calls', 'calls'), ('tokens', 'tokens'), ('cost', 'currency'))})
             usage['cost']['currency'] = None
             for job in result['jobs']:
-                key = {'verify': 'verification', 'review': 'review'}.get(job['stage'])
-                recorded = outcome.get(key) if outcome is not None and key is not None else None
-                job['outcome_reference_state'] = ('not_recorded' if recorded is None else
-                    'unavailable' if job['receipt'] is None else
-                    'matches' if self.sha(recorded) == job['receipt_sha256'] else 'differs')
+                job['outcome_reference_state'] = outcome_reference_state(outcome, job)
             result.update(read_only=True, index_type='original-task-evidence',
                 request_sha256=self.spec['request_sha256'], profile_sha256=self.spec['profile_sha256'],
                 contract={'spec': self.spec, 'spec_sha256': self.sha(self.spec),

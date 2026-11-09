@@ -182,10 +182,10 @@ def test_unsupported_composition_is_rejected_before_any_remote_or_dispatch_inten
     created = tasks.create(state, 'demo', task, 1, preview['preview_sha256'])
     assert created['composition']['runtime_supported'] is False
     root = Path(registration['execution']['state_directory'])
-    runtime = Path(registration['execution']['installation']) / '.venv/bin/python'
-    runtime.parent.mkdir(parents=True)
-    runtime.symlink_to(sys.executable)
-    with pytest.raises(ValueError, match='one reviewer leaf'):
+    runtime = Path(registration['execution']['installation']) / '.venv'
+    if not runtime.exists():
+        runtime.symlink_to(sys.prefix, target_is_directory=True)
+    with pytest.raises(ValueError, match='explicit all-join'):
         tasks.start(state, 'demo', task['task_id'], 1, created['intent_sha256'])
     assert not (root / 'ergora/task-submissions').exists()
     assert not (root / 'requests').exists() and not (root / 'receipts').exists()

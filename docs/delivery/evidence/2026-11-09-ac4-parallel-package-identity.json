@@ -1,0 +1,17 @@
+{
+  "checked_at": "2026-11-09T04:34:14.611431+00:00",
+  "source_wheel_installed_files": 369,
+  "wheel_sha256": "e69663a6b0d9b682201943f00241208fced85e969214cfd09b6819857657c214",
+  "frozen_files": 283,
+  "baseline": "4538f4e44a3c301aedde570e130a342bc1c55714",
+  "changed_source": {
+    "src/ergora/handoff.py": "2ff598ae3595e4402aa61a386545240306d20c568cbbd55e51ee3ae70c8dad8f",
+    "src/ergora/task_envelopes.py": "b43114591e99b17fe67cb3775142514d866adaa4632e5a382af01b0ff456cd4a",
+    "src/ergora/reference_workflows.py": "7dcdd6b2483593ba097985a89ffc51dd948f374626d6af9aa2895ff6538e1f8b",
+    "src/ergora/reference_executor.py": "308dd810718e40c28d0e942b56fc28ce8d8ec9f5d2f716a5ba8411f3aaae9b65",
+    "src/ergora/reference_task_reconciliation.py": "3da0b06f29ee6917a744fcfcfccceafe0a43be41de32899e8e378985d02c5559",
+    "src/ergora/reference_inputs.py": "8445e88b5944013b596c82dfa460a027acd9754479633c886c0fcfee723c6ca3"
+  },
+  "files_map_sha256": "aaa522fbdf3f64e43de0805fc2176d2f5432ca8de847569a0548696afdac9717",
+  "scope": "Exact noneditable wheel, source and installed Python/data files; each frozen file compared with baseline. Private runtime locations excluded."
+}

@@ -158,6 +158,33 @@ def test_create_only_publication_and_failure_cleanup(evidence, tmp_path):
     assert destination.read_bytes() == b'concurrent file' and list(tmp_path.iterdir()) == [destination]
 
 
+@pytest.mark.parametrize('changed', ['stage', 'job_id', 'job_sha256', 'receipt_sha256'])
+def test_parallel_review_receipts_keep_their_own_original_outcome_references(evidence, tmp_path, changed):
+    index, binary = evidence
+    aggregate = {'schema_version': 1, 'kind': 'composition-review-aggregate', 'decision': 'approve',
+                 'candidate_sha': 'a' * 40, 'admission_sha256': 'e' * 64, 'review_instance': 'root', 'members': {}}
+    for number, path in enumerate(('root/structure/review', 'root/correctness/review'), 2):
+        job = deepcopy(index['jobs'][0])
+        receipt = job['receipt']
+        job.update(job_id='job-' + str(number), job_sha256=str(number) * 64, stage='review:' + path)
+        receipt.update(job_id=job['job_id'], job_sha256=job['job_sha256'])
+        receipt['actor'].update(kind='agent', role='reviewer', session_id='review-' + str(number))
+        job['receipt_sha256'] = sha(receipt)
+        index['jobs'].append(job)
+        aggregate['members'][path] = {'stage': job['stage'], 'job_id': job['job_id'],
+            'job_sha256': job['job_sha256'], 'receipt_sha256': job['receipt_sha256']}
+    index['original_outcome']['review'] = aggregate
+    index['original_outcome_sha256'] = sha(index['original_outcome'])
+    index['history_jobs_sha256'] = sha([{'job_id': job['job_id'], 'job_sha256': job['job_sha256']}
+                                       for job in sorted(index['jobs'], key=lambda item: item['job_id'])])
+    result = handoff.create(index, lambda artifact: binary, tmp_path / 'parallel.zip')
+    assert handoff.verify(tmp_path / 'parallel.zip', sha256=result['sha256'])['original_outcome']['review'] == aggregate
+    aggregate['members']['root/structure/review'][changed] = 'f' * 64
+    index['original_outcome_sha256'] = sha(index['original_outcome'])
+    with pytest.raises(ValueError, match='outcome receipt reference'):
+        handoff.create(index, lambda artifact: binary, tmp_path / 'changed.zip')
+
+
 @pytest.mark.parametrize('kind', ['bytes', 'missing', 'extra', 'duplicate', 'compression', 'symlink', 'directory'])
 def test_archive_mutations_fail_without_extracting(evidence, tmp_path, kind):
     path, _ = collect(evidence, tmp_path)

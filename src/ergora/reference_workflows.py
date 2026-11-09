@@ -1,5 +1,7 @@
 """Explicit Temporal inputs; composition extends the frozen six-stage workflow."""
 
+import asyncio
+from contextlib import AsyncExitStack
 import json
 
 from temporalio import activity, workflow
@@ -55,6 +57,47 @@ class CompositionDevelopmentWorkflow(DevelopmentWorkflow):
         if len(content) > 1_000_000:
             raise StopWork("Complete composition stage context exceeds 1,000,000 bytes; split the task")
         return context
+
+    def authors(self):
+        receipts = [value for stage, value in self.results.items()
+                    if stage not in {'verify', 'review'} and not stage.startswith('review:') and 'actor' in value]
+        return (sorted({value['actor']['id'] for value in receipts}),
+                sorted({value['actor']['session_id'] for value in receipts}))
+
+    async def stage(self, stage, expected_sha=None, unit=None, dependencies=None):
+        if stage != 'review' or len(self.admission['composition']['members']) == 1:
+            return await super().stage(stage, expected_sha, unit, dependencies)
+        composition = self.admission['composition']
+        members = task_envelopes.review_members(composition)
+        scopes = {scope['path']: asyncio.Semaphore(scope['limit'])
+                  for leaf in members.values() for scope in leaf['concurrency_scopes']}
+
+        async def review(path):
+            async with AsyncExitStack() as stack:
+                # A branch waiting for its subtree must not reserve ancestor
+                # capacity that an independent sibling can already use.
+                for scope in reversed(members[path]['concurrency_scopes']):
+                    await stack.enter_async_context(scopes[scope['path']])
+                return await self.stage('review:' + path, expected_sha, unit, dependencies)
+
+        tasks = [asyncio.create_task(review(path)) for path in members]
+        try:
+            receipts = await asyncio.gather(*tasks)
+            sessions = [receipt['actor']['session_id'] for receipt in receipts]
+            if len(set(sessions)) != len(sessions):
+                raise StopWork('Composition reviewers must use distinct independent sessions')
+            aggregate = {'schema_version': 1, 'kind': 'composition-review-aggregate', 'decision': 'approve',
+                'candidate_sha': expected_sha, 'admission_sha256': self.admission['sha256'],
+                'review_instance': composition['review_instance'],
+                'members': {path: {'stage': 'review:' + path, 'job_id': receipt['job_id'],
+                    'job_sha256': receipt['job_sha256'], 'receipt_sha256': task_envelopes.identity(receipt)}
+                    for path, receipt in zip(members, receipts)}}
+            self.results['review'] = aggregate
+            return aggregate
+        finally:
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
 
     @workflow.run
     async def run(self, document: dict) -> dict:

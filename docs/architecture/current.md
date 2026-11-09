@@ -1,16 +1,33 @@
 # 当前架构与扩展边界
 
-2026-11-09补充：正式六阶段仍为单角色单binding。[完整快照评审及处置](../delivery/2026-11-08-agent-composition-review.md)记录组合能力差距；[ADR0004](decisions/0004-agent-composition.md)和[ADR0005](decisions/0005-composable-workflows.md)定义后续运行模型。AC2整理后端适配器；AC3a/d提供[专家库](../AGENT_DEFINITIONS.md)和[嵌套图/继承编译](../WORKFLOW_DEFINITIONS.md)。AC3b已经提供完整叶子输入、受限真实调用、只读任务MCP及共用能力准入；调用前的check-input不建立run或服务。当前AC3c.1增加可携带静态manifest及从包重新准入生成叶子输入，包完整性与当前可调用性分开；静态包不包含未来父结果或正式批准。多成员及Temporal嵌套执行按[AC计划](../plans/2026-11-08-agent-composition.md)后续接入，已有完整输入和六阶段格式保持。
+2026-11-09补充：原v1六阶段继续使用单角色绑定；v2在同一六阶段的review内支持单叶或多个嵌套只读审查分支，经显式必需all-join汇合。AC2的局部后端适配器与AC3a/d的[专家库](../AGENT_DEFINITIONS.md)、[嵌套图/继承编译](../WORKFLOW_DEFINITIONS.md)保持职责分离。完整叶子输入、只读任务MCP与共同能力准入由AC3b拥有；完整静态manifest、正式信封及原运行身份由AC3c拥有。AC4.1复用同一Temporal与执行账本：稳定实例路径映射各自stage/job，祖先共享配额控制并发，汇合只引用原收据，不新增模型批准或调度器。通用串行依赖、建议性审查、写执行者分配与页面仍按[AC计划](../plans/2026-11-08-agent-composition.md)推进，实际验收状态见[本片记录](../delivery/2026-11-09-parallel-reviews.md)。
 
 2026-11-05，R8后的当前导航，覆盖F1项目定义、F2安装/运维、F3正式任务CLI/API生命周期与F4网页消费者。F3已通过[阶段验收](../delivery/2026-11-03-f3-completion.md)，F4的创建/原ID恢复、原运行/计划/批准/取消/对账/导出及有界事件/job文本均已实现，[完整页面收口](../delivery/2026-11-05-f4-completion.md)的恢复与服务退出验收单独登记。F5.1只读证据索引与F5.2预算/用量事实CLI/API均已交付；F5.3a原生交接包及离线校验已实现，验收单独登记，F5.3b显式HTTP下载已实现，发行与真实下载验收单独登记，F5.4页面的发行/浏览器及独立审查、精确提交/双OS CI和同片终结通过；F5.5实际服务恢复组合、新综合独立审查与纯文档精确交付/远端终结通过，完整F5完成；G0全新用户旅程独立进行。历史[A1审计](2026-11-01-audit.md)及[R8记录](../delivery/2026-11-02-refactoring-exit.md)保留原身份与范围。设计约束见[ADR0001](decisions/0001-refactoring-foundations.md)/[0002](decisions/0002-static-boundaries.md)。
 
-AC3c.2的`task_envelopes`保存版本化正式信封，完整静态包、成员选择与原`legacy_spec`共同参与身份；历史读取不依赖当前后端目录。AC3c.3/CR1新增可选SDK边界`reference_workflows`，通过局部`WorkflowInput`接口选择原入口或`ErgoraCompositionWorkflowV2`；新版继承原六阶段，只在stage context附完整信封，并使用专用`ergora_composition_submit`活动，避免旧worker派成单Agent请求。`VerifiedSpecClient`先核原始单payload的完整JSON身份，再向原Transport交付兼容投影。CR2/3接通双版本worker、原owner批准和受监控executor。CR3c公开start/status只支持单个纯只读review叶，其叶子和全部结构祖先输入须直接映射至根task且没有依赖；多成员与运行态父输出仍拒绝。常驻executor从局部版本合同扫描两请求根，复用原并发预算/receipt/rejection，不另建调度器。真实安装包公开CLI/Temporal旅程两v2加v1各6原receipt及历史重放已通过；Agent为合成协议、实际模型自审单列。最终独立交付及Supervisor/故障恢复边界见[运行桥](../delivery/2026-11-09-composition-runtime.md)和[本片原件](../delivery/2026-11-09-composition-public-runtime.md)。
+AC3c.2的`task_envelopes`保存版本化正式信封，完整静态包、成员选择与原`legacy_spec`共同参与身份；历史读取不依赖当前后端目录。AC3c.3/CR1新增可选SDK边界`reference_workflows`，通过局部`WorkflowInput`接口选择原入口或`ErgoraCompositionWorkflowV2`；新版继承原六阶段，只在stage context附完整信封，并使用专用`ergora_composition_submit`活动，避免旧worker派成单Agent请求。`VerifiedSpecClient`先核原始单payload的完整JSON身份，再向原Transport交付兼容投影。CR2/3接通双版本worker、原owner批准和受监控executor。公开start/status支持单个纯只读review叶，AC4.1扩展为显式all-join的多个嵌套只读成员；每叶和全部结构祖先输入须直接映射至根task且没有依赖。运行态父输出仍拒绝。常驻executor从局部版本合同扫描两请求根，复用原并发预算/receipt/rejection，不另建调度器。真实安装包公开CLI/Temporal旅程两v2加v1各6原receipt及历史重放已通过；Agent为合成协议、实际模型自审单列。最终独立交付及Supervisor/故障恢复边界见[运行桥](../delivery/2026-11-09-composition-runtime.md)和[本片原件](../delivery/2026-11-09-composition-public-runtime.md)。
 
 CR2a在同一版本所有者增加双队列/请求根与活动构造；`reference_worker`通过原生SDK同时管理两个Worker，Supervisor消费`reference.worker_command`。v2使用`.composition-v2`队列与`requests-composition-v2`目录，原poll/authorize/fence依队列绑定各自FileAdapter，避免旧worker漏查新版请求；submit沿CR1名称，旧history不换协议。实际接线/包与独立出口见[worker记录](../delivery/2026-11-09-composition-workers.md)，原生bootstrap只解析选中的Ergora包供SDK沙箱重新导入，其余依赖保持所选原生环境；停止信号覆盖连接和完整Worker清理。这条CR2a历史验证没有覆盖Supervisor完整栈；后续有限v2入口及其实际旅程见上一段，Supervisor完整生命周期仍归CR4。
 
+正式开发的并行审查仍发生在同一个六阶段工作流内：
+
+```mermaid
+flowchart LR
+  Inventory[盘点] --> Plan[计划] --> Approval[原owner批准]
+  Approval --> Work[工作单元] --> Integration[集成] --> Verify[可信验证]
+  Verify --> Structure[结构审查子模板]
+  Verify --> Correctness[正确性审查子模板]
+  Verify --> TestValue[测试价值审查子模板]
+  Structure --> Join[必需all-join / 原收据引用]
+  Correctness --> Join
+  TestValue --> Join
+  Join --> Ready[REVIEW_READY / 待人工合入]
+```
+
+每条审查分支沿自己的结构父链完整加载Skill与上下文，独立会话检查同一候选。任一必需分支失败、取消或缺失都不能到达Ready；仍交原stop/fence与外部对账处理。
+
 ## 模块与依赖
 
-自有Python仍为单包`ergora`；F1.2增加完整注册用例`registrations`，F2.3增加显式服务用例`services`，F3.1增加项目范围的正式任务查询`tasks`，F3.2在同一用例接入预览/创建/恢复，专用`reference_task_creation`拥有原生编译/发布生命周期，F4.4的`reference_task_events`与`reference_task_evidence`分别拥有有界原事件、原job回执及文本窗口查询。F5.3的`handoff`只依赖合同基础库，拥有受限ZIP格式及离线内部身份校验；原生收集和CLI验证分别消费它。AC2为四种既有后端增加局部`AgentBackend` ABC及工厂；没有为每种专长创建Python类、空子包或通用插件容器。下图表示当前调用方向，组合节点内的模块并非互相依赖；精确导入由静态检查和源码确定。
+自有Python仍为单包`ergora`；F1.2增加完整注册用例`registrations`，F2.3增加显式服务用例`services`，F3.1增加项目范围的正式任务查询`tasks`，F3.2在同一用例接入预览/创建/恢复，专用`reference_task_creation`拥有原生编译/发布生命周期，F4.4的`reference_task_events`与`reference_task_evidence`分别拥有有界原事件、原job回执及文本窗口查询。F5.3的`handoff`依赖合同基础库，AC4.1与线上证据索引共同消费`task_envelopes.outcome_reference_state`核原作业完整引用；它拥有受限ZIP格式及离线内部身份校验；原生收集和CLI验证分别消费它。AC2为四种既有后端增加局部`AgentBackend` ABC及工厂；没有为每种专长创建Python类、空子包或通用插件容器。下图表示当前调用方向，组合节点内的模块并非互相依赖；精确导入由静态检查和源码确定。
 
 ```mermaid
 flowchart TB

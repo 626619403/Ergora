@@ -119,33 +119,103 @@ def _manifest_graph(snapshot: dict) -> dict:
         raise ValueError('Frozen composition JSON exceeds the decoder nesting limit') from error
 
 
-def review_member(composition: dict) -> str:
-    """Admit the runtime's single leaf shape without requiring SDKs or live tools.
+def review_members(composition: dict) -> dict:
+    """Select direct-input reviewers and the bounded explicit parallel shape.
 
     Creation and history may retain other valid static graphs. Submission and
     the executor share this narrower support contract; backend/resource checks
     still belong to the actual execution admission.
     """
-    if len(composition['members']) != 1:
-        raise ValueError('Composition execution currently requires one reviewer leaf')
-    member = next(iter(composition['members']))
     instances = {item['path']: item for item in _manifest_graph(composition['manifest'])['instances']}
-    leaf = instances[member]
-    if (leaf['role'] != 'reviewer' or leaf['permissions']['write']
-            or leaf['permissions']['shell'] or leaf['permissions']['network']):
-        raise ValueError('Composition review requires a read-only reviewer without shell or network')
-    node, port, visited = leaf, 'task', set()
-    while True:
-        if (node['path'] in visited or set(node['inputs']) != {port} or node['depends_on']
-                or 'input' not in node['inputs'][port]):
-            raise ValueError('Composition leaf requires a direct root task input')
-        visited.add(node['path'])
-        port = node['inputs'][port]['input']
-        if node['parent'] is None:
-            if port != 'task':
-                raise ValueError('Composition leaf must resolve to the root task input')
-            return member
-        node = instances[node['parent']]
+    members = {path: instances[path] for path in sorted(composition['members'])}
+    for leaf in members.values():
+        if (leaf['role'] != 'reviewer' or leaf['permissions']['write']
+                or leaf['permissions']['shell'] or leaf['permissions']['network']):
+            raise ValueError('Composition review requires a read-only reviewer without shell or network')
+        node, port, visited = leaf, 'task', set()
+        while True:
+            if (node['path'] in visited or set(node['inputs']) != {port} or node['depends_on']
+                    or 'input' not in node['inputs'][port]):
+                raise ValueError('Composition leaf requires a direct root task input')
+            visited.add(node['path'])
+            port = node['inputs'][port]['input']
+            if node['parent'] is None:
+                if port != 'task':
+                    raise ValueError('Composition leaf must resolve to the root task input')
+                break
+            node = instances[node['parent']]
+    if len(members) == 1:
+        return members
+
+    covered = {}
+
+    def coverage(path: str, port: str, active: frozenset) -> set:
+        if path in active:
+            raise ValueError('Composition review output cycle')
+        if (path, port) in covered:
+            return covered[path, port]
+        node = instances[path]
+        if port not in node['outputs']:
+            raise ValueError('Composition review has an unknown output port')
+        if node['kind'] == 'agent':
+            result = {path}
+        elif node['kind'] == 'workflow':
+            origin = node['outputs'][port]
+            if 'input' in origin:
+                raise ValueError('Composition review output must refer to an executed reviewer')
+            result = coverage(path + '/' + origin['node'], origin['output'], active | {path})
+        else:
+            if node['join'] != 'all' or not node['depends_on']:
+                raise ValueError('Composition review requires a nonempty all-join')
+            result = set()
+            for dependency in node['depends_on']:
+                for output in instances[dependency]['outputs']:
+                    result |= coverage(dependency, output, active | {path})
+        covered[path, port] = result
+        return result
+
+    selected = instances[composition['review_instance']]
+    if len(selected['outputs']) != 1:
+        raise ValueError('Parallel composition review requires one explicit all-join output')
+    origin = next(iter(selected['outputs'].values()))
+    if 'input' in origin:
+        raise ValueError('Parallel composition review output must refer to an explicit all-join')
+    terminal = instances[selected['path'] + '/' + origin['node']]
+    if (terminal['kind'] != 'join' or terminal['join'] != 'all'
+            or coverage(selected['path'], next(iter(selected['outputs'])), frozenset()) != members.keys()):
+        raise ValueError('Parallel composition review requires an explicit all-join covering every reviewer leaf')
+    scopes = {}
+    for leaf in members.values():
+        for scope in leaf['concurrency_scopes']:
+            if (not isinstance(scope['path'], str) or type(scope['limit']) is not int or scope['limit'] < 1
+                    or scopes.setdefault(scope['path'], scope['limit']) != scope['limit']):
+                raise ValueError('Composition review concurrency scopes must have consistent positive limits')
+    return members
+
+
+def outcome_reference_state(outcome: dict | None, job: dict) -> str:
+    """Compare complete original job references online and in offline packets."""
+    if outcome is None:
+        return 'not_recorded'
+    stage, reference = job['stage'], None
+    if stage in ('verify', 'review'):
+        receipt = outcome.get('verification' if stage == 'verify' else 'review')
+        if receipt is not None:
+            reference = {'stage': stage, 'job_id': receipt['job_id'], 'job_sha256': receipt['job_sha256'],
+                         'receipt_sha256': identity(receipt)}
+    elif stage.startswith('review:'):
+        aggregate = outcome.get('review')
+        if aggregate is not None and aggregate.get('kind') == 'composition-review-aggregate':
+            if aggregate.get('schema_version') != 1:
+                raise ValueError('Unsupported composition review aggregate')
+            reference = aggregate['members'].get(stage.removeprefix('review:'))
+    if reference is None:
+        return 'not_recorded'
+    if any(reference[key] != job[key] for key in ('stage', 'job_id', 'job_sha256')):
+        return 'differs'
+    if job['receipt'] is None:
+        return 'unavailable'
+    return 'matches' if reference['receipt_sha256'] == job['receipt_sha256'] else 'differs'
 
 
 def unwrap(document: dict) -> tuple[dict, dict | None]:
@@ -213,7 +283,7 @@ def summary(document: dict) -> dict:
     """Summarize verified history; runtime support describes shape, not readiness."""
     composition = document['composition']
     try:
-        review_member(composition)
+        review_members(composition)
     except ValueError:
         supported = False
     else:

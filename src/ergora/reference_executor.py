@@ -63,16 +63,20 @@ class Executor(original.Executor):
             with tempfile.TemporaryDirectory(prefix='ergora-composition-admission-') as temporary:
                 checked = self._manifest(Path(temporary) / 'manifest')
                 graph = checked['composition']
-            self.member = task_envelopes.review_member(composition)
-            selected = composition['members'][self.member]
-            agents.validate_binding('reviewer', selected['binding'], formal=True)
-            backend = agent_backends.for_binding(selected['binding'], {'codex': {'config': CONFIG / 'codex.toml'}})
-            backend.check_invocation()
-            backend.check_mode(selected['mode'])
-            require(backend.composition_policy(selected['mode']) == selected['policy'],
-                    'Frozen composition policy differs from the current backend contract')
-            if selected['mode'] == 'task-mcp':
-                task_mcp.check_available()
+            members = task_envelopes.review_members(composition)
+            stages = {'review' if len(members) == 1 else 'review:' + path: path for path in members}
+            self.member = stages.get(context['stage'])
+            require(not context['stage'].startswith('review') or self.member is not None,
+                    'Review stage does not select an admitted composition member')
+            for selected in composition['members'].values():
+                agents.validate_binding('reviewer', selected['binding'], formal=True)
+                backend = agent_backends.for_binding(selected['binding'], {'codex': {'config': CONFIG / 'codex.toml'}})
+                backend.check_invocation()
+                backend.check_mode(selected['mode'])
+                require(backend.composition_policy(selected['mode']) == selected['policy'],
+                        'Frozen composition policy differs from the current backend contract')
+                if selected['mode'] == 'task-mcp':
+                    task_mcp.check_available()
             self.graph = graph
         else:
             require('admission' not in context, 'Composition admission does not match the published task')

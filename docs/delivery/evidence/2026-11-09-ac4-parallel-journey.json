@@ -1,0 +1,85 @@
+{
+  "checked_at": "2026-11-09T04:32:30.575497+00:00",
+  "seconds": 228.3121592621319,
+  "records": {
+    "resumed-v2": {
+      "version": 2,
+      "task_id": "resumed-v2-public",
+      "run_id": "01a1be8b-559e-7cfc-a6a9-9ec05170754e",
+      "recovery": {
+        "original_run_after_worker_restart": true,
+        "same_three_saved_calls": true,
+        "new_candidate_history_replay_and_evidence": true,
+        "prior_worker_restart_receipts": [
+          {
+            "action": "stop",
+            "selected": [
+              "worker"
+            ],
+            "outcome": "confirmed"
+          },
+          {
+            "action": "start",
+            "selected": [
+              "worker"
+            ],
+            "outcome": "confirmed"
+          }
+        ]
+      },
+      "outcome": "REVIEW_READY",
+      "review_jobs": {
+        "review:root/test-value/review": "SUCCEEDED",
+        "review:root/correctness/review": "SUCCEEDED",
+        "review:root/structure/review": "SUCCEEDED"
+      },
+      "history": {
+        "sha256": "ef01ec193a4ccf11a9b398c81490253012ca53689c915db2243b9528519f66f1",
+        "replay": "passed",
+        "events": 183,
+        "workflow_type": "ErgoraCompositionWorkflowV2"
+      },
+      "handoff_sha256": "e6f9dccd1ef6dd5670da17dced185ec95f74b9bea2e57c9c8a5e77568948f04c"
+    },
+    "rejected-v2": {
+      "version": 2,
+      "task_id": "rejected-v2-public",
+      "run_id": "01a1be91-07e8-73d4-a6f0-36bcefc274a1",
+      "outcome": "BLOCKED",
+      "review_jobs": {
+        "review:root/test-value/review": "SUCCEEDED",
+        "review:root/correctness/review": "FAILED",
+        "review:root/structure/review": "SUCCEEDED"
+      },
+      "history": {
+        "sha256": "ab51a55d5224255e6d5cb00242b52c38976557df63e866739510df6c73bc980b",
+        "replay": "passed",
+        "events": 189,
+        "workflow_type": "ErgoraCompositionWorkflowV2"
+      },
+      "handoff_sha256": "a534b8c6fcd2a7210d7945dfc4307ab8f6fa3ad9125e69bf81fba675e16ea6d8"
+    },
+    "cancelled-v2": {
+      "version": 2,
+      "task_id": "cancelled-v2-public",
+      "run_id": "01a1be92-983a-76a9-b515-48c691bf8fc1",
+      "outcome": "CANCEL_UNCONFIRMED",
+      "review_jobs": {
+        "review:root/test-value/review": "SUCCEEDED",
+        "review:root/correctness/review": "CANCELLED",
+        "review:root/structure/review": "SUCCEEDED"
+      },
+      "history": {
+        "sha256": "81ea203be63a578adfad083d5f6d1d94d69b6ade815e37e918f1904eefb4a1bf",
+        "replay": "passed",
+        "events": 178,
+        "workflow_type": "ErgoraCompositionWorkflowV2"
+      },
+      "handoff_sha256": "22ec1a59e112a3f8d8b56bba3ffcdbb8399c5567362e16856d9f7322b604921c"
+    }
+  },
+  "ports_closed": true,
+  "databases_retained": true,
+  "scope": "Continues existing immutable R3 tasks using the new installed candidate: original positive run from worker restart is reread and replayed without repeating agent calls; remaining rejection and cancellation run under the new code. Real CLI/Supervisor/Temporal/scanner, three mandatory nested reviews, original model-protocol fixtures, worker-only recovery, rejection/cancel/fence/reconcile and indexed/offline evidence; no model quality or complete active-process crash recovery claim.",
+  "source_record": "Previous positive run remains bound to R3 original package; this candidate executes its complete history replay and evidence/handoff readers, then rejection/cancel cases."
+}
