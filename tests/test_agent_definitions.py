@@ -36,8 +36,9 @@ def revise(source, change):
 def test_complementary_examples_material_and_filtering_share_backend_without_sharing_identity(tmp_path):
     contracts.StrictValidator.check_schema(contracts.AGENT_DEFINITION)
     state = State(tmp_path / "state")
-    imported = [definitions.import_bundle(state, path) for path in sorted(EXAMPLES.iterdir())]
-    assert len(imported) == 2 and len({item["digest"] for item in imported}) == 2
+    sources = [EXAMPLES / name for name in ("architecture-reviewer", "kernel-implementer")]
+    imported = [definitions.import_bundle(state, path) for path in sources]
+    assert len({item["digest"] for item in imported}) == len(sources)
     assert {item["definition"]["backend"]["tool"] for item in imported} == {"codex"}
     assert [item["id"] for item in definitions.definitions(state, role="reviewer")] == ["architecture-reviewer"]
     assert [item["id"] for item in definitions.definitions(state, specialty="cuda")] == ["kernel-implementer"]

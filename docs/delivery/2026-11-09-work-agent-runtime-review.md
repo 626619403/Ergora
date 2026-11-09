@@ -2,7 +2,7 @@
 
 本报告保留本片初始源码审查、WA-S1 修复复核及 R2 最终本地验收。审查者 `/root/work_agent_runtime_review` 从新的上下文读取原始要求、已审合同及实际差异，并按 AIHERO 索引应用 `code-review`、`codebase-design` 和 `maintainable-project-delivery` 的 independent-review 要求。两个轴分别交给新的无历史上下文审查者，未委派实现；同片修复与最终证据由原审查者继续复核。
 
-**当前状态：R2 最终本地 Spec / Standards 验收通过，WA-S1 已关闭，开放 finding 和本地阻塞均为 0。** 原全组的一个 90 秒超时失败及原样单项重验分别保留；不称原全组全绿。下方按初审、修复、最终本地验收分别记载证据。普通提交、该精确提交自己的必要 CI 和明确 HTTPS 远端 SHA 核验仍待，尚未终结 C5 精确交付。
+**当前状态：R2 最终本地 Spec / Standards 验收通过；WA-S1 已关闭，WA-CI1 的测试修正也已通过同片本地复核，精确交付仍待。** 原 `8a856f54c0e0d16b762f5c62ca1b170eca2ddd9f` 的对象身份已核，自己的 Windows 必要回归失败，Ubuntu 回归在最近采样时仍在途。修正候选须取得自己的必要 CI 与明确 HTTPS 远端 SHA，不能借局部重验覆盖原失败。原全组的一个 90 秒超时失败及原样单项重验另外保留；不称原全组全绿。下方按初审、修复、本地验收和精确候选复核分别记载证据。
 
 ## 固定范围与证据身份
 
@@ -115,3 +115,34 @@ Standards 轴复核当前架构图、协议版本和恢复说明、示例依赖�
 本次状态追加前的低成本检查为 **12 Markdown /276 本地链接和锚点、88 条文档命令 parser、15 Python AST 全通过**，`git diff --check` 通过。它们不充作应用或外部集成运行结果。实际时长只代表这些运行，没有加速或多模型质量结论。
 
 **最终本地计数：Spec 历史 finding 1、已关闭 1、开放 0；Standards finding 0；本地验收阻塞 0。** 剩余精确交付门禁为本片普通提交、该提交自己的必要 CI 与明确 HTTPS 远端同 SHA；这些尚未发生，本报告不提前登记通过。后续三个领域模板、AC5 页面和 AC6 新用户旅程仍按后片范围推进。
+
+## 精确候选 8a856f5：对象通过，必要 CI 失败
+
+本节由原独立主审继续同片交付核验，不将下一片 AC4.4 的当前工作树混入本片。精确候选为 `8a856f54c0e0d16b762f5c62ca1b170eca2ddd9f`，父对象为原基线 `11a00061c0573f3d24e0402671d02acc1d1e9107`。`git diff-tree` 的 **38 文件**名单与已审 acceptance38 和作者 commit 记录完全相同；34 文件直接匹配原 scope SHA，另外四文件仅为 PLAN、AC-plan、runtime 和本报告的已核本地状态增量。本报告提交内字节精确为已核 `d4c3b76ed31b2695d0dbc7abb0a7d603cd677d6a675a1dd287bd0990efa1e9e4`。从固定 diff 重建原文、逐字核其余状态增量，没有新增生产行为。
+
+以私有保留原件 `runtime/r2/dist/ergora-0.2.0-py3-none-any.whl`（原 SHA `6fe8a5a663ef82fb9468e5d3eb24c6cb0f82a4f011e6f6e8c96743b5a13c1bdf`）独立比对该候选 Git 对象和原 R2 安装目录：**372 文件逐字一致**、清单摘要仍为 `f990f22953b010ef4b633ddec80fa01f00b14908340dea2c65804f886d17f2a7`；283 冻结树相对基线无差异。保留原包与根目录当前 `dist` 分开，未把后者当原 R2 证据。Portability workflow 与基线逐字相同，SHA `81c168fdb140f44ccfdca497003e452355c9164a6ed6f8dfb8fa31729a1943ca`。原件核验结果为 `independent/commit-object-audit.json`，SHA `4d2fb1533efa88c1cca98b69756affc0d5fa15e352a75ac5807257680ff9ded8`。只从该 Git 树核 **12 Markdown /284 本地链接及锚点，0 失效**，结果 `independent/commit-doc-links.json`；未使用下一片当前源码。
+
+### WA-CI1（P1，交付阻塞）：新增第三份专家示例未同步既有库存断言
+
+位置：[test_agent_definitions.py:39](../../tests/test_agent_definitions.py#L39) 与 [validation-implementer 定义](../../examples/agents/validation-implementer/agent.json)。原测试遍历 `examples/agents` 的全部目录，却在第 40 行要求导入数量和不同 digest 数都恰为 2。本候选真实目录已有 `architecture-reviewer`、`kernel-implementer`、`validation-implementer` 三份合法示例；因此原测试到达 `assert (3 == 2)`。这是既有测试的目录库存假设没有随新增示例更新，不是已证实的 workspace 执行生产缺陷。
+
+独立于作者再次读取官方 [Portability run 42599729729](https://github.com/626619403/Ergora/actions/runs/42599729729) 及两个 job 页面，核候选完整 SHA、workflow、所选 job ID 和各步骤的精确 commit/check/log URL。**2026-11-09 10:28:32.377196 UTC** 的原页采样为：
+
+| job | 必要步骤原结论 |
+|---|---|
+| Ubuntu 3.11，`129100927761` | Build and install wheel、Packaged reference identity 成功；Native application regression 在途、无终态。 |
+| Windows 3.12，`129100928088` | Build and install wheel、Packaged reference identity、Windows PowerShell 5.1 installer and upgrade 成功；**Native application regression 失败**。 |
+
+全 run 在该时刻仍为 `In progress`，但 Windows 已完成的必要失败已阻止门禁通过。官方 annotation 的完整 test ID 为 `tests/test_agent_definitions.py::test_complementary_examples_material_and_filtering_share_backend_without_sharing_identity`；原末行为 **1 failed /749 passed /572 skipped /16 subtests passed /439.33 秒**。这不是上文原本地 90 秒 timeout 的重现，也不能把两次失败合成同一原因。官方 Windows 原页 SHA 为 `e8908ca714d6cd0d70a0972bb14cdda3fec54607404a7abe985671df21c4b7f7`；采样摘要与原页保留在 `independent/exact-ci-observation-02/`，摘要 SHA `f0334c558c074159fcc2eaac8c38c1734a9ecf39c7d9b6b2444e7b6d8334b6b1`，可见失败原文另存 `independent/exact-ci-windows-failure-visible.json`。
+
+最小处置在原测试：明确其原语义针对的互补实例集合，并按实际集合核彼此不同的 digest，继续保留原后端、筛选和完整资源检查；不需要改生产调度/权限、放宽资源校验或增加 CI 作业。保留 `8a856f5` 的原失败，修复须普通提交，并核修复候选自己的必要 CI；不能以另一片后续 CI 或一次局部通过替代原失败身份。主审没有修改测试或实现、取消原 CI、启动重跑或读写下一片状态。
+
+**本次精确交付结论：对象/包/文档身份通过；WA-CI1 开放，必要 CI 门禁未通过，明确 HTTPS 远端 SHA 的最终门禁尚未执行。** 最近采样的 Ubuntu 终态仍未知，不能推为成功或失败。此前本地验收及 WA-S1 关闭保留为各自范围的历史事实；当前 Spec 历史 finding 2、已关闭 1、开放 1，Standards finding 0。本次返回等待原 CI 终态与作者处置，不持续轮询或提前登记精确交付完成。
+
+### WA-CI1 同片测试修正复核：本地关闭，精确交付待新候选
+
+已直接读取作者用保留 R2 非 editable 包执行的原例和修后整文件日志：`runtime/r2/ci-example-original.log` 为 **1 failed /0.54 秒**，同一 `3 == 2`；`ci-example-fixed.log` 为 **54 passed /1 skipped /15.74 秒**。skip 是 Linux 不能执行的真实 Windows junction 用例，不计 Windows 成功。这些结果与官方 Windows 的原失败分别保留，主审没有重新运行测试或服务。
+
+实际修正仅在原 `tests/test_agent_definitions.py:39–42`：显式选择 `architecture-reviewer` 与 `kernel-implementer` 这对原测试要比较的互补同后端实例，按 `len(sources)` 检查 digest 彼此不同；原 schema、共同后端、职能/专长过滤及完整资源文本检查均保留。该测试的用途不是要求整个示例目录永远只有两个实例或一种后端；将比较对象显式化比把全目录常量改成 3 更符合原语义。新增 validation 示例的正式 v5 映射、输入材料和实际工作路径已在本片原工作旅程覆盖，无须为该修正增加生产校验、重复测试层或 CI 作业。
+
+主审读取完整差异、检查 Python AST，并保存修后测试原文、diff 和两日志身份至私有 `independent/ci-example-fixed-source.py`、`ci-example-test-fix.diff`、`ci-example-test-fix-review.json`。修后测试 SHA256 为 `4d75b81a856553b246c8ac5a34273ce0f1faa40bfd2e1904aae136c7eda58306`。**WA-CI1 测试修正的本地复核通过，源码 finding 关闭；Spec 历史 2、已关闭 2、开放 0，Standards finding 0。** 原 `8a856f5` 的 Windows 必要失败不改变；修正此时尚未作为新精确候选完成自己的 CI/HTTPS 门禁。本次仅核这份测试修正与前片记账，不接受当前 AC4.4 源码、数据或其后续 CI 作为前片替代证据。
