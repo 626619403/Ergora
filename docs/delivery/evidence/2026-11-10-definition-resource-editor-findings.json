@@ -1,0 +1,121 @@
+{
+  "schema_version": 1,
+  "projection": "Formatted and machine-path-redacted evidence; original artifact SHA differs from this projection.",
+  "scope": "RDE-I1 isolated fixed-source original and repaired probes; not real browser OOM. Actual disclosure close observation remains unexplained, with full draft preserved; no product root cause or data loss claimed.",
+  "source_artifacts": {
+    "red": {
+      "artifact": "independent/probe-r1.json",
+      "bytes": 1248,
+      "sha256": "a8d74c4b09f64cdd25def6e48bee0d60a858572870071450e797bfe216a5270c"
+    },
+    "fixed": {
+      "artifact": "independent/probe-r2-public-summary.json",
+      "bytes": 1886,
+      "sha256": "a0cff66e90c9f5744e064f948bc2793ec5dcc08dc6d296f7116fca53ff29e426"
+    },
+    "errors_wait_diagnosis": {
+      "artifact": "r2/browser/errors-01-harness-diagnosis.json",
+      "bytes": 389,
+      "sha256": "1cf20620792384053abff0e6d307d0543b0df559c83bd32258b9f34a49f79b77"
+    },
+    "home_wait_diagnosis": {
+      "artifact": "r2/browser/races-01-harness-diagnosis.json",
+      "bytes": 497,
+      "sha256": "6c903d0534f8bec86c1cdd844b93c6b2ea5ed57c3ed5e564f7a6966c43666277"
+    }
+  },
+  "data": {
+    "red": {
+      "checked_at": "2026-11-10T08:36:12.170Z",
+      "baseline": "80375d3647fbea585db77a08ab39e70915b01e96",
+      "source": "src/ergora/data/console/definitions.js",
+      "source_sha256": "a18a248ded8ba3ee8a51fbf8ace84db4defa52ffe66643c98733a52370df74a3",
+      "expected_sha256": "a18a248ded8ba3ee8a51fbf8ace84db4defa52ffe66643c98733a52370df74a3",
+      "execution": "Node vm; actual fixed source; minimal inert DOM; no network, server or browser",
+      "checks": [
+        {
+          "name": "cumulative-text-input-before-stage",
+          "adoptedWriteBytes": 10000000,
+          "addedDraftBytes": 1,
+          "inputError": null,
+          "retainedDraft": "x",
+          "checkpointDraft": "x",
+          "priorDraftPreserved": false
+        },
+        {
+          "name": "same-input-at-stage",
+          "error": "完整 UTF-8 文本超过资源写预算；原草稿已保留，请使用 CLI --resources。",
+          "retainedDraft": "x",
+          "workingCollection": null,
+          "adoptedOperations": 1
+        },
+        {
+          "name": "single-draft-over-limit-before-stage",
+          "inputError": null,
+          "retainedCharacters": 10000001,
+          "checkpointDraftCharacters": 10000001,
+          "restoreShapeError": "完整 UTF-8 文本超过资源写预算；原草稿已保留，请使用 CLI --resources。"
+        }
+      ]
+    },
+    "fixed": {
+      "checked_at": "2026-11-10T08:40:27.605Z",
+      "baseline": "80375d3647fbea585db77a08ab39e70915b01e96",
+      "source": "src/ergora/data/console/definitions.js",
+      "source_sha256": "453e0bcd481b8e46b2e81dabf8a75ef59118d13c8d1a09a37e0b1a71aff987ed",
+      "expected_sha256": "453e0bcd481b8e46b2e81dabf8a75ef59118d13c8d1a09a37e0b1a71aff987ed",
+      "execution": "Node vm; actual fixed source; minimal inert DOM; no network, server or browser",
+      "checks": [
+        {
+          "name": "cumulative-text-input-before-stage",
+          "adoptedWriteBytes": 10000000,
+          "addedDraftBytes": 1,
+          "inputError": null,
+          "currentError": "完整 UTF-8 文本超过资源写预算；原草稿已保留，请使用 CLI --resources。",
+          "retainedDraft": "",
+          "checkpointDraft": "",
+          "priorDraftPreserved": true
+        },
+        {
+          "name": "same-input-at-stage",
+          "error": "",
+          "retainedDraft": null,
+          "workingCollection": {
+            "operations": 2,
+            "paths": [
+              "at-limit.bin",
+              "new.txt"
+            ],
+            "writeBase64Characters": [
+              13333336,
+              0
+            ]
+          },
+          "adoptedOperations": 1
+        },
+        {
+          "name": "single-draft-over-limit-before-stage",
+          "inputError": null,
+          "retainedCharacters": null,
+          "currentError": "完整 UTF-8 文本超过资源写预算；原草稿已保留，请使用 CLI --resources。",
+          "checkpointDraftCharacters": null,
+          "restoreShapeError": "文件草稿格式无法读取"
+        }
+      ],
+      "projection": "Only workingCollection is replaced by operation count, exact paths, and base64 character counts; duplicate synthetic ten-million-byte payload remains in private original. Other fields retained.",
+      "original": {
+        "artifact": "independent/probe-r2.json",
+        "bytes": 13334960,
+        "sha256": "97d83b21f5097d62ab446929b205dbe3e13b2a7e7e74cd4138755eb29e276b0e"
+      }
+    },
+    "errors_wait_diagnosis": {
+      "scope": "Harness-only wait predicate error. Product pending YAML correctly disables Apply fields. After successful discard-file action, harness waited for that unrelated button. Change idle predicate to Discard fields, disabled solely by request owner; restore exact primary-journey checkpoint before retry. Original script and result retained.",
+      "product_source_unchanged": true
+    },
+    "home_wait_diagnosis": {
+      "scope": "Three real stale preview/adoption/upload paths passed. On home switch, harness selected still-rendered A option after B bootstrap but before B definition list render; original currentLibrary guard blocked stale action as intended. No B detail request was sent, and new B list eventually rendered without selection. Wait actual B presets response and refreshed library idle before selecting, then only continue remaining home/unknown scenarios.",
+      "product_source_unchanged": true
+    }
+  }
+}

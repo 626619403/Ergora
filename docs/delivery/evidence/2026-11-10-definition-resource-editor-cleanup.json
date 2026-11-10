@@ -1,0 +1,231 @@
+{
+  "schema_version": 1,
+  "projection": "Formatted and machine-path-redacted evidence; original artifact SHA differs from this projection.",
+  "scope": "Only two rounds of owned isolated HTTP/proxy and named browser processes were stopped; original process identities and post-stop checks retained.",
+  "source_artifacts": {
+    "r1_http": {
+      "artifact": "r1/browser/cleanup.json",
+      "bytes": 442,
+      "sha256": "9aa7c72cd714d15ddee10474ce23d4cb8650fc0ee184109ad860921382c69b3b"
+    },
+    "r1_browser": {
+      "artifact": "r1/browser/browser-cleanup.json",
+      "bytes": 1297,
+      "sha256": "f9ff118f269a1d1dd721ca015773376a568097d2d04dceba219ad2cf706b70c2"
+    },
+    "r2_http": {
+      "artifact": "r2/browser/cleanup.json",
+      "bytes": 442,
+      "sha256": "48a91919424cf7f1b57126104e5b53f219afcc5aff7eb7e580892ff249a4ecf1"
+    },
+    "r2_http_audit": {
+      "artifact": "r2/browser/http-cleanup-audit.json",
+      "bytes": 751,
+      "sha256": "45f14e9d4593f878ca56b9e30751e1a3f63e82d98c400a22a4ead782354cf094"
+    },
+    "r2_browser": {
+      "artifact": "r2/browser/browser-cleanup.json",
+      "bytes": 1477,
+      "sha256": "557dc0d3392508d3b548a231120122ea947bbaed911275eda7d2800259ad0924"
+    }
+  },
+  "data": {
+    "r1_http": {
+      "checked_at": "2026-11-10T08:40:39.148691+00:00",
+      "services": [
+        {
+          "pid": 3611878,
+          "starttime": "231860982",
+          "identity_matched": true,
+          "exit_code": -15,
+          "reaped": true
+        },
+        {
+          "pid": 3611976,
+          "starttime": "231861093",
+          "identity_matched": true,
+          "exit_code": -15,
+          "reaped": true
+        }
+      ],
+      "proxy_closed": true,
+      "scope": "Only newly owned isolated HTTP services."
+    },
+    "r1_browser": {
+      "checked_at": "2026-11-10T08:40:40.498560+00:00",
+      "observations": [
+        {
+          "pid": 3615976,
+          "parent": 1,
+          "starttime": "231864127",
+          "same_identity_present": false,
+          "observed_state": null
+        },
+        {
+          "pid": 3616155,
+          "parent": 3615976,
+          "starttime": "231864162",
+          "same_identity_present": false,
+          "observed_state": null
+        },
+        {
+          "pid": 3616336,
+          "parent": 3616155,
+          "starttime": "231864190",
+          "same_identity_present": false,
+          "observed_state": null
+        },
+        {
+          "pid": 3616337,
+          "parent": 3616155,
+          "starttime": "231864190",
+          "same_identity_present": false,
+          "observed_state": null
+        },
+        {
+          "pid": 3616410,
+          "parent": 3616336,
+          "starttime": "231864203",
+          "same_identity_present": false,
+          "observed_state": null
+        },
+        {
+          "pid": 3616412,
+          "parent": 3616155,
+          "starttime": "231864205",
+          "same_identity_present": false,
+          "observed_state": null
+        },
+        {
+          "pid": 3616449,
+          "parent": 3616337,
+          "starttime": "231864213",
+          "same_identity_present": false,
+          "observed_state": null
+        }
+      ],
+      "scope": "Named R1 browser session closed; process identities observed, no killall or user-session action."
+    },
+    "r2_http": {
+      "checked_at": "2026-11-10T09:03:27.227068+00:00",
+      "services": [
+        {
+          "pid": 3744285,
+          "starttime": "231941512",
+          "identity_matched": true,
+          "exit_code": -15,
+          "reaped": true
+        },
+        {
+          "pid": 3744788,
+          "starttime": "231941773",
+          "identity_matched": true,
+          "exit_code": -15,
+          "reaped": true
+        }
+      ],
+      "proxy_closed": true,
+      "scope": "Only newly owned isolated HTTP services."
+    },
+    "r2_http_audit": {
+      "checked_at": "2026-11-10T09:04:45.805634+00:00",
+      "processes": [
+        {
+          "pid": 3744268,
+          "starttime": "231941494",
+          "same_identity_present": false
+        },
+        {
+          "pid": 3744285,
+          "starttime": "231941512",
+          "same_identity_present": false
+        },
+        {
+          "pid": 3744788,
+          "starttime": "231941773",
+          "same_identity_present": false
+        }
+      ],
+      "ports": [
+        {
+          "port": 33839,
+          "accepting_connection": false
+        },
+        {
+          "port": 57845,
+          "accepting_connection": false
+        },
+        {
+          "port": 44951,
+          "accepting_connection": false
+        }
+      ],
+      "none_survive": true,
+      "scope": "Identity and owned loopback port audit after explicit manager stop; no unrelated process touched."
+    },
+    "r2_browser": {
+      "checked_at": "2026-11-10T09:03:27.392226+00:00",
+      "session": "ergora-c3c-d3-r2",
+      "observed": [
+        {
+          "pid": 3748712,
+          "ppid": 1,
+          "starttime": "231944206",
+          "state": "S",
+          "same_identity_present": false,
+          "observed_state": null
+        },
+        {
+          "pid": 3748724,
+          "ppid": 3748712,
+          "starttime": "231944239",
+          "state": "S",
+          "same_identity_present": false,
+          "observed_state": null
+        },
+        {
+          "pid": 3748726,
+          "ppid": 3748724,
+          "starttime": "231944242",
+          "state": "S",
+          "same_identity_present": false,
+          "observed_state": null
+        },
+        {
+          "pid": 3748727,
+          "ppid": 3748724,
+          "starttime": "231944242",
+          "state": "S",
+          "same_identity_present": false,
+          "observed_state": null
+        },
+        {
+          "pid": 3748749,
+          "ppid": 3748726,
+          "starttime": "231944247",
+          "state": "S",
+          "same_identity_present": false,
+          "observed_state": null
+        },
+        {
+          "pid": 3748750,
+          "ppid": 3748724,
+          "starttime": "231944247",
+          "state": "S",
+          "same_identity_present": false,
+          "observed_state": null
+        },
+        {
+          "pid": 3748770,
+          "ppid": 3748727,
+          "starttime": "231944248",
+          "state": "S",
+          "same_identity_present": false,
+          "observed_state": null
+        }
+      ],
+      "no_owned_identity_survives": true,
+      "scope": "Identity audit after explicit named browser close; no unrelated process terminated."
+    }
+  }
+}

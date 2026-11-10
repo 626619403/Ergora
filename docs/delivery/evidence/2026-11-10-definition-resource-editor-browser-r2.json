@@ -1,0 +1,243 @@
+{
+  "schema_version": 1,
+  "projection": "Formatted and machine-path-redacted evidence; original artifact SHA differs from this projection.",
+  "scope": "Actual R2 installed browser records. Partial runs retain their original script timeouts and completed cases; later runs continue only necessary remaining cases. Primary summary omits only duplicate large finalState and binds original result hash. Not max-package/concurrent capacity or Windows browser acceptance.",
+  "source_artifacts": {
+    "primary": {
+      "artifact": "r2/browser/basic-01-summary.json",
+      "bytes": 1351,
+      "sha256": "12f16e1bd3442478d9668a910b683be3f7aa66ad72e35c3974d845baaa1d8489"
+    },
+    "primary_command": {
+      "artifact": "r2/browser/basic-01-command.json",
+      "bytes": 276,
+      "sha256": "57cc234e94a4471eb948e84ced7a659e843cc8f1f0b7b39cb680e2258a92cb99"
+    },
+    "errors": {
+      "artifact": "r2/browser/errors-02.json",
+      "bytes": 748,
+      "sha256": "c893e879a63caef8d73e44811dafd1346a5ec32c654525fe3f47dfc22516e6b4"
+    },
+    "errors_command": {
+      "artifact": "r2/browser/errors-02-command.json",
+      "bytes": 276,
+      "sha256": "104d443f655bdbf834444a48d403f68ef09eecfe058ce5248a461081a67388c6"
+    },
+    "races_partial": {
+      "artifact": "r2/browser/races-01.json",
+      "bytes": 2356,
+      "sha256": "b3a98e037d1dfc1eb594e7626e0717aa8c3335fa629366aa32dd6b85119069be"
+    },
+    "races_remaining": {
+      "artifact": "r2/browser/races-02.json",
+      "bytes": 2074,
+      "sha256": "8c60f7974be4d78790c9afc80b0f7fb4939a4d15737630ec1ee433af4446b511"
+    },
+    "races_remaining_command": {
+      "artifact": "r2/browser/races-02-command.json",
+      "bytes": 277,
+      "sha256": "2b8e9c09f3100748f4b7bfb0dd6a26fd24fba1515db593e66721093bfe0acfb5"
+    },
+    "history_partial": {
+      "artifact": "r2/browser/history-01.json",
+      "bytes": 4467,
+      "sha256": "ebd51ce806a4df4d629fda4f460b7ce565d305c4f90a0630dd1badb56077e4f0"
+    },
+    "history_resources": {
+      "artifact": "r2/browser/history-02.json",
+      "bytes": 219,
+      "sha256": "007a528330e8535b0129bb0f13727c64169c8a7ca956aa09bdf4de80efaf8c64"
+    },
+    "history_resources_command": {
+      "artifact": "r2/browser/history-02-command.json",
+      "bytes": 278,
+      "sha256": "c4dd0d4d1b666d36301d35acfd4d0e1a4da6ef1c1531e584b29a10e9045210a5"
+    }
+  },
+  "data": {
+    "primary": {
+      "passed": true,
+      "observations": [
+        {
+          "kind": "agent",
+          "id": "ergora-structure-reviewer",
+          "published_digest": "282ce7dacf248ae042ac4b31e364f4883da1bbc8217e6b1493d48ac97762461f",
+          "operations": 7,
+          "bomBytes": 144003,
+          "originalUnchanged": true,
+          "cumulativeAdoption": true,
+          "atomicHistory": true,
+          "restored": true
+        },
+        {
+          "kind": "workflow",
+          "id": "ergora-governance-delivery",
+          "published_digest": "d8ecef5cf3f81ef82cd12da53c03686229238ea4679f6815c636e53cdb40020b",
+          "operations": 7,
+          "bomBytes": 144003,
+          "originalUnchanged": true,
+          "cumulativeAdoption": true,
+          "atomicHistory": true,
+          "restored": true
+        }
+      ],
+      "dialogs": [
+        "本次修改将重新生成 JSON 原文，原注释和排版会被替换。要保留请取消并先下载原文；是否继续同步？",
+        "本次修改将重新生成 JSON 原文，原注释和排版会被替换。要保留请取消并先下载原文；是否继续同步？"
+      ],
+      "errors": [],
+      "projection": "Only duplicate full finalState objects omitted; exact original result identity below. All remaining fields retained.",
+      "original": {
+        "artifact": "r2/browser/basic-01.json",
+        "bytes": 393451,
+        "sha256": "865b904c4ecaddf88cbb352d53acd32165e6dd609f9a53a08b3cc2be074d5922"
+      }
+    },
+    "primary_command": {
+      "checked_at": "2026-11-10T08:51:29.562659+00:00",
+      "script_sha256": "af3b3257bec45987e49cc88206f275b9659e8416ca08e39a9658e5bb3f134a65",
+      "returncode": 0,
+      "seconds": 8.79356016498059,
+      "log_sha256": "4eb08cce120d1220065c97ff21c65babbbf2a8db7837931e6ecca2aa008cedd9"
+    },
+    "errors": {
+      "passed": true,
+      "results": {
+        "binaryRejectsLossyDecode": true,
+        "replaceKeepsOtherOperations": true,
+        "pendingBytesRestore": true,
+        "pendingCannotPublishOrUndo": true,
+        "explicitEmptyKept": true,
+        "emptyDoesNotOverlayApplied": true,
+        "discardRestoresAppliedSet": true,
+        "corruptCachePreservesRaw": true,
+        "correctedCacheReopens": true,
+        "legacyV1Migrates": true,
+        "cumulativeUploadRejectedBeforeRead": true,
+        "singleUploadRejectedBeforeRead": true,
+        "textRejectedBeforeRetention": true,
+        "quotaFailureVisible": true,
+        "quotaDownloadComplete": true,
+        "httpBudgetPreservesBuffer": true,
+        "discardAfterQuotaRecoversCache": true
+      },
+      "writeBytes": 9744188,
+      "fileReads": 3,
+      "errors": []
+    },
+    "errors_command": {
+      "checked_at": "2026-11-10T08:53:50.463305+00:00",
+      "script_sha256": "df203f18872945fcdaaee15d607859f3f5486d9f8a86a138c5873e270fca37f1",
+      "returncode": 0,
+      "seconds": 8.00850580772385,
+      "log_sha256": "a6ba56aafad2d925c1a54f6ff78ea16e18ae4bf2c917bf68d764658305e4c12e"
+    },
+    "races_partial": {
+      "failed": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: '编辑定义并派生新版本', exact: true }) to be visible\u001b[22m\n",
+      "step": "late read across real home switch",
+      "results": {
+        "latePreviewKeepsNewDraft": true,
+        "lateAdoptionIsAtomic": true,
+        "lateUploadKeepsNewDraft": true
+      },
+      "errors": [],
+      "screen": "ERGORA WORKSPACE\nAgent 与组合库\n\n复用专长 Agent 与嵌套子工作流。此库在同一控制目录内共享，可在注册项目之前使用。\n\n刷新定义库\n内置领域组合\n\n导入版本化定义以供后续选择；执行时另行确认项目授权与后端能力。后端工具的安装和认证在工具绑定中处理。\n\n组合\t支持范围\t操作\n\nrepository-governance\n\nParallel repository mapping and architecture regression, followed by complementary final review.\n\n\t原六阶段开发运行；writer 信任须显式选择\t导入 repository-governance\n\nlarge-change\n\nContract, parallel client/server, integration validation and complementary final review.\n\n\t原六阶段开发运行；writer 信任须显式选择\t导入 large-change\n\ntraining-optimization\n\nRead-only experiment, profile and kernel proposals with measurement review; trusted experiments remain separate.\n\n\t静态组合与只读提案叶；实验由可信 runner 执行\t导入 training-optimization\n选择定义\n\n6 个 Agent 版本 · 7 个工作流版本。后端字段表示默认请求，可用性由实际调用核验。\n\nAgent 精确版本\n选择 Agent 精确版本…\nergora-architecture-test-author @ 1.0.0 · implementer\nergora-correctness-reviewer @ 1.0.0 · reviewer\nergora-governance-mapper @ 1.0.0 · implementer\nergora-structure-reviewer @ 1.0.0 · reviewer\nergora-structure-reviewer @ 1.0.10 · reviewer\nergora-test-value-reviewer @ 1.0.0 · reviewer\n子工作流精确版本\n选择子工作流精确版本…\nergora-correctness-review @ 1.0.0\nergora-delivery-review @ 1.0.0\nergora-governance-delivery @ 1.0.0\nergora-governance-delivery @ 1.0.10\nergora-governance-work @ 1.0.0\nergora-structure-review @ 1.0.0\nergora-test-value-review @ 1.0.0\n选择一个精确版本\n\n先导入内置组合，或从列表选择 Agent / 子工作流。版本详情和静态预览均不执行任务。"
+    },
+    "races_remaining": {
+      "passed": true,
+      "results": {
+        "lateReadCannotWriteOtherHome": true,
+        "aWorkSurvivesHomeSwitch": true,
+        "bDraftIsolated": true,
+        "unknownPublishKeepsNewerDraft": true,
+        "noAutomaticPublishRetry": true,
+        "explicitSameCandidateRetry": true
+      },
+      "errors": [],
+      "candidate": {
+        "digest": "289a039cd648d15352ddff186f64fac1d5f7c2ca5b515e34b2c9d7b405674995",
+        "directories": [
+          "added",
+          "added/nested",
+          "added/nested/empty",
+          "kept",
+          "kept/empty",
+          "notes",
+          "race",
+          "skills",
+          "skills/browser-new",
+          "skills/browser-new/references",
+          "skills/browser-original",
+          "skills/browser-original/references",
+          "skills/browser-original/references/empty",
+          "skills/ergora-structure-reviewer"
+        ]
+      },
+      "publishRequests": [
+        {
+          "number": 312,
+          "home": "A",
+          "method": "POST",
+          "path": "/api/agent-definitions/ergora-structure-reviewer/1.0.10/revisions",
+          "started_at": "2026-11-10T08:56:50.766963+00:00",
+          "request_bytes": 194369,
+          "request_sha256": "941859cc50d65b834ecfe76819aa6aa13bd366bea37f97d5f1effbebd617f81b",
+          "status": 200,
+          "response_received_at": "2026-11-10T08:56:51.110333+00:00",
+          "response_bytes": 5924,
+          "response_sha256": "7e3e20368051177442bca3fa355f8b6c7abce4c47ae547fdc7208d3a3a1b5169",
+          "response_deliberately_lost": true,
+          "completed_at": "2026-11-10T08:56:51.111683+00:00"
+        },
+        {
+          "number": 317,
+          "home": "A",
+          "method": "POST",
+          "path": "/api/agent-definitions/ergora-structure-reviewer/1.0.10/revisions",
+          "started_at": "2026-11-10T08:56:51.883540+00:00",
+          "request_bytes": 194369,
+          "request_sha256": "941859cc50d65b834ecfe76819aa6aa13bd366bea37f97d5f1effbebd617f81b",
+          "status": 200,
+          "response_received_at": "2026-11-10T08:56:52.323507+00:00",
+          "response_bytes": 5924,
+          "response_sha256": "7e3e20368051177442bca3fa355f8b6c7abce4c47ae547fdc7208d3a3a1b5169",
+          "completed_at": "2026-11-10T08:56:52.324913+00:00"
+        }
+      ]
+    },
+    "races_remaining_command": {
+      "checked_at": "2026-11-10T08:56:53.492870+00:00",
+      "script_sha256": "7ba577f3616eeecd4c9fb38cf148af216198725bdbacf5996175769020bbd8c0",
+      "returncode": 0,
+      "seconds": 5.740558947902173,
+      "log_sha256": "ae64e9ecfcc2b1a380f083e3a57159b3a6a6ad1481f9e9ab3e2b8e44a5531141"
+    },
+    "history_partial": {
+      "failed": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: '暂存文件操作', exact: true })\u001b[22m\n",
+      "step": "resource bytes included in history budget",
+      "results": {
+        "fiftySnapshots": true
+      },
+      "errors": [],
+      "screen": "ERGORA WORKSPACE\nAgent 与组合库\n\n复用专长 Agent 与嵌套子工作流。此库在同一控制目录内共享，可在注册项目之前使用。\n\n刷新定义库\n内置领域组合\n\n导入版本化定义以供后续选择；执行时另行确认项目授权与后端能力。后端工具的安装和认证在工具绑定中处理。\n\n组合\t支持范围\t操作\n\nrepository-governance\n\nParallel repository mapping and architecture regression, followed by complementary final review.\n\n\t原六阶段开发运行；writer 信任须显式选择\t导入 repository-governance\n\nlarge-change\n\nContract, parallel client/server, integration validation and complementary final review.\n\n\t原六阶段开发运行；writer 信任须显式选择\t导入 large-change\n\ntraining-optimization\n\nRead-only experiment, profile and kernel proposals with measurement review; trusted experiments remain separate.\n\n\t静态组合与只读提案叶；实验由可信 runner 执行\t导入 training-optimization\n选择定义\n\n8 个 Agent 版本 · 8 个工作流版本。后端字段表示默认请求，可用性由实际调用核验。\n\nAgent 精确版本\n选择 Agent 精确版本…\nergora-architecture-test-author @ 1.0.0 · implementer\nergora-correctness-reviewer @ 1.0.0 · reviewer\nergora-governance-mapper @ 1.0.0 · implementer\nergora-structure-reviewer @ 1.0.0 · reviewer\nergora-structure-reviewer @ 1.0.10 · reviewer\nergora-structure-reviewer @ 1.0.11 · reviewer\nergora-structure-reviewer @ 1.0.14 · reviewer\nergora-test-value-reviewer @ 1.0.0 · reviewer\n子工作流精确版本\n选择子工作流精确版本…\nergora-correctness-review @ 1.0.0\nergora-delivery-review @ 1.0.0\nergora-governance-delivery @ 1.0.0\nergora-governance-delivery @ 1.0.10\nergora-governance-delivery @ 1.0.11\nergora-governance-work @ 1.0.0\nergora-structure-review @ 1.0.0\nergora-test-value-review @ 1.0.0\n编辑定义并派生新版本\n\n编辑基于此精确原包，原附件与目录全部保留。发布增加不可变版本，不修改原定义或在途任务。\n\n{\n  \"base\": {\n    \"id\": \"ergora-correctness-reviewer\",\n    \"version\": \"1.0.0\",\n    \"digest\": \"c90f74219843f5a0724e6c83ef531453493bd26d1d45d40ca495e0ca6bbd441b\"\n  }\n}\n\n有未应用的字段、JSON / YAML、文件草稿或资源操作；请应用／采用或放弃后再检查、发布或撤销。\n\n完整上传字节已进入文件草稿；尚未暂存操作或应用。\n\n检查定义候选\n发布新定义版本\n下载定义编辑缓冲\n撤销定义编辑\n重做定义编辑\n\n本页历史最多50份、合计4MiB（含完整资源操作字节）；单份超限时仅保留当前已应用快照。刷新后保留编辑缓冲并重新建立历史。\n\n字段编辑\n新版本\n描述\n职能（每行一个）\n专长（每行一个）\n后端请求 JSON\ncodex\nclaude-code\ncommand\nmini-swe-agent\n填入所选后端的基础请求\n\n填入基础请求会替换此字段；模型、选项和凭据变量引用可在 JSON 中补充。目录可选不代表已安装或认证。\n\n应用字段文本\n放弃字段文本\nJSON 原文\n应用 JSON 原文\n放弃 JSON 原文\n下载 JSON 原文\nYAML 原文\n资源与附件编辑\n\n缓冲按控制目录与原定义版本隔离，关闭标签页前请发布或下载。下载含全部已应用／未应用正文和资源字节，不含未编辑原包；完整独立包另用 CLI export。YAML 采用 JSON 数据模型，日期等字符串请加引号，不支持别名。\n\nergora-correctness-reviewer @ 1.0.0\n\nReview the exact candidate against approved requirements and failure semantics.\n\n{\n  \"kind\": \"agent\",\n  \"digest\": \"c90f74219843f5a0724e6c83ef531453493bd26d1d45d40ca495e0ca6bbd441b\",\n  \"roles\": [\n    \"reviewer\"\n  ],\n  \"specialties\": [\n    \"behavioral-correctness\",\n    \"failure-recovery\"\n  ],\n  \"backend_request\": {\n    \"tool\": \"claude-code\"\n  }\n}\n标准定义 JSON\n自身资源 · ergora-correctness-reviewer-instructions\n自身资源 · ergora-correctness-reviewer-skill\n完整包文件身份（含 Skill 附件）"
+    },
+    "history_resources": {
+      "passed": true,
+      "results": {
+        "resourceBytesBoundHistory": true,
+        "atomicResourceHistory": true
+      },
+      "countHistoryUndo": 49,
+      "resourceHistoryUndo": 1,
+      "resourceDecodedBytes": 1100000,
+      "errors": []
+    },
+    "history_resources_command": {
+      "checked_at": "2026-11-10T08:59:52.241283+00:00",
+      "script_sha256": "bd58c7921300453f43c6d13577b7b92989285735780573e0187277665d438f22",
+      "returncode": 0,
+      "seconds": 3.2804043809883296,
+      "log_sha256": "7b060e6eafff389d30851dc51aadb36ad40beff97d926d791220d06e0261710b"
+    }
+  }
+}

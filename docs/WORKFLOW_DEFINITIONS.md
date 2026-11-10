@@ -243,7 +243,7 @@ ergora composition revise kernel-delivery 1.0.0 --base-digest BASE_DIGEST --docu
 ergora composition file kernel-delivery 1.0.0 instructions.md --base-digest BASE_DIGEST --offset 0 --limit 65536
 ```
 
-同一包内的二进制附件、完整Skill树、执行位及空目录按明确操作派生；未改内容保持。文件名取自原包 `show` 的 `files`，窗口以base64返回，须按 `next_offset` 读取并合并全部字节。HTTP 为 `POST /api/workflow-definitions/{id}/{version}/revisions/preview-resources` 和 `/files/read`；请求及最终 `resource_changes/accepted_candidate` 字段与Agent一致。预览、检查、发布都执行完整递归准入；历史文件读取不要求今天后端可用。完整候选接受绑定普通附件与全部目录，正文或操作改变须重新预览；预览不提升权限、不批准执行。页面尚只编辑标准正文，资源字节用CLI/HTTP或完整导出修改。
+同一包内的二进制附件、完整Skill树、执行位及空目录按明确操作派生；未改内容保持。文件名取自原包 `show` 的 `files`，窗口以base64返回，须按 `next_offset` 读取并合并全部字节。HTTP 为 `POST /api/workflow-definitions/{id}/{version}/revisions/preview-resources` 和 `/files/read`；请求及最终 `resource_changes/accepted_candidate` 字段与Agent一致。预览、检查、发布都执行完整递归准入；历史文件读取不要求今天后端可用。完整候选接受绑定普通附件与全部目录，正文或操作改变须重新预览；预览不提升权限、不批准执行。页面可在“资源与附件编辑”中完整读取或上传文件、暂存操作并明确采用资源摘要；较大变更使用CLI或完整导出修改，步骤见[在页面修订工作流资源](#在页面修订工作流资源)。
 
 父／子可同时计划提权或追加资源：先生成新的子定义版本，逐层更新父引用与权限，再发布新的根版本，最后用新的项目grant检查整棵链。只改子级会失败；根仍越项目上限也会失败。单定义导入通过原子完整对象及索引发布，完整根修订由其精确递归引用固定；这里没有跨定义事务或项目采用动作。旧根和旧版本保持原内容，不读取新的活动头替代。
 
@@ -303,8 +303,14 @@ ergora agent output my-project RUN_ID
 
 每次运行在State的`runs/`下保存经过完整核验的输入副本、新空工作目录、完整prompt、实际argv、stdout/stderr和结构化结果，复用原Agent运行列表/输出及完整备份。记录绑定输入摘要、项目修订、请求/实际binding和覆盖原因。运行列表只带资源身份及来源，完整正文可对返回的`input_path`使用`composition verify-input --material`按需核读。读取返回的`result`文件可查看`summary`、`artifacts.response`；审查者另有`approve/request-changes`。进程成功和审查approve分别判断。
 
-单叶调用的任务由操作者提供，图前驱和端口没有执行；原输入仍为`execution_authorized: false`，本次调用也不创建正式候选/批准。完整工作流调度、正式批准和其他强制能力继续按AC3b.4、AC3c/4接入。
+单叶调用的任务由操作者提供，图前驱和端口没有执行；原输入仍为`execution_authorized: false`，本次调用也不创建正式候选/批准。正式串行/并行调度及候选、批准使用上文的[正式审查](#正式只读审查的数据端口)和[工作单元](#专长执行者与原工作单元)入口。
 
+
+## 在页面修订工作流资源
+
+在“Agent 与组合库”选择子工作流精确版本，使用“资源与附件编辑”。其完整读取/二进制上传、明确write/delete/mkdir、差异预览和摘要采用与[Agent资源步骤](AGENT_DEFINITIONS.md#在页面编辑资源与附件)共用同一会话合同。先应用提高版本及资源声明的正文，再暂存文件操作、预览并采用，最后检查和明确发布。后续追加从已采用的完整操作集合继续；原包与旧manifest不变。
+
+正文、操作和接受身份共同撤销/重做，未应用草稿独立保留；有未应用内容或摘要接受过期时不能发布旧快照。刷新后重新检查，损坏/quota缓冲可下载完整工作字节，下载不含未编辑原包。HTTP含base64总上限4,000,000字节，较大变更沿CLI `composition revise --resources`；不会创建另一套服务器草稿或自动上传会话。当前页只修订所选定义，父子共同提权与新根引用仍需各自明确新版本；新增Skill/上下文不会扩大执行权限。
 
 ## 调用前查看能力与权限
 

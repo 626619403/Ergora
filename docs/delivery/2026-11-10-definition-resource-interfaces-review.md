@@ -2,7 +2,7 @@
 
 审查者 `/root/resource_interfaces_review`，新 fresh-context 实现审查，与 D1 设计评审者不同。产品基线为 `3baa619096a2ff95e2a29aedf179f3c614af103e`，分支 `refactor/architecture-foundations`。本报告以 [D1 r3 合同](../plans/2026-11-10-definition-resources.md#d1-固定接口r3独立设计复核通过)、[D2 计划](../plans/2026-11-10-definition-resource-interfaces.md)、项目 AGENTS 和用户原始要求为依据；D1 设计结论仅作为输入。
 
-**当前提交前最终结论：完整 34 文件的 Spec／Standards 本地门禁通过，RIF-1–3 全部关闭，零开放 finding。** R3 非 editable 包、实际旅程、两轮真实自身模板完整读取、11 份公开投影和清理均已独立核验。可按原授权普通提交/推送；本候选精确 Git 对象、自己的必要 CI 与明确 HTTPS 仍待分别核，不声明精确交付或整个 C3c/AC5 已完成。
+**最终独立结论：D2 固定提交 `80375d3647fbea585db77a08ab39e70915b01e96` 精确交付终结。** 完整 34 文件的 Spec／Standards、本候选 Git 对象、435 包文件／283 冻结身份、明确 HTTPS 远端及自己的 CI42779236273 双 OS 七必要步骤均通过；RIF-1–3 全部关闭，零开放 finding。R3 安装与实际旅程、两轮真实自身模板完整读取、11 份公开投影和清理均已独立核验。D3 页面资源会话及后续节点按各自门禁继续。
 
 **R1 当时首审：Spec 需修改，2 项 P2；Standards 通过，零项独立 finding。RIF-1、RIF-2 当时均阻塞验收。** 以下首审证据及原红保持；修正与补充发现见后文。
 
@@ -132,3 +132,34 @@ R3 实际三领域旅程 **81 CLI／37 真实 HTTP／6 观测／49.05 秒**。�
 |精确交付|本候选提交对象、自己的必要 CI、明确 HTTPS 尚待后续分别核验|
 
 **本片提交前本地门禁终结。** 下一步由作者按原授权普通提交/推送并收集自己的必要 CI 和明确 HTTPS 原件，再核精确对象。D3 页面资源会话和其余后续节点继续依赖本片精确交付，当前结论不扩大其完成范围。
+
+
+## 固定提交与明确 HTTPS 补核（CI 尚待终态）
+
+独立对固定提交 **80375d3647fbea585db77a08ab39e70915b01e96** 执行 `git show`／`ls-tree`／`archive` 原对象读取：唯一父为 `3baa619096a2ff95e2a29aedf179f3c614af103e`，tree 为 `95ecb93d6030ee50986752aa66cde586b549d1fc`，完整差异恰为 ready 的 **34 文件**，逐文件 SHA256 全等。与已审 `review-final` 不同的五份文件仅续记本地门禁状态，产品与测试未改；本报告按 AGENTS 不递归评审。复核开始首次观察工作区 clean；随后作者继续状态和 D3 设计准备，固定对象核验没有以这些 live 文件替代已提交候选。
+
+固定提交的 **435 文件**与 R3 wheel、非 editable 安装及 RECORD 逐字节/摘要/长度一致；wheel SHA256 保持 `1b74ada0caa05f2a1360fa76f7e5b50027ea8ae3fc0c7cdd1819bedf096c1a23`。**283 冻结文件**的 Git mode／kind／OID 全等父基线，reference manifest 亦相同。`pyproject.toml` 与原 portability workflow 未改，第二轮模板 **14 保护源**和已审 **11 公开 JSON**均等于相应已提交对象。作者提交与推送原 stdout/stderr/returncode 一致，但推送日志不替代远端读取。独立原件为 `independent/audit-exact-commit.py`、`exact-commit-audit.json`、`exact-commit-status-only.diff`。
+
+**2026-11-10 08:06:16.452388 → 08:06:19.679944 UTC**，独立通过明确 `https://github.com/626619403/Ergora.git`，对 `refs/heads/refactor/architecture-foundations` 执行一次有界 `git ls-remote --refs`，退出 0，stdout 仅返回上述完整候选 SHA 和目标 ref，stderr 为空。运行 cwd 为仓库外 `/`，全局/系统配置禁用，未继承 Git/SSH/凭据配置或认证环境，helper/交互禁用，协议仅允许 HTTPS、TLS 验证开启、禁止重定向，外层限时 45 秒。原命令、环境变量名策略、stdout/stderr/trace 及 SHA 保存于 `independent/https-remote-01/`；未把代理配置值或凭据写入证据。
+
+首条作者 CI 命令传错完整 SHA，`snapshot-01` 的匹配失败保留为命令错误，不归作产品或 CI 失败。独立离线核正确 `snapshot-02` 的 **五份官方原响应**，逐一重算 bytes/SHA；Actions 记录精确绑定本候选、目标 ref 和 `.github/workflows/portability.yml`，run 为 [42779236273](https://github.com/626619403/Ergora/actions/runs/42779236273)。job groups 恰为两组且 `hasMore=false`，两个 job 页均核 selectedJobId 与本候选的 step log URL。
+
+该快照采样 **08:01:03–08:01:14 UTC**，run 及两 job 均 `In progress`：Linux `129704998892` 与 Windows `129704999307` 的 Build and install wheel、Packaged reference identity 已成功，两个 Native application regression 和 Windows PowerShell 5.1 installer and upgrade 尚无终态，故为 **七必要步骤四成功、CI 门禁未通过/待验**。没有借用 C3b 的旧 CI，没有轮询、取消或重跑。独立解析脚本和结果为 `independent/audit-ci.py`、`independent/ci-snapshot-02/ci-audit.json`。收到本候选后续官方终态原件后再补核；D3 产品实施仍依赖本片精确交付终结。
+
+
+## 官方 CI 终态独立补核与精确交付终结
+
+2026-11-10 的 `snapshot-04` 官方采样范围为 **08:15:27.395538 → 08:15:48.489443 UTC**。独立直接离线解析五份原响应，逐一重算 bytes／SHA256 并核精确 HTTPS URL；未只接受作者 summary。Actions 内嵌条目绑定完整提交 `80375d3647fbea585db77a08ab39e70915b01e96`、`refs/heads/refactor/architecture-foundations`、原 `.github/workflows/portability.yml` 与 [run42779236273](https://github.com/626619403/Ergora/actions/runs/42779236273)，状态为 `WORKFLOW_RUN_STATUS_COMPLETED`／`WORKFLOW_RUN_CONCLUSION_SUCCESS`，run 可见终态为 `Success`。
+
+job groups 恰为两组、`totalCount=2`／`hasMore=false`；两个 job 的名称、页面 selectedJobId、链接、step log URL 均与本候选对应。**Linux `129704998892` 与 Windows `129704999307` 均 completed／success，七必要步骤全部 success 且 job_completed：**
+
+|必要步骤|Linux ubuntu-latest／Python 3.11|Windows windows-latest／Python 3.12|
+|---|---|---|
+|Build and install wheel|success／completed|success／completed|
+|Packaged reference identity|success／completed|success／completed|
+|Native application regression|success／completed|success／completed|
+|Windows PowerShell 5.1 installer and upgrade|按 Windows 条件正常 skipped|success／completed|
+
+所有步骤未见 failure／cancelled／timed_out；Linux PowerShell skip 与已提交 workflow 的 Windows 条件一致，不属于七必要步骤。独立核验时间为 **2026-11-10T08:17:09.485846+00:00**，CI 门禁通过。原脚本与完整解析结果保存为 `independent/snapshot-04/{audit-ci.py,ci-audit.json,ci-audit.log}`；source 元数据中保留五原响应的 SHA／长度／取样时间与地址。
+
+**D2 本候选精确交付已终结。** 前述 34 固定对象、435 源/包/安装/RECORD、283 冻结 mode/kind/OID、14 模板保护源及 11 公开 JSON 的独立核验，以及 08:06:16.452388→08:06:19.679944 UTC 的明确 HTTPS 同完整 SHA 均保持；此次只补本候选自己的官方 CI 终态，没有重复网络、测试、模型或服务。`snapshot-01` 错 SHA 命令与 `snapshot-02/03` 进行中原件全部保留，未改变历史观察；首轮模型 request-changes、各原红与修后证据亦保持。后续 D3 产品实施须满足其自己的设计和实施验收门禁，本结论只终结 D2。

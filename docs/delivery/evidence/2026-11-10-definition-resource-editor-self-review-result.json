@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "projection": "Formatted and machine-path-redacted evidence; original artifact SHA differs from this projection.",
+  "scope": "Original structured native result, projected and path-redacted; native SHA differs from projection SHA.",
+  "source_artifacts": {
+    "original_result": {
+      "artifact": "self-review-r1/public-original-result.json",
+      "bytes": 3183,
+      "sha256": "4876ae237e52eaee4bbdb248a19aabf09e014128cd8a67ba4e4e3174f66dafd1"
+    }
+  },
+  "data": {
+    "original_result": {
+      "artifacts": {
+        "response": "Reviewed definitions.js SHA256 453e0bcd481b8e46b2e81dabf8a75ef59118d13c8d1a09a37e0b1a71aff987ed and all supplied adjacent-owner evidence.\n\nReading completed: all five declared task resources, including both structural instruction levels and both Skills. Candidate evidence was read continuously from byte 0 through all 434,495 bytes to next_offset:null. At offset 72,000, the base64 response with max_bytes:24000 was preserved and retried at the same offset with 23999; that successful UTF-8 page advanced to 95,999. Supplied requirements, plans, delivery record and documentation diff were also read completely. No workspace edits, code/service execution or check reruns occurred.\n\n**Spec: approve.** No substantiated finding. The complete working collection preserves adopted operations and distinguishes null from explicit empty operations. Joint draft budgets are checked before retention and during restore. Applied history binds definition, operations and accepted identity while excluding pending work. Preview/adoption and complete reads protect session identity and revision; pending work blocks old-candidate check/publication. The supplied source supports the RDE-I1 correction independently of its recorded verdict.\n\n**Standards: approve.** No substantiated finding. Both definition kinds reuse the original session owner, api.js and ui.js. The call chain remains page → existing HTTP/use-case entry → DefinitionLibrary; tree identity, path/overlap rules, final admission and immutable publication retain their existing owners. Browser byte/shape/budget helpers serve transport and checkpoint needs and do not introduce a second admission implementation. Existing workflow compilation retains inheritance and permission checks. No new production module, dependency, scheduler, permanent test or CI layer appears in the supplied diff; approval and six-stage evidence owners remain untouched.\n\nLifecycle guards are justified at distinct asynchronous boundaries, rather than redundant approval gates. The private acceptance scripts cover page-specific failure paths; the unchanged HTTP regressions provide different evidence. Recorded costs are R2 primary journey 8.79s, 17 error cases 8.01s, remaining race/home/unknown-result cases 5.74s, and the resumed resource-history portion 3.28s. The 28 HTTP tests took 33.73s on R1 and were not rerun on R2. These results establish neither maximum-package capacity nor a measured CPU/memory regression.\n\nThe resource disclosure collapse remains a nonblocking observation associated with definitions.js:855. Its event ordering and cause are unproven; the complete draft remained available and reopening continued successfully. It does not substantiate data loss or justify a speculative redesign.\n\nThis verdict covers the supplied D3 implementation. Owned cleanup, final delivery checks, commit/CI/HTTPS completion and later D4/C3d work remain outside this approval. This authorized Codex fallback review makes no independent-model or formal owner-approval claim."
+      },
+      "decision": "approve",
+      "summary": "Approve the supplied D3 candidate for Spec and Standards; no substantiated findings."
+    }
+  }
+}

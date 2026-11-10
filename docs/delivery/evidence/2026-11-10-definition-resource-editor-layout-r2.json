@@ -1,0 +1,35 @@
+{
+  "schema_version": 1,
+  "projection": "Formatted and machine-path-redacted evidence; original artifact SHA differs from this projection.",
+  "scope": "Actual1440/390page widths and screenshots; no page-level horizontal overflow. Screenshots copied byte-for-byte and visually inspected.",
+  "source_artifacts": {
+    "layout": {
+      "artifact": "r2/browser/layout-01.json",
+      "bytes": 465,
+      "sha256": "89c60e71ab1bc036cec8eac890523fe7af3404f3cef0503b96a7f993a96a6f0a"
+    }
+  },
+  "data": {
+    "layout": {
+      "passed": true,
+      "layouts": [
+        {
+          "name": "desktop",
+          "width": 1440,
+          "documentWidth": 1440,
+          "bodyWidth": 1440,
+          "path": "output/playwright/c3c-d3-r2/resource-editor-desktop.png",
+          "noPageOverflow": true
+        },
+        {
+          "name": "narrow",
+          "width": 390,
+          "documentWidth": 390,
+          "bodyWidth": 390,
+          "path": "output/playwright/c3c-d3-r2/resource-editor-narrow.png",
+          "noPageOverflow": true
+        }
+      ]
+    }
+  }
+}

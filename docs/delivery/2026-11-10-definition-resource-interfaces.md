@@ -82,3 +82,19 @@ R3实际内置模板第二轮run `69f00da988634827a4e1f5687ca1e848`，**323.03�
 原fresh-context实现评审者已终核固定`review-final`全部34文件，Spec/Standards本地通过，RIF-1–3全部关闭、零开放finding。第二轮manifest/input/prompt、14保护源、527526字节/21连续UTF8页和四结构链材料均直接重算；两轮native stream只有list/read，没有command/file_change/web_search。11公开JSON已逐来源bytes/SHA及逐字段投影复核，两原result投影与native身份对应。独立静态检查为**16文档/248链接/107实际CLI parser命令**，零缺失。
 
 本地I1–I5出口完成。提交前只续记状态并固定最终ready清单，产品/测试保持R3与第二轮模板保护源身份；不重跑已通过的安装、整组或模型。下一步普通提交/推送当前分支，分别检查精确对象、自己的双OS七必要CI步骤及明确HTTPS。尚未满足这些精确交付门禁，D3仍只允许设计准备。
+
+## 普通提交与首份正确 CI 采样
+
+完整34文件已普通提交推送 **80375d3647fbea585db77a08ab39e70915b01e96**，父为固定3baa619；ready与所有Git对象、435包对象/283冻结保持，提交时worktree clean。原件 `commit-closure/{ready/identity.json,exact-objects.json,commit.stdout,push.json}`。
+
+首条CI采样命令误传错误完整SHA，snapshot-01保留匹配失败/原响应，这是作者命令错误，不是产品或CI失败；纠正为直接读取git rev-parse HEAD后，snapshot-02官方采样核自己的 [CI42779236273](https://github.com/626619403/Ergora/actions/runs/42779236273)，双OS构建/冻结身份步骤成功、回归仍进行中，不能记门禁通过。原独立reviewer继续核精确对象、明确HTTPS及后续官方CI终态。只准备D3设计，不修改页面产品或推新提交取消本CI。
+
+独立固定对象核验已通过：34 ready对象、435 Git archive/wheel/installed/RECORD、283冻结mode/kind/OID、14第二轮保护源与11公开投影均一致。2026-11-10 08:06:16.452388→08:06:19.679944 UTC在仓库外、隔离配置/禁凭据交互、仅HTTPS的只读ls-remote核目标ref完整80375d3一致。原件 `independent/{exact-commit-audit.json,https-remote-01/,exact-delivery-verdict-01.json}`。
+
+snapshot-03在08:10:07→08:10:25 UTC官方完整采样观察Windows job终结、四必要步骤均success；Linux构建和冻结身份成功、回归仍进行中，合计六必要步骤成功。保留snapshot-02原进行中和snapshot-01命令错误；尚未把整个CI或D2精确交付记为通过。
+
+## D2 精确交付出口
+
+原fresh-context实现评审者直接离线解析snapshot-04五份官方原响应、完整job groups/selectedJobId和精确日志候选身份：自己的CI42779236273为COMPLETED/SUCCESS，双OS七必要步骤全部success/completed；Linux PowerShell按原workflow条件正常skipped。原01命令错误、02/03进行中原件保持，没有取消或重跑来覆盖原结果。
+
+结合此前独立精确34/435/283对象和明确HTTPS同完整SHA，**80375d3647fbea585db77a08ab39e70915b01e96 的D2精确交付终结**。只证明本片CLI/HTTP合同与相应平台回归，不把它当D3页面、D4继承整链、C3d提权或C4–C6完成。下一片D3 r2独立设计也已通过，可以进入E1/E2。

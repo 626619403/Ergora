@@ -19,10 +19,86 @@ const editorKey = (home, kind, base) => JSON.stringify(["ergora-definition-edito
 const currentEditor = () => library.detail && editors.get(editorKey(library.controlDirectory, library.selection.kind,
   { ...library.selection, digest: library.detail.digest }));
 const pendingText = (current, except) => ["json", "yaml"].some((format) => format !== except && current.texts[format] !== current.appliedTexts[format]);
-const pending = (current) => pendingText(current) || current.formBuffer !== null;
-const editorBuffer = (current) => ({ version: 1, home: current.home, kind: current.kind, base: current.base,
+const pendingResources = (current) => current.fileDraft !== null || current.resourceBuffer !== null;
+const pending = (current) => pendingText(current) || current.formBuffer !== null || pendingResources(current);
+const workingResources = (current) => current.resourceBuffer ?? current.resourceChanges ?? { schema_version: 1, operations: [] };
+const editorBuffer = (current) => ({ version: 2, home: current.home, kind: current.kind, base: current.base,
   definition: current.definition, texts: current.texts, appliedTexts: current.appliedTexts,
-  formBuffer: current.formBuffer, selectedNode: current.selectedNode, publication: current.publication });
+  formBuffer: current.formBuffer, selectedNode: current.selectedNode, publication: current.publication,
+  resourceChanges: current.resourceChanges, acceptedCandidate: current.acceptedCandidate,
+  resourceBuffer: current.resourceBuffer, fileDraft: current.fileDraft });
+const resourceByteLimit = 10_000_000;
+
+function base64Size(value) {
+  if (typeof value !== "string" || value.length > Math.ceil(resourceByteLimit / 3) * 4 || value.length % 4 ||
+      !/^[A-Za-z0-9+/]*={0,2}$/.test(value) || (value && btoa(atob(value.slice(-4))) !== value.slice(-4)))
+    throw new Error("资源字节不是完整的标准 base64");
+  return value.length / 4 * 3 - (value.endsWith("==") ? 2 : value.endsWith("=") ? 1 : 0);
+}
+
+function resourceBudget(operations, replacement) {
+  let count = replacement ? 1 : 0, bytes = replacement?.bytes || 0;
+  for (const item of operations) {
+    if (replacement && item.path === replacement.path) continue;
+    count++;
+    if (item.op === "write") bytes += base64Size(item.content_base64);
+    if (count > 1500 || bytes > resourceByteLimit) break;
+  }
+  if (count > 1500 || bytes > resourceByteLimit)
+    throw new Error("完整资源操作超过 1500 项或 10MB 写字节；原缓冲已保留，请使用 CLI --resources。");
+  return bytes;
+}
+
+function resourceBytes(value) {
+  base64Size(value);
+  return Uint8Array.from(atob(value), (char) => char.charCodeAt(0));
+}
+
+function resourceBase64(bytes) {
+  const parts = [];
+  for (let offset = 0; offset < bytes.length; offset += 8192)
+    parts.push(String.fromCharCode(...bytes.subarray(offset, offset + 8192)));
+  return btoa(parts.join(""));
+}
+
+function resourceTextBytes(text, limit = resourceByteLimit) {
+  const bytes = new Uint8Array(Math.min(limit + 1, text.length * 3));
+  const { read, written } = new TextEncoder().encodeInto(text, bytes);
+  if (read !== text.length || written > limit)
+    throw new Error("完整 UTF-8 文本超过资源写预算；原草稿已保留，请使用 CLI --resources。");
+  const result = bytes.subarray(0, written);
+  if (new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(result) !== text)
+    throw new Error("文本无法无损编码为 UTF-8；原草稿已保留。");
+  return result;
+}
+
+function checkResourceChanges(value) {
+  if (!value || value.schema_version !== 1 || Object.keys(value).sort().join() !== "operations,schema_version" ||
+      !Array.isArray(value.operations) || value.operations.length > 1500)
+    throw new Error("资源操作缓冲格式无法读取");
+  for (const item of value.operations) {
+    if (!item || typeof item.path !== "string" || !["write", "delete", "mkdir"].includes(item.op) ||
+        Object.keys(item).some((key) => !["op", "path", ...(item.op === "write" ? ["content_base64", "executable_bits"] : [])].includes(key)) ||
+        (item.op === "write" && typeof item.content_base64 !== "string") ||
+        (Object.hasOwn(item, "executable_bits") && (!Number.isInteger(item.executable_bits) || item.executable_bits < 0 || item.executable_bits > 0o111 || (item.executable_bits & ~0o111))))
+      throw new Error("资源操作缓冲格式无法读取");
+  }
+  resourceBudget(value.operations);
+}
+
+function checkResourceDraft(value, operations) {
+  if (!value || Object.keys(value).sort().join() !== "content,executableBits,op,path" ||
+      !["write", "delete", "mkdir"].includes(value.op) || typeof value.path !== "string" ||
+      typeof value.executableBits !== "string" || !value.content ||
+      !["text", "base64"].includes(value.content.encoding) ||
+      Object.keys(value.content).sort().join() !== "encoding,value" || typeof value.content.value !== "string")
+    throw new Error("文件草稿格式无法读取");
+  const used = resourceBudget(operations, { path: value.path, bytes: 0 });
+  const limit = value.op === "write" ? resourceByteLimit - used : resourceByteLimit;
+  if (value.content.encoding === "base64") {
+    if (base64Size(value.content.value) > limit) throw new Error("文件草稿超过完整资源写预算；请使用 CLI --resources。");
+  } else resourceTextBytes(value.content.value, limit);
+}
 
 function sameValue(left, right) {
   if (left === right) return true;
@@ -44,8 +120,9 @@ function editorSnapshot(current) {
   const text = textOf(current.definition);
   // Pending raw text belongs to the checkpoint, never to applied undo history.
   const texts = { ...current.appliedTexts };
-  return { text, texts, canonicalTexts: { ...current.canonicalTexts }, selected: current.selectedNode,
-    bytes: new TextEncoder().encode(text + texts.json + texts.yaml + current.canonicalTexts.json + current.canonicalTexts.yaml).length };
+  const resources = JSON.stringify({ resourceChanges: current.resourceChanges, acceptedCandidate: current.acceptedCandidate });
+  return { text, texts, canonicalTexts: { ...current.canonicalTexts }, resources, selected: current.selectedNode,
+    bytes: new TextEncoder().encode(text + texts.json + texts.yaml + current.canonicalTexts.json + current.canonicalTexts.yaml + resources).length };
 }
 
 async function restoreEditor(kind, detail, home) {
@@ -60,13 +137,26 @@ async function restoreEditor(kind, detail, home) {
       saved = JSON.parse(raw);
       // Validate only our persisted UI shape; definition admission stays with the library.
       const object = (value) => value && typeof value === "object" && !Array.isArray(value);
-      if (saved.version !== 1 || saved.home !== home || saved.kind !== kind || textOf(saved.base) !== textOf(base) ||
+      const resourceKeys = ["resourceChanges", "acceptedCandidate", "resourceBuffer", "fileDraft"];
+      const legacy = saved.version === 1 && !resourceKeys.some((name) => Object.hasOwn(saved, name));
+      if (!(legacy || (saved.version === 2 && resourceKeys.every((name) => Object.hasOwn(saved, name)))) ||
+          saved.home !== home || saved.kind !== kind || textOf(saved.base) !== textOf(base) ||
           !object(saved.definition) || !object(saved.texts) || !object(saved.appliedTexts) ||
           !["json", "yaml"].every((format) => typeof saved.texts[format] === "string" && typeof saved.appliedTexts[format] === "string") ||
           !Number.isInteger(saved.selectedNode) || saved.selectedNode < 0 ||
           !(saved.formBuffer === null || (object(saved.formBuffer) && Object.values(saved.formBuffer).every((value) => typeof value === "string"))) ||
           !(saved.publication === null || (object(saved.publication) && ["id", "version", "digest"].every((key) => typeof saved.publication[key] === "string"))) ||
           !sameValue(JSON.parse(saved.appliedTexts.json), saved.definition)) throw new Error("编辑缓冲格式或已应用正文无法读取");
+      if (legacy) Object.assign(saved, { resourceChanges: null, acceptedCandidate: null, resourceBuffer: null, fileDraft: null });
+      for (const name of ["resourceChanges", "resourceBuffer"]) if (saved[name] !== null) checkResourceChanges(saved[name]);
+      if (saved.fileDraft !== null) checkResourceDraft(saved.fileDraft,
+        (saved.resourceBuffer ?? saved.resourceChanges ?? { operations: [] }).operations);
+      const candidate = saved.acceptedCandidate;
+      if (candidate !== null && (!saved.resourceChanges || !object(candidate) ||
+          Object.keys(candidate).sort().join() !== "digest,directories" || !/^[0-9a-f]{64}$/.test(candidate.digest) ||
+          !Array.isArray(candidate.directories) || candidate.directories.length > 500 ||
+          !candidate.directories.every((name) => typeof name === "string") || new Set(candidate.directories).size !== candidate.directories.length))
+        throw new Error("资源接受身份无法读取");
     } catch (error) {
       editors.set(key, { key, home, kind, base, restoreError: error.message, raw });
       return;
@@ -91,6 +181,8 @@ async function restoreEditor(kind, detail, home) {
     appliedTexts: saved ? saved.appliedTexts : { json: converted.json, yaml: converted.yaml },
     canonicalTexts: { json: converted.json, yaml: converted.yaml },
     formBuffer: saved?.formBuffer || null, selectedNode: saved?.selectedNode || 0, publication: saved?.publication || null,
+    resourceChanges: saved?.resourceChanges ?? null, acceptedCandidate: saved?.acceptedCandidate ?? null,
+    resourceBuffer: saved?.resourceBuffer ?? null, fileDraft: saved?.fileDraft ?? null, resourcePreview: null,
     revision: 0, sequence: 0, request: null, error: "", message: "", check: null, storageError,
     expanded: { fields: true, json: true, yaml: false }, history: [], historyIndex: 0 };
   if (current.formBuffer) {
@@ -105,14 +197,17 @@ async function restoreEditor(kind, detail, home) {
   editors.set(key, current);
 }
 
-function touchEditor(current) {
+function touchEditor(current, acceptedCandidate = null) {
   current.revision++;
+  current.check = null;
+  current.resourcePreview = null;
+  current.acceptedCandidate = acceptedCandidate;
   current.error = "";
   current.message = "";
   rememberEditor(current);
 }
 
-function applyEditor(current, converted, format, original) {
+function applyEditor(current, converted, format, original, resources) {
   current.history[current.historyIndex].selected = current.selectedNode;
   const unchanged = sameValue(current.definition, converted.definition);
   const texts = unchanged ? { ...current.texts } : { json: converted.json, yaml: converted.yaml };
@@ -123,11 +218,16 @@ function applyEditor(current, converted, format, original) {
   current.texts = texts;
   current.appliedTexts = { ...texts };
   current.formBuffer = null;
+  if (resources) {
+    current.resourceChanges = resources.changes;
+    current.acceptedCandidate = resources.candidate;
+    current.resourceBuffer = null;
+  } else current.acceptedCandidate = null;
   current.selectedNode = Array.isArray(current.definition.nodes) && current.definition.nodes.length
     ? Math.min(current.selectedNode, current.definition.nodes.length - 1) : 0;
   const snapshot = editorSnapshot(current);
   const previous = current.history[current.historyIndex];
-  if (snapshot.text !== previous.text || snapshot.texts.json !== previous.texts.json || snapshot.texts.yaml !== previous.texts.yaml) {
+  if (snapshot.text !== previous.text || snapshot.texts.json !== previous.texts.json || snapshot.texts.yaml !== previous.texts.yaml || snapshot.resources !== previous.resources) {
     current.history.splice(current.historyIndex + 1);
     current.history.push(snapshot);
     let bytes = current.history.reduce((total, item) => total + item.bytes, 0);
@@ -135,7 +235,7 @@ function applyEditor(current, converted, format, original) {
       bytes -= current.history.shift().bytes;
     current.historyIndex = current.history.length - 1;
   } else current.history[current.historyIndex] = snapshot;
-  touchEditor(current);
+  touchEditor(current, current.acceptedCandidate);
 }
 
 async function editDefinition(current, operation, render, work) {
@@ -180,9 +280,7 @@ async function convertCandidate(current, render, { text, format, rename }) {
       current.message = "转换期间有较新编辑；原文已保留，请重新应用。";
       return;
     }
-    const replaced = ["json", "yaml"].filter((name) => name !== format && current.texts[name] !== current.canonicalTexts[name]);
-    if (!sameValue(current.definition, converted.definition) && replaced.length && !window.confirm(
-      `本次修改将重新生成 ${replaced.map((name) => name.toUpperCase()).join(" / ")} 原文，原注释和排版会被替换。要保留请取消并先下载原文；是否继续同步？`)) {
+    if (!confirmDefinitionSync(current, converted.definition, format)) {
       current.message = "未应用修改；各处原文与字段缓冲均已保留。";
       return;
     }
@@ -190,12 +288,27 @@ async function convertCandidate(current, render, { text, format, rename }) {
   });
 }
 
+function confirmDefinitionSync(current, definition, format) {
+  const replaced = ["json", "yaml"].filter((name) => name !== format && current.texts[name] !== current.canonicalTexts[name]);
+  return sameValue(current.definition, definition) || !replaced.length || window.confirm(
+    `本次修改将重新生成 ${replaced.map((name) => name.toUpperCase()).join(" / ")} 原文，原注释和排版会被替换。要保留请取消并先下载原文；是否继续同步？`);
+}
+
+function revisionRequest(current, suffix, body) {
+  if (new TextEncoder().encode(JSON.stringify(body)).length > 4_000_000)
+    throw new Error("完整请求（含 base64）超过 4,000,000 字节；编辑缓冲已保留，请下载并使用 CLI --resources。");
+  const { id, version } = current.base;
+  return api(`/api/${current.kind}-definitions/${encodeURIComponent(id)}/${encodeURIComponent(version)}/revisions${suffix}`, body);
+}
+
 async function reviseDefinition(current, publish, render) {
+  if (pending(current) || (current.resourceChanges !== null && current.acceptedCandidate === null)) return;
   const definition = structuredClone(current.definition);
+  const resources = current.resourceChanges === null ? {} : {
+    resource_changes: structuredClone(current.resourceChanges), accepted_candidate: structuredClone(current.acceptedCandidate),
+  };
   await editDefinition(current, publish ? "publish" : "check", render, async (revision) => {
-    const { id, version, digest } = current.base;
-    const url = `/api/${current.kind}-definitions/${encodeURIComponent(id)}/${encodeURIComponent(version)}/revisions`;
-    const result = await api(url + (publish ? "" : "/check"), { base_digest: digest, definition });
+    const result = await revisionRequest(current, publish ? "" : "/check", { base_digest: current.base.digest, definition, ...resources });
     if (editors.get(current.key) !== current) return;
     if (publish) {
       current.publication = { id: result.definition.id, version: result.definition.version, digest: result.digest };
@@ -204,8 +317,140 @@ async function reviseDefinition(current, publish, render) {
       if (currentLibrary(current.home)) await loadLibrary(render);
     } else {
       current.check = { revision, result };
-      current.message = current.revision === revision ? "当前已应用正文检查通过；尚未发布。" : "检查期间有较新编辑；请重新检查当前正文。";
+      current.message = current.revision === revision ? "当前已应用正文和资源检查通过；尚未发布。" : "检查期间有较新编辑；请重新检查当前候选。";
     }
+  });
+}
+
+const resourceReplyCurrent = (current, revision) => editors.get(current.key) === current && currentLibrary(current.home) &&
+  currentEditor() === current && current.revision === revision;
+const newFileDraft = () => ({ op: "write", path: "", executableBits: "", content: { encoding: "text", value: "" } });
+
+async function previewResources(current, render) {
+  if (pendingText(current) || current.formBuffer !== null || current.fileDraft !== null) return;
+  const changes = structuredClone(workingResources(current)), definition = structuredClone(current.definition);
+  await editDefinition(current, "preview-resources", render, async (revision) => {
+    const result = await revisionRequest(current, "/preview-resources", { base_digest: current.base.digest, definition, resource_changes: changes });
+    if (!resourceReplyCurrent(current, revision)) {
+      current.message = "资源预览期间有较新编辑或切换；原缓冲已保留，请重新预览。";
+      return;
+    }
+    current.resourcePreview = { revision, changes, result };
+    current.message = "资源差异已预览；请核对并明确采用摘要，尚未应用或发布。";
+  });
+}
+
+async function adoptResources(current, render) {
+  const preview = current.resourcePreview;
+  if (!preview || preview.revision !== current.revision || pendingText(current) || current.formBuffer !== null || current.fileDraft !== null) return;
+  await editDefinition(current, "adopt-resources", render, async (revision) => {
+    const converted = await api("/api/definition-documents/convert", { text: textOf(preview.result.definition) });
+    if (!resourceReplyCurrent(current, revision) || current.resourcePreview !== preview) {
+      current.message = "采用期间有较新编辑或切换；原缓冲已保留，请重新预览。";
+      return;
+    }
+    if (!confirmDefinitionSync(current, converted.definition)) {
+      current.message = "未采用资源摘要；原正文和完整操作缓冲均已保留。";
+      return;
+    }
+    applyEditor(current, converted, null, null, { changes: preview.changes, candidate: preview.result.candidate });
+    current.message = "正文、完整资源操作和接受身份已共同应用；请检查后再明确发布。";
+  });
+}
+
+async function stageResource(current, render) {
+  await editDefinition(current, "stage-resource", render, async () => {
+    const draft = current.fileDraft;
+    if (!draft) return;
+    const operations = workingResources(current).operations;
+    const used = resourceBudget(operations, { path: draft.path, bytes: 0 });
+    const operation = { op: draft.op, path: draft.path };
+    if (draft.op === "write") {
+      if (draft.content.encoding === "text") operation.content_base64 = resourceBase64(resourceTextBytes(draft.content.value, resourceByteLimit - used));
+      else {
+        if (used + base64Size(draft.content.value) > resourceByteLimit)
+          throw new Error("完整资源操作超过 10MB 写字节；原草稿已保留，请使用 CLI --resources。");
+        operation.content_base64 = draft.content.value;
+      }
+      if (draft.executableBits.trim()) {
+        if (!/^[01]{1,3}$/.test(draft.executableBits.trim())) throw new Error("执行位须为空或八进制 000–111（每位仅 0/1），例如 100。");
+        operation.executable_bits = parseInt(draft.executableBits.trim(), 8);
+      }
+    }
+    current.resourceBuffer = structuredClone({ schema_version: 1, operations: [...operations.filter((item) => item.path !== draft.path), operation] });
+    current.fileDraft = null;
+    touchEditor(current);
+    current.message = "文件操作已暂存到完整工作集合；预览并采用摘要后才进入已应用历史。";
+  });
+}
+
+async function uploadResource(current, file, render) {
+  const draft = structuredClone(current.fileDraft || newFileDraft());
+  const path = draft.path || file.name;
+  await editDefinition(current, "upload-resource", render, async (revision) => {
+    resourceBudget(workingResources(current).operations, { path, bytes: file.size });
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    if (!resourceReplyCurrent(current, revision)) {
+      current.message = "上传期间有较新编辑或切换；已有草稿保留，请重新选择文件。";
+      return;
+    }
+    if (bytes.length !== file.size) throw new Error("上传文件的完整大小发生变化，未替换草稿。");
+    current.fileDraft = { ...draft, op: "write", path, content: { encoding: "base64", value: resourceBase64(bytes) } };
+    touchEditor(current);
+    current.message = "完整上传字节已进入文件草稿；尚未暂存操作或应用。";
+  });
+}
+
+async function readResource(current, path, edit, render) {
+  if (edit && current.fileDraft !== null) return;
+  const expected = library.detail.files[path];
+  await editDefinition(current, "read-resource", render, async (revision) => {
+    const { id, version, digest } = current.base;
+    let bytes, offset = 0;
+    do {
+      const result = await api(`/api/${current.kind}-definitions/${encodeURIComponent(id)}/${encodeURIComponent(version)}/files/read`,
+        { base_digest: digest, path, offset, limit: 65536 });
+      if (!resourceReplyCurrent(current, revision)) {
+        current.message = "读取期间有较新编辑或切换；片段未进入文件草稿，请重新读取。";
+        return;
+      }
+      const size = base64Size(result.content_base64);
+      if (!sameValue(result.base, { kind: current.kind, ...current.base }) || result.path !== path ||
+          result.sha256 !== expected.sha256 || result.executable_bits !== expected.executable_bits ||
+          !Number.isInteger(result.size_bytes) || result.size_bytes < 0 || result.size_bytes > resourceByteLimit ||
+          result.offset !== offset || result.bytes_read !== size || size > 65536 || offset + size > result.size_bytes ||
+          result.next_offset !== (offset + size < result.size_bytes ? offset + size : null) ||
+          result.complete !== (offset === 0 && size === result.size_bytes) ||
+          (size === 0 && result.size_bytes !== 0) || (bytes && bytes.length !== result.size_bytes))
+        throw new Error("文件窗口身份、大小或连续性不一致；片段未进入编辑缓冲。");
+      if (!bytes) {
+        if (edit) resourceBudget(workingResources(current).operations, { path, bytes: result.size_bytes });
+        bytes = new Uint8Array(result.size_bytes);
+      }
+      bytes.set(resourceBytes(result.content_base64), offset);
+      offset += size;
+      if (result.next_offset === null) break;
+      current.message = `正在完整读取 ${path}：${offset} / ${bytes.length} 字节；片段不可编辑。`;
+      redraw(render);
+    } while (true);
+    const digestBytes = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
+    if (Array.from(digestBytes, (value) => value.toString(16).padStart(2, "0")).join("") !== expected.sha256)
+      throw new Error("完整文件 SHA256 不一致，未进入编辑缓冲或下载。");
+    if (!resourceReplyCurrent(current, revision)) return;
+    if (!edit) {
+      download(path.split("/").pop(), bytes, "application/octet-stream");
+      current.message = `已下载原包完整文件 ${path}（${bytes.length} 字节）。`;
+      return;
+    }
+    let content;
+    try { content = { encoding: "text", value: new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes) }; }
+    catch (error) {
+      if (!(error instanceof TypeError)) throw error;
+      content = { encoding: "base64", value: resourceBase64(bytes) };
+    }
+    current.fileDraft = { op: "write", path, executableBits: "", content };
+    touchEditor(current);
+    current.message = `完整文件已读入草稿（${bytes.length} 字节）；` + (content.encoding === "text" ? "严格 UTF-8，尚未暂存。" : "二进制字节原样保留，尚未暂存。");
   });
 }
 
@@ -503,6 +748,96 @@ function definitionForm(current, render, action, updateControls) {
     node("p", {}, "重命名会同步依赖和具名绑定。删除后请检查剩余端口引用；新增实例的端口、职能和权限须按实际用途调整。"));
 }
 
+function resourceEditor(current, render, action, updateControls) {
+  const draft = current.fileDraft || newFileDraft();
+  const path = node("input", { value: draft.path, "aria-label": "资源文件路径", placeholder: "context/notes.md" });
+  const operation = select([["write", "完整写入文件"], ["delete", "明确删除文件"], ["mkdir", "增加空目录"]], draft.op, null);
+  operation.setAttribute("aria-label", "资源文件操作");
+  const bits = node("input", { value: draft.executableBits, "aria-label": "资源文件执行位", placeholder: "留空保留；例如 100" });
+  const text = draft.content.encoding === "text" ? node("textarea", {
+    className: "workflow-json", value: draft.content.value, "aria-label": "资源文件完整文本", spellcheck: "false",
+  }) : null;
+  const retain = (event) => {
+    const content = event.target === text ? { encoding: "text", value: text.value } : (current.fileDraft || draft).content;
+    const proposed = { op: operation.value, path: path.value, executableBits: bits.value, content };
+    try { checkResourceDraft(proposed, workingResources(current).operations); }
+    catch (error) {
+      current.error = error.message;
+      redraw(render);
+      return;
+    }
+    current.fileDraft = proposed;
+    touchEditor(current);
+    updateControls();
+  };
+  path.addEventListener("input", retain);
+  bits.addEventListener("input", retain);
+  text?.addEventListener("input", retain);
+  operation.addEventListener("change", (event) => { retain(event); redraw(render); });
+  const busy = () => Boolean(current.request);
+  const upload = node("input", { type: "file", "aria-label": "上传完整资源文件", disabled: busy(),
+    onchange: (event) => event.target.files[0] && uploadResource(current, event.target.files[0], render) });
+  const draftView = node("div", {},
+    node("label", {}, "包内相对路径", path), node("label", {}, "文件操作", operation),
+    draft.op === "write" ? [node("label", {}, "可移植执行位（八进制；每位 0/1）", bits),
+      node("label", {}, "选择完整文件字节", upload),
+      text ? node("label", {}, "完整 UTF-8 文本", text) : node("p", {}, `完整二进制草稿：${base64Size(draft.content.value)} 字节；原字节保留。`),
+      !text ? action("将完整字节按 UTF-8 编辑", () => editDefinition(current, "decode-resource", render, async () => {
+        const value = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(resourceBytes(current.fileDraft.content.value));
+        current.fileDraft = { ...current.fileDraft, content: { encoding: "text", value } };
+        touchEditor(current);
+      }), busy) : null,
+    ] : node("p", {}, draft.op === "delete" ? "只明确删除指定普通文件；不递归删除目录。" : "明确增加空目录；父目录由原库创建。"),
+    row(action("暂存文件操作", () => stageResource(current, render), () => busy() || current.fileDraft === null),
+      action("放弃文件草稿", () => { current.fileDraft = null; touchEditor(current); redraw(render); }, () => busy() || current.fileDraft === null)));
+  const operations = workingResources(current).operations;
+  const preview = current.resourcePreview;
+  const previewView = node("div", { "data-resource-preview": "", hidden: !preview }, preview ? [
+    node("h3", {}, "资源候选差异（尚未应用）"), pre({ candidate: preview.result.candidate,
+      changes: preview.result.changes, directory_changes: preview.result.directory_changes }),
+    node("details", {}, node("summary", {}, "建议标准正文"), pre(preview.result.definition)),
+    action("采用资源摘要", () => adoptResources(current, render), () => busy() || !current.resourcePreview ||
+      current.resourcePreview.revision !== current.revision || pendingText(current) || current.formBuffer !== null || current.fileDraft !== null, "primary"),
+  ] : null);
+  const editOperation = (item) => {
+    current.fileDraft = { op: item.op, path: item.path,
+      executableBits: Object.hasOwn(item, "executable_bits") ? item.executable_bits.toString(8).padStart(3, "0") : "",
+      content: item.op === "write" ? { encoding: "base64", value: item.content_base64 } : { encoding: "text", value: "" } };
+    touchEditor(current);
+    redraw(render);
+  };
+  return node("div", {},
+    node("p", {}, "先应用正文声明与新版本，再暂存完整文件操作、预览差异并采用摘要。新增 instructions/context/skill 的声明在 JSON/YAML resources 中填写；预览会更新合法占位摘要。普通附件无需声明。Skill 的所有子文件须逐一完整加入。"),
+    draftView,
+    node("h3", {}, current.resourceBuffer !== null ? "未应用的完整工作操作集合" : "已采用的完整资源操作集合"),
+    node("p", {}, `${operations.length} 项 · ${resourceBudget(operations)} 写字节。集合相对固定原包；追加保留此前已采用操作，移除某项会恢复该路径的原包行为。`),
+    table(["路径", "操作", "完整字节 / 执行位", "调整"], operations.map((item) => [item.path, item.op,
+      item.op === "write" ? `${base64Size(item.content_base64)} B / ${Object.hasOwn(item, "executable_bits") ? item.executable_bits.toString(8) : "保留原值"}` : "—",
+      row(action(`编辑操作 ${item.path}`, () => editOperation(item), () => busy() || current.fileDraft !== null),
+        action(`移除操作 ${item.path}`, () => {
+          current.resourceBuffer = structuredClone({ schema_version: 1, operations: operations.filter((other) => other.path !== item.path) });
+          touchEditor(current);
+          redraw(render);
+        }, () => busy() || current.fileDraft !== null)),
+    ])),
+    row(action("放弃未应用资源操作", () => { current.resourceBuffer = null; touchEditor(current); redraw(render); },
+      () => busy() || current.resourceBuffer === null),
+    action("预览资源候选", () => previewResources(current, render),
+      () => busy() || pendingText(current) || current.formBuffer !== null || current.fileDraft !== null)),
+    previewView,
+    current.resourceChanges !== null ? node("details", {}, node("summary", {}, "已应用的资源接受身份"),
+      pre(current.acceptedCandidate || "正文或资源已变化；请重新预览并采用摘要。")) : null,
+    node("details", {}, node("summary", {}, "原包文件：完整读取与下载"),
+      node("p", {}, "读取固定原包，经有界窗口完整合并并核 SHA 后才可编辑或下载。未完成片段不会进入草稿；未修改的附件仍由原库保留。"),
+      table(["原包路径", "SHA256 / 执行位", "操作"], Object.entries(library.detail.files).map(([name, details]) => [name,
+        `${details.sha256} / ${details.executable_bits.toString(8)}`,
+        row(!["agent.json", "workflow.json"].includes(name) ? action(`完整读取 ${name}`, () => readResource(current, name, true, render),
+          () => busy() || current.fileDraft !== null) : node("span", {}, "经标准正文编辑"),
+        action(`下载原文件 ${name}`, () => readResource(current, name, false, render), busy)),
+      ]))),
+    node("p", {}, "HTTP 请求含 base64 最多4,000,000字节，较大变更请下载缓冲后使用 CLI --resources。完整操作最多1500项／10MB写字节；最终包的路径、文件/目录、Skill与权限仍由原库检查。"));
+}
+
 function editorView(render) {
   const current = currentEditor();
   if (!current) return null;
@@ -534,8 +869,11 @@ function editorView(render) {
     controls.forEach(({ element, disabled }) => { element.disabled = disabled(); });
     const picker = fields?.querySelector('[aria-label="编辑实例"]');
     if (picker) picker.disabled = pending(current) || Boolean(current.request);
-    notice.textContent = pending(current) ? "有未应用的字段或 JSON / YAML 文本；请逐一应用或放弃后再检查、发布或撤销。"
-      : current.check?.revision === current.revision ? "当前正文已检查，可明确发布。" : "正文已应用；检查完整候选后才能发布。";
+    const resourcePreview = resources?.querySelector("[data-resource-preview]");
+    if (resourcePreview) resourcePreview.hidden = !current.resourcePreview;
+    notice.textContent = pending(current) ? "有未应用的字段、JSON / YAML、文件草稿或资源操作；请应用／采用或放弃后再检查、发布或撤销。"
+      : current.resourceChanges !== null && current.acceptedCandidate === null ? "资源候选接受已失效；请重新预览并采用资源摘要。"
+      : current.check?.revision === current.revision ? "当前正文和资源已检查，可明确发布。" : "正文已应用；检查完整候选后才能发布。";
     storage.textContent = current.storageError || "";
     storage.hidden = !current.storageError;
     error.textContent = current.error;
@@ -543,7 +881,9 @@ function editorView(render) {
     message.textContent = current.message;
   };
   fields = definitionForm(current, render, action, updateControls);
+  const resources = resourceEditor(current, render, action, updateControls);
   const busyOrPending = () => pending(current) || Boolean(current.request);
+  const uncheckedResources = () => current.resourceChanges !== null && current.acceptedCandidate === null;
   const move = (direction) => {
     current.historyIndex += direction;
     const snapshot = current.history[current.historyIndex];
@@ -552,7 +892,8 @@ function editorView(render) {
     current.appliedTexts = { ...snapshot.texts };
     current.canonicalTexts = { ...snapshot.canonicalTexts };
     current.selectedNode = snapshot.selected;
-    touchEditor(current);
+    Object.assign(current, JSON.parse(snapshot.resources), { resourceBuffer: null, fileDraft: null });
+    touchEditor(current, current.acceptedCandidate);
     redraw(render);
   };
   const editorsView = ["json", "yaml"].map((format) => {
@@ -567,19 +908,20 @@ function editorView(render) {
   });
   const view = panel("编辑定义并派生新版本", "编辑基于此精确原包，原附件与目录全部保留。发布增加不可变版本，不修改原定义或在途任务。",
     pre({ base: current.base }), notice, storage, error, message,
-    row(action("检查定义候选", () => reviseDefinition(current, false, render), busyOrPending),
+    row(action("检查定义候选", () => reviseDefinition(current, false, render), () => busyOrPending() || uncheckedResources()),
       action("发布新定义版本", () => reviseDefinition(current, true, render),
-        () => busyOrPending() || current.check?.revision !== current.revision, "primary"),
+        () => busyOrPending() || uncheckedResources() || current.check?.revision !== current.revision, "primary"),
       button("下载定义编辑缓冲", () => download("definition-editor-buffer.json", textOf(editorBuffer(current))))),
     row(action("撤销定义编辑", () => move(-1), () => busyOrPending() || current.historyIndex === 0),
       action("重做定义编辑", () => move(1), () => busyOrPending() || current.historyIndex === current.history.length - 1)),
-    node("p", {}, "本页历史最多50份、合计4MiB；单份超限时仅保留当前正文。刷新后保留编辑缓冲并重新建立历史。"),
+    node("p", {}, "本页历史最多50份、合计4MiB（含完整资源操作字节）；单份超限时仅保留当前已应用快照。刷新后保留编辑缓冲并重新建立历史。"),
     current.publication ? panel("已发布版本回执", "此处保留最近一次成功发布的精确版本；后续编辑仍须重新检查和发布。",
       pre(current.publication), button("以已发布版本继续编辑", () => openDefinition(current.kind, current.publication, render))) : null,
     current.check ? node("details", {}, node("summary", {}, "上次检查的快照结果"), pre(current.check.result)) : null,
     disclosure("fields", "字段编辑", fields),
     ...editorsView,
-    node("p", {}, "缓冲按控制目录与原定义版本隔离，关闭标签页前请发布或下载。YAML 采用 JSON 数据模型，日期等字符串请加引号，不支持别名。资源文件变更另行使用完整包导入。"));
+    disclosure("resources", "资源与附件编辑", resources),
+    node("p", {}, "缓冲按控制目录与原定义版本隔离，关闭标签页前请发布或下载。下载含全部已应用／未应用正文和资源字节，不含未编辑原包；完整独立包另用 CLI export。YAML 采用 JSON 数据模型，日期等字符串请加引号，不支持别名。"));
   updateControls();
   return view;
 }

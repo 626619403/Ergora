@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "projection": "Formatted and machine-path-redacted evidence; original artifact SHA differs from this projection.",
+  "scope": "Offline complete files/modes/empty directories audit of four readonly bases and three actual publications, including complete export and reimport with pinned dependencies. Not full D4 ancestor execution acceptance.",
+  "source_artifacts": {
+    "audit": {
+      "artifact": "r2/browser-tree-audit.json",
+      "bytes": 2360,
+      "sha256": "2b0de333863c5a881a2b0bc9ae316cd5db1a3505c9e314e02dcccf13cf2b759b"
+    }
+  },
+  "data": {
+    "audit": {
+      "checked_at": "2026-11-10T09:00:33.816498+00:00",
+      "originals": [
+        {
+          "home": "home-a",
+          "kind": "agent",
+          "digest": "854625e06701747bb9fa59c4e9d37d1ad1db1d68261345f3ec64532788d002bf",
+          "files": 8,
+          "directories": 7,
+          "bytes_and_all_modes_unchanged": true
+        },
+        {
+          "home": "home-a",
+          "kind": "workflow",
+          "digest": "ee3279e07eee711f986c8bab23549a6d828df98de2ebf2d54843484cebfdab7f",
+          "files": 7,
+          "directories": 6,
+          "bytes_and_all_modes_unchanged": true
+        },
+        {
+          "home": "home-b",
+          "kind": "agent",
+          "digest": "854625e06701747bb9fa59c4e9d37d1ad1db1d68261345f3ec64532788d002bf",
+          "files": 8,
+          "directories": 7,
+          "bytes_and_all_modes_unchanged": true
+        },
+        {
+          "home": "home-b",
+          "kind": "workflow",
+          "digest": "ee3279e07eee711f986c8bab23549a6d828df98de2ebf2d54843484cebfdab7f",
+          "files": 7,
+          "directories": 6,
+          "bytes_and_all_modes_unchanged": true
+        }
+      ],
+      "published": [
+        {
+          "kind": "agent",
+          "version": "1.0.11",
+          "digest": "282ce7dacf248ae042ac4b31e364f4883da1bbc8217e6b1493d48ac97762461f",
+          "files": 11,
+          "directories": 13,
+          "complete_expected_tree_matches": true,
+          "export_reimport_tree_matches": true,
+          "ordinary_binary_skill_attachments_empty_directories_and_execute_bits_preserved": true
+        },
+        {
+          "kind": "agent",
+          "version": "1.0.14",
+          "digest": "289a039cd648d15352ddff186f64fac1d5f7c2ca5b515e34b2c9d7b405674995",
+          "files": 12,
+          "directories": 14,
+          "complete_expected_tree_matches": true,
+          "export_reimport_tree_matches": true,
+          "ordinary_binary_skill_attachments_empty_directories_and_execute_bits_preserved": true
+        },
+        {
+          "kind": "workflow",
+          "version": "1.0.11",
+          "digest": "d8ecef5cf3f81ef82cd12da53c03686229238ea4679f6815c636e53cdb40020b",
+          "files": 10,
+          "directories": 12,
+          "complete_expected_tree_matches": true,
+          "export_reimport_tree_matches": true,
+          "ordinary_binary_skill_attachments_empty_directories_and_execute_bits_preserved": true
+        }
+      ],
+      "scope": "Offline complete-tree audit of actual installed browser publications, all four readonly original tree modes, and exported/reimported full trees. No new browser, service, agent, or formal execution."
+    }
+  }
+}
