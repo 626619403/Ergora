@@ -1,5 +1,6 @@
 import { api } from "./api.js";
 import { app } from "./state.js";
+import { compositionGraphView } from "./composition-graph.js";
 import { node, button, pre, heading, panel, empty, row, select, field, lines, badge, download, table } from "./ui.js";
 
 // Library assets belong to the control directory, independently of project selection.
@@ -11,6 +12,15 @@ const library = {
   restoreSelection: null,
 };
 const selections = new Map();
+const graphSessions = new Map();
+let previewGraph;
+
+export function disposeDefinitionGraph() {
+  previewGraph?.dispose();
+  previewGraph = null;
+}
+
+export function drawDefinitionGraph() { previewGraph?.mount(); }
 const currentLibrary = (home) => home === library.controlDirectory && home === app.bootstrap?.state_directory;
 const editors = new Map();
 const textOf = (value) => JSON.stringify(value, null, 2) + "\n";
@@ -528,6 +538,7 @@ async function openDefinition(kind, reference, render) {
   try {
     const result = await api(`/api/${kind}-definitions/${encodeURIComponent(reference.id)}/${encodeURIComponent(reference.version)}`);
     if (!currentLibrary(home) || request !== library.detailRequest) return;
+    if (reference.digest && reference.digest !== result.digest) throw new Error("所选精确定义的摘要与当前库不符；没有切换到其他版本。");
     await restoreEditor(kind, result, home);
     if (!currentLibrary(home) || request !== library.detailRequest) return;
     library.detail = result;
@@ -926,29 +937,17 @@ function editorView(render) {
   return view;
 }
 
-function instancesView(preview) {
+function instancesView(preview, render) {
+  const key = JSON.stringify([library.controlDirectory, referenceText(preview.root)]);
+  if (!graphSessions.has(key)) graphSessions.set(key, {});
+  previewGraph = compositionGraphView(preview, graphSessions.get(key), library.agents,
+    (reference) => openDefinition(reference.kind, reference, render));
   return panel(
-    "静态组合与完整祖先指令",
-    "结构父链决定资源继承和权限上限；依赖决定先后，端口决定数据来源。此处尚未调用 Agent。",
+    "已发布静态组合与完整祖先指令",
+    "图来自下方精确已发布版本，编辑中的新版本及未应用正文不会进入此图。结构父链决定资源继承和权限上限；依赖决定先后，端口决定数据来源。此处尚未调用 Agent。",
     row(badge(`${preview.usage.instances} 个实例`), badge(`${preview.usage.material_bytes} 指令字节`)),
     pre({ root: preview.root, preview_sha256: preview.preview_sha256, pending: preview.pending }),
-    table(["实例路径", "职能 / 类型", "后端请求", "结构父级", "先行依赖"], preview.instances.map((item) => [
-      item.path, item.role || item.kind, item.backend_request?.tool || "—", item.parent || "根", item.depends_on.join("\n") || "—",
-    ])),
-    preview.instances.map((item) => node("details", { className: "definition-details" },
-      node("summary", {}, `${item.path} · 权限、端口${item.kind === "agent" ? "与完整指令" : ""}`),
-      pre({ ref: item.ref, role: item.role, backend_request: item.backend_request, permissions: item.permissions,
-        limits: item.limits, usage: item.usage, concurrency_scopes: item.concurrency_scopes,
-        inputs: item.inputs, outputs: item.outputs, review_requirement: item.review_requirement }),
-      item.kind === "agent" ? [
-        pre({ material_bytes: item.material_bytes, prompt_sha256: item.prompt_sha256 }),
-        ...item.resources.map((resource) => node("details", {},
-          node("summary", {}, `${resource.kind} · ${resource.ids.join(", ")}`),
-          pre({ content_digest: resource.content_digest, sources: resource.sources }), pre(resource.text),
-        )),
-        node("details", {}, node("summary", {}, "完整装配后的提示正文"), pre(item.prompt)),
-      ] : null,
-    )),
+    previewGraph.element,
     button("下载 composition-preview.json", () => download("composition-preview.json", JSON.stringify(preview, null, 2) + "\n")),
   );
 }
@@ -973,7 +972,7 @@ function detailView(render) {
   if (selected.kind !== "workflow") return contents;
   const result = node("div", {},
     library.previewError ? panel("预览未通过", library.previewError) : null,
-    library.preview ? instancesView(library.preview) : empty("预览后查看所有叶实例继承的指令、来源、权限和预算。"),
+    library.preview ? instancesView(library.preview, render) : empty("预览后查看所有叶实例继承的指令、来源、权限和预算。"),
   );
   const grant = node("textarea", { className: "workflow-json", value: library.grant,
     "aria-label": "静态预览上限 JSON", spellcheck: "false" });
@@ -985,6 +984,7 @@ function detailView(render) {
     Object.assign(library, { preview: null, previewLoading: false, previewError: "" });
     previewAction.disabled = false;
     previewAction.textContent = "预览完整组合";
+    disposeDefinitionGraph();
     result.replaceChildren(empty("上限已修改；重新预览后查看当前结果。"));
   });
   contents.push(panel(
@@ -995,6 +995,8 @@ function detailView(render) {
   ), result);
   return contents;
 }
+
+window.addEventListener("pagehide", disposeDefinitionGraph);
 
 export function definitionsView(render) {
   synchronizeLibrary();

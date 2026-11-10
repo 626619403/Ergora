@@ -1,0 +1,58 @@
+{
+  "kind": "ergora-evidence-projection",
+  "schema_version": 1,
+  "slice": "AC5 C4a",
+  "baseline": "45c2de47e9119d1f07616b3307331321d38155a4",
+  "originals": [
+    {
+      "file": "self-review-r1.json",
+      "bytes": 1726,
+      "sha256": "df357303c6393722f3245b0ed1e38acd59dece3dc18023a6ffd9b4ff03740dae"
+    },
+    {
+      "file": "self-review-r1/public-original-result.json",
+      "bytes": 2530,
+      "sha256": "a7a72bfbfd6222b98b0a132e2e0d208ba63bac2a6bc6fc7eb0104e2c5c028d5a"
+    }
+  ],
+  "projection": "Machine paths/local ports replaced; original bytes/SHA refer to retained originals, not this serialized projection.",
+  "omitted": "No fields omitted apart from path/port replacement. Result is a review, not formal owner approval or different-model independence.",
+  "evidence": {
+    "identity": {
+      "checked_at": "2026-11-10T12:18:57.388004+00:00",
+      "source": {
+        "src/ergora/data/console/composition-graph.js": "e82f42cfc48ef71eed2a46667df27ec4ee25e60f2e5b43a78fd70f6a6f60a009",
+        "src/ergora/data/console/definitions.js": "ca4d5e0d85bbd92b9815efe0dea69f91f137f59a8623c303a283aa83197ee8ea",
+        "src/ergora/data/console/app.js": "506cb7e81f4456745090a6a84a5a149021f52f3f0e30bbe26c494c264e709d78",
+        "src/ergora/data/console/style.css": "d66c10689fe9f3d08f4c48e1d200146ea36e894aed9aa3e690b311c06ee1da13",
+        "src/ergora/data/console/ui.js": "2fc6c19d8d46a68d12562b2c696ec1f6bad4ea7d781afbc326ce3fbf6ac3df2c",
+        "src/ergora/workflow_definitions.py": "e05abc03927d329c47b3391adc52bf11c90a437ddee49c9cb2ae8718141079e7"
+      },
+      "run_id": "0a28acda087d4a76b48fa84515532c24",
+      "status": "succeeded",
+      "backend": "codex",
+      "inference_model": "gpt-6.1-sol",
+      "reasoning_effort": "high",
+      "exit_code": 0,
+      "seconds": 201.6440556407906,
+      "input_digest": "4b9f6f587effdc4fff5fb9885d28ac13a3792e4e3d71d7ae77324f72facbd642",
+      "prompt_sha256": "852f57b65bcd2e5dcc0641b6a8e327e859b923d954fc176c3d9a8ad208e77275",
+      "attachment_bytes": 321066,
+      "attachment_sha256": "ccad6e58afec67ffc50fd8cc0b324352791c26d69cd9db8233bbc97f1a733e30",
+      "manifest_digest": "8af4a9bd9681d177f8e65aba2c5fc53c518ec444c580cfd5e4520207c3b13fbd",
+      "evidence_revision": "1.0.71",
+      "original_definition_libraries_removed": true,
+      "original_definition_libraries_retained": true,
+      "scope": "Actual bundled structure-review; frozen complete source/evidence. Not owner approval, reasoning quality or different-model independence.",
+      "decision": "approve",
+      "result_sha256": "a7a72bfbfd6222b98b0a132e2e0d208ba63bac2a6bc6fc7eb0104e2c5c028d5a"
+    },
+    "result": {
+      "artifacts": {
+        "response": "Read the complete root scope using task MCP list/read only:\n\n- `definitions/workflow/ergora-structure-review/1.0.71/instructions.md`\n- `definitions/agent/ergora-structure-reviewer/1.0.71/instructions.md`\n- `definitions/agent/ergora-structure-reviewer/1.0.71/skills/ergora-structure-reviewer/SKILL.md`\n- `definitions/agent/ergora-structure-reviewer/1.0.71/skills/candidate-evidence/SKILL.md`\n- `definitions/agent/ergora-structure-reviewer/1.0.71/skills/candidate-evidence/references/candidate.txt`\n\nThe 321,066-byte attachment was read continuously through `next_offset: null` using UTF-8 pages no larger than 24,000 bytes. The base64 window at offset 24,000 was retried successfully at the same offset with 12,000 bytes. No attached code or services were executed; no workspace changes were made.\n\n**Spec: approve.** `composition-graph.js` preserves full instance paths, distinct containment/dependency/named-data relationships, and complete shared graph/keyboard inspection. Exact definition jumps use the existing editor owner and check digests. `definitions.js` retains preview generations, grant invalidation, and home/root session ownership. Compilation, inheritance and permission ceilings remain authoritative in the compiler.\n\nFinal R4 evidence supports closing CG-1, CG-2 and CG-3: graph restoration after synthetic persisted events, preservation of unrelated research fields, and synchronized renderer dimensions before explicit fit. Requests 94 and 103 have matching held/released receipts supporting both late-response scenarios. Earlier overlapping-driver booleans and the withdrawn R3 grant claim were excluded. Natural navigation reloaded; a natural BFCache hit remains unproven.\n\n**Standards: approve.** The private graph module has a focused presentation boundary. Its layout uses compiler-provided `levels` without duplicating dependency ordering or permission logic. `app.js` owns DOM mount/disposal and limits persisted restoration to definitions. All three explicit fits reuse vendor `resize()`; no second observer or general graph framework was introduced. No unnecessary wrapper, defensive check, or test addition warrants correction.\n\nNo findings require a fix. Owner approval and remaining delivery gates retain their existing owners. This independent-context Codex review makes no different-model independence claim."
+      },
+      "decision": "approve",
+      "summary": "Spec: approve. Standards: approve. No concrete structural findings in the exact supplied C4a candidate."
+    }
+  }
+}

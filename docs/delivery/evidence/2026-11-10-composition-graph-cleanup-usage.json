@@ -1,0 +1,52 @@
+{
+  "kind": "ergora-evidence-projection",
+  "schema_version": 1,
+  "slice": "AC5 C4a",
+  "baseline": "45c2de47e9119d1f07616b3307331321d38155a4",
+  "originals": [
+    {
+      "file": "browser-cleanup.json",
+      "bytes": 7200,
+      "sha256": "1d87e86f9628d0594fd7a5b970745378bd8e14c8198d562ab57dd4f1b964526c"
+    },
+    {
+      "file": "self-review-cleanup.json",
+      "bytes": 799,
+      "sha256": "ef7c99528237bab864841ce9a80e47f0467c30dbb491d49a705bb3d405186bbb"
+    },
+    {
+      "file": "self-review-usage.json",
+      "bytes": 386,
+      "sha256": "245271a368e3d16476262870851a7df79e69c5f32b2684dde5060f94e6f3fc7c"
+    }
+  ],
+  "projection": "Machine paths/local ports replaced; original bytes/SHA refer to retained originals, not this serialized projection.",
+  "omitted": "Individual PIDs/starttimes omitted; original sampled identities retained. Usage is self-reported, not billing.",
+  "evidence": {
+    "browser": {
+      "all_observed_gone": true,
+      "observed_identities": 40,
+      "scope": "Only sampled owned HTTP managers/children and named browser trees. No claim about unobserved processes."
+    },
+    "self_review": {
+      "all_observed_gone": true,
+      "observed_identities": 4,
+      "scope": "Four sampled owned invocation identities; no unobserved-process claim."
+    },
+    "usage": {
+      "source": "Original Codex event stream; self-reported usage, not a bill. Cached input is included in input.",
+      "events": [
+        {
+          "type": "turn.completed",
+          "usage": {
+            "input_tokens": 1360988,
+            "cached_input_tokens": 1204480,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 3889,
+            "reasoning_output_tokens": 1903
+          }
+        }
+      ]
+    }
+  }
+}

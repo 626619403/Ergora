@@ -1,6 +1,6 @@
 # AC5 C3d：父子联合修订、重复实例与权限链
 
-准备基线 `4636d77377bf63f15c357cf14660024e3ae1f939`，分支 `refactor/architecture-foundations`。先读 AGENTS、PLAN、[C3总合同](2026-11-10-definition-revisions.md)、[D4/D5记录](../delivery/2026-11-10-definition-resource-inheritance.md)及[本片记录](../delivery/2026-11-10-definition-joint-revisions.md)。D4/D5已普通推送4636d77，自己的CI42799311145第三份官方样本双OS七必要步骤success/completed、原评审者离线终核通过；精确对象/一次独立HTTPS同完整SHA保持。前置门禁终结，本片K0已满足，K1/K2原CLI和K3页面已验证；K4实际自身406.36秒approve/完整五scope已核；六公开投影与清理完成，完整20文件新独立Spec/Standards通过/开放0，本地出口完成；普通提交/自己的CI/HTTPS待验。
+准备基线 `4636d77377bf63f15c357cf14660024e3ae1f939`，分支 `refactor/architecture-foundations`。先读 AGENTS、PLAN、[C3总合同](2026-11-10-definition-revisions.md)、[D4/D5记录](../delivery/2026-11-10-definition-resource-inheritance.md)及[本片记录](../delivery/2026-11-10-definition-joint-revisions.md)。D4/D5已普通推送4636d77，自己的CI42799311145第三份官方样本双OS七必要步骤success/completed、原评审者离线终核通过；精确对象/一次独立HTTPS同完整SHA保持。前置门禁终结，本片K0已满足，K1/K2原CLI和K3页面已验证；K4实际自身406.36秒approve/完整五scope已核；六公开投影与清理完成，完整20文件新独立Spec/Standards通过/开放0，本地出口完成；45c2de47e9119d1f07616b3307331321d38155a4已普通推送；自己的CI42807885966双OS七必要步骤success/completed、原评审者离线终核及精确对象/一次独立HTTPS同完整SHA通过，C3d精确交付终结。
 
 ## 目标和边界
 
@@ -43,6 +43,6 @@
 |K1 三域父子联合声明|内层到根逐次真实拒绝/共同修正/发布；旧grant拒绝、新grant预览|每个失败前后完整索引可复核；根最后；所有旧对象/材料/预算保持；实际不支持的network调用在run登记前拒绝|R2真实118CLI/84.68秒整体通过；三域八次子级越父+三旧grant及十二模式准入拒绝，完整索引/零run保持；35旧对象保持|
 |K2 重复实例与职责/后端|相同子引用两路径、完整all-join；原职责新修订及逐叶check-input|实例身份独立、来源完整、同资产去重；可用准入与实际认证不同，不扩大模板或后端合同|R2同子引用两条required路径、单独1.0.45 advisory第三路径、完整all-join/资产去重和六次逐叶Codex/Claude准入通过；未调用认证/模型|
 |K3 页面联合修订|原definitions.js表单/JSON编辑所选链，明确检查/发布/旧grant错误|实际页面能保留被拒绝候选并修正；父/子版本和精确引用不串；错误不发布旧快照；静态预览保持原上限说明|实际页面治理三层共同新版本1.0.51发布，三次单改及旧grant共四次拒绝、新grant完整预览通过；首轮下拉定位和第二轮冗余切换超时保留，原状态续接成功；15原对象保持、两HTTP/七浏览器身份清理|
-|K4 完整审查和交付|必要手册/架构续记、原CLI/浏览器原件、真实自身模板、新fresh-context两轴|实证finding处置/owned清理；源及完整证据匹配后普通提交、自己的CI和明确HTTPS分别核验|K1–K3已验；真实自身406.36秒approve、五scope/862776B/41成功UTF8页与八保护源已核，六公开投影/清理齐备；完整20文件新独立两轴通过/开放0，本地出口完成；普通提交/自己的CI/HTTPS待验|
+|K4 完整审查和交付|必要手册/架构续记、原CLI/浏览器原件、真实自身模板、新fresh-context两轴|实证finding处置/owned清理；源及完整证据匹配后普通提交、自己的CI和明确HTTPS分别核验|K1–K3已验；真实自身406.36秒approve、五scope/862776B/41成功UTF8页与八保护源已核，六公开投影/清理齐备；完整20文件新独立两轴通过/开放0，本地出口完成；45c2de47e9119d1f07616b3307331321d38155a4已普通推送；自己的CI42807885966双OS七必要步骤success/completed、原评审者离线终核及精确对象/一次独立HTTPS同完整SHA通过，C3d精确交付终结|
 
 每节点更新本片记录、C3父计划和PLAN。自身模板按本片新增合同、必要邻接和原始回执固定材料；前片大型附件不自动复制。缺证时补已有原件，保留首审和实际成本；不以通过摘要替代投递。材料必须完整，不为降低用量截断祖先资源。C6另评估材料范围、去重和分页累计开销，配置与用户约束优先于检查脚本。

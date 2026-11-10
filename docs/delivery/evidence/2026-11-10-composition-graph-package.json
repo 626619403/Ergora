@@ -1,0 +1,131 @@
+{
+  "kind": "ergora-evidence-projection",
+  "schema_version": 1,
+  "slice": "AC5 C4a",
+  "baseline": "45c2de47e9119d1f07616b3307331321d38155a4",
+  "originals": [
+    {
+      "file": "r1/package-identities.json",
+      "bytes": 58505,
+      "sha256": "c69b859662e8454ff121748e67a31e5675123df94c3f7b9cb75985004af8d007"
+    },
+    {
+      "file": "r2/package-identities.json",
+      "bytes": 58505,
+      "sha256": "9270fdd8eb6b7770a8fffd3a21d0e48198de73f008143a731f9be355e36920a4"
+    },
+    {
+      "file": "r3/package-identities.json",
+      "bytes": 58505,
+      "sha256": "7b31a871f042d02b8fda3082896eb719191749cc0e400f63676d1a591733f1f2"
+    },
+    {
+      "file": "r4/package-identities.json",
+      "bytes": 58505,
+      "sha256": "a9c864ed46f34e63395ef38924d7b2a820263fca65ecce68de0b98f7da869894"
+    },
+    {
+      "file": "r1/regression.json",
+      "bytes": 362,
+      "sha256": "86cd141434f4773ad2b3f46f20c14c7a65eabda4a28f015bd1d592580cf38b4a"
+    },
+    {
+      "file": "r1/regression.stdout",
+      "bytes": 100,
+      "sha256": "65fd36af2aadcfbb99514b7ad9de38f353e6db1ac54daec945d7f0ecc6f93303"
+    }
+  ],
+  "projection": "Machine paths/local ports replaced; original bytes/SHA refer to retained originals, not this serialized projection.",
+  "omitted": "Full 436-file hash maps omitted; original complete maps and RECORDs retained. No new permanent test or CI.",
+  "evidence": {
+    "r1": {
+      "checked_at": "2026-11-10T11:40:38.302158+00:00",
+      "baseline": "45c2de47e9119d1f07616b3307331321d38155a4",
+      "source_wheel_installed_record_files": 436,
+      "wheel_sha256": "3023e2d2f92835c6842fa4ad1cade4492a30404047f4cf1d839c1f76a4732a45",
+      "frozen_files": 283,
+      "verify": {
+        "status": "PASS",
+        "version": "2.2",
+        "path": "<repository>/.ergora/checks/ac5-composition-graph/r1/wheel-venv/lib/python3.12/site-packages/ergora/data/reference",
+        "source_zip_sha256": "8018be5094623ca0646d28d3671daaf7ac60774280eefc1c5c023bc19dc5c760",
+        "files": 283,
+        "installer": "<repository>/.ergora/checks/ac5-composition-graph/r1/wheel-venv/lib/python3.12/site-packages/ergora/data/reference/install-from-report.sh",
+        "runtime_started": false
+      },
+      "python": "3.12.11 (main, Aug 18 2025, 19:19:11) [Clang 20.1.4 ]",
+      "scope": "Noneditable composition graph wheel; no original services, model quality or GPU acceptance claim."
+    },
+    "r2": {
+      "checked_at": "2026-11-10T11:50:41.165506+00:00",
+      "baseline": "45c2de47e9119d1f07616b3307331321d38155a4",
+      "source_wheel_installed_record_files": 436,
+      "wheel_sha256": "0a40b1c4bafc30aea019bed373662342b5398481be390cfd5ce7b790a49c2277",
+      "frozen_files": 283,
+      "verify": {
+        "status": "PASS",
+        "version": "2.2",
+        "path": "<repository>/.ergora/checks/ac5-composition-graph/r2/wheel-venv/lib/python3.12/site-packages/ergora/data/reference",
+        "source_zip_sha256": "8018be5094623ca0646d28d3671daaf7ac60774280eefc1c5c023bc19dc5c760",
+        "files": 283,
+        "installer": "<repository>/.ergora/checks/ac5-composition-graph/r2/wheel-venv/lib/python3.12/site-packages/ergora/data/reference/install-from-report.sh",
+        "runtime_started": false
+      },
+      "python": "3.12.11 (main, Aug 18 2025, 19:19:11) [Clang 20.1.4 ]",
+      "scope": "Noneditable composition graph wheel; no original services, model quality or GPU acceptance claim."
+    },
+    "r3": {
+      "checked_at": "2026-11-10T11:56:22.870924+00:00",
+      "baseline": "45c2de47e9119d1f07616b3307331321d38155a4",
+      "source_wheel_installed_record_files": 436,
+      "wheel_sha256": "a40049874d01f3ad360935a19cab27e9d13c2fc86fb6df78353ee7f702c872dc",
+      "frozen_files": 283,
+      "verify": {
+        "status": "PASS",
+        "version": "2.2",
+        "path": "<repository>/.ergora/checks/ac5-composition-graph/r3/wheel-venv/lib/python3.12/site-packages/ergora/data/reference",
+        "source_zip_sha256": "8018be5094623ca0646d28d3671daaf7ac60774280eefc1c5c023bc19dc5c760",
+        "files": 283,
+        "installer": "<repository>/.ergora/checks/ac5-composition-graph/r3/wheel-venv/lib/python3.12/site-packages/ergora/data/reference/install-from-report.sh",
+        "runtime_started": false
+      },
+      "python": "3.12.11 (main, Aug 18 2025, 19:19:11) [Clang 20.1.4 ]",
+      "scope": "Noneditable composition graph wheel; no original services, model quality or GPU acceptance claim."
+    },
+    "r4": {
+      "checked_at": "2026-11-10T12:06:34.209920+00:00",
+      "baseline": "45c2de47e9119d1f07616b3307331321d38155a4",
+      "source_wheel_installed_record_files": 436,
+      "wheel_sha256": "9d8e0a423859697f876fc5dc0a9d89bc6a7a6893f10c577f335f223d71534aad",
+      "frozen_files": 283,
+      "verify": {
+        "status": "PASS",
+        "version": "2.2",
+        "path": "<repository>/.ergora/checks/ac5-composition-graph/r4/wheel-venv/lib/python3.12/site-packages/ergora/data/reference",
+        "source_zip_sha256": "8018be5094623ca0646d28d3671daaf7ac60774280eefc1c5c023bc19dc5c760",
+        "files": 283,
+        "installer": "<repository>/.ergora/checks/ac5-composition-graph/r4/wheel-venv/lib/python3.12/site-packages/ergora/data/reference/install-from-report.sh",
+        "runtime_started": false
+      },
+      "python": "3.12.11 (main, Aug 18 2025, 19:19:11) [Clang 20.1.4 ]",
+      "scope": "Noneditable composition graph wheel; no original services, model quality or GPU acceptance claim."
+    },
+    "regression": {
+      "arguments": [
+        "<repository>/.ergora/checks/ac5-composition-graph/r1/wheel-venv/bin/python",
+        "-I",
+        "-m",
+        "pytest",
+        "-q",
+        "tests/test_definition_console.py",
+        "tests/test_web.py",
+        "--basetemp",
+        ".ergora/checks/ac5-composition-graph/r1/pytest-data"
+      ],
+      "returncode": 0,
+      "seconds": 35.86978284921497
+    },
+    "regression_stdout": "............................                                             [100%]\n28 passed in 33.41s\n",
+    "limits": "28 existing installed Python regressions ran on R1. R2/R3/R4 only changed frontend lifecycle/fit and had affected browser checks; Python was not rerun."
+  }
+}

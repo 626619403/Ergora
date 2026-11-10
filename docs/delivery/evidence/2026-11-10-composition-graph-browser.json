@@ -1,0 +1,872 @@
+{
+  "kind": "ergora-evidence-projection",
+  "schema_version": 1,
+  "slice": "AC5 C4a",
+  "baseline": "45c2de47e9119d1f07616b3307331321d38155a4",
+  "originals": [
+    {
+      "file": "browser-main-01.json",
+      "bytes": 9731,
+      "sha256": "274b78a15e486742378eadc95d1c2f0d67ec7f5b4d6b43bfeb9c8d7cc8206369"
+    },
+    {
+      "file": "browser-main-02.json",
+      "bytes": 18046,
+      "sha256": "992cf628b57613347dcc3728647352d4a59fd8e3df95069826423f3dd71ee0a0"
+    },
+    {
+      "file": "browser-main-r2-package.json",
+      "bytes": 18046,
+      "sha256": "b0cf30deec05157e372da242cf63b1e48dacf421a416af4c8c449277f4ee706a"
+    },
+    {
+      "file": "browser-lifecycle-01.json",
+      "bytes": 608,
+      "sha256": "a355959b1cac6f7adc5fd9c07cb0ebdae99490a7afa51d9269f682051b5e1781"
+    },
+    {
+      "file": "browser-lifecycle-02.json",
+      "bytes": 541,
+      "sha256": "578ccc98bf01601eaeabaf3b787f6cf5dd9119dd998d5e8bf1732ab6c30e40d7"
+    },
+    {
+      "file": "browser-lifecycle-r2-package.json",
+      "bytes": 493,
+      "sha256": "469bf94e59c04afdaa191afda73a122935e0a507f0cf6dba0543928472e5e317"
+    },
+    {
+      "file": "browser-lifecycle-r3-package.json",
+      "bytes": 506,
+      "sha256": "1e30b6bb1dc4cb9131d5072bf5549c1adedb2da09f4f87db4abed6cf92c69cfc"
+    },
+    {
+      "file": "browser-lifecycle-r4-package.json",
+      "bytes": 408,
+      "sha256": "739aac2e5c15ca248eefc883e71d85b4eada1aaff73095302fdd7e172e164eee"
+    },
+    {
+      "file": "browser-lifecycle-r4-package-02.json",
+      "bytes": 561,
+      "sha256": "d40c4e15fba38fc95c592b58c8c54c1c022faecfcfa9ecb7635c920a523730a6"
+    },
+    {
+      "file": "browser-wait-diagnosis.json",
+      "bytes": 293,
+      "sha256": "15f5ff22ef8e1c566423a7e83ab666ad2ebd42b45edb5bd96351c1ff0891d474"
+    },
+    {
+      "file": "browser-restore-r2-package.json",
+      "bytes": 520,
+      "sha256": "20f4ef01eabb0187b605534e57e9dac0392abffe511c9371100d28382a37baac"
+    },
+    {
+      "file": "browser-restore-r3-package.json",
+      "bytes": 555,
+      "sha256": "97a2ca090e7efb942bf83b48b74a25a930100b1a7280214d2d74af400130b51a"
+    },
+    {
+      "file": "browser-restore-r4-package.json",
+      "bytes": 556,
+      "sha256": "5c49780e0557880bcb187f046f6bab0696e9bb7b95d44b090fa80083b812fe95"
+    },
+    {
+      "file": "browser-resize-r3-package.json",
+      "bytes": 497,
+      "sha256": "c419611881448d03b13272dbbd632edcd4354efef8eaf5ebfc8b8225087999e1"
+    },
+    {
+      "file": "browser-resize-settled-r3.json",
+      "bytes": 339,
+      "sha256": "3c99c9e045db6f9f9733c992df4e534ce75fd85748e8632b08267ef193c5b91a"
+    },
+    {
+      "file": "browser-resize-r4-package.json",
+      "bytes": 496,
+      "sha256": "c849fd1e48df6887fa95252f7141102ce2236e68ab7e0f49affe0c40b9cccb84"
+    },
+    {
+      "file": "browser-views-r3-package.json",
+      "bytes": 925,
+      "sha256": "7c90a05fdb675020cd0f68ee171b4915b8781ad9e9111a4f2aca60330a0cfa8c"
+    },
+    {
+      "file": "browser-views-r4-package.json",
+      "bytes": 925,
+      "sha256": "9bf3bdb09234c90186bc6cffdb3675febc27aed3195c4850448eeb78b384b9fa"
+    },
+    {
+      "file": "browser-audit.json",
+      "bytes": 62351,
+      "sha256": "e7461e6278ad094a8a1dbaeaf36e725a28395cdad7966668af8d229441ddaaf7"
+    }
+  ],
+  "projection": "Machine paths/local ports replaced; original bytes/SHA refer to retained originals, not this serialized projection.",
+  "omitted": "Repeated screen text, final graph positions/elements and full native metadata index omitted; full request/response bodies, controls and trees retained privately.",
+  "evidence": {
+    "browser-main-01.json": {
+      "checked_at": "2026-11-10T11:46:33.063702+00:00",
+      "script": ".ergora/checks/ac5-composition-graph/browser-main-r1.js",
+      "exit_code": 0,
+      "seconds": 4.365867459215224,
+      "result": {
+        "passed": false,
+        "step": "real graph selection and drag",
+        "error": "real canvas click not reflected",
+        "results": [
+          {
+            "id": "ergora-governance-delivery",
+            "version": "1.0.0",
+            "preview_sha256": "d1231431743a8c6a88b78690ec4013ec26a3f2d1a2768c5ee34e50e58cae2774",
+            "instances": 16,
+            "ports": 12,
+            "dependencies": 9,
+            "dataEdges": 16,
+            "completeAgentInspectors": 5
+          },
+          {
+            "id": "ergora-large-change-delivery",
+            "version": "1.0.0",
+            "preview_sha256": "23ba4611ec03804c8cdf5f4d68125a44e333df019d0b6c4260b11a15588e5e81",
+            "instances": 19,
+            "ports": 12,
+            "dependencies": 13,
+            "dataEdges": 18,
+            "completeAgentInspectors": 7
+          },
+          {
+            "id": "ergora-training-proposal",
+            "version": "1.0.0",
+            "preview_sha256": "f19085b4c06c91aa87a362ee3677ea4a99ceb1f203744a34618a9734690ba714",
+            "instances": 9,
+            "ports": 6,
+            "dependencies": 5,
+            "dataEdges": 9,
+            "completeAgentInspectors": 4
+          },
+          {
+            "id": "ergora-governance-delivery",
+            "version": "1.0.70",
+            "preview_sha256": "44ea52a9935d608e4fef56caa1963b4b7cf5ef5bfd0550b434ca55c27ec26f5f",
+            "instances": 19,
+            "ports": 15,
+            "dependencies": 11,
+            "dataEdges": 20,
+            "completeAgentInspectors": 6
+          }
+        ],
+        "errors": []
+      }
+    },
+    "browser-main-02.json": {
+      "checked_at": "2026-11-10T11:47:50.590191+00:00",
+      "script": ".ergora/checks/ac5-composition-graph/browser-main-r2.js",
+      "exit_code": 0,
+      "seconds": 4.897344064898789,
+      "result": {
+        "passed": true,
+        "results": [
+          {
+            "id": "ergora-governance-delivery",
+            "version": "1.0.0",
+            "preview_sha256": "d1231431743a8c6a88b78690ec4013ec26a3f2d1a2768c5ee34e50e58cae2774",
+            "instances": 16,
+            "ports": 12,
+            "dependencies": 9,
+            "dataEdges": 16,
+            "completeAgentInspectors": 5
+          },
+          {
+            "id": "ergora-large-change-delivery",
+            "version": "1.0.0",
+            "preview_sha256": "23ba4611ec03804c8cdf5f4d68125a44e333df019d0b6c4260b11a15588e5e81",
+            "instances": 19,
+            "ports": 12,
+            "dependencies": 13,
+            "dataEdges": 18,
+            "completeAgentInspectors": 7
+          },
+          {
+            "id": "ergora-training-proposal",
+            "version": "1.0.0",
+            "preview_sha256": "f19085b4c06c91aa87a362ee3677ea4a99ceb1f203744a34618a9734690ba714",
+            "instances": 9,
+            "ports": 6,
+            "dependencies": 5,
+            "dataEdges": 9,
+            "completeAgentInspectors": 4
+          },
+          {
+            "id": "ergora-governance-delivery",
+            "version": "1.0.70",
+            "preview_sha256": "44ea52a9935d608e4fef56caa1963b4b7cf5ef5bfd0550b434ca55c27ec26f5f",
+            "instances": 19,
+            "ports": 15,
+            "dependencies": 11,
+            "dataEdges": 20,
+            "completeAgentInspectors": 6
+          }
+        ],
+        "errors": [],
+        "realCanvasClickAndDrag": true,
+        "viewDisposalAndSession": true,
+        "exactJumpBufferPreserved": true,
+        "grantDisposes": true,
+        "missingGraphTableFallback": true
+      }
+    },
+    "browser-main-r2-package.json": {
+      "checked_at": "2026-11-10T11:51:56.316138+00:00",
+      "script": ".ergora/checks/ac5-composition-graph/browser-main-r2.js",
+      "exit_code": 0,
+      "seconds": 5.394730515778065,
+      "result": {
+        "passed": true,
+        "results": [
+          {
+            "id": "ergora-governance-delivery",
+            "version": "1.0.0",
+            "preview_sha256": "d1231431743a8c6a88b78690ec4013ec26a3f2d1a2768c5ee34e50e58cae2774",
+            "instances": 16,
+            "ports": 12,
+            "dependencies": 9,
+            "dataEdges": 16,
+            "completeAgentInspectors": 5
+          },
+          {
+            "id": "ergora-large-change-delivery",
+            "version": "1.0.0",
+            "preview_sha256": "23ba4611ec03804c8cdf5f4d68125a44e333df019d0b6c4260b11a15588e5e81",
+            "instances": 19,
+            "ports": 12,
+            "dependencies": 13,
+            "dataEdges": 18,
+            "completeAgentInspectors": 7
+          },
+          {
+            "id": "ergora-training-proposal",
+            "version": "1.0.0",
+            "preview_sha256": "f19085b4c06c91aa87a362ee3677ea4a99ceb1f203744a34618a9734690ba714",
+            "instances": 9,
+            "ports": 6,
+            "dependencies": 5,
+            "dataEdges": 9,
+            "completeAgentInspectors": 4
+          },
+          {
+            "id": "ergora-governance-delivery",
+            "version": "1.0.70",
+            "preview_sha256": "44ea52a9935d608e4fef56caa1963b4b7cf5ef5bfd0550b434ca55c27ec26f5f",
+            "instances": 19,
+            "ports": 15,
+            "dependencies": 11,
+            "dataEdges": 20,
+            "completeAgentInspectors": 6
+          }
+        ],
+        "errors": [],
+        "realCanvasClickAndDrag": true,
+        "viewDisposalAndSession": true,
+        "exactJumpBufferPreserved": true,
+        "grantDisposes": true,
+        "missingGraphTableFallback": true
+      }
+    },
+    "browser-lifecycle-01.json": {
+      "checked_at": "2026-11-10T11:48:38.304595+00:00",
+      "script": ".ergora/checks/ac5-composition-graph/browser-lifecycle-r1.js",
+      "exit_code": 0,
+      "seconds": 33.18571226391941,
+      "result": {
+        "passed": false,
+        "step": "BFCache lifecycle event",
+        "error": "persisted page restore leaves graph destroyed",
+        "results": {
+          "homeIsolation": true,
+          "latePreviewCannotReplaceHome": true,
+          "lateGrantPreviewDropped": true,
+          "lifecycleBefore": {
+            "oldDestroyed": true,
+            "restored": false,
+            "syntheticPersistedEvents": true
+          }
+        },
+        "errors": []
+      }
+    },
+    "browser-lifecycle-02.json": {
+      "checked_at": "2026-11-10T11:48:38.396695+00:00",
+      "script": ".ergora/checks/ac5-composition-graph/browser-lifecycle-r2.js",
+      "exit_code": 0,
+      "seconds": 3.7639374216087162,
+      "result": {
+        "passed": false,
+        "step": "home isolation",
+        "error": "page.evaluate: TypeError: Cannot read properties of null (reading 'cy')\n    at eval (eval at evaluate (:370:30), <anonymous>:1:66)\n    at UtilityScript.evaluate (<anonymous>:372:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)",
+        "results": {},
+        "errors": []
+      }
+    },
+    "browser-lifecycle-r2-package.json": {
+      "checked_at": "2026-11-10T11:53:08.258868+00:00",
+      "script": ".ergora/checks/ac5-composition-graph/browser-lifecycle-r2.js",
+      "exit_code": 0,
+      "seconds": 43.109327991027385,
+      "result": {
+        "passed": false,
+        "step": "home isolation",
+        "error": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: 'ergora-governance-delivery @ 1.0.70', exact: true }) to be visible\u001b[22m\n",
+        "results": {},
+        "errors": []
+      }
+    },
+    "browser-lifecycle-r3-package.json": {
+      "checked_at": "2026-11-10T11:58:21.315155+00:00",
+      "script": ".ergora/checks/ac5-composition-graph/browser-lifecycle-r3.js",
+      "exit_code": 0,
+      "seconds": 13.966030625626445,
+      "result": {
+        "passed": true,
+        "results": {
+          "homeIsolation": true,
+          "latePreviewCannotReplaceHome": true,
+          "lateGrantPreviewDropped": true,
+          "lifecycleBefore": {
+            "oldDestroyed": true,
+            "restored": true,
+            "syntheticPersistedEvents": true
+          }
+        },
+        "errors": []
+      }
+    },
+    "browser-lifecycle-r4-package.json": {
+      "checked_at": "2026-11-10T12:09:37.739353+00:00",
+      "script": ".ergora/checks/ac5-composition-graph/browser-lifecycle-r4.js",
+      "exit_code": 0,
+      "seconds": 14.03546404466033,
+      "result": {
+        "passed": false,
+        "step": "late preview across home switch",
+        "error": "Cannot read properties of undefined (reading 'number')",
+        "results": {
+          "homeIsolation": true
+        },
+        "errors": []
+      }
+    },
+    "browser-lifecycle-r4-package-02.json": {
+      "checked_at": "2026-11-10T12:12:24.681629+00:00",
+      "script": ".ergora/checks/ac5-composition-graph/browser-lifecycle-r5.js",
+      "exit_code": 0,
+      "seconds": 13.850839561782777,
+      "result": {
+        "passed": true,
+        "results": {
+          "homeIsolation": true,
+          "latePreviewCannotReplaceHome": true,
+          "lateGrantPreviewDropped": true,
+          "lifecycleBefore": {
+            "oldDestroyed": true,
+            "restored": true,
+            "syntheticPersistedEvents": true
+          }
+        },
+        "errors": [],
+        "heldRequestNumbers": [
+          94,
+          103
+        ]
+      }
+    },
+    "browser-wait-diagnosis.json": {
+      "checked_at": "2026-11-10T12:11:36.474916+00:00",
+      "script": ".ergora/checks/ac5-composition-graph/browser-wait-diagnosis.js",
+      "exit_code": 0,
+      "seconds": 1.9774716622196138,
+      "result": {
+        "passed": true,
+        "diagnostic": true,
+        "returned": false,
+        "milliseconds": 18
+      }
+    },
+    "browser-restore-r2-package.json": {
+      "checked_at": "2026-11-10T11:55:50.835916+00:00",
+      "script": ".ergora/checks/ac5-composition-graph/browser-restore-r1.js",
+      "exit_code": 0,
+      "seconds": 2.74298140918836,
+      "result": {
+        "passed": false,
+        "restored": {
+          "oldDestroyed": true,
+          "newLive": true
+        },
+        "before": {
+          "url": "https://restore.example.invalid/source",
+          "budget": "4321"
+        },
+        "after": {
+          "url": "",
+          "budget": "1000000"
+        },
+        "syntheticPersistedEvents": true,
+        "submitted": false
+      }
+    },
+    "browser-restore-r3-package.json": {
+      "checked_at": "2026-11-10T11:57:41.228482+00:00",
+      "script": ".ergora/checks/ac5-composition-graph/browser-restore-r2.js",
+      "exit_code": 0,
+      "seconds": 4.982605549972504,
+      "result": {
+        "passed": true,
+        "restored": {
+          "oldDestroyed": true,
+          "newLive": true
+        },
+        "before": {
+          "url": "https://restore.example.invalid/source",
+          "budget": "4321"
+        },
+        "after": {
+          "url": "https://restore.example.invalid/source",
+          "budget": "4321"
+        },
+        "syntheticPersistedEvents": true,
+        "submitted": false
+      }
+    },
+    "browser-restore-r4-package.json": {
+      "checked_at": "2026-11-10T12:08:55.296471+00:00",
+      "script": ".ergora/checks/ac5-composition-graph/browser-restore-r2.js",
+      "exit_code": 0,
+      "seconds": 2.6032226071693003,
+      "result": {
+        "passed": true,
+        "restored": {
+          "oldDestroyed": true,
+          "newLive": true
+        },
+        "before": {
+          "url": "https://restore.example.invalid/source",
+          "budget": "4321"
+        },
+        "after": {
+          "url": "https://restore.example.invalid/source",
+          "budget": "4321"
+        },
+        "syntheticPersistedEvents": true,
+        "submitted": false
+      }
+    },
+    "browser-resize-r3-package.json": {
+      "checked_at": "2026-11-10T12:03:13.859908+00:00",
+      "script": ".ergora/checks/ac5-composition-graph/browser-resize-r1.js",
+      "exit_code": 0,
+      "seconds": 2.687585563864559,
+      "result": {
+        "passed": false,
+        "desktop": {
+          "containerWidth": 1076,
+          "rendererWidth": 1076,
+          "containerHeight": 538,
+          "rendererHeight": 538
+        },
+        "mobile": {
+          "containerWidth": 246,
+          "rendererWidth": 1076,
+          "containerHeight": 538,
+          "rendererHeight": 538
+        }
+      }
+    },
+    "browser-resize-settled-r3.json": {
+      "checked_at": "2026-11-10T12:04:18.763953+00:00",
+      "script": ".ergora/checks/ac5-composition-graph/browser-resize-settled.js",
+      "exit_code": 0,
+      "seconds": 1.838852415792644,
+      "result": {
+        "passed": true,
+        "diagnostic": true,
+        "settled": true,
+        "dimensions": {
+          "container": 246,
+          "renderer": 246
+        }
+      }
+    },
+    "browser-resize-r4-package.json": {
+      "checked_at": "2026-11-10T12:08:10.201277+00:00",
+      "script": ".ergora/checks/ac5-composition-graph/browser-resize-r1.js",
+      "exit_code": 0,
+      "seconds": 2.8555028857663274,
+      "result": {
+        "passed": true,
+        "desktop": {
+          "containerWidth": 1076,
+          "rendererWidth": 1076,
+          "containerHeight": 538,
+          "rendererHeight": 538
+        },
+        "mobile": {
+          "containerWidth": 246,
+          "rendererWidth": 246,
+          "containerHeight": 538,
+          "rendererHeight": 538
+        }
+      }
+    },
+    "browser-views-r3-package.json": {
+      "checked_at": "2026-11-10T12:01:37.115691+00:00",
+      "script": ".ergora/checks/ac5-composition-graph/browser-views-r1.js",
+      "exit_code": 0,
+      "seconds": 2.1869633831083775,
+      "result": {
+        "passed": true,
+        "results": {
+          "desktop": {
+            "width": 1440,
+            "height": 1000,
+            "canvas": {
+              "x": 297,
+              "y": 460.34375,
+              "width": 1078,
+              "height": 540
+            },
+            "pageOverflow": false
+          },
+          "mobile": {
+            "width": 390,
+            "height": 844,
+            "canvas": {
+              "x": 105,
+              "y": 304.4375,
+              "width": 248,
+              "height": 540
+            },
+            "pageOverflow": false
+          },
+          "naturalNavigation": {
+            "transitions": [],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": null
+              }
+            ],
+            "graphPresent": false
+          }
+        }
+      }
+    },
+    "browser-views-r4-package.json": {
+      "checked_at": "2026-11-10T12:10:20.952385+00:00",
+      "script": ".ergora/checks/ac5-composition-graph/browser-views-r2.js",
+      "exit_code": 0,
+      "seconds": 2.0546966628171504,
+      "result": {
+        "passed": true,
+        "results": {
+          "desktop": {
+            "width": 1440,
+            "height": 1000,
+            "canvas": {
+              "x": 297,
+              "y": 460.34375,
+              "width": 1078,
+              "height": 540
+            },
+            "pageOverflow": false
+          },
+          "mobile": {
+            "width": 390,
+            "height": 844,
+            "canvas": {
+              "x": 105,
+              "y": 304.4375,
+              "width": 248,
+              "height": 540
+            },
+            "pageOverflow": false
+          },
+          "naturalNavigation": {
+            "transitions": [],
+            "navigation": [
+              {
+                "type": "back_forward",
+                "notRestoredReasons": null
+              }
+            ],
+            "graphPresent": false
+          }
+        }
+      }
+    },
+    "final_original_audit": {
+      "checked_at": "2026-11-10T12:13:34.582552+00:00",
+      "original_complete_objects_unchanged": 54,
+      "browser_agent_runs": 0,
+      "native_request_response_pairs": 287,
+      "final_actual_preview_matches_owner": [
+        {
+          "number": 26,
+          "home": "A",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-governance-delivery",
+            "version": "1.0.70",
+            "digest": "604224b785753d146a7c9cdb7b15cc15f19f37f2a09bd33da01192573e26505d"
+          },
+          "preview_sha256": "44ea52a9935d608e4fef56caa1963b4b7cf5ef5bfd0550b434ca55c27ec26f5f",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 259,
+          "request_sha256": "0a524c178286ac7b6c58e13591dd1a9c815c92b9185c32329c51f1d10969a15e",
+          "response_bytes": 63446,
+          "response_sha256": "d8f4864d0d81e3ebfbbf58675fb1a0e3c62f2825ae2b009a44716f3393668d38"
+        },
+        {
+          "number": 30,
+          "home": "A",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-governance-delivery",
+            "version": "1.0.70",
+            "digest": "604224b785753d146a7c9cdb7b15cc15f19f37f2a09bd33da01192573e26505d"
+          },
+          "preview_sha256": "44ea52a9935d608e4fef56caa1963b4b7cf5ef5bfd0550b434ca55c27ec26f5f",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 259,
+          "request_sha256": "0a524c178286ac7b6c58e13591dd1a9c815c92b9185c32329c51f1d10969a15e",
+          "response_bytes": 63446,
+          "response_sha256": "d8f4864d0d81e3ebfbbf58675fb1a0e3c62f2825ae2b009a44716f3393668d38"
+        },
+        {
+          "number": 39,
+          "home": "B",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-governance-delivery",
+            "version": "1.0.70",
+            "digest": "604224b785753d146a7c9cdb7b15cc15f19f37f2a09bd33da01192573e26505d"
+          },
+          "preview_sha256": "44ea52a9935d608e4fef56caa1963b4b7cf5ef5bfd0550b434ca55c27ec26f5f",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 259,
+          "request_sha256": "0a524c178286ac7b6c58e13591dd1a9c815c92b9185c32329c51f1d10969a15e",
+          "response_bytes": 63446,
+          "response_sha256": "d8f4864d0d81e3ebfbbf58675fb1a0e3c62f2825ae2b009a44716f3393668d38"
+        },
+        {
+          "number": 47,
+          "home": "A",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-governance-delivery",
+            "version": "1.0.70",
+            "digest": "604224b785753d146a7c9cdb7b15cc15f19f37f2a09bd33da01192573e26505d"
+          },
+          "preview_sha256": "44ea52a9935d608e4fef56caa1963b4b7cf5ef5bfd0550b434ca55c27ec26f5f",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 259,
+          "request_sha256": "0a524c178286ac7b6c58e13591dd1a9c815c92b9185c32329c51f1d10969a15e",
+          "response_bytes": 63446,
+          "response_sha256": "d8f4864d0d81e3ebfbbf58675fb1a0e3c62f2825ae2b009a44716f3393668d38"
+        },
+        {
+          "number": 48,
+          "home": "A",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-governance-delivery",
+            "version": "1.0.70",
+            "digest": "604224b785753d146a7c9cdb7b15cc15f19f37f2a09bd33da01192573e26505d"
+          },
+          "preview_sha256": "44ea52a9935d608e4fef56caa1963b4b7cf5ef5bfd0550b434ca55c27ec26f5f",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 259,
+          "request_sha256": "0a524c178286ac7b6c58e13591dd1a9c815c92b9185c32329c51f1d10969a15e",
+          "response_bytes": 63446,
+          "response_sha256": "d8f4864d0d81e3ebfbbf58675fb1a0e3c62f2825ae2b009a44716f3393668d38"
+        },
+        {
+          "number": 76,
+          "home": "A",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-governance-delivery",
+            "version": "1.0.70",
+            "digest": "604224b785753d146a7c9cdb7b15cc15f19f37f2a09bd33da01192573e26505d"
+          },
+          "preview_sha256": "44ea52a9935d608e4fef56caa1963b4b7cf5ef5bfd0550b434ca55c27ec26f5f",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 259,
+          "request_sha256": "0a524c178286ac7b6c58e13591dd1a9c815c92b9185c32329c51f1d10969a15e",
+          "response_bytes": 63446,
+          "response_sha256": "d8f4864d0d81e3ebfbbf58675fb1a0e3c62f2825ae2b009a44716f3393668d38"
+        },
+        {
+          "number": 85,
+          "home": "B",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-governance-delivery",
+            "version": "1.0.70",
+            "digest": "604224b785753d146a7c9cdb7b15cc15f19f37f2a09bd33da01192573e26505d"
+          },
+          "preview_sha256": "44ea52a9935d608e4fef56caa1963b4b7cf5ef5bfd0550b434ca55c27ec26f5f",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 259,
+          "request_sha256": "0a524c178286ac7b6c58e13591dd1a9c815c92b9185c32329c51f1d10969a15e",
+          "response_bytes": 63446,
+          "response_sha256": "d8f4864d0d81e3ebfbbf58675fb1a0e3c62f2825ae2b009a44716f3393668d38"
+        },
+        {
+          "number": 93,
+          "home": "A",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-governance-delivery",
+            "version": "1.0.70",
+            "digest": "604224b785753d146a7c9cdb7b15cc15f19f37f2a09bd33da01192573e26505d"
+          },
+          "preview_sha256": "44ea52a9935d608e4fef56caa1963b4b7cf5ef5bfd0550b434ca55c27ec26f5f",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 259,
+          "request_sha256": "0a524c178286ac7b6c58e13591dd1a9c815c92b9185c32329c51f1d10969a15e",
+          "response_bytes": 63446,
+          "response_sha256": "d8f4864d0d81e3ebfbbf58675fb1a0e3c62f2825ae2b009a44716f3393668d38"
+        },
+        {
+          "number": 94,
+          "home": "A",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-governance-delivery",
+            "version": "1.0.70",
+            "digest": "604224b785753d146a7c9cdb7b15cc15f19f37f2a09bd33da01192573e26505d"
+          },
+          "preview_sha256": "44ea52a9935d608e4fef56caa1963b4b7cf5ef5bfd0550b434ca55c27ec26f5f",
+          "held": true,
+          "gate_released": true,
+          "request_bytes": 259,
+          "request_sha256": "0a524c178286ac7b6c58e13591dd1a9c815c92b9185c32329c51f1d10969a15e",
+          "response_bytes": 63446,
+          "response_sha256": "d8f4864d0d81e3ebfbbf58675fb1a0e3c62f2825ae2b009a44716f3393668d38"
+        },
+        {
+          "number": 102,
+          "home": "B",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-governance-delivery",
+            "version": "1.0.70",
+            "digest": "604224b785753d146a7c9cdb7b15cc15f19f37f2a09bd33da01192573e26505d"
+          },
+          "preview_sha256": "44ea52a9935d608e4fef56caa1963b4b7cf5ef5bfd0550b434ca55c27ec26f5f",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 259,
+          "request_sha256": "0a524c178286ac7b6c58e13591dd1a9c815c92b9185c32329c51f1d10969a15e",
+          "response_bytes": 63446,
+          "response_sha256": "d8f4864d0d81e3ebfbbf58675fb1a0e3c62f2825ae2b009a44716f3393668d38"
+        },
+        {
+          "number": 103,
+          "home": "B",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-governance-delivery",
+            "version": "1.0.70",
+            "digest": "604224b785753d146a7c9cdb7b15cc15f19f37f2a09bd33da01192573e26505d"
+          },
+          "preview_sha256": "44ea52a9935d608e4fef56caa1963b4b7cf5ef5bfd0550b434ca55c27ec26f5f",
+          "held": true,
+          "gate_released": true,
+          "request_bytes": 259,
+          "request_sha256": "0a524c178286ac7b6c58e13591dd1a9c815c92b9185c32329c51f1d10969a15e",
+          "response_bytes": 63446,
+          "response_sha256": "d8f4864d0d81e3ebfbbf58675fb1a0e3c62f2825ae2b009a44716f3393668d38"
+        },
+        {
+          "number": 104,
+          "home": "B",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-governance-delivery",
+            "version": "1.0.70",
+            "digest": "604224b785753d146a7c9cdb7b15cc15f19f37f2a09bd33da01192573e26505d"
+          },
+          "preview_sha256": "44ea52a9935d608e4fef56caa1963b4b7cf5ef5bfd0550b434ca55c27ec26f5f",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 259,
+          "request_sha256": "0a524c178286ac7b6c58e13591dd1a9c815c92b9185c32329c51f1d10969a15e",
+          "response_bytes": 63446,
+          "response_sha256": "d8f4864d0d81e3ebfbbf58675fb1a0e3c62f2825ae2b009a44716f3393668d38"
+        }
+      ],
+      "actual_installed_assets_match_final_source": [
+        {
+          "path": "/assets/style.css",
+          "bytes": 20382,
+          "sha256": "d66c10689fe9f3d08f4c48e1d200146ea36e894aed9aa3e690b311c06ee1da13"
+        },
+        {
+          "path": "/assets/app.js",
+          "bytes": 7884,
+          "sha256": "506cb7e81f4456745090a6a84a5a149021f52f3f0e30bbe26c494c264e709d78"
+        },
+        {
+          "path": "/assets/definitions.js",
+          "bytes": 64956,
+          "sha256": "ca4d5e0d85bbd92b9815efe0dea69f91f137f59a8623c303a283aa83197ee8ea"
+        },
+        {
+          "path": "/assets/composition-graph.js",
+          "bytes": 10612,
+          "sha256": "e82f42cfc48ef71eed2a46667df27ec4ee25e60f2e5b43a78fd70f6a6f60a009"
+        },
+        {
+          "path": "/assets/style.css",
+          "bytes": 20382,
+          "sha256": "d66c10689fe9f3d08f4c48e1d200146ea36e894aed9aa3e690b311c06ee1da13"
+        },
+        {
+          "path": "/assets/app.js",
+          "bytes": 7884,
+          "sha256": "506cb7e81f4456745090a6a84a5a149021f52f3f0e30bbe26c494c264e709d78"
+        },
+        {
+          "path": "/assets/definitions.js",
+          "bytes": 64956,
+          "sha256": "ca4d5e0d85bbd92b9815efe0dea69f91f137f59a8623c303a283aa83197ee8ea"
+        },
+        {
+          "path": "/assets/composition-graph.js",
+          "bytes": 10612,
+          "sha256": "e82f42cfc48ef71eed2a46667df27ec4ee25e60f2e5b43a78fd70f6a6f60a009"
+        }
+      ],
+      "both_late_requests_held_and_released": [
+        94,
+        103
+      ],
+      "scope": "Offline exact HTTP bytes/owner projection and original complete object trees; synthetic persisted events remain distinct from natural BFCache."
+    },
+    "historical_limits": [
+      "R1 lifecycle booleans came from overlapping driver commands, not independent isolation acceptance.",
+      "R3 late-grant true lacked a held receipt and is withdrawn; final R4 requests 94/103 are the controlled acceptance.",
+      "async waitForFunction predicate diagnostic returned false immediately; final driver uses actual awaited bounded polling.",
+      "Persisted events were synthetic; natural back/forward reloaded and did not prove a BFCache hit.",
+      "R3 resize mismatch was within vendor debounce; final explicit resize-before-fit synchronizes immediately."
+    ]
+  }
+}

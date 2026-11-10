@@ -9,7 +9,7 @@ import { skillsView } from "./skills.js";
 import { researchView } from "./research.js";
 import { tasksView } from "./tasks.js";
 import { workflowView, resetWorkflow, disposeGraph, drawGraph } from "./workflow.js";
-import { definitionsView } from "./definitions.js";
+import { definitionsView, disposeDefinitionGraph, drawDefinitionGraph } from "./definitions.js";
 
 let refreshSequence = 0;
 let refreshing = false;
@@ -119,6 +119,7 @@ function helpDialog() {
 }
 function render() {
   disposeGraph();
+  disposeDefinitionGraph();
   sessionStorage.setItem("ergora-tab", app.tab);
   document
     .querySelectorAll("[data-tab]")
@@ -127,6 +128,7 @@ function render() {
     );
   if (app.tab === "definitions" && app.bootstrap) {
     $("#main").replaceChildren(...definitionsView(render));
+    drawDefinitionGraph();
     return;
   }
   if (!app.data) {
@@ -169,6 +171,11 @@ function render() {
   $("#main").replaceChildren(...views[app.tab](data, base, { refresh, render }));
   if (app.tab === "workflow") drawGraph(id, render);
 }
+
+// BFCache restores the existing DOM after pagehide disposed its canvases.
+window.addEventListener("pageshow", (event) => {
+  if (event.persisted && app.tab === "definitions") render();
+});
 $("#project-select").addEventListener("change", (event) => {
   app.project = event.target.value;
   resetWorkflow();

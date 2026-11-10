@@ -1,10 +1,22 @@
 # AC5 C3d 独立终审
 
-**本地终审通过：Standards 通过，Spec 通过，开放 finding 0。** fresh-context 主审 `joint_revisions_review` 及分别独立的两轴审查完成；该结论覆盖既有能力的 CLI／页面验收、文档和实际自身审查证据。本片普通提交、自己的必要 CI 与明确 HTTPS 仍待核验，精确交付门禁尚未通过。
+**本地终审通过：Standards 通过，Spec 通过，开放 finding 0。** fresh-context 主审 `joint_revisions_review` 及分别独立的两轴审查完成；该结论覆盖既有能力的 CLI／页面验收、文档和实际自身审查证据。本片已普通提交推送，精确对象、一次独立明确 HTTPS 及自己的必要 CI 均通过，C3d 精确交付门禁终结。
 
-审查基线和当时 HEAD 均为 `4636d77377bf63f15c357cf14660024e3ae1f939`，分支 `refactor/architecture-foundations`。固定候选为私有 `review-final/{identity.json,tracked.diff,files/}` 的 **20 文件：14 Markdown、6 公开 JSON（81,568 字节）**；identity SHA256 为 `9e91e3e255280793881049c642eb6dfeba2297f9edb469de1f6a2ece7035f98a`。HEAD 尚无新提交，三点 diff／提交日志为空；实际按非空固定 WIP diff 和完整 untracked 内容审查，没有将空提交范围当作无变更。
+审查基线和当时 HEAD 均为 `4636d77377bf63f15c357cf14660024e3ae1f939`，分支 `refactor/architecture-foundations`。固定候选为私有 `review-final/{identity.json,tracked.diff,files/}` 的 **20 文件：14 Markdown、6 公开 JSON（81,568 字节）**；identity SHA256 为 `9e91e3e255280793881049c642eb6dfeba2297f9edb469de1f6a2ece7035f98a`。本地终审时 HEAD 尚无新提交，三点 diff／提交日志为空；实际按非空固定 WIP diff 和完整 untracked 内容审查，没有将空提交范围当作无变更。
 
 已核根 AGENTS、README、PLAN、[本片计划](../plans/2026-11-10-definition-joint-revisions.md)、[C3 合同](../plans/2026-11-10-definition-revisions.md)、ADR0005、原 schema／所有者／消费者及邻接测试源码，采用 `maintainable-project-delivery`、`codebase-design` 和 `code-review`。在初始 17 文件基础上完整补核最终八项新增或变化，没有合并或重新排序两轴 finding。本文为审查结果续记；固定快照中同名文件仍是下方保留的准备报告，当前报告另在私有 gate 中登记身份，不回写原快照。
+
+## 精确提交、HTTPS 与 CI 终核
+
+普通提交 `45c2de47e9119d1f07616b3307331321d38155a4` 的单一父提交为上述基线，树为 `c0a5b44c8e16305f7193625a2c02efb603300e56`；原 commit／push 回执成功。主审直接核对全部 20 个 Git blob 与 `commit-closure/ready` 的 bytes／SHA／mode，提交内报告保持本地终审 SHA `c000c7e12d0a8697fe542cc1852ea1126f7c3a165c6101a202cd045262ffb928`。相对本地终审仅五份计划／交付状态文档续记通过与待交付，六公开 JSON、手册及产品行为未变；435 包对象与复用 wheel 相同、283 冻结文件及整个源子树的 mode 保持。私有 `independent/exact-object-audit.json` 的 784 项全部通过。
+
+2026-11-10 **11:33:25.982984–11:33:27.377041 UTC**，按本片明确授权只执行一次隔离 HTTPS ref 读取。关闭系统／全局／仓库配置、凭据助手和交互提示，只允许 HTTPS、校验 TLS、禁用重定向；原 trace 确认 `remote-https`，远端完整 SHA 与上述提交相同。该独立读取不以 SSH push 或本地 remote-tracking ref 代替，原件在 `independent/https-remote-01/`。
+
+自己的 [CI42807885966](https://github.com/626619403/Ergora/actions/runs/42807885966) 前三份官方样本均为 **In progress**，分别有 4／5／6 个必要步骤 success，当时均不计 CI 门禁通过。原 actions／run／完整两组 job 和原始响应保留，`independent/audit-ci-snapshot-01.json`、`audit-ci-snapshot-02.json`、`audit-ci-snapshot-03.json` 分别记录各自非终态；没有用后来的成功改写原样本。
+
+第四份官方样本的实际 run 采样时间为 **2026-11-10 11:43:33.076431 UTC**，Status **Success**。主审离线独立解析原 HTML／embedded JSON：完整 SHA、分支和 portability workflow 对应本片精确提交；Linux 三个、Windows 四个必要步骤全部 `success`，两组 job 均 `completed/success`，每步的完成标记、时间和 log 路径均绑定本提交／job。五份原始响应 bytes／SHA 与采样记录全部相符，`independent/audit-ci-snapshot-04.json` 的样本及自己的 CI 门禁通过。沿用已核的 20 blob／ready、435／283 对象和上述一次独立 HTTPS，`independent/exact-delivery-gate.json` 现为 **true**，无待验项；本轮未重跑网络、HTTPS、产品、模型或测试。
+
+作者在推送后开始的 C4a 文档工作树明确排除在本片候选外；本次精确核验只读固定 Git 提交与 ready，不用后来工作树替代。本文后续补核属于同片审查记录，不回写提交内报告或原 ready 快照。
 
 ## Standards
 
@@ -34,7 +46,7 @@ Spec 原审 8,393 项、最终补核 208 项全部通过，私有报告为 `inde
 
 主审私有 `candidate-r1-audit.json` 2,323 项、`self-review-audit-r1.json` 592 项及 `final-candidate-audit.json` 5,259 项全部通过。最终核对 435 个 Git／source／wheel／install 包文件、两份 RECORD、283 个冻结文件和执行位保持；固定 20 文件无漂移，14 文档的 256 个本地链接／锚点有效，tracked diff whitespace 通过。收口脚本首轮误将旧 publisher 身份当不可变；保留原驱动和诊断后，只承接最终 Standards 已核的 287 字节 cleanup 投影扩展，其余审计输入保持原身份。该扩展是在已有 `--final` 分支加入自身 cleanup／usage 及原件身份，没有修改产品或原始证据。
 
-本次主审和两轴只作 stdlib 离线原件核查，未重跑产品、模型、服务、浏览器、测试、安装或网络。本地结论及报告续记身份登记在 `independent/final-candidate-gate.json`；精确提交／自己的 CI／明确 HTTPS 仍为后续实际门禁。C4 画布、C5 正式交接、C6 容量／分页成本及实际训练仍待相应后续。
+本地终审的主审和两轴只作 stdlib 离线原件核查，未重跑产品、模型、服务、浏览器、测试、安装或网络。本地原结论登记在 `independent/final-candidate-gate.json`；之后的精确提交、一次独立 HTTPS 和自己的 CI 终核见上文，本片精确交付已终结。C4 画布、C5 正式交接、C6 容量／分页成本及实际训练仍待相应后续。
 
 ## 历史：准备阶段记录
 

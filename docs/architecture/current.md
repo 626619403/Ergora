@@ -423,3 +423,9 @@ AC5 C2的编辑会话由同一`workflow.js`持有：语义输入、单元原文�
 同控制目录/项目的dashboard刷新在`app.js`原refresh所有者中保留已观察的较高草稿修订；其局部data目录身份随成功安装更新，不能用较早/较新bootstrap代替data所属目录。保存回执在原`workflow.js`也按修订单调合并，均不自动变更编辑会话的expected revision。其余dashboard字段仍使用刷新结果。
 
 刷新确认bootstrap所属目录或最终项目与旧data不同，会先同步隐藏旧data再等待dashboard；失败停留在原error视图，不能打开旧目录草稿到新目录会话。旧目录的语义/未应用文本与布局按原会话保留，返回原目录仍可恢复。
+
+## 已发布组合图
+
+`definitions.js`持有原preview和请求世代，将它交给私有`composition-graph.js`展示。完整实例路径是compound节点身份；结构父子、先行依赖、具名输入/输出分别表示，不重算继承、权限、执行排序或材料。端口仅为显示锚点，布局沿编译器的`levels`；重复精确ref不合并实例。选择与键盘实例表共用完整inspector，精确Agent元数据来自原索引；编辑跳转仍使用原不可变定义与编辑缓冲。
+
+`app.js`在DOM挂接后mount、替换前dispose；grant局部清除和pagehide也dispose，仅在definitions tab的persisted pageshow沿原render恢复。其他页面的未提交DOM字段不因此重建。图捕获自己的home/根ref内存会话，旧图不会写较新会话；坐标/视口/选择不进入preview或任务摘要，刷新后重新布局。显式fit先调用vendor的resize，自动resize及销毁仍由原Cytoscape拥有，不增加第二个observer。工作单元图仍归原`workflow.js`，未为两种不同语义增加通用图编辑框架。已发布来源明确标注；未发布全图候选预览、折叠/过滤/差异及正式任务交接仍见[C4计划](../plans/2026-11-10-composition-graph.md)。

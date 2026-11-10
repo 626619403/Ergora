@@ -1,6 +1,6 @@
 # AC5 C3d：父子联合修订与实例验收
 
-准备基线`4636d77377bf63f15c357cf14660024e3ae1f939`，分支`refactor/architecture-foundations`。[本片计划](../plans/2026-11-10-definition-joint-revisions.md)固定联合权限声明、重复实例和原后端准入旅程。当前K1/K2实际CLI、K3页面及K4真实自身审查/完整读取已完成，六份公开证据与owned清理已核；完整20文件独立Spec/Standards终核通过，开放finding0；本地出口完成，精确提交/CI/HTTPS待验。
+准备基线`4636d77377bf63f15c357cf14660024e3ae1f939`，分支`refactor/architecture-foundations`。[本片计划](../plans/2026-11-10-definition-joint-revisions.md)固定联合权限声明、重复实例和原后端准入旅程。当前K1/K2实际CLI、K3页面及K4真实自身审查/完整读取已完成，六份公开证据与owned清理已核；完整20文件独立Spec/Standards终核通过，开放finding0；本地出口与精确交付均已通过，终结记录见末尾。
 
 ## K0 准备检查点
 
@@ -51,3 +51,9 @@ R2非editable安装真实**118次CLI／84.68秒**通过，复用435包身份、2
 新fresh-context完整两轴及主审最终20文件终核通过，开放finding0，原报告SHA256 `c000c7e12d0a8697fe542cc1852ea1126f7c3a165c6101a202cd045262ffb928`。原435源/Git/wheel/安装/双RECORD及283冻结、全部原CLI/页面/自身scope和六公开投影已独立核对；报告续记后14文档260本地链接与空白检查通过。收口私有脚本一次误把旧publisher身份当不可变，原件/诊断保留；只承接最终Standards已核的287B cleanup/usage投影扩展，其余原证据未改，不构成产品finding。
 
 K0–K4本地出口完成，按已授权工作分支准备普通提交/推送，再分别核自己的必要CI与明确HTTPS同完整SHA。当前没有产品/测试/依赖/CI变化，复用原非editable wheel；这不是C4/C5/C6或整体项目完成声明。
+
+## K4精确交付终结
+
+20文件已普通提交推送`45c2de47e9119d1f07616b3307331321d38155a4`，原评审者核精确Git/ready及20 blobs、435包/283冻结通过；一次隔离明确HTTPS在2026-11-10 11:33:25.982984–11:33:27.377041 UTC返回同完整SHA。自己的[CI42807885966](https://github.com/626619403/Ergora/actions/runs/42807885966)第四份官方样本11:43:33.076431 UTC为Success，双OS七必要步骤全部success/completed；前三份In progress原件保持。原评审者离线逐官方响应、commit/workflow/job/log绑定终核通过，精确门禁true，开放finding0。未重复HTTPS、产品、模型或测试。
+
+接续C4a[已发布嵌套关系图](../plans/2026-11-10-composition-graph.md)。本段是已交付片的状态续记，不将新片源或测试回填到45c2de4原身份。

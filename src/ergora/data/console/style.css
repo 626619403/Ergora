@@ -962,6 +962,19 @@ summary {
 .definition-details summary {
   cursor: pointer;
 }
+.graph.composition-graph {
+  height: 540px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-top: 14px;
+}
+.definition-details h3 {
+  overflow-wrap: anywhere;
+}
+button[aria-pressed="true"] {
+  background: var(--green-light);
+  outline: 2px solid var(--green);
+}
 .stage-strip {
   display: flex;
   gap: 0;
