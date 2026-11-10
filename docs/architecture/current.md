@@ -428,6 +428,8 @@ AC5 C2的编辑会话由同一`workflow.js`持有：语义输入、单元原文�
 
 `definitions.js`持有原preview和请求世代，将它交给私有`composition-graph.js`展示。完整实例路径是compound节点身份；结构父子、先行依赖、具名输入/输出分别表示，不重算继承、权限、执行排序或材料。端口仅为显示锚点，布局沿编译器的`levels`；重复精确ref不合并实例。选择与键盘实例表共用完整inspector，精确Agent元数据来自原索引；编辑跳转仍使用原不可变定义与编辑缓冲。
 
-`app.js`在DOM挂接后mount、替换前dispose；grant局部清除和pagehide也dispose，仅在definitions tab的persisted pageshow沿原render恢复。其他页面的未提交DOM字段不因此重建。图捕获自己的home/根ref内存会话，旧图不会写较新会话；坐标/视口/选择不进入preview或任务摘要，刷新后重新布局。显式fit先调用vendor的resize，自动resize及销毁仍由原Cytoscape拥有，不增加第二个observer。工作单元图仍归原`workflow.js`，未为两种不同语义增加通用图编辑框架。已发布来源明确标注；未发布全图候选预览、精确版本差异及正式任务交接仍见[C4计划](../plans/2026-11-10-composition-graph.md)。
+`app.js`在DOM挂接后mount、替换前dispose；grant局部清除和pagehide也dispose，仅在definitions tab的persisted pageshow沿原render恢复。其他页面的未提交DOM字段不因此重建。图捕获自己的home/根ref内存会话，旧图不会写较新会话；坐标/视口/选择不进入preview或任务摘要，刷新后重新布局。显式fit先调用vendor的resize，自动resize及销毁仍由原Cytoscape拥有，不增加第二个observer。工作单元图仍归原`workflow.js`，未为两种不同语义增加通用图编辑框架。已发布来源明确标注；未发布全图候选预览与正式任务交接仍见[C4b及后续计划](../plans/2026-11-10-composition-exploration.md)。
 
 C4b.1继续在该私有模块内投影折叠：隐藏节点/端口由最外层已折叠结构祖先表示，跨组边保留原身份/端点/类型，组内边留在完整原关系表，不投影伪自环。明确折叠/展开按原levels重排；不改原preview或编译规则。字面词项查找使用原实例与精确Agent元数据，只高亮，结果定位只展开结构祖先。查询和折叠沿原home/完整根ref内存会话，无新增持久格式、依赖、搜索后端或导出接口；实际验收状态见[本片记录](../delivery/2026-11-10-composition-exploration.md)。
+
+C4b.2成对比较继续由`definitions.js`的原preview请求世代拥有：固定基准/目标完整ref、复用同一显式grant调用原入口，两个结果都通过原准入且身份匹配才展示。home/root/target/grant变化使旧回复失效；原编辑会话和图生命周期不变。单消费者的内聚私有`composition-comparison.js`只投影两份原preview，按完整实例路径配对与按需显示完整原实例，不拥有编译/权限推断/网络。对象键序忽略而数组顺序保留，资源内容/来源与prompt身份分列；描述/专长等不在preview的字段不冒充已比较。实际验收见[交付记录](../delivery/2026-11-10-composition-comparison.md)，正式交接与容量仍属C5/C6。

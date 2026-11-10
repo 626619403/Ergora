@@ -1,0 +1,55 @@
+{
+  "kind": "ergora-evidence-projection",
+  "schema_version": 1,
+  "slice": "AC5 C4b.2",
+  "baseline": "8ce9aba51c54e368aa8625e6c6535e4ac6ccaa19",
+  "originals": [
+    {
+      "file": "browser-cleanup.json",
+      "bytes": 1500,
+      "sha256": "d9d21087f5dbec7d5dc05fd91c57413a27d7fbd10a98208212782b319def140c"
+    },
+    {
+      "file": "self-review-cleanup.json",
+      "bytes": 603,
+      "sha256": "0314944f765853558da137e8c0e2913d580b96a3fd2fb5f95cc13b2484069daa"
+    },
+    {
+      "file": "self-review-usage.json",
+      "bytes": 603,
+      "sha256": "f86a1db4f43b6ad94a36ac39a5363a5dfd1663792da71400d6cbfc87091fd37c"
+    }
+  ],
+  "projection": "Machine paths/local ports replaced. Original bytes/SHA identify retained originals, not serialized projection.",
+  "omitted": "Individual sampled PIDs/starttimes omitted; original sampled identities retained. Backend usage is self-report, not billing; cached input is already included in input.",
+  "evidence": {
+    "browser-cleanup.json": {
+      "observed_identities": 10,
+      "all_observed_gone": true,
+      "scope": "Only 10 sampled owned HTTP/Playwright identities; not a global process claim."
+    },
+    "self-review-cleanup.json": {
+      "observed_identities": 4,
+      "all_observed_gone": true,
+      "scope": "Only 4 sampled owned CLI/model identities; not a global process claim."
+    },
+    "usage": {
+      "at": "2026-11-10T14:00:33.908054+00:00",
+      "run_id": "dc6d043dcf0149a881969981ecd6be49",
+      "source": {
+        "bytes": 295797,
+        "sha256": "6e2957558ae8337961dfb7eea208c0b9fcd85ffa7815b06c07aef107a8c9548c"
+      },
+      "usage": [
+        {
+          "input_tokens": 796802,
+          "cached_input_tokens": 689024,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 2477,
+          "reasoning_output_tokens": 934
+        }
+      ],
+      "scope": "Native backend turn.completed self-report, not billing. Cached input tokens already included in input_tokens; reasoning output, when reported, is not added to output again."
+    }
+  }
+}

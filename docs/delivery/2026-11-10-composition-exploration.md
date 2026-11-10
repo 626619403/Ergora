@@ -1,6 +1,6 @@
 # AC5 C4b.1：子工作流折叠与专家查找
 
-基线`a60a67e9333316ba094c69a1ed949484fbed8231`，工作分支`refactor/architecture-foundations`。[计划](../plans/2026-11-10-composition-exploration.md)第一片拥有折叠、查找与显示会话；第二片精确版本比较仍未实现。前片C4a精确Git/HTTPS/自己的CI已终结。本片R2行为、实际自身模板及完整20文件独立两轴/本地出口通过，开放0；本片精确提交/HTTPS/自己的CI待验。
+基线`a60a67e9333316ba094c69a1ed949484fbed8231`，工作分支`refactor/architecture-foundations`。[计划](../plans/2026-11-10-composition-exploration.md)第一片拥有折叠、查找与显示会话；第二片精确版本比较另见[独立交付记录](2026-11-10-composition-comparison.md)。前片C4a精确Git/HTTPS/自己的CI已终结。本片R2行为、实际自身模板及完整20文件独立两轴/本地出口通过，开放0；精确提交/HTTPS/自己的CI已完成，详见文末。
 
 ## B0 接口与实施边界
 
@@ -58,3 +58,8 @@ R2非editable安装的内置`ergora-structure-review`以证据专用修订`1.0.7
 ## 本地最终出口
 
 完整20文件候选已由原fresh-context主审及Spec/Standards两轴补核通过，开放finding 0、CEX-ST1关闭；[独立报告](2026-11-10-composition-exploration-review.md)记录原件范围与限制。216本地链接/锚点、五JSON、JS语法及空白检查通过；公开投影从原件内存重建逐字节相同。主审私有`review-local-final-gate.json`为`local_acceptance:true`、`complete_acceptance:false`；仅待ready冻结、普通提交/推送、精确Git对象/一次独立HTTPS及本提交自己的CI。此终态续记不改变产品或重跑已验行为/模型。
+
+
+## 精确交付终结
+
+`8ce9aba51c54e368aa8625e6c6535e4ac6ccaa19`已普通推送。原评审独立核20份ready/Git blobs、436包文件与283冻结身份，并以一次HTTPS读取核远端分支同完整SHA。[CI42825342126](https://github.com/626619403/Ergora/actions/runs/42825342126)第三官方样本为Success，双OS两job完成、七必要步骤均success/completed；前两In progress样本原样保持。原主审离线核三样本15份官方原响应，最终`review-exact-delivery-gate.json`为`pass / complete_acceptance:true`。终态仅授予本片；下一片成对比较另行验收，不重复此处产品/模型/远端核验。

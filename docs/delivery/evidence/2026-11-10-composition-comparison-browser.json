@@ -1,0 +1,1469 @@
+{
+  "kind": "ergora-evidence-projection",
+  "schema_version": 1,
+  "slice": "AC5 C4b.2",
+  "baseline": "8ce9aba51c54e368aa8625e6c6535e4ac6ccaa19",
+  "originals": [
+    {
+      "file": "browser-main-01.json",
+      "bytes": 773745,
+      "sha256": "e734fc23160f7fe2ca0e305b32fa6b415e76783eb894ba39bcb3c7a3364aa804"
+    },
+    {
+      "file": "browser-lifecycle-01.json",
+      "bytes": 11800,
+      "sha256": "7458537952c2e39328821bf5bc72283ec04d0334ed2944e1231bf4e3bd23c17b"
+    },
+    {
+      "file": "browser-lifecycle-02.json",
+      "bytes": 152188,
+      "sha256": "c723ab30d7cdef7b3ee1efe9da71b61e78a612fbd5abbaa32014d81229188409"
+    },
+    {
+      "file": "browser-index-views-01.json",
+      "bytes": 124345,
+      "sha256": "0bf6627cf5283c19fd8c83254d0dd1535a836d66d8817df8cfdd53426db46b15"
+    },
+    {
+      "file": "browser-index-views-02.json",
+      "bytes": 111963,
+      "sha256": "04fe773eb8b2c92d5ec67262242a8a73cf1639967ef906885e66f1d6f6ad1879"
+    },
+    {
+      "file": "browser-main-r1.js",
+      "bytes": 10213,
+      "sha256": "28365662d7e2d0095ce7c15d7a1e1d9214ed694505173690f43a3a18f483391e"
+    },
+    {
+      "file": "browser-lifecycle-r1.js",
+      "bytes": 8739,
+      "sha256": "d6398073079ee276b1693b9a4c77627b2ec0de1d43566d3d5aa33b474ab014fa"
+    },
+    {
+      "file": "browser-lifecycle-r2.js",
+      "bytes": 8739,
+      "sha256": "af2e8b11ba7ccfe6f59a228c0e88db5598b08913a6af5f905ccf90c5f122650d"
+    },
+    {
+      "file": "browser-index-views-r1.js",
+      "bytes": 5838,
+      "sha256": "43bb1bab652482e8a962d295c1bd1d5f8136559619ae7ae5634496c206efc1e9"
+    },
+    {
+      "file": "browser-index-views-r2.js",
+      "bytes": 6040,
+      "sha256": "9ed807b5226a462a7222d8fcfe11f0fbb5a5b7e368e475af0859fe4529b4197c"
+    },
+    {
+      "file": "browser-audit.json",
+      "bytes": 46494,
+      "sha256": "ecffba599caa947de898808964c0ecb57543b4e65b32e1a29ca5abfe6bdc3174"
+    },
+    {
+      "file": "download-audit.json",
+      "bytes": 479,
+      "sha256": "7a3b6e772fb79d786fad2a2ff68423142249f5d7c67f8fe4278e3afb7f3f97d3"
+    }
+  ],
+  "projection": "Machine paths/local ports replaced. Original bytes/SHA identify retained originals, not serialized projection.",
+  "omitted": "Repeated full pair previews, raw route indexes, screen dumps and HTTP metadata maps omitted; complete originals/drivers retained privately. Complete downloads compared to actual original preview objects.",
+  "evidence": {
+    "browser-main-01.json": {
+      "checked_at": "2026-11-10T13:44:52.080076+00:00",
+      "script": ".ergora/checks/ac5-composition-comparison/browser-main-r1.js",
+      "exit_code": 0,
+      "seconds": 4.195397439878434,
+      "result": {
+        "passed": true,
+        "domains": [
+          {
+            "id": "ergora-governance-delivery",
+            "instances": 16,
+            "selectedCompleteLeaf": "root/work/boundary-test",
+            "contentUnchanged": true,
+            "provenanceAndPromptChanged": true
+          },
+          {
+            "id": "ergora-large-change-delivery",
+            "instances": 19,
+            "selectedCompleteLeaf": "root/work/contract",
+            "contentUnchanged": true,
+            "provenanceAndPromptChanged": true
+          },
+          {
+            "id": "ergora-training-proposal",
+            "instances": 9,
+            "selectedCompleteLeaf": "root/analysis/design",
+            "contentUnchanged": true,
+            "provenanceAndPromptChanged": true
+          }
+        ],
+        "repeatedInstancesIndependent": true,
+        "sharedGrantRefusalAndExplicitRetry": true,
+        "richFieldChanges": true,
+        "declaredArrayOrder": true,
+        "keyboardCompleteOriginals": true,
+        "missingExactChildRefusal": true,
+        "unappliedEditorBuffersPreserved": true,
+        "errors": []
+      }
+    },
+    "browser-lifecycle-01.json": {
+      "checked_at": "2026-11-10T13:47:20.281434+00:00",
+      "script": ".ergora/checks/ac5-composition-comparison/browser-lifecycle-r1.js",
+      "exit_code": 0,
+      "seconds": 11.388417774811387,
+      "result": {
+        "passed": false,
+        "step": "late target",
+        "error": "locator.evaluateAll: TypeError: Cannot read properties of undefined (reading 'value')\n    at eval (eval at evaluate (:370:30), <anonymous>:1:113)\n    at UtilityScript.evaluate (<anonymous>:372:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)",
+        "held": [],
+        "errors": [],
+        "controlled_routes": {}
+      }
+    },
+    "browser-lifecycle-02.json": {
+      "checked_at": "2026-11-10T13:49:21.809303+00:00",
+      "script": ".ergora/checks/ac5-composition-comparison/browser-lifecycle-r2.js",
+      "exit_code": 0,
+      "seconds": 83.52107346523553,
+      "result": {
+        "passed": false,
+        "step": "index digest incompatible with actual exact root",
+        "error": "fault index not selected",
+        "held": [
+          {
+            "label": "target",
+            "request": {
+              "id": "ergora-structure-review",
+              "version": "1.0.90",
+              "grant": {
+                "schema_version": 1,
+                "permissions": {
+                  "read": [
+                    "workspace",
+                    "definitions"
+                  ],
+                  "write": [],
+                  "shell": false,
+                  "network": []
+                },
+                "limits": {
+                  "depth": 8,
+                  "instances": 128,
+                  "concurrency": 4,
+                  "material_bytes": 262144
+                }
+              }
+            },
+            "root": {
+              "kind": "workflow",
+              "id": "ergora-structure-review",
+              "version": "1.0.90",
+              "digest": "efe5c702d6720d2130b57c63b38935a28ee9f63147c3c21df6c94cc70791a32a"
+            },
+            "preview_sha256": "6fcba35f5235d6148d1f55f67e70c9aa9c5b6c2e2db44cc40b07bffdec7c5c0b"
+          },
+          {
+            "label": "grant",
+            "request": {
+              "id": "ergora-structure-review",
+              "version": "1.0.90",
+              "grant": {
+                "schema_version": 1,
+                "permissions": {
+                  "read": [
+                    "workspace",
+                    "definitions"
+                  ],
+                  "write": [],
+                  "shell": false,
+                  "network": []
+                },
+                "limits": {
+                  "depth": 8,
+                  "instances": 128,
+                  "concurrency": 4,
+                  "material_bytes": 262144
+                }
+              }
+            },
+            "root": {
+              "kind": "workflow",
+              "id": "ergora-structure-review",
+              "version": "1.0.90",
+              "digest": "efe5c702d6720d2130b57c63b38935a28ee9f63147c3c21df6c94cc70791a32a"
+            },
+            "preview_sha256": "6fcba35f5235d6148d1f55f67e70c9aa9c5b6c2e2db44cc40b07bffdec7c5c0b"
+          },
+          {
+            "label": "root",
+            "request": {
+              "id": "ergora-structure-review",
+              "version": "1.0.90",
+              "grant": {
+                "schema_version": 1,
+                "permissions": {
+                  "read": [
+                    "workspace",
+                    "definitions"
+                  ],
+                  "write": [],
+                  "shell": false,
+                  "network": []
+                },
+                "limits": {
+                  "depth": 8,
+                  "instances": 128,
+                  "concurrency": 4,
+                  "material_bytes": 262144
+                }
+              }
+            },
+            "root": {
+              "kind": "workflow",
+              "id": "ergora-structure-review",
+              "version": "1.0.90",
+              "digest": "efe5c702d6720d2130b57c63b38935a28ee9f63147c3c21df6c94cc70791a32a"
+            },
+            "preview_sha256": "6fcba35f5235d6148d1f55f67e70c9aa9c5b6c2e2db44cc40b07bffdec7c5c0b"
+          },
+          {
+            "label": "home",
+            "request": {
+              "id": "ergora-structure-review",
+              "version": "1.0.90",
+              "grant": {
+                "schema_version": 1,
+                "permissions": {
+                  "read": [
+                    "workspace",
+                    "definitions"
+                  ],
+                  "write": [],
+                  "shell": false,
+                  "network": []
+                },
+                "limits": {
+                  "depth": 8,
+                  "instances": 128,
+                  "concurrency": 4,
+                  "material_bytes": 262144
+                }
+              }
+            },
+            "root": {
+              "kind": "workflow",
+              "id": "ergora-structure-review",
+              "version": "1.0.90",
+              "digest": "efe5c702d6720d2130b57c63b38935a28ee9f63147c3c21df6c94cc70791a32a"
+            },
+            "preview_sha256": "6fcba35f5235d6148d1f55f67e70c9aa9c5b6c2e2db44cc40b07bffdec7c5c0b"
+          }
+        ],
+        "errors": [],
+        "controlled_routes": {
+          "keyOrder": {
+            "same_json_values_ignoring_object_key_order": true,
+            "before_root": {
+              "kind": "workflow",
+              "id": "ergora-structure-review",
+              "version": "1.0.0",
+              "digest": "996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9"
+            },
+            "after_root": {
+              "digest": "996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9",
+              "version": "1.0.0",
+              "id": "ergora-structure-review",
+              "kind": "workflow"
+            },
+            "scope": "Browser-delivered object keys reversed, arrays and values preserved; original upstream unchanged."
+          },
+          "indexMismatch": {
+            "original_count": 19,
+            "delivered_count": 19,
+            "changed_refs": [
+              {
+                "before": {
+                  "description": "Check structural ownership and stable module interfaces.",
+                  "id": "ergora-structure-review",
+                  "inputs": [
+                    "task"
+                  ],
+                  "limits": {
+                    "concurrency": 4,
+                    "depth": 8,
+                    "instances": 128,
+                    "material_bytes": 262144
+                  },
+                  "nodes": [
+                    {
+                      "depends_on": [],
+                      "id": "review",
+                      "inputs": {
+                        "task": {
+                          "input": "task"
+                        }
+                      },
+                      "permissions": {
+                        "network": [],
+                        "read": [
+                          "workspace",
+                          "definitions"
+                        ],
+                        "shell": false,
+                        "write": []
+                      },
+                      "ref": {
+                        "digest": "6beb193345f0df78fac248bb95616e73ebc323c6f6de617eacb4c52d889f8714",
+                        "id": "ergora-structure-reviewer",
+                        "kind": "agent",
+                        "version": "1.0.90"
+                      },
+                      "review_requirement": "required",
+                      "role": "reviewer"
+                    },
+                    {
+                      "depends_on": [
+                        "review"
+                      ],
+                      "id": "gather",
+                      "join": "all"
+                    }
+                  ],
+                  "outputs": {
+                    "result": {
+                      "node": "gather",
+                      "output": "result"
+                    }
+                  },
+                  "permissions": {
+                    "network": [],
+                    "read": [
+                      "workspace",
+                      "definitions"
+                    ],
+                    "shell": false,
+                    "write": []
+                  },
+                  "resources": [
+                    {
+                      "id": "ergora-structure-review-instructions",
+                      "kind": "instructions",
+                      "path": "instructions.md",
+                      "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823"
+                    }
+                  ],
+                  "schema_version": 2,
+                  "version": "1.0.90",
+                  "digest": "efe5c702d6720d2130b57c63b38935a28ee9f63147c3c21df6c94cc70791a32a"
+                },
+                "after": {
+                  "description": "Check structural ownership and stable module interfaces.",
+                  "id": "ergora-structure-review",
+                  "inputs": [
+                    "task"
+                  ],
+                  "limits": {
+                    "concurrency": 4,
+                    "depth": 8,
+                    "instances": 128,
+                    "material_bytes": 262144
+                  },
+                  "nodes": [
+                    {
+                      "depends_on": [],
+                      "id": "review",
+                      "inputs": {
+                        "task": {
+                          "input": "task"
+                        }
+                      },
+                      "permissions": {
+                        "network": [],
+                        "read": [
+                          "workspace",
+                          "definitions"
+                        ],
+                        "shell": false,
+                        "write": []
+                      },
+                      "ref": {
+                        "digest": "6beb193345f0df78fac248bb95616e73ebc323c6f6de617eacb4c52d889f8714",
+                        "id": "ergora-structure-reviewer",
+                        "kind": "agent",
+                        "version": "1.0.90"
+                      },
+                      "review_requirement": "required",
+                      "role": "reviewer"
+                    },
+                    {
+                      "depends_on": [
+                        "review"
+                      ],
+                      "id": "gather",
+                      "join": "all"
+                    }
+                  ],
+                  "outputs": {
+                    "result": {
+                      "node": "gather",
+                      "output": "result"
+                    }
+                  },
+                  "permissions": {
+                    "network": [],
+                    "read": [
+                      "workspace",
+                      "definitions"
+                    ],
+                    "shell": false,
+                    "write": []
+                  },
+                  "resources": [
+                    {
+                      "id": "ergora-structure-review-instructions",
+                      "kind": "instructions",
+                      "path": "instructions.md",
+                      "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823"
+                    }
+                  ],
+                  "schema_version": 2,
+                  "version": "1.0.90",
+                  "digest": "0000000000000000000000000000000000000000000000000000000000000000"
+                }
+              }
+            ],
+            "scope": "Browser exact-index digest injection only; original library and upstream response unchanged."
+          }
+        }
+      }
+    },
+    "browser-index-views-01.json": {
+      "checked_at": "2026-11-10T13:49:59.359563+00:00",
+      "script": ".ergora/checks/ac5-composition-comparison/browser-index-views-r1.js",
+      "exit_code": 0,
+      "seconds": 3.821530215907842,
+      "result": {
+        "passed": false,
+        "step": "viewports",
+        "error": "comparison overflows document width",
+        "held": [],
+        "errors": [],
+        "controlled_routes": {
+          "indexMismatch": {
+            "original_count": 19,
+            "delivered_count": 19,
+            "changed_refs": [
+              {
+                "before": {
+                  "description": "Check structural ownership and stable module interfaces.",
+                  "id": "ergora-structure-review",
+                  "inputs": [
+                    "task"
+                  ],
+                  "limits": {
+                    "concurrency": 4,
+                    "depth": 8,
+                    "instances": 128,
+                    "material_bytes": 262144
+                  },
+                  "nodes": [
+                    {
+                      "depends_on": [],
+                      "id": "review",
+                      "inputs": {
+                        "task": {
+                          "input": "task"
+                        }
+                      },
+                      "permissions": {
+                        "network": [],
+                        "read": [
+                          "workspace",
+                          "definitions"
+                        ],
+                        "shell": false,
+                        "write": []
+                      },
+                      "ref": {
+                        "digest": "6beb193345f0df78fac248bb95616e73ebc323c6f6de617eacb4c52d889f8714",
+                        "id": "ergora-structure-reviewer",
+                        "kind": "agent",
+                        "version": "1.0.90"
+                      },
+                      "review_requirement": "required",
+                      "role": "reviewer"
+                    },
+                    {
+                      "depends_on": [
+                        "review"
+                      ],
+                      "id": "gather",
+                      "join": "all"
+                    }
+                  ],
+                  "outputs": {
+                    "result": {
+                      "node": "gather",
+                      "output": "result"
+                    }
+                  },
+                  "permissions": {
+                    "network": [],
+                    "read": [
+                      "workspace",
+                      "definitions"
+                    ],
+                    "shell": false,
+                    "write": []
+                  },
+                  "resources": [
+                    {
+                      "id": "ergora-structure-review-instructions",
+                      "kind": "instructions",
+                      "path": "instructions.md",
+                      "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823"
+                    }
+                  ],
+                  "schema_version": 2,
+                  "version": "1.0.90",
+                  "digest": "efe5c702d6720d2130b57c63b38935a28ee9f63147c3c21df6c94cc70791a32a"
+                },
+                "after": {
+                  "description": "Check structural ownership and stable module interfaces.",
+                  "id": "ergora-structure-review",
+                  "inputs": [
+                    "task"
+                  ],
+                  "limits": {
+                    "concurrency": 4,
+                    "depth": 8,
+                    "instances": 128,
+                    "material_bytes": 262144
+                  },
+                  "nodes": [
+                    {
+                      "depends_on": [],
+                      "id": "review",
+                      "inputs": {
+                        "task": {
+                          "input": "task"
+                        }
+                      },
+                      "permissions": {
+                        "network": [],
+                        "read": [
+                          "workspace",
+                          "definitions"
+                        ],
+                        "shell": false,
+                        "write": []
+                      },
+                      "ref": {
+                        "digest": "6beb193345f0df78fac248bb95616e73ebc323c6f6de617eacb4c52d889f8714",
+                        "id": "ergora-structure-reviewer",
+                        "kind": "agent",
+                        "version": "1.0.90"
+                      },
+                      "review_requirement": "required",
+                      "role": "reviewer"
+                    },
+                    {
+                      "depends_on": [
+                        "review"
+                      ],
+                      "id": "gather",
+                      "join": "all"
+                    }
+                  ],
+                  "outputs": {
+                    "result": {
+                      "node": "gather",
+                      "output": "result"
+                    }
+                  },
+                  "permissions": {
+                    "network": [],
+                    "read": [
+                      "workspace",
+                      "definitions"
+                    ],
+                    "shell": false,
+                    "write": []
+                  },
+                  "resources": [
+                    {
+                      "id": "ergora-structure-review-instructions",
+                      "kind": "instructions",
+                      "path": "instructions.md",
+                      "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823"
+                    }
+                  ],
+                  "schema_version": 2,
+                  "version": "1.0.90",
+                  "digest": "0000000000000000000000000000000000000000000000000000000000000000"
+                }
+              }
+            ],
+            "scope": "Browser exact-index digest injection only; original library and upstream response unchanged."
+          }
+        }
+      }
+    },
+    "browser-index-views-02.json": {
+      "checked_at": "2026-11-10T13:51:39.436387+00:00",
+      "script": ".ergora/checks/ac5-composition-comparison/browser-index-views-r2.js",
+      "exit_code": 0,
+      "seconds": 3.480592131614685,
+      "result": {
+        "passed": true,
+        "exactRootDigestMismatchRefused": true,
+        "indexRecoveryClearsUnavailableTarget": true,
+        "viewports": [
+          {
+            "size": {
+              "width": 1440,
+              "height": 1000
+            },
+            "actual": {
+              "document": 1440,
+              "scroll": 1440
+            },
+            "path": "output/playwright/c4b-comparison-desktop.png"
+          },
+          {
+            "size": {
+              "width": 390,
+              "height": 844
+            },
+            "actual": {
+              "document": 390,
+              "scroll": 390
+            },
+            "path": "output/playwright/c4b-comparison-mobile.png"
+          }
+        ],
+        "errors": [],
+        "controlled_routes": {
+          "indexMismatch": {
+            "original_count": 19,
+            "delivered_count": 19,
+            "changed_refs": [
+              {
+                "before": {
+                  "description": "Check structural ownership and stable module interfaces.",
+                  "id": "ergora-structure-review",
+                  "inputs": [
+                    "task"
+                  ],
+                  "limits": {
+                    "concurrency": 4,
+                    "depth": 8,
+                    "instances": 128,
+                    "material_bytes": 262144
+                  },
+                  "nodes": [
+                    {
+                      "depends_on": [],
+                      "id": "review",
+                      "inputs": {
+                        "task": {
+                          "input": "task"
+                        }
+                      },
+                      "permissions": {
+                        "network": [],
+                        "read": [
+                          "workspace",
+                          "definitions"
+                        ],
+                        "shell": false,
+                        "write": []
+                      },
+                      "ref": {
+                        "digest": "6beb193345f0df78fac248bb95616e73ebc323c6f6de617eacb4c52d889f8714",
+                        "id": "ergora-structure-reviewer",
+                        "kind": "agent",
+                        "version": "1.0.90"
+                      },
+                      "review_requirement": "required",
+                      "role": "reviewer"
+                    },
+                    {
+                      "depends_on": [
+                        "review"
+                      ],
+                      "id": "gather",
+                      "join": "all"
+                    }
+                  ],
+                  "outputs": {
+                    "result": {
+                      "node": "gather",
+                      "output": "result"
+                    }
+                  },
+                  "permissions": {
+                    "network": [],
+                    "read": [
+                      "workspace",
+                      "definitions"
+                    ],
+                    "shell": false,
+                    "write": []
+                  },
+                  "resources": [
+                    {
+                      "id": "ergora-structure-review-instructions",
+                      "kind": "instructions",
+                      "path": "instructions.md",
+                      "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823"
+                    }
+                  ],
+                  "schema_version": 2,
+                  "version": "1.0.90",
+                  "digest": "efe5c702d6720d2130b57c63b38935a28ee9f63147c3c21df6c94cc70791a32a"
+                },
+                "after": {
+                  "description": "Check structural ownership and stable module interfaces.",
+                  "id": "ergora-structure-review",
+                  "inputs": [
+                    "task"
+                  ],
+                  "limits": {
+                    "concurrency": 4,
+                    "depth": 8,
+                    "instances": 128,
+                    "material_bytes": 262144
+                  },
+                  "nodes": [
+                    {
+                      "depends_on": [],
+                      "id": "review",
+                      "inputs": {
+                        "task": {
+                          "input": "task"
+                        }
+                      },
+                      "permissions": {
+                        "network": [],
+                        "read": [
+                          "workspace",
+                          "definitions"
+                        ],
+                        "shell": false,
+                        "write": []
+                      },
+                      "ref": {
+                        "digest": "6beb193345f0df78fac248bb95616e73ebc323c6f6de617eacb4c52d889f8714",
+                        "id": "ergora-structure-reviewer",
+                        "kind": "agent",
+                        "version": "1.0.90"
+                      },
+                      "review_requirement": "required",
+                      "role": "reviewer"
+                    },
+                    {
+                      "depends_on": [
+                        "review"
+                      ],
+                      "id": "gather",
+                      "join": "all"
+                    }
+                  ],
+                  "outputs": {
+                    "result": {
+                      "node": "gather",
+                      "output": "result"
+                    }
+                  },
+                  "permissions": {
+                    "network": [],
+                    "read": [
+                      "workspace",
+                      "definitions"
+                    ],
+                    "shell": false,
+                    "write": []
+                  },
+                  "resources": [
+                    {
+                      "id": "ergora-structure-review-instructions",
+                      "kind": "instructions",
+                      "path": "instructions.md",
+                      "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823"
+                    }
+                  ],
+                  "schema_version": 2,
+                  "version": "1.0.90",
+                  "digest": "0000000000000000000000000000000000000000000000000000000000000000"
+                }
+              }
+            ],
+            "scope": "Browser exact-index digest injection only; original library and upstream response unchanged."
+          }
+        }
+      }
+    },
+    "offline_original_audit": {
+      "checked_at": "2026-11-10T13:53:12.357229+00:00",
+      "original_complete_objects_unchanged": 68,
+      "browser_agent_runs": 0,
+      "native_request_response_pairs": 122,
+      "final_actual_preview_matches_owner": [
+        {
+          "number": 46,
+          "home": "A",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-governance-delivery",
+            "version": "1.0.0",
+            "digest": "e82c02d01d2c717a38f35f242107efce32dd873027a4a3a6fb0f18f7d1fae077"
+          },
+          "preview_sha256": "d1231431743a8c6a88b78690ec4013ec26a3f2d1a2768c5ee34e50e58cae2774",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 258,
+          "request_sha256": "d874a4959601c06c24c9efcee90fb1cce740d500be153c44591f6a956f9caa9b",
+          "response_bytes": 52327,
+          "response_sha256": "5a2495b9077f0dd770fb04158ebb1a4fa73ae7314462adb23fb769f4492e0d27"
+        },
+        {
+          "number": 47,
+          "home": "A",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-governance-delivery",
+            "version": "1.0.74",
+            "digest": "cd34ecde8e321192fcddfbc4b0cebf68c0a8132fa7017c4c60ccb839e6f28c75"
+          },
+          "preview_sha256": "b187c6873a734847891de5e89d2b2064b6da038a17722bb72b32d04da1485934",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 259,
+          "request_sha256": "e65336b14186f6e2fe7f3843b3a335a543287c3a3a2234a82badd46f3a54cc5f",
+          "response_bytes": 52349,
+          "response_sha256": "56571fe3da5e1868a76fc92a02059e86654b1ee18c85ee07b063d9808a0f735a"
+        },
+        {
+          "number": 50,
+          "home": "A",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-large-change-delivery",
+            "version": "1.0.0",
+            "digest": "25dbfff6830e4123bedbfe975c964de96b8a9ce0ed8c76e8f365fecf2f7e2cc8"
+          },
+          "preview_sha256": "23ba4611ec03804c8cdf5f4d68125a44e333df019d0b6c4260b11a15588e5e81",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 260,
+          "request_sha256": "e2b380f63f8cea0b1f69ee46c9a88fdbf6746bf1fbbd7bbf8f1d635ec1afcf72",
+          "response_bytes": 69674,
+          "response_sha256": "5d268eaff77796b1b76bb734e7631d97e8ddfff77169bbb1d8f10e5951297f12"
+        },
+        {
+          "number": 51,
+          "home": "A",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-large-change-delivery",
+            "version": "1.0.74",
+            "digest": "7a871b5db862622b3e73714a077daca896699f4a7fff96578be2d729692010d0"
+          },
+          "preview_sha256": "3a8676c22942d2b92582e86a8c3069d12b65bfd531ddc62c78f5ee5d8ecd65ab",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 261,
+          "request_sha256": "27095f13b79a705ef569be97cc13b7c43d128c31e55edf1e305617d3006a8671",
+          "response_bytes": 69704,
+          "response_sha256": "c92c0676c7a04df1dcadbaf2098cee0a32fa851908276f387a608d57cae63cf6"
+        },
+        {
+          "number": 54,
+          "home": "A",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-training-proposal",
+            "version": "1.0.0",
+            "digest": "cf5df77249022c458f84d4e4d9964aa6448bacb1a74b9192a942da9ffcb7e438"
+          },
+          "preview_sha256": "f19085b4c06c91aa87a362ee3677ea4a99ceb1f203744a34618a9734690ba714",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 246,
+          "request_sha256": "d7a31768bc571387f673dd1b89ec5d290e9f31dd0cbfaacc230a3fcb6138a5df",
+          "response_bytes": 34940,
+          "response_sha256": "637a853c6a07a32a4473398609c8f410c31f38615f959f1ebde332a85887bc0c"
+        },
+        {
+          "number": 55,
+          "home": "A",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-training-proposal",
+            "version": "1.0.74",
+            "digest": "cc2994e57128ceeab9c04d766b5f6fd08f9b94dbcb99f005f413b6a6da1057c6"
+          },
+          "preview_sha256": "8d666c1e5b77e91c98ff33a935f0bbae4743869498accd1a4aa504af383c30fd",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 247,
+          "request_sha256": "2c364a8e015fdf75f13e806634b588bc25c2ea58ee27b290e6f7c0c725f308bc",
+          "response_bytes": 34958,
+          "response_sha256": "6ffc7852e7431b48f7dca31834fc63cdf236852229b4c521bc64a0f45e3e73f5"
+        },
+        {
+          "number": 57,
+          "home": "A",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-governance-delivery",
+            "version": "1.0.0",
+            "digest": "e82c02d01d2c717a38f35f242107efce32dd873027a4a3a6fb0f18f7d1fae077"
+          },
+          "preview_sha256": "d1231431743a8c6a88b78690ec4013ec26a3f2d1a2768c5ee34e50e58cae2774",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 258,
+          "request_sha256": "d874a4959601c06c24c9efcee90fb1cce740d500be153c44591f6a956f9caa9b",
+          "response_bytes": 52327,
+          "response_sha256": "5a2495b9077f0dd770fb04158ebb1a4fa73ae7314462adb23fb769f4492e0d27"
+        },
+        {
+          "number": 58,
+          "home": "A",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-governance-delivery",
+            "version": "1.0.75",
+            "digest": "4e1cf62cb021fcabb56b8d55ac8c2c71c7d6fdc66446fc62dfc582b453399bff"
+          },
+          "preview_sha256": "288ffa6b72ff7cae7da39291fa8c4b43b5dab842ce36ff909a35e80514be34d9",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 259,
+          "request_sha256": "23ac5c78bfdfe0cfa0701216280c7053f2d667257fda9ffd70ab0db31b06d7b2",
+          "response_bytes": 63417,
+          "response_sha256": "a65abeb47d4af5c919b3b20e313aa75cc03504387210dc3b1d8592557e6251a0"
+        },
+        {
+          "number": 61,
+          "home": "A",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-structure-review",
+            "version": "1.0.0",
+            "digest": "996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9"
+          },
+          "preview_sha256": "d035b8d74a274a190c445ab4db4171d3e2423404fbb68f180202dc426306fc13",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 245,
+          "request_sha256": "9980c9c96283bfd98a29744a878315c3a7611b8b25fe158cb84dd144086c6806",
+          "response_bytes": 7878,
+          "response_sha256": "1479c22d85bed38d412f969d1270a7a1eaff8f954591e8937a66afc5d31e82cd"
+        },
+        {
+          "number": 64,
+          "home": "A",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-structure-review",
+            "version": "1.0.0",
+            "digest": "996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9"
+          },
+          "preview_sha256": "2ac8477159a312e48bce08b61d307a4525b40ba2e457ab51add9fc1328620a6f",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 262,
+          "request_sha256": "02731dab8bd20b28eb5df6167609fe2cd70f5c072bbd28cb22a05f1321403940",
+          "response_bytes": 7895,
+          "response_sha256": "942fe50cefa94818997af6cabdb39a267b19881f5f7e715dca94caa2febfb581"
+        },
+        {
+          "number": 65,
+          "home": "A",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-structure-review",
+            "version": "1.0.76",
+            "digest": "1a39451886b1b0aa1a81a029a3c7cb2a3344e5451dee35843791f3a217d08856"
+          },
+          "preview_sha256": "581dcd9cad9eb689b66f5d1592033a4e0146d1bc99921e9c271bb956def14131",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 263,
+          "request_sha256": "1437f4766c10d6ed3e4c48623bd501715e3def6a841a78d2269bfef486a81010",
+          "response_bytes": 14709,
+          "response_sha256": "2b69ec2f25cc2c24831389cbeb4a4a548b882c6a641f4db0cc6ad4a03af5cb1f"
+        },
+        {
+          "number": 68,
+          "home": "A",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-structure-review",
+            "version": "1.0.76",
+            "digest": "1a39451886b1b0aa1a81a029a3c7cb2a3344e5451dee35843791f3a217d08856"
+          },
+          "preview_sha256": "581dcd9cad9eb689b66f5d1592033a4e0146d1bc99921e9c271bb956def14131",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 263,
+          "request_sha256": "1437f4766c10d6ed3e4c48623bd501715e3def6a841a78d2269bfef486a81010",
+          "response_bytes": 14709,
+          "response_sha256": "2b69ec2f25cc2c24831389cbeb4a4a548b882c6a641f4db0cc6ad4a03af5cb1f"
+        },
+        {
+          "number": 69,
+          "home": "A",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-structure-review",
+            "version": "1.0.77",
+            "digest": "5e71cae5352023f32af51a06325b1f48cffa232554d81a84143f0a8925a1d2f2"
+          },
+          "preview_sha256": "cbc60d2956e457d88d28aab3ccb09056a055cb23342f75a1f7374c77de44dfcb",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 263,
+          "request_sha256": "b25276ecc62d767016859e6c7c2aa27e5d426a97ee1a26c5ea18eba7f3665e6a",
+          "response_bytes": 14709,
+          "response_sha256": "786144c1ab51ec77bfb3bcb14d887145c8e88adb61ccfd85c8d99e81ddf0ecd5"
+        },
+        {
+          "number": 71,
+          "home": "A",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-structure-review",
+            "version": "1.0.0",
+            "digest": "996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9"
+          },
+          "preview_sha256": "d035b8d74a274a190c445ab4db4171d3e2423404fbb68f180202dc426306fc13",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 245,
+          "request_sha256": "9980c9c96283bfd98a29744a878315c3a7611b8b25fe158cb84dd144086c6806",
+          "response_bytes": 7878,
+          "response_sha256": "1479c22d85bed38d412f969d1270a7a1eaff8f954591e8937a66afc5d31e82cd"
+        },
+        {
+          "number": 75,
+          "home": "A",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-structure-review",
+            "version": "1.0.90",
+            "digest": "efe5c702d6720d2130b57c63b38935a28ee9f63147c3c21df6c94cc70791a32a"
+          },
+          "preview_sha256": "6fcba35f5235d6148d1f55f67e70c9aa9c5b6c2e2db44cc40b07bffdec7c5c0b",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 246,
+          "request_sha256": "6c65ccd236082f931b6f91f24b2a9997cdaf5a0f597080a4e2b40fbc6a6c0a3f",
+          "response_bytes": 7893,
+          "response_sha256": "efc99689b0750daad3c0db52ca1c29d632100c792f7258953de323f93b1768ca"
+        },
+        {
+          "number": 76,
+          "home": "A",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-structure-review",
+            "version": "1.0.0",
+            "digest": "996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9"
+          },
+          "preview_sha256": "d035b8d74a274a190c445ab4db4171d3e2423404fbb68f180202dc426306fc13",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 245,
+          "request_sha256": "9980c9c96283bfd98a29744a878315c3a7611b8b25fe158cb84dd144086c6806",
+          "response_bytes": 7878,
+          "response_sha256": "1479c22d85bed38d412f969d1270a7a1eaff8f954591e8937a66afc5d31e82cd"
+        },
+        {
+          "number": 78,
+          "home": "A",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-structure-review",
+            "version": "1.0.0",
+            "digest": "996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9"
+          },
+          "preview_sha256": "d035b8d74a274a190c445ab4db4171d3e2423404fbb68f180202dc426306fc13",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 245,
+          "request_sha256": "9980c9c96283bfd98a29744a878315c3a7611b8b25fe158cb84dd144086c6806",
+          "response_bytes": 7878,
+          "response_sha256": "1479c22d85bed38d412f969d1270a7a1eaff8f954591e8937a66afc5d31e82cd"
+        },
+        {
+          "number": 79,
+          "home": "A",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-structure-review",
+            "version": "1.0.90",
+            "digest": "efe5c702d6720d2130b57c63b38935a28ee9f63147c3c21df6c94cc70791a32a"
+          },
+          "preview_sha256": "6fcba35f5235d6148d1f55f67e70c9aa9c5b6c2e2db44cc40b07bffdec7c5c0b",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 246,
+          "request_sha256": "6c65ccd236082f931b6f91f24b2a9997cdaf5a0f597080a4e2b40fbc6a6c0a3f",
+          "response_bytes": 7893,
+          "response_sha256": "efc99689b0750daad3c0db52ca1c29d632100c792f7258953de323f93b1768ca"
+        },
+        {
+          "number": 81,
+          "home": "A",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-structure-review",
+            "version": "1.0.0",
+            "digest": "996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9"
+          },
+          "preview_sha256": "d035b8d74a274a190c445ab4db4171d3e2423404fbb68f180202dc426306fc13",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 245,
+          "request_sha256": "9980c9c96283bfd98a29744a878315c3a7611b8b25fe158cb84dd144086c6806",
+          "response_bytes": 7878,
+          "response_sha256": "1479c22d85bed38d412f969d1270a7a1eaff8f954591e8937a66afc5d31e82cd"
+        },
+        {
+          "number": 82,
+          "home": "A",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-structure-review",
+            "version": "1.0.90",
+            "digest": "efe5c702d6720d2130b57c63b38935a28ee9f63147c3c21df6c94cc70791a32a"
+          },
+          "preview_sha256": "6fcba35f5235d6148d1f55f67e70c9aa9c5b6c2e2db44cc40b07bffdec7c5c0b",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 246,
+          "request_sha256": "6c65ccd236082f931b6f91f24b2a9997cdaf5a0f597080a4e2b40fbc6a6c0a3f",
+          "response_bytes": 7893,
+          "response_sha256": "efc99689b0750daad3c0db52ca1c29d632100c792f7258953de323f93b1768ca"
+        },
+        {
+          "number": 85,
+          "home": "A",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-structure-review",
+            "version": "1.0.0",
+            "digest": "996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9"
+          },
+          "preview_sha256": "d035b8d74a274a190c445ab4db4171d3e2423404fbb68f180202dc426306fc13",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 245,
+          "request_sha256": "9980c9c96283bfd98a29744a878315c3a7611b8b25fe158cb84dd144086c6806",
+          "response_bytes": 7878,
+          "response_sha256": "1479c22d85bed38d412f969d1270a7a1eaff8f954591e8937a66afc5d31e82cd"
+        },
+        {
+          "number": 86,
+          "home": "A",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-structure-review",
+            "version": "1.0.90",
+            "digest": "efe5c702d6720d2130b57c63b38935a28ee9f63147c3c21df6c94cc70791a32a"
+          },
+          "preview_sha256": "6fcba35f5235d6148d1f55f67e70c9aa9c5b6c2e2db44cc40b07bffdec7c5c0b",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 246,
+          "request_sha256": "6c65ccd236082f931b6f91f24b2a9997cdaf5a0f597080a4e2b40fbc6a6c0a3f",
+          "response_bytes": 7893,
+          "response_sha256": "efc99689b0750daad3c0db52ca1c29d632100c792f7258953de323f93b1768ca"
+        },
+        {
+          "number": 93,
+          "home": "B",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-structure-review",
+            "version": "1.0.0",
+            "digest": "996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9"
+          },
+          "preview_sha256": "d035b8d74a274a190c445ab4db4171d3e2423404fbb68f180202dc426306fc13",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 245,
+          "request_sha256": "9980c9c96283bfd98a29744a878315c3a7611b8b25fe158cb84dd144086c6806",
+          "response_bytes": 7878,
+          "response_sha256": "1479c22d85bed38d412f969d1270a7a1eaff8f954591e8937a66afc5d31e82cd"
+        },
+        {
+          "number": 94,
+          "home": "B",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-structure-review",
+            "version": "1.0.90",
+            "digest": "efe5c702d6720d2130b57c63b38935a28ee9f63147c3c21df6c94cc70791a32a"
+          },
+          "preview_sha256": "6fcba35f5235d6148d1f55f67e70c9aa9c5b6c2e2db44cc40b07bffdec7c5c0b",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 246,
+          "request_sha256": "6c65ccd236082f931b6f91f24b2a9997cdaf5a0f597080a4e2b40fbc6a6c0a3f",
+          "response_bytes": 7893,
+          "response_sha256": "efc99689b0750daad3c0db52ca1c29d632100c792f7258953de323f93b1768ca"
+        },
+        {
+          "number": 96,
+          "home": "B",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-structure-review",
+            "version": "1.0.0",
+            "digest": "996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9"
+          },
+          "preview_sha256": "d035b8d74a274a190c445ab4db4171d3e2423404fbb68f180202dc426306fc13",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 245,
+          "request_sha256": "9980c9c96283bfd98a29744a878315c3a7611b8b25fe158cb84dd144086c6806",
+          "response_bytes": 7878,
+          "response_sha256": "1479c22d85bed38d412f969d1270a7a1eaff8f954591e8937a66afc5d31e82cd"
+        },
+        {
+          "number": 97,
+          "home": "B",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-structure-review",
+            "version": "1.0.0",
+            "digest": "996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9"
+          },
+          "preview_sha256": "d035b8d74a274a190c445ab4db4171d3e2423404fbb68f180202dc426306fc13",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 245,
+          "request_sha256": "9980c9c96283bfd98a29744a878315c3a7611b8b25fe158cb84dd144086c6806",
+          "response_bytes": 7878,
+          "response_sha256": "1479c22d85bed38d412f969d1270a7a1eaff8f954591e8937a66afc5d31e82cd"
+        },
+        {
+          "number": 105,
+          "home": "B",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-structure-review",
+            "version": "1.0.0",
+            "digest": "996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9"
+          },
+          "preview_sha256": "d035b8d74a274a190c445ab4db4171d3e2423404fbb68f180202dc426306fc13",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 245,
+          "request_sha256": "9980c9c96283bfd98a29744a878315c3a7611b8b25fe158cb84dd144086c6806",
+          "response_bytes": 7878,
+          "response_sha256": "1479c22d85bed38d412f969d1270a7a1eaff8f954591e8937a66afc5d31e82cd"
+        },
+        {
+          "number": 106,
+          "home": "B",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-structure-review",
+            "version": "1.0.90",
+            "digest": "efe5c702d6720d2130b57c63b38935a28ee9f63147c3c21df6c94cc70791a32a"
+          },
+          "preview_sha256": "6fcba35f5235d6148d1f55f67e70c9aa9c5b6c2e2db44cc40b07bffdec7c5c0b",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 246,
+          "request_sha256": "6c65ccd236082f931b6f91f24b2a9997cdaf5a0f597080a4e2b40fbc6a6c0a3f",
+          "response_bytes": 7893,
+          "response_sha256": "efc99689b0750daad3c0db52ca1c29d632100c792f7258953de323f93b1768ca"
+        },
+        {
+          "number": 110,
+          "home": "B",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-structure-review",
+            "version": "1.0.0",
+            "digest": "996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9"
+          },
+          "preview_sha256": "d035b8d74a274a190c445ab4db4171d3e2423404fbb68f180202dc426306fc13",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 245,
+          "request_sha256": "9980c9c96283bfd98a29744a878315c3a7611b8b25fe158cb84dd144086c6806",
+          "response_bytes": 7878,
+          "response_sha256": "1479c22d85bed38d412f969d1270a7a1eaff8f954591e8937a66afc5d31e82cd"
+        },
+        {
+          "number": 111,
+          "home": "B",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-structure-review",
+            "version": "1.0.90",
+            "digest": "efe5c702d6720d2130b57c63b38935a28ee9f63147c3c21df6c94cc70791a32a"
+          },
+          "preview_sha256": "6fcba35f5235d6148d1f55f67e70c9aa9c5b6c2e2db44cc40b07bffdec7c5c0b",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 246,
+          "request_sha256": "6c65ccd236082f931b6f91f24b2a9997cdaf5a0f597080a4e2b40fbc6a6c0a3f",
+          "response_bytes": 7893,
+          "response_sha256": "efc99689b0750daad3c0db52ca1c29d632100c792f7258953de323f93b1768ca"
+        },
+        {
+          "number": 116,
+          "home": "B",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-structure-review",
+            "version": "1.0.0",
+            "digest": "996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9"
+          },
+          "preview_sha256": "d035b8d74a274a190c445ab4db4171d3e2423404fbb68f180202dc426306fc13",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 245,
+          "request_sha256": "9980c9c96283bfd98a29744a878315c3a7611b8b25fe158cb84dd144086c6806",
+          "response_bytes": 7878,
+          "response_sha256": "1479c22d85bed38d412f969d1270a7a1eaff8f954591e8937a66afc5d31e82cd"
+        },
+        {
+          "number": 117,
+          "home": "B",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-structure-review",
+            "version": "1.0.90",
+            "digest": "efe5c702d6720d2130b57c63b38935a28ee9f63147c3c21df6c94cc70791a32a"
+          },
+          "preview_sha256": "6fcba35f5235d6148d1f55f67e70c9aa9c5b6c2e2db44cc40b07bffdec7c5c0b",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 246,
+          "request_sha256": "6c65ccd236082f931b6f91f24b2a9997cdaf5a0f597080a4e2b40fbc6a6c0a3f",
+          "response_bytes": 7893,
+          "response_sha256": "efc99689b0750daad3c0db52ca1c29d632100c792f7258953de323f93b1768ca"
+        },
+        {
+          "number": 121,
+          "home": "B",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-structure-review",
+            "version": "1.0.0",
+            "digest": "996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9"
+          },
+          "preview_sha256": "d035b8d74a274a190c445ab4db4171d3e2423404fbb68f180202dc426306fc13",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 245,
+          "request_sha256": "9980c9c96283bfd98a29744a878315c3a7611b8b25fe158cb84dd144086c6806",
+          "response_bytes": 7878,
+          "response_sha256": "1479c22d85bed38d412f969d1270a7a1eaff8f954591e8937a66afc5d31e82cd"
+        },
+        {
+          "number": 122,
+          "home": "B",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-structure-review",
+            "version": "1.0.90",
+            "digest": "efe5c702d6720d2130b57c63b38935a28ee9f63147c3c21df6c94cc70791a32a"
+          },
+          "preview_sha256": "6fcba35f5235d6148d1f55f67e70c9aa9c5b6c2e2db44cc40b07bffdec7c5c0b",
+          "held": false,
+          "gate_released": null,
+          "request_bytes": 246,
+          "request_sha256": "6c65ccd236082f931b6f91f24b2a9997cdaf5a0f597080a4e2b40fbc6a6c0a3f",
+          "response_bytes": 7893,
+          "response_sha256": "efc99689b0750daad3c0db52ca1c29d632100c792f7258953de323f93b1768ca"
+        }
+      ],
+      "actual_installed_assets_match_final_source": [
+        {
+          "path": "/assets/style.css",
+          "bytes": 20382,
+          "sha256": "d66c10689fe9f3d08f4c48e1d200146ea36e894aed9aa3e690b311c06ee1da13"
+        },
+        {
+          "path": "/assets/app.js",
+          "bytes": 7884,
+          "sha256": "506cb7e81f4456745090a6a84a5a149021f52f3f0e30bbe26c494c264e709d78"
+        },
+        {
+          "path": "/assets/definitions.js",
+          "bytes": 67412,
+          "sha256": "860fdf45eecf7ef076f40d1625b8273b1cf7fd864e29ed7328e88d234fc367f4"
+        },
+        {
+          "path": "/assets/composition-graph.js",
+          "bytes": 18414,
+          "sha256": "22fad41ba596fadeba3cfcc02e9e84f2891326395339beca793846a1bddb4469"
+        },
+        {
+          "path": "/assets/composition-comparison.js",
+          "bytes": 5569,
+          "sha256": "b56aca5f6c44ed715009a9e5a92701eb40c97cb8a8ea6f3bec62f3c7a547fea2"
+        },
+        {
+          "path": "/assets/style.css",
+          "bytes": 20382,
+          "sha256": "d66c10689fe9f3d08f4c48e1d200146ea36e894aed9aa3e690b311c06ee1da13"
+        },
+        {
+          "path": "/assets/app.js",
+          "bytes": 7884,
+          "sha256": "506cb7e81f4456745090a6a84a5a149021f52f3f0e30bbe26c494c264e709d78"
+        },
+        {
+          "path": "/assets/definitions.js",
+          "bytes": 67412,
+          "sha256": "860fdf45eecf7ef076f40d1625b8273b1cf7fd864e29ed7328e88d234fc367f4"
+        },
+        {
+          "path": "/assets/composition-graph.js",
+          "bytes": 18414,
+          "sha256": "22fad41ba596fadeba3cfcc02e9e84f2891326395339beca793846a1bddb4469"
+        },
+        {
+          "path": "/assets/composition-comparison.js",
+          "bytes": 5569,
+          "sha256": "b56aca5f6c44ed715009a9e5a92701eb40c97cb8a8ea6f3bec62f3c7a547fea2"
+        }
+      ],
+      "scope": "Offline exact HTTP bytes/owner projection and original complete object trees; synthetic persisted events do not prove natural BFCache. Missing-index route modifies only controlled browser delivery; original trees remain unchanged."
+    },
+    "downloads": {
+      "before": {
+        "file": ".ergora/checks/ac5-composition-comparison/download-before.json",
+        "bytes": 10272,
+        "sha256": "7dcd3434850c052af5b6f5a9c7c5f3239c0008566f22e26b4d28be7edd169711",
+        "full_original_preview_equal": true
+      },
+      "after": {
+        "file": ".ergora/checks/ac5-composition-comparison/download-after.json",
+        "bytes": 18771,
+        "sha256": "45484984c717e1bc30cb2b3ac51ebc009048ca7032f5aa876bb71d0d0e7bd889",
+        "full_original_preview_equal": true
+      }
+    },
+    "limits": [
+      "Main and final index/settled-viewports journeys passed. Lifecycle-02 remains an overall failed journey at the index race after four delayed replies, tab/buffer and object-key-order checkpoints; never relabeled full pass.",
+      "Lifecycle-01 failed on nonexistent fixture version before pairs. Index-views-01 failed on immediate width after index checks. Later readonly390/390 does not establish transient cause; final check awaits original renderer resize, no product CSS change.",
+      "Full original-inspector checks cover selected leaves and selected added/deleted paths, not all leaves. Settled document width does not guarantee instantaneous resize or full-graph label legibility.",
+      "No natural BFCache, cross-browser, model-quality, throughput or C6 capacity claim. All UI homes have zero Agent runs."
+    ]
+  }
+}

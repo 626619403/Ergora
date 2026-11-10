@@ -1,6 +1,6 @@
-# AC5 C4b.1 独立审查：本地最终通过
+# AC5 C4b.1 独立审查：精确交付通过
 
-**完整 20 文件候选本地通过，Standards / Spec 开放 finding 均为 0，CEX-ST1 已关闭。** R2 产品/页面、实际自身模板及公开投影均已补核；本片精确提交、自己的 CI 和一次独立 HTTPS 身份核验仍待完成。不宣称 C4、AC5 或整个项目完成。
+**完整 20 文件候选及精确交付通过，Standards / Spec 开放 finding 均为 0，CEX-ST1 已关闭。** R2 产品/页面、实际自身模板、公开投影、精确 Git / 一次独立 HTTPS 均已核；自己的 CI 第三份官方样本双 OS 七必要步骤通过。不宣称 C4、AC5 或整个项目完成。
 
 主审 `composition_exploration_review` 及独立 `spec_axis`、`standards_axis` 均从 fresh context 开始，读取原始要求、根 AGENTS、[本片计划](../plans/2026-11-10-composition-exploration.md)、[交付记录](2026-11-10-composition-exploration.md)、当前架构及必要调用邻居，按 `maintainable-project-delivery`、`code-review`、`codebase-design` 分轴审查；同片 R2 由原评审者分别续核。
 
@@ -50,4 +50,14 @@ Spec 轴独立解析 43 条模型事件和原 MCP 回执：1 次 list / 17 次�
 
 主审最终审计为私有 `independent/final-material-audit.json`；两轴为 `standards-final.md` / `standards-final-audit.json`、`spec-final.md` / `spec-final-audit.json`。Standards 的 139 项离线核查、216 本地链接/锚点及五 JSON/JS/空白通过；前片 C4a 三样本的 15 份官方原响应与原精确 gate 支持其终态，第三样本双 OS 七必要步骤只授予 C4a。终核没有重跑已验 190 HTTP、安装、浏览器、模型或网络。
 
-当前本地出口：**完整最终候选通过，Standards 0、Spec 0，CEX-ST1 关闭。** 本片自己的精确提交/CI/一次 HTTPS 核验仍待完成；跨浏览器、自然 BFCache 与 C6 容量未新增验证，四次所选隐藏叶及窄屏可读性限制保持原范围。
+本地出口：**完整最终候选通过，Standards 0、Spec 0，CEX-ST1 关闭。** 精确交付状态见下节；跨浏览器、自然 BFCache 与 C6 容量未新增验证，四次所选隐藏叶及窄屏可读性限制保持原范围。
+
+## 精确交付续核：通过
+
+普通提交并推送 `8ce9aba51c54e368aa8625e6c6535e4ac6ccaa19` 的唯一父提交为上述基线。主审确认 ready 相对固定候选仅有四份状态文档续记及已核最终评审结果；精确提交的变更路径恰为 20 文件，每个 blob 的大小/字节/SHA256 与 ready 相同，产品和公开证据不变。436 个精确 Git 包文件与已验 R2 wheel/安装/两份 RECORD 身份相同，283 冻结文件仍与原 manifest / 基线相同；未重验安装或读取未来产品 WIP。
+
+主审进行**一次只读 HTTPS GET** 读取 Git smart-HTTP ref 广告，HTTP 200、0.68 秒，分支 `refs/heads/refactor/architecture-foundations` 返回上述完整 SHA；未跟随重定向、重试或 SSH。私有原件为 `independent/exact-commit-audit.json`、`exact-https-ref.json` 及未改写 response。此观察只证明当时 ref，不代替自己的 CI。
+
+本提交自己的 [CI42825342126](https://github.com/626619403/Ergora/actions/runs/42825342126) 第三份官方样本 `snapshot-03` 为 **Success**。主审离线核三份样本的 15 份原响应大小/SHA，独立解析官方 HTML / JSON：完整 SHA、分支和 Portability 工作流绑定正确，Ubuntu / Windows 两 job 均为 completed/success，**七必要步骤**全部 success 且 job-completed；前两份原样保持 In progress。精确 20 个 Git blobs 与不可变 ready 再核相同，未混入后续 C4b.2 工作树。
+
+私有 `independent/ci-final-audit.json` 及终态 `review-exact-delivery-gate.json` 已保存，后者为 **pass / complete_acceptance:true**；原 pending `review-exact-delivery-gate-r1.json` 保留，不倒改历史。此次仅离线核官方原件与精确对象，没有网络、产品、浏览器、模型、安装或 CI 重跑。精确终态仅属于 C4b.1，不授予 C4b.2 或后续阶段通过。

@@ -1,0 +1,56 @@
+{
+  "kind": "ergora-evidence-projection",
+  "schema_version": 1,
+  "slice": "AC5 C4b.2",
+  "baseline": "8ce9aba51c54e368aa8625e6c6535e4ac6ccaa19",
+  "originals": [
+    {
+      "file": "self-review-r2.json",
+      "bytes": 1666,
+      "sha256": "0dec9b788abdd221c617ca76451856ef8a79e4165a557bc32ab69a0b58124a01"
+    },
+    {
+      "file": "self-review-r2/original-result.json",
+      "bytes": 2460,
+      "sha256": "1793c4f46571c959fe7a4339a43bc7ec2c1de91add83b251a86884e956b87d79"
+    }
+  ],
+  "projection": "Machine paths/local ports replaced. Original bytes/SHA identify retained originals, not serialized projection.",
+  "omitted": "Complete source/drivers and identity-bound receipt projection supplied; large raw pairs/routing maps excluded from model input and independently audited separately. No owner approval or different-model independence claim. Initial private preparation failed before manifest/backend/model and remains failure.",
+  "evidence": {
+    "invocation": {
+      "checked_at": "2026-11-10T13:59:01.706127+00:00",
+      "source": {
+        "src/ergora/data/console/definitions.js": "860fdf45eecf7ef076f40d1625b8273b1cf7fd864e29ed7328e88d234fc367f4",
+        "src/ergora/data/console/composition-comparison.js": "b56aca5f6c44ed715009a9e5a92701eb40c97cb8a8ea6f3bec62f3c7a547fea2",
+        "src/ergora/data/console/composition-graph.js": "22fad41ba596fadeba3cfcc02e9e84f2891326395339beca793846a1bddb4469",
+        "src/ergora/data/console/app.js": "506cb7e81f4456745090a6a84a5a149021f52f3f0e30bbe26c494c264e709d78",
+        "src/ergora/data/console/ui.js": "2fc6c19d8d46a68d12562b2c696ec1f6bad4ea7d781afbc326ce3fbf6ac3df2c"
+      },
+      "run_id": "dc6d043dcf0149a881969981ecd6be49",
+      "status": "succeeded",
+      "backend": "codex",
+      "inference_model": "gpt-6.1-sol",
+      "reasoning_effort": "high",
+      "driver_cli_exit_code": 0,
+      "seconds": 120.04863968119025,
+      "input_digest": "a07407778b001bc510da1dbfa3cdf4d53ab331daec43888ccc5587ba24bdc994",
+      "prompt_sha256": "639f2b4da6a312a442bce26a4c119165f36442338cb62ecaa9643341ce0e3342",
+      "attachment_bytes": 191351,
+      "attachment_sha256": "52e9718eef7705f222abc7f1400089c8b41a976ac24d0d0a4a324b68e79012b2",
+      "manifest_digest": "e772854155620f7ec8a3bbd3327aea20c4e2ff003c42a37418139755f990814c",
+      "evidence_revision": "1.0.78",
+      "original_definition_libraries_retained": true,
+      "scope": "Actual bundled structure-review on frozen complete source/drivers and identity-bound receipt projection; not raw omitted receipt inspection, owner approval, reasoning quality or different-model independence.",
+      "decision": "approve",
+      "result_sha256": "1793c4f46571c959fe7a4339a43bc7ec2c1de91add83b251a86884e956b87d79"
+    },
+    "result": {
+      "artifacts": {
+        "response": "Spec: approve. Both previews use the same explicit grant through the original admission owner; both admissions and exact root identities must succeed before comparison. Existing request generations invalidate late replies. Full paths preserve duplicate instances, object keys ignore ordering, and field arrays retain order. Content, provenance and prompt identities remain distinct; complete original instances and both preview downloads remain available.\n\nStandards: approve. `definitions.js` retains selection, grant, request and lifecycle ownership. Its single production call to `compositionComparisonView` delegates a cohesive presentation algorithm to `composition-comparison.js`. The change adds no compiler, backend, persistence, dependency or generic framework. The supplied diff leaves graph/app/ui unchanged and preserves existing candidate, approval and evidence owners.\n\nValidation is bounded by the supplied receipt projections: main 4.195s passed; lifecycle 83.52s remained FAILED after reaching the late-reply/tab/key-order checks; the first viewport supplement 3.82s remained FAILED. The final affected-segment supplement 3.48s passed after waiting for renderer resize. The later 390/390 observation does not establish the initial failure’s cause. Package evidence reports 437 matching files and 283 frozen assets. Omitted original receipt maps were not independently inspected. Natural BFCache, cross-browser behavior, throughput, C6 capacity and different-model independence are not established.\n\nComplete root scope—five resources, all read fully using continuous successful UTF-8 windows through `next_offset: null`:\n\n- `definitions/workflow/ergora-structure-review/1.0.78/instructions.md`\n- `definitions/agent/ergora-structure-reviewer/1.0.78/instructions.md`\n- `definitions/agent/ergora-structure-reviewer/1.0.78/skills/ergora-structure-reviewer/SKILL.md`\n- `definitions/agent/ergora-structure-reviewer/1.0.78/skills/candidate-evidence/SKILL.md`\n- `definitions/agent/ergora-structure-reviewer/1.0.78/skills/candidate-evidence/references/candidate.txt` (191,351 bytes, including bundled context, source, diffs, complete drivers and receipt projections).\n\nNo evidence was executed and no sources were edited. These are review verdicts, not formal owner approval."
+      },
+      "decision": "approve",
+      "summary": "Spec: approve. Standards: approve. No actionable findings in the supplied C4b.2 candidate."
+    }
+  }
+}

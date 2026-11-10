@@ -1,6 +1,7 @@
 import { api } from "./api.js";
 import { app } from "./state.js";
 import { compositionGraphView } from "./composition-graph.js";
+import { compositionComparisonView } from "./composition-comparison.js";
 import { node, button, pre, heading, panel, empty, row, select, field, lines, badge, download, table } from "./ui.js";
 
 // Library assets belong to the control directory, independently of project selection.
@@ -9,6 +10,7 @@ const library = {
   agents: [], workflows: [], presets: [], request: 0,
   selection: null, detail: null, detailLoading: false, detailError: "", detailRequest: 0,
   grant: "", preview: null, previewLoading: false, previewError: "", previewRequest: 0,
+  comparisonTarget: "", comparison: null,
   restoreSelection: null,
 };
 const selections = new Map();
@@ -475,7 +477,8 @@ function synchronizeLibrary() {
   Object.assign(library, {
     controlDirectory: home, started: false, loading: false, installing: null, error: "", message: "",
     agents: [], workflows: [], presets: [], selection: null, detail: null, detailLoading: false, detailError: "",
-    grant: "", preview: null, previewLoading: false, previewError: "", restoreSelection: selections.get(home) || null,
+    grant: "", preview: null, previewLoading: false, previewError: "", comparisonTarget: "", comparison: null,
+    restoreSelection: selections.get(home) || null,
   });
 }
 
@@ -503,7 +506,12 @@ async function loadLibrary(render) {
     )) {
       library.detailRequest++;
       library.previewRequest++;
-      Object.assign(library, { selection: null, detail: null, preview: null, detailLoading: false, previewLoading: false });
+      Object.assign(library, { selection: null, detail: null, preview: null, comparisonTarget: "", comparison: null,
+        detailLoading: false, previewLoading: false });
+    }
+    if (library.comparisonTarget && !workflows.some((item) => referenceText({ kind: "workflow", ...item }) === library.comparisonTarget)) {
+      library.previewRequest++;
+      Object.assign(library, { comparisonTarget: "", comparison: null, previewLoading: false, previewError: "" });
     }
     if (!library.selection && library.restoreSelection && selectionRequest === library.detailRequest) {
       const previous = library.restoreSelection;
@@ -531,7 +539,8 @@ async function openDefinition(kind, reference, render) {
   library.previewRequest++;
   Object.assign(library, {
     selection: { kind, id: reference.id, version: reference.version }, detail: null, detailLoading: true,
-    detailError: "", grant: "", preview: null, previewLoading: false, previewError: "", restoreSelection: null,
+    detailError: "", grant: "", preview: null, previewLoading: false, previewError: "", comparisonTarget: "", comparison: null,
+    restoreSelection: null,
   });
   selections.set(home, library.selection);
   redraw(render);
@@ -581,19 +590,29 @@ async function installPreset(identity, render) {
   }
 }
 
-async function previewDefinition(render) {
+async function previewDefinition(render, target = null) {
   const home = library.controlDirectory;
   if (!currentLibrary(home)) { redraw(render); return; }
   const request = ++library.previewRequest;
-  const selected = library.selection;
+  const selected = { ...library.selection, digest: library.detail.digest };
   library.previewLoading = true;
   library.previewError = "";
   library.preview = null;
+  library.comparison = null;
   redraw(render);
   try {
     const grant = JSON.parse(library.grant);
-    const result = await api("/api/composition/preview", { id: selected.id, version: selected.version, grant });
-    if (currentLibrary(home) && request === library.previewRequest) library.preview = result;
+    const references = target ? [selected, target] : [selected];
+    const results = await Promise.all(references.map(async (reference) => {
+      const result = await api("/api/composition/preview", { id: reference.id, version: reference.version, grant });
+      if (referenceText(result.root) !== referenceText(reference))
+        throw new Error("预览返回的精确根引用与所选版本不符；没有使用其他版本生成比较。");
+      return result;
+    }));
+    if (currentLibrary(home) && request === library.previewRequest) {
+      library.preview = results[0];
+      library.comparison = results[1] || null;
+    }
   } catch (error) {
     if (currentLibrary(home) && request === library.previewRequest) library.previewError = error.message;
   } finally {
@@ -973,17 +992,33 @@ function detailView(render) {
   const result = node("div", {},
     library.previewError ? panel("预览未通过", library.previewError) : null,
     library.preview ? instancesView(library.preview, render) : empty("预览后查看所有叶实例继承的指令、来源、权限和预算。"),
+    library.comparison ? compositionComparisonView(library.preview, library.comparison) : null,
   );
   const grant = node("textarea", { className: "workflow-json", value: library.grant,
     "aria-label": "静态预览上限 JSON", spellcheck: "false" });
   const previewAction = button(library.previewLoading ? "正在预览…" : "预览完整组合", () => previewDefinition(render),
     "primary", { disabled: library.previewLoading });
+  const comparisonChoice = select([["", "选择比较目标…"], ...library.workflows.map((item) =>
+    [referenceText({ kind: "workflow", ...item }), `${item.id} @ ${item.version} · ${item.digest}`])],
+  library.comparisonTarget, "comparison_target");
+  comparisonChoice.setAttribute("aria-label", "比较目标（已发布精确版本）");
+  comparisonChoice.addEventListener("change", () => {
+    library.comparisonTarget = comparisonChoice.value;
+    library.previewRequest++;
+    Object.assign(library, { comparison: null, previewLoading: false, previewError: "" });
+    redraw(render);
+  });
+  const compareAction = button(library.previewLoading ? "正在预览…" : "比较两个已发布版本",
+    () => previewDefinition(render, JSON.parse(library.comparisonTarget)), "secondary",
+    { disabled: library.previewLoading || !library.comparisonTarget });
   grant.addEventListener("input", () => {
     library.grant = grant.value;
     library.previewRequest++;
-    Object.assign(library, { preview: null, previewLoading: false, previewError: "" });
+    Object.assign(library, { preview: null, comparison: null, previewLoading: false, previewError: "" });
     previewAction.disabled = false;
     previewAction.textContent = "预览完整组合";
+    compareAction.disabled = !library.comparisonTarget;
+    compareAction.textContent = "比较两个已发布版本";
     disposeDefinitionGraph();
     result.replaceChildren(empty("上限已修改；重新预览后查看当前结果。"));
   });
@@ -992,6 +1027,9 @@ function detailView(render) {
     "初始上限来自该根定义，可修改后显式预览。这是静态校验上限；正式任务仍需项目授权、冻结输入与后端能力准入。",
     node("label", {}, "静态预览上限 JSON", grant),
     previewAction,
+    node("label", {}, "比较目标（已发布精确版本）", comparisonChoice),
+    node("p", {}, "以当前所选版本为比较前、目标为比较后；两者均按上方同一份显式上限重新预览。比较不会发布定义、应用草稿或切换编辑基准。"),
+    compareAction,
   ), result);
   return contents;
 }

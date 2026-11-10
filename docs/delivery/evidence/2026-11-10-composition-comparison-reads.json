@@ -1,0 +1,191 @@
+{
+  "kind": "ergora-evidence-projection",
+  "schema_version": 1,
+  "slice": "AC5 C4b.2",
+  "baseline": "8ce9aba51c54e368aa8625e6c6535e4ac6ccaa19",
+  "originals": [
+    {
+      "file": "model-read-audit-r2.json",
+      "bytes": 5689,
+      "sha256": "db2cb5c8aa84a801744d281f404b1f66f5de668e52169bea5cbbd5ab5ef61d6e"
+    }
+  ],
+  "projection": "Machine paths/local ports replaced. Original bytes/SHA identify retained originals, not serialized projection.",
+  "omitted": "Complete candidate/native stream retained privately. Scope/plaintext coverage proves delivery only, not understanding.",
+  "evidence": {
+    "checked_at": "2026-11-10T14:00:14.541317+00:00",
+    "run_id": "dc6d043dcf0149a881969981ecd6be49",
+    "manifest_input_and_actual_run_digest_match": true,
+    "actual_prompt_matches": true,
+    "original_definition_libraries_absent": true,
+    "original_definition_libraries_retained_outside_active_control": true,
+    "actual_stdin_and_protocol_prompt_match": true,
+    "scope_and_native_receipt_identity_match": true,
+    "bundled_agent_workflow_evidence_revision_matches": true,
+    "scope_list_passes": [
+      {
+        "pages": [
+          {
+            "offset": 0,
+            "files": 5,
+            "next_offset": null
+          }
+        ],
+        "complete": true
+      }
+    ],
+    "scope_files": 5,
+    "all_scope_files_read_completely": true,
+    "complete_scope_reads": {
+      "definitions/agent/ergora-structure-reviewer/1.0.78/instructions.md": {
+        "size": 354,
+        "sha256": "3cc9c450f0c03da5ea4a1434ac6182d50df6a4985cffdee2a59fe9fe477c6b43",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 354,
+            "next_offset": null
+          }
+        ],
+        "base64_window_retries": [],
+        "repeated_pages": [],
+        "complete_continuous_plaintext": true
+      },
+      "definitions/agent/ergora-structure-reviewer/1.0.78/skills/candidate-evidence/SKILL.md": {
+        "size": 626,
+        "sha256": "e5e848e8ced2ae0702b8ef001f0283b6f837ea09c61a7bc373e154083d7f1589",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 626,
+            "next_offset": null
+          }
+        ],
+        "base64_window_retries": [],
+        "repeated_pages": [],
+        "complete_continuous_plaintext": true
+      },
+      "definitions/agent/ergora-structure-reviewer/1.0.78/skills/candidate-evidence/references/candidate.txt": {
+        "size": 191351,
+        "sha256": "52e9718eef7705f222abc7f1400089c8b41a976ac24d0d0a4a324b68e79012b2",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 24000,
+            "next_offset": 24000
+          },
+          {
+            "offset": 24000,
+            "bytes": 24000,
+            "next_offset": 48000
+          },
+          {
+            "offset": 48000,
+            "bytes": 24000,
+            "next_offset": 72000
+          },
+          {
+            "offset": 72000,
+            "bytes": 12000,
+            "next_offset": 84000
+          },
+          {
+            "offset": 84000,
+            "bytes": 24000,
+            "next_offset": 108000
+          },
+          {
+            "offset": 108000,
+            "bytes": 12000,
+            "next_offset": 120000
+          },
+          {
+            "offset": 120000,
+            "bytes": 24000,
+            "next_offset": 144000
+          },
+          {
+            "offset": 144000,
+            "bytes": 24000,
+            "next_offset": 168000
+          },
+          {
+            "offset": 168000,
+            "bytes": 23351,
+            "next_offset": null
+          }
+        ],
+        "base64_window_retries": [
+          {
+            "offset": 72000,
+            "bytes": 24000
+          },
+          {
+            "offset": 108000,
+            "bytes": 24000
+          }
+        ],
+        "repeated_pages": [],
+        "complete_continuous_plaintext": true
+      },
+      "definitions/agent/ergora-structure-reviewer/1.0.78/skills/ergora-structure-reviewer/SKILL.md": {
+        "size": 521,
+        "sha256": "d6b69570bcca408d3d06ca5adf1cb44a4a9e43c2901f05c38a68c096f23a4ac8",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 521,
+            "next_offset": null
+          }
+        ],
+        "base64_window_retries": [],
+        "repeated_pages": [],
+        "complete_continuous_plaintext": true
+      },
+      "definitions/workflow/ergora-structure-review/1.0.78/instructions.md": {
+        "size": 163,
+        "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 163,
+            "next_offset": null
+          }
+        ],
+        "base64_window_retries": [],
+        "repeated_pages": [],
+        "complete_continuous_plaintext": true
+      }
+    },
+    "native_evidence_files": 14,
+    "original_cli_receipts_match_complete_attachment": true,
+    "source_files": 5,
+    "source_files_complete_in_attachment_and_unchanged": true,
+    "attachment_bytes": 191351,
+    "attachment_sha256": "52e9718eef7705f222abc7f1400089c8b41a976ac24d0d0a4a324b68e79012b2",
+    "native_stream_sha256": "6e2957558ae8337961dfb7eea208c0b9fcd85ffa7815b06c07aef107a8c9548c",
+    "successful_candidate_pages": 11,
+    "probe_pages": 0,
+    "continuous_pages": 9,
+    "complete_continuous_bytes": 191351,
+    "repeated_pages": 0,
+    "base64_pages": 2,
+    "plaintext_only": false,
+    "complete_continuous_plaintext": true,
+    "next_offset": null,
+    "every_candidate_page_matches_original_bytes": true,
+    "failed_read_count": 0,
+    "failed_reads": [],
+    "instruction_and_skill_reads": {
+      "definitions/workflow/ergora-structure-review/1.0.78/instructions.md": true,
+      "definitions/agent/ergora-structure-reviewer/1.0.78/instructions.md": true,
+      "definitions/agent/ergora-structure-reviewer/1.0.78/skills/ergora-structure-reviewer/SKILL.md": true,
+      "definitions/agent/ergora-structure-reviewer/1.0.78/skills/candidate-evidence/SKILL.md": true
+    },
+    "actual_candidate_asset_matches": true,
+    "original_result_sha256": "1793c4f46571c959fe7a4339a43bc7ec2c1de91add83b251a86884e956b87d79",
+    "succeeded_original_result_matches": true,
+    "decision": "approve",
+    "scope": "Audit verifies continuous successful UTF8 plaintext coverage, with unchanged-offset base64 retries preserved. Delivery does not prove reasoning quality. Existing artifacts and original inspectors only; no model, service or test rerun. Complete byte delivery does not prove reasoning quality or formal owner approval."
+  }
+}
