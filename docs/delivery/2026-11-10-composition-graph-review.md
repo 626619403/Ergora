@@ -1,6 +1,6 @@
-# AC5 C4a 独立审查：本地最终通过
+# AC5 C4a 独立审查：本地及精确交付通过
 
-**完整最终候选本地通过：Standards 开放 finding 0；Spec 历史 CG-1、CG-2、CG-3 均按最终 R4 的受影响证据关闭，开放 finding 0。** 实际自身模板与公开证据已补核。精确提交、该提交自己的官方 CI 和一次独立 HTTPS 读取仍待随后核验；本结论不宣称 C4、AC5 或整个项目完成。
+**C4a 本地及精确交付通过：Standards 开放 finding 0；Spec 历史 CG-1、CG-2、CG-3 均按最终 R4 的受影响证据关闭，开放 finding 0。** 实际自身模板、公开证据、精确 Git 对象、一次独立 HTTPS 读取及该提交自己的官方 CI 已核验。本结论不宣称 C4、AC5 或整个项目完成。
 
 主审 `composition_graph_review` 及独立 `spec_axis`、`standards_axis` 初始均使用 fresh context，实际读取根 AGENTS、PLAN、[本片计划](../plans/2026-11-10-composition-graph.md)、[交付记录](2026-11-10-composition-graph.md)、[AC5 合同](../plans/2026-11-09-composition-console.md)、当前架构和 ADR0003，按 `maintainable-project-delivery` 与 `code-review` 分轴审查，本次由原评审者续核同片。基线与审查时 HEAD 均为 `45c2de47e9119d1f07616b3307331321d38155a4`；提交范围为空，明确审查非空 WIP diff 与 untracked 文件。
 
@@ -44,4 +44,14 @@ R1 `browser-main-02.json` 的 4.90 秒实际页面旅程覆盖三领域及重复
 
 主审最后补核为私有 `independent/final-material-audit.json`，两轴各有最终审计。本次终核没有模型/浏览器/产品/测试/安装/网络运行。摘要 retry 线索因受支持库禁止同 id/version 替换 digest，未构造手改索引缺陷。前片精确交付由原评审者单独终结，不替代本片提交/CI/HTTPS 门禁。
 
-当前出口：**完整最终候选本地通过，Standards 0、Spec 开放 0、CG-1/2/3 关闭。** 随后仅按精确 Git 对象补核本片普通提交/推送、自己的官方 CI 和一次独立 HTTPS 读取，结果单独续记。
+当前本地出口：**完整最终候选通过，Standards 0、Spec 开放 0、CG-1/2/3 关闭。** 精确交付按下节单独续记，不回写本地冻结候选。
+
+## 精确交付续核：对象、HTTPS 与自己的 CI 通过
+
+本片已普通提交并推送 `a60a67e9333316ba094c69a1ed949484fbed8231`，tree `b13d0f56ae488fe679e5decc40cc25cae29e1b3f`，唯一父提交为上述基线。主审直接读取精确 Git 对象：变更路径恰为已审 26 文件，每个 blob 的字节/大小/SHA256 与 `commit-closure/ready` 相同；较最终固定候选仅有本地 gate 已核的五份状态/审查记账差异。436 个精确提交包文件与原 R4 wheel、非 editable 安装及两份 RECORD 全部相同，283 冻结参考文件还与基线相同。没有从后续 C4b 工作树读取产品字节。
+
+主审于 2026-11-10 独立进行**一次只读 HTTPS GET**，读取 Git smart-HTTP refs 原广告；HTTP 200，分支 `refs/heads/refactor/architecture-foundations` 返回完整 SHA `a60a67e9333316ba094c69a1ed949484fbed8231`，耗时 0.83 秒，未 SSH 或重试。私有原件为 `independent/exact-commit-audit.json`、`exact-https-ref.json` 及未改写 response。此观察只证明当时 ref，自己的 CI 单独核验。
+
+自己的 [Portability CI 42817897236](https://github.com/626619403/Ergora/actions/runs/42817897236) 第三份官方样本在 2026-11-10 12:58:58 至 12:59:06 UTC 采集，主审只读离线核全部五份 HTML/JSON 原响应及其 bytes/SHA。Actions 嵌入状态为 completed/success，run 可见状态为 Success；工作流、分支、run 及精确提交完整 SHA 全部一致。job groups 明确 totalCount=2、hasMore=false，Windows job `129835576744` 和 Ubuntu job `129835577143` 均 completed/success。Windows 四项、Ubuntu 三项必要步骤全为 success 且带 job-completed 标记，其日志路径绑定完整 SHA 与对应 job；Ubuntu 的非必要 PowerShell 步骤按条件 skipped，不计作必要步骤成功。触发、各步骤起止、job 完成及采样时间顺序一致。
+
+前两份样本保留 In progress，不计为通过；第三份原始终态才用于门禁。独立审计为私有 `independent/own-ci-final-audit.json`；未另取 CI 日志、重跑任务或新增网络/Git/产品/模型调用。结合已保存的精确对象/ready、本地 gate 和一次独立 HTTPS 证明，最终 `independent/review-exact-delivery-gate.json` 为 **pass / complete_acceptance:true**，仅结束 C4a。本节是后续审查记账，原提交 blob、固定候选及先前 pending gate 保持不变，C4b 工作树不属于此精确对象。

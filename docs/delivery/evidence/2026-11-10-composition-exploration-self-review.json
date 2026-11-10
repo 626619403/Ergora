@@ -1,0 +1,116 @@
+{
+  "kind": "ergora-evidence-projection",
+  "schema_version": 1,
+  "slice": "AC5 C4b.1",
+  "baseline": "a60a67e9333316ba094c69a1ed949484fbed8231",
+  "originals": [
+    {
+      "file": "self-review-r1.json",
+      "bytes": 1392,
+      "sha256": "6252f1fd9c088ce1ff026716415214b2a8723b44f55b712db252ec6bd4499e39"
+    },
+    {
+      "file": "preflight-diagnostic.json",
+      "bytes": 263,
+      "sha256": "1d3430b3251d10aba8e67a2c94f7a3b9704fbc3683c2467a68440242dc65ffde"
+    },
+    {
+      "file": "self-review-r2.json",
+      "bytes": 2404,
+      "sha256": "89c33a1fdec77201be87495931e5173608c189b9168f0641462a3d865453cb64"
+    },
+    {
+      "file": "self-review-r1/public-original-result.json",
+      "bytes": 2351,
+      "sha256": "7ecc9cd8129c633daf78f23e32bc22f06607362b16cc28f04cb03d6f644b8242"
+    }
+  ],
+  "projection": "Machine paths/local ports replaced; bytes/SHA identify retained originals, not this serialized projection.",
+  "omitted": "Original failure, unchanged-scope probe and final result retained. First failure preceded inference; final result is not formal owner approval or different-model independence.",
+  "evidence": {
+    "failed_preflight": {
+      "checked_at": "2026-11-10T13:07:51.281192+00:00",
+      "source": {
+        "src/ergora/data/console/composition-graph.js": "22fad41ba596fadeba3cfcc02e9e84f2891326395339beca793846a1bddb4469",
+        "src/ergora/data/console/definitions.js": "ca4d5e0d85bbd92b9815efe0dea69f91f137f59a8623c303a283aa83197ee8ea",
+        "src/ergora/data/console/app.js": "506cb7e81f4456745090a6a84a5a149021f52f3f0e30bbe26c494c264e709d78",
+        "src/ergora/data/console/ui.js": "2fc6c19d8d46a68d12562b2c696ec1f6bad4ea7d781afbc326ce3fbf6ac3df2c"
+      },
+      "run_id": "386a39284b194df09f81388382374886",
+      "status": "failed",
+      "backend": "codex",
+      "inference_model": "gpt-6.1-sol",
+      "reasoning_effort": "high",
+      "exit_code": 1,
+      "seconds": 37.97161543602124,
+      "input_digest": "a47399dd9efd0b9fc0cfc3e695b396706a1d6781b7cbe839dbeff18a52b4024b",
+      "prompt_sha256": "2f20a700eb3150fba795cbe826ef795b3cc2f995fbfd6e1df5832429225bd5da",
+      "attachment_bytes": 252062,
+      "attachment_sha256": "ce452e460bca4efd9dd092c9b328d13ede2f75721f48cba056bad19132be2d62",
+      "manifest_digest": "c7b083e118ef74459d217542d2adafdbdccd396bcd836c7705453290315049d6",
+      "evidence_revision": "1.0.72",
+      "original_definition_libraries_removed": true,
+      "original_definition_libraries_retained": true,
+      "scope": "Actual bundled structure-review; frozen complete source/evidence. Not owner approval, reasoning quality or different-model independence."
+    },
+    "readonly_diagnostic": {
+      "passed": true,
+      "seconds": 1.5305133271031082,
+      "result": {
+        "initialized": true,
+        "tools": [
+          "list",
+          "read"
+        ],
+        "read_only_probe": "succeeded"
+      },
+      "scope": "Original readonly preflight only; no inference/backend invocation."
+    },
+    "final_invocation": {
+      "checked_at": "2026-11-10T13:16:59.123116+00:00",
+      "source": {
+        "src/ergora/data/console/composition-graph.js": "22fad41ba596fadeba3cfcc02e9e84f2891326395339beca793846a1bddb4469",
+        "src/ergora/data/console/definitions.js": "ca4d5e0d85bbd92b9815efe0dea69f91f137f59a8623c303a283aa83197ee8ea",
+        "src/ergora/data/console/app.js": "506cb7e81f4456745090a6a84a5a149021f52f3f0e30bbe26c494c264e709d78",
+        "src/ergora/data/console/ui.js": "2fc6c19d8d46a68d12562b2c696ec1f6bad4ea7d781afbc326ce3fbf6ac3df2c"
+      },
+      "run_id": "fd460f5c66594f82966a633b1cf1e9fc",
+      "status": "succeeded",
+      "backend": "codex",
+      "inference_model": "gpt-6.1-sol",
+      "reasoning_effort": "high",
+      "exit_code": 0,
+      "seconds": 122.913023,
+      "input_digest": "a47399dd9efd0b9fc0cfc3e695b396706a1d6781b7cbe839dbeff18a52b4024b",
+      "prompt_sha256": "2f20a700eb3150fba795cbe826ef795b3cc2f995fbfd6e1df5832429225bd5da",
+      "attachment_bytes": 252062,
+      "attachment_sha256": "ce452e460bca4efd9dd092c9b328d13ede2f75721f48cba056bad19132be2d62",
+      "manifest_digest": "c7b083e118ef74459d217542d2adafdbdccd396bcd836c7705453290315049d6",
+      "evidence_revision": "1.0.72",
+      "original_definition_libraries_removed": true,
+      "original_definition_libraries_retained": true,
+      "scope": "Actual bundled structure-review; frozen complete source/evidence. Not owner approval, reasoning quality or different-model independence.",
+      "decision": "approve",
+      "result_sha256": "7ecc9cd8129c633daf78f23e32bc22f06607362b16cc28f04cb03d6f644b8242",
+      "started": "2026-11-10T13:12:11.544757+00:00",
+      "finished": "2026-11-10T13:14:14.457780+00:00",
+      "timing_source": "Original Ergora run started/finished wall-clock interval including preparation/preflight; outer monotonic measurement was not saved.",
+      "outer_driver_exit_code": 1,
+      "post_run_bookkeeping_error": "NameError for protected in private retry driver, after native CLI completed succeeded/approve. No model rerun.",
+      "recovery": "Offline identity reconstruction from immutable native-r2.stdout and original result; four source hashes unchanged.",
+      "native_run_record": {
+        "file": "self-review-r1/native-r2.stdout",
+        "bytes": 10980,
+        "sha256": "619ddaa0e3d1ff41d0adf0a37726da2b0996a2c9b4058a0efd0c586813a02c80"
+      },
+      "exit_code_scope": "Original native backend returncode. Outer Python driver separately exited 1 during post-run bookkeeping; no successful outer-driver claim."
+    },
+    "result": {
+      "artifacts": {
+        "response": "Reviewed C4b.1 against baseline `a60a67e9333316ba094c69a1ed949484fbed8231`.\n\nSpec: PASS. `composition-graph.js` preserves instance-path identity, independent nested folds, complete hidden-instance inspectors and tables, and original relation IDs/endpoints. Search uses exact Agent metadata and literal case-insensitive AND terms, preserves nonmatches, and reveals structural ancestors. Existing home/root sessions and mount/dispose callers remain intact.\n\nStandards: PASS. The sole product change stays with the existing private graph owner. Its projection and search logic serve the actual `definitions.js` caller without adding a framework, dependency, schema or compiler responsibility. R2 appropriately removes the three redundant provenance copies; original IDs and the relation inspector provide traceability. No minimum correction is required.\n\nFinal R2 receipts separately support the main journey (12.94s), session restoration (26.44s), and controlled metadata/viewport checks (3.78s). Package evidence records 436 matching files and 283 unchanged frozen assets. R1 failures remain failures. Synthetic persisted events establish handler restoration only; viewport widths do not establish label legibility. Original candidate, approval and evidence ownership remain unchanged.\n\nComplete declared root scope, all fully read:\n\n- `definitions/workflow/ergora-structure-review/1.0.72/instructions.md`\n- `definitions/agent/ergora-structure-reviewer/1.0.72/instructions.md`\n- `definitions/agent/ergora-structure-reviewer/1.0.72/skills/ergora-structure-reviewer/SKILL.md`\n- `definitions/agent/ergora-structure-reviewer/1.0.72/skills/candidate-evidence/SKILL.md`\n- `definitions/agent/ergora-structure-reviewer/1.0.72/skills/candidate-evidence/references/candidate.txt`\n\nThe 252,062-byte candidate was read continuously as UTF-8 through `next_offset: null`; the base64 window was retried at the same offset with a smaller page. Only task MCP list/read was used. No attached code or services were executed and no workspace files were changed. This verdict covers the supplied slice; it does not constitute owner approval, workflow execution or a different-model independence claim."
+      },
+      "decision": "approve",
+      "summary": "Spec: PASS. Standards: PASS. No actionable findings in the supplied final R2 candidate."
+    }
+  }
+}

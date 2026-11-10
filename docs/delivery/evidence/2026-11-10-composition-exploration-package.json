@@ -1,0 +1,167 @@
+{
+  "kind": "ergora-evidence-projection",
+  "schema_version": 1,
+  "slice": "AC5 C4b.1",
+  "baseline": "a60a67e9333316ba094c69a1ed949484fbed8231",
+  "originals": [
+    {
+      "file": "r1/package-identities.json",
+      "bytes": 58517,
+      "sha256": "4178a2f402da43eacb40ee5d52ed222a8b9393b6ca5273f3dc46778faf6be3b9"
+    },
+    {
+      "file": "r1/build-install.json",
+      "bytes": 1385,
+      "sha256": "3379356972021c9f3aa4c882384c94ad890ec08759debbf742af5e5ef48473a4"
+    },
+    {
+      "file": "r2/package-identities.json",
+      "bytes": 58517,
+      "sha256": "a149add07721d6fde8f11ab8f58e2b8e52b68c955aeeefd0710bc96e901d5e4d"
+    },
+    {
+      "file": "r2/build-install.json",
+      "bytes": 1385,
+      "sha256": "66ddad33fb9c5eae45e2c34e49f9ac729a6c69388f3f632cf78e7a24db151447"
+    }
+  ],
+  "projection": "Machine paths/local ports replaced; bytes/SHA identify retained originals, not this serialized projection.",
+  "omitted": "Full 436-file maps omitted; source/wheel/install and two RECORD originals retained.",
+  "evidence": {
+    "r1": {
+      "identity": {
+        "checked_at": "2026-11-10T12:47:18.955305+00:00",
+        "baseline": "a60a67e9333316ba094c69a1ed949484fbed8231",
+        "source_wheel_installed_record_files": 436,
+        "wheel_sha256": "52401a7eaa8508b6a12b28a37745107279df768d9ec0fd5bfbb8f622a67c4e35",
+        "frozen_files": 283,
+        "verify": {
+          "status": "PASS",
+          "version": "2.2",
+          "path": "<repository>/.ergora/checks/ac5-composition-exploration/r1/wheel-venv/lib/python3.12/site-packages/ergora/data/reference",
+          "source_zip_sha256": "8018be5094623ca0646d28d3671daaf7ac60774280eefc1c5c023bc19dc5c760",
+          "files": 283,
+          "installer": "<repository>/.ergora/checks/ac5-composition-exploration/r1/wheel-venv/lib/python3.12/site-packages/ergora/data/reference/install-from-report.sh",
+          "runtime_started": false
+        },
+        "python": "3.12.11 (main, Aug 18 2025, 19:19:11) [Clang 20.1.4 ]",
+        "scope": "Noneditable composition graph wheel; no original services, model quality or GPU acceptance claim."
+      },
+      "build_install": [
+        {
+          "checked_at": "2026-11-10T12:45:47.829866+00:00",
+          "name": "build",
+          "command": [
+            "uv",
+            "build",
+            "--offline",
+            "--python",
+            "<repository>/.ergora/checks/ac5-definition-resource-editor/r2/wheel-venv/bin/python",
+            "--wheel",
+            "--out-dir",
+            "<repository>/.ergora/checks/ac5-composition-exploration/r1/dist"
+          ],
+          "exit": 0,
+          "seconds": 7.724069491960108
+        },
+        {
+          "checked_at": "2026-11-10T12:45:47.875864+00:00",
+          "name": "venv",
+          "command": [
+            "uv",
+            "venv",
+            "--offline",
+            "--python",
+            "<repository>/.ergora/checks/ac5-definition-resource-editor/r2/wheel-venv/bin/python",
+            "<repository>/.ergora/checks/ac5-composition-exploration/r1/wheel-venv"
+          ],
+          "exit": 0,
+          "seconds": 0.04447921272367239
+        },
+        {
+          "checked_at": "2026-11-10T12:45:52.949843+00:00",
+          "name": "install",
+          "command": [
+            "uv",
+            "pip",
+            "install",
+            "--offline",
+            "--python",
+            "<repository>/.ergora/checks/ac5-composition-exploration/r1/wheel-venv/bin/python",
+            "<repository>/.ergora/checks/ac5-composition-exploration/r1/dist/ergora-0.2.0-py3-none-any.whl[dev,web,temporal,task-mcp]"
+          ],
+          "exit": 0,
+          "seconds": 5.073409961070865
+        }
+      ]
+    },
+    "r2": {
+      "identity": {
+        "checked_at": "2026-11-10T12:55:56.866264+00:00",
+        "baseline": "a60a67e9333316ba094c69a1ed949484fbed8231",
+        "source_wheel_installed_record_files": 436,
+        "wheel_sha256": "0aa34395e655fba62c7160ba8e7e8546b108a74cd02fff3edef42a54e850e0db",
+        "frozen_files": 283,
+        "verify": {
+          "status": "PASS",
+          "version": "2.2",
+          "path": "<repository>/.ergora/checks/ac5-composition-exploration/r2/wheel-venv/lib/python3.12/site-packages/ergora/data/reference",
+          "source_zip_sha256": "8018be5094623ca0646d28d3671daaf7ac60774280eefc1c5c023bc19dc5c760",
+          "files": 283,
+          "installer": "<repository>/.ergora/checks/ac5-composition-exploration/r2/wheel-venv/lib/python3.12/site-packages/ergora/data/reference/install-from-report.sh",
+          "runtime_started": false
+        },
+        "python": "3.12.11 (main, Aug 18 2025, 19:19:11) [Clang 20.1.4 ]",
+        "scope": "Noneditable composition graph wheel; no original services, model quality or GPU acceptance claim."
+      },
+      "build_install": [
+        {
+          "checked_at": "2026-11-10T12:55:21.620669+00:00",
+          "name": "build",
+          "command": [
+            "uv",
+            "build",
+            "--offline",
+            "--python",
+            "<repository>/.ergora/checks/ac5-definition-resource-editor/r2/wheel-venv/bin/python",
+            "--wheel",
+            "--out-dir",
+            "<repository>/.ergora/checks/ac5-composition-exploration/r2/dist"
+          ],
+          "exit": 0,
+          "seconds": 7.980403878260404
+        },
+        {
+          "checked_at": "2026-11-10T12:55:21.671814+00:00",
+          "name": "venv",
+          "command": [
+            "uv",
+            "venv",
+            "--offline",
+            "--python",
+            "<repository>/.ergora/checks/ac5-definition-resource-editor/r2/wheel-venv/bin/python",
+            "<repository>/.ergora/checks/ac5-composition-exploration/r2/wheel-venv"
+          ],
+          "exit": 0,
+          "seconds": 0.04949068231508136
+        },
+        {
+          "checked_at": "2026-11-10T12:55:26.685413+00:00",
+          "name": "install",
+          "command": [
+            "uv",
+            "pip",
+            "install",
+            "--offline",
+            "--python",
+            "<repository>/.ergora/checks/ac5-composition-exploration/r2/wheel-venv/bin/python",
+            "<repository>/.ergora/checks/ac5-composition-exploration/r2/dist/ergora-0.2.0-py3-none-any.whl[dev,web,temporal,task-mcp]"
+          ],
+          "exit": 0,
+          "seconds": 5.012933346442878
+        }
+      ]
+    },
+    "limits": "R2 only removes three fields with no product consumers; final browser evidence is from R2. No Python/schema/dependency/test/CI changes; unchanged compiler/runtime regressions not repeated."
+  }
+}

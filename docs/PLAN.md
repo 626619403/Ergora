@@ -4,15 +4,16 @@
 
 ## 当前检查点
 
-- 仓库 `626619403/Ergora`；工作分支 `refactor/architecture-foundations`；当前已提交/普通推送 `45c2de47e9119d1f07616b3307331321d38155a4`。不自动合入 main 或强推。
+- 仓库 `626619403/Ergora`；工作分支 `refactor/architecture-foundations`；当前已提交/普通推送 `a60a67e9333316ba094c69a1ed949484fbed8231`。不自动合入 main 或强推。
 - AC5 C3a–c 精确交付已终结。[D4/D5](delivery/2026-11-10-definition-resource-inheritance.md)提交 `4636d77377bf63f15c357cf14660024e3ae1f939` 自己的 CI42799311145 双OS七必要步骤及独立精确对象/HTTPS通过。
 - [C3d联合修订](delivery/2026-11-10-definition-joint-revisions.md)本地出口通过：118次CLI、23次预期拒绝、重复模板实例/职责/逐叶后端准入、实际页面联合修订、旧对象/快照保持；真实自身模板406.36秒approve，新独立20文件Spec/Standards通过，开放finding0。上述45c2de4已推送；自己的[CI42807885966](https://github.com/626619403/Ergora/actions/runs/42807885966)第四份样本双OS七必要步骤success/completed、原评审者离线终核及精确对象/一次独立HTTPS同SHA通过，精确交付终结。
-- 当前产品工作：[C4嵌套关系图计划](plans/2026-11-10-composition-graph.md)／[交付记录](delivery/2026-11-10-composition-graph.md)。C4a投影已发布精确版本的原preview，保留表格与完整权限/资源/预算；R1/R2主旅程与28项回归通过；最终R4即时fit/恢复/具体held隔离与视口通过，436/283及54旧对象保持、40 owned身份清理、CG1–3独立关闭；实际自身模板201.64秒approve/五scope完整读取已核，五公开投影/两截图及模型四身份清理完成；完整26文件独立两轴/最终静态通过、开放0，本地出口完成，精确交付待核。不得把当前编辑草稿误标为已发布图。
+- [C4a嵌套图](delivery/2026-11-10-composition-graph.md)精确交付完成：a60a67e自己的[CI42817897236](https://github.com/626619403/Ergora/actions/runs/42817897236)第三样本双OS七必要步骤成功，原评审者核精确26Git对象/436包/283冻结及一次独立HTTPS同SHA。原28回归、三域/重复实例与R4受影响旅程、实际自身201.64秒approve/五scope读取、完整独立两轴和清理保持原范围，CG1–3关闭。
+- 当前[C4b第一片](plans/2026-11-10-composition-exploration.md)／[交付记录](delivery/2026-11-10-composition-exploration.md)：折叠/职责专长后端查找已实现，R2三份实际页面旅程与436/283/190HTTP/54旧对象保持通过；实际自身122.91秒run区间approve/五scope完整读取及五投影/两截图/清理完成，失败与记账恢复保持实际范围。完整20文件独立Spec/Standards与本地出口通过，开放0、CEX-ST1关闭；准备普通提交推送，自己的CI/精确交付待验。图只表示已发布精确preview，未发布草稿不进入图。
 
 ## 下一可执行项
 
-1. C3d精确交付已终结，前三份非终态样本保持。C4a本地出口完成，普通提交推送并核自己的CI/HTTPS；保持原证据范围，不重跑无关产品/模型。
-2. C4a终结后接续[C4b第一片](plans/2026-11-10-composition-exploration.md)：子工作流独立折叠、职责/专长/后端高亮查找、完整键盘表格/inspector；仍由原preview提供事实。
+1. C3d及C4a精确交付均已终结，既有非终态样本保持；不重复产品/模型或远端终核。
+2. C4b.1完整最终候选本地出口已通过，冻结ready后普通提交推送并核自己的CI/精确对象/HTTPS；已过行为与模型不重复。前片C4a精确终态已核。
 3. C4b第二片比较两个精确已发布preview；必要时另片复用原编译器增加显式未发布候选预览；不引入浏览器编译器或隐式提权拖动。
 4. C5：固定manifest、后端选择/多样性与writer信任的正式任务交接；C6/AC6：容量、材料与模型分页成本、三域公开旅程及手册。
 5. 随后按[总计划](plans/2026-11-01-all-in-one.md)完成F7逐项目工单、F8可选harness/会话、F9训练实验、F10受评价持续改进与G1集成交接。D/X按实测需要；PUB1许可证仍待维护者选择。项目整体未完成。

@@ -1,0 +1,53 @@
+{
+  "kind": "ergora-evidence-projection",
+  "schema_version": 1,
+  "slice": "AC5 C4b.1",
+  "baseline": "a60a67e9333316ba094c69a1ed949484fbed8231",
+  "originals": [
+    {
+      "file": "browser-cleanup.json",
+      "bytes": 3304,
+      "sha256": "e67343d2d8f0b102c315e6450b8bf4d1d5e983fbe1d7f40caebc38d57b6d219f"
+    },
+    {
+      "file": "self-review-cleanup.json",
+      "bytes": 963,
+      "sha256": "7cb4d318ec3abec8e69f92674dafedc6853dc960e17dd7f9cb434cdfc45c9456"
+    },
+    {
+      "file": "self-review-usage.json",
+      "bytes": 525,
+      "sha256": "952b3b427b170f662f27bd493cf6db2b16755d398f79527db857d26f812f54bb"
+    }
+  ],
+  "projection": "Machine paths/local ports replaced; bytes/SHA identify retained originals, not this serialized projection.",
+  "omitted": "Individual PIDs/starttimes omitted; sampled identities retained. Usage is backend self-report, not billing; cached input included in input.",
+  "evidence": {
+    "browser-cleanup.json": {
+      "observed_identities": 23,
+      "all_observed_gone": true,
+      "scope": "23 sampled owned identities including failed startup and both browser phases; no unobserved-process claim."
+    },
+    "self-review-cleanup.json": {
+      "observed_identities": 5,
+      "all_observed_gone": true,
+      "scope": "Five sampled owned identities: initial failed CLI plus final CLI/native Codex/MCP descendants; no unobserved-process claim."
+    },
+    "usage": {
+      "source": "Original Codex event stream, self-reported not billing. Cached input is included in input. First failed MCP preflight did not invoke inference.",
+      "native_stream_sha256": "43e40d10e62a01ac5a7a4adedc5836e1770a5d22d1de4f403a01c0a7b7bcfc62",
+      "events": [
+        {
+          "type": "turn.completed",
+          "usage": {
+            "input_tokens": 1062144,
+            "cached_input_tokens": 933248,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1966,
+            "reasoning_output_tokens": 454
+          }
+        }
+      ]
+    }
+  }
+}

@@ -1,6 +1,6 @@
 # AC5 C4a：已发布嵌套关系图
 
-基线 `45c2de47e9119d1f07616b3307331321d38155a4`，当前分支 `refactor/architecture-foundations`。[计划](../plans/2026-11-10-composition-graph.md)限定只读已发布preview、完整实例与三类关系、图/键盘选择和原编辑入口。实现、行为验证、实际自身模板及完整26文件独立两轴通过，开放finding 0，本地出口完成；精确提交交付待核。
+基线 `45c2de47e9119d1f07616b3307331321d38155a4`，当前分支 `refactor/architecture-foundations`。[计划](../plans/2026-11-10-composition-graph.md)限定只读已发布preview、完整实例与三类关系、图/键盘选择和原编辑入口。实现、行为验证、实际自身模板及完整26文件独立两轴通过，开放finding 0；提交`a60a67e9333316ba094c69a1ed949484fbed8231`已普通推送，自己的CI/精确对象/独立HTTPS通过，C4a精确交付完成。
 
 ## V0准备
 
@@ -78,3 +78,7 @@ V1/V2本地行为出口完成；实际自身模板和完整新独立审查/精�
 原fresh-context评审者及原Spec/Standards两轴对固定26文件最终候选补核通过，两轴开放finding均0；历史CG1–3保留并按最终R4范围关闭。主审独立核实际输入/原生回执及完整读取，在内存重建五JSON和两PNG，与候选逐字节相同。详见[独立报告](2026-11-10-composition-graph-review.md)。作者三JS语法、diff空白、275本地链接/锚点、五JSON解析及可用凭据值/模式扫描通过，原PLAN归档逐字节相同。
 
 至此C4a本地出口完成；本段及计划的最终状态续记与评审记账不改变四产品文件或冻结证据。下一步普通提交/推送本工作分支，保留ready身份，由原评审者核精确Git对象、一次独立HTTPS及本提交自己的官方CI；尚不声称精确交付完成。
+
+## 精确交付终结
+
+`a60a67e9333316ba094c69a1ed949484fbed8231`已普通推送。原评审者核26个Git blobs逐字节等于ready，436包文件/两RECORD与283冻结保持，一次独立HTTPS读取返回相同完整SHA。自己的[CI42817897236](https://github.com/626619403/Ergora/actions/runs/42817897236)第三份官方样本在2026-11-10 12:59:00 UTC为Success，双OS七必要步骤success/completed；原评审者离线核完整SHA/run/job/原HTML与JSON后终结门禁。前两份In progress及先前pending gate原件保持，不回写历史。详见[最终独立报告](2026-11-10-composition-graph-review.md)。后续C4b工作树不属于此精确Git对象，C4整体及项目未完成。
