@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "projection": "Formatted and machine-path-redacted evidence; original artifact SHA differs from this projection.",
+  "scope": "Only three owned HTTP acceptance processes were stopped and reaped by recorded identity; no user services or browser sessions were stopped.",
+  "source_artifacts": {
+    "r1": {
+      "artifact": "r1/journey/cleanup.json",
+      "bytes": 176,
+      "sha256": "cfd39a829ea69bd3fb91946802f991a8dd8abb8b46b1adf11bb9db1051cf2a85"
+    },
+    "r2": {
+      "artifact": "r2/journey/cleanup.json",
+      "bytes": 176,
+      "sha256": "10483772a107837d4e62f8dd03a8e3bd97fe7163a6ac5cb7fe5d5ef243bfa971"
+    },
+    "r3": {
+      "artifact": "r3/journey/cleanup.json",
+      "bytes": 176,
+      "sha256": "ced5d6fdcc9fdc235a27604c53169591863fdd4ba979597514caa74f333bc1c8"
+    }
+  },
+  "data": {
+    "r1": {
+      "checked_at": "2026-11-10T07:21:10.592334+00:00",
+      "pid": 3095365,
+      "starttime": "231428969",
+      "identity_matched": true,
+      "exit": -15,
+      "owned_process_reaped": true
+    },
+    "r2": {
+      "checked_at": "2026-11-10T07:34:05.543022+00:00",
+      "pid": 3172734,
+      "starttime": "231506219",
+      "identity_matched": true,
+      "exit": -15,
+      "owned_process_reaped": true
+    },
+    "r3": {
+      "checked_at": "2026-11-10T07:41:06.446511+00:00",
+      "pid": 3229640,
+      "starttime": "231548405",
+      "identity_matched": true,
+      "exit": -15,
+      "owned_process_reaped": true
+    }
+  }
+}

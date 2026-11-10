@@ -1,5 +1,7 @@
 """Verified resource packages and immutable libraries for Agent and Workflow definitions."""
 
+import base64
+from copy import deepcopy
 import hashlib
 import json
 from pathlib import Path, PurePosixPath, PureWindowsPath
@@ -107,6 +109,48 @@ def convert_document(text: str, format: str = "json") -> dict:
         raise ValueError(f"Invalid definition document: {error}") from error
 
 
+def _check_resource_changes(value: dict, *, directory: bool = False) -> None:
+    path = {"type": "string", "minLength": 1, "maxLength": 512}
+    write = {"op": {"const": "write"}, "path": path,
+             "executable_bits": {"type": "integer", "enum": [0, 1, 8, 9, 64, 65, 72, 73]}}
+    if not directory:
+        write["content_base64"] = {"type": "string", "maxLength": 13_333_336}
+    operations = [{"type": "object", "additionalProperties": False,
+                   "required": ["op", "path", *([] if directory else ["content_base64"])], "properties": write}]
+    operations.extend({"type": "object", "additionalProperties": False, "required": ["op", "path"],
+                       "properties": {"op": {"const": operation}, "path": path}} for operation in ("delete", "mkdir"))
+    contracts.validate(value, {"type": "object", "additionalProperties": False,
+        "required": ["schema_version", "operations"], "properties": {
+            "schema_version": {"type": "integer", "const": 1},
+            "operations": {"type": "array", "maxItems": 1500, "items": {"oneOf": operations}}}}, "Resource changes")
+
+
+def resource_changes_from_directory(directory: Path) -> dict:
+    """Read an explicit local changes.json and files/<package path> transport."""
+    directory = directory.expanduser().absolute()
+    _, files, _ = inventory_tree(directory, label="Resource changes", max_directories=500, max_depth=33)
+    if "changes.json" not in files:
+        raise ValueError("Resource changes directory requires changes.json")
+    changes = read_json(directory / "changes.json", files["changes.json"]["sha256"])
+    _check_resource_changes(changes, directory=True)
+    total = 0
+    for operation in changes["operations"]:
+        relative = relative_path(operation["path"])
+        if operation["op"] == "write":
+            name = (Path("files") / relative).as_posix()
+            if name not in files:
+                raise ValueError(f"Resource write requires a complete local file: {name}")
+            with (directory / name).open("rb") as stream:
+                raw = stream.read(10_000_001)
+            total += len(raw)
+            if total > 10_000_000:
+                raise ValueError("Resource writes exceed 10 MB")
+            if hashlib.sha256(raw).hexdigest() != files[name]["sha256"]:
+                raise ValueError(f"Resource write source changed while reading: {name}")
+            operation["content_base64"] = base64.b64encode(raw).decode("ascii")
+    return changes
+
+
 def inspect_bundle(source: Path, filename: str, schemas: dict[int, dict], label: str, *, material: bool = False) -> dict:
     """Check the complete tree and declared resources without executing their content."""
     source = source.expanduser().absolute()
@@ -200,11 +244,12 @@ class DefinitionLibrary:
             path.write_text(json.dumps(index, sort_keys=True, indent=2) + "\n", encoding="utf-8")
             path.replace(store / "index.json")
 
-    def import_bundle(self, source: Path) -> dict:
+    def import_bundle(self, source: Path, *, expected_directories: list[str] | None = None) -> dict:
         original = self.inspect_import(source)
         with tempfile.TemporaryDirectory(prefix=f".{self.kind}-import-", dir=self.root) as temporary:
             copy = Path(temporary) / "bundle"
             shutil.copytree(original["path"], copy, symlinks=True)
+            copy.chmod(copy.stat().st_mode | stat.S_IWUSR)
             staged = self.inspect_import(copy)
             if staged["digest"] != original["digest"]:
                 raise ValueError(f"{self.label} source changed while importing; retry a stable source")
@@ -212,6 +257,10 @@ class DefinitionLibrary:
             identity, version, digest = definition["id"], definition["version"], staged["digest"]
             with file_lock(self.root / f".{self.kind}-definitions.lock"):
                 self._check_store()
+                if expected_directories is not None:
+                    _, _, directories = inventory_tree(copy, label=self.label, max_directories=500, max_depth=32)
+                    if directories != expected_directories:
+                        raise ValueError(f"{self.label} candidate directories changed before publication")
                 if not self.store.exists():
                     # Publish the first object and reference as one complete library.
                     library = Path(temporary) / "library"
@@ -227,6 +276,10 @@ class DefinitionLibrary:
                 destination = self.store / "objects" / digest
                 if destination.exists() or destination.is_symlink():
                     self._get(identity, version, digest)
+                    if expected_directories is not None:
+                        _, _, directories = inventory_tree(destination, label=self.label, max_directories=500, max_depth=32)
+                        if directories != expected_directories:
+                            raise ValueError(f"{self.label} object has different directories; choose a new version")
                 elif registered is not None:
                     raise ValueError(f"Stored {self.label} definition is missing; refuse to replace registered evidence")
                 else:
@@ -262,6 +315,7 @@ class DefinitionLibrary:
         with tempfile.TemporaryDirectory(prefix=f".{self.kind}-export-", dir=destination.parent) as temporary:
             copy = Path(temporary) / "bundle"
             shutil.copytree(document["path"], copy, symlinks=True)
+            copy.chmod(copy.stat().st_mode | stat.S_IWUSR)
             staged = self.inspect(copy)
             if staged["digest"] != document["digest"]:
                 raise ValueError(f"Stored {self.label} content changed while exporting")
@@ -270,20 +324,140 @@ class DefinitionLibrary:
             copy.rename(destination)
         return {"digest": document["digest"], "destination": str(destination)}
 
-    def revise(self, identity: str, version: str, base_digest: str, definition: dict, *, publish: bool = False) -> dict:
+    def read_file(self, identity: str, version: str, base_digest: str, path: str, *, offset: int = 0,
+                  limit: int = 65_536) -> dict:
+        """Read a byte window of a pinned historical ordinary file, without admission."""
+        if type(offset) is not int or offset < 0 or type(limit) is not int or not 1 <= limit <= 65_536:
+            raise ValueError("Definition file reads require a nonnegative byte offset and limit 1–65536")
+        document = self.get(identity, version)
+        if document["digest"] != base_digest:
+            raise ValueError(f"{self.label} file base digest does not match {identity}@{version}")
+        relative = relative_path(path, self.label)
+        if path not in document["files"]:
+            raise ValueError(f"Unknown {self.label} package file: {path}")
+        with (Path(document["path"]) / relative).open("rb") as stream:
+            raw = stream.read(10_000_001)
+        details = document["files"][path]
+        if hashlib.sha256(raw).hexdigest() != details["sha256"]:
+            raise ValueError(f"{self.label} file changed while reading: {path}")
+        if offset > len(raw):
+            raise ValueError("Definition file offset exceeds file size")
+        chunk = raw[offset:offset + limit]
+        next_offset = offset + len(chunk)
+        return {"base": {"kind": self.kind, "id": identity, "version": version, "digest": base_digest},
+                "path": path, **details, "size_bytes": len(raw), "offset": offset, "bytes_read": len(chunk),
+                "next_offset": next_offset if next_offset < len(raw) else None,
+                "complete": offset == 0 and len(chunk) == len(raw),
+                "content_base64": base64.b64encode(chunk).decode("ascii")}
+
+    def _apply_resource_changes(self, copy: Path, changes: dict, files: dict, directories: list[str]) -> None:
+        _check_resource_changes(changes)
+        spellings = {name.casefold(): name for name in [*files, *directories]}
+        planned_directories = set(directories)
+        paths, writes, total = [], {}, 0
+        for operation in changes["operations"]:
+            name = operation["path"]
+            relative = relative_path(name, self.label)
+            if relative.parts[0].casefold() in ("agent.json", "workflow.json"):
+                raise ValueError("Standard definition files must use the document input")
+            paths.append(tuple(part.casefold() for part in relative.parts))
+            for depth in range(1, len(relative.parts) + 1):
+                prefix = "/".join(relative.parts[:depth])
+                if spellings.setdefault(prefix.casefold(), prefix) != prefix:
+                    raise ValueError(f"Resource changes have case-insensitive path collisions: {name}")
+                if operation["op"] != "delete" and (depth < len(relative.parts) or operation["op"] == "mkdir"):
+                    planned_directories.add(prefix)
+                    if len(planned_directories) > 500 or depth > 32:
+                        raise ValueError(f"{self.label} bundle exceeds directory count or depth limit")
+            if operation["op"] == "write":
+                raw = base64.b64decode(operation["content_base64"], validate=True)
+                total += len(raw)
+                if total > 10_000_000:
+                    raise ValueError("Resource writes exceed 10 MB")
+                writes[name] = raw
+            elif operation["op"] == "delete" and name not in files:
+                raise ValueError(f"Resource delete requires an existing ordinary file: {name}")
+        paths.sort()
+        if any(right[:len(left)] == left for left, right in zip(paths, paths[1:])):
+            raise ValueError("Resource changes cannot repeat or overlap ancestor/descendant paths")
+        for operation in changes["operations"]:
+            relative = relative_path(operation["path"], self.label)
+            parent = copy
+            # Only the new private copy may need owner write/traverse bits.
+            for part in ("", *relative.parts[:-1]):
+                parent = parent / part
+                parent.mkdir(exist_ok=True)
+                parent.chmod(parent.stat().st_mode | stat.S_IWUSR | stat.S_IXUSR)
+            target = copy / relative
+            if operation["op"] == "write":
+                if target.exists():
+                    target.chmod(target.stat().st_mode | stat.S_IWUSR)
+                target.write_bytes(writes[operation["path"]])
+                bits = operation.get("executable_bits", files.get(operation["path"], {}).get("executable_bits", 0))
+                target.chmod((target.stat().st_mode & ~0o111) | bits)
+                if stat.S_IMODE(target.stat().st_mode) & 0o111 != bits:
+                    raise ValueError(f"This platform cannot preserve requested executable bits: {operation['path']}")
+            elif operation["op"] == "delete":
+                target.chmod(target.stat().st_mode | stat.S_IWUSR)
+                target.unlink()
+            else:
+                target.mkdir(exist_ok=True)
+
+    def revise(self, identity: str, version: str, base_digest: str, definition: dict, *, publish: bool = False,
+               resource_changes: dict | None = None, accepted_candidate: dict | None = None,
+               preview_resources: bool = False) -> dict:
         """Derive a complete candidate from a pinned historical package, without editing it."""
+        if resource_changes is None and (preview_resources or accepted_candidate is not None):
+            raise ValueError("Resource preview/acceptance requires resource_changes")
+        if preview_resources and (publish or accepted_candidate is not None):
+            raise ValueError("Resource preview cannot publish or accept a candidate")
+        if resource_changes is not None and not preview_resources:
+            contracts.validate(accepted_candidate, {"type": "object", "additionalProperties": False,
+                "required": ["digest", "directories"], "properties": {
+                    "digest": self.schema["$defs"]["digest"],
+                    "directories": {"type": "array", "maxItems": 500, "uniqueItems": True,
+                                    "items": {"type": "string"}}}}, "Accepted resource candidate")
         with tempfile.TemporaryDirectory(prefix=f".{self.kind}-revision-", dir=self.root) as temporary:
             copy = Path(temporary) / "bundle"
             original = self.export(identity, version, copy)
             if original["digest"] != base_digest:
                 raise ValueError(f"{self.label} revision base digest does not match {identity}@{version}")
+            extra = {}
+            if resource_changes is not None:
+                _, old_files, old_directories = inventory_tree(copy, label=self.label, max_directories=500, max_depth=32)
+                self._apply_resource_changes(copy, resource_changes, old_files, old_directories)
+                if preview_resources:
+                    definition = deepcopy(definition)
+                    contracts.validate(definition.get("resources"), {"$defs": self.schema["$defs"],
+                        **self.schema["properties"]["resources"]}, f"{self.label} resource declarations")
+                    _, changed_files, _ = inventory_tree(copy, label=self.label, max_directories=500, max_depth=32)
+                    for resource in definition["resources"]:
+                        relative = relative_path(resource["path"], self.label)
+                        if resource["kind"] == "skill":
+                            resource["digest"] = digest_tree(copy / relative)[0]
+                        else:
+                            if resource["path"] not in changed_files:
+                                raise ValueError(f"Missing {self.label} resource file: {resource['path']}")
+                            resource["sha256"] = changed_files[resource["path"]]["sha256"]
             standard = copy / f"{self.kind}.json"
             standard.chmod(standard.stat().st_mode | stat.S_IWUSR)
             standard.write_text(
                 json.dumps(definition, sort_keys=True, indent=2, ensure_ascii=False, allow_nan=False) + "\n",
                 encoding="utf-8", newline="\n")
-            candidate = self.import_bundle(copy) if publish else self.inspect_import(copy)
+            if resource_changes is not None:
+                digest, files, directories = inventory_tree(copy, label=self.label, max_directories=500, max_depth=32)
+                accepted = {"digest": digest, "directories": directories}
+                if not preview_resources and accepted != accepted_candidate:
+                    raise ValueError(f"{self.label} candidate changed; preview and explicitly accept it again")
+                extra = {"candidate": accepted, "resource_preview": preview_resources,
+                         "changes": [{"path": name, "before": old_files.get(name), "after": files.get(name)}
+                                     for name in sorted(old_files.keys() | files.keys()) if old_files.get(name) != files.get(name)],
+                         "directory_changes": {"added": sorted(set(directories) - set(old_directories)),
+                                               "removed": sorted(set(old_directories) - set(directories))}}
+            candidate = (self.import_bundle(copy, expected_directories=extra.get("candidate", {}).get("directories"))
+                         if publish else self.inspect_import(copy))
             return {**{key: value for key, value in candidate.items() if key != "path"},
+                    **extra,
                     "base": {"kind": self.kind, "id": identity, "version": version, "digest": base_digest},
                     "published": publish}
 

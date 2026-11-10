@@ -1,6 +1,8 @@
 """Specialist bundles preserve exact identities without granting execution."""
 
 from concurrent.futures import ThreadPoolExecutor
+import base64
+from copy import deepcopy
 import hashlib
 import json
 import os
@@ -104,6 +106,122 @@ def test_revision_preserves_complete_package_and_only_publishes_explicitly(bundl
     assert {key: value for key, value in saved["files"].items() if key != "agent.json"} == {
         key: value for key, value in original["files"].items() if key != "agent.json"}
     assert (Path(saved["path"]) / "skills/kernel-measurement/references/empty").is_dir()
+
+
+@pytest.mark.parametrize("mutation", ["attachment", "executable", "directory", "document"])
+def test_resource_acceptance_binds_the_entire_candidate(bundle, tmp_path, mutation):
+    if mutation == "executable" and sys.platform == "win32":
+        pytest.skip("Windows cannot set POSIX executable bits")
+    state = State(tmp_path / "state")
+    original = definitions.import_bundle(state, bundle)
+    definition = {**original["definition"], "version": "1.0.1"}
+    changes = {"schema_version": 1, "operations": [
+        {"op": "write", "path": "opaque.bin", "content_base64": base64.b64encode(b"\xff\x00 accepted attachment").decode()}]}
+    args = (state, definition["id"], "1.0.0", original["digest"])
+    preview = definitions.revise(*args, definition, resource_changes=changes, preview_resources=True)
+    index = state.root / "agent-definitions/index.json"
+    before = index.read_bytes()
+    changed = deepcopy(changes)
+    definition = deepcopy(preview["definition"])
+    if mutation == "attachment":
+        changed["operations"][0]["content_base64"] = base64.b64encode(b"\xff\x00 unaccepted attachment").decode()
+    elif mutation == "executable":
+        changed["operations"][0]["executable_bits"] = 0o100
+    elif mutation == "directory":
+        changed["operations"].append({"op": "mkdir", "path": "new/nested/empty"})
+    else:
+        definition["description"] += " Changed after acceptance"
+    for publish in (False, True):
+        with pytest.raises(ValueError, match="candidate changed"):
+            definitions.revise(*args, definition, resource_changes=changed,
+                               accepted_candidate=preview["candidate"], publish=publish)
+    assert index.read_bytes() == before
+    assert definitions.get(state, definition["id"], "1.0.0") == original
+
+
+@pytest.mark.parametrize("unreferenced", [False, True])
+def test_resource_publication_rejects_same_digest_with_different_empty_directories(bundle, tmp_path, unreferenced):
+    state = State(tmp_path / "state")
+    original = definitions.import_bundle(state, bundle)
+    definition = {**original["definition"], "version": "1.0.1"}
+    args = (state, definition["id"], "1.0.0", original["digest"], definition)
+    changes = {"schema_version": 1, "operations": [{"op": "mkdir", "path": "new/a/empty"}]}
+    first = definitions.revise(*args, resource_changes=changes, preview_resources=True)
+    published = definitions.revise(*args, resource_changes=changes, accepted_candidate=first["candidate"], publish=True)
+    assert definitions.revise(*args, resource_changes=changes, accepted_candidate=first["candidate"], publish=True) == published
+    index = state.root / "agent-definitions/index.json"
+    if unreferenced:
+        document = json.loads(index.read_bytes())
+        del document["definitions"][definition["id"]]["1.0.1"]
+        index.write_text(json.dumps(document))
+    before = index.read_bytes()
+    changed = {"schema_version": 1, "operations": [{"op": "mkdir", "path": "new/b/empty"}]}
+    second = definitions.revise(*args, resource_changes=changed, preview_resources=True)
+    assert second["digest"] == first["digest"]
+    assert second["candidate"]["directories"] != first["candidate"]["directories"]
+    with pytest.raises(ValueError, match="different directories"):
+        definitions.revise(*args, resource_changes=changed, accepted_candidate=second["candidate"], publish=True)
+    assert index.read_bytes() == before
+    stored = state.root / "agent-definitions/objects" / first["digest"]
+    assert (stored / "new/a/empty").is_dir() and not (stored / "new/b").exists()
+
+
+@pytest.mark.parametrize("operations", [
+    [{"op": "write", "path": "agent.json", "content_base64": "e30="}],
+    [{"op": "write", "path": "new.bin", "content_base64": "YQ=="},
+     {"op": "write", "path": "new.bin", "content_base64": "Yg=="}],
+    [{"op": "mkdir", "path": "new"}, {"op": "write", "path": "new/file", "content_base64": "YQ=="}],
+])
+def test_resource_operations_cannot_silently_override_each_other_or_the_document(bundle, tmp_path, operations):
+    state = State(tmp_path / "state")
+    original = definitions.import_bundle(state, bundle)
+    before = (state.root / "agent-definitions/index.json").read_bytes()
+    with pytest.raises(ValueError, match="document input|repeat or overlap"):
+        definitions.revise(state, original["definition"]["id"], "1.0.0", original["digest"],
+                           {**original["definition"], "version": "1.0.1"},
+                           resource_changes={"schema_version": 1, "operations": operations}, preview_resources=True)
+    assert (state.root / "agent-definitions/index.json").read_bytes() == before
+    assert definitions.get(state, original["definition"]["id"], "1.0.0") == original
+
+
+def test_cli_resource_transport_bounds_repeated_write_payloads(tmp_path):
+    # A small source tree can otherwise expand into an arbitrarily large transport.
+    (tmp_path / "files").mkdir()
+    (tmp_path / "files/attachment.bin").write_bytes(b"x" * 8192)
+    changes = {"schema_version": 1, "operations": [{"op": "write", "path": "attachment.bin"}] * 1500}
+    (tmp_path / "changes.json").write_text(json.dumps(changes))
+    with pytest.raises(ValueError):
+        definition_bundles.resource_changes_from_directory(tmp_path)
+
+
+@pytest.mark.parametrize("scenario", ["depth", "count", "file-boundary"])
+def test_resource_directory_budget_precedes_filesystem_allocation(bundle, tmp_path, monkeypatch, scenario):
+    state = State(tmp_path / "state")
+    original = definitions.import_bundle(state, bundle)
+    if scenario == "count":
+        operations = [{"op": "mkdir", "path": f"flood-{number}"} for number in range(501)]
+    else:
+        path = "/".join(["flood", *[f"level-{number}" for number in range(32)]])
+        operations = [{"op": "mkdir", "path": path}] if scenario == "depth" else [
+            {"op": "write", "path": path, "content_base64": "YQ=="}]
+    mkdir = Path.mkdir
+
+    def prevent_allocation(path, *args, **kwargs):
+        if any(part.startswith("flood") for part in path.parts):
+            pytest.fail("Over-budget resource directories reached filesystem allocation")
+        return mkdir(path, *args, **kwargs)
+
+    if scenario != "file-boundary":
+        monkeypatch.setattr(Path, "mkdir", prevent_allocation)
+    args = (state, original["definition"]["id"], "1.0.0", original["digest"],
+            {**original["definition"], "version": "1.0.1"})
+    changes = {"schema_version": 1, "operations": operations}
+    if scenario == "file-boundary":
+        preview = definitions.revise(*args, resource_changes=changes, preview_resources=True)
+        assert operations[0]["path"] in preview["files"]
+    else:
+        with pytest.raises(ValueError, match="directory count or depth"):
+            definitions.revise(*args, resource_changes=changes, preview_resources=True)
 
 
 @pytest.mark.parametrize("mutation", ["schema", "bool-version", "missing-hash", "bad-hash", "missing-file", "duplicate-id",

@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "projection": "Formatted and machine-path-redacted evidence; original artifact SHA differs from this projection.",
+  "scope": "Audit of exact manifest/input/prompt/native read stream/result. Complete continuous UTF8 byte delivery is not proof of reasoning quality or formal approval.",
+  "source_artifacts": {
+    "audit": {
+      "artifact": "model-read-audit-r1.json",
+      "bytes": 1902,
+      "sha256": "90a740c88a140f51de9ee0298854cf5d9be67037ad93677c4f65308808d0c715"
+    }
+  },
+  "data": {
+    "audit": {
+      "checked_at": "2026-11-10T07:30:30.820052+00:00",
+      "run_id": "6f7f4db7bfbe499d99ed47f94703228c",
+      "manifest_input_and_actual_run_digest_match": true,
+      "actual_prompt_matches": true,
+      "original_definition_libraries_absent": true,
+      "bundled_agent_workflow_evidence_revision_matches": true,
+      "source_files": 14,
+      "source_files_complete_in_attachment_and_unchanged": true,
+      "attachment_bytes": 464921,
+      "attachment_sha256": "32949309be8339af99735190d33d71d39e978b2131037c15222ee0bd7e3336b1",
+      "native_stream_sha256": "7296d61e73848450ec67e95c0ab5937591e755d493c7b8b8a288a307f71e1f21",
+      "successful_candidate_pages": 18,
+      "probe_pages": 0,
+      "continuous_pages": 18,
+      "complete_continuous_bytes": 464921,
+      "repeated_pages": 0,
+      "base64_pages": 0,
+      "plaintext_only": true,
+      "complete_continuous_plaintext": true,
+      "next_offset": null,
+      "every_candidate_page_matches_original_bytes": true,
+      "failed_read_count": 0,
+      "failed_reads": [],
+      "instruction_and_skill_reads": {
+        "definitions/workflow/ergora-structure-review/1.0.1/instructions.md": true,
+        "definitions/agent/ergora-structure-reviewer/1.0.1/instructions.md": true,
+        "definitions/agent/ergora-structure-reviewer/1.0.1/skills/ergora-structure-reviewer/SKILL.md": true,
+        "definitions/agent/ergora-structure-reviewer/1.0.1/skills/candidate-evidence/SKILL.md": true
+      },
+      "actual_candidate_asset_matches": true,
+      "original_result_sha256": "1ec4f023640458ebd178ce452d8035a0b5353d4b80bedbeeb25d09dea9cd0710",
+      "succeeded_original_result_matches": true,
+      "decision": "request-changes",
+      "scope": "Audit verifies continuous successful UTF8 plaintext coverage, with unchanged-offset base64 retries preserved. Delivery does not prove reasoning quality. Existing artifacts and original inspectors only; no model, service or test rerun. Complete byte delivery does not prove reasoning quality or formal owner approval."
+    }
+  }
+}

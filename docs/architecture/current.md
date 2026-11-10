@@ -183,7 +183,7 @@ AC3b.1将历史完整性与当前后端准入分开：`DefinitionLibrary`的历�
 |原job发布回执与文本窗口|`tasks.job` → `reference.task_job` → 专用`reference_task_evidence`；CLI/GET API|只选原dev_submit调度事件，核连续history/context/envelope；原FileAdapter核回执及全部产物，配置/注册根验证由Creation共享给本入口与外部对账。材料按原回执名及首次receipt SHA读取；先核完整摘要/严格UTF-8，再返回字符窗口；响应上限不等于完整IO/内存上限|
 |本地服务运维|`services.status / control / logs`；CLI/API|复制原 Supervisor 定义并关闭自动启动；所选服务、当前修订及停止确认；共享执行目录/控制库归属；有界日志与原生游标，未确认不报告成功|
 |独立 Agent 调用|`agent_runs.run_agent / runs / output`；CLI/Web|冻结有效绑定视图、所选 Skill/记忆上下文及归档；普通调用成功不产生正式任务通过|
-|静态专长Agent定义库|`agent_definitions.inspect_bundle / import_bundle / get / definitions / export`；CLI，`backups`另调用`verify_store`|完整资源与不可变精确版本，导入不执行；无活动头、DB新表或运行准入，后续成员/继承通过新合同接入|
+|专长Agent与Workflow定义库|`agent_definitions` / `workflow_definitions` 的 `inspect_bundle / import_bundle / get / definitions / export / revise / read_file`；CLI/HTTP，`backups`另调用`verify_store`|完整资源与不可变精确版本；原包完整派生与有界历史读取由共同库拥有，新候选沿原完整准入；无活动头、DB新表或新的执行授权|
 |原生 Agent后端|`agents.invoke` → `agent_backends.for_binding`及`AgentBackend`；`tools`复用同一诊断/探测|公开配置仍归components，后端拥有本实现命令、配置及结果提取；通用schema/摘要归agents，进程/取消归processes；成功不等于可信验收|
 |Forge候选|`kernel.create / operate`；独立调用、参考阶段/页面|既有SDK协议；campaign完成不等于可信训练采用，未知结果先对账|
 |Skill 资产、评价、采用和搜索|`skill_assets`、`evaluation`、`skills.adopt`、`optimization.optimize`；CLI/Web|资产与评价不反向导入采用；GEPA 搜索复用评价，不拥有评分/采用权限|
@@ -389,6 +389,28 @@ flowchart LR
   Manifest --> Proposal[训练只读提案叶]
   Proposal --> Operator[操作者 / 原可信实验runner与gate]
 ```
+
+## 定义修订与资源接受
+
+C3a/b 的标准正文修订和 JSON/YAML 编辑仍使用 `DefinitionLibrary.revise`；`definitions.js` 拥有控制目录/种类/精确基准分隔的会话及已应用历史。C3c D2 在同一所有者增加有限 `resource_changes`：CLI 将明确目录清单转为完整base64字节，HTTP接收同一对象。两者均不在入口复制文件操作或内容身份算法。历史 `read_file` 使用原get核固定包，返回有界base64窗口及完整性事实，不要求今天后端可用。
+
+资源预览在完整新暂存树应用操作，仅更新标准正文声明的摘要，再做原完整准入；返回建议正文、文件差异及完整 `candidate:{digest,directories}`。最终check/publish重建并匹配已接受候选，不自动改操作者正文。文件/Skill身份仍归`asset_trees`，空目录不改变旧摘要算法；原import锁在发布前核目录清单，对同摘要不同目录的对象拒绝复用。没有新的资源库、上传会话数据库、调度器或批准层。只读目录的owner-write处理只发生在复制出的新暂存树。
+
+```mermaid
+flowchart LR
+  CLI[CLI 明确变更目录] --> Decode[共同目录读取]
+  Decode --> UseCases[Agent / Workflow 用例]
+  HTTP[HTTP 完整base64操作] --> UseCases
+  UseCases --> Library[DefinitionLibrary 完整派生]
+  Library --> Preview[仅预览 更新声明摘要]
+  Library --> Match[最终核已接受digest与directories]
+  Preview --> Admission[原完整准入]
+  Match --> Admission
+  Admission --> Check[只检查 不发布]
+  Admission --> Publish[原锁与不可变对象/索引]
+```
+
+完整操作与命令见[Agent资源说明](../AGENT_DEFINITIONS.md#修订完整资源文件)和[Workflow说明](../WORKFLOW_DEFINITIONS.md#修订分享与恢复)，精确验收范围见[D2交付记录](../delivery/2026-11-10-definition-resource-interfaces.md)。页面资源缓冲/共同历史仍归后续D3；新增资源不会扩大祖先权限，完整提权修订和正式任务交接继续各自计划。
 
 AC5 C2的编辑会话由同一`workflow.js`持有：语义输入、单元原文、完整JSON原文、目标ID/已观察修订、选择、局部请求与布局各自分开。按控制目录/项目登记的当前实例是唯一缓存写入者，已替换实例的迟到保存或图销毁不能接管新会话。`sessionStorage`仅保存当前缓冲，50快照/4MiB线性历史留内存；单份超限只保留当前输入。图位置/视口不进入任务合同。角色元数据从已有bootstrap读取，不在缓存复制领域校验；损坏检查点进入原文下载/明确清除。保存/JSON应用仍调原drafts/reference所有者，不加数据库、调度器或共享编辑框架。正式创建/批准/六阶段不变，验收状态见[C2记录](../delivery/2026-11-09-editor-session.md)。
 

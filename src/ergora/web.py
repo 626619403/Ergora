@@ -37,6 +37,15 @@ class RevisionPayload(Payload):
 class DefinitionRevisionPayload(Payload):
     base_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
     definition: dict
+    resource_changes: dict | None = None
+    accepted_candidate: dict | None = None
+
+
+class DefinitionFilePayload(Payload):
+    base_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
+    path: str
+    offset: int = Field(default=0, strict=True, ge=0)
+    limit: int = Field(default=65_536, strict=True, ge=1, le=65_536)
 
 
 class DefinitionDocumentPayload(Payload):
@@ -275,11 +284,19 @@ def create_app(home: Path | None = None) -> FastAPI:
 
     @application.post("/api/agent-definitions/{identity}/{version}/revisions/check")
     def check_agent_revision(identity: str, version: str, body: DefinitionRevisionPayload):
-        return agent_definitions.revise(state, identity, version, body.base_digest, body.definition)
+        return agent_definitions.revise(state, identity, version, **body.model_dump())
 
     @application.post("/api/agent-definitions/{identity}/{version}/revisions")
     def publish_agent_revision(identity: str, version: str, body: DefinitionRevisionPayload):
-        return agent_definitions.revise(state, identity, version, body.base_digest, body.definition, publish=True)
+        return agent_definitions.revise(state, identity, version, **body.model_dump(), publish=True)
+
+    @application.post("/api/agent-definitions/{identity}/{version}/revisions/preview-resources")
+    def preview_agent_resources(identity: str, version: str, body: DefinitionRevisionPayload):
+        return agent_definitions.revise(state, identity, version, **body.model_dump(), preview_resources=True)
+
+    @application.post("/api/agent-definitions/{identity}/{version}/files/read")
+    def read_agent_file(identity: str, version: str, body: DefinitionFilePayload):
+        return agent_definitions.read_file(state, identity, version, **body.model_dump())
 
     @application.get("/api/workflow-definitions")
     def workflow_library():
@@ -291,11 +308,19 @@ def create_app(home: Path | None = None) -> FastAPI:
 
     @application.post("/api/workflow-definitions/{identity}/{version}/revisions/check")
     def check_workflow_revision(identity: str, version: str, body: DefinitionRevisionPayload):
-        return workflow_definitions.revise(state, identity, version, body.base_digest, body.definition)
+        return workflow_definitions.revise(state, identity, version, **body.model_dump())
 
     @application.post("/api/workflow-definitions/{identity}/{version}/revisions")
     def publish_workflow_revision(identity: str, version: str, body: DefinitionRevisionPayload):
-        return workflow_definitions.revise(state, identity, version, body.base_digest, body.definition, publish=True)
+        return workflow_definitions.revise(state, identity, version, **body.model_dump(), publish=True)
+
+    @application.post("/api/workflow-definitions/{identity}/{version}/revisions/preview-resources")
+    def preview_workflow_resources(identity: str, version: str, body: DefinitionRevisionPayload):
+        return workflow_definitions.revise(state, identity, version, **body.model_dump(), preview_resources=True)
+
+    @application.post("/api/workflow-definitions/{identity}/{version}/files/read")
+    def read_workflow_file(identity: str, version: str, body: DefinitionFilePayload):
+        return workflow_definitions.read_file(state, identity, version, **body.model_dump())
 
     @application.get("/api/composition/presets")
     def composition_presets():

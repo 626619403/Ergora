@@ -13,7 +13,7 @@ from . import agent_definitions, agent_runs, agents, contracts, definition_bundl
 from .state import State, resolve_home
 
 
-def _definition_revision_parser(operations) -> None:
+def _definition_edit_parsers(operations) -> None:
     revision = operations.add_parser("revise", help="Derive an immutable version from a pinned complete package")
     revision.add_argument("id")
     revision.add_argument("version", help="Exact base version")
@@ -21,6 +21,30 @@ def _definition_revision_parser(operations) -> None:
     revision.add_argument("--document", type=Path, required=True, help="Complete new standard definition document")
     revision.add_argument("--format", choices=("json", "yaml"), default="json", help="Document representation; stored packages remain JSON")
     revision.add_argument("--check", action="store_true", help="Validate without publishing a version")
+    revision.add_argument("--resources", type=Path, help="Local changes.json and files/<package path> directory")
+    revision.add_argument("--preview-resources", action="store_true", help="Suggest resource hashes and candidate identity without publishing")
+    revision.add_argument("--accept-candidate", type=Path, help="Saved resource preview response explicitly accepted for this candidate")
+    file = operations.add_parser("file", help="Read a bounded byte window of a pinned package file")
+    file.add_argument("id")
+    file.add_argument("version")
+    file.add_argument("path")
+    file.add_argument("--base-digest", required=True)
+    file.add_argument("--offset", type=int, default=0)
+    file.add_argument("--limit", type=int, default=65_536)
+
+
+def _definition_revision_options(args) -> dict:
+    accepted = None
+    if args.accept_candidate:
+        response = definition_bundles.read_json(args.accept_candidate)
+        if not isinstance(response, dict) or not isinstance(response.get("candidate"), dict):
+            raise ValueError("--accept-candidate requires a saved resource preview response with candidate")
+        accepted = response["candidate"]
+    return {"definition": definition_bundles.convert_document(
+                args.document.read_text(encoding="utf-8-sig"), args.format)["definition"],
+            "publish": not (args.check or args.preview_resources), "preview_resources": args.preview_resources,
+            "resource_changes": definition_bundles.resource_changes_from_directory(args.resources) if args.resources else None,
+            "accepted_candidate": accepted}
 
 
 def parser() -> argparse.ArgumentParser:
@@ -61,7 +85,7 @@ def parser() -> argparse.ArgumentParser:
     workflow.add_argument("arguments", nargs=argparse.REMAINDER)
     composition = commands.add_parser("composition", help="Check nested definitions, prepare inputs or explicitly invoke a leaf")
     operations = composition.add_subparsers(dest="operation", required=True)
-    _definition_revision_parser(operations)
+    _definition_edit_parsers(operations)
     operations.add_parser("presets", help="List bundled domain recipes and their actual execution scope")
     preset = operations.add_parser("install-preset", help="Import a bundled recipe's exact dependencies; does not authorize execution")
     preset.add_argument("id", help="Bundled recipe ID from composition presets")
@@ -317,7 +341,7 @@ def parser() -> argparse.ArgumentParser:
     operations = agent.add_subparsers(dest="operation", required=True)
     definition = operations.add_parser("definition", help="Check and share static specialist recipes; importing never executes them")
     definitions = definition.add_subparsers(dest="definition_operation", required=True)
-    _definition_revision_parser(definitions)
+    _definition_edit_parsers(definitions)
     for name in ("check", "import"):
         operation = definitions.add_parser(name)
         operation.add_argument("directory", type=Path)
@@ -664,7 +688,10 @@ def main(argv: list[str] | None = None) -> int:
                     output = workflow_definitions.import_bundle(state, args.directory)
                 elif args.operation == "revise":
                     output = workflow_definitions.revise(state, args.id, args.version, args.base_digest,
-                        definition_bundles.convert_document(args.document.read_text(encoding="utf-8-sig"), args.format)["definition"], publish=not args.check)
+                        **_definition_revision_options(args))
+                elif args.operation == "file":
+                    output = workflow_definitions.read_file(state, args.id, args.version, args.base_digest, args.path,
+                                                           offset=args.offset, limit=args.limit)
                 elif args.operation == "list":
                     output = workflow_definitions.definitions(state)
                 elif args.operation == "show":
@@ -681,7 +708,10 @@ def main(argv: list[str] | None = None) -> int:
                         output = agent_definitions.import_bundle(state, args.directory)
                     elif args.definition_operation == "revise":
                         output = agent_definitions.revise(state, args.id, args.version, args.base_digest,
-                            definition_bundles.convert_document(args.document.read_text(encoding="utf-8-sig"), args.format)["definition"], publish=not args.check)
+                            **_definition_revision_options(args))
+                    elif args.definition_operation == "file":
+                        output = agent_definitions.read_file(state, args.id, args.version, args.base_digest, args.path,
+                                                            offset=args.offset, limit=args.limit)
                     elif args.definition_operation == "list":
                         output = agent_definitions.definitions(state, role=args.role, specialty=args.specialty)
                     elif args.definition_operation == "show":

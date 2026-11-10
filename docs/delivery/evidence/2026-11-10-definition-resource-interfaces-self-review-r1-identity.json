@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "projection": "Formatted and machine-path-redacted evidence; original artifact SHA differs from this projection.",
+  "scope": "Actual installed bundled structure-review template, authorized Codex fallback; evidence revision only. Not a model-independence, formal approval or whole-project completion claim.",
+  "source_artifacts": {
+    "identity": {
+      "artifact": "self-review-r1.json",
+      "bytes": 2717,
+      "sha256": "e0a09c980a5edab1f0c2f482fe3b5d13ec19658dcf85a40e06052b51d2c418ed"
+    }
+  },
+  "data": {
+    "identity": {
+      "checked_at": "2026-11-10T07:29:56.633517+00:00",
+      "source": {
+        ".github/workflows/portability.yml": "81c168fdb140f44ccfdca497003e452355c9164a6ed6f8dfb8fa31729a1943ca",
+        "pyproject.toml": "6cb64afe3d5e7298dc2058765f68e4158b7cb72389ba9fcec69c2b5865ccef57",
+        "src/ergora/agent_definitions.py": "1963430ad740c04b65b104bb46174034f2a78f3b2a6542c64cac6b5df8ba0961",
+        "src/ergora/agents.py": "131481cabcedcd478356441be0a86949cd3f643c83abebb4c3468bdae451f4c5",
+        "src/ergora/asset_trees.py": "fb67133720bccbf19ec8020954af9d4cb898c2bb824d1d959e36f4782bab500a",
+        "src/ergora/cli.py": "6f795fb82d6be135e433b00d2dd3d4abb0d452d8249eb4b51833019ec515e82d",
+        "src/ergora/contracts.py": "a44bc86e4cacc87c103003f08a0e9f72296f5620f4212a41e8dc124050a07277",
+        "src/ergora/definition_bundles.py": "87f37f5fb4c7c2a4a302c8239c13c94fc8d8214265b8850dd882b3e581376a14",
+        "src/ergora/state.py": "2ed2dd4f719f593f5bfb6e7e83462118465b27c114b91ddbb88ef4ef7e13db18",
+        "src/ergora/web.py": "971ae9ef2df4186564a92f9255aebb6a3587ae9f185a07e7994e9978c956b7cc",
+        "src/ergora/workflow_definitions.py": "e05abc03927d329c47b3391adc52bf11c90a437ddee49c9cb2ae8718141079e7",
+        "tests/test_agent_definitions.py": "06e1960ebb4cb52603668b1f45ad7f5c2cfa533d76f6aa0facf1a96533b5b941",
+        "tests/test_definition_console.py": "33a55e86ff49edbb06cbb5187ec3a57f7acca711ab51383bb8da05d78387f992",
+        "tests/test_workflow_definitions.py": "87d4c87289234c2772ba68f11438b1fa44f1028202c6d594cf1ca863826ac4e9"
+      },
+      "backend": "codex",
+      "inference_model": "gpt-6.1-sol",
+      "reasoning_effort": "high",
+      "run_id": "6f7f4db7bfbe499d99ed47f94703228c",
+      "status": "succeeded",
+      "exit_code": 0,
+      "seconds": 332.6564291459508,
+      "input_digest": "386c82562a754f16d4da5e6a449f6b2c48f19186074bef8883c21f64f1652e11",
+      "prompt_sha256": "72845fe54b6485dd827af2b6c3d8e8e6586d6cc68d2e08bf13acdfe5ee5b5597",
+      "attachment_bytes": 464921,
+      "attachment_sha256": "32949309be8339af99735190d33d71d39e978b2131037c15222ee0bd7e3336b1",
+      "manifest_digest": "4ab27805376944dda4cdc310df42aa2208a8175338f6b7a0d8065815f278e7e8",
+      "installed_preset_root": {
+        "kind": "workflow",
+        "id": "ergora-governance-delivery",
+        "version": "1.0.0",
+        "digest": "e82c02d01d2c717a38f35f242107efce32dd873027a4a3a6fb0f18f7d1fae077"
+      },
+      "evidence_revision": "1.0.1",
+      "original_definition_libraries_removed": true,
+      "scope": "Actual installed bundled structure-review template with fixed complete candidate evidence and task MCP; no code execution, independent-model, OS isolation, formal approval or full project completion claim.",
+      "decision": "request-changes",
+      "result_sha256": "1ec4f023640458ebd178ce452d8035a0b5353d4b80bedbeeb25d09dea9cd0710"
+    }
+  }
+}

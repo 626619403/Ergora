@@ -338,8 +338,16 @@ def import_bundle(state: State, source: Path) -> dict:
     return library(state.root).import_bundle(source)
 
 
-def revise(state: State, identity: str, version: str, base_digest: str, definition: dict, *, publish: bool = False) -> dict:
-    return library(state.root).revise(identity, version, base_digest, definition, publish=publish)
+def revise(state: State, identity: str, version: str, base_digest: str, definition: dict, *, publish: bool = False,
+           resource_changes: dict | None = None, accepted_candidate: dict | None = None,
+           preview_resources: bool = False) -> dict:
+    return library(state.root).revise(identity, version, base_digest, definition, publish=publish,
+        resource_changes=resource_changes, accepted_candidate=accepted_candidate, preview_resources=preview_resources)
+
+
+def read_file(state: State, identity: str, version: str, base_digest: str, path: str, *, offset: int = 0,
+              limit: int = 65_536) -> dict:
+    return library(state.root).read_file(identity, version, base_digest, path, offset=offset, limit=limit)
 
 
 def get(state: State, identity: str, version: str, *, material: bool = False) -> dict:

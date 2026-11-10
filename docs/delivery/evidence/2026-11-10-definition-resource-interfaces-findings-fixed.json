@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "projection": "Formatted and machine-path-redacted evidence; original artifact SHA differs from this projection.",
+  "scope": "Same-slice controlled probes of minimal fixes. Native Windows acceptance requires the exact candidate own CI; controlled probes do not replace it.",
+  "source_artifacts": {
+    "readonly_delete": {
+      "artifact": "independent/fix-r2/readonly-delete-probe.json",
+      "bytes": 3263,
+      "sha256": "c233dc124f1fb9f127a74e24d7f5eafe295847f41eabbc73f7f323c66c482f0b"
+    },
+    "loader_budget": {
+      "artifact": "independent/fix-r2/cli-loader-budget-probe.json",
+      "bytes": 894,
+      "sha256": "73f9a32df9dd4039f2269a967f2ed642a1c317c590787e008ed985c0990b3b80"
+    },
+    "directory_budget": {
+      "artifact": "independent/fix-r3/directory-budget-probe.json",
+      "bytes": 1140,
+      "sha256": "4929411542ef95a8f12bc467a05f30e10d79558ad9463e53c2d0769a0b7118a0"
+    }
+  },
+  "data": {
+    "readonly_delete": {
+      "platform": "linux",
+      "python": "3.12.3 (main, Feb  4 2025, 14:48:35) [GCC 13.3.0]",
+      "product_sha256": "032eeff9fc4c75168ae0cca0896fe2b423d7486869c05d71bb919923b6b4ba20",
+      "scope": "Controlled Windows readonly unlink rule on Linux; not a native Windows run",
+      "source_file": "/usr/lib/python3.12/tempfile.py",
+      "stdlib_existing_readonly_cleanup": "    @classmethod\n    def _rmtree(cls, name, ignore_errors=False, repeated=False):\n        def onexc(func, path, exc):\n            if isinstance(exc, PermissionError):\n                if repeated and path == name:\n                    if ignore_errors:\n                        return\n                    raise\n\n                try:\n                    if path != name:\n                        _resetperms(_os.path.dirname(path))\n                    _resetperms(path)\n\n                    try:\n                        _os.unlink(path)\n                    except IsADirectoryError:\n                        cls._rmtree(path, ignore_errors=ignore_errors)\n                    except PermissionError:\n                        # The PermissionError handler was originally added for\n                        # FreeBSD in directories, but it seems that it is raised\n                        # on Windows too.\n                        # bpo-43153: Calling _rmtree again may\n                        # raise NotADirectoryError and mask the PermissionError.\n                        # So we must re-raise the current PermissionError if\n                        # path is not a directory.\n                        if not _os.path.isdir(path) or _os.path.isjunction(path):\n                            if ignore_errors:\n                                return\n                            raise\n                        cls._rmtree(path, ignore_errors=ignore_errors,\n                                    repeated=(path == name))\n                except FileNotFoundError:\n                    pass\n            elif isinstance(exc, FileNotFoundError):\n                pass\n            else:\n                if not ignore_errors:\n                    raise\n\n        _rmtree(name, onexc=onexc)\n",
+      "results": [
+        {
+          "kind": "agent",
+          "stored_before": {
+            "sha256": "be32b37d69a24c0ccf18826c6605e98eebaa2946fa25dbe69bb66e3bd6b0f693",
+            "mode": 292
+          },
+          "stored_after": {
+            "sha256": "be32b37d69a24c0ccf18826c6605e98eebaa2946fa25dbe69bb66e3bd6b0f693",
+            "mode": 292
+          },
+          "observed_staged_delete": [
+            {
+              "relative_target": ".agent-revision-xalas7v4/bundle/remove.bin",
+              "mode": 420
+            }
+          ],
+          "index_unchanged": true,
+          "preview_succeeded": true
+        },
+        {
+          "kind": "workflow",
+          "stored_before": {
+            "sha256": "be32b37d69a24c0ccf18826c6605e98eebaa2946fa25dbe69bb66e3bd6b0f693",
+            "mode": 292
+          },
+          "stored_after": {
+            "sha256": "be32b37d69a24c0ccf18826c6605e98eebaa2946fa25dbe69bb66e3bd6b0f693",
+            "mode": 292
+          },
+          "observed_staged_delete": [
+            {
+              "relative_target": ".workflow-revision-3fliqd_1/bundle/remove.bin",
+              "mode": 420
+            }
+          ],
+          "index_unchanged": true,
+          "preview_succeeded": true
+        }
+      ]
+    },
+    "loader_budget": {
+      "product_sha256": "032eeff9fc4c75168ae0cca0896fe2b423d7486869c05d71bb919923b6b4ba20",
+      "scope": "Bounded in-memory transport substitutions; actual source schema, loader and owner guards. No OOM experiment.",
+      "records": [
+        {
+          "case": "over_budget",
+          "source_file_bytes": 8192,
+          "operation_count": 1500,
+          "directory_total_bytes": 63729,
+          "source_reads": 1221,
+          "encoded_writes": 1220,
+          "encoded_raw_bytes": 9994240,
+          "loader_error": "Resource writes exceed 10 MB",
+          "owner_error": null
+        },
+        {
+          "case": "bounded_duplicate",
+          "source_file_bytes": 3,
+          "operation_count": 2,
+          "directory_total_bytes": 114,
+          "source_reads": 2,
+          "encoded_writes": 2,
+          "encoded_raw_bytes": 6,
+          "loader_error": null,
+          "owner_error": "Resource changes cannot repeat or overlap ancestor/descendant paths"
+        }
+      ]
+    },
+    "directory_budget": {
+      "source_sha256": "808044446301231422c6f9ae31a809bfaa071e495b85646f72f6151bd3f6b658",
+      "scope": "Real schema/operation preflight with counted synthetic filesystem calls; no physical flood or service run.",
+      "records": [
+        {
+          "case": "depth_33",
+          "operations": 1,
+          "json_bytes": 197,
+          "mkdir_call_count": 0,
+          "unique_nonroot_directories_requested": 0,
+          "max_requested_directory_depth": 0,
+          "files_written": 0,
+          "apply_error": "Agent bundle exceeds directory count or depth limit"
+        },
+        {
+          "case": "directory_count_501",
+          "operations": 501,
+          "json_bytes": 17071,
+          "mkdir_call_count": 0,
+          "unique_nonroot_directories_requested": 0,
+          "max_requested_directory_depth": 0,
+          "files_written": 0,
+          "apply_error": "Agent bundle exceeds directory count or depth limit"
+        },
+        {
+          "case": "file_under_32_directories",
+          "operations": 1,
+          "json_bytes": 231,
+          "mkdir_call_count": 33,
+          "unique_nonroot_directories_requested": 32,
+          "max_requested_directory_depth": 32,
+          "files_written": 1,
+          "apply_error": null
+        }
+      ]
+    }
+  }
+}

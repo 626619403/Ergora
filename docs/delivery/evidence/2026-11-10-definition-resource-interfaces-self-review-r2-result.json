@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "projection": "Formatted and machine-path-redacted evidence; original artifact SHA differs from this projection.",
+  "scope": "Original native structured result projected with machine paths redacted. Native result SHA is recorded separately from this formatted projection.",
+  "source_artifacts": {
+    "original_result": {
+      "artifact": "self-review-r2/public-original-result.json",
+      "bytes": 2673,
+      "sha256": "0c011a0cfec443acb1f59f348c4adf14aa2fd52c7dc4ec732cc57d88c03152bd"
+    }
+  },
+  "data": {
+    "original_result": {
+      "artifacts": {
+        "response": "**Spec — approve**\n\nNo confirmed blocking findings. The final source addresses all three recorded defects in `src/ergora/definition_bundles.py`:\n\n- RIF-1: line 401 makes only the private copied delete target writable before unlinking.\n- RIF-2: lines 145–147 enforce cumulative CLI write bytes before retaining base64; the owner retains its separate decoding bound.\n- RIF-3: lines 368–371 reject excessive planned directories before mutation, while permitting 32 directory components followed by a file.\n\nPreview validates resource declarations, refreshes only declared hashes and runs complete current admission. Final check/publication rebuilds and compares the accepted full digest and directory list. Explicit empty operations require acceptance. Historical reads retain integrity checks without current backend admission.\n\n**Standards — approve**\n\nBoth Agent/Workflow use cases and CLI/HTTP reach the existing `DefinitionLibrary` owner. Tree identity, portable paths, admission and backend validation reuse existing owners. The private finite-operation algorithm and prospective directory guard are justified; no new abstraction, module or dependency is needed.\n\nTemporary staging confines permission changes and cleanup to copies. Directory checks run under the original publication lock before library/object/index publication, including indexed and unindexed object reuse. Existing version conflicts, retries, permissions, execution and approval ownership remain intact.\n\nThe regressions cover distinct allocation and acceptance failures. Shared Agent/Workflow integration coverage is justified; no redundant framework or CI workflow was added. Recorded R3 costs are 46 affected tests in 19.43 seconds and 81 CLI plus 37 real HTTP calls in 49.05 seconds. R1’s 191 passed/1 skipped in 82.84 seconds remains historical evidence. File windows bound responses while still requiring full integrity IO.\n\nRead both declared instruction files and both Skills completely, then all 527,526 candidate bytes in 21 continuous successful UTF-8 pages from offset zero to `next_offset:null`; no base64 retries were needed. Task-reported candidate SHA256: `fe5e0f3a780398c76b27a8547015db6f33ccd5684fb38331eebbcb955b202bf1`.\n\nAttached validation was reviewed, not rerun. No candidate code/services were executed or workspace files edited. Native Windows and commit/CI/HTTPS closure remain pending. This is the authorized Codex fallback review, without a model-independence or formal owner-approval claim."
+      },
+      "decision": "approve",
+      "summary": "Approve the exact R3 candidate: no confirmed blocking Spec or Standards findings."
+    }
+  }
+}

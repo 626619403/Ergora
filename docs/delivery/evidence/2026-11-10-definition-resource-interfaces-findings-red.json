@@ -1,0 +1,115 @@
+{
+  "schema_version": 1,
+  "projection": "Formatted and machine-path-redacted evidence; original artifact SHA differs from this projection.",
+  "scope": "Retained independent controlled original reproductions. Windows readonly is simulated on Linux; budget probes avoid actual OOM or physical directory flooding.",
+  "source_artifacts": {
+    "readonly_delete": {
+      "artifact": "independent/readonly-delete-probe.json",
+      "bytes": 3720,
+      "sha256": "96e4ff2941c22c78f9a15c46554ee5b56c8d290e938e6dfe339d5b25df6ad3f0"
+    },
+    "loader_budget": {
+      "artifact": "independent/cli-loader-budget-probe.json",
+      "bytes": 568,
+      "sha256": "e6c31a83d970351f2231ea8504e0b5f8bad8388d56bf2761585b536e2ddca0b3"
+    },
+    "directory_budget": {
+      "artifact": "independent/rif3-directory-budget-probe.json",
+      "bytes": 847,
+      "sha256": "b9f8f777df4e52a97af5133ee60b17988b2aac64e6018ed4bfd4a3d6d94b4e86"
+    }
+  },
+  "data": {
+    "readonly_delete": {
+      "platform": "linux",
+      "python": "3.12.3 (main, Feb  4 2025, 14:48:35) [GCC 13.3.0]",
+      "scope": "Controlled Windows readonly unlink rule on Linux; not a native Windows run",
+      "source_file": "/usr/lib/python3.12/tempfile.py",
+      "stdlib_existing_readonly_cleanup": "    @classmethod\n    def _rmtree(cls, name, ignore_errors=False, repeated=False):\n        def onexc(func, path, exc):\n            if isinstance(exc, PermissionError):\n                if repeated and path == name:\n                    if ignore_errors:\n                        return\n                    raise\n\n                try:\n                    if path != name:\n                        _resetperms(_os.path.dirname(path))\n                    _resetperms(path)\n\n                    try:\n                        _os.unlink(path)\n                    except IsADirectoryError:\n                        cls._rmtree(path, ignore_errors=ignore_errors)\n                    except PermissionError:\n                        # The PermissionError handler was originally added for\n                        # FreeBSD in directories, but it seems that it is raised\n                        # on Windows too.\n                        # bpo-43153: Calling _rmtree again may\n                        # raise NotADirectoryError and mask the PermissionError.\n                        # So we must re-raise the current PermissionError if\n                        # path is not a directory.\n                        if not _os.path.isdir(path) or _os.path.isjunction(path):\n                            if ignore_errors:\n                                return\n                            raise\n                        cls._rmtree(path, ignore_errors=ignore_errors,\n                                    repeated=(path == name))\n                except FileNotFoundError:\n                    pass\n            elif isinstance(exc, FileNotFoundError):\n                pass\n            else:\n                if not ignore_errors:\n                    raise\n\n        _rmtree(name, onexc=onexc)\n",
+      "results": [
+        {
+          "kind": "agent",
+          "stored_before": {
+            "sha256": "be32b37d69a24c0ccf18826c6605e98eebaa2946fa25dbe69bb66e3bd6b0f693",
+            "mode": 292
+          },
+          "stored_after": {
+            "sha256": "be32b37d69a24c0ccf18826c6605e98eebaa2946fa25dbe69bb66e3bd6b0f693",
+            "mode": 292
+          },
+          "observed_staged_delete": [
+            {
+              "relative_target": ".agent-revision-lnnvs8ux/bundle/remove.bin",
+              "mode": 292
+            }
+          ],
+          "index_unchanged": true,
+          "error_type": "PermissionError",
+          "error": "[Errno 13] Controlled Windows readonly unlink rule: '<repository>/.ergora/checks/ac5-definition-resource-interfaces/independent/readonly-delete-state/.agent-revision-lnnvs8ux/bundle/remove.bin'",
+          "preview_succeeded": false
+        },
+        {
+          "kind": "workflow",
+          "stored_before": {
+            "sha256": "be32b37d69a24c0ccf18826c6605e98eebaa2946fa25dbe69bb66e3bd6b0f693",
+            "mode": 292
+          },
+          "stored_after": {
+            "sha256": "be32b37d69a24c0ccf18826c6605e98eebaa2946fa25dbe69bb66e3bd6b0f693",
+            "mode": 292
+          },
+          "observed_staged_delete": [
+            {
+              "relative_target": ".workflow-revision-ibjrsd4x/bundle/remove.bin",
+              "mode": 292
+            }
+          ],
+          "index_unchanged": true,
+          "error_type": "PermissionError",
+          "error": "[Errno 13] Controlled Windows readonly unlink rule: '<repository>/.ergora/checks/ac5-definition-resource-interfaces/independent/readonly-delete-state/.workflow-revision-ibjrsd4x/bundle/remove.bin'",
+          "preview_succeeded": false
+        }
+      ]
+    },
+    "loader_budget": {
+      "snapshot_sha256": "87f37f5fb4c7c2a4a302c8239c13c94fc8d8214265b8850dd882b3e581376a14",
+      "manifest_bytes": 55537,
+      "source_file_bytes": 8192,
+      "directory_total_bytes": 63729,
+      "directory_file_count": 2,
+      "directory_count": 1,
+      "operation_count": 1500,
+      "source_reads": 1500,
+      "decoded_write_total": 12288000,
+      "base64_total_chars": 16386000,
+      "owner_rejection_after_loading": "Resource writes exceed 10 MB",
+      "scope": "Low byte volume, in-memory source transport substitutions; product schema and owner prevalidation run unchanged. No OOM experiment."
+    },
+    "directory_budget": {
+      "source_sha256": "032eeff9fc4c75168ae0cca0896fe2b423d7486869c05d71bb919923b6b4ba20",
+      "scope": "Real schema and _apply algorithm; Path mkdir/chmod/stat are counting substitutions. No physical directory flood, publication or request/service run.",
+      "records": [
+        {
+          "case": "depth_33",
+          "operations": 1,
+          "json_bytes": 197,
+          "max_operation_path_characters": 131,
+          "mkdir_call_count": 34,
+          "unique_nonroot_directories_requested": 33,
+          "max_requested_directory_depth": 33,
+          "apply_error": null
+        },
+        {
+          "case": "directory_count_501",
+          "operations": 501,
+          "json_bytes": 17071,
+          "max_operation_path_characters": 5,
+          "mkdir_call_count": 1002,
+          "unique_nonroot_directories_requested": 501,
+          "max_requested_directory_depth": 1,
+          "apply_error": null
+        }
+      ]
+    }
+  }
+}

@@ -76,11 +76,81 @@ ergora agent definition revise architecture-reviewer 1.0.0 --base-digest BASE_DI
 ergora agent definition revise architecture-reviewer 1.0.0 --base-digest BASE_DIGEST --document ./new-agent.json
 ```
 
-`--check` 检查候选但不登记版本；省略它才发布。返回候选 `digest`、标准正文、文件/资源身份、固定 `base` 与 `published`，不返回临时目录。派生过程只重写 `agent.json`，采用 UTF-8、排序键、两空格缩进及末尾换行；原包的指令、上下文、Skill附件、未声明文件及空目录完整复制。正文中的资源声明仍必须与实际文件一致。要修改文件内容，使用上面的 export/edit/check/import 流程；此入口不接收附件；标准正文可用 JSON，或通过 `--format yaml` 读取 YAML。库内仍保存标准 JSON。
+`--check` 检查候选但不登记版本；省略它才发布。返回候选 `digest`、标准正文、文件/资源身份、固定 `base` 与 `published`，不返回临时目录。不带资源参数时只重写 `agent.json`，采用 UTF-8、排序键、两空格缩进及末尾换行；原包的指令、上下文、Skill附件、未声明文件及空目录完整复制。正文中的资源声明仍必须与实际文件一致。文件内容修改可使用下面的资源修订，或 export/edit/check/import；标准正文可用 JSON，或通过 `--format yaml` 读取 YAML。库内仍保存标准 JSON。
 
 原摘要不匹配会拒绝；新正文仍检查当前职能/后端合同。相同 ID/version 的不同内容不能发布，完全相同的请求可以重试；原版本始终保留。`check` 不是版本预留，并发发布仍可能使随后的发布产生版本冲突。派生不运行或认证后端，也不修改已引用原版本的工作流和任务。更新引用见[工作流修订](WORKFLOW_DEFINITIONS.md#修订分享与恢复)。
 
 本机 HTTP 入口与 CLI 使用相同所有者：`POST /api/agent-definitions/{id}/{version}/revisions/check` 只检查，`POST /api/agent-definitions/{id}/{version}/revisions` 发布；JSON 请求为 `{"base_digest": "原包的64位小写摘要", "definition": {完整的新正文}}`。两者都保留完整原包，不创建任务、批准或执行会话。
+
+## 修订完整资源文件
+
+CLI 可以在固定原包上写入完整文件、明确删除文件或追加空目录。先准备新的标准正文及操作目录；原包里没有编辑的文件保持原字节。以下示例承接上面的 `architecture-reviewer 1.0.0`，增加一份上下文：
+
+下面的输出文件须为UTF-8。Windows PowerShell 5.1 将 `> 文件.json` 换为 `| Set-Content -Encoding UTF8 文件.json`；输入编码见[Windows说明](WINDOWS.md#agent-安装与认证)。
+
+```bash
+ergora agent definition show architecture-reviewer 1.0.0 > base-agent.json
+```
+
+运行下面的 Python，保存原包摘要，建立 `resource-changes/changes.json`、完整内容文件及新正文。版本已存在时改用未发布的新版本。资源路径相对整个定义包，新增声明先放合法占位摘要，预览会给出实际摘要：
+
+```python
+import json
+from pathlib import Path
+
+base = json.loads(Path("base-agent.json").read_text(encoding="utf-8-sig"))
+definition = base["definition"]
+definition["version"] = "1.0.1"
+definition["resources"].append({"id": "project-context", "kind": "context",
+    "path": "context/project.md", "sha256": "0" * 64})
+root = Path("resource-changes")
+(root / "files/context").mkdir(parents=True, exist_ok=True)
+(root / "files/context/project.md").write_text("Project context: keep complete evidence.\n", encoding="utf-8")
+(root / "changes.json").write_text(json.dumps({"schema_version": 1, "operations": [
+    {"op": "write", "path": "context/project.md"},
+    {"op": "mkdir", "path": "references/empty"}]}), encoding="utf-8")
+Path("new-agent.json").write_text(json.dumps(definition, ensure_ascii=False), encoding="utf-8")
+print(base["digest"])  # 替换下面的 BASE_DIGEST
+```
+
+```bash
+ergora agent definition revise architecture-reviewer 1.0.0 --base-digest BASE_DIGEST --document ./new-agent.json --resources ./resource-changes --preview-resources > resource-preview.json
+```
+
+预览执行完整准入但不发布。检查响应的 `changes`、`directory_changes`、建议 `definition` 和 `candidate`。将建议正文保存到 `new-agent.json`：
+
+```python
+import json
+from pathlib import Path
+
+preview = json.loads(Path("resource-preview.json").read_text(encoding="utf-8-sig"))
+Path("new-agent.json").write_text(json.dumps(preview["definition"], ensure_ascii=False), encoding="utf-8")
+```
+
+确认这些修改后，以保存的预览明确接受候选，再检查和发布：
+
+```bash
+ergora agent definition revise architecture-reviewer 1.0.0 --base-digest BASE_DIGEST --document ./new-agent.json --resources ./resource-changes --accept-candidate ./resource-preview.json --check
+ergora agent definition revise architecture-reviewer 1.0.0 --base-digest BASE_DIGEST --document ./new-agent.json --resources ./resource-changes --accept-candidate ./resource-preview.json
+```
+
+`candidate` 同时包含完整包 `digest` 和完整排序 `directories`。正文、普通附件、执行位或目录变化后必须重新预览和接受；最终检查不自动刷新资源摘要。预览不是版本预留或项目批准。相同候选可显式重试；同摘要已有对象若目录不同，资源发布明确拒绝，需提高版本重新预览，不会补写旧对象。资源声明与权限分别管理，新增 Skill 不产生工具或网络授权。
+
+操作目录的 `write` 字节来自 `files/<path>`，不使用源文件执行位，也不在清单另写 `content_base64`。省略 `executable_bits` 时旧文件保持执行位，新文件为零；需要时可指定 `0o111` 的子集整数，平台不能实现则拒绝。普通附件可为二进制或空文件；声明为 instructions/context 的文件仍须非空 UTF-8，Skill 仍须完整树及合法 frontmatter。
+
+`{"op":"delete","path":"old.bin"}` 只删除已存在的普通文件；若仍被资源声明引用，须在新正文中明确移除声明。未出现在清单中的文件不变。`mkdir` 和 `write` 自动建立缺失父目录；`mkdir` 可保持已有目录。拒绝重复、大小写冲突及祖先/后代重叠操作，例如同时 mkdir `new` 和 write `new/a.md`；只声明 write 即可建立父目录。标准 `agent.json`、`workflow.json` 只走正文入口。没有递归删除、重命名或隐式目录覆盖。
+
+HTTP 对应 `POST .../revisions/preview-resources`，body 包含 `base_digest`、完整 `definition` 和 `resource_changes:{"schema_version":1,"operations":[...]}`。write 项改为携带完整 `content_base64`，不接本地目录。把预览返回的建议正文和 `candidate` 分别作为最终 body 的 `definition`、`accepted_candidate`，与同一份 `resource_changes` 送往原 `/revisions/check` 和 `/revisions`。沿用本机同源规则及 `X-Ergora-Request: 1`。HTTP 请求总上限 `4_000_000` 字节含 base64；更大修改使用 CLI。CLI 操作目录含清单受10MB/500文件/500目录限制；最终包还须满足原10MB/500文件/500目录/32层，写入总字节最多10MB，最多1500项操作。无需模型认证或后台任务服务。
+
+## 读取固定版本文件
+
+```bash
+ergora agent definition file architecture-reviewer 1.0.0 instructions.md --base-digest BASE_DIGEST --offset 0 --limit 65536
+```
+
+文件路径取自该版本 `show` 的 `files`；历史读取不要求后端今天仍可调用。返回完整文件 SHA、执行位、大小、字节偏移、`content_base64`、`next_offset` 和 `complete`。按 `next_offset` 连续读取至 null；只有从0返回全部字节时 `complete:true`，后续最后一页也不能单独覆盖整份文件。偏移按字节计算，UTF-8 字符可能跨页；先合并完整字节再严格解码。每页1–65536字节，空文件同样可完整读取；普通未声明附件也可读，包外或未登记路径拒绝。
+
+HTTP 为 `POST /api/agent-definitions/{id}/{version}/files/read`，body 是 `{"base_digest":"...","path":"instructions.md","offset":0,"limit":65536}`。此入口只读取，不执行附件或创建资源会话。完整包分享仍使用 `export`。
 
 ## 在页面编辑专长 Agent
 
@@ -92,7 +162,7 @@ ergora agent definition revise architecture-reviewer 1.0.0 --base-digest BASE_DI
 
 浏览器缓冲按控制目录、种类、原 ID/版本/摘要和标签页隔离，刷新后重新选择原版本即可恢复；缓冲不是持久定义。恢复会通过共同转换器核对已应用 JSON/YAML 的语义，未应用的无效文本继续保留。缓冲损坏时可下载原始内容、重试核对或明确清除；缓存配额不足会显示提示，可下载当前编辑缓冲。关闭标签页或换机前请发布，或另行下载保存；浏览器历史最多50份、合计4MiB正文，刷新后重新建立历史。
 
-YAML 使用 JSON 数据模型：对象键必须是字符串，不接受重复键、别名、循环或自定义标签；日期等有歧义的字符串请加引号。转换最多64层、100000值（含映射键），HTTP 总请求最多4MB。JSON/YAML 只是编辑表示，不执行内容；发布的仍是完整资源包中的标准 JSON。页面保留原文件，文件追加或内容修改继续使用 export/edit/check/import。下载单份正文不包含附件；分享定义应导出完整包。
+YAML 使用 JSON 数据模型：对象键必须是字符串，不接受重复键、别名、循环或自定义标签；日期等有歧义的字符串请加引号。转换最多64层、100000值（含映射键），HTTP 总请求最多4MB。JSON/YAML 只是编辑表示，不执行内容；发布的仍是完整资源包中的标准 JSON。页面保留原文件，文件追加或内容修改使用上面的 CLI 资源修订或 export/edit/check/import；页面资源会话仍见[后续计划](plans/2026-11-10-definition-resources.md)。下载单份正文不包含附件；分享定义应导出完整包。
 
 ## 资源和存储边界
 

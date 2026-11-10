@@ -1,10 +1,10 @@
 # AC5 C3b：定义编辑会话独立审查
 
-基线 `34afcc2cec5a38655cfc93513173d67bbc433c02`；首审固定 `review-r1`，其 `identity.json` 的全部 **11 个 tracked/untracked 文件**逐一 SHA256 复核一致。审查以保存的 `tracked.diff` 和 `candidate/` 原件为准，不将仍在变化的工作区当作 R1。基线之后无新增提交，本片为未提交差异。
+基线 `34afcc2cec5a38655cfc93513173d67bbc433c02`；首审固定 `review-r1`，其 `identity.json` 的全部 **11 个 tracked/untracked 文件**逐一 SHA256 复核一致。审查以保存的 `tracked.diff` 和 `candidate/` 原件为准，不将仍在变化的工作区当作 R1。R1审查当时基线之后无新增提交，本片尚为未提交差异。
 
 先读取差异及真实调用者 `app.js`、`api.js`、`ui.js`、原工作单元编辑器、两类定义用例和 `DefinitionLibrary.revise`，再读取作者交付记录。按 `code-review` 的两个 fresh-context 审查轴及 `codebase-design` 接口原则复核；原始要求和范围来自[本片计划](../plans/2026-11-10-definition-editor.md)、[C3 发布合同](../plans/2026-11-10-definition-revisions.md)及项目 AGENTS。资源追加、嵌套画布、正式任务交接分别归 C3c/C4/C5，不作为本片缺项。
 
-**当前提交前终核：完整30文件的 Spec／Standards 本地通过，五项 finding 全部关闭，零开放 finding。** R3 产品、非 editable 包、受影响回归、56项实际页面检查、两轮自身模板原件、11份公开JSON与2截图及清理均已独立核验。原R1／R2不通过和首轮 `request-changes` 保留。提交前同步本结论与记账清单；本候选自己的提交对象／必要 CI／独立明确 HTTPS仍待验，不登记精确交付终结。
+**当前最终结论：固定 C3b 候选 `3baa619096a2ff95e2a29aedf179f3c614af103e` 的精确交付门禁通过。** 完整30文件本地两轴通过，DE-S1–S5全部关闭，零开放 finding；R3实际页面、两轮模板完整读取、11份公开JSON与2截图、清理、精确Git／包／冻结对象与独立明确HTTPS均已核验。自己的官方run `42769849207`第三份原件为终态Success，两个job completed／success，七必要步骤全部success。原R1／R2不通过、首轮 `request-changes` 和前两份In progress原件继续保留；本结论只覆盖C3b，不宣告C3c–d、C4–C6或整个AC5完成。
 
 **R1 当时结论：暂不通过。** 下列四个问题已有固定源码复现或精确可达路径；原红及原件保持，R2 关闭依据见后文。
 
@@ -131,3 +131,44 @@ Spec 另复跑 S3/S4 的九项原探针全绿；Standards 直接执行固定快�
 两类手册、README及页面说明与实际字段／原文／固定完整包发布边界一致；配置请求不代表安装认证，库级修订不持有项目grant、不构成运行批准，C3c／C4／C5／C6继续另列。已读最终静态原日志与文档摘要：**12文档／243链接无缺失／98条手册命令parser通过**；该结果只证明静态路径与语法，不替代实际CLI或页面。之后审查状态记账更新应同步静态记录，未引入产品重测需求。
 
 **本地门禁终结：Spec／Standards通过，DE-S1–S5全部关闭，零开放finding，可按原授权普通提交本片。** 本候选尚未提交；精确Git对象／包／冻结身份、自己的必要CI与独立明确HTTPS仍待后续分别核验。C3a既有通过不替代本片，当前结论不声明整个C3或AC5已完成。
+
+## 精确提交对象续核：3baa619
+
+2026-11-10 **06:40:45 UTC**，本审直接读取固定提交 `3baa619096a2ff95e2a29aedf179f3c614af103e` 的Git对象，唯一父为原基线 `34afcc2cec5a38655cfc93513173d67bbc433c02`，tree为 `aa218a8d5d71beee4365cf3877e47e5dfabca061`。恰 **30个变更文件**逐一与 `ready-to-commit.json` 的SHA256相同，18份实际模板保护源也与此提交一致；核验时工作树干净。
+
+固定Git archive中的 **435个包文件**与R3 wheel、非editable安装和RECORD摘要／尺寸逐一一致，wheel仍为 `901f9f15d8f5cfc66d02615bc8454fa830ff0441f16301f83d06e499bd21e200`。**283冻结文件**的Git模式／blob及reference manifest与父对象不变，schema、pyproject和Portability CI也未变。13份公开文件的提交对象与已审投影原件一致，12份文档对象与最后静态检查记录完全匹配（243链接、98parser命令）。没有安装、回归或模型重跑；私有原件为 `independent/audit-committed.py`、`committed-audit.json`。
+
+已读普通commit与push原回执，均属于同一完整候选，未见本片推送失败。回执本身没有代替独立HTTPS读取或CI证据；以下续核始终读取固定3baa619对象，不使用后续C3c工作树作为其源身份。
+
+## 独立明确HTTPS与CI首份完整采样
+
+本审于 **06:40:46.218906 至 06:40:47.770526 UTC** 单独执行一次有界 `git ls-remote --refs`，实际URL为 `https://github.com/626619403/Ergora.git`，精确ref为 `refs/heads/refactor/architecture-foundations`。运行目录为非仓库的 `/`，清除继承Git环境，禁system／global配置与credential helper，仅允许HTTPS并禁SSH／HTTP。返回完整3baa619、退出0、stderr为空，原trace确认实际 `git-remote-https` 且没有SSH transport。stdout SHA256为 `d9abb2eccaff55a3d599ae6b2835d3164a653af75940befe7ba97c779aa1ae7c`，trace SHA256为 `4fd064c3caf17cd51ab539504d9357eab9a3e925f01dbd3a635a9dfecf8645a1`。**本候选独立明确HTTPS门禁通过。** 原命令与stdout／stderr／trace／JSON／日志保存在 `commit-closure/independent-snapshot-01/`。
+
+官方首份采样的五份原响应已独立重算字节和SHA256，并直接解析Actions原条目、run页、完整jobGroups和两个job页。采样范围为 **06:38:39.616724 至 06:38:48.919249 UTC**，精确绑定本候选3baa619、同分支、原Portability工作流及 [run42769849207](https://github.com/626619403/Ergora/actions/runs/42769849207)，触发为pushed。Actions状态为 `WORKFLOW_RUN_STATUS_IN_PROGRESS`，run页可见状态为 **In progress**；jobGroups为totalCount=2、hasMore=false。
+
+Windows `129674829026` 与Linux `129674829275` 均为 **in_progress／conclusion=null**，selectedJobId和矩阵版本与固定CI一致。七个必要步骤在这份原采样中都尚未得success、没有完成标记或日志URL。**本候选必要CI继续pending，不登记通过。** 这只是当时的一次完整采样，没有取消或重跑CI，也没有将其表述成当前终态。独立离线解析入口为 `independent/audit-ci.py`，结果为 `commit-closure/independent-snapshot-01/ci-audit.json`／`.log`；不沿用C3a的CI结论。
+
+## CI第三份终态原件与C3b最终门禁
+
+2026-11-10 **06:58:51 UTC**，本审离线复核 `commit-closure/snapshot-03/` 的五份官方原响应、原fetch脚本和 `ci-sample.json`／日志。五响应字节与SHA256逐一一致，三轮fetch脚本字节相同。本次只执行原件解析，没有新网络请求、CI操作、产品修改、安装或测试／模型重跑；此前本地、精确提交对象及独立HTTPS结论沿用各自原审计。
+
+官方响应采样范围为 **06:57:31.827317 至 06:57:42.491514 UTC**。独立解析Actions原run条目，确认完整 `3baa619096a2ff95e2a29aedf179f3c614af103e`、`refs/heads/refactor/architecture-foundations`、`.github/workflows/portability.yml` 和 **`42769849207`**，触发仍为pushed。原Actions状态为 `WORKFLOW_RUN_STATUS_COMPLETED`／`WORKFLOW_RUN_CONCLUSION_SUCCESS`；同run页有精确提交及Portability链接，可见状态为 **Success**。结论来自原HTML／JSON的独立解析，不继承作者summary的通过字段。
+
+完整jobGroups为totalCount=2、hasMore=false。Windows `129674829026`（windows-latest／Python3.12）与Linux `129674829275`（ubuntu-latest／Python3.11）均为 **completed／success**；两页selectedJobId与组内ID吻合，矩阵及必要步骤与固定候选的CI合同一致。
+
+|job|必要步骤独立原结论|
+|---|---|
+|Windows|Build and install wheel、Packaged reference identity、Native application regression、Windows PowerShell 5.1 installer and upgrade，四项全部success|
+|Linux|Build and install wheel、Packaged reference identity、Native application regression，三项全部success|
+
+七项都带job-completed标记，日志URL逐一绑定完整3baa619及对应job ID；两页没有failure／cancelled／timed_out步骤。Linux的PowerShell步骤为skipped，符合原CI仅Windows执行的条件，不属于Linux的三个必要步骤。**本候选自己的必要CI门禁通过：七项成功，零项未终结。** 首、二份原采样的In progress记录和前述首轮审查／红证据完整保留，没有改写历史或沿用C3a CI。
+
+|C3b最终门禁|独立结论|
+|---|---|
+|Spec／Standards及问题关闭|完整30文件本地通过；DE-S1–S5关闭，零开放finding|
+|实际旅程／模板／公开证据／清理|R3安装与实际页面、两轮完整模板读取、13份公开文件、11个owned HTTP／代理进程及8个浏览器会话清理已核|
+|精确提交／包／冻结对象|固定3baa619，30变更对象／435包文件／283冻结文件核验通过|
+|独立明确HTTPS|此前独立读取同完整候选通过，本轮没有新远端读取|
+|本候选必要CI|官方run42769849207终态Success；两job成功，七必要步骤成功|
+
+**固定C3b候选的精确交付通过。** 独立CI原件审计入口为 `independent/audit-ci.py`，原结果保存在 `commit-closure/independent-snapshot-03/ci-audit.json`／`.log`，终结摘要为同目录 `closure.json`。此段为固定提交的状态续记，不改变受审产品或提交对象，不覆盖C3c–d、C4–C6或整个AC5。

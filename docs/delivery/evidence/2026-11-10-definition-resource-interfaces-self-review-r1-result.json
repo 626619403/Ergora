@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "projection": "Formatted and machine-path-redacted evidence; original artifact SHA differs from this projection.",
+  "scope": "Original native structured result projected with machine paths redacted. Native result SHA is recorded separately from this formatted projection.",
+  "source_artifacts": {
+    "original_result": {
+      "artifact": "self-review-r1/public-original-result.json",
+      "bytes": 2881,
+      "sha256": "1ec4f023640458ebd178ce452d8035a0b5353d4b80bedbeeb25d09dea9cd0710"
+    }
+  },
+  "data": {
+    "original_result": {
+      "artifacts": {
+        "response": "**Spec — request changes**\n\n- **P2: Make the copied file writable before deletion.** At `src/ergora/definition_bundles.py:392`, the delete branch calls `target.unlink()` after adjusting only parent-directory permissions. On Windows, `copytree` preserves a read-only file’s attribute, and a writable parent does not permit deleting that file. A valid delete therefore fails during resource preview for both Agent and Workflow definitions, also preventing check/publication through CLI and HTTP. The smallest correction is to add owner-write permission to the private copied target before unlinking, as the write branch already does. Leave the original object untouched. The existing roundtrip test already constructs this trigger at `tests/test_definition_console.py:175` and requests deletion at line 188; validate it on Windows. This finding follows from source and Windows filesystem semantics; I did not reproduce it here.\n\n**Standards — no additional blocking finding**\n\n`DefinitionLibrary` retains staging, reads, finite operations, candidate matching and publication. Both use cases and CLI/HTTP remain thin. Existing tree identity, path checks, admission and backend owners are reused. The private operation algorithm is justified by the explicit write/delete/mkdir contract; no additional module or dependency is warranted.\n\nCandidate comparison binds the complete file identity and directory list. Directory checks occur under the original publication lock before library/object/index changes, including reuse of indexed or unindexed objects. Permission changes remain confined to copies. Execution and approval ownership is preserved.\n\nThe new tests exercise meaningful acceptance and publication failures. Both endpoint variants justify integration coverage. No CI workflow or redundant framework was added. Recorded costs are 183 passed/1 skipped in 70.94 seconds for source validation, 191 passed/1 skipped in 82.84 seconds for the installed package, and 81 CLI plus 37 HTTP calls in 47.56 seconds. File windows still perform full integrity reads; their response bound is not an IO bound.\n\nRead all listed ancestor instructions and both Skills, plus all 464,921 candidate bytes through continuous successful UTF-8 pages from offset 0 to `next_offset:null`. No base64 retries were needed. Candidate SHA256: `32949309be8339af99735190d33d71d39e978b2131037c15222ee0bd7e3336b1`.\n\nAttached validation was reviewed as evidence, not rerun. No code/services were executed or workspace files edited. This is the authorized Codex fallback review, without a model-independence or formal owner-approval claim. Commit, CI and HTTPS closure remain pending."
+      },
+      "decision": "request-changes",
+      "summary": "Request changes: deleting read-only resource files fails on Windows. Structural ownership and interface reuse are otherwise sound."
+    }
+  }
+}

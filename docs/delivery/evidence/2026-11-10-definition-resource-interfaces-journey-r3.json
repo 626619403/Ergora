@@ -1,0 +1,1683 @@
+{
+  "schema_version": 1,
+  "projection": "Formatted and machine-path-redacted evidence; original artifact SHA differs from this projection.",
+  "scope": "Three-domain six-definition actual installed isolated CLI and real HTTP; no browser, model backend, formal task or CPU/GPU experiment acceptance.",
+  "source_artifacts": {
+    "final": {
+      "artifact": "r3/journey/summary.json",
+      "bytes": 63245,
+      "sha256": "78920d38badd411ecb641248f1eb6f445d62189d14048f2ca82e23f6667a69d7"
+    }
+  },
+  "data": {
+    "final": {
+      "checked_at": "2026-11-10T07:41:06.229780+00:00",
+      "seconds": 49.046999162994325,
+      "installed_package": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/wheel-venv/lib/python3.12/site-packages/ergora/__init__.py",
+      "wheel_sha256": "1b74ada0caa05f2a1360fa76f7e5b50027ea8ae3fc0c7cdd1819bedf096c1a23",
+      "cli_calls": [
+        {
+          "arguments": [
+            "composition",
+            "show",
+            "ergora-governance-delivery",
+            "1.0.0"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.30496413307264447
+        },
+        {
+          "arguments": [
+            "composition",
+            "prepare-manifest",
+            "ergora-governance-delivery",
+            "1.0.0",
+            "--grant",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/repository-governance-grant.json",
+            "--directory",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/repository-governance-old-manifest"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 1.462320457212627
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "show",
+            "ergora-governance-mapper",
+            "1.0.0"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.27921696519479156
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "export",
+            "ergora-governance-mapper",
+            "1.0.0",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/repository-governance-agent-base"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.2877562907524407
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "import",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/repository-governance-agent-base"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.35184659296646714
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "show",
+            "ergora-governance-mapper",
+            "1.0.50"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.2625849391333759
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "revise",
+            "ergora-governance-mapper",
+            "1.0.50",
+            "--base-digest",
+            "6a0594aff83b18c85b4897ba3d937f226dc63d34c4e22e4e91590c5a19ee1c28",
+            "--document",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/repository-governance-agent.json",
+            "--resources",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/repository-governance-agent-changes",
+            "--preview-resources"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.5061378576792777
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "revise",
+            "ergora-governance-mapper",
+            "1.0.50",
+            "--base-digest",
+            "6a0594aff83b18c85b4897ba3d937f226dc63d34c4e22e4e91590c5a19ee1c28",
+            "--document",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/repository-governance-agent.json",
+            "--resources",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/repository-governance-agent-changes",
+            "--accept-candidate",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/repository-governance-agent-accepted.json",
+            "--check"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.4993895087391138
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "revise",
+            "ergora-governance-mapper",
+            "1.0.50",
+            "--base-digest",
+            "6a0594aff83b18c85b4897ba3d937f226dc63d34c4e22e4e91590c5a19ee1c28",
+            "--document",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/repository-governance-agent.yaml",
+            "--format",
+            "yaml",
+            "--resources",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/repository-governance-agent-changes",
+            "--accept-candidate",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/repository-governance-agent-accepted.json",
+            "--check"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.4912189580500126
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "revise",
+            "ergora-governance-mapper",
+            "1.0.50",
+            "--base-digest",
+            "6a0594aff83b18c85b4897ba3d937f226dc63d34c4e22e4e91590c5a19ee1c28",
+            "--document",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/repository-governance-agent.yaml",
+            "--format",
+            "yaml",
+            "--resources",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/repository-governance-agent-changes",
+            "--accept-candidate",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/repository-governance-agent-accepted.json"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.7084406800568104
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "show",
+            "ergora-governance-mapper",
+            "1.0.51"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.27764078928157687
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "export",
+            "ergora-governance-mapper",
+            "1.0.51",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/repository-governance-agent-export"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.3986419280990958
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "import",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/repository-governance-agent-export"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/roundtrip",
+          "code": 0,
+          "seconds": 0.39400611398741603
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "file",
+            "ergora-governance-mapper",
+            "1.0.51",
+            "extra.bin",
+            "--base-digest",
+            "050dabcc2f3c47d326df2e4be7221029e1437ff2ebe1496630a504ec26e661a0",
+            "--limit",
+            "3"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.2713582282885909
+        },
+        {
+          "arguments": [
+            "composition",
+            "show",
+            "ergora-governance-delivery",
+            "1.0.0"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.2674661888740957
+        },
+        {
+          "arguments": [
+            "composition",
+            "export",
+            "ergora-governance-delivery",
+            "1.0.0",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/repository-governance-workflow-base"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.2742972210980952
+        },
+        {
+          "arguments": [
+            "composition",
+            "import",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/repository-governance-workflow-base"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.47125759115442634
+        },
+        {
+          "arguments": [
+            "composition",
+            "show",
+            "ergora-governance-delivery",
+            "1.0.50"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.25866527296602726
+        },
+        {
+          "arguments": [
+            "composition",
+            "revise",
+            "ergora-governance-delivery",
+            "1.0.50",
+            "--base-digest",
+            "0192870336d0b6eb13f456c3aabfba567a894b3efb1a61a8f5ce450c5a43cbc7",
+            "--document",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/repository-governance-workflow.json",
+            "--resources",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/repository-governance-workflow-changes",
+            "--preview-resources"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.6364646889269352
+        },
+        {
+          "arguments": [
+            "composition",
+            "revise",
+            "ergora-governance-delivery",
+            "1.0.50",
+            "--base-digest",
+            "0192870336d0b6eb13f456c3aabfba567a894b3efb1a61a8f5ce450c5a43cbc7",
+            "--document",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/repository-governance-workflow.json",
+            "--resources",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/repository-governance-workflow-changes",
+            "--accept-candidate",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/repository-governance-workflow-accepted.json",
+            "--check"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.5236348821781576
+        },
+        {
+          "arguments": [
+            "composition",
+            "revise",
+            "ergora-governance-delivery",
+            "1.0.50",
+            "--base-digest",
+            "0192870336d0b6eb13f456c3aabfba567a894b3efb1a61a8f5ce450c5a43cbc7",
+            "--document",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/repository-governance-workflow.yaml",
+            "--format",
+            "yaml",
+            "--resources",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/repository-governance-workflow-changes",
+            "--accept-candidate",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/repository-governance-workflow-accepted.json",
+            "--check"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.5439087660051882
+        },
+        {
+          "arguments": [
+            "composition",
+            "revise",
+            "ergora-governance-delivery",
+            "1.0.50",
+            "--base-digest",
+            "0192870336d0b6eb13f456c3aabfba567a894b3efb1a61a8f5ce450c5a43cbc7",
+            "--document",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/repository-governance-workflow.yaml",
+            "--format",
+            "yaml",
+            "--resources",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/repository-governance-workflow-changes",
+            "--accept-candidate",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/repository-governance-workflow-accepted.json"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.8042069189250469
+        },
+        {
+          "arguments": [
+            "composition",
+            "show",
+            "ergora-governance-delivery",
+            "1.0.51"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.2538738213479519
+        },
+        {
+          "arguments": [
+            "composition",
+            "export",
+            "ergora-governance-delivery",
+            "1.0.51",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/repository-governance-workflow-export"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.3429728210903704
+        },
+        {
+          "arguments": [
+            "composition",
+            "import",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/repository-governance-workflow-export"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/roundtrip",
+          "code": 0,
+          "seconds": 0.4926133779808879
+        },
+        {
+          "arguments": [
+            "composition",
+            "file",
+            "ergora-governance-delivery",
+            "1.0.51",
+            "extra.bin",
+            "--base-digest",
+            "257f5ced26b2f3bd724fd8d9f0665d899a69ff702a263c5a3f85e7a085a8a9d6",
+            "--limit",
+            "3"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.27401595609262586
+        },
+        {
+          "arguments": [
+            "composition",
+            "verify-manifest",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/repository-governance-old-manifest"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.39600604586303234
+        },
+        {
+          "arguments": [
+            "composition",
+            "show",
+            "ergora-large-change-delivery",
+            "1.0.0"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.25629956321790814
+        },
+        {
+          "arguments": [
+            "composition",
+            "prepare-manifest",
+            "ergora-large-change-delivery",
+            "1.0.0",
+            "--grant",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/large-change-grant.json",
+            "--directory",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/large-change-old-manifest"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 1.7996557247824967
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "show",
+            "ergora-api-contract-author",
+            "1.0.0"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.249777321703732
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "export",
+            "ergora-api-contract-author",
+            "1.0.0",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/large-change-agent-base"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.28110776003450155
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "import",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/large-change-agent-base"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.33306205179542303
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "show",
+            "ergora-api-contract-author",
+            "1.0.50"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.2918399008922279
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "revise",
+            "ergora-api-contract-author",
+            "1.0.50",
+            "--base-digest",
+            "9e2e199b91229de6faafb80974feb9bc7e0ed9ba8bd4ea6e8d2e652de2c8453a",
+            "--document",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/large-change-agent.json",
+            "--resources",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/large-change-agent-changes",
+            "--preview-resources"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.5078696459531784
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "revise",
+            "ergora-api-contract-author",
+            "1.0.50",
+            "--base-digest",
+            "9e2e199b91229de6faafb80974feb9bc7e0ed9ba8bd4ea6e8d2e652de2c8453a",
+            "--document",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/large-change-agent.json",
+            "--resources",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/large-change-agent-changes",
+            "--accept-candidate",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/large-change-agent-accepted.json",
+            "--check"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.4712087628431618
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "revise",
+            "ergora-api-contract-author",
+            "1.0.50",
+            "--base-digest",
+            "9e2e199b91229de6faafb80974feb9bc7e0ed9ba8bd4ea6e8d2e652de2c8453a",
+            "--document",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/large-change-agent.yaml",
+            "--format",
+            "yaml",
+            "--resources",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/large-change-agent-changes",
+            "--accept-candidate",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/large-change-agent-accepted.json",
+            "--check"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.4953470276668668
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "revise",
+            "ergora-api-contract-author",
+            "1.0.50",
+            "--base-digest",
+            "9e2e199b91229de6faafb80974feb9bc7e0ed9ba8bd4ea6e8d2e652de2c8453a",
+            "--document",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/large-change-agent.yaml",
+            "--format",
+            "yaml",
+            "--resources",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/large-change-agent-changes",
+            "--accept-candidate",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/large-change-agent-accepted.json"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.7314644209109247
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "show",
+            "ergora-api-contract-author",
+            "1.0.51"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.29027019813656807
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "export",
+            "ergora-api-contract-author",
+            "1.0.51",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/large-change-agent-export"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.37507983623072505
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "import",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/large-change-agent-export"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/roundtrip",
+          "code": 0,
+          "seconds": 0.38095777994021773
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "file",
+            "ergora-api-contract-author",
+            "1.0.51",
+            "extra.bin",
+            "--base-digest",
+            "b3059df219ccab4997997b1bd61dc1e0871447ee007e42adc832bcf2598ba4bd",
+            "--limit",
+            "3"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.266685884911567
+        },
+        {
+          "arguments": [
+            "composition",
+            "show",
+            "ergora-large-change-delivery",
+            "1.0.0"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.2500610719434917
+        },
+        {
+          "arguments": [
+            "composition",
+            "export",
+            "ergora-large-change-delivery",
+            "1.0.0",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/large-change-workflow-base"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.27515156799927354
+        },
+        {
+          "arguments": [
+            "composition",
+            "import",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/large-change-workflow-base"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.4667813959531486
+        },
+        {
+          "arguments": [
+            "composition",
+            "show",
+            "ergora-large-change-delivery",
+            "1.0.50"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.2487614150159061
+        },
+        {
+          "arguments": [
+            "composition",
+            "revise",
+            "ergora-large-change-delivery",
+            "1.0.50",
+            "--base-digest",
+            "90438e88411d888885ddab775bbff0ee954f4f39ffe056bdc90b69a46d660dad",
+            "--document",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/large-change-workflow.json",
+            "--resources",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/large-change-workflow-changes",
+            "--preview-resources"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.5667573837563396
+        },
+        {
+          "arguments": [
+            "composition",
+            "revise",
+            "ergora-large-change-delivery",
+            "1.0.50",
+            "--base-digest",
+            "90438e88411d888885ddab775bbff0ee954f4f39ffe056bdc90b69a46d660dad",
+            "--document",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/large-change-workflow.json",
+            "--resources",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/large-change-workflow-changes",
+            "--accept-candidate",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/large-change-workflow-accepted.json",
+            "--check"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.5079485112801194
+        },
+        {
+          "arguments": [
+            "composition",
+            "revise",
+            "ergora-large-change-delivery",
+            "1.0.50",
+            "--base-digest",
+            "90438e88411d888885ddab775bbff0ee954f4f39ffe056bdc90b69a46d660dad",
+            "--document",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/large-change-workflow.yaml",
+            "--format",
+            "yaml",
+            "--resources",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/large-change-workflow-changes",
+            "--accept-candidate",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/large-change-workflow-accepted.json",
+            "--check"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.5562657630071044
+        },
+        {
+          "arguments": [
+            "composition",
+            "revise",
+            "ergora-large-change-delivery",
+            "1.0.50",
+            "--base-digest",
+            "90438e88411d888885ddab775bbff0ee954f4f39ffe056bdc90b69a46d660dad",
+            "--document",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/large-change-workflow.yaml",
+            "--format",
+            "yaml",
+            "--resources",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/large-change-workflow-changes",
+            "--accept-candidate",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/large-change-workflow-accepted.json"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.8081378508359194
+        },
+        {
+          "arguments": [
+            "composition",
+            "show",
+            "ergora-large-change-delivery",
+            "1.0.51"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.26547928992658854
+        },
+        {
+          "arguments": [
+            "composition",
+            "export",
+            "ergora-large-change-delivery",
+            "1.0.51",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/large-change-workflow-export"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.3643878437578678
+        },
+        {
+          "arguments": [
+            "composition",
+            "import",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/large-change-workflow-export"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/roundtrip",
+          "code": 0,
+          "seconds": 0.525493246037513
+        },
+        {
+          "arguments": [
+            "composition",
+            "file",
+            "ergora-large-change-delivery",
+            "1.0.51",
+            "extra.bin",
+            "--base-digest",
+            "e2dd980e1ddd01e56dc873b009fe63731da6ae0ece1acfe899fdbb4b0d8bcfe0",
+            "--limit",
+            "3"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.26136565394699574
+        },
+        {
+          "arguments": [
+            "composition",
+            "verify-manifest",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/large-change-old-manifest"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.4025973277166486
+        },
+        {
+          "arguments": [
+            "composition",
+            "show",
+            "ergora-training-proposal",
+            "1.0.0"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.2536041056737304
+        },
+        {
+          "arguments": [
+            "composition",
+            "prepare-manifest",
+            "ergora-training-proposal",
+            "1.0.0",
+            "--grant",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/training-optimization-grant.json",
+            "--directory",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/training-optimization-old-manifest"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.9465691871009767
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "show",
+            "ergora-kernel-designer",
+            "1.0.0"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.24830895196646452
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "export",
+            "ergora-kernel-designer",
+            "1.0.0",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/training-optimization-agent-base"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.2947555701248348
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "import",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/training-optimization-agent-base"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.3486191229894757
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "show",
+            "ergora-kernel-designer",
+            "1.0.50"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.26802406599745154
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "revise",
+            "ergora-kernel-designer",
+            "1.0.50",
+            "--base-digest",
+            "81ad9c1e19d23ef48002f68b0d89e3b573301a16f3def4daa14fda50cd91a784",
+            "--document",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/training-optimization-agent.json",
+            "--resources",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/training-optimization-agent-changes",
+            "--preview-resources"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.5190994022414088
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "revise",
+            "ergora-kernel-designer",
+            "1.0.50",
+            "--base-digest",
+            "81ad9c1e19d23ef48002f68b0d89e3b573301a16f3def4daa14fda50cd91a784",
+            "--document",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/training-optimization-agent.json",
+            "--resources",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/training-optimization-agent-changes",
+            "--accept-candidate",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/training-optimization-agent-accepted.json",
+            "--check"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.512450308073312
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "revise",
+            "ergora-kernel-designer",
+            "1.0.50",
+            "--base-digest",
+            "81ad9c1e19d23ef48002f68b0d89e3b573301a16f3def4daa14fda50cd91a784",
+            "--document",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/training-optimization-agent.yaml",
+            "--format",
+            "yaml",
+            "--resources",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/training-optimization-agent-changes",
+            "--accept-candidate",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/training-optimization-agent-accepted.json",
+            "--check"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.4835892943665385
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "revise",
+            "ergora-kernel-designer",
+            "1.0.50",
+            "--base-digest",
+            "81ad9c1e19d23ef48002f68b0d89e3b573301a16f3def4daa14fda50cd91a784",
+            "--document",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/training-optimization-agent.yaml",
+            "--format",
+            "yaml",
+            "--resources",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/training-optimization-agent-changes",
+            "--accept-candidate",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/training-optimization-agent-accepted.json"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.6905971588566899
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "show",
+            "ergora-kernel-designer",
+            "1.0.51"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.262471959926188
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "export",
+            "ergora-kernel-designer",
+            "1.0.51",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/training-optimization-agent-export"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.3681645169854164
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "import",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/training-optimization-agent-export"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/roundtrip",
+          "code": 0,
+          "seconds": 0.4006881429813802
+        },
+        {
+          "arguments": [
+            "agent",
+            "definition",
+            "file",
+            "ergora-kernel-designer",
+            "1.0.51",
+            "extra.bin",
+            "--base-digest",
+            "c8e4a84f91935c3f60414edd7b451eb1cfcffc13f77ea07f0b6f69d7a464e51d",
+            "--limit",
+            "3"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.26868340000510216
+        },
+        {
+          "arguments": [
+            "composition",
+            "show",
+            "ergora-training-proposal",
+            "1.0.0"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.25286876456812024
+        },
+        {
+          "arguments": [
+            "composition",
+            "export",
+            "ergora-training-proposal",
+            "1.0.0",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/training-optimization-workflow-base"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.27579275611788034
+        },
+        {
+          "arguments": [
+            "composition",
+            "import",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/training-optimization-workflow-base"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.3999904873780906
+        },
+        {
+          "arguments": [
+            "composition",
+            "show",
+            "ergora-training-proposal",
+            "1.0.50"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.2633782778866589
+        },
+        {
+          "arguments": [
+            "composition",
+            "revise",
+            "ergora-training-proposal",
+            "1.0.50",
+            "--base-digest",
+            "61e7f3bc08c2502387a7ef74a8679740e5ac4d9dddb1f9eed46540c996e8a7b7",
+            "--document",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/training-optimization-workflow.json",
+            "--resources",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/training-optimization-workflow-changes",
+            "--preview-resources"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.6162003190256655
+        },
+        {
+          "arguments": [
+            "composition",
+            "revise",
+            "ergora-training-proposal",
+            "1.0.50",
+            "--base-digest",
+            "61e7f3bc08c2502387a7ef74a8679740e5ac4d9dddb1f9eed46540c996e8a7b7",
+            "--document",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/training-optimization-workflow.json",
+            "--resources",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/training-optimization-workflow-changes",
+            "--accept-candidate",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/training-optimization-workflow-accepted.json",
+            "--check"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.503624688833952
+        },
+        {
+          "arguments": [
+            "composition",
+            "revise",
+            "ergora-training-proposal",
+            "1.0.50",
+            "--base-digest",
+            "61e7f3bc08c2502387a7ef74a8679740e5ac4d9dddb1f9eed46540c996e8a7b7",
+            "--document",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/training-optimization-workflow.yaml",
+            "--format",
+            "yaml",
+            "--resources",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/training-optimization-workflow-changes",
+            "--accept-candidate",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/training-optimization-workflow-accepted.json",
+            "--check"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.4981180438771844
+        },
+        {
+          "arguments": [
+            "composition",
+            "revise",
+            "ergora-training-proposal",
+            "1.0.50",
+            "--base-digest",
+            "61e7f3bc08c2502387a7ef74a8679740e5ac4d9dddb1f9eed46540c996e8a7b7",
+            "--document",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/training-optimization-workflow.yaml",
+            "--format",
+            "yaml",
+            "--resources",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/training-optimization-workflow-changes",
+            "--accept-candidate",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/training-optimization-workflow-accepted.json"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.7702067801728845
+        },
+        {
+          "arguments": [
+            "composition",
+            "show",
+            "ergora-training-proposal",
+            "1.0.51"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.2673176606185734
+        },
+        {
+          "arguments": [
+            "composition",
+            "export",
+            "ergora-training-proposal",
+            "1.0.51",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/training-optimization-workflow-export"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.36061688140034676
+        },
+        {
+          "arguments": [
+            "composition",
+            "import",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/training-optimization-workflow-export"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/roundtrip",
+          "code": 0,
+          "seconds": 0.45005015190690756
+        },
+        {
+          "arguments": [
+            "composition",
+            "file",
+            "ergora-training-proposal",
+            "1.0.51",
+            "extra.bin",
+            "--base-digest",
+            "a23a2323e6ea595625f728566f2799cc7d135404f0aa588999799a0757551430",
+            "--limit",
+            "3"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.272056442219764
+        },
+        {
+          "arguments": [
+            "composition",
+            "verify-manifest",
+            "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/training-optimization-old-manifest"
+          ],
+          "home": "<repository>/.ergora/checks/ac5-definition-resource-interfaces/r3/journey/control",
+          "code": 0,
+          "seconds": 0.3216641084291041
+        }
+      ],
+      "http_calls": [
+        {
+          "path": "/api/agent-definitions/ergora-governance-mapper/1.0.50/revisions/preview-resources",
+          "method": "POST",
+          "status": 200,
+          "seconds": 0.2409320082515478,
+          "request_bytes": 2640,
+          "response_sha256": "bef9605c42d08f9a77ac73ecaeac31e7d9fbfe3f02f393a83c7a62cbba66373f"
+        },
+        {
+          "path": "/api/agent-definitions/ergora-governance-mapper/1.0.50/revisions/check",
+          "method": "POST",
+          "status": 200,
+          "seconds": 0.22020910028368235,
+          "request_bytes": 3198,
+          "response_sha256": "ad084d66a31ed4238d902aefd409cd82cc5ec14999564cf7373ad7ee757971fc"
+        },
+        {
+          "path": "/api/agent-definitions/ergora-governance-mapper/1.0.50/revisions",
+          "method": "POST",
+          "status": 400,
+          "seconds": 0.21503118705004454,
+          "request_bytes": 3186,
+          "response_sha256": "68506f0bd0984b77a95a4c64f06daa436b9c408fc1a16dfa0443190a86e43a31"
+        },
+        {
+          "path": "/api/agent-definitions/ergora-governance-mapper/1.0.50/revisions",
+          "method": "POST",
+          "status": 200,
+          "seconds": 0.36668925639241934,
+          "request_bytes": 3198,
+          "response_sha256": "a485d6e5264f75d1926b8033bb831722c60dfe5aa7dc2ee9f4586d29c332fede"
+        },
+        {
+          "path": "/api/agent-definitions/ergora-governance-mapper/1.0.51/files/read",
+          "method": "POST",
+          "status": 200,
+          "seconds": 0.02294518332928419,
+          "request_bytes": 116,
+          "response_sha256": "2ec441aa4b43e62a3de1559d41186e807eb2d1e9e59493d736401511e6f4c14b"
+        },
+        {
+          "path": "/api/agent-definitions/ergora-governance-mapper/1.0.51/files/read",
+          "method": "POST",
+          "status": 200,
+          "seconds": 0.02383889304473996,
+          "request_bytes": 117,
+          "response_sha256": "900cc243ef4b8cf06f500f113cbd38e8bd1b0cd0fa60c58d8a93a77614f1a846"
+        },
+        {
+          "path": "/api/workflow-definitions/ergora-governance-delivery/1.0.50/revisions/preview-resources",
+          "method": "POST",
+          "status": 200,
+          "seconds": 0.28374407486990094,
+          "request_bytes": 3163,
+          "response_sha256": "46f7eb4a80c448010ba10c2414319e6378abebe81a8163636a6ac584add19802"
+        },
+        {
+          "path": "/api/workflow-definitions/ergora-governance-delivery/1.0.50/revisions/check",
+          "method": "POST",
+          "status": 200,
+          "seconds": 0.28871188405901194,
+          "request_bytes": 3710,
+          "response_sha256": "e73308b696ebcd2e350e4d9895fa54b4aff81507e11cce1ed1194c0989b4058f"
+        },
+        {
+          "path": "/api/workflow-definitions/ergora-governance-delivery/1.0.50/revisions",
+          "method": "POST",
+          "status": 400,
+          "seconds": 0.18700489774346352,
+          "request_bytes": 3698,
+          "response_sha256": "6f2c326c614adf44c7ec98b3e4cc23195e897a8fd389e6084c2da1fb10b0b484"
+        },
+        {
+          "path": "/api/workflow-definitions/ergora-governance-delivery/1.0.50/revisions",
+          "method": "POST",
+          "status": 200,
+          "seconds": 0.44559474429115653,
+          "request_bytes": 3710,
+          "response_sha256": "4108c70fe47a44018e7c92f80933deafe2b7bf30152f5710d608743de737302e"
+        },
+        {
+          "path": "/api/workflow-definitions/ergora-governance-delivery/1.0.51/files/read",
+          "method": "POST",
+          "status": 200,
+          "seconds": 0.02249256893992424,
+          "request_bytes": 116,
+          "response_sha256": "78ce62981f61705ff9393f92d4906688dde8662ac72c3d83f106c4aa91710e29"
+        },
+        {
+          "path": "/api/workflow-definitions/ergora-governance-delivery/1.0.51/files/read",
+          "method": "POST",
+          "status": 200,
+          "seconds": 0.029889486730098724,
+          "request_bytes": 117,
+          "response_sha256": "0eb9536465e3c2a1b80798c241d8d326622e75704f6e6ec928d98b4684210772"
+        },
+        {
+          "path": "/api/agent-definitions/ergora-api-contract-author/1.0.50/revisions/preview-resources",
+          "method": "POST",
+          "status": 200,
+          "seconds": 0.21988624706864357,
+          "request_bytes": 2574,
+          "response_sha256": "feb7ed29ddcd4f4a3720fd0b37eedb42792e2b58956e23eecf956400bbf9c218"
+        },
+        {
+          "path": "/api/agent-definitions/ergora-api-contract-author/1.0.50/revisions/check",
+          "method": "POST",
+          "status": 200,
+          "seconds": 0.2236111331731081,
+          "request_bytes": 3134,
+          "response_sha256": "96ea54d264fcf35f23061fe15b3031d43e8671313c8cb42c8abc0fe5a97e3f98"
+        },
+        {
+          "path": "/api/agent-definitions/ergora-api-contract-author/1.0.50/revisions",
+          "method": "POST",
+          "status": 400,
+          "seconds": 0.2235350301489234,
+          "request_bytes": 3122,
+          "response_sha256": "68506f0bd0984b77a95a4c64f06daa436b9c408fc1a16dfa0443190a86e43a31"
+        },
+        {
+          "path": "/api/agent-definitions/ergora-api-contract-author/1.0.50/revisions",
+          "method": "POST",
+          "status": 200,
+          "seconds": 0.3872224376536906,
+          "request_bytes": 3134,
+          "response_sha256": "f594c76eaf2917adf08c5dd47030e1d6f19a5ded056b6e3901e7bdcbf5a68f29"
+        },
+        {
+          "path": "/api/agent-definitions/ergora-api-contract-author/1.0.51/files/read",
+          "method": "POST",
+          "status": 200,
+          "seconds": 0.02397520374506712,
+          "request_bytes": 116,
+          "response_sha256": "ba9e5fab1b6e31d3916cc0b5aa0e0977269833dbb37a58d6154cebf7124dceaf"
+        },
+        {
+          "path": "/api/agent-definitions/ergora-api-contract-author/1.0.51/files/read",
+          "method": "POST",
+          "status": 200,
+          "seconds": 0.022642524912953377,
+          "request_bytes": 117,
+          "response_sha256": "d27d42f80c224eab3408c889ca47063d979c2f369c9de62dd3dae3707412927a"
+        },
+        {
+          "path": "/api/workflow-definitions/ergora-large-change-delivery/1.0.50/revisions/preview-resources",
+          "method": "POST",
+          "status": 200,
+          "seconds": 0.2775672059506178,
+          "request_bytes": 3126,
+          "response_sha256": "12da723f92ded7e359624c2108636016d54beca2de215fa42bcacb30c9952fcc"
+        },
+        {
+          "path": "/api/workflow-definitions/ergora-large-change-delivery/1.0.50/revisions/check",
+          "method": "POST",
+          "status": 200,
+          "seconds": 0.28139694780111313,
+          "request_bytes": 3673,
+          "response_sha256": "29dac7f8a1666151c52d24df7c89b200cfa1489aec0cdf0b433dd0d7a3525e6e"
+        },
+        {
+          "path": "/api/workflow-definitions/ergora-large-change-delivery/1.0.50/revisions",
+          "method": "POST",
+          "status": 400,
+          "seconds": 0.19302732404321432,
+          "request_bytes": 3661,
+          "response_sha256": "6f2c326c614adf44c7ec98b3e4cc23195e897a8fd389e6084c2da1fb10b0b484"
+        },
+        {
+          "path": "/api/workflow-definitions/ergora-large-change-delivery/1.0.50/revisions",
+          "method": "POST",
+          "status": 200,
+          "seconds": 0.4786972487345338,
+          "request_bytes": 3673,
+          "response_sha256": "0e0cb337b19852aece8b7de50a08b60ee4793469102088308c8d71d90517fb49"
+        },
+        {
+          "path": "/api/workflow-definitions/ergora-large-change-delivery/1.0.51/files/read",
+          "method": "POST",
+          "status": 200,
+          "seconds": 0.021635883953422308,
+          "request_bytes": 116,
+          "response_sha256": "8acbba1887aeae36b354bc34b5fb885d7a4c14a59055a511ef58418c293cbefa"
+        },
+        {
+          "path": "/api/workflow-definitions/ergora-large-change-delivery/1.0.51/files/read",
+          "method": "POST",
+          "status": 200,
+          "seconds": 0.020984229166060686,
+          "request_bytes": 117,
+          "response_sha256": "1b080759c24f6afd0cb59681834daefba9b8347920e887c2c8385dfce2f69a00"
+        },
+        {
+          "path": "/api/agent-definitions/ergora-kernel-designer/1.0.50/revisions/preview-resources",
+          "method": "POST",
+          "status": 200,
+          "seconds": 0.2934366101399064,
+          "request_bytes": 2620,
+          "response_sha256": "d02044a5d8202125e862d1bde30fe5a1dc4f33bd590b963ab06488a62cf6ee4d"
+        },
+        {
+          "path": "/api/agent-definitions/ergora-kernel-designer/1.0.50/revisions/check",
+          "method": "POST",
+          "status": 200,
+          "seconds": 0.2315978780388832,
+          "request_bytes": 3176,
+          "response_sha256": "1f729d4cafe350abe1689115f18204eae6b43a2ecbca38ee2e67177d8c4f256c"
+        },
+        {
+          "path": "/api/agent-definitions/ergora-kernel-designer/1.0.50/revisions",
+          "method": "POST",
+          "status": 400,
+          "seconds": 0.2183856712654233,
+          "request_bytes": 3164,
+          "response_sha256": "68506f0bd0984b77a95a4c64f06daa436b9c408fc1a16dfa0443190a86e43a31"
+        },
+        {
+          "path": "/api/agent-definitions/ergora-kernel-designer/1.0.50/revisions",
+          "method": "POST",
+          "status": 200,
+          "seconds": 0.34747802931815386,
+          "request_bytes": 3176,
+          "response_sha256": "abb3d659ab1d9711b56a1af4e5adaeefcf70e7ae64aa725565d35c93284fd813"
+        },
+        {
+          "path": "/api/agent-definitions/ergora-kernel-designer/1.0.51/files/read",
+          "method": "POST",
+          "status": 200,
+          "seconds": 0.02302228333428502,
+          "request_bytes": 116,
+          "response_sha256": "5c3ee898df6f11136208548fda21ecca10289013c13c849a8a813193e740ab6d"
+        },
+        {
+          "path": "/api/agent-definitions/ergora-kernel-designer/1.0.51/files/read",
+          "method": "POST",
+          "status": 200,
+          "seconds": 0.02081515919417143,
+          "request_bytes": 117,
+          "response_sha256": "d78d55296eef3f2ce082f8295c4f6f2ba3a9b0569bee1b9ac576a542b25eddd4"
+        },
+        {
+          "path": "/api/workflow-definitions/ergora-training-proposal/1.0.50/revisions/preview-resources",
+          "method": "POST",
+          "status": 200,
+          "seconds": 0.260260087903589,
+          "request_bytes": 3605,
+          "response_sha256": "4c6b2a66112209220e499b0a3586b1c33ed692667eaea7801337e563e610b013"
+        },
+        {
+          "path": "/api/workflow-definitions/ergora-training-proposal/1.0.50/revisions/check",
+          "method": "POST",
+          "status": 200,
+          "seconds": 0.27046327432617545,
+          "request_bytes": 4152,
+          "response_sha256": "9071190705a1cc395992b1fc48aa59c4a09e1b48fbabe9740b350f33e2cedb1c"
+        },
+        {
+          "path": "/api/workflow-definitions/ergora-training-proposal/1.0.50/revisions",
+          "method": "POST",
+          "status": 400,
+          "seconds": 0.2801082609221339,
+          "request_bytes": 4140,
+          "response_sha256": "6f2c326c614adf44c7ec98b3e4cc23195e897a8fd389e6084c2da1fb10b0b484"
+        },
+        {
+          "path": "/api/workflow-definitions/ergora-training-proposal/1.0.50/revisions",
+          "method": "POST",
+          "status": 200,
+          "seconds": 0.42139956587925553,
+          "request_bytes": 4152,
+          "response_sha256": "7178f98b61725eac29ca3aa740ebaad400b3bdd95cec4c5b01f550a7c1f5e959"
+        },
+        {
+          "path": "/api/workflow-definitions/ergora-training-proposal/1.0.51/files/read",
+          "method": "POST",
+          "status": 200,
+          "seconds": 0.02265107585117221,
+          "request_bytes": 116,
+          "response_sha256": "5552cc3fc853ebd3361b618eabb2cf39fe06f932074a9f6afbac910acd12a5d6"
+        },
+        {
+          "path": "/api/workflow-definitions/ergora-training-proposal/1.0.51/files/read",
+          "method": "POST",
+          "status": 200,
+          "seconds": 0.022786641027778387,
+          "request_bytes": 117,
+          "response_sha256": "633dffc9890d81c1d87233a0365eb2979ea0fde7dc29d33f7858927a973ad2c3"
+        },
+        {
+          "path": "/api/agent-definitions/anything/1.0.0/revisions/preview-resources",
+          "method": "POST",
+          "status": 413,
+          "seconds": 0.012416203040629625,
+          "request_bytes": 4000014,
+          "response_sha256": "50a4efd00c0983e57a43057ddfb146d0e7025685a9e58d87bd0455bcb2f838a4"
+        }
+      ],
+      "observations": [
+        {
+          "domain": "repository-governance",
+          "kind": "agent",
+          "base_digest": "6a0594aff83b18c85b4897ba3d937f226dc63d34c4e22e4e91590c5a19ee1c28",
+          "digest": "050dabcc2f3c47d326df2e4be7221029e1437ff2ebe1496630a504ec26e661a0",
+          "candidate_directories": [
+            "context",
+            "kept",
+            "kept/empty",
+            "skills",
+            "skills/ergora-governance-mapper",
+            "skills/revision-added-agent",
+            "skills/revision-added-agent/references",
+            "skills/revision-added-agent/references/new",
+            "skills/revision-added-agent/references/new/nested",
+            "skills/revision-added-agent/references/new/nested/empty",
+            "skills/revision-existing-agent",
+            "skills/revision-existing-agent/references",
+            "skills/revision-existing-agent/references/empty"
+          ],
+          "cli_http_json_yaml_same_candidate": true,
+          "check_does_not_publish": true,
+          "changed_attachment_rejected": true,
+          "explicit_publish_same_retry": true,
+          "all_written_bytes_equal": true,
+          "old_tree_modes_preserved": true,
+          "complete_export_import": true,
+          "binary_windows_reassembled": true
+        },
+        {
+          "domain": "repository-governance",
+          "kind": "workflow",
+          "base_digest": "0192870336d0b6eb13f456c3aabfba567a894b3efb1a61a8f5ce450c5a43cbc7",
+          "digest": "257f5ced26b2f3bd724fd8d9f0665d899a69ff702a263c5a3f85e7a085a8a9d6",
+          "candidate_directories": [
+            "context",
+            "kept",
+            "kept/empty",
+            "skills",
+            "skills/revision-added-workflow",
+            "skills/revision-added-workflow/references",
+            "skills/revision-added-workflow/references/new",
+            "skills/revision-added-workflow/references/new/nested",
+            "skills/revision-added-workflow/references/new/nested/empty",
+            "skills/revision-existing-workflow",
+            "skills/revision-existing-workflow/references",
+            "skills/revision-existing-workflow/references/empty"
+          ],
+          "cli_http_json_yaml_same_candidate": true,
+          "check_does_not_publish": true,
+          "changed_attachment_rejected": true,
+          "explicit_publish_same_retry": true,
+          "all_written_bytes_equal": true,
+          "old_tree_modes_preserved": true,
+          "complete_export_import": true,
+          "binary_windows_reassembled": true
+        },
+        {
+          "domain": "large-change",
+          "kind": "agent",
+          "base_digest": "9e2e199b91229de6faafb80974feb9bc7e0ed9ba8bd4ea6e8d2e652de2c8453a",
+          "digest": "b3059df219ccab4997997b1bd61dc1e0871447ee007e42adc832bcf2598ba4bd",
+          "candidate_directories": [
+            "context",
+            "kept",
+            "kept/empty",
+            "skills",
+            "skills/ergora-api-contract-author",
+            "skills/revision-added-agent",
+            "skills/revision-added-agent/references",
+            "skills/revision-added-agent/references/new",
+            "skills/revision-added-agent/references/new/nested",
+            "skills/revision-added-agent/references/new/nested/empty",
+            "skills/revision-existing-agent",
+            "skills/revision-existing-agent/references",
+            "skills/revision-existing-agent/references/empty"
+          ],
+          "cli_http_json_yaml_same_candidate": true,
+          "check_does_not_publish": true,
+          "changed_attachment_rejected": true,
+          "explicit_publish_same_retry": true,
+          "all_written_bytes_equal": true,
+          "old_tree_modes_preserved": true,
+          "complete_export_import": true,
+          "binary_windows_reassembled": true
+        },
+        {
+          "domain": "large-change",
+          "kind": "workflow",
+          "base_digest": "90438e88411d888885ddab775bbff0ee954f4f39ffe056bdc90b69a46d660dad",
+          "digest": "e2dd980e1ddd01e56dc873b009fe63731da6ae0ece1acfe899fdbb4b0d8bcfe0",
+          "candidate_directories": [
+            "context",
+            "kept",
+            "kept/empty",
+            "skills",
+            "skills/revision-added-workflow",
+            "skills/revision-added-workflow/references",
+            "skills/revision-added-workflow/references/new",
+            "skills/revision-added-workflow/references/new/nested",
+            "skills/revision-added-workflow/references/new/nested/empty",
+            "skills/revision-existing-workflow",
+            "skills/revision-existing-workflow/references",
+            "skills/revision-existing-workflow/references/empty"
+          ],
+          "cli_http_json_yaml_same_candidate": true,
+          "check_does_not_publish": true,
+          "changed_attachment_rejected": true,
+          "explicit_publish_same_retry": true,
+          "all_written_bytes_equal": true,
+          "old_tree_modes_preserved": true,
+          "complete_export_import": true,
+          "binary_windows_reassembled": true
+        },
+        {
+          "domain": "training-optimization",
+          "kind": "agent",
+          "base_digest": "81ad9c1e19d23ef48002f68b0d89e3b573301a16f3def4daa14fda50cd91a784",
+          "digest": "c8e4a84f91935c3f60414edd7b451eb1cfcffc13f77ea07f0b6f69d7a464e51d",
+          "candidate_directories": [
+            "context",
+            "kept",
+            "kept/empty",
+            "skills",
+            "skills/ergora-kernel-designer",
+            "skills/revision-added-agent",
+            "skills/revision-added-agent/references",
+            "skills/revision-added-agent/references/new",
+            "skills/revision-added-agent/references/new/nested",
+            "skills/revision-added-agent/references/new/nested/empty",
+            "skills/revision-existing-agent",
+            "skills/revision-existing-agent/references",
+            "skills/revision-existing-agent/references/empty"
+          ],
+          "cli_http_json_yaml_same_candidate": true,
+          "check_does_not_publish": true,
+          "changed_attachment_rejected": true,
+          "explicit_publish_same_retry": true,
+          "all_written_bytes_equal": true,
+          "old_tree_modes_preserved": true,
+          "complete_export_import": true,
+          "binary_windows_reassembled": true
+        },
+        {
+          "domain": "training-optimization",
+          "kind": "workflow",
+          "base_digest": "61e7f3bc08c2502387a7ef74a8679740e5ac4d9dddb1f9eed46540c996e8a7b7",
+          "digest": "a23a2323e6ea595625f728566f2799cc7d135404f0aa588999799a0757551430",
+          "candidate_directories": [
+            "context",
+            "kept",
+            "kept/empty",
+            "skills",
+            "skills/revision-added-workflow",
+            "skills/revision-added-workflow/references",
+            "skills/revision-added-workflow/references/new",
+            "skills/revision-added-workflow/references/new/nested",
+            "skills/revision-added-workflow/references/new/nested/empty",
+            "skills/revision-existing-workflow",
+            "skills/revision-existing-workflow/references",
+            "skills/revision-existing-workflow/references/empty"
+          ],
+          "cli_http_json_yaml_same_candidate": true,
+          "check_does_not_publish": true,
+          "changed_attachment_rejected": true,
+          "explicit_publish_same_retry": true,
+          "all_written_bytes_equal": true,
+          "old_tree_modes_preserved": true,
+          "complete_export_import": true,
+          "binary_windows_reassembled": true
+        }
+      ],
+      "old_manifests_preserved": true,
+      "scope": "Actual isolated installed CLI and real HTTP in three domains, six definitions, no browser changes, backend calls, formal tasks or training/GPU acceptance."
+    }
+  }
+}

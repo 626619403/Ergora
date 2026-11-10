@@ -228,11 +228,22 @@ ergora composition revise kernel-delivery 1.0.0 --base-digest BASE_DIGEST --docu
 ergora composition revise kernel-delivery 1.0.0 --base-digest BASE_DIGEST --document ./new-workflow.json
 ```
 
-`--check` 不发布版本；省略时才沿原库发布。两者都会复制完整原包，只用 UTF-8、排序键、两空格缩进和末尾换行重写 `workflow.json`；返回候选身份、固定 `base` 和 `published`。指令、上下文、完整 Skill 树、未声明文件及空目录保持。资源文件修改继续使用 export/edit/check/import；此入口接受完整 JSON 正文，也可用 `--format yaml` 读取 YAML；页面操作见下文。
+`--check` 不发布版本；省略时才沿原库发布。两者都会复制完整原包；没有资源参数时只用 UTF-8、排序键、两空格缩进和末尾换行重写 `workflow.json`，返回候选身份、固定 `base` 和 `published`。指令、上下文、完整 Skill 树、未声明文件及空目录保持。资源文件修改可使用下文的资源修订或 export/edit/check/import；此入口接受完整 JSON 正文，也可用 `--format yaml` 读取 YAML；页面操作见下文。
 
 与单包 `composition check` 不同，`revise --check` 使用当前库解析完整递归依赖并检查后端/职能准入、继承、权限、资源、端口与预算；依赖必须已经发布且摘要精确匹配。它不使用项目 grant，也不代表运行批准；发布后用明确的 grant 预览整棵链。原摘要不符或当前准入失败会拒绝；同版本不同内容不能发布，原版本不变。检查不预留版本，发布可能因并发版本冲突失败；完全相同的发布可重试。
 
 HTTP 的 `POST /api/workflow-definitions/{id}/{version}/revisions/check` 与 `/api/workflow-definitions/{id}/{version}/revisions` 分别检查、发布，JSON 为 `{"base_digest": "原包的64位小写摘要", "definition": {完整的新正文}}`。CLI 与 HTTP 共用候选摘要及原有校验，均不启动模型、服务或任务。
+
+资源操作沿[Agent资源修订](AGENT_DEFINITIONS.md#修订完整资源文件)的同一合同。准备 `resource-changes/changes.json`、`files/<包相对路径>` 和完整 `new-workflow.json`（新声明用合法占位摘要），先预览，审阅后保存响应中的建议正文到 `new-workflow.json`，再明确接受、检查、发布：
+
+```bash
+ergora composition revise kernel-delivery 1.0.0 --base-digest BASE_DIGEST --document ./new-workflow.json --resources ./resource-changes --preview-resources > resource-preview.json
+ergora composition revise kernel-delivery 1.0.0 --base-digest BASE_DIGEST --document ./new-workflow.json --resources ./resource-changes --accept-candidate ./resource-preview.json --check
+ergora composition revise kernel-delivery 1.0.0 --base-digest BASE_DIGEST --document ./new-workflow.json --resources ./resource-changes --accept-candidate ./resource-preview.json
+ergora composition file kernel-delivery 1.0.0 instructions.md --base-digest BASE_DIGEST --offset 0 --limit 65536
+```
+
+同一包内的二进制附件、完整Skill树、执行位及空目录按明确操作派生；未改内容保持。文件名取自原包 `show` 的 `files`，窗口以base64返回，须按 `next_offset` 读取并合并全部字节。HTTP 为 `POST /api/workflow-definitions/{id}/{version}/revisions/preview-resources` 和 `/files/read`；请求及最终 `resource_changes/accepted_candidate` 字段与Agent一致。预览、检查、发布都执行完整递归准入；历史文件读取不要求今天后端可用。完整候选接受绑定普通附件与全部目录，正文或操作改变须重新预览；预览不提升权限、不批准执行。页面尚只编辑标准正文，资源字节用CLI/HTTP或完整导出修改。
 
 父／子可同时计划提权或追加资源：先生成新的子定义版本，逐层更新父引用与权限，再发布新的根版本，最后用新的项目grant检查整棵链。只改子级会失败；根仍越项目上限也会失败。单定义导入通过原子完整对象及索引发布，完整根修订由其精确递归引用固定；这里没有跨定义事务或项目采用动作。旧根和旧版本保持原内容，不读取新的活动头替代。
 
