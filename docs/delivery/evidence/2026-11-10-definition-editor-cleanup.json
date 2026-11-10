@@ -1,0 +1,11 @@
+{
+  "checked_at": "2026-11-10T06:24:55.838844+00:00",
+  "old_http_proxy_processes": 5,
+  "old_browser_sessions": 4,
+  "remaining_http_proxy_processes": 6,
+  "remaining_browser_sessions": 4,
+  "all_owned_listeners_closed": true,
+  "all_owned_processes_not_running": true,
+  "all_browser_close_commands_succeeded": true,
+  "scope": "Only recorded owned acceptance HTTP/proxy PIDs matched by starttime/argv and dedicated browser sessions were closed. Private original identities retained; no unrelated services stopped."
+}

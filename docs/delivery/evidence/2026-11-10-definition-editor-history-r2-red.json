@@ -1,0 +1,51 @@
+{
+  "no_op_repair": {
+    "cases": [
+      {
+        "format": "json",
+        "undoEnabled": true,
+        "invalidVisible": true,
+        "checkEnabled": true,
+        "inconsistentAppliedText": true,
+        "corruptAfterUndo": true,
+        "validNoopHasNoHistory": false
+      },
+      {
+        "format": "yaml",
+        "undoEnabled": true,
+        "invalidVisible": true,
+        "checkEnabled": true,
+        "inconsistentAppliedText": true,
+        "corruptAfterUndo": true,
+        "validNoopHasNoHistory": false
+      }
+    ],
+    "errors": [],
+    "passed": false
+  },
+  "semantic_change_repair": {
+    "cases": [
+      {
+        "format": "json",
+        "undoEnabled": true,
+        "invalidVisible": true,
+        "checkEnabled": true,
+        "inconsistentAppliedText": true,
+        "corruptAfterUndo": true,
+        "validUndoRestoresAppliedText": false
+      },
+      {
+        "format": "yaml",
+        "undoEnabled": true,
+        "invalidVisible": true,
+        "checkEnabled": true,
+        "inconsistentAppliedText": true,
+        "corruptAfterUndo": true,
+        "validUndoRestoresAppliedText": false
+      }
+    ],
+    "errors": [],
+    "passed": false
+  },
+  "scope": "Original actual R2 installed failures retained. Both JSON/YAML pending raw texts were wrongly promoted by undo, enabling check of another semantic body and corrupting next reload. Corrected R3 result is separately recorded."
+}

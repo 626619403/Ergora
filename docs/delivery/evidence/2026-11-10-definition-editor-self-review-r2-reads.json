@@ -1,0 +1,146 @@
+{
+  "run_id": "85d196f49f0b49e18dffcea5dc0f3664",
+  "binding": {
+    "tool": "codex"
+  },
+  "decision": "approve",
+  "source_files_match_fixed_candidate_or_unchanged_baseline": {
+    ".github/workflows/portability.yml": "unchanged-baseline",
+    "pyproject.toml": "unchanged-baseline",
+    "src/ergora/agent_definitions.py": "unchanged-baseline",
+    "src/ergora/agents.py": "unchanged-baseline",
+    "src/ergora/asset_trees.py": "unchanged-baseline",
+    "src/ergora/cli.py": "fixed-r3",
+    "src/ergora/contracts.py": "unchanged-baseline",
+    "src/ergora/data/console/api.js": "unchanged-baseline",
+    "src/ergora/data/console/app.js": "unchanged-baseline",
+    "src/ergora/data/console/definitions.js": "fixed-r3",
+    "src/ergora/data/console/state.js": "unchanged-baseline",
+    "src/ergora/data/console/ui.js": "unchanged-baseline",
+    "src/ergora/data/console/workflow.js": "unchanged-baseline",
+    "src/ergora/definition_bundles.py": "fixed-r3",
+    "src/ergora/state.py": "unchanged-baseline",
+    "src/ergora/web.py": "fixed-r3",
+    "src/ergora/workflow_definitions.py": "unchanged-baseline",
+    "tests/test_definition_console.py": "fixed-r3"
+  },
+  "manifest_prepared_actual_run_and_prompt_match": true,
+  "attachment_bytes": 474163,
+  "attachment_sha256": "01e27326a7e1c95e7153f75581a2836526d096c27eac6f13795012a3b4e818a9",
+  "native_stream_sha256": "61be993eac56f9ec98e6691287152d069beb0fdfde0e2ceb1f5fc07c5d4feab8",
+  "continuous_plaintext_pages": 17,
+  "continuous_bytes": 474163,
+  "next_offset": null,
+  "plaintext_pages": [
+    {
+      "offset": 0,
+      "bytes": 27998,
+      "next_offset": 27998
+    },
+    {
+      "offset": 27998,
+      "bytes": 28000,
+      "next_offset": 55998
+    },
+    {
+      "offset": 55998,
+      "bytes": 28000,
+      "next_offset": 83998
+    },
+    {
+      "offset": 83998,
+      "bytes": 28000,
+      "next_offset": 111998
+    },
+    {
+      "offset": 111998,
+      "bytes": 28000,
+      "next_offset": 139998
+    },
+    {
+      "offset": 139998,
+      "bytes": 28000,
+      "next_offset": 167998
+    },
+    {
+      "offset": 167998,
+      "bytes": 28000,
+      "next_offset": 195998
+    },
+    {
+      "offset": 195998,
+      "bytes": 28000,
+      "next_offset": 223998
+    },
+    {
+      "offset": 223998,
+      "bytes": 28000,
+      "next_offset": 251998
+    },
+    {
+      "offset": 251998,
+      "bytes": 28000,
+      "next_offset": 279998
+    },
+    {
+      "offset": 279998,
+      "bytes": 28000,
+      "next_offset": 307998
+    },
+    {
+      "offset": 307998,
+      "bytes": 28000,
+      "next_offset": 335998
+    },
+    {
+      "offset": 335998,
+      "bytes": 28000,
+      "next_offset": 363998
+    },
+    {
+      "offset": 363998,
+      "bytes": 28000,
+      "next_offset": 391998
+    },
+    {
+      "offset": 391998,
+      "bytes": 28000,
+      "next_offset": 419998
+    },
+    {
+      "offset": 419998,
+      "bytes": 28000,
+      "next_offset": 447998
+    },
+    {
+      "offset": 447998,
+      "bytes": 26165,
+      "next_offset": null
+    }
+  ],
+  "base64_same_offset_retries": [
+    {
+      "offset": 0,
+      "bytes": 28000,
+      "encoding": "base64"
+    },
+    {
+      "offset": 0,
+      "bytes": 27999,
+      "encoding": "base64"
+    }
+  ],
+  "instruction_and_skill_reads": {
+    "definitions/workflow/ergora-structure-review/1.0.2/instructions.md": true,
+    "definitions/agent/ergora-structure-reviewer/1.0.2/instructions.md": true,
+    "definitions/agent/ergora-structure-reviewer/1.0.2/skills/ergora-structure-reviewer/SKILL.md": true,
+    "definitions/agent/ergora-structure-reviewer/1.0.2/skills/candidate-evidence/SKILL.md": true
+  },
+  "failed_reads": [],
+  "result_sha256": "2faf9eea8dd8db720b509748b33cee898cbfa5318680921a0f856434ffe17217",
+  "original_result_sha256": "2faf9eea8dd8db720b509748b33cee898cbfa5318680921a0f856434ffe17217",
+  "complete_continuous_plaintext": true,
+  "succeeded_original_result_matches": true,
+  "formal_execution_authorized": false,
+  "scope": "Independent artifact audit only; no model invocation, installation, services or test rerun. Byte delivery is separate from review quality."
+}

@@ -7,6 +7,8 @@ import shutil
 import stat
 import tempfile
 
+import yaml
+
 from . import contracts, skill_assets
 from .asset_trees import digest_tree, inventory_tree, is_link
 from .state import file_lock
@@ -22,19 +24,87 @@ def relative_path(value: str, label: str = "Definition") -> Path:
     return Path(*path.parts)
 
 
-def read_json(path: Path, expected: str | None = None) -> dict:
+def _parse_json(text: str, label: str) -> dict:
     def unique(pairs):
         value = {}
         for key, item in pairs:
             if key in value:
-                raise ValueError(f"Duplicate JSON key in {path.name}: {key}")
+                raise ValueError(f"Duplicate JSON key in {label}: {key}")
             value[key] = item
         return value
 
+    return json.loads(text, object_pairs_hook=unique)
+
+
+def read_json(path: Path, expected: str | None = None) -> dict:
     encoded = path.read_bytes()
     if expected is not None and hashlib.sha256(encoded).hexdigest() != expected:
         raise ValueError(f"Definition content changed while reading: {path.name}")
-    return json.loads(encoded.decode("utf-8-sig"), object_pairs_hook=unique)
+    return _parse_json(encoded.decode("utf-8-sig"), path.name)
+
+
+class _DocumentLoader(yaml.SafeLoader):
+    """Compose a bounded JSON data tree without aliases or YAML-specific values."""
+
+    _JSON_TAGS = {f"tag:yaml.org,2002:{kind}" for kind in ("map", "seq", "str", "int", "float", "bool", "null")}
+
+    def __init__(self, text):
+        self.depth = self.values = 0
+        super().__init__(text)
+
+    def compose_node(self, parent, index):
+        if self.check_event(yaml.AliasEvent):
+            raise ValueError("Definition documents do not accept YAML aliases")
+        self.depth += 1
+        self.values += 1
+        if self.depth > 64 or self.values > 100_000:
+            raise ValueError("Definition document exceeds 64 levels / 100000 values")
+        try:
+            node = super().compose_node(parent, index)
+            if node.tag not in self._JSON_TAGS:
+                raise ValueError(f"Definition document requires JSON-compatible YAML tags: {node.tag}")
+            return node
+        finally:
+            self.depth -= 1
+
+    def construct_mapping(self, node, deep=False):
+        result = {}
+        for key_node, value_node in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            if not isinstance(key, str):
+                raise ValueError("Definition document mapping keys must be strings")
+            if key in result:
+                raise ValueError(f"Duplicate YAML key in definition document: {key}")
+            result[key] = self.construct_object(value_node, deep=deep)
+        return result
+
+
+def convert_document(text: str, format: str = "json") -> dict:
+    """Convert editor text; library admission and publication remain separate."""
+    try:
+        if format == "json":
+            definition = _parse_json(text.removeprefix("\ufeff"), "definition document")
+        elif format == "yaml":
+            definition = yaml.load(text, Loader=_DocumentLoader)
+        else:
+            raise ValueError(f"Unsupported definition document format: {format}")
+        if not isinstance(definition, dict):
+            raise ValueError("Definition document requires an object root")
+        pending, values = [(definition, 1)], 0
+        while pending:
+            value, depth = pending.pop()
+            values += 1
+            if depth > 64 or values > 100_000:
+                raise ValueError("Definition document exceeds 64 levels / 100000 values")
+            if isinstance(value, dict):
+                pending.extend((item, depth + 1) for pair in value.items() for item in pair)
+            elif isinstance(value, list):
+                pending.extend((item, depth + 1) for item in value)
+        encoded = json.dumps(definition, sort_keys=True, indent=2, ensure_ascii=False, allow_nan=False) + "\n"
+        return {"definition": definition, "json": encoded,
+                "yaml": yaml.safe_dump(definition, sort_keys=True, allow_unicode=True)}
+    except (yaml.YAMLError, RecursionError) as error:
+        raise ValueError(f"Invalid definition document: {error}") from error
 
 
 def inspect_bundle(source: Path, filename: str, schemas: dict[int, dict], label: str, *, material: bool = False) -> dict:

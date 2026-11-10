@@ -106,11 +106,13 @@ def test_revision_http_and_cli_share_candidate_identity_and_keep_base(library_co
     payload = {'base_digest': reference['digest'], 'definition': definition}
     response = client.post(base_url + '/revisions/check', json=payload)
     assert response.status_code == 200, response.text
-    document = tmp_path / 'new-definition.json'
-    document.write_text(json.dumps(definition), encoding='utf-8')
-    assert cli.main(['--home', str(state.root), *command, 'revise', reference['id'], reference['version'],
-        '--base-digest', reference['digest'], '--document', str(document), '--check']) == 0
-    assert json.loads(capsys.readouterr().out) == response.json()
+    converted = client.post('/api/definition-documents/convert', json={'text': json.dumps(definition)}).json()
+    for format in ['json', 'yaml']:
+        document = tmp_path / f'new-definition.{format}'
+        document.write_text(converted[format], encoding='utf-8')
+        assert cli.main(['--home', str(state.root), *command, 'revise', reference['id'], reference['version'],
+            '--base-digest', reference['digest'], '--document', str(document), '--format', format, '--check']) == 0
+        assert json.loads(capsys.readouterr().out) == response.json()
     assert client.get(f"/api/{kind}-definitions/{reference['id']}/{definition['version']}").status_code == 400
     published = client.post(base_url + '/revisions', json=payload)
     assert published.status_code == 200, published.text
@@ -118,3 +120,46 @@ def test_revision_http_and_cli_share_candidate_identity_and_keep_base(library_co
     assert client.get(base_url).json() == original
     assert client.get(f"/api/{kind}-definitions/{reference['id']}/{definition['version']}").json()['digest'] == response.json()['digest']
     assert projects.list_projects(state) == []
+
+
+def test_document_conversion_roundtrips_json_data_without_publishing(library_console):
+    client, state = library_console
+    definition = {'description': '中文与多行\nContext: keep exact values', 'roles': ['reviewer'],
+                  'values': [True, False, None, 1, 1.25], 'nested': {'quoted': 'yes', 'date': '2026-11-10'}}
+    response = client.post('/api/definition-documents/convert', json={'text': '\ufeff' + json.dumps(definition)})
+    assert response.status_code == 200, response.text
+    converted = response.json()
+    assert converted['definition'] == definition and json.loads(converted['json']) == definition
+    yaml_response = client.post('/api/definition-documents/convert', json={'text': converted['yaml'], 'format': 'yaml'})
+    assert yaml_response.status_code == 200, yaml_response.text
+    assert yaml_response.json() == converted
+    json_response = client.post('/api/definition-documents/convert', json={'text': converted['json']})
+    assert json_response.status_code == 200, json_response.text
+    assert json_response.json() == converted
+    assert client.get('/api/agent-definitions').json() == client.get('/api/workflow-definitions').json() == []
+    assert projects.list_projects(state) == [] and not (state.root / 'runs').exists()
+
+
+@pytest.mark.parametrize('format,text,reason', [
+    ('json', '{"outer":{"value":1,"value":2}}', 'Duplicate JSON key'),
+    ('yaml', 'outer:\n  value: 1\n  value: 2\n', 'Duplicate YAML key'),
+    ('yaml', 'a: &shared [1]\nb: *shared', 'YAML aliases'),
+    ('yaml', '1: value', 'keys must be strings'),
+    ('yaml', 'date: 2026-11-10', 'JSON-compatible YAML tags'),
+    ('yaml', 'a: !!python/object/apply:os.getcwd []', 'JSON-compatible YAML tags'),
+    ('yaml', 'a: .nan', 'Out of range float'),
+    ('yaml', '- item', 'object root'),
+])
+def test_untrusted_document_formats_reject_lossy_or_executable_values(library_console, format, text, reason):
+    client, _ = library_console
+    response = client.post('/api/definition-documents/convert', json={'text': text, 'format': format})
+    assert response.status_code == 400 and reason in response.json()['error']
+
+
+@pytest.mark.parametrize('format', ['json', 'yaml'])
+@pytest.mark.parametrize('text', ['{"nested":' * 65 + '0' + '}' * 65,
+                                '{"values":[' + ','.join(['0'] * 100_001) + ']}'], ids=['depth', 'values'])
+def test_document_conversion_bounds_parser_work_before_publication(library_console, format, text):
+    client, _ = library_console
+    response = client.post('/api/definition-documents/convert', json={'text': text, 'format': format})
+    assert response.status_code == 400 and '64 levels / 100000 values' in response.json()['error']

@@ -1,0 +1,28 @@
+{
+  "run_id": "c5338c47228642efbc3e1e52e3d5262a",
+  "binding": {
+    "tool": "codex"
+  },
+  "decision": "request-changes",
+  "source_files_match_fixed_candidate_or_unchanged_adjacent": 18,
+  "manifest_prepared_actual_run_and_prompt_match": true,
+  "attachment_bytes": 405066,
+  "attachment_sha256": "d70206d4aa4e6148db26deb7045e17c0dc2436b7d9f538113d862d28353c80b9",
+  "native_stream_sha256": "ac155018fbb491ac7d93a49c0d2c50666c646867e6402b463465de65972a565c",
+  "continuous_plaintext_pages": 17,
+  "continuous_bytes": 405066,
+  "next_offset": null,
+  "instruction_and_skill_reads": {
+    "definitions/workflow/ergora-structure-review/1.0.2/instructions.md": true,
+    "definitions/agent/ergora-structure-reviewer/1.0.2/instructions.md": true,
+    "definitions/agent/ergora-structure-reviewer/1.0.2/skills/ergora-structure-reviewer/SKILL.md": true,
+    "definitions/agent/ergora-structure-reviewer/1.0.2/skills/candidate-evidence/SKILL.md": true
+  },
+  "failed_reads": [],
+  "result_sha256": "dbf4a1a2319ca74d787d29e4cd392856c1470db2386bbc5de53fc04aa023ecdb",
+  "original_result_sha256": "dbf4a1a2319ca74d787d29e4cd392856c1470db2386bbc5de53fc04aa023ecdb",
+  "complete_continuous_plaintext": true,
+  "succeeded_original_result_matches": true,
+  "formal_execution_authorized": false,
+  "scope": "Independent artifact audit only; no model invocation or test rerun. Byte delivery is separate from review quality."
+}

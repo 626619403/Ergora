@@ -18,7 +18,8 @@ def _definition_revision_parser(operations) -> None:
     revision.add_argument("id")
     revision.add_argument("version", help="Exact base version")
     revision.add_argument("--base-digest", required=True)
-    revision.add_argument("--document", type=Path, required=True, help="Complete new standard definition JSON")
+    revision.add_argument("--document", type=Path, required=True, help="Complete new standard definition document")
+    revision.add_argument("--format", choices=("json", "yaml"), default="json", help="Document representation; stored packages remain JSON")
     revision.add_argument("--check", action="store_true", help="Validate without publishing a version")
 
 
@@ -663,7 +664,7 @@ def main(argv: list[str] | None = None) -> int:
                     output = workflow_definitions.import_bundle(state, args.directory)
                 elif args.operation == "revise":
                     output = workflow_definitions.revise(state, args.id, args.version, args.base_digest,
-                        definition_bundles.read_json(args.document), publish=not args.check)
+                        definition_bundles.convert_document(args.document.read_text(encoding="utf-8-sig"), args.format)["definition"], publish=not args.check)
                 elif args.operation == "list":
                     output = workflow_definitions.definitions(state)
                 elif args.operation == "show":
@@ -680,7 +681,7 @@ def main(argv: list[str] | None = None) -> int:
                         output = agent_definitions.import_bundle(state, args.directory)
                     elif args.definition_operation == "revise":
                         output = agent_definitions.revise(state, args.id, args.version, args.base_digest,
-                            definition_bundles.read_json(args.document), publish=not args.check)
+                            definition_bundles.convert_document(args.document.read_text(encoding="utf-8-sig"), args.format)["definition"], publish=not args.check)
                     elif args.definition_operation == "list":
                         output = agent_definitions.definitions(state, role=args.role, specialty=args.specialty)
                     elif args.definition_operation == "show":

@@ -1,0 +1,425 @@
+{
+  "installed_wheel_sha256": "901f9f15d8f5cfc66d02615bc8454fa830ff0441f16301f83d06e499bd21e200",
+  "journeys": {
+    "basic": {
+      "result": {
+        "result": {
+          "pendingBlocksPublish": true,
+          "selectionKeepsRaw": true,
+          "reloadKeepsRaw": true,
+          "fieldsDoNotOverwriteRaw": true,
+          "discardKeepsOtherBuffer": true,
+          "agentFieldsApplied": true,
+          "immutableBase": true,
+          "resourcesPreserved": true,
+          "continueUsesNewBase": true,
+          "formRejectsDuplicateKeys": true,
+          "renameRewritesBindings": true,
+          "yamlRawPreserved": true,
+          "yamlRestoresWithoutFalseCorruption": true,
+          "workflowPublished": true,
+          "noProjectsOrRuns": true,
+          "noPageErrors": true
+        },
+        "errors": []
+      },
+      "command": {
+        "checked_at": "2026-11-10T06:19:45.843578+00:00",
+        "script_sha256": "094967d9c7488c202d88e3300a840ad7db529e1a9910e565a9a411181c7fe4ff",
+        "returncode": 0,
+        "seconds": 4.807493623811752,
+        "log_sha256": "1980369b36feeadb438b2b5498bdcb35a1ccef0743b2ba6086e0a612e374e047"
+      }
+    },
+    "history-recovery": {
+      "result": {
+        "cases": [
+          {
+            "format": "json",
+            "undoEnabled": true,
+            "invalidVisible": false,
+            "checkEnabled": true,
+            "inconsistentAppliedText": false,
+            "corruptAfterUndo": false,
+            "validUndoRestoresAppliedText": true
+          },
+          {
+            "format": "yaml",
+            "undoEnabled": true,
+            "invalidVisible": false,
+            "checkEnabled": true,
+            "inconsistentAppliedText": false,
+            "corruptAfterUndo": false,
+            "validUndoRestoresAppliedText": true
+          }
+        ],
+        "errors": [],
+        "passed": true
+      },
+      "command": {
+        "checked_at": "2026-11-10T06:19:50.488191+00:00",
+        "script_sha256": "160bcda18bd7e4b648e9f8dc35894467ce1dbd612039fc1969af5d0bc8c7d3b8",
+        "returncode": 0,
+        "seconds": 4.575399964116514,
+        "log_sha256": "757196e83907faa741638d80110f50c006f95b2a8738db1aa332bee2d2432115"
+      }
+    },
+    "fields": {
+      "result": {
+        "result": {
+          "addDeleteThreeKinds": true,
+          "exactReferenceRequirementBudget": true,
+          "excessPermissionRefused": true,
+          "roleChangeVisible": true,
+          "incompatibleRoleRefused": true,
+          "validCandidateChecked": true,
+          "missingDependencyRefused": true,
+          "undoRestoresSelectionAndBody": true,
+          "redoRestoresBody": true,
+          "historyCountBound": true,
+          "newBranchDropsRedo": true,
+          "singleLargeSnapshot": true,
+          "refreshKeepsCurrentResetsHistory": true,
+          "noPageErrors": true
+        },
+        "undo": 49,
+        "errors": []
+      },
+      "command": {
+        "checked_at": "2026-11-10T06:20:02.626995+00:00",
+        "script_sha256": "ff24ad7aa7a42310f2e59b30a2bcf1148634f5f99c01ffd988ae0b3b7b56386c",
+        "returncode": 0,
+        "seconds": 12.046963742002845,
+        "log_sha256": "0e1c3ca7d3d9442bf72462c1ed61d6ba9399138baac98af75861d13a440daf8b"
+      }
+    },
+    "errors": {
+      "result": {
+        "result": {
+          "invalidIntermediateRepair": true,
+          "sameValueKeepsOtherRaw": true,
+          "cancelSynchronizationKeepsRaw": true,
+          "explicitSynchronization": true,
+          "corruptAppliedYamlBlocked": true,
+          "unappliedInvalidYamlRestores": true,
+          "quotaFailureVisible": true,
+          "mobileFits": true,
+          "noPageErrors": true
+        },
+        "errors": [],
+        "geometry": {
+          "viewport": 390,
+          "document": 390
+        },
+        "dialogs": [
+          {
+            "message": "本次修改将重新生成 YAML 原文，原注释和排版会被替换。要保留请取消并先下载原文；是否继续同步？",
+            "choice": false
+          },
+          {
+            "message": "本次修改将重新生成 YAML 原文，原注释和排版会被替换。要保留请取消并先下载原文；是否继续同步？",
+            "choice": true
+          }
+        ],
+        "intermediateCases": 5
+      },
+      "command": {
+        "checked_at": "2026-11-10T06:20:10.930707+00:00",
+        "script_sha256": "2c948938841b3fab18b1b5b846a73d93df925b005c81d6dfca2511a144c5d35f",
+        "returncode": 0,
+        "seconds": 8.219544188119471,
+        "log_sha256": "16dc0d6c9b402a73bcb904f4eda003ad03c7b05da6b636553475aae98771a3f4"
+      }
+    },
+    "races": {
+      "result": {
+        "result": {
+          "lateConversionKeepsRaw": true,
+          "lateCheckCannotPublish": true,
+          "latePublishKeepsSelection": true,
+          "latePublishKeepsRawAndReceipt": true,
+          "unknownPreservesCandidate": true,
+          "explicitRetryIsIdempotent": true,
+          "conflictKeepsEditing": true,
+          "noPageErrors": true
+        },
+        "observations": [
+          {
+            "url": "/api/definition-documents/convert",
+            "status": 200
+          },
+          {
+            "url": "/api/agent-definitions/ergora-structure-reviewer/1.0.0/revisions/check",
+            "status": 200
+          },
+          {
+            "url": "/api/agent-definitions/ergora-structure-reviewer/1.0.0/revisions",
+            "status": 200
+          },
+          {
+            "url": "/api/agent-definitions/ergora-structure-reviewer/1.0.0/revisions",
+            "status": 200,
+            "responseIntentionallyLost": true
+          }
+        ],
+        "errors": []
+      },
+      "command": {
+        "checked_at": "2026-11-10T06:20:14.984441+00:00",
+        "script_sha256": "5ae31814fea4a606e2ec4bea15fa54f146ee93cf38daa1fbc058c1e45e65811e",
+        "returncode": 0,
+        "seconds": 3.9468182190321386,
+        "log_sha256": "7d6a843649445f4605a7cb24014b246bf3eb789a67780f45726e3865e378d01c"
+      }
+    },
+    "home": {
+      "result": {
+        "result": {
+          "oldPublishBlockedBeforeSend": true,
+          "noWrongPublication": true,
+          "aCheckedCandidateRetained": true,
+          "oldPresetBlockedBeforeSend": true,
+          "bInvalidBufferRetained": true,
+          "aBufferIsolated": true,
+          "noPageErrors": true
+        },
+        "statuses": {
+          "A": {
+            "status": 400,
+            "body": {
+              "error": "Unknown Agent definition: ergora-structure-reviewer@1.0.43"
+            }
+          },
+          "B": {
+            "status": 400,
+            "body": {
+              "error": "Unknown Agent definition: ergora-structure-reviewer@1.0.43"
+            }
+          }
+        },
+        "errors": [],
+        "proxy": "Actual private HTTP reverse proxy forwards installed A/B HTTP services and holds B dashboard after real bootstrap; no page.route.",
+        "api_requests": [
+          {
+            "home": "A",
+            "path": "/api/bootstrap",
+            "method": "GET",
+            "status": 200
+          },
+          {
+            "home": "A",
+            "path": "/api/bootstrap",
+            "method": "GET",
+            "status": 200
+          },
+          {
+            "home": "A",
+            "path": "/api/composition/presets",
+            "method": "GET",
+            "status": 200
+          },
+          {
+            "home": "A",
+            "path": "/api/workflow-definitions",
+            "method": "GET",
+            "status": 200
+          },
+          {
+            "home": "A",
+            "path": "/api/agent-definitions",
+            "method": "GET",
+            "status": 200
+          },
+          {
+            "home": "A",
+            "path": "/api/agent-definitions/ergora-structure-reviewer/1.0.0",
+            "method": "GET",
+            "status": 200
+          },
+          {
+            "home": "A",
+            "path": "/api/definition-documents/convert",
+            "method": "POST",
+            "status": 200
+          },
+          {
+            "home": "A",
+            "path": "/api/definition-documents/convert",
+            "method": "POST",
+            "status": 200
+          },
+          {
+            "home": "A",
+            "path": "/api/agent-definitions/ergora-structure-reviewer/1.0.0/revisions/check",
+            "method": "POST",
+            "status": 200
+          },
+          {
+            "home": "B",
+            "path": "/api/bootstrap",
+            "method": "GET",
+            "status": 200
+          },
+          {
+            "home": "B",
+            "path": "/api/composition/presets",
+            "method": "GET",
+            "status": 200
+          },
+          {
+            "home": "B",
+            "path": "/api/workflow-definitions",
+            "method": "GET",
+            "status": 200
+          },
+          {
+            "home": "B",
+            "path": "/api/projects/home-b-project/dashboard",
+            "method": "GET",
+            "status": 200
+          },
+          {
+            "home": "B",
+            "path": "/api/agent-definitions",
+            "method": "GET",
+            "status": 200
+          },
+          {
+            "home": "B",
+            "path": "/api/agent-definitions/ergora-structure-reviewer/1.0.0",
+            "method": "GET",
+            "status": 200
+          },
+          {
+            "home": "B",
+            "path": "/api/definition-documents/convert",
+            "method": "POST",
+            "status": 200
+          },
+          {
+            "home": "A",
+            "path": "/api/bootstrap",
+            "method": "GET",
+            "status": 200
+          },
+          {
+            "home": "A",
+            "path": "/api/composition/presets",
+            "method": "GET",
+            "status": 200
+          },
+          {
+            "home": "A",
+            "path": "/api/workflow-definitions",
+            "method": "GET",
+            "status": 200
+          },
+          {
+            "home": "A",
+            "path": "/api/agent-definitions",
+            "method": "GET",
+            "status": 200
+          },
+          {
+            "home": "A",
+            "path": "/api/agent-definitions/ergora-structure-reviewer/1.0.0",
+            "method": "GET",
+            "status": 200
+          },
+          {
+            "home": "A",
+            "path": "/api/agent-definitions/ergora-structure-reviewer/1.0.0",
+            "method": "GET",
+            "status": 200
+          },
+          {
+            "home": "B",
+            "path": "/api/bootstrap",
+            "method": "GET",
+            "status": 200
+          },
+          {
+            "home": "B",
+            "path": "/api/composition/presets",
+            "method": "GET",
+            "status": 200
+          },
+          {
+            "home": "B",
+            "path": "/api/workflow-definitions",
+            "method": "GET",
+            "status": 200
+          },
+          {
+            "home": "B",
+            "path": "/api/projects/home-b-project/dashboard",
+            "method": "GET",
+            "status": 200
+          },
+          {
+            "home": "B",
+            "path": "/api/agent-definitions",
+            "method": "GET",
+            "status": 200
+          },
+          {
+            "home": "B",
+            "path": "/api/agent-definitions/ergora-structure-reviewer/1.0.0",
+            "method": "GET",
+            "status": 200
+          },
+          {
+            "home": "B",
+            "path": "/api/agent-definitions/ergora-structure-reviewer/1.0.0",
+            "method": "GET",
+            "status": 200
+          },
+          {
+            "home": "A",
+            "path": "/api/bootstrap",
+            "method": "GET",
+            "status": 200
+          },
+          {
+            "home": "A",
+            "path": "/api/composition/presets",
+            "method": "GET",
+            "status": 200
+          },
+          {
+            "home": "A",
+            "path": "/api/workflow-definitions",
+            "method": "GET",
+            "status": 200
+          },
+          {
+            "home": "A",
+            "path": "/api/agent-definitions",
+            "method": "GET",
+            "status": 200
+          },
+          {
+            "home": "A",
+            "path": "/api/agent-definitions/ergora-structure-reviewer/1.0.0",
+            "method": "GET",
+            "status": 200
+          },
+          {
+            "home": "A",
+            "path": "/api/agent-definitions/ergora-structure-reviewer/1.0.0",
+            "method": "GET",
+            "status": 200
+          }
+        ]
+      },
+      "command": {
+        "checked_at": "2026-11-10T06:20:45.259206+00:00",
+        "script_sha256": "a72c27eb43841e5eecec68b45efed2e8f1c30b9d839e6749e8c2b39f169ddf0d",
+        "returncode": 0,
+        "seconds": 3.107520307879895,
+        "log_sha256": "5f1365cfd70baab6cb9c10d7e875bccb6da754a7aa5000b191813f1b1348745b"
+      }
+    }
+  },
+  "scope": "Actual installed Chromium/loopback HTTP operations. Errors journey controls window.confirm to record explicit cancel/accept; native modal observations remain separate in original failed runs. Home journey uses actual two-home HTTP services through a private reverse proxy, holding real dashboard response; production Origin checks remain enabled. No model/GPU or formal task claim."
+}

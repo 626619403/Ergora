@@ -1,0 +1,812 @@
+{
+  "checked_at": "2026-11-10T06:02:57.703780+00:00",
+  "seconds": 24.571109612938017,
+  "calls": [
+    {
+      "arguments": [
+        "composition",
+        "show",
+        "ergora-governance-delivery",
+        "1.0.0"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "agent",
+        "definition",
+        "show",
+        "ergora-governance-mapper",
+        "1.0.0"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "composition",
+        "prepare-manifest",
+        "ergora-governance-delivery",
+        "1.0.0",
+        "--grant",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/repository-governance-grant.json",
+        "--directory",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/repository-governance-old-manifest"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "agent",
+        "definition",
+        "revise",
+        "ergora-governance-mapper",
+        "1.0.0",
+        "--base-digest",
+        "84047c6d7a90c00288c5611df087fb2c649f1abaed2c56cb64a94ad7547efe7d",
+        "--document",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/repository-governance-agent.json",
+        "--format",
+        "json",
+        "--check"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "agent",
+        "definition",
+        "revise",
+        "ergora-governance-mapper",
+        "1.0.0",
+        "--base-digest",
+        "84047c6d7a90c00288c5611df087fb2c649f1abaed2c56cb64a94ad7547efe7d",
+        "--document",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/repository-governance-agent.yaml",
+        "--format",
+        "yaml",
+        "--check"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "agent",
+        "definition",
+        "revise",
+        "ergora-governance-mapper",
+        "1.0.0",
+        "--base-digest",
+        "84047c6d7a90c00288c5611df087fb2c649f1abaed2c56cb64a94ad7547efe7d",
+        "--document",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/repository-governance-agent.yaml",
+        "--format",
+        "yaml"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "agent",
+        "definition",
+        "revise",
+        "ergora-governance-mapper",
+        "1.0.0",
+        "--base-digest",
+        "84047c6d7a90c00288c5611df087fb2c649f1abaed2c56cb64a94ad7547efe7d",
+        "--document",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/repository-governance-agent.json",
+        "--format",
+        "json"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "agent",
+        "definition",
+        "show",
+        "ergora-governance-mapper",
+        "1.0.20"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "agent",
+        "definition",
+        "export",
+        "ergora-governance-mapper",
+        "1.0.20",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/repository-governance-agent-export"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "agent",
+        "definition",
+        "import",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/repository-governance-agent-export"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/roundtrip",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "composition",
+        "revise",
+        "ergora-governance-delivery",
+        "1.0.0",
+        "--base-digest",
+        "e82c02d01d2c717a38f35f242107efce32dd873027a4a3a6fb0f18f7d1fae077",
+        "--document",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/repository-governance-workflow.json",
+        "--format",
+        "json",
+        "--check"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "composition",
+        "revise",
+        "ergora-governance-delivery",
+        "1.0.0",
+        "--base-digest",
+        "e82c02d01d2c717a38f35f242107efce32dd873027a4a3a6fb0f18f7d1fae077",
+        "--document",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/repository-governance-workflow.yaml",
+        "--format",
+        "yaml",
+        "--check"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "composition",
+        "revise",
+        "ergora-governance-delivery",
+        "1.0.0",
+        "--base-digest",
+        "e82c02d01d2c717a38f35f242107efce32dd873027a4a3a6fb0f18f7d1fae077",
+        "--document",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/repository-governance-workflow.yaml",
+        "--format",
+        "yaml"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "composition",
+        "revise",
+        "ergora-governance-delivery",
+        "1.0.0",
+        "--base-digest",
+        "e82c02d01d2c717a38f35f242107efce32dd873027a4a3a6fb0f18f7d1fae077",
+        "--document",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/repository-governance-workflow.json",
+        "--format",
+        "json"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "composition",
+        "show",
+        "ergora-governance-delivery",
+        "1.0.20"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "composition",
+        "export",
+        "ergora-governance-delivery",
+        "1.0.20",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/repository-governance-workflow-export"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "composition",
+        "import",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/repository-governance-workflow-export"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/roundtrip",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "composition",
+        "verify-manifest",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/repository-governance-old-manifest"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "composition",
+        "show",
+        "ergora-large-change-delivery",
+        "1.0.0"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "agent",
+        "definition",
+        "show",
+        "ergora-api-contract-author",
+        "1.0.0"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "composition",
+        "prepare-manifest",
+        "ergora-large-change-delivery",
+        "1.0.0",
+        "--grant",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/large-change-grant.json",
+        "--directory",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/large-change-old-manifest"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "agent",
+        "definition",
+        "revise",
+        "ergora-api-contract-author",
+        "1.0.0",
+        "--base-digest",
+        "996348fae81cd3fc1192d49e70b9928efb3b9993b4341ce5a5cb6d8733ce16b1",
+        "--document",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/large-change-agent.json",
+        "--format",
+        "json",
+        "--check"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "agent",
+        "definition",
+        "revise",
+        "ergora-api-contract-author",
+        "1.0.0",
+        "--base-digest",
+        "996348fae81cd3fc1192d49e70b9928efb3b9993b4341ce5a5cb6d8733ce16b1",
+        "--document",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/large-change-agent.yaml",
+        "--format",
+        "yaml",
+        "--check"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "agent",
+        "definition",
+        "revise",
+        "ergora-api-contract-author",
+        "1.0.0",
+        "--base-digest",
+        "996348fae81cd3fc1192d49e70b9928efb3b9993b4341ce5a5cb6d8733ce16b1",
+        "--document",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/large-change-agent.yaml",
+        "--format",
+        "yaml"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "agent",
+        "definition",
+        "revise",
+        "ergora-api-contract-author",
+        "1.0.0",
+        "--base-digest",
+        "996348fae81cd3fc1192d49e70b9928efb3b9993b4341ce5a5cb6d8733ce16b1",
+        "--document",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/large-change-agent.json",
+        "--format",
+        "json"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "agent",
+        "definition",
+        "show",
+        "ergora-api-contract-author",
+        "1.0.20"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "agent",
+        "definition",
+        "export",
+        "ergora-api-contract-author",
+        "1.0.20",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/large-change-agent-export"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "agent",
+        "definition",
+        "import",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/large-change-agent-export"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/roundtrip",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "composition",
+        "revise",
+        "ergora-large-change-delivery",
+        "1.0.0",
+        "--base-digest",
+        "25dbfff6830e4123bedbfe975c964de96b8a9ce0ed8c76e8f365fecf2f7e2cc8",
+        "--document",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/large-change-workflow.json",
+        "--format",
+        "json",
+        "--check"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "composition",
+        "revise",
+        "ergora-large-change-delivery",
+        "1.0.0",
+        "--base-digest",
+        "25dbfff6830e4123bedbfe975c964de96b8a9ce0ed8c76e8f365fecf2f7e2cc8",
+        "--document",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/large-change-workflow.yaml",
+        "--format",
+        "yaml",
+        "--check"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "composition",
+        "revise",
+        "ergora-large-change-delivery",
+        "1.0.0",
+        "--base-digest",
+        "25dbfff6830e4123bedbfe975c964de96b8a9ce0ed8c76e8f365fecf2f7e2cc8",
+        "--document",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/large-change-workflow.yaml",
+        "--format",
+        "yaml"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "composition",
+        "revise",
+        "ergora-large-change-delivery",
+        "1.0.0",
+        "--base-digest",
+        "25dbfff6830e4123bedbfe975c964de96b8a9ce0ed8c76e8f365fecf2f7e2cc8",
+        "--document",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/large-change-workflow.json",
+        "--format",
+        "json"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "composition",
+        "show",
+        "ergora-large-change-delivery",
+        "1.0.20"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "composition",
+        "export",
+        "ergora-large-change-delivery",
+        "1.0.20",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/large-change-workflow-export"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "composition",
+        "import",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/large-change-workflow-export"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/roundtrip",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "composition",
+        "verify-manifest",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/large-change-old-manifest"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "composition",
+        "show",
+        "ergora-training-proposal",
+        "1.0.0"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "agent",
+        "definition",
+        "show",
+        "ergora-kernel-designer",
+        "1.0.0"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "composition",
+        "prepare-manifest",
+        "ergora-training-proposal",
+        "1.0.0",
+        "--grant",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/training-optimization-grant.json",
+        "--directory",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/training-optimization-old-manifest"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "agent",
+        "definition",
+        "revise",
+        "ergora-kernel-designer",
+        "1.0.0",
+        "--base-digest",
+        "5c1df0b888521d64123814815d106e24bb337731dc0beb2bf42fa4dd348dea9f",
+        "--document",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/training-optimization-agent.json",
+        "--format",
+        "json",
+        "--check"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "agent",
+        "definition",
+        "revise",
+        "ergora-kernel-designer",
+        "1.0.0",
+        "--base-digest",
+        "5c1df0b888521d64123814815d106e24bb337731dc0beb2bf42fa4dd348dea9f",
+        "--document",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/training-optimization-agent.yaml",
+        "--format",
+        "yaml",
+        "--check"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "agent",
+        "definition",
+        "revise",
+        "ergora-kernel-designer",
+        "1.0.0",
+        "--base-digest",
+        "5c1df0b888521d64123814815d106e24bb337731dc0beb2bf42fa4dd348dea9f",
+        "--document",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/training-optimization-agent.yaml",
+        "--format",
+        "yaml"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "agent",
+        "definition",
+        "revise",
+        "ergora-kernel-designer",
+        "1.0.0",
+        "--base-digest",
+        "5c1df0b888521d64123814815d106e24bb337731dc0beb2bf42fa4dd348dea9f",
+        "--document",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/training-optimization-agent.json",
+        "--format",
+        "json"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "agent",
+        "definition",
+        "show",
+        "ergora-kernel-designer",
+        "1.0.20"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "agent",
+        "definition",
+        "export",
+        "ergora-kernel-designer",
+        "1.0.20",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/training-optimization-agent-export"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "agent",
+        "definition",
+        "import",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/training-optimization-agent-export"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/roundtrip",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "composition",
+        "revise",
+        "ergora-training-proposal",
+        "1.0.0",
+        "--base-digest",
+        "cf5df77249022c458f84d4e4d9964aa6448bacb1a74b9192a942da9ffcb7e438",
+        "--document",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/training-optimization-workflow.json",
+        "--format",
+        "json",
+        "--check"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "composition",
+        "revise",
+        "ergora-training-proposal",
+        "1.0.0",
+        "--base-digest",
+        "cf5df77249022c458f84d4e4d9964aa6448bacb1a74b9192a942da9ffcb7e438",
+        "--document",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/training-optimization-workflow.yaml",
+        "--format",
+        "yaml",
+        "--check"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "composition",
+        "revise",
+        "ergora-training-proposal",
+        "1.0.0",
+        "--base-digest",
+        "cf5df77249022c458f84d4e4d9964aa6448bacb1a74b9192a942da9ffcb7e438",
+        "--document",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/training-optimization-workflow.yaml",
+        "--format",
+        "yaml"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "composition",
+        "revise",
+        "ergora-training-proposal",
+        "1.0.0",
+        "--base-digest",
+        "cf5df77249022c458f84d4e4d9964aa6448bacb1a74b9192a942da9ffcb7e438",
+        "--document",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/training-optimization-workflow.json",
+        "--format",
+        "json"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "composition",
+        "show",
+        "ergora-training-proposal",
+        "1.0.20"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "composition",
+        "export",
+        "ergora-training-proposal",
+        "1.0.20",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/training-optimization-workflow-export"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "composition",
+        "import",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/training-optimization-workflow-export"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/roundtrip",
+      "code": 0
+    },
+    {
+      "arguments": [
+        "composition",
+        "verify-manifest",
+        "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/training-optimization-old-manifest"
+      ],
+      "home": "<verification-root>/.ergora/checks/ac5-definition-editor/r2/journey/control",
+      "code": 0
+    }
+  ],
+  "observations": [
+    {
+      "domain": "repository-governance",
+      "kind": "agent",
+      "id": "ergora-governance-mapper",
+      "version": "1.0.20",
+      "digest": "6aeec8b13284f1e1799921522670f3f69b1054166691e006d8407cd3f3170d11",
+      "json_yaml_candidate_equal": true,
+      "check_index_unchanged": true,
+      "yaml_published_json_retry_equal": true,
+      "complete_attachments_preserved": true,
+      "export_import_same_digest": true
+    },
+    {
+      "domain": "repository-governance",
+      "kind": "workflow",
+      "id": "ergora-governance-delivery",
+      "version": "1.0.20",
+      "digest": "dcc5f84656b386dc89d43aa35a9e800ea094b2e79ad0c3e85809500515221b73",
+      "json_yaml_candidate_equal": true,
+      "check_index_unchanged": true,
+      "yaml_published_json_retry_equal": true,
+      "complete_attachments_preserved": true,
+      "export_import_same_digest": true
+    },
+    {
+      "domain": "large-change",
+      "kind": "agent",
+      "id": "ergora-api-contract-author",
+      "version": "1.0.20",
+      "digest": "f33311d547944f1cfc0f4f979200fc8f81ad978a565795c4614572f58b139ea8",
+      "json_yaml_candidate_equal": true,
+      "check_index_unchanged": true,
+      "yaml_published_json_retry_equal": true,
+      "complete_attachments_preserved": true,
+      "export_import_same_digest": true
+    },
+    {
+      "domain": "large-change",
+      "kind": "workflow",
+      "id": "ergora-large-change-delivery",
+      "version": "1.0.20",
+      "digest": "bf9f39d6f2dfcf469fec0805a6ff0fe0b7b250bfd7656c40d3aa11a3d3832548",
+      "json_yaml_candidate_equal": true,
+      "check_index_unchanged": true,
+      "yaml_published_json_retry_equal": true,
+      "complete_attachments_preserved": true,
+      "export_import_same_digest": true
+    },
+    {
+      "domain": "training-optimization",
+      "kind": "agent",
+      "id": "ergora-kernel-designer",
+      "version": "1.0.20",
+      "digest": "d2d02fe76fc122504e93091ad17d5936a4ca7d96907c00a148b831a595ca94d2",
+      "json_yaml_candidate_equal": true,
+      "check_index_unchanged": true,
+      "yaml_published_json_retry_equal": true,
+      "complete_attachments_preserved": true,
+      "export_import_same_digest": true
+    },
+    {
+      "domain": "training-optimization",
+      "kind": "workflow",
+      "id": "ergora-training-proposal",
+      "version": "1.0.20",
+      "digest": "efa2d0c11a9762fb75154ecd2c5125328f023276e113fc4e1c3195ca485cad58",
+      "json_yaml_candidate_equal": true,
+      "check_index_unchanged": true,
+      "yaml_published_json_retry_equal": true,
+      "complete_attachments_preserved": true,
+      "export_import_same_digest": true
+    }
+  ],
+  "old_manifests_objects_preserved": true,
+  "no_projects_or_runs": true,
+  "scope": "Real isolated installed CLI JSON/YAML check, publish, retry and full-package round trip in all three domains. Training is read-only proposal definitions; no experiment, model backend or GPU run."
+}

@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from . import __version__, agent_definitions, agent_runs, components, drafts, evaluation, handoff, kernel, memory, optimization, projects, reference, registrations, research, services, tasks, skill_assets, skills, tools, workflow_definitions
+from . import __version__, agent_definitions, agent_runs, components, definition_bundles, drafts, evaluation, handoff, kernel, memory, optimization, projects, reference, registrations, research, services, tasks, skill_assets, skills, tools, workflow_definitions
 from .state import State
 
 
@@ -37,6 +37,11 @@ class RevisionPayload(Payload):
 class DefinitionRevisionPayload(Payload):
     base_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
     definition: dict
+
+
+class DefinitionDocumentPayload(Payload):
+    text: str
+    format: Literal["json", "yaml"] = "json"
 
 
 class DoctorPayload(Payload):
@@ -259,6 +264,10 @@ def create_app(home: Path | None = None) -> FastAPI:
     @application.get("/api/agent-definitions")
     def agent_library(role: str | None = None, specialty: str | None = None):
         return agent_definitions.definitions(state, role=role, specialty=specialty)
+
+    @application.post("/api/definition-documents/convert")
+    def convert_definition_document(body: DefinitionDocumentPayload):
+        return definition_bundles.convert_document(body.text, body.format)
 
     @application.get("/api/agent-definitions/{identity}/{version}")
     def agent_definition(identity: str, version: str):

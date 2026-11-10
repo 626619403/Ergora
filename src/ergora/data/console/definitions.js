@@ -1,20 +1,237 @@
 import { api } from "./api.js";
 import { app } from "./state.js";
-import { node, button, pre, heading, panel, empty, row, select, badge, download, table } from "./ui.js";
+import { node, button, pre, heading, panel, empty, row, select, field, lines, badge, download, table } from "./ui.js";
 
 // Library assets belong to the control directory, independently of project selection.
 const library = {
-  started: false, loading: false, installing: null, error: "", message: "",
+  controlDirectory: null, started: false, loading: false, installing: null, installRequest: 0, error: "", message: "",
   agents: [], workflows: [], presets: [], request: 0,
   selection: null, detail: null, detailLoading: false, detailError: "", detailRequest: 0,
   grant: "", preview: null, previewLoading: false, previewError: "", previewRequest: 0,
+  restoreSelection: null,
 };
+const selections = new Map();
+const currentLibrary = (home) => home === library.controlDirectory && home === app.bootstrap?.state_directory;
+const editors = new Map();
+const textOf = (value) => JSON.stringify(value, null, 2) + "\n";
+const referenceText = ({ kind, id, version, digest }) => JSON.stringify({ kind, id, version, digest });
+const editorKey = (home, kind, base) => JSON.stringify(["ergora-definition-editor-v1", home, kind, base.id, base.version, base.digest]);
+const currentEditor = () => library.detail && editors.get(editorKey(library.controlDirectory, library.selection.kind,
+  { ...library.selection, digest: library.detail.digest }));
+const pendingText = (current, except) => ["json", "yaml"].some((format) => format !== except && current.texts[format] !== current.appliedTexts[format]);
+const pending = (current) => pendingText(current) || current.formBuffer !== null;
+const editorBuffer = (current) => ({ version: 1, home: current.home, kind: current.kind, base: current.base,
+  definition: current.definition, texts: current.texts, appliedTexts: current.appliedTexts,
+  formBuffer: current.formBuffer, selectedNode: current.selectedNode, publication: current.publication });
+
+function sameValue(left, right) {
+  if (left === right) return true;
+  if (!left || !right || typeof left !== "object" || typeof right !== "object" || Array.isArray(left) !== Array.isArray(right)) return false;
+  return Object.keys(left).length === Object.keys(right).length && Object.keys(left).every((key) => Object.hasOwn(right, key) && sameValue(left[key], right[key]));
+}
+
+function rememberEditor(current) {
+  if (editors.get(current.key) !== current || current.restoreError) return;
+  try {
+    sessionStorage.setItem(current.key, JSON.stringify(editorBuffer(current)));
+    current.storageError = "";
+  } catch (error) {
+    current.storageError = `浏览器未能保存编辑缓冲：${error.message}。请下载缓冲后再离开页面。`;
+  }
+}
+
+function editorSnapshot(current) {
+  const text = textOf(current.definition);
+  // Pending raw text belongs to the checkpoint, never to applied undo history.
+  const texts = { ...current.appliedTexts };
+  return { text, texts, canonicalTexts: { ...current.canonicalTexts }, selected: current.selectedNode,
+    bytes: new TextEncoder().encode(text + texts.json + texts.yaml + current.canonicalTexts.json + current.canonicalTexts.yaml).length };
+}
+
+async function restoreEditor(kind, detail, home) {
+  const base = { id: detail.definition.id, version: detail.definition.version, digest: detail.digest };
+  const key = editorKey(home, kind, base);
+  if (editors.has(key)) return;
+  let saved, raw, storageError = "";
+  try { raw = sessionStorage.getItem(key); }
+  catch (error) { storageError = `浏览器无法读取编辑缓冲：${error.message}。请下载本次编辑后再离开页面。`; }
+  if (raw !== null && raw !== undefined) {
+    try {
+      saved = JSON.parse(raw);
+      // Validate only our persisted UI shape; definition admission stays with the library.
+      const object = (value) => value && typeof value === "object" && !Array.isArray(value);
+      if (saved.version !== 1 || saved.home !== home || saved.kind !== kind || textOf(saved.base) !== textOf(base) ||
+          !object(saved.definition) || !object(saved.texts) || !object(saved.appliedTexts) ||
+          !["json", "yaml"].every((format) => typeof saved.texts[format] === "string" && typeof saved.appliedTexts[format] === "string") ||
+          !Number.isInteger(saved.selectedNode) || saved.selectedNode < 0 ||
+          !(saved.formBuffer === null || (object(saved.formBuffer) && Object.values(saved.formBuffer).every((value) => typeof value === "string"))) ||
+          !(saved.publication === null || (object(saved.publication) && ["id", "version", "digest"].every((key) => typeof saved.publication[key] === "string"))) ||
+          !sameValue(JSON.parse(saved.appliedTexts.json), saved.definition)) throw new Error("编辑缓冲格式或已应用正文无法读取");
+    } catch (error) {
+      editors.set(key, { key, home, kind, base, restoreError: error.message, raw });
+      return;
+    }
+  }
+  let converted;
+  try {
+    converted = await api("/api/definition-documents/convert", { text: saved ? saved.appliedTexts.json : textOf(detail.definition) });
+    if (saved) {
+      const yaml = await api("/api/definition-documents/convert", { text: saved.appliedTexts.yaml, format: "yaml" });
+      if (!sameValue(converted.definition, yaml.definition)) throw new Error("缓冲内已应用的 JSON / YAML 正文不一致");
+    }
+  } catch (error) {
+    if (!saved) throw error;
+    if (!editors.has(key)) editors.set(key, { key, home, kind, base, restoreError: error.message, raw });
+    return;
+  }
+  // A newer selection may have opened this same version during conversion.
+  if (editors.has(key)) return;
+  const current = { key, home, kind, base, definition: converted.definition,
+    texts: saved ? saved.texts : { json: converted.json, yaml: converted.yaml },
+    appliedTexts: saved ? saved.appliedTexts : { json: converted.json, yaml: converted.yaml },
+    canonicalTexts: { json: converted.json, yaml: converted.yaml },
+    formBuffer: saved?.formBuffer || null, selectedNode: saved?.selectedNode || 0, publication: saved?.publication || null,
+    revision: 0, sequence: 0, request: null, error: "", message: "", check: null, storageError,
+    expanded: { fields: true, json: true, yaml: false }, history: [], historyIndex: 0 };
+  if (current.formBuffer) {
+    const defaults = formValues(current);
+    if (!defaults || Object.keys(defaults).length !== Object.keys(current.formBuffer).length ||
+        !Object.keys(defaults).every((name) => Object.hasOwn(current.formBuffer, name))) {
+      editors.set(key, { key, home, kind, base, restoreError: "字段缓冲无法归属当前正文", raw });
+      return;
+    }
+  }
+  current.history.push(editorSnapshot(current));
+  editors.set(key, current);
+}
+
+function touchEditor(current) {
+  current.revision++;
+  current.error = "";
+  current.message = "";
+  rememberEditor(current);
+}
+
+function applyEditor(current, converted, format, original) {
+  current.history[current.historyIndex].selected = current.selectedNode;
+  const unchanged = sameValue(current.definition, converted.definition);
+  const texts = unchanged ? { ...current.texts } : { json: converted.json, yaml: converted.yaml };
+  if (format) texts[format] = original;
+  if (!unchanged) current.canonicalTexts = { json: converted.json, yaml: converted.yaml };
+  else if (format) current.canonicalTexts[format] = converted[format];
+  current.definition = converted.definition;
+  current.texts = texts;
+  current.appliedTexts = { ...texts };
+  current.formBuffer = null;
+  current.selectedNode = Array.isArray(current.definition.nodes) && current.definition.nodes.length
+    ? Math.min(current.selectedNode, current.definition.nodes.length - 1) : 0;
+  const snapshot = editorSnapshot(current);
+  const previous = current.history[current.historyIndex];
+  if (snapshot.text !== previous.text || snapshot.texts.json !== previous.texts.json || snapshot.texts.yaml !== previous.texts.yaml) {
+    current.history.splice(current.historyIndex + 1);
+    current.history.push(snapshot);
+    let bytes = current.history.reduce((total, item) => total + item.bytes, 0);
+    while (current.history.length > 1 && (current.history.length > 50 || bytes > 4 * 1024 * 1024))
+      bytes -= current.history.shift().bytes;
+    current.historyIndex = current.history.length - 1;
+  } else current.history[current.historyIndex] = snapshot;
+  touchEditor(current);
+}
+
+async function editDefinition(current, operation, render, work) {
+  if (!currentLibrary(current.home) || currentEditor() !== current) { redraw(render); return; }
+  if (current.request) return;
+  const revision = current.revision, sequence = ++current.sequence;
+  current.request = { operation, sequence };
+  current.error = "";
+  current.message = "";
+  redraw(render);
+  try {
+    await work(revision);
+  } catch (error) {
+    if (editors.get(current.key) === current) current.error = error.message + (operation === "publish"
+      ? "。发布结果可能未知；可用相同基准和正文显式重试以核对，系统不会自动重发。" : "");
+  } finally {
+    if (editors.get(current.key) === current && current.request?.sequence === sequence) {
+      current.request = null;
+      rememberEditor(current);
+      if (currentLibrary(current.home) && currentEditor() === current) redraw(render);
+    }
+  }
+}
+
+async function convertCandidate(current, render, { text, format, rename }) {
+  await editDefinition(current, "convert", render, async (revision) => {
+    let converted = await api("/api/definition-documents/convert", { text, format: format || "json" });
+    if (rename && rename.from !== rename.to) {
+      const definition = converted.definition;
+      if (definition.nodes.filter((item) => item.id === rename.to).length > 1) throw new Error("实例 ID 已存在，不能合并引用");
+      for (const item of definition.nodes) {
+        item.depends_on = item.depends_on.map((id) => id === rename.from ? rename.to : id);
+        for (const binding of Object.values(item.inputs || {}))
+          if (binding?.node === rename.from) binding.node = rename.to;
+      }
+      for (const binding of Object.values(definition.outputs || {}))
+        if (binding?.node === rename.from) binding.node = rename.to;
+      converted = await api("/api/definition-documents/convert", { text: textOf(definition) });
+    }
+    if (editors.get(current.key) !== current) return;
+    if (current.revision !== revision) {
+      current.message = "转换期间有较新编辑；原文已保留，请重新应用。";
+      return;
+    }
+    const replaced = ["json", "yaml"].filter((name) => name !== format && current.texts[name] !== current.canonicalTexts[name]);
+    if (!sameValue(current.definition, converted.definition) && replaced.length && !window.confirm(
+      `本次修改将重新生成 ${replaced.map((name) => name.toUpperCase()).join(" / ")} 原文，原注释和排版会被替换。要保留请取消并先下载原文；是否继续同步？`)) {
+      current.message = "未应用修改；各处原文与字段缓冲均已保留。";
+      return;
+    }
+    applyEditor(current, converted, format, text);
+  });
+}
+
+async function reviseDefinition(current, publish, render) {
+  const definition = structuredClone(current.definition);
+  await editDefinition(current, publish ? "publish" : "check", render, async (revision) => {
+    const { id, version, digest } = current.base;
+    const url = `/api/${current.kind}-definitions/${encodeURIComponent(id)}/${encodeURIComponent(version)}/revisions`;
+    const result = await api(url + (publish ? "" : "/check"), { base_digest: digest, definition });
+    if (editors.get(current.key) !== current) return;
+    if (publish) {
+      current.publication = { id: result.definition.id, version: result.definition.version, digest: result.digest };
+      current.message = `已发布 ${current.publication.id} @ ${current.publication.version}。` +
+        (current.revision === revision ? "可明确以该版本继续编辑。" : "发布期间的较新编辑已保留，尚未发布。");
+      if (currentLibrary(current.home)) await loadLibrary(render);
+    } else {
+      current.check = { revision, result };
+      current.message = current.revision === revision ? "当前已应用正文检查通过；尚未发布。" : "检查期间有较新编辑；请重新检查当前正文。";
+    }
+  });
+}
+
+function synchronizeLibrary() {
+  const home = app.bootstrap.state_directory;
+  if (home === library.controlDirectory) return;
+  if (library.selection) selections.set(library.controlDirectory, library.selection);
+  library.request++;
+  library.detailRequest++;
+  library.previewRequest++;
+  library.installRequest++;
+  Object.assign(library, {
+    controlDirectory: home, started: false, loading: false, installing: null, error: "", message: "",
+    agents: [], workflows: [], presets: [], selection: null, detail: null, detailLoading: false, detailError: "",
+    grant: "", preview: null, previewLoading: false, previewError: "", restoreSelection: selections.get(home) || null,
+  });
+}
 
 function redraw(render) {
   if (app.tab === "definitions") render();
 }
 
 async function loadLibrary(render) {
+  const home = library.controlDirectory;
+  if (!currentLibrary(home)) return false;
+  const selectionRequest = library.detailRequest;
   const request = ++library.request;
   library.loading = true;
   library.error = "";
@@ -23,7 +240,7 @@ async function loadLibrary(render) {
     const [agents, workflows, presets] = await Promise.all([
       api("/api/agent-definitions"), api("/api/workflow-definitions"), api("/api/composition/presets"),
     ]);
-    if (request !== library.request) return false;
+    if (!currentLibrary(home) || request !== library.request) return false;
     Object.assign(library, { agents, workflows, presets });
     const selected = library.selection;
     if (selected && !library[selected.kind === "agent" ? "agents" : "workflows"].some(
@@ -33,12 +250,19 @@ async function loadLibrary(render) {
       library.previewRequest++;
       Object.assign(library, { selection: null, detail: null, preview: null, detailLoading: false, previewLoading: false });
     }
+    if (!library.selection && library.restoreSelection && selectionRequest === library.detailRequest) {
+      const previous = library.restoreSelection;
+      library.restoreSelection = null;
+      if (library[previous.kind === "agent" ? "agents" : "workflows"].some(
+        (item) => item.id === previous.id && item.version === previous.version,
+      )) await openDefinition(previous.kind, previous, render);
+    }
     return true;
   } catch (error) {
-    if (request === library.request) library.error = error.message;
+    if (currentLibrary(home) && request === library.request) library.error = error.message;
     return false;
   } finally {
-    if (request === library.request) {
+    if (currentLibrary(home) && request === library.request) {
       library.loading = false;
       redraw(render);
     }
@@ -46,23 +270,28 @@ async function loadLibrary(render) {
 }
 
 async function openDefinition(kind, reference, render) {
+  const home = library.controlDirectory;
+  if (!currentLibrary(home)) { redraw(render); return; }
   const request = ++library.detailRequest;
   library.previewRequest++;
   Object.assign(library, {
     selection: { kind, id: reference.id, version: reference.version }, detail: null, detailLoading: true,
-    detailError: "", grant: "", preview: null, previewLoading: false, previewError: "",
+    detailError: "", grant: "", preview: null, previewLoading: false, previewError: "", restoreSelection: null,
   });
+  selections.set(home, library.selection);
   redraw(render);
   try {
     const result = await api(`/api/${kind}-definitions/${encodeURIComponent(reference.id)}/${encodeURIComponent(reference.version)}`);
-    if (request !== library.detailRequest) return;
+    if (!currentLibrary(home) || request !== library.detailRequest) return;
+    await restoreEditor(kind, result, home);
+    if (!currentLibrary(home) || request !== library.detailRequest) return;
     library.detail = result;
     if (kind === "workflow") library.grant = JSON.stringify({ schema_version: 1,
       permissions: result.definition.permissions, limits: result.definition.limits }, null, 2);
   } catch (error) {
-    if (request === library.detailRequest) library.detailError = error.message;
+    if (currentLibrary(home) && request === library.detailRequest) library.detailError = error.message;
   } finally {
-    if (request === library.detailRequest) {
+    if (currentLibrary(home) && request === library.detailRequest) {
       library.detailLoading = false;
       redraw(render);
     }
@@ -71,6 +300,8 @@ async function openDefinition(kind, reference, render) {
 
 async function installPreset(identity, render) {
   if (library.installing) return;
+  const home = library.controlDirectory, request = ++library.installRequest;
+  if (!currentLibrary(home)) { redraw(render); return; }
   library.installing = identity;
   library.message = "";
   library.error = "";
@@ -79,19 +310,24 @@ async function installPreset(identity, render) {
   redraw(render);
   try {
     const result = await api(`/api/composition/presets/${encodeURIComponent(identity)}/install`, {});
+    if (!currentLibrary(home) || request !== library.installRequest) return;
     library.message = `${identity} 的精确版本已导入；后续可在任务中显式选择。`;
     const loaded = await loadLibrary(render);
-    if (loaded && selectionRequest === library.detailRequest && previewRequest === library.previewRequest)
+    if (loaded && currentLibrary(home) && request === library.installRequest && selectionRequest === library.detailRequest && previewRequest === library.previewRequest)
       await openDefinition("workflow", result.root, render);
   } catch (error) {
-    library.error = error.message;
+    if (currentLibrary(home) && request === library.installRequest) library.error = error.message;
   } finally {
-    library.installing = null;
-    redraw(render);
+    if (currentLibrary(home) && request === library.installRequest) {
+      library.installing = null;
+      redraw(render);
+    }
   }
 }
 
 async function previewDefinition(render) {
+  const home = library.controlDirectory;
+  if (!currentLibrary(home)) { redraw(render); return; }
   const request = ++library.previewRequest;
   const selected = library.selection;
   library.previewLoading = true;
@@ -101,15 +337,251 @@ async function previewDefinition(render) {
   try {
     const grant = JSON.parse(library.grant);
     const result = await api("/api/composition/preview", { id: selected.id, version: selected.version, grant });
-    if (request === library.previewRequest) library.preview = result;
+    if (currentLibrary(home) && request === library.previewRequest) library.preview = result;
   } catch (error) {
-    if (request === library.previewRequest) library.previewError = error.message;
+    if (currentLibrary(home) && request === library.previewRequest) library.previewError = error.message;
   } finally {
-    if (request === library.previewRequest) {
+    if (currentLibrary(home) && request === library.previewRequest) {
       library.previewLoading = false;
       redraw(render);
     }
   }
+}
+
+function formValues(current) {
+  const definition = current.definition;
+  const values = { version: definition.version, description: definition.description };
+  if (typeof values.version !== "string" || typeof values.description !== "string") return null;
+  const strings = (value) => Array.isArray(value) && value.every((item) => typeof item === "string");
+  if (current.kind === "agent") {
+    if (!strings(definition.roles) || !strings(definition.specialties) || !definition.backend || typeof definition.backend !== "object") return null;
+    return { ...values, roles: definition.roles.join("\n"), specialties: definition.specialties.join("\n"), backend: textOf(definition.backend) };
+  }
+  if (!strings(definition.inputs) || !Array.isArray(definition.nodes) || !definition.nodes.length ||
+      !definition.nodes.every((item) => item && typeof item.id === "string" && strings(item.depends_on) &&
+        (item.ref ? ["agent", "workflow"].includes(item.ref.kind) &&
+          ["id", "version", "digest"].every((key) => typeof item.ref[key] === "string") : item.join === "all"))) return null;
+  const selected = definition.nodes[current.selectedNode];
+  if (!selected) return null;
+  Object.assign(values, { inputs: definition.inputs.join("\n"), outputs: textOf(definition.outputs),
+    permissions: textOf(definition.permissions), limits: textOf(definition.limits),
+    nodeId: selected.id, dependencies: selected.depends_on.join("\n") });
+  if (selected.ref) Object.assign(values, { reference: referenceText(selected.ref), nodeInputs: textOf(selected.inputs) });
+  if (selected.ref?.kind === "agent") {
+    values.role = selected.role;
+    values.nodePermissions = textOf(selected.permissions);
+    if (definition.schema_version === 2) values.requirement = selected.review_requirement || "required";
+  }
+  return Object.values(values).every((value) => typeof value === "string") ? values : null;
+}
+
+// Raw JSON fields are spliced as text so the shared strict decoder sees duplicate keys.
+function jsonObject(value, fragments) {
+  return "{" + [...new Set([...Object.keys(value), ...Object.keys(fragments)])].map((key) =>
+    JSON.stringify(key) + ":" + (Object.hasOwn(fragments, key) ? fragments[key] : JSON.stringify(value[key]))).join(",") + "}";
+}
+
+function formDocument(current, values) {
+  const definition = structuredClone(current.definition);
+  Object.assign(definition, { version: values.version, description: values.description });
+  const fragments = {};
+  if (current.kind === "agent") {
+    definition.roles = lines(values.roles);
+    definition.specialties = lines(values.specialties);
+    fragments.backend = values.backend;
+  } else {
+    definition.inputs = lines(values.inputs);
+    Object.assign(fragments, { outputs: values.outputs, permissions: values.permissions, limits: values.limits });
+    const selected = definition.nodes[current.selectedNode];
+    Object.assign(selected, { id: values.nodeId, depends_on: lines(values.dependencies) });
+    const nodeFragments = {};
+    if (selected.ref) Object.assign(nodeFragments, { ref: values.reference, inputs: values.nodeInputs });
+    if (selected.ref?.kind === "agent") {
+      selected.role = values.role;
+      nodeFragments.permissions = values.nodePermissions;
+      if (definition.schema_version === 2 && selected.role === "reviewer") selected.review_requirement = values.requirement;
+      else delete selected.review_requirement;
+    }
+    fragments.nodes = "[" + definition.nodes.map((item, index) => index === current.selectedNode
+      ? jsonObject(item, nodeFragments) : JSON.stringify(item)).join(",") + "]";
+  }
+  return jsonObject(definition, fragments);
+}
+
+function definitionForm(current, render, action, updateControls) {
+  const defaults = formValues(current);
+  if (!defaults) return empty("当前正文尚不能生成字段表单；请在 JSON / YAML 中修正后应用。检查与发布仍由定义库校验。");
+  const values = current.formBuffer || defaults;
+  const fields = node("form", { onsubmit: (event) => event.preventDefault() },
+    field("新版本", "version", values.version), field("描述", "description", values.description, "textarea"));
+  if (current.kind === "agent") {
+    const roleTools = app.agentRoles.flatMap((role) => app.bootstrap.tools[role] || []);
+    const tools = [...new Set(roleTools.map((item) => item.tool))];
+    const choice = select(tools, current.definition.backend.tool, null);
+    choice.setAttribute("aria-label", "后端基础请求");
+    fields.append(field("职能（每行一个）", "roles", values.roles, "textarea"),
+      field("专长（每行一个）", "specialties", values.specialties, "textarea"),
+      field("后端请求 JSON", "backend", values.backend, "textarea", { className: "workflow-json", spellcheck: "false" }),
+      row(choice, button("填入所选后端的基础请求", () => {
+        fields.elements.backend.value = textOf({ tool: choice.value });
+        fields.dispatchEvent(new Event("input", { bubbles: true }));
+      })), node("p", {}, "填入基础请求会替换此字段；模型、选项和凭据变量引用可在 JSON 中补充。目录可选不代表已安装或认证。"));
+  } else {
+    const selected = current.definition.nodes[current.selectedNode];
+    fields.append(field("工作流输入端口（每行一个）", "inputs", values.inputs, "textarea"),
+      field("工作流输出绑定 JSON", "outputs", values.outputs, "textarea", { spellcheck: "false" }),
+      field("根权限 JSON", "permissions", values.permissions, "textarea", { spellcheck: "false" }),
+      field("根预算 JSON", "limits", values.limits, "textarea", { spellcheck: "false" }),
+      field("实例 ID", "nodeId", values.nodeId), field("先行依赖（每行一个）", "dependencies", values.dependencies, "textarea"));
+    if (selected.ref) {
+      const available = library[selected.ref.kind === "agent" ? "agents" : "workflows"].map((item) => ({
+        kind: selected.ref.kind, id: item.id, version: item.version, digest: item.digest,
+      }));
+      if (!available.some((item) => referenceText(item) === values.reference)) available.unshift(selected.ref);
+      const references = select(available.map((item) => [referenceText(item), `${item.kind} · ${item.id} @ ${item.version} · ${item.digest.slice(0, 12)}`]), values.reference, "reference");
+      fields.append(node("label", {}, "实例精确引用", references),
+        field("实例输入绑定 JSON", "nodeInputs", values.nodeInputs, "textarea", { spellcheck: "false" }));
+    }
+    if (selected.ref?.kind === "agent") {
+      const roles = [...new Set([values.role, ...app.agentRoles])];
+      fields.append(node("label", {}, "实例职能", select(roles, values.role, "role")),
+        field("实例权限 JSON", "nodePermissions", values.nodePermissions, "textarea", { spellcheck: "false" }));
+      if (current.definition.schema_version === 2) fields.append(node("label", {}, "审查职责（仅 reviewer 生效）",
+        select([["required", "必需"], ["advisory", "建议"]], values.requirement, "requirement")));
+    }
+  }
+  const retainFields = () => {
+    const buffer = Object.fromEntries(new FormData(fields));
+    current.formBuffer = Object.keys(defaults).every((key) => defaults[key] === buffer[key]) ? null : buffer;
+    touchEditor(current);
+    updateControls();
+  };
+  fields.addEventListener("input", retainFields);
+  fields.addEventListener("change", retainFields);
+  fields.append(row(action("应用字段文本", () => {
+    const values = current.formBuffer || defaults;
+    const selected = current.definition.nodes?.[current.selectedNode];
+    return convertCandidate(current, render, { text: formDocument(current, values),
+      rename: selected ? { from: selected.id, to: values.nodeId } : null });
+  }, () => pendingText(current) || Boolean(current.request)),
+  action("放弃字段文本", () => { current.formBuffer = null; touchEditor(current); redraw(render); }, () => Boolean(current.request))));
+  if (current.kind !== "workflow") return fields;
+  const nodes = current.definition.nodes;
+  const picker = select(nodes.map((item, index) => [String(index), `${item.id} · ${item.ref?.kind || "all-join"}`]), String(current.selectedNode), null);
+  picker.setAttribute("aria-label", "编辑实例");
+  picker.disabled = pending(current) || Boolean(current.request);
+  picker.addEventListener("change", () => { current.selectedNode = Number(picker.value); rememberEditor(current); redraw(render); });
+  const add = (kind) => {
+    const next = structuredClone(current.definition);
+    let index = 1;
+    while (next.nodes.some((item) => item.id === `${kind}-${index}`)) index++;
+    const item = { id: `${kind}-${index}`, depends_on: [] };
+    if (kind === "join") item.join = "all";
+    else {
+      const reference = library[kind === "agent" ? "agents" : "workflows"][0];
+      if (!reference) throw new Error("请先导入可引用的精确版本");
+      item.ref = { kind, id: reference.id, version: reference.version, digest: reference.digest };
+      item.inputs = Object.fromEntries(next.inputs.map((port) => [port, { input: port }]));
+      if (kind === "agent") {
+        item.role = reference.roles[0];
+        item.permissions = structuredClone(next.permissions);
+        if (next.schema_version === 2 && item.role === "reviewer") item.review_requirement = "required";
+      }
+    }
+    next.nodes.push(item);
+    return convertCandidate(current, render, { text: textOf(next) });
+  };
+  return node("div", {}, row(node("label", {}, "编辑实例", picker),
+    ...[["agent", "增加 Agent 实例"], ["workflow", "增加子工作流实例"], ["join", "增加 all-join"]].map(([kind, label]) =>
+      action(label, () => add(kind), () => pending(current) || Boolean(current.request)))), fields,
+    action("删除当前实例", () => {
+      const next = structuredClone(current.definition), id = nodes[current.selectedNode].id;
+      next.nodes.splice(current.selectedNode, 1);
+      for (const item of next.nodes) item.depends_on = item.depends_on.filter((value) => value !== id);
+      return convertCandidate(current, render, { text: textOf(next) });
+    }, () => pending(current) || Boolean(current.request) || nodes.length <= 1, "secondary danger"),
+    node("p", {}, "重命名会同步依赖和具名绑定。删除后请检查剩余端口引用；新增实例的端口、职能和权限须按实际用途调整。"));
+}
+
+function editorView(render) {
+  const current = currentEditor();
+  if (!current) return null;
+  if (current.restoreError) return panel("定义编辑缓冲无法打开", current.restoreError,
+    button("下载定义原始缓冲", () => download("definition-editor-buffer.txt", current.raw)),
+    button("重新核对定义缓冲", async () => { editors.delete(current.key); await openDefinition(current.kind, current.base, render); }),
+    button("明确清除此定义缓冲", async () => {
+      sessionStorage.removeItem(current.key);
+      editors.delete(current.key);
+      await openDefinition(current.kind, current.base, render);
+    }));
+  const controls = [];
+  const disclosure = (name, label, ...children) => {
+    const details = node("details", { open: current.expanded[name] ? "" : null }, node("summary", {}, label), ...children);
+    details.addEventListener("toggle", () => { if (details.isConnected) current.expanded[name] = details.open; });
+    return details;
+  };
+  const action = (label, run, disabled = () => false, className = "secondary") => {
+    const element = button(label, run, className);
+    controls.push({ element, disabled });
+    return element;
+  };
+  const notice = node("p", { role: "status" });
+  const storage = node("p", { className: "error", role: "alert" });
+  const error = node("p", { className: "error", role: "alert" });
+  const message = node("p", { role: "status" });
+  let fields;
+  const updateControls = () => {
+    controls.forEach(({ element, disabled }) => { element.disabled = disabled(); });
+    const picker = fields?.querySelector('[aria-label="编辑实例"]');
+    if (picker) picker.disabled = pending(current) || Boolean(current.request);
+    notice.textContent = pending(current) ? "有未应用的字段或 JSON / YAML 文本；请逐一应用或放弃后再检查、发布或撤销。"
+      : current.check?.revision === current.revision ? "当前正文已检查，可明确发布。" : "正文已应用；检查完整候选后才能发布。";
+    storage.textContent = current.storageError || "";
+    storage.hidden = !current.storageError;
+    error.textContent = current.error;
+    error.hidden = !current.error;
+    message.textContent = current.message;
+  };
+  fields = definitionForm(current, render, action, updateControls);
+  const busyOrPending = () => pending(current) || Boolean(current.request);
+  const move = (direction) => {
+    current.historyIndex += direction;
+    const snapshot = current.history[current.historyIndex];
+    current.definition = JSON.parse(snapshot.text);
+    current.texts = { ...snapshot.texts };
+    current.appliedTexts = { ...snapshot.texts };
+    current.canonicalTexts = { ...snapshot.canonicalTexts };
+    current.selectedNode = snapshot.selected;
+    touchEditor(current);
+    redraw(render);
+  };
+  const editorsView = ["json", "yaml"].map((format) => {
+    const label = format.toUpperCase();
+    const input = node("textarea", { className: "workflow-json", value: current.texts[format], "aria-label": `定义 ${label} 原文`, spellcheck: "false" });
+    input.addEventListener("input", () => { current.texts[format] = input.value; touchEditor(current); updateControls(); });
+    return disclosure(format, `${label} 原文`, input,
+      row(action(`应用 ${label} 原文`, () => convertCandidate(current, render, { text: current.texts[format], format }),
+        () => pendingText(current, format) || current.formBuffer !== null || Boolean(current.request)),
+      action(`放弃 ${label} 原文`, () => { current.texts[format] = current.appliedTexts[format]; touchEditor(current); redraw(render); }, () => Boolean(current.request)),
+      button(`下载 ${label} 原文`, () => download(`${current.kind}.${format}`, current.texts[format]))));
+  });
+  const view = panel("编辑定义并派生新版本", "编辑基于此精确原包，原附件与目录全部保留。发布增加不可变版本，不修改原定义或在途任务。",
+    pre({ base: current.base }), notice, storage, error, message,
+    row(action("检查定义候选", () => reviseDefinition(current, false, render), busyOrPending),
+      action("发布新定义版本", () => reviseDefinition(current, true, render),
+        () => busyOrPending() || current.check?.revision !== current.revision, "primary"),
+      button("下载定义编辑缓冲", () => download("definition-editor-buffer.json", textOf(editorBuffer(current))))),
+    row(action("撤销定义编辑", () => move(-1), () => busyOrPending() || current.historyIndex === 0),
+      action("重做定义编辑", () => move(1), () => busyOrPending() || current.historyIndex === current.history.length - 1)),
+    node("p", {}, "本页历史最多50份、合计4MiB；单份超限时仅保留当前正文。刷新后保留编辑缓冲并重新建立历史。"),
+    current.publication ? panel("已发布版本回执", "此处保留最近一次成功发布的精确版本；后续编辑仍须重新检查和发布。",
+      pre(current.publication), button("以已发布版本继续编辑", () => openDefinition(current.kind, current.publication, render))) : null,
+    current.check ? node("details", {}, node("summary", {}, "上次检查的快照结果"), pre(current.check.result)) : null,
+    disclosure("fields", "字段编辑", fields),
+    ...editorsView,
+    node("p", {}, "缓冲按控制目录与原定义版本隔离，关闭标签页前请发布或下载。YAML 采用 JSON 数据模型，日期等字符串请加引号，不支持别名。资源文件变更另行使用完整包导入。"));
+  updateControls();
+  return view;
 }
 
 function instancesView(preview) {
@@ -146,7 +618,7 @@ function detailView(render) {
   if (!library.detail) return [panel("选择一个精确版本", "先导入内置组合，或从列表选择 Agent / 子工作流。版本详情和静态预览均不执行任务。")];
   const { definition, resources, digest } = library.detail;
   const selected = library.selection;
-  const contents = [panel(
+  const contents = [editorView(render), panel(
     `${definition.id} @ ${definition.version}`, definition.description,
     pre({ kind: selected.kind, digest, roles: definition.roles, specialties: definition.specialties,
       backend_request: definition.backend }),
@@ -183,9 +655,11 @@ function detailView(render) {
 }
 
 export function definitionsView(render) {
+  synchronizeLibrary();
   if (!library.started) {
     library.started = true;
-    queueMicrotask(() => loadLibrary(render));
+    const home = library.controlDirectory;
+    queueMicrotask(() => { if (currentLibrary(home)) loadLibrary(render); });
   }
   const selected = library.selection;
   const agentIndex = selected?.kind === "agent" ? library.agents.findIndex(
