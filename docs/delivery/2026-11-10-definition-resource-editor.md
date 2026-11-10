@@ -1,6 +1,6 @@
 # AC5 C3c D3：页面资源编辑会话
 
-固定产品基线 `80375d3647fbea585db77a08ab39e70915b01e96`，分支 `refactor/architecture-foundations`。[本片计划](../plans/2026-11-10-definition-resource-editor.md)和[D1资源合同](../plans/2026-11-10-definition-resources.md)规定验收。E1/E2与R2安装/页面旅程已完成；原实现评审者已核已备原件，真实自身模板282.12秒approve及19页连续UTF8审计通过。完整26文件独立本地Spec/Standards终核通过、开放finding0；精确提交/自己的CI/HTTPS待办，不称整个项目完成。
+固定产品基线 `80375d3647fbea585db77a08ab39e70915b01e96`，分支 `refactor/architecture-foundations`。[本片计划](../plans/2026-11-10-definition-resource-editor.md)和[D1资源合同](../plans/2026-11-10-definition-resources.md)规定验收。E1/E2与R2安装/页面旅程已完成；原实现评审者已核已备原件，真实自身模板282.12秒approve及19页连续UTF8审计通过。完整26文件独立本地Spec/Standards终核通过、开放finding0；a9778e0精确Git对象、自己的双OS CI42790499318七必要步骤与原评审者终核、明确HTTPS同SHA已通过，D3精确交付终结；不称整个项目完成。
 
 ## E0 原所有者核对
 
@@ -95,3 +95,15 @@ R2 named浏览器明确close，七个原PID/starttime身份全部消失；manage
 原fresh-context实现评审者最终直接核完整26文件、14保护源/原native输入与分页、9公开JSON/26来源、2原截图及两轮owned清理，两轴通过。RDE-I1/P2草稿联合预算和RDE-I2/P2公开合成payload成本均已关闭，源码与材料开放finding为0；原红/误等待/准备失败和未定disclosure观察均保持原范围。原件 `independent/final-local-gate.json`，评审报告SHA256 `dde5c8507c75a679e299c2cf49dd0fb64f6d432abb65882e8bff7ab85c129828`。
 
 完整14文档249链接/107实际parser、JS语法及diff空白检查通过；无新依赖、永久测试或CI。E1/E2/E3本地出口完成，E4完整独立实现与真实自身模板门禁完成。将普通提交/推送当前工作分支，后续只核这个新提交的必要双OS七步和明确HTTPS；未合main，未把D2结果沿用成本片精确交付。
+
+## E4 普通提交/推送与首份官方CI
+
+26文件已普通提交推送 `a9778e00e81b3b2e43a4f5745c92fbb21c990c5a`，父80375d3。作者精确Git对象核435源/wheel/安装/RECORD与R2相同、283冻结mode/kind/object保持，14模型保护源一致；提交后worktree clean。ready对固定审查快照只有评审/状态续记漂移，原件 `commit-closure/{ready,exact-objects.json,commit.stdout,push.json}`。
+
+自己的[CI42790499318](https://github.com/626619403/Ergora/actions/runs/42790499318)首份官方完整采样为In progress，09:25–09:26 UTC双OS构建安装/参考身份四步骤成功；两原生回归及Windows安装升级三必要步骤尚未终结，不记CI门禁通过。原HTML/job-groups/逐步骤记录保留 `commit-closure/snapshot-01/`，不取消/重跑。原评审者已在09:28:29→09:28:32 UTC用隔离配置、仅HTTPS/TLS/禁重定向及凭据读取远端ref，完整a9778e0一致，原件 `independent/https-remote-01/`；精确对象链及自己的CI最终独立终核仍在进行。
+
+等CI期间仅整理[D4/D5三领域继承计划](../plans/2026-11-10-definition-resource-inheritance.md)与准备记录，不推送新候选、不改产品/已验原件，D3精确门禁后才执行下一旅程。
+
+## E4 精确交付终结
+
+自己的[CI42790499318](https://github.com/626619403/Ergora/actions/runs/42790499318)第三份官方样本于09:37:05–09:37:21 UTC观察Success，双OS七必要步骤全部success/completed。原评审者离线直接解析五份官方原响应、完整提交/日志路径和采集原件，已核同完整a9778e0并完成最终门禁；原件 `independent/audit-ci-snapshot-03.json`、`independent/final-exact-gate.json`，审查报告最终SHA256 `8eefd4fdaa1e9086547863e1a29f68dddd5e9cdce68c98ad26f1da772cfaa29b`。原首/次在途样本保留，不重跑或取消。精确Git对象、435包/283冻结、完整26文件独立两轴、真实自身模板及明确HTTPS同SHA此前已核，开放finding0；D3精确交付终结。后续D4/D5现在开始，未沿用D3结果冒充下一片验收。

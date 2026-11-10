@@ -1,0 +1,282 @@
+{
+  "schema_version": 1,
+  "projection": "Formatted and machine-path-redacted evidence; original artifact SHA differs from this projection.",
+  "scope": "Only observed descendants of seven owned CLI calls; original libraries moved intact outside active control, no browser/HTTP service started.",
+  "source_artifacts": {
+    "cleanup": {
+      "artifact": "r1/model/cleanup.json",
+      "bytes": 3316,
+      "sha256": "6ec47e7cadcf5d2abf5207f9ab4a965a4f88cfc95a23c802e88005e30aa96d01"
+    },
+    "retirement": {
+      "artifact": "r1/model/retirement.json",
+      "bytes": 274,
+      "sha256": "bb3d92c9e2e1b9798373b9ac83c869e63dc56271a9fa5fd590e9ae4889144aa8"
+    },
+    "command": {
+      "artifact": "model-r1-command.json",
+      "bytes": 414,
+      "sha256": "ec655f2d35b9758f50a87433eadeff7c6f87bd9173f890dd57b16f1cec98c410"
+    },
+    "self_review_cleanup": {
+      "artifact": "self-review-cleanup.json",
+      "bytes": 1313,
+      "sha256": "068a1de57311d35b35d349831089ebe35c3ab85cb25a4e7571b91c5606b40152"
+    }
+  },
+  "data": {
+    "cleanup": {
+      "observed": [
+        {
+          "pid": 49649,
+          "ppid": 49639,
+          "starttime": "232322619"
+        },
+        {
+          "pid": 49749,
+          "ppid": 49639,
+          "starttime": "232322674"
+        },
+        {
+          "pid": 49759,
+          "ppid": 49639,
+          "starttime": "232322728"
+        },
+        {
+          "pid": 50160,
+          "ppid": 49759,
+          "starttime": "232323043"
+        },
+        {
+          "pid": 50233,
+          "ppid": 49759,
+          "starttime": "232323128"
+        },
+        {
+          "pid": 50473,
+          "ppid": 50471,
+          "starttime": "232323254"
+        },
+        {
+          "pid": 50471,
+          "ppid": 50462,
+          "starttime": "232323254"
+        },
+        {
+          "pid": 50472,
+          "ppid": 50471,
+          "starttime": "232323254"
+        },
+        {
+          "pid": 50474,
+          "ppid": 50471,
+          "starttime": "232323254"
+        },
+        {
+          "pid": 50462,
+          "ppid": 50233,
+          "starttime": "232323253"
+        },
+        {
+          "pid": 50757,
+          "ppid": 50233,
+          "starttime": "232323455"
+        },
+        {
+          "pid": 51024,
+          "ppid": 50233,
+          "starttime": "232323641"
+        },
+        {
+          "pid": 51036,
+          "ppid": 50233,
+          "starttime": "232323643"
+        },
+        {
+          "pid": 51779,
+          "ppid": 50233,
+          "starttime": "232324296"
+        },
+        {
+          "pid": 61502,
+          "ppid": 49639,
+          "starttime": "232332318"
+        },
+        {
+          "pid": 61535,
+          "ppid": 49639,
+          "starttime": "232332372"
+        },
+        {
+          "pid": 61829,
+          "ppid": 61535,
+          "starttime": "232332540"
+        },
+        {
+          "pid": 61903,
+          "ppid": 61535,
+          "starttime": "232332628"
+        },
+        {
+          "pid": 62111,
+          "ppid": 62106,
+          "starttime": "232332674"
+        },
+        {
+          "pid": 62112,
+          "ppid": 62111,
+          "starttime": "232332674"
+        },
+        {
+          "pid": 62113,
+          "ppid": 62111,
+          "starttime": "232332674"
+        },
+        {
+          "pid": 62114,
+          "ppid": 62111,
+          "starttime": "232332674"
+        },
+        {
+          "pid": 62106,
+          "ppid": 61903,
+          "starttime": "232332673"
+        },
+        {
+          "pid": 62124,
+          "ppid": 61903,
+          "starttime": "232332685"
+        },
+        {
+          "pid": 62216,
+          "ppid": 61903,
+          "starttime": "232332809"
+        },
+        {
+          "pid": 62968,
+          "ppid": 61903,
+          "starttime": "232333359"
+        },
+        {
+          "pid": 79532,
+          "ppid": 49639,
+          "starttime": "232342033"
+        },
+        {
+          "pid": 80364,
+          "ppid": 49639,
+          "starttime": "232342079"
+        },
+        {
+          "pid": 82242,
+          "ppid": 80364,
+          "starttime": "232342212"
+        },
+        {
+          "pid": 82322,
+          "ppid": 80364,
+          "starttime": "232342298"
+        },
+        {
+          "pid": 82433,
+          "ppid": 82322,
+          "starttime": "232342342"
+        },
+        {
+          "pid": 82438,
+          "ppid": 82433,
+          "starttime": "232342343"
+        },
+        {
+          "pid": 82439,
+          "ppid": 82438,
+          "starttime": "232342343"
+        },
+        {
+          "pid": 82440,
+          "ppid": 82438,
+          "starttime": "232342343"
+        },
+        {
+          "pid": 82441,
+          "ppid": 82438,
+          "starttime": "232342343"
+        },
+        {
+          "pid": 82473,
+          "ppid": 82322,
+          "starttime": "232342355"
+        },
+        {
+          "pid": 83369,
+          "ppid": 82322,
+          "starttime": "232343056"
+        }
+      ],
+      "same_identity_alive": [],
+      "scope": "Only observed descendants of the owned CLI commands; not a claim about unsampled or unrelated processes."
+    },
+    "retirement": {
+      "retired_to": "<repository>/.ergora/checks/ac5-definition-resource-inheritance/r1/retired-definitions",
+      "original_directories_absent": true,
+      "scope": "Moved intact for audit; original bytes and readonly modes retained, not permanently deleted."
+    },
+    "command": {
+      "observed_at": "2026-11-10T09:55:18.617903+00:00",
+      "tool_session": 71778,
+      "exit_code": 0,
+      "driver_sha256": "426e848aa45034bf67c62b57c8a12033a719540633933e3e2d9c9edb1fbe8516",
+      "stdout_sha256": "f736c3005b50606027b3a9ddf0369c9fa4188ad610e1801cc93c39e87fb17428",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "seconds_for_three_model_calls": 256.9679420655593
+    },
+    "self_review_cleanup": {
+      "checked_at": "2026-11-10T10:15:20.473366+00:00",
+      "phases": [
+        {
+          "phase": "self-review-r1",
+          "run_id": "d29be658ed2142f395d66f2016576391",
+          "status": "succeeded",
+          "temporary_mcp_pids": [
+            115421,
+            115887
+          ],
+          "temporary_mcp_pid_paths_absent": true,
+          "active_definition_libraries_absent": true,
+          "original_libraries_retained": true
+        },
+        {
+          "phase": "self-review-r2",
+          "run_id": "1fc133ef134b4a51ae22d14ebf91efa4",
+          "status": "succeeded",
+          "temporary_mcp_pids": [
+            178087,
+            178389
+          ],
+          "temporary_mcp_pid_paths_absent": true,
+          "active_definition_libraries_absent": true,
+          "original_libraries_retained": true
+        }
+      ],
+      "r2_observed_native_to_cli_chain": [
+        {
+          "pid": 178389,
+          "ppid": 178177,
+          "starttime": "232415093"
+        },
+        {
+          "pid": 178177,
+          "ppid": 177897,
+          "starttime": "232414994"
+        },
+        {
+          "pid": 177897,
+          "ppid": 177453,
+          "starttime": "232414787"
+        }
+      ],
+      "same_identity_alive": [],
+      "scope": "R1/R2 original temporary MCP PID paths absent; R2 sampled native-to-owned-CLI chain identities gone. Original process owner handles killpg/communicate. No claim about unsampled descendants; no browser/HTTP service started."
+    }
+  }
+}

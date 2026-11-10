@@ -1,0 +1,614 @@
+{
+  "schema_version": 1,
+  "projection": "Formatted and machine-path-redacted evidence; original artifact SHA differs from this projection.",
+  "scope": "Complete candidate, original native streams, fixed input/scope and selected frozen asset bytes delivered through actual native task-MCP reads.",
+  "source_artifacts": {
+    "audit": {
+      "artifact": "model-read-audit-r2.json",
+      "bytes": 19041,
+      "sha256": "202c3306da6a9521a03719c11488d8a21882e356cda9cf9f30021a537199e6b6"
+    }
+  },
+  "data": {
+    "audit": {
+      "checked_at": "2026-11-10T10:14:47.464408+00:00",
+      "run_id": "1fc133ef134b4a51ae22d14ebf91efa4",
+      "manifest_input_and_actual_run_digest_match": true,
+      "actual_prompt_matches": true,
+      "original_definition_libraries_absent": true,
+      "original_definition_libraries_retained_outside_active_control": true,
+      "actual_stdin_and_protocol_prompt_match": true,
+      "scope_and_native_receipt_identity_match": true,
+      "bundled_agent_workflow_evidence_revision_matches": true,
+      "scope_list_passes": [
+        {
+          "pages": [
+            {
+              "offset": 0,
+              "files": 27,
+              "next_offset": null
+            }
+          ],
+          "complete": true
+        },
+        {
+          "pages": [
+            {
+              "offset": 0,
+              "files": 27,
+              "next_offset": null
+            }
+          ],
+          "complete": true
+        }
+      ],
+      "scope_files": 27,
+      "all_scope_files_read_completely": true,
+      "complete_scope_reads": {
+        "definitions/agent/ergora-structure-reviewer/1.0.32/instructions.md": {
+          "size": 354,
+          "sha256": "3cc9c450f0c03da5ea4a1434ac6182d50df6a4985cffdee2a59fe9fe477c6b43",
+          "continuous_utf8_pages": [
+            {
+              "offset": 0,
+              "bytes": 354,
+              "next_offset": null
+            }
+          ],
+          "base64_window_retries": [],
+          "repeated_pages": [],
+          "complete_continuous_plaintext": true
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.32/skills/candidate-evidence/SKILL.md": {
+          "size": 1077,
+          "sha256": "a43d14ba653c58fed7218980d5ed800e887eb5bea19f8a85911825942b919bfb",
+          "continuous_utf8_pages": [
+            {
+              "offset": 0,
+              "bytes": 1077,
+              "next_offset": null
+            }
+          ],
+          "base64_window_retries": [],
+          "repeated_pages": [],
+          "complete_continuous_plaintext": true
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.32/skills/candidate-evidence/references/candidate.txt": {
+          "size": 478569,
+          "sha256": "3764282621668803d10382eb52ddd1d71a3eef786a1dd975dd5ddd9fcbcc97a8",
+          "continuous_utf8_pages": [
+            {
+              "offset": 0,
+              "bytes": 24000,
+              "next_offset": 24000
+            },
+            {
+              "offset": 24000,
+              "bytes": 24000,
+              "next_offset": 48000
+            },
+            {
+              "offset": 48000,
+              "bytes": 24000,
+              "next_offset": 72000
+            },
+            {
+              "offset": 72000,
+              "bytes": 24000,
+              "next_offset": 96000
+            },
+            {
+              "offset": 96000,
+              "bytes": 24000,
+              "next_offset": 120000
+            },
+            {
+              "offset": 120000,
+              "bytes": 24000,
+              "next_offset": 144000
+            },
+            {
+              "offset": 144000,
+              "bytes": 24000,
+              "next_offset": 168000
+            },
+            {
+              "offset": 168000,
+              "bytes": 24000,
+              "next_offset": 192000
+            },
+            {
+              "offset": 192000,
+              "bytes": 24000,
+              "next_offset": 216000
+            },
+            {
+              "offset": 216000,
+              "bytes": 24000,
+              "next_offset": 240000
+            },
+            {
+              "offset": 240000,
+              "bytes": 24000,
+              "next_offset": 264000
+            },
+            {
+              "offset": 264000,
+              "bytes": 24000,
+              "next_offset": 288000
+            },
+            {
+              "offset": 288000,
+              "bytes": 24000,
+              "next_offset": 312000
+            },
+            {
+              "offset": 312000,
+              "bytes": 24000,
+              "next_offset": 336000
+            },
+            {
+              "offset": 336000,
+              "bytes": 24000,
+              "next_offset": 360000
+            },
+            {
+              "offset": 360000,
+              "bytes": 24000,
+              "next_offset": 384000
+            },
+            {
+              "offset": 384000,
+              "bytes": 24000,
+              "next_offset": 408000
+            },
+            {
+              "offset": 408000,
+              "bytes": 24000,
+              "next_offset": 432000
+            },
+            {
+              "offset": 432000,
+              "bytes": 24000,
+              "next_offset": 456000
+            },
+            {
+              "offset": 456000,
+              "bytes": 22569,
+              "next_offset": null
+            }
+          ],
+          "base64_window_retries": [],
+          "repeated_pages": [],
+          "complete_continuous_plaintext": true
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.32/skills/candidate-evidence/references/native-index.json": {
+          "size": 7734,
+          "sha256": "8e84a76c916617392675c5ed93fc75d7e3baa77fc400679406c2db354e996e80",
+          "continuous_utf8_pages": [
+            {
+              "offset": 0,
+              "bytes": 7734,
+              "next_offset": null
+            }
+          ],
+          "base64_window_retries": [],
+          "repeated_pages": [],
+          "complete_continuous_plaintext": true
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.32/skills/candidate-evidence/references/native/large-change/composition.json": {
+          "size": 105343,
+          "sha256": "7ce2dfb64fcdeb7a476efa6209e71e5df304b0a95e5a625fad7067463397770e",
+          "continuous_utf8_pages": [
+            {
+              "offset": 0,
+              "bytes": 24000,
+              "next_offset": 24000
+            },
+            {
+              "offset": 24000,
+              "bytes": 24000,
+              "next_offset": 48000
+            },
+            {
+              "offset": 48000,
+              "bytes": 24000,
+              "next_offset": 72000
+            },
+            {
+              "offset": 72000,
+              "bytes": 24000,
+              "next_offset": 96000
+            },
+            {
+              "offset": 96000,
+              "bytes": 9343,
+              "next_offset": null
+            }
+          ],
+          "base64_window_retries": [],
+          "repeated_pages": [],
+          "complete_continuous_plaintext": true
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.32/skills/candidate-evidence/references/native/large-change/native-stdout.jsonl": {
+          "size": 45700,
+          "sha256": "3ba7e1813ee1f8518304678a17faae8c1122c33176a9f4a24812090b8f751495",
+          "continuous_utf8_pages": [
+            {
+              "offset": 0,
+              "bytes": 24000,
+              "next_offset": 24000
+            },
+            {
+              "offset": 24000,
+              "bytes": 21700,
+              "next_offset": null
+            }
+          ],
+          "base64_window_retries": [],
+          "repeated_pages": [],
+          "complete_continuous_plaintext": true
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.32/skills/candidate-evidence/references/native/large-change/prompt.txt": {
+          "size": 10017,
+          "sha256": "fba59e8b39b7ac92b46e8b1f32d45e54c9a4152ca2670cb718a9e9cda7ba1a98",
+          "continuous_utf8_pages": [
+            {
+              "offset": 0,
+              "bytes": 10017,
+              "next_offset": null
+            }
+          ],
+          "base64_window_retries": [],
+          "repeated_pages": [],
+          "complete_continuous_plaintext": true
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.32/skills/candidate-evidence/references/native/large-change/request.json": {
+          "size": 811,
+          "sha256": "b58eacf98f70ce08db286a84a5e49b4966a4148ff77693a8f030a1347d3f2f00",
+          "continuous_utf8_pages": [
+            {
+              "offset": 0,
+              "bytes": 811,
+              "next_offset": null
+            }
+          ],
+          "base64_window_retries": [],
+          "repeated_pages": [],
+          "complete_continuous_plaintext": true
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.32/skills/candidate-evidence/references/native/large-change/run.json": {
+          "size": 20359,
+          "sha256": "78188b427dd6d94e3b91b558b15d27993614faaaaa6848e71d6d3405d78225cd",
+          "continuous_utf8_pages": [
+            {
+              "offset": 0,
+              "bytes": 20359,
+              "next_offset": null
+            }
+          ],
+          "base64_window_retries": [],
+          "repeated_pages": [],
+          "complete_continuous_plaintext": true
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.32/skills/candidate-evidence/references/native/large-change/scope.json": {
+          "size": 16961,
+          "sha256": "5216c324faf4f7b101a75d1a928216b7103b7903edc39e61295f839d69487a05",
+          "continuous_utf8_pages": [
+            {
+              "offset": 0,
+              "bytes": 16961,
+              "next_offset": null
+            }
+          ],
+          "base64_window_retries": [],
+          "repeated_pages": [],
+          "complete_continuous_plaintext": true
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.32/skills/candidate-evidence/references/native/large-change/selected-assets.json": {
+          "size": 22296,
+          "sha256": "5be9f5f67269bd5fd972460b1e459b033f3af8eff56ff81f65e2f7672eac0fb4",
+          "continuous_utf8_pages": [
+            {
+              "offset": 0,
+              "bytes": 22296,
+              "next_offset": null
+            }
+          ],
+          "base64_window_retries": [],
+          "repeated_pages": [],
+          "complete_continuous_plaintext": true
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.32/skills/candidate-evidence/references/native/repository-governance/composition.json": {
+          "size": 82548,
+          "sha256": "05ad18465a3b43b47b80b7b90336b9a1d87b0971c9cf870c80d9607038c443ea",
+          "continuous_utf8_pages": [
+            {
+              "offset": 0,
+              "bytes": 24000,
+              "next_offset": 24000
+            },
+            {
+              "offset": 24000,
+              "bytes": 24000,
+              "next_offset": 48000
+            },
+            {
+              "offset": 48000,
+              "bytes": 24000,
+              "next_offset": 72000
+            },
+            {
+              "offset": 72000,
+              "bytes": 10548,
+              "next_offset": null
+            }
+          ],
+          "base64_window_retries": [],
+          "repeated_pages": [],
+          "complete_continuous_plaintext": true
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.32/skills/candidate-evidence/references/native/repository-governance/native-stdout.jsonl": {
+          "size": 46297,
+          "sha256": "ae198a056451d672a70e7a41a5dc40c63ea2c2278595905ab568e128729e0193",
+          "continuous_utf8_pages": [
+            {
+              "offset": 0,
+              "bytes": 24000,
+              "next_offset": 24000
+            },
+            {
+              "offset": 24000,
+              "bytes": 22297,
+              "next_offset": null
+            }
+          ],
+          "base64_window_retries": [],
+          "repeated_pages": [],
+          "complete_continuous_plaintext": true
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.32/skills/candidate-evidence/references/native/repository-governance/prompt.txt": {
+          "size": 10106,
+          "sha256": "88f040d4ea8af89c45bf899b01853788582b68e2d945c9abaa783697eaeacccf",
+          "continuous_utf8_pages": [
+            {
+              "offset": 0,
+              "bytes": 10106,
+              "next_offset": null
+            }
+          ],
+          "base64_window_retries": [],
+          "repeated_pages": [],
+          "complete_continuous_plaintext": true
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.32/skills/candidate-evidence/references/native/repository-governance/request.json": {
+          "size": 809,
+          "sha256": "961204bc5eeed8b7af2292a69ff0ffe40fd2676b8b0e201b20866b4ff1659bf6",
+          "continuous_utf8_pages": [
+            {
+              "offset": 0,
+              "bytes": 809,
+              "next_offset": null
+            }
+          ],
+          "base64_window_retries": [],
+          "repeated_pages": [],
+          "complete_continuous_plaintext": true
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.32/skills/candidate-evidence/references/native/repository-governance/run.json": {
+          "size": 20375,
+          "sha256": "adf021e99d0df3129f5bdae8cd43a6b6c8f80aa3e8382638e9ad8b7f8f71c505",
+          "continuous_utf8_pages": [
+            {
+              "offset": 0,
+              "bytes": 20375,
+              "next_offset": null
+            }
+          ],
+          "base64_window_retries": [],
+          "repeated_pages": [],
+          "complete_continuous_plaintext": true
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.32/skills/candidate-evidence/references/native/repository-governance/scope.json": {
+          "size": 17151,
+          "sha256": "5259dda32e4bdc60867a98ca64c10f4728ad8bfc78dfd6039f8bcec1636b1dd8",
+          "continuous_utf8_pages": [
+            {
+              "offset": 0,
+              "bytes": 17151,
+              "next_offset": null
+            }
+          ],
+          "base64_window_retries": [],
+          "repeated_pages": [],
+          "complete_continuous_plaintext": true
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.32/skills/candidate-evidence/references/native/repository-governance/selected-assets.json": {
+          "size": 22546,
+          "sha256": "d9ec3b0ca70671a26541db6e33df5718cce85c81f07c8f0435d322bc918f34a4",
+          "continuous_utf8_pages": [
+            {
+              "offset": 0,
+              "bytes": 22546,
+              "next_offset": null
+            }
+          ],
+          "base64_window_retries": [],
+          "repeated_pages": [],
+          "complete_continuous_plaintext": true
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.32/skills/candidate-evidence/references/native/training-optimization/composition.json": {
+          "size": 53060,
+          "sha256": "8298c4af08df818de6381adc78fbc1fc33816529c39b23cef1de95d14344b5a8",
+          "continuous_utf8_pages": [
+            {
+              "offset": 0,
+              "bytes": 24000,
+              "next_offset": 24000
+            },
+            {
+              "offset": 24000,
+              "bytes": 24000,
+              "next_offset": 48000
+            },
+            {
+              "offset": 48000,
+              "bytes": 5060,
+              "next_offset": null
+            }
+          ],
+          "base64_window_retries": [],
+          "repeated_pages": [],
+          "complete_continuous_plaintext": true
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.32/skills/candidate-evidence/references/native/training-optimization/native-stdout.jsonl": {
+          "size": 36394,
+          "sha256": "f5397006f4d43e154c11b64024c92e57a5e6bc73e6612a6d2056d48b5e023d94",
+          "continuous_utf8_pages": [
+            {
+              "offset": 0,
+              "bytes": 24000,
+              "next_offset": 24000
+            },
+            {
+              "offset": 24000,
+              "bytes": 12394,
+              "next_offset": null
+            }
+          ],
+          "base64_window_retries": [],
+          "repeated_pages": [],
+          "complete_continuous_plaintext": true
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.32/skills/candidate-evidence/references/native/training-optimization/prompt.txt": {
+          "size": 8264,
+          "sha256": "76955dbe74124e7473f7ca44fd5420646474da59c8eccdf332a453042b70f614",
+          "continuous_utf8_pages": [
+            {
+              "offset": 0,
+              "bytes": 8264,
+              "next_offset": null
+            }
+          ],
+          "base64_window_retries": [],
+          "repeated_pages": [],
+          "complete_continuous_plaintext": true
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.32/skills/candidate-evidence/references/native/training-optimization/request.json": {
+          "size": 791,
+          "sha256": "b6b6b8e70e67d56bdb9a56ed0d560507097ad3fdf8ec008804a90d193e61715c",
+          "continuous_utf8_pages": [
+            {
+              "offset": 0,
+              "bytes": 791,
+              "next_offset": null
+            }
+          ],
+          "base64_window_retries": [],
+          "repeated_pages": [],
+          "complete_continuous_plaintext": true
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.32/skills/candidate-evidence/references/native/training-optimization/run.json": {
+          "size": 17118,
+          "sha256": "8339ce9da690890e88fb3d81c401d086705b45201d14ade7496acc841fa87330",
+          "continuous_utf8_pages": [
+            {
+              "offset": 0,
+              "bytes": 17118,
+              "next_offset": null
+            }
+          ],
+          "base64_window_retries": [],
+          "repeated_pages": [],
+          "complete_continuous_plaintext": true
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.32/skills/candidate-evidence/references/native/training-optimization/scope.json": {
+          "size": 13330,
+          "sha256": "7281b5a9779089475adfde9b6c6208ceb76fa2fcde7999c7184905ad9428f7b0",
+          "continuous_utf8_pages": [
+            {
+              "offset": 0,
+              "bytes": 13330,
+              "next_offset": null
+            }
+          ],
+          "base64_window_retries": [],
+          "repeated_pages": [],
+          "complete_continuous_plaintext": true
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.32/skills/candidate-evidence/references/native/training-optimization/selected-assets.json": {
+          "size": 17327,
+          "sha256": "6a02307cb0a4d99d6c8d4d5c3f4aff698a061ca56d2bf593b0a7520e48390201",
+          "continuous_utf8_pages": [
+            {
+              "offset": 0,
+              "bytes": 17327,
+              "next_offset": null
+            }
+          ],
+          "base64_window_retries": [],
+          "repeated_pages": [],
+          "complete_continuous_plaintext": true
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.32/skills/ergora-structure-reviewer/SKILL.md": {
+          "size": 521,
+          "sha256": "d6b69570bcca408d3d06ca5adf1cb44a4a9e43c2901f05c38a68c096f23a4ac8",
+          "continuous_utf8_pages": [
+            {
+              "offset": 0,
+              "bytes": 521,
+              "next_offset": null
+            }
+          ],
+          "base64_window_retries": [],
+          "repeated_pages": [],
+          "complete_continuous_plaintext": true
+        },
+        "definitions/workflow/ergora-structure-review/1.0.32/instructions.md": {
+          "size": 163,
+          "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823",
+          "continuous_utf8_pages": [
+            {
+              "offset": 0,
+              "bytes": 163,
+              "next_offset": null
+            }
+          ],
+          "base64_window_retries": [],
+          "repeated_pages": [],
+          "complete_continuous_plaintext": true
+        }
+      },
+      "native_evidence_files": 21,
+      "original_native_files_and_frozen_assets_match": true,
+      "source_files": 13,
+      "source_files_complete_in_attachment_and_unchanged": true,
+      "attachment_bytes": 478569,
+      "attachment_sha256": "3764282621668803d10382eb52ddd1d71a3eef786a1dd975dd5ddd9fcbcc97a8",
+      "native_stream_sha256": "124e190e60479dba17295e1eb16d465e2ce7f577168bb4637d2e92f9636e8279",
+      "successful_candidate_pages": 20,
+      "probe_pages": 0,
+      "continuous_pages": 20,
+      "complete_continuous_bytes": 478569,
+      "repeated_pages": 0,
+      "base64_pages": 0,
+      "plaintext_only": true,
+      "complete_continuous_plaintext": true,
+      "next_offset": null,
+      "every_candidate_page_matches_original_bytes": true,
+      "failed_read_count": 0,
+      "failed_reads": [],
+      "instruction_and_skill_reads": {
+        "definitions/workflow/ergora-structure-review/1.0.32/instructions.md": true,
+        "definitions/agent/ergora-structure-reviewer/1.0.32/instructions.md": true,
+        "definitions/agent/ergora-structure-reviewer/1.0.32/skills/ergora-structure-reviewer/SKILL.md": true,
+        "definitions/agent/ergora-structure-reviewer/1.0.32/skills/candidate-evidence/SKILL.md": true
+      },
+      "actual_candidate_asset_matches": true,
+      "original_result_sha256": "e66df081e3e14a7723e398ec59cfde132ccbf8ebdd19ce38e8a25a8a626e3116",
+      "succeeded_original_result_matches": true,
+      "decision": "approve",
+      "scope": "Audit verifies continuous successful UTF8 plaintext coverage, with unchanged-offset base64 retries preserved. Delivery does not prove reasoning quality. Existing artifacts and original inspectors only; no model, service or test rerun. Complete byte delivery does not prove reasoning quality or formal owner approval."
+    }
+  }
+}

@@ -44,6 +44,8 @@ ergora agent definition export architecture-reviewer 1.0.0 ./shared-architecture
 
 `resources` 的每项都有 `id`、`kind` 和 `path`。`instructions`、`context` 指向非空文本文件，必须附 `sha256`；`skill` 指向带合法 `SKILL.md` 的完整目录，必须附 `digest`，目录名须等于 frontmatter 的 name。Skill 的全部文件都进入摘要，查看材料时返回完整 `SKILL.md` 指令；脚本和其他按需资源保持文件形式。
 
+AgentDefinition v1 不保存权限字段；同一专家在不同组合实例中的权限由所属 Workflow 节点及全部结构祖先约束。增加专家资料不会改变这些权限。将新专家资源送入既有组合时，应[沿完整依赖链发布](WORKFLOW_DEFINITIONS.md#沿完整依赖链发布资源修订)，最后固定新根和输入；实际附件读取见[任务MCP](WORKFLOW_DEFINITIONS.md#核验完整附件读取)。
+
 编辑示例后，更新资源摘要再运行 `check`。下面是本地刷新摘要的 Python 示例，将 `my-agent` 改成自己的目录：
 
 ```python

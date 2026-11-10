@@ -2,7 +2,7 @@
 
 本轮是新的 fresh-context 实现审查，与 [D3 设计审查](2026-11-10-definition-resource-editor-design-review.md)不同。主评审者 `resource_editor_implementation_review` 按 `maintainable-project-delivery`、其 independent-review brief、`codebase-design` 与 `code-review` 核对固定初候选；另以两个 fresh-context 子评审分别执行 Standards / Spec 轴。未继承设计通过作为实现结论。
 
-**最终本地结论：完整26文件 Spec / Standards 均通过，开放 finding 0。RDE-I1（预算）及最终材料审查发现的 RDE-I2（公开证据成本）均已同片关闭。R2 安装、实际页面、完整树、真实自身模板、公开证据及 owned 清理已核；普通提交、自己的必要 CI 与明确 HTTPS 仍待后续，精确交付尚未终结。**
+**最终结论：完整26文件 Spec / Standards 均通过，开放 finding 0。RDE-I1（预算）及 RDE-I2（公开证据成本）均已同片关闭。R2 安装、实际页面、完整树、真实自身模板、公开证据及 owned 清理已核；普通提交 a9778e0 的精确 Git 对象、明确 HTTPS 远端同 SHA 与自己的 CI42790499318 双 OS 七必要步骤均通过，D3 精确交付终核完成。**
 
 ## 固定范围与来源
 
@@ -86,3 +86,29 @@ fix-r2 已这样实现：`89–100` 行共同校验替换预算，`152–153` �
 最终26文件摘要均匹配固定 identity，11份 tracked diff 与当前基线差异一致；唯一产品 JS 仍与已验 R2 包及模型附件同身份。D2 精确终态、C3a 旧状态及当前手册入口的少量续记只修正文档事实，没有接手前片产品或重新宣称其验收；未改283冻结、六阶段、批准或证据所有者。D4 三领域／新增祖先材料、C3d 共同提权、C4–C6及后续工作保持原计划。本报告最终状态更新属于已审同片的 review/status 漂移，交由作者 ready 记录绑定，无须递归审查。
 
 最终计数：**Standards 1项 P2，已关闭；Spec 1项 P2，已关闭；开放 finding 0。完整26文件本地门禁通过。** 普通提交、自己的必要双 OS CI 和明确 HTTPS 同 SHA 分别待验，不继承 D2 身份或结果。
+
+## 精确提交与 HTTPS 补核（首次 CI 样本在途）
+
+主评审在普通提交后首先观察到工作区 clean，再直接核 Git 对象：提交 `a9778e00e81b3b2e43a4f5745c92fbb21c990c5a`，唯一父 `80375d3647fbea585db77a08ab39e70915b01e96`，树 `4e9c7cc76d336d61af9c1966124b01c45433614d`。独立按 Git 对象编码重算 commit、tree 和 blob 身份；26个变更路径与 `commit-closure/ready/identity.json` 完全相同，每个 blob 与 ready 文件逐字节一致，ready 摘要及作者 exact-objects 清单也一致。原已提交审查报告仍为上述 `dde5c850…`；本段是随后补核的 review/status 续记。
+
+完整读取 review-final→ready 的六份差异，仅为本审查报告、PLAN、本片 delivery 与三个父子计划更新最终本地通过状态；产品、公开材料和合同没有变化，D4、C3d、C4–C6仍未被宣称完成。独立原件 `independent/exact-ready-status.diff` 与 `independent/audit-exact-closure.{py,json}`。作者其后另做 D3 状态续记与 D4 两份计划/交付文档准备，当前这些文档 dirty 明确属于后续状态与准备；精确核对始终使用该提交及 ready，而非把当前文档工作区冒充已提交树。
+
+435份精确 Git 源文件与 R2 wheel、非 editable 安装文件、wheel RECORD、安装 RECORD 的摘要和大小全部一致；wheel SHA256仍为 `25b5a5cf8b3044696479299abcd755b1fbb992ce43589d5ce82d3577769a351f`。283份冻结文件的字节、mode和 Git blob 身份与父提交完全一致，源码只改 `data/console/definitions.js`。14份保护源码逐一直接取该提交的 blob，与模型附件中完整 FILE 段及记录摘要比较，全部相同；9份已提交公开 JSON 的26个来源逐字段核对仍匹配，2张已提交截图仍与原件及已审快照同字节。
+
+按明确授权，仅做一次隔离的 HTTPS 远端 ref 读取：2026-11-10 **09:28:29.234466→09:28:32.028575 UTC**，`https://github.com/626619403/Ergora.git` 的 `refs/heads/refactor/architecture-foundations` 完整返回上述 a9778e00… SHA。命令在 `/` 执行、禁用 system/global/repository 配置影响与凭据 helper/prompt，只允许 HTTPS，要求 TLS 验证，不跟重定向，总超时45秒；正常保留代理环境而不输出值。stdout、空 stderr、redacted Git trace 与结果摘要均独立绑定，原件 `independent/https-remote-01/`。没有提交、推送或修改远端。
+
+自己的 [CI42790499318](https://github.com/626619403/Ergora/actions/runs/42790499318) 首份完整官方样本 `commit-closure/snapshot-01/` 已离线独立解析：actions 内嵌运行记录、run 的完整提交/workflow 链接、无后页的双 job 组、两个 selectedJobId 与必要步骤日志路径均绑定同一候选；五份原响应大小和 SHA 全部匹配。09:25–09:26 UTC 样本仍为 **In progress**：双 OS 的构建/安装及 reference 身份四步 success，两项 native 回归与 Windows installer 尚未终结，不能记七必要步骤成功。原件 `independent/audit-ci-snapshot.py`、`independent/audit-ci-snapshot-01.json`；等待新的官方终态样本，不重跑或取消 CI。
+
+该次补核的精确本地对象及明确 HTTPS 门禁通过，开放 finding 仍为0；当时自己的必要 CI 待验，最终结果见下节。该次没有重跑模型、服务、浏览器、测试或安装，也未改产品、计划或其它交付文档。
+
+## 自己 CI 终态与精确交付终核
+
+2026-11-10 09:41:35 UTC，主评审离线直接解析 `commit-closure/snapshot-03/` 的官方原件，没有执行作者采集器。09:37:05.312287→09:37:21.902187 UTC 保存的五份原响应均为官方 HTTPS 200、请求与最终 URL 相同，大小和 SHA256 全部匹配。actions 内嵌记录的完整提交、工作流及分支，run 的完整提交/workflow 链接，完整双 job 组和两个 selectedJobId 均绑定 **a9778e00e81b3b2e43a4f5745c92fbb21c990c5a／CI42790499318**，没有后页或混用候选。
+
+run 为 **Success**；Ubuntu/Python3.11 job `129742379555` 与 Windows/Python3.12 job `129742378806` 均为 completed/success。两边的 Build and install wheel、Packaged reference identity、Native application regression，以及 Windows PowerShell 5.1 installer and upgrade，共七个必要步骤全部为 success、job_completed，完成时间均早于各自保存响应；每个日志路径都含相同完整提交 SHA 与所属 job ID，没有 failure、cancelled 或 timed_out 步骤。公开样本摘要与从 HTML 直接重建的七项记录完全一致。
+
+采集 stdout 与 `ci-sample.json` 逐字节相同，stderr 为空，采集器副本与保留原脚本同字节。原 snapshot-01/02 仍保留其在途事实；本次仅以新的完整 snapshot-03 通过自己的必要 CI 门禁。独立原件 `independent/audit-ci-snapshot-03.json`、`independent/audit-ci-final-gate.py`、`independent/final-exact-gate.json`；补核前报告原件另存 `independent/ci-final-review-before.md`。
+
+沿用同候选已核且原件摘要未变的精确 Git 对象、435包/两份RECORD、283冻结、14模型完整源、9公开 JSON/26来源、2截图，以及09:28:32 UTC的独立明确 HTTPS 同 SHA 证据；本次没有网络请求或再次读取远端，没有重跑测试、模型、服务、浏览器或安装，也未提交、推送或操作 CI。当前其它 dirty 文档仍属于已说明的状态续记及下片计划准备，没有充作 a9778e0 的提交树。
+
+**D3 的26文件实现／验证／新独立两轴、普通提交／推送、自己的必要双 OS CI 与明确 HTTPS 同 SHA 门禁全部终核通过；开放 finding 0。** 这仅终结 D3，D4、C3d、C4–C6及其它后续范围保持原计划。

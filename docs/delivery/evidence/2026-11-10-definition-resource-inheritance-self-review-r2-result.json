@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "projection": "Formatted and machine-path-redacted evidence; original artifact SHA differs from this projection.",
+  "scope": "Original structured bundled re-review result; first request-changes preserved separately.",
+  "source_artifacts": {
+    "result": {
+      "artifact": "self-review-r2/public-original-result.json",
+      "bytes": 2503,
+      "sha256": "e66df081e3e14a7723e398ec59cfde132ccbf8ebdd19ce38e8a25a8a626e3116"
+    }
+  },
+  "data": {
+    "result": {
+      "artifacts": {
+        "response": "Spec: approve. RIN-S1 is closed for this candidate. I listed all 27 scope URIs and completely read the inherited instructions, both Skills, candidate.txt (478,569 bytes in 20 continuous UTF-8 pages), native-index.json and all 21 native evidence files.\n\nI independently projected each selected ancestor chain’s declared resources from the frozen asset bytes, then compared the original scope, native list replies and read replies. URI sets, source lineage, sizes, reported hashes and returned bytes match:\n\n| Domain | Files/read replies | List pages | Binary attachments |\n|---|---:|---:|---:|\n| Repository governance | 21 | 2 | 4 |\n| Large change | 21 | 2 | 4 |\n| Training optimization | 16 | 1 | 3 |\n\nAll 58 reads cover their complete files. Request/composition/run identities and inline resource text agree. Ordinary undeclared attachments remain outside scope. The 11 frozen package inventories also match publication records, including execution bits and empty directories. Evidence: each domain’s `references/native/<domain>/selected-assets.json:1`, `scope.json:1` and `native-stdout.jsonl:1`.\n\nStandards: approve. Ownership remains with the existing DefinitionLibrary, workflow compiler, frozen-input/task-MCP and run/backend modules. Agent permissions remain instance-owned; backend selection stays implementation-local. The documentation-only candidate introduces no production interface, dependency, permanent test, guard or CI duplication. The private audits serve this bounded acceptance journey. Plans distinguish static validation, actual model reads and pending delivery, while retaining the original driver failure and first review rejection.\n\nRecorded costs are 90 successful J1/J2 CLI calls in 55.92 seconds and three J3 runs totaling 256.97 seconds. Native usage totals 353,276 input tokens, including 247,808 cached tokens, and 8,051 output tokens; monetary cost is unspecified. Supplying retained originals resolves the evidence gap without another J3 run.\n\nThis approval covers the fixed structural/evidence correction. J4 final independent review, public evidence and exact delivery remain pending. Formal approval, different-model independence, permission elevation and training execution are not established. I used task MCP only, made no workspace edits and reran no product checks, models or services."
+      },
+      "decision": "approve",
+      "summary": "Approve the fixed RIN-S1 correction. Spec and Standards have no substantiated findings."
+    }
+  }
+}

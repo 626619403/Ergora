@@ -1,0 +1,1142 @@
+{
+  "schema_version": 1,
+  "projection": "Formatted and machine-path-redacted evidence; original artifact SHA differs from this projection.",
+  "scope": "Three actual Linux readonly Codex task-MCP calls; complete native URI/read coverage against frozen assets, not model-independence or formal owner approval.",
+  "source_artifacts": {
+    "repository-governance": {
+      "artifact": "r1/model/repository-governance/audit.json",
+      "bytes": 9836,
+      "sha256": "1773c18880cef87861df085dcdc4a45be11548fd114d8d68aafd89aa1ac7425d"
+    },
+    "large-change": {
+      "artifact": "r1/model/large-change/audit.json",
+      "bytes": 9833,
+      "sha256": "c3379de0554ac9e26c948598afa2392ce8d3214f2c3310ab422f40a47a9f0367"
+    },
+    "training-optimization": {
+      "artifact": "r1/model/training-optimization/audit.json",
+      "bytes": 7696,
+      "sha256": "695c010f899846ddfaa823fe19332103266a861d5af2e089a5c85eb6a709a4ab"
+    },
+    "native_identities": {
+      "artifact": "model-native-identities.json",
+      "bytes": 6760,
+      "sha256": "5f8d6d23c5ba0a9ba76399e0d4545ba776d19bb3d58dfc287280eabda764549d"
+    }
+  },
+  "data": {
+    "repository-governance": {
+      "domain": "repository-governance",
+      "run_id": "21f121afbb77485da1e15ca96f3ddb65",
+      "status": "succeeded",
+      "decision": "approve",
+      "seconds": 95.30711283069104,
+      "binding": {
+        "tool": "codex"
+      },
+      "input_digest": "b6d366b3ec16c8dae7b984756f3b18cfb6d345f34af5da21446874d539f916a9",
+      "prompt_sha256": "88f040d4ea8af89c45bf899b01853788582b68e2d945c9abaa783697eaeacccf",
+      "scope_sha256": "5259dda32e4bdc60867a98ca64c10f4728ad8bfc78dfd6039f8bcec1636b1dd8",
+      "result_sha256": "e38c6f5f3957785cffedd0c9fd56ad325375d8a24280d09bb35098921800f556",
+      "scope_files": 21,
+      "list_pages": [
+        {
+          "offset": 0,
+          "next_offset": 20,
+          "files": 20
+        },
+        {
+          "offset": 20,
+          "next_offset": null,
+          "files": 1
+        }
+      ],
+      "read_calls": 21,
+      "all_listed_files_read_completely": true,
+      "files": {
+        "definitions/workflow/ergora-governance-delivery/1.0.21/instructions.md": {
+          "size": 355,
+          "sha256": "66eb88ef7aebe40cc3b46a31539b7094ecb41746940efb992d4906fa8491a418",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 355,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-governance-delivery/1.0.21/context/inh-0-3.md": {
+          "size": 138,
+          "sha256": "bc51939daf170f333901f8b33721af395613241619cda2cd9a8793ba441b5280",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 138,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-governance-delivery/1.0.21/skills/inh-0-3/SKILL.md": {
+          "size": 253,
+          "sha256": "94a8c9b678a10e04eb26ae7893fbb67bd44ce94cddb1c22958cfda91bf7745c3",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 253,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-governance-delivery/1.0.21/skills/inh-0-3/references/notes.md": {
+          "size": 111,
+          "sha256": "3f5fca01219b422d5e72daac49b0e2e1f943497f27496e18353faeee587dc23d",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 111,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-governance-delivery/1.0.21/skills/inh-0-3/references/tool.bin": {
+          "size": 72,
+          "sha256": "b58365dd21a484165fe65b1b653aea06cc6147785766e6b6884cc537b086a42b",
+          "binary": true,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 72,
+              "encoding": "base64",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-delivery-review/1.0.21/instructions.md": {
+          "size": 225,
+          "sha256": "83e867dadc6b374bd3791bcf79c87462375fff58a43b73a569d6f7b3c954e377",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 225,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-delivery-review/1.0.21/context/inh-0-2.md": {
+          "size": 134,
+          "sha256": "4b4f5582e6f88b527d172ea9c8b57b7159313ddea5cb71200f5426c4a8f918fa",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 134,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-delivery-review/1.0.21/skills/inh-0-2/SKILL.md": {
+          "size": 249,
+          "sha256": "d68ab61107d8e37cf34c9b2ace951a652fd379f2c3cba47bce1779b261d149b6",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 249,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-delivery-review/1.0.21/skills/inh-0-2/references/notes.md": {
+          "size": 107,
+          "sha256": "4b7d815739cf9b90e4f19401e03ff7f266222110623575e62101712f361c464d",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 107,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-delivery-review/1.0.21/skills/inh-0-2/references/tool.bin": {
+          "size": 68,
+          "sha256": "6215227f60f6990c4e87972573a3526c5d039223e6d142c98696e37b59221f65",
+          "binary": true,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 68,
+              "encoding": "base64",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-structure-review/1.0.21/instructions.md": {
+          "size": 163,
+          "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 163,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-structure-review/1.0.21/context/inh-0-1.md": {
+          "size": 135,
+          "sha256": "bd5ae63204bbd2584eb402d59f90ad85f322fa26027b1ab4f98846a963169919",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 135,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-structure-review/1.0.21/skills/inh-0-1/SKILL.md": {
+          "size": 250,
+          "sha256": "f25ac58a826bc8ce0667b8a9f8c5d85ccdfa34645c5883a8645948bcb2132e4d",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 250,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-structure-review/1.0.21/skills/inh-0-1/references/notes.md": {
+          "size": 108,
+          "sha256": "1ef9942830c883ff9908f67026ba238715c4c5e655763af5594f4f6bb1819588",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 108,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-structure-review/1.0.21/skills/inh-0-1/references/tool.bin": {
+          "size": 69,
+          "sha256": "ad407ebe5b2705e8353315ac8fc822551f80a3efbb8237361e2d49a366a7b448",
+          "binary": true,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 69,
+              "encoding": "base64",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.21/instructions.md": {
+          "size": 354,
+          "sha256": "3cc9c450f0c03da5ea4a1434ac6182d50df6a4985cffdee2a59fe9fe477c6b43",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 354,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.21/skills/ergora-structure-reviewer/SKILL.md": {
+          "size": 521,
+          "sha256": "d6b69570bcca408d3d06ca5adf1cb44a4a9e43c2901f05c38a68c096f23a4ac8",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 521,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.21/context/inh-0-0.md": {
+          "size": 137,
+          "sha256": "31a5b81f6865c8a4382cc79b7907806c54a60b4c07a66361f0d8ae4904ddcdb8",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 137,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.21/skills/inh-0-0/SKILL.md": {
+          "size": 252,
+          "sha256": "e033d713c17725537d25e7464e3d3445c82d4aeb779fd2a19d04dc8ca91c39c4",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 252,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.21/skills/inh-0-0/references/notes.md": {
+          "size": 110,
+          "sha256": "9c20afeb9c43d7757b616ecaafd2afcf22fd74d6b479f22f81c2d97becb4e30d",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 110,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.21/skills/inh-0-0/references/tool.bin": {
+          "size": 71,
+          "sha256": "053dce75c4ce9112e789ecb04b4a6ba8f75e456c8992cd9a0d5ad7fa40470688",
+          "binary": true,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 71,
+              "encoding": "base64",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        }
+      },
+      "undeclared_ordinary_attachments_absent": true,
+      "requested_permissions": {
+        "network": [],
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "shell": false,
+        "write": []
+      },
+      "formal_execution_authorized": false
+    },
+    "large-change": {
+      "domain": "large-change",
+      "run_id": "04602da31b254abd9ccb1e0ceb93537f",
+      "status": "succeeded",
+      "decision": "approve",
+      "seconds": 96.08515807799995,
+      "binding": {
+        "tool": "codex"
+      },
+      "input_digest": "15164df2e560a7a9e2c49d8f7b8115980986ab2c8882c71007a18cdd71aada86",
+      "prompt_sha256": "fba59e8b39b7ac92b46e8b1f32d45e54c9a4152ca2670cb718a9e9cda7ba1a98",
+      "scope_sha256": "5216c324faf4f7b101a75d1a928216b7103b7903edc39e61295f839d69487a05",
+      "result_sha256": "b87955ab868ee0cf777fdf286540d525c02c74e2feaa137c95f1cb601dfad3a8",
+      "scope_files": 21,
+      "list_pages": [
+        {
+          "offset": 0,
+          "next_offset": 20,
+          "files": 20
+        },
+        {
+          "offset": 20,
+          "next_offset": null,
+          "files": 1
+        }
+      ],
+      "read_calls": 21,
+      "all_listed_files_read_completely": true,
+      "files": {
+        "definitions/workflow/ergora-large-change-delivery/1.0.22/instructions.md": {
+          "size": 363,
+          "sha256": "a3131ea41fd90dd1d854a72e7373cd5fbdcec4df5a584f360cd38697915aebe6",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 363,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-large-change-delivery/1.0.22/context/inh-1-3.md": {
+          "size": 131,
+          "sha256": "fa6701c2737f3d49fda779a4283d71586215a11521d744663f820841f49a4d0a",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 131,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-large-change-delivery/1.0.22/skills/inh-1-3/SKILL.md": {
+          "size": 237,
+          "sha256": "40e35d108bd82dffce75cda57d33506cde260739e27fbadfa781bc7e78fdab36",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 237,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-large-change-delivery/1.0.22/skills/inh-1-3/references/notes.md": {
+          "size": 104,
+          "sha256": "c9c30fd80e9347e0f031f00051147bd1047d2d1d205aa43b9412f8888d424a76",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 104,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-large-change-delivery/1.0.22/skills/inh-1-3/references/tool.bin": {
+          "size": 65,
+          "sha256": "fd469bfb4eb269c99e8f56e85abca8051d041d46b205fd4d5724dddeca9ef5b7",
+          "binary": true,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 65,
+              "encoding": "base64",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-delivery-review/1.0.22/instructions.md": {
+          "size": 225,
+          "sha256": "83e867dadc6b374bd3791bcf79c87462375fff58a43b73a569d6f7b3c954e377",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 225,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-delivery-review/1.0.22/context/inh-1-2.md": {
+          "size": 125,
+          "sha256": "e83333835984fbe06ba4067e36929a1e1cea7da9ca05e52b8ad7302679780173",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 125,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-delivery-review/1.0.22/skills/inh-1-2/SKILL.md": {
+          "size": 231,
+          "sha256": "f5eacc11dd8ccadf7dbc9a7822920d2608be6f373e4a529fe34e617800424187",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 231,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-delivery-review/1.0.22/skills/inh-1-2/references/notes.md": {
+          "size": 98,
+          "sha256": "d7f65f09994670818b8a0242aa8d9a1e104b5fe18cb065005845c68a9847021b",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 98,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-delivery-review/1.0.22/skills/inh-1-2/references/tool.bin": {
+          "size": 59,
+          "sha256": "b8d4d032def227a80fd20335dd6f4ed0c4bc9f2a991af815fcd6244190943adb",
+          "binary": true,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 59,
+              "encoding": "base64",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-structure-review/1.0.22/instructions.md": {
+          "size": 163,
+          "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 163,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-structure-review/1.0.22/context/inh-1-1.md": {
+          "size": 126,
+          "sha256": "8b2bf04c6d59263a997cb9e139e40b51dbfb024f2218334db610427fbbd13e91",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 126,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-structure-review/1.0.22/skills/inh-1-1/SKILL.md": {
+          "size": 232,
+          "sha256": "07124825475082fb81b2611610183183d3a54553b939072c9e2bda03ae468427",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 232,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-structure-review/1.0.22/skills/inh-1-1/references/notes.md": {
+          "size": 99,
+          "sha256": "b57429610e2d1c85c6c86b09aabf3a6bf669df90b20ebbc7db81e8a197e1380a",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 99,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-structure-review/1.0.22/skills/inh-1-1/references/tool.bin": {
+          "size": 60,
+          "sha256": "f3f11a4bf2317a964f37cbafcd3d6f97483bfa6694efabb706c7ffbd897380fe",
+          "binary": true,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 60,
+              "encoding": "base64",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.22/instructions.md": {
+          "size": 354,
+          "sha256": "3cc9c450f0c03da5ea4a1434ac6182d50df6a4985cffdee2a59fe9fe477c6b43",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 354,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.22/skills/ergora-structure-reviewer/SKILL.md": {
+          "size": 521,
+          "sha256": "d6b69570bcca408d3d06ca5adf1cb44a4a9e43c2901f05c38a68c096f23a4ac8",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 521,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.22/context/inh-1-0.md": {
+          "size": 128,
+          "sha256": "792e67d0ea72bb915001f8e8451c072bd8373cee6f774a0c8ca0bfc136985ec1",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 128,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.22/skills/inh-1-0/SKILL.md": {
+          "size": 234,
+          "sha256": "6f7ae64206db9a729ffaf881df40863dede7cfc886d0b0760abdb551f0a5a6d3",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 234,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.22/skills/inh-1-0/references/notes.md": {
+          "size": 101,
+          "sha256": "7daa25835a9bb4ddba8bad2b9939f098730fc1f35861cbecdda20f06c7d4b619",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 101,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/agent/ergora-structure-reviewer/1.0.22/skills/inh-1-0/references/tool.bin": {
+          "size": 62,
+          "sha256": "449c011df6a943e0f993dd69c4588dd46557ba32a1e92d34789b35d05e9c58af",
+          "binary": true,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 62,
+              "encoding": "base64",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        }
+      },
+      "undeclared_ordinary_attachments_absent": true,
+      "requested_permissions": {
+        "network": [],
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "shell": false,
+        "write": []
+      },
+      "formal_execution_authorized": false
+    },
+    "training-optimization": {
+      "domain": "training-optimization",
+      "run_id": "27f6b0178c35415bbb50b3e30806b93c",
+      "status": "succeeded",
+      "decision": "approve",
+      "seconds": 65.57567115686834,
+      "binding": {
+        "tool": "codex"
+      },
+      "input_digest": "45d35f11454493106e34d91e854e644fdf159444a48ce256adf6c768e79419d2",
+      "prompt_sha256": "76955dbe74124e7473f7ca44fd5420646474da59c8eccdf332a453042b70f614",
+      "scope_sha256": "7281b5a9779089475adfde9b6c6208ceb76fa2fcde7999c7184905ad9428f7b0",
+      "result_sha256": "6867a45d1cac981304d670a90f1f8087019e6fc76e21df01ee106c98dc9d6356",
+      "scope_files": 16,
+      "list_pages": [
+        {
+          "offset": 0,
+          "next_offset": null,
+          "files": 16
+        }
+      ],
+      "read_calls": 16,
+      "all_listed_files_read_completely": true,
+      "files": {
+        "definitions/workflow/ergora-training-proposal/1.0.23/instructions.md": {
+          "size": 481,
+          "sha256": "96348a1c01393d98d38850efdbdf2630d1dbb67708a148977e8b2cbbaf55bdfe",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 481,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-training-proposal/1.0.23/context/inh-2-2.md": {
+          "size": 136,
+          "sha256": "fe8cbb861f7a9668a03f5d88e306553986aa94b863c4aa4a447bacbb40157881",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 136,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-training-proposal/1.0.23/skills/inh-2-2/SKILL.md": {
+          "size": 251,
+          "sha256": "12bacfa5817f98d20dea919c73c2fae0be4a7a20043d354a5b23ced49e518d81",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 251,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-training-proposal/1.0.23/skills/inh-2-2/references/notes.md": {
+          "size": 109,
+          "sha256": "89f4a47b364311dddaea2ee480cf1f0f5ce21ec97fb08dfedd8718e3c45b059d",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 109,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-training-proposal/1.0.23/skills/inh-2-2/references/tool.bin": {
+          "size": 70,
+          "sha256": "651746309bb727367ef35a2ba9059b4fd77288731981acba83717f8691cea46d",
+          "binary": true,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 70,
+              "encoding": "base64",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-measurement-review/1.0.23/instructions.md": {
+          "size": 90,
+          "sha256": "10a74282241c0040284a0e61db8cdd20905313f2822db8213888c067a1b76bc1",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 90,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-measurement-review/1.0.23/context/inh-2-1.md": {
+          "size": 137,
+          "sha256": "e2d8133bcbff69c5d4d74940b501febb13c00c99a0b259660124f76820f95841",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 137,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-measurement-review/1.0.23/skills/inh-2-1/SKILL.md": {
+          "size": 252,
+          "sha256": "f711b8bb8cbd796c5b37cbe6536d12574ded2e4222e8651359d3a93f178dafc7",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 252,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-measurement-review/1.0.23/skills/inh-2-1/references/notes.md": {
+          "size": 110,
+          "sha256": "9c0c8f8a27da8e2f041b8f124f0aec50ae768543d098d74cfd3f80a31eb85e2d",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 110,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/workflow/ergora-measurement-review/1.0.23/skills/inh-2-1/references/tool.bin": {
+          "size": 71,
+          "sha256": "e686bcc502205b3c3f00125f1a947235be8dedb7fc0e11f7d02088fe3b232fde",
+          "binary": true,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 71,
+              "encoding": "base64",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/agent/ergora-measurement-reviewer/1.0.23/instructions.md": {
+          "size": 318,
+          "sha256": "144838b2f40579ee02a367734a2d6252ad40857da6d043cee9a970243c59da6f",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 318,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/agent/ergora-measurement-reviewer/1.0.23/skills/ergora-measurement-reviewer/SKILL.md": {
+          "size": 462,
+          "sha256": "cc6224d1e8d1ac071864af35ff575bfed22ccb3b1ffc2170086abbe5ed904b33",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 462,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/agent/ergora-measurement-reviewer/1.0.23/context/inh-2-0.md": {
+          "size": 139,
+          "sha256": "1f1ab68071ca1d56317ad1e659f3e986199e71429e74608268b30d6bf7998feb",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 139,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/agent/ergora-measurement-reviewer/1.0.23/skills/inh-2-0/SKILL.md": {
+          "size": 254,
+          "sha256": "9538c5b643e4b2d6031e8370d8fb7c0e1286523f2776a2b8863f38dc96fc83b4",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 254,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/agent/ergora-measurement-reviewer/1.0.23/skills/inh-2-0/references/notes.md": {
+          "size": 112,
+          "sha256": "722bfb25a97b7a0aad9e495640971c5e5742f7930696ba061c1e25865dae2722",
+          "binary": false,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 112,
+              "encoding": "utf-8",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        },
+        "definitions/agent/ergora-measurement-reviewer/1.0.23/skills/inh-2-0/references/tool.bin": {
+          "size": 73,
+          "sha256": "961c0fd80574bafe536f8fefa27e225c989fef751e865d2cfa7eadbdbc4558b2",
+          "binary": true,
+          "continuous_pages": [
+            {
+              "offset": 0,
+              "bytes": 73,
+              "encoding": "base64",
+              "next_offset": null
+            }
+          ],
+          "utf8_window_retries": []
+        }
+      },
+      "undeclared_ordinary_attachments_absent": true,
+      "requested_permissions": {
+        "network": [],
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "shell": false,
+        "write": []
+      },
+      "formal_execution_authorized": false
+    },
+    "native_identities": {
+      "checked_at": "2026-11-10T10:00:41.831697+00:00",
+      "runs": [
+        {
+          "domain": "repository-governance",
+          "run_id": "21f121afbb77485da1e15ca96f3ddb65",
+          "sources": {
+            "cli_run": {
+              "artifact": "r1/model/repository-governance/invocation/stdout.json",
+              "bytes": 20375,
+              "sha256": "adf021e99d0df3129f5bdae8cd43a6b6c8f80aa3e8382638e9ad8b7f8f71c505"
+            },
+            "scope": {
+              "artifact": "r2/journey/control/runs/21f121afbb77485da1e15ca96f3ddb65.scope.json",
+              "bytes": 17151,
+              "sha256": "5259dda32e4bdc60867a98ca64c10f4728ad8bfc78dfd6039f8bcec1636b1dd8"
+            },
+            "native_receipt": {
+              "artifact": "r2/journey/control/runs/21f121afbb77485da1e15ca96f3ddb65.mcp-native.jsonl",
+              "bytes": 4912,
+              "sha256": "11f663d152386dc48825f56846b75e3182f18040ff867b6502e42ec230f4af96"
+            },
+            "native_stdout": {
+              "artifact": "r2/journey/control/runs/21f121afbb77485da1e15ca96f3ddb65/stdout.txt",
+              "bytes": 46297,
+              "sha256": "ae198a056451d672a70e7a41a5dc40c63ea2c2278595905ab568e128729e0193"
+            },
+            "native_stdin": {
+              "artifact": "r2/journey/control/runs/21f121afbb77485da1e15ca96f3ddb65/stdin.txt",
+              "bytes": 10106,
+              "sha256": "88f040d4ea8af89c45bf899b01853788582b68e2d945c9abaa783697eaeacccf"
+            },
+            "native_stderr": {
+              "artifact": "r2/journey/control/runs/21f121afbb77485da1e15ca96f3ddb65/stderr.txt",
+              "bytes": 0,
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "result": {
+              "artifact": "r2/journey/control/runs/21f121afbb77485da1e15ca96f3ddb65/result.json",
+              "bytes": 4549,
+              "sha256": "e38c6f5f3957785cffedd0c9fd56ad325375d8a24280d09bb35098921800f556"
+            }
+          },
+          "model": "gpt-6.1-sol",
+          "reasoning_effort": "high",
+          "preflight": {
+            "initialized": true,
+            "tools": [
+              "list",
+              "read"
+            ],
+            "read_only_probe": "succeeded"
+          },
+          "native_ready": true,
+          "handshake_observed": true,
+          "protocol_version": "2025-06-18",
+          "native_tools": [
+            "list",
+            "read"
+          ]
+        },
+        {
+          "domain": "large-change",
+          "run_id": "04602da31b254abd9ccb1e0ceb93537f",
+          "sources": {
+            "cli_run": {
+              "artifact": "r1/model/large-change/invocation/stdout.json",
+              "bytes": 20359,
+              "sha256": "78188b427dd6d94e3b91b558b15d27993614faaaaa6848e71d6d3405d78225cd"
+            },
+            "scope": {
+              "artifact": "r2/journey/control/runs/04602da31b254abd9ccb1e0ceb93537f.scope.json",
+              "bytes": 16961,
+              "sha256": "5216c324faf4f7b101a75d1a928216b7103b7903edc39e61295f839d69487a05"
+            },
+            "native_receipt": {
+              "artifact": "r2/journey/control/runs/04602da31b254abd9ccb1e0ceb93537f.mcp-native.jsonl",
+              "bytes": 4912,
+              "sha256": "d4ac68cfa8f694b051b0f0597bb1dbf3f0e129cb28aac9266e75b9311ae192b4"
+            },
+            "native_stdout": {
+              "artifact": "r2/journey/control/runs/04602da31b254abd9ccb1e0ceb93537f/stdout.txt",
+              "bytes": 45700,
+              "sha256": "3ba7e1813ee1f8518304678a17faae8c1122c33176a9f4a24812090b8f751495"
+            },
+            "native_stdin": {
+              "artifact": "r2/journey/control/runs/04602da31b254abd9ccb1e0ceb93537f/stdin.txt",
+              "bytes": 10017,
+              "sha256": "fba59e8b39b7ac92b46e8b1f32d45e54c9a4152ca2670cb718a9e9cda7ba1a98"
+            },
+            "native_stderr": {
+              "artifact": "r2/journey/control/runs/04602da31b254abd9ccb1e0ceb93537f/stderr.txt",
+              "bytes": 0,
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "result": {
+              "artifact": "r2/journey/control/runs/04602da31b254abd9ccb1e0ceb93537f/result.json",
+              "bytes": 4064,
+              "sha256": "b87955ab868ee0cf777fdf286540d525c02c74e2feaa137c95f1cb601dfad3a8"
+            }
+          },
+          "model": "gpt-6.1-sol",
+          "reasoning_effort": "high",
+          "preflight": {
+            "initialized": true,
+            "tools": [
+              "list",
+              "read"
+            ],
+            "read_only_probe": "succeeded"
+          },
+          "native_ready": true,
+          "handshake_observed": true,
+          "protocol_version": "2025-06-18",
+          "native_tools": [
+            "list",
+            "read"
+          ]
+        },
+        {
+          "domain": "training-optimization",
+          "run_id": "27f6b0178c35415bbb50b3e30806b93c",
+          "sources": {
+            "cli_run": {
+              "artifact": "r1/model/training-optimization/invocation/stdout.json",
+              "bytes": 17118,
+              "sha256": "8339ce9da690890e88fb3d81c401d086705b45201d14ade7496acc841fa87330"
+            },
+            "scope": {
+              "artifact": "r2/journey/control/runs/27f6b0178c35415bbb50b3e30806b93c.scope.json",
+              "bytes": 13330,
+              "sha256": "7281b5a9779089475adfde9b6c6208ceb76fa2fcde7999c7184905ad9428f7b0"
+            },
+            "native_receipt": {
+              "artifact": "r2/journey/control/runs/27f6b0178c35415bbb50b3e30806b93c.mcp-native.jsonl",
+              "bytes": 3772,
+              "sha256": "078415078b0f52f43c26dd5a38ea486e274b54ddb03ea211fd5fbb066af4986c"
+            },
+            "native_stdout": {
+              "artifact": "r2/journey/control/runs/27f6b0178c35415bbb50b3e30806b93c/stdout.txt",
+              "bytes": 36394,
+              "sha256": "f5397006f4d43e154c11b64024c92e57a5e6bc73e6612a6d2056d48b5e023d94"
+            },
+            "native_stdin": {
+              "artifact": "r2/journey/control/runs/27f6b0178c35415bbb50b3e30806b93c/stdin.txt",
+              "bytes": 8264,
+              "sha256": "76955dbe74124e7473f7ca44fd5420646474da59c8eccdf332a453042b70f614"
+            },
+            "native_stderr": {
+              "artifact": "r2/journey/control/runs/27f6b0178c35415bbb50b3e30806b93c/stderr.txt",
+              "bytes": 0,
+              "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+            },
+            "result": {
+              "artifact": "r2/journey/control/runs/27f6b0178c35415bbb50b3e30806b93c/result.json",
+              "bytes": 4426,
+              "sha256": "6867a45d1cac981304d670a90f1f8087019e6fc76e21df01ee106c98dc9d6356"
+            }
+          },
+          "model": "gpt-6.1-sol",
+          "reasoning_effort": "high",
+          "preflight": {
+            "initialized": true,
+            "tools": [
+              "list",
+              "read"
+            ],
+            "read_only_probe": "succeeded"
+          },
+          "native_ready": true,
+          "handshake_observed": true,
+          "protocol_version": "2025-06-18",
+          "native_tools": [
+            "list",
+            "read"
+          ]
+        }
+      ],
+      "scope": "Read-only hashes of original three actual model invocations; no rerun or provider credential value."
+    }
+  }
+}

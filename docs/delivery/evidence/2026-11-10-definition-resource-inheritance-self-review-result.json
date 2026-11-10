@@ -1,0 +1,21 @@
+{
+  "schema_version": 1,
+  "projection": "Formatted and machine-path-redacted evidence; original artifact SHA differs from this projection.",
+  "scope": "Original structured bundled self-review result; formatted/redacted projection bound to original bytes/SHA.",
+  "source_artifacts": {
+    "result": {
+      "artifact": "self-review-r1/public-original-result.json",
+      "bytes": 1746,
+      "sha256": "4e28df3046c5c5c56762cd26755544ad004a1cbe109b2112e607e4e010c52eb7"
+    }
+  },
+  "data": {
+    "result": {
+      "artifacts": {
+        "response": "Spec: P2 — supply the original J3 evidence to this review. At `.ergora/checks/ac5-definition-resource-inheritance/model-r1.py:204`, native replies are reduced to page metadata; line 215 records the derived completeness assertion. `docs/delivery/2026-11-10-definition-resource-inheritance.md:31` relies on that audit. When an independent reviewer attempts the required byte comparison, the declared task-MCP resources provide neither the three native reply streams nor their frozen input/scope data. Consequently, the reported 58 complete reads cannot be independently verified here. Smallest correction: expose those retained originals through task MCP, preserving their run identities. No rerun or product change is needed.\n\nStandards: no substantiated finding. Publication, inheritance, resource projection and backend selection retain their existing owners. The candidate adds no production interface, dependency, permanent test or CI guard. The corrected private driver appropriately preserves the first 14-call failure. Recorded costs are 55.92 seconds for the successful 90-call journey and 256.97 seconds for three model calls; billing cost is not supplied. Documentation keeps formal approval, training, joint elevation and exact delivery outside the completed evidence scope.\n\nI explicitly read both inherited instruction files, both Skills, and all 477,070 candidate bytes in 20 continuous successful UTF-8 pages through terminal `next_offset:null`. I executed no checks or services and changed no files. J4/public evidence/exact delivery remain pending at this fixed candidate."
+      },
+      "decision": "request-changes",
+      "summary": "Request changes: one Spec evidence gap; no substantiated structural defect."
+    }
+  }
+}

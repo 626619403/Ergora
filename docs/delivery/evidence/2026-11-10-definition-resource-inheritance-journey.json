@@ -1,0 +1,528 @@
+{
+  "schema_version": 1,
+  "projection": "Compact machine-path-redacted summary. Repeated original snapshot and publication inventories replaced by counts/digests; complete source originals retained and bound by bytes/SHA.",
+  "scope": "J1/J2 actual90CLI and11 complete trees; retained originals and post-model exact-directory audit. No formal workflow/approval or training experiment claim.",
+  "source_artifacts": {
+    "journey": {
+      "artifact": "r2/journey/summary.json",
+      "bytes": 143115,
+      "sha256": "4a9d08c475d806683efe66a06a3b32ce0890016441df80e79cf16cf6de1a0112"
+    },
+    "post_model_audit": {
+      "artifact": "journey-post-model-audit.json",
+      "bytes": 5291,
+      "sha256": "a0abf1740539b51b7573429ed1e05a48a8cb19899dd93fecd8ef0fe9ba1da119"
+    },
+    "initial_driver_failure": {
+      "artifact": "r1/journey-driver.json",
+      "bytes": 480,
+      "sha256": "a0eed4237027306843b59251372273f2901496f96d434d2761115664a68975fd"
+    },
+    "successful_driver": {
+      "artifact": "r2-driver.json",
+      "bytes": 360,
+      "sha256": "8e19b24c996770a546970b90dc673099a30c23730c7ee402b2cc1a59f7f85f91"
+    }
+  },
+  "data": {
+    "journey": {
+      "checked_at": "2026-11-10T09:48:33.142424+00:00",
+      "baseline": "a9778e00e81b3b2e43a4f5745c92fbb21c990c5a",
+      "source_wheel_installed_record_identity": "D3 R2 reused exact435,283frozen; no rebuild claim",
+      "seconds": 55.921737391967326,
+      "cli_calls": 90,
+      "original_objects_unchanged": 24,
+      "new_definitions": 11,
+      "scope": "J1/J2 three-domain complete immutable tree and inherited static input. No model, HTTP server, browser, formal workflow, OS sandbox or GPU experiment.",
+      "domains": [
+        {
+          "domain": "repository-governance",
+          "leaf": "root/review/structure/review",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-governance-delivery",
+            "version": "1.0.21",
+            "digest": "21a0513cd15828bce24cd21b9344dccc47a2a3efff44648db87d28ba7a62fb4d"
+          },
+          "new_manifest_digest": "9484b59007e5cda3571ffa2432ecd4c4c82cb91131c16e5c0ced30687381ea2b",
+          "new_input_digest": "b6d366b3ec16c8dae7b984756f3b18cfb6d345f34af5da21446874d539f916a9",
+          "missing_dependency_rejected_without_index_change": true,
+          "root_published_last": true,
+          "old_material_ids": [
+            "ergora-delivery-review-instructions",
+            "ergora-governance-delivery-instructions",
+            "ergora-structure-review-instructions",
+            "ergora-structure-reviewer-instructions",
+            "ergora-structure-reviewer-skill"
+          ],
+          "new_material_ids": [
+            "ergora-delivery-review-instructions",
+            "ergora-governance-delivery-instructions",
+            "ergora-structure-review-instructions",
+            "ergora-structure-reviewer-instructions",
+            "ergora-structure-reviewer-skill",
+            "inh-0-0-context",
+            "inh-0-0-skill",
+            "inh-0-1-context",
+            "inh-0-1-skill",
+            "inh-0-2-context",
+            "inh-0-2-skill",
+            "inh-0-3-context",
+            "inh-0-3-skill"
+          ],
+          "ancestor_markers_in_prompt": true,
+          "permissions_unchanged": true,
+          "scope": "Offline real CLI and immutable input verification; actual model read remains J3.",
+          "old_manifest": {
+            "digest": "d90d8b82de570216e149ae9cbaef4c78490f557e23f5fe2ea22839b66e38ea5a",
+            "files": 31,
+            "directories": 26,
+            "all_modes_sha256": "7fdfa814d49aa1724d3a6800f0f7e09516fafe94526d39b97a0177646a229b46"
+          },
+          "old_input": {
+            "digest": "2cd3b3f8a0542d74cabc206b4ca25606476476065965aecbd9248f8e147d8d9f",
+            "files": 33,
+            "directories": 26,
+            "all_modes_sha256": "179da9f3952a433c959ebb610fe082696bf2dd954fcb85ad5f0fbde19a5aec28"
+          },
+          "published": [
+            {
+              "kind": "agent",
+              "id": "ergora-structure-reviewer",
+              "version": "1.0.21",
+              "digest": "3e3032fe0f50fc27dd4382abb9846f8d2f66b0c2d1561016d076f843cfe4d30f",
+              "base_digest": "97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c",
+              "marker": "repository-governance::ergora-structure-reviewer@1.0.21::ancestor-0",
+              "new_resource_ids": [
+                "inh-0-0-context",
+                "inh-0-0-skill"
+              ],
+              "permissions_unchanged": true,
+              "complete_tree_matches": true,
+              "files": 8,
+              "directories": 7
+            },
+            {
+              "kind": "workflow",
+              "id": "ergora-structure-review",
+              "version": "1.0.21",
+              "digest": "1c19b6dab63451f2bff4c87d1e7531512319c22d025ca76a5736e825a4efdd56",
+              "base_digest": "996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9",
+              "marker": "repository-governance::ergora-structure-review@1.0.21::ancestor-1",
+              "new_resource_ids": [
+                "inh-0-1-context",
+                "inh-0-1-skill"
+              ],
+              "permissions_unchanged": true,
+              "complete_tree_matches": true,
+              "files": 7,
+              "directories": 6
+            },
+            {
+              "kind": "workflow",
+              "id": "ergora-delivery-review",
+              "version": "1.0.21",
+              "digest": "880450fe0d3dd756c24fa37bc0ca7c68ff9729b1cca491e84e134eac3701390f",
+              "base_digest": "a85e76dcd25bfddd24684b6e23ad3668097b44df0f9a7d745e387e5a841c471c",
+              "marker": "repository-governance::ergora-delivery-review@1.0.21::ancestor-2",
+              "new_resource_ids": [
+                "inh-0-2-context",
+                "inh-0-2-skill"
+              ],
+              "permissions_unchanged": true,
+              "complete_tree_matches": true,
+              "files": 7,
+              "directories": 6
+            },
+            {
+              "kind": "workflow",
+              "id": "ergora-governance-delivery",
+              "version": "1.0.21",
+              "digest": "21a0513cd15828bce24cd21b9344dccc47a2a3efff44648db87d28ba7a62fb4d",
+              "base_digest": "e82c02d01d2c717a38f35f242107efce32dd873027a4a3a6fb0f18f7d1fae077",
+              "marker": "repository-governance::ergora-governance-delivery@1.0.21::ancestor-3",
+              "new_resource_ids": [
+                "inh-0-3-context",
+                "inh-0-3-skill"
+              ],
+              "permissions_unchanged": true,
+              "complete_tree_matches": true,
+              "files": 7,
+              "directories": 6
+            }
+          ]
+        },
+        {
+          "domain": "large-change",
+          "leaf": "root/review/structure/review",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-large-change-delivery",
+            "version": "1.0.22",
+            "digest": "90367c66dac4670eae3a8ee12ebeb77ee102d5fc859a5128a9b77c3fdb4db8f0"
+          },
+          "new_manifest_digest": "159a0b7ee660900cdc000698579baad80bf10c4702402557bed9cae3072326a6",
+          "new_input_digest": "15164df2e560a7a9e2c49d8f7b8115980986ab2c8882c71007a18cdd71aada86",
+          "missing_dependency_rejected_without_index_change": true,
+          "root_published_last": true,
+          "old_material_ids": [
+            "ergora-delivery-review-instructions",
+            "ergora-large-change-delivery-instructions",
+            "ergora-structure-review-instructions",
+            "ergora-structure-reviewer-instructions",
+            "ergora-structure-reviewer-skill"
+          ],
+          "new_material_ids": [
+            "ergora-delivery-review-instructions",
+            "ergora-large-change-delivery-instructions",
+            "ergora-structure-review-instructions",
+            "ergora-structure-reviewer-instructions",
+            "ergora-structure-reviewer-skill",
+            "inh-1-0-context",
+            "inh-1-0-skill",
+            "inh-1-1-context",
+            "inh-1-1-skill",
+            "inh-1-2-context",
+            "inh-1-2-skill",
+            "inh-1-3-context",
+            "inh-1-3-skill"
+          ],
+          "ancestor_markers_in_prompt": true,
+          "permissions_unchanged": true,
+          "scope": "Offline real CLI and immutable input verification; actual model read remains J3.",
+          "old_manifest": {
+            "digest": "4bf651f95a2247b57bc246e23d3b0a6c52f005e8e835a9ad1df02b4cf9cfefa0",
+            "files": 37,
+            "directories": 32,
+            "all_modes_sha256": "2bf03b6321b76f0e16878c34c1aac5b8aa48c50bb687397cc013701ca5887205"
+          },
+          "old_input": {
+            "digest": "60d5d12dce908b1763858b67e090bcff8ac37ab08ea6a81aec3f157589c59b24",
+            "files": 39,
+            "directories": 32,
+            "all_modes_sha256": "78e56418c3f6d617f0d9fb41d88d2bca0577da2c3c01206f2b40949383127bb2"
+          },
+          "published": [
+            {
+              "kind": "agent",
+              "id": "ergora-structure-reviewer",
+              "version": "1.0.22",
+              "digest": "1e63e88ada3636a8425df0fb668a06b18a7e4a229e20b2d8bdea5af0bfa9a14e",
+              "base_digest": "97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c",
+              "marker": "large-change::ergora-structure-reviewer@1.0.22::ancestor-0",
+              "new_resource_ids": [
+                "inh-1-0-context",
+                "inh-1-0-skill"
+              ],
+              "permissions_unchanged": true,
+              "complete_tree_matches": true,
+              "files": 8,
+              "directories": 7
+            },
+            {
+              "kind": "workflow",
+              "id": "ergora-structure-review",
+              "version": "1.0.22",
+              "digest": "f48c5b0fd51f987720c644d17b36aced54626e26ed6e4ff020d7c0107dfb8c01",
+              "base_digest": "996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9",
+              "marker": "large-change::ergora-structure-review@1.0.22::ancestor-1",
+              "new_resource_ids": [
+                "inh-1-1-context",
+                "inh-1-1-skill"
+              ],
+              "permissions_unchanged": true,
+              "complete_tree_matches": true,
+              "files": 7,
+              "directories": 6
+            },
+            {
+              "kind": "workflow",
+              "id": "ergora-delivery-review",
+              "version": "1.0.22",
+              "digest": "cbbc87197ff6ecbc8c51a49f55d26f4e18093ec214fca09bfd72ddc7e04004a8",
+              "base_digest": "a85e76dcd25bfddd24684b6e23ad3668097b44df0f9a7d745e387e5a841c471c",
+              "marker": "large-change::ergora-delivery-review@1.0.22::ancestor-2",
+              "new_resource_ids": [
+                "inh-1-2-context",
+                "inh-1-2-skill"
+              ],
+              "permissions_unchanged": true,
+              "complete_tree_matches": true,
+              "files": 7,
+              "directories": 6
+            },
+            {
+              "kind": "workflow",
+              "id": "ergora-large-change-delivery",
+              "version": "1.0.22",
+              "digest": "90367c66dac4670eae3a8ee12ebeb77ee102d5fc859a5128a9b77c3fdb4db8f0",
+              "base_digest": "25dbfff6830e4123bedbfe975c964de96b8a9ce0ed8c76e8f365fecf2f7e2cc8",
+              "marker": "large-change::ergora-large-change-delivery@1.0.22::ancestor-3",
+              "new_resource_ids": [
+                "inh-1-3-context",
+                "inh-1-3-skill"
+              ],
+              "permissions_unchanged": true,
+              "complete_tree_matches": true,
+              "files": 7,
+              "directories": 6
+            }
+          ]
+        },
+        {
+          "domain": "training-optimization",
+          "leaf": "root/measurement/review",
+          "root": {
+            "kind": "workflow",
+            "id": "ergora-training-proposal",
+            "version": "1.0.23",
+            "digest": "88d01131f24af9b6361baeb6ff33eb6628f6e82ba785ca3a3950506414662346"
+          },
+          "new_manifest_digest": "2ced1f6403928ea6c4f7b04b0a50ee8c881aff5d25f3841add608456cfc933e1",
+          "new_input_digest": "45d35f11454493106e34d91e854e644fdf159444a48ce256adf6c768e79419d2",
+          "missing_dependency_rejected_without_index_change": true,
+          "root_published_last": true,
+          "old_material_ids": [
+            "ergora-measurement-review-instructions",
+            "ergora-measurement-reviewer-instructions",
+            "ergora-measurement-reviewer-skill",
+            "ergora-training-proposal-instructions"
+          ],
+          "new_material_ids": [
+            "ergora-measurement-review-instructions",
+            "ergora-measurement-reviewer-instructions",
+            "ergora-measurement-reviewer-skill",
+            "ergora-training-proposal-instructions",
+            "inh-2-0-context",
+            "inh-2-0-skill",
+            "inh-2-1-context",
+            "inh-2-1-skill",
+            "inh-2-2-context",
+            "inh-2-2-skill"
+          ],
+          "ancestor_markers_in_prompt": true,
+          "permissions_unchanged": true,
+          "scope": "Offline real CLI and immutable input verification; actual model read remains J3.",
+          "old_manifest": {
+            "digest": "8ecc679575ecc75b44fe9d9ef9cc15043e1dd45875b74a0ee966579fb544cae3",
+            "files": 22,
+            "directories": 20,
+            "all_modes_sha256": "9f600b9d5aeee20719d690fed1b926230524f5743c25e503847d220a80718c8d"
+          },
+          "old_input": {
+            "digest": "236a0a3e8262f2e8ac0b1789d74a32df0a0be7b2e60cd16a9e41af62bed5adee",
+            "files": 24,
+            "directories": 20,
+            "all_modes_sha256": "aa3d7e6e1d66558553d3327e868d55cc3c916f3436d42c1ae601652da9898e96"
+          },
+          "published": [
+            {
+              "kind": "agent",
+              "id": "ergora-measurement-reviewer",
+              "version": "1.0.23",
+              "digest": "ecaf2e69d22b8c9eee49abd2d7be83ca49698dd6bce4bee8ed1e26f1cd5ce776",
+              "base_digest": "eb0fb716357a60203318baa5c62f904ac87d00fd40216d197593b33fa4657302",
+              "marker": "training-optimization::ergora-measurement-reviewer@1.0.23::ancestor-0",
+              "new_resource_ids": [
+                "inh-2-0-context",
+                "inh-2-0-skill"
+              ],
+              "permissions_unchanged": true,
+              "complete_tree_matches": true,
+              "files": 8,
+              "directories": 7
+            },
+            {
+              "kind": "workflow",
+              "id": "ergora-measurement-review",
+              "version": "1.0.23",
+              "digest": "ce0530d7831760389c10872b4361c136ef640280567e50a8af22eb0bf1bf2328",
+              "base_digest": "8336061c7e67741cb55ee72857d1c890797411d35cf75da050a4133e844e65a8",
+              "marker": "training-optimization::ergora-measurement-review@1.0.23::ancestor-1",
+              "new_resource_ids": [
+                "inh-2-1-context",
+                "inh-2-1-skill"
+              ],
+              "permissions_unchanged": true,
+              "complete_tree_matches": true,
+              "files": 7,
+              "directories": 6
+            },
+            {
+              "kind": "workflow",
+              "id": "ergora-training-proposal",
+              "version": "1.0.23",
+              "digest": "88d01131f24af9b6361baeb6ff33eb6628f6e82ba785ca3a3950506414662346",
+              "base_digest": "cf5df77249022c458f84d4e4d9964aa6448bacb1a74b9192a942da9ffcb7e438",
+              "marker": "training-optimization::ergora-training-proposal@1.0.23::ancestor-2",
+              "new_resource_ids": [
+                "inh-2-2-context",
+                "inh-2-2-skill"
+              ],
+              "permissions_unchanged": true,
+              "complete_tree_matches": true,
+              "files": 7,
+              "directories": 6
+            }
+          ]
+        }
+      ]
+    },
+    "post_model_audit": {
+      "checked_at": "2026-11-10T09:55:19.951052+00:00",
+      "publications": [
+        {
+          "domain": "repository-governance",
+          "kind": "agent",
+          "id": "ergora-structure-reviewer",
+          "version": "1.0.21",
+          "digest": "3e3032fe0f50fc27dd4382abb9846f8d2f66b0c2d1561016d076f843cfe4d30f",
+          "files": 8,
+          "directories": 7,
+          "complete_bytes_execbits_and_exact_directories": true,
+          "new_empty_directory_present_in_all_three_trees": true,
+          "original_resources_and_fields_retained": true
+        },
+        {
+          "domain": "repository-governance",
+          "kind": "workflow",
+          "id": "ergora-structure-review",
+          "version": "1.0.21",
+          "digest": "1c19b6dab63451f2bff4c87d1e7531512319c22d025ca76a5736e825a4efdd56",
+          "files": 7,
+          "directories": 6,
+          "complete_bytes_execbits_and_exact_directories": true,
+          "new_empty_directory_present_in_all_three_trees": true,
+          "original_resources_and_fields_retained": true
+        },
+        {
+          "domain": "repository-governance",
+          "kind": "workflow",
+          "id": "ergora-delivery-review",
+          "version": "1.0.21",
+          "digest": "880450fe0d3dd756c24fa37bc0ca7c68ff9729b1cca491e84e134eac3701390f",
+          "files": 7,
+          "directories": 6,
+          "complete_bytes_execbits_and_exact_directories": true,
+          "new_empty_directory_present_in_all_three_trees": true,
+          "original_resources_and_fields_retained": true
+        },
+        {
+          "domain": "repository-governance",
+          "kind": "workflow",
+          "id": "ergora-governance-delivery",
+          "version": "1.0.21",
+          "digest": "21a0513cd15828bce24cd21b9344dccc47a2a3efff44648db87d28ba7a62fb4d",
+          "files": 7,
+          "directories": 6,
+          "complete_bytes_execbits_and_exact_directories": true,
+          "new_empty_directory_present_in_all_three_trees": true,
+          "original_resources_and_fields_retained": true
+        },
+        {
+          "domain": "large-change",
+          "kind": "agent",
+          "id": "ergora-structure-reviewer",
+          "version": "1.0.22",
+          "digest": "1e63e88ada3636a8425df0fb668a06b18a7e4a229e20b2d8bdea5af0bfa9a14e",
+          "files": 8,
+          "directories": 7,
+          "complete_bytes_execbits_and_exact_directories": true,
+          "new_empty_directory_present_in_all_three_trees": true,
+          "original_resources_and_fields_retained": true
+        },
+        {
+          "domain": "large-change",
+          "kind": "workflow",
+          "id": "ergora-structure-review",
+          "version": "1.0.22",
+          "digest": "f48c5b0fd51f987720c644d17b36aced54626e26ed6e4ff020d7c0107dfb8c01",
+          "files": 7,
+          "directories": 6,
+          "complete_bytes_execbits_and_exact_directories": true,
+          "new_empty_directory_present_in_all_three_trees": true,
+          "original_resources_and_fields_retained": true
+        },
+        {
+          "domain": "large-change",
+          "kind": "workflow",
+          "id": "ergora-delivery-review",
+          "version": "1.0.22",
+          "digest": "cbbc87197ff6ecbc8c51a49f55d26f4e18093ec214fca09bfd72ddc7e04004a8",
+          "files": 7,
+          "directories": 6,
+          "complete_bytes_execbits_and_exact_directories": true,
+          "new_empty_directory_present_in_all_three_trees": true,
+          "original_resources_and_fields_retained": true
+        },
+        {
+          "domain": "large-change",
+          "kind": "workflow",
+          "id": "ergora-large-change-delivery",
+          "version": "1.0.22",
+          "digest": "90367c66dac4670eae3a8ee12ebeb77ee102d5fc859a5128a9b77c3fdb4db8f0",
+          "files": 7,
+          "directories": 6,
+          "complete_bytes_execbits_and_exact_directories": true,
+          "new_empty_directory_present_in_all_three_trees": true,
+          "original_resources_and_fields_retained": true
+        },
+        {
+          "domain": "training-optimization",
+          "kind": "agent",
+          "id": "ergora-measurement-reviewer",
+          "version": "1.0.23",
+          "digest": "ecaf2e69d22b8c9eee49abd2d7be83ca49698dd6bce4bee8ed1e26f1cd5ce776",
+          "files": 8,
+          "directories": 7,
+          "complete_bytes_execbits_and_exact_directories": true,
+          "new_empty_directory_present_in_all_three_trees": true,
+          "original_resources_and_fields_retained": true
+        },
+        {
+          "domain": "training-optimization",
+          "kind": "workflow",
+          "id": "ergora-measurement-review",
+          "version": "1.0.23",
+          "digest": "ce0530d7831760389c10872b4361c136ef640280567e50a8af22eb0bf1bf2328",
+          "files": 7,
+          "directories": 6,
+          "complete_bytes_execbits_and_exact_directories": true,
+          "new_empty_directory_present_in_all_three_trees": true,
+          "original_resources_and_fields_retained": true
+        },
+        {
+          "domain": "training-optimization",
+          "kind": "workflow",
+          "id": "ergora-training-proposal",
+          "version": "1.0.23",
+          "digest": "88d01131f24af9b6361baeb6ff33eb6628f6e82ba785ca3a3950506414662346",
+          "files": 7,
+          "directories": 6,
+          "complete_bytes_execbits_and_exact_directories": true,
+          "new_empty_directory_present_in_all_three_trees": true,
+          "original_resources_and_fields_retained": true
+        }
+      ],
+      "original_objects_intact_after_model_calls": 24,
+      "old_manifests_and_inputs_intact_after_model_calls": 6,
+      "scope": "Offline existing files only. Exact expected directory sets derived from original trees and requested operations, including every explicit empty directory; no CLI/export/import/model rerun."
+    },
+    "initial_driver_failure": {
+      "observed_at": "2026-11-10T09:47:36.813062+00:00",
+      "driver_sha256": "686ae8cc87147c065a3218b99706771d61ffb5aad11ac4f28943b7d5df5c3f40",
+      "tool_session": 61011,
+      "exit_code": 1,
+      "completed_cli_calls": 14,
+      "scope": "Driver assumption failure after first new Agent publication. AgentDefinition v1 has no permissions field; permissions belong to Workflow instances. Original commands and publication retained; not a product failure or complete three-domain acceptance."
+    },
+    "successful_driver": {
+      "observed_at": "2026-11-10T09:49:23.253190+00:00",
+      "tool_session": 65807,
+      "exit_code": 0,
+      "driver_sha256": "042d7496308c02ecdb0a4d44103dec02ce2eb3fe4b906a7b7756b4ff8ab9e68e",
+      "stdout_sha256": "dcc8562ed643aa0652732ad04e1c9764f4c088a0449d0f93a6d4972169174b78",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

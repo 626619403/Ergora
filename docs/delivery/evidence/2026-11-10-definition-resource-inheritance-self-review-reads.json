@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "projection": "Formatted and machine-path-redacted evidence; original artifact SHA differs from this projection.",
+  "scope": "Complete candidate and ancestor reads in original native stream against fixed assets; delivery does not prove reasoning quality.",
+  "source_artifacts": {
+    "audit": {
+      "artifact": "model-read-audit-r1.json",
+      "bytes": 2080,
+      "sha256": "bd06bfdd2fb0add36ed88ecb369f0ce2e53462ddf88a974124f33f35cf3f0566"
+    }
+  },
+  "data": {
+    "audit": {
+      "checked_at": "2026-11-10T10:00:49.553644+00:00",
+      "run_id": "d29be658ed2142f395d66f2016576391",
+      "manifest_input_and_actual_run_digest_match": true,
+      "actual_prompt_matches": true,
+      "original_definition_libraries_absent": true,
+      "original_definition_libraries_retained_outside_active_control": true,
+      "actual_stdin_and_protocol_prompt_match": true,
+      "scope_and_native_receipt_identity_match": true,
+      "bundled_agent_workflow_evidence_revision_matches": true,
+      "source_files": 13,
+      "source_files_complete_in_attachment_and_unchanged": true,
+      "attachment_bytes": 477070,
+      "attachment_sha256": "a743af9446af602fe5b9cc5cc31d3c9b8363089ade1dae3743a41a411bfa3694",
+      "native_stream_sha256": "a14c2b7312477cded3f1ffc1832eebeca1228c5a8862e19bed377f4ed43f2f39",
+      "successful_candidate_pages": 20,
+      "probe_pages": 0,
+      "continuous_pages": 20,
+      "complete_continuous_bytes": 477070,
+      "repeated_pages": 0,
+      "base64_pages": 0,
+      "plaintext_only": true,
+      "complete_continuous_plaintext": true,
+      "next_offset": null,
+      "every_candidate_page_matches_original_bytes": true,
+      "failed_read_count": 0,
+      "failed_reads": [],
+      "instruction_and_skill_reads": {
+        "definitions/workflow/ergora-structure-review/1.0.31/instructions.md": true,
+        "definitions/agent/ergora-structure-reviewer/1.0.31/instructions.md": true,
+        "definitions/agent/ergora-structure-reviewer/1.0.31/skills/ergora-structure-reviewer/SKILL.md": true,
+        "definitions/agent/ergora-structure-reviewer/1.0.31/skills/candidate-evidence/SKILL.md": true
+      },
+      "actual_candidate_asset_matches": true,
+      "original_result_sha256": "4e28df3046c5c5c56762cd26755544ad004a1cbe109b2112e607e4e010c52eb7",
+      "succeeded_original_result_matches": true,
+      "decision": "request-changes",
+      "scope": "Audit verifies continuous successful UTF8 plaintext coverage, with unchanged-offset base64 retries preserved. Delivery does not prove reasoning quality. Existing artifacts and original inspectors only; no model, service or test rerun. Complete byte delivery does not prove reasoning quality or formal owner approval."
+    }
+  }
+}

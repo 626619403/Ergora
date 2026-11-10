@@ -249,6 +249,17 @@ ergora composition file kernel-delivery 1.0.0 instructions.md --base-digest BASE
 
 联合修订不是跨库原子事务。中断或父级检查失败时，先前发布的独立子版本仍可见；旧根、已冻结 manifest、任务输入及审批保持原精确引用。修复后从尚未完成的父级继续，不以“最新版本”自动替换旧引用。
 
+### 沿完整依赖链发布资源修订
+
+以治理组合的结构审查者为例，依赖发布顺序为：Agent `ergora-structure-reviewer` → `ergora-structure-review` → `ergora-delivery-review` → 根 `ergora-governance-delivery`。大型修改使用相同内层定义并承接 `ergora-large-change-delivery`；训练提案的测量链为 Agent `ergora-measurement-reviewer` → `ergora-measurement-review` → `ergora-training-proposal`。版本和摘要均从自己的发布回执取得。
+
+1. 从旧根先保存完整 manifest 和所需叶子输入，保留原版本作为对照。各层追加资料时保留原 `resources`；Skill 要包含入口、全部引用文件及所需空目录，普通未声明附件也可保留在包内。
+2. 从 Agent 开始，为每个修改包提高版本，沿上面的资源预览、明确接受、检查、发布步骤操作。父级的 `nodes[].ref` 使用刚发布子级的完整 `kind/id/version/digest`，再发布父级，根最后发布。新依赖尚未发布或摘要不符时检查会拒绝；不要填预测摘要或改旧索引。
+3. 每个包可以完整 `export`，在接收库先导入固定依赖、再导入其父包。只复制根包不能代替完整组合；需要一次分享时，用新根执行 `prepare-manifest`，分享整个目录。
+4. 用明确 grant 预览新根，核对目标叶子的全部祖先来源、原资料及新增资料、权限链和预算，再从新 manifest 准备新输入。已冻结的旧输入仍指向旧材料；发布新根不会更新它。
+
+资源修订没有自动项目采用、权限提升或执行动作。训练模板继续使用提案和材料审查入口；真实训练与采用须走各自的实验门禁。
+
 库保存在 State 的 `workflow-definitions/index.json` 与 `objects/<digest>/`，与Agent库分开，代码共用 `definition_bundles`。既有 `ERGORA_HOME`、`--home` 和平台默认目录继续适用；没有新DB表。`export` 只导出当前包，分享完整组合时还需按依赖顺序分享／导入其引用的每个包；不是单根自包含发行。
 
 原[离线完整备份](USAGE.md#升级与持久数据)保存两个库。验证不仅核索引和对象，还递归核工作流引用、资源、图和静态合同；原平台、原State路径与停止写入者的恢复要求不变。库损坏不会自动覆盖成新证据。可使用显式v2任务定义[冻结完整审查组合](USAGE.md#为正式任务冻结审查组合)，沿原六阶段启动只读reviewer或嵌套串并行审查，可分别声明必需/建议职责。旧v2/v3审查要求每叶沿结构祖先直接映射根task且没有前驱依赖；显式dag-v1的v4使用[具名端口](#正式只读审查的数据端口)，增加work-units-v1的v5使用[专长执行者分配](#专长执行者与原工作单元)。正式批准和候选证据保留原所有者。列表中的runtime_supported只表示静态形状支持，不证明后端或服务可用。
@@ -344,6 +355,12 @@ ergora composition run-input my-project ./prepared-review --mode task-mcp --back
 每次调用生成独立的[task-mcp-scope v1](../src/ergora/data/schemas/task-mcp-scope-v1.json)，保存原始字节、摘要及来源，最多10MB/500文件，完整序列化scope最多16MB；超限拒绝。服务核验scope后只查询内存，不把模型提供的URI当作宿主路径。Linux的固定资源读取逐级使用不跟随链接的文件描述符，拒绝symlink/hardlink/特殊文件；当前Windows新模式会给出Linux/WSL2指引，既有Windows功能继续可用。
 
 `list(path="",offset=0,max_entries=100)`按授权URI分页，每页条目元数据最多约64KiB；`read(path,offset=0,max_bytes=65536)`按字节分页。返回文件大小、SHA256和`next_offset`；可解码块为UTF-8，二进制或跨编码边界为明确base64。继续请求`next_offset`可取得完整内容，不以一次工具响应代表整个目录或文件。
+
+### 核验完整附件读取
+
+若任务要求完整检查每层资料，在任务文件中明确要求：分页列出全部 URI，再逐个从 offset 0 读到 `next_offset:null`，包括所有祖先 instructions/context、每个 Skill 的 `SKILL.md` 和全部引用附件。UTF-8 文本若因窗口切开多字节字符而返回 base64，可在同一 offset 缩小 `max_bytes` 后重读，再按成功文本页推进；真正的二进制附件按完整 base64 字节处理，不运行。空目录保存在完整包中，不会成为可读文件；普通未声明附件也不会自动进入任务 scope。
+
+运行成功及最终 `approve` 都不证明附件读全。核验时比对冻结输入、`task_mcp.scope` 的 URI/大小/SHA/来源，以及本次原生事件里的实际 list/read 回复；各文件的成功页应连续覆盖原字节，保留失败或重复窗口。scope 保存的是可用材料，原生读取记录才说明本次模型实际请求过哪些字节。准备好的输入可在源库移走后使用；应先核验并保留源库及完整输入，避免误删唯一副本。
 
 MCP配置只在本次调用生成。Codex只选择该server的两工具，native MCP资源发现/响应或交互入口可能保留；服务不注册额外resources/templates/prompts。Claude使用`--bare --restricted`、空native工具及strict显式MCP；bare模式只使用其支持的API环境认证，不读取常规OAuth/keychain。需要OAuth登录的用户可继续使用text-only，或为该模式设置后端支持的API环境变量；无需把密钥放入定义、scope或聊天。不同后端不会自动共享模型名或认证。
 

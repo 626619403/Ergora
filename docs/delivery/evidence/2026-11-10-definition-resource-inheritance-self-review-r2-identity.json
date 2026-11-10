@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "projection": "Formatted and machine-path-redacted evidence; original artifact SHA differs from this projection.",
+  "scope": "Actual evidence-only1.0.32 bundled structure-review after supplying retained original J3 artifacts; no J3 rerun, product change, formal approval or different-model independence.",
+  "source_artifacts": {
+    "identity": {
+      "artifact": "self-review-r2.json",
+      "bytes": 2757,
+      "sha256": "d93b80e2fb53860fdea23624c0c7310215838ee84cf3c145fd1c398b0659148a"
+    }
+  },
+  "data": {
+    "identity": {
+      "checked_at": "2026-11-10T10:12:48.302779+00:00",
+      "baseline": "a9778e00e81b3b2e43a4f5745c92fbb21c990c5a",
+      "source": {
+        "src/ergora/definition_bundles.py": "808044446301231422c6f9ae31a809bfaa071e495b85646f72f6151bd3f6b658",
+        "src/ergora/workflow_definitions.py": "e05abc03927d329c47b3391adc52bf11c90a437ddee49c9cb2ae8718141079e7",
+        "src/ergora/agent_definitions.py": "1963430ad740c04b65b104bb46174034f2a78f3b2a6542c64cac6b5df8ba0961",
+        "src/ergora/task_mcp.py": "06a037968a6c8c40ca00e240da81dc40db559cf07ae23b18a6d7c453648be975",
+        "src/ergora/asset_trees.py": "fb67133720bccbf19ec8020954af9d4cb898c2bb824d1d959e36f4782bab500a",
+        "src/ergora/agent_runs.py": "9cb9296b649ecc8bb2b8c843d4602726e49d3873c71d919cc32519c1298ade0d",
+        "src/ergora/agent_backends.py": "da15e62ea1d62b0cd25d12bffdfa6818672892eee19ee588a5ed86e18659ce33",
+        "tests/test_workflow_definitions.py": "87d4c87289234c2772ba68f11438b1fa44f1028202c6d594cf1ca863826ac4e9",
+        "tests/test_composition_manifests.py": "5cbe2c42cea4ed1d144d08bc7a53b68c9138c9718815faa25aac12c588f66d13",
+        "tests/test_task_mcp.py": "e4e8499fbb42fedc528263069fe45990d66d2d7a23b0ef02a27c6ac652a55e93",
+        ".ergora/checks/ac5-definition-resource-inheritance/journey-r2.py": "042d7496308c02ecdb0a4d44103dec02ce2eb3fe4b906a7b7756b4ff8ab9e68e",
+        ".ergora/checks/ac5-definition-resource-inheritance/model-r1.py": "426e848aa45034bf67c62b57c8a12033a719540633933e3e2d9c9edb1fbe8516",
+        ".ergora/checks/ac5-definition-resource-inheritance/audit-journey.py": "dab0e1d23d9012f4ffa46b1cab40580b6d31013650482e4d98a960dab089ab3c"
+      },
+      "backend": "codex",
+      "inference_model": "gpt-6.1-sol",
+      "reasoning_effort": "high",
+      "run_id": "1fc133ef134b4a51ae22d14ebf91efa4",
+      "status": "succeeded",
+      "exit_code": 0,
+      "seconds": 483.0443812701851,
+      "input_digest": "8f4c3c98c13560de7f8a828037ee7a28cd4afd903f287ffcbb48e8bd4c0da96f",
+      "prompt_sha256": "05389f49a1af6b4581016c96ff6f1df9695f75311186051865f0ed0968303d0f",
+      "attachment_bytes": 478569,
+      "attachment_sha256": "3764282621668803d10382eb52ddd1d71a3eef786a1dd975dd5ddd9fcbcc97a8",
+      "manifest_digest": "1a87b68ed87bf670cb18ffb9d293c33c7dba36fae73dba611f0a06b81515a714",
+      "installed_preset_root": {
+        "kind": "workflow",
+        "id": "ergora-governance-delivery",
+        "version": "1.0.0",
+        "digest": "e82c02d01d2c717a38f35f242107efce32dd873027a4a3a6fb0f18f7d1fae077"
+      },
+      "evidence_revision": "1.0.32",
+      "original_libraries_moved_out_and_retained": true,
+      "scope": "Actual installed bundled structure-review with fixed complete evidence. No formal workflow execution/approval or different-model independence claim.",
+      "decision": "approve",
+      "result_sha256": "e66df081e3e14a7723e398ec59cfde132ccbf8ebdd19ce38e8a25a8a626e3116"
+    }
+  }
+}
