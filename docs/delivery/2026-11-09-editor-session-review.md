@@ -6,6 +6,8 @@
 
 固定产品基线 `61ccc2cce8bfcc3a46b4a069c78ea660f76063d9`；审查时 HEAD 为 `03f1f583f91c6f1b2f35b89ff8d0d513f40c519d`。已用 `git diff --exit-code 61ccc2c HEAD -- src/ergora` 确认二者产品正文相同。03 的测试精度修正及其 CI 不属于 C2 验收。
 
+本片已普通提交推送为 `0a495aaaa489f838c009820b7cd978bbed0c5e37`，唯一父对象为上述 03f1f58，恰 25 文件。后续 C3 工作树差异不参与此固定对象验收。
+
 初始生产审查命令为 `git diff HEAD -- src/ergora/data/console/workflow.js`；S7 同片复核还包括现有 `app.js` refresh 所有者的最小修正。C2 文档包括 tracked PLAN／AC5 plan、USAGE／current architecture 和 untracked editor-session 交付／审查记录；并行更新的 deadline-precision 文档不纳入本片。另读实际调用者 `app.js`、`state.js`、`ui.js`，原 `drafts.py`／Web 路由、输入 schema、Web／架构测试和 ADR0003。没有修改生产、测试或原始证据，没有安装、启动服务或模型、提交或推送。
 
 |受审身份|SHA256／用途|
@@ -24,7 +26,7 @@
 |R7 wheel|`722ece41c54347d60f3216a27d8b1b66c09cebc582c2ede1396e3f9f2e90b796`；435 文件全等，283 冻结不变，相对 R6 只改 app.js|
 |R7 app.js|`6b624fe6e6a302e66663d69289626669b4a2a3f9792f5359cfb0f8b090dbbedf`；新目录／项目 dashboard 返回前同步隐藏旧 data；workflow.js 仍为上述 R5 身份|
 
-**本地终核：完整 25 文件的 Spec／Standards 通过，S1–S8 已关闭，0 开放 finding；可普通提交本片。** R7 包／旅程、第四轮真实模型、完整明文读取、公开投影、截图及 owned 清理均已独立核验。提交／推送对象、当前 C2 自己的必要 CI 与明确 HTTPS 同 SHA 仍待验；完整 E5 尚未精确终结。
+**完整 25 文件的本地 Spec／Standards 通过，S1–S8 已关闭，0 本地开放 finding；E5 最终交付门禁未通过。** 普通提交／推送后的精确对象、R7 包／冻结及独立明确 HTTPS 同 SHA 已核；本候选自己的 CI 最终为 Cancelled，Ubuntu 原生回归因作业超过 20 分钟上限被取消，七必要步骤共六项成功、一项取消。C2 已普通提交／推送，不能记为精确 CI 交付完成；下方在途文字保留为历史采样。
 
 **可维护性：受审差异内没有新增硬标准违规或阻塞性 smell。** 原 workflow 生命周期所有者仍合适；C3 尚未提供第二个生产消费者，无需提前抽取共享编辑框架。浏览器状态与编译／保存合同分别由现有所有者负责。
 
@@ -95,8 +97,7 @@ S2 的 Node 探针使用首轮源码，实际结果为 `restoreError=null`、`re
 
 ## 待终结项
 
-1. 固定父 03f1f58 的本次 25 文件普通提交／推送及实际 Git 对象核验。
-2. 该新候选自己的必要 CI 终态与明确 HTTPS 远端完整 SHA；不沿用前片结果。未完成前保持 E5 精确交付待验。
+1. 固定候选 0a495aa 自己的双 OS 七个必要 CI 步骤终态；首次 In progress 原件保留，后续单独采样，不沿用前片结果。未完成前保持 E5 精确交付待验。
 
 两轴汇总：完整 25 文件 Standards／Spec 本地通过，新增硬违规 0、阻塞性 smell 0、开放 finding 0；精确交付保持待验。
 
@@ -196,3 +197,27 @@ R7 十二核心脚本的 script／result／log 摘要、完整 Ran code 和结�
 第四轮实际 run `af764f526e3e4cc6a9fb9bec850ff966` 为 **214.2232 秒、succeeded、approve**。独立核原模板证据修订、manifest／input／准入／实际 prompt、13 份完整源、10 页连续 **224857 字节 UTF-8**、四祖先资源及固定 scope 全等，base64／读取失败均 0；registry／native／review 与原结果 SHA256 `4ba458a46ba97f7cc01d741a636f3189a4a2ef4c5f599c3c0e1db7743f9e081c` 匹配。13 公开 JSON 已逐项核对原件清理投影，保留原摘要与投影摘要的区别、R2 running 及 R3 request-changes；两张截图与原图字节相同且已目视核查。
 
 R7 成功 namespace 三脚本／日志／结果、三进程身份及 drafts before／after 字节相同已核。最终 25 HTTP 原身份与 `cleanup-http-final-r7.log` 一致，旧 15 份记录保留，当前原进程身份均消失或 zombie、所列端口无监听；原 8 加最终 15 个已知浏览器会话均有关闭／已不存在的成功回执。静态文档原检查为 8 文档／138 链接／94 parser，通过结论仅属本地出口。后续继续核实际提交／推送对象、该候选自己的必要 CI 与明确 HTTPS 完整 SHA；未提前标记精确交付或完整 E5 通过。
+
+## 精确对象首次独立采样：CI 未终态
+
+固定对象 `0a495aaaa489f838c009820b7cd978bbed0c5e37` 的唯一父为 03f1f58，完整文件集恰为已审 25 文件；两生产文件及全部 **435 个 Git 包文件**与 R7 wheel／非 editable 安装／两份 RECORD 逐一相同，wheel SHA256 仍为 `722ece41c54347d60f3216a27d8b1b66c09cebc582c2ede1396e3f9f2e90b796`。**283 冻结文件**及 manifest 与父对象相同，Portability 工作流不变，15 份公开证据对象与已审原件相同。本核验读取固定 Git archive，不使用下一片工作树作为 C2 源码。
+
+2026-11-10 **03:05:34.291034→03:05:57.039800 UTC** 的官方单次原采样绑定本候选自己的 [Portability run 42747066139](https://github.com/626619403/Ergora/actions/runs/42747066139)，状态仍为 **In progress**。已独立核五份原响应的字节／SHA、完整 job-group（totalCount=2、hasMore=false）、Ubuntu job 129601601956／Windows job 129601602409 的实际 selectedJobId、七个必要步骤属性及完整候选 check/log URL。Ubuntu 构建／冻结身份见 success，其余步骤尚未完成，所有 job_completed 均 false；**不能记自己的必要 CI 已通过**。
+
+2026-11-10 **03:08:24.089155→03:08:26.518581 UTC**，另在非 Git 目录、清除继承 Git 环境覆盖、禁用 system/global 配置及凭据助手、禁止 SSH／HTTP 协议，对明确 `https://github.com/626619403/Ergora.git` 独立只读 ls-remote；原 trace 确认 git-remote-https，远端授权分支返回完整 SHA **0a495aaaa489f838c009820b7cd978bbed0c5e37**。官方原页保留在本片 `commit-closure/snapshot-01/`，独立 HTTPS 原件另存 `commit-closure/independent-snapshot-01/`，未覆盖首次采样、取消、重跑或连续轮询 CI。对象／包／冻结／HTTPS 门禁已核，自己的七项 CI 终态仍待验。
+
+## 第二次官方采样：Windows 成功，整体仍在途
+
+2026-11-10 **03:18:51.517274→03:19:05.356341 UTC** 的 `commit-closure/snapshot-02/` 原件仍绑定同一完整候选及 run 42747066139。已独立核五份响应的字节／SHA、Actions 嵌入工作流记录及可见候选行、run 候选／工作流链接、完整两 job-group、实际 selectedJobId，以及七必要步骤属性与完整候选 log URL。Windows job 129601602409 为 completed／success，四必要步骤均 success 且 job_completed=true；Ubuntu job 129601601956 仍 in_progress，构建／包身份 success，原生回归尚无结论，job_completed 均 false。因此整体仍为 **In progress**，不计七项 CI 终态门禁通过，E5 继续待验。
+
+同目录第二次明确 HTTPS 原回执为 **03:18:32.014744→03:18:33.761965 UTC**；已独立读取检查脚本、stdout／trace 的原字节与 SHA、空 stderr，确认非 Git 目录及配置／协议限制、实际 git-remote-https、returncode 0，授权分支仍返回完整 **0a495aaaa489f838c009820b7cd978bbed0c5e37**。首次官方采样和本审查独立 HTTPS 原件均保留；本轮只读复核现有采样，没有取消、重跑或新抓取 CI，也未用 C3 工作树替代固定 C2 对象。
+
+## 官方终态：超时取消，E5 未通过
+
+2026-11-10 **03:28:04.422930→03:28:19.053021 UTC**，`commit-closure/snapshot-04/` 的官方原件将同一完整候选的 [Portability run 42747066139](https://github.com/626619403/Ergora/actions/runs/42747066139) 记为 **Cancelled**。本审查独立核五份原响应的字节／SHA、Actions 精确 commit／workflow／branch 记录及可见行、run 链接／状态、完整两 job-group、实际 selectedJobId 和七步骤的终态／完整候选 log URL。Ubuntu job 129601601956 为 completed／cancelled，构建与包身份 success、原生回归 cancelled；Windows job 129601602409 为 completed／success，四必要步骤 success。七项均有 job_completed，结果为 **6/7 success，1/7 cancelled**。
+
+run 与 Ubuntu job 的原 annotation 均为 **“The job has exceeded the maximum execution time of 20m0s”**，且 run annotation 明确链接本 Linux job。原生回归记录为 03:05:30→03:25:06 UTC、取消 annotation 为 “The operation was canceled.”；固定候选的原工作流确有 `timeout-minutes: 20`。这确认超时取消，尚不能归因到具体测试或产品缺陷。公开精确步骤日志的一次只读请求返回 404，当前无 gh CLI，未取得原 Linux 测试尾部；请求／响应原件另存本审查私有终态目录，未将缺失尾部当作测试通过或根因证明。
+
+第三次明确 HTTPS 原件（03:26:39.464177→03:26:41.059809 UTC）的脚本、stdout／trace SHA 与完整返回值也已核。本审查另于 **03:30:19.010486→03:30:20.951219 UTC** 在非 Git 目录独立明确 HTTPS ls-remote，清除 Git 环境覆盖、禁用 system/global 配置和凭据助手、禁止 SSH／HTTP；原 trace 确认实际 git-remote-https，returncode 0，授权分支仍返回完整 **0a495aaaa489f838c009820b7cd978bbed0c5e37**。新原件仅存 `commit-closure/independent-terminal-snapshot-01/`；前三轮采样、第三轮私有解析器错误、终态原件均未覆盖。
+
+**本候选的 E5 最终门禁以未通过终结；C2 不具备精确 CI 交付完成结论。** 本地两轴通过、S1–S8 关闭及包／对象／HTTPS 核验结论保持各自范围；后片不能继承本候选 Windows 成功来替代自己的必要 CI。本审查没有取消、重跑 CI 或修改工作流、生产源码和测试。

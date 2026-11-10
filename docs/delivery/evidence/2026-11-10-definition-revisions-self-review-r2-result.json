@@ -1,0 +1,12 @@
+{
+  "run_id": "6bdde5be958d41f2a88d2491b1081c6a",
+  "original_native_result_sha256": "9e2b4914705b1fe7ff4017e9d120ff230c16b7d33114e97f2fc2f4991eabce92",
+  "projection": "Reformatted public JSON projection; this file digest differs from the retained native result digest.",
+  "result": {
+    "artifacts": {
+      "response": "Spec: DR-S1 is resolved at src/ergora/definition_bundles.py:210. Only the staged standard JSON gains owner-write permission before rewriting; original files and executable bits remain preserved. Fixed-base checks, complete-package copying, current admission and explicit immutable publication retain their existing owners.\n\nStandards: CLI/HTTP delegate through the per-kind factories and shared DefinitionLibrary. No duplicated hashing, permission, dependency or publication algorithm was introduced. Temporary directories are scoped and omitted from revision responses. Concurrency remains governed by the original import lock/index. Tests cover distinct revision risks; no new dependency, framework or CI machinery was added.\n\nRead all 343,725 candidate bytes in 15 continuous UTF-8 task-MCP pages from offset 0 through next_offset=null, plus all four inherited instruction/Skill resources. No base64 responses or failed reads occurred.\n\nRecorded R2 evidence reports 180 passed/1 skipped in 74.08s and 44 CLI/HTTP calls in 8.02s, with owned HTTP cleanup. I executed no candidate code or services, reran no checks and edited nothing. This is a C3a review verdict; candidate CI/remote gates remain pending, and formal owner approval remains separate."
+    },
+    "decision": "approve",
+    "summary": "Approve C3a R2: no confirmed remaining Spec or Standards defects."
+  }
+}

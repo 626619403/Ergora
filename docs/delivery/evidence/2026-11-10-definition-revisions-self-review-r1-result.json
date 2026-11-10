@@ -1,0 +1,12 @@
+{
+  "run_id": "14c61cb4d2dd4358bf71d88c4ee67eba",
+  "original_native_result_sha256": "398666b2ebee86d47945e1bb4bdfd4b288cc5b5dd67d72e6ddfafa1764cd84d6",
+  "projection": "Reformatted public JSON projection; this file digest differs from the retained native result digest.",
+  "result": {
+    "artifacts": {
+      "response": "Spec: [P2] src/ergora/definition_bundles.py:209 writes directly into the exported standard JSON file. A valid package imported with agent.json or workflow.json mode 0444 retains that mode through copytree. For an ordinary POSIX user, both revision check and publish then raise PermissionError before validation. Make only the staged standard JSON writable before rewriting, preserving executable bits and leaving the original untouched. Add a focused regression for this accepted-package case.\n\nStandards: No separate confirmed ownership defects. CLI/HTTP delegate through the per-kind factories; current admission, dependency compilation, hashing, locking and immutable publication retain their existing owners. Temporary directories are scoped, and revision responses omit their paths. Added tests cover distinct revision risks without new CI or framework machinery.\n\nRead both inherited instructions, both skills, and all 323,011 candidate bytes through task MCP in 14 continuous UTF-8 pages, offset 0 through next_offset=null. No base64 responses occurred. Recorded evidence reports source 142 passed/1 skipped in 12.38s, installed 180 passed/1 skipped in 74.63s, and 44 journey calls in 7.88s. I executed no code or services, reran no checks, and edited nothing. This verdict covers C3a; pending CI/remote gates remain separate."
+    },
+    "decision": "request-changes",
+    "summary": "Request changes: one confirmed failure when revising valid packages with read-only standard JSON files."
+  }
+}

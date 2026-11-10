@@ -4,6 +4,7 @@ import hashlib
 import json
 from pathlib import Path, PurePosixPath, PureWindowsPath
 import shutil
+import stat
 import tempfile
 
 from . import contracts, skill_assets
@@ -198,6 +199,23 @@ class DefinitionLibrary:
                 raise ValueError(f"{self.label} export destination appeared; it was not replaced")
             copy.rename(destination)
         return {"digest": document["digest"], "destination": str(destination)}
+
+    def revise(self, identity: str, version: str, base_digest: str, definition: dict, *, publish: bool = False) -> dict:
+        """Derive a complete candidate from a pinned historical package, without editing it."""
+        with tempfile.TemporaryDirectory(prefix=f".{self.kind}-revision-", dir=self.root) as temporary:
+            copy = Path(temporary) / "bundle"
+            original = self.export(identity, version, copy)
+            if original["digest"] != base_digest:
+                raise ValueError(f"{self.label} revision base digest does not match {identity}@{version}")
+            standard = copy / f"{self.kind}.json"
+            standard.chmod(standard.stat().st_mode | stat.S_IWUSR)
+            standard.write_text(
+                json.dumps(definition, sort_keys=True, indent=2, ensure_ascii=False, allow_nan=False) + "\n",
+                encoding="utf-8", newline="\n")
+            candidate = self.import_bundle(copy) if publish else self.inspect_import(copy)
+            return {**{key: value for key, value in candidate.items() if key != "path"},
+                    "base": {"kind": self.kind, "id": identity, "version": version, "digest": base_digest},
+                    "published": publish}
 
     def verify(self) -> int:
         return len(self.documents())

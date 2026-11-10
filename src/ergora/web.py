@@ -34,6 +34,11 @@ class RevisionPayload(Payload):
     revision: int
 
 
+class DefinitionRevisionPayload(Payload):
+    base_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
+    definition: dict
+
+
 class DoctorPayload(Payload):
     timeout: int = Field(default=5, strict=True, ge=1, le=30)
 
@@ -259,6 +264,14 @@ def create_app(home: Path | None = None) -> FastAPI:
     def agent_definition(identity: str, version: str):
         return agent_definitions.get(state, identity, version, material=True)
 
+    @application.post("/api/agent-definitions/{identity}/{version}/revisions/check")
+    def check_agent_revision(identity: str, version: str, body: DefinitionRevisionPayload):
+        return agent_definitions.revise(state, identity, version, body.base_digest, body.definition)
+
+    @application.post("/api/agent-definitions/{identity}/{version}/revisions")
+    def publish_agent_revision(identity: str, version: str, body: DefinitionRevisionPayload):
+        return agent_definitions.revise(state, identity, version, body.base_digest, body.definition, publish=True)
+
     @application.get("/api/workflow-definitions")
     def workflow_library():
         return workflow_definitions.definitions(state)
@@ -266,6 +279,14 @@ def create_app(home: Path | None = None) -> FastAPI:
     @application.get("/api/workflow-definitions/{identity}/{version}")
     def workflow_definition(identity: str, version: str):
         return workflow_definitions.get(state, identity, version, material=True)
+
+    @application.post("/api/workflow-definitions/{identity}/{version}/revisions/check")
+    def check_workflow_revision(identity: str, version: str, body: DefinitionRevisionPayload):
+        return workflow_definitions.revise(state, identity, version, body.base_digest, body.definition)
+
+    @application.post("/api/workflow-definitions/{identity}/{version}/revisions")
+    def publish_workflow_revision(identity: str, version: str, body: DefinitionRevisionPayload):
+        return workflow_definitions.revise(state, identity, version, body.base_digest, body.definition, publish=True)
 
     @application.get("/api/composition/presets")
     def composition_presets():

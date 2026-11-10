@@ -338,6 +338,10 @@ def import_bundle(state: State, source: Path) -> dict:
     return library(state.root).import_bundle(source)
 
 
+def revise(state: State, identity: str, version: str, base_digest: str, definition: dict, *, publish: bool = False) -> dict:
+    return library(state.root).revise(identity, version, base_digest, definition, publish=publish)
+
+
 def get(state: State, identity: str, version: str, *, material: bool = False) -> dict:
     return library(state.root).get(identity, version, material=material)
 

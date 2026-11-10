@@ -1,6 +1,7 @@
 """The definition console shares immutable libraries and never needs a project."""
 
 import json
+from pathlib import Path
 import subprocess
 import sys
 
@@ -10,7 +11,7 @@ pytest.importorskip('fastapi')
 pytest.importorskip('httpx')
 from fastapi.testclient import TestClient
 
-from ergora import agent_definitions, projects, workflow_definitions as workflows
+from ergora import agent_definitions, cli, projects, workflow_definitions as workflows
 from ergora.state import State
 from ergora.web import create_app
 
@@ -85,3 +86,35 @@ def test_historical_http_details_remain_readable_when_current_backend_admission_
     response = client.post('/api/composition/preview', json={'id': root['id'], 'version': root['version'],
         'grant': {'schema_version': 1, 'permissions': definition['permissions'], 'limits': definition['limits']}})
     assert response.status_code == 400 and 'Backend no longer admitted' in response.json()['error']
+    for kind, original in [('agent', agent_before), ('workflow', workflow_before)]:
+        definition = {**original['definition'], 'version': '1.0.1'}
+        for suffix in ['/check', '']:
+            response = client.post(f"/api/{kind}-definitions/{definition['id']}/{original['definition']['version']}/revisions{suffix}",
+                json={'base_digest': original['digest'], 'definition': definition})
+            assert response.status_code == 400 and 'Backend no longer admitted' in response.json()['error']
+
+
+@pytest.mark.parametrize('kind,command', [('agent', ['agent', 'definition']), ('workflow', ['composition'])])
+def test_revision_http_and_cli_share_candidate_identity_and_keep_base(library_console, tmp_path, capsys, kind, command):
+    client, state = library_console
+    preset = client.post('/api/composition/presets/repository-governance/install', json={}).json()
+    reference = preset['agents'][0] if kind == 'agent' else preset['root']
+    base_url = f"/api/{kind}-definitions/{reference['id']}/{reference['version']}"
+    original = client.get(base_url).json()
+    (Path(original['path']) / f'{kind}.json').chmod(0o444)
+    definition = {**original['definition'], 'version': '1.0.1', 'description': 'New immutable revision'}
+    payload = {'base_digest': reference['digest'], 'definition': definition}
+    response = client.post(base_url + '/revisions/check', json=payload)
+    assert response.status_code == 200, response.text
+    document = tmp_path / 'new-definition.json'
+    document.write_text(json.dumps(definition), encoding='utf-8')
+    assert cli.main(['--home', str(state.root), *command, 'revise', reference['id'], reference['version'],
+        '--base-digest', reference['digest'], '--document', str(document), '--check']) == 0
+    assert json.loads(capsys.readouterr().out) == response.json()
+    assert client.get(f"/api/{kind}-definitions/{reference['id']}/{definition['version']}").status_code == 400
+    published = client.post(base_url + '/revisions', json=payload)
+    assert published.status_code == 200, published.text
+    assert published.json() == {**response.json(), 'published': True}
+    assert client.get(base_url).json() == original
+    assert client.get(f"/api/{kind}-definitions/{reference['id']}/{definition['version']}").json()['digest'] == response.json()['digest']
+    assert projects.list_projects(state) == []

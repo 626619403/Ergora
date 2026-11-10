@@ -102,6 +102,21 @@ def test_examples_expand_serial_and_parallel_all_join_without_dependency_inherit
         "root/structure": "required", "root/test-value": "advisory"}
 
 
+@pytest.mark.parametrize("publish", [False, True])
+def test_revision_uses_complete_current_compilation_before_publication(base, publish):
+    state, agent, _ = base
+    original = imported(base, definition("bounded-root", [leaf("review", agent)]))
+    revised = deepcopy(original["definition"])
+    revised.update(version="1.0.1", permissions={**READ, "read": ["definitions"]})
+    index = state.root / "workflow-definitions/index.json"
+    before = index.read_bytes()
+    with pytest.raises(ValueError, match="Permission exceeds ancestor/project"):
+        workflows.revise(state, revised["id"], original["definition"]["version"], original["digest"], revised,
+                         publish=publish)
+    assert index.read_bytes() == before
+    assert workflows.get(state, revised["id"], original["definition"]["version"]) == original
+
+
 def test_review_requirement_belongs_to_each_versioned_instance_and_survives_nested_freezing(base):
     state, agent, directory = base
     original = imported(base, definition("expert-review", [leaf("review", agent)]))

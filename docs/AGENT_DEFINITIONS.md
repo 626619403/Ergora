@@ -67,6 +67,21 @@ for resource in definition["resources"]:
 
 POSIX与Windows的可执行位语义不同，含可执行资源的Skill跨系统复制后可能摘要不匹配并明确拒绝，路径可移植不保证执行位可保真。需要移植时，应显式创建并核对适合目标系统的新版本与摘要；不会自动丢弃执行位或重写已登记身份。State备份仍只支持原平台恢复。
 
+## 从固定原包派生新版本
+
+只修改标准正文时，可以保留原包的全部文件，直接提交新的完整 `agent.json`。先用 `show` 取得原版本的 `digest` 和 `definition`；将 `definition` 单独保存为 `new-agent.json`，修改版本以及需要调整的职能、专长或后端字段。下面的 `BASE_DIGEST` 替换为原包摘要：
+
+```bash
+ergora agent definition revise architecture-reviewer 1.0.0 --base-digest BASE_DIGEST --document ./new-agent.json --check
+ergora agent definition revise architecture-reviewer 1.0.0 --base-digest BASE_DIGEST --document ./new-agent.json
+```
+
+`--check` 检查候选但不登记版本；省略它才发布。返回候选 `digest`、标准正文、文件/资源身份、固定 `base` 与 `published`，不返回临时目录。派生过程只重写 `agent.json`，采用 UTF-8、排序键、两空格缩进及末尾换行；原包的指令、上下文、Skill附件、未声明文件及空目录完整复制。正文中的资源声明仍必须与实际文件一致。要修改文件内容，使用上面的 export/edit/check/import 流程；此入口不接收附件或 YAML。
+
+原摘要不匹配会拒绝；新正文仍检查当前职能/后端合同。相同 ID/version 的不同内容不能发布，完全相同的请求可以重试；原版本始终保留。`check` 不是版本预留，并发发布仍可能使随后的发布产生版本冲突。派生不运行或认证后端，也不修改已引用原版本的工作流和任务。更新引用见[工作流修订](WORKFLOW_DEFINITIONS.md#修订分享与恢复)。
+
+本机 HTTP 入口与 CLI 使用相同所有者：`POST /api/agent-definitions/{id}/{version}/revisions/check` 只检查，`POST /api/agent-definitions/{id}/{version}/revisions` 发布；JSON 请求为 `{"base_digest": "原包的64位小写摘要", "definition": {完整的新正文}}`。两者都保留完整原包，不创建任务、批准或执行会话。
+
 ## 资源和存储边界
 
 资源路径须是可移植的包内相对路径：使用 `/`，拒绝绝对路径、`..`、反斜杠、Windows保留名称/流和大小写冲突。包不包含 `.git`、符号链接、reparse point或特殊文件；最多10 MB、500文件、500目录和32层目录。所列资源的摘要缺失、内容不匹配或Skill frontmatter无效会在导入前失败。

@@ -143,3 +143,8 @@ R7成功同端口换home/恢复也已另跑：A的未应用表单/非法JSON/目
 对外归档13份JSON和桌面/窄屏两张实际截图：[最终包/冻结身份](evidence/2026-11-09-editor-session-package-r7.json)、[浏览器/原反例/下载/目录切换与清理](evidence/2026-11-09-editor-session-browser-r7.json)、[首审原request-changes](evidence/2026-11-09-editor-session-self-review-r1-result.json)、[第二轮中断事实](evidence/2026-11-09-editor-session-self-review-r2-interruption.json)、[第三轮request-changes](evidence/2026-11-09-editor-session-self-review-r3-result.json)、[最终原意见公开投影](evidence/2026-11-09-editor-session-self-review-r4-result.json)和[最终读取审计](evidence/2026-11-09-editor-session-self-review-r4-reads.json)。JSON为路径清理/格式化的公开投影，result_sha256固定原native字节，不等同于公开文件SHA。原始缓存正文不公开，私有原下载保留供逐字复核。[桌面](evidence/2026-11-09-editor-session-desktop.png)与[390px窄屏](evidence/2026-11-09-editor-session-narrow.png)为显式重新排布后的展示截图，实际pointer/wheel/键盘旅程另有原日志；截图前后语义输入不变。
 
 边界：本片没有新增Python永久测试/依赖/schema/CI。验证为Linux当前可信容器内的本地编辑器、原HTTP/架构用例和实际Chromium交互；未证明跨浏览器永久保存、全平台浏览器、OS隔离、GPU/训练结果、C6图容量或整框架性能。C3标准定义编辑、C4嵌套图、C5正式交接、C6容量继续原计划。最终25文件的完整独立本地两轴终核通过、开放finding 0；13公开JSON/两截图/模型明文及owned清理已独立核原件。8文档138链接/94 parser检查通过。本候选普通提交/自己的必要CI和明确HTTPS远端身份仍另核。
+
+
+## 精确候选远端与 CI 终态
+
+C2 已普通提交推送 `0a495aaaa489f838c009820b7cd978bbed0c5e37`（25文件）。自己的 [CI42747066139](https://github.com/626619403/Ergora/actions/runs/42747066139) 前两采样在途；2026-11-10 03:28:04 UTC 新官方原件显示 **Cancelled**：Ubuntu 原生回归步骤取消，原 job 注释明确超过20m0s；其构建/冻结身份及 Windows 四必要步骤全部 success，共六项通过、一项取消。没有取消或重跑请求，不能把本地22项与浏览器绿灯替代整套CI，也不以Windows通过推断Linux通过。原失败保留，另做[CI时长审计](2026-11-10-ci-duration-audit.md)，无实证前不删测试、放宽断言或改变时限。明确HTTPS读取仍为同完整SHA；[独立报告](2026-11-09-editor-session-review.md)记录精确范围与复核。本地功能门禁通过和普通远端交付保持，精确CI门禁未通过。

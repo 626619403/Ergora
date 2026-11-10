@@ -74,6 +74,38 @@ def test_versions_are_immutable_idempotent_and_export_roundtrips(bundle, tmp_pat
         definitions.export(state, "kernel-implementer", "1.0.0", tmp_path / "share")
 
 
+def test_revision_preserves_complete_package_and_only_publishes_explicitly(bundle, tmp_path):
+    skill = bundle / "skills/kernel-measurement"
+    (skill / "references/empty").mkdir(parents=True)
+    (skill / "references/opaque.bin").write_bytes(b"\x00\xff complete attachment")
+    (bundle / "unlisted.bin").write_bytes(b"\xff preserved extra file")
+    revise(bundle, lambda item: next(resource for resource in item["resources"] if resource["kind"] == "skill").update(
+        digest=skill_assets.digest_tree(skill)[0]))
+    (bundle / "agent.json").chmod(0o555)
+    state = State(tmp_path / "state")
+    original = definitions.import_bundle(state, bundle)
+    identity, version = original["definition"]["id"], original["definition"]["version"]
+    updated = {**original["definition"], "version": "1.0.1", "description": "Revised specialist request",
+               "backend": {"tool": "codex", "model": "test-specialist"}}
+    index = state.root / "agent-definitions/index.json"
+    before = index.read_bytes()
+    checked = definitions.revise(state, identity, version, original["digest"], updated)
+    assert checked["published"] is False and "path" not in checked
+    assert index.read_bytes() == before
+    with pytest.raises(ValueError, match="base digest"):
+        definitions.revise(state, identity, version, "0" * 64, updated, publish=True)
+    assert index.read_bytes() == before
+    published = definitions.revise(state, identity, version, original["digest"], updated, publish=True)
+    assert published == {**checked, "published": True}
+    assert definitions.revise(state, identity, version, original["digest"], updated, publish=True) == published
+    assert definitions.get(state, identity, version) == original
+    saved = definitions.get(state, identity, updated["version"])
+    assert saved["files"]["agent.json"]["executable_bits"] == original["files"]["agent.json"]["executable_bits"]
+    assert {key: value for key, value in saved["files"].items() if key != "agent.json"} == {
+        key: value for key, value in original["files"].items() if key != "agent.json"}
+    assert (Path(saved["path"]) / "skills/kernel-measurement/references/empty").is_dir()
+
+
 @pytest.mark.parametrize("mutation", ["schema", "bool-version", "missing-hash", "bad-hash", "missing-file", "duplicate-id",
                                       "unknown-role", "incompatible-backend", "unknown-backend-field", "permission-field",
                                       "bad-skill-hash", "missing-skill-hash", "no-instructions", "two-instructions", "invalid-frontmatter"])

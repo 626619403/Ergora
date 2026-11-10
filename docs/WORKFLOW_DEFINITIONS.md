@@ -221,7 +221,22 @@ work的权限链完整继承和收窄；每个原unit的所有路径必须完整
 
 ## 修订、分享与恢复
 
+只修改工作流标准正文时，先用 `show` 取得精确原版本的 `digest` 和 `definition`，将 `definition` 单独保存为 `new-workflow.json`，调整版本、节点或依赖引用。将 `BASE_DIGEST` 替换为原包摘要：
+
+```bash
+ergora composition revise kernel-delivery 1.0.0 --base-digest BASE_DIGEST --document ./new-workflow.json --check
+ergora composition revise kernel-delivery 1.0.0 --base-digest BASE_DIGEST --document ./new-workflow.json
+```
+
+`--check` 不发布版本；省略时才沿原库发布。两者都会复制完整原包，只用 UTF-8、排序键、两空格缩进和末尾换行重写 `workflow.json`；返回候选身份、固定 `base` 和 `published`。指令、上下文、完整 Skill 树、未声明文件及空目录保持。资源文件修改继续使用 export/edit/check/import；此入口只接受完整 JSON 正文，没有页面编辑或 YAML 转换。
+
+与单包 `composition check` 不同，`revise --check` 使用当前库解析完整递归依赖并检查后端/职能准入、继承、权限、资源、端口与预算；依赖必须已经发布且摘要精确匹配。它不使用项目 grant，也不代表运行批准；发布后用明确的 grant 预览整棵链。原摘要不符、当前准入失败或同版本不同内容会拒绝，原版本不变。检查不预留版本，发布可能因并发版本冲突失败；完全相同的发布可重试。
+
+HTTP 的 `POST /api/workflow-definitions/{id}/{version}/revisions/check` 与 `/api/workflow-definitions/{id}/{version}/revisions` 分别检查、发布，JSON 为 `{"base_digest": "原包的64位小写摘要", "definition": {完整的新正文}}`。CLI 与 HTTP 共用候选摘要及原有校验，均不启动模型、服务或任务。
+
 父／子可同时计划提权或追加资源：先生成新的子定义版本，逐层更新父引用与权限，再发布新的根版本，最后用新的项目grant检查整棵链。只改子级会失败；根仍越项目上限也会失败。单定义导入通过原子完整对象及索引发布，完整根修订由其精确递归引用固定；这里没有跨定义事务或项目采用动作。旧根和旧版本保持原内容，不读取新的活动头替代。
+
+联合修订不是跨库原子事务。中断或父级检查失败时，先前发布的独立子版本仍可见；旧根、已冻结 manifest、任务输入及审批保持原精确引用。修复后从尚未完成的父级继续，不以“最新版本”自动替换旧引用。
 
 库保存在 State 的 `workflow-definitions/index.json` 与 `objects/<digest>/`，与Agent库分开，代码共用 `definition_bundles`。既有 `ERGORA_HOME`、`--home` 和平台默认目录继续适用；没有新DB表。`export` 只导出当前包，分享完整组合时还需按依赖顺序分享／导入其引用的每个包；不是单根自包含发行。
 

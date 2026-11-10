@@ -1,0 +1,477 @@
+{
+  "checked_at": "2026-11-10T03:36:35.070451+00:00",
+  "seconds": 8.018168256152421,
+  "observations": {
+    "agent-identity": {
+      "base": {
+        "kind": "agent",
+        "id": "journey-reviewer",
+        "version": "1.0.0",
+        "digest": "73711739b2c7c4b337f2bb87df89c9df9eda283fa49c51577cfc67fe92a4c324"
+      },
+      "digest": "9bd1606c1da8f7e13e90f79e26c982bf4e9c6c31768c3b5673507f0c79aabf41",
+      "check_cli_http_equal": true,
+      "retry_equal": true,
+      "base_unchanged": true,
+      "complete_files_preserved": true,
+      "standard_executable_bits_preserved": true,
+      "empty_directory_preserved": true,
+      "export": "<verification-root>/.ergora/checks/ac5-definition-revisions/r2/journey/export-agent-1.0.1"
+    },
+    "unsupported_backend_rejected_without_publish": true,
+    "workflow-identity": {
+      "base": {
+        "kind": "workflow",
+        "id": "journey-review",
+        "version": "1.0.0",
+        "digest": "c54eb6f0247d4acb1e80a404b24e261c84b3961e74b2e16f1a2990c6b1d65fc5"
+      },
+      "digest": "e4e82d03864c5a39c152944b4e5fdb896bf66728380243ae4033a17ce54cfbe9",
+      "check_cli_http_equal": true,
+      "retry_equal": true,
+      "base_unchanged": true,
+      "complete_files_preserved": true,
+      "standard_executable_bits_preserved": true,
+      "empty_directory_preserved": true,
+      "export": "<verification-root>/.ergora/checks/ac5-definition-revisions/r2/journey/export-workflow-1.0.1"
+    },
+    "permission_rejected_without_publish": true,
+    "missing-dependency_rejected_without_publish": true,
+    "wrong-digest_rejected_without_publish": true,
+    "same_version_conflict_refused": true,
+    "old_objects_and_manifest_unchanged": true,
+    "no_project_or_agent_execution": true,
+    "parent_new_exact_dependency": {
+      "digest": "e4e82d03864c5a39c152944b4e5fdb896bf66728380243ae4033a17ce54cfbe9",
+      "id": "journey-review",
+      "kind": "workflow",
+      "version": "1.0.1"
+    },
+    "complete_export_import_roundtrip": true
+  },
+  "calls": [
+    {
+      "kind": "cli",
+      "arguments": [
+        "agent",
+        "definition",
+        "import",
+        "<verification-root>/.ergora/checks/ac5-definition-revisions/r2/journey/agent"
+      ],
+      "code": 0,
+      "expected_code": 0
+    },
+    {
+      "kind": "cli",
+      "arguments": [
+        "composition",
+        "import",
+        "<verification-root>/.ergora/checks/ac5-definition-revisions/r2/journey/child"
+      ],
+      "code": 0,
+      "expected_code": 0
+    },
+    {
+      "kind": "cli",
+      "arguments": [
+        "composition",
+        "import",
+        "<verification-root>/.ergora/checks/ac5-definition-revisions/r2/journey/parent"
+      ],
+      "code": 0,
+      "expected_code": 0
+    },
+    {
+      "kind": "cli",
+      "arguments": [
+        "composition",
+        "prepare-manifest",
+        "journey-root",
+        "1.0.0",
+        "--grant",
+        "<verification-root>/.ergora/checks/ac5-definition-revisions/r2/journey/grant.json",
+        "--directory",
+        "<verification-root>/.ergora/checks/ac5-definition-revisions/r2/journey/original-manifest"
+      ],
+      "code": 0,
+      "expected_code": 0
+    },
+    {
+      "kind": "http",
+      "method": "GET",
+      "url": "/api/agent-definitions/journey-reviewer/1.0.0",
+      "code": 200,
+      "expected_code": 200
+    },
+    {
+      "kind": "http",
+      "method": "POST",
+      "url": "/api/agent-definitions/journey-reviewer/1.0.0/revisions/check",
+      "code": 200,
+      "expected_code": 200
+    },
+    {
+      "kind": "cli",
+      "arguments": [
+        "agent",
+        "definition",
+        "revise",
+        "journey-reviewer",
+        "1.0.0",
+        "--base-digest",
+        "73711739b2c7c4b337f2bb87df89c9df9eda283fa49c51577cfc67fe92a4c324",
+        "--document",
+        "<verification-root>/.ergora/checks/ac5-definition-revisions/r2/journey/new-agent-1.0.1.json",
+        "--check"
+      ],
+      "code": 0,
+      "expected_code": 0
+    },
+    {
+      "kind": "http",
+      "method": "GET",
+      "url": "/api/agent-definitions/journey-reviewer/1.0.1",
+      "code": 400,
+      "expected_code": 400
+    },
+    {
+      "kind": "http",
+      "method": "POST",
+      "url": "/api/agent-definitions/journey-reviewer/1.0.0/revisions",
+      "code": 400,
+      "expected_code": 400
+    },
+    {
+      "kind": "cli",
+      "arguments": [
+        "agent",
+        "definition",
+        "revise",
+        "journey-reviewer",
+        "1.0.0",
+        "--base-digest",
+        "73711739b2c7c4b337f2bb87df89c9df9eda283fa49c51577cfc67fe92a4c324",
+        "--document",
+        "<verification-root>/.ergora/checks/ac5-definition-revisions/r2/journey/new-agent-1.0.1.json"
+      ],
+      "code": 0,
+      "expected_code": 0
+    },
+    {
+      "kind": "http",
+      "method": "POST",
+      "url": "/api/agent-definitions/journey-reviewer/1.0.0/revisions",
+      "code": 200,
+      "expected_code": 200
+    },
+    {
+      "kind": "http",
+      "method": "GET",
+      "url": "/api/agent-definitions/journey-reviewer/1.0.0",
+      "code": 200,
+      "expected_code": 200
+    },
+    {
+      "kind": "http",
+      "method": "GET",
+      "url": "/api/agent-definitions/journey-reviewer/1.0.1",
+      "code": 200,
+      "expected_code": 200
+    },
+    {
+      "kind": "cli",
+      "arguments": [
+        "agent",
+        "definition",
+        "export",
+        "journey-reviewer",
+        "1.0.1",
+        "<verification-root>/.ergora/checks/ac5-definition-revisions/r2/journey/export-agent-1.0.1"
+      ],
+      "code": 0,
+      "expected_code": 0
+    },
+    {
+      "kind": "http",
+      "method": "POST",
+      "url": "/api/agent-definitions/journey-reviewer/1.0.0/revisions/check",
+      "code": 400,
+      "expected_code": 400
+    },
+    {
+      "kind": "http",
+      "method": "POST",
+      "url": "/api/agent-definitions/journey-reviewer/1.0.0/revisions",
+      "code": 400,
+      "expected_code": 400
+    },
+    {
+      "kind": "http",
+      "method": "GET",
+      "url": "/api/workflow-definitions/journey-review/1.0.0",
+      "code": 200,
+      "expected_code": 200
+    },
+    {
+      "kind": "http",
+      "method": "POST",
+      "url": "/api/workflow-definitions/journey-review/1.0.0/revisions/check",
+      "code": 200,
+      "expected_code": 200
+    },
+    {
+      "kind": "cli",
+      "arguments": [
+        "composition",
+        "revise",
+        "journey-review",
+        "1.0.0",
+        "--base-digest",
+        "c54eb6f0247d4acb1e80a404b24e261c84b3961e74b2e16f1a2990c6b1d65fc5",
+        "--document",
+        "<verification-root>/.ergora/checks/ac5-definition-revisions/r2/journey/new-workflow-1.0.1.json",
+        "--check"
+      ],
+      "code": 0,
+      "expected_code": 0
+    },
+    {
+      "kind": "http",
+      "method": "GET",
+      "url": "/api/workflow-definitions/journey-review/1.0.1",
+      "code": 400,
+      "expected_code": 400
+    },
+    {
+      "kind": "http",
+      "method": "POST",
+      "url": "/api/workflow-definitions/journey-review/1.0.0/revisions",
+      "code": 400,
+      "expected_code": 400
+    },
+    {
+      "kind": "http",
+      "method": "POST",
+      "url": "/api/workflow-definitions/journey-review/1.0.0/revisions",
+      "code": 200,
+      "expected_code": 200
+    },
+    {
+      "kind": "http",
+      "method": "POST",
+      "url": "/api/workflow-definitions/journey-review/1.0.0/revisions",
+      "code": 200,
+      "expected_code": 200
+    },
+    {
+      "kind": "http",
+      "method": "GET",
+      "url": "/api/workflow-definitions/journey-review/1.0.0",
+      "code": 200,
+      "expected_code": 200
+    },
+    {
+      "kind": "http",
+      "method": "GET",
+      "url": "/api/workflow-definitions/journey-review/1.0.1",
+      "code": 200,
+      "expected_code": 200
+    },
+    {
+      "kind": "cli",
+      "arguments": [
+        "composition",
+        "export",
+        "journey-review",
+        "1.0.1",
+        "<verification-root>/.ergora/checks/ac5-definition-revisions/r2/journey/export-workflow-1.0.1"
+      ],
+      "code": 0,
+      "expected_code": 0
+    },
+    {
+      "kind": "http",
+      "method": "POST",
+      "url": "/api/workflow-definitions/journey-root/1.0.0/revisions/check",
+      "code": 400,
+      "expected_code": 400
+    },
+    {
+      "kind": "http",
+      "method": "POST",
+      "url": "/api/workflow-definitions/journey-root/1.0.0/revisions",
+      "code": 400,
+      "expected_code": 400
+    },
+    {
+      "kind": "http",
+      "method": "POST",
+      "url": "/api/workflow-definitions/journey-root/1.0.0/revisions/check",
+      "code": 400,
+      "expected_code": 400
+    },
+    {
+      "kind": "http",
+      "method": "POST",
+      "url": "/api/workflow-definitions/journey-root/1.0.0/revisions",
+      "code": 400,
+      "expected_code": 400
+    },
+    {
+      "kind": "http",
+      "method": "POST",
+      "url": "/api/workflow-definitions/journey-root/1.0.0/revisions/check",
+      "code": 400,
+      "expected_code": 400
+    },
+    {
+      "kind": "http",
+      "method": "POST",
+      "url": "/api/workflow-definitions/journey-root/1.0.0/revisions",
+      "code": 400,
+      "expected_code": 400
+    },
+    {
+      "kind": "http",
+      "method": "POST",
+      "url": "/api/workflow-definitions/journey-root/1.0.0/revisions/check",
+      "code": 200,
+      "expected_code": 200
+    },
+    {
+      "kind": "cli",
+      "arguments": [
+        "composition",
+        "revise",
+        "journey-root",
+        "1.0.0",
+        "--base-digest",
+        "52a0a13af5b038886cea872814ab2401c57e52daaf33b79b7e6f2eeaf0c83842",
+        "--document",
+        "<verification-root>/.ergora/checks/ac5-definition-revisions/r2/journey/new-parent.json"
+      ],
+      "code": 0,
+      "expected_code": 0
+    },
+    {
+      "kind": "http",
+      "method": "POST",
+      "url": "/api/workflow-definitions/journey-root/1.0.0/revisions",
+      "code": 400,
+      "expected_code": 400
+    },
+    {
+      "kind": "cli",
+      "arguments": [
+        "composition",
+        "verify-manifest",
+        "<verification-root>/.ergora/checks/ac5-definition-revisions/r2/journey/original-manifest"
+      ],
+      "code": 0,
+      "expected_code": 0
+    },
+    {
+      "kind": "cli",
+      "arguments": [
+        "composition",
+        "prepare-manifest",
+        "journey-root",
+        "1.0.1",
+        "--grant",
+        "<verification-root>/.ergora/checks/ac5-definition-revisions/r2/journey/grant.json",
+        "--directory",
+        "<verification-root>/.ergora/checks/ac5-definition-revisions/r2/journey/new-manifest"
+      ],
+      "code": 0,
+      "expected_code": 0
+    },
+    {
+      "kind": "http",
+      "method": "GET",
+      "url": "/api/bootstrap",
+      "code": 200,
+      "expected_code": 200
+    },
+    {
+      "kind": "cli",
+      "arguments": [
+        "agent",
+        "definition",
+        "export",
+        "journey-reviewer",
+        "1.0.1",
+        "<verification-root>/.ergora/checks/ac5-definition-revisions/r2/journey/new-agent"
+      ],
+      "code": 0,
+      "expected_code": 0
+    },
+    {
+      "kind": "cli",
+      "arguments": [
+        "agent",
+        "definition",
+        "import",
+        "<verification-root>/.ergora/checks/ac5-definition-revisions/r2/journey/new-agent"
+      ],
+      "code": 0,
+      "expected_code": 0
+    },
+    {
+      "kind": "cli",
+      "arguments": [
+        "composition",
+        "export",
+        "journey-review",
+        "1.0.1",
+        "<verification-root>/.ergora/checks/ac5-definition-revisions/r2/journey/new-child"
+      ],
+      "code": 0,
+      "expected_code": 0
+    },
+    {
+      "kind": "cli",
+      "arguments": [
+        "composition",
+        "import",
+        "<verification-root>/.ergora/checks/ac5-definition-revisions/r2/journey/new-child"
+      ],
+      "code": 0,
+      "expected_code": 0
+    },
+    {
+      "kind": "cli",
+      "arguments": [
+        "composition",
+        "export",
+        "journey-root",
+        "1.0.1",
+        "<verification-root>/.ergora/checks/ac5-definition-revisions/r2/journey/new-parent"
+      ],
+      "code": 0,
+      "expected_code": 0
+    },
+    {
+      "kind": "cli",
+      "arguments": [
+        "composition",
+        "import",
+        "<verification-root>/.ergora/checks/ac5-definition-revisions/r2/journey/new-parent"
+      ],
+      "code": 0,
+      "expected_code": 0
+    }
+  ],
+  "scope": "Actual isolated noneditable CLI and owned loopback HTTP journey. JSON definition-only revisions and static full-package manifests; no model inference, UI, resource editing, cross-library transaction, formal task or GPU acceptance claim.",
+  "owned_http_cleanup": {
+    "closed": true,
+    "returncode": -15,
+    "identity_checked": "Owned PID, proc start identity and loopback listener independently checked; raw values stay in private verification artifacts."
+  },
+  "readonly_inputs": {
+    "agent_standard_mode": "0555",
+    "workflow_child_and_root_standard_mode": "0444",
+    "original_readonly_regression_preserved": true,
+    "fixed_independent_combinations_passed": 8,
+    "complete_original_modes_and_executable_bits_preserved": true
+  }
+}

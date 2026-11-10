@@ -13,6 +13,15 @@ from . import agent_definitions, agent_runs, agents, contracts, definition_bundl
 from .state import State, resolve_home
 
 
+def _definition_revision_parser(operations) -> None:
+    revision = operations.add_parser("revise", help="Derive an immutable version from a pinned complete package")
+    revision.add_argument("id")
+    revision.add_argument("version", help="Exact base version")
+    revision.add_argument("--base-digest", required=True)
+    revision.add_argument("--document", type=Path, required=True, help="Complete new standard definition JSON")
+    revision.add_argument("--check", action="store_true", help="Validate without publishing a version")
+
+
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(prog="ergora", description="Project collaboration and continuous improvement")
     result.add_argument("--version", action="version", version=__version__)
@@ -51,6 +60,7 @@ def parser() -> argparse.ArgumentParser:
     workflow.add_argument("arguments", nargs=argparse.REMAINDER)
     composition = commands.add_parser("composition", help="Check nested definitions, prepare inputs or explicitly invoke a leaf")
     operations = composition.add_subparsers(dest="operation", required=True)
+    _definition_revision_parser(operations)
     operations.add_parser("presets", help="List bundled domain recipes and their actual execution scope")
     preset = operations.add_parser("install-preset", help="Import a bundled recipe's exact dependencies; does not authorize execution")
     preset.add_argument("id", help="Bundled recipe ID from composition presets")
@@ -306,6 +316,7 @@ def parser() -> argparse.ArgumentParser:
     operations = agent.add_subparsers(dest="operation", required=True)
     definition = operations.add_parser("definition", help="Check and share static specialist recipes; importing never executes them")
     definitions = definition.add_subparsers(dest="definition_operation", required=True)
+    _definition_revision_parser(definitions)
     for name in ("check", "import"):
         operation = definitions.add_parser(name)
         operation.add_argument("directory", type=Path)
@@ -650,6 +661,9 @@ def main(argv: list[str] | None = None) -> int:
                 state = State(args.home)
                 if args.operation == "import":
                     output = workflow_definitions.import_bundle(state, args.directory)
+                elif args.operation == "revise":
+                    output = workflow_definitions.revise(state, args.id, args.version, args.base_digest,
+                        definition_bundles.read_json(args.document), publish=not args.check)
                 elif args.operation == "list":
                     output = workflow_definitions.definitions(state)
                 elif args.operation == "show":
@@ -664,6 +678,9 @@ def main(argv: list[str] | None = None) -> int:
                 if args.operation == "definition":
                     if args.definition_operation == "import":
                         output = agent_definitions.import_bundle(state, args.directory)
+                    elif args.definition_operation == "revise":
+                        output = agent_definitions.revise(state, args.id, args.version, args.base_digest,
+                            definition_bundles.read_json(args.document), publish=not args.check)
                     elif args.definition_operation == "list":
                         output = agent_definitions.definitions(state, role=args.role, specialty=args.specialty)
                     elif args.definition_operation == "show":
