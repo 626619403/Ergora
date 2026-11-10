@@ -1,0 +1,41 @@
+{
+  "checked_at": "2026-11-10T02:28:06.015357+00:00",
+  "run_id": "c504c48db20e495e8f7acbb25442df65",
+  "registry_status": "running",
+  "outer_completion_observed": false,
+  "elapsed_seconds": null,
+  "protocol_decision": "request-changes",
+  "protocol_result_sha256": "456c721daa641013e33ef8b6acc170a7cf775b16a0d3997455962d72252ceab1",
+  "input_digest": "c9a2e30761374b84afa77ce437a107de7c151c019f005e0f8b388b83a9cb2b0f",
+  "manifest_digest": "304f1475417bd1ef98c4855ea49e5321ffb247afeb38ae935d1da4ce45c14341",
+  "attachment_bytes": 211082,
+  "attachment_sha256": "604e8b27debc60934ec61d00432efb16efde126ba40bc84cfb8659c952c3ba77",
+  "source": {
+    ".github/workflows/portability.yml": "81c168fdb140f44ccfdca497003e452355c9164a6ed6f8dfb8fa31729a1943ca",
+    "pyproject.toml": "6cb64afe3d5e7298dc2058765f68e4158b7cb72389ba9fcec69c2b5865ccef57",
+    "src/ergora/data/console/api.js": "cd44305050536573a3dd1a66afb2eb089f5cef6a2bdcc601506e9429d7ccae83",
+    "src/ergora/data/console/app.js": "76dee86518a625dded1b6e1e25f71394b2508f973431a3247b6420923acc27aa",
+    "src/ergora/data/console/state.js": "d19a40f6e0782ee38901c84cedb800e77d5715458b2caaa2c0454977deae54f4",
+    "src/ergora/data/console/ui.js": "2fc6c19d8d46a68d12562b2c696ec1f6bad4ea7d781afbc326ce3fbf6ac3df2c",
+    "src/ergora/data/console/workflow.js": "8427d68d5b59d2973e568d7e041182068c587fc888f4b96b512f0d6cc19bab75",
+    "src/ergora/drafts.py": "5e103cfce6edb6f628cf6ad8e0f63e43c5f7d281f988bb3692abb763af743b88",
+    "src/ergora/reference.py": "a08e4ca7cd510a1e9cd7cc1b1791c74015c65f24ec0ef73b43715b691b1092c8",
+    "src/ergora/web.py": "dacc8a32f4541400aa28fffd01ef83ab8593bd177de0b4f8205fc68e0353a8ea",
+    "tests/test_architecture_boundaries.py": "13909bd96a714cba51274c44bfb3eb52408741a46b33c672f83c749bec86d203",
+    "tests/test_definition_console.py": "a71605149cba0261fd4281ab97f65b25d01f6bd4ad43f2362599f8c29b109bdb",
+    "tests/test_web.py": "d3a51f42e906e1dfcce90ae2cd1ba23767e61facd6f1d89cd0228ae02f1309d3"
+  },
+  "successful_candidate_pages": 10,
+  "complete_continuous_plaintext_bytes": 211082,
+  "plaintext_only": true,
+  "base64_pages": 0,
+  "failed_reads": 0,
+  "instruction_and_skill_reads": {
+    "definitions/workflow/ergora-structure-review/1.0.2/instructions.md": true,
+    "definitions/agent/ergora-structure-reviewer/1.0.2/instructions.md": true,
+    "definitions/agent/ergora-structure-reviewer/1.0.2/skills/ergora-structure-reviewer/SKILL.md": true,
+    "definitions/agent/ergora-structure-reviewer/1.0.2/skills/candidate-evidence/SKILL.md": true
+  },
+  "native_stream_sha256": "3066a8d016e22ded433a7b4a3f8cd730171c4444c1b7cfb994cc1afc91497859",
+  "scope": "Actual interrupted R5 self-template run: original native protocol result and plaintext delivery verified; registry remains running. This supplemental record does not finalize or alter the original run, prove outer success or infer elapsed time."
+}

@@ -1,0 +1,42 @@
+{
+  "checked_at": "2026-11-10T02:48:00.110034+00:00",
+  "source": {
+    ".github/workflows/portability.yml": "81c168fdb140f44ccfdca497003e452355c9164a6ed6f8dfb8fa31729a1943ca",
+    "pyproject.toml": "6cb64afe3d5e7298dc2058765f68e4158b7cb72389ba9fcec69c2b5865ccef57",
+    "src/ergora/data/console/api.js": "cd44305050536573a3dd1a66afb2eb089f5cef6a2bdcc601506e9429d7ccae83",
+    "src/ergora/data/console/app.js": "6b624fe6e6a302e66663d69289626669b4a2a3f9792f5359cfb0f8b090dbbedf",
+    "src/ergora/data/console/state.js": "d19a40f6e0782ee38901c84cedb800e77d5715458b2caaa2c0454977deae54f4",
+    "src/ergora/data/console/ui.js": "2fc6c19d8d46a68d12562b2c696ec1f6bad4ea7d781afbc326ce3fbf6ac3df2c",
+    "src/ergora/data/console/workflow.js": "8427d68d5b59d2973e568d7e041182068c587fc888f4b96b512f0d6cc19bab75",
+    "src/ergora/drafts.py": "5e103cfce6edb6f628cf6ad8e0f63e43c5f7d281f988bb3692abb763af743b88",
+    "src/ergora/reference.py": "a08e4ca7cd510a1e9cd7cc1b1791c74015c65f24ec0ef73b43715b691b1092c8",
+    "src/ergora/web.py": "dacc8a32f4541400aa28fffd01ef83ab8593bd177de0b4f8205fc68e0353a8ea",
+    "tests/test_architecture_boundaries.py": "13909bd96a714cba51274c44bfb3eb52408741a46b33c672f83c749bec86d203",
+    "tests/test_definition_console.py": "a71605149cba0261fd4281ab97f65b25d01f6bd4ad43f2362599f8c29b109bdb",
+    "tests/test_web.py": "d3a51f42e906e1dfcce90ae2cd1ba23767e61facd6f1d89cd0228ae02f1309d3"
+  },
+  "backend": "codex",
+  "inference_model": "gpt-6.1-sol",
+  "reasoning_effort": "high",
+  "run_id": "af764f526e3e4cc6a9fb9bec850ff966",
+  "status": "succeeded",
+  "exit_code": 0,
+  "seconds": 214.22315675392747,
+  "input_digest": "db52afb01a6ac2fdbe67b514773ec50337b6c71b033683b88fb35ac11eb1af80",
+  "prompt_sha256": "aeeb12a6d031878de4bc9da98cb254a6c6068eccb888b7c7c7d4fdc686dc6fe9",
+  "attachment_bytes": 224857,
+  "attachment_sha256": "f88c071bc5ed9a16fa38b93d46bcec6f0031f1a4b1e7c4e1bba63edb9da2ea78",
+  "manifest_digest": "939698dbadb8e968a4e6106f2775d3e9d01f4c6a7421fb2d49d0efa872f1f0f8",
+  "installed_preset_root": {
+    "kind": "workflow",
+    "id": "ergora-governance-delivery",
+    "version": "1.0.0",
+    "digest": "e82c02d01d2c717a38f35f242107efce32dd873027a4a3a6fb0f18f7d1fae077"
+  },
+  "evidence_revision": "1.0.4",
+  "original_definition_libraries_removed": true,
+  "scope": "Actual C2 installed bundled structure-review evidence revision with fixed MCP; no tests execution, formal approval, independent model errors, OS isolation or training/GPU quality claim.",
+  "decision": "approve",
+  "result_sha256": "4ba458a46ba97f7cc01d741a636f3189a4a2ef4c5f599c3c0e1db7743f9e081c",
+  "publication": "Public result is parsed/redacted/reformatted; result_sha256 identifies original native bytes, not public projection."
+}

@@ -1,0 +1,1236 @@
+{
+  "checked_at": "2026-11-10T02:49:44.412208+00:00",
+  "wheel_sha256": "722ece41c54347d60f3216a27d8b1b66c09cebc582c2ede1396e3f9f2e90b796",
+  "cases": {
+    "buffer-regression": {
+      "identity": {
+        "script": ".ergora/checks/ac5-editor/r1/browser/buffer-regression.js",
+        "script_sha256": "48dc036d26dcc7e31c4a5cba5e1bb0829a6e655ff4d4b812c358cf03c464d289",
+        "result_sha256": "ecc7c862941f52d43c7b1730e4a8443ccdbda0e983612d768407f65b7c55204c",
+        "log_sha256": "d99927e5223878398c727db64cf603e401c8b946a92db811a9c3fc66b8cd38bd",
+        "checks": [
+          "formPreserved",
+          "jsonPreserved",
+          "draftIdPreserved",
+          "downloadBlocked"
+        ],
+        "seconds": 2.2220590859651566
+      },
+      "result": {
+        "formPreserved": true,
+        "jsonPreserved": true,
+        "draftIdPreserved": true,
+        "downloadBlocked": true,
+        "originalInstructions": "Publish the approved backward-compatible pagination contract and consumer fixtures.",
+        "edited": "C2 keep this unapplied instruction",
+        "afterSelection": "C2 keep this unapplied instruction",
+        "jsonEdit": "{ C2 preserve invalid JSON",
+        "afterNavigation": "{ C2 preserve invalid JSON",
+        "downloadName": null,
+        "graph": {
+          "hasCy": true,
+          "nodes": [
+            {
+              "id": "unit:contract",
+              "position": {
+                "x": 293.5,
+                "y": 42.599999999999994
+              }
+            },
+            {
+              "id": "unit:server",
+              "position": {
+                "x": 371.275,
+                "y": 195
+              }
+            },
+            {
+              "id": "unit:client",
+              "position": {
+                "x": 215.72500000000002,
+                "y": 195
+              }
+            },
+            {
+              "id": "unit:integration-tests",
+              "position": {
+                "x": 293.5,
+                "y": 347.4
+              }
+            }
+          ]
+        }
+      }
+    },
+    "commands-layout": {
+      "identity": {
+        "script": ".ergora/checks/ac5-editor/r7/browser/commands-layout.js",
+        "script_sha256": "06a903f8bc6611cb04a62d9bef27c139bc54b9151001bba7923f35953e42f95f",
+        "result_sha256": "352123096ead3b6754bc3d03077fa168ee71f136098c7837e35ba3103e695ef6",
+        "log_sha256": "0865d1886ca40dede8a2be4c4bdaf2a7d033e7c6e600e11d893950bb898e8a4f",
+        "checks": [
+          "actualDragMoved",
+          "selectionKeepsLayout",
+          "layoutDoesNotChangeInput",
+          "reloadKeepsLayout",
+          "renameSemanticReferences",
+          "renamePendingReferences",
+          "otherBufferPreserved",
+          "undoRedo",
+          "addDeleteUndo",
+          "jsonUndo",
+          "jsonRedo",
+          "savedSnapshotEqualsEditor"
+        ],
+        "seconds": 2.7491221660748124
+      },
+      "result": {
+        "results": {
+          "actualDragMoved": true,
+          "selectionKeepsLayout": true,
+          "layoutDoesNotChangeInput": true,
+          "reloadKeepsLayout": true,
+          "renameSemanticReferences": true,
+          "renamePendingReferences": true,
+          "otherBufferPreserved": true,
+          "undoRedo": true,
+          "addDeleteUndo": true,
+          "jsonUndo": true,
+          "jsonRedo": true,
+          "savedSnapshotEqualsEditor": true,
+          "revision": 1
+        },
+        "savedInput": {
+          "goal": "Introduce a backward-compatible pagination API across server and client with a reversible rollout. C2 JSON round trip.",
+          "allowed_paths": [
+            "api/contracts",
+            "docs/design",
+            "src/server",
+            "tests/server",
+            "src/client",
+            "tests/client",
+            "tests/integration",
+            "docs/rollout"
+          ],
+          "acceptance": [
+            "Old clients still work with the new server.",
+            "New clients handle old and new server responses.",
+            "End-to-end tests and compatibility matrix pass on the final integrated candidate.",
+            "Rollback procedure is rehearsed with isolated fixtures; production deployment is out of scope."
+          ],
+          "constraints": [
+            "No production data migration or auto-merge.",
+            "Shared contracts are approved before dependent implementations start."
+          ],
+          "risk": "high",
+          "work_units": [
+            {
+              "id": "contract-renamed",
+              "paths": [
+                "api/contracts",
+                "docs/design"
+              ],
+              "instructions": "Publish the approved backward-compatible pagination contract and consumer fixtures.",
+              "depends_on": []
+            },
+            {
+              "id": "server",
+              "paths": [
+                "src/server",
+                "tests/server"
+              ],
+              "instructions": "pending server instruction",
+              "depends_on": [
+                "contract-renamed"
+              ]
+            },
+            {
+              "id": "client",
+              "depends_on": [
+                "contract-renamed"
+              ],
+              "paths": [
+                "src/client",
+                "tests/client"
+              ],
+              "instructions": "Implement consumer support using the fixed contract; retain old-server compatibility."
+            },
+            {
+              "id": "integration-tests",
+              "depends_on": [
+                "server",
+                "client"
+              ],
+              "paths": [
+                "tests/integration",
+                "docs/rollout"
+              ],
+              "instructions": "Exercise mixed versions, rollback conditions and end-to-end behavior against the integrated candidate."
+            }
+          ]
+        },
+        "dragged": {
+          "positions": [
+            {
+              "id": "contract",
+              "x": 356.5508216880939,
+              "y": 88.7622087359259
+            },
+            {
+              "id": "server",
+              "x": 371.275,
+              "y": 195
+            },
+            {
+              "id": "client",
+              "x": 215.72500000000002,
+              "y": 195
+            },
+            {
+              "id": "integration-tests",
+              "x": 293.5,
+              "y": 347.4
+            }
+          ],
+          "zoom": 0.8881487649181239,
+          "pan": {
+            "x": 32.82833749653065,
+            "y": 22.033028032195375
+          }
+        },
+        "finalLayout": {
+          "positions": [
+            {
+              "id": "contract-renamed",
+              "x": 356.5508216880939,
+              "y": 88.7622087359259
+            },
+            {
+              "id": "server",
+              "x": 371.275,
+              "y": 195
+            },
+            {
+              "id": "client",
+              "x": 215.72500000000002,
+              "y": 195
+            },
+            {
+              "id": "integration-tests",
+              "x": 293.5,
+              "y": 347.4
+            }
+          ],
+          "zoom": 0.9793785982392575,
+          "pan": {
+            "x": -82.33653707431506,
+            "y": -24.99889611683193
+          }
+        }
+      }
+    },
+    "conflict-and-invalid": {
+      "identity": {
+        "script": ".ergora/checks/ac5-editor/r7/browser/conflict-and-invalid.js",
+        "script_sha256": "9c2f5ee51faeeb863d2dbfc5134b798876bc2be42672c9795534bb4bd9b50877",
+        "result_sha256": "1b1b5cfff2c23a47abc42dfc7ff89314330b7004d869d51e96bd2b951d5767c0",
+        "log_sha256": "10f00f092552e705996db292b01153ec06b5052f44592d6d22497bbd21d58b19",
+        "checks": [
+          "newTargetCreated",
+          "unknownExistingTargetRejected",
+          "conflictKeepsInput",
+          "existingTargetUntouched",
+          "loadedTargetUsesRevision",
+          "invalidJsonKept",
+          "cycleRejected",
+          "invalidContractTextKept",
+          "lateJsonKeepsNewRaw",
+          "lateJsonDoesNotApplyOld"
+        ],
+        "seconds": 2.897602732293308
+      },
+      "result": {
+        "result": {
+          "newTargetCreated": true,
+          "unknownExistingTargetRejected": true,
+          "conflictKeepsInput": true,
+          "existingTargetUntouched": true,
+          "loadedTargetUsesRevision": true,
+          "invalidJsonKept": true,
+          "cycleRejected": true,
+          "invalidContractTextKept": true,
+          "lateJsonKeepsNewRaw": true,
+          "lateJsonDoesNotApplyOld": true
+        },
+        "conflictError": {
+          "error": "Draft revision changed; reload before saving"
+        },
+        "createdRevision": 1,
+        "loadedRevision": 2
+      }
+    },
+    "layout-pointer-settled": {
+      "identity": {
+        "script": ".ergora/checks/ac5-editor/r2/browser/layout-pointer-settled.js",
+        "script_sha256": "c69173b720238db906b26bcb267429982bce5d331093700d7ea2c63f3c9d980a",
+        "result_sha256": "8adfaf089afac5d317f92671cbf472f92bea3a0232470e78d20cda1c37e4ad91",
+        "log_sha256": "1e792f0372cac8c37dd000e8d0dfae4185c58165b6a9eae9784e20580c49d4b9",
+        "checks": [
+          "actualWheelZoom",
+          "actualDragMoved",
+          "selectionPositions",
+          "selectionViewport",
+          "reloadPositions",
+          "reloadViewport",
+          "semanticUnchanged"
+        ],
+        "seconds": 2.8270264943130314
+      },
+      "result": {
+        "result": {
+          "actualWheelZoom": true,
+          "actualDragMoved": true,
+          "selectionPositions": true,
+          "selectionViewport": true,
+          "reloadPositions": true,
+          "reloadViewport": true,
+          "semanticUnchanged": true
+        },
+        "point": {
+          "x": 566.5,
+          "y": 225.33691541770744,
+          "rect": {
+            "x": 273,
+            "y": 165.46875,
+            "width": 587.015625,
+            "height": 390
+          },
+          "viewport": {
+            "width": 1280,
+            "height": 720
+          }
+        },
+        "initial": {
+          "positions": [
+            {
+              "id": "contract-renamed",
+              "x": 293.5,
+              "y": 42.599999999999994
+            },
+            {
+              "id": "server",
+              "x": 371.275,
+              "y": 195
+            },
+            {
+              "id": "client",
+              "x": 215.72500000000002,
+              "y": 195
+            },
+            {
+              "id": "integration-tests",
+              "x": 293.5,
+              "y": 347.4
+            }
+          ],
+          "zoom": 0.8881487649181239,
+          "pan": {
+            "x": 32.82833749653065,
+            "y": 22.033028032195375
+          }
+        },
+        "afterDrag": {
+          "positions": [
+            {
+              "id": "contract-renamed",
+              "x": 364.43217439910563,
+              "y": 92.13993132635949
+            },
+            {
+              "id": "server",
+              "x": 371.275,
+              "y": 195
+            },
+            {
+              "id": "client",
+              "x": 215.72500000000002,
+              "y": 195
+            },
+            {
+              "id": "integration-tests",
+              "x": 293.5,
+              "y": 347.4
+            }
+          ],
+          "zoom": 0.8881487649181239,
+          "pan": {
+            "x": 32.82833749653065,
+            "y": 22.033028032195375
+          }
+        },
+        "viewport": {
+          "positions": [
+            {
+              "id": "contract-renamed",
+              "x": 364.43217439910563,
+              "y": 92.13993132635949
+            },
+            {
+              "id": "server",
+              "x": 371.275,
+              "y": 195
+            },
+            {
+              "id": "client",
+              "x": 215.72500000000002,
+              "y": 195
+            },
+            {
+              "id": "integration-tests",
+              "x": 293.5,
+              "y": 347.4
+            }
+          ],
+          "zoom": 0.9300059266619148,
+          "pan": {
+            "x": 20.567192353508176,
+            "y": 13.903681319818162
+          }
+        },
+        "reopened": {
+          "positions": [
+            {
+              "id": "contract-renamed",
+              "x": 364.43217439910563,
+              "y": 92.13993132635949
+            },
+            {
+              "id": "server",
+              "x": 371.275,
+              "y": 195
+            },
+            {
+              "id": "client",
+              "x": 215.72500000000002,
+              "y": 195
+            },
+            {
+              "id": "integration-tests",
+              "x": 293.5,
+              "y": 347.4
+            }
+          ],
+          "zoom": 0.9300059266619148,
+          "pan": {
+            "x": 20.567192353508176,
+            "y": 13.903681319818162
+          }
+        }
+      }
+    },
+    "keyboard-and-ids": {
+      "identity": {
+        "script": ".ergora/checks/ac5-editor/r7/browser/keyboard-and-ids.js",
+        "script_sha256": "3d3d86e5af0d49025436e60e2e4ecb887f28082b7bd4299f3b259e6367481752",
+        "result_sha256": "e03f357268f78e5b45551001a136bb761696135789b425462bb2cd3e2e9a92d9",
+        "log_sha256": "5eba9e174a372ec05f0e53d8ed0dd40787e1554f730bb072a32c91ce77979ae8",
+        "checks": [
+          "dictionaryNamePreservesBuffer",
+          "restored",
+          "keyboardSelection",
+          "keyboardApplied",
+          "keyboardUndo"
+        ],
+        "seconds": 1.9584365002810955
+      },
+      "result": {
+        "dictionaryNamePreservesBuffer": true,
+        "restored": true,
+        "keyboardSelection": true,
+        "keyboardApplied": true,
+        "keyboardUndo": true,
+        "width": {
+          "viewport": 390,
+          "document": 390
+        }
+      }
+    },
+    "keyboard-focus": {
+      "identity": {
+        "script": ".ergora/checks/ac5-editor/r3/browser/keyboard-focus.js",
+        "script_sha256": "dd6342b3c1cbc3f974a92fe2668f332843aa9cb8a33f76bb0752715a3d0bc65a",
+        "result_sha256": "f0c41361c9183e642147223e8c774776cb8f6f90d21e5c8c6657c5183f0fe179",
+        "log_sha256": "b068136d54446b4d797070179716e0a573ca3f2e1586d344354d864fc42cf3a3",
+        "checks": [
+          "selectKeepsFocus"
+        ],
+        "seconds": 1.4824381819926202
+      },
+      "result": {
+        "before": "1",
+        "after": "0",
+        "active": {
+          "tag": "SELECT",
+          "name": "unit"
+        },
+        "selectKeepsFocus": true
+      }
+    },
+    "history-bounds": {
+      "identity": {
+        "script": ".ergora/checks/ac5-editor/r2/browser/history-bounds.js",
+        "script_sha256": "3b8d0ada8736bf111189d3a93f24fc0a8a3b6a641bb1a7a51e348014c560e34d",
+        "result_sha256": "7c9462d77c68ed46ed26b5342f3458ed647bc671019a489d9fb975afadc43c48",
+        "log_sha256": "f5d1d849864b1e903f7d80f8cb00032d49d02fa724e4344def23aa76f7e9fafe",
+        "checks": [
+          "branchDropsRedo",
+          "oversizedCannotUndo"
+        ],
+        "seconds": 14.02295544790104
+      },
+      "result": {
+        "smallUndos": 49,
+        "oldest": "history-small-06",
+        "redos": 49,
+        "branchDropsRedo": true,
+        "snapshotBytes": 526132,
+        "largeUndos": 6,
+        "expectedLargeUndos": 6,
+        "oldestLargePrefix": "history-large-04",
+        "oversizedCurrent": 4194321,
+        "oversizedCannotUndo": true,
+        "storageWarning": "浏览器未能保存编辑缓冲：Failed to execute 'setItem' on 'Storage': Setting the value of '[\"ergora-editor-v1\",\"<repository>/.ergora/checks/ac5-editor/r7/browser/control\",\"demo\"]' exceeded the quota.。请保留此页并复制未完成的文本。"
+      }
+    },
+    "late-save-replacement": {
+      "identity": {
+        "script": ".ergora/checks/ac5-editor/r2/browser/late-save-replacement-fresh.js",
+        "script_sha256": "03417b3b3988e1e523def4e6d94fc2aa28d3f3d507ebb487bd6f2f0ee505b096",
+        "result_sha256": "e39d57299159b35280854286b783bcd3c04a72ccc2c817adf09362b13c02ef93",
+        "log_sha256": "e0668e93dfb27e4f30a6dd73c916019fb6862a04b3fb527a7123a1d4a7cfca91",
+        "checks": [
+          "preserved"
+        ],
+        "seconds": 2.633884363807738
+      },
+      "result": {
+        "visible": "replacement governance buffer",
+        "restored": "replacement governance buffer",
+        "kind": "repository-governance",
+        "preserved": true
+      }
+    },
+    "late-save-away": {
+      "identity": {
+        "script": ".ergora/checks/ac5-editor/r2/browser/late-save-away.js",
+        "script_sha256": "97c2e2c9d407e1d52f9372962ca701f69e854c6e1b24fba81d2f4935b219f45d",
+        "result_sha256": "e39d57299159b35280854286b783bcd3c04a72ccc2c817adf09362b13c02ef93",
+        "log_sha256": "585fb0e9339b5f22282446f9664724b04c6ada383d0dcc039e29791487c6a3cc",
+        "checks": [
+          "preserved"
+        ],
+        "seconds": 2.4998320010490716
+      },
+      "result": {
+        "visible": "replacement governance buffer",
+        "restored": "replacement governance buffer",
+        "kind": "repository-governance",
+        "preserved": true
+      }
+    },
+    "corrupt-existing": {
+      "identity": {
+        "script": ".ergora/checks/ac5-editor/r7/browser/corrupt-existing.js",
+        "script_sha256": "8c9c83540daa8818ae661075c5757cc09568cb48a467df955c3665340ff882ba",
+        "result_sha256": "0e2d8748945f2f0ce93c76562fc362e4f033a8b9dd2fe06aaa1570832178ab57",
+        "log_sha256": "b3be384e08b5c33efc27313640ed1932ea9d331f41c23572df3673f1ef795716",
+        "checks": [
+          "rawPreserved",
+          "cleared",
+          "startVisible"
+        ],
+        "seconds": 1.6662682318128645
+      },
+      "result": {
+        "rawPreserved": true,
+        "cleared": true,
+        "startVisible": true
+      }
+    },
+    "governance-and-training": {
+      "identity": {
+        "script": ".ergora/checks/ac5-editor/r7/browser/governance-and-training.js",
+        "script_sha256": "f71b587d1dcc4d48a61d2739b443163b5e3d78ecd9ddcb1c28ed6e2dab4be881",
+        "result_sha256": "1377eb67d19556208831cb0e8df9228ebdeb0372f746138e9489a823fe557600",
+        "log_sha256": "9ff5ab1abd1356fb79449b66ea8cfc483760ec863ebb241538e52b0ba62f3bbe",
+        "checks": [
+          "governanceSaved",
+          "savedMatchesEditor",
+          "developmentButtonsAbsent",
+          "trainingSessionRetained"
+        ],
+        "seconds": 2.5425615780986845
+      },
+      "result": {
+        "governanceSaved": true,
+        "savedMatchesEditor": true,
+        "savedInput": {
+          "goal": "Make this existing repository navigable and prevent one recurring dependency-boundary regression.",
+          "allowed_paths": [
+            "AGENTS.md",
+            "ARCHITECTURE.md",
+            "docs/governance",
+            "tests/architecture"
+          ],
+          "acceptance": [
+            "The repository map links to the actual build/test commands and architecture owner.",
+            "A regression test reproduces the selected boundary violation and rejects new violations.",
+            "Existing external behavior and the accepted baseline are preserved."
+          ],
+          "constraints": [
+            "No whole-repository rewrite or formatting sweep.",
+            "Trusted CI policy and accepted baseline remain outside the candidate workspace."
+          ],
+          "risk": "standard",
+          "work_units": [
+            {
+              "id": "knowledge-map",
+              "paths": [
+                "AGENTS.md",
+                "ARCHITECTURE.md",
+                "docs/governance"
+              ],
+              "instructions": "Document an actual existing boundary without changing application behavior.",
+              "depends_on": []
+            },
+            {
+              "id": "boundary-test",
+              "depends_on": [],
+              "paths": [
+                "tests/architecture"
+              ],
+              "instructions": "Add one focused architecture test for the accepted module boundary using the trusted baseline; do not change baseline policy."
+            }
+          ]
+        },
+        "developmentButtonsAbsent": true,
+        "trainingFiles": 0,
+        "trainingSessionRetained": true
+      }
+    },
+    "training-download": {
+      "identity": {
+        "script": ".ergora/checks/ac5-editor/r7/browser/training-download.js",
+        "script_sha256": "14139caadb381aeee8f05954a02548e3ac2e927bcb575e8a17d9cfeec09ed8f0",
+        "result_sha256": "9f0e58a10cf767d01f424da77fd6bc7d891056879ce0b4efbc5811062c9c57d8",
+        "log_sha256": "79147cb6c109aba03fcd8bb158931d2929e78a7237077221be292da7006bca9f",
+        "checks": [
+          "visibleDownload"
+        ],
+        "seconds": 1.453930355142802
+      },
+      "result": {
+        "files": 11,
+        "visibleDownload": true,
+        "name": "LOCAL-GUIDE.md",
+        "content": "# training-optimization\n\n本地操作说明：~/multi-agent-platform/docs/TRAINING.md。\n先按项目填写 workload-contract.md、baseline.json、experiment.json 和 runner-template.example.json；人工审阅合同后再批准，示例中的提交、指标和 PASS 不能作为真实实验依据。\n每次只手动启动一个精确实验：training prepare → worker-start → start → run-local（确认 manifest SHA）→ status/result。没有常驻训练队列消费者。\n固定 perfctl 证据门禁通过后才等待人工放行；放行只创建该项目的集成/复验任务。\n真实训练使用项目自己的环境；模板不安装 CUDA/PyTorch，也未测量任何 GPU 性能。\n\n开发与集成复验使用 Codex 实现及独立新会话审查；实验的独立审查证据由项目可信流程提供。\n"
+      }
+    },
+    "late-save-revision": {
+      "script": {
+        "artifact": "r7/audit-browser/late-save-revision.js",
+        "bytes": 2081,
+        "sha256": "2f86eb7d18cdf548061b79591aca04bdd2e6386021c99c5e13c5cf8a2d9b9c3e"
+      },
+      "result_identity": {
+        "artifact": "r7/audit-browser/late-save-revision.json",
+        "bytes": 317,
+        "sha256": "38c469a7d5e8c859c41fdae5d95c22096b16c6b0bb3c7d6ed82d39d9b53e19ad"
+      },
+      "log": {
+        "artifact": "r7/audit-browser/late-save-revision.log",
+        "bytes": 2426,
+        "sha256": "2699bada636bce74c18ad504e70086d86f191abaeca43b96aa9f62586d33fdaf"
+      },
+      "result": {
+        "original": "Publish the approved backward-compatible pagination contract and consumer fixtures.",
+        "marker": "newer r2 input must survive",
+        "newRevision": 2,
+        "labelBefore": "my-task · r2",
+        "reopened": "newer r2 input must survive",
+        "reopenedNewer": true,
+        "serverRevision": 2,
+        "serverNewer": true
+      }
+    },
+    "orphan-buffer": {
+      "script": {
+        "artifact": "r7/audit-browser/orphan-buffer.js",
+        "bytes": 1550,
+        "sha256": "53bd478ce896028fb40a10ee16981999e6e78cb409bd41a60e28888077d22471"
+      },
+      "result_identity": {
+        "artifact": "r7/audit-browser/orphan-buffer.json",
+        "bytes": 7210,
+        "sha256": "a1904f36029b25789435f2b22806dafb7a5aabdd0b72a5f0ad9eeddfe9b232a6"
+      },
+      "log": {
+        "artifact": "r7/audit-browser/orphan-buffer.log",
+        "bytes": 8800,
+        "sha256": "bacff2160c243d50ebb201d446dc17fe77e5bb6ac7a572ab845aff73de5c8529"
+      },
+      "result": {
+        "recoveryAvailable": true,
+        "blockedAfterDiscards": false,
+        "rawPreserved": true,
+        "expectedRecovery": true
+      }
+    },
+    "recovery-and-rename": {
+      "script": {
+        "artifact": "r7/audit-browser/recovery-and-rename.js",
+        "bytes": 1612,
+        "sha256": "29ab27b562a81da1d1c96bf86d4bff6c860a5915033536a80115de52c4e6f8fd"
+      },
+      "result_identity": {
+        "artifact": "r7/audit-browser/recovery-and-rename.json",
+        "bytes": 7195,
+        "sha256": "da1ea77ed958cc26cc8170494bf28bc591e7980e04063a0d98f837c79243ef44"
+      },
+      "log": {
+        "artifact": "r7/audit-browser/recovery-and-rename.log",
+        "bytes": 8995,
+        "sha256": "e1d5ce4ea896f26bf8f15b75ef4e17c0379085426e0f070a4a0e48970f80f6ff"
+      },
+      "result": {
+        "cleared": true,
+        "recoveredRename": true,
+        "remainsUnapplied": true,
+        "renameApplied": true
+      }
+    },
+    "late-dashboard": {
+      "script": {
+        "artifact": "r7/audit-browser/late-dashboard.js",
+        "bytes": 1831,
+        "sha256": "310337351446318ce41898c0d59713e731af1c5f0b1fcac216731b57b9c02e8a"
+      },
+      "result_identity": {
+        "artifact": "r7/audit-browser/late-dashboard.json",
+        "bytes": 206,
+        "sha256": "0959371c8c203fe14bc01910b7d6ccf7736e7bd00dbbc7239da7de0f705fa019"
+      },
+      "log": {
+        "artifact": "r7/audit-browser/late-dashboard.log",
+        "bytes": 2073,
+        "sha256": "46a1260d5da107a494eff3a5d80e513236e3f2ac1926c9413629cae800685825"
+      },
+      "result": {
+        "marker": "newer save must survive older dashboard",
+        "newRevision": 2,
+        "reopened": "newer save must survive older dashboard",
+        "reopenedNewer": true,
+        "serverRevision": 2,
+        "serverNewer": true
+      }
+    }
+  },
+  "scope": "Actual noneditable Chromium/local Linux editor, not OS isolation, all-platform browser, task/GPU/training execution, whole-framework performance or C6 capacity acceptance.",
+  "original_failures": {
+    "four-buffer": {
+      "original": {
+        "artifact": "r1/browser/buffer-regression-original.json",
+        "bytes": 3365,
+        "sha256": "c71d0b0c5d71ac2a8c83914a97e40f4fe2d7e415eba15011668553c1f9d2ea11"
+      },
+      "result": {
+        "seconds": 2.2874857960268855,
+        "script_sha256": "48dc036d26dcc7e31c4a5cba5e1bb0829a6e655ff4d4b812c358cf03c464d289",
+        "result": {
+          "formPreserved": false,
+          "jsonPreserved": false,
+          "draftIdPreserved": false,
+          "downloadBlocked": false,
+          "originalInstructions": "Publish the approved backward-compatible pagination contract and consumer fixtures.",
+          "edited": "C2 keep this unapplied instruction",
+          "afterSelection": "Publish the approved backward-compatible pagination contract and consumer fixtures.",
+          "jsonEdit": "{ C2 preserve invalid JSON",
+          "afterNavigation": "{\n  \"goal\": \"Introduce a backward-compatible pagination API across server and client with a reversible rollout.\",\n  \"allowed_paths\": [\n    \"api/contracts\",\n    \"docs/design\",\n    \"src/server\",\n    \"tests/server\",\n    \"src/client\",\n    \"tests/client\",\n    \"tests/integration\",\n    \"docs/rollout\"\n  ],\n  \"acceptance\": [\n    \"Old clients still work with the new server.\",\n    \"New clients handle old and new server responses.\",\n    \"End-to-end tests and compatibility matrix pass on the final integrated candidate.\",\n    \"Rollback procedure is rehearsed with isolated fixtures; production deployment is out of scope.\"\n  ],\n  \"constraints\": [\n    \"No production data migration or auto-merge.\",\n    \"Shared contracts are approved before dependent implementations start.\"\n  ],\n  \"risk\": \"high\",\n  \"work_units\": [\n    {\n      \"id\": \"contract\",\n      \"depends_on\": [],\n      \"paths\": [\n        \"api/contracts\",\n        \"docs/design\"\n      ],\n      \"instructions\": \"Publish the approved backward-compatible pagination contract and consumer fixtures.\"\n    },\n    {\n      \"id\": \"server\",\n      \"depends_on\": [\n        \"contract\"\n      ],\n      \"paths\": [\n        \"src/server\",\n        \"tests/server\"\n      ],\n      \"instructions\": \"Implement the contract and existing API compatibility in an isolated workspace.\"\n    },\n    {\n      \"id\": \"client\",\n      \"depends_on\": [\n        \"contract\"\n      ],\n      \"paths\": [\n        \"src/client\",\n        \"tests/client\"\n      ],\n      \"instructions\": \"Implement consumer support using the fixed contract; retain old-server compatibility.\"\n    },\n    {\n      \"id\": \"integration-tests\",\n      \"depends_on\": [\n        \"server\",\n        \"client\"\n      ],\n      \"paths\": [\n        \"tests/integration\",\n        \"docs/rollout\"\n      ],\n      \"instructions\": \"Exercise mixed versions, rollback conditions and end-to-end behavior against the integrated candidate.\"\n    }\n  ]\n}",
+          "downloadName": "input.json",
+          "graph": {
+            "hasCy": true,
+            "nodes": [
+              {
+                "id": "unit:contract",
+                "position": {
+                  "x": 293.5,
+                  "y": 42.599999999999994
+                }
+              },
+              {
+                "id": "unit:server",
+                "position": {
+                  "x": 371.275,
+                  "y": 195
+                }
+              },
+              {
+                "id": "unit:client",
+                "position": {
+                  "x": 215.72500000000002,
+                  "y": 195
+                }
+              },
+              {
+                "id": "unit:integration-tests",
+                "position": {
+                  "x": 293.5,
+                  "y": 347.4
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "S1": {
+      "original": {
+        "artifact": "r2/browser/late-save-away.json",
+        "bytes": 198,
+        "sha256": "27f2ac773a49dadc53d7eca65c66b1f046ac808ff5f43a177459cb8350a35612"
+      },
+      "result": {
+        "visible": "replacement governance buffer",
+        "restored": "Publish the approved backward-compatible pagination contract and consumer fixtures.",
+        "kind": "large-change",
+        "preserved": false
+      }
+    },
+    "S4": {
+      "original": {
+        "artifact": "r3/browser/keyboard-focus.json",
+        "bytes": 120,
+        "sha256": "93da3b7358b0e335b34ae4f791165ada54d89ba6a5efbc35ef139f543e4b7f11"
+      },
+      "result": {
+        "before": "1",
+        "after": "0",
+        "active": {
+          "tag": "BODY",
+          "name": null
+        },
+        "selectKeepsFocus": false
+      }
+    },
+    "S5": {
+      "original": {
+        "artifact": "r4/audit-browser/late-save-revision.json",
+        "bytes": 374,
+        "sha256": "44a2b21cd4e03d377b0d3f6dcfd6c368d0dfb77243193d930555ee1cdaf0ce03"
+      },
+      "result": {
+        "original": "Publish the approved backward-compatible pagination contract and consumer fixtures.",
+        "marker": "newer r2 input must survive",
+        "newRevision": 2,
+        "labelBefore": "my-task · r2",
+        "reopened": "Publish the approved backward-compatible pagination contract and consumer fixtures.",
+        "reopenedNewer": false,
+        "serverRevision": 2,
+        "serverNewer": true
+      }
+    },
+    "S6": {
+      "original": {
+        "artifact": "r4/audit-browser/orphan-buffer.json",
+        "bytes": 7380,
+        "sha256": "e6f31a3fe1481a307d7bc577d3e53596ca0618ea7f5acc1a22ce5435639c9c65"
+      },
+      "result": {
+        "recoveryAvailable": false,
+        "blockedAfterDiscards": true,
+        "rawPreserved": false,
+        "expectedRecovery": false
+      }
+    },
+    "S7": {
+      "original": {
+        "artifact": "r5/audit-browser/late-dashboard.json",
+        "bytes": 251,
+        "sha256": "305972ed44c348fa98423da5162abb8725ca471e6b1f7ad4f988ccebb486aefb"
+      },
+      "result": {
+        "marker": "newer save must survive older dashboard",
+        "newRevision": 2,
+        "reopened": "Publish the approved backward-compatible pagination contract and consumer fixtures.",
+        "reopenedNewer": false,
+        "serverRevision": 2,
+        "serverNewer": true
+      }
+    },
+    "S8": {
+      "original": {
+        "artifact": "r6/failure-browser/failed-refresh.json",
+        "bytes": 293,
+        "sha256": "2319b7df24b350be76ddb107f0a485994e9f34d2afdc55b85697ebdb207ee7d8"
+      },
+      "result": {
+        "hiddenForeignDrafts": false,
+        "retainedDraftControls": 1,
+        "shownOptions": [
+          "打开已保存草稿…",
+          "only-a · r1",
+          "shared · r1"
+        ],
+        "failureView": false,
+        "home": "<repository>/.ergora/checks/ac5-editor/r6/failure-browser/control-alternate"
+      }
+    }
+  },
+  "same_port_control_home_reopen": {
+    "results": {
+      "prime": {
+        "home": "<original-control>",
+        "form": "namespace-A pending instruction",
+        "json": "{ namespace-A invalid JSON",
+        "id": "namespace-A-pending-id"
+      },
+      "alternate": {
+        "blank": true,
+        "home": "<alternate-control>",
+        "form": "namespace-B pending instruction",
+        "json": "{ namespace-B invalid JSON",
+        "id": "namespace-B-pending-id"
+      },
+      "restored": {
+        "form": "namespace-A pending instruction",
+        "json": "{ namespace-A invalid JSON",
+        "id": "namespace-A-pending-id",
+        "home": "<original-control>",
+        "originalBuffersRestored": true
+      }
+    },
+    "saved_drafts_byte_identical": true,
+    "original_argv_restored": true,
+    "identity_files": [
+      {
+        "artifact": "r7/browser/http-identity.json",
+        "bytes": 558,
+        "sha256": "f694e716ce64a88f92ab91726d06cd8d9743aeee3e79229042df8a3bbd6549d5"
+      },
+      {
+        "artifact": "r7/browser/http-alternate-identity.json",
+        "bytes": 620,
+        "sha256": "a82b7be46e7db2d6041e474d2028f928e269f22e27d3f167ae10ae732f3eef48"
+      },
+      {
+        "artifact": "r7/browser/http-restored-identity.json",
+        "bytes": 610,
+        "sha256": "46da32696d36c99bba2889e22b196bdaca24b0216f069689b97fdfcb879a06bc"
+      }
+    ]
+  },
+  "directory_switch_with_failed_dashboard": {
+    "prime": {
+      "form": "home A pending text",
+      "json": "{ home A pending invalid JSON"
+    },
+    "failed-refresh": {
+      "hiddenForeignDrafts": true,
+      "retainedDraftControls": 0,
+      "shownOptions": [],
+      "failureView": true,
+      "home": "<repository>/.ergora/checks/ac5-editor/r7/failure-browser/control-alternate"
+    },
+    "retry": {
+      "onlyB": true
+    },
+    "restored": {
+      "originalBuffersRestored": true
+    }
+  },
+  "downloads": [
+    {
+      "artifact": "output/playwright/ac5-c2-commands-input-r7.json",
+      "bytes": 1888,
+      "sha256": "656a58b429a32b8e4f72db659aa7480ea8c77a6e8d6a70aeef5b8824968714aa",
+      "comparison": "semantic equality with saved input",
+      "matches": true
+    },
+    {
+      "artifact": "output/playwright/ac5-c2-governance-input-r7.json",
+      "bytes": 1258,
+      "sha256": "78d9abcaeac1f7695de0868648c8e9f445715fed93a663f7b610f765d0a262ed",
+      "comparison": "semantic equality with saved input",
+      "matches": true
+    },
+    {
+      "artifact": "output/playwright/ac5-c2-raw-buffer-r7.txt",
+      "bytes": 4594,
+      "sha256": "38e074383f8ad07c8ed8d50e34e4f6f3fceab7ccb6ea9b06e863c4e8875e6fd3",
+      "comparison": "byte equality with original raw text",
+      "matches": true
+    },
+    {
+      "artifact": "output/playwright/ac5-c2-training-file-r7.txt",
+      "bytes": 824,
+      "sha256": "0283134a50fcb79ce0909c6db7ec2973543af3207fc7b71e840095a317829cb7",
+      "comparison": "byte equality with original raw text",
+      "matches": true
+    },
+    {
+      "artifact": "output/playwright/ac5-c2-orphan-buffer-r7.txt",
+      "bytes": 6256,
+      "sha256": "7fe142ed29a59a814668e9c204bd0c424e64a42bd3a7ad7d722dea7f5ac1f98f",
+      "comparison": "byte equality with original raw text",
+      "matches": true
+    }
+  ],
+  "public_screenshots": {
+    "2026-11-09-editor-session-desktop.png": "d420411c09a3dbfc7caaaa82ab963a13f446bae613c80e9049f76690d07552ed",
+    "2026-11-09-editor-session-narrow.png": "eeabd7ce0064188dac3e468c4e21e58c8fb8e93d58fcceb9203b0defa72749ef"
+  },
+  "presentation": {
+    "semanticUnchanged": true,
+    "width": {
+      "viewport": 390,
+      "document": 390
+    }
+  },
+  "cleanup_http": {
+    "checked_at": "2026-11-10T02:45:49.445549+00:00",
+    "scope": "Only recorded owned C2 HTTP process identities; no shared or unrelated process selection",
+    "records": [
+      {
+        "identity": "r1/browser/http-identity.json",
+        "port_closed_at_sampling": true,
+        "port_closed": true,
+        "process_absent_or_zombie": true
+      },
+      {
+        "identity": "r2/browser/http-identity.json",
+        "port_closed_at_sampling": true,
+        "port_closed": true,
+        "process_absent_or_zombie": true
+      },
+      {
+        "identity": "r3/browser/http-identity.json",
+        "port_closed_at_sampling": true,
+        "port_closed": true,
+        "process_absent_or_zombie": true
+      },
+      {
+        "identity": "r4/browser/http-identity.json",
+        "port_closed_at_sampling": true,
+        "port_closed": true,
+        "process_absent_or_zombie": true
+      },
+      {
+        "identity": "r4/browser/http-alternate-identity.json",
+        "port_closed_at_sampling": true,
+        "port_closed": true,
+        "process_absent_or_zombie": true
+      },
+      {
+        "identity": "r4/browser/http-restored-identity.json",
+        "port_closed_at_sampling": true,
+        "port_closed": true,
+        "process_absent_or_zombie": true
+      },
+      {
+        "identity": "r4/audit-browser/http-identity.json",
+        "port_closed_at_sampling": true,
+        "port_closed": true,
+        "process_absent_or_zombie": true
+      },
+      {
+        "identity": "r5/audit-browser/http-identity.json",
+        "port_closed_at_sampling": true,
+        "port_closed": true,
+        "process_absent_or_zombie": true
+      },
+      {
+        "identity": "r5/browser/http-identity.json",
+        "port_closed_at_sampling": true,
+        "port_closed": true,
+        "process_absent_or_zombie": true
+      },
+      {
+        "identity": "r5/browser/http-alternate-identity.json",
+        "port_closed_at_sampling": true,
+        "port_closed": true,
+        "process_absent_or_zombie": true
+      },
+      {
+        "identity": "r5/browser/http-restored-identity.json",
+        "port_closed_at_sampling": true,
+        "port_closed": true,
+        "process_absent_or_zombie": true
+      },
+      {
+        "identity": "r6/audit-browser/http-identity.json",
+        "port_closed_at_sampling": true,
+        "port_closed": true,
+        "process_absent_or_zombie": true
+      },
+      {
+        "identity": "r6/browser/http-identity.json",
+        "port_closed_at_sampling": true,
+        "port_closed": true,
+        "process_absent_or_zombie": true
+      },
+      {
+        "identity": "r6/browser/http-alternate-identity.json",
+        "port_closed_at_sampling": true,
+        "port_closed": true,
+        "process_absent_or_zombie": true
+      },
+      {
+        "identity": "r6/browser/http-restored-identity.json",
+        "port_closed_at_sampling": true,
+        "port_closed": true,
+        "process_absent_or_zombie": true
+      },
+      {
+        "identity": "r7/audit-browser/http-identity.json",
+        "port_closed_at_sampling": true,
+        "port_closed": true,
+        "process_absent_or_zombie": true
+      },
+      {
+        "identity": "r7/browser/http-identity.json",
+        "port_closed_at_sampling": false,
+        "port_closed": true,
+        "process_absent_or_zombie": true
+      },
+      {
+        "identity": "r7/browser/http-alternate-identity.json",
+        "port_closed_at_sampling": false,
+        "port_closed": true,
+        "process_absent_or_zombie": true
+      },
+      {
+        "identity": "r7/browser/http-restored-identity.json",
+        "port_closed_at_sampling": true,
+        "port_closed": true,
+        "process_absent_or_zombie": true
+      },
+      {
+        "identity": "r6/failure-browser/http-identity.json",
+        "port_closed_at_sampling": false,
+        "port_closed": true,
+        "process_absent_or_zombie": true
+      },
+      {
+        "identity": "r6/failure-browser/http-alternate-identity.json",
+        "port_closed_at_sampling": false,
+        "port_closed": true,
+        "process_absent_or_zombie": true
+      },
+      {
+        "identity": "r6/failure-browser/http-restored-identity.json",
+        "port_closed_at_sampling": true,
+        "port_closed": true,
+        "process_absent_or_zombie": true
+      },
+      {
+        "identity": "r7/failure-browser/http-identity.json",
+        "port_closed_at_sampling": false,
+        "port_closed": true,
+        "process_absent_or_zombie": true
+      },
+      {
+        "identity": "r7/failure-browser/http-alternate-identity.json",
+        "port_closed_at_sampling": false,
+        "port_closed": true,
+        "process_absent_or_zombie": true
+      },
+      {
+        "identity": "r7/failure-browser/http-restored-identity.json",
+        "port_closed_at_sampling": true,
+        "port_closed": true,
+        "process_absent_or_zombie": true
+      }
+    ]
+  },
+  "cleanup_browsers": {
+    "checked_at": "2026-11-10T02:45:48.278234+00:00",
+    "previous_eight": "cleanup-browsers.json",
+    "records": [
+      {
+        "session": "ergora-ac5-c2-r4-audit",
+        "exit_code": 0,
+        "output": "Browser 'ergora-ac5-c2-r4-audit' is not open.\n"
+      },
+      {
+        "session": "ergora-ac5-c2-r5-audit",
+        "exit_code": 0,
+        "output": "Browser 'ergora-ac5-c2-r5-audit' is not open.\n"
+      },
+      {
+        "session": "ergora-ac5-c2-r5",
+        "exit_code": 0,
+        "output": "Browser 'ergora-ac5-c2-r5' is not open.\n"
+      },
+      {
+        "session": "ergora-ac5-c2-r5-races",
+        "exit_code": 0,
+        "output": "Browser 'ergora-ac5-c2-r5-races' is not open.\n"
+      },
+      {
+        "session": "ergora-ac5-c2-r5-dashboard",
+        "exit_code": 0,
+        "output": "Browser 'ergora-ac5-c2-r5-dashboard' is not open.\n"
+      },
+      {
+        "session": "ergora-ac5-c2-r6-audit",
+        "exit_code": 0,
+        "output": "Browser 'ergora-ac5-c2-r6-audit' is not open.\n"
+      },
+      {
+        "session": "ergora-ac5-c2-r6-dashboard",
+        "exit_code": 0,
+        "output": "Browser 'ergora-ac5-c2-r6-dashboard' is not open.\n"
+      },
+      {
+        "session": "ergora-ac5-c2-r6",
+        "exit_code": 0,
+        "output": "Browser 'ergora-ac5-c2-r6' is not open.\n"
+      },
+      {
+        "session": "ergora-ac5-c2-r6-races",
+        "exit_code": 0,
+        "output": "Browser 'ergora-ac5-c2-r6-races' is not open.\n"
+      },
+      {
+        "session": "ergora-ac5-c2-r6-failure",
+        "exit_code": 0,
+        "output": "Browser 'ergora-ac5-c2-r6-failure' closed\n\n"
+      },
+      {
+        "session": "ergora-ac5-c2-r7",
+        "exit_code": 0,
+        "output": "Browser 'ergora-ac5-c2-r7' closed\n\n"
+      },
+      {
+        "session": "ergora-ac5-c2-r7-races",
+        "exit_code": 0,
+        "output": "Browser 'ergora-ac5-c2-r7-races' closed\n\n"
+      },
+      {
+        "session": "ergora-ac5-c2-r7-audit",
+        "exit_code": 0,
+        "output": "Browser 'ergora-ac5-c2-r7-audit' closed\n\n"
+      },
+      {
+        "session": "ergora-ac5-c2-r7-dashboard",
+        "exit_code": 0,
+        "output": "Browser 'ergora-ac5-c2-r7-dashboard' closed\n\n"
+      },
+      {
+        "session": "ergora-ac5-c2-r7-failure",
+        "exit_code": 0,
+        "output": "Browser 'ergora-ac5-c2-r7-failure' closed\n\n"
+      }
+    ]
+  }
+}

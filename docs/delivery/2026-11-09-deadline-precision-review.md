@@ -45,3 +45,36 @@
 已完成只读 Git 状态/基线差异、相邻运行时与测试检查、原官方页面和实际本次日志核对、测试/运行时/wheel 身份核验、无网络算术检查、候选文档目标检查和 `git diff --check`。本次没有重新运行原网络失败、测试组、完整应用或远端 CI。
 
 尚待固定七文件提交后，独立核对：精确候选及唯一父对象、排除 C2 的完整文件集、全部包文件和 283 冻结身份、该候选自己的双 OS 七个必要步骤终态，以及明确 HTTPS 读取的远端完整 SHA。上述门禁完成前，只能记本地审查通过，不能记精确交付终结。原 61ccc2c CI Failure 和早期诊断失败继续保留。
+
+## 精确候选首次独立采样：CI 未终态
+
+本节补核普通提交推送后的固定对象 `03f1f583f91c6f1b2f35b89ff8d0d513f40c519d`，唯一父对象确为 `61ccc2cce8bfcc3a46b4a069c78ea660f76063d9`。实际恰为前述七文件，测试内容与本地审查身份一致；独立审查后的差异仅是允许的文档状态记账。C2 `workflow.js` 在该对象中与父对象相同，C2 未跟踪 delivery 不在对象内。
+
+**2026-11-09 12:27:42.378738 UTC**，从固定 Git 对象读取的 **435 个包文件**与 R4 保留 wheel、非 editable 安装及原身份表逐项一致；wheel SHA256 仍为 `7c122ff9979b224bfbcf67defea1dadf935a6609043039628e2f3431f9c89b63`。**283 个冻结文件**均符合原 manifest，Git 模式/对象身份也与父对象相同；Portability 工作流未变化。此项不使用当前 C2 工作树作为候选源码，没有重建或重新安装包。
+
+已读原 CI 抓取/验证脚本逻辑，并在本片新独立目录保留原脚本及本轮采样实现。原验证脚本以 Success 为前提；本轮对非终态如实记账，不借断言失败推定 CI Failure。官方 Actions 精确候选行、run 原页、完整 job-group（`totalCount=2`、`hasMore=false`）、实际 job 的 `selectedJobId`、完整 SHA check/log URL 与步骤属性均直接核验。
+
+**2026-11-09 12:27:43.119174 UTC**，本候选自己的 [Portability run 42616678385](https://github.com/626619403/Ergora/actions/runs/42616678385) 仍为 **In progress**。实际 Ubuntu job 为 `129158155380`、Windows job 为 `129158154892`；两 job 的构建安装和冻结身份步骤已见 success，两份 Native application regression 仍在运行，Windows 安装器步骤尚未开始。两 job 尚无终态完成标记，**七个必要步骤未通过终态门禁**。本轮各官方资源只取一次，没有轮询、取消或重跑。
+
+**2026-11-09 12:27:39.344558→12:27:40.793613 UTC**，在确认不属于 Git 仓库的目录，清除继承 Git 环境覆盖、禁用 system/global 配置及凭据助手、禁用 SSH/HTTP 协议后，对明确 `https://github.com/626619403/Ergora.git` 执行只读 `ls-remote`。原 trace 确认实际调用 `git-remote-https`；远端 `refs/heads/refactor/architecture-foundations` 返回完整 SHA **`03f1f583f91c6f1b2f35b89ff8d0d513f40c519d`**。
+
+原对象差异、包/冻结身份表、官方原页和单次采样、明确 HTTPS trace/回执及其 SHA256 汇总，均保存于本片私有 `independent/commit-closure/snapshot-01/`。`closure-sample.json` 固定本轮证据身份；后续采样须另存，保留本次 In progress 原件。
+
+对象、R4 包/冻结身份及明确 HTTPS 门禁已通过；Standards / Spec 仍为 **0 开放 finding**。**自己的双 OS 七个必要步骤仍待终态，03f1f58 精确交付尚未终结。** 本次未运行模型、浏览器、服务、安装或测试，也未改写原 61ccc2c CI Failure。
+
+## 精确候选终态复采：交付终结
+
+本节更新上节待终态项，固定候选仍为 `03f1f583f91c6f1b2f35b89ff8d0d513f40c519d`，只复采明确指定的原 run **42616678385**。`snapshot-01` 全部证据 SHA256 已复核完整，原七文件对象、435 包文件与 R4 一致及 283 冻结身份的通过结论继续保留；当前 C2 工作树没有参与本候选验收。
+
+**2026-11-09 12:41:11.657510 UTC**，官方 run 已为 **Success 终态**。完整 job-group 只有两 job，`totalCount=2`、`hasMore=false`；两 job 均为 completed/success。独立核对实际 job 的 `selectedJobId`、每个必要步骤的 success 与 `data-job-completed` 标记、绑定完整候选的 check/log URL，确认七项全部通过：
+
+|官方 job|Build and install wheel|Packaged reference identity|Native application regression|Windows PowerShell 5.1 installer and upgrade|
+|---|---|---|---|---|
+|[Ubuntu 3.11，129158155380](https://github.com/626619403/Ergora/actions/runs/42616678385/job/129158155380)|success|success|success|平台条件不适用|
+|[Windows 3.12，129158154892](https://github.com/626619403/Ergora/actions/runs/42616678385/job/129158154892)|success|success|success|success|
+
+**2026-11-09 12:41:08.475411→12:41:09.857455 UTC**，重新在非 Git 目录清除继承的 Git 环境覆盖，禁用 system/global 配置、凭据助手及 SSH/HTTP 协议，对明确 `https://github.com/626619403/Ergora.git` 作只读 `ls-remote`。原 trace 再次确认实际调用 `git-remote-https`，远端 `refs/heads/refactor/architecture-foundations` 返回完整 SHA **`03f1f583f91c6f1b2f35b89ff8d0d513f40c519d`**。
+
+本轮官方 Actions/run/job-group/两 job 原页、单次采样和明确 HTTPS 原回执另存私有 `independent/commit-closure/snapshot-02/`，由 `closure-terminal-success.json` 固定证据身份。未覆盖 `snapshot-01`，没有取消、重跑或持续轮询，也未运行模型、浏览器、服务、安装或测试。
+
+**03f1f583f91c6f1b2f35b89ff8d0d513f40c519d 的对象、R4 包/冻结身份、本候选自己的七项必要 CI 及明确 HTTPS 远端门禁全部补齐，精度修正精确交付终结。Standards / Spec 均通过，0 开放 finding。** 原 `61ccc2c` 的 CI Failure、早期诊断失败与首次 In progress 采样继续保持原状态；本结论不构成 C2 验收。

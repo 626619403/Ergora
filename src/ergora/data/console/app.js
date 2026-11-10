@@ -14,6 +14,7 @@ import { definitionsView } from "./definitions.js";
 let refreshSequence = 0;
 let refreshing = false;
 let refreshError = "";
+let dataControlDirectory;
 const savedTab = sessionStorage.getItem("ergora-tab");
 if ([...document.querySelectorAll("[data-tab]")].some((item) => item.dataset.tab === savedTab))
   app.tab = savedTab;
@@ -42,11 +43,24 @@ async function refresh(expectedProject) {
     if (!bootstrap.projects.some((project) => project.id === app.project))
       app.project = bootstrap.projects[0]?.id || null;
     const projectId = app.project;
+    if (app.data && (dataControlDirectory !== bootstrap.state_directory || app.data.project.id !== projectId)) {
+      app.data = null;
+      render();
+    }
     const data = projectId
       ? await api(`/api/projects/${encodeURIComponent(projectId)}/dashboard`)
       : null;
     if (sequence !== refreshSequence || app.project !== projectId) return;
+    if (data && app.data?.project.id === projectId && dataControlDirectory === bootstrap.state_directory) {
+      const drafts = new Map(data.drafts.map((draft) => [draft.id, draft]));
+      for (const observed of app.data.drafts) {
+        const received = drafts.get(observed.id);
+        if (!received || received.revision < observed.revision) drafts.set(observed.id, observed);
+      }
+      data.drafts = [...drafts.values()];
+    }
     app.data = data;
+    dataControlDirectory = bootstrap.state_directory;
     sessionStorage.setItem("ergora-project", projectId || "");
     $("#version").textContent = `Ergora ${bootstrap.version}`;
     $("#project-title").textContent = projectId || "选择项目";

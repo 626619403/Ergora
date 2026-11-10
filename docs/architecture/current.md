@@ -225,7 +225,7 @@ flowchart LR
   API[api.js] --> HTTP[web.py]
 ```
 
-视图通过明确的 `refresh/render` 回调组合，不反向导入入口。`state.js` 只有 UI 选择、后台快照和显示元数据；草稿编辑身份、revision、图和 kernel 请求身份同属 `workflow.js`。`tasks.js`拥有正式任务分页、冻结详情、固定原run查询，以及F4.2a的局部预览/创建/原ID查询恢复及提交检查对话框；F4.3b沿同一详情所有者新增完整计划审阅、按稳定decision检查/显式批准/原意图恢复，复用原plan/approval API，写前保存选择、锁定输入，完整材料或原记录缺失时不提供确认。已有decision单独查看，requested不当批准采纳。F4.3c1沿同一所有者接取消记录读取/明确请求/原意图恢复，固定原run与request ID，requested/already_closed不提供再投递，也不当运行或外部清理完成；F4.3c2在同一详情中独立读取外部证据和原对账记录，沿原intent明确对账/恢复；写开始使旧观察失效，仅reconciled表示原租约释放回执保存，原outcome保持。共13个前端模块，复用原tasks API。对话框结果检查页面/详情归属、内容连接、open状态和请求代际，编辑废弃预览，创建发出前保存原ID选择，未知回复不自动重发。浏览器会话只存项目/页面/任务/run/decision/cancel-request选择，服务端继续拥有创建和执行事实；项目切换同步移除旧快照/视图，刷新代际和查询序号使旧响应失效。同项目刷新保留快照，工作流保存回包也检查实际快照项目。F4.3d沿同一任务详情接入精确REVIEW_READY候选导出、本地记录读取和原intent恢复，exported保持历史事实并禁止再次写入；F4.4a/b沿同一局部所有者提供手动事件分页和原job回执/材料窗口：事件DOM保留最近200条，文本DOM只留当前8192字符，所有读取固定原run及回执身份，关闭/选择切换与迟到回复受现有作用域约束。任意角色关系编辑和原生交互会话恢复尚待后续切片。
+视图通过明确的 `refresh/render` 回调组合，不反向导入入口。`state.js` 只有 UI 选择、后台快照和显示元数据；草稿编辑身份、revision、图和 kernel 请求身份同属 `workflow.js`。`tasks.js`拥有正式任务分页、冻结详情、固定原run查询，以及F4.2a的局部预览/创建/原ID查询恢复及提交检查对话框；F4.3b沿同一详情所有者新增完整计划审阅、按稳定decision检查/显式批准/原意图恢复，复用原plan/approval API，写前保存选择、锁定输入，完整材料或原记录缺失时不提供确认。已有decision单独查看，requested不当批准采纳。F4.3c1沿同一所有者接取消记录读取/明确请求/原意图恢复，固定原run与request ID，requested/already_closed不提供再投递，也不当运行或外部清理完成；F4.3c2在同一详情中独立读取外部证据和原对账记录，沿原intent明确对账/恢复；写开始使旧观察失效，仅reconciled表示原租约释放回执保存，原outcome保持。共13个前端模块，复用原tasks API。对话框结果检查页面/详情归属、内容连接、open状态和请求代际，编辑废弃预览，创建发出前保存原ID选择，未知回复不自动重发。任务详情的浏览器会话只存项目/页面/任务/run/decision/cancel-request选择，服务端继续拥有创建和执行事实；项目切换同步移除旧快照/视图，刷新代际和查询序号使旧响应失效。同项目刷新保留快照，工作流保存回包也检查实际快照项目。F4.3d沿同一任务详情接入精确REVIEW_READY候选导出、本地记录读取和原intent恢复，exported保持历史事实并禁止再次写入；F4.4a/b沿同一局部所有者提供手动事件分页和原job回执/材料窗口：事件DOM保留最近200条，文本DOM只留当前8192字符，所有读取固定原run及回执身份，关闭/选择切换与迟到回复受现有作用域约束。任意角色关系编辑和原生交互会话恢复尚待后续切片。
 
 ## 调用与数据归属
 
@@ -358,7 +358,7 @@ F2.1已交付（运行/测试`8201c5d`，本地/精确两OS CI及独立最终复
 
 F2.2诊断增量复用 `tools.doctor` → CLI/dashboard/主动POST：本地探测和主动版本/凭据/TCP检查分开；单次请求按有效绑定复用结果，不跨请求缓存。主动探测共用预算，使用现有进程树清理，原始输出不保留；配置摘要绑定诊断，页面仅保存当前服务器快照，刷新/切项目后迟到结果不回写。诊断不产生正式任务验收；状态/修复说明见[使用手册](../USAGE.md#诊断与修复)。
 
-F6.1以独立[开发者原型](../../examples/editor-comparison/README.md)实际比较三种图/表单栈，默认生产模块及包资源未替换；[ADR0003](decisions/0003-workflow-editor-stack.md)保留Cytoscape/原生模块，下一F6.2在原workflow所有者补统一编辑状态、有限命令、撤销重做与修订处理。schema渲染和布局不拥有领域校验或执行授权；JSON Forms默认Ajv/CSP失败及官方NoValidation试验分别记账。
+F6.1以独立[开发者原型](../../examples/editor-comparison/README.md)实际比较三种图/表单栈，默认生产模块及包资源未替换；[ADR0003](decisions/0003-workflow-editor-stack.md)保留Cytoscape/原生模块。AC5 C2在原`workflow.js`生命周期所有者内补统一编辑会话、有限命令、撤销重做与按目标修订，标准定义编辑仍按C3另行实施。schema渲染和布局不拥有领域校验或执行授权；JSON Forms默认Ajv/CSP失败及官方NoValidation试验分别记账。
 
 用户进一步要求可嵌套的工作流模板：执行子图与并行结构/正确性/冗余检查子图可串接，各实例完整继承当前路径全部祖先Skill指令和上下文，资源累加而权限不越父级，父/子权限可共同存为新修订。[ADR0005](decisions/0005-composable-workflows.md)的静态定义与继承编译已由AC3d实现，真实执行仍属AC3b/c/4d，当前`drafts`和固定六阶段运行器没有嵌套执行语义；现有工作单元DAG、Agent单binding及AC1.2固定正文加载分别保留原范围。
 
@@ -389,3 +389,9 @@ flowchart LR
   Manifest --> Proposal[训练只读提案叶]
   Proposal --> Operator[操作者 / 原可信实验runner与gate]
 ```
+
+AC5 C2的编辑会话由同一`workflow.js`持有：语义输入、单元原文、完整JSON原文、目标ID/已观察修订、选择、局部请求与布局各自分开。按控制目录/项目登记的当前实例是唯一缓存写入者，已替换实例的迟到保存或图销毁不能接管新会话。`sessionStorage`仅保存当前缓冲，50快照/4MiB线性历史留内存；单份超限只保留当前输入。图位置/视口不进入任务合同。角色元数据从已有bootstrap读取，不在缓存复制领域校验；损坏检查点进入原文下载/明确清除。保存/JSON应用仍调原drafts/reference所有者，不加数据库、调度器或共享编辑框架。正式创建/批准/六阶段不变，验收状态见[C2记录](../delivery/2026-11-09-editor-session.md)。
+
+同控制目录/项目的dashboard刷新在`app.js`原refresh所有者中保留已观察的较高草稿修订；其局部data目录身份随成功安装更新，不能用较早/较新bootstrap代替data所属目录。保存回执在原`workflow.js`也按修订单调合并，均不自动变更编辑会话的expected revision。其余dashboard字段仍使用刷新结果。
+
+刷新确认bootstrap所属目录或最终项目与旧data不同，会先同步隐藏旧data再等待dashboard；失败停留在原error视图，不能打开旧目录草稿到新目录会话。旧目录的语义/未应用文本与布局按原会话保留，返回原目录仍可恢复。

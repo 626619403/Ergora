@@ -21,3 +21,7 @@ python -I -m pytest -q tests/test_research.py --basetemp=<persistent-check-direc
 结果 **11 passed、1 skipped / 11.79 秒**；跳过项因未显式选择专用隔离 Temporal 测试服务，保留原理由。该包 wheel SHA256 `7c122ff9979b224bfbcf67defea1dadf935a6609043039628e2f3431f9c89b63`。本次不重复模型/浏览器/服务验收，不将仅测试修正视为新的产品实现。
 
 [新独立两轴审查](2026-11-09-deadline-precision-review.md)本地通过，DP-D1候选外链接及DP-D2跳过理由已修正复核，0开放finding。精确选择提交、自己的新 CI 和明确 HTTPS 远端身份待取得；原 61ccc2c 的 CI Failure 不改写为成功。
+
+## 精确交付终结
+
+已普通提交推送 `03f1f583f91c6f1b2f35b89ff8d0d513f40c519d`，唯一父61ccc2c，恰七文件。独立按Git对象核435包文件与原R4 wheel/安装相同，283冻结相同，C2产品未纳入。自己的[CI42616678385](https://github.com/626619403/Ergora/actions/runs/42616678385)已Success，双OS七必要步骤全部成功；独立2026-11-09 12:41:08.475411→12:41:09.857455 UTC明确HTTPS核远端同完整SHA，12:41:11.657510 UTC核官方终态。首次In progress与终态分别保留，原61ccc2c的Failure不改写。独立两轴0开放finding，本片精确终结。
