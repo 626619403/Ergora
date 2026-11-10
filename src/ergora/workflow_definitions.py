@@ -16,7 +16,7 @@ from urllib.parse import urlsplit
 
 from . import agent_definitions, contracts, definition_bundles
 from .asset_trees import inventory_tree
-from .state import State
+from .state import State, file_lock
 
 
 _PRESETS = Path(__file__).parent / "data/presets"
@@ -557,6 +557,29 @@ def prepare_manifest(root: Path, identity: str, version: str, grant: dict, desti
     """Freeze the complete static composition without inventing future input/port values."""
     composition = preview(root, identity, version, grant)
     return _prepare_bundle(root, composition, destination, {"manifest.json": _encoded(_manifest_fields(composition))}, inspect_manifest)
+
+
+def frozen_manifest(root: Path, preview_sha256: str, *, material: bool = False) -> dict:
+    """Read an original complete package by its accepted preview, without live admission."""
+    contracts.validate(preview_sha256, contracts.COMPOSITION_MANIFEST["$defs"]["digest"], "Preview SHA256")
+    checked = inspect_manifest(root / "composition-manifests" / preview_sha256, material=material)
+    if checked["manifest"]["preview_sha256"] != preview_sha256:
+        raise ValueError("Frozen composition does not match its preview location")
+    return checked
+
+
+def freeze_manifest(root: Path, identity: str, version: str, grant: dict, preview_sha256: str) -> dict:
+    """Persist only the accepted current preview; retries verify rather than replace."""
+    contracts.validate(preview_sha256, contracts.COMPOSITION_MANIFEST["$defs"]["digest"], "Preview SHA256")
+    composition = preview(root, identity, version, grant)
+    if composition["preview_sha256"] != preview_sha256:
+        raise ValueError("Composition preview changed; review the current preview before freezing")
+    destination = root / "composition-manifests" / preview_sha256
+    with file_lock(root / ".composition-manifests.lock"):
+        if destination.exists() or destination.is_symlink():
+            return frozen_manifest(root, preview_sha256)
+        return _prepare_bundle(root, composition, destination,
+            {"manifest.json": _encoded(_manifest_fields(composition))}, inspect_manifest)
 
 
 def prepare_input_from_manifest(source: Path, instance: str, task: bytes, destination: Path, max_prompt_bytes: int) -> dict:

@@ -95,7 +95,7 @@ def parser() -> argparse.ArgumentParser:
         if name == "check":
             operation.add_argument("--material", action="store_true")
     operations.add_parser("list")
-    for name in ("show", "export", "preview", "prepare", "prepare-manifest"):
+    for name in ("show", "export", "preview", "prepare", "prepare-manifest", "freeze-manifest"):
         operation = operations.add_parser(name)
         operation.add_argument("id")
         operation.add_argument("version")
@@ -112,6 +112,11 @@ def parser() -> argparse.ArgumentParser:
                 operation.add_argument("--max-prompt-bytes", type=int, required=True, help="Complete user prompt limit; not a model token guarantee")
             elif name == "prepare-manifest":
                 operation.add_argument("--directory", type=Path, required=True, help="New complete static composition directory")
+            elif name == "freeze-manifest":
+                operation.add_argument("--preview-sha256", required=True, help="Accepted exact preview; persists a complete package in the control directory")
+    frozen = operations.add_parser("show-manifest", help="Verify an original saved package by preview SHA256; no live admission")
+    frozen.add_argument("preview_sha256")
+    frozen.add_argument("--material", action="store_true")
     for name in ("verify-input", "verify-manifest"):
         operation = operations.add_parser(name)
         operation.add_argument("directory", type=Path)
@@ -665,6 +670,11 @@ def main(argv: list[str] | None = None) -> int:
             elif args.operation == "prepare-manifest":
                 output = workflow_definitions.prepare_manifest(resolve_home(args.home), args.id, args.version,
                     definition_bundles.read_json(args.grant), args.directory)
+            elif args.operation == "freeze-manifest":
+                output = workflow_definitions.freeze_manifest(resolve_home(args.home), args.id, args.version,
+                    definition_bundles.read_json(args.grant), args.preview_sha256)
+            elif args.operation == "show-manifest":
+                output = workflow_definitions.frozen_manifest(resolve_home(args.home), args.preview_sha256, material=args.material)
             elif args.operation in ("prepare", "prepare-from-manifest"):
                 with args.task.open("rb") as source:
                     task = source.read(contracts.COMPOSITION_INPUT["properties"]["max_prompt_bytes"]["maximum"] + 1)

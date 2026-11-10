@@ -221,6 +221,10 @@ class CompositionPreviewPayload(Payload):
     grant: dict
 
 
+class CompositionFreezePayload(CompositionPreviewPayload):
+    preview_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
+
+
 def create_app(home: Path | None = None) -> FastAPI:
     state = State(home)
     application = FastAPI(title="Ergora", version=__version__, docs_url=None, redoc_url=None, openapi_url="/api/openapi.json")
@@ -333,6 +337,14 @@ def create_app(home: Path | None = None) -> FastAPI:
     @application.post("/api/composition/preview")
     def preview_composition(body: CompositionPreviewPayload):
         return workflow_definitions.preview(state.root, body.id, body.version, body.grant)
+
+    @application.post("/api/composition/manifests")
+    def freeze_composition(body: CompositionFreezePayload):
+        return workflow_definitions.freeze_manifest(state.root, body.id, body.version, body.grant, body.preview_sha256)
+
+    @application.get("/api/composition/manifests/{preview_sha256}")
+    def frozen_composition(preview_sha256: str, material: bool = False):
+        return workflow_definitions.frozen_manifest(state.root, preview_sha256, material=material)
 
     @application.post("/api/projects")
     def add_project(body: ProjectPayload):

@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "published_at": "2026-11-10T14:45:15.664444+00:00",
+  "scope": "Only3 HTTP and4 model sampled identities; browserPID lacked starttime. Backend-reported input includes cachedinput; output and reasoning separate, not a bill.",
+  "projection_policy": "Original byte/SHA identities precede JSON projection. Repository path and three private origins replaced with named placeholders. Omitted fields named; full private originals retained. Not a substitute for raw omitted evidence.",
+  "originals": [
+    {
+      "private_original": "browser-cleanup.json",
+      "bytes": 1184,
+      "sha256": "6779b9ce6c2220c337fead6dc47ab5d7ea06a889fd744ecfa26ae69fc6e13340",
+      "projection": {
+        "sampled_owned_http_or_model_identities": 3,
+        "all_sampled_identity_gone": true,
+        "browser_pid_only_no_starttime": true,
+        "scope": "HTTP owned identities sampled with starttime; browser pid only from original CLI open reply, no starttime observation."
+      },
+      "omitted_top_level_fields": "Process IDs/parent/starttime and HTTP cleanup process detail omitted; raw source identity retained."
+    },
+    {
+      "private_original": "self-review-cleanup.json",
+      "bytes": 908,
+      "sha256": "c543461c452b5e17bcdb57fa22c277eaa4f83a4cb5ad70f53b755494cf144a5d",
+      "projection": {
+        "sampled_owned_http_or_model_identities": 4,
+        "all_sampled_identity_gone": true,
+        "browser_pid_only_no_starttime": false,
+        "scope": "Only four identities sampled while actual model was running; no global cleanup claim."
+      },
+      "omitted_top_level_fields": "Process IDs/parent/starttime and HTTP cleanup process detail omitted; raw source identity retained."
+    },
+    {
+      "private_original": "self-review-usage.json",
+      "bytes": 439,
+      "sha256": "a1911e9af23929737b26eb2303681a87bdfc16278754e7f275b29a16d40b5ee7",
+      "omitted_top_level_fields": [],
+      "projection": {
+        "at": "2026-11-10T14:44:12.937015+00:00",
+        "run_id": "e7cf62b73ef34833b610e8bf5268170b",
+        "usage": [
+          {
+            "input_tokens": 1141681,
+            "cached_input_tokens": 1011200,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 2893,
+            "reasoning_output_tokens": 1307
+          }
+        ],
+        "scope": "Backend-reported usage, not billing. Cached input is already in input; reasoning, if reported separately, not added to output."
+      }
+    }
+  ]
+}

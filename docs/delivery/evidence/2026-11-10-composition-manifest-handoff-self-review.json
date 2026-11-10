@@ -1,0 +1,129 @@
+{
+  "schema_version": 1,
+  "published_at": "2026-11-10T14:45:15.660002+00:00",
+  "scope": "Actual bundled structure-review evidence revision1.0.81; complete source/tests/drivers and explicit receipt projection. Not formal owner approval, understanding or different-model independence.",
+  "projection_policy": "Original byte/SHA identities precede JSON projection. Repository path and three private origins replaced with named placeholders. Omitted fields named; full private originals retained. Not a substitute for raw omitted evidence.",
+  "originals": [
+    {
+      "private_original": "self-review-r1.json",
+      "bytes": 1901,
+      "sha256": "9f76bfc02193680eb8e4e06f1dff25581d73e5c29e8a0d0b0f17dfa172c8d214",
+      "omitted_top_level_fields": [],
+      "projection": {
+        "checked_at": "2026-11-10T14:43:30.228447+00:00",
+        "source": {
+          "src/ergora/workflow_definitions.py": "089f0a6bae4e452c91a51e2c8046680cd69b98aa3db0f05c7f430b828138a4db",
+          "src/ergora/cli.py": "64a381c3c7ce74121a757461dd03ac7e7a74a055894d06f6d56d078f70970828",
+          "src/ergora/web.py": "2577ea564c4b18897e370d9a9816d26e52d65287aae77b333de979a22115e724",
+          "src/ergora/data/console/definitions.js": "db7304d95a1dc18de38bcc173111d08d73b973da7df44fca9e1e0bab9d73cf8a",
+          "tests/test_composition_manifests.py": "65a4cb2dd91c4d6904fdd422c5c3045e7526a20f04a3f212494ea474c66be935",
+          "tests/test_definition_console.py": "55313c5584bf5cb36591bb07bfd2fef2b233fc034fd0e8929511098f4292e30d"
+        },
+        "run_id": "e7cf62b73ef34833b610e8bf5268170b",
+        "status": "succeeded",
+        "backend": "codex",
+        "inference_model": "gpt-6.1-sol",
+        "reasoning_effort": "high",
+        "driver_cli_exit_code": 0,
+        "seconds": 160.37171003501862,
+        "input_digest": "388ed23ef7ce8ecaab225c9e80d89ad94331e16cd1b99fcb36957d86af9abf97",
+        "prompt_sha256": "2a39a52f5bd1d3329e99d346d78cd6dcd8be1b451eef5a76b8a7293576a468a9",
+        "attachment_bytes": 314712,
+        "attachment_sha256": "c50e232350d4ba69168b78bbb5ebbe888489bfa3d01da302d9794c30ee10f0b3",
+        "manifest_digest": "82669ad02c01f8c4f6f7e7ee3f1e3f26444e479b7a256238d12b90e3dffe80b8",
+        "manifest_path": "$REPOSITORY/.ergora/checks/ac5-composition-handoff/self-review-r1/state/composition-manifests/8dc4fb1d54c6f6eb58ad359149ba960708da67aaf1c32d7e6d07a3c8a3308e46",
+        "evidence_revision": "1.0.81",
+        "original_definition_libraries_retained": true,
+        "scope": "Actual bundled structure-review; full source/tests/drivers and identity-bound receipt projection, not omitted raw maps, owner approval, understanding or different-model independence.",
+        "decision": "approve",
+        "result_sha256": "53a56620aae84fe73ecb77896c3df7f33cdd08f53818e7b3d09dc1d5d7b36bc5"
+      }
+    },
+    {
+      "private_original": "self-review-r1/original-result.json",
+      "bytes": 1847,
+      "sha256": "53a56620aae84fe73ecb77896c3df7f33cdd08f53818e7b3d09dc1d5d7b36bc5",
+      "omitted_top_level_fields": [],
+      "projection": {
+        "artifacts": {
+          "response": "Spec: APPROVE. Freeze reuses current preview admission, binds the accepted grant and preview SHA, and publishes through the original complete-package owner. Retries verify existing packages without overwrite. Historical reads use bundled assets without current backend admission. Empty directories remain copied but outside the unchanged digest contract.\n\nStandards: APPROVE. CLI and HTTP delegate to workflow_definitions; storage paths remain application-owned. The page captures the original home and preview object and checks the active request record before applying replies. Selected published roots remain separate from editor buffers and comparison targets. The two new tests address concrete handoff risks; no unnecessary abstraction, backend selection layer, or new approval owner was introduced. No correction required.\n\nComplete declared root scope, all read through next_offset null:\n\n- definitions/workflow/ergora-structure-review/1.0.81/instructions.md\n- definitions/agent/ergora-structure-reviewer/1.0.81/instructions.md\n- definitions/agent/ergora-structure-reviewer/1.0.81/skills/ergora-structure-reviewer/SKILL.md\n- definitions/agent/ergora-structure-reviewer/1.0.81/skills/candidate-evidence/SKILL.md\n- definitions/agent/ergora-structure-reviewer/1.0.81/skills/candidate-evidence/references/candidate.txt\n\nEvidence limits: R1 remains 41 passed/2 failed; corrected R2 passed only the two affected tests. The first browser journey remains failed; the corrected driver’s second journey passed. Omitted raw maps were not inspected, and no evidence was executed. This verdict covers static C5a handoff, excludes later formal journeys and capacity claims, and is not owner approval."
+        },
+        "decision": "approve",
+        "summary": "Approve scoped C5a. No reachable structural or ownership defect found."
+      }
+    },
+    {
+      "private_original": "self-review-r1/raw-evidence-index.json",
+      "bytes": 1998,
+      "sha256": "c0062e4ddee83e3e51bbb4bb908b1b784eb619a8482f5067b786fa56c32e2bd7",
+      "omitted_top_level_fields": [],
+      "projection": [
+        {
+          "file": "AGENTS.md",
+          "bytes": 1315,
+          "sha256": "5ba4876af2464aabcd68b3341f6420e8f4cab501858bea9d68038c13a1650590"
+        },
+        {
+          "file": "docs/plans/2026-11-10-composition-handoff.md",
+          "bytes": 3539,
+          "sha256": "97a77dfb0e13329b879dd5d6229a6f167d2651471b9c72b5475cb1b5f22eba16"
+        },
+        {
+          "file": "docs/delivery/2026-11-10-composition-manifest-handoff.md",
+          "bytes": 4422,
+          "sha256": "9a4c74757e0f6fd02fbfeb7783d263be8a600f216f58e081aee4d8e996417afd"
+        },
+        {
+          "file": "src/ergora/workflow_definitions.py",
+          "bytes": 34965,
+          "sha256": "089f0a6bae4e452c91a51e2c8046680cd69b98aa3db0f05c7f430b828138a4db"
+        },
+        {
+          "file": "src/ergora/cli.py",
+          "bytes": 55479,
+          "sha256": "64a381c3c7ce74121a757461dd03ac7e7a74a055894d06f6d56d078f70970828"
+        },
+        {
+          "file": "src/ergora/web.py",
+          "bytes": 30677,
+          "sha256": "2577ea564c4b18897e370d9a9816d26e52d65287aae77b333de979a22115e724"
+        },
+        {
+          "file": "src/ergora/data/console/definitions.js",
+          "bytes": 69927,
+          "sha256": "db7304d95a1dc18de38bcc173111d08d73b973da7df44fca9e1e0bab9d73cf8a"
+        },
+        {
+          "file": "tests/test_composition_manifests.py",
+          "bytes": 12413,
+          "sha256": "65a4cb2dd91c4d6904fdd422c5c3045e7526a20f04a3f212494ea474c66be935"
+        },
+        {
+          "file": "tests/test_definition_console.py",
+          "bytes": 21566,
+          "sha256": "55313c5584bf5cb36591bb07bfd2fef2b233fc034fd0e8929511098f4292e30d"
+        },
+        {
+          "file": "browser-main-r1.js",
+          "bytes": 8881,
+          "sha256": "f238bad3bdf24b6b896ded1430c8db04c319fae5ad4ba06168e77dd9d2b2b928"
+        },
+        {
+          "file": "browser-main-r2.js",
+          "bytes": 8898,
+          "sha256": "bf3e958d070cb293ff73836898f3bd6c55a246d95904e343cf8710805de7fefa"
+        },
+        {
+          "file": "audit-browser.py",
+          "bytes": 3167,
+          "sha256": "1a0cd3fe3f0c3590452418a74d626dae0d23655791d125708de88d35253810a5"
+        },
+        {
+          "file": "model-validation-summary.json",
+          "bytes": 27697,
+          "sha256": "3525b0dfbbd4374435b1ed673aa91ee2d9a6f0a317264a921a94ebaebe5ca67c"
+        }
+      ]
+    }
+  ]
+}

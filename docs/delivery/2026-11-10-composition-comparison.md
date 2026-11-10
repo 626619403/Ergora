@@ -65,3 +65,12 @@ R1离线wheel构建/新venv/非editable安装分别10.09/0.05/5.79秒通过；43
 ## 完整候选本地出口
 
 原主审及本片两独立轴已核完整20文件最终候选，Spec/Standards开放finding均为0，本地出口通过；[独立报告](2026-11-10-composition-comparison-review.md)记录精确范围及原件身份。最终固定后只有报告终态和一处准备失败证据归属澄清，两个产品文件、五公开投影及两原PNG保持。当前进入ready固定及普通提交/推送；自己的CI、原评审精确Git与一次独立HTTPS交付仍待验，不据此授予C5/C6或整体完成。
+
+
+## 精确提交与远端交付
+
+`a2c89a5b4b5ca49bf0c3f28a4f35efaec539bd3c`已普通提交/推送。原主审核20个Git文件对象逐份等于ready，437个Git源文件与原wheel/安装映射、283冻结Git对象/执行位均一致。独立HTTPS首个REST请求因共享出口匿名限额返回403，原响应保持；随后一次公开smart-Git HTTPS refs请求返回200，同完整分支SHA。实际为一失败加一成功请求，不把失败重标或冒称总请求一次。
+
+自己的[CI42833639985](https://github.com/626619403/Ergora/actions/runs/42833639985)第四样本已显示Success，Linux/Windows七必要步骤success/completed；前三In progress样本保持。原评审正离线核四样本20份官方原响应并收最终精确gate，产品/模型/浏览器不重复。
+
+原评审已离线核上述四样本20原响应及精确绑定，最终gate通过，Spec/Standards/阻塞均0，a2c89a5精确交付终结。既有失败/未验范围保持；C5/C6分别验收。

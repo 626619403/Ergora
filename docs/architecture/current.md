@@ -433,3 +433,6 @@ AC5 C2的编辑会话由同一`workflow.js`持有：语义输入、单元原文�
 C4b.1继续在该私有模块内投影折叠：隐藏节点/端口由最外层已折叠结构祖先表示，跨组边保留原身份/端点/类型，组内边留在完整原关系表，不投影伪自环。明确折叠/展开按原levels重排；不改原preview或编译规则。字面词项查找使用原实例与精确Agent元数据，只高亮，结果定位只展开结构祖先。查询和折叠沿原home/完整根ref内存会话，无新增持久格式、依赖、搜索后端或导出接口；实际验收状态见[本片记录](../delivery/2026-11-10-composition-exploration.md)。
 
 C4b.2成对比较继续由`definitions.js`的原preview请求世代拥有：固定基准/目标完整ref、复用同一显式grant调用原入口，两个结果都通过原准入且身份匹配才展示。home/root/target/grant变化使旧回复失效；原编辑会话和图生命周期不变。单消费者的内聚私有`composition-comparison.js`只投影两份原preview，按完整实例路径配对与按需显示完整原实例，不拥有编译/权限推断/网络。对象键序忽略而数组顺序保留，资源内容/来源与prompt身份分列；描述/专长等不在preview的字段不冒充已比较。实际验收见[交付记录](../delivery/2026-11-10-composition-comparison.md)，正式交接与容量仍属C5/C6。
+
+
+C5a的`workflow_definitions.freeze_manifest`继续调用原preview与完整包原子发布，以已接受preview摘要固定控制目录中的完整树；CLI/HTTP只转交同一用例。原跨进程文件锁串行同位置的保存，相同摘要重试完整核验原包而不覆盖。`frozen_manifest`只读核原树与位置摘要，不依赖活动库或当前后端。定义视图捕获home/原preview对象身份，保存或查询的迟到结果不能覆盖新预览；编辑缓冲和比较目标不作为保存输入。没有新schema/DB/调度器/批准；正式任务仍由原tasks重新准入。实际进度见[C5a记录](../delivery/2026-11-10-composition-manifest-handoff.md)。

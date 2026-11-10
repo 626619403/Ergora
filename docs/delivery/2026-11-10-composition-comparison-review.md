@@ -1,12 +1,12 @@
-# AC5 C4b.2 独立审查：本地完整候选通过
+# AC5 C4b.2 独立审查：精确交付通过
 
-**完整二十文件候选本地通过，Standards / Spec 开放 finding 均为 0。** 十二文件产品阶段及同片最终文档、实际自身模板、完整读取和公开投影均已补核，证据范围见下文。本片精确提交、自己的 CI 与 HTTPS 交付尚未验收。不宣称 C4、AC5 或整个项目完成。
+**完整二十文件候选及本片精确交付通过，Standards / Spec 开放 finding 均为 0。** 十二文件产品阶段及同片最终文档、实际自身模板、完整读取和公开投影均已补核；精确提交 `a2c89a5b4b5ca49bf0c3f28a4f35efaec539bd3c` 的 Git、HTTPS 与自己的 CI 已闭环，证据范围见下文。不宣称 C4、AC5 或整个项目完成。
 
 主审 `composition_comparison_review` 及独立 `spec_axis`、`standards_axis` 均使用 fresh context。依据根 AGENTS、`maintainable-project-delivery` 及 independent-review、`code-review`、`codebase-design` 和 AIHERO 本地索引，先读[第二片原规格](../plans/2026-11-10-composition-exploration.md#第二片两个精确已发布版本的比较)、[AC5 父计划](../plans/2026-11-09-composition-console.md)、原架构及调用邻居，再核实际原件。两轴分别判断，不以模型意见或通过测试代替审查。
 
 ## 固定范围
 
-基线与 HEAD 均为 `8ce9aba51c54e368aa8625e6c6535e4ac6ccaa19`，分支 `refactor/architecture-foundations`。规定的三点 diff 与提交列表均为空；用户明确授权审 WIP，因此使用私有 `review-r1/identity.json`、`tracked.diff` 及 `files/` 中完整十二文件候选，含两份 untracked 原文。主审逐份重核身份，审计时均与工作树相同。前片精确终态续记归前片，不转授本片验收。
+产品阶段固定审查时，基线与 HEAD 均为 `8ce9aba51c54e368aa8625e6c6535e4ac6ccaa19`，分支 `refactor/architecture-foundations`。规定的三点 diff 与提交列表均为空；用户明确授权审 WIP，因此使用私有 `review-r1/identity.json`、`tracked.diff` 及 `files/` 中完整十二文件候选，含两份 untracked 原文。主审逐份重核身份，审计时均与工作树相同。前片精确终态续记归前片，不转授本片验收。
 
 产品只改原 `definitions.js` 和新增私有 `composition-comparison.js`；原图、app、ui、Python、schema、依赖和 CI 保持。两产品 SHA256 分别为 `860fdf45eecf7ef076f40d1625b8273b1cf7fd864e29ed7328e88d234fc367f4`、`b56aca5f6c44ed715009a9e5a92701eb40c97cb8a8ea6f3bec62f3c7a547fea2`。另外十文件为本片规格/手册/架构/交付状态及前片终态续记。
 
@@ -63,6 +63,20 @@
 
 原 stream 的自报 input 796802 已含 cached 689024，output 2477 与另报 reasoning 934 分列，不重复相加，不称账单。模型/CLI 四个采样身份均已消失，仍只作采样清理结论。首个依赖准备驱动在缺少投影文件时失败，原代码、stderr 和空准备目录支持其未到 manifest/backend/推理；上游内联投影器的 list/dict 错误仅是作者历史工具回执说明，没有独立 projector stderr。交付记录已将证据归属限定清楚；该唯一行措辞补核无产品或公开投影变化。
 
-主审最终审计为私有 `independent/final-material-audit.json` 和 `final-wording-audit.json`；原两轴为 `spec-final.md` / `spec-final-audit.json`、`standards-final.md` / `standards-final-audit.json`。本报告只续记本片审查状态，不触发递归审查。自然 BFCache、跨浏览器、即时 resize、C6 容量及精确提交/自己的 CI/HTTPS 交付仍保持原未验范围。
+主审最终审计为私有 `independent/final-material-audit.json` 和 `final-wording-audit.json`；原两轴为 `spec-final.md` / `spec-final-audit.json`、`standards-final.md` / `standards-final-audit.json`。本报告只续记本片审查状态，不触发递归审查。自然 BFCache、跨浏览器、即时 resize、C6 容量仍保持原未验范围；本地出口时尚待的精确提交/自己的 CI/HTTPS 交付见下节。
 
-本地汇总：Standards 0、Spec 0；两轴均无最严重开放问题。完整最终候选本地出口通过，精确交付待验。
+本地汇总：Standards 0、Spec 0；两轴均无最严重开放问题。完整最终候选本地出口通过；当时精确交付待验，其后续终态如下。
+
+## 精确交付续核：通过
+
+交付对象为提交 `a2c89a5b4b5ca49bf0c3f28a4f35efaec539bd3c`，父提交为原审基线 `8ce9aba51c54e368aa8625e6c6535e4ac6ccaa19`，分支 `refactor/architecture-foundations`。保留的 `independent/exact-delivery-audit-r1.json` 已将二十份 Git blob 逐份绑定 `commit-closure/ready/identity.json`；437 个精确 Git 包源文件与原已验 wheel/安装映射一致，283 个冻结 Git blob 及模式与基线一致，原 wheel SHA256 仍为 `445570cd62d462beb6af222265e5b41ad30dbc256faea84b12ddead4cf371fc7`。本节绑定该已过审证据，没有重跑包或行为验收。
+
+独立 HTTPS 实际共两次请求：一次匿名 REST 因 GitHub 共享 API 限流返回 403，失败原响应保留；随后一次公开 HTTPS smart-Git 广告于 2026-11-10 14:29:21.712459 至 14:29:22.460374 UTC 返回 200，完整分支引用等于上述四十位提交。成功响应为 786 字节，SHA256 `928edd7d4357b25ce58e3fbc5fff8c9428dec8ba9eb2e86f8d677cf0d7862a95`。回执与原字节分别保存在 `independent/exact-https-r1.*`、`exact-https-r2.*`；本次离线续核没有新增请求。
+
+自己的 [Portability CI 42833639985](https://github.com/626619403/Ergora/actions/runs/42833639985) 已成功。主审直接读取精确 Git 对象中的 `.github/workflows/portability.yml`，再独立解析四次快照全部二十份官方原始 HTML/JSON，并逐份核对 URL、HTTP 200 回执、采样时间、完整 bytes/SHA256。actions 原页、run 原页、完整无分页 job groups、两个 job 原页共同绑定精确提交、分支、工作流、run/attempt 1 及 job ID；没有执行留存 fetcher。
+
+前三次快照在 14:24、14:30、14:37 UTC 均为 `In progress`，继续保留非终态，不追认通过。第四次 `snapshot-04` 于 14:41:34.769738 至 14:41:38.426202 UTC 采样，run 原页为 `Success`，Ubuntu/Python 3.11 job `129889941690` 与 Windows/Python 3.12 job `129889942281` 均为 `completed/success`。两个系统的 Build and install wheel、Packaged reference identity、Native application regression，以及 Windows 的 PowerShell 5.1 installer and upgrade，共七个必需步骤均在原 HTML 中为 `success` 且 job completed，原日志 URL 均绑定该精确提交。Ubuntu 的 PowerShell 步骤按原工作流条件为 skipped；终态两个作业均无失败、取消、超时或未完成步骤。
+
+离线 CI 审计为私有 `independent/ci-offline-audit-r1.json`，包含二十份原响应身份、四次历史状态、七个必需步骤及 283 项检查；最终合并门禁为 `independent/final-exact-gate.json`，绑定原本地门禁、原精确 Git/HTTPS 门禁和本次 CI 审计。只完成 C4b.2 的精确交付续记，没有新增网络、模型、浏览器、安装、行为测试或 CI 运行，也未检查 C5a。自然 BFCache、跨浏览器、即时 resize 失败与 C6 容量限制继续保留，不转授 C5/C6、C4、AC5 或整项目完成。
+
+最终汇总：Standards 0、Spec 0、阻塞项 0；C4b.2 本地完整候选与精确交付出口均通过。

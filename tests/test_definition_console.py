@@ -72,6 +72,43 @@ def test_http_preview_preserves_full_ancestors_and_leaves_permission_failure_wit
     assert projects.list_projects(state) == []
 
 
+def test_manifest_handoff_shares_cli_identity_and_reads_without_live_library(library_console, tmp_path, capsys, monkeypatch):
+    client, state = library_console
+    root = client.post('/api/composition/presets/repository-governance/install', json={}).json()['root']
+    definition = workflows.get(state, root['id'], root['version'])['definition']
+    grant = {'schema_version': 1, 'permissions': definition['permissions'], 'limits': definition['limits']}
+    payload = {'id': root['id'], 'version': root['version'], 'grant': grant}
+    original = client.post('/api/composition/preview', json=payload).json()
+    payload['preview_sha256'] = original['preview_sha256']
+    response = client.post('/api/composition/manifests', json=payload)
+    assert response.status_code == 200, response.text
+    saved = response.json()
+    assert workflows.inspect_manifest(Path(saved['path']), material=True)['composition'] == original
+    grant_file = tmp_path / 'grant.json'
+    grant_file.write_text(json.dumps(grant))
+    args = ['--home', str(state.root), 'composition']
+    assert cli.main([*args, 'freeze-manifest', root['id'], root['version'], '--grant', str(grant_file),
+                     '--preview-sha256', original['preview_sha256']]) == 0
+    assert json.loads(capsys.readouterr().out) == saved
+    url = '/api/composition/manifests/' + original['preview_sha256']
+
+    def unavailable(document):
+        raise ValueError('Backend no longer admitted for a new call')
+
+    monkeypatch.setattr(agent_definitions, 'validate_admission', unavailable)
+    rejected = client.post('/api/composition/manifests', json=payload)
+    assert rejected.status_code == 400 and 'Backend no longer admitted' in rejected.json()['error']
+    assert client.get(url).json() == saved
+    for kind in ['agent', 'workflow']:
+        (state.root / f'{kind}-definitions').rename(tmp_path / f'retired-{kind}-definitions')
+    with TestClient(create_app(state.root), base_url='http://127.0.0.1:8977') as reopened:
+        assert reopened.get(url).json() == saved
+        assert reopened.get(url, params={'material': True}).json()['composition'] == original
+    assert cli.main([*args, 'show-manifest', original['preview_sha256']]) == 0
+    assert json.loads(capsys.readouterr().out) == saved
+    assert projects.list_projects(state) == [] and not (state.root / 'runs').exists()
+
+
 def test_historical_http_details_remain_readable_when_current_backend_admission_changes(library_console, monkeypatch):
     client, state = library_console
     imported = client.post('/api/composition/presets/repository-governance/install', json={}).json()

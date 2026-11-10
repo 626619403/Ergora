@@ -1,9 +1,11 @@
 """Complete static graphs travel independently of their source catalog or runtime."""
 
 import base64
+from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 import hashlib
 import json
+from pathlib import Path
 import shutil
 
 import pytest
@@ -187,3 +189,27 @@ def test_preparing_leaf_inside_manifest_is_rejected_without_changing_its_tree(ba
         workflows.prepare_input_from_manifest(source, "root/review", b"Review.", source / relative, 30000)
     assert workflows.inspect_manifest(source)["digest"] == saved["digest"]
     assert not (source / relative.split("/")[0]).exists()
+
+
+def test_accepted_preview_freeze_is_bound_serialized_and_never_replaces_damage(base):
+    state, agent, directory = base
+    imported(base, definition('review', [leaf('review', agent)]))
+    ceiling = grant()
+    accepted = workflows.preview(state.root, 'review', '1.0.0', ceiling)['preview_sha256']
+    changed = deepcopy(ceiling)
+    changed['limits']['material_bytes'] += 1
+    with pytest.raises(ValueError, match='preview changed'):
+        workflows.freeze_manifest(state.root, 'review', '1.0.0', changed, accepted)
+    assert not (state.root / 'composition-manifests').exists()
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        saved = list(pool.map(lambda _: workflows.freeze_manifest(state.root, 'review', '1.0.0', ceiling, accepted), range(2)))
+    assert saved[0] == saved[1] == workflows.frozen_manifest(state.root, accepted)
+    destination = Path(saved[0]['path'])
+    before = digest_tree(destination)
+    assert workflows.freeze_manifest(state.root, 'review', '1.0.0', ceiling, accepted) == saved[0]
+    assert digest_tree(destination) == before
+    (destination / 'composition.json').write_bytes(b'{}')
+    damaged = digest_tree(destination)
+    with pytest.raises(ValueError, match='differs from its complete stored material'):
+        workflows.freeze_manifest(state.root, 'review', '1.0.0', ceiling, accepted)
+    assert digest_tree(destination) == damaged

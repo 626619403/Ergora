@@ -1,0 +1,1638 @@
+{
+  "schema_version": 1,
+  "published_at": "2026-11-10T14:45:15.652036+00:00",
+  "scope": "Actual installed UI journey; first failed key-order check preserved, corrected full journey passed. Static original owner audit and screenshots only within stated scope. No C5b/c or C6 capacity acceptance.",
+  "projection_policy": "Original byte/SHA identities precede JSON projection. Repository path and three private origins replaced with named placeholders. Omitted fields named; full private originals retained. Not a substitute for raw omitted evidence.",
+  "originals": [
+    {
+      "private_original": "browser-main-01.json",
+      "bytes": 13786,
+      "sha256": "f72db19ebdccfb91b301ff82252fa5db57829d368db5ef1200b9a41de5d2f3fd",
+      "omitted_top_level_fields": [],
+      "projection": {
+        "checked_at": "2026-11-10T14:35:53.039643+00:00",
+        "script": ".ergora/checks/ac5-composition-handoff/browser-main-r1.js",
+        "exit_code": 0,
+        "seconds": 3.8746128156781197,
+        "result": {
+          "passed": false,
+          "step": "complete freeze ergora-governance-delivery",
+          "error": "saved identity differs",
+          "domains": [],
+          "held": [],
+          "errors": [],
+          "screen": "义版本\n下载定义编辑缓冲\n撤销定义编辑\n重做定义编辑\n\n本页历史最多50份、合计4MiB（含完整资源操作字节）；单份超限时仅保留当前已应用快照。刷新后保留编辑缓冲并重新建立历史。\n\n字段编辑\n编辑实例\nwork · workflow\nreview · workflow\n增加 Agent 实例\n增加子工作流实例\n增加 all-join\n新版本\n描述\n工作流输入端口（每行一个）\n工作流输出绑定 JSON\n根权限 JSON\n根预算 JSON\n实例 ID\n先行依赖（每行一个）\n实例精确引用\nworkflow · ergora-correctness-review @ 1.0.0 · bbc2d7bb8c0e\nworkflow · ergora-delivery-review @ 1.0.0 · a85e76dcd25b\nworkflow · ergora-governance-delivery @ 1.0.0 · e82c02d01d2c\nworkflow · ergora-governance-work @ 1.0.0 · e9ee2e387eac\nworkflow · ergora-large-change-delivery @ 1.0.0 · 25dbfff6830e\nworkflow · ergora-large-change-work @ 1.0.0 · 41e8eb658beb\nworkflow · ergora-measurement-review @ 1.0.0 · 8336061c7e67\nworkflow · ergora-structure-review @ 1.0.0 · 996c55d50e30\nworkflow · ergora-test-value-review @ 1.0.0 · 83e1cfd354d0\nworkflow · ergora-training-analysis @ 1.0.0 · a9edaf8f526b\nworkflow · ergora-training-proposal @ 1.0.0 · cf5df7724902\n实例输入绑定 JSON\n应用字段文本\n放弃字段文本\n删除当前实例\n\n重命名会同步依赖和具名绑定。删除后请检查剩余端口引用；新增实例的端口、职能和权限须按实际用途调整。\n\nJSON 原文\n应用 JSON 原文\n放弃 JSON 原文\n下载 JSON 原文\nYAML 原文\n资源与附件编辑\n\n缓冲按控制目录与原定义版本隔离，关闭标签页前请发布或下载。下载含全部已应用／未应用正文和资源字节，不含未编辑原包；完整独立包另用 CLI export。YAML 采用 JSON 数据模型，日期等字符串请加引号，不支持别名。\n\nergora-governance-delivery @ 1.0.0\n\nGovern an existing repository while preserving its accepted behavior and boundary policy.\n\n{\n  \"kind\": \"workflow\",\n  \"digest\": \"e82c02d01d2c717a38f35f242107efce32dd873027a4a3a6fb0f18f7d1fae077\"\n}\n标准定义 JSON\n自身资源 · ergora-governance-delivery-instructions\n完整包文件身份（含 Skill 附件）\n预览整个嵌套组合\n\n初始上限来自该根定义，可修改后显式预览。这是静态校验上限；正式任务仍需项目授权、冻结输入与后端能力准入。\n\n静态预览上限 JSON\n预览完整组合\n比较目标（已发布精确版本）\n选择比较目标…\nergora-correctness-review @ 1.0.0 · bbc2d7bb8c0ecf420bedee847763aaaf488df7b90139904eb00057b78406aa5f\nergora-delivery-review @ 1.0.0 · a85e76dcd25bfddd24684b6e23ad3668097b44df0f9a7d745e387e5a841c471c\nergora-governance-delivery @ 1.0.0 · e82c02d01d2c717a38f35f242107efce32dd873027a4a3a6fb0f18f7d1fae077\nergora-governance-work @ 1.0.0 · e9ee2e387eac5b34b9bbce2aef5226bb2b482392f800507e233042b3749ba70e\nergora-large-change-delivery @ 1.0.0 · 25dbfff6830e4123bedbfe975c964de96b8a9ce0ed8c76e8f365fecf2f7e2cc8\nergora-large-change-work @ 1.0.0 · 41e8eb658beb74a8a452b62f07439abf4b82f6378424dac76c36bbdcc2e4061e\nergora-measurement-review @ 1.0.0 · 8336061c7e67741cb55ee72857d1c890797411d35cf75da050a4133e844e65a8\nergora-structure-review @ 1.0.0 · 996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9\nergora-test-value-review @ 1.0.0 · 83e1cfd354d05434c4e55f728ba7c01e1dfdaf12f8461ac05c89cbb4c0855254\nergora-training-analysis @ 1.0.0 · a9edaf8f526bdc8c5dab19ed72f566b696e8d02aee1e52cbf620d5f6f918d917\nergora-training-proposal @ 1.0.0 · cf5df77249022c458f84d4e4d9964aa6448bacb1a74b9192a942da9ffcb7e438\n\n以当前所选版本为比较前、目标为比较后；两者均按上方同一份显式上限重新预览。比较不会发布定义、应用草稿或切换编辑基准。\n\n比较两个已发布版本\n已发布静态组合与完整祖先指令\n\n图来自下方精确已发布版本，编辑中的新版本及未应用正文不会进入此图。结构父链决定资源继承和权限上限；依赖决定先后，端口决定数据来源。此处尚未调用 Agent。\n\n16 个实例\n17661 指令字节\n{\n  \"root\": {\n    \"kind\": \"workflow\",\n    \"id\": \"ergora-governance-delivery\",\n    \"version\": \"1.0.0\",\n    \"digest\": \"e82c02d01d2c717a38f35f242107efce32dd873027a4a3a6fb0f18f7d1fae077\"\n  },\n  \"preview_sha256\": \"d1231431743a8c6a88b78690ec4013ec26a3f2d1a2768c5ee34e50e58cae2774\",\n  \"pending\": [\n    \"project admission and approved manifest\",\n    \"backend permission and resource enforcement\",\n    \"runtime port values, complete input capacity and durable execution\"\n  ]\n}\n嵌套框：结构继承\n虚线箭头：先行依赖\n蓝色实线：具名数据\n入 / 出：工作流端口\n适配组合图\n定位所选实例\n重排组合图\n折叠所选子工作流\n展开所有子工作流\n\n折叠 / 展开按原层级重排当前视图。摘要线只代表原跨组关系，点击连线或下方关系ID可查原始端点；组内关系仍在完整表中。拖动、缩放、折叠和查找只属于本页会话，刷新重置。图不修改草稿、依赖或权限。端口不是额外实例，连线不是运行值。\n\n查找实例（路径、职责、专长、后端）\n上一个匹配\n下一个匹配\n清除组合查找\n\n输入字面词项查找；多个词项需同时匹配，不区分大小写。\n\n查找保留所有未匹配实例和关系；图中高亮匹配实例及包含匹配的折叠组。\n实例路径 / 选择\t职能 / 类型\t后端请求\t结构父级\t先行依赖\t子工作流显示\nroot\tworkflow\t—\t根\t—\t—\nroot/work\tworkflow\t—\troot\t—\t折叠 root/work\nroot/work/boundary-test\timplementer\tcodex\troot/work\t—\t—\nroot/work/knowledge-map\timplementer\tcodex\troot/work\t—\t—\nroot/work/done\tjoin\t—\troot/work\troot/work/knowledge-map root/work/boundary-test\t—\nroot/review\tworkflow\t—\troot\troot/work\t折叠 root/review\nroot/review/correctness\tworkflow\t—\troot/review\t—\t折叠 root/review/correctness\nroot/review/correctness/review\treviewer\tclaude-code\troot/review/correctness\t—\t—\nroot/review/correctness/gather\tjoin\t—\troot/review/correctness\troot/review/correctness/review\t—\nroot/review/structure\tworkflow\t—\troot/review\t—\t折叠 root/review/structure\nroot/review/structure/review\treviewer\tclaude-code\troot/review/structure\t—\t—\nroot/review/structure/gather\tjoin\t—\troot/review/structure\troot/review/structure/review\t—\nroot/review/test-value\tworkflow\t—\troot/review\t—\t折叠 root/review/test-value\nroot/review/test-value/review\treviewer\tclaude-code\troot/review/test-value\t—\t—\nroot/review/test-value/gather\tjoin\t—\troot/review/test-value\troot/review/test-value/review\t—\nroot/review/gather\tjoin\t—\troot/review\troot/review/structure root/review/correctness root/review/test-value\t—\n\n所选实例：root\n\nroot\n打开所选精确定义\n{\n  \"path\": \"root\",\n  \"parent\": null,\n  \"kind\": \"workflow\",\n  \"ref\": {\n    \"kind\": \"workflow\",\n    \"id\": \"ergora-governance-delivery\",\n    \"version\": \"1.0.0\",\n    \"digest\": \"e82c02d01d2c717a38f35f242107efce32dd873027a4a3a6fb0f18f7d1fae077\"\n  },\n  \"permissions\": {\n    \"read\": [\n      \"workspace\",\n      \"definitions\"\n    ],\n    \"write\": [\n      \"workspace\"\n    ],\n    \"shell\": true,\n    \"network\": []\n  },\n  \"inputs\": {\n    \"task\": {\n      \"input\": \"task\"\n    }\n  },\n  \"outputs\": {\n    \"result\": {\n      \"node\": \"review\",\n      \"output\": \"result\"\n    }\n  },\n  \"depends_on\": [],\n  \"levels\": [\n    [\n      \"root/work\"\n    ],\n    [\n      \"root/review\"\n    ]\n  ],\n  \"limits\": {\n    \"depth\": 8,\n    \"instances\": 128,\n    \"concurrency\": 4,\n    \"material_bytes\": 262144\n  },\n  \"usage\": {\n    \"instances\": 16,\n    \"material_bytes\": 17661\n  }\n}\n完整祖先材料在每个 Agent 叶实例中查看；此处展示原编译器的结构事实。\n依赖与具名数据关系表\n下载 composition-preview.json\n保存完整组合包\n\n保存当前已发布预览及全部定义和 Skill 附件，供正式任务显式选用。编辑缓冲和比较目标不包含在此包中。\n\n保存当前预览为完整 manifest\n按当前摘要读取已保存包\n{\n  \"digest\": \"d90d8b82de570216e149ae9cbaef4c78490f557e23f5fe2ea22839b66e38ea5a\",\n  \"manifest\": {\n    \"execution_authorized\": false,\n    \"grant\": {\n      \"limits\": {\n        \"concurrency\": 4,\n        \"depth\": 8,\n        \"instances\": 128,\n        \"material_bytes\": 262144\n      },\n      \"permissions\": {\n        \"network\": [],\n        \"read\": [\n          \"workspace\",\n          \"definitions\"\n        ],\n        \"shell\": true,\n        \"write\": [\n          \"workspace\"\n        ]\n      },\n      \"schema_version\": 1\n    },\n    \"kind\": \"composition-manifest\",\n    \"preview_sha256\": \"d1231431743a8c6a88b78690ec4013ec26a3f2d1a2768c5ee34e50e58cae2774\",\n    \"root\": {\n      \"digest\": \"e82c02d01d2c717a38f35f242107efce32dd873027a4a3a6fb0f18f7d1fae077\",\n      \"id\": \"ergora-governance-delivery\",\n      \"kind\": \"workflow\",\n      \"version\": \"1.0.0\"\n    },\n    \"schema_version\": 1\n  },\n  \"path\": \"$REPOSITORY/.ergora/checks/ac5-composition-handoff/r2/browser-inputs/home-a/control/composition-manifests/d1231431743a8c6a88b78690ec4013ec26a3f2d1a2768c5ee34e50e58cae2774\"\n}\n\n完整包保存在控制目录，刷新后可重新预览同一版本及上限并按摘要读取。保存不创建或启动任务，也不授予执行权限。下载的 preview JSON 仅为查看材料，不是完整包。"
+        }
+      }
+    },
+    {
+      "private_original": "browser-main-02.json",
+      "bytes": 14962,
+      "sha256": "9e1bd4e4d4f60a2133b42ea0b64ce07ae6108aa054b6712e772b9960acbcb621",
+      "omitted_top_level_fields": [],
+      "projection": {
+        "checked_at": "2026-11-10T14:37:02.823759+00:00",
+        "script": ".ergora/checks/ac5-composition-handoff/browser-main-r2.js",
+        "exit_code": 0,
+        "seconds": 15.331437523011118,
+        "result": {
+          "passed": true,
+          "domains": [
+            {
+              "id": "ergora-governance-delivery",
+              "preview_sha256": "d1231431743a8c6a88b78690ec4013ec26a3f2d1a2768c5ee34e50e58cae2774",
+              "instances": 16,
+              "saved": {
+                "digest": "d90d8b82de570216e149ae9cbaef4c78490f557e23f5fe2ea22839b66e38ea5a",
+                "manifest": {
+                  "execution_authorized": false,
+                  "grant": {
+                    "limits": {
+                      "concurrency": 4,
+                      "depth": 8,
+                      "instances": 128,
+                      "material_bytes": 262144
+                    },
+                    "permissions": {
+                      "network": [],
+                      "read": [
+                        "workspace",
+                        "definitions"
+                      ],
+                      "shell": true,
+                      "write": [
+                        "workspace"
+                      ]
+                    },
+                    "schema_version": 1
+                  },
+                  "kind": "composition-manifest",
+                  "preview_sha256": "d1231431743a8c6a88b78690ec4013ec26a3f2d1a2768c5ee34e50e58cae2774",
+                  "root": {
+                    "digest": "e82c02d01d2c717a38f35f242107efce32dd873027a4a3a6fb0f18f7d1fae077",
+                    "id": "ergora-governance-delivery",
+                    "kind": "workflow",
+                    "version": "1.0.0"
+                  },
+                  "schema_version": 1
+                },
+                "path": "$REPOSITORY/.ergora/checks/ac5-composition-handoff/r2/browser-inputs/home-a/control/composition-manifests/d1231431743a8c6a88b78690ec4013ec26a3f2d1a2768c5ee34e50e58cae2774"
+              },
+              "readonlySame": true,
+              "keyboardSave": true,
+              "bufferPreserved": true
+            },
+            {
+              "id": "ergora-large-change-delivery",
+              "preview_sha256": "23ba4611ec03804c8cdf5f4d68125a44e333df019d0b6c4260b11a15588e5e81",
+              "instances": 19,
+              "saved": {
+                "digest": "4bf651f95a2247b57bc246e23d3b0a6c52f005e8e835a9ad1df02b4cf9cfefa0",
+                "manifest": {
+                  "execution_authorized": false,
+                  "grant": {
+                    "limits": {
+                      "concurrency": 4,
+                      "depth": 8,
+                      "instances": 128,
+                      "material_bytes": 262144
+                    },
+                    "permissions": {
+                      "network": [],
+                      "read": [
+                        "workspace",
+                        "definitions"
+                      ],
+                      "shell": true,
+                      "write": [
+                        "workspace"
+                      ]
+                    },
+                    "schema_version": 1
+                  },
+                  "kind": "composition-manifest",
+                  "preview_sha256": "23ba4611ec03804c8cdf5f4d68125a44e333df019d0b6c4260b11a15588e5e81",
+                  "root": {
+                    "digest": "25dbfff6830e4123bedbfe975c964de96b8a9ce0ed8c76e8f365fecf2f7e2cc8",
+                    "id": "ergora-large-change-delivery",
+                    "kind": "workflow",
+                    "version": "1.0.0"
+                  },
+                  "schema_version": 1
+                },
+                "path": "$REPOSITORY/.ergora/checks/ac5-composition-handoff/r2/browser-inputs/home-a/control/composition-manifests/23ba4611ec03804c8cdf5f4d68125a44e333df019d0b6c4260b11a15588e5e81"
+              },
+              "readonlySame": true,
+              "keyboardSave": true,
+              "bufferPreserved": true
+            },
+            {
+              "id": "ergora-training-proposal",
+              "preview_sha256": "f19085b4c06c91aa87a362ee3677ea4a99ceb1f203744a34618a9734690ba714",
+              "instances": 9,
+              "saved": {
+                "digest": "8ecc679575ecc75b44fe9d9ef9cc15043e1dd45875b74a0ee966579fb544cae3",
+                "manifest": {
+                  "execution_authorized": false,
+                  "grant": {
+                    "limits": {
+                      "concurrency": 4,
+                      "depth": 8,
+                      "instances": 128,
+                      "material_bytes": 262144
+                    },
+                    "permissions": {
+                      "network": [],
+                      "read": [
+                        "workspace",
+                        "definitions"
+                      ],
+                      "shell": false,
+                      "write": []
+                    },
+                    "schema_version": 1
+                  },
+                  "kind": "composition-manifest",
+                  "preview_sha256": "f19085b4c06c91aa87a362ee3677ea4a99ceb1f203744a34618a9734690ba714",
+                  "root": {
+                    "digest": "cf5df77249022c458f84d4e4d9964aa6448bacb1a74b9192a942da9ffcb7e438",
+                    "id": "ergora-training-proposal",
+                    "kind": "workflow",
+                    "version": "1.0.0"
+                  },
+                  "schema_version": 1
+                },
+                "path": "$REPOSITORY/.ergora/checks/ac5-composition-handoff/r2/browser-inputs/home-a/control/composition-manifests/f19085b4c06c91aa87a362ee3677ea4a99ceb1f203744a34618a9734690ba714"
+              },
+              "readonlySame": true,
+              "keyboardSave": true,
+              "bufferPreserved": true
+            }
+          ],
+          "afterReload": {
+            "digest": "8ecc679575ecc75b44fe9d9ef9cc15043e1dd45875b74a0ee966579fb544cae3",
+            "manifest": {
+              "execution_authorized": false,
+              "grant": {
+                "limits": {
+                  "concurrency": 4,
+                  "depth": 8,
+                  "instances": 128,
+                  "material_bytes": 262144
+                },
+                "permissions": {
+                  "network": [],
+                  "read": [
+                    "workspace",
+                    "definitions"
+                  ],
+                  "shell": false,
+                  "write": []
+                },
+                "schema_version": 1
+              },
+              "kind": "composition-manifest",
+              "preview_sha256": "f19085b4c06c91aa87a362ee3677ea4a99ceb1f203744a34618a9734690ba714",
+              "root": {
+                "digest": "cf5df77249022c458f84d4e4d9964aa6448bacb1a74b9192a942da9ffcb7e438",
+                "id": "ergora-training-proposal",
+                "kind": "workflow",
+                "version": "1.0.0"
+              },
+              "schema_version": 1
+            },
+            "path": "$REPOSITORY/.ergora/checks/ac5-composition-handoff/r2/browser-inputs/home-a/control/composition-manifests/f19085b4c06c91aa87a362ee3677ea4a99ceb1f203744a34618a9734690ba714"
+          },
+          "reloadedPreview": "f19085b4c06c91aa87a362ee3677ea4a99ceb1f203744a34618a9734690ba714",
+          "lostPreview": "36738f7203e51252dd18ecc186ba6c9801d6c446c1e2acea655620239c9a1b66",
+          "recovered": {
+            "digest": "a4f5cc1c447af4353c92ea89b4a8245ec2fed253c7e20ef12e8c8d67109f2057",
+            "manifest": {
+              "execution_authorized": false,
+              "grant": {
+                "limits": {
+                  "concurrency": 4,
+                  "depth": 8,
+                  "instances": 128,
+                  "material_bytes": 262145
+                },
+                "permissions": {
+                  "network": [],
+                  "read": [
+                    "workspace",
+                    "definitions"
+                  ],
+                  "shell": false,
+                  "write": []
+                },
+                "schema_version": 1
+              },
+              "kind": "composition-manifest",
+              "preview_sha256": "36738f7203e51252dd18ecc186ba6c9801d6c446c1e2acea655620239c9a1b66",
+              "root": {
+                "digest": "cf5df77249022c458f84d4e4d9964aa6448bacb1a74b9192a942da9ffcb7e438",
+                "id": "ergora-training-proposal",
+                "kind": "workflow",
+                "version": "1.0.0"
+              },
+              "schema_version": 1
+            },
+            "path": "$REPOSITORY/.ergora/checks/ac5-composition-handoff/r2/browser-inputs/home-a/control/composition-manifests/36738f7203e51252dd18ecc186ba6c9801d6c446c1e2acea655620239c9a1b66"
+          },
+          "held": [
+            {
+              "label": "root",
+              "request": {
+                "id": "ergora-governance-delivery",
+                "version": "1.0.0",
+                "grant": {
+                  "schema_version": 1,
+                  "permissions": {
+                    "read": [
+                      "workspace",
+                      "definitions"
+                    ],
+                    "write": [
+                      "workspace"
+                    ],
+                    "shell": true,
+                    "network": []
+                  },
+                  "limits": {
+                    "depth": 8,
+                    "instances": 128,
+                    "concurrency": 4,
+                    "material_bytes": 262154
+                  }
+                },
+                "preview_sha256": "121257d6f246f8af19882f9c4ac6440293d547238195a1f83150ef7e02c91643"
+              },
+              "saved": {
+                "digest": "a4b487388e6175b0cf459601bfb9fcd4b41a0a558c140d5bab8deec82fdc3903",
+                "manifest": {
+                  "execution_authorized": false,
+                  "grant": {
+                    "limits": {
+                      "concurrency": 4,
+                      "depth": 8,
+                      "instances": 128,
+                      "material_bytes": 262154
+                    },
+                    "permissions": {
+                      "network": [],
+                      "read": [
+                        "workspace",
+                        "definitions"
+                      ],
+                      "shell": true,
+                      "write": [
+                        "workspace"
+                      ]
+                    },
+                    "schema_version": 1
+                  },
+                  "kind": "composition-manifest",
+                  "preview_sha256": "121257d6f246f8af19882f9c4ac6440293d547238195a1f83150ef7e02c91643",
+                  "root": {
+                    "digest": "e82c02d01d2c717a38f35f242107efce32dd873027a4a3a6fb0f18f7d1fae077",
+                    "id": "ergora-governance-delivery",
+                    "kind": "workflow",
+                    "version": "1.0.0"
+                  },
+                  "schema_version": 1
+                },
+                "path": "$REPOSITORY/.ergora/checks/ac5-composition-handoff/r2/browser-inputs/home-a/control/composition-manifests/121257d6f246f8af19882f9c4ac6440293d547238195a1f83150ef7e02c91643"
+              }
+            },
+            {
+              "label": "grant",
+              "request": {
+                "id": "ergora-governance-delivery",
+                "version": "1.0.0",
+                "grant": {
+                  "schema_version": 1,
+                  "permissions": {
+                    "read": [
+                      "workspace",
+                      "definitions"
+                    ],
+                    "write": [
+                      "workspace"
+                    ],
+                    "shell": true,
+                    "network": []
+                  },
+                  "limits": {
+                    "depth": 8,
+                    "instances": 128,
+                    "concurrency": 4,
+                    "material_bytes": 262155
+                  }
+                },
+                "preview_sha256": "d4b57a0fdd9af2c4d14b833d9bac3d2338f029f31a330728152c0ae3da262c24"
+              },
+              "saved": {
+                "digest": "8e8097fcc282e1f6a25245ec14b124b67ae6bdc13ac7ed83aa180775c00432a6",
+                "manifest": {
+                  "execution_authorized": false,
+                  "grant": {
+                    "limits": {
+                      "concurrency": 4,
+                      "depth": 8,
+                      "instances": 128,
+                      "material_bytes": 262155
+                    },
+                    "permissions": {
+                      "network": [],
+                      "read": [
+                        "workspace",
+                        "definitions"
+                      ],
+                      "shell": true,
+                      "write": [
+                        "workspace"
+                      ]
+                    },
+                    "schema_version": 1
+                  },
+                  "kind": "composition-manifest",
+                  "preview_sha256": "d4b57a0fdd9af2c4d14b833d9bac3d2338f029f31a330728152c0ae3da262c24",
+                  "root": {
+                    "digest": "e82c02d01d2c717a38f35f242107efce32dd873027a4a3a6fb0f18f7d1fae077",
+                    "id": "ergora-governance-delivery",
+                    "kind": "workflow",
+                    "version": "1.0.0"
+                  },
+                  "schema_version": 1
+                },
+                "path": "$REPOSITORY/.ergora/checks/ac5-composition-handoff/r2/browser-inputs/home-a/control/composition-manifests/d4b57a0fdd9af2c4d14b833d9bac3d2338f029f31a330728152c0ae3da262c24"
+              }
+            },
+            {
+              "label": "home",
+              "request": {
+                "id": "ergora-governance-delivery",
+                "version": "1.0.0",
+                "grant": {
+                  "schema_version": 1,
+                  "permissions": {
+                    "read": [
+                      "workspace",
+                      "definitions"
+                    ],
+                    "write": [
+                      "workspace"
+                    ],
+                    "shell": true,
+                    "network": []
+                  },
+                  "limits": {
+                    "depth": 8,
+                    "instances": 128,
+                    "concurrency": 4,
+                    "material_bytes": 262156
+                  }
+                },
+                "preview_sha256": "fd9f781b7292f54be16d7b52108a163052d5e4b4f585618555acf38e822df334"
+              },
+              "saved": {
+                "digest": "29581994427165eb4f340307c0adb7d9067e359374bda65699ffce4958d5a40d",
+                "manifest": {
+                  "execution_authorized": false,
+                  "grant": {
+                    "limits": {
+                      "concurrency": 4,
+                      "depth": 8,
+                      "instances": 128,
+                      "material_bytes": 262156
+                    },
+                    "permissions": {
+                      "network": [],
+                      "read": [
+                        "workspace",
+                        "definitions"
+                      ],
+                      "shell": true,
+                      "write": [
+                        "workspace"
+                      ]
+                    },
+                    "schema_version": 1
+                  },
+                  "kind": "composition-manifest",
+                  "preview_sha256": "fd9f781b7292f54be16d7b52108a163052d5e4b4f585618555acf38e822df334",
+                  "root": {
+                    "digest": "e82c02d01d2c717a38f35f242107efce32dd873027a4a3a6fb0f18f7d1fae077",
+                    "id": "ergora-governance-delivery",
+                    "kind": "workflow",
+                    "version": "1.0.0"
+                  },
+                  "schema_version": 1
+                },
+                "path": "$REPOSITORY/.ergora/checks/ac5-composition-handoff/r2/browser-inputs/home-a/control/composition-manifests/fd9f781b7292f54be16d7b52108a163052d5e4b4f585618555acf38e822df334"
+              }
+            }
+          ],
+          "homeB": "$REPOSITORY/.ergora/checks/ac5-composition-handoff/r2/browser-inputs/home-b/control",
+          "comparisonSavedRoot": {
+            "digest": "e82c02d01d2c717a38f35f242107efce32dd873027a4a3a6fb0f18f7d1fae077",
+            "id": "ergora-governance-delivery",
+            "kind": "workflow",
+            "version": "1.0.0"
+          },
+          "tabPreserved": true,
+          "views": [
+            {
+              "size": {
+                "width": 1440,
+                "height": 1000
+              },
+              "width": {
+                "document": 1440,
+                "scroll": 1440
+              },
+              "path": "output/playwright/c5a-manifest-desktop.png"
+            },
+            {
+              "size": {
+                "width": 390,
+                "height": 844
+              },
+              "width": {
+                "document": 390,
+                "scroll": 390
+              },
+              "path": "output/playwright/c5a-manifest-mobile.png"
+            }
+          ],
+          "errors": []
+        }
+      }
+    },
+    {
+      "private_original": "browser-audit.json",
+      "bytes": 49237,
+      "sha256": "bf9b5c505607aeee340d38415282fc690b882c2840ee3c040294d8b29c89f5c7",
+      "omitted_top_level_fields": [],
+      "projection": {
+        "at": "2026-11-10T14:37:20.570628+00:00",
+        "response_pairs": 94,
+        "successful_previews_equal_original_owner": 12,
+        "successful_manifest_receipts_equal_original_owner": 14,
+        "unchanged_original_trees": 48,
+        "both_homes_projects_and_agent_runs_zero": true,
+        "static_assets": {
+          "style.css": "d66c10689fe9f3d08f4c48e1d200146ea36e894aed9aa3e690b311c06ee1da13",
+          "app.js": "506cb7e81f4456745090a6a84a5a149021f52f3f0e30bbe26c494c264e709d78",
+          "vendor/cytoscape.min.js": "f55947f3daa3bae53209d4b885c195c157f595c225e508a6b382598d9452d6e2",
+          "api.js": "cd44305050536573a3dd1a66afb2eb089f5cef6a2bdcc601506e9429d7ccae83",
+          "state.js": "d19a40f6e0782ee38901c84cedb800e77d5715458b2caaa2c0454977deae54f4",
+          "ui.js": "2fc6c19d8d46a68d12562b2c696ec1f6bad4ea7d781afbc326ce3fbf6ac3df2c",
+          "projects.js": "3aec53795ee9adcaf73e82b35ed0aaf5726295f10a05dc53abc5be257a230c42",
+          "overview.js": "92afb22857f24c568c846c107b3b08765ee54a3c1f479da7032df718ea0a690f",
+          "tools.js": "d83405ff840978bc8537b99bbe1361da10bc89d26ed85ae31b9bb4f9e09fce86",
+          "memory.js": "0f791993c73c62b2b26c723865991a2253b717e39d6bc03857838c7251a40f2f",
+          "skills.js": "203bede5e54342d2fc5deb59a1c0124c62a3779b777baa27b39c11909728eb13",
+          "research.js": "765aafce0b1bcdb5f4ee3fbf5aef3dc511ea4e1f1dd074d6145a32f4ced64572",
+          "tasks.js": "65a98af2e5c902aaff4d1f5b1a224955cc6a7eb7501739621738427d1bc65161",
+          "workflow.js": "8427d68d5b59d2973e568d7e041182068c587fc888f4b96b512f0d6cc19bab75",
+          "definitions.js": "db7304d95a1dc18de38bcc173111d08d73b973da7df44fca9e1e0bab9d73cf8a",
+          "agents.js": "c873b3dff7b5f82efa1cdd71101d9e78582076d4682c1a65cf482306853fc6f4",
+          "composition-graph.js": "22fad41ba596fadeba3cfcc02e9e84f2891326395339beca793846a1bddb4469",
+          "composition-comparison.js": "b56aca5f6c44ed715009a9e5a92701eb40c97cb8a8ea6f3bec62f3c7a547fea2"
+        },
+        "responses": [
+          {
+            "file": "r2/browser/requests/0001.json",
+            "metadata_sha256": "f7e22ae85fc2d81873ee8a2cde2666c16ce648f2beb091525369b0969e2e190c",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 2994,
+            "response_sha256": "cb5aee01d9120922df27586ba6f0409d52045dc340c55fcc31c98b48c95fa695",
+            "status": 200,
+            "home": "A",
+            "path": "/",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0002.json",
+            "metadata_sha256": "fa7b028dcb494bcb835d9a6ea83ffc7fb3881e007b19ee404c24c74ea4b19746",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 20382,
+            "response_sha256": "d66c10689fe9f3d08f4c48e1d200146ea36e894aed9aa3e690b311c06ee1da13",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/style.css",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0003.json",
+            "metadata_sha256": "aac665d4ef12f5b634c3fe01348fc558003f5962b60801203a4e9b7d91801ed0",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 7884,
+            "response_sha256": "506cb7e81f4456745090a6a84a5a149021f52f3f0e30bbe26c494c264e709d78",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/app.js",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0004.json",
+            "metadata_sha256": "c86d99bd91247e8762f48b029f97b617fdc69d22cf7e75e99d379510c2103356",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 434037,
+            "response_sha256": "f55947f3daa3bae53209d4b885c195c157f595c225e508a6b382598d9452d6e2",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/vendor/cytoscape.min.js",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0005.json",
+            "metadata_sha256": "76592951dc5327136b8beb3f585c1f9d5cbecb5c75dea408e576206287ccd2a3",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 659,
+            "response_sha256": "cd44305050536573a3dd1a66afb2eb089f5cef6a2bdcc601506e9429d7ccae83",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/api.js",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0006.json",
+            "metadata_sha256": "693a3d48540164bad0f2ad858a832e395c4c344f28377b6dd290f6217ffe1081",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 410,
+            "response_sha256": "d19a40f6e0782ee38901c84cedb800e77d5715458b2caaa2c0454977deae54f4",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/state.js",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0007.json",
+            "metadata_sha256": "2ca25c0055d0ed8c63c5d11e3bc4ce0e34e9bed8c3a17ca75171e6bb4fa5bc2f",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 6121,
+            "response_sha256": "2fc6c19d8d46a68d12562b2c696ec1f6bad4ea7d781afbc326ce3fbf6ac3df2c",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/ui.js",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0008.json",
+            "metadata_sha256": "82888b477bb40025742d76a75722ae442030a7da03ab000be82f070a43fd89d9",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 1058,
+            "response_sha256": "3aec53795ee9adcaf73e82b35ed0aaf5726295f10a05dc53abc5be257a230c42",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/projects.js",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0009.json",
+            "metadata_sha256": "7b6bbb72847f689dc57f5c822f30834c4d4204d932c2a78cbc5c2f6dd4b57275",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 4984,
+            "response_sha256": "92afb22857f24c568c846c107b3b08765ee54a3c1f479da7032df718ea0a690f",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/overview.js",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0010.json",
+            "metadata_sha256": "5aa944db8b046f0b6e33c503b15dec5c7be0bd4470a6ddac4cca17ce0ccd66e3",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 7499,
+            "response_sha256": "d83405ff840978bc8537b99bbe1361da10bc89d26ed85ae31b9bb4f9e09fce86",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/tools.js",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0011.json",
+            "metadata_sha256": "7587dfae99b1cc59edad7a15bde073b445c626da4d9b6222fc950c0d439601c6",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 6550,
+            "response_sha256": "0f791993c73c62b2b26c723865991a2253b717e39d6bc03857838c7251a40f2f",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/memory.js",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0012.json",
+            "metadata_sha256": "173943d69630eed96c36dc4f9f1cf29480e3630aeb4126aecdffd14db01a35bb",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 11602,
+            "response_sha256": "203bede5e54342d2fc5deb59a1c0124c62a3779b777baa27b39c11909728eb13",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/skills.js",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0013.json",
+            "metadata_sha256": "53be6eba11d4d4a99fc0ff70f4cc6d47109ad56fb8c0be9e9d3e6b069a44d38d",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 5566,
+            "response_sha256": "765aafce0b1bcdb5f4ee3fbf5aef3dc511ea4e1f1dd074d6145a32f4ced64572",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/research.js",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0014.json",
+            "metadata_sha256": "f24e788cb857908905828bccb09d38601b7bcb4bf97b55c4164d05650a0bd427",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 73653,
+            "response_sha256": "65a98af2e5c902aaff4d1f5b1a224955cc6a7eb7501739621738427d1bc65161",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/tasks.js",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0015.json",
+            "metadata_sha256": "33b473206a88e3a299b10ce3a9d9ed9babbb694f53da8a4ef78f59662fd18ff0",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 27070,
+            "response_sha256": "8427d68d5b59d2973e568d7e041182068c587fc888f4b96b512f0d6cc19bab75",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/workflow.js",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0016.json",
+            "metadata_sha256": "bedb07b59a52a9597ae7f6cb99dc1e8d2770c555d44b9db3c9ce99c380e7eb83",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 69927,
+            "response_sha256": "db7304d95a1dc18de38bcc173111d08d73b973da7df44fca9e1e0bab9d73cf8a",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/definitions.js",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0017.json",
+            "metadata_sha256": "999f1af9827ef80013468cf0137ece289f365e5f29aa670479d260a1f0efe396",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 2294,
+            "response_sha256": "c873b3dff7b5f82efa1cdd71101d9e78582076d4682c1a65cf482306853fc6f4",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/agents.js",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0018.json",
+            "metadata_sha256": "454994c45536d4556216e5c42fa0a477aaf1e43fc5e77e5ef940fce469177ff8",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 18414,
+            "response_sha256": "22fad41ba596fadeba3cfcc02e9e84f2891326395339beca793846a1bddb4469",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/composition-graph.js",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0019.json",
+            "metadata_sha256": "236d72c0195400a3185e50be8e3a66b8f463ebee0b12b93fc874e174fe2d2a7c",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 5569,
+            "response_sha256": "b56aca5f6c44ed715009a9e5a92701eb40c97cb8a8ea6f3bec62f3c7a547fea2",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/composition-comparison.js",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0020.json",
+            "metadata_sha256": "90127233fc9e8ea52dbc9bbde06a01531db79f412042bb7a7e58af8ef218d148",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 33176,
+            "response_sha256": "de73e61c800fdb1cb9f2147f9ed04b10981186d4ba0f9d3fbe0c4cc06ef89e61",
+            "status": 200,
+            "home": "A",
+            "path": "/api/bootstrap",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0021.json",
+            "metadata_sha256": "766f84415324715ee57d7d1ce1142e793e70011a09ce27a30c1a15019e49e3c4",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 9335,
+            "response_sha256": "9b6885790253c4c964b9e0b22f96d2ede88b021739e2c1d99122cfa6db1154c5",
+            "status": 200,
+            "home": "A",
+            "path": "/api/agent-definitions",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0022.json",
+            "metadata_sha256": "8f1c4fb66534d676cc6bac62f6140cef43ac0f61ab52614fb181da95f646c5ea",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 14698,
+            "response_sha256": "ecadf9029ba47dd2334af5d88a40af5ce27cbca4ace2342be02267a2ebe7c11f",
+            "status": 200,
+            "home": "A",
+            "path": "/api/workflow-definitions",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0023.json",
+            "metadata_sha256": "7fad468a78234bc7826192614f807f1d2d50d2921c219c820363b2820b76d2a7",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 979,
+            "response_sha256": "501f0d3af3906c5cbe075eeb2767daf02991f262154c63e978f51c57d0df50d1",
+            "status": 200,
+            "home": "A",
+            "path": "/api/composition/presets",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0024.json",
+            "metadata_sha256": "dbf97e43d1e82d378c28dcad8186ef043715ac3f8f5f47b8bd57fc02ebf08ad3",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 2171,
+            "response_sha256": "d5a7563aeeb82a1602f192d9d0d64f377895a44fc4a3f4a80dda33d98ee2ab9e",
+            "status": 200,
+            "home": "A",
+            "path": "/api/workflow-definitions/ergora-governance-delivery/1.0.0",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0025.json",
+            "metadata_sha256": "3e89d3049bd72b4f17c22a060995f1fe587335b6b8176282d26c33a8ae28a3a0",
+            "request_bytes": 1807,
+            "request_sha256": "aa25769fabe28d8f85be54fa9186fe37bfe562d089df75d2676353b423130dfb",
+            "response_bytes": 4032,
+            "response_sha256": "a1102d19defdeca93312770ed2390bddfc36686e15442acfad042cce22a602a9",
+            "status": 200,
+            "home": "A",
+            "path": "/api/definition-documents/convert",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0026.json",
+            "metadata_sha256": "92bc65292522787e020bbe837ef8da5279f7083e0402420687b818a83ff1c157",
+            "request_bytes": 258,
+            "request_sha256": "d874a4959601c06c24c9efcee90fb1cce740d500be153c44591f6a956f9caa9b",
+            "response_bytes": 52327,
+            "response_sha256": "5a2495b9077f0dd770fb04158ebb1a4fa73ae7314462adb23fb769f4492e0d27",
+            "status": 200,
+            "home": "A",
+            "path": "/api/composition/preview",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0027.json",
+            "metadata_sha256": "33868c87fe9ec99fd1c3216d5fa3a8205f400786f5f9cc919d0ac0e17847a275",
+            "request_bytes": 342,
+            "request_sha256": "afff528b4943ca37b8453b8a5a736639650a6f1387f9854908d4abf229b384cb",
+            "response_bytes": 812,
+            "response_sha256": "909759042639e907bae633fa29f576c40f2d8c0032ede065a9ce6121dadff831",
+            "status": 200,
+            "home": "A",
+            "path": "/api/composition/manifests",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0028.json",
+            "metadata_sha256": "404fae6547eaaea3a0ca864e74a6b72e50e150fd1d0eda65649497b7b9805a23",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 2171,
+            "response_sha256": "d5a7563aeeb82a1602f192d9d0d64f377895a44fc4a3f4a80dda33d98ee2ab9e",
+            "status": 200,
+            "home": "A",
+            "path": "/api/workflow-definitions/ergora-governance-delivery/1.0.0",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0029.json",
+            "metadata_sha256": "cad6e9616bd9be0a37e6c62d4fc4dfc3ccacd9a0cfe1b687b1c96c42b10fb394",
+            "request_bytes": 258,
+            "request_sha256": "d874a4959601c06c24c9efcee90fb1cce740d500be153c44591f6a956f9caa9b",
+            "response_bytes": 52327,
+            "response_sha256": "5a2495b9077f0dd770fb04158ebb1a4fa73ae7314462adb23fb769f4492e0d27",
+            "status": 200,
+            "home": "A",
+            "path": "/api/composition/preview",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0030.json",
+            "metadata_sha256": "995c7d56a3cc42c44633d3a68513a5c3d4ee9e372c955ce20397ec19ef90d8e3",
+            "request_bytes": 342,
+            "request_sha256": "afff528b4943ca37b8453b8a5a736639650a6f1387f9854908d4abf229b384cb",
+            "response_bytes": 812,
+            "response_sha256": "909759042639e907bae633fa29f576c40f2d8c0032ede065a9ce6121dadff831",
+            "status": 200,
+            "home": "A",
+            "path": "/api/composition/manifests",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0031.json",
+            "metadata_sha256": "6e3f2250f95245659ca5ca9a43db3a0e019225956fcd885deb7aa97d54287a5c",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 812,
+            "response_sha256": "909759042639e907bae633fa29f576c40f2d8c0032ede065a9ce6121dadff831",
+            "status": 200,
+            "home": "A",
+            "path": "/api/composition/manifests/d1231431743a8c6a88b78690ec4013ec26a3f2d1a2768c5ee34e50e58cae2774",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0032.json",
+            "metadata_sha256": "9944cd02c36b2817eee0fb7edbbf048ddffdb8db66493dc516614173c0017a06",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 2195,
+            "response_sha256": "a37b0a28406503db72882d33829ccf5fbdfdf6d63ea3c0493f5422684a51e55e",
+            "status": 200,
+            "home": "A",
+            "path": "/api/workflow-definitions/ergora-large-change-delivery/1.0.0",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0033.json",
+            "metadata_sha256": "0ecd52f73c03537fd0b60810294289d0fd2ceb2505c6c0c4f7cf783f59fd1c9c",
+            "request_bytes": 1821,
+            "request_sha256": "b8e61b40344c76fb75fd98d6e9790e6740fae7e33fb2bde79b4b2af61efd011b",
+            "response_bytes": 4074,
+            "response_sha256": "d4272e98f4d206226d0c46479821ab0282c432ce127d4c3544673f47a0a43f2a",
+            "status": 200,
+            "home": "A",
+            "path": "/api/definition-documents/convert",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0034.json",
+            "metadata_sha256": "3b7b2ec33100dc42d3f274e2aa91becc6d8710bff728094d6d8bf6a99c638aec",
+            "request_bytes": 260,
+            "request_sha256": "e2b380f63f8cea0b1f69ee46c9a88fdbf6746bf1fbbd7bbf8f1d635ec1afcf72",
+            "response_bytes": 69674,
+            "response_sha256": "5d268eaff77796b1b76bb734e7631d97e8ddfff77169bbb1d8f10e5951297f12",
+            "status": 200,
+            "home": "A",
+            "path": "/api/composition/preview",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0035.json",
+            "metadata_sha256": "96f92fc6c6fbf854804f915544470b4685790455b964ae198e35c7c8a91ee70e",
+            "request_bytes": 344,
+            "request_sha256": "ba16fa0e37f8dee9801f8caeb1ed52a303df8744e4c62276e2f3187309b9c104",
+            "response_bytes": 814,
+            "response_sha256": "d951c610d10cb11142ee24a577816cb1468f7728e8ea305c4bb18905cd8902d2",
+            "status": 200,
+            "home": "A",
+            "path": "/api/composition/manifests",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0036.json",
+            "metadata_sha256": "170594cd1c340d575944442b21ac56e12f46fb0c63f571cc89d8aaf42a9f3dd3",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 814,
+            "response_sha256": "d951c610d10cb11142ee24a577816cb1468f7728e8ea305c4bb18905cd8902d2",
+            "status": 200,
+            "home": "A",
+            "path": "/api/composition/manifests/23ba4611ec03804c8cdf5f4d68125a44e333df019d0b6c4260b11a15588e5e81",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0037.json",
+            "metadata_sha256": "3d9a071682685d40b2438ec0e369f621278f4f3f8b2b40a06d3ac52bafbb6c99",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 2700,
+            "response_sha256": "2ae9a4829c15b8c6ed8b1b0d58b73034604488908bea2a702f2695b00c517082",
+            "status": 200,
+            "home": "A",
+            "path": "/api/workflow-definitions/ergora-training-proposal/1.0.0",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0038.json",
+            "metadata_sha256": "120efba83250777d78990789280b40528c6927e15b91c478a8cfa657c75c9e61",
+            "request_bytes": 2598,
+            "request_sha256": "b7ce371eb2dab47d1cb3d85ffd2845a5741815a14eb3208ccc82ff817fd5a83a",
+            "response_bytes": 5676,
+            "response_sha256": "f89f88381013f9d1b2f4d4696ac0d80a3d7507fd03046583af6dba1c653a8722",
+            "status": 200,
+            "home": "A",
+            "path": "/api/definition-documents/convert",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0039.json",
+            "metadata_sha256": "8b98b8206e2a2014c496316e7dc3acb95af723d38b5f3ee8e23151777984ad6c",
+            "request_bytes": 246,
+            "request_sha256": "d7a31768bc571387f673dd1b89ec5d290e9f31dd0cbfaacc230a3fcb6138a5df",
+            "response_bytes": 34940,
+            "response_sha256": "637a853c6a07a32a4473398609c8f410c31f38615f959f1ebde332a85887bc0c",
+            "status": 200,
+            "home": "A",
+            "path": "/api/composition/preview",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0040.json",
+            "metadata_sha256": "e5d5435870f8306078a24f0134c20b6449bcc9c5f0a3a646c0a5739c2a0a9b77",
+            "request_bytes": 330,
+            "request_sha256": "3d9717efd2cc2ab3118d7bbdddaf5058de1edf3a54271371401abf57e456661c",
+            "response_bytes": 800,
+            "response_sha256": "c05f82c576e9f7a03e9e6525ab4ded272691a5ac7cb59b17bc0fa5eb4bfc985c",
+            "status": 200,
+            "home": "A",
+            "path": "/api/composition/manifests",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0041.json",
+            "metadata_sha256": "4cc9e267fb4c5ab82ca8210566c13ba1d9435ceddc9f4a76c030d83562b66210",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 800,
+            "response_sha256": "c05f82c576e9f7a03e9e6525ab4ded272691a5ac7cb59b17bc0fa5eb4bfc985c",
+            "status": 200,
+            "home": "A",
+            "path": "/api/composition/manifests/f19085b4c06c91aa87a362ee3677ea4a99ceb1f203744a34618a9734690ba714",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0042.json",
+            "metadata_sha256": "148b132c8b79817af0bdbc8be0dad8c9f26a299cae49b18630e9185d7960099f",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 2994,
+            "response_sha256": "cb5aee01d9120922df27586ba6f0409d52045dc340c55fcc31c98b48c95fa695",
+            "status": 200,
+            "home": "A",
+            "path": "/",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0043.json",
+            "metadata_sha256": "e51cad0a6452f4c67bf553a80474f5423585e4763a6574b293f96a5852176a9b",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 7884,
+            "response_sha256": "506cb7e81f4456745090a6a84a5a149021f52f3f0e30bbe26c494c264e709d78",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/app.js",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0044.json",
+            "metadata_sha256": "7bc5cb6cda671019e552bb8b48cae90f79208228f45cf687980861cd16b06dbe",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 20382,
+            "response_sha256": "d66c10689fe9f3d08f4c48e1d200146ea36e894aed9aa3e690b311c06ee1da13",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/style.css",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0045.json",
+            "metadata_sha256": "56e83eb03d6e716422f9c5996ccc6f91b14e1166dc6a2d6affd63c6b0743fd45",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 434037,
+            "response_sha256": "f55947f3daa3bae53209d4b885c195c157f595c225e508a6b382598d9452d6e2",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/vendor/cytoscape.min.js",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0046.json",
+            "metadata_sha256": "8829df8b0d08b609d62c57d44957acbbba7d2b7e52f44ee5b379b0967364be24",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 659,
+            "response_sha256": "cd44305050536573a3dd1a66afb2eb089f5cef6a2bdcc601506e9429d7ccae83",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/api.js",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0047.json",
+            "metadata_sha256": "456893d86677d2d728edd5d6ac8068539d68d291792ab53904ab4718e7e209ef",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 6121,
+            "response_sha256": "2fc6c19d8d46a68d12562b2c696ec1f6bad4ea7d781afbc326ce3fbf6ac3df2c",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/ui.js",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0048.json",
+            "metadata_sha256": "6e482f2d3aab9a1571f78cfb4c68566138f34b3ac02ff16163a4da1a8524c226",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 410,
+            "response_sha256": "d19a40f6e0782ee38901c84cedb800e77d5715458b2caaa2c0454977deae54f4",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/state.js",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0049.json",
+            "metadata_sha256": "f437ecf47bd59f64c2359401fdeb1bc5af63a250fe64ffb8964b320b3411f9ee",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 1058,
+            "response_sha256": "3aec53795ee9adcaf73e82b35ed0aaf5726295f10a05dc53abc5be257a230c42",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/projects.js",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0050.json",
+            "metadata_sha256": "d582981b39f7f625b407e5b6f0117ccc1a957a07b0ff0d1c33bb2a2b86aeb227",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 4984,
+            "response_sha256": "92afb22857f24c568c846c107b3b08765ee54a3c1f479da7032df718ea0a690f",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/overview.js",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0051.json",
+            "metadata_sha256": "d2231612ec698cabb10108caa5bd0d8b2cee317dc9a1e3ec59e174d0fb53cc93",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 7499,
+            "response_sha256": "d83405ff840978bc8537b99bbe1361da10bc89d26ed85ae31b9bb4f9e09fce86",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/tools.js",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0052.json",
+            "metadata_sha256": "5a8a544a6d23d5cdd2ce809553362c5afc22cbdca6178f6d5e766b749149b422",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 6550,
+            "response_sha256": "0f791993c73c62b2b26c723865991a2253b717e39d6bc03857838c7251a40f2f",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/memory.js",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0053.json",
+            "metadata_sha256": "f4104eaf40ae56bcd50a2dd7957b9e4768c4ec7ab9c04f6fc5ed5cb9250fcd50",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 11602,
+            "response_sha256": "203bede5e54342d2fc5deb59a1c0124c62a3779b777baa27b39c11909728eb13",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/skills.js",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0054.json",
+            "metadata_sha256": "e924ada361ea1cf368483d4bdbe03afe8170d8d6519392b726965a4d5e57652b",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 5566,
+            "response_sha256": "765aafce0b1bcdb5f4ee3fbf5aef3dc511ea4e1f1dd074d6145a32f4ced64572",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/research.js",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0055.json",
+            "metadata_sha256": "4e0a40ece96476484e11f7bdbf093054baaa3dd075890d0056fe23d3fa640690",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 73653,
+            "response_sha256": "65a98af2e5c902aaff4d1f5b1a224955cc6a7eb7501739621738427d1bc65161",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/tasks.js",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0056.json",
+            "metadata_sha256": "c95cbab247e666772cad115983def984366405fbbc9cfd69de1377f5747b1f17",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 27070,
+            "response_sha256": "8427d68d5b59d2973e568d7e041182068c587fc888f4b96b512f0d6cc19bab75",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/workflow.js",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0057.json",
+            "metadata_sha256": "559c25430dc301606ffaf1f5db77cfc525d7f469350eabd0a8b66dcc65d9a5a1",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 69927,
+            "response_sha256": "db7304d95a1dc18de38bcc173111d08d73b973da7df44fca9e1e0bab9d73cf8a",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/definitions.js",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0058.json",
+            "metadata_sha256": "967d5efcd27b2af70f7f77786734e26b18ec98485973a6cd94103e5df8a0ddf6",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 2294,
+            "response_sha256": "c873b3dff7b5f82efa1cdd71101d9e78582076d4682c1a65cf482306853fc6f4",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/agents.js",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0059.json",
+            "metadata_sha256": "aa7655df2eca70a3773cb4cb4d120123c99b0d3932c6cbcbd4fab78d14b76aed",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 18414,
+            "response_sha256": "22fad41ba596fadeba3cfcc02e9e84f2891326395339beca793846a1bddb4469",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/composition-graph.js",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0060.json",
+            "metadata_sha256": "4bf08761b17598886381d8c0f17defae66021426dde2f7ce168dd17286c1affe",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 5569,
+            "response_sha256": "b56aca5f6c44ed715009a9e5a92701eb40c97cb8a8ea6f3bec62f3c7a547fea2",
+            "status": 200,
+            "home": "A",
+            "path": "/assets/composition-comparison.js",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0061.json",
+            "metadata_sha256": "20f4e7b46493432735f2444b510c81d2ebc7974fd07e6f4927eb90e08ac2e2b4",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 33176,
+            "response_sha256": "de73e61c800fdb1cb9f2147f9ed04b10981186d4ba0f9d3fbe0c4cc06ef89e61",
+            "status": 200,
+            "home": "A",
+            "path": "/api/bootstrap",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0062.json",
+            "metadata_sha256": "fe5c6c1e85c5154fa765b272796c78cbd428a6db078de4502a4d359177ed3a42",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 9335,
+            "response_sha256": "9b6885790253c4c964b9e0b22f96d2ede88b021739e2c1d99122cfa6db1154c5",
+            "status": 200,
+            "home": "A",
+            "path": "/api/agent-definitions",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0063.json",
+            "metadata_sha256": "6f89ce27593bfed3597eda225c8b7b28dcf443175b67c70b29318a38345ed352",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 14698,
+            "response_sha256": "ecadf9029ba47dd2334af5d88a40af5ce27cbca4ace2342be02267a2ebe7c11f",
+            "status": 200,
+            "home": "A",
+            "path": "/api/workflow-definitions",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0064.json",
+            "metadata_sha256": "9193a3a505d1b2723b744852887d3616e46f2ada3c6f984e16999a4b43aac927",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 979,
+            "response_sha256": "501f0d3af3906c5cbe075eeb2767daf02991f262154c63e978f51c57d0df50d1",
+            "status": 200,
+            "home": "A",
+            "path": "/api/composition/presets",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0065.json",
+            "metadata_sha256": "99b16331410ee46a2a3995a605fd6cb00045f0f240f733a9b6ed6b08e6bb1c78",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 2700,
+            "response_sha256": "2ae9a4829c15b8c6ed8b1b0d58b73034604488908bea2a702f2695b00c517082",
+            "status": 200,
+            "home": "A",
+            "path": "/api/workflow-definitions/ergora-training-proposal/1.0.0",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0066.json",
+            "metadata_sha256": "308bcfd47e3cace2976fd641b3168c8836537692025adf65a7edaf5788bde4ee",
+            "request_bytes": 2598,
+            "request_sha256": "983591fa6a71bdd45c3bf88c8b6d19951f1d860d08d33d90fac807d4a85b8d40",
+            "response_bytes": 5676,
+            "response_sha256": "083453ad3737f86d807cc1eb0288e3b9d66e955251ade16818b7f91ffba22d5d",
+            "status": 200,
+            "home": "A",
+            "path": "/api/definition-documents/convert",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0067.json",
+            "metadata_sha256": "5ec5f6f9e05e70280b821a9d60d374143be86cf939af6cef9b92ec8a11e48728",
+            "request_bytes": 1596,
+            "request_sha256": "9bacc79d3e8f6d0b556d4334bd751f6873cf84c33c5391b073a1bc241a82af85",
+            "response_bytes": 5676,
+            "response_sha256": "083453ad3737f86d807cc1eb0288e3b9d66e955251ade16818b7f91ffba22d5d",
+            "status": 200,
+            "home": "A",
+            "path": "/api/definition-documents/convert",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0068.json",
+            "metadata_sha256": "abdeab5343b0948733d65deb90a62090e508896f22bf1f779184cdc9b0e4e91f",
+            "request_bytes": 246,
+            "request_sha256": "d7a31768bc571387f673dd1b89ec5d290e9f31dd0cbfaacc230a3fcb6138a5df",
+            "response_bytes": 34940,
+            "response_sha256": "637a853c6a07a32a4473398609c8f410c31f38615f959f1ebde332a85887bc0c",
+            "status": 200,
+            "home": "A",
+            "path": "/api/composition/preview",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0069.json",
+            "metadata_sha256": "7ecd449a51c1eb683819cd236ea7079061a1df21a8a28cee637b69554b27d32e",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 800,
+            "response_sha256": "c05f82c576e9f7a03e9e6525ab4ded272691a5ac7cb59b17bc0fa5eb4bfc985c",
+            "status": 200,
+            "home": "A",
+            "path": "/api/composition/manifests/f19085b4c06c91aa87a362ee3677ea4a99ceb1f203744a34618a9734690ba714",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0070.json",
+            "metadata_sha256": "5a4d09adaa50f1e29c0b4d01d1cb6ef2fdc2b3b3b3bd0530805d1c517cdc13fa",
+            "request_bytes": 246,
+            "request_sha256": "247b2f194ee3db938c72c00f90081bfbf8895b78522b882af04d5fc68dc849e9",
+            "response_bytes": 34940,
+            "response_sha256": "b8dd280e247a06499ffc877617c89d968cb6c5bd7d27f8e7e655c3eff758b660",
+            "status": 200,
+            "home": "A",
+            "path": "/api/composition/preview",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0071.json",
+            "metadata_sha256": "9992f199f634a7da6430770d822c48cd58d4cd61ac791cc9d266aea6b1d85111",
+            "request_bytes": 330,
+            "request_sha256": "1cc94285dff5f181b04166d757012c390a574a54859b1cd19dd5ef48ec698918",
+            "response_bytes": 800,
+            "response_sha256": "710f845202b4314a63d19c4e6ae8c3be439c76d95bfe9d6b8d0c973da8ae85f8",
+            "status": 200,
+            "home": "A",
+            "path": "/api/composition/manifests",
+            "lost": true
+          },
+          {
+            "file": "r2/browser/requests/0072.json",
+            "metadata_sha256": "e273517b5f3e73e2877283135b6626f6204f136f7ba3b51145d1545df6b166bc",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 800,
+            "response_sha256": "710f845202b4314a63d19c4e6ae8c3be439c76d95bfe9d6b8d0c973da8ae85f8",
+            "status": 200,
+            "home": "A",
+            "path": "/api/composition/manifests/36738f7203e51252dd18ecc186ba6c9801d6c446c1e2acea655620239c9a1b66",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0073.json",
+            "metadata_sha256": "c48fbc37843bb6678683fac148ff792c15fb2ab648c8cf99a8f42f218f70daae",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 2171,
+            "response_sha256": "d5a7563aeeb82a1602f192d9d0d64f377895a44fc4a3f4a80dda33d98ee2ab9e",
+            "status": 200,
+            "home": "A",
+            "path": "/api/workflow-definitions/ergora-governance-delivery/1.0.0",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0074.json",
+            "metadata_sha256": "ce0e86bc36a7a1afd3c5b85d547a23d39130fe1c08ab61b055c1297e54762573",
+            "request_bytes": 1807,
+            "request_sha256": "a8ccaab92671182aab6052113ab2048693b02429bfd8f4169086d0607a7bb607",
+            "response_bytes": 4032,
+            "response_sha256": "405dd0c16c8232b2893975d5851c15e15d8fec413596b370db7103d256aba500",
+            "status": 200,
+            "home": "A",
+            "path": "/api/definition-documents/convert",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0075.json",
+            "metadata_sha256": "6b1801d4b2805b3315f7e299699fa8923af71151b21ad271e3aee1a62580526c",
+            "request_bytes": 1148,
+            "request_sha256": "56f8d14d66b7aa7bd7ef21a6a4612636d71c2e2b72a90cd578ac55b87aed050d",
+            "response_bytes": 4032,
+            "response_sha256": "405dd0c16c8232b2893975d5851c15e15d8fec413596b370db7103d256aba500",
+            "status": 200,
+            "home": "A",
+            "path": "/api/definition-documents/convert",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0076.json",
+            "metadata_sha256": "4c0e7997d7f6b3553dff7ac37bd10c23b6e4a66a49d03428c5a6f6c7a5c84a71",
+            "request_bytes": 258,
+            "request_sha256": "10222af1b65804075be225c8137eed607e78c5c0f7676dd12624d23f03c8f410",
+            "response_bytes": 52327,
+            "response_sha256": "731727e428de15e14be749f1f0b9c54288cdff9d0c1518ea50901f235557732d",
+            "status": 200,
+            "home": "A",
+            "path": "/api/composition/preview",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0077.json",
+            "metadata_sha256": "97aa7826d78908b1e1ac6c43cf49438b6de4bf2abae211529536b06270ececbc",
+            "request_bytes": 342,
+            "request_sha256": "cdfbad2b751206945441058cc3f6069fc9c9c13a7e3b3e743c7f7f94b00f352c",
+            "response_bytes": 812,
+            "response_sha256": "c948b784f02d6ca926b57842ff908500a9f0c026ee1d8c3e2f73fdc961ef0172",
+            "status": 200,
+            "home": "A",
+            "path": "/api/composition/manifests",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0078.json",
+            "metadata_sha256": "353ef83ab46dc01e28e930370238242c227a4096fd0bb3f220bbc169bdda7c07",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 2700,
+            "response_sha256": "2ae9a4829c15b8c6ed8b1b0d58b73034604488908bea2a702f2695b00c517082",
+            "status": 200,
+            "home": "A",
+            "path": "/api/workflow-definitions/ergora-training-proposal/1.0.0",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0079.json",
+            "metadata_sha256": "a284e38bc7ed283c1955cf4946b859ab8f49409c88611ac8bb721a27aa211d4c",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 2171,
+            "response_sha256": "d5a7563aeeb82a1602f192d9d0d64f377895a44fc4a3f4a80dda33d98ee2ab9e",
+            "status": 200,
+            "home": "A",
+            "path": "/api/workflow-definitions/ergora-governance-delivery/1.0.0",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0080.json",
+            "metadata_sha256": "4674881527dad2d0ac9e0b746b660c65813e96fb6e8ec299e891c7948c13115a",
+            "request_bytes": 258,
+            "request_sha256": "de4179ccb3753d799b85109ec1f008ace58de51f1488c0e63ad1f329ba096c3e",
+            "response_bytes": 52327,
+            "response_sha256": "079f133a5e25544b28d28a047dd1f9127dea09751ad7683caba0e07b81fae80c",
+            "status": 200,
+            "home": "A",
+            "path": "/api/composition/preview",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0081.json",
+            "metadata_sha256": "fb841030d8a2f648465607263db7fa9cfb8a7f1375610313b37c5fffad09b770",
+            "request_bytes": 342,
+            "request_sha256": "8df2a8c7082ba51d0de3145996be965d68e418d6651e4524bdb9bfdf055ceaa8",
+            "response_bytes": 812,
+            "response_sha256": "2325985674b48a5b34953e5dd0e753d137555b5a70c84660e4c79989546fef7c",
+            "status": 200,
+            "home": "A",
+            "path": "/api/composition/manifests",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0082.json",
+            "metadata_sha256": "9137fdad1624e595b0529ec290983c773d31ae1d6e60bb8067e31fbedda77682",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 2171,
+            "response_sha256": "d5a7563aeeb82a1602f192d9d0d64f377895a44fc4a3f4a80dda33d98ee2ab9e",
+            "status": 200,
+            "home": "A",
+            "path": "/api/workflow-definitions/ergora-governance-delivery/1.0.0",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0083.json",
+            "metadata_sha256": "680540d50a6f901b0c157e22135aba574096f145e4b177336a175ab4e323be4a",
+            "request_bytes": 258,
+            "request_sha256": "a5067ebe1f68b809773603729e337df3695063425ae704b9967cc17bca8079fd",
+            "response_bytes": 52327,
+            "response_sha256": "4dd85834277e675b867399fb5f15c6ec99e8cb31d3b5d06b6d5434215cf76e9d",
+            "status": 200,
+            "home": "A",
+            "path": "/api/composition/preview",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0084.json",
+            "metadata_sha256": "b4cbda4c8db707a4cd0e94c662ec48a74ba12b2a275e9991e5b0ebad3c2710fa",
+            "request_bytes": 342,
+            "request_sha256": "a66cc858d47737f2fe727b2aa7ad4a6a6baeda005945fdb85c77e7c01a67c9ac",
+            "response_bytes": 812,
+            "response_sha256": "06ce9246dd8dfaef6f0f7536953771a7ae1143240d1d15379e818ff0a88761e7",
+            "status": 200,
+            "home": "A",
+            "path": "/api/composition/manifests",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0085.json",
+            "metadata_sha256": "8fe1bffb94bc195397b99fb1f56c2b1ac6210706b770fa902409a521e39a85bc",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 33176,
+            "response_sha256": "0edbf355944dd45c5228c45d089fc3d9a3d418b886b2e9819200373ca4fdba76",
+            "status": 200,
+            "home": "B",
+            "path": "/api/bootstrap",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0086.json",
+            "metadata_sha256": "2f2863a0ff7038d7ae0631a0a101d18ab457822e68067ee75a11517739e6f8bd",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 9335,
+            "response_sha256": "9b6885790253c4c964b9e0b22f96d2ede88b021739e2c1d99122cfa6db1154c5",
+            "status": 200,
+            "home": "B",
+            "path": "/api/agent-definitions",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0087.json",
+            "metadata_sha256": "5d87ce5ec9cce3fb79b3826339972b33bce628239de5903107c5bf23f5b5ad23",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 14698,
+            "response_sha256": "ecadf9029ba47dd2334af5d88a40af5ce27cbca4ace2342be02267a2ebe7c11f",
+            "status": 200,
+            "home": "B",
+            "path": "/api/workflow-definitions",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0088.json",
+            "metadata_sha256": "7de494ae218c756a864d2153b3a14ecede97e448781d27170c1bda54973552cf",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 979,
+            "response_sha256": "501f0d3af3906c5cbe075eeb2767daf02991f262154c63e978f51c57d0df50d1",
+            "status": 200,
+            "home": "B",
+            "path": "/api/composition/presets",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0089.json",
+            "metadata_sha256": "5e9e29c793ab0523e91c8fccb9558890500e4ec1b01de06bd6b3505ef1382fbd",
+            "request_bytes": 0,
+            "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            "response_bytes": 2171,
+            "response_sha256": "42a30bc0b519dc1fb07349892b5adc7bd7fa1faac875042c98e2785770c04098",
+            "status": 200,
+            "home": "B",
+            "path": "/api/workflow-definitions/ergora-governance-delivery/1.0.0",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0090.json",
+            "metadata_sha256": "83dd666155f3f1e745919c6bcfaffb45a9a8cedb432cd9532b0594602855aa5a",
+            "request_bytes": 1807,
+            "request_sha256": "aa25769fabe28d8f85be54fa9186fe37bfe562d089df75d2676353b423130dfb",
+            "response_bytes": 4032,
+            "response_sha256": "a1102d19defdeca93312770ed2390bddfc36686e15442acfad042cce22a602a9",
+            "status": 200,
+            "home": "B",
+            "path": "/api/definition-documents/convert",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0091.json",
+            "metadata_sha256": "d4ce8cadccbb25ff90ee117e3a6652af02f4322d9fde7bd49cc05677fad50b04",
+            "request_bytes": 258,
+            "request_sha256": "d874a4959601c06c24c9efcee90fb1cce740d500be153c44591f6a956f9caa9b",
+            "response_bytes": 52327,
+            "response_sha256": "5a2495b9077f0dd770fb04158ebb1a4fa73ae7314462adb23fb769f4492e0d27",
+            "status": 200,
+            "home": "B",
+            "path": "/api/composition/preview",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0092.json",
+            "metadata_sha256": "95ad6d344a2e00de27ee2ba53e609b0d8bb3d59847fe6e4ef79c9f1b03442dbc",
+            "request_bytes": 258,
+            "request_sha256": "d874a4959601c06c24c9efcee90fb1cce740d500be153c44591f6a956f9caa9b",
+            "response_bytes": 52327,
+            "response_sha256": "5a2495b9077f0dd770fb04158ebb1a4fa73ae7314462adb23fb769f4492e0d27",
+            "status": 200,
+            "home": "B",
+            "path": "/api/composition/preview",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0093.json",
+            "metadata_sha256": "8e34bc6e254e4712c903103bd43f225bd8e93632285b2758cb6cf509c55ec55c",
+            "request_bytes": 256,
+            "request_sha256": "4dbfb11354ac37e837c1e18230bd09ca13d39af76155632d13a89df9b9db4850",
+            "response_bytes": 34950,
+            "response_sha256": "1acc2d128adb92c91a08a411a3247ee9d5dc83c5b3aa98d5036bfc0d58c573b9",
+            "status": 200,
+            "home": "B",
+            "path": "/api/composition/preview",
+            "lost": false
+          },
+          {
+            "file": "r2/browser/requests/0094.json",
+            "metadata_sha256": "74961af29baef0116ec8c4d29c5fd5977ec590399ecd1c40e1061a09581ad101",
+            "request_bytes": 342,
+            "request_sha256": "afff528b4943ca37b8453b8a5a736639650a6f1387f9854908d4abf229b384cb",
+            "response_bytes": 812,
+            "response_sha256": "85ddaf16ffbb04f2b53b9541a1d56d3b5106b725361c1e10aa97e1b35b8b9d30",
+            "status": 200,
+            "home": "B",
+            "path": "/api/composition/manifests",
+            "lost": false
+          }
+        ],
+        "scope": "Actual original installed HTTP bytes, owner identities and original trees; test-driver failures retain original result status."
+      }
+    }
+  ]
+}

@@ -1,0 +1,132 @@
+{
+  "schema_version": 1,
+  "published_at": "2026-11-10T14:45:15.657737+00:00",
+  "scope": "R1 failure summary explicitly lacks standalone stdout; full traceback was in original tool reply. R2 two affected tests only;437 packaged files/two RECORDs/283 frozen assets, large file map omitted.",
+  "projection_policy": "Original byte/SHA identities precede JSON projection. Repository path and three private origins replaced with named placeholders. Omitted fields named; full private originals retained. Not a substitute for raw omitted evidence.",
+  "originals": [
+    {
+      "private_original": "r1/regression-result.json",
+      "bytes": 659,
+      "sha256": "a471d7861e105eabaf12af5dba8cd8328c8f819757e5ad440d5a2af8bc29696d",
+      "omitted_top_level_fields": [],
+      "projection": {
+        "command": "python -I -m pytest -q tests/test_composition_manifests.py tests/test_definition_console.py tests/test_web.py",
+        "passed": 41,
+        "failed": 2,
+        "seconds": 42.57,
+        "failure_nodes": [
+          "test_accepted_preview_freeze_is_bound_serialized_and_never_replaces_damage",
+          "test_manifest_handoff_shares_cli_identity_and_reads_without_live_library"
+        ],
+        "causes": [
+          "Detached $ref digest schema lacked its $defs context",
+          "HTTP id keyword did not match application identity parameter"
+        ],
+        "scope": "First R1 noneditable package; tool transcript contains full original tracebacks; summary only, no standalone pytest stdout captured"
+      }
+    },
+    {
+      "private_original": "r2/regression.json",
+      "bytes": 858,
+      "sha256": "ce02df75b857bcbddf615449a32f1b3044e32a5338c9ee7019183e400925d6b3",
+      "omitted_top_level_fields": [],
+      "projection": {
+        "at": "2026-11-10T14:33:04.683952+00:00",
+        "command": [
+          "$REPOSITORY/.ergora/checks/ac5-composition-handoff/r2/wheel-venv/bin/python",
+          "-I",
+          "-m",
+          "pytest",
+          "-q",
+          "tests/test_composition_manifests.py::test_accepted_preview_freeze_is_bound_serialized_and_never_replaces_damage",
+          "tests/test_definition_console.py::test_manifest_handoff_shares_cli_identity_and_reads_without_live_library",
+          "--basetemp=$REPOSITORY/.ergora/checks/ac5-composition-handoff/r2/pytest-state"
+        ],
+        "exit": 0,
+        "seconds": 7.98054182715714,
+        "stdout": "..                                                                       [100%]\n2 passed in 6.39s\n",
+        "stderr": "",
+        "scope": "Only two previously failed new contract tests on corrected installed R2; 41 R1 neighboring regressions not repeated."
+      }
+    },
+    {
+      "private_original": "r2/build-install.json",
+      "bytes": 1369,
+      "sha256": "1e84678e0b5f094142e9feb6836f60bf0e95b4abb0f0daf3ffda902f5bea553f",
+      "omitted_top_level_fields": [],
+      "projection": [
+        {
+          "checked_at": "2026-11-10T14:32:02.716808+00:00",
+          "name": "build",
+          "command": [
+            "uv",
+            "build",
+            "--offline",
+            "--python",
+            "$REPOSITORY/.ergora/checks/ac5-definition-resource-editor/r2/wheel-venv/bin/python",
+            "--wheel",
+            "--out-dir",
+            "$REPOSITORY/.ergora/checks/ac5-composition-handoff/r2/dist"
+          ],
+          "exit": 0,
+          "seconds": 7.127427025232464
+        },
+        {
+          "checked_at": "2026-11-10T14:32:02.763339+00:00",
+          "name": "venv",
+          "command": [
+            "uv",
+            "venv",
+            "--offline",
+            "--python",
+            "$REPOSITORY/.ergora/checks/ac5-definition-resource-editor/r2/wheel-venv/bin/python",
+            "$REPOSITORY/.ergora/checks/ac5-composition-handoff/r2/wheel-venv"
+          ],
+          "exit": 0,
+          "seconds": 0.04488117899745703
+        },
+        {
+          "checked_at": "2026-11-10T14:32:07.086248+00:00",
+          "name": "install",
+          "command": [
+            "uv",
+            "pip",
+            "install",
+            "--offline",
+            "--python",
+            "$REPOSITORY/.ergora/checks/ac5-composition-handoff/r2/wheel-venv/bin/python",
+            "$REPOSITORY/.ergora/checks/ac5-composition-handoff/r2/dist/ergora-0.2.0-py3-none-any.whl[dev,web,temporal,task-mcp]"
+          ],
+          "exit": 0,
+          "seconds": 4.322409086395055
+        }
+      ]
+    },
+    {
+      "private_original": "r2/package-identities.json",
+      "bytes": 58626,
+      "sha256": "a8cc3722fa036ad7d0c58d5a6e3960f83d2082278f7d327bc7d2ef3640e2f7f7",
+      "omitted_top_level_fields": [
+        "files"
+      ],
+      "projection": {
+        "checked_at": "2026-11-10T14:32:58.700618+00:00",
+        "baseline": "a2c89a5b4b5ca49bf0c3f28a4f35efaec539bd3c",
+        "source_wheel_installed_record_files": 437,
+        "wheel_sha256": "d575678b1120649561efcd4e1dd8b44ed40ab3519654be51b6834db42e097e40",
+        "frozen_files": 283,
+        "verify": {
+          "status": "PASS",
+          "version": "2.2",
+          "path": "$REPOSITORY/.ergora/checks/ac5-composition-handoff/r2/wheel-venv/lib/python3.12/site-packages/ergora/data/reference",
+          "source_zip_sha256": "8018be5094623ca0646d28d3671daaf7ac60774280eefc1c5c023bc19dc5c760",
+          "files": 283,
+          "installer": "$REPOSITORY/.ergora/checks/ac5-composition-handoff/r2/wheel-venv/lib/python3.12/site-packages/ergora/data/reference/install-from-report.sh",
+          "runtime_started": false
+        },
+        "python": "3.12.11 (main, Aug 18 2025, 19:19:11) [Clang 20.1.4 ]",
+        "scope": "Noneditable C5a manifest handoff wheel; no original services, model quality or GPU acceptance claim."
+      }
+    }
+  ]
+}

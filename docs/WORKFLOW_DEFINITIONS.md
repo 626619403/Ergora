@@ -4,7 +4,7 @@
 
 `composition` 提供静态检查、不可覆盖的版本库、完整预览、可携带的静态组合包与显式单叶调用。预览不调用模型；`run-input` 可将准备好的输入交给所选后端。正式开发按[六阶段流程](USAGE.md#正式任务的操作顺序与恢复)执行，审查阶段可运行嵌套的只读串并行分支并作显式all-join汇合，具体配置见[正式审查组合](USAGE.md#为正式任务冻结审查组合)。只读审查的数据端口见[正式DAG协议](#正式只读审查的数据端口)；专长执行者分配使用下文的[work-units-v1协议](#专长执行者与原工作单元)。
 
-Web控制台的“Agent 与组合库”复用同一版本库、导入和preview用例，无需先注册项目。选择精确工作流版本，检查根声明初始化的静态上限后明确预览，即可查看每个实例的结构父链、先行依赖、具名端口、完整资源来源及装配提示；详见[页面操作](USAGE.md#在页面浏览与预览定义)。静态上限不构成项目授权，后端字段仅为请求。页面下载的定义JSON和预览JSON用于阅读与比较；分享完整资源和精确依赖应使用下文`export`或`prepare-manifest`。标准正文可在页面[明确修订](#在页面修订工作流)；嵌套画布与正式交接见[后续计划](plans/2026-11-09-composition-console.md)。
+Web控制台的“Agent 与组合库”复用同一版本库、导入和preview用例，无需先注册项目。选择精确工作流版本，检查根声明初始化的静态上限后明确预览，即可查看每个实例的结构父链、先行依赖、具名端口、完整资源来源及装配提示；详见[页面操作](USAGE.md#在页面浏览与预览定义)。静态上限不构成项目授权，后端字段仅为请求。页面下载的定义JSON和预览JSON用于阅读与比较；分享完整资源和精确依赖应使用下文`export`、`prepare-manifest`或[固定当前预览](#固定当前预览到持久控制目录)。标准正文可在页面[明确修订](#在页面修订工作流)；嵌套画布与正式交接见[后续计划](plans/2026-11-09-composition-console.md)。
 
 ## 使用内置领域组合
 
@@ -83,6 +83,23 @@ ergora composition prepare-from-manifest ./kernel-delivery-manifest root/review/
 这一步会重新检查当前定义准入及整图身份；旧包能核验不代表现在还能调用。生成的输入沿后文`check-input`/`run-input`使用，不执行图前驱或端口，也不会创建State或依赖接收者的原始定义库。
 
 这是完整**静态**材料，`execution_authorized`为false；它没有操作者任务正文、未来父结果、候选批准或运行会话。正式任务仍须经过创建、原owner批准和运行准入，当前支持形状见[正式审查组合](USAGE.md#为正式任务冻结审查组合)。若希望State的完整备份同时保存该包，将输出目录放在自己的State数据目录下；否则单独保存/复制整个包，不能只留下`manifest.json`。`--material`会返回所有叶子的完整静态材料，省略该参数时只返回身份与清单。
+
+### 固定当前预览到持久控制目录
+
+在页面的“Agent 与组合库”中，先预览精确工作流及显式上限，再点击“保存当前预览为完整 manifest”。页面保存的是当前所选根，编辑缓冲和比较目标不包含在内。成功结果给出完整包绝对路径、`digest`及原`preview_sha256`；正式任务定义使用此`path`与`digest`。页面的“下载 composition-preview.json”仍只用于查看，不能代替完整目录。
+
+CLI使用相同用例，必须明确提交已检查的预览摘要：
+
+```bash
+ergora composition preview kernel-delivery 1.0.0 --grant examples/composition/preview-grant.json
+# 将上一步实际返回的 preview_sha256 填入，不使用示例占位符创建任务。
+ergora composition freeze-manifest kernel-delivery 1.0.0 --grant examples/composition/preview-grant.json --preview-sha256 PREVIEW_SHA256
+ergora composition show-manifest PREVIEW_SHA256 --material
+```
+
+完整包位于当前控制目录的`composition-manifests/PREVIEW_SHA256/`，沿原`--home`/`ERGORA_HOME`及平台默认持久目录；控制目录完整备份也会包含它。首次保存重新执行原准入并核预览摘要，上限或定义身份变化须重新审阅。相同摘要重试会核验原完整包，不覆盖已有目录；违反原完整核验的文件/定义/材料身份会明确拒绝。空目录正常复制保留，但沿原摘要合同不计入digest，稳定增删空目录不会改变身份。
+
+保存回复丢失时，先保留原摘要并用“按当前摘要读取已保存包”或`show-manifest`查询；刷新后可重新预览同一精确版本及上限再读。读取不要求源库或当前后端可用，可独立执行`show-manifest`或`verify-manifest`，不能把历史可读等同当前可执行。HTTP对应`POST /api/composition/manifests`（原preview请求另加`preview_sha256`）、`GET /api/composition/manifests/PREVIEW_SHA256?material=true`；写入仍要求本地同源与原请求头。保存不创建项目、任务、批准或Agent调用。
 
 ## 定义和数据流
 

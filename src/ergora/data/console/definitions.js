@@ -10,7 +10,7 @@ const library = {
   agents: [], workflows: [], presets: [], request: 0,
   selection: null, detail: null, detailLoading: false, detailError: "", detailRequest: 0,
   grant: "", preview: null, previewLoading: false, previewError: "", previewRequest: 0,
-  comparisonTarget: "", comparison: null,
+  comparisonTarget: "", comparison: null, manifest: null,
   restoreSelection: null,
 };
 const selections = new Map();
@@ -477,7 +477,7 @@ function synchronizeLibrary() {
   Object.assign(library, {
     controlDirectory: home, started: false, loading: false, installing: null, error: "", message: "",
     agents: [], workflows: [], presets: [], selection: null, detail: null, detailLoading: false, detailError: "",
-    grant: "", preview: null, previewLoading: false, previewError: "", comparisonTarget: "", comparison: null,
+    grant: "", preview: null, previewLoading: false, previewError: "", comparisonTarget: "", comparison: null, manifest: null,
     restoreSelection: selections.get(home) || null,
   });
 }
@@ -599,6 +599,7 @@ async function previewDefinition(render, target = null) {
   library.previewError = "";
   library.preview = null;
   library.comparison = null;
+  library.manifest = null;
   redraw(render);
   try {
     const grant = JSON.parse(library.grant);
@@ -618,6 +619,31 @@ async function previewDefinition(render, target = null) {
   } finally {
     if (currentLibrary(home) && request === library.previewRequest) {
       library.previewLoading = false;
+      redraw(render);
+    }
+  }
+}
+
+async function previewManifest(preview, render, save) {
+  const home = library.controlDirectory;
+  if (!currentLibrary(home) || library.preview !== preview) return;
+  const record = { preview, loading: true, save, result: null, error: "" };
+  library.manifest = record;
+  const current = () => currentLibrary(home) && library.preview === preview && library.manifest === record;
+  redraw(render);
+  try {
+    const result = save
+      ? await api("/api/composition/manifests", { id: preview.root.id, version: preview.root.version,
+        grant: preview.grant, preview_sha256: preview.preview_sha256 })
+      : await api(`/api/composition/manifests/${encodeURIComponent(preview.preview_sha256)}`);
+    if (result.manifest.preview_sha256 !== preview.preview_sha256 || referenceText(result.manifest.root) !== referenceText(preview.root))
+      throw new Error("返回的 manifest 与当前精确预览不符；请保留原摘要核查。");
+    if (current()) record.result = result;
+  } catch (error) {
+    if (current()) record.error = error.message;
+  } finally {
+    if (current()) {
+      record.loading = false;
       redraw(render);
     }
   }
@@ -961,6 +987,7 @@ function instancesView(preview, render) {
   if (!graphSessions.has(key)) graphSessions.set(key, {});
   previewGraph = compositionGraphView(preview, graphSessions.get(key), library.agents,
     (reference) => openDefinition(reference.kind, reference, render));
+  const manifest = library.manifest?.preview === preview ? library.manifest : null;
   return panel(
     "已发布静态组合与完整祖先指令",
     "图来自下方精确已发布版本，编辑中的新版本及未应用正文不会进入此图。结构父链决定资源继承和权限上限；依赖决定先后，端口决定数据来源。此处尚未调用 Agent。",
@@ -968,6 +995,18 @@ function instancesView(preview, render) {
     pre({ root: preview.root, preview_sha256: preview.preview_sha256, pending: preview.pending }),
     previewGraph.element,
     button("下载 composition-preview.json", () => download("composition-preview.json", JSON.stringify(preview, null, 2) + "\n")),
+    panel("保存完整组合包", "保存当前已发布预览及全部定义和 Skill 附件，供正式任务显式选用。编辑缓冲和比较目标不包含在此包中。",
+      row(
+        button(manifest?.loading && manifest.save ? "正在保存…" : "保存当前预览为完整 manifest",
+          () => previewManifest(preview, render, true), "secondary", { disabled: manifest?.loading }),
+        button(manifest?.loading && !manifest.save ? "正在读取…" : "按当前摘要读取已保存包",
+          () => previewManifest(preview, render, false), "secondary", { disabled: manifest?.loading }),
+      ),
+      manifest?.error ? panel(manifest.save ? "保存结果尚未确认" : "完整包读取失败", manifest.error,
+        node("p", {}, `请保留预览摘要 ${preview.preview_sha256}。保存回复丢失时，先按此摘要读取已保存包，再决定是否重试。`)) : null,
+      manifest?.result ? pre(manifest.result) : null,
+      node("p", {}, "完整包保存在控制目录，刷新后可重新预览同一版本及上限并按摘要读取。保存不创建或启动任务，也不授予执行权限。下载的 preview JSON 仅为查看材料，不是完整包。"),
+    ),
   );
 }
 
