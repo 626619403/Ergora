@@ -1,6 +1,6 @@
 # AC5 C3c D4/D5：完整资源与祖先继承旅程
 
-候选基线 `a9778e00e81b3b2e43a4f5745c92fbb21c990c5a`，分支 `refactor/architecture-foundations`。先读 AGENTS、PLAN、[资源总合同](2026-11-10-definition-resources.md)、[D3记录](../delivery/2026-11-10-definition-resource-editor.md)及[本片记录](../delivery/2026-11-10-definition-resource-inheritance.md)。D3已精确交付：a9778e0完整26文件本地两轴、自己的CI42790499318双OS七必要步骤及原评审者官方原件终核、精确Git对象/明确HTTPS同SHA通过。J0前置已满足，J1/J2真实90CLI/55.92秒完成，11新包及24只读原对象/旧快照保持；J3三次真实读取58资源/五list页均完整，37个owned采样进程清理；J4首审234.93秒request-changes保留；补原件后483.04秒approve/27资源完整读取，十份公开证据及owned清理通过，完整24文件新独立两轴通过、RIN-S1/D1关闭、开放0；精确提交/自己的CI/HTTPS待办。
+候选基线 `a9778e00e81b3b2e43a4f5745c92fbb21c990c5a`，分支 `refactor/architecture-foundations`。先读 AGENTS、PLAN、[资源总合同](2026-11-10-definition-resources.md)、[D3记录](../delivery/2026-11-10-definition-resource-editor.md)及[本片记录](../delivery/2026-11-10-definition-resource-inheritance.md)。D3已精确交付：a9778e0完整26文件本地两轴、自己的CI42790499318双OS七必要步骤及原评审者官方原件终核、精确Git对象/明确HTTPS同SHA通过。J0前置已满足，J1/J2真实90CLI/55.92秒完成，11新包及24只读原对象/旧快照保持；J3三次真实读取58资源/五list页均完整，37个owned采样进程清理；J4首审234.93秒request-changes保留；补原件后483.04秒approve/27资源完整读取，十份公开证据及owned清理通过，完整24文件新独立两轴通过、RIN-S1/D1关闭、开放0；已普通提交推送4636d77；原评审者核精确对象及10:32:04 UTC一次明确HTTPS同完整SHA通过；自己的CI42799311145第三份官方样本双OS七必要步骤success/completed、原评审者离线终核通过，精确交付终结。
 
 ## 目标与范围
 
@@ -37,6 +37,6 @@
 |J1 三领域依赖顺序派生|实际CLI完整资源目录、预览/接受/检查/发布、新根最后|未发布依赖拒绝不改原根；每个新包候选一致，旧对象/权限/预算保持|通过；90CLI/55.92秒，11新定义按依赖发布，三个缺子根明确拒绝/索引不变|
 |J2 完整树/冻结输入往返|全部新包export→重导入、旧/新manifest/input、来源与权限链|新树全部文件/执行位/空目录一致；旧快照全身份不变，新祖先材料无截断|通过；11完整树往返相同，24只读原对象及三旧manifest/input保持，全部实例权限相同|
 |J3 三领域实际只读调用|固定新输入、原定义库移到控制目录外保留、原task-MCP/Codex调用及连续读取审计|原生scope/list/read真实连通，全部祖先与完整Skill附件按原字节覆盖；无额外工具/写权限|通过；三run合计256.97秒，21/21/16资源、五list页/58read完整逐字节；原库移置完整，37采样进程清理，旧快照复核保持|
-|J4 完整审查和D5交付|新fresh-context两轴、真实自身模板、两手册/计划/架构的必要事实续记|实证finding处置；公开原件可追溯、owned进程清理；完整范围终核后普通提交/自己的CI/明确HTTPS|第二轮483.04秒approve/27资源1,056,021B全部连续读取、十份公开证据/owned清理通过；完整24文件新独立Spec/Standards通过、RIN-S1/D1关闭/开放0，本地出口完成；普通提交/自己的CI/HTTPS待办|
+|J4 完整审查和D5交付|新fresh-context两轴、真实自身模板、两手册/计划/架构的必要事实续记|实证finding处置；公开原件可追溯、owned进程清理；完整范围终核后普通提交/自己的CI/明确HTTPS|第二轮483.04秒approve/27资源1,056,021B全部连续读取、十份公开证据/owned清理通过；完整24文件新独立Spec/Standards通过、RIN-S1/D1关闭/开放0，本地出口完成；4636d77普通推送、精确对象/独立HTTPS同SHA通过；自己的CI42799311145第三份官方样本双OS七必要步骤success/completed、原评审者离线终核通过，精确交付终结|
 
 每节点更新本片记录、总资源计划和PLAN。只针对新的实证问题重测受影响范围。D4/D5以一份完整候选记录验证和交付，避免为同一安装状态新增重复运行；验收不能替代C3d联合提权或F9真实实验。

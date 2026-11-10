@@ -1,6 +1,6 @@
 # AC5 C3c D4/D5 独立审查
 
-**最终本地结论：Spec 通过，Standards 通过；RIN-S1、RIN-D1 均关闭，开放 finding 0。** 完整范围已扩大并固定为24文件、14份 Markdown/10份公开 JSON；精确提交、自己的 CI 和 HTTPS 仍待后续核验。本结论与文末最终补核为当前状态，以下首轮范围与待办保留为历史。
+**最终结论：Spec 通过，Standards 通过；RIN-S1、RIN-D1 均关闭，开放 finding 0，D4/D5 精确交付终结。** 完整24文件提交 `4636d77377bf63f15c357cf14660024e3ae1f939` 的对象、独立 HTTPS 同 SHA 和自己的双 OS CI 七必要步骤均已核验。文末最终精确门禁为当前状态，以下首轮及中间样本待办保留为历史；后续工作树准备不属于该提交。
 
 ## 首轮审查历史
 
@@ -75,3 +75,25 @@ J1–J3 未发现产品 Spec 缺陷。独立从真实定义 `nodes/ref` 重建�
 主审最终固定范围/清理审计2308项核对0.65秒，第二轮读取审计878项核对0.30秒；Spec 轴原件/状态补核0.56秒，Standards 轴0.46秒。均为现存原件的离线检查，未新增测试或重跑模型/服务。明细在本片私有 `independent/final-candidate-audit.py/.json`、`self-review-audit.py`/`self-review-r2-audit.json`、`public-audit.py/.json`、`credential-presence-audit.json` 和两轴的 `final-audit`/最终报告。原23文件对工作树的检查捕获作者同步补记产生的资源计划差异，保留为 `final-candidate-23-drift.json`；改以新24文件固定范围核验后通过，没有忽略漂移。
 
 最终两轴开放 finding 均为0，完整本地出口通过。精确提交/推送、自己的必要 CI 和明确 HTTPS 同完整 SHA 尚未核验；不能用 D3 的 CI 替代。C3d共同提权、C4画布、C5正式交接、C6规模、Windows原生模型及真实训练仍属相应后续范围。本次完整投递与模型复审不构成正式 owner 批准、不同模型独立性或 OS 隔离证明。
+
+## 精确提交与一次 HTTPS 核验
+
+2026-11-10 10:33 UTC 同片补核：普通提交 `4636d77377bf63f15c357cf14660024e3ae1f939` 的原始 commit 对象、唯一父 `a9778e00e81b3b2e43a4f5745c92fbb21c990c5a`、树 `30ff2e8cd9b0e74e415f31d9d5f0b3c2fad78326` 及24份 blob 均直接从精确 Git 对象核验，SHA1对象身份、mode、完整字节和 ready 的 SHA256 相同。原普通 push 的命令/exit0/stdout/stderr回执身份相符；核验没有再次推送或查询 SSH。
+
+ready 相对最终审查快照的七份差异完整读取：本报告为已确认的终核续记，其余六份交付/父子计划只记录本地通过、finding关闭及精确交付待办。产品、原运行和十份公开 JSON 未变。435份 Git 源码、原 D3 R2 wheel、安装文件及两份 RECORD 的摘要/尺寸全部匹配；283份冻结资产的 Git 对象、mode 和字节保持。两轮实际模型附件各13份保护源中10份与精确 Git blob 一致、3份私有驱动与原摘要一致，原附件/结果身份相同。十份已提交公开投影重新按原件与披露转换核对通过。原检查点观察工作树 clean；本段及后续工作树状态不是该提交树的内容。
+
+唯一授权的隔离 HTTPS 引用读取于 **2026-11-10 10:32:04.749412–10:32:06.130342 UTC** 完成，exit0/1.38秒，完整返回该提交及 `refs/heads/refactor/architecture-foundations`。请求使用明确的 `https://github.com/626619403/Ergora.git`，从 `/` 运行，禁止系统/全局/本地 URL 改写、凭据助手与提示，只允许 HTTPS/TLS验证、不跟重定向，保留既有代理环境但没有记录其值，超时45秒。原 stdout/stderr/Git trace 的摘要和完整引用已核；没有第二次网络操作。
+
+自己的 [CI42799311145](https://github.com/626619403/Ergora/actions/runs/42799311145) 首份官方样本直接解析原 HTML/嵌入JSON：完整提交、Portability workflow、两组 OS 和各日志身份相同；run为 `In progress`，两个 job均 `in_progress`。七必要步骤中的四项构建/参考 identity显示success，但 `job_completed=false`，三后续必要步骤未终结，**CI门禁仍未通过**。原件来源/bytes/SHA 与摘要一致；未重跑、取消或请求新的CI样本。
+
+离线精确对象核对3080项/0.65秒，原件在私有 `independent/exact-local-audit.py/.json`、`exact-ready-status.diff`；一次 HTTPS 原件在 `independent/https-remote-01/`；首份 CI 离线原件审计为 `independent/audit-ci-snapshot.py`/`audit-ci-snapshot-01.json`。`independent/exact-delivery-gate.json` 中本地对象与HTTPS门禁为true，完整精确交付门禁为false，仅余自己的CI终态待验。后续状态修改不改变本次提交对象的验收身份。
+
+## 最终独立精确门禁
+
+2026-11-10 **10:44 UTC** 同片离线终核通过。[CI42799311145](https://github.com/626619403/Ergora/actions/runs/42799311145) 的第三份官方原件采样于10:42:10.911092–10:42:15.119093 UTC，完整绑定提交 `4636d77377bf63f15c357cf14660024e3ae1f939` 与 Portability workflow。独立重新解析原 HTML、嵌入 JSON 及完整两组 job 列表：Linux job `129772447966`、Windows job `129772447578` 均为 `completed/success`；七必要步骤全部 `success`、`job_completed=true`，完成时间存在，日志 URL 均绑定同一完整提交和各自 job，没有不利步骤终态。
+
+五份官方响应的来源、HTTP200、完整 bytes/SHA及摘要一致；三次采样的 collector 与保留原源文件逐字节相同，SHA256为 `ce0e17146114d00e79050cbf79d0b676cebba3178048ce1909fa132eee68bcec`。第一、第二份 `In progress` 原件及各自四步success/CI未通过结论完整保留，第三份不回写旧样本。
+
+原精确 commit/父/tree/24 blob 审计和唯一 HTTPS 原 stdout/stderr/trace 身份保持，未重新联网。`independent/exact-delivery-gate.json` 与 `final-exact-gate.json` 的 `exact_delivery_gate_passes=true`；本片 Spec、Standards、普通提交/原push回执、自己的必要 CI 和独立明确 HTTPS 门禁均已终结。原先待终态的门禁单独保存在 `exact-delivery-gate-pending-snapshot-01.json`。
+
+本轮只更新审查记录与私有离线审计，没有网络、模型、服务、安装、测试、CI重跑/取消或提交/推送。作者开始的 C3d 计划/驱动准备及本报告续记均为工作树后续状态，不冒充已提交候选，也不扩大本片验收边界。

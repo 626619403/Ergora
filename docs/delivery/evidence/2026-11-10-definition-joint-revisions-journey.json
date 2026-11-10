@@ -1,0 +1,834 @@
+{
+  "kind": "ergora-recorded-evidence-projection",
+  "projection": {
+    "checked_at": "2026-11-10T10:48:31.568954+00:00",
+    "baseline": "4636d77377bf63f15c357cf14660024e3ae1f939",
+    "seconds": 84.67877139896154,
+    "installed_package": "$REPOSITORY/.ergora/checks/ac5-definition-resource-editor/r2/wheel-venv/lib/python3.12/site-packages/ergora",
+    "reused_wheel_sha256": "25b5a5cf8b3044696479299abcd755b1fbb992ce43589d5ce82d3577769a351f",
+    "cli_calls": 118,
+    "rejected_calls": 23,
+    "original_objects_unchanged": 35,
+    "state": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/control",
+    "roundtrip_state": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/roundtrip",
+    "repeat_manifest": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/repeated/manifest",
+    "repeated_paths": [
+      "root/review/structure/review",
+      "root/review/structure-extra/review",
+      "root/review/structure-advisory/review"
+    ],
+    "admissions": [
+      {
+        "instance": "root/review/structure/review",
+        "backend": "codex",
+        "command_number": 110,
+        "binding": {
+          "tool": "codex"
+        },
+        "input_digest": "6b8fc5d23119199f1122a7704762aae3e8c9e4a6bc83766d06aaf2647a9e59a9",
+        "authentication": "Codex login or explicit inference provider environment credential references; not checked"
+      },
+      {
+        "instance": "root/review/structure/review",
+        "backend": "claude-code",
+        "command_number": 111,
+        "binding": {
+          "tool": "claude-code"
+        },
+        "input_digest": "6b8fc5d23119199f1122a7704762aae3e8c9e4a6bc83766d06aaf2647a9e59a9",
+        "authentication": "Bare mode API environment credentials; stored OAuth/keychain are not read"
+      },
+      {
+        "instance": "root/review/structure-extra/review",
+        "backend": "codex",
+        "command_number": 113,
+        "binding": {
+          "tool": "codex"
+        },
+        "input_digest": "7726ae8c0921effa364b02383e666e2bbd9c060092aa2935bede2cbd35671d25",
+        "authentication": "Codex login or explicit inference provider environment credential references; not checked"
+      },
+      {
+        "instance": "root/review/structure-extra/review",
+        "backend": "claude-code",
+        "command_number": 114,
+        "binding": {
+          "tool": "claude-code"
+        },
+        "input_digest": "7726ae8c0921effa364b02383e666e2bbd9c060092aa2935bede2cbd35671d25",
+        "authentication": "Bare mode API environment credentials; stored OAuth/keychain are not read"
+      },
+      {
+        "instance": "root/review/structure-advisory/review",
+        "backend": "codex",
+        "command_number": 116,
+        "binding": {
+          "tool": "codex"
+        },
+        "input_digest": "89f8f1ee94f6bd0b3b2c4db1ee47b7117a5f5ab8d85525832ac02fe9fce74b3c",
+        "authentication": "Codex login or explicit inference provider environment credential references; not checked"
+      },
+      {
+        "instance": "root/review/structure-advisory/review",
+        "backend": "claude-code",
+        "command_number": 117,
+        "binding": {
+          "tool": "claude-code"
+        },
+        "input_digest": "89f8f1ee94f6bd0b3b2c4db1ee47b7117a5f5ab8d85525832ac02fe9fce74b3c",
+        "authentication": "Bare mode API environment credentials; stored OAuth/keychain are not read"
+      }
+    ],
+    "agent_run_count": 0,
+    "scope": "Real CLI/static admission; no model/network tool/OS isolation/formal approval/GPU training claim.",
+    "domains": [
+      {
+        "domain": "repository-governance",
+        "leaf": "root/review/structure/review",
+        "root": {
+          "kind": "workflow",
+          "id": "ergora-governance-delivery",
+          "version": "1.0.41",
+          "digest": "2423f84b7b6305bd20048d4b299f922938b28089baa3a3c1997c0ee23d0491c9"
+        },
+        "published": [
+          {
+            "ref": {
+              "kind": "workflow",
+              "id": "ergora-structure-review",
+              "version": "1.0.41",
+              "digest": "f372ab574528a740c503de21b55dffa4abcf7a8167f7e0b7e15169a39d47f661"
+            },
+            "base_digest": "1c19b6dab63451f2bff4c87d1e7531512319c22d025ca76a5736e825a4efdd56",
+            "path": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/control/workflow-definitions/objects/f372ab574528a740c503de21b55dffa4abcf7a8167f7e0b7e15169a39d47f661"
+          },
+          {
+            "ref": {
+              "kind": "workflow",
+              "id": "ergora-delivery-review",
+              "version": "1.0.41",
+              "digest": "24d9c3189f69acc61db64d1f792fe4c60c236759c3d47074c2bec0b590e486b3"
+            },
+            "base_digest": "880450fe0d3dd756c24fa37bc0ca7c68ff9729b1cca491e84e134eac3701390f",
+            "path": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/control/workflow-definitions/objects/24d9c3189f69acc61db64d1f792fe4c60c236759c3d47074c2bec0b590e486b3"
+          },
+          {
+            "ref": {
+              "kind": "workflow",
+              "id": "ergora-governance-delivery",
+              "version": "1.0.41",
+              "digest": "2423f84b7b6305bd20048d4b299f922938b28089baa3a3c1997c0ee23d0491c9"
+            },
+            "base_digest": "21a0513cd15828bce24cd21b9344dccc47a2a3efff44648db87d28ba7a62fb4d",
+            "path": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/control/workflow-definitions/objects/2423f84b7b6305bd20048d4b299f922938b28089baa3a3c1997c0ee23d0491c9"
+          }
+        ],
+        "changed_network_paths": [
+          "root",
+          "root/review",
+          "root/review/gather",
+          "root/review/structure",
+          "root/review/structure/gather",
+          "root/review/structure/review"
+        ],
+        "old_grant": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/repository-governance/old-grant.json",
+        "new_grant": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/repository-governance/new-grant.json",
+        "old_manifest": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/repository-governance/old-manifest",
+        "old_input": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/repository-governance/old-input",
+        "new_manifest": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/repository-governance/new-manifest",
+        "new_input": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/repository-governance/new-input",
+        "all_inherited_content_preserved": true,
+        "unsupported_calls_rejected_before_run": true,
+        "old_snapshots": {
+          "manifest": {
+            "digest": "9484b59007e5cda3571ffa2432ecd4c4c82cb91131c16e5c0ced30687381ea2b",
+            "files": 51,
+            "directories": 49,
+            "full_mode_entries": 101
+          },
+          "input": {
+            "digest": "2ba0cdf722588345572a9628d28577f2c965cd5175ca5246373a69de4d486abe",
+            "files": 53,
+            "directories": 49,
+            "full_mode_entries": 103
+          }
+        }
+      },
+      {
+        "domain": "large-change",
+        "leaf": "root/review/structure/review",
+        "root": {
+          "kind": "workflow",
+          "id": "ergora-large-change-delivery",
+          "version": "1.0.42",
+          "digest": "f7a1a7830e449ba842d01b9bdc611350ea2eed1d764e1eef04d891d02e6036f5"
+        },
+        "published": [
+          {
+            "ref": {
+              "kind": "workflow",
+              "id": "ergora-structure-review",
+              "version": "1.0.42",
+              "digest": "52735ac1c2768f47700e0286ac15a39abbb02d593e0a51eca808391ec24472ca"
+            },
+            "base_digest": "f48c5b0fd51f987720c644d17b36aced54626e26ed6e4ff020d7c0107dfb8c01",
+            "path": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/control/workflow-definitions/objects/52735ac1c2768f47700e0286ac15a39abbb02d593e0a51eca808391ec24472ca"
+          },
+          {
+            "ref": {
+              "kind": "workflow",
+              "id": "ergora-delivery-review",
+              "version": "1.0.42",
+              "digest": "8b82751ca2012ce6f505ada4d15b9afd1e51445da53f9d6e19a2ec47ff753d53"
+            },
+            "base_digest": "cbbc87197ff6ecbc8c51a49f55d26f4e18093ec214fca09bfd72ddc7e04004a8",
+            "path": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/control/workflow-definitions/objects/8b82751ca2012ce6f505ada4d15b9afd1e51445da53f9d6e19a2ec47ff753d53"
+          },
+          {
+            "ref": {
+              "kind": "workflow",
+              "id": "ergora-large-change-delivery",
+              "version": "1.0.42",
+              "digest": "f7a1a7830e449ba842d01b9bdc611350ea2eed1d764e1eef04d891d02e6036f5"
+            },
+            "base_digest": "90367c66dac4670eae3a8ee12ebeb77ee102d5fc859a5128a9b77c3fdb4db8f0",
+            "path": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/control/workflow-definitions/objects/f7a1a7830e449ba842d01b9bdc611350ea2eed1d764e1eef04d891d02e6036f5"
+          }
+        ],
+        "changed_network_paths": [
+          "root",
+          "root/review",
+          "root/review/gather",
+          "root/review/structure",
+          "root/review/structure/gather",
+          "root/review/structure/review"
+        ],
+        "old_grant": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/large-change/old-grant.json",
+        "new_grant": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/large-change/new-grant.json",
+        "old_manifest": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/large-change/old-manifest",
+        "old_input": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/large-change/old-input",
+        "new_manifest": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/large-change/new-manifest",
+        "new_input": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/large-change/new-input",
+        "all_inherited_content_preserved": true,
+        "unsupported_calls_rejected_before_run": true,
+        "old_snapshots": {
+          "manifest": {
+            "digest": "159a0b7ee660900cdc000698579baad80bf10c4702402557bed9cae3072326a6",
+            "files": 57,
+            "directories": 55,
+            "full_mode_entries": 113
+          },
+          "input": {
+            "digest": "ba155081529fdaf79945b11441de739c8fab7270dbec28fe228cee157f30e0a1",
+            "files": 59,
+            "directories": 55,
+            "full_mode_entries": 115
+          }
+        }
+      },
+      {
+        "domain": "training-optimization",
+        "leaf": "root/measurement/review",
+        "root": {
+          "kind": "workflow",
+          "id": "ergora-training-proposal",
+          "version": "1.0.43",
+          "digest": "7d1e885943eae4ba918e1ae4c09493cff9217f2190f5311a507a553af180e991"
+        },
+        "published": [
+          {
+            "ref": {
+              "kind": "workflow",
+              "id": "ergora-measurement-review",
+              "version": "1.0.43",
+              "digest": "675f61218a4d4ca14c86fd983da02a8cdc20c15d1d3d9a2d3296923c9281fc42"
+            },
+            "base_digest": "ce0530d7831760389c10872b4361c136ef640280567e50a8af22eb0bf1bf2328",
+            "path": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/control/workflow-definitions/objects/675f61218a4d4ca14c86fd983da02a8cdc20c15d1d3d9a2d3296923c9281fc42"
+          },
+          {
+            "ref": {
+              "kind": "workflow",
+              "id": "ergora-training-proposal",
+              "version": "1.0.43",
+              "digest": "7d1e885943eae4ba918e1ae4c09493cff9217f2190f5311a507a553af180e991"
+            },
+            "base_digest": "88d01131f24af9b6361baeb6ff33eb6628f6e82ba785ca3a3950506414662346",
+            "path": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/control/workflow-definitions/objects/7d1e885943eae4ba918e1ae4c09493cff9217f2190f5311a507a553af180e991"
+          }
+        ],
+        "changed_network_paths": [
+          "root",
+          "root/gather",
+          "root/measurement",
+          "root/measurement/review"
+        ],
+        "old_grant": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/training-optimization/old-grant.json",
+        "new_grant": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/training-optimization/new-grant.json",
+        "old_manifest": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/training-optimization/old-manifest",
+        "old_input": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/training-optimization/old-input",
+        "new_manifest": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/training-optimization/new-manifest",
+        "new_input": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/training-optimization/new-input",
+        "all_inherited_content_preserved": true,
+        "unsupported_calls_rejected_before_run": true,
+        "old_snapshots": {
+          "manifest": {
+            "digest": "2ced1f6403928ea6c4f7b04b0a50ee8c881aff5d25f3841add608456cfc933e1",
+            "files": 37,
+            "directories": 37,
+            "full_mode_entries": 75
+          },
+          "input": {
+            "digest": "efc882ae581abc71beaddf8d9a4f3ade8864f6f30eac2756041b0e9cf36331ca",
+            "files": 39,
+            "directories": 37,
+            "full_mode_entries": 77
+          }
+        }
+      }
+    ],
+    "rejections": [
+      {
+        "command_number": 31,
+        "expected_error": "Permission exceeds ancestor/project",
+        "directory": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/rejections/00",
+        "both_full_indexes_unchanged": true,
+        "agent_run_records_unchanged": true
+      },
+      {
+        "command_number": 36,
+        "expected_error": "Permission exceeds ancestor/project",
+        "directory": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/rejections/01",
+        "both_full_indexes_unchanged": true,
+        "agent_run_records_unchanged": true
+      },
+      {
+        "command_number": 41,
+        "expected_error": "Permission exceeds ancestor/project",
+        "directory": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/rejections/02",
+        "both_full_indexes_unchanged": true,
+        "agent_run_records_unchanged": true
+      },
+      {
+        "command_number": 46,
+        "expected_error": "Permission exceeds ancestor/project at root: network",
+        "directory": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/rejections/03",
+        "both_full_indexes_unchanged": true,
+        "agent_run_records_unchanged": true
+      },
+      {
+        "command_number": 49,
+        "expected_error": "cannot satisfy write, shell or network requests",
+        "directory": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/rejections/04",
+        "both_full_indexes_unchanged": true,
+        "agent_run_records_unchanged": true
+      },
+      {
+        "command_number": 50,
+        "expected_error": "cannot satisfy write, shell or network requests",
+        "directory": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/rejections/05",
+        "both_full_indexes_unchanged": true,
+        "agent_run_records_unchanged": true
+      },
+      {
+        "command_number": 51,
+        "expected_error": "cannot satisfy write, shell or network requests",
+        "directory": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/rejections/06",
+        "both_full_indexes_unchanged": true,
+        "agent_run_records_unchanged": true
+      },
+      {
+        "command_number": 52,
+        "expected_error": "cannot satisfy write, shell or network requests",
+        "directory": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/rejections/07",
+        "both_full_indexes_unchanged": true,
+        "agent_run_records_unchanged": true
+      },
+      {
+        "command_number": 55,
+        "expected_error": "Permission exceeds ancestor/project",
+        "directory": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/rejections/08",
+        "both_full_indexes_unchanged": true,
+        "agent_run_records_unchanged": true
+      },
+      {
+        "command_number": 60,
+        "expected_error": "Permission exceeds ancestor/project",
+        "directory": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/rejections/09",
+        "both_full_indexes_unchanged": true,
+        "agent_run_records_unchanged": true
+      },
+      {
+        "command_number": 65,
+        "expected_error": "Permission exceeds ancestor/project",
+        "directory": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/rejections/10",
+        "both_full_indexes_unchanged": true,
+        "agent_run_records_unchanged": true
+      },
+      {
+        "command_number": 70,
+        "expected_error": "Permission exceeds ancestor/project at root: network",
+        "directory": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/rejections/11",
+        "both_full_indexes_unchanged": true,
+        "agent_run_records_unchanged": true
+      },
+      {
+        "command_number": 73,
+        "expected_error": "cannot satisfy write, shell or network requests",
+        "directory": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/rejections/12",
+        "both_full_indexes_unchanged": true,
+        "agent_run_records_unchanged": true
+      },
+      {
+        "command_number": 74,
+        "expected_error": "cannot satisfy write, shell or network requests",
+        "directory": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/rejections/13",
+        "both_full_indexes_unchanged": true,
+        "agent_run_records_unchanged": true
+      },
+      {
+        "command_number": 75,
+        "expected_error": "cannot satisfy write, shell or network requests",
+        "directory": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/rejections/14",
+        "both_full_indexes_unchanged": true,
+        "agent_run_records_unchanged": true
+      },
+      {
+        "command_number": 76,
+        "expected_error": "cannot satisfy write, shell or network requests",
+        "directory": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/rejections/15",
+        "both_full_indexes_unchanged": true,
+        "agent_run_records_unchanged": true
+      },
+      {
+        "command_number": 79,
+        "expected_error": "Permission exceeds ancestor/project",
+        "directory": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/rejections/16",
+        "both_full_indexes_unchanged": true,
+        "agent_run_records_unchanged": true
+      },
+      {
+        "command_number": 84,
+        "expected_error": "Permission exceeds ancestor/project",
+        "directory": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/rejections/17",
+        "both_full_indexes_unchanged": true,
+        "agent_run_records_unchanged": true
+      },
+      {
+        "command_number": 89,
+        "expected_error": "Permission exceeds ancestor/project at root: network",
+        "directory": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/rejections/18",
+        "both_full_indexes_unchanged": true,
+        "agent_run_records_unchanged": true
+      },
+      {
+        "command_number": 92,
+        "expected_error": "cannot satisfy write, shell or network requests",
+        "directory": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/rejections/19",
+        "both_full_indexes_unchanged": true,
+        "agent_run_records_unchanged": true
+      },
+      {
+        "command_number": 93,
+        "expected_error": "cannot satisfy write, shell or network requests",
+        "directory": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/rejections/20",
+        "both_full_indexes_unchanged": true,
+        "agent_run_records_unchanged": true
+      },
+      {
+        "command_number": 94,
+        "expected_error": "cannot satisfy write, shell or network requests",
+        "directory": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/rejections/21",
+        "both_full_indexes_unchanged": true,
+        "agent_run_records_unchanged": true
+      },
+      {
+        "command_number": 95,
+        "expected_error": "cannot satisfy write, shell or network requests",
+        "directory": "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r2/journey/rejections/22",
+        "both_full_indexes_unchanged": true,
+        "agent_run_records_unchanged": true
+      }
+    ],
+    "index_pairs": [
+      {
+        "command_number": 31,
+        "kind": "agent",
+        "before_and_after_bytes": 1928,
+        "before_and_after_sha256": "4a4de0b4592c5414ac9c4cd7d2d077e4891dcd740c879230c31abac30fcf3aba",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 31,
+        "kind": "workflow",
+        "before_and_after_bytes": 2077,
+        "before_and_after_sha256": "541825eebb50ef83a610d38478dd72039991d9dc3935871141338c60e1d266d1",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 36,
+        "kind": "agent",
+        "before_and_after_bytes": 1928,
+        "before_and_after_sha256": "4a4de0b4592c5414ac9c4cd7d2d077e4891dcd740c879230c31abac30fcf3aba",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 36,
+        "kind": "workflow",
+        "before_and_after_bytes": 2161,
+        "before_and_after_sha256": "9ddd36016c110f1258def4e948c90c26b5f241aa9627c6cbf1db494b6ae77a1e",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 41,
+        "kind": "agent",
+        "before_and_after_bytes": 1928,
+        "before_and_after_sha256": "4a4de0b4592c5414ac9c4cd7d2d077e4891dcd740c879230c31abac30fcf3aba",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 41,
+        "kind": "workflow",
+        "before_and_after_bytes": 2245,
+        "before_and_after_sha256": "5b5dd04d7eecde77cd753f2ef482c1b6ab82906b50f012287ab64004819b30a2",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 46,
+        "kind": "agent",
+        "before_and_after_bytes": 1928,
+        "before_and_after_sha256": "4a4de0b4592c5414ac9c4cd7d2d077e4891dcd740c879230c31abac30fcf3aba",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 46,
+        "kind": "workflow",
+        "before_and_after_bytes": 2329,
+        "before_and_after_sha256": "c2afbb75dc0d3c1660f5c7fce26ec215caffda3896fe42834795376f7d66310e",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 49,
+        "kind": "agent",
+        "before_and_after_bytes": 1928,
+        "before_and_after_sha256": "4a4de0b4592c5414ac9c4cd7d2d077e4891dcd740c879230c31abac30fcf3aba",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 49,
+        "kind": "workflow",
+        "before_and_after_bytes": 2329,
+        "before_and_after_sha256": "c2afbb75dc0d3c1660f5c7fce26ec215caffda3896fe42834795376f7d66310e",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 50,
+        "kind": "agent",
+        "before_and_after_bytes": 1928,
+        "before_and_after_sha256": "4a4de0b4592c5414ac9c4cd7d2d077e4891dcd740c879230c31abac30fcf3aba",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 50,
+        "kind": "workflow",
+        "before_and_after_bytes": 2329,
+        "before_and_after_sha256": "c2afbb75dc0d3c1660f5c7fce26ec215caffda3896fe42834795376f7d66310e",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 51,
+        "kind": "agent",
+        "before_and_after_bytes": 1928,
+        "before_and_after_sha256": "4a4de0b4592c5414ac9c4cd7d2d077e4891dcd740c879230c31abac30fcf3aba",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 51,
+        "kind": "workflow",
+        "before_and_after_bytes": 2329,
+        "before_and_after_sha256": "c2afbb75dc0d3c1660f5c7fce26ec215caffda3896fe42834795376f7d66310e",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 52,
+        "kind": "agent",
+        "before_and_after_bytes": 1928,
+        "before_and_after_sha256": "4a4de0b4592c5414ac9c4cd7d2d077e4891dcd740c879230c31abac30fcf3aba",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 52,
+        "kind": "workflow",
+        "before_and_after_bytes": 2329,
+        "before_and_after_sha256": "c2afbb75dc0d3c1660f5c7fce26ec215caffda3896fe42834795376f7d66310e",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 55,
+        "kind": "agent",
+        "before_and_after_bytes": 1928,
+        "before_and_after_sha256": "4a4de0b4592c5414ac9c4cd7d2d077e4891dcd740c879230c31abac30fcf3aba",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 55,
+        "kind": "workflow",
+        "before_and_after_bytes": 2329,
+        "before_and_after_sha256": "c2afbb75dc0d3c1660f5c7fce26ec215caffda3896fe42834795376f7d66310e",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 60,
+        "kind": "agent",
+        "before_and_after_bytes": 1928,
+        "before_and_after_sha256": "4a4de0b4592c5414ac9c4cd7d2d077e4891dcd740c879230c31abac30fcf3aba",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 60,
+        "kind": "workflow",
+        "before_and_after_bytes": 2413,
+        "before_and_after_sha256": "067528c740f3b48ae9ee42b09be00fee343579d771c32e60b6a6c65f3ef5c720",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 65,
+        "kind": "agent",
+        "before_and_after_bytes": 1928,
+        "before_and_after_sha256": "4a4de0b4592c5414ac9c4cd7d2d077e4891dcd740c879230c31abac30fcf3aba",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 65,
+        "kind": "workflow",
+        "before_and_after_bytes": 2497,
+        "before_and_after_sha256": "34ffd0d0389616912b6cb3f5f01a3fca1c7324008c6ee7e1afe8ef7ee37b92ba",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 70,
+        "kind": "agent",
+        "before_and_after_bytes": 1928,
+        "before_and_after_sha256": "4a4de0b4592c5414ac9c4cd7d2d077e4891dcd740c879230c31abac30fcf3aba",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 70,
+        "kind": "workflow",
+        "before_and_after_bytes": 2581,
+        "before_and_after_sha256": "9481f28be8a427d92f60ff282525f5e08bc8489fb81de9747e9a16bb5854db57",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 73,
+        "kind": "agent",
+        "before_and_after_bytes": 1928,
+        "before_and_after_sha256": "4a4de0b4592c5414ac9c4cd7d2d077e4891dcd740c879230c31abac30fcf3aba",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 73,
+        "kind": "workflow",
+        "before_and_after_bytes": 2581,
+        "before_and_after_sha256": "9481f28be8a427d92f60ff282525f5e08bc8489fb81de9747e9a16bb5854db57",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 74,
+        "kind": "agent",
+        "before_and_after_bytes": 1928,
+        "before_and_after_sha256": "4a4de0b4592c5414ac9c4cd7d2d077e4891dcd740c879230c31abac30fcf3aba",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 74,
+        "kind": "workflow",
+        "before_and_after_bytes": 2581,
+        "before_and_after_sha256": "9481f28be8a427d92f60ff282525f5e08bc8489fb81de9747e9a16bb5854db57",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 75,
+        "kind": "agent",
+        "before_and_after_bytes": 1928,
+        "before_and_after_sha256": "4a4de0b4592c5414ac9c4cd7d2d077e4891dcd740c879230c31abac30fcf3aba",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 75,
+        "kind": "workflow",
+        "before_and_after_bytes": 2581,
+        "before_and_after_sha256": "9481f28be8a427d92f60ff282525f5e08bc8489fb81de9747e9a16bb5854db57",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 76,
+        "kind": "agent",
+        "before_and_after_bytes": 1928,
+        "before_and_after_sha256": "4a4de0b4592c5414ac9c4cd7d2d077e4891dcd740c879230c31abac30fcf3aba",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 76,
+        "kind": "workflow",
+        "before_and_after_bytes": 2581,
+        "before_and_after_sha256": "9481f28be8a427d92f60ff282525f5e08bc8489fb81de9747e9a16bb5854db57",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 79,
+        "kind": "agent",
+        "before_and_after_bytes": 1928,
+        "before_and_after_sha256": "4a4de0b4592c5414ac9c4cd7d2d077e4891dcd740c879230c31abac30fcf3aba",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 79,
+        "kind": "workflow",
+        "before_and_after_bytes": 2581,
+        "before_and_after_sha256": "9481f28be8a427d92f60ff282525f5e08bc8489fb81de9747e9a16bb5854db57",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 84,
+        "kind": "agent",
+        "before_and_after_bytes": 1928,
+        "before_and_after_sha256": "4a4de0b4592c5414ac9c4cd7d2d077e4891dcd740c879230c31abac30fcf3aba",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 84,
+        "kind": "workflow",
+        "before_and_after_bytes": 2665,
+        "before_and_after_sha256": "2abe3bb3ff977b228b03b7ae6ce0cd1616d7579f19038df3a00e1bac1957dc30",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 89,
+        "kind": "agent",
+        "before_and_after_bytes": 1928,
+        "before_and_after_sha256": "4a4de0b4592c5414ac9c4cd7d2d077e4891dcd740c879230c31abac30fcf3aba",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 89,
+        "kind": "workflow",
+        "before_and_after_bytes": 2749,
+        "before_and_after_sha256": "4993d75fea44e5c757c645295a8bd024469150d40f11c93ad95923594e608689",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 92,
+        "kind": "agent",
+        "before_and_after_bytes": 1928,
+        "before_and_after_sha256": "4a4de0b4592c5414ac9c4cd7d2d077e4891dcd740c879230c31abac30fcf3aba",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 92,
+        "kind": "workflow",
+        "before_and_after_bytes": 2749,
+        "before_and_after_sha256": "4993d75fea44e5c757c645295a8bd024469150d40f11c93ad95923594e608689",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 93,
+        "kind": "agent",
+        "before_and_after_bytes": 1928,
+        "before_and_after_sha256": "4a4de0b4592c5414ac9c4cd7d2d077e4891dcd740c879230c31abac30fcf3aba",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 93,
+        "kind": "workflow",
+        "before_and_after_bytes": 2749,
+        "before_and_after_sha256": "4993d75fea44e5c757c645295a8bd024469150d40f11c93ad95923594e608689",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 94,
+        "kind": "agent",
+        "before_and_after_bytes": 1928,
+        "before_and_after_sha256": "4a4de0b4592c5414ac9c4cd7d2d077e4891dcd740c879230c31abac30fcf3aba",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 94,
+        "kind": "workflow",
+        "before_and_after_bytes": 2749,
+        "before_and_after_sha256": "4993d75fea44e5c757c645295a8bd024469150d40f11c93ad95923594e608689",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 95,
+        "kind": "agent",
+        "before_and_after_bytes": 1928,
+        "before_and_after_sha256": "4a4de0b4592c5414ac9c4cd7d2d077e4891dcd740c879230c31abac30fcf3aba",
+        "both_original_files_retained": true
+      },
+      {
+        "command_number": 95,
+        "kind": "workflow",
+        "before_and_after_bytes": 2749,
+        "before_and_after_sha256": "4993d75fea44e5c757c645295a8bd024469150d40f11c93ad95923594e608689",
+        "both_original_files_retained": true
+      }
+    ],
+    "original_harness_interruption": {
+      "original_driver": "journey-r1.py",
+      "completed_cli_calls": 34,
+      "error": "KeyError: directories",
+      "cause": "Acceptance driver assumed get() document exposes directories. The tree inventory owner returns directories, while DefinitionLibrary.get document does not.",
+      "product_changed": false,
+      "original_cli_failure": false,
+      "correction": "Compare complete directory inventory from actual fixed base/new paths; preserve R1 and use new isolated R2 acceptance State."
+    }
+  },
+  "original_sources": [
+    {
+      "private_relative_path": "r2/journey/summary.json",
+      "bytes": 201878,
+      "sha256": "fb38b4ca7f5ad8b2721ab4e38b42869a95de19d3d11d97c141b86135288a8dcb"
+    },
+    {
+      "private_relative_path": "r2/journey/commands.json",
+      "bytes": 85655,
+      "sha256": "55d79ef4ce03a36c5f02b74f13e56fa6b09c29dff6ae2335a818b2631a680180"
+    },
+    {
+      "private_relative_path": "r2/journey/rejections.json",
+      "bytes": 7098,
+      "sha256": "be128ef90ce02ab3835a4ff4e587e2311badac4bc5c26d37cf8fab94cb272a9b"
+    },
+    {
+      "private_relative_path": "r2/journey/original-objects.json",
+      "bytes": 50147,
+      "sha256": "61595c2902ae8448c1bd2c4b0fa3194839a95164e97de353a70e1b7a823e7dc5"
+    },
+    {
+      "private_relative_path": "journey-r2.py",
+      "bytes": 16330,
+      "sha256": "fdf0dbdccfc5ff03f21affc11d5d026ee4b995cb893c6d1f37ce6dfbafe1a7c8"
+    },
+    {
+      "private_relative_path": "journey-r1.py",
+      "bytes": 16294,
+      "sha256": "9d5cd98161e274fd81e9b44b490fecd170dc97df25fa50586b94b18a0e536c14"
+    },
+    {
+      "private_relative_path": "journey-r1.stderr",
+      "bytes": 571,
+      "sha256": "2f9a0c1736de708ea0557afea24fcde7bc1077b7ae7d5be0b169b03ca7a808d1"
+    },
+    {
+      "private_relative_path": "journey-r1-diagnosis.json",
+      "bytes": 480,
+      "sha256": "ac89afa34d49f6b6b447e7fcb2db0b8e3c4dab78dbf08e3aef743aa82e331c13"
+    }
+  ],
+  "transform": {
+    "machine_paths": "Repository/home paths and local HTTP origins replaced with placeholders.",
+    "omitted": "Old snapshot detailed inventories and duplicate CLI bodies omitted; summary digests/counts, original byte identities and complete index-pair identities retained.",
+    "identity": "Source bytes/SHA bind originals before formatting, redaction or omission; public JSON SHA is different."
+  }
+}

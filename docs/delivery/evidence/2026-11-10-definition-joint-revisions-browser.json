@@ -1,0 +1,639 @@
+{
+  "kind": "ergora-recorded-evidence-projection",
+  "projection": {
+    "first_phase_failed": "locator.selectOption: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel('实例精确引用', { exact: true })\u001b[22m\n",
+    "second_phase_failed": "locator.selectOption: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel('编辑实例', { exact: true })\u001b[22m\n\u001b[2m    - locator resolved to <select disabled aria-label=\"编辑实例\">…</select>\u001b[22m\n\u001b[2m  - attempting select option action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible and enabled\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying select option action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible and enabled\u001b[22m\n\u001b[2m      - element is not enabled\u001b[22m\n\u001b[2m    - retrying select option action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    60 × waiting for element to be visible and enabled\u001b[22m\n\u001b[2m       - element is not enabled\u001b[22m\n\u001b[2m     - retrying select option action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n",
+    "final_phase_passed": true,
+    "first_phase_publications": [
+      {
+        "id": "ergora-structure-review",
+        "base_digest": "1c19b6dab63451f2bff4c87d1e7531512319c22d025ca76a5736e825a4efdd56",
+        "ref": {
+          "kind": "workflow",
+          "id": "ergora-structure-review",
+          "version": "1.0.51",
+          "digest": "6f671e1b3e7e461a416bd6dd958efb7e0f212d4f4a12f0f697862f733c451d44"
+        },
+        "rejectedCandidatePreserved": true,
+        "originalUnchanged": true,
+        "finalDefinition": {
+          "description": "Check structural ownership and stable module interfaces.",
+          "id": "ergora-structure-review",
+          "inputs": [
+            "task"
+          ],
+          "limits": {
+            "concurrency": 4,
+            "depth": 8,
+            "instances": 128,
+            "material_bytes": 262144
+          },
+          "nodes": [
+            {
+              "depends_on": [],
+              "id": "review",
+              "inputs": {
+                "task": {
+                  "input": "task"
+                }
+              },
+              "permissions": {
+                "network": [
+                  "https://joint-revision.example.invalid"
+                ],
+                "read": [
+                  "workspace",
+                  "definitions"
+                ],
+                "shell": false,
+                "write": []
+              },
+              "ref": {
+                "digest": "3e3032fe0f50fc27dd4382abb9846f8d2f66b0c2d1561016d076f843cfe4d30f",
+                "id": "ergora-structure-reviewer",
+                "kind": "agent",
+                "version": "1.0.21"
+              },
+              "review_requirement": "required",
+              "role": "reviewer"
+            },
+            {
+              "depends_on": [
+                "review"
+              ],
+              "id": "gather",
+              "join": "all"
+            }
+          ],
+          "outputs": {
+            "result": {
+              "node": "gather",
+              "output": "result"
+            }
+          },
+          "permissions": {
+            "network": [
+              "https://joint-revision.example.invalid"
+            ],
+            "read": [
+              "workspace",
+              "definitions"
+            ],
+            "shell": false,
+            "write": []
+          },
+          "resources": [
+            {
+              "id": "ergora-structure-review-instructions",
+              "kind": "instructions",
+              "path": "instructions.md",
+              "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823"
+            },
+            {
+              "id": "inh-0-1-context",
+              "kind": "context",
+              "path": "context/inh-0-1.md",
+              "sha256": "bd5ae63204bbd2584eb402d59f90ad85f322fa26027b1ab4f98846a963169919"
+            },
+            {
+              "digest": "9718f4d0c9c61d849c9a50545081962d097f98f7ae0a46fb5646819556243cc0",
+              "id": "inh-0-1-skill",
+              "kind": "skill",
+              "path": "skills/inh-0-1"
+            }
+          ],
+          "schema_version": 2,
+          "version": "1.0.51"
+        }
+      }
+    ],
+    "continuation_publications": [
+      {
+        "id": "ergora-delivery-review",
+        "base_digest": "880450fe0d3dd756c24fa37bc0ca7c68ff9729b1cca491e84e134eac3701390f",
+        "ref": {
+          "kind": "workflow",
+          "id": "ergora-delivery-review",
+          "version": "1.0.51",
+          "digest": "718925556eb29c9098ae456c18fc1a91979f9120ec2d15e2223c1ba21b5d7293"
+        },
+        "rejectedCandidatePreserved": true,
+        "originalUnchanged": true,
+        "finalDefinition": {
+          "description": "Gather complementary reviews of the same exact verified candidate.",
+          "id": "ergora-delivery-review",
+          "inputs": [
+            "task"
+          ],
+          "limits": {
+            "concurrency": 4,
+            "depth": 8,
+            "instances": 128,
+            "material_bytes": 262144
+          },
+          "nodes": [
+            {
+              "depends_on": [],
+              "id": "structure",
+              "inputs": {
+                "task": {
+                  "input": "task"
+                }
+              },
+              "ref": {
+                "digest": "6f671e1b3e7e461a416bd6dd958efb7e0f212d4f4a12f0f697862f733c451d44",
+                "id": "ergora-structure-review",
+                "kind": "workflow",
+                "version": "1.0.51"
+              }
+            },
+            {
+              "depends_on": [],
+              "id": "correctness",
+              "inputs": {
+                "task": {
+                  "input": "task"
+                }
+              },
+              "ref": {
+                "digest": "bbc2d7bb8c0ecf420bedee847763aaaf488df7b90139904eb00057b78406aa5f",
+                "id": "ergora-correctness-review",
+                "kind": "workflow",
+                "version": "1.0.0"
+              }
+            },
+            {
+              "depends_on": [],
+              "id": "test-value",
+              "inputs": {
+                "task": {
+                  "input": "task"
+                }
+              },
+              "ref": {
+                "digest": "83e1cfd354d05434c4e55f728ba7c01e1dfdaf12f8461ac05c89cbb4c0855254",
+                "id": "ergora-test-value-review",
+                "kind": "workflow",
+                "version": "1.0.0"
+              }
+            },
+            {
+              "depends_on": [
+                "structure",
+                "correctness",
+                "test-value"
+              ],
+              "id": "gather",
+              "join": "all"
+            }
+          ],
+          "outputs": {
+            "result": {
+              "node": "gather",
+              "output": "result"
+            }
+          },
+          "permissions": {
+            "network": [
+              "https://joint-revision.example.invalid"
+            ],
+            "read": [
+              "workspace",
+              "definitions"
+            ],
+            "shell": false,
+            "write": []
+          },
+          "resources": [
+            {
+              "id": "ergora-delivery-review-instructions",
+              "kind": "instructions",
+              "path": "instructions.md",
+              "sha256": "83e867dadc6b374bd3791bcf79c87462375fff58a43b73a569d6f7b3c954e377"
+            },
+            {
+              "id": "inh-0-2-context",
+              "kind": "context",
+              "path": "context/inh-0-2.md",
+              "sha256": "4b4f5582e6f88b527d172ea9c8b57b7159313ddea5cb71200f5426c4a8f918fa"
+            },
+            {
+              "digest": "5a3bc327e52274de749ab48931b4eef7e277d8523aa4d3ed4cb61948353f1c48",
+              "id": "inh-0-2-skill",
+              "kind": "skill",
+              "path": "skills/inh-0-2"
+            }
+          ],
+          "schema_version": 2,
+          "version": "1.0.51"
+        }
+      },
+      {
+        "id": "ergora-governance-delivery",
+        "base_digest": "21a0513cd15828bce24cd21b9344dccc47a2a3efff44648db87d28ba7a62fb4d",
+        "ref": {
+          "kind": "workflow",
+          "id": "ergora-governance-delivery",
+          "version": "1.0.51",
+          "digest": "7af39d6410ae687fba1e32107849f091ebc7cf2fba23a160729504398aa931db"
+        },
+        "rejectedCandidatePreserved": true,
+        "originalUnchanged": true,
+        "finalDefinition": {
+          "description": "Govern an existing repository while preserving its accepted behavior and boundary policy.",
+          "id": "ergora-governance-delivery",
+          "inputs": [
+            "task"
+          ],
+          "limits": {
+            "concurrency": 4,
+            "depth": 8,
+            "instances": 128,
+            "material_bytes": 262144
+          },
+          "nodes": [
+            {
+              "depends_on": [],
+              "id": "work",
+              "inputs": {
+                "task": {
+                  "input": "task"
+                }
+              },
+              "ref": {
+                "digest": "e9ee2e387eac5b34b9bbce2aef5226bb2b482392f800507e233042b3749ba70e",
+                "id": "ergora-governance-work",
+                "kind": "workflow",
+                "version": "1.0.0"
+              }
+            },
+            {
+              "depends_on": [
+                "work"
+              ],
+              "id": "review",
+              "inputs": {
+                "task": {
+                  "node": "work",
+                  "output": "result"
+                }
+              },
+              "ref": {
+                "digest": "718925556eb29c9098ae456c18fc1a91979f9120ec2d15e2223c1ba21b5d7293",
+                "id": "ergora-delivery-review",
+                "kind": "workflow",
+                "version": "1.0.51"
+              }
+            }
+          ],
+          "outputs": {
+            "result": {
+              "node": "review",
+              "output": "result"
+            }
+          },
+          "permissions": {
+            "network": [
+              "https://joint-revision.example.invalid"
+            ],
+            "read": [
+              "workspace",
+              "definitions"
+            ],
+            "shell": true,
+            "write": [
+              "workspace"
+            ]
+          },
+          "resources": [
+            {
+              "id": "ergora-governance-delivery-instructions",
+              "kind": "instructions",
+              "path": "instructions.md",
+              "sha256": "66eb88ef7aebe40cc3b46a31539b7094ecb41746940efb992d4906fa8491a418"
+            },
+            {
+              "id": "inh-0-3-context",
+              "kind": "context",
+              "path": "context/inh-0-3.md",
+              "sha256": "bc51939daf170f333901f8b33721af395613241619cda2cd9a8793ba441b5280"
+            },
+            {
+              "digest": "0fa1b88dbe40027c8ec57dd03e7c8dace1492840cb8b78d74b5e488ef260b8c3",
+              "id": "inh-0-3-skill",
+              "kind": "skill",
+              "path": "skills/inh-0-3"
+            }
+          ],
+          "schema_version": 2,
+          "version": "1.0.51"
+        }
+      }
+    ],
+    "diagnosis": {
+      "error": "Exact getByLabel does not match select containing option text; getByRole(combobox) matches its actual accessible name.",
+      "original_result": "r1/browser/result-01.json",
+      "preserved_first_publication": {
+        "kind": "workflow",
+        "id": "ergora-structure-review",
+        "version": "1.0.51",
+        "digest": "6f671e1b3e7e461a416bd6dd958efb7e0f212d4f4a12f0f697862f733c451d44"
+      },
+      "correction": "Use observed role/name and continue only the two remaining parents from retained same editor; do not rerun the completed child publication.",
+      "product_changed": false,
+      "second_attempt": "Attempt02 correctly found the restored unsaved form disables node switching; selector was redundantly trying to reselect the current node. Attempt03 keeps current selection and continues without discarding the form."
+    },
+    "actual_label_probe": {
+      "exactLabel": 0,
+      "partialLabel": 1,
+      "role": 1,
+      "labels": [
+        "实例精确引用workflow · ergora-correctness-review @ 1.0.0 · bbc2d7bb8c0eworkflow · ergora-delivery-review @ 1.0.0 · a85e76dcd25bworkflow · ergora-delivery-review @ 1.0.21 · 880450fe0d3dworkflow · ergora-governance-delivery @ 1.0.0 · e82c02d01d2cworkflow · ergora-governance-delivery @ 1.0.21 · 21a0513cd158workflow · ergora-governance-work @ 1.0.0 · e9ee2e387eacworkflow · ergora-structure-review @ 1.0.0 · 996c55d50e30workflow · ergora-structure-review @ 1.0.21 · 1c19b6dab634workflow · ergora-structure-review @ 1.0.51 · 6f671e1b3e7eworkflow · ergora-test-value-review @ 1.0.0 · 83e1cfd354d0"
+      ]
+    },
+    "phase_commands": [
+      {
+        "checked_at": "2026-11-10T10:51:41.885037+00:00",
+        "operation": "run-code",
+        "returncode": 0,
+        "seconds": 34.440152680967,
+        "stdout_sha256": "78986f86f3a7480445a05dd48c63c666a675649966dcec878b32af5c604eb6fb",
+        "stderr_sha256": "d86e00b16ccb2c7acdce3cb32ed4aae8ac6e4504343d61e2a8c1e78c69af66c9"
+      },
+      {
+        "checked_at": "2026-11-10T10:53:28.489361+00:00",
+        "operation": "run-code",
+        "returncode": 0,
+        "seconds": 32.044722083956,
+        "stdout_sha256": "7be8dbe4878d1633aba3b1dc7c0217aebb02c8cd56f4e50fde0af368fedd9a92",
+        "stderr_sha256": "d137925da8153c045df0fc8310562a2b71d6301bd1f1e431d47f1fc765a8a2e0"
+      },
+      {
+        "checked_at": "2026-11-10T10:54:00.006889+00:00",
+        "operation": "run-code",
+        "returncode": 0,
+        "seconds": 4.809041657950729,
+        "stdout_sha256": "3a44bcab308a73bc98ce69e32608b67422920ba6b18641ddacb2c587f5fcae54",
+        "stderr_sha256": "6a0fd60d8320dc8c0945a01e18635ec23c6d379e624b574213dfeb7b5534aa79"
+      }
+    ],
+    "actual_receipts": [
+      {
+        "phase": "01",
+        "method": "GET",
+        "url": "$LOCAL_HTTP/api/workflow-definitions/ergora-structure-review/1.0.21",
+        "status": 200,
+        "body_bytes": 3684,
+        "body_sha256": "6b15179bbddad78d85e3ccc1c72c2572243002d0a2978dfd0f4325aae7212a97",
+        "request_bytes": 0,
+        "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "phase": "01",
+        "method": "POST",
+        "url": "$LOCAL_HTTP/api/workflow-definitions/ergora-structure-review/1.0.21/revisions/check",
+        "status": 400,
+        "body_bytes": 71,
+        "body_sha256": "6f1daa5154d0615424a8d3b53b80652fa69aff3c6293a28cb101ad8c4bccec00",
+        "request_bytes": 1407,
+        "request_sha256": "a4d0478c41ae9e71a8156b593973db6ca7a638bda3320209d6489293eb7e42ea"
+      },
+      {
+        "phase": "01",
+        "method": "POST",
+        "url": "$LOCAL_HTTP/api/workflow-definitions/ergora-structure-review/1.0.21/revisions/check",
+        "status": 200,
+        "body_bytes": 3145,
+        "body_sha256": "ff0c3a262ea33c5ce14c273194d7f1efd159c32785f395cb5e00f0d0d145e984",
+        "request_bytes": 1447,
+        "request_sha256": "184b4a806c4d17a082b0ef1cce3882379e7d3ac61df0854c7d5575b215979eba"
+      },
+      {
+        "phase": "01",
+        "method": "POST",
+        "url": "$LOCAL_HTTP/api/workflow-definitions/ergora-structure-review/1.0.21/revisions",
+        "status": 200,
+        "body_bytes": 3144,
+        "body_sha256": "df5864ae8b6bbb8a95fda3db3dc5e6e3728d8262b97f4cf43f5293aa684e0a83",
+        "request_bytes": 1447,
+        "request_sha256": "184b4a806c4d17a082b0ef1cce3882379e7d3ac61df0854c7d5575b215979eba"
+      },
+      {
+        "phase": "01",
+        "method": "GET",
+        "url": "$LOCAL_HTTP/api/workflow-definitions/ergora-delivery-review/1.0.21",
+        "status": 200,
+        "body_bytes": 4094,
+        "body_sha256": "6e7c96c19a498bd43c510b83d22c681e9ac7de2603fa88eacb0f20649806a388",
+        "request_bytes": 0,
+        "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "phase": "02",
+        "method": "GET",
+        "url": "$LOCAL_HTTP/api/workflow-definitions/ergora-delivery-review/1.0.21",
+        "status": 200,
+        "body_bytes": 4094,
+        "body_sha256": "6e7c96c19a498bd43c510b83d22c681e9ac7de2603fa88eacb0f20649806a388",
+        "request_bytes": 0,
+        "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "phase": "03",
+        "method": "GET",
+        "url": "$LOCAL_HTTP/api/workflow-definitions/ergora-delivery-review/1.0.21",
+        "status": 200,
+        "body_bytes": 4094,
+        "body_sha256": "6e7c96c19a498bd43c510b83d22c681e9ac7de2603fa88eacb0f20649806a388",
+        "request_bytes": 0,
+        "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "phase": "03",
+        "method": "POST",
+        "url": "$LOCAL_HTTP/api/workflow-definitions/ergora-delivery-review/1.0.21/revisions/check",
+        "status": 400,
+        "body_bytes": 74,
+        "body_sha256": "6d6a52923978f6e59d0789bbb15435a08302ecc4ccb0de477eddc692c0472829",
+        "request_bytes": 1718,
+        "request_sha256": "2ffb777ae235a7d06423590404abaa9ad1c4ab839477e09b04a9d8187ad20860"
+      },
+      {
+        "phase": "03",
+        "method": "POST",
+        "url": "$LOCAL_HTTP/api/workflow-definitions/ergora-delivery-review/1.0.21/revisions/check",
+        "status": 200,
+        "body_bytes": 3454,
+        "body_sha256": "173679f3ec3d1aa5599a9aff40b8bc2c21c881d0398bb43c29a55756f4c6c428",
+        "request_bytes": 1758,
+        "request_sha256": "525ce2375f1046dd3e092adae685a6ff63a73a8a00e5e3847194bab72781e0d4"
+      },
+      {
+        "phase": "03",
+        "method": "POST",
+        "url": "$LOCAL_HTTP/api/workflow-definitions/ergora-delivery-review/1.0.21/revisions",
+        "status": 200,
+        "body_bytes": 3453,
+        "body_sha256": "722609f49b39f24a93e3312ff7a52c0fd8891ec9fd8ce9492aa2a0df6a9c94de",
+        "request_bytes": 1758,
+        "request_sha256": "525ce2375f1046dd3e092adae685a6ff63a73a8a00e5e3847194bab72781e0d4"
+      },
+      {
+        "phase": "03",
+        "method": "GET",
+        "url": "$LOCAL_HTTP/api/workflow-definitions/ergora-governance-delivery/1.0.21",
+        "status": 200,
+        "body_bytes": 3980,
+        "body_sha256": "197b1ec75288a52d9d435b43d5538975727fbafd0c69d244d167bb5b88c769ab",
+        "request_bytes": 0,
+        "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "phase": "03",
+        "method": "POST",
+        "url": "$LOCAL_HTTP/api/workflow-definitions/ergora-governance-delivery/1.0.21/revisions/check",
+        "status": 400,
+        "body_bytes": 71,
+        "body_sha256": "6f1daa5154d0615424a8d3b53b80652fa69aff3c6293a28cb101ad8c4bccec00",
+        "request_bytes": 1462,
+        "request_sha256": "66950b03148abd060d68ec77ea988071ba56bebd0b85ff063f49c457884d59fb"
+      },
+      {
+        "phase": "03",
+        "method": "POST",
+        "url": "$LOCAL_HTTP/api/workflow-definitions/ergora-governance-delivery/1.0.21/revisions/check",
+        "status": 200,
+        "body_bytes": 3206,
+        "body_sha256": "b5a39138196b4016e806d3e5cbf3abc975d0270fbe9b10a0a9f3c8d2b2fdad9b",
+        "request_bytes": 1502,
+        "request_sha256": "a3274cf21876d3bc1616d81fc265c94511d976dcbf79d4ec55fcd110ea314866"
+      },
+      {
+        "phase": "03",
+        "method": "POST",
+        "url": "$LOCAL_HTTP/api/workflow-definitions/ergora-governance-delivery/1.0.21/revisions",
+        "status": 200,
+        "body_bytes": 3205,
+        "body_sha256": "bb77fc796c4d79599e8f238e73259bc4a0f2b4e658cd4808b709d56e3c24407f",
+        "request_bytes": 1502,
+        "request_sha256": "a3274cf21876d3bc1616d81fc265c94511d976dcbf79d4ec55fcd110ea314866"
+      },
+      {
+        "phase": "03",
+        "method": "GET",
+        "url": "$LOCAL_HTTP/api/workflow-definitions/ergora-governance-delivery/1.0.51",
+        "status": 200,
+        "body_bytes": 4020,
+        "body_sha256": "f9e893df9bf48d8b02b70dec968eb4ffc1927d3fb1b247529102a8bf19bced7a",
+        "request_bytes": 0,
+        "request_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "phase": "03",
+        "method": "POST",
+        "url": "$LOCAL_HTTP/api/composition/preview",
+        "status": 400,
+        "body_bytes": 64,
+        "body_sha256": "e435205db0875061fa470eddd4c71e66146c07be83966fe39b4581ba3ad71ad9",
+        "request_bytes": 259,
+        "request_sha256": "a131d52763872b9b05ab1eccd56d45ec0c8cb3fbdb7c17d31d68e172051ef0af"
+      },
+      {
+        "phase": "03",
+        "method": "POST",
+        "url": "$LOCAL_HTTP/api/composition/preview",
+        "status": 200,
+        "body_bytes": 82828,
+        "body_sha256": "ec7f53f12cd193824732c7f3945adc5e102be08f2199141603f250eb6834147f",
+        "request_bytes": 299,
+        "request_sha256": "f1ccc311c4fe46075b62edd7cb66da28b659465f9b5144243a7a344f762ce44b"
+      }
+    ],
+    "audit": {
+      "checked_at": "2026-11-10T10:54:24.592149+00:00",
+      "original_objects_unchanged": 15,
+      "publications": [
+        {
+          "id": "ergora-structure-review",
+          "base_digest": "1c19b6dab63451f2bff4c87d1e7531512319c22d025ca76a5736e825a4efdd56",
+          "digest": "6f671e1b3e7e461a416bd6dd958efb7e0f212d4f4a12f0f697862f733c451d44",
+          "non_document_files": 6,
+          "resource_files_and_directories_preserved": true
+        },
+        {
+          "id": "ergora-delivery-review",
+          "base_digest": "880450fe0d3dd756c24fa37bc0ca7c68ff9729b1cca491e84e134eac3701390f",
+          "digest": "718925556eb29c9098ae456c18fc1a91979f9120ec2d15e2223c1ba21b5d7293",
+          "non_document_files": 6,
+          "resource_files_and_directories_preserved": true
+        },
+        {
+          "id": "ergora-governance-delivery",
+          "base_digest": "21a0513cd15828bce24cd21b9344dccc47a2a3efff44648db87d28ba7a62fb4d",
+          "digest": "7af39d6410ae687fba1e32107849f091ebc7cf2fba23a160729504398aa931db",
+          "non_document_files": 6,
+          "resource_files_and_directories_preserved": true
+        }
+      ],
+      "actual_http_refusals": 4,
+      "actual_final_preview_matches_owner": true,
+      "all_original_inherited_markers_preserved": true,
+      "preview_sha256": "ee7967f64906a3da48c71bd3b8e05b3421de0395832d568306831ab4f654c645",
+      "browser_result_bytes": 139025,
+      "browser_result_sha256": "7b957879f7e6ac11d22d8b3e10d6e008a7cef252a9b4c7424e1b6c7dc2c00295",
+      "scope": "Offline original browser replies and fixed complete library trees. No browser rerun, model or formal task."
+    }
+  },
+  "original_sources": [
+    {
+      "private_relative_path": "r1/browser/result-01.json",
+      "bytes": 29579,
+      "sha256": "65f8b61556db439b511ae09770e34046326b69ff93fe68f343dde9f0e08d359a"
+    },
+    {
+      "private_relative_path": "r1/browser/result-02.json",
+      "bytes": 10805,
+      "sha256": "1ffdd5512830893963e1494abcb5f6e41bd959b710e77216cdf8f99853e8df20"
+    },
+    {
+      "private_relative_path": "r1/browser/result-03.json",
+      "bytes": 139025,
+      "sha256": "7b957879f7e6ac11d22d8b3e10d6e008a7cef252a9b4c7424e1b6c7dc2c00295"
+    },
+    {
+      "private_relative_path": "r1/browser/audit.json",
+      "bytes": 1515,
+      "sha256": "9a2a34cfc6a90b0c9a58a32505dc7fd4be71143229039bec6189076e82ec90ff"
+    },
+    {
+      "private_relative_path": "r1/browser/locator-diagnosis.json",
+      "bytes": 819,
+      "sha256": "d2d5c83abdc49326caddc1ef0438c9bee5b91c34d44ac4eeaa73dedb36e1e2d7"
+    },
+    {
+      "private_relative_path": "r1/browser/labels-01.json",
+      "bytes": 700,
+      "sha256": "98346241884ae4ccbb55cc15977afc696c04f04b5d6ab83386e3cee705f27db2"
+    },
+    {
+      "private_relative_path": "browser-r1.js",
+      "bytes": 5934,
+      "sha256": "e0f9139fe287edeb13c8ee100c3c6f5fb39adcd0f0a745157c3757b08de7e842"
+    },
+    {
+      "private_relative_path": "browser-r2.js",
+      "bytes": 6106,
+      "sha256": "bfcfcdb1d73c45baffe3fbccd46dfb79d1cac81d4a00da0c00368837b3b2ff7c"
+    },
+    {
+      "private_relative_path": "browser-r3.js",
+      "bytes": 6204,
+      "sha256": "22a5ed139c29b9a7737d1ed8d8fa0758e12b838c09a02c182ebd6e7fea10829a"
+    }
+  ],
+  "transform": {
+    "machine_paths": "Repository/home paths and local HTTP origins replaced with placeholders.",
+    "omitted": "Browser screen dumps and duplicate HTTP bodies omitted; every body/request retains exact pre-redaction bytes/SHA and originals remain private.",
+    "identity": "Source bytes/SHA bind originals before formatting, redaction or omission; public JSON SHA is different."
+  }
+}

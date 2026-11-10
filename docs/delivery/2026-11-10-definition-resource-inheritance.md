@@ -57,3 +57,13 @@ J3在新manifest/input冻结后，把原两个库完整移到控制目录外`r1/
 新fresh-context主审及两独立轴完成全部24文件Spec/Standards本地终核，RIN-S1、RIN-D1关闭，开放finding0。完整三域原件、两轮自身模板、27资源58页/21native证据及4/4/3祖先包80份原文件、十份公开投影、清理和14文档254链接均已直接独立核对。原报告SHA256 `a7c073d38dde822e822fe0cfa3215c3cc06e392bfc99f9113e874adb13d960c2`，私有`independent/final-candidate-audit.json`及各轴最终原件保留。后端自报用量/缓存输入及墙钟成本已记录，缓存是input子集、不等于账单；后续C6据此评估必要邻接范围、重复材料和分页累计开销，当前不重跑模型或改变完整字节合同。
 
 J1–J4本地出口完成，D4/D5完整候选准备普通提交/推送本工作分支，再分别核自己的必要双OS CI和明确HTTPS同完整SHA；不继承D3的CI或把本地通过写成精确交付。没有新生产代码、永久测试、依赖或CI；复用已验D3 R2非editable wheel，跨层验收不替代C3d共同提权、C4画布、C5正式交接或真实训练。
+
+## 精确交付在途
+
+24文件已普通提交并推送`4636d77377bf63f15c357cf14660024e3ae1f939`，父a9778e0、树`30ff2e8cd9b0e74e415f31d9d5f0b3c2fad78326`。原评审者核精确24blob与ready、435源/wheel/安装/双RECORD及283冻结、13模型保护源和十公开投影通过；2026-11-10 10:32:04.749412–10:32:06.130342 UTC一次隔离HTTPS读取返回同完整分支SHA。提交后原工作树clean；后续报告状态续记另属工作树。原件`commit-closure/`及`independent/exact-delivery-gate.json`。
+
+自己的[CI42799311145](https://github.com/626619403/Ergora/actions/runs/42799311145)第二份官方样本10:35:51–10:35:58 UTC仍In progress；两个OS的build/reference四步conclusion为success，但job尚未completed，两原生回归及Windows安装器未终结。首份原样保留，不能据此写七步成功；完整精确交付待终态及原评审者离线补核。没有取消/重跑CI或推新候选。C3d先整理计划/驱动，不在门禁终结前运行新旅程。
+
+## D4/D5精确终结
+
+自己的CI42799311145第三份官方样本10:42:10.911092–10:42:15.119093 UTC为Success；双OS job已completed，七必要步骤全部success且各log URL绑定4636d77完整提交。原评审者直接离线核官方HTML/完整job-groups/collector及原件摘要通过，`independent/exact-delivery-gate.json`现为true。前两份In progress与首审拒绝原样保留，本轮未取消或重跑CI；原精确Git及一次独立HTTPS同SHA保持。D4/D5与C3c精确交付终结，接续C3d。

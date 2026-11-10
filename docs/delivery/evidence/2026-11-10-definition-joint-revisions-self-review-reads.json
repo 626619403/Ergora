@@ -1,0 +1,331 @@
+{
+  "kind": "ergora-recorded-evidence-projection",
+  "projection": {
+    "checked_at": "2026-11-10T11:05:15.886158+00:00",
+    "run_id": "19917c71dd014cc0ae4713e844ef6ee2",
+    "manifest_input_and_actual_run_digest_match": true,
+    "actual_prompt_matches": true,
+    "original_definition_libraries_absent": true,
+    "original_definition_libraries_retained_outside_active_control": true,
+    "actual_stdin_and_protocol_prompt_match": true,
+    "scope_and_native_receipt_identity_match": true,
+    "bundled_agent_workflow_evidence_revision_matches": true,
+    "scope_list_passes": [
+      {
+        "pages": [
+          {
+            "offset": 0,
+            "files": 5,
+            "next_offset": null
+          }
+        ],
+        "complete": true
+      }
+    ],
+    "scope_files": 5,
+    "all_scope_files_read_completely": true,
+    "complete_scope_reads": {
+      "definitions/agent/ergora-structure-reviewer/1.0.61/instructions.md": {
+        "size": 354,
+        "sha256": "3cc9c450f0c03da5ea4a1434ac6182d50df6a4985cffdee2a59fe9fe477c6b43",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 354,
+            "next_offset": null
+          }
+        ],
+        "base64_window_retries": [],
+        "repeated_pages": [],
+        "complete_continuous_plaintext": true
+      },
+      "definitions/agent/ergora-structure-reviewer/1.0.61/skills/candidate-evidence/SKILL.md": {
+        "size": 477,
+        "sha256": "f28df2774a6ec2f821850e97f79f91a23abf9a8eb8d338363e5de857855e5251",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 477,
+            "next_offset": null
+          }
+        ],
+        "base64_window_retries": [],
+        "repeated_pages": [],
+        "complete_continuous_plaintext": true
+      },
+      "definitions/agent/ergora-structure-reviewer/1.0.61/skills/candidate-evidence/references/candidate.txt": {
+        "size": 861261,
+        "sha256": "3e20674bf62cd11693276a37650e23af5fa2e76bb119a99a70856f666e993e33",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 24000,
+            "next_offset": 24000
+          },
+          {
+            "offset": 24000,
+            "bytes": 24000,
+            "next_offset": 48000
+          },
+          {
+            "offset": 48000,
+            "bytes": 24000,
+            "next_offset": 72000
+          },
+          {
+            "offset": 72000,
+            "bytes": 24000,
+            "next_offset": 96000
+          },
+          {
+            "offset": 96000,
+            "bytes": 24000,
+            "next_offset": 120000
+          },
+          {
+            "offset": 120000,
+            "bytes": 24000,
+            "next_offset": 144000
+          },
+          {
+            "offset": 144000,
+            "bytes": 24000,
+            "next_offset": 168000
+          },
+          {
+            "offset": 168000,
+            "bytes": 24000,
+            "next_offset": 192000
+          },
+          {
+            "offset": 192000,
+            "bytes": 24000,
+            "next_offset": 216000
+          },
+          {
+            "offset": 216000,
+            "bytes": 24000,
+            "next_offset": 240000
+          },
+          {
+            "offset": 240000,
+            "bytes": 24000,
+            "next_offset": 264000
+          },
+          {
+            "offset": 264000,
+            "bytes": 24000,
+            "next_offset": 288000
+          },
+          {
+            "offset": 288000,
+            "bytes": 24000,
+            "next_offset": 312000
+          },
+          {
+            "offset": 312000,
+            "bytes": 24000,
+            "next_offset": 336000
+          },
+          {
+            "offset": 336000,
+            "bytes": 24000,
+            "next_offset": 360000
+          },
+          {
+            "offset": 360000,
+            "bytes": 24000,
+            "next_offset": 384000
+          },
+          {
+            "offset": 384000,
+            "bytes": 24000,
+            "next_offset": 408000
+          },
+          {
+            "offset": 408000,
+            "bytes": 24000,
+            "next_offset": 432000
+          },
+          {
+            "offset": 432000,
+            "bytes": 24000,
+            "next_offset": 456000
+          },
+          {
+            "offset": 456000,
+            "bytes": 24000,
+            "next_offset": 480000
+          },
+          {
+            "offset": 480000,
+            "bytes": 24000,
+            "next_offset": 504000
+          },
+          {
+            "offset": 504000,
+            "bytes": 24000,
+            "next_offset": 528000
+          },
+          {
+            "offset": 528000,
+            "bytes": 6000,
+            "next_offset": 534000
+          },
+          {
+            "offset": 534000,
+            "bytes": 24000,
+            "next_offset": 558000
+          },
+          {
+            "offset": 558000,
+            "bytes": 24000,
+            "next_offset": 582000
+          },
+          {
+            "offset": 582000,
+            "bytes": 24000,
+            "next_offset": 606000
+          },
+          {
+            "offset": 606000,
+            "bytes": 24000,
+            "next_offset": 630000
+          },
+          {
+            "offset": 630000,
+            "bytes": 24000,
+            "next_offset": 654000
+          },
+          {
+            "offset": 654000,
+            "bytes": 24000,
+            "next_offset": 678000
+          },
+          {
+            "offset": 678000,
+            "bytes": 24000,
+            "next_offset": 702000
+          },
+          {
+            "offset": 702000,
+            "bytes": 24000,
+            "next_offset": 726000
+          },
+          {
+            "offset": 726000,
+            "bytes": 24000,
+            "next_offset": 750000
+          },
+          {
+            "offset": 750000,
+            "bytes": 24000,
+            "next_offset": 774000
+          },
+          {
+            "offset": 774000,
+            "bytes": 24000,
+            "next_offset": 798000
+          },
+          {
+            "offset": 798000,
+            "bytes": 24000,
+            "next_offset": 822000
+          },
+          {
+            "offset": 822000,
+            "bytes": 24000,
+            "next_offset": 846000
+          },
+          {
+            "offset": 846000,
+            "bytes": 15261,
+            "next_offset": null
+          }
+        ],
+        "base64_window_retries": [
+          {
+            "offset": 528000,
+            "bytes": 24000
+          },
+          {
+            "offset": 528000,
+            "bytes": 12000
+          }
+        ],
+        "repeated_pages": [],
+        "complete_continuous_plaintext": true
+      },
+      "definitions/agent/ergora-structure-reviewer/1.0.61/skills/ergora-structure-reviewer/SKILL.md": {
+        "size": 521,
+        "sha256": "d6b69570bcca408d3d06ca5adf1cb44a4a9e43c2901f05c38a68c096f23a4ac8",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 521,
+            "next_offset": null
+          }
+        ],
+        "base64_window_retries": [],
+        "repeated_pages": [],
+        "complete_continuous_plaintext": true
+      },
+      "definitions/workflow/ergora-structure-review/1.0.61/instructions.md": {
+        "size": 163,
+        "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 163,
+            "next_offset": null
+          }
+        ],
+        "base64_window_retries": [],
+        "repeated_pages": [],
+        "complete_continuous_plaintext": true
+      }
+    },
+    "native_evidence_files": 40,
+    "original_cli_receipts_match_complete_attachment": true,
+    "source_files": 8,
+    "source_files_complete_in_attachment_and_unchanged": true,
+    "attachment_bytes": 861261,
+    "attachment_sha256": "3e20674bf62cd11693276a37650e23af5fa2e76bb119a99a70856f666e993e33",
+    "native_stream_sha256": "00b92a9dbf6ee27d965a93d7cbc6fc63f57444897e4be4026750fc9ba3cbbf30",
+    "successful_candidate_pages": 39,
+    "probe_pages": 0,
+    "continuous_pages": 37,
+    "complete_continuous_bytes": 861261,
+    "repeated_pages": 0,
+    "base64_pages": 2,
+    "plaintext_only": false,
+    "complete_continuous_plaintext": true,
+    "next_offset": null,
+    "every_candidate_page_matches_original_bytes": true,
+    "failed_read_count": 0,
+    "failed_reads": [],
+    "instruction_and_skill_reads": {
+      "definitions/workflow/ergora-structure-review/1.0.61/instructions.md": true,
+      "definitions/agent/ergora-structure-reviewer/1.0.61/instructions.md": true,
+      "definitions/agent/ergora-structure-reviewer/1.0.61/skills/ergora-structure-reviewer/SKILL.md": true,
+      "definitions/agent/ergora-structure-reviewer/1.0.61/skills/candidate-evidence/SKILL.md": true
+    },
+    "actual_candidate_asset_matches": true,
+    "original_result_sha256": "704873a0bbc20cd87bef99b756874b6b8720c4a30e9297f0d605f0f48229eb4f",
+    "succeeded_original_result_matches": true,
+    "decision": "approve",
+    "scope": "Audit verifies continuous successful UTF8 plaintext coverage, with unchanged-offset base64 retries preserved. Delivery does not prove reasoning quality. Existing artifacts and original inspectors only; no model, service or test rerun. Complete byte delivery does not prove reasoning quality or formal owner approval."
+  },
+  "original_sources": [
+    {
+      "private_relative_path": "model-read-audit-r1.json",
+      "bytes": 8686,
+      "sha256": "f90ebc23f27560cfcc42c55ad49d0f12c8c0afea79b364264b3c84783cd00501"
+    }
+  ],
+  "transform": {
+    "machine_paths": "Repository/home paths and local HTTP origins replaced with placeholders.",
+    "omitted": "No omitted audit fields; complete scope coverage is separate from reasoning quality and formal approval.",
+    "identity": "Source bytes/SHA bind originals before formatting, redaction or omission; public JSON SHA is different."
+  }
+}

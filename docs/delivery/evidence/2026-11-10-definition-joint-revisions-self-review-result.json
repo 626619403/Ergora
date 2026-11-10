@@ -1,0 +1,22 @@
+{
+  "kind": "ergora-recorded-evidence-projection",
+  "projection": {
+    "artifacts": {
+      "response": "Spec: Pass within the declared acceptance scope. The receipts support complete parent-chain revisions, old-grant rejection, and rejection of unsupported network calls before run registration. Repeated instances retain distinct paths, advisory responsibility uses a separate child revision, and backend admission remains per leaf. Sources: candidate sections `r2/journey/cli-031.stderr` through `cli-095.stderr`, `cli-097.stdout`, `cli-101.stdout`, and `cli-110/111/113/114/116/117.stdout`; browser `result-01/02/03.json` preserves failures and successful continuation.\n\nStandards: Pass. Immutable publication remains with `DefinitionLibrary.revise`; inheritance, ceilings and budgets remain with the Workflow compiler; actual admission and backend selection remain with `agent_runs` and backend adapters. The page consumes these existing interfaces. No new production interface, duplicate owner, or unnecessary permanent test is introduced. Recorded cost includes 118 CLI calls in 84.68 seconds and three browser segments totaling 71.29 seconds.\n\nRead the complete five-resource root scope, including all inherited instructions and Skills, and all 861,261 candidate bytes through EOF using continuous UTF-8 pages; base64 windows were retried at the same offset with smaller limits. Candidate SHA256: `3e20674bf62cd11693276a37650e23af5fa2e76bb119a99a70856f666e993e33`. No evidence code or services were executed; no files were edited.\n\nThis review grants no owner approval or formal execution authority. Admission checks establish neither authentication nor inference success; this Codex fallback establishes contextual independence, not different-model independence."
+    },
+    "decision": "approve",
+    "summary": "Approve the supplied C3d candidate. No actionable structural findings."
+  },
+  "original_sources": [
+    {
+      "private_relative_path": "self-review-r1/public-original-result.json",
+      "bytes": 1811,
+      "sha256": "704873a0bbc20cd87bef99b756874b6b8720c4a30e9297f0d605f0f48229eb4f"
+    }
+  ],
+  "transform": {
+    "machine_paths": "Repository/home paths and local HTTP origins replaced with placeholders.",
+    "omitted": "No omitted result fields; formatting/path redaction only. This is the actual original decision, not an independent approval ticket.",
+    "identity": "Source bytes/SHA bind originals before formatting, redaction or omission; public JSON SHA is different."
+  }
+}

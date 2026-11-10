@@ -1,0 +1,175 @@
+{
+  "kind": "ergora-recorded-evidence-projection",
+  "projection": {
+    "browser": {
+      "checked_at": "2026-11-10T10:54:36.975806+00:00",
+      "session": "ergora-c3d-r1",
+      "observed": [
+        {
+          "pid": 442902,
+          "ppid": 1,
+          "starttime": "232689087"
+        },
+        {
+          "pid": 442932,
+          "ppid": 442902,
+          "starttime": "232689122"
+        },
+        {
+          "pid": 442943,
+          "ppid": 442932,
+          "starttime": "232689148"
+        },
+        {
+          "pid": 442944,
+          "ppid": 442932,
+          "starttime": "232689148"
+        },
+        {
+          "pid": 442988,
+          "ppid": 442943,
+          "starttime": "232689160"
+        },
+        {
+          "pid": 442991,
+          "ppid": 442932,
+          "starttime": "232689162"
+        },
+        {
+          "pid": 443039,
+          "ppid": 442944,
+          "starttime": "232689170"
+        }
+      ],
+      "same_identity_alive": [],
+      "scope": "Explicit close of this named browser only; seven sampled owned root/descendant identities checked."
+    },
+    "http": {
+      "checked_at": "2026-11-10T10:54:36.801826+00:00",
+      "pid": 437896,
+      "starttime": "232682889",
+      "identity_matched_before_stop": true,
+      "exit_code": -15,
+      "reaped": true
+    },
+    "original_http_start": {
+      "identity": {
+        "pid": 436677,
+        "starttime": "232681363",
+        "argv": [
+          "$REPOSITORY/.ergora/checks/ac5-definition-resource-editor/r2/wheel-venv/bin/python",
+          "-I",
+          "$REPOSITORY/.ergora/checks/ac5-definition-revisions/http-server.py",
+          "$REPOSITORY/.ergora/checks/ac5-definition-joint-revisions/r1/browser/control"
+        ],
+        "manager_pid": 436646,
+        "url": "$LOCAL_HTTP"
+      },
+      "cleanup": {
+        "checked_at": "2026-11-10T10:49:11.828118+00:00",
+        "pid": 436677,
+        "starttime": "232681363",
+        "identity_matched_before_stop": true,
+        "exit_code": -15,
+        "reaped": true
+      },
+      "diagnosis": {
+        "error": "stdin EOF without a PTY",
+        "scope": "Owned HTTP manager ended immediately on noninteractive stdin; its owned service was terminated and reaped before any browser request.",
+        "product_changed": false,
+        "correction": "Run the same explicit stop manager with a PTY."
+      }
+    },
+    "actual_self_review": {
+      "checked_at": "2026-11-10T11:05:42.258609+00:00",
+      "observed": [
+        {
+          "pid": 480182,
+          "ppid": 479918,
+          "starttime": "232724199"
+        },
+        {
+          "pid": 480434,
+          "ppid": 480182,
+          "starttime": "232724394"
+        },
+        {
+          "pid": 480695,
+          "ppid": 480434,
+          "starttime": "232724494"
+        },
+        {
+          "pid": 482099,
+          "ppid": 480434,
+          "starttime": "232725493"
+        }
+      ],
+      "same_identity_alive": [],
+      "original_definition_libraries_relocated_intact": true,
+      "scope": "Only sampled descendants and native task-MCP PID paths; no assertion about unsampled unrelated processes.",
+      "native_receipt_pids": [
+        {
+          "pid": 480695,
+          "pid_present_now": false,
+          "starttime_not_in_receipt": true
+        }
+      ]
+    },
+    "backend_reported_usage": {
+      "run_id": "19917c71dd014cc0ae4713e844ef6ee2",
+      "backend": "codex",
+      "turn_usage_reports": [
+        {
+          "input_tokens": 3891083,
+          "cached_input_tokens": 3653248,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 9603,
+          "reasoning_output_tokens": 3727
+        }
+      ],
+      "scope": "Backend-reported usage, not provider billing. cached_input_tokens is a subset of input_tokens."
+    }
+  },
+  "original_sources": [
+    {
+      "private_relative_path": "self-review-cleanup.json",
+      "bytes": 766,
+      "sha256": "b95093ed5ef574f10355654eaa769e09439f6cfd6e3378b2491a914e0a21eede"
+    },
+    {
+      "private_relative_path": "self-review-usage.json",
+      "bytes": 398,
+      "sha256": "9a0a8dd7a2497bc51b9539792b795ddc0dc267efe72f979f7f0ea73a10e63c22"
+    },
+    {
+      "private_relative_path": "r1/browser/browser-cleanup.json",
+      "bytes": 851,
+      "sha256": "d77790097feba7e075de5eec8945f99f9cbe1a0b419806d9cbd3e8d85489afc7"
+    },
+    {
+      "private_relative_path": "r1/browser/http-cleanup.json",
+      "bytes": 178,
+      "sha256": "ef700163fc50c14c3df39358ced6c919b7201a3480520b60a6a795210377e78f"
+    },
+    {
+      "private_relative_path": "r1/browser/http-start-01/http-identity.json",
+      "bytes": 442,
+      "sha256": "2e1fa69142aec5f720a99ea5600a267333ed0ed3cebf744be2e245ade78908b0"
+    },
+    {
+      "private_relative_path": "r1/browser/http-start-01/http-cleanup.json",
+      "bytes": 178,
+      "sha256": "df15a014909fdf34329abb2dc9931fe566d21d6279b111e13af9b00852153283"
+    },
+    {
+      "private_relative_path": "r1/browser/http-start-01/diagnosis.json",
+      "bytes": 283,
+      "sha256": "209ce04479cd2c5cbf10cb48c5a592df16854dca6befa089b03e67392be5c621"
+    }
+  ],
+  "transform": {
+    "machine_paths": "Repository/home paths and local HTTP origins replaced with placeholders.",
+    "omitted": "No omitted evidence fields; path/origin redaction only. Browser covers sampled identities, not unsampled unrelated processes.",
+    "identity": "Source bytes/SHA bind originals before formatting, redaction or omission; public JSON SHA is different."
+  }
+}

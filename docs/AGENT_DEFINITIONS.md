@@ -46,6 +46,8 @@ ergora agent definition export architecture-reviewer 1.0.0 ./shared-architecture
 
 AgentDefinition v1 不保存权限字段；同一专家在不同组合实例中的权限由所属 Workflow 节点及全部结构祖先约束。增加专家资料不会改变这些权限。将新专家资源送入既有组合时，应[沿完整依赖链发布](WORKFLOW_DEFINITIONS.md#沿完整依赖链发布资源修订)，最后固定新根和输入；实际附件读取见[任务MCP](WORKFLOW_DEFINITIONS.md#核验完整附件读取)。
 
+同一个 Agent 定义可被多个不同路径的实例引用；路径区分调用身份，完整 ref 固定共同的专长、指令和默认后端。各实例可在已支持的调用入口明确覆盖后端。审查职责属于引用它的 Workflow Agent 节点；嵌套模板需要不同职责时，先发布对应子模板修订，不能在父 Workflow 引用上添加覆盖字段。具体操作见[重复实例、职责和后端选择](WORKFLOW_DEFINITIONS.md#重复实例职责和后端选择)。
+
 编辑示例后，更新资源摘要再运行 `check`。下面是本地刷新摘要的 Python 示例，将 `my-agent` 改成自己的目录：
 
 ```python

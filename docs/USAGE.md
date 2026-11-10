@@ -703,3 +703,5 @@ ssh -L 8977:127.0.0.1:8977 user@server
 ## 导入领域专家组合
 
 基础安装已带治理、大型开发和训练提案的专家/子工作流默认包。运行`ergora composition presets`查看实际使用范围，`ergora composition install-preset large-change`导入全部精确依赖。详情、节点关系、独立后端选择及分享见[内置领域组合](WORKFLOW_DEFINITIONS.md#使用内置领域组合)。静态导入不选择可信容器、不启动服务或批准任务；正式开发继续走上文原任务流程。训练提案与[可信实验执行](TRAINING.md)分别使用。
+
+修改父子权限时，按[联合修订步骤](WORKFLOW_DEFINITIONS.md#联合修订父子权限)从内层到根逐版本发布，最后给出明确grant并检查实际调用能力。并行增加同一专家的多个实例时，使用不同节点ID和完整all-join；不同审查职责须另发子模板版本，见[重复实例与后端选择](WORKFLOW_DEFINITIONS.md#重复实例职责和后端选择)。

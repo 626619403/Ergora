@@ -1,0 +1,57 @@
+{
+  "kind": "ergora-recorded-evidence-projection",
+  "projection": {
+    "checked_at": "2026-11-10T11:03:05.731611+00:00",
+    "source": {
+      "src/ergora/definition_bundles.py": "808044446301231422c6f9ae31a809bfaa071e495b85646f72f6151bd3f6b658",
+      "src/ergora/workflow_definitions.py": "e05abc03927d329c47b3391adc52bf11c90a437ddee49c9cb2ae8718141079e7",
+      "src/ergora/agent_runs.py": "9cb9296b649ecc8bb2b8c843d4602726e49d3873c71d919cc32519c1298ade0d",
+      "src/ergora/agent_backends.py": "da15e62ea1d62b0cd25d12bffdfa6818672892eee19ee588a5ed86e18659ce33",
+      "src/ergora/data/console/definitions.js": "453e0bcd481b8e46b2e81dabf8a75ef59118d13c8d1a09a37e0b1a71aff987ed",
+      ".ergora/checks/ac5-definition-joint-revisions/journey-r2.py": "fdf0dbdccfc5ff03f21affc11d5d026ee4b995cb893c6d1f37ce6dfbafe1a7c8",
+      ".ergora/checks/ac5-definition-joint-revisions/browser-r1.js": "e0f9139fe287edeb13c8ee100c3c6f5fb39adcd0f0a745157c3757b08de7e842",
+      ".ergora/checks/ac5-definition-joint-revisions/browser-r3.js": "22a5ed139c29b9a7737d1ed8d8fa0758e12b838c09a02c182ebd6e7fea10829a"
+    },
+    "backend": "codex",
+    "inference_model": "gpt-6.1-sol",
+    "reasoning_effort": "high",
+    "run_id": "19917c71dd014cc0ae4713e844ef6ee2",
+    "status": "succeeded",
+    "exit_code": 0,
+    "seconds": 406.3586668786593,
+    "input_digest": "0fe2f5dc2e2cb66d7cae1af932c99fec3469366060de26dbcbfd97d754073d51",
+    "prompt_sha256": "58ff31272b8d902bbd6d859f72a603878978280c5de89f8905ff138e1604dc6b",
+    "attachment_bytes": 861261,
+    "attachment_sha256": "3e20674bf62cd11693276a37650e23af5fa2e76bb119a99a70856f666e993e33",
+    "manifest_digest": "9598be97a87f5f56d32a01d1b2779eb2b3bd3a3488121c66e06ffba7c948709e",
+    "evidence_revision": "1.0.61",
+    "original_definition_libraries_removed": true,
+    "original_definition_libraries_retained": true,
+    "raw_cli_evidence_files": 40,
+    "scope": "Actual bundled structure-review with fixed complete evidence. No formal approval, OS isolation or different-model independence claim.",
+    "decision": "approve",
+    "result_sha256": "704873a0bbc20cd87bef99b756874b6b8720c4a30e9297f0d605f0f48229eb4f"
+  },
+  "original_sources": [
+    {
+      "private_relative_path": "self-review-r1.json",
+      "bytes": 2032,
+      "sha256": "b550413e3f25e8d4dbc68c8aaa37eabea1b14fe8ee34c5cbfd4686843927bf0e"
+    },
+    {
+      "private_relative_path": "self-review-r1/native.stdout",
+      "bytes": 11010,
+      "sha256": "e4772a0806ca7168cc204ea2b89e82d43ceaa37f795dfa445a7bab1d333078ac"
+    },
+    {
+      "private_relative_path": "self-review-r1/raw-evidence-index.json",
+      "bytes": 5963,
+      "sha256": "ff1a8a80db5d9905b9650a3df415eaf449b76caae463fe6daf03286c67076213"
+    }
+  ],
+  "transform": {
+    "machine_paths": "Repository/home paths and local HTTP origins replaced with placeholders.",
+    "omitted": "No omitted identity fields. Raw inference configuration, credential values and unrelated environment are not public evidence.",
+    "identity": "Source bytes/SHA bind originals before formatting, redaction or omission; public JSON SHA is different."
+  }
+}

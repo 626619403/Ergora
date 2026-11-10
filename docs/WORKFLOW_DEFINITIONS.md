@@ -260,6 +260,25 @@ ergora composition file kernel-delivery 1.0.0 instructions.md --base-digest BASE
 
 资源修订没有自动项目采用、权限提升或执行动作。训练模板继续使用提案和材料审查入口；真实训练与采用须走各自的实验门禁。
 
+### 联合修订父子权限
+
+权限声明属于 Workflow 和其 Agent 节点。以治理组合的结构审查叶子为例，需要检查四层：`root` → `root/review` → `root/review/structure` → `root/review/structure/review`。大型修改使用同样的审查链，训练提案的测量链少一层。只提高最内层 Agent 节点请求时，其所属 Workflow 仍会拒绝；只发布新子工作流再替换父引用时，父工作流仍会拒绝越界的新子级。
+
+|操作顺序|新修订要明确修改的内容|
+|---|---|
+|最内层 Workflow|提高所选 Agent 节点的请求和本 Workflow 的上限，检查后发布新版本。|
+|每层父 Workflow|引用刚发布子级的精确版本/摘要，同时提高自己的上限；检查后发布，根最后。|
+|新根的预览|给出覆盖新根的明确 grant；旧 grant 仍拒绝。核对未选分支、全部祖先材料、预算和端口。|
+|实际调用|从新 manifest 准备输入，再用 `check-input` 核所选模式/后端；静态声明不会增加后端能力。|
+
+例如，可以用保留域名 `https://joint-revision.example.invalid` 检查 `network` 集合的完整包含关系；这只验证声明，不应请求该域名。当前公开 `text-only` 和 `task-mcp` 调用均不支持工具网络请求，即使新根与 grant 静态校验通过，这两种模式的 `check-input` 和 `run-input` 仍在登记运行/调用模型前拒绝。需要其他执行能力时，应使用明确支持它的执行入口及项目授权。
+
+### 重复实例、职责和后端选择
+
+要重复使用同一个子模板，在父 `nodes` 中使用不同 `id` 引用相同完整 ref，并把所有需汇合的分支接入显式 `all`。例如 `structure` 和 `structure-extra` 可以引用同一个结构审查版本，叶子路径分别为 `root/review/structure/review` 和 `root/review/structure-extra/review`。冻结资产只保存一份相同定义；每次引用仍独立计算实例数、完整材料字节及作用域预算，来源保留各自结构路径。
+
+同一精确子模板的两个实例具有相同的内部职责声明。若其中一个应为建议审查，应另发子模板新版本，修改其 Agent 节点的 `review_requirement` 为 `advisory`，再由父引用它；Workflow 引用节点没有职责覆盖字段。独立 Agent 定义及逐叶调用的后端覆盖各自负责后端选择，不能通过改职责字段更换模型。对每个叶子分别运行 `check-input --backend codex` 或 `--backend claude-code` 可检查当前配置/模式准入；结果不检查认证、实际推理或不同模型的错误独立性。
+
 库保存在 State 的 `workflow-definitions/index.json` 与 `objects/<digest>/`，与Agent库分开，代码共用 `definition_bundles`。既有 `ERGORA_HOME`、`--home` 和平台默认目录继续适用；没有新DB表。`export` 只导出当前包，分享完整组合时还需按依赖顺序分享／导入其引用的每个包；不是单根自包含发行。
 
 原[离线完整备份](USAGE.md#升级与持久数据)保存两个库。验证不仅核索引和对象，还递归核工作流引用、资源、图和静态合同；原平台、原State路径与停止写入者的恢复要求不变。库损坏不会自动覆盖成新证据。可使用显式v2任务定义[冻结完整审查组合](USAGE.md#为正式任务冻结审查组合)，沿原六阶段启动只读reviewer或嵌套串并行审查，可分别声明必需/建议职责。旧v2/v3审查要求每叶沿结构祖先直接映射根task且没有前驱依赖；显式dag-v1的v4使用[具名端口](#正式只读审查的数据端口)，增加work-units-v1的v5使用[专长执行者分配](#专长执行者与原工作单元)。正式批准和候选证据保留原所有者。列表中的runtime_supported只表示静态形状支持，不证明后端或服务可用。

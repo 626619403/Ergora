@@ -416,6 +416,8 @@ flowchart LR
 
 C3c D4沿这些既有所有者验证三领域依赖链与冻结输入：逐包完整修订、子级先发布/根最后发布，旧对象和旧manifest/input保持；新输入的材料由原Workflow编译器按全部结构祖先累加，原task-MCP只投影所选叶子的声明资源及完整Skill目录。Agent包本身不持有实例权限；普通未声明附件留在包内，不因打包进入scope。实际模型读取按原生分页回复对冻结字节审计，与完整scope可用、最终模型判断分别记录。[跨层验收记录](../delivery/2026-11-10-definition-resource-inheritance.md)保留各阶段实际结果，不新增库、调度器或资源算法。
 
+C3d沿同一所有者验证完整父链联合新修订：`DefinitionLibrary.revise`逐版本发布，`workflow_definitions._within`检查每个结构上限与明确grant，`agent_runs._admit_input`再拒绝当前模式不支持的请求。不存在绕过父级的权限合并或跨库事务。相同子ref共用冻结资产，但实例路径、材料来源和预算计数仍独立；advisory职责要修改所属Agent节点并发布子Workflow新版本，不能覆盖Workflow引用。页面只是这些用例的消费者，实际逐叶backend覆盖不改模板默认请求，也不证明认证或推理成功。[联合修订记录](../delivery/2026-11-10-definition-joint-revisions.md)保留CLI/页面验收与限制；C4画布、C5正式交接、C6容量继续各自计划。
+
 AC5 C2的编辑会话由同一`workflow.js`持有：语义输入、单元原文、完整JSON原文、目标ID/已观察修订、选择、局部请求与布局各自分开。按控制目录/项目登记的当前实例是唯一缓存写入者，已替换实例的迟到保存或图销毁不能接管新会话。`sessionStorage`仅保存当前缓冲，50快照/4MiB线性历史留内存；单份超限只保留当前输入。图位置/视口不进入任务合同。角色元数据从已有bootstrap读取，不在缓存复制领域校验；损坏检查点进入原文下载/明确清除。保存/JSON应用仍调原drafts/reference所有者，不加数据库、调度器或共享编辑框架。正式创建/批准/六阶段不变，验收状态见[C2记录](../delivery/2026-11-09-editor-session.md)。
 
 同控制目录/项目的dashboard刷新在`app.js`原refresh所有者中保留已观察的较高草稿修订；其局部data目录身份随成功安装更新，不能用较早/较新bootstrap代替data所属目录。保存回执在原`workflow.js`也按修订单调合并，均不自动变更编辑会话的expected revision。其余dashboard字段仍使用刷新结果。
