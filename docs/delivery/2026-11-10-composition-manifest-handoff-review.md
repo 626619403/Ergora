@@ -1,8 +1,8 @@
-# AC5 C5a：完整 manifest 交接独立审查
+# AC5 C5a：完整 manifest 交接独立审查（精确交付通过）
 
-审查者 `manifest_handoff_review`，fresh context；另按 `code-review` 启动互不共享上下文的 `spec_axis`、`standards_axis`。先读原始 C5a/AC5 规格，再读实现叙述；参照 AIHERO 索引、`maintainable-project-delivery` 及 `independent-review`、`code-review`、`codebase-design`。本报告只评本片静态交接，不代表整片或项目交付完成。
+**C5a完整本地候选与精确交付均通过，Spec/Standards开放finding均为0。** 审查者 `manifest_handoff_review`，fresh context；另按 `code-review` 启动互不共享上下文的 `spec_axis`、`standards_axis`。先读原始 C5a/AC5 规格，再读实现叙述；参照 AIHERO 索引、`maintainable-project-delivery` 及 `independent-review`、`code-review`、`codebase-design`。只完成C5a静态交接；C5b/c、C6与项目整体未完成。各阶段按当时证据保留，当时未验的精确交付由末节续核。
 
-固定基线与 HEAD 均为 `a2c89a5b4b5ca49bf0c3f28a4f35efaec539bd3c`。`git diff a2c89a5b4b5ca49bf0c3f28a4f35efaec539bd3c...HEAD` 与对应提交列表为空；按用户明确授权的 WIP 例外，审查本地 `review-r1/identity.json`、`tracked.diff`、`files/` 的完整13文件。快照时间14:33:58 UTC，实际已含R2修复，目录名称不代表R1失败源码。范围为四产品文件 `workflow_definitions.py`、`cli.py`、`web.py`、`data/console/definitions.js`，两合同测试 `test_composition_manifests.py`、`test_definition_console.py`，以及七份计划、手册、架构与交付文档。主审逐字核快照身份；后续仅同片三文档澄清及页面证据增量，四产品/两测试不变。增量原件与身份另存本地 `independent/clarification-files/` 和 `clarification-identity.json`。
+实现阶段固定审查时，基线与 HEAD 均为 `a2c89a5b4b5ca49bf0c3f28a4f35efaec539bd3c`。`git diff a2c89a5b4b5ca49bf0c3f28a4f35efaec539bd3c...HEAD` 与对应提交列表为空；按用户明确授权的 WIP 例外，审查本地 `review-r1/identity.json`、`tracked.diff`、`files/` 的完整13文件。快照时间14:33:58 UTC，实际已含R2修复，目录名称不代表R1失败源码。范围为四产品文件 `workflow_definitions.py`、`cli.py`、`web.py`、`data/console/definitions.js`，两合同测试 `test_composition_manifests.py`、`test_definition_console.py`，以及七份计划、手册、架构与交付文档。主审逐字核快照身份；后续仅同片三文档澄清及页面证据增量，四产品/两测试不变。增量原件与身份另存本地 `independent/clarification-files/` 和 `clarification-identity.json`。
 
 ## Standards
 
@@ -78,4 +78,18 @@
 
 已实际目视公开桌面1440×1000及窄屏390×844两PNG，均与原截图逐字节相同。所截保存区域的按钮、说明及JSON结果可读，窄屏控件换行后仍在所截内容宽度内；两图未显示结果path字段或机器绝对路径。结论只限所截区域，不授予页面全貌、跨浏览器、BFCache或容量验收。
 
-**最终本地出口通过：Standards新增违规/可行动smell均0，最重问题无；Spec开放0，原P2 C5a-SP1关闭。** 可继续固定ready并普通提交/推送；本提交自己的CI、精确Git/发行包/283冻结身份与独立HTTPS交付仍须另核。C5b/c、C6及项目整体未完成。
+**最终本地出口通过：Standards新增违规/可行动smell均0，最重问题无；Spec开放0，原P2 C5a-SP1关闭。** 本地出口时待验的本提交CI、精确Git/发行包/283冻结身份与独立HTTPS交付见下节续核。C5b/c、C6及项目整体未完成。
+
+## 精确交付续核：通过
+
+交付对象为普通提交/推送的 `f68d7390e0e65f8045158cb1d0270c4057c7a74d`，父提交为原基线 `a2c89a5b4b5ca49bf0c3f28a4f35efaec539bd3c`，分支 `refactor/architecture-foundations`。25文件ready的完整tracked/untracked范围与固定身份已核，六份产品/测试、五投影及两PNG保持原验收身份；状态增量和前片终态只记账。`independent/exact-delivery-audit-r1.json`进一步核25份精确Git blob逐字等ready，437个精确Git包源文件等于原wheel/安装文件；两RECORD分别441/446条带摘要记录通过，283份冻结Git blob及mode与父提交相同。原wheel SHA256 `d575678b1120649561efcd4e1dd8b44ed40ab3519654be51b6834db42e097e40`。未重新构建、安装或运行产品，C5b当前WIP不参与本片核验。
+
+一次独立公开HTTPS smart-Git refs查询于2026-11-10 15:01:54.738227至15:01:55.667099 UTC返回200，完整分支引用等于上述40位提交；响应786字节、SHA256 `820e4e57ddf1cf7e7a10791cbc14c55bf40182378d9eff1f27f2eea750798ab3`。回执及响应原字节保存在本地 `independent/exact-https-r1.*`。本次CI续核没有新增网络请求。
+
+自己的 [Portability CI 42839729110](https://github.com/626619403/Ergora/actions/runs/42839729110) 已通过。主审直接读取该精确提交的 `.github/workflows/portability.yml`，独立离线解析四次快照的全部20份官方原始HTML/JSON，逐份核URL、HTTP200回执、时间及完整bytes/SHA256。actions原页、run原页、无分页完整job groups、两job原页共同绑定该精确提交、分支、工作流、run/attempt 1及job ID，没有执行留存fetcher。
+
+前三样本在14:59、15:05、15:13 UTC仍为 `In progress`，继续保留非终态；第三样本Windows已成功也不授予整体CI通过。第四样本 `snapshot-04` 在15:20:28.454349至15:20:33.475653 UTC为 `Success`，Ubuntu/Python3.11 job `129911424091` 与Windows/Python3.12 job `129911424362` 均为completed/success。两系统的Build and install wheel、Packaged reference identity、Native application regression，以及Windows的PowerShell5.1 installer and upgrade，共七个必要步骤均success且job completed；原日志URL均绑定该精确提交。Ubuntu的PowerShell步骤依原工作流条件skipped，两终态job没有失败、取消、超时或未完成步骤。
+
+私有 `independent/ci-offline-audit-r1.json`保存20份原响应身份、四份历史状态及七必要步骤；`independent/final-exact-gate.json`将原本地出口、精确Git/包/冻结/HTTPS与本次自己的CI合并。本次只续核原响应和本报告状态，没有新增网络、模型、浏览器、安装、行为测试或CI运行。原R1测试41通过/2失败、R2仅两受影响补验、首次页面驱动失败、空目录摘要合同及全部范围限制保持。自然BFCache、跨浏览器、C5b正式选择、C5c六阶段旅程与C6容量不由本片转授通过。
+
+**精确交付终态：C5a本地完整候选及精确Git/包/283冻结/独立HTTPS/自己的CI均通过；Spec开放0、Standards开放0、阻塞0。**

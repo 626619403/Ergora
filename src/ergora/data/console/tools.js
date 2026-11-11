@@ -1,9 +1,10 @@
 import { api } from "./api.js";
 import {
-  $, node, button, pre, heading, panel, select, field, selectField,
+  $, node, button, pre, heading, panel, select,
   badge, notify, form, modal,
 } from "./ui.js";
 import { app, bindingFor } from "./state.js";
+import { bindingFields } from "./binding-fields.js";
 
 export function toolsView(data, _base, { refresh, render }) {
   const diagnostics = node("div", {}, pre(data.tools));
@@ -89,43 +90,17 @@ function bindingDialog(data, layer, refresh) {
   );
   choice.required = true;
   const options = node("div");
-  let schema;
+  let editor;
   function fields() {
     if (!choice.value) {
-      schema = null;
+      editor = null;
       options.replaceChildren(node("p", {}, "请选择可用于这一层的工具，再保存绑定。"));
       return;
     }
     const component = choices.find((item) => item.tool === choice.value);
-    schema = component.configuration;
     const same = choice.value === current.tool ? current : {};
-    const content = [];
-    for (const [name, property] of Object.entries(schema.properties)) {
-      if (name === "tool") continue;
-      const required = schema.required.includes(name);
-      const value = same[name] ?? property["x-ergora-project-default"]?.replace("{project_id}", data.project.id)
-        ?? property.default ?? "";
-      if (property.enum) {
-        const labels = property["x-ergora-enum-labels"] || {};
-        const entries = property.enum.map((item) => [item, labels[item] || item]);
-        if (!required) entries.unshift(["", property["x-ergora-empty-label"] || "使用默认值"]);
-        content.push(selectField(property.title, entries, value, name));
-      } else if (property.type === "array") {
-        content.push(field(property.title, name, JSON.stringify(value === "" ? [] : value), "textarea", { required: required ? true : null }));
-      } else if (["number", "integer"].includes(property.type)) {
-        const ui = property["x-ergora-ui"] || {};
-        content.push(field(property.title, name, value, "number", {
-          required: required ? true : null, min: ui.min ?? property.minimum, max: property.maximum,
-          step: ui.step ?? (property.type === "integer" ? 1 : "any"),
-        }));
-      } else if (property.type === "string") {
-        content.push(field(property.title, name, value, property.format === "uri" ? "url" : "text", { required: required ? true : null }));
-      } else {
-        throw new Error(`不支持的配置字段类型：${property.type}`);
-      }
-    }
-    if (component.note) content.push(node("p", {}, component.note));
-    options.replaceChildren(...content);
+    editor = bindingFields(component, same, { projectId: data.project.id });
+    options.replaceChildren(editor.element);
   }
   choice.addEventListener("change", fields);
   fields();
@@ -135,14 +110,7 @@ function bindingDialog(data, layer, refresh) {
       [node("label", {}, "选择工具", choice), options],
       "保存绑定",
       async (values, element) => {
-        const binding = { tool: choice.value };
-        for (const [name, property] of Object.entries(schema.properties)) {
-          if (name === "tool") continue;
-          const value = values.get(name);
-          if (value === null || (value === "" && !schema.required.includes(name))) continue;
-          binding[name] = property.type === "array" ? JSON.parse(value)
-            : ["number", "integer"].includes(property.type) ? Number(value) : value;
-        }
+        const binding = editor.read();
         await api(
           `/api/projects/${encodeURIComponent(data.project.id)}/bindings/${layer}`,
           { binding, revision: data.project.revision },

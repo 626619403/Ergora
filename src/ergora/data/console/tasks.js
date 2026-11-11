@@ -2,7 +2,8 @@ import { api } from "./api.js";
 import {
   $, node, button, pre, heading, panel, empty, row, field, select, badge, form, modal, table, download,
 } from "./ui.js";
-import { stages } from "./state.js";
+import { app, stages } from "./state.js";
+import { taskComposition } from "./task-composition.js";
 
 const stageForPhase = {
   INVENTORY: "inventory", PLANNING: "plan", IMPLEMENTING: "work",
@@ -150,13 +151,18 @@ export function tasksView(data, base) {
     const result = node("div", { "aria-live": "polite" });
     let sequence = 0;
     let creationLocked = false;
+    const compositionEditor = taskComposition({
+      tools: app.bootstrap.tools, projectId: data.project.id,
+      input: () => JSON.parse(input.value), active: () => active(), invalidate,
+    });
     const fields = node("fieldset", { className: "task-creation-fields" },
       node("label", {}, "已登记开发模板", kind),
       row(button("载入所选模板", loadTemplate), node("label", {}, "从草稿载入输入", draft)),
       field("新任务 ID", "task_id", "", "text", { required: true, maxlength: 80, autocomplete: "off" }),
-      field("工单编号或本地标识", "issue_id", "", "text", { required: true, maxlength: 160 }),
+      field("工单编号 / IID（正整数）", "issue_id", "", "text", { required: true, maxlength: 160 }),
       field("起始提交 SHA（可选，留空使用登记基线）", "starting_sha", "", "text", { maxlength: 40 }),
       inputField,
+      compositionEditor.element,
     );
     const editor = form([fields], "预览冻结合同", async (values) => {
       if (!active() || creationLocked) return;
@@ -168,6 +174,8 @@ export function tasksView(data, base) {
           schema_version: 1, task_id: values.get("task_id"), task_type: values.get("task_type"),
           issue_id: values.get("issue_id"), input: JSON.parse(values.get("input")),
         };
+        const composition = compositionEditor.read();
+        if (composition) Object.assign(definition, { schema_version: 2, composition });
         if (values.get("starting_sha")) definition.starting_sha = values.get("starting_sha");
         snapshot = await api(`${base}/tasks/preview`, { definition, revision: data.project.revision });
       } catch (error) {
@@ -176,15 +184,23 @@ export function tasksView(data, base) {
       }
       if (!current(reading)) return;
       const bindings = snapshot.files["agent-bindings.json"];
+      const frozen = snapshot.files["task.spec.json"].composition;
       result.replaceChildren(panel("审阅冻结预览", "确认后只发布此合同，启动运行另行操作。",
         facts([
           ["项目修订", snapshot.project_revision], ["任务 ID", snapshot.definition.task_id],
           ["模板", snapshot.definition.task_type], ["工单", snapshot.definition.issue_id],
-          ["基线提交", snapshot.files["task.spec.json"].request.repository.base_sha],
+          ["基线提交", snapshot.files["compiled.json"].spec.request.repository.base_sha],
           ["预览 SHA256", snapshot.preview_sha256],
         ]),
-        table(["冻结角色", "工具", "模型"], Object.entries(bindings.bindings).map(([role, binding]) =>
+        node("h3", {}, "冻结项目角色"),
+        table(["角色", "工具", "模型"], Object.entries(bindings.bindings).map(([role, binding]) =>
           [role, binding.tool, binding.model ?? "未指定"])),
+        frozen ? node("div", {}, node("h3", {}, "本任务组合成员"),
+          table(["实例", "职能", "工具", "模型", "模式", "选择理由"],
+            Object.entries({ ...frozen.execution?.members, ...frozen.members }).map(([path, member]) =>
+              [path, member.role, member.binding.tool, member.binding.model ?? "采用工具配置", member.mode, member.backend_reason])),
+          disclosure("完整组合后端、信任和差异策略", { review: frozen.members, execution: frozen.execution, diversity: frozen.diversity }),
+        ) : null,
         disclosure("完整服务端预览与冻结文件", snapshot),
         form([], "确认创建冻结合同", async () => {
           if (!current(reading) || creationLocked) return;
@@ -211,7 +227,7 @@ export function tasksView(data, base) {
       ));
     });
     const content = node("div", {},
-      node("p", {}, "载入模板或兼容的已保存草稿，再编辑输入。修改字段会废弃旧预览；训练优化使用独立入口。"),
+      node("p", {}, "载入模板或兼容的已保存草稿，再编辑输入。可保留项目角色，或明确选择已保存的完整组合。修改字段会废弃旧预览；训练优化使用独立入口。"),
       editor, result,
     );
     const active = () => view.isConnected && content.isConnected && $("#dialog").open;
@@ -224,13 +240,12 @@ export function tasksView(data, base) {
       if (!active() || creationLocked) return;
       invalidate();
       const reading = sequence;
-      input.value = "";
-      draft.value = "";
       result.replaceChildren(empty("正在读取模板…"));
       try {
         const template = await api(`/api/templates/${encodeURIComponent(kind.value)}`);
         if (!current(reading)) return;
         input.value = JSON.stringify(template.input, null, 2);
+        draft.value = "";
         result.replaceChildren(empty("已载入模板输入，请填写任务标识并审阅。"));
       } catch (error) {
         if (current(reading)) result.replaceChildren(panel("模板读取失败", error.message));

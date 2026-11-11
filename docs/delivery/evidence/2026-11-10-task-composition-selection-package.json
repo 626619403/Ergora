@@ -1,0 +1,428 @@
+{
+  "schema_version": 1,
+  "published_at": "2026-11-11T02:15:38.626484+00:00",
+  "scope": "Five distinct noneditable candidates; R5 authoritative current439 files/two RECORDs/283 frozen. R4 first fix only, no browser/model acceptance. Large maps omitted. Preparation/launch failures retained; no new Python tests or CI added for this UI change.",
+  "projection_policy": "Original byte/SHA identities precede JSON projection. Repository path and 15 private origins replaced with named placeholders. Omitted fields named; full private originals retained. Not a substitute for raw omitted evidence.",
+  "originals": [
+    {
+      "private_original": "r1/build-install.json",
+      "bytes": 1397,
+      "sha256": "5abc7588cab06b48fed6368661a385974361d7e8a2093e4eaf1f0892788aa4c1",
+      "omitted_top_level_fields": [],
+      "projection": [
+        {
+          "checked_at": "2026-11-10T15:03:54.266982+00:00",
+          "name": "build",
+          "command": [
+            "uv",
+            "build",
+            "--offline",
+            "--python",
+            "$REPOSITORY/.ergora/checks/ac5-definition-resource-editor/r2/wheel-venv/bin/python",
+            "--wheel",
+            "--out-dir",
+            "$REPOSITORY/.ergora/checks/ac5-task-composition-selection/r1/dist"
+          ],
+          "exit": 0,
+          "seconds": 7.722133613191545
+        },
+        {
+          "checked_at": "2026-11-10T15:03:54.309222+00:00",
+          "name": "venv",
+          "command": [
+            "uv",
+            "venv",
+            "--offline",
+            "--python",
+            "$REPOSITORY/.ergora/checks/ac5-definition-resource-editor/r2/wheel-venv/bin/python",
+            "$REPOSITORY/.ergora/checks/ac5-task-composition-selection/r1/wheel-venv"
+          ],
+          "exit": 0,
+          "seconds": 0.040635920129716396
+        },
+        {
+          "checked_at": "2026-11-10T15:03:59.431609+00:00",
+          "name": "install",
+          "command": [
+            "uv",
+            "pip",
+            "install",
+            "--offline",
+            "--python",
+            "$REPOSITORY/.ergora/checks/ac5-task-composition-selection/r1/wheel-venv/bin/python",
+            "$REPOSITORY/.ergora/checks/ac5-task-composition-selection/r1/dist/ergora-0.2.0-py3-none-any.whl[dev,web,temporal,task-mcp]"
+          ],
+          "exit": 0,
+          "seconds": 5.12182254018262
+        }
+      ]
+    },
+    {
+      "private_original": "r2/build-install.json",
+      "bytes": 1397,
+      "sha256": "11e8a5cb9065d48a897c77f8a3645374760e2f4721803c9a2fbe94d977c61771",
+      "omitted_top_level_fields": [],
+      "projection": [
+        {
+          "checked_at": "2026-11-10T15:15:48.495327+00:00",
+          "name": "build",
+          "command": [
+            "uv",
+            "build",
+            "--offline",
+            "--python",
+            "$REPOSITORY/.ergora/checks/ac5-definition-resource-editor/r2/wheel-venv/bin/python",
+            "--wheel",
+            "--out-dir",
+            "$REPOSITORY/.ergora/checks/ac5-task-composition-selection/r2/dist"
+          ],
+          "exit": 0,
+          "seconds": 8.104847817216069
+        },
+        {
+          "checked_at": "2026-11-10T15:15:48.543438+00:00",
+          "name": "venv",
+          "command": [
+            "uv",
+            "venv",
+            "--offline",
+            "--python",
+            "$REPOSITORY/.ergora/checks/ac5-definition-resource-editor/r2/wheel-venv/bin/python",
+            "$REPOSITORY/.ergora/checks/ac5-task-composition-selection/r2/wheel-venv"
+          ],
+          "exit": 0,
+          "seconds": 0.04648861987516284
+        },
+        {
+          "checked_at": "2026-11-10T15:15:53.574480+00:00",
+          "name": "install",
+          "command": [
+            "uv",
+            "pip",
+            "install",
+            "--offline",
+            "--python",
+            "$REPOSITORY/.ergora/checks/ac5-task-composition-selection/r2/wheel-venv/bin/python",
+            "$REPOSITORY/.ergora/checks/ac5-task-composition-selection/r2/dist/ergora-0.2.0-py3-none-any.whl[dev,web,temporal,task-mcp]"
+          ],
+          "exit": 0,
+          "seconds": 5.030464719980955
+        }
+      ]
+    },
+    {
+      "private_original": "r3/build-install.json",
+      "bytes": 1397,
+      "sha256": "9c629ab1c48b79fcc9298ff50ed73b866ee4a337d36847961e75c98566cb7af4",
+      "omitted_top_level_fields": [],
+      "projection": [
+        {
+          "checked_at": "2026-11-10T15:20:28.997162+00:00",
+          "name": "build",
+          "command": [
+            "uv",
+            "build",
+            "--offline",
+            "--python",
+            "$REPOSITORY/.ergora/checks/ac5-definition-resource-editor/r2/wheel-venv/bin/python",
+            "--wheel",
+            "--out-dir",
+            "$REPOSITORY/.ergora/checks/ac5-task-composition-selection/r3/dist"
+          ],
+          "exit": 0,
+          "seconds": 7.399966672994196
+        },
+        {
+          "checked_at": "2026-11-10T15:20:29.039718+00:00",
+          "name": "venv",
+          "command": [
+            "uv",
+            "venv",
+            "--offline",
+            "--python",
+            "$REPOSITORY/.ergora/checks/ac5-definition-resource-editor/r2/wheel-venv/bin/python",
+            "$REPOSITORY/.ergora/checks/ac5-task-composition-selection/r3/wheel-venv"
+          ],
+          "exit": 0,
+          "seconds": 0.04102246230468154
+        },
+        {
+          "checked_at": "2026-11-10T15:20:33.727723+00:00",
+          "name": "install",
+          "command": [
+            "uv",
+            "pip",
+            "install",
+            "--offline",
+            "--python",
+            "$REPOSITORY/.ergora/checks/ac5-task-composition-selection/r3/wheel-venv/bin/python",
+            "$REPOSITORY/.ergora/checks/ac5-task-composition-selection/r3/dist/ergora-0.2.0-py3-none-any.whl[dev,web,temporal,task-mcp]"
+          ],
+          "exit": 0,
+          "seconds": 4.687483599875122
+        }
+      ]
+    },
+    {
+      "private_original": "r4/build-install.json",
+      "bytes": 1398,
+      "sha256": "e68185a8500be52e76480474dfb2a3723390996ab4c1d388714b6ed44e83b61d",
+      "omitted_top_level_fields": [],
+      "projection": [
+        {
+          "checked_at": "2026-11-10T15:34:25.950617+00:00",
+          "name": "build",
+          "command": [
+            "uv",
+            "build",
+            "--offline",
+            "--python",
+            "$REPOSITORY/.ergora/checks/ac5-definition-resource-editor/r2/wheel-venv/bin/python",
+            "--wheel",
+            "--out-dir",
+            "$REPOSITORY/.ergora/checks/ac5-task-composition-selection/r4/dist"
+          ],
+          "exit": 0,
+          "seconds": 9.735336858779192
+        },
+        {
+          "checked_at": "2026-11-10T15:34:26.010530+00:00",
+          "name": "venv",
+          "command": [
+            "uv",
+            "venv",
+            "--offline",
+            "--python",
+            "$REPOSITORY/.ergora/checks/ac5-definition-resource-editor/r2/wheel-venv/bin/python",
+            "$REPOSITORY/.ergora/checks/ac5-task-composition-selection/r4/wheel-venv"
+          ],
+          "exit": 0,
+          "seconds": 0.058446506038308144
+        },
+        {
+          "checked_at": "2026-11-10T15:34:31.429129+00:00",
+          "name": "install",
+          "command": [
+            "uv",
+            "pip",
+            "install",
+            "--offline",
+            "--python",
+            "$REPOSITORY/.ergora/checks/ac5-task-composition-selection/r4/wheel-venv/bin/python",
+            "$REPOSITORY/.ergora/checks/ac5-task-composition-selection/r4/dist/ergora-0.2.0-py3-none-any.whl[dev,web,temporal,task-mcp]"
+          ],
+          "exit": 0,
+          "seconds": 5.418026388157159
+        }
+      ]
+    },
+    {
+      "private_original": "r5/build-install.json",
+      "bytes": 1398,
+      "sha256": "941e790676f11e6dde18032bcf09b410a6bcc3d418f8cb47a4a11bd85069d8de",
+      "omitted_top_level_fields": [],
+      "projection": [
+        {
+          "checked_at": "2026-11-10T15:35:07.786034+00:00",
+          "name": "build",
+          "command": [
+            "uv",
+            "build",
+            "--offline",
+            "--python",
+            "$REPOSITORY/.ergora/checks/ac5-definition-resource-editor/r2/wheel-venv/bin/python",
+            "--wheel",
+            "--out-dir",
+            "$REPOSITORY/.ergora/checks/ac5-task-composition-selection/r5/dist"
+          ],
+          "exit": 0,
+          "seconds": 6.872530629392713
+        },
+        {
+          "checked_at": "2026-11-10T15:35:07.828445+00:00",
+          "name": "venv",
+          "command": [
+            "uv",
+            "venv",
+            "--offline",
+            "--python",
+            "$REPOSITORY/.ergora/checks/ac5-definition-resource-editor/r2/wheel-venv/bin/python",
+            "$REPOSITORY/.ergora/checks/ac5-task-composition-selection/r5/wheel-venv"
+          ],
+          "exit": 0,
+          "seconds": 0.041161544155329466
+        },
+        {
+          "checked_at": "2026-11-10T15:35:12.277070+00:00",
+          "name": "install",
+          "command": [
+            "uv",
+            "pip",
+            "install",
+            "--offline",
+            "--python",
+            "$REPOSITORY/.ergora/checks/ac5-task-composition-selection/r5/wheel-venv/bin/python",
+            "$REPOSITORY/.ergora/checks/ac5-task-composition-selection/r5/dist/ergora-0.2.0-py3-none-any.whl[dev,web,temporal,task-mcp]"
+          ],
+          "exit": 0,
+          "seconds": 4.448103616014123
+        }
+      ]
+    },
+    {
+      "private_original": "r1/package-identities.json",
+      "bytes": 58852,
+      "sha256": "5d53d5123db9f69df575761a89745ba1669f65fea2b5de738cf80f58e3a9c178",
+      "omitted_top_level_fields": [
+        "files"
+      ],
+      "projection": {
+        "checked_at": "2026-11-10T15:04:19.419287+00:00",
+        "baseline": "f68d7390e0e65f8045158cb1d0270c4057c7a74d",
+        "source_wheel_installed_record_files": 439,
+        "wheel_sha256": "e61e2f554326ea576b345202dc8422d6b2ef423be82eeb18f9c4f604314b4c08",
+        "frozen_files": 283,
+        "verify": {
+          "status": "PASS",
+          "version": "2.2",
+          "path": "$REPOSITORY/.ergora/checks/ac5-task-composition-selection/r1/wheel-venv/lib/python3.12/site-packages/ergora/data/reference",
+          "source_zip_sha256": "8018be5094623ca0646d28d3671daaf7ac60774280eefc1c5c023bc19dc5c760",
+          "files": 283,
+          "installer": "$REPOSITORY/.ergora/checks/ac5-task-composition-selection/r1/wheel-venv/lib/python3.12/site-packages/ergora/data/reference/install-from-report.sh",
+          "runtime_started": false
+        },
+        "python": "3.12.11 (main, Aug 18 2025, 19:19:11) [Clang 20.1.4 ]",
+        "scope": "Noneditable C5b task selection wheel; no original services, model quality or GPU acceptance claim."
+      }
+    },
+    {
+      "private_original": "r2/package-identities.json",
+      "bytes": 58852,
+      "sha256": "a7849f9e33b38f644d20d74fe07125c0058d2931fe407faf1529a4091416b352",
+      "omitted_top_level_fields": [
+        "files"
+      ],
+      "projection": {
+        "checked_at": "2026-11-10T15:16:30.270785+00:00",
+        "baseline": "f68d7390e0e65f8045158cb1d0270c4057c7a74d",
+        "source_wheel_installed_record_files": 439,
+        "wheel_sha256": "847292fd659a38d013f87c2c67488068e70e0492935f534f1016aa040fb80f00",
+        "frozen_files": 283,
+        "verify": {
+          "status": "PASS",
+          "version": "2.2",
+          "path": "$REPOSITORY/.ergora/checks/ac5-task-composition-selection/r2/wheel-venv/lib/python3.12/site-packages/ergora/data/reference",
+          "source_zip_sha256": "8018be5094623ca0646d28d3671daaf7ac60774280eefc1c5c023bc19dc5c760",
+          "files": 283,
+          "installer": "$REPOSITORY/.ergora/checks/ac5-task-composition-selection/r2/wheel-venv/lib/python3.12/site-packages/ergora/data/reference/install-from-report.sh",
+          "runtime_started": false
+        },
+        "python": "3.12.11 (main, Aug 18 2025, 19:19:11) [Clang 20.1.4 ]",
+        "scope": "Noneditable C5b task selection wheel; no original services, model quality or GPU acceptance claim."
+      }
+    },
+    {
+      "private_original": "r3/package-identities.json",
+      "bytes": 58852,
+      "sha256": "acd670f9a777c157bf2b0de720e0bb5a833defa0ceb450259141b8458a260b69",
+      "omitted_top_level_fields": [
+        "files"
+      ],
+      "projection": {
+        "checked_at": "2026-11-10T15:21:17.736997+00:00",
+        "baseline": "f68d7390e0e65f8045158cb1d0270c4057c7a74d",
+        "source_wheel_installed_record_files": 439,
+        "wheel_sha256": "f1a62824e0db346d661d3183bb239f1dcd2cb521725d229f8ba1dbf4c3a6d120",
+        "frozen_files": 283,
+        "verify": {
+          "status": "PASS",
+          "version": "2.2",
+          "path": "$REPOSITORY/.ergora/checks/ac5-task-composition-selection/r3/wheel-venv/lib/python3.12/site-packages/ergora/data/reference",
+          "source_zip_sha256": "8018be5094623ca0646d28d3671daaf7ac60774280eefc1c5c023bc19dc5c760",
+          "files": 283,
+          "installer": "$REPOSITORY/.ergora/checks/ac5-task-composition-selection/r3/wheel-venv/lib/python3.12/site-packages/ergora/data/reference/install-from-report.sh",
+          "runtime_started": false
+        },
+        "python": "3.12.11 (main, Aug 18 2025, 19:19:11) [Clang 20.1.4 ]",
+        "scope": "Noneditable C5b task selection wheel; no original services, model quality or GPU acceptance claim."
+      }
+    },
+    {
+      "private_original": "r4/package-identities.json",
+      "bytes": 58852,
+      "sha256": "4268b6a5513e847060d7df6c2f3dc92c6f52eb7641326897e6631bc35af3a0b8",
+      "omitted_top_level_fields": [
+        "files"
+      ],
+      "projection": {
+        "checked_at": "2026-11-10T15:34:46.870381+00:00",
+        "baseline": "f68d7390e0e65f8045158cb1d0270c4057c7a74d",
+        "source_wheel_installed_record_files": 439,
+        "wheel_sha256": "42f1891e864eade46058d82c238ae29d48ec2970a74f92bcd31398dd8d9b8a9a",
+        "frozen_files": 283,
+        "verify": {
+          "status": "PASS",
+          "version": "2.2",
+          "path": "$REPOSITORY/.ergora/checks/ac5-task-composition-selection/r4/wheel-venv/lib/python3.12/site-packages/ergora/data/reference",
+          "source_zip_sha256": "8018be5094623ca0646d28d3671daaf7ac60774280eefc1c5c023bc19dc5c760",
+          "files": 283,
+          "installer": "$REPOSITORY/.ergora/checks/ac5-task-composition-selection/r4/wheel-venv/lib/python3.12/site-packages/ergora/data/reference/install-from-report.sh",
+          "runtime_started": false
+        },
+        "python": "3.12.11 (main, Aug 18 2025, 19:19:11) [Clang 20.1.4 ]",
+        "scope": "Noneditable C5b task selection wheel; no original services, model quality or GPU acceptance claim."
+      }
+    },
+    {
+      "private_original": "r5/package-identities.json",
+      "bytes": 58852,
+      "sha256": "8a3349257511d08ccdcff98c246f6e1145ec24ebaae9d6f7544a0a45abd6495b",
+      "omitted_top_level_fields": [
+        "files"
+      ],
+      "projection": {
+        "checked_at": "2026-11-10T15:35:48.613537+00:00",
+        "baseline": "f68d7390e0e65f8045158cb1d0270c4057c7a74d",
+        "source_wheel_installed_record_files": 439,
+        "wheel_sha256": "5b0e11fd31baa068a349493e4de9d996d528f3ca5e44d43522b2b894e77fae33",
+        "frozen_files": 283,
+        "verify": {
+          "status": "PASS",
+          "version": "2.2",
+          "path": "$REPOSITORY/.ergora/checks/ac5-task-composition-selection/r5/wheel-venv/lib/python3.12/site-packages/ergora/data/reference",
+          "source_zip_sha256": "8018be5094623ca0646d28d3671daaf7ac60774280eefc1c5c023bc19dc5c760",
+          "files": 283,
+          "installer": "$REPOSITORY/.ergora/checks/ac5-task-composition-selection/r5/wheel-venv/lib/python3.12/site-packages/ergora/data/reference/install-from-report.sh",
+          "runtime_started": false
+        },
+        "python": "3.12.11 (main, Aug 18 2025, 19:19:11) [Clang 20.1.4 ]",
+        "scope": "Noneditable C5b task selection wheel; no original services, model quality or GPU acceptance claim."
+      }
+    },
+    {
+      "private_original": "r1/preparation-failed-01-result.json",
+      "bytes": 336,
+      "sha256": "a503bfc60a98ce9e66e1c010382030cc047da71fefebde93f37db61d9bb3b520",
+      "omitted_top_level_fields": [],
+      "projection": {
+        "at": "2026-11-10T15:05:32.578012+00:00",
+        "status": "failed",
+        "error": "Preparation driver supplied None instead of required new-draft expected_revision=0; fixture setup stopped before browser/HTTP/model.",
+        "original_trace": "Tool receipt; no separate stdout file. Product unchanged.",
+        "retained": "preparation-failed-01"
+      }
+    },
+    {
+      "private_original": "r1/browser-launch-initial.json",
+      "bytes": 347,
+      "sha256": "447d86a835788104ff09c52319cb970203ea9f917508537e300b74d7cd060170",
+      "omitted_top_level_fields": [],
+      "projection": {
+        "at": "2026-11-10T15:06:41.207983+00:00",
+        "initial_default_launch": "failed: expected system Chrome at /opt/google/chrome/chrome unavailable",
+        "next_launch": "Use existing pinned headless Chromium CLI config output/playwright/r1-cli.config.json; no installation/product changes.",
+        "original_error": "Tool receipt; no separate stdout."
+      }
+    }
+  ]
+}

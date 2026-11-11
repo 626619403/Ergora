@@ -1,10 +1,10 @@
 # Ergora 实施计划与进度
 
-最后更新：2026-11-10。本文件只保留恢复入口、当前状态及稳定规则；旧逐片记录完整保存在[11月10日检查点归档](PLAN-history-2026-11-10.md)和[更早历史](PLAN-history-2026-11-09.md)。旧文的“当前”只代表当时快照。
+最后更新：2026-11-11。本文件只保留恢复入口、当前状态及稳定规则；旧逐片记录完整保存在[11月10日检查点归档](PLAN-history-2026-11-10.md)和[更早历史](PLAN-history-2026-11-09.md)。旧文的“当前”只代表当时快照。
 
 ## 当前检查点
 
-- 仓库 `626619403/Ergora`；工作分支 `refactor/architecture-foundations`；当前已提交/普通推送 `a2c89a5b4b5ca49bf0c3f28a4f35efaec539bd3c`。不自动合入 main 或强推。
+- 仓库 `626619403/Ergora`；工作分支 `refactor/architecture-foundations`；当前已提交/普通推送 `f68d7390e0e65f8045158cb1d0270c4057c7a74d`。不自动合入 main 或强推。
 - AC5 C3a–c 精确交付已终结。[D4/D5](delivery/2026-11-10-definition-resource-inheritance.md)提交 `4636d77377bf63f15c357cf14660024e3ae1f939` 自己的 CI42799311145 双OS七必要步骤及独立精确对象/HTTPS通过。
 - [C3d联合修订](delivery/2026-11-10-definition-joint-revisions.md)本地出口通过：118次CLI、23次预期拒绝、重复模板实例/职责/逐叶后端准入、实际页面联合修订、旧对象/快照保持；真实自身模板406.36秒approve，新独立20文件Spec/Standards通过，开放finding0。上述45c2de4已推送；自己的[CI42807885966](https://github.com/626619403/Ergora/actions/runs/42807885966)第四份样本双OS七必要步骤success/completed、原评审者离线终核及精确对象/一次独立HTTPS同SHA通过，精确交付终结。
 - [C4a嵌套图](delivery/2026-11-10-composition-graph.md)精确交付完成：a60a67e自己的[CI42817897236](https://github.com/626619403/Ergora/actions/runs/42817897236)第三样本双OS七必要步骤成功，原评审者核精确26Git对象/436包/283冻结及一次独立HTTPS同SHA。原28回归、三域/重复实例与R4受影响旅程、实际自身201.64秒approve/五scope读取、完整独立两轴和清理保持原范围，CG1–3关闭。
@@ -15,7 +15,7 @@
 1. C3d及C4a精确交付均已终结，既有非终态样本保持；不重复产品/模型或远端终核。
 2. C4b.1完整最终候选本地出口已通过，8ce9aba已普通推送、原评审精确20Git对象/436包/283冻结及一次HTTPS同SHA通过；自己的CI42825342126第三样本双OS七必要步骤与原评审离线终核通过，精确交付终结；前两In progress样本保持。已过行为与模型不重复。
 3. [C4b第二片](delivery/2026-11-10-composition-comparison.md)：两个精确已发布preview共用显式grant，逐实例比较内容/来源/提示等事实；V0设计已核，V1/V2已实现，437包/两RECORD及283冻结通过；V3主页面/最终索引视口通过，生命周期失败前四迟到回复/tab/key序检查按实际checkpoint保留；122HTTP/34成功preview/68原对象/零run与下载已核，实际自身120.05秒approve/全部五scope完整读取，五公开投影/两截图及清理完成；完整20文件新独立两轴及本地出口通过，Spec/Standards开放finding0；a2c89a5已普通提交/推送，自己的CI42833639985第四样本双OS七必要步骤success/completed，精确20Git对象/437包/283冻结及独立HTTPS同SHA已核，原评审四样本20原响应离线终核通过，精确交付终结；前三In progress样本与REST403后smart-Git200的实际请求范围保持。必要时另片复用原编译器增加显式未发布候选预览，不引入浏览器编译器或隐式提权拖动。
-4. [C5分片计划](plans/2026-11-10-composition-handoff.md)：C5a当前预览完整manifest持久交接已实现，R2包437/283与两受影响回归、实际页面15.33秒/94HTTP/48旧树保持通过，实际自身160.37秒approve/全部五scope及314712B连续读取通过，新独立完整22文件两轴及模型/投影终核开放0，目录措辞finding关闭；五公开投影/两截图及本地出口通过，待普通提交/本片CI与精确远端交付；随后C5b正式选择/逐叶后端与writer信任、C5c两开发域六阶段旅程；[C5a记录](delivery/2026-11-10-composition-manifest-handoff.md)。C6/AC6：容量、材料与模型分页成本、三域公开旅程及手册。
+4. [C5分片计划](plans/2026-11-10-composition-handoff.md)：C5a精确交付已终结；[C5b](plans/2026-11-10-task-composition-selection.md)正式选择/逐叶后端与writer信任已实现，R3两开发域/审查组合创建/原ID未知恢复及144HTTP/48旧对象通过，失败保持。自身首审request-changes与新独立两轴两P2已最小修正；R5包439/283、受影响页面2.94秒/22检查/30HTTP及旧记录保持通过；自身复核79.67秒approve/五scope与143890B连续读取通过，五公开投影/两原截图已发布。完整23文件新独立两轴及本地出口通过，SP1/SP2/ST1关闭、开放0；普通提交/远端/本提交CI待验，接续C5c两开发域六阶段旅程；[本片记录](delivery/2026-11-10-task-composition-selection.md)。C6/AC6：容量、材料与模型分页成本、三域公开旅程及手册。
 5. 随后按[总计划](plans/2026-11-01-all-in-one.md)完成F7逐项目工单、F8可选harness/会话、F9训练实验、F10受评价持续改进与G1集成交接。D/X按实测需要；PUB1许可证仍待维护者选择。项目整体未完成。
 
 ## 持续执行与验收规则

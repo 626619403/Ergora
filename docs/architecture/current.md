@@ -436,3 +436,5 @@ C4b.2成对比较继续由`definitions.js`的原preview请求世代拥有：固�
 
 
 C5a的`workflow_definitions.freeze_manifest`继续调用原preview与完整包原子发布，以已接受preview摘要固定控制目录中的完整树；CLI/HTTP只转交同一用例。原跨进程文件锁串行同位置的保存，相同摘要重试完整核验原包而不覆盖。`frozen_manifest`只读核原树与位置摘要，不依赖活动库或当前后端。定义视图捕获home/原preview对象身份，保存或查询的迟到结果不能覆盖新预览；编辑缓冲和比较目标不作为保存输入。没有新schema/DB/调度器/批准；正式任务仍由原tasks重新准入。实际进度见[C5a记录](../delivery/2026-11-10-composition-manifest-handoff.md)。
+
+C5b在`console/tasks.js`保留原sequence、creationLocked和原ID未知恢复，构建schema-v1或显式schema-v2后仍调用同一tasks.preview/create。`task-composition.js`拥有对话框内manifest读取世代、完整实例选择、unit分配及逐叶编辑；SHA/来源/home或对话框变化使旧读取失效。它不复制WorkDelivery、编译器或后端准入，不提供正式调度。`binding-fields.js`仅由项目绑定`tools.js`和逐叶编辑实际共用既有组件schema的字段展示/取值；不同后端字段属于组件catalog，执行者不从静态定义自动授信。没有新HTTP/schema/DB/依赖，服务端原任务创建/候选批准/六阶段所有者保持。实际验收范围见[C5b记录](../delivery/2026-11-10-task-composition-selection.md)。

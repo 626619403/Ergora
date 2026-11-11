@@ -1,6 +1,6 @@
 # AC5 C5a：当前静态预览的完整manifest交接
 
-基线 `a2c89a5b4b5ca49bf0c3f28a4f35efaec539bd3c`；[C5计划](../plans/2026-11-10-composition-handoff.md)拥有本片范围。C4b.2自己的CI与原评审精确交付已终结。本片完整本地出口通过；普通提交、自己的CI与精确远端交付待核。
+基线 `a2c89a5b4b5ca49bf0c3f28a4f35efaec539bd3c`；[C5计划](../plans/2026-11-10-composition-handoff.md)拥有本片范围。C4b.2自己的CI与原评审精确交付已终结。本片完整本地出口通过；f68d739自己的CI及精确远端交付已终结，见末段。
 
 ## 实施前核对
 
@@ -56,3 +56,7 @@ R2实际安装页面15.33秒旅程通过：三域16/19/9实例，键盘明确保
 新fresh-context主审与原Spec/Standards两轴已完成完整22文件最终候选补核，开放finding均为0，本地出口通过；[原评审报告](2026-11-10-composition-manifest-handoff-review.md)保存实现审查及最终增量的各自范围。原件另核437源/wheel/安装身份与两RECORD、94HTTP/14manifest/48旧树/18静态资产；模型全部五scope及连续读取、13份全文附件、五投影所引14原件、两份原PNG字节与实际目视通过。目录措辞finding保持准确关闭，原R1及页面首失败不回写。
 
 这里只关闭本地出口；待普通提交/推送后由原主审核精确Git文件、包及283冻结身份、一次独立HTTPS远端同SHA，以及本提交自己的双OS七必要CI步骤。C5b正式选择与C5c纵向六阶段继续原计划，不重复本片已过页面、模型和回归。
+
+## 精确交付终态
+
+`f68d7390e0e65f8045158cb1d0270c4057c7a74d`已普通推送。原主审核25精确Git对象等ready、437源/wheel/安装及两RECORD、283冻结blob/执行位保持，一次独立HTTPS smart-Git refs返回同完整SHA。自己的[CI42839729110](https://github.com/626619403/Ergora/actions/runs/42839729110)第四样本双OS七必要步骤success/completed；原主审独立离线核四样本20份官方原响应，前三In progress继续保留。原报告已续记最终gate：Spec/Standards/阻塞0，本片精确交付终结；不重复已过行为、模型、远端或CI。C5b/c仍是各自独立验收。

@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "published_at": "2026-11-11T02:15:38.650763+00:00",
+  "scope": "Only sampled owned identities after explicit closes. Backend-reported input includes cached input; output/reasoning separate, not a bill.",
+  "projection_policy": "Original byte/SHA identities precede JSON projection. Repository path and 15 private origins replaced with named placeholders. Omitted fields named; full private originals retained. Not a substitute for raw omitted evidence.",
+  "originals": [
+    {
+      "private_original": "browser-cleanup.json",
+      "bytes": 1699,
+      "sha256": "df0db33d74f0e01cdf9fd16fdef5c2d1bd901892165a0d197e4611747fec5eb7",
+      "projection": {
+        "sampled_owned_identities": 12,
+        "all_sampled_identity_gone": true,
+        "scope": "Only original sampled owned browser and HTTP/proxy identities after explicit closes; no global process cleanup claim."
+      },
+      "omitted_top_level_fields": [
+        "at",
+        "observed"
+      ],
+      "derived_fields": [
+        "sampled_owned_identities",
+        "all_sampled_identity_gone"
+      ]
+    },
+    {
+      "private_original": "r5/supplement-audit.json",
+      "bytes": 14284,
+      "sha256": "e45777fa96f26a79c72758e1ca79a38e0d97a66005cdc938472fdd7002255b6d",
+      "projection": {
+        "sampled_owned_identities": 4,
+        "all_sampled_identity_gone": true,
+        "scope": "R5 affected fixes only. Real proxy originals retained; browser driver separately injects a client503 after original200, not a server503. No preview/create/model/six-stage replay. R1–R3 original144HTTP/4contracts/48trees acceptance remains scoped to their candidates."
+      },
+      "omitted_top_level_fields": [
+        "at",
+        "response_pairs",
+        "all_product_requests_get_only",
+        "manifest_reads_match_original_inspector",
+        "served_assets_match_R5_source_wheel_installed",
+        "repository_contract_project_definition_manifest_files_and_lists_unchanged_in_both_homes",
+        "agent_runs",
+        "originals",
+        "sampled_owned_processes"
+      ],
+      "derived_fields": [
+        "sampled_owned_identities",
+        "all_sampled_identity_gone"
+      ]
+    },
+    {
+      "private_original": "self-review-r1-cleanup.json",
+      "bytes": 697,
+      "sha256": "1ed1f357d6139e7450a78000aae0d74047bf83df66f25261bf3d5d3fd95e3441",
+      "projection": {
+        "sampled_owned_identities": 4,
+        "all_sampled_identity_gone": true,
+        "scope": "Only four original sampled owned identities after completion; no global cleanup claim."
+      },
+      "omitted_top_level_fields": [
+        "at",
+        "sampled_processes"
+      ],
+      "derived_fields": [
+        "sampled_owned_identities",
+        "all_sampled_identity_gone"
+      ]
+    },
+    {
+      "private_original": "self-review-r2-cleanup.json",
+      "bytes": 797,
+      "sha256": "07c4263f70e4fa689aeb5ddbe00763effad21ee5939d7a0dd1f49066c3465335",
+      "projection": {
+        "sampled_owned_identities": 4,
+        "all_sampled_identity_gone": true,
+        "scope": "Only four original sampled owned identities after completion; no global cleanup claim."
+      },
+      "omitted_top_level_fields": [
+        "at",
+        "sampled_processes"
+      ],
+      "derived_fields": [
+        "sampled_owned_identities",
+        "all_sampled_identity_gone"
+      ]
+    },
+    {
+      "private_original": "self-review-r1-usage.json",
+      "bytes": 430,
+      "sha256": "ab5cac78d32df12efa3b844acbb6cd15778fc19c1bda4e7f28ddbf08a278f210",
+      "omitted_top_level_fields": [],
+      "projection": {
+        "at": "2026-11-10T15:38:59.168119+00:00",
+        "run_id": "6885032f0074414a9638acbd8452a951",
+        "usage": [
+          {
+            "input_tokens": 747236,
+            "cached_input_tokens": 656512,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 3586,
+            "reasoning_output_tokens": 1730
+          }
+        ],
+        "scope": "Backend reported usage, not billing. Cached input included in input; separately reported reasoning not added to output."
+      }
+    },
+    {
+      "private_original": "self-review-r2-usage.json",
+      "bytes": 429,
+      "sha256": "8c2d6c5ec7244da4889a58ee9786b0c5878316787d9b358766d787a4a5640142",
+      "omitted_top_level_fields": [],
+      "projection": {
+        "at": "2026-11-10T15:41:55.597324+00:00",
+        "run_id": "04d2d3e522694311a50256d23596d92b",
+        "usage": [
+          {
+            "input_tokens": 274510,
+            "cached_input_tokens": 212608,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1656,
+            "reasoning_output_tokens": 406
+          }
+        ],
+        "scope": "Backend reported usage, not billing. Cached input included in input; separately reported reasoning not added to output."
+      }
+    }
+  ]
+}

@@ -1,0 +1,256 @@
+{
+  "schema_version": 1,
+  "published_at": "2026-11-11T02:15:38.635777+00:00",
+  "scope": "Actual bundled structure-review evidence revisions1.0.82/1.0.83; first167.84s request-changes, fixed79.67s approve. Four full product sources, scoped drivers and explicit receipt projections; no formal approval, model quality or different-model independence claim.",
+  "projection_policy": "Original byte/SHA identities precede JSON projection. Repository path and 15 private origins replaced with named placeholders. Omitted fields named; full private originals retained. Not a substitute for raw omitted evidence.",
+  "originals": [
+    {
+      "private_original": "self-review-r1.json",
+      "bytes": 1769,
+      "sha256": "b9286b5885ad4a9e84e16dc8998741c9baa4b2b05398c8696ef86bb0b21b611f",
+      "omitted_top_level_fields": [],
+      "projection": {
+        "checked_at": "2026-11-10T15:31:29.218647+00:00",
+        "source": {
+          "src/ergora/data/console/tasks.js": "9f173978cdcc25c4b34679f32b03d2cd4acf4e112f16c19ee0be09538628cd37",
+          "src/ergora/data/console/tools.js": "ef2ec7c9eedef04a49cb90b729d158ed591a17d49ab0fde31b54914dc868fcd8",
+          "src/ergora/data/console/task-composition.js": "61c5e3d7e1ce1ca018191ace67107906f33e75d3cf4a65b336e461a0cd27d12b",
+          "src/ergora/data/console/binding-fields.js": "b21d6d75d9317f8ab30328608bed54ba03c0d001b0139af292977aea8c8357a2"
+        },
+        "run_id": "6885032f0074414a9638acbd8452a951",
+        "status": "succeeded",
+        "backend": "codex",
+        "inference_model": "gpt-6.1-sol",
+        "reasoning_effort": "high",
+        "driver_cli_exit_code": 0,
+        "seconds": 167.83689139597118,
+        "input_digest": "12e7c90fc3956820a8d269685355a4ba61c33f8bfb7f4d203f254c8f71453c41",
+        "prompt_sha256": "cb6c22144f54d96c4976e416905b162978dc2f4578529ac538e5fc6d5f9230ce",
+        "attachment_bytes": 244105,
+        "attachment_sha256": "c32afa8539d9cfdb61bbd32f78feb40c81e7fb0cc39b712e7574a754c6d16657",
+        "manifest_digest": "0e96b27863b277327d7643ff097cea9e5451b9c598a4dabc55341a362be75ee3",
+        "manifest_path": "$REPOSITORY/.ergora/checks/ac5-task-composition-selection/self-review-r1/state/composition-manifests/bfde6d1b40483ceb452b9dce802c52480728e451fa7967494f13572003100e5d",
+        "evidence_revision": "1.0.82",
+        "original_definition_libraries_retained": true,
+        "scope": "Actual bundled structure-review; full four product sources and selected original drivers and identity-bound receipt projection, not omitted raw maps, owner approval, understanding or different-model independence.",
+        "decision": "request-changes",
+        "result_sha256": "3eda3f7fd943f90a6f72d42f522b558de9ecc1b73107ae3582f2df518b144aa3"
+      }
+    },
+    {
+      "private_original": "self-review-r2.json",
+      "bytes": 1760,
+      "sha256": "4f6de0a5dc77a0a84fd792b3f4ceebea110b5ce82984572f4dfd4c6c55e90cf0",
+      "omitted_top_level_fields": [],
+      "projection": {
+        "checked_at": "2026-11-10T15:41:27.782972+00:00",
+        "source": {
+          "src/ergora/data/console/tasks.js": "a14b7ecd2acff1756f4952e6bc209e7da721a425d9ca6717f70f9b1c9bfc192c",
+          "src/ergora/data/console/tools.js": "ef2ec7c9eedef04a49cb90b729d158ed591a17d49ab0fde31b54914dc868fcd8",
+          "src/ergora/data/console/task-composition.js": "f7c4ebc02e1a8262266620678b5af07b8784cbaa3b66649b69d196eaaec0d544",
+          "src/ergora/data/console/binding-fields.js": "b21d6d75d9317f8ab30328608bed54ba03c0d001b0139af292977aea8c8357a2"
+        },
+        "run_id": "04d2d3e522694311a50256d23596d92b",
+        "status": "succeeded",
+        "backend": "codex",
+        "inference_model": "gpt-6.1-sol",
+        "reasoning_effort": "high",
+        "driver_cli_exit_code": 0,
+        "seconds": 79.67008982831612,
+        "input_digest": "d6383ce63ca8b003efbe056c3e7a13cac14fb8ee0ff30da763de08118d4c77e1",
+        "prompt_sha256": "c092d58187928c4280ff00dc15149ed2d5db3799d6911f41c058be8df4fce7b8",
+        "attachment_bytes": 143890,
+        "attachment_sha256": "2e25b28112c5a1ace854ccaf0dcd6030f8fc28c2937bd5953b80640dd1d82394",
+        "manifest_digest": "807a41880aa91f559f9f2f00d482acb823900036c010d4bca9003ae023b7762c",
+        "manifest_path": "$REPOSITORY/.ergora/checks/ac5-task-composition-selection/self-review-r2/state/composition-manifests/dbe8ebcc917ff2e3a3ff85aaf9d60b11b9bcd51c12aa7e937ee19f188bd9fd86",
+        "evidence_revision": "1.0.83",
+        "original_definition_libraries_retained": true,
+        "scope": "Actual bundled structure-review; full four product sources and selected original drivers and identity-bound receipt projection, not omitted raw maps, owner approval, understanding or different-model independence.",
+        "decision": "approve",
+        "result_sha256": "c841f910964b126cef6287015559c05c0ffda65c2b7b6bc40d91598dbbc267d9"
+      }
+    },
+    {
+      "private_original": "self-review-r1/original-result.json",
+      "bytes": 2239,
+      "sha256": "3eda3f7fd943f90a6f72d42f522b558de9ecc1b73107ae3582f2df518b144aa3",
+      "omitted_top_level_fields": [],
+      "projection": {
+        "artifacts": {
+          "response": "Spec: request-changes.\n\n- P2 — `src/ergora/data/console/tasks.js:243`, `loadTemplate()`: with edited task JSON present, clicking “载入所选模板” clears `input.value` and the selected draft before awaiting the GET. If that read fails, the catch only displays an error, leaving the user's raw input lost. This inherited path violates C5b's explicit failed-read/input-reload preservation requirement. Minimum correction: keep the existing input and draft selection while reading, replace them only after a successful current response, and retain preview invalidation. Verify a failed template GET preserves the exact edited JSON.\n\nStandards: approve.\n\nThe composition editor collects instance, assignment and binding choices while `tasks._composition`, WorkDelivery and task creation retain admission, graph validation and publication/recovery ownership. `binding-fields.js` has two real consumers and reuses component configuration metadata without backend-name dispatch. No actionable duplication, new interface, dependency or CI-cost defect was found in the supplied changes.\n\nEntire declared root scope, read completely:\n\n- `definitions/workflow/ergora-structure-review/1.0.82/instructions.md`\n- `definitions/agent/ergora-structure-reviewer/1.0.82/instructions.md`\n- `definitions/agent/ergora-structure-reviewer/1.0.82/skills/ergora-structure-reviewer/SKILL.md`\n- `definitions/agent/ergora-structure-reviewer/1.0.82/skills/candidate-evidence/SKILL.md`\n- `definitions/agent/ergora-structure-reviewer/1.0.82/skills/candidate-evidence/references/candidate.txt`\n\nAll reads used continuous UTF-8 windows of at most 24,000 bytes through `next_offset: null`; candidate.txt totaled 244,105 bytes. No evidence was executed and no workspace files were edited.\n\nThe receipt projections preserve failed checkpoints and support only their stated validation scope. I did not read the omitted original maps or screenshots, and do not claim six-stage execution, different-model independence, formal owner approval, or exact new-commit CI."
+        },
+        "decision": "request-changes",
+        "summary": "Spec: request-changes for one input-preservation defect. Standards: approve; no actionable structural finding."
+      }
+    },
+    {
+      "private_original": "self-review-r2/original-result.json",
+      "bytes": 2302,
+      "sha256": "c841f910964b126cef6287015559c05c0ffda65c2b7b6bc40d91598dbbc267d9",
+      "omitted_top_level_fields": [],
+      "projection": {
+        "artifacts": {
+          "response": "Spec: approve.\n\n`tasks.js::loadTemplate()` now replaces input and clears the draft only after a successful, still-current reply. Failure preserves both; sequence invalidation prevents a late reply overwriting newer edits. `task-composition.js::loadAssignments()` retains selections by unit ID, leaves new or reintroduced units blank, and preserves existing work-instance and manifest-change clearing.\n\nStandards: approve.\n\nBoth fixes remain within their existing UI owners. The assignment map is local form state, with no duplicated backend or graph admission. `binding-fields.js` serves two real callers using existing configuration metadata. The supplied changes preserve creation locking, original-ID recovery, and existing admission, approval, evidence, scheduler and WorkDelivery ownership. No correction is requested.\n\nEntire declared root scope listed and read completely:\n\n- `definitions/workflow/ergora-structure-review/1.0.83/instructions.md`\n- `definitions/agent/ergora-structure-reviewer/1.0.83/instructions.md`\n- `definitions/agent/ergora-structure-reviewer/1.0.83/skills/ergora-structure-reviewer/SKILL.md`\n- `definitions/agent/ergora-structure-reviewer/1.0.83/skills/candidate-evidence/SKILL.md`\n- `definitions/agent/ergora-structure-reviewer/1.0.83/skills/candidate-evidence/references/candidate.txt`\n\nAll 145,540 bytes were read using continuous UTF-8 windows of at most 24,000 bytes through `next_offset: null`, including embedded instructions, context, complete source, original review and supplemental evidence. No shell, network, evidence execution or edits were performed.\n\nThe supplied R5 browser record supports the two fixes with 22 checks; its client 503 was injected after an upstream 200. Earlier failed checkpoints remain failed and scoped to their original candidates. Omitted maps and original HTTP bodies were not inspected. This focused approval does not establish full execution, six-stage acceptance, model quality, different-model independence, formal owner approval, tool authentication, capacity acceptance or exact new-commit CI."
+        },
+        "decision": "approve",
+        "summary": "Spec: approve. Standards: approve. Both preservation fixes resolve the reported defects; no actionable structural finding in the supplied snapshot."
+      }
+    },
+    {
+      "private_original": "self-review-r1/raw-evidence-index.json",
+      "bytes": 2510,
+      "sha256": "aac10afe71b845e2e770ff90b3b02a2eb0062fdb4c46a3fdd9dae147d9e8f8ef",
+      "omitted_top_level_fields": [],
+      "projection": [
+        {
+          "file": "AGENTS.md",
+          "bytes": 1315,
+          "sha256": "5ba4876af2464aabcd68b3341f6420e8f4cab501858bea9d68038c13a1650590"
+        },
+        {
+          "file": "docs/plans/2026-11-10-composition-handoff.md",
+          "bytes": 4155,
+          "sha256": "5c43c394c920e5b1514cdb016398b657277f4fd8fcdca7fab92cfc15e5c18cfc"
+        },
+        {
+          "file": "docs/plans/2026-11-10-task-composition-selection.md",
+          "bytes": 3255,
+          "sha256": "e4526d5a814f62f7d5ff33ba2c121b94bf1797c2ee4ca929c24684eb19166da8"
+        },
+        {
+          "file": "docs/delivery/2026-11-10-task-composition-selection.md",
+          "bytes": 6089,
+          "sha256": "aecd32af26c77f9a4ca824d619a14d31884433621dfcfe9d161f248862c18b59"
+        },
+        {
+          "file": "src/ergora/data/console/tasks.js",
+          "bytes": 74845,
+          "sha256": "9f173978cdcc25c4b34679f32b03d2cd4acf4e112f16c19ee0be09538628cd37"
+        },
+        {
+          "file": "src/ergora/data/console/tools.js",
+          "bytes": 5544,
+          "sha256": "ef2ec7c9eedef04a49cb90b729d158ed591a17d49ab0fde31b54914dc868fcd8"
+        },
+        {
+          "file": "src/ergora/data/console/task-composition.js",
+          "bytes": 10739,
+          "sha256": "61c5e3d7e1ce1ca018191ace67107906f33e75d3cf4a65b336e461a0cd27d12b"
+        },
+        {
+          "file": "src/ergora/data/console/binding-fields.js",
+          "bytes": 2397,
+          "sha256": "b21d6d75d9317f8ab30328608bed54ba03c0d001b0139af292977aea8c8357a2"
+        },
+        {
+          "file": "src/ergora/tasks.py",
+          "bytes": 30114,
+          "sha256": "84b432d8eb282724c7ad12efaa488f44e7872db00bde1691fb2510edbad2c2bf"
+        },
+        {
+          "file": "src/ergora/data/schemas/task-definition-v2.json",
+          "bytes": 3742,
+          "sha256": "92b767efbca8d2d30c0525d49b6ba410a4b3d1997f66fecc8ede3a50ce9346d4"
+        },
+        {
+          "file": "src/ergora/data/console/ui.js",
+          "bytes": 6121,
+          "sha256": "2fc6c19d8d46a68d12562b2c696ec1f6bad4ea7d781afbc326ce3fbf6ac3df2c"
+        },
+        {
+          "file": "browser-main-r3.js",
+          "bytes": 17661,
+          "sha256": "98d892a9d02524ffc5cf91335dbe542ddf7139c0780003d026ac58b38a279381"
+        },
+        {
+          "file": "browser-main-r5.js",
+          "bytes": 14551,
+          "sha256": "29a11eb170577b4ff45fdda5e844aa495bdd4b4a547da3e5a91f9ceee18bf19b"
+        },
+        {
+          "file": "browser-main-r6.js",
+          "bytes": 11559,
+          "sha256": "dac9f70a24ad24d46d45cc8d1de6c24d7a79769089ba358d342659806dec9f3f"
+        },
+        {
+          "file": "audit-browser.py",
+          "bytes": 6397,
+          "sha256": "8b3e51c8f5abec999c6533d7d77a41b7db9972ca92c62bd7c834846ae1c25b92"
+        },
+        {
+          "file": "model-validation-summary.json",
+          "bytes": 21307,
+          "sha256": "6b92495297f72fe33583f544db269fefed0356491acd3fd98fa7e2a827759e24"
+        }
+      ]
+    },
+    {
+      "private_original": "self-review-r2/raw-evidence-index.json",
+      "bytes": 1873,
+      "sha256": "278ed0a02d91d877e0978a4470c75f5805e9a735e9e2b730ac8ab3bd35664ba4",
+      "omitted_top_level_fields": [],
+      "projection": [
+        {
+          "file": "AGENTS.md",
+          "bytes": 1315,
+          "sha256": "5ba4876af2464aabcd68b3341f6420e8f4cab501858bea9d68038c13a1650590"
+        },
+        {
+          "file": "docs/plans/2026-11-10-task-composition-selection.md",
+          "bytes": 3585,
+          "sha256": "45f4744ba06b8705789282d6a2e5d731909d588d1af055e8fd1ba9cd53b1b11b"
+        },
+        {
+          "file": "src/ergora/data/console/tasks.js",
+          "bytes": 74823,
+          "sha256": "a14b7ecd2acff1756f4952e6bc209e7da721a425d9ca6717f70f9b1c9bfc192c"
+        },
+        {
+          "file": "src/ergora/data/console/tools.js",
+          "bytes": 5544,
+          "sha256": "ef2ec7c9eedef04a49cb90b729d158ed591a17d49ab0fde31b54914dc868fcd8"
+        },
+        {
+          "file": "src/ergora/data/console/task-composition.js",
+          "bytes": 10858,
+          "sha256": "f7c4ebc02e1a8262266620678b5af07b8784cbaa3b66649b69d196eaaec0d544"
+        },
+        {
+          "file": "src/ergora/data/console/binding-fields.js",
+          "bytes": 2397,
+          "sha256": "b21d6d75d9317f8ab30328608bed54ba03c0d001b0139af292977aea8c8357a2"
+        },
+        {
+          "file": "src/ergora/data/console/ui.js",
+          "bytes": 6121,
+          "sha256": "2fc6c19d8d46a68d12562b2c696ec1f6bad4ea7d781afbc326ce3fbf6ac3df2c"
+        },
+        {
+          "file": "self-review-r1/original-result.json",
+          "bytes": 2239,
+          "sha256": "3eda3f7fd943f90a6f72d42f522b558de9ecc1b73107ae3582f2df518b144aa3"
+        },
+        {
+          "file": "browser-supplement-r5.js",
+          "bytes": 7838,
+          "sha256": "17fe93f4867c9d7371944020c81edea7d59a3a4cf65e6cc9b8f4898f38297a02"
+        },
+        {
+          "file": "browser-supplement-07.json",
+          "bytes": 1856,
+          "sha256": "93ac13caa697ff6e0ffd385ec68d230346ffcf4c3c4191beffa4bac7b9ce9409"
+        },
+        {
+          "file": "r5/supplement-audit.json",
+          "bytes": 14284,
+          "sha256": "e45777fa96f26a79c72758e1ca79a38e0d97a66005cdc938472fdd7002255b6d"
+        },
+        {
+          "file": "r5/build-install.json",
+          "bytes": 1398,
+          "sha256": "941e790676f11e6dde18032bcf09b410a6bcc3d418f8cb47a4a11bd85069d8de"
+        }
+      ]
+    }
+  ]
+}
