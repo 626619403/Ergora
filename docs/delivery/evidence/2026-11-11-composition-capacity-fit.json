@@ -1,0 +1,508 @@
+{
+  "schema_version": 1,
+  "slice": "C6a focused fit supplement",
+  "candidate": "3d6d1220bd600817e748c19f6a9c0fa1332f6ca9",
+  "result": {
+    "passed": true,
+    "records": [
+      {
+        "id": "capacity-small-50",
+        "preview_sha256": "29961a430a55fa6635d5fde6883500f92aaf56250340c7da3a5c08c8ddd9e866",
+        "before": {
+          "zoom": 4.030769230769231,
+          "min_zoom": 1e-50,
+          "max_zoom": 1e+50,
+          "width": 916,
+          "height": 538,
+          "nodes": 62,
+          "edges": 92,
+          "selected": [
+            "root/group-4/leaf-6"
+          ],
+          "box": {
+            "x1": -54.5,
+            "y1": 52,
+            "x2": 1678,
+            "y2": 6438,
+            "w": 1732.5,
+            "h": 6386
+          },
+          "extent": {
+            "x1": 356.3740458015267,
+            "x2": 583.6259541984732,
+            "y1": 6273.263358778626,
+            "y2": 6406.736641221374,
+            "w": 227.25190839694653,
+            "h": 133.4732824427483
+          },
+          "epsilon": 0.2480916030534351,
+          "contains_all_visible_elements": false
+        },
+        "after": {
+          "zoom": 0.0732795741016206,
+          "min_zoom": 1e-50,
+          "max_zoom": 1e+50,
+          "width": 916,
+          "height": 538,
+          "nodes": 62,
+          "edges": 92,
+          "selected": [
+            "root/group-4/leaf-6"
+          ],
+          "box": {
+            "x1": -54.5,
+            "y1": 52,
+            "x2": 1678,
+            "y2": 6438,
+            "w": 1732.5,
+            "h": 6386
+          },
+          "extent": {
+            "x1": -5438.786324786325,
+            "x2": 7061.286324786326,
+            "y1": -426.1228632478635,
+            "y2": 6915.622863247863,
+            "w": 12500.072649572652,
+            "h": 7341.745726495727
+          },
+          "epsilon": 13.646367521367523,
+          "contains_all_visible_elements": true
+        },
+        "automation_dispatch_to_two_frames_ms": 62
+      },
+      {
+        "id": "capacity-small-200",
+        "preview_sha256": "94c64d5bac2d5061f2e82b0e9d2b2e4498d7a36f3b932a612d2e303f11338036",
+        "before": {
+          "zoom": 4.030769230769231,
+          "min_zoom": 1e-50,
+          "max_zoom": 1e+50,
+          "width": 916,
+          "height": 538,
+          "nodes": 212,
+          "edges": 392,
+          "selected": [
+            "root/group-4/leaf-9"
+          ],
+          "box": {
+            "x1": -54.5,
+            "y1": 52,
+            "x2": 1678,
+            "y2": 28938,
+            "w": 1732.5,
+            "h": 28886
+          },
+          "extent": {
+            "x1": 356.3740458015267,
+            "x2": 583.6259541984732,
+            "y1": 28773.263358778626,
+            "y2": 28906.736641221374,
+            "w": 227.25190839694653,
+            "h": 133.4732824427483
+          },
+          "epsilon": 0.2480916030534351,
+          "contains_all_visible_elements": false
+        },
+        "after": {
+          "zoom": 0.016201339726169665,
+          "min_zoom": 1e-50,
+          "max_zoom": 1e+50,
+          "width": 916,
+          "height": 538,
+          "nodes": 212,
+          "edges": 392,
+          "selected": [
+            "root/group-4/leaf-9"
+          ],
+          "box": {
+            "x1": -54.5,
+            "y1": 52,
+            "x2": 1678,
+            "y2": 28938,
+            "w": 1732.5,
+            "h": 28886
+          },
+          "extent": {
+            "x1": -27458.01709401709,
+            "x2": 29080.517094017094,
+            "y1": -2108.815170940171,
+            "y2": 31098.31517094017,
+            "w": 56538.53418803419,
+            "h": 33207.13034188034
+          },
+          "epsilon": 61.723290598290596,
+          "contains_all_visible_elements": true
+        },
+        "automation_dispatch_to_two_frames_ms": 140.40000009536743
+      },
+      {
+        "id": "capacity-small-500",
+        "preview_sha256": "01bd9e7ce951f5aae1cc4e876586be6e3cda4a8073a1d457c80beb0cd97bf688",
+        "before": {
+          "zoom": 4.030769230769231,
+          "min_zoom": 1e-50,
+          "max_zoom": 1e+50,
+          "width": 916,
+          "height": 538,
+          "nodes": 512,
+          "edges": 992,
+          "selected": [
+            "root/group-4/leaf-96"
+          ],
+          "box": {
+            "x1": -54.5,
+            "y1": 52,
+            "x2": 1678,
+            "y2": 73938,
+            "w": 1732.5,
+            "h": 73886
+          },
+          "extent": {
+            "x1": 356.3740458015267,
+            "x2": 583.6259541984732,
+            "y1": 73773.26335877863,
+            "y2": 73906.73664122137,
+            "w": 227.25190839694653,
+            "h": 133.4732824427483
+          },
+          "epsilon": 0.2480916030534351,
+          "contains_all_visible_elements": false
+        },
+        "after": {
+          "zoom": 0.0063340393711977154,
+          "min_zoom": 1e-50,
+          "max_zoom": 1e+50,
+          "width": 916,
+          "height": 538,
+          "nodes": 512,
+          "edges": 992,
+          "selected": [
+            "root/group-4/leaf-96"
+          ],
+          "box": {
+            "x1": -54.5,
+            "y1": 52,
+            "x2": 1678,
+            "y2": 73938,
+            "w": 1732.5,
+            "h": 73886
+          },
+          "extent": {
+            "x1": -71496.47863247863,
+            "x2": 73118.97863247864,
+            "y1": -5474.199786324786,
+            "y2": 79463.69978632478,
+            "w": 144615.45726495725,
+            "h": 84937.89957264956
+          },
+          "epsilon": 157.87713675213675,
+          "contains_all_visible_elements": true
+        },
+        "automation_dispatch_to_two_frames_ms": 282.5
+      },
+      {
+        "id": "capacity-bundled-structure-50",
+        "preview_sha256": "7c5d0d799917fa5b7de6a508625225646970ba773d31d1b0ee5308b737387ccb",
+        "before": {
+          "zoom": 4.030769230769231,
+          "min_zoom": 1e-50,
+          "max_zoom": 1e+50,
+          "width": 916,
+          "height": 538,
+          "nodes": 62,
+          "edges": 92,
+          "selected": [
+            "root/group-4/leaf-6"
+          ],
+          "box": {
+            "x1": -54.5,
+            "y1": 52,
+            "x2": 1678,
+            "y2": 6438,
+            "w": 1732.5,
+            "h": 6386
+          },
+          "extent": {
+            "x1": 356.3740458015267,
+            "x2": 583.6259541984732,
+            "y1": 6273.263358778626,
+            "y2": 6406.736641221374,
+            "w": 227.25190839694653,
+            "h": 133.4732824427483
+          },
+          "epsilon": 0.2480916030534351,
+          "contains_all_visible_elements": false
+        },
+        "after": {
+          "zoom": 0.0732795741016206,
+          "min_zoom": 1e-50,
+          "max_zoom": 1e+50,
+          "width": 916,
+          "height": 538,
+          "nodes": 62,
+          "edges": 92,
+          "selected": [
+            "root/group-4/leaf-6"
+          ],
+          "box": {
+            "x1": -54.5,
+            "y1": 52,
+            "x2": 1678,
+            "y2": 6438,
+            "w": 1732.5,
+            "h": 6386
+          },
+          "extent": {
+            "x1": -5438.786324786325,
+            "x2": 7061.286324786326,
+            "y1": -426.1228632478635,
+            "y2": 6915.622863247863,
+            "w": 12500.072649572652,
+            "h": 7341.745726495727
+          },
+          "epsilon": 13.646367521367523,
+          "contains_all_visible_elements": true
+        },
+        "automation_dispatch_to_two_frames_ms": 58.90000009536743
+      },
+      {
+        "id": "capacity-bundled-structure-200",
+        "preview_sha256": "aa81881109b6d1610c123f40b76f26fb51c6f1f161aeda665e22a6399dbeb0f3",
+        "before": {
+          "zoom": 4.030769230769231,
+          "min_zoom": 1e-50,
+          "max_zoom": 1e+50,
+          "width": 916,
+          "height": 538,
+          "nodes": 212,
+          "edges": 392,
+          "selected": [
+            "root/group-4/leaf-9"
+          ],
+          "box": {
+            "x1": -54.5,
+            "y1": 52,
+            "x2": 1678,
+            "y2": 28938,
+            "w": 1732.5,
+            "h": 28886
+          },
+          "extent": {
+            "x1": 356.3740458015267,
+            "x2": 583.6259541984732,
+            "y1": 28773.263358778626,
+            "y2": 28906.736641221374,
+            "w": 227.25190839694653,
+            "h": 133.4732824427483
+          },
+          "epsilon": 0.2480916030534351,
+          "contains_all_visible_elements": false
+        },
+        "after": {
+          "zoom": 0.016201339726169665,
+          "min_zoom": 1e-50,
+          "max_zoom": 1e+50,
+          "width": 916,
+          "height": 538,
+          "nodes": 212,
+          "edges": 392,
+          "selected": [
+            "root/group-4/leaf-9"
+          ],
+          "box": {
+            "x1": -54.5,
+            "y1": 52,
+            "x2": 1678,
+            "y2": 28938,
+            "w": 1732.5,
+            "h": 28886
+          },
+          "extent": {
+            "x1": -27458.01709401709,
+            "x2": 29080.517094017094,
+            "y1": -2108.815170940171,
+            "y2": 31098.31517094017,
+            "w": 56538.53418803419,
+            "h": 33207.13034188034
+          },
+          "epsilon": 61.723290598290596,
+          "contains_all_visible_elements": true
+        },
+        "automation_dispatch_to_two_frames_ms": 140.39999961853027
+      }
+    ],
+    "checks": [
+      "capacity-small-50 original preview",
+      "capacity-small-50 pre-fit is selected leaf viewport",
+      "capacity-small-50 renderer zoom limits",
+      "capacity-small-50 fit contains all visible bounds",
+      "capacity-small-50 fit preserves graph and selection",
+      "capacity-small-200 original preview",
+      "capacity-small-200 pre-fit is selected leaf viewport",
+      "capacity-small-200 renderer zoom limits",
+      "capacity-small-200 fit contains all visible bounds",
+      "capacity-small-200 fit preserves graph and selection",
+      "capacity-small-500 original preview",
+      "capacity-small-500 pre-fit is selected leaf viewport",
+      "capacity-small-500 renderer zoom limits",
+      "capacity-small-500 fit contains all visible bounds",
+      "capacity-small-500 fit preserves graph and selection",
+      "capacity-bundled-structure-50 original preview",
+      "capacity-bundled-structure-50 pre-fit is selected leaf viewport",
+      "capacity-bundled-structure-50 renderer zoom limits",
+      "capacity-bundled-structure-50 fit contains all visible bounds",
+      "capacity-bundled-structure-50 fit preserves graph and selection",
+      "capacity-bundled-structure-200 original preview",
+      "capacity-bundled-structure-200 pre-fit is selected leaf viewport",
+      "capacity-bundled-structure-200 renderer zoom limits",
+      "capacity-bundled-structure-200 fit contains all visible bounds",
+      "capacity-bundled-structure-200 fit preserves graph and selection",
+      "no page errors"
+    ],
+    "errors": [],
+    "scope": "Focused five-case fit correctness supplement. New original preview per case, keyboard-locate leaf establishes non-containing viewport, fit must contain all visible labelled element bounds within one CSS pixel tolerance and actual renderer zoom limits. No repeat of the original 118 checks or compilation timing; original result stays unchanged."
+  },
+  "audit": {
+    "at": "2026-11-11T04:21:11.964233+00:00",
+    "baseline": "3d6d1220bd600817e748c19f6a9c0fa1332f6ca9",
+    "cases": 5,
+    "checks": 26,
+    "fit_numeric_geometry_verified": true,
+    "all_five_pre_fit_viewports_do_not_contain_graph": true,
+    "all_five_post_fit_viewports_contain_graph": true,
+    "one_css_pixel_tolerance": true,
+    "selection_counts_and_model_bounding_boxes_unchanged": true,
+    "http_records": 40,
+    "preview_requests": [
+      {
+        "id": "capacity-small-50",
+        "trace": "0028",
+        "preview_sha256": "29961a430a55fa6635d5fde6883500f92aaf56250340c7da3a5c08c8ddd9e866",
+        "response_bytes": 171901,
+        "response_sha256": "860de33e1b906640af79565efff7c052eac9dc69227fed67f2a014bd4ee2322b"
+      },
+      {
+        "id": "capacity-small-200",
+        "trace": "0031",
+        "preview_sha256": "94c64d5bac2d5061f2e82b0e9d2b2e4498d7a36f3b932a612d2e303f11338036",
+        "response_bytes": 830958,
+        "response_sha256": "15476cb76a6bb2e251bba8c3db133766a3472d59561cf882d222b38a02cdaf7e"
+      },
+      {
+        "id": "capacity-small-500",
+        "trace": "0034",
+        "preview_sha256": "01bd9e7ce951f5aae1cc4e876586be6e3cda4a8073a1d457c80beb0cd97bf688",
+        "response_bytes": 2148566,
+        "response_sha256": "3428b385d8e1f49a50477751407813876897709205a3b43ee7af1004cc3f2a65"
+      },
+      {
+        "id": "capacity-bundled-structure-50",
+        "trace": "0037",
+        "preview_sha256": "7c5d0d799917fa5b7de6a508625225646970ba773d31d1b0ee5308b737387ccb",
+        "response_bytes": 290319,
+        "response_sha256": "ce854d0dd7e41a9880386021e0eae2ba18eefe85a219b826bcf73b11a00e16c3"
+      },
+      {
+        "id": "capacity-bundled-structure-200",
+        "trace": "0040",
+        "preview_sha256": "aa81881109b6d1610c123f40b76f26fb51c6f1f161aeda665e22a6399dbeb0f3",
+        "response_bytes": 1416755,
+        "response_sha256": "0b2762c8826939e12c80f584b4d50500c85879678b619844135e57c6fc6edf30"
+      }
+    ],
+    "all_original_81_files_and_database_dump_unchanged": true,
+    "graceful_http_exit": 0,
+    "http_exit_source": "http-command-result.json: separately observed orchestration tool exit, explicitly transcribed",
+    "http_finally_receipt": true,
+    "owned_http_alive": false,
+    "port_open": false,
+    "browser_cleanup": {
+      "named_close_exit": 0,
+      "observed_processes": 6,
+      "live_sampled_processes": [],
+      "scope": "One observed named browser tree sampled after open; not a complete short-lived process inventory."
+    },
+    "scope": "Focused original installed UI supplement; does not overwrite original118checks/47HTTP/timing or original missing-finally boundary."
+  },
+  "original_results_preserved": {
+    "checks": 118,
+    "http_records": 47
+  },
+  "sources": [
+    {
+      "original": "fit-supplement.js",
+      "bytes": 4045,
+      "sha256": "0cd2c1bed40f822518c59146e0029836f0e2776e3686ac8bd7cadec24e172982"
+    },
+    {
+      "original": "http-fit.py",
+      "bytes": 3977,
+      "sha256": "d6446a7c815f2506f8885798c0a8a5ae416cea8a4beeb9f2b9a85a6eed47b9a9"
+    },
+    {
+      "original": "audit-fit.py",
+      "bytes": 4255,
+      "sha256": "9416be9984edb50468a0d1e7ae6510278c913565defafbff503880ac2a25862d"
+    },
+    {
+      "original": "fit-supplement/browser-fit-command.json",
+      "bytes": 178,
+      "sha256": "764515b6ecb61831327870d6c5c13a3f4ea8905ef67caf88a9a26d339f3b2f88"
+    },
+    {
+      "original": "fit-supplement/browser-fit-result.json",
+      "bytes": 10469,
+      "sha256": "a42910306a0c0ae4989adb334892c0acdde660d8a2168d40698d7c445a3a30bb"
+    },
+    {
+      "original": "fit-supplement/browser-fit.stdout",
+      "bytes": 11078,
+      "sha256": "5e241f899ad6f3ea4f5e7d32d361ebc9bdf713dd24c7a5f52c3e72cd4474b2b9"
+    },
+    {
+      "original": "audit-fit-r1.py",
+      "bytes": 3978,
+      "sha256": "a1a30b72b7f96471fa3376dc32166b3baf30e4805712412102d6d5ccce870f31"
+    },
+    {
+      "original": "fit-supplement/audit.json",
+      "bytes": 2437,
+      "sha256": "d352da4165e261f7c0c22205e5ca567cd180bab9d6e4cffa0e6ceda3bb52c9f2"
+    },
+    {
+      "original": "fit-supplement/audit-r2.json",
+      "bytes": 2556,
+      "sha256": "742bff68f7439d8fc80e2783b5e340398b7237da7ef0e144aae68050e4d99aa0"
+    },
+    {
+      "original": "fit-supplement/http-command-result.json",
+      "bytes": 534,
+      "sha256": "3373aa5f9f11f564e147a2c6aa3ff9a6a0ce0b0ceacc42ec94862d6dfbd57b15"
+    },
+    {
+      "original": "fit-supplement/http/before.json",
+      "bytes": 14587,
+      "sha256": "3d5d0769d7ed0a19906e44a0c3f3b2a301e7dc0106f9016b3c65bfe3ee488f38"
+    },
+    {
+      "original": "fit-supplement/http/after.json",
+      "bytes": 14587,
+      "sha256": "3d5d0769d7ed0a19906e44a0c3f3b2a301e7dc0106f9016b3c65bfe3ee488f38"
+    },
+    {
+      "original": "fit-supplement/http/cleanup.json",
+      "bytes": 571,
+      "sha256": "a43a6a9df12e7ac570a4f28263894624f147fa6c75baf69245737431e233a1c5"
+    },
+    {
+      "original": "fit-supplement/browser-cleanup.json",
+      "bytes": 199,
+      "sha256": "acd431e9cb78755b60dbf8bca5f7db00032d58b0aa6b39d9515f89314e7b091a"
+    }
+  ],
+  "omitted": [
+    "private HTTP origin/PID/starttime and control paths",
+    "raw full HTTP bodies and state per-file hash maps"
+  ],
+  "scope": "Separate five-case supplement after advisory review. Actual canvas916x538 versus original1076x538; no controlled timing comparison. Zoom constraints and one CSS pixel tolerance verified numerically. Original118checks and missing HTTP finally receipt remain their original scope."
+}

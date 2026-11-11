@@ -1,0 +1,338 @@
+{
+  "schema_version": 1,
+  "slice": "C6a",
+  "candidate": "3d6d1220bd600817e748c19f6a9c0fa1332f6ca9",
+  "wheel_sha256": "aca2ea19761a0011d4b2b10851962733a5f77990dfc4f8e34450ad6901ecf9d5",
+  "accepted_seconds_scope": "Original preview call plus instance-count/kind assertions and json.dumps(ensure_ascii=False); excludes later min/max aggregation and file write. No isolated compiler-only timer.",
+  "source_status": "Production and test sources unchanged from candidate. Reuses verified noneditable wheel.",
+  "grant": {
+    "schema_version": 1,
+    "permissions": {
+      "read": [
+        "workspace",
+        "definitions"
+      ],
+      "write": [],
+      "shell": false,
+      "network": []
+    },
+    "limits": {
+      "depth": 8,
+      "instances": 512,
+      "concurrency": 4,
+      "material_bytes": 1000000
+    }
+  },
+  "records": [
+    {
+      "profile": "small",
+      "requested_total_instances": 50,
+      "leaf_count": 38,
+      "root": {
+        "id": "capacity-small-50",
+        "version": "1.0.0",
+        "digest": "b46efda402ef69f6d6bd437c0b0724a2fc97b570280a589b4b85e7150bca28ba"
+      },
+      "samples": [
+        {
+          "sample": 0,
+          "seconds": 0.07374947564676404,
+          "outcome": "accepted",
+          "preview_sha256": "29961a430a55fa6635d5fde6883500f92aaf56250340c7da3a5c08c8ddd9e866",
+          "json_bytes": 178407,
+          "usage": {
+            "instances": 50,
+            "material_bytes": 54454
+          },
+          "prompt_min_bytes": 1433,
+          "prompt_max_bytes": 1433
+        },
+        {
+          "sample": 1,
+          "seconds": 0.07484984397888184,
+          "outcome": "accepted",
+          "preview_sha256": "29961a430a55fa6635d5fde6883500f92aaf56250340c7da3a5c08c8ddd9e866",
+          "json_bytes": 178407,
+          "usage": {
+            "instances": 50,
+            "material_bytes": 54454
+          },
+          "prompt_min_bytes": 1433,
+          "prompt_max_bytes": 1433
+        },
+        {
+          "sample": 2,
+          "seconds": 0.07343591377139091,
+          "outcome": "accepted",
+          "preview_sha256": "29961a430a55fa6635d5fde6883500f92aaf56250340c7da3a5c08c8ddd9e866",
+          "json_bytes": 178407,
+          "usage": {
+            "instances": 50,
+            "material_bytes": 54454
+          },
+          "prompt_min_bytes": 1433,
+          "prompt_max_bytes": 1433
+        }
+      ]
+    },
+    {
+      "profile": "small",
+      "requested_total_instances": 200,
+      "leaf_count": 188,
+      "root": {
+        "id": "capacity-small-200",
+        "version": "1.0.0",
+        "digest": "4569b2fba6c2df32182171655d7b1e62039259add805929d13443605cea87330"
+      },
+      "samples": [
+        {
+          "sample": 0,
+          "seconds": 0.22780186124145985,
+          "outcome": "accepted",
+          "preview_sha256": "94c64d5bac2d5061f2e82b0e9d2b2e4498d7a36f3b932a612d2e303f11338036",
+          "json_bytes": 861164,
+          "usage": {
+            "instances": 200,
+            "material_bytes": 270294
+          },
+          "prompt_min_bytes": 1437,
+          "prompt_max_bytes": 1438
+        },
+        {
+          "sample": 1,
+          "seconds": 0.22554482892155647,
+          "outcome": "accepted",
+          "preview_sha256": "94c64d5bac2d5061f2e82b0e9d2b2e4498d7a36f3b932a612d2e303f11338036",
+          "json_bytes": 861164,
+          "usage": {
+            "instances": 200,
+            "material_bytes": 270294
+          },
+          "prompt_min_bytes": 1437,
+          "prompt_max_bytes": 1438
+        },
+        {
+          "sample": 2,
+          "seconds": 0.23623954597860575,
+          "outcome": "accepted",
+          "preview_sha256": "94c64d5bac2d5061f2e82b0e9d2b2e4498d7a36f3b932a612d2e303f11338036",
+          "json_bytes": 861164,
+          "usage": {
+            "instances": 200,
+            "material_bytes": 270294
+          },
+          "prompt_min_bytes": 1437,
+          "prompt_max_bytes": 1438
+        }
+      ]
+    },
+    {
+      "profile": "small",
+      "requested_total_instances": 500,
+      "leaf_count": 488,
+      "root": {
+        "id": "capacity-small-500",
+        "version": "1.0.0",
+        "digest": "31893669ad6f9a0ed6cc08750fcfab8147b3e8b73424cc97c1e26dea7b3ee999"
+      },
+      "samples": [
+        {
+          "sample": 0,
+          "seconds": 0.5399358589202166,
+          "outcome": "accepted",
+          "preview_sha256": "01bd9e7ce951f5aae1cc4e876586be6e3cda4a8073a1d457c80beb0cd97bf688",
+          "json_bytes": 2226172,
+          "usage": {
+            "instances": 500,
+            "material_bytes": 701694
+          },
+          "prompt_min_bytes": 1437,
+          "prompt_max_bytes": 1438
+        },
+        {
+          "sample": 1,
+          "seconds": 0.5463776588439941,
+          "outcome": "accepted",
+          "preview_sha256": "01bd9e7ce951f5aae1cc4e876586be6e3cda4a8073a1d457c80beb0cd97bf688",
+          "json_bytes": 2226172,
+          "usage": {
+            "instances": 500,
+            "material_bytes": 701694
+          },
+          "prompt_min_bytes": 1437,
+          "prompt_max_bytes": 1438
+        },
+        {
+          "sample": 2,
+          "seconds": 0.5419267578981817,
+          "outcome": "accepted",
+          "preview_sha256": "01bd9e7ce951f5aae1cc4e876586be6e3cda4a8073a1d457c80beb0cd97bf688",
+          "json_bytes": 2226172,
+          "usage": {
+            "instances": 500,
+            "material_bytes": 701694
+          },
+          "prompt_min_bytes": 1437,
+          "prompt_max_bytes": 1438
+        }
+      ]
+    },
+    {
+      "profile": "bundled-structure",
+      "requested_total_instances": 50,
+      "leaf_count": 38,
+      "root": {
+        "id": "capacity-bundled-structure-50",
+        "version": "1.0.0",
+        "digest": "cdbb7ce82af770a45d5e8f6e5b2ef5c9f686a29fce40d35903a8c0db9d4878a5"
+      },
+      "samples": [
+        {
+          "sample": 0,
+          "seconds": 0.08318057283759117,
+          "outcome": "accepted",
+          "preview_sha256": "7c5d0d799917fa5b7de6a508625225646970ba773d31d1b0ee5308b737387ccb",
+          "json_bytes": 298307,
+          "usage": {
+            "instances": 50,
+            "material_bytes": 103664
+          },
+          "prompt_min_bytes": 2728,
+          "prompt_max_bytes": 2728
+        },
+        {
+          "sample": 1,
+          "seconds": 0.07950624404475093,
+          "outcome": "accepted",
+          "preview_sha256": "7c5d0d799917fa5b7de6a508625225646970ba773d31d1b0ee5308b737387ccb",
+          "json_bytes": 298307,
+          "usage": {
+            "instances": 50,
+            "material_bytes": 103664
+          },
+          "prompt_min_bytes": 2728,
+          "prompt_max_bytes": 2728
+        },
+        {
+          "sample": 2,
+          "seconds": 0.07963372115045786,
+          "outcome": "accepted",
+          "preview_sha256": "7c5d0d799917fa5b7de6a508625225646970ba773d31d1b0ee5308b737387ccb",
+          "json_bytes": 298307,
+          "usage": {
+            "instances": 50,
+            "material_bytes": 103664
+          },
+          "prompt_min_bytes": 2728,
+          "prompt_max_bytes": 2728
+        }
+      ]
+    },
+    {
+      "profile": "bundled-structure",
+      "requested_total_instances": 200,
+      "leaf_count": 188,
+      "root": {
+        "id": "capacity-bundled-structure-200",
+        "version": "1.0.0",
+        "digest": "2439320f61e62a151736b645fa15706513466c77c634e6547e4fb9abefad11e9"
+      },
+      "samples": [
+        {
+          "sample": 0,
+          "seconds": 0.25275060860440135,
+          "outcome": "accepted",
+          "preview_sha256": "aa81881109b6d1610c123f40b76f26fb51c6f1f161aeda665e22a6399dbeb0f3",
+          "json_bytes": 1454293,
+          "usage": {
+            "instances": 200,
+            "material_bytes": 513892
+          },
+          "prompt_min_bytes": 2732,
+          "prompt_max_bytes": 2734
+        },
+        {
+          "sample": 1,
+          "seconds": 0.26390032889321446,
+          "outcome": "accepted",
+          "preview_sha256": "aa81881109b6d1610c123f40b76f26fb51c6f1f161aeda665e22a6399dbeb0f3",
+          "json_bytes": 1454293,
+          "usage": {
+            "instances": 200,
+            "material_bytes": 513892
+          },
+          "prompt_min_bytes": 2732,
+          "prompt_max_bytes": 2734
+        },
+        {
+          "sample": 2,
+          "seconds": 0.24931565998122096,
+          "outcome": "accepted",
+          "preview_sha256": "aa81881109b6d1610c123f40b76f26fb51c6f1f161aeda665e22a6399dbeb0f3",
+          "json_bytes": 1454293,
+          "usage": {
+            "instances": 200,
+            "material_bytes": 513892
+          },
+          "prompt_min_bytes": 2732,
+          "prompt_max_bytes": 2734
+        }
+      ]
+    },
+    {
+      "profile": "bundled-structure",
+      "requested_total_instances": 500,
+      "leaf_count": 488,
+      "root": {
+        "id": "capacity-bundled-structure-500",
+        "version": "1.0.0"
+      },
+      "samples": [
+        {
+          "sample": 0,
+          "seconds": 0.47834647074341774,
+          "outcome": "rejected",
+          "stage": "import-bundle",
+          "error": "Composition material_bytes budget exceeded at root/group-3/leaf-73 (scope project)",
+          "scope": "Same original unpublished root bundle; one bounded import recheck, not a changed fixture."
+        }
+      ],
+      "unpublished_workflow_json_sha256": "9d98ae4407d6cfc6e525035dede84a304678c447a23029c0145dfc84571d0e6d"
+    }
+  ],
+  "input_shape": {
+    "workflow_instances": 6,
+    "join_instances": 6,
+    "agent_instances": "total - 12",
+    "nested_groups": 5,
+    "visual_ports_count_as_instances": false,
+    "small_resources": "complete root context, group context and leaf instructions",
+    "bundled_resources": "complete root/group context and unchanged bundled structure-reviewer instructions/Skill"
+  },
+  "original_driver_exit": 1,
+  "original_driver_failure": "Expected material rejection occurred at import before the driver preview-only handler; raw log retained.",
+  "rejected_root_not_published": true,
+  "recovery": "First read-only continuation used nonexistent index() before import and failed. Corrected continuation checked the same unpublished root once, refused at the same material budget, and preserved the index.",
+  "source": [
+    {
+      "original": "preparation-complete.json",
+      "bytes": 9853,
+      "sha256": "f70a8b966f7cabf99982c624c562f2ffd1ee7ac709ab9638db1547f7f3997a24"
+    },
+    {
+      "original": "prepare-capacity.py",
+      "bytes": 6387,
+      "sha256": "1a1c9f3dbbee52f7aef3bf6b644ecbfed0565cd0ef48521e17b48351f317753b"
+    },
+    {
+      "original": "finish-preparation-r2.py",
+      "bytes": 2313,
+      "sha256": "575d3abc7b8214f945fd6b17e1ab1f33564f9fb08d73671c519f473c80e3aebc"
+    }
+  ],
+  "omitted": [
+    "private control path",
+    "raw material text and full preview bodies retained privately"
+  ],
+  "scope": "Three same-process preview-call plus count-check/serialization samples per accepted input; not HTTP, cold startup, formal execution or model quality. Full materials, original configured budgets and permissions retained."
+}

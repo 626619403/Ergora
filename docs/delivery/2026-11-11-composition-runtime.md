@@ -81,3 +81,21 @@ R2实际服务驱动269.30秒退出1：两个任务均已REVIEW_READY，但大�
 原fresh-context评审者已终核完整27份Git候选，Spec／Standards开放finding均为0；C5C-SP1、M1-ST1、M1-ST2全部按各自实际范围关闭。[独立报告](2026-11-11-composition-runtime-review.md)另核439源/wheel/安装及两RECORD、283冻结，五scope共263,137B完整读取、真实结果和四份公开JSON的26条投影均相符。没有重复模型/服务，也没有增加测试或CI。
 
 本地出口再核259个文件/锚点链接、5份JSON、JS语法、六个改动Python文件AST与whitespace通过，公开候选未包含六个已加载凭据值或私有路径。最终非editable原439文件表及wheel SHA与R2完全相同。状态与审查记账只更新本片文档，不另开递归评审。当前允许普通提交/推送；自己的CI、远端精确对象及独立HTTPS同SHA仍待，不借用C5b结果。下一可执行项为C6的容量/材料与分页成本、三域公开旅程，项目整体未完成。
+
+
+## 普通提交与精确交付开始
+
+27份ready快照逐件核Git对象后普通提交／推送`3d6d1220bd600817e748c19f6a9c0fa1332f6ca9`成功；未合main、未强推。提交前新静态检查为260个本地链接、5JSON、JS/whitespace和已加载秘密值检查零问题；前一259链接结果保持其时点。自己的CI样本及原评审者精确对象／一次独立HTTPS终核进行中，尚不授予精确交付通过。下一[C6计划](../plans/2026-11-11-composition-capacity.md)已建立，行为验收不从本片转授。
+
+
+## 精确交付网络边界
+
+原评审者离线核本提交27个Git对象与ready、单parent与基线、Git中的439源与原wheel/安装/两RECORD及283冻结通过，产品/测试/四公开JSON保持。首次独立HTTPS Git读取因GnuTLS握手中断未得refs；第二次明确授权的官方HTTPS smart-Git单次GET在20.14秒握手超时，仍未取得状态/正文。两份自己的官方CI样本均在TLS阶段EOF、sources为空；这些均不计CI或远端SHA通过，不隐去失败。
+
+普通SSH推送已确认成功，但独立HTTPS同SHA及必要CI门禁仍待网络恢复后补核；未重跑/取消CI、不强推，也不为此重复产品或模型。当前继续独立可做的C6。
+
+## 精确交付终结
+
+后续官方API主机可达；原评审者一次独立Git Ref HTTPS GET取得HTTP200，正文ref／object.type／完整SHA与`3d6d1220bd600817e748c19f6a9c0fa1332f6ca9`一致。辅助脚本首次把官方canonical的复数`/git/refs`误与请求单数`/git/ref`比较而退出1；原件保持，只离线修正URL判定，未再请求。此前两次smart-Git TLS失败保持，不冒称其已取得refs。
+
+自己的[CI42954686614](https://github.com/626619403/Ergora/actions/runs/42954686614)首API样本为In progress；第二API样本在04:02:29 UTC取得整体及Linux／Windows completed/success，七个必要步骤全部成功。原评审者离线核两响应字节／SHA／URL、精确head／分支／push／Portability／attempt1，及同job身份／开始时间，确认没有重跑；前两TLS空sources和首API非终态原件保持。合并已核27个精确Git对象／439包／两RECORD／283冻结与独立远端同SHA，完整Spec／Standards开放finding0／0，本片精确交付终结；原失败、模型／平台未验范围不变。下一执行项仍为C6，不重复已过行为或模型。

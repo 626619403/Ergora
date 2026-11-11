@@ -1,0 +1,559 @@
+{
+  "schema_version": 1,
+  "slice": "C6a",
+  "candidate": "3d6d1220bd600817e748c19f6a9c0fa1332f6ca9",
+  "environment": {
+    "user_agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/155.0.8059.12 Safari/537.36",
+    "device_pixel_ratio": 1,
+    "viewport": {
+      "width": 1440,
+      "height": 1000
+    },
+    "hardware_concurrency": 192,
+    "performance_time_origin": 1794369021593.9
+  },
+  "records": [
+    {
+      "id": "capacity-small-50",
+      "profile": "small",
+      "instances": 50,
+      "preview_samples": [
+        {
+          "sample": 0,
+          "automation_dispatch_to_two_frames_ms": 358.40000009536743,
+          "preview_sha256": "29961a430a55fa6635d5fde6883500f92aaf56250340c7da3a5c08c8ddd9e866",
+          "graph_nodes": 62,
+          "graph_edges": 92,
+          "canvas_width": 1076,
+          "canvas_height": 538,
+          "zoom": 0.07329105003523609
+        },
+        {
+          "sample": 1,
+          "automation_dispatch_to_two_frames_ms": 272.09999990463257,
+          "preview_sha256": "29961a430a55fa6635d5fde6883500f92aaf56250340c7da3a5c08c8ddd9e866",
+          "graph_nodes": 62,
+          "graph_edges": 92,
+          "canvas_width": 1076,
+          "canvas_height": 538,
+          "zoom": 0.07329105003523609
+        }
+      ],
+      "search_all_ms": 67,
+      "fold_ms": 118.39999961853027,
+      "keyboard_locate_ms": 88.09999990463257,
+      "selected": {
+        "instance": "root/group-4/leaf-6",
+        "prompt_bytes": 1433,
+        "resources": 3
+      },
+      "fit_ms": 81.19999980926514,
+      "restore_ms": 144.30000019073486
+    },
+    {
+      "id": "capacity-small-200",
+      "profile": "small",
+      "instances": 200,
+      "preview_samples": [
+        {
+          "sample": 0,
+          "automation_dispatch_to_two_frames_ms": 588.7999997138977,
+          "preview_sha256": "94c64d5bac2d5061f2e82b0e9d2b2e4498d7a36f3b932a612d2e303f11338036",
+          "graph_nodes": 212,
+          "graph_edges": 392,
+          "canvas_width": 1076,
+          "canvas_height": 538,
+          "zoom": 0.016201900607571273
+        },
+        {
+          "sample": 1,
+          "automation_dispatch_to_two_frames_ms": 607.3000001907349,
+          "preview_sha256": "94c64d5bac2d5061f2e82b0e9d2b2e4498d7a36f3b932a612d2e303f11338036",
+          "graph_nodes": 212,
+          "graph_edges": 392,
+          "canvas_width": 1076,
+          "canvas_height": 538,
+          "zoom": 0.016201900607571273
+        }
+      ],
+      "search_all_ms": 122.90000009536743,
+      "fold_ms": 257.80000019073486,
+      "keyboard_locate_ms": 190.40000009536743,
+      "selected": {
+        "instance": "root/group-4/leaf-9",
+        "prompt_bytes": 1437,
+        "resources": 3
+      },
+      "fit_ms": 175.09999990463257,
+      "restore_ms": 325.5
+    },
+    {
+      "id": "capacity-small-500",
+      "profile": "small",
+      "instances": 500,
+      "preview_samples": [
+        {
+          "sample": 0,
+          "automation_dispatch_to_two_frames_ms": 1308.5999999046326,
+          "preview_sha256": "01bd9e7ce951f5aae1cc4e876586be6e3cda4a8073a1d457c80beb0cd97bf688",
+          "graph_nodes": 512,
+          "graph_edges": 992,
+          "canvas_width": 1076,
+          "canvas_height": 538,
+          "zoom": 0.006334125098970704
+        },
+        {
+          "sample": 1,
+          "automation_dispatch_to_two_frames_ms": 1411.5999999046326,
+          "preview_sha256": "01bd9e7ce951f5aae1cc4e876586be6e3cda4a8073a1d457c80beb0cd97bf688",
+          "graph_nodes": 512,
+          "graph_edges": 992,
+          "canvas_width": 1076,
+          "canvas_height": 538,
+          "zoom": 0.006334125098970704
+        }
+      ],
+      "search_all_ms": 258.7999997138977,
+      "fold_ms": 749.2999997138977,
+      "keyboard_locate_ms": 482.30000019073486,
+      "selected": {
+        "instance": "root/group-4/leaf-96",
+        "prompt_bytes": 1438,
+        "resources": 3
+      },
+      "fit_ms": 681.5999999046326,
+      "restore_ms": 1623
+    },
+    {
+      "id": "capacity-bundled-structure-50",
+      "profile": "bundled-structure",
+      "instances": 50,
+      "preview_samples": [
+        {
+          "sample": 0,
+          "automation_dispatch_to_two_frames_ms": 319.7000002861023,
+          "preview_sha256": "7c5d0d799917fa5b7de6a508625225646970ba773d31d1b0ee5308b737387ccb",
+          "graph_nodes": 62,
+          "graph_edges": 92,
+          "canvas_width": 1076,
+          "canvas_height": 538,
+          "zoom": 0.07329105003523609
+        },
+        {
+          "sample": 1,
+          "automation_dispatch_to_two_frames_ms": 308,
+          "preview_sha256": "7c5d0d799917fa5b7de6a508625225646970ba773d31d1b0ee5308b737387ccb",
+          "graph_nodes": 62,
+          "graph_edges": 92,
+          "canvas_width": 1076,
+          "canvas_height": 538,
+          "zoom": 0.07329105003523609
+        }
+      ],
+      "search_all_ms": 41.69999980926514,
+      "fold_ms": 112.2999997138977,
+      "keyboard_locate_ms": 78,
+      "selected": {
+        "instance": "root/group-4/leaf-6",
+        "prompt_bytes": 2728,
+        "resources": 4
+      },
+      "fit_ms": 77.80000019073486,
+      "restore_ms": 195.19999980926514
+    },
+    {
+      "id": "capacity-bundled-structure-200",
+      "profile": "bundled-structure",
+      "instances": 200,
+      "preview_samples": [
+        {
+          "sample": 0,
+          "automation_dispatch_to_two_frames_ms": 714.2000002861023,
+          "preview_sha256": "aa81881109b6d1610c123f40b76f26fb51c6f1f161aeda665e22a6399dbeb0f3",
+          "graph_nodes": 212,
+          "graph_edges": 392,
+          "canvas_width": 1076,
+          "canvas_height": 538,
+          "zoom": 0.016201900607571273
+        },
+        {
+          "sample": 1,
+          "automation_dispatch_to_two_frames_ms": 786.5999999046326,
+          "preview_sha256": "aa81881109b6d1610c123f40b76f26fb51c6f1f161aeda665e22a6399dbeb0f3",
+          "graph_nodes": 212,
+          "graph_edges": 392,
+          "canvas_width": 1076,
+          "canvas_height": 538,
+          "zoom": 0.016201900607571273
+        }
+      ],
+      "search_all_ms": 125.2999997138977,
+      "fold_ms": 286,
+      "keyboard_locate_ms": 242,
+      "selected": {
+        "instance": "root/group-4/leaf-9",
+        "prompt_bytes": 2732,
+        "resources": 4
+      },
+      "fit_ms": 171.7000002861023,
+      "restore_ms": 307.69999980926514
+    }
+  ],
+  "checks": [
+    "preview HTTP200",
+    "capacity-small-50 actual preview count",
+    "capacity-small-50 all rendered instance paths",
+    "capacity-small-50 actual ports/canvas",
+    "capacity-small-50 relation count",
+    "preview HTTP200",
+    "capacity-small-50 actual preview count",
+    "capacity-small-50 all rendered instance paths",
+    "capacity-small-50 actual ports/canvas",
+    "capacity-small-50 relation count",
+    "capacity-small-50 all reviewer results",
+    "capacity-small-50 folded last group",
+    "capacity-small-50 hidden leaf remains in full keyboard table",
+    "capacity-small-50 summary exists",
+    "capacity-small-50 original relation provenance",
+    "capacity-small-50 locate expands ancestor",
+    "capacity-small-50 complete selected facts",
+    "capacity-small-50 complete selected resource 0",
+    "capacity-small-50 complete selected resource 1",
+    "capacity-small-50 complete selected resource 2",
+    "capacity-small-50 complete selected prompt",
+    "capacity-small-50 old graph disposed",
+    "capacity-small-50 restored exact selection",
+    "preview HTTP200",
+    "capacity-small-200 actual preview count",
+    "capacity-small-200 all rendered instance paths",
+    "capacity-small-200 actual ports/canvas",
+    "capacity-small-200 relation count",
+    "preview HTTP200",
+    "capacity-small-200 actual preview count",
+    "capacity-small-200 all rendered instance paths",
+    "capacity-small-200 actual ports/canvas",
+    "capacity-small-200 relation count",
+    "capacity-small-200 all reviewer results",
+    "capacity-small-200 folded last group",
+    "capacity-small-200 hidden leaf remains in full keyboard table",
+    "capacity-small-200 summary exists",
+    "capacity-small-200 original relation provenance",
+    "capacity-small-200 locate expands ancestor",
+    "capacity-small-200 complete selected facts",
+    "capacity-small-200 complete selected resource 0",
+    "capacity-small-200 complete selected resource 1",
+    "capacity-small-200 complete selected resource 2",
+    "capacity-small-200 complete selected prompt",
+    "capacity-small-200 old graph disposed",
+    "capacity-small-200 restored exact selection",
+    "preview HTTP200",
+    "capacity-small-500 actual preview count",
+    "capacity-small-500 all rendered instance paths",
+    "capacity-small-500 actual ports/canvas",
+    "capacity-small-500 relation count",
+    "preview HTTP200",
+    "capacity-small-500 actual preview count",
+    "capacity-small-500 all rendered instance paths",
+    "capacity-small-500 actual ports/canvas",
+    "capacity-small-500 relation count",
+    "capacity-small-500 all reviewer results",
+    "capacity-small-500 folded last group",
+    "capacity-small-500 hidden leaf remains in full keyboard table",
+    "capacity-small-500 summary exists",
+    "capacity-small-500 original relation provenance",
+    "capacity-small-500 locate expands ancestor",
+    "capacity-small-500 complete selected facts",
+    "capacity-small-500 complete selected resource 0",
+    "capacity-small-500 complete selected resource 1",
+    "capacity-small-500 complete selected resource 2",
+    "capacity-small-500 complete selected prompt",
+    "capacity-small-500 old graph disposed",
+    "capacity-small-500 restored exact selection",
+    "preview HTTP200",
+    "capacity-bundled-structure-50 actual preview count",
+    "capacity-bundled-structure-50 all rendered instance paths",
+    "capacity-bundled-structure-50 actual ports/canvas",
+    "capacity-bundled-structure-50 relation count",
+    "preview HTTP200",
+    "capacity-bundled-structure-50 actual preview count",
+    "capacity-bundled-structure-50 all rendered instance paths",
+    "capacity-bundled-structure-50 actual ports/canvas",
+    "capacity-bundled-structure-50 relation count",
+    "capacity-bundled-structure-50 all reviewer results",
+    "capacity-bundled-structure-50 folded last group",
+    "capacity-bundled-structure-50 hidden leaf remains in full keyboard table",
+    "capacity-bundled-structure-50 summary exists",
+    "capacity-bundled-structure-50 original relation provenance",
+    "capacity-bundled-structure-50 locate expands ancestor",
+    "capacity-bundled-structure-50 complete selected facts",
+    "capacity-bundled-structure-50 complete selected resource 0",
+    "capacity-bundled-structure-50 complete selected resource 1",
+    "capacity-bundled-structure-50 complete selected resource 2",
+    "capacity-bundled-structure-50 complete selected resource 3",
+    "capacity-bundled-structure-50 complete selected prompt",
+    "capacity-bundled-structure-50 old graph disposed",
+    "capacity-bundled-structure-50 restored exact selection",
+    "preview HTTP200",
+    "capacity-bundled-structure-200 actual preview count",
+    "capacity-bundled-structure-200 all rendered instance paths",
+    "capacity-bundled-structure-200 actual ports/canvas",
+    "capacity-bundled-structure-200 relation count",
+    "preview HTTP200",
+    "capacity-bundled-structure-200 actual preview count",
+    "capacity-bundled-structure-200 all rendered instance paths",
+    "capacity-bundled-structure-200 actual ports/canvas",
+    "capacity-bundled-structure-200 relation count",
+    "capacity-bundled-structure-200 all reviewer results",
+    "capacity-bundled-structure-200 folded last group",
+    "capacity-bundled-structure-200 hidden leaf remains in full keyboard table",
+    "capacity-bundled-structure-200 summary exists",
+    "capacity-bundled-structure-200 original relation provenance",
+    "capacity-bundled-structure-200 locate expands ancestor",
+    "capacity-bundled-structure-200 complete selected facts",
+    "capacity-bundled-structure-200 complete selected resource 0",
+    "capacity-bundled-structure-200 complete selected resource 1",
+    "capacity-bundled-structure-200 complete selected resource 2",
+    "capacity-bundled-structure-200 complete selected resource 3",
+    "capacity-bundled-structure-200 complete selected prompt",
+    "capacity-bundled-structure-200 old graph disposed",
+    "capacity-bundled-structure-200 restored exact selection",
+    "no page errors"
+  ],
+  "page_errors": [],
+  "long_tasks": {
+    "count": 43,
+    "total_ms": 6630,
+    "max_ms": 1237,
+    "attribution": "Unattributed PerformanceObserver entries; no CPU/source bottleneck or controlled speedup claim."
+  },
+  "http": {
+    "http_records": 47,
+    "statuses": {
+      "200": 47
+    },
+    "method_counts": {
+      "GET": 31,
+      "POST": 16
+    },
+    "preview_requests": [
+      {
+        "id": "capacity-small-50",
+        "trace": "0030",
+        "http_seconds": 0.10222618468105793,
+        "request_bytes": 240,
+        "request_sha256": "53d99b2d11442156b76d6fc0c5587462134062c83d613a9717f3b60b43b5a600",
+        "response_bytes": 171901,
+        "response_sha256": "860de33e1b906640af79565efff7c052eac9dc69227fed67f2a014bd4ee2322b",
+        "saved_preview_bytes": 178407,
+        "saved_preview_sha256": "c034827204e863a349be47c45e0e4f057d040b42b6fb637c1488ec6286f23a08",
+        "preview_sha256": "29961a430a55fa6635d5fde6883500f92aaf56250340c7da3a5c08c8ddd9e866"
+      },
+      {
+        "id": "capacity-small-50",
+        "trace": "0031",
+        "http_seconds": 0.08604978211224079,
+        "request_bytes": 240,
+        "request_sha256": "53d99b2d11442156b76d6fc0c5587462134062c83d613a9717f3b60b43b5a600",
+        "response_bytes": 171901,
+        "response_sha256": "860de33e1b906640af79565efff7c052eac9dc69227fed67f2a014bd4ee2322b",
+        "saved_preview_bytes": 178407,
+        "saved_preview_sha256": "c034827204e863a349be47c45e0e4f057d040b42b6fb637c1488ec6286f23a08",
+        "preview_sha256": "29961a430a55fa6635d5fde6883500f92aaf56250340c7da3a5c08c8ddd9e866"
+      },
+      {
+        "id": "capacity-small-200",
+        "trace": "0034",
+        "http_seconds": 0.2756239431910217,
+        "request_bytes": 241,
+        "request_sha256": "1c02db65a3435a9c078a64c5579823c1a8afc265fcdd7781ec1a7da8bc2f4b53",
+        "response_bytes": 830958,
+        "response_sha256": "15476cb76a6bb2e251bba8c3db133766a3472d59561cf882d222b38a02cdaf7e",
+        "saved_preview_bytes": 861164,
+        "saved_preview_sha256": "7485feff8a67d0d82d416b30676365a76adc3d770b6244be13bf9f9c10002e2c",
+        "preview_sha256": "94c64d5bac2d5061f2e82b0e9d2b2e4498d7a36f3b932a612d2e303f11338036"
+      },
+      {
+        "id": "capacity-small-200",
+        "trace": "0035",
+        "http_seconds": 0.25977403577417135,
+        "request_bytes": 241,
+        "request_sha256": "1c02db65a3435a9c078a64c5579823c1a8afc265fcdd7781ec1a7da8bc2f4b53",
+        "response_bytes": 830958,
+        "response_sha256": "15476cb76a6bb2e251bba8c3db133766a3472d59561cf882d222b38a02cdaf7e",
+        "saved_preview_bytes": 861164,
+        "saved_preview_sha256": "7485feff8a67d0d82d416b30676365a76adc3d770b6244be13bf9f9c10002e2c",
+        "preview_sha256": "94c64d5bac2d5061f2e82b0e9d2b2e4498d7a36f3b932a612d2e303f11338036"
+      },
+      {
+        "id": "capacity-small-500",
+        "trace": "0038",
+        "http_seconds": 0.6539174900390208,
+        "request_bytes": 241,
+        "request_sha256": "433839db1ba3d76be2c816751b1698974e518252f8c5d0da00f4794bac92ffda",
+        "response_bytes": 2148566,
+        "response_sha256": "3428b385d8e1f49a50477751407813876897709205a3b43ee7af1004cc3f2a65",
+        "saved_preview_bytes": 2226172,
+        "saved_preview_sha256": "0301052cd7349bb9ae68a03abb72e08e145b18cb3877f6ec3a059bf6dc01827d",
+        "preview_sha256": "01bd9e7ce951f5aae1cc4e876586be6e3cda4a8073a1d457c80beb0cd97bf688"
+      },
+      {
+        "id": "capacity-small-500",
+        "trace": "0039",
+        "http_seconds": 0.6007452909834683,
+        "request_bytes": 241,
+        "request_sha256": "433839db1ba3d76be2c816751b1698974e518252f8c5d0da00f4794bac92ffda",
+        "response_bytes": 2148566,
+        "response_sha256": "3428b385d8e1f49a50477751407813876897709205a3b43ee7af1004cc3f2a65",
+        "saved_preview_bytes": 2226172,
+        "saved_preview_sha256": "0301052cd7349bb9ae68a03abb72e08e145b18cb3877f6ec3a059bf6dc01827d",
+        "preview_sha256": "01bd9e7ce951f5aae1cc4e876586be6e3cda4a8073a1d457c80beb0cd97bf688"
+      },
+      {
+        "id": "capacity-bundled-structure-50",
+        "trace": "0042",
+        "http_seconds": 0.11494740238413215,
+        "request_bytes": 252,
+        "request_sha256": "c37e4353b722f93f40b64255563067c9cee7364ac543ab9ef671d6b928e841cf",
+        "response_bytes": 290319,
+        "response_sha256": "ce854d0dd7e41a9880386021e0eae2ba18eefe85a219b826bcf73b11a00e16c3",
+        "saved_preview_bytes": 298307,
+        "saved_preview_sha256": "ba3aee25fe856fdb177967002d9ea1b326745c202a5c5722fb23d64fd40069c2",
+        "preview_sha256": "7c5d0d799917fa5b7de6a508625225646970ba773d31d1b0ee5308b737387ccb"
+      },
+      {
+        "id": "capacity-bundled-structure-50",
+        "trace": "0043",
+        "http_seconds": 0.09368234593421221,
+        "request_bytes": 252,
+        "request_sha256": "c37e4353b722f93f40b64255563067c9cee7364ac543ab9ef671d6b928e841cf",
+        "response_bytes": 290319,
+        "response_sha256": "ce854d0dd7e41a9880386021e0eae2ba18eefe85a219b826bcf73b11a00e16c3",
+        "saved_preview_bytes": 298307,
+        "saved_preview_sha256": "ba3aee25fe856fdb177967002d9ea1b326745c202a5c5722fb23d64fd40069c2",
+        "preview_sha256": "7c5d0d799917fa5b7de6a508625225646970ba773d31d1b0ee5308b737387ccb"
+      },
+      {
+        "id": "capacity-bundled-structure-200",
+        "trace": "0046",
+        "http_seconds": 0.29347565304487944,
+        "request_bytes": 253,
+        "request_sha256": "7ef25815b3749e003d9bb499de8efe3810e070055899e3554e5cb4688bc6f4a9",
+        "response_bytes": 1416755,
+        "response_sha256": "0b2762c8826939e12c80f584b4d50500c85879678b619844135e57c6fc6edf30",
+        "saved_preview_bytes": 1454293,
+        "saved_preview_sha256": "8e1117f990b4d8dd403c77bd1bb9f1cef127c7d7e18c3593b98b7ef87316e4ec",
+        "preview_sha256": "aa81881109b6d1610c123f40b76f26fb51c6f1f161aeda665e22a6399dbeb0f3"
+      },
+      {
+        "id": "capacity-bundled-structure-200",
+        "trace": "0047",
+        "http_seconds": 0.31168159702792764,
+        "request_bytes": 253,
+        "request_sha256": "7ef25815b3749e003d9bb499de8efe3810e070055899e3554e5cb4688bc6f4a9",
+        "response_bytes": 1416755,
+        "response_sha256": "0b2762c8826939e12c80f584b4d50500c85879678b619844135e57c6fc6edf30",
+        "saved_preview_bytes": 1454293,
+        "saved_preview_sha256": "8e1117f990b4d8dd403c77bd1bb9f1cef127c7d7e18c3593b98b7ef87316e4ec",
+        "preview_sha256": "aa81881109b6d1610c123f40b76f26fb51c6f1f161aeda665e22a6399dbeb0f3"
+      }
+    ],
+    "preview_semantic_identity": true,
+    "preview_exact_request_identity": true,
+    "full_leaf_instances_checked": 940,
+    "full_material_records_checked": 3046,
+    "source_bytes_checked": 3046,
+    "all_structural_ancestor_sources_present": true,
+    "checks": 118,
+    "page_errors": [],
+    "original_control_files_unchanged": 81,
+    "no_projects_or_agent_runs": true
+  },
+  "cleanup": {
+    "original_finally_receipt_exists": false,
+    "original_http_command_exit": 143,
+    "supplement_checks": {
+      "owned_http_process_alive": false,
+      "port_open": false,
+      "original_files_unchanged": true,
+      "logical_database_equal": true,
+      "all_database_tables_empty": true
+    },
+    "browser_named_close_receipt": true,
+    "browser_process_scope": "Named close receipt only. Starttime not sampled; no full process-lifecycle assertion.",
+    "scope": "Original SIGTERM/finally receipt absent. New read-only supplement confirms owned HTTP PID/starttime gone, port closed and all original physical and logical state unchanged; no app restarted."
+  },
+  "sources": [
+    {
+      "original": "browser-capacity.js",
+      "bytes": 9739,
+      "sha256": "cfe95928ccc621e2e8b527a0e1f149e8e041c8d492ace9ad033f92f1aa2dde16"
+    },
+    {
+      "original": "browser-capacity-command.json",
+      "bytes": 337,
+      "sha256": "184d555acc159a1b0eba45929843f739c281f9da754247483cc905f7cb97beca"
+    },
+    {
+      "original": "browser-capacity.stdout",
+      "bytes": 21888,
+      "sha256": "fc8c389f75ebed9807efe54cc1c1ec9183992df8444b497aac6e3f85410d6257"
+    },
+    {
+      "original": "browser-capacity-result.json",
+      "bytes": 15702,
+      "sha256": "8d8499f9200f43a2bd3fab1ef3faf2fc2a000f297ed9bfdffa9fd1b2872247c4"
+    },
+    {
+      "original": "http-audit.json",
+      "bytes": 7246,
+      "sha256": "6d874ff2832cd07fb05db22c6e345eacec45d7e44630cb5454a62a42b8f09a8c"
+    },
+    {
+      "original": "http/before.json",
+      "bytes": 14587,
+      "sha256": "3d5d0769d7ed0a19906e44a0c3f3b2a301e7dc0106f9016b3c65bfe3ee488f38"
+    },
+    {
+      "original": "http/after-supplement.json",
+      "bytes": 14587,
+      "sha256": "3d5d0769d7ed0a19906e44a0c3f3b2a301e7dc0106f9016b3c65bfe3ee488f38"
+    },
+    {
+      "original": "http/cleanup-supplement.json",
+      "bytes": 1535,
+      "sha256": "017134252d108d1fd73ebe3d68c40569aee713d88a4e292d6d292f8485e76305"
+    },
+    {
+      "original": "browser-close.log",
+      "bytes": 109,
+      "sha256": "7d75d739abab055f97875b761cd00ceeb6004ca570d247c9aef728f43ed59249"
+    },
+    {
+      "original": "verify-cleanup.py",
+      "bytes": 2917,
+      "sha256": "868c4c61ef79e273904573fb8080a9839f12fe6eb5e26ac5074de9ecb52de240"
+    },
+    {
+      "original": "audit-http.py",
+      "bytes": 5699,
+      "sha256": "78c30a99b27c9c61aec3dfb55a81cfa388f90fdf4b2e4067849f43a3f3d2f74d"
+    },
+    {
+      "original": "audit-http-r1.py",
+      "bytes": 5632,
+      "sha256": "0338d25289b8b4c5d073b6cfc800f3919d0883c1762b3ea7a5fd3743bd9fdb09"
+    },
+    {
+      "original": "audit-http-r1-failure.txt",
+      "bytes": 307,
+      "sha256": "68e1c2718ddc947f6306caa5089538ab53479537dfea1a4dd920e5a427e2d452"
+    }
+  ],
+  "omitted": [
+    "private HTTP origin/control and PID/starttime identities",
+    "raw original HTTP/preview bodies and per-file state map",
+    "raw long-task start offsets"
+  ],
+  "recovery": "First offline audit included a rejected record in expected successful previews and exited1. Its original source/failure are retained; corrected accepted-outcome filter passed without HTTP/browser/compiler/model rerun.",
+  "scope": "Actual installed UI and HTTP responses. Preview includes server/network/render and Playwright dispatch overhead; action times include two real animation frames and automation overhead. Warm named browser, sequential cases, no performance thresholds or model/execution capacity claim."
+}

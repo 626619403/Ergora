@@ -2,7 +2,7 @@
 
 审查者：`/root/composition_runtime_review`，fresh context。固定基线 `fe45e8ff07c6cb5ec9048b506c03b6dfd4e838b3`；分支 `refactor/architecture-foundations`。按 `AGENTS.md`、AIHERO 索引、code-review 的 Spec／Standards 两轴、codebase-design 和 maintainable-project-delivery 独立审查规则检查。原始要求来自本片审查任务，不用实现者的预期结论代替判断。
 
-本记录保存 **M0 设计、M1 固定代码候选、M2 两域原件和 M3 最终本地审查**；最新门禁见末段。M0 推荐的显式版本 B 已按[规格](../plans/2026-11-11-stage-result-materials.md)实现。M2 两域协议 fixture 协作、完整资源读取及 M3 真实自身模板／公开投影原件补核通过；完整最终候选本地出口通过，Spec／Standards 开放 finding 均为 0。精确提交、自己的 CI 和远端身份仍待。
+本记录保存 **M0 设计、M1 固定代码候选、M2 两域原件、M3 最终本地及 M4 精确交付终核**；各时点结论和原失败保持，最新门禁见末段。显式版本 B 已按[规格](../plans/2026-11-11-stage-result-materials.md)实现，完整本地出口通过；精确提交 `3d6d1220bd600817e748c19f6a9c0fa1332f6ca9` 的 27 Git 对象／439 包／283 冻结、独立官方 Git Ref API 同 SHA 和自己的 [CI42954686614](https://github.com/626619403/Ergora/actions/runs/42954686614) 双 OS 七必要步骤均已通过。**C5c 精确交付终结，Spec／Standards 开放 finding 均为 0。**
 
 ## 固定对象与检查范围
 
@@ -145,3 +145,39 @@ M1 固定代码候选静态可继续验证，不能据此宣布 C5c 完成。等
 **完整最终候选本地出口通过；精确交付尚未完成。** 可普通提交／推送本次候选，随后仍须核自己的必要 CI、精确 Git 对象及独立远端同 SHA，不能借用 C5b 的 CI。当前未提交，故本报告不授予这些待验项通过。后续只有状态／审查记账变化无需重跑已过模型或服务。
 
 保留未验范围：新 v6 页面浏览器旅程；调用提交后、receipt 发布前的实际崩溃恢复（保存分支静态保持与 terminal receipt 重复返回已有各自证据）；无限长链／任意节点数或真正大业务结果；模型／项目质量、不同后端独立性、宿主隔离、GPU／未配置外部平台。尺寸与不同轮耗时只支持实际边界观察，不构成受控加速结论；原 history replay 是驱动实际执行的保存记录，本审没有再次重放。
+
+## M4 精确提交与首份远端样本
+
+2026-11-11，同片核普通提交 `3d6d1220bd600817e748c19f6a9c0fa1332f6ca9`，唯一父提交为基线 `fe45e8ff07c6cb5ec9048b506c03b6dfd4e838b3`。完整 **27 个精确 Git 对象**逐份等于 `commit-closure/ready` 的原字节数／SHA 和 files 正文；ready 的 19 份 tracked.diff 与同一提交对应文件差异相同，其余新文件也由完整身份和 Git 正文逐件核验。与 M3 固定输入相比，仅本审报告续记及六份状态文档前移；产品／测试和四份公开 JSON 无变。原报告 M3 完成本地出口的 SHA 与 ready 收录相同，状态措辞符合本地通过、精确交付待验。
+
+独立从该提交的 Git archive 取全包，439 份与 M1、R2／最终身份表、wheel、非 editable 安装和两 RECORD 再核一致，283 冻结参考保持。原普通 commit／非强推原件退出均为 0，push 明确只更新工作分支，没有 main 合并。这里依据精确 Git 对象，不以可能继续推进 C6 的可变工作区代替。过程保存在 `independent/verify_precise_commit.py`、`precise-identities.json` 和 `precise-status-delta.diff`。
+
+经本次明确授权，仅做 **一次**独立有界 HTTPS-only 官方 refs 读取：从无仓库配置的 `/` 调 `https://github.com/626619403/Ergora.git`，禁用全局／系统 Git 配置、凭据 helper／交互、重定向和非 HTTPS 协议，TLS 校验保持。45 秒上限内实际约 **21.53 秒**以 Git exit 128 结束，stdout 为空，原错误为 `gnutls_handshake() failed: The TLS connection was non-properly terminated.`。trace 只见 remote-https，没有 SSH 重写；原 stdout／stderr／trace／摘要保存在 `independent/https-remote-01/`。未取得 refs，故没有远端 SHA 通过结论；没有自动重试。
+
+本提交自己的首份官方 CI 原样本 `commit-closure/snapshot-01/ci-sample-error.json` 记录 `SSL: UNEXPECTED_EOF_WHILE_READING`，`sources: []`，没有取得状态。它不是 CI success 或 failure，也不能从推送成功推断 CI 已通过。按授权等待新的原官方样本，未主动 poll 或重跑 CI。
+
+随后获第二次且仅一次的明确授权，改以标准库 urllib／默认验证的 SSLContext，对官方 `info/refs?service=git-upload-pack` 作一个 HTTPS GET，禁止重定向、自动重试和 SSH，预备按原 pkt-line 公告核同一完整 SHA。实际 **20.14 秒**在握手阶段超时，原错误为 `The handshake operation timed out`，没有 HTTP 状态／正文或可解析公告；因此不能授予远端身份通过。`independent/https-remote-02/` 保留 result、响应元数据、空原正文及空解析列表；首次 GnuTLS 失败保持。没有发起第三次请求，也没有主动查询 CI；远端受限不阻断独立的 C6 工作。
+
+**M4 当前出口：精确 Git／包／状态差异通过；独立远端同 SHA 与自己的必要 CI 仍待。** 本地 Spec／Standards 开放 0 保持，精确交付尚未终结。C6 后续测量和其他候选结果不转授本提交。
+
+## M4 官方 Git Ref API 与首份可读 CI 样本
+
+再次明确授权后，对不同官方主机 `api.github.com` 仅作一次独立 HTTPS Git Ref API GET；默认 TLS 证书／主机校验保持，无认证、重定向或自动重试，未调用 Git／SSH。实际 **1.29 秒 HTTP 200**，完整原 JSON **429 B**，SHA256 `8c72ce629e2c1daba6bad089fa8d1b383ae8aa408e712bef0dea253c86bc21f9`；精确 `ref` 为 `refs/heads/refactor/architecture-foundations`，`object.type` 为 commit，`object.sha` 为 `3d6d1220bd600817e748c19f6a9c0fa1332f6ca9`。响应状态、完整 headers／原 JSON／请求摘要保存在 `independent/https-remote-api-01/`。
+
+初始请求 helper 在核过上述三字段后，额外错误要求响应 url 使用请求的单数 `/git/ref/`；官方原响应使用标准复数 `/git/refs/`，导致该附加断言退出 1。原 helper／result 和 HTTP 正文保持，随后只离线核原 JSON 的三项合同及合法 canonical URL，通过结果另存 `offline-identity.json`；没有为修正验证器再发请求。**远端精确身份按这份独立公开官方 API 原响应通过**，不声称前两次 Git 传输取得了 smart-Git 公告。
+
+作者提供的 `commit-closure/snapshot-api-01` 两份官方原 HTTP body（runs／jobs）逐份字节数／SHA 与 source 元数据相符，URL／final URL 均为官方 API、状态均 200。离线按该提交的原 `portability.yml` 核 run **42954686614**、push／工作分支／精确 head SHA、仓库身份、run attempt 和两个 job，摘要与原文一致。七个必要步骤中，Windows 四项 completed／success，Linux build／identity 两项 completed／success，但 Linux regression 仍 in_progress；run 也为 in_progress、conclusion null。条件 Windows installer 不被算作 Linux 必要步骤，不能把当前六项已过误写为七项全过。原件与结论保存在 `independent/ci-api-01-audit.json`、`verify_api_and_ci_first.py`，本审未发 CI 查询、poll 或重跑。
+
+**M4 最新出口：27 精确 Git／439 包／283 冻结及独立官方远端同 SHA 已通过；自己的必要 CI 终态仍待。** Spec／Standards 开放 0 保持；精确交付尚未终结，等待提供正式终态原件后同片离线续核。原 TLS 失败和非终态样本不回写为成功，不阻断 C6。
+
+## M4 正式 CI 终态与精确交付终结
+
+2026-11-11 **04:02:29 UTC** 的第四份状态样本（`snapshot-api-02`，第二份 API 样本）已正式终态。本审仅离线核两份原 HTTP body：runs **12,000 B**、jobs **5,208 B**，逐份 SHA／字节数与 source 元数据相等，URL／final URL 均为官方 API，HTTP 均为 200。run **42954686614** 精确 head SHA／分支／push／`portability.yml`／仓库身份和 run attempt 1 相符，整体 **completed／success**。
+
+按该精确提交的原 CI 定义，Windows Python 3.12 的 build／reference identity／application regression／PowerShell 5.1 安装升级四项，以及 Ubuntu Python 3.11 的 build／reference identity／application regression 三项，**七个必要步骤全部 completed／success**；两个 job 也均 completed／success。与前份 API 样本是同一 run、同一 attempt、相同 job ID 和步骤开始时间；此前已完成的步骤正文保持，Linux 原在运行的回归现于 04:00:32 UTC 成功结束，没有借用其他提交或重跑结果。摘要的每份 required_steps 与原 jobs 对应项完整相等，Linux 条件不适用的 PowerShell 步骤不进入七项集合。
+
+前两份 TLS 未得状态样本仍分别保留 `sources: []`；前份 API 样本仍为 in_progress／六项成功一项在运行，其原 runs／jobs SHA 与此前独立审计相同，没有覆盖为本次成功。前两次独立 Git HTTPS 失败、随后官方 Git Ref API 原响应及附加 URL 断言的离线处置也保持原记录。此次没有发网络请求、CI poll、测试／服务／模型／安装或重放。
+
+`independent/verify_ci_terminal.py`、`ci-terminal-audit.json` 和 `ci-terminal-files.json` 保存终核。本次重新逐件核 27 个精确 Git 对象仍等于 ready 及先前独立身份，439 份 Git／wheel／安装／两 RECORD 与 283 冻结的既有核验仍精确绑定该对象集；独立官方 API 原文的 ref／commit 类型／完整 SHA 与先前审计相同。核验依据提交对象和原件，未用 C6 的可变工作区或后续测量代替。
+
+**最终出口：C5c 本地及精确交付通过并终结。** 对象为 `3d6d1220bd600817e748c19f6a9c0fa1332f6ca9`，自己的 [CI42954686614](https://github.com/626619403/Ergora/actions/runs/42954686614) 双 OS 七必要步骤、独立官方 HTTPS API 同 SHA、27 Git／439 包／283 冻结均已核实；Spec／Standards 开放 finding **0／0**，C5C-SP1、M1-ST1、M1-ST2 按各自已记录范围关闭。原 v5 BLOCKED、私有驱动失败、TLS 未得状态与非终态样本不回写为成功。前述未验产品／模型／平台范围仍不授予通过；C6 与项目其他后续工作继续单独验收，报告／状态续记无需递归审查。

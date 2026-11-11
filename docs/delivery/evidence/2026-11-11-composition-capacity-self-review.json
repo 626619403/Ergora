@@ -1,0 +1,402 @@
+{
+  "schema_version": 1,
+  "slice": "C6a",
+  "reviews": [
+    {
+      "attempt": "self-review-r1",
+      "disposition": "Original timing/fit findings retained and corrected in follow-up evidence; no final original-model approve claimed.",
+      "actual_scope": "Initial complete measurement packet; no omitted raw-map inspection",
+      "identity": {
+        "at": "2026-11-11T04:10:14.871312+00:00",
+        "baseline": "3d6d1220bd600817e748c19f6a9c0fa1332f6ca9",
+        "run_id": "4f2bb5a4c6b24ff685fc0d5521d7f9eb",
+        "status": "succeeded",
+        "backend": "codex",
+        "inference_model": "gpt-6.1-sol",
+        "reasoning_effort": "high",
+        "cli_exit": 0,
+        "seconds": 143.37258264282718,
+        "input_digest": "de21b0aa8638800e52b893928fbfabe170e1f23a9d80a3cb684ce521679580b3",
+        "prompt_sha256": "121ccf8eca92aa13418464209965772f2a341f93e0c67046274135175a34fbc9",
+        "attachment_bytes": 133605,
+        "attachment_sha256": "bfad1f5993062c40e3b069de7a0a77d28bec46cf28783c3f1b775b95814fbb70",
+        "manifest_digest": "d13f2dc24818c9cedd81ac35798d78ab1610d383ce425de21d7feb4f0ed42df1",
+        "revision": "1.0.85",
+        "observed_processes": 4,
+        "live_sampled_processes": [],
+        "scope": "Actual bundled structure-review on full measurement drivers, bounded results/public projections and unchanged graph owner. No raw omitted map inspection, model quality, owner approval or different-backend independence claim.",
+        "decision": "request-changes",
+        "result_sha256": "3a0bbdbe264e6a7bb7955800033d5e7d9d7355e5ce0e28d5f64ad4991a90f65c"
+      },
+      "read_audit": {
+        "at": "2026-11-11T04:13:54.713224+00:00",
+        "run_id": "4f2bb5a4c6b24ff685fc0d5521d7f9eb",
+        "revision": "1.0.85",
+        "manifest_prepared_actual_prompt_admission_scope_native_original_result_match": true,
+        "bundled_template_unchanged_except_evidence_revision_resource_and_limit": true,
+        "scope_files": 5,
+        "all_scope_continuous_utf8_through_null": true,
+        "complete_scope_reads": {
+          "definitions/agent/ergora-structure-reviewer/1.0.85/instructions.md": {
+            "bytes": 354,
+            "sha256": "3cc9c450f0c03da5ea4a1434ac6182d50df6a4985cffdee2a59fe9fe477c6b43",
+            "continuous_utf8_pages": [
+              {
+                "offset": 0,
+                "bytes": 354,
+                "next_offset": null
+              }
+            ],
+            "base64_retries": [],
+            "duplicates": []
+          },
+          "definitions/agent/ergora-structure-reviewer/1.0.85/skills/candidate-evidence/SKILL.md": {
+            "bytes": 468,
+            "sha256": "9fdcf4846357ec3b040660c923a25e9ce3a98101b1214a8a1be9b4c37bfdc622",
+            "continuous_utf8_pages": [
+              {
+                "offset": 0,
+                "bytes": 468,
+                "next_offset": null
+              }
+            ],
+            "base64_retries": [],
+            "duplicates": []
+          },
+          "definitions/agent/ergora-structure-reviewer/1.0.85/skills/candidate-evidence/references/candidate.txt": {
+            "bytes": 133605,
+            "sha256": "bfad1f5993062c40e3b069de7a0a77d28bec46cf28783c3f1b775b95814fbb70",
+            "continuous_utf8_pages": [
+              {
+                "offset": 0,
+                "bytes": 16000,
+                "next_offset": 16000
+              },
+              {
+                "offset": 16000,
+                "bytes": 16000,
+                "next_offset": 32000
+              },
+              {
+                "offset": 32000,
+                "bytes": 16000,
+                "next_offset": 48000
+              },
+              {
+                "offset": 48000,
+                "bytes": 16000,
+                "next_offset": 64000
+              },
+              {
+                "offset": 64000,
+                "bytes": 16000,
+                "next_offset": 80000
+              },
+              {
+                "offset": 80000,
+                "bytes": 16000,
+                "next_offset": 96000
+              },
+              {
+                "offset": 96000,
+                "bytes": 16000,
+                "next_offset": 112000
+              },
+              {
+                "offset": 112000,
+                "bytes": 16000,
+                "next_offset": 128000
+              },
+              {
+                "offset": 128000,
+                "bytes": 5605,
+                "next_offset": null
+              }
+            ],
+            "base64_retries": [],
+            "duplicates": []
+          },
+          "definitions/agent/ergora-structure-reviewer/1.0.85/skills/ergora-structure-reviewer/SKILL.md": {
+            "bytes": 521,
+            "sha256": "d6b69570bcca408d3d06ca5adf1cb44a4a9e43c2901f05c38a68c096f23a4ac8",
+            "continuous_utf8_pages": [
+              {
+                "offset": 0,
+                "bytes": 521,
+                "next_offset": null
+              }
+            ],
+            "base64_retries": [],
+            "duplicates": []
+          },
+          "definitions/workflow/ergora-structure-review/1.0.85/instructions.md": {
+            "bytes": 163,
+            "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823",
+            "continuous_utf8_pages": [
+              {
+                "offset": 0,
+                "bytes": 163,
+                "next_offset": null
+              }
+            ],
+            "base64_retries": [],
+            "duplicates": []
+          }
+        },
+        "list_passes_files": [
+          5
+        ],
+        "failed_calls": 0,
+        "attachment_bytes": 133605,
+        "attachment_sha256": "bfad1f5993062c40e3b069de7a0a77d28bec46cf28783c3f1b775b95814fbb70",
+        "frozen_complete_files": 17,
+        "original_result_sha256": "3a0bbdbe264e6a7bb7955800033d5e7d9d7355e5ce0e28d5f64ad4991a90f65c",
+        "decision": "request-changes",
+        "native_stream_sha256": "29d7d74a34c17809068defbd49c15f5dfb473112a1a4e9aeaef55159a6261c7c",
+        "backend_reported_turn_usage": [
+          {
+            "input_tokens": 419729,
+            "cached_input_tokens": 354688,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 2600,
+            "reasoning_output_tokens": 1046
+          }
+        ],
+        "observed_processes": 4,
+        "live_sampled_processes": [],
+        "scope": "Offline exact identity and successful plaintext page reconstruction only. Cached counters are part of input, reasoning reported separately, neither is added twice. No billing, reasoning quality, owner approval, independent backend-error or unsampled-process claim."
+      },
+      "response": "Read all five declared resources completely: workflow instructions, reviewer instructions, both Skills, and candidate.txt (133,605 bytes, continuous UTF-8 pages through next_offset:null). No commands, network operations or edits were performed.\n\nComplete candidate scope: AGENTS.md; capacity plan and delivery record; unchanged/composition-graph.js; prepare-capacity.py; finish-preparation-r2.py; http-server.py; browser-capacity.js; audit-http.py; verify-cleanup.py; project-public.py; preparation-complete.json; browser-capacity-result.json; http-audit.json; audit-http-r1-failure.txt; and both public capacity metrics/browser JSON projections. Referenced private originals and baseline identity inventories were not supplied for direct inspection.\n\n**Spec — request changes**\n\n1. **P2: Compile timings include measurement bookkeeping.** In prepare-capacity.py, the sample timer starts before workflows.preview(), but accepted `seconds` is captured after count assertions and json.dumps(...). Consequently, the delivery record’s “compile” medians include validation and serialization, with overhead dependent on preview size. Minimally relabel the existing samples and public claims as preview-call-plus-validation/serialization timings. Preserve the original samples; isolate the preview-call timer only in future measurements.\n\n2. **P2: Fit is exercised without checking its result.** In browser-capacity.js, the “fit and dispose” block clicks “适配组合图”, awaits frames and records fit_ms, but never verifies the resulting viewport. A no-op fit would pass all 118 checks, particularly after keyboard locate has fitted the selected leaf. This leaves the required fit correctness unsupported despite C6a.1 being marked complete. Add a focused assertion in this measurement driver that the viewport contains the visible graph bounds, accounting for renderer zoom limits, and collect a clearly identified supplementary receipt. Alternatively, mark fit correctness pending. No production change or permanent test suite expansion is justified.\n\n**Standards — no blocking structural findings**\n\nThe drivers call the existing import/preview libraries and installed HTTP/UI entry points. The renderer retains presentation ownership: compiler levels determine layout inputs, ports remain display anchors, and folded relations retain original provenance. There is no new scheduler, dependency-ordering algorithm, backend abstraction, production/test change or CI expansion to justify.\n\nThe supplied claims appropriately retain the bundled-500 import refusal, original failures and bounded recoveries; distinguish workflow/join/Agent counts from visual ports; and limit browser cleanup to the named-close receipt. Unattributed long tasks do not justify renderer optimization. Keep these boundaries and the original evidence intact while correcting the two gaps.\n\nThis is an advisory structure review of the supplied candidate. It does not provide owner approval, independent model-error evidence, direct verification of omitted private maps, or closure of the separate fresh-context review, C6b–d, AC6/F6 or F7–F10.",
+      "sources": [
+        {
+          "original": "self-review-r1.json",
+          "bytes": 1475,
+          "sha256": "c3540345416216d71fe69433ec2aa02f25de77d7772534653cc90bf93612838b"
+        },
+        {
+          "original": "self-review-r1-read-audit.json",
+          "bytes": 4198,
+          "sha256": "5de83295ebcf76f9acf3c2456e905b7a776d75608e5a123e0ebcb25235f3353a"
+        },
+        {
+          "original": "self-review-r1/raw-evidence-index.json",
+          "bytes": 2613,
+          "sha256": "5fcf854bf81b64e25690c7cc7212d2d38866441ab78acd49f5758849a91736a7"
+        },
+        {
+          "original": "self-review-r1/original-result.json",
+          "bytes": 3339,
+          "sha256": "3a0bbdbe264e6a7bb7955800033d5e7d9d7355e5ce0e28d5f64ad4991a90f65c"
+        },
+        {
+          "original": "self-review-r1/review.md",
+          "bytes": 3136,
+          "sha256": "603a3c9ddade3d9b2b34aa5b0173cb2686e410c118f42a6427549c75311c825a"
+        },
+        {
+          "original": "self-review-r1/sampled-processes.json",
+          "bytes": 525,
+          "sha256": "09c8d64d572464a7f1aab77f1e6fc1891818b5d7ff8805474f8c8316261b7f9d"
+        }
+      ]
+    },
+    {
+      "attempt": "self-review-r2",
+      "disposition": "Accept coverage limitation: original task/identity used complete-candidate wording but attachment was focused. Actual scope is corrected here without rewriting original records or treating omitted originals as rereviewed. Full independent gate is separate.",
+      "actual_scope": "Focused correction packet with retained predecessor review receipts; not a complete-candidate rereview. Original timing/fit findings acknowledged resolved; request-changes for complete-candidate wording/omitted prior files retained. No final model approve claimed.",
+      "identity": {
+        "at": "2026-11-11T04:19:21.507722+00:00",
+        "baseline": "3d6d1220bd600817e748c19f6a9c0fa1332f6ca9",
+        "run_id": "297041ec0aba432b931b05d408448e3f",
+        "status": "succeeded",
+        "backend": "codex",
+        "inference_model": "gpt-6.1-sol",
+        "reasoning_effort": "high",
+        "cli_exit": 0,
+        "seconds": 128.7377473609522,
+        "input_digest": "043d45f0be07cb91de97d9ba2cf8e7e398b3c3f378c63db94df2d77da9e83025",
+        "prompt_sha256": "1c856a3400285473ad5fbd5a5dc877a8ef5b1eb6993e30aaaada528c2a433b1b",
+        "attachment_bytes": 100465,
+        "attachment_sha256": "eed0da58a69c5627723ce9d5563563ef227811a602a675864de84d41a681d0f0",
+        "manifest_digest": "9b3f12a100e479ef4b267dc372b5b189b868c9c7dcadcf3ae01d3f8afc5f0443",
+        "revision": "1.0.86",
+        "observed_processes": 4,
+        "live_sampled_processes": [],
+        "scope": "Actual bundled structure-review on full measurement drivers, bounded results/public projections and unchanged graph owner. No raw omitted map inspection, model quality, owner approval or different-backend independence claim.",
+        "decision": "request-changes",
+        "result_sha256": "10c831aa69e46364495db2e818d6c558f1335e4d95c1180ffd307802e8bd20fd"
+      },
+      "read_audit": {
+        "at": "2026-11-11T04:21:11.647862+00:00",
+        "run_id": "297041ec0aba432b931b05d408448e3f",
+        "revision": "1.0.86",
+        "manifest_prepared_actual_prompt_admission_scope_native_original_result_match": true,
+        "bundled_template_unchanged_except_evidence_revision_resource_and_limit": true,
+        "scope_files": 5,
+        "all_scope_continuous_utf8_through_null": true,
+        "complete_scope_reads": {
+          "definitions/agent/ergora-structure-reviewer/1.0.86/instructions.md": {
+            "bytes": 354,
+            "sha256": "3cc9c450f0c03da5ea4a1434ac6182d50df6a4985cffdee2a59fe9fe477c6b43",
+            "continuous_utf8_pages": [
+              {
+                "offset": 0,
+                "bytes": 354,
+                "next_offset": null
+              }
+            ],
+            "base64_retries": [],
+            "duplicates": []
+          },
+          "definitions/agent/ergora-structure-reviewer/1.0.86/skills/candidate-evidence/SKILL.md": {
+            "bytes": 468,
+            "sha256": "9fdcf4846357ec3b040660c923a25e9ce3a98101b1214a8a1be9b4c37bfdc622",
+            "continuous_utf8_pages": [
+              {
+                "offset": 0,
+                "bytes": 468,
+                "next_offset": null
+              }
+            ],
+            "base64_retries": [],
+            "duplicates": []
+          },
+          "definitions/agent/ergora-structure-reviewer/1.0.86/skills/candidate-evidence/references/candidate.txt": {
+            "bytes": 100465,
+            "sha256": "eed0da58a69c5627723ce9d5563563ef227811a602a675864de84d41a681d0f0",
+            "continuous_utf8_pages": [
+              {
+                "offset": 0,
+                "bytes": 16000,
+                "next_offset": 16000
+              },
+              {
+                "offset": 16000,
+                "bytes": 14000,
+                "next_offset": 30000
+              },
+              {
+                "offset": 30000,
+                "bytes": 14000,
+                "next_offset": 44000
+              },
+              {
+                "offset": 44000,
+                "bytes": 14000,
+                "next_offset": 58000
+              },
+              {
+                "offset": 58000,
+                "bytes": 14000,
+                "next_offset": 72000
+              },
+              {
+                "offset": 72000,
+                "bytes": 14000,
+                "next_offset": 86000
+              },
+              {
+                "offset": 86000,
+                "bytes": 14000,
+                "next_offset": 100000
+              },
+              {
+                "offset": 100000,
+                "bytes": 465,
+                "next_offset": null
+              }
+            ],
+            "base64_retries": [],
+            "duplicates": []
+          },
+          "definitions/agent/ergora-structure-reviewer/1.0.86/skills/ergora-structure-reviewer/SKILL.md": {
+            "bytes": 521,
+            "sha256": "d6b69570bcca408d3d06ca5adf1cb44a4a9e43c2901f05c38a68c096f23a4ac8",
+            "continuous_utf8_pages": [
+              {
+                "offset": 0,
+                "bytes": 521,
+                "next_offset": null
+              }
+            ],
+            "base64_retries": [],
+            "duplicates": []
+          },
+          "definitions/workflow/ergora-structure-review/1.0.86/instructions.md": {
+            "bytes": 163,
+            "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823",
+            "continuous_utf8_pages": [
+              {
+                "offset": 0,
+                "bytes": 163,
+                "next_offset": null
+              }
+            ],
+            "base64_retries": [],
+            "duplicates": []
+          }
+        },
+        "list_passes_files": [
+          5
+        ],
+        "failed_calls": 0,
+        "attachment_bytes": 100465,
+        "attachment_sha256": "eed0da58a69c5627723ce9d5563563ef227811a602a675864de84d41a681d0f0",
+        "frozen_complete_files": 15,
+        "original_result_sha256": "10c831aa69e46364495db2e818d6c558f1335e4d95c1180ffd307802e8bd20fd",
+        "decision": "request-changes",
+        "native_stream_sha256": "23ac424c31882cfdbce2e6cfb79b20668f6b2024d17e330450c4a638d97ad6a5",
+        "backend_reported_turn_usage": [
+          {
+            "input_tokens": 333671,
+            "cached_input_tokens": 269440,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 3426,
+            "reasoning_output_tokens": 1674
+          }
+        ],
+        "observed_processes": 4,
+        "live_sampled_processes": [],
+        "scope": "Offline exact identity and successful plaintext page reconstruction only. Cached counters are part of input, reasoning reported separately, neither is added twice. No billing, reasoning quality, owner approval, independent backend-error or unsampled-process claim."
+      },
+      "response": "Read all five declared resources completely through task MCP, using continuous UTF-8 pages through next_offset:null. Candidate size: 100,465 bytes; SHA256 eed0da58a69c5627723ce9d5563563ef227811a602a675864de84d41a681d0f0. No base64 retries, shell/network/code execution or edits.\n\nComplete resource scope:\n- definitions/workflow/ergora-structure-review/1.0.86/instructions.md\n- definitions/agent/ergora-structure-reviewer/1.0.86/instructions.md\n- definitions/agent/ergora-structure-reviewer/1.0.86/skills/ergora-structure-reviewer/SKILL.md\n- definitions/agent/ergora-structure-reviewer/1.0.86/skills/candidate-evidence/SKILL.md\n- definitions/agent/ergora-structure-reviewer/1.0.86/skills/candidate-evidence/references/candidate.txt\n\nComplete embedded file scope:\n- AGENTS.md\n- docs/plans/2026-11-11-composition-capacity.md\n- docs/delivery/2026-11-11-composition-capacity.md\n- src/ergora/data/console/composition-graph.js\n- docs/delivery/evidence/2026-11-11-composition-capacity-metrics.json\n- docs/delivery/evidence/2026-11-11-composition-capacity-fit.json\n- prepare-capacity.py\n- fit-supplement.js\n- http-fit.py\n- audit-fit.py\n- fit-supplement/browser-fit-result.json\n- fit-supplement/audit.json\n- self-review-r1/review.md\n- self-review-r1.json\n- self-review-r1-read-audit.json\n\n**Spec — request changes**\n\n1. **P2: The packet does not contain the complete candidate required for this re-review.** Source: candidate.txt’s completeness claim, the delivery record’s C6a.1/C6a.2 claims, and the original scope listed in self-review-r1/review.md. Trigger: independently tracing the original 118 checks, HTTP capture, material audit and cleanup. The current packet omits browser-capacity.js, http-server.py, audit-http.py, verify-cleanup.py and their original results, among other files from the first candidate. The referenced public browser and self-review projections are also absent. Consequence: those original claims can only be assessed through summaries and predecessor review receipts; this review cannot establish complete-candidate coverage. Minimal correction: restore the retained original driver/result evidence and missing public projections to the attachment, preserving their identities and scope labels. No rerun, private raw-map disclosure, product change or additional permanent tests is needed.\n\nThe supplied focused corrections resolve the two original findings: timing claims now describe the measured preview/assertion/serialization scope, and the five-case fit supplement establishes non-containing pre-fit viewports, awaits two frames, checks labelled bounds and renderer limits, and verifies unchanged counts, selection and model bounding boxes through the offline audit. Original samples and the first request-changes review remain preserved.\n\n**Standards — no blocking structural findings in the supplied files**\n\nThe measurement drivers use the existing installed import/preview and HTTP/UI owners. The graph module consumes compiler levels and keeps presentation ownership; ports remain display anchors. The supplement adds no production interface, dependency, scheduling algorithm, backend abstraction, permanent tests or CI. Unattributed long tasks provide no basis for optimization.\n\nThis advisory review does not independently verify omitted originals, grant owner approval, or close C6b–d, formal 500-Agent execution, model quality, whole AC6/F6 or F7–F10.",
+      "sources": [
+        {
+          "original": "self-review-r2.json",
+          "bytes": 1474,
+          "sha256": "416aab0805fada775d98725227a42c0b57829159fd0556d4399505465376abd5"
+        },
+        {
+          "original": "self-review-r2-read-audit.json",
+          "bytes": 4090,
+          "sha256": "a69338328b07cb4f891f76827b9b37a140f11b3b14c9af33fcba5d6362e81d1d"
+        },
+        {
+          "original": "self-review-r2/raw-evidence-index.json",
+          "bytes": 2353,
+          "sha256": "373bef7fb27e5f8010ad57261ae19be9ba9abb01ea239bcbbc40bc7e7d832a31"
+        },
+        {
+          "original": "self-review-r2/original-result.json",
+          "bytes": 3655,
+          "sha256": "10c831aa69e46364495db2e818d6c558f1335e4d95c1180ffd307802e8bd20fd"
+        },
+        {
+          "original": "self-review-r2/review.md",
+          "bytes": 3399,
+          "sha256": "ecbfdd186a3f4a17fd0cb315e97857aafa12b806d8b77b4a73af5d2c909778c9"
+        },
+        {
+          "original": "self-review-r2/sampled-processes.json",
+          "bytes": 525,
+          "sha256": "ea85318b4ae11a5595a5ce0f9bd53af30d3affd897ff3c433d208bc5e02b8333"
+        }
+      ]
+    }
+  ],
+  "omitted": [
+    "private absolute manifest/input/cwd/scope/result paths",
+    "raw full native event stream and complete attached source/evidence"
+  ],
+  "scope": "Advisory actual bundled template calls and successful UTF8 page reconstruction. Original findings/results retained. Backend reported input includes cached; reasoning is separate and never added twice. No billing, model-quality, different-backend error-independence or formal owner-approval claim."
+}
