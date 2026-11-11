@@ -10,7 +10,7 @@ import stat
 import sys
 import tempfile
 
-from . import agent_definitions, contracts, issues, skill_assets, workflow_definitions
+from . import agent_definitions, contracts, issues, issue_writebacks, skill_assets, workflow_definitions
 from .asset_trees import is_link as _is_link
 from .state import SCHEMA_VERSION, file_lock, now
 
@@ -100,7 +100,7 @@ def _check_assets(db: sqlite3.Connection, data: Path, original_home: Path) -> di
             if actual != row["sha"]:
                 raise ValueError(f"Source snapshot identity does not match database: {relative}")
             checked["source_snapshots"] += 1
-    return {**checked, **issues.validate_storage(db)}
+    return {**checked, **issues.validate_storage(db), **issue_writebacks.validate_storage(db)}
 
 
 def verify(backup: Path) -> dict:

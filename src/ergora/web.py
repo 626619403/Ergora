@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from . import __version__, agent_definitions, agent_runs, components, definition_bundles, drafts, evaluation, handoff, issues, kernel, memory, optimization, projects, reference, registrations, research, services, tasks, skill_assets, skills, tools, workflow_definitions
+from . import __version__, agent_definitions, agent_runs, components, definition_bundles, drafts, evaluation, handoff, issues, issue_writebacks, kernel, memory, optimization, projects, reference, registrations, research, services, tasks, skill_assets, skills, tools, workflow_definitions
 from .state import State
 
 
@@ -92,6 +92,21 @@ class IssueLinkPayload(IssueCapturePayload):
     task_id: str
     creation_sha256: str
     reason: str
+
+
+class IssueWritebackPreparePayload(IssueCapturePayload):
+    task_id: str
+    run_id: str
+    candidate_sha: str
+
+
+class IssueWritebackSendPayload(IssueCapturePayload):
+    confirm: bool = Field(strict=True)
+
+
+class IssueWritebackObservePayload(Payload):
+    comment_id: str | None = None
+    page: int = Field(default=1, strict=True, ge=1, le=10_000)
 
 
 class TaskCreationPayload(TaskDefinitionPayload):
@@ -429,6 +444,23 @@ def create_app(home: Path | None = None) -> FastAPI:
                             limit: int = 50, after: str | None = None):
         return issues.links(state, project_id, snapshot_sha256=snapshot_sha256, task_id=task_id,
                             limit=limit, after=after)
+
+    @application.post("/api/projects/{project_id}/issue-writebacks")
+    def prepare_issue_writeback(project_id: str, body: IssueWritebackPreparePayload):
+        return issue_writebacks.prepare(state, project_id, body.task_id, body.revision,
+                                        run_id=body.run_id, candidate_sha=body.candidate_sha)
+
+    @application.get("/api/projects/{project_id}/issue-writebacks/{digest}")
+    def saved_issue_writeback(project_id: str, digest: str):
+        return issue_writebacks.status(state, project_id, digest)
+
+    @application.post("/api/projects/{project_id}/issue-writebacks/{digest}/send")
+    def send_issue_writeback(project_id: str, digest: str, body: IssueWritebackSendPayload):
+        return issue_writebacks.send(state, project_id, digest, body.revision, confirm=body.confirm)
+
+    @application.post("/api/projects/{project_id}/issue-writebacks/{digest}/observe")
+    def observe_issue_writeback(project_id: str, digest: str, body: IssueWritebackObservePayload):
+        return issue_writebacks.observe(state, project_id, digest, comment_id=body.comment_id, page=body.page)
 
     @application.post("/api/projects/{project_id}/tasks/preview")
     def preview_formal_task(project_id: str, body: TaskDefinitionPayload):

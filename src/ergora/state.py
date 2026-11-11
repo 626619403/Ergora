@@ -68,7 +68,22 @@ def _schema_v2(db: sqlite3.Connection) -> None:
         _writer_fences(db, table, 2)
 
 
-_MIGRATIONS = (_schema_v1, _schema_v2)
+def _schema_v3(db: sqlite3.Connection) -> None:
+    tables = {
+        'issue_writebacks': '(project TEXT NOT NULL, sha TEXT NOT NULL, scope TEXT NOT NULL, document TEXT NOT NULL, attempt TEXT, result TEXT, PRIMARY KEY(project,sha), UNIQUE(project,scope))',
+        'issue_writeback_observations': '(project TEXT NOT NULL, write_sha TEXT NOT NULL, sha TEXT NOT NULL, document TEXT NOT NULL, PRIMARY KEY(project,write_sha,sha))',
+    }
+    for table, declaration in tables.items():
+        db.execute(f'CREATE TABLE "{table}" {declaration}')
+    previous = (*_TABLES, 'issue_snapshots', 'issue_task_links')
+    for table in previous:
+        for operation in ('insert', 'update', 'delete'):
+            db.execute(f'DROP TRIGGER "ergora_writer_v2_{table}_{operation}"')
+    for table in (*previous, *tables):
+        _writer_fences(db, table, 3)
+
+
+_MIGRATIONS = (_schema_v1, _schema_v2, _schema_v3)
 SCHEMA_VERSION = len(_MIGRATIONS)
 
 

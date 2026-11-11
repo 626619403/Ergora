@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 import subprocess
 import sys
-from threading import Thread
+from threading import Lock, Thread
 from types import SimpleNamespace
 
 import pytest
@@ -18,16 +18,33 @@ from test_registrations import installation, registration
 
 @pytest.fixture
 def source(tmp_path):
-    service = SimpleNamespace(calls=[], status=200, raw=b'', headers={'ETag': '"r1"'}, on_read=None, declared_length=None)
+    service = SimpleNamespace(calls=[], status=200, raw=b'', headers={'ETag': '"r1"'}, on_read=None,
+                              on_write=None, drop_write=False, declared_length=None)
+    response_lock = Lock()
 
     class Handler(BaseHTTPRequestHandler):
         def log_message(self, *args):
             pass
 
         def do_GET(self):
-            service.calls.append({'path': self.path, 'headers': dict(self.headers), 'method': self.command})
-            if service.on_read:
-                service.on_read()
+            with response_lock:
+                service.calls.append({'path': self.path, 'headers': dict(self.headers), 'method': self.command})
+                if service.on_read:
+                    service.on_read()
+                self.respond()
+
+        def do_POST(self):
+            body = json.loads(self.rfile.read(int(self.headers['Content-Length'])))
+            with response_lock:
+                service.calls.append({'path': self.path, 'headers': dict(self.headers), 'method': self.command, 'body': body})
+                if service.on_write:
+                    service.on_write()
+                if service.drop_write:
+                    self.close_connection = True
+                    return
+                self.respond()
+
+        def respond(self):
             self.send_response(service.status)
             for name, value in service.headers.items():
                 self.send_header(name, value)
@@ -195,7 +212,7 @@ def test_cli_http_and_descriptors_share_the_actual_read_use_case(source):
         bootstrap = client.get('/api/bootstrap').json()
         tracker = bootstrap['tools']['tracker']
         assert {item['tool'] for item in tracker} == {'manual', 'github', 'gitlab'}
-        assert all(item['operations'] == ['issue.show'] for item in tracker if item['tool'] != 'manual')
+        assert all('issue.show' in item['operations'] for item in tracker if item['tool'] != 'manual')
     assert cli['issue']['body'] == ''
     assert len(source.calls) == 2 and {item['method'] for item in source.calls} == {'GET'}
     before = len(source.calls)

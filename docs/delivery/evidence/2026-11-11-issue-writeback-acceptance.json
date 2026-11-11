@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "slice": "F7c-C1 explicit candidate association comment",
+  "baseline": "472ff60a6d27c91ef5d5285f959e61d3b935341d",
+  "state": "Local implementation, final r2 affected installed checks, focused actual own review and complete independent two-axis review passed; exact Git, remote and own CI pending",
+  "final_package": {
+    "at": "2026-11-11T11:29:32.562864+00:00",
+    "wheel_sha256": "e75d130e88966a1c89145fd246e5acd3c8ac7a8c70f8b20433a7e8e08173c46d",
+    "wheel_files": 451,
+    "package_files": 446,
+    "wheel_and_installed_records_verified": true,
+    "installed_record_rows": 455,
+    "source_and_installed_package_equal": true,
+    "frozen_files": 283,
+    "editable": false
+  },
+  "historical_checks": [
+    {
+      "candidate": "early source W1",
+      "passed": 20,
+      "seconds_pytest": 14.3,
+      "seconds_command": 16.35,
+      "scope": "Original issue reads and new native comment protocols; not complete C1"
+    },
+    {
+      "candidate": "source W2 first",
+      "passed": 91,
+      "skipped": 1,
+      "seconds_pytest": 30.41,
+      "seconds_command": 32.49,
+      "scope": "Before added parallel and complete entrypoint cases"
+    },
+    {
+      "candidate": "source W2 second",
+      "passed": 99,
+      "skipped": 1,
+      "seconds_pytest": 55.78,
+      "seconds_command": 59.12,
+      "scope": "Five suites; original task creation/show/export_status ports controlled; real tracker HTTP and State"
+    },
+    {
+      "candidate": "source native-owner integration",
+      "passed": 1,
+      "seconds_pytest": 13.1,
+      "seconds_command": 13.82,
+      "scope": "Real v7 publication/submission/Git export/claim release and fresh CLI use original task owners; only Temporal SDK result controlled, no inference"
+    },
+    {
+      "candidate": "r1 noneditable package",
+      "wheel_sha256": "2a050ba5e30376635abbd928e27350f406f5e543807a791562ffb63b680c8a77",
+      "package_files": 446,
+      "wheel_record_rows": 451,
+      "installed_record_rows": 622,
+      "record_hashes_present": 454,
+      "record_hashes_absent": 168,
+      "passed": 188,
+      "skipped": 1,
+      "seconds_pytest": 520.74,
+      "seconds_command": 521.85,
+      "scope": "Eight installed suites before the own-review fixes; not full final r2 regression"
+    }
+  ],
+  "final_r2_affected_installed_checks": {
+    "passed": 52,
+    "seconds_pytest": 52.16,
+    "seconds_command": 54.19,
+    "suites": [
+      "test_issue_writebacks.py",
+      "test_architecture_boundaries.py"
+    ],
+    "reference_verify_exit": 0,
+    "reference_verify_seconds": 0.37,
+    "delta_from_r1": "Only opaque literal punctuation encoding and final revision/original-attempt transaction checkpoint; meaningful test cases updated in original test module",
+    "scope": "Fresh noneditable installed package; complete current writeback and architecture suites, not all repository suites"
+  },
+  "verified_behaviors": [
+    "Attempt committed and read by a separate CLI before the single native POST",
+    "Two simultaneous explicit confirmations produce one POST",
+    "Full matching original 201 persisted as acknowledged; repeated send performs no further request",
+    "Lost/truncated/wrong-author/missing-visibility responses preserve unknown",
+    "Controlled interruption before send or after native response preserves unknown and no resend",
+    "Unique matching current comment, copied marker, edits/deletion/empty page do not acknowledge unknown",
+    "Current actor/native target/tracker binding and original snapshot/task identities cannot retarget an intent",
+    "Current revision checked before attempt and result; change during POST preserves unknown",
+    "Unrelated prior agent revision allowed using current expected revision and the same frozen candidate",
+    "Legal Git branch Markdown characters encoded; issue instructions never copied into fixed body",
+    "Shared CLI/protected HTTP and original task/export owners; exact offline backup and old writer fencing"
+  ],
+  "limits": [
+    "All tracker writes use loopback fixtures; no real account write or real service compatibility claim",
+    "Controlled SystemExit is not an OS SIGKILL experiment",
+    "No claim of exactly-once remote effect, distinct backend independence or full r2 suite result",
+    "No label changes, branch push, PR/MR creation, close/merge or comment edit/delete",
+    "Final public documentation, complete independent review, Git/remote and own CI checked separately"
+  ],
+  "build_attempts": {
+    "first_no_isolation": "Failed because the prior acceptance interpreter had no setuptools; no product mutation or old environment install",
+    "standard_isolated": "Success using declared pyproject build requirements; intermediate artifacts in home-owned check storage"
+  },
+  "own_review": {
+    "first_full_run": "b1a49a24ce944b12955bdc0eead2089c",
+    "first_decision": "request-changes",
+    "focused_run": "0bd80ee0a3f8445c8db7fd6c32748cea",
+    "focused_decision": "approve",
+    "focused_seconds": 103.93,
+    "scope": "Two P2 fixes and eight full attachments, not a new full final-doc review; five scope files continuously read to null, 0 failed MCP, 4 owned sampled processes none live"
+  },
+  "independent_review": {
+    "report": "../2026-11-11-issue-writeback-review.md",
+    "candidate_files": 28,
+    "spec_open": 0,
+    "standards_open": 0,
+    "closed_findings": [
+      "SP1",
+      "SP2",
+      "SP3",
+      "SP4",
+      "ST1",
+      "ST2"
+    ],
+    "scope": "Complete 28-file manifest and four live status-only deltas, final r2 package and raw own-review evidence; exact ready/Git/remote and own CI remain pending"
+  }
+}

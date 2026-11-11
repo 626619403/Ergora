@@ -9,7 +9,7 @@ import sys
 
 from . import __version__
 from . import reference
-from . import agent_definitions, agent_runs, agents, contracts, definition_bundles, evaluation, issues, kernel, memory, optimization, projects, registrations, research, services, tasks, skill_assets, skills, tools, workflow_definitions
+from . import agent_definitions, agent_runs, agents, contracts, definition_bundles, evaluation, issues, issue_writebacks, kernel, memory, optimization, projects, registrations, research, services, tasks, skill_assets, skills, tools, workflow_definitions
 from .state import State, resolve_home
 
 
@@ -168,7 +168,7 @@ def parser() -> argparse.ArgumentParser:
     bind.add_argument("layer")
     bind.add_argument("--binding", type=Path, required=True, help="JSON tool binding")
     bind.add_argument("--revision", type=int, required=True)
-    issue = commands.add_parser("issue", help="Read project tracker context without creating or authorizing tasks")
+    issue = commands.add_parser("issue", help="Read tracker context and explicitly confirm candidate association comments")
     operations = issue.add_subparsers(dest="operation", required=True)
     show_issue = operations.add_parser("show", help="Read one GitHub number or GitLab iid using the selected tracker")
     show_issue.add_argument("project")
@@ -197,6 +197,25 @@ def parser() -> argparse.ArgumentParser:
     issue_links.add_argument("--task", dest="task_id")
     issue_links.add_argument("--limit", type=int, default=50)
     issue_links.add_argument("--after")
+    writing = operations.add_parser("writeback-prepare", help="Prepare a fixed comment for an exact exported v7 candidate; sends no comment")
+    writing.add_argument("project")
+    writing.add_argument("task_id")
+    writing.add_argument("--revision", type=int, required=True)
+    writing.add_argument("--run-id", required=True)
+    writing.add_argument("--candidate-sha", required=True)
+    for name in ("writeback-status", "writeback-send", "writeback-observe"):
+        writing = operations.add_parser(name, help={
+            'writeback-status': 'Read the saved writeback offline',
+            'writeback-send': 'Confirm one saved intent; an existing attempt is never resent',
+            'writeback-observe': 'Read one current resource or comment page without acknowledging an unknown attempt'}[name])
+        writing.add_argument("project")
+        writing.add_argument("intent_sha256")
+        if name == 'writeback-send':
+            writing.add_argument("--revision", type=int, required=True)
+            writing.add_argument("--confirm", action="store_true", required=True)
+        elif name == 'writeback-observe':
+            writing.add_argument("--comment-id")
+            writing.add_argument("--page", type=int, default=1)
     tool = commands.add_parser("tools", help="List supported tools or check project availability")
     operations = tool.add_subparsers(dest="operation", required=True)
     operations.add_parser("list")
@@ -603,9 +622,20 @@ def main(argv: list[str] | None = None) -> int:
             elif args.operation == "link-task":
                 output = issues.link_task(state, args.project, args.snapshot_sha256, args.task_id,
                                           args.creation_sha256, args.revision, args.reason)
-            else:
+            elif args.operation == 'links':
                 output = issues.links(state, args.project, snapshot_sha256=args.snapshot_sha256,
                                       task_id=args.task_id, limit=args.limit, after=args.after)
+            elif args.operation == 'writeback-prepare':
+                output = issue_writebacks.prepare(state, args.project, args.task_id, args.revision,
+                                                  run_id=args.run_id, candidate_sha=args.candidate_sha)
+            elif args.operation == 'writeback-status':
+                output = issue_writebacks.status(state, args.project, args.intent_sha256)
+            elif args.operation == 'writeback-send':
+                output = issue_writebacks.send(state, args.project, args.intent_sha256, args.revision, confirm=args.confirm)
+                print(json.dumps(output, ensure_ascii=False, indent=2))
+                return 0 if output['status'] == 'acknowledged' else 1
+            elif args.operation == 'writeback-observe':
+                output = issue_writebacks.observe(state, args.project, args.intent_sha256, comment_id=args.comment_id, page=args.page)
         elif args.command == "tools":
             if args.operation == "profiles":
                 output = tools.installation_profiles()

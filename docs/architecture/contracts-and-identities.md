@@ -10,6 +10,7 @@
 |角色与支持工具绑定|上述 configuration；绑定沿用现有无独立版本的 `{tool, ...}` 格式，位于 project v1|`bindings`委托实际所有者：`agents`核角色/能力、`kernel`核原生路径、`issue_backends`核tracker连接，其余支持层核schema及ReMe URL/变量名；共用结构校验|
 |指定工单观察|`data/schemas/issue-observation-v1.json`；与task／request版本分开|`issue_backends`验证原生响应与完整原字节摘要；`issues.show`补固定项目修订／配置摘要和观察时间。source含完整API base／namespace／number或iid，issue另存native ID；文本为context_only，show不持久入表、不派工。ETag／更新时间不是写CAS|
 |工单快照与显式上下文关联|`issue_sources.validate_snapshot / issue_snapshots / issues._LINK`为本域严格v1记录；SQLite schema v2的两专属表|snapshot SHA对完整观察去掉observed_at及当次tracker binding做UTF8 canonical JSON摘要；首次观察时间另存。link固定snapshot SHA、task ID及原creation intent／compiled SHA；`created_revision`是项目修订，`operator_asserted_context`不授予执行。离线备份核记录／列／摘要／引用，不解析当前凭据或原execution目录|
+|显式候选评论|`issue_writebacks`本域严格v1 intent／attempt／result及观察；SQLite schema v3增加两专属表|固定body与scope绑定原v7来源、task／creation／run／candidate／export；intent SHA还含准备actor与项目历史。逻辑scope唯一，不因重prepare或换请求ID重复发送；attempt提交后无新POST槽。只有原完整201的受支持目标／作者／全文及已存result表示acknowledged，观察永不证明原attempt|
 |Agent 结构化结果|`agents.result_schema` 生成所选模板角色的必需 artifacts 和审查 decision；命令信封沿用 `stage-json-v1`|`agents.validate_result` 使用同一份 schema 验证实际输出，非空白 summary/artifacts 和拒绝额外字段保持；进程成功不是正式验收|
 |静态Agent定义包|`data/schemas/agent-definition-v1.json`，严格整数版本1；索引由定义库所有者校验|`agent_definitions`核职能/后端、包内资源与精确版本；备份核索引→对象→资源，不新建DB表或运行准入|
 |静态工作流定义包与预览|`workflow-definition-v1.json / workflow-definition-v2.json`；预览v1/v2，grant仍v1|v2增加实例必需／建议审查职责；`workflow_definitions`核精确引用、端口／有界DAG、完整祖先资料／权限及预算。preview版本为所展开定义的最高版本，仍`executable:false`；`definition_bundles`逐包发布，不授执行权|
@@ -45,6 +46,7 @@
 |离线备份清单|`backups.verify` 对 manifest.json 原 UTF-8 字节 SHA-256；文件清单各自记录实际字节、大小和文件模式|清单身份绑定这一份快照；不重写其中引用的旧 Skill / 评价 / 正式证据摘要|
 |项目登记、投影与导入预览|排序、UTF8、不转义Unicode、紧凑分隔符、拒绝NaN的JSON/SHA256；登记摘要绑定id/repo/规范化定义，预览另绑定control_home/revision/绑定/差异/源SHA及投影摘要|bindings仅由项目顶层拥有；旧文件SHA另按原字节计算，空白变化也使导入预览失效；不重编码旧文件以制造一致性|
 |工单响应|成功单GET完整原响应字节的SHA256；ETag和原updated_at另保留，不重编码响应来计算同一摘要|响应空白／字段顺序变化也会改变SHA；观察时间与配置身份另存，不能由内容摘要推导任务授权、事件去重或原子写入版本|
+|候选评论身份|复用`task_envelopes.identity`的排序、UTF8、不转义Unicode、紧凑JSON／SHA256；固定body中opaque名称另做JSON文字及Markdown／mention字符转义|intent／逻辑scope／attempt／观察各有不同摘要；原生POST／GET响应另存原字节摘要，不能将marker、当前匹配或重编码投影视为原请求因果证明|
 
 A2 的固定向量、两种 compiled/request/profile 身份、Skill 执行位和合成旧状态继续作为回归依据。R2 只把测试中的私有 `_sha` 调用迁到实际语义名称，未改任何身份夹具。
 

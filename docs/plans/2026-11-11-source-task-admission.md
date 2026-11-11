@@ -25,10 +25,12 @@
 |C1 所选依赖|源码与已安装包：无关包／服务和未选后端缺失仍可 start；所选后端、MCP、runtime、执行禁用／容器不匹配具体拒绝；v1–v6 原 report 保持|r2 非 editable 包身份／283冻结及架构＋准入25项通过；r1九suite8失败／158通过／6跳过按原范围保留，八失败已定向修验|
 |C2 原提交恢复|原 policy／可信 checks／同一 claim 竞争；丢接受响应与原输入／memo 错配；unknown 仅 lookup，即便新准入不可用；恢复原 ID／原文件保持|r2定向25项包含原policy／共享claim、丢响应与input／memo错配；夹具改用原task_spec后旧identifier边界1项重验通过|
 |C3 原六阶段|独立 home 的已安装包＋Supervisor／Temporal worker／executor，冻结工单后 tracker 下线；显式批准精确计划、精确候选、证据／handoff／事件 replay 与所属进程清理|r1确定性9job／236事件已核；最终r2正向混合5真实叶、9job全成功REVIEW_READY、386事件重放／handoff／原ID重复与精确本地export通过，87＋2采样清理、23资源7437B／五来源回显均经独立原件终核；两失败原run／对账保留|
-|C4 完整审查与交付|Ergora 自身真实审查模板、完整祖先／来源读取原件，新 fresh-context 独立两轴；安装／受影响检查／手册；普通推送、精确身份与自己的双 OS 必要 CI|自身144.57秒approve／12完整附件与五scope读取；完整18文件和最终正向原件独立Spec／Standards及本地出口通过，ST1关闭、开放0／0；6a7e9a1精确Git／独立Ref通过；自己的CI43003408859已Failure，Linux六例受fixture缺claude影响、Windows四步骤成功；ST2/P2夹具最小修正，初始系统PATH下原13项／69.80秒通过；产品445／283不变，完整修正独立审查与新CI待验|
+|C4 完整审查与交付|Ergora 自身真实审查模板、完整祖先／来源读取原件，新 fresh-context 独立两轴；安装／受影响检查／手册；普通推送、精确身份与自己的双 OS 必要 CI|自身144.57秒approve／12完整附件与五scope读取；完整18文件和最终正向原件独立Spec／Standards及本地出口通过，ST1关闭、开放0／0；6a7e9a1精确Git／独立Ref通过；自己的CI43003408859已Failure，Linux六例受fixture缺claude影响、Windows四步骤成功；ST2/P2夹具最小修正，初始系统PATH下原13项／69.80秒通过；产品445／283不变，完整六文件修正独立两轴开放0／0、ST2关闭；472ff60精确Git／独立Ref通过，自己的CI43007648352首索引In progress，终态待验|
 
 所有验收原件保存在 home 下忽略的本片 checks；公开文档仅保留去环境化身份／范围投影。原失败不覆盖，未执行范围不写通过。默认不向真实 tracker 写入。
 
 r1→r2逐文件核验：两wheel路径相同，唯一产品差异是`reference_inputs.py`补回`import json`（另有RECORD）；r2 SHA `34c80c6257b7975e607b6a046d8e598c4506378109aa3740c5e6efe69b48ef94`，445包文件、450wheel／455安装RECORD行及283冻结均核。r2定向25项79.53秒，失败分支已在新包实际运行；未将r1错误分支或确定性fixture等同真实模型验收。
 
 本片不实现 F7c 的远端写意图／恢复、F7d 的 observe/UI、F8 harness、F9 实验或 F10 演进。每节点更新[交付记录](../delivery/2026-11-11-source-task-admission.md)和[PLAN](../PLAN.md)；完成本片后继续[总计划](2026-11-01-all-in-one.md)。
+
+修正472ff60自己的CI43007648352首run HTML终态Success；Linux130479025102／Windows130479025624七必要步骤completed／success，同片原评审核三份原HTML／receipt、完整提交绑定及原失败保留后通过。精确交付终结；后续工作见[F7c-C1](2026-11-11-issue-writeback.md)。

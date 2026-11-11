@@ -762,7 +762,11 @@
       "capabilities": [],
       "operations": {
         "tracker": [
-          "issue.show"
+          "issue.show",
+          "issue.writeback.prepare",
+          "issue.writeback.status",
+          "issue.writeback.send",
+          "issue.writeback.observe"
         ]
       },
       "platforms": [],
@@ -778,7 +782,9 @@
             "type": "string",
             "maxLength": 300,
             "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$",
-            "not": {"pattern": "\\s"},
+            "not": {
+              "pattern": "\\s"
+            },
             "description": "Repository owner/name"
           },
           "api_url": {
@@ -786,7 +792,9 @@
             "type": "string",
             "minLength": 1,
             "pattern": "^[^\\s]+$",
-            "not": {"pattern": "\\s"},
+            "not": {
+              "pattern": "\\s"
+            },
             "default": "https://api.github.com",
             "description": "HTTPS API base; HTTP is supported only on loopback"
           },
@@ -794,14 +802,18 @@
             "title": "凭据环境变量名（可选）",
             "type": "string",
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
-            "not": {"pattern": "\\s"},
+            "not": {
+              "pattern": "\\s"
+            },
             "description": "Optional environment variable name; omit for anonymous public reads"
           },
           "api_version": {
             "title": "GitHub API 版本",
             "type": "string",
             "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
-            "not": {"pattern": "\\s"},
+            "not": {
+              "pattern": "\\s"
+            },
             "default": "2022-11-28"
           }
         },
@@ -811,7 +823,7 @@
         ],
         "additionalProperties": false
       },
-      "note": "GitHub 工单只读来源；保存变量名，不保存token值。读取不授予执行权限；更新时间/ETag不是写入CAS。",
+      "note": "GitHub/GitLab 工单上下文与显式候选评论；只保存凭据变量名。写入需已导出v7候选及精确意图确认；unknown不重发。读取不授予执行权限；更新时间/ETag不是写入CAS。",
       "installation": null
     },
     "gitlab": {
@@ -823,7 +835,11 @@
       "capabilities": [],
       "operations": {
         "tracker": [
-          "issue.show"
+          "issue.show",
+          "issue.writeback.prepare",
+          "issue.writeback.status",
+          "issue.writeback.send",
+          "issue.writeback.observe"
         ]
       },
       "platforms": [],
@@ -839,7 +855,9 @@
             "type": "string",
             "maxLength": 300,
             "pattern": "^[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)+$",
-            "not": {"pattern": "\\s"},
+            "not": {
+              "pattern": "\\s"
+            },
             "description": "Project namespace/path, including subgroups"
           },
           "api_url": {
@@ -847,7 +865,9 @@
             "type": "string",
             "minLength": 1,
             "pattern": "^[^\\s]+$",
-            "not": {"pattern": "\\s"},
+            "not": {
+              "pattern": "\\s"
+            },
             "default": "https://gitlab.com/api/v4",
             "description": "HTTPS API base; HTTP is supported only on loopback"
           },
@@ -855,7 +875,9 @@
             "title": "凭据环境变量名（可选）",
             "type": "string",
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
-            "not": {"pattern": "\\s"},
+            "not": {
+              "pattern": "\\s"
+            },
             "description": "Optional environment variable name; omit for anonymous public reads"
           }
         },
@@ -865,7 +887,7 @@
         ],
         "additionalProperties": false
       },
-      "note": "GitLab 工单只读来源；保存变量名，不保存token值。读取不授予执行权限；更新时间/ETag不是写入CAS。",
+      "note": "GitHub/GitLab 工单上下文与显式候选评论；只保存凭据变量名。写入需已导出v7候选及精确意图确认；unknown不重发。读取不授予执行权限；更新时间/ETag不是写入CAS。",
       "installation": null
     }
   },

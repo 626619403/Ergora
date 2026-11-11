@@ -99,3 +99,30 @@ Spec／Standards本地出口通过，开放0／0；ST1/P2已关闭。普通提�
 新增公开 `first_exact_delivery_ci` 与原ci-result-r1逐字段相等，仅过滤HTTP headers；两job／run receipt另与原保存receipt及HTML字节大小／SHA核对。按原页面data属性重核平台、必要步骤conclusion／起止时间及精确commit-bound log URL，Windows四步、Linux三步的原状态均相符，目录误名与早两非终态／REST403明确保持。新增fixture_repair的命令去环境化投影、原结果摘要／耗时／初始PATH／fixture SHA均与原件相符；未公开HTTP cookies／私有路径或借旧Windows成功关闭新提交。最后纯文档delta已核：PLAN移除指向未提交C1文档的链接，delivery将首样本待验明确标为当时状态。完整六文件静态复核的1个Python AST／1份JSON均可解析，37个本地Markdown链接目标均存在且已跟踪；6个载入秘密值及私有home路径检查零命中，`git diff --check`通过。仅核本地目标，不声称外链、锚点或Mermaid运行。
 
 ST2/P2关闭。修正候选Spec／Standards本地开放0／0，本地出口通过；原6a7e9a1／CI43003408859仍为失败记录。该六文件修正的新ready／精确提交／独立远端Ref及它自己的双OS必要CI尚待后续原件终核，本报告未提前关闭精确交付、F7c或整个项目。
+
+## 修正提交472ff60的精确身份与独立Ref
+
+普通修正提交 `472ff60a6d27c91ef5d5285f959e61d3b935341d` 的直接父为 `6a7e9a1da1ce13e1035b1f544fa36b9b1a0237d7`。独立读取精确Git tree／blob，变更恰为上述六文件；repair-ready-r1原manifest SHA `a26418652de3722637f3362961964927cdb4006e81554c7de04475ecbe9cbdfc`，六件大小／SHA256／Git blob对象及 `100644` 模式均与冻结ready文件相等。提交内本报告blob为24,719字节、SHA `4dea6d5772394c09103d5be28a2c236bd1e057a02cb6f31c05c526f5547829a7`；本节为该提交后的事实追加，没有冒称已包含于其blob。
+
+精确472ff60的445个产品blob与原最终r2 wheel／安装逐字相等，450／455行RECORD所有非空摘要和大小重算通过，283冻结参考文件与该提交父基线相同；wheel SHA仍 `34c80c6257b7975e607b6a046d8e598c4506378109aa3740c5e6efe69b48ef94`。后续恢复的F7c live草稿未进入此对象核验，没有据live源码、旧本地结果或原模型判词扩大已提交修正范围。
+
+作者repair-push原receipt／stdout／stderr已逐字核，普通推送exit0，原输出为6a7e9a1→472ff60。收到完成通知后，评审者仅一次对现有origin执行只读 `git ls-remote --refs`，exit0，原输出为完整 `472ff60a6d27c91ef5d5285f959e61d3b935341d` 及 `refs/heads/refactor/architecture-foundations`；没有认证更改、网络重试或推送。
+
+修正的精确Git／ready／报告／包／冻结及独立远端Ref通过；472ff60自己的双OS必要CI仍待原终态终核，未借43003408859的Windows成功或其他提交结果关闭本片。
+
+## 修正提交自己的CI43007648352终态与精确交付终结
+
+精确提交 `472ff60a6d27c91ef5d5285f959e61d3b935341d` 自己的[Portability run43007648352](https://github.com/626619403/Ergora/actions/runs/43007648352)，官方run HTML在2026-11-11 11:10:24UTC明确为 **Success**。本轮仅离线读取已有原件；独立重算首Actions索引、run、Linux及Windows的四组receipt／原HTML字节大小及SHA256，HTTP200、URL＝final URL均相符，没有新增网络请求、安装或产品／模型重跑。
+
+|官方原件|独立重算与状态|
+|---|---|
+|repair-actions-index-r1|320,317B，body SHA `774dd5fe9cc8b0d26d6e60f4701d06ec12284720789257733fc734d6aeaf4f6a`，receipt SHA `4da9fc928bde7ff5d18deb2d690b798a3f55150a5f45be2425cc6638c18107c8`；原样本仍为In progress|
+|repair-ci-run-html-r1|157,129B，body SHA `a61dc97805fd125ee486e08a0330eb36f579c93244f10e365796ce592afda0e6`，receipt SHA `225cd57ff00c252f27d089b4a12e46e770c3261db320c1d67f0b217c42726b17`；Success|
+|Linux job130479025102|161,678B，body SHA `3c2934c3693d57812e1685cb34a8a7f86f402f078d951892b707240b294814cc`，receipt SHA `92638d765328091757775b382553ad2ffbfb9a1c46439b6f5c51b4d6150b2cb3`；实际matrix为ubuntu-latest／Python3.11，job completed／succeeded|
+|Windows job130479025624|159,766B，body SHA `3bdf17f64736b7e5c2f509185a2f764b88475f60a67912460b13608227d90809`，receipt SHA `08e489fda7eb7ce998c44503e2b93df7d1200315e0b100dcff02535334e3b918`；实际matrix为windows-latest／Python3.12，job completed／succeeded|
+
+从首索引的原embedded JSON独立提取run，完整提交链接／run ID／Portability／`.github/workflows/portability.yml`及分支与原exact-run投影相等；没有把其In progress改成终态。run终态页面另含完整472ff60提交链接。按该精确提交的原workflow核必要步骤，再从两job原HTML逐件核data-conclusion、开始／完成时间及所有非空data-log-url：Linux的build/install、reference identity、native regression三步均success，分别完成于10:55:44、10:55:44、11:08:23UTC；Windows同三步及PowerShell安装升级四步均success，分别完成于10:56:18、10:56:19、11:04:25、11:05:50UTC。每条非空step日志URL均绑定完整472ff60及各自原job ID；Linux的Windows步骤按原条件skipped，不计为必要步骤失败。
+
+作者 `repair-ci-result-r1.json` SHA `1bba16b989ffc68496681a207c87b6cb22166381265f80f1636fb1d441a7c504` 的全部身份／终态／平台／七步结论、完成时间、日志URL及body SHA，均与上述独立原HTML提取相等。证据范围为官方公开HTML及其可见步骤状态，没有声称下载完整认证日志、成功REST查询或取得CI测试总数。原匿名REST403、原6a7e9a1／CI43003408859的失败及其六例完整摘要均保持，未继承该run的Windows成功；恢复中的F7c live产品字节未进入本次Git／CI判词。
+
+本片B1c修正的完整本地出口、六文件精确Git／ready／冻结报告、445包／两RECORD／283冻结、普通推送及一次独立同SHA远端Ref，以及472ff60自己的双OS七必要步骤均独立通过。Spec／Standards开放0／0，ST1／ST2均关闭，B1c精确交付终结。该结论不关闭F7c或整个项目，也不扩大原模型、混合旅程、availability与性能证据范围。本节为472ff60提交后的事实追加，提交内报告blob仍为此前冻结的 `4dea6d5772394c09103d5be28a2c236bd1e057a02cb6f31c05c526f5547829a7`。

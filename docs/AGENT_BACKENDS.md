@@ -116,6 +116,8 @@ ergora reference executor --installation "$HOME/multi-agent-platform"
 
 统一入口的[外部证据查询](USAGE.md#核对闭合运行的外部作业证据)将原run完整历史中的dev_submit与可信FileAdapter请求/回执逐项对应。每个已知job即使请求丢失仍保留为未决；没有正确fence、存在额外请求/孤立回执、无效回执或产物摘要错误时不会报告外部已确认。只读查询不修改原outcome、不发布fence、不释放租约，外部终止证据和六阶段质量结果分别保留。 正常REVIEW_READY也不会因workflow闭合自动释放租约：导出沿原规则处理，暂不导出时使用[正常任务关闭流程](USAGE.md#正常任务完成后的关闭)。需要写入fence和释放精确原claim时，显式使用[reconcile/reconciliation/resume-reconcile](USAGE.md#显式终态对账与工单租约释放)；它保存原outcome与独立清理evidence，原CANCEL_UNCONFIRMED保持，缺证据不释放。
 
+原v7来源任务导出精确候选后，可按[候选评论说明](USAGE.md#为已导出的候选发布工单评论)准备并确认GitHub／GitLab中性评论；该操作单独保存意图及原生收据，复用原任务身份，不改变Agent后端、批准或导出结果。
+
 新记录还保存`configuration`有效绑定视图，含每层来源、校验结果、项目修订和内容摘要；`ergora project config PROJECT_ID`可查看当前值。旧任务没有此附加字段时仍使用原绑定快照，不重建历史配置。视图范围与独立调用的上下文区别见[有效绑定与运行快照](USAGE.md#有效绑定与运行快照)。
 
 统一注册项目需要长期运行时，优先用`ergora services start PROJECT temporal worker executor a2a --revision N`管理所选栈，不必手改ini。以下仅适用于保留原Supervisor的旧部署：在 `~/.config/multi-agent-platform/supervisor.d/executor.ini` 中把该 program 的 `command` 改为 Ergora 可执行文件绝对路径、`reference executor --installation ...`，保留 stopasgroup/killasgroup。再用 supervisorctl `reread` / `update`。初始化参考发行可能重新生成该文件，升级后应核对。不要同时运行新旧两个 executor。

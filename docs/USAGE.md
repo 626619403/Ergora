@@ -116,7 +116,7 @@ claude
 |Skill 优化|手动导入、GEPA + JSON 提案器|有界候选搜索与证据记录|
 |资料来源|明确 URL|有界观察、快照和审阅|
 |研究调度|手动、Temporal Schedule|CLI worker / Schedule|
-|项目工单|本地手动、GitHub、GitLab|CLI／HTTP显式读取指定工单上下文|
+|项目工单|本地手动、GitHub、GitLab|CLI／HTTP读取来源、冻结快照，并显式评论已导出候选|
 
 认证使用工具自己的登录或环境变量。配置只保存凭据变量名，不在网页填写密钥。Codex 和 Claude Code 分别选择模型；默认实现与审查均为 Codex。自定义命令接收 stdin 提示，以 argv 启动，不经 shell 拼接。已安装、已连通、已认证和已通过任务验收是不同状态。
 
@@ -183,7 +183,7 @@ HTTP与CLI共用相同用例；POST沿用本地Origin及`X-Ergora-Request: 1`保
 |关联|`POST /api/projects/PROJECT/issue-links`，`{"snapshot_sha256":"…","task_id":"TASK","creation_sha256":"…","revision":2,"reason":"…"}`|
 |关联列表|`GET /api/projects/PROJECT/issue-links?task_id=TASK&snapshot_sha256=SNAPSHOT_SHA&limit=20`，两过滤条件可选，可带`after`|
 
-快照与关联保存在控制面的SQLite中，由原`state backup / verify-backup / restore`完整离线备份恢复；数据库升级到schema v2会先保留旧库备份，旧客户端不能写新库。完整备份仍要求停写、同平台及原home；外置执行目录须另行保存，不会从上下文关联重建任务。正式派工、远端回写和工单专页仍按[F7计划](plans/2026-11-11-project-trackers.md)分片交付。
+快照与关联保存在控制面的SQLite中，由原`state backup / verify-backup / restore`完整离线备份恢复；当前数据库为schema v3，升级先保留旧库备份，旧客户端不能写新库。完整备份仍要求停写、同平台及原home；外置执行目录须另行保存，不会从上下文关联重建任务。来源派工见下一节，候选评论见[回写说明](#为已导出的候选发布工单评论)，工单专页仍按[F7计划](plans/2026-11-11-project-trackers.md)分片交付。
 
 ### 从工单快照创建来源任务
 
@@ -215,6 +215,42 @@ ergora task show my-project issue-7-r1
 来源任务按冻结选择准入：只检查实际inventory／plan角色、工作／审查叶的程序与配置、所选MCP模式，以及原Git、timeout、Python和已确认的当前容器执行条件。A2A、MLflow、LangGraph及未选的默认implementer／reviewer不成为此入口的必需依赖。先明确启动`temporal worker executor`，再按[正式提交](#提交正式任务与恢复未知结果)执行start；可信检查、策略、Temporal连接和共享工单占用仍走原流程。程序可用不证明认证、配额或worker就绪；实际失败会保留具体依赖和原提交状态。unknown恢复只查询原ID，不重发，也不因当前工具变化重新准入。旧v1–v6保留原安装级doctor。
 
 安装并重启本版worker／executor后才接收v7队列；真实Agent消费须查原调用材料与回执。单文件1MiB、stage／prompt各1,000,000字节、全部祖先资料和动态产物限额保持；静态必然超限在预览拒绝，后续产物超限在原阶段拒绝，没有隐式摘要。v7的证据／handoff保存完整`contract.original_input`并核来源／原admission SHA，合计仍受原1MiB索引与包manifest限额；旧v1–v6和旧交接包不迁移。
+
+### 为已导出的候选发布工单评论
+
+来源任务到达`REVIEW_READY`后，先按[候选导出](#导出精确候选与恢复回执)导出精确run和candidate。然后读取当前项目revision，准备一条固定的中性评论。tracker绑定须包含外部`token_env`，其账号须能读取`/user`、目标工单并创建GitHub issue comment或GitLab issue note；凭据值只放启动CLI／Web的环境中。无需新增SDK。
+
+```bash
+ergora project show PROJECT
+ergora issue writeback-prepare PROJECT TASK --revision REVISION --run-id RUN_ID --candidate-sha CANDIDATE_SHA
+# 检查返回的完整intent：来源、actor_id、原task/run/candidate/export、body和intent_sha256。
+ergora issue writeback-send PROJECT INTENT_SHA --revision REVISION --confirm
+ergora issue writeback-status PROJECT INTENT_SHA
+```
+
+prepare只做身份读取和本地保存，不发布评论。send只发送保存的正文，不能临时改写；固定正文包含候选和本地导出分支，不复制工单指令、不声称远端分支或合并已完成。同一来源／任务／run／候选操作只有一个意图，重新prepare返回原记录，不能用新请求ID绕过它。其他Agent配置修订后可填写当前revision，原tracker绑定、来源及导出身份仍须保持；绑定或发送账号变化会拒绝未发送意图。发送期间项目修订变化会使最后保存确认失败，原attempt继续保持unknown；即使使用新revision再次send也不会补发。
+
+`acknowledged`表示单次POST的完整201中正文、作者和原生目标已核对，且结果保存成功。send仅在此状态返回退出码0；HTTP也须检查业务status。`prepared`表示尚未保存attempt。attempt在POST前提交，随后任何丢失／不完整响应或中断都会留下`unknown`，包括实际尚未发送的中断窗口；再次send不会补发。status只读本地，不访问tracker。
+
+不知道远端结果时，显式观察当前评论或一页列表：
+
+```bash
+ergora issue writeback-observe PROJECT INTENT_SHA --comment-id COMMENT_ID
+ergora issue writeback-observe PROJECT INTENT_SHA --page 1
+```
+
+列表每页最多100条；沿返回的`next_page`手动继续，每次最多一页。匹配marker、全文和作者只能说明当前可见事实，复制、编辑、删除或空页均不能证明原请求成功或未发送。观察不把unknown升级为acknowledged，不修改旧收据，也不开放重试槽。需要人工处理时先核远端事实，保留原unknown记录；不要另建任务来伪装同次请求重试。
+
+CLI与HTTP共用同一用例；POST沿用Origin及`X-Ergora-Request: 1`保护：
+
+|操作|HTTP入口／正文|
+|---|---|
+|准备|`POST /api/projects/PROJECT/issue-writebacks`，`{"revision":2,"task_id":"TASK","run_id":"RUN_ID","candidate_sha":"…"}`|
+|离线状态|`GET /api/projects/PROJECT/issue-writebacks/INTENT_SHA`|
+|发送|`POST .../issue-writebacks/INTENT_SHA/send`，`{"revision":2,"confirm":true}`|
+|观察|`POST .../issue-writebacks/INTENT_SHA/observe`，`{"comment_id":"71"}`或`{"page":1}`|
+
+每个HTTP请求20秒socket I/O超时、完整响应上限1MiB，不跟随redirect、无自动写重试；prepare和send还各做actor及目标身份读取，总操作可能超过20秒。GitLab支持普通issue note，成功响应必须明确包含布尔`system`和`internal`，不兼容响应保留unknown。真实服务版本／代理兼容须在自己的测试项目核验。意图、attempt、收据和观察纳入原控制面离线备份；正式任务与导出目录仍另行保存。本入口只创建一条中性评论，标签、PR/MR及工单专页按后续片交付。
 
 ### 诊断与修复
 

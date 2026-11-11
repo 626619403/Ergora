@@ -1811,6 +1811,71 @@
     "package_files": 445,
     "frozen_files": 283,
     "new_model_call": false,
-    "new_ci_pending": true
+    "new_ci_pending": true,
+    "own_ci_terminal": {
+      "run_id": 43007648352,
+      "commit": "472ff60a6d27c91ef5d5285f959e61d3b935341d",
+      "status": "Success",
+      "method": "Official run and job HTML; not REST or complete logs",
+      "jobs": {
+        "linux": {
+          "job_id": 130479025102,
+          "status": "completed",
+          "body_sha256": "3c2934c3693d57812e1685cb34a8a7f86f402f078d951892b707240b294814cc",
+          "required_steps": [
+            {
+              "name": "Build and install wheel",
+              "conclusion": "success",
+              "completed-at": "2026-11-11T10:55:44Z",
+              "log-url": "/626619403/Ergora/commit/472ff60a6d27c91ef5d5285f959e61d3b935341d/checks/130479025102/logs/4"
+            },
+            {
+              "name": "Packaged reference identity",
+              "conclusion": "success",
+              "completed-at": "2026-11-11T10:55:44Z",
+              "log-url": "/626619403/Ergora/commit/472ff60a6d27c91ef5d5285f959e61d3b935341d/checks/130479025102/logs/5"
+            },
+            {
+              "name": "Native application regression",
+              "conclusion": "success",
+              "completed-at": "2026-11-11T11:08:23Z",
+              "log-url": "/626619403/Ergora/commit/472ff60a6d27c91ef5d5285f959e61d3b935341d/checks/130479025102/logs/6"
+            }
+          ]
+        },
+        "windows": {
+          "job_id": 130479025624,
+          "status": "completed",
+          "body_sha256": "3bdf17f64736b7e5c2f509185a2f764b88475f60a67912460b13608227d90809",
+          "required_steps": [
+            {
+              "name": "Build and install wheel",
+              "conclusion": "success",
+              "completed-at": "2026-11-11T10:56:18Z",
+              "log-url": "/626619403/Ergora/commit/472ff60a6d27c91ef5d5285f959e61d3b935341d/checks/130479025624/logs/4"
+            },
+            {
+              "name": "Packaged reference identity",
+              "conclusion": "success",
+              "completed-at": "2026-11-11T10:56:19Z",
+              "log-url": "/626619403/Ergora/commit/472ff60a6d27c91ef5d5285f959e61d3b935341d/checks/130479025624/logs/5"
+            },
+            {
+              "name": "Native application regression",
+              "conclusion": "success",
+              "completed-at": "2026-11-11T11:04:25Z",
+              "log-url": "/626619403/Ergora/commit/472ff60a6d27c91ef5d5285f959e61d3b935341d/checks/130479025624/logs/6"
+            },
+            {
+              "name": "Windows PowerShell 5.1 installer and upgrade",
+              "conclusion": "success",
+              "completed-at": "2026-11-11T11:05:50Z",
+              "log-url": "/626619403/Ergora/commit/472ff60a6d27c91ef5d5285f959e61d3b935341d/checks/130479025624/logs/7"
+            }
+          ]
+        }
+      },
+      "independent_review": "Passed: original reviewer rehashed run and two job bodies/receipts, matrix identities, full commit and all seven required steps; original failures retained."
+    }
   }
 }
