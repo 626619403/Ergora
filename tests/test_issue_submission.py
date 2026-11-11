@@ -1,6 +1,7 @@
 """Selected v7 prerequisites share native admission and unknown recovery owners."""
 
 import json
+import os
 from pathlib import Path
 import sys
 
@@ -18,12 +19,16 @@ pytestmark = pytest.mark.skipif(sys.platform != 'linux', reason='Formal source t
 
 
 @pytest.fixture
-def source_submission(issue_creation):
+def source_submission(issue_creation, monkeypatch):
     pytest.importorskip('temporalio')
     source, registered, definition, saved = issue_creation
     state = source.state
     execution = registered['execution']
     config = Path(execution['config_directory'])
+    # This selected text-only reviewer is an availability fixture, just like
+    # selected-codex below. Do not depend on an ambient Claude installation.
+    (config / 'claude').symlink_to(sys.executable)
+    monkeypatch.setenv('PATH', str(config) + os.pathsep + os.environ.get('PATH', ''))
     inspector = config / 'selected-inspector'
     inspector.symlink_to(sys.executable)
     binding = {'tool': 'command', 'argv': [sys.executable, '-c', 'pass'],

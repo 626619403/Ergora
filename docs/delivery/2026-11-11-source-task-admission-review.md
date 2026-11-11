@@ -1,6 +1,6 @@
 # F7b.1-B1c 独立审查
 
-评审者：`f7bc_selected_admission_review`；本片独立 fresh-context，未继承实现对话。按项目 `AGENTS.md`、maintainable-project-delivery 及其 independent-review brief 审查。基线／当前 HEAD 均为 `4638c3b9524adcba584a9313b8fd1588b5dde64d`，本片为未提交工作树；检查完整基线差异和未跟踪文件，不以 HEAD 代替工作树身份。只读源码／原件及本报告写入，没有安装、模型调用、产品修改、提交或推送。
+评审者：`f7bc_selected_admission_review`；本片独立 fresh-context，未继承实现对话。按项目 `AGENTS.md`、maintainable-project-delivery 及其 independent-review brief 审查。初轮固定基线及当时 HEAD 均为 `4638c3b9524adcba584a9313b8fd1588b5dde64d`，审查对象为完整未提交工作树；后续精确提交、自己的CI失败及同片夹具修正分别在末节记录。检查完整基线差异和本片未跟踪文件，不以 HEAD 代替候选身份。只读源码／原件及本报告写入，没有安装、模型调用、产品修改、提交或推送。
 
 ## 范围与身份
 
@@ -20,7 +20,7 @@
 
 ## Standards
 
-已审范围通过；一项文档 finding 已修复并复核关闭，产品开放 finding 0。Input 的版本差异留在既有版本族及共同 Interface；新方法的实际调用者是原 submission 所有者，属于必要的版本合同，没有为单一调用增加新包装模块或第二套调度／账本。native／SDK 导入仍在执行方法内，纯输入／journal 的标准库依赖方向保持。
+初轮完整18文件本地范围通过，ST1文档finding已修复并复核关闭，产品开放finding 0。随后首个提交自己的CI实证暴露ST2/P2测试环境依赖并重新开放1项；同片最小夹具修正及原13项干净PATH结果已在末节独立复核，ST2现已关闭，当前修正候选本地开放0项。首个提交的失败保持，新提交自己的CI仍待；不把原本地25项成功改写成CI成功。Input 的版本差异留在既有版本族及共同 Interface；新方法的实际调用者是原 submission 所有者，属于必要的版本合同，没有为单一调用增加新包装模块或第二套调度／账本。native／SDK 导入仍在执行方法内，纯输入／journal 的标准库依赖方向保持。
 
 新增判断分别保护当前本地执行许可、外部配置／程序、所选模式／policy 与 SDK 存在性；没有发现无可达触发的断言或跨层重复授权。13 项新增回归穿过同一公开任务入口，保护新增 report 替换可能静默绕过的前置失败顺序、原 policy／claim 和 unknown input／memo 恢复；旧 v1 回归不能单独证明这些 v7 行为，未建议删掉必要覆盖。没有新增 CI 路径、测试框架或配置默认值限制。
 
@@ -59,3 +59,43 @@ r3→r4验收driver差异已独立核：只增加operator明确提供的fixture 
 最终5个变更源码／测试与自身冻结附件仍相等；10份源码／测试冻结附件（含未变原所有者）全部保持。完整18文件静态复核：5个Python AST、3份JSON可解析；10份Markdown共138个本地链接目标存在；检查7个已载入秘密值和私有home路径，命中0；`git diff --check`通过。PLAN／本片计划／交付的最后纯记账delta已复核，当前正向结果、ST1关闭及精确交付待验范围一致。没有新增CI或为了文档／夹具shim另造测试，也没有无测量的准入提速／吞吐结论。
 
 Spec／Standards本地出口通过，开放0／0；ST1/P2已关闭。普通提交／推送、精确远端Ref和本片自己的双OS必要CI尚待同片后续终核，没有继承B1b CI或将其判词扩展到本片。F7c及整个项目未由本报告关闭。
+
+## 提交6a7e9a1的精确身份与远端Ref
+
+普通提交 `6a7e9a1da1ce13e1035b1f544fa36b9b1a0237d7` 的直接父提交为固定基线 `4638c3b9524adcba584a9313b8fd1588b5dde64d`。独立读取该提交的Git tree／blob，18个变更路径恰好等于ready-r1清单，原manifest SHA256 `f55c5acdf9641f0f2ac7e2902eae65c05b0dab1e98b73b7df66653f7de0bb3f4`；逐件核原字节、大小、SHA256、Git blob对象和 `100644` 模式，与ready保存文件全部相等。提交内本报告blob保持冻结SHA `a13cc694c8ec43f58ee2515058a820d771f438bb16c149af8ec05db8d6a41011`；本节属于提交后同片交付复核追加，不冒称已在该blob内。
+
+以精确提交blob直接比对r2 wheel／installed，445个包文件逐字相同；450行wheel／455行installed RECORD所有非空摘要和大小独立重算通过，283个冻结参考文件在提交／wheel／安装一致，并逐件与基线保持。wheel SHA仍为 `34c80c6257b7975e607b6a046d8e598c4506378109aa3740c5e6efe69b48ef94`。没有以随后live工作树代替已提交候选，也没有重复行为或模型运行。
+
+作者普通 `git push origin HEAD:refs/heads/refactor/architecture-foundations` 的原receipt及stdout／stderr已核，退出0；随后作者Ref与同完整SHA一致。得到推送完成通知后，评审者只做一次现有origin的只读 `git ls-remote --refs`，退出0，原输出为完整 `6a7e9a1da1ce13e1035b1f544fa36b9b1a0237d7` 和 `refs/heads/refactor/architecture-foundations`。没有更改认证、重试网络或执行推送。
+
+本片精确Git／ready／包／冻结身份及独立远端Ref通过；`6a7e9a1`自己的双OS必要CI仍待新原件终核，不借 `4638c3b` 的CI或本地检查提前关闭精确交付。
+
+## 自己的CI43003408859失败与ST2/P2
+
+固定提交 `6a7e9a1da1ce13e1035b1f544fa36b9b1a0237d7` 的Portability [run43003408859](https://github.com/626619403/Ergora/actions/runs/43003408859)，第三官方HTML样本在2026-11-11 10:42:21UTC为Failure，不是验收通过。独立核本run前三样本、两job、Actions索引的6组receipt／原body字节数及SHA256，另核REST403原body；URL均与final URL一致，精确提交链接及所有非空step log URL均指本完整SHA／各原job ID。早两run样本In progress和REST403保留，不称成功REST或全日志下载。
+
+|官方终态原件|独立核验|
+|---|---|
+|run r3|177,128B，body SHA `3a65063e971882402b4c811392f2fc05cb7a38a66600226813b70d309e891172`，receipt SHA `cf9ac62915af63317a8a07ccf5c3cfa9725a6957f8b937c24ca9ffa3536c6599`，Failure|
+|Windows job130464821531|160,063B，body SHA `95b927a33c894268935ab03235527314c70958b17f5db041152b7791d9eb08d7`，receipt SHA `f17d94740332ddb88d9b7935431e0b60f61c130cab18cbc7ca0d80093204ce79`，completed；Build/install、reference identity、Native regression、PowerShell安装升级4必要步均success|
+|Linux job130464822022|181,295B，body SHA `81ae32e64cc5c04d52163a5dea4df765147f4875049d7c1b6e210adde9eaafbc`，receipt SHA `9b4f21f8543e1742b802ada4bc8244cc34568904f00cb7610a34348574641801`，completed；Build/install、reference identity成功，Native regression failure；PowerShell按原workflow跳过|
+
+两个保存目录最初按顺序误贴Linux／Windows名，未更名／覆盖原件；本结论按原URL、页面实际matrix名称及step属性识别OS，未按目录猜测。Linux原注释为 **6 failed／1394 passed／87 skipped／36 subtests passed，1015.45秒**；6个失败均来自新增source submission：1个正常start、2个policy／claim和3个unknown首start，在 `review:root/review/correctness/review` 的 `claude-code`／text-only 被原新增准入以 `Selected executable is unavailable: claude` 正确拒绝，未到相应用例想测试的后续路径。
+
+**ST2／P2，CI终核时开放，现已关闭。** 精确提交的 `tests/test_issue_submission.py:18` 中source_submission只配置临时Codex、inspector／planner程序；它复用的issue_creation／work_graph仍冻结一个claude-code reviewer，却没有给该选中后端提供明确本地程序。测试因此依赖开发主机PATH里恰好有Claude，CI的干净环境失败；产品按实际冻结选择拒绝是正确行为。已独立读取本提交这4个测试／fixture所有者及Input准入源码，没有用当前F7c草稿推断本候选。当时要求的最小修正为只在source fixture的临时PATH提供显式本地claude程序，继续真实程序availability／配置／模式校验，不装真实CLI、不恒真mock／跳过，也不修改产品；复用原13项检查，无需另造shim测试。以下修正原件及完整六文件候选复核已完成。
+
+该次CI终核时Spec产品实证保持原范围，Standards的ST2/P2重新开放，`6a7e9a1`精确交付未完成。下一片F7c未提交源码与测试明确隔离，不用其live字节充当该提交或修正候选。
+
+## ST2最小修正与完整六文件本地出口
+
+修正基线为精确提交 `6a7e9a1da1ce13e1035b1f544fa36b9b1a0237d7`。完整tracked差异只有六文件：`docs/PLAN.md`、本片plan／delivery／review、本片acceptance JSON及 `tests/test_issue_submission.py`，均已逐字审查。未来F7c的research／plan／delivery三份未跟踪Markdown明确排除；其十份产品／测试草稿已移出当前候选，当前全部445个产品文件逐字等于6a7e9a1的Git blob，未以F7c字节修补本片。
+
+测试唯一行为差异为source_submission增加monkeypatch参数，在原临时config内建立 `claude` 指向测试Python的symlink，再将该目录前置到该fixture的PATH。它与原selected-codex一样只提供明确的本地availability程序，真实后端配置／模式／程序探测、原policy／claim／attempt及unknown恢复照常执行；没有产品变化、真实CLI安装、恒真available mock或新增skip。四个原测试函数AST及原参数化用例保持，没有增删／复制检查。
+
+独立逐字读取 `.ergora/checks/f7-source-admission/commit-closure/fixture-repair-r1/` 原件：result记录原r2非editable解释器以 `-I -m pytest -q --tb=short tests/test_issue_submission.py` 运行、初始PATH为 `/usr/bin:/bin`、exit0和命令70.508934秒；原stdout确为 **13 passed／69.80秒**，stderr为0字节。当前fixture SHA `f97f973c56b691c81bbb64ebad2ca8215fe4169cee1d7768a729bf1e0616fae2` 与result／公开投影相等；result SHA `9fb523302384be4be3bffa23fb3d308aa15a1d62f453c1706f63238e866133e9`，stdout SHA `09a5c8a752371035da10873da3103fe26fade0d7cc4052142a7912ba21b2abad`。没有把此定向结果扩成全套或新提交CI成功。
+
+再次只读重算当前源码／6a7e9a1 Git／r2 wheel／安装全部445文件相等，两RECORD的450／455行摘要和大小均通过，283冻结文件与固定基线相等；wheel SHA仍 `34c80c6257b7975e607b6a046d8e598c4506378109aa3740c5e6efe69b48ef94`。原自身模型产品附件保持，新fixture字节由本次独立复核覆盖，没有继承旧模型approve。
+
+新增公开 `first_exact_delivery_ci` 与原ci-result-r1逐字段相等，仅过滤HTTP headers；两job／run receipt另与原保存receipt及HTML字节大小／SHA核对。按原页面data属性重核平台、必要步骤conclusion／起止时间及精确commit-bound log URL，Windows四步、Linux三步的原状态均相符，目录误名与早两非终态／REST403明确保持。新增fixture_repair的命令去环境化投影、原结果摘要／耗时／初始PATH／fixture SHA均与原件相符；未公开HTTP cookies／私有路径或借旧Windows成功关闭新提交。最后纯文档delta已核：PLAN移除指向未提交C1文档的链接，delivery将首样本待验明确标为当时状态。完整六文件静态复核的1个Python AST／1份JSON均可解析，37个本地Markdown链接目标均存在且已跟踪；6个载入秘密值及私有home路径检查零命中，`git diff --check`通过。仅核本地目标，不声称外链、锚点或Mermaid运行。
+
+ST2/P2关闭。修正候选Spec／Standards本地开放0／0，本地出口通过；原6a7e9a1／CI43003408859仍为失败记录。该六文件修正的新ready／精确提交／独立远端Ref及它自己的双OS必要CI尚待后续原件终核，本报告未提前关闭精确交付、F7c或整个项目。

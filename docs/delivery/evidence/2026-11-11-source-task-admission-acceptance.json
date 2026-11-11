@@ -1691,5 +1691,126 @@
     "export_observed_processes": 2,
     "export_surviving_observed_processes": 0,
     "scope": "Positive installed final-r2 hybrid: deterministic inspector/planner protocol; actual Codex two work leaves and three independent-context reviewer leaves; actual trusted checks and candidate-bound approval. Operator-supplied fixture owner resolves earlier missing input; original failed attempts unchanged. No distinct model-backend, real tracker write, GPU or production-quality claim."
+  },
+  "first_exact_delivery_ci": {
+    "commit": "6a7e9a1da1ce13e1035b1f544fa36b9b1a0237d7",
+    "run_id": "43003408859",
+    "conclusion": "failure",
+    "jobs": [
+      {
+        "os": "Windows",
+        "receipt": {
+          "at": "2026-11-11T10:42:59.599020+00:00",
+          "url": "https://github.com/626619403/Ergora/actions/runs/43003408859/job/130464821531",
+          "purpose": "Single official public Actions HTML read after anonymous REST rate-limit; no auth, retries or writes.",
+          "http_status": 200,
+          "final_url": "https://github.com/626619403/Ergora/actions/runs/43003408859/job/130464821531",
+          "bytes": 160063,
+          "sha256": "95b927a33c894268935ab03235527314c70958b17f5db041152b7791d9eb08d7"
+        },
+        "required_steps": [
+          {
+            "name": "Build and install wheel",
+            "conclusion": "success",
+            "started_at": "2026-11-11T10:25:00Z",
+            "completed_at": "2026-11-11T10:25:35Z",
+            "commit_bound_log_url": "/626619403/Ergora/commit/6a7e9a1da1ce13e1035b1f544fa36b9b1a0237d7/checks/130464821531/logs/4"
+          },
+          {
+            "name": "Packaged reference identity",
+            "conclusion": "success",
+            "started_at": "2026-11-11T10:25:35Z",
+            "completed_at": "2026-11-11T10:25:37Z",
+            "commit_bound_log_url": "/626619403/Ergora/commit/6a7e9a1da1ce13e1035b1f544fa36b9b1a0237d7/checks/130464821531/logs/5"
+          },
+          {
+            "name": "Native application regression",
+            "conclusion": "success",
+            "started_at": "2026-11-11T10:25:37Z",
+            "completed_at": "2026-11-11T10:32:32Z",
+            "commit_bound_log_url": "/626619403/Ergora/commit/6a7e9a1da1ce13e1035b1f544fa36b9b1a0237d7/checks/130464821531/logs/6"
+          },
+          {
+            "name": "Windows PowerShell 5.1 installer and upgrade",
+            "conclusion": "success",
+            "started_at": "2026-11-11T10:32:32Z",
+            "completed_at": "2026-11-11T10:33:46Z",
+            "commit_bound_log_url": "/626619403/Ergora/commit/6a7e9a1da1ce13e1035b1f544fa36b9b1a0237d7/checks/130464821531/logs/7"
+          }
+        ],
+        "annotation_summary": "All four required steps success; no full test summary claimed."
+      },
+      {
+        "os": "Linux",
+        "receipt": {
+          "at": "2026-11-11T10:42:59.602618+00:00",
+          "url": "https://github.com/626619403/Ergora/actions/runs/43003408859/job/130464822022",
+          "purpose": "Single official public Actions HTML read after anonymous REST rate-limit; no auth, retries or writes.",
+          "http_status": 200,
+          "final_url": "https://github.com/626619403/Ergora/actions/runs/43003408859/job/130464822022",
+          "bytes": 181295,
+          "sha256": "81ae32e64cc5c04d52163a5dea4df765147f4875049d7c1b6e210adde9eaafbc"
+        },
+        "required_steps": [
+          {
+            "name": "Build and install wheel",
+            "conclusion": "success",
+            "started_at": "2026-11-11T10:24:57Z",
+            "completed_at": "2026-11-11T10:25:13Z",
+            "commit_bound_log_url": "/626619403/Ergora/commit/6a7e9a1da1ce13e1035b1f544fa36b9b1a0237d7/checks/130464822022/logs/4"
+          },
+          {
+            "name": "Packaged reference identity",
+            "conclusion": "success",
+            "started_at": "2026-11-11T10:25:13Z",
+            "completed_at": "2026-11-11T10:25:13Z",
+            "commit_bound_log_url": "/626619403/Ergora/commit/6a7e9a1da1ce13e1035b1f544fa36b9b1a0237d7/checks/130464822022/logs/5"
+          },
+          {
+            "name": "Native application regression",
+            "conclusion": "failure",
+            "started_at": "2026-11-11T10:25:13Z",
+            "completed_at": "2026-11-11T10:42:10Z",
+            "commit_bound_log_url": "/626619403/Ergora/commit/6a7e9a1da1ce13e1035b1f544fa36b9b1a0237d7/checks/130464822022/logs/6"
+          }
+        ],
+        "annotation_summary": "6 failed /1394 passed /87 skipped /36 subtests; 1015.45s. All six failures: selected Claude executable absent in fixture."
+      }
+    ],
+    "run_receipt": {
+      "at": "2026-11-11T10:42:21.927951+00:00",
+      "url": "https://github.com/626619403/Ergora/actions/runs/43003408859",
+      "purpose": "Single official public Actions HTML read after anonymous REST rate-limit; no auth, retries or writes.",
+      "http_status": 200,
+      "final_url": "https://github.com/626619403/Ergora/actions/runs/43003408859",
+      "bytes": 177128,
+      "sha256": "3a65063e971882402b4c811392f2fc05cb7a38a66600226813b70d309e891172"
+    },
+    "directory_names_are_not_os_identity": true,
+    "scope": "Official run/job HTML and visible annotations only. Original REST403 and first two in-progress run samples retained; no successful REST/full log claim."
+  },
+  "fixture_repair": {
+    "scope": "Same original 13 source-submission cases against unchanged final r2 installed product. Test fixture provides all selected programs. Fresh initial PATH excludes ambient home tool installations.",
+    "pytest_command": [
+      "python",
+      "-I",
+      "-m",
+      "pytest",
+      "-q",
+      "--tb=short",
+      "tests/test_issue_submission.py"
+    ],
+    "exit": 0,
+    "driver_seconds": 70.5089342338033,
+    "pytest_passed": 13,
+    "pytest_seconds": 69.8,
+    "initial_path": "/usr/bin:/bin",
+    "fixture_sha256": "f97f973c56b691c81bbb64ebad2ca8215fe4169cee1d7768a729bf1e0616fae2",
+    "result_sha256": "9fb523302384be4be3bffa23fb3d308aa15a1d62f453c1706f63238e866133e9",
+    "product_wheel_sha256": "34c80c6257b7975e607b6a046d8e598c4506378109aa3740c5e6efe69b48ef94",
+    "package_files": 445,
+    "frozen_files": 283,
+    "new_model_call": false,
+    "new_ci_pending": true
   }
 }

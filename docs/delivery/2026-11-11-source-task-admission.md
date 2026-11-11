@@ -4,7 +4,7 @@
 
 ## 当前检查点
 
-B1b依赖修正4638已精确交付，自己的CI42995785084与原独立终核通过，原655失败保留。本片在该基线上实现所选依赖，r2非editable包身份／283冻结和C1／C2定向结果已核；r1与两轮真实模型失败均按原scope保留，下文分别记录。准入的唯一变化点为版本Input报告，原入口继续拥有授权、连接、占用、提交和恢复；选中Agent的配置／程序检查不等于认证或模型消费。C3最终正向真实混合旅程、完整来源读取、原ID精确本地export和清理均已由独立评审核验；C4最终18文件独立Spec／Standards及本地出口通过，开放0／0、ST1关闭；精确提交／远端／自己的CI仍待，不以中断的混合身份source suite作验收。
+B1b依赖修正4638已精确交付，自己的CI42995785084与原独立终核通过，原655失败保留。本片在该基线上实现所选依赖，r2非editable包身份／283冻结和C1／C2定向结果已核；r1与两轮真实模型失败均按原scope保留，下文分别记录。准入的唯一变化点为版本Input报告，原入口继续拥有授权、连接、占用、提交和恢复；选中Agent的配置／程序检查不等于认证或模型消费。C3最终正向真实混合旅程、完整来源读取、原ID精确本地export和清理均已由独立评审核验；C4最终18文件独立Spec／Standards及本地出口通过，开放0／0、ST1关闭；6a7e9a1精确Git／独立Ref通过，自己的CI43003408859的Linux六例失败；ST2/P2夹具修正与新候选CI待验，不以中断的混合身份source suite作验收。
 
 Codex 实际 command 与 `executable()/available()` 已统一采用 `options.executable`，由 CodexBackend 自身拥有该配置语义，避免上层按名字补丁。原所有者及 283 冻结发行文件保持。
 
@@ -65,3 +65,17 @@ Ergora内置structure-review的独立精确证据修订已实际运行：run `d8
 ## 本地出口
 
 完整18文件已由新的fresh-context评审者完成Spec／Standards，开放0／0、文档ST1/P2关闭；最终r4原件、原IDexport及五次模型完整读取均独立通过。提交前再核最终r2源码／wheel／安装445文件、两RECORD及283冻结一致，包SHA不变。普通提交／推送及本片自己的双OS必要CI单独收尾，不借B1b的终态。
+
+## 精确提交与自己的CI
+
+6a7e9a1da1ce13e1035b1f544fa36b9b1a0237d7已普通提交／推送，18个Git对象及模式与ready清单逐字相等；ready SHA `f55c5acdf9641f0f2ac7e2902eae65c05b0dab1e98b73b7df66653f7de0bb3f4`，冻结独立报告SHA `a13cc694c8ec43f58ee2515058a820d771f438bb16c149af8ec05db8d6a41011`。作者SSH Ref同完整提交；原评审精确对象／独立Ref另核。最终静态18文件／138本地链接／6个载入秘密值扫描issue0；只核文件目标，不声称外链或Mermaid运行。
+
+本片自己的[Portability 43003408859](https://github.com/626619403/Ergora/actions/runs/43003408859)已由官方Actions index按完整提交与workflow匹配，首样本In progress；匿名REST403原件保留，没有据此称CI通过或借前片4638结果。该首样本时终态及双OS七必要步骤尚待，实际失败终态见下节。
+
+## CI失败与可移植夹具修正
+
+原6a7e9a1自己的CI43003408859已Failure。按页面matrix身份核，Windows job130464821531的四必要步骤均success；Linux job130464822022的build／reference成功、native regression失败：6 failed／1394 passed／87 skipped／36 subtests，1015.45秒。六例都在新准入报告被实际选中的claude-code审查叶缺程序阻断；原测试只给Codex及inventory／plan提供显式程序，本机环境恰有claude，导致旧本地通过范围未暴露该外部依赖。产品拒绝缺失的选中后端正确，不改准入、不跳过检查、不安装真实Claude以掩盖夹具问题。原HTML目录曾按顺序误贴OS名称，原URL／SHA保持，公共投影按页面matrix和job ID识别，不能按目录推断平台。
+
+原独立评审登记ST2/P2并重新开放该测试环境finding。最小修正只在source_submission的临时config目录提供显式claude→测试Python symlink，将该目录加入该fixture的PATH；仍执行真实后端available／配置和原提交门禁。原Codex配置、选择、测试数量和产品445字节身份均保持。F7c的十份产品／测试草稿已逐字保存并移出当前候选，不混入本次修正。新的安装包定向回归与完整候选复核继续；旧6a7e9a1失败不会改写为通过。
+
+修正后仍用原最终r2非editable安装，以初始`PATH=/usr/bin:/bin`运行同一13项来源submission：**13 passed／69.80秒**（命令70.51秒），fixture SHA `f97f973c56b691c81bbb64ebad2ca8215fe4169cee1d7768a729bf1e0616fae2`。没有复制、增减或跳过原测试；旧本地与CI失败保留。产品／wheel／安装445文件、两RECORD／283再次相等，产品wheel SHA仍34c80c6257b7975e607b6a046d8e598c4506378109aa3740c5e6efe69b48ef94。原自身模型的产品附件保持；这次夹具小改由同片独立评审复核，不借原判词声称它审过新测试字节。完整修正候选与新提交自己的CI另核。
