@@ -1,0 +1,233 @@
+{
+  "schema_version": 1,
+  "slice": "F7a",
+  "baseline": "0252dec5c41be1c1f6f533d86d8f32d30d178ce3",
+  "packages": {
+    "r1": {
+      "at": "2026-11-11T06:15:21.830109+00:00",
+      "wheel_sha256": "0f872c9bde47dfbcd32c25c1661e60ded763ec3467e7ed53a677ff7cce2c504e",
+      "wheel_files": 447,
+      "package_files": 442,
+      "wheel_and_installed_records_verified": true,
+      "installed_record_rows": 452,
+      "source_and_installed_package_equal": true,
+      "frozen_files": 283,
+      "editable": false
+    },
+    "r2": {
+      "at": "2026-11-11T06:24:17.148785+00:00",
+      "wheel_sha256": "7d937646df9e7151e5f6c6fa7b830fe0c39380f9885406182bbc2f74ab62bda7",
+      "wheel_files": 447,
+      "package_files": 442,
+      "wheel_and_installed_records_verified": true,
+      "installed_record_rows": 452,
+      "source_and_installed_package_equal": true,
+      "frozen_files": 283,
+      "editable": false
+    }
+  },
+  "installed_validation": {
+    "r1": [
+      {
+        "at": "2026-11-11T06:15:46.832570+00:00",
+        "exit": 0,
+        "seconds": 24.998430965002626,
+        "stdout_sha256": "25c389c8f06f62bda552bc1c118dcb73e7a6f61c5b13c376b218096bf3d4e6d1",
+        "operation": "installed-tests",
+        "command_scope": "Isolated noneditable installed Python; pytest three affected files or reference verify."
+      },
+      {
+        "at": "2026-11-11T06:15:47.100352+00:00",
+        "exit": 0,
+        "seconds": 0.26614835392683744,
+        "stdout_sha256": "784a0d78d069c48a0cdca8695a0aca053f9c3531506c2f77de42e42fa43a23bd",
+        "operation": "verify",
+        "command_scope": "Isolated noneditable installed Python; pytest three affected files or reference verify."
+      }
+    ],
+    "r2": [
+      {
+        "at": "2026-11-11T06:24:31.545254+00:00",
+        "exit": 0,
+        "seconds": 14.392591037787497,
+        "stdout_sha256": "4c0b2fda7e912822262398503ef6319efe656e349dafc963b129644e1b949956",
+        "operation": "installed-tests",
+        "command_scope": "Isolated noneditable installed Python; pytest three affected files or reference verify."
+      },
+      {
+        "at": "2026-11-11T06:24:31.812930+00:00",
+        "exit": 0,
+        "seconds": 0.2658394817262888,
+        "stdout_sha256": "383c22ed5164a99c050182188a1d893cf145c09d008f1aa1afaea5bee123a3ce",
+        "operation": "verify",
+        "command_scope": "Isolated noneditable installed Python; pytest three affected files or reference verify."
+      }
+    ]
+  },
+  "browser_and_protocol_audit": {
+    "at": "2026-11-11T06:32:11.355660+00:00",
+    "all_http_byte_identities_match": true,
+    "http_requests": 57,
+    "http_statuses": {
+      "200": 56,
+      "404": 1
+    },
+    "write_requests": 2,
+    "project_revisions": [
+      1,
+      2,
+      3
+    ],
+    "tracker_choices": [
+      "manual",
+      "github",
+      "gitlab"
+    ],
+    "local_tracker_GETs": 3,
+    "context_only_observations": 2,
+    "cli_http_same_source": true,
+    "other_bindings_and_work_records_unchanged": true,
+    "task_directory_absent": true,
+    "attempts": [
+      {
+        "passed": false,
+        "at": "2026-11-11T06:28:31.731728+00:00",
+        "seconds": 9.544814558234066,
+        "checks": [
+          "new project defaults to manual",
+          "GitHub API and version defaults visible",
+          "all four GitHub controls have accessible names"
+        ],
+        "commands": 7,
+        "error": "HTTP Error 404: Not Found"
+      },
+      {
+        "passed": false,
+        "at": "2026-11-11T06:29:28.839972+00:00",
+        "seconds": 15.161091983318329,
+        "checks": [
+          "GitHub binding saved at revision2 with no token",
+          "HTTP reads GitHub source chosen through real UI",
+          "GitHub saved values read back in reopened dialog",
+          "GitLab provider default and provider-specific fields",
+          "all three GitLab controls have accessible names"
+        ],
+        "commands": 11,
+        "error": "Missing labelled control 配置项目工单"
+      },
+      {
+        "passed": true,
+        "at": "2026-11-11T06:30:07.263569+00:00",
+        "seconds": 5.329847962129861,
+        "checks": [
+          "GitLab saved values persist after full page reload",
+          "GitLab binding revision3 retains only actual supplied fields",
+          "HTTP reads GitLab nested namespace and complete text",
+          "installed CLI reads same UI-selected GitLab source",
+          "CLI and HTTP observations agree except observation time"
+        ],
+        "commands": 3,
+        "scope": "Real noneditable installed UI binding save/reopen/reload; original HTTP and CLI reads from local protocol fixtures, no model, accounts or external writes."
+      }
+    ],
+    "console_errors": 0,
+    "browser_cleanup": {
+      "named_close_exit": 0,
+      "sampled_processes": 7,
+      "live_sampled_processes": [],
+      "scope": "One observed named browser tree; does not prove all short-lived process lifecycles."
+    },
+    "owned_servers_exited_and_ports_closed": true,
+    "screenshots": [
+      {
+        "file": "output/playwright/f7a-gitlab-binding-r2.png",
+        "bytes": 107451,
+        "sha256": "143081fb9cc0760b9548dffb5b8f6f6a8f0b62ee1be368f3576402e91eff8244"
+      }
+    ],
+    "scope": "Thirteen checks across preserved failed-driver segments and continuation, original installed UI/HTTP/CLI. Driver404 retained; no accounts, external writes, models or formal task execution. Timings are automation wall time, not throughput claims."
+  },
+  "source_identities": [
+    {
+      "original": "r1/package-identity.json",
+      "bytes": 472,
+      "sha256": "dd86bb2ecdc87cf1e197c6d622fc6244a1592f62cd344c3609b4eca4781ab8eb"
+    },
+    {
+      "original": "r1/installed-validation.json",
+      "bytes": 882,
+      "sha256": "8c8d1c4377385a6f437fddc821c66e3bf46475cfcfccfd27d1fe4e8815445733"
+    },
+    {
+      "original": "r1/installed-tests.stdout",
+      "bytes": 100,
+      "sha256": "25c389c8f06f62bda552bc1c118dcb73e7a6f61c5b13c376b218096bf3d4e6d1"
+    },
+    {
+      "original": "r2/package-identity.json",
+      "bytes": 472,
+      "sha256": "85bafd4cbbf92ce5ed1ad57b9cec336d113894160448f9aa73f36947fd382b1c"
+    },
+    {
+      "original": "r2/installed-validation.json",
+      "bytes": 881,
+      "sha256": "0b2f85fc70dfebd8939cba22ae5d6f71a222d0399021deb2f86f7a88a2e6640c"
+    },
+    {
+      "original": "r2/installed-tests.stdout",
+      "bytes": 100,
+      "sha256": "4c0b2fda7e912822262398503ef6319efe656e349dafc963b129644e1b949956"
+    },
+    {
+      "original": "r2/reference-verify.stdout",
+      "bytes": 476,
+      "sha256": "383c22ed5164a99c050182188a1d893cf145c09d008f1aa1afaea5bee123a3ce"
+    },
+    {
+      "original": "browser-r2/audit.json",
+      "bytes": 2815,
+      "sha256": "df7f2a7a7cea8d2651b2f3aea2015f0cd6f861f6288e288f2ead9bf432e4b995"
+    },
+    {
+      "original": "browser-r2/attempt1/browser-result.json",
+      "bytes": 312,
+      "sha256": "4d267cd20a15b731fbfe93daa14818fe8004972714f60e628c8009422d999d61"
+    },
+    {
+      "original": "browser-r2/attempt2/browser-result.json",
+      "bytes": 474,
+      "sha256": "e4b624cadb0144fd8f3aa2efe0e93f978c54e4b2c885ac6dc4b32c6f2df0e279"
+    },
+    {
+      "original": "browser-r2/browser-result.json",
+      "bytes": 608,
+      "sha256": "abfbd80c99679dd59b81a254fb31419499cb10c162a821498a878e8f944076b7"
+    },
+    {
+      "original": "browser-r2/browser-cleanup.json",
+      "bytes": 184,
+      "sha256": "c1319de9ef340d5518457484d8dc0ef6db0ba01075cfad204082cb60cf38bc8c"
+    },
+    {
+      "original": "browser-r2/drive-bindings.py",
+      "bytes": 6650,
+      "sha256": "66e1b5f779880caf4f9c1f8c3f9aa91f0221dee582b1ac5a0ecaf15cc0e25466"
+    },
+    {
+      "original": "browser-r2/drive-bindings-continuation.py",
+      "bytes": 5949,
+      "sha256": "ba4e62af839dd1b3c73a23d6bc529b8821542c0ed01cf1d4fa53dc63eb64ef73"
+    },
+    {
+      "original": "browser-r2/drive-readback-continuation.py",
+      "bytes": 4259,
+      "sha256": "d09e1a3db9adb077bf5dc6f38efe40183ede4944e8cb9436bbd760a33a26f1b6"
+    },
+    {
+      "original": "browser-r2/audit-r2.py",
+      "bytes": 5037,
+      "sha256": "c277bca5363310098cc48630f5260631c00027b809c6670aeab41a2d3e9f7670"
+    }
+  ],
+  "scope": "Current noneditable installed binding UI and local GitHub/GitLab protocol fixtures, CLI/HTTP observations and no task side effects. Original driver failures and continuation retained; no real service credentials, external writes, model results, GPU/WSL2 execution or CI accepted by this projection. Field title/whitespace corrections are later than the separate actual model attachment. Screenshot identity retained, original private screenshot not bundled."
+}

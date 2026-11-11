@@ -1,0 +1,353 @@
+{
+  "schema_version": 1,
+  "slice": "F7a",
+  "baseline": "0252dec5c41be1c1f6f533d86d8f32d30d178ce3",
+  "actual_call": {
+    "at": "2026-11-11T06:21:19.998027+00:00",
+    "baseline": "0252dec5c41be1c1f6f533d86d8f32d30d178ce3",
+    "run_id": "8c8263c0fd2d4317ac2ae55d50c782be",
+    "status": "succeeded",
+    "backend": "codex",
+    "inference_model": "gpt-6.1-sol",
+    "reasoning_effort": "high",
+    "cli_exit": 0,
+    "seconds": 228.06622993201017,
+    "input_digest": "9df23e978768d6314077198b8877923172194e667b7a4ed2d07b90be743fecca",
+    "prompt_sha256": "a6c36dc9c336d9c13f189880051518696a12c8597d9ba7144aadea09f96eccfc",
+    "attachment_bytes": 253279,
+    "attachment_sha256": "45cd37d2ec57d11fdf177ddde7a46e92d549f4f5d7b1615d7c3275a6905317f8",
+    "manifest_digest": "63efe2762671cb6c64277853e4672228a2ebdd921bac8bfe27715dd329267b59",
+    "revision": "1.0.90",
+    "observed_processes": 4,
+    "live_sampled_processes": [],
+    "scope": "F7a full tracked delta, complete new source/schema/tests/plan/delivery/research and selected full neighboring owners; later bookkeeping, other linked source/runtime evidence omitted; independent complete candidate review separate.",
+    "decision": "approve",
+    "result_sha256": "649466dcf8444a7708aa6d39af67e8e3e890c26aafdc8e7aa473cce27f030572"
+  },
+  "original_decoded_result": {
+    "artifacts": {
+      "response": "Reviewed against baseline `0252dec5c41be1c1f6f533d86d8f32d30d178ce3`; candidate SHA256 `45cd37d2ec57d11fdf177ddde7a46e92d549f4f5d7b1615d7c3275a6905317f8`.\n\nSpec: no material findings. `issues.py:show` captures the original project revision/configuration, checks registered kind/namespace before reading, and supplies both CLI and HTTP. `issue_backends.py:read` preserves raw-body SHA, ETag, native ID, local number/iid and complete text while rejecting mismatched numbers, PRs, unsupported GitLab types, redirects, oversize bodies and declared-length truncation. Credentials are validated before header construction; HTTP/transport failures omit response bodies and credential values. Observations remain context_only without task, approval, scheduler or writeback effects. The documented socket timeout correctly makes no whole-call deadline promise. No correction required.\n\nStandards: no material findings. Provider selection, native paths, authentication and field mapping remain inside `issue_backends`; project ownership stays in `issues`/`projects`. Existing binding validation, component descriptors, diagnostics and CLI/HTTP consumers are reused. The small ABC and local registry serve two actual implementations. The narrow standard-library GET avoids new dependencies, retries, background work and duplicate scheduling. Added tests exercise meaningful identity, snapshot and HTTP boundaries. No correction required.\n\nAll five task MCP fixed resources were listed and read completely:\n\n- `definitions/workflow/ergora-structure-review/1.0.90/instructions.md`\n- `definitions/agent/ergora-structure-reviewer/1.0.90/instructions.md`\n- `definitions/agent/ergora-structure-reviewer/1.0.90/skills/ergora-structure-reviewer/SKILL.md`\n- `definitions/agent/ergora-structure-reviewer/1.0.90/skills/candidate-evidence/SKILL.md`\n- `definitions/agent/ergora-structure-reviewer/1.0.90/skills/candidate-evidence/references/candidate.txt`\n\nComplete candidate scope: the tracked delta in `.ergora/checks/f7-issues/public-candidate.diff`; complete `AGENTS.md`; complete production files `src/ergora/issue_backends.py`, `issues.py`, `components.py`, `bindings.py`, `projects.py`, `tools.py`, `cli.py`, `web.py`, `contracts.py`, `data/components.json` and `data/schemas/issue-observation-v1.json`; complete tests `tests/test_project_issues.py`, `test_components.py` and `test_project_configuration.py`; complete F7 plan, delivery and research documents named `2026-11-11-project-trackers.md` in their respective documentation directories. Diff-only documentation coverage comprises `README.md`, `docs/INTEGRATIONS.md`, `docs/PLAN.md`, `docs/USAGE.md`, `docs/architecture/contracts-and-identities.md`, `docs/architecture/current.md` and `docs/plans/2026-11-01-all-in-one.md`.\n\nThe 253,279-byte candidate was read in continuous UTF-8 pages through next_offset:null. A later spot-read returned base64 and was retried at the same offset with a smaller UTF-8 page. No shell, network, tests or edits were performed. Reported 159-test, wheel and installed-runtime results remain owner reports; their omitted raw evidence and linked external sources were not independently verified here. This approval is a scoped model opinion, not owner approval or whole-project completion."
+    },
+    "decision": "approve",
+    "summary": "Approve the supplied F7a source slice. No material Spec or Standards findings."
+  },
+  "actual_read_audit": {
+    "at": "2026-11-11T06:22:01.071921+00:00",
+    "run_id": "8c8263c0fd2d4317ac2ae55d50c782be",
+    "revision": "1.0.90",
+    "manifest_prepared_actual_prompt_admission_scope_native_original_result_match": true,
+    "bundled_template_unchanged_except_evidence_revision_resource_and_limit": true,
+    "scope_files": 5,
+    "all_scope_continuous_utf8_through_null": true,
+    "complete_scope_reads": {
+      "definitions/agent/ergora-structure-reviewer/1.0.90/instructions.md": {
+        "bytes": 354,
+        "sha256": "3cc9c450f0c03da5ea4a1434ac6182d50df6a4985cffdee2a59fe9fe477c6b43",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 354,
+            "next_offset": null
+          }
+        ],
+        "base64_retries": [],
+        "duplicates": []
+      },
+      "definitions/agent/ergora-structure-reviewer/1.0.90/skills/candidate-evidence/SKILL.md": {
+        "bytes": 480,
+        "sha256": "aedb683ba435b973bdf6602542688b870d5e10872d2fe55387eaa39202ecbd75",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 480,
+            "next_offset": null
+          }
+        ],
+        "base64_retries": [],
+        "duplicates": []
+      },
+      "definitions/agent/ergora-structure-reviewer/1.0.90/skills/candidate-evidence/references/candidate.txt": {
+        "bytes": 253279,
+        "sha256": "45cd37d2ec57d11fdf177ddde7a46e92d549f4f5d7b1615d7c3275a6905317f8",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 24000,
+            "next_offset": 24000
+          },
+          {
+            "offset": 24000,
+            "bytes": 24000,
+            "next_offset": 48000
+          },
+          {
+            "offset": 48000,
+            "bytes": 24000,
+            "next_offset": 72000
+          },
+          {
+            "offset": 72000,
+            "bytes": 24000,
+            "next_offset": 96000
+          },
+          {
+            "offset": 96000,
+            "bytes": 24000,
+            "next_offset": 120000
+          },
+          {
+            "offset": 120000,
+            "bytes": 24000,
+            "next_offset": 144000
+          },
+          {
+            "offset": 144000,
+            "bytes": 24000,
+            "next_offset": 168000
+          },
+          {
+            "offset": 168000,
+            "bytes": 24000,
+            "next_offset": 192000
+          },
+          {
+            "offset": 192000,
+            "bytes": 24000,
+            "next_offset": 216000
+          },
+          {
+            "offset": 216000,
+            "bytes": 18000,
+            "next_offset": 234000
+          },
+          {
+            "offset": 234000,
+            "bytes": 18000,
+            "next_offset": 252000
+          },
+          {
+            "offset": 252000,
+            "bytes": 1279,
+            "next_offset": null
+          }
+        ],
+        "base64_retries": [],
+        "duplicates": [
+          {
+            "offset": 74000,
+            "bytes": 3500
+          },
+          {
+            "offset": 74000,
+            "bytes": 1000
+          }
+        ]
+      },
+      "definitions/agent/ergora-structure-reviewer/1.0.90/skills/ergora-structure-reviewer/SKILL.md": {
+        "bytes": 521,
+        "sha256": "d6b69570bcca408d3d06ca5adf1cb44a4a9e43c2901f05c38a68c096f23a4ac8",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 521,
+            "next_offset": null
+          }
+        ],
+        "base64_retries": [],
+        "duplicates": []
+      },
+      "definitions/workflow/ergora-structure-review/1.0.90/instructions.md": {
+        "bytes": 163,
+        "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 163,
+            "next_offset": null
+          }
+        ],
+        "base64_retries": [],
+        "duplicates": []
+      }
+    },
+    "list_passes_files": [
+      5
+    ],
+    "failed_calls": 0,
+    "attachment_bytes": 253279,
+    "attachment_sha256": "45cd37d2ec57d11fdf177ddde7a46e92d549f4f5d7b1615d7c3275a6905317f8",
+    "frozen_complete_files": 19,
+    "original_result_sha256": "649466dcf8444a7708aa6d39af67e8e3e890c26aafdc8e7aa473cce27f030572",
+    "decision": "approve",
+    "native_stream_sha256": "9522c9953e6898e2a468cf09065e8732d6582aa01cd3393ae5f52527ff294b73",
+    "backend_reported_turn_usage": [
+      {
+        "input_tokens": 979742,
+        "cached_input_tokens": 881920,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 5497,
+        "reasoning_output_tokens": 3202
+      }
+    ],
+    "observed_processes": 4,
+    "live_sampled_processes": [],
+    "scope": "Offline exact identity and successful plaintext page reconstruction only. Cached counters are part of input, reasoning reported separately, neither is added twice. No billing, reasoning quality, owner approval, independent backend-error or unsampled-process claim."
+  },
+  "complete_attachment_file_index": [
+    {
+      "file": ".ergora/checks/f7-issues/public-candidate.diff",
+      "bytes": 42158,
+      "sha256": "43697baa6d86805c8e722e26359832a59f73eee620bc9da05c17fc4bfdde9e67"
+    },
+    {
+      "file": "AGENTS.md",
+      "bytes": 1315,
+      "sha256": "5ba4876af2464aabcd68b3341f6420e8f4cab501858bea9d68038c13a1650590"
+    },
+    {
+      "file": "src/ergora/issue_backends.py",
+      "bytes": 7853,
+      "sha256": "5f5acc3057a1961981126445f75c4da84166402c2554e2efcc043eabb5ae9769"
+    },
+    {
+      "file": "src/ergora/issues.py",
+      "bytes": 934,
+      "sha256": "fe50b853481a87405f3319a1cc44661266697a971509bd6733a50d65f07b7db0"
+    },
+    {
+      "file": "src/ergora/data/schemas/issue-observation-v1.json",
+      "bytes": 1932,
+      "sha256": "bd0e9ce962492909eebbd81e2bc70edb3b073d2bb2e0dde270853e9930b65db4"
+    },
+    {
+      "file": "src/ergora/data/components.json",
+      "bytes": 23127,
+      "sha256": "4353ef6bb4423dcec4548372f4e0ba0d9767155260c67ee1509ea553782ce856"
+    },
+    {
+      "file": "src/ergora/components.py",
+      "bytes": 3456,
+      "sha256": "5f80ca0b958722c65564159f51b8c26636e6eb953d3f603097c9b07e2d8aaba4"
+    },
+    {
+      "file": "src/ergora/bindings.py",
+      "bytes": 2077,
+      "sha256": "8b289eb6666551e73a746627b01d192e635e3bb0e50bc34ee068dde363a3118d"
+    },
+    {
+      "file": "src/ergora/projects.py",
+      "bytes": 3806,
+      "sha256": "28c7d15ea79632d2f9a1f2550a97959e9f801aaa10f86deb4fc4f52e50ee1500"
+    },
+    {
+      "file": "src/ergora/tools.py",
+      "bytes": 11384,
+      "sha256": "4e2c340d5860ac039a8f71e95896afb74457bc2678ae7b5d6fa8d2281d1796a2"
+    },
+    {
+      "file": "src/ergora/cli.py",
+      "bytes": 55990,
+      "sha256": "c26ede4c35729bddd913ce978c8dfb80bec5566b7bd2fc77485175071c597757"
+    },
+    {
+      "file": "src/ergora/web.py",
+      "bytes": 30866,
+      "sha256": "0263cbdd897e5676eddc53ee05e521e5e139f1fb230d141c8d9ed15d0e05b27b"
+    },
+    {
+      "file": "src/ergora/contracts.py",
+      "bytes": 2159,
+      "sha256": "a44bc86e4cacc87c103003f08a0e9f72296f5620f4212a41e8dc124050a07277"
+    },
+    {
+      "file": "tests/test_project_issues.py",
+      "bytes": 10538,
+      "sha256": "6a5f6c95d98783f5c99b4dcc24ab3f5b4b0ba5179bd8196776dc5c454d45e1d8"
+    },
+    {
+      "file": "tests/test_components.py",
+      "bytes": 10409,
+      "sha256": "241945185e57d7d058c1d3a31ceca03e3f4e1587b7df4c0a2bb688846cc86114"
+    },
+    {
+      "file": "tests/test_project_configuration.py",
+      "bytes": 9767,
+      "sha256": "ab852bd9de8ba1d4a5d7574c6ac89115eb244ed84e87efa470e7c5d2725e3128"
+    },
+    {
+      "file": "docs/plans/2026-11-11-project-trackers.md",
+      "bytes": 5512,
+      "sha256": "aa11f239db5ec64a1eed7f1ac6e7bdb2d51b4685bb6936f4447b9765c7751c65"
+    },
+    {
+      "file": "docs/delivery/2026-11-11-project-trackers.md",
+      "bytes": 2559,
+      "sha256": "b09c4a62a29a88165fcf9001b082d4451cde56dbf104a8fe898dd143971b7140"
+    },
+    {
+      "file": "docs/research/2026-11-11-project-trackers.md",
+      "bytes": 25986,
+      "sha256": "bd54301a0569a593d8fa786a1d5fc34cd09170c846580d3904bbaea446748b0b"
+    }
+  ],
+  "source_identities": [
+    {
+      "original": "self-review.py",
+      "bytes": 11077,
+      "sha256": "8f75005b867f987c066fe60a1556218565730cc9dffc244170a34758319aab03"
+    },
+    {
+      "original": "audit-self-review.py",
+      "bytes": 7625,
+      "sha256": "e8023e1eda194c8de2d3a509b72b6bd4f8de1ce813487b69eedf0d594a9871ad"
+    },
+    {
+      "original": "review-files.json",
+      "bytes": 660,
+      "sha256": "4f2d3f98c3b052a9bb1b1284a74be7c1265dd16dc050ac0360534a103e73b689"
+    },
+    {
+      "original": "public-candidate.diff",
+      "bytes": 42158,
+      "sha256": "43697baa6d86805c8e722e26359832a59f73eee620bc9da05c17fc4bfdde9e67"
+    },
+    {
+      "original": "self-review-r1.json",
+      "bytes": 1467,
+      "sha256": "87f1c2e81fc2169cc25b9e17509f2688f3b5ebe679ff086befcd428564ddd435"
+    },
+    {
+      "original": "self-review-r1-read-audit.json",
+      "bytes": 4665,
+      "sha256": "905f60d34c5fb5f43758ac35e4e09953558fd669472c8ba70b76c9d1b28baf57"
+    },
+    {
+      "original": "self-review-r1/original-result.json",
+      "bytes": 3420,
+      "sha256": "649466dcf8444a7708aa6d39af67e8e3e890c26aafdc8e7aa473cce27f030572"
+    },
+    {
+      "original": "self-review-r1/raw-evidence-index.json",
+      "bytes": 2928,
+      "sha256": "6bb73ac829e79d3c341ad9cb5388da15c5301099e8c23ca8a31320a340875c7f"
+    },
+    {
+      "original": "self-review-r1/agent/skills/candidate-evidence/references/candidate.txt",
+      "bytes": 253279,
+      "sha256": "45cd37d2ec57d11fdf177ddde7a46e92d549f4f5d7b1615d7c3275a6905317f8"
+    },
+    {
+      "original": "self-review-r1/sampled-processes.json",
+      "bytes": 525,
+      "sha256": "ac81d67df18d2af1f224b7dd760b0c2ec8a834e689c22caf805fbe5b542764fc"
+    }
+  ],
+  "scope_disposition": "One actual bundled structure-reviewer call. Nineteen complete attachments comprise the frozen tracked delta, complete new issue source/schema/tests and F7 plan/delivery/research, AGENTS, and selected full neighboring production owners. Other documentation has diff-only coverage. The model read all five fixed scope resources continuously through null; a later base64 spot-read was retried at the same offset as UTF-8. After the call, field titles, whitespace rejection plus four existing binding-matrix cases and the integer-range documentation were corrected; these later bytes, browser/package evidence, status updates, this projection and the fresh independent report were not supplied to the model. Their final review is separate.",
+  "omitted": [
+    "Private configuration/input/manifest/process paths and identities.",
+    "Full native stream and attached bodies; byte/hash identities and continuous page metadata retained.",
+    "Other implementation modules, linked manuals and original runtime/browser evidence were not automatically read.",
+    "No billing, model quality, independent backend-error, full repository or unsampled-process guarantee."
+  ],
+  "limits": "Cached tokens are already included in backend-reported input; reasoning is separately reported. Scoped model approval is not owner approval, successful dual-backend inference, CI, GPU or WSL2 runtime acceptance."
+}

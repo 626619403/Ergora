@@ -149,6 +149,17 @@
       "default_binding": {
         "tool": "manual"
       }
+    },
+    "tracker": {
+      "kind": "support",
+      "title": "项目工单",
+      "description": "逐项目读取工单上下文；不自动派工或回写",
+      "icon": "☷",
+      "display_order": 12,
+      "requires": [],
+      "default_binding": {
+        "tool": "manual"
+      }
     }
   },
   "components": {
@@ -505,7 +516,8 @@
       "layers": [
         "optimizer",
         "scheduler",
-        "kernel"
+        "kernel",
+        "tracker"
       ],
       "capabilities": [],
       "operations": {
@@ -515,7 +527,8 @@
         "scheduler": [
           "research.run"
         ],
-        "kernel": []
+        "kernel": [],
+        "tracker": []
       },
       "platforms": [],
       "probe": "local",
@@ -739,6 +752,121 @@
         "commit": "5030503d3ff71851aa34c14b9caf13ebfa9d9a78"
       },
       "platform_note": "Requires Linux; use WSL2"
+    },
+    "github": {
+      "kind": "issue-tracker",
+      "implementation": "github",
+      "layers": [
+        "tracker"
+      ],
+      "capabilities": [],
+      "operations": {
+        "tracker": [
+          "issue.show"
+        ]
+      },
+      "platforms": [],
+      "probe": "remote",
+      "configuration": {
+        "type": "object",
+        "properties": {
+          "tool": {
+            "const": "github"
+          },
+          "project": {
+            "title": "仓库命名空间（owner/name）",
+            "type": "string",
+            "maxLength": 300,
+            "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$",
+            "not": {"pattern": "\\s"},
+            "description": "Repository owner/name"
+          },
+          "api_url": {
+            "title": "API 基地址",
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\s]+$",
+            "not": {"pattern": "\\s"},
+            "default": "https://api.github.com",
+            "description": "HTTPS API base; HTTP is supported only on loopback"
+          },
+          "token_env": {
+            "title": "凭据环境变量名（可选）",
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+            "not": {"pattern": "\\s"},
+            "description": "Optional environment variable name; omit for anonymous public reads"
+          },
+          "api_version": {
+            "title": "GitHub API 版本",
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+            "not": {"pattern": "\\s"},
+            "default": "2022-11-28"
+          }
+        },
+        "required": [
+          "tool",
+          "project"
+        ],
+        "additionalProperties": false
+      },
+      "note": "GitHub 工单只读来源；保存变量名，不保存token值。读取不授予执行权限；更新时间/ETag不是写入CAS。",
+      "installation": null
+    },
+    "gitlab": {
+      "kind": "issue-tracker",
+      "implementation": "gitlab",
+      "layers": [
+        "tracker"
+      ],
+      "capabilities": [],
+      "operations": {
+        "tracker": [
+          "issue.show"
+        ]
+      },
+      "platforms": [],
+      "probe": "remote",
+      "configuration": {
+        "type": "object",
+        "properties": {
+          "tool": {
+            "const": "gitlab"
+          },
+          "project": {
+            "title": "项目命名空间（含子组）",
+            "type": "string",
+            "maxLength": 300,
+            "pattern": "^[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)+$",
+            "not": {"pattern": "\\s"},
+            "description": "Project namespace/path, including subgroups"
+          },
+          "api_url": {
+            "title": "API 基地址",
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^[^\\s]+$",
+            "not": {"pattern": "\\s"},
+            "default": "https://gitlab.com/api/v4",
+            "description": "HTTPS API base; HTTP is supported only on loopback"
+          },
+          "token_env": {
+            "title": "凭据环境变量名（可选）",
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+            "not": {"pattern": "\\s"},
+            "description": "Optional environment variable name; omit for anonymous public reads"
+          }
+        },
+        "required": [
+          "tool",
+          "project"
+        ],
+        "additionalProperties": false
+      },
+      "note": "GitLab 工单只读来源；保存变量名，不保存token值。读取不授予执行权限；更新时间/ETag不是写入CAS。",
+      "installation": null
     }
   },
   "installation_profiles": {

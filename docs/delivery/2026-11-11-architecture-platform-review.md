@@ -58,3 +58,22 @@
 没有运行作者脚本、项目入口、测试、安装／打包、模型、服务、浏览器或网络，没有读取个人凭据配置；未重验GPU／WSL2／原生Windows运行。已读前片原评审者追加的离线终核结论：自己的CI第四样本双OS七必要步骤成功、作者Ref完整SHA相符，C6b/c按该范围终结。本报告只核新增记录与事实归属，未直接核其原网络／CI原件。原独立Ref超时、smart-Git TLS失败与前三in_progress原样本保持。
 
 本片后续应完成最终文档冻结检查、普通提交／推送、自己的必要CI与精确Git／远端身份；任何后续状态增量须按新字节复核。当前结论为本地完整文档候选的两轴独立通过，Spec开放0／Standards开放0，最高历史问题为Spec P3且已关闭。
+
+## 精确提交、独立Ref与CI终核
+
+2026-11-11同片收尾，独立核冻结 `ready-r1` 的20路径、全部副本／live／manifest字节和100644模式一致；manifest SHA256为 `a25eab250bfd9fe179a86f5d2967905d4ba17a92814430d03ef31f44ed7f6c7d`。相对终审仅六份计划／交付状态记账及报告回链，作者第三份有限静态20文件／414链接、JSON／whitespace及6个已加载秘密值扫描issue0；本评审没有重复读取秘密值。随后普通提交／推送 `0252dec5c41be1c1f6f533d86d8f32d30d178ce3`，唯一父为本片基线c1f31fc。独立逐件核20个Git blob全部与冻结原件／摘要相同，mode均100644、changed paths精确相同；`src / tests / scripts / .github / pyproject.toml` 对象全部与父提交相同。私有回执为 `independent/commit-closure/ready-r1-audit.json` 与 `independent/commit-0252dec/git-objects-audit.json`。
+
+获明确授权后，本评审者唯一一次官方无源站凭据HTTPS Git Ref GET于05:59:00.471234→05:59:01.445098 UTC直接成功，0.974秒、HTTP200，原ref为 `refs/heads/refactor/architecture-foundations`、类型commit、完整SHA同0252dec。请求保持既有默认网络／代理环境，使用 `ssl.create_default_context()`、hostname校验和CERT_REQUIRED；25秒上限，无重试、重定向或TLS放宽，未添加源站认证／Cookie。429B原正文SHA256 `e8cffad2d75069a4e90c5bff193ac4bd56d3168ee4d9fc3e9c5cb5ab00476ed9`；原正文、请求身份和解析响应字段保存在私有 `independent/commit-0252dec/ref-*`，字段文件不是线路抓包。该结果属于本片评审者直接网络成功，前片评审者超时及作者样本仍各按原身份保留。
+
+独立离线核 `commit-closure/snapshot-api-01..03` 的六份runs／jobs完整原正文、三份 `ci-sample.json` 和抓取脚本源码，未执行作者脚本或发新请求。逐件字节／SHA256、官方URL及HTTP200、完整0252dec、分支、push事件、Portability路径、run144／attempt1、check suite116364821813与两个job身份始终相符。各job开始时间保持，状态仅前进；已经完成的原步骤结论及时间逐项保持。05:58和06:07 UTC前两份原样本仍为in_progress，第二份仅Windows已成功，未改写这些原件。
+
+第三份06:14:22.815245 UTC样本确认本候选自己的[CI42968978850](https://github.com/626619403/Ergora/actions/runs/42968978850)整体及双OS均为completed／success：
+
+|Job|原ID|必要步骤|
+|---|---|---|
+|Ubuntu latest／Python3.11|130352743246|3／3 completed／success|
+|Windows latest／Python3.12|130352743797|4／4 completed／success|
+
+七个必要步骤为两OS的Build and install wheel、Packaged reference identity、Native application regression，加Windows PowerShell5.1 installer and upgrade；与0252dec的原工作流逐项相符。Linux的Windows专用步骤按原条件skipped，其余初始化／收尾成功。第三份runs正文12,012B／SHA256 `953169566454c59b1e086c7375a5a8bfb90b537086ed239ec6b59605234b5072`，jobs正文5,208B／`2859ff9490332988b7e2fd0a819ed171123115f0b99981488aba1d0fd214e561`；全样本身份和连续性回执见私有 `independent/commit-0252dec/ci-three-samples-audit.json`。
+
+结合已通过的完整本地两轴、精确20个Git对象、一次独立官方Ref和本候选自己的必要CI，C6d按上述范围精确交付终结，Spec／Standards开放finding仍0／0、P3保持关闭。本段为提交后同片记账；当前F7未提交源码／文档不纳入0252dec的20对象验收，没有重跑已过模型／产品或旧c1f31fc的CI。未验双后端、GPU、WSL2及AC6/F6／项目整体结算继续沿总计划的实际范围。

@@ -116,8 +116,38 @@ claude
 |Skill 优化|手动导入、GEPA + JSON 提案器|有界候选搜索与证据记录|
 |资料来源|明确 URL|有界观察、快照和审阅|
 |研究调度|手动、Temporal Schedule|CLI worker / Schedule|
+|项目工单|本地手动、GitHub、GitLab|CLI／HTTP显式读取指定工单上下文|
 
 认证使用工具自己的登录或环境变量。配置只保存凭据变量名，不在网页填写密钥。Codex 和 Claude Code 分别选择模型；默认实现与审查均为 Codex。自定义命令接收 stdin 提示，以 argv 启动，不经 shell 拼接。已安装、已连通、已认证和已通过任务验收是不同状态。
+
+### 读取项目工单上下文
+
+普通项目无需安装参考执行器、启动服务或配置模型，就能读取一个明确的工单。先用`project add`登记业务Git仓库，再保存tracker绑定；项目命名空间与API地址分别配置。下面的文件只含变量名称，环境变量的值在启动CLI／Web的同一环境中设置。
+
+```json
+{
+  "tool": "gitlab",
+  "project": "team/subgroup/repository",
+  "api_url": "https://gitlab.com/api/v4",
+  "token_env": "GITLAB_TOKEN"
+}
+```
+
+将其保存为`tracker.json`后：
+
+```bash
+ergora project show PROJECT
+ergora project bind PROJECT tracker --binding tracker.json --revision 1
+ergora issue show PROJECT 7
+```
+
+`--revision`填写`project show`返回的当前值。GitHub绑定使用`"tool":"github"`、`"project":"owner/repository"`，API默认`https://api.github.com`；默认固定REST版本`2022-11-28`，可用`api_version`显式选择支持的日期版本。GitLab默认API为`https://gitlab.com/api/v4`，支持完整subgroup路径。自托管API须使用HTTPS；HTTP仅支持loopback。公共工单可省略`token_env`匿名读取；配置了变量名但环境缺值时明确失败。未知字段和URL内凭据被拒绝，接口不跟随重定向。
+
+`issue show`参数是GitHub仓库内number或GitLab项目内iid，响应另存全局native ID。返回完整标题／正文／标签、原生状态与更新时间、ETag（若有）、原始响应SHA256、API地址／namespace、项目修订／配置摘要和本次观察时间。正文保留为文本，标记`context_only:true`；需要保存时可将JSON输出重定向到自己的持久文件。当前不缓存、不扫描列表、不读取评论、不派工或回写。ETag／更新时间／摘要仅为观察线索，不提供写入CAS，也不构成任务批准。
+
+HTTP入口为`GET /api/projects/PROJECT/issues/7`，与CLI共用同一用例。原工具绑定页面按schema显示tracker配置；工单专页与observe列表在后续节点交付。已正式注册的项目只允许读取其登记的kind／namespace；改变来源绑定会产生新项目修订，不修改旧任务或参考注册。正式注册尚未包含API host，后续跨host派工必须另行核准身份，不能直接复用旧claim。
+
+只接受普通GitHub issue／GitLab project issue；GitHub PR、GitLab非issue类型或不兼容响应明确拒绝。每次一个GET、20秒socket I/O超时、1MiB完整响应上限，无自动重试；这不是整个调用的20秒wall-time保证。认证／不可用／重定向／超限／截断等失败不会伪装成空工单。详细接口取舍和未验自托管范围见[工单接入调研](research/2026-11-11-project-trackers.md)。
 
 ### 诊断与修复
 

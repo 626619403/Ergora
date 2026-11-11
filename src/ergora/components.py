@@ -23,6 +23,7 @@ _LEGACY_SUPPORT_BINDINGS = {
     "memory": {"tool": "sqlite"}, "optimizer": {"tool": "manual"},
     "research": {"tool": "urls"}, "scheduler": {"tool": "manual"},
     "kernel": {"tool": "manual"},
+    "tracker": {"tool": "manual"},
 }
 
 

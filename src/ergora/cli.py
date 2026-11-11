@@ -9,7 +9,7 @@ import sys
 
 from . import __version__
 from . import reference
-from . import agent_definitions, agent_runs, agents, contracts, definition_bundles, evaluation, kernel, memory, optimization, projects, registrations, research, services, tasks, skill_assets, skills, tools, workflow_definitions
+from . import agent_definitions, agent_runs, agents, contracts, definition_bundles, evaluation, issues, kernel, memory, optimization, projects, registrations, research, services, tasks, skill_assets, skills, tools, workflow_definitions
 from .state import State, resolve_home
 
 
@@ -168,6 +168,11 @@ def parser() -> argparse.ArgumentParser:
     bind.add_argument("layer")
     bind.add_argument("--binding", type=Path, required=True, help="JSON tool binding")
     bind.add_argument("--revision", type=int, required=True)
+    issue = commands.add_parser("issue", help="Read project tracker context without creating or authorizing tasks")
+    operations = issue.add_subparsers(dest="operation", required=True)
+    show_issue = operations.add_parser("show", help="Read one GitHub number or GitLab iid using the selected tracker")
+    show_issue.add_argument("project")
+    show_issue.add_argument("issue_id")
     tool = commands.add_parser("tools", help="List supported tools or check project availability")
     operations = tool.add_subparsers(dest="operation", required=True)
     operations.add_parser("list")
@@ -561,6 +566,8 @@ def main(argv: list[str] | None = None) -> int:
                     output = registrations.preview_import(state, specification, args.revision)
             else:
                 output = projects.bind(state, args.id, args.layer, json.loads(args.binding.read_text(encoding="utf-8-sig")), args.revision)
+        elif args.command == "issue":
+            output = issues.show(State(args.home), args.project, args.issue_id)
         elif args.command == "tools":
             if args.operation == "profiles":
                 output = tools.installation_profiles()

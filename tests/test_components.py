@@ -30,7 +30,7 @@ def test_installation_profiles_are_discoverable_without_creating_state(tmp_path)
 def test_catalog_preserves_legacy_fields_and_returns_isolated_descriptions():
     baseline = json.loads((Path(__file__).parent / "fixtures/components-v0_2_0.json").read_text(encoding="utf-8"))["catalog"]
     catalog = tools.catalog()
-    assert list(catalog) == list(baseline)
+    assert list(catalog)[:len(baseline)] == list(baseline)
     for layer, expected in baseline.items():
         assert [{key: entry[key] for key in expected[index]} for index, entry in enumerate(catalog[layer])] == expected
     catalog["implementer"][0]["configuration"]["properties"]["model"]["title"] = "changed"
@@ -55,6 +55,8 @@ def test_binding_matrix_preserves_acceptance_and_rejection():
         "temporal": [{"tool": "temporal", "address": "localhost:7233", "namespace": "default", "task_queue": "demo"}],
         "forgekernel": [{"tool": "forgekernel", "checkout": str(fixture_root / "forge"),
                           "python": sys.executable, "task": str(fixture_root / "forge/task")}],
+        "github": [{"tool": "github", "project": "owner/repo"}],
+        "gitlab": [{"tool": "gitlab", "project": "group/subgroup/repo"}],
     }
     for layer, choices in tools.CATALOG.items():
         for tool in choices:
@@ -80,6 +82,10 @@ def test_binding_matrix_preserves_acceptance_and_rejection():
         ("optimizer", {"tool": "gepa", "proposer_argv": ["bad\0arg"]}),
         ("scheduler", {"tool": "temporal", "address": "localhost:7233", "namespace": "default"}),
         ("kernel", {"tool": "forgekernel", "checkout": "/forge", "python": "/python"}),
+        ("tracker", {"tool": "github", "project": "owner/repo\n"}),
+        ("tracker", {"tool": "gitlab", "project": "group/repo", "api_url": "https://gitlab.example/api/v4\n"}),
+        ("tracker", {"tool": "github", "project": "owner/repo", "token_env": "ISSUE_TOKEN\n"}),
+        ("tracker", {"tool": "github", "project": "owner/repo", "api_version": "2022-11-28\n"}),
     ]
     for layer, binding in invalid:
         with pytest.raises(ValueError):
@@ -93,7 +99,7 @@ def test_new_project_defaults_do_not_rewrite_existing_projects(tmp_path, monkeyp
     before = projects.create(state, "before", repo)
     expected = {**{role: {"tool": "codex"} for role in agents.ROLE_CAPABILITIES},
                 "memory": {"tool": "sqlite"}, "optimizer": {"tool": "manual"}, "research": {"tool": "urls"},
-                "scheduler": {"tool": "manual"}, "kernel": {"tool": "manual"}}
+                "scheduler": {"tool": "manual"}, "kernel": {"tool": "manual"}, "tracker": {"tool": "manual"}}
     assert before["bindings"] == expected
     before["bindings"]["reviewer"]["tool"] = "claude-code"
     assert projects.create(state, "second", repo)["bindings"] == expected

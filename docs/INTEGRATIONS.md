@@ -12,6 +12,12 @@ Ergora 的工具绑定由具体消费者读取。默认 `agentflow` 参考执行
 
 退出码、超时和 SIGINT 取消均留存；同进程组后代在命令结束时清理。工具须以受控前台命令运行。机器故障后的遗留 running 不是可靠恢复终态，需操作者对账；正式工作流恢复沿用参考 Temporal。返回 succeeded 只证明命令退出成功，不代表正式代码审查通过。
 
+## 项目工单来源
+
+tracker层的`manual`保留本地流程；`github`／`gitlab`通过各自的只读Adapter读取明确的仓库number／项目iid。配置沿现有项目绑定与schema表单，CLI／HTTP共用`issues.show`；API host和namespace进入观察身份，凭据只保存`token_env`引用。无需参考运行时或后台服务，详见[工单配置与命令](USAGE.md#读取项目工单上下文)。
+
+新增同类实现需实现`IssueBackend`的原生路径、headers及字段投影，在本族映射注册并增加组件描述；上层用例不分派厂商。观察格式是[issue-observation-v1](../src/ergora/data/schemas/issue-observation-v1.json)，与正式task、request、run和工单写入版本分开。当前仅普通issue单GET，无缓存、列表、评论、自动接单或写回。旧Symphony保留其有限标签迁移行为；后续将按[F7分片](plans/2026-11-11-project-trackers.md)连接任务与受约束写入，不能将ETag当作写CAS。
+
 ## 项目记忆
 
 默认 `{"tool":"sqlite"}` 是无需服务的持久基线，支持记忆、来源、修订、纠错和检索。例如：

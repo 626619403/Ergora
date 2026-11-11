@@ -1,12 +1,12 @@
 # C6d：架构导航与平台说明
 
-基线 `c1f31fcfa38ac25085e287c507377be422786026`；[分片计划](../plans/2026-11-11-architecture-platform.md)。本片20文件完整独立两轴及本地出口通过，无生产／测试／打包／CI变更；最终冻结与自己的精确交付仍待，C6d及整个AC6/F6未提前关闭。
+基线 `c1f31fcfa38ac25085e287c507377be422786026`；[分片计划](../plans/2026-11-11-architecture-platform.md)。本片20文件完整独立两轴及本地出口通过，无生产／测试／打包／CI变更；0252dec的精确交付已终结，整个AC6/F6的未验范围继续保留。
 
 ## 已核与下一步
 
 已读原架构、合同身份说明、Windows说明，以及后端／版本Input／worker／执行材料的相关源码。第一方包只读AST预盘点为53个Python模块、203条本地导入边，包含函数内导入，拓扑无环；console为18个第一方JS，不含vendor。该结果只覆盖静态导入，不推断动态加载、子进程或运行语义；原清单保留源字节摘要。
 
-原架构归档和当前导航／格式／平台说明、实际自身模板、最终20文件独立复核均已完成。复用未变源码的439文件／两RECORD／283冻结非editable包身份，不为文档重建同代码或重跑已过产品旅程。前片自己的CI第四样本已终态成功，四样本／作者Ref精确原件经原评审者离线终核通过，C6b/c精确交付终结；本片本地出口通过，接着冻结、普通提交／推送并核自己的CI与远端身份。
+原架构归档和当前导航／格式／平台说明、实际自身模板、最终20文件独立复核均已完成。复用未变源码的439文件／两RECORD／283冻结非editable包身份，不为文档重建同代码或重跑已过产品旅程。前片自己的CI第四样本已终态成功，四样本／作者Ref精确原件经原评审者离线终核通过，C6b/c精确交付终结；本片本地出口与0252dec精确交付均通过；详见下文P5原件终核。
 
 ## P1–P3 文档候选
 
@@ -14,7 +14,7 @@
 
 新[架构导航](../architecture/current.md)按当前所有者重组，含主要调用、六阶段／审查、正式操作时序、前端与数据归属五图，保留Agent后端接入锚点。明确三个图关系、专长数据包与实际ABC／版本继承、完整祖先读取、逐定义父子修订、局部后端映射、v6材料及原ID恢复；保留差异化生命周期、冻结分发和直接兼容别名的理由。它不是新增调度器或重构源码。
 
-[格式说明](../architecture/contracts-and-identities.md)补Workflow／preview v1/v2、manifest／input／MCP scope v1、用户task-definition v1/v2、正式信封v2–v6、材料v1/v2及handoff各自责任。[Windows](../WINDOWS.md)与[训练](../TRAINING.md)区分原生静态定义／普通调用和Linux task-MCP／完整执行；两份冻结参考手册保持，导航链接可达。README与总计划的旧版本／“未开始”检查点同步到本片实际范围，原失败CI与未验项保持。静态／真实自身模板与完整独立审查通过；精确交付待完成。
+[格式说明](../architecture/contracts-and-identities.md)补Workflow／preview v1/v2、manifest／input／MCP scope v1、用户task-definition v1/v2、正式信封v2–v6、材料v1/v2及handoff各自责任。[Windows](../WINDOWS.md)与[训练](../TRAINING.md)区分原生静态定义／普通调用和Linux task-MCP／完整执行；两份冻结参考手册保持，导航链接可达。README与总计划的旧版本／“未开始”检查点同步到本片实际范围，原失败CI与未验项保持。静态／真实自身模板与完整独立审查通过；0252dec精确交付已终结。
 
 ## P4 静态与真实自身模板
 
@@ -29,3 +29,11 @@
 独立评审提出阶段命名P3：新图中首阶段曾写inspect，原冻结workflow和日常手册实际为inventory。已将两处新图标记改成inventory／盘点，原归档与原模型输入／判词保持；这项后续修正由独立同片复核，不声称原模型审过修正后的候选，也不为纯标签更正重放模型或产品。
 
 作者另核本地main=cab3a724，未包含当前preset树、CLI对象与当前分支不同；该本地事实不冒称另核远端main。README／日常与Windows原示例clone main，未直接给出本文当前功能所在分支，容易让接收者安装到不同源码。已明确选择`refactor/architecture-foundations`开发分支，Windows空环境ZIP同分支，入门旅程回链；重现验收应固定完整提交，不能只比0.2.0版本号。没有合main、改安装器或重跑产品；此更正晚于原模型快照，完整独立同片复核已过，不计为原模型批准范围。
+
+## P5 精确提交与候选CI终结
+
+20文件最终静态样本为414个本地文件链接、6个已加载秘密值，issue0；最终冻结manifest SHA256为`a25eab250bfd9fe179a86f5d2967905d4ba17a92814430d03ef31f44ed7f6c7d`。普通提交／推送`0252dec5c41be1c1f6f533d86d8f32d30d178ce3`，单父为本片基线；原评审者直接核20个Git blob／100644与冻结逐字一致，生产源码与父提交相同。
+
+评审者一次独立官方GitHub HTTPS Ref请求获得HTTP200，同完整0252dec；原429B响应SHA256为`e8cffad2d75069a4e90c5bff193ac4bd56d3168ee4d9fc3e9c5cb5ab00476ed9`。自己的[CI42968978850](https://github.com/626619403/Ergora/actions/runs/42968978850)第三API样本success/completed，Linux三项／Windows四项、合计七个必要步骤通过，平台专用跳过符合原条件。前两In progress样本保留；[原独立评审](2026-11-11-architecture-platform-review.md)离线逐份终核三样本六原HTTP body、摘要、官方URL、提交／分支／run／attempt与完整步骤连续性。Spec／Standards开放0／0，C6d精确交付终结，不借用F7未提交工作区或其他候选CI。
+
+本片只完成既定架构／平台说明，不据文档关闭第二后端推理、真实GPU或WSL2实测等AC6/F6未验范围。下一候选推送所需的前片CI终态约束现已满足。

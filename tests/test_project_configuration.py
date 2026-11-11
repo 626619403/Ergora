@@ -36,7 +36,7 @@ def test_effective_sources_keep_legacy_choices_without_writing_defaults(legacy_p
         assert resolved["binding"] == project["bindings"]["implementer"]
         assert resolved["source"] == {"kind": "project" if role == "implementer" else "inherited", "path": "bindings.implementer"}
         assert resolved["validation"] == {"valid": True}
-    expected = {"memory": "sqlite", "research": "urls", "scheduler": "manual", "optimizer": "manual", "kernel": "manual"}
+    expected = {"memory": "sqlite", "research": "urls", "scheduler": "manual", "optimizer": "manual", "kernel": "manual", "tracker": "manual"}
     for layer, tool in expected.items():
         assert configuration["layers"][layer] == {
             "binding": {"tool": tool},

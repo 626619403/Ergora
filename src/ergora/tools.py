@@ -13,7 +13,7 @@ from urllib.parse import urlsplit
 from pathlib import Path
 import sys
 
-from . import agent_backends, agents, components, kernel, processes, projects
+from . import agent_backends, agents, components, issue_backends, kernel, processes, projects
 from .agent_runs import output as output, run_agent as run_agent, runs as runs
 from .bindings import validate_binding as validate_binding
 from .state import State
@@ -71,6 +71,8 @@ def _local_check(binding: dict, repo: Path) -> dict:
     elif component["kind"] == "agent":
         check.update(installed=agents.available(binding, repo), runtime="ergora-agent-invocation")
         check.update(agent_backends.for_binding(binding).diagnostics())
+    elif component["kind"] == "issue-tracker":
+        check.update(issue_backends.for_binding(binding).diagnostics())
     elif tool == "forgekernel":
         check.update(kernel.available(binding), runtime="native ForgeKernel campaign; candidate only")
         check["remediation"].append("Use the pinned Forge installer, verify its task, Claude credentials and GPU, then evaluate the candidate independently.")

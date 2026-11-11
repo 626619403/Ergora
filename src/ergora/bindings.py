@@ -3,7 +3,7 @@
 import re
 from urllib.parse import urlsplit
 
-from . import agents, components, contracts, kernel
+from . import agents, components, contracts, issue_backends, kernel
 from .components import CATALOG
 
 
@@ -28,6 +28,9 @@ def validate_binding(layer: str, binding: dict) -> None:
         return
     if layer == "kernel":
         kernel.validate_binding(binding)
+        return
+    if components.COMPONENTS[tool]["kind"] == "issue-tracker":
+        issue_backends.for_binding(binding)
         return
     contracts.validate(binding, components.COMPONENTS[tool]["configuration"], f"{layer} binding")
     if tool == "reme":
