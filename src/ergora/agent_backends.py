@@ -113,7 +113,7 @@ class CodexBackend(AgentBackend):
     guidance = ("Use codex login, then tools doctor PROJECT --probe; stored credentials do not verify account access or quota.",)
 
     def executable(self) -> str:
-        return "codex"
+        return self.options.get("executable") or "codex"
 
     def composition_policy(self, mode: str) -> dict:
         self._options(mode)
@@ -143,6 +143,7 @@ class CodexBackend(AgentBackend):
     def check_invocation(self) -> None:
         if sys.platform != "linux" and self.binding.get("sandbox") == "current-container":
             raise ValueError("current-container requires the trusted Linux container configuration; use the native Codex sandbox on Windows")
+        self._options("native")
 
     def _options(self, mode: str, task_mcp: dict | None = None) -> list[str]:
         """Parse the same inference options for model-free admission and command construction."""
@@ -196,7 +197,7 @@ class CodexBackend(AgentBackend):
         sandbox = "read-only" if request.mode not in ("native", "workspace-task-mcp") else self.binding.get(
             "sandbox", "read-only" if request.role != "implementer" else "workspace-write")
         sandbox = "danger-full-access" if sandbox == "current-container" else sandbox
-        argv = [self.options.get("executable", "codex"), "exec", "--ephemeral", "--sandbox", sandbox, "--json", *options]
+        argv = [self.executable(), "exec", "--ephemeral", "--sandbox", sandbox, "--json", *options]
         if "model" in self.binding:
             argv += ["--model", self.binding["model"]]
         if request.schema:

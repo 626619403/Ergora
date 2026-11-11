@@ -21,6 +21,7 @@ from ergora.reference_inputs import execution_input
 payload = json.load(sys.stdin)
 sys.stdin = io.StringIO(json.dumps(payload))
 scenario = os.environ.get('ERGORA_TEST_SUBMISSION_SCENARIO', 'normal')
+source_input = core.task_spec(payload['task_id']).get('schema_version') == 7
 fixture = Path(payload['project']['registration']['definition']['execution']['state_directory']) / 'sdk-fixture'
 fixture.mkdir(exist_ok=True)
 server = fixture / 'server.json'
@@ -33,10 +34,39 @@ def log(event):
 
 def report():
     log('doctor')
+    if source_input:
+        raise AssertionError('Source admission must not call the broad fixture doctor')
     return {'ready_for_real_tasks': scenario != 'doctor-blocked'}
 
 
 doctor.report = report
+if source_input:
+    from agent_platform.sandbox import Sandbox
+    from ergora import processes, task_mcp
+
+    # Only the OS-dependent probe is controlled. The v7 report, real settings,
+    # selected backend/config/program checks and original admission all run.
+    Sandbox.probe = lambda self: {'available': scenario != 'boundary-blocked',
+        'backend': 'current-container', 'scope': 'SDK fixture probe, not host isolation acceptance'}
+    if scenario == 'mcp-missing':
+        def missing_mcp():
+            raise ValueError('Task MCP requires the task-mcp extra')
+        task_mcp.check_available = missing_mcp
+    if scenario == 'timeout-missing':
+        original_program = processes.resolve_program
+        def missing_timeout(program, cwd):
+            if program == '/usr/bin/timeout':
+                raise FileNotFoundError('Executable not found: /usr/bin/timeout')
+            return original_program(program, cwd)
+        processes.resolve_program = missing_timeout
+    if scenario == 'foreign-claim':
+        from dev_platform.ingress import IngressLeases
+        document = execution_input(json.loads((core.STATE / 'tasks' / payload['task_id'] / 'task.spec.json').read_text()))
+        leases = IngressLeases(core.STATE / 'ingress/leases.sqlite3')
+        try:
+            leases.acquire(document.spec['request']['tracker'], 'legacy-entrance', 'legacy-task', 'f' * 64)
+        finally:
+            leases.close()
 if scenario == 'environment-blocked':
     def denied_environment():
         raise core.Blocked('Fixture connection environment denied')

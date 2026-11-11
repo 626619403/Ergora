@@ -5,6 +5,7 @@ native implementation imports stay at the operations that actually use them.
 """
 
 from abc import ABC, abstractmethod
+import json
 from pathlib import Path
 
 from . import task_envelopes
@@ -67,6 +68,10 @@ class WorkflowInput(ABC):
     def admission_spec(self, legacy_reader, task_id: str) -> dict:
         """Preserve native v1 reads and their validation/compatibility behavior."""
         return legacy_reader(task_id)
+
+    def admission_report(self, original_report, selection: dict) -> dict:
+        """Keep the original installation-wide prerequisites for existing inputs."""
+        return original_report()
 
     def require_submission(self) -> None:
         """Refuse unsupported formal execution before dispatch or journal writes."""
@@ -240,6 +245,66 @@ class IssueSourceInput(StageResultsInput):
         from .reference_workflows import IssueSourceAdapter
 
         return IssueSourceAdapter({**config, 'requests': str(cls.request_root(Path(config['requests'])))})
+
+    def admission_report(self, original_report, selection: dict) -> dict:
+        """Probe only frozen selections and the original local execution requirements.
+
+        Imports stay here so offline input/journal readers remain standard-library
+        only. Program/configuration availability is not an authentication, worker
+        liveness or model-quality probe; native task_action still connects and claims.
+        """
+        from agent_platform.core import Blocked, CONFIG, PYTHON, settings
+        from agent_platform.sandbox import Sandbox
+        from . import agent_backends, agents, processes, task_mcp
+
+        config = settings()
+        boundary = Sandbox().probe()
+        checks = {
+            'automatic-executor': {'status': 'ready' if config.get('execution_enabled') is True else 'disabled'},
+            'execution-boundary': {**boundary, 'status': 'ready' if boundary['available'] else 'blocked'},
+        }
+        cwd = Path(selection['configuration']['project']['repo'])
+        for name, program in (('git', '/usr/bin/git'), ('timeout', '/usr/bin/timeout'), ('python', str(PYTHON))):
+            try:
+                checks[name] = {'status': 'ready', 'executable': processes.resolve_program(program, cwd)}
+            except (OSError, ValueError) as error:
+                checks[name] = {'status': 'missing', 'detail': str(error)}
+
+        selected = []
+        for stage in ('inventory', 'plan'):
+            role = self.spec['profile']['roles'][stage]
+            selected.append((stage, {'role': role, 'binding': selection['bindings'][role], 'mode': 'native'}))
+        composition = self.document['composition']
+        selected.extend(('work:' + path, member) for path, member in composition['execution']['members'].items())
+        selected.extend(('review:' + path, member) for path, member in composition['members'].items())
+        for name, member in selected:
+            binding, mode = member['binding'], member['mode']
+            try:
+                agents.validate_binding(member['role'], binding, formal=True)
+                backend = agent_backends.for_binding(binding, {'codex': {
+                    'config': CONFIG / 'codex.toml', 'executable': config.get('codex_bin') or 'codex'}})
+                backend.check_invocation()
+                backend.check_mode(mode)
+                if mode != 'native' and backend.composition_policy(mode) != member['policy']:
+                    raise ValueError('Frozen composition policy differs from the current backend contract')
+                if not backend.available(cwd):
+                    raise ValueError('Selected executable is unavailable: ' + backend.executable())
+                checks[name] = {'status': 'ready', 'tool': binding['tool'], 'mode': mode,
+                                'executable': backend.executable()}
+            except (OSError, ValueError, ImportError) as error:
+                checks[name] = {'status': 'blocked', 'tool': binding['tool'], 'mode': mode, 'detail': str(error)}
+        if any(member['mode'] in ('task-mcp', 'workspace-task-mcp') for _, member in selected):
+            try:
+                task_mcp.check_available()
+                checks['task-mcp'] = {'status': 'ready'}
+            except (OSError, ValueError, ImportError) as error:
+                checks['task-mcp'] = {'status': 'blocked', 'detail': str(error)}
+        failed = {name: check for name, check in checks.items() if check['status'] != 'ready'}
+        if failed:
+            raise Blocked('Source task prerequisites incomplete: ' + json.dumps(failed, ensure_ascii=False))
+        return {'checks': checks, 'ready_for_real_tasks': True,
+                'scope': 'Selected local programs/configuration and acknowledged current container; '
+                         'authentication, capacity and worker liveness are not checked'}
 
     def stage_material(self) -> dict:
         return {'issue_source': self.document['issue_source']}

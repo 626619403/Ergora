@@ -571,5 +571,127 @@
       "ST3/P2"
     ],
     "report": "docs/delivery/2026-11-11-issue-dispatch-review.md"
+  },
+  "exact_delivery": {
+    "commit": "4638c3b9524adcba584a9313b8fd1588b5dde64d",
+    "own_ci_run": 42995785084,
+    "own_ci_status": "Success",
+    "jobs": [
+      {
+        "platform": "linux",
+        "job_id": "130439423259",
+        "status": "completed",
+        "required_steps": [
+          {
+            "name": "Build and install wheel",
+            "conclusion": "success",
+            "completed-at": "2026-11-11T09:31:03Z",
+            "log-url": "/626619403/Ergora/commit/4638c3b9524adcba584a9313b8fd1588b5dde64d/checks/130439423259/logs/4"
+          },
+          {
+            "name": "Packaged reference identity",
+            "conclusion": "success",
+            "completed-at": "2026-11-11T09:31:04Z",
+            "log-url": "/626619403/Ergora/commit/4638c3b9524adcba584a9313b8fd1588b5dde64d/checks/130439423259/logs/5"
+          },
+          {
+            "name": "Native application regression",
+            "conclusion": "success",
+            "completed-at": "2026-11-11T09:47:25Z",
+            "log-url": "/626619403/Ergora/commit/4638c3b9524adcba584a9313b8fd1588b5dde64d/checks/130439423259/logs/6"
+          }
+        ]
+      },
+      {
+        "platform": "windows",
+        "job_id": "130439423651",
+        "status": "completed",
+        "required_steps": [
+          {
+            "name": "Build and install wheel",
+            "conclusion": "success",
+            "completed-at": "2026-11-11T09:31:36Z",
+            "log-url": "/626619403/Ergora/commit/4638c3b9524adcba584a9313b8fd1588b5dde64d/checks/130439423651/logs/4"
+          },
+          {
+            "name": "Packaged reference identity",
+            "conclusion": "success",
+            "completed-at": "2026-11-11T09:31:38Z",
+            "log-url": "/626619403/Ergora/commit/4638c3b9524adcba584a9313b8fd1588b5dde64d/checks/130439423651/logs/5"
+          },
+          {
+            "name": "Native application regression",
+            "conclusion": "success",
+            "completed-at": "2026-11-11T09:40:54Z",
+            "log-url": "/626619403/Ergora/commit/4638c3b9524adcba584a9313b8fd1588b5dde64d/checks/130439423651/logs/6"
+          },
+          {
+            "name": "Windows PowerShell 5.1 installer and upgrade",
+            "conclusion": "success",
+            "completed-at": "2026-11-11T09:41:49Z",
+            "log-url": "/626619403/Ergora/commit/4638c3b9524adcba584a9313b8fd1588b5dde64d/checks/130439423651/logs/7"
+          }
+        ]
+      }
+    ],
+    "official_read_samples": [
+      {
+        "at": "2026-11-11T09:31:38.896568+00:00",
+        "url": "https://api.github.com/repos/626619403/Ergora/actions/runs?head_sha=4638c3b9524adcba584a9313b8fd1588b5dde64d&event=push&per_page=20",
+        "final_url": "https://api.github.com/repos/626619403/Ergora/actions/runs?head_sha=4638c3b9524adcba584a9313b8fd1588b5dde64d&event=push&per_page=20",
+        "http_status": 403,
+        "bytes": 280,
+        "sha256": "cab107d310af6137d3ca21f7de123c972a91cb1cbd91e2f58f61fe192ba31735"
+      },
+      {
+        "at": "2026-11-11T09:43:54.931273+00:00",
+        "url": "https://github.com/626619403/Ergora/actions/runs/42995785084",
+        "final_url": "https://github.com/626619403/Ergora/actions/runs/42995785084",
+        "http_status": 200,
+        "bytes": 153323,
+        "sha256": "d6f29e78490654a14423fd4741b86c21aaa888e22745a8ee2f2186a7f5282087"
+      },
+      {
+        "at": "2026-11-11T09:55:59.986616+00:00",
+        "url": "https://github.com/626619403/Ergora/actions/runs/42995785084",
+        "final_url": "https://github.com/626619403/Ergora/actions/runs/42995785084",
+        "http_status": 200,
+        "bytes": 157029,
+        "sha256": "bbb7ca87dd3fbd9aee342ce1e0179682d0afcbd686d06fa96b9a7f2b47a19f50"
+      },
+      {
+        "at": "2026-11-11T09:49:33.498942+00:00",
+        "url": "https://github.com/626619403/Ergora/actions/runs/42995785084/job/130439423651",
+        "final_url": "https://github.com/626619403/Ergora/actions/runs/42995785084/job/130439423651",
+        "http_status": 200,
+        "bytes": 159659,
+        "sha256": "4b402b1c515862b3fc36d1c1505481e840686452dacb8b62248540a2919c0d97"
+      },
+      {
+        "at": "2026-11-11T09:56:59.611951+00:00",
+        "url": "https://github.com/626619403/Ergora/actions/runs/42995785084/job/130439423259",
+        "final_url": "https://github.com/626619403/Ergora/actions/runs/42995785084/job/130439423259",
+        "http_status": 200,
+        "bytes": 161578,
+        "sha256": "ab6f48913781f7867d222d29fbdc0c7c5d20210d57ebd6a5b3cf9bc2e570ff1a"
+      },
+      {
+        "at": "2026-11-11T09:49:33.496431+00:00",
+        "url": "https://github.com/626619403/Ergora/actions/runs/42995785084/graph/matrix/fC1uYXRpdmUtfA==?attempt=1&expanded=true",
+        "final_url": "https://github.com/626619403/Ergora/actions/runs/42995785084/graph/matrix/fC1uYXRpdmUtfA==?attempt=1&expanded=true",
+        "http_status": 404,
+        "bytes": 226081,
+        "sha256": "841220bcbb6b53bc7714f6bba834a82197a4aa2c4a0fb2eae103f82aed2cfecd"
+      },
+      {
+        "at": "2026-11-11T09:53:08.441302+00:00",
+        "url": "https://github.com/626619403/Ergora/actions/runs/42995785084/navigation_partial?attempt=1&selected_check_run_id=130439423651&selected_tab=summary",
+        "final_url": "https://github.com/626619403/Ergora/actions/runs/42995785084/navigation_partial?attempt=1&selected_check_run_id=130439423651&selected_tab=summary",
+        "http_status": 404,
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    ],
+    "independent_final_verification": "Original same-slice reviewer verified exact Git/wheel/frozen identity, SSH Ref and these seven samples; original655 failure, REST403 and lazyHTML404 remain. No full log download or B1c acceptance implied."
   }
 }

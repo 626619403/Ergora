@@ -90,7 +90,7 @@ flowchart TB
 
 ### 正式开发路径
 
-默认两开发preset采用 `work-units-v2`／正式信封v6；用户task-definition仍为v2，二者版本号含义不同。显式work-units-v1／v5与更早版本保留自己的身份，不自动迁移。在正式v5/v6中，每个原work unit一对一分配implementer实例，工作依赖必须匹配原units的传递依赖，全部Agent叶由work/review覆盖。静态图可表示的结构不保证正式运行器支持任意角色或拓扑。 工单来源任务显式用definition3／creation3／信封v7选择完整snapshot，限work-units-v2；默认v2/v6不变。v7的纯来源合同核完整API来源与本项目冻结绑定，正文是任务数据，不授执行权；start目前仍原广doctor。
+默认两开发preset采用 `work-units-v2`／正式信封v6；用户task-definition仍为v2，二者版本号含义不同。显式work-units-v1／v5与更早版本保留自己的身份，不自动迁移。在正式v5/v6中，每个原work unit一对一分配implementer实例，工作依赖必须匹配原units的传递依赖，全部Agent叶由work/review覆盖。静态图可表示的结构不保证正式运行器支持任意角色或拓扑。工单来源任务显式用definition3／creation3／信封v7选择完整snapshot，限work-units-v2；默认v2/v6不变。v7的纯来源合同核完整API来源与本项目冻结绑定，正文是任务数据，不授执行权；start的Input准入报告检查实际所选依赖，原策略／checks／claim保持。
 
 ```mermaid
 flowchart LR
@@ -145,6 +145,8 @@ sequenceDiagram
 `WorkflowInput`选出版本专用queue／request根；`reference_workflows`继承原六阶段，`StageDAG / WorkDelivery`只是同一冻结图的阶段数据投影。原units、job/context、monitor、ledger和FileAdapter继续拥有执行事实。Executor拥有checkout、依赖commit合并、路径门禁、确定性检查和可信commit；桥接调用沿`agent_runs`冻结输入、固定任务MCP、后端Interface及进程记录。
 
 v6使用 `StageResultsInput → WorkDeliveryInput` 和 `StageResultsWorkflow → WorkDeliveryWorkflow`，复用原调度及活动；输入材料另标 `schema_version: 2 / artifact_protocol: stage-artifacts-v1`。完整声明阶段产物、可信检查与意见内联；审计原件仍逐件核验，不递归复制旧prompt/materials。work的具名来源与直接控制前驱合并交付，另保留unit→instance映射；祖先资源和原1,000,000B预算保持。v7继承v6并通过Input.stage_material提供完整issue_source；stage-artifacts协议由Input拥有，不在执行器继续枚举新版本号。v5旧材料和history不改写。[版本表](contracts-and-identities.md#当前格式和责任)区分这些合同。
+
+Input还拥有准入报告的版本差异：v1–v6调用原doctor，v7从冻结creation角色与composition成员检查实际选中的后端配置／程序／模式和必要本地执行条件，所选MCP才检查SDK。Codex可用性与执行命令读取同一executable配置。`_Submission.dispatch`只在原专用进程作用域替换报告并finally恢复；策略、可信检查、Temporal连接、同一共享claim与attempt-before-send仍由原task_action／transport拥有。availability不表示认证、worker可用或模型消费，unknown仍只查询原workflow／memo，不重新准入或重发。
 
 崩溃恢复复用原job/context/monitor。HEAD偏离首次调用起点时，核Executor在首次HEAD门禁后发布的完整agent-selection和结果字节摘要，用已有证据区分可信commit与Agent自提交窗口；证据不足要求对账，不新增“成功”标记绕过原门禁。
 

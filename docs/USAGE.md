@@ -212,7 +212,9 @@ ergora task show my-project issue-7-r1
 
 新创建使用creation3／正式信封v7，完整来源进入原始执行输入及每次work／review材料，祖先Skill与权限仍由原组合控制。发布后不再依赖控制库中的该快照、当前绑定或外部正文；`resume-create`按原intent SHA恢复，不重新选择来源。工单更新后如需另一份工作，用新task ID和新preview；旧任务、批准和B0上下文关联保持。
 
-安装并重启本版worker／executor后才接收v7队列；当前start仍沿完整参考发行的原doctor、policy、可信checks与原claim。来源格式不会解除这些运行依赖；按选择收窄依赖的入口在后续验收，真实Agent消费也须查原调用材料与回执。单文件1MiB、stage／prompt各1,000,000字节、全部祖先资料和动态产物限额保持；静态必然超限在预览拒绝，后续产物超限在原阶段拒绝，没有隐式摘要。v7的证据／handoff保存完整`contract.original_input`并核来源／原admission SHA，合计仍受原1MiB索引与包manifest限额；旧v1–v6和旧交接包不迁移。
+来源任务按冻结选择准入：只检查实际inventory／plan角色、工作／审查叶的程序与配置、所选MCP模式，以及原Git、timeout、Python和已确认的当前容器执行条件。A2A、MLflow、LangGraph及未选的默认implementer／reviewer不成为此入口的必需依赖。先明确启动`temporal worker executor`，再按[正式提交](#提交正式任务与恢复未知结果)执行start；可信检查、策略、Temporal连接和共享工单占用仍走原流程。程序可用不证明认证、配额或worker就绪；实际失败会保留具体依赖和原提交状态。unknown恢复只查询原ID，不重发，也不因当前工具变化重新准入。旧v1–v6保留原安装级doctor。
+
+安装并重启本版worker／executor后才接收v7队列；真实Agent消费须查原调用材料与回执。单文件1MiB、stage／prompt各1,000,000字节、全部祖先资料和动态产物限额保持；静态必然超限在预览拒绝，后续产物超限在原阶段拒绝，没有隐式摘要。v7的证据／handoff保存完整`contract.original_input`并核来源／原admission SHA，合计仍受原1MiB索引与包manifest限额；旧v1–v6和旧交接包不迁移。
 
 ### 诊断与修复
 
@@ -483,7 +485,7 @@ API为`GET /api/projects/ID/tasks/TASK_ID/jobs/42?run_id=RUN_ID&timeout=20`；�
 
 ### 提交正式任务与恢复未知结果
 
-在Linux/WSL2安装完整参考运行时并初始化所登记的配置，使用该运行时的`.venv/bin/python`执行准入。控制面无需安装全部执行依赖；实际提交仍须通过原doctor、可信检查和工单租约，所选服务及模型须就绪。此入口仅接受通过统一入口完整创建的任务，保留其原spec和角色快照。
+在Linux/WSL2安装参考运行时所需依赖并初始化所登记的配置，使用该运行时的`.venv/bin/python`执行准入。控制面无需安装全部执行依赖；v1–v6使用原安装级doctor，v7来源任务按[冻结选择](#从工单快照创建来源任务)检查实际依赖。实际提交继续核可信检查、策略和工单占用，所选服务及模型须就绪。此入口仅接受通过统一入口完整创建的任务，保留其原spec和角色快照。
 
 ```bash
 # CREATION_SHA取自task creation的intent_sha256；修订取自project show。
@@ -692,7 +694,7 @@ ergora services stop my-project worker temporal --revision 1 --confirm --timeout
 ergora services shutdown my-project --revision 1 --confirm --timeout 30
 ```
 
-可选服务为 `temporal`、`mlflow`、`worker`、`executor`、`a2a`、`training-worker`，只启动列出的服务，不自动补依赖或启动研究。完整正式开发可用`ergora services start my-project temporal worker executor a2a --revision 1 --timeout 30`显式启动所需服务；当前参考提交准入要求Temporal与本地A2A监听，worker/executor负责实际阶段，MLflow可按观测需要另启。托管 executor 使用同一 Ergora 控制目录的选择式执行器。Supervisor 的 `RUNNING` 仅代表进程状态，服务协议、worker/队列、模型与任务仍分别验收。停止和 shutdown 必须确认；1–60 秒的控制等待时限从注册预检后计算。`outcome: unconfirmed` 表示操作可能继续进行，应查状态对账；未确认 STOPPED 前不重启，CLI 对失败/未确认返回非零。
+可选服务为 `temporal`、`mlflow`、`worker`、`executor`、`a2a`、`training-worker`，只启动列出的服务，不自动补依赖或启动研究。v7来源任务可用`ergora services start my-project temporal worker executor --revision 1 --timeout 30`显式启动其原六阶段所需服务；旧v1–v6的安装级doctor另要求本地A2A监听，可显式加上`a2a`，MLflow按观测需要另启。托管 executor 使用同一 Ergora 控制目录的选择式执行器。Supervisor 的 `RUNNING` 仅代表进程状态，服务协议、worker/队列、模型与任务仍分别验收。停止和 shutdown 必须确认；1–60 秒的控制等待时限从注册预检后计算。`outcome: unconfirmed` 表示操作可能继续进行，应查状态对账；未确认 STOPPED 前不重启，CLI 对失败/未确认返回非零。
 
 首次 start 在执行状态目录下创建 `ergora-services/`，记录控制目录归属、独立 socket 及配置，复制原 Supervisor 程序定义并关闭全部 autostart，原 ini 保持不变。原 Supervisor socket 仍存在时拒绝接管：先通过原 `agentflow services stop` 停止并核对原栈，再使用新入口；陈旧 socket/PID 也需先对账。注册投影漂移、控制目录归属冲突或过长 Unix socket 路径会明确报错，后者应选择较短的持久 execution state 目录。软件升级前先 shutdown 托管栈，升级后按原参数显式启动。
 

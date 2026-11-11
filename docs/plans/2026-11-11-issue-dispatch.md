@@ -1,6 +1,6 @@
 # F7b.1：来源冻结与正式入口的窄准入
 
-基线`3c4ef3928fe756bf596fd1da1cc80c7eb1e6578d`，分支`refactor/architecture-foundations`。承接[F7b.0快照与显式上下文关联](2026-11-11-issue-mapping.md)和[F7总分片](2026-11-11-project-trackers.md)。B0自己的精确CI42982197290七必要步骤及原评审终核已通过。当前B1a已选型，B1b来源合同／离线发布和材料路径正在实现；B1c窄准入尚未实现，不称真实派工通过。
+基线`3c4ef3928fe756bf596fd1da1cc80c7eb1e6578d`，分支`refactor/architecture-foundations`。承接[F7b.0快照与显式上下文关联](2026-11-11-issue-mapping.md)和[F7总分片](2026-11-11-project-trackers.md)。B0自己的精确CI42982197290七必要步骤及原评审终核已通过。B1b来源合同／离线发布和材料路径已精确交付4638c3b；自己的CI42995785084与同片独立终核通过，6558671原失败保持。[B1c窄准入](2026-11-11-source-task-admission.md)实现和实际运行验收另行进行。
 
 ## 结果与边界
 
@@ -66,3 +66,5 @@ B0的精确提交／CI状态以其[计划](2026-11-11-issue-mapping.md)和[交�
 6558671已普通推送，自己的42991272992 Windows architecture回归失败；原CI保留，不关闭精确交付。新增issue_snapshots仅集中原SQL读取／row重建／digest校验，实际供issues与tasks消费，issues继续拥有observe／capture／link，不再task／issues互相导入。首inventory context逐字段迁至纯task_envelopes、creation与v7 workflow直接复用；Input与workflow不反向导入。handoff直接unwrap完整原输入及来源合同，仅v7取issue_source并绑定冻结selection，旧v1–v6不因任意附加字段改变语义。基础依赖表增加纯issue_sources和标准库约束，继续禁止运行层依赖／导入环。原12项source架构修后通过，安装r4及同片独立复核待结果；不借原r3／模型结论证明修后源码。
 
 依赖修正最终r4：445包／两RECORD／283冻结、安装125／209.38秒、真实离线旅程15／11.08秒通过；自身12附件177571B／161.00秒approve、五scope连续读取和所属采样清理已核。完整20文件同片独立终核两轴开放0／0、ST3关闭，本地修正出口通过；新修正提交／远端／自己的CI仍须另核，原6558671双OS失败保持，不自动关闭B1c。
+
+修正4638c3b已精确20Git／ready、445包／283冻结、普通推送及独立SSH Ref同完整SHA通过；自己的CI42995785084第三官方run原HTML Success、Linux三／Windows四必要步骤与原评审七组原件终核通过，B1b精确交付终结。原655／429912失败、REST403、lazy matrix／navigation404和非终态样本保持；不将HTML终核称成功REST或完整日志，B1c仍单独验收。

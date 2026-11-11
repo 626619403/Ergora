@@ -122,3 +122,25 @@ r4 真实 CLI／loopback HTTP 旅程原件的 22 个 CLI stdout／stderr 和 11 
 完整 20 文件的 JSON／静态检查通过；八份 Markdown 的 84 个本地链接目标存在，六个已载入秘密值和私有 home 路径检查无问题，`git diff --check` 通过。十个已核产品／测试文件与源码复核时的身份相同。
 
 ST3／P2 已按修正源码、安装／旅程和完整后补证据复核关闭。当前 Spec／Standards 通过，开放 0／0，B1b 依赖修正的本地出口通过；新修正候选的冻结身份／普通提交／远端／自己的必要 CI 随后另核。原 `6558671` 双 OS CI 保持失败、一次独立 Ref 限流 403 保持原结果，B1c 真实运行及项目整体均未关闭。
+
+## 修正提交 4638c3b 的精确身份与远端 Ref
+
+普通修正提交 `4638c3b9524adcba584a9313b8fd1588b5dde64d` 的直接父提交为 `6558671f128c320f01785f9b28c673442cf76089`。独立读取其 Git tree／blob，20 个变更路径恰好等于 repair-ready-r1，清单 SHA256 `22065eb1dadbdbf59b0d8f2c0172afdf2e0500c207a13d6817358f6132cfa037`；逐件核原字节、大小、SHA256 和 `100644` 模式，全部与 ready 保存文件一致。以该提交的精确 Git blob 直接比对 r4 wheel／installed，445 个包文件逐字相同，450／455 行 RECORD 所有非空摘要和大小及 283 份 frozen 三处身份通过，wheel SHA 保持 `29c4626ce18e7988d4635cd0f8e3659993ba8bb4439d576ddf86d95e0e98b2b9`。没有用随后恢复的 B1c live 产品代替本片候选，也没有重跑行为或模型。
+
+2026-11-11，作者报告普通推送成功后，评审者只做一次现有 SSH `git ls-remote --refs` 分支读取，退出 0；`refs/heads/refactor/architecture-foundations` 返回完整 `4638c3b9524adcba584a9313b8fd1588b5dde64d`，与本片修正提交相同。没有重新访问已限流 API、变更认证或重试；原 `6558671` 的 API 403 仍保持其实际范围。修正提交自己的 CI 原件尚待提供，不借原失败或本地检查提前关闭；本次只属于 B1b 精确交付复核，不复用为 B1c 独立审查。
+
+## 修正自己的 CI 终态：精确交付终结
+
+独立离线核准固定提交 `4638c3b9524adcba584a9313b8fd1588b5dde64d` 自己的 [Portability run 42995785084](https://github.com/626619403/Ergora/actions/runs/42995785084)。最终 `repair-ci-run-html-r3` 官方原 HTML 为 HTTP 200／Status Success，并链接同完整提交；早期 r2 仍为 In progress，分别保留。七组原件（run r2／r3、两 job、API、matrix、navigation）的七份 receipt 及七份 body 均逐一核原字节数／SHA256，URL 与实际 final URL 相同，未用原失败候选或当前 B1c 工作区替代。
+
+|最终原 HTML|body 字节数／SHA256|receipt SHA256|
+|---|---|---|
+|run r3|157029／`bbb7ca87dd3fbd9aee342ce1e0179682d0afcbd686d06fa96b9a7f2b47a19f50`|`c6b8394021d86a0ba3fe76919b386a8d4b7588e510e73a8f3af039e055d0b4b1`|
+|Linux job|161578／`ab6f48913781f7867d222d29fbdc0c7c5d20210d57ebd6a5b3cf9bc2e570ff1a`|`e70a44f40988bc051d31a38d50a31c60c26348ca42d860d44c3286402440ab49`|
+|Windows job|159659／`4b402b1c515862b3fc36d1c1505481e840686452dacb8b62248540a2919c0d97`|`7c530c5fe8f27a6247c62523a8a5a90156738ac24f4246c71ba0e37c17673ecc`|
+
+直接解析 [Linux job 130439423259](https://github.com/626619403/Ergora/actions/runs/42995785084/job/130439423259) 与 [Windows job 130439423651](https://github.com/626619403/Ergora/actions/runs/42995785084/job/130439423651) 的原 check-steps／check-step 属性，并对照该提交的原 workflow：两 job 均 completed；Build and install wheel、Packaged reference identity、Native application regression 在两 OS 全部 success，Windows PowerShell 5.1 installer and upgrade 在 Windows success、Linux skipped。Linux 三项／Windows 四项必要步骤均有非空 completed-at；每个非空日志 URL 均绑定完整 `4638c3b` 和各自 job ID。未以两个 job 的外围 setup 成功代替必要步骤，也不从折叠 HTML 推计用例数量或声称下载全日志。
+
+原 `repair-ci-api-r1` 仍为 HTTP 403／限流，matrix r1 为 404（226081B），navigation r1 为 404（0B），其 receipt／body 摘要同样通过；这些失败不改称成功 REST 或可用的 lazy 子接口。本次只读取作者保存的官方原件，没有新外部读取、重复 Ref、运行测试／模型或使用后续 live 产品。原 `6558671`／run `42991272992` 的双 OS failure 保持其原候选范围。
+
+结合此前精确 20 Git 对象／模式、445 committed／wheel／installed、两份 RECORD、283 frozen 和一次独立 SSH 完整 Ref 核准，本片 B1b 修正 `4638c3b` 的必要 CI 与精确交付现已终结。Spec／Standards 开放 0／0，SP1、ST1、ST2、ST3 均关闭。B1c 的准备文档、后续实现／真实六阶段以及项目整体不由本结论关闭；本次 CI 追加属于原报告后补交付事实，不冒称已存在于修正提交的报告 blob。

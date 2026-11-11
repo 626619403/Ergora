@@ -108,13 +108,18 @@ class _Submission:
                 'result_saved': receipt is not None}
 
     async def dispatch(self, intent: dict) -> dict:
-        from agent_platform import cli
+        from agent_platform import cli, doctor
         from dev_platform import runtime
         from temporalio.exceptions import WorkflowAlreadyStartedError
 
         operation = self
         original = runtime.DevelopmentTransport
         original_spec = cli.task_spec
+        original_report = doctor.report
+
+        def selected_report():
+            return operation.input.admission_report(original_report,
+                operation.creation_record['files']['agent-bindings.json'])
 
         def frozen_spec(task_id):
             document = operation.creation.document(operation.creation.target / 'task.spec.json')
@@ -158,14 +163,17 @@ class _Submission:
                 return await super().start(spec)
 
         # task_action imports this port at call time. The override is confined
-        # to this dedicated process and preserves doctor, policy and claim.
+        # to this dedicated process. The input owns prerequisites; native
+        # task_action still owns policy, trusted checks, connection and claim.
         runtime.DevelopmentTransport = CheckpointedTransport
         cli.task_spec = frozen_spec
+        doctor.report = selected_report
         try:
             observed = await cli.task_action(SimpleNamespace(operation='start', task_id=self.creation.task_id))
         finally:
             runtime.DevelopmentTransport = original
             cli.task_spec = original_spec
+            doctor.report = original_report
         if observed['workflow_id'] != intent['workflow_id']:
             raise ValueError('Native start returned a different workflow; reconcile the original ID')
         self.core.write(self.result_path, self.receipt(intent, observed['run_id']))

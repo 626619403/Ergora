@@ -1,0 +1,1695 @@
+{
+  "schema_version": 1,
+  "slice": "F7b.1-B1c",
+  "baseline": "4638c3b9524adcba584a9313b8fd1588b5dde64d",
+  "state": "Positive local journey passed; final independent full candidate review and exact commit/remote/own CI pending",
+  "final_package": {
+    "at": "2026-11-11T09:41:05.770257+00:00",
+    "wheel_sha256": "34c80c6257b7975e607b6a046d8e598c4506378109aa3740c5e6efe69b48ef94",
+    "wheel_files": 450,
+    "package_files": 445,
+    "wheel_and_installed_records_verified": true,
+    "installed_record_rows": 455,
+    "source_and_installed_package_equal": true,
+    "frozen_files": 283,
+    "editable": false
+  },
+  "r1_to_r2_delta": {
+    "same_paths": true,
+    "changed": [
+      "ergora/reference_inputs.py",
+      "ergora-0.2.0.dist-info/RECORD"
+    ],
+    "product_changes": [
+      {
+        "path": "ergora/reference_inputs.py",
+        "old_sha256": "c23abed83768cec9a3044126193e434f0d4f93a87094c20dab4eb2e3a51f3da4",
+        "new_sha256": "6f5922dca726c2da5c4974666a9396d8e7aa392d36212731fdfa359c2ba1cd50",
+        "only_json_import": true
+      }
+    ]
+  },
+  "r1_installed_checks_failed": [
+    {
+      "at": "2026-11-11T09:46:28.907639+00:00",
+      "command": [
+        "python",
+        "-I",
+        "-m",
+        "pytest",
+        "-q",
+        "--tb=short",
+        "tests/test_architecture_boundaries.py",
+        "tests/test_issue_submission.py",
+        "tests/test_task_submission.py",
+        "tests/test_task_submission_locks.py",
+        "tests/test_agents.py",
+        "tests/test_issue_tasks.py",
+        "tests/test_composition_workers.py",
+        "tests/test_work_agents.py",
+        "tests/test_task_mcp.py"
+      ],
+      "exit": 1,
+      "seconds": 793.5035620178096,
+      "stdout_sha256": "8e9e5f082b5a986f39a6fbe5028a84a387c084a307228a83ce39348c6594d05f"
+    }
+  ],
+  "r2_affected_checks": [
+    {
+      "at": "2026-11-11T09:42:27.141910+00:00",
+      "command": [
+        "python",
+        "-I",
+        "-m",
+        "pytest",
+        "-q",
+        "--tb=short",
+        "tests/test_architecture_boundaries.py",
+        "tests/test_issue_submission.py"
+      ],
+      "exit": 0,
+      "seconds": 81.3663874217309,
+      "stdout_sha256": "cd8bc77cba2bbd4bcc0860b8fd330938ef0ea9618add71a7a0341fa82978d47a"
+    },
+    {
+      "at": "2026-11-11T09:42:27.460449+00:00",
+      "command": [
+        "python",
+        "-I",
+        "-m",
+        "ergora",
+        "reference",
+        "verify"
+      ],
+      "exit": 0,
+      "seconds": 0.31655463809147477,
+      "stdout_sha256": "b008885b07d2b77122350a8ad73dc72e11dd940f057f283ed67c7a6d76bebfde"
+    }
+  ],
+  "r2_legacy_boundary": {
+    "at": "2026-11-11T09:48:36.887001+00:00",
+    "exit": 0,
+    "seconds": 64.50325968489051,
+    "fixture_sha256": "91dbc55f2f555d976caf610c91a2b9bf407603dde825c52ed41d4779573d780c",
+    "stdout_sha256": "16e0267479ab4d2c25f38d6129a1304a0566521d565ced3ba62d620834ed7983",
+    "test": "tests/test_task_submission.py::test_creation_identity_registration_and_legacy_boundaries"
+  },
+  "deterministic_r1": {
+    "journey_seconds": 157.60324634471908,
+    "record": {
+      "task_id": "source-repository-governance-task",
+      "writers": [
+        "root/work/knowledge-map",
+        "root/work/boundary-test"
+      ],
+      "paths": {
+        "knowledge-map": "docs/governance/map.md",
+        "boundary-test": "tests/architecture/boundary.py"
+      },
+      "root": "ergora-governance-delivery",
+      "manifest_digest": "d90d8b82de570216e149ae9cbaef4c78490f557e23f5fe2ea22839b66e38ea5a",
+      "run_id": "01a1c9f7-fcdd-7b8d-8112-fcd414e739b6",
+      "stage_inputs": {
+        "review:root/review/correctness/review": {
+          "task_bytes": 28152,
+          "prompt_bytes": 31997,
+          "prompt_sha256": "13cd59190ca94d9d002860a63255ee3a7c3f454096358c3f6f8750c3087f8939",
+          "source_artifacts": {
+            "root/work/boundary-test": [
+              "change-summary",
+              "test-results"
+            ],
+            "root/work/knowledge-map": [
+              "change-summary",
+              "test-results"
+            ]
+          }
+        },
+        "review:root/review/structure/review": {
+          "task_bytes": 28150,
+          "prompt_bytes": 32039,
+          "prompt_sha256": "024e3a5a565190c99878c5f9fa66167f9f0beee1ce2cee40c248d1ddadaf9d85",
+          "source_artifacts": {
+            "root/work/boundary-test": [
+              "change-summary",
+              "test-results"
+            ],
+            "root/work/knowledge-map": [
+              "change-summary",
+              "test-results"
+            ]
+          }
+        },
+        "work:boundary-test": {
+          "task_bytes": 12689,
+          "prompt_bytes": 15900,
+          "prompt_sha256": "fcab120733361dc48c7d039220ee9adabc73c6ee5f88f3d92d3095e7cf4415b4",
+          "source_artifacts": {}
+        },
+        "review:root/review/test-value/review": {
+          "task_bytes": 28151,
+          "prompt_bytes": 32047,
+          "prompt_sha256": "89ab8ce2cebaf8735b1ddb09d4397bcddd6ea35c0d0be8128c6da9d2bc420bbb",
+          "source_artifacts": {
+            "root/work/boundary-test": [
+              "change-summary",
+              "test-results"
+            ],
+            "root/work/knowledge-map": [
+              "change-summary",
+              "test-results"
+            ]
+          }
+        },
+        "work:knowledge-map": {
+          "task_bytes": 12673,
+          "prompt_bytes": 15823,
+          "prompt_sha256": "c1bd946cec3e3237ba56c90ec0f1f113a94dd0fc07d6d17ee037a878cb52b3b9",
+          "source_artifacts": {}
+        }
+      },
+      "outcome": "REVIEW_READY",
+      "candidate_sha": "e52109ffef3e4169bd1b73fc1a493f861cdf5f62",
+      "plan_sha256": "293f8f57ea10c23078277ce8047d5f4181a9fb52493a4e3fed3d5437d85ddd46",
+      "jobs": {
+        "review:root/review/correctness/review": "SUCCEEDED",
+        "review:root/review/structure/review": "SUCCEEDED",
+        "work:boundary-test": "SUCCEEDED",
+        "plan": "SUCCEEDED",
+        "inventory": "SUCCEEDED",
+        "verify": "SUCCEEDED",
+        "integrate": "SUCCEEDED",
+        "review:root/review/test-value/review": "SUCCEEDED",
+        "work:knowledge-map": "SUCCEEDED"
+      },
+      "history": {
+        "sha256": "fe8522cf71b86c243d3e43334e42b59b35a723b4dae0c0701946658d4dd42df1",
+        "events": 236,
+        "replay": "passed"
+      },
+      "handoff_sha256": "b3a727549d31f4016a89c3bb19730f9191ced18ac0bb8da5882546815222ace3",
+      "fixture_native_read_receipts": [
+        {
+          "run_id": "c2719e7940e446128f143819c5ddf432",
+          "files": 5,
+          "bytes": 1608,
+          "receipt_sha256": "11bf59ad07737f271d4547a97ce0ad1ffea93d6423fe438379828e088ae69ce2"
+        },
+        {
+          "run_id": "54c5751ac5664644ab0994d5b85cd80b",
+          "files": 5,
+          "bytes": 1540,
+          "receipt_sha256": "1af032b46e98c5acf4cb3a7abb03c057570d215dfda503f52dd592d842a64da0"
+        },
+        {
+          "run_id": "842156f100284e789fad58929bb925ca",
+          "files": 5,
+          "bytes": 1618,
+          "receipt_sha256": "980ebf8158d6e952088dd51bc71c33ae7060d7056dc728014d81c173a474a407"
+        },
+        {
+          "run_id": "4aa701ed2aa142ca9d2b466520ea5c84",
+          "files": 4,
+          "bytes": 1340,
+          "receipt_sha256": "558b2514ec73544771cb0db2dab0a68c224efba69544e33d45bc311d812f2b9c"
+        },
+        {
+          "run_id": "268380e7c4394ee9a56db7488d69c886",
+          "files": 4,
+          "bytes": 1331,
+          "receipt_sha256": "1ee8fbc2a2a9588471ce53e15ff67f737fca62657e2a9abd27da0f64b4931617"
+        }
+      ]
+    },
+    "command": {
+      "at": "2026-11-11T09:39:47.771080+00:00",
+      "exit": 0,
+      "seconds": 171.12014139303938,
+      "preserved_original_files": 2356,
+      "preserved_originals_equal": true
+    },
+    "observed_processes": 70,
+    "surviving_observed_processes": 0,
+    "complete_resource_deliveries": 23,
+    "complete_resource_bytes": 7437,
+    "complete_named_artifact_bytes": 12398
+  },
+  "actual_model_attempts": {
+    "r2-model": {
+      "original_journey": {
+        "at": "2026-11-11T09:52:21.735869+00:00",
+        "exit": 1,
+        "seconds": 183.99087880318984,
+        "preserved_original_files": 2356,
+        "preserved_originals_equal": true
+      },
+      "observed_processes": 44,
+      "surviving_observed_processes": 0,
+      "original_closed_run_reconciliation": {
+        "at": "2026-11-11T10:04:59.893918+00:00",
+        "run_id": "01a1ca03-4d6c-7469-9b94-f1517ee9c2de",
+        "original_outcome": {
+          "admission_sha256": "716daccb8120c828a8f1e833f9f9942f55ffd74570af8d06377ff3e146784c0c",
+          "candidate_sha": "dd96f0b6a03dfa032de9618aaec37e6c6f47f22d",
+          "detail": "Stage work:boundary-test ended as FAILED",
+          "fence": {
+            "confirmed": true,
+            "fenced": true,
+            "unresolved_jobs": []
+          },
+          "request_sha256": "225e58eca89546352f0e9b7f8c9f64fca0bfbd4164f675e2d1f410b78d423d8f",
+          "status": "BLOCKED",
+          "task_id": "source-repository-governance-task"
+        },
+        "reconciliation_status": "reconciled",
+        "lease_released": true,
+        "original_outcome_preserved": true,
+        "history": {
+          "events": 216,
+          "sha256": "c587ed8ac89ea6b0904112049f270da366181aef55d6bc44e70d01311e69b0bb",
+          "replay": "passed"
+        },
+        "handoff_sha256": "9fda6d772c7a767c8e982dadb7f4a24b390e855a522aa8311d18c0a2adc6bae8",
+        "jobs": {
+          "work:boundary-test": "FAILED",
+          "plan": "SUCCEEDED",
+          "inventory": "SUCCEEDED",
+          "work:knowledge-map": "SUCCEEDED"
+        },
+        "ports_closed": true,
+        "seconds": 15.295498225837946,
+        "scope": "Original closed run inspected/reconciled/handoff/replayed with Temporal only. No worker, executor, model restart or outcome rewrite."
+      },
+      "closure_observed_processes": 2,
+      "closure_surviving_processes": 0,
+      "native_calls_audit": {
+        "all_scope_continuous_utf8_through_null": true,
+        "calls": [
+          {
+            "run_id": "f2abab7f40c44d91924ab14834af8367",
+            "instance": "root/work/knowledge-map",
+            "status": "succeeded",
+            "mode": "workspace-task-mcp",
+            "backend": "codex",
+            "model": "gpt-6.1-sol",
+            "input_digest": "3e1ed245385f7baec81074b860925199546eade039f91d4dc8500c336d71cb96",
+            "prompt_sha256": "98761b72d6068d765d7c9087a0129bf46133e1a4f57bbe625f6a56f0888b6a3f",
+            "prompt_bytes": 17532,
+            "task_bytes": 14382,
+            "complete_issue_source_identity": "f3325d9a61acc24582bb35c97151be81923f7b203684a829ff60b3c8360f3ac2",
+            "scope_files": 4,
+            "scope_bytes": 1340,
+            "original_result_sha256": "d73a3de830c67ce011d323e0e1e63ec4c44c85ab8587d444d6bb35cb228f6a7e",
+            "decision": null,
+            "result_echoes_exact_source_marker": true,
+            "native_stream_sha256": "0aecb5f623a4a27d22ab96c23916ade89ebb5da0a6bb264240ad2dffc0de6711",
+            "backend_reported_turn_usage": [
+              {
+                "input_tokens": 140573,
+                "cached_input_tokens": 120704,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 2559,
+                "reasoning_output_tokens": 784
+              }
+            ],
+            "failed_native_mcp_calls": 0,
+            "complete_scope_reads": {
+              "definitions/agent/ergora-governance-mapper/1.0.0/instructions.md": {
+                "bytes": 310,
+                "sha256": "ef4b95e41f5ee2217b1db290d2cb17c7bbd67d0656d835978cfe24e648326fab",
+                "continuous_utf8_pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 310,
+                    "next_offset": null
+                  }
+                ],
+                "base64_retries": [],
+                "duplicates": []
+              },
+              "definitions/agent/ergora-governance-mapper/1.0.0/skills/ergora-governance-mapper/SKILL.md": {
+                "bytes": 430,
+                "sha256": "e302ba8abfb92b1e16361a142926bca32de75b5af0d963561f715142cfa9ddaa",
+                "continuous_utf8_pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 430,
+                    "next_offset": null
+                  }
+                ],
+                "base64_retries": [],
+                "duplicates": []
+              },
+              "definitions/workflow/ergora-governance-delivery/1.0.0/instructions.md": {
+                "bytes": 355,
+                "sha256": "66eb88ef7aebe40cc3b46a31539b7094ecb41746940efb992d4906fa8491a418",
+                "continuous_utf8_pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 355,
+                    "next_offset": null
+                  }
+                ],
+                "base64_retries": [],
+                "duplicates": []
+              },
+              "definitions/workflow/ergora-governance-work/1.0.0/instructions.md": {
+                "bytes": 245,
+                "sha256": "2d6bd12d60054bfe71460b4dc0cab3c19f63390361ae459170bd3dec712c94fc",
+                "continuous_utf8_pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 245,
+                    "next_offset": null
+                  }
+                ],
+                "base64_retries": [],
+                "duplicates": []
+              }
+            }
+          },
+          {
+            "run_id": "7fa3954d144a41e59d71e84651a6db22",
+            "instance": "root/work/boundary-test",
+            "status": "succeeded",
+            "mode": "workspace-task-mcp",
+            "backend": "codex",
+            "model": "gpt-6.1-sol",
+            "input_digest": "61cce959bb0707ff50a7f4f66393b0d6db456f17bbc49d77ae977d0e72f3e42f",
+            "prompt_sha256": "06b0495de7c5dc7efee0b090ae25c9956a77fe8e73fe48ee5da419a6a67b98af",
+            "prompt_bytes": 17759,
+            "task_bytes": 14548,
+            "complete_issue_source_identity": "f3325d9a61acc24582bb35c97151be81923f7b203684a829ff60b3c8360f3ac2",
+            "scope_files": 4,
+            "scope_bytes": 1331,
+            "original_result_sha256": "69548e102e6ea0d692e4b093c0e0d340ab28b7953918c23c127b6154debf373b",
+            "decision": null,
+            "result_echoes_exact_source_marker": true,
+            "native_stream_sha256": "babf921dd0f83b482c82285b2faec48c6f92c122ef5ed37046e9c955f2eecd64",
+            "backend_reported_turn_usage": [
+              {
+                "input_tokens": 138674,
+                "cached_input_tokens": 98816,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 2835,
+                "reasoning_output_tokens": 1267
+              }
+            ],
+            "failed_native_mcp_calls": 1,
+            "complete_scope_reads": {
+              "definitions/agent/ergora-architecture-test-author/1.0.0/instructions.md": {
+                "bytes": 263,
+                "sha256": "e547a86d6b60640edb044f7556b6d2405f011acedb82d97b59f0d2867a5a5cf6",
+                "continuous_utf8_pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 263,
+                    "next_offset": null
+                  }
+                ],
+                "base64_retries": [],
+                "duplicates": []
+              },
+              "definitions/agent/ergora-architecture-test-author/1.0.0/skills/ergora-architecture-test-author/SKILL.md": {
+                "bytes": 468,
+                "sha256": "7d49dff73b7c6da8a05d34d32319e3697b9ff74d206798369651ff27cbe5127c",
+                "continuous_utf8_pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 468,
+                    "next_offset": null
+                  }
+                ],
+                "base64_retries": [],
+                "duplicates": []
+              },
+              "definitions/workflow/ergora-governance-delivery/1.0.0/instructions.md": {
+                "bytes": 355,
+                "sha256": "66eb88ef7aebe40cc3b46a31539b7094ecb41746940efb992d4906fa8491a418",
+                "continuous_utf8_pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 355,
+                    "next_offset": null
+                  }
+                ],
+                "base64_retries": [],
+                "duplicates": []
+              },
+              "definitions/workflow/ergora-governance-work/1.0.0/instructions.md": {
+                "bytes": 245,
+                "sha256": "2d6bd12d60054bfe71460b4dc0cab3c19f63390361ae459170bd3dec712c94fc",
+                "continuous_utf8_pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 245,
+                    "next_offset": null
+                  }
+                ],
+                "base64_retries": [],
+                "duplicates": []
+              }
+            }
+          }
+        ],
+        "audit_sha256": "104f858b80fabcd6a826042b01a99b04f59a467c49695a14e8729d73d1b1f80d"
+      }
+    },
+    "r3-model": {
+      "original_journey": {
+        "at": "2026-11-11T09:59:55.591105+00:00",
+        "exit": 1,
+        "seconds": 289.36215742630884,
+        "preserved_original_files": 2356,
+        "preserved_originals_equal": true
+      },
+      "observed_processes": 81,
+      "surviving_observed_processes": 0,
+      "original_closed_run_reconciliation": {
+        "at": "2026-11-11T10:03:45.950545+00:00",
+        "run_id": "01a1ca08-99be-7528-811f-e98260ebb3f3",
+        "original_outcome": {
+          "admission_sha256": "69188dd3847e911b2a8419c2c726affc59560232183469d5f9cdc5a4e5844b1f",
+          "candidate_sha": "cedd5be9142cbd1665217fe1aa8140177a5791dc",
+          "detail": "Stage review:root/review/structure/review ended as FAILED",
+          "fence": {
+            "confirmed": false,
+            "fenced": true,
+            "unresolved_jobs": [
+              "source-repository-governance-task-039b497f310bc2a05743b785",
+              "source-repository-governance-task-cf62c6df448302d7404a2adc"
+            ]
+          },
+          "request_sha256": "1389f59f6e6e57efa92813af9c7a5958996b3bd15b575bb9b3676ca7c5ce7985",
+          "status": "CANCEL_UNCONFIRMED",
+          "task_id": "source-repository-governance-task"
+        },
+        "reconciliation_status": "reconciled",
+        "lease_released": true,
+        "original_outcome_preserved": true,
+        "history": {
+          "events": 386,
+          "sha256": "8b8ab871edb6cb574154a679c31fe73a4c4db9e5efb8116fbb3a27f1dd375f18",
+          "replay": "passed"
+        },
+        "handoff_sha256": "d772ecf4dae109dec8de5473a65d9f9b9619fe58898615a6ad1c30779a30d66a",
+        "jobs": {
+          "review:root/review/correctness/review": "CANCELLED",
+          "review:root/review/structure/review": "FAILED",
+          "work:boundary-test": "SUCCEEDED",
+          "plan": "SUCCEEDED",
+          "inventory": "SUCCEEDED",
+          "verify": "SUCCEEDED",
+          "integrate": "SUCCEEDED",
+          "review:root/review/test-value/review": "CANCELLED",
+          "work:knowledge-map": "SUCCEEDED"
+        },
+        "ports_closed": true,
+        "seconds": 16.61558157624677,
+        "scope": "Original closed run inspected/reconciled/handoff/replayed with Temporal only. No worker, executor, model restart or outcome rewrite."
+      },
+      "closure_observed_processes": 2,
+      "closure_surviving_processes": 0,
+      "native_calls_audit": {
+        "all_scope_continuous_utf8_through_null": true,
+        "calls": [
+          {
+            "run_id": "ab146643f16248588bb7d4d43004c34f",
+            "instance": "root/review/test-value/review",
+            "status": "cancelled",
+            "mode": "task-mcp",
+            "backend": "codex",
+            "model": "gpt-6.1-sol",
+            "input_digest": "2d75c825dd95bce9fd9c3091712f9924e0ce81d1b97d8b405369eaa824ec4d54",
+            "prompt_sha256": "6739ac3958be0d2bf19e0a30c1d1d9bf6f3e402d9b5adbf448e568cb89c9d87f",
+            "prompt_bytes": 44954,
+            "task_bytes": 41058,
+            "complete_issue_source_identity": "8fefafa29939861819141cd0d92f7394f86566598cfc80cebe7cc777e7823517",
+            "native_receipt_verified": false,
+            "scope_files": 5,
+            "scope_bytes": 1608,
+            "original_result_sha256": null,
+            "decision": null,
+            "result_echoes_exact_source_marker": false,
+            "native_stream_sha256": "1944c7c281c301441cf149af2b89de597e284784241090c1299933ed3e8b5ba3",
+            "backend_reported_turn_usage": [],
+            "complete_scope_reads": {
+              "definitions/agent/ergora-test-value-reviewer/1.0.0/instructions.md": {
+                "bytes": 340,
+                "sha256": "76c7d82049d325757f516c832a07383de11e84fc94313888df963b19f7361ab8",
+                "continuous_utf8_pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 340,
+                    "next_offset": null
+                  }
+                ],
+                "base64_retries": [],
+                "duplicates": [],
+                "complete_continuous_utf8": true,
+                "continuous_utf8_bytes": 340
+              },
+              "definitions/agent/ergora-test-value-reviewer/1.0.0/skills/ergora-test-value-reviewer/SKILL.md": {
+                "bytes": 513,
+                "sha256": "b85dbd610e094340ae6edc7386f8233441f048bd41c2b00ad425388cfba0d6cb",
+                "continuous_utf8_pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 513,
+                    "next_offset": null
+                  }
+                ],
+                "base64_retries": [],
+                "duplicates": [],
+                "complete_continuous_utf8": true,
+                "continuous_utf8_bytes": 513
+              },
+              "definitions/workflow/ergora-delivery-review/1.0.0/instructions.md": {
+                "bytes": 225,
+                "sha256": "83e867dadc6b374bd3791bcf79c87462375fff58a43b73a569d6f7b3c954e377",
+                "continuous_utf8_pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 225,
+                    "next_offset": null
+                  }
+                ],
+                "base64_retries": [],
+                "duplicates": [],
+                "complete_continuous_utf8": true,
+                "continuous_utf8_bytes": 225
+              },
+              "definitions/workflow/ergora-governance-delivery/1.0.0/instructions.md": {
+                "bytes": 355,
+                "sha256": "66eb88ef7aebe40cc3b46a31539b7094ecb41746940efb992d4906fa8491a418",
+                "continuous_utf8_pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 355,
+                    "next_offset": null
+                  }
+                ],
+                "base64_retries": [],
+                "duplicates": [],
+                "complete_continuous_utf8": true,
+                "continuous_utf8_bytes": 355
+              },
+              "definitions/workflow/ergora-test-value-review/1.0.0/instructions.md": {
+                "bytes": 175,
+                "sha256": "d6ce532f24b70ce1bf2b26c37f07b4901e8a00ce6fc4dff7d269cabd57db1a73",
+                "continuous_utf8_pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 175,
+                    "next_offset": null
+                  }
+                ],
+                "base64_retries": [],
+                "duplicates": [],
+                "complete_continuous_utf8": true,
+                "continuous_utf8_bytes": 175
+              }
+            },
+            "failed_native_mcp_calls": 0
+          },
+          {
+            "run_id": "36884e4ac6c543139a899ceaf0e3ee2a",
+            "instance": "root/review/structure/review",
+            "status": "succeeded",
+            "mode": "task-mcp",
+            "backend": "codex",
+            "model": "gpt-6.1-sol",
+            "input_digest": "14e24e39df9869449de450548ad12fc2ec47bb83a1f3da14c87916580569f182",
+            "prompt_sha256": "4bd93d08086a6a4fb7c00ce41844642a827e42d9cef366c8f1b11e5bef5da496",
+            "prompt_bytes": 44946,
+            "task_bytes": 41057,
+            "complete_issue_source_identity": "8fefafa29939861819141cd0d92f7394f86566598cfc80cebe7cc777e7823517",
+            "native_receipt_verified": true,
+            "scope_files": 5,
+            "scope_bytes": 1618,
+            "original_result_sha256": "46b940c1d283f591f8e2c6e75f1ad8491e7d5cc79898971888b705abe50e2d67",
+            "decision": "request-changes",
+            "result_echoes_exact_source_marker": true,
+            "native_stream_sha256": "7a218e42beeec38fb7be09a4e77850de148e2762749211eefb9d0491ab5a2cd1",
+            "backend_reported_turn_usage": [
+              {
+                "input_tokens": 94522,
+                "cached_input_tokens": 68864,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 1815,
+                "reasoning_output_tokens": 954
+              }
+            ],
+            "complete_scope_reads": {
+              "definitions/agent/ergora-structure-reviewer/1.0.0/instructions.md": {
+                "bytes": 354,
+                "sha256": "3cc9c450f0c03da5ea4a1434ac6182d50df6a4985cffdee2a59fe9fe477c6b43",
+                "continuous_utf8_pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 354,
+                    "next_offset": null
+                  }
+                ],
+                "base64_retries": [],
+                "duplicates": [],
+                "complete_continuous_utf8": true,
+                "continuous_utf8_bytes": 354
+              },
+              "definitions/agent/ergora-structure-reviewer/1.0.0/skills/ergora-structure-reviewer/SKILL.md": {
+                "bytes": 521,
+                "sha256": "d6b69570bcca408d3d06ca5adf1cb44a4a9e43c2901f05c38a68c096f23a4ac8",
+                "continuous_utf8_pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 521,
+                    "next_offset": null
+                  }
+                ],
+                "base64_retries": [],
+                "duplicates": [],
+                "complete_continuous_utf8": true,
+                "continuous_utf8_bytes": 521
+              },
+              "definitions/workflow/ergora-delivery-review/1.0.0/instructions.md": {
+                "bytes": 225,
+                "sha256": "83e867dadc6b374bd3791bcf79c87462375fff58a43b73a569d6f7b3c954e377",
+                "continuous_utf8_pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 225,
+                    "next_offset": null
+                  }
+                ],
+                "base64_retries": [],
+                "duplicates": [],
+                "complete_continuous_utf8": true,
+                "continuous_utf8_bytes": 225
+              },
+              "definitions/workflow/ergora-governance-delivery/1.0.0/instructions.md": {
+                "bytes": 355,
+                "sha256": "66eb88ef7aebe40cc3b46a31539b7094ecb41746940efb992d4906fa8491a418",
+                "continuous_utf8_pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 355,
+                    "next_offset": null
+                  }
+                ],
+                "base64_retries": [],
+                "duplicates": [],
+                "complete_continuous_utf8": true,
+                "continuous_utf8_bytes": 355
+              },
+              "definitions/workflow/ergora-structure-review/1.0.0/instructions.md": {
+                "bytes": 163,
+                "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823",
+                "continuous_utf8_pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 163,
+                    "next_offset": null
+                  }
+                ],
+                "base64_retries": [],
+                "duplicates": [],
+                "complete_continuous_utf8": true,
+                "continuous_utf8_bytes": 163
+              }
+            },
+            "failed_native_mcp_calls": 0
+          },
+          {
+            "run_id": "45e92b97f2634bab8e8c8fca453fb8f9",
+            "instance": "root/review/correctness/review",
+            "status": "cancelled",
+            "mode": "task-mcp",
+            "backend": "codex",
+            "model": "gpt-6.1-sol",
+            "input_digest": "2c9a9d22d753673651044f9e986f22ab262d52c9d285cdb162e9b711de3691e0",
+            "prompt_sha256": "324bb482368ac2d4e6557fc435fcb9a385e2662d51b97b384a2eca91a4e720a3",
+            "prompt_bytes": 44904,
+            "task_bytes": 41059,
+            "complete_issue_source_identity": "8fefafa29939861819141cd0d92f7394f86566598cfc80cebe7cc777e7823517",
+            "native_receipt_verified": false,
+            "scope_files": 5,
+            "scope_bytes": 1540,
+            "original_result_sha256": null,
+            "decision": null,
+            "result_echoes_exact_source_marker": false,
+            "native_stream_sha256": "39f5be90889e268a75c6e61eb6747c7ed594f41f5469fb20e39fb20c81b1f4c1",
+            "backend_reported_turn_usage": [],
+            "complete_scope_reads": {
+              "definitions/agent/ergora-correctness-reviewer/1.0.0/instructions.md": {
+                "bytes": 333,
+                "sha256": "60e3789ed195fd8abcbb7895ee2da536e88021ca76f2d3077fc4116364bfbd79",
+                "continuous_utf8_pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 333,
+                    "next_offset": null
+                  }
+                ],
+                "base64_retries": [],
+                "duplicates": [],
+                "complete_continuous_utf8": true,
+                "continuous_utf8_bytes": 333
+              },
+              "definitions/agent/ergora-correctness-reviewer/1.0.0/skills/ergora-correctness-reviewer/SKILL.md": {
+                "bytes": 465,
+                "sha256": "1284f48f7238b5f3be6f422d3bb59373d66a6049e7e1215238acfb832dac8097",
+                "continuous_utf8_pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 465,
+                    "next_offset": null
+                  }
+                ],
+                "base64_retries": [],
+                "duplicates": [],
+                "complete_continuous_utf8": true,
+                "continuous_utf8_bytes": 465
+              },
+              "definitions/workflow/ergora-correctness-review/1.0.0/instructions.md": {
+                "bytes": 162,
+                "sha256": "5f2ccfa00ae1bc8075d318be19c8c0a9dfc8d9e868b3c995ac34da30ba485894",
+                "continuous_utf8_pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 162,
+                    "next_offset": null
+                  }
+                ],
+                "base64_retries": [],
+                "duplicates": [],
+                "complete_continuous_utf8": true,
+                "continuous_utf8_bytes": 162
+              },
+              "definitions/workflow/ergora-delivery-review/1.0.0/instructions.md": {
+                "bytes": 225,
+                "sha256": "83e867dadc6b374bd3791bcf79c87462375fff58a43b73a569d6f7b3c954e377",
+                "continuous_utf8_pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 225,
+                    "next_offset": null
+                  }
+                ],
+                "base64_retries": [],
+                "duplicates": [],
+                "complete_continuous_utf8": true,
+                "continuous_utf8_bytes": 225
+              },
+              "definitions/workflow/ergora-governance-delivery/1.0.0/instructions.md": {
+                "bytes": 355,
+                "sha256": "66eb88ef7aebe40cc3b46a31539b7094ecb41746940efb992d4906fa8491a418",
+                "continuous_utf8_pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 355,
+                    "next_offset": null
+                  }
+                ],
+                "base64_retries": [],
+                "duplicates": [],
+                "complete_continuous_utf8": true,
+                "continuous_utf8_bytes": 355
+              }
+            },
+            "failed_native_mcp_calls": 0
+          },
+          {
+            "run_id": "c300e9bc82204d57bfa7dca691710ecd",
+            "instance": "root/work/boundary-test",
+            "status": "succeeded",
+            "mode": "workspace-task-mcp",
+            "backend": "codex",
+            "model": "gpt-6.1-sol",
+            "input_digest": "d05e6a27dfbeab6c5b518145de7f1953b77722482a8f9d3ce2be9485fc5d022a",
+            "prompt_sha256": "d29b292f57487a865658caa8dfa3b9e192e128795a6a153aafa78405bce66ba2",
+            "prompt_bytes": 17759,
+            "task_bytes": 14548,
+            "complete_issue_source_identity": "8fefafa29939861819141cd0d92f7394f86566598cfc80cebe7cc777e7823517",
+            "native_receipt_verified": true,
+            "scope_files": 4,
+            "scope_bytes": 1331,
+            "original_result_sha256": "bca508156e08e544ca96c0dafed28107057a091de2c5dde7e07a1b83f4781dba",
+            "decision": null,
+            "result_echoes_exact_source_marker": true,
+            "native_stream_sha256": "9c161abfa593959be7500d7fc4bbc07a5cd1f18cb8e2bdf32cf8430ffed82941",
+            "backend_reported_turn_usage": [
+              {
+                "input_tokens": 103970,
+                "cached_input_tokens": 93568,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 2741,
+                "reasoning_output_tokens": 1252
+              }
+            ],
+            "complete_scope_reads": {
+              "definitions/agent/ergora-architecture-test-author/1.0.0/instructions.md": {
+                "bytes": 263,
+                "sha256": "e547a86d6b60640edb044f7556b6d2405f011acedb82d97b59f0d2867a5a5cf6",
+                "continuous_utf8_pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 263,
+                    "next_offset": null
+                  }
+                ],
+                "base64_retries": [],
+                "duplicates": [],
+                "complete_continuous_utf8": true,
+                "continuous_utf8_bytes": 263
+              },
+              "definitions/agent/ergora-architecture-test-author/1.0.0/skills/ergora-architecture-test-author/SKILL.md": {
+                "bytes": 468,
+                "sha256": "7d49dff73b7c6da8a05d34d32319e3697b9ff74d206798369651ff27cbe5127c",
+                "continuous_utf8_pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 468,
+                    "next_offset": null
+                  }
+                ],
+                "base64_retries": [],
+                "duplicates": [],
+                "complete_continuous_utf8": true,
+                "continuous_utf8_bytes": 468
+              },
+              "definitions/workflow/ergora-governance-delivery/1.0.0/instructions.md": {
+                "bytes": 355,
+                "sha256": "66eb88ef7aebe40cc3b46a31539b7094ecb41746940efb992d4906fa8491a418",
+                "continuous_utf8_pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 355,
+                    "next_offset": null
+                  }
+                ],
+                "base64_retries": [],
+                "duplicates": [],
+                "complete_continuous_utf8": true,
+                "continuous_utf8_bytes": 355
+              },
+              "definitions/workflow/ergora-governance-work/1.0.0/instructions.md": {
+                "bytes": 245,
+                "sha256": "2d6bd12d60054bfe71460b4dc0cab3c19f63390361ae459170bd3dec712c94fc",
+                "continuous_utf8_pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 245,
+                    "next_offset": null
+                  }
+                ],
+                "base64_retries": [],
+                "duplicates": [],
+                "complete_continuous_utf8": true,
+                "continuous_utf8_bytes": 245
+              }
+            },
+            "failed_native_mcp_calls": 0
+          },
+          {
+            "run_id": "5d5431fb3dda41d4a99aaa2fd0a24597",
+            "instance": "root/work/knowledge-map",
+            "status": "succeeded",
+            "mode": "workspace-task-mcp",
+            "backend": "codex",
+            "model": "gpt-6.1-sol",
+            "input_digest": "2188dc47cff0894c3bad7f7e4ba2a3b4f39cee4bfbd8785418d70037ac3eb212",
+            "prompt_sha256": "c818f57336b0287549bd6dec8b1e11e575f0a4fdce8e32f2bb5eca116386c49d",
+            "prompt_bytes": 17532,
+            "task_bytes": 14382,
+            "complete_issue_source_identity": "8fefafa29939861819141cd0d92f7394f86566598cfc80cebe7cc777e7823517",
+            "native_receipt_verified": true,
+            "scope_files": 4,
+            "scope_bytes": 1340,
+            "original_result_sha256": "70481942514697bc35c7ccc8e3d1ac12a230da89c854e3a600ee145eb062045e",
+            "decision": null,
+            "result_echoes_exact_source_marker": true,
+            "native_stream_sha256": "aebf4950bd84906c3da5ad726cd028c7d6b4f0d0bf8096e70cca1bb8574f3f8f",
+            "backend_reported_turn_usage": [
+              {
+                "input_tokens": 140714,
+                "cached_input_tokens": 120320,
+                "cache_write_input_tokens": 0,
+                "output_tokens": 2202,
+                "reasoning_output_tokens": 511
+              }
+            ],
+            "complete_scope_reads": {
+              "definitions/agent/ergora-governance-mapper/1.0.0/instructions.md": {
+                "bytes": 310,
+                "sha256": "ef4b95e41f5ee2217b1db290d2cb17c7bbd67d0656d835978cfe24e648326fab",
+                "continuous_utf8_pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 310,
+                    "next_offset": null
+                  }
+                ],
+                "base64_retries": [],
+                "duplicates": [],
+                "complete_continuous_utf8": true,
+                "continuous_utf8_bytes": 310
+              },
+              "definitions/agent/ergora-governance-mapper/1.0.0/skills/ergora-governance-mapper/SKILL.md": {
+                "bytes": 430,
+                "sha256": "e302ba8abfb92b1e16361a142926bca32de75b5af0d963561f715142cfa9ddaa",
+                "continuous_utf8_pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 430,
+                    "next_offset": null
+                  }
+                ],
+                "base64_retries": [],
+                "duplicates": [],
+                "complete_continuous_utf8": true,
+                "continuous_utf8_bytes": 430
+              },
+              "definitions/workflow/ergora-governance-delivery/1.0.0/instructions.md": {
+                "bytes": 355,
+                "sha256": "66eb88ef7aebe40cc3b46a31539b7094ecb41746940efb992d4906fa8491a418",
+                "continuous_utf8_pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 355,
+                    "next_offset": null
+                  }
+                ],
+                "base64_retries": [],
+                "duplicates": [],
+                "complete_continuous_utf8": true,
+                "continuous_utf8_bytes": 355
+              },
+              "definitions/workflow/ergora-governance-work/1.0.0/instructions.md": {
+                "bytes": 245,
+                "sha256": "2d6bd12d60054bfe71460b4dc0cab3c19f63390361ae459170bd3dec712c94fc",
+                "continuous_utf8_pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 245,
+                    "next_offset": null
+                  }
+                ],
+                "base64_retries": [],
+                "duplicates": [],
+                "complete_continuous_utf8": true,
+                "continuous_utf8_bytes": 245
+              }
+            },
+            "failed_native_mcp_calls": 2
+          }
+        ],
+        "audit_sha256": "3b96fcfe63664d25c95483db7624414a580cbaca444371962fde1ba7825c921a"
+      }
+    }
+  },
+  "own_review": "2026-11-11-source-task-admission-self-review.json",
+  "scope": "Deterministic r1 is not actual inference or final-r2 behavior. r2 25 checks and separate legacy boundary are not a complete-r2-suite claim. Failed actual journeys retain original outcomes, model decisions and separate original-ID reconciliation; no quality or cross-backend independence inference. Credentials external; public projection omits private runtime paths. Final-r2 new task with supplied fixture ownership evidence reached REVIEW_READY and exported exact candidate locally; final independent review and exact delivery remain separate.",
+  "positive_actual_model_journey": {
+    "journey_seconds": 296.77511832211167,
+    "command": {
+      "at": "2026-11-11T10:11:11.488312+00:00",
+      "exit": 0,
+      "seconds": 309.87241939501837,
+      "preserved_original_files": 2356,
+      "preserved_originals_equal": true
+    },
+    "record": {
+      "task_id": "source-repository-governance-task-r4",
+      "writers": [
+        "root/work/knowledge-map",
+        "root/work/boundary-test"
+      ],
+      "paths": {
+        "knowledge-map": "docs/governance/map.md",
+        "boundary-test": "tests/architecture/test_dependencies.py"
+      },
+      "root": "ergora-governance-delivery",
+      "manifest_digest": "d90d8b82de570216e149ae9cbaef4c78490f557e23f5fe2ea22839b66e38ea5a",
+      "run_id": "01a1ca12-9887-7dcb-a7e9-473466c5a600",
+      "stage_inputs": {
+        "review:root/review/correctness/review": {
+          "task_bytes": 42351,
+          "prompt_bytes": 46196,
+          "prompt_sha256": "cef10786520dcdb2f9b1d59b0f02297d8444cd3b3d362adcba670a9d107a2109",
+          "source_artifacts": {
+            "root/work/boundary-test": [
+              "change-summary",
+              "test-results"
+            ],
+            "root/work/knowledge-map": [
+              "change-summary",
+              "test-results"
+            ]
+          }
+        },
+        "review:root/review/structure/review": {
+          "task_bytes": 42349,
+          "prompt_bytes": 46238,
+          "prompt_sha256": "7c8f2ff109523f4c0e6a359fc95c5c18e37f8fedf0c23a00a1d2e21ba3679f8b",
+          "source_artifacts": {
+            "root/work/boundary-test": [
+              "change-summary",
+              "test-results"
+            ],
+            "root/work/knowledge-map": [
+              "change-summary",
+              "test-results"
+            ]
+          }
+        },
+        "work:boundary-test": {
+          "task_bytes": 15097,
+          "prompt_bytes": 18308,
+          "prompt_sha256": "d08ff233e905b71e710e64e1bdeb79ae949bd6c3c5ba1116fca3a9e7564c8eb0",
+          "source_artifacts": {}
+        },
+        "review:root/review/test-value/review": {
+          "task_bytes": 42350,
+          "prompt_bytes": 46246,
+          "prompt_sha256": "abbfec77f6163fbacba49268179bfafc77120796eec4b01aaac4dfa152ec05a1",
+          "source_artifacts": {
+            "root/work/boundary-test": [
+              "change-summary",
+              "test-results"
+            ],
+            "root/work/knowledge-map": [
+              "change-summary",
+              "test-results"
+            ]
+          }
+        },
+        "work:knowledge-map": {
+          "task_bytes": 15107,
+          "prompt_bytes": 18257,
+          "prompt_sha256": "b0c07ad782f50839a7482b424891e6cb00e4bf657dcbd82b4d0af118fa09359d",
+          "source_artifacts": {}
+        }
+      },
+      "outcome": "REVIEW_READY",
+      "candidate_sha": "51410f67017b9bac5083bb7d9386bafb6ea31f52",
+      "plan_sha256": "2ea36f2461e516437fbf96cac866ada059710bbbf07e5c4d36c8cbb509d85f59",
+      "jobs": {
+        "review:root/review/correctness/review": "SUCCEEDED",
+        "review:root/review/structure/review": "SUCCEEDED",
+        "work:boundary-test": "SUCCEEDED",
+        "plan": "SUCCEEDED",
+        "inventory": "SUCCEEDED",
+        "verify": "SUCCEEDED",
+        "integrate": "SUCCEEDED",
+        "review:root/review/test-value/review": "SUCCEEDED",
+        "work:knowledge-map": "SUCCEEDED"
+      },
+      "actual_model_native_calls": [
+        {
+          "run_id": "081388dacc1f4c8db2ecc1390c810732",
+          "bytes": 14405,
+          "native_stream_sha256": "b64e0f1a04a4fea6829958072adde7b2ebb0714ea631dcd8da34ad4e1e6288c0",
+          "scope": "Actual model JSONL; complete delivery and source consumption audit pending separately."
+        },
+        {
+          "run_id": "b46bb40b91284d06b4099c15f1363056",
+          "bytes": 13623,
+          "native_stream_sha256": "da14bfd9532f8ed1131bd13021cbd8242ecd2fc7edc277e9aff1d1cde64594f5",
+          "scope": "Actual model JSONL; complete delivery and source consumption audit pending separately."
+        },
+        {
+          "run_id": "f31000a4e9114152b210a18024c7c18a",
+          "bytes": 12980,
+          "native_stream_sha256": "6e5171c77be6c7828c5ea9ea1982819a597a38702010ea5e34799425b07160d5",
+          "scope": "Actual model JSONL; complete delivery and source consumption audit pending separately."
+        },
+        {
+          "run_id": "c6a6dc86ba4e44d98b946e21a5ea0fbe",
+          "bytes": 24306,
+          "native_stream_sha256": "5a3fd7f3d4b3d47e9908f2f37b05d533c258a0add6db1c584d66023411c80b4b",
+          "scope": "Actual model JSONL; complete delivery and source consumption audit pending separately."
+        },
+        {
+          "run_id": "f4a42bf69bdd49e98579d20a5cc4a0c4",
+          "bytes": 21773,
+          "native_stream_sha256": "09794b74dd7fad937eb6473f0acbd7f29fe7e69cca58d01b8ea539b9d01cc9b2",
+          "scope": "Actual model JSONL; complete delivery and source consumption audit pending separately."
+        }
+      ],
+      "history": {
+        "sha256": "876cebdf4fe8b368c21e256303e6d82a3395ae56fdf250a2d41f62e0e569f55f",
+        "events": 386,
+        "replay": "passed"
+      },
+      "handoff_sha256": "f162f2afea1b0bfcbb6fc83ce17513796ed344845543c13c0a797fc0f5e433d4"
+    },
+    "native_calls_audit": {
+      "all_scope_continuous_utf8_through_null": true,
+      "calls": [
+        {
+          "run_id": "081388dacc1f4c8db2ecc1390c810732",
+          "instance": "root/review/structure/review",
+          "status": "succeeded",
+          "mode": "task-mcp",
+          "backend": "codex",
+          "model": "gpt-6.1-sol",
+          "input_digest": "6090fbb034fef5f4c163ba3bb054025b383e62ec0fd5b599e53972dc2cb94f7f",
+          "prompt_sha256": "7c8f2ff109523f4c0e6a359fc95c5c18e37f8fedf0c23a00a1d2e21ba3679f8b",
+          "prompt_bytes": 46238,
+          "task_bytes": 42349,
+          "complete_issue_source_identity": "4a549cef628ae6ad0baddd83b40319862d90d312031a2e4733e3b6ea701c75a3",
+          "native_receipt_verified": true,
+          "scope_files": 5,
+          "scope_bytes": 1618,
+          "original_result_sha256": "e154599c35d9f766d2a90e5a7147af8b33558b4f896d0ca66618a18052a64b5e",
+          "decision": "approve",
+          "result_echoes_exact_source_marker": true,
+          "native_stream_sha256": "b64e0f1a04a4fea6829958072adde7b2ebb0714ea631dcd8da34ad4e1e6288c0",
+          "backend_reported_turn_usage": [
+            {
+              "input_tokens": 122731,
+              "cached_input_tokens": 95744,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 1563,
+              "reasoning_output_tokens": 605
+            }
+          ],
+          "complete_scope_reads": {
+            "definitions/agent/ergora-structure-reviewer/1.0.0/instructions.md": {
+              "bytes": 354,
+              "sha256": "3cc9c450f0c03da5ea4a1434ac6182d50df6a4985cffdee2a59fe9fe477c6b43",
+              "continuous_utf8_pages": [
+                {
+                  "offset": 0,
+                  "bytes": 354,
+                  "next_offset": null
+                }
+              ],
+              "base64_retries": [],
+              "duplicates": [],
+              "complete_continuous_utf8": true,
+              "continuous_utf8_bytes": 354
+            },
+            "definitions/agent/ergora-structure-reviewer/1.0.0/skills/ergora-structure-reviewer/SKILL.md": {
+              "bytes": 521,
+              "sha256": "d6b69570bcca408d3d06ca5adf1cb44a4a9e43c2901f05c38a68c096f23a4ac8",
+              "continuous_utf8_pages": [
+                {
+                  "offset": 0,
+                  "bytes": 521,
+                  "next_offset": null
+                }
+              ],
+              "base64_retries": [],
+              "duplicates": [],
+              "complete_continuous_utf8": true,
+              "continuous_utf8_bytes": 521
+            },
+            "definitions/workflow/ergora-delivery-review/1.0.0/instructions.md": {
+              "bytes": 225,
+              "sha256": "83e867dadc6b374bd3791bcf79c87462375fff58a43b73a569d6f7b3c954e377",
+              "continuous_utf8_pages": [
+                {
+                  "offset": 0,
+                  "bytes": 225,
+                  "next_offset": null
+                }
+              ],
+              "base64_retries": [],
+              "duplicates": [],
+              "complete_continuous_utf8": true,
+              "continuous_utf8_bytes": 225
+            },
+            "definitions/workflow/ergora-governance-delivery/1.0.0/instructions.md": {
+              "bytes": 355,
+              "sha256": "66eb88ef7aebe40cc3b46a31539b7094ecb41746940efb992d4906fa8491a418",
+              "continuous_utf8_pages": [
+                {
+                  "offset": 0,
+                  "bytes": 355,
+                  "next_offset": null
+                }
+              ],
+              "base64_retries": [],
+              "duplicates": [],
+              "complete_continuous_utf8": true,
+              "continuous_utf8_bytes": 355
+            },
+            "definitions/workflow/ergora-structure-review/1.0.0/instructions.md": {
+              "bytes": 163,
+              "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823",
+              "continuous_utf8_pages": [
+                {
+                  "offset": 0,
+                  "bytes": 163,
+                  "next_offset": null
+                }
+              ],
+              "base64_retries": [],
+              "duplicates": [],
+              "complete_continuous_utf8": true,
+              "continuous_utf8_bytes": 163
+            }
+          },
+          "failed_native_mcp_calls": 0
+        },
+        {
+          "run_id": "b46bb40b91284d06b4099c15f1363056",
+          "instance": "root/review/test-value/review",
+          "status": "succeeded",
+          "mode": "task-mcp",
+          "backend": "codex",
+          "model": "gpt-6.1-sol",
+          "input_digest": "a96299c33db76f06f35f40ba20047cff291609d9031fe48139612f03db0642f8",
+          "prompt_sha256": "abbfec77f6163fbacba49268179bfafc77120796eec4b01aaac4dfa152ec05a1",
+          "prompt_bytes": 46246,
+          "task_bytes": 42350,
+          "complete_issue_source_identity": "4a549cef628ae6ad0baddd83b40319862d90d312031a2e4733e3b6ea701c75a3",
+          "native_receipt_verified": true,
+          "scope_files": 5,
+          "scope_bytes": 1608,
+          "original_result_sha256": "5f8b6e7b296c24ea188a56d2816569d81c496a8909e4964c849c8642a73955d5",
+          "decision": "approve",
+          "result_echoes_exact_source_marker": true,
+          "native_stream_sha256": "da14bfd9532f8ed1131bd13021cbd8242ecd2fc7edc277e9aff1d1cde64594f5",
+          "backend_reported_turn_usage": [
+            {
+              "input_tokens": 96015,
+              "cached_input_tokens": 70016,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 1100,
+              "reasoning_output_tokens": 340
+            }
+          ],
+          "complete_scope_reads": {
+            "definitions/agent/ergora-test-value-reviewer/1.0.0/instructions.md": {
+              "bytes": 340,
+              "sha256": "76c7d82049d325757f516c832a07383de11e84fc94313888df963b19f7361ab8",
+              "continuous_utf8_pages": [
+                {
+                  "offset": 0,
+                  "bytes": 340,
+                  "next_offset": null
+                }
+              ],
+              "base64_retries": [],
+              "duplicates": [],
+              "complete_continuous_utf8": true,
+              "continuous_utf8_bytes": 340
+            },
+            "definitions/agent/ergora-test-value-reviewer/1.0.0/skills/ergora-test-value-reviewer/SKILL.md": {
+              "bytes": 513,
+              "sha256": "b85dbd610e094340ae6edc7386f8233441f048bd41c2b00ad425388cfba0d6cb",
+              "continuous_utf8_pages": [
+                {
+                  "offset": 0,
+                  "bytes": 513,
+                  "next_offset": null
+                }
+              ],
+              "base64_retries": [],
+              "duplicates": [],
+              "complete_continuous_utf8": true,
+              "continuous_utf8_bytes": 513
+            },
+            "definitions/workflow/ergora-delivery-review/1.0.0/instructions.md": {
+              "bytes": 225,
+              "sha256": "83e867dadc6b374bd3791bcf79c87462375fff58a43b73a569d6f7b3c954e377",
+              "continuous_utf8_pages": [
+                {
+                  "offset": 0,
+                  "bytes": 225,
+                  "next_offset": null
+                }
+              ],
+              "base64_retries": [],
+              "duplicates": [],
+              "complete_continuous_utf8": true,
+              "continuous_utf8_bytes": 225
+            },
+            "definitions/workflow/ergora-governance-delivery/1.0.0/instructions.md": {
+              "bytes": 355,
+              "sha256": "66eb88ef7aebe40cc3b46a31539b7094ecb41746940efb992d4906fa8491a418",
+              "continuous_utf8_pages": [
+                {
+                  "offset": 0,
+                  "bytes": 355,
+                  "next_offset": null
+                }
+              ],
+              "base64_retries": [],
+              "duplicates": [],
+              "complete_continuous_utf8": true,
+              "continuous_utf8_bytes": 355
+            },
+            "definitions/workflow/ergora-test-value-review/1.0.0/instructions.md": {
+              "bytes": 175,
+              "sha256": "d6ce532f24b70ce1bf2b26c37f07b4901e8a00ce6fc4dff7d269cabd57db1a73",
+              "continuous_utf8_pages": [
+                {
+                  "offset": 0,
+                  "bytes": 175,
+                  "next_offset": null
+                }
+              ],
+              "base64_retries": [],
+              "duplicates": [],
+              "complete_continuous_utf8": true,
+              "continuous_utf8_bytes": 175
+            }
+          },
+          "failed_native_mcp_calls": 0
+        },
+        {
+          "run_id": "f31000a4e9114152b210a18024c7c18a",
+          "instance": "root/review/correctness/review",
+          "status": "succeeded",
+          "mode": "task-mcp",
+          "backend": "codex",
+          "model": "gpt-6.1-sol",
+          "input_digest": "f3bbb37c8687ec6a48a816182ee0e05e70dc6e0c46bd029b85854f178d656047",
+          "prompt_sha256": "cef10786520dcdb2f9b1d59b0f02297d8444cd3b3d362adcba670a9d107a2109",
+          "prompt_bytes": 46196,
+          "task_bytes": 42351,
+          "complete_issue_source_identity": "4a549cef628ae6ad0baddd83b40319862d90d312031a2e4733e3b6ea701c75a3",
+          "native_receipt_verified": true,
+          "scope_files": 5,
+          "scope_bytes": 1540,
+          "original_result_sha256": "49cb2c5fc1f2e3add3349e735d729794af853428e350fb47094d6decdc49264b",
+          "decision": "approve",
+          "result_echoes_exact_source_marker": true,
+          "native_stream_sha256": "6e5171c77be6c7828c5ea9ea1982819a597a38702010ea5e34799425b07160d5",
+          "backend_reported_turn_usage": [
+            {
+              "input_tokens": 95964,
+              "cached_input_tokens": 70016,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 1326,
+              "reasoning_output_tokens": 659
+            }
+          ],
+          "complete_scope_reads": {
+            "definitions/agent/ergora-correctness-reviewer/1.0.0/instructions.md": {
+              "bytes": 333,
+              "sha256": "60e3789ed195fd8abcbb7895ee2da536e88021ca76f2d3077fc4116364bfbd79",
+              "continuous_utf8_pages": [
+                {
+                  "offset": 0,
+                  "bytes": 333,
+                  "next_offset": null
+                }
+              ],
+              "base64_retries": [],
+              "duplicates": [],
+              "complete_continuous_utf8": true,
+              "continuous_utf8_bytes": 333
+            },
+            "definitions/agent/ergora-correctness-reviewer/1.0.0/skills/ergora-correctness-reviewer/SKILL.md": {
+              "bytes": 465,
+              "sha256": "1284f48f7238b5f3be6f422d3bb59373d66a6049e7e1215238acfb832dac8097",
+              "continuous_utf8_pages": [
+                {
+                  "offset": 0,
+                  "bytes": 465,
+                  "next_offset": null
+                }
+              ],
+              "base64_retries": [],
+              "duplicates": [],
+              "complete_continuous_utf8": true,
+              "continuous_utf8_bytes": 465
+            },
+            "definitions/workflow/ergora-correctness-review/1.0.0/instructions.md": {
+              "bytes": 162,
+              "sha256": "5f2ccfa00ae1bc8075d318be19c8c0a9dfc8d9e868b3c995ac34da30ba485894",
+              "continuous_utf8_pages": [
+                {
+                  "offset": 0,
+                  "bytes": 162,
+                  "next_offset": null
+                }
+              ],
+              "base64_retries": [],
+              "duplicates": [],
+              "complete_continuous_utf8": true,
+              "continuous_utf8_bytes": 162
+            },
+            "definitions/workflow/ergora-delivery-review/1.0.0/instructions.md": {
+              "bytes": 225,
+              "sha256": "83e867dadc6b374bd3791bcf79c87462375fff58a43b73a569d6f7b3c954e377",
+              "continuous_utf8_pages": [
+                {
+                  "offset": 0,
+                  "bytes": 225,
+                  "next_offset": null
+                }
+              ],
+              "base64_retries": [],
+              "duplicates": [],
+              "complete_continuous_utf8": true,
+              "continuous_utf8_bytes": 225
+            },
+            "definitions/workflow/ergora-governance-delivery/1.0.0/instructions.md": {
+              "bytes": 355,
+              "sha256": "66eb88ef7aebe40cc3b46a31539b7094ecb41746940efb992d4906fa8491a418",
+              "continuous_utf8_pages": [
+                {
+                  "offset": 0,
+                  "bytes": 355,
+                  "next_offset": null
+                }
+              ],
+              "base64_retries": [],
+              "duplicates": [],
+              "complete_continuous_utf8": true,
+              "continuous_utf8_bytes": 355
+            }
+          },
+          "failed_native_mcp_calls": 0
+        },
+        {
+          "run_id": "c6a6dc86ba4e44d98b946e21a5ea0fbe",
+          "instance": "root/work/knowledge-map",
+          "status": "succeeded",
+          "mode": "workspace-task-mcp",
+          "backend": "codex",
+          "model": "gpt-6.1-sol",
+          "input_digest": "7af037ea0436cb79476723ae05ce0ab2ff280c0c90298e29d691834e6330aafe",
+          "prompt_sha256": "b0c07ad782f50839a7482b424891e6cb00e4bf657dcbd82b4d0af118fa09359d",
+          "prompt_bytes": 18257,
+          "task_bytes": 15107,
+          "complete_issue_source_identity": "4a549cef628ae6ad0baddd83b40319862d90d312031a2e4733e3b6ea701c75a3",
+          "native_receipt_verified": true,
+          "scope_files": 4,
+          "scope_bytes": 1340,
+          "original_result_sha256": "c15aa09c22452044c3ec14dc2a03bc13038626a783a04028434504c02bd49ab7",
+          "decision": null,
+          "result_echoes_exact_source_marker": true,
+          "native_stream_sha256": "5a3fd7f3d4b3d47e9908f2f37b05d533c258a0add6db1c584d66023411c80b4b",
+          "backend_reported_turn_usage": [
+            {
+              "input_tokens": 146665,
+              "cached_input_tokens": 125568,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 2187,
+              "reasoning_output_tokens": 512
+            }
+          ],
+          "complete_scope_reads": {
+            "definitions/agent/ergora-governance-mapper/1.0.0/instructions.md": {
+              "bytes": 310,
+              "sha256": "ef4b95e41f5ee2217b1db290d2cb17c7bbd67d0656d835978cfe24e648326fab",
+              "continuous_utf8_pages": [
+                {
+                  "offset": 0,
+                  "bytes": 310,
+                  "next_offset": null
+                }
+              ],
+              "base64_retries": [],
+              "duplicates": [],
+              "complete_continuous_utf8": true,
+              "continuous_utf8_bytes": 310
+            },
+            "definitions/agent/ergora-governance-mapper/1.0.0/skills/ergora-governance-mapper/SKILL.md": {
+              "bytes": 430,
+              "sha256": "e302ba8abfb92b1e16361a142926bca32de75b5af0d963561f715142cfa9ddaa",
+              "continuous_utf8_pages": [
+                {
+                  "offset": 0,
+                  "bytes": 430,
+                  "next_offset": null
+                }
+              ],
+              "base64_retries": [],
+              "duplicates": [],
+              "complete_continuous_utf8": true,
+              "continuous_utf8_bytes": 430
+            },
+            "definitions/workflow/ergora-governance-delivery/1.0.0/instructions.md": {
+              "bytes": 355,
+              "sha256": "66eb88ef7aebe40cc3b46a31539b7094ecb41746940efb992d4906fa8491a418",
+              "continuous_utf8_pages": [
+                {
+                  "offset": 0,
+                  "bytes": 355,
+                  "next_offset": null
+                }
+              ],
+              "base64_retries": [],
+              "duplicates": [],
+              "complete_continuous_utf8": true,
+              "continuous_utf8_bytes": 355
+            },
+            "definitions/workflow/ergora-governance-work/1.0.0/instructions.md": {
+              "bytes": 245,
+              "sha256": "2d6bd12d60054bfe71460b4dc0cab3c19f63390361ae459170bd3dec712c94fc",
+              "continuous_utf8_pages": [
+                {
+                  "offset": 0,
+                  "bytes": 245,
+                  "next_offset": null
+                }
+              ],
+              "base64_retries": [],
+              "duplicates": [],
+              "complete_continuous_utf8": true,
+              "continuous_utf8_bytes": 245
+            }
+          },
+          "failed_native_mcp_calls": 3
+        },
+        {
+          "run_id": "f4a42bf69bdd49e98579d20a5cc4a0c4",
+          "instance": "root/work/boundary-test",
+          "status": "succeeded",
+          "mode": "workspace-task-mcp",
+          "backend": "codex",
+          "model": "gpt-6.1-sol",
+          "input_digest": "8d54538cd5db7f33b4d2c80b2afef23ae24e962147223a87af0af2b0232355b0",
+          "prompt_sha256": "d08ff233e905b71e710e64e1bdeb79ae949bd6c3c5ba1116fca3a9e7564c8eb0",
+          "prompt_bytes": 18308,
+          "task_bytes": 15097,
+          "complete_issue_source_identity": "4a549cef628ae6ad0baddd83b40319862d90d312031a2e4733e3b6ea701c75a3",
+          "native_receipt_verified": true,
+          "scope_files": 4,
+          "scope_bytes": 1331,
+          "original_result_sha256": "a20fae603c34cb55abd719490494e4b0979fd40703d9dcc2be0defc1d1e5a30f",
+          "decision": null,
+          "result_echoes_exact_source_marker": true,
+          "native_stream_sha256": "09794b74dd7fad937eb6473f0acbd7f29fe7e69cca58d01b8ea539b9d01cc9b2",
+          "backend_reported_turn_usage": [
+            {
+              "input_tokens": 184257,
+              "cached_input_tokens": 165888,
+              "cache_write_input_tokens": 0,
+              "output_tokens": 3561,
+              "reasoning_output_tokens": 1486
+            }
+          ],
+          "complete_scope_reads": {
+            "definitions/agent/ergora-architecture-test-author/1.0.0/instructions.md": {
+              "bytes": 263,
+              "sha256": "e547a86d6b60640edb044f7556b6d2405f011acedb82d97b59f0d2867a5a5cf6",
+              "continuous_utf8_pages": [
+                {
+                  "offset": 0,
+                  "bytes": 263,
+                  "next_offset": null
+                }
+              ],
+              "base64_retries": [],
+              "duplicates": [],
+              "complete_continuous_utf8": true,
+              "continuous_utf8_bytes": 263
+            },
+            "definitions/agent/ergora-architecture-test-author/1.0.0/skills/ergora-architecture-test-author/SKILL.md": {
+              "bytes": 468,
+              "sha256": "7d49dff73b7c6da8a05d34d32319e3697b9ff74d206798369651ff27cbe5127c",
+              "continuous_utf8_pages": [
+                {
+                  "offset": 0,
+                  "bytes": 468,
+                  "next_offset": null
+                }
+              ],
+              "base64_retries": [],
+              "duplicates": [],
+              "complete_continuous_utf8": true,
+              "continuous_utf8_bytes": 468
+            },
+            "definitions/workflow/ergora-governance-delivery/1.0.0/instructions.md": {
+              "bytes": 355,
+              "sha256": "66eb88ef7aebe40cc3b46a31539b7094ecb41746940efb992d4906fa8491a418",
+              "continuous_utf8_pages": [
+                {
+                  "offset": 0,
+                  "bytes": 355,
+                  "next_offset": null
+                }
+              ],
+              "base64_retries": [],
+              "duplicates": [],
+              "complete_continuous_utf8": true,
+              "continuous_utf8_bytes": 355
+            },
+            "definitions/workflow/ergora-governance-work/1.0.0/instructions.md": {
+              "bytes": 245,
+              "sha256": "2d6bd12d60054bfe71460b4dc0cab3c19f63390361ae459170bd3dec712c94fc",
+              "continuous_utf8_pages": [
+                {
+                  "offset": 0,
+                  "bytes": 245,
+                  "next_offset": null
+                }
+              ],
+              "base64_retries": [],
+              "duplicates": [],
+              "complete_continuous_utf8": true,
+              "continuous_utf8_bytes": 245
+            }
+          },
+          "failed_native_mcp_calls": 1
+        }
+      ],
+      "audit_sha256": "7cc37aded22c641b79960022419556d36273ec6461fbd1cf39258372733fc500"
+    },
+    "observed_processes": 87,
+    "surviving_observed_processes": 0,
+    "export": {
+      "at": "2026-11-11T10:14:26.735055+00:00",
+      "run_id": "01a1ca12-9887-7dcb-a7e9-473466c5a600",
+      "export_status": "exported",
+      "branch": "agent/source-repository-governance-task-r4",
+      "candidate_sha": "51410f67017b9bac5083bb7d9386bafb6ea31f52",
+      "original_head_unchanged": true,
+      "checked_out": false,
+      "merged": false,
+      "original_outcome_preserved": true,
+      "history": {
+        "events": 386,
+        "sha256": "876cebdf4fe8b368c21e256303e6d82a3395ae56fdf250a2d41f62e0e569f55f",
+        "replay": "passed"
+      },
+      "handoff_sha256": "f162f2afea1b0bfcbb6fc83ce17513796ed344845543c13c0a797fc0f5e433d4",
+      "jobs": {
+        "review:root/review/correctness/review": "SUCCEEDED",
+        "review:root/review/structure/review": "SUCCEEDED",
+        "work:boundary-test": "SUCCEEDED",
+        "plan": "SUCCEEDED",
+        "inventory": "SUCCEEDED",
+        "verify": "SUCCEEDED",
+        "integrate": "SUCCEEDED",
+        "review:root/review/test-value/review": "SUCCEEDED",
+        "work:knowledge-map": "SUCCEEDED"
+      },
+      "ports_closed": true,
+      "seconds": 18.127579293679446,
+      "scope": "Original successful run exported locally, exact branch and unchanged HEAD checked, handoff/replayed with Temporal only. No worker, executor, model restart, merge, remote push or outcome rewrite.",
+      "lease_released": true
+    },
+    "export_observed_processes": 2,
+    "export_surviving_observed_processes": 0,
+    "scope": "Positive installed final-r2 hybrid: deterministic inspector/planner protocol; actual Codex two work leaves and three independent-context reviewer leaves; actual trusted checks and candidate-bound approval. Operator-supplied fixture owner resolves earlier missing input; original failed attempts unchanged. No distinct model-backend, real tracker write, GPU or production-quality claim."
+  }
+}
