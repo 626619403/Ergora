@@ -1,0 +1,718 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Candidate review context v1",
+  "$defs": {
+    "tracker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "api_url",
+        "project"
+      ],
+      "properties": {
+        "provider": {
+          "enum": [
+            "github",
+            "gitlab"
+          ]
+        },
+        "api_url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "project": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "provider",
+        "api_url",
+        "project",
+        "issue_id"
+      ],
+      "properties": {
+        "provider": {
+          "enum": [
+            "github",
+            "gitlab"
+          ]
+        },
+        "api_url": {
+          "type": "string",
+          "minLength": 1
+        },
+        "project": {
+          "type": "string",
+          "minLength": 1
+        },
+        "issue_id": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]{0,19}$"
+        }
+      }
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "native_id",
+        "node_id",
+        "project"
+      ],
+      "properties": {
+        "native_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "node_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "project": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "creation_sha256",
+        "compiled_sha256",
+        "request_sha256",
+        "profile_sha256",
+        "export_intent_sha256",
+        "export_facts_sha256",
+        "id",
+        "run_id",
+        "candidate_sha",
+        "branch"
+      ],
+      "properties": {
+        "creation_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "compiled_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "request_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "profile_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "export_intent_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "export_facts_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "candidate_sha": {
+          "type": "string",
+          "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "branch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ref",
+        "sha",
+        "resolution",
+        "observed_at",
+        "http_status",
+        "response_sha256"
+      ],
+      "properties": {
+        "ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha": {
+          "type": "string",
+          "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+        },
+        "resolution": {
+          "const": "resolved"
+        },
+        "observed_at": {
+          "type": "string",
+          "minLength": 1
+        },
+        "http_status": {
+          "const": 200
+        },
+        "response_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "review_request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "source",
+        "repository",
+        "review",
+        "response",
+        "context_only"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 1
+        },
+        "source": {
+          "$ref": "#/$defs/tracker"
+        },
+        "repository": {
+          "$ref": "#/$defs/repository"
+        },
+        "review": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "number",
+            "native_id",
+            "node_id",
+            "author_id",
+            "title",
+            "body",
+            "state",
+            "draft",
+            "merged",
+            "web_url",
+            "created_at",
+            "updated_at",
+            "head",
+            "base",
+            "diff_refs"
+          ],
+          "properties": {
+            "kind": {
+              "enum": [
+                "pull_request",
+                "merge_request"
+              ]
+            },
+            "number": {
+              "type": "string",
+              "pattern": "^[1-9][0-9]{0,19}$"
+            },
+            "native_id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "node_id": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "minLength": 1
+            },
+            "author_id": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "title": {
+              "type": "string"
+            },
+            "body": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "state": {
+              "enum": [
+                "open",
+                "opened",
+                "closed",
+                "merged"
+              ]
+            },
+            "draft": {
+              "type": "boolean"
+            },
+            "merged": {
+              "type": [
+                "boolean",
+                "null"
+              ]
+            },
+            "web_url": {
+              "type": "string",
+              "pattern": "^https?://"
+            },
+            "created_at": {
+              "type": "string",
+              "minLength": 1
+            },
+            "updated_at": {
+              "type": "string",
+              "minLength": 1
+            },
+            "head": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "branch",
+                "sha"
+              ],
+              "properties": {
+                "branch": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "sha": {
+                  "type": "string",
+                  "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+                }
+              }
+            },
+            "base": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "branch",
+                "response_sha"
+              ],
+              "properties": {
+                "branch": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "response_sha": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              }
+            },
+            "diff_refs": {
+              "anyOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "type": "object",
+                  "maxProperties": 0
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "base_sha",
+                    "head_sha",
+                    "start_sha"
+                  ],
+                  "properties": {
+                    "base_sha": {
+                      "type": "string",
+                      "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+                    },
+                    "head_sha": {
+                      "type": "string",
+                      "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+                    },
+                    "start_sha": {
+                      "type": "string",
+                      "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "response": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "observed_at",
+            "http_status",
+            "response_sha256",
+            "request_url"
+          ],
+          "properties": {
+            "observed_at": {
+              "type": "string",
+              "minLength": 1
+            },
+            "http_status": {
+              "const": 200
+            },
+            "response_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "request_url": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "context_only": {
+          "const": true
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "source": {
+                "properties": {
+                  "provider": {
+                    "const": "github"
+                  }
+                }
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "repository": {
+                "properties": {
+                  "node_id": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              },
+              "review": {
+                "properties": {
+                  "kind": {
+                    "const": "pull_request"
+                  },
+                  "node_id": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "state": {
+                    "enum": [
+                      "open",
+                      "closed"
+                    ]
+                  },
+                  "merged": {
+                    "type": "boolean"
+                  },
+                  "base": {
+                    "properties": {
+                      "response_sha": {
+                        "type": "string",
+                        "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+                      }
+                    }
+                  },
+                  "diff_refs": {
+                    "type": "null"
+                  }
+                }
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "repository": {
+                "properties": {
+                  "node_id": {
+                    "type": "null"
+                  }
+                }
+              },
+              "review": {
+                "properties": {
+                  "kind": {
+                    "const": "merge_request"
+                  },
+                  "node_id": {
+                    "type": "null"
+                  },
+                  "state": {
+                    "enum": [
+                      "opened",
+                      "closed",
+                      "merged"
+                    ]
+                  },
+                  "merged": {
+                    "type": "null"
+                  },
+                  "base": {
+                    "properties": {
+                      "response_sha": {
+                        "type": "null"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "kind",
+    "project",
+    "configuration_sha256",
+    "snapshot_sha256",
+    "source",
+    "source_check",
+    "task",
+    "repository",
+    "local",
+    "head",
+    "base",
+    "comparisons",
+    "review_request",
+    "reason",
+    "linked_at",
+    "relationship",
+    "context_only",
+    "execution_authorized",
+    "proves_original_attempt"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "kind": {
+      "const": "candidate-review-context"
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "revision"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "configuration_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "snapshot_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "source": {
+      "$ref": "#/$defs/source"
+    },
+    "source_check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "native_id",
+        "response_sha256",
+        "observed_at"
+      ],
+      "properties": {
+        "native_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "response_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "observed_at": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "task": {
+      "$ref": "#/$defs/task"
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "native_id",
+        "node_id",
+        "project",
+        "observed_at",
+        "http_status",
+        "response_sha256"
+      ],
+      "properties": {
+        "native_id": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "node_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "minLength": 1
+        },
+        "project": {
+          "type": "string",
+          "minLength": 1
+        },
+        "observed_at": {
+          "type": "string",
+          "minLength": 1
+        },
+        "http_status": {
+          "const": 200
+        },
+        "response_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "local": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "base_sha",
+        "candidate_sha",
+        "branch",
+        "current_branch_sha",
+        "objects_verified_as_commits",
+        "observed_at"
+      ],
+      "properties": {
+        "base_sha": {
+          "type": "string",
+          "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+        },
+        "candidate_sha": {
+          "type": "string",
+          "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+        },
+        "branch": {
+          "type": "string",
+          "minLength": 1
+        },
+        "current_branch_sha": {
+          "type": "string",
+          "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+        },
+        "objects_verified_as_commits": {
+          "const": true
+        },
+        "observed_at": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "head": {
+      "$ref": "#/$defs/branch"
+    },
+    "base": {
+      "$ref": "#/$defs/branch"
+    },
+    "comparisons": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "local_export_ref_matches_candidate",
+        "head_matches_candidate",
+        "base_matches_task_base",
+        "diff_version_head_matches_candidate"
+      ],
+      "properties": {
+        "local_export_ref_matches_candidate": {
+          "const": true
+        },
+        "head_matches_candidate": {
+          "const": true
+        },
+        "base_matches_task_base": {
+          "type": "boolean"
+        },
+        "diff_version_head_matches_candidate": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      }
+    },
+    "review_request": {
+      "$ref": "#/$defs/review_request"
+    },
+    "reason": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000,
+      "pattern": "\\S"
+    },
+    "linked_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "relationship": {
+      "const": "operator_asserted_review_context"
+    },
+    "context_only": {
+      "const": true
+    },
+    "execution_authorized": {
+      "const": false
+    },
+    "proves_original_attempt": {
+      "const": false
+    }
+  }
+}

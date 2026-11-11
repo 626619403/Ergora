@@ -1,0 +1,190 @@
+{
+  "schema_version": 1,
+  "slice": "F7c-C3b immutable local context for explicit existing PR/MR",
+  "baseline": "ad331c854a6fbdbf6bacc3aac4350bb8d393713f",
+  "state": "Local gate passed: r2 installed68, complete independent28 Spec/Standards0/0, SP1/ST1/ST2 closed and final static; R6 own exact delivery pending",
+  "installed_r1": {
+    "at": "2026-11-11T16:08:07.973515+00:00",
+    "wheel_sha256": "fb78f40363adaad20f52e5c97a9745d5e74d95f00492211928bd438034a5bc9e",
+    "wheel_files": 452,
+    "package_files": 447,
+    "wheel_and_installed_records_verified": true,
+    "installed_record_rows": 457,
+    "source_and_installed_package_equal": true,
+    "frozen_files": 283,
+    "editable": false
+  },
+  "affected_installed_checks": {
+    "at": "2026-11-11T16:11:27.668799+00:00",
+    "exit": 0,
+    "seconds": 199.68884461931884,
+    "stdout_sha256": "c5735477e45ab7c02134948ed8fdc984ed4a2cc0924e9f4eb9ab6068bd36047d",
+    "passed": 189,
+    "skipped": 1,
+    "seconds_pytest": 197.6
+  },
+  "reference_verify": {
+    "at": "2026-11-11T16:11:27.936975+00:00",
+    "exit": 0,
+    "seconds": 0.26617989875376225,
+    "stdout_sha256": "0db0d07a77a1d2e903cffcd8057df0a9ace19763a8006fad0b69d02ef6d66362"
+  },
+  "scope": "Eight affected installed suites; real loopback HTTP, State, backup and actual native v7/localGit/freshCLI for both providers, only Temporal SDK/result controlled in that journey. No six-stage model or real platform write acceptance.",
+  "actual_own_review_r1": {
+    "at": "2026-11-11T16:18:16.089453+00:00",
+    "baseline": "ad331c854a6fbdbf6bacc3aac4350bb8d393713f",
+    "run_id": "e61508dd3a094fb5bccbcaa167c206d5",
+    "status": "timed_out",
+    "backend": "codex",
+    "inference_model": "gpt-6.1-sol",
+    "reasoning_effort": "high",
+    "cli_exit": 1,
+    "seconds": 604.7134906752035,
+    "input_digest": "65be3ccb0177182b0bbdb0d7a1bc9e5c1a792ced4ee063653cef6c38323745e3",
+    "prompt_sha256": "acb4a63f21c65981bb8b8bc7382e14d775fd28762f0cfa51643e8b29cab274ce",
+    "attachment_bytes": 472872,
+    "attachment_sha256": "0aeda01f8788771c05db59cf33c0c41020217a4cdff83c9256952809506dc1d9",
+    "manifest_digest": "aa18ef7e2c04ad895c1a992d9b5a32ea680c9e04e7c40ad202a689ca65e89344",
+    "revision": "1.0.101",
+    "observed_processes": 4,
+    "live_sampled_processes": [],
+    "scope": "F7c-C3b seventeen complete frozen source/caller/schema/test/spec/delivery/research/usage files. Later final evidence/projections and independent review are separate; actual Codex fallback inference, not successful distinct-backend independence."
+  },
+  "actual_own_review_r2": {
+    "at": "2026-11-11T16:37:45.848328+00:00",
+    "baseline": "ad331c854a6fbdbf6bacc3aac4350bb8d393713f",
+    "run_id": "51020a1029d94bd1b8cacf78aa38a7c4",
+    "status": "succeeded",
+    "backend": "codex",
+    "inference_model": "gpt-6.1-sol",
+    "reasoning_effort": "high",
+    "cli_exit": 0,
+    "seconds": 546.832766497042,
+    "input_digest": "dad1036e8f5696d6f28c509cbdf26f7a405d5fcb4b8863be946c0e3895a9acda",
+    "prompt_sha256": "b085d1b08aaeb87ca500aedd8b8f9e8287c7d04012077ce48b981bded0c3763a",
+    "attachment_bytes": 133647,
+    "attachment_sha256": "78fad38a124a1df2402382a53c8f714f497be149c9f0fc02a4f815c8fcadb1ec",
+    "manifest_digest": "d528d5495dffa67ec38dd25ce25dc1fd2bd64f4f68eb677e4325a7af66fc3149",
+    "revision": "1.0.102",
+    "observed_processes": 4,
+    "live_sampled_processes": [],
+    "scope": "F7c-C3b nine complete frozen core owner/schema/tests/spec/delivery files; prior17-file attempt timed out, not rerun or accepted. Later final evidence/projections and independent review are separate; actual Codex fallback inference, not successful distinct-backend independence.",
+    "decision": "approve",
+    "result_sha256": "407c061d997611e0acf8e62ba61ad5230f5c95d0babbbca6b40c78ed2cc4b7a4"
+  },
+  "actual_own_review_r2_read_audit": {
+    "at": "2026-11-11T16:42:54.573044+00:00",
+    "run_id": "51020a1029d94bd1b8cacf78aa38a7c4",
+    "revision": "1.0.102",
+    "manifest_prepared_actual_prompt_admission_scope_native_original_result_match": true,
+    "bundled_template_unchanged_except_evidence_revision_resource_and_limit": true,
+    "scope_files": 5,
+    "all_scope_continuous_utf8_through_null": true,
+    "list_passes_files": [
+      5
+    ],
+    "failed_calls": 0,
+    "attachment_bytes": 133647,
+    "attachment_sha256": "78fad38a124a1df2402382a53c8f714f497be149c9f0fc02a4f815c8fcadb1ec",
+    "frozen_complete_files": 9,
+    "original_result_sha256": "407c061d997611e0acf8e62ba61ad5230f5c95d0babbbca6b40c78ed2cc4b7a4",
+    "decision": "approve",
+    "native_stream_sha256": "d257ca0bd2b6d94817d52f96b08b853986d2196f4b1554a684632d0aa86da3b9",
+    "backend_reported_turn_usage": [
+      {
+        "input_tokens": 260029,
+        "cached_input_tokens": 205824,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 2697,
+        "reasoning_output_tokens": 1602
+      }
+    ],
+    "observed_processes": 4,
+    "live_sampled_processes": [],
+    "scope": "Offline exact identity and successful plaintext page reconstruction only. Cached counters are part of input, reasoning reported separately, neither is added twice. No billing, reasoning quality, owner approval, independent backend-error or unsampled-process claim."
+  },
+  "native_http_r1": {
+    "at": "2026-11-11T16:41:10.663622+00:00",
+    "cases": [
+      {
+        "provider": "github",
+        "candidate_sha": "3de1f0e5d9774d24076cf61d8d14e623ae25a24a",
+        "record_sha256": "258d7677f8b24b00263494d5b3251127ae02efbe0c39cac97964c02714db365b",
+        "response_sha256": "ae10f87f3665f70aa455652862cc182843d3e75123a5b1080c7dcd595214fa1a",
+        "response_bytes": 3896,
+        "seconds": 0.18717522267252207,
+        "http_status": 200,
+        "logical_db_unchanged": true,
+        "credential_env_removed": true
+      },
+      {
+        "provider": "gitlab",
+        "candidate_sha": "0ff218b019b59995efd1542fe680050104f425cd",
+        "record_sha256": "65259aab8b734cea367cbcaf781d0cf7f8b6bfd455beaf268c796dd654702e87",
+        "response_sha256": "28a1d9975dbda82fdb907e8eb56e150e3e24cd88a5180bf5d478f50eeeeaf261",
+        "response_bytes": 3883,
+        "seconds": 0.11892372788861394,
+        "http_status": 200,
+        "logical_db_unchanged": true,
+        "credential_env_removed": true
+      }
+    ],
+    "scope": "Read-only HTTP GET on retained actual r1 v7/native Git/freshCLI saved records, no provider fixture server running, token removed; no model/SDK/provider call or recreation of native task."
+  },
+  "strict_version_r1_red": {
+    "accepted_float_versions": true,
+    "expected": "reject float1.0 in a new strictly integer-versioned context",
+    "actual_types": [
+      "float",
+      "float"
+    ],
+    "persisted_rows_mutated": false
+  },
+  "final_r2_package": {
+    "at": "2026-11-11T16:45:21.985168+00:00",
+    "wheel_sha256": "f39eabc3ecf596a1d82a06b2bf2c663f8e0160ec744450eed77969ca678b0169",
+    "wheel_files": 452,
+    "package_files": 447,
+    "wheel_and_installed_records_verified": true,
+    "installed_record_rows": 457,
+    "source_and_installed_package_equal": true,
+    "frozen_files": 283,
+    "editable": false,
+    "r1_product_delta": [
+      "ergora/data/schemas/candidate-review-context-v1.json"
+    ]
+  },
+  "r2_affected_checks": {
+    "at": "2026-11-11T16:47:04.975827+00:00",
+    "exit": 0,
+    "seconds": 102.95601458009332,
+    "stdout_sha256": "a45ac4156fef4f3f0932966b50b2a24efb4eacccc9ccfb53a5fa69d27dad3f69",
+    "passed": 68,
+    "seconds_pytest": 101.06
+  },
+  "reference_verify_r2": {
+    "at": "2026-11-11T16:47:05.245292+00:00",
+    "exit": 0,
+    "seconds": 0.2677310397848487,
+    "stdout_sha256": "1ed7cda645e7d42171c3b8fbf011753d068b978834f7d0fbe07d630b7466e85a"
+  },
+  "complete_independent_review": {
+    "candidate_files": 28,
+    "spec_open": 0,
+    "standards_open": 0,
+    "closed_findings": [
+      "SP1 native-v7 HTTP offline evidence",
+      "ST1 strict integer version fields",
+      "ST2 optional Web test skip"
+    ],
+    "report_snapshot_sha256": "5fa2dbf03d11791a7edc1c6e7bcd93b6245e6c58272769fc9707b5f97227d7b2",
+    "scope": "Complete final source/public-document scope and both actual model original streams, r2 package/records/283 and raw affected tests independently read. No independent product rerun or network request; model9 pre-minimal-fix scope retained."
+  },
+  "static_public": {
+    "candidate_files": 28,
+    "local_links": 367,
+    "loaded_secret_values_checked": 6,
+    "issues": 0,
+    "scope": "Relative local file targets/JSON/whitespace/private paths/loaded secrets; no anchor, external URL or Mermaid rendering acceptance."
+  }
+}

@@ -83,7 +83,20 @@ def _schema_v3(db: sqlite3.Connection) -> None:
         _writer_fences(db, table, 3)
 
 
-_MIGRATIONS = (_schema_v1, _schema_v2, _schema_v3)
+def _schema_v4(db: sqlite3.Connection) -> None:
+    db.execute('''CREATE TABLE candidate_review_links
+        (project TEXT NOT NULL, scope TEXT NOT NULL, sha TEXT NOT NULL, document TEXT NOT NULL,
+         PRIMARY KEY(project,scope), UNIQUE(project,sha))''')
+    previous = (*_TABLES, 'issue_snapshots', 'issue_task_links',
+                'issue_writebacks', 'issue_writeback_observations')
+    for table in previous:
+        for operation in ('insert', 'update', 'delete'):
+            db.execute(f'DROP TRIGGER "ergora_writer_v3_{table}_{operation}"')
+    for table in (*previous, 'candidate_review_links'):
+        _writer_fences(db, table, 4)
+
+
+_MIGRATIONS = (_schema_v1, _schema_v2, _schema_v3, _schema_v4)
 SCHEMA_VERSION = len(_MIGRATIONS)
 
 

@@ -215,6 +215,18 @@ def parser() -> argparse.ArgumentParser:
     candidate.add_argument("--run-id", required=True)
     candidate.add_argument("--candidate-sha", required=True)
     candidate.add_argument("--base-branch", required=True, help="Explicit remote base branch; never inferred from its current default")
+    review = operations.add_parser("review-link", help="Save an explicit existing PR/MR as immutable candidate context; provider GET only")
+    review.add_argument("project")
+    review.add_argument("task_id")
+    review.add_argument("--revision", type=int, required=True)
+    review.add_argument("--run-id", required=True)
+    review.add_argument("--candidate-sha", required=True)
+    review.add_argument("--base-branch", required=True)
+    review.add_argument("--review-number", required=True, help="Repository PR number or project MR iid, not a global ID or URL")
+    review.add_argument("--reason", required=True)
+    saved_review = operations.add_parser("review-link-show", help="Read saved candidate review context offline by content identity")
+    saved_review.add_argument("project")
+    saved_review.add_argument("sha256")
     for name in ("writeback-status", "writeback-send", "writeback-observe"):
         writing = operations.add_parser(name, help={
             'writeback-status': 'Read the saved writeback offline',
@@ -647,6 +659,12 @@ def main(argv: list[str] | None = None) -> int:
             elif args.operation == 'candidate-observe':
                 output = issues.remote_candidate(state, args.project, args.task_id, args.revision,
                     run_id=args.run_id, candidate_sha=args.candidate_sha, base_branch=args.base_branch)
+            elif args.operation == 'review-link':
+                output = issues.link_review(state, args.project, args.task_id, args.revision,
+                    run_id=args.run_id, candidate_sha=args.candidate_sha, base_branch=args.base_branch,
+                    review_number=args.review_number, reason=args.reason)
+            elif args.operation == 'review-link-show':
+                output = issues.review_link(state, args.project, args.sha256)
             elif args.operation == 'writeback-status':
                 output = issue_writebacks.status(state, args.project, args.intent_sha256)
             elif args.operation == 'writeback-send':

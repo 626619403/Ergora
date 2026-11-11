@@ -768,7 +768,9 @@
           "issue.writeback.status",
           "issue.writeback.send",
           "issue.writeback.observe",
-          "issue.candidate.observe"
+          "issue.candidate.observe",
+          "issue.review.link",
+          "issue.review.show"
         ]
       },
       "platforms": [],
@@ -842,7 +844,9 @@
           "issue.writeback.status",
           "issue.writeback.send",
           "issue.writeback.observe",
-          "issue.candidate.observe"
+          "issue.candidate.observe",
+          "issue.review.link",
+          "issue.review.show"
         ]
       },
       "platforms": [],

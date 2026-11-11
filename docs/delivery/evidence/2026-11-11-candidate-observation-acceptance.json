@@ -2,7 +2,7 @@
   "schema_version": 1,
   "slice": "F7c-C3a read-only local and remote candidate observations",
   "baseline": "93b538fd474120fa05574dcdcf376b7666502c8d",
-  "state": "Local gate passed: implemented, affected installed checks, actual focused own review, complete independent Spec/Standards open0/0; exact Git/ref/own CI pending",
+  "state": "C3a precise delivery closed: ad331c8 exact29 Git/ready/r3 package/283 and author SSH ref independently audited; own CI43042210053 seven required steps completed/success",
   "source_r1": {
     "passed": 34,
     "seconds_pytest": 59.16,
@@ -230,5 +230,20 @@
       "SP3 Git object replacement"
     ],
     "scope": "Final29-file frozen candidate and independently reconstructed r3 package plus both actual model native read chains. Later bookkeeping/report appendices remain outside original manifest bytes."
+  },
+  "exact_delivery": {
+    "commit": "ad331c854a6fbdbf6bacc3aac4350bb8d393713f",
+    "ready_sha256": "f0b220682f1af5237cef3d0bebba78843038085fe1ef3aa0616f27de8a69d3a7",
+    "files": 29,
+    "author_git_objects_and_modes_equal_ready": true,
+    "ordinary_push": true,
+    "author_remote_ref_equal_commit": true,
+    "own_ci": "success",
+    "rest_status": 403,
+    "scope": "Original reviewer offline audit of exact committed29 Git/ready/r3 package/283, ordinary push/author SSH Ref and own official run/job HTML terminal steps; no independent direct network, successful REST or full-log claim",
+    "ci_run_id": 43042210053,
+    "required_steps_passed": 7,
+    "independent_terminal_audit": true,
+    "report_sha256": "d2ddca348bef5a81705f9bc9d893a0963362803b22881cd8aa629ae755686f78"
   }
 }

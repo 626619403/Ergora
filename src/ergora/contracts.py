@@ -35,6 +35,8 @@ COMPOSITION_GRANT = {"$defs": WORKFLOW_DEFINITION["$defs"], "$ref": "#/$defs/gra
 COMPOSITION_INPUT = json.loads((_SCHEMAS / "composition-input-v1.json").read_text(encoding="utf-8"))
 COMPOSITION_MANIFEST = json.loads((_SCHEMAS / "composition-manifest-v1.json").read_text(encoding="utf-8"))
 ISSUE_OBSERVATION = json.loads((_SCHEMAS / "issue-observation-v1.json").read_text(encoding="utf-8"))
+CANDIDATE_REVIEW_CONTEXT = json.loads((_SCHEMAS / "candidate-review-context-v1.json").read_text(encoding="utf-8"))
+REVIEW_REQUEST = {"$defs": CANDIDATE_REVIEW_CONTEXT["$defs"], "$ref": "#/$defs/review_request"}
 
 
 def validate(value, schema: dict, context: str) -> None:

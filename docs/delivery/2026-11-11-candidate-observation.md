@@ -1,6 +1,6 @@
 # F7c-C3a 交付记录
 
-基线 `93b538fd474120fa05574dcdcf376b7666502c8d`；[本片计划](../plans/2026-11-11-candidate-observation.md)。本地出口通过：r3安装18项、聚焦自身approve／完整读取及完整29文件独立两轴通过，SP1–SP3关闭、开放0／0。普通提交／推送与自己的精确Git／远端／CI继续；历史失败保持原候选范围。
+基线 `93b538fd474120fa05574dcdcf376b7666502c8d`；[本片计划](../plans/2026-11-11-candidate-observation.md)。本地出口通过，SP1–SP3关闭、开放0／0；`ad331c854a6fbdbf6bacc3aac4350bb8d393713f`已普通提交／推送，作者精确29Git／ready及SSH远端同完整SHA。原评审精确Git／Ref及本提交自己的CI43042210053双OS七必要步骤终核通过，精确交付终结；历史失败保持原候选范围。
 
 [结构化验收投影](evidence/2026-11-11-candidate-observation-acceptance.json)区分原候选、失败、修正复验和未验范围；私有原件不进入公开发行包。
 
@@ -69,3 +69,16 @@ C2a的93b538f自己的CI43023048173现已Success／双OS七必要步骤，原评
 原fresh-context评审完成同片最终29文件核对，清单SHA `6d0b51e8c6f7af095afa99c5a4dcc549a63767a7ffbc964eeaafb5092cdc46e4`。独立重核r3包／两RECORD／283、真实red与18项复验、两轮manifest到实际native流／连续UTF8页至null／原结果及最终文档范围；[报告](2026-11-11-candidate-observation-review.md)两轴开放0／0，SP1–SP3全部关闭，无新增finding。终核报告快照SHA `a52afa14fc30fa91da6ffe65dee9eafdcd1ba337d7c87d03a9614eb505a47516`；后续状态追加不冒充原清单字节。
 
 本片本地出口完成；精确提交／普通推送、远端同完整SHA及本提交自己的双OS必要CI仍属O4，不用C2a结果替代。最后记账与报告字节将随ready清单冻结；C3b两份设计资料独立留在下一片。
+
+## O4 精确交付进行中
+
+`ad331c854a6fbdbf6bacc3aac4350bb8d393713f`普通提交／推送完成。29个Git blob和执行位逐一符合ready清单，清单SHA `f0b220682f1af5237cef3d0bebba78843038085fe1ef3aa0616f27de8a69d3a7`；提交内审查报告SHA为上节终核快照。push退出0／44.75秒；作者SSH `ls-remote`退出0／29.73秒，返回该分支同完整SHA。最新静态29文件／395本地链接／六个已加载秘密值issue0，r3发行元数据含最终README原字节。
+
+本提交自己的首次匿名Actions REST读取返回403，原body／摘要保留；这是读取限制，不是CI失败或成功REST。继续以官方run／job HTML核精确提交与必要步骤，尚未记为CI通过。原独立评审负责Git／Ref及最终CI原件终核；后续C3b未提交变化不回写本提交或冒充原r3已测候选。
+
+
+## O4 原评审终核完成
+
+本提交自己的[CI43042210053](https://github.com/626619403/Ergora/actions/runs/43042210053)后份官方run HTML为Success；Linux130596697924三项、Windows130596697242四项必要步骤均completed／success，步骤log路径绑定原完整ad331c8 SHA。原评审离线重建七份原响应／receipt并核对原workflow与结果投影，Spec／Standards仍开放0／0，无新增finding。精确29Git／ready、r3包／283、普通推送及作者SSH同完整Ref的原件已独立核过，C3a精确交付终结。
+
+匿名REST403、matrix404、早期run In progress及中间job未齐的投影分别保持，不改写为当时已通过。这里只核官方HTML终态和必要步骤，不称成功REST、完整job日志或评审者独立直接网络成功。[原报告](2026-11-11-candidate-observation-review.md)包含逐原件摘要、七步时间和最后结论。下一片C3b有自己的候选、验收和新独立评审。

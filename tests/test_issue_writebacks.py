@@ -370,9 +370,10 @@ def test_cli_and_protected_http_share_the_same_saved_intent(candidate, capsys):
     assert len([call for call in candidate.calls if call['method'] == 'POST']) == 1
 
 
-@pytest.mark.parametrize('writer', ['github'], indirect=True)
+@pytest.mark.parametrize('writer,issue_creation', [('github', 'github'), ('gitlab', 'gitlab')], indirect=True)
 def test_published_v7_export_is_consumed_by_a_fresh_cli(source_submission, native_client, writer, monkeypatch):
     """Only the Temporal SDK port is controlled; task owners, Git and CLI are real."""
+    pytest.importorskip('fastapi')
     state, registered, definition, created = source_submission
     task_id, revision = definition['task_id'], state.project('demo')['revision']
     started = tasks.start(state, 'demo', task_id, revision, created['intent_sha256'])
@@ -423,16 +424,17 @@ def test_published_v7_export_is_consumed_by_a_fresh_cli(source_submission, nativ
     assert run('writeback-status', 'demo', digest) == sent and len(writer.calls) == calls
     assert tasks.export_status(state, 'demo', task_id) == exported
 
-    configure_labels(writer)
-    label = run('writeback-label-prepare', 'demo', task_id, '--revision', str(revision),
-                '--run-id', started['run_id'], '--candidate-sha', candidate_sha, '--label-name', writer.label_name)
-    assert label['intent']['source'] == prepared['intent']['source'] and label['intent']['task'] == prepared['intent']['task']
-    labelled = run('writeback-send', 'demo', label['intent_sha256'], '--revision', str(revision), '--confirm')
-    assert labelled['status'] == 'acknowledged' and len(writer.label_mutations) == 1
-    calls = len(writer.calls)
-    assert run('writeback-status', 'demo', digest) == sent
-    assert run('writeback-send', 'demo', label['intent_sha256'], '--revision', str(revision), '--confirm') == labelled
-    assert len(writer.calls) == calls and tasks.export_status(state, 'demo', task_id) == exported
+    if writer.provider == 'github':
+        configure_labels(writer)
+        label = run('writeback-label-prepare', 'demo', task_id, '--revision', str(revision),
+                    '--run-id', started['run_id'], '--candidate-sha', candidate_sha, '--label-name', writer.label_name)
+        assert label['intent']['source'] == prepared['intent']['source'] and label['intent']['task'] == prepared['intent']['task']
+        labelled = run('writeback-send', 'demo', label['intent_sha256'], '--revision', str(revision), '--confirm')
+        assert labelled['status'] == 'acknowledged' and len(writer.label_mutations) == 1
+        calls = len(writer.calls)
+        assert run('writeback-status', 'demo', digest) == sent
+        assert run('writeback-send', 'demo', label['intent_sha256'], '--revision', str(revision), '--confirm') == labelled
+        assert len(writer.calls) == calls and tasks.export_status(state, 'demo', task_id) == exported
 
     from test_candidate_observations import configure_remote
     from test_task_creation import _files
@@ -449,6 +451,28 @@ def test_published_v7_export_is_consumed_by_a_fresh_cli(source_submission, nativ
     assert (_files(root), _files(Path(registered['repo'])), _calls(source_submission)) == before
     assert [call['method'] for call in writer.calls[calls:]] == ['GET'] * 3
     assert tasks.export_status(state, 'demo', task_id) == exported
+
+    from test_review_associations import configure_review
+    configure_review(writer)
+    calls = len(writer.calls)
+    associated = run('review-link', 'demo', task_id, '--revision', str(revision),
+        '--run-id', started['run_id'], '--candidate-sha', candidate_sha, '--base-branch', 'release/稳定',
+        '--review-number', '11', '--reason', 'Explicit native source candidate review context')
+    record = associated['record']
+    assert associated['fresh_observations'] and not associated['already_saved']
+    assert record['payload']['task'] == prepared['intent']['task']
+    assert record['payload']['snapshot_sha256'] == envelope['issue_source']['sha256']
+    assert [call['method'] for call in writer.calls[calls:]] == ['GET'] * 5
+    monkeypatch.delenv('ERGORA_FIXTURE_ISSUE_TOKEN')
+    assert run('review-link-show', 'demo', record['sha256']) == record
+    from fastapi.testclient import TestClient
+    from ergora.web import create_app
+    with TestClient(create_app(state.root), base_url='http://127.0.0.1') as client:
+        response = client.get('/api/projects/demo/candidate-review-links/' + record['sha256'])
+        assert response.status_code == 200 and response.json() == record
+    assert run('writeback-status', 'demo', digest) == sent
+    assert (_files(root), _files(Path(registered['repo'])), _calls(source_submission)) == before
+    assert len(writer.calls) == calls + 5 and tasks.export_status(state, 'demo', task_id) == exported
 
 
 def test_native_comment_identity_and_fixed_authentication_context(writer, monkeypatch):

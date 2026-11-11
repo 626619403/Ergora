@@ -118,6 +118,30 @@ class IssueBackend(ABC):
     def repository_refs(self, head_branch: str, base_branch: str) -> dict:
         """Read two refs after export-owner branch validation; no publication receipt or CAS."""
 
+    @abstractmethod
+    def review_path(self, repository: dict, number: str) -> str:
+        """Address one explicitly selected native PR/MR, with no list or search."""
+
+    @abstractmethod
+    def review_request(self, document: dict, repository: dict, number: str) -> dict:
+        """Map native review fields and verify both endpoints belong to this repository."""
+
+    def read_review_request(self, repository: dict, number: str) -> dict:
+        self._identifier(number)
+        path = self.review_path(repository, number)
+        document, receipt = self._document(path)
+        try:
+            review = self.review_request(document, repository, number)
+            observed = {'schema_version': 1,
+                'source': issue_sources.tracker_identity(self.binding),
+                'repository': {'native_id': repository['native_id'], 'node_id': repository.get('node_id'),
+                               'project': repository['project']},
+                'review': review, 'response': {**receipt, 'request_url': self.api_url + path}, 'context_only': True}
+            contracts.validate(observed, contracts.REVIEW_REQUEST, 'Review request observation')
+        except (KeyError, TypeError, ValueError, AttributeError):
+            raise ValueError('Tracker returned an unsupported or different review request') from None
+        return observed
+
     def read(self, issue_id: str, *, authenticated: bool = False) -> dict:
         self._identifier(issue_id)
         raw, headers = self._request('GET', self.path(issue_id), authenticated=authenticated)
@@ -272,6 +296,26 @@ class GitHubBackend(IssueBackend):
             'labels': sorted({item if isinstance(item, str) else item['name'] for item in document['labels']}),
             'web_url': document['html_url'], 'updated_at': document['updated_at']}
 
+    def review_path(self, repository: dict, number: str) -> str:
+        return '/repos/' + quote(self.binding['project'], safe='/') + '/pulls/' + number
+
+    def review_request(self, document: dict, repository: dict, number: str) -> dict:
+        root = self.api_url + '/repos/' + quote(self.binding['project'], safe='/')
+        if type(document['number']) is not int or document['number'] != int(number) or document['url'] != root + '/pulls/' + number:
+            raise ValueError('Different review request')
+        for endpoint in ('head', 'base'):
+            native = document[endpoint]['repo']
+            if (type(native['id']) is not int or native['id'] != repository['native_id']
+                    or native['node_id'] != repository['node_id'] or native['full_name'] != self.binding['project']
+                    or native['url'] != root):
+                raise ValueError('Cross-repository or missing review endpoint')
+        return {'kind': 'pull_request', 'number': number, 'native_id': document['id'], 'node_id': document['node_id'],
+            'author_id': document['user']['id'], 'title': document['title'], 'body': document['body'],
+            'state': document['state'], 'draft': document['draft'], 'merged': document['merged'],
+            'web_url': document['html_url'], 'created_at': document['created_at'], 'updated_at': document['updated_at'],
+            'head': {'branch': document['head']['ref'], 'sha': document['head']['sha']},
+            'base': {'branch': document['base']['ref'], 'response_sha': document['base']['sha']}, 'diff_refs': None}
+
     def comment_path(self, issue_id: str, comment_id: str | None = None) -> str:
         if comment_id is None:
             return self.path(issue_id) + '/comments'
@@ -424,6 +468,21 @@ class GitLabBackend(IssueBackend):
         return document['iid'], {'native_id': document['id'], 'title': document['title'],
             'body': document['description'] if document['description'] is not None else '', 'state': document['state'],
             'labels': sorted(set(document['labels'])), 'web_url': document['web_url'], 'updated_at': document['updated_at']}
+
+    def review_path(self, repository: dict, number: str) -> str:
+        return '/projects/' + str(repository['native_id']) + '/merge_requests/' + number
+
+    def review_request(self, document: dict, repository: dict, number: str) -> dict:
+        if (type(document['iid']) is not int or document['iid'] != int(number)
+                or any(type(document[key]) is not int or document[key] != repository['native_id']
+                       for key in ('project_id', 'source_project_id', 'target_project_id'))):
+            raise ValueError('Different iid or cross-project review request')
+        return {'kind': 'merge_request', 'number': number, 'native_id': document['id'], 'node_id': None,
+            'author_id': document['author']['id'], 'title': document['title'], 'body': document['description'],
+            'state': document['state'], 'draft': document['draft'], 'merged': None,
+            'web_url': document['web_url'], 'created_at': document['created_at'], 'updated_at': document['updated_at'],
+            'head': {'branch': document['source_branch'], 'sha': document['sha']},
+            'base': {'branch': document['target_branch'], 'response_sha': None}, 'diff_refs': document['diff_refs']}
 
     def repository_refs(self, head_branch: str, base_branch: str) -> dict:
         document, receipt = self._document('/projects/' + quote(self.binding['project'], safe=''))

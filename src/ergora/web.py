@@ -108,6 +108,11 @@ class IssueCandidateObservePayload(IssueWritebackPreparePayload):
     base_branch: str
 
 
+class IssueReviewLinkPayload(IssueCandidateObservePayload):
+    review_number: str
+    reason: str
+
+
 class IssueWritebackSendPayload(IssueCapturePayload):
     confirm: bool = Field(strict=True)
 
@@ -468,6 +473,16 @@ def create_app(home: Path | None = None) -> FastAPI:
     def observe_remote_candidate(project_id: str, body: IssueCandidateObservePayload):
         return issues.remote_candidate(state, project_id, body.task_id, body.revision,
             run_id=body.run_id, candidate_sha=body.candidate_sha, base_branch=body.base_branch)
+
+    @application.post("/api/projects/{project_id}/candidate-review-links")
+    def link_candidate_review(project_id: str, body: IssueReviewLinkPayload):
+        return issues.link_review(state, project_id, body.task_id, body.revision,
+            run_id=body.run_id, candidate_sha=body.candidate_sha, base_branch=body.base_branch,
+            review_number=body.review_number, reason=body.reason)
+
+    @application.get("/api/projects/{project_id}/candidate-review-links/{digest}")
+    def saved_candidate_review(project_id: str, digest: str):
+        return issues.review_link(state, project_id, digest)
 
     @application.get("/api/projects/{project_id}/issue-writebacks/{digest}")
     def saved_issue_writeback(project_id: str, digest: str):

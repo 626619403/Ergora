@@ -183,7 +183,7 @@ HTTP与CLI共用相同用例；POST沿用本地Origin及`X-Ergora-Request: 1`保
 |关联|`POST /api/projects/PROJECT/issue-links`，`{"snapshot_sha256":"…","task_id":"TASK","creation_sha256":"…","revision":2,"reason":"…"}`|
 |关联列表|`GET /api/projects/PROJECT/issue-links?task_id=TASK&snapshot_sha256=SNAPSHOT_SHA&limit=20`，两过滤条件可选，可带`after`|
 
-快照与关联保存在控制面的SQLite中，由原`state backup / verify-backup / restore`完整离线备份恢复；当前数据库为schema v3，升级先保留旧库备份，旧客户端不能写新库。完整备份仍要求停写、同平台及原home；外置执行目录须另行保存，不会从上下文关联重建任务。来源派工见下一节，候选评论见[回写说明](#为已导出的候选发布工单评论)，工单专页仍按[F7计划](plans/2026-11-11-project-trackers.md)分片交付。
+快照与关联保存在控制面的SQLite中，由原`state backup / verify-backup / restore`完整离线备份恢复；当前数据库为schema v4，升级先保留旧库备份，旧客户端不能写新库。完整备份仍要求停写、同平台及原home；外置执行目录须另行保存，不会从上下文关联重建任务。来源派工见下一节，候选评论见[回写说明](#为已导出的候选发布工单评论)，工单专页仍按[F7计划](plans/2026-11-11-project-trackers.md)分片交付。
 
 ### 从工单快照创建来源任务
 
@@ -293,6 +293,23 @@ ergora issue candidate-observe PROJECT TASK --revision REVISION --run-id RUN_ID 
 这是分别取得的当前事实，不能发现两次读取之间的ABA，也不能证明谁推送过、原attempt成功或执行瞬间head／base未变化。仓库原生ID是在原来源命名空间下本次读到的身份，原工单快照没有冻结创建时的仓库native ID；命名空间被删除重用等历史不能由本观察排除。不根据本地origin或返回URL改换目标，repo响应仅保留必要白名单字段，不返回临时clone token。
 
 同一查询的HTTP入口为`POST /api/projects/PROJECT/candidate-observations`，正文`revision/task_id/run_id/candidate_sha/base_branch`，继续要求同源及`X-Ergora-Request: 1`。这里POST是本地查询入口；provider只收到GET。该命令不推送分支、不创建或关联PR／MR、不写评论／标签、不批准或合并，`execution_authorized`及`proves_original_attempt`始终为false。确认当前内容相等后，仍按项目自己的发布和人工审查流程操作。
+
+### 关联已有 PR／MR 与候选
+
+在自己的项目平台中已建好PR／MR后，可把其明确的仓库PR number／项目MR iid与原v7任务的完整已导出candidate关联。首次关联要求原本地export ref、远端head ref及review head均仍指向该candidate，head名为原export分支，base名为显式输入。仅支持同来源仓库／项目；fork、跨仓库、搜索猜测和任意URL不支持。沿上一节Linux／WSL2 Git检查，不要求Temporal在线。
+
+```bash
+ergora issue review-link PROJECT TASK --revision REVISION --run-id RUN_ID --candidate-sha CANDIDATE_SHA --base-branch main --review-number 11 --reason '此资源用于审查原候选'
+ergora issue review-link-show PROJECT SAVED_SHA256
+```
+
+首次返回`record`含不可变`sha256`和`scope_sha256`、完整来源／task／run／candidate／export身份、当前仓库和review原生ID、全文标题与正文、作者／状态／draft及各次读取摘要和时间。保存的是`operator_asserted_review_context`，`context_only=true`、`execution_authorized=false`、`proves_original_attempt=false`。它不确认原评论或标签attempt、不清除unknown、不批准、不证明资源由Ergora创建。原工单native ID也须与来源快照一致；原快照未冻结历史repo ID，仍不能排除namespace被重用的所有情况。
+
+原task base、当前远端base tip和PR响应`base.sha`分别保留；当前base已前进允许保存，`base_matches_task_base=false`不会改写原基线。GitLab的`diff_refs`可能null或空，代表版本资料未就绪；非空`base_sha`是merge-base，`start_sha`是该版diff的目标commit，均不是当前target tip。`diff_version_head_matches_candidate`单独投影true／false／null，不覆盖MR的`sha`。state／draft按实际值保存，关闭或合并资源仍须符合上述当前refs条件。
+
+一个原候选槽只能保存一个review。同目标／base再次调用返回原`record`、`already_saved=true`、`fresh_observations=false`，忽略新的reason，不重新读取平台；换number或base明确冲突，不能覆盖。`review-link-show`只需控制面保存记录，离线不要求token、原任务文件、Git或平台仍可见。该记录纳入schema v4备份，load与backup核同一身份合同；外部执行目录仍须单独备份。
+
+HTTP保存入口为`POST /api/projects/PROJECT/candidate-review-links`，正文`revision/task_id/run_id/candidate_sha/base_branch/review_number/reason`，同源及`X-Ergora-Request: 1`保护；离线读取为`GET /api/projects/PROJECT/candidate-review-links/SAVED_SHA256`。首次正常关联向provider发五次有界GET，不持SQLite写锁；每次完整响应上限1MiB、20秒socket I/O、无redirect／retry，完整canonical关联另限1MiB，超限拒绝不截断。总墙钟不承诺20秒。各读不组成共同snapshot／CAS，也不能发现ABA；provider GET可能计算内部派生对象。本地保存不请求平台业务修改，不推送或创建／编辑／合并PR／MR。工单专页按[F7计划](plans/2026-11-11-project-trackers.md)继续。
 
 ### 诊断与修复
 

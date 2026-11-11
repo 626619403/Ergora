@@ -152,3 +152,52 @@ SP1 在原删除旅程补断言；SP2 只有一个真实缺对象回归。后者
 作者 `static-r1` 记录 29 件／393 个本地链接、六个当时加载的秘密值、issue 0；文件身份与最终冻结相比只有交付文档后来追加的静态说明不同，其余 28 件相同。本轮独立按最终 29 件重新核 JSON、private home 路径、**393 个本地链接目标全部存在**及 `git diff --check`，均通过。秘密值扫描保留为作者当时的有范围证据，本评审没有读取或转储凭据值；不把它扩大为未知秘密／历史扫描。锚点、外部 URL 与 Mermaid 渲染不在该静态检查范围。本报告追加及据此同步的纯状态记账只需最终最新字节静态检查，不递归重跑模型或原产品 suite。
 
 **最终 Spec／Standards 开放 0／0；SP1、SP2、SP3 均关闭，无新增 finding。完整本地出口通过。** 此结论覆盖最终冻结 29 件、原调用路径、分轮安装／测试原件、实际自身完整读取及本次报告追加。普通提交／推送、精确 Git 对象／远端 Ref 和本片自己的双 OS 必要 CI 仍属 O4 后续精确交付，当前未完成；不能借 C2a CI、模型 approve 或本地出口替代。真实 SaaS／GHES、平台权限及延迟、原生 Windows 正式执行、六阶段全真实运行和成功不同后端独立性仍未由本片证明；F7 及项目整体不因此关闭。
+
+## O4 精确 Git／作者 Ref 原件复核，CI 待终核
+
+已独立核提交 **`ad331c854a6fbdbf6bacc3aac4350bb8d393713f`**，唯一父提交为 **`93b538fd474120fa05574dcdcf376b7666502c8d`**。读取使用禁 lazy fetch／禁 replacement 的本地 Git 原对象；commit 与 blob 均按 Git 对象头／原内容重新计算 SHA1。实际父→子差异恰为 **29 件**，全部是普通 blob／`100644`，大小／SHA256／mode 与 `commit-closure/ready-r1/manifest.json` 及封存副本逐一相符；ready 清单 SHA256 **`f0b220682f1af5237cef3d0bebba78843038085fe1ef3aa0616f27de8a69d3a7`**。提交内报告 blob 保持本地出口快照 SHA **`a52afa14fc30fa91da6ffe65dee9eafdcd1ba337d7c87d03a9614eb505a47516`**，本节后续追加不是该提交的原字节。
+
+完整本地出口之后，除报告外只有六份公开状态文档／验收 JSON 同步结果。已读其逐项差异，正确登记本地出口 0／0、SP1–SP3 关闭及 O4 仍待，没有改产品、测试、依赖或 CI。r3 wheel 的 **446 件包文件**又逐一等于该提交的源码，**283 件 reference 原字节**符合提交内 manifest；wheel METADATA 中 README 的原 UTF-8 body 也逐字等于提交内 README，SHA **`f4740a062d0e78009079ac5c53cd7478846732cfb38b4176b2531a6cc7becef5`**。没有重新安装或运行产品。
+
+作者 `static-r2` 的 29 件大小／SHA 与 ready 全符，记录 **395 个本地链接／六个当时加载的秘密值／issue 0**；独立重核 ready 中 JSON 与 395 个本地目标均通过，秘密值扫描仍按前文作为作者有范围证据。C3b 两份设计不在该提交或 ready 内。此后的下一片工作树变化不属于 C3a 漂移，后续本片判断固定使用提交、ready 与原 r3 安装包。
+
+已读普通 commit、push、Ref 的原 argv／stdout／stderr／JSON：
+
+|作者实际操作|结果与原件|
+|---|---|
+|普通 commit|退出 0／1.1609 秒，29 件变更；stdout SHA `959411d82de0b59e1657f69dda3106b22ecb40eebe1cfd5f0bac92d6c2c134a1`，stderr 空|
+|`git push origin HEAD:refs/heads/refactor/architecture-foundations`|退出 0／44.7522 秒；无 force，原 stderr 显示 `93b538f..ad331c8`，SHA `3899d7aacab763558f4ff20a3498d190bad7167ff5a674a98574c0d9e91389b6`，stdout 空|
+|`git ls-remote --exit-code origin refs/heads/refactor/architecture-foundations`|退出 0／29.7316 秒；原 stdout 精确为上述完整 `ad331c854a6fbdbf6bacc3aac4350bb8d393713f` 与该 ref，SHA `bd004d81c61d23087950723670b45519a9a50cd2303ccdc2213fc5ce0d27b9a6`，stderr 空|
+
+**精确 29 Git 对象／mode／ready 与作者 SSH Ref 原件的独立离线核对通过，无新增 finding。** 本评审没有直接联网查询远端；上述结论是对作者实际原件的离线核对，不能称评审者直接网络确认。本提交自己的 CI 终态与必要双 OS 步骤尚待原件终核，**O4 继续开放，C3a 精确交付尚未终结**；不借旧 C2a CI 或本地通过替代。
+
+## O4 最终 CI 原件终核：精确交付终结
+
+继续由原评审者只读核保留原件，没有网络请求、产品／测试／模型运行、安装或提交。对象固定为 **`ad331c854a6fbdbf6bacc3aac4350bb8d393713f`**、原 ready 与 r3 包；没有把已经进入下一片的 C3b 工作树作为 C3a 候选。本节追加不改写提交内报告快照或前文当时的待核状态。
+
+独立以标准库重算 **7 份实际响应**的大小／SHA，并与各 HTTP 回执或 API source 记录的请求 URL、最终 URL、状态逐一核对；没有执行作者会写结果的 parser。全部相符：
+
+|保留原响应|HTTP／字节|body SHA256|
+|---|---|---|
+|`ci-api-r1/runs.json`|403／280|`cab107d310af6137d3ca21f7de123c972a91cb1cbd91e2f58f61fe192ba31735`|
+|`actions-html-r1/page.html`|200／320,264|`5270424d71499fcb7185c089633ac61be384af3ce1aa16516a21cc32030dd6b7`|
+|`ci-run-html-r1/page.html`|200／150,737|`dd8308e3decf0b30fae4c45655d1db9c4bd4619d268d2126d22de0fac8be281a`|
+|`ci-matrix-html-r1/page.html`|404／226,126|`cc18685632ae0e7f012545a984e3313984baee30fd1cbd7ab975e14077528ba9`|
+|`ci-run-html-r2/page.html`|200／157,202|`ea0d2ae90a922fbf23d888a1ee16355b757d5af5c4c98bffd1295d9dd4477c6c`|
+|`ci-job-130596697924-html-r1/page.html`|200／161,751|`b6d7cc637ce159d969ac0b3ef74beadf2408d43b6cf2b19b2e08051c1dd35928`|
+|`ci-job-130596697242-html-r1/page.html`|200／159,839|`8b5075d22c6a8a3b9b47a9e67382a07f372853db7c296752552aaa4ff45658ce`|
+
+API 原文为匿名限流 403，不能计作成功 REST 或测试失败。matrix 原文为该视图的 404，不证明 job 不存在。首份 run HTML 仍为 **In progress**；原 `ci-result-r1` 的未齐状态保持。后份 run 已为 Success、但尚无 job 原件的 `ci-result-r2` 也保留当时 `required_steps_passed: false`，没有回写成当时已经完成必要步骤终核。
+
+Actions 发现页指向本 run。两份 run HTML 均在推送身份处链接精确完整 candidate SHA、原分支及 `portability.yml`；最终 `ci-run-html-r2` 对 **run `43042210053`** 明确显示 **Success**，并分别链接 Linux **`130596697924`**、Windows **`130596697242`**。最终 run receipt SHA 为 **`3333ce3dc790b38a04917de970d4e5f68cc0c549b0c1653f669550907eecc586`**。两份 job receipt SHA 分别为 **`6fc3a5df2117ee6168260755f0eeed0dcf8f464fe5284c139014e6b953ca1a48`**、**`ae1128210194e4d6a8856180bc5662c8a0bb1cd52d801b2f264d0d69c199bda6`**，实际请求／最终 URL 均是对应 run 下的精确 job。
+
+从该提交的 `.github/workflows/portability.yml` 重新确认矩阵是 Ubuntu／Python 3.11 和 Windows／Python 3.12。独立解析原 HTML 元素与属性：两 job 的 `check-steps` 均为 **completed**；各必要 `check-step` 均有 `data-conclusion="success"`、`data-job-completed` 和有效起止时间，`data-log-url` 逐个固定为 `/626619403/Ergora/commit/<完整ad331c8 SHA>/checks/<原job ID>/logs/<原步骤号>`。
+
+|job|必要步骤|原件结果|
+|---|---|---|
+|Linux `130596697924`|Build and install wheel；Packaged reference identity；Native application regression|3／3 success／completed；回归完成 `2026-11-11T15:01:01Z`|
+|Windows `130596697242`|上述三步；Windows PowerShell 5.1 installer and upgrade|4／4 success／completed；回归完成 `2026-11-11T15:02:31Z`，installer 完成 `15:03:27Z`|
+
+Linux 的 Windows installer 为 skipped，与原 workflow 的 Windows 条件一致，不计入 Linux 必要三步。两 job 的 Complete job 也均 success。重建的七步名称、结论、时间、完成标记与各 receipt／body 摘要逐项等于 `ci-result-r3.json`，该投影 SHA **`8c29853d1b64b6849147fe641b9fe15e57094d4bf8821f036d1fbbba45aca739`**。此处只确认官方 HTML 报告的终态与必要步骤，没有下载完整 job 日志，也不据链接推断未读取的测试明细或计数。
+
+**O4 最终结论：通过。** 同片的精确 29 Git 对象／mode／ready、原 r3 包／283 冻结、普通提交／推送、作者 SSH 同完整 Ref 原件及本提交自己的 **run `43042210053` 双 OS 七必要步骤**均已由原评审者独立离线终核。Spec／Standards 仍开放 **0／0**，无新增 finding；**C3a 对 `ad331c854a6fbdbf6bacc3aac4350bb8d393713f` 的精确交付终结**。原 REST 403、matrix 404、非终态及中间未齐样本保留；不称成功 REST、完整日志或评审者独立直接网络成功。C3b、F7 其余及项目整体仍按各自范围继续，前文真实平台／执行环境限制保持。

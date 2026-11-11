@@ -205,7 +205,7 @@ flowchart TB
 
 ```mermaid
 flowchart LR
-  Control[项目 / 工单上下文与回写 / 记忆 / Skill / 评价等用例] --> DB[(Ergora SQLite / 20表 / schema v3)]
+  Control[项目 / 工单上下文与回写 / 记忆 / Skill / 评价等用例] --> DB[(Ergora SQLite / 21表 / schema v4)]
   Control --> Assets[Skill / 定义版本 / run / 来源文件]
   Memory[memory] --> DB
   Memory --> ReMe[ReMe可重建投影]
@@ -222,6 +222,7 @@ flowchart LR
 |项目与有效绑定|`projects`表及登记意图／回执|revision与能力校验；参考注册／策略是单向不可变投影|
 |工单来源与上下文关联|show不写库；capture保存issue_snapshots，link保存issue_task_links；原生响应SHA与稳定payload SHA各自独立|列表有界、完整快照显式离线读；原State v2迁移／writer fence及完整备份复用。旧正式注册无API host，operator_asserted_context不证明归属、不派工或改写原任务／批准|
 |候选评论／标签与当前观察|issue_writebacks保存原intent／attempt／result，issue_writeback_observations追加当前原生观察|schema v3沿原迁移／backup与旧writer fence；完整来源重新绑定原snapshot。status与备份离线核已存身份，send再消费原任务与导出所有者，不据观察补发|
+|候选与已有PR／MR上下文|`issues.link_review / review_link`保存及离线读取candidate_review_links；原生review读取留在IssueBackend本族|State v4迁移／旧writer fence；单候选scope不可变，save／load／backup同一身份校验。网络不持写锁，短事务核revision；不确认原发送、不创建资源或改变正式run|
 |静态专家与组合|独立完整包、版本索引、`composition-manifests/`|DefinitionLibrary逐包原子发布；历史读取不要求今天的后端仍可准入|
 |记忆与资料|`memories / memory_mirrors`；research四表与来源文件|来源、修订、审阅由所属域拥有；镜像不取代SQLite|
 |Skill／评价／搜索|`skill_versions / skill_heads / skill_events / evaluation_suites / evaluations / optimizations`及完整资产|采用／回退只改经过核验的精确头；生成与评分分权|

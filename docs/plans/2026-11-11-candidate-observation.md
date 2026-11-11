@@ -27,6 +27,6 @@ GitLab标签的固定版本研究已补足schema，但路由目标和scoped rena
 |O1 原所有者与协议|共用source-candidate验证；原export只读Git；GH／GL同一Interface，精确ref与opaque分支名|已实现；SP1／SP2已独立关闭；自身首审SP3真实red后最小修正，r3新包及受影响18项、完整独立通过，SP1–SP3关闭|
 |O2 CLI／HTTP与故障旅程|一致／漂移／不可见、错误native目标／ref、认证／限流、旧C1记录和备份保持；读取不写数据库／Git／tracker|r1安装196通过／1跳过保留；r2受影响49通过／1文案断言失败，修正后该回归1通过；无产品二次改动|
 |O3 安装与结构审查|新非editable包／两RECORD／283冻结，必要受影响回归；实际自身模板、新fresh-context完整独立两轴|r2包446／两RECORD／283通过，相对r1仅原Git owner变化；自身首审306.03秒request-changes／完整读取通过；SP3修正后r3包446／283及受影响18项通过，聚焦自身164.79秒approve／五scope完整读取通过，完整29文件独立两轴0／0通过，本地出口完成|
-|O4 精确交付|普通提交／推送、精确Git／remote及本片自己的双OS必要CI；更新手册／架构／本片记录|待交付；C2a精确交付已终结，不借其CI|
+|O4 精确交付|普通提交／推送、精确Git／remote及本片自己的双OS必要CI；更新手册／架构／本片记录|ad331c8普通提交／推送、29Git／ready及作者SSH同完整SHA通过，自己的CI43042210053双OS七必要步骤及原评审精确终核通过，C3a精确交付终结；REST403／matrix404／原非终态保留|
 
 当前[交付记录](../delivery/2026-11-11-candidate-observation.md)记录每步实际证据。只用loopback和本地Git做平台写零次验收，不向真实账号创建分支或PR／MR。凭据继续外部变量，持久原件置home下忽略检查目录。
