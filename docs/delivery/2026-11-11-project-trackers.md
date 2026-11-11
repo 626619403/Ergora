@@ -35,3 +35,12 @@ GET保留完整API base／namespace／路由number或iid和另列native ID；只
 ## 本地出口
 
 完整最终候选的新独立评审已覆盖实现、测试、配置与文档／两公开投影；没有新增依赖、CI或JS。前片CI已终态，本片接着最终有限静态／冻结、普通提交／推送，并核同一候选的Git对象／官方Ref和必要CI。最终有限静态核28文件／328本地文件链接／6已加载秘密值，issue0，未检查全部锚点／Mermaid或外链。完整F7、F8–F10及G1仍按计划推进，不把只读来源称为已处理工单。
+
+## 普通提交与自己的精确交付
+
+最终28文件ready manifest SHA256 `03dd8868ee582d281fc557311b5ab348d45b6d0e507b93830957b78e454c6d39`，独立核冻结／live／模式／Git路径及后补状态通过；最终静态28／328／6值issue0。普通提交并推送`9f010079126f374c01272ecf2f0ec85284e4e2cc`，单父0252dec；Git工作区当时clean。自己的精确Git／远端Ref及CI正在同片终核，原模型／平台／后补范围保持，不借前片CI。
+
+第一次匿名REST查询返回403限流，280B原body保留，未得到CI状态，不称CI失败或通过。随后一次官方公开Actions页面HTTP200（320,338B、SHA256 `bf4f868515b99237faa2697cc55df33e7c2feb6f14a367abfcb00be0f2701b0c`）的原embedded JSON将完整9f01007、分支与[本片CI42974715330](https://github.com/626619403/Ergora/actions/runs/42974715330)精确关联，状态为in_progress；等待自己的终态，继续本地设计且不推下一候选。
+
+
+同片精确交付现已终结：原评审独立核28Git对象／ready及既有SSH远端同完整9f01007；官方run42974715330页面及其直接各取一次的两job HTML均为终态成功，Linux三／Windows四必要步骤success，原件／精确关联／步数离线核验通过，见[原评审终核](2026-11-11-project-trackers-review.md#同片精确交付终核2026-11-11)。第二匿名REST仍403，两个403与早期In progress均保留；本结论基于官方HTML，不冒称成功终态REST或全日志下载。F7b live源码没有代替原候选包身份。

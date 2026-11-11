@@ -34,6 +34,7 @@ WORKFLOW_DEFINITIONS = {1: WORKFLOW_DEFINITION,
 COMPOSITION_GRANT = {"$defs": WORKFLOW_DEFINITION["$defs"], "$ref": "#/$defs/grant"}
 COMPOSITION_INPUT = json.loads((_SCHEMAS / "composition-input-v1.json").read_text(encoding="utf-8"))
 COMPOSITION_MANIFEST = json.loads((_SCHEMAS / "composition-manifest-v1.json").read_text(encoding="utf-8"))
+ISSUE_OBSERVATION = json.loads((_SCHEMAS / "issue-observation-v1.json").read_text(encoding="utf-8"))
 
 
 def validate(value, schema: dict, context: str) -> None:

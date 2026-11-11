@@ -143,11 +143,47 @@ ergora issue show PROJECT 7
 
 `--revision`填写`project show`返回的当前值。GitHub绑定使用`"tool":"github"`、`"project":"owner/repository"`，API默认`https://api.github.com`；默认固定REST版本`2022-11-28`，可用`api_version`显式选择支持的日期版本。GitLab默认API为`https://gitlab.com/api/v4`，支持完整subgroup路径。自托管API须使用HTTPS；HTTP仅支持loopback。公共工单可省略`token_env`匿名读取；配置了变量名但环境缺值时明确失败。未知字段和URL内凭据被拒绝，接口不跟随重定向。
 
-`issue show`参数是GitHub仓库内number或GitLab项目内iid，响应另存全局native ID。返回完整标题／正文／标签、原生状态与更新时间、ETag（若有）、原始响应SHA256、API地址／namespace、项目修订／配置摘要和本次观察时间。正文保留为文本，标记`context_only:true`；需要保存时可将JSON输出重定向到自己的持久文件。当前不缓存、不扫描列表、不读取评论、不派工或回写。ETag／更新时间／摘要仅为观察线索，不提供写入CAS，也不构成任务批准。
+`issue show`参数是GitHub仓库内number或GitLab项目内iid，响应另存全局native ID。返回完整标题／正文／标签、原生状态与更新时间、ETag（若有）、原始响应SHA256、API地址／namespace、项目修订／配置摘要和本次观察时间。正文保留为文本，标记`context_only:true`；`show`不保存，需要持久化时使用下面的`capture`。不扫描远端列表、不读取评论、不派工或回写。ETag／更新时间／摘要仅为观察线索，不提供写入CAS，也不构成任务批准。
 
 HTTP入口为`GET /api/projects/PROJECT/issues/7`，与CLI共用同一用例。原工具绑定页面按schema显示tracker配置；工单专页与observe列表在后续节点交付。已正式注册的项目只允许读取其登记的kind／namespace；改变来源绑定会产生新项目修订，不修改旧任务或参考注册。正式注册尚未包含API host，后续跨host派工必须另行核准身份，不能直接复用旧claim。
 
 只接受普通GitHub issue／GitLab project issue；GitHub PR、GitLab非issue类型或不兼容响应明确拒绝。每次一个GET、20秒socket I/O超时、1MiB完整响应上限，无自动重试；这不是整个调用的20秒wall-time保证。认证／不可用／重定向／超限／截断等失败不会伪装成空工单。详细接口取舍和未验自托管范围见[工单接入调研](research/2026-11-11-project-trackers.md)。
+
+### 保存工单与关联任务上下文
+
+`capture`显式读取并保存一份完整、不可变的工单上下文。后续读取已保存快照不需要当前tracker或凭据可用；所有命令使用同一控制目录`--home`。先查看项目当前revision，再执行：
+
+```bash
+ergora issue capture PROJECT 7 --revision 2
+ergora issue snapshots PROJECT --limit 20
+ergora issue snapshot PROJECT SNAPSHOT_SHA
+```
+
+capture返回`snapshot.sha256`、`snapshot.first_observed_at`和本次`observed_at`。SHA绑定完整观察与当次tracker配置，包括API基地址、命名空间、工单number／iid、native ID、正文、响应摘要及项目修订；配置只保存凭据变量名。首次保存时间不参与内容SHA，相同内容／配置重读返回原快照，工单更新产生新快照。GET期间修改配置仍保存明确标注原修订的观察。没有保存原HTTP响应正文，`response.sha256`仅是该响应的字节摘要。
+
+要将快照关联到已有任务，先按原流程`task preview → task create`发布合同，再用`task creation PROJECT TASK`读取其`intent_sha256`。随后显式指定这个SHA、快照SHA、任务ID和关联原因：
+
+```bash
+ergora issue link-task PROJECT SNAPSHOT_SHA TASK --creation-sha256 CREATION_SHA --revision 2 --reason "本次工作参考的来源"
+ergora issue links PROJECT --snapshot SNAPSHOT_SHA --limit 20
+ergora issue links PROJECT --task TASK --limit 20
+```
+
+一份快照可关联多个任务，一个任务也可显式关联后续快照。重复同一关系返回原原因／时间，即使原请求的项目修订已过时；新关系仍要求当前项目修订、目标creation已published且SHA精确相符，pending先走原resume-create，conflict先核原文件。`created_revision`是创建时的项目修订；新工作版本沿原合同使用新任务ID。旧任务输入／批准不被改写，关联不启动任务，也不自动让运行中的Agent读取资料。输出的`operator_asserted_context / context_only / execution_authorized:false`表示操作者声明的上下文关系；旧正式来源没有API host，因此关联不能证明原生来源归属或替代派工准入。
+
+两个列表只返回有界metadata，完整正文通过单份snapshot读取。`--limit`为1–100；`next_cursor`非空时原样传给`--after`，并保持相同项目／过滤条件。分页期间新增且排序在游标之前的内容需要从首页重读；这是发现已保存记录的查询，不是固定视图或一次派工去重。capture响应丢失后可查询本地列表；再次capture可能观察到更新内容。
+
+HTTP与CLI共用相同用例；POST沿用本地Origin及`X-Ergora-Request: 1`保护：
+
+|操作|HTTP入口／正文|
+|---|---|
+|保存|`POST /api/projects/PROJECT/issues/7/snapshots`，`{"revision":2}`|
+|快照metadata列表|`GET /api/projects/PROJECT/issue-snapshots?limit=20&after=CURSOR`|
+|完整快照|`GET /api/projects/PROJECT/issue-snapshots/SNAPSHOT_SHA`|
+|关联|`POST /api/projects/PROJECT/issue-links`，`{"snapshot_sha256":"…","task_id":"TASK","creation_sha256":"…","revision":2,"reason":"…"}`|
+|关联列表|`GET /api/projects/PROJECT/issue-links?task_id=TASK&snapshot_sha256=SNAPSHOT_SHA&limit=20`，两过滤条件可选，可带`after`|
+
+快照与关联保存在控制面的SQLite中，由原`state backup / verify-backup / restore`完整离线备份恢复；数据库升级到schema v2会先保留旧库备份，旧客户端不能写新库。完整备份仍要求停写、同平台及原home；外置执行目录须另行保存，不会从上下文关联重建任务。正式派工、远端回写和工单专页仍按[F7计划](plans/2026-11-11-project-trackers.md)分片交付。
 
 ### 诊断与修复
 

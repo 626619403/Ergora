@@ -33,3 +33,30 @@ Spec轴实际复用既有r2依赖环境运行当前源码的 `tests/test_project
 研究的43份原body／SHA、33次200／2次304／1次404／7次超时及两SDK wheel与PyPI／抽取源码身份已离线核验；研究公开GET没有运行Ergora Adapter。C6d三样本六份原CI正文和原Ref指向精确0252dec，前两in_progress保留，第三双OS共七必要步骤成功；这是前片记录支持，本评审没有新发外网请求，不将该CI转授F7a。
 
 结论仅为本片完整候选的本地两轴通过。Spec／Standards开放0／0，各一项历史P3已关闭；无开放产品finding。F7a自己的冻结后普通提交／推送、精确Git／远端身份和候选CI仍待同片终核。真实账号认证／写入、自托管兼容、第二后端推理、GPU／WSL2及项目整体完成均不在本次结算范围。
+
+## 同片精确交付终核（2026-11-11）
+
+本段结清F7a自己的提交与CI出口，上文“当前HEAD／未提交／待核”保留为原评审快照。唯一代码候选为不可变提交 `9f010079126f374c01272ecf2f0ec85284e4e2cc`，唯一父提交是原基线 `0252dec5c41be1c1f6f533d86d8f32d30d178ce3`。主评审已逐件核28个Git blob、`100644`模式及changed-path集合，与ready-r1精确一致；ready manifest SHA256 `03dd8868ee582d281fc557311b5ab348d45b6d0e507b93830957b78e454c6d39`。原r2包／安装／283冻结核验沿用其原始观察时间，没有拿后续F7b工作区与F7a包比较。
+
+独立官方HTTPS Ref GET实际返回匿名限流403，原280B正文及回执保留，不改称HTTPS成功。随后按授权只用既有origin push URL执行一次SSH `ls-remote`，远端 `refs/heads/refactor/architecture-foundations` 返回上述完整9f01007，exit0、7.067秒、stdout86B／stderr0B；没有更改认证、remote或网络配置。其stdout SHA256 `fe656c57e8fc25afec64ebc511cce86337d3073835027305dd617b4e0b97ee1e`。
+
+本片自己的[Portability #145](https://github.com/626619403/Ergora/actions/runs/42974715330)对应push、上述分支与完整commit，attempt1、workflow `.github/workflows/portability.yml`。主评审逐字核作者保存的官方运行汇总HTTP200原页：`Status → Success`、`2 jobs completed`。汇总不含必要步骤属性，因此本评审又分别直接GET一次[Ubuntu／Python3.11 job 130370989713](https://github.com/626619403/Ergora/actions/runs/42974715330/job/130370989713)和[Windows／Python3.12 job 130370989224](https://github.com/626619403/Ergora/actions/runs/42974715330/job/130370989224)，均HTTP200、请求与最终URL相同。两页均显示`succeeded`，各`check-step`带`data-job-completed`，`Complete job`为success；成功步骤的log链接均精确含本片完整commit及各自job ID，开始／完成时间有效且早于取样时间。
+
+|不可变workflow中的必要步骤|Ubuntu|Windows|
+|---|---|---|
+|Build and install wheel|success|success|
+|Packaged reference identity|success|success|
+|Native application regression|success|success|
+|Windows PowerShell 5.1 installer and upgrade|skipped，符合Windows条件|success|
+
+所以实际为Linux三项／Windows四项、合计七个必要步骤成功。没有从HTML推导pytest数量。以下原页均已独立核字节数／SHA256与各自receipt一致；私有证据根为 `.ergora/checks/f7-issues/`：
+
+|原页证据ID|字节|SHA256|
+|---|---:|---|
+|`commit-closure/actions-run-02/page.html`|156947|`2769ae69dccb4c72643315650de09917b9fa879a14784058a0709abf8bf9a5ca`|
+|`independent/commit-9f01007/actions-job-linux-01/page.html`|161497|`cbdae8a62c20ef5a2941659ca2940bea96b287a6c8b7b82403a8f3ea01f61aed`|
+|`independent/commit-9f01007/actions-job-windows-01/page.html`|159583|`f92459016f7fba505f74b847120d3fb5d135ea46df4e614337e881b9ada82333`|
+
+完整离线终核见私有 `independent/commit-9f01007/ci-html-terminal-audit.json`，15513B、SHA256 `4c275a3d09662c7abdddf4f0c48fba2957f48649c67f4cfc9a0cd8821ae27602`；同目录保留`git-objects-audit.json`、HTTPS原件及`ssh-ls-remote-receipt.json`。较早`actions-page-01`的IN_PROGRESS及`snapshot-api-01`／`snapshot-api-02`两次REST403仍按原状态保留；汇总页的通用局部加载提示、两警告一notice也未删除。终态依据是官方公开HTML的状态与步骤属性，没有终态REST响应或下载的完整job日志。本次没有重跑CI、安装、产品、浏览器或模型，没有审查F7b源码／运行时，也没有远端写入。
+
+在上述范围内，F7a的同一候选精确Git／远端身份及自己的必要CI均已终核，精确交付可关闭；Spec／Standards开放finding仍为0／0。此结论不构成F7b、完整F7或整个项目验收，原列未验范围继续保持。

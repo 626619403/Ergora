@@ -173,6 +173,30 @@ def parser() -> argparse.ArgumentParser:
     show_issue = operations.add_parser("show", help="Read one GitHub number or GitLab iid using the selected tracker")
     show_issue.add_argument("project")
     show_issue.add_argument("issue_id")
+    capture_issue = operations.add_parser("capture", help="Save a complete immutable issue context snapshot")
+    capture_issue.add_argument("project")
+    capture_issue.add_argument("issue_id")
+    capture_issue.add_argument("--revision", type=int, required=True)
+    saved_issue = operations.add_parser("snapshot", help="Read one complete saved snapshot offline")
+    saved_issue.add_argument("project")
+    saved_issue.add_argument("sha256")
+    saved_issues = operations.add_parser("snapshots", help="List bounded saved snapshot metadata offline")
+    saved_issues.add_argument("project")
+    saved_issues.add_argument("--limit", type=int, default=50)
+    saved_issues.add_argument("--after")
+    link_issue = operations.add_parser("link-task", help="Associate context with an exact published creation; does not start execution")
+    link_issue.add_argument("project")
+    link_issue.add_argument("snapshot_sha256")
+    link_issue.add_argument("task_id")
+    link_issue.add_argument("--creation-sha256", required=True)
+    link_issue.add_argument("--revision", type=int, required=True)
+    link_issue.add_argument("--reason", required=True)
+    issue_links = operations.add_parser("links", help="Read saved task context associations offline")
+    issue_links.add_argument("project")
+    issue_links.add_argument("--snapshot", dest="snapshot_sha256")
+    issue_links.add_argument("--task", dest="task_id")
+    issue_links.add_argument("--limit", type=int, default=50)
+    issue_links.add_argument("--after")
     tool = commands.add_parser("tools", help="List supported tools or check project availability")
     operations = tool.add_subparsers(dest="operation", required=True)
     operations.add_parser("list")
@@ -567,7 +591,21 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 output = projects.bind(state, args.id, args.layer, json.loads(args.binding.read_text(encoding="utf-8-sig")), args.revision)
         elif args.command == "issue":
-            output = issues.show(State(args.home), args.project, args.issue_id)
+            state = State(args.home)
+            if args.operation == "show":
+                output = issues.show(state, args.project, args.issue_id)
+            elif args.operation == "capture":
+                output = issues.capture(state, args.project, args.issue_id, args.revision)
+            elif args.operation == "snapshot":
+                output = issues.snapshot(state, args.project, args.sha256)
+            elif args.operation == "snapshots":
+                output = issues.snapshots(state, args.project, limit=args.limit, after=args.after)
+            elif args.operation == "link-task":
+                output = issues.link_task(state, args.project, args.snapshot_sha256, args.task_id,
+                                          args.creation_sha256, args.revision, args.reason)
+            else:
+                output = issues.links(state, args.project, snapshot_sha256=args.snapshot_sha256,
+                                      task_id=args.task_id, limit=args.limit, after=args.after)
         elif args.command == "tools":
             if args.operation == "profiles":
                 output = tools.installation_profiles()

@@ -83,6 +83,17 @@ class TaskDefinitionPayload(Payload):
     revision: int = Field(strict=True, ge=1)
 
 
+class IssueCapturePayload(Payload):
+    revision: int = Field(strict=True, ge=1)
+
+
+class IssueLinkPayload(IssueCapturePayload):
+    snapshot_sha256: str
+    task_id: str
+    creation_sha256: str
+    reason: str
+
+
 class TaskCreationPayload(TaskDefinitionPayload):
     preview_sha256: str = Field(pattern="^[0-9a-f]{64}$")
 
@@ -395,6 +406,29 @@ def create_app(home: Path | None = None) -> FastAPI:
     @application.get("/api/projects/{project_id}/issues/{issue_id}")
     def project_issue(project_id: str, issue_id: str):
         return issues.show(state, project_id, issue_id)
+
+    @application.post("/api/projects/{project_id}/issues/{issue_id}/snapshots")
+    def capture_project_issue(project_id: str, issue_id: str, body: IssueCapturePayload):
+        return issues.capture(state, project_id, issue_id, body.revision)
+
+    @application.get("/api/projects/{project_id}/issue-snapshots")
+    def saved_project_issues(project_id: str, limit: int = 50, after: str | None = None):
+        return issues.snapshots(state, project_id, limit=limit, after=after)
+
+    @application.get("/api/projects/{project_id}/issue-snapshots/{sha256}")
+    def saved_project_issue(project_id: str, sha256: str):
+        return issues.snapshot(state, project_id, sha256)
+
+    @application.post("/api/projects/{project_id}/issue-links")
+    def link_project_issue(project_id: str, body: IssueLinkPayload):
+        return issues.link_task(state, project_id, body.snapshot_sha256, body.task_id,
+                                body.creation_sha256, body.revision, body.reason)
+
+    @application.get("/api/projects/{project_id}/issue-links")
+    def project_issue_links(project_id: str, snapshot_sha256: str | None = None, task_id: str | None = None,
+                            limit: int = 50, after: str | None = None):
+        return issues.links(state, project_id, snapshot_sha256=snapshot_sha256, task_id=task_id,
+                            limit=limit, after=after)
 
     @application.post("/api/projects/{project_id}/tasks/preview")
     def preview_formal_task(project_id: str, body: TaskDefinitionPayload):

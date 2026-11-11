@@ -1,0 +1,301 @@
+{
+  "schema_version": 1,
+  "slice": "F7b.0",
+  "baseline": "9f010079126f374c01272ecf2f0ec85284e4e2cc",
+  "checks": [
+    {
+      "original": "source-r1/storage.stdout",
+      "pytest_summary": "33 passed, 1 skipped in 3.42s"
+    },
+    {
+      "original": "source-r1/mapping.stdout",
+      "pytest_summary": "1 failed, 23 passed in 19.27s"
+    },
+    {
+      "original": "source-r1/targeted-r2.stdout",
+      "pytest_summary": "152 passed, 1 skipped in 57.95s"
+    },
+    {
+      "original": "source-r1/replay-r3.stdout",
+      "pytest_summary": "10 passed in 11.22s"
+    },
+    {
+      "original": "r1/definition-backup.stdout",
+      "pytest_summary": "68 passed, 1 skipped in 3.91s"
+    },
+    {
+      "original": "r1/installed-tests.stdout",
+      "pytest_summary": "57 passed, 1 skipped in 23.71s"
+    },
+    {
+      "original": "r2/installed-tests.stdout",
+      "pytest_summary": "57 passed, 1 skipped in 24.00s"
+    },
+    {
+      "original": "r3/installed-tests.stdout",
+      "pytest_summary": "11 passed in 13.69s"
+    }
+  ],
+  "packages": {
+    "r1": {
+      "at": "2026-11-11T07:18:20.436642+00:00",
+      "wheel_sha256": "f4c520ead27fdf1c6b0b59efce498ee1e6ae101b44c1c5a2b5acfbe5771dde3b",
+      "wheel_files": 447,
+      "package_files": 442,
+      "wheel_and_installed_records_verified": true,
+      "installed_record_rows": 452,
+      "source_and_installed_package_equal": true,
+      "frozen_files": 283,
+      "editable": false
+    },
+    "r2": {
+      "at": "2026-11-11T07:31:22.305188+00:00",
+      "wheel_sha256": "aef9df6e150b739867e00c2f43e2b3a1e2acc9e5d5735ab9def0bc2a0e35ef29",
+      "wheel_files": 447,
+      "package_files": 442,
+      "wheel_and_installed_records_verified": true,
+      "installed_record_rows": 452,
+      "source_and_installed_package_equal": true,
+      "frozen_files": 283,
+      "editable": false
+    },
+    "r3": {
+      "at": "2026-11-11T07:36:59.566450+00:00",
+      "wheel_sha256": "5976eeb3b1c3e0beb93bffc1bdf86d8c8221c3625d34a97fa7bc715f81c14042",
+      "wheel_files": 447,
+      "package_files": 442,
+      "wheel_and_installed_records_verified": true,
+      "installed_record_rows": 452,
+      "source_and_installed_package_equal": true,
+      "frozen_files": 283,
+      "editable": false
+    }
+  },
+  "installed_validation": {
+    "r1": [
+      {
+        "at": "2026-11-11T07:18:45.939436+00:00",
+        "exit": 0,
+        "seconds": 25.498782779090106,
+        "stdout_sha256": "15a875f298962f4978b48f62a862a79384ae27e2f0fc99149ee9d26de29bb136"
+      },
+      {
+        "at": "2026-11-11T07:18:46.207083+00:00",
+        "exit": 0,
+        "seconds": 0.26600926695391536,
+        "stdout_sha256": "a7514370039d9c00bd129bdad9423506f3db098c296b09736c0186d3b74f1a33"
+      }
+    ],
+    "r2": [
+      {
+        "at": "2026-11-11T07:31:48.259766+00:00",
+        "exit": 0,
+        "seconds": 25.950517003890127,
+        "stdout_sha256": "7412fdd20e2f06586f01e26289e51fb924efca8fb31f1cdc442bd606950c9a26"
+      },
+      {
+        "at": "2026-11-11T07:31:48.528087+00:00",
+        "exit": 0,
+        "seconds": 0.2662992072291672,
+        "stdout_sha256": "425f581c0f1822c6dc55863b6e16520051f904266c3785b80df1333bfd51b0bd"
+      }
+    ],
+    "r3": [
+      {
+        "at": "2026-11-11T07:37:15.156911+00:00",
+        "exit": 0,
+        "seconds": 15.586331536062062,
+        "stdout_sha256": "86c7168c792c613bd038617617dd194941df879bdc58d4da91a924b7723dcde9"
+      },
+      {
+        "at": "2026-11-11T07:37:15.424835+00:00",
+        "exit": 0,
+        "seconds": 0.266137070953846,
+        "stdout_sha256": "c227137bc962ac49cd494a56d6e48e6f2727131528dd86f5224cd5980fdcb3f0"
+      }
+    ]
+  },
+  "synthetic_journeys": {
+    "journey-r1": {
+      "at": "2026-11-11T07:19:45.717660+00:00",
+      "passed": false,
+      "checks": [],
+      "seconds": 3.3403834816999733,
+      "owned_web_exit": -15,
+      "tracker_thread_alive": false,
+      "owned_ports_closed": true,
+      "scope": "Synthetic registered project, installed isolated CLI and real loopback HTTP; tasks created but never started. Fixture checks are placeholders, not real business acceptance. No remote writes, model, GPU, WSL or OS-isolation claim.",
+      "error_type": "AttributeError",
+      "error": "'Request' object has no attribute 'method'",
+      "cli_calls": 3,
+      "http_calls": 0,
+      "http_statuses": {},
+      "local_tracker_GETs": 1
+    },
+    "journey-r2": {
+      "at": "2026-11-11T07:20:23.539392+00:00",
+      "passed": true,
+      "checks": [
+        "Real HTTP and CLI capture return the same immutable snapshot and first time",
+        "Changed issue text creates a new snapshot without replacing the first",
+        "Bounded filtered cursor reads both relations",
+        "Complete old context remains readable with manual binding, no token and tracker stopped",
+        "Real HTTP offline snapshot agrees with CLI",
+        "Response-loss retry returns original reason and time without target mutation",
+        "Two tasks and two snapshots retain all three explicit context links",
+        "Real HTTP and CLI offline link listings agree",
+        "Existing offline backup verifies complete context records",
+        "Original-home restore preserves full snapshots and links",
+        "Published native task and creation files remain byte-identical",
+        "No start, Temporal, model or formal job request generated",
+        "Only three explicit source GETs; all offline operations use stored context"
+      ],
+      "seconds": 6.272850530222058,
+      "owned_web_exit": -15,
+      "tracker_thread_alive": false,
+      "owned_ports_closed": true,
+      "scope": "Synthetic registered project, installed isolated CLI and real loopback HTTP; tasks created but never started. Fixture checks are placeholders, not real business acceptance. No remote writes, model, GPU, WSL or OS-isolation claim.",
+      "cli_calls": 13,
+      "http_calls": 13,
+      "http_statuses": {
+        "403": 1,
+        "200": 12
+      },
+      "local_tracker_GETs": 3
+    },
+    "journey-r3": {
+      "at": "2026-11-11T07:31:59.710355+00:00",
+      "passed": true,
+      "checks": [
+        "Real HTTP and CLI capture return the same immutable snapshot and first time",
+        "Changed issue text creates a new snapshot without replacing the first",
+        "Bounded filtered cursor reads both relations",
+        "Complete old context remains readable with manual binding, no token and tracker stopped",
+        "Real HTTP offline snapshot agrees with CLI",
+        "Response-loss retry returns original reason and time without target mutation",
+        "Two tasks and two snapshots retain all three explicit context links",
+        "Real HTTP and CLI offline link listings agree",
+        "Existing offline backup verifies complete context records",
+        "Original-home restore preserves full snapshots and links",
+        "Published native task and creation files remain byte-identical",
+        "No start, Temporal, model or formal job request generated",
+        "Only three explicit source GETs; all offline operations use stored context"
+      ],
+      "seconds": 7.667528979945928,
+      "owned_web_exit": -15,
+      "tracker_thread_alive": false,
+      "owned_ports_closed": true,
+      "scope": "Synthetic registered project, installed isolated CLI and real loopback HTTP; tasks created but never started. Fixture checks are placeholders, not real business acceptance. No remote writes, model, GPU, WSL or OS-isolation claim.",
+      "cli_calls": 13,
+      "http_calls": 13,
+      "http_statuses": {
+        "403": 1,
+        "200": 12
+      },
+      "local_tracker_GETs": 3
+    }
+  },
+  "source_identities": [
+    {
+      "original": "source-r1/storage.stdout",
+      "bytes": 110,
+      "sha256": "22b6553c93649e03fc9a552b241d2d708f89fc2dc7e7e2a56ed28cca3d1f06d7"
+    },
+    {
+      "original": "source-r1/mapping.stdout",
+      "bytes": 901,
+      "sha256": "30f513f407dc24a3f7a96d4e8edef2ae0c143bda95e7d7b8387de39cb66646be"
+    },
+    {
+      "original": "source-r1/targeted-r2.stdout",
+      "bytes": 272,
+      "sha256": "b121abf25ea6c2b99665fcede2a73a1cb68cb03f4ed71ac37ba12477562b513f"
+    },
+    {
+      "original": "source-r1/replay-r3.stdout",
+      "bytes": 100,
+      "sha256": "3216878685f502a426690cc8a5523c595be908869f72e3e7e9174ea7514cdfaf"
+    },
+    {
+      "original": "r1/definition-backup.stdout",
+      "bytes": 110,
+      "sha256": "ce187fe17abb44db3330d5dc87c615889a4830d731e16fc978b1d69b83b83d10"
+    },
+    {
+      "original": "r1/installed-tests.stdout",
+      "bytes": 111,
+      "sha256": "15a875f298962f4978b48f62a862a79384ae27e2f0fc99149ee9d26de29bb136"
+    },
+    {
+      "original": "r2/installed-tests.stdout",
+      "bytes": 111,
+      "sha256": "7412fdd20e2f06586f01e26289e51fb924efca8fb31f1cdc442bd606950c9a26"
+    },
+    {
+      "original": "r3/installed-tests.stdout",
+      "bytes": 100,
+      "sha256": "86c7168c792c613bd038617617dd194941df879bdc58d4da91a924b7723dcde9"
+    },
+    {
+      "original": "r1/package-identity.json",
+      "bytes": 473,
+      "sha256": "6ba68908cf96dd299f339b512cab2419e9f08d52685100a43ab4329fff613571"
+    },
+    {
+      "original": "r1/installed-validation.json",
+      "bytes": 919,
+      "sha256": "abfa562c2b8a3dd3b738a456e4268657caf387816db5384366befd3190afe73f"
+    },
+    {
+      "original": "r1/reference-verify.stdout",
+      "bytes": 478,
+      "sha256": "a7514370039d9c00bd129bdad9423506f3db098c296b09736c0186d3b74f1a33"
+    },
+    {
+      "original": "r2/package-identity.json",
+      "bytes": 473,
+      "sha256": "2aa669de248ced7db71eea853e04db322580436c382a0f342949eb478cfbd418"
+    },
+    {
+      "original": "r2/installed-validation.json",
+      "bytes": 918,
+      "sha256": "39565a9b4be793f5d436b84976e58dd459fb821e0fc9bf114176859b0fc622f8"
+    },
+    {
+      "original": "r2/reference-verify.stdout",
+      "bytes": 478,
+      "sha256": "425f581c0f1822c6dc55863b6e16520051f904266c3785b80df1333bfd51b0bd"
+    },
+    {
+      "original": "r3/package-identity.json",
+      "bytes": 473,
+      "sha256": "2bde6b57be5cb4426bc40bbb19000b6fd42237ffde15ca9ec08c4aa88059b9c1"
+    },
+    {
+      "original": "r3/installed-validation.json",
+      "bytes": 802,
+      "sha256": "5aa4e09f5c0e8ae63494d51a4d0895403aa2efdde38ecbef4bc7f4d782777709"
+    },
+    {
+      "original": "r3/reference-verify.stdout",
+      "bytes": 478,
+      "sha256": "c227137bc962ac49cd494a56d6e48e6f2727131528dd86f5224cd5980fdcb3f0"
+    },
+    {
+      "original": "journey-r1/receipt.json",
+      "bytes": 1606,
+      "sha256": "74daa4dd35c321c9f64186f033db56349ed95d112f9c7f8ee6912550674b0c48"
+    },
+    {
+      "original": "journey-r2/receipt.json",
+      "bytes": 8882,
+      "sha256": "e750caa2e44f35fceccd6fa1d2e03ff9b7d6088495d08db46ff8576196645b6f"
+    },
+    {
+      "original": "journey-r3/receipt.json",
+      "bytes": 8879,
+      "sha256": "c6a417632e1e638c2574b2e340a1a1a421c68bd6a07294907e5b97295670325e"
+    }
+  ],
+  "scope": "F7b.0 local immutable context, exact original creation associations and offline restore. r1 retains its original lost-response bug and earlier failed test; r2 fixes original stale-revision retries and runs the real CLI/HTTP journey; final r3 adds transaction-race priority and validates all eleven mapping checks in a new isolated installed package. Earlier package tests/journeys are not represented as r3 reruns. The first driver failure is retained. No task start, formal source admission, real-service authentication/writes, billing, GPU, WSL2 or whole-project acceptance."
+}

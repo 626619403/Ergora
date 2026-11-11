@@ -15,7 +15,7 @@ import pytest
 
 from ergora import agent_definitions as definitions
 from ergora import agents, backups, contracts, definition_bundles, projects, skill_assets
-from ergora.state import State
+from ergora.state import SCHEMA_VERSION, State
 
 
 EXAMPLES = Path(__file__).resolve().parents[1] / "examples/agents"
@@ -402,7 +402,7 @@ def test_offline_restore_preserves_definitions_resources_and_exact_references(bu
     definitions.import_bundle(state, EXAMPLES / "architecture-reviewer")
     before = definitions.get(state, "kernel-implementer", "1.0.0", material=True)
     snapshot = backups.create(state.root, tmp_path / "backup", offline=True)
-    assert snapshot["agent_definitions"] == 2 and snapshot["database_schema_version"] == 1
+    assert snapshot["agent_definitions"] == 2 and snapshot["database_schema_version"] == SCHEMA_VERSION
     state.root.rename(tmp_path / "kept-original")
     backups.restore(state.root, tmp_path / "backup", offline=True)
     restored = State(state.root)

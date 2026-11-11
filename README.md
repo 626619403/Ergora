@@ -64,7 +64,7 @@ flowchart LR
 
 独立控制面使用 Python、SQLite、FastAPI / Uvicorn 和随包 Cytoscape.js。各项目可按盘点、规划、实现、审查及训练角色选择 Codex / Claude Code / 自定义命令，实现角色也可选择 mini-swe-agent；kernel 层可接原生 ForgeKernel。记忆、优化和调度分别选择 SQLite / ReMe、手动 / GEPA、手动 / Temporal。前端和 CLI 共用应用函数，不复制评价、采用或合同校验逻辑。
 
-项目的tracker层可选择本地手动、GitHub或GitLab。`ergora issue show PROJECT 7`读取指定工单的完整上下文与来源摘要，普通项目即可使用；配置与命令见[使用手册](docs/USAGE.md#读取项目工单上下文)。当前读取不创建任务或回写，任务映射和显式状态关联按[F7计划](docs/plans/2026-11-11-project-trackers.md)继续实现。
+项目的tracker层可选择本地手动、GitHub或GitLab。`ergora issue show PROJECT 7`读取完整上下文，`issue capture`保存不可变快照，`issue link-task`把快照显式关联到已有任务的精确创建版本；列表和完整快照支持离线读回，见[使用手册](docs/USAGE.md#保存工单与关联任务上下文)。关联只保存上下文，不启动任务或改写输入／批准；正式来源准入、回写和页面按[F7计划](docs/plans/2026-11-11-project-trackers.md)继续实现。
 
 下表为完整六阶段**参考发行**的工具栈：
 

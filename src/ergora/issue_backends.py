@@ -5,7 +5,6 @@ import hashlib
 from http.client import HTTPException
 import json
 import os
-from pathlib import Path
 import re
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlsplit
@@ -14,7 +13,6 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 from . import components, contracts
 
 
-_OBSERVATION = json.loads((Path(__file__).parent / 'data/schemas/issue-observation-v1.json').read_text(encoding='utf-8'))
 _RESPONSE_LIMIT = 1_048_576
 
 
@@ -105,7 +103,7 @@ class IssueBackend(ABC):
         observed = {'schema_version': 1, 'source': {'provider': self.binding['tool'], 'api_url': self.api_url,
                     'project': self.binding['project'], 'issue_id': issue_id}, 'issue': issue,
                     'response': {'sha256': hashlib.sha256(raw).hexdigest(), 'etag': etag}, 'context_only': True}
-        contracts.validate(observed, _OBSERVATION, 'Issue observation')
+        contracts.validate(observed, contracts.ISSUE_OBSERVATION, 'Issue observation')
         return observed
 
 

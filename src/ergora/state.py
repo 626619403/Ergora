@@ -31,6 +31,14 @@ _TABLES = {
 }
 
 
+def _writer_fences(db: sqlite3.Connection, table: str, version: int) -> None:
+    for operation in ("INSERT", "UPDATE", "DELETE"):
+        db.execute(f'''CREATE TRIGGER "ergora_writer_v{version}_{table}_{operation.lower()}"
+            BEFORE {operation} ON "{table}"
+            WHEN ergora_writer_schema_version() IS NOT {version}
+            BEGIN SELECT RAISE(ABORT, 'Incompatible Ergora writer; upgrade before writing'); END''')
+
+
 def _schema_v1(db: sqlite3.Connection) -> None:
     with closing(sqlite3.connect(":memory:")) as expected:
         for table, declaration in _TABLES.items():
@@ -41,14 +49,26 @@ def _schema_v1(db: sqlite3.Connection) -> None:
             db.execute(f'CREATE TABLE IF NOT EXISTS "{table}" {declaration}')
             # Old 0.2.0 clients never inspect user_version. Requiring a registered
             # writer function also fences their already-open SQLite connections.
-            for operation in ("INSERT", "UPDATE", "DELETE"):
-                db.execute(f'''CREATE TRIGGER "ergora_writer_v1_{table}_{operation.lower()}"
-                    BEFORE {operation} ON "{table}"
-                    WHEN ergora_writer_schema_version() IS NOT 1
-                    BEGIN SELECT RAISE(ABORT, 'Incompatible Ergora writer; upgrade before writing'); END''')
+            _writer_fences(db, table, 1)
 
 
-_MIGRATIONS = (_schema_v1,)
+def _schema_v2(db: sqlite3.Connection) -> None:
+    tables = {
+        "issue_snapshots": "(project TEXT NOT NULL, sha TEXT NOT NULL, first_observed_at TEXT NOT NULL, document TEXT NOT NULL, PRIMARY KEY(project,sha))",
+        "issue_task_links": "(project TEXT NOT NULL, snapshot TEXT NOT NULL, task_id TEXT NOT NULL, creation_sha TEXT NOT NULL, sha TEXT NOT NULL, document TEXT NOT NULL, PRIMARY KEY(project,snapshot,task_id,creation_sha), UNIQUE(project,sha))",
+    }
+    for table, declaration in tables.items():
+        db.execute(f'CREATE TABLE "{table}" {declaration}')
+    db.execute('CREATE INDEX issue_task_links_target ON issue_task_links(project,task_id,sha)')
+    # Fence connections opened by schema-v1 clients before this migration too.
+    for table in _TABLES:
+        for operation in ("insert", "update", "delete"):
+            db.execute(f'DROP TRIGGER "ergora_writer_v1_{table}_{operation}"')
+    for table in (*_TABLES, *tables):
+        _writer_fences(db, table, 2)
+
+
+_MIGRATIONS = (_schema_v1, _schema_v2)
 SCHEMA_VERSION = len(_MIGRATIONS)
 
 

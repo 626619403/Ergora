@@ -17,6 +17,17 @@ from ergora.state import State
 
 LEGACY_SQL = (Path(__file__).parent / "fixtures/compatibility-v0_2_0/schema.sql").read_text(encoding="utf-8")
 LEGACY_TABLES = set(re.findall(r"CREATE TABLE (\w+)", LEGACY_SQL))
+CURRENT_TABLES = LEGACY_TABLES | {'issue_snapshots', 'issue_task_links'}
+
+
+def _fixed_v1(db):
+    # Historical v1 contract, independent of the current migration functions.
+    for table in LEGACY_TABLES:
+        for operation in ('INSERT', 'UPDATE', 'DELETE'):
+            db.execute(f'''CREATE TRIGGER "ergora_writer_v1_{table}_{operation.lower()}"
+                BEFORE {operation} ON "{table}" WHEN ergora_writer_schema_version() IS NOT 1
+                BEGIN SELECT RAISE(ABORT, 'Incompatible Ergora writer; upgrade before writing'); END''')
+    db.execute('PRAGMA user_version=1')
 
 
 @pytest.fixture
@@ -41,9 +52,9 @@ def old_home(tmp_path):
 def test_new_state_has_complete_schema_without_lazy_ddl_or_backup(tmp_path):
     state = State(tmp_path / "new")
     with state.connect() as db:
-        assert db.execute("PRAGMA user_version").fetchone()[0] == 1
-        assert {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")} == LEGACY_TABLES
-        assert db.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='trigger'").fetchone()[0] == 48
+        assert db.execute("PRAGMA user_version").fetchone()[0] == storage.SCHEMA_VERSION
+        assert {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")} == CURRENT_TABLES
+        assert db.execute("SELECT COUNT(*) FROM sqlite_master WHERE type='trigger'").fetchone()[0] == 3 * len(CURRENT_TABLES)
         with closing(sqlite3.connect(":memory:")) as legacy:
             legacy.executescript(LEGACY_SQL)
             for table in LEGACY_TABLES:
@@ -53,23 +64,28 @@ def test_new_state_has_complete_schema_without_lazy_ddl_or_backup(tmp_path):
 
 
 @pytest.mark.parametrize("journal_mode", ["delete", "wal"])
-def test_upgrade_preserves_rows_extra_objects_assets_and_restorable_v0_backup(old_home, journal_mode):
+@pytest.mark.parametrize("schema_version", [0, 1])
+def test_upgrade_preserves_rows_extra_objects_assets_and_restorable_backup(old_home, journal_mode, schema_version):
     root, document = old_home
     asset = root / "sources/demo/synthetic.raw"
     original_asset = hashlib.sha256(asset.read_bytes()).hexdigest()
     with closing(sqlite3.connect(root / "ergora.sqlite3")) as db:
+        if schema_version == 1:
+            _fixed_v1(db)
         assert db.execute(f"PRAGMA journal_mode={journal_mode}").fetchone()[0] == journal_mode
         original = list(db.iterdump())
     state = State(root)
     assert state.project("demo") == document
-    backups = list((root / "backups").glob("schema-v0-*.sqlite3"))
+    backups = list((root / "backups").glob(f"schema-v{schema_version}-*.sqlite3"))
     assert len(backups) == 1
     with closing(sqlite3.connect(backups[0])) as backup:
-        assert backup.execute("PRAGMA user_version").fetchone()[0] == 0
+        assert backup.execute("PRAGMA user_version").fetchone()[0] == schema_version
         assert backup.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
         assert list(backup.iterdump()) == original
         # A pre-migration backup remains writable by an unmodified old client.
         with backup:
+            if schema_version == 1:
+                backup.create_function('ergora_writer_schema_version', 0, lambda: 1)
             backup.execute("UPDATE projects SET document=document WHERE id='demo'")
     with state.connect() as db:
         assert db.execute("SELECT value FROM custom_extra").fetchone()[0] == "preserved"
@@ -89,7 +105,7 @@ def test_partial_legacy_database_gains_missing_tables_without_rewriting_existing
     state = State(root)
     assert state.project("partial") == {"revision": 1}
     with state.connect() as db:
-        assert {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")} == LEGACY_TABLES
+        assert {row[0] for row in db.execute("SELECT name FROM sqlite_master WHERE type='table'")} == CURRENT_TABLES
     backup = next((root / "backups").glob("*.sqlite3"))
     with closing(sqlite3.connect(backup)) as db:
         assert db.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall() == [("projects",)]
@@ -101,7 +117,7 @@ def test_already_open_legacy_client_cannot_write_any_of_the_16_tables(old_home):
     with closing(sqlite3.connect(root / "ergora.sqlite3")) as old:
         old.execute("SELECT * FROM projects").fetchall()
         state = State(root)
-        for table in LEGACY_TABLES:
+        for table in CURRENT_TABLES:
             column = old.execute(f'PRAGMA table_info("{table}")').fetchone()[1]
             for sql in (f'INSERT INTO "{table}" DEFAULT VALUES', f'UPDATE "{table}" SET "{column}"="{column}"',
                         f'DELETE FROM "{table}"'):
@@ -109,7 +125,7 @@ def test_already_open_legacy_client_cannot_write_any_of_the_16_tables(old_home):
                     with old:
                         old.execute(sql)
         assert json.loads(old.execute("SELECT document FROM projects").fetchone()[0]) == document
-        for version in (0, 2, None):
+        for version in (0, 1, storage.SCHEMA_VERSION + 1, None):
             old.create_function("ergora_writer_schema_version", 0, lambda: version)
             with pytest.raises(sqlite3.IntegrityError, match="Incompatible Ergora writer"):
                 with old:
@@ -119,9 +135,27 @@ def test_already_open_legacy_client_cannot_write_any_of_the_16_tables(old_home):
     assert state.project("demo") == document
 
 
+def test_open_v1_writer_is_fenced_on_old_and_new_tables(old_home):
+    root, document = old_home
+    with closing(sqlite3.connect(root / 'ergora.sqlite3')) as old:
+        old.create_function('ergora_writer_schema_version', 0, lambda: 1)
+        _fixed_v1(old)
+        old.execute('UPDATE projects SET document=document')
+        old.commit()
+        state = State(root)
+        for table in CURRENT_TABLES:
+            with pytest.raises(sqlite3.IntegrityError, match='Incompatible Ergora writer'):
+                with old:
+                    old.execute(f'INSERT INTO "{table}" DEFAULT VALUES')
+        with pytest.raises(sqlite3.IntegrityError, match='Incompatible Ergora writer'):
+            with old:
+                old.execute('UPDATE projects SET document=document')
+    assert state.project('demo') == document
+
+
 def test_failed_migration_rolls_back_ddl_version_and_writer_guards(old_home, monkeypatch):
     root, document = old_home
-    migrate = storage._MIGRATIONS[0]
+    migrate = storage._MIGRATIONS[-1]
 
     def interrupted(db):
         migrate(db)
@@ -129,7 +163,7 @@ def test_failed_migration_rolls_back_ddl_version_and_writer_guards(old_home, mon
         raise RuntimeError("injected migration interruption")
 
     with monkeypatch.context() as patch:
-        patch.setattr(storage, "_MIGRATIONS", (interrupted,))
+        patch.setattr(storage, "_MIGRATIONS", (*storage._MIGRATIONS[:-1], interrupted))
         with pytest.raises(RuntimeError, match="injected migration interruption"):
             State(root)
     with closing(sqlite3.connect(root / "ergora.sqlite3")) as db, db:
@@ -146,11 +180,11 @@ def test_abrupt_process_exit_during_migration_recovers_the_old_transaction(old_h
     code = '''import os,sys
 from pathlib import Path
 from ergora import state
-original=state._MIGRATIONS[0]
+original=state._MIGRATIONS[-1]
 def crash(db):
  original(db)
  os._exit(19)
-state._MIGRATIONS=(crash,)
+state._MIGRATIONS=(*state._MIGRATIONS[:-1],crash)
 state.State(Path(sys.argv[1]))
 '''
     child = subprocess.run([sys.executable, "-c", code, str(root)], capture_output=True, text=True, timeout=20)
@@ -194,11 +228,11 @@ def test_unknown_layout_and_newer_versions_are_rejected_without_rewriting(tmp_pa
         assert len(db.execute("PRAGMA table_info(projects)").fetchall()) == 1
     state = State(tmp_path / "future")
     with state.connect() as db:
-        db.execute("PRAGMA user_version=2")
+        db.execute(f"PRAGMA user_version={storage.SCHEMA_VERSION + 1}")
     original = (state.root / "ergora.sqlite3").read_bytes()
-    with pytest.raises(ValueError, match="Unsupported database schema 2"):
+    with pytest.raises(ValueError, match=f"Unsupported database schema {storage.SCHEMA_VERSION + 1}"):
         State(state.root)
-    with pytest.raises(ValueError, match="Unsupported database schema 2"):
+    with pytest.raises(ValueError, match=f"Unsupported database schema {storage.SCHEMA_VERSION + 1}"):
         with state.connect():
             pytest.fail("A stale State instance must not open the newer schema")
     assert (state.root / "ergora.sqlite3").read_bytes() == original

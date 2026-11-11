@@ -12,7 +12,7 @@ import sys
 import pytest
 
 from ergora import backups, contracts, memory, projects, skills
-from ergora.state import State
+from ergora.state import SCHEMA_VERSION, State
 
 
 @pytest.fixture
@@ -49,7 +49,7 @@ def test_full_roundtrip_preserves_canonical_rows_skills_sources_unknown_files_an
         original_skill = db.execute("SELECT document FROM skill_versions").fetchone()[0]
     result = backups.create(state.root, tmp_path / "snapshot", offline=True)
     assert result["status"] == "backed_up" and result["skills"] == result["source_snapshots"] == 1
-    assert result["database_schema_version"] == 1
+    assert result["database_schema_version"] == SCHEMA_VERSION
     assert backups.verify(tmp_path / "snapshot")["manifest_sha256"] == result["manifest_sha256"]
     state.root.rename(tmp_path / "kept-original")
     restored = backups.restore(state.root, tmp_path / "snapshot", offline=True)
@@ -129,7 +129,7 @@ def test_manifest_versions_paths_and_platform_are_checked(archive_state, tmp_pat
     elif mutation == "platform":
         manifest["platform"] = "other-platform"
     else:
-        manifest["database_schema_version"] = 2
+        manifest["database_schema_version"] = SCHEMA_VERSION + 1
     (target / "manifest.json").write_text(json.dumps(manifest))
     with pytest.raises(ValueError):
         backups.verify(target)
@@ -270,7 +270,7 @@ def test_cli_maintenance_does_not_create_or_migrate_state_implicitly(archive_sta
 
     absent = tmp_path / "absent"
     assert cli(absent, "info").returncode == 2 and not absent.exists()
-    assert json.loads(cli(state.root, "info").stdout)["database_schema_version"] == 1
+    assert json.loads(cli(state.root, "info").stdout)["database_schema_version"] == SCHEMA_VERSION
     assert cli(state.root, "backup", str(tmp_path / "without-flag")).returncode == 2
     assert not (tmp_path / "without-flag").exists()
     assert cli(state.root, "backup", str(tmp_path / "backup"), "--offline").returncode == 0

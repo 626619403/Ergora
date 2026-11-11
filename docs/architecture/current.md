@@ -2,7 +2,7 @@
 
 Ergora 把项目合同、可组合的专长 Agent、正式执行和可核对证据接在一起。CLI 与网页共用应用用例；Agent 后端、工单来源和外部通信各有自己的接入位置。当前实现仍复用冻结参考发行的六阶段与 Temporal，不要求每个项目使用工单，也没有第二套正式调度器。
 
-主体对应 `c1f31fc` 的生产源码，F7a工单读取在对应所有者处增补；当前进度以[PLAN](../PLAN.md)与各片交付记录为准。逐次实施说明已[逐字归档](current-history-2026-11-11.md)，当中的“当前”“待实现”和默认版本只代表原记录。[C6d源码清单](../delivery/evidence/2026-11-11-architecture-source-inventory.json)是该基线的53个第一方Python模块、203条静态本地导入边和18个第一方console JS，不包含后增的`issues / issue_backends`。原静态导入包含函数内导入、拓扑无环；动态装载、子进程和运行语义另按下文调用关系核对。
+主体对应 `c1f31fc` 的生产源码，F7a工单读取及F7b.0上下文快照／关联在对应所有者处增补；当前进度以[PLAN](../PLAN.md)与各片交付记录为准。逐次实施说明已[逐字归档](current-history-2026-11-11.md)，当中的“当前”“待实现”和默认版本只代表原记录。[C6d源码清单](../delivery/evidence/2026-11-11-architecture-source-inventory.json)是该基线的53个第一方Python模块、203条静态本地导入边和18个第一方console JS，不包含后增的`issues / issue_backends`。原静态导入包含函数内导入、拓扑无环；动态装载、子进程和运行语义另按下文调用关系核对。
 
 ## 模块与依赖
 
@@ -14,7 +14,7 @@ flowchart TB
   HTTP[web / HTTP] --> Uses
   Uses --> Project[projects / registrations / bindings]
   Uses --> Tasks[tasks / 正式任务操作]
-  Uses --> Issues[issues / 只读工单观察]
+  Uses --> Issues[issues / 工单观察与上下文关联]
   Issues --> IssueBackends[issue_backends / 本族原生读取]
   Uses --> Library[agent_definitions / workflow_definitions]
   Uses --> Runs[agent_runs / 独立调用]
@@ -45,7 +45,7 @@ flowchart TB
 |`components`、`contracts`|随包工具目录／配置schema、严格结构校验|声明不代表安装或认证；schema不注入默认值，摘要算法不混用|
 |`state`、`asset_trees`|SQLite版本与锁、完整文件树身份|领域拥有自己的事务；文件字节与执行位影响身份|
 |`projects`、`bindings`、`registrations`|项目修订、有效工具选择、完整登记及旧登记采用|控制项目为权威；参考配置是单向投影，跨资源发布按原意图恢复|
-|`issues`、`issue_backends`|固定项目配置的只读工单观察；GitHub／GitLab本族协议与局部选择|完整API base／namespace／number或iid及native ID分别保留；来源文本只作上下文，无任务／批准／远端写入副作用|
+|`issues`、`issue_backends`|固定项目配置的工单观察、不可变快照／显式creation关联；GitHub／GitLab本族协议与局部选择|完整API base／namespace／number或iid及native ID分别保留；新link复用原tasks.creation，只有上下文关联，无任务启动／输入或批准改写／远端写入|
 |`agent_definitions`、`workflow_definitions`|独立专家、精确嵌套引用、继承／DAG编译、preset与manifest|定义可静态检查；preview不授执行权，freeze不启动任务|
 |`definition_bundles`|两类定义共用的完整资源树、检查／修订／不可变版本发布|修订派生新包；逐定义发布，根最后发布，不是跨库事务|
 |`agent_runs`|独立叶子／角色的输入冻结、准入、调用和归档|原项目／定义／后端绑定保持；普通调用成功不生成正式任务通过|
@@ -196,7 +196,7 @@ flowchart TB
 
 ```mermaid
 flowchart LR
-  Control[项目 / 记忆 / Skill / 评价等用例] --> DB[(Ergora SQLite / 16表 / schema v1)]
+  Control[项目 / 工单上下文 / 记忆 / Skill / 评价等用例] --> DB[(Ergora SQLite / 18表 / schema v2)]
   Control --> Assets[Skill / 定义版本 / run / 来源文件]
   Memory[memory] --> DB
   Memory --> ReMe[ReMe可重建投影]
@@ -211,7 +211,7 @@ flowchart LR
 |---|---|---|
 |工具字段、默认值、平台、安装SDK组合|随包 `data/components.json`|声明由catalog拥有；动态诊断不写成静态可用|
 |项目与有效绑定|`projects`表及登记意图／回执|revision与能力校验；参考注册／策略是单向不可变投影|
-|工单来源观察|当前tracker绑定、原生GET响应及其SHA／ETag／更新时间|不写新表；返回项目快照和观察时间，操作者可自行保存JSON；旧正式注册无API host，不能据此假定跨host claim身份已支持|
+|工单来源与上下文关联|show不写库；capture保存issue_snapshots，link保存issue_task_links；原生响应SHA与稳定payload SHA各自独立|列表有界、完整快照显式离线读；原State v2迁移／writer fence及完整备份复用。旧正式注册无API host，operator_asserted_context不证明归属、不派工或改写原任务／批准|
 |静态专家与组合|独立完整包、版本索引、`composition-manifests/`|DefinitionLibrary逐包原子发布；历史读取不要求今天的后端仍可准入|
 |记忆与资料|`memories / memory_mirrors`；research四表与来源文件|来源、修订、审阅由所属域拥有；镜像不取代SQLite|
 |Skill／评价／搜索|`skill_versions / skill_heads / skill_events / evaluation_suites / evaluations / optimizations`及完整资产|采用／回退只改经过核验的精确头；生成与评分分权|

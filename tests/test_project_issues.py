@@ -89,7 +89,7 @@ def test_complete_native_identity_and_context_are_shared_without_running_tasks(s
     assert source.calls == [{'path': path, 'headers': source.calls[0]['headers'], 'method': 'GET'}]
     assert source.calls[0]['headers'][auth_header] == auth_value
     assert 'fixture-token' not in json.dumps(observed)
-    contracts.validate(observed, issue_backends._OBSERVATION, 'Public observation')
+    contracts.validate(observed, contracts.ISSUE_OBSERVATION, 'Public observation')
     document['title'] = 'Edited by a human'
     source.raw = json.dumps(document).encode()
     edited = issues.show(source.state, 'demo', '7')
