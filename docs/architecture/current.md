@@ -2,7 +2,7 @@
 
 Ergora 把项目合同、可组合的专长 Agent、正式执行和可核对证据接在一起。CLI 与网页共用应用用例；Agent 后端、工单来源和外部通信各有自己的接入位置。当前实现仍复用冻结参考发行的六阶段与 Temporal，不要求每个项目使用工单，也没有第二套正式调度器。
 
-主体对应 `c1f31fc` 的生产源码，F7a工单读取及F7b.0上下文快照／关联及B1b来源任务v7在对应所有者处增补；当前进度以[PLAN](../PLAN.md)与各片交付记录为准。逐次实施说明已[逐字归档](current-history-2026-11-11.md)，当中的“当前”“待实现”和默认版本只代表原记录。[C6d源码清单](../delivery/evidence/2026-11-11-architecture-source-inventory.json)是该基线的53个第一方Python模块、203条静态本地导入边和18个第一方console JS，不包含后增的`issues / issue_backends / issue_sources`。原静态导入包含函数内导入、拓扑无环；动态装载、子进程和运行语义另按下文调用关系核对。
+主体对应 `c1f31fc` 的生产源码，F7a工单读取及F7b.0上下文快照／关联及B1b来源任务v7在对应所有者处增补；当前进度以[PLAN](../PLAN.md)与各片交付记录为准。逐次实施说明已[逐字归档](current-history-2026-11-11.md)，当中的“当前”“待实现”和默认版本只代表原记录。[C6d源码清单](../delivery/evidence/2026-11-11-architecture-source-inventory.json)是该基线的53个第一方Python模块、203条静态本地导入边和18个第一方console JS，不包含后增的`issues / issue_backends / issue_sources / issue_snapshots`。原静态导入包含函数内导入、拓扑无环；动态装载、子进程和运行语义另按下文调用关系核对。
 
 ## 模块与依赖
 
@@ -45,7 +45,7 @@ flowchart TB
 |`components`、`contracts`|随包工具目录／配置schema、严格结构校验|声明不代表安装或认证；schema不注入默认值，摘要算法不混用|
 |`state`、`asset_trees`|SQLite版本与锁、完整文件树身份|领域拥有自己的事务；文件字节与执行位影响身份|
 |`projects`、`bindings`、`registrations`|项目修订、有效工具选择、完整登记及旧登记采用|控制项目为权威；参考配置是单向投影，跨资源发布按原意图恢复|
-|`issues`、`issue_backends`、`issue_sources`|固定项目配置的工单观察、不可变快照／显式creation关联；GitHub／GitLab本族协议与局部选择、标准库来源合同|完整API base／namespace／number或iid及native ID分别保留；新link复用原tasks.creation，只有上下文关联，无任务启动／输入或批准改写／远端写入|
+|`issues`、`issue_backends`、`issue_sources`、`issue_snapshots`|固定项目配置的工单观察、不可变快照／显式creation关联；GitHub／GitLab本族协议与局部选择、标准库来源合同。issue_snapshots共享读取／row核验，由tasks与issues消费，避免二者互相导入|完整API base／namespace／number或iid及native ID分别保留；新link复用原tasks.creation，只有上下文关联，无任务启动／输入或批准改写／远端写入|
 |`agent_definitions`、`workflow_definitions`|独立专家、精确嵌套引用、继承／DAG编译、preset与manifest|定义可静态检查；preview不授执行权，freeze不启动任务|
 |`definition_bundles`|两类定义共用的完整资源树、检查／修订／不可变版本发布|修订派生新包；逐定义发布，根最后发布，不是跨库事务|
 |`agent_runs`|独立叶子／角色的输入冻结、准入、调用和归档|原项目／定义／后端绑定保持；普通调用成功不生成正式任务通过|
@@ -61,7 +61,7 @@ flowchart TB
 |`reference_review_opinions`|SDK无关的可信审查意见读取|原workflow活动与Executor共用候选／job／调用绑定规则，不各解释一套建议意见|
 |`reference_inputs`、`reference_workflows`、`reference_worker`|按版本构造队列／请求根／活动与workflow、共同worker生命周期|保留旧版本路由与history；扩展原六阶段，不新建调度／账本|
 |`reference_executor`、`stage_driver`|原checkout／检查／可信commit／receipt，以及Agent桥接|原Executor拥有可信候选；Agent写入或后端成功不能代替门禁|
-|`handoff`|受限ZIP格式、内部字节与引用校验|离线核包不执行材料、不认证来源，也不重放完整history|
+|`handoff`|受限ZIP格式、内部字节与引用校验；仅依赖纯envelope／来源合同，不依赖运行Input|离线核包不执行材料、不认证来源，也不重放完整history|
 |`skill_assets`、`evaluation`、`skills`、`optimization`|Skill版本、固定评价、评价后采用／回退、可选GEPA搜索|生成器不改评分；采用核精确baseline和revision，没有绕过评价的另一入口|
 |`memory`、`research`|带来源的记忆、可选ReMe投影、有界资料快照／提案|SQLite是记忆权威；新资料须审阅，不自动写成有效记忆|
 |`kernel`、`data/drivers`|ForgeKernel原生campaign与独立SDK进程|原生ID／未知状态保留；候选生成不等于可信实验采用|
@@ -220,7 +220,7 @@ flowchart LR
 |正式运行与训练结果|原task/spec／ingress leases／job ledger／Git／receipt／Temporal history；runner证据|原runtime／executor／runner拥有，不搬迁在途history|
 |只读索引与交接包|原材料引用索引；操作者明确导出的 `task-handoff-v1` ZIP|有来源的快照和内部身份校验，不是完整备份、来源认证或重新执行|
 
-公开JSON Schema Draft2020-12由`contracts`统一校验；需纯标准库读取的工单快照／版本化envelope由`issue_sources / task_envelopes`拥有严格运行合同，普通Python JSON值与现有canonical身份保持；Web DTO只负责传输。格式、schema版本、摘要编码和迁移责任见[合同与身份表](contracts-and-identities.md)。CLI/env路径、项目定义、冻结任务、数据库版本与原生SDK配置分别归属，不能用一次JSON重编码合并旧身份。凭据只从外部环境或工具认证读取，分享定义保留变量名引用。
+公开JSON Schema Draft2020-12由`contracts`统一校验；需纯标准库读取的工单快照／版本化envelope由`issue_sources / task_envelopes`拥有严格运行合同，已核来源的完整首inventory context也由task_envelopes组装、creation与v7 workflow直接复用，两个运行Module不反向导入，普通Python JSON值与现有canonical身份保持；Web DTO只负责传输。格式、schema版本、摘要编码和迁移责任见[合同与身份表](contracts-and-identities.md)。CLI/env路径、项目定义、冻结任务、数据库版本与原生SDK配置分别归属，不能用一次JSON重编码合并旧身份。凭据只从外部环境或工具认证读取，分享定义保留变量名引用。
 
 ## 修改影响与接入方式
 

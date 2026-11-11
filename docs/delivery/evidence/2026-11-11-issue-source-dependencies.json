@@ -1,0 +1,575 @@
+{
+  "schema_version": 1,
+  "slice": "F7b.1-B1b dependency correction",
+  "baseline": "6558671f128c320f01785f9b28c673442cf76089",
+  "at": "2026-11-11T09:20:25.493089+00:00",
+  "state": "dependency-correction-local-exit-and-independent-review-complete; precise-delivery-pending",
+  "package": {
+    "at": "2026-11-11T09:15:14.685797+00:00",
+    "wheel_sha256": "29c4626ce18e7988d4635cd0f8e3659993ba8bb4439d576ddf86d95e0e98b2b9",
+    "wheel_files": 450,
+    "package_files": 445,
+    "wheel_and_installed_records_verified": true,
+    "installed_record_rows": 455,
+    "source_and_installed_package_equal": true,
+    "frozen_files": 283,
+    "editable": false
+  },
+  "installed_checks": {
+    "passed": 125,
+    "pytest_seconds": 209.38,
+    "driver_seconds": 211.95843614917248,
+    "files": [
+      "tests/test_architecture_boundaries.py",
+      "tests/test_issue_mapping.py",
+      "tests/test_issue_tasks.py",
+      "tests/test_handoff.py",
+      "tests/test_composition_workers.py",
+      "tests/test_work_agents.py"
+    ],
+    "reference_verify": "PASS",
+    "scope": "Noneditable package; architecture and affected source/offline/worker/original executor protocol. No real Temporal service or task-model run."
+  },
+  "journey": {
+    "at": "2026-11-11T09:17:32.122102+00:00",
+    "checks": [
+      "Two upstream bodies retain distinct complete source snapshots",
+      "Installed CLI and real HTTP produce identical complete offline previews with no token and tracker stopped",
+      "Preview freezes the explicitly selected old snapshot in original input v7, not latest issue text",
+      "Creation3 publishes exactly the original seven native files",
+      "HTTP response-loss retry returns original source creation without replacing files",
+      "HTTP readback retains complete original source input",
+      "Installed CLI readback agrees with HTTP",
+      "Changed source cannot replace a published task; original bytes remain unchanged",
+      "A new task ID explicitly publishes a revised source, without altering the first task",
+      "HTTP resume uses the original source and selection after current binding changes",
+      "CLI recovery agrees after removing the supplied manifest",
+      "Recovery and readback retain every original source byte",
+      "Readback and resume leave both published source tasks byte-identical",
+      "No workflow start, Temporal job, Agent process or receipt created",
+      "Only two explicit captures made tracker requests; all publication and recovery is offline"
+    ],
+    "cli": [
+      {
+        "operation": [
+          "project",
+          "register"
+        ],
+        "exit": 0,
+        "seconds": 0.5963830170221627,
+        "stdout_sha256": "9fca9db493b7a16928b843fc088b5d4eef055645aa8d3a98dd95f874abf514ed",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "operation": [
+          "project",
+          "bind"
+        ],
+        "exit": 0,
+        "seconds": 0.27768576238304377,
+        "stdout_sha256": "7c72a7181e958115c4862b90adc0c8945b6deca0f795e20b642d71c15947d71c",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "operation": [
+          "issue",
+          "capture"
+        ],
+        "exit": 0,
+        "seconds": 0.2604201901704073,
+        "stdout_sha256": "e269489ccb96dd58bbef0f339de3cebbef9073b86ac4d14ed2cb784e02c12a4d",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "operation": [
+          "issue",
+          "capture"
+        ],
+        "exit": 0,
+        "seconds": 0.29046712489798665,
+        "stdout_sha256": "64d2cffd5173cbf93c7be8473b9d421b561ccd2dcfd844cc7a93adee6e1d02c6",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "operation": [
+          "composition",
+          "install-preset"
+        ],
+        "exit": 0,
+        "seconds": 1.0452296240255237,
+        "stdout_sha256": "1b42524d2a86a86f271dd189882abdccf122e52c8b3b76d6b889ceaca8f469e8",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "operation": [
+          "composition",
+          "prepare-manifest"
+        ],
+        "exit": 0,
+        "seconds": 1.356409806292504,
+        "stdout_sha256": "3b29f2ac4592c38df6cec974fb768f6cb8a9cbee84d631e433e77ac2582c4164",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "operation": [
+          "task",
+          "preview"
+        ],
+        "exit": 0,
+        "seconds": 0.6091042370535433,
+        "stdout_sha256": "babe640064af4ed9f2c15a3bc61d1fc14d37d194a00c6e67b548b9fad67fa57f",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "operation": [
+          "task",
+          "create"
+        ],
+        "exit": 0,
+        "seconds": 0.7325319983065128,
+        "stdout_sha256": "b6839207cafcb00255d4441c5764cf5abd7ccd628c72717fc2e0c8c55dbe2aa7",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "operation": [
+          "task",
+          "show"
+        ],
+        "exit": 0,
+        "seconds": 0.32532546296715736,
+        "stdout_sha256": "42ed00a84e666abfd037d7d76a406b58e4c2865084782110f522c13a270c9ed7",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "operation": [
+          "project",
+          "bind"
+        ],
+        "exit": 0,
+        "seconds": 0.2527700727805495,
+        "stdout_sha256": "a44b1b1b1aa639129bafb7d68cf2ffb8992fa613bcfb551674e9495ae9368853",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "operation": [
+          "task",
+          "resume-create"
+        ],
+        "exit": 0,
+        "seconds": 0.4040716770105064,
+        "stdout_sha256": "7b727d31a98f5880a8cc4b63685b1a5915451cb3ec79921561af07f66e94de62",
+        "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    ],
+    "http": [
+      {
+        "method": "POST",
+        "path": "/api/projects/demo/tasks/preview",
+        "status": 200,
+        "bytes": 179902,
+        "sha256": "4511ee898ea25ebed7f5bc7def0f7d82211f8ea223b5473ce7197c3e525dd9ae"
+      },
+      {
+        "method": "POST",
+        "path": "/api/projects/demo/tasks",
+        "status": 403,
+        "bytes": 40,
+        "sha256": "c25cc945901dfd9dcab54dac1a8470778bdc6712d10c2cd778c03d7714ef43c1"
+      },
+      {
+        "method": "POST",
+        "path": "/api/projects/demo/tasks",
+        "status": 200,
+        "bytes": 14902,
+        "sha256": "623b836d5720f72de390707c4b155e5940da8691fb1e405050763a49e7bda3e5"
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects/demo/tasks/issue-task",
+        "status": 200,
+        "bytes": 155792,
+        "sha256": "a5f78c3cd5558243e68788487e38bc4d994c04806a32a9c464b5be280e306466"
+      },
+      {
+        "method": "POST",
+        "path": "/api/projects/demo/tasks/preview",
+        "status": 200,
+        "bytes": 158968,
+        "sha256": "a8e78c24efd21c03aa4ac4fa61cb4f906f716e66579bdc3df0e7bc24d39ae983"
+      },
+      {
+        "method": "POST",
+        "path": "/api/projects/demo/tasks",
+        "status": 400,
+        "bytes": 108,
+        "sha256": "973f153fb6035e49f76c8a2ee213b66e3aa9ab542f70e14eb07f0cd9f9ae7292"
+      },
+      {
+        "method": "POST",
+        "path": "/api/projects/demo/tasks/preview",
+        "status": 200,
+        "bytes": 158983,
+        "sha256": "9e6c69c5e1cad56f3af74ed2b4f0e1bdb5ec661e97651faa7f46326d5e07f150"
+      },
+      {
+        "method": "POST",
+        "path": "/api/projects/demo/tasks",
+        "status": 200,
+        "bytes": 14905,
+        "sha256": "0f0f4bf7f15af524375d20091297d4a619802367b0d24e8c87cbbc7e2a516181"
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects/demo/tasks/issue-task-r2",
+        "status": 200,
+        "bytes": 134867,
+        "sha256": "36e3b709ded6def3707f3ec55dbc5f97caa2db0985d8729f301e1e3be557f936"
+      },
+      {
+        "method": "POST",
+        "path": "/api/projects/demo/tasks/issue-task/resume-create",
+        "status": 200,
+        "bytes": 14902,
+        "sha256": "c371e147cecd530db54fc9eac11f5b6a65de3385f90aa9c202497bea5c693e51"
+      },
+      {
+        "method": "GET",
+        "path": "/api/projects/demo/tasks/issue-task",
+        "status": 200,
+        "bytes": 155792,
+        "sha256": "5c664211d78e8dfb1d75a1ead1be120ed55a6501e0ad2e07662d9c8acaa589bd"
+      }
+    ],
+    "tracker": [
+      {
+        "method": "GET",
+        "path": "/repos/team/repo/issues/7"
+      },
+      {
+        "method": "GET",
+        "path": "/repos/team/repo/issues/7"
+      }
+    ],
+    "passed": true,
+    "seconds": 11.078511161264032,
+    "owned_web_exit": -15,
+    "tracker_thread_alive": false,
+    "owned_ports_closed": true,
+    "scope": "Synthetic registered project, installed isolated CLI and real loopback HTTP. Two source tasks published and recovered offline, never started. Fixture checks are placeholders, no business/model/Temporal/GPU/Windows/OS-isolation acceptance or remote write."
+  },
+  "actual_self_review": {
+    "at": "2026-11-11T09:18:58.794001+00:00",
+    "baseline": "6558671f128c320f01785f9b28c673442cf76089",
+    "run_id": "5451283ae8bb4b06b974af59bb45b0bd",
+    "status": "succeeded",
+    "backend": "codex",
+    "inference_model": "gpt-6.1-sol",
+    "reasoning_effort": "high",
+    "cli_exit": 0,
+    "seconds": 161.0033348123543,
+    "input_digest": "ba91ed4da7198c4394a643c48907da7bbc7f3a7c317fd0923093cb914bc58b96",
+    "prompt_sha256": "aa7a4f44fc8367d932f5e1ee048f3558b4d6aa35a47852fa99c87ea6f1608170",
+    "attachment_bytes": 177571,
+    "attachment_sha256": "97f64ba7b8fb1cb83d822e98e4f64b0ef73cbcc5f16aeea3b4be14061ca717a3",
+    "manifest_digest": "a856c93a0f101bbe8af531a95d514c3a43ca962f46999202553322443c49dc78",
+    "revision": "1.0.95",
+    "observed_processes": 4,
+    "live_sampled_processes": [],
+    "scope": "F7b.1-B1b frozen product/test/plan/design/delivery sources; attachments use model-candidate immutable copies. Later documents/projections and independent review are separate. No actual narrow admission or real Agent-source consumption claimed.",
+    "decision": "approve",
+    "result_sha256": "d96ed56a4d3ad2b63d4104aad98ade8bfa858627a9cdab87dae90ff2adb4fc3a"
+  },
+  "self_review_read_audit": {
+    "at": "2026-11-11T09:19:35.804457+00:00",
+    "run_id": "5451283ae8bb4b06b974af59bb45b0bd",
+    "revision": "1.0.95",
+    "manifest_prepared_actual_prompt_admission_scope_native_original_result_match": true,
+    "bundled_template_unchanged_except_evidence_revision_resource_and_limit": true,
+    "scope_files": 5,
+    "all_scope_continuous_utf8_through_null": true,
+    "complete_scope_reads": {
+      "definitions/agent/ergora-structure-reviewer/1.0.95/instructions.md": {
+        "bytes": 354,
+        "sha256": "3cc9c450f0c03da5ea4a1434ac6182d50df6a4985cffdee2a59fe9fe477c6b43",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 354,
+            "next_offset": null
+          }
+        ],
+        "base64_retries": [],
+        "duplicates": []
+      },
+      "definitions/agent/ergora-structure-reviewer/1.0.95/skills/candidate-evidence/SKILL.md": {
+        "bytes": 480,
+        "sha256": "aedb683ba435b973bdf6602542688b870d5e10872d2fe55387eaa39202ecbd75",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 480,
+            "next_offset": null
+          }
+        ],
+        "base64_retries": [],
+        "duplicates": []
+      },
+      "definitions/agent/ergora-structure-reviewer/1.0.95/skills/candidate-evidence/references/candidate.txt": {
+        "bytes": 177571,
+        "sha256": "97f64ba7b8fb1cb83d822e98e4f64b0ef73cbcc5f16aeea3b4be14061ca717a3",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 18000,
+            "next_offset": 18000
+          },
+          {
+            "offset": 18000,
+            "bytes": 18000,
+            "next_offset": 36000
+          },
+          {
+            "offset": 36000,
+            "bytes": 18000,
+            "next_offset": 54000
+          },
+          {
+            "offset": 54000,
+            "bytes": 18000,
+            "next_offset": 72000
+          },
+          {
+            "offset": 72000,
+            "bytes": 18000,
+            "next_offset": 90000
+          },
+          {
+            "offset": 90000,
+            "bytes": 18000,
+            "next_offset": 108000
+          },
+          {
+            "offset": 108000,
+            "bytes": 18000,
+            "next_offset": 126000
+          },
+          {
+            "offset": 126000,
+            "bytes": 18000,
+            "next_offset": 144000
+          },
+          {
+            "offset": 144000,
+            "bytes": 18000,
+            "next_offset": 162000
+          },
+          {
+            "offset": 162000,
+            "bytes": 15571,
+            "next_offset": null
+          }
+        ],
+        "base64_retries": [],
+        "duplicates": []
+      },
+      "definitions/agent/ergora-structure-reviewer/1.0.95/skills/ergora-structure-reviewer/SKILL.md": {
+        "bytes": 521,
+        "sha256": "d6b69570bcca408d3d06ca5adf1cb44a4a9e43c2901f05c38a68c096f23a4ac8",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 521,
+            "next_offset": null
+          }
+        ],
+        "base64_retries": [],
+        "duplicates": []
+      },
+      "definitions/workflow/ergora-structure-review/1.0.95/instructions.md": {
+        "bytes": 163,
+        "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 163,
+            "next_offset": null
+          }
+        ],
+        "base64_retries": [],
+        "duplicates": []
+      }
+    },
+    "list_passes_files": [
+      5
+    ],
+    "failed_calls": 0,
+    "attachment_bytes": 177571,
+    "attachment_sha256": "97f64ba7b8fb1cb83d822e98e4f64b0ef73cbcc5f16aeea3b4be14061ca717a3",
+    "frozen_complete_files": 12,
+    "original_result_sha256": "d96ed56a4d3ad2b63d4104aad98ade8bfa858627a9cdab87dae90ff2adb4fc3a",
+    "decision": "approve",
+    "native_stream_sha256": "caf10d68e0a67afc9d00bff096ddd65ff92c1d8f9003b07af1aa5224f0cae58d",
+    "backend_reported_turn_usage": [
+      {
+        "input_tokens": 430641,
+        "cached_input_tokens": 368384,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 3176,
+        "reasoning_output_tokens": 1679
+      }
+    ],
+    "observed_processes": 4,
+    "live_sampled_processes": [],
+    "scope": "Offline exact identity and successful plaintext page reconstruction only. Cached counters are part of input, reasoning reported separately, neither is added twice. No billing, reasoning quality, owner approval, independent backend-error or unsampled-process claim."
+  },
+  "complete_attachments": [
+    {
+      "file": "src/ergora/issue_snapshots.py",
+      "bytes": 1118,
+      "sha256": "412ccb67076d0f19675aca58381e32d2797e0a265436a2c9ee760b90082b7eee"
+    },
+    {
+      "file": "src/ergora/issues.py",
+      "bytes": 10718,
+      "sha256": "48a1be603d95ee4f5045468da19acf81922e86e9787c4c2e543d2b7bf8ac9547"
+    },
+    {
+      "file": "src/ergora/tasks.py",
+      "bytes": 31369,
+      "sha256": "a59c71add2103bfd347ec2f6880dd4efaae3cf7bea53df168f5ffa2c1cd0ec5a"
+    },
+    {
+      "file": "src/ergora/handoff.py",
+      "bytes": 12385,
+      "sha256": "28610b1eb4072c5fae19738b57e3ee6e8bb8f9a9f0bfbf97c115abba322d2513"
+    },
+    {
+      "file": "src/ergora/task_envelopes.py",
+      "bytes": 26703,
+      "sha256": "e9de621e81c274840d0c8669cf6376ec75ef5d89c087d544d26e7e6c98967355"
+    },
+    {
+      "file": "src/ergora/reference_inputs.py",
+      "bytes": 8677,
+      "sha256": "11e00ff8f7044fdd0cfd2c7e36eeaf22ff67fc5b747d98b2bf83128fbe513048"
+    },
+    {
+      "file": "src/ergora/reference_task_creation.py",
+      "bytes": 19649,
+      "sha256": "e1172dd6d5ba09a770fb512409ec3672a4367b5fd4af1be575dab457fe180363"
+    },
+    {
+      "file": "src/ergora/reference_workflows.py",
+      "bytes": 20177,
+      "sha256": "f14f843ac3139bb93df841988811424a10b26c1130297d42cf1a4222f59dc4da"
+    },
+    {
+      "file": "tests/test_architecture_boundaries.py",
+      "bytes": 3241,
+      "sha256": "98c6ea4f3ff0f21c50c2f33336b30434eab301ae8665e01315b306c8d1935c17"
+    },
+    {
+      "file": "tests/test_issue_tasks.py",
+      "bytes": 19230,
+      "sha256": "794a23512749388bde168a9bc866c879ac19169eb8290adfbd90b4e3bd327308"
+    },
+    {
+      "file": "docs/plans/2026-11-11-issue-dispatch.md",
+      "bytes": 12102,
+      "sha256": "3df9bcc45bf07fdf63c6aefc2abb1dcab62db8454470fcf85074ce58fca09019"
+    },
+    {
+      "file": "docs/delivery/2026-11-11-issue-dispatch.md",
+      "bytes": 11402,
+      "sha256": "04863719a7069903c91875788ea6a11a7cd7bb18058b174f33fb15bbe28de630"
+    }
+  ],
+  "source_identities": [
+    {
+      "file": ".ergora/checks/f7-dispatch/r4/package-identity.json",
+      "bytes": 474,
+      "sha256": "5fc76b35ead9be73ca9d8de25d8a04ee5094ae00055d58c3112108baf3d41711"
+    },
+    {
+      "file": ".ergora/checks/f7-dispatch/r4/installed-validation.json",
+      "bytes": 996,
+      "sha256": "0489a8ed589f1d93fb86356a9abb63665d23404a0322d489830c9b2ca86b042a"
+    },
+    {
+      "file": ".ergora/checks/f7-dispatch/r4/installed-tests.stdout",
+      "bytes": 192,
+      "sha256": "46307d4732893b400b16d9644ba170d818f1b0cbea7d9e0cf126fb7a5f115c28"
+    },
+    {
+      "file": ".ergora/checks/f7-dispatch/r4/reference-verify.stdout",
+      "bytes": 480,
+      "sha256": "76ae6f79e9ac96a014bca7bc97f93f76a6d44f92e70e3af556afeb546f88bc42"
+    },
+    {
+      "file": ".ergora/checks/f7-dispatch/journey-r3/receipt.json",
+      "bytes": 7678,
+      "sha256": "7b3aafc9134a45d4a612e8cc11817ace729a702c62a87d88332a2704441f2c59"
+    },
+    {
+      "file": ".ergora/checks/f7-dispatch/self-review-r4.json",
+      "bytes": 1483,
+      "sha256": "0f17a40b712f7f5fd2419b21180434470bba5a0f5879759f1c0d138404f62d10"
+    },
+    {
+      "file": ".ergora/checks/f7-dispatch/self-review-r4-read-audit.json",
+      "bytes": 4300,
+      "sha256": "c2c46bf3628cd9c9d8aa7c5bdfabe48bc79241bacbdf822f0128861e0949aa3b"
+    },
+    {
+      "file": ".ergora/checks/f7-dispatch/self-review-r4/original-result.json",
+      "bytes": 2133,
+      "sha256": "d96ed56a4d3ad2b63d4104aad98ade8bfa858627a9cdab87dae90ff2adb4fc3a"
+    },
+    {
+      "file": ".ergora/checks/f7-dispatch/self-review-r4/raw-evidence-index.json",
+      "bytes": 1872,
+      "sha256": "880e9bbee4bc46268ac6c516644fc01878d91e48728919cec4365015a3c4ad35"
+    },
+    {
+      "file": ".ergora/checks/f7-dispatch/self-review-r4/sampled-processes.json",
+      "bytes": 525,
+      "sha256": "b89759151c6933f4b4e497a1946911ed4faae9a545c646de79714e3158298e0a"
+    },
+    {
+      "file": ".ergora/checks/f7-dispatch/commit-closure/ci-failure-original.json",
+      "bytes": 4973,
+      "sha256": "3fc4854791652602445c84d8ed727ce32bfad226a364dbd84d3d3efc35dc574f"
+    },
+    {
+      "file": ".ergora/checks/f7-dispatch/commit-closure/ci-run-html-r2/page.html",
+      "bytes": 184232,
+      "sha256": "2192fdde602f8a8f40ebcee8dfa699aed93d2f086f01255aa8cfe2804d59db3e"
+    },
+    {
+      "file": ".ergora/checks/f7-dispatch/commit-closure/ci-linux-html-r1/page.html",
+      "bytes": 175096,
+      "sha256": "32b00784f71afb37ac314f215b317b9d81a78bc1ef857157a0c738d60e9191fa"
+    },
+    {
+      "file": ".ergora/checks/f7-dispatch/commit-closure/ci-windows-html-r1/page.html",
+      "bytes": 173345,
+      "sha256": "4b2bbcc61c4d732c75ab27230fd98ddd7305f5b6ca356631f0afa4fffc1afc60"
+    }
+  ],
+  "limits": [
+    "Original6558671 CI remains failed on both OS jobs; a new correction commit requires its own CI",
+    "Model verdict covers twelve full attachments only; later test results and final docs/CI independently verified",
+    "Source task live six-stage/model journey and narrow admission remain B1c",
+    "Original53-module architecture inventory and old packages retain original scope",
+    "No remote tracker write, host privileges, OS isolation or successful different-backend comparison"
+  ],
+  "independent_review": {
+    "files": 20,
+    "spec_open": 0,
+    "standards_open": 0,
+    "closed": [
+      "ST3/P2"
+    ],
+    "report": "docs/delivery/2026-11-11-issue-dispatch-review.md"
+  }
+}

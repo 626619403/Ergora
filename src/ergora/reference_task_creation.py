@@ -201,12 +201,10 @@ class _Creation:
             if definition['source'] != {'snapshot_sha256': source['sha256']}:
                 raise ValueError('Creation intent source differs from its selected snapshot')
             issue_sources.bind_snapshot(source, record['project'], configuration['layers']['tracker']['binding'], request['tracker'])
-            from .reference_inputs import IssueSourceInput
-
             # Inventory has no dynamic receipts or approval yet, so its exact
             # complete context is known before publication. Later stages keep
             # their original complete-material checks as results arrive.
-            IssueSourceInput(files['task.spec.json'], spec).inventory_context(request['repository']['starting_sha'])
+            task_envelopes.issue_inventory_context(files['task.spec.json'], request['repository']['starting_sha'])
 
     def load(self) -> dict | None:
         record = self.optional(self.intent_path, _INTENT_LIMIT)

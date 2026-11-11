@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 import re
 
-from . import agent_backends, agents, bindings, contracts, issue_sources, issues, projects, reference, workflow_definitions
+from . import agent_backends, agents, bindings, contracts, issue_snapshots, issue_sources, projects, reference, workflow_definitions
 from .asset_trees import inventory_tree
 from .state import State
 
@@ -46,7 +46,7 @@ def _definition(state: State, project: dict, definition: dict) -> dict:
     if version == 3:
         from .task_envelopes import manifest_graph
 
-        saved = issues.snapshot(state, project['id'], definition['source']['snapshot_sha256'])
+        saved = issue_snapshots.snapshot(state, project['id'], definition['source']['snapshot_sha256'])
         tracker = {**project['registration']['definition']['tracker'], 'issue_id': definition['issue_id']}
         issue_sources.bind_snapshot(saved, project['id'], selection['configuration']['layers']['tracker']['binding'], tracker)
         # This lower bound is already needed by every selected work/review

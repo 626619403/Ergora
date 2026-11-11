@@ -5,7 +5,6 @@ native implementation imports stay at the operations that actually use them.
 """
 
 from abc import ABC, abstractmethod
-import json
 from pathlib import Path
 
 from . import task_envelopes
@@ -247,21 +246,6 @@ class IssueSourceInput(StageResultsInput):
 
     def evidence_contract(self) -> dict:
         return {'original_input': self.document, 'original_input_sha256': task_envelopes.identity(self.document)}
-
-    def inventory_context(self, expected_sha: str | None) -> dict:
-        """The complete first-stage input, shared by offline publication and v7 execution."""
-        request = self.spec['request']
-        context = {'task_id': request['task_id'], 'request_sha256': self.spec['request_sha256'],
-            'profile_sha256': self.spec['profile_sha256'], 'spec': self.spec, 'stage': 'inventory',
-            'expected_candidate_sha': expected_sha, 'unit': None, 'dependencies': {},
-            'author_ids': [], 'author_sessions': [],
-            'job_id': request['task_id'] + '-' + task_envelopes.identity({'stage': 'inventory'})[:24],
-            'admission': self.document}
-        if len(json.dumps(context, ensure_ascii=False, sort_keys=True, separators=(',', ':'),
-                          allow_nan=False).encode('utf-8')) > 1_000_000:
-            raise ValueError('Complete issue inventory context exceeds 1,000,000 bytes; split the task')
-        return context
-
 
 _INPUTS = {1: LegacyInput, 2: CompositionInput, 3: ReviewRequirementsInput, 4: ReviewDAGInput,
            5: WorkDeliveryInput, 6: StageResultsInput, 7: IssueSourceInput}

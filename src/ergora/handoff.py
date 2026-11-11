@@ -42,13 +42,14 @@ def _references(index: dict) -> dict:
             or contract['agent_bindings_sha256'] != _sha(contract['agent_bindings'])):
         raise ValueError('Handoff contract identity differs from the indexed frozen bytes')
     if 'original_input' in contract:
-        from .reference_inputs import execution_input
+        from .task_envelopes import unwrap
         from .issue_sources import bind_snapshot
 
-        selected = execution_input(contract['original_input'])
-        if selected.spec != spec or contract['original_input_sha256'] != _sha(selected.document):
+        document = contract['original_input']
+        original_spec, composition = unwrap(document)
+        if original_spec != spec or contract['original_input_sha256'] != _sha(document):
             raise ValueError('Handoff original input differs from its indexed identity')
-        source = selected.stage_material().get('issue_source')
+        source = document['issue_source'] if composition is not None and document['schema_version'] == 7 else None
         if source is not None:
             selection = contract['agent_bindings']
             bind_snapshot(source, index['project'], selection['configuration']['layers']['tracker']['binding'],

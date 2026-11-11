@@ -2,7 +2,9 @@
 
 日期：2026-11-11。审查者：fresh-context 独立 Agent `f7b1_source_publication_review`；未继承实现会话、未启动子 Agent。依据本项目 [AGENTS](../../AGENTS.md)、[B1 计划](../plans/2026-11-11-issue-dispatch.md)、[独立设计](../plans/2026-11-11-issue-dispatch-design-review.md)及 maintainable-project-delivery 的 independent-review brief，先读原需求、冻结 diff／新增文件及相邻调用，再核作者交付记录和原始证据。
 
-**最终独立结论：Spec 通过，Standards 通过，开放 finding 0／0。** 初审发现的 Spec 一项 P2、Standards 一项 P2 和一项 P3 均已最小修正并复核关闭。最终 r3 安装身份、受影响检查、实际 CLI／HTTP 旅程、两轮自身模板原件及完整候选终核通过；结论限 B1b 本地出口，普通提交／远端／本候选自己的 CI 仍须另核。
+**原 r3 本地独立判词：Spec 通过，Standards 通过，开放 finding 0／0。** 初审发现的 Spec 一项 P2、Standards 一项 P2 和一项 P3 均已最小修正并复核关闭。最终 r3 安装身份、受影响检查、实际 CLI／HTTP 旅程、两轮自身模板原件及完整候选终核通过；结论限 B1b 本地出口，普通提交／远端／本候选自己的 CI 仍须另核。
+
+**当前同片结论：r4 依赖修正的 Spec／Standards 均通过，ST3／P2 关闭，开放 0／0。** 上段 Standards 原判词曾因 `6558671` 的实际双 OS CI 架构失败和另查出的静态循环撤回；现已独立核准修正源码、安装／旅程／自身原件及完整 20 文件范围，详见末节。新修正的精确提交／远端／自己的 CI 仍待另核；原提交的失败不改写为成功。
 
 ## 精确范围
 
@@ -16,7 +18,7 @@
 
 相邻只读范围包括 `contracts / components / projects / bindings / reference_creation_process / reference_task_submission / reference_task_runtime / reference_task_reconciliation / reference_worker / review_dags / task_mcp`、原 native cli／workflow／adapter／ingress、相关原创建／worker／transport／handoff夹具和现有 Portability CI。B0 文档的精确交付追加只核其身份和范围表述，不重新宣称本评审直接完成 B0 的网络或 CI 操作。
 
-最终完整冻结为 32 文件：上述 30 文件，加本报告与 `docs/delivery/evidence/2026-11-11-issue-dispatch-self-review.json`。最终清单 SHA256 `dab5143782c752d7fbc043d57a5c2b6a4e28d2d32517e2669d2a07814e1b6141`，tracked diff SHA256 `9e0f346f639e9d6da815afb61ba53a759229e855b3ea2965b2067c002ca2f7c8`；终核开始时 32 份冻结内容均与工作区逐字相等。后续仅本报告结论和相对链接回写，不改变其余 31 文件；产品／测试实际修改及后补文档均已纳入复核。本报告自身与后续出口状态记账不触发递归审查。
+原 r3 完整冻结为 32 文件：上述 30 文件，加本报告与 `docs/delivery/evidence/2026-11-11-issue-dispatch-self-review.json`。清单 SHA256 `dab5143782c752d7fbc043d57a5c2b6a4e28d2d32517e2669d2a07814e1b6141`，tracked diff SHA256 `9e0f346f639e9d6da815afb61ba53a759229e855b3ea2965b2067c002ca2f7c8`；该轮终核开始时 32 份冻结内容均与工作区逐字相等。随后本报告结论和相对链接回写，以及 PLAN／本片计划／交付记录／验收投影四份完成状态更新，均已分别复核；其余 27 文件在该轮终核时仍逐字相等。之后的 ST3 修正候选另见末节，产品／测试实际修改及后补文档均已纳入复核。本报告自身与后续出口状态记账不触发递归审查。
 
 ## Spec
 
@@ -71,7 +73,7 @@
 6. 最终 r3 wheel SHA256 `1c4dcc20b37cfcd776159bb1085129695cf7d64ed591acb2632a75b153c33222`，再次独立核 444 source／wheel／installed 包文件、两份 RECORD 的 449／454 行以及 283 冻结原件。r2→r3 恰好四个包文件变化：`reference_inputs / reference_workflows / reference_task_creation` 和 `task-definition-v3.json`；其他原安装检查覆盖的产品字节保持。原 28 passed／57.09s 包含来源 17、worker 10 和实际原执行器 CLI 协议 1，driver 59.14s；reference verify PASS，两个 stdout 摘要匹配原元数据。没有将原 343 项改称 r3 全套重跑。
 7. 最终 r3 的第二次真实旅程：11 对 CLI 原 stream 和 11 HTTP 原 body 的摘要／大小均核准，CLI／HTTP 完整 preview 相等，两个任务各七文件，15 检查通过／11.895s；两次 tracker GET，原退出记录为 owned web -15、tracker thread 不存活、owned ports closed。其原件身份和历史 r2 旅程均由最终公开投影区分，未借旧旅程证明新包。
 8. 聚焦自身模板 run `8e5db9fc8e4644d595b68ec4981d22cb`：完整身份链已核，五份 scope 从原 native JSONL 逐字重建为 354、480、93009、521、163B；正文七个连续 UTF8 页到 null，另一次 base64 页缩小重读，工具失败 0。七份完整附件中四个最终产品文件与最终测试文件逐字等于当前源码；两份当时计划／交付记录的后补状态由本评审另核。原 result SHA256 `a9c9207b3c2bc5eb0acfb46c84fbbc1b616bf4fef0b438c6e985849efde2abef`，原判断 approve，run 区间 106.72s。原模板指令／Skill 字节保持，只有证据资源、精确引用版本和显式材料额度变化。四个采样 PID/starttime 无相同存活进程。
-9. 聚焦原 usage 为 input 354,519／cached 289,024／output 1,892／reasoning 624，同样不重复计数。最终自身投影的 12 份原件，以及安装／旅程投影的原件身份均逐项核对。模型聚焦判词限这七份供给材料，不覆盖稍后测试结果、最终文档、精确交付或 B1c。
+9. 聚焦原 usage 为 input 354,519／cached 289,024／output 1,892／reasoning 624，同样不重复计数。最终自身投影的 12 份原件，以及安装／旅程投影的 16 份原件身份均逐项核对；最终 13 份 Markdown 的 356 个本地链接目标存在，`git diff --check` 通过。模型聚焦判词限这七份供给材料，不覆盖稍后测试结果、最终文档、精确交付或 B1c。
 
 本评审只读源码／原件和 ZIP／RECORD，运行必要的纯内存来源、平台和预算探针，以及文档静态检查；仅写本项目本报告。没有安装、运行模型、联网写入、提交或启动服务，没有重跑产品套件。Windows 真实运行、最终精确提交／远端／自己的 CI，以及 B1c 真实运行均未由本评审完成。
 
@@ -80,3 +82,43 @@
 完整 32 文件审查完成。Spec：SP1／P2 关闭，开放 0；Standards：ST1／P2、ST2／P3 关闭，开放 0。最终源码、相邻调用、测试价值、性能范围、r3 安装／旅程、两轮自身原件及最终计划／交付／两公开投影相互一致，B1b 本地出口通过。
 
 本结论不关闭 B1c 的窄依赖准入／真实 Temporal/model 六阶段、历史 replay、Windows 实机新格式、宿主隔离、远端工单写入或项目整体。精确 Git 对象／远端／自己的 CI 在普通提交后核准；后续工作区即使开始 B1c，也不得替代本片冻结候选。
+
+## 普通提交后的精确只读终核
+
+2026-11-11，独立读取普通提交 `6558671f128c320f01785f9b28c673442cf76089` 的 Git tree／blob。其直接父提交为原基线，32 个变更路径恰好等于 ready-r1；ready 清单 SHA256 为 `cdb8a7a9138244d51bf070133814deedfe3b19a214b22f4ce2b983f71477f609`。逐个核 Git blob 原字节、大小、SHA256 和 `100644` 模式，均等于 ready 保存的 32 份文件。本报告上文两段清单／证据数量补记晚于 ready／staging，仍在工作区保留，不将当前报告全文冒称该提交的报告 blob；这些补记不改变产品或测试。
+
+以该精确提交的 Git blob 直接比对最终 r3：444 个包文件与 wheel 及独立安装目录逐字相等，wheel SHA256 仍为 `1c4dcc20b37cfcd776159bb1085129695cf7d64ed591acb2632a75b153c33222`；wheel／installed 两份 RECORD 的 449／454 行中每个非空摘要和大小均通过，283 份 reference frozen 内容在提交／wheel／installed 三处一致且匹配 manifest。此轮没有重跑产品行为或模型。
+
+作者报告普通推送成功后，评审者于 `2026-11-11T08:59:59.786051+00:00` 只做一次 GitHub 官方完整 [Ref API GET](https://api.github.com/repos/626619403/Ergora/git/ref/heads/refactor/architecture-foundations)。实际返回 HTTP 403／API rate limit exceeded，原响应 280B、SHA256 `cab107d310af6137d3ca21f7de123c972a91cb1cbd91e2f58f61fe192ba31735`；未取得远端完整 SHA，没有重试或换路，不称独立远端核准成功。自己的 CI 原件尚待提供，本段不提前关闭该项；本轮只属于 B1b 的精确交付复核，不构成 B1c 独立实现审查。
+
+## ST3／P2：原精确 CI 暴露架构合同回归，已同片修正
+
+独立读取自己的 [Portability run 42991272992](https://github.com/626619403/Ergora/actions/runs/42991272992) 首份原 HTML（166,659B，SHA256 `064d519126f16fcb5f64cd2558546987a131b1615569e50456db0a9eadbf1092`）。该样本仍显示 run In progress，Windows native regression 已明确失败：3 failed／820 passed／595 skipped／16 subtests，381.16s。三项分别是 `tasks → issues → tasks` 违反已有无环合同、task_envelopes 新增纯 issue_sources 依赖未纳入 foundation 合同，以及 handoff 依赖 reference_inputs／issue_sources 越过其已声明边界。它不是本候选 CI 成功证据，也不能用此前定向安装检查替代。
+
+另直接对 `6558671` 全部 first-party 模块 AST 求强连通分量，确认 `reference_inputs → reference_workflows → reference_inputs` 是第二处循环；首个 cycle assertion 被前一循环先行截断，没有替后者提供通过结论。handoff 原 input 校验实际只需已存在的纯 unwrap／来源绑定；完整首 inventory 的预算组装也不应使 workflow 反向依赖其版本构造 Input。原独立终核未将这些新增依赖与已有全图合同正确对应，Standards 无问题的原结论在此撤回。
+
+同片最小修正方向已审查：把原 snapshot 保存／读取与 row 重建下移到共同 issue_snapshots 所有者，保留 issues 的远端观察／修订／关联编排；handoff 直接 unwrap 原文、核投影和原文 SHA，仅对已验证 v7 绑定完整来源；首 inventory context 原样下移纯 task_envelopes，由 creation／workflow 直接调用，保留精确字段、原上限和 ValueError→StopWork 边界。foundation 合同只增加实际纯 issue_sources 的依赖许可与标准库约束，不准许运行 Input 或循环。按这些边虚拟替换后的 57 模块全图无环；该设计检查时 ST3 仍开放，没有替代修正源码／安装包／受影响行为及新精确 CI 的复核。
+
+### ST3 同片源码复核：先于安装原件
+
+后续实际修正逐项对照 `6558671`：八个产品文件为新增 `issue_snapshots` 及 `issues / tasks / handoff / task_envelopes / reference_inputs / reference_task_creation / reference_workflows`，另两份原测试为 `test_architecture_boundaries / test_issue_tasks`。本轮十文件按路径排序的 file／bytes／sha256 canonical JSON 摘要为 `77b5b1b135fc1163991a9e2d55572deefe73fb32f737355eb69a4717f240a579`。B1c 未跟踪计划／交付／test_issue_submission 不属于该候选，没有纳入本次代码审查。
+
+实际修法比原拟方案更小：共同 issue_snapshots 仅接收原 getter、row 重建和 digest 校验，`issues.snapshot` 仍 reexport 旧公开入口；capture 的唯一持久写／事务仍由原 issues 拥有，没有为单调用另建写抽象。tasks 改向共同读取所有者，issues 的原 link 仍调用 tasks.creation。handoff 的原文投影／SHA／冻结来源校验保持，只在 composition 非空且已验证版本为 7 时取来源，旧格式不因任意附加 issue_source 改变分支。首 context helper 原样移到纯 task_envelopes；原 native validate_spec 原样返回 spec，故从已验证 admission 取 legacy_spec 与原运行 self.spec 相同。
+
+独立对实际源码而非虚拟图再做 AST 检查：57 个 first-party 模块全图无环，九个 foundation 依赖集合与三项标准库边界满足，未许可 reference_inputs 等运行层。必要的 `python -S -B` 纯内存等价探针逐字段／逐字比较原提交 helper 和新 helper：ASCII／中文均精确接受 1,000,000B，增加一字符分别多 1／3B，错误文本相同；原 snapshot row／digest 与迁出函数行为相同，纯读取不依赖 JSON Schema 或 SDK。测试只更新原架构依赖合同及原预算调用点，没有新增同构 CI 或重复保护。首份 source 架构修正检查的 `1 failed / 11 passed`（0.45s、根级 import 被标准库合同识别为 ergora）保留，其后的具名纯导入没有放宽该合同。源码复核未发现新 finding；此时 ST3 的最终关闭仍待 r4 安装及后补原件。
+
+### ST3 最终同片复核：关闭
+
+完整修正范围按 `repair-files.json` 的 20 文件终核：八个产品、两测试、八份本片／架构／证据文档，以及两份已被公开链接的 B1c 准备文档。后两份只核未来范围、原型备份还原及混合身份检查无效的状态表述，没有审查 B1c 设计或实现；未跟踪的 `test_issue_submission.py` 正文和 B1c 产品不在本轮范围。其余文档与新公开投影的状态、范围及实际原件相符，原模型只覆盖下述 12 附件，不借其判词覆盖完整 20 文件。
+
+最终 r4 wheel SHA256 `29c4626ce18e7988d4635cd0f8e3659993ba8bb4439d576ddf86d95e0e98b2b9`。独立逐字核 445 source／wheel／installed 文件、450／455 行两份 RECORD 的所有非空摘要和大小，以及 283 份 frozen 内容；r3→r4 恰好只变更八个已审产品文件。安装六文件组原 stdout 为 125 passed／209.38s，driver 211.958s；reference verify PASS，两份 stdout SHA 均匹配原元数据。没有重跑行为、重新安装或借原 r3 检查称新包全套通过。
+
+r4 真实 CLI／loopback HTTP 旅程原件的 22 个 CLI stdout／stderr 和 11 个 HTTP body 均逐项核摘要／大小，完整 preview 相等，两任务各七文件；15 检查／11.0785s，两次 tracker GET。fixture 的解释器确为 r4 独立安装；tracker 先停止、token 删除后才发布／恢复，换源需新 ID、绑定变化及移除 manifest 后恢复保持原文。退出 -15、tracker thread 不存活、端口关闭均为原驱动记录，本轮未启动服务。没有执行请求／回执／提交记录，不将该离线旅程称六阶段或真实来源 Agent 消费。
+
+第三次实际自身模板 run `5451283ae8bb4b06b974af59bb45b0bd` 独立核完整 manifest→prepared／actual input→prompt／stdin／协议→admission／scope→原 result 身份；原模板指令／Skill 保持，仅按前两轮相同规则加入证据、精确版本与额度。直接解析原 native JSONL，完整重建五份 scope（354、480、177571、521、163B），正文十个连续 UTF8 页至 null，无 base64 重试或失败调用。12 份完整附件按声明字节／SHA 逐件核准；八产品和两测试等于最终源码，计划附件当轮相等、交付附件后补结果由本评审另核。原 result SHA256 `d96ed56a4d3ad2b63d4104aad98ade8bfa858627a9cdab87dae90ff2adb4fc3a`，原判断 approve／161.003s，native stream SHA256 `caf10d68e0a67afc9d00bff096ddd65ff92c1d8f9003b07af1aa5224f0cae58d`。input 430,641／cached 368,384／output 3,176／reasoning 1,679 保持原计数口径，不重复相加；四个采样 PID／starttime 无相同存活进程。`self-review-r3` 仅准备失败、没有 run 记录，不计作实际模型调用或成功判词。
+
+新[依赖修正投影](evidence/2026-11-11-issue-source-dependencies.json)的 14 份原件身份全部核准。另直接解析原 `6558671` 两 job 官方 HTML 的 check-step 属性、完整提交身份和失败摘要，与原失败投影逐字段相同：Linux 3 failed／1383 passed／87 skipped／36 subtests／978.08s，Windows 3 failed／820 passed／595 skipped／16 subtests／381.16s；两 job 均 completed，Native regression 为 failure。构建与 reference identity 成功、Windows installer 成功／Linux 对应步骤跳过不构成整项 CI 成功，没有称成功 REST 或下载全日志。
+
+完整 20 文件的 JSON／静态检查通过；八份 Markdown 的 84 个本地链接目标存在，六个已载入秘密值和私有 home 路径检查无问题，`git diff --check` 通过。十个已核产品／测试文件与源码复核时的身份相同。
+
+ST3／P2 已按修正源码、安装／旅程和完整后补证据复核关闭。当前 Spec／Standards 通过，开放 0／0，B1b 依赖修正的本地出口通过；新修正候选的冻结身份／普通提交／远端／自己的必要 CI 随后另核。原 `6558671` 双 OS CI 保持失败、一次独立 Ref 限流 403 保持原结果，B1c 真实运行及项目整体均未关闭。

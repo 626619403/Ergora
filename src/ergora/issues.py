@@ -3,9 +3,9 @@
 import base64
 import hashlib
 import json
-import re
 
-from . import contracts, issue_backends, issue_sources, projects
+from . import contracts, issue_backends, projects
+from .issue_snapshots import snapshot, snapshot_from_row, validate_digest
 from .state import State, now
 
 
@@ -34,11 +34,6 @@ def _identity(payload: dict) -> str:
         separators=(',', ':'), allow_nan=False).encode('utf-8')).hexdigest()
 
 
-def _digest(value: str) -> None:
-    if not isinstance(value, str) or not re.fullmatch('[a-f0-9]{64}', value):
-        raise ValueError('Issue record identity must be a SHA256 digest')
-
-
 def _revision(project: dict, expected: int) -> None:
     if type(expected) is not int or project['revision'] != expected:
         raise ValueError('Project revision changed; reload before the issue operation')
@@ -58,15 +53,6 @@ def _observe(project: dict, issue_id: str) -> tuple[dict, dict]:
 
 def show(state: State, project_id: str, issue_id: str) -> dict:
     return _observe(state.project(project_id), issue_id)[0]
-
-
-def _snapshot(row) -> dict:
-    payload = json.loads(row['document'])
-    result = {'schema_version': 1, 'sha256': row['sha'], 'first_observed_at': row['first_observed_at'], 'payload': payload}
-    issue_sources.validate_snapshot(result)
-    if payload['observation']['project']['id'] != row['project']:
-        raise ValueError('Saved issue snapshot differs from its project')
-    return result
 
 
 def _link(row) -> dict:
@@ -93,18 +79,8 @@ def capture(state: State, project_id: str, issue_id: str, expected_revision: int
         db.execute('INSERT INTO issue_snapshots VALUES (?,?,?,?) ON CONFLICT(project,sha) DO NOTHING',
                    (project_id, digest, observed_at, json.dumps(payload, ensure_ascii=False)))
         row = db.execute('SELECT * FROM issue_snapshots WHERE project=? AND sha=?', (project_id, digest)).fetchone()
-        saved = _snapshot(row)
+        saved = snapshot_from_row(row)
     return {'snapshot': saved, 'observed_at': observed_at}
-
-
-def snapshot(state: State, project_id: str, digest: str) -> dict:
-    state.project(project_id)
-    _digest(digest)
-    with state.connect() as db:
-        row = db.execute('SELECT * FROM issue_snapshots WHERE project=? AND sha=?', (project_id, digest)).fetchone()
-    if row is None:
-        raise ValueError('Unknown issue snapshot in this project')
-    return _snapshot(row)
 
 
 def _page(project_id: str, kind: str, filters: dict, limit: int, after: str | None) -> tuple[dict, str]:
@@ -119,7 +95,7 @@ def _page(project_id: str, kind: str, filters: dict, limit: int, after: str | No
         document = json.loads(base64.b64decode(after + '=' * (-len(after) % 4), altchars=b'-_', validate=True))
         if not isinstance(document, dict) or set(document) != {*scope, 'after'} or any(document[key] != value for key, value in scope.items()):
             raise ValueError('Cursor scope changed')
-        _digest(document['after'])
+        validate_digest(document['after'])
     except (ValueError, TypeError):
         raise ValueError('Issue history cursor is invalid or belongs to another query') from None
     return scope, document['after']
@@ -139,7 +115,7 @@ def snapshots(state: State, project_id: str, *, limit: int = 50, after: str | No
             if index == limit:
                 more = True
                 break
-            saved = _snapshot(row)
+            saved = snapshot_from_row(row)
             observation = saved['payload']['observation']
             title = observation['issue']['title']
             result.append({'sha256': saved['sha256'], 'first_observed_at': saved['first_observed_at'],
@@ -154,8 +130,8 @@ def link_task(state: State, project_id: str, digest: str, task_id: str, creation
     from . import tasks
 
     project = state.project(project_id)
-    _digest(digest)
-    _digest(creation_sha256)
+    validate_digest(digest)
+    validate_digest(creation_sha256)
     contracts.validate(reason, _LINK['properties']['reason'], 'Issue task link reason')
     key = (project_id, digest, task_id, creation_sha256)
     query = 'SELECT * FROM issue_task_links WHERE project=? AND snapshot=? AND task_id=? AND creation_sha=?'
@@ -192,7 +168,7 @@ def links(state: State, project_id: str, *, snapshot_sha256: str | None = None, 
     scope, position = _page(project_id, 'issue-links', filters, limit, after)
     conditions, parameters = ['project=?', 'sha>?'], [project_id, position]
     if snapshot_sha256 is not None:
-        _digest(snapshot_sha256)
+        validate_digest(snapshot_sha256)
         conditions.append('snapshot=?')
         parameters.append(snapshot_sha256)
     if task_id is not None:
@@ -216,7 +192,7 @@ def validate_storage(db) -> dict:
     if db.execute('PRAGMA user_version').fetchone()[0] < 2:
         return counts
     for row in db.execute('SELECT * FROM issue_snapshots'):
-        _snapshot(row)
+        snapshot_from_row(row)
         counts['issue_snapshots'] += 1
     for row in db.execute('SELECT * FROM issue_task_links'):
         _link(row)

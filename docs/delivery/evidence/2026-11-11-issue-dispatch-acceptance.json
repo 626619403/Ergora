@@ -2,7 +2,7 @@
   "schema_version": 1,
   "slice": "F7b.1-B1b",
   "baseline": "3c4ef3928fe756bf596fd1da1cc80c7eb1e6578d",
-  "state": "local-exit-and-independent-review-complete; precise-delivery-pending",
+  "state": "original-6558671-ci-failed; dependency-correction-r4-local-exit-complete-precise-delivery-pending",
   "package": {
     "at": "2026-11-11T08:42:40.286264+00:00",
     "wheel_sha256": "1c4dcc20b37cfcd776159bb1085129695cf7d64ed591acb2632a75b153c33222",
@@ -230,13 +230,50 @@
   ],
   "independent_review": {
     "report": "docs/delivery/2026-11-11-issue-dispatch-review.md",
-    "files": 32,
+    "original_files": 32,
+    "correction_files": 20,
     "spec_open": 0,
     "standards_open": 0,
     "closed": [
       "SP1/P2",
       "ST1/P2",
-      "ST2/P3"
+      "ST2/P3",
+      "ST3/P2"
     ]
+  },
+  "original_candidate_ci": {
+    "candidate": "6558671f128c320f01785f9b28c673442cf76089",
+    "run_id": 42991272992,
+    "official_run": "https://github.com/626619403/Ergora/actions/runs/42991272992",
+    "conclusion": "failure",
+    "evidence": "Original official run and two job HTML, not REST success or whole log downloads",
+    "linux": {
+      "job_id": 130424492708,
+      "failed": 3,
+      "passed": 1383,
+      "skipped": 87,
+      "subtests_passed": 36
+    },
+    "windows": {
+      "job_id": 130424492885,
+      "failed": 3,
+      "passed": 820,
+      "skipped": 595,
+      "subtests_passed": 16
+    },
+    "failures": [
+      "task/issue static import cycle",
+      "task_envelopes pure source dependency contract missing",
+      "handoff depended on runtime Input"
+    ],
+    "additional_local_finding": "reference_inputs/reference_workflows static cycle",
+    "disposition": "Original candidate remains failed; correct actual ownership and validate a new candidate"
+  },
+  "dependency_repair": {
+    "evidence": "2026-11-11-issue-source-dependencies.json",
+    "package_sha256": "29c4626ce18e7988d4635cd0f8e3659993ba8bb4439d576ddf86d95e0e98b2b9",
+    "installed_passed": 125,
+    "journey_checks": 15,
+    "same_slice_review": "Complete20-file same-slice independent review passed; ST3 closed, open0/0"
   }
 }

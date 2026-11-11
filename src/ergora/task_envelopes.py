@@ -9,7 +9,7 @@ import hashlib
 import json
 
 from .review_dags import ReviewDAG, WorkDelivery
-from . import issue_sources
+from .issue_sources import validate_snapshot
 
 
 _KIND = 'composition-task-admission'
@@ -391,12 +391,32 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
         review_members(composition)
     if document['schema_version'] == 7:
         saved = document['issue_source']
-        issue_sources.validate_snapshot(saved)
+        validate_snapshot(saved)
         source = saved['payload']['observation']['source']
         if document['legacy_spec']['request']['tracker'] != {
                 'kind': source['provider'], 'project': source['project'], 'issue_id': source['issue_id']}:
             raise ValueError('Formal issue source differs from its original native tracker')
     return document['legacy_spec'], composition
+
+
+def issue_inventory_context(document: dict, expected_sha: str | None) -> dict:
+    """Build the complete first context of an already validated source input.
+
+    Publication and v7 execution share these bytes; neither imports the other's
+    native runtime. Later dynamic stages retain their original material limits.
+    """
+    spec = document['legacy_spec']
+    request = spec['request']
+    context = {'task_id': request['task_id'], 'request_sha256': spec['request_sha256'],
+        'profile_sha256': spec['profile_sha256'], 'spec': spec, 'stage': 'inventory',
+        'expected_candidate_sha': expected_sha, 'unit': None, 'dependencies': {},
+        'author_ids': [], 'author_sessions': [],
+        'job_id': request['task_id'] + '-' + identity({'stage': 'inventory'})[:24],
+        'admission': document}
+    if len(json.dumps(context, ensure_ascii=False, sort_keys=True, separators=(',', ':'),
+                      allow_nan=False).encode('utf-8')) > 1_000_000:
+        raise ValueError('Complete issue inventory context exceeds 1,000,000 bytes; split the task')
+    return context
 
 
 def summary(document: dict) -> dict:

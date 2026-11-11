@@ -278,7 +278,7 @@ def test_complete_first_context_is_checked_at_publication_and_runtime(issue_crea
     selected = execution_input(preview['files']['task.spec.json'])
     starting = selected.spec['request']['repository']['starting_sha']
     encode = lambda value: json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(',', ':'), allow_nan=False).encode()
-    available = 1_000_000 - len(encode(selected.inventory_context(starting)))
+    available = 1_000_000 - len(encode(task_envelopes.issue_inventory_context(selected.document, starting)))
     body_bytes = len(encode(saved['payload']['observation']['issue']['body'])) - 2 + available
     count, remainder = divmod(body_bytes, len(character.encode()))
     body = character * count + 'a' * remainder

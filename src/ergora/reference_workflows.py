@@ -13,7 +13,6 @@ with workflow.unsafe.imports_passed_through():
     from dev_platform.adapter import FileAdapter, ContractViolation
     from dev_platform.workflow import DevelopmentWorkflow, StopWork
     from ergora import task_envelopes
-    from ergora.reference_inputs import IssueSourceInput
     from ergora.reference_review_opinions import review_observation
 
 
@@ -413,7 +412,7 @@ class IssueSourceWorkflow(StageResultsWorkflow):
     def context(self, stage, expected_sha=None, unit=None, dependencies=None):
         if stage == 'inventory':
             try:
-                return IssueSourceInput(self.admission, self.spec).inventory_context(expected_sha)
+                return task_envelopes.issue_inventory_context(self.admission, expected_sha)
             except ValueError as error:
                 raise StopWork(str(error)) from error
         return super().context(stage, expected_sha, unit, dependencies)

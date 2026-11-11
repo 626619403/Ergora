@@ -9,7 +9,7 @@
 |内置层与组件目录|`data/components.json`，目录 `schema_version: 1`；configuration 按 Draft 2020-12 解释|`components` 负责内置目录/显示投影；不运行外部插件|
 |角色与支持工具绑定|上述 configuration；绑定沿用现有无独立版本的 `{tool, ...}` 格式，位于 project v1|`bindings`委托实际所有者：`agents`核角色/能力、`kernel`核原生路径、`issue_backends`核tracker连接，其余支持层核schema及ReMe URL/变量名；共用结构校验|
 |指定工单观察|`data/schemas/issue-observation-v1.json`；与task／request版本分开|`issue_backends`验证原生响应与完整原字节摘要；`issues.show`补固定项目修订／配置摘要和观察时间。source含完整API base／namespace／number或iid，issue另存native ID；文本为context_only，show不持久入表、不派工。ETag／更新时间不是写CAS|
-|工单快照与显式上下文关联|`issue_sources.validate_snapshot / issues._LINK`为本域严格v1记录；SQLite schema v2的两专属表|snapshot SHA对完整观察去掉observed_at及当次tracker binding做UTF8 canonical JSON摘要；首次观察时间另存。link固定snapshot SHA、task ID及原creation intent／compiled SHA；`created_revision`是项目修订，`operator_asserted_context`不授予执行。离线备份核记录／列／摘要／引用，不解析当前凭据或原execution目录|
+|工单快照与显式上下文关联|`issue_sources.validate_snapshot / issue_snapshots / issues._LINK`为本域严格v1记录；SQLite schema v2的两专属表|snapshot SHA对完整观察去掉observed_at及当次tracker binding做UTF8 canonical JSON摘要；首次观察时间另存。link固定snapshot SHA、task ID及原creation intent／compiled SHA；`created_revision`是项目修订，`operator_asserted_context`不授予执行。离线备份核记录／列／摘要／引用，不解析当前凭据或原execution目录|
 |Agent 结构化结果|`agents.result_schema` 生成所选模板角色的必需 artifacts 和审查 decision；命令信封沿用 `stage-json-v1`|`agents.validate_result` 使用同一份 schema 验证实际输出，非空白 summary/artifacts 和拒绝额外字段保持；进程成功不是正式验收|
 |静态Agent定义包|`data/schemas/agent-definition-v1.json`，严格整数版本1；索引由定义库所有者校验|`agent_definitions`核职能/后端、包内资源与精确版本；备份核索引→对象→资源，不新建DB表或运行准入|
 |静态工作流定义包与预览|`workflow-definition-v1.json / workflow-definition-v2.json`；预览v1/v2，grant仍v1|v2增加实例必需／建议审查职责；`workflow_definitions`核精确引用、端口／有界DAG、完整祖先资料／权限及预算。preview版本为所展开定义的最高版本，仍`executable:false`；`definition_bundles`逐包发布，不授执行权|
@@ -17,7 +17,7 @@
 |用户正式任务定义|`task-definition-v1.json / task-definition-v2.json / task-definition-v3.json`|`tasks`拥有项目／revision及有效绑定；v2另选完整manifest、review子图、逐叶override和work分配，v3另选精确工单snapshot SHA并要求work-units-v2；creation3仍原七文件，创建不是提交。task-definition版本不等于正式信封版本|
 |正式任务spec／组合信封|原生v1 spec保持原形状；`task_envelopes`校验v2–v7信封，原`legacy_spec`为兼容六阶段投影|v2完整组合，v3审查职责，v4显式dag-v1，v5 work-units-v1，v6 work-units-v2，v7新增完整issue_source且保留v6材料语义。`reference_inputs`局部映射选择原版本queue／request根／workflow；旧身份／history不自动迁移，完整信封参与准入／恢复|
 |正式执行材料|`reference_executor`发布`formal-work-materials / formal-review-materials`；旧材料v1，正式信封v6/v7使用材料v2／`artifact_protocol:stage-artifacts-v1`|v6/v7逐件核审计原件，只内联完整声明阶段产物、可信检查与意见，不递归复制前代prompt；完整祖先资料和原预算仍核验。v7另外在work/review材料交付完整issue_source；材料v2与WorkflowDefinition-v2没有版本继承关系|
-|离线任务交接|`task-handoff-v1` ZIP：manifest与去重blob；`handoff`受限校验|收集沿原证据所有者；v7追加完整contract.original_input及canonical SHA，核来源／冻结配置／原outcome admission SHA，仍受索引和manifest 1MiB限制；基础包可离线核内部字节及声明关系，不认证来源或推断执行成功，不替代控制面／执行目录备份|
+|离线任务交接|`task-handoff-v1` ZIP：manifest与去重blob；`handoff`受限校验|收集沿原证据所有者；v7追加完整contract.original_input及canonical SHA，核来源／冻结配置／原outcome admission SHA，仍受索引和manifest 1MiB限制；基础包经纯task_envelopes.unwrap／issue_sources校验，可离线核内部字节及声明关系，不认证来源或推断执行成功，不替代控制面／执行目录备份|
 |评价输入|`data/schemas/evaluation-manifest-v1.json`|`evaluation.register` 负责版本、case 安全 ID/唯一性/三个 split、可信文件解析和指纹；不允许额外顶层/case 字段|
 |evaluator 响应|`data/schemas/evaluation-result-v1.json`，结果本身不新增版本字段|`evaluation.evaluate` 要求有限 score/cost、bool passed、string feedback；沿用旧行为接受并忽略附加上游字段，预算和候选绑定仍由评价所有者负责|
 |离线控制面备份|`data/schemas/state-backup-v1.json`，严格整数版本 1|`backups` 负责库/文件/Skill/来源身份核对及同平台原 home 恢复；CLI state 入口不先创建或迁移 State|

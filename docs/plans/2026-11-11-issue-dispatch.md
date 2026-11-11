@@ -60,3 +60,9 @@ B1a验收需要回答：新定义／creation／input具体字段和版本，来�
 必须覆盖的真实错误：错host／namespace／local ID／native ID，编辑snapshot／输入SHA，来源切换与无关绑定修订，删除token后的离线预览，工单更新保留旧创建／批准；不需要的A2A／MLflow缺失可用且实际必需Agent／runtime缺失明确拒绝；与原入口同一claim的竞争、lookup与start冲突、attempt后丢响应、原memo不匹配；完整资料交付／预算拒绝和旧v1–v6读回／恢复。复用原测试夹具与调度／进程monitor，不新增同构CI或为了证明普通异常而堆测试。
 
 B0的精确提交／CI状态以其[计划](2026-11-11-issue-mapping.md)和[交付记录](../delivery/2026-11-11-issue-mapping.md)为准。每节点完成后更新本计划、所属交付记录及[PLAN](../PLAN.md)，新实现片另固定自己的基线／证据／审查范围。项目整体、F7c／d与F8–F10／G1仍未完成。
+
+## B1b CI后的依赖修正
+
+6558671已普通推送，自己的42991272992 Windows architecture回归失败；原CI保留，不关闭精确交付。新增issue_snapshots仅集中原SQL读取／row重建／digest校验，实际供issues与tasks消费，issues继续拥有observe／capture／link，不再task／issues互相导入。首inventory context逐字段迁至纯task_envelopes、creation与v7 workflow直接复用；Input与workflow不反向导入。handoff直接unwrap完整原输入及来源合同，仅v7取issue_source并绑定冻结selection，旧v1–v6不因任意附加字段改变语义。基础依赖表增加纯issue_sources和标准库约束，继续禁止运行层依赖／导入环。原12项source架构修后通过，安装r4及同片独立复核待结果；不借原r3／模型结论证明修后源码。
+
+依赖修正最终r4：445包／两RECORD／283冻结、安装125／209.38秒、真实离线旅程15／11.08秒通过；自身12附件177571B／161.00秒approve、五scope连续读取和所属采样清理已核。完整20文件同片独立终核两轴开放0／0、ST3关闭，本地修正出口通过；新修正提交／远端／自己的CI仍须另核，原6558671双OS失败保持，不自动关闭B1c。
