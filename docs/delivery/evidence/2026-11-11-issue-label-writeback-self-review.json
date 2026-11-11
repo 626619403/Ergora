@@ -1,0 +1,205 @@
+{
+  "schema_version": 1,
+  "slice": "F7c-C2a existing GitHub candidate label by native ID",
+  "actual_review": {
+    "at": "2026-11-11T12:29:52.238140+00:00",
+    "baseline": "b5ee397e6571f95393b0f8d6e9ee7e6d947b0935",
+    "run_id": "18c4b04c030b40a2bb800a7f3e8a32bf",
+    "status": "succeeded",
+    "backend": "codex",
+    "inference_model": "gpt-6.1-sol",
+    "reasoning_effort": "high",
+    "cli_exit": 0,
+    "seconds": 256.52178626833484,
+    "input_digest": "36b3c7b4da07c120eb1ef073c3bc27f6ee013fb479796fc20ffacceb837a0f83",
+    "prompt_sha256": "524e3f3cbba8f4bd22901a6eb55ca4c4eb2c036e2fca00ef3d9a96b8108994d9",
+    "attachment_bytes": 311806,
+    "attachment_sha256": "7c89b8a2a2c85fff359d4a98693680a0b6bbaded9284d80b922567c10c5ebc03",
+    "manifest_digest": "ec9c1f6169f8208ec6b41f8b078cdbff4e829cb59563e6bcd9131564791819c2",
+    "revision": "1.0.99",
+    "observed_processes": 4,
+    "live_sampled_processes": [],
+    "scope": "F7c-C2a thirteen complete frozen product/test/owner/spec files. Later public documents/projections and independent review are separate. Review is actual Codex inference; no all-real-runtime or cross-backend independence implied.",
+    "decision": "approve",
+    "result_sha256": "1a4555922b3f7344b54f61edcda6e47f95bf706d7d87f6da7a1fa3aa5650b4a5"
+  },
+  "read_audit": {
+    "at": "2026-11-11T12:30:08.689592+00:00",
+    "run_id": "18c4b04c030b40a2bb800a7f3e8a32bf",
+    "revision": "1.0.99",
+    "manifest_prepared_actual_prompt_admission_scope_native_original_result_match": true,
+    "bundled_template_unchanged_except_evidence_revision_resource_and_limit": true,
+    "scope_files": 5,
+    "all_scope_continuous_utf8_through_null": true,
+    "complete_scope_reads": {
+      "definitions/agent/ergora-structure-reviewer/1.0.99/instructions.md": {
+        "bytes": 354,
+        "sha256": "3cc9c450f0c03da5ea4a1434ac6182d50df6a4985cffdee2a59fe9fe477c6b43",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 354,
+            "next_offset": null
+          }
+        ],
+        "base64_retries": [],
+        "duplicates": []
+      },
+      "definitions/agent/ergora-structure-reviewer/1.0.99/skills/candidate-evidence/SKILL.md": {
+        "bytes": 480,
+        "sha256": "aedb683ba435b973bdf6602542688b870d5e10872d2fe55387eaa39202ecbd75",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 480,
+            "next_offset": null
+          }
+        ],
+        "base64_retries": [],
+        "duplicates": []
+      },
+      "definitions/agent/ergora-structure-reviewer/1.0.99/skills/candidate-evidence/references/candidate.txt": {
+        "bytes": 311806,
+        "sha256": "7c89b8a2a2c85fff359d4a98693680a0b6bbaded9284d80b922567c10c5ebc03",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 25000,
+            "next_offset": 25000
+          },
+          {
+            "offset": 25000,
+            "bytes": 24000,
+            "next_offset": 49000
+          },
+          {
+            "offset": 49000,
+            "bytes": 25000,
+            "next_offset": 74000
+          },
+          {
+            "offset": 74000,
+            "bytes": 26000,
+            "next_offset": 100000
+          },
+          {
+            "offset": 100000,
+            "bytes": 26000,
+            "next_offset": 126000
+          },
+          {
+            "offset": 126000,
+            "bytes": 26000,
+            "next_offset": 152000
+          },
+          {
+            "offset": 152000,
+            "bytes": 24000,
+            "next_offset": 176000
+          },
+          {
+            "offset": 176000,
+            "bytes": 26000,
+            "next_offset": 202000
+          },
+          {
+            "offset": 202000,
+            "bytes": 26000,
+            "next_offset": 228000
+          },
+          {
+            "offset": 228000,
+            "bytes": 25000,
+            "next_offset": 253000
+          },
+          {
+            "offset": 253000,
+            "bytes": 26000,
+            "next_offset": 279000
+          },
+          {
+            "offset": 279000,
+            "bytes": 11000,
+            "next_offset": 290000
+          },
+          {
+            "offset": 290000,
+            "bytes": 10000,
+            "next_offset": 300000
+          },
+          {
+            "offset": 300000,
+            "bytes": 11806,
+            "next_offset": null
+          }
+        ],
+        "base64_retries": [
+          {
+            "offset": 279000,
+            "bytes": 22000
+          }
+        ],
+        "duplicates": [
+          {
+            "offset": 0,
+            "bytes": 25000
+          },
+          {
+            "offset": 25000,
+            "bytes": 24000
+          }
+        ]
+      },
+      "definitions/agent/ergora-structure-reviewer/1.0.99/skills/ergora-structure-reviewer/SKILL.md": {
+        "bytes": 521,
+        "sha256": "d6b69570bcca408d3d06ca5adf1cb44a4a9e43c2901f05c38a68c096f23a4ac8",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 521,
+            "next_offset": null
+          }
+        ],
+        "base64_retries": [],
+        "duplicates": []
+      },
+      "definitions/workflow/ergora-structure-review/1.0.99/instructions.md": {
+        "bytes": 163,
+        "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 163,
+            "next_offset": null
+          }
+        ],
+        "base64_retries": [],
+        "duplicates": []
+      }
+    },
+    "list_passes_files": [
+      5
+    ],
+    "failed_calls": 0,
+    "attachment_bytes": 311806,
+    "attachment_sha256": "7c89b8a2a2c85fff359d4a98693680a0b6bbaded9284d80b922567c10c5ebc03",
+    "frozen_complete_files": 13,
+    "original_result_sha256": "1a4555922b3f7344b54f61edcda6e47f95bf706d7d87f6da7a1fa3aa5650b4a5",
+    "decision": "approve",
+    "native_stream_sha256": "2192ef17b12bde25a85dd2d318de88ae28cf32a0597775677b5f933d3be3bd26",
+    "backend_reported_turn_usage": [
+      {
+        "input_tokens": 1301769,
+        "cached_input_tokens": 1171328,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 5687,
+        "reasoning_output_tokens": 3511
+      }
+    ],
+    "observed_processes": 4,
+    "live_sampled_processes": [],
+    "scope": "Offline exact identity and successful plaintext page reconstruction only. Cached counters are part of input, reasoning reported separately, neither is added twice. No billing, reasoning quality, owner approval, independent backend-error or unsampled-process claim."
+  },
+  "original_response": "Read all five declared task-MCP resources completely, including continuous UTF-8 candidate pages through next_offset:null. Retried the base64 page at the same offset with a smaller window.\n\nComplete thirteen-file scope: src/ergora/{issue_writebacks.py, issue_backends.py, cli.py, web.py, projects.py, tasks.py, data/components.json}; tests/{test_issue_writebacks.py, test_issue_label_writebacks.py, fixtures/issue-comment-v1.json}; docs/{plans,delivery,research}/2026-11-11-issue-label-writeback.md.\n\n**Spec:** No finding requiring correction. The action scope excludes replaceable label names (issue_writebacks.py:170), send commits the attempt before mutation and preserves unknown outcomes (:359), and observation cannot acknowledge the original attempt (:412). GitHub owns native ID selection, endpoint derivation and response mapping (issue_backends.py:267–349); GitLab explicitly rejects the label action while retaining comments.\n\n**Standards:** No finding requiring correction. Two real local action implementations justify the private interface and registry. CLI and protected HTTP call the common lifecycle without provider branching. Candidate verification reuses tasks.creation/show/export_status; storage validation reuses normal loading (issue_writebacks.py:444). The guards protect distinct boundaries. No concrete redundant-test or performance defect was established; response/page bounds and network work outside the write transaction remain appropriate.\n\nThe supplied validation supports this verdict but was not rerun. The compatibility fixture establishes old-codec compatibility only. External owner implementations absent from the attachments were not source-reviewed. Final public documentation, complete independent acceptance, exact C2a Git delivery and C2a’s own CI remain pending; this structural approval does not satisfy those gates or establish real-service compatibility.",
+  "scope": "Actual bundled structure-review on thirteen frozen complete product/test/owner/spec files; final public documentation and independent complete review are separate. Earlier Claude failure and authorized Codex fallback retained; no successful distinct-backend independence claim. Process proof covers only sampled owned CLI/descendants."
+}

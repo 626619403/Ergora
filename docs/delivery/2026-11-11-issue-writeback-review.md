@@ -220,3 +220,42 @@ candidate SHA256为 `54474ac7b12534c5034d381c6fb5337bc0a1e27f6b9cef31f39bbc2a0ca
 **最终独立两轴：Spec开放0，Standards开放0；SP1／SP2／SP3／SP4、ST1／ST2均关闭，C1完整候选的本地实现／验证与独立审查出口通过。** 本轮评审只追加本报告，未修改产品／测试／计划、安装、执行模型／产品测试、联网、commit或push。本片精确ready／Git对象、普通提交／推送、独立同SHA远端Ref及本提交自己的必要双OS CI仍须后续原件终核，当前不能称C1精确交付、完整F7或整个项目完成。
 
 模板比较的精确口径补充：内置模板原有的三份指令／skill逐字保持；第四份 `candidate-evidence/SKILL.md` 是新增的证据读取资源，其r1／r2字节相同，并已核manifest／input／scope与实际读取页相等。上文“四份原指令／skill保持字节”不表示内置模板原先已有该第四资源。
+
+## 精确提交b5ee397的ready／Git对象复核
+
+C1普通提交为 `b5ee397e6571f95393b0f8d6e9ee7e6d947b0935`，直接父提交是本片指定基线 `472ff60a6d27c91ef5d5285f959e61d3b935341d`。独立重算 `.ergora/checks/f7-writeback/commit-closure/ready-r1/manifest.json`，SHA256为 `794c25333d6729b0540c915bc639db0447155ba7a20712e95a2477f6f0e62534`。该提交相对父节点恰改变manifest所列28件；每件冻结ready内容、大小、SHA256、精确Git blob原字节与Git对象ID均独立相符，模式均为 `100644`。下一片label研究没有混入提交。
+
+与full-review-r2比较，ready实际变化为7件：本报告的已完成审查追加，以及PLAN、C1交付／acceptance、总计划、C1计划和F7计划的6份状态／证据记账。后者逐diff核过，只把已通过的独立本地出口与当前状态记入对应投影，保留精确Git／远端／自己的CI待核，没有增加产品行为或扩大模型／测试判词。十份产品／测试逐字不变；此前4份状态修正也都进入ready。提交内本报告blob为34624字节、SHA256 `ed0e0a24d29b6daa38d9a6848bc149bd5a4f18d376b00450828930b56efda534`，与评审者最终追加后的文件完全相同。本节是提交后事实追加，不声称在该blob中。
+
+从精确b5ee397另读完整 `src/ergora` Git归档，446份包文件与已验r2 wheel逐字相等，283份reference文件各自符合冻结manifest；没有从后来live源码推断提交身份。此前r2的两RECORD／安装身份与行为结论继续按原范围成立。`static-final-r3/result.json` 所列28件大小／SHA逐项等于ready，382个本地Markdown目标由评审者另行提取并核存在；相对基线的 `git diff --check`、JSON解析均通过。原静态记录的6个载入秘密值检查及外链／anchor／Mermaid未验边界保持，没有额外读取凭据。
+
+作者原 `commit.json`／stdout／stderr、`push.json`／stdout／stderr与 `ref.json`／stdout／stderr已离线核过：普通commit与push均exit0，push命令不含force，原输出为472ff60→b5ee397；作者随后一次原Ref输出为完整b5ee397及 `refs/heads/refactor/architecture-foundations`。原push receipt SHA256为 `3e17be51a2fb9331daf1b8c5c1dfe4c2b94dd03ae2cad7624600f432d015ab35`，push stderr SHA256为 `f664b544b08e601a80b5869ac2e6f01153cd931042d9cc34682aa0c683e7212c`；原Ref stdout为86字节、SHA256 `396ada5ee14e31cf734b9431093553b834add09e82b704fa0b915e981d97bee7`，stderr为空。这是对作者已有原件的独立核对，未称作评审者直接网络成功。
+
+收到推送通知后，评审者按本轮授权仅做一次有界直接SSH只读Ref请求：2026-11-11 11:56:16UTC，`git ls-remote --refs git@github.com:626619403/Ergora.git refs/heads/refactor/architecture-foundations`，本次进程明确BatchMode、StrictHostKeyChecking与15秒连接／30秒命令预算；0.454秒exit128，stdout为空。原stderr为代理 `HTTP/1.1 407 Proxy Authentication Required` 后关闭连接，SHA256 `6540329cf19588977e7287917bb0efb4e6df155ea8feddf8489a791accc45f33`。没有取得远端head，也不能由代理拒绝推断仓库权限或Ref不符；没有重试、读取凭据、修改认证、push或tracker写入。
+
+本轮精确28 Git／ready／提交内报告、446包／283冻结及作者普通推送原件通过；独立直接Ref仍未成功，b5ee397自己的双OS必要CI仍待原终态原件。Spec／Standards本地开放0／0的结论保持，尚不关闭C1精确交付。
+
+## b5ee397自己的CI43015595781终核与C1精确交付结案
+
+本轮仅离线读取已有原件。精确提交 `b5ee397e6571f95393b0f8d6e9ee7e6d947b0935` 自己的[Portability run43015595781](https://github.com/626619403/Ergora/actions/runs/43015595781)，第三份官方run HTML在2026-11-11 12:13:44UTC读取时明确显示 **Status=Success**。独立解析前两份原run页面，仍分别是In progress；没有用后来的终态改写旧样本。五组原receipt的HTTP200、请求URL＝final URL、body字节数与SHA256均已独立重算相符：
+
+|原件|字节／body SHA256|receipt SHA256|
+|---|---|---|
+|ci-run-html-r1，In progress|150695／9d68089b08c4224b2cba0b5d04cda5cfa68d94b8aa1a0f2ed742d62950861bba|65fe70b1ed47bbb7daff47a01e685e7275af07069442154a5281613fd685a65c|
+|ci-run-html-r2，In progress|153454／da19485af52b532ddf0f0533782da42bb85ef4ddb5c0be56b1e3777b60f8e9fd|0af17248135b404bb2b61d3140483104488715de59b81d2484a39ae64df42b9f|
+|ci-run-html-r3，Success|157160／01c903c6bbee54a99943e75fde7a73e9ded3c32be3fb429ccfbbd9a37ca52164|37b1f3a83ee8c8da0c336776db8d7c2bf759021494e7e679be7f1ee59be1022d|
+|Linux job130505734181|161709／d18e6d9c7effbcf77e0d10a2a81f554a718d63c5fe20f437c8e73af1011582c3|e9945e38f385cda3d6f37924d9e093698363c8c4c96fe8008a98ba581d0a67c0|
+|Windows job130505734633|159795／bcfac73c803dca1fec0057cf1a13b45f44aa8f3d05b3c9afe60cb1a84566285e|4bbce4b36394902db42afab5458922f9b002556f4ce4a7e2b2922b440036e81d|
+
+三份run页面都链接完整b5ee397提交、原分支及Portability workflow。评审者从该精确提交读取 `.github/workflows/portability.yml`，再独立解析两份job HTML，实际名称分别为 `native (ubuntu-latest, 3.11)` 和 `native (windows-latest, 3.12)`，与原matrix完全相符；没有依据目录顺序或作者平台标签猜测。两个job的 `check-steps data-job-status` 均为completed，必要步骤的原data-conclusion均为success且有开始／完成时间。
+
+|实际job|必要步骤与完成时间（UTC）|
+|---|---|
+|Ubuntu／Python3.11，130505734181|Build and install wheel 11:53:15；Packaged reference identity 11:53:16；Native application regression 12:10:44|
+|Windows／Python3.12，130505734633|Build and install wheel 11:53:57；Packaged reference identity 11:53:58；Native application regression 12:04:13；Windows PowerShell 5.1 installer and upgrade 12:05:07|
+
+Linux的PowerShell步骤按原workflow的Windows条件为skipped，不计为必要步骤失败。两job所有非空 `data-log-url` 均精确绑定完整b5ee397及各自原job ID／步骤号；每个开始时间≤完成时间≤该原页面读取时间。页面的完成成功标识、job状态与步骤结论相符。作者 `ci-result-r1.json` 实算SHA256为 `861b7bab899306040fcaebe7aec23b71f2bbce3fa69df1371caba8d08d4846f5`，其中候选／run／原receipt、两实际job及七必要步骤的名称、序号、结论和完成时间，与本次从原HTML独立提取逐字段相等。
+
+证据范围为官方公开run／job HTML及其可见状态、原receipt和精确提交workflow；没有下载完整job日志、获得CI测试总数或执行成功REST查询。原匿名REST限制按原记录保留；本评审先前一次直接SSH被代理407拒绝的事实继续保留，不称独立直接网络成功。作者已有普通推送与完整同SHA origin Ref原件已经本评审离线核准，本轮依此准确范围收口，不重试网络或更改认证。
+
+**C1精确交付终结：** 完整本地实现／安装与实际自身审查、28文件最终独立两轴、ready／精确Git对象及提交内报告、446包／两RECORD／283冻结、普通提交／推送与作者同SHA Ref原件，以及b5ee397自己的双OS七必要步骤，均已按各自范围独立核验。Spec／Standards开放0／0，SP1–SP4、ST1／ST2均关闭；原失败、两非终态和受控验收边界继续保留。C2a及后续F7按各自候选继续，本轮没有使用已继续变化的live产品替代b5ee397／ready，也未改产品／测试／计划、安装、运行模型／产品测试、联网或推送。本节为提交后审查追加，提交内报告blob仍是前述 `ed0e0a24d29b6daa38d9a6848bc149bd5a4f18d376b00450828930b56efda534`。

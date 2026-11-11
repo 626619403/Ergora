@@ -197,12 +197,17 @@ def parser() -> argparse.ArgumentParser:
     issue_links.add_argument("--task", dest="task_id")
     issue_links.add_argument("--limit", type=int, default=50)
     issue_links.add_argument("--after")
-    writing = operations.add_parser("writeback-prepare", help="Prepare a fixed comment for an exact exported v7 candidate; sends no comment")
-    writing.add_argument("project")
-    writing.add_argument("task_id")
-    writing.add_argument("--revision", type=int, required=True)
-    writing.add_argument("--run-id", required=True)
-    writing.add_argument("--candidate-sha", required=True)
+    for name in ("writeback-prepare", "writeback-label-prepare"):
+        writing = operations.add_parser(name, help={
+            'writeback-prepare': 'Prepare a fixed comment for an exact exported v7 candidate; sends no comment',
+            'writeback-label-prepare': 'Prepare one existing GitHub label by native ID; sends no mutation'}[name])
+        writing.add_argument("project")
+        writing.add_argument("task_id")
+        writing.add_argument("--revision", type=int, required=True)
+        writing.add_argument("--run-id", required=True)
+        writing.add_argument("--candidate-sha", required=True)
+        if name == 'writeback-label-prepare':
+            writing.add_argument("--label-name", required=True)
     for name in ("writeback-status", "writeback-send", "writeback-observe"):
         writing = operations.add_parser(name, help={
             'writeback-status': 'Read the saved writeback offline',
@@ -216,6 +221,7 @@ def parser() -> argparse.ArgumentParser:
         elif name == 'writeback-observe':
             writing.add_argument("--comment-id")
             writing.add_argument("--page", type=int, default=1)
+            writing.add_argument("--cursor", help="Read one current label page using its opaque GraphQL cursor")
     tool = commands.add_parser("tools", help="List supported tools or check project availability")
     operations = tool.add_subparsers(dest="operation", required=True)
     operations.add_parser("list")
@@ -628,6 +634,9 @@ def main(argv: list[str] | None = None) -> int:
             elif args.operation == 'writeback-prepare':
                 output = issue_writebacks.prepare(state, args.project, args.task_id, args.revision,
                                                   run_id=args.run_id, candidate_sha=args.candidate_sha)
+            elif args.operation == 'writeback-label-prepare':
+                output = issue_writebacks.prepare_label(state, args.project, args.task_id, args.revision,
+                    run_id=args.run_id, candidate_sha=args.candidate_sha, label_name=args.label_name)
             elif args.operation == 'writeback-status':
                 output = issue_writebacks.status(state, args.project, args.intent_sha256)
             elif args.operation == 'writeback-send':
@@ -635,7 +644,8 @@ def main(argv: list[str] | None = None) -> int:
                 print(json.dumps(output, ensure_ascii=False, indent=2))
                 return 0 if output['status'] == 'acknowledged' else 1
             elif args.operation == 'writeback-observe':
-                output = issue_writebacks.observe(state, args.project, args.intent_sha256, comment_id=args.comment_id, page=args.page)
+                output = issue_writebacks.observe(state, args.project, args.intent_sha256,
+                    comment_id=args.comment_id, page=args.page, cursor=args.cursor)
         elif args.command == "tools":
             if args.operation == "profiles":
                 output = tools.installation_profiles()

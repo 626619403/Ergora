@@ -64,7 +64,7 @@ flowchart LR
 
 独立控制面使用 Python、SQLite、FastAPI / Uvicorn 和随包 Cytoscape.js。各项目可按盘点、规划、实现、审查及训练角色选择 Codex / Claude Code / 自定义命令，实现角色也可选择 mini-swe-agent；kernel 层可接原生 ForgeKernel。记忆、优化和调度分别选择 SQLite / ReMe、手动 / GEPA、手动 / Temporal。前端和 CLI 共用应用函数，不复制评价、采用或合同校验逻辑。
 
-项目的tracker层可选择本地手动、GitHub或GitLab。`ergora issue show PROJECT 7`读取完整上下文，`issue capture`保存不可变快照，`issue link-task`把快照显式关联到已有任务的精确创建版本；列表和完整快照支持离线读回，见[使用手册](docs/USAGE.md#保存工单与关联任务上下文)。要为新工作冻结完整来源，可用[来源任务定义v3](docs/USAGE.md#从工单快照创建来源任务)选择快照和work-units-v2专家组合，按实际所选依赖准入；来源文本不授执行权。候选导出后，可准备并明确确认一条[中性工单评论](docs/USAGE.md#为已导出的候选发布工单评论)，unknown不补发；标签与来源页面按[F7计划](docs/plans/2026-11-11-project-trackers.md)继续实现。
+项目的tracker层可选择本地手动、GitHub或GitLab。`ergora issue show PROJECT 7`读取完整上下文，`issue capture`保存不可变快照，`issue link-task`把快照显式关联到已有任务的精确创建版本；列表和完整快照支持离线读回，见[使用手册](docs/USAGE.md#保存工单与关联任务上下文)。要为新工作冻结完整来源，可用[来源任务定义v3](docs/USAGE.md#从工单快照创建来源任务)选择快照和work-units-v2专家组合，按实际所选依赖准入；来源文本不授执行权。候选导出后，可准备并明确确认一条[中性工单评论](docs/USAGE.md#为已导出的候选发布工单评论)，unknown不补发；GitHub还可[按原生ID追加一个既存候选标签](docs/USAGE.md#为已导出的候选追加-github-标签)，复用同一确认与恢复流程。GitLab标签、PR/MR与来源页面按[F7计划](docs/plans/2026-11-11-project-trackers.md)继续实现。
 
 下表为完整六阶段**参考发行**的工具栈：
 
@@ -93,7 +93,7 @@ src/ergora/
 ├── projects.py / registrations.py / bindings.py 项目修订、统一注册与绑定校验
 ├── tasks.py / services.py          正式任务生命周期/原ID恢复/精确导出、显式服务运维
 ├── issues.py / issue_backends.py / issue_sources.py 工单观察、原生协议与纯来源合同
-├── issue_snapshots.py / issue_writebacks.py         来源快照与显式候选评论
+├── issue_snapshots.py / issue_writebacks.py         来源快照与显式候选评论／标签
 ├── components.py / tools.py        组件描述、工具目录与就绪检查
 ├── agent_runs.py                   独立 Agent 上下文、调用与运行记录
 ├── agent_definitions.py / workflow_definitions.py 专家库、嵌套图编译、资源修订与完整manifest

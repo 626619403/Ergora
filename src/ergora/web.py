@@ -100,6 +100,10 @@ class IssueWritebackPreparePayload(IssueCapturePayload):
     candidate_sha: str
 
 
+class IssueLabelPreparePayload(IssueWritebackPreparePayload):
+    label_name: str = Field(min_length=1)
+
+
 class IssueWritebackSendPayload(IssueCapturePayload):
     confirm: bool = Field(strict=True)
 
@@ -107,6 +111,7 @@ class IssueWritebackSendPayload(IssueCapturePayload):
 class IssueWritebackObservePayload(Payload):
     comment_id: str | None = None
     page: int = Field(default=1, strict=True, ge=1, le=10_000)
+    cursor: str | None = None
 
 
 class TaskCreationPayload(TaskDefinitionPayload):
@@ -450,6 +455,11 @@ def create_app(home: Path | None = None) -> FastAPI:
         return issue_writebacks.prepare(state, project_id, body.task_id, body.revision,
                                         run_id=body.run_id, candidate_sha=body.candidate_sha)
 
+    @application.post("/api/projects/{project_id}/issue-label-writebacks")
+    def prepare_issue_label_writeback(project_id: str, body: IssueLabelPreparePayload):
+        return issue_writebacks.prepare_label(state, project_id, body.task_id, body.revision,
+            run_id=body.run_id, candidate_sha=body.candidate_sha, label_name=body.label_name)
+
     @application.get("/api/projects/{project_id}/issue-writebacks/{digest}")
     def saved_issue_writeback(project_id: str, digest: str):
         return issue_writebacks.status(state, project_id, digest)
@@ -460,7 +470,8 @@ def create_app(home: Path | None = None) -> FastAPI:
 
     @application.post("/api/projects/{project_id}/issue-writebacks/{digest}/observe")
     def observe_issue_writeback(project_id: str, digest: str, body: IssueWritebackObservePayload):
-        return issue_writebacks.observe(state, project_id, digest, comment_id=body.comment_id, page=body.page)
+        return issue_writebacks.observe(state, project_id, digest,
+            comment_id=body.comment_id, page=body.page, cursor=body.cursor)
 
     @application.post("/api/projects/{project_id}/tasks/preview")
     def preview_formal_task(project_id: str, body: TaskDefinitionPayload):

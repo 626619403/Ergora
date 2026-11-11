@@ -2,7 +2,7 @@
   "schema_version": 1,
   "slice": "F7c-C1 explicit candidate association comment",
   "baseline": "472ff60a6d27c91ef5d5285f959e61d3b935341d",
-  "state": "Local implementation, final r2 affected installed checks, focused actual own review and complete independent two-axis review passed; exact Git, remote and own CI pending",
+  "state": "C1 exact delivery closed: committed candidate, original author remote-ref receipt and own terminal dual-OS required CI independently verified within the recorded scope",
   "final_package": {
     "at": "2026-11-11T11:29:32.562864+00:00",
     "wheel_sha256": "e75d130e88966a1c89145fd246e5acd3c8ac7a8c70f8b20433a7e8e08173c46d",
@@ -118,6 +118,19 @@
       "ST1",
       "ST2"
     ],
-    "scope": "Complete 28-file manifest and four live status-only deltas, final r2 package and raw own-review evidence; exact ready/Git/remote and own CI remain pending"
+    "scope": "Complete 28-file candidate plus status-only bookkeeping; exact ready/Git/package, author full remote-ref original and own terminal dual-OS CI independently checked. Direct reviewer SSH proxy407 preserved."
+  },
+  "exact_delivery": {
+    "commit": "b5ee397e6571f95393b0f8d6e9ee7e6d947b0935",
+    "ready_manifest_sha256": "794c25333d6729b0540c915bc639db0447155ba7a20712e95a2477f6f0e62534",
+    "files": 28,
+    "ordinary_push": true,
+    "remote_ref_scope": "Author SSH returned the exact full SHA; original receipt independently checked offline. Reviewer direct SSH failed with proxy HTTP407, not claimed successful.",
+    "ci_run_id": "43015595781",
+    "ci_url": "https://github.com/626619403/Ergora/actions/runs/43015595781",
+    "ci_result": "success",
+    "ci_evidence": "Third official public run HTML and both actual matrix job HTML with seven required completed/success steps; raw receipts independently reconstructed. Earlier two In progress samples preserved; no successful REST or full-log claim.",
+    "linux_job": "130505734181",
+    "windows_job": "130505734633"
   }
 }

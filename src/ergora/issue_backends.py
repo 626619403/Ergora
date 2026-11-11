@@ -66,13 +66,15 @@ class IssueBackend(ABC):
         if not isinstance(issue_id, str) or not re.fullmatch(r'[1-9][0-9]{0,19}', issue_id):
             raise ValueError('Issue ID must be a positive repository number or project iid')
 
-    def _request(self, method: str, path: str, body: dict | None = None, *, authenticated: bool = False):
+    def _request(self, method: str, path: str, body: dict | None = None, *, authenticated: bool = False,
+                 expected_status: int | None = None, base_url: str | None = None):
         headers = self.headers() if not authenticated else self._authenticated_headers()
         encoded = None if body is None else json.dumps(body, ensure_ascii=False, allow_nan=False).encode('utf-8')
         if encoded is not None:
             headers = {**headers, 'Content-Type': 'application/json'}
-        request = Request(self.api_url + path, data=encoded, headers=headers, method=method)
-        operation, expected = ('read', 200) if method == 'GET' else ('write', 201)
+        request = Request((base_url or self.api_url) + path, data=encoded, headers=headers, method=method)
+        operation = 'read' if method == 'GET' else 'write'
+        expected = expected_status if expected_status is not None else 200 if method == 'GET' else 201
         try:
             # A write is exactly one HTTP attempt: no redirect or automatic retry.
             with build_opener(_NoRedirect).open(request, timeout=20) as response:
@@ -195,9 +197,38 @@ class IssueBackend(ABC):
         return {'comments': [self._comment(item, issue_id, native_issue_id) for item in documents],
                 'response_sha256': hashlib.sha256(raw).hexdigest(), 'next_page': self.next_comments_page(headers, issue_id, page)}
 
+    def label_selection(self, source: dict, label_name: str) -> dict:
+        """Freeze verified native IDs, or fail before a label attempt exists."""
+        raise ValueError('Candidate label writeback is unsupported by this tracker; comment writeback remains available')
+
+    def label_operation(self, source: dict, target: dict, mutation_id: str) -> dict:
+        """Describe the exact native ID request without reading credentials or sending it."""
+        raise ValueError('Candidate label writeback is unsupported by this tracker')
+
+    def add_label(self, source: dict, target: dict, mutation_id: str) -> dict:
+        raise ValueError('Candidate label writeback is unsupported by this tracker')
+
+    def observe_label(self, source: dict, target: dict, cursor: str | None) -> dict:
+        raise ValueError('Candidate label writeback is unsupported by this tracker')
+
 
 class GitHubBackend(IssueBackend):
     token_header = 'Authorization'
+    _LABEL_PAGE = '''__typename ... on Issue {
+        id number repository { id nameWithOwner }
+        labels(first: 100, after: $cursor) {
+            nodes { id name repository { id } }
+            pageInfo { hasNextPage endCursor }
+        }
+    }'''
+    _LABEL_ADD = '''mutation ErgoraCandidateLabel($input: AddLabelsToLabelableInput!, $cursor: String) {
+        addLabelsToLabelable(input: $input) {
+            clientMutationId labelable { ''' + _LABEL_PAGE + ''' }
+        }
+    }'''
+    _LABEL_OBSERVE = '''query ErgoraCandidateLabelObservation($issue: ID!, $cursor: String) {
+        node(id: $issue) { ''' + _LABEL_PAGE + ''' }
+    }'''
 
     def path(self, issue_id: str) -> str:
         return '/repos/' + quote(self.binding['project'], safe='/') + '/issues/' + issue_id
@@ -232,6 +263,100 @@ class GitHubBackend(IssueBackend):
     def next_comments_page(self, headers, issue_id: str, page: int) -> int | None:
         # Return a page number, never follow a supplied URL with credentials.
         return self._next_link_page(headers, issue_id, page)
+
+    def _graphql_url(self) -> str:
+        parsed = urlsplit(self.api_url)
+        if parsed.path == '':
+            return self.api_url + '/graphql'
+        if parsed.path == '/api/v3':
+            return parsed._replace(path='/api/graphql').geturl()
+        raise ValueError('GitHub label writeback requires a REST origin or /api/v3 base; no GraphQL endpoint was inferred')
+
+    def label_selection(self, source: dict, label_name: str) -> dict:
+        self._identifier(source['issue_id'])
+        self._graphql_url()  # Reject an unsupported endpoint before any lookup.
+        if not isinstance(label_name, str) or not label_name:
+            raise ValueError('Select one nonempty exact existing label name')
+        root = '/repos/' + quote(self.binding['project'], safe='/')
+        raw, _ = self._request('GET', self.path(source['issue_id']), authenticated=True)
+        repository_raw, _ = self._request('GET', root, authenticated=True)
+        label_raw, _ = self._request('GET', root + '/labels/' + quote(label_name, safe=''), authenticated=True)
+        try:
+            document, repository, label = map(json.loads, (raw, repository_raw, label_raw))
+            number, issue = self.issue(document)
+            target = {'issue_id': document['node_id'], 'repository_id': repository['node_id'],
+                      'label_id': label['node_id'], 'label_native_id': label['id']}
+            if (type(number) is not int or number != int(source['issue_id']) or issue['native_id'] != source['native_id']
+                    or repository['full_name'] != self.binding['project'] or repository['url'] != self.api_url + root
+                    or label['name'] != label_name or label['url'] != self.api_url + root + '/labels/' + quote(label_name, safe='')
+                    or any(not isinstance(target[key], str) or not target[key] for key in ('issue_id', 'repository_id', 'label_id'))
+                    or type(target['label_native_id']) is not int or target['label_native_id'] < 1):
+                raise ValueError('Different native label target')
+        except (KeyError, ValueError, TypeError, AttributeError):
+            raise ValueError('Tracker returned an unsupported label identity or a different issue/repository/label target') from None
+        return {'native_target': target, 'target_at_prepare_sha256': hashlib.sha256(raw).hexdigest()}
+
+    def label_operation(self, source: dict, target: dict, mutation_id: str) -> dict:
+        return {'method': 'POST', 'url': self._graphql_url(), 'body': {
+            'query': self._LABEL_ADD, 'variables': {'input': {
+                'labelableId': target['issue_id'], 'labelIds': [target['label_id']],
+                'clientMutationId': mutation_id}, 'cursor': None}}}
+
+    def _graphql(self, body: dict) -> tuple[dict, str]:
+        raw, _ = self._request('POST', '', body, authenticated=True, expected_status=200, base_url=self._graphql_url())
+        try:
+            document = json.loads(raw)
+            if not isinstance(document, dict) or 'errors' in document or not isinstance(document['data'], dict):
+                raise ValueError('Incomplete GraphQL data')
+        except (KeyError, ValueError, TypeError):
+            # Do not put server-controlled error text or credentials in durable observations.
+            raise ValueError('Tracker returned GraphQL errors or unsupported partial data; execution is not disproved') from None
+        return document['data'], hashlib.sha256(raw).hexdigest()
+
+    def _label_page(self, document: dict, source: dict) -> dict:
+        try:
+            repository, connection = document['repository'], document['labels']
+            labels, page = connection['nodes'], connection['pageInfo']
+            if (document['__typename'] != 'Issue' or type(document['number']) is not int
+                    or document['number'] != int(source['issue_id']) or repository['nameWithOwner'] != source['project']
+                    or any(not isinstance(value, str) or not value for value in (document['id'], repository['id']))
+                    or not isinstance(labels, list) or len(labels) > 100 or type(page['hasNextPage']) is not bool
+                    or (page['endCursor'] is not None and (not isinstance(page['endCursor'], str) or not page['endCursor']))
+                    or (page['hasNextPage'] and not page['endCursor'])):
+                raise ValueError('Invalid label page')
+            items = []
+            for label in labels:
+                if (any(not isinstance(label[key], str) or not label[key] for key in ('id', 'name'))
+                        or label['repository']['id'] != repository['id']):
+                    raise ValueError('Invalid label identity')
+                items.append({'id': label['id'], 'name': label['name'], 'repository_id': label['repository']['id']})
+            return {'issue_id': document['id'], 'issue_number': document['number'], 'project': repository['nameWithOwner'],
+                    'repository_id': repository['id'], 'labels': items,
+                    'page_info': {'has_next_page': page['hasNextPage'], 'end_cursor': page['endCursor']}}
+        except (KeyError, ValueError, TypeError, AttributeError):
+            raise ValueError('Tracker returned an unsupported label page or a different issue/repository target') from None
+
+    def add_label(self, source: dict, target: dict, mutation_id: str) -> dict:
+        operation = self.label_operation(source, target, mutation_id)
+        data, digest = self._graphql(operation['body'])
+        try:
+            payload = data['addLabelsToLabelable']
+            echo, page = payload['clientMutationId'], self._label_page(payload['labelable'], source)
+        except (KeyError, TypeError, AttributeError):
+            raise ValueError('Tracker returned an unsupported label mutation payload; execution is not disproved') from None
+        return {'http_status': 200, 'response_sha256': digest, 'client_mutation_id': echo, 'page': page}
+
+    def observe_label(self, source: dict, target: dict, cursor: str | None) -> dict:
+        if cursor is not None and (not isinstance(cursor, str) or not cursor):
+            raise ValueError('A label cursor must be a nonempty opaque string')
+        data, digest = self._graphql({'query': self._LABEL_OBSERVE, 'variables': {'issue': target['issue_id'], 'cursor': cursor}})
+        try:
+            page = self._label_page(data['node'], source)
+        except (KeyError, TypeError):
+            raise ValueError('Tracker returned an unsupported label observation') from None
+        if page['issue_id'] != target['issue_id'] or page['repository_id'] != target['repository_id']:
+            raise ValueError('Observed label page differs from the frozen native target')
+        return {'response_sha256': digest, 'page': page}
 
 
 class GitLabBackend(IssueBackend):

@@ -116,7 +116,7 @@ claude
 |Skill 优化|手动导入、GEPA + JSON 提案器|有界候选搜索与证据记录|
 |资料来源|明确 URL|有界观察、快照和审阅|
 |研究调度|手动、Temporal Schedule|CLI worker / Schedule|
-|项目工单|本地手动、GitHub、GitLab|CLI／HTTP读取来源、冻结快照，并显式评论已导出候选|
+|项目工单|本地手动、GitHub、GitLab|CLI／HTTP读取来源、冻结快照、显式评论已导出候选；GitHub可按原生ID追加一个既存候选标签|
 
 认证使用工具自己的登录或环境变量。配置只保存凭据变量名，不在网页填写密钥。Codex 和 Claude Code 分别选择模型；默认实现与审查均为 Codex。自定义命令接收 stdin 提示，以 argv 启动，不经 shell 拼接。已安装、已连通、已认证和已通过任务验收是不同状态。
 
@@ -250,7 +250,33 @@ CLI与HTTP共用同一用例；POST沿用Origin及`X-Ergora-Request: 1`保护：
 |发送|`POST .../issue-writebacks/INTENT_SHA/send`，`{"revision":2,"confirm":true}`|
 |观察|`POST .../issue-writebacks/INTENT_SHA/observe`，`{"comment_id":"71"}`或`{"page":1}`|
 
-每个HTTP请求20秒socket I/O超时、完整响应上限1MiB，不跟随redirect、无自动写重试；prepare和send还各做actor及目标身份读取，总操作可能超过20秒。GitLab支持普通issue note，成功响应必须明确包含布尔`system`和`internal`，不兼容响应保留unknown。真实服务版本／代理兼容须在自己的测试项目核验。意图、attempt、收据和观察纳入原控制面离线备份；正式任务与导出目录仍另行保存。本入口只创建一条中性评论，标签、PR/MR及工单专页按后续片交付。
+每个HTTP请求20秒socket I/O超时、完整响应上限1MiB，不跟随redirect、无自动写重试；prepare和send还各做actor及目标身份读取，总操作可能超过20秒。GitLab支持普通issue note，成功响应必须明确包含布尔`system`和`internal`，不兼容响应保留unknown。真实服务版本／代理兼容须在自己的测试项目核验。意图、attempt、收据和观察纳入原控制面离线备份；正式任务与导出目录仍另行保存。本入口只创建一条中性评论；GitHub标签见下一节，PR/MR及工单专页按后续片交付。
+
+### 为已导出的候选追加 GitHub 标签
+
+同一个原v7来源任务导出后，可以单独准备一个仓库中已存在的标签。先在自己的GitHub项目建立合适的普通标签，例如`candidate-exported`，并让tracker的外部`token_env`账号具备对应读取／标签写权限。准备只读取和保存，不发送mutation；凭据存在或actor可读不证明标签写权限。
+
+```bash
+ergora issue writeback-label-prepare PROJECT TASK --revision REVISION --run-id RUN_ID --candidate-sha CANDIDATE_SHA --label-name candidate-exported
+# 检查返回的label_name、native_target、完整operation和intent_sha256，再确认这个摘要。
+ergora issue writeback-send PROJECT INTENT_SHA --revision REVISION --confirm
+ergora issue writeback-status PROJECT INTENT_SHA
+ergora issue writeback-observe PROJECT INTENT_SHA
+# 需要下一页时，显式使用上一页page_info.end_cursor；一次仅取一页。
+ergora issue writeback-observe PROJECT INTENT_SHA --cursor OPAQUE_CURSOR
+```
+
+原REST读取将冻结工单number／native ID、仓库及标签映射为服务返回的GraphQL ID；发送只含一个`labelIds`和原`labelableId`，不按名称写入，不创建标签，不发送整套labels、不移除或替换其他标签。名称包含空格、逗号、引号或Unicode时原样保存，不自行拆分／归一化。GitHub.com使用同源`/graphql`，Enterprise REST `/api/v3`对应同源`/api/graphql`；未知路径、schema／权限不兼容会可见失败，不退回名称REST写入。该路径推导不表示任意Enterprise版本已经实测。
+
+一个来源／creation／run／导出候选只有一个标签追加槽。第一次准备后operand已冻结；重新准备相同名称返回原意图，改名称会拒绝，不能绕过已存在的attempt。标签动作与评论动作各有其原意图，二者复用同一持久生命周期。发送前重核原task／export、当前actor、绑定与原生目标；改名、删除重建或绑定变化会拒绝尚未发送的意图。无关Agent修订允许填当前revision，结果保存仍核同一原attempt和当前expected revision。预检不是服务端CAS，读后目标元数据仍可能变化。
+
+只有单次mutation的完整原200、无GraphQL errors、回显匹配、原Issue／repository匹配，且**原响应所选的一页实际含原label ID、名称和所属仓库**，并保存result后才为`acknowledged`。`clientMutationId`只核回显，不是服务端幂等键。首100项未见目标、nullable／partial data、data与errors并存、丢失／截断响应或结果保存失败都保留`unknown`；已保存attempt后不补发。原响应命中目标可确认，不要求把其他标签翻完，也不表示本次首次新增。
+
+observe通过只读GraphQL query读取当前原Issue的一页，`membership_in_page`只说明该页`present`或`not_seen`；未见不表示标签不存在。即使当前有唯一匹配，或人工已移除、查询空页，也不会确认／重发原attempt。`--comment-id`和非默认`--page`用于评论，不用于标签；标签翻页用不透明cursor。
+
+HTTP准备入口为`POST /api/projects/PROJECT/issue-label-writebacks`，正文是评论prepare的`revision/task_id/run_id/candidate_sha`再加`label_name`。status／send／observe沿上一节的共同`issue-writebacks/INTENT_SHA`入口；标签observe传`{}`或`{"cursor":"…"}`。继续要求同源和`X-Ergora-Request: 1`。标签prepare和首次send各有actor加issue／repo／label三个读取；首次send之后至多一个mutation，status离线，observe是actor加一个query，不后台扫描。每请求仍为1MiB完整响应上限和20秒socket I/O超时，总墙钟不承诺20秒。
+
+当前GitLab标签动作明确不支持，普通工单评论可用；缺少完整目标部署／返回合同及scoped rename并发保证时，不自动改用`add_labels`。标签操作可能产生平台事件、通知和外部自动化，不承诺静默；标签不授批准权，不代表远端发布、合并或工单完成。真实服务版本和账号写权限需在自己的测试项目验证，默认验收只用loopback夹具。
 
 ### 诊断与修复
 

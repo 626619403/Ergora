@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import subprocess
 import sys
+from urllib.parse import quote
 
 import pytest
 
@@ -32,9 +33,7 @@ def comment(service, provider, body='Pinned candidate', **changes):
     return {**item, **changes}
 
 
-@pytest.fixture(params=['github', 'gitlab'])
-def writer(source, monkeypatch, request):
-    provider = request.param
+def writer_for(source, monkeypatch, provider):
     monkeypatch.setenv('ERGORA_FIXTURE_ISSUE_TOKEN', 'original-fixture-token')
     binding = bind(source, provider, token_env='ERGORA_FIXTURE_ISSUE_TOKEN')
     backend = issue_backends.for_binding(binding)
@@ -67,8 +66,12 @@ def writer(source, monkeypatch, request):
     return source
 
 
-@pytest.fixture
-def candidate(writer, monkeypatch):
+@pytest.fixture(params=['github', 'gitlab'])
+def writer(source, monkeypatch, request):
+    return writer_for(source, monkeypatch, request.param)
+
+
+def candidate_for(writer, monkeypatch):
     """Native task ports are controlled here; tracker HTTP and durable State are real."""
     state = writer.state
     revision = state.project('demo')['revision']
@@ -90,6 +93,56 @@ def candidate(writer, monkeypatch):
     writer.digest = writer.prepared['intent_sha256']
     writer.revision = revision
     return writer
+
+
+@pytest.fixture
+def candidate(writer, monkeypatch):
+    return candidate_for(writer, monkeypatch)
+
+
+def configure_labels(service):
+    """Extend the GitHub protocol fixture; queries and mutations remain distinct."""
+    original_read, original_write = service.on_read, service.on_write
+    service.issue_document['node_id'] = 'I_original_issue'
+    service.label_name = 'candidate, "review" / 核验'
+    service.label = {'id': 101, 'node_id': 'LA_existing_label', 'name': service.label_name,
+                     'url': service.url + '/repos/team/repo/labels/' + quote(service.label_name, safe='')}
+    service.label_members = [{'id': 'LA_human', 'name': 'human-triage', 'repository': {'id': 'R_original_repo'}}]
+    service.label_mutations = []
+    service.label_has_next, service.label_cursor, service.graphql_transform = False, None, lambda value: value
+
+    def read():
+        path = service.calls[-1]['path']
+        if path.endswith('/repos/team/repo'):
+            payload = {'id': 88, 'node_id': 'R_original_repo', 'full_name': 'team/repo',
+                       'url': service.url + '/repos/team/repo'}
+        elif '/labels/' in path:
+            payload = service.label
+        else:
+            return original_read()
+        service.status, service.raw, service.headers = 200, json.dumps(payload).encode(), {}
+
+    def write():
+        request = service.calls[-1]['body']
+        if 'query' not in request:
+            return original_write()
+        mutation = request['query'].startswith('mutation ')
+        if mutation:
+            service.label_mutations.append(request)
+            if not any(item['id'] == service.label['node_id'] for item in service.label_members):
+                service.label_members.append({'id': service.label['node_id'], 'name': service.label['name'],
+                                              'repository': {'id': 'R_original_repo'}})
+        page = {'__typename': 'Issue', 'id': 'I_original_issue', 'number': 7,
+                'repository': {'id': 'R_original_repo', 'nameWithOwner': 'team/repo'},
+                'labels': {'nodes': deepcopy(service.label_members),
+                           'pageInfo': {'hasNextPage': service.label_has_next, 'endCursor': service.label_cursor}}}
+        data = ({'addLabelsToLabelable': {'clientMutationId': request['variables']['input']['clientMutationId'],
+                                         'labelable': page}} if mutation else {'node': page})
+        payload = service.graphql_transform({'data': data})
+        service.status, service.raw, service.headers = 200, json.dumps(payload).encode(), {}
+
+    service.on_read, service.on_write = read, write
+    return service
 
 
 def test_candidate_comment_commits_attempt_before_post_and_retains_exact_receipt(candidate):
@@ -369,6 +422,17 @@ def test_published_v7_export_is_consumed_by_a_fresh_cli(source_submission, nativ
     assert run('writeback-send', 'demo', digest, '--revision', str(revision), '--confirm') == sent
     assert run('writeback-status', 'demo', digest) == sent and len(writer.calls) == calls
     assert tasks.export_status(state, 'demo', task_id) == exported
+
+    configure_labels(writer)
+    label = run('writeback-label-prepare', 'demo', task_id, '--revision', str(revision),
+                '--run-id', started['run_id'], '--candidate-sha', candidate_sha, '--label-name', writer.label_name)
+    assert label['intent']['source'] == prepared['intent']['source'] and label['intent']['task'] == prepared['intent']['task']
+    labelled = run('writeback-send', 'demo', label['intent_sha256'], '--revision', str(revision), '--confirm')
+    assert labelled['status'] == 'acknowledged' and len(writer.label_mutations) == 1
+    calls = len(writer.calls)
+    assert run('writeback-status', 'demo', digest) == sent
+    assert run('writeback-send', 'demo', label['intent_sha256'], '--revision', str(revision), '--confirm') == labelled
+    assert len(writer.calls) == calls and tasks.export_status(state, 'demo', task_id) == exported
 
 
 def test_native_comment_identity_and_fixed_authentication_context(writer, monkeypatch):

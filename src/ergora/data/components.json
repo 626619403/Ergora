@@ -764,6 +764,7 @@
         "tracker": [
           "issue.show",
           "issue.writeback.prepare",
+          "issue.writeback.label-prepare",
           "issue.writeback.status",
           "issue.writeback.send",
           "issue.writeback.observe"

@@ -1,5 +1,6 @@
-"""Explicit candidate comments; native observations never stand in for a send receipt."""
+"""Explicit candidate writebacks; native observations never replace a send receipt."""
 
+from abc import ABC, abstractmethod
 import json
 import string
 
@@ -28,6 +29,143 @@ _INTENT = {'type': 'object', 'additionalProperties': False, 'properties': {
 for _object in (_INTENT, _INTENT['properties']['source'], _INTENT['properties']['task']):
     _object['required'] = list(_object['properties'])
 
+_LABEL_INTENT = {**_INTENT, 'properties': {
+    **{key: value for key, value in _INTENT['properties'].items() if key != 'body'},
+    'kind': {'const': 'candidate-label-add'}, 'label_name': _TEXT,
+    'native_target': {'type': 'object', 'additionalProperties': False, 'properties': {
+        'issue_id': _TEXT, 'repository_id': _TEXT, 'label_id': _TEXT, 'label_native_id': _POSITIVE},
+        'required': ['issue_id', 'repository_id', 'label_id', 'label_native_id']},
+    'operation': {'type': 'object', 'additionalProperties': False, 'properties': {
+        'method': {'const': 'POST'}, 'url': _TEXT, 'body': {'type': 'object'}}, 'required': ['method', 'url', 'body']},
+}}
+_LABEL_INTENT['required'] = list(_LABEL_INTENT['properties'])
+_LABEL_PAGE = {'type': 'object', 'additionalProperties': False, 'properties': {
+    'issue_id': _TEXT, 'issue_number': _POSITIVE, 'project': _TEXT, 'repository_id': _TEXT,
+    'labels': {'type': 'array', 'maxItems': 100, 'items': {'type': 'object', 'additionalProperties': False,
+        'properties': {'id': _TEXT, 'name': _TEXT, 'repository_id': _TEXT}, 'required': ['id', 'name', 'repository_id']}},
+    'page_info': {'type': 'object', 'additionalProperties': False, 'properties': {
+        'has_next_page': {'type': 'boolean'}, 'end_cursor': {'anyOf': [_TEXT, {'type': 'null'}]}},
+        'required': ['has_next_page', 'end_cursor']},
+}}
+_LABEL_PAGE['required'] = list(_LABEL_PAGE['properties'])
+_LABEL_RECEIPT = {'type': 'object', 'additionalProperties': False, 'properties': {
+    'http_status': {'const': 200}, 'response_sha256': _SHA, 'client_mutation_id': _TEXT, 'page': _LABEL_PAGE}}
+_LABEL_RECEIPT['required'] = list(_LABEL_RECEIPT['properties'])
+
+
+class _WritebackAction(ABC):
+    """The two real actions share one durable lifecycle and own their actual differences."""
+
+    kind: str
+    observation_kind: str
+
+    @abstractmethod
+    def validate(self, intent: dict) -> None:
+        """Validate frozen action fields offline, including the exact request/body."""
+
+    @abstractmethod
+    def select(self, backend, intent: dict) -> dict:
+        """Read current native identity and return the fields to freeze/compare."""
+
+    @abstractmethod
+    def attempt_fields(self, intent: dict) -> dict:
+        """Describe the request before it is sent, preserving released action formats."""
+
+    @abstractmethod
+    def write(self, backend, intent: dict) -> dict:
+        """Make one native write through its provider owner."""
+
+    @abstractmethod
+    def match(self, intent: dict, native: dict) -> None:
+        """Only a sufficient original response may acknowledge the saved attempt."""
+
+    @abstractmethod
+    def observe(self, backend, intent: dict, comment_id, page: int, cursor) -> dict:
+        """Read one current resource/page; never claim the original attempt succeeded."""
+
+
+class _CandidateComment(_WritebackAction):
+    kind = 'candidate-association-comment'
+    observation_kind = 'native-comment-observation'
+
+    def validate(self, intent: dict) -> None:
+        contracts.validate(intent, _INTENT, 'Issue comment intent')
+        if _body(intent) != intent['body']:
+            raise ValueError('Issue writeback differs from its fixed body')
+
+    def select(self, backend, intent: dict) -> dict:
+        return {'body': _body(intent), 'target_at_prepare_sha256': _target(backend, intent['source'])['response']['sha256']}
+
+    def attempt_fields(self, intent: dict) -> dict:
+        return {'method': 'POST', 'payload_sha256': identity({'body': intent['body']})}
+
+    def write(self, backend, intent: dict) -> dict:
+        return backend.create_comment(intent['source']['issue_id'], intent['source']['native_id'], intent['body'])
+
+    def match(self, intent: dict, native: dict) -> None:
+        _matched_response(intent, native)
+
+    def observe(self, backend, intent: dict, comment_id, page: int, cursor) -> dict:
+        if cursor is not None:
+            raise ValueError('Comment observations use page numbers, not label cursors')
+        source = intent['source']
+        native = (backend.read_comment(source['issue_id'], source['native_id'], comment_id) if comment_id is not None else
+                  backend.list_comments(source['issue_id'], source['native_id'], page))
+        return {'native': native, 'matching_ids': [item['id'] for item in native['comments']
+            if item['ordinary'] and item['actor_id'] == intent['actor_id'] and item['body'] == intent['body']]}
+
+
+class _CandidateLabel(_WritebackAction):
+    kind = 'candidate-label-add'
+    observation_kind = 'native-label-observation'
+
+    def validate(self, intent: dict) -> None:
+        contracts.validate(intent, _LABEL_INTENT, 'Issue label intent')
+        expected = issue_backends.for_binding(intent['tracker_binding']).label_operation(
+            intent['source'], intent['native_target'], intent['scope_sha256'])
+        if intent['operation'] != expected:
+            raise ValueError('Issue label writeback differs from its exact native ID request')
+
+    def select(self, backend, intent: dict) -> dict:
+        selection = backend.label_selection(intent['source'], intent['label_name'])
+        return {**selection, 'operation': backend.label_operation(intent['source'], selection['native_target'], intent['scope_sha256'])}
+
+    def attempt_fields(self, intent: dict) -> dict:
+        operation = intent['operation']
+        return {'method': operation['method'], 'url': operation['url'], 'payload_sha256': identity(operation['body'])}
+
+    def write(self, backend, intent: dict) -> dict:
+        return backend.add_label(intent['source'], intent['native_target'], intent['scope_sha256'])
+
+    def match(self, intent: dict, native: dict) -> None:
+        contracts.validate(native, _LABEL_RECEIPT, 'Native label receipt')
+        page, target = native['page'], intent['native_target']
+        if (native['client_mutation_id'] != intent['scope_sha256'] or page['issue_id'] != target['issue_id']
+                or page['repository_id'] != target['repository_id'] or page['project'] != intent['source']['project']
+                or page['issue_number'] != int(intent['source']['issue_id'])
+                or any(item['repository_id'] != target['repository_id'] for item in page['labels'])
+                or (page['page_info']['has_next_page'] and not page['page_info']['end_cursor'])
+                or not any(item['id'] == target['label_id'] and item['name'] == intent['label_name'] for item in page['labels'])):
+            raise ValueError('Original label response does not prove the frozen target in its selected page; execution is not disproved')
+
+    def observe(self, backend, intent: dict, comment_id, page: int, cursor) -> dict:
+        if comment_id is not None or page != 1:
+            raise ValueError('Label observations use an opaque cursor, not comment IDs or page numbers')
+        native = backend.observe_label(intent['source'], intent['native_target'], cursor)
+        matched = [item['id'] for item in native['page']['labels']
+                   if item['id'] == intent['native_target']['label_id'] and item['name'] == intent['label_name']]
+        return {'native': native, 'matching_ids': matched,
+                'membership_in_page': 'present' if matched else 'not_seen'}
+
+
+_ACTIONS = {action.kind: action for action in (_CandidateComment(), _CandidateLabel())}
+
+
+def _action(intent: dict) -> _WritebackAction:
+    if not isinstance(intent, dict) or intent.get('kind') not in _ACTIONS:
+        raise ValueError('Unsupported saved issue writeback action')
+    return _ACTIONS[intent['kind']]
+
 
 def _scope(intent: dict) -> str:
     return identity({'kind': intent['kind'], 'project': intent['project'],
@@ -52,9 +190,10 @@ def _body(intent: dict) -> str:
 
 def _record(row) -> dict:
     intent = json.loads(row['document'])
-    contracts.validate(intent, _INTENT, 'Issue writeback intent')
+    action = _action(intent)
+    action.validate(intent)
     if (intent['project'] != row['project'] or identity(intent) != row['sha']
-            or intent['scope_sha256'] != row['scope'] or _scope(intent) != row['scope'] or _body(intent) != intent['body']
+            or intent['scope_sha256'] != row['scope'] or _scope(intent) != row['scope']
             or issue_sources.tracker_identity(intent['tracker_binding']) !=
                {key: intent['source'][key] for key in ('provider', 'api_url', 'project')}):
         raise ValueError('Issue writeback differs from its saved identity or fixed body')
@@ -73,7 +212,7 @@ def _record(row) -> dict:
                 or result['attempt_sha256'] != identity(attempt) or not isinstance(result['received_at'], str)
                 or not result['received_at']):
             raise ValueError('Issue writeback result has no matching original attempt')
-        _matched_response(intent, result['native'])
+        action.match(intent, result['native'])
     return {'project': row['project'], 'intent_sha256': row['sha'], 'intent': intent,
             'status': 'acknowledged' if result is not None else 'unknown' if attempt is not None else 'prepared',
             'attempt': attempt, 'result': result}
@@ -131,24 +270,37 @@ def _candidate(state: State, project: dict, binding: dict, task_id: str, run_id:
 
 
 def prepare(state: State, project_id: str, task_id: str, expected_revision: int, *, run_id: str, candidate_sha: str) -> dict:
+    return _prepare(state, project_id, task_id, expected_revision, run_id, candidate_sha, _ACTIONS['candidate-association-comment'], {})
+
+
+def prepare_label(state: State, project_id: str, task_id: str, expected_revision: int, *, run_id: str,
+                  candidate_sha: str, label_name: str) -> dict:
+    return _prepare(state, project_id, task_id, expected_revision, run_id, candidate_sha,
+                    _ACTIONS['candidate-label-add'], {'label_name': label_name})
+
+
+def _prepare(state: State, project_id: str, task_id: str, expected_revision: int, run_id: str,
+             candidate_sha: str, action: _WritebackAction, fields: dict) -> dict:
     project = state.project(project_id)
     _revision(project, expected_revision)
     configuration = projects.effective_configuration(project)
     binding = configuration['layers']['tracker']['binding']
     saved, task = _candidate(state, project, binding, task_id, run_id, candidate_sha)
-    intent = {'schema_version': 1, 'kind': 'candidate-association-comment', 'template_version': 1,
+    intent = {'schema_version': 1, 'kind': action.kind, 'template_version': 1,
         'project': project_id, 'project_revision': expected_revision, 'configuration_sha256': configuration['sha256'],
         'tracker_binding': binding,
-        'source': _source(saved), 'task': task}
+        'source': _source(saved), 'task': task, **fields}
     scope = intent['scope_sha256'] = _scope(intent)
     with state.connect() as db:
         existing = db.execute('SELECT * FROM issue_writebacks WHERE project=? AND scope=?', (project_id, scope)).fetchone()
         if existing is not None:
-            return _load(db, project_id, existing['sha'])
+            record = _load(db, project_id, existing['sha'])
+            if any(record['intent'].get(key) != value for key, value in fields.items()):
+                raise ValueError('This candidate action already has a frozen operand; use its original saved intent')
+            return record
     backend = issue_backends.for_binding(binding)
     intent['actor_id'] = backend.current_actor()
-    intent['target_at_prepare_sha256'] = _target(backend, intent['source'])['response']['sha256']
-    intent.update(body=_body(intent), prepared_at=now())
+    intent.update(action.select(backend, intent), prepared_at=now())
     digest = identity(intent)
     with state.connect() as db:
         db.execute('BEGIN IMMEDIATE')
@@ -158,7 +310,10 @@ def prepare(state: State, project_id: str, task_id: str, expected_revision: int,
         db.execute('INSERT INTO issue_writebacks(project,sha,scope,document) VALUES (?,?,?,?) ON CONFLICT(project,scope) DO NOTHING',
                    (project_id, digest, scope, json.dumps(intent, ensure_ascii=False)))
         row = db.execute('SELECT * FROM issue_writebacks WHERE project=? AND scope=?', (project_id, scope)).fetchone()
-        return _load(db, project_id, row['sha'])
+        record = _load(db, project_id, row['sha'])
+        if any(record['intent'].get(key) != value for key, value in fields.items()):
+            raise ValueError('This candidate action already has a frozen operand; use its original saved intent')
+        return record
 
 
 def _attempt(intent: dict, saved_at: str, target_response_sha256: str) -> dict:
@@ -167,7 +322,7 @@ def _attempt(intent: dict, saved_at: str, target_response_sha256: str) -> dict:
         raise ValueError('Invalid issue writeback attempt time')
     return {'schema_version': 1, 'intent_sha256': identity(intent), 'saved_at': saved_at,
             'actor_id': intent['actor_id'], 'target_response_sha256': target_response_sha256,
-            'method': 'POST', 'payload_sha256': identity({'body': intent['body']})}
+            **_action(intent).attempt_fields(intent)}
 
 
 def _matched_response(intent: dict, native: dict) -> None:
@@ -203,11 +358,12 @@ def _save_observation(state: State, project_id: str, digest: str, document: dict
 
 def send(state: State, project_id: str, digest: str, expected_revision: int, *, confirm: bool = False) -> dict:
     if confirm is not True:
-        raise ValueError('Sending an issue comment requires explicit confirmation of its exact saved intent')
+        raise ValueError('Sending an issue writeback requires explicit confirmation of its exact saved intent')
     record = status(state, project_id, digest)
     if record['status'] != 'prepared':
         return record
     intent = record['intent']
+    action = _action(intent)
     project = state.project(project_id)
     _revision(project, expected_revision)
     binding = projects.effective_configuration(project)['layers']['tracker']['binding']
@@ -219,8 +375,10 @@ def send(state: State, project_id: str, digest: str, expected_revision: int, *, 
     backend = issue_backends.for_binding(intent['tracker_binding'])
     if backend.current_actor() != intent['actor_id']:
         raise ValueError('Authenticated actor changed; the original intent cannot be impersonated')
-    observed = _target(backend, intent['source'])
-    attempt = _attempt(intent, now(), observed['response']['sha256'])
+    selected = action.select(backend, intent)
+    if any(intent[key] != value for key, value in selected.items() if key != 'target_at_prepare_sha256'):
+        raise ValueError('Frozen writeback operand or native identity changed; the original intent cannot be retargeted')
+    attempt = _attempt(intent, now(), selected['target_at_prepare_sha256'])
     with state.connect() as db:
         db.execute('BEGIN IMMEDIATE')
         current = _load(db, project_id, digest)
@@ -232,8 +390,8 @@ def send(state: State, project_id: str, digest: str, expected_revision: int, *, 
     # The committed attempt is visible to another process before this POST.
     # Any exception or death after this point leaves unknown, never a retry slot.
     try:
-        native = backend.create_comment(intent['source']['issue_id'], intent['source']['native_id'], intent['body'])
-        _matched_response(intent, native)
+        native = action.write(backend, intent)
+        action.match(intent, native)
     except ValueError as error:
         _save_observation(state, project_id, digest, {'schema_version': 1, 'kind': 'write-error',
             'intent_sha256': digest, 'observed_at': now(), 'error': str(error)})
@@ -251,21 +409,21 @@ def send(state: State, project_id: str, digest: str, expected_revision: int, *, 
     return status(state, project_id, digest)
 
 
-def observe(state: State, project_id: str, digest: str, *, comment_id: str | None = None, page: int = 1) -> dict:
+def observe(state: State, project_id: str, digest: str, *, comment_id: str | None = None, page: int = 1,
+            cursor: str | None = None) -> dict:
     record = status(state, project_id, digest)
     intent = record['intent']
+    action = _action(intent)
     backend = issue_backends.for_binding(intent['tracker_binding'])
-    observation = {'schema_version': 1, 'kind': 'native-comment-observation', 'intent_sha256': digest,
+    observation = {'schema_version': 1, 'kind': action.observation_kind, 'intent_sha256': digest,
         'observed_at': now(), 'requested': {'comment_id': comment_id, 'page': page},
         'coverage': 'one_current_resource' if comment_id is not None else 'one_current_page',
         'proves_original_attempt': False}
+    if cursor is not None:
+        observation['requested']['cursor'] = cursor
     try:
         observation['reader_actor_id'] = backend.current_actor()
-        source = intent['source']
-        native = (backend.read_comment(source['issue_id'], source['native_id'], comment_id) if comment_id is not None else
-                  backend.list_comments(source['issue_id'], source['native_id'], page))
-        observation.update(native=native, matching_ids=[item['id'] for item in native['comments']
-            if item['ordinary'] and item['actor_id'] == intent['actor_id'] and item['body'] == intent['body']])
+        observation.update(action.observe(backend, intent, comment_id, page, cursor))
     except ValueError as error:
         observation.update(coverage='incomplete', error=str(error))
     _save_observation(state, project_id, digest, observation)
@@ -276,9 +434,9 @@ def _observation(row) -> dict:
     document = json.loads(row['document'])
     if (not isinstance(document, dict) or document.get('schema_version') != 1
             or document.get('intent_sha256') != row['write_sha'] or identity(document) != row['sha']
-            or document.get('kind') not in ('write-error', 'native-comment-observation')
+            or document.get('kind') not in ('write-error', 'native-comment-observation', 'native-label-observation')
             or not isinstance(document.get('observed_at'), str) or not document['observed_at']
-            or (document['kind'] == 'native-comment-observation' and document.get('proves_original_attempt') is not False)):
+            or (document['kind'] != 'write-error' and document.get('proves_original_attempt') is not False)):
         raise ValueError('Issue writeback observation differs from its saved identity')
     return {'sha256': row['sha'], 'document': document}
 

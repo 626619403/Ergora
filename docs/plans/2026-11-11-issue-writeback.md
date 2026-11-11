@@ -1,6 +1,6 @@
 # F7c：显式候选评论与原生事实观察
 
-实现基线 `472ff60a6d27c91ef5d5285f959e61d3b935341d`，分支 `refactor/architecture-foundations`。承接[逐项目工单计划](2026-11-11-project-trackers.md)；前片B1c修正已精确交付，自己的CI43007648352及原评审终核通过，原6a7e9a1夹具失败记录保持。当前C1最终r2包446／两RECORD／283与受影响52项安装检查通过，原生v7导出后新CLI衔接已验；自身首审request-changes两P2已修、聚焦103.93秒approve。最终28文件独立两轴及本地出口通过，Spec／Standards开放0／0，SP1–SP4／ST1／ST2关闭；本片精确Git／远端／自己的CI待核，不继承前片CI结论。
+实现基线 `472ff60a6d27c91ef5d5285f959e61d3b935341d`，分支 `refactor/architecture-foundations`。承接[逐项目工单计划](2026-11-11-project-trackers.md)；前片B1c修正已精确交付，自己的CI43007648352及原评审终核通过，原6a7e9a1夹具失败记录保持。当前C1最终r2包446／两RECORD／283与受影响52项安装检查通过，原生v7导出后新CLI衔接已验；自身首审request-changes两P2已修、聚焦103.93秒approve。最终28文件独立两轴及本地出口通过，Spec／Standards开放0／0，SP1–SP4／ST1／ST2关闭；b5ee397已普通提交／推送，精确28Git／ready及作者完整Ref经原评审离线核过；自己的CI43015595781双OS七必要步骤及原件独立终核通过，C1精确交付终结。独立直接SSH407及两非终态样本保持，不称成功REST／全日志。
 
 ## C1行为与既有所有者
 
@@ -13,7 +13,7 @@
 |W1 原生评论协议|扩展原IssueBackend：固定认证上下文、current actor、单次create、按ID读取及单页有界列表；复用无redirect／完整响应／超时读取|两协议路径、GitLab iid与全局ID、完整201／正文／author／issue所属核对；无SDK默认POST重试，无redirect凭据传播；分页只返回实际续页信息|源码实现通过原读取＋回写协议检查，含最新99项／1跳过；446新包与两RECORD／283已核，尚非完整C1交付|
 |W2 显式意图与不确定性|独立且内聚的issue writeback用例由CLI与HTTP共同消费；沿原State保存canonical intent、attempt、result和最后观察；复用原迁移、writer fence、backup校验|只准原v7已导出精确候选；关键点核当前expected revision，tracker绑定／actor漂移拒绝发送；同source/task/run/candidate操作唯一；事务内保存attempt并提交后才单POST；重启／并发／丢响应不重发|源码实现及首轮99项／55.78秒通过；该99项原task读取受控；后补真实原v7／Git导出衔接1项已通过，最终r2含此集成的回写／架构52项通过|
 |W3 可用入口与恢复|prepare／status／send／observe入口、去环境化使用说明；保存原生观察，原ID与原意图不变|CLI和受保护HTTP使用相同用例；原生v7导出后新CLI1项／13.10秒通过；status不访问网络。observe可按ID或一页列表核marker／全文／author，始终只说明当前可见事实，不将匹配、空列表、编辑或删除推断为原attempt成功／未发送|源码入口及原生v7导出后新CLI衔接已通过，r2安装52项覆盖当前入口|
-|W4 安装、审查与精确交付|固定非editable包、两RECORD／283原冻结、相应回归和本地协议旅程；实际自身审查模板及新fresh-context完整两轴|正常201与已导出原候选关联；响应丢失／部分响应／重试／并发／人工编辑与来源变更证据；更新计划和交付，普通提交／推送、同提交自己的必要双OS CI终核|446新包／两RECORD／283身份通过；r1安装188／1跳过保持；自身首审两P2已修，r2包446／两RECORD／283及52项定向通过；聚焦自身103.93秒approve／五scope全文核过；完整28文件独立两轴／本地出口通过，开放0／0；精确交付待核|
+|W4 安装、审查与精确交付|固定非editable包、两RECORD／283原冻结、相应回归和本地协议旅程；实际自身审查模板及新fresh-context完整两轴|正常201与已导出原候选关联；响应丢失／部分响应／重试／并发／人工编辑与来源变更证据；更新计划和交付，普通提交／推送、同提交自己的必要双OS CI终核|446新包／两RECORD／283身份通过；r1安装188／1跳过保持；自身首审两P2已修，r2包446／两RECORD／283及52项定向通过；聚焦自身103.93秒approve／五scope全文核过；完整28文件独立两轴／本地出口通过，开放0／0；b5ee397自己的CI43015595781及原评审精确原件终核通过，精确交付终结|
 
 定向[协议研究](../research/2026-11-11-issue-writeback.md)已完成，固定SDK源码的默认POST重试及原生关联副作用已有第一方依据。
 

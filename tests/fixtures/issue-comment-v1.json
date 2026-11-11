@@ -1,0 +1,86 @@
+{
+  "generated_by": {
+    "commit": "b5ee397e6571f95393b0f8d6e9ee7e6d947b0935",
+    "wheel_sha256": "e75d130e88966a1c89145fd246e5acd3c8ac7a8c70f8b20433a7e8e08173c46d",
+    "scope": "Synthetic released C1 canonical record, no network, task, source-snapshot or account acceptance"
+  },
+  "row": {
+    "project": "compatibility-demo",
+    "sha": "ab98ea958ee9306fae7ab0dad06b1bfc3966f622f8933e009c2d8a5feb21f36e",
+    "scope": "09c2639686fc791b99747f106503e559640d393e2be070cf5fc13fbe7c3da6d2",
+    "document": "{\"schema_version\": 1, \"kind\": \"candidate-association-comment\", \"template_version\": 1, \"project\": \"compatibility-demo\", \"project_revision\": 2, \"configuration_sha256\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\", \"tracker_binding\": {\"tool\": \"github\", \"project\": \"team/repo\", \"api_url\": \"https://api.github.com\", \"token_env\": \"ERGORA_FIXTURE_TOKEN\"}, \"source\": {\"provider\": \"github\", \"api_url\": \"https://api.github.com\", \"project\": \"team/repo\", \"issue_id\": \"7\", \"native_id\": 9001, \"snapshot_sha256\": \"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"}, \"task\": {\"id\": \"compatibility-task\", \"creation_sha256\": \"1111111111111111111111111111111111111111111111111111111111111111\", \"compiled_sha256\": \"2222222222222222222222222222222222222222222222222222222222222222\", \"request_sha256\": \"3333333333333333333333333333333333333333333333333333333333333333\", \"profile_sha256\": \"4444444444444444444444444444444444444444444444444444444444444444\", \"run_id\": \"original-run\", \"candidate_sha\": \"5555555555555555555555555555555555555555\", \"export_intent_sha256\": \"6666666666666666666666666666666666666666666666666666666666666666\", \"export_facts_sha256\": \"7777777777777777777777777777777777777777777777777777777777777777\", \"branch\": \"agent/__candidate__\"}, \"actor_id\": 12, \"target_at_prepare_sha256\": \"8888888888888888888888888888888888888888888888888888888888888888\", \"prepared_at\": \"2026-11-11T00:00:00Z\", \"scope_sha256\": \"09c2639686fc791b99747f106503e559640d393e2be070cf5fc13fbe7c3da6d2\", \"body\": \"Ergora local candidate export (reference only).\\n\\nTask: \\\"compatibility\\\\u002dtask\\\"; run: \\\"original\\\\u002drun\\\".\\nCandidate: `5555555555555555555555555555555555555555`.\\nLocal export branch: \\\"agent\\\\u002f\\\\u005f\\\\u005fcandidate\\\\u005f\\\\u005f\\\". Remote publication and merge have not been verified.\\nSource snapshot: `bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb`.\\n\\n<!-- ergora:candidate-association:v1:09c2639686fc791b99747f106503e559640d393e2be070cf5fc13fbe7c3da6d2 -->\"}",
+    "attempt": "{\"schema_version\": 1, \"intent_sha256\": \"ab98ea958ee9306fae7ab0dad06b1bfc3966f622f8933e009c2d8a5feb21f36e\", \"saved_at\": \"2026-11-11T00:01:00Z\", \"actor_id\": 12, \"target_response_sha256\": \"9999999999999999999999999999999999999999999999999999999999999999\", \"method\": \"POST\", \"payload_sha256\": \"4084f72c0941befe6924af9f4554f6491d7cc78e3e6b640d63e55c22b8986496\"}",
+    "result": "{\"schema_version\": 1, \"intent_sha256\": \"ab98ea958ee9306fae7ab0dad06b1bfc3966f622f8933e009c2d8a5feb21f36e\", \"attempt_sha256\": \"0fb1a809719fba7722f759b9c6728ce6081395f9b6731c5fc58271bc37cb341d\", \"received_at\": \"2026-11-11T00:01:02Z\", \"native\": {\"comment\": {\"id\": 71, \"actor_id\": 12, \"body\": \"Ergora local candidate export (reference only).\\n\\nTask: \\\"compatibility\\\\u002dtask\\\"; run: \\\"original\\\\u002drun\\\".\\nCandidate: `5555555555555555555555555555555555555555`.\\nLocal export branch: \\\"agent\\\\u002f\\\\u005f\\\\u005fcandidate\\\\u005f\\\\u005f\\\". Remote publication and merge have not been verified.\\nSource snapshot: `bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb`.\\n\\n<!-- ergora:candidate-association:v1:09c2639686fc791b99747f106503e559640d393e2be070cf5fc13fbe7c3da6d2 -->\", \"ordinary\": true, \"created_at\": \"2026-11-11T00:01:01Z\", \"updated_at\": \"2026-11-11T00:01:01Z\"}, \"response_sha256\": \"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\", \"http_status\": 201}}"
+  },
+  "record": {
+    "project": "compatibility-demo",
+    "intent_sha256": "ab98ea958ee9306fae7ab0dad06b1bfc3966f622f8933e009c2d8a5feb21f36e",
+    "intent": {
+      "schema_version": 1,
+      "kind": "candidate-association-comment",
+      "template_version": 1,
+      "project": "compatibility-demo",
+      "project_revision": 2,
+      "configuration_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "tracker_binding": {
+        "tool": "github",
+        "project": "team/repo",
+        "api_url": "https://api.github.com",
+        "token_env": "ERGORA_FIXTURE_TOKEN"
+      },
+      "source": {
+        "provider": "github",
+        "api_url": "https://api.github.com",
+        "project": "team/repo",
+        "issue_id": "7",
+        "native_id": 9001,
+        "snapshot_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      "task": {
+        "id": "compatibility-task",
+        "creation_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+        "compiled_sha256": "2222222222222222222222222222222222222222222222222222222222222222",
+        "request_sha256": "3333333333333333333333333333333333333333333333333333333333333333",
+        "profile_sha256": "4444444444444444444444444444444444444444444444444444444444444444",
+        "run_id": "original-run",
+        "candidate_sha": "5555555555555555555555555555555555555555",
+        "export_intent_sha256": "6666666666666666666666666666666666666666666666666666666666666666",
+        "export_facts_sha256": "7777777777777777777777777777777777777777777777777777777777777777",
+        "branch": "agent/__candidate__"
+      },
+      "actor_id": 12,
+      "target_at_prepare_sha256": "8888888888888888888888888888888888888888888888888888888888888888",
+      "prepared_at": "2026-11-11T00:00:00Z",
+      "scope_sha256": "09c2639686fc791b99747f106503e559640d393e2be070cf5fc13fbe7c3da6d2",
+      "body": "Ergora local candidate export (reference only).\n\nTask: \"compatibility\\u002dtask\"; run: \"original\\u002drun\".\nCandidate: `5555555555555555555555555555555555555555`.\nLocal export branch: \"agent\\u002f\\u005f\\u005fcandidate\\u005f\\u005f\". Remote publication and merge have not been verified.\nSource snapshot: `bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb`.\n\n<!-- ergora:candidate-association:v1:09c2639686fc791b99747f106503e559640d393e2be070cf5fc13fbe7c3da6d2 -->"
+    },
+    "status": "acknowledged",
+    "attempt": {
+      "schema_version": 1,
+      "intent_sha256": "ab98ea958ee9306fae7ab0dad06b1bfc3966f622f8933e009c2d8a5feb21f36e",
+      "saved_at": "2026-11-11T00:01:00Z",
+      "actor_id": 12,
+      "target_response_sha256": "9999999999999999999999999999999999999999999999999999999999999999",
+      "method": "POST",
+      "payload_sha256": "4084f72c0941befe6924af9f4554f6491d7cc78e3e6b640d63e55c22b8986496"
+    },
+    "result": {
+      "schema_version": 1,
+      "intent_sha256": "ab98ea958ee9306fae7ab0dad06b1bfc3966f622f8933e009c2d8a5feb21f36e",
+      "attempt_sha256": "0fb1a809719fba7722f759b9c6728ce6081395f9b6731c5fc58271bc37cb341d",
+      "received_at": "2026-11-11T00:01:02Z",
+      "native": {
+        "comment": {
+          "id": 71,
+          "actor_id": 12,
+          "body": "Ergora local candidate export (reference only).\n\nTask: \"compatibility\\u002dtask\"; run: \"original\\u002drun\".\nCandidate: `5555555555555555555555555555555555555555`.\nLocal export branch: \"agent\\u002f\\u005f\\u005fcandidate\\u005f\\u005f\". Remote publication and merge have not been verified.\nSource snapshot: `bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb`.\n\n<!-- ergora:candidate-association:v1:09c2639686fc791b99747f106503e559640d393e2be070cf5fc13fbe7c3da6d2 -->",
+          "ordinary": true,
+          "created_at": "2026-11-11T00:01:01Z",
+          "updated_at": "2026-11-11T00:01:01Z"
+        },
+        "response_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "http_status": 201
+      }
+    }
+  }
+}

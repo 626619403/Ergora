@@ -1,0 +1,116 @@
+{
+  "schema_version": 1,
+  "slice": "F7c-C2a existing GitHub candidate label by native ID",
+  "baseline": "b5ee397e6571f95393b0f8d6e9ee7e6d947b0935",
+  "state": "Complete local candidate passed implementation, affected installed checks, actual own review and fresh-context full independent review; exact Git/remote/own CI pending",
+  "final_r2_package": {
+    "at": "2026-11-11T12:31:38.522925+00:00",
+    "wheel_sha256": "13ace2b7aebaac9bf171fcb335e84bea2b6c53bc7758206c55840b70d062d600",
+    "wheel_files": 451,
+    "package_files": 446,
+    "wheel_and_installed_records_verified": true,
+    "installed_record_rows": 456,
+    "source_and_installed_package_equal": true,
+    "frozen_files": 283,
+    "editable": false
+  },
+  "r1_r2_delta": {
+    "at": "2026-11-11T12:32:00.965154+00:00",
+    "r1_wheel_sha256": "981028c61542244bd7795ac6b3c1c8eb7620fdcbbae4b663d47d6d7f487c00a2",
+    "r2_wheel_sha256": "13ace2b7aebaac9bf171fcb335e84bea2b6c53bc7758206c55840b70d062d600",
+    "package_files_equal": 446,
+    "changed_archive_entries": [
+      "ergora-0.2.0.dist-info/METADATA",
+      "ergora-0.2.0.dist-info/RECORD"
+    ],
+    "final_metadata_ends_with_current_readme_bytes": true,
+    "readme_sha256": "4dc8e5abbca0cb7fedca54fefbb2f706ff703d62c9def0c52c15e8492a27709c",
+    "scope": "Final r2 changes README metadata and its RECORD only; all446 package files exactly equal those tested in the isolated noneditable r1 environment (117passed1skipped). No claim to rerun117 on r2."
+  },
+  "source_checks": {
+    "passed": 67,
+    "seconds_pytest": 155.35,
+    "seconds_command": 158.93661219999194,
+    "exit": 0,
+    "stdout_sha256": "e7fee68c542c322d9a70fd37f64d3de06281acd06c32d019d356656c60184e8d",
+    "scope": "Explicit current source PYTHONPATH using the preserved prior environment; not an installed-C2a check"
+  },
+  "affected_r1_installed_checks": {
+    "passed": 117,
+    "skipped": 1,
+    "seconds_pytest": 95.8,
+    "seconds_command": 97.99237440200523,
+    "exit": 0,
+    "stdout_sha256": "edb7b4438faf9e435b3744e83b88142797121205c26fbce8090099fbfbc0b92c",
+    "suites": [
+      "tests/test_issue_label_writebacks.py",
+      "tests/test_issue_writebacks.py",
+      "tests/test_project_issues.py",
+      "tests/test_state_migrations.py",
+      "tests/test_state_backups.py",
+      "tests/test_architecture_boundaries.py"
+    ],
+    "scope": "Six affected suites on isolated noneditable r1. All446 package files later verified identical to final r2; no117-test rerun on metadata-only r2 claimed."
+  },
+  "final_r2_commands": [
+    {
+      "command": "label prepare CLI help",
+      "exit": 0,
+      "seconds": 1.0170814828015864,
+      "stdout_sha256": "e589fc8dc49357b317c37bec978312570f50f71b938a67c07b39cb5e3bf28f0b"
+    },
+    {
+      "command": "reference verify",
+      "exit": 0,
+      "seconds": 0.31608632067218423,
+      "stdout_sha256": "3dac2649dde45b8ac802a874813f5e5e281ac6a7ac462551161f18a114b19b14"
+    }
+  ],
+  "actual_own_review": {
+    "run_id": "18c4b04c030b40a2bb800a7f3e8a32bf",
+    "decision": "approve",
+    "seconds": 256.52178626833484,
+    "frozen_complete_files": 13,
+    "attachment_bytes": 311806,
+    "attachment_sha256": "7c89b8a2a2c85fff359d4a98693680a0b6bbaded9284d80b922567c10c5ebc03",
+    "original_result_sha256": "1a4555922b3f7344b54f61edcda6e47f95bf706d7d87f6da7a1fa3aa5650b4a5",
+    "all_five_scopes_read_through_null": true,
+    "failed_mcp_calls": 0
+  },
+  "early_independent_review": {
+    "candidate_files": 11,
+    "manifest_sha256": "531399071486c8fad56109f84badc2e7038522f08a3ca22eea1a1e0164a0f814",
+    "spec_open": 0,
+    "standards_open": 0,
+    "scope": "Initial source/spec snapshot and raw checks; later full independent review separately records complete final public candidate/package/own-review chain"
+  },
+  "verified_behaviors": [
+    "Original v7 source task/publication/start/Git export and claim release consumed by fresh CLI comment and label actions; only Temporal SDK/result controlled",
+    "Single native ID operand and complete frozen mutation; names never used as write targets or decoded/guessed GraphQL IDs",
+    "Another CLI reads committed attempt before mutation; simultaneous confirms share at most one mutation",
+    "Full matching original200 with target present in selected page and persisted result acknowledges",
+    "Partial errors, wrong target/echo, selected page without target and lost responses stay unknown; current positive/empty membership cannot confirm",
+    "Rename and delete-recreate reject unsent retargeting; another prepare name cannot bypass logical slot",
+    "Mutation-time project revision change preserves unknown and original attempt; human removal never triggers resend",
+    "Comment and label records roundtrip through common offline backup; released synthetic C1 codec stays readable",
+    "CLI/protected HTTP share lifecycle; observation reads one query page with opaque cursor"
+  ],
+  "limits": [
+    "All tracker traffic uses local loopback fixtures; no real SaaS/GHES write, token permission, notification or external automation acceptance",
+    "GraphQL200 alone and clientMutationId echo are not idempotency/exactly-once proof; preflight is not a write CAS",
+    "GitLab label action remains explicitly unsupported; original ordinary comment remains available",
+    "Synthetic C1 codec fixture does not prove original source snapshot/task linkage; native owner integration covers a separate real-local contract",
+    "Exact Git/remote/own CI remain separate; C1 CI43015595781 is not C2a CI"
+  ],
+  "complete_independent_review": {
+    "candidate_files": 26,
+    "manifest_sha256": "bb44bec7fae1b845e65013d9478cec72cdd0256c372300d627a9efe4d5d27959",
+    "report_snapshot_sha256": "4adfe249920fbaac0d4ead55f5b6c1a603551756d7534af19623f31349bbb809",
+    "spec_open": 0,
+    "standards_open": 0,
+    "closed_findings": [
+      "ST1 P3 current-status wording"
+    ],
+    "scope": "Full26-file candidate plus three independently rechecked status-only fixes; r2 package/RECORDs/frozen files and actual own review raw chain rehashed. Later status/report appendices are bookkeeping, not original manifest bytes."
+  }
+}

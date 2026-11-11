@@ -4,7 +4,7 @@
 
 ## 当前检查点
 
-W1–W3已实现；最终r2非editable包446／RECORD451／455／283及受影响回写／架构**52项／52.16秒**通过，含原生v7发布／提交／Git导出后的新CLI衔接。自身首审267.61秒request-changes两P2已最小修正，聚焦103.93秒approve；最终28文件独立两轴及本地出口通过，Spec／Standards开放0／0，SP1–SP4／ST1／ST2关闭；本片精确Git／远端／自己的CI待核。r1安装188通过／1跳过保留旧候选范围，不称完整r2全套通过。前片472ff60及自己的CI43007648352已经独立终核，原6a7e9a1的失败保持；不能充当本片CI。标签及PR/MR另片，当前没有真实tracker写入。
+W1–W3已实现；最终r2非editable包446／RECORD451／455／283及受影响回写／架构**52项／52.16秒**通过，含原生v7发布／提交／Git导出后的新CLI衔接。自身首审267.61秒request-changes两P2已最小修正，聚焦103.93秒approve；最终28文件独立两轴及本地出口通过，Spec／Standards开放0／0，SP1–SP4／ST1／ST2关闭；b5ee397精确Git／ready及作者完整Ref经原评审离线核过，自己的CI43015595781双OS七必要步骤及原件独立终核通过，C1精确交付终结。独立直接SSH代理407与前两In progress样本保持。r1安装188通过／1跳过保留旧候选范围，不称完整r2全套通过。前片472ff60及自己的CI43007648352已经独立终核，原6a7e9a1的失败保持；不能充当本片CI。标签及PR/MR另片，当前没有真实tracker写入。
 
 研究已确认成熟SDK默认可能重试POST；C1复用现有标准库单请求传输，继续无redirect及无自动写重试。GitLab官方创建notes段未逐字段承诺独立201 schema，严格解析作为本工具支持合同，实际服务兼容不提前称通过。其普通issue关联可能在merge自动关闭的问题保留为设计限制。
 
@@ -65,3 +65,13 @@ Ergora内置structure-review实际run `b1a49a24ce944b12955bdc0eead2089c`，Codex
 ## 完整独立出口
 
 [最终两轴报告](2026-11-11-issue-writeback-review.md)已核完整28文件及四份当前状态修正；Spec／Standards开放0／0，SP1–SP4、ST1／ST2全部关闭。原评审独立重算r2全部446包文件、两RECORD、283冻结及52项原结果，也重建聚焦自身模板的manifest／input／prompt／scope／连续读取页与原判词。确认本地实现／验证出口通过；精确ready／Git对象、普通提交／推送、同SHA远端与本片自己的双OS必要CI另核，尚不称精确交付或整个F7完成。
+
+## 精确Git与普通推送
+
+28文件ready manifest SHA `794c25333d6729b0540c915bc639db0447155ba7a20712e95a2477f6f0e62534` 已冻结；提交 `b5ee397e6571f95393b0f8d6e9ee7e6d947b0935` 的28Git对象／模式逐项等于ready，完整已提交评审报告SHA `ed0e0a24d29b6daa38d9a6848bc149bd5a4f18d376b00450828930b56efda534`。普通推送成功，作者一次SSH Ref得到同完整SHA；独立精确对象／Ref及该提交自己的CI继续，当前不称精确交付终结。提交前最终静态28文件／382本地目标／6载入秘密值issue0；不扩写为外链或运行检查。下一片C2研究文件明确未包含在这28文件中。
+
+## 自己的CI终核与结案
+
+CI43015595781第三份官方run原HTML为Success，Linux实际job130505734181／Python3.11与Windows实际job130505734633／Python3.12均completed；三个／四个必要步骤均success且有完成时间，所有原日志URL绑定完整b5ee397。原评审独立重算三份run及两job receipt／body、逐项提取matrix与步骤并核作者解析，原件终核通过；前两In progress保持，未取得成功REST或完整job日志。
+
+精确28Git对象／ready、446包／283与作者既有SSH完整Ref原件已独立离线核过；评审者自己唯一一次直接SSH读取遭代理407，未另读凭据或重试，不能称独立直接网络成功。[终核报告](2026-11-11-issue-writeback-review.md)按此准确范围关闭C1精确交付，Spec／Standards开放0／0，SP1–SP4／ST1／ST2关闭。当前live中的C2a产品不是C1候选，不借本CI验收C2a；后续C2和F7其余继续。

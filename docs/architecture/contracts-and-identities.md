@@ -47,6 +47,7 @@
 |项目登记、投影与导入预览|排序、UTF8、不转义Unicode、紧凑分隔符、拒绝NaN的JSON/SHA256；登记摘要绑定id/repo/规范化定义，预览另绑定control_home/revision/绑定/差异/源SHA及投影摘要|bindings仅由项目顶层拥有；旧文件SHA另按原字节计算，空白变化也使导入预览失效；不重编码旧文件以制造一致性|
 |工单响应|成功单GET完整原响应字节的SHA256；ETag和原updated_at另保留，不重编码响应来计算同一摘要|响应空白／字段顺序变化也会改变SHA；观察时间与配置身份另存，不能由内容摘要推导任务授权、事件去重或原子写入版本|
 |候选评论身份|复用`task_envelopes.identity`的排序、UTF8、不转义Unicode、紧凑JSON／SHA256；固定body中opaque名称另做JSON文字及Markdown／mention字符转义|intent／逻辑scope／attempt／观察各有不同摘要；原生POST／GET响应另存原字节摘要，不能将marker、当前匹配或重编码投影视为原请求因果证明|
+|候选标签身份|新kind `candidate-label-add` 沿原schema v1和schema v3本域表；冻结完整ID请求、单项标签及服务返回的issue／repo／label node ID，原C1格式不重写|同候选只有一个标签语义槽，改名／新请求ID不能绕过；原200无GraphQL errors、回显及原响应有限页内目标匹配才可保存ack。clientMutationId不是幂等键，当前query页不替代原receipt；GitLab标签未支持|
 
 A2 的固定向量、两种 compiled/request/profile 身份、Skill 执行位和合成旧状态继续作为回归依据。R2 只把测试中的私有 `_sha` 调用迁到实际语义名称，未改任何身份夹具。
 
