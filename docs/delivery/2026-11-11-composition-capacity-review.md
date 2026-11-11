@@ -63,3 +63,28 @@ Standards 子轴最终结论：**通过；硬规则与 Fowler 启发性开放 fi
 私有独立原件保留在 `.ergora/checks/ac6-capacity/independent/`：`originals-audit.json`、`final-audit.json`、两份 `self-review-r*-audit.json` 与对应标准库脚本／日志，及两个轴的独立报告。`inspected-files.json` 是完整有界文件清单，逐件记录路径、字节、SHA 和核验类型；区分语义审查、字节身份读取与仅状态边界。清单覆盖上列十文件、指定驱动／原失败、五份完整 preview、47＋40 组 HTTP 三件、81 控制文件、74 bundle 源文件、两轮各52份输入／scope／事件／结果文件及439项显式包清单；没有扫描全部 checks 或 venv。必要相邻源仅核原编译／材料继承／导入／转换路径，图所有者完整读取，不把文件哈希称为整仓代码审查。
 
 通过范围仅为 C6a 静态容量、材料预算、暖页面交互及上述清理事实。时间包含各自记录的验证／序列化或自动化／网络／两帧开销，没有隔离 CPU、冷启动、真实500 Agent 执行或优化加速证据。可信容器及 `--no-sandbox` 不构成新增 OS 隔离。C6b 三域／v6 页面、C6c 后端／成本／平台和 C6d 手册／本片必要 CI／精确远端交付仍待；本报告不关闭 AC6／F6 或后续 F7–F10。
+
+## 精确提交与独立远端核
+
+2026-11-11 04:36 UTC 同片收尾：完成记账后的 `ready-r2` 十一文件与工作区／冻结 bytes、SHA、tracked.diff 精确相同；相对上述终审仅四个计划／交付状态文件更新为本地完成，加本报告，四份公开 JSON 的原决策／身份保持。静态回执已准确写明 JS 未重跑，原辅助脚本误继承标签及更正说明保留。
+
+普通提交 `f9574895525e3c19bfe7094636c407359baed007` 的唯一父提交为原基线。独立读取其全部十一个 mode100644 Git blob，逐件等于 `ready-r2`；`src`、`tests`、`.github`、`pyproject.toml` 的 Git 对象 ID 与父提交相同，不重复扫描原439包文件。后续工作区或本报告状态记账不改变这些已提交对象。
+
+获明确授权的一次官方只读 Git Ref API GET 于 04:36:42.383705→04:36:43.436239 UTC 返回 HTTP200，默认 TLS 验证结果0；curlrc关闭，不读凭据，不带 Authorization／Cookie，无重试、重定向跟随、SSH改写或TLS放宽。原 `ref=refs/heads/refactor/architecture-foundations`、`object.type=commit`、完整 SHA 均与上述提交相符；返回的官方 canonical `/git/refs/` URL 已按真实格式核验。完整429B响应体 SHA256 为 `218c521e2097da7ad075b1edafedae24529c0f8dda86c83c6a2a9ff94059770b`，完整1390B响应头及 stderr／curl 元数据原字节另存；身份和审计位于私有 `independent/commit-f957489/`。没有重复请求远端。
+
+上述 Git／远端核验时，C6a 自己的 CI 尚待终态；下文为后续同片离线补核，不借用 C5c CI，不改变上文模型、平台和 C6b–d 范围。
+
+## CI 终核与 C6a 精确交付终结
+
+2026-11-11 04:57:34.601210 UTC，独立离线核四份现有官方 API 样本 `snapshot-api-01` 至 `04` 的全部八份 runs／jobs 原始响应：字节数、SHA256、请求／最终 URL、HTTP200、完整 candidate、run／job 身份和每个步骤均与原回执相符。四份始终为本片精确提交 `f9574895525e3c19bfe7094636c407359baed007`、分支 `refactor/architecture-foundations`、push 事件、Portability 工作流、run142／attempt1、同一 check suite；两个 job ID 和开始时间保持，已完成步骤的原结论／时间未变，没有将另次运行当成本片通过。
+
+前三份原样本仍分别为04:36、04:40、04:47 UTC的 `in_progress`；第三份 Windows已成功、Linux仍进行中。第四份04:53:22.758259 UTC回执确认 [CI42960110776](https://github.com/626619403/Ergora/actions/runs/42960110776) 整体及两OS均 `completed/success`：
+
+|Job|原ID|必要步骤|
+|---|---|---|
+|Ubuntu latest／Python3.11|130324361126|3／3 completed/success|
+|Windows latest／Python3.12|130324361606|4／4 completed/success|
+
+两OS均实际通过 Build and install wheel、Packaged reference identity、Native application regression；Windows另通过 PowerShell5.1 installer and upgrade，共七个必要步骤。Linux的Windows专用步骤为预期 skipped，与提交中的原条件相符；其余初始化／收尾步骤均成功。第四份原 runs 响应12,002B／SHA256 `c7d5dc72a28cad8a615cbac4c4cd9089b7a936b619cb2a5815dfa24c499ba9e4`，jobs响应5,208B／SHA256 `e548dd2e3954c5e867ec09c4fc068e04a0b5cc2d185f2a9cd26df9e9e5c25012`。四样本完整核验另存私有 `independent/commit-f957489/ci-four-samples-audit.json`；原响应和前三份非终态均未改。
+
+结合已独立核过的十一个精确Git对象、父对象／439包与283冻结身份、一次官方远端同完整SHA、本片自己的双OS必要CI，**C6a精确交付通过并终结，Spec／Standards开放finding仍为0／0。** 本次没有网络请求、CI重跑／取消、模型／产品／包重复执行。原两次模型request-changes、覆盖处置、所有原失败及清理／平台限制继续保持；此结论不授予C6b–d、AC6／F6或后续F7–F10完成。

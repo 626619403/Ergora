@@ -1,0 +1,592 @@
+{
+  "schema_version": 1,
+  "slice": "C6b/c",
+  "source_candidate_at_run": "3d6d1220bd600817e748c19f6a9c0fa1332f6ca9",
+  "manifest_digest": "8ecc679575ecc75b44fe9d9ef9cc15043e1dd45875b74a0ee966579fb544cae3",
+  "runs": [
+    {
+      "actual_run": {
+        "at": "2026-11-11T04:31:51.575427+00:00",
+        "label": "design-codex",
+        "instance": "root/analysis/design",
+        "backend": "codex",
+        "native_invoked": true,
+        "admission_exit": 0,
+        "cli_exit": 0,
+        "seconds": 67.67656931094825,
+        "run_id": "b0fd22dab8b24f7499bc06ae0c2d5a34",
+        "status": "succeeded",
+        "input_digest": "d89a21e968fb8244d5b7a01b788379252ea5f1c94e5d76d7643677819f38a18d",
+        "prompt_sha256": "864571af3ed836464012f6b3096b3da0414d454cdc8485ea52bcf6f314ddc629",
+        "manifest_digest": "8ecc679575ecc75b44fe9d9ef9cc15043e1dd45875b74a0ee966579fb544cae3",
+        "observed_processes": 4,
+        "live_sampled_processes": [],
+        "decision": null,
+        "result_sha256": "6bfac548d124c9afb3efbdc713dd5d2f730231e2bba4e93a5725e3d56ec490f4"
+      },
+      "offline_identity_and_read_audit": {
+        "label": "design-codex",
+        "run_id": "b0fd22dab8b24f7499bc06ae0c2d5a34",
+        "instance": "root/analysis/design",
+        "binding": {
+          "tool": "codex"
+        },
+        "status": "succeeded",
+        "input_digest": "d89a21e968fb8244d5b7a01b788379252ea5f1c94e5d76d7643677819f38a18d",
+        "prompt_sha256": "864571af3ed836464012f6b3096b3da0414d454cdc8485ea52bcf6f314ddc629",
+        "manifest_digest": "8ecc679575ecc75b44fe9d9ef9cc15043e1dd45875b74a0ee966579fb544cae3",
+        "complete_bundled_assets_and_ancestor_scope_verified": true,
+        "structural_ancestors": [
+          "root",
+          "root/analysis"
+        ],
+        "bundles": [
+          {
+            "kind": "workflow",
+            "id": "ergora-training-proposal",
+            "version": "1.0.0",
+            "digest": "cf5df77249022c458f84d4e4d9964aa6448bacb1a74b9192a942da9ffcb7e438"
+          },
+          {
+            "kind": "workflow",
+            "id": "ergora-training-analysis",
+            "version": "1.0.0",
+            "digest": "a9edaf8f526bdc8c5dab19ed72f566b696e8d02aee1e52cbf620d5f6f918d917"
+          },
+          {
+            "kind": "agent",
+            "id": "ergora-experiment-designer",
+            "version": "1.0.0",
+            "digest": "44240db7e58bd19b9a07302665a538627e422ffd65d061c160a46435bc408426"
+          }
+        ],
+        "scope_sha256": "a2dc2fd8d56ee1e8955e3dbd2d0f80319542cb67c63ac27dec0426cb8cc151da",
+        "scope_files": 4,
+        "scope_bytes": 1447,
+        "model_full_continuous_utf8_read_verified": true,
+        "complete_scope_reads": {
+          "definitions/workflow/ergora-training-proposal/1.0.0/instructions.md": {
+            "bytes": 481,
+            "sha256": "96348a1c01393d98d38850efdbdf2630d1dbb67708a148977e8b2cbbaf55bdfe",
+            "continuous_utf8_pages": [
+              {
+                "offset": 0,
+                "bytes": 481,
+                "next_offset": null
+              }
+            ],
+            "base64_retries": [],
+            "duplicates": []
+          },
+          "definitions/workflow/ergora-training-analysis/1.0.0/instructions.md": {
+            "bytes": 201,
+            "sha256": "23681af71dd5c815f742d9049ae9bce96aeeb4ec3b5ca8f92ed756b13c2f373e",
+            "continuous_utf8_pages": [
+              {
+                "offset": 0,
+                "bytes": 201,
+                "next_offset": null
+              }
+            ],
+            "base64_retries": [],
+            "duplicates": []
+          },
+          "definitions/agent/ergora-experiment-designer/1.0.0/instructions.md": {
+            "bytes": 310,
+            "sha256": "1c3642b7f24b062696f8bfe8fea89bb5def431f5c70296b884ef29e5649b2e68",
+            "continuous_utf8_pages": [
+              {
+                "offset": 0,
+                "bytes": 310,
+                "next_offset": null
+              }
+            ],
+            "base64_retries": [],
+            "duplicates": []
+          },
+          "definitions/agent/ergora-experiment-designer/1.0.0/skills/ergora-experiment-designer/SKILL.md": {
+            "bytes": 455,
+            "sha256": "bb42fff0ca3d7e801df2a5db8b152e8c3d1053e2af93a5c24a52e18591504bb1",
+            "continuous_utf8_pages": [
+              {
+                "offset": 0,
+                "bytes": 455,
+                "next_offset": null
+              }
+            ],
+            "base64_retries": [],
+            "duplicates": []
+          }
+        },
+        "failed_model_tool_calls": 0,
+        "native_stream_bytes": 13152,
+        "native_stream_sha256": "0ac8cbb0b5bec6c4b3fe7eb3972f243eb0335493613cd67d6960443b00326cf3",
+        "backend_reported_turn_usage": [
+          {
+            "input_tokens": 45716,
+            "cached_input_tokens": 20608,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1340,
+            "reasoning_output_tokens": 364
+          }
+        ],
+        "observed_processes": 4,
+        "live_sampled_processes": []
+      }
+    },
+    {
+      "actual_run": {
+        "at": "2026-11-11T04:32:02.379011+00:00",
+        "label": "measurement-claude",
+        "instance": "root/measurement/review",
+        "backend": "claude-code",
+        "native_invoked": true,
+        "admission_exit": 0,
+        "cli_exit": 1,
+        "seconds": 9.617359853815287,
+        "run_id": "68386417a6804d5d972345fb6622f302",
+        "status": "failed",
+        "input_digest": "2a8dab6750fcc0f31979b94e02f9b8c404dc087b34aa00972e8351b981568d0a",
+        "prompt_sha256": "1eac2ed885aab20ba091fa63af64059b5dd542bd6624cba36957be26cd1338be",
+        "manifest_digest": "8ecc679575ecc75b44fe9d9ef9cc15043e1dd45875b74a0ee966579fb544cae3",
+        "observed_processes": 9,
+        "live_sampled_processes": []
+      },
+      "offline_identity_and_read_audit": {
+        "label": "measurement-claude",
+        "run_id": "68386417a6804d5d972345fb6622f302",
+        "instance": "root/measurement/review",
+        "binding": {
+          "tool": "claude-code"
+        },
+        "status": "failed",
+        "input_digest": "2a8dab6750fcc0f31979b94e02f9b8c404dc087b34aa00972e8351b981568d0a",
+        "prompt_sha256": "1eac2ed885aab20ba091fa63af64059b5dd542bd6624cba36957be26cd1338be",
+        "manifest_digest": "8ecc679575ecc75b44fe9d9ef9cc15043e1dd45875b74a0ee966579fb544cae3",
+        "complete_bundled_assets_and_ancestor_scope_verified": true,
+        "structural_ancestors": [
+          "root",
+          "root/measurement"
+        ],
+        "bundles": [
+          {
+            "kind": "workflow",
+            "id": "ergora-training-proposal",
+            "version": "1.0.0",
+            "digest": "cf5df77249022c458f84d4e4d9964aa6448bacb1a74b9192a942da9ffcb7e438"
+          },
+          {
+            "kind": "workflow",
+            "id": "ergora-measurement-review",
+            "version": "1.0.0",
+            "digest": "8336061c7e67741cb55ee72857d1c890797411d35cf75da050a4133e844e65a8"
+          },
+          {
+            "kind": "agent",
+            "id": "ergora-measurement-reviewer",
+            "version": "1.0.0",
+            "digest": "eb0fb716357a60203318baa5c62f904ac87d00fd40216d197593b33fa4657302"
+          }
+        ],
+        "scope_sha256": "cc6bc1094ca0fc984f72343ebdb520dae6015cd14f6735ad25355c46488c938d",
+        "scope_files": 4,
+        "scope_bytes": 1351,
+        "model_full_continuous_utf8_read_verified": false,
+        "complete_scope_reads": {},
+        "failed_model_tool_calls": 0,
+        "native_stream_bytes": 5657,
+        "native_stream_sha256": "a928f44108d99bfefeb6c8b19b1eb1f7046047f034eb52d3c378cf7efc88b6bb",
+        "backend_reported_turn_usage": [
+          {
+            "output_tokens_details": {
+              "thinking_tokens": 0
+            },
+            "input_tokens": 0,
+            "cache_creation_input_tokens": 0,
+            "cache_read_input_tokens": 0,
+            "output_tokens": 0,
+            "server_tool_use": {
+              "web_search_requests": 0,
+              "web_fetch_requests": 0
+            },
+            "service_tier": "standard",
+            "cache_creation": {
+              "ephemeral_1h_input_tokens": 0,
+              "ephemeral_5m_input_tokens": 0
+            },
+            "inference_geo": "",
+            "iterations": [],
+            "speed": "standard",
+            "fallback_credit": null
+          }
+        ],
+        "observed_processes": 9,
+        "live_sampled_processes": []
+      }
+    },
+    {
+      "actual_run": {
+        "at": "2026-11-11T04:33:09.172266+00:00",
+        "label": "measurement-codex-fallback",
+        "instance": "root/measurement/review",
+        "backend": "codex",
+        "native_invoked": true,
+        "admission_exit": 0,
+        "cli_exit": 0,
+        "seconds": 65.67739673983306,
+        "run_id": "7a944465283f4f2a8d7afaad05700870",
+        "status": "succeeded",
+        "input_digest": "2a8dab6750fcc0f31979b94e02f9b8c404dc087b34aa00972e8351b981568d0a",
+        "prompt_sha256": "1eac2ed885aab20ba091fa63af64059b5dd542bd6624cba36957be26cd1338be",
+        "manifest_digest": "8ecc679575ecc75b44fe9d9ef9cc15043e1dd45875b74a0ee966579fb544cae3",
+        "observed_processes": 4,
+        "live_sampled_processes": [],
+        "decision": "request-changes",
+        "result_sha256": "0792d600c88a7091fa89ac73b6fbc27c525afb16c3d3dc17defb9160f4540f32"
+      },
+      "offline_identity_and_read_audit": {
+        "label": "measurement-codex-fallback",
+        "run_id": "7a944465283f4f2a8d7afaad05700870",
+        "instance": "root/measurement/review",
+        "binding": {
+          "tool": "codex"
+        },
+        "status": "succeeded",
+        "input_digest": "2a8dab6750fcc0f31979b94e02f9b8c404dc087b34aa00972e8351b981568d0a",
+        "prompt_sha256": "1eac2ed885aab20ba091fa63af64059b5dd542bd6624cba36957be26cd1338be",
+        "manifest_digest": "8ecc679575ecc75b44fe9d9ef9cc15043e1dd45875b74a0ee966579fb544cae3",
+        "complete_bundled_assets_and_ancestor_scope_verified": true,
+        "structural_ancestors": [
+          "root",
+          "root/measurement"
+        ],
+        "bundles": [
+          {
+            "kind": "workflow",
+            "id": "ergora-training-proposal",
+            "version": "1.0.0",
+            "digest": "cf5df77249022c458f84d4e4d9964aa6448bacb1a74b9192a942da9ffcb7e438"
+          },
+          {
+            "kind": "workflow",
+            "id": "ergora-measurement-review",
+            "version": "1.0.0",
+            "digest": "8336061c7e67741cb55ee72857d1c890797411d35cf75da050a4133e844e65a8"
+          },
+          {
+            "kind": "agent",
+            "id": "ergora-measurement-reviewer",
+            "version": "1.0.0",
+            "digest": "eb0fb716357a60203318baa5c62f904ac87d00fd40216d197593b33fa4657302"
+          }
+        ],
+        "scope_sha256": "64ab6a0558faaf2e6024d8323da253f296e9021ad96256645bc994f80ad3306e",
+        "scope_files": 4,
+        "scope_bytes": 1351,
+        "model_full_continuous_utf8_read_verified": true,
+        "complete_scope_reads": {
+          "definitions/workflow/ergora-training-proposal/1.0.0/instructions.md": {
+            "bytes": 481,
+            "sha256": "96348a1c01393d98d38850efdbdf2630d1dbb67708a148977e8b2cbbaf55bdfe",
+            "continuous_utf8_pages": [
+              {
+                "offset": 0,
+                "bytes": 481,
+                "next_offset": null
+              }
+            ],
+            "base64_retries": [],
+            "duplicates": []
+          },
+          "definitions/workflow/ergora-measurement-review/1.0.0/instructions.md": {
+            "bytes": 90,
+            "sha256": "10a74282241c0040284a0e61db8cdd20905313f2822db8213888c067a1b76bc1",
+            "continuous_utf8_pages": [
+              {
+                "offset": 0,
+                "bytes": 90,
+                "next_offset": null
+              }
+            ],
+            "base64_retries": [],
+            "duplicates": []
+          },
+          "definitions/agent/ergora-measurement-reviewer/1.0.0/instructions.md": {
+            "bytes": 318,
+            "sha256": "144838b2f40579ee02a367734a2d6252ad40857da6d043cee9a970243c59da6f",
+            "continuous_utf8_pages": [
+              {
+                "offset": 0,
+                "bytes": 318,
+                "next_offset": null
+              }
+            ],
+            "base64_retries": [],
+            "duplicates": []
+          },
+          "definitions/agent/ergora-measurement-reviewer/1.0.0/skills/ergora-measurement-reviewer/SKILL.md": {
+            "bytes": 462,
+            "sha256": "cc6224d1e8d1ac071864af35ff575bfed22ccb3b1ffc2170086abbe5ed904b33",
+            "continuous_utf8_pages": [
+              {
+                "offset": 0,
+                "bytes": 462,
+                "next_offset": null
+              }
+            ],
+            "base64_retries": [],
+            "duplicates": []
+          }
+        },
+        "failed_model_tool_calls": 0,
+        "native_stream_bytes": 12749,
+        "native_stream_sha256": "a54cfb86ff8131a01ccd2e5231e7e9d04bcaefa5a2b357d9c9ce26c1aba47229",
+        "backend_reported_turn_usage": [
+          {
+            "input_tokens": 48540,
+            "cached_input_tokens": 34560,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1472,
+            "reasoning_output_tokens": 516
+          }
+        ],
+        "observed_processes": 4,
+        "live_sampled_processes": []
+      }
+    }
+  ],
+  "authentication_scope": "Claude auth status reported API authentication configured; this does not prove inference availability. Private raw status omitted.",
+  "actual_distinct_backends_succeeded": false,
+  "claude_original_error": "API400 / Bedrock ValidationException: messages.1: system content must contain at least one block",
+  "diagnostic_pair": [
+    {
+      "label": "original-bare",
+      "system_prompt_added": false,
+      "seconds": 6.530619514174759,
+      "status": "failed",
+      "returncode": 1,
+      "prompt_sha256": "596e69cae05811b6786d319c07f0fe52ef8c050a543dd609aa7a3d98448f97c5",
+      "structured_result": null,
+      "terminal_is_error": true,
+      "backend_reported_usage": {
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "output_tokens": 0,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard",
+        "fallback_credit": null
+      },
+      "observed_processes": 11,
+      "live_sampled_processes": []
+    },
+    {
+      "label": "explicit-system",
+      "system_prompt_added": true,
+      "seconds": 5.8798507722094655,
+      "status": "failed",
+      "returncode": 1,
+      "prompt_sha256": "596e69cae05811b6786d319c07f0fe52ef8c050a543dd609aa7a3d98448f97c5",
+      "structured_result": null,
+      "terminal_is_error": true,
+      "backend_reported_usage": {
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        },
+        "input_tokens": 0,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "output_tokens": 0,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 0
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard",
+        "fallback_credit": null
+      },
+      "observed_processes": 12,
+      "live_sampled_processes": []
+    }
+  ],
+  "diagnostic_disposition": "Same failure for minimal prompt and explicit nonempty system. No confirmed adapter fix; no source change, relaxed permissions, hidden backend retry or successful second-backend claim.",
+  "audit_recovery": "First offline auditor compared material-bearing preview resources with metadata-only run context and exited1. Original source/failure retained; corrected comparison checks all saved metadata and separately reconstructs exact whole scope from immutable assets; no model replay.",
+  "usage_scope": "Backend-reported counters, not billing. Cached counters are already part of input; reasoning is reported separately. Claude failed terminal reports zero input/output, not a proof of free execution.",
+  "sources": [
+    {
+      "original": "ac6-backends/training-leaves.py",
+      "bytes": 7868,
+      "sha256": "057b1f9d122bd3d0faf09eed623797e785e61b04d4b95353a83c87cc0c879a3e"
+    },
+    {
+      "original": "ac6-backends/training-results.json",
+      "bytes": 3327,
+      "sha256": "7bfebe5820d52ad97a9f4350a28cf97677a0d2c8df806ec3ca983e9599c0a5d4"
+    },
+    {
+      "original": "ac6-backends/audit-training.py",
+      "bytes": 10044,
+      "sha256": "f610111b373f5b1d40d0b82b34b789d78d9fdfa609b1abe0b90de39cceadd973"
+    },
+    {
+      "original": "ac6-backends/audit-training-r1.py",
+      "bytes": 9891,
+      "sha256": "5e01457fceadb9e3e25b2e5832d0c1f9b6ed3380443834d134c2258f1a967025"
+    },
+    {
+      "original": "ac6-backends/audit-training-r1-failure.txt",
+      "bytes": 292,
+      "sha256": "ded9c8643bc8d804aa3d6fe7193d9575d3472b83a5f8c6e8d181f0c962ea8277"
+    },
+    {
+      "original": "ac6-backends/training-read-audit.json",
+      "bytes": 10710,
+      "sha256": "2463637200929ce19399371b2f027d4b7026f3dea710e732996b04ea5b795c79"
+    },
+    {
+      "original": "ac6-backends/claude-auth-status.stdout",
+      "bytes": 259,
+      "sha256": "207c3407a99b0d8af765c36b81d81a0f6ca8a1fab7f553c0e509930bdc16da28"
+    },
+    {
+      "original": "ac6-backends/claude-auth-status.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original": "ac6-backends/claude-system-probe.py",
+      "bytes": 4372,
+      "sha256": "90938d76f121fb1848445eccb5ed6cc5aac93ffa88bbf1ef47ecd62d1ae44150"
+    },
+    {
+      "original": "ac6-backends/claude-system-probe/results.json",
+      "bytes": 8314,
+      "sha256": "9d062f78d539c540794600ccd075a0d5b5314c9ce54adaece06fe88e20274f1f"
+    },
+    {
+      "original": "ac6-backends/design-codex/result.json",
+      "bytes": 864,
+      "sha256": "f0e66f9e19c4d3f82fb2680c3550f2495d0a83360c0e0588c2c4c2b07c63e4f8"
+    },
+    {
+      "original": "ac6-backends/design-codex/run.json",
+      "bytes": 10952,
+      "sha256": "4ca0475751b0ee346822c4d20d899041ad3ec63b5ec241b69a707fd61c9e7a93"
+    },
+    {
+      "original": "ac6-backends/design-codex/task.txt",
+      "bytes": 1235,
+      "sha256": "7496b108106f4f6571a253ae8988a4f91cbcafdd78be9e4238a3c336380c67e8"
+    },
+    {
+      "original": "ac6-backends/design-codex/admission.stdout",
+      "bytes": 9308,
+      "sha256": "a503003c445b50e6f8803f4f6107c5336577d31c438d0530de7d6e08c09de4f2"
+    },
+    {
+      "original": "ac6-backends/design-codex/admission.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original": "ac6-backends/design-codex/sampled-processes.json",
+      "bytes": 485,
+      "sha256": "791590647ff85f8f5efcbc925d2918baa70cdb5a805f3fa7253bffade503f73f"
+    },
+    {
+      "original": "ac6-backends/measurement-claude/result.json",
+      "bytes": 769,
+      "sha256": "d438fabcb2d6e3e8e37f3d520a71335a6b1ee0b452108c4074f7f7e8d6ec7066"
+    },
+    {
+      "original": "ac6-backends/measurement-claude/run.json",
+      "bytes": 10266,
+      "sha256": "8111c2ae9a5f5569e17a0a25788014d303a6fe24451de0501295c90405fa8c59"
+    },
+    {
+      "original": "ac6-backends/measurement-claude/task.txt",
+      "bytes": 4974,
+      "sha256": "4a8305bdbff168af220f130f9e96b6fb68cc4486b63f9ad6f929e33a30652c6d"
+    },
+    {
+      "original": "ac6-backends/measurement-claude/admission.stdout",
+      "bytes": 9251,
+      "sha256": "55568db692be1704aa0e86aae5f85c40ace0d9b2a4790c91961f4518727d55ac"
+    },
+    {
+      "original": "ac6-backends/measurement-claude/admission.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original": "ac6-backends/measurement-claude/sampled-processes.json",
+      "bytes": 920,
+      "sha256": "400a62716d44a2abba9943c944e5195ade108ce690068383156378fc59510afa"
+    },
+    {
+      "original": "ac6-backends/measurement-codex-fallback/result.json",
+      "bytes": 894,
+      "sha256": "98cb72f29611ed4d23f27d66ae1da3548de21bebb24b2d10e9a7190ea65e4693"
+    },
+    {
+      "original": "ac6-backends/measurement-codex-fallback/run.json",
+      "bytes": 10991,
+      "sha256": "a0fe80652d51fb96417fa71c4b103f7c5d44017099c621ec81683925b55de6d2"
+    },
+    {
+      "original": "ac6-backends/measurement-codex-fallback/task.txt",
+      "bytes": 4974,
+      "sha256": "4a8305bdbff168af220f130f9e96b6fb68cc4486b63f9ad6f929e33a30652c6d"
+    },
+    {
+      "original": "ac6-backends/measurement-codex-fallback/admission.stdout",
+      "bytes": 9344,
+      "sha256": "8df0dacbbac26348a66c4e5004daf7f600f270cb855eff8a7f22a3f065132017"
+    },
+    {
+      "original": "ac6-backends/measurement-codex-fallback/admission.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original": "ac6-backends/measurement-codex-fallback/sampled-processes.json",
+      "bytes": 485,
+      "sha256": "67d0ffc99885f1d3c05463a807a7cc3b9e238afc01c9b5bfda1f172c6ba9333f"
+    },
+    {
+      "original": "ac6-backends/design-codex/original-result.json",
+      "bytes": 3722,
+      "sha256": "6bfac548d124c9afb3efbdc713dd5d2f730231e2bba4e93a5725e3d56ec490f4"
+    },
+    {
+      "original": "ac6-backends/measurement-codex-fallback/original-result.json",
+      "bytes": 3288,
+      "sha256": "0792d600c88a7091fa89ac73b6fbc27c525afb16c3d3dc17defb9160f4540f32"
+    }
+  ],
+  "omitted": [
+    "Private configuration/credentials, absolute paths and process identities.",
+    "Raw auth status, request IDs, native output streams and proposal/review text remain in originals; their bytes/SHA and scope are recorded.",
+    "Diagnostic probes do not claim full Skill reading or workflow acceptance."
+  ],
+  "scope": "Actual unchanged bundled training design leaf and measurement-review leaf. Operator supplies predecessor text; no automatic DAG execution, GPU/runner/performance result, complete kernel workflow or adoption. Original failed backend calls remain; explicit user-authorized fallback only."
+}

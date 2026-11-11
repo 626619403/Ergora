@@ -1,0 +1,797 @@
+{
+  "schema_version": 1,
+  "slice": "C6b/c",
+  "source_candidate_at_run": "3d6d1220bd600817e748c19f6a9c0fa1332f6ca9",
+  "documentation_baseline": "f9574895525e3c19bfe7094636c407359baed007",
+  "source_relation": "Same production/test/packaging/CI tree; original noneditable installed package reused.",
+  "wheel_sha256": "aca2ea19761a0011d4b2b10851962733a5f77990dfc4f8e34450ad6901ecf9d5",
+  "cli_preparation": [
+    {
+      "number": 1,
+      "exit": 0,
+      "seconds": 0.24695392092689872,
+      "stdout_bytes": 1182,
+      "stdout_sha256": "030f1bcecd7656b9a54fc0cdf64047e849589335dffa7341ec4684a921f90077",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "arguments_after_python_I_m_ergora": [
+        "--home",
+        "[SLICE]/control",
+        "composition",
+        "presets"
+      ]
+    },
+    {
+      "number": 2,
+      "exit": 0,
+      "seconds": 0.26569552067667246,
+      "stdout_bytes": 158,
+      "stdout_sha256": "4d4e00eb509acd790e7779c6ca05ee4fbf09c265fba167f492c5e3f87500d755",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "arguments_after_python_I_m_ergora": [
+        "--home",
+        "[SLICE]/control",
+        "templates",
+        "copy",
+        "repository-governance",
+        "[SLICE]/templates/repository-governance"
+      ]
+    },
+    {
+      "number": 3,
+      "exit": 0,
+      "seconds": 0.9794844649732113,
+      "stdout_bytes": 2389,
+      "stdout_sha256": "1b42524d2a86a86f271dd189882abdccf122e52c8b3b76d6b889ceaca8f469e8",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "arguments_after_python_I_m_ergora": [
+        "--home",
+        "[SLICE]/control",
+        "composition",
+        "install-preset",
+        "repository-governance"
+      ]
+    },
+    {
+      "number": 4,
+      "exit": 0,
+      "seconds": 0.24712762283161283,
+      "stdout_bytes": 2538,
+      "stdout_sha256": "d7a756ab09265815fc5bbdba87f4824d24bd33c0f2963f94fd1860c4b31860a2",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "arguments_after_python_I_m_ergora": [
+        "--home",
+        "[SLICE]/control",
+        "composition",
+        "show",
+        "ergora-governance-delivery",
+        "1.0.0"
+      ]
+    },
+    {
+      "number": 5,
+      "exit": 0,
+      "seconds": 0.28834261279553175,
+      "stdout_bytes": 66993,
+      "stdout_sha256": "83ac54f1ac9b1b3aabd2910e2877eaab030fec14c9a6f5d7b05e2f6a1a9da0c9",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "arguments_after_python_I_m_ergora": [
+        "--home",
+        "[SLICE]/control",
+        "composition",
+        "preview",
+        "ergora-governance-delivery",
+        "1.0.0",
+        "--grant",
+        "[SLICE]/repository-governance-grant.json"
+      ]
+    },
+    {
+      "number": 6,
+      "exit": 0,
+      "seconds": 1.321376127190888,
+      "stdout_bytes": 1044,
+      "stdout_sha256": "15d808550fae631c074d0b9f2eb1407e38a7c978b50111b0c60d2c00f53f8de3",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "arguments_after_python_I_m_ergora": [
+        "--home",
+        "[SLICE]/control",
+        "composition",
+        "freeze-manifest",
+        "ergora-governance-delivery",
+        "1.0.0",
+        "--grant",
+        "[SLICE]/repository-governance-grant.json",
+        "--preview-sha256",
+        "d1231431743a8c6a88b78690ec4013ec26a3f2d1a2768c5ee34e50e58cae2774"
+      ]
+    },
+    {
+      "number": 7,
+      "exit": 0,
+      "seconds": 0.36904048593714833,
+      "stdout_bytes": 1044,
+      "stdout_sha256": "15d808550fae631c074d0b9f2eb1407e38a7c978b50111b0c60d2c00f53f8de3",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "arguments_after_python_I_m_ergora": [
+        "--home",
+        "[SLICE]/control",
+        "composition",
+        "verify-manifest",
+        "[SLICE]/control/composition-manifests/d1231431743a8c6a88b78690ec4013ec26a3f2d1a2768c5ee34e50e58cae2774"
+      ]
+    },
+    {
+      "number": 8,
+      "exit": 0,
+      "seconds": 0.25389586482197046,
+      "stdout_bytes": 140,
+      "stdout_sha256": "0a7d3de5544d4b38f7cc131fe7ec83dcd70835d5173259ca4628e29394b23045",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "arguments_after_python_I_m_ergora": [
+        "--home",
+        "[SLICE]/control",
+        "templates",
+        "copy",
+        "large-change",
+        "[SLICE]/templates/large-change"
+      ]
+    },
+    {
+      "number": 9,
+      "exit": 0,
+      "seconds": 1.1125556100159883,
+      "stdout_bytes": 2759,
+      "stdout_sha256": "cbf9dceccb8e8939c45a6f7ad019c2a1b18cc9874b00c11b45fb2aab3d0bf52e",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "arguments_after_python_I_m_ergora": [
+        "--home",
+        "[SLICE]/control",
+        "composition",
+        "install-preset",
+        "large-change"
+      ]
+    },
+    {
+      "number": 10,
+      "exit": 0,
+      "seconds": 0.24083620123565197,
+      "stdout_bytes": 2554,
+      "stdout_sha256": "ee88c03ebcf5b03c2c70157b9578fda56ce770517f27fcd424ccd2d1524f3966",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "arguments_after_python_I_m_ergora": [
+        "--home",
+        "[SLICE]/control",
+        "composition",
+        "show",
+        "ergora-large-change-delivery",
+        "1.0.0"
+      ]
+    },
+    {
+      "number": 11,
+      "exit": 0,
+      "seconds": 0.3160228938795626,
+      "stdout_bytes": 88541,
+      "stdout_sha256": "f0f3553bdf51d0f6ee8803880cfff64874c7fac80f8d844658e5a6223c208f9d",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "arguments_after_python_I_m_ergora": [
+        "--home",
+        "[SLICE]/control",
+        "composition",
+        "preview",
+        "ergora-large-change-delivery",
+        "1.0.0",
+        "--grant",
+        "[SLICE]/large-change-grant.json"
+      ]
+    },
+    {
+      "number": 12,
+      "exit": 0,
+      "seconds": 1.7340595028363168,
+      "stdout_bytes": 1046,
+      "stdout_sha256": "eaa28794c7b1988e31d1718a8594d88abf948035858d0b15aa80656c1bb3627e",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "arguments_after_python_I_m_ergora": [
+        "--home",
+        "[SLICE]/control",
+        "composition",
+        "freeze-manifest",
+        "ergora-large-change-delivery",
+        "1.0.0",
+        "--grant",
+        "[SLICE]/large-change-grant.json",
+        "--preview-sha256",
+        "23ba4611ec03804c8cdf5f4d68125a44e333df019d0b6c4260b11a15588e5e81"
+      ]
+    },
+    {
+      "number": 13,
+      "exit": 0,
+      "seconds": 0.38689836487174034,
+      "stdout_bytes": 1046,
+      "stdout_sha256": "eaa28794c7b1988e31d1718a8594d88abf948035858d0b15aa80656c1bb3627e",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "arguments_after_python_I_m_ergora": [
+        "--home",
+        "[SLICE]/control",
+        "composition",
+        "verify-manifest",
+        "[SLICE]/control/composition-manifests/23ba4611ec03804c8cdf5f4d68125a44e333df019d0b6c4260b11a15588e5e81"
+      ]
+    },
+    {
+      "number": 14,
+      "exit": 0,
+      "seconds": 0.25855599297210574,
+      "stdout_bytes": 158,
+      "stdout_sha256": "b22569869a14411c99f33b3b37997dda841296908330f66b04661132a99c2866",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "arguments_after_python_I_m_ergora": [
+        "--home",
+        "[SLICE]/control",
+        "templates",
+        "copy",
+        "training-optimization",
+        "[SLICE]/templates/training-optimization"
+      ]
+    },
+    {
+      "number": 15,
+      "exit": 0,
+      "seconds": 0.6793896900489926,
+      "stdout_bytes": 1634,
+      "stdout_sha256": "3eeba34cf92d90bbd18e3f2722092c228322cdd9e6a80bb6c569f8f887c0c36d",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "arguments_after_python_I_m_ergora": [
+        "--home",
+        "[SLICE]/control",
+        "composition",
+        "install-preset",
+        "training-optimization"
+      ]
+    },
+    {
+      "number": 16,
+      "exit": 0,
+      "seconds": 0.23901304509490728,
+      "stdout_bytes": 3294,
+      "stdout_sha256": "19c5c24a21889e0c1c904d98acd23c87fddf7b00c78026562b4d3a3d37c5a8a7",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "arguments_after_python_I_m_ergora": [
+        "--home",
+        "[SLICE]/control",
+        "composition",
+        "show",
+        "ergora-training-proposal",
+        "1.0.0"
+      ]
+    },
+    {
+      "number": 17,
+      "exit": 0,
+      "seconds": 0.26938424073159695,
+      "stdout_bytes": 44180,
+      "stdout_sha256": "b0842cb29ec46fba7946ed131c336bf9c97c64e5af4badd735d1c0f9a0e271ad",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "arguments_after_python_I_m_ergora": [
+        "--home",
+        "[SLICE]/control",
+        "composition",
+        "preview",
+        "ergora-training-proposal",
+        "1.0.0",
+        "--grant",
+        "[SLICE]/training-optimization-grant.json"
+      ]
+    },
+    {
+      "number": 18,
+      "exit": 0,
+      "seconds": 0.8659816109575331,
+      "stdout_bytes": 1012,
+      "stdout_sha256": "244ad583fccee36e8764f318851abc27553ac61ea8ecc8be054983c7d801c3c1",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "arguments_after_python_I_m_ergora": [
+        "--home",
+        "[SLICE]/control",
+        "composition",
+        "freeze-manifest",
+        "ergora-training-proposal",
+        "1.0.0",
+        "--grant",
+        "[SLICE]/training-optimization-grant.json",
+        "--preview-sha256",
+        "f19085b4c06c91aa87a362ee3677ea4a99ceb1f203744a34618a9734690ba714"
+      ]
+    },
+    {
+      "number": 19,
+      "exit": 0,
+      "seconds": 0.315419839695096,
+      "stdout_bytes": 1012,
+      "stdout_sha256": "244ad583fccee36e8764f318851abc27553ac61ea8ecc8be054983c7d801c3c1",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "arguments_after_python_I_m_ergora": [
+        "--home",
+        "[SLICE]/control",
+        "composition",
+        "verify-manifest",
+        "[SLICE]/control/composition-manifests/f19085b4c06c91aa87a362ee3677ea4a99ceb1f203744a34618a9734690ba714"
+      ]
+    },
+    {
+      "number": 20,
+      "exit": 0,
+      "seconds": 0.5858421032316983,
+      "stdout_bytes": 5717,
+      "stdout_sha256": "ee1bfa5269534414c44c36f433cc8ffe66de3bd10a1c6d91ff2a67635d89faab",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "arguments_after_python_I_m_ergora": [
+        "--home",
+        "[SLICE]/control",
+        "project",
+        "register",
+        "[SLICE]/registration.json",
+        "--revision",
+        "0"
+      ]
+    },
+    {
+      "number": 21,
+      "exit": 0,
+      "seconds": 0.23377800174057484,
+      "stdout_bytes": 5717,
+      "stdout_sha256": "ee1bfa5269534414c44c36f433cc8ffe66de3bd10a1c6d91ff2a67635d89faab",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "arguments_after_python_I_m_ergora": [
+        "--home",
+        "[SLICE]/control",
+        "project",
+        "show",
+        "demo"
+      ]
+    }
+  ],
+  "manifests": {
+    "repository-governance": {
+      "digest": "d90d8b82de570216e149ae9cbaef4c78490f557e23f5fe2ea22839b66e38ea5a",
+      "manifest": {
+        "execution_authorized": false,
+        "grant": {
+          "limits": {
+            "concurrency": 4,
+            "depth": 8,
+            "instances": 128,
+            "material_bytes": 262144
+          },
+          "permissions": {
+            "network": [],
+            "read": [
+              "workspace",
+              "definitions"
+            ],
+            "shell": true,
+            "write": [
+              "workspace"
+            ]
+          },
+          "schema_version": 1
+        },
+        "kind": "composition-manifest",
+        "preview_sha256": "d1231431743a8c6a88b78690ec4013ec26a3f2d1a2768c5ee34e50e58cae2774",
+        "root": {
+          "digest": "e82c02d01d2c717a38f35f242107efce32dd873027a4a3a6fb0f18f7d1fae077",
+          "id": "ergora-governance-delivery",
+          "kind": "workflow",
+          "version": "1.0.0"
+        },
+        "schema_version": 1
+      },
+      "root": {
+        "kind": "workflow",
+        "id": "ergora-governance-delivery",
+        "version": "1.0.0",
+        "digest": "e82c02d01d2c717a38f35f242107efce32dd873027a4a3a6fb0f18f7d1fae077"
+      },
+      "units": [
+        "knowledge-map",
+        "boundary-test"
+      ]
+    },
+    "large-change": {
+      "digest": "4bf651f95a2247b57bc246e23d3b0a6c52f005e8e835a9ad1df02b4cf9cfefa0",
+      "manifest": {
+        "execution_authorized": false,
+        "grant": {
+          "limits": {
+            "concurrency": 4,
+            "depth": 8,
+            "instances": 128,
+            "material_bytes": 262144
+          },
+          "permissions": {
+            "network": [],
+            "read": [
+              "workspace",
+              "definitions"
+            ],
+            "shell": true,
+            "write": [
+              "workspace"
+            ]
+          },
+          "schema_version": 1
+        },
+        "kind": "composition-manifest",
+        "preview_sha256": "23ba4611ec03804c8cdf5f4d68125a44e333df019d0b6c4260b11a15588e5e81",
+        "root": {
+          "digest": "25dbfff6830e4123bedbfe975c964de96b8a9ce0ed8c76e8f365fecf2f7e2cc8",
+          "id": "ergora-large-change-delivery",
+          "kind": "workflow",
+          "version": "1.0.0"
+        },
+        "schema_version": 1
+      },
+      "root": {
+        "kind": "workflow",
+        "id": "ergora-large-change-delivery",
+        "version": "1.0.0",
+        "digest": "25dbfff6830e4123bedbfe975c964de96b8a9ce0ed8c76e8f365fecf2f7e2cc8"
+      },
+      "units": [
+        "contract",
+        "server",
+        "client",
+        "integration-tests"
+      ]
+    },
+    "training-optimization": {
+      "digest": "8ecc679575ecc75b44fe9d9ef9cc15043e1dd45875b74a0ee966579fb544cae3",
+      "manifest": {
+        "execution_authorized": false,
+        "grant": {
+          "limits": {
+            "concurrency": 4,
+            "depth": 8,
+            "instances": 128,
+            "material_bytes": 262144
+          },
+          "permissions": {
+            "network": [],
+            "read": [
+              "workspace",
+              "definitions"
+            ],
+            "shell": false,
+            "write": []
+          },
+          "schema_version": 1
+        },
+        "kind": "composition-manifest",
+        "preview_sha256": "f19085b4c06c91aa87a362ee3677ea4a99ceb1f203744a34618a9734690ba714",
+        "root": {
+          "digest": "cf5df77249022c458f84d4e4d9964aa6448bacb1a74b9192a942da9ffcb7e438",
+          "id": "ergora-training-proposal",
+          "kind": "workflow",
+          "version": "1.0.0"
+        },
+        "schema_version": 1
+      },
+      "root": {
+        "kind": "workflow",
+        "id": "ergora-training-proposal",
+        "version": "1.0.0",
+        "digest": "cf5df77249022c458f84d4e4d9964aa6448bacb1a74b9192a942da9ffcb7e438"
+      },
+      "units": []
+    }
+  },
+  "page": {
+    "seconds": 5.803634934592992,
+    "exit": 0,
+    "driver_sha256": "3bd965e0c2e719833b022e29eb1f22d534bcf05e44edd0622da5a504680aa01b",
+    "checks": [
+      "c6b-governance-v6 original template read",
+      "c6b-governance-v6 exact template units",
+      "c6b-governance-v6 original full manifest",
+      "c6b-governance-v6 formal preview200",
+      "c6b-governance-v6 page uses explicit work-units-v2",
+      "c6b-governance-v6 original envelope admission-v6",
+      "c6b-governance-v6 exact frozen manifest preview",
+      "c6b-governance-v6 all explicit assignments",
+      "c6b-governance-v6 writer choices preserved",
+      "c6b-governance-v6 review default preserved as request",
+      "c6b-governance-v6 exact published creation",
+      "c6b-governance-v6 creation bound to accepted snapshot",
+      "c6b-governance-v6 creation does not start runtime",
+      "c6b-large-v6 original template read",
+      "c6b-large-v6 exact template units",
+      "c6b-large-v6 original full manifest",
+      "c6b-large-v6 formal preview200",
+      "c6b-large-v6 page uses explicit work-units-v2",
+      "c6b-large-v6 original envelope admission-v6",
+      "c6b-large-v6 exact frozen manifest preview",
+      "c6b-large-v6 all explicit assignments",
+      "c6b-large-v6 writer choices preserved",
+      "c6b-large-v6 review default preserved as request",
+      "c6b-large-v6 exact published creation",
+      "c6b-large-v6 creation bound to accepted snapshot",
+      "c6b-large-v6 creation does not start runtime",
+      "c6b-governance-v6 reload reads original creation identity",
+      "c6b-governance-v6 readback does not infer execution",
+      "c6b-large-v6 reload reads original creation identity",
+      "c6b-large-v6 readback does not infer execution",
+      "no page errors"
+    ],
+    "page_errors": [],
+    "scope": "Actual current noneditable UI v6 preview/create/readback for both development domains; inert trusted checks, no service/worker/model/task start/approval. Default Claude request is not authentication or execution evidence. Original C5c six-stage journeys retain their own source/config identity."
+  },
+  "offline_audit": {
+    "at": "2026-11-11T04:29:06.861601+00:00",
+    "candidate": "3d6d1220bd600817e748c19f6a9c0fa1332f6ca9",
+    "cli_preparation_commands": 21,
+    "cli_readback_commands": 2,
+    "http_records": 69,
+    "http_methods": {
+      "GET": 65,
+      "POST": 4
+    },
+    "all_http_bytes_match": true,
+    "http_statuses": {
+      "200": 66,
+      "400": 3
+    },
+    "runtime_submission_read_limits": "Three original GET submission reads returned400 for intentionally incomplete creation-only installation; retained, no submission attempted",
+    "page_checks": 31,
+    "page_errors": [],
+    "tasks": [
+      {
+        "id": "c6b-governance-v6",
+        "preview_sha256": "db81997a9b1f255c6d1b6f4d7ba21f297ee3a50805bd96a1a631e70b7e58d7f8",
+        "envelope_sha256": "dd6519ea54e1ebb5671ac1a1fd7a7e3ca7a028f63ccae7d48477796a2b03bc5f",
+        "intent_sha256": "db81997a9b1f255c6d1b6f4d7ba21f297ee3a50805bd96a1a631e70b7e58d7f8",
+        "preview_trace": "0030",
+        "create_trace": "0031",
+        "published_files": {
+          "task.json": {
+            "bytes": 1783,
+            "sha256": "ae4809618cb42073d470ba5584006dfe6255a2215154ac263cbc11276abec4d8"
+          },
+          "policy.json": {
+            "bytes": 1189,
+            "sha256": "45a631b88ba7dbcdaa80f2971d0c678a810f67641d7521086dca285aa6107c3b"
+          },
+          "binding.json": {
+            "bytes": 682,
+            "sha256": "a39825e8aa52ed00adfc87ae572c27763af55f9dc7692c00c867984ef42cd2b5"
+          },
+          "compiled.json": {
+            "bytes": 39573,
+            "sha256": "fd496f57877a43013302493a8024b3ec15b0f21ea22bf56cf35df3879846efea"
+          },
+          "project.json": {
+            "bytes": 1499,
+            "sha256": "fc6da8e1f420405a7665f4261d1e04455064d7baf37e87c28ec1f1dcae4df56c"
+          },
+          "task.spec.json": {
+            "bytes": 124307,
+            "sha256": "b0db5e639cb558fed985ab2a625398bd256166103988b40883274fc5e735863d"
+          },
+          "agent-bindings.json": {
+            "bytes": 6123,
+            "sha256": "2fab1f347b7ccf285e2c7fa976d9a91a6048ae5531365769022e4b1c2f545c9c"
+          }
+        },
+        "cli_readback_exit": 0,
+        "cli_readback_bytes": 154469,
+        "cli_readback_sha256": "e01ea4e3e2ad563430a4d0ba354ffeb3fc97e5994489ca1d4610c652f103241e"
+      },
+      {
+        "id": "c6b-large-v6",
+        "preview_sha256": "c6c76b68133356de490132b041e16bc2b8d481504ac9df5d37979003ee9d960d",
+        "envelope_sha256": "f19577edb320c21bd847f8557e1863033d7b438e8aac90109bebd41c9c2d70e5",
+        "intent_sha256": "c6c76b68133356de490132b041e16bc2b8d481504ac9df5d37979003ee9d960d",
+        "preview_trace": "0037",
+        "create_trace": "0038",
+        "published_files": {
+          "task.json": {
+            "bytes": 2410,
+            "sha256": "e443c039e3e3f819a4c783c8743362515e6e2f195f9fc503809d14a166c3e6d4"
+          },
+          "policy.json": {
+            "bytes": 1252,
+            "sha256": "9ba8ba8ade5e4e5c955ee2f1709195ec58d65cb92b1faec6124436eee56932b5"
+          },
+          "binding.json": {
+            "bytes": 682,
+            "sha256": "e495483cfdd39add57adf584b96dafab9ac6e527c04b3b3de1c3edd7c45ae9e7"
+          },
+          "compiled.json": {
+            "bytes": 41553,
+            "sha256": "89c259b8bb6289157d8acae2d8a3bcdea5ecd5b94212609381cfc2ea2e6de540"
+          },
+          "project.json": {
+            "bytes": 1499,
+            "sha256": "fc6da8e1f420405a7665f4261d1e04455064d7baf37e87c28ec1f1dcae4df56c"
+          },
+          "task.spec.json": {
+            "bytes": 162558,
+            "sha256": "b84c8d93a196f316f78e384c7b7cad8e51410a157beb623cd4a68fee65757369"
+          },
+          "agent-bindings.json": {
+            "bytes": 6123,
+            "sha256": "2fab1f347b7ccf285e2c7fa976d9a91a6048ae5531365769022e4b1c2f545c9c"
+          }
+        },
+        "cli_readback_exit": 0,
+        "cli_readback_bytes": 200499,
+        "cli_readback_sha256": "6f9fe185642d94dd650fb8140e1ab48bc08938643bb5cf57bbc361de769e6494"
+      }
+    ],
+    "protected_files_unchanged": 178,
+    "new_runtime_files": 20,
+    "new_runtime_files_exact_contracts_intents_receipts_and_locks": true,
+    "control_files_and_logical_dump_unchanged": true,
+    "no_native_agent_or_runtime_task_start": true,
+    "http_exit": 0,
+    "owned_http_alive": false,
+    "port_open": false,
+    "browser_cleanup": {
+      "at": "2026-11-11T04:27:07.672246+00:00",
+      "named_close_exit": 0,
+      "observed_processes": 6,
+      "live_sampled_processes": [],
+      "scope": "One named browser tree observed after open; no full short-lived lifecycle assertion."
+    },
+    "scope": "Current installed CLI and actual page v6 publication/readback only. No authentication, models, six-stage rerun, checks quality or approval evidence. Original two private driver failures retained; current browser5.80s is automation wall time, not runtime speedup."
+  },
+  "failures_retained": [
+    {
+      "attempt": "browser-r1",
+      "effect": "Select locator timeout; zero checks or writes."
+    },
+    {
+      "attempt": "browser-r2",
+      "effect": "Read before template UI application; old generation invalidated; no preview/create."
+    },
+    {
+      "attempt": "audit-r1",
+      "effect": "Incorrect all200 expectation; original three submission400s retained. Corrected offline audit only."
+    }
+  ],
+  "sources": [
+    {
+      "original": "ac6-walkthroughs/prepare.py",
+      "bytes": 5102,
+      "sha256": "6105e9b9e991893714d38cde92b0921d84f76a3a00725134dbe340158ee294d0"
+    },
+    {
+      "original": "ac6-walkthroughs/preparation.json",
+      "bytes": 27316,
+      "sha256": "27cccda544493f65c021e626b6201fa1dda65f781d556349009291ec443bdda3"
+    },
+    {
+      "original": "ac6-walkthroughs/manifests.json",
+      "bytes": 4162,
+      "sha256": "3859290793027eb38c8f19643717429fdb12a4a2c5d4e085a478bbab5a777714"
+    },
+    {
+      "original": "ac6-walkthroughs/browser.js",
+      "bytes": 7604,
+      "sha256": "3bd965e0c2e719833b022e29eb1f22d534bcf05e44edd0622da5a504680aa01b"
+    },
+    {
+      "original": "ac6-walkthroughs/browser-command.json",
+      "bytes": 179,
+      "sha256": "001355ab5c5bef6306bf55822ef421aff6013f24106c8a823a5106545ac3f536"
+    },
+    {
+      "original": "ac6-walkthroughs/browser-result.json",
+      "bytes": 72104,
+      "sha256": "8b052e22d8938620f1635de82f4d40e8a7abd51f4f67b0dcf924f726c3f5ea3e"
+    },
+    {
+      "original": "ac6-walkthroughs/audit.py",
+      "bytes": 6619,
+      "sha256": "b637833c37c0473ad8c3f742a95d444acdc0f6fd1731a08c7ec93e824794d311"
+    },
+    {
+      "original": "ac6-walkthroughs/audit.json",
+      "bytes": 4672,
+      "sha256": "318bee735b39007c295795881f9b172475ae778c176900b70a4535d8389d3d65"
+    },
+    {
+      "original": "ac6-walkthroughs/browser-r1.js",
+      "bytes": 7150,
+      "sha256": "4765008ce84215639b74a53a4bb70a1c1ec6415d4ae14203e5c6ae8af974105c"
+    },
+    {
+      "original": "ac6-walkthroughs/browser-r1-result.json",
+      "bytes": 2799,
+      "sha256": "67b954d25fb52a43e5c7e3888d4f0792f1711ff9587d7665969ee9db59403f13"
+    },
+    {
+      "original": "ac6-walkthroughs/browser-r2.js",
+      "bytes": 7492,
+      "sha256": "2dcafc14adcaa92c5e93bd9187b0409b7b5838622770074305ad11152635578a"
+    },
+    {
+      "original": "ac6-walkthroughs/browser-r2-result.json",
+      "bytes": 2798,
+      "sha256": "dc01e9d71e318d40335ecf6bdf2de6d76bcc82fd8955f71f6d32020825a7e256"
+    },
+    {
+      "original": "ac6-walkthroughs/audit-r1.py",
+      "bytes": 6115,
+      "sha256": "9426ab7ed32e433a3d9ec5865680688aa6fbde3ea986dafc2bb319d2368066c3"
+    },
+    {
+      "original": "ac6-walkthroughs/audit-r1-failure.txt",
+      "bytes": 364,
+      "sha256": "b84b27508d5247db3363eda5e408f3f54432e82cda173c0db1791f732cf63284"
+    },
+    {
+      "original": "ac6-walkthroughs/http-server.py",
+      "bytes": 3962,
+      "sha256": "d1233314a239c20c2e1a5837e732271cf513228c7af26a3f2009bedbd500779f"
+    },
+    {
+      "original": "ac6-walkthroughs/http-command-result.json",
+      "bytes": 294,
+      "sha256": "1a88127d1f424fb6f8f8c6234bc15be5958220654e28e36ade27ae7a960771a7"
+    },
+    {
+      "original": "ac6-walkthroughs/http/before.json",
+      "bytes": 36814,
+      "sha256": "71b68f13b52b50f26eee7a1eb261e1ef2269dabbbf3b5317cc7f5f08093dd61b"
+    },
+    {
+      "original": "ac6-walkthroughs/http/after.json",
+      "bytes": 36814,
+      "sha256": "71b68f13b52b50f26eee7a1eb261e1ef2269dabbbf3b5317cc7f5f08093dd61b"
+    },
+    {
+      "original": "ac6-walkthroughs/http/cleanup.json",
+      "bytes": 575,
+      "sha256": "6b6bb0b741bdb3e70193d3a7dbff8eef41155ad0fbd33294107861574f441441"
+    },
+    {
+      "original": "ac6-walkthroughs/browser-owned.json",
+      "bytes": 689,
+      "sha256": "e584d736003bef1b0cc50e73618b3187539eff978150872a383fc1eddbcb7a37"
+    },
+    {
+      "original": "ac6-walkthroughs/browser-cleanup.json",
+      "bytes": 230,
+      "sha256": "b3aa60ed9bc496bd5e0ebfad249bcc5cc972d843751bdec26badaaa962ccc28c"
+    }
+  ],
+  "omitted": [
+    "Private absolute paths/port and process identities; argv paths are replaced with [SLICE].",
+    "Original stdout/stderr and full page request/response bodies, definitions, contracts, and per-file state maps.",
+    "Public projection hashes identify retained originals; this projection is not their complete replacement."
+  ],
+  "scope": "Actual CLI and page publication/readback only. Inert trusted checks and incomplete creation-only installation; no native Agent, six-stage execution, approval or project-quality claim. Original three submission GET400s remain."
+}

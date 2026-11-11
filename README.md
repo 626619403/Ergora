@@ -8,6 +8,8 @@ Ergora 用任务合同明确目标、角色、修改范围和验收标准，把�
 
 [安装与日常使用](docs/USAGE.md) · [Windows 安装](docs/WINDOWS.md) · [训练优化手册](docs/TRAINING.md) · [Agent 选择与正式执行](docs/AGENT_BACKENDS.md) · [工作流组合](docs/WORKFLOW_DEFINITIONS.md) · [工具接入](docs/INTEGRATIONS.md) · [单文件参考发行](docs/distribution/multi-agent-development-platform.html) · [计划与进度](docs/PLAN.md)
 
+首次使用专家组合可从[三模板入门旅程](docs/TEMPLATE_WALKTHROUGHS.md)开始：准备完整manifest，选择逐实例后端，再创建开发任务或调用训练提案叶。
+
 ```bash
 git clone --branch main https://github.com/626619403/Ergora.git
 cd Ergora

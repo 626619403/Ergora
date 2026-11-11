@@ -2,6 +2,8 @@
 
 Ergora 提供 Linux / Windows 本地 CLI 与图形控制面，并保留 v2.2 的完整六阶段 Linux 参考发行。控制面可以先独立使用；项目工具、工单、服务和实验环境按需接入。Windows 的 PowerShell 安装、Agent 与 WSL2 范围见 [Windows 手册](WINDOWS.md)。已实现的能力和实际验收范围见 [计划与进度](PLAN.md)。
 
+第一次选择模板时，可沿[三模板入门旅程](TEMPLATE_WALKTHROUGHS.md)完成专家组合、逐实例后端、页面v6创建、原ID恢复与训练提案，再回到本手册查具体命令。
+
 ## 从空环境安装
 
 基础环境为 Linux、Git、Python 3.11+、venv / pip。Ubuntu 24.04 可以先安装系统基础包：
