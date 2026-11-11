@@ -4,8 +4,10 @@
 
 ## 当前检查点
 
-- 仓库 `626619403/Ergora`；工作分支 `refactor/architecture-foundations`；当前已提交/普通推送 `f9574895525e3c19bfe7094636c407359baed007`。不自动合入 main 或强推。
-- C6a已普通提交／推送；新独立核11精确Git对象及一次官方Git Ref API同完整SHA通过，生产／测试／打包／CI内容保持；自己的CI42960110776第四样本双OS七必要步骤success/completed，前三In progress原件保持，原评审者八份原响应离线终核通过，C6a精确交付终结。[C6b/c新片](plans/2026-11-11-template-walkthroughs.md)已记录21准备CLI／2原ID读回、实际页面31检查与69HTTP（含3个预期submission读取400），创建夹具未执行六阶段；内置训练设计Codex成功、Claude真实400失败、相同输入Codex显式回退审查request-changes，非空system最小对照仍400。两成功调用各四祖先资料连续UTF-8到null及原用量已核，通用指南／三投影已写；实际自身首审／聚焦R2各自范围保持、五scope全文已核。新完整16文件独立两轴通过，P2／P3已关闭，W1–W5本地完成；本片自己的普通提交／CI／精确远端仍待；[本片记录](delivery/2026-11-11-template-walkthroughs.md)。
+- 仓库 `626619403/Ergora`；工作分支 `refactor/architecture-foundations`；当前已提交/普通推送 `c1f31fcfa38ac25085e287c507377be422786026`。不自动合入 main 或强推。
+- [C6a容量](delivery/2026-11-11-composition-capacity.md)已精确交付f957489：五组静态／页面测量、完整资料和预算拒绝保持，独立Git／Ref及自己的CI42960110776第四样本／原评审终核通过；没有将画布容量称作同数量Agent已执行。
+- [C6b/c旅程与后端](delivery/2026-11-11-template-walkthroughs.md)已精确交付c1f31fc：21准备CLI／2读回、两域页面创建、训练只读叶与明确回退、完整祖先读取及指南／三投影完成；新完整16文件独立两轴开放0／0。自己的CI42964143325第四样本双OS七必要步骤success/completed，原评审核四份八原body及作者HTTPS200同完整SHA通过；原独立Ref超时、smart-Git TLS失败与前三In progress保持，不称评审者直接网络成功。C6b页面未跑六阶段，Claude失败及Codex request-changes范围保持。
+- 当前[C6d架构／平台](plans/2026-11-11-architecture-platform.md)：原架构逐字归档，当前职责／五图、格式表／平台／两手册导航完成；第二静态20文件／413链接／6秘密值issue0。实际自身208.25秒approve／17附件与五scope完整读取、原用量投影已核；最终完整20文件新独立两轴开放0／0，inventory命名P3已关闭。后补安装说明明确开发分支、Windows同分支ZIP和固定提交，由独立复核覆盖，未借原模型判词；本地出口完成，最终冻结／普通提交及自己的CI／远端终核待，AC6/F6未关闭。
 - AC5 C3a–c 精确交付已终结。[D4/D5](delivery/2026-11-10-definition-resource-inheritance.md)提交 `4636d77377bf63f15c357cf14660024e3ae1f939` 自己的 CI42799311145 双OS七必要步骤及独立精确对象/HTTPS通过。
 - [C3d联合修订](delivery/2026-11-10-definition-joint-revisions.md)本地出口通过：118次CLI、23次预期拒绝、重复模板实例/职责/逐叶后端准入、实际页面联合修订、旧对象/快照保持；真实自身模板406.36秒approve，新独立20文件Spec/Standards通过，开放finding0。上述45c2de4已推送；自己的[CI42807885966](https://github.com/626619403/Ergora/actions/runs/42807885966)第四份样本双OS七必要步骤success/completed、原评审者离线终核及精确对象/一次独立HTTPS同SHA通过，精确交付终结。
 - [C4a嵌套图](delivery/2026-11-10-composition-graph.md)精确交付完成：a60a67e自己的[CI42817897236](https://github.com/626619403/Ergora/actions/runs/42817897236)第三样本双OS七必要步骤成功，原评审者核精确26Git对象/436包/283冻结及一次独立HTTPS同SHA。原28回归、三域/重复实例与R4受影响旅程、实际自身201.64秒approve/五scope读取、完整独立两轴和清理保持原范围，CG1–3关闭。

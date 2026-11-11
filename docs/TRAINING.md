@@ -6,7 +6,7 @@
 
 训练领域组合仍提供只读proposal叶，由操作者提供workload和前驱资料；开发任务的`work-units-v2`不会自动调度训练实验或批准候选。全部祖先Skill/上下文仍须完整交付，真实设备运行和结果采用继续按本手册的runner/gate处理。
 
-Windows 原生可设计训练模板、运行提案角色并管理记忆 / Skill；ForgeKernel、mini 驱动及完整参考实验执行请使用 WSL2/Linux，可信参考执行器还要求 Linux 容器。原生安装不会配置 CUDA、GPU 或这些参考服务，详见 [Windows 手册](WINDOWS.md)。
+Windows 原生可设计训练模板、普通调用提案角色并管理记忆 / Skill；带完整Skill附件的组合单叶使用Linux task-MCP，须在WSL2/Linux运行。ForgeKernel、mini 驱动及完整参考实验执行同样使用WSL2/Linux，可信参考执行器还要求Linux容器。原生安装不会配置CUDA、GPU或这些参考服务，详见[Windows手册](WINDOWS.md)。
 
 ## 准备工作
 

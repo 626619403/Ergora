@@ -8,6 +8,8 @@ Ergora 0.2 提供原生 Windows CLI 和本地图形控制台，与 Linux 使用�
 |---|---|---|
 |CLI、网页、项目注册与分层工具选择|支持|支持|
 |三个模板的复制、角色合同、工作单元 DAG 与输入编译|支持|支持|
+|独立Agent／嵌套Workflow定义、完整资源修订、preview／manifest／组合图|支持静态编辑、校验与分享；完整包可导出|支持；运行时仍须另做准入|
+|固定任务MCP、带Skill附件的组合单叶与正式v6执行|使用WSL2/Linux；原生环境创建scope会明确拒绝|task-MCP需同一解释器安装可选SDK；完整执行另需参考运行时和可信容器|
 |交接包离线核对|基础CLI支持，无需在线服务或SDK|支持|
 |闭合原run证据索引、预算与交接收集|在WSL2/Linux中的Ergora入口操作|需登记完整参考运行时、Temporal和原材料|
 |Codex / Claude Code 独立角色调用|原生 `.exe`，认证由各工具完成|Linux CLI|
@@ -19,13 +21,15 @@ Ergora 0.2 提供原生 Windows CLI 和本地图形控制台，与 Linux 使用�
 
 原生安装不会部署完整参考服务。查看、设计模板与运行一个角色，并不产生正式任务验收。旧 [单文件 HTML](distribution/multi-agent-development-platform.html) 仍是冻结的 Linux v2.2 发行；Windows 版本从本仓库安装。
 
+“Agent与组合库”的结构继承、串并行依赖、具名端口与逐叶默认后端属于跨平台静态数据；导入或freeze不会启动Agent。普通 `agent run` 的原生后端能力与组合单叶的 `task-mcp` 模式不同：后者使用Linux no-follow文件描述符读取固定scope，不能由安装MCP SDK或Windows模型认证消除平台限制。开发／训练完整祖先Skill读取及页面v6创建的顺序见[三模板入门旅程](TEMPLATE_WALKTHROUGHS.md)，其中Linux运行步骤在WSL2内完成。Windows CI验证其明确选择的安装／应用检查，不推导WSL2、双后端或GPU实测通过。
+
 ## 安装控制面
 
-已有 Python 3.11+、Git 时，在普通 PowerShell 中执行。以下从main安装；尚未发布的源码特性使用维护者提供的功能分支：
+已有 Python 3.11+、Git 时，在普通 PowerShell 中执行。本文的组合／执行能力目前随 `refactor/architecture-foundations` 开发分支交付，以下clone和空环境ZIP选择同一分支；已有clone也先选择该分支，或固定所需验收记录的完整提交，再运行安装器。包版本号相同不代表源码相同。
 
 ```powershell
 New-Item -ItemType Directory -Force "$HOME\source" | Out-Null
-git clone --branch main https://github.com/626619403/Ergora.git "$HOME\source\Ergora"
+git clone --branch refactor/architecture-foundations https://github.com/626619403/Ergora.git "$HOME\source\Ergora"
 Set-Location "$HOME\source\Ergora"
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1 -AddToPath
 & "$env:LOCALAPPDATA\Ergora\bin\ergora.exe" --version
@@ -34,7 +38,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1 -A
 
 打开 `http://127.0.0.1:8977`。控制台资源随包提供，无需 Node 或前端构建。`-AddToPath` 将命令目录加入当前用户 PATH，新终端可直接使用 `ergora`；已有终端用上述绝对路径。命令中的 ExecutionPolicy 仅作用于这次 PowerShell 进程；组织策略仍可能要求使用签名脚本或由管理员部署。
 
-空环境先从 GitHub 下载 [源码 ZIP](https://github.com/626619403/Ergora/archive/refs/heads/main.zip)，解压到用户的持久目录，在包含 `pyproject.toml` 的目录打开 PowerShell：
+空环境先从 GitHub 下载[同分支源码ZIP](https://github.com/626619403/Ergora/archive/refs/heads/refactor/architecture-foundations.zip)，解压到用户的持久目录，在包含 `pyproject.toml` 的目录打开 PowerShell：
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1 -InstallPrerequisites -AddToPath

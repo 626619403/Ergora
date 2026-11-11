@@ -1,0 +1,693 @@
+{
+  "schema_version": 1,
+  "kind": "architecture-source-inventory",
+  "baseline": "c1f31fcfa38ac25085e287c507377be422786026",
+  "source_tree": "bff8c45480c31d82794cdf1dbe1775eed8abd940",
+  "original_receipt": {
+    "source_head": "f9574895525e3c19bfe7094636c407359baed007",
+    "bytes": 27971,
+    "sha256": "02a336d1c52bd965ccf2bf1c7db6482f2167f1b9fc1140eec402fc05e3a00ac2"
+  },
+  "scope": "Read-only AST of current first-party package, including function-local imports as in existing architecture test. Dynamic imports, subprocess calls, JS import relations and runtime semantics require separate source inspection. No new product assertion/test or invocation.",
+  "python": {
+    "modules": 53,
+    "local_import_edges": 203,
+    "acyclic": true,
+    "dependencies": {
+      "__init__": [],
+      "__main__": [
+        "cli"
+      ],
+      "agent_backends": [
+        "components",
+        "contracts",
+        "processes"
+      ],
+      "agent_definitions": [
+        "agents",
+        "contracts",
+        "definition_bundles",
+        "state"
+      ],
+      "agent_runs": [
+        "agent_backends",
+        "agent_definitions",
+        "agents",
+        "bindings",
+        "contracts",
+        "memory",
+        "projects",
+        "reference",
+        "skill_assets",
+        "state",
+        "task_mcp",
+        "workflow_definitions"
+      ],
+      "agents": [
+        "agent_backends",
+        "components",
+        "contracts",
+        "processes"
+      ],
+      "asset_trees": [],
+      "backups": [
+        "agent_definitions",
+        "asset_trees",
+        "contracts",
+        "skill_assets",
+        "state",
+        "workflow_definitions"
+      ],
+      "bindings": [
+        "agents",
+        "components",
+        "contracts",
+        "kernel"
+      ],
+      "cli": [
+        "agent_definitions",
+        "agent_runs",
+        "agents",
+        "backups",
+        "contracts",
+        "definition_bundles",
+        "evaluation",
+        "handoff",
+        "kernel",
+        "memory",
+        "optimization",
+        "projects",
+        "reference",
+        "registrations",
+        "research",
+        "scheduling",
+        "services",
+        "skill_assets",
+        "skills",
+        "state",
+        "tasks",
+        "tools",
+        "web",
+        "workflow_definitions"
+      ],
+      "components": [],
+      "contracts": [],
+      "definition_bundles": [
+        "asset_trees",
+        "contracts",
+        "skill_assets",
+        "state"
+      ],
+      "drafts": [
+        "reference",
+        "state"
+      ],
+      "evaluation": [
+        "contracts",
+        "processes",
+        "skill_assets",
+        "state"
+      ],
+      "handoff": [
+        "contracts",
+        "task_envelopes"
+      ],
+      "kernel": [
+        "components",
+        "contracts",
+        "processes",
+        "state"
+      ],
+      "memory": [
+        "components",
+        "state"
+      ],
+      "optimization": [
+        "components",
+        "evaluation",
+        "processes",
+        "skill_assets",
+        "state"
+      ],
+      "processes": [
+        "windows_job"
+      ],
+      "projects": [
+        "bindings",
+        "components",
+        "state"
+      ],
+      "reference": [
+        "reference_creation_process",
+        "reference_executor",
+        "task_envelopes"
+      ],
+      "reference_creation_process": [],
+      "reference_executor": [
+        "agent_backends",
+        "agents",
+        "bindings",
+        "projects",
+        "reference_creation_process",
+        "reference_inputs",
+        "reference_review_opinions",
+        "state",
+        "task_envelopes",
+        "task_mcp",
+        "workflow_definitions"
+      ],
+      "reference_inputs": [
+        "reference_workflows",
+        "task_envelopes"
+      ],
+      "reference_review_opinions": [],
+      "reference_task_approval": [
+        "reference_task_runtime",
+        "reference_task_submission",
+        "state"
+      ],
+      "reference_task_cancellation": [
+        "reference_task_runtime",
+        "reference_task_submission",
+        "state"
+      ],
+      "reference_task_creation": [
+        "reference",
+        "state",
+        "task_envelopes"
+      ],
+      "reference_task_events": [
+        "reference_task_submission"
+      ],
+      "reference_task_evidence": [
+        "reference_task_submission"
+      ],
+      "reference_task_export": [
+        "processes",
+        "reference_task_submission",
+        "state"
+      ],
+      "reference_task_reconciliation": [
+        "handoff",
+        "reference_task_submission",
+        "state",
+        "task_envelopes"
+      ],
+      "reference_task_runtime": [
+        "reference_inputs"
+      ],
+      "reference_task_submission": [
+        "reference_inputs",
+        "reference_task_creation",
+        "reference_task_runtime",
+        "state"
+      ],
+      "reference_worker": [
+        "reference",
+        "reference_inputs"
+      ],
+      "reference_workflows": [
+        "reference_review_opinions",
+        "task_envelopes"
+      ],
+      "registrations": [
+        "agents",
+        "bindings",
+        "components",
+        "contracts",
+        "projects",
+        "reference",
+        "state"
+      ],
+      "research": [
+        "components",
+        "state",
+        "windows_job"
+      ],
+      "review_dags": [],
+      "scheduling": [
+        "components",
+        "research",
+        "state"
+      ],
+      "services": [
+        "reference",
+        "registrations",
+        "state"
+      ],
+      "skill_assets": [
+        "asset_trees",
+        "state"
+      ],
+      "skills": [
+        "evaluation",
+        "skill_assets",
+        "state"
+      ],
+      "stage_driver": [
+        "agent_runs",
+        "agents",
+        "processes",
+        "state"
+      ],
+      "state": [],
+      "task_envelopes": [
+        "review_dags"
+      ],
+      "task_mcp": [
+        "asset_trees",
+        "contracts",
+        "definition_bundles"
+      ],
+      "tasks": [
+        "agent_backends",
+        "agents",
+        "asset_trees",
+        "bindings",
+        "contracts",
+        "projects",
+        "reference",
+        "review_dags",
+        "state",
+        "task_envelopes",
+        "workflow_definitions"
+      ],
+      "tools": [
+        "agent_backends",
+        "agent_runs",
+        "agents",
+        "bindings",
+        "components",
+        "kernel",
+        "processes",
+        "projects",
+        "state"
+      ],
+      "web": [
+        "agent_definitions",
+        "agent_runs",
+        "components",
+        "definition_bundles",
+        "drafts",
+        "evaluation",
+        "handoff",
+        "kernel",
+        "memory",
+        "optimization",
+        "projects",
+        "reference",
+        "registrations",
+        "research",
+        "services",
+        "skill_assets",
+        "skills",
+        "state",
+        "tasks",
+        "tools",
+        "workflow_definitions"
+      ],
+      "windows_job": [],
+      "workflow_definitions": [
+        "agent_definitions",
+        "asset_trees",
+        "contracts",
+        "definition_bundles",
+        "state"
+      ]
+    },
+    "sources": [
+      {
+        "file": "src/ergora/__init__.py",
+        "bytes": 86,
+        "sha256": "aff5d87075552b31ab865dfe98c31e1ce521a818f85e4b0562a9e471e4139017"
+      },
+      {
+        "file": "src/ergora/__main__.py",
+        "bytes": 79,
+        "sha256": "307299fda7b77d22c64cb51430ec75e5f59d78e9c948786afb3b2544fe45e4b7"
+      },
+      {
+        "file": "src/ergora/agent_backends.py",
+        "bytes": 19202,
+        "sha256": "da15e62ea1d62b0cd25d12bffdfa6818672892eee19ee588a5ed86e18659ce33"
+      },
+      {
+        "file": "src/ergora/agent_definitions.py",
+        "bytes": 2977,
+        "sha256": "1963430ad740c04b65b104bb46174034f2a78f3b2a6542c64cac6b5df8ba0961"
+      },
+      {
+        "file": "src/ergora/agent_runs.py",
+        "bytes": 15481,
+        "sha256": "9cb9296b649ecc8bb2b8c843d4602726e49d3873c71d919cc32519c1298ade0d"
+      },
+      {
+        "file": "src/ergora/agents.py",
+        "bytes": 3921,
+        "sha256": "131481cabcedcd478356441be0a86949cd3f643c83abebb4c3468bdae451f4c5"
+      },
+      {
+        "file": "src/ergora/asset_trees.py",
+        "bytes": 2503,
+        "sha256": "fb67133720bccbf19ec8020954af9d4cb898c2bb824d1d959e36f4782bab500a"
+      },
+      {
+        "file": "src/ergora/backups.py",
+        "bytes": 11465,
+        "sha256": "e0d266a8093ad6ae396264ac6c78da1e1c60b1149c865319b1373dda846091da"
+      },
+      {
+        "file": "src/ergora/bindings.py",
+        "bytes": 1939,
+        "sha256": "5f9c760141a0e57b02d68e16cb78a14eee1625da61f53d599bb7979a63e12080"
+      },
+      {
+        "file": "src/ergora/cli.py",
+        "bytes": 55479,
+        "sha256": "64a381c3c7ce74121a757461dd03ac7e7a74a055894d06f6d56d078f70970828"
+      },
+      {
+        "file": "src/ergora/components.py",
+        "bytes": 3421,
+        "sha256": "24ce279b6d51989f4183502c1daa5fbe839770a0849e8694128f60147eb7ec89"
+      },
+      {
+        "file": "src/ergora/contracts.py",
+        "bytes": 2159,
+        "sha256": "a44bc86e4cacc87c103003f08a0e9f72296f5620f4212a41e8dc124050a07277"
+      },
+      {
+        "file": "src/ergora/definition_bundles.py",
+        "bytes": 27411,
+        "sha256": "808044446301231422c6f9ae31a809bfaa071e495b85646f72f6151bd3f6b658"
+      },
+      {
+        "file": "src/ergora/drafts.py",
+        "bytes": 1524,
+        "sha256": "5e103cfce6edb6f628cf6ad8e0f63e43c5f7d281f988bb3692abb763af743b88"
+      },
+      {
+        "file": "src/ergora/evaluation.py",
+        "bytes": 10304,
+        "sha256": "5e75b8da5bb7dab227131ad0424730cd98d800c7c3452c493b8d7c348d9a84da"
+      },
+      {
+        "file": "src/ergora/handoff.py",
+        "bytes": 11426,
+        "sha256": "2ff598ae3595e4402aa61a386545240306d20c568cbbd55e51ee3ae70c8dad8f"
+      },
+      {
+        "file": "src/ergora/kernel.py",
+        "bytes": 9265,
+        "sha256": "763c9ba30b194afbf520730397f05f8d9f9022eb868b033f3f0cb23d0a206d4a"
+      },
+      {
+        "file": "src/ergora/memory.py",
+        "bytes": 9681,
+        "sha256": "e46c87e13e914851118efc00ce098f05c606952e8ed36398a21af710641c06c9"
+      },
+      {
+        "file": "src/ergora/optimization.py",
+        "bytes": 10299,
+        "sha256": "01277565ed3f1e85dbb4d9b28c7ad93470cb9561bc056b35aa6c833a416a9623"
+      },
+      {
+        "file": "src/ergora/processes.py",
+        "bytes": 7532,
+        "sha256": "8b71a48351a8823bf712ad0735b369e829d3a259010ce8aebec6792b42269eb2"
+      },
+      {
+        "file": "src/ergora/projects.py",
+        "bytes": 3806,
+        "sha256": "28c7d15ea79632d2f9a1f2550a97959e9f801aaa10f86deb4fc4f52e50ee1500"
+      },
+      {
+        "file": "src/ergora/reference.py",
+        "bytes": 29386,
+        "sha256": "a08e4ca7cd510a1e9cd7cc1b1791c74015c65f24ec0ef73b43715b691b1092c8"
+      },
+      {
+        "file": "src/ergora/reference_creation_process.py",
+        "bytes": 2057,
+        "sha256": "8e6122720bed4c53b009a828d8039f7abfd322d29b106a6d6107e684be3f0914"
+      },
+      {
+        "file": "src/ergora/reference_executor.py",
+        "bytes": 53184,
+        "sha256": "c8ea3c11f7fea696eb1d68a85cba67d60fbe089e435013e81ed7701fb0ba9da6"
+      },
+      {
+        "file": "src/ergora/reference_inputs.py",
+        "bytes": 7540,
+        "sha256": "d227ecad611e5aa1353f230f52fb03545d56193ede615e9dce41ba58cf5c7343"
+      },
+      {
+        "file": "src/ergora/reference_review_opinions.py",
+        "bytes": 3473,
+        "sha256": "86abdd4538703fcbbdd143e6a78143522805e8188883b8db5d7cc59161c699af"
+      },
+      {
+        "file": "src/ergora/reference_task_approval.py",
+        "bytes": 16932,
+        "sha256": "106f82510c114624a823105501ce5eaa8e9dfdcff36d7f93b912618bd815752f"
+      },
+      {
+        "file": "src/ergora/reference_task_cancellation.py",
+        "bytes": 11149,
+        "sha256": "19d5725d97fcb6197fd409508328335bd9e5b33e2d262289ec63dbb8c376b8fc"
+      },
+      {
+        "file": "src/ergora/reference_task_creation.py",
+        "bytes": 18590,
+        "sha256": "fdecb4e96dc412f2b91ad87a053aa97400d642019a1c423750bf46821683a70f"
+      },
+      {
+        "file": "src/ergora/reference_task_events.py",
+        "bytes": 6603,
+        "sha256": "b8ef882e19b9aa14d0299b7a088aae45ba21f3bbb98299c858ca9f6d6cc87ecd"
+      },
+      {
+        "file": "src/ergora/reference_task_evidence.py",
+        "bytes": 6386,
+        "sha256": "eb968036312b647113640d8bd4ac50ac46d4c86a33129778dd7ebdd93730cbb5"
+      },
+      {
+        "file": "src/ergora/reference_task_export.py",
+        "bytes": 17968,
+        "sha256": "a1748edc9cf52e4a75bbf4fedb71a234982f9e7bc404066af0a4691c9ccb17d3"
+      },
+      {
+        "file": "src/ergora/reference_task_reconciliation.py",
+        "bytes": 26262,
+        "sha256": "3da0b06f29ee6917a744fcfcfccceafe0a43be41de32899e8e378985d02c5559"
+      },
+      {
+        "file": "src/ergora/reference_task_runtime.py",
+        "bytes": 4169,
+        "sha256": "af253979f3cff209ba808bda8ea83108d5859e0761d93e674443bebaef1caef5"
+      },
+      {
+        "file": "src/ergora/reference_task_submission.py",
+        "bytes": 14498,
+        "sha256": "f5fcd8bb17481925f407f51bb9aa38fc69b0e643cc4ccfec3b07b1fbe1bc3426"
+      },
+      {
+        "file": "src/ergora/reference_worker.py",
+        "bytes": 2692,
+        "sha256": "998242a5d35d8ebd5b0d458c55ffea46a3bf8e1db294421d149445ea6de58e65"
+      },
+      {
+        "file": "src/ergora/reference_workflows.py",
+        "bytes": 19387,
+        "sha256": "9b613829540c005f7d273fceb0e57225452721f5ae6b0815ed81b3eb84aca9b2"
+      },
+      {
+        "file": "src/ergora/registrations.py",
+        "bytes": 18514,
+        "sha256": "1b9fc68d3763366697d86c56ea984f56f40d856580a7fd1b8796d808a1692566"
+      },
+      {
+        "file": "src/ergora/research.py",
+        "bytes": 17431,
+        "sha256": "8449b65af42f04658383abd598da20b1332797ea7f23689564ecff7f8dbb1b54"
+      },
+      {
+        "file": "src/ergora/review_dags.py",
+        "bytes": 12657,
+        "sha256": "07886cf696f19f5611ecafb64243c934ed4c2889936cac80e63719d1d979f98a"
+      },
+      {
+        "file": "src/ergora/scheduling.py",
+        "bytes": 5472,
+        "sha256": "9dd86187507442b7503d82b8b4c8d7155535cf4d569c346eadc794222628017c"
+      },
+      {
+        "file": "src/ergora/services.py",
+        "bytes": 16138,
+        "sha256": "9d7ffa3a06384acff2802f5934c03f1bb6469ff84bbe2ea609602e6f7522bdb9"
+      },
+      {
+        "file": "src/ergora/skill_assets.py",
+        "bytes": 8255,
+        "sha256": "63ba09d81b82b3564890821177f9dbb2d16f2f927e17caab1f4935fc87247c34"
+      },
+      {
+        "file": "src/ergora/skills.py",
+        "bytes": 1162,
+        "sha256": "37b3ce43ef95a2a825fc6afc5ba47fe2ca5b396a7b9f5564d5a2c3927e114302"
+      },
+      {
+        "file": "src/ergora/stage_driver.py",
+        "bytes": 2665,
+        "sha256": "6658ae8fafe3aff82830446ff7772d0a46e5d68f7180170ae361c92d64b0a657"
+      },
+      {
+        "file": "src/ergora/state.py",
+        "bytes": 8110,
+        "sha256": "2ed2dd4f719f593f5bfb6e7e83462118465b27c114b91ddbb88ef4ef7e13db18"
+      },
+      {
+        "file": "src/ergora/task_envelopes.py",
+        "bytes": 24410,
+        "sha256": "c928b850a33892fc2d10108fa90d1377df920babc82f7cf4a73bb88e08d2ff7d"
+      },
+      {
+        "file": "src/ergora/task_mcp.py",
+        "bytes": 13392,
+        "sha256": "06a037968a6c8c40ca00e240da81dc40db559cf07ae23b18a6d7c453648be975"
+      },
+      {
+        "file": "src/ergora/tasks.py",
+        "bytes": 30114,
+        "sha256": "84b432d8eb282724c7ad12efaa488f44e7872db00bde1691fb2510edbad2c2bf"
+      },
+      {
+        "file": "src/ergora/tools.py",
+        "bytes": 11249,
+        "sha256": "5c9a5904c47692c62f5b1898ebc1f56966f65839649a7797e95d6a6ce48ba823"
+      },
+      {
+        "file": "src/ergora/web.py",
+        "bytes": 30677,
+        "sha256": "2577ea564c4b18897e370d9a9816d26e52d65287aae77b333de979a22115e724"
+      },
+      {
+        "file": "src/ergora/windows_job.py",
+        "bytes": 4225,
+        "sha256": "f2c623752a7f628685f99f4d01a40c3a128021e52de6bc7c4598129e190f45ad"
+      },
+      {
+        "file": "src/ergora/workflow_definitions.py",
+        "bytes": 34965,
+        "sha256": "089f0a6bae4e452c91a51e2c8046680cd69b98aa3db0f05c7f430b828138a4db"
+      }
+    ]
+  },
+  "console": {
+    "first_party_modules": 18,
+    "files": [
+      {
+        "file": "src/ergora/data/console/agents.js",
+        "bytes": 2294,
+        "sha256": "c873b3dff7b5f82efa1cdd71101d9e78582076d4682c1a65cf482306853fc6f4"
+      },
+      {
+        "file": "src/ergora/data/console/api.js",
+        "bytes": 659,
+        "sha256": "cd44305050536573a3dd1a66afb2eb089f5cef6a2bdcc601506e9429d7ccae83"
+      },
+      {
+        "file": "src/ergora/data/console/app.js",
+        "bytes": 7884,
+        "sha256": "506cb7e81f4456745090a6a84a5a149021f52f3f0e30bbe26c494c264e709d78"
+      },
+      {
+        "file": "src/ergora/data/console/binding-fields.js",
+        "bytes": 2397,
+        "sha256": "b21d6d75d9317f8ab30328608bed54ba03c0d001b0139af292977aea8c8357a2"
+      },
+      {
+        "file": "src/ergora/data/console/composition-comparison.js",
+        "bytes": 5569,
+        "sha256": "b56aca5f6c44ed715009a9e5a92701eb40c97cb8a8ea6f3bec62f3c7a547fea2"
+      },
+      {
+        "file": "src/ergora/data/console/composition-graph.js",
+        "bytes": 18414,
+        "sha256": "22fad41ba596fadeba3cfcc02e9e84f2891326395339beca793846a1bddb4469"
+      },
+      {
+        "file": "src/ergora/data/console/definitions.js",
+        "bytes": 69927,
+        "sha256": "db7304d95a1dc18de38bcc173111d08d73b973da7df44fca9e1e0bab9d73cf8a"
+      },
+      {
+        "file": "src/ergora/data/console/memory.js",
+        "bytes": 6550,
+        "sha256": "0f791993c73c62b2b26c723865991a2253b717e39d6bc03857838c7251a40f2f"
+      },
+      {
+        "file": "src/ergora/data/console/overview.js",
+        "bytes": 4984,
+        "sha256": "92afb22857f24c568c846c107b3b08765ee54a3c1f479da7032df718ea0a690f"
+      },
+      {
+        "file": "src/ergora/data/console/projects.js",
+        "bytes": 1058,
+        "sha256": "3aec53795ee9adcaf73e82b35ed0aaf5726295f10a05dc53abc5be257a230c42"
+      },
+      {
+        "file": "src/ergora/data/console/research.js",
+        "bytes": 5566,
+        "sha256": "765aafce0b1bcdb5f4ee3fbf5aef3dc511ea4e1f1dd074d6145a32f4ced64572"
+      },
+      {
+        "file": "src/ergora/data/console/skills.js",
+        "bytes": 11602,
+        "sha256": "203bede5e54342d2fc5deb59a1c0124c62a3779b777baa27b39c11909728eb13"
+      },
+      {
+        "file": "src/ergora/data/console/state.js",
+        "bytes": 410,
+        "sha256": "d19a40f6e0782ee38901c84cedb800e77d5715458b2caaa2c0454977deae54f4"
+      },
+      {
+        "file": "src/ergora/data/console/task-composition.js",
+        "bytes": 10858,
+        "sha256": "8f10bcd7f621e046a77b87f2d9ba7f3c5680a927bca86602497bd7c44d9aba22"
+      },
+      {
+        "file": "src/ergora/data/console/tasks.js",
+        "bytes": 74823,
+        "sha256": "a14b7ecd2acff1756f4952e6bc209e7da721a425d9ca6717f70f9b1c9bfc192c"
+      },
+      {
+        "file": "src/ergora/data/console/tools.js",
+        "bytes": 5544,
+        "sha256": "ef2ec7c9eedef04a49cb90b729d158ed591a17d49ab0fde31b54914dc868fcd8"
+      },
+      {
+        "file": "src/ergora/data/console/ui.js",
+        "bytes": 6121,
+        "sha256": "2fc6c19d8d46a68d12562b2c696ec1f6bad4ea7d781afbc326ce3fbf6ac3df2c"
+      },
+      {
+        "file": "src/ergora/data/console/workflow.js",
+        "bytes": 27070,
+        "sha256": "8427d68d5b59d2973e568d7e041182068c587fc888f4b96b512f0d6cc19bab75"
+      }
+    ]
+  },
+  "historical_architecture": {
+    "file": "docs/architecture/current-history-2026-11-11.md",
+    "bytes": 59761,
+    "sha256": "3231898e9ab6b60e453ad04b4c444876d7f5abdfb867eacbf93a7cc287baf920",
+    "source": "c1f31fcfa38ac25085e287c507377be422786026:docs/architecture/current.md",
+    "projection": "Byte-exact, no added historical banner; relative links remain in the same directory."
+  },
+  "limits": [
+    "Static imports include function-local imports, not dynamic loads or subprocess relationships.",
+    "This inventory does not prove semantic correctness, performance, OS or backend availability.",
+    "No production change or new product test. Existing installed package acceptance keeps its original scope."
+  ]
+}

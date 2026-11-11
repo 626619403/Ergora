@@ -10,8 +10,10 @@ Ergora 用任务合同明确目标、角色、修改范围和验收标准，把�
 
 首次使用专家组合可从[三模板入门旅程](docs/TEMPLATE_WALKTHROUGHS.md)开始：准备完整manifest，选择逐实例后端，再创建开发任务或调用训练提案叶。
 
+本文的组合与执行能力目前随 `refactor/architecture-foundations` 开发分支交付，以下安装选择同一分支；`main` 是另一条主线，不能仅按包版本号假定它已包含本文全部命令。需要复现某次验收时，在安装前固定该记录的完整提交。
+
 ```bash
-git clone --branch main https://github.com/626619403/Ergora.git
+git clone --branch refactor/architecture-foundations https://github.com/626619403/Ergora.git
 cd Ergora
 bash scripts/install.sh
 "$HOME/.local/bin/ergora" serve
@@ -90,11 +92,13 @@ src/ergora/
 ├── tasks.py / services.py          正式任务生命周期/原ID恢复/精确导出、显式服务运维
 ├── components.py / tools.py        组件描述、工具目录与就绪检查
 ├── agent_runs.py                   独立 Agent 上下文、调用与运行记录
-├── agent_definitions.py / workflow_definitions.py 静态专家库与嵌套工作流预览
+├── agent_definitions.py / workflow_definitions.py 专家库、嵌套图编译、资源修订与完整manifest
 ├── definition_bundles.py / asset_trees.py 完整资源包、不可变版本与树身份
 ├── agents.py / agent_backends.py   Agent兼容入口、原生后端合同与局部实现
 ├── task_mcp.py                     每调用固定资源投影、官方MCP SDK与连接回执
 ├── reference_executor.py / stage_driver.py 可选六阶段桥接与专用进程入口
+├── reference_inputs.py / reference_workflows.py 版本化正式入口、原六阶段及实例配额
+├── task_envelopes.py / review_dags.py 正式身份、工作分配与审查DAG投影
 ├── kernel.py / data/drivers/        原生 Forge campaign 与独立 SDK 驱动
 ├── memory.py / state.py            项目记忆、来源与持久状态
 ├── skill_assets.py / skills.py     版本资产/头事务/回退与评价后采用
@@ -405,7 +409,7 @@ agentflow verify
 
 这样可以保留当前工作流，并让工单来源、通信渠道和执行后端分别演进。提取时应以同一个本地任务能够完整运行和恢复为验收，再扩展新的后端。
 
-**图形页面已提供分层绑定与有约束的工作单元编辑。** 编辑器只调整允许的依赖和路径所有权，保存为任务输入草稿；正式任务冻结、审批和执行继续使用参考工作流。支持新的阶段拓扑，需要先扩展并验证合同与运行时。
+**图形页面提供分层绑定、工作单元草稿，以及独立Agent／嵌套Workflow的定义与资源修订。** 已发布组合图分开显示结构继承、控制依赖和具名数据，支持查找、折叠、版本比较与完整manifest保存；正式任务可选择逐实例后端和工作分配。编译、冻结、审批和执行沿原用例，布局不进入合同。新增可信阶段或正式运行器尚不支持的拓扑，需要先扩展并验证合同与运行时。
 
 进一步的 [工具调研与产品方案](docs/research/2026-10-28-multi-agent-landscape.md) 比较了 40 个代表性工具或产品家族，讨论 Agent Spec 等现有关系格式、组件复用和各层工具绑定。建议面向用户提供统一安装、配置与任务视图的 all-in-one 体验，内部逐步验证可替换组件；这些仍是后续方案。术语见 [领域词汇表](CONTEXT.md)。
 
@@ -413,7 +417,7 @@ agentflow verify
 
 三个模板的角色现可独立于工具选择；[选型调研](docs/research/2026-10-31-template-agents.md) 说明首批适配和未接入工具的优缺点。ForgeKernel 作为可选原生候选生成工具，其内部 judge 不替代可信训练门禁；模型质量和 GPU 性能比较需要真实项目证据。固定官方版本及实际检查范围记录在 [计划](docs/PLAN.md) 和各切片交付记录。
 
-原v1任务每个角色绑定一个工具。[专长Agent定义库](docs/AGENT_DEFINITIONS.md)已提供静态包检查、版本化导入、筛选、查看和导出，可让同一后端具有不同专长；也可通过composition准备完整输入并显式调用独立叶子。v2正式任务可[冻结完整审查组合](docs/USAGE.md#为正式任务冻结审查组合)，选择单个或多个嵌套只读reviewer；每叶沿全部结构祖先直映根task，多分支要求覆盖全部成员的显式all-join，分别绑定后端、祖先资源、原候选及独立会话。结构、正确性与测试价值审查可同时使用，任一必需分支未通过都不会生成通过汇合。必需/建议职责可由工作流实例分别声明；建议请求修改保留原FAILED回执与意见，运行失败仍阻塞。只读串并行端口使用显式dag-v1；[work-units-v1](docs/WORKFLOW_DEFINITIONS.md#专长执行者与原工作单元)可把原工作单元分配给不同冻结专家，原integrate/verify后承接审查；设计依据见[Agent组合](docs/architecture/decisions/0004-agent-composition.md)、[嵌套工作流](docs/architecture/decisions/0005-composable-workflows.md)与[框架及论文对照](docs/research/2026-11-08-agent-composition.md)。
+原v1任务每个角色绑定一个工具。[专长Agent定义库](docs/AGENT_DEFINITIONS.md)让提示词、Skill／上下文与具体后端分开；同一专家可重复实例化，各有独立路径、后端和会话。用户task-definition-v2可[冻结完整组合](docs/USAGE.md#为正式任务冻结审查组合)，每叶累加全部结构祖先资料，子权限不越父级；[work-units-v2](docs/WORKFLOW_DEFINITIONS.md#专长执行者与原工作单元)默认发布正式信封v6，将原工作单元分配给冻结专家，原integrate/verify后承接串并行审查及具名端口，显式v1／v5兼容入口保持。结构、正确性和测试价值子模板可组合；至少一名必需审查者，建议请求修改保留原FAILED回执与可信意见，运行失败仍阻塞。当前接口／版本与扩展位置见[架构导航](docs/architecture/current.md)，设计依据及论文对照见[研究报告](docs/research/2026-11-08-agent-composition.md)。
 
 ## 项目状态与许可
 

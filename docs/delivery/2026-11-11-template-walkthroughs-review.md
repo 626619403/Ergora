@@ -49,3 +49,28 @@
 没有网络、服务、浏览器、Agent／模型、安装、打包或产品测试重跑；没有读取个人 shell 认证配置。没有扫描全部 checks／venv，未重验未变439包／283冻结集合；本次对源身份和选定原包内容的核验不替代其原验收。没有新 GPU／原生 Windows／WSL2 端到端实测，没有重新执行六阶段。
 
 C6a 的 CI 终态由原评审者同片记账负责，本评审仅检查其新增记录和范围，不访问其原件或冒称再次独立核过。下一步固定本片十六文件候选，普通提交／推送，核本片自己的必要 CI 与精确 Git／远端身份；W6 完成后再继续 C6d。上述出口未完成前，本报告仅是完整本地文档／验收片的独立通过。
+
+## 精确提交与一次远端尝试
+
+2026-11-11 同片收尾，独立检查已普通提交的 `c1f31fcfa38ac25085e287c507377be422786026`，唯一父为文档基线 `f9574895525e3c19bfe7094636c407359baed007`。全部十六个 Git blob 均为 mode100644，原字节／SHA256逐件等于 `ready-r1`；changed paths 精确等于冻结候选。`src`、`tests`、`scripts`、`.github` 与 `pyproject.toml` 的 Git 对象均与父提交相同，未用后续工作区状态替代精确提交。原对象身份见私有 `independent/commit-c1f31fc/git-objects-audit.json`。
+
+获明确授权的一次官方无凭据 Git Ref API GET 于05:13:34.789827→05:13:44.799532 UTC尝试读取本分支，10.01秒后 curl exit28连接超时。请求禁用curlrc、凭据和代理，无自动重试、重定向跟随、SSH改写或TLS放宽；未收到HTTP响应头／正文，也未取得远端完整SHA，不能据元数据的缺省TLS字段推导握手或证书验证成功。完整1,825B curl元数据、92B stderr和0B头文件原件保留在私有 `independent/commit-c1f31fc/`，原正文没有产生。未追加网络请求。
+
+本次只通过精确 Git 对象检查，远端身份和本候选自己的 CI 仍待；没有模型、产品、包或旧片验收重跑。本段状态记账不改变上述已经独立核定的十六个已提交对象。
+
+## CI 终核与作者 Ref 样本离线核验
+
+2026-11-11 同片后续，独立离线核 `snapshot-api-01..04` 的八份 runs／jobs 完整原正文及四份 `ci-sample.json`。来源字节／SHA256、官方请求／最终 URL、HTTP200、完整提交 `c1f31fcfa38ac25085e287c507377be422786026`、分支、push 事件、Portability 工作流、run143／attempt1、check suite 和两个 job 身份始终相符。各 job 开始时间不变，状态仅前进，已经完成的原步骤结论和时间逐项保持。
+
+前三份05:12、05:16、05:26 UTC样本仍为 `in_progress`，第三份仅Windows已成功；这些原件没有改成通过。第四份05:31:29.377594 UTC记录确认本候选自己的 [CI42964143325](https://github.com/626619403/Ergora/actions/runs/42964143325) 整体及两OS均为 `completed/success`：
+
+|Job|原ID|必要步骤|
+|---|---|---|
+|Ubuntu latest／Python3.11|130337322819|3／3 completed/success|
+|Windows latest／Python3.12|130337323299|4／4 completed/success|
+
+七个必要步骤为两OS的 Build and install wheel、Packaged reference identity、Native application regression，加Windows PowerShell5.1 installer and upgrade；与该精确提交的原工作流逐项相符。Linux的Windows专用步骤为原条件要求的 skipped，其余初始化／收尾步骤成功。第四份 runs 正文12,004B／SHA256 `d0e5a63e4440cb792f5edf208ae8dbcc575fedb3f39058d5ea917c0041c2fe25`，jobs正文5,208B／SHA256 `8f425cd5abf50b67bf62c188fcab31b970473456a4a6e0d10d4e94faa09d8e2b`。完整核验见私有 `independent/commit-c1f31fc/ci-four-samples-audit.json`。
+
+作者另于05:33:09.698136→05:33:10.713747 UTC取得一次独立记录的官方 Git Ref API HTTP200样本；本评审仅离线读取其原正文／元数据／头字段文件和脚本，没有发新请求或运行作者脚本。脚本明确使用 `ssl.create_default_context()`，保留默认网络环境，无显式源站认证／Cookie头或TLS放宽。429B原正文SHA256为 `3f041341aaed4e6d424c96056183202357b302b78621fe76258c807cef2dfd6e`；原ref、commit类型、完整SHA和官方 canonical `/git/refs/` URL均与上述精确提交相符。1,329B头字段文件是响应字段的序列化，非线路抓包；807B元数据明确actor为author。原件身份和实际范围见私有 `independent/commit-c1f31fc/author-ref-offline-audit.json`。
+
+原评审者那一次无代理请求仍为连接超时；作者另一次smart-Git TLS失败也不由新样本回写为成功。这里通过的是**作者官方Ref样本的独立离线核验**，不是本评审者直接网络取得SHA的成功。结合先前十六个精确Git对象与本候选自己的必要CI，**C6b/c按上述证据范围精确交付终结，Spec／Standards开放finding仍为0／0。** 本次仅作原片记账，没有网络、模型、产品或构建重跑，不授予C6d或整个AC6／F6完成。

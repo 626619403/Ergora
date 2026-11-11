@@ -1,6 +1,6 @@
 # 结构合同与内容身份
 
-R2 的所有权说明。共享结构按 JSON Schema Draft 2020-12 描述，核心由 `ergora.contracts` 使用 `jsonschema==4.24.0` 校验。业务 API 接收和保留普通 Python JSON 值；校验不转换类型、不写入 schema 的 default、不经 Pydantic dump 重新编码。
+共享结构按 JSON Schema Draft 2020-12 描述，核心由 `ergora.contracts` 使用 `jsonschema==4.24.0` 校验。业务 API 接收和保留普通 Python JSON 值；校验不转换类型、不写入 schema 的 default、不经 Pydantic dump 重新编码。下表包含R2以来已接入的版本，当前调用关系见[架构导航](current.md)。格式版本、定义的语义版本、项目revision和内容摘要分别标识不同事实，不能互相替代。
 
 ## 当前格式和责任
 
@@ -10,7 +10,12 @@ R2 的所有权说明。共享结构按 JSON Schema Draft 2020-12 描述，核�
 |角色与支持工具绑定|上述 configuration；绑定沿用现有无独立版本的 `{tool, ...}` 格式，位于 project v1|`agents` 负责角色/能力；`tools` 负责支持层与 ReMe URL/变量名；`kernel` 负责原生绝对路径；三者调用同一结构校验|
 |Agent 结构化结果|`agents.result_schema` 生成所选模板角色的必需 artifacts 和审查 decision；命令信封沿用 `stage-json-v1`|`agents.validate_result` 使用同一份 schema 验证实际输出，非空白 summary/artifacts 和拒绝额外字段保持；进程成功不是正式验收|
 |静态Agent定义包|`data/schemas/agent-definition-v1.json`，严格整数版本1；索引由定义库所有者校验|`agent_definitions`核职能/后端、包内资源与精确版本；备份核索引→对象→资源，不新建DB表或运行准入|
-|静态工作流定义包与预览|`workflow-definition-v1.json`及其grant子schema；复用Agent资源格式|`workflow_definitions`核精确递归引用、端口/有界DAG、祖先资源/权限及子树/总预算；`definition_bundles`共享包与不可变索引发布，不授执行权限|
+|静态工作流定义包与预览|`workflow-definition-v1.json / workflow-definition-v2.json`；预览v1/v2，grant仍v1|v2增加实例必需／建议审查职责；`workflow_definitions`核精确引用、端口／有界DAG、完整祖先资料／权限及预算。preview版本为所展开定义的最高版本，仍`executable:false`；`definition_bundles`逐包发布，不授执行权|
+|完整静态manifest、叶子输入与MCP scope|`composition-manifest-v1.json / composition-input-v1.json / task-mcp-scope-v1.json`|完整包树与已接受preview固定，含精确资料与来源；`workflow_definitions`拥有冻结／核验，`agent_runs`拥有调用准入，`task_mcp`只交付本次固定资源；静态`execution_authorized:false`不随包导出改变|
+|用户正式任务定义|`task-definition-v1.json / task-definition-v2.json`|`tasks`拥有项目／revision及有效绑定；v2另选完整manifest、review子图、逐叶override和work分配，创建不是提交。task-definition-v2不等于正式信封v2|
+|正式任务spec／组合信封|原生v1 spec保持原形状；`task_envelopes`校验v2–v6信封，原`legacy_spec`为兼容六阶段投影|v2完整组合，v3审查职责，v4显式dag-v1，v5 work-units-v1，v6 work-units-v2。`reference_inputs`局部映射选择原版本queue／request根／workflow；旧身份／history不自动迁移，完整信封参与准入／恢复|
+|正式执行材料|`reference_executor`发布`formal-work-materials / formal-review-materials`；旧材料v1，正式信封v6使用材料v2／`artifact_protocol:stage-artifacts-v1`|v6逐件核审计原件，只内联完整声明阶段产物、可信检查与意见，不递归复制前代prompt；完整祖先资料和原预算仍核验。材料v2与WorkflowDefinition-v2没有版本继承关系|
+|离线任务交接|`task-handoff-v1` ZIP：manifest与去重blob；`handoff`受限校验|收集沿原证据所有者；基础包可离线核内部字节及声明关系，不认证来源或推断执行成功，不替代控制面／执行目录备份|
 |评价输入|`data/schemas/evaluation-manifest-v1.json`|`evaluation.register` 负责版本、case 安全 ID/唯一性/三个 split、可信文件解析和指纹；不允许额外顶层/case 字段|
 |evaluator 响应|`data/schemas/evaluation-result-v1.json`，结果本身不新增版本字段|`evaluation.evaluate` 要求有限 score/cost、bool passed、string feedback；沿用旧行为接受并忽略附加上游字段，预算和候选绑定仍由评价所有者负责|
 |离线控制面备份|`data/schemas/state-backup-v1.json`，严格整数版本 1|`backups` 负责库/文件/Skill/来源身份核对及同平台原 home 恢复；CLI state 入口不先创建或迁移 State|

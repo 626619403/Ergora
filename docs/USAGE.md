@@ -8,10 +8,12 @@ Ergora 提供 Linux / Windows 本地 CLI 与图形控制面，并保留 v2.2 的
 
 基础环境为 Linux、Git、Python 3.11+、venv / pip。Ubuntu 24.04 可以先安装系统基础包：
 
+本文使用包含当前组合／执行功能的 `refactor/architecture-foundations` 开发分支，下面clone已固定分支。已有clone先选择同一分支，或固定所需验收记录的完整提交，再运行该源码中的安装器；不要将 `main` 或相同包版本号当作相同功能／源码身份。
+
 ```bash
 sudo apt-get update
 sudo apt-get install -y ca-certificates curl git python3 python3-venv
-git clone --branch main https://github.com/626619403/Ergora.git
+git clone --branch refactor/architecture-foundations https://github.com/626619403/Ergora.git
 cd Ergora
 bash scripts/install.sh
 export PATH="$HOME/.local/bin:$PATH"

@@ -1,0 +1,402 @@
+{
+  "schema_version": 1,
+  "slice": "C6d",
+  "baseline": "c1f31fcfa38ac25085e287c507377be422786026",
+  "actual_call": {
+    "at": "2026-11-11T05:32:27.590409+00:00",
+    "baseline": "c1f31fcfa38ac25085e287c507377be422786026",
+    "run_id": "873f78512f944ad19d018980ff95b1ab",
+    "status": "succeeded",
+    "backend": "codex",
+    "inference_model": "gpt-6.1-sol",
+    "reasoning_effort": "high",
+    "cli_exit": 0,
+    "seconds": 208.2524828929454,
+    "input_digest": "314561c1c5bc82182f7aabdcaf38b5255983a3739ef208afa636b790e50d1fd5",
+    "prompt_sha256": "59e2e1fbfbfad7e2cf2d8d719dc4fea1e87f42c3339b46253cc0718ee281ae5f",
+    "attachment_bytes": 393375,
+    "attachment_sha256": "8a61e235ecc7766473884fd59d711edc61c658144e47a96338b164259863d9c0",
+    "manifest_digest": "6a5825e77df0695234df96ccf326091e458e0cc31a98a56f87c78d35a362beac",
+    "revision": "1.0.89",
+    "observed_processes": 4,
+    "live_sampled_processes": [],
+    "scope": "C6d tracked documentation delta and full new architecture/archive/version/Windows/new slice documents, source inventory and selected complete source contracts. Later bookkeeping, other sources and linked runtime originals/manuals are omitted; full independent current-candidate review is separate.",
+    "decision": "approve",
+    "result_sha256": "51128bdac4f419d9cfdd125cab528a772de636f13bfff5beefa6f7f0f2af2be8"
+  },
+  "original_decoded_result": {
+    "artifacts": {
+      "response": "Read all five fixed resources completely: workflow instructions, reviewer instructions, structure-reviewer SKILL.md, candidate-evidence SKILL.md, and references/candidate.txt. The candidate was read continuously as UTF-8 through byte 393,375 and next_offset:null; base64 pages were retried at the same offset with smaller limits. Candidate SHA256: 8a61e235ecc7766473884fd59d711edc61c658144e47a96338b164259863d9c0.\n\nComplete documentation scope relative to c1f31fc: README.md; docs/PLAN.md; docs/TRAINING.md; docs/WINDOWS.md; docs/architecture/{current.md,current-history-2026-11-11.md,contracts-and-identities.md}; docs/plans/{2026-11-01-all-in-one.md,2026-11-11-template-walkthroughs.md,2026-11-11-architecture-platform.md}; docs/delivery/{2026-11-11-template-walkthroughs.md,2026-11-11-template-walkthroughs-review.md,2026-11-11-architecture-platform.md}; and docs/delivery/evidence/2026-11-11-architecture-source-inventory.json.\n\nAdditional supplied evidence read: complete AGENTS.md, the tracked documentation diff, and complete agent_backends.py, reference_inputs.py, reference_workflows.py, workflow_definitions.py, task_envelopes.py, review_dags.py, task_mcp.py and pyproject.toml.\n\n**Spec — no substantiated findings.** The current documentation distinguishes structural inheritance, control dependencies and named data; independent definitions and per-instance backend selection; static composition and supported formal execution. The supplied compiler and graph projections support the documented ancestor-resource accumulation, parent-bounded permissions, budgets and work-unit assignments. The version table correctly separates task-definition-v2, formal envelope-v6 and materials-v2. Six stages, exact owner plan approval, trusted candidate/evidence ownership and original-ID recovery remain explicit. Windows task-MCP restrictions and unverified backend/GPU/WSL2 outcomes remain visible.\n\n**Standards — no substantiated findings.** Ownership and extension guidance follows the existing definition libraries, backend ABC/local mapping, versioned Input/Workflow interfaces and shared graph projections. It gives concrete reasons for retained compatibility and platform implementations without proposing speculative abstractions. Historical pending statements are separated from current claims, and static inventory counts are not presented as semantic or performance proof.\n\nThis is a scoped model opinion on the supplied documentation candidate, not owner approval or a whole-repository audit. Linked manuals, omitted modules and original runtime/browser/model evidence were not read or independently revalidated. No shell, scripts, network, edits or product reruns were performed."
+    },
+    "decision": "approve",
+    "summary": "Approve the supplied C6d documentation slice. No substantiated Spec or Standards findings within the supplied evidence."
+  },
+  "actual_read_audit": {
+    "at": "2026-11-11T05:33:22.352402+00:00",
+    "run_id": "873f78512f944ad19d018980ff95b1ab",
+    "revision": "1.0.89",
+    "manifest_prepared_actual_prompt_admission_scope_native_original_result_match": true,
+    "bundled_template_unchanged_except_evidence_revision_resource_and_limit": true,
+    "scope_files": 5,
+    "all_scope_continuous_utf8_through_null": true,
+    "complete_scope_reads": {
+      "definitions/agent/ergora-structure-reviewer/1.0.89/instructions.md": {
+        "bytes": 354,
+        "sha256": "3cc9c450f0c03da5ea4a1434ac6182d50df6a4985cffdee2a59fe9fe477c6b43",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 354,
+            "next_offset": null
+          }
+        ],
+        "base64_retries": [],
+        "duplicates": []
+      },
+      "definitions/agent/ergora-structure-reviewer/1.0.89/skills/candidate-evidence/SKILL.md": {
+        "bytes": 480,
+        "sha256": "aedb683ba435b973bdf6602542688b870d5e10872d2fe55387eaa39202ecbd75",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 480,
+            "next_offset": null
+          }
+        ],
+        "base64_retries": [],
+        "duplicates": []
+      },
+      "definitions/agent/ergora-structure-reviewer/1.0.89/skills/candidate-evidence/references/candidate.txt": {
+        "bytes": 393375,
+        "sha256": "8a61e235ecc7766473884fd59d711edc61c658144e47a96338b164259863d9c0",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 24000,
+            "next_offset": 24000
+          },
+          {
+            "offset": 24000,
+            "bytes": 24000,
+            "next_offset": 48000
+          },
+          {
+            "offset": 48000,
+            "bytes": 24000,
+            "next_offset": 72000
+          },
+          {
+            "offset": 72000,
+            "bytes": 12000,
+            "next_offset": 84000
+          },
+          {
+            "offset": 84000,
+            "bytes": 9000,
+            "next_offset": 93000
+          },
+          {
+            "offset": 93000,
+            "bytes": 12000,
+            "next_offset": 105000
+          },
+          {
+            "offset": 105000,
+            "bytes": 24000,
+            "next_offset": 129000
+          },
+          {
+            "offset": 129000,
+            "bytes": 24000,
+            "next_offset": 153000
+          },
+          {
+            "offset": 153000,
+            "bytes": 24000,
+            "next_offset": 177000
+          },
+          {
+            "offset": 177000,
+            "bytes": 5998,
+            "next_offset": 182998
+          },
+          {
+            "offset": 182998,
+            "bytes": 23999,
+            "next_offset": 206997
+          },
+          {
+            "offset": 206997,
+            "bytes": 24000,
+            "next_offset": 230997
+          },
+          {
+            "offset": 230997,
+            "bytes": 24000,
+            "next_offset": 254997
+          },
+          {
+            "offset": 254997,
+            "bytes": 24000,
+            "next_offset": 278997
+          },
+          {
+            "offset": 278997,
+            "bytes": 24000,
+            "next_offset": 302997
+          },
+          {
+            "offset": 302997,
+            "bytes": 24000,
+            "next_offset": 326997
+          },
+          {
+            "offset": 326997,
+            "bytes": 24000,
+            "next_offset": 350997
+          },
+          {
+            "offset": 350997,
+            "bytes": 24000,
+            "next_offset": 374997
+          },
+          {
+            "offset": 374997,
+            "bytes": 18378,
+            "next_offset": null
+          }
+        ],
+        "base64_retries": [
+          {
+            "offset": 72000,
+            "bytes": 24000
+          },
+          {
+            "offset": 84000,
+            "bytes": 18000
+          },
+          {
+            "offset": 177000,
+            "bytes": 24000
+          },
+          {
+            "offset": 177000,
+            "bytes": 12000
+          },
+          {
+            "offset": 177000,
+            "bytes": 6000
+          },
+          {
+            "offset": 177000,
+            "bytes": 5999
+          },
+          {
+            "offset": 182998,
+            "bytes": 24000
+          }
+        ],
+        "duplicates": []
+      },
+      "definitions/agent/ergora-structure-reviewer/1.0.89/skills/ergora-structure-reviewer/SKILL.md": {
+        "bytes": 521,
+        "sha256": "d6b69570bcca408d3d06ca5adf1cb44a4a9e43c2901f05c38a68c096f23a4ac8",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 521,
+            "next_offset": null
+          }
+        ],
+        "base64_retries": [],
+        "duplicates": []
+      },
+      "definitions/workflow/ergora-structure-review/1.0.89/instructions.md": {
+        "bytes": 163,
+        "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 163,
+            "next_offset": null
+          }
+        ],
+        "base64_retries": [],
+        "duplicates": []
+      }
+    },
+    "list_passes_files": [
+      5
+    ],
+    "failed_calls": 0,
+    "attachment_bytes": 393375,
+    "attachment_sha256": "8a61e235ecc7766473884fd59d711edc61c658144e47a96338b164259863d9c0",
+    "frozen_complete_files": 17,
+    "original_result_sha256": "51128bdac4f419d9cfdd125cab528a772de636f13bfff5beefa6f7f0f2af2be8",
+    "decision": "approve",
+    "native_stream_sha256": "2dca3915f564ac41da87180368f4971f6b45501f77d126f0df0686f92be45766",
+    "backend_reported_turn_usage": [
+      {
+        "input_tokens": 3503516,
+        "cached_input_tokens": 3265664,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 3887,
+        "reasoning_output_tokens": 1144
+      }
+    ],
+    "observed_processes": 4,
+    "live_sampled_processes": [],
+    "scope": "Offline exact identity and successful plaintext page reconstruction only. Cached counters are part of input, reasoning reported separately, neither is added twice. No billing, reasoning quality, owner approval, independent backend-error or unsampled-process claim."
+  },
+  "complete_attachment_file_index": [
+    {
+      "file": "AGENTS.md",
+      "bytes": 1315,
+      "sha256": "5ba4876af2464aabcd68b3341f6420e8f4cab501858bea9d68038c13a1650590"
+    },
+    {
+      "file": ".ergora/checks/ac6-platform/public-docs.diff",
+      "bytes": 122299,
+      "sha256": "520da35ac5d39f69b65fd899d58b5027b88be64aeb31e82d5400db3f681e57bf"
+    },
+    {
+      "file": "docs/architecture/current.md",
+      "bytes": 26129,
+      "sha256": "325e6ad4ecae937f93fa0498cf26f1d6bcacbff15825c4c1b11abcc6dbc367e7"
+    },
+    {
+      "file": "docs/architecture/current-history-2026-11-11.md",
+      "bytes": 59761,
+      "sha256": "3231898e9ab6b60e453ad04b4c444876d7f5abdfb867eacbf93a7cc287baf920"
+    },
+    {
+      "file": "docs/architecture/contracts-and-identities.md",
+      "bytes": 10144,
+      "sha256": "e6316237ebad5d81950c605f34c30bcc5ac0b288d11fd2b9c6ed5732c55e22a2"
+    },
+    {
+      "file": "docs/WINDOWS.md",
+      "bytes": 13576,
+      "sha256": "845a882ee3ded45e91864f86f9753e939b310d06f29e664690c62b67160c6e61"
+    },
+    {
+      "file": "docs/plans/2026-11-11-architecture-platform.md",
+      "bytes": 3243,
+      "sha256": "680c38b2a9d1dc2b88295c7df6e5d9b6b234c6f8bc961064855d5af2adb36fa0"
+    },
+    {
+      "file": "docs/delivery/2026-11-11-architecture-platform.md",
+      "bytes": 2603,
+      "sha256": "a81c21d9e1ce6f911f48d49611214ace4d81c3ecadaa5a09767c8e96bdc1390a"
+    },
+    {
+      "file": "docs/delivery/evidence/2026-11-11-architecture-source-inventory.json",
+      "bytes": 20280,
+      "sha256": "0e7201f2a55ec69dd2670266a8e57cda172241b197ac53ec887f8e36798645a6"
+    },
+    {
+      "file": "src/ergora/agent_backends.py",
+      "bytes": 19202,
+      "sha256": "da15e62ea1d62b0cd25d12bffdfa6818672892eee19ee588a5ed86e18659ce33"
+    },
+    {
+      "file": "src/ergora/reference_inputs.py",
+      "bytes": 7540,
+      "sha256": "d227ecad611e5aa1353f230f52fb03545d56193ede615e9dce41ba58cf5c7343"
+    },
+    {
+      "file": "src/ergora/reference_workflows.py",
+      "bytes": 19387,
+      "sha256": "9b613829540c005f7d273fceb0e57225452721f5ae6b0815ed81b3eb84aca9b2"
+    },
+    {
+      "file": "src/ergora/workflow_definitions.py",
+      "bytes": 34965,
+      "sha256": "089f0a6bae4e452c91a51e2c8046680cd69b98aa3db0f05c7f430b828138a4db"
+    },
+    {
+      "file": "src/ergora/task_envelopes.py",
+      "bytes": 24410,
+      "sha256": "c928b850a33892fc2d10108fa90d1377df920babc82f7cf4a73bb88e08d2ff7d"
+    },
+    {
+      "file": "src/ergora/review_dags.py",
+      "bytes": 12657,
+      "sha256": "07886cf696f19f5611ecafb64243c934ed4c2889936cac80e63719d1d979f98a"
+    },
+    {
+      "file": "src/ergora/task_mcp.py",
+      "bytes": 13392,
+      "sha256": "06a037968a6c8c40ca00e240da81dc40db559cf07ae23b18a6d7c453648be975"
+    },
+    {
+      "file": "pyproject.toml",
+      "bytes": 967,
+      "sha256": "6cb64afe3d5e7298dc2058765f68e4158b7cb72389ba9fcec69c2b5865ccef57"
+    }
+  ],
+  "source_identities": [
+    {
+      "original": "self-review.py",
+      "bytes": 10890,
+      "sha256": "f2abfcbebfaf185ae89828a05f7df9737a922ae6719fe042b4f492ec579b64de"
+    },
+    {
+      "original": "audit-self-review.py",
+      "bytes": 7625,
+      "sha256": "e8023e1eda194c8de2d3a509b72b6bd4f8de1ce813487b69eedf0d594a9871ad"
+    },
+    {
+      "original": "review-files.json",
+      "bytes": 670,
+      "sha256": "334e83b83b67f337e55907b0f983c37078cd23e763d8f6497035a23048d4f664"
+    },
+    {
+      "original": "public-docs.diff",
+      "bytes": 122299,
+      "sha256": "520da35ac5d39f69b65fd899d58b5027b88be64aeb31e82d5400db3f681e57bf"
+    },
+    {
+      "original": "self-review-r1.json",
+      "bytes": 1539,
+      "sha256": "45c6d59ea43a2224529bfdfff1286008ea9f328ebbfabfa8d3dd9fb95083d175"
+    },
+    {
+      "original": "self-review-r1-read-audit.json",
+      "bytes": 5783,
+      "sha256": "13e591146891e2de1bcef898132dae079f8a4057e46baf21a55ec76d995a97d5"
+    },
+    {
+      "original": "self-review-r1/original-result.json",
+      "bytes": 2896,
+      "sha256": "51128bdac4f419d9cfdd125cab528a772de636f13bfff5beefa6f7f0f2af2be8"
+    },
+    {
+      "original": "self-review-r1/raw-evidence-index.json",
+      "bytes": 2705,
+      "sha256": "0c7aaeb36c384826fe352a28cde2eb0b6b54b3e8dad37cd6abf7449c32f9dc73"
+    },
+    {
+      "original": "self-review-r1/agent/skills/candidate-evidence/references/candidate.txt",
+      "bytes": 393375,
+      "sha256": "8a61e235ecc7766473884fd59d711edc61c658144e47a96338b164259863d9c0"
+    },
+    {
+      "original": "self-review-r1/sampled-processes.json",
+      "bytes": 525,
+      "sha256": "ae49693827e9a72a694229f6a905bc4adf1e7d7ee3f7de3c124cf7ffdc74b818"
+    }
+  ],
+  "scope_disposition": "One actual bundled structure-reviewer call. Seventeen attached files comprise the complete selected tracked delta, full current/historical architecture, contract version table, Windows guide, new plan/delivery/inventory, AGENTS and seven implementation modules plus pyproject. Other tracked documents are supplied as complete deltas, not full unchanged bodies. The original decoded result lists documentation paths as its scope; it is retained without turning that path list into a claim of full unchanged-body reads. The later inventory stage-label correction, README/USAGE/Windows development-branch installation guidance, matching Windows ZIP and walkthrough source-selection link were added after the frozen model attachment and are covered by independent follow-up, not this model approval. Later status updates, this projection and the independent report were also not in that attachment.",
+  "omitted": [
+    "Private configuration/input/manifest/process paths and identities.",
+    "Full native stream and attached bodies; byte/hash identities and continuous page metadata retained.",
+    "Other implementation modules, linked manuals and original runtime/browser evidence were not automatically read.",
+    "No billing, model quality, independent backend-error, full repository or unsampled-process guarantee."
+  ],
+  "limits": "Cached tokens are already included in backend-reported input; reasoning is separately reported. Scoped model approval is not owner approval, successful dual-backend inference, CI, GPU or WSL2 runtime acceptance.",
+  "post_model_changes": [
+    "Independent C6D-SP1/P3: two current architecture stage labels changed from inspect to inventory; original model input/result/archive unchanged, covered by independent follow-up only.",
+    "Author install-entry correction: README/USAGE/Windows clone and Windows ZIP explicitly select the documented development branch; walkthrough links source selection. Added after this frozen model call, for full independent review, not a new model approval."
+  ]
+}

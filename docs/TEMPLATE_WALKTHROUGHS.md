@@ -2,6 +2,8 @@
 
 这份指南串起安装、专家组合、正式开发与训练实验。先读[安装与日常使用](USAGE.md)，Windows使用[Windows手册](WINDOWS.md)。基础控制台包含CLI、SQLite和本地页面；完整六阶段还需要Linux/WSL2参考执行环境、所选服务和已认证Agent。选择development或research安装组合只补SDK，服务、模型、项目检查和GPU按需准备。
 
+先按[源码分支选择](USAGE.md#从空环境安装)安装本文对应的开发分支或固定提交；包版本号相同不保证具有下文的preset／组合命令。
+
 |模板／preset|根ID，版本1.0.0|专家关系与入口|
 |---|---|---|
 |repository-governance|`ergora-governance-delivery`|knowledge-map与boundary-test并行，接可信集成／验证及结构、正确性、测试价值审查|
