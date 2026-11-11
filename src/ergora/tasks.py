@@ -9,6 +9,7 @@ import re
 from . import agent_backends, agents, bindings, contracts, issue_snapshots, issue_sources, projects, reference, workflow_definitions
 from .asset_trees import inventory_tree
 from .state import State
+from .task_envelopes import identity
 
 
 _DEFINITIONS = {version: json.loads((Path(__file__).parent / f'data/schemas/task-definition-v{version}.json').read_text(encoding='utf-8'))
@@ -455,6 +456,37 @@ def export_status(state: State, project_id: str, task_id: str) -> dict:
     """Read the saved local export, without querying the run or changing Git refs."""
     project = _project(state, project_id)
     return reference.task_export(project, state.root, 'status', {'task_id': task_id}, timeout=20)
+
+
+def exported_source_candidate(state: State, project: dict, binding: dict, task_id: str,
+                              run_id: str, candidate_sha: str) -> tuple[dict, dict]:
+    """Bind an original v7 source creation and exported candidate for both observations and writebacks."""
+    created = creation(state, project['id'], task_id)
+    original = show(state, project['id'], task_id)
+    envelope = original.get('admission_envelope', {})
+    if created['status'] != 'published' or envelope.get('schema_version') != 7:
+        raise ValueError('Candidate association requires a published original v7 source task')
+    saved = envelope['issue_source']
+    if saved != issue_snapshots.snapshot(state, project['id'], saved['sha256']):
+        raise ValueError('Task source differs from its saved original snapshot')
+    issue_sources.bind_snapshot(saved, project['id'], binding, original['spec']['request']['tracker'])
+    exported = export_status(state, project['id'], task_id)
+    if exported['status'] != 'exported' or exported['run_id'] != run_id or exported['candidate_sha'] != candidate_sha:
+        raise ValueError('Candidate association requires the exact original exported run and candidate')
+    facts = {key: exported[key] for key in ('intent_sha256', 'workflow_id', 'run_id', 'candidate_sha', 'repo', 'branch', 'lease_released')}
+    task = {'id': task_id, 'creation_sha256': created['intent_sha256'], 'compiled_sha256': created['compiled_sha256'],
+            'request_sha256': original['request_sha256'], 'profile_sha256': original['profile_sha256'],
+            'run_id': run_id, 'candidate_sha': candidate_sha, 'export_intent_sha256': exported['intent_sha256'],
+            'export_facts_sha256': identity(facts), 'branch': exported['branch']}
+    return saved, task
+
+
+def inspect_export(state: State, project_id: str, task_id: str, *, run_id: str, candidate_sha: str,
+                   base_branch: str) -> dict:
+    """Read current local Git facts through the original export owner; never fetch or update refs."""
+    project = _project(state, project_id)
+    return reference.task_export(project, state.root, 'inspect',
+        {'task_id': task_id, 'run_id': run_id, 'candidate_sha': candidate_sha, 'base_branch': base_branch}, timeout=20)
 
 
 def export(state: State, project_id: str, task_id: str, expected_revision: int,

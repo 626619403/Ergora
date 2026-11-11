@@ -11,9 +11,17 @@ from urllib.parse import parse_qs, quote, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from . import components, contracts, issue_sources
+from .state import now
 
 
 _RESPONSE_LIMIT = 1_048_576
+_FULL_OID = r'(?:[0-9a-f]{40}|[0-9a-f]{64})'
+
+
+class _HTTPStatusError(ValueError):
+    def __init__(self, operation: str, status: int):
+        self.status = status
+        super().__init__(f'Tracker {operation} failed with HTTP {status}')
 
 
 class _NoRedirect(HTTPRedirectHandler):
@@ -85,7 +93,7 @@ class IssueBackend(ABC):
                 remaining = response.length
         except HTTPError as error:
             error.close()
-            raise ValueError(f'Tracker {operation} failed with HTTP {error.code}') from None
+            raise _HTTPStatusError(operation, error.code) from None
         except (URLError, OSError, HTTPException) as error:
             raise ValueError(f'Tracker {operation} unavailable: ' + type(error).__name__) from None
         if len(raw) > _RESPONSE_LIMIT:
@@ -93,6 +101,22 @@ class IssueBackend(ABC):
         if remaining not in (None, 0):
             raise ValueError('Tracker response ended before its declared content length')
         return raw, response_headers
+
+    def _document(self, path: str, *, optional: bool = False) -> tuple[dict | None, dict]:
+        try:
+            raw, _ = self._request('GET', path)
+        except _HTTPStatusError as error:
+            if optional and error.status == 404:
+                return None, {'observed_at': now(), 'http_status': 404, 'response_sha256': None}
+            raise
+        document = json.loads(raw)
+        if not isinstance(document, dict):
+            raise ValueError('Tracker returned an unsupported repository or ref document')
+        return document, {'observed_at': now(), 'http_status': 200, 'response_sha256': hashlib.sha256(raw).hexdigest()}
+
+    @abstractmethod
+    def repository_refs(self, head_branch: str, base_branch: str) -> dict:
+        """Read two refs after export-owner branch validation; no publication receipt or CAS."""
 
     def read(self, issue_id: str, *, authenticated: bool = False) -> dict:
         self._identifier(issue_id)
@@ -264,6 +288,35 @@ class GitHubBackend(IssueBackend):
         # Return a page number, never follow a supplied URL with credentials.
         return self._next_link_page(headers, issue_id, page)
 
+    def repository_refs(self, head_branch: str, base_branch: str) -> dict:
+        root = '/repos/' + quote(self.binding['project'], safe='/')
+        document, receipt = self._document(root)
+        try:
+            if (type(document['id']) is not int or document['id'] < 1
+                    or not isinstance(document['node_id'], str) or not document['node_id']
+                    or document['full_name'] != self.binding['project'] or document['url'] != self.api_url + root):
+                raise ValueError('Different repository')
+            repository = {'native_id': document['id'], 'node_id': document['node_id'],
+                          'project': document['full_name'], **receipt}
+        except (KeyError, TypeError, ValueError):
+            raise ValueError('Tracker returned an unsupported or different repository identity') from None
+        return {'repository': repository, 'head': self._branch(root, head_branch), 'base': self._branch(root, base_branch)}
+
+    def _branch(self, root: str, branch: str) -> dict:
+        ref = 'refs/heads/' + branch
+        document, receipt = self._document(root + '/git/ref/heads/' + quote(branch, safe='/'), optional=True)
+        if document is None:
+            return {'ref': ref, 'sha': None, 'resolution': 'not_found_or_not_visible', **receipt}
+        try:
+            sha = document['object']['sha']
+            if (document['ref'] != ref or document['object']['type'] != 'commit'
+                    or document['url'] != self.api_url + root + '/git/refs/heads/' + quote(branch, safe='/')
+                    or not isinstance(sha, str) or not re.fullmatch(_FULL_OID, sha)):
+                raise ValueError('Different ref')
+        except (KeyError, TypeError, ValueError):
+            raise ValueError('Tracker returned an unsupported or different exact branch ref') from None
+        return {'ref': ref, 'sha': sha, 'resolution': 'resolved', **receipt}
+
     def _graphql_url(self) -> str:
         parsed = urlsplit(self.api_url)
         if parsed.path == '':
@@ -371,6 +424,31 @@ class GitLabBackend(IssueBackend):
         return document['iid'], {'native_id': document['id'], 'title': document['title'],
             'body': document['description'] if document['description'] is not None else '', 'state': document['state'],
             'labels': sorted(set(document['labels'])), 'web_url': document['web_url'], 'updated_at': document['updated_at']}
+
+    def repository_refs(self, head_branch: str, base_branch: str) -> dict:
+        document, receipt = self._document('/projects/' + quote(self.binding['project'], safe=''))
+        try:
+            if (type(document['id']) is not int or document['id'] < 1
+                    or document['path_with_namespace'] != self.binding['project']):
+                raise ValueError('Different repository')
+            repository = {'native_id': document['id'], 'project': document['path_with_namespace'], **receipt}
+        except (KeyError, TypeError, ValueError):
+            raise ValueError('Tracker returned an unsupported or different repository identity') from None
+        root = '/projects/' + str(repository['native_id'])
+        return {'repository': repository, 'head': self._branch(root, head_branch), 'base': self._branch(root, base_branch)}
+
+    def _branch(self, root: str, branch: str) -> dict:
+        ref = 'refs/heads/' + branch
+        document, receipt = self._document(root + '/repository/branches/' + quote(branch, safe=''), optional=True)
+        if document is None:
+            return {'ref': ref, 'sha': None, 'resolution': 'not_found_or_not_visible', **receipt}
+        try:
+            sha = document['commit']['id']
+            if document['name'] != branch or not isinstance(sha, str) or not re.fullmatch(_FULL_OID, sha):
+                raise ValueError('Different branch')
+        except (KeyError, TypeError, ValueError):
+            raise ValueError('Tracker returned an unsupported or different exact branch ref') from None
+        return {'ref': ref, 'sha': sha, 'resolution': 'resolved', **receipt}
 
     def comment_path(self, issue_id: str, comment_id: str | None = None) -> str:
         path = self.path(issue_id) + '/notes'

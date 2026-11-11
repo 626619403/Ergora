@@ -340,6 +340,57 @@ def test_parent_reply_loss_preserves_the_completed_export(export_task, export_cl
     assert _calls(export_task).count('export-fetch') == 1
 
 
+def test_export_inspection_reads_current_git_without_changing_receipt_or_claim(export_task, export_client):
+    exported = export(export_task)
+    state, repo = export_task[0], Path(export_task[1]['repo'])
+    root = _root(export_task)
+    original = _files(root), _files(repo), lease(export_task), _calls(export_task)
+    def inspect(**changes):
+        return tasks.inspect_export(state, 'demo', 'new-task',
+            **{'run_id': 'original-run', 'candidate_sha': exported['candidate_sha'], 'base_branch': 'release/稳定', **changes})
+    result = inspect()
+    assert result['export'] == exported and result['base_sha'] == outcome(export_task)['base_sha']
+    assert result['current_branch_sha'] == exported['candidate_sha'] and result['branch_matches_candidate']
+    assert (_files(root), _files(repo), lease(export_task), _calls(export_task)) == original
+    for options in ({'base_branch': 'bad..ref'}, {'run_id': 'another-run'}, {'candidate_sha': 'f' * 40}):
+        with pytest.raises(ValueError, match='branch|original exported'):
+            inspect(**options)
+    assert (_files(root), _files(repo), lease(export_task), _calls(export_task)) == original
+    git(repo, 'update-ref', 'refs/heads/' + exported['branch'], result['base_sha'])
+    assert not inspect()['branch_matches_candidate']
+    git(repo, 'update-ref', '-d', 'refs/heads/' + exported['branch'])
+    missing = inspect()
+    assert missing['current_branch_sha'] is None and missing['branch_matches_candidate'] is None
+    assert status(export_task) == exported and lease(export_task) == original[2]
+
+
+@pytest.mark.parametrize('replacement', [False, True])
+def test_export_inspection_never_fetches_missing_promisor_content(export_task, export_client, monkeypatch, replacement):
+    repo, root = Path(export_task[1]['repo']), _root(export_task)
+    git(repo, 'config', 'fetch.unpackLimit', '1000')
+    exported = export(export_task)
+    source = root / 'workspaces/new-task/repo.git'
+    git(repo, 'config', 'remote.origin.url', str(source))
+    git(repo, 'config', 'remote.origin.promisor', 'true')
+    git(repo, 'config', 'remote.origin.partialclonefilter', 'blob:none')
+    git(repo, 'update-ref', '-d', 'refs/heads/' + exported['branch'])
+    candidate = exported['candidate_sha']
+    if replacement:
+        git(repo, 'replace', candidate, outcome(export_task)['base_sha'])
+    (repo / '.git/objects' / candidate[:2] / candidate[2:]).unlink()
+    monkeypatch.setenv('GIT_NO_LAZY_FETCH', '1')
+    before = _files(repo), _files(root), lease(export_task), _calls(export_task)
+    error = None
+    try:
+        tasks.inspect_export(export_task[0], 'demo', 'new-task', run_id='original-run',
+                             candidate_sha=candidate, base_branch='main')
+    except ValueError as caught:
+        error = caught
+    assert (_files(repo), _files(root), lease(export_task), _calls(export_task)) == before, 'Read-only inspection fetched missing promisor objects'
+    assert error is not None and 'git cat-file' in str(error)
+    assert status(export_task) == exported
+
+
 def test_one_task_cannot_replace_its_original_export_target_or_digest(export_task, export_client):
     original = export(export_task)
     for change in ({'branch': 'agent/another'}, {'candidate_sha': outcome(export_task)['base_sha']}):

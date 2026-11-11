@@ -434,6 +434,22 @@ def test_published_v7_export_is_consumed_by_a_fresh_cli(source_submission, nativ
     assert run('writeback-send', 'demo', label['intent_sha256'], '--revision', str(revision), '--confirm') == labelled
     assert len(writer.calls) == calls and tasks.export_status(state, 'demo', task_id) == exported
 
+    from test_candidate_observations import configure_remote
+    from test_task_creation import _files
+    from test_task_submission import _calls
+
+    configure_remote(writer, candidate_sha, base, exported['branch'], 'release/稳定')
+    before = _files(root), _files(Path(registered['repo'])), _calls(source_submission)
+    calls = len(writer.calls)
+    observed = run('candidate-observe', 'demo', task_id, '--revision', str(revision),
+                   '--run-id', started['run_id'], '--candidate-sha', candidate_sha, '--base-branch', 'release/稳定')
+    assert all(observed['comparisons'].values())
+    assert observed['task'] == prepared['intent']['task']
+    assert observed['local']['base_sha'] == base and observed['local']['export'] == exported
+    assert (_files(root), _files(Path(registered['repo'])), _calls(source_submission)) == before
+    assert [call['method'] for call in writer.calls[calls:]] == ['GET'] * 3
+    assert tasks.export_status(state, 'demo', task_id) == exported
+
 
 def test_native_comment_identity_and_fixed_authentication_context(writer, monkeypatch):
     backend = writer.backend

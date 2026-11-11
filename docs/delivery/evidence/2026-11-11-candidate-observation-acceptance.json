@@ -1,0 +1,234 @@
+{
+  "schema_version": 1,
+  "slice": "F7c-C3a read-only local and remote candidate observations",
+  "baseline": "93b538fd474120fa05574dcdcf376b7666502c8d",
+  "state": "Local gate passed: implemented, affected installed checks, actual focused own review, complete independent Spec/Standards open0/0; exact Git/ref/own CI pending",
+  "source_r1": {
+    "passed": 34,
+    "seconds_pytest": 59.16,
+    "seconds_command": 61.32458252692595,
+    "scope": "Explicit current source PYTHONPATH in preserved prior environment; before SP1/SP2 fixes, not installed-C3a acceptance"
+  },
+  "r1_installed": {
+    "wheel_sha256": "247bea7cf47e19c7af1ce07ab6b4666482c498bd7cfa0e30c3ddab0fde661a59",
+    "passed": 196,
+    "skipped": 1,
+    "seconds_pytest": 625.86,
+    "seconds_command": 641.5974698299542,
+    "exit": 0,
+    "stdout_sha256": "b7e9a5c968b6382cb8538df709ef8e7a27bcf243fac7de9d611f5661ffebcf08",
+    "scope": "Eight affected suites on original r1 before independent SP1/SP2 fixes; preserved rather than promoted to final-code evidence"
+  },
+  "r1_real_red_regressions": {
+    "failed": 2,
+    "seconds_pytest": 23.09,
+    "scope": "Null-ref and implicit promisor fetch regression checks against unchanged r1 installed package; initial driver failure did not execute product"
+  },
+  "r2_affected_checks": {
+    "passed": 49,
+    "failed": 1,
+    "seconds_pytest": 250.68,
+    "seconds_command": 252.68213270325214,
+    "exit": 1,
+    "stdout_sha256": "bbcd5b84540fbdf8e58222479507a8ab56beb8b9ea9bd392cb94eb4fe86a1e56",
+    "scope": "Only failure was new promisor error-text assertion, after no-write checks passed. Test-only wording corrected; 49 other checks kept, no product or package change and no claim of a new all50 run"
+  },
+  "corrected_r2_promisor_check": {
+    "passed": 1,
+    "seconds_pytest": 9.17,
+    "seconds_command": 9.87931188987568,
+    "exit": 0,
+    "stdout_sha256": "49ff53f003e5fa62c6fc80fe0a12f212a6ebdc4b1dc2f36c731ac3ee38df0b9e"
+  },
+  "reference_verify": {
+    "at": "2026-11-11T13:33:40.409718+00:00",
+    "exit": 0,
+    "seconds": 0.26618253299966455,
+    "stdout_sha256": "0956eb14b24b5dbf6b5b72222b9a4ddd871ee7f9e2f9baad3e9de4e137395a75"
+  },
+  "corrected_installed_owner_probe": {
+    "exit": 128,
+    "object_type": "",
+    "objects_before": 0,
+    "objects_after": 0,
+    "readonly_preserved": true
+  },
+  "verified_behaviors": [
+    "Original v7 source, snapshot, creation, original run and completed local export remain candidate-bound through shared task owner",
+    "CLI and protected same-origin HTTP share one read-only use case; both platform adapters issue only three bounded GETs",
+    "Exact native repository and branch identities, full commit OIDs, opaque branch encoding, drift, not-found-or-not-visible404,301403429 and project revision drift",
+    "Three independent true/false/null comparisons; missing local ref is null rather than false",
+    "Inspection disables implicit promisor fetch after environment filtering and rejects Git older than2.43; missing candidate fails without object or ref writes",
+    "Original explicit export fetch, interrupted-write unknown recovery, claim and SDK calls remain unchanged",
+    "Native v7 publication/submission/local Git export then fresh CLI candidate-observe, comment and label; only Temporal SDK/result controlled, no real model execution in that journey"
+  ],
+  "limits": [
+    "All platform traffic is loopback; no real SaaS/GHES write or compatibility/permissions acceptance",
+    "Current local and remote reads are separate observations, not snapshot, CAS, publication receipt, actor attribution or ABA detection",
+    "Repository native identity observed now at original source namespace was not frozen at task creation; namespace reuse cannot be excluded",
+    "404 means not found or not visible, never proven absence or permission to create",
+    "1MiB and20s socket IO limits apply per response, not total wallclock deadline or measured platform latency",
+    "Local export inspection is original Linux/WSL2 execution path; no native Windows formal execution claim",
+    "No fetch/push/ref update, PR/MR operation, tracker mutation, Temporal query, claim release, schema/table addition or persisted observation",
+    "GitLab strict labels remain unsupported; future association/publication are separate slices, C2a CI does not verify C3a"
+  ],
+  "r2_package": {
+    "at": "2026-11-11T13:28:39.528696+00:00",
+    "wheel_sha256": "a999eb34bc320e6d2ccaf68de58847574d39b5121e964d19e917bd4de38e55f8",
+    "wheel_files": 451,
+    "package_files": 446,
+    "wheel_and_installed_records_verified": true,
+    "installed_record_rows": 456,
+    "source_and_installed_package_equal": true,
+    "frozen_files": 283,
+    "editable": false,
+    "r1_package_changed_files": [
+      "ergora/reference_task_export.py"
+    ]
+  },
+  "final_r3_package": {
+    "at": "2026-11-11T14:18:22.933815+00:00",
+    "wheel_sha256": "7a346be467c7c5bd03035aae7331f9947be7c4ddb3a58dc3de2f534e1e4364de",
+    "wheel_files": 451,
+    "package_files": 446,
+    "wheel_and_installed_records_verified": true,
+    "installed_record_rows": 456,
+    "source_and_installed_package_equal": true,
+    "frozen_files": 283,
+    "editable": false,
+    "r2_package_changed_files": [
+      "ergora/reference_task_export.py"
+    ]
+  },
+  "actual_own_review_r1": {
+    "run_id": "4eec0d1776b94def80af7515f796caa5",
+    "decision": "request-changes",
+    "seconds": 306.0272154007107,
+    "attachment_bytes": 318545,
+    "attachment_sha256": "dc67e7a6f8006f8a2f653f72cf3aa7cbaa9d8a21a0194fd9b075c7f5fd357bbb",
+    "result_sha256": "b765b29c1c8dc50ae867f4f06a2c34f954e3238c8fd30690ed5173b5579b85ac",
+    "frozen_complete_files": 13,
+    "scope_files": 5,
+    "all_scope_continuous_utf8_through_null": true,
+    "failed_mcp_calls": 0,
+    "observed_owned_processes": 4,
+    "live_sampled_processes": [],
+    "scope": "Original thirteen complete attachments, actual Codex fallback inference. Later final public docs and SP3 fix outside this original verdict; no successful distinct-backend independence"
+  },
+  "sp3_actual_red": {
+    "exit": 1,
+    "seconds": 9.53266182076186,
+    "stdout_sha256": "6694eabb277e205e8efe78cc5c22c4f34e34c034896ede08c2e0fb36255f623c",
+    "failed": 1,
+    "seconds_pytest": 8.79,
+    "scope": "Original missing-object/replacement integration on unchanged installed r2, inspect unexpectedly succeeded after no-write assertion passed"
+  },
+  "sp3_r2_probe": {
+    "at": "2026-11-11T14:16:07.047390+00:00",
+    "observations": [
+      {
+        "mode": "owner-default",
+        "exit": 0,
+        "object_type": "commit",
+        "objects_before": 2,
+        "objects_after": 2,
+        "objects_unchanged": true,
+        "original_loose_object_present": false
+      },
+      {
+        "mode": "direct-no-replace",
+        "exit": 128,
+        "object_type": "",
+        "objects_before": 2,
+        "objects_after": 2,
+        "objects_unchanged": true,
+        "original_loose_object_present": false
+      },
+      {
+        "mode": "owner-without-replacement-ref",
+        "exit": 128,
+        "object_type": "",
+        "objects_before": 2,
+        "objects_after": 2,
+        "objects_unchanged": true,
+        "original_loose_object_present": false
+      }
+    ],
+    "scope": "Installed r2 owner against new local bare promisor and absent original candidate; same hooks/protocol flags, both direct controls disable lazy fetch. No external Git network."
+  },
+  "sp3_r3_probe": {
+    "at": "2026-11-11T14:19:03.012152+00:00",
+    "observations": [
+      {
+        "mode": "owner-default",
+        "exit": 128,
+        "object_type": "",
+        "objects_before": 2,
+        "objects_after": 2,
+        "objects_unchanged": true,
+        "original_loose_object_present": false
+      },
+      {
+        "mode": "direct-no-replace",
+        "exit": 128,
+        "object_type": "",
+        "objects_before": 2,
+        "objects_after": 2,
+        "objects_unchanged": true,
+        "original_loose_object_present": false
+      },
+      {
+        "mode": "owner-without-replacement-ref",
+        "exit": 128,
+        "object_type": "",
+        "objects_before": 2,
+        "objects_after": 2,
+        "objects_unchanged": true,
+        "original_loose_object_present": false
+      }
+    ],
+    "scope": "Corrected installed r3 owner against new local bare promisor and absent original candidate; same hooks/protocol flags, both direct controls disable lazy fetch. No external Git network."
+  },
+  "r3_affected_checks": {
+    "exit": 0,
+    "seconds": 84.32794089289382,
+    "stdout_sha256": "2a3b2b19bfb07698d32b2327bc676c329d38f2ea96c448862ea5ec7ab592b019",
+    "passed": 18,
+    "seconds_pytest": 82.43,
+    "scope": "Missing promisor objects with/without replacement, local current ref drift/deletion, explicit original export, actual v7 fresh CLI and architecture; no claim of full196 rerun"
+  },
+  "reference_verify_r3": {
+    "at": "2026-11-11T14:19:47.564593+00:00",
+    "exit": 0,
+    "seconds": 0.2670776001177728,
+    "stdout_sha256": "0bb0be3cd8c131f05db9f9235276a2a844d70f3e7520507748f01d01c9f42a40"
+  },
+  "actual_own_review_r2": {
+    "run_id": "1026f3500a504828b165b05b4dc4b70e",
+    "decision": "approve",
+    "seconds": 164.79092703480273,
+    "attachment_bytes": 114634,
+    "attachment_sha256": "f9a083a02f96b0d9094727cada3ed42b88412240d7ec5f6b3c95a0a8b444795a",
+    "result_sha256": "a0a2a8f0cddf948ac22e9b80c05f5483c9aaa8c83dc2d9a94d66305ba9a872c7",
+    "frozen_complete_files": 8,
+    "scope_files": 5,
+    "all_scope_continuous_utf8_through_null": true,
+    "failed_mcp_calls": 0,
+    "observed_owned_processes": 4,
+    "live_sampled_processes": [],
+    "scope": "Focused eight complete attachments only, actual Codex fallback inference; not a rerun of original thirteen-file scope or final public docs"
+  },
+  "complete_independent_review": {
+    "candidate_files": 29,
+    "manifest_sha256": "6d0b51e8c6f7af095afa99c5a4dcc549a63767a7ffbc964eeaafb5092cdc46e4",
+    "report_snapshot_sha256": "a52afa14fc30fa91da6ffe65dee9eafdcd1ba337d7c87d03a9614eb505a47516",
+    "spec_open": 0,
+    "standards_open": 0,
+    "closed_findings": [
+      "SP1 missing-ref null",
+      "SP2 implicit promisor fetch",
+      "SP3 Git object replacement"
+    ],
+    "scope": "Final29-file frozen candidate and independently reconstructed r3 package plus both actual model native read chains. Later bookkeeping/report appendices remain outside original manifest bytes."
+  }
+}

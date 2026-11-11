@@ -13,7 +13,7 @@ import subprocess
 import sys
 
 from .reference_task_submission import _Submission
-from .state import file_lock
+from .state import file_lock, now
 
 
 class _Export:
@@ -40,14 +40,17 @@ class _Export:
     def actor() -> str:
         return f'unix:{os.getuid()}:{getpass.getuser()}'
 
-    def record(self, revision: int, candidate: str, branch: str, actor: str) -> dict:
-        if not isinstance(candidate, str) or not re.fullmatch(r'(?:[0-9a-f]{40}|[0-9a-f]{64})', candidate):
-            raise ValueError('Export requires the exact full candidate commit SHA')
+    def validate_branch(self, branch: str) -> None:
         if not isinstance(branch, str) or not 1 <= len(branch) <= 1024 or branch.startswith('-'):
             raise ValueError('Invalid export branch')
         checked = self.core.git(self.repo, 'check-ref-format', '--branch', branch, check=False)
         if checked.returncode != 0 or checked.stdout.rstrip('\n') != branch:
             raise ValueError('Invalid export branch')
+
+    def record(self, revision: int, candidate: str, branch: str, actor: str) -> dict:
+        if not isinstance(candidate, str) or not re.fullmatch(r'(?:[0-9a-f]{40}|[0-9a-f]{64})', candidate):
+            raise ValueError('Export requires the exact full candidate commit SHA')
+        self.validate_branch(branch)
         if not isinstance(actor, str) or not actor.strip():
             raise ValueError('Invalid saved export actor')
         return {**self.submission.expected, 'operation': 'export', 'project_revision': revision,
@@ -109,6 +112,8 @@ class _Export:
         env.update(GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL='/dev/null', GIT_TERMINAL_PROMPT='0',
                    GIT_AUTHOR_NAME='Agent Platform', GIT_AUTHOR_EMAIL='agent-platform@localhost',
                    GIT_COMMITTER_NAME='Agent Platform', GIT_COMMITTER_EMAIL='agent-platform@localhost')
+        if self.payload['operation'] == 'inspect':
+            env.update(GIT_NO_LAZY_FETCH='1', GIT_NO_REPLACE_OBJECTS='1')
         process = await asyncio.create_subprocess_exec(
             '/usr/bin/git', '-c', 'core.hooksPath=/dev/null', '-c', 'protocol.file.allow=always',
             '-C', str(self.repo), *args, env=env, start_new_session=True,
@@ -176,6 +181,28 @@ class _Export:
         self.core.require(observed.returncode == 0, 'Unable to read the original export branch: ' + observed.stderr[:1500])
         return observed.stdout.strip()
 
+    async def inspect(self, intent: dict | None) -> dict:
+        status = self.status(intent)
+        if status['status'] != 'exported':
+            raise ValueError('Candidate inspection requires the original completed local export receipt')
+        if (self.payload['run_id'], self.payload['candidate_sha']) != (intent['run_id'], intent['candidate_sha']):
+            raise ValueError('Candidate inspection must pin the original exported run and candidate')
+        self.validate_branch(self.payload['base_branch'])
+        version = re.fullmatch(r'git version (\d+)\.(\d+)(?:[^\n]*)', (await self.git('--version')).stdout.strip())
+        if version is None or tuple(map(int, version.groups())) < (2, 43):
+            raise ValueError('Candidate inspection requires Git 2.43 or later with GIT_NO_LAZY_FETCH support')
+        base = self.spec['request']['repository']['base_sha']
+        for sha in (intent['candidate_sha'], base):
+            if (await self.git('cat-file', '-t', sha)).stdout.strip() != 'commit':
+                raise ValueError('Candidate inspection requires the original candidate and base commit objects')
+        current = await self.branch_sha(intent)
+        return {'export': status, 'base_sha': base, 'candidate_sha': intent['candidate_sha'],
+                'branch': intent['branch'], 'current_branch_sha': current,
+                'branch_matches_candidate': None if current is None else current == intent['candidate_sha'],
+                'base_branch': self.payload['base_branch'], 'objects_verified_as_commits': True,
+                'observed_at': now(),
+                'coverage': 'Current local objects and one ref only; no fetch, ref write or workflow lookup'}
+
     async def outcome(self, intent: dict) -> dict:
         from temporalio.client import WorkflowExecutionStatus
 
@@ -237,9 +264,10 @@ class _Export:
 
     async def run(self) -> dict:
         operation = self.payload['operation']
-        if operation == 'status':
+        if operation in ('status', 'inspect'):
             self.prepare()
-            return self.status(self.load())
+            intent = self.load()
+            return await self.inspect(intent) if operation == 'inspect' else self.status(intent)
         preparing = operation in ('prepare', 'prepare-resume')
         with file_lock(self.creation.lock_path, blocking=not preparing):
             self.prepare()
@@ -280,7 +308,7 @@ def main() -> None:
     adopting = False
     try:
         payload = json.load(sys.stdin)
-        if payload['operation'] not in ('status', 'prepare', 'prepare-resume'):
+        if payload['operation'] not in ('status', 'inspect', 'prepare', 'prepare-resume'):
             os.environ.update(environment())
             _adopt_children()
             adopting = True

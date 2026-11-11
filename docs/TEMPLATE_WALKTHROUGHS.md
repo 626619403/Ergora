@@ -87,6 +87,8 @@ ergora composition freeze-manifest ergora-governance-delivery 1.0.0 --grant "$WA
 
 `REVIEW_READY`表示有待维护者检查的精确候选。核candidate、真实检查、所有必需审查与原产物，再导出每任务本地分支，独立复验并走项目自己的MR／合入。模型approve、进程exit0、工单关闭各自都不能替代该流程。
 
+如果新任务使用工单来源v7，导出后还可按[候选远端核对](USAGE.md#核对候选与当前远端分支)比较本地与远端head／base；这只读取当前事实，不推送／关联PR或替代人工审查。无来源的默认v6任务继续走原导出和项目自己的发布流程。
+
 回复丢失时沿原ID查询：创建用`task creation`，提交用`task submission`，批准用`task approval`，导出用`task export-status`；按返回的原意图使用对应resume命令。未知状态先对账，不改ID重发。闭合后再核外部作业和租约。控制目录、执行CONFIG／STATE、Git仓库和Temporal持久数据联合备份；[恢复表](USAGE.md#正式任务的操作顺序与恢复)及[联合备份](BACKUP_RECOVERY.md)给出完整步骤。
 
 ## 5. 训练提案与实际实验

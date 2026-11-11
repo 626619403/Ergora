@@ -2,7 +2,7 @@
   "schema_version": 1,
   "slice": "F7c-C2a existing GitHub candidate label by native ID",
   "baseline": "b5ee397e6571f95393b0f8d6e9ee7e6d947b0935",
-  "state": "Complete local candidate passed implementation, affected installed checks, actual own review and fresh-context full independent review; exact Git/remote/own CI pending",
+  "state": "C2a exact delivery complete: local, independent, exact Git/author ref, ordinary push and own terminal dual-OS CI verified",
   "final_r2_package": {
     "at": "2026-11-11T12:31:38.522925+00:00",
     "wheel_sha256": "13ace2b7aebaac9bf171fcb335e84bea2b6c53bc7758206c55840b70d062d600",
@@ -100,7 +100,7 @@
     "GraphQL200 alone and clientMutationId echo are not idempotency/exactly-once proof; preflight is not a write CAS",
     "GitLab label action remains explicitly unsupported; original ordinary comment remains available",
     "Synthetic C1 codec fixture does not prove original source snapshot/task linkage; native owner integration covers a separate real-local contract",
-    "Exact Git/remote/own CI remain separate; C1 CI43015595781 is not C2a CI"
+    "C2a own exact delivery is complete; C3a, GitLab label support and remaining F7 are separate slices, not covered by this CI"
   ],
   "complete_independent_review": {
     "candidate_files": 26,
@@ -112,5 +112,116 @@
       "ST1 P3 current-status wording"
     ],
     "scope": "Full26-file candidate plus three independently rechecked status-only fixes; r2 package/RECORDs/frozen files and actual own review raw chain rehashed. Later status/report appendices are bookkeeping, not original manifest bytes."
+  },
+  "exact_delivery": {
+    "commit": "93b538fd474120fa05574dcdcf376b7666502c8d",
+    "ready_sha256": "c1280a05ce65b06d93de53263c11101e0a0dfa05c2418a958c6ebb8bb6d230e0",
+    "files": 26,
+    "author_git_objects_and_modes_equal_ready": true,
+    "author_remote_ref_equal_commit": true,
+    "ordinary_push": true,
+    "independent_exact_delivery": "passed",
+    "own_ci_run_id": 43023048173,
+    "own_ci_state": "Success",
+    "rest_status": 403,
+    "scope": "Independent exact26 Git objects/modes and author ordinary Git/ref receipts; own four-run and two-job HTML raw chain verified. REST403 and matrix404 preserved, no successful REST, complete logs or independent direct network claimed.",
+    "independent_terminal_report_sha256": "90d17af3216c9ab2cdfa9a164fc423449b12023efe6877dbb78bbc00cb09f8a9",
+    "own_ci_required_steps_passed": true,
+    "own_ci": {
+      "at": "2026-11-11T13:10:27.641614+00:00",
+      "candidate": "93b538fd474120fa05574dcdcf376b7666502c8d",
+      "run_id": 43023048173,
+      "status": "Success",
+      "required_steps_passed": true,
+      "samples": [
+        {
+          "sample": 1,
+          "status": "In progress",
+          "sha256": "c2c92035f8ae75c6b64c514c6d4138e66eeed1cbedb132278f7d0b7cefeafda1",
+          "bytes": 150552
+        },
+        {
+          "sample": 2,
+          "status": "In progress",
+          "sha256": "dc1ac36ecc02265597866d40faaf550bb95d5c7e34d9cb62fad3ca9994f69a0c",
+          "bytes": 153316
+        },
+        {
+          "sample": 3,
+          "status": "In progress",
+          "sha256": "e500de881d9407ca0d658846fa4bb92be53e4838e319e5e3953041b98b0aa559",
+          "bytes": 153311
+        },
+        {
+          "sample": 4,
+          "status": "Success",
+          "sha256": "a7d29a77922ab48e8404bc1e50b1f094435df1c48504bb3c9d7edff1bae18898",
+          "bytes": 157022
+        }
+      ],
+      "jobs": [
+        {
+          "job_id": 130530751169,
+          "os": "ubuntu-latest",
+          "python": "3.11",
+          "required_steps": [
+            {
+              "name": "Build and install wheel",
+              "conclusion": "success",
+              "completed_at": "2026-11-11T12:45:29Z",
+              "job_completed_attribute": true
+            },
+            {
+              "name": "Packaged reference identity",
+              "conclusion": "success",
+              "completed_at": "2026-11-11T12:45:30Z",
+              "job_completed_attribute": true
+            },
+            {
+              "name": "Native application regression",
+              "conclusion": "success",
+              "completed_at": "2026-11-11T13:03:25Z",
+              "job_completed_attribute": true
+            }
+          ],
+          "sha256": "72a2e809b28eec9c3adaf50cd2d08e45021946034a274f70212784f459dd494a",
+          "bytes": 161571
+        },
+        {
+          "job_id": 130530751731,
+          "os": "windows-latest",
+          "python": "3.12",
+          "required_steps": [
+            {
+              "name": "Build and install wheel",
+              "conclusion": "success",
+              "completed_at": "2026-11-11T12:45:53Z",
+              "job_completed_attribute": true
+            },
+            {
+              "name": "Packaged reference identity",
+              "conclusion": "success",
+              "completed_at": "2026-11-11T12:45:54Z",
+              "job_completed_attribute": true
+            },
+            {
+              "name": "Native application regression",
+              "conclusion": "success",
+              "completed_at": "2026-11-11T12:55:48Z",
+              "job_completed_attribute": true
+            },
+            {
+              "name": "Windows PowerShell 5.1 installer and upgrade",
+              "conclusion": "success",
+              "completed_at": "2026-11-11T12:56:33Z",
+              "job_completed_attribute": true
+            }
+          ],
+          "sha256": "f9dbab07ea909355c5bf8f594857032f44a8c691ba31b66d95badf9c4ee9558c",
+          "bytes": 160171
+        }
+      ],
+      "scope": "Official run and job HTML raw bodies with exact candidate paths and completed successful required step attributes. First three run samples remain In progress. REST403 and anonymous lazy-matrix404 retained; no successful REST or full-log download claimed."
+    }
   }
 }

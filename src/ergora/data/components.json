@@ -767,7 +767,8 @@
           "issue.writeback.label-prepare",
           "issue.writeback.status",
           "issue.writeback.send",
-          "issue.writeback.observe"
+          "issue.writeback.observe",
+          "issue.candidate.observe"
         ]
       },
       "platforms": [],
@@ -840,7 +841,8 @@
           "issue.writeback.prepare",
           "issue.writeback.status",
           "issue.writeback.send",
-          "issue.writeback.observe"
+          "issue.writeback.observe",
+          "issue.candidate.observe"
         ]
       },
       "platforms": [],

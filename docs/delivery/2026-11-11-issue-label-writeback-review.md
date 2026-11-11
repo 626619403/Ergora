@@ -133,3 +133,53 @@ README、使用手册和架构说明与实际 Interface／调用路径一致：G
 ST1 关闭；这是纯状态修正，无需重跑产品。
 
 **完整本地出口通过：Spec 开放 0，Standards 开放 0，ST1（P3）已关闭。** 该结论覆盖上述 26 文件、三件已核状态修正、最终 r2 全包／两 RECORD／283、实际自身原件及公开投影；本报告追加按同片记账处理。C2a 精确 ready／Git 对象、普通提交／推送、同 SHA remote 和本提交自己的必要双 OS CI 继续待核，当前不称 C2a 精确交付或整个 F7 完成。
+
+## 提交后续核：精确 Git、普通推送与作者 Ref
+
+本节在普通提交 **`93b538fd474120fa05574dcdcf376b7666502c8d`** 之后追加，不属于该提交内已封存的报告 blob。该已提交报告为 **20661B／SHA256 `4adfe249920fbaac0d4ead55f5b6c1a603551756d7534af19623f31349bbb809`**，本轮从实际 Git 对象重新读取并核对，等于追加前的评审报告；不以本节的新字节改写其身份。评审者没有提交、推送或运行产品／模型。
+
+`commit-closure/ready-r1/manifest.json` SHA256 为 **`c1280a05ce65b06d93de53263c11101e0a0dfa05c2418a958c6ebb8bb6d230e0`**。独立重算其 26 份封存原件的大小／SHA，逐一与实际提交 blob 比较原字节，并以 Git 的 `blob <size>\0<bytes>` 算法重算各对象 ID；全部相符，mode 均为 `100644`。另外独立重算提交对象 ID，核实际直接父提交唯一为 `b5ee397e6571f95393b0f8d6e9ee7e6d947b0935`，相对该父提交的变更集合恰为 ready 的 26 个路径，无额外文件。排除的 C2b 研究不在该提交树中。
+
+相对已审 `full-review-r1`，ready 只有本报告追加及五件状态材料变化：`docs/PLAN.md`、C2a 交付记录、C2a acceptance JSON、总计划和 C2a 计划。逐项 diff 已核：除前述 ST1 修正外，只登记完整独立本地出口通过、原 26 文件 manifest／报告摘要和后续精确交付仍待；没有改写源码／测试、历史模型／检查身份或提前宣称真实平台、Git／远端／CI 通过。acceptance 对初轮和完整后轮分别保留范围，新增的状态同步不冒称旧 manifest 原字节。
+
+本轮从精确提交只读导出整个 `src/ergora` 到内存，**446 个包文件**的集合与原字节逐项等于最终 r2 wheel；该 wheel SHA256 仍为 `13ace2b7aebaac9bf171fcb335e84bea2b6c53bc7758206c55840b70d062d600`。提交中的 reference manifest 及其 **283 件**原字节也逐项符合冻结摘要。这是精确 Git 对既有发行／检查证据的身份闭合，没有重新安装或重跑已过的产品检查。
+
+`static-r2/result.json` 的 26 行大小／摘要逐项等于 ready。独立重新解析其中 5 份 JSON，核 388 个本地 Markdown 目标，缺失 0；没有指向已排除 C2b 研究的目标。26 件无本机私有 home 路径或尾空白，实际基线→提交的 `git diff --check` 退出 0。作者的 6 个已载入秘密值扫描仍仅按作者原件记，不称本轮独立取得秘密并重扫。
+
+已读取 `commit-closure/` 的提交、推送、Ref metadata 及对应原 stdout／stderr，并核对驱动中的实际 argv。普通提交 message 为 `feat: append candidate labels through native GitHub IDs`，exit 0／9.304235 秒、stderr 空；实际提交与上面的对象身份相同。普通 push argv 为 `git push origin HEAD:refs/heads/refactor/architecture-foundations`，没有 force，exit 0／7.809344 秒、stdout 空，原 stderr 记录 `b5ee397..93b538f` 到该分支，SHA256 `7b59e9c58cbf29fd18cdbe06d8c87f08024564ad436fd1afe76c9594df042e0b`。
+
+作者随后 `git ls-remote --exit-code origin refs/heads/refactor/architecture-foundations`，exit 0／1.807579 秒、stderr 空；86B 原 stdout 为完整 `93b538fd474120fa05574dcdcf376b7666502c8d` 与该精确 ref，SHA256 **`85e4e2ab6251960a7ecae0292e75901e885f5f9552e480fce1fb404d9972192a`**。本轮独立离线核对原件，不冒称评审者另一次直接网络读取，也未重复已知代理失败。
+
+**精确 ready／26 Git 对象、446 包／283 冻结、普通提交／推送及作者同完整 SHA Ref 原件核验通过；Spec／Standards 开放仍为 0／0。** 本提交自己的必要双 OS CI 仍待原件及同片终核；当前不称 C2a 精确交付或整个 F7 完成。
+
+## 提交后终核：本片自己的双 OS CI
+
+本节同样是 `93b538fd474120fa05574dcdcf376b7666502c8d` 之后的报告追加，不属于该提交内的报告 blob。只使用该精确 Git 对象、既有 ready／r2 封存原件和本节 CI 原响应；工作树已开始的 C3a 源码不属于 C2a 候选，也未拿它与 C2a 安装包比较。评审者没有网络请求、CI 写入／重跑、安装、模型或产品运行。
+
+从精确提交读取 `.github/workflows/portability.yml`，原字节 SHA256 **`81c168fdb140f44ccfdca497003e452355c9164a6ed6f8dfb8fa31729a1943ca`**。实际矩阵为 Ubuntu／Python 3.11 和 Windows／Python 3.12；各有 wheel 构建安装、packaged reference identity、native application regression 三项，Windows 另有 PowerShell 5.1 安装／升级，合计七项必要出口。Linux 的 Windows 条件步骤无需成功，不能把它的 `skipped` 当成必要检查遗漏。
+
+独立读取 `commit-closure/ci-run-html-r1` 至 `r4` 的完整 `page.html / receipt.json`，重算大小／SHA，均为同一官方 run URL 的 HTTP 200 原响应；逐份核实际 commit 链接的完整 SHA、精确分支、Portability workflow 和 push 触发身份。实际 Status 区域依次为：
+
+|run 样本|原 Status|原字节数|原 body SHA256|
+|---|---|---:|---|
+|r1|In progress|150552|`c2c92035f8ae75c6b64c514c6d4138e66eeed1cbedb132278f7d0b7cefeafda1`|
+|r2|In progress|153316|`dc1ac36ecc02265597866d40faaf550bb95d5c7e34d9cb62fad3ca9994f69a0c`|
+|r3|In progress|153311|`e500de881d9407ca0d658846fa4bb92be53e4838e319e5e3953041b98b0aa559`|
+|r4|Success|157022|`a7d29a77922ab48e8404bc1e50b1f094435df1c48504bb3c9d7edff1bae18898`|
+
+终态为本提交自己的 [Portability run 43023048173](https://github.com/626619403/Ergora/actions/runs/43023048173)，未借 C1 或其他 SHA。r4 中两个 job 链接分别绑定 Linux `130530751169` 和 Windows `130530751731`，实际矩阵名称与精确 workflow 相同。
+
+两份 `ci-job-<id>-html-r1` 原 body／receipt 也已独立重算：Linux 为 **161571B／`72a2e809b28eec9c3adaf50cd2d08e45021946034a274f70212784f459dd494a`**，Windows 为 **160171B／`f9dbab07ea909355c5bf8f594857032f44a8c691ba31b66d95badf9c4ee9558c`**。各自 URL／final URL 均为该 run 的精确 job，HTTP 200；原容器 `data-job-status="completed"`。直接解析每个实际 `check-step`，必要步骤均唯一，`data-conclusion="success"`，有完成时间和 `data-job-completed`；每个原 `data-log-url` 同时包含完整候选 SHA、对应 job ID 和该步骤号，未用页面上其他 success 图标代替步骤判定。
+
+|必要步骤|Linux 完成时间 UTC|Windows 完成时间 UTC|
+|---|---|---|
+|Build and install wheel|12:45:29|12:45:53|
+|Packaged reference identity|12:45:30|12:45:54|
+|Native application regression|13:03:25|12:55:48|
+|Windows PowerShell 5.1 installer and upgrade|条件跳过|12:56:33|
+
+以上时间均为 2026-11-11。两 job 的 `Complete job` 也为 success，分别于 13:03:26、12:56:35 完成。Windows 原件采样时间为 12:59:19.857850，已晚于它的全部必要步骤和 Complete job；虽然早于 13:07:35.695072 的终态 run 样本，它当时已完成，无需仅为采样顺序重复 GET。Linux 原件采样为 13:08:24.991859，也晚于其完成时间。七项必要步骤及原件身份、大小／SHA、四次 run 状态均逐字段等于 `ci-result-r1.json`。
+
+匿名 REST 原响应仍为 **HTTP 403**，280B／SHA256 `cab107d310af6137d3ca21f7de123c972a91cb1cbd91e2f58f61fe192ba31735`，实际内容为 rate limit；anonymous lazy-matrix 原响应仍为 **HTTP 404**，226080B／SHA256 `0f38613ea9279dd893829cc07e9082108f8d2f61eeae78cf5fb767504804728d`。两份失败 metadata／URL／原字节摘要均已核，前三份 In progress 保持原样。本轮是六份 HTTP 200 run／job HTML 与两份失败响应的离线终核，不称成功 REST、全日志下载或评审者直接网络成功。
+
+**C2a 精确交付终结：完整本地出口、精确 26 Git 对象／ready、446 包／两 RECORD／283 冻结、实际自身与独立两轴、普通提交／推送及作者同完整 SHA Ref 原件、本提交自己的双 OS 七项必要 CI 均已按上述范围核过。Spec／Standards 开放 0／0，ST1（P3）已关闭。** 本结论仅关闭 GitHub 原生 ID 单标签 C2a；GitLab C2b、C3a 及 F7 其他范围仍为各自后片，不据此称整个 F7 或项目完成。

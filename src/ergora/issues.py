@@ -55,6 +55,36 @@ def show(state: State, project_id: str, issue_id: str) -> dict:
     return _observe(state.project(project_id), issue_id)[0]
 
 
+def remote_candidate(state: State, project_id: str, task_id: str, expected_revision: int, *,
+                     run_id: str, candidate_sha: str, base_branch: str) -> dict:
+    """Compare original exported content with current local and remote refs; persist nothing."""
+    from . import tasks
+
+    project = state.project(project_id)
+    _revision(project, expected_revision)
+    configuration = projects.effective_configuration(project)
+    binding = configuration['layers']['tracker']['binding']
+    saved, task = tasks.exported_source_candidate(state, project, binding, task_id, run_id, candidate_sha)
+    local = tasks.inspect_export(state, project_id, task_id, run_id=run_id,
+                                candidate_sha=candidate_sha, base_branch=base_branch)
+    if local['export']['intent_sha256'] != task['export_intent_sha256']:
+        raise ValueError('Local candidate inspection differs from the original export intent')
+    remote = issue_backends.for_binding(binding).repository_refs(task['branch'], base_branch)
+    _revision(state.project(project_id), expected_revision)
+    return {'schema_version': 1, 'kind': 'remote-candidate-observation',
+        'project': {'id': project_id, 'revision': expected_revision}, 'configuration_sha256': configuration['sha256'],
+        'source': saved['payload']['observation']['source'], 'snapshot_sha256': saved['sha256'], 'task': task,
+        'local': local, 'remote': remote, 'observed_at': now(),
+        'comparisons': {
+            'local_export_ref_matches_candidate': local['branch_matches_candidate'],
+            'head_matches_candidate': None if remote['head']['sha'] is None else remote['head']['sha'] == candidate_sha,
+            'base_matches_task_base': None if remote['base']['sha'] is None else remote['base']['sha'] == local['base_sha']},
+        'context_only': True, 'execution_authorized': False, 'proves_original_attempt': False,
+        'coverage': 'Separate current reads, not a shared snapshot or CAS; cannot detect ABA or prove who published. '
+                    'Repository identity is observed now at the frozen source namespace, not frozen at task creation. '
+                    '404 means not found or not visible. No fetch, push, tracker mutation or persisted receipt.'}
+
+
 def _link(row) -> dict:
     payload = json.loads(row['document'])
     contracts.validate(payload, _LINK, 'Saved issue task link')

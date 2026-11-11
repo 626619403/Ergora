@@ -2,7 +2,7 @@
 
 Ergora 把项目合同、可组合的专长 Agent、正式执行和可核对证据接在一起。CLI 与网页共用应用用例；Agent 后端、工单来源和外部通信各有自己的接入位置。当前实现仍复用冻结参考发行的六阶段与 Temporal，不要求每个项目使用工单，也没有第二套正式调度器。
 
-主体对应 `c1f31fc` 的生产源码，F7a读取、F7b快照／来源任务v7与F7c显式候选评论／GitHub原生ID标签在对应所有者处增补；当前进度以[PLAN](../PLAN.md)与各片交付记录为准。逐次实施说明已[逐字归档](current-history-2026-11-11.md)，当中的“当前”“待实现”和默认版本只代表原记录。[C6d源码清单](../delivery/evidence/2026-11-11-architecture-source-inventory.json)是该基线的53个第一方Python模块、203条静态本地导入边和18个第一方console JS，不包含后增的`issues / issue_backends / issue_sources / issue_snapshots / issue_writebacks`。原静态导入包含函数内导入、拓扑无环；动态装载、子进程和运行语义另按下文调用关系核对。
+主体对应 `c1f31fc` 的生产源码，F7a读取、F7b快照／来源任务v7与F7c显式候选评论／GitHub原生ID标签及只读远端候选核对在对应所有者处增补；当前进度以[PLAN](../PLAN.md)与各片交付记录为准。逐次实施说明已[逐字归档](current-history-2026-11-11.md)，当中的“当前”“待实现”和默认版本只代表原记录。[C6d源码清单](../delivery/evidence/2026-11-11-architecture-source-inventory.json)是该基线的53个第一方Python模块、203条静态本地导入边和18个第一方console JS，不包含后增的`issues / issue_backends / issue_sources / issue_snapshots / issue_writebacks`。原静态导入包含函数内导入、拓扑无环；动态装载、子进程和运行语义另按下文调用关系核对。
 
 ## 模块与依赖
 
@@ -16,6 +16,7 @@ flowchart TB
   Uses --> Tasks[tasks / 正式任务操作]
   Uses --> Issues[issues / 工单观察与上下文关联]
   Issues --> IssueBackends[issue_backends / 本族原生协议]
+  Issues --> Tasks
   Uses --> Writebacks[issue_writebacks / 显式候选评论与标签]
   Writebacks --> IssueBackends
   Writebacks --> Tasks
@@ -48,14 +49,14 @@ flowchart TB
 |`components`、`contracts`|随包工具目录／配置schema、严格结构校验|声明不代表安装或认证；schema不注入默认值，摘要算法不混用|
 |`state`、`asset_trees`|SQLite版本与锁、完整文件树身份|领域拥有自己的事务；文件字节与执行位影响身份|
 |`projects`、`bindings`、`registrations`|项目修订、有效工具选择、完整登记及旧登记采用|控制项目为权威；参考配置是单向投影，跨资源发布按原意图恢复|
-|`issues`、`issue_backends`、`issue_sources`、`issue_snapshots`|固定项目配置的工单观察、不可变快照／显式creation关联；GitHub／GitLab本族协议与局部选择、标准库来源合同。issue_snapshots共享读取／row核验，由tasks与issues消费，避免二者互相导入|完整API base／namespace／number或iid及native ID分别保留；新link复用原tasks.creation，只有上下文关联，无任务启动／输入或批准改写／远端写入|
+|`issues`、`issue_backends`、`issue_sources`、`issue_snapshots`|固定项目配置的工单观察、不可变快照／显式creation关联；GitHub／GitLab本族协议与局部选择、标准库来源合同。issue_snapshots共享读取／row核验，由tasks与issues共享读取，tasks不反向导入issues|完整API base／namespace／number或iid及native ID分别保留；新link复用原tasks.creation，只有上下文关联，无任务启动／输入或批准改写／远端写入|
 |`issue_writebacks`|CLI与HTTP共享原v7已导出精确候选的评论／单标签prepare及共同send／status／observe；本域action Interface／registry拥有两种真实动作，消费原tasks与快照|原C1记录保持；同一生命周期先提交attempt再至多一次写，只有严格原201评论或原200标签收据持久化才确认。GitHub按原生ID追加，GitLab标签明确unsupported；IssueBackend拥有原生协议，State／backup复用原本域记录，观察不确认unknown，无第二调度或通用副作用框架|
 |`agent_definitions`、`workflow_definitions`|独立专家、精确嵌套引用、继承／DAG编译、preset与manifest|定义可静态检查；preview不授执行权，freeze不启动任务|
 |`definition_bundles`|两类定义共用的完整资源树、检查／修订／不可变版本发布|修订派生新包；逐定义发布，根最后发布，不是跨库事务|
 |`agent_runs`|独立叶子／角色的输入冻结、准入、调用和归档|原项目／定义／后端绑定保持；普通调用成功不生成正式任务通过|
 |`agents`、`agent_backends`|角色输出合同与可替换后端Adapter|调用者走同一Interface；实现拥有原生命令、配置、结果提取及支持模式|
 |`task_mcp`|单次调用的完整声明资源投影与连接回执|只有固定 `list/read`，没有任意路径／shell工具；当前要求Linux和可选SDK|
-|`tasks`|正式任务本地查询、预览／创建，以及运行／批准／取消／导出／对账用例|项目revision、原task/run、精确意图与摘要；未知结果沿原ID恢复|
+|`tasks`|正式任务本地查询、预览／创建，以及运行／批准／取消／导出／对账用例；共有exported_source_candidate绑定原来源与精确候选，inspect_export委托原Git owner读当前对象|项目revision、原task/run、精确意图与摘要；未知结果沿原ID恢复|
 |`reference`、`reference_creation_process`|随包参考资源和专用进程装载|编译／读取与执行分开；不在Web请求中直接改原生进程全局|
 |`reference_task_creation`、`reference_task_submission`、`reference_task_runtime`|原合同发布、attempt-before-send及原运行查询|操作先持久化意图，后做外部变更；原spec/memo/run必须匹配|
 |`reference_task_approval`、`reference_task_cancellation`|完整计划读取、精确批准、取消请求和投递恢复|requested是投递事实；授权采纳／外部停止需另核|
@@ -73,6 +74,8 @@ flowchart TB
 |`backups`、`drafts`|离线完整控制面备份；任务输入草稿|备份需停止写入；草稿不是正式合同，业务仓库／执行状态另行备份|
 |`processes`、`windows_job`|POSIX进程组或Windows Job的时限／取消／后代清理|生命周期管理不提供文件或网络沙箱；远程计算另行对账|
 |`cli`、`web`、`__main__`、`__init__`|入口、传输DTO与版本|直接调用现有用例，不另持评分、批准或运行状态|
+
+`issues.remote_candidate`供CLI／HTTP共用，只拼接原`tasks.exported_source_candidate`、`tasks.inspect_export`和`IssueBackend.repository_refs`的事实。GH／GL本族拥有仓库与两条精确分支读取；GitLab后续按本次项目native ID访问，GitHub仍按原namespace路由。repo／ref逐点读取不是共同snapshot或CAS，原快照没有创建时repo native ID，404是不存在或不可见；结果不授执行权、不证明原attempt或自动发布，无新表或账本。原C1／C2持久task/source投影字节保持，当前本地ref不能改写历史export状态。
 
 `components / contracts / state / asset_trees / windows_job` 不导入其他自有模块；`processes`只依赖`windows_job`。定义编译不导入Temporal；SDK相关装载留在实际原生操作和worker。原执行器动态装载、驱动子进程及外部SDK环境是静态导入图之外的调用边，详见[reference边界](reference-boundary.md)。
 

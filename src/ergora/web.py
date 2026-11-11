@@ -104,6 +104,10 @@ class IssueLabelPreparePayload(IssueWritebackPreparePayload):
     label_name: str = Field(min_length=1)
 
 
+class IssueCandidateObservePayload(IssueWritebackPreparePayload):
+    base_branch: str
+
+
 class IssueWritebackSendPayload(IssueCapturePayload):
     confirm: bool = Field(strict=True)
 
@@ -459,6 +463,11 @@ def create_app(home: Path | None = None) -> FastAPI:
     def prepare_issue_label_writeback(project_id: str, body: IssueLabelPreparePayload):
         return issue_writebacks.prepare_label(state, project_id, body.task_id, body.revision,
             run_id=body.run_id, candidate_sha=body.candidate_sha, label_name=body.label_name)
+
+    @application.post("/api/projects/{project_id}/candidate-observations")
+    def observe_remote_candidate(project_id: str, body: IssueCandidateObservePayload):
+        return issues.remote_candidate(state, project_id, body.task_id, body.revision,
+            run_id=body.run_id, candidate_sha=body.candidate_sha, base_branch=body.base_branch)
 
     @application.get("/api/projects/{project_id}/issue-writebacks/{digest}")
     def saved_issue_writeback(project_id: str, digest: str):

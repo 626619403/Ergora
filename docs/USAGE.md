@@ -278,6 +278,22 @@ HTTP准备入口为`POST /api/projects/PROJECT/issue-label-writebacks`，正文�
 
 当前GitLab标签动作明确不支持，普通工单评论可用；缺少完整目标部署／返回合同及scoped rename并发保证时，不自动改用`add_labels`。标签操作可能产生平台事件、通知和外部自动化，不承诺静默；标签不授批准权，不代表远端发布、合并或工单完成。真实服务版本和账号写权限需在自己的测试项目验证，默认验收只用loopback夹具。
 
+### 核对候选与当前远端分支
+
+原v7来源任务已导出后，可读取原来源仓库的当前head与base分支。head名称固定为原export分支，base必须显式指定；工具不会把当前默认分支推断为原任务基线。
+
+```bash
+ergora issue candidate-observe PROJECT TASK --revision REVISION --run-id RUN_ID --candidate-sha CANDIDATE_SHA --base-branch main
+```
+
+输出分别列出原导出收据、当前本地ref／完整candidate与base commit，以及远端仓库原生ID和两条精确ref。`comparisons`中的`local_export_ref_matches_candidate`、`head_matches_candidate`、`base_matches_task_base`分别表示这三个比较。当前本地分支被移动或远端base已前进时，原收据和冻结base保持不变，比较返回false；本地分支已删除时本地比较为null；远端ref返回404时相应比较为null，`resolution`是`not_found_or_not_visible`。404不能区分不存在与权限不可见，不能据此自动创建。
+
+本地Git读取沿原Linux／WSL2正式执行环境，本入口要求Git 2.43或更新版本并强制`GIT_NO_LAZY_FETCH=1`、`GIT_NO_REPLACE_OBJECTS=1`，未知／更老版本明确拒绝；必须仍有原任务、提交、导出记录和candidate／base commit原对象，不能以`refs/replace`的替代对象通过检查。读取不要求Temporal在线，缺失promisor对象直接报错，不隐式fetch对象、不更新ref或释放claim；原显式导出fetch不受这些只读选项影响。GitHub读取repo及单数`git/ref/heads/...`的精确ref；GitLab先读项目原生ID，再按数字ID读两条分支，完整编码含斜线的分支名。三个平台请求均为GET、无redirect或重试，每个完整响应上限1MiB，socket I/O超时20秒；三次读取和本地操作总墙钟不承诺20秒。原来源binding变化会拒绝；无关Agent设置可使用当前revision。读取期间项目修订变化则拒绝返回旧选择结果，观察不持久保存。
+
+这是分别取得的当前事实，不能发现两次读取之间的ABA，也不能证明谁推送过、原attempt成功或执行瞬间head／base未变化。仓库原生ID是在原来源命名空间下本次读到的身份，原工单快照没有冻结创建时的仓库native ID；命名空间被删除重用等历史不能由本观察排除。不根据本地origin或返回URL改换目标，repo响应仅保留必要白名单字段，不返回临时clone token。
+
+同一查询的HTTP入口为`POST /api/projects/PROJECT/candidate-observations`，正文`revision/task_id/run_id/candidate_sha/base_branch`，继续要求同源及`X-Ergora-Request: 1`。这里POST是本地查询入口；provider只收到GET。该命令不推送分支、不创建或关联PR／MR、不写评论／标签、不批准或合并，`execution_authorized`及`proves_original_attempt`始终为false。确认当前内容相等后，仍按项目自己的发布和人工审查流程操作。
+
 ### 诊断与修复
 
 `ergora tools doctor PROJECT` 按有效绑定显示安装、版本、认证、连接、任务前置条件和修复指引，附项目修订及配置摘要。默认只做本地安装检查，不连接外部服务，也不调用模型。`ergora tools doctor PROJECT --probe --timeout 5` 主动检查原生 CLI 版本、Codex 凭据状态及 ReMe/Temporal 的 TCP 可达性；`--timeout` 为全部主动探测共用的 1–30 秒预算，本地安装检查及进程清理另计。工具绑定页也有同一主动探测入口，API 为 `POST /api/projects/PROJECT/doctor`，正文 `{"timeout":5}`，沿用本地写请求头 `X-Ergora-Request: 1`。

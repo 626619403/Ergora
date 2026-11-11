@@ -6,7 +6,7 @@
 
 C2a 先实现 GitHub 的 `addLabelsToLabelable(labelableId, labelIds)`。原 REST 读取将原 issue number／native ID、repository 和既存 label 映射到服务返回的不透明 GraphQL ID；不自行编码 ID。冻结精确单项标签和完整原生 mutation 请求，经操作者确认该意图摘要后发送。名称只是准备入口，不作为写入目标；不创建、移除、替换或按失败后的新名称重新定位标签。正文、标题和模型输出仍不参与授权。
 
-C2b 再核 GitLab 的完整读取／返回 schema、部署及权限，并按其真实能力接入。现有证据确认 `updateIssue(projectPath, iid, addLabelIds)` 避免按名称创建，但没有取得完整返回 selection 合同；同一 label ID 在预检后改成 scoped name 仍可移除人工同 scope 标签。当前 C2a 对 GitLab 标签动作明确拒绝，原评论功能保持，不退回 REST `add_labels`，不称 F7c 已全部完成。GitHub Enterprise 的正确 `/api/graphql` 路径可由原 REST `/api/v3` 推导；schema 不兼容须可见拒绝，不声称跨版本实测。
+C2b 的[固定版本第一方研究](../research/2026-11-11-gitlab-label-ids.md)已补足完整读取／返回schema及GID证据，但`updateIssue(projectPath, iid, addLabelIds)`没有原issue ID／expected版本条件；原label ID在预检后改成scoped name仍可移除人工同scope标签。严格原子合同当前无法满足，保留unsupported；有限非原子模式没有立项或默认启用。当前 C2a 对 GitLab 标签动作明确拒绝，原评论功能保持，不退回 REST `add_labels`，不称 F7c 已全部完成。GitHub Enterprise 的正确 `/api/graphql` 路径可由原 REST `/api/v3` 推导；schema 不兼容须可见拒绝，不声称跨版本实测。
 
 同一来源、原 creation／run／export candidate 只有一个候选标签追加语义槽。首次准备即冻结 operand；另一个名称不得获得新槽，已有 attempt 更不能通过重新准备、更换 write ID 或更换 SDK 重发。新业务工作使用原任务所有者的新候选身份。标签可以表示本地候选事实，不表示批准、远端发布、合并或工单完成。
 
@@ -26,8 +26,8 @@ C2b 再核 GitLab 的完整读取／返回 schema、部署及权限，并按其�
 |L1 单生命周期与 C1 兼容|同域 action Interface／局部映射；原 C1 已保存记录逐字可读、原发送及 unknown 语义保持；不增加 State 表／版本|源码67项／r1安装117项通过，原C1序列化合同保持；自身approve，完整独立两轴开放0／0，本地出口通过|
 |L2 GitHub ID 原生协议|原 issue／repo／label GET 映射；同源 GraphQL 路径；变量传 opaque 名称；完整单次 mutation 与只读有界页|原生协议已随源码67项／安装117项检查；完整独立通过，GitLab此动作明确unsupported|
 |L3 CLI／HTTP 与故障旅程|新增 label-prepare，共用 status／send／observe；明确确认；并发一 mutation、丢响应／部分 200／删除重建／改名、人工删除后不重发、当前修订变化；原 comment 与 backup 保持|源码67项与r1安装117通过／1跳过；仅本地loopback，不写真实tracker|
-|L4 安装、审查与交付|新非 editable 包／两 RECORD／283；必要受影响回归与原生 v7 export→新 CLI；实际自身审查模板、fresh-context 两轴；普通提交／推送及自己的双 OS CI|r1安装117通过／1跳过；最终r2包446／两RECORD／283与r1产品相同、自身256.52秒approve；完整26文件独立两轴及本地出口通过，ST1关闭，精确Git／远端／本片CI待核；C1模型／CI不替代本片|
-|C2b GitLab 后续|先补官方返回／ID／授权证据，明确 scoped rename／路由竞态及支持合同，再实现相同 Interface|独立后片，不借 C2a 提前关闭|
+|L4 安装、审查与交付|新非 editable 包／两 RECORD／283；必要受影响回归与原生 v7 export→新 CLI；实际自身审查模板、fresh-context 两轴；普通提交／推送及自己的双 OS CI|r1安装117通过／1跳过；最终r2包446／两RECORD／283与r1产品相同、自身256.52秒approve；完整26文件独立两轴及本地出口通过，ST1关闭，93b538f精确26Git／ready及作者SSH Ref独立通过，自己的CI43023048173双OS七必要步骤终核通过，精确交付终结；C1模型／CI不替代本片|
+|C2b GitLab 后续|先补官方返回／ID／授权证据，明确 scoped rename／路由竞态及支持合同，再实现相同 Interface|固定版本研究完成；路由／scoped rename无原子条件，严格能力继续unsupported，不称已接入|
 
 标签名称作为完整不透明变量传递，不做 casefold、Unicode 归一化或 CSV 拆分。原生通知、事件和外部自动化可能发生；本工具不承诺静默，不自动补偿人工标签，也不维护互斥工作流状态。删除／替换、分支推送、PR／MR、close／merge 和 F7d 页面／事件继续另片。
 

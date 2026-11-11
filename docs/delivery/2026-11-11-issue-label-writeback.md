@@ -1,10 +1,10 @@
 # F7c-C2a 交付记录
 
-基线 `b5ee397e6571f95393b0f8d6e9ee7e6d947b0935`；[本片计划](../plans/2026-11-11-issue-label-writeback.md)；[定向研究](../research/2026-11-11-issue-label-writeback.md)。当前L1–L3源码已实现并完成67项源码检查，r1新包身份通过，r1安装回归117通过／1跳过，实际自身approve、最终r2包身份及CLI／reference通过，完整26文件独立两轴及本地出口通过，ST1已关闭，精确Git／远端／本片CI待核。
+基线 `b5ee397e6571f95393b0f8d6e9ee7e6d947b0935`；[本片计划](../plans/2026-11-11-issue-label-writeback.md)；[定向研究](../research/2026-11-11-issue-label-writeback.md)。当前L1–L3源码已实现并完成67项源码检查，r1新包身份通过，r1安装回归117通过／1跳过，实际自身approve、最终r2包身份及CLI／reference通过，完整26文件独立两轴及本地出口通过，ST1已关闭；93b538f精确26Git、普通推送／作者Ref与自己的CI43023048173双OS七必要步骤经原评审终核，C2a精确交付终结。
 
 ## 当前检查点
 
-选择 GitHub 原生 ID mutation，先增加一个既存候选标签；复用 C1 回写生命周期和原 task／snapshot／export owners，保留 C1 已发布记录身份，不建立第二队列或任务状态。GitLab 完整 GraphQL 返回合同尚缺，同 ID scoped rename 竞态也须明确，因此本片显示 unsupported，后续 C2b 单独补证／接入。
+选择 GitHub 原生 ID mutation，先增加一个既存候选标签；复用 C1 回写生命周期和原 task／snapshot／export owners，保留 C1 已发布记录身份，不建立第二队列或任务状态。GitLab固定版本返回合同现已由[后片研究](../research/2026-11-11-gitlab-label-ids.md)补证，但原issue路由与同ID scoped rename无原子条件；严格能力继续unsupported，不将研究完成称为接入。
 
 初查 23 次无凭据 GET（21 次200、2 次301）；按 ID 后补8次（7次200、1次404），未发送真实 GraphQL、未安装 SDK、未读凭据或写 tracker。研究中的 REST 推荐保留其历史范围，顶部和后补已明确优先采用按 ID 接口；完整事实与 hash 见研究。没有将未见目标的有限页当作不存在，也不将 clientMutationId 当幂等键。
 
@@ -37,3 +37,15 @@ GitHub通过原issue／repo／label三个REST GET核native ID、namespace及服�
 ## 完整独立本地出口
 
 新的fresh-context评审者已核完整26文件候选、最终r2全部446包文件／RECORD451与456／283冻结、实际自身MCP原件全链和两份公开投影；Spec／Standards开放0／0。唯一P3 ST1为三处当前进度表述落后，修正后由原评审复核关闭，不改产品或重跑已过检查。完整候选manifest SHA `bb44bec7fae1b845e65013d9478cec72cdd0256c372300d627a9efe4d5d27959`；追加报告SHA `4adfe249920fbaac0d4ead55f5b6c1a603551756d7534af19623f31349bbb809`。本地出口通过；后续纯状态同步与报告追加不冒称原manifest中的旧字节。下一步冻结ready、普通提交／推送，并核本提交自己的必要CI。
+
+## 精确提交与首份CI样本
+
+26文件ready SHA `c1280a05ce65b06d93de53263c11101e0a0dfa05c2418a958c6ebb8bb6d230e0`，普通提交／推送 `93b538fd474120fa05574dcdcf376b7666502c8d`。作者逐一核26Git blob／mode与ready相同，提交中的审查报告SHA仍为 `4adfe249920fbaac0d4ead55f5b6c1a603551756d7534af19623f31349bbb809`；作者SSH ls-remote同完整SHA通过，原评审精确核验继续。最终静态26文件／388本地链接／6已载入秘密值issue0。后补状态与审查报告不冒称已提交旧字节。
+
+本提交自己的[CI43023048173](https://github.com/626619403/Ergora/actions/runs/43023048173)首份官方run HTML为In progress。匿名REST读返回403，原body／hash保留；不称成功REST或全日志下载，不借C1 CI。暂不推下一提交以免取消正在执行的本片CI。
+
+## 本提交自己的CI与精确交付终结
+
+[CI43023048173](https://github.com/626619403/Ergora/actions/runs/43023048173)第四份官方run原HTML为Success，绑定完整93b538f。Linux实际job130530751169的wheel／reference／native三项、Windows实际job130530751731的这三项加PowerShell5.1安装／升级均success／completed；原评审从精确提交workflow和六份成功HTTP原body逐项核SHA／job／必要步骤及完成时间通过，Spec／Standards开放0／0。报告终结快照SHA `90d17af3216c9ab2cdfa9a164fc423449b12023efe6877dbb78bbc00cb09f8a9`，后追加不冒称93b538f中旧报告blob。
+
+前三份In progress、匿名REST403及lazy-matrix404保留，不称成功REST、完整日志下载或评审者直接网络成功。Windows原件读取虽早于run终态样本，已晚于其Complete job，不为顺序重复GET。完整本地出口、精确26Git／ready、446包／两RECORD／283、实际自身与完整独立两轴、普通提交／推送及作者同完整SHA Ref和本提交自己的七必要CI已按实际范围闭合，C2a精确交付终结。GitLab严格标签、C3a及F7其余仍为后片。

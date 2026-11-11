@@ -248,26 +248,6 @@ def _target(backend, source: dict) -> dict:
     return observed
 
 
-def _candidate(state: State, project: dict, binding: dict, task_id: str, run_id: str, candidate_sha: str) -> tuple[dict, dict]:
-    created = tasks.creation(state, project['id'], task_id)
-    original = tasks.show(state, project['id'], task_id)
-    envelope = original.get('admission_envelope', {})
-    if created['status'] != 'published' or envelope.get('schema_version') != 7:
-        raise ValueError('Candidate comments require a published original v7 source task')
-    saved = envelope['issue_source']
-    if saved != issue_snapshots.snapshot(state, project['id'], saved['sha256']):
-        raise ValueError('Task source differs from its saved original snapshot')
-    issue_sources.bind_snapshot(saved, project['id'], binding, original['spec']['request']['tracker'])
-    exported = tasks.export_status(state, project['id'], task_id)
-    if exported['status'] != 'exported' or exported['run_id'] != run_id or exported['candidate_sha'] != candidate_sha:
-        raise ValueError('Candidate comment requires the exact original exported run and candidate')
-    facts = {key: exported[key] for key in ('intent_sha256', 'workflow_id', 'run_id', 'candidate_sha', 'repo', 'branch', 'lease_released')}
-    task = {'id': task_id, 'creation_sha256': created['intent_sha256'], 'compiled_sha256': created['compiled_sha256'],
-            'request_sha256': original['request_sha256'], 'profile_sha256': original['profile_sha256'],
-            'run_id': run_id, 'candidate_sha': candidate_sha, 'export_intent_sha256': exported['intent_sha256'],
-            'export_facts_sha256': identity(facts), 'branch': exported['branch']}
-    return saved, task
-
 
 def prepare(state: State, project_id: str, task_id: str, expected_revision: int, *, run_id: str, candidate_sha: str) -> dict:
     return _prepare(state, project_id, task_id, expected_revision, run_id, candidate_sha, _ACTIONS['candidate-association-comment'], {})
@@ -285,7 +265,7 @@ def _prepare(state: State, project_id: str, task_id: str, expected_revision: int
     _revision(project, expected_revision)
     configuration = projects.effective_configuration(project)
     binding = configuration['layers']['tracker']['binding']
-    saved, task = _candidate(state, project, binding, task_id, run_id, candidate_sha)
+    saved, task = tasks.exported_source_candidate(state, project, binding, task_id, run_id, candidate_sha)
     intent = {'schema_version': 1, 'kind': action.kind, 'template_version': 1,
         'project': project_id, 'project_revision': expected_revision, 'configuration_sha256': configuration['sha256'],
         'tracker_binding': binding,
@@ -369,7 +349,7 @@ def send(state: State, project_id: str, digest: str, expected_revision: int, *, 
     binding = projects.effective_configuration(project)['layers']['tracker']['binding']
     if binding != intent['tracker_binding']:
         raise ValueError('Prepared issue writeback tracker binding changed; it cannot be retargeted')
-    saved, task = _candidate(state, project, binding, intent['task']['id'], intent['task']['run_id'], intent['task']['candidate_sha'])
+    saved, task = tasks.exported_source_candidate(state, project, binding, intent['task']['id'], intent['task']['run_id'], intent['task']['candidate_sha'])
     if task != intent['task'] or _source(saved) != intent['source']:
         raise ValueError('Original task source or candidate export differs from the prepared writeback')
     backend = issue_backends.for_binding(intent['tracker_binding'])

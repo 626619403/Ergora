@@ -49,6 +49,8 @@
 |候选评论身份|复用`task_envelopes.identity`的排序、UTF8、不转义Unicode、紧凑JSON／SHA256；固定body中opaque名称另做JSON文字及Markdown／mention字符转义|intent／逻辑scope／attempt／观察各有不同摘要；原生POST／GET响应另存原字节摘要，不能将marker、当前匹配或重编码投影视为原请求因果证明|
 |候选标签身份|新kind `candidate-label-add` 沿原schema v1和schema v3本域表；冻结完整ID请求、单项标签及服务返回的issue／repo／label node ID，原C1格式不重写|同候选只有一个标签语义槽，改名／新请求ID不能绕过；原200无GraphQL errors、回显及原响应有限页内目标匹配才可保存ack。clientMutationId不是幂等键，当前query页不替代原receipt；GitLab标签未支持|
 
+|远端候选观察|原source／creation／run／export身份来自tasks共有投影；当前本地ref与原base／candidate commit由原export owner读取，平台完整200响应摘要各自保留|不持久保存或重编码旧intent；三个ref比较分开，404为不可判断。当前repo native ID不是原创建时身份，非共同snapshot／CAS，不证明原attempt、历史唯一性或推送作者|
+
 A2 的固定向量、两种 compiled/request/profile 身份、Skill 执行位和合成旧状态继续作为回归依据。R2 只把测试中的私有 `_sha` 调用迁到实际语义名称，未改任何身份夹具。
 
 ## 增加或调整字段

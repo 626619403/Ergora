@@ -208,6 +208,13 @@ def parser() -> argparse.ArgumentParser:
         writing.add_argument("--candidate-sha", required=True)
         if name == 'writeback-label-prepare':
             writing.add_argument("--label-name", required=True)
+    candidate = operations.add_parser("candidate-observe", help="Compare original exported content with current local and remote refs; read only")
+    candidate.add_argument("project")
+    candidate.add_argument("task_id")
+    candidate.add_argument("--revision", type=int, required=True)
+    candidate.add_argument("--run-id", required=True)
+    candidate.add_argument("--candidate-sha", required=True)
+    candidate.add_argument("--base-branch", required=True, help="Explicit remote base branch; never inferred from its current default")
     for name in ("writeback-status", "writeback-send", "writeback-observe"):
         writing = operations.add_parser(name, help={
             'writeback-status': 'Read the saved writeback offline',
@@ -637,6 +644,9 @@ def main(argv: list[str] | None = None) -> int:
             elif args.operation == 'writeback-label-prepare':
                 output = issue_writebacks.prepare_label(state, args.project, args.task_id, args.revision,
                     run_id=args.run_id, candidate_sha=args.candidate_sha, label_name=args.label_name)
+            elif args.operation == 'candidate-observe':
+                output = issues.remote_candidate(state, args.project, args.task_id, args.revision,
+                    run_id=args.run_id, candidate_sha=args.candidate_sha, base_branch=args.base_branch)
             elif args.operation == 'writeback-status':
                 output = issue_writebacks.status(state, args.project, args.intent_sha256)
             elif args.operation == 'writeback-send':
