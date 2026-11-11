@@ -326,7 +326,9 @@ ergora composition verify-manifest ./review-requirements-manifest
 
 组合任务按正式信封版本使用独立的composition-v2、composition-v3或composition-v4队列与请求目录，六阶段、计划批准、候选验证及收据仍由原有所有者处理。旧worker不能接管更新版本；升级时停止旧worker/executor并由本版`services`重启，保留原history与状态目录。每阶段绑定完整原信封；状态和恢复核对原Temporal输入，不能用相同legacy投影替换不同manifest。审查调用保存完整祖先材料、原模板指令、批准计划和验证产物，以及任务与叶子共同读取范围内的base/candidate源码和diff。源码、依赖摘要、调用及结果均绑定同一候选；原monitor继续负责超时和取消。只读工具配置不等于操作系统隔离。组合任务的取消也核完整原信封，沿同一`cancel/cancellation/resume-cancel`和原signal恢复；`requested`仍只是投递事实，外部终态与租约按原`external-status/reconcile`核对，清理后保留原outcome。
 
-完整组合包导出仍支持10 MB/500文件；正式任务的内联信封沿原逐文件1 MiB和总意图16 MiB上限，base64及图中完整正文也计入。原stage context和每成员的完整审查输入各有1,000,000字节上限，动态源码、依赖正文和全部祖先提示一并计入，超限明确拒绝。保存与备份范围仍是登记执行状态目录中的任务七份合同、完整意图及结果回执；单独备份控制库不包含它们。只读DAG的前驱原产物完整内联、原请求/回执/claim与实际正文在下游调用前核验；共享端口表避免递归展开，但长审计链仍可能因完整正文超限而拒绝。写执行者分配仍沿计划接入；`kernel-delivery`目前只能静态预览，不能把manifest当作全部节点已执行。
+完整组合包导出仍支持10 MB/500文件；正式任务的内联信封沿原逐文件1 MiB和总意图16 MiB上限，base64及图中完整正文也计入。原stage context和每成员的完整审查输入各有1,000,000字节上限，动态源码、依赖正文和全部祖先提示一并计入，超限明确拒绝。保存与备份范围仍是登记执行状态目录中的任务七份合同、完整意图及结果回执；单独备份控制库不包含它们。原v4只读DAG及v5工作组合的前驱全部原产物完整内联，长审计链仍可能超预算。`kernel-delivery`仍只能静态预览，不能把manifest当作全部节点已执行。
+
+需要将实现专家分配到原工作单元，再承接总审查时，按[专长执行者配置](WORKFLOW_DEFINITIONS.md#专长执行者与原工作单元)选择`execution.protocol: work-units-v2`；用户任务定义仍为schema-v2，正式信封为v6。页面“完整manifest · 组合执行与审查”使用此协议。v6完整传递声明阶段产物、可信检查与审查意见，执行审计留原receipt/evidence/handoff并继续逐件核验，避免下游递归复制旧提示；控制依赖未绑定端口时也保留结果。祖先资源、批准、候选及原恢复门禁保持；旧`work-units-v1`/v5任务不自动迁移。升级worker/executor后才能接收新v6队列，完整执行仍要求Linux/WSL2和显式可信容器。
 
 ### 查询正式任务运行状态
 

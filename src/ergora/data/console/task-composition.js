@@ -202,7 +202,7 @@ export function taskComposition({ tools, projectId, input, active, invalidate })
       if (source.value === "delivery") {
         if (!assigned) throw new Error("请从当前任务输入载入并分配工作单元。");
         composition.execution = {
-          protocol: "work-units-v1", instance: work.value, mode: "workspace-task-mcp",
+          protocol: "work-units-v2", instance: work.value, mode: "workspace-task-mcp",
           assignments: Object.fromEntries(assigned.map(({ id, choice }) => [id, choice.value])),
         };
       }

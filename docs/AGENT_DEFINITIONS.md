@@ -2,7 +2,7 @@
 
 Agent 定义包保存一名专家的职能、专长、后端、初始指令、上下文和 Skill 资源。同一个后端可有多份互补定义；同一份定义以后也可用于多个模板。当前入口负责静态检查、导入、查看和分享，导入不运行其中的命令或脚本。
 
-项目的角色调用使用[角色绑定](AGENT_BACKENDS.md#项目选择与独立调用)。Agent定义可由[工作流定义](WORKFLOW_DEFINITIONS.md)引用、预览完整祖先链，并通过`composition run-input`显式调用固定叶子。正式六阶段可[冻结审查组合](USAGE.md#为正式任务冻结审查组合)，运行单个或显式all-join的多个嵌套只读串并行审查者；[work-units-v1](WORKFLOW_DEFINITIONS.md#专长执行者与原工作单元)还可把互补实现专家分配给原工作单元，再承接总审查。任意其他职能拓扑仍见[实施计划](plans/2026-11-08-agent-composition.md)。
+项目的角色调用使用[角色绑定](AGENT_BACKENDS.md#项目选择与独立调用)。Agent定义可由[工作流定义](WORKFLOW_DEFINITIONS.md)引用、预览完整祖先链，并通过`composition run-input`显式调用固定叶子。正式六阶段可[冻结审查组合](USAGE.md#为正式任务冻结审查组合)，运行单个或显式all-join的多个嵌套只读串并行审查者；[work-units-v2](WORKFLOW_DEFINITIONS.md#专长执行者与原工作单元)还可把互补实现专家分配给原工作单元，再承接总审查。原v1协议和已封存任务保持其合同。任意其他职能拓扑仍见[实施计划](plans/2026-11-08-agent-composition.md)。
 
 ## 内置专家
 

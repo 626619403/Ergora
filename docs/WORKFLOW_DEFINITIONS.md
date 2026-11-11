@@ -2,7 +2,7 @@
 
 工作流包把精确版本的专家或子工作流组合成有界 DAG。可以单独使用结构审查模板，也可以把结构、正确性、测试价值三个模板并行组合，再串接执行模板。结构父链决定继承；工作依赖只通过具名端口传递数据。
 
-`composition` 提供静态检查、不可覆盖的版本库、完整预览、可携带的静态组合包与显式单叶调用。预览不调用模型；`run-input` 可将准备好的输入交给所选后端。正式开发按[六阶段流程](USAGE.md#正式任务的操作顺序与恢复)执行，审查阶段可运行嵌套的只读串并行分支并作显式all-join汇合，具体配置见[正式审查组合](USAGE.md#为正式任务冻结审查组合)。只读审查的数据端口见[正式DAG协议](#正式只读审查的数据端口)；专长执行者分配使用下文的[work-units-v1协议](#专长执行者与原工作单元)。
+`composition` 提供静态检查、不可覆盖的版本库、完整预览、可携带的静态组合包与显式单叶调用。预览不调用模型；`run-input` 可将准备好的输入交给所选后端。正式开发按[六阶段流程](USAGE.md#正式任务的操作顺序与恢复)执行，审查阶段可运行嵌套的只读串并行分支并作显式all-join汇合，具体配置见[正式审查组合](USAGE.md#为正式任务冻结审查组合)。只读审查的数据端口见[正式DAG协议](#正式只读审查的数据端口)；专长执行者分配使用下文的[work-units-v2协议](#专长执行者与原工作单元)。
 
 Web控制台的“Agent 与组合库”复用同一版本库、导入和preview用例，无需先注册项目。选择精确工作流版本，检查根声明初始化的静态上限后明确预览，即可查看每个实例的结构父链、先行依赖、具名端口、完整资源来源及装配提示；详见[页面操作](USAGE.md#在页面浏览与预览定义)。静态上限不构成项目授权，后端字段仅为请求。页面下载的定义JSON和预览JSON用于阅读与比较；分享完整资源和精确依赖应使用下文`export`、`prepare-manifest`或[固定当前预览](#固定当前预览到持久控制目录)。标准正文可在页面[明确修订](#在页面修订工作流)；嵌套画布与正式交接见[后续计划](plans/2026-11-09-composition-console.md)。
 
@@ -29,7 +29,7 @@ ergora agent definition show ergora-server-implementer 1.0.0 --material
 
 开发组合共用 `ergora-delivery-review`，它引用结构、正确性、测试价值三份可单独使用的子模板。每份专家有独立初始指令、专长和Skill，沿自己的结构父链完整装载资料。开发writer默认Codex，reviewer默认Claude Code；支持的后端可以逐实例明确覆盖。实际可用性和认证仍由调用准入核验；同后端回退需遵守所选多样性政策并记录原因。
 
-在明确的preview grant下，按[完整组合分享](#保存和分享完整组合)执行`prepare-manifest`，把上面的根ID/版本换入即可。开发正式选择沿[work-units-v1](#专长执行者与原工作单元)，使用`root/work`和`root/review`；unit ID直接映射同名叶子，例如`contract`→`root/work/contract`。原`templates copy`取得的领域input包含对应unit ID、路径和依赖；改变原units关系时，应同时修订对应工作子模板。workspace写调用仍要求每个writer显式选择可信current-container；导入组合不会自动选择此边界。
+在明确的preview grant下，按[完整组合分享](#保存和分享完整组合)执行`prepare-manifest`，把上面的根ID/版本换入即可。开发正式选择沿[work-units-v2](#专长执行者与原工作单元)，使用`root/work`和`root/review`；unit ID直接映射同名叶子，例如`contract`→`root/work/contract`。原`templates copy`取得的领域input包含对应unit ID、路径和依赖；改变原units关系时，应同时修订对应工作子模板。workspace写调用仍要求每个writer显式选择可信current-container；导入组合不会自动选择此边界。
 
 训练组合的`root/analysis/design`、`root/analysis/profile`、`root/kernel`和`root/measurement/review`可按[单叶调用](#调用一个准备好的叶子)使用；操作者需要在任务文件中提供完整workload、baseline和相应前驱输出。独立`run-input`不执行图前驱。生成的提案/代码文本及模型review不是实验结果或采用批准，真实CPU/GPU、Forge候选和测量仍按[训练手册](TRAINING.md)使用原可信runner/gate。目录中的`runtime`只描述本发行支持的使用范围，不表示后端、服务或硬件已经就绪。
 
@@ -192,7 +192,7 @@ ergora composition verify-manifest ./specialist-delivery-manifest
   "review_instance": "root/review",
   "mode": "task-mcp",
   "execution": {
-    "protocol": "work-units-v1",
+    "protocol": "work-units-v2",
     "instance": "root/work",
     "assignments": {
       "implementation": "root/work/implementation",
@@ -209,9 +209,13 @@ ergora composition verify-manifest ./specialist-delivery-manifest
 
 work的权限链完整继承和收窄；每个原unit的所有路径必须完整落在其有效write范围（逻辑路径前缀`workspace/`）内。原独立checkout、依赖commit合并、路径gate、确定性检查、取消fence及可信commit继续由Executor拥有。Agent不能提交或移动HEAD；不合格结果不进入后继。所有writer同时服从原unit并发、执行器容量与整条结构祖先限额。
 
-新正式信封为v5，使用自己的队列和request根；缺少execution选项的旧v1–v4不自动升级。`composition check-input/run-input`仍只读；准备一个输入包不能授权可写调用。workspace原生工具可操作当前用户的文件，权限路径由提示和最终Git gate约束，不提供过程中每一次文件访问或网络出口的强制隔离；固定任务MCP仍只提供本叶及祖先的声明资料。需要强隔离或外部MCP时请使用另有实际支持的执行环境，不能将此模式当作该能力。Windows既有安装、定义和兼容读取保持，新写路径用WSL2。
+`work-units-v2`发布正式信封v6，使用独立的`composition-v6`队列和请求根；页面新建执行组合选择此协议。仍可在任务JSON中显式选择`work-units-v1`，发布原v5合同。已创建的任务保留其原版本，不因工具升级改写。`composition check-input/run-input`仍只读；准备一个输入包不能授权可写调用。workspace原生工具可操作当前用户的文件，权限路径由提示和最终Git gate约束，不提供过程中每一次文件访问或网络出口的强制隔离；固定任务MCP仍只提供本叶及祖先的声明资料。需要强隔离或外部MCP时请使用另有实际支持的执行环境，不能将此模式当作该能力。Windows既有安装、定义和兼容读取保持，新写路径用WSL2。
 
-实际工作输入包含全部祖先指令、上下文、Skill正文/附件入口、批准计划和已核前驱全部原产物。work端口只核原work receipt，不当作审查意见；进入review前仍强制integrate/verify、最终候选与原批准计划。原request/context/admission、实际binding/session、claim及产物摘要都先核验，原work commit须为当前候选祖先。v5模型材料以摘要引用已完整保存的admission，避免在每代审计正文里重复整个base64资产树；原完整请求和manifest仍留存在可信原件，实际祖先和所有端口产物均不截断。超出完整输入预算仍明确停止。
+实际工作输入包含全部祖先指令、上下文、Skill正文/附件入口和批准计划。v6的`stage-artifacts-v1`传递全部声明阶段产物与可信检查/意见：profile的`artifacts_by_stage`，work的可信`test-results`、verify的可信`check-results`，receipt的所有checks引用，以及review的可信`composition-review-decision`。这些正文完整内联；模型summary不是此合同承诺的产物。日志、旧prompt、MCP审计等完整原件留在原receipt索引、`task evidence`和离线handoff中，不再次作为下游结果递归复制。保留索引不代表下游已读审计全文。
+
+v6的`work_inputs.results`用实例路径保存端口来源和直接工作依赖的并集，`dependencies`给出unit ID→实例路径映射；同一来源只交付一次。没有绑定数据端口的控制依赖仍交付其声明产物/可信检查，祖先Skill不因控制边增加。review仍接收原plan/verification和绑定来源。v2–v5保留原全部产物内联合同，长审计链仍可能超预算；新任务应选v2协议，不修改旧任务来消除失败记录。
+
+原request/context/admission、实际binding/session、claim、formal-call/invocation/selection、全部receipt产物字节及Git祖先关系仍核验；v6不内联的审计也不能被篡改。work端口不当作审查意见，review意见仍由可信读取器验证。进入review前仍强制integrate/verify、最终候选与原批准计划。v5/v6以摘要引用已完整保存的admission，原manifest和完整祖先资源保持。1,000,000字节完整输入上限不提高；声明产物或祖先材料真正超限仍在调用前拒绝，不截断。
 
 原attempt/monitor/unknown与取消恢复规则保持。已完成原调用及提交后、回执发布前的恢复复用同一job/context与监控产物；HEAD已变化时，必须核对原Executor在首次HEAD门禁之后保存的完整调用证据，缺失或不符会拒绝并要求对账。无可靠外部结果时保持未知，不重新派发写Agent或换ID。运行后可用`agent runs`和正式`task evidence`查看原调用及产物，按原任务导出离线handoff。
 
@@ -221,7 +225,7 @@ work的权限链完整继承和收窄；每个原unit的所有路径必须完整
 
 相同逻辑资源ID对应不同内容或种类会拒绝。同名Skill按实际frontmatter加载名称检查，不同树拒绝；同名同树可合并，但保留全部逻辑ID与来源，并检查每个来源都可读。不会用最后写入覆盖祖先。兄弟和前驱的Skill不会成为继承材料，前驱只有端口数据；重复引用不共享可变会话。
 
-静态材料完整交付预览不证明模型理解、遵从或已实际读到。实际调用固定原实例和本次任务正文，再检查完整输入容量并保留装载证据；不足时拒绝，不静默截断。正式`dag-v1`会将明确绑定的前驱原产物完整加入实际输入；单独`run-input`仍只调用一个叶子。
+静态材料完整交付预览不证明模型理解、遵从或已实际读到。实际调用固定原实例和本次任务正文，再检查完整输入容量并保留装载证据；不足时拒绝，不静默截断。正式`dag-v1`按其封存版本加入明确绑定的前驱产物（v6为上述声明产物与可信检查/意见）；单独`run-input`仍只调用一个叶子。
 
 ## 权限路径和预算
 
@@ -311,7 +315,7 @@ ergora composition file kernel-delivery 1.0.0 instructions.md --base-digest BASE
 
 库保存在 State 的 `workflow-definitions/index.json` 与 `objects/<digest>/`，与Agent库分开，代码共用 `definition_bundles`。既有 `ERGORA_HOME`、`--home` 和平台默认目录继续适用；没有新DB表。`export` 只导出当前包，分享完整组合时还需按依赖顺序分享／导入其引用的每个包；不是单根自包含发行。
 
-原[离线完整备份](USAGE.md#升级与持久数据)保存两个库。验证不仅核索引和对象，还递归核工作流引用、资源、图和静态合同；原平台、原State路径与停止写入者的恢复要求不变。库损坏不会自动覆盖成新证据。可使用显式v2任务定义[冻结完整审查组合](USAGE.md#为正式任务冻结审查组合)，沿原六阶段启动只读reviewer或嵌套串并行审查，可分别声明必需/建议职责。旧v2/v3审查要求每叶沿结构祖先直接映射根task且没有前驱依赖；显式dag-v1的v4使用[具名端口](#正式只读审查的数据端口)，增加work-units-v1的v5使用[专长执行者分配](#专长执行者与原工作单元)。正式批准和候选证据保留原所有者。列表中的runtime_supported只表示静态形状支持，不证明后端或服务可用。
+原[离线完整备份](USAGE.md#升级与持久数据)保存两个库。验证不仅核索引和对象，还递归核工作流引用、资源、图和静态合同；原平台、原State路径与停止写入者的恢复要求不变。库损坏不会自动覆盖成新证据。可使用显式v2任务定义[冻结完整审查组合](USAGE.md#为正式任务冻结审查组合)，沿原六阶段启动只读reviewer或嵌套串并行审查，可分别声明必需/建议职责。旧v2/v3审查要求每叶沿结构祖先直接映射根task且没有前驱依赖；显式dag-v1的v4使用[具名端口](#正式只读审查的数据端口)，增加work-units-v1的v5和work-units-v2的v6使用[专长执行者分配](#专长执行者与原工作单元)。正式批准和候选证据保留原所有者。列表中的runtime_supported只表示静态形状支持，不证明后端或服务可用。
 
 历史 `show/list/export` 与备份/恢复不要求引用的后端仍在当前catalog中；它们继续核完整静态结构及内容。新 `import`（包括相同内容的重复导入）与 `preview` 另外核每份Agent定义的当前角色/后端合同，不会因旧版本曾经导入就跳过准入。单包 `check` 只核本地图与资源，仍不访问依赖库。历史可读与当前可用的区别见[Agent手册](AGENT_DEFINITIONS.md#历史资产与当前准入)。
 

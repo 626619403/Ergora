@@ -196,7 +196,26 @@ class WorkDeliveryInput(ReviewDAGInput):
         task_envelopes.work_delivery(self.document['composition'], self.spec)
 
 
-_INPUTS = {1: LegacyInput, 2: CompositionInput, 3: ReviewRequirementsInput, 4: ReviewDAGInput, 5: WorkDeliveryInput}
+class StageResultsInput(WorkDeliveryInput):
+    version = 6
+    queue_suffix = '.composition-v6'
+    requests_suffix = '-composition-v6'
+
+    @classmethod
+    def workflow_type(cls):
+        from .reference_workflows import StageResultsWorkflow
+
+        return StageResultsWorkflow
+
+    @classmethod
+    def adapter(cls, config: dict):
+        from .reference_workflows import StageResultsAdapter
+
+        return StageResultsAdapter({**config, 'requests': str(cls.request_root(Path(config['requests'])))})
+
+
+_INPUTS = {1: LegacyInput, 2: CompositionInput, 3: ReviewRequirementsInput, 4: ReviewDAGInput,
+           5: WorkDeliveryInput, 6: StageResultsInput}
 
 
 def workers(client, queue: str, config: dict) -> list:

@@ -1,6 +1,6 @@
 # AC5 C5b：正式任务组合选择独立审查
 
-**完整本地候选审查通过：Spec、Standards 开放 finding 均为 0；SP1/SP2 两项 P2 和 ST1 一项 P3 已关闭。精确提交、自己的 CI 与远端交付仍待。** 初审发现及当时证据按下文保留，不回写原失败为通过。
+**C5b 本地审查与精确交付门禁通过：Spec、Standards 开放 finding 均为 0；SP1/SP2 两项 P2 和 ST1 一项 P3 已关闭。精确提交、包身份、独立 HTTPS 远端同 SHA 及本提交自己的 CI 终态均已核。** 初审发现及当时证据按下文保留，不回写原失败为通过。
 
 主审 `task_composition_selection_review`，fresh context；另按 AIHERO 的 `code-review` 启动互不继承上下文的 `spec_axis`、`standards_axis`。先读原始 C5b/AC 要求和 `AGENTS.md`，再读作者记录；应用 `maintainable-project-delivery`、`references/independent-review.md` 和 `codebase-design`。本报告只评 C5b 创建入口，不代表 C5c 六阶段、C6 容量或项目完成。自身模板与独立审查分别记账，不称不同模型独立。
 
@@ -82,3 +82,34 @@ R5 wheel SHA256 为 `5b0e11fd31baa068a349493e4de9d996d528f3ca5e44d43522b2b894e77
 读取最终本地出口记录：234 个本地链接/锚点、五 JSON、四 JS 语法与 whitespace、受保护四源保持均通过；环境敏感值扫描为作者检查，主审没有读取密钥值。预检脚本行首分号 SyntaxError，以及无边界 `sk-` 模式将文件名子串误判为密钥的失败与逐项处置均保留；修正扫描器后零 issue，没有修改产品来迎合检查。主审没有重跑该出口或任何产品行为。
 
 **最终本地出口通过：Standards 开放 0、最重问题无；Spec 开放 0、最重问题无；SP1/SP2/ST1 关闭，阻塞 0。** 可固定 ready 并继续原授权的普通提交/推送。本提交自己的 CI、精确 Git/包/283 冻结身份与独立 HTTPS 远端同 SHA 仍须另核，不转授前片或旧候选 CI。C5c、C6 和项目整体未完成。
+
+## 精确提交与远端续核：首轮 CI 待定
+
+以上保留提交前本地门禁的历史状态。现核普通提交 `fe45e8ff07c6cb5ec9048b506c03b6dfd4e838b3`，唯一 parent 为原基线 `f68d7390e0e65f8045158cb1d0270c4057c7a74d`。`commit-closure/commit.json` 记录 2026-11-11 02:24:02 UTC 提交成功；`push.json` 与原 stderr 记录 02:24:20 UTC 普通推送成功，`HEAD -> refactor/architecture-foundations`，未 merge/force/写凭据。
+
+主审从该精确 Git 对象读取并核 23 个变更文件，集合、bytes、SHA256 均等 `commit-closure/ready/files/`；ready 身份文件 SHA256 为 `82be41990867ad02d569f6f52b55ef4590153531a941b8fc061f7d4a1c5aaa54`，与提交记录一致。其中四产品源继续等模型 R2 已完整读取的附件。精确提交中全部 439 个包文件逐字等 R5 wheel 和安装副本，两 RECORD 各 439 包条目成立；283 冻结文件等原 manifest，Git blob、内容和模式均等原基线。R5 wheel 仍为 `5b0e11fd31baa068a349493e4de9d996d528f3ca5e44d43522b2b894e77fae33`，未重建或安装。私有 `independent/exact-git-package-audit-r1.json` 无 issue。工作区随后新增的 C5c 计划与交付文档不属于本次 23 文件候选。
+
+按新增授权，主审只执行一次独立 HTTPS 读取：[Git smart refs](https://github.com/626619403/Ergora.git/info/refs?service=git-upload-pack)，2026-11-11 02:27:09.189859 至 02:27:10.002073 UTC，0.812213 秒，HTTP 200、curl exit 0。未重试、未跟随重定向、TLS 校验开启，未提供认证或读取环境值。原响应 786B，SHA256 `47d8af0b67ed2c57f5bc7fce6f03b7edd05a25731ad0366679a2e51567708669`；逐 pkt-line 解析得到 `refs/heads/refactor/architecture-foundations` 精确等 `fe45e8ff07c6cb5ec9048b506c03b6dfd4e838b3`。原 headers/body/stderr、URL、时刻、字节与摘要保存为 `independent/exact-https-r1.*`。这是本次审查唯一网络读取，不扩大此前离线审查的实际范围。
+
+CI 只离线读取主代理保存的样本，没有执行取样脚本或重取请求。`snapshot-01` 在首个 HTTPS 握手出现 URLError/SSL EOF，`sources=[]`，没有取得 CI 状态，不能记为 CI 失败。`snapshot-02` 的五份官方原响应为 02:26:52.235277 至 02:26:57.805927 UTC，逐份核 URL、HTTP 200、bytes/SHA。原 actions/run 绑定本精确 SHA、分支和 `.github/workflows/portability.yml`，run 为 [42945800414](https://github.com/626619403/Ergora/actions/runs/42945800414)；完整 groups 为 Ubuntu 3.11 job `130278182300`、Windows 3.12 job `130278178468`，没有遗漏分页。原 run 为 `In progress`，两 job 均 `in_progress`、conclusion null；两平台 build/install 和 packaged reference 共四步骤 success，两个 native regression 及 Windows PowerShell 5.1 installer/upgrade 仍待。七必需步骤未全成，job 未完成，**CI 门禁待定**。
+
+私有 `independent/exact-ci-audit-r2.json` 保存原件逐项核对。审计器首次离线解析误要求 job 页必须有 commit anchor，实际页没有该链接；已保留 `exact-ci-audit-r2-attempt-01.json`，改按原 actions/run、完整 groups、selected job ID 与精确 commit 的 step log URL 绑定后通过身份核对。只修正审计假设，未重取 HTTP、修改原证据或将运行中状态判为通过。后续须由同一候选自己的终态样本证明两 job 和七必需步骤全部 completed/success；此前本地及前片 CI 不替代此项。
+
+**当轮结论：Spec/Standards 开放 0；精确 Git/包/283 冻结身份及独立 HTTPS 同 SHA 通过；本提交 CI 待定，精确交付尚未完成。C5c、C6 及项目整体未完成。**
+
+## 精确交付终核：通过
+
+主审仅离线续核主代理保留的 `commit-closure/snapshot-04`，没有重新抓取网络、执行作者取样脚本或运行产品、模型、浏览器、测试和安装。五份官方原响应采样于 2026-11-11 02:40:55.912668 至 02:41:00.625729 UTC；逐份核 requested/final URL、HTTP 200、原 bytes/SHA256，以及摘要与原页面一致。`ci-sample.json` 为 5056B，SHA256 `abdcf08209f9ee1af50b6101bc2f48945db8e2f46bb90d2274ae06539ecf39d9`。
+
+原 actions/run 页面再次绑定精确提交 `fe45e8ff07c6cb5ec9048b506c03b6dfd4e838b3`、`refs/heads/refactor/architecture-foundations` 与 `.github/workflows/portability.yml`，属于同一 [Portability run 42945800414](https://github.com/626619403/Ergora/actions/runs/42945800414)。原 run 状态为 `Success`；完整 job groups 为两项、`hasMore: false`。两 job 的 ID、名称、官方 URL、页面 selected job、精确 commit 的各 step log URL 均与摘要相符。
+
+| 平台与 job | 必需步骤 | 终态 |
+| --- | --- | --- |
+| Ubuntu / Python 3.11，`130278182300` | Build and install wheel；Packaged reference identity；Native application regression | job completed/success，三步骤 success 且 job_completed |
+| Windows / Python 3.12，`130278178468` | 同上三项；Windows PowerShell 5.1 installer and upgrade | job completed/success，四步骤 success 且 job_completed |
+
+七个必需步骤全部通过，原 job 页没有 failure/cancelled/timed_out 步骤。本终态授予的是本精确提交自己的 CI，通过范围沿现有 Portability 工作流，不转授前片、旧候选或 C5c。
+
+此前样本全部保留：`snapshot-01` 于 02:25:00 UTC、`snapshot-03` 于 02:37:08 UTC 均在首个 HTTPS 握手出现 URLError/SSL EOF，`sources=[]`，未取得 CI 状态；`snapshot-02` 仍如实为 `In progress` 和四个步骤 success，不回写终态。私有 `independent/exact-ci-audit-r4.json` 保存五原件身份、逐 job/step、两次网络未知及零审计错误；`exact-ci-audit-r2.json` 与首次审计假设失败记录继续保持。
+
+此前已完成的 23 个 ready/Git 对象、四源/模型 R2、439 个 Git/wheel/安装文件与两 RECORD、283 个冻结内容/模式以及一次独立 HTTPS 同 SHA 均引用原审计，本轮没有重复。结合本终态，**C5b 精确交付门禁通过，Spec/Standards 开放 0、阻塞 0。** 本结论只关闭 C5b 创建入口及其精确交付；C5c 六阶段真实链正在另一片处理，C6 容量和项目整体仍未完成。

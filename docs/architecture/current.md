@@ -1,5 +1,7 @@
 # 当前架构与扩展边界
 
+新`execution.protocol: work-units-v2`发布admission-v6：`StageResultsInput`通过本族局部注册选择独立queue/request根，`StageResultsWorkflow/Adapter`继承原WorkDelivery调度与活动。原Executor继续逐件核验全部receipt审计；下游材料v2/`stage-artifacts-v1`只内联全部声明阶段产物、可信检查与意见，不递归复制旧prompt/materials。work以一个来源表交付数据端口和直接控制依赖并集，另存unit→instance映射；完整祖先资源和1MB限额保持。原`work-units-v1`/v5及更早版本不改合同或自动迁移。实现及本轮实际状态见[C5c记录](../delivery/2026-11-11-composition-runtime.md)和[修正规格](../plans/2026-11-11-stage-result-materials.md)。
+
 AC4.3c 为显式 `composition.execution.protocol: work-units-v1` 接入正式信封 v5。`review_dags.StageDAG / WorkDelivery` 从同一冻结图投影两个互不重叠的阶段；每个原 work unit 一对一选择 implementer 实例，静态工作先后关系必须等于原 units 的传递依赖，全部 Agent 叶子都必须被 work/review 覆盖。原 `Workflow.units` 继续拥有调度，v5 在已有版本继承层核结构祖先容量；没有第二份执行图、调度器或账本。`WorkflowInput` 的局部注册同时选择 v5 队列、请求根、活动和原工作流入口，旧 v1–v4 保持原身份与历史。
 
 原 Executor 保留 checkout、依赖 commit 合并、路径门禁、确定性检查与 commit；内部 workspace 调用复用 `agent_runs` 的完整输入、固定任务 MCP、后端 Interface 和进程记录。首版要求 Linux/WSL2 上显式选择 current-container Codex，权限声明和最终 Git 门禁不等于 OS/网络隔离；公开单叶入口仍只读。work 原 request/context/claim/调用/receipt/所有产物及 commit 祖先关系由原来源拥有者核验，随后原 integrate 和 trusted verify 生成最终候选，再交全部审查者。v5 输入完整保存 manifest/祖先资源，以摘要引用原 admission 避免每代重复 base64 资产；原前驱产物不截断，超预算拒绝。

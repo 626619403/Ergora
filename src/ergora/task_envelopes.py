@@ -60,7 +60,8 @@ def manifest_identity(snapshot: dict) -> str:
 
 
 def wrap(spec: dict, composition: dict) -> dict:
-    version = (5 if 'execution' in composition else 4 if 'review_protocol' in composition else
+    version = (6 if composition.get('execution', {}).get('protocol') == 'work-units-v2' else
+               5 if 'execution' in composition else 4 if 'review_protocol' in composition else
                3 if any('review_requirement' in member for member in composition['members'].values()) else 2)
     value = {'schema_version': version, 'kind': _KIND, 'legacy_spec': spec, 'composition': composition}
     return {**value, 'sha256': identity(value)}
@@ -279,23 +280,23 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
     if document.get('kind') != _KIND and 'schema_version' not in document:
         return document, None
     if (set(document) != {'schema_version', 'kind', 'legacy_spec', 'composition', 'sha256'}
-            or type(document['schema_version']) is not int or document['schema_version'] not in (2, 3, 4, 5)
+            or type(document['schema_version']) is not int or document['schema_version'] not in (2, 3, 4, 5, 6)
             or document['kind'] != _KIND):
         raise ValueError('Unsupported formal task admission envelope')
     if document['sha256'] != identity({key: value for key, value in document.items() if key != 'sha256'}):
         raise ValueError('Formal task admission envelope digest mismatch')
     composition = document['composition']
     fields = {'manifest', 'root', 'preview_sha256', 'review_instance', 'members', 'diversity'}
-    if document['schema_version'] in (4, 5):
+    if document['schema_version'] in (4, 5, 6):
         fields.add('review_protocol')
-    if document['schema_version'] == 5:
+    if document['schema_version'] in (5, 6):
         fields.add('execution')
     if (not isinstance(composition, dict) or set(composition) != fields
-            or (document['schema_version'] in (4, 5) and composition['review_protocol'] != 'dag-v1')):
+            or (document['schema_version'] in (4, 5, 6) and composition['review_protocol'] != 'dag-v1')):
         raise ValueError('Invalid formal composition selection')
     manifest_identity(composition['manifest'])
     graph = manifest_graph(composition['manifest'])
-    requirements = document['schema_version'] in (3, 4, 5)
+    requirements = document['schema_version'] in (3, 4, 5, 6)
     if document['schema_version'] == 3 and graph['schema_version'] != 2:
         raise ValueError('Formal v3 admission requires a versioned review requirements graph')
     if graph['root'] != composition['root'] or graph['preview_sha256'] != composition['preview_sha256']:
@@ -331,10 +332,11 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
             raise ValueError('Formal composition requested binding differs from its frozen graph')
         _policy(member['policy'], member['mode'])
     diversity = composition['diversity']
-    if document['schema_version'] == 5:
+    if document['schema_version'] in (5, 6):
         execution = composition['execution']
         if (not isinstance(execution, dict) or set(execution) != {'protocol', 'instance', 'assignments', 'mode', 'members'}
-                or execution['protocol'] != 'work-units-v1' or execution['mode'] != 'workspace-task-mcp'
+                or execution['protocol'] != ('work-units-v2' if document['schema_version'] == 6 else 'work-units-v1')
+                or execution['mode'] != 'workspace-task-mcp'
                 or not isinstance(execution['assignments'], dict) or not isinstance(execution['members'], dict)):
             raise ValueError('Invalid formal work execution selection')
         delivery = work_delivery(composition, document['legacy_spec'])
@@ -378,7 +380,7 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
             or (same and diversity['policy'] == 'require-distinct')
             or (same and diversity['policy'] == 'prefer-distinct' and not diversity.get('reason'))):
         raise ValueError('Formal composition diversity differs from its selected member backends')
-    if document['schema_version'] in (4, 5):
+    if document['schema_version'] in (4, 5, 6):
         review_members(composition)
     return document['legacy_spec'], composition
 

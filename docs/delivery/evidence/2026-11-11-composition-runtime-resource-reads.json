@@ -1,0 +1,1799 @@
+{
+  "schema_version": 1,
+  "published_at": "2026-11-11T03:25:22.392157+00:00",
+  "scope": "All12 native fixture calls:54 complete resources17740B match frozen admission assets, prepared graph/input, original exact URI scope, full bytes/hashes and contiguous pages. Independent check observed54UTF8pages and0base64pages. Fixture receipts omit raw next_offset; complete byte coverage and native call success do not establish model understanding.",
+  "projection_policy": "Original byte/SHA identities precede projection. Repository and user-home paths use placeholders. Omitted/derived fields are explicit; complete private originals retained. No original omitted field inspection is implied.",
+  "originals": [
+    {
+      "private_original": "r2/resource-read-audit.json",
+      "bytes": 58621,
+      "sha256": "f1589b6eb47603456d3d5265572c05a977eef643cafa868f2869f75109f19866",
+      "omitted_top_level_fields": [],
+      "projection": {
+        "checked_at": "2026-11-11T03:19:51.353363+00:00",
+        "runs": [
+          {
+            "project": "c5m-repository-governance",
+            "run_id": "6589019ced8d47fc8044470d6a8ccb35",
+            "instance": "root/review/test-value/review",
+            "input_digest": "d83c47fc07ae45745399176ef859a9c2144d5f96e3e9d4f6e3479c7e6a4bedc8",
+            "scope_sha256": "260eb374adee01157ecb09d4926efae2c261052142d579640102dc9c2ce1b807",
+            "receipt_sha256": "11bf59ad07737f271d4547a97ce0ad1ffea93d6423fe438379828e088ae69ce2",
+            "files": [
+              {
+                "uri": "definitions/agent/ergora-test-value-reviewer/1.0.0/instructions.md",
+                "bytes": 340,
+                "sha256": "76c7d82049d325757f516c832a07383de11e84fc94313888df963b19f7361ab8",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 340,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "41a2a42c9276fa2eb2ab128fd7a294c3e7eb3d1f4dd3578862f7d9da5bf10f27",
+                      "id": "ergora-test-value-reviewer",
+                      "kind": "agent",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/review/test-value/review",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-test-value-reviewer-instructions",
+                    "uri": "definitions/agent/ergora-test-value-reviewer/1.0.0/instructions.md"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/agent/ergora-test-value-reviewer/1.0.0/skills/ergora-test-value-reviewer/SKILL.md",
+                "bytes": 513,
+                "sha256": "b85dbd610e094340ae6edc7386f8233441f048bd41c2b00ad425388cfba0d6cb",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 513,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "41a2a42c9276fa2eb2ab128fd7a294c3e7eb3d1f4dd3578862f7d9da5bf10f27",
+                      "id": "ergora-test-value-reviewer",
+                      "kind": "agent",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/review/test-value/review",
+                    "path": "skills/ergora-test-value-reviewer",
+                    "resource_id": "ergora-test-value-reviewer-skill",
+                    "uri": "definitions/agent/ergora-test-value-reviewer/1.0.0/skills/ergora-test-value-reviewer"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/workflow/ergora-delivery-review/1.0.0/instructions.md",
+                "bytes": 225,
+                "sha256": "83e867dadc6b374bd3791bcf79c87462375fff58a43b73a569d6f7b3c954e377",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 225,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "a85e76dcd25bfddd24684b6e23ad3668097b44df0f9a7d745e387e5a841c471c",
+                      "id": "ergora-delivery-review",
+                      "kind": "workflow",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/review",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-delivery-review-instructions",
+                    "uri": "definitions/workflow/ergora-delivery-review/1.0.0/instructions.md"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/workflow/ergora-governance-delivery/1.0.0/instructions.md",
+                "bytes": 355,
+                "sha256": "66eb88ef7aebe40cc3b46a31539b7094ecb41746940efb992d4906fa8491a418",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 355,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "e82c02d01d2c717a38f35f242107efce32dd873027a4a3a6fb0f18f7d1fae077",
+                      "id": "ergora-governance-delivery",
+                      "kind": "workflow",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-governance-delivery-instructions",
+                    "uri": "definitions/workflow/ergora-governance-delivery/1.0.0/instructions.md"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/workflow/ergora-test-value-review/1.0.0/instructions.md",
+                "bytes": 175,
+                "sha256": "d6ce532f24b70ce1bf2b26c37f07b4901e8a00ce6fc4dff7d269cabd57db1a73",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 175,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "83e1cfd354d05434c4e55f728ba7c01e1dfdaf12f8461ac05c89cbb4c0855254",
+                      "id": "ergora-test-value-review",
+                      "kind": "workflow",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/review/test-value",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-test-value-review-instructions",
+                    "uri": "definitions/workflow/ergora-test-value-review/1.0.0/instructions.md"
+                  }
+                ]
+              }
+            ],
+            "native_list_calls": 1,
+            "native_read_calls": 5
+          },
+          {
+            "project": "c5m-repository-governance",
+            "run_id": "26c36d888cc3448ead3aaf331a5ae28c",
+            "instance": "root/review/structure/review",
+            "input_digest": "30640125e2544f593f724c09d4059729153c10a82ce70742ceb7ef35e4fe5a7f",
+            "scope_sha256": "0ba03edc6693301a80b417c01290a7d481079e37ab281aacf718ef6794fa8382",
+            "receipt_sha256": "980ebf8158d6e952088dd51bc71c33ae7060d7056dc728014d81c173a474a407",
+            "files": [
+              {
+                "uri": "definitions/agent/ergora-structure-reviewer/1.0.0/instructions.md",
+                "bytes": 354,
+                "sha256": "3cc9c450f0c03da5ea4a1434ac6182d50df6a4985cffdee2a59fe9fe477c6b43",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 354,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c",
+                      "id": "ergora-structure-reviewer",
+                      "kind": "agent",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/review/structure/review",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-structure-reviewer-instructions",
+                    "uri": "definitions/agent/ergora-structure-reviewer/1.0.0/instructions.md"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/agent/ergora-structure-reviewer/1.0.0/skills/ergora-structure-reviewer/SKILL.md",
+                "bytes": 521,
+                "sha256": "d6b69570bcca408d3d06ca5adf1cb44a4a9e43c2901f05c38a68c096f23a4ac8",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 521,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c",
+                      "id": "ergora-structure-reviewer",
+                      "kind": "agent",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/review/structure/review",
+                    "path": "skills/ergora-structure-reviewer",
+                    "resource_id": "ergora-structure-reviewer-skill",
+                    "uri": "definitions/agent/ergora-structure-reviewer/1.0.0/skills/ergora-structure-reviewer"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/workflow/ergora-delivery-review/1.0.0/instructions.md",
+                "bytes": 225,
+                "sha256": "83e867dadc6b374bd3791bcf79c87462375fff58a43b73a569d6f7b3c954e377",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 225,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "a85e76dcd25bfddd24684b6e23ad3668097b44df0f9a7d745e387e5a841c471c",
+                      "id": "ergora-delivery-review",
+                      "kind": "workflow",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/review",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-delivery-review-instructions",
+                    "uri": "definitions/workflow/ergora-delivery-review/1.0.0/instructions.md"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/workflow/ergora-governance-delivery/1.0.0/instructions.md",
+                "bytes": 355,
+                "sha256": "66eb88ef7aebe40cc3b46a31539b7094ecb41746940efb992d4906fa8491a418",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 355,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "e82c02d01d2c717a38f35f242107efce32dd873027a4a3a6fb0f18f7d1fae077",
+                      "id": "ergora-governance-delivery",
+                      "kind": "workflow",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-governance-delivery-instructions",
+                    "uri": "definitions/workflow/ergora-governance-delivery/1.0.0/instructions.md"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/workflow/ergora-structure-review/1.0.0/instructions.md",
+                "bytes": 163,
+                "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 163,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9",
+                      "id": "ergora-structure-review",
+                      "kind": "workflow",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/review/structure",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-structure-review-instructions",
+                    "uri": "definitions/workflow/ergora-structure-review/1.0.0/instructions.md"
+                  }
+                ]
+              }
+            ],
+            "native_list_calls": 1,
+            "native_read_calls": 5
+          },
+          {
+            "project": "c5m-repository-governance",
+            "run_id": "636b9a24522548d8a0b1e22247b79db8",
+            "instance": "root/review/correctness/review",
+            "input_digest": "af56754b02e1213e7f121e7d255c5ea46c003e318d16225ee93afebbd4886b2b",
+            "scope_sha256": "9a60003ae5e1a35f7f163be28c9cc631d0ada38530168eedfc219bdd538acaef",
+            "receipt_sha256": "1af032b46e98c5acf4cb3a7abb03c057570d215dfda503f52dd592d842a64da0",
+            "files": [
+              {
+                "uri": "definitions/agent/ergora-correctness-reviewer/1.0.0/instructions.md",
+                "bytes": 333,
+                "sha256": "60e3789ed195fd8abcbb7895ee2da536e88021ca76f2d3077fc4116364bfbd79",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 333,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "c90f74219843f5a0724e6c83ef531453493bd26d1d45d40ca495e0ca6bbd441b",
+                      "id": "ergora-correctness-reviewer",
+                      "kind": "agent",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/review/correctness/review",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-correctness-reviewer-instructions",
+                    "uri": "definitions/agent/ergora-correctness-reviewer/1.0.0/instructions.md"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/agent/ergora-correctness-reviewer/1.0.0/skills/ergora-correctness-reviewer/SKILL.md",
+                "bytes": 465,
+                "sha256": "1284f48f7238b5f3be6f422d3bb59373d66a6049e7e1215238acfb832dac8097",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 465,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "c90f74219843f5a0724e6c83ef531453493bd26d1d45d40ca495e0ca6bbd441b",
+                      "id": "ergora-correctness-reviewer",
+                      "kind": "agent",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/review/correctness/review",
+                    "path": "skills/ergora-correctness-reviewer",
+                    "resource_id": "ergora-correctness-reviewer-skill",
+                    "uri": "definitions/agent/ergora-correctness-reviewer/1.0.0/skills/ergora-correctness-reviewer"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/workflow/ergora-correctness-review/1.0.0/instructions.md",
+                "bytes": 162,
+                "sha256": "5f2ccfa00ae1bc8075d318be19c8c0a9dfc8d9e868b3c995ac34da30ba485894",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 162,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "bbc2d7bb8c0ecf420bedee847763aaaf488df7b90139904eb00057b78406aa5f",
+                      "id": "ergora-correctness-review",
+                      "kind": "workflow",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/review/correctness",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-correctness-review-instructions",
+                    "uri": "definitions/workflow/ergora-correctness-review/1.0.0/instructions.md"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/workflow/ergora-delivery-review/1.0.0/instructions.md",
+                "bytes": 225,
+                "sha256": "83e867dadc6b374bd3791bcf79c87462375fff58a43b73a569d6f7b3c954e377",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 225,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "a85e76dcd25bfddd24684b6e23ad3668097b44df0f9a7d745e387e5a841c471c",
+                      "id": "ergora-delivery-review",
+                      "kind": "workflow",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/review",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-delivery-review-instructions",
+                    "uri": "definitions/workflow/ergora-delivery-review/1.0.0/instructions.md"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/workflow/ergora-governance-delivery/1.0.0/instructions.md",
+                "bytes": 355,
+                "sha256": "66eb88ef7aebe40cc3b46a31539b7094ecb41746940efb992d4906fa8491a418",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 355,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "e82c02d01d2c717a38f35f242107efce32dd873027a4a3a6fb0f18f7d1fae077",
+                      "id": "ergora-governance-delivery",
+                      "kind": "workflow",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-governance-delivery-instructions",
+                    "uri": "definitions/workflow/ergora-governance-delivery/1.0.0/instructions.md"
+                  }
+                ]
+              }
+            ],
+            "native_list_calls": 1,
+            "native_read_calls": 5
+          },
+          {
+            "project": "c5m-repository-governance",
+            "run_id": "4c54ea9ea0374f9b9f4221242523c52a",
+            "instance": "root/work/knowledge-map",
+            "input_digest": "a4cda24c6dced64305f7095c2e79d03efc527df291f13a01beb17589473f10ba",
+            "scope_sha256": "231123f34542ffa7d2e17c7a20a61907815400d01c427770086fc56f92e024c1",
+            "receipt_sha256": "558b2514ec73544771cb0db2dab0a68c224efba69544e33d45bc311d812f2b9c",
+            "files": [
+              {
+                "uri": "definitions/agent/ergora-governance-mapper/1.0.0/instructions.md",
+                "bytes": 310,
+                "sha256": "ef4b95e41f5ee2217b1db290d2cb17c7bbd67d0656d835978cfe24e648326fab",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 310,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "84047c6d7a90c00288c5611df087fb2c649f1abaed2c56cb64a94ad7547efe7d",
+                      "id": "ergora-governance-mapper",
+                      "kind": "agent",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/work/knowledge-map",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-governance-mapper-instructions",
+                    "uri": "definitions/agent/ergora-governance-mapper/1.0.0/instructions.md"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/agent/ergora-governance-mapper/1.0.0/skills/ergora-governance-mapper/SKILL.md",
+                "bytes": 430,
+                "sha256": "e302ba8abfb92b1e16361a142926bca32de75b5af0d963561f715142cfa9ddaa",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 430,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "84047c6d7a90c00288c5611df087fb2c649f1abaed2c56cb64a94ad7547efe7d",
+                      "id": "ergora-governance-mapper",
+                      "kind": "agent",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/work/knowledge-map",
+                    "path": "skills/ergora-governance-mapper",
+                    "resource_id": "ergora-governance-mapper-skill",
+                    "uri": "definitions/agent/ergora-governance-mapper/1.0.0/skills/ergora-governance-mapper"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/workflow/ergora-governance-delivery/1.0.0/instructions.md",
+                "bytes": 355,
+                "sha256": "66eb88ef7aebe40cc3b46a31539b7094ecb41746940efb992d4906fa8491a418",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 355,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "e82c02d01d2c717a38f35f242107efce32dd873027a4a3a6fb0f18f7d1fae077",
+                      "id": "ergora-governance-delivery",
+                      "kind": "workflow",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-governance-delivery-instructions",
+                    "uri": "definitions/workflow/ergora-governance-delivery/1.0.0/instructions.md"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/workflow/ergora-governance-work/1.0.0/instructions.md",
+                "bytes": 245,
+                "sha256": "2d6bd12d60054bfe71460b4dc0cab3c19f63390361ae459170bd3dec712c94fc",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 245,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "e9ee2e387eac5b34b9bbce2aef5226bb2b482392f800507e233042b3749ba70e",
+                      "id": "ergora-governance-work",
+                      "kind": "workflow",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/work",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-governance-work-instructions",
+                    "uri": "definitions/workflow/ergora-governance-work/1.0.0/instructions.md"
+                  }
+                ]
+              }
+            ],
+            "native_list_calls": 1,
+            "native_read_calls": 4
+          },
+          {
+            "project": "c5m-repository-governance",
+            "run_id": "4707182cffc146e8b23d268f8e600d86",
+            "instance": "root/work/boundary-test",
+            "input_digest": "dd4c5a2c65bb174750a442d4191d6bdec1a7b9fa0a6afb3e8020d322c1aeaf19",
+            "scope_sha256": "7ad6c69e9e618db0b8efe2f2979660b8f5f54c072aee7795627cd93b0f6aa290",
+            "receipt_sha256": "1ee8fbc2a2a9588471ce53e15ff67f737fca62657e2a9abd27da0f64b4931617",
+            "files": [
+              {
+                "uri": "definitions/agent/ergora-architecture-test-author/1.0.0/instructions.md",
+                "bytes": 263,
+                "sha256": "e547a86d6b60640edb044f7556b6d2405f011acedb82d97b59f0d2867a5a5cf6",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 263,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "6b83c9f19ba646cb7624a224238aaa803e97ca88a7fad4925cb34b2c6039ea1c",
+                      "id": "ergora-architecture-test-author",
+                      "kind": "agent",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/work/boundary-test",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-architecture-test-author-instructions",
+                    "uri": "definitions/agent/ergora-architecture-test-author/1.0.0/instructions.md"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/agent/ergora-architecture-test-author/1.0.0/skills/ergora-architecture-test-author/SKILL.md",
+                "bytes": 468,
+                "sha256": "7d49dff73b7c6da8a05d34d32319e3697b9ff74d206798369651ff27cbe5127c",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 468,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "6b83c9f19ba646cb7624a224238aaa803e97ca88a7fad4925cb34b2c6039ea1c",
+                      "id": "ergora-architecture-test-author",
+                      "kind": "agent",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/work/boundary-test",
+                    "path": "skills/ergora-architecture-test-author",
+                    "resource_id": "ergora-architecture-test-author-skill",
+                    "uri": "definitions/agent/ergora-architecture-test-author/1.0.0/skills/ergora-architecture-test-author"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/workflow/ergora-governance-delivery/1.0.0/instructions.md",
+                "bytes": 355,
+                "sha256": "66eb88ef7aebe40cc3b46a31539b7094ecb41746940efb992d4906fa8491a418",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 355,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "e82c02d01d2c717a38f35f242107efce32dd873027a4a3a6fb0f18f7d1fae077",
+                      "id": "ergora-governance-delivery",
+                      "kind": "workflow",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-governance-delivery-instructions",
+                    "uri": "definitions/workflow/ergora-governance-delivery/1.0.0/instructions.md"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/workflow/ergora-governance-work/1.0.0/instructions.md",
+                "bytes": 245,
+                "sha256": "2d6bd12d60054bfe71460b4dc0cab3c19f63390361ae459170bd3dec712c94fc",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 245,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "e9ee2e387eac5b34b9bbce2aef5226bb2b482392f800507e233042b3749ba70e",
+                      "id": "ergora-governance-work",
+                      "kind": "workflow",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/work",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-governance-work-instructions",
+                    "uri": "definitions/workflow/ergora-governance-work/1.0.0/instructions.md"
+                  }
+                ]
+              }
+            ],
+            "native_list_calls": 1,
+            "native_read_calls": 4
+          },
+          {
+            "project": "c5m-large-change",
+            "run_id": "7903a46d75b44130b67fa0774da64330",
+            "instance": "root/review/test-value/review",
+            "input_digest": "fa7bf0cc0ab239cc2fca1adfa744e3b719e4e395e8d0165f185240942323c331",
+            "scope_sha256": "cbf42d83b59d3a6e123d82965ceef872f58de088a7792f349946281add7b5cf6",
+            "receipt_sha256": "a3b36da63174f095066144f64d879315eaf5b93b71d706c0c61e7da76b21d9c7",
+            "files": [
+              {
+                "uri": "definitions/agent/ergora-test-value-reviewer/1.0.0/instructions.md",
+                "bytes": 340,
+                "sha256": "76c7d82049d325757f516c832a07383de11e84fc94313888df963b19f7361ab8",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 340,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "41a2a42c9276fa2eb2ab128fd7a294c3e7eb3d1f4dd3578862f7d9da5bf10f27",
+                      "id": "ergora-test-value-reviewer",
+                      "kind": "agent",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/review/test-value/review",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-test-value-reviewer-instructions",
+                    "uri": "definitions/agent/ergora-test-value-reviewer/1.0.0/instructions.md"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/agent/ergora-test-value-reviewer/1.0.0/skills/ergora-test-value-reviewer/SKILL.md",
+                "bytes": 513,
+                "sha256": "b85dbd610e094340ae6edc7386f8233441f048bd41c2b00ad425388cfba0d6cb",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 513,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "41a2a42c9276fa2eb2ab128fd7a294c3e7eb3d1f4dd3578862f7d9da5bf10f27",
+                      "id": "ergora-test-value-reviewer",
+                      "kind": "agent",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/review/test-value/review",
+                    "path": "skills/ergora-test-value-reviewer",
+                    "resource_id": "ergora-test-value-reviewer-skill",
+                    "uri": "definitions/agent/ergora-test-value-reviewer/1.0.0/skills/ergora-test-value-reviewer"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/workflow/ergora-delivery-review/1.0.0/instructions.md",
+                "bytes": 225,
+                "sha256": "83e867dadc6b374bd3791bcf79c87462375fff58a43b73a569d6f7b3c954e377",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 225,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "a85e76dcd25bfddd24684b6e23ad3668097b44df0f9a7d745e387e5a841c471c",
+                      "id": "ergora-delivery-review",
+                      "kind": "workflow",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/review",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-delivery-review-instructions",
+                    "uri": "definitions/workflow/ergora-delivery-review/1.0.0/instructions.md"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/workflow/ergora-large-change-delivery/1.0.0/instructions.md",
+                "bytes": 363,
+                "sha256": "a3131ea41fd90dd1d854a72e7373cd5fbdcec4df5a584f360cd38697915aebe6",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 363,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "25dbfff6830e4123bedbfe975c964de96b8a9ce0ed8c76e8f365fecf2f7e2cc8",
+                      "id": "ergora-large-change-delivery",
+                      "kind": "workflow",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-large-change-delivery-instructions",
+                    "uri": "definitions/workflow/ergora-large-change-delivery/1.0.0/instructions.md"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/workflow/ergora-test-value-review/1.0.0/instructions.md",
+                "bytes": 175,
+                "sha256": "d6ce532f24b70ce1bf2b26c37f07b4901e8a00ce6fc4dff7d269cabd57db1a73",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 175,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "83e1cfd354d05434c4e55f728ba7c01e1dfdaf12f8461ac05c89cbb4c0855254",
+                      "id": "ergora-test-value-review",
+                      "kind": "workflow",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/review/test-value",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-test-value-review-instructions",
+                    "uri": "definitions/workflow/ergora-test-value-review/1.0.0/instructions.md"
+                  }
+                ]
+              }
+            ],
+            "native_list_calls": 1,
+            "native_read_calls": 5
+          },
+          {
+            "project": "c5m-large-change",
+            "run_id": "98c820efc1ff4cb3b8aa0fa0d5fc0d35",
+            "instance": "root/review/correctness/review",
+            "input_digest": "e62eed3e897bb5be246792ab32b7e7649df5e7e801c751cb30a480453b37c1c4",
+            "scope_sha256": "74c3a681f3450a3838911668f8e57d8a2781659349648501a7e07dbe504d175c",
+            "receipt_sha256": "71dd73c294b41cc146839184806840d8c8793e6a2b2af56a50cbd8bac00e3792",
+            "files": [
+              {
+                "uri": "definitions/agent/ergora-correctness-reviewer/1.0.0/instructions.md",
+                "bytes": 333,
+                "sha256": "60e3789ed195fd8abcbb7895ee2da536e88021ca76f2d3077fc4116364bfbd79",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 333,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "c90f74219843f5a0724e6c83ef531453493bd26d1d45d40ca495e0ca6bbd441b",
+                      "id": "ergora-correctness-reviewer",
+                      "kind": "agent",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/review/correctness/review",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-correctness-reviewer-instructions",
+                    "uri": "definitions/agent/ergora-correctness-reviewer/1.0.0/instructions.md"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/agent/ergora-correctness-reviewer/1.0.0/skills/ergora-correctness-reviewer/SKILL.md",
+                "bytes": 465,
+                "sha256": "1284f48f7238b5f3be6f422d3bb59373d66a6049e7e1215238acfb832dac8097",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 465,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "c90f74219843f5a0724e6c83ef531453493bd26d1d45d40ca495e0ca6bbd441b",
+                      "id": "ergora-correctness-reviewer",
+                      "kind": "agent",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/review/correctness/review",
+                    "path": "skills/ergora-correctness-reviewer",
+                    "resource_id": "ergora-correctness-reviewer-skill",
+                    "uri": "definitions/agent/ergora-correctness-reviewer/1.0.0/skills/ergora-correctness-reviewer"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/workflow/ergora-correctness-review/1.0.0/instructions.md",
+                "bytes": 162,
+                "sha256": "5f2ccfa00ae1bc8075d318be19c8c0a9dfc8d9e868b3c995ac34da30ba485894",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 162,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "bbc2d7bb8c0ecf420bedee847763aaaf488df7b90139904eb00057b78406aa5f",
+                      "id": "ergora-correctness-review",
+                      "kind": "workflow",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/review/correctness",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-correctness-review-instructions",
+                    "uri": "definitions/workflow/ergora-correctness-review/1.0.0/instructions.md"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/workflow/ergora-delivery-review/1.0.0/instructions.md",
+                "bytes": 225,
+                "sha256": "83e867dadc6b374bd3791bcf79c87462375fff58a43b73a569d6f7b3c954e377",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 225,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "a85e76dcd25bfddd24684b6e23ad3668097b44df0f9a7d745e387e5a841c471c",
+                      "id": "ergora-delivery-review",
+                      "kind": "workflow",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/review",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-delivery-review-instructions",
+                    "uri": "definitions/workflow/ergora-delivery-review/1.0.0/instructions.md"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/workflow/ergora-large-change-delivery/1.0.0/instructions.md",
+                "bytes": 363,
+                "sha256": "a3131ea41fd90dd1d854a72e7373cd5fbdcec4df5a584f360cd38697915aebe6",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 363,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "25dbfff6830e4123bedbfe975c964de96b8a9ce0ed8c76e8f365fecf2f7e2cc8",
+                      "id": "ergora-large-change-delivery",
+                      "kind": "workflow",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-large-change-delivery-instructions",
+                    "uri": "definitions/workflow/ergora-large-change-delivery/1.0.0/instructions.md"
+                  }
+                ]
+              }
+            ],
+            "native_list_calls": 1,
+            "native_read_calls": 5
+          },
+          {
+            "project": "c5m-large-change",
+            "run_id": "261359026a8f404f906b96a2e16b0a51",
+            "instance": "root/review/structure/review",
+            "input_digest": "674600c9a148ba429f16a624736b6391aa2347c659afb0a02f5e894baf5980fc",
+            "scope_sha256": "3bdfffd068d43769989ab04f652259da333aa3f5894dbf07ada4229066d7ca8e",
+            "receipt_sha256": "1a2973e4fb5930811e6215e4181ec3a7cfbed705601f71edc4e474d466f4fa4a",
+            "files": [
+              {
+                "uri": "definitions/agent/ergora-structure-reviewer/1.0.0/instructions.md",
+                "bytes": 354,
+                "sha256": "3cc9c450f0c03da5ea4a1434ac6182d50df6a4985cffdee2a59fe9fe477c6b43",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 354,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c",
+                      "id": "ergora-structure-reviewer",
+                      "kind": "agent",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/review/structure/review",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-structure-reviewer-instructions",
+                    "uri": "definitions/agent/ergora-structure-reviewer/1.0.0/instructions.md"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/agent/ergora-structure-reviewer/1.0.0/skills/ergora-structure-reviewer/SKILL.md",
+                "bytes": 521,
+                "sha256": "d6b69570bcca408d3d06ca5adf1cb44a4a9e43c2901f05c38a68c096f23a4ac8",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 521,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c",
+                      "id": "ergora-structure-reviewer",
+                      "kind": "agent",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/review/structure/review",
+                    "path": "skills/ergora-structure-reviewer",
+                    "resource_id": "ergora-structure-reviewer-skill",
+                    "uri": "definitions/agent/ergora-structure-reviewer/1.0.0/skills/ergora-structure-reviewer"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/workflow/ergora-delivery-review/1.0.0/instructions.md",
+                "bytes": 225,
+                "sha256": "83e867dadc6b374bd3791bcf79c87462375fff58a43b73a569d6f7b3c954e377",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 225,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "a85e76dcd25bfddd24684b6e23ad3668097b44df0f9a7d745e387e5a841c471c",
+                      "id": "ergora-delivery-review",
+                      "kind": "workflow",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/review",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-delivery-review-instructions",
+                    "uri": "definitions/workflow/ergora-delivery-review/1.0.0/instructions.md"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/workflow/ergora-large-change-delivery/1.0.0/instructions.md",
+                "bytes": 363,
+                "sha256": "a3131ea41fd90dd1d854a72e7373cd5fbdcec4df5a584f360cd38697915aebe6",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 363,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "25dbfff6830e4123bedbfe975c964de96b8a9ce0ed8c76e8f365fecf2f7e2cc8",
+                      "id": "ergora-large-change-delivery",
+                      "kind": "workflow",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-large-change-delivery-instructions",
+                    "uri": "definitions/workflow/ergora-large-change-delivery/1.0.0/instructions.md"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/workflow/ergora-structure-review/1.0.0/instructions.md",
+                "bytes": 163,
+                "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 163,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9",
+                      "id": "ergora-structure-review",
+                      "kind": "workflow",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/review/structure",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-structure-review-instructions",
+                    "uri": "definitions/workflow/ergora-structure-review/1.0.0/instructions.md"
+                  }
+                ]
+              }
+            ],
+            "native_list_calls": 1,
+            "native_read_calls": 5
+          },
+          {
+            "project": "c5m-large-change",
+            "run_id": "3b6055c7de8145e5aa511ef6dacd4033",
+            "instance": "root/work/integration-tests",
+            "input_digest": "675d4aa0b33eb338f569dd12f1b0852860282be002c11f2d7a13feb4009e8e9a",
+            "scope_sha256": "0dada7a19a6d3bc9099de36548a7aa907b387d6122d3f2adad8134b39b1d42e7",
+            "receipt_sha256": "ed166d03f9b6c0f1c645f0cbe564a663320827c5bf17aa864bbc85247436bae6",
+            "files": [
+              {
+                "uri": "definitions/agent/ergora-compatibility-validator/1.0.0/instructions.md",
+                "bytes": 319,
+                "sha256": "69ee580d80fdde496d8b17657050c9e856db8084a6ed04f2c009cc52a0996794",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 319,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "ad58fd050257dfcfb3a4d3c03a4cfd40f4bc712d837743f46b0c2a45c91b37dc",
+                      "id": "ergora-compatibility-validator",
+                      "kind": "agent",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/work/integration-tests",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-compatibility-validator-instructions",
+                    "uri": "definitions/agent/ergora-compatibility-validator/1.0.0/instructions.md"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/agent/ergora-compatibility-validator/1.0.0/skills/ergora-compatibility-validator/SKILL.md",
+                "bytes": 482,
+                "sha256": "b72c2390a2bbd2c8bb9b1a4ccd5356d8ca8eec3aa8487b899d8b74314d1de3d9",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 482,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "ad58fd050257dfcfb3a4d3c03a4cfd40f4bc712d837743f46b0c2a45c91b37dc",
+                      "id": "ergora-compatibility-validator",
+                      "kind": "agent",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/work/integration-tests",
+                    "path": "skills/ergora-compatibility-validator",
+                    "resource_id": "ergora-compatibility-validator-skill",
+                    "uri": "definitions/agent/ergora-compatibility-validator/1.0.0/skills/ergora-compatibility-validator"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/workflow/ergora-large-change-delivery/1.0.0/instructions.md",
+                "bytes": 363,
+                "sha256": "a3131ea41fd90dd1d854a72e7373cd5fbdcec4df5a584f360cd38697915aebe6",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 363,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "25dbfff6830e4123bedbfe975c964de96b8a9ce0ed8c76e8f365fecf2f7e2cc8",
+                      "id": "ergora-large-change-delivery",
+                      "kind": "workflow",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-large-change-delivery-instructions",
+                    "uri": "definitions/workflow/ergora-large-change-delivery/1.0.0/instructions.md"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/workflow/ergora-large-change-work/1.0.0/instructions.md",
+                "bytes": 259,
+                "sha256": "fede80577421bef430eb6dd93b52b9abe3a30225ae71b47d3964c5d7081bbfad",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 259,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "41e8eb658beb74a8a452b62f07439abf4b82f6378424dac76c36bbdcc2e4061e",
+                      "id": "ergora-large-change-work",
+                      "kind": "workflow",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/work",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-large-change-work-instructions",
+                    "uri": "definitions/workflow/ergora-large-change-work/1.0.0/instructions.md"
+                  }
+                ]
+              }
+            ],
+            "native_list_calls": 1,
+            "native_read_calls": 4
+          },
+          {
+            "project": "c5m-large-change",
+            "run_id": "8ac9145debdc4a198e9400109836be1f",
+            "instance": "root/work/client",
+            "input_digest": "c0a60e872b2ab1a7075bbe954dc8e2e85cb94a44da8d3d98e106f8a3b0648ffe",
+            "scope_sha256": "bdf80bd106e70c438f3851e4a5c350699e359251181957e962cff385e0b75b6c",
+            "receipt_sha256": "dcee834eb1e0c6ebc7d2715f051bf086380d91122434885a9d5d0163483f11fb",
+            "files": [
+              {
+                "uri": "definitions/agent/ergora-client-implementer/1.0.0/instructions.md",
+                "bytes": 288,
+                "sha256": "43892ec96e6457ec23628156a771615b5b68d8b2d1cbab64f1e070109eaf7485",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 288,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "511b8a2d3c25e057a8ba97c9f0107e50a68f5acc847ccc1102cb5dd2a110bba4",
+                      "id": "ergora-client-implementer",
+                      "kind": "agent",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/work/client",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-client-implementer-instructions",
+                    "uri": "definitions/agent/ergora-client-implementer/1.0.0/instructions.md"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/agent/ergora-client-implementer/1.0.0/skills/ergora-client-implementer/SKILL.md",
+                "bytes": 444,
+                "sha256": "65f0bbced07c09f814cc6f3aa5ecf6a619f3332629db48cb789077e547014713",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 444,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "511b8a2d3c25e057a8ba97c9f0107e50a68f5acc847ccc1102cb5dd2a110bba4",
+                      "id": "ergora-client-implementer",
+                      "kind": "agent",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/work/client",
+                    "path": "skills/ergora-client-implementer",
+                    "resource_id": "ergora-client-implementer-skill",
+                    "uri": "definitions/agent/ergora-client-implementer/1.0.0/skills/ergora-client-implementer"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/workflow/ergora-large-change-delivery/1.0.0/instructions.md",
+                "bytes": 363,
+                "sha256": "a3131ea41fd90dd1d854a72e7373cd5fbdcec4df5a584f360cd38697915aebe6",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 363,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "25dbfff6830e4123bedbfe975c964de96b8a9ce0ed8c76e8f365fecf2f7e2cc8",
+                      "id": "ergora-large-change-delivery",
+                      "kind": "workflow",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-large-change-delivery-instructions",
+                    "uri": "definitions/workflow/ergora-large-change-delivery/1.0.0/instructions.md"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/workflow/ergora-large-change-work/1.0.0/instructions.md",
+                "bytes": 259,
+                "sha256": "fede80577421bef430eb6dd93b52b9abe3a30225ae71b47d3964c5d7081bbfad",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 259,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "41e8eb658beb74a8a452b62f07439abf4b82f6378424dac76c36bbdcc2e4061e",
+                      "id": "ergora-large-change-work",
+                      "kind": "workflow",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/work",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-large-change-work-instructions",
+                    "uri": "definitions/workflow/ergora-large-change-work/1.0.0/instructions.md"
+                  }
+                ]
+              }
+            ],
+            "native_list_calls": 1,
+            "native_read_calls": 4
+          },
+          {
+            "project": "c5m-large-change",
+            "run_id": "c897b4e75f2544d183acfe607e12e5b1",
+            "instance": "root/work/server",
+            "input_digest": "a1e91433119732f0da62dfecef72f39ee94e9b859ad5793550d2cbbb5177d01d",
+            "scope_sha256": "de70846ae84037b4900a4f49ad0c7250b31f85c95435644b68cfa3f19cbc3128",
+            "receipt_sha256": "19f06e4b62ad3b421cc546ddb09eadf9732682ab9f95af95aa734d30271503b1",
+            "files": [
+              {
+                "uri": "definitions/agent/ergora-server-implementer/1.0.0/instructions.md",
+                "bytes": 288,
+                "sha256": "8919237421f1da203375d2eea41b7408ad48c6bd89cc2f91c7abbb6ae35e0227",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 288,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "b835e630d8579083b24aa03fcd41184635547768077f2f95af23f7b84d8cca99",
+                      "id": "ergora-server-implementer",
+                      "kind": "agent",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/work/server",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-server-implementer-instructions",
+                    "uri": "definitions/agent/ergora-server-implementer/1.0.0/instructions.md"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/agent/ergora-server-implementer/1.0.0/skills/ergora-server-implementer/SKILL.md",
+                "bytes": 449,
+                "sha256": "d009528a26f8016b227dfce72ed3d890f0ca7d2fa63331e3fd2539df7d82f3b8",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 449,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "b835e630d8579083b24aa03fcd41184635547768077f2f95af23f7b84d8cca99",
+                      "id": "ergora-server-implementer",
+                      "kind": "agent",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/work/server",
+                    "path": "skills/ergora-server-implementer",
+                    "resource_id": "ergora-server-implementer-skill",
+                    "uri": "definitions/agent/ergora-server-implementer/1.0.0/skills/ergora-server-implementer"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/workflow/ergora-large-change-delivery/1.0.0/instructions.md",
+                "bytes": 363,
+                "sha256": "a3131ea41fd90dd1d854a72e7373cd5fbdcec4df5a584f360cd38697915aebe6",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 363,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "25dbfff6830e4123bedbfe975c964de96b8a9ce0ed8c76e8f365fecf2f7e2cc8",
+                      "id": "ergora-large-change-delivery",
+                      "kind": "workflow",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-large-change-delivery-instructions",
+                    "uri": "definitions/workflow/ergora-large-change-delivery/1.0.0/instructions.md"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/workflow/ergora-large-change-work/1.0.0/instructions.md",
+                "bytes": 259,
+                "sha256": "fede80577421bef430eb6dd93b52b9abe3a30225ae71b47d3964c5d7081bbfad",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 259,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "41e8eb658beb74a8a452b62f07439abf4b82f6378424dac76c36bbdcc2e4061e",
+                      "id": "ergora-large-change-work",
+                      "kind": "workflow",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/work",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-large-change-work-instructions",
+                    "uri": "definitions/workflow/ergora-large-change-work/1.0.0/instructions.md"
+                  }
+                ]
+              }
+            ],
+            "native_list_calls": 1,
+            "native_read_calls": 4
+          },
+          {
+            "project": "c5m-large-change",
+            "run_id": "a79000e0bf3644ce8ceb1354beb09256",
+            "instance": "root/work/contract",
+            "input_digest": "c78df47babc9ae9f42a1823b55daa7a7302a0b2bec6e56e469b4915a62831293",
+            "scope_sha256": "88f9cd6cc67233fdcc44a3f4ddb47c24d3bebe794f9c90e9009ea370872218ef",
+            "receipt_sha256": "bbc2ddaa14ac1767a756dd5fa5acf33ffb1f94ba43b5752f376707fe8abaad80",
+            "files": [
+              {
+                "uri": "definitions/agent/ergora-api-contract-author/1.0.0/instructions.md",
+                "bytes": 328,
+                "sha256": "1f8c616ccd6cdb5608c785fdf9ed782783a739d2db966a7ca9668dc8faaaca27",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 328,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "996348fae81cd3fc1192d49e70b9928efb3b9993b4341ce5a5cb6d8733ce16b1",
+                      "id": "ergora-api-contract-author",
+                      "kind": "agent",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/work/contract",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-api-contract-author-instructions",
+                    "uri": "definitions/agent/ergora-api-contract-author/1.0.0/instructions.md"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/agent/ergora-api-contract-author/1.0.0/skills/ergora-api-contract-author/SKILL.md",
+                "bytes": 427,
+                "sha256": "44cdc82dca2dcb4721d98b08f65e5593ea17285316af620325956494a75fc914",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 427,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "996348fae81cd3fc1192d49e70b9928efb3b9993b4341ce5a5cb6d8733ce16b1",
+                      "id": "ergora-api-contract-author",
+                      "kind": "agent",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/work/contract",
+                    "path": "skills/ergora-api-contract-author",
+                    "resource_id": "ergora-api-contract-author-skill",
+                    "uri": "definitions/agent/ergora-api-contract-author/1.0.0/skills/ergora-api-contract-author"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/workflow/ergora-large-change-delivery/1.0.0/instructions.md",
+                "bytes": 363,
+                "sha256": "a3131ea41fd90dd1d854a72e7373cd5fbdcec4df5a584f360cd38697915aebe6",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 363,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "25dbfff6830e4123bedbfe975c964de96b8a9ce0ed8c76e8f365fecf2f7e2cc8",
+                      "id": "ergora-large-change-delivery",
+                      "kind": "workflow",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-large-change-delivery-instructions",
+                    "uri": "definitions/workflow/ergora-large-change-delivery/1.0.0/instructions.md"
+                  }
+                ]
+              },
+              {
+                "uri": "definitions/workflow/ergora-large-change-work/1.0.0/instructions.md",
+                "bytes": 259,
+                "sha256": "fede80577421bef430eb6dd93b52b9abe3a30225ae71b47d3964c5d7081bbfad",
+                "pages": [
+                  {
+                    "offset": 0,
+                    "bytes": 259,
+                    "encoding": "utf-8"
+                  }
+                ],
+                "sources": [
+                  {
+                    "definition": {
+                      "digest": "41e8eb658beb74a8a452b62f07439abf4b82f6378424dac76c36bbdcc2e4061e",
+                      "id": "ergora-large-change-work",
+                      "kind": "workflow",
+                      "version": "1.0.0"
+                    },
+                    "instance": "root/work",
+                    "path": "instructions.md",
+                    "resource_id": "ergora-large-change-work-instructions",
+                    "uri": "definitions/workflow/ergora-large-change-work/1.0.0/instructions.md"
+                  }
+                ]
+              }
+            ],
+            "native_list_calls": 1,
+            "native_read_calls": 4
+          }
+        ],
+        "run_count": 12,
+        "files": 54,
+        "bytes": 17740,
+        "frozen_manifest_assets_and_graph_match_actual_inputs": true,
+        "reconstructed_expected_scopes_match_originals": true,
+        "all_fixture_bytes_hashes_and_contiguous_pages_match": true,
+        "scope": "Read-only original evidence inspection plus isolated reconstruction of expected scopes. No service, model or job rerun. Fixture receipts preserve page offset/size/encoding and final bytes; next_offset is not stored in these receipts. Native success audit is matched to observed page counts. This proves protocol delivery, not model understanding."
+      }
+    },
+    {
+      "private_original": "independent/r2-runtime-scope-audit.json",
+      "bytes": 9158,
+      "sha256": "13f1de70fe805aec2380d40861c69765d0e3c09af588ff356857ecc5f3fe85f7",
+      "omitted_top_level_fields": [],
+      "projection": {
+        "checked_at": "2026-11-11T03:20:28.826365+00:00",
+        "totals": {
+          "jobs": 20,
+          "artifacts": 154,
+          "calls": 12,
+          "resources": 54,
+          "resource_bytes": 17740,
+          "pages": 54,
+          "utf8_pages": 54,
+          "base64_pages": 0
+        },
+        "records": {
+          "c5m-repository-governance": {
+            "run_id": "01a1c892-6943-7842-8f04-a84f5c91f76d",
+            "outcome": "REVIEW_READY",
+            "candidate_sha": "f0820df3cebc4316f1422d7057902653f7930958",
+            "stages": {
+              "review:root/review/correctness/review": {
+                "state": "SUCCEEDED",
+                "job_id": "c5m-repository-governance-task-039b497f310bc2a05743b785",
+                "artifacts": 11,
+                "instance": "root/review/correctness/review",
+                "task_bytes": 26736,
+                "prompt_bytes": 30581,
+                "scope_files": 5,
+                "scope_bytes": 1540,
+                "scope_sha256": "9a60003ae5e1a35f7f163be28c9cc631d0ada38530168eedfc219bdd538acaef",
+                "fixture_sha256": "1af032b46e98c5acf4cb3a7abb03c057570d215dfda503f52dd592d842a64da0"
+              },
+              "review:root/review/structure/review": {
+                "state": "SUCCEEDED",
+                "job_id": "c5m-repository-governance-task-174bd41ec4c25edb0d53fdfa",
+                "artifacts": 11,
+                "instance": "root/review/structure/review",
+                "task_bytes": 26734,
+                "prompt_bytes": 30623,
+                "scope_files": 5,
+                "scope_bytes": 1618,
+                "scope_sha256": "0ba03edc6693301a80b417c01290a7d481079e37ab281aacf718ef6794fa8382",
+                "fixture_sha256": "980ebf8158d6e952088dd51bc71c33ae7060d7056dc728014d81c173a474a407"
+              },
+              "work:boundary-test": {
+                "state": "SUCCEEDED",
+                "job_id": "c5m-repository-governance-task-2649c83fc39b6573dc88dd7a",
+                "artifacts": 11,
+                "instance": "root/work/boundary-test",
+                "task_bytes": 11461,
+                "prompt_bytes": 14672,
+                "scope_files": 4,
+                "scope_bytes": 1331,
+                "scope_sha256": "7ad6c69e9e618db0b8efe2f2979660b8f5f54c072aee7795627cd93b0f6aa290",
+                "fixture_sha256": "1ee8fbc2a2a9588471ce53e15ff67f737fca62657e2a9abd27da0f64b4931617"
+              },
+              "plan": {
+                "state": "SUCCEEDED",
+                "job_id": "c5m-repository-governance-task-29c77e683944f0250f07816e",
+                "artifacts": 5
+              },
+              "inventory": {
+                "state": "SUCCEEDED",
+                "job_id": "c5m-repository-governance-task-468519c303ac175bf7c8fabb",
+                "artifacts": 4
+              },
+              "verify": {
+                "state": "SUCCEEDED",
+                "job_id": "c5m-repository-governance-task-5ef460a3142b5ab94c4ff7a4",
+                "artifacts": 1
+              },
+              "integrate": {
+                "state": "SUCCEEDED",
+                "job_id": "c5m-repository-governance-task-65bd4e363e016ec396722c0a",
+                "artifacts": 1
+              },
+              "review:root/review/test-value/review": {
+                "state": "SUCCEEDED",
+                "job_id": "c5m-repository-governance-task-cf62c6df448302d7404a2adc",
+                "artifacts": 11,
+                "instance": "root/review/test-value/review",
+                "task_bytes": 26735,
+                "prompt_bytes": 30631,
+                "scope_files": 5,
+                "scope_bytes": 1608,
+                "scope_sha256": "260eb374adee01157ecb09d4926efae2c261052142d579640102dc9c2ce1b807",
+                "fixture_sha256": "11bf59ad07737f271d4547a97ce0ad1ffea93d6423fe438379828e088ae69ce2"
+              },
+              "work:knowledge-map": {
+                "state": "SUCCEEDED",
+                "job_id": "c5m-repository-governance-task-fb7e54e6e960cde0244ce235",
+                "artifacts": 11,
+                "instance": "root/work/knowledge-map",
+                "task_bytes": 11445,
+                "prompt_bytes": 14595,
+                "scope_files": 4,
+                "scope_bytes": 1340,
+                "scope_sha256": "231123f34542ffa7d2e17c7a20a61907815400d01c427770086fc56f92e024c1",
+                "fixture_sha256": "558b2514ec73544771cb0db2dab0a68c224efba69544e33d45bc311d812f2b9c"
+              }
+            },
+            "history_events": 194,
+            "handoff_sha256": "6a337b7bc3cbde851229dff976a9cb7981af2064df553342236a577992a82ed1"
+          },
+          "c5m-large-change": {
+            "run_id": "01a1c894-0ad4-7350-8a4b-7813b65cb9f5",
+            "outcome": "REVIEW_READY",
+            "candidate_sha": "9049f4de6be3bd8e57a791a66a696bd48ad91df5",
+            "stages": {
+              "review:root/review/correctness/review": {
+                "state": "SUCCEEDED",
+                "job_id": "c5m-large-change-task-039b497f310bc2a05743b785",
+                "artifacts": 11,
+                "instance": "root/review/correctness/review",
+                "task_bytes": 24586,
+                "prompt_bytes": 28447,
+                "scope_files": 5,
+                "scope_bytes": 1548,
+                "scope_sha256": "74c3a681f3450a3838911668f8e57d8a2781659349648501a7e07dbe504d175c",
+                "fixture_sha256": "71dd73c294b41cc146839184806840d8c8793e6a2b2af56a50cbd8bac00e3792"
+              },
+              "review:root/review/structure/review": {
+                "state": "SUCCEEDED",
+                "job_id": "c5m-large-change-task-174bd41ec4c25edb0d53fdfa",
+                "artifacts": 11,
+                "instance": "root/review/structure/review",
+                "task_bytes": 24584,
+                "prompt_bytes": 28489,
+                "scope_files": 5,
+                "scope_bytes": 1626,
+                "scope_sha256": "3bdfffd068d43769989ab04f652259da333aa3f5894dbf07ada4229066d7ca8e",
+                "fixture_sha256": "1a2973e4fb5930811e6215e4181ec3a7cfbed705601f71edc4e474d466f4fa4a"
+              },
+              "plan": {
+                "state": "SUCCEEDED",
+                "job_id": "c5m-large-change-task-29c77e683944f0250f07816e",
+                "artifacts": 5
+              },
+              "work:server": {
+                "state": "SUCCEEDED",
+                "job_id": "c5m-large-change-task-3c4b6d45bd30e1d25a8a7870",
+                "artifacts": 11,
+                "instance": "root/work/server",
+                "task_bytes": 19270,
+                "prompt_bytes": 22451,
+                "scope_files": 4,
+                "scope_bytes": 1359,
+                "scope_sha256": "de70846ae84037b4900a4f49ad0c7250b31f85c95435644b68cfa3f19cbc3128",
+                "fixture_sha256": "19f06e4b62ad3b421cc546ddb09eadf9732682ab9f95af95aa734d30271503b1"
+              },
+              "inventory": {
+                "state": "SUCCEEDED",
+                "job_id": "c5m-large-change-task-468519c303ac175bf7c8fabb",
+                "artifacts": 4
+              },
+              "work:client": {
+                "state": "SUCCEEDED",
+                "job_id": "c5m-large-change-task-5bef06813f272ec3bef08139",
+                "artifacts": 11,
+                "instance": "root/work/client",
+                "task_bytes": 19270,
+                "prompt_bytes": 22446,
+                "scope_files": 4,
+                "scope_bytes": 1354,
+                "scope_sha256": "bdf80bd106e70c438f3851e4a5c350699e359251181957e962cff385e0b75b6c",
+                "fixture_sha256": "dcee834eb1e0c6ebc7d2715f051bf086380d91122434885a9d5d0163483f11fb"
+              },
+              "verify": {
+                "state": "SUCCEEDED",
+                "job_id": "c5m-large-change-task-5ef460a3142b5ab94c4ff7a4",
+                "artifacts": 1
+              },
+              "work:contract": {
+                "state": "SUCCEEDED",
+                "job_id": "c5m-large-change-task-64f9eb23fbc55364213db348",
+                "artifacts": 11,
+                "instance": "root/work/contract",
+                "task_bytes": 12521,
+                "prompt_bytes": 15734,
+                "scope_files": 4,
+                "scope_bytes": 1377,
+                "scope_sha256": "88f9cd6cc67233fdcc44a3f4ddb47c24d3bebe794f9c90e9009ea370872218ef",
+                "fixture_sha256": "bbc2ddaa14ac1767a756dd5fa5acf33ffb1f94ba43b5752f376707fe8abaad80"
+              },
+              "integrate": {
+                "state": "SUCCEEDED",
+                "job_id": "c5m-large-change-task-65bd4e363e016ec396722c0a",
+                "artifacts": 1
+              },
+              "review:root/review/test-value/review": {
+                "state": "SUCCEEDED",
+                "job_id": "c5m-large-change-task-cf62c6df448302d7404a2adc",
+                "artifacts": 11,
+                "instance": "root/review/test-value/review",
+                "task_bytes": 24585,
+                "prompt_bytes": 28497,
+                "scope_files": 5,
+                "scope_bytes": 1616,
+                "scope_sha256": "cbf42d83b59d3a6e123d82965ceef872f58de088a7792f349946281add7b5cf6",
+                "fixture_sha256": "a3b36da63174f095066144f64d879315eaf5b93b71d706c0c61e7da76b21d9c7"
+              },
+              "work:integration-tests": {
+                "state": "SUCCEEDED",
+                "job_id": "c5m-large-change-task-d03637fe5547598aeb69c246",
+                "artifacts": 11,
+                "instance": "root/work/integration-tests",
+                "task_bytes": 26300,
+                "prompt_bytes": 29617,
+                "scope_files": 4,
+                "scope_bytes": 1423,
+                "scope_sha256": "0dada7a19a6d3bc9099de36548a7aa907b387d6122d3f2adad8134b39b1d42e7",
+                "fixture_sha256": "ed166d03f9b6c0f1c645f0cbe564a663320827c5bf17aa864bbc85247436bae6"
+              }
+            },
+            "history_events": 240,
+            "handoff_sha256": "0b4dff0632b06865104de49cca2c9a506aa9418f843802c1f08d60a7b6c911f0"
+          }
+        },
+        "scope": "Read-only exact frozen assets -> prepared manifest/input -> scope URI/bytes/SHA -> contiguous fixture read bytes. Saved histories/handoff hashes only, no replay/service/model rerun.",
+        "limitations": "Deterministic native protocol fixture reading, not model understanding; actual UTF-8/base64 page counts shown rather than inferred coverage."
+      }
+    }
+  ]
+}

@@ -90,7 +90,8 @@ def work_creation(creation_project, work_graph, tmp_path):
     return state, registration, definition
 
 
-def test_v5_creation_freezes_actual_writers_and_uses_its_own_input_route(work_creation, monkeypatch):
+@pytest.mark.parametrize('protocol,version', [('work-units-v1', 5), ('work-units-v2', 6)])
+def test_work_creation_freezes_actual_writers_and_uses_its_own_input_route(work_creation, monkeypatch, protocol, version):
     pytest.importorskip('temporalio')
     from ergora import reference
     monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
@@ -98,14 +99,15 @@ def test_v5_creation_freezes_actual_writers_and_uses_its_own_input_route(work_cr
     from temporalio.workflow import _Definition
 
     state, registered, definition = work_creation
+    definition['composition']['execution']['protocol'] = protocol
     preview = tasks.preview(state, 'demo', definition, 1)
     document = preview['files']['task.spec.json']
-    assert document['schema_version'] == 5
+    assert document['schema_version'] == version
     selected = execution_input(document)
     selected.require_submission()
-    assert selected.task_queue('dev') == 'dev.composition-v5'
-    assert selected.request_root(Path('requests')).name == 'requests-composition-v5'
-    assert _Definition.must_from_run_fn(selected.entrypoint).name == 'ErgoraCompositionWorkflowV5'
+    assert selected.task_queue('dev') == f'dev.composition-v{version}'
+    assert selected.request_root(Path('requests')).name == f'requests-composition-v{version}'
+    assert _Definition.must_from_run_fn(selected.entrypoint).name == f'ErgoraCompositionWorkflowV{version}'
     assert document['composition']['diversity']['implementer_backends'] == ['codex']
     assert len(document['composition']['execution']['members']) == 2
     created = tasks.create(state, 'demo', definition, 1, preview['preview_sha256'])
@@ -147,7 +149,7 @@ def test_workspace_mode_does_not_relax_the_public_read_only_leaf_entry(work_crea
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Native workflow/monitor is Linux/WSL2')
 @pytest.mark.parametrize('case', ['full', 'source-artifact', 'source-claim', 'scope', 'commit', 'recovery',
-                                  'recovery-commit', 'recovery-tamper'])
+                                  'recovery-commit', 'recovery-tamper', 'results', 'results-source-artifact'])
 def test_formal_work_reuses_original_checks_commits_and_sources(tmp_path, case):
     pytest.importorskip('temporalio')
     pytest.importorskip('mcp')

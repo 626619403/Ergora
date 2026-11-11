@@ -1,0 +1,600 @@
+{
+  "schema_version": 1,
+  "published_at": "2026-11-11T03:25:22.377538+00:00",
+  "scope": "Original v5 governance success/large-change BLOCKED and failed private drivers preserved. Two new v6 tasks REVIEW_READY9/11jobs5/7native calls; exact approval, evidence, original-ID repeat, handoff and194/240history replay passed. Same-run continuation did not rerun agents. Deterministic native protocol fixture, not model/project quality or different-backend independence. Sampling only.",
+  "projection_policy": "Original byte/SHA identities precede projection. Repository and user-home paths use placeholders. Omitted/derived fields are explicit; complete private originals retained. No original omitted field inspection is implied.",
+  "originals": [
+    {
+      "private_original": "c5c-repository-governance-checkpoint.json",
+      "bytes": 2984,
+      "sha256": "58ebfbf6b918904f3579cf7e4e40455679a021606e65e3567e0ffb8420a9c438",
+      "omitted_top_level_fields": [],
+      "projection": {
+        "task_id": "c5c-repository-governance-task",
+        "writers": [
+          "root/work/knowledge-map",
+          "root/work/boundary-test"
+        ],
+        "paths": {
+          "knowledge-map": "docs/governance/map.md",
+          "boundary-test": "tests/architecture/boundary.py"
+        },
+        "root": "ergora-governance-delivery",
+        "manifest_digest": "d90d8b82de570216e149ae9cbaef4c78490f557e23f5fe2ea22839b66e38ea5a",
+        "run_id": "01a1c873-0fa6-7866-b147-d53b0b66dd69",
+        "outcome": "REVIEW_READY",
+        "candidate_sha": "d5b8c205903950e4d922d3e1f40f19c9c5810eab",
+        "plan_sha256": "74b2270fdd9b8d13069be32f0f669ad1ad4b93c763974df8644aa8b682c456e6",
+        "jobs": {
+          "review:root/review/correctness/review": "SUCCEEDED",
+          "review:root/review/structure/review": "SUCCEEDED",
+          "work:boundary-test": "SUCCEEDED",
+          "plan": "SUCCEEDED",
+          "inventory": "SUCCEEDED",
+          "verify": "SUCCEEDED",
+          "integrate": "SUCCEEDED",
+          "review:root/review/test-value/review": "SUCCEEDED",
+          "work:knowledge-map": "SUCCEEDED"
+        },
+        "actual_native_scope_reads": [
+          {
+            "run_id": "bbe134cd9a1b4b6ba1cb61ce35a78f79",
+            "files": 5,
+            "bytes": 1608,
+            "receipt_sha256": "11bf59ad07737f271d4547a97ce0ad1ffea93d6423fe438379828e088ae69ce2",
+            "receipt": "$USER_HOME/.local/state/ergora-checks/c5c1/control/runs/bbe134cd9a1b4b6ba1cb61ce35a78f79.protocol/fixture-read-delivery.json"
+          },
+          {
+            "run_id": "d683be3328e1461c85b7522f61b87c8b",
+            "files": 5,
+            "bytes": 1618,
+            "receipt_sha256": "980ebf8158d6e952088dd51bc71c33ae7060d7056dc728014d81c173a474a407",
+            "receipt": "$USER_HOME/.local/state/ergora-checks/c5c1/control/runs/d683be3328e1461c85b7522f61b87c8b.protocol/fixture-read-delivery.json"
+          },
+          {
+            "run_id": "77e2cf53e7c24120b958416da14bb2e9",
+            "files": 5,
+            "bytes": 1540,
+            "receipt_sha256": "1af032b46e98c5acf4cb3a7abb03c057570d215dfda503f52dd592d842a64da0",
+            "receipt": "$USER_HOME/.local/state/ergora-checks/c5c1/control/runs/77e2cf53e7c24120b958416da14bb2e9.protocol/fixture-read-delivery.json"
+          },
+          {
+            "run_id": "4110b4d278bf4b8b9753e98c1604a463",
+            "files": 4,
+            "bytes": 1340,
+            "receipt_sha256": "558b2514ec73544771cb0db2dab0a68c224efba69544e33d45bc311d812f2b9c",
+            "receipt": "$USER_HOME/.local/state/ergora-checks/c5c1/control/runs/4110b4d278bf4b8b9753e98c1604a463.protocol/fixture-read-delivery.json"
+          },
+          {
+            "run_id": "233ff6383869410fb6c153608ce5d463",
+            "files": 4,
+            "bytes": 1331,
+            "receipt_sha256": "1ee8fbc2a2a9588471ce53e15ff67f737fca62657e2a9abd27da0f64b4931617",
+            "receipt": "$USER_HOME/.local/state/ergora-checks/c5c1/control/runs/233ff6383869410fb6c153608ce5d463.protocol/fixture-read-delivery.json"
+          }
+        ],
+        "history": {
+          "sha256": "a024c53f2afa7ac792e6a1ba09b4afa0f39ace05fd7095488794515c15402c12",
+          "events": 194,
+          "replay": "passed"
+        },
+        "handoff_sha256": "6c4f335c89edb32c395bec0ec6d02e95616b802a8868ca306efdbbab52270555"
+      }
+    },
+    {
+      "private_original": "resume-command-result.json",
+      "bytes": 93,
+      "sha256": "ab2090ff891f548404f9c571dba6729c6d3c5bc7f0f19fe27a978ace2a70182a",
+      "omitted_top_level_fields": [],
+      "projection": {
+        "at": "2026-11-11T02:37:53.212862+00:00",
+        "exit": 1,
+        "seconds": 103.93182518007234
+      }
+    },
+    {
+      "private_original": "reproduce-r1/result.json",
+      "bytes": 869,
+      "sha256": "49a471edc224e887b21d9657da0c3ec7ecf30f7e2569421c332c8176ecd8409b",
+      "omitted_top_level_fields": [],
+      "projection": {
+        "outcome": "rejected",
+        "error_type": "ValueError",
+        "detail": "Composition task exceeds the supported input byte limit",
+        "task_bytes": 1928864,
+        "task_sha256": "78a019a5664ab57ee6e0a7f828de5ef430dedcc84c53eb1d19e91f15eefccb57",
+        "fields": {
+          "schema_version": 1,
+          "kind": 23,
+          "candidate_sha": 42,
+          "context": 11840,
+          "template_instructions": 2929,
+          "dependency_artifacts": 953187,
+          "effective_write_paths": 35,
+          "checkout": 152,
+          "result_schema": 390,
+          "root_task": 1842,
+          "work_inputs": 957656
+        },
+        "seconds": 3.5869033252820373,
+        "source_sha256": "a01c7ec460adfe3cf127d580e1cb684c2f53d62d8983d6b3763af7114c8e9789",
+        "original_job_id": "c5c-large-change-task-d03637fe5547598aeb69c246",
+        "scope": "Offline reconstruction of the original failed stage. No agent, task restart, approval, commit or receipt publication."
+      }
+    },
+    {
+      "private_original": "reproduce-r1/size-probes.json",
+      "bytes": 1263,
+      "sha256": "bfe9ef5fc34a5848a006a00eb614a100092d56f7a93b59fa1cc987bfaf5862c0",
+      "omitted_top_level_fields": [],
+      "projection": {
+        "scope": "Offline size-only probes of original reconstructed material; originals unchanged.",
+        "original_task_bytes": 1928864,
+        "direct_producers": [
+          {
+            "path": "root/work/client",
+            "bytes": 478527,
+            "artifacts": {
+              "composition-call": 4195,
+              "composition-materials": 191193,
+              "composition-prompt": 189611,
+              "model-log": 12230,
+              "composition-invocation": 15659,
+              "composition-mcp-scope": 5055,
+              "composition-mcp-audit": 1610,
+              "composition-native-command": 2312,
+              "agent-selection": 458,
+              "change-summary": 32,
+              "test-results": 624
+            },
+            "same_as_dependency": true
+          },
+          {
+            "path": "root/work/server",
+            "bytes": 478540,
+            "artifacts": {
+              "composition-call": 4195,
+              "composition-materials": 191193,
+              "composition-prompt": 189616,
+              "model-log": 12230,
+              "composition-invocation": 15659,
+              "composition-mcp-scope": 5063,
+              "composition-mcp-audit": 1610,
+              "composition-native-command": 2312,
+              "agent-selection": 458,
+              "change-summary": 32,
+              "test-results": 624
+            },
+            "same_as_dependency": true
+          }
+        ],
+        "without_duplicate_dependency_table": 977107
+      }
+    },
+    {
+      "private_original": "r2/journey-command-result.json",
+      "bytes": 166,
+      "sha256": "230f4013bfe906d0f75d7b4ade9d32323c34563f13d74c44830d663c64af77d2",
+      "omitted_top_level_fields": [],
+      "projection": {
+        "at": "2026-11-11T03:10:45.892933+00:00",
+        "exit": 1,
+        "seconds": 269.30111475801095,
+        "preserved_original_files": 1677,
+        "preserved_originals_equal": true
+      }
+    },
+    {
+      "private_original": "r2/finish-command-result.json",
+      "bytes": 188,
+      "sha256": "97093aa7bebc57a014047ce0a3fad101bba5a6eb830eaedf5efa4c90af0eb871",
+      "omitted_top_level_fields": [],
+      "projection": {
+        "at": "2026-11-11T03:17:33.922995+00:00",
+        "exit": 0,
+        "observer_exit": 0,
+        "seconds": 14.617174103856087,
+        "preserved_original_files": 1677,
+        "preserved_originals_equal": true
+      }
+    },
+    {
+      "private_original": "r2/journey-resume.json",
+      "bytes": 12535,
+      "sha256": "d4d591a97cab4057d36fea99447d29066cded37dee219a3fbd1dcb7b7de4d66c",
+      "omitted_top_level_fields": [],
+      "projection": {
+        "checked_at": "2026-11-11T03:17:32.414709+00:00",
+        "seconds": 11.882048938889056,
+        "records": {
+          "c5m-repository-governance": {
+            "task_id": "c5m-repository-governance-task",
+            "writers": [
+              "root/work/knowledge-map",
+              "root/work/boundary-test"
+            ],
+            "paths": {
+              "knowledge-map": "docs/governance/map.md",
+              "boundary-test": "tests/architecture/boundary.py"
+            },
+            "root": "ergora-governance-delivery",
+            "manifest_digest": "d90d8b82de570216e149ae9cbaef4c78490f557e23f5fe2ea22839b66e38ea5a",
+            "run_id": "01a1c892-6943-7842-8f04-a84f5c91f76d",
+            "stage_inputs": {
+              "review:root/review/correctness/review": {
+                "task_bytes": 26736,
+                "prompt_bytes": 30581,
+                "prompt_sha256": "a41636fdea21d4e2d854df0c54ef3bf9ff16eec35a634e5c4501e5430dba3d30",
+                "source_artifacts": {
+                  "root/work/boundary-test": [
+                    "change-summary",
+                    "test-results"
+                  ],
+                  "root/work/knowledge-map": [
+                    "change-summary",
+                    "test-results"
+                  ]
+                }
+              },
+              "review:root/review/structure/review": {
+                "task_bytes": 26734,
+                "prompt_bytes": 30623,
+                "prompt_sha256": "5c3247952bf931a0e5999c32f416cf680ee809b014473fb8f2e0f2a6fda9a516",
+                "source_artifacts": {
+                  "root/work/boundary-test": [
+                    "change-summary",
+                    "test-results"
+                  ],
+                  "root/work/knowledge-map": [
+                    "change-summary",
+                    "test-results"
+                  ]
+                }
+              },
+              "work:boundary-test": {
+                "task_bytes": 11461,
+                "prompt_bytes": 14672,
+                "prompt_sha256": "625effd79eac6b7d02eee97a428a3d03cdfdca7fe4fed965a953abe33a4aabed",
+                "source_artifacts": {}
+              },
+              "review:root/review/test-value/review": {
+                "task_bytes": 26735,
+                "prompt_bytes": 30631,
+                "prompt_sha256": "a73f7d11c8cb15d8f97bc04397a3f8792c072c34313b0d727fc14d7c033ed919",
+                "source_artifacts": {
+                  "root/work/boundary-test": [
+                    "change-summary",
+                    "test-results"
+                  ],
+                  "root/work/knowledge-map": [
+                    "change-summary",
+                    "test-results"
+                  ]
+                }
+              },
+              "work:knowledge-map": {
+                "task_bytes": 11445,
+                "prompt_bytes": 14595,
+                "prompt_sha256": "36c39dda0705e0f6dcce37a853bdc7a368daeb43fb6731427c7ee8befce85d03",
+                "source_artifacts": {}
+              }
+            },
+            "outcome": "REVIEW_READY",
+            "candidate_sha": "f0820df3cebc4316f1422d7057902653f7930958",
+            "plan_sha256": "93fde0478ac93ec0f0c6a4fcf301791131c93a6a3a63a95e92d8f9c509b2bbad",
+            "jobs": {
+              "review:root/review/correctness/review": "SUCCEEDED",
+              "review:root/review/structure/review": "SUCCEEDED",
+              "work:boundary-test": "SUCCEEDED",
+              "plan": "SUCCEEDED",
+              "inventory": "SUCCEEDED",
+              "verify": "SUCCEEDED",
+              "integrate": "SUCCEEDED",
+              "review:root/review/test-value/review": "SUCCEEDED",
+              "work:knowledge-map": "SUCCEEDED"
+            },
+            "actual_native_scope_reads": [
+              {
+                "run_id": "6589019ced8d47fc8044470d6a8ccb35",
+                "files": 5,
+                "bytes": 1608,
+                "receipt_sha256": "11bf59ad07737f271d4547a97ce0ad1ffea93d6423fe438379828e088ae69ce2",
+                "receipt": "$USER_HOME/.local/state/ergora-checks/c5c2/control/runs/6589019ced8d47fc8044470d6a8ccb35.protocol/fixture-read-delivery.json"
+              },
+              {
+                "run_id": "26c36d888cc3448ead3aaf331a5ae28c",
+                "files": 5,
+                "bytes": 1618,
+                "receipt_sha256": "980ebf8158d6e952088dd51bc71c33ae7060d7056dc728014d81c173a474a407",
+                "receipt": "$USER_HOME/.local/state/ergora-checks/c5c2/control/runs/26c36d888cc3448ead3aaf331a5ae28c.protocol/fixture-read-delivery.json"
+              },
+              {
+                "run_id": "636b9a24522548d8a0b1e22247b79db8",
+                "files": 5,
+                "bytes": 1540,
+                "receipt_sha256": "1af032b46e98c5acf4cb3a7abb03c057570d215dfda503f52dd592d842a64da0",
+                "receipt": "$USER_HOME/.local/state/ergora-checks/c5c2/control/runs/636b9a24522548d8a0b1e22247b79db8.protocol/fixture-read-delivery.json"
+              },
+              {
+                "run_id": "4c54ea9ea0374f9b9f4221242523c52a",
+                "files": 4,
+                "bytes": 1340,
+                "receipt_sha256": "558b2514ec73544771cb0db2dab0a68c224efba69544e33d45bc311d812f2b9c",
+                "receipt": "$USER_HOME/.local/state/ergora-checks/c5c2/control/runs/4c54ea9ea0374f9b9f4221242523c52a.protocol/fixture-read-delivery.json"
+              },
+              {
+                "run_id": "4707182cffc146e8b23d268f8e600d86",
+                "files": 4,
+                "bytes": 1331,
+                "receipt_sha256": "1ee8fbc2a2a9588471ce53e15ff67f737fca62657e2a9abd27da0f64b4931617",
+                "receipt": "$USER_HOME/.local/state/ergora-checks/c5c2/control/runs/4707182cffc146e8b23d268f8e600d86.protocol/fixture-read-delivery.json"
+              }
+            ],
+            "history": {
+              "sha256": "3d24e3fb91d0323ffc0cc45b6b595724385792dd3e5d3aad01999202b001bd5d",
+              "events": 194,
+              "replay": "passed"
+            },
+            "handoff_sha256": "6a337b7bc3cbde851229dff976a9cb7981af2064df553342236a577992a82ed1"
+          },
+          "c5m-large-change": {
+            "task_id": "c5m-large-change-task",
+            "writers": [
+              "root/work/contract",
+              "root/work/server",
+              "root/work/client",
+              "root/work/integration-tests"
+            ],
+            "paths": {
+              "contract": "api/contracts/pagination.py",
+              "server": "src/server/pagination.py",
+              "client": "src/client/pagination.py",
+              "integration-tests": "tests/integration/pagination.py"
+            },
+            "root": "ergora-large-change-delivery",
+            "manifest_digest": "4bf651f95a2247b57bc246e23d3b0a6c52f005e8e835a9ad1df02b4cf9cfefa0",
+            "run_id": "01a1c894-0ad4-7350-8a4b-7813b65cb9f5",
+            "stage_inputs": {
+              "review:root/review/correctness/review": {
+                "task_bytes": 24586,
+                "prompt_bytes": 28447,
+                "prompt_sha256": "9f9a15efbb4158ffa5ac8c80597c1cc6423c9c936d62565be7e0e804baa79fad",
+                "source_artifacts": {
+                  "root/work/integration-tests": [
+                    "change-summary",
+                    "test-results"
+                  ]
+                }
+              },
+              "review:root/review/structure/review": {
+                "task_bytes": 24584,
+                "prompt_bytes": 28489,
+                "prompt_sha256": "e3d9efc99465a95f78e22a990e6afa7cd8b5cff0be86c82ffded1e3e18db9b8e",
+                "source_artifacts": {
+                  "root/work/integration-tests": [
+                    "change-summary",
+                    "test-results"
+                  ]
+                }
+              },
+              "work:server": {
+                "task_bytes": 19270,
+                "prompt_bytes": 22451,
+                "prompt_sha256": "b6522f2d2b9b64ce906cf92213abb520d9f08e48c5e49b19f514699adf477f06",
+                "source_artifacts": {
+                  "root/work/contract": [
+                    "change-summary",
+                    "test-results"
+                  ]
+                }
+              },
+              "work:client": {
+                "task_bytes": 19270,
+                "prompt_bytes": 22446,
+                "prompt_sha256": "ea2f25b12190249d398f2806e6754185e509a8d663841e01e6fe15c394ffe9f5",
+                "source_artifacts": {
+                  "root/work/contract": [
+                    "change-summary",
+                    "test-results"
+                  ]
+                }
+              },
+              "work:contract": {
+                "task_bytes": 12521,
+                "prompt_bytes": 15734,
+                "prompt_sha256": "6d5418cefa43111690ca34431d42323f0c019133b6c6335ef2468fce12c07b23",
+                "source_artifacts": {}
+              },
+              "review:root/review/test-value/review": {
+                "task_bytes": 24585,
+                "prompt_bytes": 28497,
+                "prompt_sha256": "4f636e4d1651ddef87de225ee75357cf5d0ba09641b09be614f2aa929a59bb4a",
+                "source_artifacts": {
+                  "root/work/integration-tests": [
+                    "change-summary",
+                    "test-results"
+                  ]
+                }
+              },
+              "work:integration-tests": {
+                "task_bytes": 26300,
+                "prompt_bytes": 29617,
+                "prompt_sha256": "edfd9e14dbdab60f5d0c9466d514694bead301920650c1e0ef931fbd838d5c75",
+                "source_artifacts": {
+                  "root/work/client": [
+                    "change-summary",
+                    "test-results"
+                  ],
+                  "root/work/server": [
+                    "change-summary",
+                    "test-results"
+                  ]
+                }
+              }
+            },
+            "outcome": "REVIEW_READY",
+            "candidate_sha": "9049f4de6be3bd8e57a791a66a696bd48ad91df5",
+            "plan_sha256": "ed2be8e1de4f60eb7a8925cef85878e50272e83773532008f69fca800f6328f2",
+            "jobs": {
+              "review:root/review/correctness/review": "SUCCEEDED",
+              "review:root/review/structure/review": "SUCCEEDED",
+              "plan": "SUCCEEDED",
+              "work:server": "SUCCEEDED",
+              "inventory": "SUCCEEDED",
+              "work:client": "SUCCEEDED",
+              "verify": "SUCCEEDED",
+              "work:contract": "SUCCEEDED",
+              "integrate": "SUCCEEDED",
+              "review:root/review/test-value/review": "SUCCEEDED",
+              "work:integration-tests": "SUCCEEDED"
+            },
+            "actual_native_scope_reads": [
+              {
+                "run_id": "7903a46d75b44130b67fa0774da64330",
+                "files": 5,
+                "bytes": 1616,
+                "receipt_sha256": "a3b36da63174f095066144f64d879315eaf5b93b71d706c0c61e7da76b21d9c7",
+                "receipt": "$USER_HOME/.local/state/ergora-checks/c5c2/control/runs/7903a46d75b44130b67fa0774da64330.protocol/fixture-read-delivery.json"
+              },
+              {
+                "run_id": "98c820efc1ff4cb3b8aa0fa0d5fc0d35",
+                "files": 5,
+                "bytes": 1548,
+                "receipt_sha256": "71dd73c294b41cc146839184806840d8c8793e6a2b2af56a50cbd8bac00e3792",
+                "receipt": "$USER_HOME/.local/state/ergora-checks/c5c2/control/runs/98c820efc1ff4cb3b8aa0fa0d5fc0d35.protocol/fixture-read-delivery.json"
+              },
+              {
+                "run_id": "261359026a8f404f906b96a2e16b0a51",
+                "files": 5,
+                "bytes": 1626,
+                "receipt_sha256": "1a2973e4fb5930811e6215e4181ec3a7cfbed705601f71edc4e474d466f4fa4a",
+                "receipt": "$USER_HOME/.local/state/ergora-checks/c5c2/control/runs/261359026a8f404f906b96a2e16b0a51.protocol/fixture-read-delivery.json"
+              },
+              {
+                "run_id": "3b6055c7de8145e5aa511ef6dacd4033",
+                "files": 4,
+                "bytes": 1423,
+                "receipt_sha256": "ed166d03f9b6c0f1c645f0cbe564a663320827c5bf17aa864bbc85247436bae6",
+                "receipt": "$USER_HOME/.local/state/ergora-checks/c5c2/control/runs/3b6055c7de8145e5aa511ef6dacd4033.protocol/fixture-read-delivery.json"
+              },
+              {
+                "run_id": "8ac9145debdc4a198e9400109836be1f",
+                "files": 4,
+                "bytes": 1354,
+                "receipt_sha256": "dcee834eb1e0c6ebc7d2715f051bf086380d91122434885a9d5d0163483f11fb",
+                "receipt": "$USER_HOME/.local/state/ergora-checks/c5c2/control/runs/8ac9145debdc4a198e9400109836be1f.protocol/fixture-read-delivery.json"
+              },
+              {
+                "run_id": "c897b4e75f2544d183acfe607e12e5b1",
+                "files": 4,
+                "bytes": 1359,
+                "receipt_sha256": "19f06e4b62ad3b421cc546ddb09eadf9732682ab9f95af95aa734d30271503b1",
+                "receipt": "$USER_HOME/.local/state/ergora-checks/c5c2/control/runs/c897b4e75f2544d183acfe607e12e5b1.protocol/fixture-read-delivery.json"
+              },
+              {
+                "run_id": "a79000e0bf3644ce8ceb1354beb09256",
+                "files": 4,
+                "bytes": 1377,
+                "receipt_sha256": "bbc2ddaa14ac1767a756dd5fa5acf33ffb1f94ba43b5752f376707fe8abaad80",
+                "receipt": "$USER_HOME/.local/state/ergora-checks/c5c2/control/runs/a79000e0bf3644ce8ceb1354beb09256.protocol/fixture-read-delivery.json"
+              }
+            ],
+            "history": {
+              "sha256": "4c4cf5dcaa730b17cd688965d8778114f6db7693563f88aa00cdd27405085b49",
+              "events": 240,
+              "replay": "passed"
+            },
+            "handoff_sha256": "0b4dff0632b06865104de49cca2c9a506aa9418f843802c1f08d60a7b6c911f0"
+          }
+        },
+        "ports_closed": true,
+        "databases_retained": true,
+        "scope": "Actual installed CLI/Supervisor/Temporal/scanner and exact built-in domain graphs, deterministic native protocol processes with complete fixed MCP reading. Not model quality, production project quality or cross-backend independence."
+      }
+    },
+    {
+      "private_original": "owned-processes.json",
+      "bytes": 15236,
+      "sha256": "6b0300d647b2df23c2a19df1f53f2b0c412a6001364c12b58e9abd6fc37b526d",
+      "omitted_top_level_fields": [
+        "checked_at",
+        "observed_processes",
+        "remaining_live_original_processes",
+        "first_observed_live_after_close",
+        "waited_after_close_seconds"
+      ],
+      "derived_fields": [
+        "sampled_owned_identities",
+        "remaining_live_original_processes"
+      ],
+      "projection": {
+        "sampled_owned_identities": 67,
+        "remaining_live_original_processes": 0,
+        "scope": "Observed original Supervisor daemon PID/starttime and recursive descendants, including surviving reparented processes already observed; sampling cannot establish every short-lived process was seen."
+      }
+    },
+    {
+      "private_original": "owned-processes-resume.json",
+      "bytes": 10154,
+      "sha256": "009cb87ce659ed23f6ac113e40191f0a136d6301fbec0b55190468da09e95c54",
+      "omitted_top_level_fields": [
+        "checked_at",
+        "observed_processes",
+        "remaining_live_original_processes",
+        "first_observed_live_after_close",
+        "waited_after_close_seconds"
+      ],
+      "derived_fields": [
+        "sampled_owned_identities",
+        "remaining_live_original_processes"
+      ],
+      "projection": {
+        "sampled_owned_identities": 44,
+        "remaining_live_original_processes": 0,
+        "scope": "Observed original Supervisor daemon PID/starttime and recursive descendants, including surviving reparented processes already observed; sampling cannot establish every short-lived process was seen."
+      }
+    },
+    {
+      "private_original": "r2/owned-processes.json",
+      "bytes": 30043,
+      "sha256": "6037374b3cd712155a5f88be50677291b76a390a80c232174fa293bf709c1e1a",
+      "omitted_top_level_fields": [
+        "checked_at",
+        "observed_processes",
+        "remaining_live_original_processes",
+        "first_observed_live_after_close",
+        "waited_after_close_seconds"
+      ],
+      "derived_fields": [
+        "sampled_owned_identities",
+        "remaining_live_original_processes"
+      ],
+      "projection": {
+        "sampled_owned_identities": 134,
+        "remaining_live_original_processes": 0,
+        "scope": "Observed original Supervisor daemon PID/starttime and recursive descendants, including surviving reparented processes already observed; sampling cannot establish every short-lived process was seen."
+      }
+    },
+    {
+      "private_original": "r2/owned-processes-resume.json",
+      "bytes": 871,
+      "sha256": "a7723cfd456ce3a1b6b24df0df88d788a71866cdc47b9f9e57038d096d2554db",
+      "omitted_top_level_fields": [
+        "checked_at",
+        "observed_processes",
+        "remaining_live_original_processes",
+        "first_observed_live_after_close",
+        "waited_after_close_seconds"
+      ],
+      "derived_fields": [
+        "sampled_owned_identities",
+        "remaining_live_original_processes"
+      ],
+      "projection": {
+        "sampled_owned_identities": 2,
+        "remaining_live_original_processes": 0,
+        "scope": "Observed original Supervisor daemon PID/starttime and recursive descendants, including surviving reparented processes already observed; sampling cannot establish every short-lived process was seen."
+      }
+    }
+  ]
+}

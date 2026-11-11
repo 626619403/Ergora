@@ -382,3 +382,18 @@ class WorkDeliveryWorkflow(ReviewDAGWorkflow):
     @workflow.run
     async def run(self, document: dict) -> dict:
         return await self._run_document(document)
+
+
+class StageResultsAdapter(WorkDeliveryAdapter):
+    envelope_version = 6
+
+
+@workflow.defn(name='ErgoraCompositionWorkflowV6')
+class StageResultsWorkflow(WorkDeliveryWorkflow):
+    """The same original schedule, with explicitly versioned stage-result inputs."""
+
+    envelope_version = 6
+
+    @workflow.run
+    async def run(self, document: dict) -> dict:
+        return await self._run_document(document)

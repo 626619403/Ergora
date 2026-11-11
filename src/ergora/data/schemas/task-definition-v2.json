@@ -126,7 +126,7 @@
           ],
           "properties": {
             "protocol": {
-              "const": "work-units-v1"
+              "enum": ["work-units-v1", "work-units-v2"]
             },
             "instance": {
               "type": "string",

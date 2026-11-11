@@ -7,8 +7,8 @@
 |节点|实现与原所有者|验收出口|状态|
 |---|---|---|---|
 |C5a 完整manifest|原workflow定义用例复用preview、完整包核验与原子发布；CLI/HTTP/定义页面显式固定当前preview摘要，在控制目录持久保存|三域完整preview与全部附件保持；摘要/权限失配不发布；同身份重试不覆盖，损坏拒绝；重开/源库不可用时可只读核原包；页面迟到回复不覆盖新预览；无项目/任务/Agent副作用；实际自身模板及fresh-context审查|已实现；R2包437/283、两受影响回归及实际页面15.33秒/94HTTP/48旧树保持通过，首轮接口及驱动失败保持；实际自身160.37秒approve/五scope完整读取、新独立完整22文件两轴及模型/公开证据终核开放0/目录措辞关闭，本地出口通过；f68d739已普通推送，自己的CI42839729110第四样本双OS七必要步骤/原评审20响应及精确Git/包/283/一次HTTPS通过，精确交付终结|
-|C5b 正式选择|原tasks创建页面显式选择manifest、review/work子树和work assignments；逐叶backend override/reason、diversity、writer信任沿原schema-v2/后端合同|保留schema-v1入口；失败保留输入；复用原任务preview/create及原ID未知恢复；后端不支持/同后端缺理由/未信任writer明确拒绝；新旧草稿及迟到回复不混用|[详细计划](2026-11-10-task-composition-selection.md) 实现与独立本地出口通过：R3两开发域/审查组合创建及原ID恢复、144HTTP/48旧对象；R5包439/283及两修正22检查/30HTTP通过。自身复核79.67秒approve/五scope完整，完整23文件新独立两轴开放0、SP1/SP2/ST1关闭；普通提交/本提交CI/远端待验|
-|C5c 纵向交付|两个开发域实际创建与原六阶段运行；训练仅只读proposal|固定原candidate/审批/证据/恢复身份；记录真实后端与未验外部范围，更新两手册与当前架构|依赖C5b|
+|C5b 正式选择|原tasks创建页面显式选择manifest、review/work子树和work assignments；逐叶backend override/reason、diversity、writer信任沿原schema-v2/后端合同|保留schema-v1入口；失败保留输入；复用原任务preview/create及原ID未知恢复；后端不支持/同后端缺理由/未信任writer明确拒绝；新旧草稿及迟到回复不混用|[详细计划](2026-11-10-task-composition-selection.md) 实现与独立本地出口通过：R3两开发域/审查组合创建及原ID恢复、144HTTP/48旧对象；R5包439/283及两修正22检查/30HTTP通过。自身复核79.67秒approve/五scope完整，完整23文件新独立两轴开放0、SP1/SP2/ST1关闭；fe45e8f已普通推送，独立23Git/439包/283/HTTPS通过；自己的CI42945800414第四样本双OS七必要步骤success/completed，原评审五HTTP离线终核通过，精确交付终结|
+|C5c 纵向交付|两个开发域实际创建与原六阶段运行；训练仅只读proposal|固定原candidate/审批/证据/恢复身份；记录真实后端与未验外部范围，更新两手册与当前架构|[详细计划](2026-11-11-composition-runtime.md)：原v5治理通过与大变更材料超限BLOCKED保持；显式work-units-v2/v6修正后两个新任务REVIEW_READY，20jobs/12次native、194/240事件history及两handoff通过。54资源/17,740B完整祖先读取与154产物独立核验通过，原SP1/ST1关闭；实际自身229.91秒approve/五scope完整读取通过，完整27文件独立两轴及本地出口通过，开放0；普通提交/自己的CI/远端精确交付待验|
 
 ## C5a 决策
 
