@@ -9,6 +9,7 @@ import hashlib
 import json
 
 from .review_dags import ReviewDAG, WorkDelivery
+from . import issue_sources
 
 
 _KIND = 'composition-task-admission'
@@ -59,11 +60,14 @@ def manifest_identity(snapshot: dict) -> str:
     return digest
 
 
-def wrap(spec: dict, composition: dict) -> dict:
-    version = (6 if composition.get('execution', {}).get('protocol') == 'work-units-v2' else
+def wrap(spec: dict, composition: dict, issue_source: dict | None = None) -> dict:
+    version = (7 if issue_source is not None else
+               6 if composition.get('execution', {}).get('protocol') == 'work-units-v2' else
                5 if 'execution' in composition else 4 if 'review_protocol' in composition else
                3 if any('review_requirement' in member for member in composition['members'].values()) else 2)
     value = {'schema_version': version, 'kind': _KIND, 'legacy_spec': spec, 'composition': composition}
+    if issue_source is not None:
+        value['issue_source'] = issue_source
     return {**value, 'sha256': identity(value)}
 
 
@@ -279,24 +283,27 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
         raise ValueError('Formal task input must be a JSON object')
     if document.get('kind') != _KIND and 'schema_version' not in document:
         return document, None
-    if (set(document) != {'schema_version', 'kind', 'legacy_spec', 'composition', 'sha256'}
-            or type(document['schema_version']) is not int or document['schema_version'] not in (2, 3, 4, 5, 6)
+    fields = {'schema_version', 'kind', 'legacy_spec', 'composition', 'sha256'}
+    if document.get('schema_version') == 7:
+        fields.add('issue_source')
+    if (set(document) != fields
+            or type(document['schema_version']) is not int or document['schema_version'] not in (2, 3, 4, 5, 6, 7)
             or document['kind'] != _KIND):
         raise ValueError('Unsupported formal task admission envelope')
     if document['sha256'] != identity({key: value for key, value in document.items() if key != 'sha256'}):
         raise ValueError('Formal task admission envelope digest mismatch')
     composition = document['composition']
     fields = {'manifest', 'root', 'preview_sha256', 'review_instance', 'members', 'diversity'}
-    if document['schema_version'] in (4, 5, 6):
+    if document['schema_version'] in (4, 5, 6, 7):
         fields.add('review_protocol')
-    if document['schema_version'] in (5, 6):
+    if document['schema_version'] in (5, 6, 7):
         fields.add('execution')
     if (not isinstance(composition, dict) or set(composition) != fields
-            or (document['schema_version'] in (4, 5, 6) and composition['review_protocol'] != 'dag-v1')):
+            or (document['schema_version'] in (4, 5, 6, 7) and composition['review_protocol'] != 'dag-v1')):
         raise ValueError('Invalid formal composition selection')
     manifest_identity(composition['manifest'])
     graph = manifest_graph(composition['manifest'])
-    requirements = document['schema_version'] in (3, 4, 5, 6)
+    requirements = document['schema_version'] in (3, 4, 5, 6, 7)
     if document['schema_version'] == 3 and graph['schema_version'] != 2:
         raise ValueError('Formal v3 admission requires a versioned review requirements graph')
     if graph['root'] != composition['root'] or graph['preview_sha256'] != composition['preview_sha256']:
@@ -332,10 +339,10 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
             raise ValueError('Formal composition requested binding differs from its frozen graph')
         _policy(member['policy'], member['mode'])
     diversity = composition['diversity']
-    if document['schema_version'] in (5, 6):
+    if document['schema_version'] in (5, 6, 7):
         execution = composition['execution']
         if (not isinstance(execution, dict) or set(execution) != {'protocol', 'instance', 'assignments', 'mode', 'members'}
-                or execution['protocol'] != ('work-units-v2' if document['schema_version'] == 6 else 'work-units-v1')
+                or execution['protocol'] != ('work-units-v2' if document['schema_version'] in (6, 7) else 'work-units-v1')
                 or execution['mode'] != 'workspace-task-mcp'
                 or not isinstance(execution['assignments'], dict) or not isinstance(execution['members'], dict)):
             raise ValueError('Invalid formal work execution selection')
@@ -380,8 +387,15 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
             or (same and diversity['policy'] == 'require-distinct')
             or (same and diversity['policy'] == 'prefer-distinct' and not diversity.get('reason'))):
         raise ValueError('Formal composition diversity differs from its selected member backends')
-    if document['schema_version'] in (4, 5, 6):
+    if document['schema_version'] in (4, 5, 6, 7):
         review_members(composition)
+    if document['schema_version'] == 7:
+        saved = document['issue_source']
+        issue_sources.validate_snapshot(saved)
+        source = saved['payload']['observation']['source']
+        if document['legacy_spec']['request']['tracker'] != {
+                'kind': source['provider'], 'project': source['project'], 'issue_id': source['issue_id']}:
+            raise ValueError('Formal issue source differs from its original native tracker')
     return document['legacy_spec'], composition
 
 
@@ -398,4 +412,9 @@ def summary(document: dict) -> dict:
             'root': composition['root'], 'review_instance': composition['review_instance'],
             **({'review_protocol': composition['review_protocol']} if 'review_protocol' in composition else {}),
             **({'execution': composition['execution']} if 'execution' in composition else {}),
-            'members': composition['members'], 'diversity': composition['diversity'], 'runtime_supported': supported}
+            'members': composition['members'], 'diversity': composition['diversity'], 'runtime_supported': supported,
+            **({'issue_source': {'snapshot_sha256': document['issue_source']['sha256'],
+                'source': document['issue_source']['payload']['observation']['source'],
+                'native_id': document['issue_source']['payload']['observation']['issue']['native_id'],
+                'observed_project': document['issue_source']['payload']['observation']['project']}}
+               if 'issue_source' in document else {})}

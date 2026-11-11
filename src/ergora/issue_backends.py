@@ -7,10 +7,10 @@ import json
 import os
 import re
 from urllib.error import HTTPError, URLError
-from urllib.parse import quote, urlsplit
+from urllib.parse import quote
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
-from . import components, contracts
+from . import components, contracts, issue_sources
 
 
 _RESPONSE_LIMIT = 1_048_576
@@ -22,22 +22,12 @@ class _NoRedirect(HTTPRedirectHandler):
 
 
 class IssueBackend(ABC):
-    default_api_url: str
     token_header: str
 
     def __init__(self, binding: dict):
         contracts.validate(binding, components.COMPONENTS[binding['tool']]['configuration'], 'Tracker binding')
         self.binding = dict(binding)
-        self.api_url = binding.get('api_url', self.default_api_url).rstrip('/')
-        url = urlsplit(self.api_url)
-        # The connection is trusted project configuration, never an issue-text URL.
-        if (not url.hostname or url.username is not None or url.password is not None or url.query or url.fragment
-                or url.scheme not in ('http', 'https')
-                or (url.scheme == 'http' and url.hostname not in ('127.0.0.1', '::1', 'localhost'))):
-            raise ValueError('Tracker API requires HTTPS (HTTP only on loopback), without credentials, query or fragment')
-        url.port  # Validate an explicitly supplied port before sending credentials.
-        if any(part in ('.', '..') for part in binding['project'].split('/')):
-            raise ValueError('Tracker project must name an ordinary repository namespace')
+        self.api_url = issue_sources.tracker_identity(binding)['api_url']
 
     def diagnostics(self) -> dict:
         variable = self.binding.get('token_env')
@@ -108,7 +98,6 @@ class IssueBackend(ABC):
 
 
 class GitHubBackend(IssueBackend):
-    default_api_url = 'https://api.github.com'
     token_header = 'Authorization'
 
     def path(self, issue_id: str) -> str:
@@ -131,7 +120,6 @@ class GitHubBackend(IssueBackend):
 
 
 class GitLabBackend(IssueBackend):
-    default_api_url = 'https://gitlab.com/api/v4'
     token_header = 'PRIVATE-TOKEN'
 
     def path(self, issue_id: str) -> str:

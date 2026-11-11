@@ -41,10 +41,24 @@ def _references(index: dict) -> dict:
             or spec['request']['task_id'] != index['task_id']
             or contract['agent_bindings_sha256'] != _sha(contract['agent_bindings'])):
         raise ValueError('Handoff contract identity differs from the indexed frozen bytes')
+    if 'original_input' in contract:
+        from .reference_inputs import execution_input
+        from .issue_sources import bind_snapshot
+
+        selected = execution_input(contract['original_input'])
+        if selected.spec != spec or contract['original_input_sha256'] != _sha(selected.document):
+            raise ValueError('Handoff original input differs from its indexed identity')
+        source = selected.stage_material().get('issue_source')
+        if source is not None:
+            selection = contract['agent_bindings']
+            bind_snapshot(source, index['project'], selection['configuration']['layers']['tracker']['binding'],
+                          spec['request']['tracker'])
     outcome = index['original_outcome']
     if (index['original_outcome_sha256'] != (_sha(outcome) if outcome is not None else None)
             or outcome is not None and (outcome.get('task_id') != index['task_id']
-                                      or outcome.get('request_sha256') != index['request_sha256'])):
+                                      or outcome.get('request_sha256') != index['request_sha256']
+                                      or 'original_input' in contract and
+                                      outcome.get('admission_sha256') != contract['original_input'].get('sha256'))):
         raise ValueError('Handoff original outcome identity differs from its indexed task')
     identities, artifacts = {}, {}
     for job in index['jobs']:

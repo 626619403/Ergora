@@ -185,6 +185,35 @@ HTTP与CLI共用相同用例；POST沿用本地Origin及`X-Ergora-Request: 1`保
 
 快照与关联保存在控制面的SQLite中，由原`state backup / verify-backup / restore`完整离线备份恢复；数据库升级到schema v2会先保留旧库备份，旧客户端不能写新库。完整备份仍要求停写、同平台及原home；外置执行目录须另行保存，不会从上下文关联重建任务。正式派工、远端回写和工单专页仍按[F7计划](plans/2026-11-11-project-trackers.md)分片交付。
 
+### 从工单快照创建来源任务
+
+为新任务固定工单正文时，使用`task-definition-v3`；它支持治理和大变更模板，要求显式`work-units-v2`的执行／审查组合。先按[专长执行者配置](WORKFLOW_DEFINITIONS.md#专长执行者与原工作单元)准备完整的`task-definition.json`，其中已有真实manifest、摘要、工作分配和逐实例后端。再保存快照，将以下命令中的项目、编号和修订替换为当前值：
+
+```bash
+ergora issue capture my-project 7 --revision 2 > issue-capture.json
+python - <<'PY'
+import json
+from pathlib import Path
+definition = json.loads(Path('task-definition.json').read_text(encoding='utf-8'))
+saved = json.loads(Path('issue-capture.json').read_text(encoding='utf-8'))['snapshot']
+definition.update(schema_version=3, task_id='issue-7-r1',
+    issue_id=saved['payload']['observation']['source']['issue_id'],
+    source={'snapshot_sha256': saved['sha256']})
+Path('issue-task.json').write_text(json.dumps(definition, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+PY
+ergora task preview my-project --definition issue-task.json --revision 2
+# 检查 files/task.spec.json 中的完整 issue_source、项目配置、专家与权限后，使用本次摘要：
+ergora task create my-project --definition issue-task.json --revision 2 --preview-sha256 PREVIEW_SHA
+ergora task creation my-project issue-7-r1
+ergora task show my-project issue-7-r1
+```
+
+快照与当前执行配置必须属于同一项目、provider、完整API地址及namespace，number／iid也须匹配。来源相同时，捕获后更换Agent或token变量引用不强迫重新读取工单；捕获修订与本次创建修订分别保存。读取保存的快照和预览无需tracker在线或token，仍须有登记项目及选定的完整组合。API host/path或项目切换后应重新捕获，不以网页URL或旧hostless登记推断来源。
+
+新创建使用creation3／正式信封v7，完整来源进入原始执行输入及每次work／review材料，祖先Skill与权限仍由原组合控制。发布后不再依赖控制库中的该快照、当前绑定或外部正文；`resume-create`按原intent SHA恢复，不重新选择来源。工单更新后如需另一份工作，用新task ID和新preview；旧任务、批准和B0上下文关联保持。
+
+安装并重启本版worker／executor后才接收v7队列；当前start仍沿完整参考发行的原doctor、policy、可信checks与原claim。来源格式不会解除这些运行依赖；按选择收窄依赖的入口在后续验收，真实Agent消费也须查原调用材料与回执。单文件1MiB、stage／prompt各1,000,000字节、全部祖先资料和动态产物限额保持；静态必然超限在预览拒绝，后续产物超限在原阶段拒绝，没有隐式摘要。v7的证据／handoff保存完整`contract.original_input`并核来源／原admission SHA，合计仍受原1MiB索引与包manifest限额；旧v1–v6和旧交接包不迁移。
+
 ### 诊断与修复
 
 `ergora tools doctor PROJECT` 按有效绑定显示安装、版本、认证、连接、任务前置条件和修复指引，附项目修订及配置摘要。默认只做本地安装检查，不连接外部服务，也不调用模型。`ergora tools doctor PROJECT --probe --timeout 5` 主动检查原生 CLI 版本、Codex 凭据状态及 ReMe/Temporal 的 TCP 可达性；`--timeout` 为全部主动探测共用的 1–30 秒预算，本地安装检查及进程清理另计。工具绑定页也有同一主动探测入口，API 为 `POST /api/projects/PROJECT/doctor`，正文 `{"timeout":5}`，沿用本地写请求头 `X-Ergora-Request: 1`。

@@ -377,7 +377,8 @@ def verify_store(root: Path) -> int:
     return len(documents)
 
 
-def _input_fields(composition: dict, instance: str, task: bytes, max_prompt_bytes: int) -> tuple[dict, bytes]:
+def compile_input(composition: dict, instance: str, task: bytes, max_prompt_bytes: int) -> tuple[dict, bytes]:
+    """Compile complete leaf prompt bytes without writing or authorizing a call."""
     contracts.validate(max_prompt_bytes, contracts.COMPOSITION_INPUT["properties"]["max_prompt_bytes"], "Input byte limit")
     if len(task) > contracts.COMPOSITION_INPUT["properties"]["max_prompt_bytes"]["maximum"]:
         raise ValueError("Composition task exceeds the supported input byte limit")
@@ -420,7 +421,7 @@ def _inspect_snapshot(source: Path, *, leaf_input: bool, material: bool) -> dict
     document = library(assets).get(root["id"], root["version"], material=True)
     composition = _Compilation(assets, request["grant"]).compile(document)
     stored = definition_bundles.read_json(source / "composition.json", files["composition.json"]["sha256"])
-    expected, prompt = (_input_fields(composition, request["instance"], (source / "task.txt").read_bytes(), request["max_prompt_bytes"])
+    expected, prompt = (compile_input(composition, request["instance"], (source / "task.txt").read_bytes(), request["max_prompt_bytes"])
                         if leaf_input else (_manifest_fields(composition), None))
     if (_encoded(stored) != _encoded(composition) or _encoded(request) != _encoded(expected) or
             (leaf_input and (source / "prompt.txt").read_bytes() != prompt)):
@@ -548,7 +549,7 @@ def prepare_input(root: Path, identity: str, version: str, instance: str, grant:
                   destination: Path, max_prompt_bytes: int) -> dict:
     """Atomically export a complete, bounded, operator-supplied leaf input; never run it."""
     composition = preview(root, identity, version, grant)
-    request, prompt = _input_fields(composition, instance, task, max_prompt_bytes)
+    request, prompt = compile_input(composition, instance, task, max_prompt_bytes)
     return _prepare_bundle(root, composition, destination,
         {"request.json": _encoded(request), "task.txt": task, "prompt.txt": prompt}, inspect_input)
 
@@ -592,6 +593,6 @@ def prepare_input_from_manifest(source: Path, instance: str, task: bytes, destin
     composition = preview(root, reference["id"], reference["version"], checked["manifest"]["grant"])
     if _encoded(composition) != _encoded(checked["composition"]):
         raise ValueError("Composition manifest changed before input admission")
-    request, prompt = _input_fields(composition, instance, task, max_prompt_bytes)
+    request, prompt = compile_input(composition, instance, task, max_prompt_bytes)
     return _prepare_bundle(root, composition, destination,
         {"request.json": _encoded(request), "task.txt": task, "prompt.txt": prompt}, inspect_input)

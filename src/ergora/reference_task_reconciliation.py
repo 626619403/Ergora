@@ -169,7 +169,7 @@ class _Inspection:
                 contract={'spec': self.spec, 'spec_sha256': self.sha(self.spec),
                           'creation_sha256': self.intent['creation_sha256'],
                           'submission_sha256': self.sha(self.intent), 'agent_bindings': selection,
-                          'agent_bindings_sha256': self.sha(selection)},
+                          'agent_bindings_sha256': self.sha(selection), **self.submission.input.evidence_contract()},
                 original_outcome_sha256=self.sha(outcome) if outcome is not None else None,
                 budget={'source': 'frozen_task_spec.profile', 'profile_sha256': self.spec['profile_sha256'],
                         'scope': 'workflow_admission_and_waiting', 'limits': profile['limits'],

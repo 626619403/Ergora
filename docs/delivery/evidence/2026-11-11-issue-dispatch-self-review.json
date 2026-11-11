@@ -1,0 +1,595 @@
+{
+  "schema_version": 1,
+  "slice": "F7b.1-B1b",
+  "calls": [
+    {
+      "actual_call": {
+        "at": "2026-11-11T08:32:57.349478+00:00",
+        "baseline": "3c4ef3928fe756bf596fd1da1cc80c7eb1e6578d",
+        "run_id": "655a6261426746d08e2018a3f69cb7d3",
+        "status": "succeeded",
+        "backend": "codex",
+        "inference_model": "gpt-6.1-sol",
+        "reasoning_effort": "high",
+        "cli_exit": 0,
+        "seconds": 288.75204675178975,
+        "input_digest": "cad18fd9277ff7f610c24067bba08456a8cc86dd632ce7cf843e39cdce40125a",
+        "prompt_sha256": "97ecfdfb599067ac1713d1647cbf08e2d13c45a178d2c6d454176d9daecd6c9e",
+        "attachment_bytes": 359090,
+        "attachment_sha256": "255b96172e5f175d81eff61b032b61c0b1be428cbe4fd23dc5dce3a48ec7b6af",
+        "manifest_digest": "9dcdeed5be7a2762ae23a4b9deda19ba902d9595ee9b99e3e3a609b973fcddce",
+        "revision": "1.0.93",
+        "observed_processes": 4,
+        "live_sampled_processes": [],
+        "scope": "F7b.1-B1b frozen product/test/plan/design/delivery sources; attachments use model-candidate immutable copies. Later documents/projections and independent review are separate. No actual narrow admission or real Agent-source consumption claimed.",
+        "decision": "approve",
+        "result_sha256": "60e3a341a0e894ac5eb96b7d6013013de7789274814066ba3a180fdc066f9583"
+      },
+      "original_decoded_result": {
+        "artifacts": {
+          "response": "Spec: No reachable blocking finding in the supplied candidate. Source selection and binding flow through tasks.py:34, issue_sources.py:66/102, and reference_task_creation.py:199. The implementation compares provider, full API base/path, namespace and local ID, while the snapshot digest binds native ID and body. Observation revision remains distinct from the frozen execution selection; saved creation recovery uses its original source without recapture. Preview confirmation, seven-file publication and intent-before-files ordering remain in the existing creation owner.\n\nWork/review receive complete issue_source through reference_inputs.py:244 and reference_executor.py:483 despite admission removal from _composition_context. Inventory/plan retain their original context. Static capacity checks remain necessary lower bounds; later complete stage/prompt checks still apply. Handoff checks the original-input digest, legacy projection, source against frozen tracker selection, and admission hash when an original outcome exists (handoff.py:44–62), retaining existing size limits.\n\nStandards: No actionable ownership or interface finding. The standard-library issue_sources module has concrete shared callers and supports native readers without loading SDK/schema dependencies. Input owns artifact_protocol, stage_material and evidence_contract. V7 inherits the existing workflow/activity schedule with its own queue and request root; no second scheduler, ledger or backend orchestration branch appears in the supplied changes. Approval, commits, trusted checks and evidence remain with their existing owners. No unnecessary framework, private algorithm or duplicate CI is justified by this review.\n\nCoverage: Read all five fixed task-MCP resources completely:\n\n- definitions/workflow/ergora-structure-review/1.0.93/instructions.md\n- definitions/agent/ergora-structure-reviewer/1.0.93/instructions.md\n- definitions/agent/ergora-structure-reviewer/1.0.93/skills/ergora-structure-reviewer/SKILL.md\n- definitions/agent/ergora-structure-reviewer/1.0.93/skills/candidate-evidence/SKILL.md\n- definitions/agent/ergora-structure-reviewer/1.0.93/skills/candidate-evidence/references/candidate.txt\n\nCandidate identity: SHA256 255b96172e5f175d81eff61b032b61c0b1be428cbe4fd23dc5dce3a48ec7b6af; 359,090 bytes. Read continuous UTF-8 pages from offset 0 through next_offset:null. Base64 responses were retried at the same offset with smaller max_bytes.\n\nComplete candidate file scope:\n\n```text\ndocs/delivery/2026-11-11-issue-dispatch.md\ndocs/plans/2026-11-11-issue-dispatch-design-review.md\ndocs/plans/2026-11-11-issue-dispatch.md\nsrc/ergora/data/schemas/task-definition-v3.json\nsrc/ergora/data/schemas/task-handoff-v1.json\nsrc/ergora/handoff.py\nsrc/ergora/issue_backends.py\nsrc/ergora/issue_sources.py\nsrc/ergora/issues.py\nsrc/ergora/reference_executor.py\nsrc/ergora/reference_inputs.py\nsrc/ergora/reference_task_creation.py\nsrc/ergora/reference_task_reconciliation.py\nsrc/ergora/reference_workflows.py\nsrc/ergora/task_envelopes.py\nsrc/ergora/tasks.py\nsrc/ergora/workflow_definitions.py\ntests/fixtures/work_delivery_acceptance.py\ntests/test_issue_tasks.py\ntests/test_work_agents.py\n```\n\nThis was a read-only review through task MCP: no shell, network, edits or tests. The reported 16 source tests and earlier 212 affected checks are supplied evidence, not independent runs here. Native dependencies, unchanged owners outside the bundle, wheel/RECORD identities, frozen-file verification and full-repository coverage were not independently inspected. Broad doctor remains the B1b start contract; narrow admission, real Temporal/model consumption and full acceptance remain B1c/separate evidence. This approval establishes neither OS isolation nor successful dual-backend execution."
+        },
+        "decision": "approve",
+        "summary": "Approve the supplied F7b.1-B1b scope. No actionable structural defect found; live acceptance and installation verification remain separate."
+      },
+      "actual_read_audit": {
+        "at": "2026-11-11T08:33:12.022052+00:00",
+        "run_id": "655a6261426746d08e2018a3f69cb7d3",
+        "revision": "1.0.93",
+        "manifest_prepared_actual_prompt_admission_scope_native_original_result_match": true,
+        "bundled_template_unchanged_except_evidence_revision_resource_and_limit": true,
+        "scope_files": 5,
+        "all_scope_continuous_utf8_through_null": true,
+        "complete_scope_reads": {
+          "definitions/agent/ergora-structure-reviewer/1.0.93/instructions.md": {
+            "bytes": 354,
+            "sha256": "3cc9c450f0c03da5ea4a1434ac6182d50df6a4985cffdee2a59fe9fe477c6b43",
+            "continuous_utf8_pages": [
+              {
+                "offset": 0,
+                "bytes": 354,
+                "next_offset": null
+              }
+            ],
+            "base64_retries": [],
+            "duplicates": []
+          },
+          "definitions/agent/ergora-structure-reviewer/1.0.93/skills/candidate-evidence/SKILL.md": {
+            "bytes": 480,
+            "sha256": "aedb683ba435b973bdf6602542688b870d5e10872d2fe55387eaa39202ecbd75",
+            "continuous_utf8_pages": [
+              {
+                "offset": 0,
+                "bytes": 480,
+                "next_offset": null
+              }
+            ],
+            "base64_retries": [],
+            "duplicates": []
+          },
+          "definitions/agent/ergora-structure-reviewer/1.0.93/skills/candidate-evidence/references/candidate.txt": {
+            "bytes": 359090,
+            "sha256": "255b96172e5f175d81eff61b032b61c0b1be428cbe4fd23dc5dce3a48ec7b6af",
+            "continuous_utf8_pages": [
+              {
+                "offset": 0,
+                "bytes": 12000,
+                "next_offset": 12000
+              },
+              {
+                "offset": 12000,
+                "bytes": 18000,
+                "next_offset": 30000
+              },
+              {
+                "offset": 30000,
+                "bytes": 20000,
+                "next_offset": 50000
+              },
+              {
+                "offset": 50000,
+                "bytes": 22000,
+                "next_offset": 72000
+              },
+              {
+                "offset": 72000,
+                "bytes": 22000,
+                "next_offset": 94000
+              },
+              {
+                "offset": 94000,
+                "bytes": 24000,
+                "next_offset": 118000
+              },
+              {
+                "offset": 118000,
+                "bytes": 24000,
+                "next_offset": 142000
+              },
+              {
+                "offset": 142000,
+                "bytes": 24000,
+                "next_offset": 166000
+              },
+              {
+                "offset": 166000,
+                "bytes": 24000,
+                "next_offset": 190000
+              },
+              {
+                "offset": 190000,
+                "bytes": 24000,
+                "next_offset": 214000
+              },
+              {
+                "offset": 214000,
+                "bytes": 24000,
+                "next_offset": 238000
+              },
+              {
+                "offset": 238000,
+                "bytes": 24000,
+                "next_offset": 262000
+              },
+              {
+                "offset": 262000,
+                "bytes": 24000,
+                "next_offset": 286000
+              },
+              {
+                "offset": 286000,
+                "bytes": 24000,
+                "next_offset": 310000
+              },
+              {
+                "offset": 310000,
+                "bytes": 24000,
+                "next_offset": 334000
+              },
+              {
+                "offset": 334000,
+                "bytes": 24000,
+                "next_offset": 358000
+              },
+              {
+                "offset": 358000,
+                "bytes": 1090,
+                "next_offset": null
+              }
+            ],
+            "base64_retries": [
+              {
+                "offset": 0,
+                "bytes": 24000
+              },
+              {
+                "offset": 0,
+                "bytes": 16000
+              }
+            ],
+            "duplicates": []
+          },
+          "definitions/agent/ergora-structure-reviewer/1.0.93/skills/ergora-structure-reviewer/SKILL.md": {
+            "bytes": 521,
+            "sha256": "d6b69570bcca408d3d06ca5adf1cb44a4a9e43c2901f05c38a68c096f23a4ac8",
+            "continuous_utf8_pages": [
+              {
+                "offset": 0,
+                "bytes": 521,
+                "next_offset": null
+              }
+            ],
+            "base64_retries": [],
+            "duplicates": []
+          },
+          "definitions/workflow/ergora-structure-review/1.0.93/instructions.md": {
+            "bytes": 163,
+            "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823",
+            "continuous_utf8_pages": [
+              {
+                "offset": 0,
+                "bytes": 163,
+                "next_offset": null
+              }
+            ],
+            "base64_retries": [],
+            "duplicates": []
+          }
+        },
+        "list_passes_files": [
+          5
+        ],
+        "failed_calls": 0,
+        "attachment_bytes": 359090,
+        "attachment_sha256": "255b96172e5f175d81eff61b032b61c0b1be428cbe4fd23dc5dce3a48ec7b6af",
+        "frozen_complete_files": 20,
+        "original_result_sha256": "60e3a341a0e894ac5eb96b7d6013013de7789274814066ba3a180fdc066f9583",
+        "decision": "approve",
+        "native_stream_sha256": "5bb8acd9f7f969f27ed25c8e976562f63df580eddbdbd8b684a6cea45f35b1b4",
+        "backend_reported_turn_usage": [
+          {
+            "input_tokens": 2238908,
+            "cached_input_tokens": 2089856,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 6208,
+            "reasoning_output_tokens": 2310
+          }
+        ],
+        "observed_processes": 4,
+        "live_sampled_processes": [],
+        "scope": "Offline exact identity and successful plaintext page reconstruction only. Cached counters are part of input, reasoning reported separately, neither is added twice. No billing, reasoning quality, owner approval, independent backend-error or unsampled-process claim."
+      },
+      "complete_attachment_index": [
+        {
+          "file": "docs/delivery/2026-11-11-issue-dispatch.md",
+          "bytes": 3384,
+          "sha256": "7f1a740fbf3f1cdf180d691af9bce6233604fde092c76274dbaac6460886dde3"
+        },
+        {
+          "file": "docs/plans/2026-11-11-issue-dispatch-design-review.md",
+          "bytes": 22787,
+          "sha256": "e4865900af90aa7d97551c4d168d6fb82dabeb64a140ce698957494de5faef92"
+        },
+        {
+          "file": "docs/plans/2026-11-11-issue-dispatch.md",
+          "bytes": 11067,
+          "sha256": "6c3cf747385afe420b874ca5d9a1b0bd8ddde2c0ad5f440f6e00bba731f75218"
+        },
+        {
+          "file": "src/ergora/data/schemas/task-definition-v3.json",
+          "bytes": 4163,
+          "sha256": "9f8deda287460d70b8439ea3b64c72f32ca59b139950e5da7ea37f09e5e5aa9c"
+        },
+        {
+          "file": "src/ergora/data/schemas/task-handoff-v1.json",
+          "bytes": 10166,
+          "sha256": "5476add6d7fc27761c845b5c4e89842e6383db66532c6082d4d79f3931491766"
+        },
+        {
+          "file": "src/ergora/handoff.py",
+          "bytes": 12316,
+          "sha256": "6aa7019131cc9ce7773b3aa43bfcb29026ea7e64911a4faedba611cdbf3170e4"
+        },
+        {
+          "file": "src/ergora/issue_backends.py",
+          "bytes": 6828,
+          "sha256": "e1ba9db2646d31c1436a3b4e5eb54065060608bca6eb2253a17b6bb7901c6ce6"
+        },
+        {
+          "file": "src/ergora/issue_sources.py",
+          "bytes": 6124,
+          "sha256": "38b49cde22b7bc46314a9b42915e96054e29b975d0268dcde27b4c5ecf62b14f"
+        },
+        {
+          "file": "src/ergora/issues.py",
+          "bytes": 11578,
+          "sha256": "f209b56291a2863544647ac5a67f02fb98a08278e4796ed9a78791a4671983a7"
+        },
+        {
+          "file": "src/ergora/reference_executor.py",
+          "bytes": 53347,
+          "sha256": "aabbade15e9bafc1f93e36e3e590ba328d68391e30b598b8d7ac1c02e87cc0d0"
+        },
+        {
+          "file": "src/ergora/reference_inputs.py",
+          "bytes": 8678,
+          "sha256": "602f3ad5292a5e7ca622f6b84ec01b896d752e0c7db8338edd93ace8a8d59aed"
+        },
+        {
+          "file": "src/ergora/reference_task_creation.py",
+          "bytes": 19915,
+          "sha256": "a5663bd2a816613b6ea39192a7551d1f11fa186e5950e9a34757e76a7ffddbe9"
+        },
+        {
+          "file": "src/ergora/reference_task_reconciliation.py",
+          "bytes": 26307,
+          "sha256": "03f30dfb8b946b304873c0f89feb900f93fd849ba721cfb0142e4d7bbfe09548"
+        },
+        {
+          "file": "src/ergora/reference_workflows.py",
+          "bytes": 19789,
+          "sha256": "12471b7e15bfdc639559d371a050ae2afce2b9ee9655ba14e7279dc97c608de5"
+        },
+        {
+          "file": "src/ergora/task_envelopes.py",
+          "bytes": 25608,
+          "sha256": "2bfe87d309c3303aa13b3af02ed0abffef31f0087394774931e51731657422d8"
+        },
+        {
+          "file": "src/ergora/tasks.py",
+          "bytes": 31351,
+          "sha256": "efd77f97b25556d3e1c1aa439a196fc099e7b9e3cb51c865eddb14db872b3325"
+        },
+        {
+          "file": "src/ergora/workflow_definitions.py",
+          "bytes": 35049,
+          "sha256": "c920d604a55ef2b5c85427801c4cb78a5e0357849be24bbbcf3d5094e861190d"
+        },
+        {
+          "file": "tests/fixtures/work_delivery_acceptance.py",
+          "bytes": 18364,
+          "sha256": "e1e25ab693c394a68f6b5a9662641f84f0216f744e30e5fc4938b6cf7be6b2d2"
+        },
+        {
+          "file": "tests/test_issue_tasks.py",
+          "bytes": 16363,
+          "sha256": "53491061d47007692b8f5c3a34bd50b9b839f74a04ebcc94538a01d16d3b8ed3"
+        },
+        {
+          "file": "tests/test_work_agents.py",
+          "bytes": 14488,
+          "sha256": "208a002cf7c7fefecc825bb86a70cfcd9fd6529e865266ffdb414222a647a709"
+        }
+      ]
+    },
+    {
+      "actual_call": {
+        "at": "2026-11-11T08:45:33.565946+00:00",
+        "baseline": "3c4ef3928fe756bf596fd1da1cc80c7eb1e6578d",
+        "run_id": "8e5db9fc8e4644d595b68ec4981d22cb",
+        "status": "succeeded",
+        "backend": "codex",
+        "inference_model": "gpt-6.1-sol",
+        "reasoning_effort": "high",
+        "cli_exit": 0,
+        "seconds": 106.72468819282949,
+        "input_digest": "19bef49348d0c999a7a5874d64911c66e3704f615be9cd6a51d5551b793b0e34",
+        "prompt_sha256": "37b430effb52d1cfd44a5e456314adfb6367fd87e8e23b47dcc4105eec3c310f",
+        "attachment_bytes": 93009,
+        "attachment_sha256": "f6a8e837111c528e0cc695ae2317888e58adc5b5fac103e72937130de6594619",
+        "manifest_digest": "59151b42e9b932a9a85508a1e101dba5525dda79dac43dd55f8aa4eb41e9877d",
+        "revision": "1.0.94",
+        "observed_processes": 4,
+        "live_sampled_processes": [],
+        "scope": "F7b.1-B1b frozen product/test/plan/design/delivery sources; attachments use model-candidate immutable copies. Later documents/projections and independent review are separate. No actual narrow admission or real Agent-source consumption claimed.",
+        "decision": "approve",
+        "result_sha256": "a9c9207b3c2bc5eb0acfb46c84fbbc1b616bf4fef0b438c6e985849efde2abef"
+      },
+      "original_decoded_result": {
+        "artifacts": {
+          "response": "Read all five fixed MCP resources completely, including both instruction resources, both Skills, and all 93,009 bytes of candidate.txt through next_offset:null. Retried the base64 page at the same offset with a smaller UTF-8 page.\n\nExact scope:\n\n- src/ergora/reference_inputs.py\n- src/ergora/reference_workflows.py\n- src/ergora/reference_task_creation.py\n- src/ergora/data/schemas/task-definition-v3.json\n- tests/test_issue_tasks.py\n- docs/delivery/2026-11-11-issue-dispatch.md\n- docs/plans/2026-11-11-issue-dispatch.md\n\n**Spec:** No actionable findings. Creation-v3 validation calls the shared inventory_context(expected_sha) before returning a preview or publishing. The builder includes the complete deterministic inventory metadata and applies the unchanged compact UTF-8 1,000,000-byte limit. V7 runtime uses that same builder, converts ValueError to StopWork, and delegates other stages to the inherited implementation. The tests compare the inherited context and cover ASCII/Chinese boundary acceptance, one additional encoded character, and preservation of published bytes. Workspace fixtures retain the Linux/WSL2 restriction; strict snapshot validation uses the existing source fixture.\n\n**Standards:** No actionable findings. The shared method belongs to the existing versioned input owner and serves two concrete callers without adding a scheduler, SDK dependency, or budget mechanism. The v3 schema retains unconditional requirements without redundant dependentSchemas. Documentation distinguishes B1b offline delivery from B1c admission and real consumption, and separates historical checks from pending corrected regressions.\n\nThis is structural approval of these seven supplied files. No commands or tests were executed and no files were edited. Unsupplied native owners, v2 schema, frozen-file identity, running r3 regressions, final documentation/CI, and full independent acceptance were not independently verified."
+        },
+        "decision": "approve",
+        "summary": "Approve the focused seven-file candidate. No actionable Spec or Standards findings within the supplied scope."
+      },
+      "actual_read_audit": {
+        "at": "2026-11-11T08:46:52.495148+00:00",
+        "run_id": "8e5db9fc8e4644d595b68ec4981d22cb",
+        "revision": "1.0.94",
+        "manifest_prepared_actual_prompt_admission_scope_native_original_result_match": true,
+        "bundled_template_unchanged_except_evidence_revision_resource_and_limit": true,
+        "scope_files": 5,
+        "all_scope_continuous_utf8_through_null": true,
+        "complete_scope_reads": {
+          "definitions/agent/ergora-structure-reviewer/1.0.94/instructions.md": {
+            "bytes": 354,
+            "sha256": "3cc9c450f0c03da5ea4a1434ac6182d50df6a4985cffdee2a59fe9fe477c6b43",
+            "continuous_utf8_pages": [
+              {
+                "offset": 0,
+                "bytes": 354,
+                "next_offset": null
+              }
+            ],
+            "base64_retries": [],
+            "duplicates": []
+          },
+          "definitions/agent/ergora-structure-reviewer/1.0.94/skills/candidate-evidence/SKILL.md": {
+            "bytes": 480,
+            "sha256": "aedb683ba435b973bdf6602542688b870d5e10872d2fe55387eaa39202ecbd75",
+            "continuous_utf8_pages": [
+              {
+                "offset": 0,
+                "bytes": 480,
+                "next_offset": null
+              }
+            ],
+            "base64_retries": [],
+            "duplicates": []
+          },
+          "definitions/agent/ergora-structure-reviewer/1.0.94/skills/candidate-evidence/references/candidate.txt": {
+            "bytes": 93009,
+            "sha256": "f6a8e837111c528e0cc695ae2317888e58adc5b5fac103e72937130de6594619",
+            "continuous_utf8_pages": [
+              {
+                "offset": 0,
+                "bytes": 22000,
+                "next_offset": 22000
+              },
+              {
+                "offset": 22000,
+                "bytes": 20000,
+                "next_offset": 42000
+              },
+              {
+                "offset": 42000,
+                "bytes": 18000,
+                "next_offset": 60000
+              },
+              {
+                "offset": 60000,
+                "bytes": 12000,
+                "next_offset": 72000
+              },
+              {
+                "offset": 72000,
+                "bytes": 10000,
+                "next_offset": 82000
+              },
+              {
+                "offset": 82000,
+                "bytes": 9000,
+                "next_offset": 91000
+              },
+              {
+                "offset": 91000,
+                "bytes": 2009,
+                "next_offset": null
+              }
+            ],
+            "base64_retries": [
+              {
+                "offset": 60000,
+                "bytes": 16000
+              }
+            ],
+            "duplicates": []
+          },
+          "definitions/agent/ergora-structure-reviewer/1.0.94/skills/ergora-structure-reviewer/SKILL.md": {
+            "bytes": 521,
+            "sha256": "d6b69570bcca408d3d06ca5adf1cb44a4a9e43c2901f05c38a68c096f23a4ac8",
+            "continuous_utf8_pages": [
+              {
+                "offset": 0,
+                "bytes": 521,
+                "next_offset": null
+              }
+            ],
+            "base64_retries": [],
+            "duplicates": []
+          },
+          "definitions/workflow/ergora-structure-review/1.0.94/instructions.md": {
+            "bytes": 163,
+            "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823",
+            "continuous_utf8_pages": [
+              {
+                "offset": 0,
+                "bytes": 163,
+                "next_offset": null
+              }
+            ],
+            "base64_retries": [],
+            "duplicates": []
+          }
+        },
+        "list_passes_files": [
+          5
+        ],
+        "failed_calls": 0,
+        "attachment_bytes": 93009,
+        "attachment_sha256": "f6a8e837111c528e0cc695ae2317888e58adc5b5fac103e72937130de6594619",
+        "frozen_complete_files": 7,
+        "original_result_sha256": "a9c9207b3c2bc5eb0acfb46c84fbbc1b616bf4fef0b438c6e985849efde2abef",
+        "decision": "approve",
+        "native_stream_sha256": "25c5ef9d144023ffbcb47ede9883f90261c6e66f98b37bff717e33649b7ce605",
+        "backend_reported_turn_usage": [
+          {
+            "input_tokens": 354519,
+            "cached_input_tokens": 289024,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1892,
+            "reasoning_output_tokens": 624
+          }
+        ],
+        "observed_processes": 4,
+        "live_sampled_processes": [],
+        "scope": "Offline exact identity and successful plaintext page reconstruction only. Cached counters are part of input, reasoning reported separately, neither is added twice. No billing, reasoning quality, owner approval, independent backend-error or unsampled-process claim."
+      },
+      "complete_attachment_index": [
+        {
+          "file": "src/ergora/reference_inputs.py",
+          "bytes": 9665,
+          "sha256": "34d93f312be58131411e96f1d229af3ed3ad6256a33b4b5a6839367ca17c7c87"
+        },
+        {
+          "file": "src/ergora/reference_workflows.py",
+          "bytes": 20241,
+          "sha256": "3374d362c0034f65b59e63afee3dc460c8187a863929a7f60787577123f712a0"
+        },
+        {
+          "file": "src/ergora/reference_task_creation.py",
+          "bytes": 19711,
+          "sha256": "656f37024f787dcfc656fbe841d518b95270e9142588e268df3c044dcf01455c"
+        },
+        {
+          "file": "src/ergora/data/schemas/task-definition-v3.json",
+          "bytes": 4027,
+          "sha256": "cb2edca38e29b877de169e6f25841d3b622dbd1e7bdda6167088ce35a7b2c427"
+        },
+        {
+          "file": "tests/test_issue_tasks.py",
+          "bytes": 19199,
+          "sha256": "245b9f5886087eb148e2f064ac3cd6b75380b047a77ca6e35bae32976be1c462"
+        },
+        {
+          "file": "docs/delivery/2026-11-11-issue-dispatch.md",
+          "bytes": 8330,
+          "sha256": "9d5c309913fb0dcf64dd41444299e00a120c5cdc7bdbc496afcc4d3257149976"
+        },
+        {
+          "file": "docs/plans/2026-11-11-issue-dispatch.md",
+          "bytes": 11198,
+          "sha256": "e6a0522e66f15b19886a846aef064e80705cabf282970535784f8cc95efa7290"
+        }
+      ]
+    }
+  ],
+  "source_identities": [
+    {
+      "original": "self-review-r1.json",
+      "bytes": 1484,
+      "sha256": "8723eb0395bf9112a207e1746c748b48043db37bf74ec2ae398da0e0be4d4ec5"
+    },
+    {
+      "original": "self-review-r1-read-audit.json",
+      "bytes": 5194,
+      "sha256": "fd9a29084c52519a77d5dd455f4cde159e656d2c34d47bd47bc47ae4edbd87bc"
+    },
+    {
+      "original": "self-review-r1/original-result.json",
+      "bytes": 4020,
+      "sha256": "60e3a341a0e894ac5eb96b7d6013013de7789274814066ba3a180fdc066f9583"
+    },
+    {
+      "original": "self-review-r1/raw-evidence-index.json",
+      "bytes": 3187,
+      "sha256": "6a87a81c41736d9a4f049a8eb570efdcac2c5af9ed1728c72bb14c5de0491ae3"
+    },
+    {
+      "original": "self-review-r1/sampled-processes.json",
+      "bytes": 525,
+      "sha256": "b4b1a2121d4885b33030436c83be0fb717ee5f930760765e533233c725b5fb71"
+    },
+    {
+      "original": "self-review-r1/agent/skills/candidate-evidence/references/candidate.txt",
+      "bytes": 359090,
+      "sha256": "255b96172e5f175d81eff61b032b61c0b1be428cbe4fd23dc5dce3a48ec7b6af"
+    },
+    {
+      "original": "self-review-r2.json",
+      "bytes": 1483,
+      "sha256": "d7d6607dcd91da319ed728803f063a6db6fe3a759ad77addf5ba9c0edd718ed9"
+    },
+    {
+      "original": "self-review-r2-read-audit.json",
+      "bytes": 4050,
+      "sha256": "44acc740e96bd2f76b792ab3aefa8e40095ab929f181397026b28661dc704d0d"
+    },
+    {
+      "original": "self-review-r2/original-result.json",
+      "bytes": 2127,
+      "sha256": "a9c9207b3c2bc5eb0acfb46c84fbbc1b616bf4fef0b438c6e985849efde2abef"
+    },
+    {
+      "original": "self-review-r2/raw-evidence-index.json",
+      "bytes": 1135,
+      "sha256": "b02c73ea2ed3ce89d408ec8d2ff02dcfcf15202b759949cd557469de9fb4bcda"
+    },
+    {
+      "original": "self-review-r2/sampled-processes.json",
+      "bytes": 525,
+      "sha256": "36acfaec02e2b133621b25a7adf2a731b5a48ab57520f3dc27c91beddc59835e"
+    },
+    {
+      "original": "self-review-r2/agent/skills/candidate-evidence/references/candidate.txt",
+      "bytes": 93009,
+      "sha256": "f6a8e837111c528e0cc695ae2317888e58adc5b5fac103e72937130de6594619"
+    }
+  ],
+  "scope_disposition": "Original bundled structure-review template, explicit evidence revision and material limit. Twenty frozen complete files supplied; all five fixed MCP resources reconstructed as continuous UTF8 through next_offset:null, no failed tool calls. Frozen attachments precede later package/journey status and public projections. Those and independent review are separate evidence. Codex is the explicitly authorized fallback after the earlier preserved Claude failure, not successful dual-backend evidence. Focused re-review supplies seven complete corrected files,93009B; five fixed scopes read continuously. Its scope includes shared exact inventory context/platform fixture/schema simplification but excludes subsequently completed r3 regressions/journey and final public bookkeeping.",
+  "omitted": [
+    "Private inference configuration and execution paths",
+    "Native stdout and complete attached source bodies, whose original SHA identities remain"
+  ],
+  "limits": "Backend cached counters are part of input; reasoning is reported separately, not added again. Model review is not formal owner approval, understanding, billing, isolated execution, source-task model acceptance, CI or whole-project completion."
+}

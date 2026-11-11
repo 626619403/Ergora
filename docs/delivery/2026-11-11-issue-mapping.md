@@ -1,6 +1,6 @@
 # F7b.0：工单快照与显式上下文关联
 
-基线`9f010079126f374c01272ecf2f0ec85284e4e2cc`；[分片计划](../plans/2026-11-11-issue-mapping.md)。当前源码／最终安装包与完整独立两轴的本地出口已通过；普通提交／推送、精确远端身份及本候选自己的CI仍待。前片F7a精确Git和现有SSH远端通过，自己的CI42974715330官方run／两job HTML终态七必要步骤经原评审终核通过；不借前片运行证明新字节。
+基线`9f010079126f374c01272ecf2f0ec85284e4e2cc`；[分片计划](../plans/2026-11-11-issue-mapping.md)。`3c4ef39`的本地出口、普通提交／推送、精确Git／作者SSH Ref及自己的CI42982197290七必要步骤经原评审终核通过，精确交付已结案。前片F7a自己的CI42974715330保持独立原身份，不借前片运行证明新字节。
 
 已检查`issues / tasks / reference_task_creation / reference_task_submission / reference_inputs / state / backups`及迁移／备份与任务创建测试。真实目标事实归原creation，稳定内容快照和上下文关联归issues；旧正式来源无host，先记录显式关联，版本化来源准入另片处理。SQLite新表将使用原状态迁移／备份，保留历史布局与旧writer隔离；具体设计意见、实现及验证按节点续记。
 
@@ -46,3 +46,13 @@ r1 wheel SHA256 `f4c520ead27fdf1c6b0b59efce498ee1e6ae101b44c1c5a2b5acfbe5771dde3
 新的fresh-context协调者及其两个fresh子轴已完成初始25与最终28文件独立审查，原SP1／P2和ST1／P3关闭，Spec／Standards开放0／0；实际复建两轮模板输入／scope／原意见与receipt修复，终核33份公开投影原件，逐字核最终r3的447／442、两RECORD／452行、source／freeze／wheel／installed与283原件，并从保留真实DB只读调用最终Interface核原rev2重放、新关系拒绝和不访问runtime。[独立终核报告](2026-11-11-issue-mapping-review.md)限定本地出口，没有新跑模型、网络或产品套件。
 
 最终有限静态先核28文件／326本地链接／6已加载秘密值issue0；完整锚点、Mermaid、外链与运行时不在该静态范围。模型的聚焦批准没有覆盖后改并发／公开投影，最终独立两轴覆盖。接下来冻结ready、普通提交／推送，核精确Git／远端和本候选自己的CI；本地通过不提前替代这些出口。下一实现片按F7b.1先设计版本化完整来源及窄准入，保持原policy／claim／attempt／memo／unknown，不从本片关联推导正式派工。
+
+## 普通提交与精确交付（已结案）
+
+最终有限静态28文件／329本地链接／6已加载秘密值issue0，ready manifest SHA256 `5682d1b8cf20f354a88121348a983cbc7723003e5b69a82fa28b4f530063ab15`；原评审同片核28冻结／live／模式／路径及仅6份后补状态通过，生产／测试／两投影保持。普通提交并推送`3c4ef3928fe756bf596fd1da1cc80c7eb1e6578d`、单父9f01007；作者核全部28 Git blob／100644与ready相同，push exit0，未强推／合main或改认证／remote。当时工作区clean；本段为提交后的同片状态回写。自己的精确远端及CI继续独立终核，不借前片终态。
+
+作者随后一次既有SSH push URL的只读Ref查询exit0，86B stdout为完整`3c4ef3928fe756bf596fd1da1cc80c7eb1e6578d`及正确分支；原评审离线核原件与摘要通过。评审者自己的一次SSH查询因代理407失败，保持原件，不称评审直接远端成功。匿名REST第一次403限流；官方Actions索引HTTP200精确关联本提交／分支与自己的[Portability 42982197290](https://github.com/626619403/Ergora/actions/runs/42982197290)，首run HTML仍In progress／0/2 jobs completed。此时终态尚未确认，不据403称CI失败，也不推下一候选以取消它。下一片的[来源任务设计](../plans/2026-11-11-issue-dispatch.md)在本地继续。
+
+第三份run HTML为HTTP200／157,039B，SHA256 `52945372826d9d015131f2ac60594eb542fd360282732a4542e2cbdb9d621b9c`，Status Success并精确关联完整提交、分支与两job。原评审随后对Linux `130394959642`和Windows `130394959979`官方job页面各一次直接GET，两原HTML确认Linux三／Windows四必要步骤completed/success，逐步log URL均带完整本候选及正确job ID；Linux的Windows安装项按条件skipped。原评审离线再核28个Git blob／模式等ready，以及提交中的442份包文件逐字等于最终r3 wheel；未借正在变化的B1源码。
+
+[原评审精确终核](2026-11-11-issue-mapping-review.md#同片精确交付终核2026-11-11)通过，本片精确交付结案。首REST403、前三份非终态HTML（含Actions索引）、独立SSH407保持原件；这不是成功REST查询或全job日志下载，也不声称评审直接SSH成功。后续按B1版本化来源任务继续，原业务／平台未验范围保持。

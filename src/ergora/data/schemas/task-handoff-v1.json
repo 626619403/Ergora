@@ -246,17 +246,23 @@
       "type": "object",
       "if": {
         "properties": {
-          "temporal_status": {"const": "COMPLETED"}
+          "temporal_status": {
+            "const": "COMPLETED"
+          }
         }
       },
       "then": {
         "properties": {
-          "original_outcome": {"type": "object"}
+          "original_outcome": {
+            "type": "object"
+          }
         }
       },
       "else": {
         "properties": {
-          "original_outcome": {"type": "null"}
+          "original_outcome": {
+            "type": "null"
+          }
         }
       },
       "required": [
@@ -399,7 +405,21 @@
             },
             "agent_bindings_sha256": {
               "$ref": "#/$defs/digest"
+            },
+            "original_input": {
+              "type": "object"
+            },
+            "original_input_sha256": {
+              "$ref": "#/$defs/digest"
             }
+          },
+          "dependentRequired": {
+            "original_input": [
+              "original_input_sha256"
+            ],
+            "original_input_sha256": [
+              "original_input"
+            ]
           }
         },
         "jobs": {

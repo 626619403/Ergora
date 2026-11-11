@@ -6,13 +6,13 @@ import json
 from pathlib import Path
 import re
 
-from . import agent_backends, agents, bindings, contracts, projects, reference, workflow_definitions
+from . import agent_backends, agents, bindings, contracts, issue_sources, issues, projects, reference, workflow_definitions
 from .asset_trees import inventory_tree
 from .state import State
 
 
 _DEFINITIONS = {version: json.loads((Path(__file__).parent / f'data/schemas/task-definition-v{version}.json').read_text(encoding='utf-8'))
-                for version in (1, 2)}
+                for version in (1, 2, 3)}
 
 
 def _project(state: State, project_id: str) -> dict:
@@ -31,16 +31,34 @@ def _revision(project: dict, expected_revision: int) -> None:
         raise ValueError('Project revision changed; reload before the task operation')
 
 
-def _definition(project: dict, definition: dict) -> dict:
-    schema = _DEFINITIONS[2] if isinstance(definition, dict) and definition.get('schema_version') == 2 else _DEFINITIONS[1]
+def _definition(state: State, project: dict, definition: dict) -> dict:
+    version = definition.get('schema_version') if isinstance(definition, dict) else None
+    schema = _DEFINITIONS.get(version, _DEFINITIONS[1]) if type(version) is int else _DEFINITIONS[1]
     contracts.validate(definition, schema, 'Task definition')
     if definition['task_type'] not in project['registration']['definition']['templates']:
         raise ValueError('Task template is not registered for this project')
     if len(json.dumps(definition, ensure_ascii=False, allow_nan=False).encode('utf-8')) > 1_048_576:
         raise ValueError('Task definition exceeds 1 MiB')
     selection = bindings.development_snapshot(project, projects.effective_configuration(project))
-    return {'definition': definition, 'selection': selection,
-            **({'composition': _composition(definition, selection)} if definition['schema_version'] == 2 else {})}
+    result = {'definition': definition, 'selection': selection}
+    if version in (2, 3):
+        result['composition'] = _composition(definition, selection)
+    if version == 3:
+        from .task_envelopes import manifest_graph
+
+        saved = issues.snapshot(state, project['id'], definition['source']['snapshot_sha256'])
+        tracker = {**project['registration']['definition']['tracker'], 'issue_id': definition['issue_id']}
+        issue_sources.bind_snapshot(saved, project['id'], selection['configuration']['layers']['tracker']['binding'], tracker)
+        # This lower bound is already needed by every selected work/review
+        # prompt. Runtime producers and candidate files have their own later
+        # complete-material check; they are not guessed during offline preview.
+        minimum = json.dumps({'issue_source': saved, 'root_task': {'input': definition['input']}},
+                             ensure_ascii=False, allow_nan=False).encode('utf-8')
+        graph = manifest_graph(result['composition']['manifest'])
+        for path in (result['composition']['members'].keys() | result['composition']['execution']['members'].keys()):
+            workflow_definitions.compile_input(graph, path, minimum, 1_000_000)
+        result['issue_source'] = saved
+    return result
 
 
 def _composition(definition: dict, selection: dict) -> dict:
@@ -161,7 +179,7 @@ def preview(state: State, project_id: str, definition: dict, expected_revision: 
     """Compile in temporary storage and return the exact proposed task and bindings."""
     project = _project(state, project_id)
     _revision(project, expected_revision)
-    return reference.task_creation(project, state.root, 'preview', _definition(project, definition))
+    return reference.task_creation(project, state.root, 'preview', _definition(state, project, definition))
 
 
 def create(state: State, project_id: str, definition: dict, expected_revision: int, preview_sha256: str) -> dict:
@@ -174,7 +192,7 @@ def create(state: State, project_id: str, definition: dict, expected_revision: i
         project = _project(state, project_id)
         _revision(project, expected_revision)
         return reference.task_creation(project, state.root, 'create',
-                                       {**_definition(project, definition), 'preview_sha256': preview_sha256})
+                                       {**_definition(state, project, definition), 'preview_sha256': preview_sha256})
 
 
 def creation(state: State, project_id: str, task_id: str) -> dict:

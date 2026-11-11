@@ -4,7 +4,7 @@
 
 基线 `9f010079126f374c01272ecf2f0ec85284e4e2cc`，分支 `refactor/architecture-foundations`。评审时 HEAD 即基线，三点 diff 和新增提交为空；实际对象为 `git diff <baseline>` 加全部新增文件。初始完整 25 文件冻结清单 SHA256 `108d382a3d0ab9b90d0ae68d79cf1d41852eaad471b3059731bf76effdce4004`；同片最终完整 28 文件清单 SHA256 `c4f170540588a80c760d9d3fcc8bc0ab5ce9f28e34ccbd510c971b9a8e731042`。逐件核大小／SHA 及 initial→final 全部实施差异；后者新增本报告和两份公开投影，评审收尾／状态记账不递归审查。
 
-**最终本地审查通过：Spec／Standards 开放 finding 各 0；原 SP1／P2 与 ST1／P3 均关闭。** 此结论覆盖本片实现、受影响证据、实际自身模板范围及最终公开投影；普通提交／推送、精确远端身份和本候选自己的 CI 尚待作者完成，不表示精确交付或项目整体完成。
+**最终本地审查通过：Spec／Standards 开放 finding 各 0；原 SP1／P2 与 ST1／P3 均关闭。** 此结论覆盖本片实现、受影响证据、实际自身模板范围及最终公开投影。随后普通提交／推送、精确远端原件及本候选自己的 CI 也已终核通过，见文末；不表示项目整体完成。
 
 完整初审对象：根 README；PLAN／USAGE；当前架构、身份与迁移三文；F7a 两交付文与分片计划、总计划；本片新增规格／设计／交付；`backups / cli / contracts / issue_backends / issues / state / web` 七生产文件；`test_agent_definitions / test_issue_mapping / test_project_issues / test_state_backups / test_state_migrations` 五测试文件。另读 AGENTS、ADR0001／0002、实际项目配置和原 `tasks.creation`／reference creation 调用链。
 
@@ -36,6 +36,23 @@ CLI／HTTP 共用 `issues` 五用例；厂商选择留在 `issue_backends`，新
 
 [验收投影](evidence/2026-11-11-issue-mapping-acceptance.json)的 20 份及[自身投影](evidence/2026-11-11-issue-mapping-self-review.json)的 13 份引用原件大小／SHA 全部相符。所有包、检查回执、旅程字段、两轮原判词／输入索引／读取页／用量字段均逐项核原件；用量还与独立重建的 native stream 相同，cached 已含于 input、reasoning 单列，不推导账单。首审失败、聚焦批准及后改范围没有混淆。
 
-有限静态原件与最终冻结 28 文件逐件相符：326 个本地文件链接／6 个已加载秘密值、issue 0，另 `git diff --check` 通过；不声称全锚点、Mermaid、外链或运行时检查，ST1 由本次精确核标题。评审没有安装、网络或模型新调用，没有重跑套件；只读原证据、有限内存／只读数据库检查。私有审计首次的输出路径格式化失败及修正留存，未改变产品或原件。
+有限静态原件与最终冻结 28 文件逐件相符：326 个本地文件链接／6 个已加载秘密值、issue 0，另 `git diff --check` 通过；不声称全锚点、Mermaid、外链或运行时检查，ST1 由本次精确核标题。本地审查阶段没有安装、网络或模型新调用，没有重跑套件；只读原证据、有限内存／只读数据库检查。私有审计首次的输出路径格式化失败及修正留存，未改变产品或原件。
 
-最终：Spec 开放 0（原 P2 已关闭）；Standards 开放 0（原文档 P3 已关闭）。两轴均无新增 finding；本地出口通过，普通提交／推送及本候选精确远端／CI 仍待。
+最终：Spec 开放 0（原 P2 已关闭）；Standards 开放 0（原文档 P3 已关闭）。两轴均无新增 finding，本地出口通过。
+
+## 同片精确交付终核（2026-11-11）
+
+**F7b.0 精确交付终核通过。** 普通提交 `3c4ef3928fe756bf596fd1da1cc80c7eb1e6578d` 的唯一父提交为原基线 `9f010079126f374c01272ecf2f0ec85284e4e2cc`。评审者独立复核全部 28 个变更 Git blob／100644 模式与 ready 冻结相同，ready manifest SHA256 `5682d1b8cf20f354a88121348a983cbc7723003e5b69a82fa28b4f530063ab15`；后补状态对应的有限静态为 28 文件／329 本地链接／6 值、issue 0。又将该提交的全部 442 个包文件与原 r3 wheel 逐字比较通过。本次使用固定 Git 对象和 B0 原件，没有用后续 B1 工作区源码代替已验证候选。
+
+原普通 push exit 0；作者随后一次既有 push URL 的 SSH Ref 原 stdout 为 86B，完整 SHA 与正确分支相符，两原 stream 摘要经评审离线核对通过。评审者自己的一次 SSH 读取因代理 407 失败，原件保留，不称评审直接 Ref 成功；未改认证／remote、未强推或合入 main。
+
+本候选自己的 [Portability 42982197290](https://github.com/626619403/Ergora/actions/runs/42982197290) 终态 run HTML 为 HTTP 200／157,039B、SHA256 `52945372826d9d015131f2ac60594eb542fd360282732a4542e2cbdb9d621b9c`，明确关联完整提交、分支、Status Success 和两个完成的 job。评审者按授权对以下两个官方 job URL 各直接读取一次；原 HTML／响应元数据均留存，随后只作离线核验：
+
+|job|必要步骤|终态|原 HTML SHA256|
+|---|---|---|---|
+|[Linux／Python 3.11](https://github.com/626619403/Ergora/actions/runs/42982197290/job/130394959642)|3|completed／success|`6ecc55f9e8aa4f3c267b6675010468e04a4455ccc1f54b145d339824621af8f4`|
+|[Windows／Python 3.12](https://github.com/626619403/Ergora/actions/runs/42982197290/job/130394959979)|4|completed／success|`ffb7a6175a2f88d678f02afb374d48c67056196c74aff35221c4cba4220778b6`|
+
+两 job 的 Build and install wheel、Packaged reference identity、Native application regression 均成功；Windows 另核 PowerShell 5.1 installer and upgrade 成功。各步骤的完成属性、结论、起止时刻和包含完整提交／对应 job ID 的原 log URL 一致，Linux 上 Windows installer 按条件跳过。终核依据官方 HTML 的步骤元数据，没有下载登录受限的完整日志，也没有把此前 REST 403 称为成功 REST。
+
+首份 Actions 索引和前两 run 页面仍保留当时的 In progress，原 REST 403、独立 SSH 407 和各模型／driver 失败不改写。离线解析首次因官方 job 链接含步骤 fragment 而调整为核精确 URL 路径，原错误留存，没有重复请求。除上述两次授权 job GET，本次未增加 REST／认证／CI 操作、模型或产品测试；本报告追加属于同片交付记账，无新的实现变更。F7b.1 及项目其余节点仍按各自计划推进。

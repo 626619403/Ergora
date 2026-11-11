@@ -1,0 +1,242 @@
+{
+  "schema_version": 1,
+  "slice": "F7b.1-B1b",
+  "baseline": "3c4ef3928fe756bf596fd1da1cc80c7eb1e6578d",
+  "state": "local-exit-and-independent-review-complete; precise-delivery-pending",
+  "package": {
+    "at": "2026-11-11T08:42:40.286264+00:00",
+    "wheel_sha256": "1c4dcc20b37cfcd776159bb1085129695cf7d64ed591acb2632a75b153c33222",
+    "wheel_files": 449,
+    "package_files": 444,
+    "wheel_and_installed_records_verified": true,
+    "installed_record_rows": 454,
+    "source_and_installed_package_equal": true,
+    "frozen_files": 283,
+    "editable": false
+  },
+  "checks": {
+    "source_new": {
+      "passed": 16,
+      "seconds": 44.187236085068434,
+      "includes": "15 source regressions and deterministic original-executor CLI protocol journey; no Temporal service/model"
+    },
+    "installed_r1": {
+      "passed": 343,
+      "pytest_seconds": 298.61,
+      "driver_seconds": 300.55340084573254,
+      "later_changes": [
+        "issue_sources.py strict-positive finite integer validation"
+      ],
+      "scope": "Twelve affected files; package was verified at build. Historical r1 is not the final r2 candidate."
+    },
+    "installed_r2": {
+      "passed": 40,
+      "pytest_seconds": 48.39,
+      "driver_seconds": 50.58549668779597,
+      "files": [
+        "tests/test_issue_tasks.py",
+        "tests/test_issue_mapping.py",
+        "tests/test_project_issues.py"
+      ],
+      "reference_verify": true
+    },
+    "source_platform_r3": {
+      "passed": 15,
+      "pytest_seconds": 23.03,
+      "driver_seconds": 24.320741376839578,
+      "scope": "Platform fixture correction; r2 unchanged product"
+    },
+    "source_budget_r4": {
+      "passed": 16,
+      "failed": 2,
+      "pytest_seconds": 45.86,
+      "driver_seconds": 46.72742799203843,
+      "scope": "New exact-boundary filler initially omitted a newline JSON-escape byte; both999999B failures retained. Product budget unchanged, test filler corrected to full JSON contribution."
+    },
+    "installed_r3": {
+      "passed": 28,
+      "pytest_seconds": 57.09,
+      "driver_seconds": 59.14352811407298,
+      "files": [
+        "tests/test_issue_tasks.py",
+        "tests/test_composition_workers.py",
+        "tests/test_work_agents.py::test_formal_work_reuses_original_checks_commits_and_sources[issue-source]"
+      ],
+      "reference_verify": true,
+      "scope": "Final r3 product; source17+worker10+deterministic native protocol1; no model/Temporal service"
+    }
+  },
+  "journey": {
+    "passed": true,
+    "checks": [
+      "Two upstream bodies retain distinct complete source snapshots",
+      "Installed CLI and real HTTP produce identical complete offline previews with no token and tracker stopped",
+      "Preview freezes the explicitly selected old snapshot in original input v7, not latest issue text",
+      "Creation3 publishes exactly the original seven native files",
+      "HTTP response-loss retry returns original source creation without replacing files",
+      "HTTP readback retains complete original source input",
+      "Installed CLI readback agrees with HTTP",
+      "Changed source cannot replace a published task; original bytes remain unchanged",
+      "A new task ID explicitly publishes a revised source, without altering the first task",
+      "HTTP resume uses the original source and selection after current binding changes",
+      "CLI recovery agrees after removing the supplied manifest",
+      "Recovery and readback retain every original source byte",
+      "Readback and resume leave both published source tasks byte-identical",
+      "No workflow start, Temporal job, Agent process or receipt created",
+      "Only two explicit captures made tracker requests; all publication and recovery is offline"
+    ],
+    "seconds": 11.895240219775587,
+    "owned_web_exit": -15,
+    "tracker_thread_alive": false,
+    "owned_ports_closed": true,
+    "scope": "Synthetic registered project, installed isolated CLI and real loopback HTTP. Two source tasks published and recovered offline, never started. Fixture checks are placeholders, no business/model/Temporal/GPU/Windows/OS-isolation acceptance or remote write."
+  },
+  "journey_counts": {
+    "cli": 11,
+    "http": 11,
+    "tracker": 2
+  },
+  "limits": [
+    "No narrow dependency admission in this slice; original broad doctor remains",
+    "No model/Temporal service ran in the source-task journey",
+    "Independent review, commit, push and candidate CI are separate pending steps"
+  ],
+  "historical_packages": {
+    "r2": {
+      "at": "2026-11-11T08:27:55.169444+00:00",
+      "wheel_sha256": "dbea1d7373625fb76b224b9ae470484df2432fc136bf5ebb633f2269b08f19c5",
+      "wheel_files": 449,
+      "package_files": 444,
+      "wheel_and_installed_records_verified": true,
+      "installed_record_rows": 454,
+      "source_and_installed_package_equal": true,
+      "frozen_files": 283,
+      "editable": false
+    }
+  },
+  "historical_journeys": {
+    "r2-package-journey-r1": {
+      "passed": true,
+      "checks": [
+        "Two upstream bodies retain distinct complete source snapshots",
+        "Installed CLI and real HTTP produce identical complete offline previews with no token and tracker stopped",
+        "Preview freezes the explicitly selected old snapshot in original input v7, not latest issue text",
+        "Creation3 publishes exactly the original seven native files",
+        "HTTP response-loss retry returns original source creation without replacing files",
+        "HTTP readback retains complete original source input",
+        "Installed CLI readback agrees with HTTP",
+        "Changed source cannot replace a published task; original bytes remain unchanged",
+        "A new task ID explicitly publishes a revised source, without altering the first task",
+        "HTTP resume uses the original source and selection after current binding changes",
+        "CLI recovery agrees after removing the supplied manifest",
+        "Recovery and readback retain every original source byte",
+        "Readback and resume leave both published source tasks byte-identical",
+        "No workflow start, Temporal job, Agent process or receipt created",
+        "Only two explicit captures made tracker requests; all publication and recovery is offline"
+      ],
+      "seconds": 11.866135769989341,
+      "owned_web_exit": -15,
+      "tracker_thread_alive": false,
+      "owned_ports_closed": true,
+      "scope": "Synthetic registered project, installed isolated CLI and real loopback HTTP. Two source tasks published and recovered offline, never started. Fixture checks are placeholders, no business/model/Temporal/GPU/Windows/OS-isolation acceptance or remote write.",
+      "counts": {
+        "cli": 11,
+        "http": 11,
+        "tracker": 2
+      }
+    }
+  },
+  "source_identities": [
+    {
+      "original": "r1/package-identity.json",
+      "bytes": 474,
+      "sha256": "1a8794d49c3d36711e9d05c89e2cb454f9fa793cf43f0fb079285762db8723fa"
+    },
+    {
+      "original": "r1/installed-validation.json",
+      "bytes": 1240,
+      "sha256": "61b62575c838e43eae64b1cff512f401cad8faae2536c84d2623c68cfce33961"
+    },
+    {
+      "original": "r1/installed-tests.stdout",
+      "bytes": 432,
+      "sha256": "01921efa373564748b32849c5ca372bcbad785079ad71a38c609de29dca7a6fb"
+    },
+    {
+      "original": "r2/package-identity.json",
+      "bytes": 474,
+      "sha256": "fa9e3195ca4ff4e09e01df6576efd30c8d02305f36f169ab3ccef7acc5320b76"
+    },
+    {
+      "original": "r2/installed-validation.json",
+      "bytes": 877,
+      "sha256": "0a2a5518885cca99d77fb06511b11f4ccb4390c245636abb80934d75668d77e7"
+    },
+    {
+      "original": "r2/installed-tests.stdout",
+      "bytes": 100,
+      "sha256": "bd41da660dcb1eae41b4603100208d04b4fff8397cbfc3ab866a44a5ed51c867"
+    },
+    {
+      "original": "r3/package-identity.json",
+      "bytes": 474,
+      "sha256": "9b6da1a8740969b20e95bd8f91897448ffed81f405f1d1a212e6ff0980043584"
+    },
+    {
+      "original": "r3/installed-validation.json",
+      "bytes": 955,
+      "sha256": "ef40d2bab585f6e1a35e603a49316a0dd7a306c65b68373829e4721a9ea3d3fc"
+    },
+    {
+      "original": "r3/installed-tests.stdout",
+      "bytes": 100,
+      "sha256": "36440aaa24ba3a3107940235f058f838870bb688b7e389508454cf1e594edc57"
+    },
+    {
+      "original": "r3/reference-verify.stdout",
+      "bytes": 480,
+      "sha256": "40b867e806390c5c52f74ec071c555e534108443ec5b7dc41b7818d52b7b6549"
+    },
+    {
+      "original": "source-platform-r3.json",
+      "bytes": 374,
+      "sha256": "be0a9b128bc7cc8d9be74131dd99ec45950ea6e2c0395873fba369ffe067ecc0"
+    },
+    {
+      "original": "source-platform-r3.stdout",
+      "bytes": 100,
+      "sha256": "fe49f7f928442f4e68417e1171608101c02d246b488922513afa5b229a3112fd"
+    },
+    {
+      "original": "source-budget-r4.json",
+      "bytes": 498,
+      "sha256": "c73427749f7c6d0032221dff06986bc812ccefa208fb474433ba6c83b1d7590a"
+    },
+    {
+      "original": "source-budget-r4.stdout",
+      "bytes": 3689,
+      "sha256": "cf93f7649dccd17ca407ac37813ccdd3801df090ed3c16d6050a104f8d09fb20"
+    },
+    {
+      "original": "journey-r1/receipt.json",
+      "bytes": 7677,
+      "sha256": "7433a9eea9b01ed189207e5be2bb69a70ca862db4fcd5f2256a95d7ec0432e51"
+    },
+    {
+      "original": "journey-r2/receipt.json",
+      "bytes": 7679,
+      "sha256": "50c19a0bb45f0059b0c1c4890dac0776e7419df44b8e45303706a394be4be7c3"
+    }
+  ],
+  "independent_review": {
+    "report": "docs/delivery/2026-11-11-issue-dispatch-review.md",
+    "files": 32,
+    "spec_open": 0,
+    "standards_open": 0,
+    "closed": [
+      "SP1/P2",
+      "ST1/P2",
+      "ST2/P3"
+    ]
+  }
+}

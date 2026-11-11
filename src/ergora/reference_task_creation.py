@@ -7,7 +7,7 @@ import sys
 
 from .reference import _read_windows_contract, registration_paths
 from .state import file_lock
-from . import task_envelopes
+from . import issue_sources, task_envelopes
 
 
 _FILES = ('agent-bindings.json', 'task.json', 'policy.json', 'binding.json',
@@ -106,8 +106,9 @@ class _Creation:
         files = {name: self.document(temporary / 'tasks' / self.task_id / name)
                  for name in _FILES if name != 'agent-bindings.json'}
         files['agent-bindings.json'] = self.payload['selection']
-        if definition['schema_version'] == 2:
-            files['task.spec.json'] = task_envelopes.wrap(files['task.spec.json'], self.payload['composition'])
+        if definition['schema_version'] in (2, 3):
+            files['task.spec.json'] = task_envelopes.wrap(files['task.spec.json'], self.payload['composition'],
+                                                       self.payload.get('issue_source'))
         record = {'schema_version': definition['schema_version'], 'control_home': self.payload['control_home'],
                   'project': self.project['id'], 'repo': self.project['repo'],
                   'project_revision': self.project['revision'],
@@ -126,7 +127,7 @@ class _Creation:
         expected = {'schema_version', 'control_home', 'project', 'repo', 'project_revision',
                     'registration_sha256', 'execution', 'definition', 'files'}
         if (set(record) != expected or type(record['schema_version']) is not int
-                or record['schema_version'] not in (1, 2) or record['schema_version'] != record['definition']['schema_version']):
+                or record['schema_version'] not in (1, 2, 3) or record['schema_version'] != record['definition']['schema_version']):
             raise ValueError('Unsupported creation intent format')
         if (record['control_home'] != self.payload['control_home'] or record['project'] != self.project['id']
                 or record['repo'] != self.project['repo'] or record['execution'] != self.execution
@@ -140,8 +141,10 @@ class _Creation:
         self.check_size(record, _INTENT_LIMIT, 'creation intent')
         compiled = self.portable.validate_compiled(files['compiled.json'])
         spec, composition = task_envelopes.unwrap(files['task.spec.json'])
-        if spec != compiled['spec'] or (composition is not None) != (record['schema_version'] == 2):
+        if spec != compiled['spec'] or (composition is not None) != (record['schema_version'] in (2, 3)):
             raise ValueError('Creation intent execution envelope differs from its original spec')
+        if ('issue_source' in files['task.spec.json']) != (record['schema_version'] == 3):
+            raise ValueError('Creation intent source differs from its versioned definition')
         for filename, key in (('task.json', 'task'), ('policy.json', 'policy'), ('binding.json', 'binding')):
             if files[filename] != compiled[key]:
                 raise ValueError('Creation intent contract mismatch: ' + filename)
@@ -193,6 +196,17 @@ class _Creation:
                 mode = option['mode'] if member['role'] == 'reviewer' else option['execution']['mode']
                 if member['mode'] != mode or member['binding'] != binding or member['backend_reason'] != reason:
                     raise ValueError('Creation intent composition member differs from its saved selection: ' + path)
+        if record['schema_version'] == 3:
+            source = files['task.spec.json']['issue_source']
+            if definition['source'] != {'snapshot_sha256': source['sha256']}:
+                raise ValueError('Creation intent source differs from its selected snapshot')
+            issue_sources.bind_snapshot(source, record['project'], configuration['layers']['tracker']['binding'], request['tracker'])
+            from .reference_inputs import IssueSourceInput
+
+            # Inventory has no dynamic receipts or approval yet, so its exact
+            # complete context is known before publication. Later stages keep
+            # their original complete-material checks as results arrive.
+            IssueSourceInput(files['task.spec.json'], spec).inventory_context(request['repository']['starting_sha'])
 
     def load(self) -> dict | None:
         record = self.optional(self.intent_path, _INTENT_LIMIT)
@@ -239,7 +253,7 @@ class _Creation:
                 'compiled_sha256': self.sha(record['files']['compiled.json']),
                 'agent_bindings': record['files']['agent-bindings.json'],
                 **({'composition': task_envelopes.summary(record['files']['task.spec.json'])}
-                   if record['schema_version'] == 2 else {})}
+                   if record['schema_version'] in (2, 3) else {})}
 
     def publish(self, record: dict, *, save_intent: bool) -> dict:
         self.check_registration()

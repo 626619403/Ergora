@@ -149,7 +149,7 @@ def test_workspace_mode_does_not_relax_the_public_read_only_leaf_entry(work_crea
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Native workflow/monitor is Linux/WSL2')
 @pytest.mark.parametrize('case', ['full', 'source-artifact', 'source-claim', 'scope', 'commit', 'recovery',
-                                  'recovery-commit', 'recovery-tamper', 'results', 'results-source-artifact'])
+                                  'recovery-commit', 'recovery-tamper', 'results', 'results-source-artifact', 'issue-source'])
 def test_formal_work_reuses_original_checks_commits_and_sources(tmp_path, case):
     pytest.importorskip('temporalio')
     pytest.importorskip('mcp')

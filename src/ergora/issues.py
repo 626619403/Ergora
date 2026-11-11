@@ -5,24 +5,12 @@ import hashlib
 import json
 import re
 
-from . import contracts, issue_backends, projects
+from . import contracts, issue_backends, issue_sources, projects
 from .state import State, now
 
 
 _SHA = {'type': 'string', 'pattern': '^[a-f0-9]{64}$', 'not': {'pattern': '\\s'}}
 _TEXT = {'type': 'string', 'minLength': 1}
-_SNAPSHOT = {
-    'type': 'object', 'additionalProperties': False,
-    'required': ['schema_version', 'observation', 'tracker_binding'],
-    'properties': {
-        'schema_version': {'type': 'integer', 'const': 1},
-        'observation': {**contracts.ISSUE_OBSERVATION,
-            'required': [*contracts.ISSUE_OBSERVATION['required'], 'project', 'configuration_sha256'],
-            'properties': {key: value for key, value in contracts.ISSUE_OBSERVATION['properties'].items()
-                           if key != 'observed_at'}},
-        'tracker_binding': {'type': 'object', 'required': ['tool', 'project']},
-    },
-}
 _LINK = {
     'type': 'object', 'additionalProperties': False,
     'required': ['schema_version', 'project', 'snapshot_sha256', 'task', 'reason', 'linked_at',
@@ -74,16 +62,11 @@ def show(state: State, project_id: str, issue_id: str) -> dict:
 
 def _snapshot(row) -> dict:
     payload = json.loads(row['document'])
-    contracts.validate(payload, _SNAPSHOT, 'Saved issue snapshot')
-    observation, binding = payload['observation'], payload['tracker_binding']
-    backend = issue_backends.for_binding(binding)  # Configuration only; never reads credentials or sends I/O.
-    if (_identity(payload) != row['sha'] or observation['project']['id'] != row['project']
-            or binding['tool'] != observation['source']['provider']
-            or binding['project'] != observation['source']['project']
-            or backend.api_url != observation['source']['api_url']
-            or not isinstance(row['first_observed_at'], str) or not row['first_observed_at']):
-        raise ValueError('Saved issue snapshot differs from its content identity or project')
-    return {'schema_version': 1, 'sha256': row['sha'], 'first_observed_at': row['first_observed_at'], 'payload': payload}
+    result = {'schema_version': 1, 'sha256': row['sha'], 'first_observed_at': row['first_observed_at'], 'payload': payload}
+    issue_sources.validate_snapshot(result)
+    if payload['observation']['project']['id'] != row['project']:
+        raise ValueError('Saved issue snapshot differs from its project')
+    return result
 
 
 def _link(row) -> dict:

@@ -22,6 +22,9 @@
 |B0.1 设计与迁移|源码完成，存储33项通过／1项平台跳过：显式schema v2、固定历史v1夹具／v0升级、54 writer fences与旧连接拒绝；旧行／资产／备份、故障和进程中断回滚通过。完整独立两轴通过|
 |B0.2 用例与入口|本地通过：源码受影响152通过／1平台跳过；重复／并发capture和link、更新／换绑定、离线读／多对多、精确creation反例、分页及原字节保持；完整独立两轴通过|
 |B0.3 安装与旅程|完成：r1／r2各57通过／1平台跳过及真实13项旅程保留原包身份；最终r3新非editable包442／两RECORD／283及11映射回归通过；完整原home备份恢复／任务字节保持，首个driver失败保持，无正式start|
-|B0.4 审查与交付|本地出口完成：自身首审request-changes／194.63秒与聚焦approve／80.09秒、两次五scope完整读取；后补并发／投影由新的完整28文件独立两轴覆盖，SP1／ST1关闭、开放0／0。最终静态／ready／普通提交推送与本候选精确CI继续|
+|B0.4 审查与交付|本地出口完成：自身首审request-changes／194.63秒与聚焦approve／80.09秒、两次五scope完整读取；后补并发／投影由新的完整28文件独立两轴覆盖，SP1／ST1关闭、开放0／0。最终静态28／329／6值issue0、28ready独立通过；3c4ef39已普通提交／推送，自己的精确Git／远端／CI终核继续|
 
 最小CLI／HTTP先沿现有issue命名空间；本地列表有界，完整快照单独显式读取，列表不批量返回所有正文。只有真实静默错误才增回归，版本敏感的既有迁移／备份测试按SCHEMA_VERSION调整，不用新增同构CI。每完成节点更新[交付记录](../delivery/2026-11-11-issue-mapping.md)及[PLAN](../PLAN.md)。
+
+
+精确交付结案：3c4ef39的28Git／ready与作者SSH完整Ref、提交442包文件等原r3 wheel已独立核准；自己的CI42982197290第三官方run HTML Success，原评审两job各一次直接GET核Linux三／Windows四必要步骤completed/success。原REST403、非终态HTML与独立SSH407保持，详见[终核记录](../delivery/2026-11-11-issue-mapping-review.md#同片精确交付终核2026-11-11)。后续按[B1来源任务计划](2026-11-11-issue-dispatch.md)推进。

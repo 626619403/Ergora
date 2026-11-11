@@ -5,6 +5,7 @@ native implementation imports stay at the operations that actually use them.
 """
 
 from abc import ABC, abstractmethod
+import json
 from pathlib import Path
 
 from . import task_envelopes
@@ -16,6 +17,7 @@ class WorkflowInput(ABC):
     queue_suffix = ''
     requests_suffix = ''
     submit_activity = 'dev_submit'
+    artifact_protocol = None
 
     def __init__(self, document: dict, spec: dict):
         self.document, self.spec = document, spec
@@ -69,6 +71,14 @@ class WorkflowInput(ABC):
 
     def require_submission(self) -> None:
         """Refuse unsupported formal execution before dispatch or journal writes."""
+
+    def stage_material(self) -> dict:
+        """Additional frozen task data outside the structural resource tree."""
+        return {}
+
+    def evidence_contract(self) -> dict:
+        """Additional original input bytes needed by the offline evidence reader."""
+        return {}
 
 
 class LegacyInput(WorkflowInput):
@@ -200,6 +210,7 @@ class StageResultsInput(WorkDeliveryInput):
     version = 6
     queue_suffix = '.composition-v6'
     requests_suffix = '-composition-v6'
+    artifact_protocol = 'stage-artifacts-v1'
 
     @classmethod
     def workflow_type(cls):
@@ -214,8 +225,46 @@ class StageResultsInput(WorkDeliveryInput):
         return StageResultsAdapter({**config, 'requests': str(cls.request_root(Path(config['requests'])))})
 
 
+class IssueSourceInput(StageResultsInput):
+    version = 7
+    queue_suffix = '.composition-v7'
+    requests_suffix = '-composition-v7'
+
+    @classmethod
+    def workflow_type(cls):
+        from .reference_workflows import IssueSourceWorkflow
+
+        return IssueSourceWorkflow
+
+    @classmethod
+    def adapter(cls, config: dict):
+        from .reference_workflows import IssueSourceAdapter
+
+        return IssueSourceAdapter({**config, 'requests': str(cls.request_root(Path(config['requests'])))})
+
+    def stage_material(self) -> dict:
+        return {'issue_source': self.document['issue_source']}
+
+    def evidence_contract(self) -> dict:
+        return {'original_input': self.document, 'original_input_sha256': task_envelopes.identity(self.document)}
+
+    def inventory_context(self, expected_sha: str | None) -> dict:
+        """The complete first-stage input, shared by offline publication and v7 execution."""
+        request = self.spec['request']
+        context = {'task_id': request['task_id'], 'request_sha256': self.spec['request_sha256'],
+            'profile_sha256': self.spec['profile_sha256'], 'spec': self.spec, 'stage': 'inventory',
+            'expected_candidate_sha': expected_sha, 'unit': None, 'dependencies': {},
+            'author_ids': [], 'author_sessions': [],
+            'job_id': request['task_id'] + '-' + task_envelopes.identity({'stage': 'inventory'})[:24],
+            'admission': self.document}
+        if len(json.dumps(context, ensure_ascii=False, sort_keys=True, separators=(',', ':'),
+                          allow_nan=False).encode('utf-8')) > 1_000_000:
+            raise ValueError('Complete issue inventory context exceeds 1,000,000 bytes; split the task')
+        return context
+
+
 _INPUTS = {1: LegacyInput, 2: CompositionInput, 3: ReviewRequirementsInput, 4: ReviewDAGInput,
-           5: WorkDeliveryInput, 6: StageResultsInput}
+           5: WorkDeliveryInput, 6: StageResultsInput, 7: IssueSourceInput}
 
 
 def workers(client, queue: str, config: dict) -> list:

@@ -13,6 +13,7 @@ with workflow.unsafe.imports_passed_through():
     from dev_platform.adapter import FileAdapter, ContractViolation
     from dev_platform.workflow import DevelopmentWorkflow, StopWork
     from ergora import task_envelopes
+    from ergora.reference_inputs import IssueSourceInput
     from ergora.reference_review_opinions import review_observation
 
 
@@ -393,6 +394,29 @@ class StageResultsWorkflow(WorkDeliveryWorkflow):
     """The same original schedule, with explicitly versioned stage-result inputs."""
 
     envelope_version = 6
+
+    @workflow.run
+    async def run(self, document: dict) -> dict:
+        return await self._run_document(document)
+
+
+class IssueSourceAdapter(StageResultsAdapter):
+    envelope_version = 7
+
+
+@workflow.defn(name='ErgoraCompositionWorkflowV7')
+class IssueSourceWorkflow(StageResultsWorkflow):
+    """Retain the original schedule and its complete source-bearing admission."""
+
+    envelope_version = 7
+
+    def context(self, stage, expected_sha=None, unit=None, dependencies=None):
+        if stage == 'inventory':
+            try:
+                return IssueSourceInput(self.admission, self.spec).inventory_context(expected_sha)
+            except ValueError as error:
+                raise StopWork(str(error)) from error
+        return super().context(stage, expected_sha, unit, dependencies)
 
     @workflow.run
     async def run(self, document: dict) -> dict:

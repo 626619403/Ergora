@@ -75,7 +75,7 @@ def prepare(root, state, task_input, kind, examples, mode):
     definition = {'schema_version': 2, 'task_id': 'task-1', 'task_type': kind, 'issue_id': '1', 'input': task_input,
         'composition': {'manifest': manifest['path'], 'manifest_digest': manifest['digest'], 'review_protocol': 'dag-v1',
             'review_instance': 'root/review', 'mode': 'text-only', 'diversity': {'policy': 'allow-same'},
-            'execution': {'protocol': 'work-units-v2' if mode.startswith('composition-work-results') else 'work-units-v1',
+            'execution': {'protocol': 'work-units-v2' if mode.startswith('composition-work-results') or mode == 'composition-work-issue-source' else 'work-units-v1',
                 'instance': 'root/work', 'mode': 'workspace-task-mcp',
                 'assignments': {unit['id']: 'root/work/' + unit['id'] for unit in task_input['work_units']}},
             'backend_overrides': {path: {'binding': {'tool': 'codex', 'sandbox': 'current-container'},
@@ -85,6 +85,22 @@ def prepare(root, state, task_input, kind, examples, mode):
                                                'root/review/test-value/review')}}}
     if mode == 'composition-work-results':
         definition['composition']['backend_overrides']['root/review/structure/review']['binding']['model'] = 'fixture-reject'
+    if mode == 'composition-work-issue-source':
+        from unittest.mock import patch
+        from ergora import issue_backends, issues, projects
+
+        revision = state.project('demo')['revision']
+        projects.bind(state, 'demo', 'tracker', {'tool': 'github', 'project': 'fixtures/demo'}, revision)
+        # Synthetic observation: this protocol fixture never contacts a tracker
+        # or model. The independent issue tests exercise real loopback capture.
+        observation = {'schema_version': 1, 'source': {'provider': 'github', 'api_url': 'https://api.github.com',
+            'project': 'fixtures/demo', 'issue_id': '1'}, 'issue': {'native_id': 9001, 'title': 'Source protocol fixture',
+            'body': '完整来源必须进入每个执行与审查实例。\nNo additional permissions.\n', 'state': 'open',
+            'labels': ['fixture'], 'web_url': 'https://github.com/fixtures/demo/issues/1', 'updated_at': '2026-01-01T00:00:00Z'},
+            'response': {'sha256': hashlib.sha256(b'synthetic-fixture-response').hexdigest(), 'etag': None}, 'context_only': True}
+        with patch.object(issue_backends.GitHubBackend, 'read', return_value=observation):
+            saved = issues.capture(state, 'demo', '1', revision + 1)['snapshot']
+        definition.update(schema_version=3, source={'snapshot_sha256': saved['sha256']})
     return definition
 
 
@@ -182,7 +198,7 @@ async def exercise(root, case, app, activities, installation, state, runtime, re
         else:
             assert 'only the trusted Executor may commit' in receipt['detail']
         return {'case': case, 'original_owners': True, 'failed_before_successor': True, 'detail': receipt['detail']}
-    assert case in ('full', 'recovery', 'results')
+    assert case in ('full', 'recovery', 'results', 'issue-source')
     work_stages = ['work:' + unit['id'] for unit in app.spec['request']['input']['work_units']]
     for stage in work_stages:
         receipt = records[stage]
@@ -192,6 +208,10 @@ async def exercise(root, case, app, activities, installation, state, runtime, re
         materials = read(folder / 'materials.json')
         assert json.loads((folder / 'input/task.txt').read_text().splitlines()[-1]) == materials
         assert materials['root_task'] == app.spec['request']
+        if case == 'issue-source':
+            assert materials['issue_source'] == app.admission['issue_source']
+            assert json.loads((folder / 'input/task.txt').read_text().splitlines()[-1])['issue_source'] == app.admission['issue_source']
+            assert materials['artifact_protocol'] == 'stage-artifacts-v1'
         assert materials['effective_write_paths'] == materials['context']['unit']['paths']
         leaf = next(item for item in prepared['composition']['instances'] if item['path'] == read(folder / 'formal-call.json')['member'])
         assert all(resource['text'] in prepared['prompt'] for resource in leaf['resources'])
@@ -208,6 +228,11 @@ async def exercise(root, case, app, activities, installation, state, runtime, re
                     assert set(source['artifacts']) == {'change-summary', 'test-results'}
                     assert source['artifacts'] == {item['name']: (runtime / 'artifacts' / item['path']).read_text()
                                                    for item in source['receipt']['artifacts'] if item['name'] in source['artifacts']}
+            elif case == 'issue-source':
+                source = materials['work_inputs']['results']['root/work/implementation']
+                assert source['receipt'] == records['work:implementation']
+                assert set(source['artifacts']) == {'change-summary', 'test-results'}
+                assert 'composition-materials' not in source['artifacts']
             else:
                 source = materials['work_inputs']['results']['root/work/implementation']
                 assert source['receipt'] == records['work:implementation']
@@ -223,6 +248,11 @@ async def exercise(root, case, app, activities, installation, state, runtime, re
         folder = runtime / 'workspaces/task-1/jobs' / receipt['job_id'] / 'selected-agent'
         materials = read(folder / 'materials.json')
         assert materials['root_task'] == app.spec['request']
+        if case == 'issue-source':
+            assert materials['issue_source'] == app.admission['issue_source']
+            prepared = workflows.inspect_input(folder / 'input', material=True)
+            assert json.loads((folder / 'input/task.txt').read_text().splitlines()[-1])['issue_source'] == app.admission['issue_source']
+            assert materials['artifact_protocol'] == 'stage-artifacts-v1'
         if case != 'results' or path == 'root/review/structure/review':
             assert materials['review_inputs']['results']['root/work/validation']['receipt'] == records['work:validation']
         else:

@@ -2,7 +2,7 @@
 
 Ergora 把项目合同、可组合的专长 Agent、正式执行和可核对证据接在一起。CLI 与网页共用应用用例；Agent 后端、工单来源和外部通信各有自己的接入位置。当前实现仍复用冻结参考发行的六阶段与 Temporal，不要求每个项目使用工单，也没有第二套正式调度器。
 
-主体对应 `c1f31fc` 的生产源码，F7a工单读取及F7b.0上下文快照／关联在对应所有者处增补；当前进度以[PLAN](../PLAN.md)与各片交付记录为准。逐次实施说明已[逐字归档](current-history-2026-11-11.md)，当中的“当前”“待实现”和默认版本只代表原记录。[C6d源码清单](../delivery/evidence/2026-11-11-architecture-source-inventory.json)是该基线的53个第一方Python模块、203条静态本地导入边和18个第一方console JS，不包含后增的`issues / issue_backends`。原静态导入包含函数内导入、拓扑无环；动态装载、子进程和运行语义另按下文调用关系核对。
+主体对应 `c1f31fc` 的生产源码，F7a工单读取及F7b.0上下文快照／关联及B1b来源任务v7在对应所有者处增补；当前进度以[PLAN](../PLAN.md)与各片交付记录为准。逐次实施说明已[逐字归档](current-history-2026-11-11.md)，当中的“当前”“待实现”和默认版本只代表原记录。[C6d源码清单](../delivery/evidence/2026-11-11-architecture-source-inventory.json)是该基线的53个第一方Python模块、203条静态本地导入边和18个第一方console JS，不包含后增的`issues / issue_backends / issue_sources`。原静态导入包含函数内导入、拓扑无环；动态装载、子进程和运行语义另按下文调用关系核对。
 
 ## 模块与依赖
 
@@ -45,7 +45,7 @@ flowchart TB
 |`components`、`contracts`|随包工具目录／配置schema、严格结构校验|声明不代表安装或认证；schema不注入默认值，摘要算法不混用|
 |`state`、`asset_trees`|SQLite版本与锁、完整文件树身份|领域拥有自己的事务；文件字节与执行位影响身份|
 |`projects`、`bindings`、`registrations`|项目修订、有效工具选择、完整登记及旧登记采用|控制项目为权威；参考配置是单向投影，跨资源发布按原意图恢复|
-|`issues`、`issue_backends`|固定项目配置的工单观察、不可变快照／显式creation关联；GitHub／GitLab本族协议与局部选择|完整API base／namespace／number或iid及native ID分别保留；新link复用原tasks.creation，只有上下文关联，无任务启动／输入或批准改写／远端写入|
+|`issues`、`issue_backends`、`issue_sources`|固定项目配置的工单观察、不可变快照／显式creation关联；GitHub／GitLab本族协议与局部选择、标准库来源合同|完整API base／namespace／number或iid及native ID分别保留；新link复用原tasks.creation，只有上下文关联，无任务启动／输入或批准改写／远端写入|
 |`agent_definitions`、`workflow_definitions`|独立专家、精确嵌套引用、继承／DAG编译、preset与manifest|定义可静态检查；preview不授执行权，freeze不启动任务|
 |`definition_bundles`|两类定义共用的完整资源树、检查／修订／不可变版本发布|修订派生新包；逐定义发布，根最后发布，不是跨库事务|
 |`agent_runs`|独立叶子／角色的输入冻结、准入、调用和归档|原项目／定义／后端绑定保持；普通调用成功不生成正式任务通过|
@@ -90,7 +90,7 @@ flowchart TB
 
 ### 正式开发路径
 
-默认两开发preset采用 `work-units-v2`／正式信封v6；用户task-definition仍为v2，二者版本号含义不同。显式work-units-v1／v5与更早版本保留自己的身份，不自动迁移。在正式v5/v6中，每个原work unit一对一分配implementer实例，工作依赖必须匹配原units的传递依赖，全部Agent叶由work/review覆盖。静态图可表示的结构不保证正式运行器支持任意角色或拓扑。
+默认两开发preset采用 `work-units-v2`／正式信封v6；用户task-definition仍为v2，二者版本号含义不同。显式work-units-v1／v5与更早版本保留自己的身份，不自动迁移。在正式v5/v6中，每个原work unit一对一分配implementer实例，工作依赖必须匹配原units的传递依赖，全部Agent叶由work/review覆盖。静态图可表示的结构不保证正式运行器支持任意角色或拓扑。 工单来源任务显式用definition3／creation3／信封v7选择完整snapshot，限work-units-v2；默认v2/v6不变。v7的纯来源合同核完整API来源与本项目冻结绑定，正文是任务数据，不授执行权；start目前仍原广doctor。
 
 ```mermaid
 flowchart LR
@@ -144,7 +144,7 @@ sequenceDiagram
 
 `WorkflowInput`选出版本专用queue／request根；`reference_workflows`继承原六阶段，`StageDAG / WorkDelivery`只是同一冻结图的阶段数据投影。原units、job/context、monitor、ledger和FileAdapter继续拥有执行事实。Executor拥有checkout、依赖commit合并、路径门禁、确定性检查和可信commit；桥接调用沿`agent_runs`冻结输入、固定任务MCP、后端Interface及进程记录。
 
-v6使用 `StageResultsInput → WorkDeliveryInput` 和 `StageResultsWorkflow → WorkDeliveryWorkflow`，复用原调度及活动；输入材料另标 `schema_version: 2 / artifact_protocol: stage-artifacts-v1`。完整声明阶段产物、可信检查与意见内联；审计原件仍逐件核验，不递归复制旧prompt/materials。work的具名来源与直接控制前驱合并交付，另保留unit→instance映射；祖先资源和原1,000,000B预算保持。v5旧材料和history不改写。[版本表](contracts-and-identities.md#当前格式和责任)区分这些合同。
+v6使用 `StageResultsInput → WorkDeliveryInput` 和 `StageResultsWorkflow → WorkDeliveryWorkflow`，复用原调度及活动；输入材料另标 `schema_version: 2 / artifact_protocol: stage-artifacts-v1`。完整声明阶段产物、可信检查与意见内联；审计原件仍逐件核验，不递归复制旧prompt/materials。work的具名来源与直接控制前驱合并交付，另保留unit→instance映射；祖先资源和原1,000,000B预算保持。v7继承v6并通过Input.stage_material提供完整issue_source；stage-artifacts协议由Input拥有，不在执行器继续枚举新版本号。v5旧材料和history不改写。[版本表](contracts-and-identities.md#当前格式和责任)区分这些合同。
 
 崩溃恢复复用原job/context/monitor。HEAD偏离首次调用起点时，核Executor在首次HEAD门禁后发布的完整agent-selection和结果字节摘要，用已有证据区分可信commit与Agent自提交窗口；证据不足要求对账，不新增“成功”标记绕过原门禁。
 
@@ -220,7 +220,7 @@ flowchart LR
 |正式运行与训练结果|原task/spec／ingress leases／job ledger／Git／receipt／Temporal history；runner证据|原runtime／executor／runner拥有，不搬迁在途history|
 |只读索引与交接包|原材料引用索引；操作者明确导出的 `task-handoff-v1` ZIP|有来源的快照和内部身份校验，不是完整备份、来源认证或重新执行|
 
-JSON Schema Draft2020-12由`contracts`统一校验，普通Python JSON值与现有canonical身份保持；Web DTO只负责传输。格式、schema版本、摘要编码和迁移责任见[合同与身份表](contracts-and-identities.md)。CLI/env路径、项目定义、冻结任务、数据库版本与原生SDK配置分别归属，不能用一次JSON重编码合并旧身份。凭据只从外部环境或工具认证读取，分享定义保留变量名引用。
+公开JSON Schema Draft2020-12由`contracts`统一校验；需纯标准库读取的工单快照／版本化envelope由`issue_sources / task_envelopes`拥有严格运行合同，普通Python JSON值与现有canonical身份保持；Web DTO只负责传输。格式、schema版本、摘要编码和迁移责任见[合同与身份表](contracts-and-identities.md)。CLI/env路径、项目定义、冻结任务、数据库版本与原生SDK配置分别归属，不能用一次JSON重编码合并旧身份。凭据只从外部环境或工具认证读取，分享定义保留变量名引用。
 
 ## 修改影响与接入方式
 
