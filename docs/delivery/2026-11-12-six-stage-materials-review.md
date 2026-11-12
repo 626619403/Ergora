@@ -60,8 +60,37 @@ Codex原stream中42个UTF-8响应含重复、19次base64重试；重建时只用
 
 公开[自身审查身份与读取投影](evidence/2026-11-12-six-stage-materials-self-review.json)SHA256为 `db4c218875622a5907735aa12487de481d52217aa4ecb9a25e4fc0e592bb182c`；其evidence字段、五scope身份、原文件清单及用量逐项匹配实际原件。原生本轮计数为input 3,083,925、其中cached input 2,858,880，output 8,847、reasoning output 4,071；缓存和reasoning不再次相加，不据此推导账单或错误独立性。该模型在冻结时收到的是检查叙述，没有自行复跑测试或读取后续最终状态文档。
 
-已读static-r2／r3原回执：均为36文件、6个已加载秘密值、issue0，JSON与空白检查通过；两份快照分别有216／217个本地链接目标，范围不含锚点、渲染或外部URL。r3逐文件快照与当前比较，仅本报告的状态更新不同；四份最新状态／计划文档也已读取。本报告相对文件链接均可解析，最后ready身份与静态记账由交付所有者刷新，不借旧清单宣称新字节已经核过。
+已读static-r2／r3原回执：均为36文件、6个已加载秘密值、issue0，JSON与空白检查通过；两份快照分别有216／217个本地链接目标，范围不含锚点、渲染或外部URL。该轮补核时，r3逐文件快照与工作树比较仅本报告的状态更新不同，四份当时最新状态／计划文档也已读取；本报告相对文件链接均可解析。后续static-r4与最终ready身份已按下节核验，后续状态记账不借旧清单宣称新字节已经核过。
 
-**B1本地出口通过：实现、对应行为／安装身份、实际自身模板和完整候选独立补核已记录，两轴开放finding均为0。** 普通提交／推送、最终Git／远端身份及该提交必要CI仍待闭合；此报告不宣称B1精确交付终结，B2／C／D保持开放。
+**B1精确交付终结：实现、对应行为／安装身份、实际自身模板、完整候选独立补核、普通提交／推送、精确Git／作者Ref原件及本提交自己的必要CI均已核准，两轴开放finding均为0。** 独立直接Ref的403保持；B2总预算、C原生单实例与D完整真实旅程继续开放。
+
+## 精确Git与远端原件终核
+
+产品提交为 `f394945db894740ad23a81c62b4ad87c85a84511`，唯一父提交为固定基线 `210f58d46c3332f4d192ee8cb13e8c149dd2173f`。协调者直接读取Git tree／blob，核变更路径恰为36份；每件Git内容、尺寸、SHA及文件模式均等于 `closure/ready-r1/files/` 原件。ready manifest SHA256为 `27dcd5a53417ccf2d3ab5440f8d735c33984731ca498e1c5e5b31e6d2b73fce3`，其中提交时的本报告SHA256为 `f38799e33d0fd65149b5f01d3ad61a22b8aa42045a1e66573106b2306e765d82`。static-r4的36文件身份也逐项等于ready，218个本地目标／6个已加载秘密值issue0。
+
+已直接核作者commit、push、Ref三组命令、stdout／stderr及JSON回执：退出均为0，push没有force，原stdout显示基线至上述提交的普通更新；SSH `ls-remote` 原stdout将 `refs/heads/refactor/architecture-foundations` 指向同一完整SHA。这是对作者远端原件的独立核验。
+
+协调者于2026-11-12 11:47:19 UTC仅一次直接GET官方GitHub Ref接口，返回HTTP403，原body明确为API限流；280字节body的SHA256为 `cab107d310af6137d3ca21f7de123c972a91cb1cbd91e2f58f61fe192ba31735`，GitHub Request-ID为 `C786:1BD399:1D40F49:2D1CBAE:6AF5A746`。保留该失败，不声称评审者独立远端读取成功，也未重试。
+
+本产品提交自己的必要CI已按下节读取实际原件终核，没有借历史候选CI。上述追加为同片评审状态记账，不改变已核36份产品提交身份，不要求递归产品审查。
+
+## 本提交自己的CI终核
+
+协调者离线直接读取[run43211896925](https://github.com/626619403/Ergora/actions/runs/43211896925)及两个job的官方原HTML和获取回执。run页面的commit链接为完整 `f394945db894740ad23a81c62b4ad87c85a84511`，可见Status为 `Success`；三份回执均HTTP200，URL、实际body字节数与SHA逐项相符。
+
+Ubuntu／Python3.11的job为 `131161352417`，Windows／Python3.12的job为 `131161352527`，原 `check-steps` 均为 `data-job-status="completed"`。按该提交内 `.github/workflows/portability.yml` 核七个必要步骤：
+
+|必要步骤|Ubuntu／3.11|Windows／3.12|
+|---|---|---|
+|Build and install wheel|success／completed|success／completed|
+|Packaged reference identity|success／completed|success／completed|
+|Native application regression|success／completed|success／completed|
+|Windows PowerShell 5.1 installer and upgrade|workflow条件跳过，非Linux必要步骤|success／completed|
+
+七个实际必要步骤均有开始／完成时间、`data-job-completed`及完整绑定本提交SHA和所属job的 `data-log-url`；未把Linux按条件skipped的Windows步骤算作成功。Ubuntu回归于12:03:02 UTC完成，Windows安装／升级于11:59:34 UTC完成。`ci-terminal-r4.json` 的run、job和逐步骤汇总与这些原HTML一致。
+
+原件body SHA256分别为：run `1b7b96ffcbd76f42dc3cddaa1fc62390e88a671234c415041deefaa1593eb747`；Ubuntu job `cf72c10a3e2c74b1710f4d98f34c74090029cc8ff2884616067cef70fb8b6293`；Windows job `7266f2928e6641d959440fe92d896639e826bbd8a70de30f23c85de10e8df6f4`。私有原件位于所属closure的 `ci-run-html-r3/`、两份 `ci-job-…-html-r1/`。
+
+原REST403、前两份run HTML的In progress、首次取得run Success时两job尚未核验的记录，以及matrix／navigation两份404均保留原范围。终态证据来自官方HTML原件，经独立评审者离线核验；不称REST终态读取成功、评审者直接网络成功或完整日志下载。本次没有重跑产品、模型或安装检查。
 
 两轴汇总：Standards 0项，轴内无最严重finding；Spec 0项，轴内无最严重finding。

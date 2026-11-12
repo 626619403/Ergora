@@ -18,7 +18,7 @@
 |B1.1 版本与投影|新 schema、明确准备叶、完整覆盖、冻结创建／恢复、独立 queue/request-root；stdlib 读取不引入运行依赖|已实现并独立审查通过，含静态／创建／恢复及纯stdlib读取检查|
 |B1.2 实际材料消费者|前两阶段使用真实受限调用；精确 Git、完整 inventory 结果、祖先正文／附件；容量失败、旧模式保持|已实现并独立审查通过；原进程组件旅程及MCP范围回归通过，原首轮失败保留|
 |B1.3 行为验收|受影响现有 suite、必要缺失风险回归、原 Executor／stage_driver／native 夹具、安装身份与283冻结文件|已验证：整理后受影响源码295项、非editable安装58项通过；453产品文件／两RECORD／283冻结身份通过|
-|B1.4 审查与交付|自己的实际审查模板、新 fresh-context 独立两轴评审、修正复核、普通提交／推送及该候选必要 CI|完整36文件及真实模板原件已由原独立评审同片补核，两轴开放0／0，本地出口通过；实际Codex377.86秒approve／五scope全文，Claude原API400保持；普通交付及该提交CI待做|
+|B1.4 审查与交付|自己的实际审查模板、新 fresh-context 独立两轴评审、修正复核、普通提交／推送及该候选必要 CI|完整36文件及真实模板原件已由原独立评审同片补核，两轴开放0／0；实际Codex377.86秒approve／五scope全文，Claude原API400保持。f394945已普通提交／推送、作者SSH同完整Ref；精确Git／作者Ref原件及自己的CI43211896925双OS七必要步骤经原评审终核通过，B1精确交付终结；原独立Ref403／在途保持|
 
 实现位置优先使用 `review_dags`、`tasks`、`task_envelopes`、`reference_task_creation`、`reference_inputs/workflows/executor` 和 `task_mcp`。共同行为放在其原所有者，仅在两个实际消费者需要时抽共享实现；不为阶段各复制一个执行器。测试复用现有原生夹具，不增加重复 CI 或覆盖普通显式异常的断言。首次验收不能把手工 stage 活动序列称为 Temporal 完整任务生命周期；完整实际旅程归 D。
 

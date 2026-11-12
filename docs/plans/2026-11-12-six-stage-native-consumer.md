@@ -40,8 +40,8 @@ flowchart LR
 |节点|范围与实际出口|主要所有者与必要验证|状态|
 |---|---|---|---|
 |A 源码设计|一个父、一个六阶段实例；选原task启动方式；列全阶段覆盖、材料、真实权限／预算和拒绝范围。|本计划及对应源码核对；研究不作运行判词。|设计完成；[D0同片独立补核](../delivery/2026-11-12-specialist-adoption-review.md)开放0／0|
-|B1 全阶段材料消费者|显式新正式输入选择inventory／plan及work／review；前两者受限调用获得全部父材料、必要仓库及完整阶段结果；原writer模式如实保持。|tasks、task_envelopes、reference_inputs／executor及原stage_driver／agent_runs；版本化投影。验证超过60k依赖尾部完整或完整拒绝、祖先资源／附件完整、遗漏／重复叶拒绝、旧合同保持。|[B1本地出口](2026-11-12-six-stage-materials.md)通过：源码295／安装58、实际模板approve／全文及完整36文件独立两轴0／0；普通交付与必要CI待做|
-|B2 最小总预算消费者|在首次授权prepare的原合同中保存同一预算身份／起点／deadline；剩余时间贯穿准备、等待、模型、可信命令及收集／清理，恢复不重领额度。|原创建／提交、WorkflowInput／workflow、Executor和原monitor。对真实入口注入受控时钟／丢回执，核超期fence／unknown及调用额度，不只测预算对象自身减数。|依赖B1，待实现|
+|B1 全阶段材料消费者|显式新正式输入选择inventory／plan及work／review；前两者受限调用获得全部父材料、必要仓库及完整阶段结果；原writer模式如实保持。|tasks、task_envelopes、reference_inputs／executor及原stage_driver／agent_runs；版本化投影。验证超过60k依赖尾部完整或完整拒绝、祖先资源／附件完整、遗漏／重复叶拒绝、旧合同保持。|[B1本地出口](2026-11-12-six-stage-materials.md)通过：源码295／安装58、实际模板approve／全文及完整36文件独立两轴0／0；f394945普通提交／推送、精确原件及自己的CI43211896925双OS七必要步骤经原评审终核通过，B1精确交付终结|
+|B2 最小总预算消费者|在首次授权prepare的原合同中保存同一预算身份／起点／deadline；剩余时间贯穿准备、等待、模型、可信命令及收集／清理，恢复不重领额度。|原创建／提交、WorkflowInput／workflow、Executor和原monitor。对真实入口注入受控时钟／丢回执，核超期fence／unknown及调用额度，不只测预算对象自身减数。|[B2细化计划](2026-11-12-six-stage-budget.md)已立，执行接缝／a／b／c分片；调查、独立设计复核及进程原语探针完成，两P2关闭／开放0／0，产品待实现|
 |C 单实例原生调用|父manifest／精确定义链、实例路径、项目revision、原任务／baseline、全阶段选择、能力及预算冻结为调用输入；原创建／提交唯一消费。|按真实消费者扩版本化定义／静态编译；原任务保存完整原输入，原ID观察／取消／对账及候选证据投影。重复start、未知回应、wrong memo／full input及未执行外部边有行为验证。|依赖B1／B2，待实现|
 |D 实际旅程与交付|隔离安装后，CLI一个小治理任务完成真实前阶段、精确计划批准、work／integrate／verify／review、候选／evidence及原ID恢复；核全部实际会话与拥有资源清理。|新候选自己的自身审查模板、新fresh-context两轴评审、受影响检查及必要CI；普通提交／推送。真实调用与失效注入分别记录；未成功异构后端不称双后端通过。|依赖C，待实现|
 
