@@ -1,6 +1,6 @@
 # B2：一次授权、全程共用的六阶段预算
 
-产品基线`f394945db894740ad23a81c62b4ad87c85a84511`。承接[D1的B2合同](2026-11-12-six-stage-native-consumer.md)及[B1完整材料](2026-11-12-six-stage-materials.md)。本文件是下一片的设计与实施计划，预算产品尚未实现，独立设计复核开放0／0；[交付记录](../delivery/2026-11-12-six-stage-budget.md)逐节点保存实际证据，恢复时先核[PLAN](../PLAN.md)、本文件、Git和所属交付。B1自己的CI另按原候选记录，不作为B2验收。
+产品基线`f394945db894740ad23a81c62b4ad87c85a84511`。承接[D1的B2合同](2026-11-12-six-stage-native-consumer.md)及[B1完整材料](2026-11-12-six-stage-materials.md)。本文件是下一片的设计与实施计划，B2a准备合同已实现、正在行为与独立出口验收；B2b／c运行消费者未实现，独立设计复核开放0／0；[交付记录](../delivery/2026-11-12-six-stage-budget.md)逐节点保存实际证据，恢复时先核[PLAN](../PLAN.md)、本文件、Git和所属交付。B1自己的CI另按原候选记录，不作为B2验收。
 
 ## 行为与范围
 
@@ -58,7 +58,7 @@ flowchart LR
 |节点|交付与主要所有者|必要证据|状态|
 |---|---|---|---|
 |B2.0 实际执行接缝|小型独立进程探针，验证绝对截止覆盖准备延迟、阻塞锁和另建session的后代；只用既有进程监督原语，探针不进入产品或CI。|真实PID／starttime、原返回与清理结果；失败保持，不能用算术对象测试替代。探针只验证监督原语，真实prepare材料与正式receipt门禁仍须各片验收。|三种实际进程探针及原件独立补核通过，观察者未代清理；设计SP1／DS1两P2已关闭、开放0／0|
-|B2a 持久预算与准备合同|`tasks`／CLI／HTTP共用prepare；原`reference_task_creation`保存一次原件，新schema及WorkflowInput读完整实例；完整材料遍历／编译／收集及清理由prepare worker受同一deadline监督，preview/create/resume保持精确身份。|首次prepare丢回执／重复／并发返回同实例；时钟前进preview不变；慢manifest／编译在实际入口停止且不漏清理；冲突／到期不发布；旧合同保持。新输入的start显式unsupported，不能注册一个可绕过预算的worker。|待实现|
+|B2a 持久预算与准备合同|`tasks`／CLI／HTTP共用prepare；原`reference_task_creation`保存一次原件，新schema及WorkflowInput读完整实例；完整材料遍历／编译／收集及清理由prepare worker受同一deadline监督，preview/create/resume保持精确身份。|首次prepare丢回执／重复／并发返回同实例；时钟前进preview不变；慢manifest／编译在实际入口停止且不漏清理；冲突／到期不发布；旧合同保持。新输入的start显式unsupported，不能注册一个可绕过预算的worker。|已实现；三处独立P2及模型preview P2已修、原四red／源码24项通过。r2包455／两RECORD／283冻结及安装核心80项通过，自身聚焦145.60秒approve／五scope全文、原恢复54项／代表旅程5项通过；新增SP3／ST3最终witness慢fsync在r2包真实red已修，r3安装25项及自身聚焦106.92秒approve／五scope全文通过；完整21文件独立两轴开放0／0、六finding关闭，本地出口通过；普通提交／推送及自己的CI继续，原失败／partial保持|
 |B2b 原workflow消费者|原submission／WorkflowInput／Temporal共用deadline与slot，涵盖队列、owner、semaphore、poll、重试及原fence。|真实workflow调度的过期排队／owner等待、并发准入；丢start回执后到期仍只lookup，wrong memo／完整input保持。不能拿手工stage序列冒充Temporal生命周期。|依赖B2a；仍不开放新执行|
 |B2c 实际进程与收集闭合|原Executor／进程所有者适配整个job的构造、Git／锁、可信命令、MCP／模型、快照、读取／hash及清理；child返回待核结果，原finalizer清理确认后唯一发布全部正式终态及ledger更新，最后才开放新start。|慢Git／被占锁／慢preflight或收集、TERM抵抗及脱离组孙进程；child结果已返回而后代仍存活时原poll／fence仍unresolved，不因FAILED／CANCELLED误确认；真实spawn数不超过slot；原ID恢复、旧进程原件和283身份。|依赖B2.0／a／b|
 |B2d 独立出口与发布|受影响行为检查、非editable安装、实际自身审查模板、新fresh-context两轴及普通提交／推送和自己的必要CI。|每片实际命令、失败／未验范围、finding修正复核及精确身份。最终真实六阶段旅程归D，不因本片受控进程通过提前关闭。|各可独立交付片分别执行|
@@ -72,3 +72,13 @@ B2a／b可分片交付准备合同及控制消费者，但新运行始终阻断�
 进程迁移先围绕同一request／started／PID／terminal与unknown Interface组织，保持原任务调度；收集完成及拥有进程停止确认后才发布任意正式终态回执。新finalizer恢复时只收集核对原attempt／待核结果，不能重新执行child body；正式receipt已发布而ledger更新中断时只恢复原状态更新。不会仅以模型返回、future.done或Temporal关闭释放仍未确认的资源。预算与原安装级active上限、单task祖先并发分别记录；多task项目全局上限不在本片无实现承诺中。
 
 复用现有creation／submission／transport／composition／work／processes行为夹具；新增检查只覆盖实际的静默失败风险和生命周期，不复制预算减数、默认值断言或重复CI。每个完整片更新本计划与交付记录，启动新的fresh-context独立评审；产品大项同时使用Ergora自身模板，核实际材料／范围和成本。设计／探针结论与产品执行判词分别保存。
+
+## B2a 当前实现接缝
+
+本片代码从文档检查点`e37f617f9aca566d862175de5a1e6b25a08ba2de`推进，产品基线仍为上述f394945。新definition5在原定义中增加稳定`budget`：`wall_seconds`（2–604800）、总额内`cleanup_seconds`（至少1且小于总额）和`model_invocations`（1–258）。其他严格维度在授权前拒绝。完整input9携带原预算实例和全部已知slot；它可离线读取，但start、直接workflow注册和Executor均拒绝执行，worker和请求根枚举不包含v9。
+
+`task prepare`先在原task-creations锁下原子保存预算、定义／项目身份摘要，再保存唯一attempt并进入supervised准备worker。安装身份、当前项目重核、整个`tasks._definition`、manifest冻结和编译在worker内。原监督者等待拥有树退出并清理编译scratch后才写准备成果及小的完成witness；新preview只读取该冻结成果，时钟不进入preview。create明确确认prepare和preview两个SHA，按同一截止核发布；resume只读原intent，不重编／重领。绑定或注册修订冲突可见。
+
+准备worker使用总额内的工作截止请求停止，原subreaper监督覆盖另建session的后代。收集／清理使用同一总截止；不响应的清理保持原attempt与unknown，观察调用30秒结束不会杀掉安全清理或重启body。确认后仍超期则记录exhausted和实际overrun，不开放新合同。首片不承诺内核强实时；整个job的正式receipt finalizer仍归B2c，不能借prepare witness称其已经实现。失败／未知的prepare不自动重做body；只观察原ID，新的授权须使用新task ID。
+
+准备完成witness采用先持久化小候选、后重核总截止、最后链接原字节的顺序。迟到候选只可发布exhausted；elapsed／recorded_at是候选决策处的采样，超期落盘继续作为安全收尾，不宣称内核强实时或测得自身最终原子链接返回时刻。SP3原r2慢fsync失败及r3修正证据分别记录，不能把r2模型approve扩为该修正的判词。

@@ -42,14 +42,14 @@ def test_control_plane_import_graph_is_acyclic(local_dependencies):
 
 @pytest.mark.parametrize("module,allowed", [
     ("components", set()), ("contracts", set()), ("state", set()),
-    ("review_dags", set()), ("issue_sources", set()),
-    ("task_envelopes", {"review_dags", "issue_sources"}),
+    ("review_dags", set()), ("issue_sources", set()), ("reference_budget", set()),
+    ("task_envelopes", {"review_dags", "issue_sources", "reference_budget"}),
     ("handoff", {"contracts", "task_envelopes", "issue_sources"}),
     ("windows_job", set()), ("processes", {"windows_job"}),
 ])
 def test_foundations_do_not_depend_on_application_modules(local_dependencies, module_imports, module, allowed):
     assert local_dependencies[module] <= allowed
-    if module in {"review_dags", "task_envelopes", "issue_sources"}:
+    if module in {"review_dags", "task_envelopes", "issue_sources", "reference_budget"}:
         external_roots = {name.split(".")[0] for name in module_imports[module]
                           if not name.startswith("ergora.")}
         assert external_roots <= sys.stdlib_module_names

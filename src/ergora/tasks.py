@@ -6,22 +6,24 @@ import json
 from pathlib import Path
 import re
 
-from . import agent_backends, agents, bindings, contracts, issue_snapshots, issue_sources, projects, reference, workflow_definitions
+from . import agent_backends, agents, bindings, contracts, issue_snapshots, issue_sources, projects, reference, reference_budget, workflow_definitions
+from .reference_creation_process import task_preparation
 from .asset_trees import inventory_tree
 from .state import State
 from .task_envelopes import identity
 
 
 _DEFINITIONS = {version: json.loads((Path(__file__).parent / f'data/schemas/task-definition-v{version}.json').read_text(encoding='utf-8'))
-                for version in (1, 2, 3, 4)}
+                for version in (1, 2, 3, 4, 5)}
 
 
-def _project(state: State, project_id: str) -> dict:
+def _project(state: State, project_id: str, *, validate_runtime: bool = True) -> dict:
     project = state.project(project_id)
     registration = project.get('registration')
     if not registration or registration['status'] != 'published':
         raise ValueError('Formal tasks require a published unified project registration')
-    reference.validate_installation(Path(registration['definition']['execution']['installation']))
+    if validate_runtime:
+        reference.validate_installation(Path(registration['definition']['execution']['installation']))
     return project
 
 
@@ -42,7 +44,7 @@ def _definition(state: State, project: dict, definition: dict) -> dict:
         raise ValueError('Task definition exceeds 1 MiB')
     selection = bindings.development_snapshot(project, projects.effective_configuration(project))
     result = {'definition': definition, 'selection': selection}
-    if version in (2, 3, 4):
+    if version in (2, 3, 4, 5):
         result['composition'] = _composition(definition, selection)
     if 'source' in definition:
         from .task_envelopes import manifest_graph
@@ -183,14 +185,23 @@ def _run_id(value: str) -> None:
 
 def preview(state: State, project_id: str, definition: dict, expected_revision: int) -> dict:
     """Compile in temporary storage and return the exact proposed task and bindings."""
+    if isinstance(definition, dict) and type(definition.get('schema_version')) is int and definition['schema_version'] == 5:
+        project = _budget_project(state, project_id, definition, expected_revision)
+        return reference.task_creation(project, state.root, 'preview', {'definition': definition, 'budgeted': True})
     project = _project(state, project_id)
     _revision(project, expected_revision)
     return reference.task_creation(project, state.root, 'preview', _definition(state, project, definition))
 
 
-def create(state: State, project_id: str, definition: dict, expected_revision: int, preview_sha256: str) -> dict:
+def create(state: State, project_id: str, definition: dict, expected_revision: int, preview_sha256: str,
+           *, prepare_sha256: str | None = None) -> dict:
     """Publish only an explicitly previewed immutable task, after saving its intent."""
     _digest(preview_sha256, 'Preview')
+    if isinstance(definition, dict) and type(definition.get('schema_version')) is int and definition['schema_version'] == 5:
+        _digest(prepare_sha256, 'Preparation')
+        project = _budget_project(state, project_id, definition, expected_revision)
+        return task_preparation(project, state.root, 'create', {'definition': definition,
+            'prepare_sha256': prepare_sha256, 'preview_sha256': preview_sha256})
     # Binding and registration writers use the same SQLite write reservation.
     # Hold it through publication so an approved revision cannot change halfway.
     with state.connect() as db:
@@ -210,12 +221,41 @@ def creation(state: State, project_id: str, task_id: str) -> dict:
 def resume_create(state: State, project_id: str, task_id: str, expected_revision: int, intent_sha256: str) -> dict:
     """Finish the original saved publication without recompiling or changing its bindings."""
     _digest(intent_sha256, 'Intent')
+    project = _project(state, project_id, validate_runtime=False)
+    _revision(project, expected_revision)
+    prepared = reference.task_creation(project, state.root, 'preparation', {'task_id': task_id})
+    if prepared['status'] != 'not_recorded':
+        return task_preparation(project, state.root, 'resume',
+                                {'task_id': task_id, 'intent_sha256': intent_sha256})
     with state.connect() as db:
         db.execute('BEGIN IMMEDIATE')
         project = _project(state, project_id)
         _revision(project, expected_revision)
         return reference.task_creation(project, state.root, 'resume',
                                        {'task_id': task_id, 'intent_sha256': intent_sha256})
+
+
+def _budget_project(state: State, project_id: str, definition: dict, expected_revision: int) -> dict:
+    """Only bounded input/identity admission may precede durable authorization."""
+    contracts.validate(definition, _DEFINITIONS[5], 'Budgeted task definition')
+    reference_budget.validate_policy(definition['budget'])
+    if len(json.dumps(definition, ensure_ascii=False, allow_nan=False).encode('utf-8')) > 1_048_576:
+        raise ValueError('Task definition exceeds 1 MiB')
+    project = _project(state, project_id, validate_runtime=False)
+    _revision(project, expected_revision)
+    return project
+
+
+def prepare(state: State, project_id: str, definition: dict, expected_revision: int) -> dict:
+    """Authorize once, then freeze complete six-stage materials in the original owner."""
+    project = _budget_project(state, project_id, definition, expected_revision)
+    return task_preparation(project, state.root, 'prepare', {'definition': definition})
+
+
+def preparation(state: State, project_id: str, task_id: str) -> dict:
+    """Observe the original preparation without renewing it or issuing work."""
+    project = _project(state, project_id, validate_runtime=False)
+    return reference.task_creation(project, state.root, 'preparation', {'task_id': task_id})
 
 
 def status(state: State, project_id: str, task_id: str, *, run_id: str | None = None, timeout: int = 20) -> dict:

@@ -19,6 +19,7 @@ class WorkflowInput(ABC):
     submit_activity = 'dev_submit'
     artifact_protocol = None
     complete_resources = False
+    execution_enabled = True
 
     def __init__(self, document: dict, spec: dict):
         self.document, self.spec = document, spec
@@ -345,18 +346,34 @@ class FullStageMaterialsInput(StageResultsInput):
         return {'original_input': self.document, 'original_input_sha256': task_envelopes.identity(self.document)}
 
 
+class BudgetedInput(FullStageMaterialsInput):
+    """Readable persisted input; execution stays closed until all owners consume it."""
+
+    version = 9
+    queue_suffix = '.composition-v9'
+    requests_suffix = '-composition-v9'
+    execution_enabled = False
+
+    @classmethod
+    def workflow_type(cls):
+        raise ValueError('Budgeted six-stage execution is unsupported until the complete lifecycle consumer is available')
+
+    def require_submission(self) -> None:
+        self.workflow_type()
+
+
 _INPUTS = {1: LegacyInput, 2: CompositionInput, 3: ReviewRequirementsInput, 4: ReviewDAGInput,
-           5: WorkDeliveryInput, 6: StageResultsInput, 7: IssueSourceInput, 8: FullStageMaterialsInput}
+           5: WorkDeliveryInput, 6: StageResultsInput, 7: IssueSourceInput, 8: FullStageMaterialsInput, 9: BudgetedInput}
 
 
 def workers(client, queue: str, config: dict) -> list:
     """Register every supported version through its own construction contract."""
-    return [implementation.worker(client, queue, config) for implementation in _INPUTS.values()]
+    return [implementation.worker(client, queue, config) for implementation in _INPUTS.values() if implementation.execution_enabled]
 
 
 def request_roots(original: Path) -> tuple[Path, ...]:
     """The registered input versions own the executor's request namespaces."""
-    return tuple(implementation.request_root(original) for implementation in _INPUTS.values())
+    return tuple(implementation.request_root(original) for implementation in _INPUTS.values() if implementation.execution_enabled)
 
 
 def execution_input(document: dict) -> WorkflowInput:

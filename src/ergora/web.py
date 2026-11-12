@@ -125,6 +125,7 @@ class IssueWritebackObservePayload(Payload):
 
 class TaskCreationPayload(TaskDefinitionPayload):
     preview_sha256: str = Field(pattern="^[0-9a-f]{64}$")
+    prepare_sha256: str | None = Field(default=None, pattern="^[0-9a-f]{64}$")
 
 
 class TaskResumePayload(Payload):
@@ -497,13 +498,22 @@ def create_app(home: Path | None = None) -> FastAPI:
         return issue_writebacks.observe(state, project_id, digest,
             comment_id=body.comment_id, page=body.page, cursor=body.cursor)
 
+    @application.post("/api/projects/{project_id}/tasks/prepare")
+    def prepare_formal_task(project_id: str, body: TaskDefinitionPayload):
+        return tasks.prepare(state, project_id, body.definition, body.revision)
+
+    @application.get("/api/projects/{project_id}/tasks/{task_id}/preparation")
+    def formal_task_preparation(project_id: str, task_id: str):
+        return tasks.preparation(state, project_id, task_id)
+
     @application.post("/api/projects/{project_id}/tasks/preview")
     def preview_formal_task(project_id: str, body: TaskDefinitionPayload):
         return tasks.preview(state, project_id, body.definition, body.revision)
 
     @application.post("/api/projects/{project_id}/tasks")
     def create_formal_task(project_id: str, body: TaskCreationPayload):
-        return tasks.create(state, project_id, body.definition, body.revision, body.preview_sha256)
+        return tasks.create(state, project_id, body.definition, body.revision, body.preview_sha256,
+                            prepare_sha256=body.prepare_sha256)
 
     @application.get("/api/projects/{project_id}/tasks/{task_id}/creation")
     def formal_task_creation(project_id: str, task_id: str):

@@ -564,6 +564,23 @@ ergora composition verify-manifest ./review-requirements-manifest
 
 安装并重启新版 worker／executor 才能消费 v8 队列；与 v7 一样按实际冻结后端和本地执行条件准入，所需服务可显式启动 `temporal worker executor`。这是完整材料支持，统一总预算与原生嵌套调用仍待各自交付。
 
+### 一次授权的预算准备
+
+Linux／WSL2 可先使用 task-definition v5 准备完整预算合同：在上述 v4 定义中将 `schema_version` 改为 `5`，增加 `budget`，例如 `{"wall_seconds":3600,"cleanup_seconds":60,"model_invocations":16}`。清理预留包含在总额内；调用上限涵盖 inventory、plan、每个 work unit 和每个 reviewer（含建议审查），至少应覆盖这些已知 slot。这里计模型启动槽，不计后端内部 API 请求、token 或费用。
+
+```bash
+ergora task prepare my-project --definition task-definition.json --revision 1
+ergora task preparation my-project TASK_ID
+ergora task preview my-project --definition task-definition.json --revision 1
+ergora task create my-project --definition task-definition.json --revision 1 --prepare-sha256 PREPARE_SHA --preview-sha256 PREVIEW_SHA
+```
+
+首次 prepare 在读取安装和材料之前保存唯一预算；重复或丢回执后继续读原 TASK_ID，不刷新起点。只在 prepare 的 `status: prepared` 后预览和创建。preview 读取完整冻结成果，包含两个需确认的 SHA，时间前进不改变其正文。create 到期不再发布；已保存的 intent 继续使用原 `creation/resume-create`，不重编材料。准备绑定项目修订和注册身份，修改后不能把旧授权换成新预算。
+
+`authorized` 表示预算已存但尚未开始 body，`unknown` 表示原 attempt 或清理仍未确认，`failed/exhausted` 不发布可用准备成果；检查 `budget_status` 与原私有输出。失败或未知不自动重跑 body，先对账原身份；新的独立授权需新 task ID。单次观察超过30秒会返回 unknown 并保留原清理进程，不增加业务时长。`prepared` 只证明本次准备完成；**当前 v9 正式执行仍明确 unsupported**，worker／executor 不启动它。完整等待、执行与收集的预算消费者尚待交付；已有 v1–v8 运行保持原合同。
+
+API 对应 `POST .../tasks/prepare`（`definition/revision`）、`GET .../tasks/TASK_ID/preparation`，以及原 preview/create；v5 create 另传 `prepare_sha256`，写请求保留同源与 `X-Ergora-Request: 1`。备份需同时保留登记执行状态中的 `ergora/task-creations` 和控制目录 `operations/task-preparations`；控制库单独备份不包含全部材料。跨 boot／主机或 UTC 与单调时钟明显不一致时，新工作拒绝恢复；静态合同仍可读取。
+
 ### 查询正式任务运行状态
 
 安装development组合或 `ergora[temporal]`，并准备所登记的参考运行时。通过CLI或 `GET /api/projects/ID/tasks/TASK_ID/status?run_id=RUN_ID&timeout=20` 只读查询原生运行事实：

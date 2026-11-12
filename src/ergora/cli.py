@@ -280,14 +280,15 @@ def parser() -> argparse.ArgumentParser:
     job.add_argument("--offset", type=int, default=0, help="Unicode character offset in the original text")
     job.add_argument("--limit", type=int, default=8192, help="Maximum Unicode characters in one window (1–16384)")
     job.add_argument("--timeout", type=int, default=20)
-    for name in ("preview", "create"):
+    for name in ("prepare", "preview", "create"):
         operation = operations.add_parser(name)
         operation.add_argument("project")
         operation.add_argument("--definition", type=Path, required=True)
         operation.add_argument("--revision", type=int, required=True)
         if name == "create":
             operation.add_argument("--preview-sha256", required=True)
-    for name in ("creation", "resume-create"):
+            operation.add_argument("--prepare-sha256", help="Required for a budgeted v5 task's original authorization")
+    for name in ("preparation", "creation", "resume-create"):
         operation = operations.add_parser(name)
         operation.add_argument("project")
         operation.add_argument("task_id")
@@ -699,6 +700,8 @@ def main(argv: list[str] | None = None) -> int:
                                     plan_sha256=args.plan_sha256, timeout=args.timeout)
             elif args.operation == "creation":
                 output = tasks.creation(state, args.project, args.task_id)
+            elif args.operation == "preparation":
+                output = tasks.preparation(state, args.project, args.task_id)
             elif args.operation == "resume-create":
                 output = tasks.resume_create(state, args.project, args.task_id, args.revision, args.intent_sha256)
             elif args.operation == "submission":
@@ -759,8 +762,15 @@ def main(argv: list[str] | None = None) -> int:
                 return 0 if output["status"] in ("requested", "already_closed") else 1
             else:
                 definition = json.loads(args.definition.read_text(encoding="utf-8-sig"))
-                output = (tasks.preview(state, args.project, definition, args.revision) if args.operation == "preview"
-                          else tasks.create(state, args.project, definition, args.revision, args.preview_sha256))
+                if args.operation == "prepare":
+                    output = tasks.prepare(state, args.project, definition, args.revision)
+                    print(json.dumps(output, ensure_ascii=False, indent=2))
+                    return 0 if output['status'] == 'prepared' else 1
+                elif args.operation == "preview":
+                    output = tasks.preview(state, args.project, definition, args.revision)
+                else:
+                    output = tasks.create(state, args.project, definition, args.revision, args.preview_sha256,
+                                          prepare_sha256=args.prepare_sha256)
         elif args.command == "services":
             state = State(args.home)
             if args.operation == "status":

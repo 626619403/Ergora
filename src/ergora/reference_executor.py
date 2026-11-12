@@ -42,6 +42,7 @@ class Executor(original.Executor):
         published = STATE / 'tasks' / task_id / 'task.spec.json'
         document = read(published) if published.exists() else spec
         self.input = execution_input(document)
+        self.input.require_submission()
         composition = document.get('composition')
         if composition is not None:
             require(envelope['job_sha256'] == original.sha(context), 'Stage context digest mismatch')

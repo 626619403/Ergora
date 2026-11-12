@@ -287,4 +287,21 @@ flowchart LR
 
 原Executor统一选择实际member；inventory／plan复用原stage_driver与run_input，在新空cwd执行，完整资料由原快照和固定MCP提供。精确Git对象批量读取由原Executor内聚共享算法承担，review保留base／candidate，准备阶段提供starting及所需AGENTS。plan先核原inventory请求／收据／claim／调用与产物身份；完整输入超过限额直接失败。`task_mcp`记录成功read返回范围，v8阶段接受前核未内联附件连续覆盖；旧版本仍按原握手准入，不重写旧输入。
 
+## 预算准备 input9
+
+`tasks.prepare`和CLI／HTTP共用原creation所有者：先在task-creations持久授权及唯一attempt，再由独立supervised worker遍历安装、读取完整manifest／材料及编译。原subreaper等待拥有进程树退出，原owner清理编译scratch后才发布准备成果与完成witness。`reference_budget`只拥有实例、时钟和已知slot的stdlib合同；时间状态另投影，不改变完整preview身份。create确认prepare／preview两个SHA并在同一工作截止内逐文件发布，resume不重编或重新授权。
+
+```mermaid
+flowchart LR
+  Entry[CLI / HTTP tasks.prepare] --> Owner[原task-creations锁与授权]
+  Owner --> Child[supervised完整准备worker]
+  Child --> Cleanup[原监督者回收 / 收集 / scratch清理]
+  Cleanup --> Frozen[原prepare成果与完成witness]
+  Frozen --> Preview[确定性只读preview]
+  Preview --> Create[双摘要create / 原intent恢复]
+  Create --> Closed[v9执行入口unsupported]
+```
+
+单次观察结束不终止仍在安全清理的owner；未知attempt不重跑。跨boot／主机及明显时钟跳变不授权新工作。当前只实现准备消费者，正式Temporal等待及整个job的最终receipt发布仍待B2b／c；v9不注册worker或请求扫描根，显式Executor也拒绝。现有版本的调度、终态与冻结参考保持；可信当前容器依然不是本工具提供的OS隔离。
+
 此片不实现统一总预算或原生嵌套六阶段调用，trusted writer的advisory能力保持。当前图形向导仍生成v6；新合同从CLI／共用API使用。材料传递和原生夹具的实际验收见[B1交付](../delivery/2026-11-12-six-stage-materials.md)，不得借旧候选结果推导新版本成功。
