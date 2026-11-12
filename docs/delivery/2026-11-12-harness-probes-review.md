@@ -153,3 +153,35 @@ Standards 没有开放违反或具体 smell：局部注册、独立 SDK driver �
 评审者按本次授权于06:51:50 UTC直接对官方 GitHub Ref API 做唯一一次匿名 GET，0.92秒返回限流403，原响应280字节、SHA256 `cab107d310af6137d3ca21f7de123c972a91cb1cbd91e2f58f61fe192ba31735`，message 为 `API rate limit exceeded`。没有更换认证、重试或绕过；该失败保留，不称评审者直接网络确认成功。
 
 **十九件精确 Git／ready／最终静态、r2产品身份、普通推送及作者原远端身份离线终核通过；Spec／Standards 保持0／0。** 本提交含产品／测试，原 `Portability` workflow 的双OS产品 CI 适用，不能按 H0 纯文档忽略或借用前片成功。自己的 CI 尚待新原件，本节不关闭完整精确交付；本次没有重跑 SDK、模型、测试或产品，仅追加本授权报告。
+
+## 自己的 CI 与精确交付终结
+
+按同片授权，仅离线读取官方 run `43170918496` 的 `ci-run-html-r3/{page.html,receipt.json}`、两份 job HTML／收据、前两份 run 样本、API／导航失败原件及私有投影源码／r1／r2结果。没有运行投影脚本、重跑源码／模型／测试、推送或新增外部请求。用独立标准库 HTMLParser 从原 body 解析实际元素及属性，再核投影；未将作者 `required_steps_passed` 字段当作结论。
+
+三份终态原 body 的实际大小／SHA256 与各自收据完全相同，收据均为官方原 URL、最终 URL 相同、HTTP200：
+
+|原件|收据时间 UTC|字节|原 body SHA256|
+|---|---|---|---|
+|run43170918496／r3|2026-11-12 07:27:13|157,038|`378e5508fa750246a8a32039fd3eca3dc1aac3e75087c8b62823799dd95c07c8`|
+|job131023739116／r1|2026-11-12 07:34:09|161,582|`9997a8c2599cb205bde501bccd4097bd8353210c3c69756731506c3414e19d1b`|
+|job131023738875／r1|2026-11-12 07:34:09|159,673|`9ae9943d18955f2c1373d0fe1ace614ddf9a6adf2f7791143f43afbc670f15c5`|
+
+run 原 `Workflow run summary` 的 Status 为 **Success**，trigger 为 push，分支原链接为 `refs/heads/refactor/architecture-foundations`，提交原链接为完整 `5ab6d350024de8515487d0bedb3b950be60ac867`。同页原 job 链接分别对应 `native (ubuntu-latest, 3.11)`／131023739116 与 `native (windows-latest, 3.12)`／131023738875；两份 job 原页面的名称及 run／job 路径吻合。
+
+两 job 的原 `check-steps data-job-status` 均为 completed。逐项核七件必要 `check-step` 的唯一名称、`data-conclusion=success`、非空开始／结束时间、`data-job-completed`，以及 `data-log-url` 中完整候选 SHA、各自 job ID 和步骤号：
+
+|job|必要步骤|原 completed_at UTC|结论|
+|---|---|---|---|
+|Ubuntu／Python3.11|Build and install wheel|06:50:28|success／completed|
+|Ubuntu／Python3.11|Packaged reference identity|06:50:29|success／completed|
+|Ubuntu／Python3.11|Native application regression|07:02:48|success／completed|
+|Windows／Python3.12|Build and install wheel|06:51:07|success／completed|
+|Windows／Python3.12|Packaged reference identity|06:51:08|success／completed|
+|Windows／Python3.12|Native application regression|07:04:19|success／completed|
+|Windows／Python3.12|Windows PowerShell 5.1 installer and upgrade|07:05:16|success／completed|
+
+表内均为2026-11-12；Ubuntu 的 Windows 专属步骤原为 skipped，未把它计为通过或缺失。私有 `ci-terminal-r2.json` 的候选、run、job映射、原 body／receipt 摘要和上述步骤事实与独立解析一致；r1／r2 的事实字段相同，仅时间和 scope 修正。r1 曾将前期 API 错写为成功的非终态样本，该文字错误由 r2 更正，原 r1 保留；私有目录 glob 误扫 console 文本的解析失败亦保持，不作为产品或 CI 执行失败，终核不依赖该次解析。
+
+前两份官方 run HTML 为 HTTP200，但 Status 原文均是 **In progress**，仍只记录当时状态。06:50:32 UTC 首匿名 REST 样本原为403，280字节 SHA256 `cab107d310af6137d3ca21f7de123c972a91cb1cbd91e2f58f61fe192ba31735`；06:54:06 UTC 导航 partial 原为404／零字节，SHA256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`。前节评审者独立 Ref403同样保持。没有把这些失败请求称作成功，也没有声称成功取得终态 REST。两份 job 页面明确要求登录查看日志；本结论来自官方 HTML 状态和步骤元数据，未下载或逐行核全日志，不能据此增加测试数量或新 SDK／真实模型支持范围。
+
+**H1 完整十九件的本地出口、精确提交 `5ab6d350024de8515487d0bedb3b950be60ac867`／普通推送／作者原远端身份、自己的 run43170918496 双OS七必要步骤及独立终核均通过，精确交付终结；Spec／Standards 保持0／0，ST1关闭。** 本节只追加交付记账，不改变冻结报告或产品身份，不递归要求为终核记账重新运行模型／测试／CI。H2真实网关／同模板正式候选、H3持久会话与续接、Windows新SDK、OS隔离和完整六阶段仍按原范围待后片，不借本次CI关闭。

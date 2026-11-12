@@ -1,6 +1,6 @@
 # F8-H1 有界探针与适配交付记录
 
-[本片计划](../plans/2026-11-12-harness-probes.md)；文档基线 `a35123e4ea3f24b091774f1476c2e159804de560`。P1/P2 私有原生探针、P3 最小只读实现及 P4 安装／合成服务入口验收已分段完成；自身模板、完整独立审查和精确远端交付仍待收口，没有真实模型兼容或会话恢复结论。
+[本片计划](../plans/2026-11-12-harness-probes.md)；文档基线 `a35123e4ea3f24b091774f1476c2e159804de560`。P1/P2探针、P3只读实现、P4安装／合成服务入口、自身模板、完整独立审查及精确交付均已完成：`5ab6d35`自己的CI43170918496双OS七必要步骤及原评审终核通过。没有真实模型兼容或会话恢复结论；下文分段保留发生时的状态。
 
 ## P1 固定 MCP 正向链
 
@@ -61,3 +61,5 @@ r2独立安装再通过原CLI接收一次受控HTTP500，11.63秒failed／exit1�
 原评审独立核十九件Git／ready／static-r3与已核r2产品通过，原作者SSH Ref原件同完整SHA；其唯一一次直接官方Ref API返回403并保留，不称独立直接网络成功。官方Actions索引的嵌入JSON以完整候选／分支／workflow链接到自己的 [CI43170918496](https://github.com/626619403/Ergora/actions/runs/43170918496)，首索引／run页面仍为In progress。双OS七必要步骤及原评审CI终核继续，未提前关闭H1精确交付。
 
 第二份官方run HTML仍为In progress；原页面声明的navigation partial只读GET返回404／空body，原件保留，没有借页面片段缺失推断job失败。后续直接等待该run终态并核两job必要步骤，不重跑产品或CI。
+
+第三份官方run原HTML为Success，两job原件已取得：Linux131023739116的构建安装／reference身份／回归三步骤、Windows131023738875相同三项及PowerShell安装升级均success／completed。原评审从三份HTML／receipt独立重算身份与状态，并核原精确SHA、分支和job映射，[CI终核与精确交付](2026-11-12-harness-probes-review.md#自己的-ci-与精确交付终结)通过。原API403、前两在途、导航404及私有解析修正保持，不称成功终态REST或完整日志下载。H1精确交付终结，H2真实网关／同模板正式候选、H3会话与其他未验范围仍保留。
