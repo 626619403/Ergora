@@ -1,6 +1,6 @@
 # F7d-D3c 交付记录
 
-基线 `18585dccf067c28e1c444df0c8daaa040b038568`；[计划](../plans/2026-11-12-issue-writeback-console.md)。W0–W3本地出口已完成；完整19件新独立Spec／Standards通过，开放0／0、SP1／SP2关闭；W4待精确提交／推送及自身CI。
+基线 `18585dccf067c28e1c444df0c8daaa040b038568`；[计划](../plans/2026-11-12-issue-writeback-console.md)。W0–W3本地出口已完成；完整19件新独立Spec／Standards通过，开放0／0、SP1／SP2关闭；W4精确提交／推送、Git／Ref及自身CI经原评审终核通过，精确交付已终结。
 
 ## W0 既有所有者与范围
 
@@ -51,3 +51,13 @@ r3新非editable包451件、两RECORD456／461与283冻结通过，wheel SHA256 
 ## W3 完整候选本地出口
 
 新的fresh-context协调者及两原轴已终核最终19件，Spec／Standards开放0／0；SP1／SP2关闭。逐件核21个公开样本、五个实际hold身份、两轮模型完整链、包增量、143HTTP、原记录及两PNG，失败分段与候选范围保持。结构检查确认新JS只有tasks一个实际调用文件但拥有完整交互职责，原业务owner不变，未新增重复guard、永久test／CI或依赖。本地出口通过；冻结前再执行一次完整19件静态检查，W4只核精确Git／Ref与本提交自身必要CI，不重复产品／模型运行。
+
+## W4 精确提交与推送
+
+最终static-r3对19件／353本地目标／6个已加载秘密值检查issue0。19件ready与Git对象／mode相符，普通提交 `784da65da89bdd2fed4742e57e3f904c0f295216`、push退出0，作者现有SSH远端Ref同完整SHA；冻结报告SHA `b7b2b8b0c9b8c735fbb25cbb95b365bf44a17bc0880716966dcc8723513eba07`。自己的双OS必要CI与原评审精确终核继续，尚未称W4交付终结；不重跑已过产品／模型。
+
+## W4 自身CI与原评审终核
+
+原评审独立核19Git／ready／static-r3、451包／两RECORD／283及README元数据，一次独立HTTPS smart-Git Ref为同完整784da65；该命令内既有proxy初407后认证200，未改认证。自己的[CI43159652748](https://github.com/626619403/Ergora/actions/runs/43159652748)官方run HTML为Success，Linux130987552459三项／Windows130987552702四项必要步骤均success／completed，原评审按同完整commit链接和full-SHA step-log路径离线终核通过，不借其他提交CI。
+
+首两轮REST200原在途／null及四份body保持，第三轮REST403保持；终态来自三份官方run／job HTML，不称成功终态REST或全日志下载。私有首summary-r1 scope误称无成功REST，r2仅更正scope及生成时间，明确前两非终态API仍成功；两原summary和所有原响应均保留。原评审核八份原body及回执、固定workflow与精确投影一致。W4精确交付终结，未重跑产品／模型；后续H0仅记账，不把本片CI转授新增Harness。

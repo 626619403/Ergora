@@ -26,6 +26,6 @@ SHA、观察输入编辑，窗口关闭／替换及任务／run／项目／视�
 |W1 页面|原导出准备；完整意图与独立SHA状态；prepared单独确认发送、unknown禁补发；手动有界观察、迟到隔离|已实现并修复两P2，原owner不变|
 |W2 实际验收|新非editable包／两RECORD／283；必要原writeback／Web／架构suite；原生v7／Git两provider页面评论、GitHub标签、GitLab拒绝、丢失回复／unknown与观察不升级、离线读／修订／迟到；原合同／导出保持与拥有资源清理|已验：r1安装76项，r3包451／两RECORD／283；主56／续20／离线3／最终7，段失败保持；143HTTP／原88runtime与3记录及所属资源清理通过|
 |W3 文档与审查|使用／架构与两视口；实际自身审查模板；新的fresh-context完整Spec／Standards／结构、冗余guard/test/CI与成本检查|自身首审request-changes／聚焦approve，完整19件新独立Spec／Standards及本地出口通过，开放0／0、SP1／SP2关闭|
-|W4 精确交付|普通提交／推送、精确Git／Ref和本提交自身双OS必要CI，计划及交付同步|待交付|
+|W4 精确交付|普通提交／推送、精确Git／Ref和本提交自身双OS必要CI，计划及交付同步|784da65精确19Git／包与独立Ref、普通推送和自己的CI43159652748双OS七必要步骤／原评审终核通过，精确交付终结|
 
 种子若控制Temporal SDK、合成REVIEW_READY，须按实际标记；不冒称新模型六阶段、SaaS或原生Windows运行。CLI／HTTP的既有后端回归与实际页面各有范围，不为文案或状态记账重复全套。每个节点同步[PLAN](../PLAN.md)及[交付记录](../delivery/2026-11-12-issue-writeback-console.md)。稳定Trigger、PR／MR创建、远端push及F8–F10另片。
