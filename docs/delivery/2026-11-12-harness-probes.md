@@ -53,3 +53,11 @@ r2独立安装再通过原CLI接收一次受控HTTP500，11.63秒failed／exit1�
 当前十九份完整公开候选初版静态检查：357个本地链接目标、六个已加载秘密值、私有路径、JSON及diff空白issue0；不检查远端链接、Markdown锚点或浏览器渲染。完整新独立Spec／Standards、最后静态候选及本地出口继续；随后普通提交／推送和本提交自己的既有双OS CI，未提前记为通过。
 
 新的fresh-context协调者及两轴已[终核完整十九件](2026-11-12-harness-probes-review.md#完整十九文件与本地出口终核)，Spec／Standards开放0／0，ST1关闭，本地出口通过。评审独立重算两包／283、五段产品与补充生命周期原件，并从实际自身模板原stream重建全部五scope、二十六附件和原结果，未只采信作者passed字段。源码／测试保持已核r2和模型冻结身份。最后静态、十九件精确Git／Ref与本提交自己的CI继续；不重跑既过产品／模型，不借前片CI。
+
+## 精确提交与推送
+
+最终static-h1-r3对十九件／358本地目标／六秘密值检查issue0。十九件ready与Git对象／mode相同，普通提交 `5ab6d350024de8515487d0bedb3b950be60ac867`，push退出0，作者现有SSH远端Ref同完整SHA。冻结报告SHA `994a1731a4fd36bc2bf9a7f977f685d7025ed038e0d80963ff91c3b7ca283ed8`。原评审精确交付终核与本提交自己的双OS必要CI继续；首匿名REST样本403保留，随后只读官方Actions HTML，不将接口限流当作产品或CI失败。
+
+原评审独立核十九件Git／ready／static-r3与已核r2产品通过，原作者SSH Ref原件同完整SHA；其唯一一次直接官方Ref API返回403并保留，不称独立直接网络成功。官方Actions索引的嵌入JSON以完整候选／分支／workflow链接到自己的 [CI43170918496](https://github.com/626619403/Ergora/actions/runs/43170918496)，首索引／run页面仍为In progress。双OS七必要步骤及原评审CI终核继续，未提前关闭H1精确交付。
+
+第二份官方run HTML仍为In progress；原页面声明的navigation partial只读GET返回404／空body，原件保留，没有借页面片段缺失推断job失败。后续直接等待该run终态并核两job必要步骤，不重跑产品或CI。

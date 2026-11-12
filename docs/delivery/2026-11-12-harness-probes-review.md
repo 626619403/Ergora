@@ -137,3 +137,19 @@ Standards 没有开放违反或具体 smell：局部注册、独立 SDK driver �
 独立静态复核重现357个本地目标、六个已加载秘密值、JSON／私有路径 issue0，当前 `git diff --check` 退出0；边界仍不含远端链接、锚点和浏览器渲染。报告写完后的最后静态及精确十九件提交身份由作者冻结，不把初版摘要误称最终提交摘要。本次仅写本授权报告；没有运行 SDK、模型、测试、网络、安装、原审计脚本或提交命令。
 
 当前本地出口没有未满足的 H1 实现／评审项。后续仍需普通提交／推送、精确远端身份及自己的必要 CI；H2 真实网关／同模板正式候选、H3 持久会话／续接、Windows 新 SDK、OS 隔离和完整六阶段均未关闭，也没有真实 SaaS 业务写或双后端成功结论。
+
+## 精确 Git／推送与远端原件终核
+
+同片交付继续，独立读取 `h1-closure` 原 commit／push／ref 的 JSON、stdout／stderr、`ready-r1` 全部冻结正文、`static-h1-r3` 以及实际 Git 对象。当前提交为 `5ab6d350024de8515487d0bedb3b950be60ac867`，唯一父提交为原基线 `a35123e4ea3f24b091774f1476c2e159804de560`，标题 `feat: add bounded DeepSeek Harness read-only backend`；原 commit 退出0、3.40秒，十九件、607行增加／15行删除。
+
+实际 diff 文件集合与本报告十九件、ready／static／candidate 清单完全相同；逐件从 Git blob 重算字节／SHA，均与冻结正文和两份清单一致，mode 全为100644，没有额外文件或产品变化。ready manifest 原字节 SHA256 为 `07ffeb1a1692bae3689df6949f9a3ba584c6c4c3d78e49d198ea5c565f33d4b5`；提交中本报告为19,378字节、SHA256 `994a1731a4fd36bc2bf9a7f977f685d7025ed038e0d80963ff91c3b7ca283ed8`。该摘要指此提交中的版本，本节为提交后追加的交付记账。
+
+对提交原文独立重现最终静态范围：十九件、358个本地链接目标、六个已加载秘密值、JSON／私有路径 issue0；`git diff --check a35123e 5ab6d35` 退出0。与原初版357相比，新增本地目标属于完成后的报告导航；未把初版或晚期工作区正文冒称提交身份。
+
+再次直接按 r2 wheel 与安装 RECORD 重算：wheel SHA256 仍为 `8da7a263f4c2dbd8b826796bdf09d8664d8dc773328906992c1c7d16912674b9`，457件 wheel／462行安装 RECORD 的具名摘要和字节数通过；452件产品逐字等于此提交 `src/ergora`、当前源码及实际安装副本。源码／测试没有在包、模型冻结和原完整评审后变更，既有283冻结结论仍由相同产品字节承接。提交后的 PLAN／本片计划／交付三件差异已读，均仅记录交付进展。
+
+原 push 为2026-11-12 06:50:10 UTC、9.10秒、退出0，argv 是普通 `push origin HEAD:refs/heads/refactor/architecture-foundations`，没有 force；stderr 为 `a35123e..5ab6d35 HEAD -> refactor/architecture-foundations`。作者随后原 SSH `ls-remote --exit-code` 于06:50:12 UTC、2.10秒、退出0；stdout 唯一一行为完整 `5ab6d350024de8515487d0bedb3b950be60ac867` 及同分支 ref，与 Git／ready 相同。以上成功远端身份依据是作者原收据的独立离线核对。
+
+评审者按本次授权于06:51:50 UTC直接对官方 GitHub Ref API 做唯一一次匿名 GET，0.92秒返回限流403，原响应280字节、SHA256 `cab107d310af6137d3ca21f7de123c972a91cb1cbd91e2f58f61fe192ba31735`，message 为 `API rate limit exceeded`。没有更换认证、重试或绕过；该失败保留，不称评审者直接网络确认成功。
+
+**十九件精确 Git／ready／最终静态、r2产品身份、普通推送及作者原远端身份离线终核通过；Spec／Standards 保持0／0。** 本提交含产品／测试，原 `Portability` workflow 的双OS产品 CI 适用，不能按 H0 纯文档忽略或借用前片成功。自己的 CI 尚待新原件，本节不关闭完整精确交付；本次没有重跑 SDK、模型、测试或产品，仅追加本授权报告。
