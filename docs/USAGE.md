@@ -306,6 +306,10 @@ ergora issue candidate-observe PROJECT TASK --revision REVISION --run-id RUN_ID 
 
 同一查询的HTTP入口为`POST /api/projects/PROJECT/candidate-observations`，正文`revision/task_id/run_id/candidate_sha/base_branch`，继续要求同源及`X-Ergora-Request: 1`。这里POST是本地查询入口；provider只收到GET。该命令不推送分支、不创建或关联PR／MR、不写评论／标签、不批准或合并，`execution_authorized`及`proves_original_attempt`始终为false。确认当前内容相等后，仍按项目自己的发布和人工审查流程操作。
 
+在控制台选择原正式任务，点击“检查原导出记录与恢复”；原v7来源任务的记录为`exported`时，可进入“观察当前候选分支”。页面固定原任务／run／candidate／导出分支及本次项目修订。填写“远端目标分支（base）”，点击“明确查询当前分支”后才调用上述查询；打开和编辑不访问平台。结果分列原目标值、当前读取值、三态比较和各次远端响应的时间／摘要，完整JSON按安全文本展开。
+
+修改目标分支立即使旧观察失效；在途旧回复不会覆盖新选择、关闭重开的窗口或其他项目／任务。失败清楚显示本次错误；再次查询须明确点击，没有轮询或自动重试。读取不要求Temporal在线，仍需要上一节的原执行环境／Git和来源凭据；历史导出保持不变。已有PR／MR关联及评论／标签继续使用各自CLI入口。
+
 ### 关联已有 PR／MR 与候选
 
 在自己的项目平台中已建好PR／MR后，可把其明确的仓库PR number／项目MR iid与原v7任务的完整已导出candidate关联。首次关联要求原本地export ref、远端head ref及review head均仍指向该candidate，head名为原export分支，base名为显式输入。仅支持同来源仓库／项目；fork、跨仓库、搜索猜测和任意URL不支持。沿上一节Linux／WSL2 Git检查，不要求Temporal在线。

@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "identity": {
+    "at": "2026-11-12T03:25:02.048986+00:00",
+    "baseline": "c69dedf82512ce87d6a72a249626c26dadca4c3c",
+    "run_id": "384432194d75441b98c108a18be06b95",
+    "status": "succeeded",
+    "backend": "codex",
+    "inference_model": "gpt-6.1-sol",
+    "reasoning_effort": "high",
+    "cli_exit": 0,
+    "seconds": 124.16688655735925,
+    "input_digest": "f146778e12709df8fb403d015c5aecb12aff7e8622fd4c94893d62f08d3011c2",
+    "prompt_sha256": "ed7b06f38ab0b4f942d7e95460a882e995170708250a4efecb85748ccbc0dbda",
+    "attachment_bytes": 150396,
+    "attachment_sha256": "a52e29748641bdbf3f6fed781a9a4b759b1b560d497742d7bb58d13e5314d49e",
+    "manifest_digest": "c3b4deec3e1f65bb31a9c9c86ae222d46d836d7b6e8ddccb3a234b712e49af93",
+    "revision": "1.0.113",
+    "observed_processes": 4,
+    "live_sampled_processes": [],
+    "scope": "F7d-D3a eight complete frozen UI/callers/backend/spec/delivery. Final browser, public docs and independent review separate; authorized Codex fallback, no dual-backend success claim.",
+    "decision": "approve",
+    "result_sha256": "09ef55fc2b35b06c8a147e79311ab360e9b94a24459cc30e7d7e0efffc125e81"
+  },
+  "read_audit": {
+    "at": "2026-11-12T03:26:52.707142+00:00",
+    "run_id": "384432194d75441b98c108a18be06b95",
+    "revision": "1.0.113",
+    "manifest_prepared_actual_prompt_admission_scope_native_original_result_match": true,
+    "bundled_template_unchanged_except_evidence_revision_resource_and_limit": true,
+    "scope_files": 5,
+    "all_scope_continuous_utf8_through_null": true,
+    "list_passes_files": [
+      5
+    ],
+    "failed_calls": 0,
+    "attachment_bytes": 150396,
+    "attachment_sha256": "a52e29748641bdbf3f6fed781a9a4b759b1b560d497742d7bb58d13e5314d49e",
+    "frozen_complete_files": 8,
+    "original_result_sha256": "09ef55fc2b35b06c8a147e79311ab360e9b94a24459cc30e7d7e0efffc125e81",
+    "decision": "approve",
+    "native_stream_sha256": "9c42ede3d37ae92e25019837723b770d317d3caec9c1d39dcc45ee68d9e1470e",
+    "backend_reported_turn_usage": [
+      {
+        "input_tokens": 322292,
+        "cached_input_tokens": 263680,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 2304,
+        "reasoning_output_tokens": 1093
+      }
+    ],
+    "observed_processes": 4,
+    "live_sampled_processes": [],
+    "scope": "Offline exact identity and successful plaintext page reconstruction only. Cached counters are part of input, reasoning reported separately, neither is added twice. No billing, reasoning quality, owner approval, independent backend-error or unsampled-process claim."
+  },
+  "original_result": {
+    "artifacts": {
+      "response": "Read all declared ancestor instructions and both Skills, plus candidate.txt continuously through next_offset:null.\n\nComplete attachment scope: src/ergora/data/console/{candidate-observation.js,tasks.js,api.js,ui.js}; src/ergora/{issues.py,tasks.py}; docs/{plans,delivery}/2026-11-12-candidate-observation-console.md. Baseline: c69dedf82512ce87d6a72a249626c26dadca4c3c.\n\n**Spec:** No actionable finding. The export entry fixes the original task/run/candidate/branch/revision. Opening the observation modal issues no request; explicit submission uses the existing API. Branch edits invalidate pending results, errors replace prior success, and lifetime checks cover replaced dialogs and task/view changes. Rendering preserves unknown comparisons, separate response identities and safe full text. issues.remote_candidate delegates original source/export and local Git checks to tasks, selects the existing provider internally, checks the final revision and persists nothing.\n\n**Standards:** No actionable finding. candidate-observation.js cohesively owns one interaction for its single production caller. tasks.js retains task/export lifecycle ownership and supplies a context guard independent of the replaced export-modal DOM. Existing API/UI helpers are reused; the supplied interaction introduces no scheduler, ledger, automatic reads, polling, dependencies or permanent tests/CI.\n\nThis approval covers the eight supplied attachments only. HTTP protection, provider/native implementations, frozen-file integrity, installation results and browser/runtime behavior were not independently verified here; broader delivery remains outside this review."
+    },
+    "decision": "approve",
+    "summary": "Approve the bounded source review; no reachable Spec or Standards defect found."
+  },
+  "later_changes_outside_model_scope": "One local observation container class and two CSS wrap declarations, plus later docs/projections; final independent review and r2 display validation cover these separately."
+}

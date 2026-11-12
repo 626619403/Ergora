@@ -2,7 +2,7 @@
 
 审查日期：2026-11-12。协调者 `f7d_source_task_console_review` 为本片新的 fresh-context 独立审查者；Spec 和 Standards 分别由两个 `fork_turns: none` 子审查者读取原始要求后完成，未继承作者讨论。依据为 AIHERO `code-review`、`maintainable-project-delivery`（含 independent-review）及 `codebase-design`。
 
-**最终本地判词：完整20文件候选的 Spec／Standards 均通过，开放 finding 0／0；SP1/P3 状态记账已修正并由原 Spec 审查者复核关闭。包、安装检查、实际页面、内置审查全文读取、公开投影及拥有资源清理已核。** 普通提交／推送、精确 Git／Ref 和本提交自己的必要双 OS CI 尚待后续交付，不借前片 D1 的 CI 关闭本片。
+**最终判词：完整20文件候选的 Spec／Standards 均通过，开放 finding 0／0；SP1/P3 状态记账已修正并由原 Spec 审查者复核关闭。包、安装检查、实际页面、内置审查全文读取、公开投影及拥有资源清理已核。** 精确提交 `c69dedf82512ce87d6a72a249626c26dadca4c3c` 的 Git／ready／最终静态、r1 包、普通提交／推送及作者 SSH Ref 原件通过；自己的 CI `43146853654` 原始 HTML／收据已独立离线核实双 OS 七必要步骤成功，**D2 的 S4 精确交付关闭**。独立官方 Ref 限流403及此前在途样本原样保留，不宣称评审者直接远端读取成功。下文待交付／待终态表述属于当时审查记录，最终状态以末节终核为准；本结论不关闭 D3a、F7 或项目整体。
 
 ## 固定范围与身份
 
@@ -81,3 +81,45 @@ r1 wheel SHA256 为 `2773db5b6d67c09aab13893662ae538a95a6256cfade19bd5339ca8defc
 本轮未重新安装或运行产品、浏览器、Agent／模型。未验证真实 SaaS、原生 Windows 正式工作区执行、OS 隔离或重新运行六阶段；未取得 D2 自身提交／Ref／必要 CI，精确交付继续。D1 后补 CI 由其原评审者处理，范围不转授 D2。
 
 **最终汇总：Standards 0项；Spec 共1项记账P3、已关闭、开放0。完整20文件候选的独立本地审查通过；普通提交／推送、精确 Git／Ref 和本提交自己的双 OS 必要 CI 待交付。**
+
+## S4 精确 Git／ready／普通推送与 Ref 原件
+
+对象固定为 **`c69dedf82512ce87d6a72a249626c26dadca4c3c`**，唯一父提交为原基线 **`d60a9d82be80a52d3e6ca0257772af3b3a26a084`**。本节是提交后的状态追加，不将当前报告或未来工作树当作已提交字节。提交内本报告 SHA256 为 **`6ebf355fabb1bac8ebef14208f22304b7b3b4f292aeaf70ed5789c1fffab3bcf`**。
+
+禁用 object replacement 与 lazy fetch 后，从原对象头与字节重算 commit、根 tree、118件所经中间 tree，以及所有候选／包 blob 的 SHA1。原根 tree 为 `dc8c148295e516770ce338daa1ca27ad4364b0ac`；父→子恰为20件差异，全部普通 blob／`100644`。每件原内容、大小、SHA256、mode 均与完整封存副本、ready 清单及 `static-r2` 身份一致。ready 清单 SHA256 为 **`17c8b88d214a2018121f6af0bca15453ebead7d6fc4c30c4bd89f2943674c4d0`**。
+
+最终 `static-r2` 的20件全部等于 ready／提交，**347个本地 Markdown 目标／当时6个加载秘密值／issue0** 保持其原检查范围；没有读取凭据值，也不将其扩大为外部 URL、anchor 或 Mermaid 验收。已独立从精确提交的全部448件 `src/ergora` blob 逐字核同 r1 wheel 完整包集合；METADATA 的原 README body 也与提交内 README 逐字相同。wheel SHA256 仍为 **`2773db5b6d67c09aab13893662ae538a95a6256cfade19bd5339ca8defc1e42d`**。没有重装或重跑产品／模型。
+
+普通提交原回执 **exit0／1.13秒**，stdout724B／SHA256 `770611869ca75a9e1d73c020e858b100b58827bd79c2b8a030181f418a940fc7`，stderr空。普通 push 原回执 **exit0／7.83秒**、`force:false`，stderr98B 明确从 d60a9d8 更新到 c69dedf，SHA256 **`1521850131be2822f22a2c6a4812bc364e5c3b5732fd6bf466cf5a861a4fb896`**，stdout空。没有重推或改写前片失败。
+
+作者一次 SSH `ls-remote --exit-code` 原回执 **exit0／1.63秒**；86B stdout 逐字为完整候选 SHA、tab、`refs/heads/refactor/architecture-foundations` 和换行，SHA256 **`0bb2794ac4eb439b1c9e26a1ae977bcc174434d25135301466472f844813daa3`**，stderr空。这是作者该次实际 Ref 观察，不称评审者直接 SSH 成功。
+
+评审者于 **`2026-11-12T03:16:12Z`** 只尝试一次匿名官方 Git Ref GET，URL 为 `https://api.github.com/repos/626619403/Ergora/git/ref/heads/refactor%2Farchitecture-foundations`；最终 URL 相同，无 retry／redirect／凭据读取，约 **1.29秒，HTTP403／280B**。原 body SHA256 为 **`cab107d310af6137d3ca21f7de123c972a91cb1cbd91e2f58f61fe192ba31735`**，表示 API 限流。请求／响应身份与失败原件已保存；没有补造远端身份或宣称独立直接网络成功。
+
+**本轮结论：精确20 Git／mode／ready／static-r2、448件 r1 包／README、普通提交及 push exit0、作者同完整 SSH Ref 原件通过，无新增 finding；Spec／Standards 仍开放0／0。自己的双 OS 必要 CI 终态待核，S4 精确交付尚未终结。**
+
+## S4 本提交双 OS 必要 CI 终核
+
+本次仅离线读取作者封存的官方公开 HTML 原字节及收据，不再请求网络、安装或重跑产品／测试／浏览器／模型。对象继续固定为 **`c69dedf82512ce87d6a72a249626c26dadca4c3c`**；当前工作树已有后片 D3a 改动，不以当前源码代替本提交。CI 为 [Portability run 43146853654](https://github.com/626619403/Ergora/actions/runs/43146853654)，分支 `refactor/architecture-foundations`，触发为 `push`／`2026-11-12T03:14:29Z`。
+
+已独立重算全部 **10份 HTML 原 body 与对应收据**：5份 run、Linux 2份 job、Windows 1份 job，以及较早 Actions 列表和 commit checks 各1份。逐份 HTTP200、请求／最终 URL 相同，大小、SHA256 与收据相符；页面中的仓库、完整提交、分支、`portability.yml` 和 run／job 链接互相一致。原 `ci-run-html-r1` 至 `r4` 均为 `In progress`；Linux `ci-job-130946572425-html-r1` 中回归步骤仍为 `null`／在途、无完成时间和 `Complete job`。这些原件未被终态覆盖。作者 `ci-html-r1` 至 `r5` 的投影字段均与各自原 HTML 相符。
+
+终态 run 原件为 `ci-run-html-r5`，采样于 **`2026-11-12T03:37:22.175228+00:00`**，状态 **`Success`**，body **157,162B／SHA256 `59ee8c4d5ec5aea5a34309295f44c3809581ce5684ea45219117635a179c3f65`**；收据 SHA256 **`d9eb847da1e53afc4e3e27cfc32289456838d2246fbed105d38d4120e9953852`**。
+
+从精确提交读取 `.github/workflows/portability.yml`，SHA256 为 **`81c168fdb140f44ccfdca497003e452355c9164a6ed6f8dfb8fa31729a1943ca`**；其矩阵为 Ubuntu／Python3.11 与 Windows／Python3.12，共用必要步骤4–6，Windows 另需步骤7。以下 UTC 时间来自原 `<check-step>` 属性，七步均为 **`data-conclusion="success"`**、具有 `data-job-completed` 且开始／结束时间有效、顺序一致并处于对应 job 区间：
+
+| OS／job | 步骤 | 开始–结束（2026-11-12 UTC） | 终态 |
+| --- | --- | --- | --- |
+| Windows／130946572914 | 4 Build and install wheel | 03:14:43–03:15:32 | success |
+| Windows／130946572914 | 5 Packaged reference identity | 03:15:32–03:15:33 | success |
+| Windows／130946572914 | 6 Native application regression | 03:15:33–03:29:26 | success |
+| Windows／130946572914 | 7 Windows PowerShell 5.1 installer and upgrade | 03:29:26–03:30:22 | success |
+| Ubuntu／130946572425 | 4 Build and install wheel | 03:14:35–03:14:55 | success |
+| Ubuntu／130946572425 | 5 Packaged reference identity | 03:14:55–03:14:55 | success |
+| Ubuntu／130946572425 | 6 Native application regression | 03:14:55–03:33:47 | success |
+
+Windows 终态原件 `ci-job-130946572914-html-r1` 为 **160,311B／body SHA256 `021ebd48a741c6b8906f39e28b599ae938b541c98ed92bc1140fcf2317060267`**，收据 SHA256 **`70d342de0557018df46c193d0ff89f85aa9da507922015746a578f54e9d78004`**。Linux 终态原件 `ci-job-130946572425-html-r2` 为 **161,711B／body SHA256 `4536b72386fc2b76b850a16e95903977a567a7cf2ff544007b590c1b3eab0a57`**，收据 SHA256 **`3d86a49804facebc5099c931abd1df883ae19c214386c78fc6f5510f2d950280`**。两 job 原页面均为 `data-job-status="completed"`、可见 `succeeded`，`Complete job` 步骤15为 success，分别结束于 **03:30:24Z／03:33:47Z**；header 分别记录 **03:30:26Z／15m53s**、**03:33:49Z／19m17s**。Linux 步骤7为 **skipped**，与工作流的 Windows 条件一致。
+
+七必要步及其余成功步骤的 `data-log-url` 均逐字指向 `/626619403/Ergora/commit/c69dedf82512ce87d6a72a249626c26dadca4c3c/checks/<本 job ID>/logs/<本步骤号>`。本核验确认官方 HTML 所示的本提交必要步骤终态，未取得完整 job 日志，不从页面推算测试数量或宣称新的本地运行。原匿名 REST CI 请求的 HTTP403／280B／SHA256 `cab107d310af6137d3ca21f7de123c972a91cb1cbd91e2f58f61fe192ba31735` 及前节独立 Ref403 继续保留，不改写为成功 REST／直接 Ref 读取。
+
+**最终关闭结论：D2 的完整20文件 Spec／Standards 开放0／0，精确 Git／ready／包、普通提交／推送及作者 SSH Ref 原件通过；本提交自身双 OS 七必要 CI 步骤成功，S4 精确交付关闭。** 此追加仅更新审查与交付状态，不把后补报告字节称为 c69dedf 已提交内容；D1 证据不转作 D2，D3a／F7／项目整体及真实 SaaS、原生 Windows 正式工作区执行、OS 隔离、六阶段重跑和成功不同后端独立性均不在关闭范围。

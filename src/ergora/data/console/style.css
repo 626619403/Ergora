@@ -616,6 +616,12 @@ main {
 .table-wrap {
   overflow: auto;
 }
+.candidate-observation td {
+  overflow-wrap: anywhere;
+}
+.candidate-observation th {
+  white-space: normal;
+}
 table {
   width: 100%;
   border-collapse: collapse;

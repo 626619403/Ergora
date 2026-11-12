@@ -1,0 +1,980 @@
+{
+  "schema_version": 1,
+  "at": "2026-11-12T03:36:01.442078+00:00",
+  "baseline": "c69dedf82512ce87d6a72a249626c26dadca4c3c",
+  "state": "local-exit-passed-exact-delivery-pending",
+  "packages": {
+    "r1": {
+      "at": "2026-11-12T03:19:35.699390+00:00",
+      "wheel_sha256": "876231da8e0aa9aef124ac19fa40818f9bc7413cf3439e3b643c9ee899234e8b",
+      "wheel_files": 454,
+      "package_files": 449,
+      "wheel_and_installed_records_verified": true,
+      "installed_record_rows": 459,
+      "source_and_installed_package_equal": true,
+      "frozen_files": 283,
+      "editable": false
+    },
+    "r2": {
+      "at": "2026-11-12T03:30:15.841007+00:00",
+      "wheel_sha256": "66649a70c9d73d512768847fbae7e2f46f460c6ad29ca344447580c6fb9e74b6",
+      "wheel_files": 454,
+      "package_files": 449,
+      "wheel_and_installed_records_verified": true,
+      "installed_record_rows": 459,
+      "source_and_installed_package_equal": true,
+      "frozen_files": 283,
+      "editable": false
+    }
+  },
+  "r2_package_delta": {
+    "package_files": 449,
+    "unchanged_package_files": 447,
+    "changed": [
+      {
+        "file": "ergora/data/console/candidate-observation.js",
+        "r1_sha256": "00804c34dad426c1eaa0a219ff20fe1ba711357471d461a28503ef28d4dfee4c",
+        "r2_sha256": "0f8eb175c51030c2d60d1d493df6febbd19836cc3ded5b16d14fde49d41f76c1"
+      },
+      {
+        "file": "ergora/data/console/style.css",
+        "r1_sha256": "4c09228e2e3759e269f6af561c14cec5cd9c404fcd3c2ddb3bdae1a1af25593f",
+        "r2_sha256": "be7206668ae25f99bde9e52775b0989f34620e5b7fd886d46ec1965b60685e71"
+      }
+    ],
+    "metadata_and_readme_unchanged": true,
+    "scope": "Only post-r1 local wrap class/CSS changed; r1 behavior/model retains original exact scope. r2 final display checked separately."
+  },
+  "installed_checks": [
+    {
+      "at": "2026-11-12T03:20:07.737587+00:00",
+      "exit": 0,
+      "seconds": 31.859675572253764,
+      "stdout_sha256": "a75635edc798f9cb806751b4d4fd3ebe9d0d6372ac733cb28de7d31d4812ebfa"
+    },
+    {
+      "at": "2026-11-12T03:20:08.005514+00:00",
+      "exit": 0,
+      "seconds": 0.26628241827711463,
+      "stdout_sha256": "28f4b3adab8f2d7b7f61ab96a8e36771f39975c1a57ece901099307bafcb6611"
+    }
+  ],
+  "pytest": {
+    "passed": 40,
+    "seconds": 29.82,
+    "suites": [
+      "test_candidate_observations.py",
+      "test_web.py",
+      "test_architecture_boundaries.py"
+    ]
+  },
+  "native_seed": {
+    "at": "2026-11-12T03:20:36.985278+00:00",
+    "exit": 0,
+    "seconds": 22.89600889198482,
+    "stdout_sha256": "a9bf55a60b49f0f1382891d0834096baa15663977b9025422074b4008979e9eb",
+    "cases": 2,
+    "scope": "Original v7 contracts/start/native Git export; only Temporal SDK controlled and REVIEW_READY synthesized. No new real model/six-stage execution."
+  },
+  "browser_segments": {
+    "browser-main-r1": {
+      "checked_at": "2026-11-12T03:25:09.058521+00:00",
+      "exit_code": 0,
+      "seconds": 8.083639642689377,
+      "result": {
+        "passed": false,
+        "step": "GitHub exact refs",
+        "error": "query outcome GitHub exact refs",
+        "checks": [
+          "opening original exported github observation makes zero provider calls",
+          "original fixed candidate identity github",
+          "base branch is explicit github"
+        ],
+        "errors": []
+      }
+    },
+    "browser-main-r2": {
+      "checked_at": "2026-11-12T03:27:53.001493+00:00",
+      "exit_code": 0,
+      "seconds": 34.8137365099974,
+      "result": {
+        "passed": true,
+        "step": "GitLab",
+        "checks": [
+          "opening original exported github observation makes zero provider calls",
+          "original fixed candidate identity github",
+          "base branch is explicit github",
+          "query outcome GitHub exact refs",
+          "one explicit query is three provider GETs",
+          "GitHub exact three comparisons",
+          "original export retained",
+          "context only result",
+          "full safe JSON exact",
+          "observation limitations visible",
+          "provider markup remains safe text",
+          "edit invalidates result with zero network",
+          "query outcome remote drift",
+          "current remote drift distinct from original export",
+          "query outcome remote404",
+          "404 comparisons remain unknown",
+          "unknown visible",
+          "query outcome local missing",
+          "local missing distinguished from remote exact",
+          "query outcome local drift",
+          "local ref drift leaves original base",
+          "query outcome upstream503",
+          "upstream error shown",
+          "failed query does not retain old success",
+          "query outcome invalid branch",
+          "owner rejects invalid branch before provider",
+          "query outcome explicit retry",
+          "explicit successful retry current result",
+          "full observation explicitly expandable",
+          "desktop no document overflow",
+          "390px no document overflow",
+          "opening original exported gitlab observation makes zero provider calls",
+          "original fixed candidate identity gitlab",
+          "base branch is explicit gitlab",
+          "query outcome GitLab",
+          "GitLab native repository/ref exact",
+          "GitLab exact encoded base",
+          "query outcome GitLab",
+          "GitLab404 not reported as match",
+          "no browser page errors"
+        ],
+        "errors": [],
+        "desktop": {
+          "viewport": 1440,
+          "document": 1440
+        },
+        "mobile": {
+          "viewport": 390,
+          "document": 390
+        },
+        "scope": "Installed actual native task/export records and original HTTP owners with revived frozen loopback origins. No new SDK/model/provider writes.",
+        "samples": [
+          {
+            "step": "GitHub exact refs",
+            "status": 200,
+            "request": {
+              "revision": 6,
+              "task_id": "issue-task",
+              "run_id": "original-run",
+              "candidate_sha": "fc904857480f1c5be5b311a3e0b1a4ef753fd24e",
+              "base_branch": "release/稳定,base"
+            },
+            "observed": {
+              "provider": "github",
+              "project_revision": 6,
+              "original_candidate_sha": "fc904857480f1c5be5b311a3e0b1a4ef753fd24e",
+              "original_export_intent_sha256": "f54ed6862a7c60edf8ca46b1358b4cfaa549f70b28b0606cbcf2e7b1469a2164",
+              "task_base_sha": "03ab7521b7924d9c84810804e157d3cc869bde42",
+              "current_local_sha": "fc904857480f1c5be5b311a3e0b1a4ef753fd24e",
+              "remote": {
+                "repository": {
+                  "native_id": 88,
+                  "node_id": "R_<script>window.__obsXss=1</script>",
+                  "project": "team/repo",
+                  "observed_at": "2026-11-12T03:27:25.596922+00:00",
+                  "http_status": 200,
+                  "response_sha256": "6ba678657fa4845f8152a9030b6ad37220c7cde32cebeeb9ede99a0c95e44ca3"
+                },
+                "head": {
+                  "ref": "refs/heads/agent/原候选",
+                  "sha": "fc904857480f1c5be5b311a3e0b1a4ef753fd24e",
+                  "resolution": "resolved",
+                  "observed_at": "2026-11-12T03:27:25.598650+00:00",
+                  "http_status": 200,
+                  "response_sha256": "16b0eae5a91addf5f5940c6502471c3568abeb9b40a41c96557fe6553ef7a4bc"
+                },
+                "base": {
+                  "ref": "refs/heads/release/稳定,base",
+                  "sha": "03ab7521b7924d9c84810804e157d3cc869bde42",
+                  "resolution": "resolved",
+                  "observed_at": "2026-11-12T03:27:25.600060+00:00",
+                  "http_status": 200,
+                  "response_sha256": "c1aa3e0ab4866e92568425c659420c5932e07d24cb2151b323b316a6f18b80b4"
+                }
+              },
+              "comparisons": {
+                "local_export_ref_matches_candidate": true,
+                "head_matches_candidate": true,
+                "base_matches_task_base": true
+              },
+              "context_only": true,
+              "execution_authorized": false,
+              "proves_original_attempt": false
+            }
+          },
+          {
+            "step": "remote drift",
+            "status": 200,
+            "request": {
+              "revision": 6,
+              "task_id": "issue-task",
+              "run_id": "original-run",
+              "candidate_sha": "fc904857480f1c5be5b311a3e0b1a4ef753fd24e",
+              "base_branch": "release/另一条"
+            },
+            "observed": {
+              "provider": "github",
+              "project_revision": 6,
+              "original_candidate_sha": "fc904857480f1c5be5b311a3e0b1a4ef753fd24e",
+              "original_export_intent_sha256": "f54ed6862a7c60edf8ca46b1358b4cfaa549f70b28b0606cbcf2e7b1469a2164",
+              "task_base_sha": "03ab7521b7924d9c84810804e157d3cc869bde42",
+              "current_local_sha": "fc904857480f1c5be5b311a3e0b1a4ef753fd24e",
+              "remote": {
+                "repository": {
+                  "native_id": 88,
+                  "node_id": "R_<script>window.__obsXss=1</script>",
+                  "project": "team/repo",
+                  "observed_at": "2026-11-12T03:27:28.102225+00:00",
+                  "http_status": 200,
+                  "response_sha256": "6ba678657fa4845f8152a9030b6ad37220c7cde32cebeeb9ede99a0c95e44ca3"
+                },
+                "head": {
+                  "ref": "refs/heads/agent/原候选",
+                  "sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                  "resolution": "resolved",
+                  "observed_at": "2026-11-12T03:27:28.103646+00:00",
+                  "http_status": 200,
+                  "response_sha256": "390b613ec38ade6d2f3b42fb816f6dfe67c1a5a5444fcd4c546725f003f2ffc4"
+                },
+                "base": {
+                  "ref": "refs/heads/release/另一条",
+                  "sha": "cccccccccccccccccccccccccccccccccccccccc",
+                  "resolution": "resolved",
+                  "observed_at": "2026-11-12T03:27:28.104966+00:00",
+                  "http_status": 200,
+                  "response_sha256": "6c812bbb4070e5ea63cf78c0f8645fe03c450ad3d07bec5c17d8e8ac09cc52a4"
+                }
+              },
+              "comparisons": {
+                "local_export_ref_matches_candidate": true,
+                "head_matches_candidate": false,
+                "base_matches_task_base": false
+              },
+              "context_only": true,
+              "execution_authorized": false,
+              "proves_original_attempt": false
+            }
+          },
+          {
+            "step": "remote404",
+            "status": 200,
+            "request": {
+              "revision": 6,
+              "task_id": "issue-task",
+              "run_id": "original-run",
+              "candidate_sha": "fc904857480f1c5be5b311a3e0b1a4ef753fd24e",
+              "base_branch": "release/另一条"
+            },
+            "observed": {
+              "provider": "github",
+              "project_revision": 6,
+              "original_candidate_sha": "fc904857480f1c5be5b311a3e0b1a4ef753fd24e",
+              "original_export_intent_sha256": "f54ed6862a7c60edf8ca46b1358b4cfaa549f70b28b0606cbcf2e7b1469a2164",
+              "task_base_sha": "03ab7521b7924d9c84810804e157d3cc869bde42",
+              "current_local_sha": "fc904857480f1c5be5b311a3e0b1a4ef753fd24e",
+              "remote": {
+                "repository": {
+                  "native_id": 88,
+                  "node_id": "R_<script>window.__obsXss=1</script>",
+                  "project": "team/repo",
+                  "observed_at": "2026-11-12T03:27:30.544416+00:00",
+                  "http_status": 200,
+                  "response_sha256": "6ba678657fa4845f8152a9030b6ad37220c7cde32cebeeb9ede99a0c95e44ca3"
+                },
+                "head": {
+                  "ref": "refs/heads/agent/原候选",
+                  "sha": null,
+                  "resolution": "not_found_or_not_visible",
+                  "observed_at": "2026-11-12T03:27:30.545940+00:00",
+                  "http_status": 404,
+                  "response_sha256": null
+                },
+                "base": {
+                  "ref": "refs/heads/release/另一条",
+                  "sha": null,
+                  "resolution": "not_found_or_not_visible",
+                  "observed_at": "2026-11-12T03:27:30.547223+00:00",
+                  "http_status": 404,
+                  "response_sha256": null
+                }
+              },
+              "comparisons": {
+                "local_export_ref_matches_candidate": true,
+                "head_matches_candidate": null,
+                "base_matches_task_base": null
+              },
+              "context_only": true,
+              "execution_authorized": false,
+              "proves_original_attempt": false
+            }
+          },
+          {
+            "step": "local missing",
+            "status": 200,
+            "request": {
+              "revision": 6,
+              "task_id": "issue-task",
+              "run_id": "original-run",
+              "candidate_sha": "fc904857480f1c5be5b311a3e0b1a4ef753fd24e",
+              "base_branch": "release/另一条"
+            },
+            "observed": {
+              "provider": "github",
+              "project_revision": 6,
+              "original_candidate_sha": "fc904857480f1c5be5b311a3e0b1a4ef753fd24e",
+              "original_export_intent_sha256": "f54ed6862a7c60edf8ca46b1358b4cfaa549f70b28b0606cbcf2e7b1469a2164",
+              "task_base_sha": "03ab7521b7924d9c84810804e157d3cc869bde42",
+              "current_local_sha": null,
+              "remote": {
+                "repository": {
+                  "native_id": 88,
+                  "node_id": "R_<script>window.__obsXss=1</script>",
+                  "project": "team/repo",
+                  "observed_at": "2026-11-12T03:27:33.004705+00:00",
+                  "http_status": 200,
+                  "response_sha256": "6ba678657fa4845f8152a9030b6ad37220c7cde32cebeeb9ede99a0c95e44ca3"
+                },
+                "head": {
+                  "ref": "refs/heads/agent/原候选",
+                  "sha": "fc904857480f1c5be5b311a3e0b1a4ef753fd24e",
+                  "resolution": "resolved",
+                  "observed_at": "2026-11-12T03:27:33.006318+00:00",
+                  "http_status": 200,
+                  "response_sha256": "16b0eae5a91addf5f5940c6502471c3568abeb9b40a41c96557fe6553ef7a4bc"
+                },
+                "base": {
+                  "ref": "refs/heads/release/另一条",
+                  "sha": "03ab7521b7924d9c84810804e157d3cc869bde42",
+                  "resolution": "resolved",
+                  "observed_at": "2026-11-12T03:27:33.007837+00:00",
+                  "http_status": 200,
+                  "response_sha256": "dcc5e624d20a80b529ea87ce903e81263f8d2ad6a9f2545187c42abead8a049e"
+                }
+              },
+              "comparisons": {
+                "local_export_ref_matches_candidate": null,
+                "head_matches_candidate": true,
+                "base_matches_task_base": true
+              },
+              "context_only": true,
+              "execution_authorized": false,
+              "proves_original_attempt": false
+            }
+          },
+          {
+            "step": "local drift",
+            "status": 200,
+            "request": {
+              "revision": 6,
+              "task_id": "issue-task",
+              "run_id": "original-run",
+              "candidate_sha": "fc904857480f1c5be5b311a3e0b1a4ef753fd24e",
+              "base_branch": "release/另一条"
+            },
+            "observed": {
+              "provider": "github",
+              "project_revision": 6,
+              "original_candidate_sha": "fc904857480f1c5be5b311a3e0b1a4ef753fd24e",
+              "original_export_intent_sha256": "f54ed6862a7c60edf8ca46b1358b4cfaa549f70b28b0606cbcf2e7b1469a2164",
+              "task_base_sha": "03ab7521b7924d9c84810804e157d3cc869bde42",
+              "current_local_sha": "03ab7521b7924d9c84810804e157d3cc869bde42",
+              "remote": {
+                "repository": {
+                  "native_id": 88,
+                  "node_id": "R_<script>window.__obsXss=1</script>",
+                  "project": "team/repo",
+                  "observed_at": "2026-11-12T03:27:35.477622+00:00",
+                  "http_status": 200,
+                  "response_sha256": "6ba678657fa4845f8152a9030b6ad37220c7cde32cebeeb9ede99a0c95e44ca3"
+                },
+                "head": {
+                  "ref": "refs/heads/agent/原候选",
+                  "sha": "fc904857480f1c5be5b311a3e0b1a4ef753fd24e",
+                  "resolution": "resolved",
+                  "observed_at": "2026-11-12T03:27:35.479062+00:00",
+                  "http_status": 200,
+                  "response_sha256": "16b0eae5a91addf5f5940c6502471c3568abeb9b40a41c96557fe6553ef7a4bc"
+                },
+                "base": {
+                  "ref": "refs/heads/release/另一条",
+                  "sha": "03ab7521b7924d9c84810804e157d3cc869bde42",
+                  "resolution": "resolved",
+                  "observed_at": "2026-11-12T03:27:35.480389+00:00",
+                  "http_status": 200,
+                  "response_sha256": "dcc5e624d20a80b529ea87ce903e81263f8d2ad6a9f2545187c42abead8a049e"
+                }
+              },
+              "comparisons": {
+                "local_export_ref_matches_candidate": false,
+                "head_matches_candidate": true,
+                "base_matches_task_base": true
+              },
+              "context_only": true,
+              "execution_authorized": false,
+              "proves_original_attempt": false
+            }
+          },
+          {
+            "step": "upstream503",
+            "status": 400,
+            "request": {
+              "revision": 6,
+              "task_id": "issue-task",
+              "run_id": "original-run",
+              "candidate_sha": "fc904857480f1c5be5b311a3e0b1a4ef753fd24e",
+              "base_branch": "release/另一条"
+            },
+            "observed": {
+              "error": "Tracker read failed with HTTP 503"
+            }
+          },
+          {
+            "step": "invalid branch",
+            "status": 400,
+            "request": {
+              "revision": 6,
+              "task_id": "issue-task",
+              "run_id": "original-run",
+              "candidate_sha": "fc904857480f1c5be5b311a3e0b1a4ef753fd24e",
+              "base_branch": "bad name"
+            },
+            "observed": {
+              "error": "BLOCKED: Invalid export branch; inspect task export before any recovery"
+            }
+          },
+          {
+            "step": "explicit retry",
+            "status": 200,
+            "request": {
+              "revision": 6,
+              "task_id": "issue-task",
+              "run_id": "original-run",
+              "candidate_sha": "fc904857480f1c5be5b311a3e0b1a4ef753fd24e",
+              "base_branch": "release/稳定,base"
+            },
+            "observed": {
+              "provider": "github",
+              "project_revision": 6,
+              "original_candidate_sha": "fc904857480f1c5be5b311a3e0b1a4ef753fd24e",
+              "original_export_intent_sha256": "f54ed6862a7c60edf8ca46b1358b4cfaa549f70b28b0606cbcf2e7b1469a2164",
+              "task_base_sha": "03ab7521b7924d9c84810804e157d3cc869bde42",
+              "current_local_sha": "fc904857480f1c5be5b311a3e0b1a4ef753fd24e",
+              "remote": {
+                "repository": {
+                  "native_id": 88,
+                  "node_id": "R_<script>window.__obsXss=1</script>",
+                  "project": "team/repo",
+                  "observed_at": "2026-11-12T03:27:42.926942+00:00",
+                  "http_status": 200,
+                  "response_sha256": "6ba678657fa4845f8152a9030b6ad37220c7cde32cebeeb9ede99a0c95e44ca3"
+                },
+                "head": {
+                  "ref": "refs/heads/agent/原候选",
+                  "sha": "fc904857480f1c5be5b311a3e0b1a4ef753fd24e",
+                  "resolution": "resolved",
+                  "observed_at": "2026-11-12T03:27:42.928707+00:00",
+                  "http_status": 200,
+                  "response_sha256": "16b0eae5a91addf5f5940c6502471c3568abeb9b40a41c96557fe6553ef7a4bc"
+                },
+                "base": {
+                  "ref": "refs/heads/release/稳定,base",
+                  "sha": "03ab7521b7924d9c84810804e157d3cc869bde42",
+                  "resolution": "resolved",
+                  "observed_at": "2026-11-12T03:27:42.930039+00:00",
+                  "http_status": 200,
+                  "response_sha256": "c1aa3e0ab4866e92568425c659420c5932e07d24cb2151b323b316a6f18b80b4"
+                }
+              },
+              "comparisons": {
+                "local_export_ref_matches_candidate": true,
+                "head_matches_candidate": true,
+                "base_matches_task_base": true
+              },
+              "context_only": true,
+              "execution_authorized": false,
+              "proves_original_attempt": false
+            }
+          },
+          {
+            "step": "GitLab",
+            "status": 200,
+            "request": {
+              "revision": 6,
+              "task_id": "issue-task",
+              "run_id": "original-run",
+              "candidate_sha": "e22cc926ccd321d66a3590e8bf8b9fb4187056a0",
+              "base_branch": "release/稳定,base"
+            },
+            "observed": {
+              "provider": "gitlab",
+              "project_revision": 6,
+              "original_candidate_sha": "e22cc926ccd321d66a3590e8bf8b9fb4187056a0",
+              "original_export_intent_sha256": "e6485d8339faa2704ec28013118b4ed8b49f96773458dca34818f062ec2eef13",
+              "task_base_sha": "6f57a61a6fc3765d08c307e1cd43cba0942a48c9",
+              "current_local_sha": "e22cc926ccd321d66a3590e8bf8b9fb4187056a0",
+              "remote": {
+                "repository": {
+                  "native_id": 88,
+                  "project": "team/sub/repo",
+                  "observed_at": "2026-11-12T03:27:49.913256+00:00",
+                  "http_status": 200,
+                  "response_sha256": "3a63207d3b7efbe54958a79bb1a7f4610c0123ff84ea9b54a7f09fd538b358d8"
+                },
+                "head": {
+                  "ref": "refs/heads/agent/原候选",
+                  "sha": "e22cc926ccd321d66a3590e8bf8b9fb4187056a0",
+                  "resolution": "resolved",
+                  "observed_at": "2026-11-12T03:27:49.914660+00:00",
+                  "http_status": 200,
+                  "response_sha256": "e301e7b0cd5efa437d01791552698205fe568a4c748d12d7bc1060b244c9cdf4"
+                },
+                "base": {
+                  "ref": "refs/heads/release/稳定,base",
+                  "sha": "6f57a61a6fc3765d08c307e1cd43cba0942a48c9",
+                  "resolution": "resolved",
+                  "observed_at": "2026-11-12T03:27:49.915968+00:00",
+                  "http_status": 200,
+                  "response_sha256": "d4140542b1480b0b0c9939f54fcc3e43e1271e8bece54eed12c86b0c45cdf597"
+                }
+              },
+              "comparisons": {
+                "local_export_ref_matches_candidate": true,
+                "head_matches_candidate": true,
+                "base_matches_task_base": true
+              },
+              "context_only": true,
+              "execution_authorized": false,
+              "proves_original_attempt": false
+            }
+          },
+          {
+            "step": "GitLab",
+            "status": 200,
+            "request": {
+              "revision": 6,
+              "task_id": "issue-task",
+              "run_id": "original-run",
+              "candidate_sha": "e22cc926ccd321d66a3590e8bf8b9fb4187056a0",
+              "base_branch": "release/稳定,base"
+            },
+            "observed": {
+              "provider": "gitlab",
+              "project_revision": 6,
+              "original_candidate_sha": "e22cc926ccd321d66a3590e8bf8b9fb4187056a0",
+              "original_export_intent_sha256": "e6485d8339faa2704ec28013118b4ed8b49f96773458dca34818f062ec2eef13",
+              "task_base_sha": "6f57a61a6fc3765d08c307e1cd43cba0942a48c9",
+              "current_local_sha": "e22cc926ccd321d66a3590e8bf8b9fb4187056a0",
+              "remote": {
+                "repository": {
+                  "native_id": 88,
+                  "project": "team/sub/repo",
+                  "observed_at": "2026-11-12T03:27:52.438455+00:00",
+                  "http_status": 200,
+                  "response_sha256": "3a63207d3b7efbe54958a79bb1a7f4610c0123ff84ea9b54a7f09fd538b358d8"
+                },
+                "head": {
+                  "ref": "refs/heads/agent/原候选",
+                  "sha": null,
+                  "resolution": "not_found_or_not_visible",
+                  "observed_at": "2026-11-12T03:27:52.439644+00:00",
+                  "http_status": 404,
+                  "response_sha256": null
+                },
+                "base": {
+                  "ref": "refs/heads/release/稳定,base",
+                  "sha": null,
+                  "resolution": "not_found_or_not_visible",
+                  "observed_at": "2026-11-12T03:27:52.440885+00:00",
+                  "http_status": 404,
+                  "response_sha256": null
+                }
+              },
+              "comparisons": {
+                "local_export_ref_matches_candidate": true,
+                "head_matches_candidate": null,
+                "base_matches_task_base": null
+              },
+              "context_only": true,
+              "execution_authorized": false,
+              "proves_original_attempt": false
+            }
+          }
+        ]
+      }
+    },
+    "browser-lifecycle-r1": {
+      "checked_at": "2026-11-12T03:29:06.955174+00:00",
+      "exit_code": 0,
+      "seconds": 39.70277204923332,
+      "result": {
+        "passed": true,
+        "step": "changed tracker source",
+        "checks": [
+          "actual backend reply held branch edits supersede reply",
+          "held original owner response completed branch edits supersede reply",
+          "late branch result stays invalidated",
+          "branch invalidation remains visible",
+          "query outcome branch edits supersede reply",
+          "new explicit query uses only new branch",
+          "actual backend reply held close and reopen",
+          "held original owner response completed close and reopen",
+          "closed reply cannot populate replacement dialog",
+          "actual backend reply held switch project",
+          "held original owner response completed switch project",
+          "project switch does not reopen old dialog",
+          "late result cannot replace current project",
+          "actual backend reply held leave view",
+          "held original owner response completed leave view",
+          "late reply cannot replace different view",
+          "query outcome stale project revision",
+          "stale revision rejected before provider",
+          "query outcome fresh revision",
+          "fresh current revision keeps original export",
+          "query outcome changed tracker source",
+          "changed source refused without fallback",
+          "no lifecycle browser errors"
+        ],
+        "held": [
+          {
+            "step": "branch edits supersede reply",
+            "path": "/api/projects/demo/candidate-observations"
+          },
+          {
+            "step": "close and reopen",
+            "path": "/api/projects/demo/candidate-observations"
+          },
+          {
+            "step": "switch project",
+            "path": "/api/projects/demo/candidate-observations"
+          },
+          {
+            "step": "leave view",
+            "path": "/api/projects/demo/candidate-observations"
+          }
+        ],
+        "errors": [],
+        "scope": "Real installed HTTP owner responses delayed after processing. Explicit fixture revision/rebind changes; no new SDK/model/provider mutations.",
+        "samples": [
+          {
+            "step": "branch edits supersede reply",
+            "status": 200,
+            "request": {
+              "revision": 6,
+              "task_id": "issue-task",
+              "run_id": "original-run",
+              "candidate_sha": "fc904857480f1c5be5b311a3e0b1a4ef753fd24e",
+              "base_branch": "release/second"
+            },
+            "observed": {
+              "provider": "github",
+              "project_revision": 6,
+              "original_candidate_sha": "fc904857480f1c5be5b311a3e0b1a4ef753fd24e",
+              "original_export_intent_sha256": "f54ed6862a7c60edf8ca46b1358b4cfaa549f70b28b0606cbcf2e7b1469a2164",
+              "task_base_sha": "03ab7521b7924d9c84810804e157d3cc869bde42",
+              "current_local_sha": "fc904857480f1c5be5b311a3e0b1a4ef753fd24e",
+              "remote": {
+                "repository": {
+                  "native_id": 88,
+                  "node_id": "R_<script>window.__obsXss=1</script>",
+                  "project": "team/repo",
+                  "observed_at": "2026-11-12T03:28:38.098164+00:00",
+                  "http_status": 200,
+                  "response_sha256": "6ba678657fa4845f8152a9030b6ad37220c7cde32cebeeb9ede99a0c95e44ca3"
+                },
+                "head": {
+                  "ref": "refs/heads/agent/原候选",
+                  "sha": "fc904857480f1c5be5b311a3e0b1a4ef753fd24e",
+                  "resolution": "resolved",
+                  "observed_at": "2026-11-12T03:28:38.100203+00:00",
+                  "http_status": 200,
+                  "response_sha256": "16b0eae5a91addf5f5940c6502471c3568abeb9b40a41c96557fe6553ef7a4bc"
+                },
+                "base": {
+                  "ref": "refs/heads/release/second",
+                  "sha": "03ab7521b7924d9c84810804e157d3cc869bde42",
+                  "resolution": "resolved",
+                  "observed_at": "2026-11-12T03:28:38.101999+00:00",
+                  "http_status": 200,
+                  "response_sha256": "497f9fd0f441c0bee900574ab673c882bcfd02242493db485d4f3b0b8a54483b"
+                }
+              },
+              "comparisons": {
+                "local_export_ref_matches_candidate": true,
+                "head_matches_candidate": true,
+                "base_matches_task_base": true
+              },
+              "context_only": true,
+              "execution_authorized": false,
+              "proves_original_attempt": false
+            }
+          },
+          {
+            "step": "stale project revision",
+            "status": 400,
+            "request": {
+              "revision": 6,
+              "task_id": "issue-task",
+              "run_id": "original-run",
+              "candidate_sha": "fc904857480f1c5be5b311a3e0b1a4ef753fd24e",
+              "base_branch": "release/revision"
+            },
+            "observed": {
+              "error": "Project revision changed; reload before the issue operation"
+            }
+          },
+          {
+            "step": "fresh revision",
+            "status": 200,
+            "request": {
+              "revision": 7,
+              "task_id": "issue-task",
+              "run_id": "original-run",
+              "candidate_sha": "fc904857480f1c5be5b311a3e0b1a4ef753fd24e",
+              "base_branch": "release/refreshed"
+            },
+            "observed": {
+              "provider": "github",
+              "project_revision": 7,
+              "original_candidate_sha": "fc904857480f1c5be5b311a3e0b1a4ef753fd24e",
+              "original_export_intent_sha256": "f54ed6862a7c60edf8ca46b1358b4cfaa549f70b28b0606cbcf2e7b1469a2164",
+              "task_base_sha": "03ab7521b7924d9c84810804e157d3cc869bde42",
+              "current_local_sha": "fc904857480f1c5be5b311a3e0b1a4ef753fd24e",
+              "remote": {
+                "repository": {
+                  "native_id": 88,
+                  "node_id": "R_<script>window.__obsXss=1</script>",
+                  "project": "team/repo",
+                  "observed_at": "2026-11-12T03:29:02.368298+00:00",
+                  "http_status": 200,
+                  "response_sha256": "6ba678657fa4845f8152a9030b6ad37220c7cde32cebeeb9ede99a0c95e44ca3"
+                },
+                "head": {
+                  "ref": "refs/heads/agent/原候选",
+                  "sha": "fc904857480f1c5be5b311a3e0b1a4ef753fd24e",
+                  "resolution": "resolved",
+                  "observed_at": "2026-11-12T03:29:02.369664+00:00",
+                  "http_status": 200,
+                  "response_sha256": "16b0eae5a91addf5f5940c6502471c3568abeb9b40a41c96557fe6553ef7a4bc"
+                },
+                "base": {
+                  "ref": "refs/heads/release/refreshed",
+                  "sha": "03ab7521b7924d9c84810804e157d3cc869bde42",
+                  "resolution": "resolved",
+                  "observed_at": "2026-11-12T03:29:02.370898+00:00",
+                  "http_status": 200,
+                  "response_sha256": "463e88e3ae3373f23fc8bc1b2e210425337b58c3871768219664e4aa0e9f61c5"
+                }
+              },
+              "comparisons": {
+                "local_export_ref_matches_candidate": true,
+                "head_matches_candidate": true,
+                "base_matches_task_base": true
+              },
+              "context_only": true,
+              "execution_authorized": false,
+              "proves_original_attempt": false
+            }
+          },
+          {
+            "step": "changed tracker source",
+            "status": 400,
+            "request": {
+              "revision": 8,
+              "task_id": "issue-task",
+              "run_id": "original-run",
+              "candidate_sha": "fc904857480f1c5be5b311a3e0b1a4ef753fd24e",
+              "base_branch": "release/rebound"
+            },
+            "observed": {
+              "error": "Select a GitHub or GitLab tracker binding to read issues"
+            }
+          }
+        ]
+      }
+    },
+    "browser-final-r2": {
+      "checked_at": "2026-11-12T03:31:47.486252+00:00",
+      "exit_code": 0,
+      "seconds": 8.970543466042727,
+      "result": {
+        "passed": true,
+        "checks": [
+          "r2 installed full actual query succeeds",
+          "desktop no document overflow",
+          "desktop all observation table columns fit",
+          "mobile no document overflow",
+          "mobile all observation table columns fit"
+        ],
+        "views": [
+          {
+            "name": "desktop",
+            "viewport": 1440,
+            "document": 1440,
+            "tables": [
+              {
+                "client": 634,
+                "scroll": 634
+              },
+              {
+                "client": 584,
+                "scroll": 584
+              },
+              {
+                "client": 584,
+                "scroll": 584
+              }
+            ],
+            "compare": [
+              "相同",
+              "相同",
+              "相同",
+              "3a63207d3b7efbe54958a79bb1a7f4610c0123ff84ea9b54a7f09fd538b358d8",
+              "e301e7b0cd5efa437d01791552698205fe568a4c748d12d7bc1060b244c9cdf4",
+              "d4140542b1480b0b0c9939f54fcc3e43e1271e8bece54eed12c86b0c45cdf597"
+            ]
+          },
+          {
+            "name": "mobile",
+            "viewport": 390,
+            "document": 390,
+            "tables": [
+              {
+                "client": 298,
+                "scroll": 298
+              },
+              {
+                "client": 258,
+                "scroll": 258
+              },
+              {
+                "client": 258,
+                "scroll": 258
+              }
+            ],
+            "compare": [
+              "相同",
+              "相同",
+              "相同",
+              "3a63207d3b7efbe54958a79bb1a7f4610c0123ff84ea9b54a7f09fd538b358d8",
+              "e301e7b0cd5efa437d01791552698205fe568a4c748d12d7bc1060b244c9cdf4",
+              "d4140542b1480b0b0c9939f54fcc3e43e1271e8bece54eed12c86b0c45cdf597"
+            ]
+          }
+        ],
+        "query_sha": "e22cc926ccd321d66a3590e8bf8b9fb4187056a0",
+        "scope": "Final r2 installed query and two viewport table wrap only; earlier r1 behavior/lifecycle not rerun."
+      }
+    }
+  },
+  "cleanup_and_originals": {
+    "at": "2026-11-12T03:34:09.520321+00:00",
+    "http_requests": 125,
+    "all_original_http_request_response_bytes_verified": true,
+    "provider_gets": 49,
+    "provider_mutations": 0,
+    "services": [
+      {
+        "service": "r1/browser",
+        "http_requests": 12,
+        "candidate_observation_posts": 1,
+        "provider_gets": 2,
+        "held_real_responses": 0,
+        "runtime_files_unchanged": {
+          "github": 44,
+          "gitlab": 44
+        },
+        "two_complete_original_snapshots_unchanged": true,
+        "owned_process_exited": true,
+        "owned_threads_stopped": true
+      },
+      {
+        "service": "r1/browser-r2",
+        "http_requests": 101,
+        "candidate_observation_posts": 18,
+        "provider_gets": 44,
+        "held_real_responses": 4,
+        "runtime_files_unchanged": {
+          "github": 44,
+          "gitlab": 44
+        },
+        "two_complete_original_snapshots_unchanged": true,
+        "owned_process_exited": true,
+        "owned_threads_stopped": true
+      },
+      {
+        "service": "r2/browser",
+        "http_requests": 12,
+        "candidate_observation_posts": 1,
+        "provider_gets": 3,
+        "held_real_responses": 0,
+        "runtime_files_unchanged": {
+          "github": 44,
+          "gitlab": 44
+        },
+        "two_complete_original_snapshots_unchanged": true,
+        "owned_process_exited": true,
+        "owned_threads_stopped": true
+      }
+    ],
+    "original_candidates": [
+      {
+        "provider": "github",
+        "source_sha256": "496e59ebfbba8b5b836c78084fb23953d2e45701cc60ced2e9def28993ebfb49",
+        "complete_source_first_time_and_payload_unchanged": true,
+        "original_creation_intent_sha256": "446d572c63189b14642cf494ed79d958d7052fecb32335e5ff198e5c2ccdedc4",
+        "seven_original_files_match": true,
+        "original_export_intent_sha256": "f54ed6862a7c60edf8ca46b1358b4cfaa549f70b28b0606cbcf2e7b1469a2164",
+        "original_export_and_git_candidate_unchanged": true,
+        "zero_agent_link_review_writeback_rows": {
+          "agent_runs": 0,
+          "issue_task_links": 0,
+          "candidate_review_links": 0,
+          "issue_writebacks": 0
+        }
+      },
+      {
+        "provider": "gitlab",
+        "source_sha256": "884dd3df539d5b0356a9ed100002942c996aa0984e4f086706e81298ad0d8c6d",
+        "complete_source_first_time_and_payload_unchanged": true,
+        "original_creation_intent_sha256": "0046f27654db590757404e57bad773e726325ca3500dc0e20a949c9fbd11641e",
+        "seven_original_files_match": true,
+        "original_export_intent_sha256": "e6485d8339faa2704ec28013118b4ed8b49f96773458dca34818f062ec2eef13",
+        "original_export_and_git_candidate_unchanged": true,
+        "zero_agent_link_review_writeback_rows": {
+          "agent_runs": 0,
+          "issue_task_links": 0,
+          "candidate_review_links": 0,
+          "issue_writebacks": 0
+        }
+      }
+    ],
+    "named_browser_close_exits": [
+      0,
+      0
+    ],
+    "scope": "Actual original HTTP bytes, native source/contracts/export and complete runtime unchanged. Explicit fixture bump/rebind/ref edits are logged: no claim of unchanged whole control DB or repo reflog. Only owned processes/threads/ports/browsers; no new SDK/model execution, real SaaS or native Windows claim.",
+    "owned_port_count": 8,
+    "owned_ports_closed": true
+  },
+  "preserved_failures": [
+    "First browser3 checks then400: private GitHub fixture omitted exact ref URL; original owner correctly refused. Fixture only corrected at original frozen API ports; source/tasks not rewritten.",
+    "r1 screenshots no page overflow but comparison column required horizontal scroll; local wrap class/CSS corrected, r2 exact installation and new real query/two viewports separately checked. r1 behavior/model does not approve later bytes."
+  ],
+  "scope": "New installed app/native task/export owners, loopback providers and explicit lifecycle controls. No new real SaaS/native Windows formal execution, OS isolation, model or six-stage execution claim. Exact delivery pending.",
+  "independent_review": {
+    "candidate_files": 20,
+    "spec_open": 0,
+    "standards_open": 0,
+    "closed_findings": [
+      "ST1/P3 architecture module count",
+      "SP1/P3 PLAN status",
+      "SP2/P3 delivery opening status"
+    ],
+    "complete_candidate_passed": true,
+    "report": "../2026-11-12-candidate-observation-console-review.md"
+  }
+}

@@ -2,7 +2,7 @@
   "schema_version": 1,
   "at": "2026-11-12T02:59:50.457139+00:00",
   "baseline": "d60a9d82be80a52d3e6ca0257772af3b3a26a084",
-  "state": "local-exit-passed-exact-delivery-pending",
+  "state": "exact-delivery-complete",
   "r1_package": {
     "at": "2026-11-12T02:42:14.473941+00:00",
     "wheel_sha256": "2773db5b6d67c09aab13893662ae538a95a6256cfade19bd5339ca8defc1e42d",
@@ -387,5 +387,106 @@
     ],
     "complete_candidate_passed": true,
     "report": "../2026-11-12-source-task-console-review.md"
+  },
+  "delivery": {
+    "commit": "c69dedf82512ce87d6a72a249626c26dadca4c3c",
+    "ordinary_push_exit": 0,
+    "exact_git_files_and_modes": 20,
+    "ready_sha256": "17c8b88d214a2018121f6af0bca15453ebead7d6fc4c30c4bd89f2943674c4d0",
+    "author_ssh_ref_matches": true,
+    "independent_exact_git_and_receipts_passed": true,
+    "independent_direct_ref_http_status": 403,
+    "ci_run_id": 43146853654,
+    "ci_terminal_verified": true,
+    "preserved_ci_failures": [
+      "anonymous REST403",
+      "four In progress official run HTML samples"
+    ],
+    "independent_ci_raw_receipts_passed": true,
+    "official_ci_html_bodies_verified": 10,
+    "ci_projection_sha256": "64ed9d535ce3feca177a5e2904beb433fcd50d3cf7c0c64faa6010815115beee",
+    "ci": {
+      "at": "2026-11-12T03:38:17.567185+00:00",
+      "candidate": "c69dedf82512ce87d6a72a249626c26dadca4c3c",
+      "run_id": 43146853654,
+      "status": "Success",
+      "run_sample": "ci-run-html-r5",
+      "run_body_sha256": "59ee8c4d5ec5aea5a34309295f44c3809581ce5684ea45219117635a179c3f65",
+      "job_ids": {
+        "native (windows-latest, 3.12)": "130946572914",
+        "native (ubuntu-latest, 3.11)": "130946572425"
+      },
+      "jobs": [
+        {
+          "name": "native (windows-latest, 3.12)",
+          "job_id": "130946572914",
+          "job_sample": "ci-job-130946572914-html-r1",
+          "receipt_sha256": "70d342de0557018df46c193d0ff89f85aa9da507922015746a578f54e9d78004",
+          "body_sha256": "021ebd48a741c6b8906f39e28b599ae938b541c98ed92bc1140fcf2317060267",
+          "required_steps": [
+            {
+              "name": "Build and install wheel",
+              "conclusion": "success",
+              "started_at": "2026-11-12T03:14:43Z",
+              "completed_at": "2026-11-12T03:15:32Z",
+              "job_completed": true
+            },
+            {
+              "name": "Packaged reference identity",
+              "conclusion": "success",
+              "started_at": "2026-11-12T03:15:32Z",
+              "completed_at": "2026-11-12T03:15:33Z",
+              "job_completed": true
+            },
+            {
+              "name": "Native application regression",
+              "conclusion": "success",
+              "started_at": "2026-11-12T03:15:33Z",
+              "completed_at": "2026-11-12T03:29:26Z",
+              "job_completed": true
+            },
+            {
+              "name": "Windows PowerShell 5.1 installer and upgrade",
+              "conclusion": "success",
+              "started_at": "2026-11-12T03:29:26Z",
+              "completed_at": "2026-11-12T03:30:22Z",
+              "job_completed": true
+            }
+          ]
+        },
+        {
+          "name": "native (ubuntu-latest, 3.11)",
+          "job_id": "130946572425",
+          "job_sample": "ci-job-130946572425-html-r2",
+          "receipt_sha256": "3d86a49804facebc5099c931abd1df883ae19c214386c78fc6f5510f2d950280",
+          "body_sha256": "4536b72386fc2b76b850a16e95903977a567a7cf2ff544007b590c1b3eab0a57",
+          "required_steps": [
+            {
+              "name": "Build and install wheel",
+              "conclusion": "success",
+              "started_at": "2026-11-12T03:14:35Z",
+              "completed_at": "2026-11-12T03:14:55Z",
+              "job_completed": true
+            },
+            {
+              "name": "Packaged reference identity",
+              "conclusion": "success",
+              "started_at": "2026-11-12T03:14:55Z",
+              "completed_at": "2026-11-12T03:14:55Z",
+              "job_completed": true
+            },
+            {
+              "name": "Native application regression",
+              "conclusion": "success",
+              "started_at": "2026-11-12T03:14:55Z",
+              "completed_at": "2026-11-12T03:33:47Z",
+              "job_completed": true
+            }
+          ]
+        }
+      ],
+      "required_steps_passed": true,
+      "scope": "Official unauthenticated run/job HTML receipts only, exact commit links and full-SHA step log paths. No successful REST or complete job log claim. Nonterminal samples retained separately."
+    }
   }
 }

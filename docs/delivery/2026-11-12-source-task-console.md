@@ -1,6 +1,6 @@
 # F7d-D2 交付记录
 
-基线 `d60a9d82be80a52d3e6ca0257772af3b3a26a084`；[本片计划](../plans/2026-11-12-source-task-console.md)。S0–S3本地出口通过，S4精确交付继续。前片D1精确19Git、普通推送／作者SSH Ref和自己的CI43142680273双OS七必要步骤已由原评审终核；原403及非终态样本保留，不借给本片。
+基线 `d60a9d82be80a52d3e6ca0257772af3b3a26a084`；[本片计划](../plans/2026-11-12-source-task-console.md)。S0–S4及c69dedf精确交付已终结。前片D1精确19Git、普通推送／作者SSH Ref和自己的CI43142680273双OS七必要步骤已由原评审终核；原403及非终态样本保留，不借给本片。
 
 ## S0 原路径核对
 
@@ -36,4 +36,10 @@ r1离线隔离构建／新venv非editable安装成功，wheel SHA `2773db5b6d67c
 
 [自身模型投影](evidence/2026-11-12-source-task-console-self-review.json)保留原结果和后端自报用量，去除私有manifest／input路径；八附件中六份源码／schema仍与当前相同，仅计划／交付有后来记账，未借旧approve覆盖补后材料。完整20文件新的fresh-context独立Spec／Standards审查通过，开放0／0；唯一SP1/P3为S1过期状态，已最小修正并由原Spec审查者复核关闭，见[独立报告](2026-11-12-source-task-console-review.md)。原包／安装、全部实际页面分段、120HTTP／旧资料、模型完整读取、公开投影／两图与拥有资源清理均已独立核对；S0–S3本地出口通过。
 
-冻结前补最终文档静态身份，随后普通提交／推送并取得本提交自己的必要双OS CI。此时尚未提交／推送，精确交付待完成；状态记账不触发重复产品／模型或递归审查。
+S3通过时尚未提交／推送，后续精确交付按下段S4记账；状态更新不触发重复产品／模型或递归审查。
+
+## S4 精确交付
+
+最终静态20文件／347本地Markdown目标／6秘密值issue0；ready SHA `17c8b88d214a2018121f6af0bca15453ebead7d6fc4c30c4bd89f2943674c4d0`。`c69dedf82512ce87d6a72a249626c26dadca4c3c` 已普通提交／推送退出0，精确20Git对象／mode与ready相同，作者SSH Ref为同完整SHA；原评审已独立核原commit／push／Ref回执和448包身份。一次独立官方Ref直接读取403，保持原失败，不称评审直接网络成功。
+
+本提交自己的[CI43146853654](https://github.com/626619403/Ergora/actions/runs/43146853654)第五官方run HTML为Success；Windows job130946572914四必要步骤、Linux job130946572425三必要步骤均success／completed，原评审离线终核10份原HTML／收据、精确完整SHA日志路径和各时间区间通过，S4精确交付终结。CI投影SHA `64ed9d535ce3feca177a5e2904beb433fcd50d3cf7c0c64faa6010815115beee`。原匿名REST403、独立直接Ref403、前四run在途及首份Linux job在途均保留，不称成功REST、完整job日志或评审直接网络成功；D1及D3a结果不转授本片。

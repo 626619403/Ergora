@@ -4,6 +4,7 @@ import {
 } from "./ui.js";
 import { app, stages } from "./state.js";
 import { taskComposition } from "./task-composition.js";
+import { candidateObservation } from "./candidate-observation.js";
 
 const stageForPhase = {
   INVENTORY: "inventory", PLANNING: "plan", IMPLEMENTING: "work",
@@ -1114,8 +1115,9 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
           ["本次选择的精确候选", candidate.candidate_sha]]) : null,
         row(readButton), result,
       );
-      const active = () => view.isConnected && sequence === detailSequence &&
-        content.isConnected && $("#dialog").open && (!candidate || selectedRunSequence === runSequence);
+      const contextActive = () => view.isConnected && sequence === detailSequence &&
+        (!candidate || selectedRunSequence === runSequence);
+      const active = () => contextActive() && content.isConnected && $("#dialog").open;
       const current = (reading) => active() && reading === readingSequence;
 
       function show(record, reading) {
@@ -1140,6 +1142,11 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
             ["开发成功", record.execution_success == null ? "未知" : record.execution_success ? "是" : "否"],
           ]),
           disclosure("完整原导出记录", record),
+          record.status === "exported" && task.admission_envelope?.schema_version === 7
+            ? button("观察当前候选分支", () => {
+              if (!current(reading)) return;
+              candidateObservation({ base, taskId, record, isCurrent: contextActive });
+            }) : null,
           candidate && record.status !== "not_recorded"
             ? node("p", {}, "此任务已有原目标；恢复只沿原意图，不用本次选择覆盖它。") : null,
           canExport || canResume ? form(canExport ? [field("目标本地分支", "branch", "", "text", {
