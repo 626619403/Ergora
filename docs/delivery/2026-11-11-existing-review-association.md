@@ -95,3 +95,14 @@ SP1／ST1由原独立评审复核，最终公开候选／静态与R6精确交付
 
 
 最后公开静态28文件／367本地链接／六个已加载秘密值、JSON及diff空白检查issue0；只核相对文件目标存在，不宣称锚点、外部URL或Mermaid渲染。本片本地出口完成，R6精确交付继续。原静态五链接失败保留，报告现为标准文件#L链接。
+
+
+## R6 普通提交、远端同SHA与原push超时
+
+普通提交`572c44e3f9621cd85d18447f14b436725df2eb64`完成，parent为本片固定ad331c8。28个Git blob与mode逐一等于ready，ready清单SHA `29cb5c25f9b6fe0b89c26b4b7b68693fb2dd80ef39383c6d10783004ec3e0432`；提交内独立报告SHA为上节终核快照。原普通git push等待60秒后TimeoutExpired，**没有退出0或终态push收据**；原异常与重建说明保持。随后作者实际SSH精确分支ls-remote退出0／2.46秒，返回完整572c44e SHA；当前远端已到此提交，无需重复推送。
+
+原独立评审继续对committed28／ready／r2包、作者Ref原件以及本提交自己的CI终核；后续未提交文档不回写成原commit字节。R6仍待本提交自己的双OS七必要步骤，未借C3a的CI结案。
+
+## R6 自己的CI终态与精确交付终结
+
+第四份官方REST样本核到自己的run **43068731988 completed／success**；Windows 130691751127四个、Linux 130691751567三个必要步骤全部completed／success。原评审者离线核四轮七原body、HTTP来源／摘要、完整提交572c44e及原workflow；Spec／Standards开放0／0，C3b精确交付终结。首轮queued时采集脚本误断言、第二轮in_progress与第三轮限流403均保留，不当作CI失败或改写原件。原push仍是60秒超时、无exit0，随后同SHA的作者Ref观察另核；没有重复推送。后续工单页面不在本片判词范围。

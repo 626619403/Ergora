@@ -95,6 +95,8 @@ flowchart TB
 
 ## 调用与数据归属
 
+控制台的 `issues.js` 只消费已有 `issues.show / capture / snapshots / snapshot` 用例。导航进入只读取本地列表；外部读取和保存由操作者点击。局部序号、DOM存活和项目身份负责页面迟到响应，完整来源和权限仍由原后端所有者负责。历史快照保留原绑定，manual仍可离线读；未增加持久业务状态、provider分派或调度。
+
 ### 正式开发路径
 
 默认两开发preset采用 `work-units-v2`／正式信封v6；用户task-definition仍为v2，二者版本号含义不同。显式work-units-v1／v5与更早版本保留自己的身份，不自动迁移。在正式v5/v6中，每个原work unit一对一分配implementer实例，工作依赖必须匹配原units的传递依赖，全部Agent叶由work/review覆盖。静态图可表示的结构不保证正式运行器支持任意角色或拓扑。工单来源任务显式用definition3／creation3／信封v7选择完整snapshot，限work-units-v2；默认v2/v6不变。v7的纯来源合同核完整API来源与本项目冻结绑定，正文是任务数据，不授执行权；start的Input准入报告检查实际所选依赖，原策略／checks／claim保持。
@@ -175,7 +177,7 @@ Skill采用沿 `skills.adopt → evaluation.compare → skill_assets.move_head`�
 
 ## 图形页面与低代码
 
-前端为18个第一方原生ES module，加随包Cytoscape，无Node构建或运行时CDN。`app.js`拥有导航、刷新及图mount/dispose；`api / ui / state`提供传输、DOM和界面选择，均不保存正式执行真相。
+前端为19个第一方原生ES module，加随包Cytoscape，无Node构建或运行时CDN。`app.js`拥有导航、刷新及图mount/dispose；`api / ui / state`提供传输、DOM和界面选择，均不保存正式执行真相。
 
 ```mermaid
 flowchart TB
@@ -183,6 +185,7 @@ flowchart TB
   App --> Draft[workflow.js / 工作单元草稿]
   App --> Definitions[definitions.js / 定义库与修订会话]
   App --> Tasks[tasks.js / 正式任务详情与原ID恢复]
+  App --> Issues[issues.js / 当前工单与离线快照]
   Views --> Agents[agents.js / 独立调用]
   Definitions --> Graph[composition-graph.js / 已发布preview图]
   Definitions --> Compare[composition-comparison.js / 两份精确preview]

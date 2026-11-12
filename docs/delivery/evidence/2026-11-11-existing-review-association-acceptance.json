@@ -2,7 +2,7 @@
   "schema_version": 1,
   "slice": "F7c-C3b immutable local context for explicit existing PR/MR",
   "baseline": "ad331c854a6fbdbf6bacc3aac4350bb8d393713f",
-  "state": "Local gate passed: r2 installed68, complete independent28 Spec/Standards0/0, SP1/ST1/ST2 closed and final static; R6 own exact delivery pending",
+  "state": "572c44e exact delivery closed: Git/ready, author exact remote Ref and own dual-OS CI independently audited; original push timeout retained",
   "installed_r1": {
     "at": "2026-11-11T16:08:07.973515+00:00",
     "wheel_sha256": "fb78f40363adaad20f52e5c97a9745d5e74d95f00492211928bd438034a5bc9e",
@@ -186,5 +186,23 @@
     "loaded_secret_values_checked": 6,
     "issues": 0,
     "scope": "Relative local file targets/JSON/whitespace/private paths/loaded secrets; no anchor, external URL or Mermaid rendering acceptance."
+  },
+  "exact_delivery": {
+    "commit": "572c44e3f9621cd85d18447f14b436725df2eb64",
+    "ready_sha256": "29cb5c25f9b6fe0b89c26b4b7b68693fb2dd80ef39383c6d10783004ec3e0432",
+    "files": 28,
+    "author_git_objects_and_modes_equal_ready": true,
+    "ordinary_push_attempt": true,
+    "push_terminal_receipt": false,
+    "push_timeout_seconds": 60,
+    "author_ssh_remote_ref_equal_commit": true,
+    "author_ref_seconds": 2.457576744258404,
+    "own_ci": "completed/success",
+    "scope": "Original push timeout retained without exit0; later author exact Ref and own official CI completed/success independently verified offline",
+    "ci_run_id": 43068731988,
+    "ci_run_url": "https://github.com/626619403/Ergora/actions/runs/43068731988",
+    "required_steps_passed": true,
+    "independent_terminal_audit": true,
+    "ci_sample": "fourth official API sample; first queued/parser error, second in_progress and third rate-limit403 preserved"
   }
 }

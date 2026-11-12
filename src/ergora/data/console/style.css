@@ -859,6 +859,10 @@ summary {
 .task-detail {
   min-width: 0;
 }
+.issue-history {
+  max-height: 560px;
+  overflow: auto;
+}
 .task-creation-fields {
   display: grid;
   gap: 14px;

@@ -45,7 +45,7 @@ GET是分时观察，不是共同snapshot/CAS/ABA检测；GET也可能让provide
 |R3 迁移与备份|新表、旧打开连接writer fence、失败回滚、旧备份／新记录同一load校验；损坏有意义地拒绝|已通过源码与r2受影响安装，完整独立Spec／Standards开放0／0|
 |R4 CLI／HTTP旅程|两provider真实本地v7→Git export→新CLI保存／fresh CLI与HTTP离线读；只控制SDK端口，不称六阶段模型运行|两provider原v7／Git→fresh CLI保存／离线读通过；HTTP同用例通过，仅SDK端口受控|
 |R5 安装与审查|新非editable包／RECORD／283，必要受影响检查；实际内置审查模板、fresh-context完整独立Spec/Standards、文档静态|r1包447／两RECORD／283及八安装suite189通过／1跳过；实际自身首轮超时；九完整核心聚焦546.83秒approve／五scope全文审计通过，后两处修正不借模型判词；独立SP1／ST1补证／最小修正后r2包447／283及68安装项通过，完整28独立两轴开放0／0，SP1／ST1／ST2关闭；最后静态28文件／367链接issue0，本地出口通过；R6待核|
-|R6 精确交付|普通提交／推送、精确Git／remote和本提交自己的必要双OS CI；更新本片记录及PLAN|本地出口完成；精确提交／普通推送／remote及自己的CI待核|
+|R6 精确交付|普通提交／推送、精确Git／remote和本提交自己的必要双OS CI；更新本片记录及PLAN|572c44e普通提交、28Git／ready与作者SSH同完整Ref通过；原push60秒超时无终态，远端已到commit；自己的CI43068731988第四API样本双OS七必要步骤success/completed及原评审离线终核通过，精确交付终结|
 
 验证沿既有loopback provider、本地Git和备份旅程，保护可静默出错的合同，不逐个镜像普通参数异常。重点是number/iid/global id混淆、namespace/native ID变化、可空异步diff、base前进的不同语义、正文预算、无写锁网络、同scope并发与备份篡改。必要checks通过后，除新改动／失败／未决风险外不重复完整套件或模型。
 

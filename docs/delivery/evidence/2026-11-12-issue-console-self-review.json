@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "identity": {
+    "at": "2026-11-11T19:38:22.312911+00:00",
+    "baseline": "572c44e3f9621cd85d18447f14b436725df2eb64",
+    "run_id": "b0bf5ffbb79143069663015f1f68b3c6",
+    "status": "succeeded",
+    "backend": "codex",
+    "inference_model": "gpt-6.1-sol",
+    "reasoning_effort": "high",
+    "cli_exit": 0,
+    "seconds": 706.8380586542189,
+    "input_digest": "810ea6e3e568d0ec8e85a38236607d6fe043b1d56a7c0bae605864a0356df333",
+    "prompt_sha256": "d3e00edc1c6abc8be062e25e369d6cb00e614282e9ac139c8a8f89226cc9575c",
+    "attachment_bytes": 87459,
+    "attachment_sha256": "56c3e1e43f877dbd5f98c8e0b57c95f91a48da516fc310763c3d3fea8490ea9c",
+    "manifest_digest": "ba5eecd888fb1b64f9759a6daf675539daa5fcc6e41b403b1ddc6dcd58ac3a2f",
+    "revision": "1.0.111",
+    "observed_processes": 4,
+    "live_sampled_processes": [],
+    "scope": "F7d-D1 nine complete current source/callers/spec/delivery. Final browser, public docs and independent review separate; authorized Codex fallback, no dual-backend success claim.",
+    "decision": "approve",
+    "result_sha256": "52c4d5b9ea41bcc0ce80abfa68dc8a6dd5bb54227f900ac1535364da892a48df"
+  },
+  "read_audit": {
+    "at": "2026-11-12T02:16:53.948913+00:00",
+    "run_id": "b0bf5ffbb79143069663015f1f68b3c6",
+    "revision": "1.0.111",
+    "manifest_prepared_actual_prompt_admission_scope_native_original_result_match": true,
+    "bundled_template_unchanged_except_evidence_revision_resource_and_limit": true,
+    "scope_files": 5,
+    "all_scope_continuous_utf8_through_null": true,
+    "list_passes_files": [
+      5
+    ],
+    "failed_calls": 0,
+    "attachment_bytes": 87459,
+    "attachment_sha256": "56c3e1e43f877dbd5f98c8e0b57c95f91a48da516fc310763c3d3fea8490ea9c",
+    "frozen_complete_files": 9,
+    "original_result_sha256": "52c4d5b9ea41bcc0ce80abfa68dc8a6dd5bb54227f900ac1535364da892a48df",
+    "decision": "approve",
+    "native_stream_sha256": "825eca8743bb4595f63399cbba985fca630656c2bee743ddd500a4a26e245fcd",
+    "backend_reported_turn_usage": [
+      {
+        "input_tokens": 218571,
+        "cached_input_tokens": 177152,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 2732,
+        "reasoning_output_tokens": 1644
+      }
+    ],
+    "observed_processes": 4,
+    "live_sampled_processes": [],
+    "scope": "Offline exact identity and successful plaintext page reconstruction only. Cached counters are part of input, reasoning reported separately, neither is added twice. No billing, reasoning quality, owner approval, independent backend-error or unsampled-process claim."
+  },
+  "original_result": {
+    "artifacts": {
+      "response": "Read all declared ancestor instructions and skills, plus all 87,459 bytes of candidate.txt in continuous UTF-8 pages through next_offset:null.\n\nComplete scope:\n\n- src/ergora/data/console/issues.js\n- src/ergora/data/console/app.js\n- src/ergora/data/console/ui.js\n- src/ergora/data/console/api.js\n- src/ergora/data/console/state.js\n- src/ergora/web.py\n- src/ergora/issues.py\n- docs/plans/2026-11-12-issue-console.md\n- docs/delivery/2026-11-12-issue-console.md\n\n**Spec:** No actionable finding. Traced current read, capture, history and snapshot inspection through the shared API helper, HTTP routes and existing issue owner. Detail sequencing rejects superseded reads and captures; DOM/project checks reject detached views. The capture’s recorded pageSequence preserves a later history selection whether that query is pending or complete. Current observations and saved facts remain distinct, and source content uses text rendering.\n\n**Standards:** No actionable finding. Provider dispatch stays in issues.py; the view consumes existing use cases and keeps only presentation state. The detail/history counters protect separate response streams. The supplied scope adds no scheduler, run ledger, schema, dependency, permanent test or CI layer, and exposes no task or tracker mutation action beyond explicit snapshot capture.\n\nThis verdict covers the frozen source. Final r3 browser, installation, cleanup and delivery acceptance outside the attachments remain unverified. No commands, network requests or workspace edits were performed."
+    },
+    "decision": "approve",
+    "summary": "Approve the supplied source for structure: no reachable Spec or Standards defect found. Final r3 acceptance remains unverified."
+  }
+}

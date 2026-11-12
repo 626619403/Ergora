@@ -1,6 +1,6 @@
 # F7c-C3b 独立审查
 
-**当前判词：最终 28 件候选独立 Spec／Standards 均通过，开放 finding 0／0；SP1、ST1、ST2 已关闭。** 最后文档字节的静态终核及 R6 精确交付仍分别执行，不以审查通过替代。以下先保留首轮发现，再记录同片复核。
+**当前判词：最终 28 件候选独立 Spec／Standards 均通过，开放 finding 0／0；SP1、ST1、ST2 已关闭。** 精确提交 `572c44e3f9621cd85d18447f14b436725df2eb64` 的 Git／ready／包、作者 Ref 和自己的双 OS 七必要步骤均已独立离线终核，R6 精确交付终结。原 push 超时与中间非终态／请求失败原件保留。以下保留各轮当时结论及同片复核。
 
 审查日期：2026-11-12。审查者为本片新建的 Codex 独立上下文；另以两个 `fork_turns: none` 上下文分别完成 Spec 与 Standards 轴，先读原始规格和实际差异，再读作者叙述。只读源码、邻近所有者和证据；仅写本报告，没有修改产品、安装、联网、提交或运行产品套件。Standards 的小型复证仅用 `python -B` 和内存 SQLite，不写文件。
 
@@ -73,3 +73,46 @@ SP1 开放，ST1 为开放建议；本片尚不能据首轮报告结案。下一
 最后又读了 r2 之后本片交付／两份总计划的状态追加，均准确保留独立／静态与精确交付的先后范围。新结构化验收 JSON 与原件一致，不含机器路径或凭据值。本报告初稿的五个相对链接曾错误使用冒号行号，已改为相对文件加 `#L`；独立核本报告全部本地文件目标存在，未声称锚点或外部 URL 验证。作者记录的六秘密值扫描仍只是其有范围证据，本评审没有读取凭据值。
 
 **最终 Spec：通过，开放 0；最终 Standards：通过，开放 0。SP1、ST1、ST2 均关闭，完整 28 件独立审查出口完成。** 最后文档字节静态检查由作者随后终核；普通提交／推送、精确 Git／remote 和本提交自己的双 OS 必要 CI 属 R6，尚未由本报告证明。前述真实平台、原生 Windows、六阶段模型、不同后端与历史身份限制全部保持；F7 其余和项目整体不因此关闭。
+
+## R6 精确 Git／ready／作者 Ref 原件：通过，CI 待终态
+
+仅离线读取固定提交 **`572c44e3f9621cd85d18447f14b436725df2eb64`**，没有安装、产品／模型重跑或网络请求。禁 lazy fetch 和 object replacement，按 Git 对象头与原内容重算 commit 及 blob SHA1；唯一父提交为 **`ad331c854a6fbdbf6bacc3aac4350bb8d393713f`**。父→子差异恰为 28 件，全部普通 blob／`100644`；逐件大小、SHA256、mode 与 `commit-closure/ready-r1/manifest.json` 及封存完整副本相符，ready 清单 SHA256 **`29cb5c25f9b6fe0b89c26b4b7b68693fb2dd80ef39383c6d10783004ec3e0432`**。提交内审查报告保持已核快照 SHA **`5fa2dbf03d11791a7edc1c6e7bcd93b6245e6c58272769fc9707b5f97227d7b2`**；本节后续追加不是该提交内原字节。后续新片或工作树文档不改变本次候选身份。
+
+r2 wheel 的 447 件包文件逐一等于该提交 `src/ergora` 的全部 447 件文件，METADATA 的 README body 也逐字等于提交内 README；wheel SHA 仍为 **`f39eabc3ecf596a1d82a06b2bf2c663f8e0160ec744450eed77969ca678b0169`**。没有重跑已核安装与套件。最后公开状态追加仅登记本地出口、关闭的 finding 与 R6 待核；`static-r3` 的 28 件文件身份逐一等于 ready，记录 367 个本地链接、六个当时加载秘密值及 issue 0，四份 JSON 再次可解析。秘密值扫描只作为作者有范围证据，本评审未读取凭据值。
+
+普通 `git commit -m ...` 原回执退出 0／0.21 秒，原 stdout SHA `1447796c5b778e445088db3f5028685e1fe8c22e0c7a7d57ea3da6a1b2df3fe7`，stderr 空。随后普通 `git push origin HEAD:refs/heads/refactor/architecture-foundations` 的原脚本发生 **TimeoutExpired／60 秒**，没有 push 终态或退出 0 收据。`push-timeout-r1.json` 明确是依保留工具异常重建的说明，不能据后来远端状态把本次 push 改写为成功返回，也不补造 partial stdout/stderr。
+
+后续作者实际 `git ls-remote --exit-code origin refs/heads/refactor/architecture-foundations` 原件退出 **0／2.4576 秒**；JSON 的 stdout 与独立保留 stdout 逐字相同，精确为该完整提交 SHA 和原分支，stdout SHA **`f9c0f9ecdbff4c2b731c9a0e2b5186e424d1cb344a475eb9339a889512cab6ae`**，stderr 空。这证明作者该次读取观察到远端已到候选，不证明原 push 进程成功退出；本评审没有独立联网确认。
+
+首份 `ci-api-r1` 官方 REST runs／jobs 响应均为 HTTP 200，原 body 大小／SHA 与来源回执相符。精确 candidate、原分支、push event 和 `portability.yml` 对应 run **`43068731988`**；Windows job **`130691751127`**、Linux job **`130691751567`** 均为 queued、conclusion null、steps 空。该样本的 parser AssertionError 不能当作平台 CI 失败或通过；原非终态保留，等待自己的双 OS 必要步骤终态原件。
+
+**本轮结论：精确 28 Git 对象／mode／ready、提交与 r2 包／README、作者同完整 Ref 原件均通过，无新增 finding。Spec／Standards 仍开放 0／0；R6 只剩本提交自己的 CI 终态及必要步骤原件终核，尚未关闭。**
+
+## R6 自己的双 OS CI 原件终核：精确交付终结
+
+继续由原评审者离线核原件，只追加本报告；没有网络请求、产品／模型重跑或其他文档修改。对象固定为 **`572c44e3f9621cd85d18447f14b436725df2eb64`**、原 ready 和 r2 包；当前新片页面或文档变化不属于该提交。
+
+独立重算四轮共七份实际 HTTP body 的大小／SHA，逐一核对原 receipt 的请求 URL、最终 URL 和状态，全部相符：
+
+|保留原响应|HTTP／字节|body SHA256|
+|---|---|---|
+|`ci-api-r1/runs.json`|200／12,006|`5e7c295292622b412dbffc8edf498bd51c0f9e6705e755b6d6ae657dd46439b5`|
+|`ci-api-r1/jobs.json`|200／1,746|`8d38defa75c2730fad270e4d5e3b2c0053732621ed4826eb8750110ae8267553`|
+|`ci-api-r2/runs.json`|200／12,011|`d42c59f06d296c2d4d66ea0011da1c6191653f934b44bbce97805e4473aa9892`|
+|`ci-api-r2/jobs.json`|200／4,558|`6fe57a731647fc3182b667e93b03ff61f01d777615639d328ad733a300014dc9`|
+|`ci-api-r3/runs.json`|403／280|`cab107d310af6137d3ca21f7de123c972a91cb1cbd91e2f58f61fe192ba31735`|
+|`ci-api-r4/runs.json`|200／12,014|`584fcb60591e4d32d2802cad88cf1f61e092347dc0bdb8514bff4f9a3d1016ee`|
+|`ci-api-r4/jobs.json`|200／5,208|`3c954cd5f13d8412303732c5dd48ac5e16e8a96aa7d600460e4694ebc56d6021`|
+
+所有成功样本均绑定仓库／head repository `626619403/Ergora`、精确完整 candidate SHA、原分支、`push`、`.github/workflows/portability.yml`、run **`43068731988`** 与 attempt **1**，两个 job ID 始终相同。r1 为 queued、空 steps；原 collector 错把未来必要步骤当时已存在而触发 AssertionError，其后离线非终态投影准确保留，没有 CI 失败含义。r2 为 in_progress，两个回归仍在运行、Windows installer 尚待，`required_steps_passed: false` 保持。r3 是匿名限流 403，只有请求失败，不能补推当时 CI 状态。r4 才是 run／双 job 均 **completed／success**；这些历史样本没有回写为提前成功。
+
+从该提交原 `portability.yml` 确认 Ubuntu／Python 3.11 与 Windows／Python 3.12 矩阵、三个共同必要步骤及 Windows 条件步骤。独立从 r4 jobs 原文选出七项，名称、step number、completed／success 和有效起止时间均与投影一致，完成时间落在各 job 内：
+
+|job|必要步骤|终态原件|
+|---|---|---|
+|Windows `130691751127`|Build and install wheel；Packaged reference identity；Native application regression；Windows PowerShell 5.1 installer and upgrade|4／4 completed／success；回归完成 `2026-11-11T17:43:38Z`，installer 完成 `17:44:15Z`|
+|Linux `130691751567`|Build and install wheel；Packaged reference identity；Native application regression|3／3 completed／success；回归完成 `2026-11-11T17:53:39Z`|
+
+Linux 的 Windows installer 为 completed／skipped，与原 workflow 条件一致，不计为 Linux 必要步骤；两个 Complete job 也均 success。最终 `ci-api-r4/ci-sample.json` SHA256 **`42af2eae7e46e4f0de3203485a649f8d3021a1eb387e23d0a5ac01c20156d72d`** 与原文重建结果相符。这里只确认官方 REST 报告的精确身份、终态和必要步骤，没有下载完整 job 日志或推断未读取的测试计数，也不是评审者直接联网成功。
+
+**R6 最终结论：通过，C3b 对 `572c44e3f9621cd85d18447f14b436725df2eb64` 的精确交付终结。** 已核的 28 Git／mode／ready、r2 包／README、作者同完整 Ref 和本提交自己的双 OS 七必要步骤闭合；Spec／Standards 开放 **0／0**，无新增 finding。原普通 push 仍是 60 秒 TimeoutExpired、无退出 0 收据，后来 Ref 和本次成功 CI 不能改写该进程结果。原模型超时、分轮失败、403 与非终态均保留；F7 其余和项目整体，以及前述真实平台／执行环境／历史身份限制，不因此关闭。

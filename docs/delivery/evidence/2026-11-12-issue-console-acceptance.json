@@ -1,0 +1,345 @@
+{
+  "schema_version": 1,
+  "at": "2026-11-12T02:27:57.382448+00:00",
+  "baseline": "572c44e3f9621cd85d18447f14b436725df2eb64",
+  "state": "local-exit-passed-exact-delivery-pending",
+  "packages": {
+    "r2": {
+      "at": "2026-11-11T18:18:06.613988+00:00",
+      "wheel_sha256": "3ebdd1ea08bbca5e03b1759e3153eaea8ca08a1c94d451ec2177d7e0ba691086",
+      "wheel_files": 453,
+      "package_files": 448,
+      "wheel_and_installed_records_verified": true,
+      "installed_record_rows": 458,
+      "source_and_installed_package_equal": true,
+      "frozen_files": 283,
+      "editable": false
+    },
+    "r3": {
+      "at": "2026-11-11T19:26:33.549831+00:00",
+      "wheel_sha256": "bf7ab2c07cc8500a103e27e8ca57a25fbedc5c8349df06398c5cee92962505c0",
+      "wheel_files": 453,
+      "package_files": 448,
+      "wheel_and_installed_records_verified": true,
+      "installed_record_rows": 458,
+      "source_and_installed_package_equal": true,
+      "frozen_files": 283,
+      "editable": false
+    },
+    "r4": {
+      "at": "2026-11-12T02:24:27.569386+00:00",
+      "wheel_sha256": "6bb6d45e0411796ed97579e5f0ad01bc9e758c42b8a2242a6050d5ed71751660",
+      "wheel_files": 453,
+      "package_files": 448,
+      "wheel_and_installed_records_verified": true,
+      "installed_record_rows": 458,
+      "source_and_installed_package_equal": true,
+      "frozen_files": 283,
+      "editable": false
+    }
+  },
+  "r2_affected_installed_checks": [
+    {
+      "at": "2026-11-11T18:22:09.293423+00:00",
+      "exit": 0,
+      "seconds": 242.67332487134263,
+      "stdout_sha256": "2ae83450dd3cac72a91fddadb5c87435c0d7e44c75fb5b520c63b53225e5e828"
+    },
+    {
+      "at": "2026-11-11T18:22:09.561725+00:00",
+      "exit": 0,
+      "seconds": 0.2660597488284111,
+      "stdout_sha256": "62134fd44102295697774100d72a32716855a720bb8ce68b5bcea2a913505000"
+    }
+  ],
+  "r2_pytest": {
+    "passed": 45,
+    "seconds": 227.6
+  },
+  "final_r4_browser": {
+    "checked_at": "2026-11-12T02:25:23.439865+00:00",
+    "exit_code": 0,
+    "seconds": 4.4769904389977455,
+    "result": {
+      "passed": true,
+      "step": "complete GitLab read",
+      "checks": [
+        "entering page makes no provider read",
+        "first history page bounded at20",
+        "actual GitHub read HTTP200",
+        "GitHub full exact body",
+        "GitHub native identity",
+        "GitHub source rendered only as text",
+        "long original body reaches end marker",
+        "complete observation record displayed",
+        "capture re-read observes changed source",
+        "capture distinct from original show",
+        "saved full exact body",
+        "saved native identity",
+        "saved source rendered only as text",
+        "capture appends one immutable snapshot",
+        "same capture returns same immutable snapshot",
+        "repeat keeps first-observed history",
+        "last history page bounded at4",
+        "last page stops pagination",
+        "previous restores same bounded page",
+        "two pages discover all saved identities without duplicates",
+        "offline full exact body",
+        "offline native identity",
+        "offline source rendered only as text",
+        "offline snapshot does not touch provider",
+        "narrow viewport has no document overflow",
+        "provider failure remains visible instead of empty current issue",
+        "failed read creates no snapshot",
+        "manual project blocks external read",
+        "manual history full exact body",
+        "manual history native identity",
+        "manual history source rendered only as text",
+        "historical binding explicitly retained under manual",
+        "manual history fully offline",
+        "actual GitLab iid and global ID distinct",
+        "GitLab full exact body",
+        "GitLab native identity",
+        "GitLab source rendered only as text",
+        "no browser page error"
+      ],
+      "timings": [
+        {
+          "path": "/api/projects/github/issues/7",
+          "status": 200,
+          "automation_to_headers_ms": 50
+        },
+        {
+          "path": "/api/projects/github/issues/7/snapshots",
+          "status": 200,
+          "automation_to_headers_ms": 43
+        },
+        {
+          "path": "/api/projects/github/issues/7",
+          "status": 200,
+          "automation_to_headers_ms": 41
+        },
+        {
+          "path": "/api/projects/github/issues/7/snapshots",
+          "status": 200,
+          "automation_to_headers_ms": 48
+        },
+        {
+          "path": "/api/projects/github/issue-snapshots",
+          "status": 200,
+          "automation_to_headers_ms": 49
+        },
+        {
+          "path": "/api/projects/github/issue-snapshots",
+          "status": 200,
+          "automation_to_headers_ms": 50
+        },
+        {
+          "path": "/api/projects/github/issue-snapshots/06cdd614bbf6affa6f1eff6f746d8d9f33daecef94901a0f8dad558023368577",
+          "status": 200,
+          "automation_to_headers_ms": 39
+        },
+        {
+          "path": "/api/projects/github/issues/7",
+          "status": 400,
+          "automation_to_headers_ms": 43
+        },
+        {
+          "path": "/api/projects/manual/issue-snapshots/7ac8ce501f603766ca0fed4420187ad6c5a3e471279e13dbd83d9d2dcdb4f963",
+          "status": 200,
+          "automation_to_headers_ms": 33
+        },
+        {
+          "path": "/api/projects/gitlab/issues/7",
+          "status": 200,
+          "automation_to_headers_ms": 41
+        }
+      ],
+      "errors": [],
+      "saved_sha256": "a7b931b13b88cbb9da72938601ac9050c10860b187ae4efd874318adb2c147b6",
+      "github_history": [
+        "06cdd614bbf6affa6f1eff6f746d8d9f33daecef94901a0f8dad558023368577",
+        "0b4a24f09135ed68ea4fc1efe9265467660950973549ed44f45d9f7e0893f167",
+        "10de0672c6bd2c78b8a6d0619f07efe7014124a9f6e30e7e38b8d71aeba1b7e5",
+        "153395c12fdebb9223ad78db538883404c3762895e95a40c5dfe0c2aff7b3412",
+        "2339aad33230e8158262e94e5c35b0cca2988c9b55c20b6e8de38eed54e59b84",
+        "271d6767189411ef60a1043d39be9c6139026478d4e625d96ccc5eafc018ad80",
+        "2e67d1ed182d56aa7d0d9ccb331af93509c153771415e8471627f84ca4d7d681",
+        "2f4872a8ea5251a2fd80939ec5def858e9ea226a522535742e330292a7f617c7",
+        "31977b0f24dd3f07785844be6a743c724ce0136665277fe46497bb0a6e13993e",
+        "3bd16f977cc7a562517b4414dcaa2e8514d5b7d0dcfc713a1327c4ad6fd5aec3",
+        "4777132e06c61021937c8726e329f5f1144374d444a2de59999e89d76082f74b",
+        "51420cc476890a4c553d575a6402d072b0f595a733b987b7f7bd556637fcbd56",
+        "81ab21d3d273577abec69a6252c11bbb0f9cc046ebf0e4dfee4bd8f042bfa5f1",
+        "855c5088849a8290da326440ac1ad3b3fbcfde7e9c0c2238fee9c997aa20af92",
+        "8890d876de840679136f5192155f162e0d105911c57d8fb44e5b3014282a459b",
+        "8fe9817c65ee153e51fb58065ce6b04a5cbbf6dbdf6bf1f4711e3cf8c0e3b72b",
+        "a059607538ab408f4c1a1e88f6877cc21d719e40577724adbb51faf666733bad",
+        "a2701b0adf8ebec41186cb9e43412d2c3f9a440697186786ee16804f9a0990df",
+        "a29c57bdce32f630a8f8469571f33900578ecca5635c48bd8213d4460475a8e3",
+        "a7b931b13b88cbb9da72938601ac9050c10860b187ae4efd874318adb2c147b6",
+        "b5b4d94e1d268668a90eb51e256bf117baa8f62156affd2745515da1c892e1fb",
+        "bbc5267c2e9da458323e7cf7bd430116e93e12e27089609b867dee6d0917031c",
+        "c87776d87f7fa857829f97f91964b28100700acd137a528e1430bf2aac525a53",
+        "d6528d8fa0ffc65da033965cbb7d567f62be1051b08d4b8936e545aa304e3d2d"
+      ],
+      "width": {
+        "viewport": 390,
+        "document": 390
+      },
+      "scope": "Real installed UI/HTTP/State with loopback GitHub/GitLab; no actual hosted platform/model/Windows execution."
+    }
+  },
+  "r3_lifecycle": {
+    "checked_at": "2026-11-12T02:22:43.686501+00:00",
+    "exit_code": 0,
+    "seconds": 58.30536788981408,
+    "result": {
+      "passed": true,
+      "step": "provider capture failure",
+      "checks": [
+        "stale page revision rejected",
+        "stale save no provider read or snapshot",
+        "refresh adopts actual new tracker and revision",
+        "late read cannot replace edited number",
+        "late snapshot cannot replace later selection",
+        "late history page cannot overwrite reset",
+        "latest bounded page stays visible",
+        "late response leaves other tab intact",
+        "new view starts without previous full record",
+        "late capture cannot replace another project",
+        "original capture retained while UI moved",
+        "capture failure shown to browser",
+        "actual original save survives response failure",
+        "no implicit retry on unknown capture result",
+        "unknown result discoverable by original immutable identity",
+        "native capture failure stays visible",
+        "failed provider read makes no partial snapshot",
+        "no browser page error during lifecycle"
+      ],
+      "held": [
+        "/api/projects/github/issues/7",
+        "/api/projects/github/issue-snapshots/07e1f1637d67db44cf662ca2bef54cfa4f61a9299bcfe79d6df37194ffb71129",
+        "/api/projects/github/issue-snapshots",
+        "/api/projects/github/issues/7",
+        "/api/projects/github/issues/7/snapshots"
+      ],
+      "errors": [],
+      "after_counts": {
+        "github": 26,
+        "gitlab": 1,
+        "manual": 1
+      }
+    }
+  },
+  "r4_capture_newer_page_regression": {
+    "checked_at": "2026-11-12T02:25:50.402656+00:00",
+    "exit_code": 0,
+    "seconds": 2.363660746719688,
+    "result": {
+      "passed": true,
+      "checks": [
+        "new page2 visible while original capture still held",
+        "late capture preserves newer history page without extra fetch"
+      ],
+      "newer_page_preserved": true,
+      "unexpected_history_refreshes": 0,
+      "observed_page_note": "第 2 页 · 4 条"
+    }
+  },
+  "cleanup": {
+    "versions": [
+      {
+        "package": "r2",
+        "http_requests": 40,
+        "provider_gets": 36,
+        "original_api_bytes_verified": true,
+        "only_snapshot_posts": true,
+        "zero_task_or_writeback_rows": true,
+        "tasks_directory_created": false,
+        "owned_ports_closed": true,
+        "server_threads_stopped": true
+      },
+      {
+        "package": "r3",
+        "http_requests": 67,
+        "provider_gets": 44,
+        "original_api_bytes_verified": true,
+        "only_snapshot_posts": true,
+        "zero_task_or_writeback_rows": true,
+        "tasks_directory_created": false,
+        "owned_ports_closed": true,
+        "server_threads_stopped": true
+      },
+      {
+        "package": "r4",
+        "http_requests": 28,
+        "provider_gets": 33,
+        "original_api_bytes_verified": true,
+        "only_snapshot_posts": true,
+        "zero_task_or_writeback_rows": true,
+        "tasks_directory_created": false,
+        "owned_ports_closed": true,
+        "server_threads_stopped": true
+      }
+    ],
+    "package_file_deltas": {
+      "r2-r3": [
+        "ergora/data/console/issues.js"
+      ],
+      "r3-r4": [
+        "ergora/data/console/issues.js",
+        "ergora/data/console/style.css"
+      ]
+    },
+    "scope": "Every original captured API body, expected snapshot-only local POSTs, native provider GETs, empty task/Agent/writeback state and only the owned server threads/ports; no global process or SaaS acceptance"
+  },
+  "immutable_originals": {
+    "versions": [
+      {
+        "package": "r2",
+        "original_snapshots": 25,
+        "unchanged_identity_and_first_observed": true
+      },
+      {
+        "package": "r3",
+        "original_snapshots": 25,
+        "unchanged_identity_and_first_observed": true
+      },
+      {
+        "package": "r4",
+        "original_snapshots": 25,
+        "unchanged_identity_and_first_observed": true
+      }
+    ],
+    "scope": "Shared offline loader validates full immutable payload/hash for every original snapshot; no provider read or task recreation"
+  },
+  "preserved_failures": [
+    "Initial isolated build PyPI connection timeout; offline isolated build/install succeeded",
+    "Initial private HTTP driver stdin EOF and browser connection refused; driver lifecycle corrected",
+    "r2 primary18 checks before stale-page-note sampling failure; resumed22 checks passed after waiting actual table",
+    "Initial lifecycle private async helper adopted unresolved response Promise; three checks then timeout",
+    "r3 primary driver did not click navigation and ran zero checks before timeout",
+    "Later browser session closed before lifecycle execution; reopen and private dashboard/DOM readiness fixes followed",
+    "Old r2 actual late capture issued one unexpected history GET after page2; r4 final regression has zero"
+  ],
+  "scope": "Local installed app/HTTP/State and loopback GitHub/GitLab; r2 backend tests not falsely rerun on r4; async r3 scope preserved across final markup/CSS-only delta. No SaaS account, OS isolation, native Windows formal execution or six-stage model acceptance.",
+  "static_public_candidate": {
+    "files": 19,
+    "local_markdown_targets": 206,
+    "loaded_secret_values_checked": 6,
+    "issues": 0,
+    "whitespace_check_passed": true,
+    "scope": "Offline complete public candidate JSON/local Markdown targets/whitespace/loaded-secret/private-home check; anchors and external URLs not checked."
+  },
+  "independent_review": {
+    "candidate_files": 19,
+    "open_spec_findings": 0,
+    "open_standards_findings": 0,
+    "closed_findings": [
+      "SP1/P2",
+      "ST1/P3"
+    ],
+    "scope": "Fresh-context independent two-axis review; full final candidate and actual raw evidence checked. Exact commit, Ref and own CI pending."
+  }
+}
