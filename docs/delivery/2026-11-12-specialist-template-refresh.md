@@ -18,7 +18,7 @@
 
 ## 用户追加与研究范围
 
-最新要求已同步到计划：最初列举的七方向不作为固定划分，按官方Skill Reference拆分纵向职责；完成后增加横向架构设计、端到端kernel及跨域诊断／实验／独立评价研究，形成技术方向与agent职责的多对多矩阵。R1 kernel、R2量化、R3通信独立报告已完成；R4并行策略、R5显存继续，余项按并发容量分批。当前未因研究结论修改产品或宣称硬件实测。
+最新要求已同步到计划：最初列举的七方向不作为固定划分，按官方Skill Reference拆分纵向职责；完成后增加横向架构设计、端到端kernel及跨域诊断／实验／独立评价研究，形成技术方向与agent职责的多对多矩阵。R1–R10均已完成；R8作者报告另经新fresh-context事实／设计审查，两个P2最小修正后开放0／0。X1架构／系统、X2 kernel端到端、X3诊断／实验已按并发容量开始。当前未因研究结论修改产品或宣称硬件实测。
 
 [分类说明](../research/2026-11-12-optimization-taxonomy.md)已逐组对应索引的Getting Started、Adding Model Support、Performance Techniques、Cluster & Debugging，另标kernel／低精度补充来源和MoE跨域场景。保留现有Agent多职能／多专长及精确引用，不为研究新建一套运行语言；真正子流程执行缺口交D1单独验收。
 
@@ -32,6 +32,35 @@
 
 原命令、逐条stdout／stderr、10份HTTP正文与摘要、server输出和52项投影保存在私有`local-upgrade/journey-r1/`。本轮产品未变，不重复H1已过189测试或模型审查；U1/U2原件独立验收另行进行，不提前记录为完成。
 
+新的fresh-context评审已[完成U1/U2独立验收](2026-11-12-specialist-installation-review.md)，Spec／Standards开放0／0。其独立重算备份及安装RECORD、452产品、283冻结、三图全部16叶的祖先材料／完整树／prompt、六次实际准入、两个编译合同及10份HTTP；另核原server退出／PID无存活／端口关闭、只读SQLite零run及夹具干净，没有重跑旅程或网络。U1/U2范围内验收完成；未恢复旧环境、未全盘比较机器历史数据，未把HTTP入口冒称浏览器全矩阵或完整六阶段／GPU／新专家模板通过。
+
 ## U0 前片精确交付
 
 H1原独立评审已从官方run／两job原HTML及receipt重算身份、独立解析状态和七件步骤，确认产品`5ab6d350024de8515487d0bedb3b950be60ac867`自己的CI43170918496为Success，Linux三／Windows四必要步骤均success／completed。[原终核](2026-11-12-harness-probes-review.md#自己的-ci-与精确交付终结)已记录，H1精确交付终结。匿名API／独立Ref403、导航404、早期In progress和私有解析记账失败原件保持；没有新网络请求或全日志下载声明。U0不重跑已核产品、模型或CI，不关闭H2／H3。
+
+## D0前置：已核产品调用面
+
+以下为当前源码事实，不是新方案已实现：
+
+- [Agent定义](../../src/ergora/agent_definitions.py)已允许同一精确定义具备多个职能和专长标签，由现有后端能力逐职能准入；权限在工作流实例及父链中约束。因此纵向研究不要求每个技术项新增一个职能或一个基类。
+- [工作流定义](../../src/ergora/workflow_definitions.py)和[v2格式](../../src/ergora/data/schemas/workflow-definition-v2.json)已支持嵌套Agent／Workflow引用和all-join。现有格式没有原生外部流程调用节点；新增一个上游系统的名字不会自动得到它的运行能力。
+- [单叶调用](../../src/ergora/agent_runs.py)复用原快照、MCP、结果和进程所有者，独立运行选中叶子；不执行图前驱／端口。独立训练提案叶不能据此变成完整训练流程。
+- [StageDAG／WorkDelivery](../../src/ergora/review_dags.py)是原运行图的阶段数据投影，正式消费者约束工作实现者与只读审查者，并将原unit一对一分配；不是任意混合职能图运行器。
+- [Forge原生campaign](../../src/ergora/kernel.py)已有prepare／run／status、固定版本、native ID和未知对账，适合作为首个真实子流程消费者；不可重写其内部teacher／student循环或静默升级绑定。
+- [WorkflowInput及原workflow](../../src/ergora/reference_inputs.py)拥有六阶段的版本路由、创建／批准／运行身份；要将六阶段作为可复用子模板，应设计通往该所有者的Interface，保留原task/run、计划批准与可信候选，不能仅用六个Agent节点替代。
+
+D1待纵横向研究和D0决定后再细分实现；不提前引入第二调度、账本或只有一层转发的通用插件框架。
+
+## 持久研究检查点
+
+文档检查点`42902bbe1af59059b287a38f0c9efa51a72dca4b`已普通推送至原开发分支，退出0；既有SSH只读Ref核同完整SHA。包含U0收口、U1/U2作者验收、方向分类及R1–R3报告，共12件Markdown，210本地目标／6个已加载秘密值／私有路径与空白检查issue0。全部路径属于既有Portability文档忽略范围，没有新产品CI；不借H1 CI证明新研究或新模板能力。此检查点明确保留U1/U2独立验收和剩余纵横向研究待做，后到的报告另行保存／推送。
+
+## 纵向研究收口与横向交接
+
+R4–R10分别补齐[并行分片](../research/2026-11-12-optimization-parallelism-agents.md)、[显存与卸载](../research/2026-11-12-optimization-memory-agents.md)、[执行图／数据调度](../research/2026-11-12-optimization-execution-graph-agents.md)、[诊断与测量](../research/2026-11-12-optimization-profiling-agents.md)、[集群与恢复](../research/2026-11-12-optimization-cluster-agents.md)、[模型／配方](../research/2026-11-12-optimization-model-recipe-agents.md)和[重构／六阶段](../research/2026-11-12-refactoring-workflow-agents.md)。各文分别固定公开版本、原生接口、许可和未验范围；来源读取与作者结果没有冒称本项目硬件实测。
+
+需要在D0处理的共同问题：多个Skill的开关／导入／支持表已滞后于同快照实际源码；不同项目的独立latest存在Python和Core／TE配套冲突；native exit0、缓存、schema或内部judge不等于正确性、质量或收益通过。原生系统的teacher／student／planner等每个内部会话如何完整接收父资料和权限，是实际接入门槛，不能靠包装CLI解决。具体建议须经X1–X3的跨域控制和交接证据汇总后定稿，不按纵向目录直接生成一套互斥agent类。
+
+[R8新独立审查](2026-11-12-cluster-research-review.md)首审指出Slurm主Skill／复制模板启动形态未展开、内部模型缺少可拒绝的继承／权限／预算门禁。作者补固定模板引用、参数化rank生成者／共享路径合同，以及deterministic-only首片和不满足父合同的模型流程unsupported。原评审复核最终研究稿`d9419364dc0c2c25876d715dd2640a370672535d2a8aef5755374476fb799b9a`通过，R8-SP1／SP2关闭、Spec／Standards开放0／0；首稿身份和原finding保持。复核没有新增网络、安装或上游执行，不是D0、X或产品适配通过。
+
+第二文档检查点限定U1/U2新独立验收、R4–R10、R8独立审查和三件进度文档，共12件Markdown，不包含仍在编写的X报告。首轮静态指出审查报告12个相对链接含`:行号`而指向不存在文件，已仅机械修正目标、保留标签／正文／判词及原报告前像；暂存校验另指出R7末尾多余空行，已机械修正，尚未运行commit。两项原失败保持；先前空白检查未覆盖当时未跟踪的新文件，不能当作完整暂存候选通过。完整候选的12文件／132本地目标／6个已加载秘密值检查issue0，最终Git空白检查按暂存候选重新核验。此为文档范围，无产品、测试或CI变更；不重跑U1/U2旅程、H1模型或旧候选CI。
