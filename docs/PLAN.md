@@ -6,6 +6,8 @@
 
 - 当前产品`5ab6d350024de8515487d0bedb3b950be60ac867`的[F8-H1](delivery/2026-11-12-harness-probes.md)自己的CI43170918496双OS七必要步骤及原评审精确终核通过，精确交付终结；原匿名／独立Ref403、导航404和早期在途保持。日常安装已备份升级，43命令／52检查／10HTTP及新独立原件验收通过；当前优先按[专家模板重整](plans/2026-11-12-specialist-template-refresh.md)完成Skill Reference纵向及跨方向横向研究，再调整运行接口与模板。下列较早节点保留其完成身份。
 
+- 专家模板重整上一文档检查点`9abbb6448cf42548f598e53faa342e261671b354`已普通推送／作者SSH完整Ref核准：U1/U2独立验收、R4–R10及R8独立修正复核共12文件，最终静态132本地目标／6秘密值issue0，原两项文档静态失败保持。R1–R10及X1–X3研究均完成，[D0矩阵](research/2026-11-12-specialist-adoption.md)及[新独立审查／补核](delivery/2026-11-12-specialist-adoption-review.md)开放0／0；[D1a设计](plans/2026-11-12-six-stage-native-consumer.md)完成。首原六阶段通用消费者／首Forge kernel方向；下一B1全阶段材料，再B2总预算、C单实例、D旅程。没有新增产品、测试或CI变更，D1b–D3仍未实现。
+
 - 仓库 `626619403/Ergora`；工作分支 `refactor/architecture-foundations`；产品提交 `784da65da89bdd2fed4742e57e3f904c0f295216` 的D3c自己的CI43159652748双OS七必要步骤及原评审精确终核通过；后续H0文档 `a35123e4ea3f24b091774f1476c2e159804de560` 普通push退出0、精确十Git及作者SSH Ref原件独立核过，H0精确交付终结，独立API403保持。不自动合入 main 或强推。
 - [C6a容量](delivery/2026-11-11-composition-capacity.md)已精确交付f957489：五组静态／页面测量、完整资料和预算拒绝保持，独立Git／Ref及自己的CI42960110776第四样本／原评审终核通过；没有将画布容量称作同数量Agent已执行。
 - [C6b/c旅程与后端](delivery/2026-11-11-template-walkthroughs.md)已精确交付c1f31fc：21准备CLI／2读回、两域页面创建、训练只读叶与明确回退、完整祖先读取及指南／三投影完成；新完整16文件独立两轴开放0／0。自己的CI42964143325第四样本双OS七必要步骤success/completed，原评审核四份八原body及作者HTTPS200同完整SHA通过；原独立Ref超时、smart-Git TLS失败与前三In progress保持，不称评审者直接网络成功。C6b页面未跑六阶段，Claude失败及Codex request-changes范围保持。
@@ -19,7 +21,7 @@
 
 ## 下一可执行项
 
-0. 用户新增[专家模板重整计划](plans/2026-11-12-specialist-template-refresh.md)：已备份并升级日常安装，452产品文件／RECORD与产品基线一致，U2的43命令／52检查／10HTTP及新独立原件验收完成。按Megatron Bridge Skill Reference细化纵向方向，最初七方向只是举例；R1–R10完成，R8新独立复核通过、两P2关闭。X1架构／系统、X2 kernel端到端、X3诊断／实验横向研究均已分派；D0汇总多对多能力关系与采用优先级。完整方向流程可接子模板，六阶段自身也按可复用模板核对；不足的真实运行接口优先补足，保留原合同／权限和恢复所有者。U0的H1原评审CI终核已完成；[交付记录](delivery/2026-11-12-specialist-template-refresh.md)。
+0. 用户新增[专家模板重整计划](plans/2026-11-12-specialist-template-refresh.md)：已备份并升级日常安装，452产品文件／RECORD与产品基线一致，U2的43命令／52检查／10HTTP及新独立原件验收完成。按Megatron Bridge Skill Reference细化纵向方向，最初七方向只是举例；R1–R10完成，R8新独立复核通过、两P2关闭。X1架构／系统、X2 kernel端到端、X3诊断／实验、D0采用决策和D1a设计均完成，新独立两轴及同片补核开放0／0；本轮文档收口后实施[D1计划](plans/2026-11-12-six-stage-native-consumer.md)的B1全阶段材料。原六阶段为首通用消费者，Forge旧pin为首kernel方向；条件适配Optuna／原runner，不再建调度。完整方向流程可接子模板，保留原合同／权限、预算和恢复所有者；没有把CLI／静态图称完整接入。U0的H1原评审CI终核已完成；[交付记录](delivery/2026-11-12-specialist-template-refresh.md)。
 
 1. C3d及C4a精确交付均已终结，既有非终态样本保持；不重复产品/模型或远端终核。
 2. C4b.1完整最终候选本地出口已通过，8ce9aba已普通推送、原评审精确20Git对象/436包/283冻结及一次HTTPS同SHA通过；自己的CI42825342126第三样本双OS七必要步骤与原评审离线终核通过，精确交付终结；前两In progress样本保持。已过行为与模型不重复。

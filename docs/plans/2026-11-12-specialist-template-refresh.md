@@ -23,21 +23,21 @@
 |U0 前片交付|H1 精确候选自己的双 OS 必要 CI 与原独立终核完成；原失败／限流样本保持|已完成：5ab6d35自己的CI43170918496双OS七必要步骤及原评审精确终核通过|
 |U1 日常安装升级|备份原安装身份／依赖与必要持久数据；升级标准 home 安装；CLI 实际加载新包，旧数据及项目保持，回退方法可用|完成：完整旧环境备份、离线升级、452产品文件／RECORD一致；新独立Spec／Standards开放0／0|
 |U2 升级后旅程|新版 CLI、三组合导入／重复导入、完整 manifest／叶准入、页面及既有正式合同的必要操作；不误触业务写；记录当前支持和未验范围|完成：43命令／52检查／10HTTP通过，所属页面进程／端口清理；新独立原件重算通过|
-|R1 kernel|NVIDIA KDA／ForgeKernel 及华为具名候选的一手实现、流程、硬件／语言、正确性与性能评价、许可和最小适配|[独立研究完成](../research/2026-11-12-optimization-kernel-agents.md)，待D0汇总|
+|R1 kernel|NVIDIA KDA／ForgeKernel 及华为具名候选的一手实现、流程、硬件／语言、正确性与性能评价、许可和最小适配|[独立研究完成](../research/2026-11-12-optimization-kernel-agents.md)，已纳入D0|
 |R2 低精度与压缩|训练／推理量化区分，校准／误差／质量门禁，附剪枝蒸馏适用性；区分 agent、搜索流程、库和 Skill|[量化独立研究完成](../research/2026-11-12-optimization-quantization-agents.md)，压缩与模型适配联动R9|
-|R3 通信|collective／MoE／并行拓扑／重叠；真实自动搜索或 agent 实现与诊断工具分开，保留正确性与端到端证据|[独立研究完成](../research/2026-11-12-optimization-communication-agents.md)，待D0汇总|
-|R4 并行策略与分片|TP／DP／PP／EP／CP、FSDP、分层与动态CP、vision DP over CP、MoE长上下文与硬件配方；搜索与推荐流程|[独立研究完成](../research/2026-11-12-optimization-parallelism-agents.md)，待D0汇总|
-|R5 显存与卸载|memory tuning／estimator、activation recompute、CPU offload、优化器／激活／权重状态；容量与代价测量、自动搜索|[独立研究完成](../research/2026-11-12-optimization-memory-agents.md)，待D0汇总|
-|R6 执行图与数据调度|CUDA Graphs、sequence packing、attention／fusion、microbatch重排／调度；编译和数据流优化，保持语义及质量|[独立研究完成](../research/2026-11-12-optimization-execution-graph-agents.md)，待D0汇总|
-|R7 性能诊断与测量|Nsight Systems、PyTorch／跨层trace、分析陷阱与SQLite、memory snapshot；诊断agent／MCP、基线和可信测量|[独立研究完成](../research/2026-11-12-optimization-profiling-agents.md)，待D0汇总|
+|R3 通信|collective／MoE／并行拓扑／重叠；真实自动搜索或 agent 实现与诊断工具分开，保留正确性与端到端证据|[独立研究完成](../research/2026-11-12-optimization-communication-agents.md)，已纳入D0|
+|R4 并行策略与分片|TP／DP／PP／EP／CP、FSDP、分层与动态CP、vision DP over CP、MoE长上下文与硬件配方；搜索与推荐流程|[独立研究完成](../research/2026-11-12-optimization-parallelism-agents.md)，已纳入D0|
+|R5 显存与卸载|memory tuning／estimator、activation recompute、CPU offload、优化器／激活／权重状态；容量与代价测量、自动搜索|[独立研究完成](../research/2026-11-12-optimization-memory-agents.md)，已纳入D0|
+|R6 执行图与数据调度|CUDA Graphs、sequence packing、attention／fusion、microbatch重排／调度；编译和数据流优化，保持语义及质量|[独立研究完成](../research/2026-11-12-optimization-execution-graph-agents.md)，已纳入D0|
+|R7 性能诊断与测量|Nsight Systems、PyTorch／跨层trace、分析陷阱与SQLite、memory snapshot；诊断agent／MCP、基线和可信测量|[独立研究完成](../research/2026-11-12-optimization-profiling-agents.md)，已纳入D0|
 |R8 集群运行与恢复|multi-node Slurm／模板、resiliency／straggler／故障恢复；作业诊断agent和完整生命周期，权限与资源边界|[研究](../research/2026-11-12-optimization-cluster-agents.md)及[新独立事实／设计复核](../delivery/2026-11-12-cluster-research-review.md)通过，SP1／SP2关闭、开放0／0|
-|R9 模型／配方与框架适配|recipe推荐、LLM／VLM bridge、模型验证卡、训练关联／数值一致、RL框架E2E；模型结构／剪枝蒸馏与框架选择|[独立研究完成](../research/2026-11-12-optimization-model-recipe-agents.md)，待D0汇总|
-|R10 重构与开发流程|build／dependency／testing／CI／PR review相关成熟重构与治理agent；核六阶段模板及当前运行差距，给最小迁移方案|[独立研究完成](../research/2026-11-12-refactoring-workflow-agents.md)，待D0汇总|
-|X1 横向架构与系统优化|在纵向研究后，核跨并行／显存／通信／图／硬件的架构设计与系统优化agent／流程；区分模型架构与代码架构|纵向正文完成，fresh-context研究中|
-|X2 横向kernel与端到端优化|在纵向研究后，核kernel agent覆盖精度、布局、融合、通信、图与服务集成的真实边界；复用R1证据并补跨域调用／交接|纵向研究后，fresh-context研究中|
-|X3 横向诊断／实验／评价协作|跨域瓶颈定位、候选搜索、预算／恢复、正确性／质量／性能独立审查、干预冲突与归因；成熟实现及论文|纵向研究后，fresh-context研究中|
-|D0 汇总与优先级|按“技术方向×agent能力／职责”建多对多矩阵，逐项选择采用／适配／借鉴／暂缓；明确工具、子模板及自建边界与依赖顺序|待R1–R10及X1–X3|
-|D1 最小运行补足|仅为选中真实流程补缺口，六阶段模板可引用且保留原所有者；模式、权限、输入输出、恢复和预算可验收|按 D0 立独立实现片|
+|R9 模型／配方与框架适配|recipe推荐、LLM／VLM bridge、模型验证卡、训练关联／数值一致、RL框架E2E；模型结构／剪枝蒸馏与框架选择|[独立研究完成](../research/2026-11-12-optimization-model-recipe-agents.md)，已纳入D0|
+|R10 重构与开发流程|build／dependency／testing／CI／PR review相关成熟重构与治理agent；核六阶段模板及当前运行差距，给最小迁移方案|[独立研究完成](../research/2026-11-12-refactoring-workflow-agents.md)，已纳入D0|
+|X1 横向架构与系统优化|在纵向研究后，核跨并行／显存／通信／图／硬件的架构设计与系统优化agent／流程；区分模型架构与代码架构|[研究完成](../research/2026-11-12-horizontal-architecture-agents.md)：六组系统／Galvatron补证，已入D0并完成独立审查|
+|X2 横向kernel与端到端优化|在纵向研究后，核kernel agent覆盖精度、布局、融合、通信、图与服务集成的真实边界；复用R1证据并补跨域调用／交接|[研究完成](../research/2026-11-12-horizontal-kernel-agents.md)：四条真实流程、逐会话／最小接口缺口，已入D0并完成独立审查|
+|X3 横向诊断／实验／评价协作|跨域瓶颈定位、候选搜索、预算／恢复、正确性／质量／性能独立审查、干预冲突与归因；成熟实现及论文|[研究完成](../research/2026-11-12-horizontal-experiment-agents.md)：AIDE／FT／Optuna／Tune及原评价owner，已入D0并完成独立审查|
+|D0 汇总与优先级|按“技术方向×agent能力／职责”建多对多矩阵，逐项选择采用／适配／借鉴／暂缓；明确工具、子模板及自建边界与依赖顺序|[采用矩阵](../research/2026-11-12-specialist-adoption.md)及[新独立审查／补核](../delivery/2026-11-12-specialist-adoption-review.md)完成文档范围，Spec／Standards开放0／0|
+|D1 最小运行补足|仅为选中真实流程补缺口，六阶段模板可引用且保留原所有者；模式、权限、输入输出、恢复和预算可验收|[D1a设计](2026-11-12-six-stage-native-consumer.md)及独立补核完成；下一B1全阶段材料，B2总预算、C单实例调用、D实际旅程均未实现|
 |D2 模板与专家适配|新版本优化／重构模板，方向子模板、独立 Agent 定义／完整资源与可选后端；旧版本保持，公开说明可独立复现|按 D0／D1 分片|
 |D3 实际执行与交付|适配包的实际叶／方向流程与六阶段衔接、适当 CPU／模型与可用硬件验证；自身审查＋新独立两轴，手册、正常推送及自己的必要 CI|按每实现片分别验收|
 
@@ -50,5 +50,7 @@
 初步编排按“资料与硬件清点→可信基线／诊断→按瓶颈选方向子流程→独立正确性／质量／性能评价→候选整合”组织；并行候选须在隔离实验或不同分支上执行，不能同时修改同一训练配置后失去归因。此为待D0确认的设计，尚不宣称通用图运行器已经存在。研究也须分开技术分类、实际可用工具和可执行流程，用户可调各层实现而不越父级权限。
 
 用户追加横向关系：纵向技术分类不能直接成为互斥的agent类别，一个架构或kernel agent可能覆盖多类技术；每类技术也可能由多种职责互补。完成纵向研究后再开展X1–X3，核跨域真实流程而非重复候选清单。D0须同时记录技术能力、职责（执行／监管／审查等）、专长、所需工具／资源、输入输出和可组合关系；单个agent定义可被多个模板按固定版本引用。模板嵌套负责上下文与权限上限继承，协作边负责数据／依赖交接，不能以技术分类推导权限扩张或重复建立运行所有者。
+
+X1–X3已收口，采用选择与D1拆分以[D0](../research/2026-11-12-specialist-adoption.md)为准：原六阶段先作为通用复用消费者，Forge保留为首个kernel方向适配。完整原生Agent系统若无法覆盖全部内部会话的材料、权限和总预算，完整模式保持unsupported，不因有CLI／SDK而准入。条件适配Optuna时在原runner消费有限参数建议，不直接安装研究dev快照；只有真实分布式试次需求才接Tune。确定性solver消费核定config／artifact，不伪造需要读取资料的模型会话。当前代码、测试和CI未变，三份横向研究均非运行或收益实测。
 
 U1/U2 的机器身份、备份与原始输出留在 home 下私有验收目录；公开手册只描述通用用法。每节点更新本计划、交付和 [PLAN](../PLAN.md)；不将上一片测试或 CI 授给新行为。

@@ -46,7 +46,7 @@ H1原独立评审已从官方run／两job原HTML及receipt重算身份、独立�
 - [工作流定义](../../src/ergora/workflow_definitions.py)和[v2格式](../../src/ergora/data/schemas/workflow-definition-v2.json)已支持嵌套Agent／Workflow引用和all-join。现有格式没有原生外部流程调用节点；新增一个上游系统的名字不会自动得到它的运行能力。
 - [单叶调用](../../src/ergora/agent_runs.py)复用原快照、MCP、结果和进程所有者，独立运行选中叶子；不执行图前驱／端口。独立训练提案叶不能据此变成完整训练流程。
 - [StageDAG／WorkDelivery](../../src/ergora/review_dags.py)是原运行图的阶段数据投影，正式消费者约束工作实现者与只读审查者，并将原unit一对一分配；不是任意混合职能图运行器。
-- [Forge原生campaign](../../src/ergora/kernel.py)已有prepare／run／status、固定版本、native ID和未知对账，适合作为首个真实子流程消费者；不可重写其内部teacher／student循环或静默升级绑定。
+- [Forge原生campaign](../../src/ergora/kernel.py)已有prepare／run／status、固定版本、native ID和未知对账，适合作为首个kernel方向消费者；不代表已经满足嵌套父合同。不可重写其内部teacher／student循环或静默升级绑定。
 - [WorkflowInput及原workflow](../../src/ergora/reference_inputs.py)拥有六阶段的版本路由、创建／批准／运行身份；要将六阶段作为可复用子模板，应设计通往该所有者的Interface，保留原task/run、计划批准与可信候选，不能仅用六个Agent节点替代。
 
 D1待纵横向研究和D0决定后再细分实现；不提前引入第二调度、账本或只有一层转发的通用插件框架。
@@ -64,3 +64,23 @@ R4–R10分别补齐[并行分片](../research/2026-11-12-optimization-paralleli
 [R8新独立审查](2026-11-12-cluster-research-review.md)首审指出Slurm主Skill／复制模板启动形态未展开、内部模型缺少可拒绝的继承／权限／预算门禁。作者补固定模板引用、参数化rank生成者／共享路径合同，以及deterministic-only首片和不满足父合同的模型流程unsupported。原评审复核最终研究稿`d9419364dc0c2c25876d715dd2640a370672535d2a8aef5755374476fb799b9a`通过，R8-SP1／SP2关闭、Spec／Standards开放0／0；首稿身份和原finding保持。复核没有新增网络、安装或上游执行，不是D0、X或产品适配通过。
 
 第二文档检查点限定U1/U2新独立验收、R4–R10、R8独立审查和三件进度文档，共12件Markdown，不包含仍在编写的X报告。首轮静态指出审查报告12个相对链接含`:行号`而指向不存在文件，已仅机械修正目标、保留标签／正文／判词及原报告前像；暂存校验另指出R7末尾多余空行，已机械修正，尚未运行commit。两项原失败保持；先前空白检查未覆盖当时未跟踪的新文件，不能当作完整暂存候选通过。完整候选的12文件／132本地目标／6个已加载秘密值检查issue0，最终Git空白检查按暂存候选重新核验。此为文档范围，无产品、测试或CI变更；不重跑U1/U2旅程、H1模型或旧候选CI。
+
+上述最终12文件已形成`9abbb6448cf42548f598e53faa342e261671b354`，全部Git对象与最终静态候选字节一致；普通push退出0、7.21秒，随后既有SSH只读Ref核同完整SHA。既有Portability规则忽略本次全部Markdown路径，无新增产品CI要求。这是纵向研究／安装验收的持久检查点，X1–X3、D0及新运行／模板能力仍待完成，不能借原产品CI或本次文档推送称其通过。
+
+## 横向研究与D0采用决策
+
+三位fresh-context研究者分别完成[X1架构／系统](../research/2026-11-12-horizontal-architecture-agents.md)、[X2 kernel到端到端](../research/2026-11-12-horizontal-kernel-agents.md)、[X3诊断／实验／评价](../research/2026-11-12-horizontal-experiment-agents.md)。作者已读各报告的控制、预算／恢复、逐内部会话接缝、矩阵及接入建议，结合当前WorkflowDefinition、WorkflowInput、Task和Executor源码汇总[D0采用矩阵](../research/2026-11-12-specialist-adoption.md)。本轮只改文档；没有安装候选、调用模型／GPU、修改产品／测试／CI或移动283冻结参考文件。
+
+X1深核ModelOpt、nnScaler、Aceso、Galvatron-2、Unity／FlexFlow、FT-Agent六组实现，新增Galvatron固定源码及完整profile→search→runtime消费者；模型结构、运行架构、代码架构分开。X2复用纵向来源并补核Forge旧pin、GEAK真实递归lane、Fuser／SDK内部worker和AKG全会话及截断路径；有FK_CLAUDE_BIN或统一backend接缝不等于已覆盖CLI内部子agent。X3核AIDE、Optuna、Tune和既有GEPA／runner／MLflow；trial／journal／resume并不同时提供候选隔离、原作业停止或训练checkpoint恢复。
+
+D0选择先完善原六阶段的可复用消费者，将D1拆为设计、全阶段父合同、单实例原生调用、实际旅程；Forge保留为首kernel方向另片适配。四种采用形态与技术×职责多对多关系分别表达，不加一方向一基类，不添加执行DSL或第二调度／正式账本。优化与重构模板的知识／只读资料可分片更新，完整执行能力依赖真实消费者；外部MCP没有现成任意endpoint资源合同。AIDE／FT-Agent等完整模式在逐内部会话、父权限、总预算未达标前保持unsupported；Optuna仅在真实runner消费者内条件适配并另选稳定版本。
+
+研究者各自的静态检查与原件SHA已归档；根端首次完整暂存候选7文件、179本地目标、6个已加载秘密值及Git空白检查issue0，原件在私有`checkpoint-3-static-r1/`。该检查不含锚点、Mermaid渲染或外部URL，也不是运行验证。当时新的D0独立事实／设计审查尚待做，最终记录更新后需重新冻结文档身份；研究报告不等同独立审查，不借U1/U2旅程或H1产品CI关闭D1–D3。
+
+[D0新独立评审](2026-11-12-specialist-adoption-review.md)已完成原七文件语义和身份核对，Spec／Standards开放0／0。其独立重算来源／派生／必要产品输入1,531项字节身份并对核心事实抽核，报告明确完整性不等于全部来源语义逐项复现；含自身报告8文件／198本地目标／6已加载秘密值静态通过。没有新网络、安装、产品测试或模型／GPU执行，没有授予D1运行准入。
+
+后续只读源码调查已形成[D1a明细计划](../plans/2026-11-12-six-stage-native-consumer.md)：选择原tasks／WorkflowInput而非新增Temporal child；前两阶段父资料、WorkDelivery全部叶覆盖、MCP就绪与实际附件读取、可信容器advisory保证、聚合预算均列出真实缺口。将B1完整材料、B2总wall／已知invocation预算、C单实例原生消费和D真实旅程拆开，已发布版本保持；没有提出或实现通用patch应用者。当时该新增计划与本轮状态修订待原D0评审补核，原七文件审查判词不自动覆盖新增范围。
+
+原D0评审已在同一报告追加明细计划与进度增量补核：八份作者文档r2字节／差异精确一致，新增D1计划9,892B／SHA256为`c0bfd248eda0b0c3863994b97ad198604ba359cff50d541ba566fd8e9e5458f6`；Spec／Standards开放0／0。含报告的九文件／221本地目标／6已加载秘密值静态通过，源码仍未变。随后仅同步X、D0及D1a完成状态，保留原七文件首审和r2补核身份；本地最终静态另核实际收口字节。D1a设计完成，下一可执行出口为B1材料消费者，产品运行准入与D1b–D3仍未完成。
+
+本轮交付范围为九份Markdown，最终静态核222本地目标、6个已加载秘密值及完整暂存Git空白检查issue0；不含锚点、外链或Mermaid渲染。产品、测试、依赖与CI路径相对基线无变化，全部交付路径在既有Portability文档忽略范围，没有新产品CI或模型／安装旅程重跑。最终文件身份、所属Git对象及普通发布回执留在私有`checkpoint-3-*`原件；本地文档出口完成，后续B1按独立产品片实现和验收。
