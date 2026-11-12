@@ -13,7 +13,7 @@ from .task_envelopes import identity
 
 
 _DEFINITIONS = {version: json.loads((Path(__file__).parent / f'data/schemas/task-definition-v{version}.json').read_text(encoding='utf-8'))
-                for version in (1, 2, 3)}
+                for version in (1, 2, 3, 4)}
 
 
 def _project(state: State, project_id: str) -> dict:
@@ -42,9 +42,9 @@ def _definition(state: State, project: dict, definition: dict) -> dict:
         raise ValueError('Task definition exceeds 1 MiB')
     selection = bindings.development_snapshot(project, projects.effective_configuration(project))
     result = {'definition': definition, 'selection': selection}
-    if version in (2, 3):
+    if version in (2, 3, 4):
         result['composition'] = _composition(definition, selection)
-    if version == 3:
+    if 'source' in definition:
         from .task_envelopes import manifest_graph
 
         saved = issue_snapshots.snapshot(state, project['id'], definition['source']['snapshot_sha256'])
@@ -56,10 +56,24 @@ def _definition(state: State, project: dict, definition: dict) -> dict:
         minimum = json.dumps({'issue_source': saved, 'root_task': {'input': definition['input']}},
                              ensure_ascii=False, allow_nan=False).encode('utf-8')
         graph = manifest_graph(result['composition']['manifest'])
-        for path in (result['composition']['members'].keys() | result['composition']['execution']['members'].keys()):
+        composition = result['composition']
+        paths = (composition['members'].keys() | composition['execution']['members'].keys()
+                 | composition.get('preparation', {}).get('members', {}).keys())
+        for path in paths:
             workflow_definitions.compile_input(graph, path, minimum, 1_000_000)
         result['issue_source'] = saved
     return result
+
+
+def _member(leaf: dict, mode: str, override: dict | None) -> dict:
+    """Freeze the actual backend and policy for one formally selected leaf."""
+    binding = dict(override['binding'] if override else leaf['backend_request'])
+    agents.validate_binding(leaf['role'], binding, formal=True)
+    backend = agent_backends.for_binding(binding)
+    backend.check_mode(mode)
+    return {'role': leaf['role'], 'binding': binding, 'requested_binding': leaf['backend_request'],
+            'backend_reason': override['reason'] if override else 'definition-selected backend',
+            'mode': mode, 'policy': backend.composition_policy(mode)}
 
 
 def _composition(definition: dict, selection: dict) -> dict:
@@ -96,25 +110,22 @@ def _composition(definition: dict, selection: dict) -> dict:
     if execution is not None:
         from .review_dags import WorkDelivery
 
-        work = WorkDelivery(graph, execution, position, definition['input']['work_units'])
+        work = WorkDelivery(graph, execution, position, definition['input']['work_units'],
+                            preparation=option.get('preparation'))
     overrides = option.get('backend_overrides', {})
-    all_paths = leaves.keys() | (work.work.members.keys() if work else set())
+    preparing = {leaf['path']: leaf for leaf in work.preparation.values()} if work else {}
+    all_paths = leaves.keys() | (work.work.members.keys() if work else set()) | preparing.keys()
     if not leaves or set(overrides) - all_paths:
         raise ValueError('Composition backend overrides must select existing review members')
     members = {}
     implementer = selection['bindings']['implementer']['tool']
     work_members = {}
+    preparation = {}
+    for path, leaf in preparing.items():
+        preparation[path] = _member(leaf, option['preparation']['mode'], overrides.get(path))
     if work is not None:
         for path, leaf in work.work.members.items():
-            override = overrides.get(path)
-            binding = dict(override['binding'] if override else leaf['backend_request'])
-            agents.validate_binding('implementer', binding, formal=True)
-            backend = agent_backends.for_binding(binding)
-            backend.check_mode(execution['mode'])
-            policy = backend.composition_policy(execution['mode'])
-            work_members[path] = {'role': 'implementer', 'binding': binding,
-                'requested_binding': leaf['backend_request'], 'backend_reason': override['reason'] if override else 'definition-selected backend',
-                'mode': execution['mode'], 'policy': policy}
+            work_members[path] = _member(leaf, execution['mode'], overrides.get(path))
     implementers = {member['binding']['tool'] for member in work_members.values()} if work else {implementer}
     diversity = option.get('diversity', {'policy': 'prefer-distinct'})
     same = []
@@ -123,17 +134,10 @@ def _composition(definition: dict, selection: dict) -> dict:
             raise ValueError('Formal composition currently selects only reviewer leaves')
         if leaf['permissions']['write'] or leaf['permissions']['shell'] or leaf['permissions']['network']:
             raise ValueError('Formal review composition requires read-only leaves without shell or network tools')
-        override = overrides.get(path)
-        binding = dict(override['binding'] if override else leaf['backend_request'])
-        agents.validate_binding('reviewer', binding, formal=True)
-        backend = agent_backends.for_binding(binding)
-        backend.check_mode(option['mode'])
-        policy = backend.composition_policy(option['mode'])
-        if binding['tool'] in implementers:
+        member = _member(leaf, option['mode'], overrides.get(path))
+        if member['binding']['tool'] in implementers:
             same.append(path)
-        members[path] = {'role': 'reviewer', 'binding': binding, 'requested_binding': leaf['backend_request'],
-            'backend_reason': override['reason'] if override else 'definition-selected backend',
-            'mode': option['mode'], 'policy': policy,
+        members[path] = {**member,
             **({'review_requirement': leaf.get('review_requirement', 'required')}
                if graph['schema_version'] == 2 or 'review_protocol' in option else {})}
     if ((graph['schema_version'] == 2 or 'review_protocol' in option)
@@ -157,6 +161,7 @@ def _composition(definition: dict, selection: dict) -> dict:
             'review_instance': position, 'members': members,
             **({'review_protocol': option['review_protocol']} if 'review_protocol' in option else {}),
             **({'execution': {**execution, 'members': work_members}} if work else {}),
+            **({'preparation': {**option['preparation'], 'members': preparation}} if preparing else {}),
             'diversity': {**diversity, **({'implementer_backends': sorted(implementers)} if work else
                                         {'implementer_backend': implementer}), 'same_backend_members': same}}
     if 'review_protocol' in option:
@@ -464,7 +469,7 @@ def exported_source_candidate(state: State, project: dict, binding: dict, task_i
     created = creation(state, project['id'], task_id)
     original = show(state, project['id'], task_id)
     envelope = original.get('admission_envelope', {})
-    if created['status'] != 'published' or envelope.get('schema_version') != 7:
+    if created['status'] != 'published' or 'issue_source' not in envelope:
         raise ValueError('Candidate association requires a published original v7 source task')
     saved = envelope['issue_source']
     if saved != issue_snapshots.snapshot(state, project['id'], saved['sha256']):

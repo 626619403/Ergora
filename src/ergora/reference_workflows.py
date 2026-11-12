@@ -44,6 +44,7 @@ class CompositionDevelopmentWorkflow(DevelopmentWorkflow):
 
     envelope_version = 2
     group_single_review = False
+    complete_inventory_context = False
     operations = {'dev_submit': task_envelopes.COMPOSITION_SUBMIT}
 
     def __init__(self):
@@ -61,6 +62,11 @@ class CompositionDevelopmentWorkflow(DevelopmentWorkflow):
         return await super().call(operation, value, result_type)
 
     def context(self, stage, expected_sha=None, unit=None, dependencies=None):
+        if stage == 'inventory' and self.complete_inventory_context:
+            try:
+                return task_envelopes.issue_inventory_context(self.admission, expected_sha)
+            except ValueError as error:
+                raise StopWork(str(error)) from error
         context = {**super().context(stage, expected_sha, unit, dependencies), "admission": self.admission}
         content = json.dumps(context, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False).encode("utf-8")
         if len(content) > 1_000_000:
@@ -409,13 +415,24 @@ class IssueSourceWorkflow(StageResultsWorkflow):
 
     envelope_version = 7
 
-    def context(self, stage, expected_sha=None, unit=None, dependencies=None):
-        if stage == 'inventory':
-            try:
-                return task_envelopes.issue_inventory_context(self.admission, expected_sha)
-            except ValueError as error:
-                raise StopWork(str(error)) from error
-        return super().context(stage, expected_sha, unit, dependencies)
+    complete_inventory_context = True
+
+    @workflow.run
+    async def run(self, document: dict) -> dict:
+        return await self._run_document(document)
+
+
+class FullStageMaterialsAdapter(StageResultsAdapter):
+    envelope_version = 8
+
+
+@workflow.defn(name='ErgoraCompositionWorkflowV8')
+class FullStageMaterialsWorkflow(StageResultsWorkflow):
+    """Select complete preparation materials within the original six-stage run."""
+
+    envelope_version = 8
+
+    complete_inventory_context = True
 
     @workflow.run
     async def run(self, document: dict) -> dict:

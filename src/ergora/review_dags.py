@@ -6,6 +6,49 @@ executor and receipt owners establish runtime authority and artifact identity.
 
 from graphlib import CycleError, TopologicalSorter
 import json
+from pathlib import PurePosixPath
+
+
+def require_root_task(instances: dict, leaf: dict) -> None:
+    """A direct stage leaf consumes no unexecuted sibling data or control edge."""
+    node, port, visited = leaf, 'task', set()
+    while True:
+        if (node['path'] in visited or set(node['inputs']) != {port} or node['depends_on']
+                or 'input' not in node['inputs'][port]):
+            raise ValueError('Composition leaf requires a direct root task input')
+        visited.add(node['path'])
+        port = node['inputs'][port]['input']
+        if node['parent'] is None:
+            if port != 'task':
+                raise ValueError('Composition leaf must resolve to the root task input')
+            return
+        node = instances[node['parent']]
+
+
+def preparation_members(graph: dict, selection: dict) -> dict:
+    """Project the two original preparation calls, without a mixed-role schedule."""
+    paths = selection['repository_paths']
+    if (not isinstance(paths, list) or not 1 <= len(paths) <= 128
+            or any(not isinstance(name, str) or not name or len(name) > 4096
+                   or name != PurePosixPath(name).as_posix() or PurePosixPath(name).is_absolute()
+                   or '..' in PurePosixPath(name).parts or any(char in name for char in ('\\', ':', '\0', '\n', '\r'))
+                   for name in paths) or len(set(paths)) != len(paths)):
+        raise ValueError('Preparation requires distinct canonical relative repository paths')
+    instances = {item['path']: item for item in graph['instances']}
+    members = {}
+    for stage, role in (('inventory', 'inspector'), ('plan', 'planner')):
+        leaf = instances.get(selection[stage])
+        if leaf is None or leaf['kind'] != 'agent' or leaf['role'] != role:
+            raise ValueError('Preparation must select an ' + role + ' Agent leaf')
+        if leaf['permissions']['write'] or leaf['permissions']['shell'] or leaf['permissions']['network']:
+            raise ValueError('Preparation requires read-only leaves without shell or network')
+        for name in paths:
+            wanted = 'workspace' if name == '.' else 'workspace/' + name
+            if not any(wanted == prefix or wanted.startswith(prefix + '/') for prefix in leaf['permissions']['read']):
+                raise ValueError('Preparation repository paths exceed the leaf read ceiling: ' + name)
+        require_root_task(instances, leaf)
+        members[stage] = leaf
+    return members
 
 
 class StageDAG:
@@ -190,15 +233,24 @@ class ReviewDAG(StageDAG):
 class WorkDelivery:
     """Project the original units onto two disjoint stages, never schedule them."""
 
-    def __init__(self, graph: dict, execution: dict, review_instance: str, units: list[dict]):
+    def __init__(self, graph: dict, execution: dict, review_instance: str, units: list[dict], *, preparation=None):
         self.work = StageDAG(graph, execution['instance'], role='implementer')
         self.review = StageDAG(graph, review_instance, external=self.work)
+        self.preparation = preparation_members(graph, preparation) if preparation is not None else {}
         work_paths, review_paths = set(self.work.members), set(self.review.members)
+        preparation_paths = {leaf['path'] for leaf in self.preparation.values()}
         agents = {item['path'] for item in graph['instances'] if item['kind'] == 'agent'}
-        if work_paths & review_paths or work_paths | review_paths != agents:
+        if (work_paths & review_paths or preparation_paths & (work_paths | review_paths)
+                or work_paths | review_paths | preparation_paths != agents):
             raise ValueError('Work and review must cover exactly all Agent leaves without overlap')
         self.assignments = execution['assignments']
         original = {unit['id']: unit for unit in units}
+        if preparation is not None:
+            for unit in units:
+                for name in unit['paths']:
+                    if not any(prefix == '.' or name == prefix or name.startswith(prefix + '/')
+                               for prefix in preparation['repository_paths']):
+                        raise ValueError('Preparation repository paths must cover the original work unit paths')
         if (set(self.assignments) != original.keys() or set(self.assignments.values()) != work_paths
                 or len(self.assignments) != len(work_paths)):
             raise ValueError('Work assignments require exactly one distinct implementer instance per original unit')

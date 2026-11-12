@@ -18,6 +18,7 @@ class WorkflowInput(ABC):
     requests_suffix = ''
     submit_activity = 'dev_submit'
     artifact_protocol = None
+    complete_resources = False
 
     def __init__(self, document: dict, spec: dict):
         self.document, self.spec = document, spec
@@ -247,64 +248,10 @@ class IssueSourceInput(StageResultsInput):
         return IssueSourceAdapter({**config, 'requests': str(cls.request_root(Path(config['requests'])))})
 
     def admission_report(self, original_report, selection: dict) -> dict:
-        """Probe only frozen selections and the original local execution requirements.
-
-        Imports stay here so offline input/journal readers remain standard-library
-        only. Program/configuration availability is not an authentication, worker
-        liveness or model-quality probe; native task_action still connects and claims.
-        """
-        from agent_platform.core import Blocked, CONFIG, PYTHON, settings
-        from agent_platform.sandbox import Sandbox
-        from . import agent_backends, agents, processes, task_mcp
-
-        config = settings()
-        boundary = Sandbox().probe()
-        checks = {
-            'automatic-executor': {'status': 'ready' if config.get('execution_enabled') is True else 'disabled'},
-            'execution-boundary': {**boundary, 'status': 'ready' if boundary['available'] else 'blocked'},
-        }
-        cwd = Path(selection['configuration']['project']['repo'])
-        for name, program in (('git', '/usr/bin/git'), ('timeout', '/usr/bin/timeout'), ('python', str(PYTHON))):
-            try:
-                checks[name] = {'status': 'ready', 'executable': processes.resolve_program(program, cwd)}
-            except (OSError, ValueError) as error:
-                checks[name] = {'status': 'missing', 'detail': str(error)}
-
-        selected = []
-        for stage in ('inventory', 'plan'):
-            role = self.spec['profile']['roles'][stage]
-            selected.append((stage, {'role': role, 'binding': selection['bindings'][role], 'mode': 'native'}))
-        composition = self.document['composition']
-        selected.extend(('work:' + path, member) for path, member in composition['execution']['members'].items())
-        selected.extend(('review:' + path, member) for path, member in composition['members'].items())
-        for name, member in selected:
-            binding, mode = member['binding'], member['mode']
-            try:
-                agents.validate_binding(member['role'], binding, formal=True)
-                backend = agent_backends.for_binding(binding, {'codex': {
-                    'config': CONFIG / 'codex.toml', 'executable': config.get('codex_bin') or 'codex'}})
-                backend.check_invocation()
-                backend.check_mode(mode)
-                if mode != 'native' and backend.composition_policy(mode) != member['policy']:
-                    raise ValueError('Frozen composition policy differs from the current backend contract')
-                if not backend.available(cwd):
-                    raise ValueError('Selected executable is unavailable: ' + backend.executable())
-                checks[name] = {'status': 'ready', 'tool': binding['tool'], 'mode': mode,
-                                'executable': backend.executable()}
-            except (OSError, ValueError, ImportError) as error:
-                checks[name] = {'status': 'blocked', 'tool': binding['tool'], 'mode': mode, 'detail': str(error)}
-        if any(member['mode'] in ('task-mcp', 'workspace-task-mcp') for _, member in selected):
-            try:
-                task_mcp.check_available()
-                checks['task-mcp'] = {'status': 'ready'}
-            except (OSError, ValueError, ImportError) as error:
-                checks['task-mcp'] = {'status': 'blocked', 'detail': str(error)}
-        failed = {name: check for name, check in checks.items() if check['status'] != 'ready'}
-        if failed:
-            raise Blocked('Source task prerequisites incomplete: ' + json.dumps(failed, ensure_ascii=False))
-        return {'checks': checks, 'ready_for_real_tasks': True,
-                'scope': 'Selected local programs/configuration and acknowledged current container; '
-                         'authentication, capacity and worker liveness are not checked'}
+        preparation = [(stage, {'role': self.spec['profile']['roles'][stage],
+            'binding': selection['bindings'][self.spec['profile']['roles'][stage]], 'mode': 'native'})
+            for stage in ('inventory', 'plan')]
+        return _selected_prerequisites(self, selection, preparation)
 
     def stage_material(self) -> dict:
         return {'issue_source': self.document['issue_source']}
@@ -312,8 +259,94 @@ class IssueSourceInput(StageResultsInput):
     def evidence_contract(self) -> dict:
         return {'original_input': self.document, 'original_input_sha256': task_envelopes.identity(self.document)}
 
+
+def _selected_prerequisites(selected_input, selection: dict, preparation: list) -> dict:
+    """Probe the actual frozen programs, sharing the v7/v8 local admission owner."""
+    from agent_platform.core import Blocked, CONFIG, PYTHON, settings
+    from agent_platform.sandbox import Sandbox
+    from . import agent_backends, agents, processes, task_mcp
+
+    config = settings()
+    boundary = Sandbox().probe()
+    checks = {
+        'automatic-executor': {'status': 'ready' if config.get('execution_enabled') is True else 'disabled'},
+        'execution-boundary': {**boundary, 'status': 'ready' if boundary['available'] else 'blocked'},
+    }
+    cwd = Path(selection['configuration']['project']['repo'])
+    for name, program in (('git', '/usr/bin/git'), ('timeout', '/usr/bin/timeout'), ('python', str(PYTHON))):
+        try:
+            checks[name] = {'status': 'ready', 'executable': processes.resolve_program(program, cwd)}
+        except (OSError, ValueError) as error:
+            checks[name] = {'status': 'missing', 'detail': str(error)}
+
+    selected = list(preparation)
+    composition = selected_input.document['composition']
+    selected.extend(('work:' + path, member) for path, member in composition['execution']['members'].items())
+    selected.extend(('review:' + path, member) for path, member in composition['members'].items())
+    for name, member in selected:
+        binding, mode = member['binding'], member['mode']
+        try:
+            agents.validate_binding(member['role'], binding, formal=True)
+            backend = agent_backends.for_binding(binding, {'codex': {
+                'config': CONFIG / 'codex.toml', 'executable': config.get('codex_bin') or 'codex'}})
+            backend.check_invocation()
+            backend.check_mode(mode)
+            if mode != 'native' and backend.composition_policy(mode) != member['policy']:
+                raise ValueError('Frozen composition policy differs from the current backend contract')
+            if not backend.available(cwd):
+                raise ValueError('Selected executable is unavailable: ' + backend.executable())
+            checks[name] = {'status': 'ready', 'tool': binding['tool'], 'mode': mode,
+                            'executable': backend.executable()}
+        except (OSError, ValueError, ImportError) as error:
+            checks[name] = {'status': 'blocked', 'tool': binding['tool'], 'mode': mode, 'detail': str(error)}
+    if any(member['mode'] in ('task-mcp', 'workspace-task-mcp') for _, member in selected):
+        try:
+            task_mcp.check_available()
+            checks['task-mcp'] = {'status': 'ready'}
+        except (OSError, ValueError, ImportError) as error:
+            checks['task-mcp'] = {'status': 'blocked', 'detail': str(error)}
+    failed = {name: check for name, check in checks.items() if check['status'] != 'ready'}
+    if failed:
+        raise Blocked('Selected task prerequisites incomplete: ' + json.dumps(failed, ensure_ascii=False))
+    return {'checks': checks, 'ready_for_real_tasks': True,
+            'scope': 'Selected local programs/configuration and acknowledged current container; '
+                     'authentication, capacity and worker liveness are not checked'}
+
+
+class FullStageMaterialsInput(StageResultsInput):
+    """All four model stages consume frozen leaves; the original schedule remains."""
+
+    version = 8
+    queue_suffix = '.composition-v8'
+    requests_suffix = '-composition-v8'
+    complete_resources = True
+
+    @classmethod
+    def workflow_type(cls):
+        from .reference_workflows import FullStageMaterialsWorkflow
+
+        return FullStageMaterialsWorkflow
+
+    @classmethod
+    def adapter(cls, config: dict):
+        from .reference_workflows import FullStageMaterialsAdapter
+
+        return FullStageMaterialsAdapter({**config, 'requests': str(cls.request_root(Path(config['requests'])))})
+
+    def admission_report(self, original_report, selection: dict) -> dict:
+        preparation = self.document['composition']['preparation']
+        return _selected_prerequisites(self, selection,
+            [(stage, preparation['members'][preparation[stage]]) for stage in ('inventory', 'plan')])
+
+    def stage_material(self) -> dict:
+        return {'issue_source': self.document['issue_source']} if 'issue_source' in self.document else {}
+
+    def evidence_contract(self) -> dict:
+        return {'original_input': self.document, 'original_input_sha256': task_envelopes.identity(self.document)}
+
+
 _INPUTS = {1: LegacyInput, 2: CompositionInput, 3: ReviewRequirementsInput, 4: ReviewDAGInput,
-           5: WorkDeliveryInput, 6: StageResultsInput, 7: IssueSourceInput}
+           5: WorkDeliveryInput, 6: StageResultsInput, 7: IssueSourceInput, 8: FullStageMaterialsInput}
 
 
 def workers(client, queue: str, config: dict) -> list:

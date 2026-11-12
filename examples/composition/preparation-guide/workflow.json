@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "id": "preparation-guide",
+  "version": "1.0.0",
+  "description": "Shared structural materials for the two original preparation calls.",
+  "resources": [
+    {
+      "id": "preparation-guide-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "759f63f963278285936a4eeedf2a47655f6d65082f30a4bd18a313e116a4bab0"
+    },
+    {
+      "id": "preparation-evidence",
+      "kind": "skill",
+      "path": "skills/preparation-evidence",
+      "digest": "c5fed1266ee5aa90dcff70d19fcd19a76502eea4837757ab7453726b39c508b5"
+    }
+  ],
+  "permissions": {
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "write": [],
+    "shell": false,
+    "network": []
+  },
+  "limits": {
+    "depth": 8,
+    "instances": 128,
+    "concurrency": 4,
+    "material_bytes": 262144
+  },
+  "inputs": [
+    "task"
+  ],
+  "outputs": {
+    "result": {
+      "node": "plan",
+      "output": "result"
+    }
+  },
+  "nodes": [
+    {
+      "id": "inventory",
+      "ref": {
+        "kind": "agent",
+        "id": "development-preparer",
+        "version": "1.0.0",
+        "digest": "1be08568b1083585dc4c136df7245a18ceecc1f3fff2979d7f5ab0d0cd11cbc3"
+      },
+      "role": "inspector",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      }
+    },
+    {
+      "id": "plan",
+      "ref": {
+        "kind": "agent",
+        "id": "development-preparer",
+        "version": "1.0.0",
+        "digest": "1be08568b1083585dc4c136df7245a18ceecc1f3fff2979d7f5ab0d0cd11cbc3"
+      },
+      "role": "planner",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      }
+    }
+  ]
+}

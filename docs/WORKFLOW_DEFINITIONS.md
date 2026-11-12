@@ -219,6 +219,48 @@ v6的`work_inputs.results`用实例路径保存端口来源和直接工作依赖
 
 原attempt/monitor/unknown与取消恢复规则保持。已完成原调用及提交后、回执发布前的恢复复用同一job/context与监控产物；HEAD已变化时，必须核对原Executor在首次HEAD门禁之后保存的完整调用证据，缺失或不符会拒绝并要求对账。无可靠外部结果时保持未知，不重新派发写Agent或换ID。运行后可用`agent runs`和正式`task evidence`查看原调用及产物，按原任务导出离线handoff。
 
+## 盘点与规划的完整材料
+
+要让前两阶段也使用精确的 Agent 定义与完整结构资料，选择 [task-definition v4](../src/ergora/data/schemas/task-definition-v4.json)。它生成正式输入 v8：`preparation-v1` 选择各一个 inspector／planner，后接既有 `work-units-v2` 与 `dag-v1`。原 Temporal 六阶段继续安排顺序、等待 owner 计划批准、运行可信检查和提交；这不是通用图运行或可执行的原生嵌套节点。
+
+在完成上一节 specialist-delivery 的依赖导入后，导入准备专家及新的示例根：
+
+```bash
+ergora agent definition import examples/composition/agents/development-preparer
+ergora composition import examples/composition/preparation-guide
+ergora composition import examples/composition/prepared-delivery
+ergora composition prepare-manifest prepared-delivery 1.0.0 --grant examples/composition/preview-grant.json --directory ./prepared-delivery-manifest
+ergora composition verify-manifest ./prepared-delivery-manifest
+```
+
+在上一节的完整任务定义中，把 `schema_version` 改为 `4`，将 `composition.manifest / manifest_digest` 换为此次实际结果，保留 `execution.protocol: "work-units-v2"`，并加入：
+
+```json
+{
+  "preparation": {
+    "protocol": "preparation-v1",
+    "inventory": "root/preparation/inventory",
+    "plan": "root/preparation/plan",
+    "mode": "task-mcp",
+    "repository_paths": ["src"]
+  }
+}
+```
+
+`preparation` 是 `composition` 内的字段，不是完整任务定义。两个实例可引用同一份多职能 Agent，也可使用不同精确定义；实际调用的角色分别为 inspector 和 planner。逐实例 `backend_overrides` 也覆盖它们，例如 `root/preparation/plan` 可单独选择支持受限调用的其他后端，记录 `binding` 与原因。执行／审查优先选择不同后端；不能用改变职责或覆盖后端绕过父权限。
+
+`repository_paths` 是从原 starting commit 读取的相对路径前缀，必须覆盖原 work unit 路径。`["."]` 表示整个起始仓库；也可额外选择根配置和说明，例如 `["src", "pyproject.toml", "README.md"]`。可信读取器附上这些路径适用的祖先 `AGENTS.md`，每个实际文件仍须在该准备叶的 read 上限内。必要说明超出权限时，父子共同修订后再发布；文件为二进制、特殊 Git 类型或完整输入超限时整份拒绝，不静默排除。应按任务需要明确纳入构建／模型配置等其他资料。
+
+两个准备叶只能直接映射结构根 task，叶及其祖先不能依赖尚未执行的外部节点。inventory→plan 的结果由原六阶段合同传递；示例 `preparation-guide` 的两个静态叶没有另建调度关系。准备、work 与 review 必须恰好覆盖全部 Agent 叶，不可遗漏、重复或把 inspector 假装成 implementer。其他阶段的兄弟结果不会成为继承权限。
+
+inventory 和 plan 实际走只读叶调用、新空工作目录和原进程监控。完整 root→leaf 指令、上下文、SKILL.md、固定开发模板、原任务及精确 Git 文本进入完整 prompt。plan 另核原 inventory 请求、成功 receipt、session、后端及产物身份，取得全部声明产物与可信 baseline；超过旧 60k 截断位置的内容仍完整交付。模型不获得任意仓库读取或 shell 工具。原 writer 继续使用明确可信 current-container；read/write/egress 中标为 advisory 的能力没有变为 OS 隔离。
+
+v8 中，只要选中结构链有未内联 Skill 附件，text-only 就在创建前拒绝；使用 task-mcp。模型必须完整读取必要附件，实际成功服务响应记录 URI、SHA、大小、offset 和返回字节数。原 Executor 在接受阶段结果前核连续覆盖，握手／list 成功或模型自称已读不能替代。完整正文已在 prompt 内，无须为了满足附件门禁再次读取同一正文。此证据证明字节交付，不证明模型理解。
+
+继续使用原 `task preview/create/start`，原计划批准及候选证据入口不变。v4 也可加入与 v3 相同的可选 `source: {"snapshot_sha256": "实际快照摘要"}`，完整来源进入全部选中阶段，并保存在原 input／evidence／handoff。升级并重启 worker／executor 后才能接收 `.composition-v8` 队列；按冻结选择只检查实际依赖。图形任务向导仍生成 v6，v8 通过 CLI／共用 API 提交完整定义。
+
+此版本只补完整材料消费。每阶段现有时限继续生效，跨准备、队列、人工等待和执行的统一总预算、六阶段可引用原生实例及其完整生命周期旅程另行实现。旧 definition v1–v3、正式 input v1–v7、已冻结 manifest 和历史不迁移。
+
 ## 完整继承与冲突
 
 每个叶子按 root→parent→自身的顺序拼装全部祖先 Skill 指令与上下文，以及各层初始指令。组合模板本身不额外调用模型。预览给出每份正文、内容身份、全部来源、完整拼装正文和 SHA；Skill 的必读正文是 `SKILL.md`，目录里的脚本和其他附件仍属于按需资源。

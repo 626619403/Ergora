@@ -178,6 +178,12 @@ def serve(path: Path, digest: str, audit: Path) -> None:
                 fields["tools"] = sorted(tool["name"] for tool in payload["tools"])
             if context.method == "tools/call":
                 fields["tool"] = context.params.get("name")
+                if fields['tool'] == 'read' and fields['success']:
+                    returned = json.loads(payload['content'][0]['text'])
+                    content = (returned['content'].encode('utf-8') if returned['encoding'] == 'utf-8' else
+                               base64.b64decode(returned['content'], validate=True))
+                    fields['read'] = {key: returned[key] for key in ('uri', 'sha256', 'size', 'offset')}
+                    fields['read']['bytes'] = len(content)
             record(**fields)
         return result
 
@@ -240,6 +246,44 @@ def verify_native(audit: Path, scope_sha256: str) -> dict:
     return {"ready": True, "handshake_observed": any(event.get("method") == "initialize" and event.get("success") for event in events),
             "protocol_version": ready.get("protocol_version"), "tools": TOOLS, "receipt": str(audit),
             "receipt_sha256": hashlib.sha256(audit.read_bytes()).hexdigest()}
+
+
+def verify_reads(scope: dict, audit: bytes) -> dict:
+    """Require continuous byte delivery of attachments absent from the inline prompt.
+
+    The original invocation owns the scope/audit identities. These successful
+    server responses prove delivered ranges, not that a model understood them.
+    Inline instructions, context and SKILL.md are already in the sealed prompt.
+    """
+    files = scope['files']
+    required = {uri: details for uri, details in files.items()
+                if not any(uri in (source['uri'], source['uri'] + '/SKILL.md') for source in details['sources'])}
+    ranges = {uri: [] for uri in required}
+    for event in (json.loads(line) for line in audit.decode('utf-8').splitlines()):
+        if event.get('method') != 'tools/call' or not event.get('success') or event.get('tool') != 'read':
+            continue
+        read = event.get('read')
+        if read is None:  # Earlier audit versions prove readiness only.
+            continue
+        uri = read['uri']
+        if (uri not in files or read['sha256'] != files[uri]['sha256'] or read['size'] != files[uri]['size']
+                or type(read['offset']) is not int or type(read['bytes']) is not int
+                or not 0 <= read['offset'] <= read['offset'] + read['bytes'] <= files[uri]['size']):
+            raise ValueError('Native resource read differs from its fixed scope')
+        if uri in ranges:
+            ranges[uri].append((read['offset'], read['offset'] + read['bytes']))
+    coverage = {}
+    for uri, intervals in ranges.items():
+        end = 0
+        for start, finish in sorted(intervals):
+            if start > end:
+                break
+            end = max(end, finish)
+        if not intervals or end != required[uri]['size']:
+            raise ValueError('Required Skill attachment was not completely read: ' + uri)
+        coverage[uri] = {'sha256': required[uri]['sha256'], 'size': required[uri]['size'], 'covered_bytes': end}
+    return {'schema_version': 1, 'kind': 'complete-resource-coverage', 'attachments': coverage,
+            'basis': 'Complete sealed inline material and continuous successful native read responses'}
 
 
 if __name__ == "__main__":

@@ -556,6 +556,14 @@ ergora composition verify-manifest ./review-requirements-manifest
 
 需要将实现专家分配到原工作单元，再承接总审查时，按[专长执行者配置](WORKFLOW_DEFINITIONS.md#专长执行者与原工作单元)选择`execution.protocol: work-units-v2`；用户任务定义仍为schema-v2，正式信封为v6。页面“完整manifest · 组合执行与审查”使用此协议。v6完整传递声明阶段产物、可信检查与审查意见，执行审计留原receipt/evidence/handoff并继续逐件核验，避免下游递归复制旧提示；控制依赖未绑定端口时也保留结果。祖先资源、批准、候选及原恢复门禁保持；旧`work-units-v1`/v5任务不自动迁移。升级worker/executor后才能接收新v6队列，完整执行仍要求Linux/WSL2和显式可信容器。
 
+### 为盘点和规划选择模板 Agent
+
+[完整材料配置](WORKFLOW_DEFINITIONS.md#盘点与规划的完整材料)使用 task-definition v4／正式 input v8，将 inventory 和 plan 也绑定到精确叶实例、独立后端与全部结构祖先资料。沿原 `task preview/create/start` 运行，owner 批准和可信候选流程保持；CLI 与 API 接受完整定义，当前图形任务向导仍生成 v6。
+
+选择需要的 `preparation.repository_paths`，纳入任务所需源码／配置；适用的 `AGENTS.md` 也受 read 上限约束。Skill 有附件时选 task-mcp，前两阶段无 shell／写／任意仓库工具。容量不足、附件读取不完整或原 inventory 产物变动会在对应阶段失败，不截断为成功。可选工单 `source` 沿原快照合同冻结，进入四类模型阶段；所有运行身份与恢复仍由原任务所有者维护。
+
+安装并重启新版 worker／executor 才能消费 v8 队列；与 v7 一样按实际冻结后端和本地执行条件准入，所需服务可显式启动 `temporal worker executor`。这是完整材料支持，统一总预算与原生嵌套调用仍待各自交付。
+
 ### 查询正式任务运行状态
 
 安装development组合或 `ergora[temporal]`，并准备所登记的参考运行时。通过CLI或 `GET /api/projects/ID/tasks/TASK_ID/status?run_id=RUN_ID&timeout=20` 只读查询原生运行事实：

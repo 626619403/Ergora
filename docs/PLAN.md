@@ -4,6 +4,8 @@
 
 ## 当前检查点
 
+- 文档检查点 `210f58d46c3332f4d192ee8cb13e8c149dd2173f` 已核远端；D0／D1a完成。[B1完整材料输入](plans/2026-11-12-six-stage-materials.md)本地出口通过，[交付记录](delivery/2026-11-12-six-stage-materials.md)保存definition4／input8、准备叶及完整材料：整理后源码295项／隔离wheel58项、453产品／两RECORD／283冻结通过。实际Codex377.86秒approve／五scope完整读取、完整36文件新独立两轴及原件补核开放0／0；Claude原API400保持。普通提交／推送及该提交CI继续；B2／C／D及新专家执行模板仍未实现，不借已过安装／研究结论关闭。
+
 - 当前产品`5ab6d350024de8515487d0bedb3b950be60ac867`的[F8-H1](delivery/2026-11-12-harness-probes.md)自己的CI43170918496双OS七必要步骤及原评审精确终核通过，精确交付终结；原匿名／独立Ref403、导航404和早期在途保持。日常安装已备份升级，43命令／52检查／10HTTP及新独立原件验收通过；当前优先按[专家模板重整](plans/2026-11-12-specialist-template-refresh.md)完成Skill Reference纵向及跨方向横向研究，再调整运行接口与模板。下列较早节点保留其完成身份。
 
 - 专家模板重整上一文档检查点`9abbb6448cf42548f598e53faa342e261671b354`已普通推送／作者SSH完整Ref核准：U1/U2独立验收、R4–R10及R8独立修正复核共12文件，最终静态132本地目标／6秘密值issue0，原两项文档静态失败保持。R1–R10及X1–X3研究均完成，[D0矩阵](research/2026-11-12-specialist-adoption.md)及[新独立审查／补核](delivery/2026-11-12-specialist-adoption-review.md)开放0／0；[D1a设计](plans/2026-11-12-six-stage-native-consumer.md)完成。首原六阶段通用消费者／首Forge kernel方向；下一B1全阶段材料，再B2总预算、C单实例、D旅程。没有新增产品、测试或CI变更，D1b–D3仍未实现。

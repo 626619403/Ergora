@@ -68,6 +68,8 @@ async def main():
     git(repo, "init")
     (repo / "src").mkdir()
     (repo / "src/base.py").write_bytes(b"VALUE = 1\r\n" if composition_mode else b"VALUE = 1\n")
+    if mode.startswith('composition-work-materials-'):
+        (repo / 'AGENTS.md').write_bytes(b'Exact repository instructions.\r\n')
     if mode == 'composition-import-shadowing':
         # Candidate imports must never run inside the installed trusted driver.
         shadow = "from pathlib import Path\nPath(" + repr(str(root / 'shadow-imported')) + ").touch()\nraise RuntimeError('candidate import executed')\n"
@@ -229,6 +231,12 @@ async def main():
         requests, wrapper = runtime / 'requests', None
     await activities.validate(app.spec)
     records = {}
+    if mode.startswith('composition-work-materials-'):
+        from full_stage_acceptance import exercise
+
+        print(json.dumps(await exercise(root, mode.removeprefix('composition-work-materials-'), app, activities,
+            adapter, installation, state, runtime, requests, records)))
+        return
     frozen_selection = None
     starting = app.spec["request"]["repository"]["starting_sha"]
     if cancellation:

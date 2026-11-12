@@ -59,7 +59,13 @@ def prepare(root, state, task_input, kind, examples, mode):
         (folder / 'workflow.json').write_text(json.dumps(document))
         workflows.import_bundle(state, folder)
     grant = json.loads((examples / 'composition/preview-grant.json').read_bytes())
-    manifest = workflows.prepare_manifest(state.root, 'specialist-delivery', version, grant, root / 'manifest')
+    if mode.startswith('composition-work-materials-'):
+        from full_stage_acceptance import prepare_graph
+
+        identity, version = prepare_graph(root, state, examples)
+    else:
+        identity = 'specialist-delivery'
+    manifest = workflows.prepare_manifest(state.root, identity, version, grant, root / 'manifest')
     task_input['work_units'] = [
         {'id': 'implementation', 'depends_on': [], 'paths': ['src/new.py'], 'instructions': 'Implement the fixture'},
         {'id': 'validation', 'depends_on': ['implementation'], 'paths': ['src/validation.py'], 'instructions': 'Validate the fixture'}]
@@ -75,7 +81,7 @@ def prepare(root, state, task_input, kind, examples, mode):
     definition = {'schema_version': 2, 'task_id': 'task-1', 'task_type': kind, 'issue_id': '1', 'input': task_input,
         'composition': {'manifest': manifest['path'], 'manifest_digest': manifest['digest'], 'review_protocol': 'dag-v1',
             'review_instance': 'root/review', 'mode': 'text-only', 'diversity': {'policy': 'allow-same'},
-            'execution': {'protocol': 'work-units-v2' if mode.startswith('composition-work-results') or mode == 'composition-work-issue-source' else 'work-units-v1',
+            'execution': {'protocol': 'work-units-v2' if mode.startswith(('composition-work-results', 'composition-work-materials-')) or mode == 'composition-work-issue-source' else 'work-units-v1',
                 'instance': 'root/work', 'mode': 'workspace-task-mcp',
                 'assignments': {unit['id']: 'root/work/' + unit['id'] for unit in task_input['work_units']}},
             'backend_overrides': {path: {'binding': {'tool': 'codex', 'sandbox': 'current-container'},
@@ -85,7 +91,7 @@ def prepare(root, state, task_input, kind, examples, mode):
                                                'root/review/test-value/review')}}}
     if mode == 'composition-work-results':
         definition['composition']['backend_overrides']['root/review/structure/review']['binding']['model'] = 'fixture-reject'
-    if mode == 'composition-work-issue-source':
+    if mode in ('composition-work-issue-source', 'composition-work-materials-issue-source'):
         from unittest.mock import patch
         from ergora import issue_backends, issues, projects
 
@@ -101,6 +107,15 @@ def prepare(root, state, task_input, kind, examples, mode):
         with patch.object(issue_backends.GitHubBackend, 'read', return_value=observation):
             saved = issues.capture(state, 'demo', '1', revision + 1)['snapshot']
         definition.update(schema_version=3, source={'snapshot_sha256': saved['sha256']})
+    if mode.startswith('composition-work-materials-'):
+        definition['schema_version'] = 4
+        definition['composition']['preparation'] = {'protocol': 'preparation-v1',
+            'inventory': 'root/preparation/inventory', 'plan': 'root/preparation/plan',
+            'mode': 'task-mcp', 'repository_paths': ['src']}
+        model = ('fixture-unread-inventory' if mode.endswith('-unread') else
+                 'fixture-capacity-inventory' if mode.endswith('-capacity') else 'fixture-complete-inventory')
+        definition['composition']['backend_overrides']['root/preparation/inventory'] = {
+            'binding': {'tool': 'codex', 'model': model}, 'reason': 'Deterministic complete-material protocol fixture'}
     return definition
 
 
@@ -198,7 +213,7 @@ async def exercise(root, case, app, activities, installation, state, runtime, re
         else:
             assert 'only the trusted Executor may commit' in receipt['detail']
         return {'case': case, 'original_owners': True, 'failed_before_successor': True, 'detail': receipt['detail']}
-    assert case in ('full', 'recovery', 'results', 'issue-source')
+    assert case in ('full', 'recovery', 'results', 'issue-source', 'materials', 'materials-issue-source')
     work_stages = ['work:' + unit['id'] for unit in app.spec['request']['input']['work_units']]
     for stage in work_stages:
         receipt = records[stage]
@@ -208,7 +223,7 @@ async def exercise(root, case, app, activities, installation, state, runtime, re
         materials = read(folder / 'materials.json')
         assert json.loads((folder / 'input/task.txt').read_text().splitlines()[-1]) == materials
         assert materials['root_task'] == app.spec['request']
-        if case == 'issue-source':
+        if 'issue-source' in case:
             assert materials['issue_source'] == app.admission['issue_source']
             assert json.loads((folder / 'input/task.txt').read_text().splitlines()[-1])['issue_source'] == app.admission['issue_source']
             assert materials['artifact_protocol'] == 'stage-artifacts-v1'
@@ -228,7 +243,7 @@ async def exercise(root, case, app, activities, installation, state, runtime, re
                     assert set(source['artifacts']) == {'change-summary', 'test-results'}
                     assert source['artifacts'] == {item['name']: (runtime / 'artifacts' / item['path']).read_text()
                                                    for item in source['receipt']['artifacts'] if item['name'] in source['artifacts']}
-            elif case == 'issue-source':
+            elif case == 'issue-source' or case.startswith('materials'):
                 source = materials['work_inputs']['results']['root/work/implementation']
                 assert source['receipt'] == records['work:implementation']
                 assert set(source['artifacts']) == {'change-summary', 'test-results'}
@@ -248,7 +263,7 @@ async def exercise(root, case, app, activities, installation, state, runtime, re
         folder = runtime / 'workspaces/task-1/jobs' / receipt['job_id'] / 'selected-agent'
         materials = read(folder / 'materials.json')
         assert materials['root_task'] == app.spec['request']
-        if case == 'issue-source':
+        if 'issue-source' in case:
             assert materials['issue_source'] == app.admission['issue_source']
             prepared = workflows.inspect_input(folder / 'input', material=True)
             assert json.loads((folder / 'input/task.txt').read_text().splitlines()[-1])['issue_source'] == app.admission['issue_source']
@@ -268,7 +283,7 @@ async def exercise(root, case, app, activities, installation, state, runtime, re
         receipt = records[stage]
         envelope = read(requests / 'task-1' / (receipt['job_id'] + '.json'))
         assert Executor(envelope, state.root).execute() == receipt
-    assert len(agent_runs.runs(state, 'demo')) == before == len(work_stages) + 3
+    assert len(agent_runs.runs(state, 'demo')) == before == len(work_stages) + 3 + (2 if case.startswith('materials') else 0)
     assert len({receipt['actor']['session_id'] for receipt in records.values()}) == len(records)
     return {'case': case, 'original_owners': True, 'candidate': candidate, 'work_calls': len(work_stages), 'review_calls': 3,
             'complete_sources': True, 'original_call_recovery': True}

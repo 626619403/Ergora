@@ -242,7 +242,7 @@ flowchart LR
 |正式运行与训练结果|原task/spec／ingress leases／job ledger／Git／receipt／Temporal history；runner证据|原runtime／executor／runner拥有，不搬迁在途history|
 |只读索引与交接包|原材料引用索引；操作者明确导出的 `task-handoff-v1` ZIP|有来源的快照和内部身份校验，不是完整备份、来源认证或重新执行|
 
-公开JSON Schema Draft2020-12由`contracts`统一校验；需纯标准库读取的工单快照／版本化envelope由`issue_sources / task_envelopes`拥有严格运行合同，已核来源的完整首inventory context也由task_envelopes组装、creation与v7 workflow直接复用，两个运行Module不反向导入，普通Python JSON值与现有canonical身份保持；Web DTO只负责传输。格式、schema版本、摘要编码和迁移责任见[合同与身份表](contracts-and-identities.md)。CLI/env路径、项目定义、冻结任务、数据库版本与原生SDK配置分别归属，不能用一次JSON重编码合并旧身份。凭据只从外部环境或工具认证读取，分享定义保留变量名引用。
+公开JSON Schema Draft2020-12由`contracts`统一校验；需纯标准库读取的工单快照／版本化envelope由`issue_sources / task_envelopes`拥有严格运行合同，已核来源的完整首inventory context也由task_envelopes组装、creation与v7／v8 workflow直接复用，两个运行Module不反向导入，普通Python JSON值与现有canonical身份保持；Web DTO只负责传输。格式、schema版本、摘要编码和迁移责任见[合同与身份表](contracts-and-identities.md)。CLI/env路径、项目定义、冻结任务、数据库版本与原生SDK配置分别归属，不能用一次JSON重编码合并旧身份。凭据只从外部环境或工具认证读取，分享定义保留变量名引用。
 
 ## 修改影响与接入方式
 
@@ -280,3 +280,11 @@ flowchart LR
 - [Windows手册](../WINDOWS.md)：原生控制面／静态定义与Linux task-MCP／完整执行的区分；WSL2是部署路径，不能由Windows CI推导其实际运行通过。
 
 当前两域v6完整六阶段证据来自真实服务加确定性原生命令协议夹具，[C5c记录](../delivery/2026-11-11-composition-runtime.md)明确其范围；真实模型自身审查与训练单叶另记。C6b页面只验创建／原ID读回，C6a画布容量不代表同数量Agent已执行；不同输入、后端或环境不能继承这些结果。成功双后端、模型质量、真实GPU收益与生产隔离均须各自实测，不能由定义、认证、CI或文档静态检查推出。后续F7–F10及G1仍见[总计划](../plans/2026-11-01-all-in-one.md)。
+
+## 完整材料输入 v8
+
+[B1材料合同](../WORKFLOW_DEFINITIONS.md#盘点与规划的完整材料)新增definition4／input8，沿原tasks、creation、WorkflowInput和Temporal六阶段消费。`review_dags`在原unit映射旁投影两个只读准备叶并核全部Agent覆盖；`task_envelopes`保留纯标准库冻结读取，`reference_inputs`局部注册v8自己的queue／request根和所选依赖准入。准备叶没有独立调度器。
+
+原Executor统一选择实际member；inventory／plan复用原stage_driver与run_input，在新空cwd执行，完整资料由原快照和固定MCP提供。精确Git对象批量读取由原Executor内聚共享算法承担，review保留base／candidate，准备阶段提供starting及所需AGENTS。plan先核原inventory请求／收据／claim／调用与产物身份；完整输入超过限额直接失败。`task_mcp`记录成功read返回范围，v8阶段接受前核未内联附件连续覆盖；旧版本仍按原握手准入，不重写旧输入。
+
+此片不实现统一总预算或原生嵌套六阶段调用，trusted writer的advisory能力保持。当前图形向导仍生成v6；新合同从CLI／共用API使用。材料传递和原生夹具的实际验收见[B1交付](../delivery/2026-11-12-six-stage-materials.md)，不得借旧候选结果推导新版本成功。

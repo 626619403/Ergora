@@ -8,7 +8,7 @@ import base64
 import hashlib
 import json
 
-from .review_dags import ReviewDAG, WorkDelivery
+from .review_dags import ReviewDAG, WorkDelivery, preparation_members, require_root_task
 from .issue_sources import validate_snapshot
 
 
@@ -61,7 +61,7 @@ def manifest_identity(snapshot: dict) -> str:
 
 
 def wrap(spec: dict, composition: dict, issue_source: dict | None = None) -> dict:
-    version = (7 if issue_source is not None else
+    version = (8 if 'preparation' in composition else 7 if issue_source is not None else
                6 if composition.get('execution', {}).get('protocol') == 'work-units-v2' else
                5 if 'execution' in composition else 4 if 'review_protocol' in composition else
                3 if any('review_requirement' in member for member in composition['members'].values()) else 2)
@@ -175,18 +175,7 @@ def review_members(composition: dict) -> dict:
         if (leaf['role'] != 'reviewer' or leaf['permissions']['write']
                 or leaf['permissions']['shell'] or leaf['permissions']['network']):
             raise ValueError('Composition review requires a read-only reviewer without shell or network')
-        node, port, visited = leaf, 'task', set()
-        while True:
-            if (node['path'] in visited or set(node['inputs']) != {port} or node['depends_on']
-                    or 'input' not in node['inputs'][port]):
-                raise ValueError('Composition leaf requires a direct root task input')
-            visited.add(node['path'])
-            port = node['inputs'][port]['input']
-            if node['parent'] is None:
-                if port != 'task':
-                    raise ValueError('Composition leaf must resolve to the root task input')
-                break
-            node = instances[node['parent']]
+        require_root_task(instances, leaf)
     if len(members) == 1 and graph['schema_version'] == 1:
         return members
 
@@ -249,7 +238,7 @@ def review_dag(composition: dict):
 
 def work_delivery(composition: dict, spec: dict) -> WorkDelivery:
     return WorkDelivery(manifest_graph(composition['manifest']), composition['execution'],
-        composition['review_instance'], spec['request']['input']['work_units'])
+        composition['review_instance'], spec['request']['input']['work_units'], preparation=composition.get('preparation'))
 
 
 def outcome_reference_state(outcome: dict | None, job: dict) -> str:
@@ -284,26 +273,28 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
     if document.get('kind') != _KIND and 'schema_version' not in document:
         return document, None
     fields = {'schema_version', 'kind', 'legacy_spec', 'composition', 'sha256'}
-    if document.get('schema_version') == 7:
+    if document.get('schema_version') == 7 or (document.get('schema_version') == 8 and 'issue_source' in document):
         fields.add('issue_source')
     if (set(document) != fields
-            or type(document['schema_version']) is not int or document['schema_version'] not in (2, 3, 4, 5, 6, 7)
+            or type(document['schema_version']) is not int or document['schema_version'] not in (2, 3, 4, 5, 6, 7, 8)
             or document['kind'] != _KIND):
         raise ValueError('Unsupported formal task admission envelope')
     if document['sha256'] != identity({key: value for key, value in document.items() if key != 'sha256'}):
         raise ValueError('Formal task admission envelope digest mismatch')
     composition = document['composition']
     fields = {'manifest', 'root', 'preview_sha256', 'review_instance', 'members', 'diversity'}
-    if document['schema_version'] in (4, 5, 6, 7):
+    if document['schema_version'] in (4, 5, 6, 7, 8):
         fields.add('review_protocol')
-    if document['schema_version'] in (5, 6, 7):
+    if document['schema_version'] in (5, 6, 7, 8):
         fields.add('execution')
+    if document['schema_version'] == 8:
+        fields.add('preparation')
     if (not isinstance(composition, dict) or set(composition) != fields
-            or (document['schema_version'] in (4, 5, 6, 7) and composition['review_protocol'] != 'dag-v1')):
+            or (document['schema_version'] in (4, 5, 6, 7, 8) and composition['review_protocol'] != 'dag-v1')):
         raise ValueError('Invalid formal composition selection')
     manifest_identity(composition['manifest'])
     graph = manifest_graph(composition['manifest'])
-    requirements = document['schema_version'] in (3, 4, 5, 6, 7)
+    requirements = document['schema_version'] in (3, 4, 5, 6, 7, 8)
     if document['schema_version'] == 3 and graph['schema_version'] != 2:
         raise ValueError('Formal v3 admission requires a versioned review requirements graph')
     if graph['root'] != composition['root'] or graph['preview_sha256'] != composition['preview_sha256']:
@@ -339,10 +330,32 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
             raise ValueError('Formal composition requested binding differs from its frozen graph')
         _policy(member['policy'], member['mode'])
     diversity = composition['diversity']
-    if document['schema_version'] in (5, 6, 7):
+    if document['schema_version'] == 8:
+        preparation = composition['preparation']
+        if (not isinstance(preparation, dict)
+                or set(preparation) != {'protocol', 'inventory', 'plan', 'mode', 'repository_paths', 'members'}
+                or preparation['protocol'] != 'preparation-v1'
+                or preparation['mode'] not in ('text-only', 'task-mcp')
+                or not isinstance(preparation['members'], dict)
+                or any(not isinstance(preparation[stage], str) for stage in ('inventory', 'plan'))):
+            raise ValueError('Invalid formal preparation selection')
+        expected = {leaf['path']: leaf for leaf in preparation_members(graph, preparation).values()}
+        if preparation['members'].keys() != expected.keys():
+            raise ValueError('Frozen preparation members differ from the selected stage leaves')
+        for path, member in preparation['members'].items():
+            if (not isinstance(member, dict)
+                    or set(member) != {'role', 'binding', 'requested_binding', 'backend_reason', 'mode', 'policy'}
+                    or member['role'] != expected[path]['role'] or member['mode'] != preparation['mode']
+                    or not isinstance(member['backend_reason'], str) or not member['backend_reason'].strip()
+                    or member['requested_binding'] != expected[path]['backend_request']):
+                raise ValueError('Invalid frozen preparation member: ' + path)
+            _binding(member['binding'])
+            _binding(member['requested_binding'])
+            _policy(member['policy'], member['mode'])
+    if document['schema_version'] in (5, 6, 7, 8):
         execution = composition['execution']
         if (not isinstance(execution, dict) or set(execution) != {'protocol', 'instance', 'assignments', 'mode', 'members'}
-                or execution['protocol'] != ('work-units-v2' if document['schema_version'] in (6, 7) else 'work-units-v1')
+                or execution['protocol'] != ('work-units-v2' if document['schema_version'] in (6, 7, 8) else 'work-units-v1')
                 or execution['mode'] != 'workspace-task-mcp'
                 or not isinstance(execution['assignments'], dict) or not isinstance(execution['members'], dict)):
             raise ValueError('Invalid formal work execution selection')
@@ -387,9 +400,26 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
             or (same and diversity['policy'] == 'require-distinct')
             or (same and diversity['policy'] == 'prefer-distinct' and not diversity.get('reason'))):
         raise ValueError('Formal composition diversity differs from its selected member backends')
-    if document['schema_version'] in (4, 5, 6, 7):
+    if document['schema_version'] in (4, 5, 6, 7, 8):
         review_members(composition)
-    if document['schema_version'] == 7:
+    if document['schema_version'] == 8:
+        # SKILL.md and ordinary resources are already complete inline text.
+        # Other Skill files require the fixed MCP resource reader; naming an
+        # attachment in a prompt is not byte delivery in text-only mode.
+        selected = {**members, **composition['execution']['members'], **composition['preparation']['members']}
+        for path, member in selected.items():
+            if member['mode'] != 'text-only':
+                continue
+            for resource in instances[path]['resources']:
+                if resource['kind'] != 'skill':
+                    continue
+                for origin in resource['sources']:
+                    ref = origin['definition']
+                    prefix = 'assets/' + ref['kind'] + '-definitions/objects/' + ref['digest'] + '/' + origin['path'] + '/'
+                    if any(name.startswith(prefix) and name != prefix + 'SKILL.md'
+                           for name in composition['manifest']['files']):
+                        raise ValueError('Complete Skill attachments require task-mcp mode: ' + path)
+    if 'issue_source' in document:
         saved = document['issue_source']
         validate_snapshot(saved)
         source = saved['payload']['observation']['source']
@@ -432,6 +462,7 @@ def summary(document: dict) -> dict:
             'root': composition['root'], 'review_instance': composition['review_instance'],
             **({'review_protocol': composition['review_protocol']} if 'review_protocol' in composition else {}),
             **({'execution': composition['execution']} if 'execution' in composition else {}),
+            **({'preparation': composition['preparation']} if 'preparation' in composition else {}),
             'members': composition['members'], 'diversity': composition['diversity'], 'runtime_supported': supported,
             **({'issue_source': {'snapshot_sha256': document['issue_source']['sha256'],
                 'source': document['issue_source']['payload']['observation']['source'],

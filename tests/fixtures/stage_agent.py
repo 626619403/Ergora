@@ -31,7 +31,7 @@ if '--model' in sys.argv and sys.argv[sys.argv.index('--model') + 1] in ('fixtur
     subprocess.Popen([sys.executable, '-c', child], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     time.sleep(40)
     raise SystemExit(2)
-if 'decision' not in schema['required'] and '"kind": "formal-work-materials"' in prompt:
+if '"kind": "formal-preparation-materials"' in prompt or ('decision' not in schema['required'] and '"kind": "formal-work-materials"' in prompt):
     import asyncio
     from ergora import task_mcp
 
@@ -40,21 +40,32 @@ if 'decision' not in schema['required'] and '"kind": "formal-work-materials"' in
     server = {key.removeprefix('mcp_servers.ergora_task.'): value for key, value in settings.items()
               if key.startswith('mcp_servers.ergora_task.')}
     server = {key: value for key, value in server.items() if key in ('command', 'args', 'env')}
-    asyncio.run(task_mcp.probe(server, Path(sys.argv[sys.argv.index('--output-last-message') + 1]).with_name('fixture-mcp.stderr')))
+    if '"kind": "formal-preparation-materials"' in prompt and 'fixture-unread-inventory' not in sys.argv:
+        import runpy
+
+        read_all = runpy.run_path(str(Path(__file__).with_name('full_stage_resources.py')))['read_all']
+        asyncio.run(read_all(server))
+    else:
+        asyncio.run(task_mcp.probe(server, Path(sys.argv[sys.argv.index('--output-last-message') + 1]).with_name('fixture-mcp.stderr')))
     payload = json.loads(prompt.splitlines()[-1])
-    unit = payload['context']['unit']
-    target = Path(unit['paths'][0]); target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text('VALUE = 42\n')
-    if 'fixture-work-scope' in unit['instructions']:
-        Path('src/outside.py').write_text('OUTSIDE = True\n')
-    if 'fixture-work-commit' in unit['instructions']:
-        subprocess.run(['git', 'add', '.'], check=True, capture_output=True)
-        subprocess.run(['git', 'commit', '-m', 'Unauthorized agent commit'], check=True, capture_output=True)
+    if payload['kind'] == 'formal-work-materials':
+        unit = payload['context']['unit']
+        target = Path(unit['paths'][0]); target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text('VALUE = 42\n')
+        if 'fixture-work-scope' in unit['instructions']:
+            Path('src/outside.py').write_text('OUTSIDE = True\n')
+        if 'fixture-work-commit' in unit['instructions']:
+            subprocess.run(['git', 'add', '.'], check=True, capture_output=True)
+            subprocess.run(['git', 'commit', '-m', 'Unauthorized agent commit'], check=True, capture_output=True)
 elif 'decision' not in schema['required'] and '"stage": "work:' in prompt:
     Path("src/new.py").write_text("VALUE = 42\n")
     if 'fixture-delete-base-only' in prompt:
         Path('src/removed.txt').unlink()
 result = {"summary": mode, "artifacts": {name: mode + ": " + name for name in schema["properties"]["artifacts"]["required"]}}
+if any(model in sys.argv for model in ('fixture-complete-inventory', 'fixture-capacity-inventory')):
+    name = next(iter(result['artifacts']))
+    result['artifacts'][name] = ('I' * (1100000 if 'fixture-capacity-inventory' in sys.argv else 75000)
+                                + '\nComplete inventory tail beyond the legacy truncation.\n')
 if "decision" in schema["required"]:
     result["decision"] = "request-changes" if "fixture-reject" in sys.argv else "approve"
     # Same-group background work must stop before the formal read-only check.

@@ -49,7 +49,7 @@ def _references(index: dict) -> dict:
         original_spec, composition = unwrap(document)
         if original_spec != spec or contract['original_input_sha256'] != _sha(document):
             raise ValueError('Handoff original input differs from its indexed identity')
-        source = document['issue_source'] if composition is not None and document['schema_version'] == 7 else None
+        source = document.get('issue_source') if composition is not None else None
         if source is not None:
             selection = contract['agent_bindings']
             bind_snapshot(source, index['project'], selection['configuration']['layers']['tracker']['binding'],

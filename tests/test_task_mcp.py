@@ -183,6 +183,37 @@ def test_actual_official_sdk_stdio_roundtrip_and_missing_server(scoped, tmp_path
         asyncio.run(task_mcp.probe({"command": str(tmp_path / "missing"), "args": []}, tmp_path / "failed.stderr"))
 
 
+def test_attachment_delivery_requires_continuous_actual_read_ranges(scoped, tmp_path):
+    from mcp import ClientSession, StdioServerParameters
+    from mcp.client.stdio import stdio_client
+
+    _, _, scope = scoped
+    audit = tmp_path / 'resource-ranges.jsonl'
+    document = json.loads(Path(scope['path']).read_bytes())
+    attachments = [uri for uri in document['files'] if uri.endswith(('attachment.txt', 'leaf.bin'))]
+
+    async def exercise():
+        async with stdio_client(StdioServerParameters(**task_mcp.launch(scope, audit))) as (reader, writer):
+            async with ClientSession(reader, writer) as session:
+                await session.initialize()
+                await session.list_tools()
+                for uri in attachments:
+                    # Overlapping responses do not fill the missing byte at 3.
+                    for offset, size in ((0, 3), (0, 3), (4, 65536)):
+                        response = await session.call_tool('read', {'path': uri, 'offset': offset, 'max_bytes': size})
+                        assert not response.is_error
+                with pytest.raises(ValueError, match='not completely read'):
+                    task_mcp.verify_reads(document, audit.read_bytes())
+                for uri in attachments:
+                    response = await session.call_tool('read', {'path': uri, 'offset': 3, 'max_bytes': 1})
+                    assert not response.is_error
+        return task_mcp.verify_reads(document, audit.read_bytes())
+
+    coverage = asyncio.run(exercise())['attachments']
+    assert coverage.keys() == set(attachments)
+    assert all(item['size'] == item['covered_bytes'] for item in coverage.values())
+
+
 def test_successful_model_cannot_substitute_for_missing_native_mcp_connection(scoped, monkeypatch, capsys):
     state, prepared, _ = scoped
     async def preflight(*args):

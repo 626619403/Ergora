@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "id": "development-preparer",
+  "version": "1.0.0",
+  "description": "Read-only inventory and planning; backend and stage are selected per instance.",
+  "roles": [
+    "inspector",
+    "planner"
+  ],
+  "specialties": [
+    "repository-inventory",
+    "delivery-planning"
+  ],
+  "backend": {
+    "tool": "codex"
+  },
+  "resources": [
+    {
+      "id": "preparation-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "82b79591e84d6899f3960385a21874ca1e62c092a2129e4371e3b96d6c804d00"
+    }
+  ]
+}

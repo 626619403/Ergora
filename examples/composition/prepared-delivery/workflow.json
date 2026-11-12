@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "id": "prepared-delivery",
+  "version": "1.0.0",
+  "description": "Explicit preparation, original work units and review selected by formal input v8.",
+  "resources": [
+    {
+      "id": "prepared-delivery-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "dc8a8a0143679a404e0e0a765cea4a04c3f93d844fcdf05ae65eac09d8abe6fe"
+    }
+  ],
+  "permissions": {
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "write": [
+      "workspace"
+    ],
+    "shell": true,
+    "network": []
+  },
+  "limits": {
+    "depth": 8,
+    "instances": 128,
+    "concurrency": 4,
+    "material_bytes": 262144
+  },
+  "inputs": [
+    "task"
+  ],
+  "outputs": {
+    "result": {
+      "node": "review",
+      "output": "findings"
+    }
+  },
+  "nodes": [
+    {
+      "id": "preparation",
+      "ref": {
+        "kind": "workflow",
+        "id": "preparation-guide",
+        "version": "1.0.0",
+        "digest": "27a2c7ef67e00255d58f6dafed8044161194fe81226fc2dcb5e0a7e488f2cb27"
+      },
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      }
+    },
+    {
+      "id": "work",
+      "ref": {
+        "kind": "workflow",
+        "id": "specialist-work",
+        "version": "1.0.0",
+        "digest": "2a7cf485138327034747d097647d1a19672f793278170e88ef64cdb063812d96"
+      },
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      }
+    },
+    {
+      "id": "review",
+      "ref": {
+        "kind": "workflow",
+        "id": "parallel-review",
+        "version": "1.0.0",
+        "digest": "9d4f4858ed6abc533e8d675ac3f1a3132b3acded5b2a96f0a1428ecd452cabde"
+      },
+      "depends_on": [
+        "work"
+      ],
+      "inputs": {
+        "task": {
+          "node": "work",
+          "output": "result"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,554 @@
+{
+  "at": "2026-11-12T11:36:16.565368+00:00",
+  "baseline": "210f58d46c3332f4d192ee8cb13e8c149dd2173f",
+  "run_id": "c25283866f0e4ea59888421a7772b657",
+  "status": "succeeded",
+  "backend": "codex",
+  "inference_model": "gpt-6.1-sol",
+  "reasoning_effort": "high",
+  "cli_exit": 0,
+  "input_digest": "2d7a1735f63d3e9f9ded7d5466386b7e3ec3c04107f285f53427d6e9c62d2adf",
+  "prompt_sha256": "aeba6bca69d9ee3a7d8dba9e3d5c765b85397d9ca192d2ecf42a76dfbe8c09dc",
+  "attachment_bytes": 629091,
+  "attachment_sha256": "f6550a2e32f75fcb967d308e671eb0cb78ab6461e2dc7a71ae58c67821fb025f",
+  "manifest_digest": "164faf23f95ee07168784485b2fe223cfd74f73ce92047b5007336c593747180",
+  "revision": "1.0.121",
+  "result_sha256": "5cc1dd956c151094a217d967debcf28ceed892340010d39e8061d4a349536131",
+  "seconds": 377.86,
+  "evidence": {
+    "manifest_prepared_actual_prompt_admission_scope_native_original_result_match": true,
+    "bundled_template_unchanged_except_evidence_revision_resource_and_limit": true,
+    "scope_files": 5,
+    "all_scope_continuous_utf8_through_null": true,
+    "complete_scope_reads": {
+      "definitions/agent/ergora-structure-reviewer/1.0.121/instructions.md": {
+        "bytes": 354,
+        "sha256": "3cc9c450f0c03da5ea4a1434ac6182d50df6a4985cffdee2a59fe9fe477c6b43",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 354,
+            "next_offset": null
+          }
+        ],
+        "base64_retries": [],
+        "duplicates": []
+      },
+      "definitions/agent/ergora-structure-reviewer/1.0.121/skills/candidate-evidence/SKILL.md": {
+        "bytes": 480,
+        "sha256": "aedb683ba435b973bdf6602542688b870d5e10872d2fe55387eaa39202ecbd75",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 480,
+            "next_offset": null
+          }
+        ],
+        "base64_retries": [],
+        "duplicates": []
+      },
+      "definitions/agent/ergora-structure-reviewer/1.0.121/skills/candidate-evidence/references/candidate.txt": {
+        "bytes": 629091,
+        "sha256": "f6550a2e32f75fcb967d308e671eb0cb78ab6461e2dc7a71ae58c67821fb025f",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 12000,
+            "next_offset": 12000
+          },
+          {
+            "offset": 12000,
+            "bytes": 3000,
+            "next_offset": 15000
+          },
+          {
+            "offset": 15000,
+            "bytes": 12000,
+            "next_offset": 27000
+          },
+          {
+            "offset": 27000,
+            "bytes": 8000,
+            "next_offset": 35000
+          },
+          {
+            "offset": 35000,
+            "bytes": 2000,
+            "next_offset": 37000
+          },
+          {
+            "offset": 37000,
+            "bytes": 12000,
+            "next_offset": 49000
+          },
+          {
+            "offset": 49000,
+            "bytes": 11999,
+            "next_offset": 60999
+          },
+          {
+            "offset": 60999,
+            "bytes": 11998,
+            "next_offset": 72997
+          },
+          {
+            "offset": 72997,
+            "bytes": 15000,
+            "next_offset": 87997
+          },
+          {
+            "offset": 87997,
+            "bytes": 15000,
+            "next_offset": 102997
+          },
+          {
+            "offset": 102997,
+            "bytes": 15000,
+            "next_offset": 117997
+          },
+          {
+            "offset": 117997,
+            "bytes": 16000,
+            "next_offset": 133997
+          },
+          {
+            "offset": 133997,
+            "bytes": 15999,
+            "next_offset": 149996
+          },
+          {
+            "offset": 149996,
+            "bytes": 19998,
+            "next_offset": 169994
+          },
+          {
+            "offset": 169994,
+            "bytes": 19998,
+            "next_offset": 189992
+          },
+          {
+            "offset": 189992,
+            "bytes": 19998,
+            "next_offset": 209990
+          },
+          {
+            "offset": 209990,
+            "bytes": 20000,
+            "next_offset": 229990
+          },
+          {
+            "offset": 229990,
+            "bytes": 20000,
+            "next_offset": 249990
+          },
+          {
+            "offset": 249990,
+            "bytes": 19999,
+            "next_offset": 269989
+          },
+          {
+            "offset": 269989,
+            "bytes": 19999,
+            "next_offset": 289988
+          },
+          {
+            "offset": 289988,
+            "bytes": 20000,
+            "next_offset": 309988
+          },
+          {
+            "offset": 309988,
+            "bytes": 24000,
+            "next_offset": 333988
+          },
+          {
+            "offset": 333988,
+            "bytes": 24000,
+            "next_offset": 357988
+          },
+          {
+            "offset": 357988,
+            "bytes": 20000,
+            "next_offset": 377988
+          },
+          {
+            "offset": 377988,
+            "bytes": 20000,
+            "next_offset": 397988
+          },
+          {
+            "offset": 397988,
+            "bytes": 20000,
+            "next_offset": 417988
+          },
+          {
+            "offset": 417988,
+            "bytes": 22000,
+            "next_offset": 439988
+          },
+          {
+            "offset": 439988,
+            "bytes": 22000,
+            "next_offset": 461988
+          },
+          {
+            "offset": 461988,
+            "bytes": 22000,
+            "next_offset": 483988
+          },
+          {
+            "offset": 483988,
+            "bytes": 22000,
+            "next_offset": 505988
+          },
+          {
+            "offset": 505988,
+            "bytes": 24000,
+            "next_offset": 529988
+          },
+          {
+            "offset": 529988,
+            "bytes": 24000,
+            "next_offset": 553988
+          },
+          {
+            "offset": 553988,
+            "bytes": 22000,
+            "next_offset": 575988
+          },
+          {
+            "offset": 575988,
+            "bytes": 22000,
+            "next_offset": 597988
+          },
+          {
+            "offset": 597988,
+            "bytes": 22000,
+            "next_offset": 619988
+          },
+          {
+            "offset": 619988,
+            "bytes": 9103,
+            "next_offset": null
+          }
+        ],
+        "base64_retries": [
+          {
+            "offset": 0,
+            "bytes": 24000
+          },
+          {
+            "offset": 12000,
+            "bytes": 12000
+          },
+          {
+            "offset": 12000,
+            "bytes": 6000
+          },
+          {
+            "offset": 27000,
+            "bytes": 16000
+          },
+          {
+            "offset": 35000,
+            "bytes": 16000
+          },
+          {
+            "offset": 35000,
+            "bytes": 8000
+          },
+          {
+            "offset": 35000,
+            "bytes": 4000
+          },
+          {
+            "offset": 49000,
+            "bytes": 12000
+          },
+          {
+            "offset": 60999,
+            "bytes": 12000
+          },
+          {
+            "offset": 60999,
+            "bytes": 11999
+          },
+          {
+            "offset": 133997,
+            "bytes": 16000
+          },
+          {
+            "offset": 149996,
+            "bytes": 20000
+          },
+          {
+            "offset": 149996,
+            "bytes": 19999
+          },
+          {
+            "offset": 169994,
+            "bytes": 20000
+          },
+          {
+            "offset": 169994,
+            "bytes": 19999
+          },
+          {
+            "offset": 189992,
+            "bytes": 20000
+          },
+          {
+            "offset": 189992,
+            "bytes": 19999
+          },
+          {
+            "offset": 249990,
+            "bytes": 20000
+          },
+          {
+            "offset": 269989,
+            "bytes": 20000
+          }
+        ],
+        "duplicates": [
+          {
+            "offset": 87997,
+            "bytes": 15000
+          },
+          {
+            "offset": 357988,
+            "bytes": 20000
+          }
+        ]
+      },
+      "definitions/agent/ergora-structure-reviewer/1.0.121/skills/ergora-structure-reviewer/SKILL.md": {
+        "bytes": 521,
+        "sha256": "d6b69570bcca408d3d06ca5adf1cb44a4a9e43c2901f05c38a68c096f23a4ac8",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 521,
+            "next_offset": null
+          }
+        ],
+        "base64_retries": [],
+        "duplicates": []
+      },
+      "definitions/workflow/ergora-structure-review/1.0.121/instructions.md": {
+        "bytes": 163,
+        "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823",
+        "continuous_utf8_pages": [
+          {
+            "offset": 0,
+            "bytes": 163,
+            "next_offset": null
+          }
+        ],
+        "base64_retries": [],
+        "duplicates": []
+      }
+    },
+    "list_passes_files": [
+      5
+    ],
+    "failed_calls": 0,
+    "frozen_complete_files": 34,
+    "native_stream_sha256": "9bdb87109a61a6cff65c4a2be8ee008bfe88c6fc63ea77cda869e6b6a398263a",
+    "backend_reported_turn_usage": [
+      {
+        "input_tokens": 3083925,
+        "cached_input_tokens": 2858880,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 8847,
+        "reasoning_output_tokens": 4071
+      }
+    ],
+    "observed_processes": 4,
+    "live_sampled_processes": []
+  },
+  "frozen_candidate_files": [
+    {
+      "file": "docs/PLAN.md",
+      "bytes": 30219,
+      "sha256": "66abc145bf2f0a28c3f4c9d50a1e83214cf876878eef7dfa1784537e9548da2d"
+    },
+    {
+      "file": "docs/USAGE.md",
+      "bytes": 124083,
+      "sha256": "34bf36e55c2532ad12063683f1d1178a32d6d1a672f339174ba08812e8fe518a"
+    },
+    {
+      "file": "docs/WORKFLOW_DEFINITIONS.md",
+      "bytes": 67150,
+      "sha256": "a85014299d1fd13e7e985e2a1dc8e67267b2b5640242c73517679981707755f4"
+    },
+    {
+      "file": "docs/architecture/contracts-and-identities.md",
+      "bytes": 14612,
+      "sha256": "e91d8da2751301907f92dbdc0543f00a39c8d5369fb431ab5fe233dbf17ce098"
+    },
+    {
+      "file": "docs/architecture/current.md",
+      "bytes": 34688,
+      "sha256": "c23c1bcb2bda3f17a79080e7862e10158c64adbc10f1891d8d8810869116b35f"
+    },
+    {
+      "file": "docs/delivery/2026-11-12-six-stage-materials.md",
+      "bytes": 3226,
+      "sha256": "d23b6ecb1acf03e172bfca1d3d00b25e3e4f21c8a783a964bd7dc46901274fea"
+    },
+    {
+      "file": "docs/plans/2026-11-12-six-stage-materials.md",
+      "bytes": 3568,
+      "sha256": "1d4a94be79fc9c91ddd8d2699c443ee97be171e91254405ed1583f4d14780075"
+    },
+    {
+      "file": "docs/plans/2026-11-12-six-stage-native-consumer.md",
+      "bytes": 10025,
+      "sha256": "f001f64fafa96d489da9b403c9d28f46c003694fd9b13dc49490141e18b78966"
+    },
+    {
+      "file": "examples/composition/README.md",
+      "bytes": 4743,
+      "sha256": "67b23184ad690145ed2bfd41d211cb57221d3ecc41daafb3252d94198a028f8e"
+    },
+    {
+      "file": "examples/composition/agents/development-preparer/agent.json",
+      "bytes": 564,
+      "sha256": "10b0c491f720b0a106cc0d032820578ca22886f5cfffbecd519eb5bb81eb6412"
+    },
+    {
+      "file": "examples/composition/agents/development-preparer/instructions.md",
+      "bytes": 607,
+      "sha256": "82b79591e84d6899f3960385a21874ca1e62c092a2129e4371e3b96d6c804d00"
+    },
+    {
+      "file": "examples/composition/preparation-guide/instructions.md",
+      "bytes": 494,
+      "sha256": "759f63f963278285936a4eeedf2a47655f6d65082f30a4bd18a313e116a4bab0"
+    },
+    {
+      "file": "examples/composition/preparation-guide/skills/preparation-evidence/SKILL.md",
+      "bytes": 297,
+      "sha256": "92b2903eb439c10bd9a7b55eecb87b849f7dd3c40843c8beabebc076debce450"
+    },
+    {
+      "file": "examples/composition/preparation-guide/skills/preparation-evidence/references/coverage.md",
+      "bytes": 383,
+      "sha256": "07fbd226cc5bff4326f9a35b4acd6e3daa1bf612960412b8d4d8b69c7834dc0f"
+    },
+    {
+      "file": "examples/composition/preparation-guide/workflow.json",
+      "bytes": 2055,
+      "sha256": "aa1786be7f8354f2add6d6d9d5b1f2d6ab17d0b780120f3bb65f92bf74ad5f86"
+    },
+    {
+      "file": "examples/composition/prepared-delivery/instructions.md",
+      "bytes": 339,
+      "sha256": "dc8a8a0143679a404e0e0a765cea4a04c3f93d844fcdf05ae65eac09d8abe6fe"
+    },
+    {
+      "file": "examples/composition/prepared-delivery/workflow.json",
+      "bytes": 1881,
+      "sha256": "dd67a4c346931f70d89d2510e2771a459323b5e11e93ea6ca3ba913d4df04998"
+    },
+    {
+      "file": "src/ergora/data/schemas/task-definition-v4.json",
+      "bytes": 5128,
+      "sha256": "332566a13fb053e7be72edf07ee826cfb6581b406b0405df505c547ee964edef"
+    },
+    {
+      "file": "src/ergora/handoff.py",
+      "bytes": 12353,
+      "sha256": "bd8d74cb96225519a2136e11227b76b10545b9aadc77a67ff799743584558f6b"
+    },
+    {
+      "file": "src/ergora/reference_executor.py",
+      "bytes": 59206,
+      "sha256": "b83bf68b4c60529938cc86860a880fa29ce88dc37fe7cad45dd364b2733965bd"
+    },
+    {
+      "file": "src/ergora/reference_inputs.py",
+      "bytes": 13791,
+      "sha256": "1ee326561c335cdb094d0b64cbba187d444e6c508457b2a45a1a64eac2f135a3"
+    },
+    {
+      "file": "src/ergora/reference_task_creation.py",
+      "bytes": 20294,
+      "sha256": "3e8255d3d9ce0af4f8a9b82f11431dd375cc90d8d1dbea0d2875843e1af6579b"
+    },
+    {
+      "file": "src/ergora/reference_workflows.py",
+      "bytes": 20595,
+      "sha256": "cdbd3836b8bb723606e96149972fcc5eecd96f3ca38d3b81b52b0ad9b168bd6c"
+    },
+    {
+      "file": "src/ergora/review_dags.py",
+      "bytes": 15814,
+      "sha256": "d419f313bf62c64e85e0e4504bdd9de93ae6a4d618213480f3d70ff3c8b5c4ca"
+    },
+    {
+      "file": "src/ergora/task_envelopes.py",
+      "bytes": 29233,
+      "sha256": "2f10ee79bf28d4625e0e5b49d24bc681870c1614f0be11bd34be47a35b1ce5c1"
+    },
+    {
+      "file": "src/ergora/task_mcp.py",
+      "bytes": 16041,
+      "sha256": "826ae117ebc939e8caec773f75a191553f4c49d38a5f28b0c4f78484d05772bb"
+    },
+    {
+      "file": "src/ergora/tasks.py",
+      "bytes": 33806,
+      "sha256": "00a539a68da5371c6bf672d8db21d0a3653ce91be52915a16e08754840d9b4db"
+    },
+    {
+      "file": "tests/fixtures/full_stage_acceptance.py",
+      "bytes": 7280,
+      "sha256": "c58946e15141a5687645b40cdf651735039cf3bcfa84d785a959af94b7e172a7"
+    },
+    {
+      "file": "tests/fixtures/full_stage_resources.py",
+      "bytes": 1604,
+      "sha256": "0245d1cb2aaabaeae12ba619a3c6ba6c319b93a2f77e79498101adeef625f805"
+    },
+    {
+      "file": "tests/fixtures/reference_acceptance.py",
+      "bytes": 39780,
+      "sha256": "cdb4d264c9c167dea306d6483140b1c3a0ecc9bb6641de7a64e54ff87b39c25c"
+    },
+    {
+      "file": "tests/fixtures/stage_agent.py",
+      "bytes": 4601,
+      "sha256": "aedf3db946be8bb33616f54d9c4026a0137908742c2a265a1453cf2524044ff7"
+    },
+    {
+      "file": "tests/fixtures/work_delivery_acceptance.py",
+      "bytes": 19497,
+      "sha256": "b832a86dff59c707769800a691ddb1e7faf719b6fa12f5b2f540a32b5b2ad61b"
+    },
+    {
+      "file": "tests/test_full_stage_materials.py",
+      "bytes": 6345,
+      "sha256": "922713245602cee2ad3a9d561e65c9a0f610a1f14d44cfd241494fdd70b3bb01"
+    },
+    {
+      "file": "tests/test_task_mcp.py",
+      "bytes": 22377,
+      "sha256": "fb31ec3f2c923b61496df7dc058aadb8ff0e5c8a06bab0a09b0de392a7610f95"
+    }
+  ],
+  "prior_backend_attempt": {
+    "run_id": "c94b7c8333b24731bbe1dfc2a34e4aa6",
+    "backend": "claude-code",
+    "status": "failed",
+    "cli_exit": 1,
+    "seconds": 8.01,
+    "api_error_status": 400,
+    "reason": "Gateway rejected empty system content before a review result was produced",
+    "observed_processes": 8,
+    "live_sampled_processes": []
+  },
+  "scope": "Actual bundled structure-review plus a frozen complete evidence Skill. Separate read-only model context; full original stream reconstruction proves delivered UTF-8 byte ranges and identity, not comprehension or backend-error independence. Test/install results were supplied as claims at freeze, not independently reproduced by this model; the fresh-context reviewers separately checked raw evidence. No full CLI/Temporal journey, total-budget, GPU or Windows acceptance claim.",
+  "usage_scope": "Original backend counters. Cached input is included in input_tokens; reasoning output is reported separately. Do not add either again or infer invoice cost."
+}
