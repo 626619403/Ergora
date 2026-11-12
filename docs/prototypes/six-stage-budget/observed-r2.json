@@ -1,0 +1,176 @@
+{
+  "at": "2026-11-12T11:55:09.637331+00:00",
+  "cases": [
+    {
+      "case": "detached-child",
+      "budget": {
+        "started_at": 1794484503.670895,
+        "deadline": 1794484506.8708951,
+        "work_deadline": 1794484505.8708951,
+        "wall_seconds": 3.2,
+        "cleanup_seconds": 1.0,
+        "id": "84d4115eb896f9361b846672215c0a8848ceb3d427151097fef75ffce8208d31"
+      },
+      "preparation_delay_seconds": 0.8,
+      "total_elapsed_to_first_return_seconds": 2.2614712715148926,
+      "first": {
+        "budget_id": "84d4115eb896f9361b846672215c0a8848ceb3d427151097fef75ffce8208d31",
+        "started_at": 1794484503.670895,
+        "deadline": 1794484506.8708951,
+        "remaining_at_entry": 1.3482847213745117,
+        "launch_attempted": true,
+        "status": "cancelled",
+        "returncode": -9,
+        "finished_at": 1794484505.9323664,
+        "observation_seconds": 1.4760046051815152,
+        "observed_processes": [
+          {
+            "pid": 172052,
+            "start_ticks": "250356709",
+            "state": "S"
+          },
+          {
+            "pid": 172054,
+            "start_ticks": "250356714",
+            "state": "S"
+          },
+          {
+            "pid": 172059,
+            "start_ticks": "250356718",
+            "state": "R"
+          }
+        ],
+        "live_after_observation": [],
+        "manual_cleanup": []
+      },
+      "same_budget_again": {
+        "budget_id": "84d4115eb896f9361b846672215c0a8848ceb3d427151097fef75ffce8208d31",
+        "started_at": 1794484503.670895,
+        "deadline": 1794484506.8708951,
+        "remaining_at_entry": -0.12524724006652832,
+        "launch_attempted": false,
+        "status": "exhausted-before-launch",
+        "finished_at": 1794484505.9961464,
+        "observation_seconds": 0.06321272812783718,
+        "observed_processes": [
+          {
+            "pid": 172066,
+            "start_ticks": "250356857",
+            "state": "R"
+          }
+        ],
+        "live_after_observation": [],
+        "manual_cleanup": []
+      }
+    },
+    {
+      "case": "blocked-lock",
+      "budget": {
+        "started_at": 1794484506.0180335,
+        "deadline": 1794484509.2180336,
+        "work_deadline": 1794484508.2180336,
+        "wall_seconds": 3.2,
+        "cleanup_seconds": 1.0,
+        "id": "ec2199ddba6a326566e716d26851c9cfe1dd00d7e1b237243a5c6218a5a97ba2"
+      },
+      "preparation_delay_seconds": 0.8,
+      "total_elapsed_to_first_return_seconds": 2.3136162757873535,
+      "first": {
+        "budget_id": "ec2199ddba6a326566e716d26851c9cfe1dd00d7e1b237243a5c6218a5a97ba2",
+        "started_at": 1794484506.0180335,
+        "deadline": 1794484509.2180336,
+        "remaining_at_entry": 1.3501060009002686,
+        "launch_attempted": true,
+        "status": "cancelled",
+        "returncode": -9,
+        "finished_at": 1794484508.3316498,
+        "observation_seconds": 1.5139762558974326,
+        "observed_processes": [
+          {
+            "pid": 172067,
+            "start_ticks": "250356944",
+            "state": "S"
+          },
+          {
+            "pid": 172068,
+            "start_ticks": "250356949",
+            "state": "S"
+          }
+        ],
+        "live_after_observation": [],
+        "manual_cleanup": []
+      },
+      "same_budget_again": {
+        "budget_id": "ec2199ddba6a326566e716d26851c9cfe1dd00d7e1b237243a5c6218a5a97ba2",
+        "started_at": 1794484506.0180335,
+        "deadline": 1794484509.2180336,
+        "remaining_at_entry": -0.16408514976501465,
+        "launch_attempted": false,
+        "status": "exhausted-before-launch",
+        "finished_at": 1794484508.382123,
+        "observation_seconds": 0.06320651480928063,
+        "observed_processes": [
+          {
+            "pid": 172167,
+            "start_ticks": "250357096",
+            "state": "R"
+          }
+        ],
+        "live_after_observation": [],
+        "manual_cleanup": []
+      }
+    },
+    {
+      "case": "expired-before-entry",
+      "budget": {
+        "started_at": 1794484508.4060464,
+        "deadline": 1794484509.4060464,
+        "work_deadline": 1794484509.1060464,
+        "wall_seconds": 1.0,
+        "cleanup_seconds": 0.3,
+        "id": "7bbe7e807fb53c720a66a1752531e63adf8d8b1495452b9be3aba7b4c156aac8"
+      },
+      "preparation_delay_seconds": 1.1,
+      "total_elapsed_to_first_return_seconds": 1.1476311683654785,
+      "first": {
+        "budget_id": "7bbe7e807fb53c720a66a1752531e63adf8d8b1495452b9be3aba7b4c156aac8",
+        "started_at": 1794484508.4060464,
+        "deadline": 1794484509.4060464,
+        "remaining_at_entry": -0.44762682914733887,
+        "launch_attempted": false,
+        "status": "exhausted-before-launch",
+        "finished_at": 1794484509.5536776,
+        "observation_seconds": 0.06353488704189658,
+        "observed_processes": [
+          {
+            "pid": 172242,
+            "start_ticks": "250357213",
+            "state": "R"
+          }
+        ],
+        "live_after_observation": [],
+        "manual_cleanup": []
+      },
+      "same_budget_again": {
+        "budget_id": "7bbe7e807fb53c720a66a1752531e63adf8d8b1495452b9be3aba7b4c156aac8",
+        "started_at": 1794484508.4060464,
+        "deadline": 1794484509.4060464,
+        "remaining_at_entry": -0.5106675624847412,
+        "launch_attempted": false,
+        "status": "exhausted-before-launch",
+        "finished_at": 1794484509.6167185,
+        "observation_seconds": 0.06303084501996636,
+        "observed_processes": [
+          {
+            "pid": 172248,
+            "start_ticks": "250357219",
+            "state": "R"
+          }
+        ],
+        "live_after_observation": [],
+        "manual_cleanup": []
+      }
+    }
+  ],
+  "scope": "Throwaway real Linux subprocess/lock/subreaper experiment using existing processes.run supervised implementation. A prototype timer requests cancellation at one fixed absolute cutoff after an intentional preparation delay. No product task prepare/create/submission/Temporal/budget slot or Git command executed; no hard-real-time, uninterruptible-I/O, bounded cleanup failure, arbitrary daemon or complete native workflow acceptance claim."
+}

@@ -1,0 +1,10 @@
+{
+  "at": "2026-11-12T11:58:41.664518+00:00",
+  "product_baseline": "f394945db894740ad23a81c62b4ad87c85a84511",
+  "python": "3.12.3",
+  "prototype_sha256": "437f333811bdc660fd0d16ca06e9ab3f017e23dcbf2e64f80adfc9355eba857d",
+  "observed_r2_sha256": "341438d2b6806da951c5dd51a561a98f8911f7ac4b0d76016602a68470d37313",
+  "existing_processes_source_sha256": "8b71a48351a8823bf712ad0735b369e829d3a259010ce8aebec6792b42269eb2",
+  "existing_product_source_changed": false,
+  "scope": "Post-run source identity capture for the r2 prototype; not a formal task/run/Temporal acceptance. Raw private r1 diagnostic retained without attributing independent cleanup confirmation to it."
+}
