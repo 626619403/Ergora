@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "attempts": [
+    {
+      "identity": {
+        "at": "2026-11-12T04:46:07.762001+00:00",
+        "baseline": "18585dccf067c28e1c444df0c8daaa040b038568",
+        "run_id": "aba57382686c4584a48d77c873d7c4fb",
+        "status": "succeeded",
+        "backend": "codex",
+        "inference_model": "gpt-6.1-sol",
+        "reasoning_effort": "high",
+        "cli_exit": 0,
+        "seconds": 184.70522299408913,
+        "input_digest": "04b5b1c5ac85df138610a1cc9da145fad9eeea48a5130857c501837405378fbd",
+        "prompt_sha256": "0121d1ffe304780600083a4d3f5df5402dba461775da022a35d2bce27a9f6747",
+        "attachment_bytes": 197240,
+        "attachment_sha256": "2e3df60a8b4a9f2199f31a68b253c0aeec4680c27794bc9be600a7178d3d8069",
+        "manifest_digest": "b0aaecb8f34e11bb734e14b75ff91b853d90c338454869e2e8164613ea22d3b1",
+        "revision": "1.0.115",
+        "observed_processes": 4,
+        "live_sampled_processes": [],
+        "scope": "F7d-D3c nine complete frozen UI/callers/backend/spec/delivery. Final browser, public docs and independent review separate; authorized Codex fallback, no dual-backend success claim.",
+        "decision": "request-changes",
+        "result_sha256": "79d15cf27a1b41c8f41cc8806d1ca8ec93ad4cf8fb0244a76176fa827b86fa39"
+      },
+      "read_audit": {
+        "at": "2026-11-12T04:47:27.194469+00:00",
+        "run_id": "aba57382686c4584a48d77c873d7c4fb",
+        "revision": "1.0.115",
+        "manifest_prepared_actual_prompt_admission_scope_native_original_result_match": true,
+        "bundled_template_unchanged_except_evidence_revision_resource_and_limit": true,
+        "scope_files": 5,
+        "all_scope_continuous_utf8_through_null": true,
+        "list_passes_files": [
+          5
+        ],
+        "failed_calls": 0,
+        "attachment_bytes": 197240,
+        "attachment_sha256": "2e3df60a8b4a9f2199f31a68b253c0aeec4680c27794bc9be600a7178d3d8069",
+        "frozen_complete_files": 9,
+        "original_result_sha256": "79d15cf27a1b41c8f41cc8806d1ca8ec93ad4cf8fb0244a76176fa827b86fa39",
+        "decision": "request-changes",
+        "native_stream_sha256": "bea4d97da4bbe137824a131f0cfd50661fdaf304bc25e98424c3db5776bf4ba3",
+        "backend_reported_turn_usage": [
+          {
+            "input_tokens": 1466156,
+            "cached_input_tokens": 1354624,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 3744,
+            "reasoning_output_tokens": 1693
+          }
+        ],
+        "observed_processes": 4,
+        "live_sampled_processes": [],
+        "scope": "Offline exact identity and successful plaintext page reconstruction only. Cached counters are part of input, reasoning reported separately, neither is added twice. No billing, reasoning quality, owner approval, independent backend-error or unsampled-process claim."
+      },
+      "original_result": {
+        "artifacts": {
+          "response": "Reviewed all declared ancestor instructions and both skills, plus candidate.txt continuously through next_offset:null, retrying base64 pages at the same offset with smaller reads.\n\nComplete frozen scope:\n\n- src/ergora/data/console/issue-writeback.js\n- src/ergora/data/console/tasks.js\n- src/ergora/data/console/api.js\n- src/ergora/data/console/ui.js\n- src/ergora/issue_writebacks.py\n- src/ergora/web.py\n- src/ergora/issue_backends.py\n- docs/plans/2026-11-12-issue-writeback-console.md\n- docs/delivery/2026-11-12-issue-writeback-console.md\n\n**Spec — P2: observation edits retain the old send affordance.** In issue-writeback.js, show(), the observeForm input listener only clears the observation panel. After reading a prepared record, edit its comment ID, page, query kind or label cursor: sequence remains unchanged, and the existing send confirmation still passes current(reading). This violates the plan’s explicit requirement that observation-input edits invalidate the previous generation and prevent old results from retaining send access. The delivery record consequently overstates input invalidation. Smallest correction: invalidate the previous confirmation when these inputs change and remove its send affordance, while keeping explicit observation of the edited query usable. Verify that sending requires a fresh reviewed status after the edit.\n\n**Standards — no additional concrete defect found.** The single-caller module has a cohesive interaction responsibility. tasks.js supplies task/run lifetime checks, web.py delegates to the existing application functions, issue_writebacks retains identity, revision, attempt and receipt ownership, and provider operations stay in issue_backends. Offline status does not require credentials or task-file reads along the supplied path. Unknown records offer no resend; observations do not acknowledge attempts. Durable validation guards protect distinct boundaries and do not justify removal. No concrete performance defect or redundant test/CI change is established by these attachments.\n\nThis verdict covers only the nine frozen attachments against baseline 18585dccf067c28e1c444df0c8daaa040b038568. Browser behavior, final documentation, independent acceptance and exact-commit CI remain unverified. Package/seed evidence does not establish repository-wide acceptance, a new model-driven six-stage run or dual-backend success. No commands, network requests, tests or workspace edits were performed."
+        },
+        "decision": "request-changes",
+        "summary": "Request changes: observation input edits leave the previous prepared-send confirmation actionable."
+      }
+    },
+    {
+      "identity": {
+        "at": "2026-11-12T04:51:47.718259+00:00",
+        "baseline": "18585dccf067c28e1c444df0c8daaa040b038568",
+        "run_id": "28469044b5864306a241ab09509a1dbc",
+        "status": "succeeded",
+        "backend": "codex",
+        "inference_model": "gpt-6.1-sol",
+        "reasoning_effort": "high",
+        "cli_exit": 0,
+        "seconds": 98.1684287218377,
+        "input_digest": "5b1be92c8a5e2954be15f53419ba78f2dbb176fa6a4dcec79b3a4c511e989c98",
+        "prompt_sha256": "d0422da5e84fec6ae647e6a4de5491eec2c77c099b6c336a2933eae27b7c08b9",
+        "attachment_bytes": 51085,
+        "attachment_sha256": "c9e423cc090bf09bc4290e1b751d71d4f1d1258ffc78b71387fcc6bfe946e12b",
+        "manifest_digest": "005cf49e6f40f7b0286f20f618076652a8ac4aa9f9a6ebf01ce1fe864f9faba0",
+        "revision": "1.0.116",
+        "observed_processes": 4,
+        "live_sampled_processes": [],
+        "scope": "F7d-D3c five complete frozen UI/callers/backend/spec/delivery. Final browser, public docs and independent review separate; authorized Codex fallback, no dual-backend success claim.",
+        "decision": "approve",
+        "result_sha256": "9d1367e93f69afb0bca00103e4ff04de5d9455db4e1bd308a4c38def71adae42"
+      },
+      "read_audit": {
+        "at": "2026-11-12T04:52:23.170630+00:00",
+        "run_id": "28469044b5864306a241ab09509a1dbc",
+        "revision": "1.0.116",
+        "manifest_prepared_actual_prompt_admission_scope_native_original_result_match": true,
+        "bundled_template_unchanged_except_evidence_revision_resource_and_limit": true,
+        "scope_files": 5,
+        "all_scope_continuous_utf8_through_null": true,
+        "list_passes_files": [
+          5
+        ],
+        "failed_calls": 0,
+        "attachment_bytes": 51085,
+        "attachment_sha256": "c9e423cc090bf09bc4290e1b751d71d4f1d1258ffc78b71387fcc6bfe946e12b",
+        "frozen_complete_files": 5,
+        "original_result_sha256": "9d1367e93f69afb0bca00103e4ff04de5d9455db4e1bd308a4c38def71adae42",
+        "decision": "approve",
+        "native_stream_sha256": "9de8d2922cf6b1265e03289b2c6101fed175950cad166add1848b2e949794b17",
+        "backend_reported_turn_usage": [
+          {
+            "input_tokens": 240512,
+            "cached_input_tokens": 201344,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 2264,
+            "reasoning_output_tokens": 1027
+          }
+        ],
+        "observed_processes": 4,
+        "live_sampled_processes": [],
+        "scope": "Offline exact identity and successful plaintext page reconstruction only. Cached counters are part of input, reasoning reported separately, neither is added twice. No billing, reasoning quality, owner approval, independent backend-error or unsampled-process claim."
+      },
+      "original_result": {
+        "artifacts": {
+          "response": "Reviewed all declared ancestor instructions and skills, and candidate.txt continuously through next_offset:null (SHA256 c9e423cc090bf09bc4290e1b751d71d4f1d1258ffc78b71387fcc6bfe946e12b).\n\nComplete scope:\n\n- src/ergora/data/console/issue-writeback.js\n- src/ergora/issue_writebacks.py\n- src/ergora/data/console/ui.js\n- docs/plans/2026-11-12-issue-writeback-console.md\n- docs/delivery/2026-11-12-issue-writeback-console.md\n\n**Spec:** No remaining finding. In issue-writeback.js, the observation form’s input listener advances sequence, removes the prior send confirmation, and updates selected. The send closure retains its original reading, so editing the query invalidates that send while explicit observe/GET remains usable. A fresh returned record can supply a new confirmation.\n\nThe independent prepare-recovery P2 is also closed: show() clears recovery before displaying any successfully returned record. After preparation succeeds, a send-response failure exposes the original SHA GET without retaining the prepare POST button. Unconfirmed preparation still preserves the fixed original request for explicit recovery.\n\n**Standards:** No reachable ownership, interface, redundant-guard, or performance defect found within these files. The UI owns interaction state; issue_writebacks retains identity, revision, scope, attempt-before-send, unknown/no-retry, and receipt decisions. busy, sequence, and active checks address distinct concurrency and lifecycle conditions. External values use text nodes; reads and pagination remain explicit.\n\nThis approval covers only these frozen five files against baseline 18585dccf067c28e1c444df0c8daaa040b038568. The original nine-file request-changes record remains retained. Unseen callers/routes, r3 installation identity, actual browser acceptance, independent checks, and exact delivery are outside this approval. Historical tests and controlled seeds remain evidence for their recorded versions and scope. No tests, shell commands, network operations, or writes were performed."
+        },
+        "decision": "approve",
+        "summary": "Approve the exact five-file candidate. Both prior P2 findings are closed by code; no additional reachable Spec or Standards defects found."
+      }
+    }
+  ],
+  "scope": "Nine-file request-changes retained, focused current five-file approve closes the two UI issues. Exact frozen task-MCP plaintext chains audited; final browser/docs/independent/exact delivery separate. No dual-backend success or billing claim."
+}

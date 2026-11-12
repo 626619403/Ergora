@@ -1,0 +1,1017 @@
+{
+  "schema_version": 1,
+  "at": "2026-11-12T05:01:48.605703+00:00",
+  "baseline": "18585dccf067c28e1c444df0c8daaa040b038568",
+  "state": "local-validation-complete-final-independent-review-pending",
+  "packages": {
+    "r1": {
+      "at": "2026-11-12T04:41:16.250795+00:00",
+      "wheel_sha256": "a98ec34f731ea046de878e74241867281c81c3bea835965206a0f299278eae26",
+      "wheel_files": 456,
+      "package_files": 451,
+      "wheel_and_installed_records_verified": true,
+      "installed_record_rows": 461,
+      "source_and_installed_package_equal": true,
+      "frozen_files": 283,
+      "editable": false
+    },
+    "r2": {
+      "at": "2026-11-12T04:47:27.832762+00:00",
+      "wheel_sha256": "8c6fec283e3bc0ddd082645e88b080d11b7fe61c7de09b7e8987fe9300b35590",
+      "wheel_files": 456,
+      "package_files": 451,
+      "wheel_and_installed_records_verified": true,
+      "installed_record_rows": 461,
+      "source_and_installed_package_equal": true,
+      "frozen_files": 283,
+      "editable": false
+    },
+    "r3": {
+      "at": "2026-11-12T04:50:08.442292+00:00",
+      "wheel_sha256": "3eaf48d8ff5411739e724afbdfd1084409bd5222e896782a1eefdec0d66d28d0",
+      "wheel_files": 456,
+      "package_files": 451,
+      "wheel_and_installed_records_verified": true,
+      "installed_record_rows": 461,
+      "source_and_installed_package_equal": true,
+      "frozen_files": 283,
+      "editable": false
+    }
+  },
+  "package_delta": [
+    {
+      "before": "r1",
+      "after": "r2",
+      "changed_package_files": [
+        "ergora/data/console/issue-writeback.js"
+      ],
+      "other_package_files_unchanged": 450,
+      "changed_distribution_files": [
+        "ergora-0.2.0.dist-info/METADATA",
+        "ergora-0.2.0.dist-info/RECORD"
+      ],
+      "README_matches_current": true
+    },
+    {
+      "before": "r2",
+      "after": "r3",
+      "changed_package_files": [
+        "ergora/data/console/issue-writeback.js"
+      ],
+      "other_package_files_unchanged": 450,
+      "changed_distribution_files": [
+        "ergora-0.2.0.dist-info/RECORD"
+      ],
+      "README_matches_current": true
+    }
+  ],
+  "installed_checks": [
+    {
+      "at": "2026-11-12T04:43:07.094089+00:00",
+      "exit": 0,
+      "seconds": 110.69105308130383,
+      "stdout_sha256": "d837fb2ca4b19a275adc7b99b8af53fea56e968c78a88a5626c32f6ca148abce"
+    },
+    {
+      "at": "2026-11-12T04:43:07.365025+00:00",
+      "exit": 0,
+      "seconds": 0.26820678589865565,
+      "stdout_sha256": "232d3ce8a6d1ceed52ea961ffff12086f8c9ddce7b8148fa501b1712dce915e5"
+    }
+  ],
+  "pytest": {
+    "passed": 76,
+    "seconds": 108.38,
+    "suites": [
+      "test_issue_writebacks.py",
+      "test_issue_label_writebacks.py",
+      "test_web.py",
+      "test_architecture_boundaries.py"
+    ],
+    "scope": "r1 only; r2/r3 UI-only corrections receive actual browser validation, no repeated full suite"
+  },
+  "seed": {
+    "at": "2026-11-12T04:41:40.525585+00:00",
+    "exit": 0,
+    "seconds": 22.947792145889252,
+    "stdout_sha256": "9f7f727d331ee5154d7de07444c6957bbe317f2fc8710479ff42cc482fe655ac"
+  },
+  "seed_scope": "Two native v7 task and actual local Git export cases; only Temporal SDK controlled, REVIEW_READY synthesized. No new real model/six-stage run.",
+  "browser_segments": {
+    "browser-main-r3": {
+      "checked_at": "2026-11-12T04:52:29.346301+00:00",
+      "exit_code": 0,
+      "seconds": 41.055720751173794,
+      "result": {
+        "passed": true,
+        "step": "independent SHA and project isolation",
+        "checks": [
+          "opening github makes no provider request",
+          "original github identity visible",
+          "prepare saved locally before deliberate reply loss with zero business writes",
+          "original prepare fields locked",
+          "HTTP outcome GitHub original prepare recovery",
+          "explicit recovery preserves identical request and original saved slot",
+          "successful record removes prepare recovery bypass",
+          "complete original intent safely displayed",
+          "complete fixed comment body visible",
+          "no send control prepared observation edit invalidates send",
+          "explicit status restores fresh reviewed confirmation without provider reads",
+          "HTTP outcome GitHub one write dropped native reply",
+          "native accepted one comment but missing reply retains unknown attempt",
+          "no send control GitHub one write dropped native reply",
+          "unknown cannot recover prepare to expose send",
+          "HTTP outcome GitHub matching current comment never confirms original",
+          "matching current page keeps unknown and actual next page",
+          "no send control GitHub matching current comment never confirms original",
+          "HTTP outcome GitHub explicit next page",
+          "empty explicit next page cannot disprove original send",
+          "HTTP outcome GitHub explicit native comment ID",
+          "ID observation retains original unknown",
+          "observations never repeat business write",
+          "opening github makes no provider request",
+          "original github identity visible",
+          "HTTP outcome GitHub label prepare",
+          "exact existing label/native target prepared with no mutation",
+          "no send control label cursor edit invalidates send",
+          "HTTP outcome actor drift refuses unattempted send",
+          "no send control actor drift refuses unattempted send",
+          "send preflight failure offers only original status and no prepare bypass",
+          "no send control GitHub label original success browser reply loss",
+          "one native label mutation acknowledged before browser loss",
+          "lost send result retains only GET recovery",
+          "lost send restored from offline status without another mutation",
+          "no send control read original acknowledged label",
+          "HTTP outcome label first observed page",
+          "one native label page exposes original opaque continuation",
+          "HTTP outcome explicit label cursor",
+          "label cursor passed unchanged in one explicit query",
+          "label reads do not add mutation",
+          "opening gitlab makes no provider request",
+          "original gitlab identity visible",
+          "HTTP outcome GitLab neutral note",
+          "HTTP outcome GitLab neutral note",
+          "original ordinary GitLab note and full201 acknowledged",
+          "no send control GitLab neutral note",
+          "opening gitlab makes no provider request",
+          "original gitlab identity visible",
+          "HTTP outcome GitLab label unsupported",
+          "GitLab label visibly unsupported without business write",
+          "GET outcome independent SHA and project isolation",
+          "independent saved state uses no provider",
+          "GET outcome independent SHA and project isolation",
+          "unregistered different project cannot access original intent",
+          "no browser page errors"
+        ],
+        "errors": [],
+        "scope": "Installed r3 UI with original v7/native Git records and loopback native providers. No real SaaS or new model/six-stage run."
+      },
+      "samples": [
+        {
+          "step": "GitHub prepare reply loss",
+          "http_status": 200,
+          "transport": "actual prepare response then browser abort",
+          "request": {
+            "revision": 7,
+            "task_id": "issue-task",
+            "run_id": "original-run",
+            "candidate_sha": "834ef785050624479327fab237e2fc2dea40999b"
+          },
+          "intent_sha256": "68b10fc8de23d3b92fc7a39f8858011dea0e7383c994712d7c8fc63f2bcaa8ed",
+          "status": "prepared",
+          "kind": "candidate-association-comment",
+          "provider": "github",
+          "source_native_id": 9001,
+          "task_id": "issue-task",
+          "run_id": "original-run",
+          "candidate_sha": "834ef785050624479327fab237e2fc2dea40999b",
+          "actor_id": 12,
+          "intent_bytes": 1922,
+          "body_sha256": "e445ef8c4c2bb64546a3169368f22cb7fd7fa97d6b6b2331a224a7fc057cc310",
+          "label_name": null,
+          "native_target": null,
+          "attempt_saved": false,
+          "original_result_saved": false,
+          "latest_observation": null,
+          "native_continuation": null
+        },
+        {
+          "step": "GitHub original prepare recovery",
+          "http_status": 200,
+          "path": "/api/projects/demo/issue-writebacks",
+          "request": {
+            "revision": 7,
+            "task_id": "issue-task",
+            "run_id": "original-run",
+            "candidate_sha": "834ef785050624479327fab237e2fc2dea40999b"
+          },
+          "intent_sha256": "68b10fc8de23d3b92fc7a39f8858011dea0e7383c994712d7c8fc63f2bcaa8ed",
+          "status": "prepared",
+          "kind": "candidate-association-comment",
+          "provider": "github",
+          "source_native_id": 9001,
+          "task_id": "issue-task",
+          "run_id": "original-run",
+          "candidate_sha": "834ef785050624479327fab237e2fc2dea40999b",
+          "actor_id": 12,
+          "intent_bytes": 1922,
+          "body_sha256": "e445ef8c4c2bb64546a3169368f22cb7fd7fa97d6b6b2331a224a7fc057cc310",
+          "label_name": null,
+          "native_target": null,
+          "attempt_saved": false,
+          "original_result_saved": false,
+          "latest_observation": null,
+          "native_continuation": null
+        },
+        {
+          "step": "GitHub one write dropped native reply",
+          "http_status": 200,
+          "path": "/api/projects/demo/issue-writebacks/68b10fc8de23d3b92fc7a39f8858011dea0e7383c994712d7c8fc63f2bcaa8ed/send",
+          "request": {
+            "revision": 7,
+            "confirm": true
+          },
+          "intent_sha256": "68b10fc8de23d3b92fc7a39f8858011dea0e7383c994712d7c8fc63f2bcaa8ed",
+          "status": "unknown",
+          "kind": "candidate-association-comment",
+          "provider": "github",
+          "source_native_id": 9001,
+          "task_id": "issue-task",
+          "run_id": "original-run",
+          "candidate_sha": "834ef785050624479327fab237e2fc2dea40999b",
+          "actor_id": 12,
+          "intent_bytes": 1922,
+          "body_sha256": "e445ef8c4c2bb64546a3169368f22cb7fd7fa97d6b6b2331a224a7fc057cc310",
+          "label_name": null,
+          "native_target": null,
+          "attempt_saved": true,
+          "original_result_saved": false,
+          "latest_observation": {
+            "kind": "write-error",
+            "coverage": null,
+            "requested": null,
+            "proves_original_attempt": null,
+            "matching_ids": null,
+            "membership_in_page": null
+          },
+          "native_continuation": {
+            "next_page": null,
+            "page_info": null
+          }
+        },
+        {
+          "step": "GitHub matching current comment never confirms original",
+          "http_status": 200,
+          "path": "/api/projects/demo/issue-writebacks/68b10fc8de23d3b92fc7a39f8858011dea0e7383c994712d7c8fc63f2bcaa8ed/observe",
+          "request": {
+            "page": 1
+          },
+          "intent_sha256": "68b10fc8de23d3b92fc7a39f8858011dea0e7383c994712d7c8fc63f2bcaa8ed",
+          "status": "unknown",
+          "kind": "candidate-association-comment",
+          "provider": "github",
+          "source_native_id": 9001,
+          "task_id": "issue-task",
+          "run_id": "original-run",
+          "candidate_sha": "834ef785050624479327fab237e2fc2dea40999b",
+          "actor_id": 12,
+          "intent_bytes": 1922,
+          "body_sha256": "e445ef8c4c2bb64546a3169368f22cb7fd7fa97d6b6b2331a224a7fc057cc310",
+          "label_name": null,
+          "native_target": null,
+          "attempt_saved": true,
+          "original_result_saved": false,
+          "latest_observation": {
+            "kind": "native-comment-observation",
+            "coverage": "one_current_page",
+            "requested": {
+              "comment_id": null,
+              "page": 1
+            },
+            "proves_original_attempt": false,
+            "matching_ids": [
+              71
+            ],
+            "membership_in_page": null
+          },
+          "native_continuation": {
+            "next_page": 2,
+            "page_info": null
+          }
+        },
+        {
+          "step": "GitHub explicit next page",
+          "http_status": 200,
+          "path": "/api/projects/demo/issue-writebacks/68b10fc8de23d3b92fc7a39f8858011dea0e7383c994712d7c8fc63f2bcaa8ed/observe",
+          "request": {
+            "page": 2
+          },
+          "intent_sha256": "68b10fc8de23d3b92fc7a39f8858011dea0e7383c994712d7c8fc63f2bcaa8ed",
+          "status": "unknown",
+          "kind": "candidate-association-comment",
+          "provider": "github",
+          "source_native_id": 9001,
+          "task_id": "issue-task",
+          "run_id": "original-run",
+          "candidate_sha": "834ef785050624479327fab237e2fc2dea40999b",
+          "actor_id": 12,
+          "intent_bytes": 1922,
+          "body_sha256": "e445ef8c4c2bb64546a3169368f22cb7fd7fa97d6b6b2331a224a7fc057cc310",
+          "label_name": null,
+          "native_target": null,
+          "attempt_saved": true,
+          "original_result_saved": false,
+          "latest_observation": {
+            "kind": "native-comment-observation",
+            "coverage": "one_current_page",
+            "requested": {
+              "comment_id": null,
+              "page": 2
+            },
+            "proves_original_attempt": false,
+            "matching_ids": [],
+            "membership_in_page": null
+          },
+          "native_continuation": {
+            "next_page": null,
+            "page_info": null
+          }
+        },
+        {
+          "step": "GitHub explicit native comment ID",
+          "http_status": 200,
+          "path": "/api/projects/demo/issue-writebacks/68b10fc8de23d3b92fc7a39f8858011dea0e7383c994712d7c8fc63f2bcaa8ed/observe",
+          "request": {
+            "comment_id": "71"
+          },
+          "intent_sha256": "68b10fc8de23d3b92fc7a39f8858011dea0e7383c994712d7c8fc63f2bcaa8ed",
+          "status": "unknown",
+          "kind": "candidate-association-comment",
+          "provider": "github",
+          "source_native_id": 9001,
+          "task_id": "issue-task",
+          "run_id": "original-run",
+          "candidate_sha": "834ef785050624479327fab237e2fc2dea40999b",
+          "actor_id": 12,
+          "intent_bytes": 1922,
+          "body_sha256": "e445ef8c4c2bb64546a3169368f22cb7fd7fa97d6b6b2331a224a7fc057cc310",
+          "label_name": null,
+          "native_target": null,
+          "attempt_saved": true,
+          "original_result_saved": false,
+          "latest_observation": {
+            "kind": "native-comment-observation",
+            "coverage": "one_current_resource",
+            "requested": {
+              "comment_id": "71",
+              "page": 1
+            },
+            "proves_original_attempt": false,
+            "matching_ids": [
+              71
+            ],
+            "membership_in_page": null
+          },
+          "native_continuation": {
+            "next_page": null,
+            "page_info": null
+          }
+        },
+        {
+          "step": "GitHub label prepare",
+          "http_status": 200,
+          "path": "/api/projects/demo/issue-label-writebacks",
+          "request": {
+            "revision": 7,
+            "task_id": "issue-task",
+            "run_id": "original-run",
+            "candidate_sha": "834ef785050624479327fab237e2fc2dea40999b",
+            "label_name": "candidate, \"review\" / 核验"
+          },
+          "intent_sha256": "cfad33fc8e465bc2eb85b727caddcee2b5f8c453219e9e7542309ef383f876df",
+          "status": "prepared",
+          "kind": "candidate-label-add",
+          "provider": "github",
+          "source_native_id": 9001,
+          "task_id": "issue-task",
+          "run_id": "original-run",
+          "candidate_sha": "834ef785050624479327fab237e2fc2dea40999b",
+          "actor_id": 12,
+          "intent_bytes": 2321,
+          "body_sha256": null,
+          "label_name": "candidate, \"review\" / 核验",
+          "native_target": {
+            "issue_id": "I_original_issue",
+            "repository_id": "R_original_repo",
+            "label_id": "LA_existing_label",
+            "label_native_id": 101
+          },
+          "attempt_saved": false,
+          "original_result_saved": false,
+          "latest_observation": null,
+          "native_continuation": null
+        },
+        {
+          "step": "actor drift refuses unattempted send",
+          "http_status": 400,
+          "path": "/api/projects/demo/issue-writebacks/cfad33fc8e465bc2eb85b727caddcee2b5f8c453219e9e7542309ef383f876df/send",
+          "request": {
+            "revision": 7,
+            "confirm": true
+          },
+          "error": "Authenticated actor changed; the original intent cannot be impersonated"
+        },
+        {
+          "step": "GitHub label original success browser reply loss",
+          "http_status": 200,
+          "transport": "original acknowledged response then browser abort",
+          "request": {
+            "revision": 7,
+            "confirm": true
+          },
+          "intent_sha256": "cfad33fc8e465bc2eb85b727caddcee2b5f8c453219e9e7542309ef383f876df",
+          "status": "acknowledged",
+          "kind": "candidate-label-add",
+          "provider": "github",
+          "source_native_id": 9001,
+          "task_id": "issue-task",
+          "run_id": "original-run",
+          "candidate_sha": "834ef785050624479327fab237e2fc2dea40999b",
+          "actor_id": 12,
+          "intent_bytes": 2321,
+          "body_sha256": null,
+          "label_name": "candidate, \"review\" / 核验",
+          "native_target": {
+            "issue_id": "I_original_issue",
+            "repository_id": "R_original_repo",
+            "label_id": "LA_existing_label",
+            "label_native_id": 101
+          },
+          "attempt_saved": true,
+          "original_result_saved": true,
+          "latest_observation": null,
+          "native_continuation": null
+        },
+        {
+          "step": "label first observed page",
+          "http_status": 200,
+          "path": "/api/projects/demo/issue-writebacks/cfad33fc8e465bc2eb85b727caddcee2b5f8c453219e9e7542309ef383f876df/observe",
+          "request": {},
+          "intent_sha256": "cfad33fc8e465bc2eb85b727caddcee2b5f8c453219e9e7542309ef383f876df",
+          "status": "acknowledged",
+          "kind": "candidate-label-add",
+          "provider": "github",
+          "source_native_id": 9001,
+          "task_id": "issue-task",
+          "run_id": "original-run",
+          "candidate_sha": "834ef785050624479327fab237e2fc2dea40999b",
+          "actor_id": 12,
+          "intent_bytes": 2321,
+          "body_sha256": null,
+          "label_name": "candidate, \"review\" / 核验",
+          "native_target": {
+            "issue_id": "I_original_issue",
+            "repository_id": "R_original_repo",
+            "label_id": "LA_existing_label",
+            "label_native_id": 101
+          },
+          "attempt_saved": true,
+          "original_result_saved": true,
+          "latest_observation": {
+            "kind": "native-label-observation",
+            "coverage": "one_current_page",
+            "requested": {
+              "comment_id": null,
+              "page": 1
+            },
+            "proves_original_attempt": false,
+            "matching_ids": [
+              "LA_existing_label"
+            ],
+            "membership_in_page": "present"
+          },
+          "native_continuation": {
+            "next_page": null,
+            "page_info": {
+              "has_next_page": true,
+              "end_cursor": "page-two/opaque+cursor"
+            }
+          }
+        },
+        {
+          "step": "explicit label cursor",
+          "http_status": 200,
+          "path": "/api/projects/demo/issue-writebacks/cfad33fc8e465bc2eb85b727caddcee2b5f8c453219e9e7542309ef383f876df/observe",
+          "request": {
+            "cursor": "page-two/opaque+cursor"
+          },
+          "intent_sha256": "cfad33fc8e465bc2eb85b727caddcee2b5f8c453219e9e7542309ef383f876df",
+          "status": "acknowledged",
+          "kind": "candidate-label-add",
+          "provider": "github",
+          "source_native_id": 9001,
+          "task_id": "issue-task",
+          "run_id": "original-run",
+          "candidate_sha": "834ef785050624479327fab237e2fc2dea40999b",
+          "actor_id": 12,
+          "intent_bytes": 2321,
+          "body_sha256": null,
+          "label_name": "candidate, \"review\" / 核验",
+          "native_target": {
+            "issue_id": "I_original_issue",
+            "repository_id": "R_original_repo",
+            "label_id": "LA_existing_label",
+            "label_native_id": 101
+          },
+          "attempt_saved": true,
+          "original_result_saved": true,
+          "latest_observation": {
+            "kind": "native-label-observation",
+            "coverage": "one_current_page",
+            "requested": {
+              "comment_id": null,
+              "page": 1,
+              "cursor": "page-two/opaque+cursor"
+            },
+            "proves_original_attempt": false,
+            "matching_ids": [
+              "LA_existing_label"
+            ],
+            "membership_in_page": "present"
+          },
+          "native_continuation": {
+            "next_page": null,
+            "page_info": {
+              "has_next_page": false,
+              "end_cursor": null
+            }
+          }
+        },
+        {
+          "step": "GitLab neutral note",
+          "http_status": 200,
+          "path": "/api/projects/demo/issue-writebacks",
+          "request": {
+            "revision": 7,
+            "task_id": "issue-task",
+            "run_id": "original-run",
+            "candidate_sha": "d995b2dbe48f485687ac4b94aee7b2676909790e"
+          },
+          "intent_sha256": "e17ab2e92c95bb51edc164e85544707f405f8d777fa061140e48fcb2ff06e667",
+          "status": "prepared",
+          "kind": "candidate-association-comment",
+          "provider": "gitlab",
+          "source_native_id": 9001,
+          "task_id": "issue-task",
+          "run_id": "original-run",
+          "candidate_sha": "d995b2dbe48f485687ac4b94aee7b2676909790e",
+          "actor_id": 12,
+          "intent_bytes": 1944,
+          "body_sha256": "cfc8ef4777ede19b8cc9a3577b2ff9e240f1487bb72b81b11527ecfe198b05ca",
+          "label_name": null,
+          "native_target": null,
+          "attempt_saved": false,
+          "original_result_saved": false,
+          "latest_observation": null,
+          "native_continuation": null
+        },
+        {
+          "step": "GitLab neutral note",
+          "http_status": 200,
+          "path": "/api/projects/demo/issue-writebacks/e17ab2e92c95bb51edc164e85544707f405f8d777fa061140e48fcb2ff06e667/send",
+          "request": {
+            "revision": 7,
+            "confirm": true
+          },
+          "intent_sha256": "e17ab2e92c95bb51edc164e85544707f405f8d777fa061140e48fcb2ff06e667",
+          "status": "acknowledged",
+          "kind": "candidate-association-comment",
+          "provider": "gitlab",
+          "source_native_id": 9001,
+          "task_id": "issue-task",
+          "run_id": "original-run",
+          "candidate_sha": "d995b2dbe48f485687ac4b94aee7b2676909790e",
+          "actor_id": 12,
+          "intent_bytes": 1944,
+          "body_sha256": "cfc8ef4777ede19b8cc9a3577b2ff9e240f1487bb72b81b11527ecfe198b05ca",
+          "label_name": null,
+          "native_target": null,
+          "attempt_saved": true,
+          "original_result_saved": true,
+          "latest_observation": null,
+          "native_continuation": null
+        },
+        {
+          "step": "GitLab label unsupported",
+          "http_status": 400,
+          "path": "/api/projects/demo/issue-label-writebacks",
+          "request": {
+            "revision": 7,
+            "task_id": "issue-task",
+            "run_id": "original-run",
+            "candidate_sha": "d995b2dbe48f485687ac4b94aee7b2676909790e",
+            "label_name": "candidate, \"review\" / 核验"
+          },
+          "error": "Candidate label writeback is unsupported by this tracker; comment writeback remains available"
+        },
+        {
+          "step": "independent SHA and project isolation",
+          "http_status": 200,
+          "path": "/api/projects/demo/issue-writebacks/e17ab2e92c95bb51edc164e85544707f405f8d777fa061140e48fcb2ff06e667",
+          "intent_sha256": "e17ab2e92c95bb51edc164e85544707f405f8d777fa061140e48fcb2ff06e667",
+          "status": "acknowledged",
+          "kind": "candidate-association-comment",
+          "provider": "gitlab",
+          "source_native_id": 9001,
+          "task_id": "issue-task",
+          "run_id": "original-run",
+          "candidate_sha": "d995b2dbe48f485687ac4b94aee7b2676909790e",
+          "actor_id": 12,
+          "intent_bytes": 1944,
+          "body_sha256": "cfc8ef4777ede19b8cc9a3577b2ff9e240f1487bb72b81b11527ecfe198b05ca",
+          "label_name": null,
+          "native_target": null,
+          "attempt_saved": true,
+          "original_result_saved": true,
+          "latest_observation": null,
+          "native_continuation": null
+        },
+        {
+          "step": "independent SHA and project isolation",
+          "http_status": 400,
+          "path": "/api/projects/other/issue-writebacks/e17ab2e92c95bb51edc164e85544707f405f8d777fa061140e48fcb2ff06e667",
+          "error": "No saved issue writeback for this project and intent"
+        }
+      ]
+    },
+    "browser-lifecycle-r3": {
+      "checked_at": "2026-11-12T04:54:26.042007+00:00",
+      "exit_code": 0,
+      "seconds": 4.98241211194545,
+      "result": {
+        "passed": false,
+        "step": "SHA edit while old status held",
+        "error": "page.waitForFunction: TypeError: Failed to fetch\n    at eval (eval at predicate (eval at evaluate (:370:30)), <anonymous>:1:34)\n    at predicate (eval at evaluate (:370:30), <anonymous>:7:27)\n    at next (eval at evaluate (:370:30), <anonymous>:29:33)\n    at eval (eval at evaluate (:370:30), <anonymous>:42:13)\n    at UtilityScript.evaluate (<anonymous>:372:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)",
+        "checks": [],
+        "errors": []
+      },
+      "samples": []
+    },
+    "browser-lifecycle-r4": {
+      "checked_at": "2026-11-12T04:55:51.227208+00:00",
+      "exit_code": 0,
+      "seconds": 39.05873304000124,
+      "result": {
+        "passed": false,
+        "step": "offline read original without task/provider/current binding",
+        "error": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: '工单回写：acknowledged', exact: true }) to be visible\u001b[22m\n",
+        "checks": [
+          "same form blocks concurrent GET",
+          "explicit old response released SHA edit while old status held",
+          "edited SHA ignores old successful state",
+          "no stale send SHA edit while old status held",
+          "GET outcome new modal error before held old success",
+          "new400 displayed while old200 still held",
+          "explicit old response released new modal error before held old success",
+          "older success cannot replace newer error",
+          "no stale send new modal error before held old success",
+          "explicit old response released closed modal ignores old reply",
+          "old status cannot reopen closed modal",
+          "explicit old response released project replacement ignores old state",
+          "old project state not rendered after project switch",
+          "no stale send project replacement ignores old state",
+          "explicit old response released view replacement ignores old state",
+          "old task view cannot render late status",
+          "no stale send view replacement ignores old state",
+          "old preparation refused without changing its frozen request",
+          "no stale send stale original preparation revision",
+          "GET outcome offline read original without task/provider/current binding"
+        ],
+        "errors": []
+      },
+      "samples": [
+        {
+          "step": "new modal error before held old success",
+          "http_status": 400,
+          "path": "/api/projects/demo/issue-writebacks/ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+          "error": "No saved issue writeback for this project and intent"
+        },
+        {
+          "step": "stale original preparation revision",
+          "http_status": 400,
+          "request": {
+            "revision": 7,
+            "task_id": "issue-task",
+            "run_id": "original-run",
+            "candidate_sha": "d995b2dbe48f485687ac4b94aee7b2676909790e"
+          },
+          "error": "Project revision changed; reload before the issue writeback"
+        },
+        {
+          "step": "offline read original without task/provider/current binding",
+          "http_status": 200,
+          "path": "/api/projects/demo/issue-writebacks/e17ab2e92c95bb51edc164e85544707f405f8d777fa061140e48fcb2ff06e667",
+          "intent_sha256": "e17ab2e92c95bb51edc164e85544707f405f8d777fa061140e48fcb2ff06e667",
+          "status": "acknowledged",
+          "kind": "candidate-association-comment",
+          "provider": "gitlab",
+          "source_native_id": 9001,
+          "task_id": "issue-task",
+          "run_id": "original-run",
+          "candidate_sha": "d995b2dbe48f485687ac4b94aee7b2676909790e",
+          "actor_id": 12,
+          "intent_bytes": 1944,
+          "body_sha256": "cfc8ef4777ede19b8cc9a3577b2ff9e240f1487bb72b81b11527ecfe198b05ca",
+          "label_name": null,
+          "native_target": null,
+          "attempt_saved": true,
+          "original_result_saved": true,
+          "latest_observation": null,
+          "native_continuation": null
+        }
+      ],
+      "held": [
+        {
+          "step": "SHA edit while old status held",
+          "path": "/api/projects/demo/issue-writebacks/68b10fc8de23d3b92fc7a39f8858011dea0e7383c994712d7c8fc63f2bcaa8ed",
+          "http_number": 96
+        },
+        {
+          "step": "new modal error before held old success",
+          "path": "/api/projects/demo/issue-writebacks/cfad33fc8e465bc2eb85b727caddcee2b5f8c453219e9e7542309ef383f876df",
+          "http_number": 99
+        },
+        {
+          "step": "closed modal ignores old reply",
+          "path": "/api/projects/demo/issue-writebacks/cfad33fc8e465bc2eb85b727caddcee2b5f8c453219e9e7542309ef383f876df",
+          "http_number": 101
+        },
+        {
+          "step": "project replacement ignores old state",
+          "path": "/api/projects/demo/issue-writebacks/cfad33fc8e465bc2eb85b727caddcee2b5f8c453219e9e7542309ef383f876df",
+          "http_number": 102
+        },
+        {
+          "step": "view replacement ignores old state",
+          "path": "/api/projects/demo/issue-writebacks/cfad33fc8e465bc2eb85b727caddcee2b5f8c453219e9e7542309ef383f876df",
+          "http_number": 113
+        }
+      ],
+      "held_identity_correction": {
+        "reported_first_http_number": 96,
+        "actual_held_first_http_number": 94,
+        "scope": "The private driver recorded the last concurrently started HTTP row (a task detail). Actual matching SHA GET0094 was held and explicitly released; raw/audit identity governs. Original report kept."
+      }
+    },
+    "browser-final-r3": {
+      "checked_at": "2026-11-12T04:57:23.787567+00:00",
+      "exit_code": 0,
+      "seconds": 31.761175049934536,
+      "result": {
+        "passed": false,
+        "step": "desktop and mobile original label state",
+        "error": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('heading', { name: 'issue-task', exact: true }) to be visible\u001b[22m\n",
+        "checks": [
+          "same original intent offline with token unset/binding changed/task unavailable/provider offline",
+          "zero provider requests for full offline state",
+          "no send for original acknowledged state"
+        ],
+        "errors": [],
+        "views": []
+      },
+      "samples": [
+        {
+          "step": "original offline read",
+          "http_status": 200,
+          "intent_sha256": "e17ab2e92c95bb51edc164e85544707f405f8d777fa061140e48fcb2ff06e667",
+          "status": "acknowledged",
+          "kind": "candidate-association-comment",
+          "provider": "gitlab",
+          "source_native_id": 9001,
+          "task_id": "issue-task",
+          "run_id": "original-run",
+          "candidate_sha": "d995b2dbe48f485687ac4b94aee7b2676909790e",
+          "actor_id": 12,
+          "intent_bytes": 1944,
+          "body_sha256": "cfc8ef4777ede19b8cc9a3577b2ff9e240f1487bb72b81b11527ecfe198b05ca",
+          "label_name": null,
+          "native_target": null,
+          "attempt_saved": true,
+          "original_result_saved": true,
+          "latest_observation": null,
+          "native_continuation": null
+        }
+      ]
+    },
+    "browser-viewports-r3": {
+      "checked_at": "2026-11-12T04:57:53.006418+00:00",
+      "exit_code": 0,
+      "seconds": 4.202075647190213,
+      "result": {
+        "passed": true,
+        "step": "final viewports only",
+        "checks": [
+          "original independent label state after page navigation",
+          "full offline record exact safe text",
+          "record creates no active external markup",
+          "page and full record tables fit desktop",
+          "page and full record tables fit mobile",
+          "no browser page errors",
+          "no additional provider business write in lifecycle/final"
+        ],
+        "errors": [],
+        "views": [
+          {
+            "name": "desktop",
+            "viewport": 1440,
+            "document": 1440,
+            "tables": [
+              {
+                "client": 584,
+                "scroll": 584
+              }
+            ]
+          },
+          {
+            "name": "mobile",
+            "viewport": 390,
+            "document": 390,
+            "tables": [
+              {
+                "client": 258,
+                "scroll": 258
+              }
+            ]
+          }
+        ],
+        "scope": "Supplement only unfinished offline/viewport cases on same original records; earlier56+20+3 and driver failures retain original scope."
+      },
+      "samples": [
+        {
+          "step": "final viewports only",
+          "http_status": 200,
+          "intent_sha256": "cfad33fc8e465bc2eb85b727caddcee2b5f8c453219e9e7542309ef383f876df",
+          "status": "acknowledged",
+          "kind": "candidate-label-add",
+          "provider": "github",
+          "source_native_id": 9001,
+          "task_id": "issue-task",
+          "run_id": "original-run",
+          "candidate_sha": "834ef785050624479327fab237e2fc2dea40999b",
+          "actor_id": 12,
+          "intent_bytes": 2321,
+          "body_sha256": null,
+          "label_name": "candidate, \"review\" / 核验",
+          "native_target": {
+            "issue_id": "I_original_issue",
+            "repository_id": "R_original_repo",
+            "label_id": "LA_existing_label",
+            "label_native_id": 101
+          },
+          "attempt_saved": true,
+          "original_result_saved": true,
+          "latest_observation": {
+            "kind": "native-label-observation",
+            "coverage": "one_current_page",
+            "requested": {
+              "comment_id": null,
+              "page": 1,
+              "cursor": "page-two/opaque+cursor"
+            },
+            "proves_original_attempt": false,
+            "matching_ids": [
+              "LA_existing_label"
+            ],
+            "membership_in_page": "present"
+          },
+          "native_continuation": {
+            "next_page": null,
+            "page_info": {
+              "has_next_page": false,
+              "end_cursor": null
+            }
+          }
+        }
+      ]
+    }
+  },
+  "cleanup_and_originals": {
+    "at": "2026-11-12T04:59:35.235488+00:00",
+    "http_requests_raw_bytes_and_sidecars_checked": 143,
+    "services": [
+      {
+        "service": "r1",
+        "http_requests": 0,
+        "owned_pid_gone": true,
+        "threads_stopped": true,
+        "runtime_files_preserved": 88,
+        "repo_files_preserved": 56,
+        "source_and_exports_preserved": true,
+        "provider_gets": 0,
+        "provider_readonly_posts": 0,
+        "provider_business_writes": 0
+      },
+      {
+        "service": "r2",
+        "http_requests": 0,
+        "owned_pid_gone": true,
+        "threads_stopped": true,
+        "runtime_files_preserved": 88,
+        "repo_files_preserved": 56,
+        "source_and_exports_preserved": true,
+        "provider_gets": 0,
+        "provider_readonly_posts": 0,
+        "provider_business_writes": 0
+      },
+      {
+        "service": "r3",
+        "http_requests": 143,
+        "owned_pid_gone": true,
+        "threads_stopped": true,
+        "runtime_files_preserved": 88,
+        "repo_files_preserved": 56,
+        "source_and_exports_preserved": true,
+        "provider_gets": 26,
+        "provider_readonly_posts": 2,
+        "provider_business_writes": 3
+      }
+    ],
+    "held_replies": [
+      {
+        "service": "r3",
+        "number": 94,
+        "path": "/api/projects/demo/issue-writebacks/68b10fc8de23d3b92fc7a39f8858011dea0e7383c994712d7c8fc63f2bcaa8ed",
+        "explicitly_released": true
+      },
+      {
+        "service": "r3",
+        "number": 99,
+        "path": "/api/projects/demo/issue-writebacks/cfad33fc8e465bc2eb85b727caddcee2b5f8c453219e9e7542309ef383f876df",
+        "explicitly_released": true
+      },
+      {
+        "service": "r3",
+        "number": 101,
+        "path": "/api/projects/demo/issue-writebacks/cfad33fc8e465bc2eb85b727caddcee2b5f8c453219e9e7542309ef383f876df",
+        "explicitly_released": true
+      },
+      {
+        "service": "r3",
+        "number": 102,
+        "path": "/api/projects/demo/issue-writebacks/cfad33fc8e465bc2eb85b727caddcee2b5f8c453219e9e7542309ef383f876df",
+        "explicitly_released": true
+      },
+      {
+        "service": "r3",
+        "number": 113,
+        "path": "/api/projects/demo/issue-writebacks/cfad33fc8e465bc2eb85b727caddcee2b5f8c453219e9e7542309ef383f876df",
+        "explicitly_released": true
+      }
+    ],
+    "explicit_successful_gate_releases": 5,
+    "owned_port_count": 8,
+    "owned_ports_closed": true,
+    "named_browser_close_exit": 0,
+    "original_records": [
+      {
+        "provider": "github",
+        "original_source_preserved": true,
+        "original_intents_attempts_results_preserved": true,
+        "counts": {
+          "agent_runs": 0,
+          "issue_task_links": 0,
+          "issue_writebacks": 2,
+          "issue_writeback_observations": 6
+        }
+      },
+      {
+        "provider": "gitlab",
+        "original_source_preserved": true,
+        "original_intents_attempts_results_preserved": true,
+        "counts": {
+          "agent_runs": 0,
+          "issue_task_links": 0,
+          "issue_writebacks": 1,
+          "issue_writeback_observations": 0
+        }
+      }
+    ],
+    "provider_business_writes": 3,
+    "real_saas_writes": 0,
+    "product_posts": 15,
+    "post_owner_seconds": {
+      "min": 0.010624449234455824,
+      "median": 1.505174865014851,
+      "max": 2.3595271417871118
+    },
+    "scope": "Owned resources only. HTTP times end before deliberate response gates, not SaaS latency or full browser duration. Revisions/token reference/rebind/task-file controls logged; task restored. No whole DB immutability or new model/six-stage/Windows execution claim."
+  },
+  "preserved_failures": [
+    "Initial CLI open used an unsafe placeholder port; later goto used an already-stopped service. Both failed before product acceptance and remain private original receipts.",
+    "Lifecycle-r3 driver used a cross-origin page fetch for the private control route and failed before assertions; replaced with the driver APIRequestContext for unfinished lifecycle only.",
+    "Lifecycle-r4 completed20 assertions, then timed out waiting for display after original offline GET200 and task-view refresh. New stable modal continued the original record; not counted as a successful full segment.",
+    "Final-r3 completed3 original offline checks, then waited for a task heading while the prior navigation had saved overview. Only missing task-tab/viewport segment continued.",
+    "Lifecycle-r4 first reported held row96 is a concurrent task detail; actual request94 identity corrected explicitly, original driver report unchanged."
+  ],
+  "scope": "Installed r3 UI and original native HTTP owners on loopback only. Three native business writes are deliberate fake provider actions, not SaaS writes. No new model/six-stage/native Windows acceptance, OS isolation or whole DB immutability claim. Exact delivery separate."
+}

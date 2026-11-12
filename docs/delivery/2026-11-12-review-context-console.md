@@ -1,6 +1,6 @@
 # F7d-D3b 交付记录
 
-基线 `cae1dbb7f35ae76d9290b6e5c86f8445fd5f5ae5`；[计划](../plans/2026-11-12-review-context-console.md)。R0–R3本地出口通过，完整19件独立两轴终核开放0／0，R4待精确交付。前片D3a已精确交付，自己的CI43150719942双OS七必要步骤及原评审终核通过；不借给本片。
+基线 `cae1dbb7f35ae76d9290b6e5c86f8445fd5f5ae5`；[计划](../plans/2026-11-12-review-context-console.md)。R0–R4完成，完整19件独立两轴开放0／0，18585dc自己的CI43155880413及原评审精确终核通过，精确交付终结。前片D3a的CI43150719942只属于前片，不借给本片。
 
 ## R0 原恢复所有者
 
@@ -51,3 +51,9 @@ r2真实安装主旅程完成 **39项检查**：原GitHub保存回执继续使�
 新的fresh-context协调者与原Spec／Standards两轴已核完整19件候选，开放finding **0／0**；累计SP1／P2已关闭。实际包、两轮内置模板、151份原HTTP、顺序补验、原资料／拥有资源清理及两张最终截图均经原件映射核对，结论与限制见[独立记录](2026-11-12-review-context-console-review.md)。没有新增后端、schema、依赖、永久test或CI；独立检查没有重跑已过行为或模型。
 
 公开验收JSON保留其生成时“最终独立待核”的历史状态和字节身份；本节及独立记录给出后续结论，不回写原快照为较晚状态。最终文档静态、冻结和R4本提交精确交付继续。
+
+## R4 普通提交与远端身份
+
+最终静态覆盖19文件／348本地Markdown目标／6个已加载秘密值，issue0，whitespace通过。19件候选冻结后逐件核精确Git对象及执行位，普通提交 `18585dccf067c28e1c444df0c8daaa040b038568` 已完成；普通push退出0／10.00秒，作者SSH远端Ref退出0／2.30秒且同完整SHA，没有强推或合入main。原评审同片精确离线核验与本提交自身CI继续，不借前片结果。下一片[D3c工单回写页面](../plans/2026-11-12-issue-writeback-console.md)独立立片。
+
+自己的[CI43155880413](https://github.com/626619403/Ergora/actions/runs/43155880413)第五份官方run HTML为Success，Windows130975573184四／Linux130975572836三必要步骤均success／completed。原评审独立从固定提交workflow和八份index／run／job原HTML及回执重建精确身份与全SHA step-log路径，离线终核通过；精确19Git／ready、450包／两RECORD／283和作者原提交／push／完整Ref此前已核，R4精确交付终结。匿名REST403、索引／前四run的In progress保持，不称成功REST、全job日志或评审者直接网络成功。D3c与整个F7／项目保持各自未完成范围。

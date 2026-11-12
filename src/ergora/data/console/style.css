@@ -617,11 +617,13 @@ main {
   overflow: auto;
 }
 .candidate-observation td,
-.candidate-review td {
+.candidate-review td,
+.issue-writeback td {
   overflow-wrap: anywhere;
 }
 .candidate-observation th,
-.candidate-review th {
+.candidate-review th,
+.issue-writeback th {
   white-space: normal;
 }
 table {

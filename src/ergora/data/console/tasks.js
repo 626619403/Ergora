@@ -6,6 +6,7 @@ import { app, stages } from "./state.js";
 import { taskComposition } from "./task-composition.js";
 import { candidateObservation } from "./candidate-observation.js";
 import { candidateReview } from "./candidate-review.js";
+import { issueWriteback } from "./issue-writeback.js";
 
 const stageForPhase = {
   INVENTORY: "inventory", PLANNING: "plan", IMPLEMENTING: "work",
@@ -20,7 +21,9 @@ const facts = (items) =>
 
 export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
   const actions = row(button("按 SHA 读取 PR／MR 关联", () =>
-    candidateReview({ base, isCurrent: () => title.isConnected })));
+    candidateReview({ base, isCurrent: () => title.isConnected })),
+  button("按 SHA 读取工单回写", () =>
+    issueWriteback({ base, revision: data.project.revision, isCurrent: () => title.isConnected })));
   const title = heading("正式任务", "查看冻结合同、原运行和候选结果。工作流设计中的草稿另行保存。", actions);
   if (data.project.registration?.status !== "published")
     return [title, panel("先完成项目登记", "正式任务需要统一注册的执行目录、模板和可信检查。按仓库docs/PROJECTS.md准备项目定义，通过CLI发布或恢复登记后刷新页面。",
@@ -1154,6 +1157,11 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
             ? button("关联已有 PR／MR", () => {
               if (!current(reading)) return;
               candidateReview({ base, taskId, record, isCurrent: contextActive });
+            }) : null,
+          record.status === "exported" && task.admission_envelope?.schema_version === 7
+            ? button("准备工单回写", () => {
+              if (!current(reading)) return;
+              issueWriteback({ base, revision: record.project_revision, taskId, record, isCurrent: contextActive });
             }) : null,
           candidate && record.status !== "not_recorded"
             ? node("p", {}, "此任务已有原目标；恢复只沿原意图，不用本次选择覆盖它。") : null,

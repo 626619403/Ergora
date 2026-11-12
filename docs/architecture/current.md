@@ -193,6 +193,8 @@ flowchart TB
   Tasks --> Candidate[candidate-observation.js / 原候选的显式分支观察]
   Candidate --> Shared
   Tasks --> SavedReview[candidate-review.js / 已有评审关联与离线读取]
+  Tasks --> WritebackView[issue-writeback.js / 原意图准备、发送、状态与有界观察]
+  WritebackView --> WritebackOwner[issue_writebacks / 既有共同生命周期]
   SavedReview --> Shared
   Selection --> Fields[binding-fields.js]
   Views --> Fields
@@ -202,7 +204,7 @@ flowchart TB
 - **工作单元草稿**：`workflow.js`拥有语义、完整JSON／单元原文、目标ID／已观察修订、有限命令／撤销重做与布局。缓冲按控制目录／项目隔离；保存仍调用drafts/reference，不直接变成正式任务。
 - **独立定义修订**：`definitions.js`调用两类原用例，JSON/YAML只是同一结构的输入语法。完整资源变更从新暂存树派生，预览返回candidate digest和directories，check/publish重新核已接受候选。CLI/HTTP不各实现一套文件身份算法。
 - **已发布图与比较**：`composition-graph.js`展示原编译器的完整路径、结构／控制／数据关系与全文inspector，支持折叠／查找／键盘选择；图位置不进入摘要。比较模块只投影同grant下两份已发布preview，不在浏览器推断权限或编译未发布候选。
-- **正式任务选择**：`tasks.js`沿原创建／原ID恢复用例，收集可选来源快照并在有完整执行组合时提交既有definition3；`task-composition.js`只持有完整manifest选择、unit分配和逐叶binding；共用schema字段展示由`binding-fields.js`负责。正式准入仍在后端。原v7已导出记录可打开`candidate-observation.js`的内聚观察对话框，调用既有`issues.remote_candidate`；任务owner传固定原记录与独立于旧modal内容的存活条件，观察owner只管理临时base选择、异步代际与安全结果展示，不持久化或实现provider分派。`candidate-review.js`内聚已有PR／MR的明确保存／原字段恢复和独立SHA读取，复用原`issues.link_review / review_link`；恢复同一幂等POST可能首次保存，页面不冒称只读status，也不建浏览器恢复账本。
+- **正式任务选择**：`tasks.js`沿原创建／原ID恢复用例，收集可选来源快照并在有完整执行组合时提交既有definition3；`task-composition.js`只持有完整manifest选择、unit分配和逐叶binding；共用schema字段展示由`binding-fields.js`负责。正式准入仍在后端。原v7已导出记录可打开`candidate-observation.js`的内聚观察对话框，调用既有`issues.remote_candidate`；任务owner传固定原记录与独立于旧modal内容的存活条件，观察owner只管理临时base选择、异步代际与安全结果展示，不持久化或实现provider分派。`candidate-review.js`内聚已有PR／MR的明确保存／原字段恢复和独立SHA读取，复用原`issues.link_review / review_link`；恢复同一幂等POST可能首次保存，页面不冒称只读status，也不建浏览器恢复账本。`issue-writeback.js`内聚评论／标签的准备和原字段恢复、独立SHA状态、明确发送与有界观察，直接消费原`issue_writebacks`共同生命周期；页面只管理临时选择／忙状态，不建立provider分派或第二账本，unknown不提供发送入口。
 
 视图／home／项目／原run／编辑代际约束迟到回复；已替换会话不能保存到新会话。草稿与资源缓冲使用有限内存历史／sessionStorage，损坏或配额失败可明确下载／清除。布局、折叠和浏览器缓存不是合同、执行账本或协同编辑存储。
 
