@@ -896,6 +896,93 @@
       },
       "note": "GitHub/GitLab 工单上下文与显式候选评论；只保存凭据变量名。写入需已导出v7候选及精确意图确认；unknown不重发。读取不授予执行权限；更新时间/ETag不是写入CAS。",
       "installation": null
+    },
+    "deepseek-harness": {
+      "kind": "agent",
+      "implementation": "deepseek-harness",
+      "layers": [],
+      "capabilities": [
+        "independent-candidate-review",
+        "experiment-design",
+        "performance-analysis",
+        "kernel-generation"
+      ],
+      "operations": {
+        "*": [
+          "composition.run-input"
+        ]
+      },
+      "platforms": [
+        "linux"
+      ],
+      "probe": "binding",
+      "configuration": {
+        "type": "object",
+        "properties": {
+          "tool": {
+            "const": "deepseek-harness"
+          },
+          "python": {
+            "type": "string",
+            "title": "独立 SDK 环境 Python 路径",
+            "minLength": 1,
+            "pattern": "\\S",
+            "not": {
+              "pattern": "\u0000"
+            }
+          },
+          "model": {
+            "type": "string",
+            "title": "OpenAI-compatible 模型 ID",
+            "minLength": 1,
+            "pattern": "\\S",
+            "not": {
+              "pattern": "\u0000"
+            }
+          },
+          "base_url": {
+            "type": "string",
+            "title": "推理 API base URL（如 https://example.com/v1）",
+            "minLength": 1,
+            "pattern": "\\S",
+            "not": {
+              "pattern": "\u0000"
+            }
+          },
+          "api_key_env": {
+            "type": "string",
+            "title": "API key 环境变量名",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*(?![\\s\\S])"
+          },
+          "context_window": {
+            "type": "integer",
+            "title": "模型上下文窗口（token）",
+            "minimum": 1,
+            "default": 131072
+          },
+          "max_tokens": {
+            "type": "integer",
+            "title": "单次模型输出上限（token）",
+            "minimum": 1,
+            "default": 4096
+          }
+        },
+        "required": [
+          "tool",
+          "python",
+          "model",
+          "base_url",
+          "api_key_env"
+        ],
+        "additionalProperties": false
+      },
+      "note": "仅 composition text-only/task-mcp 只读叶；不支持 agent.run 原生调用、工作区写入或会话恢复。安装与认证不代表真实模型兼容。",
+      "installation": {
+        "kind": "external",
+        "url": "https://github.com/deepseek-ai/deepseek-harness",
+        "version": "0.2.2rc2"
+      },
+      "platform_note": "当前适配仅验 Linux；Windows 使用 WSL2，原生 Windows 未准入。"
     }
   },
   "installation_profiles": {

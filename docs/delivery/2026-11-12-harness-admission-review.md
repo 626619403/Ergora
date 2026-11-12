@@ -57,3 +57,32 @@
 仍未证明正式 task MCP 全资源／越权拒绝、完整取消与未知恢复、真实模型／网关、Windows／WSL2、同模板六阶段或精确候选准入；runtime 的源码构建身份亦未知。下一步先完成 H0 精确提交／远端及本片必要 CI，再按原 owner 继续 H1a，是否进入 H1b 由其实际证据决定。本报告不关闭 F8 整体或其他工作包。
 
 最终：Spec 0；Standards 0；各轴无最严重问题，H0 本地出口独立通过。
+
+## H0 精确交付终核（2026-11-12）
+
+前文保留提交前的两轴审查快照。本节只补核同片提交、推送、远端原件及适用 CI 范围，不重跑研究、模型、探针或 suite，也不纳入后续私有 MCP 行为。
+
+精确提交为 `a35123e4ea3f24b091774f1476c2e159804de560`，唯一父提交为产品基线 `784da65da89bdd2fed4742e57e3f904c0f295216`。直接读取全部 Git blob，确认提交恰好包含 `candidate-files-h0.json` 所列十件 Markdown；每件字节数／SHA256 均与 `static-h0-r1/result.json`、`h0-commit.json` 及终核开始时工作区相同。源码、依赖、测试和 workflow 无变更。D3c 四份状态收口仍属原片记账，未递归审查或转授其 CI。
+
+`static-h0-r1/result.json` 原件记录十文件、218 个本地目标、6 个已加载秘密值检查、issue 0 及 whitespace 通过，SHA256 为 `d0e5aac64b3666aa356ebe8a2283821b39b75e4d84f300fa27d66dc8eb7e79fe`。本次核对其精确文件身份及原记录，未重新加载秘密值。相对上表的四份后补文档，只变更已完成审查的状态和链接；将这些文字还原后，逐件重得上表原 SHA256，未加入新的 H1a 结论。研究与本提交内原 review 的身份保持。
+
+|本提交内文件|字节数|SHA256|
+|---|---:|---|
+|`docs/PLAN.md`|25,781|`847a59d2cfcb47e18af40f736e4c985176463583b716bca9e7a6e145c3b2ec33`|
+|`docs/delivery/2026-11-12-harness-admission-review.md`|7,518|`1999fb3a5f8504145fccb8d718bfe7dc233b46fc8410bc7fcd8273546059a2b8`|
+|`docs/delivery/2026-11-12-harness-admission.md`|7,367|`d89aa9aad9a732390b3f709213ab5e3e73e8cc389687d843d904b163a550bd66`|
+|`docs/delivery/2026-11-12-issue-writeback-console-review.md`|19,063|`c7b8ecbaaeaecc392e87d87fde1770b9f3b10f82355ef63c8f5b5f2e7e9723a1`|
+|`docs/delivery/2026-11-12-issue-writeback-console.md`|10,679|`b71e282afd873ec7f31e359634db90bd757a32bf1d06714faa9eb10a03bbd992`|
+|`docs/plans/2026-11-01-all-in-one.md`|78,414|`54228369731a463098690701d1c22684cf68151161dc4c8e08a037660a473990`|
+|`docs/plans/2026-11-11-project-trackers.md`|9,959|`ca03a470267aefbeb70491039cffdad9e20fc40dcd45e98ca46ad88740b0fc3a`|
+|`docs/plans/2026-11-12-harness-admission.md`|3,537|`83301c73e1b928638c29f6122bd35f354110948bf3495a6dce3dc17efbb4d1a2`|
+|`docs/plans/2026-11-12-issue-writeback-console.md`|5,114|`8b5ff50bbda60d3f44b1c31169aacd2c5f34abc7f5d53f649283a8c9c0c8d7cd`|
+|`docs/research/2026-11-12-harness-admission.md`|42,459|`4c38037460ba16fcb50946bff9183ddf5b39b4608471f2affe78f334f4e9e00f`|
+
+普通推送原件 `h0-push.{json,stdout,stderr}` 相符：2026-11-12 05:53:18 UTC，退出 0，6.79 秒，原 stderr 明确 `784da65..a35123e HEAD -> refactor/architecture-foundations`。作者随后使用既有 SSH 的 `h0-ref.{json,stdout,stderr}` 于 05:54:22 UTC 退出 0／1.90 秒；独立离线核 stdout 唯一一行是完整 `a35123e4ea3f24b091774f1476c2e159804de560` 与 `refs/heads/refactor/architecture-foundations`，与本地提交一致。
+
+评审者另于 05:55:07 UTC 直接向官方 GitHub Ref API 做唯一一次匿名 GET，返回限流 403，未改认证或重试。280 字节原响应 SHA256 为 `cab107d310af6137d3ca21f7de123c972a91cb1cbd91e2f58f61fe192ba31735`，错误为 API rate limit exceeded。该失败保持；成功的远端身份依据是作者 SSH 原件的独立离线终核，不称评审者直接网络成功。
+
+原 `.github/workflows/portability.yml` 的 push `paths-ignore: ["docs/**.md", "README.md", "AGENTS.md"]` 覆盖本提交全部十件；workflow 未变。本片没有新增产品 CI 要求，不登记不存在的 CI 成功，也不借 D3c 的结果。前文“自身 CI 待核”由本次适用范围核对闭合。
+
+**H0 十件 Markdown 的精确提交／推送、作者原远端身份离线终核及 CI 适用范围通过，精确交付收口；Spec／Standards 仍为 0／0。** 本节在 `a35123e` 之后追加，表内原 review 哈希仅指该提交中的版本。H1a 准入、产品适配和 F8 整体仍未完成。

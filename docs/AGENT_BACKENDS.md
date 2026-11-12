@@ -94,6 +94,50 @@ bash scripts/install-agent.sh mini-swe-agent
 
 认证由相应 provider 的环境变量提供。mini 支持实现角色，不承担只读独立审查。驱动使用原生 LiteLLM tool-call 模型与一致的 bash 工具提示，保存 trajectory；完成时将最终文本写到运行归档中的提交文件，再用提示中给出的命令提交正文，交给同一结构验证。空 submission 判为失败。shell action 保留在外层监控的进程组，使用整体任务时限；一个 action 可消耗剩余时限。成本沿用上游报告值，单次 API 请求可能超过剩余预算，不是预付费金额上限。安装和 CPU SDK 检查不代表模型效果验收。
 
+### DeepSeek Harness 只读叶后端
+
+可选适配固定为 SDK／runtime-bin `0.2.2rc2`，使用独立环境；基础 Ergora 不依赖它。目前只支持 Linux/WSL2 的 `composition check-input/run-input`，模式为 `text-only` 或 `task-mcp`，角色为 reviewer、experiment-planner、performance-analyst、kernel-tuner。后两类产物仍是文本提案，不是实际测量或 kernel 执行。`agent run` 的原生调用、workspace 写入、交互会话和恢复尚不支持；OpenHands SDK 暂未注册。
+
+安装器已提供 uv 后，可在持久目录单独安装：
+
+```bash
+ERGORA_DSH_ENV="$HOME/.local/share/ergora-tools/deepseek-harness/0.2.2rc2/.venv"
+uv venv --python 3.12 "$ERGORA_DSH_ENV"
+uv pip install --python "$ERGORA_DSH_ENV/bin/python" \
+  'deepseek-harness-sdk==0.2.2rc2' 'deepseek-harness-runtime-bin==0.2.2rc2'
+```
+
+在所选[Agent定义的新版本](AGENT_DEFINITIONS.md#从固定原包派生新版本)中设置完整 `backend`；解释器替换为上一步实际绝对路径，模型与URL替换为自己服务的值：
+
+```json
+{
+  "tool": "deepseek-harness",
+  "python": "/YOUR_HOME/.local/share/ergora-tools/deepseek-harness/0.2.2rc2/.venv/bin/python",
+  "model": "YOUR_MODEL_ID",
+  "base_url": "https://YOUR_PROVIDER/v1",
+  "api_key_env": "LINGZHI_API_KEY",
+  "context_window": 131072,
+  "max_tokens": 4096
+}
+```
+
+当前推理路由只使用 OpenAI-compatible Chat Completions；服务还须兼容模型的工具调用及 SSE。环境变量由启动 Ergora 的 shell 提供，不把密钥填入JSON。`context_window`和`max_tokens`按实际模型配置，默认值不证明服务支持相同容量。包版本诊断不调用模型，也不证明认证、网关或模型质量通过。
+
+发布新的 Agent 版本并沿父引用准备新输入，保留完整祖先资料及权限上限，然后调用：
+
+```bash
+ergora composition check-input my-project ./prepared-review --mode task-mcp
+ergora composition run-input my-project ./prepared-review --mode task-mcp --timeout 300
+ergora agent runs my-project
+ergora agent output my-project RUN_ID
+```
+
+这里采用叶定义的完整后端配置。单独 `--backend deepseek-harness` 不会填充必需的解释器、服务和认证变量名。只含内联资料时可显式选择text-only；有Skill附件时用task-mcp，按[全文读取说明](WORKFLOW_DEFINITIONS.md#核验完整附件读取)检查原回执。
+
+每次调用使用新原生home／session、固定最小profile与生成的patch；无原生shell、文件、工作目录及额外MCP工具。task-mcp只提供原scope的list/read。适配保存原生身份、完整prompt、事件和终值到本次`.protocol`目录，整体时限／停止仍由原进程owner负责。这不提供OS隔离。
+
+必须同时核对完成状态、严格JSON／原结果schema和原MCP连接回执；任一原生工具错误使本次调用失败，不隐式重试或续接会话。上游可能在插件失败或断连后仍返回completed，因此最终文本本身不能代表成功。失败或结果不明先按原run ID查看证据，不创建另一次调用冒充恢复。当前发行包／loopback验收与尚未验证的真实模型、同模板六阶段及平台范围见[本片交付](delivery/2026-11-12-harness-probes.md)。
+
 ## 可选的正式六阶段执行桥接
 
 默认`agentflow`执行器保持v2.2行为。要使项目的角色选择作用于正式任务，先按参考手册安装、配置模型和可信执行边界，再用[统一项目注册](PROJECTS.md)一次登记Git根、角色、模板与可信检查，并运行`ergora reference executor --project PROJECT_ID`。旧的两次注册方式继续兼容，两个同名项目必须指向相同Git根。只对新任务启用；不要中途切换已开始的参考任务。

@@ -312,6 +312,67 @@ class MiniSweBackend(AgentBackend):
                 "from importlib.metadata import version; print(version('mini-swe-agent'))"])]
 
 
+class DeepSeekHarnessBackend(AgentBackend):
+    """Optional SDK environment, admitted only for fixed-resource read-only calls."""
+
+    invocation_modes = ("text-only", "task-mcp")
+    guidance = ("Install the pinned DeepSeek SDK/runtime in a separate Python environment and select its interpreter.",
+                "Configure the OpenAI-compatible base_url, model and api_key_env; native/workspace calls and session resume are unsupported.")
+
+    def executable(self) -> str:
+        return self.binding["python"]
+
+    def validate_binding(self, role: str, *, formal: bool = False) -> None:
+        super().validate_binding(role, formal=formal)
+        from urllib.parse import urlsplit
+
+        url = urlsplit(self.binding["base_url"])
+        if url.scheme not in ("http", "https") or not url.hostname or url.username or url.password or url.query or url.fragment:
+            raise ValueError("DeepSeek base_url requires HTTP(S), without credentials, query or fragment")
+
+    def check_invocation(self) -> None:
+        if sys.platform != "linux":
+            raise ValueError("This DeepSeek Harness adapter currently requires Linux; use WSL2")
+
+    def probe_commands(self, cwd: Path) -> list[tuple[str, list[str]]]:
+        return [("version", [processes.resolve_program(self.executable(), cwd), "-I",
+                             str(Path(__file__).parent / "data/drivers/deepseek.py"), "--check"])]
+
+    def available(self, cwd: Path) -> bool:
+        if sys.platform != "linux":
+            return False
+        try:
+            result = subprocess.run(self.probe_commands(cwd)[0][1], cwd=cwd, capture_output=True, timeout=5)
+        except (OSError, ValueError, subprocess.SubprocessError):
+            return False
+        return result.returncode == 0
+
+    def composition_policy(self, mode: str) -> dict:
+        policy = _restricted_policy(mode, [], "Only the named API environment credential; not checked",
+            {"status": "unsupported", "requested": None, "effective": None,
+             "scope": "Fixed model tools; no OS sandbox is requested"})
+        policy.update(ambient_configuration="fresh explicit SDK home and fixed sdk-minimal invocation patch",
+            model_tools="only fixed task MCP list/read" if mode == "task-mcp" else "no model tools",
+            native_errors="Any native tool error rejects this call; no implicit retry or session resume")
+        return policy
+
+    def command(self, request: Invocation) -> tuple[list[str], str]:
+        document = {"binding": self.binding, "prompt": request.prompt, "cwd": str(request.cwd),
+                    "schema": request.schema, "mode": request.mode, "task_mcp": request.task_mcp}
+        path = request.protocol / "request.json"
+        path.write_text(json.dumps(document, ensure_ascii=False), encoding="utf-8", newline="\n")
+        return [self.executable(), "-I", str(Path(__file__).parent / "data/drivers/deepseek.py"), str(path)], ""
+
+    def read_result(self, output: Path, request: Invocation) -> dict:
+        native = json.loads((request.protocol / "native-result.json").read_text(encoding="utf-8"))
+        if native["finish_reason"] != "completed":
+            raise ValueError("DeepSeek Harness input did not complete")
+        if any(event.get("type") == "tool/result" and event["data"]["message"].get("isError")
+               for event in native["events"]):
+            raise ValueError("DeepSeek Harness reported a tool error; see native-events.jsonl")
+        return json.loads(native["final_response"])
+
+
 class CommandBackend(AgentBackend):
     authentication = "external"
     guidance = ("Verify the configured command's credentials and protocol separately; doctor does not execute arbitrary argv.",)
@@ -336,7 +397,7 @@ class CommandBackend(AgentBackend):
 
 
 _BACKENDS = {"codex": CodexBackend, "claude-code": ClaudeCodeBackend,
-             "mini-swe-agent": MiniSweBackend, "command": CommandBackend}
+             "mini-swe-agent": MiniSweBackend, "deepseek-harness": DeepSeekHarnessBackend, "command": CommandBackend}
 
 
 def for_binding(binding: dict, configurations: dict | None = None) -> AgentBackend:

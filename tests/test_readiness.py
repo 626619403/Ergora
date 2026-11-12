@@ -66,7 +66,8 @@ def test_missing_executable_is_blocked_with_guidance(project):
 
 
 @pytest.mark.parametrize("returncode,expected", [(0, "credentials_present"), (1, "not_confirmed")])
-def test_codex_probe_discards_auth_output_and_never_reports_task_acceptance(project, monkeypatch, returncode, expected):
+@pytest.mark.parametrize("reported_version", ["1.2.3", "0.2.2rc2"])
+def test_codex_probe_discards_auth_output_and_never_reports_task_acceptance(project, monkeypatch, returncode, expected, reported_version):
     state, _ = project
     monkeypatch.setattr(agents, "available", lambda *args: True)
     monkeypatch.setattr(processes, "resolve_program", lambda *args: "codex")
@@ -75,13 +76,13 @@ def test_codex_probe_discards_auth_output_and_never_reports_task_acceptance(proj
         calls.append(argv)
         output.mkdir()
         version = argv[1:] == ["--version"]
-        (output / "stdout.txt").write_text("codex-cli 1.2.3 secret-value" if version else "secret-value", encoding="utf-8")
+        (output / "stdout.txt").write_text(f"codex-cli {reported_version} secret-value" if version else "secret-value", encoding="utf-8")
         code = 0 if version else returncode
         return {"status": "succeeded" if code == 0 else "failed", "returncode": code}
     monkeypatch.setattr(processes, "run", run)
     result = tools.doctor(state, "demo", probe=True)
     review = checks(result)["reviewer"]
-    assert review["version"] == "1.2.3" and review["authentication"] == expected
+    assert review["version"] == reported_version and review["authentication"] == expected
     assert review["task_availability"] == "not_checked" and review["connectivity"] == "not_checked"
     assert calls == [["codex", "--version"], ["codex", "login", "status"]]
     assert "secret-value" not in json.dumps(result)

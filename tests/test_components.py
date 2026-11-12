@@ -32,7 +32,8 @@ def test_catalog_preserves_legacy_fields_and_returns_isolated_descriptions():
     catalog = tools.catalog()
     assert list(catalog)[:len(baseline)] == list(baseline)
     for layer, expected in baseline.items():
-        assert [{key: entry[key] for key in expected[index]} for index, entry in enumerate(catalog[layer])] == expected
+        current = {entry["tool"]: entry for entry in catalog[layer]}
+        assert [{key: current[entry["tool"]][key] for key in entry} for entry in expected] == expected
     catalog["implementer"][0]["configuration"]["properties"]["model"]["title"] = "changed"
     catalog["implementer"][0]["capabilities"].clear()
     catalog["implementer"][0]["installation"]["url"] = "changed"
@@ -48,6 +49,8 @@ def test_binding_matrix_preserves_acceptance_and_rejection():
         "codex": [{"tool": "codex"}, {"tool": "codex", "model": "provider/model", "sandbox": "current-container"}],
         "claude-code": [{"tool": "claude-code", "model": "provider/model"}],
         "mini-swe-agent": [{"tool": "mini-swe-agent", "model": "provider/model", "python": sys.executable, "step_limit": 1, "cost_limit": 0.1}],
+        "deepseek-harness": [{"tool": "deepseek-harness", "model": "model", "python": sys.executable,
+                              "base_url": "https://example.invalid/v1", "api_key_env": "MODEL_KEY"}],
         "command": [{"tool": "command", "argv": [sys.executable, "-c", "print('ready')"]}],
         "sqlite": [{"tool": "sqlite"}], "manual": [{"tool": "manual"}], "urls": [{"tool": "urls"}],
         "reme": [{"tool": "reme", "endpoint": "https://example.org/memory", "token_env": "REME_TOKEN"}],
@@ -167,7 +170,7 @@ def test_cli_works_when_optional_sdks_are_unavailable(tmp_path):
 import importlib.abc, sys
 class AbsentSDKs(importlib.abc.MetaPathFinder):
     def find_spec(self, fullname, path=None, target=None):
-        if fullname.split('.')[0] in {'fastapi', 'gepa', 'temporalio', 'minisweagent'}:
+        if fullname.split('.')[0] in {'fastapi', 'gepa', 'temporalio', 'minisweagent', 'deepseek_harness'}:
             raise ImportError('optional SDK deliberately unavailable')
 sys.meta_path.insert(0, AbsentSDKs())
 from ergora.cli import main

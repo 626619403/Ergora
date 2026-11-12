@@ -148,7 +148,7 @@ def _probe_check(check: dict, binding: dict, repo: Path, deadline: float) -> Non
                 if dimension == "version":
                     with (output / "stdout.txt").open("rb") as stream:
                         content = stream.read(4096).decode("utf-8", errors="replace")
-                    match = re.search(r"\b[0-9]+\.[0-9]+\.[0-9]+(?:[-+][A-Za-z0-9.-]+)?\b", content)
+                    match = re.search(r"\b[0-9]+\.[0-9]+\.[0-9]+(?:(?:a|b|rc)[0-9]+)?(?:[-+][A-Za-z0-9.-]+)?\b", content)
                     check[dimension] = match.group() if match else "not_confirmed"
                 else:
                     check[dimension] = "credentials_present" if dimension == "authentication" else "tcp_reachable"
