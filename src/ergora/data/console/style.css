@@ -616,10 +616,12 @@ main {
 .table-wrap {
   overflow: auto;
 }
-.candidate-observation td {
+.candidate-observation td,
+.candidate-review td {
   overflow-wrap: anywhere;
 }
-.candidate-observation th {
+.candidate-observation th,
+.candidate-review th {
   white-space: normal;
 }
 table {

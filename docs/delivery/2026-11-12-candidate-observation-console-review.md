@@ -1,6 +1,6 @@
 # F7d-D3a 独立审查记录
 
-**最终本地判词：完整20文件候选的 Standards／Spec 均通过，开放 finding 0／0；ST1、SP1及末次状态记账SP2三个P3均已关闭。** r2包、原安装／页面分段、最终视口、125份HTTP、模型八附件全文读取、公开投影及拥有资源清理已独立核对。O4普通提交／推送、精确Git／Ref和本提交自己的双OS必要CI尚未交付；D2的证据不转授D3a。
+**最终判词：完整20文件候选的 Standards／Spec 均通过，开放 finding 0／0；ST1、SP1及末次状态记账SP2三个P3均已关闭，D3a精确交付终结。** r2包、原安装／页面分段、最终视口、125份HTTP、模型八附件全文读取、公开投影及拥有资源清理已独立核对。精确提交 `cae1dbb7f35ae76d9290b6e5c86f8445fd5f5ae5` 的20件Git／ready／最终静态、449件r2包、普通提交／推送及作者原Ref回执已核；一次独立官方Ref读取为限流403。本提交自己的CI `43150719942` 第三官方run HTML为Success，双OS七项必要步骤原HTML及回执经本片离线独立终核通过，O4已关闭；D2证据不转授D3a，D3b不在本报告结论内。
 
 本报告保留O1初审和后续同片复核的原范围及当时状态，最终结论见末节。评审协调者为新 fresh-context `f7d_candidate_console_review`；两个互不继承实现会话的 fresh-context 子审查者分别为 `spec_axis` 和 `standards_axis`。按 AI Hero code-review 两轴、maintainable-project-delivery／independent-review 和 codebase-design 检查；[原规格](../plans/2026-11-12-candidate-observation-console.md)、[交付记录](2026-11-12-candidate-observation-console.md)及仓库 AGENTS／PLAN 适用。
 
@@ -131,3 +131,46 @@ r2源码／wheel／安装、RECORD、冻结文件、公开projection／PNG和原
 `static-r1`实际覆盖当时20件、347个本地Markdown目标、6个加载秘密值、issue0。之后交付总述、架构图及本报告有状态／文档追加，不冒称仍为static-r1原字节；最终冻结前应另做完整静态身份。该静态结果不证明anchor、外部URL或Mermaid渲染。没有重跑产品／模型／安装，没有真实SaaS、原生Windows正式工作区或新的完整六阶段验收。
 
 **最终汇总：Standards累计1项P3、已关闭、开放0；Spec累计SP1／SP2两项P3、均已关闭、开放0。完整20文件独立本地审查通过；O4普通提交／推送、精确Git／Ref及本提交自己的双OS必要CI待交付。**
+
+## O4 精确Git／ready／普通提交、推送与原Ref回执
+
+本节只核 **`cae1dbb7f35ae76d9290b6e5c86f8445fd5f5ae5`**，唯一父提交为 **`c69dedf82512ce87d6a72a249626c26dadca4c3c`**。提交内本报告SHA256为 **`2af4462b9daf8a5067c6b04068f00bd5cb62a2cf58b1acb65fa23841c6de66e8`**；本节是提交后状态追加，不将当前报告或后续D3b工作树当作该提交的字节。
+
+禁用object replacement及lazy fetch后，从原对象头和原字节重算2个commit、165个所经tree和409个唯一blob的SHA1；根tree为 **`1d1712680ba0c0f5c97acc8e7a4020cf63ce824d`**。父→子恰为20件变更，全部普通blob／`100644`。每件字节、大小、SHA256和mode均与ready封存副本、manifest及最终 `static-r2` 一致，ready manifest SHA256为 **`c763941cf727d21c7a660255e6416380bbce382e55674d5adcd79f9c40cbf9aa`**。
+
+最终静态20件身份全部等于该提交。评审者以提交内Markdown和完整Git文件／目录集合重新核得 **348个本地目标、缺失0**，三个JSON解析通过，私有home路径检查0，提交差异whitespace检查exit0。原静态报告当时6个加载秘密值／issue0保持其实际范围，评审没有读取凭据值；不将该检查扩大为anchor、外部URL或Mermaid验收。
+
+已从精确提交逐件读取全部449件 `src/ergora` 内容，与r2 wheel完整包集合逐字相同；METADATA的README正文也与提交内README完全一致。r2 wheel SHA256仍为 **`66649a70c9d73d512768847fbae7e2f46f460c6ad29ca344447580c6fb9e74b6`**。没有重装、重复产品／浏览器／模型或重跑六阶段。D2自己的CI后补只记其原片状态，不借给D3a。
+
+普通commit原回执 **exit0／1.20秒**；stdout858B／SHA256 `0cd369613384452179a5e90a7e9e082cdb343551f3f79aef0246adc69fb9f6e3`，stderr空，标题和20件变更与原commit一致。普通push原回执 **exit0／10.34秒**、`force:false`；stdout空，stderr98B／SHA256 **`08832b379f4833f33820be3060f9bec6a0f465aa872c796cd3cdf322b231c4db`**，明确从c69dedf更新到cae1dbb及原分支。没有重推或改写历史。
+
+作者一次 `git ls-remote --exit-code origin refs/heads/refactor/architecture-foundations` 原回执 **exit0／1.74秒**；86B stdout逐字为完整候选SHA、tab、原分支和换行，SHA256 **`5c459b16f6eea81cdc0b31846d290e03f29d507e3a8946330fae12f436431d13`**，stderr空。此处严格记为作者原Ref回执，不据当前origin配置追加传输定性，也不称评审者SSH或独立直接网络成功。
+
+评审者于 **2026-11-12T03:52:30Z** 仅尝试一次匿名官方Git Ref GET：`https://api.github.com/repos/626619403/Ergora/git/ref/heads/refactor%2Farchitecture-foundations`。最终URL相同，无redirect／retry／凭据读取，约 **0.99秒，HTTP403／280B**；原body SHA256为 **`cab107d310af6137d3ca21f7de123c972a91cb1cbd91e2f58f61fe192ba31735`**，原JSON明确API限流。原请求、header、body及receipt已保存在本片 `commit-closure/reviewer-ref`，没有补造远端SHA，也不将失败当作独立直接Ref成功。
+
+**本轮结论：精确20Git／mode／ready／static-r2、449件r2包／README、普通commit和push退出0、作者同完整Ref原件通过，无新增finding；Standards／Spec仍开放0／0。剩余证据仅为本提交自己的双OS必要CI终态及对应run／head SHA、两job必要步骤原件，须由本片终核，O4尚未终结。后续D3b源码、候选或CI不进入本片范围。**
+
+## O4 自身双OS CI原件离线终核与精确交付结案
+
+本次仅离线读取本片 `commit-closure` 原件，没有联网、凭据读取、CI重跑、产品／安装／浏览器／模型运行。范围仍固定 **`cae1dbb7f35ae76d9290b6e5c86f8445fd5f5ae5`** 和它自己的 [Portability run `43150719942`](https://github.com/626619403/Ergora/actions/runs/43150719942)。三份run原HTML均包含完整候选commit链接、原分支 `refactor/architecture-foundations`、push触发及 `portability.yml` 入口；没有借用D2或D3b的CI。
+
+协调者独立读取原字节，以独立HTML解析逐项重建事实，重算初始Actions列表及下列六份原HTML／空body的长度和SHA256，均与各自receipt一致；各receipt的请求／最终URL及HTTP状态也逐件符合原run／job身份。
+
+|原样本|UTC采样时间|HTTP／实际状态|原body字节|原body SHA256|
+|---|---|---|---:|---|
+|`ci-run-html-r1`|03:59:36|200／In progress|150637|`08ef94d00ae785cb50ba442c11d6e1f7660da87c602c0f997f72ca3dda35565e`|
+|`ci-run-html-r2`|04:04:12|200／In progress|150641|`cba08b4e22384591d746ea026b212215634cfe5df13126e3e7a1aeaccca4bff8`|
+|`ci-job-groups-r1`|04:09:12|400／空body|0|`e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`|
+|`ci-run-html-r3`|04:10:50|200／Success|157102|`da0341340969367929ac8881947892641ebd7e6491aa98cd3290ff442f7b56c3`|
+|`ci-job-130958961707-html-r1`|04:11:49|200／Linux终态|161651|`a265203cd6e1102a0d74ace825f58ccd1b37835375ce66c0e52fb7b01fa665a9`|
+|`ci-job-130958961937-html-r1`|04:11:49|200／Windows终态|159737|`01a53c01fb723fa23d4d0f52856466e957e11b21530dafc27f811ab2e78427fe`|
+
+日期均为 **2026-11-12**。前两run的In progress和 `job_groups_batch?attempt=1` 的400空body保留原状态，后续Success没有覆盖或改写它们。第三run明确将 `native (ubuntu-latest, 3.11)` 映射到job **`130958961707`**，将 `native (windows-latest, 3.12)` 映射到job **`130958961937`**；两个job的receipt最终URL均为该run下对应的精确job。
+
+以精确提交内workflow核必要项：Linux三项 `Build and install wheel`、`Packaged reference identity`、`Native application regression` 均为 **success**，分别于 **03:49:39Z／03:49:40Z／04:06:41Z** 完成；Windows相同三项及 `Windows PowerShell 5.1 installer and upgrade` 四项均为 **success**，分别于 **03:50:11Z／03:50:12Z／04:04:12Z／04:05:09Z** 完成。七项均有完整起止时间和 `data-job-completed`，各 `data-log-url` 逐字指向完整候选SHA和对应job／step编号。两个job各10个原step均终态；Linux的Windows专属步骤按原workflow为skipped，其余均success。两条 `Complete job` 也均success，Linux于 **04:06:42Z**、Windows于 **04:05:12Z** 完成。
+
+独立重建的run状态、job集合、七项步骤、起止时间、完成标志、body摘要和两份job receipt摘要，全部与 `ci-html-r3-projection.json` 逐字段相同；该投影SHA256为 **`b0f2762356c9a3ea93f4d1573aab88bfcb7bf0cbbb30e71071213c0a5df308a8`**。原run r3 receipt SHA256为 `b0a94112d6b0b04463325b69fdca2d657160b18454741da948147a78b2c818df`，Linux／Windows receipt分别为 `37e529daa647583404a756be2f53a31604558138caf5a24b6d91422b60dc2d05`／`f2519a0f803aa141148a6636b173a650e52fa63915568cfc9c0b35b818c2a171`。这些是作者取得的官方HTML原件的独立离线核验，不称评审者直接联网读取、成功REST或完整job日志下载。
+
+原匿名CI REST查询和独立Git Ref请求仍分别为 **HTTP403／280B限流**；两份body均重新核得SHA256 **`cab107d310af6137d3ca21f7de123c972a91cb1cbd91e2f58f61fe192ba31735`**，原失败及独立Ref未获远端SHA的事实保持。作者同完整Ref原回执仍仅按上节范围认定。
+
+**终核结论：D3a精确提交自己的双OS七项必要CI步骤及原件身份通过，无新增finding，Standards／Spec开放0／0。结合上节精确Git／ready／包／普通提交、推送及作者原Ref回执，O4精确交付终结。本结论只属于D3a，不覆盖后来D3b工作树、安装、页面、模型、审查或CI。**

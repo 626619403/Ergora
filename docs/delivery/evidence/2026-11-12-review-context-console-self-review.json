@@ -1,0 +1,130 @@
+{
+  "schema_version": 1,
+  "attempts": [
+    {
+      "identity": {
+        "at": "2026-11-12T04:06:32.109248+00:00",
+        "baseline": "cae1dbb7f35ae76d9290b6e5c86f8445fd5f5ae5",
+        "run_id": "d4a721e0dc1e40e0bccea5d60cb1ccd6",
+        "status": "succeeded",
+        "backend": "codex",
+        "inference_model": "gpt-6.1-sol",
+        "reasoning_effort": "high",
+        "cli_exit": 0,
+        "seconds": 228.99742130981758,
+        "input_digest": "2f3b0aac1c97beb7827071097f41a5bd8aa47a7f9633ddbdf16c4f3821ba7543",
+        "prompt_sha256": "2507e0b921b7d814cda8676bbaccd7f1f31bd42feab4ecf5290f05fecc162dfb",
+        "attachment_bytes": 190129,
+        "attachment_sha256": "ce226ef9233fc536e22456553ff5631b8aeaf71ceb55740605a49bac26b26a9f",
+        "manifest_digest": "3fa6d921b3340f0b1bbb9e76465fb627046ded3360fb85a270e9552e5d483c69",
+        "revision": "1.0.114",
+        "observed_processes": 4,
+        "live_sampled_processes": [],
+        "scope": "F7d-D3b nine complete frozen UI/callers/backend/spec/delivery. Final browser, public docs and independent review separate; authorized Codex fallback, no dual-backend success claim.",
+        "decision": "request-changes",
+        "result_sha256": "789a8fba9a84c9d3d598f6a44dccf35b7d9cbeb69420bef1863ab2974872eba3"
+      },
+      "read_audit": {
+        "at": "2026-11-12T04:06:50.849104+00:00",
+        "run_id": "d4a721e0dc1e40e0bccea5d60cb1ccd6",
+        "revision": "1.0.114",
+        "manifest_prepared_actual_prompt_admission_scope_native_original_result_match": true,
+        "bundled_template_unchanged_except_evidence_revision_resource_and_limit": true,
+        "scope_files": 5,
+        "all_scope_continuous_utf8_through_null": true,
+        "list_passes_files": [
+          5
+        ],
+        "failed_calls": 0,
+        "attachment_bytes": 190129,
+        "attachment_sha256": "ce226ef9233fc536e22456553ff5631b8aeaf71ceb55740605a49bac26b26a9f",
+        "frozen_complete_files": 9,
+        "original_result_sha256": "789a8fba9a84c9d3d598f6a44dccf35b7d9cbeb69420bef1863ab2974872eba3",
+        "decision": "request-changes",
+        "native_stream_sha256": "93e36f872327dfcdcb32f7bc17a8d192f119ff09ff41610dfb608a45c6035974",
+        "backend_reported_turn_usage": [
+          {
+            "input_tokens": 1191249,
+            "cached_input_tokens": 1060992,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 5163,
+            "reasoning_output_tokens": 2911
+          }
+        ],
+        "observed_processes": 4,
+        "live_sampled_processes": [],
+        "scope": "Offline exact identity and successful plaintext page reconstruction only. Cached counters are part of input, reasoning reported separately, neither is added twice. No billing, reasoning quality, owner approval, independent backend-error or unsampled-process claim."
+      },
+      "original_result": {
+        "artifacts": {
+          "response": "Spec — P2\n\nSource: `src/ergora/data/console/candidate-review.js`, `save()` success message; corroborated by `src/ergora/issues.py`, `link_review()` final `previous` branch.\n\nTrigger: two clients explicitly save the same unsaved candidate association concurrently. Both can perform the provider reads before one persists the record. The other then returns that existing record with `fresh_observations=false`.\n\nConsequence: the UI says “本次没有重新读取平台” even though this request read the platform. The flag distinguishes the returned saved observations; it does not guarantee that this invocation performed no reads. This misstates evidence and runtime cost.\n\nMinimal correction: remove the no-platform-read claim. For example: “返回原已保存关联；显示的是原不可变记录，新的原因不覆盖原内容。” Keep backend ownership, flags and recovery semantics unchanged.\n\nStandards\n\nNo additional reachable structural findings. The new module cohesively owns association, explicit recovery and SHA lookup despite having one production caller. It reuses `api.js` and `ui.js`; HTTP routes delegate to the existing issue owner. Native identity checks, persistence, conflict handling and revision checks remain in `issues.link_review`. No new scheduler, ledger, provider dispatch or testing infrastructure is visible in this scope.\n\nComplete reviewed scope\n\nRead both declared workflow/agent instructions and both Skills completely, plus all continuous UTF-8 candidate pages through `next_offset: null`, including these nine complete attachments:\n\n- `src/ergora/data/console/candidate-review.js`\n- `src/ergora/data/console/tasks.js`\n- `src/ergora/data/console/api.js`\n- `src/ergora/data/console/ui.js`\n- `src/ergora/issues.py`\n- `src/ergora/tasks.py`\n- `src/ergora/web.py`\n- `docs/plans/2026-11-12-review-context-console.md`\n- `docs/delivery/2026-11-12-review-context-console.md`\n\nThis is a review of those attachments, not full-repository or delivery certification. The reported 74 checks, two controlled native seeds and package/frozen-file checks are supplied evidence. Browser behavior, final documentation, independent validation and exact delivery remain unverified. No shell, network, tests or workspace edits were performed."
+        },
+        "decision": "request-changes",
+        "summary": "Request changes: one Spec finding about a misleading platform-read claim. Structural ownership is otherwise sound."
+      }
+    },
+    {
+      "identity": {
+        "at": "2026-11-12T04:11:12.282157+00:00",
+        "baseline": "cae1dbb7f35ae76d9290b6e5c86f8445fd5f5ae5",
+        "run_id": "547b572e661e41ec9e8b96cf08c98e24",
+        "status": "succeeded",
+        "backend": "codex",
+        "inference_model": "gpt-6.1-sol",
+        "reasoning_effort": "high",
+        "cli_exit": 0,
+        "seconds": 88.76027609687299,
+        "input_digest": "2c80d8f00d057c0446c6e3fc83cd01b6791ce7bd76cfae1161e892f1145381c0",
+        "prompt_sha256": "2dfa58d1a77e7a3de613de4bb6db50d78ec03894300561682029ab3e6a0b51d3",
+        "attachment_bytes": 42374,
+        "attachment_sha256": "21228d3f999b5f1d1405d4892c8883ca6bcea44d6385cc16a15ec63c97072e86",
+        "manifest_digest": "4f804c4534cadb8e9161b67361f70648e89a949758f60f04e3eb509e3829b5b0",
+        "revision": "1.0.115",
+        "observed_processes": 4,
+        "live_sampled_processes": [],
+        "scope": "F7d-D3b five complete frozen UI/callers/backend/spec/delivery. Final browser, public docs and independent review separate; authorized Codex fallback, no dual-backend success claim.",
+        "decision": "approve",
+        "result_sha256": "018eed2fe8caacf5a2d728cdc63b23fb279c57083be1fbafae8bc1605ac23430"
+      },
+      "read_audit": {
+        "at": "2026-11-12T04:12:12.554763+00:00",
+        "run_id": "547b572e661e41ec9e8b96cf08c98e24",
+        "revision": "1.0.115",
+        "manifest_prepared_actual_prompt_admission_scope_native_original_result_match": true,
+        "bundled_template_unchanged_except_evidence_revision_resource_and_limit": true,
+        "scope_files": 5,
+        "all_scope_continuous_utf8_through_null": true,
+        "list_passes_files": [
+          5
+        ],
+        "failed_calls": 0,
+        "attachment_bytes": 42374,
+        "attachment_sha256": "21228d3f999b5f1d1405d4892c8883ca6bcea44d6385cc16a15ec63c97072e86",
+        "frozen_complete_files": 5,
+        "original_result_sha256": "018eed2fe8caacf5a2d728cdc63b23fb279c57083be1fbafae8bc1605ac23430",
+        "decision": "approve",
+        "native_stream_sha256": "d9e6d83456a80220b904b2cb281351801e58c488c43751bc88cbc68a2519a622",
+        "backend_reported_turn_usage": [
+          {
+            "input_tokens": 215961,
+            "cached_input_tokens": 176384,
+            "cache_write_input_tokens": 0,
+            "output_tokens": 1933,
+            "reasoning_output_tokens": 835
+          }
+        ],
+        "observed_processes": 4,
+        "live_sampled_processes": [],
+        "scope": "Offline exact identity and successful plaintext page reconstruction only. Cached counters are part of input, reasoning reported separately, neither is added twice. No billing, reasoning quality, owner approval, independent backend-error or unsampled-process claim."
+      },
+      "original_result": {
+        "artifacts": {
+          "response": "Read all declared ancestor instructions, both Skills, and candidate.txt continuously as UTF-8 through next_offset:null.\n\nComplete candidate scope:\n\n- src/ergora/data/console/candidate-review.js\n- src/ergora/issues.py\n- src/ergora/data/console/ui.js\n- docs/plans/2026-11-12-review-context-console.md\n- docs/delivery/2026-11-12-review-context-console.md\n\nSpec: No findings. In candidateReview.save, the fresh_observations=false message now describes the original immutable record without claiming this invocation skipped provider reads. This is correct for both the early existing-record return and the concurrent-save return in issues.link_review. Explicit recovery retains the same fixed request, with no automatic retry. The separate SHA lookup remains available without a candidate record and invalidates stale responses. Context remains distinct from approval and proof of original execution.\n\nStandards: No findings. Backend validation, immutable identity, persistence and conflict handling remain with issues; presentation reuses api/ui. The UI lifecycle, lookup-generation and write guards cover distinct triggers. The backend transaction recheck remains necessary for concurrent first saves. No new abstraction, backend selector, test framework or CI mechanism appears in these files; no concrete new performance defect is evident.\n\nEvidence limits: The plan and delivery preserve the original request-changes result, limit the r1 checks to their original scope, and retain the browser fixture failure without claiming page acceptance. This approval covers only the five frozen files. Unseen callers, routes, tests, CI definitions, current packaging, browser acceptance, independent review and final delivery were not verified."
+        },
+        "decision": "approve",
+        "summary": "Approve the focused five-file re-review. The prior wording defect is resolved; no new actionable structural findings."
+      }
+    }
+  ],
+  "scope": "First nine-complete-file request-changes retained; focused current five-complete-file approve verifies P2 wording correction. Both exact native task-MCP plaintext chains audited; later browser/projections/docs/final independent/exact delivery separate. No dual-backend independence, billing or full-repository claim."
+}

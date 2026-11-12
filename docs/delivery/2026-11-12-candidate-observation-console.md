@@ -1,6 +1,6 @@
 # F7d-D3a 交付记录
 
-基线 `c69dedf82512ce87d6a72a249626c26dadca4c3c`；[计划](../plans/2026-11-12-candidate-observation-console.md)。O0–O3本地出口通过，O4精确交付待完成。D2 c69dedf已精确交付，自己的CI43146853654双OS七必要步骤及原评审终核通过，不借给本片。
+基线 `c69dedf82512ce87d6a72a249626c26dadca4c3c`；[计划](../plans/2026-11-12-candidate-observation-console.md)。O0–O4精确交付已完成；自己的CI与原评审终核见O4。D2 c69dedf已精确交付，自己的CI43146853654双OS七必要步骤及原评审终核通过，不借给本片。
 
 ## O0 原所有者核对
 
@@ -41,3 +41,9 @@ r2独立新包449件与最终源码／安装同，两RECORD454／459和283冻结
 新的fresh-context独立协调者及原两轴已完成20文件终核，Spec／Standards开放0／0；ST1（架构计数）、SP1（PLAN进度）、SP2（交付首段过期状态）均已最小修正并复核关闭。两provider原件、r2完整包、全部125HTTP／49GET、原来源／合同／导出、88runtime文件、模型全文链和公开投影／两图及拥有资源清理均已独立重算或核读；后补架构两条实际调用边也已源码核对，未扩称Mermaid渲染。详见[独立报告](2026-11-12-candidate-observation-console-review.md)。
 
 O0–O3本地出口通过；普通提交／推送、精确Git／Ref及本提交自己的双OS必要CI尚待O4，不借D2 CI。冻结前最终静态检查，状态记账不触发重复产品／模型或递归审查。
+
+## O4 精确交付终结
+
+`cae1dbb7f35ae76d9290b6e5c86f8445fd5f5ae5`已普通提交／推送退出0；精确20Git对象／mode／ready、449件r2包／README、作者同完整Ref原件经原评审核对。独立匿名Ref GET为403限流，不称评审直接网络成功，不据当前origin对原传输追加定性。
+
+自己的[CI43150719942](https://github.com/626619403/Ergora/actions/runs/43150719942)第三run原HTML为Success，Linux130958961707三项／Windows130958961937四项必要步骤均success／completed，完整SHA日志路径及Complete job已核。原评审离线重算Actions列表／三run／fragment／两job共七份原body及receipt，精确run／分支／push／候选身份和投影一致，开放finding0／0；O4精确交付终结。前两In progress、fragment400／空body、REST403及独立Ref403均保留，不称成功REST、全日志或D3b验收。

@@ -1,0 +1,804 @@
+{
+  "schema_version": 1,
+  "at": "2026-11-12T04:25:39.877066+00:00",
+  "baseline": "cae1dbb7f35ae76d9290b6e5c86f8445fd5f5ae5",
+  "state": "local-validation-complete-final-independent-review-pending",
+  "packages": {
+    "r1": {
+      "at": "2026-11-12T03:53:39.935679+00:00",
+      "wheel_sha256": "810bb1e8b5e8db534fb6b0892ca4d39ae562d03bd9beac0fb14f2e2bda616818",
+      "wheel_files": 455,
+      "package_files": 450,
+      "wheel_and_installed_records_verified": true,
+      "installed_record_rows": 460,
+      "source_and_installed_package_equal": true,
+      "frozen_files": 283,
+      "editable": false
+    },
+    "r2": {
+      "at": "2026-11-12T04:09:59.119009+00:00",
+      "wheel_sha256": "ed20d152eb566261d883b0942f1fef3db2b3ca70f2778607ddf9bfa20e1fabec",
+      "wheel_files": 455,
+      "package_files": 450,
+      "wheel_and_installed_records_verified": true,
+      "installed_record_rows": 460,
+      "source_and_installed_package_equal": true,
+      "frozen_files": 283,
+      "editable": false
+    }
+  },
+  "r2_package_delta": {
+    "package_files": 450,
+    "unchanged": 449,
+    "changed": [
+      "ergora/data/console/candidate-review.js"
+    ],
+    "metadata_and_readme_unchanged": true
+  },
+  "installed_checks": [
+    {
+      "at": "2026-11-12T03:54:41.527190+00:00",
+      "exit": 0,
+      "seconds": 61.42432168731466,
+      "stdout_sha256": "751501c788e11328955195fedbe33b85b793cdb1c5ed3f467ee66de6e119351e"
+    },
+    {
+      "at": "2026-11-12T03:54:41.896090+00:00",
+      "exit": 0,
+      "seconds": 0.3670252622105181,
+      "stdout_sha256": "734fadc931db30a05f84b20ade1d3f5d3e428af9c0bab4d629f8a30f95556b2b"
+    }
+  ],
+  "pytest": {
+    "passed": 74,
+    "seconds": 59.03,
+    "suites": [
+      "test_review_associations.py",
+      "test_web.py",
+      "test_architecture_boundaries.py"
+    ],
+    "scope": "r1 candidate; r2 one wording string changed, final actual UI checked separately, no repeated full suite"
+  },
+  "native_seed": {
+    "at": "2026-11-12T03:54:05.265451+00:00",
+    "exit": 0,
+    "seconds": 23.94922312675044,
+    "stdout_sha256": "c65989eb532d22e712c08fb6bc618c356fd9c24fa38178f97337ccbf23f49895"
+  },
+  "native_seed_scope": "Two original v7 task/native Git export cases. Only Temporal SDK controlled and REVIEW_READY synthesized; no new real model/six-stage task run.",
+  "browser_segments": {
+    "browser-main-r1": {
+      "checked_at": "2026-11-12T04:05:10.684391+00:00",
+      "exit_code": 1,
+      "seconds": 72.98800994688645,
+      "result": null,
+      "driver_error": "route.fetch exceeded30000ms; backend200 saved original record and provider log gap retained"
+    },
+    "browser-main-r2": {
+      "checked_at": "2026-11-12T04:13:26.552364+00:00",
+      "exit_code": 0,
+      "seconds": 157.53264402179047,
+      "result": {
+        "passed": false,
+        "step": "project isolation",
+        "error": "page.waitForResponse: Timeout 120000ms exceeded while waiting for event \"response\"",
+        "checks": [
+          "opening github makes zero provider requests",
+          "original github task/run/candidate preserved",
+          "explicit github target required",
+          "original saved GH record delivered before deliberate reply loss without provider reads",
+          "original target fieldset locked",
+          "first save no longer offered",
+          "fixed original request visible after loss",
+          "original owner outcome explicit restore after GH save",
+          "explicit restore replays identical original request",
+          "same saved slot restored without provider access",
+          "fresh-versus-saved facts visible",
+          "original task/current remote/PR response bases stay separate",
+          "complete saved JSON exact safe text",
+          "complete external body exact",
+          "saved context carries no approval or send proof",
+          "external markup cannot execute",
+          "desktop tables and page fit",
+          "390px tables and page fit",
+          "opening github makes zero provider requests",
+          "original github task/run/candidate preserved",
+          "explicit github target required",
+          "original owner outcome GH conflicting existing target",
+          "different target refused without provider call",
+          "opening github makes zero provider requests",
+          "original github task/run/candidate preserved",
+          "explicit github target required",
+          "original owner outcome GH repeat same target",
+          "reopening original target preserves first reason and full record",
+          "opening gitlab makes zero provider requests",
+          "original gitlab task/run/candidate preserved",
+          "explicit gitlab target required",
+          "original owner outcome GL failure before first save",
+          "GL drift refuses first save",
+          "original owner outcome GL explicit original restore first saves",
+          "restore before initial persistence explicitly performs first five reads/save",
+          "GL diff version kept distinct from absent PR response base",
+          "complete GL body saved",
+          "offline owner outcome independent SHA offline GET",
+          "independent same-project GET requires zero provider requests"
+        ],
+        "errors": [],
+        "samples": [
+          {
+            "step": "GitHub lost save response",
+            "status": 200,
+            "request": {
+              "revision": 6,
+              "task_id": "issue-task",
+              "run_id": "original-run",
+              "candidate_sha": "9dc21fea0c4d54695e6cfeee3459cb4d6da42a1b",
+              "base_branch": "release/稳定,base",
+              "review_number": "11",
+              "reason": "明确关联原候选；仅上下文。"
+            },
+            "record_sha256": "8465b2798c7f5a05db7202b8466f721fc2dcc9db33bf3a6ef296dbab5efadfef",
+            "scope_sha256": "e77592d2c21a5f9443160d3f602edf4b6571e71d76cd6e0eeb2bcb69844f4875",
+            "provider": "github",
+            "candidate_sha": "9dc21fea0c4d54695e6cfeee3459cb4d6da42a1b",
+            "task_base_sha": "b3e6cb60469970628d0e25ebb71ccc7ffaa0148f",
+            "remote_base_sha": "9999999999999999999999999999999999999999",
+            "review_response_base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "diff_refs": null,
+            "full_title_bytes": 60,
+            "full_title_sha256": "ebf3e24da4dc94e1ba6260dccaba38cd17832b745d9b44b027f6f1bc5d26a4e3",
+            "full_body_bytes": 22894,
+            "full_body_sha256": "c5b060cd5036a75f516c532833810e332aace2e77bae2e0d3f90325700e3ca2b",
+            "already_saved": true,
+            "fresh_observations": false,
+            "context_only": true,
+            "execution_authorized": false,
+            "proves_original_attempt": false
+          },
+          {
+            "step": "explicit restore after GH save",
+            "status": 200,
+            "request": {
+              "revision": 6,
+              "task_id": "issue-task",
+              "run_id": "original-run",
+              "candidate_sha": "9dc21fea0c4d54695e6cfeee3459cb4d6da42a1b",
+              "base_branch": "release/稳定,base",
+              "review_number": "11",
+              "reason": "明确关联原候选；仅上下文。"
+            },
+            "record_sha256": "8465b2798c7f5a05db7202b8466f721fc2dcc9db33bf3a6ef296dbab5efadfef",
+            "scope_sha256": "e77592d2c21a5f9443160d3f602edf4b6571e71d76cd6e0eeb2bcb69844f4875",
+            "provider": "github",
+            "candidate_sha": "9dc21fea0c4d54695e6cfeee3459cb4d6da42a1b",
+            "task_base_sha": "b3e6cb60469970628d0e25ebb71ccc7ffaa0148f",
+            "remote_base_sha": "9999999999999999999999999999999999999999",
+            "review_response_base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "diff_refs": null,
+            "full_title_bytes": 60,
+            "full_title_sha256": "ebf3e24da4dc94e1ba6260dccaba38cd17832b745d9b44b027f6f1bc5d26a4e3",
+            "full_body_bytes": 22894,
+            "full_body_sha256": "c5b060cd5036a75f516c532833810e332aace2e77bae2e0d3f90325700e3ca2b",
+            "already_saved": true,
+            "fresh_observations": false,
+            "context_only": true,
+            "execution_authorized": false,
+            "proves_original_attempt": false
+          },
+          {
+            "step": "GH conflicting existing target",
+            "status": 400,
+            "error": "Original candidate already has a different saved review context; inspect its original record"
+          },
+          {
+            "step": "GH repeat same target",
+            "status": 200,
+            "request": {
+              "revision": 6,
+              "task_id": "issue-task",
+              "run_id": "original-run",
+              "candidate_sha": "9dc21fea0c4d54695e6cfeee3459cb4d6da42a1b",
+              "base_branch": "release/稳定,base",
+              "review_number": "11",
+              "reason": "新的原因不能覆盖原记录"
+            },
+            "record_sha256": "8465b2798c7f5a05db7202b8466f721fc2dcc9db33bf3a6ef296dbab5efadfef",
+            "scope_sha256": "e77592d2c21a5f9443160d3f602edf4b6571e71d76cd6e0eeb2bcb69844f4875",
+            "provider": "github",
+            "candidate_sha": "9dc21fea0c4d54695e6cfeee3459cb4d6da42a1b",
+            "task_base_sha": "b3e6cb60469970628d0e25ebb71ccc7ffaa0148f",
+            "remote_base_sha": "9999999999999999999999999999999999999999",
+            "review_response_base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "diff_refs": null,
+            "full_title_bytes": 60,
+            "full_title_sha256": "ebf3e24da4dc94e1ba6260dccaba38cd17832b745d9b44b027f6f1bc5d26a4e3",
+            "full_body_bytes": 22894,
+            "full_body_sha256": "c5b060cd5036a75f516c532833810e332aace2e77bae2e0d3f90325700e3ca2b",
+            "already_saved": true,
+            "fresh_observations": false,
+            "context_only": true,
+            "execution_authorized": false,
+            "proves_original_attempt": false
+          },
+          {
+            "step": "GL failure before first save",
+            "status": 400,
+            "error": "Review request head or base differs from the selected candidate and branches"
+          },
+          {
+            "step": "GL explicit original restore first saves",
+            "status": 200,
+            "request": {
+              "revision": 6,
+              "task_id": "issue-task",
+              "run_id": "original-run",
+              "candidate_sha": "8fc349ffe0289b54ba90916b80510bdb2b582de9",
+              "base_branch": "release/稳定,base",
+              "review_number": "11",
+              "reason": "GitLab原候选资料"
+            },
+            "record_sha256": "8824040d5d8afcac63784f23a70edc0715a764084740f6f43f25cb770abc6b83",
+            "scope_sha256": "87fdf4d961954bc02f292673a87906f63789a302855d51035bdc40a6fa847203",
+            "provider": "gitlab",
+            "candidate_sha": "8fc349ffe0289b54ba90916b80510bdb2b582de9",
+            "task_base_sha": "02f67699433f47320b013414625e1c6effdf800c",
+            "remote_base_sha": "9999999999999999999999999999999999999999",
+            "review_response_base_sha": null,
+            "diff_refs": {
+              "base_sha": "cccccccccccccccccccccccccccccccccccccccc",
+              "start_sha": "dddddddddddddddddddddddddddddddddddddddd",
+              "head_sha": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+            },
+            "full_title_bytes": 60,
+            "full_title_sha256": "b2475c60a6d02ec31b152d31174ad23ccc154950118ad497fe26219c6428137b",
+            "full_body_bytes": 22894,
+            "full_body_sha256": "c5b060cd5036a75f516c532833810e332aace2e77bae2e0d3f90325700e3ca2b",
+            "already_saved": false,
+            "fresh_observations": true,
+            "context_only": true,
+            "execution_authorized": false,
+            "proves_original_attempt": false
+          },
+          {
+            "step": "independent SHA offline GET",
+            "status": 200,
+            "request": null,
+            "record_sha256": "8824040d5d8afcac63784f23a70edc0715a764084740f6f43f25cb770abc6b83",
+            "scope_sha256": "87fdf4d961954bc02f292673a87906f63789a302855d51035bdc40a6fa847203",
+            "provider": "gitlab",
+            "candidate_sha": "8fc349ffe0289b54ba90916b80510bdb2b582de9",
+            "task_base_sha": "02f67699433f47320b013414625e1c6effdf800c",
+            "remote_base_sha": "9999999999999999999999999999999999999999",
+            "review_response_base_sha": null,
+            "diff_refs": {
+              "base_sha": "cccccccccccccccccccccccccccccccccccccccc",
+              "start_sha": "dddddddddddddddddddddddddddddddddddddddd",
+              "head_sha": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+            },
+            "full_title_bytes": 60,
+            "full_title_sha256": "b2475c60a6d02ec31b152d31174ad23ccc154950118ad497fe26219c6428137b",
+            "full_body_bytes": 22894,
+            "full_body_sha256": "c5b060cd5036a75f516c532833810e332aace2e77bae2e0d3f90325700e3ca2b",
+            "already_saved": null,
+            "fresh_observations": null,
+            "context_only": true,
+            "execution_authorized": false,
+            "proves_original_attempt": false
+          }
+        ]
+      },
+      "scope_correction": "39 prior checks completed; last original other-project GET400/error displayed but private wait predicate incorrectly selected demo; timeout retained. Only unfinished project check continued."
+    },
+    "browser-lifecycle-r1": {
+      "checked_at": "2026-11-12T04:15:55.876482+00:00",
+      "exit_code": 0,
+      "seconds": 64.34883960010484,
+      "result": {
+        "passed": true,
+        "step": "offline with unavailable original task and changed binding",
+        "checks": [
+          "retained unregistered other project",
+          "explicit GET outcome project isolation continuation",
+          "same digest denied across project",
+          "explicit GET outcome SHA editing invalidates old result",
+          "editing clears old record with zero provider calls",
+          "actual owner reply held late GET after SHA edit",
+          "held original owner completed late GET after SHA edit",
+          "late digest reply cannot replace edited choice",
+          "actual owner reply held late GET after newer explicit failure",
+          "explicit GET outcome late GET after newer explicit failure",
+          "held original owner completed late GET after newer explicit failure",
+          "older success cannot replace newer explicit error",
+          "actual owner reply held GET close and reopen",
+          "held original owner completed GET close and reopen",
+          "closed lookup cannot fill replacement dialog",
+          "actual owner reply held GET project switch",
+          "held original owner completed GET project switch",
+          "old lookup cannot replace other project or reopen dialog",
+          "actual owner reply held GET leave view",
+          "held original owner completed GET leave view",
+          "late lookup cannot replace another view",
+          "actual owner reply held POST replaced by independent lookup",
+          "held original owner completed POST replaced by independent lookup",
+          "late save cannot replace newer lookup content",
+          "stale project revision refused before provider reads",
+          "explicit GET outcome offline with unavailable original task and changed binding",
+          "saved original full record read with task unavailable, token removed, tracker rebound, provider offline",
+          "no lifecycle browser page errors"
+        ],
+        "held": [
+          {
+            "step": "late GET after SHA edit",
+            "path": "/api/projects/demo/candidate-review-links/8465b2798c7f5a05db7202b8466f721fc2dcc9db33bf3a6ef296dbab5efadfef"
+          },
+          {
+            "step": "late GET after newer explicit failure",
+            "path": "/api/projects/demo/candidate-review-links/8465b2798c7f5a05db7202b8466f721fc2dcc9db33bf3a6ef296dbab5efadfef"
+          },
+          {
+            "step": "GET close and reopen",
+            "path": "/api/projects/demo/candidate-review-links/8465b2798c7f5a05db7202b8466f721fc2dcc9db33bf3a6ef296dbab5efadfef"
+          },
+          {
+            "step": "GET project switch",
+            "path": "/api/projects/demo/candidate-review-links/8465b2798c7f5a05db7202b8466f721fc2dcc9db33bf3a6ef296dbab5efadfef"
+          },
+          {
+            "step": "GET leave view",
+            "path": "/api/projects/demo/candidate-review-links/8465b2798c7f5a05db7202b8466f721fc2dcc9db33bf3a6ef296dbab5efadfef"
+          },
+          {
+            "step": "POST replaced by independent lookup",
+            "path": "/api/projects/demo/candidate-review-links"
+          }
+        ],
+        "errors": [],
+        "scope": "Installed original HTTP responses held after real processing. Explicit revision/rebind/task-file/offline controls logged; no new model/SDK/provider business writes.",
+        "samples": [
+          {
+            "step": "project isolation continuation",
+            "status": 400,
+            "error": "Unknown saved review context in this project"
+          },
+          {
+            "step": "SHA editing invalidates old result",
+            "status": 200,
+            "request": null,
+            "record_sha256": "8465b2798c7f5a05db7202b8466f721fc2dcc9db33bf3a6ef296dbab5efadfef",
+            "scope_sha256": "e77592d2c21a5f9443160d3f602edf4b6571e71d76cd6e0eeb2bcb69844f4875",
+            "provider": "github",
+            "candidate_sha": "9dc21fea0c4d54695e6cfeee3459cb4d6da42a1b",
+            "task_base_sha": "b3e6cb60469970628d0e25ebb71ccc7ffaa0148f",
+            "remote_base_sha": "9999999999999999999999999999999999999999",
+            "review_response_base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "diff_refs": null,
+            "full_title_bytes": 60,
+            "full_title_sha256": "ebf3e24da4dc94e1ba6260dccaba38cd17832b745d9b44b027f6f1bc5d26a4e3",
+            "full_body_bytes": 22894,
+            "full_body_sha256": "c5b060cd5036a75f516c532833810e332aace2e77bae2e0d3f90325700e3ca2b",
+            "already_saved": null,
+            "fresh_observations": null,
+            "context_only": true,
+            "execution_authorized": false,
+            "proves_original_attempt": false
+          },
+          {
+            "step": "late GET after SHA edit",
+            "status": 200,
+            "request": null,
+            "record_sha256": "8465b2798c7f5a05db7202b8466f721fc2dcc9db33bf3a6ef296dbab5efadfef",
+            "scope_sha256": "e77592d2c21a5f9443160d3f602edf4b6571e71d76cd6e0eeb2bcb69844f4875",
+            "provider": "github",
+            "candidate_sha": "9dc21fea0c4d54695e6cfeee3459cb4d6da42a1b",
+            "task_base_sha": "b3e6cb60469970628d0e25ebb71ccc7ffaa0148f",
+            "remote_base_sha": "9999999999999999999999999999999999999999",
+            "review_response_base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "diff_refs": null,
+            "full_title_bytes": 60,
+            "full_title_sha256": "ebf3e24da4dc94e1ba6260dccaba38cd17832b745d9b44b027f6f1bc5d26a4e3",
+            "full_body_bytes": 22894,
+            "full_body_sha256": "c5b060cd5036a75f516c532833810e332aace2e77bae2e0d3f90325700e3ca2b",
+            "already_saved": null,
+            "fresh_observations": null,
+            "context_only": true,
+            "execution_authorized": false,
+            "proves_original_attempt": false
+          },
+          {
+            "step": "late GET after newer explicit failure",
+            "status": 400,
+            "error": "Unknown saved review context in this project"
+          },
+          {
+            "step": "late GET after newer explicit failure",
+            "status": 200,
+            "request": null,
+            "record_sha256": "8465b2798c7f5a05db7202b8466f721fc2dcc9db33bf3a6ef296dbab5efadfef",
+            "scope_sha256": "e77592d2c21a5f9443160d3f602edf4b6571e71d76cd6e0eeb2bcb69844f4875",
+            "provider": "github",
+            "candidate_sha": "9dc21fea0c4d54695e6cfeee3459cb4d6da42a1b",
+            "task_base_sha": "b3e6cb60469970628d0e25ebb71ccc7ffaa0148f",
+            "remote_base_sha": "9999999999999999999999999999999999999999",
+            "review_response_base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "diff_refs": null,
+            "full_title_bytes": 60,
+            "full_title_sha256": "ebf3e24da4dc94e1ba6260dccaba38cd17832b745d9b44b027f6f1bc5d26a4e3",
+            "full_body_bytes": 22894,
+            "full_body_sha256": "c5b060cd5036a75f516c532833810e332aace2e77bae2e0d3f90325700e3ca2b",
+            "already_saved": null,
+            "fresh_observations": null,
+            "context_only": true,
+            "execution_authorized": false,
+            "proves_original_attempt": false
+          },
+          {
+            "step": "GET close and reopen",
+            "status": 200,
+            "request": null,
+            "record_sha256": "8465b2798c7f5a05db7202b8466f721fc2dcc9db33bf3a6ef296dbab5efadfef",
+            "scope_sha256": "e77592d2c21a5f9443160d3f602edf4b6571e71d76cd6e0eeb2bcb69844f4875",
+            "provider": "github",
+            "candidate_sha": "9dc21fea0c4d54695e6cfeee3459cb4d6da42a1b",
+            "task_base_sha": "b3e6cb60469970628d0e25ebb71ccc7ffaa0148f",
+            "remote_base_sha": "9999999999999999999999999999999999999999",
+            "review_response_base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "diff_refs": null,
+            "full_title_bytes": 60,
+            "full_title_sha256": "ebf3e24da4dc94e1ba6260dccaba38cd17832b745d9b44b027f6f1bc5d26a4e3",
+            "full_body_bytes": 22894,
+            "full_body_sha256": "c5b060cd5036a75f516c532833810e332aace2e77bae2e0d3f90325700e3ca2b",
+            "already_saved": null,
+            "fresh_observations": null,
+            "context_only": true,
+            "execution_authorized": false,
+            "proves_original_attempt": false
+          },
+          {
+            "step": "GET project switch",
+            "status": 200,
+            "request": null,
+            "record_sha256": "8465b2798c7f5a05db7202b8466f721fc2dcc9db33bf3a6ef296dbab5efadfef",
+            "scope_sha256": "e77592d2c21a5f9443160d3f602edf4b6571e71d76cd6e0eeb2bcb69844f4875",
+            "provider": "github",
+            "candidate_sha": "9dc21fea0c4d54695e6cfeee3459cb4d6da42a1b",
+            "task_base_sha": "b3e6cb60469970628d0e25ebb71ccc7ffaa0148f",
+            "remote_base_sha": "9999999999999999999999999999999999999999",
+            "review_response_base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "diff_refs": null,
+            "full_title_bytes": 60,
+            "full_title_sha256": "ebf3e24da4dc94e1ba6260dccaba38cd17832b745d9b44b027f6f1bc5d26a4e3",
+            "full_body_bytes": 22894,
+            "full_body_sha256": "c5b060cd5036a75f516c532833810e332aace2e77bae2e0d3f90325700e3ca2b",
+            "already_saved": null,
+            "fresh_observations": null,
+            "context_only": true,
+            "execution_authorized": false,
+            "proves_original_attempt": false
+          },
+          {
+            "step": "GET leave view",
+            "status": 200,
+            "request": null,
+            "record_sha256": "8465b2798c7f5a05db7202b8466f721fc2dcc9db33bf3a6ef296dbab5efadfef",
+            "scope_sha256": "e77592d2c21a5f9443160d3f602edf4b6571e71d76cd6e0eeb2bcb69844f4875",
+            "provider": "github",
+            "candidate_sha": "9dc21fea0c4d54695e6cfeee3459cb4d6da42a1b",
+            "task_base_sha": "b3e6cb60469970628d0e25ebb71ccc7ffaa0148f",
+            "remote_base_sha": "9999999999999999999999999999999999999999",
+            "review_response_base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "diff_refs": null,
+            "full_title_bytes": 60,
+            "full_title_sha256": "ebf3e24da4dc94e1ba6260dccaba38cd17832b745d9b44b027f6f1bc5d26a4e3",
+            "full_body_bytes": 22894,
+            "full_body_sha256": "c5b060cd5036a75f516c532833810e332aace2e77bae2e0d3f90325700e3ca2b",
+            "already_saved": null,
+            "fresh_observations": null,
+            "context_only": true,
+            "execution_authorized": false,
+            "proves_original_attempt": false
+          },
+          {
+            "step": "POST replaced by independent lookup",
+            "status": 200,
+            "request": null,
+            "record_sha256": "8465b2798c7f5a05db7202b8466f721fc2dcc9db33bf3a6ef296dbab5efadfef",
+            "scope_sha256": "e77592d2c21a5f9443160d3f602edf4b6571e71d76cd6e0eeb2bcb69844f4875",
+            "provider": "github",
+            "candidate_sha": "9dc21fea0c4d54695e6cfeee3459cb4d6da42a1b",
+            "task_base_sha": "b3e6cb60469970628d0e25ebb71ccc7ffaa0148f",
+            "remote_base_sha": "9999999999999999999999999999999999999999",
+            "review_response_base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "diff_refs": null,
+            "full_title_bytes": 60,
+            "full_title_sha256": "ebf3e24da4dc94e1ba6260dccaba38cd17832b745d9b44b027f6f1bc5d26a4e3",
+            "full_body_bytes": 22894,
+            "full_body_sha256": "c5b060cd5036a75f516c532833810e332aace2e77bae2e0d3f90325700e3ca2b",
+            "already_saved": true,
+            "fresh_observations": false,
+            "context_only": true,
+            "execution_authorized": false,
+            "proves_original_attempt": false
+          },
+          {
+            "step": "stale revision save",
+            "status": 400,
+            "error": "Project revision changed; reload before the issue operation"
+          },
+          {
+            "step": "offline with unavailable original task and changed binding",
+            "status": 200,
+            "request": null,
+            "record_sha256": "8465b2798c7f5a05db7202b8466f721fc2dcc9db33bf3a6ef296dbab5efadfef",
+            "scope_sha256": "e77592d2c21a5f9443160d3f602edf4b6571e71d76cd6e0eeb2bcb69844f4875",
+            "provider": "github",
+            "candidate_sha": "9dc21fea0c4d54695e6cfeee3459cb4d6da42a1b",
+            "task_base_sha": "b3e6cb60469970628d0e25ebb71ccc7ffaa0148f",
+            "remote_base_sha": "9999999999999999999999999999999999999999",
+            "review_response_base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "diff_refs": null,
+            "full_title_bytes": 60,
+            "full_title_sha256": "ebf3e24da4dc94e1ba6260dccaba38cd17832b745d9b44b027f6f1bc5d26a4e3",
+            "full_body_bytes": 22894,
+            "full_body_sha256": "c5b060cd5036a75f516c532833810e332aace2e77bae2e0d3f90325700e3ca2b",
+            "already_saved": null,
+            "fresh_observations": null,
+            "context_only": true,
+            "execution_authorized": false,
+            "proves_original_attempt": false
+          }
+        ]
+      },
+      "scope_correction": "28 assertions completed. One same-form newer-submit scenario waited behind disabled button until the old held reply auto-released at45s (HTTP79 gate_released=false); it does not prove new-error-before-old-success order. Five other holds explicitly released; browser-order-r3 separately verifies real order with a new modal/form."
+    },
+    "browser-final-r2": {
+      "checked_at": "2026-11-12T04:16:50.209592+00:00",
+      "exit_code": 0,
+      "seconds": 1.523507890291512,
+      "result": {
+        "passed": true,
+        "step": "final installed offline record display",
+        "checks": [
+          "original offline record remains visible after task restored",
+          "desktop full page and record tables fit",
+          "mobile full page and record tables fit"
+        ],
+        "views": [
+          {
+            "name": "desktop",
+            "width": 1440,
+            "document": 1440,
+            "tables": [
+              {
+                "client": 534,
+                "scroll": 534
+              },
+              {
+                "client": 534,
+                "scroll": 534
+              }
+            ]
+          },
+          {
+            "name": "mobile",
+            "width": 390,
+            "document": 390,
+            "tables": [
+              {
+                "client": 218,
+                "scroll": 218
+              },
+              {
+                "client": 218,
+                "scroll": 218
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "browser-order-r1": {
+      "checked_at": "2026-11-12T04:21:36.127592+00:00",
+      "exit_code": 1,
+      "seconds": 31.00264912704006,
+      "result": null,
+      "driver_error": "Supplement driver waited for original button label while ui.form had changed it to busy text, causing response wait timeout; no successful order verdict"
+    },
+    "browser-order-r2": {
+      "checked_at": "2026-11-12T04:24:20.030427+00:00",
+      "exit_code": 0,
+      "seconds": 48.82970134122297,
+      "result": {
+        "passed": false,
+        "step": "hold older record",
+        "error": "same form intentionally blocks parallel submits",
+        "checks": [
+          "original real successful GET held"
+        ]
+      }
+    },
+    "browser-order-r3": {
+      "checked_at": "2026-11-12T04:24:44.151171+00:00",
+      "exit_code": 0,
+      "seconds": 4.396325523965061,
+      "result": {
+        "passed": true,
+        "step": "release older success",
+        "checks": [
+          "original real successful GET held",
+          "same form intentionally blocks parallel submits",
+          "newer explicit failure displayed while old success still held",
+          "original old HTTP200 explicitly released",
+          "old success cannot overwrite newer independent error"
+        ],
+        "scope": "Supplemental original HTTP order: separate modal/form needed because current form disables concurrent submission. No product change or repeated earlier journey.",
+        "samples": [
+          {
+            "step": "newer-before-release",
+            "status": 400,
+            "error": "Unknown saved review context in this project"
+          },
+          {
+            "step": "older-after-newer-error",
+            "status": 200,
+            "request": null,
+            "record_sha256": "8465b2798c7f5a05db7202b8466f721fc2dcc9db33bf3a6ef296dbab5efadfef",
+            "scope_sha256": "e77592d2c21a5f9443160d3f602edf4b6571e71d76cd6e0eeb2bcb69844f4875",
+            "provider": "github",
+            "candidate_sha": "9dc21fea0c4d54695e6cfeee3459cb4d6da42a1b",
+            "task_base_sha": "b3e6cb60469970628d0e25ebb71ccc7ffaa0148f",
+            "remote_base_sha": "9999999999999999999999999999999999999999",
+            "review_response_base_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            "diff_refs": null,
+            "full_title_bytes": 60,
+            "full_title_sha256": "ebf3e24da4dc94e1ba6260dccaba38cd17832b745d9b44b027f6f1bc5d26a4e3",
+            "full_body_bytes": 22894,
+            "full_body_sha256": "c5b060cd5036a75f516c532833810e332aace2e77bae2e0d3f90325700e3ca2b",
+            "already_saved": null,
+            "fresh_observations": null,
+            "context_only": true,
+            "execution_authorized": false,
+            "proves_original_attempt": false
+          }
+        ]
+      }
+    }
+  },
+  "cleanup_and_originals": {
+    "at": "2026-11-12T04:25:27.379524+00:00",
+    "http_requests": 151,
+    "all_original_http_request_response_bytes_verified": true,
+    "logged_provider_gets": 9,
+    "provider_total_read_count_unknown": true,
+    "provider_log_gap": "r1/browser private timestamp-variable logging failure. Empty list does not mean no provider reads; original successful save and later trace retained.",
+    "provider_mutations": 0,
+    "services": [
+      {
+        "service": "r1/browser",
+        "http_requests": 14,
+        "review_posts": 1,
+        "logged_provider_gets": 0,
+        "provider_log_complete": false,
+        "held_real_responses": 0,
+        "runtime_files_unchanged": {
+          "github": 44,
+          "gitlab": 44
+        },
+        "two_complete_original_snapshots_unchanged": true,
+        "manifests_unchanged": true,
+        "owned_process_exited": true,
+        "owned_threads_stopped": true
+      },
+      {
+        "service": "r1/browser-r2",
+        "http_requests": 0,
+        "review_posts": 0,
+        "logged_provider_gets": 0,
+        "provider_log_complete": true,
+        "held_real_responses": 0,
+        "runtime_files_unchanged": {
+          "github": 44,
+          "gitlab": 44
+        },
+        "two_complete_original_snapshots_unchanged": true,
+        "manifests_unchanged": true,
+        "owned_process_exited": true,
+        "owned_threads_stopped": true
+      },
+      {
+        "service": "r2/browser",
+        "http_requests": 117,
+        "review_posts": 8,
+        "logged_provider_gets": 9,
+        "provider_log_complete": true,
+        "held_real_responses": 6,
+        "runtime_files_unchanged": {
+          "github": 44,
+          "gitlab": 44
+        },
+        "two_complete_original_snapshots_unchanged": true,
+        "manifests_unchanged": true,
+        "owned_process_exited": true,
+        "owned_threads_stopped": true
+      },
+      {
+        "service": "r3/browser",
+        "http_requests": 20,
+        "review_posts": 0,
+        "logged_provider_gets": 0,
+        "provider_log_complete": true,
+        "held_real_responses": 3,
+        "runtime_files_unchanged": {
+          "github": 44,
+          "gitlab": 44
+        },
+        "two_complete_original_snapshots_unchanged": true,
+        "manifests_unchanged": true,
+        "owned_process_exited": true,
+        "owned_threads_stopped": true
+      }
+    ],
+    "original_candidates": [
+      {
+        "provider": "github",
+        "source_sha256": "d34ebd30ad38c6cc05d1cc1809a03dc0b8d480f5cdde893d65cb3995c9042aae",
+        "complete_source_first_time_and_payload_unchanged": true,
+        "original_creation_intent_sha256": "aebec0b7f376a5ae1dc00d73090b57c19fd6f23e623fb8ab48d6d86a1f57cb08",
+        "seven_original_files_match": true,
+        "original_export_intent_sha256": "8dfbdda476e73009e6c239476725997acb76282d77062e96b9779fbf2efd3eea",
+        "original_export_and_git_candidate_unchanged": true,
+        "record_sha256": "8465b2798c7f5a05db7202b8466f721fc2dcc9db33bf3a6ef296dbab5efadfef",
+        "one_original_saved_record": true,
+        "zero_new_model_task_link_writeback_rows": {
+          "agent_runs": 0,
+          "issue_task_links": 0,
+          "candidate_review_links": 1,
+          "issue_writebacks": 0
+        }
+      },
+      {
+        "provider": "gitlab",
+        "source_sha256": "fb1d4416bddea85c4e6d85a119c55073e67c1fa66757ff6f963f243aa5bae42b",
+        "complete_source_first_time_and_payload_unchanged": true,
+        "original_creation_intent_sha256": "a69da7ac7a6499d074f9fb9c453c2430f9598aeb50f4b6d8501b66a21d82de3d",
+        "seven_original_files_match": true,
+        "original_export_intent_sha256": "dac4ca54c795a7ead8ae48dbabeb8786830a89815162ba7d9304052b9683f656",
+        "original_export_and_git_candidate_unchanged": true,
+        "record_sha256": "8824040d5d8afcac63784f23a70edc0715a764084740f6f43f25cb770abc6b83",
+        "one_original_saved_record": true,
+        "zero_new_model_task_link_writeback_rows": {
+          "agent_runs": 0,
+          "issue_task_links": 0,
+          "candidate_review_links": 1,
+          "issue_writebacks": 0
+        }
+      }
+    ],
+    "named_browser_close_exits": [
+      0,
+      0,
+      0
+    ],
+    "model_scope_audits": [
+      {
+        "attempt": "self-review-r1",
+        "decision": "request-changes",
+        "all_scope_plaintext": true
+      },
+      {
+        "attempt": "self-review-r2",
+        "decision": "approve",
+        "all_scope_plaintext": true
+      }
+    ],
+    "scope": "All captured original HTTP bytes, source/contracts/export/runtime/manifests and saved immutable records verified. Explicit fixture revision/rebind/unavailable-task/offline controls logged. First provider log incomplete; later reads counted separately. Only owned services/threads/ports/browser; no new real SaaS/native Windows/model six-stage execution claim.",
+    "owned_port_count": 10,
+    "owned_ports_closed": true
+  },
+  "preserved_failures": [
+    "Initial private provider logging variable shadowed timestamp, so first segment provider read count unknown; first original save200 persisted, browser route.fetch30000ms timeout kept. No claim of zero reads from empty trace.",
+    "One browser-open used invalid placeholder URL, then corrected to actual service URL. No product request from that failed navigation.",
+    "Main-r2 wrong project response predicate timed out after39 prior checks; original other GET400 retained, only unfinished check continued.",
+    "Lifecycle same-form concurrency test auto-released old reply at45s before newer submit; first two supplement drivers selected the old button label after busy text change and failed. Corrected stable button selector/separate-modal real order supplement retained. Product guard not relaxed."
+  ],
+  "scope": "Installed original HTTP owners/native task/export data, loopback providers and explicit lifecycle controls. Actual captured bytes and immutable records preserved. No new SaaS/native Windows/model six-stage execution or OS isolation claim. Exact delivery pending."
+}

@@ -323,9 +323,13 @@ ergora issue review-link-show PROJECT SAVED_SHA256
 
 原task base、当前远端base tip和PR响应`base.sha`分别保留；当前base已前进允许保存，`base_matches_task_base=false`不会改写原基线。GitLab的`diff_refs`可能null或空，代表版本资料未就绪；非空`base_sha`是merge-base，`start_sha`是该版diff的目标commit，均不是当前target tip。`diff_version_head_matches_candidate`单独投影true／false／null，不覆盖MR的`sha`。state／draft按实际值保存，关闭或合并资源仍须符合上述当前refs条件。
 
-一个原候选槽只能保存一个review。同目标／base再次调用返回原`record`、`already_saved=true`、`fresh_observations=false`，忽略新的reason，不重新读取平台；换number或base明确冲突，不能覆盖。`review-link-show`只需控制面保存记录，离线不要求token、原任务文件、Git或平台仍可见。该记录纳入schema v4备份，load与backup核同一身份合同；外部执行目录仍须单独备份。
+一个原候选槽只能保存一个review。同目标／base再次调用返回原`record`、`already_saved=true`、`fresh_observations=false`，忽略新的reason；入口已查到原记录时不重新读取平台。两个首次请求并发时，后保存者可能已读取平台，最终仍返回先保存的原记录；`fresh_observations=false`只描述返回资料，不能证明本次没有发生读取。换number或base明确冲突，不能覆盖。`review-link-show`只需控制面保存记录，离线不要求token、原任务文件、Git或平台仍可见。该记录纳入schema v4备份，load与backup核同一身份合同；外部执行目录仍须单独备份。
 
 HTTP保存入口为`POST /api/projects/PROJECT/candidate-review-links`，正文`revision/task_id/run_id/candidate_sha/base_branch/review_number/reason`，同源及`X-Ergora-Request: 1`保护；离线读取为`GET /api/projects/PROJECT/candidate-review-links/SAVED_SHA256`。首次正常关联向provider发五次有界GET，不持SQLite写锁；每次完整响应上限1MiB、20秒socket I/O、无redirect／retry，完整canonical关联另限1MiB，超限拒绝不截断。总墙钟不承诺20秒。各读不组成共同snapshot／CAS，也不能发现ABA；provider GET可能计算内部派生对象。本地保存不请求平台业务修改，不推送或创建／编辑／合并PR／MR。来源页可读取与保存完整工单；候选动作页面按[F7计划](plans/2026-11-11-project-trackers.md)继续。
+
+控制台从原v7已导出任务的“检查原导出记录与恢复”进入“关联已有PR／MR”，明确填写base、PR number／MR iid和原因后“确认保存已有PR／MR关联”。首次发送固定字段；回复失败时保留原请求，点击“恢复原关联请求”。这不是只读status：原记录存在时返回它，尚无记录时可能重新读取平台并首次保存本地记录。不会自动重试；要修改首次选择，关闭后重新填写，原候选槽已有不同目标时仍由后端拒绝覆盖。
+
+保存后请保留记录SHA。正式任务页顶部“按SHA读取PR／MR关联”可直接离线读取，即使原任务目录不可读、项目尚未登记或当前tracker已改绑；它只读本项目记录。也可在关联窗口下方按SHA读回。正文和完整JSON按安全文本展示，各种base／diff事实单独保留；SHA修改、关闭重开或切项目／视图使旧回复失效。原记录与当时的already_saved／fresh_observations不代表当前远端状态。
 
 ### 诊断与修复
 

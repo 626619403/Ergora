@@ -5,6 +5,7 @@ import {
 import { app, stages } from "./state.js";
 import { taskComposition } from "./task-composition.js";
 import { candidateObservation } from "./candidate-observation.js";
+import { candidateReview } from "./candidate-review.js";
 
 const stageForPhase = {
   INVENTORY: "inventory", PLANNING: "plan", IMPLEMENTING: "work",
@@ -18,7 +19,9 @@ const facts = (items) =>
   ]));
 
 export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
-  const title = heading("正式任务", "查看冻结合同、原运行和候选结果。工作流设计中的草稿另行保存。");
+  const actions = row(button("按 SHA 读取 PR／MR 关联", () =>
+    candidateReview({ base, isCurrent: () => title.isConnected })));
+  const title = heading("正式任务", "查看冻结合同、原运行和候选结果。工作流设计中的草稿另行保存。", actions);
   if (data.project.registration?.status !== "published")
     return [title, panel("先完成项目登记", "正式任务需要统一注册的执行目录、模板和可信检查。按仓库docs/PROJECTS.md准备项目定义，通过CLI发布或恢复登记后刷新页面。",
       pre(`ergora project register project.json --revision ${data.project.revision}\nergora project registration ${data.project.id}`))];
@@ -43,10 +46,10 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
       row(previous, next, button("重新读取列表", () => { pageIndex = 0; loadPage(); }))),
     detail,
   );
-  title.append(row(
+  actions.prepend(
     button(sourceSnapshot ? "从所选快照预览与创建" : "预览与创建", () => creationDialog(sourceSnapshot), "primary"),
     button("按 ID 读取创建记录", () => creationLookup()),
-  ));
+  );
 
   function selectPublished(record) {
     if (record.status !== "published") return;
@@ -1146,6 +1149,11 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
             ? button("观察当前候选分支", () => {
               if (!current(reading)) return;
               candidateObservation({ base, taskId, record, isCurrent: contextActive });
+            }) : null,
+          record.status === "exported" && task.admission_envelope?.schema_version === 7
+            ? button("关联已有 PR／MR", () => {
+              if (!current(reading)) return;
+              candidateReview({ base, taskId, record, isCurrent: contextActive });
             }) : null,
           candidate && record.status !== "not_recorded"
             ? node("p", {}, "此任务已有原目标；恢复只沿原意图，不用本次选择覆盖它。") : null,
