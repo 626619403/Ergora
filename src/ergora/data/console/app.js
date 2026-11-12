@@ -118,7 +118,7 @@ function helpDialog() {
     ),
   ]);
 }
-function render() {
+function render({ sourceSnapshot = "" } = {}) {
   disposeGraph();
   disposeDefinitionGraph();
   sessionStorage.setItem("ergora-tab", app.tab);
@@ -170,7 +170,10 @@ function render() {
     issues: issuesView,
     workflow: workflowView,
   };
-  $("#main").replaceChildren(...views[app.tab](data, base, { refresh, render }));
+  $("#main").replaceChildren(...views[app.tab](data, base, {
+    refresh, render, sourceSnapshot,
+    openSourceTask: (digest) => { app.tab = "tasks"; render({ sourceSnapshot: digest }); },
+  }));
   if (app.tab === "workflow") drawGraph(id, render);
 }
 

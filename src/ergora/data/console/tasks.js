@@ -16,7 +16,7 @@ const facts = (items) =>
     node("dt", {}, name), node("dd", {}, value ?? "未返回"),
   ]));
 
-export function tasksView(data, base) {
+export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
   const title = heading("正式任务", "查看冻结合同、原运行和候选结果。工作流设计中的草稿另行保存。");
   if (data.project.registration?.status !== "published")
     return [title, panel("先完成项目登记", "正式任务需要统一注册的执行目录、模板和可信检查。按仓库docs/PROJECTS.md准备项目定义，通过CLI发布或恢复登记后刷新页面。",
@@ -43,7 +43,7 @@ export function tasksView(data, base) {
     detail,
   );
   title.append(row(
-    button("预览与创建", () => creationDialog(), "primary"),
+    button(sourceSnapshot ? "从所选快照预览与创建" : "预览与创建", () => creationDialog(sourceSnapshot), "primary"),
     button("按 ID 读取创建记录", () => creationLookup()),
   ));
 
@@ -131,7 +131,7 @@ export function tasksView(data, base) {
     modal("按原 ID 读取与恢复创建", content);
   }
 
-  function creationDialog() {
+  function creationDialog(initialSource = "") {
     const kinds = data.project.registration.definition.templates.filter((kind) =>
       ["repository-governance", "large-change"].includes(kind));
     if (!kinds.length) {
@@ -148,6 +148,15 @@ export function tasksView(data, base) {
       required: true, className: "workflow-json", spellcheck: "false",
     });
     const input = inputField.querySelector("textarea");
+    const issueField = field("工单编号 / IID（正整数）", "issue_id", "", "text", { required: true, maxlength: 160 });
+    const issueId = issueField.querySelector("input");
+    const sourceField = field("来源快照 SHA256（可选）", "source_snapshot_sha256", initialSource, "text", {
+      maxlength: 64, autocomplete: "off", spellcheck: "false",
+    });
+    const sourceSha = sourceField.querySelector("input");
+    const sourceResult = node("div", { "aria-live": "polite" });
+    let savedSource = null;
+    let sourceSequence = 0;
     const result = node("div", { "aria-live": "polite" });
     let sequence = 0;
     let creationLocked = false;
@@ -159,7 +168,15 @@ export function tasksView(data, base) {
       node("label", {}, "已登记开发模板", kind),
       row(button("载入所选模板", loadTemplate), node("label", {}, "从草稿载入输入", draft)),
       field("新任务 ID", "task_id", "", "text", { required: true, maxlength: 80, autocomplete: "off" }),
-      field("工单编号 / IID（正整数）", "issue_id", "", "text", { required: true, maxlength: 160 }),
+      sourceField,
+      row(button("读取来源快照", loadSource), button("清除来源选择", () => {
+        sourceSha.value = "";
+        resetSource();
+        invalidate();
+      })),
+      node("p", { className: "form-note" }, "来源仅提供上下文；读取后固定工单编号。须选择完整执行与审查组合；预览与创建不会启动任务或回写工单。"),
+      sourceResult,
+      issueField,
       field("起始提交 SHA（可选，留空使用登记基线）", "starting_sha", "", "text", { maxlength: 40 }),
       inputField,
       compositionEditor.element,
@@ -176,6 +193,11 @@ export function tasksView(data, base) {
         };
         const composition = compositionEditor.read();
         if (composition) Object.assign(definition, { schema_version: 2, composition });
+        if (sourceSha.value.trim()) {
+          if (savedSource?.sha256 !== sourceSha.value.trim()) throw new Error("请先读取当前 SHA256 对应的来源快照。");
+          if (!composition?.execution) throw new Error("来源任务须选择完整 manifest 的组合执行与审查，并分配工作单元。");
+          Object.assign(definition, { schema_version: 3, source: { snapshot_sha256: savedSource.sha256 } });
+        }
         if (values.get("starting_sha")) definition.starting_sha = values.get("starting_sha");
         snapshot = await api(`${base}/tasks/preview`, { definition, revision: data.project.revision });
       } catch (error) {
@@ -189,6 +211,7 @@ export function tasksView(data, base) {
         facts([
           ["项目修订", snapshot.project_revision], ["任务 ID", snapshot.definition.task_id],
           ["模板", snapshot.definition.task_type], ["工单", snapshot.definition.issue_id],
+          ["来源快照 SHA256", snapshot.definition.source?.snapshot_sha256 ?? "未选择"],
           ["基线提交", snapshot.files["compiled.json"].spec.request.repository.base_sha],
           ["预览 SHA256", snapshot.preview_sha256],
         ]),
@@ -236,6 +259,42 @@ export function tasksView(data, base) {
       sequence++;
       result.replaceChildren(empty("输入已更改，请重新预览后确认。"));
     }
+    function resetSource() {
+      sourceSequence++;
+      savedSource = null;
+      issueId.readOnly = false;
+      sourceResult.replaceChildren(empty(sourceSha.value.trim() ? "摘要已更改，请重新读取来源快照。" : "未选择来源快照。"));
+    }
+    async function loadSource() {
+      if (!active() || creationLocked) return;
+      resetSource();
+      invalidate();
+      const reading = sourceSequence;
+      const digest = sourceSha.value.trim();
+      if (!digest) return;
+      sourceResult.replaceChildren(empty("正在读取本地来源快照…"));
+      try {
+        const saved = await api(`${base}/issue-snapshots/${encodeURIComponent(digest)}`);
+        if (!active() || creationLocked || reading !== sourceSequence) return;
+        savedSource = saved;
+        const observed = saved.payload.observation;
+        issueId.value = observed.source.issue_id;
+        issueId.readOnly = true;
+        invalidate();
+        sourceResult.replaceChildren(panel("已选来源上下文", "当前绑定与登记命名空间仍由服务端在预览时重新核对。",
+          facts([
+            ["快照 SHA256", saved.sha256], ["首次保存时间", saved.first_observed_at],
+            ["来源", `${observed.source.provider} · ${observed.source.project} · ${observed.source.issue_id}`],
+            ["来源项目修订", observed.project.revision],
+          ]), node("h3", {}, observed.issue.title), pre(observed.issue.body),
+          disclosure("完整来源快照", saved),
+        ));
+      } catch (error) {
+        if (active() && !creationLocked && reading === sourceSequence)
+          sourceResult.replaceChildren(panel("来源快照读取失败", error.message));
+      }
+    }
+    sourceSha.addEventListener("input", resetSource);
     async function loadTemplate() {
       if (!active() || creationLocked) return;
       invalidate();

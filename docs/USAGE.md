@@ -145,7 +145,7 @@ ergora issue show PROJECT 7
 
 `issue show`参数是GitHub仓库内number或GitLab项目内iid，响应另存全局native ID。返回完整标题／正文／标签、原生状态与更新时间、ETag（若有）、原始响应SHA256、API地址／namespace、项目修订／配置摘要和本次观察时间。正文保留为文本，标记`context_only:true`；`show`不保存，需要持久化时使用下面的`capture`。不扫描远端列表、不读取评论、不派工或回写。ETag／更新时间／摘要仅为观察线索，不提供写入CAS，也不构成任务批准。
 
-HTTP入口为`GET /api/projects/PROJECT/issues/7`，与CLI共用同一用例。原工具绑定页面按schema显示tracker配置；工单专页与observe列表在后续节点交付。已正式注册的项目只允许读取其登记的kind／namespace；改变来源绑定会产生新项目修订，不修改旧任务或参考注册。正式注册尚未包含API host，后续跨host派工必须另行核准身份，不能直接复用旧claim。
+HTTP入口为`GET /api/projects/PROJECT/issues/7`，与CLI共用同一用例。原工具绑定页面按schema显示tracker配置；工单专页见[页面读取说明](#在页面读取与保存工单)，observe列表按计划继续。已正式注册的项目只允许读取其登记的kind／namespace；改变来源绑定会产生新项目修订，不修改旧任务或参考注册。正式注册尚未包含API host，后续跨host派工必须另行核准身份，不能直接复用旧claim。
 
 只接受普通GitHub issue／GitLab project issue；GitHub PR、GitLab非issue类型或不兼容响应明确拒绝。每次一个GET、20秒socket I/O超时、1MiB完整响应上限，无自动重试；这不是整个调用的20秒wall-time保证。认证／不可用／重定向／超限／截断等失败不会伪装成空工单。详细接口取舍和未验自托管范围见[工单接入调研](research/2026-11-11-project-trackers.md)。
 
@@ -191,9 +191,13 @@ HTTP与CLI共用相同用例；POST沿用本地Origin及`X-Ergora-Request: 1`保
 
 点击“重新读取并保存快照”会再次读取平台，并按当前页面持有的项目修订保存；平台内容可能已更新，应核对返回的完整快照。保存不会创建或启动任务，也不发送评论、标签或 PR／MR。项目修订变化时先点顶部“刷新”再操作。保存结果未确认时先“重新读取列表”核对，避免把响应失败当作未保存。
 
-历史每页最多20条，“上一页／下一页”沿原游标浏览，“查看快照”完整离线读回。列表按内容摘要排序，新增内容可能出现在之前的页，可重新读取首页。历史快照保留当时来源；项目改用其他来源或manual后仍可阅读，不代表平台当前内容或当前工具绑定。manual禁用外部工单读取。正文不执行HTML／Markdown，不能通过工单文本扩张Agent权限。来源任务和候选动作继续使用下文CLI；此页只负责来源阅读。
+历史每页最多20条，“上一页／下一页”沿原游标浏览，“查看快照”完整离线读回。列表按内容摘要排序，新增内容可能出现在之前的页，可重新读取首页。历史快照保留当时来源；项目改用其他来源或manual后仍可阅读，不代表平台当前内容或当前工具绑定。manual禁用外部工单读取。正文不执行HTML／Markdown，不能通过工单文本扩张Agent权限。点击已保存快照的“以此快照准备正式任务”可转到原正式任务表单，页面只临时承接本项目摘要；刷新后可从快照重新进入或自行粘贴SHA。来源页本身只负责阅读，候选动作继续使用下文CLI。
 
 ### 从工单快照创建来源任务
+
+页面入口：在“工单来源”查看已保存快照，点击“以此快照准备正式任务”，再点击“从所选快照预览与创建”。也可在“正式任务”的“预览与创建”手动填入可选来源SHA。点击“读取来源快照”，完整离线核读正文和来源，工单编号随之固定。修改摘要后必须重新读取；“清除来源选择”恢复无来源入口。来源读取失败不会自动转为无来源任务。
+
+选择已登记开发模板并编辑完整输入，在“本任务Agent来源”选择“完整manifest · 组合执行与审查”，沿[正式组合选择](WORKFLOW_DEFINITIONS.md#在正式任务页面选择组合)核包、分配工作单元、选择每叶后端和执行信任。预览显示来源SHA和完整冻结文件；审阅后明确创建。服务端重新核当前绑定、登记来源及项目修订，历史快照可读不代表当前可创建。预览和创建不连接工单平台、不启动Agent、不回写工单；需另行提交运行。未知创建沿原ID读取／恢复，不重新capture或改ID重发。
 
 为新任务固定工单正文时，使用`task-definition-v3`；它支持治理和大变更模板，要求显式`work-units-v2`的执行／审查组合。先按[专长执行者配置](WORKFLOW_DEFINITIONS.md#专长执行者与原工作单元)准备完整的`task-definition.json`，其中已有真实manifest、摘要、工作分配和逐实例后端。再保存快照，将以下命令中的项目、编号和修订替换为当前值：
 
@@ -317,7 +321,7 @@ ergora issue review-link-show PROJECT SAVED_SHA256
 
 一个原候选槽只能保存一个review。同目标／base再次调用返回原`record`、`already_saved=true`、`fresh_observations=false`，忽略新的reason，不重新读取平台；换number或base明确冲突，不能覆盖。`review-link-show`只需控制面保存记录，离线不要求token、原任务文件、Git或平台仍可见。该记录纳入schema v4备份，load与backup核同一身份合同；外部执行目录仍须单独备份。
 
-HTTP保存入口为`POST /api/projects/PROJECT/candidate-review-links`，正文`revision/task_id/run_id/candidate_sha/base_branch/review_number/reason`，同源及`X-Ergora-Request: 1`保护；离线读取为`GET /api/projects/PROJECT/candidate-review-links/SAVED_SHA256`。首次正常关联向provider发五次有界GET，不持SQLite写锁；每次完整响应上限1MiB、20秒socket I/O、无redirect／retry，完整canonical关联另限1MiB，超限拒绝不截断。总墙钟不承诺20秒。各读不组成共同snapshot／CAS，也不能发现ABA；provider GET可能计算内部派生对象。本地保存不请求平台业务修改，不推送或创建／编辑／合并PR／MR。工单专页按[F7计划](plans/2026-11-11-project-trackers.md)继续。
+HTTP保存入口为`POST /api/projects/PROJECT/candidate-review-links`，正文`revision/task_id/run_id/candidate_sha/base_branch/review_number/reason`，同源及`X-Ergora-Request: 1`保护；离线读取为`GET /api/projects/PROJECT/candidate-review-links/SAVED_SHA256`。首次正常关联向provider发五次有界GET，不持SQLite写锁；每次完整响应上限1MiB、20秒socket I/O、无redirect／retry，完整canonical关联另限1MiB，超限拒绝不截断。总墙钟不承诺20秒。各读不组成共同snapshot／CAS，也不能发现ABA；provider GET可能计算内部派生对象。本地保存不请求平台业务修改，不推送或创建／编辑／合并PR／MR。来源页可读取与保存完整工单；候选动作页面按[F7计划](plans/2026-11-11-project-trackers.md)继续。
 
 ### 诊断与修复
 

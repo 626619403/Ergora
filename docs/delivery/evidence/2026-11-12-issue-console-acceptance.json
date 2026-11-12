@@ -2,7 +2,7 @@
   "schema_version": 1,
   "at": "2026-11-12T02:27:57.382448+00:00",
   "baseline": "572c44e3f9621cd85d18447f14b436725df2eb64",
-  "state": "local-exit-passed-exact-delivery-pending",
+  "state": "exact-delivery-complete",
   "packages": {
     "r2": {
       "at": "2026-11-11T18:18:06.613988+00:00",
@@ -341,5 +341,38 @@
       "ST1/P3"
     ],
     "scope": "Fresh-context independent two-axis review; full final candidate and actual raw evidence checked. Exact commit, Ref and own CI pending."
+  },
+  "delivery": {
+    "commit": "d60a9d82be80a52d3e6ca0257772af3b3a26a084",
+    "files": 19,
+    "git_objects_and_modes_equal_ready": true,
+    "ready_sha256": "65ea988b8c07ca1ae0260f358e1115fa18e23c25a7e68a0ff8d7f06f037db3b8",
+    "commit_exit": 0,
+    "ordinary_push_exit": 0,
+    "author_ssh_exact_ref": true,
+    "independent_offline_commit_push_ref_checked": true,
+    "independent_direct_ref_http": 403,
+    "ci_run_id": 43142680273,
+    "ci_pending": false,
+    "preserved_samples": [
+      "two anonymous official API HTTP403",
+      "first three run HTML In progress",
+      "navigation_partial404",
+      "graph matrix404",
+      "independent direct Ref403"
+    ],
+    "ci_terminal": {
+      "run_status": "Success",
+      "format": "official-html",
+      "required_steps_passed": true,
+      "windows_job_id": 130933140723,
+      "linux_job_id": 130933141021,
+      "windows_required_steps": 4,
+      "linux_required_steps": 3,
+      "independent_terminal_audit_pending": false,
+      "independent_terminal_audit_passed": true,
+      "original_http_bodies_checked": 11,
+      "ci_projection_sha256": "f23a8e0839eb31500a9d30689985ddde44ace73c001e37d693ebbd84534f7ec5"
+    }
   }
 }

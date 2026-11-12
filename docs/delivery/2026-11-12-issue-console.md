@@ -1,6 +1,6 @@
 # F7d-D1 交付记录
 
-基线`572c44e3f9621cd85d18447f14b436725df2eb64`；[本片计划](../plans/2026-11-12-issue-console.md)。D0／D1实现与安装、浏览器、模型验收完成；独立最终结案与本地出口通过，精确交付继续。C3b自己的CI43068731988已取得成功终态及双OS七必要步骤，原评审者已核对原件通过；未将前片验收借给本片。
+基线`572c44e3f9621cd85d18447f14b436725df2eb64`；[本片计划](../plans/2026-11-12-issue-console.md)。D0–D4完成，d60a9d8精确交付终结。C3b自己的CI43068731988已取得成功终态及双OS七必要步骤，原评审者已核对原件通过；未将前片验收借给本片。
 
 ## D0 所有者核对
 
@@ -37,3 +37,9 @@ r3修正包448／两RECORD／283通过；主旅程38项／4.57秒，生命周期
 内置`ergora-structure-review`模板实际run `b0bf5ffbb79143069663015f1f68b3c6`，Codex／gpt-6.1-sol／high，**approve／706.84秒**。保留原祖先提示和Skill，只追加完整证据资源及局部版本／材料限额；九份完整源码／调用者／规格／交付共87,459附件字节。离线核manifest→prepared→actual input→prompt／stdin→五scope连续UTF8到null及原判词全部相符，失败工具调用0，四个所属采样进程无存活。[原结果投影](evidence/2026-11-12-issue-console-self-review.json)保留精确身份与后端自报用量，缓存是输入子集，不重复累计或推算费用。
 
 自身模型审查覆盖r3冻结源码，未借其approve覆盖最终单列markup／CSS、后补文档、浏览器或交付；这些由同片独立完整复核。用户已授权Codex回退，未宣称成功不同后端独立性。README、日常使用和架构同步当前入口／只读范围，模块图加入issues.js，第一方ES module计数更新为19。新fresh-context独立两轴首审及SP1修复复核见[共享报告](2026-11-12-issue-console-review.md)。最终公开候选19文件（含前片C3b四份CI结案记账）静态通过：206个本地Markdown目标、JSON／whitespace、6个已加载秘密值和个人home路径检查issue0；不据此声称外部URL／anchor或产品运行验收。原独立审查者已独立核最终r4包、两个原截图／公开投影、SP1动态、95次r3／r4 HTTP和原快照／清理；完整19文件最终独立两轴开放0／0、SP1／ST1均关闭，本地出口通过。提交前再核最终记账字节的静态范围，不以旧hash当冻结身份；尚未提交／推送或获得本提交CI。
+
+## D4 提交与远端
+
+`d60a9d82be80a52d3e6ca0257772af3b3a26a084`普通提交／推送退出0；19文件ready摘要 `65ea988b8c07ca1ae0260f358e1115fa18e23c25a7e68a0ff8d7f06f037db3b8`与精确Git对象／mode相同，作者一次SSH Ref同完整SHA。原独立评审已核提交／push／Ref原件与最终静态／包身份通过；独立官方Ref读取限流403保留，不称独立直接网络成功。自己的CI43142680273首API403，后两官方run HTML仍In progress；本提交CI终态继续，不借C3b的CI替代。
+
+自己的[CI43142680273](https://github.com/626619403/Ergora/actions/runs/43142680273)第四官方run HTML已Success，Windows130933140723四项／Linux130933141021三项必要步骤均success／completed，步骤日志路径指向完整d60a9d8。双OS原HTML与run回执保留；两匿名REST403、前三In progress及两个lazy片段404原件保持。未获取成功REST或完整job日志；原同片评审已离线核11份原HTTP body／receipt、精确run／job及七必要步骤通过，D1精确交付终结。

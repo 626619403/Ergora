@@ -2,7 +2,7 @@ import { api } from "./api.js";
 import { node, button, pre, heading, panel, empty, row, field, form, table } from "./ui.js";
 import { app } from "./state.js";
 
-export function issuesView(data, base) {
+export function issuesView(data, base, { openSourceTask }) {
   const project = data.project;
   const binding = data.configuration.layers.tracker.binding;
   const title = heading("工单来源", "读取指定工单，保存完整上下文，或离线查看历史。保存快照不会启动任务。");
@@ -77,6 +77,7 @@ export function issuesView(data, base) {
         ["快照 SHA256", saved.sha256], ["首次保存时间", saved.first_observed_at],
       ]),
       node("p", { className: "form-note" }, "这是保存时的来源，不代表当前平台内容或当前工具绑定。"),
+      row(button("以此快照准备正式任务", () => { if (active()) openSourceTask(saved.sha256); })),
     ));
   }
 

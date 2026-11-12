@@ -4,7 +4,7 @@
 
 ## 当前检查点
 
-- 仓库 `626619403/Ergora`；工作分支 `refactor/architecture-foundations`；当前已提交 `572c44e3f9621cd85d18447f14b436725df2eb64`，作者SSH远端同完整SHA；原普通push60秒超时无终态收据，当前远端已到commit。不自动合入 main 或强推。
+- 仓库 `626619403/Ergora`；工作分支 `refactor/architecture-foundations`；当前已提交 `d60a9d82be80a52d3e6ca0257772af3b3a26a084`，普通push退出0及作者SSH远端同完整SHA。不自动合入 main 或强推。
 - [C6a容量](delivery/2026-11-11-composition-capacity.md)已精确交付f957489：五组静态／页面测量、完整资料和预算拒绝保持，独立Git／Ref及自己的CI42960110776第四样本／原评审终核通过；没有将画布容量称作同数量Agent已执行。
 - [C6b/c旅程与后端](delivery/2026-11-11-template-walkthroughs.md)已精确交付c1f31fc：21准备CLI／2读回、两域页面创建、训练只读叶与明确回退、完整祖先读取及指南／三投影完成；新完整16文件独立两轴开放0／0。自己的CI42964143325第四样本双OS七必要步骤success/completed，原评审核四份八原body及作者HTTPS200同完整SHA通过；原独立Ref超时、smart-Git TLS失败与前三In progress保持，不称评审者直接网络成功。C6b页面未跑六阶段，Claude失败及Codex request-changes范围保持。
 - [C6d架构／平台](plans/2026-11-11-architecture-platform.md)：原架构逐字归档，当前职责／五图、格式表／平台／两手册导航完成；最终静态20文件／414链接／6秘密值issue0。实际自身208.25秒approve／17附件与五scope完整读取、原用量投影已核；最终完整20文件新独立两轴开放0／0，inventory命名P3已关闭。后补安装说明明确开发分支、Windows同分支ZIP和固定提交，由独立复核覆盖，未借原模型判词；本地出口完成，20文件冻结／精确Git独立通过；0252dec已普通推送，一次独立官方HTTPS Ref同完整SHA；自己的CI42968978850第三API样本双OS七必要步骤success/completed，原评审者三样本六原body离线终核通过，前两In progress保持，C6d精确交付终结。AC6/F6未关闭。
@@ -26,7 +26,7 @@
 
 7. 下一片[C3b显式关联已有PR／MR](plans/2026-11-11-existing-review-association.md)已立片，基线ad331c8；[研究](research/2026-11-11-existing-review-association.md)复用12份官方原件、新GET0。R1原生读取首轮48项源码通过；R2／R3本地不可变context、State4／旧writer fence与backup已接入，源码77通过／6测试写法失败后原六项补验通过；CLI／HTTP共用保存／离线读。R4真实v7／Git两provider旅程通过，原导出／执行／writeback保持；v0–v3离线backup／迁移八项在测试别名修正后补验通过。R5 r1隔离包447／两RECORD／283通过，初依赖网络超时后同新venv离线缓存安装成功；八受影响安装suite189通过／1跳过／197.60秒，实际自身17附件首轮604.71秒超时（未全读／无判词），九完整核心聚焦546.83秒approve／五scope全文审计通过。新独立两P3：SP1真实HTTP缺口已补，ST1版本float已真实red并加两处整数类型；r2包447／283与受影响68项／101.06秒通过，完整28独立两轴开放0／0、SP1／ST1／ST2关闭；最后静态28文件／367链接issue0，本地出口通过，572c44e已普通提交、28Git／ready及作者SSH同完整Ref通过；原push60秒超时无终态，自己的CI43068731988第四官方API样本双OS七必要步骤success/completed，原评审四轮七原body离线终核通过，C3b精确交付终结；原queued解析误断言、in_progress、限流403及push无exit0保持，后修正不借旧模型判词。C3a已精确终结。[本片记录](delivery/2026-11-11-existing-review-association.md)持续更新。
 
-8. [F7d-D1来源页面](plans/2026-11-12-issue-console.md)已实现并验证，基线572c44e。r2后端45项／r3生命周期18项／r4主页面38项与SP1迟到保存分页2项通过；最终448包／两RECORD／283、75份原快照与拥有服务／端口清理通过。正文按文本展示，20条有界单列历史，不增加后端表、SDK、派工或回写。自身模板706.84秒approve／九完整附件／五scope全文已核；新独立两轴SP1已最小修正，最终r4与动态／清理已独立核准，完整19文件最终独立两轴开放0／0、SP1／ST1关闭，本地出口通过；静态206链接／6秘密值issue0。普通推送及本提交自己的CI待交付，[本片记录](delivery/2026-11-12-issue-console.md)保留原失败和分轮范围。前片C3b已精确终结；下一片是来源快照→原正式任务页面，不建第二任务状态机。
+8. [F7d-D1来源页面](plans/2026-11-12-issue-console.md)本地出口通过：r2后端45项／r3生命周期18项／r4主页面38项与SP1分页2项、最终448包／两RECORD／283、75原快照与拥有资源清理通过；自身706.84秒approve／九完整附件／五scope已核，完整19文件独立两轴0／0、SP1／ST1关闭。最终静态206链接／6秘密值issue0，d60a9d8普通提交／推送退出0、精确19Git／ready和作者SSH Ref同SHA；自己的CI43142680273第四run HTML Success／双OS七必要步骤及原评审11份原body终核通过，D1精确交付终结；精确Git／push／作者Ref原件已独立核，独立直接Ref403、两REST403／前三非终态／lazy404保持。[本片记录](delivery/2026-11-12-issue-console.md)保留原失败和范围；新[D2来源任务页面](plans/2026-11-12-source-task-console.md)立片，S1已实现原tasks创建／恢复和definition3承接，可选来源完整读取及逐叶组合保持；r1包448／两RECORD／283及安装65项、自身155.40秒approve／全文已过，新独立静态0／0；主首段22项后驱动失败保留，原ID续段21项及生命周期41项通过，120HTTP／旧资料和拥有资源清理已核；完整20文件独立Spec／Standards及本地出口通过，开放0／0、SP1记账关闭；冻结前最终静态及普通提交／推送／自身CI继续，不建第二状态机。
 
 ## 持续执行与验收规则
 

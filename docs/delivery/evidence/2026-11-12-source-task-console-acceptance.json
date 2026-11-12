@@ -1,0 +1,391 @@
+{
+  "schema_version": 1,
+  "at": "2026-11-12T02:59:50.457139+00:00",
+  "baseline": "d60a9d82be80a52d3e6ca0257772af3b3a26a084",
+  "state": "local-exit-passed-exact-delivery-pending",
+  "r1_package": {
+    "at": "2026-11-12T02:42:14.473941+00:00",
+    "wheel_sha256": "2773db5b6d67c09aab13893662ae538a95a6256cfade19bd5339ca8defc1e42d",
+    "wheel_files": 453,
+    "package_files": 448,
+    "wheel_and_installed_records_verified": true,
+    "installed_record_rows": 458,
+    "source_and_installed_package_equal": true,
+    "frozen_files": 283,
+    "editable": false
+  },
+  "installed_checks": [
+    {
+      "exit": 0,
+      "seconds": 113.11369022959843,
+      "stdout_sha256": "d7737d4f186190d389a70efd65c07ee92de7042a56b54add5d5ccc05a48250c4"
+    },
+    {
+      "exit": 0,
+      "seconds": 0.3163577038794756,
+      "stdout_sha256": "c65ff3cc71ab395dfab20b88f97f060e331187e8022a64471988a9f101f74805"
+    }
+  ],
+  "pytest": {
+    "passed": 65,
+    "seconds": 110.52,
+    "suites": [
+      "test_issue_tasks.py",
+      "test_task_creation.py",
+      "test_web.py",
+      "test_architecture_boundaries.py"
+    ]
+  },
+  "primary_initial": {
+    "checked_at": "2026-11-12T02:50:53.745522+00:00",
+    "exit_code": 0,
+    "seconds": 8.783612164668739,
+    "result": {
+      "passed": false,
+      "step": "lost source creation reply",
+      "error": "unknown create locks frozen fields",
+      "checks": [
+        "handoff only navigates and does not create",
+        "handoff exact digest",
+        "offline snapshot GET github",
+        "source fixes original issue number github",
+        "complete exact source body github",
+        "source safe text github",
+        "source cannot silently downgrade to project roles",
+        "preview expected outcome source preview",
+        "definition3 exact selected origin",
+        "input7 freezes complete original source",
+        "clear restores editable non-source form",
+        "clearing invalidates previous preview",
+        "preview expected outcome explicit source clear",
+        "non-source full composition remains schema2/input6",
+        "preview expected outcome original entry",
+        "original schema1 entry preserved",
+        "published original task github",
+        "offline snapshot GET github",
+        "source fixes original issue number github",
+        "complete exact source body github",
+        "source safe text github",
+        "preview expected outcome lost source creation reply"
+      ],
+      "errors": [],
+      "observations": [
+        {
+          "step": "source preview",
+          "status": 200,
+          "definition_version": 3,
+          "task_id": "source-gh-ui",
+          "source_sha256": "2b8c3c152157c797f67799469bab78d6c6ee13c0e8bc4ff8d22ae435146453b9",
+          "preview_sha256": "edff4a55e6ac9d4de45b09d2127c8f8a8dcd1987c46c87159ac7eb28fc3da94f",
+          "error": null
+        },
+        {
+          "step": "explicit source clear",
+          "status": 200,
+          "definition_version": 2,
+          "task_id": "source-gh-ui",
+          "source_sha256": null,
+          "preview_sha256": "e1a4dca4bd5ea6ba5cbdbd7ec7e7b06c722e0316b127ef210e962d3f77688fce",
+          "error": null
+        },
+        {
+          "step": "original entry",
+          "status": 200,
+          "definition_version": 1,
+          "task_id": "legacy-source-ui",
+          "source_sha256": null,
+          "preview_sha256": "dcda9765507e3268405608b45f057bf00873b89236f72e82b710fe07da36dfe0",
+          "error": null
+        },
+        {
+          "step": "lost source creation reply",
+          "status": 200,
+          "definition_version": 3,
+          "task_id": "source-gh-ui",
+          "source_sha256": "2b8c3c152157c797f67799469bab78d6c6ee13c0e8bc4ff8d22ae435146453b9",
+          "preview_sha256": "edff4a55e6ac9d4de45b09d2127c8f8a8dcd1987c46c87159ac7eb28fc3da94f",
+          "error": null
+        }
+      ]
+    }
+  },
+  "primary_original_id_continuation": {
+    "checked_at": "2026-11-12T02:52:22.035415+00:00",
+    "exit_code": 0,
+    "seconds": 7.00640987418592,
+    "result": {
+      "passed": true,
+      "step": "screenshots",
+      "checks": [
+        "unknown create locks original form and inputs",
+        "unknown keeps original task ID",
+        "original lookup retains preview identity",
+        "original formal task detail reached after unknown recovery",
+        "offline snapshot GET gitlab",
+        "source fixes original issue number gitlab",
+        "complete exact source body gitlab",
+        "source safe text gitlab",
+        "preview expected outcome GitLab large-change source",
+        "GitLab source input7 full frozen origin",
+        "published original task gitlab",
+        "failed source read blocks implicit non-source preview",
+        "unregistered historical source uses original registration guidance",
+        "offline snapshot GET github",
+        "source fixes original issue number github",
+        "complete exact source body github",
+        "source safe text github",
+        "390px source dialog no document overflow",
+        "source task workflows make zero provider reads while provider503",
+        "unknown source create not automatically resent",
+        "no browser page errors"
+      ],
+      "errors": [],
+      "width": {
+        "viewport": 390,
+        "document": 390
+      },
+      "provider_calls": 6,
+      "scope": "Installed real app/HTTP/State and offline loopback sources. Local publication only; no Temporal/model/SaaS mutation.",
+      "observations": [
+        {
+          "step": "GitLab large-change source",
+          "status": 200,
+          "definition_version": 3,
+          "task_id": "source-gl-ui",
+          "source_sha256": "382381326afd9afb001fe2b229715421a89b74e8a80ddb9fa8a2437d36c5f454",
+          "preview_sha256": "00ebeaa65cd8e51965393483c332d4c4cd0724e232215c41c95e0b8d5704cdd5",
+          "error": null
+        }
+      ]
+    }
+  },
+  "lifecycle": {
+    "checked_at": "2026-11-12T02:54:59.918381+00:00",
+    "exit_code": 0,
+    "seconds": 11.335717793088406,
+    "result": {
+      "passed": true,
+      "step": "historical source after rebinding",
+      "checks": [
+        "late source cannot restore superseded digest",
+        "offline snapshot GET github",
+        "source fixes original issue number github",
+        "complete exact source body github",
+        "source safe text github",
+        "late source cannot undo explicit clear",
+        "late source cannot populate replacement dialog",
+        "offline snapshot GET gitlab",
+        "source fixes original issue number gitlab",
+        "complete exact source body gitlab",
+        "source safe text gitlab",
+        "late source cannot replace another project source",
+        "offline snapshot GET github",
+        "source fixes original issue number github",
+        "complete exact source body github",
+        "source safe text github",
+        "late preview cannot restore previous source contract",
+        "offline snapshot GET github",
+        "source fixes original issue number github",
+        "complete exact source body github",
+        "source safe text github",
+        "preview expected outcome source edit invalidates pending preview",
+        "new preview freezes full newer source only",
+        "preview expected outcome stale project revision",
+        "owner refuses Project revision changed",
+        "stale revision leaves no create confirmation",
+        "offline snapshot GET github",
+        "source fixes original issue number github",
+        "complete exact source body github",
+        "source safe text github",
+        "preview expected outcome stale project revision",
+        "capture revision and current execution revision remain distinct",
+        "offline snapshot GET github",
+        "source fixes original issue number github",
+        "complete exact source body github",
+        "source safe text github",
+        "preview expected outcome historical source after rebinding",
+        "owner refuses Select a GitHub or GitLab tracker binding",
+        "historical local read does not authorize wrong current origin",
+        "lifecycle operations and source admission stay offline",
+        "no lifecycle browser page errors"
+      ],
+      "errors": [],
+      "held": [
+        "/api/projects/github/issue-snapshots/2b8c3c152157c797f67799469bab78d6c6ee13c0e8bc4ff8d22ae435146453b9",
+        "/api/projects/github/issue-snapshots/f7931021927f9a6b33b97f0d73ada2fceeda1b75a371cca06c96304a2830bf79",
+        "/api/projects/github/issue-snapshots/2b8c3c152157c797f67799469bab78d6c6ee13c0e8bc4ff8d22ae435146453b9",
+        "/api/projects/github/issue-snapshots/2b8c3c152157c797f67799469bab78d6c6ee13c0e8bc4ff8d22ae435146453b9",
+        "/api/projects/github/tasks/preview"
+      ],
+      "provider_calls": 6,
+      "scope": "Installed source form lifecycle and original revision/origin admission. No new task creation, run, provider call or account mutation.",
+      "observations": [
+        {
+          "step": "source edit invalidates pending preview",
+          "status": 200,
+          "definition_version": 3,
+          "task_id": "source-preview-ui",
+          "source_sha256": "f7931021927f9a6b33b97f0d73ada2fceeda1b75a371cca06c96304a2830bf79",
+          "preview_sha256": "aefa7d7c76c832d9cdaf61727b7397cab877bb5514b385be641e6db33072fe7f",
+          "error": null
+        },
+        {
+          "step": "stale project revision",
+          "status": 400,
+          "definition_version": 3,
+          "task_id": "source-preview-ui",
+          "source_sha256": "f7931021927f9a6b33b97f0d73ada2fceeda1b75a371cca06c96304a2830bf79",
+          "preview_sha256": null,
+          "error": "Project revision changed; reload before the task operation"
+        },
+        {
+          "step": "stale project revision",
+          "status": 200,
+          "definition_version": 3,
+          "task_id": "source-later-revision-ui",
+          "source_sha256": "2b8c3c152157c797f67799469bab78d6c6ee13c0e8bc4ff8d22ae435146453b9",
+          "preview_sha256": "d1f4a8cd213725677f77c54be962815f4eefb3ef0e566f39b605aec18853f3c3",
+          "error": null
+        },
+        {
+          "step": "historical source after rebinding",
+          "status": 400,
+          "definition_version": 3,
+          "task_id": "source-rebound-ui",
+          "source_sha256": "2b8c3c152157c797f67799469bab78d6c6ee13c0e8bc4ff8d22ae435146453b9",
+          "preview_sha256": null,
+          "error": "Select a GitHub or GitLab tracker binding to read issues"
+        }
+      ]
+    }
+  },
+  "final_screenshots": {
+    "checked_at": "2026-11-12T02:55:56.553416+00:00",
+    "exit_code": 0,
+    "seconds": 1.6528541720472276,
+    "result": {
+      "passed": true,
+      "checks": [
+        "source metadata screenshot and no overflow at 1440",
+        "source metadata screenshot and no overflow at 390"
+      ],
+      "scope": "Only final source metadata viewport capture; earlier task lifecycle results not rerun.",
+      "observations": []
+    }
+  },
+  "cleanup": {
+    "at": "2026-11-12T02:58:25.201034+00:00",
+    "http_requests": 120,
+    "all_original_request_response_bytes_verified": true,
+    "provider_gets_before_browser": 6,
+    "provider_gets_added_during_browser": 0,
+    "local_posts": 13,
+    "immutable_original_snapshots": [
+      {
+        "project": "github",
+        "sha256": "2b8c3c152157c797f67799469bab78d6c6ee13c0e8bc4ff8d22ae435146453b9",
+        "first_observed_at_unchanged": true,
+        "complete_payload_and_digest_verified": true
+      },
+      {
+        "project": "github",
+        "sha256": "f7931021927f9a6b33b97f0d73ada2fceeda1b75a371cca06c96304a2830bf79",
+        "first_observed_at_unchanged": true,
+        "complete_payload_and_digest_verified": true
+      },
+      {
+        "project": "gitlab",
+        "sha256": "382381326afd9afb001fe2b229715421a89b74e8a80ddb9fa8a2437d36c5f454",
+        "first_observed_at_unchanged": true,
+        "complete_payload_and_digest_verified": true
+      },
+      {
+        "project": "gitlab",
+        "sha256": "3a5919a3417d16934062c3046a06386cc69ed3a46003f252c07a19cf5faf956f",
+        "first_observed_at_unchanged": true,
+        "complete_payload_and_digest_verified": true
+      },
+      {
+        "project": "manual",
+        "sha256": "cfd9b117ac70c4ed5b17e8e8d7b43e65f010d82f9881ce3590f785ba0dbf45ea",
+        "first_observed_at_unchanged": true,
+        "complete_payload_and_digest_verified": true
+      },
+      {
+        "project": "manual",
+        "sha256": "e5704b6c942cc264bc4eb7ae19a0e098e911c272c6803c115495ed902edb94a8",
+        "first_observed_at_unchanged": true,
+        "complete_payload_and_digest_verified": true
+      }
+    ],
+    "unchanged_complete_manifest_trees": 2,
+    "original_creations": [
+      {
+        "project": "github",
+        "task_id": "legacy-source-ui",
+        "definition_version": 1,
+        "original_intent_sha256": "dcda9765507e3268405608b45f057bf00873b89236f72e82b710fe07da36dfe0",
+        "original_files_matches": true,
+        "source_sha256": null,
+        "original_reply_deliberately_lost": false
+      },
+      {
+        "project": "github",
+        "task_id": "source-gh-ui",
+        "definition_version": 3,
+        "original_intent_sha256": "edff4a55e6ac9d4de45b09d2127c8f8a8dcd1987c46c87159ac7eb28fc3da94f",
+        "original_files_matches": true,
+        "source_sha256": "2b8c3c152157c797f67799469bab78d6c6ee13c0e8bc4ff8d22ae435146453b9",
+        "original_reply_deliberately_lost": true
+      },
+      {
+        "project": "gitlab",
+        "task_id": "source-gl-ui",
+        "definition_version": 3,
+        "original_intent_sha256": "00ebeaa65cd8e51965393483c332d4c4cd0724e232215c41c95e0b8d5704cdd5",
+        "original_files_matches": true,
+        "source_sha256": "382381326afd9afb001fe2b229715421a89b74e8a80ddb9fa8a2437d36c5f454",
+        "original_reply_deliberately_lost": false
+      }
+    ],
+    "zero_agent_task_link_review_link_writeback_rows": {
+      "agent_runs": 0,
+      "issue_task_links": 0,
+      "candidate_review_links": 0,
+      "issue_writebacks": 0
+    },
+    "runtime_checks": [
+      {
+        "project": "github",
+        "published_contracts_only": true,
+        "no_run_queues_receipts_artifacts_workspaces_or_submissions": true
+      },
+      {
+        "project": "gitlab",
+        "published_contracts_only": true,
+        "no_run_queues_receipts_artifacts_workspaces_or_submissions": true
+      }
+    ],
+    "owned_service_process_exited": true,
+    "service_threads_stopped": true,
+    "named_browser_close_exit": 0,
+    "scope": "Exact original HTTP bytes, original offline snapshot loaders, immutable manifests and all three original creation intents/contracts after lifecycle and binding changes. Only owned service/ports/browser; no global process, SaaS, Temporal/model execution or native Windows claim.",
+    "owned_port_count": 2,
+    "owned_ports_closed": true
+  },
+  "preserved_failures": [
+    "Initial browser default Chrome distribution unavailable; existing headless configuration succeeded without installing software",
+    "Initial main browser22 checks then fieldset Playwright isDisabled comparison failed; actual DOM disabled=true/:disabled=true and child inputs disabled; original source create was published but response503; continuation used same original ID without retransmission"
+  ],
+  "scope": "New installed app and original HTTP/State/native task publication with synthetic GitHub/GitLab data and explicit delivery faults. No real SaaS, new formal six-stage/model execution, OS isolation or native Windows formal execution claim.",
+  "independent_review": {
+    "candidate_files": 20,
+    "spec_open": 0,
+    "standards_open": 0,
+    "closed_findings": [
+      "SP1/P3 stale S1 status bookkeeping"
+    ],
+    "complete_candidate_passed": true,
+    "report": "../2026-11-12-source-task-console-review.md"
+  }
+}

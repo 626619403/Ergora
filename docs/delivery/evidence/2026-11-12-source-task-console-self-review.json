@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "identity": {
+    "at": "2026-11-12T02:49:02.711069+00:00",
+    "baseline": "d60a9d82be80a52d3e6ca0257772af3b3a26a084",
+    "run_id": "7c9365f47cdc4c9a94848b4ed75ee617",
+    "status": "succeeded",
+    "backend": "codex",
+    "inference_model": "gpt-6.1-sol",
+    "reasoning_effort": "high",
+    "cli_exit": 0,
+    "seconds": 155.40430556191131,
+    "input_digest": "6fefdf86efc954d1f36815a0ab7c1b83928d8e15325af65d1d87581e8320637a",
+    "prompt_sha256": "ac3362d19a74cd9ed724422bcdf9f7ade0ddf131cf275e392357c65559c761d1",
+    "attachment_bytes": 120396,
+    "attachment_sha256": "2bd82515f9774224ae1b173e0cbc8f3c293844c782a912251f1f7f06e5f03352",
+    "manifest_digest": "503ff710f9009323ad6b4fcc1fb015ea1eb57c9aa175264cfd16076570fa8f8b",
+    "revision": "1.0.112",
+    "observed_processes": 4,
+    "live_sampled_processes": [],
+    "scope": "F7d-D2 eight complete frozen UI/callers/v3 schema/spec/delivery. Final browser, public docs and independent review separate; authorized Codex fallback, no dual-backend success claim.",
+    "decision": "approve",
+    "result_sha256": "4826e5dad414510eb903885491c22041c554ab2f3da0e1eb8b300f3e7c428e54"
+  },
+  "read_audit": {
+    "at": "2026-11-12T02:51:50.454700+00:00",
+    "run_id": "7c9365f47cdc4c9a94848b4ed75ee617",
+    "revision": "1.0.112",
+    "manifest_prepared_actual_prompt_admission_scope_native_original_result_match": true,
+    "bundled_template_unchanged_except_evidence_revision_resource_and_limit": true,
+    "scope_files": 5,
+    "all_scope_continuous_utf8_through_null": true,
+    "list_passes_files": [
+      5
+    ],
+    "failed_calls": 0,
+    "attachment_bytes": 120396,
+    "attachment_sha256": "2bd82515f9774224ae1b173e0cbc8f3c293844c782a912251f1f7f06e5f03352",
+    "frozen_complete_files": 8,
+    "original_result_sha256": "4826e5dad414510eb903885491c22041c554ab2f3da0e1eb8b300f3e7c428e54",
+    "decision": "approve",
+    "native_stream_sha256": "ec751e26e0c44e4881938d75ae70d98f27d82faec47d1f74da07c7afbc7e2d1b",
+    "backend_reported_turn_usage": [
+      {
+        "input_tokens": 507666,
+        "cached_input_tokens": 432384,
+        "cache_write_input_tokens": 0,
+        "output_tokens": 3224,
+        "reasoning_output_tokens": 1806
+      }
+    ],
+    "observed_processes": 4,
+    "live_sampled_processes": [],
+    "scope": "Offline exact identity and successful plaintext page reconstruction only. Cached counters are part of input, reasoning reported separately, neither is added twice. No billing, reasoning quality, owner approval, independent backend-error or unsampled-process claim."
+  },
+  "original_result": {
+    "artifacts": {
+      "response": "Read all declared ancestor instructions and Skills, and all 120,396 bytes of candidate.txt through next_offset:null, retrying base64 pages at the same offset with smaller limits.\n\nComplete scope:\n- src/ergora/data/console/app.js\n- src/ergora/data/console/issues.js\n- src/ergora/data/console/tasks.js\n- src/ergora/data/console/task-composition.js\n- src/ergora/data/console/ui.js\n- src/ergora/data/schemas/task-definition-v3.json\n- docs/plans/2026-11-12-source-task-console.md\n- docs/delivery/2026-11-12-source-task-console.md\n\n**Spec:** No reachable finding. issuesView passes only the snapshot digest through app.render into the existing creation dialog. SHA edits and explicit clearing reset savedSource and invalidate previews. Source generations, dialog/view lifetime and creationLocked reject obsolete responses. A nonempty unread source blocks preview; selected sources require execution composition and definition3. Clearing returns to definition1/2 selection. Confirmation submits exactly the server-returned definition, project revision and preview digest. Existing task-ID recovery and separate execution/approval paths retain ownership.\n\n**Standards:** No structural finding. Source presentation uses existing text-safe UI helpers, composition choices remain in taskComposition, and task creation remains in tasks.js. The supplied source adds no scheduler, ledger, provider dispatch, dependency or CI mechanism. Source reading, preview and creation use explicit existing requests without a new polling loop or private algorithm.\n\nLimits: Backend guard implementations, runtime inheritance and permission enforcement, package448/RECORD integrity, the 283 frozen files, suite/browser results and backend independence were not independently verifiable from these attachments. No approval of those facts is implied. Pending documentation, browser, independent-review and CI delivery gates are not treated as source defects. No shell, network or workspace edits were used."
+    },
+    "decision": "approve",
+    "summary": "Approve the supplied source candidate for structural ownership and interfaces. No reachable in-scope defect found; delivery acceptance remains unverified."
+  }
+}

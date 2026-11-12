@@ -95,7 +95,7 @@ flowchart TB
 
 ## 调用与数据归属
 
-控制台的 `issues.js` 只消费已有 `issues.show / capture / snapshots / snapshot` 用例。导航进入只读取本地列表；外部读取和保存由操作者点击。局部序号、DOM存活和项目身份负责页面迟到响应，完整来源和权限仍由原后端所有者负责。历史快照保留原绑定，manual仍可离线读；未增加持久业务状态、provider分派或调度。
+控制台的 `issues.js` 只消费已有 `issues.show / capture / snapshots / snapshot` 用例。导航进入只读取本地列表；外部读取和保存由操作者点击。局部序号、DOM存活和项目身份负责页面迟到响应，完整来源和权限仍由原后端所有者负责。历史快照保留原绑定，manual仍可离线读。已保存快照通过app渲染参数把本项目SHA临时承接到原tasks创建表单；完整来源只经原本地snapshot读取，definition3仍由原tasks准入。没有新增持久业务状态、provider分派或调度。
 
 ### 正式开发路径
 
@@ -198,7 +198,7 @@ flowchart TB
 - **工作单元草稿**：`workflow.js`拥有语义、完整JSON／单元原文、目标ID／已观察修订、有限命令／撤销重做与布局。缓冲按控制目录／项目隔离；保存仍调用drafts/reference，不直接变成正式任务。
 - **独立定义修订**：`definitions.js`调用两类原用例，JSON/YAML只是同一结构的输入语法。完整资源变更从新暂存树派生，预览返回candidate digest和directories，check/publish重新核已接受候选。CLI/HTTP不各实现一套文件身份算法。
 - **已发布图与比较**：`composition-graph.js`展示原编译器的完整路径、结构／控制／数据关系与全文inspector，支持折叠／查找／键盘选择；图位置不进入摘要。比较模块只投影同grant下两份已发布preview，不在浏览器推断权限或编译未发布候选。
-- **正式任务选择**：`tasks.js`沿原创建／原ID恢复用例，`task-composition.js`只持有完整manifest选择、unit分配和逐叶binding；共用schema字段展示由`binding-fields.js`负责。正式准入仍在后端。
+- **正式任务选择**：`tasks.js`沿原创建／原ID恢复用例，收集可选来源快照并在有完整执行组合时提交既有definition3；`task-composition.js`只持有完整manifest选择、unit分配和逐叶binding；共用schema字段展示由`binding-fields.js`负责。正式准入仍在后端。
 
 视图／home／项目／原run／编辑代际约束迟到回复；已替换会话不能保存到新会话。草稿与资源缓冲使用有限内存历史／sessionStorage，损坏或配额失败可明确下载／清除。布局、折叠和浏览器缓存不是合同、执行账本或协同编辑存储。
 
