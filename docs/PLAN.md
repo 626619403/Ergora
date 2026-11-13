@@ -4,7 +4,7 @@
 
 ## 当前检查点
 
-开发分支 `refactor/architecture-foundations`；F9b2产品 `0d9c0a7a2e0c7d107f3a832fa9492a452df71f34` 已普通推送、完整远端Ref一致，自己的CI `43511152711` Success（8 job／30必要步骤）及原独立两轴终核通过。当前活动F9b3取消／停止观察：实现、源码52项、r1真实CPU／页面和自身approve通过，390窄屏原失败保留、r2局部修复重验通过；安装r1界限停止后89项逐项PASSED／r2剩余66项通过，最终r3仅EOF格式修正、568／两RECORD／283／SDK-free已验；新的独立需求／结构两轴最终本地补核通过、开放0／0，普通发布与自己的CI待完成。普通推送当前分支，不合入 `main`。
+开发分支 `refactor/architecture-foundations`；F9b3产品 `fad53478c9261157b3016563b410b9d4b4d85b9d` 已普通推送、35个Git blob及完整远端Ref一致，自己的CI `43516776101` Success（8job／30必要步骤），原独立两轴发布／CI终核通过、开放0／0。活动[F9b4a基线初始化](plans/2026-11-14-training-preparation.md)：r1五安装suite57通过；首轮两P2修复后的r2最终570／两RECORD／283、受影响20项、实际SDK-free与完整页面／27原件／收尾、自身两轮approve已核，独立两轴最终本地原件补核通过、开放0／0；普通发布／自己的CI待完。runner登记及精确prepare各自随后验收。普通推送当前分支，不合入 `main`。
 
 |节点|实际状态|接续动作与权威记录|
 |---|---|---|
@@ -20,7 +20,7 @@ W1仅验源码提案与交接：共享仓库HEAD／213条status字节保持，�
 ## 下一可执行项
 
 1. **F8-H3b实际续接**：精确交付完成，自己的CI与原独立两轴终核通过，详见[计划](plans/2026-11-14-harness-session-continuation.md)／[交付](delivery/2026-11-14-harness-session-continuation.md)。r3包561／两RECORD／283、安装133通过／12跳过；实际SDK四场景与真实模型两调用成功、自身approve。原两个P2及失败保留并已修复。冻结原项目／资料／权限／后端／schema，原home／cwd／session不分叉；unknown不自动重发，正式恢复归原owner。
-2. **F9实验导航**：F9a只读工作台、[F9b1原生查询](delivery/2026-11-14-training-runtime.md)及[F9b2提交／对账](delivery/2026-11-14-training-submission.md)均已精确发布、自有CI与原独立终核通过。当前活动片为[F9b3取消／停止观察](plans/2026-11-14-training-cancellation.md)，进度见[交付](delivery/2026-11-14-training-cancellation.md)：固定原run的取消／attempt／原history恢复、共享CLI／HTTP与独立面板已实现；原真实ACK丢失恢复、未发送继续、三迟到路径及最终三视口已验。r1安装回归在600秒界限停止，89项逐项PASSED、其余66项在r2包补测通过／278.86秒，r3只去EOF空行且包／AST／SDK-free核过；不能称单次全套通过。下一F9b4接原baseline／runner／prepare控制面，随后F9c精确evidence批准、F9d真实旅程；复用原训练owner和账本，CPU合同与真实GPU分别验收。
+2. **F9实验导航**：F9a／b1／b2／[b3取消与停止观察](delivery/2026-11-14-training-cancellation.md)均已精确发布、自有CI与原独立两轴终核通过。当前[F9b4a基线初始化](plans/2026-11-14-training-preparation.md)本地最终r2安装20项／真实CLI与页面／无SDK／原件及收尾／自身模板已核，独立需求／结构两轴最终本地通过、开放0／0；随后普通发布与自己的CI。runner登记与精确prepare各自立片验收，再接F9c原evidence批准／F9d真实旅程；复用原训练owner，不把CPU合同当真实GPU验收。
 3. **F10受评价改进**：沿记忆／Skill／评价／采用owner，补正式任务可选冻结、来源／失效／容量可见及复盘候选／明确采用回退。复用AC3资料合同，不让生成器改可信评价或扩大权限，见[总计划F10](plans/2026-11-01-all-in-one.md#8-p1低代码更多真实工具与演进闭环)。
 4. **G1集成交接**：开发／治理／训练公开旅程，核新安装、配置、角色替换、工单、演进、旧项目升级／回退、跨机重建；更新[架构](architecture/current.md)、README、[使用手册](USAGE.md)、[训练手册](TRAINING.md)与Windows手册，再完成相关完整回归、独立审查与推送。U3日常安装只覆盖其精确旧包，不代表S1等新包已升级。
 

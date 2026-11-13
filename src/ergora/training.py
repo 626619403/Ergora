@@ -7,6 +7,25 @@ from . import reference
 from .state import State
 
 
+def preview_baseline(state: State, project_id: str, baseline: dict) -> dict:
+    """Validate the entire baseline with the native owner; leave its registry untouched."""
+    return reference.training_setup(_project(state, project_id), state.root, 'preview-baseline', {'baseline': baseline})
+
+
+def initialize_baseline(state: State, project_id: str, baseline: dict, expected_revision: int,
+                        baseline_sha256: str) -> dict:
+    """Confirm one baseline; retrying identical content never replaces a different one."""
+    if type(expected_revision) is not int or expected_revision < 1:
+        raise ValueError('Expected project revision must be a positive integer')
+    with state.connect() as db:
+        db.execute('BEGIN IMMEDIATE')
+        project = _project(state, project_id)
+        if project['revision'] != expected_revision:
+            raise ValueError('Project revision changed; preview the baseline again')
+        return reference.training_setup(project, state.root, 'init-baseline',
+                                        {'baseline': baseline, 'baseline_sha256': baseline_sha256})
+
+
 def inspect(state: State, project_id: str, experiment_id: str | None = None, *,
             limit: int = 50, after: str | None = None) -> dict:
     """Read native records without submitting, querying or approving an experiment."""

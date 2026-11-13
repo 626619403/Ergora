@@ -8,6 +8,7 @@ export function trainingView(data, base) {
   const home = app.bootstrap.state_directory;
   const entries = node("div", { "aria-live": "polite" });
   const baseline = node("div");
+  const setup = node("div");
   const note = node("p", { className: "form-note" });
   const detail = node("div", { className: "task-detail", "aria-live": "polite" }, empty("选择一个实验，查看完整合同与已保存证据。"));
   let pageSequence = 0, detailSequence = 0, pageIndex = 0, page;
@@ -15,10 +16,69 @@ export function trainingView(data, base) {
   const previous = button("上一页", () => { pageIndex--; load(); });
   const next = button("下一页", () => { cursors[++pageIndex] = page.next_after; load(); });
   const view = node("div", { className: "task-layout training-workbench" },
-    node("div", {}, panel("当前基线", null, baseline),
+    node("div", {}, panel("当前基线", null, baseline, setup),
       panel("原实验记录", "列表读取已保存文件；不会查询或启动训练。", entries, note,
         row(previous, next, button("重新读取列表", () => { pageIndex = 0; load(); })))), detail);
   const active = () => view.isConnected && app.project === project && app.tab === "training" && app.bootstrap.state_directory === home;
+
+  function baselineSetup() {
+    let sequence = 0, sending = false;
+    const result = node("div", { "aria-live": "polite" });
+    const source = node("textarea", { rows: 12, "aria-label": "完整 baseline JSON", spellcheck: "false",
+      placeholder: "粘贴已审阅的完整 baseline.json", oninput: () => { sequence++; result.replaceChildren(); } });
+    const preview = button("预览基线", async () => {
+      if (sending) return;
+      const text = source.value, request = ++sequence;
+      const baselineDocument = JSON.parse(text);
+      result.replaceChildren(empty("正在验证基线…"));
+      try {
+        const observed = await api(`${base}/training/baseline-preview`, { baseline: baselineDocument });
+        if (!active() || request !== sequence || source.value !== text) return;
+        result.replaceChildren(pre(observed));
+        if (observed.status === "conflict") {
+          result.append(empty("当前基线与输入不同；需要经过审阅的基线迁移，此处不覆盖。"));
+          return;
+        }
+        if (app.bootstrap.platform !== "linux") {
+          result.append(empty("此处可预览；原生初始化请在登记的 Linux／WSL2 环境执行。"));
+          return;
+        }
+        const confirm = node("input", { type: "text", "aria-label": "确认 baseline 内容 SHA256",
+          autocomplete: "off", spellcheck: "false", placeholder: "粘贴预览返回的完整 baseline_sha256" });
+        const initialize = button("确认初始化基线", async () => {
+          if (!active() || sending || request !== sequence || source.value !== text) return;
+          if (confirm.value !== observed.baseline_sha256) throw new Error("请确认预览中的完整 baseline 内容 SHA256。");
+          sending = true;
+          source.disabled = preview.disabled = confirm.disabled = initialize.disabled = true;
+          try {
+            const reply = await api(`${base}/training/init-baseline`, {
+              baseline: baselineDocument, revision: observed.project_revision, baseline_sha256: observed.baseline_sha256,
+            });
+            if (active() && request === sequence) {
+              result.replaceChildren(pre(reply), empty("已读取原基线文件。此登记不证明测量、质量或训练收益。"));
+              load();
+            }
+          } catch (error) {
+            if (active() && request === sequence)
+              result.replaceChildren(panel("未取得初始化确认", error.message,
+                node("p", {}, "重新读取基线，再预览相同内容。已有不同基线不会被覆盖。"),
+                button("重新读取原基线", () => load())));
+          } finally {
+            sending = false;
+            source.disabled = preview.disabled = false;
+          }
+        }, "primary");
+        result.append(node("p", {}, "核对完整基线和项目修订，粘贴内容SHA后初始化。相同内容可重试；原文件字节SHA在回执中另列。"), confirm, initialize);
+      } catch (error) {
+        if (active() && request === sequence) result.replaceChildren(panel("未取得基线预览", error.message));
+      }
+    });
+    return node("details", {}, node("summary", {}, "预览与初始化基线"),
+      node("p", {}, "使用训练模板中的 baseline.json 填写真实代码、配置和 workload。预览与初始化无需启动服务。"),
+      source, preview, result);
+  }
+
+  setup.append(baselineSetup());
 
   function submissionPanel(id, selected, cancellation) {
     const submission = node("div", { "aria-live": "polite" });
@@ -168,7 +228,7 @@ export function trainingView(data, base) {
           ["Workload", short(observed.baseline.workload_fingerprint)],
         ]), node("details", {}, node("summary", {}, "完整基线与摘要"),
           pre({ baseline: observed.baseline, files: observed.baseline_files })))
-        : empty("尚未初始化基线。按训练手册用原生 training init 登记真实 baseline。"));
+        : empty("尚未初始化基线。展开下方入口预览并确认真实 baseline。"));
       entries.replaceChildren(observed.items.length ? table(["实验"], observed.items.map((item) => [
         node("div", { className: "task-choice" }, node("strong", {}, item.experiment_id),
           node("p", { className: "form-note" }, `已保存结果：${item.recorded_result_state || "未知／未读到"}`),

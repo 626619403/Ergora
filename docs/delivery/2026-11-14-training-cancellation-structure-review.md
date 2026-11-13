@@ -2,7 +2,7 @@
 
 审查者：fresh-context 独立结构轴 `f9b3_structure_review`；日期：2026-11-14。未继承实现会话。先读 `AGENTS.md`、[总计划](../PLAN.md)、[本片 B3.1–B3.5 合同](../plans/2026-11-14-training-cancellation.md)，再读实际差异、新文件全文、调用方和原训练／Task owner，最后读[作者交付](2026-11-14-training-cancellation.md)。应用 maintainable-project-delivery 的 independent-review brief、codebase-design 和 ergora-codebase-quality 的模块／测试／仓库约定；未修改产品、测试、参考文件或作者验收原件，未安装、提交、推送或启动服务。
 
-当前最终本地结论：**本轴所审 B3.1–B3.5 需求符合性通过；结构／维护性通过，开放 finding 0。** 最终 r3 身份、两轮安装的完整分段覆盖、原生 CPU／页面／自身模板／收尾及公开证据已补核。固定原 start／run 身份、原 client 检查与发送、attempt-before-send、unknown 后只读完整 history、已关闭 not_sent，以及原 control／adapter／fence 分别观察均符合本片合同。普通精确发布与本片自己的 CI 尚待原件，不能提前记为发布完成。以下首轮及补核中的“待验”保留其当轮身份，最终本地状态以末节为准；完整需求轴结论仍归[独立需求报告](2026-11-14-training-cancellation-spec-review.md)。
+当前结论：**本轴所审 B3.1–B3.5 需求符合性通过；结构／维护性通过，开放 finding 0；精确交付补核完成。** 最终 r3 身份、两轮安装的完整分段覆盖、原生 CPU／页面／自身模板／收尾及公开证据已补核。固定产品提交 `fad53478c9261157b3016563b410b9d4b4d85b9d` 的 35 个 Git blob、普通推送及原完整远端 Ref 已补核；本片自己的 CI `43516776101` 官方终态为 `Success`，8 个 job 和 30 个必要步骤均已独立核原件通过。以下首轮及补核中的“待验”保留其当轮身份，最终状态见末节；完整需求轴结论仍归[独立需求报告](2026-11-14-training-cancellation-spec-review.md)。
 
 ## 精确检查范围
 
@@ -68,3 +68,38 @@
 公开 JSON 为 12,929B，SHA256 **`b1dcc3572ad74e43266b36bf865367b41591bbb3eff85d1fdea09dc8e6594478`**。本轴逐项核其 25 份私有原回执哈希，全部与原件相等；三包身份、四原 run 的 history／Outcome、两次自身原模板输入／结果和最终观察字段均与原件相符，原负 Outcome、390 失败、安装中断及 SDK-free 初次探针失败保留，没有扩大验收范围。原 CI 分组收集 returncode 0，实际摘要为 **351／1804 collected、1453 deselected**；仅证明接线和收集，不是 351 项执行通过。
 
 **最终本地结构／维护性验收通过，开放 finding 0。** 本轴未发现还需修改的所有权、依赖方向、抽象、防护或测试问题；原先提出的共享算法机械迁移、runtime 两消费者、私有 start 身份复用、独立页面寿命、可见失败和必要持久验证均已按实际代码／原件核实。普通精确提交、推送／远端 Ref 和本片自己的必要 CI 尚待另核。本结论不关闭 F9b4、F9c／F9d、真实 B3、Windows OS 实测或完整 C2，不支持 GPU、模型质量／性能收益、批准／采用或真实外部停止成功主张。
+
+## 精确发布补核：通过，自己的 CI 在途
+
+固定产品提交为 **`fad53478c9261157b3016563b410b9d4b4d85b9d`**，唯一父提交确为基线 `0d9c0a7a2e0c7d107f3a832fa9492a452df71f34`。本轴直接读取不可变 Git 对象：父→候选恰为 35 个改动路径，逐项完整字节数／SHA 与发布前 `static-r4.json` 全部相等；该静态清单 SHA256 为 `a969d1004cf84851050cdfc66ea7f1554a80cb40c4661401e9bf69b779ebbd60`。20 个产品／测试／CI 路径按 Git blob 重算的组合 SHA 仍为 `a58b2a5eba7ec124e2bbe6eefa8202afd5c152e8a02ab7e6dbb73d33a2e779cc`，与本地通过候选一致。
+
+另将原 r3 wheel 的全部 **568 个产品文件**逐字对照候选 Git blob，全部相等；283 个参考文件的候选字节与原冻结 manifest 相等。实际运行基线→候选的完整 `git diff --check`，退出 0、无 diagnostic，覆盖已进入该提交的新文件。当前工作树的 F9b4 计划、后续产品或状态补记没有用于判定本片候选身份。
+
+已阅读 `commit.py` 与原 `commit-r1.json`、`push-r1.json`、`ref-r1.json`：提交成功记录是在完整 staged diff-check、35 个候选 blob 相等及提交后工作树 clean 的门槛通过后写出；普通 push 退出 0，目标仅为开发分支，原 argv 没有强推参数或 main 目标。保存的完整 Ref 原件退出 0、stderr 空，精确返回 `fad53478c9261157b3016563b410b9d4b4d85b9d refs/heads/refactor/architecture-foundations`。该 Ref 结论绑定记录当时的实际返回；本轴未另发远端 Git 请求，也未执行 Git 写操作。
+
+**精确产品／普通发布／原完整 Ref 补核通过，结构轴开放 0。** 本片自己的 CI run **`43516776101`** 尚在途，仍待官方终态及必要 job／step 原件。此前本地 89＋66 分段、各包真实验收和前片 CI 均不能替代它。本轮只补本报告，未修改产品、安装、运行回归或启动服务。
+
+## 自身 CI 终态补核：通过，开放 0
+
+本轴独立读取已保存的[官方 run `43516776101`](https://github.com/626619403/Ergora/actions/runs/43516776101) HTML、同 run 的官方 UI job batch JSON 和八份最终 job HTML；重新解析原件，没有执行作者的汇总生成器或发起新的远端请求。候选仍固定为 **`fad53478c9261157b3016563b410b9d4b4d85b9d`**。run HTML 的 `currentPath` 属于该 run，`Status` 明确为 `Success`，完整 commit link 和分支均相符。10 份 HTTP 收据全部为 200，原请求／最终 URL 相等并精确属于该 run／job；独立按完整 body 重算的字节数与 SHA256 如下，均与原收据相等。
+
+| 官方原件 | body 字节数 | SHA256 |
+| --- | ---: | --- |
+| run HTML r4 | 213321 | `5797f9dde953288c68eee2202a765302706491778dce84817deab2f1bc99b62c` |
+| UI job batch r1 | 2715 | `d1fe852f62b76e44f89c2fe82a3e1ff27cc3fd8389d9d0afe766254fc500107f` |
+| plan `132200612712` HTML r1 | 158860 | `6236cf129b9dbc59e5d757b233c6c2746c5c0e3a0d17e278d7fffcbd9733596b` |
+| Linux group 0 `132200669532` HTML r2 | 162550 | `c9d43c02e07b6d058e25ef1bee3e8e62de37bb1d3699c9f58c5b1e4729a2dcde` |
+| Linux group 1 `132200669631` HTML r2 | 162550 | `fc0dc499d85cdb8d746fa39aff5bba40a60c90a7d8e65315ca218dfb73d4e1df` |
+| Linux group 2 `132200669629` HTML r2 | 162549 | `776f8262476cbf7545cabcd5e144fa493fc30894e00943e9146b14329266a7be` |
+| Linux group 3 `132200669595` HTML r2 | 162550 | `d0bb911c767d9ce225771135bafcdc5c31eb1de878c5643ede9946d6338ae098` |
+| Linux group 4 `132200669603` HTML r2 | 162550 | `719b57a96db257914d6ba0c39a88071189ae4eb12af96f453378fc8f340cd1df` |
+| Linux group 5 `132200669480` HTML r2 | 162550 | `1012bc7cb533e3b23986dcabcd7e8a47488a3958ff2e70d7e4653bb95f3a0fd7` |
+| Windows `132200669517` HTML r5 | 160131 | `ec328de6805941277f018fae3f1087269d5013c4e0e038f8f6442794e6f408d0` |
+
+**矩阵与归属。** 从候选 Git blob 读取 `.github/workflows/portability.yml` 和 `scripts/ci/linux-groups.json`，未使用已有 F9b4 改动的工作树文件。候选含六个非空 Linux group、79 个不重复测试路径，取消 suite 只出现一次；workflow 为每组生成 Ubuntu／Python 3.11 job，另加 Windows／Python 3.12 `group all`。原 UI batch 的 `totalCount=8`、`hasMore=false`，八个唯一 ID／完整 job 名恰覆盖 plan、六个 Linux group 和该 Windows job，每个 href 精确属于本 run。`ci-ui-metadata-r1.json` 的投影和 source SHA 与该原 batch 相等；它记录当时进行中状态，仅用来确定 job 身份，终态另由最终 HTML 证明。
+
+**八个 job 与三十个必要步骤。** 各最终 job HTML 的 `data-job-status` 均为 `completed`，选中 job 的原 header 均为 `succeeded`。plan 的 `Read explicit test groups` 一项、六个 Linux job 各自的 `Build and install wheel`／`Packaged reference identity`／`Native application regression`／`Upload regression observations` 四项，以及 Windows 同四项加 `Windows PowerShell 5.1 installer and upgrade`，共 **1＋6×4＋5＝30 项**；本轴逐项核唯一名称、`data-conclusion=success`、`data-job-completed`、非空开始／完成时间及时间顺序。每项原 `data-log-url` 均严格等于 `/626619403/Ergora/commit/` 加完整候选 SHA、对应 job ID 与原 step number，全部绑定本候选；没有借其他 run 或短 SHA 作归属。六个 Linux 的 Windows 专用步骤按原 workflow 条件 skipped，未计为必要成功步骤。其余实际 step 的结论均为 success，Windows 原回归／PowerShell 安装升级／上传的完成时间分别为 `22:23:09Z`／`22:23:57Z`／`22:23:58Z`，job header 为 `2026-11-13T22:24:02Z` succeeded。
+
+`ci-terminal-r4.json` 为 13,357B，SHA256 **`05477637426f91920af8ec0640f01af394e65748fefadc307443d8376528210c`**；本轴另将其 run 身份、每 job sample／body SHA 与 30 项完整字段逐项对照上述原件，全部相等。该结论是保存的官方 UI HTML／JSON 对本候选的终态证明，支持本次 Linux／Windows CI 必要步骤通过；没有取得完整 step stdout 或下载 artifact archive，也不据此增加测试项数、训练、GPU、模型质量／性能或真实外部停止主张。原本地 89＋66 分段及 SDK-free 探针保留各自原范围。
+
+**本轴所审 F9b3 结构／维护性及精确交付补核完成，开放 finding 0。** 原候选产品、发布／Ref、既有本地验收与本片自身必要 CI 的证据链现已完整；F9b4 及后续片仍按各自合同和候选验收。本轮仅更新本报告，未修改产品／测试／CI 或原验收材料，未安装、重跑 suite、启动服务或执行 Git 写操作。

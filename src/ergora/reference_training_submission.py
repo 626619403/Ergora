@@ -11,7 +11,8 @@ import re
 import sys
 import uuid
 
-from .reference import _read_windows_contract, _training_records, registration_paths
+from .reference import _training_records
+from .reference_training_context import _TrainingProject
 from .state import file_lock
 
 
@@ -19,24 +20,10 @@ _MEMO_KEY = 'ergora.training_submission_sha256'
 _INTENT_LIMIT = 16 * 1_048_576
 
 
-class _Submission:
+class _Submission(_TrainingProject):
     def __init__(self, payload: dict):
-        from agent_platform import core
-        from dev_platform import adapter
-        from dev_platform.contracts import canonical_sha
-
-        self.core, self.adapter, self.sha = core, adapter, canonical_sha
-        if os.name == 'nt':
-            adapter.read_raw = _read_windows_contract
-        self.payload = payload
-        self.project = payload['project']
-        self.execution = self.project['registration']['definition']['execution']
-        self.root = Path(self.execution['state_directory'])
-        self.config = Path(self.execution['config_directory'])
-        for directory in (self.root, self.config):
-            if not directory.is_absolute() or directory.resolve() != directory:
-                raise ValueError('Execution directories must retain their registered canonical paths')
-        self.ident = core.slug(payload['experiment_id'])
+        super().__init__(payload)
+        self.ident = self.core.slug(payload['experiment_id'])
         self.prefix = 'ergora/training-submissions/' + self.ident
         self.identity = {'schema_version': 1, 'operation': 'start',
                          'control_home': payload['control_home'], 'project': self.project['id'],
@@ -51,25 +38,11 @@ class _Submission:
             raise ValueError('Symlinked or reparsed training submission path is forbidden')
         return path
 
-    def document(self, root: Path, relative: str, limit: int = 1_048_576) -> dict:
-        value = json.loads(self.adapter.read_raw(self.adapter.safe_file(root, relative), limit))
-        if not isinstance(value, dict):
-            raise ValueError('Training submission record must be a JSON object')
-        return value
-
     def optional(self, suffix: str) -> dict | None:
         try:
             return self.document(self.root, self.prefix + suffix, _INTENT_LIMIT if suffix == '.intent.json' else 1_048_576)
         except FileNotFoundError:
             return None
-
-    def registration(self) -> None:
-        for name, expected in self.project['registration']['files'].items():
-            if self.sha(self.document(self.config, name)) != self.sha(expected):
-                raise ValueError('Registered reference configuration drift: ' + name)
-        marker = self.project['registration']['files'][registration_paths(self.project['id'])[0]]
-        if marker['control_home'] != self.payload['control_home']:
-            raise ValueError('Registered training project belongs to another control directory')
 
     def records(self) -> dict:
         return _training_records({'project': self.project['id'], 'repo': self.project['repo'],

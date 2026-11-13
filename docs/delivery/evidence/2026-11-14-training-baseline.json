@@ -1,0 +1,338 @@
+{
+  "slice": "F9b4a",
+  "at": "2026-11-13T22:29:59.369253+00:00",
+  "baseline": "fad53478c9261157b3016563b410b9d4b4d85b9d",
+  "packages": {
+    "r1": {
+      "at": "2026-11-13T22:19:28.731923+00:00",
+      "wheel_sha256": "186118240d553bd463d430e4dbd423ae13ef4bc0929992d648daea2ff04d0eed",
+      "wheel_files": 578,
+      "package_files": 570,
+      "wheel_and_installed_records_verified": true,
+      "installed_record_rows": 583,
+      "source_and_installed_package_equal": true,
+      "frozen_files": 283,
+      "editable": false
+    },
+    "r2": {
+      "at": "2026-11-13T22:26:48.904006+00:00",
+      "wheel_sha256": "e39866028ee7e4625f814e3fb23064ee7ea274d85cb2cd509c4f06d24af5ffeb",
+      "wheel_files": 578,
+      "package_files": 570,
+      "wheel_and_installed_records_verified": true,
+      "installed_record_rows": 583,
+      "source_and_installed_package_equal": true,
+      "frozen_files": 283,
+      "editable": false
+    }
+  },
+  "source_verification": {
+    "r1": {
+      "passed": 19,
+      "failed": 1,
+      "seconds": 7.23,
+      "failure": "test matcher excluded existing Path escapes trusted root rejection; no product fix"
+    },
+    "r2": {
+      "passed": 38,
+      "seconds": 198.46,
+      "scope": "Only corrected test plus original training/submission/cancellation source suites; not a fresh all-final-package run"
+    }
+  },
+  "installation_verification": {
+    "r1": {
+      "passed": 57,
+      "pytest_seconds": 232.41,
+      "process_seconds": 234.24901218619198,
+      "status": "succeeded",
+      "scope": "Noneditable pre-review package; baseline/training/submission/cancellation/architecture suites"
+    },
+    "r2_final": {
+      "passed": 20,
+      "pytest_seconds": 11.39,
+      "process_seconds": 12.975087741855532,
+      "status": "succeeded",
+      "scope": "Final baseline and architecture affected by raw-capacity/portable Git repairs; other568 products identical to r1"
+    }
+  },
+  "native_cpu": {
+    "at": "2026-11-13T22:20:58.977684+00:00",
+    "status": "passed",
+    "cli_original_init_and_same_content_retry": true,
+    "preview_wrong_sha_no_registry": true,
+    "actual_no_site_packages_and_no_temporal_sdk_init": true,
+    "protected_files": 27,
+    "initial_sdk_probe_failure_retained": "sdk-free.stderr",
+    "scope": "Actual installed baseline init; CLI first part passed, SDK-free probe corrected to load only Ergora module rather than adding whole site-packages. No product change, no server/runner/Temporal/GPU/approval."
+  },
+  "sdk_free_final": {
+    "exit": 0,
+    "status": "passed",
+    "no_site_packages": true,
+    "sdk_available": false
+  },
+  "package_delta": {
+    "status": "passed",
+    "final_products_match_current_source": true,
+    "product_count": 570,
+    "r1_to_r2_product_changes": [
+      "cli.py",
+      "reference_training_setup.py"
+    ],
+    "r1_to_r2_test_changes": [
+      "tests/test_training_baseline.py"
+    ],
+    "scope": "Final r2 bounded CLI input and existing portable readonly Git primitive; original context/submission/cancellation and all other568 products byte-identical to r1. No fresh single final57suite claim."
+  },
+  "browser": {
+    "browser-r1/baseline": {
+      "status": "passed",
+      "actual_preview": true,
+      "wrong_sha_zero_posts": true,
+      "edited_input_late_preview_ignored": true,
+      "double_click_posts": 1,
+      "conflict_no_initialize_button": true,
+      "layouts": [
+        {
+          "width": 1440,
+          "scroll": 1440
+        },
+        {
+          "width": 960,
+          "scroll": 960
+        },
+        {
+          "width": 390,
+          "scroll": 390
+        }
+      ]
+    },
+    "browser-r2/baseline": {
+      "status": "passed",
+      "actual_preview": true,
+      "wrong_sha_zero_posts": true,
+      "edited_input_late_preview_ignored": true,
+      "double_click_posts": 1,
+      "conflict_no_initialize_button": true,
+      "layouts": [
+        {
+          "width": 1440,
+          "scroll": 1440
+        },
+        {
+          "width": 960,
+          "scroll": 960
+        },
+        {
+          "width": 390,
+          "scroll": 390
+        }
+      ]
+    },
+    "browser-r2/lifecycle": {
+      "status": "passed",
+      "actual_lost_reply_recovered_by_same_content": true,
+      "same_original_file_sha_after_retry": true,
+      "late_preview_after_project_switch_ignored": true,
+      "late_actual_init_after_project_switch_ignored": true,
+      "unsent_form_layout": {
+        "width": 390,
+        "scroll": 390
+      }
+    }
+  },
+  "self_reviews": [
+    {
+      "status": "succeeded",
+      "run_id": "148631ce62a740f4a98e3edf918be3d8",
+      "cli_exit": 0,
+      "seconds": 49.80466346768662,
+      "packet_files": 14,
+      "packet_bytes": 245707,
+      "prompt_sha256": "f6251132cc7c2cbf2b38a3e4efa6316f43c6a05bc35272e07015df1e655b3874",
+      "input_digest": "316967d024e1ff8748bc8182e7477a5920dcb876b8d357912e97af3fa0fb473c",
+      "all_inline_files_and_inherited_resources_in_stdin": true,
+      "scope": "Installed original structure-review template, complete F9b4a baseline initialization packet; no MCP/read-comprehension or full independent review claim.",
+      "decision": "approve",
+      "result_sha256": "983361a519462f19f5498d409290216d7226bd7fc094f5c7f381680e5889260f"
+    },
+    {
+      "status": "succeeded",
+      "run_id": "985458b8e837456c9ec6487bc74d052e",
+      "cli_exit": 0,
+      "seconds": 23.169926767237484,
+      "packet_files": 5,
+      "packet_bytes": 95335,
+      "prompt_sha256": "c504f71d8128cdb2ea2157a6f60d93b12d56da08605dcb7d496527bdec36cb53",
+      "input_digest": "dc2440f5ce0104b6a73b652886acabc11d861acd6fd16df78bafbadef8399057",
+      "all_inline_files_and_inherited_resources_in_stdin": true,
+      "scope": "Installed original structure-review template, final F9b4a input-capacity and portable-Git repair packet; no MCP/read-comprehension or full independent review claim.",
+      "decision": "approve",
+      "result_sha256": "f7a1fce083795dcfbf1aba2731c339a51136588e6a0c43845b4251134610a69e"
+    }
+  ],
+  "final_observations": {
+    "at": "2026-11-13T22:29:59.369253+00:00",
+    "status": "passed",
+    "protected_files_unchanged": 27,
+    "original_baselines": 8,
+    "other_project_no_baseline": true,
+    "no_training_execution_or_control_records_created": true,
+    "git_status_empty": true,
+    "both_browsers_closed": true,
+    "both_web_process_groups_stopped": true,
+    "scope": "Final r2 actual baseline UI and original files. Original r1 lifecycle timeout retained; no claimed Windows OS/GPU/training/performance/quality/approval."
+  },
+  "independent_review": {
+    "requirements": "final local passed; two P2 closed, zero open findings; own publication/CI pending",
+    "structure": "final local passed; zero open findings; own publication/CI pending"
+  },
+  "publication": {
+    "status": "pending",
+    "policy": "Ordinary push of current development branch; own exact-commit CI still required. No main merge."
+  },
+  "private_raw_artifacts": [
+    {
+      "path": "install-r1/package-identity.json",
+      "bytes": 488,
+      "sha256": "cc37517897b73dab035e48b484ee0ee7718330f6301280d6fe2356f7d32d53d7"
+    },
+    {
+      "path": "install-r2/package-identity.json",
+      "bytes": 488,
+      "sha256": "309bf8ec37975415d7d052f785b634179326fcbd72dd66aa8b946c51734b9d15"
+    },
+    {
+      "path": "install-r1/regression-r1/result.json",
+      "bytes": 786,
+      "sha256": "6aa1a1062e76b2e306263d90e02f3ad04bb30095c7bf7366c779e265d871616a"
+    },
+    {
+      "path": "install-r1/regression-r1/process/stdout.txt",
+      "bytes": 9379,
+      "sha256": "a7dcb672707ac42e0fcc28cde8648bc4a55c20a8980a2a09e3732db4933961e7"
+    },
+    {
+      "path": "install-r2/regression-r2/result.json",
+      "bytes": 672,
+      "sha256": "52762ac111c032603c23e0ee7567c8d2673e2a3a6bed0ea15cf2044ee9258ddb"
+    },
+    {
+      "path": "install-r2/regression-r2/process/stdout.txt",
+      "bytes": 4605,
+      "sha256": "60baf24c4f32889b33e606a40df54099bd42f7296dedc82ad32a74bd5fc429e7"
+    },
+    {
+      "path": "source-r1.log",
+      "bytes": 783,
+      "sha256": "f72664327f99a591dcba25941433918c8c892cb9aecb2c33393abf39d07fd664"
+    },
+    {
+      "path": "source-r2.log",
+      "bytes": 111,
+      "sha256": "3feb339c0a355d7b04a4e5d25b9eb01414f5b2de09cb1f0225f58b918f288234"
+    },
+    {
+      "path": "native-r1/result.json",
+      "bytes": 526,
+      "sha256": "74d5f49bbc9913878a6f4198e9a5a02b709d5611a7836905aa251298fca3a611"
+    },
+    {
+      "path": "native-r1/protected-before.json",
+      "bytes": 3164,
+      "sha256": "ae10fd579f5b4cf83d60febe9d24ff5461f0409f01dd73786c1c6b13d7d471a6"
+    },
+    {
+      "path": "native-r1/sdk-free.stderr",
+      "bytes": 89,
+      "sha256": "09a596a85bd2c6b81ed1c4f1519e29c8f5cdb5b6a1f7e3b5bde6b48fad697970"
+    },
+    {
+      "path": "native-r1/sdk-free-r2-argv.json",
+      "bytes": 4845,
+      "sha256": "b2f20fc85c2940d4c50059e342d64d1f64066631d262f5b194152d5b3e4c7c54"
+    },
+    {
+      "path": "sdk-free-final.json",
+      "bytes": 2125,
+      "sha256": "0664e4adfd73fc35c2e6dab46a05114819f086ebc5d612e6c6fdad52ff2642f2"
+    },
+    {
+      "path": "package-delta-r2.json",
+      "bytes": 465,
+      "sha256": "346274f0d45fdd513d031a59f48572294c122576afaa1481f9ec7c997784b2a3"
+    },
+    {
+      "path": "browser-r1/baseline.stdout",
+      "bytes": 6401,
+      "sha256": "015a68616f039677cad0dadee9adebfd3eba2f49e77cd42303122e1b214a09c1"
+    },
+    {
+      "path": "browser-r1/lifecycle.stdout",
+      "bytes": 163,
+      "sha256": "8c83bcdc8a7cdf0bb82505f634f3c5dc572db09f62a17fa9600b0687cb15329b"
+    },
+    {
+      "path": "browser-r2/baseline.stdout",
+      "bytes": 6389,
+      "sha256": "fdfed7b99c52de6b8c418e7bb0583777cec14be59e55bde9321f67db1274af95"
+    },
+    {
+      "path": "browser-r2/lifecycle.stdout",
+      "bytes": 8222,
+      "sha256": "617d33d70bf6e29eb21f881669341e6e85c5065c6f812e5e07759a833564f035"
+    },
+    {
+      "path": "browser-r2/requests.jsonl",
+      "bytes": 13486,
+      "sha256": "a234ed4e5e501d233526f02125bee17756d18986466ee3e287d6fd23660a706e"
+    },
+    {
+      "path": "self-review-r1-codex.json",
+      "bytes": 3066,
+      "sha256": "5cdbad61e4b65a33095d25b565e60d64ba3e1d2aeef19865f153626de5c558b4"
+    },
+    {
+      "path": "self-review-r1-codex/original-result.json",
+      "bytes": 1098,
+      "sha256": "983361a519462f19f5498d409290216d7226bd7fc094f5c7f381680e5889260f"
+    },
+    {
+      "path": "self-review-r2-codex.json",
+      "bytes": 1568,
+      "sha256": "7523a80db76fe05fea7ac40b0a70893d57218902830f9fd91981c8dd86b4bddb"
+    },
+    {
+      "path": "self-review-r2-codex/original-result.json",
+      "bytes": 786,
+      "sha256": "f7a1fce083795dcfbf1aba2731c339a51136588e6a0c43845b4251134610a69e"
+    },
+    {
+      "path": "final-observations.json",
+      "bytes": 7381,
+      "sha256": "88f6e983de10635322bcec3b6ecac97d1a09f51df4a4845e69dc6337aff3bd37"
+    },
+    {
+      "path": "ci-group-collect-r1/result.json",
+      "bytes": 54,
+      "sha256": "177809f15a075ec4c12f8bb0bd96042a65f47432591edd4606325be0eb582ef5"
+    },
+    {
+      "path": "ci-group-collect-r1/stdout.txt",
+      "bytes": 36350,
+      "sha256": "2e9d396dcb5e8e27b20b86977bf258bf8ba82cb81de79aad9ccceb759304deee"
+    }
+  ],
+  "limits": [
+    "No local native Windows OS execution",
+    "No runner registration or experiment prepare in this slice",
+    "No Temporal workflow, runner command, GPU, model quality, performance benefit, evidence approval or adoption"
+  ],
+  "ci_group_collection": {
+    "returncode": 0,
+    "selected": 357,
+    "total": 1810,
+    "deselected": 1453,
+    "execution_claim": false
+  }
+}

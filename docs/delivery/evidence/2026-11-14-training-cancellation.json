@@ -282,5 +282,147 @@
     "Final display scope, initial runtime scope and final whitespace-only package scope are distinct",
     "Windows OS not locally exercised; actual native cancellation/executor observation remain Linux/WSL2",
     "Own publication and exact CI remain to verify"
+  ],
+  "publication": {
+    "candidate": "fad53478c9261157b3016563b410b9d4b4d85b9d",
+    "ordinary_development_branch_push": true,
+    "exact_remote_ref_verified": true,
+    "commit_blobs_verified": 35,
+    "own_ci": {
+      "run_id": 43516776101,
+      "url": "https://github.com/626619403/Ergora/actions/runs/43516776101",
+      "status": "Success",
+      "jobs": 8,
+      "required_steps": 30,
+      "required_steps_passed": true,
+      "independent_terminal_recheck": "requirements and structure passed, zero open findings"
+    }
+  },
+  "publication_raw_artifacts": [
+    {
+      "path": "commit-r1.json",
+      "bytes": 1245,
+      "sha256": "bb126fac518a14d85f9e33392119f93931ce34f202df1fef97136e2578e91047"
+    },
+    {
+      "path": "push-r1.json",
+      "bytes": 750,
+      "sha256": "dd7d78a3e17ed71d7537605641da7e9a420ead8d05519bd7b035c37cc5f439c3"
+    },
+    {
+      "path": "ref-r1.json",
+      "bytes": 738,
+      "sha256": "9af19283303f472daffe0026f6c7f15dc87cce92392f3e3af93de5d839296c4c"
+    },
+    {
+      "path": "ci-terminal-r4.json",
+      "bytes": 13357,
+      "sha256": "05477637426f91920af8ec0640f01af394e65748fefadc307443d8376528210c"
+    },
+    {
+      "path": "ci-ui-metadata-r1.json",
+      "bytes": 2119,
+      "sha256": "1cd74b14fe8ebc54a39bd8a02f30ed16e562f882c7a8b21256cce95f442cf594"
+    },
+    {
+      "path": "ci-job-batch-r1/body.json",
+      "bytes": 2715,
+      "sha256": "d1fe852f62b76e44f89c2fe82a3e1ff27cc3fd8389d9d0afe766254fc500107f"
+    },
+    {
+      "path": "ci-job-batch-r1/receipt.json",
+      "bytes": 766,
+      "sha256": "d26e583c8c79195904c3730fc5861568620fe407320bea0bcc246010ffbc2983"
+    },
+    {
+      "path": "ci-run-html-r4/page.html",
+      "bytes": 213321,
+      "sha256": "5797f9dde953288c68eee2202a765302706491778dce84817deab2f1bc99b62c"
+    },
+    {
+      "path": "ci-run-html-r4/receipt.json",
+      "bytes": 5963,
+      "sha256": "b9f7f466c2efd9887953fa11d52565266be3e9aca66d44ebbd9d52e68a849dd4"
+    },
+    {
+      "path": "ci-job-132200612712-html-r1/page.html",
+      "bytes": 158860,
+      "sha256": "6236cf129b9dbc59e5d757b233c6c2746c5c0e3a0d17e278d7fffcbd9733596b"
+    },
+    {
+      "path": "ci-job-132200612712-html-r1/receipt.json",
+      "bytes": 6007,
+      "sha256": "0a13265bdf0070360c52965b121fe806250db9e86182d3580ebfca9595dc3af7"
+    },
+    {
+      "path": "ci-job-132200669532-html-r2/page.html",
+      "bytes": 162550,
+      "sha256": "c9d43c02e07b6d058e25ef1bee3e8e62de37bb1d3699c9f58c5b1e4729a2dcde"
+    },
+    {
+      "path": "ci-job-132200669532-html-r2/receipt.json",
+      "bytes": 6005,
+      "sha256": "f8f7277128dd481d07ab0422282cf80295e2878edf496f9363e4ddfe2a5f771b"
+    },
+    {
+      "path": "ci-job-132200669631-html-r2/page.html",
+      "bytes": 162550,
+      "sha256": "fc0dc499d85cdb8d746fa39aff5bba40a60c90a7d8e65315ca218dfb73d4e1df"
+    },
+    {
+      "path": "ci-job-132200669631-html-r2/receipt.json",
+      "bytes": 6005,
+      "sha256": "f764acf0e47bbeeff0e20371a068a687f150eaa7047167ecfac4d120834481b4"
+    },
+    {
+      "path": "ci-job-132200669629-html-r2/page.html",
+      "bytes": 162549,
+      "sha256": "776f8262476cbf7545cabcd5e144fa493fc30894e00943e9146b14329266a7be"
+    },
+    {
+      "path": "ci-job-132200669629-html-r2/receipt.json",
+      "bytes": 6001,
+      "sha256": "7d7cc0c18858b803269a3ecaa8e71816392bf813182bc883a5fa56b7252fb812"
+    },
+    {
+      "path": "ci-job-132200669595-html-r2/page.html",
+      "bytes": 162550,
+      "sha256": "d0bb911c767d9ce225771135bafcdc5c31eb1de878c5643ede9946d6338ae098"
+    },
+    {
+      "path": "ci-job-132200669595-html-r2/receipt.json",
+      "bytes": 6011,
+      "sha256": "823420bd15ef1593b20610a218961cc65dd2318400804f46fb9054520c6c0831"
+    },
+    {
+      "path": "ci-job-132200669603-html-r2/page.html",
+      "bytes": 162550,
+      "sha256": "719b57a96db257914d6ba0c39a88071189ae4eb12af96f453378fc8f340cd1df"
+    },
+    {
+      "path": "ci-job-132200669603-html-r2/receipt.json",
+      "bytes": 6005,
+      "sha256": "6565135b1f9f0e80148023d2c95d3c0c887c5506961018fafe390cf3880421ef"
+    },
+    {
+      "path": "ci-job-132200669480-html-r2/page.html",
+      "bytes": 162550,
+      "sha256": "1012bc7cb533e3b23986dcabcd7e8a47488a3958ff2e70d7e4653bb95f3a0fd7"
+    },
+    {
+      "path": "ci-job-132200669480-html-r2/receipt.json",
+      "bytes": 5997,
+      "sha256": "10b86e2dc9dc8fd0f9e1b46c7969ace0692d5fb155b6510796dcb66a9f82c673"
+    },
+    {
+      "path": "ci-job-132200669517-html-r5/page.html",
+      "bytes": 160131,
+      "sha256": "ec328de6805941277f018fae3f1087269d5013c4e0e038f8f6442794e6f408d0"
+    },
+    {
+      "path": "ci-job-132200669517-html-r5/receipt.json",
+      "bytes": 5995,
+      "sha256": "4d2aaec520ed49e9dbfc6648f9ab203fe88e08970a3faa562a2a6d5c3c98d1de"
+    }
   ]
 }

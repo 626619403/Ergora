@@ -1,6 +1,6 @@
 # F9b3 独立需求／正确性审查
 
-当前结论（最终本地出口）：**需求／正确性通过，开放 finding 0。** 源码、分段安装、真实 CPU／浏览器、原模板自身调用、最终 r3 包与公开证据均已补核；本轴所查责任边界／维护性也无 finding，独立结构轴的完整结论另归该轴报告。原安装 r1 的 600 秒取消保留：89 项逐项通过，加上 r2 补测的 66 项通过，精确覆盖 155 个原收集项；不称一次全新 r3 全套或全旅程。普通精确发布／远端 Ref／本片自己的 CI 仍待验。以下保留各轮身份、原失败和当轮未验范围，较早的“待补核”仅指该轮。
+当前结论（本地、发布身份及自己的 CI）：**需求／正确性通过，开放 finding 0。** 源码、分段安装、真实 CPU／浏览器、原模板自身调用、最终 r3 包与公开证据均已补核；本轴所查责任边界／维护性也无 finding，独立结构轴的完整结论另归该轴报告。原安装 r1 的 600 秒取消保留：89 项逐项通过，加上 r2 补测的 66 项通过，精确覆盖 155 个原收集项；不称一次全新 r3 全套或全旅程。产品 `fad53478c9261157b3016563b410b9d4b4d85b9d` 的固定 Git 对象、普通推送与保存的完整远端 Ref 已补核；本片自己的 CI `43516776101` 官方原始终态也已独立验收，8 个 job／30 个必要步骤全部成功。以下保留各轮身份、原失败和当轮未验范围，较早的“待补核”仅指该轮。
 
 审查者：fresh-context 独立需求轴 `f9b3_spec_review`；日期：2026-11-14。未继承实现过程；依次读取 `AGENTS.md`、总计划、[本片原始计划](../plans/2026-11-14-training-cancellation.md)、实际 tracked diff／untracked 新文件和邻近调用者，最后读取[作者交付](2026-11-14-training-cancellation.md)。使用 `ergora-codebase-quality` 的原调用者、模块所有权与真实失败路径标准。仅写本报告，未修改产品、测试、原参考、作者私有证据或 Git 状态，未安装或重跑服务／大 suite。
 
@@ -107,3 +107,38 @@
 已读更新后的 PLAN、本片交付、总工作台接续计划和原分组收集结果。分组 5 的 351／1804、1453 deselected 与原 stdout／退出 0 相符，只是收集成功；不是额外 351 项执行通过。`static-r3.json` 保存当时 35 个改动路径／239 本地链接／完整 tracked＋untracked whitespace 和无私有机器字符串结果；本轴另对当前 35 路径重新检查本地链接、四种原禁入机器字符串及逐新增文件 whitespace，均无问题。报告的后续状态补记不被当成新的产品候选。
 
 **最终本地需求／正确性验收通过，开放 finding 0。** 已完成的原 run／history 恢复、分别停止观察、共享入口、页面生命周期、打包与本地收尾满足本片 B3.1–B3.5；所查维护边界没有新增 finding。普通提交／推送、精确 Git 对象／远端 Ref 和本片自己的必要 CI 尚待发布后原件，不借前片 CI 关闭。Windows 原生实际操作、F9b4、F9c／F9d、真实 B3 和完整 C2 仍保持原边界；没有真实训练／GPU、数值质量、性能收益、采用或整体外部停止成功主张。
+
+## 普通发布与精确 Ref 补核：通过，自己的 CI 待验
+
+只读检查固定产品提交 **`fad53478c9261157b3016563b410b9d4b4d85b9d`**，唯一父提交为原基线 `0d9c0a7a2e0c7d107f3a832fa9492a452df71f34`。本次直接从 Git 对象读取 baseline→candidate 的全部 35 个改动 blob，路径集合与本片最终本地范围一致；其中 20 个产品／测试／CI 路径重新计算组合 SHA，仍为 `a58b2a5eba7ec124e2bbe6eefa8202afd5c152e8a02ab7e6dbb73d33a2e779cc`。没有引入未经本轴核对的产品变化，后续工作树或 F9b4 变化不参与本结论。
+
+提交内公开 evidence 仍为 12,929B、SHA `b1dcc3572ad74e43266b36bf865367b41591bbb3eff85d1fdea09dc8e6594478`，与最终本地已核原件相同；已发布的本轴报告为补记前 17,560B 的完整原报告，逐字相符。原参考目录的 Git tree 与基线相同，283 个参考 blob 身份全部保持。对两个固定提交运行完整 `git diff --check`，退出 0、无 diagnostic；再以该候选 Git tree 核 242 个本地 Markdown 链接均有对象，35 个改动 blob 未含原检查列举的私有机器字符串。
+
+阅读原 `commit-r1.json`、`push-r1.json`、`ref-r1.json`：三份记录都绑定同一 40 位候选且退出 0；commit 原件记 35 个 Git blob 核对及完整 staged whitespace 通过。push argv 为普通 `HEAD:refs/heads/refactor/architecture-foundations`，无强推参数，原回复由 `0d9c0a7` 前进至 `fad5347`；其后的原 `ls-remote` stdout 精确为 `fad53478c9261157b3016563b410b9d4b4d85b9d refs/heads/refactor/architecture-foundations`，stderr 为空。本轴只读保存的原回执，没有额外发起 Git 写入或外部查询。
+
+**普通发布与精确 Ref 补核通过，开放 finding 仍为 0。** 本片自己的 CI run `43516776101` 尚待官方原始 run／job／step 终态送核；不借前片 CI 或仅有 run ID 宣称成功。仅补本报告，没有修改产品、运行测试／服务、提交或推送。
+
+## 本片自己的 CI 终态补核：通过，开放 finding 0
+
+本次离线核对 [CI run `43516776101`](https://github.com/626619403/Ergora/actions/runs/43516776101)，固定候选仍为 **`fad53478c9261157b3016563b410b9d4b4d85b9d`**。直接从该提交读取 `.github/workflows/portability.yml` 和 `scripts/ci/linux-groups.json`，确认矩阵为 6 个 Ubuntu／Python 3.11 分组及 1 个 Windows／Python 3.12 的 all 分组；`tests/test_training_cancellation.py` 恰好位于 Linux 分组 5 一次。没有使用后续 F9b4 工作树的配置解释本片结果。
+
+独立重算早期 run r1、身份 batch r1、最终 run r4 和 8 份终态 job HTML，共 11 份原始 body 的完整长度／SHA；每份均与保存回执相符，HTTP 200、请求 URL 和最终 URL 均精确指向同一 run 或其对应 job。原 `job_groups_batch` 的 `totalCount=8`、`hasMore=false`，8 个 job 的名称／ID／href 与矩阵逐项相符；`ci-ui-metadata-r1.json` 的投影与原 batch 完全一致。该早期 batch 中原生 job 尚为 in_progress，仅作为身份来源，不充当成功终态。
+
+最终 run r4 原 HTML 为 213,321B，SHA256 `5797f9dde953288c68eee2202a765302706491778dce84817deab2f1bc99b62c`；其完整 commit 链接绑定固定候选，Status 原文为 `Success`。终态样本使用 plan r1、六个 Linux r2 和 Windows r5；独立解析各原 HTML 的 `check-steps`／`check-step`，8 个 job 均为 completed，且各自 `Complete job` 成功：
+
+|Job|Job ID|必要步骤成功数|
+|---|---|---|
+|plan|132200612712|1／1|
+|Linux group 0|132200669532|4／4|
+|Linux group 1|132200669631|4／4|
+|Linux group 2|132200669629|4／4|
+|Linux group 3|132200669595|4／4|
+|Linux group 4|132200669603|4／4|
+|Linux group 5|132200669480|4／4|
+|Windows group all|132200669517|5／5|
+
+plan 的必要步骤为 `Read explicit test groups`；每个原生 job 均包括 wheel 构建安装、原参考身份、应用回归及观察上传；Windows 另包括 `Windows PowerShell 5.1 installer and upgrade`。全部 **30 个必要步骤** 的原 `data-conclusion` 都是 success，开始／完成时间有效且早于采样，`data-job-completed` 属性存在；各日志路径均含同一完整候选 SHA、对应 job ID 与步骤编号。Linux 中 6 个 Windows 安装步骤按工作流条件为 skipped，未计入必要步骤或通过数；所有其他原步骤均成功，无失败／取消终态。
+
+由原件重新构造的 8 个 job／30 个步骤投影与 `ci-terminal-r4.json` 逐项相同；该汇总为 13,357B，SHA256 `05477637426f91920af8ec0640f01af394e65748fefadc307443d8376528210c`。本结论基于保存的官方 UI HTML／同 run JSON batch，没有冒称读取 REST API、下载 artifact archive 或重跑 suite。
+
+**本片自己的必要 CI 验收通过；本轴需求／正确性最终通过，开放 finding 0。** 本次仅补本报告，未发远端请求、安装、运行测试／服务、提交或推送。该结论不扩展到 Windows 原生训练取消实际支持、真实训练／GPU、性能或数值质量，也不关闭 F9b4、F9c／F9d、真实 B3 或完整 C2。

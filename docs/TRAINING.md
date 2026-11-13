@@ -32,6 +32,24 @@ init / runner-add → prepare → worker-start → start
 
 `run-local` 逐实验显式执行；没有常驻训练队列消费者。审批、结果、取消和恢复沿用原实验身份。未知结果需要对账，不直接用新 ID 重跑。候选模型或 Agent 的报告不能替代可信 runner 的验证；实验失败和负结果也要保存。
 
+### 预览与初始化基线
+
+先登记选择 `training-optimization` 的真实Git项目和参考安装，填写模板的 `baseline.json`。`commit` 必须是该仓库内已存在的完整提交，配置与workload摘要须真实；登记不证明这些测量或质量已通过。
+
+```bash
+ergora training baseline-preview my-project --baseline ./training-task/baseline.json
+# 核对返回的完整 baseline、project_revision 和 baseline_sha256
+ergora training init-baseline my-project --baseline ./training-task/baseline.json \
+  --revision REVISION --baseline-sha256 PREVIEW_BASELINE_CONTENT_SHA256
+ergora training list my-project
+```
+
+控制台“训练实验”→“当前基线”→“预览与初始化基线”支持同一流程：粘贴完整JSON、预览、核对完整资料与项目修订，再粘贴预览的内容SHA并确认。修改JSON或切项目会使旧预览失效。CLI／页面／`POST /api/projects/{project}/training/baseline-preview`（`baseline`对象）和`POST .../init-baseline`（再加`revision / baseline_sha256`）共用应用入口。
+
+内容SHA由完整对象的canonical JSON计算，保留额外说明字段、忽略键顺序与排版；使用预览返回值，不能拿文件的 `sha256sum` 代替。回执的 `current_baseline_file_sha256` 则是原文件字节SHA。CLI原始输入文件和原生序列化文件各最多1MiB；HTTP沿控制台既有4MB请求上限，解析后的baseline还须满足原生1MiB容量。预览和初始化无需Temporal SDK、服务或GPU；实际原子初始化使用原perfctl锁，只支持Linux／WSL2，Windows原生可预览。
+
+预览的`not_initialized`表示尚无原基线，`already_initialized`表示已有完整同内容，`conflict`表示不同内容。初始化成功返回`initialized`或`already_initialized`，CLI退出0；错误／冲突退出非零。若初始化请求失联，先重新读取列表，再预览相同JSON并显式重试；已发布的同内容文件保持原字节，不另建基线，不覆盖不同内容。已有不同基线须走经过审阅的迁移流程，此入口不提供替换。runner登记与实验prepare暂沿下面的原生流程。
+
 ## 在控制台查看原实验
 
 先按[项目登记说明](USAGE.md)用 `project register` 登记已有 Git 项目，选择 `training-optimization`，并指定原生参考安装、配置和执行状态目录。已有原实验保留原目录与身份，无需导入另一份实验数据库。基础安装的列表／详情不要求启动 Temporal、MLflow 或 GPU；显式实时查询和完整训练执行分别按下文及上一节配置。

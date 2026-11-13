@@ -1,6 +1,6 @@
 # F9b3 训练取消与停止观察交付
 
-日期：2026-11-14；基线 `0d9c0a7a2e0c7d107f3a832fa9492a452df71f34`。[实施计划](../plans/2026-11-14-training-cancellation.md)。B3.1–B3.5已实现，安装分段／真实CPU与页面验收及自身模板通过；新的独立需求／结构两轴最终本地补核通过、开放0／0；普通发布与自己的CI待完成。
+日期：2026-11-14；基线 `0d9c0a7a2e0c7d107f3a832fa9492a452df71f34`。[实施计划](../plans/2026-11-14-training-cancellation.md)。B3.1–B3.5本地验收与独立两轴通过、开放0／0；产品 `fad53478c9261157b3016563b410b9d4b4d85b9d` 已普通推送／精确Ref一致，自己的CI `43516776101` Success（8job／30必要步骤），原独立两轴CI终核通过、开放0／0。下文各轮历史进度不覆盖本段。
 
 已核原client的cancel/query/binding、原workflow有界取消、LocalTrainingAdapter的job／fence／poll与executor所有权。真实前片的两个CANCEL_UNCONFIRMED／后来的本地CANCELLED保持，不能改写为同一停止结论。离线SDK可行性探针仅核CancelRequest编码／解码与独立操作标记保留，未发请求或改变产品；实际服务接收／worker行为仍待验。
 
@@ -39,3 +39,9 @@ r2仅补未完成66项，**66 passed／278.86秒**；与r1的89个逐项PASSED�
 自身最终展示聚焦r2原模板approve：5完整文件50,537B、23.219秒，全部输入与祖先资源核实际stdin，原result SHA `d6ef2f6be708840cd5104de77886f53af440894f9a8663b38fbdfa9f261dc415`。初次24文件评审与聚焦展示评审是两轮，各自原输入／后端／回执保留；最终EOF格式差异由静态／AST与独立最终核验覆盖。公开范围见[证据JSON](evidence/2026-11-14-training-cancellation.json)，需求和结构两轴报告分别见[需求](2026-11-14-training-cancellation-spec-review.md)／[结构](2026-11-14-training-cancellation-structure-review.md)。普通精确提交／推送和本片自己的CI尚待，后续F9b4准备控制面、F9c精确evidence批准、F9d真实GPU不在本片完成范围。
 
 两位新的fresh-context审查者已对最终r3产品、两轮安装精确分区、真实CPU／页面、自身原模板、25份公开引用原件SHA及完整静态范围完成本地补核，需求／正确性和结构／维护性均通过，开放finding **0／0**。20产品／测试／CI路径组合SHA为 `a58b2a5eba7ec124e2bbe6eefa8202afd5c152e8a02ab7e6dbb73d33a2e779cc`。本地出口完成；接下来普通提交／推送当前开发分支并核本片自己的CI，不自动合入main。
+
+## 精确发布与自己的CI
+
+产品 `fad53478c9261157b3016563b410b9d4b4d85b9d` 唯一父为原基线；35个提交blob与最终静态清单逐字／长度／SHA一致，本片568产品与r3包一致、283冻结保持，完整diff-check通过。普通推送开发分支及完整远端Ref已核；原两审查者固定Git对象的发布补核通过，没有将后续F9b4工作树当作候选。
+
+自己的[CI 43516776101](https://github.com/626619403/Ergora/actions/runs/43516776101)最终官方run HTML为Success。按固定候选Git blob的分组配置核同run官方UI batch、8个job HTML及30必要步骤，全部success，完整SHA的step log路径相符；Windows的原生回归及PowerShell安装／升级步骤也通过。保留前几轮in-progress，不改写为早已成功。原件为私有 `ci-terminal-r4.json`、`ci-run-html-r4`、plan首轮、六Linux第二轮及Windows第五轮HTML；公开JSON另列25份发布／CI原件SHA。原两独立审查者已分别重算并完成CI终核、开放0／0；这只属于F9b3，不代表F9b4、真实GPU或整套未验工作完成。

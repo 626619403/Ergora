@@ -143,6 +143,15 @@ class TaskResumeStartPayload(TaskResumePayload):
     timeout: int = Field(default=20, strict=True, ge=1, le=60)
 
 
+class TrainingBaselinePreviewPayload(Payload):
+    baseline: dict
+
+
+class TrainingBaselineInitPayload(TrainingBaselinePreviewPayload):
+    revision: int = Field(strict=True, ge=1)
+    baseline_sha256: str = Field(pattern="^[0-9a-f]{64}$")
+
+
 class TrainingStartPayload(Payload):
     revision: int = Field(strict=True, ge=1)
     manifest_sha256: str = Field(pattern="^[0-9a-f]{64}$")
@@ -460,6 +469,14 @@ def create_app(home: Path | None = None) -> FastAPI:
     @application.get("/api/projects/{project_id}/training")
     def training_experiments(project_id: str, limit: int = 50, after: str | None = None):
         return training.inspect(state, project_id, limit=limit, after=after)
+
+    @application.post("/api/projects/{project_id}/training/baseline-preview")
+    def training_baseline_preview(project_id: str, body: TrainingBaselinePreviewPayload):
+        return training.preview_baseline(state, project_id, body.baseline)
+
+    @application.post("/api/projects/{project_id}/training/init-baseline")
+    def training_baseline_init(project_id: str, body: TrainingBaselineInitPayload):
+        return training.initialize_baseline(state, project_id, body.baseline, body.revision, body.baseline_sha256)
 
     @application.get("/api/projects/{project_id}/training/{experiment_id}")
     def training_experiment(project_id: str, experiment_id: str):

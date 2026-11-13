@@ -362,6 +362,14 @@ def training_runtime_status(project: dict, spec: dict, *, run_id: str | None, ti
     return _training_process(project, 'runtime', {'spec': spec, 'run_id': run_id}, timeout, sdk=True)
 
 
+def training_setup(project: dict, home: Path, operation: str, payload: dict) -> dict:
+    """Preview locally or initialize the selected native baseline, without starting work."""
+    if operation == 'init-baseline' and sys.platform != 'linux':
+        raise ValueError('Native training initialization requires Linux; use the registered runtime in WSL2')
+    return _training_process(project, 'setup', {'project': project, 'control_home': str(home),
+                             'operation': operation, **payload}, 20, sdk=False)
+
+
 def training_submission(project: dict, home: Path, operation: str, payload: dict, *, timeout: int) -> dict:
     """Enter the selected training owner with durable submission checkpoints."""
     if operation != 'status' and sys.platform != 'linux':
@@ -406,6 +414,15 @@ def _training_process(project: dict, module: str, payload: dict, timeout: int, *
         return json.loads((output / 'stdout.txt').read_text(encoding='utf-8'))
 
 
+def _validate_training_baseline(baseline: dict) -> None:
+    import perfctl
+
+    perfctl.ident(baseline.get('baseline_id'))
+    perfctl.commit(baseline.get('commit'), 'commit')
+    for key in ('config_sha256', 'workload_fingerprint'):
+        perfctl.sha(baseline.get(key), key)
+
+
 def _training_records(payload: dict) -> dict:
     import base64
     from dataclasses import asdict
@@ -436,10 +453,7 @@ def _training_records(payload: dict) -> dict:
 
     baseline = document(prefix + 'baseline.json', optional=True)
     if baseline is not None:
-        perfctl.ident(baseline.get('baseline_id'))
-        perfctl.commit(baseline.get('commit'), 'commit')
-        for key in ('config_sha256', 'workload_fingerprint'):
-            perfctl.sha(baseline.get(key), key)
+        _validate_training_baseline(baseline)
     baseline_files = dict(files)
 
     def inspect(ident, *, detail=False):

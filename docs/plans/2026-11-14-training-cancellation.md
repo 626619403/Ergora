@@ -1,6 +1,6 @@
 # F9b3：训练取消请求、未知投递恢复与停止事实
 
-日期：2026-11-14。基线 `0d9c0a7a2e0c7d107f3a832fa9492a452df71f34`，承接[F9b2](2026-11-14-training-submission.md)与[F9总计划](2026-11-14-training-workbench.md)。F9b2已精确发布，自己的CI `43511152711` 八job／30必要步骤与原独立两轴终核通过。本片B3.1–B3.5已实现，功能／安装分段及真实CPU／页面、自身模板已验，新的独立两轴最终本地补核通过、开放0／0；普通发布与自己的CI尚待完成。baseline／runner／prepare控制面归F9b4，精确evidence批准归F9c，真实GPU归F9d／B3。
+日期：2026-11-14。基线 `0d9c0a7a2e0c7d107f3a832fa9492a452df71f34`，承接[F9b2](2026-11-14-training-submission.md)与[F9总计划](2026-11-14-training-workbench.md)。本片产品 `fad53478c9261157b3016563b410b9d4b4d85b9d` 已普通推送，35个Git blob／完整远端Ref与原本地候选一致；自己的CI `43516776101` Success，8job／30必要步骤，原独立两轴发布／CI终核通过、开放0／0。本地B3.1–B3.5及分段安装／真实CPU／页面／自身模板、独立两轴开放0／0范围保持。baseline／runner／prepare控制面归[F9b4](2026-11-14-training-preparation.md)，精确evidence批准归F9c，真实GPU归F9d／B3。
 
 ## 原问题与既有 owner
 

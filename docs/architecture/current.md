@@ -6,7 +6,7 @@ Ergora 把项目合同、可组合的专长 Agent、正式执行和可核对证�
 
 ## 模块与依赖
 
-自有Python保持一个 `ergora` 包。下图是主要调用方向；组合框表示职责集合，不表示框内模块互相依赖，也不是全部203条导入边。
+自有Python保持一个 `ergora` 包。下图是主要调用方向；组合框表示职责集合，不表示框内模块互相依赖，也不是完整的导入图。
 
 ```mermaid
 flowchart TB
@@ -14,7 +14,7 @@ flowchart TB
   HTTP[web / HTTP] --> Uses
   Uses --> Project[projects / registrations / bindings]
   Uses --> Tasks[tasks / 正式任务操作]
-  Uses --> Training[training / 原实验观察]
+  Uses --> Training[training / 原实验观察与显式操作]
   Training --> Reference
   Uses --> Issues[issues / 工单观察与上下文关联]
   Issues --> IssueBackends[issue_backends / 本族原生协议]
@@ -61,6 +61,7 @@ flowchart TB
 |`tasks`|正式任务本地查询、预览／创建，以及运行／批准／取消／导出／对账用例；共有exported_source_candidate绑定原来源与精确候选，inspect_export委托原Git owner读当前对象|项目revision、原task/run、精确意图与摘要；未知结果沿原ID恢复|
 |`training`|CLI／HTTP共用离线观察、显式实时查询、原准备实验提交／取消及意图对账；reference子进程装载所选原配置|标准库reader共用于观察与预检；原client拥有start／cancel，操作intent／attempt／memo／回执不替代实验账本。attempt后只读固定原history恢复；停止观察分别呈现原control、adapter与fence，不复制调度／批准|
 |`reference_training_submission`、`reference_training_cancellation`、`reference_training_runtime`|原训练start身份、固定run取消意图与投递恢复、共享原Status／Outcome观察|取消引用原start意图与receipt，不复制大manifest；原client核binding并发送，原ClusterAdapter核job／executor；原负结果保持|
+|`reference_training_context`、`reference_training_setup`|setup与原submission共用注册身份／路径；完整baseline预览及确认初始化|原reader与setup共用perfctl原语验证；只读Git沿原可移植primitive，发布交原perfctl锁／原子init。同内容可重试、不同内容不覆盖，不新建实验账本|
 |`reference_history`|Task批准／取消和训练取消共用的完整signal payload分页匹配|只读固定run的原history；同原因或错误操作SHA不能补回执|
 |`reference`、`reference_creation_process`|随包参考资源和专用进程装载|编译／读取与执行分开；不在Web请求中直接改原生进程全局|
 |`reference_task_creation`、`reference_task_submission`、`reference_task_runtime`|原合同发布、attempt-before-send及原运行查询|操作先持久化意图，后做外部变更；原spec/memo/run必须匹配|
@@ -171,6 +172,8 @@ Input还拥有准入报告的版本差异：v1–v6调用原doctor，v7从冻结
 Skill采用沿 `skills.adopt → evaluation.compare → skill_assets.move_head`，同事务核旧revision与精确baseline。GEPA只提出候选；资料观察／研究调度只提出带来源材料；ReMe只是可重建的记忆投影。
 
 训练领域组合提供实验设计／kernel／性能／测量审查的只读提案叶。实际实验仍走 `prepare → start（控制排队）→ 操作者run-local + manifest SHA → 可信统计门禁 → owner evidence SHA → 集成复验`。控制worker不自动启动训练，Forge内部judge不替代可信门禁；GPU结果和完整实验图须有独立实测，见[训练手册](../TRAINING.md)。
+
+新项目的baseline可由同一training应用入口从CLI／HTTP／页面预览，再确认当前项目revision及完整canonical内容SHA初始化。原文件字节SHA单列；初始化失联先读原registry，同内容可显式重试，已有不同内容交给经过审阅的基线迁移。实际发布仍是原perfctl单文件锁／原子init，只有Linux／WSL2；预览与初始化无需SDK或服务。runner登记／prepare继续沿原owner，见[分片计划](../plans/2026-11-14-training-preparation.md)。
 
 ## Agent后端接入
 

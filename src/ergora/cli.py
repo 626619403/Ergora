@@ -464,6 +464,13 @@ def parser() -> argparse.ArgumentParser:
     preview.add_argument("--history-revision", help="Observation revision required after the first history page")
     experiments = commands.add_parser("training", help="Observe native experiments; explicitly submit, cancel or reconcile original operations")
     operations = experiments.add_subparsers(dest="operation", required=True)
+    for name in ("baseline-preview", "init-baseline"):
+        operation = operations.add_parser(name, help="Preview or explicitly initialize the native baseline; never execute training")
+        operation.add_argument("project")
+        operation.add_argument("--baseline", type=Path, required=True)
+        if name == "init-baseline":
+            operation.add_argument("--revision", type=int, required=True)
+            operation.add_argument("--baseline-sha256", required=True, help="Content SHA-256 returned by baseline-preview")
     for name in ("list", "show"):
         operation = operations.add_parser(name)
         operation.add_argument("project")
@@ -916,7 +923,17 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(output, ensure_ascii=False, indent=2))
             return 0 if args.operation != "run" or output["status"] == "succeeded" else 1
         elif args.command == "training":
-            if args.operation == "status":
+            if args.operation in ("baseline-preview", "init-baseline"):
+                with args.baseline.open("rb") as stream:
+                    raw = stream.read(1_048_577)
+                if len(raw) > 1_048_576:
+                    raise ValueError("Baseline source file exceeds 1 MiB")
+                baseline = json.loads(raw)
+                if args.operation == "baseline-preview":
+                    output = training.preview_baseline(State(args.home), args.project, baseline)
+                else:
+                    output = training.initialize_baseline(State(args.home), args.project, baseline, args.revision, args.baseline_sha256)
+            elif args.operation == "status":
                 output = training.status(State(args.home), args.project, args.experiment_id, run_id=args.run_id, timeout=args.timeout)
             elif args.operation == "submission":
                 output = training.submission(State(args.home), args.project, args.experiment_id)
