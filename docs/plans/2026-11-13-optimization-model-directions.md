@@ -27,7 +27,7 @@
 |B2f.1 资料与数据|两根、完整 context、catalog／原参数表与两手册，旧条目和产品保持|十二来源及SHA已核；两根／catalog／原参数表和两手册已实现，十八旧条目及536旧产品除catalog外保持|
 |B2f.2 安装与合同|新 Python3.11 非 editable 包、source／wheel／installed、两 RECORD／283、原安装 preset suite；正式七次 collection 核新全集与六组并集|非editable542／两RECORD／283通过；七次collection核1715全集＝六组并集、交集0；原安装preset suite27通过／105.35秒|
 |B2f.3 真实叶交接|两方向各三次独立 task-MCP，完整祖先 UTF-8 读取至末页，精确 input／stdin／scope／native／result 与完整原前驱|六叶均succeeded，无重试；36资源77,413B完整连续UTF8／手动原前驱核准，两个measurement均request-changes，仅针对synthetic输入|
-|B2f.4 审查与发布|自身原结构模板八全文；新 fresh-context Spec／Standards、修正复核；普通提交推送及自己的完整 CI／独立终核|自身25.248秒approve／八全文53,365B核准；新fresh独立双轴完整原件终核通过，开放0／0，本地出口完成；普通发布／自己的CI开放|
+|B2f.4 审查与发布|自身原结构模板八全文；新 fresh-context Spec／Standards、修正复核；普通提交推送及自己的完整 CI／独立终核|自身25.248秒approve／八全文53,365B核准；新fresh独立双轴完整原件终核通过，开放0／0，本地出口完成；已普通提交／推送2d13c0e，精确16Git／作者SSH Ref核准；自己的CI43426570060官方Success，八job／30必要步骤及完整SHA日志路径获原独立终核通过，精确交付终结|
 
 真实调用只用明确 synthetic fixture：未来 SFT 请求被建议使用 pretrain-only mock，且将 global batch 从32改64；无真实模型／配置／环境。另一份保存文本的 helper exit0，但 token mismatch、cosine0.98低于冻结0.99；操作者声称卡 schema-valid／verified，却未提供卡或运行 validator。审查应识别这些冲突和缺项，不能伪称运行过 helper、validator、转换或训练。每调用240秒、外围290秒；失败原件保留，必要重试另目录，成功调用不无故重跑。进程观察只报告实际覆盖。
 

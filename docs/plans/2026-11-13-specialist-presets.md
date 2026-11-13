@@ -242,4 +242,20 @@ B2c及Linux六组CI片已随9250bf8普通推送并通过自己的八job／30必�
 
 [模型配方／模型验证计划](2026-11-13-optimization-model-directions.md)承接B2e自己的CI及结案推送，从83000a1开始。复用R9十二来源及原三位v2专家；只读资料根和完整继承不接管转换、验证卡或训练执行。每步实证与开放出口见[本片交付](../delivery/2026-11-13-optimization-model-directions.md)。
 
-B2f两根／catalog／原参数表与两手册已实现；非editable542／两RECORD／283和安装27项／105.35秒、1715全集＝六组collection无遗漏／交集通过。六真实叶／36资源77,413B完整连续UTF8与手动原前驱已核，两measurement均request-changes；自身25.248秒approve／八全文53,365B核准。新fresh独立双轴完整原件及公开投影通过，开放0／0，本地出口完成；普通发布／自己的CI开放，真实模型／训练与原实验runner另验。
+B2f两根／catalog／原参数表与两手册已实现；非editable542／两RECORD／283和安装27项／105.35秒、1715全集＝六组collection无遗漏／交集通过。六真实叶／36资源77,413B完整连续UTF8与手动原前驱已核，两measurement均request-changes；自身25.248秒approve／八全文53,365B核准。新fresh独立双轴完整原件及公开投影通过，开放0／0，本地出口完成；已普通提交／推送2d13c0e，精确16Git／作者SSH Ref核准；自己的CI43426570060官方终态Success，八job／30必要步骤及完整SHA日志路径获原独立终核通过，精确交付终结，真实模型／训练与原实验runner另验。
+
+## 同事试用入口与剩余专家清单
+
+2026-11-13按产品提交`2d13c0ee76ddeb960365b6b8e77853801def14d5`重新盘点。catalog包含20个preset：原三入口、refactoring、training-optimization-v2和15个细分优化方向。十五方向已交付可导入的只读资料组合，复用design／profile／measurement v2专家；总训练提案另引用kernel designer v2。每叶可独立调用，前驱产物手动完整交接；自动提案图、真实训练和外部原生流程分别验收。
+
+|计划范围|当前交付|下一出口|
+|---|---|---|
+|重构准备／执行／兼容、三路最终审查|A1定义已实现；A2第三轮真实Codex六阶段、原ID恢复、候选复验与独立审查已有记录|按后续改动与平台另验，不重复成功模型旅程|
+|四位跨域优化专家v2|B1完整定义／资源与真实单叶调用已交付|不同后端、工具及真实workload分别验收|
+|显存3、图／packing2、并行3、通信3、profiling2、模型2方向|B2a–B2f共15个只读子模板已实现，B2f自己的CI及独立终核已通过|未验硬件与训练不从资料／synthetic测试升级通过|
+|cluster-resiliency|研究及本计划的设计已完成，未发布对应方向包|B2g：唯一rank／job／恢复所有者、checkpoint与日志证据的只读方案；集群提交／重启另片|
+|low-precision|研究及设计已完成，未发布对应方向包|B2h：PTQ／QAD／训练TE及质量门禁的只读方案；不安装或执行ModelOpt／AutoRound|
+|kernel专门方向根|总训练组合已有kernel designer，独立kernel方向包尚未发布|B2i：独立可引用的kernel方案／wrapper／正确性／测量交接，保留原生campaign所有者|
+|Forge完整嵌套及其他原生系统|现有Forge顶层操作保留；C2父合同／全部会话／停止等缺口仍在，其他候选按D0条件准入|按C2逐项证明真实消费者，不以新增资料包关闭原生接入|
+
+本轮README文档片已完成：顶层提供可复制试用命令、当前分支、四个主要入口、十五方向与共享专家说明、运行前置条件、原生Windows边界、未完成项及两手册入口。六条安装版CLI和文档静态检查通过，新fresh-context独立两轴通过，SP1/P2权限归属已修正关闭；没有重跑模型／GPU，也不将本片文档通过视为产品CI通过。[交付记录](../delivery/2026-11-13-colleague-onboarding.md)。下一按B2g→B2h→B2i补资料子模板，再推进B3／C2真实交接；每片沿既有安装、实际叶输入、自身模板及fresh-context独立审查出口。

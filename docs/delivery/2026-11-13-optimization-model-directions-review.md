@@ -45,3 +45,36 @@ Spec 0 finding；Standards 0 规范违反／0 启发 finding，两轴均无开�
 2026-11-13：r4 十六文件冻结清单 SHA256 为 `eeca263615b611f0846c7dea429bc99c8e5e5ffdb8c8881601b0a17deced3656`，baseline／HEAD 仍为 `83000a1afbdbd2429efbcebe1e7c65133215ca8e`。逐件长度／SHA 与冻结原件及当时 live 全符，冻结目录和 Git 跟踪差异／全部未忽略新文件均与清单精确相等，没有清单外变更。r3→r4 只有 PLAN、本片计划、D2 计划和交付记录四份状态 Markdown，以及新增本独立报告；八产品／测试与公开投影全部保持。
 
 四处状态所述“独立双轴通过、开放 0／0、本地出口完成”与本报告原结论相符，并明确保留普通发布、本候选自己的完整 CI 及独立终核开放；没有把 synthetic、collection 或 B2e 的结果扩大为本候选真实模型／实验或 CI 验收。十六文件中 176 个本地 Markdown 文件链接全部存在。本次仅补核同片状态与链接，不改变两轴判词或原验证范围；本尾注由后续最终快照单独绑定。
+
+## 同片普通发布与 CI 初始绑定补核
+
+2026-11-13：普通提交 `2d13c0ee76ddeb960365b6b8e77853801def14d5` 的唯一 parent 为 `83000a1afbdbd2429efbcebe1e7c65133215ca8e`。最终 r5 十六文件清单 SHA256 为 `cc35a1d754f07f579cfba504d10e38797406b3970a9f6f57eeeb3e7bd939f9c2`；与 r4 相比只有上述获核准的报告尾注。协调者从实际 Git 对象重算十六文件长度／SHA 和 blob OID，全部等于 r5 原文件、ready.files 及 staged_objects；变更集合精确相同。ready 的辅助 `review_report_sha256` 确由本片相同 manifest 的报告条目取值，等于 `78c4edc785adc4652bc3aad4c25b2f05ef3d6c1da9193ad9845d3bc404e85c79`，没有借用前片字段。
+
+该提交的全部 542 包文件与已核 source／wheel／installed 及 live 逐字相等；原 wheel 身份和两 RECORD 550／555 行继续符合。普通 push 原回执 exit0，argv 无 force；作者 SSH `ls-remote` 原回执 exit0，完整分支 Ref 等于上述候选。此处只核作者保存的原回执，审查者没有请求远端。
+
+官方 Actions 初始列表原 JSON 的唯一完整 commit 链接、run 原 HTML 和 UI job-groups 原 JSON，均绑定本候选自己的 [CI43426570060](https://github.com/626619403/Ergora/actions/runs/43426570060)。三份 HTTP200 原回执的长度／SHA 与 body 一致；列表、summary 与 UI metadata 的身份字段一致，八个不同 job ID 恰好覆盖 plan、六 Linux 组和一 Windows 组，逐 job href 均属于该 run。初始原页为 In progress，plan success，其余七 job 在途；本次只通过初始身份绑定，自己的 CI 终态和全部必要步骤仍待独立核准，不使用 B2e 的 CI 结果。
+
+发布后状态补核 P3-1 已关闭：`docs/PLAN.md:10` 的旧 B2c 和 `docs/plans/2026-11-13-specialist-presets.md:217` 的旧 B2a 曾误写 B2f 的新提交／CI，可能让恢复者错误归属候选证据。实现方仅将两处历史段落恢复为已提交 HEAD 原字节；协调者重读逐字一致，B2f 最新条目保留。除本报告尾注外，当前更新只涉及本片四份状态 Markdown。176 个本地文件链接均存在。该修正不改变已发布产品和原两轴结论；普通发布身份补核通过，CI 终态继续开放。
+
+## 本候选自己的 CI 终态独立验收
+
+2026-11-13 13:26–13:29 UTC：协调者沿同一官方 UI 路径各取一次 run 原 HTML、当前 job-groups 原 JSON 及八份 job 原 HTML，十份 HTTP200 原回执的 URL、长度和 SHA256 与保存 body 全符。终态 r2 原件使用新目录，早期在途及受限观察完整保留。run 原页明确为 Success，完整 commit 链接仍绑定 `2d13c0ee76ddeb960365b6b8e77853801def14d5` 的 [CI43426570060](https://github.com/626619403/Ergora/actions/runs/43426570060)；当前 UI 的 totalCount 为 8、hasMore 为 false，八个不同 job 均 completed／success。
+
+`ci-run-html-r2` 原 body SHA256 为 `93f75c389d5c2f1f7c6057e84009ca9a3716ef1ad4747ba2beee36c7bc018977`；`ci-job-groups-r2` 原 body 为 `abad91a70e2d16941850eeb56b030d98e31e28af96964b3bfa082dbcac4b3e85`。逐 job 的 `ci-job-<ID>-html-r2` 原件、回执和步骤身份由独立原件审计逐项绑定。
+
+| Job | 官方 job ID | 必要步骤数 | 原生回归秒数 |
+|---|---|---:|---:|
+| plan | [131889315431](https://github.com/626619403/Ergora/actions/runs/43426570060/job/131889315431) | 1 | — |
+| Linux group 0／Python 3.11 | [131889393569](https://github.com/626619403/Ergora/actions/runs/43426570060/job/131889393569) | 4 | 253 |
+| Linux group 1／Python 3.11 | [131889393518](https://github.com/626619403/Ergora/actions/runs/43426570060/job/131889393518) | 4 | 246 |
+| Linux group 2／Python 3.11 | [131889393553](https://github.com/626619403/Ergora/actions/runs/43426570060/job/131889393553) | 4 | 235 |
+| Linux group 3／Python 3.11 | [131889393659](https://github.com/626619403/Ergora/actions/runs/43426570060/job/131889393659) | 4 | 164 |
+| Linux group 4／Python 3.11 | [131889393536](https://github.com/626619403/Ergora/actions/runs/43426570060/job/131889393536) | 4 | 178 |
+| Linux group 5／Python 3.11 | [131889393493](https://github.com/626619403/Ergora/actions/runs/43426570060/job/131889393493) | 4 | 211 |
+| Windows all／Python 3.12 | [131889393640](https://github.com/626619403/Ergora/actions/runs/43426570060/job/131889393640) | 5 | 600 |
+
+必要步骤与候选 workflow 对照：plan 的 `Read explicit test groups` 一项；七个 native job 各自的 `Build and install wheel`、`Packaged reference identity`、`Native application regression`、`Upload regression observations` 四项；Windows 另有 `Windows PowerShell 5.1 installer and upgrade`。共 30 项均恰好出现一次，conclusion 为 success，开始／结束时间非空且带 `data-job-completed`，日志 URL 非空并严格含完整候选 SHA、对应 job ID 和步骤号。六 Linux 回归为 164–253 秒，Windows 回归为 600 秒，PowerShell 5.1 安装升级为 36 秒；这些是官方步骤时间差。
+
+独立原件审计 `ci-independent-terminal-audit-r2.json` 为 15,571B，SHA256 为 `ae2f26b9b59d3a15a992c8b3a69ee3cb3a8bd31fa02d5e13fc5d4765ca21b045`，结果 passed=true、issues=[]、job_count=8、required_step_count=30。该审计另从原 HTML／UI JSON 核验，与复用原解析器所得 r2 结果一致。已验证的是完整 SHA 日志 URL 与官方步骤元数据；没有下载日志正文或 artifact 归档，没有执行本地测试、安装或模型。
+
+结合前节普通发布身份补核，本片已提交 B2f 候选的发布及其自己的必要 CI 独立终态验收通过，原 Spec／Standards 开放问题继续为 0／0。结论范围为上述精确候选；后续 README 或试用文档变更按其自身证据验收。真实模型／卡／转换、GPU、质量／恢复、性能收益、自动图和采用仍未验。

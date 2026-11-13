@@ -4,6 +4,8 @@
 
 ## 当前检查点
 
+- [同事试用入口](delivery/2026-11-13-colleague-onboarding.md)本地出口完成：按2d13c0e盘点20个preset，明确15个只读细方向与四位跨域v2专家已交付，cluster-resiliency／low-precision／kernel专门方向根及完整原生接入仍待做；顶层README补试用命令、运行前置、平台和手册入口，隔离目录六条安装版CLI、文档链接／锚点、安装脚本语法与diff检查通过，新fresh-context需求／可维护性两轴通过、开放0／0，SP1/P2权限归属已修正关闭，第0条过期状态已收口。下一资料片按[D2剩余清单](plans/2026-11-13-specialist-presets.md#同事试用入口与剩余专家清单)推进B2g→B2h→B2i，B3／C2分别验真实实验与Forge嵌套。
+
 - [A2第三轮重构旅程](delivery/2026-11-13-refactoring-journey.md)本地验收与[新独立双轴终核](delivery/2026-11-13-refactoring-journey-r3-review.md)通过，开放0／0；9 job／7真实会话、串行前驱、38资源23,329B完整读取、精确候选复验／handoff／623事件重放／原ID重启、9 owner／7槽／claim收尾均已核。前两轮失败及原预算保留。运行时修正分别普通提交`e890785`／`4076451`，A2原件和审查提交`ee84d83`；后续远端／自己的CI另记。
 - [B2a三内存方向](delivery/2026-11-13-optimization-memory-directions.md)本地出口及[新独立双轴](delivery/2026-11-13-optimization-memory-directions-review.md)通过：506产品／两RECORD／283，安装15项，九叶54资源88,611B完整读取／手动前驱、自身原结构模板42.021秒approve，最终16文件开放0／0、过期状态P3关闭。[B2b执行图／packing](delivery/2026-11-13-optimization-execution-directions.md)两根／catalog／手册、512／两RECORD／283和安装17项通过；六叶36资源62,230B完整读取／手动前驱、自身原结构模板108.003秒approve；八文件提升及最终13文件／原件的新独立双轴通过，开放0／0、过期状态P3关闭，本地出口完成。
 - [发布与CI](delivery/2026-11-13-publication-status.md)：原00922自己的CI43373597757仅Windows四步骤通过，Linux20分钟job上限取消。[独立成本调查](delivery/2026-11-13-linux-ci-profile-review.md)后，Python3.11原suite phase采样在4500.222秒固定边界cancelled：1463完成／233未完成，1433 call通过／21跳过／9research失败，原失败及缺终态trace保持。首case紧凑red／入口保护green定位到采样驱动spawn重复创建日志，原产品未改；完整模块两次补测11通过／1跳过各自保留。仅对233未完成原nodeid的独立pytest入口续测已退出0：227通过／6跳过／36子测试通过，393.593秒；去子报告和未完成setup后原1696项分段成本4875.574秒，完整无交集覆盖，非单次全suite通过。CI六组实测估算各812.58–812.63秒，原20分钟job上限保持。后续六组候选的精确发布与自己的完整CI结果见下述最新检查点。
@@ -14,7 +16,7 @@
 
 - [B2e profiling／memory-snapshot](plans/2026-11-13-optimization-profiling-directions.md)从通信五MD结案提交e85b1e6开始，十一份固定资料已核，两个只读根／catalog／原参数表和两手册已实现并复用共享v2专家；独立安装536／两RECORD／283和25项通过，1713全集与六组collection无遗漏／交集；六叶成功／36资源75,319B完整原件与手动前驱核准，profiling仅批准补证据方案、snapshot要求补实验条件；自身26.700秒approve／八全文核准，新fresh两轴完整原件及文档通过，SP1/P3关闭／开放0／0，本地出口完成，已普通提交／推送99b953f，精确16Git／作者SSH Ref核准；自己的CI43420340258第三官方run HTML为Success，八job／30必要步骤success／completed且每步非空完整SHA日志URL获原独立协调者终核通过；Windows回归671秒／PS5.1升级42秒，精确交付终结。[交付记录](delivery/2026-11-13-optimization-profiling-directions.md)持续更新；不把synthetic报告或文本审查当parser／GPU验收。
 
-- [B2f 模型配方／模型验证](plans/2026-11-13-optimization-model-directions.md)从 B2e 五MD结案提交83000a1开始；十二份R9固定原件464,656B及SHA已复核，新GET为零。两只读根／catalog／原参数表／两手册已实现，十八旧条目保持；非editable542／两RECORD／283及1715全集＝六组collection无遗漏／交集通过，原安装suite27项／105.35秒通过，自身25.248秒approve／八全文核准；六叶成功／36资源77,413B完整连续UTF8／手动原前驱核准，两个measurement均缺原实证request-changes；新fresh独立双轴完整原件和公开文档终核通过，开放0／0，本地出口完成；普通发布／自己的CI开放。详见[交付记录](delivery/2026-11-13-optimization-model-directions.md)。
+- [B2f 模型配方／模型验证](plans/2026-11-13-optimization-model-directions.md)从 B2e 五MD结案提交83000a1开始；十二份R9固定原件464,656B及SHA已复核，新GET为零。两只读根／catalog／原参数表／两手册已实现，十八旧条目保持；非editable542／两RECORD／283及1715全集＝六组collection无遗漏／交集通过，原安装suite27项／105.35秒通过，自身25.248秒approve／八全文核准；六叶成功／36资源77,413B完整连续UTF8／手动原前驱核准，两个measurement均缺原实证request-changes；新fresh独立双轴完整原件和公开文档终核通过，开放0／0，本地出口完成；已普通提交／推送2d13c0e，精确16Git／作者SSH Ref核准；自己的CI43426570060官方终态Success，八job／30必要步骤completed／success且完整SHA日志路径获原独立评审终核通过，精确交付终结。详见[交付记录](delivery/2026-11-13-optimization-model-directions.md)。
 
 以下保留较早检查点的原身份；其中“当前／在途”仅指该历史记录的当时状态，恢复与下一步以上述最新条目及各片交付为准。
 
@@ -41,7 +43,7 @@
 
 ## 下一可执行项
 
-0. 用户新增[专家模板重整计划](plans/2026-11-12-specialist-template-refresh.md)：已备份并升级日常安装，452产品文件／RECORD与产品基线一致，U2的43命令／52检查／10HTTP及新独立原件验收完成。按Megatron Bridge Skill Reference细化纵向方向，最初七方向只是举例；R1–R10完成，R8新独立复核通过、两P2关闭。X1架构／系统、X2 kernel端到端、X3诊断／实验、D0采用决策和D1a设计均完成，新独立两轴及同片补核开放0／0；[D1计划](plans/2026-11-12-six-stage-native-consumer.md)的B1／B2a已精确交付，B2运行与C本地出口已过，D真实旅程及新独立证据两轴通过，原串行记账P2已关闭；接续[D2计划](plans/2026-11-13-specialist-presets.md)：A1已本地提交3122487，A2首轮BLOCKED及原件补核中，B1实际叶验收并行推进，其后B2优化方向。原六阶段为首通用消费者，Forge旧pin为首kernel方向；条件适配Optuna／原runner，不再建调度。完整方向流程可接子模板，保留原合同／权限、预算和恢复所有者；没有把CLI／静态图称完整接入。U0的H1原评审CI终核已完成；[交付记录](delivery/2026-11-12-specialist-template-refresh.md)。
+0. [专家模板重整](plans/2026-11-12-specialist-template-refresh.md)的U1／U2安装与旅程、R1–R10纵向及X1–X3横向研究、D0采用决策均已完成各自范围；D1已有完整材料／总预算／单实例六阶段消费者和真实治理旅程。接续[D2计划](plans/2026-11-13-specialist-presets.md)：A1重构配方与A2第三轮真实重构已验，B1四位共享专家v2及B2a–B2f十五方向资料已实现，B2f自己的CI43426570060及原独立终核已通过。README试用说明及独立文档评审已完成；下一B2g集群／恢复→B2h低精度→B2i独立kernel方向，B3原实验runner交接与C2 Forge全部内部会话／权限／停止分别验收。原A2前两轮失败保持历史，不再作为当前下一任务；不重复已成功模型旅程，不将资料包当自动图或GPU收益。
 
 1. C3d及C4a精确交付均已终结，既有非终态样本保持；不重复产品/模型或远端终核。
 2. C4b.1完整最终候选本地出口已通过，8ce9aba已普通推送、原评审精确20Git对象/436包/283冻结及一次HTTPS同SHA通过；自己的CI42825342126第三样本双OS七必要步骤与原评审离线终核通过，精确交付终结；前两In progress样本保持。已过行为与模型不重复。

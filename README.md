@@ -8,18 +8,41 @@ Ergora 用任务合同明确目标、角色、修改范围和验收标准，把�
 
 [安装与日常使用](docs/USAGE.md) · [Windows 安装](docs/WINDOWS.md) · [训练优化手册](docs/TRAINING.md) · [Agent 选择与正式执行](docs/AGENT_BACKENDS.md) · [工作流组合](docs/WORKFLOW_DEFINITIONS.md) · [工具接入](docs/INTEGRATIONS.md) · [单文件参考发行](docs/distribution/multi-agent-development-platform.html) · [计划与进度](docs/PLAN.md)
 
-首次使用专家组合可从[三模板入门旅程](docs/TEMPLATE_WALKTHROUGHS.md)开始：准备完整manifest，选择逐实例后端，再创建开发任务或调用训练提案叶。
+首次使用专家组合可从[模板入门旅程](docs/TEMPLATE_WALKTHROUGHS.md)开始：准备完整 manifest，选择逐实例后端，再创建开发任务或调用训练提案叶。
+
+## 当前试用范围
+
+当前版本适合单机、可信项目的小范围试用。建议先在一个小型 Git 仓库运行治理或重构任务，核对计划批准、命令验证、独立审查和候选导出。
+
+- **交互入口：** CLI 与本地图形控制台，提供项目、分层工具绑定、Agent／工作流定义、正式任务和证据交接。
+- **专家组合：** 独立版本的 Agent 可以声明职能、专长、指令、Skill 和上下文；工作流为实例声明权限，并沿结构父链收窄至项目授权上限。子模板累加结构祖先资料，每实例选择支持的后端。开发组合支持受约束的串并行工作单元及多路审查。
+- **已记录的实际运行：** [治理](docs/delivery/2026-11-13-six-stage-native-journey.md)与[重构](docs/delivery/2026-11-13-refactoring-journey.md)已使用真实 Codex 走通六阶段、候选复验和原 ID 恢复；模型及硬件结论按各记录的范围理解。
+- **平台：** Linux 和 Windows 原生均可安装控制面；完整开发执行使用 Linux／WSL2 下的可信容器参考执行环境，详见 [Windows 手册](docs/WINDOWS.md)。
+
+代码与文档的最新交付范围见 [持续计划](docs/PLAN.md)，精确提交的云端检查见 [GitHub Actions](https://github.com/626619403/Ergora/actions)。下面的安装只准备控制面与模板；正式执行还需完成模型和服务配置。
+
+## 快速试用
 
 本文的组合与执行能力目前随 `refactor/architecture-foundations` 开发分支交付，以下安装选择同一分支；`main` 是另一条主线，不能仅按包版本号假定它已包含本文全部命令。需要复现某次验收时，在安装前固定该记录的完整提交。
 
+Linux 需要 Git、Python 3.11+、venv 和 pip，并能访问依赖源。以下使用一个尚不存在的源码目录：
+
 ```bash
-git clone --branch refactor/architecture-foundations https://github.com/626619403/Ergora.git
-cd Ergora
+git clone --branch refactor/architecture-foundations \
+  https://github.com/626619403/Ergora.git "$HOME/Ergora"
+cd "$HOME/Ergora"
 bash scripts/install.sh
-"$HOME/.local/bin/ergora" serve
+export PATH="$HOME/.local/bin:$PATH"
+
+ergora composition presets
+ergora composition install-preset repository-governance
+ergora composition install-preset refactoring
+ergora serve
 ```
 
-以上是 Linux 的 Git / Python 3.11+ 安装路径；Windows 使用 [PowerShell 安装器](docs/WINDOWS.md)。打开 `http://127.0.0.1:8977`，注册已有仓库即可使用。网页资源随包安装，无需 Node 构建或外部工单。可选工具有各自的安装、认证与服务要求，见 [使用手册](docs/USAGE.md)。
+打开 `http://127.0.0.1:8977`，可查看和配置已导入的专家与模板。网页资源随包安装，无需 Node 构建。Windows 使用 [PowerShell 安装器](docs/WINDOWS.md)，安装时选择同一开发分支或固定提交。
+
+首次正式运行还需要：按 [Agent 安装与认证](docs/USAGE.md#安装与认证-agent-cli)配置自己的后端，将凭据提供给启动 CLI／服务的环境；按 [项目手册](docs/PROJECTS.md)登记已有提交的业务仓库与实际可信检查；再按 [模板入门旅程](docs/TEMPLATE_WALKTHROUGHS.md)准备完整 manifest、参考执行栈和所需 `task-mcp` 依赖，预览并明确提交任务。可以先选择本地手动工单，不必先接 GitHub／GitLab。
 
 安装组合可选`--profile control`（默认Web控制面）、`development`（加Temporal SDK）或`research`（再加GEPA SDK）；Windows使用`-Profile`。运行`ergora tools profiles`查看配方及外部要求。组合只选择SDK，Agent和后台服务按需另配，详见[组合与离线安装](docs/USAGE.md#选择安装组合)。
 
@@ -29,11 +52,41 @@ bash scripts/install.sh
 |---|---|---|
 |整理已有仓库、约束模块依赖、沉淀项目知识|`repository-governance`|盘点基线、建立导航与架构检查，在限定范围内修改并验证|
 |跨模块功能、接口调整、可回滚迁移|`large-change`|按依赖和路径所有权拆工作单元，增加集成、兼容、迁移回滚检查|
-|训练性能或配方实验|`training-optimization`|冻结 workload、基线和实验清单，运行可信 runner，保存证据并经人工放行|
+|保持行为的模块重构、调用者迁移|`refactoring`|准备→重构→兼容验证→可信集成／验证→三路审查，引用一个原生六阶段任务|
+|训练性能与配方方案|`training-optimization-v2`|跨域实验设计、性能分析、kernel／wrapper 设计与独立测量审查；实际实验交可信 runner|
 
 适合需要管理多个 agent 的交接、恢复长任务、保留验收依据的项目维护者。每个业务项目拥有自己的 Git 仓库和工单；每个开发任务导出自己的分支。平台共享工具和运行记录。
 
 安装后运行`ergora composition presets`查看内置专家组合；`ergora composition install-preset large-change`一次导入该领域的Agent与子模板。治理和开发可将互补专家映射到原工作单元，再接结构、正确性、测试价值三份审查子模板；训练组合提供只读提案，真实实验保留可信runner/gate。[使用与后端选择](docs/WORKFLOW_DEFINITIONS.md#使用内置领域组合)。
+
+当前内置 **20 个 preset**：上表四个入口、保留的 `training-optimization` v1，以及以下 **15 个优化方向子模板**。方向完整 ID、根版本和调用方式见 [训练手册](docs/TRAINING.md#独立的优化方向子模板)。
+
+|方向组|已发布的细分方向|
+|---|---|
+|显存|memory tuning、activation recompute、CPU offloading|
+|执行图与数据|CUDA Graphs、sequence packing|
+|并行与分片|parallelism、Megatron FSDP、hierarchical CP|
+|通信|TP／DP overlap、MoE dispatcher、MoE overlap|
+|诊断|profiling、memory snapshot|
+|模型|recipe／model、model verification|
+
+开发侧有准备者、领域执行者、兼容验证者，以及结构／正确性／测试价值三位审查专家。训练侧有实验设计、性能分析、kernel 设计、测量审查四位 v2 专家；多个方向复用这些专家，并分别继承所选方向资料。提示词与资源定义独立于后端，逐实例绑定仍受后端支持的职能、模式和权限限制。
+
+优化方向当前使用 `proposal-leaves`：每次显式调用一叶，操作者完整传递前驱结果。安装 preset 不会自动运行整张提案图、安装 GPU 工具或提交训练。真实实验继续沿 workload／baseline／experiment → 可信 runner → 独立评价 → 精确 evidence SHA 人工批准 → 项目集成复验，见 [训练优化手册](docs/TRAINING.md)。
+
+## 仍在补齐的模板与功能
+
+计划中的子 Agent 与模板**尚未全部补完**。下一批方向包依次为：
+
+1. **集群与恢复：** rank／job／恢复所有者、checkpoint、日志和资源方案；集群提交与重启另行接入。
+2. **低精度／量化：** PTQ、QAD、训练低精度的适用条件、质量与测量门禁。
+3. **独立 kernel 方向：** 将已有 kernel 专家的方案、wrapper、正确性与测量交接组织成可独立引用的方向包。
+
+ForgeKernel 已有顶层 campaign 操作，作为完整嵌套流程仍需补齐全部内部会话的父资源／权限、总预算、取消和未知结果对账。Fuser、GEAK、AKG、ModelOpt 等研究候选按 [采用矩阵](docs/research/2026-11-12-specialist-adoption.md)条件接入，实际可用范围分别验收。
+
+后续还包括首次任务引导与固定发行入口、优化提案到真实实验的统一交接、更多后端／会话验证、低代码配置收口、部分工单写回，以及基于评价与明确采用的记忆／Skill 改进闭环。实施顺序与验收节点见 [专家计划](docs/plans/2026-11-13-specialist-presets.md#同事试用入口与剩余专家清单)和 [总计划](docs/plans/2026-11-01-all-in-one.md)。
+
+分享当前功能时请带上本分支与 [使用手册](docs/USAGE.md)、[训练手册](docs/TRAINING.md)。单文件 HTML 内嵌 v2.2 参考发行及其两份手册；新增控制面与组合能力通过当前仓库安装。
 
 ## 当前工作流
 
