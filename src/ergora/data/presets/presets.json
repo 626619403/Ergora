@@ -322,6 +322,21 @@
         "ergora-measurement-review-v2",
         "ergora-opt-model-verification-proposal"
       ]
+    },
+    "optimization-cluster-resiliency": {
+      "description": "Unique rank and job ownership, bounded diagnosis and independently verified distributed recovery proposals. Readonly v2 experts; original executor, framework and evaluator retain execution ownership.",
+      "runtime": "proposal-leaves",
+      "root": "ergora-opt-cluster-resiliency-proposal",
+      "agents": [
+        "ergora-experiment-designer-v2",
+        "ergora-performance-analyst-v2",
+        "ergora-measurement-reviewer-v2"
+      ],
+      "workflows": [
+        "ergora-training-analysis-v2",
+        "ergora-measurement-review-v2",
+        "ergora-opt-cluster-resiliency-proposal"
+      ]
     }
   }
 }

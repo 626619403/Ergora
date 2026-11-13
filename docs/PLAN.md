@@ -4,6 +4,8 @@
 
 ## 当前检查点
 
+- [B2g集群／恢复方向](plans/2026-11-13-optimization-cluster-directions.md)从9c84b08清洁基线开始：R8十五资料257,662B／新研究请求0；一根／catalog／原参数与手册已实现。r1安装／三叶／自身结构原件保持；SP1/P3的Nsight范围已改为原文NSys／Nsight Systems。r2非editable545／两RECORD／283、28项／109.49秒、三真实叶18资源44,924B与手动原前驱通过；measurement保留request-changes。[新独立两轴终核](delivery/2026-11-13-optimization-cluster-directions-review.md)通过、SP1关闭／开放0／0，本地出口完成；普通发布／自己的CI仍开放。[交付](delivery/2026-11-13-optimization-cluster-directions.md)逐步记录。低精度与独立kernel继续排在后面。
+
 - [同事试用入口](delivery/2026-11-13-colleague-onboarding.md)本地出口完成：按2d13c0e盘点20个preset，明确15个只读细方向与四位跨域v2专家已交付，cluster-resiliency／low-precision／kernel专门方向根及完整原生接入仍待做；顶层README补试用命令、运行前置、平台和手册入口，隔离目录六条安装版CLI、文档链接／锚点、安装脚本语法与diff检查通过，新fresh-context需求／可维护性两轴通过、开放0／0，SP1/P2权限归属已修正关闭，第0条过期状态已收口。下一资料片按[D2剩余清单](plans/2026-11-13-specialist-presets.md#同事试用入口与剩余专家清单)推进B2g→B2h→B2i，B3／C2分别验真实实验与Forge嵌套。
 
 - [A2第三轮重构旅程](delivery/2026-11-13-refactoring-journey.md)本地验收与[新独立双轴终核](delivery/2026-11-13-refactoring-journey-r3-review.md)通过，开放0／0；9 job／7真实会话、串行前驱、38资源23,329B完整读取、精确候选复验／handoff／623事件重放／原ID重启、9 owner／7槽／claim收尾均已核。前两轮失败及原预算保留。运行时修正分别普通提交`e890785`／`4076451`，A2原件和审查提交`ee84d83`；后续远端／自己的CI另记。

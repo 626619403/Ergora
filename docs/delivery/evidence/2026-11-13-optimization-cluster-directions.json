@@ -1,0 +1,189 @@
+{
+  "baseline": "9c84b088146e11eb45bb8c2065c9091526297789",
+  "wheel_sha256": "4e2e63f967b67fb32be3ce40d4ba5cc6a5a105edea02e8a79e3a848f453a4a92",
+  "package_files": 545,
+  "frozen_files": 283,
+  "installed_presets": {
+    "passed": 28,
+    "pytest_seconds": 110.41,
+    "controller_seconds": 112.76380818430334
+  },
+  "native_successful_calls": 3,
+  "resource_occurrences": 18,
+  "resource_bytes": 44675,
+  "all_resources_continuous_utf8": true,
+  "full_manual_predecessor_results": true,
+  "calls": [
+    {
+      "direction": "cluster-resiliency",
+      "name": "measurement",
+      "instance": "root/measurement/review",
+      "run_id": "7d64322c4cad4f1caf04b78b041faa32",
+      "status": "succeeded",
+      "seconds": 50.083084479905665,
+      "input_digest": "69465085e434f371cd294bf3d1b812a65aa4f961627f0d4ed28732f32bbcd7ed",
+      "prompt_sha256": "415d7f1826ae765cb3338c2e77bdfda2f0d43889b7bcf693e10459b8a5beea0f",
+      "result_sha256": "8ee3faff5fe1ca446ed00520f7da745568f3f03e358dfe6534c395ae41383751",
+      "decision": "request-changes",
+      "predecessor_sha256": {
+        "design": "70605f9a3507e5de69bd8a280e37be7d5987f591f16704c738650da20f1d053e",
+        "profile": "dfb7275ce2a9255ab9c73b7b27d0fcc6b03a847a7dc3f358307eeb447867c72a"
+      },
+      "requested_binding": {
+        "tool": "claude-code"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      },
+      "backend_reason": "User-authorized explicit Codex fallback after retained Claude failure; independent sessions, no heterogeneous-backend claim."
+    },
+    {
+      "direction": "cluster-resiliency",
+      "name": "profile",
+      "instance": "root/analysis/profile",
+      "run_id": "c164be570629428da50c872575108f60",
+      "status": "succeeded",
+      "seconds": 58.59178808890283,
+      "input_digest": "4a06a14282af693c4d8d97de500e025c36b2033edfa216433ad480eeb5194b35",
+      "prompt_sha256": "c0b7c3bda29c15d27a55f5b5ac20627f7374b49dcfa49f41262940e0e88d5d52",
+      "result_sha256": "dfb7275ce2a9255ab9c73b7b27d0fcc6b03a847a7dc3f358307eeb447867c72a",
+      "decision": null,
+      "predecessor_sha256": {},
+      "requested_binding": {
+        "tool": "codex"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      },
+      "backend_reason": "User-authorized explicit Codex fallback after retained Claude failure; independent sessions, no heterogeneous-backend claim."
+    },
+    {
+      "direction": "cluster-resiliency",
+      "name": "design",
+      "instance": "root/analysis/design",
+      "run_id": "416f616ae1c942d297c8f0420d91a75e",
+      "status": "succeeded",
+      "seconds": 61.34721727017313,
+      "input_digest": "3928ca5016ef3c182205415421f742c63b95bd5ad7e2bc1a641d34fa463d7840",
+      "prompt_sha256": "3ffc6f435eee01422e2d5cf070a7096b609c059943c61f879bf984172f41cc40",
+      "result_sha256": "70605f9a3507e5de69bd8a280e37be7d5987f591f16704c738650da20f1d053e",
+      "decision": null,
+      "predecessor_sha256": {},
+      "requested_binding": {
+        "tool": "codex"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      },
+      "backend_reason": "User-authorized explicit Codex fallback after retained Claude failure; independent sessions, no heterogeneous-backend claim."
+    }
+  ],
+  "fixture_sha256": "2d2008c44fb47949b9afe49660f22f77c21941c0f8e44f71f58adfdc8f3db08c",
+  "fixed_sources": [
+    {
+      "file": "bridge-slurm-skill.md",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Megatron-Bridge/55694838ce73cd23b00ff95bd00512aefb963ce0/skills/nemo-mbridge-multi-node-slurm/SKILL.md",
+      "bytes": 15784,
+      "sha256": "1755991a2310d06d8a98d8576b14ce7e8b14c6bddb0901c4a1eb11350be64535"
+    },
+    {
+      "file": "review-bridge-slurm-templates.md",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Megatron-Bridge/55694838ce73cd23b00ff95bd00512aefb963ce0/skills/nemo-mbridge-multi-node-slurm/references/templates.md",
+      "bytes": 4744,
+      "sha256": "215a6a6d6cefb8ade44ad00ca75836551bff9e2e911f69d323ff6887e1121413"
+    },
+    {
+      "file": "bridge-resiliency-skill.md",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Megatron-Bridge/55694838ce73cd23b00ff95bd00512aefb963ce0/skills/nemo-mbridge-resiliency/SKILL.md",
+      "bytes": 11324,
+      "sha256": "026c7e4d9b0994f9d5bc8da3d58e2504d3836b957bc90ac5cb4c56e816d8cbef"
+    },
+    {
+      "file": "bridge-resiliency.md",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Megatron-Bridge/55694838ce73cd23b00ff95bd00512aefb963ce0/docs/training/resiliency.md",
+      "bytes": 7841,
+      "sha256": "e4a268e65b90e496820da0f75a947cad3ba5ec3f8324235ab156576c9f601eba"
+    },
+    {
+      "file": "nemo-run--nemo_run--run--experiment.py",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Run/5f39d666bfdf9efca07d274722f7d84a41532a2e/nemo_run/run/experiment.py",
+      "bytes": 53549,
+      "sha256": "f90ac1c52fbbd6ccb095b7e5f9119c8715a76826e5fd05833a4bbef896753405"
+    },
+    {
+      "file": "nemo-run-management.md",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Run/5f39d666bfdf9efca07d274722f7d84a41532a2e/docs/guides/management.md",
+      "bytes": 7251,
+      "sha256": "a9c0a735aa4975c41bebece823d20c03447044b8c8ce4e4a9946401c2044bc8f"
+    },
+    {
+      "file": "nemo-run-execution.md",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Run/5f39d666bfdf9efca07d274722f7d84a41532a2e/docs/guides/execution.md",
+      "bytes": 8327,
+      "sha256": "f8105400fac9dcbf91aa916a6a1fdc86e720024ebc8b975ae3fe3fcf400b325b"
+    },
+    {
+      "file": "submitit--docs--checkpointing.md",
+      "url": "https://raw.githubusercontent.com/facebookincubator/submitit/d1fd7ac4f357a2c1ac4d5c9d025147617513224a/docs/checkpointing.md",
+      "bytes": 3184,
+      "sha256": "8af6ab4be41fe33e932011165eb29759ec31fea6d2ad96468ee6626e414ac721"
+    },
+    {
+      "file": "nvrx--docs--source--attribution--features--restart-agent.rst",
+      "url": "https://github.com/NVIDIA/nvidia-resiliency-ext/blob/be12a1e3af7eee550abd28a67f85928ef7a9d3ab/docs/source/attribution/features/restart-agent.rst",
+      "bytes": 6510,
+      "sha256": "c9a6e57ab1562431994ed02bbaf0c23f279a4fb20e595a9b8d22bf7f9059d087"
+    },
+    {
+      "file": "nvrx--src--nvidia_resiliency_ext--attribution--restart_agent--cli.py",
+      "url": "https://github.com/NVIDIA/nvidia-resiliency-ext/blob/be12a1e3af7eee550abd28a67f85928ef7a9d3ab/src/nvidia_resiliency_ext/attribution/restart_agent/cli.py",
+      "bytes": 22260,
+      "sha256": "6e7ee7e9ef9e9d3b7ec95f3a70032959d77619fdb18966614d87392e837a8b03"
+    },
+    {
+      "file": "nvrx--src--nvidia_resiliency_ext--attribution--restart_agent--runtime.py",
+      "url": "https://github.com/NVIDIA/nvidia-resiliency-ext/blob/be12a1e3af7eee550abd28a67f85928ef7a9d3ab/src/nvidia_resiliency_ext/attribution/restart_agent/runtime.py",
+      "bytes": 1446,
+      "sha256": "30cc600128a2238e925dd7be293922cdcb3ce7279652c463f96581e667aae66d"
+    },
+    {
+      "file": "nvrx--src--nvidia_resiliency_ext--attribution--restart_agent--models.py",
+      "url": "https://github.com/NVIDIA/nvidia-resiliency-ext/blob/be12a1e3af7eee550abd28a67f85928ef7a9d3ab/src/nvidia_resiliency_ext/attribution/restart_agent/models.py",
+      "bytes": 80070,
+      "sha256": "24b07325bb23765bb5b8e29cf53df95c398624201150fb10ba08a7ccfa1fc6dc"
+    },
+    {
+      "file": "nvrx--src--nvidia_resiliency_ext--attribution--restart_agent--l1--prompts.py",
+      "url": "https://github.com/NVIDIA/nvidia-resiliency-ext/blob/be12a1e3af7eee550abd28a67f85928ef7a9d3ab/src/nvidia_resiliency_ext/attribution/restart_agent/l1/prompts.py",
+      "bytes": 9529,
+      "sha256": "0b03f3e8b5efaf38ab1be0fd9181a4da8e312b8a4c4ebf1f52e54ee5b42ddb82"
+    },
+    {
+      "file": "nvrx--src--nvidia_resiliency_ext--attribution--mcp_integration--module_definitions.py",
+      "url": "https://github.com/NVIDIA/nvidia-resiliency-ext/blob/be12a1e3af7eee550abd28a67f85928ef7a9d3ab/src/nvidia_resiliency_ext/attribution/mcp_integration/module_definitions.py",
+      "bytes": 7734,
+      "sha256": "b3a9877261bbdb82a45f14ed9da7f63e838c75d87fe577ceebd83bbf036650e1"
+    },
+    {
+      "file": "nvrx--src--nvidia_resiliency_ext--attribution--ARCHITECTURE.md",
+      "url": "https://github.com/NVIDIA/nvidia-resiliency-ext/blob/be12a1e3af7eee550abd28a67f85928ef7a9d3ab/src/nvidia_resiliency_ext/attribution/ARCHITECTURE.md",
+      "bytes": 18109,
+      "sha256": "dfe56d835eea610ebf02f8cdc02a89053dc941919bd6ffbb587970cb058c6b8c"
+    }
+  ],
+  "self_review": {
+    "run_id": "17a6118e2e764ee183c08067338f7d70",
+    "status": "succeeded",
+    "decision": "approve",
+    "packet_files": 5,
+    "packet_bytes": 45908,
+    "prompt_sha256": "261d60185b2bbf00bd16fd58e38199bad822775eac8291af8def0c68270d12ea",
+    "input_digest": "20928b4fe4c8f45300f434210120d60f337790b0b58b029b76e7c48ee5190971",
+    "result_sha256": "0875744041ce7357dc39ce572addcde6b78124a0a2602e09792122b3c9156e7b"
+  },
+  "raw_audit_sha256": "e3bca2c617542dca7877d81aa42ded2ab1a6e5376da5ea23db7a596c9e2072ac",
+  "self_review_audit_sha256": "1e339a3d4eb17ace88aeb7c9e32a1759783720dc81411c23129aed8d5d0f6601",
+  "installed_test_stdout_sha256": "218f8783931ec8c676d67092122c46663efe80b3513146666e2c30e9530bf1e3",
+  "post_call_process_observation_sha256": "fa300ed53e20923f1818162ec12f2a7b7a9525a2e0c5e09c069ff5441f70b1e2",
+  "scope": "Three real independent readonly model calls on an explicitly synthetic launch/lost-ack/empty-log/checkpoint-enqueue fixture; complete inherited resource transport and full manual original predecessor transfer. Measurement request-changes is retained. No actual scheduler, launch, analyzer, restart, checkpoint, GPU/training, quality/performance, heterogeneous-backend or adoption acceptance. Own text-only structure review covers five complete inline files. Independent review, ordinary publication and own exact-candidate CI recorded separately. No local full-suite or seven-group collection was run for this slice; process receipt is one bounded end observation."
+}

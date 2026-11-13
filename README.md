@@ -59,7 +59,7 @@ ergora serve
 
 安装后运行`ergora composition presets`查看内置专家组合；`ergora composition install-preset large-change`一次导入该领域的Agent与子模板。治理和开发可将互补专家映射到原工作单元，再接结构、正确性、测试价值三份审查子模板；训练组合提供只读提案，真实实验保留可信runner/gate。[使用与后端选择](docs/WORKFLOW_DEFINITIONS.md#使用内置领域组合)。
 
-当前内置 **20 个 preset**：上表四个入口、保留的 `training-optimization` v1，以及以下 **15 个优化方向子模板**。方向完整 ID、根版本和调用方式见 [训练手册](docs/TRAINING.md#独立的优化方向子模板)。
+当前内置 **21 个 preset**：上表四个入口、保留的 `training-optimization` v1，以及以下 **16 个优化方向子模板**。方向完整 ID、根版本和调用方式见 [训练手册](docs/TRAINING.md#独立的优化方向子模板)。
 
 |方向组|已发布的细分方向|
 |---|---|
@@ -69,6 +69,7 @@ ergora serve
 |通信|TP／DP overlap、MoE dispatcher、MoE overlap|
 |诊断|profiling、memory snapshot|
 |模型|recipe／model、model verification|
+|集群与恢复|cluster resiliency：唯一 rank／job／恢复所有者、checkpoint、日志与恢复证据方案|
 
 开发侧有准备者、领域执行者、兼容验证者，以及结构／正确性／测试价值三位审查专家。训练侧有实验设计、性能分析、kernel 设计、测量审查四位 v2 专家；多个方向复用这些专家，并分别继承所选方向资料。提示词与资源定义独立于后端，逐实例绑定仍受后端支持的职能、模式和权限限制。
 
@@ -78,9 +79,10 @@ ergora serve
 
 计划中的子 Agent 与模板**尚未全部补完**。下一批方向包依次为：
 
-1. **集群与恢复：** rank／job／恢复所有者、checkpoint、日志和资源方案；集群提交与重启另行接入。
-2. **低精度／量化：** PTQ、QAD、训练低精度的适用条件、质量与测量门禁。
-3. **独立 kernel 方向：** 将已有 kernel 专家的方案、wrapper、正确性与测量交接组织成可独立引用的方向包。
+1. **低精度／量化：** PTQ、QAD、训练低精度的适用条件、质量与测量门禁。
+2. **独立 kernel 方向：** 将已有 kernel 专家的方案、wrapper、正确性与测量交接组织成可独立引用的方向包。
+
+集群／恢复方向已提供只读提案包。实际作业提交、原生归因器、取消与重启继续由所选执行器和框架接入、验收；模板本身只分析提供的资料。
 
 ForgeKernel 已有顶层 campaign 操作，作为完整嵌套流程仍需补齐全部内部会话的父资源／权限、总预算、取消和未知结果对账。Fuser、GEAK、AKG、ModelOpt 等研究候选按 [采用矩阵](docs/research/2026-11-12-specialist-adoption.md)条件接入，实际可用范围分别验收。
 

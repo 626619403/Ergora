@@ -95,6 +95,7 @@ init / runner-add → prepare → worker-start → start
 |`optimization-memory-snapshot`|`ergora-opt-memory-snapshot-proposal`|受信报告、allocator／历史口径、step对齐和快照差异；缺失峰值或设备总量保持未知|
 |`optimization-recipe-model`|`ergora-opt-recipe-model-proposal`|模型／任务／配方身份、收敛语义与执行映射、真实builder／mapping／模态缺项；适配交原开发流程|
 |`optimization-model-verification`|`ergora-opt-model-verification-proposal`|十二核心项、完整权重／forward／训练／resume／质量证据；exit0和schema-valid卡不替代实际结果|
+|`optimization-cluster-resiliency`|`ergora-opt-cluster-resiliency-proposal`|唯一rank生成者、原experiment／job／cycle和unknown、日志归因、checkpoint持久化与下一update恢复证据；只读提案|
 
 例如选择容量诊断，先准备项目、后端、根grant及真实UTF-8任务正文，再使用原命令：
 
@@ -110,6 +111,8 @@ ergora composition run-input PROJECT_ID ./memory-design --mode task-mcp --backen
 grant的`permissions`／`limits`从该精确根读取，按[完整manifest准备](WORKFLOW_DEFINITIONS.md#保存和分享完整组合)设置；若需要新增权限，先修订所有相关父级上限再修订子模板，不能用task正文越权。正文提供实际code／config／依赖版本、模型与token／batch、精度／optimizer／PEFT、mesh／rank、失败阶段与原trace／snapshot／峰值、目标与独立数值／质量门禁、允许改动、资源／时间预算及恢复要求；缺项标为未知，不填写虚构测量。
 
 单次调用只运行所选叶。独立准备profile输入后，把design和profile的完整原产物、来源摘要及真实实验材料一起放入measurement的新任务正文。measurement默认优先异于执行后端，覆盖及回退须显式记录原因。配置能解析、估算低于容量、未OOM或有限短loss都不等于端到端性能／质量通过；资料中引用的Bridge／Core版本是知识来源，不表示这些依赖已安装，也不证明该组合适合当前运行版本。多个方向可作为普通精确引用子模板组合，但静态图不会获得自动训练执行权。
+
+集群／恢复提案还需实际入口／初始化、nodes与每节点进程、原提交回执与作业身份、所有rank日志及共享路径、checkpoint提交／分片与恢复后的下一update证据。用srun直接生成训练进程或每节点一个launcher，按真实入口选定一个rank生成者；lost acknowledgement先按原身份对账，空日志的RESTART建议与异步保存入队均保留未验。`optimization-cluster-resiliency`不运行Slurm、NVRx或恢复动作；确定性归因工具、带内部模型的Restart Agent和实际集群执行分别准入，完整步骤及来源见其已声明context。
 
 Graph提案需提供实际trace／shape分布／地址和RNG生命周期、当前编译及capture范围；capture成功与实际replay、冷启动和稳态收益分别核对。Packing提案还需数据／tokenizer身份、真实样本边界／mask／loss分母、原生路径和resume状态；按所选版本区分runtime THD与offline／in-batch限制，配置token容量不能当有效源token吞吐。缺项保留未验，由原runner和owner决定实验／采用。
 
