@@ -171,7 +171,7 @@ Skill采用沿 `skills.adopt → evaluation.compare → skill_assets.move_head`�
 
 `agent_backends.AgentBackend`是已有共享ABC，`_BACKENDS`只登记本族Codex、Claude Code、mini-swe-agent、DeepSeek Harness、command五种Adapter。`Invocation`传角色、正文、cwd、协议目录、时限和结果schema，不拥有模板成员或正式状态。`agents.invoke`沿共同Interface调用；Adapter拥有命令、原生配置、模式能力、结果提取、诊断及固定探测。通用结果校验归agents，进程生命周期归processes，doctor沿同一Adapter读取实际支持范围。
 
-DeepSeek只准入只读composition模式，其独立SDK驱动位于`data/drivers/deepseek.py`；基础安装不导入或依赖SDK。调用使用原`.protocol`目录保存新原生home／ID、固定patch、完整模型输入、事件和终值；原Adapter拒绝不完整turn与工具错误，原agents校验结构，原agent_runs核MCP readiness。没有新增调度或状态账本，native／workspace与会话续接保持unsupported；实际验收范围见[H1交付](../delivery/2026-11-12-harness-probes.md)。
+DeepSeek只准入只读composition模式，其独立SDK驱动位于`data/drivers/deepseek.py`；基础安装不导入或依赖SDK。默认调用使用原`.protocol`目录保存新原生home／ID、固定patch、完整模型输入、事件和终值；原Adapter拒绝不完整turn与工具错误，原agents校验结构，原agent_runs核MCP readiness。显式opt-in的新standalone task-MCP源可沿原Invocation续接一次；`agent_runs`拥有原项目／资料／权限准入、唯一intent与DB记录，Adapter／driver拥有原生冻结、resume／receipt和归档，`processes`仍拥有停止。新调用复用原home／ID／cwd，独立MCP与结果；原锁覆盖操作及子进程，unknown不重发。不增调度或状态账本，native／workspace和正式任务恢复仍unsupported；实际验收分别见[H1](../delivery/2026-11-12-harness-probes.md)与[H3b](../delivery/2026-11-14-harness-session-continuation.md)。
 
 新增后端需实现这一Interface、登记本地映射，并在 `components.json` 声明配置schema／角色能力／平台／安装配方。仅能遵守命令协议时可选现有command；它不会凭一条argv获得恢复、隔离或MCP能力。正式模式还要给出真实准入与资源／权限合同，不能只登记模式名。上层任务／模板无需新增厂商分支；验证应覆盖结构化输出、错误退出、取消与真实平台限制。[接入手册](../AGENT_BACKENDS.md)列出公开协议。
 

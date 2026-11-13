@@ -1,20 +1,18 @@
 """Native Agent adapters; the local mapping selects execution, not public schemas."""
 
 from abc import ABC, abstractmethod
-import codecs
-from contextlib import ExitStack
 from dataclasses import dataclass
 import hashlib
-from itertools import islice
 import json
 import os
 from pathlib import Path
-import stat
 import subprocess
 import sys
 import tomllib
 
 from . import components, contracts, processes
+from .data.drivers.deepseek import (CALL_METADATA_LIMITS, MAX_CONTINUATION_HISTORY,
+    call_files as _call_files, native_directories as _native_directories, native_history_page)
 
 
 def _events(output: Path):
@@ -61,6 +59,7 @@ class Invocation:
     schema: dict | None
     mode: str = "native"
     task_mcp: dict | None = None
+    continuation: dict | None = None
 
 
 class AgentBackend(ABC):
@@ -108,6 +107,15 @@ class AgentBackend(ABC):
                          limit: int, revision: str | None) -> dict:
         """Observe saved native bytes without starting an interpreter or SDK."""
         return {"available": False, "reason": "This backend has no native archive reader"}
+
+    def check_continuation(self, mode: str) -> None:
+        raise ValueError(f"{self.binding['tool']} does not support explicit session continuation")
+
+    def continuation_source(self, protocol: Path, *, cwd: Path) -> dict:
+        raise ValueError(f"{self.binding['tool']} does not support explicit session continuation")
+
+    def continuation_result(self, protocol: Path, *, source: dict) -> dict:
+        raise ValueError(f"{self.binding['tool']} does not support explicit session continuation")
 
     def diagnostics(self) -> dict:
         return {"authentication": self.authentication, "remediation": [
@@ -328,7 +336,8 @@ class DeepSeekHarnessBackend(AgentBackend):
 
     invocation_modes = ("text-only", "task-mcp")
     guidance = ("Install the pinned DeepSeek SDK/runtime in a separate Python environment and select its interpreter.",
-                "Configure the OpenAI-compatible base_url, model and api_key_env; native/workspace calls and session resume are unsupported.")
+                "Configure the OpenAI-compatible base_url, model and api_key_env; native/workspace calls are unsupported.",
+                "Session continuation requires an explicitly enabled new standalone task-MCP source and its frozen contract.")
 
     def executable(self) -> str:
         return self.binding["python"]
@@ -370,6 +379,8 @@ class DeepSeekHarnessBackend(AgentBackend):
     def command(self, request: Invocation) -> tuple[list[str], str]:
         document = {"binding": self.binding, "prompt": request.prompt, "cwd": str(request.cwd),
                     "schema": request.schema, "mode": request.mode, "task_mcp": request.task_mcp}
+        if request.continuation is not None:
+            document["continuation"] = request.continuation
         path = request.protocol / "request.json"
         path.write_text(json.dumps(document, ensure_ascii=False), encoding="utf-8", newline="\n")
         return [self.executable(), "-I", str(Path(__file__).parent / "data/drivers/deepseek.py"), str(path)], ""
@@ -383,111 +394,121 @@ class DeepSeekHarnessBackend(AgentBackend):
             raise ValueError("DeepSeek Harness reported a tool error; see native-events.jsonl")
         return json.loads(native["final_response"])
 
+    def check_continuation(self, mode: str) -> None:
+        self.check_invocation()
+        if mode != "task-mcp":
+            raise ValueError("Explicit continuation requires a standalone task-MCP call")
+
+    def continuation_source(self, protocol: Path, *, cwd: Path) -> dict:
+        self.check_continuation("task-mcp")
+        material = _call_files(protocol, {"native-source-seal.json": 65_536, **CALL_METADATA_LIMITS})
+        seal = json.loads(material["native-source-seal.json"])
+        request = json.loads(material["request.json"])
+        identity = json.loads(material["native-identity.json"])
+        frozen = json.loads(material["native-call-contract.json"])
+        for value in (seal, request, identity, frozen):
+            contracts.validate(value, {"type": "object"}, "Saved continuation metadata")
+        metadata = {name: hashlib.sha256(raw).hexdigest() for name, raw in material.items() if name != "native-source-seal.json"}
+        if (type(seal.get("schema_version")) is not int or seal["schema_version"] != 1
+                or not isinstance(request.get("continuation"), dict) or request["continuation"].get("kind") != "source"
+                or not isinstance(request["continuation"].get("authority"), dict)
+                or request.get("binding") != self.binding or request.get("cwd") != str(cwd)
+                or request.get("mode") != "task-mcp" or not isinstance(request.get("schema"), dict)
+                or request["schema"] != json.loads(material["schema.json"])
+                or not isinstance(identity.get("session_id"), str) or seal.get("session_id") != identity["session_id"]
+                or seal.get("root_idle") is not True or not seal.get("receipt_id")
+                or frozen.get("files") != {name: digest for name, digest in metadata.items() if name != "native-call-contract.json"}
+                or any(seal.get(key) != value for key, value in frozen.items() if key != "files")
+                or seal.get("files") != {name: hashlib.sha256(raw).hexdigest() for name, raw in material.items()
+                                         if name != "native-source-seal.json"}):
+            raise ValueError("Native source differs from its frozen call contract")
+        with _native_directories(protocol, cwd, expected=seal):
+            history, _ = self._history_snapshot(protocol, cwd)
+        if seal.get("history") != history:
+            raise ValueError("Native source history changed after its sealed completion")
+        return {"protocol": str(protocol), "cwd": str(cwd), "session_id": identity["session_id"],
+                "seal_sha256": hashlib.sha256(material["native-source-seal.json"]).hexdigest(),
+                "authority": request["continuation"]["authority"], "history": history}
+
+    def _history_snapshot(self, protocol: Path, cwd: Path, ranges: tuple = ()) -> tuple[dict, list[str]]:
+        digest = hashlib.sha256()
+        intervals = [hashlib.sha256() for _ in ranges]
+        offset, revision, first = 0, None, None
+        while True:
+            page = self.archived_history(protocol, cwd=cwd, offset=offset, limit=65_536, revision=revision)
+            if not page["available"] or page["size_bytes"] > MAX_CONTINUATION_HISTORY:
+                raise ValueError("Continuation requires an available native archive of at most 64 MiB")
+            first = first or page
+            raw = page["content"].encode("utf-8")
+            digest.update(raw)
+            for (start, end), hasher in zip(ranges, intervals):
+                left, right = max(start, offset), min(end, offset + len(raw))
+                if left < right:
+                    hasher.update(raw[left - offset:right - offset])
+            if page["next_offset"] is None:
+                break
+            revision, offset = page["revision"], page["next_offset"]
+        history = {"source": first["source"], "size_bytes": first["size_bytes"], "sha256": digest.hexdigest()}
+        return history, [hasher.hexdigest() for hasher in intervals]
+
+    def continuation_result(self, protocol: Path, *, source: dict) -> dict:
+        """Observe stopped-call bytes even when no completed input receipt exists."""
+        root, cwd = Path(source["protocol"]), Path(source["cwd"])
+        sealed = _call_files(root, {"native-source-seal.json": 65_536})["native-source-seal.json"]
+        if hashlib.sha256(sealed).hexdigest() != source["seal_sha256"]:
+            raise ValueError("Native source seal changed during continuation")
+        seal = json.loads(sealed)
+        try:
+            restoration = json.loads(_call_files(protocol, {"native-restore.json": 65_536})["native-restore.json"])
+        except FileNotFoundError:
+            restoration = None
+        b0 = source["history"]["size_bytes"]
+        b1 = restoration["restored"]["size_bytes"] if restoration is not None else None
+        if b1 is not None and (type(b1) is not int or not b0 <= b1 <= MAX_CONTINUATION_HISTORY):
+            raise ValueError("Native restore observation has an invalid byte interval")
+        with _native_directories(root, cwd, expected=seal):
+            history, hashes = self._history_snapshot(root, cwd,
+                ((0, b0), (b0, b1 or b0), (b1 or b0, MAX_CONTINUATION_HISTORY), (0, b1 or b0)))
+        observed = {"completed": False, "session_id": source["session_id"], "source_bytes": b0,
+            "restored_bytes": b1, "final_bytes": history["size_bytes"], "history": history,
+            "source_prefix_preserved": history["size_bytes"] >= b0 and hashes[0] == source["history"]["sha256"],
+            "restore_sha256": hashes[1] if b1 is not None else None,
+            "activity_sha256": hashes[2] if b1 is not None else None,
+            "post_source_sha256": hashes[2] if b1 is None else None}
+        if restoration is not None and (restoration.get("source") != source["history"]
+                or restoration.get("prefix_preserved") is not True
+                or restoration["restored"] != {**history, "size_bytes": b1, "sha256": hashes[3]}
+                or restoration.get("restore_sha256") != hashes[1]):
+            raise ValueError("Native restore interval differs from its saved observation")
+        try:
+            material = _call_files(protocol, {"native-continuation.json": 65_536, **CALL_METADATA_LIMITS})
+        except FileNotFoundError:
+            return observed
+        receipt = json.loads(material["native-continuation.json"])
+        request = json.loads(material["request.json"])
+        contracts.validate(receipt, {"type": "object", "required": ["result_sha256"], "properties": {
+            "result_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}}, "Native continuation receipt")
+        contracts.validate(request, {"type": "object"}, "Native continuation request")
+        b2 = receipt.get("final_bytes")
+        if (receipt.get("schema_version") != 1 or receipt.get("session_id") != source["session_id"]
+                or receipt.get("source_seal_sha256") != source["seal_sha256"]
+                or not isinstance(request.get("continuation"), dict) or request["continuation"].get("source") != source
+                or receipt.get("root_idle") is not True or not receipt.get("receipt_id")
+                or type(b1) is not int or type(b2) is not int or not b0 <= b1 < b2 <= MAX_CONTINUATION_HISTORY
+                or receipt.get("restored_bytes") != b1
+                or receipt.get("files") != {name: hashlib.sha256(raw).hexdigest() for name, raw in material.items()
+                                         if name != "native-continuation.json"}):
+            raise ValueError("Native continuation lacks its matching input, identity or completed receipt")
+        if (history != receipt.get("history") or history["size_bytes"] != b2 or hashes[0] != source["history"]["sha256"]
+                or receipt.get("restore_sha256") != hashes[1] or receipt.get("activity_sha256") != hashes[2]):
+            raise ValueError("Native continuation history differs from its original prefix or saved intervals")
+        return {**observed, "completed": True, "receipt_id": receipt["receipt_id"],
+            "receipt_sha256": hashlib.sha256(material["native-continuation.json"]).hexdigest(),
+            "result_sha256": receipt["result_sha256"], "root_idle": True}
+
     def archived_history(self, protocol: Path, *, cwd: Path, offset: int,
                          limit: int, revision: str | None) -> dict:
-        """Read the original single-session v4 archive, with bounded IO per page.
-
-        This is an observation revision, not a sealed content digest or an SDK
-        restore. Unknown generations are left to their native persistence owner.
-        """
-        if sys.platform != "linux":
-            return {"available": False, "reason": "Native archive reads currently require Linux/WSL2"}
-        with ExitStack() as stack:
-            directories, files, layouts = [], [], []
-
-            def stamp(value):
-                return value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns, value.st_ctime_ns
-
-            def directory(parent, name):
-                descriptor = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=parent)
-                stack.callback(os.close, descriptor)
-                directories.append((parent, name, descriptor))
-                return descriptor
-
-            def ordinary(parent, name):
-                descriptor = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent)
-                stream = stack.enter_context(os.fdopen(descriptor, "rb"))
-                details = os.fstat(descriptor)
-                if not stat.S_ISREG(details.st_mode):
-                    raise ValueError("Native archives require ordinary files")
-                files.append((parent, name, stream, details))
-                return stream
-
-            def listing(descriptor, maximum):
-                with os.scandir(descriptor) as entries:
-                    names = [entry.name for entry in islice(entries, maximum)]
-                layouts.append((descriptor, maximum, set(names)))
-                return names
-
-            try:
-                runs = directory(None, protocol.anchor)
-                for part in protocol.parent.parts[1:]:
-                    runs = directory(runs, part)
-                protocol_fd = directory(runs, protocol.name)
-                native = directory(protocol_fd, "native-home")
-            except FileNotFoundError:
-                return {"available": False, "reason": "No native archive was saved for this call"}
-            identity_file = ordinary(protocol_fd, "native-identity.json")
-            raw_identity = identity_file.read(16_385)
-            if len(raw_identity) > 16_384:
-                raise ValueError("Native archive identity exceeds 16 KiB")
-            identity = json.loads(raw_identity)
-            if (not isinstance(identity, dict) or identity.get("home") != str(protocol / "native-home") or
-                    identity.get("profile") != "sdk-minimal"):
-                raise ValueError("Native archive home/profile differs from the saved call")
-            sessions = directory(native, "sessions")
-            projects = listing(sessions, 2)
-            if len(projects) != 1:
-                raise ValueError("Native archive requires one original session namespace")
-            namespace = directory(sessions, projects[0])
-            names = listing(namespace, 2)
-            if names != [identity.get("session_id")]:
-                raise ValueError("Native archive session differs from the saved call")
-            session = directory(namespace, names[0])
-            names = set(listing(session, 3))
-            if "session.v4.jsonl" not in names or names - {"session.lock", "session.v4.jsonl"}:
-                raise ValueError("Only the original uncompressed v4 session archive is supported")
-            stream = ordinary(session, "session.v4.jsonl")
-            line = stream.readline(16_385)
-            if len(line) > 16_384 or not line.endswith(b"\n"):
-                raise ValueError("Native archive header is missing or exceeds 16 KiB")
-            header = json.loads(line)
-            if (not isinstance(header, dict) or type(header.get("version")) is not int or header["version"] != 4 or
-                    header.get("id") != identity["session_id"] or header.get("cwd") != str(cwd)):
-                raise ValueError("Native archive header differs from the saved session/cwd")
-            details = files[-1][3]
-            source = f"native-home/sessions/{projects[0]}/{identity['session_id']}/session.v4.jsonl"
-            observed = hashlib.sha256(json.dumps({"run": protocol.name, "source": source, "session": identity["session_id"],
-                "identity": hashlib.sha256(raw_identity).hexdigest(), "stat": stamp(details)}, sort_keys=True).encode()).hexdigest()
-            if revision is not None and revision != observed:
-                raise ValueError("Native archive changed; restart at offset 0 without the old revision")
-            if offset > details.st_size:
-                raise ValueError("Native archive offset exceeds the observed file")
-            stream.seek(offset)
-            raw = stream.read(min(limit, details.st_size - offset))
-            decoder = codecs.getincrementaldecoder("utf-8")(errors="strict")
-            text = decoder.decode(raw, final=offset + len(raw) == details.st_size)
-            count = len(raw) - len(decoder.getstate()[0])
-            for parent, name, descriptor in directories:
-                current = os.stat(name, dir_fd=parent, follow_symlinks=False)
-                opened = os.fstat(descriptor)
-                if (current.st_dev, current.st_ino) != (opened.st_dev, opened.st_ino):
-                    raise ValueError("Native archive directory moved while reading")
-            for parent, name, opened, before in files:
-                if stamp(os.fstat(opened.fileno())) != stamp(before) or stamp(os.stat(name, dir_fd=parent, follow_symlinks=False)) != stamp(before):
-                    raise ValueError("Native archive changed while reading")
-            for descriptor, maximum, before in layouts:
-                with os.scandir(descriptor) as entries:
-                    current = {entry.name for entry in islice(entries, maximum)}
-                if current != before:
-                    raise ValueError("Native archive directory changed while reading")
-            return {"available": True, "kind": "native-jsonl-archive", "session_id": identity["session_id"],
-                "source": source,
-                "revision": observed, "revision_basis": "local file observation; not a full content SHA",
-                "writer_state": "unconfirmed", "size_bytes": details.st_size, "offset": offset,
-                "bytes_read": count, "next_offset": offset + count if offset + count < details.st_size else None,
-                "encoding": "utf-8", "content": text,
-                "complete": offset == 0 and count == details.st_size}
+        return native_history_page(protocol, cwd=cwd, offset=offset, limit=limit, revision=revision)
 
 
 class CommandBackend(AgentBackend):

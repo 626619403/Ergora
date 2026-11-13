@@ -45,13 +45,16 @@ def validate_result(result: dict, schema: dict) -> dict:
 def invoke(binding: dict, role: str, prompt: str, cwd: Path, output: Path, timeout: int,
            schema: dict | None = None, *, env: dict | None = None,
            codex_options: list[str] | None = None, codex_bin: str = "codex", supervised: bool = False,
-           codex_config: str | Path | None = None, mode: str = "native", task_mcp: dict | None = None) -> dict:
+           codex_config: str | Path | None = None, mode: str = "native", task_mcp: dict | None = None,
+           continuation: dict | None = None, lock_fd: int | None = None) -> dict:
     """A successful process is not evidence acceptance; structured consumers validate separately."""
     validate_binding(role, binding, formal=bool(schema))
     backend = agent_backends.for_binding(binding, {"codex": {
         "arguments": codex_options, "executable": codex_bin, "config": codex_config}})
     backend.check_invocation()
     backend.check_mode(mode)
+    if continuation is not None:
+        backend.check_continuation(mode)
     if (mode in ("task-mcp", "workspace-task-mcp")) != (task_mcp is not None):
         raise ValueError("Task MCP mode requires its explicit per-call server configuration")
     protocol = output.with_name(output.name + ".protocol")
@@ -59,10 +62,11 @@ def invoke(binding: dict, role: str, prompt: str, cwd: Path, output: Path, timeo
     (protocol / "prompt.txt").write_text(prompt, encoding="utf-8", newline="\n")
     if schema:
         (protocol / "schema.json").write_text(json.dumps(schema), encoding="utf-8", newline="\n")
-    request = agent_backends.Invocation(role, prompt, cwd, protocol, timeout, schema, mode, task_mcp)
+    request = agent_backends.Invocation(role, prompt, cwd, protocol, timeout, schema, mode, task_mcp, continuation)
     argv, stdin = backend.command(request)
     document = processes.run(argv, cwd, output, timeout, stdin, env, supervised=supervised,
-                             command_record=protocol / "command.json" if mode != "native" else None)
+                             command_record=protocol / "command.json" if mode != "native" else None,
+                             **({"lock_fd": lock_fd} if lock_fd is not None else {}))
     if document["status"] == "succeeded" and schema:
         try:
             result = backend.read_result(output, request)

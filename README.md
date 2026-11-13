@@ -123,7 +123,7 @@ flowchart LR
 
 独立控制面使用 Python、SQLite、FastAPI / Uvicorn 和随包 Cytoscape.js。各项目可按盘点、规划、实现、审查及训练角色选择 Codex / Claude Code / 自定义命令，实现角色也可选择 mini-swe-agent；kernel 层可接原生 ForgeKernel。记忆、优化和调度分别选择 SQLite / ReMe、手动 / GEPA、手动 / Temporal。前端和 CLI 共用应用函数，不复制评价、采用或合同校验逻辑。
 
-组合的只读审查／提案叶还可选择[DeepSeek Harness固定版本适配](docs/AGENT_BACKENDS.md#deepseek-harness-只读叶后端)，使用独立SDK环境和OpenAI-compatible服务；目前不支持其workspace写入或原生会话续接。OpenHands仍处于准入评估，未注册为可用后端。
+组合的只读审查／提案叶还可选择[DeepSeek Harness固定版本适配](docs/AGENT_BACKENDS.md#deepseek-harness-只读叶后端)，使用独立SDK环境和OpenAI-compatible服务；新 standalone task-MCP 调用可[显式授权一次原会话续接](docs/AGENT_BACKENDS.md#显式续接一次只读会话)。workspace写入和正式任务恢复尚不支持。OpenHands仍处于准入评估，未注册为可用后端。
 
 项目的tracker层可选择本地手动、GitHub或GitLab。`ergora issue show PROJECT 7`读取完整上下文，`issue capture`保存不可变快照，`issue link-task`把快照显式关联到已有任务的精确创建版本；列表和完整快照支持离线读回，见[使用手册](docs/USAGE.md#保存工单与关联任务上下文)。要为新工作冻结完整来源，可用[来源任务定义v3](docs/USAGE.md#从工单快照创建来源任务)选择快照和work-units-v2专家组合，按实际所选依赖准入；来源文本不授执行权。候选导出后，可准备并明确确认一条[中性工单评论](docs/USAGE.md#为已导出的候选发布工单评论)，unknown不补发；GitHub还可[按原生ID追加一个既存候选标签](docs/USAGE.md#为已导出的候选追加-github-标签)，复用同一确认与恢复流程。[页面操作](docs/USAGE.md#在页面准备发送与观察工单回写)从原导出记录明确准备、核对后单独确认发送，或按原意图SHA离线重读及手动观察一页；unknown不提供补发。还可用[候选远端核对](docs/USAGE.md#核对候选与当前远端分支)比较原导出、本地ref和GitHub／GitLab当前head／base；正式任务页的原导出记录也提供显式观察入口；填写base后才查询，404保留未知。观察不会发布分支或授予批准。已有PR／MR可[与原候选显式关联并离线读回](docs/USAGE.md#关联已有-prmr-与候选)；正式任务页提供明确保存／原请求恢复，以及独立的按SHA离线读取入口。它只保存本地上下文，不创建资源或确认原发送。GitLab标签和远端创建按[F7计划](docs/plans/2026-11-11-project-trackers.md)继续实现。
 

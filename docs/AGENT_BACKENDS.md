@@ -96,7 +96,7 @@ bash scripts/install-agent.sh mini-swe-agent
 
 ### DeepSeek Harness 只读叶后端
 
-可选适配固定为 SDK／runtime-bin `0.2.2rc2`，使用独立环境；基础 Ergora 不依赖它。目前只支持 Linux/WSL2 的 `composition check-input/run-input`，模式为 `text-only` 或 `task-mcp`，角色为 reviewer、experiment-planner、performance-analyst、kernel-tuner。后两类产物仍是文本提案，不是实际测量或 kernel 执行。`agent run` 的原生调用、workspace 写入、交互会话和恢复尚不支持；OpenHands SDK 暂未注册。
+可选适配固定为 SDK／runtime-bin `0.2.2rc2`，使用独立环境；基础 Ergora 不依赖它。目前支持 Linux/WSL2 的 `composition check-input/run-input`，模式为 `text-only` 或 `task-mcp`，角色为 reviewer、experiment-planner、performance-analyst、kernel-tuner。后两类产物仍是文本提案，不是实际测量或 kernel 执行。显式开启的新 standalone task-MCP 源支持下文的一次续接。`agent run` 的原生调用、workspace 写入、任意多轮交互和正式任务恢复尚不支持；OpenHands SDK 暂未注册。
 
 安装器已提供 uv 后，可在持久目录单独安装：
 
@@ -135,7 +135,7 @@ ergora agent output my-project RUN_ID
 
 这里采用叶定义的完整后端配置。单独 `--backend deepseek-harness` 不会填充必需的解释器、服务和认证变量名。只含内联资料时可显式选择text-only；有Skill附件时用task-mcp，按[全文读取说明](WORKFLOW_DEFINITIONS.md#核验完整附件读取)检查原回执。
 
-每次调用使用新原生home／session、固定最小profile与生成的patch；无原生shell、文件、工作目录及额外MCP工具。task-mcp只提供原scope的list/read。适配保存原生身份、完整prompt、事件和终值到本次`.protocol`目录，整体时限／停止仍由原进程owner负责。这不提供OS隔离。
+默认调用使用新原生home／session、固定最小profile与生成的patch；无原生shell、文件、工作目录及额外MCP工具。task-mcp只提供原scope的list/read。适配保存原生身份、完整prompt、事件和终值到本次`.protocol`目录，整体时限／停止仍由原进程owner负责。这不提供OS隔离。
 
 必须同时核对完成状态、严格JSON／原结果schema和原MCP连接回执；任一原生工具错误使本次调用失败，不隐式重试或续接会话。上游可能在插件失败或断连后仍返回completed，因此最终文本本身不能代表成功。失败或结果不明先按原run ID查看证据，不创建另一次调用冒充恢复。固定发行包与loopback／停止探针见[H1交付](delivery/2026-11-12-harness-probes.md)；显式Responses的真实禁工具调用及同模板专家叶task-MCP全文验收见[H2交付](delivery/2026-11-14-harness-real-model.md)。这两次只读成功不证明正式六阶段、持久会话或其他平台已经准入。
 
@@ -150,7 +150,36 @@ ergora agent output my-project RUN_ID --native-history \
   --history-offset NEXT_OFFSET --history-revision REVISION
 ```
 
-每页默认最多 65,536B，可用 `--history-limit` 在 4–65,536B 内调整；游标以字节为单位，返回内容保持 UTF-8 边界。网页只展示当前一页，完整导出可由调用者逐页保存 `native_history.content`，直到 `next_offset` 为 null。观察 revision 绑定当前文件身份和时间／大小，不是完整内容 SHA，也不证明写入者已停止。读取期间文件变化会拒绝旧页，应“从头读取”或不带旧 revision 从零开始。只支持原调用保存的、未压缩的 v4 单会话归档；归档丢失、ID／目录不符或未来存储代次不能当作空历史。归档末尾不等于成功完成，原调用状态和结果回执仍独立核查；真正续接仍未支持。
+每页默认最多 65,536B，可用 `--history-limit` 在 4–65,536B 内调整；游标以字节为单位，返回内容保持 UTF-8 边界。网页只展示当前一页，完整导出可由调用者逐页保存 `native_history.content`，直到 `next_offset` 为 null。观察 revision 绑定当前文件身份和时间／大小，不是完整内容 SHA，也不证明写入者已停止。读取期间文件变化会拒绝旧页，应“从头读取”或不带旧 revision 从零开始。只支持原调用保存的、未压缩的 v4 单会话归档；归档丢失、ID／目录不符或未来存储代次不能当作空历史。归档末尾不等于成功完成，原调用状态和结果回执仍独立核查。
+
+#### 显式续接一次只读会话
+
+先用固定 manifest 准备源输入，并在首次实际调用时授权一次后续输入：
+
+```bash
+ergora composition run-input my-project ./prepared-review \
+  --mode task-mcp --allow-one-continuation --timeout 300
+```
+
+只有这次调用成功、完整附件读取与原生完成证据都通过，才可作为来源。旧记录、默认未开启的调用、text-only、正式阶段和其他后端不具备此授权。不能给旧记录补字段来开启。
+
+用**原 manifest、原叶子、相同 grant 和相同 `--max-prompt-bytes`**准备新任务正文；不修改父子定义、Skill、上下文或后端：
+
+```bash
+ergora composition prepare-from-manifest ./review-manifest root/review \
+  --task followup.md --directory ./prepared-followup --max-prompt-bytes 200000
+ergora composition continue-input my-project SOURCE_RUN_ID ./prepared-followup \
+  --intent followup-one --timeout 300
+ergora agent output my-project FOLLOWUP_RUN_ID --native-history
+```
+
+`SOURCE_RUN_ID` 是第一次调用返回的 `id`。`--intent` 是调用者选择的 1–64 位字母／数字／下划线／短横线标识，首位须为字母或数字。一个来源只占用一次续接名额；相同 intent、完整输入摘要与 timeout 重复提交只返回原记录，不再发送。改变任一值会拒绝；续接结果也不能再作为新来源。并发操作及时返回忙，随后查看原 run。项目修订、仓库／cwd 身份、输入／资料、原档、schema、绑定或 runtime 合同变化时应开始新源。
+
+续接保留原 home／session ID／cwd 和之前的完整上下文，为新调用创建独立输入、结果、MCP scope 和审计。读取附件必须在新 scope 内再次完整完成；旧回执不算新交付。原源结果及其记录保持，原 session 归档会追加；两条记录的历史入口指向同一原档。输出同时给出来源、续接状态、输入 receipt 和恢复／新增字节区间。SDK idle 不代表已持久化，成功证据在正常关闭后核对完整原前缀和本次结果。
+
+这是一次新的显式 wall-time 授权，范围 1–3600 秒，准备／preflight 的已用时间会从调用余量扣除；停止清理可能另需时间。它不是累计 token／费用上限，一次 prompt 可能引发多次模型 HTTP 和工具循环。`reserved` 表示已保存名额但尚未进入发送路径，`unknown` 表示已进入可能发送的路径且缺少完整成功证据，只有 `completed` 结合 run 的 `status:succeeded` 才是本次成功。超时、Ctrl+C、断连或丢回执均保留名额和原件，不自动重发；相同请求仍只返回原状态，需人工检查证据。正式六阶段、跨后端／版本迁移和任意多轮会话另有合同，不从这里恢复。
+
+失败也会在原进程 owner 收尾后只读观察原归档，记录最终字节及可确认的恢复／新增区间；恢复回执丢失时 `restored_bytes` 为 null，只有源之后的物理增量，不能当作已收到新输入。`native.completed:false` 不会改写 `unknown`；目录身份丢失或原件不可读时保存 `observation_error`。这些观察不重启 SDK、不恢复正式任务，也不证明部分输出已成功执行。
 
 ## 可选的正式六阶段执行桥接
 

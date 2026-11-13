@@ -140,6 +140,14 @@ def parser() -> argparse.ArgumentParser:
         operation.add_argument("--codex-config", type=Path, help="Inference settings only; native tool and permission settings are ignored")
         if name == "run-input":
             operation.add_argument("--timeout", type=int, default=300)
+            operation.add_argument("--allow-one-continuation", action="store_true",
+                                   help="Enable one explicit follow-up for a new standalone task-MCP source; unsupported backends fail")
+    continuation = operations.add_parser("continue-input", help="Send one explicit new prepared input to an enabled native source")
+    continuation.add_argument("project")
+    continuation.add_argument("source_run")
+    continuation.add_argument("directory", type=Path)
+    continuation.add_argument("--intent", required=True, help="Stable input identity; repeats return the original saved attempt")
+    continuation.add_argument("--timeout", type=int, default=300)
     project = commands.add_parser("project", help="Register a project and choose layer tools")
     operations = project.add_subparsers(dest="operation", required=True)
     create = operations.add_parser("add")
@@ -818,7 +826,11 @@ def main(argv: list[str] | None = None) -> int:
                     backend=args.backend, model=args.model, reason=args.backend_reason, mode=args.mode, codex_config=args.codex_config)
             elif args.operation == "run-input":
                 output = agent_runs.run_input(State(args.home), args.project, args.directory, args.timeout,
-                    backend=args.backend, model=args.model, reason=args.backend_reason, codex_config=args.codex_config, mode=args.mode)
+                    backend=args.backend, model=args.model, reason=args.backend_reason, codex_config=args.codex_config, mode=args.mode,
+                    allow_one_continuation=args.allow_one_continuation)
+            elif args.operation == "continue-input":
+                output = agent_runs.continue_input(State(args.home), args.project, args.source_run, args.directory,
+                    intent_id=args.intent, timeout=args.timeout)
             else:
                 state = State(args.home)
                 if args.operation == "import":
@@ -965,7 +977,7 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         if args.command == "services" and output.get("outcome") in ("unconfirmed", "failed"):
             return 1
-        if args.command == "composition" and args.operation == "run-input" and output["status"] != "succeeded":
+        if args.command == "composition" and args.operation in ("run-input", "continue-input") and output["status"] != "succeeded":
             return 1
         return 0
     except (ValueError, OSError, RuntimeError) as error:

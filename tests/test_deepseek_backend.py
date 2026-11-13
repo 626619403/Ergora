@@ -1,12 +1,19 @@
 """A completed SDK turn must not silently bypass restricted call acceptance."""
 
 import json
+import os
 from pathlib import Path
+import shutil
+import subprocess
 import sys
+from types import SimpleNamespace
 
 import pytest
 
-from ergora import agent_backends, agents, processes
+from ergora import agent_backends, agent_definitions, agent_runs, agents, processes, projects, task_mcp, workflow_definitions as workflows
+from ergora.data.drivers import deepseek
+from ergora.cli import main
+from ergora.state import State
 
 
 def binding():
@@ -162,7 +169,7 @@ def test_archived_history_refuses_intermediate_ancestor_symlink(native_archive, 
 @pytest.mark.parametrize("addition", ["generation", "session"])
 def test_archived_history_refuses_layout_changes_during_a_page(native_archive, monkeypatch, addition):
     adapter, protocol, cwd, _, archive, _ = native_archive
-    original_decoder = agent_backends.codecs.getincrementaldecoder
+    original_decoder = deepseek.codecs.getincrementaldecoder
 
     def mutate_after_listing(encoding):
         if addition == "generation":
@@ -171,6 +178,278 @@ def test_archived_history_refuses_layout_changes_during_a_page(native_archive, m
             (archive.parent.parent / "another-session").mkdir()
         return original_decoder(encoding)
 
-    monkeypatch.setattr(agent_backends.codecs, "getincrementaldecoder", mutate_after_listing)
+    monkeypatch.setattr(deepseek.codecs, "getincrementaldecoder", mutate_after_listing)
     with pytest.raises(ValueError, match="directory changed"):
         adapter.archived_history(protocol, cwd=cwd, offset=0, limit=4093, revision=None)
+
+
+@pytest.fixture
+def continuation(tmp_path, monkeypatch):
+    """Exercise the product driver with a deterministic single-input SDK double.
+
+    The double delays persistence until close, as the real SDK can. Actual SDK,
+    transport, timeout and cancellation acceptance runs separately on loopback.
+    """
+    if sys.platform != "linux":
+        pytest.skip("Native continuation currently admits Linux/WSL2")
+    pytest.importorskip("mcp")
+    examples = Path(__file__).resolve().parents[1] / "examples"
+    repo = tmp_path / "repo"
+    subprocess.run(["git", "init", str(repo)], capture_output=True, check=True)
+    state = State(tmp_path / "control")
+    projects.create(state, "demo", repo)
+    agent_source = tmp_path / "agent"
+    shutil.copytree(examples / "agents/architecture-reviewer", agent_source)
+    definition = json.loads((agent_source / "agent.json").read_bytes())
+    definition["backend"] = binding()
+    (agent_source / "agent.json").write_text(json.dumps(definition))
+    agent = agent_definitions.import_bundle(state, agent_source)
+    workflow_source = tmp_path / "workflow"
+    shutil.copytree(examples / "composition/structure-review", workflow_source)
+    workflow = json.loads((workflow_source / "workflow.json").read_bytes())
+    workflow["nodes"][0]["ref"]["digest"] = agent["digest"]
+    (workflow_source / "workflow.json").write_text(json.dumps(workflow))
+    workflows.import_bundle(state, workflow_source)
+    grant = {"schema_version": 1, "permissions": workflow["permissions"], "limits": workflow["limits"]}
+
+    def prepare(name, task):
+        source = tmp_path / name
+        workflows.prepare_input(state.root, "structure-review", "1.0.0", "root/review", grant, task, source, 30000)
+        return source
+
+    source = prepare("source", b"Remember SOURCE_MEMORY. Read all inherited attachments.")
+    followup = prepare("followup", b"Recall SOURCE_MEMORY and read all inherited attachments again.")
+    calls, options = [], {}
+    answer = {"summary": "Reviewed", "artifacts": {"response": "Source response"}, "decision": "approve"}
+
+    class Harness:
+        def __init__(self, **configuration):
+            self.configuration = configuration
+            self.pending = b""
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            if self.pending:
+                with self.archive.open("ab") as stream:
+                    stream.write(self.pending)
+            if options.get("replace-home-on-close"):
+                home = Path(self.configuration["dsh_home"])
+                saved = home.with_name("original-home")
+                home.rename(saved)
+                shutil.copytree(saved, home)
+
+        def resume_session(self, session_id):
+            self.archive = Path(self.configuration["dsh_home"]) / "sessions/project" / session_id / "session.v4.jsonl"
+            self.previous = self.archive.read_bytes()
+            with self.archive.open("ab") as stream:
+                stream.write(json.dumps({"type": "session/end-seed", "seq": 10}).encode() + b"\n")
+            def cwd():
+                if options.get("restore-disconnect"):
+                    raise OSError("Synthetic restore cwd RPC disconnected")
+                return self.configuration["cwd"]
+            return SimpleNamespace(get_working_directory=cwd,
+                                   run=lambda prompt, **kwargs: self.run(prompt, session_id=session_id, **kwargs))
+
+        def run(self, prompt, *, session_id, on_notification):
+            path = Path(self.configuration["patches"][0])
+            request = json.loads((path.parent / "request.json").read_bytes())
+            calls.append(request)
+            if options.get("during_run"):
+                options["during_run"](request)
+            if options.get("interrupted"):
+                raise KeyboardInterrupt
+            if options.get("disconnect"):
+                raise OSError("Synthetic connection lost after prompt submission")
+            self.archive = Path(self.configuration["dsh_home"]) / "sessions/project" / session_id / "session.v4.jsonl"
+            self.archive.parent.mkdir(parents=True, exist_ok=True)
+            if not self.archive.exists():
+                self.archive.write_bytes(json.dumps({"type": "session", "version": 4, "id": session_id,
+                    "cwd": self.configuration["cwd"]}).encode() + b"\n")
+            patch = json.loads(path.read_bytes())
+            transport = patch[-1]["insert"][0]["config"]["args"]
+            view = task_mcp.ResourceView.load(Path(transport[3]), transport[4])
+            events = [{"scope_sha256": transport[4], "method": "tools/list", "success": True,
+                       "tools": task_mcp.TOOLS, "protocol_version": "fixture"}]
+            for uri, details in view.document["files"].items():
+                events.append({"scope_sha256": transport[4], "method": "tools/call", "success": True,
+                    "tool": "read", "read": {"uri": uri, "sha256": details["sha256"], "size": details["size"],
+                                                "offset": 0, "bytes": details["size"]}})
+            Path(transport[5]).write_text("".join(json.dumps(event) + "\n" for event in events))
+            resumed = request["continuation"]["kind"] == "resume"
+            message = {"id": "followup-message" if resumed else "source-message", "role": "user",
+                       "source": {"kind": "user"}, "content": [{"type": "text", "text": prompt}]}
+            base = 20 if resumed else 1
+            events = [{"seq": base, "type": "agent/inbox/spliced", "data": {
+                "target": "next-turn", "start": 0, "removedCount": 0, "inserted": [message]}},
+                {"seq": base + 1, "type": "agent/inbox/spliced", "data": {
+                    "target": "next-turn", "start": 0, "removedCount": 1, "inserted": []}},
+                {"seq": base + 2, "type": "user/message", "data": message},
+                {"seq": base + 3, "type": "turn/end", "data": {"turn": 1, "reason": {"kind": "completed"}}}]
+            from dataclasses import make_dataclass
+
+            notification = make_dataclass("Notification", ["method", "payload"])
+            on_notification(notification("session.status", {"sessionId": session_id, "status": "idle"}))
+            self.pending = b"".join(json.dumps(event, ensure_ascii=False).encode() + b"\n" for event in events)
+            return SimpleNamespace(session_id=session_id, finish_reason="completed", events=events,
+                final_response=json.dumps({**answer, "artifacts": {"response": "Followup response"}}) if resumed else json.dumps(answer))
+
+    def dispatch(argv, cwd, output, timeout, stdin, env, **kwargs):
+        import contextlib
+        import io
+
+        output.mkdir()
+        stdout = io.StringIO()
+        environment = dict(os.environ)
+        try:
+            monkeypatch.setattr(sys, "argv", argv[2:])
+            with contextlib.redirect_stdout(stdout):
+                deepseek.main()
+            status, code, error = "succeeded", 0, ""
+        except (OSError, ValueError) as failure:
+            status, code, error = "failed", 1, str(failure)
+        finally:
+            os.environ.clear()
+            os.environ.update(environment)
+            (output / "stdout.txt").write_text(stdout.getvalue())
+        (output / "stderr.txt").write_text(error)
+        return {"status": status, "returncode": code, "output": str(output)}
+
+    monkeypatch.setitem(sys.modules, "deepseek_harness", SimpleNamespace(DeepSeekHarness=Harness))
+    monkeypatch.setattr(deepseek, "installed_versions", lambda: {
+        name: "0.2.2rc2" for name in ("deepseek-harness-sdk", "deepseek-harness-runtime-bin")})
+    monkeypatch.setattr(processes, "run", dispatch)
+    return SimpleNamespace(state=state, repo=repo, source=source, followup=followup, calls=calls, options=options, prepare=prepare)
+
+
+def test_continuation_keeps_original_session_and_results_with_one_durable_intent(continuation, capsys):
+    case = continuation
+    original = agent_runs.run_input(case.state, "demo", case.source, mode="task-mcp", allow_one_continuation=True)
+    assert original["status"] == "succeeded", original
+    saved_original = json.dumps(original, sort_keys=True)
+    native = original["continuation"]["native"]
+    old_page = agent_runs.output(case.state, "demo", original["id"], native_history=True)["native_history"]
+
+    def concurrent(_):
+        with pytest.raises(BlockingIOError):
+            agent_runs.continue_input(case.state, "demo", original["id"], case.followup, intent_id="followup-one")
+
+    case.options["during_run"] = concurrent
+    assert main(["--home", str(case.state.root), "composition", "continue-input", "demo", original["id"],
+                 str(case.followup), "--intent", "followup-one"]) == 0
+    followup = json.loads(capsys.readouterr().out)
+    assert followup["status"] == "succeeded", followup
+    assert followup["continuation"]["state"] == "completed" and len(case.calls) == 2
+    assert json.loads(Path(original["result"]).read_bytes())["artifacts"]["response"] == "Source response"
+    assert json.loads(Path(followup["result"]).read_bytes())["artifacts"]["response"] == "Followup response"
+    assert case.calls[1]["cwd"] == case.calls[0]["cwd"] == native["cwd"]
+    assert followup["task_mcp"]["scope"]["sha256"] != original["task_mcp"]["scope"]["sha256"]
+    assert followup["task_mcp"]["reads"]["attachments"] == original["task_mcp"]["reads"]["attachments"]
+    assert agent_runs.continue_input(case.state, "demo", original["id"], case.followup, intent_id="followup-one") == followup
+    with pytest.raises(ValueError, match="already claimed"):
+        agent_runs.continue_input(case.state, "demo", original["id"], case.followup, intent_id="conflicting-intent")
+    with pytest.raises(ValueError, match="already claimed"):
+        agent_runs.continue_input(case.state, "demo", original["id"], case.followup, intent_id="followup-one", timeout=30)
+    with pytest.raises(ValueError, match="standalone source"):
+        agent_runs.continue_input(case.state, "demo", followup["id"], case.followup, intent_id="third")
+    assert len(case.calls) == 2
+    assert json.dumps(next(run for run in agent_runs.runs(case.state, "demo") if run["id"] == original["id"]), sort_keys=True) == saved_original
+    history = agent_runs.output(case.state, "demo", followup["id"], native_history=True)
+    assert history["native_history"]["source_run"] == original["id"]
+    assert history["native_history"]["content"].startswith(old_page["content"])
+    assert history["native_history"]["revision"] != old_page["revision"]
+
+
+@pytest.mark.parametrize("drift", ["project", "repository", "cwd", "home", "history", "schema", "binding", "material"])
+def test_continuation_refuses_changed_authority_or_native_evidence_before_new_input(continuation, drift, tmp_path):
+    case = continuation
+    original = agent_runs.run_input(case.state, "demo", case.source, mode="task-mcp", allow_one_continuation=True)
+    assert original["status"] == "succeeded", original
+    protocol = Path(original["continuation"]["native"]["protocol"])
+    if drift == "project":
+        projects.bind(case.state, "demo", "reviewer", {"tool": "codex"}, 1)
+    elif drift in ("repository", "cwd"):
+        path = case.repo if drift == "repository" else Path(original["continuation"]["native"]["cwd"])
+        path.rename(tmp_path / "old-directory")
+        path.mkdir()
+    elif drift == "home":
+        path = protocol / "native-home"
+        original_home = tmp_path / "original-home"
+        path.rename(original_home)
+        shutil.copytree(original_home, path)
+    elif drift == "history":
+        archive = next((protocol / "native-home/sessions").glob("*/*/session.v4.jsonl"))
+        with archive.open("ab") as stream:
+            stream.write(b'{"type":"session/end-seed"}\n')
+    elif drift == "schema":
+        (protocol / "schema.json").write_text('{"type":"string"}')
+    elif drift == "binding":
+        request = json.loads((protocol / "request.json").read_bytes())
+        request["binding"]["model"] = "other-model"
+        (protocol / "request.json").write_text(json.dumps(request))
+    else:
+        # The prepared input verifier owns all resource digests.
+        path = next((case.followup / "assets").rglob("instructions.md"))
+        path.write_text("Changed material")
+    with pytest.raises(ValueError):
+        agent_runs.continue_input(case.state, "demo", original["id"], case.followup, intent_id="followup-one")
+    assert len(case.calls) == 1
+    assert len(agent_runs.runs(case.state, "demo")) == 1
+
+
+@pytest.mark.parametrize("failure", ["disconnect", "interrupted", "restore-disconnect", "replace-home-on-close"])
+def test_uncertain_or_interrupted_continuation_is_not_resent(continuation, failure):
+    case = continuation
+    original = agent_runs.run_input(case.state, "demo", case.source, mode="task-mcp", allow_one_continuation=True)
+    assert original["status"] == "succeeded", original
+    case.options[failure] = True
+    followup = agent_runs.continue_input(case.state, "demo", original["id"], case.followup, intent_id="once")
+    assert followup["status"] in ("failed", "cancelled") and followup["continuation"]["state"] == "unknown"
+    expected_calls = 1 if failure == "restore-disconnect" else 2
+    assert len(case.calls) == expected_calls
+    if failure != "replace-home-on-close":
+        native = followup["continuation"]["native"]
+        assert not native["completed"] and native["source_prefix_preserved"]
+        assert native["final_bytes"] >= native["restored_bytes"] > native["source_bytes"]
+    else:
+        assert "observation_error" in followup["continuation"]
+    case.options.clear()
+    assert agent_runs.continue_input(State(case.state.root), "demo", original["id"], case.followup, intent_id="once") == followup
+    assert len(case.calls) == expected_calls
+
+
+def test_source_requires_explicit_standalone_opt_in_on_a_supported_backend(continuation):
+    case = continuation
+    for options in ({"supervised": True}, {"result_schema": agents.result_schema(["custom"])}, {"backend": "codex"}):
+        with pytest.raises(ValueError):
+            agent_runs.run_input(case.state, "demo", case.source, mode="task-mcp", allow_one_continuation=True, **options)
+    assert agent_runs.runs(case.state, "demo") == [] and case.calls == []
+
+    original = agent_runs.run_input(case.state, "demo", case.source, mode="task-mcp", allow_one_continuation=True)
+    assert original["status"] == "succeeded", original
+    with case.state.connect() as db:
+        legacy = dict(original)
+        del legacy["continuation"]
+        db.execute("UPDATE agent_runs SET document=? WHERE id=?", (json.dumps(legacy), original["id"]))
+    with pytest.raises(ValueError, match="explicitly enabled"):
+        agent_runs.continue_input(case.state, "demo", original["id"], case.followup, intent_id="old-source")
+    assert len(case.calls) == 1
+
+
+def test_preflight_cannot_reset_continuation_wall_budget_or_its_reserved_slot(continuation, monkeypatch):
+    import asyncio
+
+    case = continuation
+    original = agent_runs.run_input(case.state, "demo", case.source, mode="task-mcp", allow_one_continuation=True)
+    assert original["status"] == "succeeded", original
+
+    async def stalled_probe(*args):
+        await asyncio.sleep(10)
+
+    monkeypatch.setattr(task_mcp, "probe", stalled_probe)
+    followup = agent_runs.continue_input(case.state, "demo", original["id"], case.followup, intent_id="short", timeout=1)
+    assert followup["status"] == "failed" and followup["continuation"]["state"] == "reserved"
+    assert len(case.calls) == 1
+    assert agent_runs.continue_input(case.state, "demo", original["id"], case.followup, intent_id="short", timeout=1) == followup
+    assert len(case.calls) == 1

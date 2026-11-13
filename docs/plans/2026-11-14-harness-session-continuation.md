@@ -1,6 +1,6 @@
 # F8-H3b：显式续接原生只读会话
 
-日期：2026-11-14。承接已精确交付的 [H3a](2026-11-14-harness-session-readback.md)和[原接缝调查](../architecture/2026-11-14-harness-session-seam.md)。基线产品 `fde425164e45a15e255eb62e0e6f6fd959e00f6c`；S1 自己的 CI 与 W1 试用另片收口。本片仍在设计，下面是验收要求，不是已实现承诺。
+日期：2026-11-14。承接已精确交付的 [H3a](2026-11-14-harness-session-readback.md)和[原接缝调查](../architecture/2026-11-14-harness-session-seam.md)。基线产品 `fde425164e45a15e255eb62e0e6f6fd959e00f6c`；S1 自己的 CI 与 W1 试用另片收口。下面是本片验收合同；实际状态见末节与所属交付。
 
 ## 首片范围
 
@@ -22,6 +22,8 @@
 
 ## 当前状态
 
-节点 1 的[两种 Interface 调查](../architecture/2026-11-14-harness-continuation-options.md)已完成，选择方案 A：原 Invocation 携带已准入的来源描述，原 command／结果／进程消费保持。先补一个全新私有 home 的本地 loopback 机制探针，核新 MCP scope、原上下文带回和实际 B0／B1／B2 刷盘；已有 H3a 零新 prompt 的五副本探针不替代此行为。产品尚未改动，设计及合成机制探针均不算实际续接实现或独立验收。
+节点 1 的[两种 Interface 调查](../architecture/2026-11-14-harness-continuation-options.md)和[两调用机制探针](../delivery/2026-11-14-harness-continuation-probe.md)已完成，选择方案 A：原 Invocation 携带已准入的来源描述，原 command／结果／进程消费保持。全新私有 home 的本地 loopback 已核新 MCP scope、原上下文带回和实际 B0／B1／B2 刷盘；SDK idle 不是持久化屏障，正常 close 后才读取最终归档。
+
+节点 2–6 已实现并在 r3 完成本地验收；节点 7 的发布／CI 待验。r1安装回归130通过／12跳过及实际SDK成功保留为原候选证据；新的独立评审复现home副本／时窗与失败增量两P2，r3已修并按原场景复核，开放0。r3包561／两RECORD／283、源35项和安装133项通过／12跳过；实际SDK四场景与真实模型两调用均通过，自身原结构模板73.433秒approve。最终新独立两轴补核通过、本地出口开放0／0；普通发布／自己的CI待收口。原迁移失败和夹具失败详见交付，不能替代最终候选的实际验收。
 
 预期复用／修改范围为原 `agent_runs`、`Invocation`／`agents.invoke`、DeepSeek Adapter 与独立 driver、原 CLI／output consumer、既有 composition／DeepSeek 测试及手册。若新调用从原 home 续接，output 必须按 DB 中核准的同项目 source lineage 读取原 root protocol／cwd，同时仍返回本调用 stdout／结果及本次 interval；不能让 backend 信任任意 `identity.home` 或用 symlink 迁就原 reader。
