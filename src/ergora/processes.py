@@ -116,26 +116,27 @@ def run(argv: list[str], cwd: Path, output: Path, timeout: int, stdin: str = "",
     status = "succeeded"
     if supervised:
         _adopt_children()
-    with (output / "stdout.txt").open("w", encoding="utf-8") as stdout, (output / "stderr.txt").open("w", encoding="utf-8") as stderr:
+    with ((output / "stdout.txt").open("w", encoding="utf-8") as stdout,
+          (output / "stderr.txt").open("w", encoding="utf-8") as stderr,
+          (output / "stdin.txt").open("rb") as recorded_input):
         process = None
         try:
             if not (supervised and should_stop()):
                 process = subprocess.Popen(
-                    argv, cwd=cwd, env=env, stdin=subprocess.PIPE, stdout=stdout, stderr=stderr,
+                    argv, cwd=cwd, env=env, stdin=recorded_input, stdout=stdout, stderr=stderr,
                     text=True, start_new_session=not supervised,
                     pass_fds=() if lock_fd is None else (lock_fd,), encoding="utf-8")
                 try:
                     if supervised:
                         # TERM only requests cancellation, including during final cleanup.
-                        payload = stdin
                         while not should_stop():
                             try:
-                                process.communicate(payload, timeout=0.2)
+                                process.wait(timeout=0.2)
                                 break
                             except subprocess.TimeoutExpired:
-                                payload = None
+                                pass
                     else:
-                        process.communicate(stdin, timeout=timeout)
+                        process.wait(timeout=timeout)
                 except subprocess.TimeoutExpired:
                     status = "timed_out"
                 except KeyboardInterrupt:
@@ -150,7 +151,7 @@ def run(argv: list[str], cwd: Path, output: Path, timeout: int, stdin: str = "",
                         os.killpg(process.pid, signal.SIGKILL)
                 except ProcessLookupError:
                     pass
-                process.communicate()
+                process.wait()
             if supervised:
                 _reap_children()
     code = process.returncode if process is not None else None

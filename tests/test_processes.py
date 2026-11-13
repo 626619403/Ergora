@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -9,6 +10,23 @@ import pytest
 
 from ergora import processes
 from ergora.state import file_lock
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Dedicated supervised Linux process owner')
+def test_slow_supervised_reader_receives_complete_large_utf8_input(tmp_path):
+    reader = 'import sys,time,hashlib;time.sleep(.35);print(hashlib.sha256(sys.stdin.buffer.read()).hexdigest())'
+    controller = (
+        'import sys,time,json;from pathlib import Path;from ergora import processes;'
+        "payload='漢字\\r\\nline\\n'*32768;started=time.monotonic();"
+        f'result=processes.run([sys.executable,"-c",{reader!r}],Path({str(tmp_path)!r}),'
+        f'Path({str(tmp_path / "output")!r}),5,payload,supervised=True,'
+        'stop_requested=lambda:time.monotonic()-started>=5);print(json.dumps(result))'
+    )
+    result = subprocess.run([sys.executable, '-c', controller], capture_output=True, text=True, timeout=10)
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)['status'] == 'succeeded'
+    expected = hashlib.sha256(('漢字\r\nline\n' * 32768).encode()).hexdigest()
+    assert (tmp_path / 'output/stdout.txt').read_text().strip() == expected
 
 
 def test_unicode_paths_and_stdin_are_literal_utf8(tmp_path):
