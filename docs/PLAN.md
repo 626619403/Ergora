@@ -4,7 +4,9 @@
 
 ## 当前检查点
 
-- [B2g集群／恢复方向](plans/2026-11-13-optimization-cluster-directions.md)从9c84b08清洁基线开始：R8十五资料257,662B／新研究请求0；一根／catalog／原参数与手册已实现。r1安装／三叶／自身结构原件保持；SP1/P3的Nsight范围已改为原文NSys／Nsight Systems。r2非editable545／两RECORD／283、28项／109.49秒、三真实叶18资源44,924B与手动原前驱通过；measurement保留request-changes。[新独立两轴终核](delivery/2026-11-13-optimization-cluster-directions-review.md)通过、SP1关闭／开放0／0，本地出口完成；普通发布／自己的CI仍开放。[交付](delivery/2026-11-13-optimization-cluster-directions.md)逐步记录。低精度与独立kernel继续排在后面。
+- [B2h低精度／量化](plans/2026-11-13-optimization-low-precision-directions.md)：十八固定原件470,878B／新研究请求0；四叶根／catalog／原测试与手册已实现，545旧产品除catalog和21旧条目保持。noneditable548／两RECORD／283、29项／115.59秒、四真实叶23资源63,232B与两处完整原前驱、自身30.278秒approve／五全文48,318B均已核；measurement保留request-changes。新fresh独立两轴完整原件通过，SP1/P3关闭、开放0／0，本地出口完成；普通发布／自己的CI开放，[交付](delivery/2026-11-13-optimization-low-precision-directions.md)逐步记录。B2g自己的CI及原独立终核已完成，可继续发布本片；独立kernel随后。
+
+- [B2g集群／恢复方向](plans/2026-11-13-optimization-cluster-directions.md)：r1原件保持，SP1/P3的NSys范围已修正；r2非editable545／两RECORD／283、28项／109.49秒、三叶18资源44,924B与手动原前驱及新独立两轴终核通过，开放0／0。已普通提交／推送8f0b580，15Git／新包／作者SSH完整Ref获原独立补核；自己的CI43451540232官方Success，八job／30必要步骤及完整SHA日志路径获原独立终核通过，精确交付终结。[交付](delivery/2026-11-13-optimization-cluster-directions.md)逐步记录。
 
 - [同事试用入口](delivery/2026-11-13-colleague-onboarding.md)本地出口完成：按2d13c0e盘点20个preset，明确15个只读细方向与四位跨域v2专家已交付，cluster-resiliency／low-precision／kernel专门方向根及完整原生接入仍待做；顶层README补试用命令、运行前置、平台和手册入口，隔离目录六条安装版CLI、文档链接／锚点、安装脚本语法与diff检查通过，新fresh-context需求／可维护性两轴通过、开放0／0，SP1/P2权限归属已修正关闭，第0条过期状态已收口。下一资料片按[D2剩余清单](plans/2026-11-13-specialist-presets.md#同事试用入口与剩余专家清单)推进B2g→B2h→B2i，B3／C2分别验真实实验与Forge嵌套。
 
@@ -45,7 +47,7 @@
 
 ## 下一可执行项
 
-0. [专家模板重整](plans/2026-11-12-specialist-template-refresh.md)的U1／U2安装与旅程、R1–R10纵向及X1–X3横向研究、D0采用决策均已完成各自范围；D1已有完整材料／总预算／单实例六阶段消费者和真实治理旅程。接续[D2计划](plans/2026-11-13-specialist-presets.md)：A1重构配方与A2第三轮真实重构已验，B1四位共享专家v2及B2a–B2f十五方向资料已实现，B2f自己的CI43426570060及原独立终核已通过。README试用说明及独立文档评审已完成；下一B2g集群／恢复→B2h低精度→B2i独立kernel方向，B3原实验runner交接与C2 Forge全部内部会话／权限／停止分别验收。原A2前两轮失败保持历史，不再作为当前下一任务；不重复已成功模型旅程，不将资料包当自动图或GPU收益。
+0. [专家模板重整](plans/2026-11-12-specialist-template-refresh.md)的U1／U2安装与旅程、R1–R10纵向及X1–X3横向研究、D0采用决策均已完成各自范围；D1已有完整材料／总预算／单实例六阶段消费者和真实治理旅程。接续[D2计划](plans/2026-11-13-specialist-presets.md)：A1重构配方与A2第三轮真实重构已验，B1四位共享专家v2及B2a–B2g十六方向资料已发布，B2g自己的CI43451540232及原独立终核已通过。README试用说明及独立文档评审已完成；B2h低精度本地出口已通过，待普通发布／自己的CI；下一B2i独立kernel方向，B3原实验runner交接与C2 Forge全部内部会话／权限／停止分别验收。原A2前两轮失败保持历史，不再作为当前下一任务；不重复已成功模型旅程，不将资料包当自动图或GPU收益。
 
 1. C3d及C4a精确交付均已终结，既有非终态样本保持；不重复产品/模型或远端终核。
 2. C4b.1完整最终候选本地出口已通过，8ce9aba已普通推送、原评审精确20Git对象/436包/283冻结及一次HTTPS同SHA通过；自己的CI42825342126第三样本双OS七必要步骤与原评审离线终核通过，精确交付终结；前两In progress样本保持。已过行为与模型不重复。

@@ -1,0 +1,231 @@
+{
+  "baseline": "8f0b5802274f5db80b804d99979d074cdd3e1338",
+  "wheel_sha256": "1b9b01d2a5d1692a3a8681293d36907ae10911c4c299ced6a6961653ba192111",
+  "package_files": 548,
+  "frozen_files": 283,
+  "installed_presets": {
+    "passed": 29,
+    "pytest_seconds": 115.59,
+    "controller_seconds": 117.0798400817439
+  },
+  "native_successful_calls": 4,
+  "resource_occurrences": 23,
+  "resource_bytes": 63232,
+  "all_resources_continuous_utf8": true,
+  "full_manual_predecessor_results": true,
+  "calls": [
+    {
+      "direction": "low-precision",
+      "name": "measurement",
+      "instance": "root/measurement/review",
+      "run_id": "ba92181a8a2b4a2fb212ea818e643a0c",
+      "status": "succeeded",
+      "seconds": 60.893369688186795,
+      "input_digest": "5aeb6596b03d4abce56eb3dcecf84e3b190de6145761fcec67d7b94b5009b6e6",
+      "prompt_sha256": "37e619d11a7417ce59bb5b2d375cd1405b173c3a94d90e28f3d28becd9739726",
+      "result_sha256": "ac1fe64e8051d70e57907969fc52fe722f849e2910e89113de10c3161beb974f",
+      "decision": "request-changes",
+      "predecessor_sha256": {
+        "design": "cc7840f770ea114566c4fd2beb5a1082a1f700258fac2cfc92fc12bba361bbdf",
+        "profile": "3d36f2430f24a391ad3e5ed4bf7cc24aa1e1a5f4e7ccfb25656c7dd79f33c24d",
+        "kernel": "652490e05f96bab7b0799df2c4dcfefc2f37f9b9a2e6345f77aea92169d91a80"
+      },
+      "requested_binding": {
+        "tool": "claude-code"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      },
+      "backend_reason": "User-authorized explicit Codex fallback after retained Claude failure; independent sessions, no heterogeneous-backend claim."
+    },
+    {
+      "direction": "low-precision",
+      "name": "kernel",
+      "instance": "root/kernel",
+      "run_id": "3c8ec3c31b8747cc8b0bea4162b79cff",
+      "status": "succeeded",
+      "seconds": 91.03198848385364,
+      "input_digest": "10e1acc155187134a167641f56e01d9bbf43d3e199920fa63423d8961a868c7f",
+      "prompt_sha256": "e4447b8eb3239ad372caa68c0cacba9d86071f38b1c52560905f629f439d1f10",
+      "result_sha256": "652490e05f96bab7b0799df2c4dcfefc2f37f9b9a2e6345f77aea92169d91a80",
+      "decision": null,
+      "predecessor_sha256": {
+        "design": "cc7840f770ea114566c4fd2beb5a1082a1f700258fac2cfc92fc12bba361bbdf",
+        "profile": "3d36f2430f24a391ad3e5ed4bf7cc24aa1e1a5f4e7ccfb25656c7dd79f33c24d"
+      },
+      "requested_binding": {
+        "tool": "codex"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      },
+      "backend_reason": "User-authorized explicit Codex fallback after retained Claude failure; independent sessions, no heterogeneous-backend claim."
+    },
+    {
+      "direction": "low-precision",
+      "name": "profile",
+      "instance": "root/analysis/profile",
+      "run_id": "1812897873624dcab984fc4c5b246e09",
+      "status": "succeeded",
+      "seconds": 94.0374000617303,
+      "input_digest": "efeedb8980cad1b299bf349722116899556c89574aea613b442516d308a8bb4a",
+      "prompt_sha256": "31f7cccffdd091a9fb0a1ff9b6c6451f2fc83d3d87cee57d1ad9f435010807b0",
+      "result_sha256": "3d36f2430f24a391ad3e5ed4bf7cc24aa1e1a5f4e7ccfb25656c7dd79f33c24d",
+      "decision": null,
+      "predecessor_sha256": {},
+      "requested_binding": {
+        "tool": "codex"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      },
+      "backend_reason": "User-authorized explicit Codex fallback after retained Claude failure; independent sessions, no heterogeneous-backend claim."
+    },
+    {
+      "direction": "low-precision",
+      "name": "design",
+      "instance": "root/analysis/design",
+      "run_id": "ca5d72bf90c84d26b317c2f1bfb1ec9a",
+      "status": "succeeded",
+      "seconds": 91.88484337413684,
+      "input_digest": "2d4a9fea0394e085c63fecf1e9945e379ed3b5e4046e6d7406004928cdbf0ae5",
+      "prompt_sha256": "1ae943089e3d5ece534a3219f8d3db861b97f9303a1798f3c16cf52da8a27eaf",
+      "result_sha256": "cc7840f770ea114566c4fd2beb5a1082a1f700258fac2cfc92fc12bba361bbdf",
+      "decision": null,
+      "predecessor_sha256": {},
+      "requested_binding": {
+        "tool": "codex"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      },
+      "backend_reason": "User-authorized explicit Codex fallback after retained Claude failure; independent sessions, no heterogeneous-backend claim."
+    }
+  ],
+  "fixture_sha256": "d24a33454a44d00c165147adb9997f860778eb7bbff8a2830825ff69e86780ce",
+  "fixed_sources": [
+    {
+      "file": "autoround_auto_scheme_code.raw",
+      "url": "https://raw.githubusercontent.com/intel/auto-round/v0.16.1/auto_round/auto_scheme/gen_auto_scheme.py",
+      "bytes": 11971,
+      "sha256": "0fbdd8dba9d4e929fdb7a2c53182df3a44cb98288c944ec635367f0329e00072"
+    },
+    {
+      "file": "autoround_scheme.raw",
+      "url": "https://raw.githubusercontent.com/intel/auto-round/v0.16.1/docs/step_by_step.md",
+      "bytes": 64697,
+      "sha256": "6ca03f2a8727d11ddba39d364968a9633c6cbdc6325a67c51684efe82cf6073b"
+    },
+    {
+      "file": "bridge_tag_mixed.raw",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Megatron-Bridge/v0.7.0/docs/training/mixed-precision.md",
+      "bytes": 10991,
+      "sha256": "1eaaa5295132b8707a8188fa64b97d668ded87bf426bca03008c78dd9458c926"
+    },
+    {
+      "file": "bridge_tag_quant.raw",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Megatron-Bridge/v0.7.0/docs/modelopt/quantization.md",
+      "bytes": 9384,
+      "sha256": "1f75a6364d3c18da0735740c3b4e297fd658d2fa48ffa2ab924803c839442dfe"
+    },
+    {
+      "file": "modelopt_bridge_readme.raw",
+      "url": "https://raw.githubusercontent.com/NVIDIA/Model-Optimizer/0.48.0/examples/megatron_bridge/README.md",
+      "bytes": 26887,
+      "sha256": "193416305aa76680f9b8d4d2637916b3cea2080168676b734fa4a265b151564a"
+    },
+    {
+      "file": "modelopt_checkpoint_gate.raw",
+      "url": "https://raw.githubusercontent.com/NVIDIA/Model-Optimizer/9aeff419f3afa1b27e7bcc10dc6a90cc68df4d77/plugins/modelopt/skills/ptq/references/checkpoint-validation.md",
+      "bytes": 13961,
+      "sha256": "f7aa3827c16042ab222e38417fc8487f84ca587131bf3cc1961c9ba5598ed0a7"
+    },
+    {
+      "file": "modelopt_ptq_readme.raw",
+      "url": "https://raw.githubusercontent.com/NVIDIA/Model-Optimizer/0.48.0/examples/hf_ptq/README.md",
+      "bytes": 51847,
+      "sha256": "e0853212fe12042b66d79cc40af9c7abdce01359796bf39484dc98054670d6f7"
+    },
+    {
+      "file": "modelopt_qat_tag.raw",
+      "url": "https://raw.githubusercontent.com/NVIDIA/Model-Optimizer/0.48.0/docs/source/guides/quantization_aware_training_and_distillation.rst",
+      "bytes": 6560,
+      "sha256": "0faca4d775612b0ea927eefb4559350d772642c9853ff80a24a4e6b231776efe"
+    },
+    {
+      "file": "modelopt_search_ref.raw",
+      "url": "https://raw.githubusercontent.com/NVIDIA/Model-Optimizer/9aeff419f3afa1b27e7bcc10dc6a90cc68df4d77/plugins/modelopt/skills/quant-recipe-search/references/recipe_iteration.md",
+      "bytes": 12440,
+      "sha256": "d3a3f86093e7ce31ea9ba3598ed9451e097bf5de9f999c0025be2acd037ee488"
+    },
+    {
+      "file": "modelopt_skill_evaluation.raw",
+      "url": "https://raw.githubusercontent.com/NVIDIA/Model-Optimizer/9aeff419f3afa1b27e7bcc10dc6a90cc68df4d77/plugins/modelopt/skills/evaluation/SKILL.md",
+      "bytes": 8521,
+      "sha256": "ee1893665ec1dd989de4c37eeb4b95ce451146e92bbd81cf4201bad2fcc43e9b"
+    },
+    {
+      "file": "modelopt_skill_ptq.raw",
+      "url": "https://raw.githubusercontent.com/NVIDIA/Model-Optimizer/9aeff419f3afa1b27e7bcc10dc6a90cc68df4d77/plugins/modelopt/skills/ptq/SKILL.md",
+      "bytes": 11423,
+      "sha256": "823c7c9c307d4be8f6725e305144b109feee1de34b1c5f06ff0ec9ee4d064aff"
+    },
+    {
+      "file": "modelopt_skill_qad.raw",
+      "url": "https://raw.githubusercontent.com/NVIDIA/Model-Optimizer/9aeff419f3afa1b27e7bcc10dc6a90cc68df4d77/plugins/modelopt/skills/qad/SKILL.md",
+      "bytes": 11367,
+      "sha256": "930855483582f61bf2ba85d40e696ea205974d2c9bc0d19171a791c0e8b0016a"
+    },
+    {
+      "file": "modelopt_skill_search.raw",
+      "url": "https://raw.githubusercontent.com/NVIDIA/Model-Optimizer/9aeff419f3afa1b27e7bcc10dc6a90cc68df4d77/plugins/modelopt/skills/quant-recipe-search/SKILL.md",
+      "bytes": 10056,
+      "sha256": "2fbf14aedc6d0125bf3bb11b3f8d70d96b1f44495443fe6af969a7d1fcc71edc"
+    },
+    {
+      "file": "modelopt_tag_quant.raw",
+      "url": "https://raw.githubusercontent.com/NVIDIA/Model-Optimizer/0.48.0/modelopt/torch/quantization/model_quant.py",
+      "bytes": 57569,
+      "sha256": "03d2448c881457a857c7bd9b9374603289a83b463ec6bf8398715141979d0700"
+    },
+    {
+      "file": "olive_engine.raw",
+      "url": "https://raw.githubusercontent.com/microsoft/Olive/v0.13.0/olive/engine/engine.py",
+      "bytes": 37815,
+      "sha256": "440c3638fb7ce19bb3d42d98a2787f7261f12cd285a574bf628f2c7d7a679dba"
+    },
+    {
+      "file": "olive_search.raw",
+      "url": "https://raw.githubusercontent.com/microsoft/Olive/v0.13.0/olive/search/search_strategy.py",
+      "bytes": 14317,
+      "sha256": "05c37361ea0fefb2fee1af21ce30b4d88b0c94d3eb19b2ca1da43f29ce0419ee"
+    },
+    {
+      "file": "te_quant_availability.raw",
+      "url": "https://raw.githubusercontent.com/NVIDIA/TransformerEngine/v2.21.0/transformer_engine/pytorch/quantization.py",
+      "bytes": 78284,
+      "sha256": "d8f2cd4fa72d8343eaca912cad0d89c4f39ff5828849cda3904c640aa587a943"
+    },
+    {
+      "file": "te_tag_recipe.raw",
+      "url": "https://raw.githubusercontent.com/NVIDIA/TransformerEngine/v2.21.0/transformer_engine/common/recipe/__init__.py",
+      "bytes": 32788,
+      "sha256": "086710097a7df57c68c281dd520a3e559817ffec8b44906eac98a399061e7586"
+    }
+  ],
+  "self_review": {
+    "run_id": "8d08b7677da2457dbebb10b8cda93a29",
+    "status": "succeeded",
+    "decision": "approve",
+    "packet_files": 5,
+    "packet_bytes": 48318,
+    "prompt_sha256": "e9dc230644884edd13c2fb5af419fb8f16731bc4eb5270bc82340583b3434986",
+    "input_digest": "9604c134b618c9347ba6ba82da67b537ca2e0f6eabbc7546b83b6d34e89ab4fe",
+    "result_sha256": "ab0cc8adee98b2755190b145e310327a5da9b6f5b370b2d2d8957d4af1c2bca4"
+  },
+  "raw_audit_sha256": "68f89f2f244bfe59c940bfb2b0f195500594986c7e585891ab81acced8b8e9b1",
+  "self_review_audit_sha256": "50bf3e75f8eb48f49a36a2ffd3c4009ebcefe7df5fdf38328a06ab588c25d40e",
+  "installed_test_stdout_sha256": "acf64e36c2d687d5e131e2281a0bab693234b73d0e36961de26bc0d9a4234cc8",
+  "post_call_process_observation_sha256": "7778b50a70773f9c98767d4da03e013c0dc75e880e5fce226f356bcf33863fcc",
+  "scope": "Four real independent readonly model calls on an explicitly synthetic quantization/quality/support/coverage/cost fixture; complete inherited resource transport and full manual original predecessor transfer to kernel and measurement. Original per-call results and measurement decision are retained. No actual model, calibration, quantizer/search/export/load, QAD/TE training, GPU, quality/performance, heterogeneous-backend or adoption acceptance. Own text-only structure review covers five complete inline files. Independent review, ordinary publication and own exact-candidate CI recorded separately. No local full-suite or seven-group collection was run for this slice; process receipt is one bounded end observation."
+}

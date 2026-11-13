@@ -253,8 +253,8 @@ B2f两根／catalog／原参数表与两手册已实现；非editable542／两RE
 |重构准备／执行／兼容、三路最终审查|A1定义已实现；A2第三轮真实Codex六阶段、原ID恢复、候选复验与独立审查已有记录|按后续改动与平台另验，不重复成功模型旅程|
 |四位跨域优化专家v2|B1完整定义／资源与真实单叶调用已交付|不同后端、工具及真实workload分别验收|
 |显存3、图／packing2、并行3、通信3、profiling2、模型2方向|B2a–B2f共15个只读子模板已实现，B2f自己的CI及独立终核已通过|未验硬件与训练不从资料／synthetic测试升级通过|
-|cluster-resiliency|[B2g](2026-11-13-optimization-cluster-directions.md)一根已实现；r1保持，r2安装545／两RECORD／283、28项和三叶18资源44,924B／手动原前驱已获新独立两轴终核，SP1/P3关闭／开放0／0，本地出口完成；发布／自己的CI待做|唯一rank／job／恢复所有者、checkpoint与日志证据；集群提交／重启另片|
-|low-precision|研究及设计已完成，未发布对应方向包|B2h：PTQ／QAD／训练TE及质量门禁的只读方案；不安装或执行ModelOpt／AutoRound|
+|cluster-resiliency|[B2g](2026-11-13-optimization-cluster-directions.md)r2安装／三叶及新独立两轴通过；8f0b580已普通推送，精确Git／作者SSH Ref获原独立补核；自己的CI43451540232八job／30必要步骤获原独立终核通过，精确交付终结|唯一rank／job／恢复所有者、checkpoint与日志证据；集群提交／重启另片|
+|low-precision|[B2h](2026-11-13-optimization-low-precision-directions.md)四叶根／catalog／原测试与手册已实现；安装548／两RECORD／283、29项和四叶23资源63,232B／两处完整手动原前驱、自身结构及新独立双轴完整原件通过，SP1/P3关闭／开放0／0；发布／自己的CI开放|PTQ／QAD／训练TE及质量门禁方案；实际工具与实验仍由原所有者执行|
 |kernel专门方向根|总训练组合已有kernel designer，独立kernel方向包尚未发布|B2i：独立可引用的kernel方案／wrapper／正确性／测量交接，保留原生campaign所有者|
 |Forge完整嵌套及其他原生系统|现有Forge顶层操作保留；C2父合同／全部会话／停止等缺口仍在，其他候选按D0条件准入|按C2逐项证明真实消费者，不以新增资料包关闭原生接入|
 

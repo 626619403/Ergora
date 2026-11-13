@@ -24,7 +24,7 @@
 |G1 定义与合同|只读根／catalog可导入，完整context继承及重复导入沿原测试|完成|
 |G2 独立安装|非editable wheel、source／installed身份及RECORD／283、原preset suite|r1保留；修正r2的545／两RECORD／283、28项／109.49秒通过|
 |G3 实际叶交接|三次真实task-MCP调用、完整祖先读取、measurement完整接收原design／profile|r1保留；修正r2三叶18资源44,924B与手动原前驱通过，measurement为request-changes；仅synthetic资料|
-|G4 审查与发布|自身原审查模板、新fresh-context独立两轴、普通推送和精确候选自己的CI|r1自身结构证据保持；新独立r2两轴通过、SP1/P3关闭／开放0／0，本地出口完成；普通发布／自己的CI待做|
+|G4 审查与发布|自身原审查模板、新fresh-context独立两轴、普通推送和精确候选自己的CI|本地两轴通过、SP1/P3关闭／开放0／0；8f0b580已普通推送，精确Git／作者Ref获独立补核；自己的CI43451540232官方Success，八job／30必要步骤及完整SHA日志路径获原独立终核，精确交付终结|
 
 Synthetic资料故意混用两节点、每节点四task且每task四worker，丢失提交回执却拟重提，空／degraded日志给RESTART与异步checkpoint仅入队。调用应分析该配置的32个潜在worker与期望8的冲突，并保留原身份、日志和持久恢复证据缺项。它只验方案与审查行为，不证明真实启动、归因器、集群权限、checkpoint／GPU恢复或收益。
 

@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-R8十五份固定原件257,662B及原回执／NVRx归档成员身份已核，新研究请求0。一个方向根、catalog、原测试参数与使用入口已实现；r1原件保留，SP1／P3来源措辞已修正。修正r2安装、28项及三叶原件已获同片独立终核，两轴通过、开放0／0，本地出口完成。普通发布／自己的CI仍开放。
+R8十五份固定原件257,662B及原回执／NVRx归档成员身份已核，新研究请求0。一个方向根、catalog、原测试参数与使用入口已实现；r1原件保留，SP1／P3来源措辞已修正。修正r2安装、28项及三叶原件已获同片独立终核，两轴通过、开放0／0，本地出口完成。普通发布与精确远端身份已独立核准；自己的CI43451540232八job／30必要步骤获原独立终核通过，精确交付终结。
 
 现有共享专家、父资料继承、权限、预算与证据所有者保持；模拟启动／丢失回执／空日志／checkpoint入队资料只检查方案和证据辨别，不能证明真实集群或恢复功能。
 
@@ -47,3 +47,13 @@ r2从同一基线重新构建非editable wheel，SHA256为`78befd7c4d3eda2901ace
 ## 独立终核与本地出口
 
 原fresh-context评审者已同片核准修正后的15文件快照、r1／r2仅两产品及RECORD差异、新包545／两RECORD／283、28原测试及三叶state／input／stdin／protocol／完整MCP／native stream／result链，18资源44,924B及完整r2原前驱、三原结果和公开投影均通过；267本地目标／64锚点与diff检查通过。SP1/P3关闭，需求／可维护性两轴开放0／0，[独立报告](2026-11-13-optimization-cluster-directions-review.md)记录原问题和复核范围。本地只读方案出口完成；普通提交推送、精确远端身份与该提交自己的完整CI待验，未借旧候选CI或原r1结果关闭。
+
+## 普通发布与自己的CI
+
+最终15文件manifest SHA256为`52c8855899f347323d54a96b89707f0adbbbc4e4e69ee8022bf4fb2207560d2e`。普通提交`8f0b5802274f5db80b804d99979d074cdd3e1338`的15个Git blob等于ready／staged，父为9c84b08，提交后工作树清洁；普通push退出0、作者SSH完整Ref同SHA。原独立评审已离线补核全部Git对象、r2包／两RECORD／283和作者Ref原件，无新增finding；未宣称独立网络探测成功。
+
+官方Actions列表的完整commit链接绑定本提交自己的[CI43451540232](https://github.com/626619403/Ergora/actions/runs/43451540232)，初始为In progress。已读取官方run HTML和UI batch，绑定八个预期job；完整必要步骤终态与原独立终核仍待验。没有新匿名REST探测，不借前一候选结果关闭本片CI。
+
+## 自己的CI独立终核
+
+官方run第四原HTML为Success；八job／30必要步骤均success／completed，具有非空完整候选SHA日志URL及有序起止时间。作者终态投影SHA256为`e82b9d6d32f0c2cb0cfc32b18f38a0fa09182b3d8206c5f84623dc32d58f2dd4`；原独立评审重新解析十四份原body／回执与候选Git树，独立审计SHA256为`7e8761b4befc58217070021f26940c23cd8c96815c5a4ffd4256449cc7c866e5`，全部核准。Linux回归105–293秒，Windows回归635秒／PS5.1升级41秒。前三In progress、首次Windows未完成与terminal-r1 false保持；只作官方HTML／UI验收，不称REST、完整日志正文或artifact下载。开放0／0，本候选精确交付终结；真实集群／恢复与B3／C2范围保持。下一低精度产品自己的CI另验。

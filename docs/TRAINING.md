@@ -96,6 +96,7 @@ init / runner-add → prepare → worker-start → start
 |`optimization-recipe-model`|`ergora-opt-recipe-model-proposal`|模型／任务／配方身份、收敛语义与执行映射、真实builder／mapping／模态缺项；适配交原开发流程|
 |`optimization-model-verification`|`ergora-opt-model-verification-proposal`|十二核心项、完整权重／forward／训练／resume／质量证据；exit0和schema-valid卡不替代实际结果|
 |`optimization-cluster-resiliency`|`ergora-opt-cluster-resiliency-proposal`|唯一rank生成者、原experiment／job／cycle和unknown、日志归因、checkpoint持久化与下一update恢复证据；只读提案|
+|`optimization-low-precision`|`ergora-opt-low-precision-proposal`|PTQ／QAT-QAD／TE训练的格式、融合／导出／runtime、质量及成本方案；复用四位v2专家|
 
 例如选择容量诊断，先准备项目、后端、根grant及真实UTF-8任务正文，再使用原命令：
 
@@ -113,6 +114,8 @@ grant的`permissions`／`limits`从该精确根读取，按[完整manifest准备
 单次调用只运行所选叶。独立准备profile输入后，把design和profile的完整原产物、来源摘要及真实实验材料一起放入measurement的新任务正文。measurement默认优先异于执行后端，覆盖及回退须显式记录原因。配置能解析、估算低于容量、未OOM或有限短loss都不等于端到端性能／质量通过；资料中引用的Bridge／Core版本是知识来源，不表示这些依赖已安装，也不证明该组合适合当前运行版本。多个方向可作为普通精确引用子模板组合，但静态图不会获得自动训练执行权。
 
 集群／恢复提案还需实际入口／初始化、nodes与每节点进程、原提交回执与作业身份、所有rank日志及共享路径、checkpoint提交／分片与恢复后的下一update证据。用srun直接生成训练进程或每节点一个launcher，按真实入口选定一个rank生成者；lost acknowledgement先按原身份对账，空日志的RESTART建议与异步保存入队均保留未验。`optimization-cluster-resiliency`不运行Slurm、NVRx或恢复动作；确定性归因工具、带内部模型的Restart Agent和实际集群执行分别准入，完整步骤及来源见其已声明context。
+
+低精度提案需源权重／精度、模块与模态覆盖、tokenizer／chat template、校准／开发／独立留出数据、每任务质量门槛、格式／算法／scale／packing及目标runtime／硬件身份。该方向额外保留`root/kernel`：先手动提供design／profile完整原产物，再把三份完整原结果和实际实验材料交给measurement。PTQ、QAT／QAD与TE训练分别核；effective_bits、低perplexity、短loss或搜索返回best均不替代任务质量与真实性能。原生ModelOpt／AutoRound／TE未随提案安装或执行，原runner与评价／采用门禁保持。
 
 Graph提案需提供实际trace／shape分布／地址和RNG生命周期、当前编译及capture范围；capture成功与实际replay、冷启动和稳态收益分别核对。Packing提案还需数据／tokenizer身份、真实样本边界／mask／loss分母、原生路径和resume状态；按所选版本区分runtime THD与offline／in-batch限制，配置token容量不能当有效源token吞吐。缺项保留未验，由原runner和owner决定实验／采用。
 

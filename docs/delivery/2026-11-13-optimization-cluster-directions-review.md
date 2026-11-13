@@ -95,3 +95,44 @@ SP1 已由下述 r2 复核关闭；r1 成功检查仍保持 r1 范围。普通�
 - **完整文档和静态检查。** 对照 r1／r2 文档差异、计划节点、交付和两个投影，已准确区分旧证据、新验收、独立复核待办与尚未发布／CI 的状态，没有借旧检查或历史 CI 关闭新候选。复核开始的 15 文件共 267 个本地目标／64 个锚点通过，`git diff --check` 通过。没有读取或输出 inference 配置凭据，没有运行新模型、安装、suite 或执行集群动作。
 
 r2 需求合规和可维护性两轴通过，开放 0／0；本地出口可关闭。普通发布、精确远端身份及该候选自己的 CI 仍须后续单独核准；上节所列实际集群／恢复／native 内部模型未验范围全部保持。
+
+## 精确发布补核：8f0b580
+
+本节更新前文的发布待验状态：普通提交／推送及作者 SSH 远端 Ref 回执已核准，**该候选自己的 CI 仍开放，尚未通过**。两轴结论及 SP1 关闭保持，未新增 finding。
+
+候选为 `8f0b5802274f5db80b804d99979d074cdd3e1338`，唯一父提交为 `9c84b088146e11eb45bb8c2065c9091526297789`。独立读取 Git commit／tree／blob：完整差异恰为 15 文件，每个 blob 的内容、长度、SHA-256 与 `review-r4/files/`、`review-r4/manifest.json`、`git-ready-r1.json` 的文件清单相同，Git object ID 也与 ready 的 staged objects 及实际索引逐项相同。最终 manifest SHA-256 为 `52c8855899f347323d54a96b89707f0adbbbc4e4e69ee8022bf4fb2207560d2e`；其中评审报告是 r2 复核后的 14,950B 版本，SHA-256 `6977d03f74c5b74d75b28b46297c6610108ea7d9c77561cc288e2ceedd2d1f3e`。补核开始时 HEAD 等于该候选，工作树清洁。
+
+对照 review-r2 与最终 review-r4，后续变化仅为本报告的既有复核结论及计划／交付状态记账、下一步措辞；产品、测试、README 和两个公开证据投影没有变化。再次将提交中的全部 545 个产品 blob 与 r2 wheel、安装目录及工作区比较，逐字节一致；wheel SHA-256 仍为 `78befd7c4d3eda2901ace1415cc88e76d471d8332dbb8bdd69b724716889b5d4`。两份 RECORD、558 行安装记录及 283 冻结文件再次核准。此发布补核没有重跑模型、安装或 suite。
+
+独立检查本片私有原件 `commit-r1.json`、`git-ready-r1.json`、`git-identity-r1.json`、`push-r1.json` 和 `ref-r1.json`：commit 返回 0；普通 push 返回 0，目标为 `refs/heads/refactor/architecture-foundations`，命令没有 force；作者 SSH `ls-remote` 原回执也返回 0，完整输出为候选 SHA 加该分支 Ref。由此确认作者回执观察到的远端分支身份与受审候选一致。没有要求或执行独立网络成功探测，也没有覆盖任何既有网络失败记录；这些回执不构成 CI 通过或 merge main 的证据。
+
+独立对最终快照复核 269 个本地链接目标／64 个锚点以及 `git diff --check`，均通过。作者的 `static-r2.json` 凭据检查摘要已读，本次没有读取配置或凭据值。上述提交身份判断针对追加本节前的 Git 对象；本节只是后续评审记录，未提交或推送。待该候选自己的必要 CI 取得终态原件后，再单独核准 CI 及精确交付关闭。
+
+## CI 终态独立补核：43451540232
+
+本节替代前文“该候选自己的 CI 仍开放”的历史状态。候选 `8f0b5802274f5db80b804d99979d074cdd3e1338` 的 [Portability run 43451540232](https://github.com/626619403/Ergora/actions/runs/43451540232) 已取得终态 **Success**；八个 job、30 个必要步骤全部成功且已完成。需求合规／可维护性两轴继续通过，开放 0／0，SP1 保持关闭。结合前节已经核准的普通发布和精确远端 Ref，B2g 该候选的精确交付出口可关闭。
+
+本轮只进行离线独立核验，未运行作者的 `parse-ci-html.py`。独立审计保存为 `.ergora/checks/optimization-cluster-directions/ci-independent-review-r1.json`（54,626B，SHA-256 `7e8761b4befc58217070021f26940c23cd8c96815c5a4ffd4256449cc7c866e5`）；其中保留全部必要步骤的完整 UTC 起止时间、结论、完成标记及含完整候选 SHA 的公共日志 URL，并记录原件和回执 hash。作者终态投影 `ci-terminal-r2.json` 为 13,357B，SHA-256 `e82b9d6d32f0c2cb0cfc32b18f38a0fa09182b3d8206c5f84623dc32d58f2dd4`，逐字段与独立解析结果一致。
+
+**身份及必要范围。** 从候选 Git 树读取 `.github/workflows/portability.yml`、`scripts/ci/linux-groups.json`、`scripts/ci/run.py`、`scripts/ci/pytest_phases.py` 及 Windows 安装脚本；这五份 CI 实现与父提交一致。独立解析 workflow／plan Python AST，确认 plan 读取六组显式 Linux 文件，生成 Ubuntu／Python 3.11 的 group 0–5，加 Windows／Python 3.12／all。75 个分组路径均存在于候选树且没有重复，`tests/test_presets.py` 位于 group 4；没有用当前已进入下一片的 catalog 或测试文件替代候选身份。runner 返回 pytest 进程状态，分组观察器拒绝重复、缺失、未分配及空选择；workflow 没有 `continue-on-error`，native 依赖 plan，保留 5／20 分钟上限及 `fail-fast: false`。
+
+30 个必要步骤按候选 workflow 计算：plan 的显式分组一步，六个 Linux job 各有构建安装 wheel、包内 reference 身份、原生应用回归及上传四步，Windows 另有 PowerShell 5.1 安装升级，共五步。官方 UI batch 的 `totalCount: 8`、`hasMore: false` 及全部名称／ID 与该矩阵一致；它是较早的枚举样本，其在途状态没有用作终态结论。八个终态 job 原页的名称、`succeeded` header、完成时间和所有必要步骤均重新解析；30 步都有 `success`、非空且有序的起止时间、`data-job-completed` 属性，以及精确 `/commit/8f0b5802274f5db80b804d99979d074cdd3e1338/checks/{job_id}/logs/{step_number}` 路径。只有 Linux 的 Windows 专用步骤按条件 skipped，其余原页步骤均成功。
+
+以下时间均为 2026-11-13 UTC；秒数按原页步骤的起止时间计算，表示步骤墙钟时间：
+
+|job|官方 job ID|必要步数|分组／回归步骤起止|秒数|
+|---|---|---|---|---:|
+|plan|131974681327|1|15:20:07–15:20:07（读取显式分组）|0|
+|Linux group 0|131974782281|4|15:20:30–15:24:43|253|
+|Linux group 1|131974782249|4|15:20:30–15:25:23|293|
+|Linux group 2|131974782216|4|15:20:29–15:23:43|194|
+|Linux group 3|131974782229|4|15:20:27–15:22:12|105|
+|Linux group 4|131974782307|4|15:20:29–15:23:16|167|
+|Linux group 5|131974782385|4|15:20:33–15:24:29|236|
+|Windows all|131974782212|5|15:20:49–15:31:24|635|
+
+Windows PowerShell 5.1 安装升级随后于 `2026-11-13T15:31:24Z`–`2026-11-13T15:32:05Z` 成功（41 秒），上传于 `15:32:05Z`–`15:32:06Z` 成功，job header 的完成时间为 `2026-11-13T15:32:09Z`，显示总时 11m 56s。run r4 原页采集于 `2026-11-13T15:33:28.298819+00:00`，为 213,258B、SHA-256 `d23fc715d402856b82d0a19f6f3422149f3d950c365cbcd0a5cd5da6136948ad`；其完整候选链接、分支、push 触发时间及八个 job 链接均核准。Windows r2 原页采集于 `2026-11-13T15:33:48.745912+00:00`，也已终态。全部步骤完成时间均早于对应采集回执。
+
+**原件及历史边界。** 对四轮 run 页面、八个终态 job 页面、首次 Windows 页面及官方 UI batch，共 14 份 body，逐项核准原始回执的 HTTP 200、原始／最终官方 URL、长度和 SHA-256，并单独记录回执自身 SHA。metadata 的 batch 原件和 r1 run 完整 SHA 绑定也核准。前三轮 run 原页仍为 `In progress`；首次 Windows 页面虽然回归已成功，但安装升级和上传尚未完成，job 完成标记也未出现。上述历史 body／回执及 `ci-terminal-r1.json` 的 `required_steps_passed: false` 均保留，未覆盖或倒填。
+
+本次证据范围是已保存的官方 HTML／UI JSON、原始回执及候选 Git 对象；没有新增网络访问，没有 REST、完整日志正文或 artifact 归档下载核验，也不据页面成功推导具体测试总数。没有运行模型、安装、重跑 suite、提交或推送；只向本报告追加本节并保存私有独立审计，没有修改下一片产品或计划。真实集群启动、GPU、原生归因／取消／checkpoint 恢复、质量／收益和 native 内部模型完整流程仍按前文保留为后续验收。
