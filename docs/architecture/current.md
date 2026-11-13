@@ -174,7 +174,7 @@ Skill采用沿 `skills.adopt → evaluation.compare → skill_assets.move_head`�
 
 训练领域组合提供实验设计／kernel／性能／测量审查的只读提案叶。实际实验仍走 `prepare → start（控制排队）→ 操作者run-local + manifest SHA → 可信统计门禁 → owner evidence SHA → 集成复验`。控制worker不自动启动训练，Forge内部judge不替代可信门禁；GPU结果和完整实验图须有独立实测，见[训练手册](../TRAINING.md)。
 
-新项目的baseline与runner由同一training应用入口从CLI／HTTP／页面预览，再确认当前项目revision及完整canonical内容SHA登记，原文件字节SHA单列。baseline仍交原perfctl锁／原子init，仅Linux／WSL2初始化，预览与初始化无需SDK或服务。runner沿原register_runner在隔离临时CONFIG预览，确认后用规范化文档向真实config不可变发布，仅Linux／WSL2且需可选SDK，无需服务。两者共用短本地DB预留与页面表单生命周期；失联先读原文件，同内容显式重试，不同内容不覆盖；共享config的外项目runner ID拒绝且不展示命令。实验准备的CLI／HTTP复用原多件publisher，确认精确计划后保存原意图，部分发布只能以原intent显式恢复；图形化准备入口另片。见[分片计划](../plans/2026-11-14-training-preparation.md)。
+新项目的baseline与runner由同一training应用入口从CLI／HTTP／页面预览，再确认当前项目revision及完整canonical内容SHA登记，原文件字节SHA单列。baseline仍交原perfctl锁／原子init，仅Linux／WSL2初始化，预览与初始化无需SDK或服务。runner沿原register_runner在隔离临时CONFIG预览，确认后用规范化文档向真实config不可变发布，仅Linux／WSL2且需可选SDK，无需服务。两者共用短本地DB预留与页面表单生命周期；失联先读原文件，同内容显式重试，不同内容不覆盖；共享config的外项目runner ID拒绝且不展示命令。实验准备的CLI／HTTP复用原多件publisher，确认精确计划后保存原意图，部分发布只能以原intent显式恢复；训练页的局部preparation面板只拥有编辑／请求序列与显式确认，发布算法仍在原owner。见[分片计划](../plans/2026-11-14-training-preparation.md)。
 
 ## Agent后端接入
 

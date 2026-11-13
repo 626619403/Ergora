@@ -1,0 +1,309 @@
+{
+  "slice": "F9b4c C2",
+  "baseline": "92e7c24dbeb6847fe20c00e69c89c04b17702d5e",
+  "implementation": "Training UI for existing exact native preview/prepare/read/resume; no application/native contract changes",
+  "product_packet_sha256": "893a738a2a33ac3767be11e983afc7ee952ddb00a6fb595daea2fa6cd8b20ff5",
+  "installed_final": {
+    "wheel_sha256": "21e106dc2a3cd264fbd309ddf32afe2a66002930b64713e7315eb0c05f237c75",
+    "product_files": 572,
+    "current_source_snapshot_wheel_install_equal": true,
+    "two_records_verified": true,
+    "frozen_reference_files": 283
+  },
+  "r1_regression": {
+    "suites": 3,
+    "passed": 38,
+    "test_seconds": 84.27,
+    "monitor_seconds": 86.03727996675298,
+    "scope": "r1 installed preparation/web/architecture, before UI validity guard; no C1 Python/test/CI changed in C2"
+  },
+  "retained_findings": [
+    {
+      "severity": "P2",
+      "status": "fixed and independently closed; zero open",
+      "scenario": "HTML number 1e309 sanitizes value empty but badInput true; r1 preview actually sent null/200 and silently used default",
+      "fix": "Reuse existing HTML checkValidity before Number; final actual browser rejects invalid input without request and accepts true empty omission"
+    }
+  ],
+  "browser_final": {
+    "groups": [
+      "basic",
+      "lifecycle-r3",
+      "visual"
+    ],
+    "invalid_window_zero_posts": true,
+    "true_empty_window_omitted": true,
+    "wrong_plan_and_intent_zero_posts": true,
+    "prepare_resume_double_click_each_posts": 1,
+    "actual_successful_prepare_resume_replies_aborted": true,
+    "only_original_id_get_recovers_loss": true,
+    "old_actual_preview_read_ignored_after_edits": true,
+    "actual_preview_read_prepare_resume_late_after_project_switch_ignored": true,
+    "publishing_controls_disabled": true,
+    "conflict_orphan_no_overwrite_or_takeover_or_foreign_disclosure": true,
+    "original_partial_boundaries": [
+      0,
+      1,
+      2
+    ],
+    "baseline_runner_and_detail_regression": true,
+    "widths": [
+      1440,
+      960,
+      390
+    ],
+    "expanded_material_no_horizontal_overflow": true,
+    "screenshots_visually_inspected": true,
+    "expected_console_errors": 2
+  },
+  "originals_and_cleanup": {
+    "protected_original_files": 15,
+    "preserved_partial_records": 18,
+    "prepared_experiments": 10,
+    "native_files_each": 3,
+    "preview_only_files_not_published": true,
+    "no_job_fence_start_approval_or_command_execution": true,
+    "repo_status_empty": true,
+    "browser_closed": true,
+    "web_group_stopped_and_port_closed": true
+  },
+  "self_review": {
+    "template": "ergora-structure-review",
+    "backend": "user-authorized Codex fallback",
+    "packet_files": 10,
+    "packet_bytes": 107163,
+    "seconds": 42.94739273376763,
+    "decision": "approve",
+    "all_inline_files_and_inherited_resources_in_actual_stdin": true,
+    "result_sha256": "c871b112fb6f5af127ef6d5365cbf629bf46195527d2e04e60f4225ae5cbaa49"
+  },
+  "independent_review": {
+    "requirements": "final local passed; first P2 fixed and closed; zero open findings",
+    "structure": "final local passed; zero open findings",
+    "publication_and_own_ci": "pending exact ordinary publication and own CI"
+  },
+  "publication": {
+    "state": "not_committed"
+  },
+  "raw_evidence": {
+    "private_base": ".ergora/checks/training-preparation-console/",
+    "references": [
+      {
+        "path": "install-r1/package-identity.json",
+        "bytes": 499,
+        "sha256": "1a7f467e4495536021ed643080ccfca27e4791f77fb92f1220b0538306fa6227"
+      },
+      {
+        "path": "install-r1/regression-r1/result.json",
+        "bytes": 732,
+        "sha256": "7abbdffbcda9dbc812a7eb6b6692a5b34a920087735c0281f3bb27808ac7196e"
+      },
+      {
+        "path": "install-r1/regression-r1/process/stdout.txt",
+        "bytes": 7220,
+        "sha256": "0438759bd97f9939d05fb12f2fc22046ce1833646a463b781cd2ad26ab26441c"
+      },
+      {
+        "path": "install-r1/regression-r1/process/stderr.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r1/result.json",
+        "bytes": 1269,
+        "sha256": "b5f651324bb57b44afdac9f4fe061c972db47f4a182fcc3fcf4367b700a843b9"
+      },
+      {
+        "path": "browser-r1/basic.stdout",
+        "bytes": 10429,
+        "sha256": "1b312cbf934c214134584918fa5533b0ba2e55bcc24706938ed0148d828e0c7a"
+      },
+      {
+        "path": "browser-r1/window-probe.js",
+        "bytes": 683,
+        "sha256": "42a4dd7780fb023bda0ba434974db68bc4a2e567da9aae1595da0cb537b1cc7a"
+      },
+      {
+        "path": "browser-r1/window-probe.stdout",
+        "bytes": 866,
+        "sha256": "9653fb04886944a4179abbd89f47bf72e9bd8231c9901f982d3362b46f588b8b"
+      },
+      {
+        "path": "browser-r1/window-probe.json",
+        "bytes": 262,
+        "sha256": "45ff2d59e3088c2f46dd9f11e5250a23267319c477b4501e0076b729db76febd"
+      },
+      {
+        "path": "browser-r1/close.stdout",
+        "bytes": 48,
+        "sha256": "03bd775bf309585d3c6875f4f74611991913a6016fdcea39ea989a88ce007744"
+      },
+      {
+        "path": "browser-r1/cleanup.json",
+        "bytes": 162,
+        "sha256": "dd9883db36b86d0c8fcae7dff8e96a166377c18191131c80d62805fb2b1976c8"
+      },
+      {
+        "path": "install-r2/source-manifest.json",
+        "bytes": 1948,
+        "sha256": "150e84deb9f755cd39b26680abb66290b0bc03069930b0e59c09e1367ef10402"
+      },
+      {
+        "path": "install-r2/package-identity.json",
+        "bytes": 499,
+        "sha256": "9586f3ebc8d1e510b1a653a07d476db2a6435df9243c777014ce1128a19bc8eb"
+      },
+      {
+        "path": "product-current-r2.json",
+        "bytes": 334,
+        "sha256": "5cc4942c66277a2f661ceae62b6640244434fec66acf50dc12deaece72a2f659"
+      },
+      {
+        "path": "syntax-final.json",
+        "bytes": 235,
+        "sha256": "1506d461af809a9827a4bd944eb3aa8a97e169c20eaa5de1992ee77e40725e40"
+      },
+      {
+        "path": "native-r2/result.json",
+        "bytes": 1269,
+        "sha256": "0e275dea864965d146d89647d5155c4914a9eefbe241402a08f30dd4ef2dc157"
+      },
+      {
+        "path": "native-r2/protected-before.json",
+        "bytes": 1825,
+        "sha256": "047bc3d0510df1878e5cc70f206c26b81b8b7fd3616e7985534bc1a213fd6d90"
+      },
+      {
+        "path": "native-r2/prepared-before.json",
+        "bytes": 2394,
+        "sha256": "8a3b528cfc3e653b57aa78f3ea6976e6832b1d3b78939e8958492bd55d14d484"
+      },
+      {
+        "path": "native-r2/additional-interruptions-r1.json",
+        "bytes": 467,
+        "sha256": "a0de60027ee5396cab01e756bd9e87a5c5ccbe4128362cbe300f273e56b106e8"
+      },
+      {
+        "path": "browser-r2/basic.js",
+        "bytes": 11033,
+        "sha256": "94c3f6e44f9d7221d07713851c859904ea7eb9a1c8b863410388a26642ae5646"
+      },
+      {
+        "path": "browser-r2/basic.stdout",
+        "bytes": 11444,
+        "sha256": "7a50a37cdc60a0f9c9295f0e5f15a81f4114a3e3c510ebbfb366f4bbb605313d"
+      },
+      {
+        "path": "browser-r2/basic.json",
+        "bytes": 256,
+        "sha256": "f8c83514a37ce971e8c4e395377c59ac24b415a41604666fff6a9da82140aca0"
+      },
+      {
+        "path": "browser-r2/lifecycle.js",
+        "bytes": 14232,
+        "sha256": "12bd38169bc3582eee3017d90deaafe7a247fe6dc582b023983a8319b7f1576b"
+      },
+      {
+        "path": "browser-r2/lifecycle.stdout",
+        "bytes": 559,
+        "sha256": "955951c5d03cf658a5cd679af44540cb27c7927d893b4c4ef54a7edbdbcd3c6c"
+      },
+      {
+        "path": "browser-r2/lifecycle.json",
+        "bytes": 260,
+        "sha256": "ee1e4ab5b869df69fe1e9d35175ea514d58baabe6350d5cb27e73482a1b20c3c"
+      },
+      {
+        "path": "browser-r2/lifecycle-r2.js",
+        "bytes": 14345,
+        "sha256": "c312964ebc9f04283128c638ffa3a0272c41995d5eaebbff7afb8b2b5a88b43c"
+      },
+      {
+        "path": "browser-r2/lifecycle-r2.stdout",
+        "bytes": 51,
+        "sha256": "9c9b3afd79f30090173bcdacbf1f63c906f901103256e7ace87d84e5a6a9197d"
+      },
+      {
+        "path": "browser-r2/lifecycle-r2.json",
+        "bytes": 262,
+        "sha256": "151dbb6193ec095add390e804054b09ea2365300d5d8772a4a1d74117d5b46cd"
+      },
+      {
+        "path": "browser-r2/lifecycle-r3.js",
+        "bytes": 14541,
+        "sha256": "94a556e917ce05ce0a68fc5cdfc92c2da2d694477cd0d5265c9592b61285e0a9"
+      },
+      {
+        "path": "browser-r2/lifecycle-r3.stdout",
+        "bytes": 15171,
+        "sha256": "7af4634d5fae015e8313c9e64d89c29d3474919e144c228be7aeee17e6709878"
+      },
+      {
+        "path": "browser-r2/lifecycle-r3.json",
+        "bytes": 263,
+        "sha256": "be9a00f29254fa962253dca284750f994d3b456e158a0273a56ca05c9c5c8ddf"
+      },
+      {
+        "path": "browser-r2/visual.js",
+        "bytes": 5450,
+        "sha256": "1585bcf9c039029b7131e93ea881bc4f8bd43c8db715d883dfe9e3a5bb538a59"
+      },
+      {
+        "path": "browser-r2/visual.stdout",
+        "bytes": 5712,
+        "sha256": "6573f1ea481ef5a65e4c3dbcbbffe5f71e0bb1c7a7375a05112207df9beddee4"
+      },
+      {
+        "path": "browser-r2/visual.json",
+        "bytes": 256,
+        "sha256": "75fc4941bef521d67dee3e74ef0715e0f26e4d837a86c83a901dce7075e8cdd4"
+      },
+      {
+        "path": "browser-r2/requests.jsonl",
+        "bytes": 35576,
+        "sha256": "b05f0e836422c10e5859d7375939877c7ccf2b7ef1c281bba66da59bc36c87d1"
+      },
+      {
+        "path": "browser-r2/console.stdout",
+        "bytes": 331,
+        "sha256": "dc2d02122a28e6646399c393258e9ece68a5ea03f929f007bcd747dcb9c723eb"
+      },
+      {
+        "path": "browser-r2/close-final.stdout",
+        "bytes": 48,
+        "sha256": "8a7263500e164e935cdc43c5f20d4cba692e8d65032b3d04b278ff284150a41c"
+      },
+      {
+        "path": "browser-r2/close-final.json",
+        "bytes": 219,
+        "sha256": "f83d066103ca2ab87df5395c68b1f149d41ee8b1b42469dd89f074df471e4a97"
+      },
+      {
+        "path": "browser-r2/cleanup.json",
+        "bytes": 162,
+        "sha256": "e06bd42a62a7269acc9867dd63e9e73a5a469ed3bfd5db4dfb162dc1ecdccb55"
+      },
+      {
+        "path": "self-review-r1-codex.json",
+        "bytes": 2476,
+        "sha256": "e909cbc4f14d06ebe3b09335673afff1a359658e3dfa196290de7a4f05867054"
+      },
+      {
+        "path": "self-review-r1-codex/original-result.json",
+        "bytes": 671,
+        "sha256": "c871b112fb6f5af127ef6d5365cbf629bf46195527d2e04e60f4225ae5cbaa49"
+      },
+      {
+        "path": "final-observations.json",
+        "bytes": 3598,
+        "sha256": "f565eb3e7ec3ce35588ab592280fa53302d52ae2102c424753055a3d2b22e07b"
+      }
+    ]
+  },
+  "limits": [
+    "Linux/WSL2 only; no native Windows preparation execution",
+    "No Temporal server, training/GPU, quality/performance acceptance, evidence approval or adoption",
+    "First two lifecycle runs failed in private automation; original outputs and already published records retained. Final third lifecycle run passed on fresh stable test IDs with complete handler cleanup.",
+    "Final exact publication/own CI pending; home/tab conditions source-inspected, not separately exercised for all four browser operations"
+  ]
+}

@@ -39,3 +39,13 @@ CLI／HTTP共用training应用入口，隔离子进程暂存调用原register_ru
 r2再次实际运行11条CLI、真实`-P -S`无SDK status、loopback HTTP实际写后丢200回复并GET原ID读回、错误SHA／同prepare／显式resume。原8件及两实验各三件字节／binding保持，无job／fence／start／批准／命令执行，原monitor停止web组、端口关闭。分组5最终只收集379／1832，1453 deselected，不称379项执行。
 
 最终自身原结构模板再审15完整文件／265,212B（含原owner）、33.487秒approve，结果SHA `b7c4144e5e198f7d878a86088cf611407d408a3ebabdab08bd3b1b9e6f8bc0c4`；实际stdin及全部祖先资源保持。用户授权Codex回退，无异后端成功主张。[公开证据](evidence/2026-11-14-training-experiment-preparation.json)保留26件r1原件，再增26件r2原件。新fresh-context [需求](2026-11-14-training-experiment-preparation-spec-review.md)／[结构](2026-11-14-training-experiment-preparation-structure-review.md)已直接核最终源码、原owner、r2全包／两RECORD／283、实际安装与CLI／HTTP／原件／收尾／52引用。需求轴首轮P2修后关闭，最终本地通过、开放0／0。普通提交／推送、完整Ref与自己的CI仍待，不借前片CI关闭本片。
+
+## 普通发布接续
+
+已普通推送`92e7c24dbeb6847fe20c00e69c89c04b17702d5e`，27个Git blob与清单逐字相符，完整Ref一致。原两轴补固定发布身份中；本片自己的CI随后核，不借runner成功。C2页面另片已立计划。
+
+## C1固定发布与自己的CI收口
+
+原两轴已核固定候选`92e7c24dbeb6847fe20c00e69c89c04b17702d5e`的27件Git blob、普通推送和完整Ref，本地与固定发布开放0／0。自己的[Portability run43527240748](https://github.com/626619403/Ergora/actions/runs/43527240748)第五官方run HTML为Success，八job／30必要步骤均success。原结构轴直接核固定候选的workflow／groups、原job batch、run及八job HTML／HTTP收据／完整SHA日志路径／完成时间，与terminal原件一致，自己的CI终核通过、开放0；未代称需求轴另核CI，也未声称另取REST、下载artifact或完整测试日志。
+
+[原结构报告](2026-11-14-training-experiment-preparation-structure-review.md)SHA `755e859687a23c9d1580c9334d4ab5a8be90c3c585097b1d6153a11b4a6a6edb`。本片精确交付完成；C2页面及F9c／F9d／B3继续独立验收，不以Windows CI成功扩大preparation的Linux／WSL2支持合同。

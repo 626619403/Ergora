@@ -95,7 +95,9 @@ ergora training show my-project EXPERIMENT_ID
 
 恢复重核原source字节、注册身份、精确文件计划及已有内容，再由原owner补齐；不同内容不覆盖。显式恢复即使三件完整也拒绝已有job／fence／start；此时仍可用`preparation`或相同`prepare`只读回原准备状态。source漂移、已存在job／fence／start或没有本工具意图的旧原生文件，须先核对其原记录；此入口不自动接管、清理或换ID重试。原意图在所登记执行状态目录`ergora/training-preparations/`，无第二实验数据库。
 
-HTTP对应`POST /api/projects/{project}/training/experiment-preview`，body含`experiment / runner_template_id / max_run_seconds`（可省略或null）；`POST .../prepare`再加`revision / preview_sha256`。读取`GET .../training/{experiment_id}/preparation`，恢复`POST .../training/{experiment_id}/resume-prepare`含`revision / intent_sha256`。它们与CLI共用应用入口；图形化准备／恢复面板仍待单独交付，现有页面可以读取准备完成的原实验。
+HTTP对应`POST /api/projects/{project}/training/experiment-preview`，body含`experiment / runner_template_id / max_run_seconds`（可省略或null）；`POST .../prepare`再加`revision / preview_sha256`。读取`GET .../training/{experiment_id}/preparation`，恢复`POST .../training/{experiment_id}/resume-prepare`含`revision / intent_sha256`。它们与CLI共用应用入口。训练页“准备实验”中展开“预览与准备实验”，填写完整experiment JSON、已登记runner ID与可选窗口，先预览完整发布计划，再粘贴preview SHA确认。准备完成可查看原实验，提交仍需详情中的独立确认。
+
+请求失败或页面重开时，展开“读取与恢复原准备记录”，输入原实验ID读取各文件事实；`intent_saved / partially_prepared`会展示完整原意图和逐件状态，粘贴原intent SHA后明确恢复。`conflict / native_files_without_intent`不提供覆盖／接管操作。编辑输入或切项目会使旧预览和迟到回执失效，发送期间禁用本面板防双击。完整prepared仅表示文件一致，不代表已经start、训练成功或批准采用。
 
 ## 在控制台查看原实验
 

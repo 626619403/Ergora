@@ -80,7 +80,7 @@ ergora serve
 
 优化方向当前使用 `proposal-leaves`：每次显式调用一叶，操作者完整传递前驱结果。安装 preset 不会自动运行整张提案图、安装 GPU 工具或提交训练。真实实验继续沿 workload／baseline／experiment → 可信 runner → 独立评价 → 精确 evidence SHA 人工批准 → 项目集成复验，见 [训练优化手册](docs/TRAINING.md)。
 
-已有原实验可在控制台“训练实验”或 `ergora training list/show` 中[查看](docs/TRAINING.md#在控制台查看原实验)：同一项目的 baseline、精确 manifest／spec、runner／job、门禁、负结果和 MLflow ID 沿用原记录。新项目可先用[基线预览与初始化](docs/TRAINING.md#预览与初始化基线)，核对完整JSON、项目修订和内容SHA后登记；无需服务或SDK，原子初始化使用Linux／WSL2。[可信runner预览与登记](docs/TRAINING.md#预览与登记可信-runner)使用同样的确认流程，需Linux／WSL2和`temporal` extra，无需服务，登记不会运行命令。随后用[实验预览与准备](docs/TRAINING.md#精确准备实验与恢复部分发布)固定完整draft、runner和窗口，确认精确SHA后发布原manifest／spec；中断按原intent显式恢复，CLI／HTTP已接，图形化准备入口待补。`ergora training status`显式查询完整原输入与run；[确认提交](docs/TRAINING.md#提交已准备实验与原-id-对账)使用精确项目revision与manifest SHA，丢失回执后按原intent对账，不重发start。页面默认只读，无自动启动或批准；原生执行仍由原训练 owner 管理，实时操作需要`temporal` extra。
+已有原实验可在控制台“训练实验”或 `ergora training list/show` 中[查看](docs/TRAINING.md#在控制台查看原实验)：同一项目的 baseline、精确 manifest／spec、runner／job、门禁、负结果和 MLflow ID 沿用原记录。新项目可先用[基线预览与初始化](docs/TRAINING.md#预览与初始化基线)，核对完整JSON、项目修订和内容SHA后登记；无需服务或SDK，原子初始化使用Linux／WSL2。[可信runner预览与登记](docs/TRAINING.md#预览与登记可信-runner)使用同样的确认流程，需Linux／WSL2和`temporal` extra，无需服务，登记不会运行命令。随后用[实验预览与准备](docs/TRAINING.md#精确准备实验与恢复部分发布)固定完整draft、runner和窗口，确认精确SHA后发布原manifest／spec；中断按原intent显式恢复，CLI／HTTP与训练页共用同一流程。`ergora training status`显式查询完整原输入与run；[确认提交](docs/TRAINING.md#提交已准备实验与原-id-对账)使用精确项目revision与manifest SHA，丢失回执后按原intent对账，不重发start。页面默认只读，无自动启动或批准；原生执行仍由原训练 owner 管理，实时操作需要`temporal` extra。
 
 ## 仍在补齐的模板与功能
 

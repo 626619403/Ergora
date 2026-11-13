@@ -38,3 +38,7 @@ C1安装、实际CLI／HTTP和新独立两轴收口后另片接页面，不让�
 ## 独立评审后的合同修正
 
 需求轴指出完整三件时publish提前返回、绕过已有job／fence／start检查的歧义。将原ensure_unstarted移至完整早返之前；重复prepare仍只读，显式resume统一拒绝已有执行／提交checkpoint。补三种checkpoint参数化回归，最终r2包571／两RECORD／283与当前树逐字一致，受影响15项69.67秒、真实CLI／HTTP／SDK-free及原件收尾、自身模板最终approve已补，新独立两轴最终本地通过、开放0／0，普通发布及自己的CI待；不扩大跨项目孤儿扫描范围。
+
+## C1精确交付终态
+
+C1已普通推送`92e7c24dbeb6847fe20c00e69c89c04b17702d5e`，27件Git blob与清单相符、完整远端Ref一致；原需求／结构两轴固定发布身份通过。自己的[CI43527240748](https://github.com/626619403/Ergora/actions/runs/43527240748)八job／30必要步骤success，原结构轴直接核固定workflow／groups与run／八job原HTML、收据、完整SHA日志路径及完成时间，终核通过、开放0；未代称需求轴另核CI。C2页面另片活动，不继承C1的CI，F9c／F9d／B3继续另验。

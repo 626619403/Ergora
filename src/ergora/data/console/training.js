@@ -2,6 +2,7 @@ import { api } from "./api.js";
 import { node, button, pre, heading, panel, empty, row, table, short } from "./ui.js";
 import { app } from "./state.js";
 import { trainingCancellationPanel } from "./training-cancellation.js";
+import { trainingPreparationPanel } from "./training-preparation.js";
 
 export function trainingView(data, base) {
   const project = data.project.id;
@@ -10,6 +11,7 @@ export function trainingView(data, base) {
   const baseline = node("div");
   const setup = node("div");
   const runnerSetup = node("div");
+  const experimentSetup = node("div");
   const note = node("p", { className: "form-note" });
   const detail = node("div", { className: "task-detail", "aria-live": "polite" }, empty("选择一个实验，查看完整合同与已保存证据。"));
   let pageSequence = 0, detailSequence = 0, pageIndex = 0, page;
@@ -19,6 +21,7 @@ export function trainingView(data, base) {
   const view = node("div", { className: "task-layout training-workbench" },
     node("div", {}, panel("当前基线", null, baseline, setup),
       panel("可信 runner", "明确登记项目命令；登记不会执行 argv。", runnerSetup),
+      experimentSetup,
       panel("原实验记录", "列表读取已保存文件；不会查询或启动训练。", entries, note,
         row(previous, next, button("重新读取列表", () => { pageIndex = 0; load(); })))), detail);
   const active = () => view.isConnected && app.project === project && app.tab === "training" && app.bootstrap.state_directory === home;
@@ -89,6 +92,7 @@ export function trainingView(data, base) {
 
   setup.append(setupDocument("baseline"));
   runnerSetup.append(setupDocument("runner"));
+  experimentSetup.append(trainingPreparationPanel(base, active, load, inspect, app.bootstrap.platform));
 
   function submissionPanel(id, selected, cancellation) {
     const submission = node("div", { "aria-live": "polite" });
@@ -264,7 +268,7 @@ export function trainingView(data, base) {
     view,
     panel("开始与执行实验", "先准备真实合同、数据、环境和预算，再按训练手册使用原生执行流程。",
       pre(`ergora templates copy training-optimization ./training-task\nergora training list ${project}\nergora training show ${project} EXPERIMENT_ID`),
-      node("p", {}, "先按原生 agentflow training prepare 准备实验，再在此确认提交。已确认原运行可用稳定请求 ID 取消、按原意图恢复并读取停止事实。run-local／approve沿用原实验 ID；执行和 evidence SHA 批准见仓库 docs/TRAINING.md。")),
+      node("p", {}, "在上方预览并确认准备实验，或按稳定 ID 读取原准备意图恢复，再在详情确认提交。已确认原运行可用稳定请求 ID 取消、按原意图恢复并读取停止事实。run-local／approve沿用原实验 ID；执行和 evidence SHA 批准见仓库 docs/TRAINING.md。")),
     panel("Forge 候选来源", "原生 campaign 是候选材料；完成不代表实验通过或已经采用。在工作流设计中选择训练模板可操作原生工具。",
       pre(`ergora kernel list ${project}`),
       data.kernel_runs.length ? table(["原记录 ID", "记录状态"], data.kernel_runs.map((item) => [item.id, item.status])) : empty("尚无 Forge 候选记录。")),

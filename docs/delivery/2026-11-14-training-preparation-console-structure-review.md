@@ -1,0 +1,119 @@
+# F9b4c C2 训练准备页面：独立结构评审
+
+日期：2026-11-14。评审者：fresh-context 独立结构轴代理 `/root/preparation_console_structure_review`。未继承实现对话；先读原要求、`AGENTS.md`、`maintainable-project-delivery` 及其 independent-review brief、`codebase-design`，再审源码、相邻调用者和原始验证记录。本轴只写本报告，未编辑产品、测试、计划、原件或其他报告，未安装、重跑昂贵检查或操作远端。
+
+## 结论
+
+最终本地结构复核通过；在本轴所查需求范围内实现与最终证据一致，开放阻塞 finding 为 0，非阻塞 finding 为 0。需求轴首轮窗口 `badInput` P2 已经最小修复并由 r2 实际浏览器补验关闭。最终 r2 包、basic／第三轮 lifecycle／visual、原文件和收尾、Ergora 自身原模板调用均已独立补核；普通发布、精确远端身份和本片自己的 CI 仍待，不在此宣称精确交付完成。
+
+最终两产品路径组合 SHA256 为 `893a738a2a33ac3767be11e983afc7ee952ddb00a6fb595daea2fa6cd8b20ff5`。本轴未新增产品 finding；前两轮 lifecycle 的真实脚本失败及已发布原件保持，未把失败改写为成功。最终裁定与证据详见本文末节；此前“待验”均为当轮历史状态。
+
+新 `training-preparation.js` 虽只有一个生产消费者，但拥有完整、内聚的局部页面算法：编辑失效、预览确认、原 ID 读取、按原意图恢复、mutation 防重入和失联后的读取入口。将其并回 `training.js` 会把这些状态与原 baseline／runner／列表／详情／提交／取消代码混在同一个 owner 中；独立文件有具体 locality 理由。当前 interface 仅接原路径、有效性、列表刷新、详情读取和平台；没有 registry、插件接口、可互换 adapter、第二业务状态或假想复用。
+
+## 检查身份与变更范围
+
+基线与当前 `HEAD` 均为 `92e7c24dbeb6847fe20c00e69c89c04b17702d5e`，分支 `refactor/architecture-foundations`；评审对象为其未提交工作树。独立执行 `git status --short`、相对基线的 diff／文件清单和 `git ls-files --others --exclude-standard`，初检范围如下：
+
+|类型|文件|
+|---|---|
+|C2 tracked 产品|`src/ergora/data/console/training.js`|
+|C2 untracked 产品|`src/ergora/data/console/training-preparation.js`|
+|C2 tracked 使用／状态文档|`README.md`、`docs/PLAN.md`、`docs/TRAINING.md`、`docs/architecture/current.md`|
+|C2 untracked 计划／交付|`docs/plans/2026-11-14-training-preparation-console.md`、`docs/delivery/2026-11-14-training-preparation-console.md`|
+|旧 C1 发布记账|`docs/delivery/2026-11-14-training-experiment-preparation-spec-review.md`、`docs/delivery/2026-11-14-training-experiment-preparation-structure-review.md`、`docs/delivery/2026-11-14-training-experiment-preparation.md`、`docs/delivery/evidence/2026-11-14-training-experiment-preparation.json`|
+
+最终补核时新增 untracked 的需求／本结构报告与 `docs/delivery/evidence/2026-11-14-training-preparation-console.json`，均为本片评审／证据记账；两件产品保持修后身份，没有新增 Python、测试或 CI 变更。
+
+旧 C1 四件仅按上一片记账识别，不把其历史通过当成本片 UI 验证。`training.py`、`reference_training_preparation.py`、`web.py`、共享 `api.js / ui.js / state.js` 及冻结参考相对基线均无修改。
+
+首轮两件产品的 SHA256：
+
+|文件|SHA256|
+|---|---|
+|`training-preparation.js`|`acebd4473903c1fe6ca3207e882cd40a545e4aad1b2fdd7781422fcd17c1a1de`|
+|`training.js`|`fd116288aed7c25cdce430080ba7d003d23f40d376f43a86260615632b469abe`|
+
+## 调用链、所有权与 guard
+
+实读 `training-preparation.js` 全文、`training.js` 及其 diff、共享 `api.js / ui.js / state.js`、`app.js` 的刷新／渲染／项目与 tab 路径、`training.py` 的四个准备入口及 `_setup`、`reference_training_preparation.py` 全文、`web.py` 的 payload／四路由，以及相关现有 preparation／architecture 测试和安装输出。
+
+|位置|真实调用／可达场景|评审判断|
+|---|---|---|
+|`training.js:95` → `trainingPreparationPanel`|唯一不同生产文件调用者；传入原 `active / load / inspect`|已有 owner 保留列表刷新和详情读取，面板不复制职责。五个参数均有真实用途，没有为单消费者添加配置框架。|
+|`training-preparation.js:5`|服务端 bootstrap 平台不是 `linux`|明确解释 Linux／WSL2 执行范围；没有隐式尝试 unsupported 发布。|
+|`:10–16` 的 `changed`|draft／runner／窗口／恢复 ID 的用户输入变化|同一 `sequence` 失效旧预览及在途读取并清除旧确认；不另建前端业务状态。|
+|`:24` 的 `current`；`training.js:27` 的 `active`|请求返回前发生输入变化、切项目、换 home、切 tab 或 DOM 被替换|复用原 home／project／tab／`isConnected`，同时检查请求序列。旧闭包即使仍有回复也不能更新新视图或触发列表／详情动作。|
+|`:25–28` 的 `setSending`；`:50 / :58 / :91 / :112`|prepare／resume 未返回时双击，或试图启动另一面板动作|mutation 进入 `await api` 前同步设 `sending` 并禁用面板按钮／输入；回调 guard 也处理已排队事件。局部禁控不侵入原 baseline／runner／提交／取消。|
+|`:30` 的 `show`|read／preview 原已有意图／publish 返回原状态|统一呈现原 intent、逐件状态和 SHA。只给 `intent_saved / partially_prepared` 恢复动作；`conflict / native_files_without_intent` 不显示接管动作。状态判断用于呈现，不重写 native validator。|
+|`:36–39`|返回 `prepared`|显示“文件一致”限制并通过原 `inspect` 读取；未 start、未查询训练、未批准。|
+|`:46–54`|操作者显式确认恢复|完整 intent SHA 严格相等后，POST 仅带服务端原 revision／intent SHA；没有从当前 draft 重造恢复意图。|
+|`:57–70` 的 `read`|按稳定 ID 初次读取或失败后重新读取|沿原 GET 入口；空 ID 在使用处给错误，迟到成功／失败均经过 `current`。没有自动重发 mutation。|
+|`:72–88` 的 `publish`|prepare 或 resume 成功／网络失败／丢实际回执|两条 mutation 共用一个局部发送算法；异常不假定零写入，保留原 ID 的 GET 按钮与明确说明。`finally` 释放禁控；失效视图不执行 `show / prepared`。|
+|`:90–119` 的 `preview`|完整 draft、runner ID 和可选窗口预览|完整 request 交原 POST 入口；全量 `pre(observed)` 含原 plan、sources、manifest／spec。已有准备记录转入同一原记录显示，不绕过原 intent 另发布。|
+|`:105–116`|预览后确认准备|显示服务端 revision 和完整 SHA；错误 SHA 在客户端阻断 POST，正确 SHA 连同原 payload／revision 发送。输入修改使对应 request 失效。|
+|`ui.js:5–49`、`api.js`|原意图／JSON／服务端错误进入 DOM 与网络|复用文本节点及 JSON 呈现、现有 GET／POST 和错误传播；未拼接来源 HTML，未引入额外网络 owner。|
+
+新文件的 `changed / current / setSending / show / read / publish / preview` 均为该算法私有函数；其内部多个调用点不是第二个生产消费者，也无需以复用配额证明独立导出价值。`publish` 隐藏了两条 mutation 共同的禁控、失联与迟到回执处理；`show` 隐藏了原状态的统一呈现，均非仅改名转发的浅层包装。没有发现不可达 guard、重复 native binding／字段 validator、泛化插件或新增 tests／CI。
+
+原 baseline／runner setup、列表分页、详情、start／resume-start、cancel／resume-cancel 的实现未改；新面板成功后仅调用原 `load`，查看原件仅调用原 `inspect`。`training.py:152–161` 继续拥有 revision 预留，原 `reference_training_preparation.py` 继续拥有身份、source、三目标、冲突和 unstarted 检查；浏览器没有搬运这些规则。
+
+## 实读与独立复核的证据
+
+证据根目录：`.ergora/checks/training-preparation-console/`，属于本地验收原件；以下不将 CPU 文件合同称为训练或 GPU 成果。
+
+- 本轴直接执行两个产品文件的 `node --input-type=module --check`，均退出 0；相对基线 `git diff --check` 退出 0。
+- 实读 `install-r1/setup.json`、package／source manifest、构建与安装脚本、`regression-r1/result.json` 和原 `process/stdout.txt / stderr.txt`。原安装环境 Python 3.11.15／pytest 9.2.0；`-I -m pytest` 对 `test_training_preparation.py / test_web.py / test_architecture_boundaries.py` 为 38 passed／84.27 秒，process monitor 86.037 秒、returncode 0。没有重新运行这批检查；它们不覆盖真实浏览器 DOM 交互。
+- 本轴以只读标准库脚本重新遍历 wheel 的全部 572 个产品文件，对照当前 `src`、构建树 `source/src` 和 noneditable `site-packages`，逐字一致；独立重算 wheel／installed 两份 RECORD 的摘要和大小，580／585 行均匹配；当前与安装树的 283 份冻结参考逐件匹配 manifest。
+- wheel SHA256 为 `16c012ac072580e4d7e813ce3aaba9ec2228c56fdc218120a216b22171671369`；没有把文档后来更新误称为产品不一致。
+- 实读 `native-r1.py`、`native-r1/result.json`、protected／prepared 原始摘要和磁盘 intent／三目标。脚本在原 `core.write` 真正返回后执行 `os._exit(73)`，实际生成 intent-only、global-only 和 global＋project 两种部分发布；记录没有把模拟返回值当写入。安装 38 项还保留了四个原写入边界的真实中断检查。
+- 本轴重算 15 份原 config／baseline 的 protected 摘要，均保持；`must-not-execute` 不存在。核验当时 native 目录无 job／fence／submission／approval 文件。浏览器进行中可以新增或补齐准备文件，这不是最终收尾核验。
+- 实读 `browser-r1/service.py / endpoint.json / browser.json` 与 open／tab／snapshot 记录：真实本地服务和 Chromium 已打开。没有最终 browser result 时不把打开页面、初始截图或原部分文件当作全部交互验收通过。
+
+README、TRAINING 和 architecture 的改动准确描述准备／恢复入口与原 owner，未宣称训练成功。初读时 C2 计划末段仍保留静态／安装尚待，已向实现者指出；复读 `docs/plans/2026-11-14-training-preparation-console.md:21` 已同步 JS／572／两 RECORD／283／安装 38 项和浏览器在途状态，此记账问题已消除，不保留开放 finding。
+
+## 初轮待验清单（历史）
+
+继续沿原 C2 计划验证：真实浏览器完整 draft→preview→错误 SHA 零 POST→双击一次 prepare；原部分 intent 显式 resume；真实成功回复丢失后的原 ID GET；编辑、项目切换及其他页面生命周期的迟到 preview／read／publish／resume；1440／960／390 视口与实际截图；原 baseline／runner／详情不受破坏。最终再核原件、无训练副作用、原 monitor 停服务进程组、browser 关闭及端口不监听，补 Ergora 自身模板原回复、最终源码身份／普通发布／本片 CI。本轮未验上述尾项，不能据此报告 C2 精确交付完成。
+
+## 同片 P2 与最小修复复核
+
+需求轴发现的 P2：首轮 `training-preparation.js:95` 使用 `duration.value === "" ? null : Number(duration.value)`。真实浏览器输入 `1e309` 后 `value` 已是空串，但 `checkValidity() === false` 且 `validity.badInput === true`；首轮会 POST `max_run_seconds: null` 并获得 HTTP 200，把用户显式输入误当省略。位置与原始行为已通过 `browser-r1/window-probe.js / window-probe.stdout / window-probe.json` 独立实读确认；这是转换前丢失信息，不能只靠服务端窗口 validator 拒绝。
+
+修复仅在 `preview` 转换输入之前调用原 HTML `duration.checkValidity()`（当前 `training-preparation.js:93`），非法输入先显示错误；合法空值仍按原合同传 `null`。本轴以构建 r1 原件和当前文件的 diff 确认只有这一行产品变化；此检查有真实可达失败且属于页面外部输入，不是把 native validator 搬浏览器，没有新增抽象或测试框架。源码修复通过结构复核，JS 语法和 whitespace 重新检查均通过。当前 preparation SHA256 为 `6b8fae9d4008a7d9dca874efe3e116d09df98915fe761d2b4b5d8fe7b89097fc`，`training.js` SHA256 保持首轮身份。
+
+实读 r1 `basic.js / basic.stdout / basic.json`：旧包基本交互通过，错误两种 SHA 均零 POST、双击 prepare／resume 各一次、实际 global-only partial 同 SHA 补齐、conflict／orphan 不接管、原 baseline／runner 和详情正常，1440／960／390 的测量宽度无溢出；已有截图路径。`cleanup.json` 记录原 monitor cancelled／-9，`close.json` 退出 0。此处只确认已读脚本和记录，没有把旧包基本交互或截图路径继承为修后完整验收，也未用它替代实际查看截图及端口收尾。r2 源码包与 actual basic／lifecycle 记录待就绪后继续同片复核。
+
+修后 r2 包已单独只读复核：wheel SHA256 `21e106dc2a3cd264fbd309ddf32afe2a66002930b64713e7315eb0c05f237c75`；遍历当前源码／构建树／wheel／noneditable 安装树的 572 个产品文件逐字一致，两 RECORD 580／585 行的摘要与大小全部匹配，当前与安装树的 283 份冻结参考逐件匹配；native-r2 的 15 份 protected 原件保持、runner marker 不存在。产品身份采用修后 `6b8fae… / fd1162…`，未沿用旧包身份。已实读 r2 basic／lifecycle 脚本，包含 badInput 零 POST、合法空默认、原部分三边界、真实服务先成功写入再丢回执，以及真实响应延迟后编辑／换项目；运行输出、截图实看和最终收尾尚待，脚本本身不计运行通过。
+
+## 最终本地证据补核
+
+本节取代前文当轮待验状态。实读最终产品文件摘要，独立按 `路径 + NUL + 文件原字节 + NUL` 重算两件产品组合 SHA，得到 `893a738a2a33ac3767be11e983afc7ee952ddb00a6fb595daea2fa6cd8b20ff5`，与已逐字核验的 r2 源码／快照／wheel／安装身份一致；修复后无其他产品变化。r1 的三 suite 38 项仍严格属于 r1 安装包，未称 r2 又跑 Python 检查。
+
+本轴读实际脚本、`stdout` 内的结果与原错误、CLI 记录、真实服务 `requests.jsonl` 和磁盘事实，不仅检查派生 summary 的布尔值：
+
+|最终原件|独立确认的行为与范围|
+|---|---|
+|`browser-r2/basic.js / basic.stdout / basic.json`|11.392 秒，实际修后 `1e309` 显示错误且无 preview 请求；真正空值的原计划 request 保留 `null`。错误 preview SHA／intent SHA 各零 mutation；同步连续点击 prepare／resume 各只发 1 POST，返回同 intent 的 `prepared`。global-only 原部分文件通过显式恢复补齐；冲突／无 intent 原件没有恢复按钮，orphan 原私有内容未泄露。原 baseline／runner 预览和实验详情仍正常。|
+|`browser-r2/lifecycle-r3.js / lifecycle-r3.stdout / lifecycle-r3.json`|19.558 秒。两次真实 preview 在编辑后反序返回，保留新结果；编辑恢复 ID 使旧真实 GET 失效。preview／read／prepare／resume 的真实回执在切到另一项目后分别迟到，均不污染新视图。prepare 期间原 draft 与恢复 ID 控制禁用。|
+|同一第三轮的 `route.fetch / route.abort` 与原服务日志|prepare／resume 均先取得真实 HTTP 200 和完整服务端结果，再刻意 abort 给浏览器；不是以伪造结果代替实际发布。只点击原 ID GET 恢复，JSON 与已丢真实结果完全相等、intent SHA 保持；整组 prepare／resume 各 2 POST，包含各自另一个延迟项目切换场景，没有自动重发。服务端对应 POST→GET 摘要分别同为 `f8bdb85e… / 671d4694…`，与脚本全 JSON 比较相互支持。|
+|`native-r2/result.json`、`additional-interruptions-r1.py / .json` 与恢复脚本|原 `core.write` 返回后 `os._exit(73)` 的真实 intent-only、global-only、global＋project 三个部分边界通过页面显式恢复。新增稳定 ID 的 intent-only／two-manifest 检查均先 GET 原状态与 SHA 后再恢复；不改旧原件、不重新定义业务恢复算法。四个原发布写入边界的完整原 owner 回归仍仅采用 r1 安装测试原范围。|
+|`browser-r2/visual.js / visual.stdout / visual.json` 与截图|2.936 秒；完整 draft／runner／窗口与展开原意图在 1440／960／390 均测得 `scrollWidth === innerWidth`。本轴实际查看原有 desktop／mobile preparation panel 顶部截图及 960 页面顶部截图，完整 SHA／ID 与 JSON 以文本换行、控制可见；未据截图主张训练执行或完整内容阅读成功。|
+
+前两轮 lifecycle 不计 pass：
+
+1. `lifecycle.stdout` 原样为 `locator.click` 超时、元素 detached；首轮脚本在已选项目再次 `selectOption`，原 app 的 change 路径触发 refresh／DOM 替换，但脚本未等完成。对比后续脚本确认仅在验收脚本跳过无意义重选。
+2. `lifecycle-r2.stdout` 原样为 `route.fulfill: Route is already handled!`。对比第三轮脚本，hold 改成只拦首个请求、等待 handler `done` 后再 `unroute`；保留原输出及已经成功发布的实验。第三轮采用额外新稳定 ID、真实原写入中断和新浏览器会话，未清理／覆盖已发布文件来重复同 ID 场景。CLI wrapper 的退出 0 不能把含 `### Error` 的旧 stdout 当作产品通过。
+
+本轴另外执行只读核验，未运行会重写结果的 `final-observations.py`：
+
+- 独立重算 native-r2 的 `protected-before.json` 15 项与 `prepared-before.json` 18 项，全部与当前字节一致。逐件读取 `final-observations.json` 列出的十个实验的 intent 和三个目标，30 件原字节均等原 intent；各 spec 的 `manifest_uri` 等实际绝对原 manifest URI，`binding.manifest_sha` 等原 manifest 字节摘要，intent 文件摘要也匹配最终记录。
+- 两个 preview-only ID 没有 intent／manifest 发布；orphan 没有意图、conflict 没有新 spec，原冲突／孤立文件摘要由上述 18 项保持支持。runtime 下 job／fence／approval／integration-ticket／submission 目录不存在，runner marker 不存在；验收专用业务 Git 仓库的 `status --porcelain` 为空。没有把 Ergora 当前工作树的合法未提交变更称为 Git clean。
+- 原服务日志的十次 mutation 均为实际 HTTP 200；失败脚本已发布的实验同样保留在十个完整记录中。最终 console 原件恰两条 `ERR_FAILED`，路径分别对应第三轮刻意丢弃的 prepare／resume，没有其他最终会话错误。前会话脚本失败另行保留。
+- 实读 `close-final.stdout / .json`，原 browser 关闭且命令退出 0；实读 `web-r2.py` 的原 `processes.run(supervised=True)` 与 `cleanup.json` 的 cancelled／-9。补核时实际原端口连接返回 111，未发现该服务命令遗留进程。浏览器关闭采用原 CLI 回执，不额外启动浏览器确认。
+- 独立重算公开 JSON 所引用 42 份私有原件的大小和 SHA256，全部匹配，没有只信引用表中的布尔状态。
+
+Ergora 自身原结构模板也已补核：实读 actual native run、packet index、原结果及 prepared composition。十份完整文件共 107,163B 逐份存在于实际 stdin 且大小／摘要匹配，八份源码上下文等当前字节；prepared prompt 与原 `stdin.txt` 111,939B 逐字相同，三份祖先／叶 instructions／Skill 资源均实在 prompt 中。42.947 秒成功，原结果 SHA256 为 `c871b112fb6f5af127ef6d5365cbf629bf46195527d2e04e60f4225ae5cbaa49`，决策 approve；原请求 claude-code、实际 binding codex 及用户授权 fallback 原因均保留。这是自身模板验收，不取代本轴独立评审，也不称异后端成功。
+
+最终维护性结论维持通过。新增 `checkValidity` 的实际可达失败与最小位置有充分证据；其余 ownership／interface／私有算法／guard 判断保持，无需再加产品 guard、测试镜像或插件抽象。README／TRAINING／architecture 与本地实现一致，PLAN／delivery 和公开证据已保留产品 P2、两次脚本失败、最终通过及发布在途的范围。
+
+开放项仅为正常发布流程的普通提交／推送、精确远端 Ref 和本片自己的 CI，以及另一独立需求轴的最终记录；本轴没有开放产品 finding。没有单独实跑每一个 home／tab／非 Linux 条件，相关结论限源码 guard 检查；真实项目切换覆盖了原 DOM 替换路径。没有服务端训练调度、真实 GPU／质量／性能验收、evidence 批准或采用主张；这些仍归后续原计划。
