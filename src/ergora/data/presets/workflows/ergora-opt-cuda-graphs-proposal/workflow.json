@@ -1,0 +1,86 @@
+{
+  "schema_version": 2,
+  "id": "ergora-opt-cuda-graphs-proposal",
+  "version": "1.0.0",
+  "description": "Version-matched capture, replay, lifetime and caller-cost proposals with independent evidence review.",
+  "resources": [
+    {
+      "id": "ergora-opt-cuda-graphs-proposal-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "dd4915d2402453a02e9371e3bdbbc5c54f78f90ed57763aefe1c3e2407ed7ed8"
+    },
+    {
+      "id": "ergora-opt-cuda-graphs-proposal-context",
+      "kind": "context",
+      "path": "context/cuda-graphs.md",
+      "sha256": "0a7c73d789cac76bf7b4dc60044eef56cf8214df534039011c592b1cd6685e9a"
+    }
+  ],
+  "permissions": {
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "write": [],
+    "shell": false,
+    "network": []
+  },
+  "limits": {
+    "depth": 8,
+    "instances": 128,
+    "concurrency": 4,
+    "material_bytes": 262144
+  },
+  "inputs": [
+    "task"
+  ],
+  "outputs": {
+    "result": {
+      "node": "gather",
+      "output": "result"
+    }
+  },
+  "nodes": [
+    {
+      "id": "analysis",
+      "ref": {
+        "kind": "workflow",
+        "id": "ergora-training-analysis",
+        "version": "2.0.0",
+        "digest": "a9d715b010ba4c444cf8cacebf739388c2a434b3fc6adcc024ee8ba78776be2a"
+      },
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      }
+    },
+    {
+      "id": "measurement",
+      "ref": {
+        "kind": "workflow",
+        "id": "ergora-measurement-review",
+        "version": "2.0.0",
+        "digest": "098f379a30627950103b485d1e1364bbd80f5f8f316f0ded804ca8847ecb8961"
+      },
+      "depends_on": [
+        "analysis"
+      ],
+      "inputs": {
+        "task": {
+          "node": "analysis",
+          "output": "result"
+        }
+      }
+    },
+    {
+      "id": "gather",
+      "join": "all",
+      "depends_on": [
+        "measurement"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,118 @@
+{
+  "wheel_sha256": "7dfe5549d61959aab2eea97f08a5485bd5eda46db0e931abb0dfcf9e9e895263",
+  "package_files": 512,
+  "frozen_files": 283,
+  "installed_presets": {
+    "passed": 17,
+    "pytest_seconds": 69.67,
+    "controller_seconds": 71.62344980984926
+  },
+  "native_calls": 6,
+  "resource_occurrences": 36,
+  "resource_bytes": 62230,
+  "all_resources_continuous_utf8": true,
+  "full_manual_predecessor_results": true,
+  "calls": [
+    {
+      "direction": "cuda-graphs",
+      "name": "measurement",
+      "instance": "root/measurement/review",
+      "run_id": "5554afcb1fd64ed0a8cd71c340905158",
+      "status": "succeeded",
+      "seconds": 72.70534155610949,
+      "input_digest": "b2769adc025ee897dc8d59d2288c23afe0389edb3823cb1fc36d582c475e9f73",
+      "prompt_sha256": "5207142fc6c0caa07e2df15b39698733ec9810358af9f3d0b1081cf3319009d7",
+      "result_sha256": "fababe0f515664093c72fca363f032dcd7dfa0e471aa01f2d18d3c6c6ca3a677",
+      "decision": "request-changes",
+      "predecessor_sha256": {
+        "design": "9ff7b0f2a7207b018f380f791cd7a8fd0cd9ccae90e4b586b06b357df42991ba",
+        "profile": "483f1543873a439a435e3faaa7418078ab686310a752185ebc4bf3f333faba01"
+      }
+    },
+    {
+      "direction": "cuda-graphs",
+      "name": "profile",
+      "instance": "root/analysis/profile",
+      "run_id": "93dd83449a4e4c01bc93bced11a8691d",
+      "status": "succeeded",
+      "seconds": 78.3628986258991,
+      "input_digest": "0b2e79ebffd47c74ec961f2286faf70ddd3abd04b78583d437c452741d02109b",
+      "prompt_sha256": "d950b0dca89303b52605e390f17211fe35a41ebfb4f9b9a4cddb750a83de2fa7",
+      "result_sha256": "483f1543873a439a435e3faaa7418078ab686310a752185ebc4bf3f333faba01",
+      "decision": null,
+      "predecessor_sha256": {}
+    },
+    {
+      "direction": "cuda-graphs",
+      "name": "design",
+      "instance": "root/analysis/design",
+      "run_id": "cf9c6ca466624bbf9fa551c79b9f4048",
+      "status": "succeeded",
+      "seconds": 84.8706772569567,
+      "input_digest": "0db8e98e8ad734409f1ae150ede645c0513ea226070001d12dfba1755a2f3d9f",
+      "prompt_sha256": "76350397352e59a87b214d23313a337332bc1573f662dbea47269c579cf0ebd4",
+      "result_sha256": "9ff7b0f2a7207b018f380f791cd7a8fd0cd9ccae90e4b586b06b357df42991ba",
+      "decision": null,
+      "predecessor_sha256": {}
+    },
+    {
+      "direction": "sequence-packing",
+      "name": "measurement",
+      "instance": "root/measurement/review",
+      "run_id": "102e6783cc4a404c950a3bf546a412e9",
+      "status": "succeeded",
+      "seconds": 62.9951832969673,
+      "input_digest": "bf38a67927013f1d72f76756ba8ba6fba99c7bb08f2fd9f4b881d4ab3551a134",
+      "prompt_sha256": "91616bc2c49dae66a28d3b189d245642c23436cce8c7798aa353f35f9bdff862",
+      "result_sha256": "d2ba75ad4958818be0aff5e0506cf5e85d289370a916d8fa1a5a1f39efca6e6f",
+      "decision": "request-changes",
+      "predecessor_sha256": {
+        "design": "7c4f0bd06f48f180e5ae4c16a56f95b398eec9291accb4a9edace631101454d2",
+        "profile": "a2bde3f534e32e65497de52ea85105f92d6d2f86366b50f4093f12dbf98686ec"
+      }
+    },
+    {
+      "direction": "sequence-packing",
+      "name": "profile",
+      "instance": "root/analysis/profile",
+      "run_id": "327249c53e424fd990c601ce3eb2bda1",
+      "status": "succeeded",
+      "seconds": 68.29921093117446,
+      "input_digest": "52c9c19adba09aa3a6ce5992b383d628af3fda25c03a1cc1957d2bff2bced338",
+      "prompt_sha256": "dfef86efc5daa63583e341feea9461699082701d1340797c90e87843e259e73f",
+      "result_sha256": "a2bde3f534e32e65497de52ea85105f92d6d2f86366b50f4093f12dbf98686ec",
+      "decision": null,
+      "predecessor_sha256": {}
+    },
+    {
+      "direction": "sequence-packing",
+      "name": "design",
+      "instance": "root/analysis/design",
+      "run_id": "2b2d94f1734745b1b5ecb3f25b29de73",
+      "status": "succeeded",
+      "seconds": 65.39763218071312,
+      "input_digest": "a68059f460146166037cbb04fdd764dece36b1b91ee35ea5f5a2ee90eeec252e",
+      "prompt_sha256": "24e827fe7a022b8ac7951b8e865a9bf8dd72bbf70bcbfaa81560ebfe33705ab2",
+      "result_sha256": "7c4f0bd06f48f180e5ae4c16a56f95b398eec9291accb4a9edace631101454d2",
+      "decision": null,
+      "predecessor_sha256": {}
+    }
+  ],
+  "self_review": {
+    "run_id": "da23414a047945f2a628b69e21020318",
+    "status": "succeeded",
+    "decision": "approve",
+    "packet_files": 8,
+    "packet_bytes": 41857,
+    "prompt_bytes": 47206,
+    "prompt_sha256": "213996d421b3dcfe731d2705e80a1110003718e51620b829ba5d77f10d3ad893",
+    "input_digest": "d4f4a45906ee85a7ac9fed68b9247658bdfa2761e3cb5c8dd584b6e75c5430e6",
+    "result_sha256": "d56d450d7f773bf3ffeef13c1d195b074c64fc13bb275a12f5e20bcdc5927d28"
+  },
+  "raw_audit_sha256": {
+    "cuda-graphs": "4717ea4a9a3b7a8309826e5b1761ad1cad6fd7c5bc077c5b62721d087803f6db",
+    "sequence-packing": "050fdd5e3efe56b2fcc8859aa5cf0ee110da2f2c56865ba4c4f4194fa243ce6b"
+  },
+  "promoted_source_identity_sha256": "14296a9f324ac8e3e817620f433c02bf0601f2d770d134a27b597dd95f87203e",
+  "scope": "Six independent readonly calls; saved future training scenario only, full manual predecessor transfer. No automatic graph, GPU/model run, measured gain, adoption or heterogeneous-backend claim. Independent review/publication separate."
+}

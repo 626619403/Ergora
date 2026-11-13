@@ -208,6 +208,18 @@ D2在`docs/AGENT_BACKENDS.md`和`docs/TRAINING.md`如实说明这些事实，保
 
 A1已本地提交3122487，A2沿其已核安装包独立运行；B1从后续文档提交00922d3开始，仅新增四份跨域只读专家v2、三份必要子模板v2和显式新catalog键。旧精确定义和原运行owner保持；计划中的两Workflow数量已按实际measurement引用依赖修正为三份。每步验证记录在[B1交付](../delivery/2026-11-13-optimization-experts-v2.md)。
 
-B1修正r2包497产品／两RECORD／283及受影响安装检查通过；四叶实际Codex完成、19资源21,036B和手动全前驱链核准，测量因缺原实验材料request-changes；自身原结构模板54.533秒approve／24件49,304B完整stdin。安装／模型原件与最终文档由原fresh-context评审补核中，B2方向包尚未实施。A2首轮BLOCKED、恢复及隔离候选实证分别记录；第二轮独立新task运行中，不覆盖首轮预算或结果。
+B1修正r2包497产品／两RECORD／283及受影响安装检查通过；四叶实际Codex完成、19资源21,036B和手动全前驱链核准，测量因缺原实验材料request-changes；自身原结构模板54.533秒approve／24件49,304B完整stdin。安装／模型原件与最终文档随后获原fresh-context补核通过；B1阶段时B2方向包尚未实施，当前以本文件末节为准。A2首轮BLOCKED、恢复及隔离候选实证分别记录；第二轮曾独立启动、后因历史大小超限终止，其原件／收尾与新第三轮详见下方A2运行前置检查点，不覆盖首轮预算或结果。
 
 B1的完整r3及安装／模型原件已获原fresh-context独立补核，Spec／Standards开放0／0、SP1关闭，本地出口完成；普通提交与自己的CI另记。下一B2a仅交付memory-tuning／activation-recompute／cpu-offloading三个可独立选择的只读方向根，复用B1的analysis／measurement和三位专家，不改变v2共享包。
+
+## D2-B2a实施检查点
+
+B1已普通提交`e2bbde0bec4750b2e3a1d09d8597bf94196ba1bd`；下一[三内存方向子模板](../delivery/2026-11-13-optimization-memory-directions.md)已按原catalog实现数据，复用精确analysis／measurement v2和三专家，固定R5知识与实际版本漂移。506产品／两RECORD／283及安装15项、九叶真实只读调用／54资源88,611B完整读取和手动前驱交接、自身原结构模板42.021秒approve已完成；fresh-context独立双轴已终核，开放0／0、过期状态P3关闭，本地出口通过；普通发布／自己的CI开放。资料提案不称GPU优化、自动图或原生搜索执行，各出口见交付表。
+
+## A2运行前置修正与恢复
+
+首轮BLOCKED、第二轮TERMINATED及原预算保持。第二轮原job／fence／claim收尾已沿既有公开reconcile和原executor完成并获原独立补核；原workflow未被称取消成功。真实慢stdin red及原poll重复大context分别由原process owner与原workflow/activity owner修正，两个片各自安装／模型／独立两轴通过；详见[stdin片](../delivery/2026-11-13-supervised-stdin.md)和[历史片](../delivery/2026-11-13-workflow-poll-history.md)。第三轮以新独立task／预算、同fixture及已核组合安装跑完整A2。B2a数据保留，最终交付还需第三轮原件、远端与本候选必要CI；不以运行时修正或旧失败恢复关闭成功旅程。
+
+第三轮原run已REVIEW_READY：9 job／7会话、实际串行、38资源23,329B完整读取、精确导出复验／handoff、623事件重放／原ID重启及9 owner／7槽／claim清理均已补核。新的独立A2评审已终核通过，开放0／0。B2a非editable包506产品／两RECORD／283与安装15项通过，九个真实只读叶及其手动前驱交接已完成；未宣称自动图或GPU测量。CI成本只读审计及单迁移case分phase探针完成，整体超限根因仍待完整分阶段计时。
+
+后续B2a九叶已完成，54资源88,611B完整读取／手动前驱链及自身原结构模板42.021秒approve已核，新独立双轴已通过，开放0／0。[B2b执行图／packing](../delivery/2026-11-13-optimization-execution-directions.md)按R6实现两根六数据、catalog及使用入口，复用三位共享v2专家；512产品／两RECORD／283与安装17项、六叶36资源62,230B完整读取及手动交接、自身原结构模板108.003秒approve已过；八文件按原字节提升，最终13文件及包／模型／来源原件的新fresh-context双轴通过，开放0／0、过期catalog状态P3已修复复核，本地出口完成。发布／自己的CI开放。完整Linux phase采样继续，不先放宽CI期限或删测试。

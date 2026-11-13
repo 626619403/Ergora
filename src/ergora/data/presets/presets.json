@@ -142,6 +142,36 @@
         "ergora-measurement-review-v2",
         "ergora-opt-cpu-offloading-proposal"
       ]
+    },
+    "optimization-cuda-graphs": {
+      "description": "Readonly CUDA capture/replay scope, lifetime and paired caller-cost proposals; no automatic graph or GPU execution.",
+      "runtime": "proposal-leaves",
+      "root": "ergora-opt-cuda-graphs-proposal",
+      "agents": [
+        "ergora-experiment-designer-v2",
+        "ergora-performance-analyst-v2",
+        "ergora-measurement-reviewer-v2"
+      ],
+      "workflows": [
+        "ergora-training-analysis-v2",
+        "ergora-measurement-review-v2",
+        "ergora-opt-cuda-graphs-proposal"
+      ]
+    },
+    "optimization-sequence-packing": {
+      "description": "Readonly native packing paths, sample/loss boundaries and valid-token proposals; real experiments stay with the trusted runner.",
+      "runtime": "proposal-leaves",
+      "root": "ergora-opt-sequence-packing-proposal",
+      "agents": [
+        "ergora-experiment-designer-v2",
+        "ergora-performance-analyst-v2",
+        "ergora-measurement-reviewer-v2"
+      ],
+      "workflows": [
+        "ergora-training-analysis-v2",
+        "ergora-measurement-review-v2",
+        "ergora-opt-sequence-packing-proposal"
+      ]
     }
   }
 }
