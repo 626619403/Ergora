@@ -1,0 +1,272 @@
+{
+  "baseline": "83000a1afbdbd2429efbcebe1e7c65133215ca8e",
+  "wheel_sha256": "f5fbf80e29cfa9fc80cd8c89788bf45b2f81761186e76e97b91e6a72faa0099c",
+  "package_files": 542,
+  "frozen_files": 283,
+  "installed_presets": {
+    "passed": 27,
+    "pytest_seconds": 105.35,
+    "controller_seconds": 107.00891112908721
+  },
+  "native_successful_calls": 6,
+  "resource_occurrences": 36,
+  "resource_bytes": 77413,
+  "all_resources_continuous_utf8": true,
+  "full_manual_predecessor_results": true,
+  "calls": [
+    {
+      "direction": "recipe-model",
+      "name": "measurement",
+      "instance": "root/measurement/review",
+      "run_id": "e628110a847a473893fc5913aa5a7521",
+      "status": "succeeded",
+      "seconds": 49.328340876847506,
+      "input_digest": "93d49325b1a6847ffc4f46441d5aa286df1a1b31b951f41fcb12cf4e47c083d4",
+      "prompt_sha256": "dd00b3876ef9d69b0235b8baa6a82054446a822f8470049dca25c82070dd6f24",
+      "result_sha256": "62a56355d4f7eb52e42cd8ef4a9b9ce0e4116f7e191aecc9868773ba771e961d",
+      "decision": "request-changes",
+      "predecessor_sha256": {
+        "design": "bf6d10e28916e5442256bd9e21a27018299d576416f55ad48911bbfe578d8ed1",
+        "profile": "a56464c1fb3297bea4a56f29111e7b0cdeecbae6c9cd2238a23865afab15b527"
+      },
+      "requested_binding": {
+        "tool": "claude-code"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      }
+    },
+    {
+      "direction": "recipe-model",
+      "name": "profile",
+      "instance": "root/analysis/profile",
+      "run_id": "7b3d682eb1ca43199cad730366d74337",
+      "status": "succeeded",
+      "seconds": 52.3817802160047,
+      "input_digest": "1bab6c8ae3f08b04a4ac46a354b66df76c5ede9de700efba760d2c541991f2a1",
+      "prompt_sha256": "60dac689eacd0609596a51687c041e52b65945e534e9671e86c26f93dff8b183",
+      "result_sha256": "a56464c1fb3297bea4a56f29111e7b0cdeecbae6c9cd2238a23865afab15b527",
+      "decision": null,
+      "predecessor_sha256": {},
+      "requested_binding": {
+        "tool": "codex"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      }
+    },
+    {
+      "direction": "recipe-model",
+      "name": "design",
+      "instance": "root/analysis/design",
+      "run_id": "a98b27fed196430bb1cbfd6efce7bfba",
+      "status": "succeeded",
+      "seconds": 60.94237908907235,
+      "input_digest": "0245571295c9c4dc8f608be569103d7c923fff9e3c7338d925d0e6109c5a9563",
+      "prompt_sha256": "6f5ef549e4f6c860aa01488f4afff8d1fabc243e332cda70a72d72ce18f91ce5",
+      "result_sha256": "bf6d10e28916e5442256bd9e21a27018299d576416f55ad48911bbfe578d8ed1",
+      "decision": null,
+      "predecessor_sha256": {},
+      "requested_binding": {
+        "tool": "codex"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      }
+    },
+    {
+      "direction": "model-verification",
+      "name": "measurement",
+      "instance": "root/measurement/review",
+      "run_id": "6dd9fab2ff7b4aeeb1d9fc0462116c76",
+      "status": "succeeded",
+      "seconds": 51.785608337726444,
+      "input_digest": "93312f0e2a97ae2ca76d1f87f937e44e056086ad8f34a7bcd765e81f9d313fef",
+      "prompt_sha256": "ca95174d8bf4f45f434d86dac18a04e28919e6f40b3b565ab8b8117ba2d2bc2f",
+      "result_sha256": "cc5fbd1afc18b4efd78155471e3095418eb88c373294d1e88b1e6653c00e0f08",
+      "decision": "request-changes",
+      "predecessor_sha256": {
+        "design": "d4686ac6728eb4ee9bf67bc62944b6119675243768dff7b8edeaa6b327d68885",
+        "profile": "1eb9f7e874ba9c27aed7f5c7db975ae9ef6b677a5e8f98841ff3ec84d06bc9dd"
+      },
+      "requested_binding": {
+        "tool": "claude-code"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      }
+    },
+    {
+      "direction": "model-verification",
+      "name": "profile",
+      "instance": "root/analysis/profile",
+      "run_id": "a25f4302ebd54b4691ce82dd40c8c767",
+      "status": "succeeded",
+      "seconds": 54.48423510463908,
+      "input_digest": "aaedf6c2b41b082126957d6ed1fde23e18aaa784d199f2ca81a80d550f38160c",
+      "prompt_sha256": "ac85dc6c201c639cf5da55136eb058f55df5935aa837e4649939528fc51f9281",
+      "result_sha256": "1eb9f7e874ba9c27aed7f5c7db975ae9ef6b677a5e8f98841ff3ec84d06bc9dd",
+      "decision": null,
+      "predecessor_sha256": {},
+      "requested_binding": {
+        "tool": "codex"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      }
+    },
+    {
+      "direction": "model-verification",
+      "name": "design",
+      "instance": "root/analysis/design",
+      "run_id": "207229bdc38f46acbaca53e5b0d3ee11",
+      "status": "succeeded",
+      "seconds": 53.682595633901656,
+      "input_digest": "ab238046d37c83bf6f96157fa161daab2dca86354a8b2b42e944f28c5e1b4997",
+      "prompt_sha256": "591f39d92a75fa4b3a400eadc277786e1073b712a7d06b0c35a0581be7cb9262",
+      "result_sha256": "d4686ac6728eb4ee9bf67bc62944b6119675243768dff7b8edeaa6b327d68885",
+      "decision": null,
+      "predecessor_sha256": {},
+      "requested_binding": {
+        "tool": "codex"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      }
+    }
+  ],
+  "fixture_sha256": {
+    "recipe-model": "1243be685a092efaff15f7f1ef79a064c22b5c11ed0ca2e762dfebba077d7832",
+    "model-verification": "fb3350cf84d1dacd80a873dcfe095589dcfefcacda2a483f1d4641bf6b5cf693"
+  },
+  "fixed_sources": [
+    {
+      "path": "skills/nemo-mbridge-recipe-recommender/SKILL.md",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Megatron-Bridge/55694838ce73cd23b00ff95bd00512aefb963ce0/skills/nemo-mbridge-recipe-recommender/SKILL.md",
+      "bytes": 20621,
+      "sha256": "60477d595f79f62445cdd8a3926f7681a751e35016046232596aefdf7c6cd75c"
+    },
+    {
+      "path": "skills/adding-model-support/SKILL.md",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Megatron-Bridge/55694838ce73cd23b00ff95bd00512aefb963ce0/skills/adding-model-support/SKILL.md",
+      "bytes": 28575,
+      "sha256": "759bd6e96a4d451fc2d3cb872793cfb6cce2552ab4cba1a3ff92051d41ee9e0c"
+    },
+    {
+      "path": "skills/adding-model-support/llm-patterns.md",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Megatron-Bridge/55694838ce73cd23b00ff95bd00512aefb963ce0/skills/adding-model-support/llm-patterns.md",
+      "bytes": 17794,
+      "sha256": "cd65350193091befb9623320bed83134cecaaa6a536bfcde45fd49814e1bba12"
+    },
+    {
+      "path": "skills/adding-model-support/vlm-patterns.md",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Megatron-Bridge/55694838ce73cd23b00ff95bd00512aefb963ce0/skills/adding-model-support/vlm-patterns.md",
+      "bytes": 15014,
+      "sha256": "0f18072e83125a8595b76ab1dd28b8805bde5da328b3c8932ce53d367eddf190"
+    },
+    {
+      "path": "skills/adding-model-support/recipe-patterns.md",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Megatron-Bridge/55694838ce73cd23b00ff95bd00512aefb963ce0/skills/adding-model-support/recipe-patterns.md",
+      "bytes": 5985,
+      "sha256": "57b21802955f8692468097b9431932ecc309b79cb9389e147640387dcf46e539"
+    },
+    {
+      "path": "skills/adding-model-support/tests-and-examples.md",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Megatron-Bridge/55694838ce73cd23b00ff95bd00512aefb963ce0/skills/adding-model-support/tests-and-examples.md",
+      "bytes": 13279,
+      "sha256": "6bee242e0df4930c0e9b2e7c0b364d20729ff999be7cb7e9ca6a5ee5dec161ce"
+    },
+    {
+      "path": "skills/create-model-verification-card/SKILL.md",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Megatron-Bridge/55694838ce73cd23b00ff95bd00512aefb963ce0/skills/create-model-verification-card/SKILL.md",
+      "bytes": 54895,
+      "sha256": "7f41d749a44941ca096ea5b529baa2d292223a0151c5d85ae75270c7682c69de"
+    },
+    {
+      "path": "skills/create-model-verification-card/scripts/validate_card.py",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Megatron-Bridge/55694838ce73cd23b00ff95bd00512aefb963ce0/skills/create-model-verification-card/scripts/validate_card.py",
+      "bytes": 100327,
+      "sha256": "53f9b88fde989634204b024ed39dae26066ba12fd09cc62d855428a846715cc4"
+    },
+    {
+      "path": "examples/conversion/compare_hf_and_megatron/compare.py",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Megatron-Bridge/55694838ce73cd23b00ff95bd00512aefb963ce0/examples/conversion/compare_hf_and_megatron/compare.py",
+      "bytes": 52533,
+      "sha256": "b46a266832d527a1b39ce1e88fa90fc973f380d8ce54d90c060e9e16cff924bc"
+    },
+    {
+      "path": "src/megatron/bridge/models/conversion/auto_bridge.py",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Megatron-Bridge/55694838ce73cd23b00ff95bd00512aefb963ce0/src/megatron/bridge/models/conversion/auto_bridge.py",
+      "bytes": 141587,
+      "sha256": "20263476bedc2d49237d2b71966dd8c792c83bf770f108f57e386697fc7c76ff"
+    },
+    {
+      "path": "src/megatron/bridge/models/qwen/qwen3_bridge.py",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Megatron-Bridge/55694838ce73cd23b00ff95bd00512aefb963ce0/src/megatron/bridge/models/qwen/qwen3_bridge.py",
+      "bytes": 7816,
+      "sha256": "975751e333783f23dd6b916c722f8401fc6ce3d096896bd0e19f523f3b92f368"
+    },
+    {
+      "path": "skills/nemo-mbridge-mlm-bridge-training/SKILL.md",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Megatron-Bridge/55694838ce73cd23b00ff95bd00512aefb963ce0/skills/nemo-mbridge-mlm-bridge-training/SKILL.md",
+      "bytes": 6230,
+      "sha256": "68ba0354367532d6d8fe4c222e63cf618b33cd805619b1005b103c3ae0e16b1a"
+    }
+  ],
+  "self_review": {
+    "run_id": "506c2c4b8f91462380da143ec685ba5c",
+    "status": "succeeded",
+    "decision": "approve",
+    "packet_files": 8,
+    "packet_bytes": 53365,
+    "prompt_bytes": 59552,
+    "prompt_sha256": "ef9596821b04676231eb563c2e7da489e670662e12082512d6fb4cc47a1bdf42",
+    "input_digest": "bee01c7c655cfb9df11f92e9e1a9189ec869ff3129d279d1c71ff355fc66c4fc",
+    "result_sha256": "4732164654efc07375f820113d8ff25ccd661199f8bc42de9c6581c08e4e1650"
+  },
+  "ci_collection": {
+    "full_collection": 1715,
+    "group_collections": [
+      {
+        "group": 0,
+        "nodes": 254,
+        "phase_sha256": "55c73f52b9586de0375317f0204fb64d2fcfdb54f9016ed0129da375b7741ddc"
+      },
+      {
+        "group": 1,
+        "nodes": 250,
+        "phase_sha256": "ed41a4dc207232847c652a8209a0f0afd8a76b3308962998955d4df262d95952"
+      },
+      {
+        "group": 2,
+        "nodes": 342,
+        "phase_sha256": "dcfc080bcb5ed315393b38b335f92b879810c8a768d37ddc1e809e038ba2bdfc"
+      },
+      {
+        "group": 3,
+        "nodes": 312,
+        "phase_sha256": "0c1c3c4e3ce87b17dcd55444533152490c31bab5b5e4c165f5a56f37a1be21fa"
+      },
+      {
+        "group": 4,
+        "nodes": 258,
+        "phase_sha256": "c611d941570ddc9dd52a3703f4a367cbbcc73be965717cace3025885f0a4a1c5"
+      },
+      {
+        "group": 5,
+        "nodes": 299,
+        "phase_sha256": "8f06044a095ca9d45625fc2eca916ef9085ac7c4a3f62dfe722115c78d4fb449"
+      }
+    ],
+    "union_equals_full": true,
+    "pairwise_intersection": 0,
+    "scope": "Seven collect-only calls to formal CI runner with the noneditable candidate; no regression-test execution."
+  },
+  "raw_audit_sha256": {
+    "recipe-model": "6581744936e60797af1cf188235e1efd32b1c04fb9c9e388f5e7f687ef070323",
+    "model-verification": "a653533af1a0973644195306dae883c665e4af29141c8087878013914e9cb05e"
+  },
+  "self_review_audit_sha256": "d4a6c16fbd19a90b0126934cf22e1738dc22b4fdc3aa02552ab83ae1b2e623ea",
+  "post_call_process_observation_sha256": "264de7d1563e101be79f6044f8b2c7bda7e8f774c0a02010dfdc969a25910675",
+  "scope": "Six independent readonly calls on explicitly synthetic model/recipe and failed-forward text fixtures; complete inherited resources and full manual original predecessor transfer. Per-call decisions and their original findings are preserved; no actual card validation, converter/helper, model weights, training/GPU, all-rank correctness/quality/recovery, measured gain, heterogeneous-backend or adoption acceptance. Own structure review covers eight complete inline files; independent review, publication and exact-candidate CI recorded separately. Process receipt is one bounded end observation."
+}

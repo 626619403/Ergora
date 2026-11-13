@@ -17,7 +17,7 @@ from test_registrations import installation, registration
 
 @pytest.mark.parametrize('direction', ['memory-tuning', 'activation-recompute', 'cpu-offloading',
     'cuda-graphs', 'sequence-packing', 'parallelism', 'megatron-fsdp', 'hierarchical-cp',
-    'tp-dp-overlap', 'moe-dispatcher', 'moe-overlap', 'profiling', 'memory-snapshot'])
+    'tp-dp-overlap', 'moe-dispatcher', 'moe-overlap', 'profiling', 'memory-snapshot', 'recipe-model', 'model-verification'])
 def test_direction_roots_keep_full_context_when_reusing_v2_experts(tmp_path, direction):
     state = State(tmp_path / 'state')
     installed = workflows.install_preset(state, 'optimization-' + direction)

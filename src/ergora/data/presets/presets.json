@@ -292,6 +292,36 @@
         "ergora-measurement-review-v2",
         "ergora-opt-memory-snapshot-proposal"
       ]
+    },
+    "optimization-recipe-model": {
+      "description": "Exact model and recipe selection, convergence invariants and bounded adaptation evidence proposals. Readonly v2 experts; original parser, collector and runner retain execution ownership.",
+      "runtime": "proposal-leaves",
+      "root": "ergora-opt-recipe-model-proposal",
+      "agents": [
+        "ergora-experiment-designer-v2",
+        "ergora-performance-analyst-v2",
+        "ergora-measurement-reviewer-v2"
+      ],
+      "workflows": [
+        "ergora-training-analysis-v2",
+        "ergora-measurement-review-v2",
+        "ergora-opt-recipe-model-proposal"
+      ]
+    },
+    "optimization-model-verification": {
+      "description": "Per-claim model conversion, forward, training, resume and independent quality evidence review proposals. Readonly v2 experts; original parser, collector and runner retain execution ownership.",
+      "runtime": "proposal-leaves",
+      "root": "ergora-opt-model-verification-proposal",
+      "agents": [
+        "ergora-experiment-designer-v2",
+        "ergora-performance-analyst-v2",
+        "ergora-measurement-reviewer-v2"
+      ],
+      "workflows": [
+        "ergora-training-analysis-v2",
+        "ergora-measurement-review-v2",
+        "ergora-opt-model-verification-proposal"
+      ]
     }
   }
 }

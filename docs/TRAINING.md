@@ -93,6 +93,8 @@ init / runner-add → prepare → worker-start → start
 |`optimization-moe-overlap`|`ergora-opt-moe-overlap-proposal`|普通EP overlap与delayed wgrad分开，版本／graph／重计算约束及独立测量|
 |`optimization-profiling`|`ergora-opt-profiling-proposal`|原trace／稳态窗口／rank覆盖，区间并集、依赖归因和有限关键路径机会|
 |`optimization-memory-snapshot`|`ergora-opt-memory-snapshot-proposal`|受信报告、allocator／历史口径、step对齐和快照差异；缺失峰值或设备总量保持未知|
+|`optimization-recipe-model`|`ergora-opt-recipe-model-proposal`|模型／任务／配方身份、收敛语义与执行映射、真实builder／mapping／模态缺项；适配交原开发流程|
+|`optimization-model-verification`|`ergora-opt-model-verification-proposal`|十二核心项、完整权重／forward／训练／resume／质量证据；exit0和schema-valid卡不替代实际结果|
 
 例如选择容量诊断，先准备项目、后端、根grant及真实UTF-8任务正文，再使用原命令：
 
