@@ -217,6 +217,51 @@
         "ergora-measurement-review-v2",
         "ergora-opt-hierarchical-cp-proposal"
       ]
+    },
+    "optimization-tp-dp-overlap": {
+      "description": "Effective TP/DP/PP overlap, critical-path contention and independent training evidence proposals. Readonly v2 experts; original runner owns actual experiments.",
+      "runtime": "proposal-leaves",
+      "root": "ergora-opt-tp-dp-overlap-proposal",
+      "agents": [
+        "ergora-experiment-designer-v2",
+        "ergora-performance-analyst-v2",
+        "ergora-measurement-reviewer-v2"
+      ],
+      "workflows": [
+        "ergora-training-analysis-v2",
+        "ergora-measurement-review-v2",
+        "ergora-opt-tp-dp-overlap-proposal"
+      ]
+    },
+    "optimization-moe-dispatcher": {
+      "description": "Pinned MoE dispatcher selection, actual initialization and routing-correctness evidence proposals. Readonly v2 experts; original runner owns actual experiments.",
+      "runtime": "proposal-leaves",
+      "root": "ergora-opt-moe-dispatcher-proposal",
+      "agents": [
+        "ergora-experiment-designer-v2",
+        "ergora-performance-analyst-v2",
+        "ergora-measurement-reviewer-v2"
+      ],
+      "workflows": [
+        "ergora-training-analysis-v2",
+        "ergora-measurement-review-v2",
+        "ergora-opt-moe-dispatcher-proposal"
+      ]
+    },
+    "optimization-moe-overlap": {
+      "description": "Plain EP overlap versus delayed wgrad, native constraints and independent measurement proposals. Readonly v2 experts; original runner owns actual experiments.",
+      "runtime": "proposal-leaves",
+      "root": "ergora-opt-moe-overlap-proposal",
+      "agents": [
+        "ergora-experiment-designer-v2",
+        "ergora-performance-analyst-v2",
+        "ergora-measurement-reviewer-v2"
+      ],
+      "workflows": [
+        "ergora-training-analysis-v2",
+        "ergora-measurement-review-v2",
+        "ergora-opt-moe-overlap-proposal"
+      ]
     }
   }
 }

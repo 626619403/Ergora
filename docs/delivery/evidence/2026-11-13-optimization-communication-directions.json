@@ -1,0 +1,280 @@
+{
+  "baseline": "a9fcc17d17a91d1df54fbfb65ed8921837d3eb1a",
+  "wheel_sha256": "d670881e158a6aa1ed3f2a8bcbdb95e9eac63386fee40a615efafa696442c9d2",
+  "package_files": 530,
+  "frozen_files": 283,
+  "installed_presets": {
+    "passed": 23,
+    "pytest_seconds": 96.46,
+    "controller_seconds": 98.19698590599
+  },
+  "native_successful_calls": 9,
+  "resource_occurrences": 54,
+  "resource_bytes": 96303,
+  "all_resources_continuous_utf8": true,
+  "full_manual_predecessor_results": true,
+  "calls": [
+    {
+      "direction": "tp-dp-overlap",
+      "name": "measurement",
+      "instance": "root/measurement/review",
+      "run_id": "efa024379a7841c395a87ba41c1f984e",
+      "status": "succeeded",
+      "seconds": 59.79816194018349,
+      "input_digest": "7e485a1d32179c6332c90cc8db89bc155aa502ad7758a20be2e2a9eb4871ebc6",
+      "prompt_sha256": "652b07aab068847f435b99a90e0bd109970292935a2fb573db3fcb6d85370dbd",
+      "result_sha256": "39ec6a784ee1698e14c96dd0c0888851b163469c3520f72cc64330f6dc45f3a4",
+      "decision": "request-changes",
+      "predecessor_sha256": {
+        "design": "c377f9c92aa983336ca3f173742a70ca79cea9ef7e946efc48c47ef49f83cbd9",
+        "profile": "3988d796bdeb7f79208962fad8a861fc89206b8f9700fd9d616518ac42da4530"
+      },
+      "requested_binding": {
+        "tool": "claude-code"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      }
+    },
+    {
+      "direction": "tp-dp-overlap",
+      "name": "profile",
+      "instance": "root/analysis/profile",
+      "run_id": "16b70b1e81654d15ad5c5cc43c746215",
+      "status": "succeeded",
+      "seconds": 69.60572645673528,
+      "input_digest": "4624775552f160be3dd8846ccbb12125c3b6ba177824a5d1c19858d0187ed476",
+      "prompt_sha256": "fd98d4e53e94cc9d31b4033c6fe0badf1cac726f9a090e6fd47ff94798fa2196",
+      "result_sha256": "3988d796bdeb7f79208962fad8a861fc89206b8f9700fd9d616518ac42da4530",
+      "decision": null,
+      "predecessor_sha256": {},
+      "requested_binding": {
+        "tool": "codex"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      }
+    },
+    {
+      "direction": "tp-dp-overlap",
+      "name": "design",
+      "instance": "root/analysis/design",
+      "run_id": "867c3600a2ec41d2aa908f3695ae9655",
+      "status": "succeeded",
+      "seconds": 93.4866825081408,
+      "input_digest": "d2e6e8f9b37aa5814bb43425e02159b9c223d8b39af4e5460618b4c6539ef274",
+      "prompt_sha256": "9d2979706566edac2ab3c0178d5363e6aa043a46a29c734f423ee75e5a8b60be",
+      "result_sha256": "c377f9c92aa983336ca3f173742a70ca79cea9ef7e946efc48c47ef49f83cbd9",
+      "decision": null,
+      "predecessor_sha256": {},
+      "requested_binding": {
+        "tool": "codex"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      }
+    },
+    {
+      "direction": "moe-dispatcher",
+      "name": "measurement",
+      "instance": "root/measurement/review",
+      "run_id": "8dcb450cfa254e80bd8e4aba9cf7f7ed",
+      "status": "succeeded",
+      "seconds": 60.83823830867186,
+      "input_digest": "48f3f5cd4077895da904fa31df29948b46719394d727157acabc48e71936c600",
+      "prompt_sha256": "d9f5129634979033254344d692a2f758c6969d32b3b359f883f1e78231cf815b",
+      "result_sha256": "e8c24cb47df0e3323a4cf1905fb50da71458996c54e60c4a26f142178cab40ed",
+      "decision": "request-changes",
+      "predecessor_sha256": {
+        "design": "4961bc5ce15c2121dca73f774adf032d6a1795bdce35120fee49916981858869",
+        "profile": "d2b1bd0474a1a3620bb7621179106a5a281e17c0dbe4c0a7b2aabe1658103093"
+      },
+      "requested_binding": {
+        "tool": "claude-code"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      }
+    },
+    {
+      "direction": "moe-dispatcher",
+      "name": "profile",
+      "instance": "root/analysis/profile",
+      "run_id": "4a76e442323047a78fa7a8fb1f97cf12",
+      "status": "succeeded",
+      "seconds": 78.97491414425895,
+      "input_digest": "4892f06e474887c9018fe791bea8fa5486e7fcde6222a4cded594dabb628b01b",
+      "prompt_sha256": "620c89a8b54215f71570c43a23dfe55d54b7233d680687e0735b4f67a2dfa433",
+      "result_sha256": "d2b1bd0474a1a3620bb7621179106a5a281e17c0dbe4c0a7b2aabe1658103093",
+      "decision": null,
+      "predecessor_sha256": {},
+      "requested_binding": {
+        "tool": "codex"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      }
+    },
+    {
+      "direction": "moe-dispatcher",
+      "name": "design",
+      "instance": "root/analysis/design",
+      "run_id": "6f8ede8bd70147fea5f6a04fc4c11b33",
+      "status": "succeeded",
+      "seconds": 93.86056085396558,
+      "input_digest": "16c19cb1ece66b0c9ac8b5d72453971fb976514a65efe75f00a02ca335f5bd47",
+      "prompt_sha256": "fad656bc2f5ed9326068c6d0c396f7d667509b723cb13a309aff8e60f49cc875",
+      "result_sha256": "4961bc5ce15c2121dca73f774adf032d6a1795bdce35120fee49916981858869",
+      "decision": null,
+      "predecessor_sha256": {},
+      "requested_binding": {
+        "tool": "codex"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      }
+    },
+    {
+      "direction": "moe-overlap",
+      "name": "measurement",
+      "instance": "root/measurement/review",
+      "run_id": "de0bb8f2c6024d00b99645063aba3af7",
+      "status": "succeeded",
+      "seconds": 55.34594314079732,
+      "input_digest": "65754cd68ccdcc908af00004279c8b7171d2d1448db14786ad9c5d0b4be64797",
+      "prompt_sha256": "229481409a595ddca0d5bdbfd7c6d73b42a1e43bb937bda6366f562b8f636a7b",
+      "result_sha256": "6683dccf35c3d6ea1970ca63cfe26c86f977a42c6a1622c89b385d791cee07d6",
+      "decision": "request-changes",
+      "predecessor_sha256": {
+        "design": "2cebe06a3a69bd81d90ef694964dd694b0ae77fe4732ab8b3625eb3fbbae21ce",
+        "profile": "576ed088036ae9d0d4b426324434a3388c0a43f0af40f5b82e3296f563e63ff4"
+      },
+      "requested_binding": {
+        "tool": "claude-code"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      }
+    },
+    {
+      "direction": "moe-overlap",
+      "name": "profile",
+      "instance": "root/analysis/profile",
+      "run_id": "e9b43461e1534ffba2c0a23c288af11d",
+      "status": "succeeded",
+      "seconds": 65.23443205701187,
+      "input_digest": "d15d7ef44376dd910d3baffcfe849e9cadc0d052d66239d8b6dfa58760c7fdee",
+      "prompt_sha256": "5c789f78b2b9fcc2b2724616547f0d7a3f1b41b2fe22cd92a9cb42dc3d61525d",
+      "result_sha256": "576ed088036ae9d0d4b426324434a3388c0a43f0af40f5b82e3296f563e63ff4",
+      "decision": null,
+      "predecessor_sha256": {},
+      "requested_binding": {
+        "tool": "codex"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      }
+    },
+    {
+      "direction": "moe-overlap",
+      "name": "design",
+      "instance": "root/analysis/design",
+      "run_id": "f075f08b3e62490297d0ee3e50280116",
+      "status": "succeeded",
+      "seconds": 70.81166348932311,
+      "input_digest": "b742ed6783a428afc89c8713ac1c1b1ad3b2f1a99c5786a4e99939cdb4afa914",
+      "prompt_sha256": "2fb2f5a8c9116d402d03685c604b337c91bd5e86f7b8e42b9585e81752b01a8e",
+      "result_sha256": "2cebe06a3a69bd81d90ef694964dd694b0ae77fe4732ab8b3625eb3fbbae21ce",
+      "decision": null,
+      "predecessor_sha256": {},
+      "requested_binding": {
+        "tool": "codex"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      }
+    }
+  ],
+  "original_failed_call": {
+    "direction": "moe-overlap",
+    "name": "design",
+    "run_id": "37cc585b20e74d9bb496c5e1426a53f8",
+    "status": "timed_out",
+    "seconds": 602.2243719808757,
+    "cli_exit": 1,
+    "input_digest": "b742ed6783a428afc89c8713ac1c1b1ad3b2f1a99c5786a4e99939cdb4afa914",
+    "prompt_sha256": "2fb2f5a8c9116d402d03685c604b337c91bd5e86f7b8e42b9585e81752b01a8e"
+  },
+  "failed_call_material": {
+    "resources": 6,
+    "bytes": 10965,
+    "complete_utf8": true,
+    "result_present": false,
+    "network_reconnect_events": 11,
+    "native_final_readiness_summary_present": false
+  },
+  "retry": {
+    "scope": "Only MoE overlap in new State; original six successes and failed run preserved",
+    "per_call_seconds": 240,
+    "outer_seconds": 290,
+    "design_input_and_prompt_identical_to_failed_call": true
+  },
+  "self_review": {
+    "run_id": "bb00a9e439154f27ba9be96538e5eacf",
+    "status": "succeeded",
+    "decision": "approve",
+    "packet_files": 11,
+    "packet_bytes": 54212,
+    "prompt_bytes": 60445,
+    "prompt_sha256": "e09fd36ab39ce5f0ae3cf5699c4c6ac4976143df9fc9e0492b9e2a3dce18c761",
+    "input_digest": "54adac46a8f05c62d44f8e7508868e07783c9b259a40c8be0b2ab643f39050d3",
+    "result_sha256": "be07d524d19be4bcd6e9b7dd158c511409218bed8cd864bb88b9590d599cc3e4"
+  },
+  "ci_collection": {
+    "full_collection": 1711,
+    "group_collections": [
+      {
+        "group": 0,
+        "nodes": 254,
+        "phase_sha256": "fc22d5f3e349b6416a5a240ee21602ae71cb02cbf5661edff320398e5e309fb3"
+      },
+      {
+        "group": 1,
+        "nodes": 250,
+        "phase_sha256": "ec61c839a66da3c2fd3de5a0ad4c144c282b327e0f61d661c12717527896fde5"
+      },
+      {
+        "group": 2,
+        "nodes": 342,
+        "phase_sha256": "c42038e3e33dcab1074b7a8b6cffaccaceb8bcce7086d60cc137cd365ce2f069"
+      },
+      {
+        "group": 3,
+        "nodes": 312,
+        "phase_sha256": "991f50ce58bbeae9bb169b52763cbb9d23bc0014159d2b2c1da6ab1f4e9dc89c"
+      },
+      {
+        "group": 4,
+        "nodes": 254,
+        "phase_sha256": "259e261143131ad85ee6835970800f0b99c96e51d23059cfe3dde1688c17ac31"
+      },
+      {
+        "group": 5,
+        "nodes": 299,
+        "phase_sha256": "fd98009e0a9bad9f1e0975d8af5fccf969ba5484e6da8d636c0d1a293e258a5e"
+      }
+    ],
+    "union_equals_full": true,
+    "pairwise_intersection": 0,
+    "scope": "Seven collect-only invocations of formal CI runner using isolated noneditable package, no regression test execution."
+  },
+  "raw_audit_sha256": {
+    "tp-dp-overlap": "29ae4406f6958e2bbc54684bad613af5a54fa5bd3704dadff5f9e1c7002e9c65",
+    "moe-dispatcher": "3c97a7565e7a332ce08c2f2e34b07821667e5a1b8cb256506a568d3b0271f60c",
+    "moe-overlap": "1b975dd8f7b450744fd7577f2cc554cd9ea2bc72f4911091fd113fa655d71462"
+  },
+  "failed_call_audit_sha256": "d4353b20ed82258228d84af508e0bc7e3e625d999c4d66ce6934c2e4fa6aed60",
+  "self_review_audit_sha256": "44dc6b889031719065c128cc9a67ce67020d2dd3f8c10bd6fb3319cad08f179a",
+  "post_call_process_observation_sha256": "136f0a0f818ac6249b8b45281da7e6dc8441241a35d81a7704ce61d87ff6c576",
+  "scope": "Nine successful independent readonly calls across two rounds plus one preserved network timeout. Complete inherited resources and manual full original predecessor transfer; saved future MoE specifications, not instantiated mesh/model/hardware. No automatic graph, training measurement/gain, numerical/quality/recovery, adoption or heterogeneous-backend acceptance. Own review is focused text-only with no Ergora task-MCP; independent review and publication separately recorded. End process observation is not whole-run descendant sampling."
+}

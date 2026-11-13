@@ -110,7 +110,7 @@ flowchart TD
 |`memory-tuning`、`activation-recompute`、`cpu-offloading`|design＋diagnose＋measurement；[R5](../research/2026-11-12-optimization-memory-agents.md)对应三个Bridge Skill。第一批。|容量分解、状态及重算粒度、host／pinned／NVMe预算和吞吐代价分别交付；不把不同offload接口统一成开关。|
 |`cuda-graphs`、`sequence-packing`|design＋diagnose＋correctness；[R6](../research/2026-11-12-optimization-execution-graph-agents.md)。第一批。|真实capture scope／地址寿命与动态形状；packing的mask／loss／样本边界；明确版本组合限制及重验。|
 |`parallelism`、`megatron-fsdp`、`hierarchical-cp`|design＋diagnose；[R4](../research/2026-11-12-optimization-parallelism-agents.md)、[X1](../research/2026-11-12-horizontal-architecture-agents.md)。后续按需求。|mesh与资源／模型合法性、CP／EP／DP／PP影响；推荐配方、solver输出和真实runtime分开。|
-|`tp-dp-overlap`、`moe-dispatcher`、`moe-overlap`|design＋kernel＋diagnose；[R3](../research/2026-11-12-optimization-communication-agents.md)。|关键路径暴露、SM／HBM争用、成套版本、buffer／stream和多rank正确性；两个MoE overlap Skill的共享实现不拆成两个agent。|
+|`tp-dp-overlap`、`moe-dispatcher`、`moe-overlap`|design＋diagnose＋measurement；[R3](../research/2026-11-12-optimization-communication-agents.md)。kernel执行另由原生方向接入。|关键路径暴露、SM／HBM争用、成套版本、buffer／stream和多rank正确性；两个MoE overlap Skill的共享实现不拆成两个agent。|
 |`profiling`、`memory-snapshot`|diagnose＋measurement；[R7](../research/2026-11-12-optimization-profiling-agents.md)。|已有原报告、窗口／rank／缺失事件／缓存副作用；离线解释不能称新采集或测得收益。|
 |`recipe-model`、`model-verification`|design＋correctness；[R9](../research/2026-11-12-optimization-model-recipe-agents.md)。|区分LLM／VLM／RL与框架；权重转换、forward／导数／optimizer／checkpoint和质量所需证据；recipe推荐不是搜索执行。|
 |`cluster-resiliency`|design＋diagnose；[R8](../research/2026-11-12-optimization-cluster-agents.md)。|唯一rank／job／恢复所有者和共享路径；deterministic日志分析先于含内部模型的Restart Agent。|
@@ -229,3 +229,7 @@ B1已普通提交`e2bbde0bec4750b2e3a1d09d8597bf94196ba1bd`；下一[三内存�
 B2b已普通提交`a711539`。下一片[并行策略／FSDP／分层CP](../delivery/2026-11-13-optimization-parallelism-directions.md)沿R4仅增三个只读资料根，复用相同三位v2专家和原catalog。先核固定资料与实际配置差异，再安装／完整继承、实际单叶及手动前驱、自身模板和独立双轴分别验收；不将并行库／solver改名为Agent，也不新增训练调度器。补取的同pin HCP Skill／guide和FSDP guide只作证据，不再分发上游正文。Linux完整phase成本采样独立继续，最终CI修改不能借本方向安装检查关闭。
 
 本片九数据及catalog、原测试三参数、两手册入口已实现；同pin确认`dist.use_megatron_fsdp`已删除，R4表同步纠正。隔离noneditable521产品／两RECORD／283及安装20项／84.42秒通过，产品／测试仅11个明确覆盖；自身原结构模板44.874秒approve、十一文件51,577B完整实际stdin核准。九叶真实调用成功，54资源94,170B完整连续UTF8／原前驱手动交接通过，三measurement缺证据request-changes；最终17文件及所有包／来源／模型原件／公开投影的新独立双轴终核通过，开放0／0，本地出口完成。普通发布／自己的CI另记；未改其他运行owner或旧包，未授予GPU／完整图／恢复或采用。
+
+## D2-B2d实施检查点
+
+B2c及Linux六组CI片已随9250bf8普通推送并通过自己的八job／30必要步骤及独立终核，结案MD为a9fcc17。[通信方向片](../delivery/2026-11-13-optimization-communication-directions.md)仅增加TP/DP overlap、MoE dispatcher、MoE overlap三个只读根，复用design／profile／measurement，原生kernel调用另片。非editable530产品／两RECORD／283与安装23项通过；两轮共九成功叶／54资源96,303B完整读取和原前驱手动交接核准，原网络超时保持；自身35.619秒approve。新独立双轴完整证据终核通过，状态P3关闭／开放0／0，本地出口完成；普通发布及该候选自己的CI尚待。下一方向为profiling／memory-snapshot，不重复已完成市场调查，不改原训练runner或Forge固定pin。

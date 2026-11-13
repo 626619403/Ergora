@@ -88,6 +88,9 @@ init / runner-add → prepare → worker-start → start
 |`optimization-parallelism`|`ergora-opt-parallelism-proposal`|dense／expert两mesh的合法性、rank／stage与拓扑、有限布局及独立训练／恢复证据|
 |`optimization-megatron-fsdp`|`ergora-opt-megatron-fsdp-proposal`|状态容量／通信权衡、实际DDP flag、checkpoint格式、权重reshard与完整续训分开|
 |`optimization-hierarchical-cp`|`ergora-opt-hierarchical-cp-proposal`|HCP选择依据、内外组／MPU／TE路径、真实attention／梯度和端到端收益证据|
+|`optimization-tp-dp-overlap`|`ergora-opt-tp-dp-overlap-proposal`|TP／DP／PP实际生效路径、bucket／精度／launch归属、关键路径与争用|
+|`optimization-moe-dispatcher`|`ergora-opt-moe-dispatcher-proposal`|实际dispatcher／backend初始化、ABI／拓扑、自然路由与独立全rank正确性|
+|`optimization-moe-overlap`|`ergora-opt-moe-overlap-proposal`|普通EP overlap与delayed wgrad分开，版本／graph／重计算约束及独立测量|
 
 例如选择容量诊断，先准备项目、后端、根grant及真实UTF-8任务正文，再使用原命令：
 
@@ -107,3 +110,5 @@ grant的`permissions`／`limits`从该精确根读取，按[完整manifest准备
 Graph提案需提供实际trace／shape分布／地址和RNG生命周期、当前编译及capture范围；capture成功与实际replay、冷启动和稳态收益分别核对。Packing提案还需数据／tokenizer身份、真实样本边界／mask／loss分母、原生路径和resume状态；按所选版本区分runtime THD与offline／in-batch限制，配置token容量不能当有效源token吞吐。缺项保留未验，由原runner和owner决定实验／采用。
 
 并行方向还需实际dense／expert mesh、局部head／expert／layer划分、rank顺序和节点链路。普通mesh的两组整除下界不替代原生validator或自定义layout／GTP支持。FSDP需区分实际实现与配置版本：引用快照使用`ddp.use_megatron_fsdp`，旧`dist`字段已移除；保存／加载前核`fsdp_dtensor`，并分别验证权重重分片及optimizer／RNG／数据顺序的完整恢复。HCP仅显式选择，需核hierarchical groups真实传入attention和独立数值证据；TE最低版本、建组或短loss均不能单独证明组合正确。库和solver仍是原生工具，不因出现于context就成为已安装Agent或获得执行权限。
+
+通信方向先固定真实mesh／rank↔GPU↔NIC、原baseline和精确框架／库版本。TP请求可能被原实现禁用；DP配置需对应真实DDP／optimizer消费者，bucket按参数数量计，不能把FSDP当同一个开关。MoE先证明所选flex后端已在目标环境初始化，不把缺包失败当性能结果；固定Bridge源码识别deepep／hybridep／ncclep，显式None选择alltoall，不支持的最终后端不会静默替换。MoE overlap与delayed wgrad须分别对照，harness一次同时开启两项不能用于单项归因。强制负载均衡改变路由语义；自然路由、全rank数值／梯度／恢复和未profile的配对step测量仍须独立通过。方向资源详列固定实现的必要条件，不能代替实际版本的完整validator或训练质量门禁。

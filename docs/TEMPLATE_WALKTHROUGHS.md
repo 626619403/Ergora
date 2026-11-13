@@ -13,6 +13,9 @@
 |optimization-memory-tuning|`ergora-opt-memory-tuning-proposal`|容量／allocator方向资料＋共享设计／诊断专家，接独立测量证据审查|
 |optimization-activation-recompute|`ergora-opt-activation-recompute-proposal`|重计算边界、数值与图／卸载约束；复用v2专家的只读子模板|
 |optimization-cpu-offloading|`ergora-opt-cpu-offloading-proposal`|分开三种卸载接口及host／传输／计算成本；复用v2专家的只读子模板|
+|optimization-tp-dp-overlap|`ergora-opt-tp-dp-overlap-proposal`|实际TP／DP／PP overlap路径、关键路径和独立测量；只读提案|
+|optimization-moe-dispatcher|`ergora-opt-moe-dispatcher-proposal`|固定backend／ABI／拓扑、路由与全rank证据；只读提案|
+|optimization-moe-overlap|`ergora-opt-moe-overlap-proposal`|普通EP overlap／delayed wgrad分别归因，复用同一组v2专家|
 |refactoring|`ergora-refactoring-template`|准备→rewrite→compatibility→原可信集成／验证→三审查；普通父引用一个原生large-change六阶段实例|
 
 每个Agent是独立版本包，可有自己的专长、初始指令、Skill和后端。结构父链完整累加资料并限制子权限；依赖边安排执行先后，具名端口传递结果。这三种关系可在“Agent 与组合库”展开查看。[定义格式与继承规则](WORKFLOW_DEFINITIONS.md)。
@@ -116,7 +119,7 @@ ergora composition run-input PROJECT_ID ./prepared-design --mode task-mcp --back
 
 其他叶子为`root/analysis/profile`、`root/kernel`、`root/measurement/review`。单叶调用没有自动执行前驱，操作者应在新任务正文中明确提供完整来源和前驱回复。审查尽量使用另一后端；调用失败后保留原run，再用明确的`--backend`和`--backend-reason`建立回退调用，不会自动更换后端。认证检查成功仍需真实小调用确认推理可用；上游API错误不能用放宽工具权限来证明已修复。
 
-若任务需要细方向知识，可按[独立优化方向表](TRAINING.md#独立的优化方向子模板)选择显存、重计算、CPU卸载、CUDA Graphs、sequence packing、并行策略、Megatron FSDP或分层CP。它们保留design／profile／measurement三叶，读取所选方向的完整context并复用v2专家，不含kernel叶；将前两份完整原结果手动交给measurement。安装这些提案包不会安装GPU工具、开启原生搜索或运行整个图。
+若任务需要细方向知识，可按[独立优化方向表](TRAINING.md#独立的优化方向子模板)选择显存、重计算、CPU卸载、CUDA Graphs、sequence packing、并行策略、Megatron FSDP、分层CP、TP/DP overlap、MoE dispatcher或MoE overlap。它们保留design／profile／measurement三叶，读取所选方向的完整context并复用v2专家，不含kernel叶；将前两份完整原结果手动交给measurement。安装这些提案包不会安装GPU工具、开启原生搜索或运行整个图。
 
 提案和模型审查供操作者准备实验。实际流程为固定workload／baseline／experiment→可信runner执行→独立正确性／性能复验→人工批准原evidence SHA→该项目开发任务集成复验。ForgeKernel是可选候选生成器，有独立版本、模型与设备要求；生成器完成不代表性能通过或采用。CPU／GPU、数据、ML依赖按项目安装，控制台不会配置CUDA或申请设备。[训练手册](TRAINING.md)说明runner、负结果、取消与采用。
 

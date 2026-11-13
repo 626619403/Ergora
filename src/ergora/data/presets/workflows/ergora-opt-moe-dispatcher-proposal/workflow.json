@@ -1,0 +1,86 @@
+{
+  "schema_version": 2,
+  "id": "ergora-opt-moe-dispatcher-proposal",
+  "version": "1.0.0",
+  "description": "Pinned MoE dispatcher selection, actual initialization and routing-correctness evidence proposals.",
+  "resources": [
+    {
+      "id": "ergora-opt-moe-dispatcher-proposal-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "f267a5c8e642f51a88c61e977754b866eadc39fd3b65ac1fed15541e484ce29b"
+    },
+    {
+      "id": "ergora-opt-moe-dispatcher-proposal-context",
+      "kind": "context",
+      "path": "context/moe-dispatcher.md",
+      "sha256": "1b1bfe90d04d0cfb9a0a450e58be408a09003e5a2bc112d9c11daa621a90f145"
+    }
+  ],
+  "permissions": {
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "write": [],
+    "shell": false,
+    "network": []
+  },
+  "limits": {
+    "depth": 8,
+    "instances": 128,
+    "concurrency": 4,
+    "material_bytes": 262144
+  },
+  "inputs": [
+    "task"
+  ],
+  "outputs": {
+    "result": {
+      "node": "gather",
+      "output": "result"
+    }
+  },
+  "nodes": [
+    {
+      "id": "analysis",
+      "ref": {
+        "kind": "workflow",
+        "id": "ergora-training-analysis",
+        "version": "2.0.0",
+        "digest": "a9d715b010ba4c444cf8cacebf739388c2a434b3fc6adcc024ee8ba78776be2a"
+      },
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      }
+    },
+    {
+      "id": "measurement",
+      "ref": {
+        "kind": "workflow",
+        "id": "ergora-measurement-review",
+        "version": "2.0.0",
+        "digest": "098f379a30627950103b485d1e1364bbd80f5f8f316f0ded804ca8847ecb8961"
+      },
+      "depends_on": [
+        "analysis"
+      ],
+      "inputs": {
+        "task": {
+          "node": "analysis",
+          "output": "result"
+        }
+      }
+    },
+    {
+      "id": "gather",
+      "join": "all",
+      "depends_on": [
+        "measurement"
+      ]
+    }
+  ]
+}
