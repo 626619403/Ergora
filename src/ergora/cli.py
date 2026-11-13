@@ -450,6 +450,10 @@ def parser() -> argparse.ArgumentParser:
     preview = operations.add_parser("output")
     preview.add_argument("project")
     preview.add_argument("id")
+    preview.add_argument("--native-history", action="store_true", help="Read a page of saved native history without starting the backend")
+    preview.add_argument("--history-offset", type=int, default=0, help="Byte offset returned by the previous history page")
+    preview.add_argument("--history-limit", type=int, default=65536, help="UTF-8 byte window, 4–65536 bytes")
+    preview.add_argument("--history-revision", help="Observation revision required after the first history page")
     kernels = commands.add_parser("kernel", help="Native ForgeKernel campaigns; independent project validation still required")
     operations = kernels.add_subparsers(dest="operation", required=True)
     for name in ("plan", "prepare", "list", "run", "status"):
@@ -854,7 +858,9 @@ def main(argv: list[str] | None = None) -> int:
                 elif args.operation == "runs":
                     output = agent_runs.runs(state, args.project)
                 elif args.operation == "output":
-                    output = agent_runs.output(state, args.project, args.id)
+                    output = agent_runs.output(state, args.project, args.id, native_history=args.native_history,
+                                              offset=args.history_offset, limit=args.history_limit,
+                                              revision=args.history_revision)
                 else:
                     output = agent_runs.run_agent(state, args.project, args.role, args.prompt.read_text(encoding="utf-8-sig"), args.timeout, args.skill, args.recall, args.template)
             print(json.dumps(output, ensure_ascii=False, indent=2))

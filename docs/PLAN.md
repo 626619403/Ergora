@@ -4,7 +4,13 @@
 
 ## 当前检查点
 
-- [F8-H2 真实模型](plans/2026-11-14-harness-real-model.md)从已推送 a0a42ba 开始：第一 completions 真实调用因网关 HTTP400 明确失败并保留；固定 SDK 原支持两协议，现有 schema／driver 已增显式可选 Responses、默认不变。新 noneditable 551／两 RECORD／283 及原安装 suite 38 项通过；与 Codex 完全相同的输入在 DSH Responses 下 45.849 秒成功。原 kernel 专家叶 45.695 秒成功、六资源 16,774B 与原生全文链通过，六采样身份清理；新自身模板 29.628 秒 approve／五全文 64,066B 与新独立两轴通过，SP1状态句关闭／开放0／0，本地出口完成；普通发布和自己的CI待核；未关闭 H3 会话或完整 C2／B3。[交付](delivery/2026-11-14-harness-real-model.md)逐步更新。
+- [F8-H3a 原生归档读取](plans/2026-11-14-harness-session-readback.md)承接已推送 `322007f`：五副本零模型探针／原件审计和接缝设计完成。原后端→output→CLI／HTTP／网页分页已实现；首自身模型 request-changes 与新独立三 P2 已接受，三个实际 red 和首修目录 stat 两失败保留。逐级打开／有界重枚举和面板显示状态修正后的 r3 包 551／两 RECORD／283、安装 60 项、原 H2 两归档10／6页及网页六生命周期／分页复验通过；自身修正复核与新独立终核在做，实际会话续接属于 H3b。外部项目只通过 Ergora 自身模板试用，不由本会话直接优化业务代码；不以合成实验关闭 B3。
+
+  后续 r3 完整网页／逐字审计与七观察身份／两端口清理通过，新自身原结构模板 65.875 秒 approve／十一全文215,436B实际输入已核；完整最终十八文件／自审／清理原件获同片独立终核，无新增实质发现，SP1–SP3关闭、两轴通过，本地出口完成。首失败及修正候选身份保留；正在普通发布本片，再核自己的 CI，不合入 main。
+
+- [S1 本地工程 Skill 补充](plans/2026-11-14-engineering-skills.md)：18 主记录／24 相邻元数据及既有角色覆盖已盘点，[研究建议](research/2026-11-14-local-engineering-skills.md)已保存。下一片按两标准 Skill＋新的父模板资源复用原继承，23 旧条目／原角色保持，再验本地导入与真实读取；尚未实现。不无差别加载所有 Skill。真实外部项目仅作为 Ergora 优化模板试用目标；`glab`／`igs` 的32次只读调用已核参考分支精确身份与训练接口／依赖／资源，当前无已绑定资产和执行目标，不由本开发会话直接优化业务代码，也不把参考分支自动当正式性能基线。
+
+- [F8-H2 真实模型](plans/2026-11-14-harness-real-model.md)精确交付完成：第一 completions 的 HTTP400 失败保持；显式 Responses、551／两 RECORD／283、安装 38 项及两真实只读调用／全文链、自身 29.628 秒 approve 与新独立两轴均通过，开放 0／0。普通提交／推送 `322007f`、十一 Git／完整 SSH Ref 获原评审补核；自己的 CI `43475349587` 第四官方 HTML Success，八 job／30 必要步骤、完整 SHA 日志路径及16 HTTP原件获原独立终核。未关闭 H3 会话或完整 C2／B3。[交付](delivery/2026-11-14-harness-real-model.md)保存精确范围。
 
 - [C2 原生准入](plans/2026-11-14-forge-native-admission.md)从 f4da08b 清洁基线继续：C2.0 接缝调查完成；C2.1 原 `kernel` owner 已统一包／scripts Git 身份门禁，基线两 red、551 产品／两 RECORD／283 与安装 23 通过／9 跳过、自身 Codex 回退 37.233 秒 approve 及新独立两轴通过，开放 0／0，本地出口完成，a0a42ba已普通推送，八Git与完整作者Ref获原评审补核，自己的CI43471215671八job／30必要步骤及完整SHA日志路径获原独立终核，C2.1精确交付完成。Claude 简单只读 5.275 秒成功与完整审查 240.495 秒超时分别保留；bwrap 实际拒绝，完整 C2／真实训练 B3 仍开放。可独立继续 F8-H2 的真实只读模型兼容验收。[交付](delivery/2026-11-14-forge-native-admission.md)逐步记录。
 

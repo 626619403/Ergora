@@ -672,8 +672,10 @@ def create_app(home: Path | None = None) -> FastAPI:
         return kernel.operate(state, project_id, run_id, body.action, body.timeout, body.reconcile_reason)
 
     @application.get("/api/projects/{project_id}/agent-runs/{run_id}/output")
-    def agent_output(project_id: str, run_id: str):
-        return agent_runs.output(state, project_id, run_id)
+    def agent_output(project_id: str, run_id: str, native_history: bool = False,
+                     history_offset: int = 0, history_limit: int = 65536, history_revision: str | None = None):
+        return agent_runs.output(state, project_id, run_id, native_history=native_history,
+                                 offset=history_offset, limit=history_limit, revision=history_revision)
 
     @application.post("/api/projects/{project_id}/memories")
     def save_memory(project_id: str, body: MemoryPayload):

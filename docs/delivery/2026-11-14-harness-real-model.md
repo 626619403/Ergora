@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-独立可选环境 SDK／runtime `0.2.2rc2`、Python 3.12.11 的只读版本检查通过。第一真实调用的协议失败保留，显式 Responses 的新包、禁工具及 task-MCP 真实调用与原件全文链、自身结构审查及新 fresh-context 需求／结构两轴均已通过，开放 0／0；普通发布及自己的 CI 仍另验。原 H1 的 loopback／停止证据保持其原范围。源／安装、实际输入、网关身份与模型结果在本片私有原件中分别核定，不公开认证或机器路径。
+独立可选环境 SDK／runtime `0.2.2rc2`、Python 3.12.11 的只读版本检查通过。第一真实调用的协议失败保留，显式 Responses 的新包、禁工具及 task-MCP 真实调用与原件全文链、自身结构审查及新 fresh-context 需求／结构两轴均已通过，开放 0／0；`322007f` 已普通推送、完整 Ref 和自己的八 job／30 必要步骤 CI 获原独立终核，H2 精确交付完成。原 H1 的 loopback／停止证据保持其原范围。源／安装、实际输入、网关身份与模型结果在本片私有原件中分别核定，不公开认证或机器路径。
 
 ## 首次真实调用与协议缺口
 
@@ -43,3 +43,11 @@ Python 3.11 noneditable wheel SHA256 `2aa9eda87f4f3629437bf4c718beebe1d7ba1d2ede
 [新 fresh-context 评审](2026-11-14-harness-real-model-review.md)已独立重算源／构建／wheel／安装 551 字节集合、两 RECORD、283、原 38 项测试、三次真实调用的实际 request／native user／通知／结果与六资源完整链，以及自身五文件输入和限定采样终态。需求／结构两轴通过，开放 0／0。
 
 唯一 SP1／P3 是后端手册尚沿 H1 声称真实模型未验；已只更新该状态句，保留 H1 历史和新增 H2 的精确范围链接，明确六阶段／会话／其他平台未准入，独立补核关闭。两产品文件与原已验包及自身审查一致；未为文档状态更正重跑模型或 suite。最终候选、普通提交／推送和自己的 CI 另核，不借 C2 的 CI。
+
+## 精确发布与自己的 CI
+
+普通提交 `322007f9c50223606d80f3d0fcdc157eac6db428`，父 `a0a42ba009bdcd541c9ee42d11838db835e0dcd3`；十一文件 Git blob 与最终候选逐字一致。普通 push 退出 0／5.473 秒，SSH 完整 Ref 退出 0／1.337 秒且同完整 SHA，原 fresh 评审发布补核通过；没有合入 main。
+
+自己的 [CI 43475349587](https://github.com/626619403/Ergora/actions/runs/43475349587) 第四份官方 run HTML 为 Success。八 job 全部 completed／succeeded，30 必要步骤均 success，且有非空、唯一、绑定完整提交／job／step 的日志路径。Linux 六组回归 120–286 秒，Windows 回归 891 秒／PowerShell 5.1 安装升级 56 秒。
+
+原独立评审对 16 份最终／历史／batch HTTP 原件重算 URL、状态、字节及 SHA256，独立解析全部步骤，且以精确 Git `322007f` 重核 551 产品等于 H2 隔离包和 283 冻结，不借用后续 H3 工作树。前三 run／Windows 在途与旧 batch 状态保持；未声称下载所有日志或成功 REST。两轴开放 0／0，H2 精确交付关闭；H3、完整 C2 与真实 workload B3 仍分别开放。

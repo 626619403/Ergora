@@ -21,5 +21,6 @@
 - 原随包 `optimization-kernel` 的 `root/analysis/design` 真实 task-MCP run 45.695 秒成功；六资源 16,774B 的随包→冻结输入→scope→原生工具正文逐字一致，连续 UTF8 页均读到尾部，实际仅 list／read。六个按 PID／starttime 观察的进程已无存活；不是全局隔离证明。没有 workload／测量／GPU 或整个图自动执行。
 - 三次真实调用的离线原件审计已通过；两次私有审计驱动的 stdin 假设／事件字段错误及修正保留，产品与原模型调用未重跑。新自身原结构模板 29.628 秒 approve，五全文 64,066B 和三份继承资源均在实际 input／stdin；采用已授权 Codex 回退，保留前片 Claude 超时理由，不声称异模型成功。
 - [新 fresh-context 需求／结构两轴](../delivery/2026-11-14-harness-real-model-review.md)通过，开放 0／0；手册过期状态 SP1／P3 只改原句并复核关闭，产品未变。本地验收出口完成；最终快照、普通发布和自己的 CI 待核，不借 C2 或 H1 的结果。
+- 后续精确终核完成：普通提交／推送 `322007f9c50223606d80f3d0fcdc157eac6db428`、十一 Git blob／完整 SSH Ref 获原评审补核。自己的 CI `43475349587` 第四官方 HTML Success，八 job／30 必要步骤及完整 SHA 日志路径、16 HTTP 原件获独立终核，H2 精确交付关闭；H3／完整 C2／B3 不由本片关闭。
 
 原件在本项目私有检查目录，结果写[本片交付](../delivery/2026-11-14-harness-real-model.md)。

@@ -65,11 +65,53 @@ def test_binding_revisions_and_cli_web_share_durable_state(console):
     assert "API fixture" in Path(result["output"], "stdout.txt").read_text()
     preview = client.get(f"/api/projects/demo/agent-runs/{result['id']}/output").json()
     assert "API fixture" in preview["streams"]["stdout"]["text"]
+    assert "native_history" not in preview
+    unsupported = client.get(f"/api/projects/demo/agent-runs/{result['id']}/output?native_history=true").json()
+    assert unsupported["native_history"]["available"] is False
     Path(result["output"], "stdout.txt").write_text("Z" * 70000)
     bounded = client.get(f"/api/projects/demo/agent-runs/{result['id']}/output").json()["streams"]["stdout"]
     assert len(bounded["text"]) == 65536 and bounded["truncated"]
     assert client.get(f"/api/projects/other/agent-runs/{result['id']}/output").status_code == 400
     assert client.get("/api/projects/other/dashboard").json()["agent_runs"] == []
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Native archive reads admit Linux/WSL2")
+def test_native_history_http_and_cli_read_the_same_saved_run_without_mutating_it(console):
+    client, state, _ = console
+    run_id = "saved-harness-run"
+    protocol = state.root / "runs" / (run_id + ".protocol")
+    cwd = state.root / "runs" / (run_id + ".cwd")
+    home = protocol / "native-home"
+    archive = home / "sessions/project/native-session/session.v4.jsonl"
+    archive.parent.mkdir(parents=True)
+    identity = {"home": str(home), "session_id": "native-session", "profile": "sdk-minimal"}
+    (protocol / "native-identity.json").write_text(json.dumps(identity))
+    raw = (json.dumps({"version": 4, "id": "native-session", "cwd": str(cwd)}) + "\n" +
+           json.dumps({"text": "保存的回复🙂" * 30}, ensure_ascii=False) + "\n").encode()
+    archive.write_bytes(raw)
+    document = {"id": run_id, "project": "demo", "status": "succeeded", "binding": {"tool": "deepseek-harness"}}
+    encoded = json.dumps(document)
+    with state.connect() as db:
+        db.execute("INSERT INTO agent_runs VALUES (?, ?, ?)", (run_id, "demo", encoded))
+    url = f"/api/projects/demo/agent-runs/{run_id}/output"
+    first = client.get(url, params={"native_history": True, "history_limit": 255})
+    assert first.status_code == 200
+    page = first.json()["native_history"]
+    assert page["next_offset"] is not None
+    args = [sys.executable, "-m", "ergora", "--home", str(state.root), "agent", "output", "demo", run_id,
+            "--native-history", "--history-limit", "255"]
+    result = subprocess.run(args, capture_output=True, text=True, encoding="utf-8", timeout=10)
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout) == first.json()
+    assert client.get(url, params={"native_history": True, "history_offset": page["next_offset"]}).status_code == 400
+    cursor = {"native_history": True, "history_offset": page["next_offset"], "history_limit": 255,
+              "history_revision": page["revision"]}
+    following = client.get(url, params=cursor)
+    assert following.status_code == 200 and following.json()["native_history"]["offset"] == page["next_offset"]
+    assert client.get(url.replace("/demo/", "/other/"), params=cursor).status_code == 400
+    assert archive.read_bytes() == raw
+    with state.connect() as db:
+        assert db.execute("SELECT document FROM agent_runs WHERE id=?", (run_id,)).fetchone()[0] == encoded
 
 
 def test_memory_provenance_search_conflict_and_restore(console):

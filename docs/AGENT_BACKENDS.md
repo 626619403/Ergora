@@ -139,6 +139,19 @@ ergora agent output my-project RUN_ID
 
 必须同时核对完成状态、严格JSON／原结果schema和原MCP连接回执；任一原生工具错误使本次调用失败，不隐式重试或续接会话。上游可能在插件失败或断连后仍返回completed，因此最终文本本身不能代表成功。失败或结果不明先按原run ID查看证据，不创建另一次调用冒充恢复。固定发行包与loopback／停止探针见[H1交付](delivery/2026-11-12-harness-probes.md)；显式Responses的真实禁工具调用及同模板专家叶task-MCP全文验收见[H2交付](delivery/2026-11-14-harness-real-model.md)。这两次只读成功不证明正式六阶段、持久会话或其他平台已经准入。
 
+#### 查看已保存的原生历史
+
+Linux／WSL2 可在原调用记录页点击“读取原生历史”，然后逐页查看保存的输入、工具结果和模型回复。读取只访问原 run 的归档，不启动 SDK、不调用模型，也不恢复会话；其他后端会显示不支持。原 stdout／stderr 查看方式保持。
+
+```bash
+ergora agent output my-project RUN_ID --native-history
+# 下一页：使用上一页返回的 next_offset 和 revision
+ergora agent output my-project RUN_ID --native-history \
+  --history-offset NEXT_OFFSET --history-revision REVISION
+```
+
+每页默认最多 65,536B，可用 `--history-limit` 在 4–65,536B 内调整；游标以字节为单位，返回内容保持 UTF-8 边界。网页只展示当前一页，完整导出可由调用者逐页保存 `native_history.content`，直到 `next_offset` 为 null。观察 revision 绑定当前文件身份和时间／大小，不是完整内容 SHA，也不证明写入者已停止。读取期间文件变化会拒绝旧页，应“从头读取”或不带旧 revision 从零开始。只支持原调用保存的、未压缩的 v4 单会话归档；归档丢失、ID／目录不符或未来存储代次不能当作空历史。归档末尾不等于成功完成，原调用状态和结果回执仍独立核查；真正续接仍未支持。
+
 ## 可选的正式六阶段执行桥接
 
 默认`agentflow`执行器保持v2.2行为。要使项目的角色选择作用于正式任务，先按参考手册安装、配置模型和可信执行边界，再用[统一项目注册](PROJECTS.md)一次登记Git根、角色、模板与可信检查，并运行`ergora reference executor --project PROJECT_ID`。旧的两次注册方式继续兼容，两个同名项目必须指向相同Git根。只对新任务启用；不要中途切换已开始的参考任务。

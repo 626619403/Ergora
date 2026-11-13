@@ -233,7 +233,8 @@ def runs(state: State, project_id: str) -> list[dict]:
             "SELECT document FROM agent_runs WHERE project=? ORDER BY rowid DESC LIMIT 100", (project_id,))]
 
 
-def output(state: State, project_id: str, run_id: str) -> dict:
+def output(state: State, project_id: str, run_id: str, *, native_history: bool = False,
+           offset: int = 0, limit: int = 65_536, revision: str | None = None) -> dict:
     state.project(project_id)
     with state.connect() as db:
         row = db.execute("SELECT document FROM agent_runs WHERE project=? AND id=?", (project_id, run_id)).fetchone()
@@ -249,4 +250,14 @@ def output(state: State, project_id: str, run_id: str) -> dict:
         with path.open("rb") as source:
             content = source.read(65537)
         streams[name] = {"available": True, "text": content[:65536].decode("utf-8", errors="replace"), "truncated": len(content) > 65536}
-    return {"id": run_id, "status": document["status"], "streams": streams}
+    result = {"id": run_id, "status": document["status"], "streams": streams}
+    if native_history:
+        contracts.validate(offset, {"type": "integer", "minimum": 0, "maximum": 2**63 - 1}, "History byte offset")
+        contracts.validate(limit, {"type": "integer", "minimum": 4, "maximum": 65_536}, "History byte limit")
+        contracts.validate(revision, {"type": ["null", "string"], "pattern": "^[0-9a-f]{64}$"}, "History revision")
+        if offset and revision is None:
+            raise ValueError("History pages after offset 0 require the observed revision")
+        adapter = agent_backends.for_binding(document["binding"], {})
+        result["native_history"] = adapter.archived_history(state.root / "runs" / (run_id + ".protocol"),
+            cwd=state.root / "runs" / (run_id + ".cwd"), offset=offset, limit=limit, revision=revision)
+    return result

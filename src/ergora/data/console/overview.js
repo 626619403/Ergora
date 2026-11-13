@@ -153,7 +153,7 @@ export function overview(data, base, { refresh, render }) {
             "查看记录",
             async () => {
               const output = await api(`${base}/agent-runs/${item.id}/output`);
-              modal("工具调用记录", [pre(item), ...outputPanels(output)]);
+              modal("工具调用记录", [pre(item), ...outputPanels(output, base)]);
             },
             "text-button",
           ),

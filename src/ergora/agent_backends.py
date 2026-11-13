@@ -1,9 +1,15 @@
 """Native Agent adapters; the local mapping selects execution, not public schemas."""
 
 from abc import ABC, abstractmethod
+import codecs
+from contextlib import ExitStack
 from dataclasses import dataclass
+import hashlib
+from itertools import islice
 import json
+import os
 from pathlib import Path
+import stat
 import subprocess
 import sys
 import tomllib
@@ -97,6 +103,11 @@ class AgentBackend(ABC):
 
     def read_result(self, output: Path, request: Invocation) -> dict:
         return json.loads((output / "stdout.txt").read_text(encoding="utf-8"))
+
+    def archived_history(self, protocol: Path, *, cwd: Path, offset: int,
+                         limit: int, revision: str | None) -> dict:
+        """Observe saved native bytes without starting an interpreter or SDK."""
+        return {"available": False, "reason": "This backend has no native archive reader"}
 
     def diagnostics(self) -> dict:
         return {"authentication": self.authentication, "remediation": [
@@ -371,6 +382,112 @@ class DeepSeekHarnessBackend(AgentBackend):
                for event in native["events"]):
             raise ValueError("DeepSeek Harness reported a tool error; see native-events.jsonl")
         return json.loads(native["final_response"])
+
+    def archived_history(self, protocol: Path, *, cwd: Path, offset: int,
+                         limit: int, revision: str | None) -> dict:
+        """Read the original single-session v4 archive, with bounded IO per page.
+
+        This is an observation revision, not a sealed content digest or an SDK
+        restore. Unknown generations are left to their native persistence owner.
+        """
+        if sys.platform != "linux":
+            return {"available": False, "reason": "Native archive reads currently require Linux/WSL2"}
+        with ExitStack() as stack:
+            directories, files, layouts = [], [], []
+
+            def stamp(value):
+                return value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns, value.st_ctime_ns
+
+            def directory(parent, name):
+                descriptor = os.open(name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=parent)
+                stack.callback(os.close, descriptor)
+                directories.append((parent, name, descriptor))
+                return descriptor
+
+            def ordinary(parent, name):
+                descriptor = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK, dir_fd=parent)
+                stream = stack.enter_context(os.fdopen(descriptor, "rb"))
+                details = os.fstat(descriptor)
+                if not stat.S_ISREG(details.st_mode):
+                    raise ValueError("Native archives require ordinary files")
+                files.append((parent, name, stream, details))
+                return stream
+
+            def listing(descriptor, maximum):
+                with os.scandir(descriptor) as entries:
+                    names = [entry.name for entry in islice(entries, maximum)]
+                layouts.append((descriptor, maximum, set(names)))
+                return names
+
+            try:
+                runs = directory(None, protocol.anchor)
+                for part in protocol.parent.parts[1:]:
+                    runs = directory(runs, part)
+                protocol_fd = directory(runs, protocol.name)
+                native = directory(protocol_fd, "native-home")
+            except FileNotFoundError:
+                return {"available": False, "reason": "No native archive was saved for this call"}
+            identity_file = ordinary(protocol_fd, "native-identity.json")
+            raw_identity = identity_file.read(16_385)
+            if len(raw_identity) > 16_384:
+                raise ValueError("Native archive identity exceeds 16 KiB")
+            identity = json.loads(raw_identity)
+            if (not isinstance(identity, dict) or identity.get("home") != str(protocol / "native-home") or
+                    identity.get("profile") != "sdk-minimal"):
+                raise ValueError("Native archive home/profile differs from the saved call")
+            sessions = directory(native, "sessions")
+            projects = listing(sessions, 2)
+            if len(projects) != 1:
+                raise ValueError("Native archive requires one original session namespace")
+            namespace = directory(sessions, projects[0])
+            names = listing(namespace, 2)
+            if names != [identity.get("session_id")]:
+                raise ValueError("Native archive session differs from the saved call")
+            session = directory(namespace, names[0])
+            names = set(listing(session, 3))
+            if "session.v4.jsonl" not in names or names - {"session.lock", "session.v4.jsonl"}:
+                raise ValueError("Only the original uncompressed v4 session archive is supported")
+            stream = ordinary(session, "session.v4.jsonl")
+            line = stream.readline(16_385)
+            if len(line) > 16_384 or not line.endswith(b"\n"):
+                raise ValueError("Native archive header is missing or exceeds 16 KiB")
+            header = json.loads(line)
+            if (not isinstance(header, dict) or type(header.get("version")) is not int or header["version"] != 4 or
+                    header.get("id") != identity["session_id"] or header.get("cwd") != str(cwd)):
+                raise ValueError("Native archive header differs from the saved session/cwd")
+            details = files[-1][3]
+            source = f"native-home/sessions/{projects[0]}/{identity['session_id']}/session.v4.jsonl"
+            observed = hashlib.sha256(json.dumps({"run": protocol.name, "source": source, "session": identity["session_id"],
+                "identity": hashlib.sha256(raw_identity).hexdigest(), "stat": stamp(details)}, sort_keys=True).encode()).hexdigest()
+            if revision is not None and revision != observed:
+                raise ValueError("Native archive changed; restart at offset 0 without the old revision")
+            if offset > details.st_size:
+                raise ValueError("Native archive offset exceeds the observed file")
+            stream.seek(offset)
+            raw = stream.read(min(limit, details.st_size - offset))
+            decoder = codecs.getincrementaldecoder("utf-8")(errors="strict")
+            text = decoder.decode(raw, final=offset + len(raw) == details.st_size)
+            count = len(raw) - len(decoder.getstate()[0])
+            for parent, name, descriptor in directories:
+                current = os.stat(name, dir_fd=parent, follow_symlinks=False)
+                opened = os.fstat(descriptor)
+                if (current.st_dev, current.st_ino) != (opened.st_dev, opened.st_ino):
+                    raise ValueError("Native archive directory moved while reading")
+            for parent, name, opened, before in files:
+                if stamp(os.fstat(opened.fileno())) != stamp(before) or stamp(os.stat(name, dir_fd=parent, follow_symlinks=False)) != stamp(before):
+                    raise ValueError("Native archive changed while reading")
+            for descriptor, maximum, before in layouts:
+                with os.scandir(descriptor) as entries:
+                    current = {entry.name for entry in islice(entries, maximum)}
+                if current != before:
+                    raise ValueError("Native archive directory changed while reading")
+            return {"available": True, "kind": "native-jsonl-archive", "session_id": identity["session_id"],
+                "source": source,
+                "revision": observed, "revision_basis": "local file observation; not a full content SHA",
+                "writer_state": "unconfirmed", "size_bytes": details.st_size, "offset": offset,
+                "bytes_read": count, "next_offset": offset + count if offset + count < details.st_size else None,
+                "encoding": "utf-8", "content": text,
+                "complete": offset == 0 and count == details.st_size}
 
 
 class CommandBackend(AgentBackend):

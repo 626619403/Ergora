@@ -68,3 +68,33 @@ C2 三文件及其 PLAN 状态只回填原候选自己的 CI 终态。核原评�
 作者 `static-r2` 记录的157本地目标、两项凭据值检查、issues 0 与本次 manifest 身份一致。私有 `independent-review-r1/final-candidate-audit.json` 保存本次补核，SHA256 为 `c460636e7bbeaadd8fcf778694f0f776758a28123ef9188522388173eae2844a`。未运行模型、测试、安装或网络请求。
 
 最终候选补核通过，新增发现0，需求／结构开放0／0。普通 commit／push、精确 Git／远端原件及 H2 自己的 CI 尚需后续分别核准。
+
+## 同片普通发布补核
+
+2026-11-14，独立核准提交 `322007f9c50223606d80f3d0fcdc157eac6db428`，唯一父提交为 `a0a42ba009bdcd541c9ee42d11838db835e0dcd3`。直接读取原 commit／blob 对象并重算 Git 对象身份；十一条实际变更路径与 `git-ready-r1.json` 完全相同，十作者文件逐字匹配上述 r2 manifest／快照，第十一文件为已审本报告（提交时 SHA256 `7e8298666a444e5b20c3c8623c5e5ef5e080b0cbc6bacf5b18843a7cfbeaa679`）。H3a 三文档没有进入此提交。
+
+本次直接以该提交中的551个产品 Git blob 核已验 wheel 完整集合及字节，再核原构建源／安装副本、wheel 559项、安装 RECORD 564行与283个冻结文件，全部通过。没有以此后 H3a 工作树源码代替 H2 源码身份，没有重新安装或运行模型／测试。
+
+作者普通 push 原回执为退出0／5.473秒，stderr 对应 a0a42ba → 322007f 及目标开发分支；其后 SSH `ls-remote` 原回执退出0／1.337秒，stdout 将完整 `refs/heads/refactor/architecture-foundations` 解析为同一 `322007f9c50223606d80f3d0fcdc157eac6db428`。本评审只核这些保留原件，没有自行发网络请求。
+
+私有 `independent-review-r1/publication-audit.json` 保存十一 Git 对象、发行包和原 push／Ref 身份，SHA256 为 `3331aafba61574c6d47bdf4fe20cfc785875e7722d86dd726b1bbbe5644d163e`。普通发布精确补核通过，新增发现0；H2 自己的 CI 尚待终态原件，不能借 C2 或 H1 的 CI 关闭。会话 H3、完整 C2 与 B3 的未验范围保持。
+
+## 同片自己的 CI 终态补核
+
+2026-11-14，独立核准 H2 自己的 [Portability run 43475349587](https://github.com/626619403/Ergora/actions/runs/43475349587)。第四份官方 run HTML 的状态为 **Success**，实际 commit 链接为完整 `322007f9c50223606d80f3d0fcdc157eac6db428`，分支为 `refactor/architecture-foundations`。该原件213,315B，SHA256为 `145744152df62e8d85fb9c40d7bd14aa94dd92602bc0d1a7c3e6eadee97f75de`。
+
+本评审用独立 HTMLParser 直接解析 run／job 原页面，从 run 内嵌的原生 batch 路径核 `job_groups_batch` 原 JSON 的八个 job ID／名称／run 路径；再以此精确提交中的 `portability.yml` 和六组配置确定必要步骤，没有使用 H3a 当前工作树配置。最终八份 job HTML 均显示 `data-job-status=completed` 和 succeeded header：
+
+|范围|job 数|必要步骤|终态|
+|---|---:|---:|---|
+|plan|1|1|显式测试组读取成功|
+|Linux Python 3.11 六组|6|24|构建安装、reference 身份、应用回归、观测上传全部成功|
+|Windows Python 3.12|1|5|上述四步及 PowerShell 5.1 安装升级全部成功|
+
+三十个必要步骤均为 success，具有开始／结束时间及 job-completed 标记；三十条日志路径全部非空、唯一，逐项包含本次完整提交 SHA、正确 job ID 与 step number。Linux 六组应用回归120–286秒；Windows 应用回归 UTC 17:42:59–17:57:50，共891秒，随后 PowerShell 5.1 安装升级17:57:50–17:58:46，共56秒。
+
+最终九份 run／job HTML、原 batch JSON、前三份 run 与前三份 Windows HTML 共十六份 HTTP 原件，URL／最终 URL、200状态、实际长度及 SHA256 全部与收据一致。早期 batch 的 Windows 仍为 in_progress，前三份 run 为 In progress，前三份 Windows 为 in_progress；均原样保留，终态仅据第四份 run／Windows 页面判定。独立逐项提取与作者 `ci-observation-r4.json` 一致，未将历史页面改写为成功。
+
+同时从精确 Git 提交重新读取551个产品文件，完整匹配原 H2 隔离 wheel，283冻结文件身份保持；没有取 H3a 当前工作树作为 H2 源码。本补核未发网络请求，未读取日志正文或下载 artifact archive，未运行模型、安装或测试。私有 `independent-review-r1/ci-terminal-audit.json` 保存逐原件、逐 job／step 和历史状态核查；初版私有核查对历史 header 的文字假设已按原件更正，未涉及产品或模型重跑。
+
+H2 精确提交自己的 CI 终核通过，新增发现0；需求／结构两轴仍通过，开放0／0。结合上述精确源码、受限真实调用、自身模板、独立评审及普通发布核准，F8-H2 的精确交付可关闭。此结论不扩大到 H3 持久会话、完整六阶段 DSH 执行、OpenHands、其他平台的 DSH 准入、完整 C2 或 B3。

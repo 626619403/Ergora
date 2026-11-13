@@ -1,9 +1,47 @@
 import { api } from "./api.js";
-import { node, pre, panel, field, selectField, status, form, modal } from "./ui.js";
+import { node, pre, panel, field, selectField, status, form, modal, button, row } from "./ui.js";
 import { app } from "./state.js";
 
-export function outputPanels(result) {
-  return Object.entries(result.streams).map(([name, stream]) =>
+function archivedHistory(base, runId) {
+  const content = node("div");
+  let nextOffset = null;
+  let revision = null;
+  const start = button("读取原生历史", () => read(true));
+  const next = button("下一页", () => read(false), "secondary", { disabled: true });
+  const view = panel("原生历史归档", "按页查看已保存的输入、工具结果和模型回复。", row(start, next), content);
+  const displayed = () => view.isConnected && view.closest("dialog")?.open;
+  async function read(reset) {
+    start.disabled = true;
+    next.disabled = true;
+    try {
+      const query = new URLSearchParams({ native_history: "true", history_offset: reset ? 0 : nextOffset });
+      if (!reset) query.set("history_revision", revision);
+      const result = await api(`${base}/agent-runs/${runId}/output?${query}`);
+      if (!displayed()) return;
+      const page = result.native_history;
+      if (!page.available) {
+        content.replaceChildren(node("p", {}, page.reason));
+        return;
+      }
+      revision = page.revision;
+      nextOffset = page.next_offset;
+      content.replaceChildren(
+        node("p", {}, `${page.offset}–${page.offset + page.bytes_read} / ${page.size_bytes} 字节`, nextOffset === null ? " · 已到本次观察末尾" : ""),
+        pre(page.content),
+      );
+      next.disabled = nextOffset === null;
+      start.textContent = "从头读取";
+    } catch (error) {
+      if (displayed()) throw error;
+    } finally {
+      if (displayed()) start.disabled = false;
+    }
+  }
+  return view;
+}
+
+export function outputPanels(result, base) {
+  const panels = Object.entries(result.streams).map(([name, stream]) =>
     panel(
       name === "stdout" ? "标准输出" : "诊断输出",
       !stream.available
@@ -14,6 +52,8 @@ export function outputPanels(result) {
       pre(stream.text),
     ),
   );
+  if (base) panels.push(archivedHistory(base, result.id));
+  return panels;
 }
 export function agentDialog(data, base, refresh) {
   const result = node("div");
@@ -63,7 +103,7 @@ export function agentDialog(data, base, refresh) {
         result.replaceChildren(
           status(response.status),
           pre(response),
-          ...outputPanels(output),
+          ...outputPanels(output, base),
         );
         await refresh(data.project.id);
       },
