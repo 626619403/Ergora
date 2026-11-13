@@ -1,0 +1,343 @@
+{
+  "schema_version": 1,
+  "acceptance": "D real native six-stage journey",
+  "product_commit": "5af9882367bbe5708f1a86ddabc16b2b665e9a49",
+  "wheel_sha256": "1da3b270eb63c9c8d20eba96f659bf6a5049288b35c8100cfc143841327dd598",
+  "definition_version": 6,
+  "input_version": 10,
+  "run_id": "01a1d2cd-96df-7d38-879f-777f119909b1",
+  "phase": "REVIEW_READY",
+  "seconds": 1132.4859114931896,
+  "baseline_sha": "8e4f83f7057495c1e0075471a898f6dfdd900868",
+  "candidate_sha": "2bd4d5a282ce9ef4dea7bb639fe53265fc16d5c7",
+  "parent": {
+    "protocol": "six-stage-v1",
+    "instance": "root/development",
+    "task_type": "repository-governance",
+    "lineage": [
+      {
+        "instance": "root",
+        "definition": {
+          "kind": "workflow",
+          "id": "native-development",
+          "version": "1.0.1",
+          "digest": "3c42338659aa0da3a2331e6b3299a3b9cd6300ff0fb792c3b53974bf26279eb3"
+        }
+      },
+      {
+        "instance": "root/development",
+        "definition": {
+          "kind": "workflow",
+          "id": "prepared-delivery",
+          "version": "1.0.1",
+          "digest": "132982c241201d0c944a722ab6acd4ef4a987043a87ae634ecf06739bc2eb76c"
+        }
+      }
+    ]
+  },
+  "jobs": {
+    "review:root/development/review/test-value/review": "SUCCEEDED",
+    "work:boundary-test": "SUCCEEDED",
+    "review:root/development/review/correctness/review": "SUCCEEDED",
+    "plan": "SUCCEEDED",
+    "inventory": "SUCCEEDED",
+    "verify": "SUCCEEDED",
+    "integrate": "SUCCEEDED",
+    "review:root/development/review/structure/review": "SUCCEEDED",
+    "work:knowledge-map": "SUCCEEDED"
+  },
+  "calls": [
+    {
+      "run_id": "469edff157fb46a5a77cfd744f45c4f6",
+      "instance": "root/development/review/correctness/review",
+      "stage": "review:root/development/review/correctness/review",
+      "backend": "codex",
+      "model": "gpt-6.1-sol",
+      "status": "succeeded",
+      "mode": "task-mcp",
+      "manifest_digest": "4095f8396ded047d0101fb91f7370f3931083f49fa6604e67091fab08590926c",
+      "input_digest": "ccd317ae84ba0d4196df37501172af48eb55bd70f3ce587d9ef8bb2d89feaa52",
+      "prompt_sha256": "0963f2486b838bf1bdceb53bc575a2d36eb7c16d8e9c866c7284e951bbf3fd35",
+      "prompt_bytes": 50558,
+      "task_bytes": 45791,
+      "scope_files": 6,
+      "scope_bytes": 2061,
+      "complete_structural_inline_material": true,
+      "native_receipt_verified": true,
+      "original_result_sha256": "eab5fa4a440da8aa21480d28562a9750a8534237a819f6a58c5c4ff23c4eff69",
+      "decision": "approve",
+      "native_stream_sha256": "3ae9d35230d54bc6439635ebc8333b2245d145c20e29820646bbe8fdd22465df",
+      "backend_reported_turn_usage": [
+        {
+          "input_tokens": 103067,
+          "cached_input_tokens": 74880,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 1216,
+          "reasoning_output_tokens": 212
+        }
+      ]
+    },
+    {
+      "run_id": "111fac5a100147fca28452066fbc1d7b",
+      "instance": "root/development/review/structure/review",
+      "stage": "review:root/development/review/structure/review",
+      "backend": "codex",
+      "model": "gpt-6.1-sol",
+      "status": "succeeded",
+      "mode": "task-mcp",
+      "manifest_digest": "4095f8396ded047d0101fb91f7370f3931083f49fa6604e67091fab08590926c",
+      "input_digest": "00a5add358a66946e869bf27d1c3ed3385d56a653e3f1f2e1cac3bc937dbe044",
+      "prompt_sha256": "008457141c810012007ebef7338900ca75c0ba391fcd46e4ed05c8a071523f70",
+      "prompt_bytes": 50600,
+      "task_bytes": 45789,
+      "scope_files": 6,
+      "scope_bytes": 2139,
+      "complete_structural_inline_material": true,
+      "native_receipt_verified": true,
+      "original_result_sha256": "7dd29421d9f7d916d22a1bb5cb818f3d33a5748f4b6a411c3724724133104f40",
+      "decision": "approve",
+      "native_stream_sha256": "6e5c5505ba385dfce31627d42add220e24f884266256dd835f6e3ad297e6c220",
+      "backend_reported_turn_usage": [
+        {
+          "input_tokens": 103448,
+          "cached_input_tokens": 75136,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 1259,
+          "reasoning_output_tokens": 160
+        }
+      ]
+    },
+    {
+      "run_id": "9ab39ca732804370a42e21ba93368ee2",
+      "instance": "root/development/review/test-value/review",
+      "stage": "review:root/development/review/test-value/review",
+      "backend": "codex",
+      "model": "gpt-6.1-sol",
+      "status": "succeeded",
+      "mode": "task-mcp",
+      "manifest_digest": "4095f8396ded047d0101fb91f7370f3931083f49fa6604e67091fab08590926c",
+      "input_digest": "3b021f46a3a0341a635d9b3a684a38fca6dd57dee964b5d95fe17cfa04b26b1c",
+      "prompt_sha256": "1440682f369f9bf9b2e0c208517bdfa61fb49d1c58a913d4a0e513770fd9d2db",
+      "prompt_bytes": 50608,
+      "task_bytes": 45790,
+      "scope_files": 6,
+      "scope_bytes": 2129,
+      "complete_structural_inline_material": true,
+      "native_receipt_verified": true,
+      "original_result_sha256": "4d398f16650c4608f4a22ca8df5fc77858769fba4d238a9bbe665dd4c667892c",
+      "decision": "approve",
+      "native_stream_sha256": "b18c30634762e09bafff81fdb115293aa3dea1003a22317af77ecf8d125ec4c8",
+      "backend_reported_turn_usage": [
+        {
+          "input_tokens": 102935,
+          "cached_input_tokens": 50944,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 942,
+          "reasoning_output_tokens": 69
+        }
+      ]
+    },
+    {
+      "run_id": "c6ba14e043fb47babe30432b3368d33a",
+      "instance": "root/development/work/knowledge-map",
+      "stage": "work:knowledge-map",
+      "backend": "codex",
+      "model": "gpt-6.1-sol",
+      "status": "succeeded",
+      "mode": "workspace-task-mcp",
+      "manifest_digest": "4095f8396ded047d0101fb91f7370f3931083f49fa6604e67091fab08590926c",
+      "input_digest": "3d6535c70955fb6713efd450f862925fcb2f4d692dffa743bd985873d153cc19",
+      "prompt_sha256": "303e61280eba32833a0d3fa8c772c4d9296f65950640e1d92fb02500300e68b2",
+      "prompt_bytes": 25630,
+      "task_bytes": 21570,
+      "scope_files": 5,
+      "scope_bytes": 1861,
+      "complete_structural_inline_material": true,
+      "native_receipt_verified": true,
+      "original_result_sha256": "6765e820df2a12e33568834a8b46861fdc8682c93522d5bf6d7ace9fc650ed58",
+      "decision": null,
+      "native_stream_sha256": "795aec2aa6acb166479b012c1d6d815f49178f5d7c0e219f5dcc362c8105f4a9",
+      "backend_reported_turn_usage": [
+        {
+          "input_tokens": 91282,
+          "cached_input_tokens": 70912,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 858,
+          "reasoning_output_tokens": 0
+        }
+      ]
+    },
+    {
+      "run_id": "964e3db77414472cab0db28d7e706319",
+      "instance": "root/development/work/boundary-test",
+      "stage": "work:boundary-test",
+      "backend": "codex",
+      "model": "gpt-6.1-sol",
+      "status": "succeeded",
+      "mode": "workspace-task-mcp",
+      "manifest_digest": "4095f8396ded047d0101fb91f7370f3931083f49fa6604e67091fab08590926c",
+      "input_digest": "22ac9455098cf304aea613ef10f81b52866694016dda02bf75ae004c6f3aaf07",
+      "prompt_sha256": "b82e9857e4eed85697ad3d1bcbf3dea8ce9659d1419a8783e540080d7f81f0fd",
+      "prompt_bytes": 25874,
+      "task_bytes": 21753,
+      "scope_files": 5,
+      "scope_bytes": 1852,
+      "complete_structural_inline_material": true,
+      "native_receipt_verified": true,
+      "original_result_sha256": "b8b93ed9dc2a38418e1855049f59d73db1ba06c74b9c4d1fac686bbbfc374b18",
+      "decision": null,
+      "native_stream_sha256": "d278af1843a60b8d80d36ff5cd29f8d0d913df1f016fd55e099b34e128aa748f",
+      "backend_reported_turn_usage": [
+        {
+          "input_tokens": 115907,
+          "cached_input_tokens": 94336,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 1603,
+          "reasoning_output_tokens": 212
+        }
+      ]
+    },
+    {
+      "run_id": "9d41ac0adad44ead961dab0d7524187e",
+      "instance": "root/development/preparation/plan",
+      "stage": "plan",
+      "backend": "codex",
+      "model": "gpt-6.1-sol",
+      "status": "succeeded",
+      "mode": "task-mcp",
+      "manifest_digest": "4095f8396ded047d0101fb91f7370f3931083f49fa6604e67091fab08590926c",
+      "input_digest": "3df983f81c72f8bde3c7fed922a13abe862aa29cb65b21a4c4781d74e66e7c52",
+      "prompt_sha256": "980c033286b2d0510810e8b388fb30c02c40cf2ead6bd45c3e37ca85b3358301",
+      "prompt_bytes": 24339,
+      "task_bytes": 19958,
+      "scope_files": 6,
+      "scope_bytes": 2657,
+      "complete_structural_inline_material": true,
+      "native_receipt_verified": true,
+      "original_result_sha256": "b75f65cb93a35049a93931ff33def5dc858cff8a3333a46868aeab1f9c1bc775",
+      "decision": null,
+      "native_stream_sha256": "9890a1d38f31f033ef4e79caa2b084aed36c1f818e83230f18182d197a112662",
+      "backend_reported_turn_usage": [
+        {
+          "input_tokens": 68372,
+          "cached_input_tokens": 33152,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 2038,
+          "reasoning_output_tokens": 127
+        }
+      ]
+    },
+    {
+      "run_id": "25416f2f8fc34961b6694e33eb29638d",
+      "instance": "root/development/preparation/inventory",
+      "stage": "inventory",
+      "backend": "codex",
+      "model": "gpt-6.1-sol",
+      "status": "succeeded",
+      "mode": "task-mcp",
+      "manifest_digest": "4095f8396ded047d0101fb91f7370f3931083f49fa6604e67091fab08590926c",
+      "input_digest": "4e9e99798c9dc1f55b9b5e5e8f5c236695573cd28c77b9230c803d1e2f543aa1",
+      "prompt_sha256": "c9673187557d61ab4e2cb81991dba178c7b1c8d66d3b7548b45526464353691c",
+      "prompt_bytes": 16554,
+      "task_bytes": 12168,
+      "scope_files": 6,
+      "scope_bytes": 2657,
+      "complete_structural_inline_material": true,
+      "native_receipt_verified": true,
+      "original_result_sha256": "d0f728a5c0e900c057c4c42037c718fd61f85a98a89112c5d2646b75c6f9b5cb",
+      "decision": null,
+      "native_stream_sha256": "c7bd33fde6e1f4658847a5a557f8f2f3f9c5efd98456c801e8f2dd3006728b47",
+      "backend_reported_turn_usage": [
+        {
+          "input_tokens": 60112,
+          "cached_input_tokens": 42496,
+          "cache_write_input_tokens": 0,
+          "output_tokens": 1327,
+          "reasoning_output_tokens": 119
+        }
+      ]
+    }
+  ],
+  "scope_resources": 40,
+  "scope_bytes": 15356,
+  "all_manifest_input_prompt_stdin_source_and_native_scope_chains_verified": true,
+  "all_scope_continuous_utf8_through_null": true,
+  "failed_native_mcp_calls": 0,
+  "budget": {
+    "wall_seconds": 7200,
+    "cleanup_reserve_seconds": 60,
+    "model_slots": 7,
+    "sha256": "951eb6f61928cc7310977794308245e7dfddd3ca0250c8ed308eb8580277290d",
+    "original_budget_and_seven_exact_slots_verified": true
+  },
+  "history": {
+    "events": 1317,
+    "sha256": "9e2ebd2abb7fbb5ec87ee9b3e59ad5f24419f596feb886d91276ff544ee894dd",
+    "replay": "passed"
+  },
+  "handoff_sha256": "a7fe51ee6f0c49a98251a63174f80cc87126fa360c345834db23090b6d37d9db",
+  "original_head_unchanged": true,
+  "original_run_reopened": true,
+  "ports_closed": true,
+  "managed_daemon_not_running": true,
+  "persistent_temporal_database_retained": true,
+  "all_nine_owner_identities_not_alive": true,
+  "all_nine_body_and_collection_cleanup_confirmed": true,
+  "exported_candidate_check": {
+    "exit": 0,
+    "seconds": 0.1260165898129344,
+    "candidate": "2bd4d5a282ce9ef4dea7bb639fe53265fc16d5c7",
+    "stdout_sha256": "7ee4a2cf5f01d0430c4371853d6c37a3dce86becb52292de6116e1c64022ddb2",
+    "stderr_sha256": "921b60a7fd52e978fbb551cacd29df2d6708879400278e1fcc70fceeb0c6f8e0"
+  },
+  "raw_evidence": [
+    {
+      "name": "journey.json",
+      "bytes": 3607,
+      "sha256": "92c85e15944ae563150a93fc8a2a4bfce6e682857f19ed45304fde4dd72716ad"
+    },
+    {
+      "name": "outcome.json",
+      "bytes": 5824,
+      "sha256": "9c873c84108bdd577702dc96f91f3edaf9258dad0df549d01f1684c838c2b875"
+    },
+    {
+      "name": "submission.json",
+      "bytes": 540,
+      "sha256": "e83615a6747ec81ef4da986bfd50ed337af812ea05f1fa42b266a12b9d523b80"
+    },
+    {
+      "name": "history.json",
+      "bytes": 41356977,
+      "sha256": "9e2ebd2abb7fbb5ec87ee9b3e59ad5f24419f596feb886d91276ff544ee894dd"
+    },
+    {
+      "name": "model-calls-audit.json",
+      "bytes": 30708,
+      "sha256": "c734a84280f74d4de804e755bd9d25d4de04b4ceb6e834891f1f00feace8fcd9"
+    },
+    {
+      "name": "closure-audit.json",
+      "bytes": 4798,
+      "sha256": "1ccd72adccbb3b8cedd60a13fd91811d2c15129b59c6ce70046ec27d36bf0df4"
+    },
+    {
+      "name": "revalidation.json",
+      "bytes": 547,
+      "sha256": "a5da84b04c1ce6151edec130fd3b105fff3e1c627b462101e9812e8d0e6171e6"
+    },
+    {
+      "name": "commands.jsonl",
+      "bytes": 164824,
+      "sha256": "3c352a8e7c29db2a611a51211741c5fe5ebb0c4408c3c1b6b885d6ffc0a028f3"
+    }
+  ],
+  "limits": [
+    "One governance task and one nested native instance; derived governance-specific definitions.",
+    "Seven Codex sessions; no successful Claude or heterogeneous-backend acceptance.",
+    "Complete UTF-8 delivery and observed scope reads do not prove model understanding or billing.",
+    "Original monitor receipts and exact owner PID/start identities; no whole-system descendant sampling claim.",
+    "No v10 cancellation/expiry fault injection, GPU training, Windows service execution or remote tracker write.",
+    "No merge or remote publication of the generated candidate; no GitHub/CI acceptance claimed."
+  ]
+}
