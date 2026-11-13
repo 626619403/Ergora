@@ -10,7 +10,7 @@ from temporalio.exceptions import ApplicationError
 
 with workflow.unsafe.imports_passed_through():
     from dev_platform.activities import Activities
-    from dev_platform.adapter import FileAdapter, ContractViolation
+    from dev_platform.adapter import FileAdapter, ContractViolation, identifier, read_json, sha
     from dev_platform.workflow import DevelopmentWorkflow, RETRY, StopWork
     from ergora import reference_budget, task_envelopes
     from ergora.reference_review_opinions import review_observation
@@ -318,6 +318,19 @@ class WorkDeliveryActivities(ReviewDAGActivities):
 
     @activity.defn(name=task_envelopes.WORK_POLL)
     async def poll(self, job: dict) -> dict | None:
+        if 'context' not in job:
+            try:
+                relative = identifier(job['task_id']) + '/' + identifier(job['job_id']) + '.json'
+                envelope = read_json(self.adapter.path('requests', relative))
+                context = envelope['context']
+                reference = {'task_id': context['task_id'], 'job_id': context['job_id'], 'job_sha256': sha(context)}
+                expected = {'schema_version': 1, 'job_id': reference['job_id'],
+                            'job_sha256': reference['job_sha256'], 'context': context}
+                if job != reference or sha(envelope) != sha(expected):
+                    raise ContractViolation('Poll reference differs from the trusted original job envelope')
+                job = {**reference, 'context': context}
+            except (ContractViolation, KeyError, TypeError, ValueError) as error:
+                raise ApplicationError(str(error), type='ContractViolation', non_retryable=True) from error
         return await super().poll(job)
 
 
@@ -486,6 +499,10 @@ class BudgetedWorkflow(FullStageMaterialsWorkflow):
         # reserve elapsed, the bounded attempt may remain unconfirmed; the job
         # owner still owns its independent stop and cleanup.
         timeout = max(.001, remaining)
+        if name == 'dev_poll' and workflow.patched('ergora-budgeted-poll-reference-v1'):
+            # Keep full material in the original immutable request, outside the
+            # repeatedly recorded poll payload. Older histories keep their input.
+            value = {key: value[key] for key in ('task_id', 'job_id', 'job_sha256')}
         return await workflow.execute_activity(self.operations.get(name, name), value, result_type=result_type,
             start_to_close_timeout=timedelta(seconds=min(30, timeout)),
             schedule_to_close_timeout=timedelta(seconds=min(180, timeout)), retry_policy=RETRY)

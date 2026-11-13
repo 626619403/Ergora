@@ -19,15 +19,51 @@ import pytest
 pytest.importorskip('temporalio')
 pytestmark = pytest.mark.skipif(sys.platform != 'linux', reason='Budgeted native execution requires Linux/WSL2')
 
-from ergora import reference, reference_budget, tasks, workflow_definitions
+from ergora import reference, reference_budget, task_envelopes, tasks, workflow_definitions
 from ergora.reference_inputs import execution_input
 from test_task_budget import budget_creation, full_creation, full_graph, work_creation, work_graph
 from test_registrations import installation, registration
 from test_task_creation import creation_project
 
 
+def test_poll_reference_preserves_receipt_validation_and_rejects_replaced_material(budget_creation, tmp_path, monkeypatch):
+    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
+    from dev_platform.adapter import publish
+    from temporalio.exceptions import ApplicationError
+
+    state, _, definition = budget_creation
+    assert tasks.prepare(state, 'demo', definition, 1)['status'] == 'prepared'
+    document = tasks.preview(state, 'demo', definition, 1)['files']['task.spec.json']
+    selected = execution_input(document)
+    roots = {name: str((tmp_path / name).resolve())
+             for name in ('requests', 'receipts', 'artifacts', 'approvals', 'fences')}
+    operations = selected.activities({**roots, 'trusted_receipts': True})
+    workflow = selected.workflow_type()()
+    workflow.spec, workflow.admission = selected.spec, document
+
+    async def exercise():
+        job = await operations.submit(workflow.context('inventory'))
+        reference = {key: job[key] for key in ('task_id', 'job_id', 'job_sha256')}
+        assert await operations.poll(reference) is None
+        receipt = {'schema_version': 1, 'job_id': job['job_id'], 'job_sha256': job['job_sha256'],
+            'state': 'FAILED', 'candidate_sha': selected.spec['request']['repository']['starting_sha'],
+            'actor': {'id': 'controlled-inspector', 'session_id': job['job_id'], 'role': 'inspector', 'kind': 'agent'},
+            'artifacts': [], 'checks': []}
+        path = operations.adapter.path('receipts', job['task_id'] + '/' + job['job_id'] + '.json')
+        publish(path, receipt)
+        assert await operations.poll(reference) == await operations.poll(job) == receipt
+        request = operations.adapter.path('requests', job['task_id'] + '/' + job['job_id'] + '.json')
+        envelope = json.loads(request.read_bytes())
+        envelope['context']['stage'] = 'plan'
+        request.write_text(json.dumps(envelope))
+        with pytest.raises(ApplicationError, match='Poll reference differs'):
+            await operations.poll(reference)
+
+    asyncio.run(exercise())
+
+
 @pytest.mark.parametrize('case', ['queued', 'owner', 'activity-queue', 'poll-retry',
-                                 'native-cancel', 'fencing', 'review-scope'])
+                                 'native-cancel', 'fencing', 'review-scope', 'poll-history'])
 def test_original_workflow_uses_one_deadline_for_real_temporal_waits(budget_creation, full_graph, tmp_path, monkeypatch, case):
     binary = os.environ.get('ERGORA_TEST_TEMPORAL_BIN')
     if not binary:
@@ -158,6 +194,18 @@ def test_original_workflow_uses_one_deadline_for_real_temporal_waits(budget_crea
                 reviews = [row['stage'] for row in trace if row['stage'].startswith('review:')]
                 assert len(reviews) == 1 and len(document['composition']['members']) == 3
                 assert outcome['status'] == 'CANCEL_UNCONFIRMED' and len(outcome['fence']['unresolved_jobs']) == 1
+            elif case == 'poll-history':
+                polls = [event.activity_task_scheduled_event_attributes for event in history.events
+                         if event.HasField('activity_task_scheduled_event_attributes')
+                         and event.activity_task_scheduled_event_attributes.activity_type.name == task_envelopes.WORK_POLL]
+                assert polls
+                for scheduled in polls:
+                    job, = await service.client.data_converter.decode(scheduled.input.payloads, [dict])
+                    assert set(job) == {'task_id', 'job_id', 'job_sha256'}
+                    envelope = json.loads(adapter.path('requests', job['task_id'] + '/' + job['job_id'] + '.json').read_bytes())
+                    assert job['job_sha256'] == task_envelopes.identity(envelope['context'])
+                    assert envelope['context']['admission'] == document
+                assert outcome['status'] == 'CANCEL_UNCONFIRMED'
             else:
                 assert [row['stage'] for row in trace if row['operation'] == 'submit'] == ['inventory']
                 attempts = [row['attempt'] for row in trace if row['operation'] == 'poll-retry']
