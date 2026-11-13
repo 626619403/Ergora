@@ -1,8 +1,8 @@
 # F9b4b 可信 runner 登记：独立需求与正确性评审
 
-日期：2026-11-14。评审者：fresh-context 独立 agent `runner_spec_review`。固定基线与当前 HEAD 均为 `fe26796a54b3804aac9272a9ea86643320a7f0b3`；评审对象为其上的未提交 F9b4b 变更。先读取原始验收要求和实际实现，再读取交付叙述。遵循仓库 `AGENTS.md`、`maintainable-project-delivery` 及其独立评审 brief。本轮仅做只读检查并写本文；未运行产品、argv、测试、安装或服务，未提交／推送。
+日期：2026-11-14。评审者：fresh-context 独立 agent `runner_spec_review`。首轮固定基线与当时 HEAD 均为 `fe26796a54b3804aac9272a9ea86643320a7f0b3`；首轮评审对象为其上的未提交 F9b4b 变更，随后补核最终本地与固定发布身份。先读取原始验收要求和实际实现，再读取交付叙述。遵循仓库 `AGENTS.md`、`maintainable-project-delivery` 及其独立评审 brief。本轮仅做只读检查并写本文；未运行产品、argv、测试、安装或服务，未提交／推送。
 
-**当前结论（最终本地出口）：需求／正确性通过，开放 finding 0；本轴所查维护边界无新增 finding。** 相同产品身份的最终 noneditable 包、必要安装回归、真实 CLI／页面、SDK-free baseline、原件与收尾、自身模板及公开证据已补核，详见文末。普通发布／精确远端与本片自己的 CI 仍待；首轮待验记录保留其当时范围。
+**当前结论（本地与发布身份）：需求／正确性通过，开放 finding 0；本轴所查维护边界无新增 finding。** 相同产品身份的最终 noneditable 包、必要安装回归、真实 CLI／页面、SDK-free baseline、原件与收尾、自身模板及公开证据已补核。普通发布 `80236fe8957c0704a3c73c7ea1440f7f288ff563` 的固定 Git 对象／23 个 blob／原完整远端 Ref 已核；本片自己的 CI 仍待，详见文末。首轮待验记录保留其当时范围。
 
 ## 首轮代码结论
 
@@ -78,3 +78,22 @@
 **公开记录。** 补核的[公开证据](evidence/2026-11-14-training-runner.json)为 7,966B、SHA `7ad999676b6294e2a3690aa1d128288b21bdba47caf7193fa35cc6409593b260`；其 30 份私有原件引用长度／SHA 全部独立复算匹配。计划与交付的安装、实际交互、自身模板和平台／责任边界主张符合上述原件；后续独立评审状态更新不被当成产品重测。
 
 **最终本地需求／正确性通过，开放 finding 0。** 未发现需要修改产品、补 guard／抽象或扩大测试的实证问题。普通精确提交／推送、完整远端 Ref 和本片自己的必要 CI 尚待固定发布原件。原生 Windows OS、prepare、真实训练／GPU、质量／性能、evidence 批准与采用继续按原合同开放；本次 CPU 控制合同不关闭这些责任。
+
+## 固定 Git 发布身份补核
+
+本次全部产品从不可变 Git 对象读取，未读取后续片产品工作树，也未运行 suite、服务或远端请求。候选为 **`80236fe8957c0704a3c73c7ea1440f7f288ff563`**，其唯一父提交为原 baseline **`fe26796a54b3804aac9272a9ea86643320a7f0b3`**。直接以 `git cat-file --batch` 读取该候选：父→候选恰为 23 个改动路径，与 `static-final-r1.json` 集合相同，23 件 blob 的长度／SHA 全匹配。8 件产品／测试／CI 按路径＋完整内容重算组合 SHA 仍为 **`43634fafdf354cb60f212face64c28caa27e7d5f0979c32362dacfcf64f8f583`**。
+
+原 r1 wheel 的全部 **570 个产品文件**已逐字对照该固定提交的 Git blob，全部相等；wheel SHA 仍为 `8d53c60ee378fecfdbbb994cbe174e6eda5657211bcede3fe46050ce59222860`。因此发布产品与前述本地原件所验产品一致，未继承后续工作树的行为。候选内本轴报告恰为最终本地版 14,641B、SHA `555cae405c8b363f5caf8c9618eb1227a59f109bf8ee45ca7de7a158a6e6fafe`。对两个固定提交运行完整 `git diff --check` 退出 0；按候选 Git tree 核 245 个本地 Markdown 链接均存在，23 个改动 blob 未含原静态检查列举的私有机器字符串。
+
+已读原提交／发布脚本及 `commit-r1.json / push-r1.json / ref-r1.json`。提交记录退出 0，绑定同一完整候选，保存了精确 23 个 staged 路径、完整 whitespace check、提交后逐件 Git blob 一致和当时工作树 clean 的检查。原 push 退出 0，目标为 `HEAD:refs/heads/refactor/architecture-foundations`，argv 无 force／mirror／main 合并；原回复记录 `fe26796..80236fe` 的前进。随后原 `ls-remote` 退出 0、stderr 为空，stdout 精确返回完整候选和完整 `refs/heads/refactor/architecture-foundations`，未仅用短 SHA 或本地 tracking ref 代替。
+
+|发布原件|字节|SHA-256|
+|---|---:|---|
+|`static-final-r1.json`|4,938|`5b68aae6a5ae6db4e4d616d246b96e201f79cb35552215688e4be1c5aefac409`|
+|`commit-r1.json`|949|`a248c55525fbb11b41d9cc98e350ecd5f4d272c9a84f0e7e075968d7e1754514`|
+|`push-r1.json`|750|`90bf3f156226d46b28f3e3e8ce474b2cb9cacd98376486d6105a05d82b16d281`|
+|`ref-r1.json`|738|`47c2cbe39f1d775f47d841bd6d4d3395400776c032634d5eeea34c55950f331f`|
+
+候选内 runner 公开证据为 8,173B、SHA `c2df66a9b8a714779bcc2d4e372bb09d0025534420038d2588e97a3764d37e91`，30 份私有引用重新复算全部匹配；其 `publication` 当时仍标 not_committed，符合提交前记录，不被追认成提交内已知发布结果。该提交同时携带 F9b4a 的发布／CI 状态记账，其候选与 run 均明确属于原 baseline 片；这些文档更新未改本片产品，也不构成本片 runner 自己的 CI 通过证据。
+
+**固定产品／普通发布／原完整 Ref 身份通过，开放 finding 0；本片自己的 CI 仍待发现与终态补核。** 本地回归、分组收集、F9b4a CI 及只有 runner run ID 都不能关闭该待验项。此次仅补本报告，不提交／推送，不以当前或后续工作树代替固定发布对象。

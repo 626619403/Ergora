@@ -2,7 +2,7 @@
 
 日期：2026-11-14。评审员：fresh-context 独立结构轴 `runner_structure_review`。未继承实现对话；先读项目 `AGENTS.md`、maintainable-project-delivery 的独立评审要求、codebase-design、[原验收合同](../plans/2026-11-14-training-runner.md)，再读候选代码、原 owner 和相邻消费者，最后对照[作者交付](2026-11-14-training-runner.md)及保存的检查记录。本次只读产品／证据并写本报告，未安装、运行 suite、浏览器、模型或服务，未改产品、提交或推送。
 
-**当前最终本地结论：结构／维护性通过，开放 finding 0；同产品最终安装、实际 CLI／页面、SDK-free、原件／收尾和自身模板证据已补核。** 普通精确发布、完整远端 Ref 及本片自己的 CI 继续待验。所查需求符合性也无额外 finding，完整需求轴另行记录；原生 Windows OS、真实训练／GPU及质量／性能不在本地通过范围。以下保留首轮身份与当时待验状态，最终补核见末节。
+**当前结论：结构／维护性、精确发布身份及本片自己的 CI 独立终核通过，开放 finding 0。** 固定候选 `80236fe8957c0704a3c73c7ea1440f7f288ff563` 的本地安装／交互／原件／自身、普通推送与完整 Ref 已核；自己的 CI `43523861953` 为 Success，八 job／30 必要步骤终态已由本轴直接检查原 HTTP／HTML。所查需求符合性也无额外 finding，完整需求轴另行记录，不代称其另做 CI 终核。runner 仍只支持 Linux／WSL2；真实训练／GPU及质量／性能继续保持原未验范围。以下保留各轮身份与当时待验状态，当前补核见末节。
 
 ## 固定身份与实际查阅范围
 
@@ -84,3 +84,47 @@
 本轮[公开证据](evidence/2026-11-14-training-runner.json)为 7,966B、SHA256 `7ad999676b6294e2a3690aa1d128288b21bdba47caf7193fa35cc6409593b260`；引用的 30 份私有原件全部独立复算长度／SHA 相符。其实现、安装、页面、自身和未验范围与原件吻合。之后常规更新独立审查状态不应被当成新产品重测。
 
 **最终本地结构／维护性与所查证据通过，开放 finding 0。** 无需产品修改或额外 guard／抽象／测试。剩余为本片普通精确提交、完整远端 Ref 与自己的必要 CI 固定身份补核；不借 F9b4a 的 CI 关闭本片。F9b4c prepare、F9c／F9d、真实训练／GPU、质量／性能、证据批准／采用和原生 Windows OS 实测继续保持原责任范围。
+
+## 普通发布与完整 Ref 补核：通过，自己的 CI 待验
+
+本轮仅从固定 Git 对象和保存的发布原件读取产品身份，没有读取下一片产品工作树，也没有运行 suite／服务或发出远端请求。候选为 **`80236fe8957c0704a3c73c7ea1440f7f288ff563`**；直接读取 commit 对象确认唯一父提交是原基线 `fe26796a54b3804aac9272a9ea86643320a7f0b3`。父→候选实际恰有 23 个改动路径，与 `static-final-r1.json` 的完整集合相等；逐件以 `git cat-file blob CANDIDATE:PATH` 复算长度／SHA，23 件全等。
+
+八件产品／测试／CI 按固定 Git blob 重算的组合 SHA 仍为 **`43634fafdf354cb60f212face64c28caa27e7d5f0979c32362dacfcf64f8f583`**。将原 r1 wheel 的 570 个产品条目逐字对照候选 Git blob，全部一致，因此原本地包、安装回归和真实交互证据仍绑定同一产品。该提交内本报告为 16,697B、SHA256 `d96006ac58634480d6e4668919cd70c9d73732af992cd5ccab42b953e8c9aa76`，恰为前述最终本地通过报告；之后补记不改变候选。
+
+对两个固定提交运行 `git diff --check`，退出 0。以候选 Git tree 解析改动 Markdown 的 245 个本地链接，全部存在；23 个改动 blob 未含原检查列举的私有机器字符串。候选内公开证据为 8,173B、SHA256 `c2df66a9b8a714779bcc2d4e372bb09d0025534420038d2588e97a3764d37e91`，所引 30 份私有原件长度／SHA 再次逐项匹配。其 `publication: not_committed` 与发布／CI pending 是提交前记录，本节补充其后的实际发布事实，不把旧状态改写为当时已完成。
+
+已读 `commit.py`、`publish.py` 和三份发布原件。提交脚本约束固定父提交、开发分支、精确 23 个 staged 路径、完整 staged whitespace 检查及提交后 Git blob 匹配；保存的 commit 退出 0，记录同一完整候选。原普通 push 目标为 `HEAD:refs/heads/refactor/architecture-foundations`，没有 force／mirror 或 main 合并参数，退出 0，原回复记录 `fe26796..80236fe` 前进。之后原 `ls-remote` 退出 0、stderr 空，stdout 精确为该 40 位候选与完整 `refs/heads/refactor/architecture-foundations`。远端结论绑定这份实际回执的当时状态，没有额外查询当前远端。
+
+|发布原件|字节|SHA256|
+|---|---:|---|
+|`static-final-r1.json`|4,938|`5b68aae6a5ae6db4e4d616d246b96e201f79cb35552215688e4be1c5aefac409`|
+|`commit-r1.json`|949|`a248c55525fbb11b41d9cc98e350ecd5f4d272c9a84f0e7e075968d7e1754514`|
+|`push-r1.json`|750|`90bf3f156226d46b28f3e3e8ce474b2cb9cacd98376486d6105a05d82b16d281`|
+|`ref-r1.json`|738|`47c2cbe39f1d775f47d841bd6d4d3395400776c032634d5eeea34c55950f331f`|
+
+同提交的 F9b4a 交付／评审／公开证据及准备总计划更新只记录旧片自己的发布／CI，不是 runner 产品变化或 runner CI 成功。**本片精确产品、普通发布及原完整 Ref 补核通过，结构轴开放 0；本片自己的 CI 尚待发现和官方 run／必要 job／step 终态原件。** 下一片 prepare 及既有未验平台／GPU责任范围均不由本次发布补核关闭。
+
+## 本片自己的 CI 独立终核：通过
+
+本轮继续只读固定 `80236fe8957c0704a3c73c7ea1440f7f288ff563` 的 Git 对象及保存原件，没有读取下一片产品工作树，没有发出远端请求，也没有运行 suite 或服务。[本片 Portability run 43523861953](https://github.com/626619403/Ergora/actions/runs/43523861953) 的第三份官方 run HTML 为 **Success**。本轴直接重算该 `page.html` 的 213,287B／SHA256 `410a3e3d8aa7784100812bb7ab94602bf166489191b36ac8fb07ba4d2fea47f6`，与同目录原 HTTP 收据相符；请求 URL、final URL 均为该精确 run，HTTP 200，页面含完整候选 commit 链接及开发分支。
+
+没有用 `ci-terminal-r3.json` 的布尔结果替代原页面检查。先核原 job batch 的 HTTP 200、完整 URL、2,733B 及 SHA256 `6698fcd0f6117950767ba8cc79843fcca8507f9ef19cf15ab602fa93b5891e4b`，直接解析 `jobGroups`：totalCount 为 8、hasMore 为 false，八个 job 名称／ID／run 路径与 metadata 逐项相同。metadata 引用的首轮 run SHA 也对上其保存原页及完整 commit 链接。首轮 batch 的 Windows 状态仍 in_progress，只用于识别原 job，不作为终态证据。
+
+从固定候选的 `.github/workflows/portability.yml` 与 `scripts/ci/linux-groups.json` 读取真实预期：六 Linux 分组、plan 和一个 Windows all，分组配置 SHA256 为 `dd1e00a876eb1dcda6da41e8c49fa2aebe4ec1d5d997656b533b180f1bad6f63`。随后分别直接解析 plan／六 Linux 的 r1 原 job HTML，以及 Windows 的 r3 原 job HTML；九份最终 run／job 页的 HTTP 状态、请求／final URL、原字节长度及 SHA 全部核对。
+
+30 个必要步骤为 plan 的 `Read explicit test groups` 一项，加六 Linux 各四项，以及 Windows 五项：构建安装、参考身份、原生回归、上传观察，Windows 另加 PowerShell 5.1 安装升级。每一项均直接核到 `data-conclusion="success"`、非空开始／完成时间、时间先后正确、`data-job-completed` 标记，以及精确 `/626619403/Ergora/commit/80236fe8957c0704a3c73c7ea1440f7f288ff563/checks/JOB_ID/logs/STEP` 路径。未接受短 SHA 或只显示成功却缺日志路径的状态。
+
+|job／原 ID|原 HTML 字节|必要步骤|最后必要步骤完成（UTC）|原 HTML SHA256|
+|---|---:|---:|---|---|
+|plan／132224632469|158,829|1|23:01:09|`94fb0b8bbe9a6380d347b740750788647c47705fc85670acb83f060e94e93ed1`|
+|Linux group 0／132224701507|162,520|4|23:05:38|`1ee294a06f7b9982c150270fb44419c3606776dea94ef6bdfdcfba7e04325e5c`|
+|Linux group 1／132224701569|162,519|4|23:05:15|`c327c79e74e2b8181c8dcbcf479143cd91db53902cbc2ff862c447a86d1c8f4c`|
+|Linux group 2／132224701543|162,520|4|23:04:50|`fe69aca64d41b81b4b6068656f953b1f14fa21e9b886a65b64e9658aebd6f08d`|
+|Linux group 3／132224701511|162,519|4|23:03:38|`553934aeffbae2a68f19bda14db5fbc1b5b34fbe8c081d299012efe6ddab9654`|
+|Linux group 4／132224701514|162,519|4|23:04:27|`d790b3a985f738412195a4a354a71cd2111016902b37f3757323885e4b932f4f`|
+|Linux group 5／132224701454|162,524|4|23:06:36|`d59f61ee2f379576e0e0dae10a16f1b45e137cfeda8fb3ea56b80a8090c4b229`|
+|Windows all／132224701578|160,100|5|23:16:34|`5c5f6f90655466336e2e9842025228ce409caafc034c2d11a5965dd201d405b1`|
+
+表中时间均为 2026-11-13。Windows 原生回归于 23:15:44 完成，PowerShell 5.1 安装升级于 23:16:33 完成，上传于 23:16:34 完成；均早于最终原页抓取。其 r1／r2 原件仍是回归及后续步骤未完成、无完整日志路径的在途状态，已保留；r3 提供终态，没有放宽条件。独立解析所得八 job／30 步及各 body SHA 与作者终态 JSON 相符；该 JSON 为 13,357B、SHA256 `4b5541994df0e0a9d3048e154eeb64a373766eff6d820e72c8acc13addc3e2dd`。
+
+**本片自己的 CI 固定身份与必要步骤终态通过，结构轴开放 0。** 该结论覆盖官方 UI HTML 所呈现的 workflow／job／step；没有声称另取 REST 结果、下载 artifact 档案或读取完整测试日志。Windows CI 成功不改变 runner 的 Linux／WSL2 支持范围，也不把 CPU 合同当成 GPU、训练质量或性能验收。原发布／完整 Ref／23 个 blob／570 包文件的精确绑定沿前节保持；没有借用 F9b4a CI，也没有代称需求轴另做本轮 CI 终核。

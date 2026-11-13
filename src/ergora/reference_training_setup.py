@@ -10,14 +10,7 @@ import sys
 from tempfile import TemporaryDirectory
 
 from .reference import _validate_training_baseline
-from .reference_training_context import _TrainingProject
-
-
-def _native_bytes(value: dict, name: str) -> bytes:
-    raw = (json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + '\n').encode('utf-8')
-    if len(raw) > 1_048_576:
-        raise ValueError(name + ' exceeds the native 1 MiB read capacity')
-    return raw
+from .reference_training_context import _TrainingProject, _native_bytes
 
 
 def _baseline(context: _TrainingProject) -> dict:

@@ -161,6 +161,22 @@ class TrainingRunnerRegistrationPayload(TrainingRunnerPreviewPayload):
     runner_sha256: str = Field(pattern="^[0-9a-f]{64}$")
 
 
+class TrainingExperimentPreviewPayload(Payload):
+    experiment: dict
+    runner_template_id: str
+    max_run_seconds: int | None = Field(default=None, strict=True, ge=60, le=86400)
+
+
+class TrainingPreparationPayload(TrainingExperimentPreviewPayload):
+    revision: int = Field(strict=True, ge=1)
+    preview_sha256: str = Field(pattern="^[0-9a-f]{64}$")
+
+
+class TrainingPreparationResumePayload(Payload):
+    revision: int = Field(strict=True, ge=1)
+    intent_sha256: str = Field(pattern="^[0-9a-f]{64}$")
+
+
 class TrainingStartPayload(Payload):
     revision: int = Field(strict=True, ge=1)
     manifest_sha256: str = Field(pattern="^[0-9a-f]{64}$")
@@ -494,6 +510,24 @@ def create_app(home: Path | None = None) -> FastAPI:
     @application.post("/api/projects/{project_id}/training/register-runner")
     def training_runner_registration(project_id: str, body: TrainingRunnerRegistrationPayload):
         return training.register_runner(state, project_id, body.runner, body.revision, body.runner_sha256)
+
+    @application.post("/api/projects/{project_id}/training/experiment-preview")
+    def training_experiment_preview(project_id: str, body: TrainingExperimentPreviewPayload):
+        return training.preview_experiment(state, project_id, body.experiment, body.runner_template_id,
+                                           max_run_seconds=body.max_run_seconds)
+
+    @application.post("/api/projects/{project_id}/training/prepare")
+    def training_prepare(project_id: str, body: TrainingPreparationPayload):
+        return training.prepare_experiment(state, project_id, body.experiment, body.runner_template_id,
+                  body.revision, body.preview_sha256, max_run_seconds=body.max_run_seconds)
+
+    @application.get("/api/projects/{project_id}/training/{experiment_id}/preparation")
+    def training_preparation(project_id: str, experiment_id: str):
+        return training.preparation(state, project_id, experiment_id)
+
+    @application.post("/api/projects/{project_id}/training/{experiment_id}/resume-prepare")
+    def training_preparation_resume(project_id: str, experiment_id: str, body: TrainingPreparationResumePayload):
+        return training.resume_prepare(state, project_id, experiment_id, body.revision, body.intent_sha256)
 
     @application.get("/api/projects/{project_id}/training/{experiment_id}")
     def training_experiment(project_id: str, experiment_id: str):

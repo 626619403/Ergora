@@ -65,7 +65,37 @@ ergora training register-runner my-project --runner ./training-task/runner-templ
 
 控制台“训练实验”→“可信 runner”→“预览与登记 runner”提供同一流程。HTTP为`POST /api/projects/{project}/training/runner-preview`（`runner`对象）及`POST .../register-runner`（再加`revision / runner_sha256`）。编辑或切项目使旧预览失效，确认内容SHA与原文件字节SHA分列；CLI原文件和原生序列化文件各最多1MiB，HTTP沿既有4MB封套。
 
-预览状态为`not_registered / already_registered / conflict`；确认成功返回`registered / already_registered`。同内容重试保留原文件字节；同ID不同内容拒绝，更新命令需要新的已审阅ID。ID属于其他项目时拒绝且不展示其命令。回执丢失后先重新预览相同JSON，读取当前原件，再显式确认重试。实验 `prepare` 暂沿原生流程；登记不提交实验或批准训练合同。
+预览状态为`not_registered / already_registered / conflict`；确认成功返回`registered / already_registered`。同内容重试保留原文件字节；同ID不同内容拒绝，更新命令需要新的已审阅ID。ID属于其他项目时拒绝且不展示其命令。回执丢失后先重新预览相同JSON，读取当前原件，再显式确认重试。登记不提交实验或批准训练合同；随后可使用下述实验准备入口。
+
+### 精确准备实验与恢复部分发布
+
+填写真实、经过项目负责人审阅的完整 `experiment.json`，并先登记可信runner及baseline。共享执行状态目录中的实验ID全局唯一，建议带项目名称；已有原生实验仍用`list / show`查看。以下CLI／HTTP入口在Linux／WSL2安装`ergora[temporal]`后可用，不需要启动服务。准备不会运行runner、提交workflow或批准性能结果；不会替你把`contract_approved`改成true。
+
+```bash
+ergora training experiment-preview my-project --experiment ./training-task/experiment.json \
+  --runner my-project-training-v1 --max-run-seconds 25200
+# 核对完整plan、三目标文件、baseline／runner、project_revision及preview_sha256
+ergora training prepare my-project --experiment ./training-task/experiment.json \
+  --runner my-project-training-v1 --max-run-seconds 25200 \
+  --revision REVISION --preview-sha256 PREVIEW_SHA256
+ergora training preparation my-project EXPERIMENT_ID
+```
+
+`--max-run-seconds`可省略以使用原owner默认窗口；明确传值时为60–86400秒，且须覆盖runner超时，0／False不表示省略。原CLI draft和每个原生文件各最多1MiB，完整恢复意图最多16MiB；超容量明确拒绝。预览在临时配置／状态目录调用原prepare，绑定真实Git commit、baseline和比较器；spec URI映射回登记的真实manifest路径，manifest字节binding保持原owner结果。预览不写真实执行目录。
+
+确认后先不可变保存原意图，再直接由原prepare依次发布全局manifest、项目manifest与spec；三件并非一个原子事务。`preparation`只读取本地意图及各文件字节事实，无需SDK或服务，状态为`not_recorded / intent_saved / partially_prepared / prepared / conflict / native_files_without_intent`。`prepared`仅表示三原文件与确认计划一致。内容确认的canonical `preview_sha256`与原意图的`intent_sha256`标识同一冻结对象；每个发布文件的字节SHA另列，不能拿文件`sha256sum`代替意图摘要。
+
+若请求失败或回执丢失，先读取原实验ID的准备记录。重复相同`prepare`只读回原意图现状，不自动补文件。确认恢复时使用原intent SHA和当前项目revision：
+
+```bash
+ergora training resume-prepare my-project EXPERIMENT_ID \
+  --revision CURRENT_REVISION --intent-sha256 ORIGINAL_INTENT_SHA256
+ergora training show my-project EXPERIMENT_ID
+```
+
+恢复重核原source字节、注册身份、精确文件计划及已有内容，再由原owner补齐；不同内容不覆盖。显式恢复即使三件完整也拒绝已有job／fence／start；此时仍可用`preparation`或相同`prepare`只读回原准备状态。source漂移、已存在job／fence／start或没有本工具意图的旧原生文件，须先核对其原记录；此入口不自动接管、清理或换ID重试。原意图在所登记执行状态目录`ergora/training-preparations/`，无第二实验数据库。
+
+HTTP对应`POST /api/projects/{project}/training/experiment-preview`，body含`experiment / runner_template_id / max_run_seconds`（可省略或null）；`POST .../prepare`再加`revision / preview_sha256`。读取`GET .../training/{experiment_id}/preparation`，恢复`POST .../training/{experiment_id}/resume-prepare`含`revision / intent_sha256`。它们与CLI共用应用入口；图形化准备／恢复面板仍待单独交付，现有页面可以读取准备完成的原实验。
 
 ## 在控制台查看原实验
 

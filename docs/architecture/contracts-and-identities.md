@@ -27,6 +27,7 @@
 |完整项目注册与旧注册导入|`data/schemas/project-registration-v1.json`；导入spec及旧项目格式从其属性复用结构，版本均严格整数1|`registrations`拥有Git根、角色能力、检查、修订及意图/resume；reference拥有投影路径、原scope/路径校验与不覆盖发布。每份投影最多1MiB，旧源要求原runtime可读取的UTF8|
 |CLI JSON 文件 / Web body|CLI 沿用 `utf-8-sig`（接受 UTF-8 BOM）；Web 继续使用原 Pydantic 传输 DTO|业务绑定/评价都走相同函数；传输错误仍由各入口解释。Agent/evaluator stdout 沿用严格 UTF-8 JSON，不自动剥 BOM|
 |冻结 reference 编译 / 请求 / 回执 / 训练合同|原 `dev_platform` / `agent_platform` 版本与验证器|不修改冻结 schema、可信检查、批准权限或 canonical 编码；训练 prepare / worker 不启动实际训练|
+|训练准备恢复意图|`reference_training_preparation`领域v1；原state的不可变JSON，聚合最多16MiB|固定项目／home／execution／注册／revision、完整request、原source内容／字节SHA及三件精确发布字节。预览与保存意图的canonical SHA标识同一对象，原manifest binding仍哈希其原文件字节；不新增实验DB、自动重试或批准|
 |Skill metadata / 资产、记忆、研究和持久文档|沿用各领域现有格式及 schema_version|目录/修订/来源和领域状态由原模块负责；R2 不为旧 DB 强加重写。DB 迁移与旧客户端隔离由 R3 单独实施|
 
 结构错误为 `CONTEXT at /field/0: REASON`；路径使用 JSON Pointer，`/` 和 `~` 分别编码为 `~1`、`~0`。缺失字段或额外字段的结构错误指向所属对象，并在原因中列出字段。业务错误继续给出具体原因，不假装 URL、文件可用性或评分判断都是 schema 规则。

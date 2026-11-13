@@ -24,3 +24,7 @@ setup沿原 `_TrainingProject` 核注册／control home／路径；baseline原�
 原training模块导入fcntl和Temporal客户端，runner的预览及登记仅Linux／WSL2且需`ergora[temporal]`；安装或导入不能证明服务可用，但本片无需启动服务。baseline现有SDK-free及Windows预览支持保持。原schema中的布尔值／整数歧义等若与正式start严格合同冲突，须在支持合同边界明确拒绝，不能让登记成功掩盖不可提交的runner。
 
 F9b4c随后接原prepare三件发布／恢复，先查真实owner再定意图与部分发布语义。原job／fence／start／executor、evidence批准、GPU与真实B3均不在本片范围。R1–R3已实现，R4最终r1包570／两RECORD／283、安装40项／65.54秒、实际CLI／SDK-free基线／三浏览器组及原件／收尾、自身模板approve、新独立两轴最终本地补核通过0／0。发布及自己的CI仍待。原CI分组收集364／1817，未冒称全部执行，各原件见交付。
+
+## 固定发布与自己的CI收口
+
+普通发布`80236fe8957c0704a3c73c7ea1440f7f288ff563`，23个Git blob／570产品／完整Ref一致，原需求及结构轴已补固定发布身份。自己的[CI43523861953](https://github.com/626619403/Ergora/actions/runs/43523861953)第三run HTML Success，八job／30必要步骤完成success，完整SHA日志路径与原HTTP原件获原结构轴独立终核通过、开放0；需求轴未另作CI终核。原30本地证据保持，新增27发布／CI引用，不借此验F9b4c。

@@ -1,0 +1,375 @@
+{
+  "slice": "F9b4c C1",
+  "baseline": "80236fe8957c0704a3c73c7ea1440f7f288ff563",
+  "implementation": "Exact native three-file preparation plan, immutable same-intent publication and explicit partial recovery; CLI/HTTP only",
+  "installed_r1": {
+    "wheel_sha256": "cd3e98c1bcce0448efaeb38839f0f1a75509e88dff7a43ac7281a57a3498691e",
+    "product_files": 571,
+    "frozen_reference_files": 283,
+    "two_records_verified": true,
+    "suites": 6,
+    "passed": 65,
+    "test_seconds": 212.14,
+    "monitor_seconds": 214.04188105929643
+  },
+  "native": {
+    "cli_commands": 11,
+    "actual_sdk_free_status": true,
+    "real_loopback_http": true,
+    "actual_success_reply_dropped_by_client": true,
+    "original_intent_readback": true,
+    "wrong_sha_no_publication": true,
+    "same_intent_files_preserved": true,
+    "original_files_preserved": 8,
+    "prepared_experiments": 2,
+    "native_files_each": 3,
+    "no_command_job_fence_start_or_approval": true,
+    "web_group_stopped_and_port_closed": true
+  },
+  "regression_interruption": {
+    "boundaries": [
+      "intent",
+      "global-manifest",
+      "project-manifest",
+      "spec"
+    ],
+    "method": "Actual original atomic write followed by os._exit(73), fresh-process explicit same-intent recovery",
+    "source_drift_and_file_conflict_no_overwrite": true
+  },
+  "self_review": {
+    "template": "ergora-structure-review",
+    "backend": "user-authorized Codex fallback",
+    "packet_files": 15,
+    "packet_bytes": 260874,
+    "original_native_owners_included": true,
+    "seconds": 38.090622370131314,
+    "decision": "approve",
+    "all_inline_and_inherited_resources_in_actual_stdin": true,
+    "result_sha256": "3f5ad224625b181b29d5a529b4fcae1c3f2e7cde5c1b5dd02b9f0f52635ad6fc"
+  },
+  "ci_group_collection": {
+    "selected": 376,
+    "total": 1829,
+    "deselected": 1453,
+    "execution_claim": false
+  },
+  "independent_review": {
+    "requirements": "final local passed; first P2 fixed and closed; zero open findings",
+    "structure": "final local passed; zero open findings",
+    "publication_and_own_ci": "pending"
+  },
+  "publication": {
+    "state": "not_committed"
+  },
+  "raw_evidence": {
+    "private_base": ".ergora/checks/training-preparation/",
+    "references": [
+      {
+        "path": "source-r1.stdout",
+        "bytes": 2332,
+        "sha256": "d8d47910f9c53543335cd21f91121616e9f1cd522de8ed3514d31c3501250e3b"
+      },
+      {
+        "path": "source-r1.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "source-r2.stdout",
+        "bytes": 110,
+        "sha256": "87f8d2d84267b5030cc411e6c0bea3ac3af592ea95741fc645a2bdeb7c35e31b"
+      },
+      {
+        "path": "source-r2.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "install-r1/source-manifest.json",
+        "bytes": 2370,
+        "sha256": "7b2fe47b59a4cb018e765d7d4d5a917a8f081f8b7399bb8e0ff3e8cd0e5ebde7"
+      },
+      {
+        "path": "install-r1/package-identity.json",
+        "bytes": 491,
+        "sha256": "f0d5c7a54499e735a3b5fe21a584d967847cab1ac5ba0b7d5694cfe45f4b0958"
+      },
+      {
+        "path": "install-r1/regression-r1/result.json",
+        "bytes": 831,
+        "sha256": "7a6b05021e1dd324c501f3c5536f01528818a2094c572eb1900ea62ab4af8c2a"
+      },
+      {
+        "path": "install-r1/regression-r1/process/stdout.txt",
+        "bytes": 10256,
+        "sha256": "da72fafd4c328d96f42203b025727842139996a817d43d32f7edffb35224e66b"
+      },
+      {
+        "path": "install-r1/regression-r1/process/stderr.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r1/commands.json",
+        "bytes": 7018,
+        "sha256": "9ae083078c51031fa0e442af3f43a6de0f07b6e0c871740ea01614937204bce6"
+      },
+      {
+        "path": "native-r1/result.json",
+        "bytes": 453,
+        "sha256": "a6e0745fa931088886cf29253487ae384403701751385c020df30a430ef2420b"
+      },
+      {
+        "path": "native-r1/experiment-preview.stdout",
+        "bytes": 10276,
+        "sha256": "566ffb784763161889ffd52f0c9b8f5647f1b7f48972d8be73fd5c89c57e410b"
+      },
+      {
+        "path": "native-r1/prepare.stdout",
+        "bytes": 10932,
+        "sha256": "664a22d6ef55f00db90779b463bf9a552751d4c034a523ce39a2a6c25f9d5a11"
+      },
+      {
+        "path": "native-r1/sdk-free.stdout",
+        "bytes": 9962,
+        "sha256": "8b9fca14e0b17bd69c4814ef2a51dad15e90cf7c885b94e766ea5c2fc2a197cb"
+      },
+      {
+        "path": "native-r1/sdk-free.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r1/protected-before.json",
+        "bytes": 1002,
+        "sha256": "da8a1411f8ca4bee01bde996b0c2697aeb830cd40079a28fb8c0caa44a7da96e"
+      },
+      {
+        "path": "http-r1/client.py",
+        "bytes": 4635,
+        "sha256": "0e241559f5e947f900e220da8d8784e2fc7cbc95adcc4763cece8aea6557825f"
+      },
+      {
+        "path": "http-r1/steps.json",
+        "bytes": 2086,
+        "sha256": "1ab671738ba657ae3a6760153c63917e50c9f54878d8b1c93b469d1b430ef2a8"
+      },
+      {
+        "path": "http-r1/requests.jsonl",
+        "bytes": 1913,
+        "sha256": "5ab89c6e94c4c0129ace5718d1d0ecaadd2ed33dfa476244e997290a042c14c7"
+      },
+      {
+        "path": "http-r1/result.json",
+        "bytes": 456,
+        "sha256": "7bd6bd386ea6baea2ebf07a87d77fe2833fc243d03d550873a1b7909f98a6fe5"
+      },
+      {
+        "path": "http-r1/cleanup.json",
+        "bytes": 151,
+        "sha256": "e5b053cc80d46226cf258351a11724d00c0472003ab62ff0572a6f9d4de0afe1"
+      },
+      {
+        "path": "final-observations.json",
+        "bytes": 1128,
+        "sha256": "988caed4b2281c13788eb2126fed26f15577200ca737368afa70947a8ad2c2dc"
+      },
+      {
+        "path": "self-review-r1-codex.json",
+        "bytes": 3384,
+        "sha256": "4762f2bc0b4b649b5b712709dd8ee343340189cf9283a5086caa65eee694551c"
+      },
+      {
+        "path": "self-review-r1-codex/original-result.json",
+        "bytes": 667,
+        "sha256": "3f5ad224625b181b29d5a529b4fcae1c3f2e7cde5c1b5dd02b9f0f52635ad6fc"
+      },
+      {
+        "path": "ci-group-collect-r1/result.json",
+        "bytes": 54,
+        "sha256": "2cbb9fb37db4c014b3334e59a82b60ba588c42963e5f84000b4f3921250fb7c7"
+      },
+      {
+        "path": "ci-group-collect-r1/stdout.txt",
+        "bytes": 38340,
+        "sha256": "1acf2455d7832769f2d97b2299a5701fcca4539b63281ef6d0218cf9fe635608"
+      },
+      {
+        "path": "install-r2/source-manifest.json",
+        "bytes": 3057,
+        "sha256": "a60d8ed6524da1d89ea3a0e10d5d61a635ea54f98fa2bc008357aa4d364861de"
+      },
+      {
+        "path": "install-r2/package-identity.json",
+        "bytes": 491,
+        "sha256": "41637d81f9ffdd6beff81a02100f60a95475b2a9fd7ad80ec23ca2c82fd8a702"
+      },
+      {
+        "path": "install-r2/setup.json",
+        "bytes": 755,
+        "sha256": "ff38b3204eeb5fda25e1bb0b6ec14432f1bd8bc4bfdfef481f28a8783c6c3de9"
+      },
+      {
+        "path": "install-r2/venv.stderr",
+        "bytes": 102,
+        "sha256": "6d87bba32f077e46f5da8b73c5d2729253359be249369682b27f7ad3a42ae115"
+      },
+      {
+        "path": "install-r2/setup-recovery.json",
+        "bytes": 1048,
+        "sha256": "840547cc627e588b94e7e9272d94b1e72ee9bac71d251fb17d1fd621d4d2b9ec"
+      },
+      {
+        "path": "product-current-r2.json",
+        "bytes": 668,
+        "sha256": "6989b7e80036598b304b119569d36491916028b20c73acb2744c7f74e5626cb3"
+      },
+      {
+        "path": "install-r2/regression-r2/result.json",
+        "bytes": 638,
+        "sha256": "a81c2a0203edac83229b35f261fd565df2464212957acb36d3f4808a6df3e7df"
+      },
+      {
+        "path": "install-r2/regression-r2/process/stdout.txt",
+        "bytes": 4719,
+        "sha256": "108161a42045c5925d4d26dfad341d45ec182027e51ef92b745ffec39e901b7c"
+      },
+      {
+        "path": "install-r2/regression-r2/process/stderr.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r2/commands.json",
+        "bytes": 7016,
+        "sha256": "4c5c41c5f95b4745d92cf37c1d3087f8b4f49ccc259b0f3dfb0ee5a86c30eb53"
+      },
+      {
+        "path": "native-r2/result.json",
+        "bytes": 453,
+        "sha256": "68d8e890565752f7b96418d075f189bce760c2e6e1c98289031fdc572c2f793b"
+      },
+      {
+        "path": "native-r2/experiment-preview.stdout",
+        "bytes": 10276,
+        "sha256": "2e5171dcd2403a3577a446da9a0bcf6ea8e5364a9be4bb24708fe87ce49b52c4"
+      },
+      {
+        "path": "native-r2/prepare.stdout",
+        "bytes": 10932,
+        "sha256": "0e1b31c53041b953bbebca0992edd0f5be705aafe40649e538ed58570ec6934c"
+      },
+      {
+        "path": "native-r2/sdk-free.stdout",
+        "bytes": 9962,
+        "sha256": "0d4b7e33b8f40efdcd4b4de50359782b9c2b1207564490aaac32d56bc031858a"
+      },
+      {
+        "path": "native-r2/sdk-free.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r2/protected-before.json",
+        "bytes": 1002,
+        "sha256": "f5597d45b4b0c5f74db020a0859cfe86f81e58d34981b724ca815418383ce7a6"
+      },
+      {
+        "path": "http-r2/client.py",
+        "bytes": 4635,
+        "sha256": "545726083e86cd8284759c7e5cd8114e7f0ee74a2caf3d10e680a30a80ec0a21"
+      },
+      {
+        "path": "http-r2/steps.json",
+        "bytes": 2086,
+        "sha256": "cd0cb6decb20408e5f6dc4e847f05ad97f3c88f38278eb41c50457d8f216b57a"
+      },
+      {
+        "path": "http-r2/requests.jsonl",
+        "bytes": 1914,
+        "sha256": "7c4250478d24973c8532ba8a17ad2d759c60fbf11f40d9343e4851664fbd844d"
+      },
+      {
+        "path": "http-r2/result.json",
+        "bytes": 456,
+        "sha256": "c82dde6dd39eba60fc46ea2ed2183d0e6297035c7999da4751fa5237b8ac3f09"
+      },
+      {
+        "path": "http-r2/cleanup.json",
+        "bytes": 151,
+        "sha256": "0e28fb295428cf861359118f2e81cf12f5f182551144a34845e221cf50a462bc"
+      },
+      {
+        "path": "final-observations-r2.json",
+        "bytes": 1128,
+        "sha256": "7c07504f384aaa29b0e82738be683015b40fedde4552d502967b29dd5ed55009"
+      },
+      {
+        "path": "self-review-r2-codex.json",
+        "bytes": 3383,
+        "sha256": "2d7378aee72c7756ef8971b250f607c1cdbffa953ec366872883c021e62307d1"
+      },
+      {
+        "path": "self-review-r2-codex/original-result.json",
+        "bytes": 945,
+        "sha256": "b7c4144e5e198f7d878a86088cf611407d408a3ebabdab08bd3b1b9e6f8bc0c4"
+      },
+      {
+        "path": "ci-group-collect-r2/result.json",
+        "bytes": 54,
+        "sha256": "8c61253597be3b0b9efeba339c9af21d4af45641d1bd717f427c3f2259d5e3a5"
+      },
+      {
+        "path": "ci-group-collect-r2/stdout.txt",
+        "bytes": 38761,
+        "sha256": "7d1753237c6ff5b291f37b7feea38316725cd9f45061b7d7338494d386f6cb1c"
+      }
+    ]
+  },
+  "limits": [
+    "No training preparation UI in C1; C2 remains separate",
+    "Linux/WSL2 only; no native Windows preparation execution",
+    "No Temporal server, runner command, GPU, quality/performance acceptance, evidence approval or adoption",
+    "First source run 38 passed/1 failed is retained, not reclassified as success"
+  ],
+  "product_packet_sha256": "4414d4f7f8fba705e18373c53a827f6eca0691d2a04fd5a48a452208dfa0e983",
+  "installed_final": {
+    "wheel_sha256": "cc96e63433d647a0e9db33f2de52ff056090d274ae211863c36e591606df0935",
+    "product_files": 571,
+    "frozen_reference_files": 283,
+    "two_records_verified": true,
+    "current_source_snapshot_wheel_and_install_equal": true,
+    "passed": 15,
+    "test_seconds": 69.67,
+    "monitor_seconds": 71.39308858243749,
+    "scope": "Final r2 preparation suite only; preserves r1 six-suite65pass as its original pre-fix scope"
+  },
+  "ci_group_collection_final": {
+    "selected": 379,
+    "total": 1832,
+    "deselected": 1453,
+    "execution_claim": false
+  },
+  "self_review_final": {
+    "template": "ergora-structure-review",
+    "backend": "user-authorized Codex fallback",
+    "packet_files": 15,
+    "packet_bytes": 265212,
+    "seconds": 33.48738234397024,
+    "decision": "approve",
+    "all_inline_and_inherited_resources_in_actual_stdin": true,
+    "result_sha256": "b7c4144e5e198f7d878a86088cf611407d408a3ebabdab08bd3b1b9e6f8bc0c4"
+  },
+  "native_final": {
+    "cli_commands": 11,
+    "actual_sdk_free_status": true,
+    "real_loopback_http": true,
+    "actual_success_reply_dropped_by_client": true,
+    "original_intent_readback": true,
+    "protected_original_files": 8,
+    "two_experiments_three_files_each_matching_intent": true,
+    "no_job_fence_start_approval_or_command_execution": true,
+    "web_group_stopped_and_port_closed": true
+  },
+  "retained_harness_failure": "r2 private setup used nonexistent dependency cache r2; existing pinned r1 cache used to install already built unchanged wheel, original setup/stderr retained"
+}

@@ -7,6 +7,13 @@ from pathlib import Path
 from .reference import _read_windows_contract, registration_paths
 
 
+def _native_bytes(value: dict, name: str, limit: int = 1_048_576) -> bytes:
+    raw = (json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + '\n').encode('utf-8')
+    if len(raw) > limit:
+        raise ValueError(f'{name} exceeds the native {limit // 1_048_576} MiB read capacity')
+    return raw
+
+
 class _TrainingProject:
     def __init__(self, payload: dict):
         from agent_platform import core

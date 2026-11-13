@@ -371,6 +371,14 @@ def training_setup(project: dict, home: Path, operation: str, payload: dict) -> 
                              'operation': operation, **payload}, 20, sdk=runner)
 
 
+def training_preparation(project: dict, home: Path, operation: str, payload: dict) -> dict:
+    """Prepare native files locally; their original intent remains explicitly recoverable."""
+    if sys.platform != 'linux':
+        raise ValueError('Native training preparation requires Linux; use the registered runtime in WSL2')
+    return _training_process(project, 'preparation', {'project': project, 'control_home': str(home),
+                             'operation': operation, **payload}, 20, sdk=operation != 'status')
+
+
 def training_submission(project: dict, home: Path, operation: str, payload: dict, *, timeout: int) -> dict:
     """Enter the selected training owner with durable submission checkpoints."""
     if operation != 'status' and sys.platform != 'linux':

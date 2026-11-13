@@ -117,7 +117,7 @@ ergora agent runs my-project
 
 Windows 命令与资料抓取使用 Job Object 管理生命周期：超时、取消或控制器关闭时停止其本地后代。它不限制该用户的文件、网络访问，不提供每 Agent 的安全沙箱；远程 API 请求和外部计算服务的取消仍由对应服务负责。应用以普通用户、可信项目方式运行。CLI 前台任务可用 Ctrl+C；资料观察也可从页面请求取消并核对终态。
 
-训练实验的本地 `training submission`／`training cancellation` 可在原生 Windows 读取已保存操作记录，无需 Temporal SDK。`training baseline-preview`可预览完整基线，实际`init-baseline`使用原fcntl锁，须在Linux／WSL2执行；两者都无需SDK或服务，见[基线初始化](TRAINING.md#预览与初始化基线)。`training runner-preview / register-runner`沿原登记器，须在Linux／WSL2安装`ergora[temporal]`，无需服务，见[可信runner登记](TRAINING.md#预览与登记可信-runner)。实际 `training start`／`resume-start`／`cancel`／`resume-cancel` 与 `stop-status` 的原执行器观察使用 Linux／WSL2，不由 Windows Job Object 代管远端或训练作业。步骤与结果语义见[训练取消与停止观察](TRAINING.md#取消原运行与分别观察停止事实)。
+训练实验的本地 `training submission`／`training cancellation` 可在原生 Windows 读取已保存操作记录，无需 Temporal SDK。`training baseline-preview`可预览完整基线，实际`init-baseline`使用原fcntl锁，须在Linux／WSL2执行；两者都无需SDK或服务，见[基线初始化](TRAINING.md#预览与初始化基线)。`training runner-preview / register-runner`沿原登记器，须在Linux／WSL2安装`ergora[temporal]`，无需服务，见[可信runner登记](TRAINING.md#预览与登记可信-runner)。`training experiment-preview / prepare / resume-prepare`同样使用Linux／WSL2与`ergora[temporal]`；`training preparation`虽无需SDK，当前入口也限定Linux／WSL2，见[实验准备与恢复](TRAINING.md#精确准备实验与恢复部分发布)。实际 `training start`／`resume-start`／`cancel`／`resume-cancel` 与 `stop-status` 的原执行器观察使用 Linux／WSL2，不由 Windows Job Object 代管远端或训练作业。步骤与结果语义见[训练取消与停止观察](TRAINING.md#取消原运行与分别观察停止事实)。
 
 ## 接收交接包并离线核对
 

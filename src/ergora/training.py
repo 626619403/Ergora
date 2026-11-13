@@ -1,4 +1,4 @@
-"""Project-scoped observations of the original training experiment registry."""
+"""Project-scoped native training observations and explicit local/control operations."""
 
 from pathlib import Path
 import re
@@ -16,7 +16,7 @@ def initialize_baseline(state: State, project_id: str, baseline: dict, expected_
                         baseline_sha256: str) -> dict:
     """Confirm one baseline; retrying identical content never replaces a different one."""
     return _setup(state, project_id, expected_revision, 'init-baseline',
-                  {'baseline': baseline, 'baseline_sha256': baseline_sha256})
+                  {'baseline': baseline, 'baseline_sha256': baseline_sha256}, reference.training_setup)
 
 
 def preview_runner(state: State, project_id: str, runner: dict) -> dict:
@@ -28,7 +28,37 @@ def register_runner(state: State, project_id: str, runner: dict, expected_revisi
                     runner_sha256: str) -> dict:
     """Confirm one project-bound native runner; existing IDs remain immutable."""
     return _setup(state, project_id, expected_revision, 'register-runner',
-                  {'runner': runner, 'runner_sha256': runner_sha256})
+                  {'runner': runner, 'runner_sha256': runner_sha256}, reference.training_setup)
+
+
+def preview_experiment(state: State, project_id: str, experiment: dict, runner_template_id: str,
+                       *, max_run_seconds: int | None = None) -> dict:
+    """Generate the original three-file publication plan entirely in staging."""
+    return reference.training_preparation(_project(state, project_id), state.root, 'preview',
+        {'experiment_id': experiment.get('experiment_id') if isinstance(experiment, dict) else None, 'request': {'experiment': experiment,
+         'runner_template_id': runner_template_id, 'max_run_seconds': max_run_seconds}})
+
+
+def prepare_experiment(state: State, project_id: str, experiment: dict, runner_template_id: str,
+                       expected_revision: int, preview_sha256: str, *, max_run_seconds: int | None = None) -> dict:
+    """Freeze the confirmed local plan before the original owner publishes any file."""
+    return _setup(state, project_id, expected_revision, 'prepare',
+        {'experiment_id': experiment.get('experiment_id') if isinstance(experiment, dict) else None, 'preview_sha256': preview_sha256,
+         'request': {'experiment': experiment, 'runner_template_id': runner_template_id,
+                     'max_run_seconds': max_run_seconds}}, reference.training_preparation)
+
+
+def preparation(state: State, project_id: str, experiment_id: str) -> dict:
+    """Read the saved intent and each original publication fact without SDK or service."""
+    return reference.training_preparation(_project(state, project_id), state.root, 'status',
+                                          {'experiment_id': experiment_id})
+
+
+def resume_prepare(state: State, project_id: str, experiment_id: str, expected_revision: int,
+                   intent_sha256: str) -> dict:
+    """Explicitly complete only the exact original local preparation intent."""
+    return _setup(state, project_id, expected_revision, 'resume',
+                  {'experiment_id': experiment_id, 'intent_sha256': intent_sha256}, reference.training_preparation)
 
 
 def inspect(state: State, project_id: str, experiment_id: str | None = None, *,
@@ -119,16 +149,16 @@ def _project(state: State, project_id: str) -> dict:
     return project
 
 
-def _setup(state: State, project_id: str, expected_revision: int, operation: str, payload: dict) -> dict:
+def _setup(state: State, project_id: str, expected_revision: int, operation: str, payload: dict, publish) -> dict:
     if type(expected_revision) is not int or expected_revision < 1:
         raise ValueError('Expected project revision must be a positive integer')
-    # Both operations publish local immutable files; no remote I/O under this reservation.
+    # Local setup/preparation owns immutable files; no remote I/O under this reservation.
     with state.connect() as db:
         db.execute('BEGIN IMMEDIATE')
         project = _project(state, project_id)
         if project['revision'] != expected_revision:
             raise ValueError('Project revision changed; preview the setup document again')
-        return reference.training_setup(project, state.root, operation, payload)
+        return publish(project, state.root, operation, payload)
 
 
 def _submission(state: State, project_id: str, experiment_id: str, expected_revision: int,

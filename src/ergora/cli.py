@@ -473,6 +473,22 @@ def parser() -> argparse.ArgumentParser:
             operation.add_argument("--revision", type=int, required=True)
             operation.add_argument("--runner-sha256" if runner else "--baseline-sha256", dest="document_sha256", required=True,
                                    help="Content SHA-256 returned by the corresponding preview")
+    for name in ("experiment-preview", "prepare"):
+        operation = operations.add_parser(name, help="Preview or explicitly prepare the original immutable experiment files; never start training")
+        operation.add_argument("project")
+        operation.add_argument("--experiment", type=Path, required=True)
+        operation.add_argument("--runner", required=True, help="Already registered project runner ID")
+        operation.add_argument("--max-run-seconds", type=int, help="Native queue-plus-run window; omitted uses the original default")
+        if name == "prepare":
+            operation.add_argument("--revision", type=int, required=True)
+            operation.add_argument("--preview-sha256", required=True)
+    for name in ("preparation", "resume-prepare"):
+        operation = operations.add_parser(name, help="Read or explicitly recover the same original preparation intent")
+        operation.add_argument("project")
+        operation.add_argument("experiment_id")
+        if name == "resume-prepare":
+            operation.add_argument("--revision", type=int, required=True)
+            operation.add_argument("--intent-sha256", required=True)
     for name in ("list", "show"):
         operation = operations.add_parser(name)
         operation.add_argument("project")
@@ -925,16 +941,27 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(output, ensure_ascii=False, indent=2))
             return 0 if args.operation != "run" or output["status"] == "succeeded" else 1
         elif args.command == "training":
-            if args.operation in ("baseline-preview", "init-baseline", "runner-preview", "register-runner"):
-                with args.document.open("rb") as stream:
+            if args.operation in ("baseline-preview", "init-baseline", "runner-preview", "register-runner", "experiment-preview", "prepare"):
+                document_path = args.experiment if args.operation in ("experiment-preview", "prepare") else args.document
+                with document_path.open("rb") as stream:
                     raw = stream.read(1_048_577)
                 if len(raw) > 1_048_576:
                     raise ValueError("Training setup source file exceeds 1 MiB")
                 document = json.loads(raw)
-                operation = {"baseline-preview": training.preview_baseline, "init-baseline": training.initialize_baseline,
-                             "runner-preview": training.preview_runner, "register-runner": training.register_runner}[args.operation]
-                confirmation = () if args.operation in ("baseline-preview", "runner-preview") else (args.revision, args.document_sha256)
-                output = operation(State(args.home), args.project, document, *confirmation)
+                if args.operation in ("experiment-preview", "prepare"):
+                    operation = training.preview_experiment if args.operation == "experiment-preview" else training.prepare_experiment
+                    confirmation = () if args.operation == "experiment-preview" else (args.revision, args.preview_sha256)
+                    output = operation(State(args.home), args.project, document, args.runner, *confirmation,
+                                       max_run_seconds=args.max_run_seconds)
+                else:
+                    operation = {"baseline-preview": training.preview_baseline, "init-baseline": training.initialize_baseline,
+                                 "runner-preview": training.preview_runner, "register-runner": training.register_runner}[args.operation]
+                    confirmation = () if args.operation in ("baseline-preview", "runner-preview") else (args.revision, args.document_sha256)
+                    output = operation(State(args.home), args.project, document, *confirmation)
+            elif args.operation == "preparation":
+                output = training.preparation(State(args.home), args.project, args.experiment_id)
+            elif args.operation == "resume-prepare":
+                output = training.resume_prepare(State(args.home), args.project, args.experiment_id, args.revision, args.intent_sha256)
             elif args.operation == "status":
                 output = training.status(State(args.home), args.project, args.experiment_id, run_id=args.run_id, timeout=args.timeout)
             elif args.operation == "submission":
