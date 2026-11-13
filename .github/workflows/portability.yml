@@ -15,15 +15,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.groups.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: groups
+        name: Read explicit test groups
+        shell: python
+        run: |
+          import json, os
+          from pathlib import Path
+          groups = json.loads(Path('scripts/ci/linux-groups.json').read_text())['linux_groups']
+          if not groups:
+              raise ValueError('Configure at least one Linux test group')
+          include = [{'os': 'ubuntu-latest', 'python': '3.11', 'group': str(index)}
+                     for index in range(len(groups))]
+          include.append({'os': 'windows-latest', 'python': '3.12', 'group': 'all'})
+          with open(os.environ['GITHUB_OUTPUT'], 'a', encoding='utf-8') as stream:
+              stream.write('matrix=' + json.dumps({'include': include}) + '\n')
   native:
+    needs: plan
+    name: Native (${{ matrix.os }}, ${{ matrix.python }}, group ${{ matrix.group }})
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            python: "3.11"
-          - os: windows-latest
-            python: "3.12"
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     env:
@@ -43,31 +61,7 @@ jobs:
       - name: Packaged reference identity
         run: python -m ergora reference verify
       - name: Native application regression
-        shell: python
-        run: |
-          import os, subprocess, sys
-          from pathlib import Path
-          suites = ['tests', 'src/ergora/data/reference/platform/upstream/platform/tests/test_contracts.py']
-          environment = dict(os.environ)
-          if sys.platform == 'linux':
-              environment['PYTHONPATH'] = str(Path('src/ergora/data/reference/platform/upstream/platform').resolve())
-              suites += ['src/ergora/data/reference/platform/upstream/platform/tests/test_portable.py']
-              suites += ['src/ergora/data/reference/platform/upstream/platform/tests/test_workflow.py::AdapterTests',
-                         'src/ergora/data/reference/platform/upstream/platform/tests/test_runtime.py']
-          tail = ''
-          with subprocess.Popen([sys.executable, '-u', '-m', 'pytest', '-v', '--tb=short', '--durations=20', *suites],
-                  stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, encoding='utf-8', env=environment) as process:
-              for line in process.stdout:
-                  print(line, end='', flush=True)
-                  tail = (tail + line)[-3500:]
-                  if line.startswith('FAILED '):
-                      detail = line.rstrip()[:3000].replace('%', '%25')
-                      print(f'::error title=Failed test::{detail}', flush=True)
-              returncode = process.wait()
-          if returncode:
-              details = tail.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
-              print(f'::error title=Native regression::{details}', flush=True)
-          raise SystemExit(returncode)
+        run: python scripts/ci/run.py --group ${{ matrix.group }} --output ci-results
       - name: Windows PowerShell 5.1 installer and upgrade
         if: runner.os == 'Windows' && !cancelled()
         shell: powershell
@@ -79,3 +73,10 @@ jobs:
             Write-Output "::error title=Windows installer::$details"
             throw
           }
+      - name: Upload regression observations
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-${{ matrix.os }}-${{ matrix.python }}-${{ matrix.group }}
+          path: ci-results/
+          if-no-files-found: warn

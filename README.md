@@ -168,7 +168,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1 -A
 
 空环境可加 `-InstallPrerequisites` 通过 winget 安装缺失的 Python / Git。安装、认证、目录、升级及功能范围见 [Windows 手册](docs/WINDOWS.md)。原生支持项目、模板设计、角色调用、记忆与持续改进；完整六阶段参考执行器、mini-swe-agent 驱动和 ForgeKernel 使用 WSL2/Linux，正式执行器还要求可信 Linux 容器。旧 HTML 保持 Linux v2.2 内容。
 
-开发检查：安装 `.[dev,web,gepa,temporal,task-mcp]` 后运行 `python -m pytest tests`；真实 Temporal 回归需通过 `ERGORA_TEMPORAL_TEST_ADDRESS` 明确指定隔离服务，否则跳过。`ergora workflow` 直接调用随包的原合同编译器，支持 `compile`、`validate`、`convert-v2`、`export-v2`，不自动安装或启动执行服务。
+开发检查：安装 `.[dev,web,gepa,temporal,task-mcp]` 后运行 `python -m pytest tests`；与 CI 一致的 wheel 安装、Linux 分组、完整覆盖核对及失败日志见[测试维护说明](docs/TESTING.md)。真实 Temporal 回归需通过 `ERGORA_TEMPORAL_TEST_ADDRESS` 明确指定隔离服务，否则跳过。`ergora workflow` 直接调用随包的原合同编译器，支持 `compile`、`validate`、`convert-v2`、`export-v2`，不自动安装或启动执行服务。
 
 开发者可用独立的[图与表单比较例子](examples/editor-comparison/README.md)复现技术选型。Node仅用于该例子构建，默认安装保持原要求；例子只编辑试验草稿，正式功能状态见[实施计划](docs/PLAN.md)。
 
