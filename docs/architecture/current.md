@@ -59,7 +59,7 @@ flowchart TB
 |`agents`、`agent_backends`|角色输出合同与可替换后端Adapter|调用者走同一Interface；实现拥有原生命令、配置、结果提取及支持模式|
 |`task_mcp`|单次调用的完整声明资源投影与连接回执|只有固定 `list/read`，没有任意路径／shell工具；当前要求Linux和可选SDK|
 |`tasks`|正式任务本地查询、预览／创建，以及运行／批准／取消／导出／对账用例；共有exported_source_candidate绑定原来源与精确候选，inspect_export委托原Git owner读当前对象|项目revision、原task/run、精确意图与摘要；未知结果沿原ID恢复|
-|`training`|CLI／HTTP共用项目级离线观察与显式实时查询，分别调用reference标准库reader／可选SDK进程|原baseline／manifest／spec／runner／job／gate／fence及摘要保持；默认not_queried，实时读取须核完整原Experiment／固定run，负领域结果保持，不写训练原件／第二账本|
+|`training`|CLI／HTTP共用离线观察、显式实时查询及原准备实验提交／意图对账；reference子进程隔离所选原配置|标准库reader共用于观察与预检；原client拥有start策略，操作intent／attempt／memo／回执不替代实验账本。attempt后仅核原输入／memo找回run；默认not_queried，原领域负结果保持，不复制调度／批准|
 |`reference`、`reference_creation_process`|随包参考资源和专用进程装载|编译／读取与执行分开；不在Web请求中直接改原生进程全局|
 |`reference_task_creation`、`reference_task_submission`、`reference_task_runtime`|原合同发布、attempt-before-send及原运行查询|操作先持久化意图，后做外部变更；原spec/memo/run必须匹配|
 |`reference_task_approval`、`reference_task_cancellation`|完整计划读取、精确批准、取消请求和投递恢复|requested是投递事实；授权采纳／外部停止需另核|

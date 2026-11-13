@@ -35,3 +35,13 @@ noneditable wheel SHA `7ac58997490fac91b3ed15d75f6a5c13b7f36b3b4a517b7dcb069f329
 新的独立两轴源码均无finding；需求轴另用真实SDK/protobuf/DataConverter的9场景离线Service探针，结构轴核两个目录、全部非默认有效Experiment时限和忽略协程取消时外层6.016秒进程回收。两名原审查者随后分别只读补核最终564包／两RECORD／283、48安装检查、原42事件和负Outcome、21原件／唯一start与cancel、完整14文件实际stdin／祖先资源、45GET／三交错／三视口及进程停止；最终本地出口通过，开放0／0。详见[需求报告](2026-11-14-training-runtime-spec-review.md)与[结构报告](2026-11-14-training-runtime-structure-review.md)。普通发布与自己的CI仍待完成。F9b2写操作、F9c可信采用、真实B3／完整C2保持开放。
 
 [可公开验收摘要](evidence/2026-11-14-training-runtime.json)保存精确身份、实际负结果和范围，不发布原始私有缓存。
+
+## 精确发布检查点
+
+产品 `106481a80abfd168f5b45fbba7381063505239d0` 的25文件与最终冻结字节／Git blobs相等；221本地链接、私有机器标识与diff检查通过，10个产品／测试／CI文件组合SHA `4399454c62e491baa801638257d437cee0fd49c2c87b0ba8804a82df2c067bf0`。已普通推送开发分支并核完整远端Ref；原两轴发布补核及自己的CI单独推进，不借F9a。
+
+## 自有 CI 收口与旧静态范围更正
+
+本候选自己的 [Portability 43504031945](https://github.com/626619403/Ergora/actions/runs/43504031945) 已 Success，精确 `106481a80abfd168f5b45fbba7381063505239d0` 的8job／30必要步骤成功；原独立结构轴只读核官方run与全部job终态HTML／HTTP身份并重算必要步骤。详见[原结构终核](2026-11-14-training-runtime-structure-review.md#本候选自己的-ci终核)。原需求轴已核精确发布，未把它记作另一次CI终核。
+
+旧静态脚本仅对tracked执行diff检查，遗漏当时untracked的本片结构报告EOF空行；原基线到候选完整Git对象检查退出2，唯一诊断为该报告新增EOF空行。原失败保留，工作树报告已修正，随F9b2普通文档提交发布；不回写旧检查成绩或重写历史。后续完整静态覆盖tracked与untracked，产品564身份不变。F9b1精确发布及自己的CI完成，不借给F9b2。

@@ -22,17 +22,17 @@ def installation(tmp_path_factory):
 @pytest.fixture
 def runtime_client(monkeypatch):
     pytest.importorskip('temporalio')
-    original = reference.subprocess.run
+    original = reference.processes.run
     fixture = Path(__file__).parent / 'fixtures/training_runtime_client.py'
 
     def select(scenario):
-        def invoke(argv, **kwargs):
+        def invoke(argv, *args, **kwargs):
             if 'from ergora.reference_training_runtime import main;main()' in argv:
                 argv = list(argv)
                 argv[-1] = f'import runpy;runpy.run_path({str(fixture)!r},run_name="__main__")'
                 kwargs['env'] = {**kwargs['env'], 'ERGORA_TEST_TRAINING_RUNTIME': scenario}
-            return original(argv, **kwargs)
-        monkeypatch.setattr(reference.subprocess, 'run', invoke)
+            return original(argv, *args, **kwargs)
+        monkeypatch.setattr(reference.processes, 'run', invoke)
     return select
 
 

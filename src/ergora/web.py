@@ -143,6 +143,18 @@ class TaskResumeStartPayload(TaskResumePayload):
     timeout: int = Field(default=20, strict=True, ge=1, le=60)
 
 
+class TrainingStartPayload(Payload):
+    revision: int = Field(strict=True, ge=1)
+    manifest_sha256: str = Field(pattern="^[0-9a-f]{64}$")
+    timeout: int = Field(default=20, strict=True, ge=1, le=60)
+
+
+class TrainingResumeStartPayload(Payload):
+    revision: int = Field(strict=True, ge=1)
+    intent_sha256: str = Field(pattern="^[0-9a-f]{64}$")
+    timeout: int = Field(default=20, strict=True, ge=1, le=60)
+
+
 class TaskRunDecisionPayload(Payload):
     revision: int = Field(strict=True, ge=1)
     run_id: str = Field(min_length=1, max_length=128)
@@ -444,6 +456,18 @@ def create_app(home: Path | None = None) -> FastAPI:
     @application.get("/api/projects/{project_id}/training/{experiment_id}/status")
     def training_status(project_id: str, experiment_id: str, run_id: str | None = None, timeout: int = 20):
         return training.status(state, project_id, experiment_id, run_id=run_id, timeout=timeout)
+
+    @application.get("/api/projects/{project_id}/training/{experiment_id}/submission")
+    def training_submission(project_id: str, experiment_id: str):
+        return training.submission(state, project_id, experiment_id)
+
+    @application.post("/api/projects/{project_id}/training/{experiment_id}/start")
+    def training_start(project_id: str, experiment_id: str, body: TrainingStartPayload):
+        return training.start(state, project_id, experiment_id, body.revision, body.manifest_sha256, timeout=body.timeout)
+
+    @application.post("/api/projects/{project_id}/training/{experiment_id}/resume-start")
+    def training_resume_start(project_id: str, experiment_id: str, body: TrainingResumeStartPayload):
+        return training.resume_start(state, project_id, experiment_id, body.revision, body.intent_sha256, timeout=body.timeout)
 
     @application.get("/api/projects/{project_id}/issues/{issue_id}")
     def project_issue(project_id: str, issue_id: str):

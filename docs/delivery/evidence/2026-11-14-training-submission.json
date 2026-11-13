@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "baseline": "106481a80abfd168f5b45fbba7381063505239d0",
+  "final_wheel_sha256": "d71a44f394325ae5fce08ab36f4e6f3830b34fd1cecca9a324d1f6196409cd5a",
+  "source_wheel_installed_equal": 565,
+  "wheel_and_installed_records_verified": true,
+  "frozen_reference_files": 283,
+  "editable": false,
+  "final_product_packet_sha256": "68a14b81ef3ad8685a7a4aa7b80ee6d134c3706b2fa610f3b0897773418a36bc",
+  "installed_regressions": [
+    {
+      "candidate": "r1",
+      "passed": 65,
+      "platform_skipped": 4,
+      "pytest_seconds": 154.87,
+      "scope": "Original six affected suites; before subsequent fixes."
+    },
+    {
+      "candidate": "r3",
+      "passed": 32,
+      "pytest_seconds": 95.27,
+      "scope": "Aggregate intent and source-independent recovery; before late-detail/checkpoint/CLI fixes."
+    },
+    {
+      "candidate": "r4",
+      "passed": 13,
+      "pytest_seconds": 95.02,
+      "scope": "Submission suite including status publication order; before load re-read and CLI exit fix."
+    },
+    {
+      "candidate": "r5",
+      "passed": 3,
+      "pytest_seconds": 21.99,
+      "scope": "Both publication races, original single-send, CLI/HTTP success; final reader."
+    },
+    {
+      "candidate": "r6",
+      "passed": 5,
+      "pytest_seconds": 55.86,
+      "process_seconds": 57.626823655329645,
+      "scope": "Last CLI exit fix: both unknown recoveries, both ownership rejections, successful CLI/HTTP."
+    }
+  ],
+  "native_cpu": {
+    "same_original_database_restored_after_retained_timeout": true,
+    "prepared_files_unchanged": 22,
+    "real_ack_withheld_after_server_receipt": 2,
+    "same_original_runs_recovered_without_resending": true,
+    "complete_original_input_and_intent_memo_verified": true,
+    "one_listed_run_per_original_workflow": true,
+    "runner_commands_executed": 0,
+    "runs": {
+      "submit-ack": {
+        "workflow_id": "perf-experiment/submit-ack",
+        "run_id": "01a1d6b4-dfd4-7c31-96ca-806cc21c5054",
+        "history_events": 254,
+        "history_sha256": "1f86732565c5b48b50f25b82424edd090ce101f9bb72bfa7e0e723f11242ceb5",
+        "original_outcome": "CANCEL_UNCONFIRMED",
+        "saved_executor_result": "CANCELLED",
+        "cancel_cli_exit": 1
+      },
+      "submit-loss": {
+        "workflow_id": "perf-experiment/submit-loss",
+        "run_id": "01a1d6b4-ef3f-70ab-be77-609a56fd5a7b",
+        "history_events": 254,
+        "history_sha256": "d6688d50c631ae13781fb2afd2300241068b5f60aac86c423b8de2957cf87d5f",
+        "original_outcome": "CANCEL_UNCONFIRMED",
+        "saved_executor_result": "CANCELLED",
+        "cancel_cli_exit": 1
+      },
+      "submit-page-recovery": {
+        "workflow_id": "perf-experiment/submit-page-recovery",
+        "run_id": "01a1d6ba-3eb8-720a-8c28-93692ed39e86",
+        "history_events": 178,
+        "history_sha256": "0b114e7b8f1ea457fe3a70d059574a1508ae231bf33d14291f57461c77e50957",
+        "original_outcome": "CANCELLED",
+        "saved_executor_result": "CANCELLED",
+        "cancel_cli_exit": 0
+      },
+      "submit-browser": {
+        "workflow_id": "perf-experiment/submit-browser",
+        "run_id": "01a1d6c2-d67f-7977-afec-c6b51e2df613",
+        "history_events": 46,
+        "history_sha256": "bf9493b08896a266bb9725cae631833e5dcb698ac6c2002d935b2b0dc4ea52be",
+        "original_outcome": "CANCELLED",
+        "saved_executor_result": "CANCELLED",
+        "cancel_cli_exit": 0
+      }
+    },
+    "final_r5_offline_reads_same_receipts": 4,
+    "scope": "r1 actual start/lost ACK, r3 actual additional lost ACK, fixed r4 page recovery/continue on original database. Later reader/CLI changes verified separately; not a fresh all-r6 real journey."
+  },
+  "browser": {
+    "training_js_sha256": "f8cdca313391a43d2f0344804882b076cb973ef3bc7b5ea2da93f827eb19d553",
+    "training_js_equal_to_final_package": true,
+    "http_requests": 68,
+    "http200": 67,
+    "intentional_detail400": 1,
+    "post_requests": 3,
+    "post_breakdown": {
+      "real_unknown_recovery": 1,
+      "real_prepared_continue": 1,
+      "late_receipt_probe_existing_submission": 1
+    },
+    "no_default_post_or_runtime_query": true,
+    "wrong_sha_sent_no_post": true,
+    "double_click_single_request": true,
+    "late_submission_get_after_project_switch": "passed",
+    "late_resume_receipt_after_project_switch": "passed; authentic earlier unknown GET replay, real POST reads existing receipt without new start",
+    "viewports": [
+      [
+        1440,
+        900
+      ],
+      [
+        960,
+        900
+      ],
+      [
+        390,
+        900
+      ]
+    ],
+    "no_document_horizontal_overflow": true,
+    "screenshots_visually_checked": [
+      1440,
+      390
+    ]
+  },
+  "self_review": {
+    "status": "succeeded",
+    "run_id": "cb59439c91fd41deb95f8265ae00fb76",
+    "seconds": 68.02657041000202,
+    "packet_files": 18,
+    "packet_bytes": 259686,
+    "prompt_sha256": "bbe376e8347ebd5e119d6ec611bb92e292f245b6505ed13b2693609ee6f4a978",
+    "input_digest": "2c70395abdbf2d0eb4ebadd86830bd4971045ab45a2c3ce8b25ce45ee5ad0441",
+    "all_inline_files_and_inherited_resources_in_stdin": true,
+    "decision": "approve",
+    "result_sha256": "54bdc7415d79849a477e579fa944478f8357eaddd94d438a8475fe51124aca50"
+  },
+  "self_review_original_requests_for_changes": [
+    "status completion publication order",
+    "CLI nonzero exit for unconfirmed/rejected start"
+  ],
+  "private_validation_processes_stopped": true,
+  "independent_reviews": "Two fresh-context directions independently verified final source/package/RECORDs/frozen reference, scoped installed tests, original native histories and negative Outcomes, browser, complete self-review input and cleanup. Local exit passed with zero open findings; publication and own CI pending.",
+  "scope": "Prepared-experiment start/recovery CPU control semantics only. Original negative Outcomes and earlier test/helper failures retained. No model/MLflow/GPU/numerical/performance/adoption/external-job-stop/backend-diversity claim."
+}

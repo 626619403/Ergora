@@ -48,7 +48,7 @@ CLI、页面和 `GET /api/projects/{project}/training[/{experiment_id}]` 共用�
 
 原作业请求中的冻结 runner 或当前 runner 至少保留一份，用于核对项目和 Git 根；两者均缺失时明确报告归属无法核实。配置目录与状态目录可以共用同一文件夹，仍分别标记两种资料来源。
 
-上述离线列表／详情保留 `runtime_status: not_queried`。开始文件存在不能证明作业仍在运行，未读到结果也不能判为失败；`recorded_result_state: SUCCEEDED` 只描述原执行结果，门禁仍可能失败。门禁摘要核对原 result 引用的 report SHA 与 manifest／job binding，但不会重新执行统计、正确性或质量评价。详情没有自动批准、重提或停止操作；取消、对账和精确 evidence SHA 批准仍沿原 `agentflow training` 流程。
+上述离线列表／详情保留 `runtime_status: not_queried`。开始文件存在不能证明作业仍在运行，未读到结果也不能判为失败；`recorded_result_state: SUCCEEDED` 只描述原执行结果，门禁仍可能失败。门禁摘要核对原 result 引用的 report SHA 与 manifest／job binding，但不会重新执行统计、正确性或质量评价。详情没有自动批准、重提或停止操作；取消和精确 evidence SHA 批准仍沿原 `agentflow training` 流程，提交对账见下文。
 
 ### 显式查询原运行状态
 
@@ -62,6 +62,36 @@ ergora training status my-project EXPERIMENT_ID --run-id ORIGINAL_RUN_ID
 页面先选择实验，再点击“查询原运行状态”；`GET /api/projects/{project}/training/{experiment_id}/status` 使用相同语义，支持可选 `run_id` 与1–60秒 `timeout`。没有自动轮询。查询先核原manifest／spec及仓库归属，再核原工作流第一历史事件中的完整Experiment输入，固定实际run ID读取原Status或Outcome；SDK和新增使用的原生源码均须匹配受支持版本。
 
 `runtime_status: queried`只证明本次取得绑定的原运行时事实，`not_found`仅来自原运行时明确的不存在答复。缺历史、输入或binding不一致、网络错误和超时会直接报错，不会回退为本地“运行成功”或自动重提。`GATE_FAILED`、`CANCEL_UNCONFIRMED`等原结果保留；控制工作流结束不等于外部作业已停止，集成票据也不表示自动合并。列表／详情的已保存证据仍单独显示，实时查询不会重算门禁、批准或修改训练原件。
+
+### 提交已准备实验与原 ID 对账
+
+先用原`init / runner-add / prepare`冻结真实实验，并启动同一原生Temporal／训练控制worker。`ergora training show`返回当前`project_revision`及`experiment.binding.manifest_sha`；确认完整原manifest与可信runner后，提交它们的精确身份：
+
+```bash
+ergora training submission my-project EXPERIMENT_ID
+ergora training start my-project EXPERIMENT_ID --revision REVISION --manifest-sha256 EXACT_MANIFEST_SHA256
+ergora training submission my-project EXPERIMENT_ID
+# 已有意图：使用上一步返回的完整 intent_sha256
+ergora training resume-start my-project EXPERIMENT_ID --revision REVISION --intent-sha256 ORIGINAL_INTENT_SHA256
+```
+
+控制台在实验详情只读取本地提交记录。首次提交需粘贴完整manifest SHA，继续／对账需粘贴原intent SHA；项目revision变化时重新读取。HTTP沿相同应用入口：`GET .../training/{experiment}/submission`、`POST .../start`（`revision / manifest_sha256 / timeout`）及`POST .../resume-start`（`revision / intent_sha256 / timeout`），实时操作timeout为1–60秒。默认导航没有start、自动轮询或自动重试。
+
+CLI的`start`／`resume-start`仅在返回`submitted`时退出0；`prepared`／`unknown`／`rejected`退出1并打印原JSON，不能据此继续执行训练。`submission`是只读观察，成功读取退出0；它的退出码不表示提交成功。`submitted`也仅表示原控制工作流已确认接收，不代表训练已运行或通过。
+
+提交预检要求已准备的合同、当前匹配baseline、同仓库的可信runner、存在的原Git提交和原比较器，拒绝已有job／执行／fence记录。意图保存原合同、baseline／runner及文件摘要，位于已登记原执行state的`ergora/training-submissions/`；它只是操作checkpoint，实验、job、统计、批准与调度仍属于原owner。不要删除这些记录来绕过未知状态。
+
+|本地提交状态|含义与后续|
+|---|---|
+|`not_recorded`|尚无控制面意图；只能在确认精确manifest后提交。已有原生运行不会被认领。|
+|`prepared`|意图已保存，尚无发送attempt；可显式`resume-start`继续一次原提交，发送前重核原来源。|
+|`unknown`|已落盘attempt但未取得回执；`resume-start`仅按原workflow ID查找，固定实际run并核完整输入及意图memo。明确NOT_FOUND也不会清attempt或重发。|
+|`submitted`|原start返回run ID，或已核原历史／memo补回原run回执；不代表训练已执行、门禁通过或已经采用。|
+|`rejected`|存在无本意图的运行，或同ID竞争被原客户端拒绝；保留冲突记录，不认领、不重发。|
+
+丢失回复、超时或进程停止后，先读取`submission`，不要改实验ID、重新`prepare`或直接调用原start以绕过记录。attempt后对账沿意图中的原spec；后来的baseline／runner变化不把它重解释为新发送许可。输入或memo冲突、缺历史、RPC错误会保留unknown并明确报错。旧注册／执行目录变化须恢复原登记后处理原意图，不能把旧记录搬到新home认领。
+
+提交只排队原控制工作流；实际runner仍须按原`agentflow training run-local EXPERIMENT_ID --confirm-manifest-sha ...`逐实验执行。取消、停止、原evidence SHA批准和集成票据继续使用原训练协议；`ergora task`只管理开发Task。
 
 ## 从专家提案填写原实验合同
 

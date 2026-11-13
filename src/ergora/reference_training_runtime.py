@@ -8,29 +8,24 @@ import os
 import sys
 
 
-async def _status(payload: dict) -> dict:
+async def lookup(client, spec: dict, *, run_id: str | None, timeout: int):
+    """Find a fixed original run, validating its complete initial Experiment."""
     from dev_platform.contracts import canonical_sha
-    from perf_temporal.connection import connect
     from perf_temporal.models import Binding, Experiment, Outcome, workflow_id
-    from perf_temporal.workflow import ExperimentWorkflow
-    from temporalio.client import WorkflowExecutionStatus
     from temporalio.service import RPCError, RPCStatusCode
 
-    spec = payload['spec']
     experiment = Experiment(**{**spec, 'binding': Binding(**spec['binding'])})
     experiment.validate()
     wid = workflow_id(experiment.binding)
-    identity = {'workflow_id': wid, 'run_id': payload['run_id']}
-    client = await connect()
-    handle = client.get_workflow_handle(wid, run_id=payload['run_id'], result_type=Outcome)
-    rpc_timeout = timedelta(seconds=payload['timeout'])
+    handle = client.get_workflow_handle(wid, run_id=run_id, result_type=Outcome)
+    rpc_timeout = timedelta(seconds=timeout)
     try:
         description = await handle.describe(rpc_timeout=rpc_timeout)
     except RPCError as error:
         if error.status == RPCStatusCode.NOT_FOUND:
-            return {**identity, 'runtime_status': 'not_found'}
+            return None
         raise
-    if payload['run_id'] is not None and description.run_id != payload['run_id']:
+    if run_id is not None and description.run_id != run_id:
         raise ValueError('Training runtime returned another run ID')
     handle = client.get_workflow_handle(wid, run_id=description.run_id, result_type=Outcome)
     started = None
@@ -43,16 +38,32 @@ async def _status(payload: dict) -> dict:
     values = await client.data_converter.decode(started.input.payloads, [dict])
     if canonical_sha(values) != canonical_sha([spec]):
         raise ValueError('Training workflow ID collision: complete original Experiment differs')
+    return handle, description
+
+
+async def _status(payload: dict) -> dict:
+    from perf_temporal.connection import connect
+    from perf_temporal.models import Binding, workflow_id
+    from perf_temporal.workflow import ExperimentWorkflow
+    from temporalio.client import WorkflowExecutionStatus
+
+    binding = Binding(**payload['spec']['binding'])
+    wid = workflow_id(binding)
+    found = await lookup(await connect(), payload['spec'], run_id=payload['run_id'], timeout=payload['timeout'])
+    if found is None:
+        return {'workflow_id': wid, 'run_id': payload['run_id'], 'runtime_status': 'not_found'}
+    handle, description = found
+    rpc_timeout = timedelta(seconds=payload['timeout'])
     result = {'workflow_id': wid, 'run_id': description.run_id, 'runtime_status': 'queried',
               'temporal_status': description.status.name}
     if description.status == WorkflowExecutionStatus.RUNNING:
         status = await handle.query(ExperimentWorkflow.status, rpc_timeout=rpc_timeout)
-        if status.binding != experiment.binding:
+        if status.binding != binding:
             raise ValueError('Training runtime status belongs to another binding')
         return {**result, 'terminal': False, 'phase': status.phase, 'status': asdict(status)}
     if description.status == WorkflowExecutionStatus.COMPLETED:
         outcome = await handle.result(follow_runs=False, rpc_timeout=rpc_timeout)
-        if outcome.binding != experiment.binding:
+        if outcome.binding != binding:
             raise ValueError('Training runtime outcome belongs to another binding')
         return {**result, 'terminal': True, 'phase': outcome.status, 'outcome': asdict(outcome)}
     return {**result, 'terminal': True, 'phase': 'NEEDS_RECONCILIATION'}

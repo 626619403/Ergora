@@ -1,6 +1,6 @@
 # F9b2：已准备训练实验的原生提交与对账
 
-日期：2026-11-14。承接[F9b1实时读取](2026-11-14-training-runtime.md)与[F9总体计划](2026-11-14-training-workbench.md)。这是下一片设计；产品未实现，实施前固定F9b1提交与最终验收身份。原baseline／runner登记／prepare仍可先按完整训练手册执行；把这些写操作接到控制面另列后续小片，不隐含加入本片。
+日期：2026-11-14。承接[F9b1实时读取](2026-11-14-training-runtime.md)与[F9总体计划](2026-11-14-training-workbench.md)。实施基线 `106481a80abfd168f5b45fbba7381063505239d0`，F9b1本地出口及普通推送／精确Ref已验，自己的CI八job／30必要步骤成功且原结构轴终核通过；本片产品已实现，修后包／真实CPU／浏览器已验，CLI退出码补验、自身及最终独立两轴通过，开放0／0；普通发布与自己的CI待验。原baseline／runner登记／prepare仍可先按完整训练手册执行；把这些写操作接到控制面另列后续小片，不隐含加入本片。
 
 ## 所有权与待解决问题
 
@@ -25,3 +25,17 @@ F9b1新原输入核验需要被提交／对账实际复用时，在原训练runt
 使用真实SDK的有界Service替身注入请求被接收后失联、重复、原输入／memo冲突、原run缺失与timeout；用新noneditable包实际CPU Temporal验原prepared→提交→原ID查询→回复丢失对账。保留操作前后原registry／manifest、实际start次数、原history／memo／回执与停止证据；页面核确认和迟到行为。再用原结构审查模板及新的fresh-context需求／结构两轴，普通发布并核自己的CI，不借F9a／F9b1。
 
 取消／停止对账另立F9b3；baseline／runner／prepare接入另立F9b4；原evidence SHA批准／票据归F9c，真实GPU收益归F9d／B3。不能因CPU旅程通过而关闭它们。当前授权沿原计划持续开发、普通推送开发分支；不自动合main或采用训练候选。
+
+## 实施接缝细化
+
+- 仅新增训练提交owner，不复用依赖Task creation的`_Submission`；其输入和批准规则不同。应用层沿原SQLite短写保留revision，仅本地prepare持有；网络阶段按已保存意图与原文件锁进行，不持有控制数据库锁。
+- 原reference训练reader将同一算法收拢为可返回值的私有Interface，离线子进程与提交预检两个真实消费者共用；SDK lookup在原runtime Module深化为固定输入／run查询，两处实际复用。复用原safe_file／read_raw／core.write／file_lock。
+- intent保存完整原spec、manifest、baseline／runner快照及原文件摘要、home／registration／execution／repo；先核已准备且未有job／fence／旧执行记录，原Git提交存在、当前baseline／runner和原comparator一致。checkpoint前重读；已attempt的对账沿原冻结spec，不把后来的baseline、runner或取消结果重解释为新提交许可。
+- 原`perf_temporal.client.main`仍解析原start、load_experiment、connect并决定REJECT_DUPLICATE／FAIL／single-attempt。只在该独立进程包裹connect／start，核完整输入／参数、保存attempt并加入意图memo；捕获原stdout与run回执，不重写调度或改变原参考283文件。
+- 未发送的prepared意图可显式`resume-start`继续；一旦有attempt只lookup原workflow，固定run并核首历史完整输入与memo。NOT_FOUND／RPC／冲突不清attempt、不自动重发。普通start重复返回原本地状态。
+
+## 当前实施检查点
+
+已完成步骤1–5的源码实现。r1安装65通过／4跳过；r3修后32通过；r4并发读序13通过；r5含load竞态补读的三定向安装检查通过。真实CPU原驱动等待页面超时，保留失败后恢复同SQLite／原run；四实际history／完整输入／memo／唯一run及原22件保持已核，控制Outcome保留两个CANCEL_UNCONFIRMED和两个CANCELLED，原执行器均CANCELLED且无训练启动。页面修复、错误SHA、双击、两迟到跨项目场景、三视口与收尾已验；不同包轮次范围见[交付](../delivery/2026-11-14-training-submission.md)。
+
+独立两轴及自身模板已发现并修复容量、来源恢复依赖、迟到详情、并发发布读序和CLI退出码问题。当前产品最后变动仅CLI未确认／拒绝退出1及原失败场景断言；r6最终包565／两RECORD／283及5项CLI受影响安装检查已过；自身最终原模板approve；原两轴最终本地补核通过、开放0／0；普通发布与自己的CI待完成。没有提前关闭F9b3／F9b4／F9c或真实GPU。

@@ -80,7 +80,7 @@ ergora serve
 
 优化方向当前使用 `proposal-leaves`：每次显式调用一叶，操作者完整传递前驱结果。安装 preset 不会自动运行整张提案图、安装 GPU 工具或提交训练。真实实验继续沿 workload／baseline／experiment → 可信 runner → 独立评价 → 精确 evidence SHA 人工批准 → 项目集成复验，见 [训练优化手册](docs/TRAINING.md)。
 
-已有原实验可在控制台“训练实验”或 `ergora training list/show` 中[只读查看](docs/TRAINING.md#在控制台查看原实验)：同一项目的 baseline、精确 manifest／spec、runner／job、门禁、负结果和 MLflow ID 沿用原记录。选中实验后可点击“查询原运行状态”，或显式使用 `ergora training status PROJECT EXPERIMENT_ID`（需要 `temporal` extra）；查询核完整原输入与run ID。页面不自动启动、重提或批准实验，原生执行仍由原训练 owner 管理。
+已有原实验可在控制台“训练实验”或 `ergora training list/show` 中[查看](docs/TRAINING.md#在控制台查看原实验)：同一项目的 baseline、精确 manifest／spec、runner／job、门禁、负结果和 MLflow ID 沿用原记录。`ergora training status`显式查询完整原输入与run；[确认提交](docs/TRAINING.md#提交已准备实验与原-id-对账)使用精确项目revision与manifest SHA，丢失回执后按原intent对账，不重发start。页面默认只读，无自动启动或批准；原生执行仍由原训练 owner 管理，实时操作需要`temporal` extra。
 
 ## 仍在补齐的模板与功能
 

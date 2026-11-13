@@ -12,6 +12,7 @@ import subprocess
 import sys
 from tempfile import TemporaryDirectory
 
+from . import processes
 from .reference_creation_process import task_creation
 
 
@@ -92,7 +93,8 @@ def validate_installation(installation: Path, *, training: bool = False) -> Path
     manifest = json.loads((DATA / "reference-manifest.json").read_text(encoding="utf-8"))
     prefixes = ("platform/local/", "platform/upstream/platform/")
     if training:
-        prefixes += ("platform/upstream/temporal/perf_temporal/",)
+        prefixes += ("platform/upstream/temporal/perf_temporal/", "platform/upstream/perfctl.py",
+                     "platform/upstream/compare_runs.py")
     for relative, expected in manifest["files"].items():
         if relative.startswith(prefixes) and relative.endswith(".py"):
             file = installation / relative.removeprefix("platform/")
@@ -357,8 +359,20 @@ def training_files(project: dict, *, experiment_id: str | None = None, limit: in
 
 def training_runtime_status(project: dict, spec: dict, *, run_id: str | None, timeout: int) -> dict:
     """Explicitly query the native training workflow, pinned to its original input."""
-    if importlib.util.find_spec('temporalio') is None:
-        raise ValueError('Training runtime queries require the optional Temporal SDK; install ergora[temporal] in this environment')
+    return _training_process(project, 'runtime', {'spec': spec, 'run_id': run_id}, timeout, sdk=True)
+
+
+def training_submission(project: dict, home: Path, operation: str, payload: dict, *, timeout: int) -> dict:
+    """Enter the selected training owner with durable submission checkpoints."""
+    if operation != 'status' and sys.platform != 'linux':
+        raise ValueError('Native training submission requires Linux; use the registered runtime in WSL2')
+    return _training_process(project, 'submission', {'project': project, 'control_home': str(home),
+                              'operation': operation, **payload}, timeout, sdk=operation in ('dispatch', 'resume'))
+
+
+def _training_process(project: dict, module: str, payload: dict, timeout: int, *, sdk: bool) -> dict:
+    if sdk and importlib.util.find_spec('temporalio') is None:
+        raise ValueError('Training runtime operations require the optional Temporal SDK; install ergora[temporal] in this environment')
     execution = project['registration']['definition']['execution']
     installation = validate_installation(Path(execution['installation']), training=True)
     environment = dict(os.environ, PYTHONDONTWRITEBYTECODE='1', PYTHONUTF8='1',
@@ -366,21 +380,24 @@ def training_runtime_status(project: dict, spec: dict, *, run_id: str | None, ti
                        AGENTFLOW_STATE_DIR=execution['state_directory'])
     environment['PYTHONPATH'] = os.pathsep.join(map(str, (
         Path(__file__).parent.parent, installation / 'local', installation / 'upstream/platform',
-        installation / 'upstream/temporal')))
-    try:
-        result = subprocess.run([sys.executable, '-P', '-c',
-                                 'from ergora.reference_training_runtime import main;main()'],
-                                input=json.dumps({'spec': spec, 'run_id': run_id, 'timeout': timeout}, allow_nan=False),
-                                capture_output=True, text=True, encoding='utf-8', env=environment, timeout=timeout + 5)
-    except subprocess.TimeoutExpired as error:
-        raise ValueError('Training runtime query process timed out; execution state remains unknown') from error
-    if result.returncode:
-        lines = result.stderr.strip().splitlines()
-        raise ValueError(lines[-1] if lines else f'Training runtime query process exited with status {result.returncode}')
-    return json.loads(result.stdout)
+        installation / 'upstream/temporal', installation / 'upstream')))
+    # Submission preflight invokes native Git. Keep that entire process group
+    # under the existing owner, including timeout and interrupted-call cleanup.
+    with TemporaryDirectory(prefix='ergora-training-operation-') as temporary:
+        output = Path(temporary) / 'process'
+        result = processes.run([sys.executable, '-P', '-c',
+                               f'from ergora.reference_training_{module} import main;main()'],
+                              Path.cwd(), output, timeout + 5,
+                              stdin=json.dumps({**payload, 'timeout': timeout}, allow_nan=False), env=environment)
+        if result['status'] in ('timed_out', 'cancelled'):
+            raise ValueError('Training runtime process timed out or stopped; inspect the original intent/run, execution state remains unknown')
+        if result['returncode']:
+            lines = (output / 'stderr.txt').read_text(encoding='utf-8').strip().splitlines()
+            raise ValueError(lines[-1] if lines else f'Training runtime process exited with status {result["returncode"]}')
+        return json.loads((output / 'stdout.txt').read_text(encoding='utf-8'))
 
 
-def _training_files_main():
+def _training_records(payload: dict) -> dict:
     import base64
     from dataclasses import asdict
     import heapq
@@ -389,143 +406,149 @@ def _training_files_main():
     from perf_temporal.models import Binding, Experiment
     import perfctl
 
-    try:
-        payload = json.load(sys.stdin)
-        project_id = slug(payload['project'])
-        root, config = STATE.resolve(), CONFIG.resolve()
-        prefix = 'training/projects/' + project_id + '/perf/'
-        if os.name == 'nt':
-            adapter.read_raw = _read_windows_contract
-        files = {}
+    project_id = slug(payload['project'])
+    root, config = STATE.resolve(), CONFIG.resolve()
+    prefix = 'training/projects/' + project_id + '/perf/'
+    if os.name == 'nt':
+        adapter.read_raw = _read_windows_contract
+    files = {}
 
-        def document(relative, *, optional=False, configuration=False):
-            storage = config if configuration else root
-            path = adapter.safe_file(storage, relative)
-            if optional and not path.exists():
-                return None
-            raw = adapter.read_raw(path)
-            value = json.loads(raw)
-            if not isinstance(value, dict):
-                raise ValueError('Training JSON must be an object: ' + relative)
-            files[('config/' if configuration else 'state/') + relative] = hashlib.sha256(raw).hexdigest()
-            return value
+    def document(relative, *, optional=False, configuration=False):
+        storage = config if configuration else root
+        path = adapter.safe_file(storage, relative)
+        if optional and not path.exists():
+            return None
+        raw = adapter.read_raw(path)
+        value = json.loads(raw)
+        if not isinstance(value, dict):
+            raise ValueError('Training JSON must be an object: ' + relative)
+        files[('config/' if configuration else 'state/') + relative] = hashlib.sha256(raw).hexdigest()
+        return value
 
-        baseline = document(prefix + 'baseline.json', optional=True)
-        if baseline is not None:
-            perfctl.ident(baseline.get('baseline_id'))
-            perfctl.commit(baseline.get('commit'), 'commit')
-            for key in ('config_sha256', 'workload_fingerprint'):
-                perfctl.sha(baseline.get(key), key)
-        baseline_files = dict(files)
+    baseline = document(prefix + 'baseline.json', optional=True)
+    if baseline is not None:
+        perfctl.ident(baseline.get('baseline_id'))
+        perfctl.commit(baseline.get('commit'), 'commit')
+        for key in ('config_sha256', 'workload_fingerprint'):
+            perfctl.sha(baseline.get(key), key)
+    baseline_files = dict(files)
 
-        def inspect(ident, *, detail=False):
-            slug(ident)
-            files.clear()
-            manifest = document(prefix + 'experiments/' + ident + '/manifest.json')
-            perfctl.validate(manifest)
-            if manifest['experiment_id'] != ident or manifest['local_project'] != project_id:
-                raise ValueError('Experiment does not belong to this project and native directory')
-            registered_sha = files['state/' + prefix + 'experiments/' + ident + '/manifest.json']
-            frozen = document('training/manifests/' + ident + '.json')
-            if files['state/training/manifests/' + ident + '.json'] != registered_sha:
-                raise ValueError('Frozen manifest bytes differ from the project registry')
-            binding = Binding(ident, registered_sha, manifest['candidate_commit'], manifest['baseline_commit'])
-            if frozen['candidate_sha'] != binding.candidate_sha or frozen['baseline_sha'] != binding.baseline_sha:
-                raise ValueError('Manifest commit aliases differ from the original binding')
-            spec = document('training/specs/' + ident + '.json')
-            experiment = Experiment(**{**spec, 'binding': Binding(**spec['binding'])})
-            experiment.validate()
-            manifest_path = adapter.safe_file(root, 'training/manifests/' + ident + '.json')
-            if (experiment.binding != binding or experiment.manifest_uri != manifest_path.as_uri()
-                    or experiment.max_run_seconds != manifest['max_run_seconds']):
-                raise ValueError('Experiment spec differs from its frozen manifest binding')
-            baseline_error = None
-            if baseline is None:
-                baseline_error = 'Baseline is not present in the selected registry'
-            else:
-                try:
-                    perfctl.baseline_ok(manifest, baseline)
-                except perfctl.Invalid as error:
-                    baseline_error = str(error)
-            job_prefix = 'training/jobs/' + ident + '/'
-            request = document(job_prefix + 'request.json', optional=True)
-            runner_id = slug(manifest['runner_template_id'])
-            runner = document('training-runners/' + runner_id + '.json', optional=True, configuration=True)
-            if runner is None and request is None:
-                raise ValueError('Cannot verify experiment Git repository: current runner and original job request are both missing')
-
-            def check_runner(value):
-                if (value['runner_template_id'] != runner_id or value['project'] != project_id
-                        or value['repo'] != payload['repo']):
-                    raise ValueError('Runner does not belong to the selected project and Git repository')
-
-            if runner is not None:
-                check_runner(runner)
-            if request is not None:
-                if request['experiment'] != spec or request['job_id'] != 'local-perf-' + ident:
-                    raise ValueError('Native job request differs from the original experiment')
-                check_runner(request['runner'])
-            started = document(job_prefix + 'started.json', optional=True)
-            result = document(job_prefix + 'result.json', optional=True)
-            fence = document('training/fences/' + ident + '.json', optional=True)
-            negative = document('training/negative-results/' + ident + '.json', optional=True) if detail else None
-            for value in (started, result, fence, negative):
-                if value is not None and value['binding'] != asdict(binding):
-                    raise ValueError('Training record belongs to another immutable binding')
-            for value in (started, result):
-                if value is not None and (request is None or value['job_id'] != request['job_id']):
-                    raise ValueError('Training job result has no matching original request')
-            gate = None
-            gate_ref = result.get('gate') if result is not None else None
-            if gate_ref is not None:
-                expected = adapter.safe_file(root, job_prefix + 'gate-report.json')
-                if gate_ref['report'] != str(expected):
-                    raise ValueError('Gate report is outside the original experiment job')
-                gate = document(job_prefix + 'gate-report.json')
-                if files['state/' + job_prefix + 'gate-report.json'] != gate_ref['report_sha256']:
-                    raise ValueError('Gate report bytes differ from the original result SHA')
-                if gate['binding'] != asdict(binding) or gate['manifest_sha256'] != binding.manifest_sha:
-                    raise ValueError('Gate report belongs to another experiment manifest')
-            item = {'experiment_id': ident, 'binding': asdict(binding), 'track': manifest['track'],
-                    'baseline_id': manifest['baseline_id'], 'workload_fingerprint': manifest['workload_fingerprint'],
-                    'baseline_matches': baseline_error is None, 'baseline_error': baseline_error,
-                    'max_run_seconds': experiment.max_run_seconds, 'runtime_status': 'not_queried',
-                    'job_id': request['job_id'] if request else None, 'started_recorded': started is not None,
-                    'recorded_result_state': result['state'] if result else None, 'fence_recorded': fence is not None,
-                    'recorded_gate': {'passed': gate['passed'], 'evidence_sha256': gate['evidence_sha256'],
-                                      'report_sha256': gate_ref['report_sha256'],
-                                      'mlflow_run_id': gate_ref['mlflow_run_id']} if gate else None,
-                    'files': dict(files)}
-            if detail:
-                item.update(manifest=manifest, spec=spec, current_runner=runner, job_request=request,
-                            started=started, result=result, gate_report=gate, fence=fence, negative_result=negative)
-            return item
-
-        result = {'baseline': baseline, 'baseline_files': baseline_files, 'runtime_status': 'not_queried'}
-        if payload['experiment_id'] is not None:
-            result['experiment'] = inspect(payload['experiment_id'], detail=True)
+    def inspect(ident, *, detail=False):
+        slug(ident)
+        files.clear()
+        manifest = document(prefix + 'experiments/' + ident + '/manifest.json')
+        perfctl.validate(manifest)
+        if manifest['experiment_id'] != ident or manifest['local_project'] != project_id:
+            raise ValueError('Experiment does not belong to this project and native directory')
+        registered_sha = files['state/' + prefix + 'experiments/' + ident + '/manifest.json']
+        frozen = document('training/manifests/' + ident + '.json')
+        if files['state/training/manifests/' + ident + '.json'] != registered_sha:
+            raise ValueError('Frozen manifest bytes differ from the project registry')
+        binding = Binding(ident, registered_sha, manifest['candidate_commit'], manifest['baseline_commit'])
+        if frozen['candidate_sha'] != binding.candidate_sha or frozen['baseline_sha'] != binding.baseline_sha:
+            raise ValueError('Manifest commit aliases differ from the original binding')
+        spec = document('training/specs/' + ident + '.json')
+        experiment = Experiment(**{**spec, 'binding': Binding(**spec['binding'])})
+        experiment.validate()
+        manifest_path = adapter.safe_file(root, 'training/manifests/' + ident + '.json')
+        if (experiment.binding != binding or experiment.manifest_uri != manifest_path.as_uri()
+                or experiment.max_run_seconds != manifest['max_run_seconds']):
+            raise ValueError('Experiment spec differs from its frozen manifest binding')
+        baseline_error = None
+        if baseline is None:
+            baseline_error = 'Baseline is not present in the selected registry'
         else:
-            after = payload['after']
-            if after is not None:
-                if not isinstance(after, str) or len(after) > 2048:
-                    raise ValueError('Invalid experiment directory cursor')
-                after = os.fsdecode(base64.b64decode(after.encode('ascii'), altchars=b'-_', validate=True))
-            directory = adapter.safe_file(root, prefix + 'experiments')
-            if directory.exists():
-                with os.scandir(directory) as entries:
-                    names = heapq.nsmallest(payload['limit'] + 1, (entry.name for entry in entries
-                        if not entry.name.startswith('.') and (after is None or entry.name > after)))
-            else:
-                names = []
-            count = min(len(names), payload['limit'])
-            result.update(items=[], errors=[], inspected_entries=count,
-                          next_after=base64.urlsafe_b64encode(os.fsencode(names[count - 1])).decode('ascii')
-                          if len(names) > count else None)
-            for name in names[:count]:
-                try:
-                    result['items'].append(inspect(name))
-                except (OSError, ValueError, KeyError, TypeError, Blocked) as error:
-                    result['errors'].append({'experiment_id': name, 'error': str(error)})
+            try:
+                perfctl.baseline_ok(manifest, baseline)
+            except perfctl.Invalid as error:
+                baseline_error = str(error)
+        job_prefix = 'training/jobs/' + ident + '/'
+        request = document(job_prefix + 'request.json', optional=True)
+        runner_id = slug(manifest['runner_template_id'])
+        runner = document('training-runners/' + runner_id + '.json', optional=True, configuration=True)
+        if runner is None and request is None:
+            raise ValueError('Cannot verify experiment Git repository: current runner and original job request are both missing')
+
+        def check_runner(value):
+            if (value['runner_template_id'] != runner_id or value['project'] != project_id
+                    or value['repo'] != payload['repo']):
+                raise ValueError('Runner does not belong to the selected project and Git repository')
+
+        if runner is not None:
+            check_runner(runner)
+        if request is not None:
+            if request['experiment'] != spec or request['job_id'] != 'local-perf-' + ident:
+                raise ValueError('Native job request differs from the original experiment')
+            check_runner(request['runner'])
+        started = document(job_prefix + 'started.json', optional=True)
+        result = document(job_prefix + 'result.json', optional=True)
+        fence = document('training/fences/' + ident + '.json', optional=True)
+        negative = document('training/negative-results/' + ident + '.json', optional=True) if detail else None
+        for value in (started, result, fence, negative):
+            if value is not None and value['binding'] != asdict(binding):
+                raise ValueError('Training record belongs to another immutable binding')
+        for value in (started, result):
+            if value is not None and (request is None or value['job_id'] != request['job_id']):
+                raise ValueError('Training job result has no matching original request')
+        gate = None
+        gate_ref = result.get('gate') if result is not None else None
+        if gate_ref is not None:
+            expected = adapter.safe_file(root, job_prefix + 'gate-report.json')
+            if gate_ref['report'] != str(expected):
+                raise ValueError('Gate report is outside the original experiment job')
+            gate = document(job_prefix + 'gate-report.json')
+            if files['state/' + job_prefix + 'gate-report.json'] != gate_ref['report_sha256']:
+                raise ValueError('Gate report bytes differ from the original result SHA')
+            if gate['binding'] != asdict(binding) or gate['manifest_sha256'] != binding.manifest_sha:
+                raise ValueError('Gate report belongs to another experiment manifest')
+        item = {'experiment_id': ident, 'binding': asdict(binding), 'track': manifest['track'],
+                'baseline_id': manifest['baseline_id'], 'workload_fingerprint': manifest['workload_fingerprint'],
+                'baseline_matches': baseline_error is None, 'baseline_error': baseline_error,
+                'max_run_seconds': experiment.max_run_seconds, 'runtime_status': 'not_queried',
+                'job_id': request['job_id'] if request else None, 'started_recorded': started is not None,
+                'recorded_result_state': result['state'] if result else None, 'fence_recorded': fence is not None,
+                'recorded_gate': {'passed': gate['passed'], 'evidence_sha256': gate['evidence_sha256'],
+                                  'report_sha256': gate_ref['report_sha256'],
+                                  'mlflow_run_id': gate_ref['mlflow_run_id']} if gate else None,
+                'files': dict(files)}
+        if detail:
+            item.update(manifest=manifest, spec=spec, current_runner=runner, job_request=request,
+                        started=started, result=result, gate_report=gate, fence=fence, negative_result=negative)
+        return item
+
+    result = {'baseline': baseline, 'baseline_files': baseline_files, 'runtime_status': 'not_queried'}
+    if payload['experiment_id'] is not None:
+        result['experiment'] = inspect(payload['experiment_id'], detail=True)
+    else:
+        after = payload['after']
+        if after is not None:
+            if not isinstance(after, str) or len(after) > 2048:
+                raise ValueError('Invalid experiment directory cursor')
+            after = os.fsdecode(base64.b64decode(after.encode('ascii'), altchars=b'-_', validate=True))
+        directory = adapter.safe_file(root, prefix + 'experiments')
+        if directory.exists():
+            with os.scandir(directory) as entries:
+                names = heapq.nsmallest(payload['limit'] + 1, (entry.name for entry in entries
+                    if not entry.name.startswith('.') and (after is None or entry.name > after)))
+        else:
+            names = []
+        count = min(len(names), payload['limit'])
+        result.update(items=[], errors=[], inspected_entries=count,
+                      next_after=base64.urlsafe_b64encode(os.fsencode(names[count - 1])).decode('ascii')
+                      if len(names) > count else None)
+        for name in names[:count]:
+            try:
+                result['items'].append(inspect(name))
+            except (OSError, ValueError, KeyError, TypeError, Blocked) as error:
+                result['errors'].append({'experiment_id': name, 'error': str(error)})
+    return result
+
+
+def _training_files_main():
+    from agent_platform.core import Blocked
+
+    try:
+        result = _training_records(json.load(sys.stdin))
         print(json.dumps(result, ensure_ascii=False, allow_nan=False))
     except (OSError, ValueError, KeyError, TypeError, Blocked) as error:
         raise SystemExit('BLOCKED: ' + str(error))

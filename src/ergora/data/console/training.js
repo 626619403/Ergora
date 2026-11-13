@@ -19,12 +19,91 @@ export function trainingView(data, base) {
         row(previous, next, button("重新读取列表", () => { pageIndex = 0; load(); })))), detail);
   const active = () => view.isConnected && app.project === project && app.tab === "training" && app.bootstrap.state_directory === home;
 
+  function submissionPanel(id, selected) {
+    const submission = node("div", { "aria-live": "polite" });
+    let submissionSequence = 0, sending = false, source, lastResult;
+
+    function showSubmission(result) {
+      lastResult = result;
+      const controls = node("div");
+      const refresh = button("读取本地提交记录", readSubmission);
+      submission.replaceChildren(table(["提交记录", "值"], [
+        ["状态", result.status], ["项目修订", result.project_revision], ["原工作流", result.workflow_id],
+        ["原运行 ID", result.run_id || "尚无确认回执"],
+        ["意图 SHA256", result.intent_sha256 || "尚未创建意图"],
+        ["发送记录", result.attempt_saved ? "已有；仅按原 ID 对账" : "尚未记录发送"],
+        ["归属拒绝", result.reason || "无"],
+      ]), node("details", {}, node("summary", {}, "完整提交记录"), pre(result)), controls, refresh);
+      if (!["not_recorded", "prepared", "unknown"].includes(result.status)) return;
+      const starting = result.status === "not_recorded";
+      if (starting && !source) {
+        controls.append(node("p", {}, "先读取一致的实验原件才能首次提交。已有意图的继续／对账不依赖当前原件。"));
+        return;
+      }
+      const item = source?.experiment;
+      const material = starting ? { binding: item.binding, max_run_seconds: item.max_run_seconds, runner: item.current_runner }
+        : result.confirmation;
+      const digest = starting ? item.binding.manifest_sha : result.intent_sha256;
+      const confirmation = node("input", { type: "text", "aria-label": starting ? "确认 manifest SHA256" : "确认原意图 SHA256",
+        autocomplete: "off", spellcheck: "false", placeholder: "粘贴上方完整 SHA256" });
+      const action = button(starting ? "提交已准备实验" : result.status === "unknown" ? "按原 ID 对账" : "继续原提交", async () => {
+        if (!selected() || sending) return;
+        if (confirmation.value !== digest) throw new Error("请粘贴本次操作的完整 SHA256；项目变化后需重新读取。");
+        sending = true;
+        const request = ++submissionSequence;
+        for (const control of submission.querySelectorAll("button, input")) control.disabled = true;
+        try {
+          const reply = await api(`${base}/training/${encodeURIComponent(id)}/${starting ? "start" : "resume-start"}`,
+            { revision: starting ? source.project_revision : result.project_revision, [starting ? "manifest_sha256" : "intent_sha256"]: digest });
+          if (selected() && request === submissionSequence) showSubmission(reply);
+        } catch (error) {
+          if (selected() && request === submissionSequence)
+            submission.replaceChildren(panel("本次操作未取得确认", error.message,
+              node("p", {}, "先读取原意图。若已有发送记录，只能对账，不要换实验 ID 或重新提交。"),
+              button("读取本地提交记录", readSubmission)));
+        } finally {
+          sending = false;
+        }
+      }, "primary");
+      controls.append(node("p", {}, starting
+        ? "确认下列原合同与可信 runner 后，粘贴 manifest SHA256。此操作提交原控制工作流；逐实验执行仍使用原 run-local。"
+        : result.status === "unknown" ? "已有发送记录：粘贴原意图 SHA256后，仅查询原运行与归属，不会重发 start。"
+          : "意图已保存但尚无发送记录：粘贴原意图 SHA256后，可以继续一次原提交。"),
+        pre({ confirmation_sha256: digest, ...material }),
+        confirmation, action);
+    }
+
+    async function readSubmission() {
+      if (sending) return;
+      const request = ++submissionSequence;
+      submission.replaceChildren(empty("正在读取本地提交记录…"));
+      try {
+        const result = await api(`${base}/training/${encodeURIComponent(id)}/submission`);
+        if (selected() && request === submissionSequence) showSubmission(result);
+      } catch (error) {
+        if (selected() && request === submissionSequence)
+          submission.replaceChildren(panel("未取得本地提交记录", error.message, button("重新读取提交记录", readSubmission)));
+      }
+    }
+
+    readSubmission();
+    return { element: panel("原实验提交", "默认只读本地记录。原意图与当前原件分别读取，恢复须确认原 SHA256；回执不代表训练成功或外部作业停止。", submission),
+      setSource(observed) {
+        source = observed;
+        if (selected() && lastResult?.status === "not_recorded") showSubmission(lastResult);
+      } };
+  }
+
   async function inspect(id) {
     const sequence = ++detailSequence;
-    detail.replaceChildren(empty(`正在读取实验 ${id}…`));
+    const selected = () => active() && sequence === detailSequence;
+    const records = node("div", {}, empty(`正在读取实验 ${id}…`));
+    const submission = submissionPanel(id, selected);
+    detail.replaceChildren(records, submission.element);
     try {
       const observed = await api(`${base}/training/${encodeURIComponent(id)}`);
       if (!active() || sequence !== detailSequence) return;
+      submission.setSource(observed);
       const item = observed.experiment;
       const gate = item.recorded_gate;
       const live = node("div", { "aria-live": "polite" }, empty("尚未实时查询。"));
@@ -47,7 +126,7 @@ export function trainingView(data, base) {
             live.replaceChildren(panel("未取得实时状态", error.message));
         }
       }
-      detail.replaceChildren(panel(`实验 ${item.experiment_id}`, "这些是原记录；运行状态未实时查询，统计和正确性未重新复验，也未授予采用。",
+      records.replaceChildren(panel(`实验 ${item.experiment_id}`, "这些是原记录；运行状态未实时查询，统计和正确性未重新复验，也未授予采用。",
         table(["记录", "值"], [
           ["原作业 ID", item.job_id || "尚未读到作业请求"],
           ["已保存的执行结果", item.recorded_result_state || "尚未读到结果，当前状态未知"],
@@ -64,7 +143,7 @@ export function trainingView(data, base) {
         live, button("查询原运行状态", queryRuntime)));
     } catch (error) {
       if (active() && sequence === detailSequence)
-        detail.replaceChildren(panel("未取得一致的实验记录", error.message,
+        records.replaceChildren(panel("未取得一致的实验记录", error.message,
           button("重新读取该实验", () => inspect(id))));
     }
   }
@@ -93,7 +172,8 @@ export function trainingView(data, base) {
           node("p", { className: "form-note" }, `当前基线：${item.baseline_matches ? "匹配" : "不匹配／缺失"}`),
           button("查看原件", () => inspect(item.experiment_id))),
       ])) : empty("本页未读到有效实验。"),
-      ...observed.errors.map((item) => panel(`实验 ${item.experiment_id} 无法读取`, item.error)));
+      ...observed.errors.map((item) => panel(`实验 ${item.experiment_id} 无法读取`, item.error,
+          button("查看原件与原意图", () => inspect(item.experiment_id)))));
       note.textContent = `第 ${pageIndex + 1} 页 · 检查 ${observed.inspected_entries} 个条目 · ${observed.items.length} 个可读实验`;
       previous.disabled = pageIndex === 0;
       next.disabled = !observed.next_after;
@@ -111,7 +191,7 @@ export function trainingView(data, base) {
     view,
     panel("开始与执行实验", "先准备真实合同、数据、环境和预算，再按训练手册使用原生执行流程。",
       pre(`ergora templates copy training-optimization ./training-task\nergora training list ${project}\nergora training show ${project} EXPERIMENT_ID`),
-      node("p", {}, "原生 agentflow training 的 prepare／start／run-local／status／cancel／approve 沿用原实验 ID。执行、取消、恢复和 evidence SHA 批准的步骤见仓库 docs/TRAINING.md；当前页面只读。")),
+      node("p", {}, "先按原生 agentflow training prepare 准备实验，再在此确认提交。run-local／cancel／approve沿用原实验 ID；执行、取消和 evidence SHA 批准的步骤见仓库 docs/TRAINING.md。")),
     panel("Forge 候选来源", "原生 campaign 是候选材料；完成不代表实验通过或已经采用。在工作流设计中选择训练模板可操作原生工具。",
       pre(`ergora kernel list ${project}`),
       data.kernel_runs.length ? table(["原记录 ID", "记录状态"], data.kernel_runs.map((item) => [item.id, item.status])) : empty("尚无 Forge 候选记录。")),

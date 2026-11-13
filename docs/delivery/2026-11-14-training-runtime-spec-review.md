@@ -50,3 +50,11 @@
 - **停止与公开摘要**：实际 browser close 退出 0；四轮原 controller PID／starttime 当前均不在，`/proc/net/tcp{,6}` 无原 7233／42391 监听。已核 `closure-r1.json` 与各轮 monitor 的 `cancelled`／`-9` 原件；仅认定私有验收服务收尾，不扩为远端／GPU 作业停止证明。[公开摘要](evidence/2026-11-14-training-runtime.json) 的包、回归、run／history、负 Outcome、浏览器和自身审查字段与原件一致，原失败及未执行范围保持可见。
 
 **需求与行为轴本地出口通过，开放 finding 0。** 维护性最终结论见[独立结构报告](2026-11-14-training-runtime-structure-review.md)；本报告不代判该轴。普通发布、精确远端 Ref 与本候选自己的 CI 尚未本 reviewer 核定，不能借 F9a 成绩。上述 CPU 控制流不证明 runner 命令、模型训练、MLflow、GPU、数值／性能比较或采用；F9b 后续写操作、F9c／F9d、真实 B3 与完整 C2 继续按原计划开放。
+
+## 发布身份补核
+
+本次只核已提交的 `106481a80abfd168f5b45fbba7381063505239d0` Git 对象，唯一父提交为本片基线 `8182499fa46c61adecea2f6defd2c777a433eed5`；后续 F9b2 工作树不进入判断。独立读取该候选 25 个变更 blob，集合、长度及 SHA 全部等于 `static-r2.json`（该清单 SHA256 `bb7f8b28b96a29a164ab85a63f9d295a667b9a1af2d65157e6f44b7ce360ce67`）。10 个产品／测试／CI 文件按原算法重算 packet SHA256 为 `4399454c62e491baa801638257d437cee0fd49c2c87b0ba8804a82df2c067bf0`；它们与初始 review-r1 相符，其中产品源码亦与已验安装快照／wheel／installed 逐字相等。候选中的 221 个相对 Markdown 链接目标在同一 Git 树内存在，约定的机器私有标识扫描无命中。
+
+F9a 发布／CI 附录仍归原片记账，不成为 F9b1 的 CI 证据；新增 F9b2 文档明确是下一片设计，未混入其提交／对账产品。已读 `commit-r1.json`、`push-r1.json`、`ref-r1.json`：普通 push 退出 0、没有 force 参数，随后原 `ls-remote` 回执的完整 `refs/heads/refactor/architecture-foundations` 为上述候选 SHA。**本轴提交／普通推送身份核对通过，需求与行为 finding 仍为 0。** 该回执证明所记时点的远端身份，不保证之后的分支位置。
+
+本轮另保留一项工具发现的文档空白注记：对已提交的完整候选执行 `git diff --check BASELINE CANDIDATE` 实际退出 **2**，唯一诊断为 `docs/delivery/2026-11-14-training-runtime-structure-review.md:44: new blank line at EOF`。原命令／退出／stdout 在私有 `spec-review-r1/publication-diff-check.json`。提交前 `static-r2.json` 的 `diff_check_exit: 0` 来自当时只覆盖 tracked 差异的命令，不能扩大成 25 个提交文件的检查通过；旧记录未覆盖改写。该空白不改变产品行为，修正归后续普通文档提交与完整静态补核，不回写旧候选成功。本候选自己的 CI 尚未本 reviewer 核定，仍须单独收口。
