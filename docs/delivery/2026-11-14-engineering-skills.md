@@ -24,4 +24,12 @@
 
 十九作者文件的 142 个本地链接目标及凭据值匹配检查 issue 0；八个原 MCP audit PID 在终核时均已不存在，未提前采样 starttime，结论限此观察。夹具精确 HEAD 和全部八份原源码保持；只产生三份 Python bytecode 缓存。首次静态驱动把缓存当成源码改动而断言失败，修正为原字节／HEAD 加独立缓存枚举后通过，产品未变。
 
-新的 [fresh-context 独立评审](2026-11-14-engineering-skills-review.md)已完成完整十九文件、原角色输出、安装／完整读取及最终状态终核；需求和维护性两轴通过，开放 0／0，无实证 finding，S1 本地出口完成。最终作者快照 manifest SHA `cfbd2470a30dfd65b82d57a80ff65e34c7c26ede36004b352289ccaec0dd0892`；此后仅补记状态与发布事实。自己的普通提交／推送及 CI 尚待完成，不合入 main。真实外部参考项目只由 Ergora 工具启动的 agent 试用；不直接编辑业务仓库，也不以只读方案代替 B3 实验。
+新的 [fresh-context 独立评审](2026-11-14-engineering-skills-review.md)已完成完整十九文件、原角色输出、安装／完整读取及最终状态终核；需求和维护性两轴通过，开放 0／0，无实证 finding，S1 本地出口完成。最终作者快照 manifest SHA `cfbd2470a30dfd65b82d57a80ff65e34c7c26ede36004b352289ccaec0dd0892`；此后仅补记状态与发布事实。普通提交／推送已核，自己的 CI 及原独立终核通过，不合入 main。真实外部参考项目只由 Ergora 工具启动的 agent 试用；不直接编辑业务仓库，也不以只读方案代替 B3 实验。
+
+## 发布与自己的 CI
+
+已普通提交／推送 `fde425164e45a15e255eb62e0e6f6fd959e00f6c`，父 `560bfdf`；二十三精确 Git 文件和全部 561 产品与测试包一致，原独立报告及 H3a 收尾记录获核准。push 5.523 秒、完整 SSH Ref 1.468 秒均退出 0，Ref 与候选完整 SHA 相同；原独立发布补核通过，开放 0／0。
+
+自己的 CI `43485238011` 第五官方 run HTML 已为 Success；八 job／30 必要步骤均 success／completed，逐步完整候选 SHA 日志路径及原 body／receipt 已核，原独立终态补核通过。前四 run 样本和 Windows 前三在途样本保留，未用 H3a 或另一候选的成功代替。产品内容仍为同一已验包，后续 [W1 源码试用](2026-11-14-workload-source-trial.md)属于独立验证片。
+
+原独立终核重算十八份 HTTP body／receipt 共 3,078,044B、UI 批次、八 job 与全部步骤，开放 0／0；Linux 六组回归 231／301／193／162／146／233 秒，Windows 回归 963 秒、PowerShell 5.1 安装升级 60 秒。最终报告 9,701B，SHA `00c3660c187aae85d8be3cd135f651ad2fb36af64d748a3e62250116c2726b86`；S1 精确交付完成，不借其验收 W1／GPU。
