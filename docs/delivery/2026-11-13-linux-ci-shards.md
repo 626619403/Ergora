@@ -29,3 +29,7 @@
 ## CI4：审查与发布
 
 自身原结构审查模板已实际调用：67.247731秒succeeded／approve；六文件21,629B与全部三个祖先／自身资源逐字进入原prompt／stdin／protocol25,947B，result SHA `d0df2970baca7ae2f5b24f4b32bda259c12e769a92e084e753f52cd9a4066e05`。这是该聚焦材料的结构审查，独立两轴与原件复核另计。修正后自身模板48.880621秒succeeded／approve，六全文22,097B／实际prompt、stdin和protocol26,663B及全部三个资源核准，结果SHA `44ef04dba3bf72750be1bf496f8ee65ed34d8d11244a14c68bc5f7c6195136a7`。完整12文件及全部原件的[新独立双轴终核](2026-11-13-linux-ci-shards-review.md)通过：Standards0，Spec初审两P3已关闭／开放0。本地实现／验证／审查出口完成，精确发布尚待完成。原00922 CI的Windows通过／Linux20分钟取消保持，不能作为本候选CI通过。普通push与精确Ref、该候选自己的六Linux／一Windows必要步骤另行核准；不自动合main或强推。
+
+普通提交／推送与原独立补核：`9250bf880c07e13b0aa2af9ba49f612737082a50` 的13Git对象／r5最终manifest及作者SSH完整Ref相符；自己的[CI43402253789](https://github.com/626619403/Ergora/actions/runs/43402253789)首REST样本plan成功、六Linux／一Windows在途，未关闭远端出口。详见[发布记录](2026-11-13-publication-status.md)。
+
+最终自己的CI43402253789第三官方run HTML为Success；plan、六Linux／一Windows全部30必要步骤成功，含七组观测上传。原独立协调者直接从九份原HTML／回执逐项核准确切SHA／job／step、状态和全部30条日志路径，与投影一致。Linux回归111–271秒；Windows回归743秒、PowerShell5.1安装升级47秒。最后状态以[发布终态记录](2026-11-13-publication-status.md)及[原独立终核](2026-11-13-linux-ci-shards-review.md)为准；本片精确交付终结。API限流、旧在途和原取消不改写，未下载完整job日志或artifact ZIP，硬截止后的上传仍无保证。

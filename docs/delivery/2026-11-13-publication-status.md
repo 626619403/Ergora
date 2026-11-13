@@ -50,3 +50,25 @@
 原233项tail已退出0：227 passed、6 skipped、36 subtests passed，pytest391.72秒／控制器393.593秒。原1463完成项与tail233的并集恰为原1696、交集0。原采样仍为cancelled且九失败保持；没有将分段补测称连续suite通过。pytest9.2在父call报告前发出子报告，因此成本使用每node／phase最终父报告，不重复累加36子报告；剔除r3未完成node的1.104574秒setup。去重后阶段成本4875.574秒／75文件，详见[公开成本投影](evidence/2026-11-13-linux-ci-costs.json)，原两份phase日志保留。
 
 [CI分组计划](../plans/2026-11-13-linux-ci-shards.md)现采用六个显式整文件组，原job20分钟上限保持，每组本地估算812.58–812.63秒。正式pytest plugin保持独立入口并记录report类型／完整失败；workflow从同一JSON生成matrix且尝试上传已落盘观测。新候选Python3.11非editable安装521产品／两RECORD／283身份相等；全量1708collection与六组254／250／342／312／251／299并集相等、交集0。代表research／process／installation／submission-lock检查31通过／5跳过57.86秒，仅授予此范围。正式负向／失败／中断探针已通过；独立审查发现提前skip起点缺失及最慢文件文字两P3，已改外围wrapper并修正文案。r2四模块31通过／5跳过58.00秒、103phase起点齐全；修正后原结构模板48.881秒approve，完整12文件与原件的新独立两轴通过、开放0／0，见[交付与审查](2026-11-13-linux-ci-shards.md)。普通推送／新候选自己的CI尚待完成；原Windows通过不继承。
+
+## 新六组候选已普通发布
+
+Linux CI片已普通提交／推送为 `9250bf880c07e13b0aa2af9ba49f612737082a50`：push退出0／6.651743秒，随后SSH `ls-remote`退出0／1.333619秒，精确同SHA；没有强推。13个Git对象与最终r5全文manifest逐字相等，变更集合恰为13路径；最终manifest SHA `6076cc8241237f649a3f3bab945b3735a872b8d69ced9da4efd55be63d533ea7`。原独立协调者已补核上述Git／发布身份及四份结案记账；实现相对其r4审查未变。早前首次commit未暂存新文件而pathspec失败，原回执保留，随后明确13路径stage／普通commit成功，没有删除锁或绕过检查。
+
+自己的[Portability 43402253789](https://github.com/626619403/Ergora/actions/runs/43402253789)首官方REST样本为in_progress：plan成功，六Linux与一Windows native均已启动。此时 `required_steps_passed=false`；旧00922的Windows green不继承。原始请求／回执保存在私有 `linux-ci-shards/` 的push-r1、ref-r1、git-identity-r1和ci-api-r1；完整必要步骤终态待核。
+
+第三REST样本因匿名限流403未取到终态，原body／回执保持。随后官方run及八job各一次HTML读取，完整绑定9250bf8：六Linux的wheel、reference、regression和观测上传四必要步骤均completed／success；regression分别111–271秒，job上限保持20分钟。plan成功，Windows回归仍在途，其后安装升级／上传待验，因此整体仍为In progress／`required_steps_passed=false`。原件为 `ci-api-r3/`、`ci-run-html-r1/`、八份 `ci-job-*-html-r1/`、`ci-html-r1.json` 与 `linux-durations-r1.json`。没有成功终态REST或完整日志／artifact ZIP下载声明。
+
+### 9250bf8 自己的跨平台终态
+
+第三官方run HTML为 **Success**，`required_steps_passed=true`。原独立协调者从run r3及八job原HTML／回执直接复算：8job名字／ID与原HTTP200 API的精确candidate／run相符；全部30个必要check-step的conclusion均success，completed-at／data-job-completed齐全，每条log URL都绑定完整 `9250bf880c07e13b0aa2af9ba49f612737082a50`／job／step。随后逐项核投影一致，精确发布与CI终核完成；没有用旧Windows结果关闭本片。
+
+|环境／步骤|终态与实际范围|
+|---|---|
+|plan|Read explicit test groups成功|
+|六Linux／3.11|各自wheel、reference、回归及上传均成功；group0..5回归分别180／271／179／111／198／205秒|
+|Windows／3.12|wheel、reference、回归743秒、PowerShell5.1安装升级47秒及上传1秒全部成功|
+
+每个native job原20分钟上限保持，所观测步骤的首尾跨度最长837秒。run r3 body SHA `6342eb4f8b3161b47eba39dacb778232bd2a4340c5d3951c63723f44f681ae4a`；最终Windows job body `afa13ecebd09e9c83a40a15d785ddc3bf77b49a8bf9a289fb8030042cdbc819f`，其他七份body身份与回执保留在 `ci-html-r3.json` 所指的私有原件。前两run HTML在途、首两REST200在途、第三REST403、原00922取消等历史范围全部保持；不称成功终态REST，不称完整job日志或artifact ZIP下载。上传步骤成功授予该次正常终态范围，不保证硬截止后上传。
+
+本地13Git／r5快照及原作者SSH Ref已独立核；最终报告与结案记账为同片文档，不扩大实现或运行范围，见[独立终核](2026-11-13-linux-ci-shards-review.md)。下一按[D2通信方向计划](../plans/2026-11-13-specialist-presets.md)推进新资料配方；新候选仍需自己的验证与CI。
