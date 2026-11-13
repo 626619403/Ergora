@@ -6,7 +6,7 @@
 
 基线／HEAD：`106481a80abfd168f5b45fbba7381063505239d0`。本轮检查未提交的 21 文件，精确清单为 `.ergora/checks/training-submission/review-r1-files.json`（SHA256 `5b5cff51a1dc88ddd98262c10705ef516b1f2d5af2b4367f686a2c4b1c5572df`），tracked diff 为同目录 `review-r1.diff`（SHA256 `e14a345b6df4f4daee7a5ec3d13218d03eadcdeb5692e8f0b2680f0a9be9400e`）。检查时 21 项均与清单一致。全文读取新提交 owner、Service fixture 和新增 suite，读取所有生产改动及相邻调用者／原 owner；文档状态后续补记不继承本轮产品结论。
 
-首轮需求符合性：**待修正并补验收**。发现合法输入导致持久意图不可恢复的 P2；其余已检查的单次 start、unknown 后仅 lookup、完整原输入／memo 归属校验符合计划。首轮结构／维护性：**request changes，1 个 P2**。未发现需要新建 Task/Experiment 继承体系、第二调度器或实验账本的理由。另轴提出的页面恢复依赖问题由需求轴记录，本报告不重复计数，修复后仍需补核本轴所涉调用关系。**最终本地结构复核通过，开放 0；S1／S2／S3 与自身模板提出的 CLI 退出码 S4 均已关闭。r6 包、分轮原生／页面旅程、自身调用和收尾已补核；精确提交／远端 Ref／本片自己的 CI 仍待发布后核验，见末节。**
+首轮需求符合性：**待修正并补验收**。发现合法输入导致持久意图不可恢复的 P2；其余已检查的单次 start、unknown 后仅 lookup、完整原输入／memo 归属校验符合计划。首轮结构／维护性：**request changes，1 个 P2**。未发现需要新建 Task/Experiment 继承体系、第二调度器或实验账本的理由。另轴提出的页面恢复依赖问题由需求轴记录，本报告不重复计数，修复后仍需补核本轴所涉调用关系。**最终结构复核通过，开放 0；S1／S2／S3 与自身模板提出的 CLI 退出码 S4 均已关闭。r6 包、分轮原生／页面旅程、自身调用和收尾已补核；精确产品 `0d9c0a7a2e0c7d107f3a832fa9492a452df71f34` 的 Git 对象、普通推送、完整远端 Ref 与自己的 CI `43511152711` 八 job／30 必要步骤均已通过终核，见末节。**
 
 ## S1 · P2 · 聚合意图沿用了单源文件读界
 
@@ -123,3 +123,36 @@ native-r1 等待浏览器 marker 的原 600 秒超时及当轮服务收尾保留
 已核[交付](2026-11-14-training-submission.md)、[公开证据](evidence/2026-11-14-training-submission.json)及活动计划的范围：最终 r6 安装、r4 原生／页面、负 Outcome 与 helper 失败各按原身份记录，不宣称模型、MLflow、GPU、性能收益、采用或外部作业停止。新 owner／共享 reader 与 lookup 的真实消费者、DB／进程／文件锁边界、原训练及批准所有权仍合理；没有发现应删的结构、防护或测试，也没有未解决的性能退化证据。
 
 **最终本地结构／维护性验收通过，开放 0。** 本轮只运行小型离线核验并读取已有测试、服务和浏览器原件，未重跑安装、模型、服务、浏览器或大 suite；只编辑本报告及私有复核产物。精确提交／普通推送／完整远端 Ref 与本片自己的必要 CI 尚待原件送核；本结论不继承 F9b1，也不关闭 F9b3／F9b4、F9c／F9d、真实 B3 或完整 C2。
+
+## 精确发布身份补核：通过
+
+普通发布候选为 `0d9c0a7a2e0c7d107f3a832fa9492a452df71f34`，唯一父提交为基线 `106481a80abfd168f5b45fbba7381063505239d0`。本轴直接读取不可变 Git 对象，核对 baseline→candidate 的完整差异恰为 `static-r3.json` 冻结的 24 个路径，全部 24 个 blob 的字节数／SHA 与清单一致；12 个产品／测试／CI 路径组合仍为 `68a14b81ef3ad8685a7a4aa7b80ee6d134c3706b2fa610f3b0897773418a36bc`。再将 r6 wheel 全部 565 个产品文件逐字对照该提交 blob，全部相等；未用后续工作树认定候选。
+
+`static-r3.json` 对应 226 个本地链接、无坏链／私有机器标识；`commit-r1.json` 与原驱动核实完整 staged baseline diff-check 为 0、24 个 blob 相等后工作树 clean 才写出最终成功记录。本轴另对两个完整提交运行只读 `git diff --check`，退出 0 且无 diagnostic。原 staged stdout／stderr 均为 0B；该检查包含原新增文件，范围明确。
+
+已阅读 `push-r1.json`／`ref-r1.json` 原件：普通 push 退出 0，由 `106481a` 前进到 `0d9c0a7`，无强推参数；其后成功的完整 Ref 返回 `0d9c0a7a2e0c7d107f3a832fa9492a452df71f34 refs/heads/refactor/architecture-foundations`。本轴没有另发外部 Git 请求或执行 Git 写操作，只补本报告。此后 F9b3 计划及工作树变化属于下一片，不能替代本候选身份。
+
+**精确发布身份复核通过，结构轴开放 0。** 此轮当时尚待本片自己的官方原始 run／job／step 证据；后续结果见下，不借父提交或其他片的 CI 成功关闭。
+
+## 本片自己的 CI 终核：通过
+
+终核仅绑定不可变候选 `0d9c0a7a2e0c7d107f3a832fa9492a452df71f34`。本轴直接从该 Git 对象读取 `.github/workflows/portability.yml` 与 `scripts/ci/linux-groups.json`，核定 plan、六个 Linux 分组和一个 Windows job；新增 submission suite 确实登记在原 group5。没有用正在推进的 F9b3 工作树推断候选或必要步骤。
+
+官方 [Portability run 43511152711](https://github.com/626619403/Ergora/actions/runs/43511152711) 已为 **Success**。2026-11-13 21:50:26 UTC 保存的 run HTML 第五轮与 Windows job HTML 第四轮均为 HTTP 200，完整候选链接一致；run 原 body SHA256 为 `db14edd48c94bb4d7243f05a43c32dc8d69fc67d4a4c0bb727ebf8e67cb5fb87`，Windows 原 body SHA256 为 `ad52756aafc4251cb4c48d1a5f0105c7e6bff683c9ae7622076fb1a1cb56d784`。
+
+|job|原 job ID|必要步骤通过|
+|---|---|---:|
+|plan|132181448482|1／1|
+|Linux group0|132181511578|4／4|
+|Linux group1|132181511664|4／4|
+|Linux group2|132181511619|4／4|
+|Linux group3|132181511595|4／4|
+|Linux group4|132181511652|4／4|
+|Linux group5|132181511662|4／4|
+|Windows group all|132181511879|5／5|
+
+本轴独立重读、重算并关联 11 份原 HTTP body／receipt：初始候选 run、官方 UI job 映射 JSON、终态 run 与八份 job HTML，均为 HTTP 200且字节数／摘要一致。UI 映射完整列出八个唯一 ID，无下一批；每份必要步骤的原 log 路径均包含完整候选 SHA 与对应 check ID。30 个必要步骤全部为 success，均有完成时间及 job_completed 标记；plan 读取分组 1 项，Linux 六组各含构建安装、参考身份、原生回归和上传 4 项，Windows 另含 PowerShell 5.1 安装升级，共 5 项。没有以 optional skipped 步骤凑数，也没有把早期 null 当成功。独立结果为 `structure-review-r1/ci-independent-r3.json`，`accepted=true`、`remaining=[]`；对应原解析结果为 `ci-terminal-r4.json`。
+
+早期 run／Windows 运行中原件、测试和 helper 原失败均保留；本轮没有重跑工作流、下载 REST 日志／产物归档、执行本地 suite 或修改产品。CI 证据证明该候选工作流及必要步骤通过，不扩展为 Windows 原生 start／resume 支持、GPU／性能验收或外部作业停止；原产品支持范围不变。
+
+**本片精确发布及自己的 CI 终核通过，结构轴开放 0，无剩余必要 CI 项。** 已仅补原 F9b2 结构报告、交付和公开证据的记账，未改 F9b3 文件，未提交或推送；这些后记不改变上述已验产品身份。

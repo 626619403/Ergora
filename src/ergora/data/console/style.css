@@ -869,6 +869,9 @@ summary {
 .task-detail {
   min-width: 0;
 }
+.training-workbench {
+  overflow-wrap: anywhere;
+}
 .issue-history {
   max-height: 560px;
   overflow: auto;

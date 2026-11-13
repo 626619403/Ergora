@@ -462,7 +462,7 @@ def parser() -> argparse.ArgumentParser:
     preview.add_argument("--history-offset", type=int, default=0, help="Byte offset returned by the previous history page")
     preview.add_argument("--history-limit", type=int, default=65536, help="UTF-8 byte window, 4–65536 bytes")
     preview.add_argument("--history-revision", help="Observation revision required after the first history page")
-    experiments = commands.add_parser("training", help="Observe native experiments; explicitly submit or reconcile an original start")
+    experiments = commands.add_parser("training", help="Observe native experiments; explicitly submit, cancel or reconcile original operations")
     operations = experiments.add_subparsers(dest="operation", required=True)
     for name in ("list", "show"):
         operation = operations.add_parser(name)
@@ -484,6 +484,21 @@ def parser() -> argparse.ArgumentParser:
         if name != "submission":
             operation.add_argument("--revision", type=int, required=True)
             operation.add_argument("--manifest-sha256" if name == "start" else "--intent-sha256", required=True)
+            operation.add_argument("--timeout", type=int, default=20)
+    for name in ("cancellation", "cancel", "resume-cancel", "stop-status"):
+        operation = operations.add_parser(name)
+        operation.add_argument("project")
+        operation.add_argument("experiment_id")
+        if name != "stop-status":
+            operation.add_argument("request_id", help="Stable cancellation request ID; reuse it for recovery")
+        if name in ("cancel", "resume-cancel"):
+            operation.add_argument("--revision", type=int, required=True)
+            if name == "cancel":
+                operation.add_argument("--run-id", required=True)
+                operation.add_argument("--reason", required=True)
+            else:
+                operation.add_argument("--intent-sha256", required=True)
+        if name != "cancellation":
             operation.add_argument("--timeout", type=int, default=20)
     kernels = commands.add_parser("kernel", help="Native ForgeKernel campaigns; independent project validation still required")
     operations = kernels.add_subparsers(dest="operation", required=True)
@@ -911,11 +926,25 @@ def main(argv: list[str] | None = None) -> int:
             elif args.operation == "resume-start":
                 output = training.resume_start(State(args.home), args.project, args.experiment_id, args.revision,
                                                args.intent_sha256, timeout=args.timeout)
+            elif args.operation == "cancellation":
+                output = training.cancellation(State(args.home), args.project, args.experiment_id, args.request_id)
+            elif args.operation == "cancel":
+                output = training.cancel(State(args.home), args.project, args.experiment_id, args.request_id, args.revision,
+                                         run_id=args.run_id, reason=args.reason, timeout=args.timeout)
+            elif args.operation == "resume-cancel":
+                output = training.resume_cancel(State(args.home), args.project, args.experiment_id, args.request_id,
+                                                args.revision, args.intent_sha256, timeout=args.timeout)
+            elif args.operation == "stop-status":
+                output = training.stop_status(State(args.home), args.project, args.experiment_id, timeout=args.timeout)
             else:
                 output = training.inspect(State(args.home), args.project, getattr(args, "experiment_id", None),
                                           limit=getattr(args, "limit", 50), after=getattr(args, "after", None))
             print(json.dumps(output, ensure_ascii=False, indent=2))
-            return 0 if args.operation not in ("start", "resume-start") or output["status"] == "submitted" else 1
+            if args.operation in ("start", "resume-start"):
+                return 0 if output["status"] == "submitted" else 1
+            if args.operation in ("cancel", "resume-cancel"):
+                return 0 if output["status"] in ("requested", "already_closed") else 1
+            return 0
         elif args.command == "kernel":
             state = State(args.home)
             if args.operation == "list":

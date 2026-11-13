@@ -48,7 +48,7 @@ CLI、页面和 `GET /api/projects/{project}/training[/{experiment_id}]` 共用�
 
 原作业请求中的冻结 runner 或当前 runner 至少保留一份，用于核对项目和 Git 根；两者均缺失时明确报告归属无法核实。配置目录与状态目录可以共用同一文件夹，仍分别标记两种资料来源。
 
-上述离线列表／详情保留 `runtime_status: not_queried`。开始文件存在不能证明作业仍在运行，未读到结果也不能判为失败；`recorded_result_state: SUCCEEDED` 只描述原执行结果，门禁仍可能失败。门禁摘要核对原 result 引用的 report SHA 与 manifest／job binding，但不会重新执行统计、正确性或质量评价。详情没有自动批准、重提或停止操作；取消和精确 evidence SHA 批准仍沿原 `agentflow training` 流程，提交对账见下文。
+上述离线列表／详情保留 `runtime_status: not_queried`。开始文件存在不能证明作业仍在运行，未读到结果也不能判为失败；`recorded_result_state: SUCCEEDED` 只描述原执行结果，门禁仍可能失败。门禁摘要核对原 result 引用的 report SHA 与 manifest／job binding，但不会重新执行统计、正确性或质量评价。取消需在下述独立面板中明确确认，精确 evidence SHA 批准仍沿原 `agentflow training` 流程。
 
 ### 显式查询原运行状态
 
@@ -91,7 +91,36 @@ CLI的`start`／`resume-start`仅在返回`submitted`时退出0；`prepared`／`
 
 丢失回复、超时或进程停止后，先读取`submission`，不要改实验ID、重新`prepare`或直接调用原start以绕过记录。attempt后对账沿意图中的原spec；后来的baseline／runner变化不把它重解释为新发送许可。输入或memo冲突、缺历史、RPC错误会保留unknown并明确报错。旧注册／执行目录变化须恢复原登记后处理原意图，不能把旧记录搬到新home认领。
 
-提交只排队原控制工作流；实际runner仍须按原`agentflow training run-local EXPERIMENT_ID --confirm-manifest-sha ...`逐实验执行。取消、停止、原evidence SHA批准和集成票据继续使用原训练协议；`ergora task`只管理开发Task。
+提交只排队原控制工作流；实际runner仍须按原`agentflow training run-local EXPERIMENT_ID --confirm-manifest-sha ...`逐实验执行。原evidence SHA批准和集成票据继续使用原训练协议；`ergora task`只管理开发Task。
+
+### 取消原运行与分别观察停止事实
+
+先确认 `training submission` 返回 `submitted` 和完整原 `run_id`；未知 start 必须先按上一节恢复。实际取消与原执行器观察要求 Linux／WSL2、`temporal` extra 和同一原服务／训练控制 worker。取消请求使用稳定 ID；保留这个 ID，失败后继续查询或恢复同一请求。
+
+```bash
+ergora training cancellation my-project EXPERIMENT_ID stop-one
+ergora training cancel my-project EXPERIMENT_ID stop-one --revision REVISION --run-id ORIGINAL_RUN_ID --reason '停止本次实验'
+ergora training cancellation my-project EXPERIMENT_ID stop-one
+# 使用取消记录中的原 intent_sha256；不要使用 start 的意图 SHA
+ergora training resume-cancel my-project EXPERIMENT_ID stop-one --revision REVISION --intent-sha256 ORIGINAL_CANCEL_INTENT_SHA256
+ergora training stop-status my-project EXPERIMENT_ID --timeout 20
+```
+
+页面先读取原提交回执，再填写请求 ID 并点击“读取本地取消记录”。首次取消需粘贴完整原运行 ID 并填写原因；已有意图需粘贴原取消 SHA。取消和“读取停止事实”都是显式操作，没有自动轮询。当前 manifest／baseline／runner／spec 缺失时，已有原提交与取消仍按冻结的原输入恢复；详情读失败不会隐藏这些操作。
+
+|取消记录状态|含义与后续|
+|---|---|
+|`not_recorded`|该请求 ID 尚无意图；确认原运行和原因后创建。|
+|`prepared`|意图已保存但尚无发送记录；`resume-cancel` 可显式继续一次原请求。|
+|`unknown`|发送前 attempt 已保存，投递未确认；恢复只查固定原 run 的完整信号历史，不重发。缺事件、NOT_FOUND或RPC错误不清除原 attempt。|
+|`requested`|原信号已取得发送回执，或历史中匹配了完整 binding／reason／独立操作 SHA；它只证明投递。|
+|`already_closed`|原控制工作流已结束，记录 `signal_delivery: not_sent`；没有发送取消，不能称已停止。|
+
+本地 `cancellation` 读取不需要 SDK 或运行中的服务，成功读取退出0。`cancel`／`resume-cancel` 仅在 `requested`／`already_closed` 时退出0，其他记录状态退出1；该退出码不能作为外部停止证明。实际信号由原客户端检查 binding 后发送，记录固定原 start 意图、原 run、原因和操作人；同一请求不得改变原因或冒用操作人。意图、发送 attempt 和回执保存在原执行 state 的 `ergora/training-cancellations/EXPERIMENT/REQUEST_ID.*.json`，须与 `ergora/training-submissions/`、原 job／fence 和 Temporal history 一起保存。不要换 ID 或删除 checkpoint 绕过未知投递。
+
+`stop-status` 是一次只读观察，分别返回 `control`（原 Status／Outcome）、`executor_observation`（原 adapter 的作业观察）和 `fence_recorded`；读取成功退出0。原 `CANCEL_UNCONFIRMED` 与后来本地 `CANCELLED` 可以同时存在，页面会分别保留。`QUEUED`／`RUNNING`、缺作业、未读到 fence 或控制工作流结束都不能合成为“已经停止”。此查询不发信号、不写 fence、不执行 runner，也不重新评价或批准候选；仍需操作者核对真实设备／远端作业。
+
+HTTP 使用相同入口：`GET .../training/{experiment}/cancellations/{request_id}`；`POST .../cancel`（`revision / request_id / run_id / reason / timeout`）；`POST .../resume-cancel`（`revision / request_id / intent_sha256 / timeout`）；`GET .../stop-status?timeout=20`。实际操作的 timeout 为1–60秒。Windows 原生仅提供本地取消记录读取，实际取消和 executor 观察使用登记的 Linux／WSL2 环境。
 
 ## 从专家提案填写原实验合同
 

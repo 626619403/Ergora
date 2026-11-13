@@ -144,6 +144,181 @@
     "CLI nonzero exit for unconfirmed/rejected start"
   ],
   "private_validation_processes_stopped": true,
-  "independent_reviews": "Two fresh-context directions independently verified final source/package/RECORDs/frozen reference, scoped installed tests, original native histories and negative Outcomes, browser, complete self-review input and cleanup. Local exit passed with zero open findings; publication and own CI pending.",
+  "independent_reviews": "Two fresh-context directions independently verified final source/package/RECORDs/frozen reference, scoped installed tests, original native histories and negative Outcomes, browser, complete self-review input and cleanup, with zero open findings. The original structure reviewer also verified the immutable published Git candidate, ordinary push, full remote Ref, and this candidate's own successful eight-job/thirty-required-step CI.",
+  "publication": {
+    "candidate": "0d9c0a7a2e0c7d107f3a832fa9492a452df71f34",
+    "sole_parent": "106481a80abfd168f5b45fbba7381063505239d0",
+    "branch": "refactor/architecture-foundations",
+    "ordinary_push_verified": true,
+    "full_remote_ref_verified": true,
+    "changed_git_blobs_verified": 24,
+    "r6_wheel_product_files_equal_to_candidate_git_blobs": 565,
+    "candidate_identity_from": "immutable Git objects; subsequent F9b3 working tree excluded"
+  },
+  "own_ci": {
+    "candidate": "0d9c0a7a2e0c7d107f3a832fa9492a452df71f34",
+    "run_id": 43511152711,
+    "run_url": "https://github.com/626619403/Ergora/actions/runs/43511152711",
+    "status": "Success",
+    "jobs": 8,
+    "required_steps": 30,
+    "required_steps_passed": 30,
+    "remaining_required_steps": [],
+    "original_independent_structure_review": "passed",
+    "workflow_sha256": "ec2816e893c25ff3a7f96513e677bdf53f42d90b3cd79fe585e474a27c0121b2",
+    "groups_sha256": "bf1aaca345ff0eab43880a4a1fc8136c1704dc1ea3fa5d1514e98531fe7acd68",
+    "submission_suite_linux_group": 5,
+    "run_html_sample": 5,
+    "windows_html_sample": 4,
+    "jobs_verified": [
+      {
+        "name": "plan",
+        "job_id": 132181448482,
+        "required_steps_passed": 1,
+        "last_required_step_completed_at": "2026-11-13T21:29:39Z",
+        "body_sha256": "2acab0f74a85404c32db0aee22b8ba720b190a28dfc0a65eec9ff3294b1bc388"
+      },
+      {
+        "name": "Native (ubuntu-latest, 3.11, group 0)",
+        "job_id": 132181511578,
+        "required_steps_passed": 4,
+        "last_required_step_completed_at": "2026-11-13T21:33:03Z",
+        "body_sha256": "2eef4fb96b355f5e7307ca5640ef981ae4747c6dbdd5914606d267a95dd7edf0"
+      },
+      {
+        "name": "Native (ubuntu-latest, 3.11, group 1)",
+        "job_id": 132181511664,
+        "required_steps_passed": 4,
+        "last_required_step_completed_at": "2026-11-13T21:34:04Z",
+        "body_sha256": "01a2278d275ffd76b49a0328b9c1e4cdc375698094207f1e16ee644d848d06fc"
+      },
+      {
+        "name": "Native (ubuntu-latest, 3.11, group 2)",
+        "job_id": 132181511619,
+        "required_steps_passed": 4,
+        "last_required_step_completed_at": "2026-11-13T21:34:01Z",
+        "body_sha256": "6e912f925e57f926ba838d909e27305d5f6d8b0519691127d108473d9e5e57e7"
+      },
+      {
+        "name": "Native (ubuntu-latest, 3.11, group 3)",
+        "job_id": 132181511595,
+        "required_steps_passed": 4,
+        "last_required_step_completed_at": "2026-11-13T21:32:50Z",
+        "body_sha256": "1b96a1a177b45088fdf463bd05e6ff0b17b2c0e0da4169edeca36704b14c88f8"
+      },
+      {
+        "name": "Native (ubuntu-latest, 3.11, group 4)",
+        "job_id": 132181511652,
+        "required_steps_passed": 4,
+        "last_required_step_completed_at": "2026-11-13T21:33:28Z",
+        "body_sha256": "3abfdbd6a948556ac5745d345dc9587799941fc99b637cb901379e2cd722f509"
+      },
+      {
+        "name": "Native (ubuntu-latest, 3.11, group 5)",
+        "job_id": 132181511662,
+        "required_steps_passed": 4,
+        "last_required_step_completed_at": "2026-11-13T21:34:25Z",
+        "body_sha256": "650f5fc253f829e1da26df67626b7139a17bce3a42b9406abceaa1ba3053ab4d"
+      },
+      {
+        "name": "Native (windows-latest, 3.12, group all)",
+        "job_id": 132181511879,
+        "required_steps_passed": 5,
+        "last_required_step_completed_at": "2026-11-13T21:46:49Z",
+        "body_sha256": "ad52756aafc4251cb4c48d1a5f0105c7e6bff683c9ae7622076fb1a1cb56d784"
+      }
+    ],
+    "http_body_receipts_verified": [
+      {
+        "sample": "ci-run-html-r1",
+        "url": "https://github.com/626619403/Ergora/actions/runs/43511152711",
+        "at": "2026-11-13T21:31:18.724203+00:00",
+        "http_status": 200,
+        "bytes": 159036,
+        "sha256": "b625da7a64a20adbcdaac9f44af90267e3fac433e68852b6c1a202235dcf6734"
+      },
+      {
+        "sample": "ci-jobs-json-r1",
+        "url": "https://github.com/626619403/Ergora/actions/runs/43511152711/job_groups_batch?attempt=1&batch=0&size=200",
+        "at": "2026-11-13T21:31:46.668183+00:00",
+        "http_status": 200,
+        "bytes": 2715,
+        "sha256": "68d1825d0fcbf490b6e26a9502e6570b82b32501218220c3e29a5fdd7c45bab2"
+      },
+      {
+        "sample": "ci-run-html-r5",
+        "url": "https://github.com/626619403/Ergora/actions/runs/43511152711",
+        "at": "2026-11-13T21:50:26.451392+00:00",
+        "http_status": 200,
+        "bytes": 213372,
+        "sha256": "db14edd48c94bb4d7243f05a43c32dc8d69fc67d4a4c0bb727ebf8e67cb5fb87"
+      },
+      {
+        "sample": "ci-job-132181448482-html-r1",
+        "url": "https://github.com/626619403/Ergora/actions/runs/43511152711/job/132181448482",
+        "at": "2026-11-13T21:37:02.634593+00:00",
+        "http_status": 200,
+        "bytes": 158911,
+        "sha256": "2acab0f74a85404c32db0aee22b8ba720b190a28dfc0a65eec9ff3294b1bc388"
+      },
+      {
+        "sample": "ci-job-132181511578-html-r1",
+        "url": "https://github.com/626619403/Ergora/actions/runs/43511152711/job/132181511578",
+        "at": "2026-11-13T21:37:02.636998+00:00",
+        "http_status": 200,
+        "bytes": 162601,
+        "sha256": "2eef4fb96b355f5e7307ca5640ef981ae4747c6dbdd5914606d267a95dd7edf0"
+      },
+      {
+        "sample": "ci-job-132181511664-html-r1",
+        "url": "https://github.com/626619403/Ergora/actions/runs/43511152711/job/132181511664",
+        "at": "2026-11-13T21:37:02.631938+00:00",
+        "http_status": 200,
+        "bytes": 162601,
+        "sha256": "01a2278d275ffd76b49a0328b9c1e4cdc375698094207f1e16ee644d848d06fc"
+      },
+      {
+        "sample": "ci-job-132181511619-html-r1",
+        "url": "https://github.com/626619403/Ergora/actions/runs/43511152711/job/132181511619",
+        "at": "2026-11-13T21:37:02.665297+00:00",
+        "http_status": 200,
+        "bytes": 162601,
+        "sha256": "6e912f925e57f926ba838d909e27305d5f6d8b0519691127d108473d9e5e57e7"
+      },
+      {
+        "sample": "ci-job-132181511595-html-r1",
+        "url": "https://github.com/626619403/Ergora/actions/runs/43511152711/job/132181511595",
+        "at": "2026-11-13T21:37:02.644189+00:00",
+        "http_status": 200,
+        "bytes": 162600,
+        "sha256": "1b96a1a177b45088fdf463bd05e6ff0b17b2c0e0da4169edeca36704b14c88f8"
+      },
+      {
+        "sample": "ci-job-132181511652-html-r1",
+        "url": "https://github.com/626619403/Ergora/actions/runs/43511152711/job/132181511652",
+        "at": "2026-11-13T21:37:02.670841+00:00",
+        "http_status": 200,
+        "bytes": 162601,
+        "sha256": "3abfdbd6a948556ac5745d345dc9587799941fc99b637cb901379e2cd722f509"
+      },
+      {
+        "sample": "ci-job-132181511662-html-r1",
+        "url": "https://github.com/626619403/Ergora/actions/runs/43511152711/job/132181511662",
+        "at": "2026-11-13T21:37:02.680837+00:00",
+        "http_status": 200,
+        "bytes": 162601,
+        "sha256": "650f5fc253f829e1da26df67626b7139a17bce3a42b9406abceaa1ba3053ab4d"
+      },
+      {
+        "sample": "ci-job-132181511879-html-r4",
+        "url": "https://github.com/626619403/Ergora/actions/runs/43511152711/job/132181511879",
+        "at": "2026-11-13T21:50:26.456087+00:00",
+        "http_status": 200,
+        "bytes": 160181,
+        "sha256": "ad52756aafc4251cb4c48d1a5f0105c7e6bff683c9ae7622076fb1a1cb56d784"
+      }
+    ],
+    "scope": "Official UI HTML and UI job mapping JSON, all HTTP 200 with retained bodies and verified digests; all thirty required step log paths bind the full candidate SHA and job ID, with success, completion times and job-completed markers. Earlier in-progress samples and test/helper failures remain retained. No REST log or artifact archive download, workflow rerun, Windows native submission, GPU/performance, adoption or external-job-stop claim."
+  },
   "scope": "Prepared-experiment start/recovery CPU control semantics only. Original negative Outcomes and earlier test/helper failures retained. No model/MLflow/GPU/numerical/performance/adoption/external-job-stop/backend-diversity claim."
 }

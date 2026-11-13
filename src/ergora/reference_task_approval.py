@@ -12,7 +12,7 @@ import time
 import uuid
 
 from .reference_task_submission import _Submission
-from .reference_task_runtime import find_signal_event
+from .reference_history import find_signal_event
 from .state import file_lock
 
 

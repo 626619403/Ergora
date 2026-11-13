@@ -60,7 +60,9 @@ class Handle:
 def handle(wid, *, run_id, result_type):
     assert wid == 'perf-experiment/' + binding.experiment_id
     handles.append(run_id)
-    return Handle()
+    result = Handle()
+    result.id = wid
+    return result
 
 
 async def connect():

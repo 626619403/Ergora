@@ -100,4 +100,5 @@ async def connect():
 
 
 connection.connect = native.connect = connect
-main()
+if __name__ == '__main__':
+    main()

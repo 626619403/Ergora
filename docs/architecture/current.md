@@ -59,7 +59,9 @@ flowchart TB
 |`agents`、`agent_backends`|角色输出合同与可替换后端Adapter|调用者走同一Interface；实现拥有原生命令、配置、结果提取及支持模式|
 |`task_mcp`|单次调用的完整声明资源投影与连接回执|只有固定 `list/read`，没有任意路径／shell工具；当前要求Linux和可选SDK|
 |`tasks`|正式任务本地查询、预览／创建，以及运行／批准／取消／导出／对账用例；共有exported_source_candidate绑定原来源与精确候选，inspect_export委托原Git owner读当前对象|项目revision、原task/run、精确意图与摘要；未知结果沿原ID恢复|
-|`training`|CLI／HTTP共用离线观察、显式实时查询及原准备实验提交／意图对账；reference子进程隔离所选原配置|标准库reader共用于观察与预检；原client拥有start策略，操作intent／attempt／memo／回执不替代实验账本。attempt后仅核原输入／memo找回run；默认not_queried，原领域负结果保持，不复制调度／批准|
+|`training`|CLI／HTTP共用离线观察、显式实时查询、原准备实验提交／取消及意图对账；reference子进程装载所选原配置|标准库reader共用于观察与预检；原client拥有start／cancel，操作intent／attempt／memo／回执不替代实验账本。attempt后只读固定原history恢复；停止观察分别呈现原control、adapter与fence，不复制调度／批准|
+|`reference_training_submission`、`reference_training_cancellation`、`reference_training_runtime`|原训练start身份、固定run取消意图与投递恢复、共享原Status／Outcome观察|取消引用原start意图与receipt，不复制大manifest；原client核binding并发送，原ClusterAdapter核job／executor；原负结果保持|
+|`reference_history`|Task批准／取消和训练取消共用的完整signal payload分页匹配|只读固定run的原history；同原因或错误操作SHA不能补回执|
 |`reference`、`reference_creation_process`|随包参考资源和专用进程装载|编译／读取与执行分开；不在Web请求中直接改原生进程全局|
 |`reference_task_creation`、`reference_task_submission`、`reference_task_runtime`|原合同发布、attempt-before-send及原运行查询|操作先持久化意图，后做外部变更；原spec/memo/run必须匹配|
 |`reference_task_approval`、`reference_task_cancellation`|完整计划读取、精确批准、取消请求和投递恢复|requested是投递事实；授权采纳／外部停止需另核|
@@ -242,6 +244,7 @@ flowchart LR
 |Skill／评价／搜索|`skill_versions / skill_heads / skill_events / evaluation_suites / evaluations / optimizations`及完整资产|采用／回退只改经过核验的精确头；生成与评分分权|
 |独立调用／草稿／Forge|`agent_runs / drafts / kernel_runs`及原生产物|保留各自状态和native ID，不合并成另一套通用状态机|
 |正式创建与操作|登记执行状态中的 `ergora/task-creations / task-submissions / task-approvals / task-cancellations / task-exports / task-reconciliations`|固定原身份与意图／attempt／回执；与原合同、执行目录和ledger联合备份|
+|训练提交／取消操作|原执行状态中的 `ergora/training-submissions / training-cancellations`|取消引用原start意图及run，保存操作人／原因／稳定request ID；操作checkpoint不替代原实验账本，与job／fence／history共同保存|
 |正式运行与训练结果|原task/spec／ingress leases／job ledger／Git／receipt／Temporal history；runner证据|原runtime／executor／runner拥有，不搬迁在途history|
 |只读索引与交接包|原材料引用索引；操作者明确导出的 `task-handoff-v1` ZIP|有来源的快照和内部身份校验，不是完整备份、来源认证或重新执行|
 

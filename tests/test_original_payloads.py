@@ -7,7 +7,8 @@ import pytest
 
 from ergora import reference
 from ergora.reference_task_reconciliation import _Inspection
-from ergora.reference_task_runtime import VerifiedSpecClient, find_signal_event
+from ergora.reference_history import find_signal_event
+from ergora.reference_task_runtime import VerifiedSpecClient
 
 
 @pytest.fixture

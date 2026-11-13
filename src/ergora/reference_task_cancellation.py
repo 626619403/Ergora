@@ -7,7 +7,8 @@ import os
 import sys
 from types import SimpleNamespace
 
-from .reference_task_runtime import VerifiedSpecClient, find_signal_event
+from .reference_history import find_signal_event
+from .reference_task_runtime import VerifiedSpecClient
 from .reference_task_submission import _Submission
 from .state import file_lock
 

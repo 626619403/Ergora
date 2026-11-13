@@ -155,6 +155,18 @@ class TrainingResumeStartPayload(Payload):
     timeout: int = Field(default=20, strict=True, ge=1, le=60)
 
 
+class TrainingCancelPayload(Payload):
+    revision: int = Field(strict=True, ge=1)
+    request_id: str = Field(min_length=1, max_length=120)
+    run_id: str = Field(min_length=1, max_length=128)
+    reason: str = Field(min_length=1, max_length=1000)
+    timeout: int = Field(default=20, strict=True, ge=1, le=60)
+
+
+class TrainingResumeCancelPayload(TrainingResumeStartPayload):
+    request_id: str = Field(min_length=1, max_length=120)
+
+
 class TaskRunDecisionPayload(Payload):
     revision: int = Field(strict=True, ge=1)
     run_id: str = Field(min_length=1, max_length=128)
@@ -468,6 +480,24 @@ def create_app(home: Path | None = None) -> FastAPI:
     @application.post("/api/projects/{project_id}/training/{experiment_id}/resume-start")
     def training_resume_start(project_id: str, experiment_id: str, body: TrainingResumeStartPayload):
         return training.resume_start(state, project_id, experiment_id, body.revision, body.intent_sha256, timeout=body.timeout)
+
+    @application.get("/api/projects/{project_id}/training/{experiment_id}/cancellations/{request_id}")
+    def training_cancellation(project_id: str, experiment_id: str, request_id: str):
+        return training.cancellation(state, project_id, experiment_id, request_id)
+
+    @application.post("/api/projects/{project_id}/training/{experiment_id}/cancel")
+    def training_cancel(project_id: str, experiment_id: str, body: TrainingCancelPayload):
+        return training.cancel(state, project_id, experiment_id, body.request_id, body.revision,
+                               run_id=body.run_id, reason=body.reason, timeout=body.timeout)
+
+    @application.post("/api/projects/{project_id}/training/{experiment_id}/resume-cancel")
+    def training_resume_cancel(project_id: str, experiment_id: str, body: TrainingResumeCancelPayload):
+        return training.resume_cancel(state, project_id, experiment_id, body.request_id, body.revision,
+                                      body.intent_sha256, timeout=body.timeout)
+
+    @application.get("/api/projects/{project_id}/training/{experiment_id}/stop-status")
+    def training_stop_status(project_id: str, experiment_id: str, timeout: int = 20):
+        return training.stop_status(state, project_id, experiment_id, timeout=timeout)
 
     @application.get("/api/projects/{project_id}/issues/{issue_id}")
     def project_issue(project_id: str, issue_id: str):

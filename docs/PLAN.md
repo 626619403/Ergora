@@ -4,7 +4,7 @@
 
 ## 当前检查点
 
-开发分支 `refactor/architecture-foundations`；H3b 产品 `47443840b68693f63ee011dc6fbe29421a42223f` 已普通推送、完整远端Ref一致，自己的 CI `43495562208` Success（8 job／30必要步骤）及原独立两轴终核通过。F9a只读训练工作台已实现；r1安装121项、修后r2安装33项、原生CPU读取及自身r2 approve／两独立源码复核已过，r3最终包／浏览器／聚焦自身approve也已验，新的独立两轴本地终核通过、开放0／0，产品 `8182499fa46c61adecea2f6defd2c777a433eed5` 已普通推送并核完整远端Ref，自己的CI `43500423499` Success（8 job／30必要步骤），原独立结构轴精确终核通过。普通推送当前分支，不合入 `main`。
+开发分支 `refactor/architecture-foundations`；F9b2产品 `0d9c0a7a2e0c7d107f3a832fa9492a452df71f34` 已普通推送、完整远端Ref一致，自己的CI `43511152711` Success（8 job／30必要步骤）及原独立两轴终核通过。当前活动F9b3取消／停止观察：实现、源码52项、r1真实CPU／页面和自身approve通过，390窄屏原失败保留、r2局部修复重验通过；安装r1界限停止后89项逐项PASSED／r2剩余66项通过，最终r3仅EOF格式修正、568／两RECORD／283／SDK-free已验；新的独立需求／结构两轴最终本地补核通过、开放0／0，普通发布与自己的CI待完成。普通推送当前分支，不合入 `main`。
 
 |节点|实际状态|接续动作与权威记录|
 |---|---|---|
@@ -20,7 +20,7 @@ W1仅验源码提案与交接：共享仓库HEAD／213条status字节保持，�
 ## 下一可执行项
 
 1. **F8-H3b实际续接**：精确交付完成，自己的CI与原独立两轴终核通过，详见[计划](plans/2026-11-14-harness-session-continuation.md)／[交付](delivery/2026-11-14-harness-session-continuation.md)。r3包561／两RECORD／283、安装133通过／12跳过；实际SDK四场景与真实模型两调用成功、自身approve。原两个P2及失败保留并已修复。冻结原项目／资料／权限／后端／schema，原home／cwd／session不分叉；unknown不自动重发，正式恢复归原owner。
-2. **F9实验导航**：F9a精确发布／自己的CI与原结构轴终核通过；F9b1已实现，r1安装564／两RECORD／283、48项通过，原生同一run实时负结果与离线取消区分、浏览器三交错／三视口和收尾通过；自身approve、独立两轴最终本地补核通过、开放0／0，产品 `106481a80abfd168f5b45fbba7381063505239d0`已普通推送、精确Ref一致；自己的CI `43504031945` 八job／30必要步骤成功且原结构轴终核通过；原EOF文档静态范围误述已纠正。当前活动片为[F9b2提交／对账](plans/2026-11-14-training-submission.md)；F9b2已实现，r1安装65过4跳、r3修后32过、r4提交13过、r5定向3过；真实同SQLite／原ID恢复及四原history已验，两个CANCEL_UNCONFIRMED保留，未运行训练；浏览器两迟到／三视口与全部服务收尾通过。r6最终包565／两RECORD／283及CLI退出码5项定向检查已过；自身最终原模板approve、新的独立两轴最终本地补核通过，开放0／0；当前普通发布并验自己的CI，然后进入F9b3取消／停止对账。[F9b1交付](delivery/2026-11-14-training-runtime.md)与[F9b2交付](delivery/2026-11-14-training-submission.md)保留各精确身份。已按[F9a–d计划](plans/2026-11-14-training-workbench.md)拆分，先实现原实验的项目级只读CLI／HTTP／页面，再接原owner操作、精确证据采用与真实旅程；进度见[交付](delivery/2026-11-14-training-workbench.md)。将既有workload、baseline、experiment、可信runner、compare／gate、MLflow及Forge交接接到同一入口；复用原训练owner和账本。CPU合同与真实GPU分别验收。
+2. **F9实验导航**：F9a只读工作台、[F9b1原生查询](delivery/2026-11-14-training-runtime.md)及[F9b2提交／对账](delivery/2026-11-14-training-submission.md)均已精确发布、自有CI与原独立终核通过。当前活动片为[F9b3取消／停止观察](plans/2026-11-14-training-cancellation.md)，进度见[交付](delivery/2026-11-14-training-cancellation.md)：固定原run的取消／attempt／原history恢复、共享CLI／HTTP与独立面板已实现；原真实ACK丢失恢复、未发送继续、三迟到路径及最终三视口已验。r1安装回归在600秒界限停止，89项逐项PASSED、其余66项在r2包补测通过／278.86秒，r3只去EOF空行且包／AST／SDK-free核过；不能称单次全套通过。下一F9b4接原baseline／runner／prepare控制面，随后F9c精确evidence批准、F9d真实旅程；复用原训练owner和账本，CPU合同与真实GPU分别验收。
 3. **F10受评价改进**：沿记忆／Skill／评价／采用owner，补正式任务可选冻结、来源／失效／容量可见及复盘候选／明确采用回退。复用AC3资料合同，不让生成器改可信评价或扩大权限，见[总计划F10](plans/2026-11-01-all-in-one.md#8-p1低代码更多真实工具与演进闭环)。
 4. **G1集成交接**：开发／治理／训练公开旅程，核新安装、配置、角色替换、工单、演进、旧项目升级／回退、跨机重建；更新[架构](architecture/current.md)、README、[使用手册](USAGE.md)、[训练手册](TRAINING.md)与Windows手册，再完成相关完整回归、独立审查与推送。U3日常安装只覆盖其精确旧包，不代表S1等新包已升级。
 

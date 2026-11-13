@@ -370,6 +370,15 @@ def training_submission(project: dict, home: Path, operation: str, payload: dict
                               'operation': operation, **payload}, timeout, sdk=operation in ('dispatch', 'resume'))
 
 
+def training_cancellation(project: dict, home: Path, operation: str, payload: dict, *, timeout: int) -> dict:
+    """Keep training cancellation delivery and native stop observations with their owners."""
+    if operation != 'status' and sys.platform != 'linux':
+        raise ValueError('Native training cancellation and executor observation require Linux; use WSL2')
+    return _training_process(project, 'cancellation', {'project': project, 'control_home': str(home),
+                              'operation': operation, **payload}, timeout,
+                             sdk=operation in ('dispatch', 'resume', 'stop-status'))
+
+
 def _training_process(project: dict, module: str, payload: dict, timeout: int, *, sdk: bool) -> dict:
     if sdk and importlib.util.find_spec('temporalio') is None:
         raise ValueError('Training runtime operations require the optional Temporal SDK; install ergora[temporal] in this environment')

@@ -1,6 +1,6 @@
 # F9b2 已准备训练实验的提交与对账
 
-日期：2026-11-14；基线 `106481a80abfd168f5b45fbba7381063505239d0`。[计划](../plans/2026-11-14-training-submission.md)／[需求审查](2026-11-14-training-submission-spec-review.md)／[结构审查](2026-11-14-training-submission-structure-review.md)。产品及最终本地出口通过；修后安装、真实 CPU 控制流程、页面、自身原模板和新的独立两轴已验，开放0／0。普通发布／精确Ref与自己的CI待验。下列各轮证据保留其原身份，不能相互替代。
+日期：2026-11-14；基线 `106481a80abfd168f5b45fbba7381063505239d0`。[计划](../plans/2026-11-14-training-submission.md)／[需求审查](2026-11-14-training-submission-spec-review.md)／[结构审查](2026-11-14-training-submission-structure-review.md)。产品及最终本地出口通过；修后安装、真实 CPU 控制流程、页面、自身原模板和新的独立两轴已验，开放0／0。精确产品 `0d9c0a7a2e0c7d107f3a832fa9492a452df71f34` 已普通推送、完整远端Ref一致，自己的CI `43511152711` 八job／30必要步骤成功且获原结构轴终核。下列各轮证据保留其原身份，不能相互替代。
 
 ## 行为与所有权
 
@@ -51,4 +51,14 @@
 
 本片不包含 baseline／runner／prepare 控制面入口（F9b4）、取消／停止对账（F9b3）、原 evidence SHA 批准（F9c）或真实 GPU 收益（F9d／B3）。真实原生 CPU 只证明提交与恢复控制语义，没有运行模型、MLflow、GPU、统计性能比较或采用候选。普通发布开发分支，不自动合 main。
 
-[公开精简证据](evidence/2026-11-14-training-submission.json)记录候选轮次、原run／history摘要、页面及自身实际调用；私有完整stdin、响应、服务数据库、构建和进程日志不入库。当前产品组合SHA `68a14b81ef3ad8685a7a4aa7b80ee6d134c3706b2fa610f3b0897773418a36bc`，原两轴已独立核最终565包／两RECORD／283、分轮安装成绩、四原history及负结果、18完整文件／祖先stdin、页面和收尾，开放0／0。普通发布及自己的CI另补。
+[公开精简证据](evidence/2026-11-14-training-submission.json)记录候选轮次、原run／history摘要、页面、自身实际调用及精确发布／CI身份；私有完整stdin、响应、服务数据库、构建和进程日志不入库。产品组合SHA `68a14b81ef3ad8685a7a4aa7b80ee6d134c3706b2fa610f3b0897773418a36bc`，原两轴已独立核最终565包／两RECORD／283、分轮安装成绩、四原history及负结果、18完整文件／祖先stdin、页面和收尾，开放0／0。
+
+## 精确发布与自己的 CI
+
+普通发布产品为 `0d9c0a7a2e0c7d107f3a832fa9492a452df71f34`，唯一父提交为上述基线。原结构轴已按不可变 Git 对象核 24 个变更 blob，逐字匹配冻结清单；r6 wheel 的全部 565 个产品文件也逐字匹配该提交。完整 baseline→candidate 空白检查通过，普通推送后的完整远端 `refs/heads/refactor/architecture-foundations` 等于该 SHA。后续 F9b3 工作树不参与本候选验收。
+
+本片自己的 [Portability run 43511152711](https://github.com/626619403/Ergora/actions/runs/43511152711) 终态为 Success：plan 1 项、Linux 六组各4项、Windows 5项，共八job／30必要步骤全部通过。Windows 原生回归、PowerShell 5.1 安装升级及上传均已终态成功；各组构建安装、包内参考身份和回归／上传也均有原完成时间。新增 submission suite 位于候选原 group5。
+
+原结构轴核 11 份官方 HTTP body／receipt，包含候选绑定的初始 run、UI job 映射、第五轮终态 run 和八份 job HTML，均200且原摘要一致；30份原 log 路径全部含完整候选 SHA／check ID。终态 run body SHA `db14edd48c94bb4d7243f05a43c32dc8d69fc67d4a4c0bb727ebf8e67cb5fb87`，Windows 第四轮 body SHA `ad52756aafc4251cb4c48d1a5f0105c7e6bff683c9ae7622076fb1a1cb56d784`。早期运行中样本及原测试／helper失败保留；没有下载 REST 日志或产物归档，没有将 CI 通过扩展为 Windows 原生提交、GPU、性能或外部作业停止能力。
+
+精确发布、自己的必要 CI 及原独立结构轴终核通过，无剩余必要 CI 项；本节只补 F9b2 状态，不改变已验产品，也不关闭后续片。

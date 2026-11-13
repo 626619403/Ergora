@@ -1,0 +1,286 @@
+{
+  "slice": "F9b3",
+  "at": "2026-11-13T22:03:53.195961+00:00",
+  "baseline": "0d9c0a7a2e0c7d107f3a832fa9492a452df71f34",
+  "source_verification": {
+    "passed": 52,
+    "seconds": 130.4,
+    "scope": "Source cancellation/runtime/original-payload/architecture at pre-layout candidate; not installed"
+  },
+  "packages": {
+    "r1": {
+      "at": "2026-11-13T21:46:27.462071+00:00",
+      "wheel_sha256": "cc5802792c8127dd8fb7168c655ffde2a87b89534d4e2f6fa2f0507e1935374b",
+      "wheel_files": 576,
+      "package_files": 568,
+      "wheel_and_installed_records_verified": true,
+      "installed_record_rows": 581,
+      "source_and_installed_package_equal": true,
+      "frozen_files": 283,
+      "editable": false
+    },
+    "r2_display": {
+      "at": "2026-11-13T21:54:44.354055+00:00",
+      "wheel_sha256": "6dafb5b7060c631235fa296545a4e14f0133b55a49eb0e48f15a3a550a01407b",
+      "wheel_files": 576,
+      "package_files": 568,
+      "wheel_and_installed_records_verified": true,
+      "installed_record_rows": 581,
+      "source_and_installed_package_equal": true,
+      "frozen_files": 283,
+      "editable": false
+    },
+    "r3_final": {
+      "at": "2026-11-13T22:01:24.890080+00:00",
+      "wheel_sha256": "11cc353a2b0812e9f06503105a5ca69dff1a305eb7321d6961c9d4bc93bbd878",
+      "wheel_files": 576,
+      "package_files": 568,
+      "wheel_and_installed_records_verified": true,
+      "installed_record_rows": 581,
+      "source_and_installed_package_equal": true,
+      "frozen_files": 283,
+      "editable": false
+    }
+  },
+  "installation_verification": {
+    "r1": {
+      "status": "cancelled_at_explicit_600_seconds",
+      "individual_passed_before_bound": 89,
+      "collected": 155,
+      "complete_suite_pass": false
+    },
+    "r2": {
+      "selected_remaining": 66,
+      "status": "succeeded",
+      "seconds": 279.6640073657036
+    },
+    "scope": "Two separate noneditable runs. r1 to r2 changes local CSS/training root class, backend/tests byte-identical. Final r3 removes only one EOF blank line from reference_history; AST and other567 products unchanged. No fresh single all-final-package suite claim."
+  },
+  "native_cpu": {
+    "status": "passed",
+    "seconds": 440.37044620281085,
+    "original_prepared_files_unchanged": 25,
+    "runner_commands_executed": 0,
+    "actual_signal_ack_withheld_after_server_acceptance": true,
+    "signal_count_each": 1,
+    "current_spec_absent_during_original_recovery": true,
+    "closed_workflow_zero_extra_signal": true,
+    "scope": "Installed real CPU Temporal cancellation and original-worker typed signal acceptance, original history recovery and local fenced collection. No actual training/GPU/quality/performance/adoption claim."
+  },
+  "native_runs": {
+    "cancel-ack": {
+      "run_id": "01a1d6e2-2f28-760b-9d4b-a57298fbb21b",
+      "outcome": {
+        "status": "CANCELLED",
+        "binding": {
+          "experiment_id": "cancel-ack",
+          "manifest_sha": "495c07d1f5cca6cacf82981f304c21e8fcece379069a283440227019b40ffdcc",
+          "candidate_sha": "9285bc8266e040b58b8ff9b8935ec85839e193aa",
+          "baseline_sha": "9285bc8266e040b58b8ff9b8935ec85839e193aa"
+        },
+        "job_id": "local-perf-cancel-ack",
+        "report_uri": null,
+        "integration_task_url": null,
+        "detail": "Release suppressed; scheduler ended as CANCELLED; reason=Actual CPU acceptance; no runner"
+      },
+      "signal_event_id": 18,
+      "history_sha256": "4755329c0d779a22b8c6e586088c848db99af4c3bb605c56e761410f4856dae9",
+      "history_events": 46
+    },
+    "cancel-loss": {
+      "run_id": "01a1d6e2-35f4-7def-82e4-e20eb667528c",
+      "outcome": {
+        "status": "CANCELLED",
+        "binding": {
+          "experiment_id": "cancel-loss",
+          "manifest_sha": "42f85fc85edbdbd09ef924b6da5aa0ab50593256630111f7b38c76306bb4bc22",
+          "candidate_sha": "9285bc8266e040b58b8ff9b8935ec85839e193aa",
+          "baseline_sha": "9285bc8266e040b58b8ff9b8935ec85839e193aa"
+        },
+        "job_id": "local-perf-cancel-loss",
+        "report_uri": null,
+        "integration_task_url": null,
+        "detail": "Release suppressed; scheduler ended as CANCELLED; reason=Keep original signal identity"
+      },
+      "signal_event_id": 18,
+      "history_sha256": "24f6caacc764f9abb326c2e867d1442745e9f34ff575630c53e3cd28949cdd7f",
+      "history_events": 46
+    },
+    "cancel-prepared": {
+      "run_id": "01a1d6e2-3c09-7068-9499-871f315cc137",
+      "outcome": {
+        "status": "CANCEL_UNCONFIRMED",
+        "binding": {
+          "experiment_id": "cancel-prepared",
+          "manifest_sha": "310e62694e2e029d31ec225718c1d4bb0b85f801a1a201b3a9a8eeaa1247c2bb",
+          "candidate_sha": "9285bc8266e040b58b8ff9b8935ec85839e193aa",
+          "baseline_sha": "9285bc8266e040b58b8ff9b8935ec85839e193aa"
+        },
+        "job_id": "local-perf-cancel-prepared",
+        "report_uri": null,
+        "integration_task_url": null,
+        "detail": "Operator must reconcile exact job; scheduler walltime remains required; reason=Resume saved unsent intent"
+      },
+      "signal_event_id": 73,
+      "history_sha256": "b9925aef7ba1b31d191a26adb2d0418296d95a6909d3096a77375d2ae57f07e4",
+      "history_events": 106
+    },
+    "cancel-browser": {
+      "run_id": "01a1d6e2-41e8-7cce-a873-59265bd81832",
+      "outcome": {
+        "status": "CANCEL_UNCONFIRMED",
+        "binding": {
+          "experiment_id": "cancel-browser",
+          "manifest_sha": "1d1f9db025f77e12582b22b5cb4438a4a36c05db8ce726bd7cdd714279d66266",
+          "candidate_sha": "9285bc8266e040b58b8ff9b8935ec85839e193aa",
+          "baseline_sha": "9285bc8266e040b58b8ff9b8935ec85839e193aa"
+        },
+        "job_id": "local-perf-cancel-browser",
+        "report_uri": null,
+        "integration_task_url": null,
+        "detail": "Operator must reconcile exact job; scheduler walltime remains required; reason=Actual browser CPU acceptance; no runner"
+      },
+      "signal_event_id": 73,
+      "history_sha256": "f38ba2ca3aa39376d46953b82900cd7036bbf96cfbd3daacdfafd958ec7ddd16",
+      "history_events": 106
+    }
+  },
+  "browser": {
+    "r1": {
+      "actual_lost_signal_ack_recovery_with_missing_spec": true,
+      "wrong_sha_zero_posts": true,
+      "unsent_intent_continued": true,
+      "wrong_run_zero_posts": true,
+      "double_click_posts": 1,
+      "late_local_request_read_ignored": true,
+      "late_stop_read_after_detail_switch_ignored": true,
+      "late_actual_closed_receipt_after_project_switch_ignored": true,
+      "layout_failure_retained": {
+        "width": 390,
+        "scroll": 477
+      }
+    },
+    "r2_final": {
+      "status": "passed",
+      "same_original_missing_spec_and_cancellation_receipt": true,
+      "viewports": [
+        {
+          "width": 1440,
+          "scroll": 1440
+        },
+        {
+          "width": 960,
+          "scroll": 960
+        },
+        {
+          "width": 390,
+          "scroll": 390
+        }
+      ],
+      "unsent_form_layout": {
+        "width": 390,
+        "scroll": 390
+      },
+      "send_requested": false
+    }
+  },
+  "self_reviews": [
+    {
+      "status": "succeeded",
+      "run_id": "73c4799d9404494293f0580518ee7e72",
+      "cli_exit": 0,
+      "seconds": 42.99946079729125,
+      "packet_files": 24,
+      "packet_bytes": 318975,
+      "prompt_sha256": "ea914a005465ea38478e27c13aa4d0149ea37eff84e76d181a9cedfd5bbda22a",
+      "input_digest": "d7e820db8c8fc0464aa25b8cfd5577173850879114849163dbad9af1ab93c587",
+      "all_inline_files_and_inherited_resources_in_stdin": true,
+      "scope": "Installed original structure-review template, complete F9b3 inline packet; no MCP/read-comprehension or full independent review claim.",
+      "decision": "approve",
+      "result_sha256": "0798bcdd2ef80eb019652ac49c07df623ed086b00fc06ee1c3a15e4c7120163e"
+    },
+    {
+      "status": "succeeded",
+      "run_id": "56887bd54beb44aaba1faf3772de887e",
+      "cli_exit": 0,
+      "seconds": 23.2187804360874,
+      "packet_files": 5,
+      "packet_bytes": 50537,
+      "prompt_sha256": "7880c8fe719730ebaaa501ef2b57d0861c0143fa079add806ec4d698afc4d196",
+      "input_digest": "05f849709f7a6000c4f101ae9eba8b18f29133c8f4d6613c2c3b93294bb1f2dd",
+      "all_inline_files_and_inherited_resources_in_stdin": true,
+      "scope": "Installed original structure-review template, final F9b3 rendering delta inline packet; no MCP/read-comprehension or full independent review claim.",
+      "decision": "approve",
+      "result_sha256": "d6ef2f6be708840cd5104de77886f53af440894f9a8663b38fbdfa9f261dc415"
+    }
+  ],
+  "final_observations": {
+    "status": "passed",
+    "sdk_free_local_status": true,
+    "no_site_packages": true,
+    "sdk_available_to_child": false,
+    "closed_receipt_status": "already_closed",
+    "all_three_listeners_stopped": true,
+    "r1_to_r3_product_changes": [
+      "reference_history.py",
+      "data/console/style.css",
+      "data/console/training.js"
+    ],
+    "only_nondisplay_delta_is_single_EOF_blank_line": true,
+    "scope": "Real SDK-free local read plus precise display plus EOF-whitespace final package delta and selected listeners. Windows OS not exercised."
+  },
+  "final_package_delta": {
+    "status": "passed",
+    "final_package_matches_current_src": true,
+    "r2_to_final_r3_product_changes": {
+      "reference_history.py": {
+        "r2_sha256": "56f6477c4b25cd0f3e95d7af942dfe42d89d3966e1e304f6cb741130f0ff3a20",
+        "r3_sha256": "208d4ce9c4e1c3413ad1475eb695d413ef2e882f20a11e391615be8060feb527"
+      }
+    },
+    "removed_single_EOF_blank_line": true,
+    "algorithm_AST_unchanged": true,
+    "all_other_product_files_identical": 567
+  },
+  "ci_group_collection": {
+    "returncode": 0,
+    "selected": 351,
+    "total": 1804,
+    "deselected": 1453,
+    "execution_claim": false
+  },
+  "private_original_receipt_sha256": {
+    "source-r1.log": "c3209fae06524ba840fd7582f2a81ef85416845375b33adb1aad89f7de921369",
+    "install-r1/package-identity.json": "59d1f3735cb3a08eaf28522ca2813afea4cdf28f3fef70164c73fdb57e057c02",
+    "install-r2/package-identity.json": "48e4c02c4ef7467181fee92824b82b4403360031f4a8c7bc916cc6817ac950b6",
+    "install-r1/regression-r1/result.json": "1a89ba6c4eb3429d78b3d22d2cab3b32b2c3b0f534f5e419d421d01991e4377d",
+    "test-partition-r1.json": "ad89d7bf0c8e724d6ad011fd23e5ab4c239037b73e8090a013bf1555c97e7d36",
+    "native-r1/result.json": "2ab623722690f7479855963da08cd94668817ba8ea3d7553294c2132b9055190",
+    "native-r1/cleanup.json": "93627a65e4255c03a447ce22f25e8b46ac5fa58b5a5002838675dcd87a3b8021",
+    "browser-r1/loss-recovery.stdout": "ffbcbca5e4edd2d476f1c6aec24e3b535d6433aa21334193ef6ebc8257821d15",
+    "browser-r1/continue-and-cancel.stdout": "ca3acbdcc19b8588194520001872cbb067edcc6da42319428dbe41f4e4d309d0",
+    "browser-r1/lifecycle.stdout": "3f49acb470b1f98ae094f7a78779241a7ad240338cc14d3320f343772951cb79",
+    "browser-r1/layout.stdout": "868c9f5ba9c3f1501b4fe1315aa29b1877ab78997296ec8575314d4316d7b7b6",
+    "browser-r1/close.stdout": "0558feb07670146fe09d333fbb24ccbb2ccac273edee1c41c5a769576256ad02",
+    "browser-r2/final.stdout": "82103c3fbe311475d998a569664e9c1ee93d22ede8d9add11efea0514d1824b4",
+    "browser-r2/close.stdout": "cc44e12390c213036c365b3d04498ed691f26282e43e1ee27e963b5d41bae6a8",
+    "browser-r2/cleanup.json": "cddb6bf8c6668029547132c6d6ac2a6c14ba79bc642a0eaa93332f0b1bd563aa",
+    "final-observations.json": "c892f60916ab47ffdfb0fe079e4a655232cc4ab8f5a5f5afa64d11e80e2b26b8",
+    "self-review-r1-codex.json": "37fb59fb8acc56fc5ea815ad508bd2d0d9cece023c779fdbb36921dcef5bee3c",
+    "self-review-r2-codex.json": "5989289a83fd5b7b5233fda0eeeb2edb7fb134bf1515e6effda137b1f50d0830",
+    "install-r3/package-identity.json": "e533f86f7f4606a06812a5ff21e6c992e90ad7b23f747f0b1113058183611a44",
+    "final-package-delta.json": "d6332bd0e2013d39cb8eb62ce476fc20435673e8ab62f433dd6018de0979a7c1",
+    "final-observations-r3.json": "5e74911a7733b7be3bc216bc005cd48f138f18e88f57dc7f9cdff6b41dfd403c",
+    "sdk-free-r3.stdout": "99d657ffa4de3a08bf63c4c4346b5d787a0ce13b3f5c1b522bf94a9c6dd149b9",
+    "ci-group-collect-r1/result.json": "26d2d4917e0fde89b2f5a285896a847f0e51af3b9e97901983a5f771afddb59e",
+    "install-r2/regression-r2/result.json": "d76857e8d33ad5701f1f7283cd674e5a23ff64fa0888c70b3d07ce4b02c3ac96",
+    "install-r2/regression-r2/process/stdout.txt": "cf96f7b78ebe5c8686902468d489cc97e1b56dd995ab042c4d4857aa2151db46"
+  },
+  "limits": [
+    "No real model/GPU training, quality, statistical/performance benefit or adoption acceptance",
+    "Original control outcomes remain two CANCELLED and two CANCEL_UNCONFIRMED; four later local executor results CANCELLED do not rewrite them",
+    "Final display scope, initial runtime scope and final whitespace-only package scope are distinct",
+    "Windows OS not locally exercised; actual native cancellation/executor observation remain Linux/WSL2",
+    "Own publication and exact CI remain to verify"
+  ]
+}

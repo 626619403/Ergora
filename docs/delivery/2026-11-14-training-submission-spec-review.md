@@ -1,6 +1,6 @@
 # F9b2 独立需求／正确性审查
 
-当前结论（同片最终本地终核）：**需求／正确性通过，开放 finding 0。** 原两项 P2 与追加修复已关闭，最终 r6 包身份、受影响安装回归、原生 CPU 原记录、实际浏览器、自身原模板和本地收尾均已独立补核。普通发布／精确 Ref 与本片自己的 CI 尚待送核；本地通过不能提前记为发布完成。以下保留各轮身份、原失败和验证范围，历史“待补核”描述仅指该轮。
+当前结论（同片精确交付终核）：**需求／正确性通过，开放 finding 0。** 原两项 P2 与追加修复已关闭，最终 r6 包身份、受影响安装回归、原生 CPU 原记录、实际浏览器、自身原模板和本地收尾均已独立补核。产品 `0d9c0a7a2e0c7d107f3a832fa9492a452df71f34` 已普通发布，24个Git blob及完整远端Ref通过独立核对；自己的CI `43511152711` 官方终态Success、8个job／30个必要步骤通过本轴原件终核。本轴对此精确候选验收完成；结构轴仍以其原报告为准。以下保留各轮身份、原失败和验证范围，历史“待补核”描述仅指该轮。
 
 审查者：fresh-context 独立需求轴 `f9b2_spec_review`；日期：2026-11-14。先读项目 `AGENTS.md`、maintainable-project-delivery Skill 与 independent-review brief、基线中的[原始活动计划](../plans/2026-11-14-training-submission.md)，再读实现及[作者交付](2026-11-14-training-submission.md)。未继承实现会话，未修改产品、测试、原参考或作者验收原件。
 
@@ -105,3 +105,23 @@
 本轮独立脚本及精简结果在原私有目录 `spec-review-r1/recheck-final/`：`package_review.py`／`package-review.json`、`native_review.py`／`native-review.json`、`evidence_review.py`／`evidence-review.json`。均为只读身份与原件检查，仅把结果写入本轴私有目录；没有安装、运行大suite、修改产品／原证据、读写模型／GPU或调用真实服务。[公开精简证据](evidence/2026-11-14-training-submission.json)与上述原件所述范围相符。
 
 **最终本地需求／正确性终核通过，开放finding 0。** 独立结构／维护性结论仍归原结构轴报告。普通开发分支发布、精确Git对象／远端Ref与自己的必要CI尚待送核；不得借F9a／F9b1成功完成本片发布。Windows原生提交、F9b3／F9b4、F9c／F9d、真实B3与完整C2仍保持原边界，无模型、数值质量、性能、采用或外部停止成功主张。
+
+## 普通发布与精确 Ref 补核
+
+已沿本片只读核产品提交 **`0d9c0a7a2e0c7d107f3a832fa9492a452df71f34`**，唯一父提交为基线 `106481a80abfd168f5b45fbba7381063505239d0`。相对该父提交恰为24个文件；逐项从Git对象读取完整字节，与最终`static-r3.json`的24份哈希及长度全部相等。12个产品／测试／CI路径组合SHA仍为 `68a14b81ef3ad8685a7a4aa7b80ee6d134c3706b2fa610f3b0897773418a36bc`，与本地通过候选一致；完整baseline→candidate的`git diff --check`退出0。另从同一Git树核226个本地Markdown链接均有原对象，无清单所列私有机器标识。
+
+阅读原`commit-r1.json`、普通`push-r1.json`和`ref-r1.json`，提交／推送／Ref均退出0，无强推或合main。除核保存的完整Ref，本轴另实际执行一次只读`ls-remote`，远端 `refs/heads/refactor/architecture-foundations` 精确返回上述40位提交，退出0、stderr空。复核脚本及原返回保存在本轴私有`recheck-final/publication_review.py`／`publication-review.json`。
+
+本补核仅绑定该已发布Git对象，不把随后工作树、F9b3计划或后续修改纳入F9b2候选。**普通发布与精确Ref通过；F9b2自己的必要CI仍待原件，开放finding保持0。** 后续补记属于状态记录，不重复产品审查，也不借前片CI完成本片。
+
+## 自己的 CI 原件终核
+
+仅核上述F9b2完整提交，未使用F9b3工作树。独立从候选Git对象读取`.github/workflows/portability.yml`及`scripts/ci/linux-groups.json`，SHA256分别为 `ec2816e893c25ff3a7f96513e677bdf53f42d90b3cd79fe585e474a27c0121b2` 和 `bf1aaca345ff0eab43880a4a1fc8136c1704dc1ea3fa5d1514e98531fe7acd68`。原配置生成六个Linux／Python3.11分组、Windows／Python3.12全组及plan，共8个job；新增`test_training_submission.py`恰登记一次于Linux group5。
+
+本轴实际执行独立离线原件核验：读取官方run初始HTML、UI job映射JSON、末次`ci-run-html-r5`及八个job原HTML，共 **11份HTTP200原件**，逐项核请求／最终官方URL、完整响应长度及SHA256，与保存receipt和最终`ci-terminal-r4.json`一致。初始run链接绑定完整候选SHA，UI批次完整列出八个唯一job ID且hasMore=false；其早期in_progress状态只用于名称／ID映射，不当作终态成功。最后run页面明确为[CI 43511152711](https://github.com/626619403/Ergora/actions/runs/43511152711)的Success，完整commit链接和开发分支均匹配；页面SHA256为 `db14edd48c94bb4d7243f05a43c32dc8d69fc67d4a4c0bb727ebf8e67cb5fb87`。
+
+另自行解析每个原HTML的`check-step`，逐个核必要名称、success、开始／完成时间、job-completed及包含完整候选SHA和正确check ID的log路径：plan的Read explicit test groups一项；六个Linux job各有Build and install wheel、Packaged reference identity、Native application regression、Upload regression observations四项；Windows除同四项外另有Windows PowerShell 5.1 installer and upgrade，共 **1＋6×4＋5＝30项，全部完成且success**。Windows job `132181511879`使用末次r4原件，其回归及PowerShell步骤已完成，完整页面SHA256为 `ad52756aafc4251cb4c48d1a5f0105c7e6bff683c9ae7622076fb1a1cb56d784`。Linux group5 job为`132181511662`，相同完整候选的必要步骤均通过。早期terminal r1／r2／r3仍为In progress且必要步骤未齐，原件保留，没有倒填成功。
+
+私有独立脚本及逐项结果为`spec-review-r1/recheck-final/ci_review.py`／`ci-review.json`，结论accepted=true、剩余finding 0。该次实际执行的是保存原件的哈希／URL核验、候选Git读取及HTML解析；未发起HTTP／REST请求、下载日志／artifact、触发CI、重跑本地测试、安装、运行模型／GPU或提交／推送。HTML中的成功步骤支持该候选既有CI合同，不提供未下载的pytest数量／日志内容，也不改变Windows原生training start／resume不支持的范围。
+
+**F9b2精确候选的本地、普通发布／完整Ref及自己的必要CI均通过本需求轴终核，开放finding 0。** 此处仅补原片状态，不扩大为F9b3／F9b4、F9c／F9d、真实B3、完整C2或外部作业停止完成；无产品变化，不递归要求新的产品审查。

@@ -41,20 +41,13 @@ async def lookup(client, spec: dict, *, run_id: str | None, timeout: int):
     return handle, description
 
 
-async def _status(payload: dict) -> dict:
-    from perf_temporal.connection import connect
-    from perf_temporal.models import Binding, workflow_id
+async def observe(handle, description, binding, *, timeout: int) -> dict:
+    """Read domain facts after the caller has verified the fixed original run."""
     from perf_temporal.workflow import ExperimentWorkflow
     from temporalio.client import WorkflowExecutionStatus
 
-    binding = Binding(**payload['spec']['binding'])
-    wid = workflow_id(binding)
-    found = await lookup(await connect(), payload['spec'], run_id=payload['run_id'], timeout=payload['timeout'])
-    if found is None:
-        return {'workflow_id': wid, 'run_id': payload['run_id'], 'runtime_status': 'not_found'}
-    handle, description = found
-    rpc_timeout = timedelta(seconds=payload['timeout'])
-    result = {'workflow_id': wid, 'run_id': description.run_id, 'runtime_status': 'queried',
+    rpc_timeout = timedelta(seconds=timeout)
+    result = {'workflow_id': handle.id, 'run_id': description.run_id, 'runtime_status': 'queried',
               'temporal_status': description.status.name}
     if description.status == WorkflowExecutionStatus.RUNNING:
         status = await handle.query(ExperimentWorkflow.status, rpc_timeout=rpc_timeout)
@@ -67,6 +60,17 @@ async def _status(payload: dict) -> dict:
             raise ValueError('Training runtime outcome belongs to another binding')
         return {**result, 'terminal': True, 'phase': outcome.status, 'outcome': asdict(outcome)}
     return {**result, 'terminal': True, 'phase': 'NEEDS_RECONCILIATION'}
+
+
+async def _status(payload: dict) -> dict:
+    from perf_temporal.connection import connect
+    from perf_temporal.models import Binding, workflow_id
+
+    binding = Binding(**payload['spec']['binding'])
+    found = await lookup(await connect(), payload['spec'], run_id=payload['run_id'], timeout=payload['timeout'])
+    if found is None:
+        return {'workflow_id': workflow_id(binding), 'run_id': payload['run_id'], 'runtime_status': 'not_found'}
+    return await observe(*found, binding, timeout=payload['timeout'])
 
 
 def main() -> None:
