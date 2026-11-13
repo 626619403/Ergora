@@ -1,0 +1,241 @@
+{
+  "at": "2026-11-13T07:20:51.014906+00:00",
+  "seconds": 892.9290396920405,
+  "run_id": "01a1d3ba-600c-7c5f-b4e2-0e52c156d305",
+  "phase": "REVIEW_READY",
+  "candidate_sha": "63004b35f123e0efa49f3746627247d9036d1de8",
+  "baseline_sha": "19cd20e31210eb938020df034427f53dcc9c76ed",
+  "parent": {
+    "protocol": "six-stage-v1",
+    "instance": "root/development",
+    "task_type": "large-change",
+    "lineage": [
+      {
+        "instance": "root",
+        "definition": {
+          "kind": "workflow",
+          "id": "ergora-refactoring-template",
+          "version": "1.0.0",
+          "digest": "ce26192b22c25031156755290c252823dbd845c199ff7f62f8e874e07076a15d"
+        }
+      },
+      {
+        "instance": "root/development",
+        "definition": {
+          "kind": "workflow",
+          "id": "ergora-refactoring-delivery",
+          "version": "1.0.0",
+          "digest": "8bc02f70dc320aff86736235446b94a0f4065bb63d243a382906be69e947822d"
+        }
+      }
+    ]
+  },
+  "jobs": {
+    "review:root/development/review/test-value/review": "SUCCEEDED",
+    "review:root/development/review/correctness/review": "SUCCEEDED",
+    "plan": "SUCCEEDED",
+    "inventory": "SUCCEEDED",
+    "verify": "SUCCEEDED",
+    "integrate": "SUCCEEDED",
+    "work:compatibility": "SUCCEEDED",
+    "review:root/development/review/structure/review": "SUCCEEDED",
+    "work:rewrite": "SUCCEEDED"
+  },
+  "history": {
+    "events": 623,
+    "sha256": "22bb6bd0327c3bdb90075cc3bb3b7e90cd4b56ba70d4d4fda781a394a13d37c9",
+    "replay": "passed"
+  },
+  "handoff_sha256": "264c48b1500b594a88f36e3c6dd91e6dc9986420ebb347357a873f89ee37036b",
+  "original_head_unchanged": true,
+  "original_run_reopened": true,
+  "ports_closed": true,
+  "scope": "Real refactoring preset, serial rewrite then compatibility, original Temporal approval/checks/three independent reviewers. Seven Codex sessions; no heterogeneous-backend, GPU, Windows or deployed-rollback claim.",
+  "wheel_sha256": "85e20a342361f8fda1233f607dc94679364a0691b0b5452bb6b274648d117ab7",
+  "budget_id": "73cab749f22c48e9945538de025a9670",
+  "budget_sha256": "19b7d833ccf84fd6b3b78f65c3d87a58913072b72005b1bb4d052e92b3356f23",
+  "serial_work": {
+    "rewrite_finished": "2026-11-13T07:14:40.285809+00:00",
+    "compatibility_started": "2026-11-13T07:15:00.468038+00:00"
+  },
+  "original_owners": 9,
+  "model_slots": 7,
+  "receipt_artifacts": 85,
+  "active_claims": 0,
+  "released_claim_count": 1,
+  "exact_candidate_revalidation": {
+    "exit": 0,
+    "seconds": 0.1992771402001381,
+    "candidate": "63004b35f123e0efa49f3746627247d9036d1de8",
+    "baseline": "19cd20e31210eb938020df034427f53dcc9c76ed",
+    "stdout_sha256": "a38f45109151dc4ef739dd487f92a493fbcc0ba74ea78ed971cb84b9e10015fb",
+    "stderr_sha256": "a6707d4eff38012da33ddc34bc6dc076a3b17151cfc9aef223c8790cbe64c3da"
+  },
+  "history_payload": {
+    "events": 623,
+    "bytes": 6111384,
+    "sha256": "22bb6bd0327c3bdb90075cc3bb3b7e90cd4b56ba70d4d4fda781a394a13d37c9",
+    "compact_poll_count": 61,
+    "compact_poll_payload_bytes": 10065
+  },
+  "native_materials": {
+    "calls": 7,
+    "resource_occurrences": 38,
+    "resource_bytes": 23329,
+    "all_manifest_input_prompt_stdin_source_and_native_scope_chains_verified": true,
+    "all_scope_continuous_utf8_through_null": true,
+    "calls_detail": [
+      {
+        "run_id": "18b3b345e98a49f3bff69a2f8bb070e8",
+        "instance": "root/development/review/structure/review",
+        "status": "succeeded",
+        "backend": "codex",
+        "model": "gpt-6.1-sol",
+        "input_digest": "7749b60fba0a59ec70bbf52b3d07ae6d980a0a9e86f7cbaf84163a1780ad2794",
+        "prompt_sha256": "ccc95babc7ae3dc31ff15c27cd0e2a964c38e1ece2ccca2a8c58d0c7d0520f98",
+        "prompt_bytes": 67834,
+        "task_bytes": 62097,
+        "stage": "review:root/development/review/structure/review",
+        "scope_files": 6,
+        "scope_bytes": 2964,
+        "original_result_sha256": "def6e5c0839a3a01948138d82b8c47b584b6d6f09e57c617238670e23aa2b7ee",
+        "decision": "approve",
+        "native_stream_sha256": "7e8da668f0ae21c8631648ba8e3cdc4d1428e97d226c9b0320bcac45801a7a7a"
+      },
+      {
+        "run_id": "21adc6f031454a629ac6128065c13b36",
+        "instance": "root/development/review/correctness/review",
+        "status": "succeeded",
+        "backend": "codex",
+        "model": "gpt-6.1-sol",
+        "input_digest": "cf090b7f97b3199257f5fb811a7dab153cbf580ee78909fa287029d562d86122",
+        "prompt_sha256": "c3466c449534becb785e7f8d5181899bf838f16fccc78610948b5cc33e41eede",
+        "prompt_bytes": 67792,
+        "task_bytes": 62099,
+        "stage": "review:root/development/review/correctness/review",
+        "scope_files": 6,
+        "scope_bytes": 2886,
+        "original_result_sha256": "5bca35c210e6e5c0d9550708375a981131b637b8fad8c9109371c605a5f5b244",
+        "decision": "approve",
+        "native_stream_sha256": "8734b9dc363d82b95bb21d00bc80b36a7426647d03f04e244f94da736477fdb9"
+      },
+      {
+        "run_id": "ef634fc7709c48c9a535c0af4cafe9d6",
+        "instance": "root/development/review/test-value/review",
+        "status": "succeeded",
+        "backend": "codex",
+        "model": "gpt-6.1-sol",
+        "input_digest": "3bafc2da47f021d8d4b1c008000f7923bdb83a97a7ab99b2821e212f54852d68",
+        "prompt_sha256": "1aefebf5c4ba78290628b15052d009d8ba58fae97486614ae6d228bbde4871ee",
+        "prompt_bytes": 67842,
+        "task_bytes": 62098,
+        "stage": "review:root/development/review/test-value/review",
+        "scope_files": 6,
+        "scope_bytes": 2954,
+        "original_result_sha256": "a6685570d5276020b45cf6147bc81582c172a6ae70188bd0889c9096aa945bf7",
+        "decision": "approve",
+        "native_stream_sha256": "f7f1bb499d4758aa327a953fe32fe83ba25173a770f8a091adfe590220faec5c"
+      },
+      {
+        "run_id": "6a9d031203aa45bebea0453e0a464b4c",
+        "instance": "root/development/work/compatibility",
+        "status": "succeeded",
+        "backend": "codex",
+        "model": "gpt-6.1-sol",
+        "input_digest": "74c7604bd6bf00247a9630d977ca5731d076b6029615ce8b59822920bf281b20",
+        "prompt_sha256": "aafb7a618755cf55f0c063f08d479606b393db691d0bfb8e76b0da19511eea6a",
+        "prompt_bytes": 45461,
+        "task_bytes": 39451,
+        "stage": "work:compatibility",
+        "scope_files": 5,
+        "scope_bytes": 3646,
+        "original_result_sha256": "06c30bf455bd0543e08a33f45cff154c850c403cc2f685e5bb7190fefd200711",
+        "decision": null,
+        "native_stream_sha256": "f3e22c6223ef81fc9282e887acdf01da90082c73ec3c7b8c2b1f2fd01d42cdc0"
+      },
+      {
+        "run_id": "78a68fa8412a49d8bcb7c4ecd7545365",
+        "instance": "root/development/work/rewrite",
+        "status": "succeeded",
+        "backend": "codex",
+        "model": "gpt-6.1-sol",
+        "input_digest": "b3fe2432a89b884306545745859d8b7aedded237fa2b4712f0c6c054372148d3",
+        "prompt_sha256": "fea19aade80e881e9167dc478c7608e88061ac766938ac6baedfd01b5f5feb6b",
+        "prompt_bytes": 35909,
+        "task_bytes": 29936,
+        "stage": "work:rewrite",
+        "scope_files": 5,
+        "scope_bytes": 3651,
+        "original_result_sha256": "dacce5d48d94d231bd04964b4c67c6c8b2338aaf84d37d035fa3658bde25a772",
+        "decision": null,
+        "native_stream_sha256": "447438b6e991d3993007ddcb35eec9192e78f60be1ae27887783b39fb53e264d"
+      },
+      {
+        "run_id": "1b7b287ad42a4d1081c6a4a9d68d3500",
+        "instance": "root/development/preparation/plan",
+        "status": "succeeded",
+        "backend": "codex",
+        "model": "gpt-6.1-sol",
+        "input_digest": "0d8e915a87c27c7b41bea149f143927e1f3313f167cce992fee3d9d78f382afd",
+        "prompt_sha256": "efcb938481927ee958bf5ff65c4e6a65ba270b6c750e6b0abcf7a3e1d003b2a2",
+        "prompt_bytes": 39585,
+        "task_bytes": 33606,
+        "stage": "plan",
+        "scope_files": 5,
+        "scope_bytes": 3614,
+        "original_result_sha256": "f3be3607b3d55d257327675aded5cde50d168bdea9b59814db3752f668522af4",
+        "decision": null,
+        "native_stream_sha256": "3bc9f261ab29b2fa73d23edbb5af40062538553bba4ac5c1624979ab28d3944d"
+      },
+      {
+        "run_id": "372c3493500f4f61b4a49f2e1181d7c4",
+        "instance": "root/development/preparation/inventory",
+        "status": "succeeded",
+        "backend": "codex",
+        "model": "gpt-6.1-sol",
+        "input_digest": "58c7133dfb842a9b7251d6f6ee9b50e52d6ae1463306238b30d290dc1efc14c0",
+        "prompt_sha256": "2134fb6e4f06b6b294634f9f34a4fae47031132203cb1f113b1909a298197364",
+        "prompt_bytes": 28406,
+        "task_bytes": 22417,
+        "stage": "inventory",
+        "scope_files": 5,
+        "scope_bytes": 3614,
+        "original_result_sha256": "1e839c9cca3d53590f8559074b5ad273b8c21957b7657d1c5ca4528311d1e4fa",
+        "decision": null,
+        "native_stream_sha256": "f0f07f68f5c560e3fcdd8fe2acd4400f61030eebbff6e425f4e676473696e7c9"
+      }
+    ]
+  },
+  "original_artifacts": {
+    "journey.json": "1611b13b46951544cbb3eb646dca1b54bc92a0399aa4e3baf18902cc7be3d596",
+    "model-calls-audit.json": "308e12a4906e430d015214f19b07e5b7b2799d314e4e62d3d8d6b99cea1fa0b3",
+    "closure-audit.json": "63706060db33854ff0fe2710664c17f021a85db1c4a908800673de7a8e5d0342",
+    "outcome.json": "51b8c366dadd6d839a151c385e362ce7bf6c2564eb2729025e393ab5d28192d6",
+    "evidence.stdout": "34f0303ef05c417220a67086ee7a39a6eeb71fd33e8fc4f9187631a827a063f8",
+    "history.json": "22bb6bd0327c3bdb90075cc3bb3b7e90cd4b56ba70d4d4fda781a394a13d37c9",
+    "export.stdout": "53abc4058258960318c0123b1f509657e98ba018ab6c5a84c02300982883f891",
+    "verify-handoff.stdout": "128ed435d73a4b10ae45e5be75983dd315a0167ad377079a961d123024205571",
+    "owner-plan-assessment.json": "a88c02fc28e74c4a7df8039d7398800b3517ad83c1355f4ca7a9c0898c1a2baa",
+    "owner-approve.stdout": "f6acffdc74260db1959c93f7847e0dddebf353a22b91e645ca0ada833f0b69e9",
+    "exported-revalidation-r3.stdout": "a38f45109151dc4ef739dd487f92a493fbcc0ba74ea78ed971cb84b9e10015fb",
+    "exported-revalidation-r3.stderr": "a6707d4eff38012da33ddc34bc6dc076a3b17151cfc9aef223c8790cbe64c3da",
+    "reopened-original-run.stdout": "51b8c366dadd6d839a151c385e362ce7bf6c2564eb2729025e393ab5d28192d6",
+    "reopened-submission.stdout": "1bcda4a739a1fbee189942249104e15ac8cd25ec69943747202d30b1c5c19d7e",
+    "cleanup-status.stdout": "5ed2b90aba8815bfcf31b015f6fbd793db873aa28553c4da9a885b84b62c05f9"
+  },
+  "remaining": [
+    "Normal publication and exact-candidate required CI",
+    "Successful heterogeneous-backend execution, Windows journey and GPU measurements are outside this journey"
+  ],
+  "independent_review": {
+    "report": "2026-11-13-refactoring-journey-r3-review.md",
+    "sha256": "c8084d012ba915becff5806f53103804da31f3be6405a93f56789357388bc712",
+    "open_spec_findings": 0,
+    "open_standards_findings": 0,
+    "closed_findings": [
+      "SP-R3-1: same-candidate independent offline structure addendum",
+      "R3-ST1: completed-verification checkpoint corrected"
+    ],
+    "preserves_original_sessions_receipts_budget": true
+  }
+}
