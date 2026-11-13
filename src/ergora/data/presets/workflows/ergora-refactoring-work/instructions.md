@@ -1,0 +1,2 @@
+Project the approved refactoring work units onto rewrite and compatibility validation.
+The rewrite unit changes the module and migrates its real callers within the approved paths. The compatibility unit consumes that dependency-integrated result and checks the declared behavior, migration and rollback using its own assigned paths. Report original failures and unverified conditions. The explicit all-join projects these work results; trusted integration, verification and final review remain original development stages.

@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "id": "ergora-compatibility-validator",
+  "version": "2.0.0",
+  "description": "Validate the integrated interface migration, behavior and rollback against the approved contract.",
+  "roles": [
+    "implementer"
+  ],
+  "specialties": [
+    "integration-validation",
+    "interface-compatibility",
+    "migration-rollback"
+  ],
+  "backend": {
+    "tool": "codex"
+  },
+  "resources": [
+    {
+      "id": "ergora-compatibility-validator-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "beebae56f200c6433f74a9113417a4ebcf38ec726c4849db3694c0d7b00c0f58"
+    },
+    {
+      "id": "ergora-compatibility-validator-skill",
+      "kind": "skill",
+      "path": "skills/ergora-compatibility-validator",
+      "digest": "1e8dd2a33177bbcad9225b2719eebaf6dfe247422d8aa7d24990c1382776a098"
+    }
+  ]
+}

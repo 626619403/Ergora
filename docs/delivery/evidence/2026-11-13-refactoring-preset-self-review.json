@@ -1,0 +1,205 @@
+{
+  "at": "2026-11-13T05:15:16.127248+00:00",
+  "status": "succeeded",
+  "run_id": "0ee55401953a42d2b405518cf9996779",
+  "cli_exit": 0,
+  "seconds": 32.256980339065194,
+  "packet": [
+    {
+      "path": "examples/composition/refactoring/README.md",
+      "bytes": 3860,
+      "sha256": "7d04aa6dadf730a35318669d7de01bed9b940adddb0e21c97747345ae99b0c9e"
+    },
+    {
+      "path": "examples/composition/refactoring/grant.json",
+      "bytes": 265,
+      "sha256": "efa96b799b1774fa9949b570f3914fe8d070def94c2cb8a6e2db1dac3bf90b1f"
+    },
+    {
+      "path": "examples/composition/refactoring/task.example.json",
+      "bytes": 3781,
+      "sha256": "5d38e358b26a7039c283f781d720459a1e5f452fd86eb6f74d05c07db8a76441"
+    },
+    {
+      "path": "src/ergora/data/presets/agents/ergora-compatibility-validator-v2/agent.json",
+      "bytes": 859,
+      "sha256": "3e829ab09736f43e602f60f474ae97d0ad287f5da30bf6bb5569141466809646"
+    },
+    {
+      "path": "src/ergora/data/presets/agents/ergora-compatibility-validator-v2/instructions.md",
+      "bytes": 667,
+      "sha256": "beebae56f200c6433f74a9113417a4ebcf38ec726c4849db3694c0d7b00c0f58"
+    },
+    {
+      "path": "src/ergora/data/presets/agents/ergora-compatibility-validator-v2/skills/ergora-compatibility-validator/SKILL.md",
+      "bytes": 755,
+      "sha256": "aea37779abfe11c52611765dc6111b7b6a3d01b35c9a288de88a0fd33e94b49c"
+    },
+    {
+      "path": "src/ergora/data/presets/agents/ergora-development-preparer/agent.json",
+      "bytes": 863,
+      "sha256": "41de8c35d76bea1387a2d0d1dd6f04f808c284aee3d99b255010076b7471958d"
+    },
+    {
+      "path": "src/ergora/data/presets/agents/ergora-development-preparer/instructions.md",
+      "bytes": 651,
+      "sha256": "ea6d947859ad8ee28f6d010d4136180249cbe2707ba4bbd5efada2db85bf0b75"
+    },
+    {
+      "path": "src/ergora/data/presets/agents/ergora-development-preparer/skills/ergora-development-preparer/SKILL.md",
+      "bytes": 811,
+      "sha256": "65ac02086b15da1cb9e87e3cf07b3ff4d9eb0065a4adbea88044b6b6136f42e1"
+    },
+    {
+      "path": "src/ergora/data/presets/agents/ergora-refactoring-engineer/agent.json",
+      "bytes": 837,
+      "sha256": "e464460c1576079e5f23ee0db0fa844282dadcbd6579f10bd06e50f062d54973"
+    },
+    {
+      "path": "src/ergora/data/presets/agents/ergora-refactoring-engineer/instructions.md",
+      "bytes": 652,
+      "sha256": "a1bad4e01cf7c9f6767dbd9f974a56f67b2b357da4ab2219e1f94bad7d9622ab"
+    },
+    {
+      "path": "src/ergora/data/presets/agents/ergora-refactoring-engineer/skills/ergora-refactoring-engineer/SKILL.md",
+      "bytes": 775,
+      "sha256": "eae09924fae0f35015a880df593cf520df75fabe2af303efbf2d48786c9edda2"
+    },
+    {
+      "path": "src/ergora/data/presets/presets.json",
+      "bytes": 2948,
+      "sha256": "0626c23ace6dc0461eeaa1580aa93b6a87edb31358ff7b30b7ddbeeb0d8165cc"
+    },
+    {
+      "path": "src/ergora/data/presets/workflows/ergora-development-preparation/instructions.md",
+      "bytes": 451,
+      "sha256": "8caf20b3d71042124b02cdb557836c3053e12e721b7f3cf380ef66fe95a81aef"
+    },
+    {
+      "path": "src/ergora/data/presets/workflows/ergora-development-preparation/workflow.json",
+      "bytes": 1902,
+      "sha256": "15056c56dbe2e17191f44d3f54bd50cba8fc5654daffcab4e416d91d20cd297b"
+    },
+    {
+      "path": "src/ergora/data/presets/workflows/ergora-refactoring-delivery/instructions.md",
+      "bytes": 521,
+      "sha256": "02a1205ed24913af26c236c2a21ce707939cec4cd83bafde21af6ad5084db434"
+    },
+    {
+      "path": "src/ergora/data/presets/workflows/ergora-refactoring-delivery/workflow.json",
+      "bytes": 1952,
+      "sha256": "f765bd17f02fafc6ce5ab3ada9eb13e581d3a1b0b9c5bdeb4a954da7c2e033b9"
+    },
+    {
+      "path": "src/ergora/data/presets/workflows/ergora-refactoring-template/instructions.md",
+      "bytes": 1180,
+      "sha256": "6ed4dcc6ad9c95996381293199676b3e9a6bf01497859128e9c6048a69381a53"
+    },
+    {
+      "path": "src/ergora/data/presets/workflows/ergora-refactoring-template/workflow.json",
+      "bytes": 1203,
+      "sha256": "0bb790e67aa61b30474028a7976e357d52fb031b50bba6b4d2f50ba8a668d6f8"
+    },
+    {
+      "path": "src/ergora/data/presets/workflows/ergora-refactoring-work/instructions.md",
+      "bytes": 523,
+      "sha256": "6f8d56a1dc833f6156375020d31056da269656fd86fd58022658ab6faa6b0da8"
+    },
+    {
+      "path": "src/ergora/data/presets/workflows/ergora-refactoring-work/workflow.json",
+      "bytes": 2166,
+      "sha256": "19ba2c9d80c11ed03362e1acf35f7f9207ecfd64104784641772670fdd1c1829"
+    },
+    {
+      "path": "tests/test_presets.py",
+      "bytes": 14676,
+      "sha256": "896881b90c4a72af0fa7aa940842e3282cbae53ca3017fc7f0b882bc8eabee57"
+    }
+  ],
+  "input_digest": "f264f9acc4cd8877fcdcc767ddbc2a66a36aead8b12d954b59d38f39239d83f8",
+  "prompt_sha256": "18ba2513790cd7c6e03f4b4ad066adfbf05d11b464817b97156c186978a416f9",
+  "complete_focused_text_in_stdin": true,
+  "mcp": false,
+  "scope": "Installed original bundled structure template; complete 22-file focused inline packet and ancestor byte-chain independently auditable. Does not prove comprehension, billing, heterogeneous backends or A2 runtime behavior.",
+  "decision": "approve",
+  "result_sha256": "18aa2d51fdbd26d24678396e10bba51902ceb5e097027d6f158b32947788bbc8",
+  "packet_files": 22,
+  "packet_bytes": 42298,
+  "prompt_bytes": 49822,
+  "complete_ancestor_resources": [
+    {
+      "kind": "instructions",
+      "bytes": 163,
+      "instruction_sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823",
+      "sources": [
+        {
+          "definition": {
+            "digest": "996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9",
+            "id": "ergora-structure-review",
+            "kind": "workflow",
+            "version": "1.0.0"
+          },
+          "instance": "root",
+          "path": "instructions.md",
+          "resource_id": "ergora-structure-review-instructions",
+          "uri": "definitions/workflow/ergora-structure-review/1.0.0/instructions.md"
+        }
+      ]
+    },
+    {
+      "kind": "instructions",
+      "bytes": 354,
+      "instruction_sha256": "3cc9c450f0c03da5ea4a1434ac6182d50df6a4985cffdee2a59fe9fe477c6b43",
+      "sources": [
+        {
+          "definition": {
+            "digest": "97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c",
+            "id": "ergora-structure-reviewer",
+            "kind": "agent",
+            "version": "1.0.0"
+          },
+          "instance": "root/review",
+          "path": "instructions.md",
+          "resource_id": "ergora-structure-reviewer-instructions",
+          "uri": "definitions/agent/ergora-structure-reviewer/1.0.0/instructions.md"
+        }
+      ]
+    },
+    {
+      "kind": "skill",
+      "bytes": 521,
+      "instruction_sha256": "d6b69570bcca408d3d06ca5adf1cb44a4a9e43c2901f05c38a68c096f23a4ac8",
+      "sources": [
+        {
+          "definition": {
+            "digest": "97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c",
+            "id": "ergora-structure-reviewer",
+            "kind": "agent",
+            "version": "1.0.0"
+          },
+          "instance": "root/review",
+          "path": "skills/ergora-structure-reviewer",
+          "resource_id": "ergora-structure-reviewer-skill",
+          "uri": "definitions/agent/ergora-structure-reviewer/1.0.0/skills/ergora-structure-reviewer"
+        }
+      ]
+    }
+  ],
+  "backend_reported_turn_usage": [
+    {
+      "input_tokens": 61992,
+      "cached_input_tokens": 40832,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 722,
+      "reasoning_output_tokens": 311
+    }
+  ],
+  "backend": "codex",
+  "mode": "text-only",
+  "composition_root": {
+    "digest": "996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9",
+    "id": "ergora-structure-review",
+    "kind": "workflow",
+    "version": "1.0.0"
+  }
+}

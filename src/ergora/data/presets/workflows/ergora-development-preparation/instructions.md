@@ -1,0 +1,2 @@
+Prepare the two original read-only stages using the selected task and exact repository inputs.
+Inventory identifies existing behavior, affected interfaces, actual callers, persisted formats and evidence gaps. Plan consumes the original stage results supplied by the runtime and describes scoped ownership, migration, checks and rollback. Keep incomplete conditions explicit for the original plan owner; these calls do not approve or execute the plan.

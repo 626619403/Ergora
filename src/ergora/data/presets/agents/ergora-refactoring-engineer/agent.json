@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "id": "ergora-refactoring-engineer",
+  "version": "1.0.0",
+  "description": "Refactor a module and migrate its callers within the approved behavior-preserving work unit.",
+  "roles": [
+    "implementer"
+  ],
+  "specialties": [
+    "module-refactoring",
+    "interface-migration",
+    "behavior-preservation"
+  ],
+  "backend": {
+    "tool": "codex"
+  },
+  "resources": [
+    {
+      "id": "ergora-refactoring-engineer-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "a1bad4e01cf7c9f6767dbd9f974a56f67b2b357da4ab2219e1f94bad7d9622ab"
+    },
+    {
+      "id": "ergora-refactoring-engineer-skill",
+      "kind": "skill",
+      "path": "skills/ergora-refactoring-engineer",
+      "digest": "a1f1a4526f37aba0185d747a73730571bf8ed90de0144a4822b6813653bbdaef"
+    }
+  ]
+}

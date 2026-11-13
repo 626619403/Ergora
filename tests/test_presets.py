@@ -8,7 +8,7 @@ import sys
 
 import pytest
 
-from ergora import reference, registrations, tasks, workflow_definitions as workflows
+from ergora import agent_definitions, reference, registrations, task_envelopes, tasks, workflow_definitions as workflows
 from ergora.reference_inputs import execution_input
 from ergora.review_dags import WorkDelivery
 from ergora.state import State
@@ -57,7 +57,7 @@ def test_preset_listing_and_installation_are_real_offline_cli_operations(tmp_pat
     command = [sys.executable, '-I', '-m', 'ergora', '--home', str(home), 'composition']
     listed = subprocess.run([*command, 'presets'], capture_output=True, text=True, check=True, timeout=30)
     assert not home.exists()
-    assert {item['id'] for item in json.loads(listed.stdout)} == set(reference.TEMPLATES)
+    assert json.loads(listed.stdout) == workflows.presets()
     installed = subprocess.run([*command, 'install-preset', 'training-optimization'],
                                capture_output=True, text=True, check=True, timeout=30)
     assert json.loads(installed.stdout)['runtime'] == 'proposal-leaves'
@@ -112,3 +112,104 @@ def test_development_preset_creates_original_unit_contract_without_starting(regi
     created = tasks.create(state, 'demo', definition, 1, preview['preview_sha256'])
     assert created['status'] == 'published' and created['execution_started_by_operation'] is False
     assert not (Path(project['execution']['state_directory']) / 'requests-composition-v5').exists()
+
+
+def test_refactoring_preset_restarts_with_old_versions_and_complete_parent_materials(tmp_path):
+    state = State(tmp_path / 'state')
+    original = workflows.install_preset(state, 'large-change')
+    old_validator = agent_definitions.get(state, 'ergora-compatibility-validator', '1.0.0')
+    installed = workflows.install_preset(state, 'refactoring')
+    assert installed == workflows.install_preset(state, 'refactoring')
+    assert workflows.install_preset(state, 'large-change') == original
+    assert agent_definitions.get(state, 'ergora-compatibility-validator', '1.0.0') == old_validator
+    validator = agent_definitions.get(state, 'ergora-compatibility-validator', '2.0.0')
+    assert validator['digest'] != old_validator['digest']
+    assert installed['execution_authorized'] is False
+    root = workflows.get(state, installed['root']['id'], installed['root']['version'])['definition']
+    grant = {'schema_version': 1, 'permissions': root['permissions'], 'limits': root['limits']}
+    graph = workflows.preview(state.root, root['id'], root['version'], grant)
+    instances = {item['path']: item for item in graph['instances']}
+    leaves = [item for item in graph['instances'] if item['kind'] == 'agent']
+    for leaf in leaves:
+        ancestors = set()
+        node = leaf
+        while node is not None:
+            ancestors.add(node['path'])
+            node = instances[node['parent']] if node['parent'] is not None else None
+        assert {source['instance'] for resource in leaf['resources'] for source in resource['sources']} == ancestors
+        assert all(resource['text'] in leaf['prompt'] for resource in leaf['resources'])
+    example = Path(__file__).parents[1] / 'examples/composition/refactoring/task.example.json'
+    definition = json.loads(example.read_bytes())
+    option = definition['composition']
+    delivery = WorkDelivery(graph, option['execution'], option['review_instance'],
+                            definition['input']['work_units'], preparation=option['preparation'])
+    assert set(delivery.work.members) == set(option['execution']['assignments'].values())
+    assert set(delivery.preparation) == {'inventory', 'plan'}
+    assert set(delivery.review.members) == {
+        'root/development/review/' + kind + '/review' for kind in ('structure', 'correctness', 'test-value')}
+    assert all(not member['permissions']['write'] and not member['permissions']['shell']
+               and not member['permissions']['network'] for member in delivery.review.members.values())
+    assert all(member['review_requirement'] == 'required' for member in delivery.review.members.values())
+    manifest = workflows.prepare_manifest(state.root, root['id'], root['version'], grant, tmp_path / 'manifest')
+    shutil.rmtree(state.root / 'agent-definitions')
+    shutil.rmtree(state.root / 'workflow-definitions')
+    assert workflows.inspect_manifest(Path(manifest['path']), material=True)['composition'] == graph
+    selected = 'root/development/review/structure/review'
+    prepared = workflows.prepare_input_from_manifest(Path(manifest['path']), selected,
+        b'Review the exact refactoring candidate and its real caller migration evidence.', tmp_path / 'input', 100000)
+    assert workflows.inspect_input(Path(prepared['path']))['digest'] == prepared['digest']
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Budgeted native preparation requires Linux/WSL2')
+def test_refactoring_preset_prepares_the_original_large_change_native_contract(registration, tmp_path):
+    state, project = registration
+    example = Path(__file__).parents[1] / 'examples/composition/refactoring/task.example.json'
+    definition = json.loads(example.read_bytes())
+    repo = Path(project['repo'])
+    sources = {
+        'src/example/normalizer.py': 'def normalize(value):\n    return value.strip().lower()\n',
+        'src/example/client.py': 'from .normalizer import normalize\n\ndef request(value):\n    return normalize(value)\n',
+        'tests/example/test_normalizer.py': 'from src.example.client import request\n\ndef test_request():\n    assert request(" A ") == "a"\n',
+        'docs/refactoring/contract.md': 'Preserve normalize and its request caller; rollback restores this exact baseline.\n',
+    }
+    for name, text in sources.items():
+        target = repo / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(text)
+    subprocess.run(['git', '-C', str(repo), 'add', '--', 'src', 'tests', 'docs'], check=True, capture_output=True)
+    subprocess.run(['git', '-C', str(repo), '-c', 'commit.gpgsign=false', '-c', 'user.name=Fixture',
+        '-c', 'user.email=fixture@example.test', 'commit', '-m', 'refactoring baseline'], check=True, capture_output=True)
+    definition['starting_sha'] = subprocess.check_output(['git', '-C', str(repo), 'rev-parse', 'HEAD'], text=True).strip()
+    definition['issue_id'] = '1'
+    project['allowed_paths'] = definition['input']['allowed_paths']
+    registrations.register(state, project, 0)
+    installed = workflows.install_preset(state, 'refactoring')
+    root = workflows.get(state, installed['root']['id'], installed['root']['version'])['definition']
+    grant = {'schema_version': 1, 'permissions': root['permissions'], 'limits': root['limits']}
+    manifest = workflows.prepare_manifest(state.root, root['id'], root['version'], grant, tmp_path / 'manifest')
+    definition['composition'].update(manifest=manifest['path'], manifest_digest=manifest['digest'])
+    prepared = tasks.prepare(state, 'demo', definition, 1)
+    assert prepared['status'] == 'prepared'
+    preview = tasks.preview(state, 'demo', definition, 1)
+    document = preview['files']['task.spec.json']
+    selected = execution_input(document)
+    selected.require_submission()
+    assert document['schema_version'] == 10
+    assert document['legacy_spec']['request']['task_type'] == 'large-change'
+    assert document['legacy_spec']['request']['input'] == definition['input']
+    assert selected.request_root(Path('requests')) == Path('requests-composition-v10')
+    composition = document['composition']
+    assert [item['instance'] for item in composition['native']['lineage']] == ['root', 'root/development']
+    assert composition['native']['task_type'] == 'large-change'
+    graph = task_envelopes.manifest_graph(composition['manifest'])
+    assert {item['path'] for item in graph['instances'] if item['kind'] == 'agent'} == (
+        composition['execution']['members'].keys() | composition['members'].keys()
+        | composition['preparation']['members'].keys())
+    assert composition['execution']['assignments'] == definition['composition']['execution']['assignments']
+    assert composition['diversity']['same_backend_members'] == []
+    assert {member['binding']['tool'] for member in composition['members'].values()} == {'claude-code'}
+    assert all(member['binding']['sandbox'] == 'current-container'
+               for member in composition['execution']['members'].values())
+    runtime = Path(project['execution']['state_directory'])
+    assert not (runtime / 'tasks' / definition['task_id']).exists()
+    assert not (runtime / 'requests-composition-v10').exists()

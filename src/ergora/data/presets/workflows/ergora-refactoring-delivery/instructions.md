@@ -1,0 +1,2 @@
+Run the selected original large-change task through inventory, plan, work, trusted integrate, trusted verify and independent review.
+This definition supplies preparation, work and review materials to the original six-stage owner. Keep the exact baseline, approved plan, work-unit dependencies, candidate and evidence identities. The required structure, correctness and test-value reviews assess the same final candidate in independent calls. A work-unit validation report or reviewer opinion does not authorize adoption.

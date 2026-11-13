@@ -583,7 +583,7 @@ ergora task create my-project --definition task-definition.json --revision 1 --p
 
 发送前到期的首次start不会创建新运行；已有attempt的`resume-start`只查询原workflow／run及完整input，不再发送，即使新配置已关闭执行。执行中重启Executor会继续计入原jobs账本中的OWNED占用；live或unknown的原job不会因Future或Temporal结束退款。正式回执已链接而账本更新丢失时，daemon只对账原终态，不重跑body。未知占用可能阻塞安装级`max_parallel_jobs`，应保留原请求、attempt、owner、停止／收集witness并调查；不要删除账本或手改终态来释放名额。此上限与单task的祖先并发是不同约束，不代表跨task项目总配额。
 
-这条入口仍是原六阶段正式任务；把整个六阶段作为父图中可引用的子模板、多个native或任意混合图调度有独立的后续合同。
+这条v5入口仍是原六阶段正式任务；单个父模板引用一个六阶段实例时使用下一节的v6定义。多个native或任意混合外层图调度仍需后续合同。
 
 API 对应 `POST .../tasks/prepare`（`definition/revision`）、`GET .../tasks/TASK_ID/preparation`，以及原 preview/create；v5 create 另传 `prepare_sha256`，写请求保留同源与 `X-Ergora-Request: 1`。备份需同时保留登记执行状态中的 `ergora/task-creations` 和控制目录 `operations/task-preparations`；控制库单独备份不包含全部材料。跨 boot／主机或 UTC 与单调时钟明显不一致时，新工作拒绝恢复；静态合同仍可读取。
 
@@ -603,6 +603,23 @@ task-definition v6／正式input v10在上述预算合同中增加 `composition.
 沿同一 `task prepare → preview → create → start` 操作，create仍确认prepare和preview两个摘要，随后批准原计划。升级并重启worker／executor后使用 `.composition-v10` 队列及 `requests-composition-v10` 请求根；旧版本队列和history保持。原task创建记录的 `composition.native` 保存精确父定义链，原status及终态结果的 `native_invocation` 投影同一调用；task/run/candidate、批准、取消、unknown恢复和证据仍归原所有者。
 
 首形状要求祖先只含这次调用并直接转发task及结果；work和review是所选六阶段实例的直接子模板，盘点／规划可有自己的结构包装。准备时拒绝额外父分支、第二实例、未执行的外部输入或控制依赖。内部工作／审查继续支持原有串并行DAG；这不授予任意外层图的执行权。图形任务向导目前生成原v6工作材料信封，新的v10合同使用完整JSON经CLI／HTTP提交。
+
+### 使用重构配方
+
+`refactoring`把行为保持重构交给原`large-change`六阶段所有者。默认依次安排资料盘点、计划及原owner批准；重构执行者完成`rewrite`后，兼容性专家在集成了前驱的候选上完成`compatibility`；原可信integrate／verify之后，结构、正确性和测试价值三个必需reviewer并行审查。
+
+```bash
+ergora composition install-preset refactoring
+ergora composition prepare-manifest ergora-refactoring-template 1.0.0 \
+  --grant examples/composition/refactoring/grant.json \
+  --directory ./refactoring-manifest
+```
+
+示例位于仓库[refactoring目录](../examples/composition/refactoring/README.md)；wheel中已含全部Agent和子模板，使用自己的grant时无需examples。将[task.example.json](../examples/composition/refactoring/task.example.json)复制成任务定义，填写真实工单、task ID、baseline、manifest路径／摘要及项目内实际模块／caller；同时核完整资料范围、行为不变量、迁移和隔离回退检查。随后沿原`task prepare → preview → create`的双摘要确认与start／计划批准流程。有效JSON或prepare成功只证明合同可装配，行为保持由实际检查和审查证据支持。
+
+默认preparation及writer使用Codex，reviewer使用Claude Code；每个实例可以沿原`backend_overrides`换成实际支持的后端。Claude不可用时，按[多样性政策](#为正式任务冻结审查组合)填写各叶覆盖及`diversity.reason`；独立同后端会话保留真实回退原因。兼容性执行者有自己的可写工作单元，其检查不替代最终三个独立reviewer。改变默认分工时须一并修订精确子模板和原units映射；原任务/profile与材料上限继续适用。
+
+新配方不会重写旧版本或在途任务。回退新任务的选择时重新选择旧精确包／manifest并prepare；已经启动的任务继续用原task／run观察、取消或对账。
 
 ### 查询正式任务运行状态
 

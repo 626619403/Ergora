@@ -1,0 +1,57 @@
+{
+  "schema_version": 2,
+  "id": "ergora-refactoring-template",
+  "version": "1.0.0",
+  "description": "Forward one behavior-preserving module refactor to the original large-change six-stage owner.",
+  "resources": [
+    {
+      "id": "ergora-refactoring-template-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "6ed4dcc6ad9c95996381293199676b3e9a6bf01497859128e9c6048a69381a53"
+    }
+  ],
+  "permissions": {
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "write": [
+      "workspace"
+    ],
+    "shell": true,
+    "network": []
+  },
+  "limits": {
+    "depth": 8,
+    "instances": 128,
+    "concurrency": 4,
+    "material_bytes": 262144
+  },
+  "inputs": [
+    "task"
+  ],
+  "outputs": {
+    "result": {
+      "node": "development",
+      "output": "result"
+    }
+  },
+  "nodes": [
+    {
+      "id": "development",
+      "ref": {
+        "kind": "workflow",
+        "id": "ergora-refactoring-delivery",
+        "version": "1.0.0",
+        "digest": "8bc02f70dc320aff86736235446b94a0f4065bb63d243a382906be69e947822d"
+      },
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      }
+    }
+  ]
+}

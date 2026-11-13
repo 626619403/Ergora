@@ -1,4 +1,4 @@
-# 三模板入门旅程
+# 模板入门旅程
 
 这份指南串起安装、专家组合、正式开发与训练实验。先读[安装与日常使用](USAGE.md)，Windows使用[Windows手册](WINDOWS.md)。基础控制台包含CLI、SQLite和本地页面；完整六阶段还需要Linux/WSL2参考执行环境、所选服务和已认证Agent。选择development或research安装组合只补SDK，服务、模型、项目检查和GPU按需准备。
 
@@ -9,8 +9,11 @@
 |repository-governance|`ergora-governance-delivery`|knowledge-map与boundary-test并行，接可信集成／验证及结构、正确性、测试价值审查|
 |large-change|`ergora-large-change-delivery`|contract→server／client并行→integration-tests，再接可信集成／验证和三审查|
 |training-optimization|`ergora-training-proposal`|实验设计／性能分析→kernel设计→测量审查；独立只读提案，实际实验由可信runner执行|
+|refactoring|`ergora-refactoring-template`|准备→rewrite→compatibility→原可信集成／验证→三审查；普通父引用一个原生large-change六阶段实例|
 
 每个Agent是独立版本包，可有自己的专长、初始指令、Skill和后端。结构父链完整累加资料并限制子权限；依赖边安排执行先后，具名端口传递结果。这三种关系可在“Agent 与组合库”展开查看。[定义格式与继承规则](WORKFLOW_DEFINITIONS.md)。
+
+重构配方是独立新入口，使用[definition6／input10操作说明](USAGE.md#使用重构配方)和[完整示例](../examples/composition/refactoring/README.md)。下面的旧两域页面向导仍生成原v6工作材料合同；原生v10定义通过CLI／HTTP提交。选择该配方前先固定实际caller、需要保持的行为、迁移顺序和回退检查；它沿原task／run／candidate及批准流程执行。
 
 ## 1. 准备模板与完整组合
 

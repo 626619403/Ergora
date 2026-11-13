@@ -1,0 +1,106 @@
+{
+  "schema_version": 2,
+  "id": "ergora-refactoring-work",
+  "version": "1.0.0",
+  "description": "Refactor the approved module, then validate the integrated caller migration and rollback.",
+  "resources": [
+    {
+      "id": "ergora-refactoring-work-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "6f8d56a1dc833f6156375020d31056da269656fd86fd58022658ab6faa6b0da8"
+    }
+  ],
+  "permissions": {
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "write": [
+      "workspace"
+    ],
+    "shell": true,
+    "network": []
+  },
+  "limits": {
+    "depth": 8,
+    "instances": 128,
+    "concurrency": 4,
+    "material_bytes": 262144
+  },
+  "inputs": [
+    "task"
+  ],
+  "outputs": {
+    "result": {
+      "node": "done",
+      "output": "result"
+    }
+  },
+  "nodes": [
+    {
+      "id": "rewrite",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-refactoring-engineer",
+        "version": "1.0.0",
+        "digest": "09bb5a05363eec1e96d7a99f077228a1a3d33acb1ca0a5a596bf5165212e8398"
+      },
+      "role": "implementer",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [
+          "workspace"
+        ],
+        "shell": true,
+        "network": []
+      }
+    },
+    {
+      "id": "compatibility",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-compatibility-validator",
+        "version": "2.0.0",
+        "digest": "f4315988025976a16e81b9431086b0628b0e69f67d06c73ac82052ceb453ae07"
+      },
+      "role": "implementer",
+      "depends_on": [
+        "rewrite"
+      ],
+      "inputs": {
+        "task": {
+          "node": "rewrite",
+          "output": "result"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [
+          "workspace"
+        ],
+        "shell": true,
+        "network": []
+      }
+    },
+    {
+      "id": "done",
+      "join": "all",
+      "depends_on": [
+        "compatibility"
+      ]
+    }
+  ]
+}

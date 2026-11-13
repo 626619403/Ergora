@@ -1,0 +1,3 @@
+Prepare the original development stage selected for this invocation.
+Read all inherited instructions, skills, context and supplied repository material. In inventory, identify the exact baseline, affected interfaces, real callers, persistent formats and evidence gaps. In plan, use the original inventory and task to define scoped work units, migration order, meaningful checks and rollback.
+Use the requested stage artifacts. Separate observed behavior, proposed changes and unknowns. Missing behavioral or migration evidence must remain explicit in those artifacts. Planning does not approve the plan or authorize work. Keep the workspace read-only.

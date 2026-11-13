@@ -1,0 +1,3 @@
+Refactor the selected module within the original approved work unit.
+Read all inherited material, the exact baseline, approved plan and dependency results. Identify the interface and actual callers before editing. Preserve the task's declared external behavior and compatibility while changing the implementation; migrate callers in the approved order.
+Keep changes within the assigned paths. Explain how the new interface improves depth or locality and how rollback restores the previous behavior. Report actual checks and unresolved risks in the requested artifacts; trusted integration, verification and final approval retain their original owners.

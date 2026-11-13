@@ -1,0 +1,80 @@
+{
+  "schema_version": 6,
+  "task_id": "refactor-module-example",
+  "task_type": "large-change",
+  "issue_id": "REPLACE_WITH_ISSUE_ID",
+  "starting_sha": "REPLACE_WITH_EXACT_BASELINE_SHA",
+  "input": {
+    "goal": "Refactor the implementation behind src/example/normalizer.py while preserving its public normalize interface and the behavior observed by the real callers in src/example/client.py. Confirm those callers and the behavior from the actual baseline before planning.",
+    "allowed_paths": ["src/example", "tests/example", "docs/refactoring"],
+    "acceptance": [
+      "The exact baseline and actual callers are recorded; public imports, supported inputs, outputs and failure behavior remain compatible.",
+      "Every affected caller is checked against the approved interface migration; persisted-format impact is identified and verified or explicitly recorded as absent with evidence.",
+      "Relevant checks run against the dependency-integrated candidate with their oracle and original failures retained.",
+      "An isolated rollback to the exact baseline is exercised with the relevant caller fixtures; production rollout is outside this task."
+    ],
+    "constraints": [
+      "Replace this example scope, callers and invariants with verified project facts before preparing the task.",
+      "The owner approves the exact plan before work. Schema-valid text does not prove behavior preservation or authorize migration.",
+      "Keep original candidate, evidence, budget and recovery identities; missing evidence remains unverified."
+    ],
+    "risk": "high",
+    "work_units": [
+      {
+        "id": "rewrite",
+        "depends_on": [],
+        "paths": ["src/example"],
+        "instructions": "Implement the approved module refactor and caller migration in an isolated workspace. Preserve the declared behavior and explain how the interface improves depth or locality."
+      },
+      {
+        "id": "compatibility",
+        "depends_on": ["rewrite"],
+        "paths": ["tests/example", "docs/refactoring"],
+        "instructions": "Validate the dependency-integrated candidate using real caller fixtures, relevant old/new behavior and isolated rollback. Record executed checks, original failures and remaining gaps."
+      }
+    ]
+  },
+  "composition": {
+    "manifest": "REPLACE_WITH_MANIFEST_DIRECTORY",
+    "manifest_digest": "REPLACE_WITH_MANIFEST_DIGEST",
+    "review_protocol": "dag-v1",
+    "review_instance": "root/development/review",
+    "mode": "task-mcp",
+    "preparation": {
+      "protocol": "preparation-v1",
+      "inventory": "root/development/preparation/inventory",
+      "plan": "root/development/preparation/plan",
+      "mode": "task-mcp",
+      "repository_paths": ["src/example", "tests/example", "docs/refactoring"]
+    },
+    "execution": {
+      "protocol": "work-units-v2",
+      "instance": "root/development/work",
+      "mode": "workspace-task-mcp",
+      "assignments": {
+        "rewrite": "root/development/work/rewrite",
+        "compatibility": "root/development/work/compatibility"
+      }
+    },
+    "native": {
+      "protocol": "six-stage-v1",
+      "instance": "root/development"
+    },
+    "backend_overrides": {
+      "root/development/work/rewrite": {
+        "binding": {"tool": "codex", "sandbox": "current-container"},
+        "reason": "Explicit trusted-container selection for the scoped refactoring writer."
+      },
+      "root/development/work/compatibility": {
+        "binding": {"tool": "codex", "sandbox": "current-container"},
+        "reason": "Explicit trusted-container selection for the scoped compatibility validation unit."
+      }
+    },
+    "diversity": {"policy": "prefer-distinct"}
+  },
+  "budget": {
+    "wall_seconds": 3600,
+    "cleanup_seconds": 30,
+    "model_invocations": 14
+  }
+}

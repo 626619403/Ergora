@@ -1,0 +1,90 @@
+{
+  "schema_version": 2,
+  "id": "ergora-refactoring-delivery",
+  "version": "1.0.0",
+  "description": "Use the original large-change six-stage owner with preparation, scoped refactoring and independent review.",
+  "resources": [
+    {
+      "id": "ergora-refactoring-delivery-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "02a1205ed24913af26c236c2a21ce707939cec4cd83bafde21af6ad5084db434"
+    }
+  ],
+  "permissions": {
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "write": [
+      "workspace"
+    ],
+    "shell": true,
+    "network": []
+  },
+  "limits": {
+    "depth": 8,
+    "instances": 128,
+    "concurrency": 4,
+    "material_bytes": 262144
+  },
+  "inputs": [
+    "task"
+  ],
+  "outputs": {
+    "result": {
+      "node": "review",
+      "output": "result"
+    }
+  },
+  "nodes": [
+    {
+      "id": "preparation",
+      "ref": {
+        "kind": "workflow",
+        "id": "ergora-development-preparation",
+        "version": "1.0.0",
+        "digest": "3006fcc8b7b93a018952ebe7921514d5cd604434670c2d36caae90e598fc4acd"
+      },
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      }
+    },
+    {
+      "id": "work",
+      "ref": {
+        "kind": "workflow",
+        "id": "ergora-refactoring-work",
+        "version": "1.0.0",
+        "digest": "c4385feb2e92b2e2b1253d53eac7d578f6a3ff64343ae22a2e426db8f082da25"
+      },
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      }
+    },
+    {
+      "id": "review",
+      "ref": {
+        "kind": "workflow",
+        "id": "ergora-delivery-review",
+        "version": "1.0.0",
+        "digest": "a85e76dcd25bfddd24684b6e23ad3668097b44df0f9a7d745e387e5a841c471c"
+      },
+      "depends_on": [
+        "work"
+      ],
+      "inputs": {
+        "task": {
+          "node": "work",
+          "output": "result"
+        }
+      }
+    }
+  ]
+}
