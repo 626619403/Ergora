@@ -1,0 +1,165 @@
+{
+  "candidate": "41dd5aa30f589b5c27a1cc3f09db59d66005a40f",
+  "python": "3.12.3",
+  "package_version": "0.2.0",
+  "before": {
+    "product_files": 452,
+    "presets": 3,
+    "distributions": 38,
+    "known_default_state_existed": false
+  },
+  "backup": {
+    "bytes": 38626813,
+    "sha256": "a22ee071849df6995ec59f6733dd2a6ac4f77057757d0c2d771fdfedf3a2e735",
+    "members": 6190,
+    "verified_regular_files_and_symlinks": 5051
+  },
+  "installation": {
+    "wheel_sha256": "34e6b375c8771fa67bb1b02a71070f289ec72d5b0c99badac3afd28373fee208",
+    "package_files": 551,
+    "wheel_files": 559,
+    "installed_record_rows": 564,
+    "source_git_wheel_and_installed_equal": true,
+    "wheel_and_installed_records_verified": true,
+    "frozen_files": 283,
+    "distributions_unchanged": 38,
+    "unchanged_non_application_files_and_symlinks": 4550,
+    "launcher_symlink_unchanged": true,
+    "default_state_still_absent": true,
+    "app_replaced": true
+  },
+  "acceptance": {
+    "presets": 23,
+    "representative_roots": [
+      {
+        "preset": "repository-governance",
+        "root": {
+          "kind": "workflow",
+          "id": "ergora-governance-delivery",
+          "version": "1.0.0",
+          "digest": "e82c02d01d2c717a38f35f242107efce32dd873027a4a3a6fb0f18f7d1fae077"
+        },
+        "leaves": 5,
+        "selected": "root/review/structure/review",
+        "manifest_digest": "d90d8b82de570216e149ae9cbaef4c78490f557e23f5fe2ea22839b66e38ea5a",
+        "input_digest": "8cc6204b0bd90df1c27927e53d37b10f92189008d4416e61bd5747402ab1c543",
+        "resource_bytes": 7437
+      },
+      {
+        "preset": "large-change",
+        "root": {
+          "kind": "workflow",
+          "id": "ergora-large-change-delivery",
+          "version": "1.0.0",
+          "digest": "25dbfff6830e4123bedbfe975c964de96b8a9ce0ed8c76e8f365fecf2f7e2cc8"
+        },
+        "leaves": 7,
+        "selected": "root/review/structure/review",
+        "manifest_digest": "4bf651f95a2247b57bc246e23d3b0a6c52f005e8e835a9ad1df02b4cf9cfefa0",
+        "input_digest": "26f2b01a13871b906fa064d7cb7cc8be380fb6b5e8192a81632ef5ec01a3e208",
+        "resource_bytes": 10303
+      },
+      {
+        "preset": "training-optimization",
+        "root": {
+          "kind": "workflow",
+          "id": "ergora-training-proposal",
+          "version": "1.0.0",
+          "digest": "cf5df77249022c458f84d4e4d9964aa6448bacb1a74b9192a942da9ffcb7e438"
+        },
+        "leaves": 4,
+        "selected": "root/analysis/design",
+        "manifest_digest": "8ecc679575ecc75b44fe9d9ef9cc15043e1dd45875b74a0ee966579fb544cae3",
+        "input_digest": "bb51ffcde4d215ed1ff0b0d9ae70fc951827d4db59a3ae5a3d0b5c4279bedfc5",
+        "resource_bytes": 5487
+      },
+      {
+        "preset": "refactoring",
+        "root": {
+          "kind": "workflow",
+          "id": "ergora-refactoring-template",
+          "version": "1.0.0",
+          "digest": "ce26192b22c25031156755290c252823dbd845c199ff7f62f8e874e07076a15d"
+        },
+        "leaves": 7,
+        "selected": "root/development/review/structure/review",
+        "manifest_digest": "668e4e65e76d6b0cbdc926b3b76ecf3b4be6551fa095174c6343dc87da55b8d5",
+        "input_digest": "b5dc0f421a1849eb3eab089c5e409f59cebdf69e93000f366d91c115f32f9a82",
+        "resource_bytes": 23329
+      },
+      {
+        "preset": "training-optimization-v2",
+        "root": {
+          "kind": "workflow",
+          "id": "ergora-training-proposal",
+          "version": "2.0.0",
+          "digest": "f82061705d1b7a0f8bc6b480327aa0602b8b3519c35aa2a985e1deeadfbb33fa"
+        },
+        "leaves": 4,
+        "selected": "root/analysis/design",
+        "manifest_digest": "53388d4dcdbc3268917ac5d8718041f94bbda18ef5f1b2e7f18518273cf727e2",
+        "input_digest": "3e077f9c38d68a1fc0c3daa922dca3843541040d128065274f68892d8c4ab1d7",
+        "resource_bytes": 13284
+      },
+      {
+        "preset": "optimization-cluster-resiliency",
+        "root": {
+          "kind": "workflow",
+          "id": "ergora-opt-cluster-resiliency-proposal",
+          "version": "1.0.0",
+          "digest": "96c851ebc8aa6395109f1162e29d7de808dadb1e2cd04d71772917391b36438e"
+        },
+        "leaves": 3,
+        "selected": "root/analysis/design",
+        "manifest_digest": "99fecab551209b684d04a6817b404e35fcb48df931beefbbce06b36c98df41a4",
+        "input_digest": "9aacfe5fd71c9c6919eeaee1fc6f2d14d4d9e9034530c54cf64793dabcb1eef4",
+        "resource_bytes": 39218
+      },
+      {
+        "preset": "optimization-low-precision",
+        "root": {
+          "kind": "workflow",
+          "id": "ergora-opt-low-precision-proposal",
+          "version": "1.0.0",
+          "digest": "b8fce6c6115a6106940db830824d4c6c2da586dc95f61996bd79b8c049283530"
+        },
+        "leaves": 4,
+        "selected": "root/analysis/design",
+        "manifest_digest": "172ebe3479cd06add1a4e712697acfc445a89a8943f61f33a497c8f2f85eb1f4",
+        "input_digest": "c3406cc0b9f164763762365e051afb8d5fa30d7cb6967b9d5e977070d0d24674",
+        "resource_bytes": 55480
+      },
+      {
+        "preset": "optimization-kernel",
+        "root": {
+          "kind": "workflow",
+          "id": "ergora-opt-kernel-proposal",
+          "version": "1.0.0",
+          "digest": "ff822cc713cde9fdf70d8120afcd371769d7d072a352e2cb1d6d5bad758ce82d"
+        },
+        "leaves": 4,
+        "selected": "root/analysis/design",
+        "manifest_digest": "8667bd189cc02fa521a3e6cb028925d4309774f420e1cce9d65faec034822db7",
+        "input_digest": "aa3fd06a3ae27f202601f31c595ba6ff127053d33230e1276022be23553d78ca",
+        "resource_bytes": 58800
+      }
+    ],
+    "commands": 65,
+    "checks": 72,
+    "http_reads": 10,
+    "passed": true,
+    "no_model_run": true,
+    "owned_server_reaped_and_port_closed": true
+  },
+  "raw_sha256": {
+    "backup.json": "d460875407fab4ea2e065984d8cd694635905343b1e38aed7678ee0ecfec9f29",
+    "release-gate.json": "d13c6047f857d4a271552c42eee6338ad4ae386e06f4da6002f8b8f893ace323",
+    "installation.json": "ed1b63242ca301329a1b4f3923e18d2b9937528f4d80fbd500e6f54e34a49fbd",
+    "install-operations.json": "414f1e69055dc5e43934ca5b26ad034555052abff347cd6da65393dac460328e",
+    "journey-r1/summary.json": "8680973ba82b75d56dda4728dbb68ec1dc73976d1ebde130547d1974372b3389",
+    "journey-r1/operations.jsonl": "e6ea76aa2f170b76fc7d7656086b1ad46a402964b3611d58aabf13f145dc30ae",
+    "journey-r1/http.jsonl": "7bc710f4a87976c90d9db053ec979861120187f681527c2eb78d9e6197209d29",
+    "journey-r1/representative-roots.json": "58a8446b6a3fbace16eb276d6f282dbbe67ca3f17f1ce4471d365b25c537e291"
+  },
+  "scope": "Verified home application-only offline reinstall and actual default launcher/isolated state/HTTP acceptance. No model/GPU/native/business execution, full workflow journey, restoration rehearsal, entire-home inspection or CI artifact-content audit."
+}

@@ -4,9 +4,13 @@
 
 ## 当前检查点
 
-- [B2i独立kernel方向](plans/2026-11-13-optimization-kernel-direction.md)：从已普通推送的d683c01开始，工作树初始清洁；R1／X2二十一原件920,972B及十一原HTTP回执已核，新研究请求0。复用四位v2专家的只读方向根、catalog、原测试及README／两手册已实现，548旧产品除catalog与22旧条目保持；独立noneditable551／两RECORD／283通过，原suite30通过／119.64秒与自身29.578秒approve／五全文49,861B已核；四实际叶23资源66,552B与两处完整原前驱已核，measurement保留request-changes；新fresh独立两轴完整原件通过，SP1/P3关闭／开放0／0，本地出口完成；普通发布／自己的CI开放。B2h自己的CI单独收口，新产品发布前核准依赖。
+- [B3a提案交接资料](plans/2026-11-14-proposal-experiment-handoff.md)：等待B2i自己的CI／U3安装期间，沿原训练owner核字段和门禁；现有训练手册22／6／6字段说明、四原调用及两处完整前驱走查和比例静态检查及新fresh独立需求／可维护性两轴通过，开放0／0；本地资料出口完成，普通发布待做；不新建执行器／账本／schema，不修改283冻结文件。真实workload、原manifest及运行／独立评价／批准仍属于B3开放验收。
 
-- [B2h低精度／量化](plans/2026-11-13-optimization-low-precision-directions.md)：十八固定原件470,878B／新研究请求0；四叶根／catalog／原测试与手册已实现，545旧产品除catalog和21旧条目保持。noneditable548／两RECORD／283、29项／115.59秒、四真实叶23资源63,232B与两处完整原前驱、自身30.278秒approve／五全文48,318B均已核；measurement保留request-changes。新fresh独立两轴完整原件通过，SP1/P3关闭、开放0／0，本地出口完成；已普通提交／推送d683c01，作者SSH完整Ref核准；17Git／作者Ref获原独立补核；自己的CI43455797163八job／30必要步骤已获作者终态核准，原独立终核中，[交付](delivery/2026-11-13-optimization-low-precision-directions.md)逐步记录。B2g自己的CI及原独立终核已完成；B2i已立计划并开始。
+- [U3日常安装升级](plans/2026-11-14-daily-installation-refresh.md)：升级前PATH入口为3 preset／452产品／38 distributions。前像和完整私有venv备份已完成，归档38,626,813B／6,190成员、5,051文件与symlink逐项核准；限定活动进程观察0，默认业务state不存在。B2i发布／自己的CI及独立终核已完成，已核精确release gate，同一551产品wheel已离线安装到原应用，两RECORD／283、38依赖及4,550非应用文件／symlink和启动器保持；实际日常入口65命令／72检查／10 HTTP和8代表根均通过，23条目可见、所属server／端口清理通过；原fresh独立终验两轴通过，开放0／0；另新日常自身原结构模板41.303秒approve／五全文54,066B及独立原件核准，本地出口完成，文档发布待做。[交付](delivery/2026-11-14-daily-installation-refresh.md)逐步更新。
+
+- [B2i独立kernel方向](plans/2026-11-13-optimization-kernel-direction.md)：从已普通推送的d683c01开始，工作树初始清洁；R1／X2二十一原件920,972B及十一原HTTP回执已核，新研究请求0。复用四位v2专家的只读方向根、catalog、原测试及README／两手册已实现，548旧产品除catalog与22旧条目保持；独立noneditable551／两RECORD／283通过，原suite30通过／119.64秒与自身29.578秒approve／五全文49,861B已核；四实际叶23资源66,552B与两处完整原前驱已核，measurement保留request-changes；新fresh独立两轴完整原件通过，SP1/P3关闭／开放0／0，本地出口完成；41dd5aa已普通推送、作者完整Ref核准，原独立发布补核通过，自己的CI43459951488八job／30必要步骤及原独立终核通过，精确交付终结。B2h自己的CI及原独立终核已通过。
+
+- [B2h低精度／量化](plans/2026-11-13-optimization-low-precision-directions.md)：十八固定原件470,878B／新研究请求0；四叶根／catalog／原测试与手册已实现，545旧产品除catalog和21旧条目保持。noneditable548／两RECORD／283、29项／115.59秒、四真实叶23资源63,232B与两处完整原前驱、自身30.278秒approve／五全文48,318B均已核；measurement保留request-changes。新fresh独立两轴完整原件通过，SP1/P3关闭、开放0／0，本地出口完成；已普通提交／推送d683c01，作者SSH完整Ref核准；17Git／作者Ref获原独立补核；自己的CI43455797163八job／30必要步骤及原独立终核通过，精确交付终结，[交付](delivery/2026-11-13-optimization-low-precision-directions.md)逐步记录。B2g与B2i自己的CI及原独立终核均已完成。
 
 - [B2g集群／恢复方向](plans/2026-11-13-optimization-cluster-directions.md)：r1原件保持，SP1/P3的NSys范围已修正；r2非editable545／两RECORD／283、28项／109.49秒、三叶18资源44,924B与手动原前驱及新独立两轴终核通过，开放0／0。已普通提交／推送8f0b580，15Git／新包／作者SSH完整Ref获原独立补核；自己的CI43451540232官方Success，八job／30必要步骤及完整SHA日志路径获原独立终核通过，精确交付终结。[交付](delivery/2026-11-13-optimization-cluster-directions.md)逐步记录。
 
@@ -49,7 +53,7 @@
 
 ## 下一可执行项
 
-0. [专家模板重整](plans/2026-11-12-specialist-template-refresh.md)的U1／U2安装与旅程、R1–R10纵向及X1–X3横向研究、D0采用决策均已完成各自范围；D1已有完整材料／总预算／单实例六阶段消费者和真实治理旅程。接续[D2计划](plans/2026-11-13-specialist-presets.md)：A1重构配方与A2第三轮真实重构已验，B1四位共享专家v2及B2a–B2g十六方向资料已发布，B2g自己的CI43451540232及原独立终核已通过。README试用说明及独立文档评审已完成；B2h低精度本地出口已通过，d683c01已普通推送、作者Ref核准，17Git／作者Ref获原独立补核；自己的CI43455797163八job／30必要步骤已获作者终态核准，原独立终核中；B2i独立kernel方向开始，十八方向发布收口后，先补U3日常home安装升级：实际PATH入口仍为3 preset，需备份原环境／状态身份后更新为本批已验23 preset，核默认CLI、完整资源与原配置保持；独立安装不自动更新默认入口。B3原实验runner交接与C2 Forge全部内部会话／权限／停止分别验收。原A2前两轮失败保持历史，不再作为当前下一任务；不重复已成功模型旅程，不将资料包当自动图或GPU收益。
+0. [专家模板重整](plans/2026-11-12-specialist-template-refresh.md)的研究／D0、D1六阶段材料／预算／消费者、D2-A1／A2重构与B1共享专家已分别验收；B2a–B2i十八优化方向均已发布，最新41dd5aa自己的CI43459951488及原独立终核通过。接续[U3](plans/2026-11-14-daily-installation-refresh.md)：原home应用已升级为551产品／23 preset，65命令／72检查／10 HTTP和8代表根通过，独立终验和额外自身模板补验均通过，本地出口完成、文档发布待做。[B3a](plans/2026-11-14-proposal-experiment-handoff.md)字段手册／原产物走查及新独立两轴通过；完整B3仍需真实workload与原实验／独立评价／精确证据批准。下一先按[D2-C2](plans/2026-11-13-specialist-presets.md#c2第一个执行适配片的准入设计)核固定Forge的普通teacher／student／judge调用接缝、父完整材料／权限交集和原预算／恢复／真实停止，再设计有真实消费者的最小执行适配；复用X2固定源码研究，不重复完成市场调查或成功模型旅程。Apache-2.0已落实；不自动合main，不把资料包／安装／页面当GPU或原生嵌套完成。
 
 1. C3d及C4a精确交付均已终结，既有非终态样本保持；不重复产品/模型或远端终核。
 2. C4b.1完整最终候选本地出口已通过，8ce9aba已普通推送、原评审精确20Git对象/436包/283冻结及一次HTTPS同SHA通过；自己的CI42825342126第三样本双OS七必要步骤与原评审离线终核通过，精确交付终结；前两In progress样本保持。已过行为与模型不重复。

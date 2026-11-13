@@ -1,0 +1,174 @@
+{
+  "baseline": "41dd5aa30f589b5c27a1cc3f09db59d66005a40f",
+  "guide_sha256": "cb8166b275d8f0c8a532d70767943f0ca3019d424edb6fb5050a65aa34997d16",
+  "original_calls": [
+    {
+      "name": "design",
+      "instance": "root/analysis/design",
+      "run_id": "22a304e865384576a6cece1363becee8",
+      "input_digest": "386fafe5551b8ba5352350c75a9c4f734fdfbab360a737e51cef642243bc57ce",
+      "result_sha256": "cd0f4efab41b552821b14ec97c93247d694c3359951447503aefc1290501e210",
+      "decision": null,
+      "predecessor_sha256": {},
+      "actual_binding": {
+        "tool": "codex"
+      },
+      "backend_reason": "User-authorized explicit Codex fallback after retained Claude failure; independent sessions, no heterogeneous-backend claim."
+    },
+    {
+      "name": "profile",
+      "instance": "root/analysis/profile",
+      "run_id": "990746a10a2144e68f4ab5c0ed45e3e0",
+      "input_digest": "0d43f84ba1310d4f44080ac5d99ac16c4114152619c8cf37f8a9e76b860e8224",
+      "result_sha256": "9b4c55ed7f045521b37be6b9d561ac58cd5a77c40d6506ef3eb379a7986a9f70",
+      "decision": null,
+      "predecessor_sha256": {},
+      "actual_binding": {
+        "tool": "codex"
+      },
+      "backend_reason": "User-authorized explicit Codex fallback after retained Claude failure; independent sessions, no heterogeneous-backend claim."
+    },
+    {
+      "name": "kernel",
+      "instance": "root/kernel",
+      "run_id": "4121389c22a24070845139e433bb50e7",
+      "input_digest": "23f88cf96697f2e0b87860b1cf82d2db9db9d8a977bb0f41bf1ef27f84f5af25",
+      "result_sha256": "a6beba1a43d0b8c071227813bea58a01bbcc3622c816fcc06fdbdc4577b10b04",
+      "decision": null,
+      "predecessor_sha256": {
+        "design": "cd0f4efab41b552821b14ec97c93247d694c3359951447503aefc1290501e210",
+        "profile": "9b4c55ed7f045521b37be6b9d561ac58cd5a77c40d6506ef3eb379a7986a9f70"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      },
+      "backend_reason": "User-authorized explicit Codex fallback after retained Claude failure; independent sessions, no heterogeneous-backend claim."
+    },
+    {
+      "name": "measurement",
+      "instance": "root/measurement/review",
+      "run_id": "fb166c2a63084a2aa4da3fce162e779e",
+      "input_digest": "fe1f1bc613b41642dcc94679858f05dfb022dca08e9fb02c11787bfff8c18085",
+      "result_sha256": "9128d39afc755c85a88ab739881bfc91a87bc3b3b5b73d1d63151e4f6306ea68",
+      "decision": "request-changes",
+      "predecessor_sha256": {
+        "design": "cd0f4efab41b552821b14ec97c93247d694c3359951447503aefc1290501e210",
+        "profile": "9b4c55ed7f045521b37be6b9d561ac58cd5a77c40d6506ef3eb379a7986a9f70",
+        "kernel": "a6beba1a43d0b8c071227813bea58a01bbcc3622c816fcc06fdbdc4577b10b04"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      },
+      "backend_reason": "User-authorized explicit Codex fallback after retained Claude failure; independent sessions, no heterogeneous-backend claim."
+    }
+  ],
+  "full_predecessor_handoffs_rechecked": {
+    "kernel": 2,
+    "measurement": 3
+  },
+  "original_contract_sources": {
+    "templates/training-optimization/baseline.json": {
+      "bytes": 212,
+      "sha256": "98bb666cd8811b153a4f23c4f57fba412e80b9f030b51c07b7bdb823134bbfac"
+    },
+    "templates/training-optimization/experiment.json": {
+      "bytes": 1505,
+      "sha256": "42813ad09407bb7bc35d75d16648778ed47be7b2825891d3bbf8eda4193e55de"
+    },
+    "templates/training-optimization/runner-template.example.json": {
+      "bytes": 278,
+      "sha256": "0b47eda62f2dd15db2aeb22d11e7a7811134dcbbb5cee6d96902cf7e845395dd"
+    },
+    "templates/training-optimization/workload-contract.md": {
+      "bytes": 1057,
+      "sha256": "7fce244d18f0fee9d61aebb96bb7309bacb1a0e89005a1e086fb328f67439c76"
+    },
+    "local/agent_platform/training.py": {
+      "bytes": 16366,
+      "sha256": "97dcf661b34de14f8edd28a1ca3c7fb4b40ca891b40398bbad73b8b8b6ebf9e0"
+    },
+    "upstream/perfctl.py": {
+      "bytes": 14983,
+      "sha256": "5f373f04d50a44f52a2b07179e0f687083f1971374bd853a7e053d3e3b6cf941"
+    },
+    "upstream/compare_runs.py": {
+      "bytes": 18457,
+      "sha256": "9d931b68dc8577cad3f66355588e526a55e5ecf3ebf0bc0e0b0f179828f0ad1d"
+    },
+    "upstream/docs/evidence-format.md": {
+      "bytes": 1713,
+      "sha256": "cbd313e50b9e47cc8bc6c5d40970aab144d901493a26c3ed32c611a712571c32"
+    }
+  },
+  "template_fields_covered_by_guide": {
+    "baseline.json": [
+      "baseline_id",
+      "commit",
+      "config_sha256",
+      "evidence_uri",
+      "quality_scope",
+      "workload_fingerprint"
+    ],
+    "experiment.json": [
+      "allowed_changes",
+      "author",
+      "base_config_sha256",
+      "baseline_commit",
+      "baseline_id",
+      "candidate_commit",
+      "candidate_config_sha256",
+      "checks_required",
+      "comparison_tool_sha256",
+      "contract_approved",
+      "dataset_manifest_sha256",
+      "environment_fingerprint",
+      "experiment_id",
+      "initial_checkpoint_sha256",
+      "notes",
+      "owner",
+      "performance_policy",
+      "quality_required",
+      "schema_version",
+      "track",
+      "validation_contract_sha256",
+      "workload_fingerprint"
+    ],
+    "runner-template.example.json": [
+      "command",
+      "project",
+      "repo",
+      "runner_template_id",
+      "schema_version",
+      "timeout_seconds"
+    ]
+  },
+  "experiment_field_trace": {
+    "schema_version": "Known original schema 1; no new experiment manifest created.",
+    "experiment_id": "Not assigned: no real experiment is registered.",
+    "baseline_id": "Missing real registered baseline; retain original proposal identity only.",
+    "track": "Conditional E-style kernel proposal; actual semantic scope/quality decision requires a real workload.",
+    "contract_approved": "No human experiment approval occurred.",
+    "owner": "Real experiment owner not assigned.",
+    "author": "Real candidate author not assigned; backend name is not author identity.",
+    "baseline_commit": "No real baseline commit supplied; synthetic compiled/eager timings identify no code.",
+    "candidate_commit": "No implementation commit; the kernel result contains a design/formulas, not code bytes.",
+    "workload_fingerprint": "Synthetic fixture SHA identifies provided bytes only, not a real workload fingerprint.",
+    "environment_fingerprint": "No task-local runtime/compiler/toolchain/topology evidence; local GPU visibility is not an experiment environment.",
+    "dataset_manifest_sha256": "No real data manifest supplied.",
+    "initial_checkpoint_sha256": "No real initial checkpoint supplied.",
+    "base_config_sha256": "No actual final baseline configuration supplied.",
+    "candidate_config_sha256": "No actual final candidate configuration supplied.",
+    "validation_contract_sha256": "Conditional abs/relative 0.003, lengths128/257, strides, dropout/RNG and gradients are synthetic task requirements; no real oracle/contract bytes.",
+    "comparison_tool_sha256": "Original compare_runs.py bytes are known; this alone binds no approved experiment.",
+    "allowed_changes": "One conditional fused forward/backward and a second layout candidate within original allowance; no execution approval.",
+    "checks_required": "Real supported shape/stride/gradient/wrapper/quality coverage undecided; JVP explicitly unnecessary for supplied synthetic consumer. Do not copy all sample checks.",
+    "quality_required": "Actual classification and quality criterion absent; explicitly decide for real workload, N/A requires true.",
+    "performance_policy": "Hypothetical isolated 2x/wrapper regression/Amdahl1.25x and proposed repeats are not measured pairs or an approved statistics policy.",
+    "notes": "Original complete four-result lineage is available above; notes/sidecar linkage still requires manual verification."
+  },
+  "real_experiment_manifest_created": false,
+  "model_calls_added": 0,
+  "actual_training_or_gpu_execution": false,
+  "b3_actual_workload_acceptance_complete": false,
+  "scope": "Actual original Codex results on expressly synthetic fixture; offline lineage and all original field guidance. Missing real identities remain missing. No experiment registration, runner/gate/approval, new model or native execution."
+}

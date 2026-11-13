@@ -92,3 +92,28 @@ r3 仅改该行及本片交付的 finding 记录；逐字复核两份 Markdown �
 原 commit 回执退出 0、17 文件；push 回执退出 0，实际 argv 为普通 `HEAD:refs/heads/refactor/architecture-foundations`，没有 force。作者随后 SSH `ls-remote` 回执退出 0，其完整 stdout 精确为候选 SHA、tab、该分支完整 Ref 和换行。由此核准本候选的普通提交／推送、精确 Git 身份及作者 SSH Ref 原件；本次没有发起独立网络探测，不能称为独立联网核准。最后一致性检查保存在本片私有 `publication-independent-review-r1.json`，SHA-256 为 `da16f12a898e67f5a1c589dddab1feadf0bd5d47443d175eea8c803c7560091d`。
 
 需求符合性、可维护性通过及 SP1 关闭保持，开放 finding 0／0。上文普通发布／精确身份的待做状态由本补核关闭；**d683 本候选自己的完整 CI 与对应独立终核仍开放**，不能借 B2g 结果关闭。未重新安装、运行 suite、调用模型或联网；真实量化／训练／GPU／质量／收益等未验范围保持。本追加章节尚未提交，不属于 d683 已发布的报告字节。
+
+## 本候选自己的 CI 独立终核：43455797163
+
+2026-11-14，同一独立评审者完成离线终核。**精确候选 `d683c018344fb604be115a3ed2a02bd9d50d4eff` 自己的 [Portability run 43455797163](https://github.com/626619403/Ergora/actions/runs/43455797163) 通过，需求符合性、可维护性通过，开放 finding 0／0；B2h 精确交付可以关闭。** 此结论补齐上文仍开放的本候选 CI 及独立终核，SP1 关闭保持；不借 B2g CI，也不涵盖工作树中的 B2i 候选。
+
+必要范围先从 d683 Git 树的 `.github/workflows/portability.yml`、`scripts/ci/linux-groups.json`、runner／pytest 观察插件及项目配置确定。六个 Linux 分组的 75 个配置文件路径无重复且均在该树；`test_presets.py` 属于第 4 组。workflow 要求 plan 读取分组，Linux Python 3.11 六组及 Windows Python 3.12 的 `all`；runner 保持安装产品回归，Linux 增加指定 reference 选择，Windows 保留 `tests` 与 reference contracts。必要命名步骤共 30：plan 1 项，Linux 每组构建安装／reference identity／回归／上传 4 项，Windows 另加 PowerShell 5.1 安装升级，共 5 项；原 plan 5 分钟、native 20 分钟上限保持。
+
+独立使用标准库解析官方 Actions listing 内嵌 JSON、三份原 run HTML、完整 UI jobs batch，以及八个终态 job HTML；连同 Windows 前两份原件，共十五份原响应及各自 HTTP200 回执的 URL／最终 URL／长度／SHA-256 均核准。listing 中精确完整 commit 链接将本候选、分支、workflow 和 run 绑定；原 jobs batch 的 `totalCount:8`、`hasMore:false` 与八个名称／job ID／run 路径一致。终态选用 run 的 r3、plan／六 Linux 的 r1 和 Windows 的 r3；各 job 原 HTML 的标题、run／attempt 1 导航、`check-steps` completed、步骤完成标记及时间均核到。未执行作者 parser；随后逐项比较 discovery、UI metadata 和三份 terminal 投影，来源散列及全部必要 job／步骤字段一致。
+
+30 个必要步骤均为 success，开始／完成时间非空，`data-job-completed` 存在；每条日志 URL 非空并精确匹配完整候选 SHA、所属 job ID 和步骤号。另核 checkout、setup、post 和 Complete job：终态共 82 个步骤，76 success；六个 Linux 的 Windows 专属步骤按 workflow 条件 skipped，未混入必要通过数。七组上传均 success。原 HTML 时间计算出的回归成本如下：
+
+|选择|job ID|必要步骤数|回归秒|
+|---|---|---:|---:|
+|plan|`131989458821`|1|—|
+|Linux group 0|`131989552967`|4|225|
+|Linux group 1|`131989552643`|4|295|
+|Linux group 2|`131989552770`|4|233|
+|Linux group 3|`131989552755`|4|138|
+|Linux group 4|`131989552733`|4|165|
+|Linux group 5|`131989552675`|4|202|
+|Windows all|`131989552762`|5|769|
+
+Windows PowerShell 5.1 安装升级另为 47 秒，起止时间为 `2026-11-13T15:59:13Z`／`16:00:00Z`。前两次 run 的 Status 仍为 In progress，Windows 的 r1／r2 仍无回归／安装升级／上传终态；对应 `ci-terminal-r1.json`、`r2` 的 false 投影保持，未追写为成功。第三份原 run HTML 明确为 Status Success，SHA-256 为 `0d100f38c7aed64e017623225ee21baad54300eb68405a6b56fe9531aabea57b`；作者终态原审计 `ci-terminal-r3.json` 的 SHA-256 为 `0beb88c1b169eb3e8973e2473023b4915d7bc65f3b6c4f570abed5077885672f`。
+
+本次独立审计保存在本片私有 `ci-independent-review-r1.json`，SHA-256 为 `2a3a4fbd9feb8a2c1f191d6fe37c948807127f6a02c8c736f16ff321d9a60ba3`，保留候选 Git 来源身份、十五份原响应／回执身份、所有步骤、必要范围、投影比较与耗时。核准范围是官方 UI 的精确候选 CI 结果及日志路径；没有下载步骤日志正文或 artifact 归档，上传的 `if-no-files-found:warn` 也不单独证明归档内容。本次未联网、安装、运行新 suite／模型或修改产品。真实量化／训练／GPU／质量／成本／收益等原未验范围保持；本追加章节尚未提交，不属于 d683 原提交字节。

@@ -4,7 +4,7 @@
 
 ## 当前状态
 
-18份R2固定原件470,878B及原HTTP200回执／SHA已核，新研究请求0。只读方向根／catalog、原测试方向与四叶预期、README和两手册已实现；独立安装／29项、实际四叶／完整交接及自身模板已通过。新fresh-context独立需求／可维护性两轴及完整原件终核通过，SP1/P3关闭、开放0／0，本地出口完成；普通发布／自己的CI仍开放。
+18份R2固定原件470,878B及原HTTP200回执／SHA已核，新研究请求0。只读方向根／catalog、原测试方向与四叶预期、README和两手册已实现；独立安装／29项、实际四叶／完整交接及自身模板已通过。新fresh-context独立需求／可维护性两轴及完整原件终核通过，SP1/P3关闭、开放0／0，本地出口完成；d683c01已普通发布，自己的CI43455797163及原独立终核通过，精确交付终结。
 
 所有实际量化／训练／部署／搜索与采用继续由原所有者执行；synthetic门槛／支持／覆盖／返回值矛盾只用于检查方案与证据辨别，不构成真实运行、GPU、质量、成本或收益验收。
 
@@ -46,3 +46,9 @@ Kernel只提出实际shape／stride／alias／packing／数值与wrapper合同�
 精确发布已获原独立评审补核：17Git文件／manifest／ready、父与tree、普通push和作者完整SSH Ref一致，287本地目标／65锚点及diff通过。其补核仅使用d683c01 Git树与r4原件，不把B2i工作树当成本片产品。官方Actions列表以完整commit链接绑定自己的[CI43455797163](https://github.com/626619403/Ergora/actions/runs/43455797163)，初始In progress；run原HTML／UI batch已保存并枚举八个预期job，必要步骤终态仍待核。
 
 官方第三run HTML为Success，六Linux、plan及Windows终态八job／30必要步骤均已由作者核准；完整SHA日志URL、完成标记与有序时间齐全。原fresh-context评审正在从原HTML／回执及候选Git树独立终核。前两run与前两Windows未完成、terminal-r1／r2 false保留；未在独立终核之前关闭H5。
+
+## 自己的CI独立终核收口
+
+2026-11-14，原fresh-context评审按d683c01的workflow／六组／runner及plugin独立推导范围，从十五份官方原响应及回执核准八job／30必要步骤；82全步骤为76 success及6 Linux条件skip。必要步骤完整非空SHA／job／step日志路径、完成标记、有序时间及作者三轮投影均一致。Linux六组回归138–295秒，Windows769秒，PowerShell5.1安装升级47秒。前两轮非终态原样保留；未下载日志正文或artifact，不把路径核准表述为全文日志审计。
+
+作者终态审计SHA256为`0beb88c1b169eb3e8973e2473023b4915d7bc65f3b6c4f570abed5077885672f`；原独立终核SHA256为`2a3a4fbd9feb8a2c1f191d6fe37c948807127f6a02c8c736f16ff321d9a60ba3`。[独立报告](2026-11-13-optimization-low-precision-directions-review.md)已追加终核，开放0／0；本片精确交付终结，下一允许B2i普通发布。

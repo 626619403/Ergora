@@ -38,3 +38,19 @@ Python3.11 noneditable wheel SHA256为`34e6b375c8771fa67bb1b02a71070f289ec72d5b0
 ## 独立终核与本地出口
 
 [新fresh-context报告](2026-11-13-optimization-kernel-direction-review.md)核准修正后的r3完整16文件，manifest SHA256为`436c76b042dfafbee47523bdadc59fa926aee1f4a499ba66aeb057e1a438d517`。21来源、551产品／两RECORD／283、30原测试、自身原结构模板及四叶23资源66,552B与两处完整原前驱均获独立终核；288本地目标／65锚点与diff通过。SP1/P3来源定位元数据修正关闭，需求／可维护性开放0／0，本地只读资料出口完成。后续同片纯状态记账与本报告不改变五产品／测试、已验包／输入／结果身份；普通发布与本候选自己的CI仍分别开放。
+
+## 普通发布与自己的CI
+
+B2h自己的CI及原独立终核通过后，普通push退出0，作者完整SSH Ref等于`41dd5aa30f589b5c27a1cc3f09db59d66005a40f`；没有提前提交U3或B2h后续结案工作树。最终review-r4十七文件manifest SHA256为`43ba27003f21f50f0d8640a794259a7aa69e02da2cd8b0fbcc3559fa0405a748`，精确Git／发布原件已交原评审独立补核。
+
+官方Actions列表的完整commit链接将本候选绑定自己的[CI43459951488](https://github.com/626619403/Ergora/actions/runs/43459951488)，初始In progress；原响应／回执已保存。自己的必要步骤与独立终核仍开放，不借低精度或更早CI关闭本片，也不提前替换日常应用。
+
+原独立评审已补核精确发布：十七Git／r4／ready、父及tree、551源／包／两RECORD／283和作者完整SSH Ref一致，候选树289目标／65锚点及diff通过。发布独立审计SHA256为`f44030314c75cadbd99641a85dec35b94abcab32fc2cc3207ff11e835a9cb2db`，仅离线核原件，没有独立网络探测。自己的CI前四run样本仍In progress；六Linux必要步骤已成功，Windows回归也已成功，PowerShell5.1安装升级及上传仍未取得终态，三次terminal false原样保存。自己的CI及独立终核仍开放。
+
+第五官方run原HTML为Success，Windows第四原HTML全五必要步骤成功；作者终态审计r4核准八job／30必要步骤、非空完整SHA日志路径及完成标记。原独立评审正在终核，前三terminal false和前四run／前三Windows非终态保持；独立终核未结束前继续保留I5／U3.0开放。
+
+## 自己的CI独立终核收口
+
+原fresh-context评审从十九份官方原响应及回执独立核准本候选自己的CI43459951488：最终Success，八job／30必要步骤全部success／completed，完整SHA日志路径、非空日志URL、完成标记和有序时间一致。Linux六组回归159–278秒、Windows672秒、PowerShell5.1安装升级41秒。前三作者false和全部早期在途样本保持，未下载全日志或artifact正文。
+
+独立审计SHA256为`5c473669d1baa37224ee53096f2de8a0025f05268896c9e00ca9aa353771dbcc`，最后交叉核验为`30b366c0c0bc833807a14774253021ab560789e7109d0ab3e9b1b3fe1f1daa7e`；[原报告](2026-11-13-optimization-kernel-direction-review.md)追加后SHA256为`9a3302d0b7366ae80cca7adf8d6d43d7f5767af6fec49313f69be4a53ffa4be2`。需求／可维护性通过，开放0／0，SP1保持关闭，本片精确交付终结；下一U3日常安装已获此前置，不授予B3／C2或GPU实验证明。

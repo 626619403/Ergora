@@ -21,7 +21,7 @@
 |I2 安装与兼容|noneditable wheel、source／installed及两RECORD／283、原preset suite|551产品／两RECORD／283与noneditable通过；原suite30通过／119.64秒|
 |I3 实际交接|四真实task-MCP叶、完整UTF8资源、两处完整原前驱手动交接|四调用成功，23资源66,552B完整UTF8读取与两处完整原前驱通过；measurement保留request-changes，仅synthetic资料|
 |I4 审查|自身原结构模板及新fresh-context需求／可维护性两轴，修正finding|自身29.578秒approve／五全文49,861B、新fresh-context完整原件／两轴通过，SP1/P3关闭、开放0／0|
-|I5 发布|普通push、精确Git／远端Ref、本提交自己的CI与独立终核|待做|
+|I5 发布|普通push、精确Git／远端Ref、本提交自己的CI与独立终核|41dd5aa已普通推送，作者完整SSH Ref／17Git及原独立发布补核通过；自己的CI43459951488八job／30必要步骤及原独立终核通过，精确交付终结|
 
 Synthetic fixture检查：错误eager基线的4×、当前compiled的2×、条件Amdahl上限1.25×、wrapper反而慢20%、单forward／单shape／关闭dropout的生成PASS、缺梯度／strided／tail、Forge pin／协议混用、GEAK exit0却no_gain、AKG默认截断及lost-ack新ID重置预算。所有数值明确为假定，不是实测；这些只验方案与证据辨别，不能关闭真实工具／编译／GPU／质量／收益或原生嵌套。
 

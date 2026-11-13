@@ -32,6 +32,47 @@ init / runner-add → prepare → worker-start → start
 
 `run-local` 逐实验显式执行；没有常驻训练队列消费者。审批、结果、取消和恢复沿用原实验身份。未知结果需要对账，不直接用新 ID 重跑。候选模型或 Agent 的报告不能替代可信 runner 的验证；实验失败和负结果也要保存。
 
+## 从专家提案填写原实验合同
+
+先完成下文的[专家提案及手动交接](#可选的实验专家提案)，保存完整manifest、所选叶input、原result及实际后端记录。原result的自由文本供人审阅，不能直接当作`experiment.json`。以下步骤适用于各优化方向；真实文件仍使用`ergora templates copy training-optimization`给出的原模板，执行命令沿[完整参考手册](../src/ergora/data/reference/platform/docs/TRAINING.md)。
+
+1. 明确真实项目、优化目标和允许改变的语义，分别选定基线负责人、候选作者、受信runner、独立评价者及采用负责人。design／profile完整原结果先交kernel；measurement接收全部相关原结果和实际实验材料。三叶方向没有kernel时直接交接两份分析。
+2. 按下表填写合同。每个值记录真实来源和人工决定；缺少实际commit、配置、数据、初态或验收方法时先补齐，保留未验状态。提案中的示例数值、搜索成本估算或自生成PASS不进入真实测量。
+3. 人工审阅范围、检查、质量和资源预算后，才设置`contract_approved: true`；登记真实baseline与runner，再运行`prepare`。它检查canonical提交与别名、仓库commit、当前基线和比较器，补充执行字段并冻结原字节。后续确认它返回的`manifest_sha256`，不要用提案、draft或重新排版JSON的SHA代替。
+4. 原runner以精确manifest执行，生成可信证据、独立检查／审查／质量与配对比较。measurement可解释这些原材料并提出缺项；其`approve`不代替实验门禁或人工采用。最后按原`evidence SHA`批准，再交该项目的开发集成／复验任务。
+
+|目标文件／字段|来源及决定|
+|---|---|
+|`workload-contract.md`的目标、硬件、数据、更新、计量、停止／恢复、资源授权|真实项目说明与原配置／报告；profile指出缺口，design给有限建议，操作者确认有效源样本、rank范围与实际optimizer更新语义。Markdown不会自动变成workload指纹。|
+|`baseline.json`的`baseline_id / commit / config_sha256 / workload_fingerprint / evidence_uri / quality_scope`|基线负责人确认的精确commit、最终有效配置、工作负载身份、原证据位置和质量适用范围。`baseline_ok`核前四项与experiment匹配；证据URI和质量文字仍须人工核查。|
+|`experiment.json`的`schema_version / experiment_id / baseline_id`|沿原schema 1和唯一实验身份登记，关联同一baseline。结果不明先按原ID对账；改变已绑定内容须按原流程创建可追溯修订。|
+|`track / allowed_changes`|按实际变化选择E／N／A并列精确边界。kernel、packing或低精度的方向名称不能自动决定分类；提案建议不授予修改oracle、阈值或受信runner的权限。|
+|`owner / author / contract_approved`|实际负责人／候选作者和人工合同决定。它们不是模型后端名称；独立review的`reviewer_id`须区别于作者，身份真实性由受信流程负责。|
+|`baseline_commit / candidate_commit`|真实runner仓库中的完整Git提交；`prepare`补同值`baseline_sha / candidate_sha`，已有别名冲突会拒绝。设计公式、生成代码片段和原result摘要都不是候选commit。|
+|`workload_fingerprint / environment_fingerprint`|项目固定的工作负载与真实环境身份，包括有效batch／token、precision、软件／硬件／mesh等实际条件；保留用于计算指纹的原记录。内容和归一化规则由项目定义，平台不自动探测或证明其真实性。|
+|`dataset_manifest_sha256 / initial_checkpoint_sha256`|真实数据manifest及初态产物摘要，保存可复现来源与内容范围；不能填示例、文件名的SHA或未实际使用的checkpoint。|
+|`base_config_sha256 / candidate_config_sha256`|两臂实际最终有效配置摘要，包含所选版本中真正生效的开关；配置能解析和提案写了参数不证明执行时使用过。|
+|`validation_contract_sha256 / checks_required`|项目独立oracle、容差、shape／stride／梯度／RNG／全rank／恢复等所需覆盖及其固定合同。检查列表非空且唯一；模板中的JVP等仅为示例，按真实任务选择充分检查，不能为迁就PASS删掉必要项。|
+|`quality_required`|显式布尔值；N／A要求true。E是否需要任务质量证据也由项目合同决定；短loss、单算子误差或一次forward不自动替代训练／服务质量。|
+|`comparison_tool_sha256 / performance_policy`|核实际固定`compare_runs.py`原字节SHA；批准实际归一化单位、配对重复／统计／阈值。原gate重算并核两臂代码、配置、环境、数据和初态；局部kernel speedup或Amdahl估算不能充当整体配对测量。|
+|runner的`schema_version / runner_template_id / project / repo / command / timeout_seconds`|原runner schema 1、真实项目Git根和受信argv；`{manifest} / {output} / {baseline_repo} / {candidate_repo}`由原执行器提供。使用已验证环境与资源权限，保留唯一作业／rank／取消所有者。|
+|`prepare --max-run-seconds`及其补充字段|该值是排队加执行窗口，至少覆盖runner执行walltime，二者分别核预算；prepare还补`runner_template_id / max_run_seconds / local_project`。总搜索、模型调用和原生重试成本另向原所有者核账，不能凭单个walltime声称全预算已受控。|
+|`notes`及人工追溯表|可写提案manifest／input／result身份、完整前驱结果摘要、决定与缺项的说明位置。若在notes记录追溯表SHA，可人工核表与原件；现有validator不自动校验这条关联，表不是新执行或批准凭据。|
+
+在项目的持久资料目录保存一份普通Markdown追溯表即可；其格式由项目维护，不需要再建数据库或转换服务。记录以下对应关系，后续有真实manifest再补其位置／SHA：
+
+```text
+原组合根 id / version / digest；完整manifest digest
+所选实例path；input digest；原run ID／实际backend／model／回退原因
+各完整原result的位置／SHA，以及kernel和measurement收到的原前驱
+原合同字段 → 真实来源／SHA → 人工决定／负责人 → 未验项
+prepare返回的实验ID／manifest SHA → 原runner／job → evidence SHA／原批准
+```
+
+这些身份各有作用：组合manifest固定模板和资料，叶input固定本次任务，result固定模型原产物，实验manifest绑定真实候选和实验合同，evidence SHA绑定执行证据。它们不能互换，也不会因为记录在一张表中就自动获得执行权。
+
+失败、`no_gain`、噪声、缺项与`unknown`保留原身份和预算；只有受信执行、独立正确性／质量与统计都满足合同后才进入原采用流程。原生工具结束、生成器自报PASS或measurement建议通过均不关闭这一步。具体证据字段见[原证据格式](../src/ergora/data/reference/platform/upstream/docs/evidence-format.md)。
+
 ## 将实验候选交给开发任务
 
 训练证据已按原evidence SHA获准后，在同一业务项目使用repository-governance或large-change创建集成/复验任务；先通过`project register`登记相应开发模板、路径和可信检查。按[正式任务旅程](../README.md#首个开发任务)预览、创建、提交、批准精确计划，再用原run结果核对verification/review与candidate并导出本地分支。训练批准、开发计划批准和业务合入分别保留原证据，不能互相替代。

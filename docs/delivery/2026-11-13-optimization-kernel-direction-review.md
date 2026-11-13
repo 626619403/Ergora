@@ -21,3 +21,43 @@
 私有独立审计保存于本片 `independent-reviewer-r1/`，包括 source-identity、package-identity、self-review、real-leaves、input-and-projection 与 final-r3；检查证明实际交付字节与已记录行为，不证明模型理解或普遍专业能力。一次调用后 `/proc` 观察只保留其限定范围，不升级为全程后代清理或 OS 隔离。
 
 普通发布、精确 Git／远端身份、本候选自己的完整 CI 及相应独立终核仍开放。r3 中 B2h 自己的 CI 在途，由其原评审另核；不借 B2g／B2h 结果关闭本片。真实原生工具／编译／GPU、独立数值与梯度、wrapper／训练／服务质量与收益、checkpoint／恢复，以及全部内部会话父材料、权限、总预算和后代停止均未验，继续留 B3／C2。研究、synthetic fixture、提案和本报告均不授予这些通过状态。
+
+## 精确发布补核：41dd5aa3
+
+同一独立评审者获同片后续授权，仅作离线发布补核。候选为 `41dd5aa30f589b5c27a1cc3f09db59d66005a40f`，唯一 parent 为 `d683c018344fb604be115a3ed2a02bd9d50d4eff`，tree 为 `3e9b538bc88c2896f28329dfb570f90280a418b3`，分支 `refactor/architecture-foundations`。补核时 HEAD 等于候选；工作树已有 B2h 后续终核记账及未提交 U3 文档，全部产品身份与链接检查因此只取本候选 Git 树。
+
+最终 r4 manifest 共 17 文件，SHA-256 为 `43ba27003f21f50f0d8640a794259a7aa69e02da2cd8b0fbcc3559fa0405a748`。已逐项核准基线至候选的完整文件集、Git blob 字节／长度／SHA-256、object ID、r4 保存原件及 ready 记录的 staged object，全部一致；原 commit 对象摘要、parent／tree 也一致。提交内本报告为 6,320B，SHA-256 `dcd05113bc65b13d443527b9dc15d0e93dc6a129d58e7e0cb13e0b415aac69a7`，等于原审查与 ready 身份。r3→r4 已完整读差异：增加原报告、更新验收／B2h 状态并记录 U3 下一步，不改变五产品／测试或公开证据投影。
+
+从候选 Git 树重新核准全部 551 产品与原构建源／wheel／installed 字节一致；wheel SHA-256 仍为 `34e6b375c8771fa67bb1b02a71070f289ec72d5b0c99badac3afd28373fee208`。559 wheel 文件、两份 RECORD、564 行安装记录、283 冻结文件、6 个构建 overlay 与当前 README metadata 均保持。候选内 13 份 Markdown 的本地链接检查覆盖 289 个目标／65 个锚点，无缺失；基线至候选的 `git diff --check` 通过。
+
+原 commit 回执退出 0、17 文件；push 回执退出 0，实际 argv 为普通 `HEAD:refs/heads/refactor/architecture-foundations`，没有 force，回执记录 d683c01→41dd5aa。作者随后 SSH `ls-remote` 退出 0，完整 stdout 精确为候选 SHA、tab、该分支完整 Ref 和换行。由此核准普通提交／推送、精确 Git 身份及作者 SSH Ref 原件；本次未发起独立网络探测，不能称为独立联网核准。私有 `independent-reviewer-r1/publication-r1.json` 的 SHA-256 为 `f44030314c75cadbd99641a85dec35b94abcab32fc2cc3207ff11e835a9cb2db`。
+
+需求符合性／可维护性通过、SP1 关闭与开放 0／0 保持。上文普通发布及精确身份的待做项由本补核关闭；**41dd5aa 本候选自己的完整 CI 及相应独立终核仍开放**，不借已另行终核的 B2h CI 关闭。没有重新安装、运行 suite、调用模型、联网或检查 U3 安装实施；真实 GPU／原生完整嵌套等未验范围保持。本追加章节尚未提交，不属于 41dd5aa 已发布的报告字节。
+
+
+## 本候选 CI 终核：43459951488
+
+同一独立评审者获本片终核授权，只读核对已发布候选 `41dd5aa30f589b5c27a1cc3f09db59d66005a40f` 的 Git 树和保存的官方 CI 原件。完整读取候选 `.github/workflows/portability.yml`、`scripts/ci/linux-groups.json`、`scripts/ci/run.py` 与 `scripts/ci/pytest_phases.py`，记录四份 Git blob／字节／SHA-256。六 Linux 组分别有 12／13／13／14／12／11 个文件，共 75 个唯一配置路径，全部存在于候选树；矩阵为 Ubuntu／Python 3.11 的六组及 Windows／Python 3.12 的 all。plan 保持 5 分钟、native 保持 20 分钟和 fail-fast:false；安装版选择、reference 附加范围、分组完整性拒绝与观测出口均沿原 owner，未执行 collection 或 suite。
+
+独立解析 19 份原正文及其 HTTP 200 回执（actions 一份、UI job batch 一份、run 五份、job 十二份），逐项重算原始 bytes／SHA-256、URL／final URL 和采样时间。Actions 原 embedded JSON 的同一行直接绑定 run `43459951488`、Portability、候选 workflow 路径、完整分支及完整提交链接，不依赖短 SHA 或作者发现摘要。初始 UI batch 的 totalCount=8／hasMore=false，提供 plan、六 Linux 组及 Windows 的精确 job 映射；其当时 in_progress 状态保持为历史，不作最终状态。
+
+最终 `ci-run-html-r5` 于 `2026-11-13T16:23:58.031801Z` 保存，官方 [run 43459951488](https://github.com/626619403/Ergora/actions/runs/43459951488) 的 Workflow run summary 明确为 **Success**，全文 213,240B，SHA-256 `254c5d3073036e557f3babeabc392096bf3ecff1d65af229683efac9f870e95b`。最终 Windows 原页 `ci-job-132003979023-html-r4` 为 160,049B，SHA-256 `55ee038fbdd74791c32b713da7ad6c36aa920bcff484dccac66ec5042bdd2cb1`。最终 run 的实际 job 链接及各 job 原页／回执与以下八项一致：
+
+| job | 矩阵范围 | 原页版本 | 回归秒数 |
+| --- | --- | --- | ---: |
+| 132003886500 | plan | r1 | — |
+| 132003978875 | Linux group 0 | r2 | 278 |
+| 132003978769 | Linux group 1 | r1 | 193 |
+| 132003978867 | Linux group 2 | r1 | 218 |
+| 132003978767 | Linux group 3 | r1 | 159 |
+| 132003978870 | Linux group 4 | r1 | 163 |
+| 132003978832 | Linux group 5 | r1 | 178 |
+| 132003979023 | Windows all | r4 | 672 |
+
+按候选 workflow 逐项独立核准 **30 个必要步骤**：plan 的显式分组 1 项，六 Linux 的 build/install、packaged reference identity、native regression、upload 各 4 项，以及 Windows 同四项加 PS5.1 installer／upgrade 共 5 项。全部原 `check-step` 均为 success，具 `data-job-completed`、非在途标志、有效有序起止时间；每条必要步骤的日志定位精确含完整候选 SHA、job ID 和 step number。七组上传全部成功；Windows PS5.1 安装升级为 41 秒。八 job 的 Complete job、checkout／setup 与 post 步骤同样核准成功；Linux 专属 Windows installer 的 skipped 符合原条件，不计作必要步骤成功。
+
+前四 run 原页仍为 In progress；Windows r1／r2 的 regression 与后续步骤未完成，r3 虽已显示 regression success，但 installer 在途、upload 待做且无 job-completed。三份早期作者终态摘要 required_steps_passed=false 和对应原件全部保持，未追认早期样本成功。作者最终 `ci-terminal-r4.json` 的 SHA-256 `1277a1dcea15ad58d2163d621aa3f92f5fd83cc4372ea81759a683891cc29157` 与本次独立结论一致；本次没有执行作者 parser 或采信其 passed 代替原件。
+
+私有独立审计为 `.ergora/checks/optimization-kernel-direction/independent-reviewer-r1/ci-independent-r1.json`，109,799B，SHA-256 `5c473669d1baa37224ee53096f2de8a0025f05268896c9e00ca9aa353771dbcc`，保留逐样本回执身份、逐步骤属性及最终 8／30 结果。**需求符合性：通过。可维护性：通过。开放 finding 仍为 0／0，SP1 保持关闭。** 本候选自己的完整 CI 及相应独立终核待做项由本追加关闭，结合上节已核普通发布／精确 Git 与作者 Ref 原件，本片精确交付验收终结。
+
+本结论只覆盖已保存官方 HTML 状态和原件身份；没有独立联网、成功 REST、全量 raw CI 日志或上传 artifact 内容核验，也没有重装、重跑 suite／collection、模型调用或 GPU／原生实验。未检验并行 U3 的实际安装替换或 B3 实验；真实 oracle／梯度／wrapper／训练／服务收益、checkpoint／恢复及 C2 全部内部会话／权限／总预算／后代停止等原未验范围保持。追加前 8,956B 报告（SHA-256 `f9e1cb85cb24b062d67ae9e1eaaca8376f0162cbaa7170f69b7a4b29d59d29e6`）逐字保持；本追加尚未提交，不属于候选内已发布报告字节。
