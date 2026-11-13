@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from . import __version__, agent_definitions, agent_runs, components, definition_bundles, drafts, evaluation, handoff, issues, issue_writebacks, kernel, memory, optimization, projects, reference, registrations, research, services, tasks, skill_assets, skills, tools, workflow_definitions
+from . import __version__, agent_definitions, agent_runs, components, definition_bundles, drafts, evaluation, handoff, issues, issue_writebacks, kernel, memory, optimization, projects, reference, registrations, research, services, tasks, skill_assets, skills, tools, training, workflow_definitions
 from .state import State
 
 
@@ -432,6 +432,14 @@ def create_app(home: Path | None = None) -> FastAPI:
     @application.get("/api/projects/{project_id}/tasks")
     def formal_tasks(project_id: str, limit: int = 50, after: str | None = None):
         return tasks.listing(state, project_id, limit=limit, after=after)
+
+    @application.get("/api/projects/{project_id}/training")
+    def training_experiments(project_id: str, limit: int = 50, after: str | None = None):
+        return training.inspect(state, project_id, limit=limit, after=after)
+
+    @application.get("/api/projects/{project_id}/training/{experiment_id}")
+    def training_experiment(project_id: str, experiment_id: str):
+        return training.inspect(state, project_id, experiment_id)
 
     @application.get("/api/projects/{project_id}/issues/{issue_id}")
     def project_issue(project_id: str, issue_id: str):

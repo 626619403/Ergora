@@ -61,3 +61,21 @@ Fowler smell baseline、必要分支和测试逐项按可达场景检查：未�
 总计划的原 P3 已关闭；片计划和交付正文尚存“实际 SDK／模型在途”“自身模板尚未完成”的旧当前状态文字，已通知原 owner 按已完成证据同步，属于本片记录收口。普通发布、精确远端及自己的 CI 仍待原 owner，未取得证据前不宣称通过。
 
 随后再次读取总计划、片计划当前状态与交付开头／r3 状态段，均已同步 133／12、四 SDK 场景、真实模型及自身 73.433 秒 approve；前述状态提示关闭。当前公开摘要 SHA256 为 `845e36e0835d9e10d40b1e53729d56145294ba2d37f7d01738b4b3120a8d001f`，产品／测试 diff 仍为 `90c14415978fafe742cf4f42e94655683137f19d267babe1dd1cf49314134b7e`。**本方向本地出口通过，产品结构／规范与文档开放 finding 为 0；普通发布、精确远端和自己的 CI 尚未核验。**
+
+## 同片普通发布身份核验
+
+精确提交 `47443840b68693f63ee011dc6fbe29421a42223f` 的唯一父提交为原固定基线 `67966095814eec01f2e1e5d65d87e289320ad79f`。独立从 Git 对象重取全部 17 份变更文件，大小与 SHA256 均逐项符合 `static-r5.json` 的 ready 清单及 `commit-r1.json`；五产品＋测试 diff 仍为 `90c14415978fafe742cf4f42e94655683137f19d267babe1dd1cf49314134b7e`，没有未审产品修改。发布前新增状态记账限总计划／交付／公开摘要，不改变原行为判词。静态原记录为 225 个本地链接、无坏链接／私有机器字符串、diff check exit 0；扫描排除的通用 loopback 安装 URL 在原固定基线已有，不新增私有服务。
+
+只读核原作者 `push-r1.json`：普通 push，无 force，exit 0、5.961 秒；`ref-r1.json` exit 0、1.416 秒，精确返回上述完整 SHA 和 `refs/heads/refactor/architecture-foundations`。未重新发起远端查询、推送或模型调用。**本方向发布身份核验通过，开放 finding 仍为 0。**
+
+另重算官方 Actions 列表原 HTML SHA 并解析 embedded JSON，确认 [Portability run 43495562208](https://github.com/626619403/Ergora/actions/runs/43495562208) 绑定上述完整提交和当前分支；留存观察为 `WORKFLOW_RUN_STATUS_IN_PROGRESS`。这仅证明本候选自己的 CI 已启动，尚无终态及完整 job／必要步骤证据，不能记作 CI 成功。
+
+## H3b 自有 CI 精确终验
+
+本附录覆盖上节 CI 待验状态。独立只读核官方 `ci-run-html-r5`、`ci-jobs-json-r1` 原 HTTP 200／body，以及每个 job 的最新终态页面：plan／六个 Linux job 为 r2，Windows job `132127694689` 为 r3。本轮选取的 10 份原 HTTP 回执，其最终 URL、原字节大小和 SHA256 均匹配；没有新请求、日志／artifact 下载或模型调用。
+
+run 页面明确为 **Success**，完整提交链接仍为 `47443840b68693f63ee011dc6fbe29421a42223f`。原 jobs batch 共 8 项、`hasMore:false`；逐项 ID／name／run href 与元数据一致。用该固定提交的 workflow 与 Linux 分组文件确定检查范围：plan 1 项、Linux 六组各 4 项、Windows 5 项，合计 **8 job／30 必要步骤全部 success**。每个必要步骤均有 `completed_at`、`data-job-completed`，且 log 路径明确包含上述完整 SHA、对应 job ID 和 step number；所有页面的其余步骤也未出现失败结论。Linux 上按条件跳过的 Windows 专属步骤不计入必要项。
+
+独立 HTML 解析所得 job、步骤、结论、起止时间与 `ci-parsed-r3.json` 逐字段相同；该原解析记录 SHA256 为 `8a0eaed739e94fd5b4b2fc6c594608de36713ca0a9961663732fce7eeb39ff15`。原 jobs batch 的早期 in-progress 状态仅用于确定完整清单，最终结论取自上述终态页面。
+
+**本方向 H3b 精确发布／自有 CI 终验通过，结构／规范开放 finding 为 0。** 判词限已审并发布的 `47443840b68693f63ee011dc6fbe29421a42223f`、其 r3 包／实际调用证据与本次 CI；不扩为 Windows 原生续接、正式任务恢复、GPU、其他后端或另片 F9a 工作树验收。

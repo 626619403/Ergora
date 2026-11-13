@@ -163,5 +163,13 @@
     "decision": "approve",
     "result_sha256": "acdb060f5c6570769fcff414e06f7a5115380373c145d4a60618dcfccdcdc9fb"
   },
-  "independent_reviews": "Two fresh-context directions independently verified r3 fixes, installed artifacts, five actual call cases and the original self-review packet; local exit passed with zero open findings. Exact publication and this candidate CI pending."
+  "independent_reviews": "Two fresh-context directions verified r3 local evidence and final exact publication/own CI; zero open findings.",
+  "publication": {
+    "commit": "47443840b68693f63ee011dc6fbe29421a42223f",
+    "remote_ref_equal": true,
+    "ci_run": 43495562208,
+    "conclusion": "success",
+    "jobs": 8,
+    "required_steps": 30
+  }
 }

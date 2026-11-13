@@ -14,6 +14,8 @@ flowchart TB
   HTTP[web / HTTP] --> Uses
   Uses --> Project[projects / registrations / bindings]
   Uses --> Tasks[tasks / 正式任务操作]
+  Uses --> Training[training / 原实验观察]
+  Training --> Reference
   Uses --> Issues[issues / 工单观察与上下文关联]
   Issues --> IssueBackends[issue_backends / 本族原生协议]
   Issues --> Tasks
@@ -57,6 +59,7 @@ flowchart TB
 |`agents`、`agent_backends`|角色输出合同与可替换后端Adapter|调用者走同一Interface；实现拥有原生命令、配置、结果提取及支持模式|
 |`task_mcp`|单次调用的完整声明资源投影与连接回执|只有固定 `list/read`，没有任意路径／shell工具；当前要求Linux和可选SDK|
 |`tasks`|正式任务本地查询、预览／创建，以及运行／批准／取消／导出／对账用例；共有exported_source_candidate绑定原来源与精确候选，inspect_export委托原Git owner读当前对象|项目revision、原task/run、精确意图与摘要；未知结果沿原ID恢复|
+|`training`|CLI／HTTP共用原训练实验的项目级离线观察，调用reference独立标准库reader|原baseline／manifest／spec／runner／job／gate／fence／负结果及摘要保持；runtime未查询，started不证明运行，runner完成不代表门禁通过或采用，无实验副本／第二账本|
 |`reference`、`reference_creation_process`|随包参考资源和专用进程装载|编译／读取与执行分开；不在Web请求中直接改原生进程全局|
 |`reference_task_creation`、`reference_task_submission`、`reference_task_runtime`|原合同发布、attempt-before-send及原运行查询|操作先持久化意图，后做外部变更；原spec/memo/run必须匹配|
 |`reference_task_approval`、`reference_task_cancellation`|完整计划读取、精确批准、取消请求和投递恢复|requested是投递事实；授权采纳／外部停止需另核|

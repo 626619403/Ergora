@@ -1,0 +1,90 @@
+{
+  "schema_version": 1,
+  "baseline": "47443840b68693f63ee011dc6fbe29421a42223f",
+  "final_wheel_sha256": "df85fd4c28d502f8d39c1138e317738ee716d090baf9114c1d41db9b538b285a",
+  "final_product_files": 563,
+  "wheel_and_installed_records_verified": true,
+  "frozen_reference_files": 283,
+  "regression_rounds": [
+    {
+      "candidate": "r1",
+      "passed": 121,
+      "pytest_seconds": 87.23,
+      "process_seconds": 88.869,
+      "scope": "Original pre-fix six-suite regression."
+    },
+    {
+      "candidate": "r2",
+      "passed": 33,
+      "pytest_seconds": 16.98,
+      "process_seconds": 18.616,
+      "scope": "Fixed core training, architecture and reference suites; final r3 only changes frontend rendering."
+    }
+  ],
+  "final_native_readback": {
+    "status": "passed",
+    "current_source_and_installed_equal": 563,
+    "native_files_still_equal": 18,
+    "same_exact_original_observation": true,
+    "reference_sha256": "31f95d6c48c2a7462c2aa0b7b514e1d4ad21636c55c3619684b9973912d7ec94",
+    "scope": "Final r3 installed reader on original unchanged native-generated r1 manifest/job/fence; no dispatch or execution."
+  },
+  "native_cpu_seconds": 9.487654019147158,
+  "browser": {
+    "viewports": [
+      [
+        1440,
+        1000
+      ],
+      [
+        960,
+        800
+      ],
+      [
+        390,
+        844
+      ]
+    ],
+    "page_horizontal_overflow": false,
+    "late_detail_after_project_switch": "passed",
+    "older_list_after_newer_list": "passed",
+    "full_collapsed_originals": "passed",
+    "get_requests": 40,
+    "controllers_and_listeners_stopped": true,
+    "final_js_sha256": "f754d2409ec19d002e5e076426b08d7594dc59e48969d2c212ce6da9e765ef44"
+  },
+  "self_reviews": [
+    {
+      "status": "succeeded",
+      "run_id": "e6ce2760d2244c54a5e58101f4456b32",
+      "seconds": 59.62274273298681,
+      "packet_files": 11,
+      "packet_bytes": 183738,
+      "input_digest": "8213d8ac837afffdb7cc91d38b91d503112371b042eaa7a50a1e286d84beb517",
+      "decision": "request-changes",
+      "result_sha256": "9bc66147a205a00f5c87d9e5f3938479667eafbee5dc6fb65b6233e8b101ec20"
+    },
+    {
+      "status": "succeeded",
+      "run_id": "fd366e3cebe44451a84495b87bc9e366",
+      "seconds": 23.977387849707156,
+      "packet_files": 11,
+      "packet_bytes": 187590,
+      "input_digest": "dc70a489b39a1fc7b99edb99c9009bf62c6f4018155dbc15b8e069397500fe3d",
+      "decision": "approve",
+      "result_sha256": "4b278acc472436d19163fb5f433d9e8724721664353f4efe4fa2a829badc3a1d"
+    },
+    {
+      "status": "succeeded",
+      "run_id": "b53b61e2482f4be19b02504fb257371a",
+      "seconds": 23.36982236104086,
+      "packet_files": 6,
+      "packet_bytes": 25122,
+      "input_digest": "a01ce102732654b2eb72a295d00f526c2766dda636229c07d57f3879117f9c31",
+      "decision": "approve",
+      "result_sha256": "1c34e2d73b59b4e47c1ae879e548951eb8566df2dc04d837771bf414dafe7f77"
+    }
+  ],
+  "independent_reviews": "Two fresh-context directions verified fixes, r2 core and r3 final package/browser/native/self-review evidence; local exit passed with zero open findings. Exact publication and own CI pending.",
+  "scope": "Offline original registry navigation and native CPU prepare/job receipt/fence only; no Temporal workflow, runner execution, MLflow query, model workload, GPU, statistics, adoption or cross-backend diversity claim."
+}

@@ -1,6 +1,6 @@
 # F8-H3b 显式原生续接交付
 
-日期：2026-11-14。产品基线 `fde425164e45a15e255eb62e0e6f6fd959e00f6c`，文档检查点 `67966095814eec01f2e1e5d65d87e289320ad79f`。本片[计划](../plans/2026-11-14-harness-session-continuation.md)限定显式新 standalone task-MCP 源的一次续接。r3 实现、安装／实际调用、自身模板及最终新独立两轴本地出口通过，开放0／0；普通发布、精确远端及自己的CI待收口。
+日期：2026-11-14。产品基线 `fde425164e45a15e255eb62e0e6f6fd959e00f6c`，文档检查点 `67966095814eec01f2e1e5d65d87e289320ad79f`。本片[计划](../plans/2026-11-14-harness-session-continuation.md)限定显式新 standalone task-MCP 源的一次续接。r3 实现、安装／实际调用、自身模板及最终新独立两轴本地出口通过，开放0／0；产品 `47443840b68693f63ee011dc6fbe29421a42223f` 已普通推送并核完整远端Ref，自己的 CI `43495562208` Success；原独立两轴终核通过。
 
 ## 实现与所有者
 
@@ -24,13 +24,13 @@ r1 noneditable wheel SHA `cc2d78a85fdb1d5545e81de56e9bf77fea95776740fcfe5e2e711b
 
 [Spec 审查](2026-11-14-harness-continuation-spec-review.md)复现两项 P2：原 home 未封存物理身份，完整副本能接管；恢复／发送失败缺少 B2 及新增区间记账。[结构审查](2026-11-14-harness-continuation-structure-review.md)进一步复现 close 后、B2 前替换副本仍可完成，以及总 PLAN 恢复入口过期的 P3。
 
-r3 通过共享目录上下文、发送前和结束身份检查修复副本时窗，并把 B1 保存提前及 B2 观察移至原进程 owner 收尾后。两独立审查者分别按原场景复核：发送前换 home 未发新 prompt；close 后换 home 为失败／unknown；恢复 cwd RPC 断连保存 B1=B2 的恢复种子区间，发送断连保存已知 B1/B2，无 `completed`，相同 intent 不重发。原失败与初修窗口未删除；最终安装与实际证据已由两方向补核，发布／CI仍单独待验。
+r3 通过共享目录上下文、发送前和结束身份检查修复副本时窗，并把 B1 保存提前及 B2 观察移至原进程 owner 收尾后。两独立审查者分别按原场景复核：发送前换 home 未发新 prompt；close 后换 home 为失败／unknown；恢复 cwd RPC 断连保存 B1=B2 的恢复种子区间，发送断连保存已知 B1/B2，无 `completed`，相同 intent 不重发。原失败与初修窗口未删除；最终安装与实际证据已由两方向补核，发布／CI终验见末节。
 
 ## r3 候选与验收
 
 r3 noneditable wheel SHA `587c345fae69a70fdf0d436433bebe7a3df81ce801eca6003c2909c2a5c392a4`；561 产品文件在构建源码、wheel 和安装逐字一致，wheel／安装两 RECORD 及 283 冻结参考文件重算通过。源 DeepSeek suite 35 通过／37.54 秒；r3安装版七个受影响suite **133通过／12跳过**，125.12秒pytest／127.014秒受控进程；跳过项保留原可选依赖／平台条件，不算已运行。实际固定 SDK 四场景与新真实模型结果如下。
 
-实际自身结构审查模板及新独立最终两轴已通过；终版公开文件静态核验、普通提交／推送及自己的CI待收口，之后封存发布身份。证据只保存在被忽略的本片持久检查目录，不把凭据、内部服务或业务源码放入公开文档。
+实际自身结构审查模板及新独立最终两轴已通过；终版公开文件静态核验、普通提交／推送及自己的CI已完成，精确身份见末节。证据只保存在被忽略的本片持久检查目录，不把凭据、内部服务或业务源码放入公开文档。
 
 
 |r3实际调用|观察结果|
@@ -48,4 +48,8 @@ r3 noneditable wheel SHA `587c345fae69a70fdf0d436433bebe7a3df81ce801eca6003c2909
 
 原安装版 `ergora-structure-review/root/review` 已实际运行，Codex回退73.433秒、`approve`，无可执行finding。完整九文件220,205B实际进入原输入／stdin，原全部内联资源也已核；这次文本审查不独立重跑运行证据，不替代两名fresh-context reviewer。原回复SHA `acdb060f5c6570769fcff414e06f7a5115380373c145d4a60618dcfccdcdc9fb`，原输入摘要 `a88990d77af65c22536fa04ee7d64ce36311a867d3e1a7f94876f8ec09f27792`。
 
-[可公开验收摘要](evidence/2026-11-14-harness-session-continuation.json)保留包、五案例、结果／输入摘要及scope统计；凭据、服务地址与原始私有缓存未发布。两名独立审查者已分别补核最终包、实际调用、自身模板与公开文档，本地出口通过、开放0／0。终版17文件、225个本地链接、机器标识和diff检查通过；扫描首次把README原有通用loopback安装链接误归私有地址，核固定基线相同字节后排除，原失败保留。普通发布与自己的CI仍待收口。
+[可公开验收摘要](evidence/2026-11-14-harness-session-continuation.json)保留包、五案例、结果／输入摘要及scope统计；凭据、服务地址与原始私有缓存未发布。两名独立审查者已分别补核最终包、实际调用、自身模板与公开文档，本地出口通过、开放0／0。终版17文件、225个本地链接、机器标识和diff检查通过；扫描首次把README原有通用loopback安装链接误归私有地址，核固定基线相同字节后排除，原失败保留。普通发布与自己的CI已收口，详见末节。
+
+## 精确发布与自己的 CI 终验
+
+产品提交 `47443840b68693f63ee011dc6fbe29421a42223f`，17 文件与发布冻结字节及 Git blobs 相等；普通推送当前开发分支，完整远端 Ref 一致。自己的 [Portability CI 43495562208](https://github.com/626619403/Ergora/actions/runs/43495562208) 最终为 Success，8 个 job／30 个必要步骤通过。原独立两轴分别重核最终官方页、原 HTTP 大小／SHA、完整候选绑定、各步骤成功与完成时间；开放0／0。此为本片状态记账，不继承给后续 F9a。

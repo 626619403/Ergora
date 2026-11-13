@@ -9,6 +9,7 @@ import { skillsView } from "./skills.js";
 import { researchView } from "./research.js";
 import { tasksView } from "./tasks.js";
 import { issuesView } from "./issues.js";
+import { trainingView } from "./training.js";
 import { workflowView, resetWorkflow, disposeGraph, drawGraph } from "./workflow.js";
 import { definitionsView, disposeDefinitionGraph, drawDefinitionGraph } from "./definitions.js";
 
@@ -168,6 +169,7 @@ function render({ sourceSnapshot = "" } = {}) {
     research: researchView,
     tasks: tasksView,
     issues: issuesView,
+    training: trainingView,
     workflow: workflowView,
   };
   $("#main").replaceChildren(...views[app.tab](data, base, {

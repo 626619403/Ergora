@@ -9,7 +9,7 @@ import sys
 
 from . import __version__
 from . import reference
-from . import agent_definitions, agent_runs, agents, contracts, definition_bundles, evaluation, issues, issue_writebacks, kernel, memory, optimization, projects, registrations, research, services, tasks, skill_assets, skills, tools, workflow_definitions
+from . import agent_definitions, agent_runs, agents, contracts, definition_bundles, evaluation, issues, issue_writebacks, kernel, memory, optimization, projects, registrations, research, services, tasks, skill_assets, skills, tools, training, workflow_definitions
 from .state import State, resolve_home
 
 
@@ -462,6 +462,16 @@ def parser() -> argparse.ArgumentParser:
     preview.add_argument("--history-offset", type=int, default=0, help="Byte offset returned by the previous history page")
     preview.add_argument("--history-limit", type=int, default=65536, help="UTF-8 byte window, 4–65536 bytes")
     preview.add_argument("--history-revision", help="Observation revision required after the first history page")
+    experiments = commands.add_parser("training", help="Read original training contracts and recorded evidence without querying or executing jobs")
+    operations = experiments.add_subparsers(dest="operation", required=True)
+    for name in ("list", "show"):
+        operation = operations.add_parser(name)
+        operation.add_argument("project")
+        if name == "show":
+            operation.add_argument("experiment_id")
+        else:
+            operation.add_argument("--limit", type=int, default=50)
+            operation.add_argument("--after", help="Directory cursor from the previous page")
     kernels = commands.add_parser("kernel", help="Native ForgeKernel campaigns; independent project validation still required")
     operations = kernels.add_subparsers(dest="operation", required=True)
     for name in ("plan", "prepare", "list", "run", "status"):
@@ -877,6 +887,9 @@ def main(argv: list[str] | None = None) -> int:
                     output = agent_runs.run_agent(state, args.project, args.role, args.prompt.read_text(encoding="utf-8-sig"), args.timeout, args.skill, args.recall, args.template)
             print(json.dumps(output, ensure_ascii=False, indent=2))
             return 0 if args.operation != "run" or output["status"] == "succeeded" else 1
+        elif args.command == "training":
+            output = training.inspect(State(args.home), args.project, getattr(args, "experiment_id", None),
+                                      limit=getattr(args, "limit", 50), after=getattr(args, "after", None))
         elif args.command == "kernel":
             state = State(args.home)
             if args.operation == "list":

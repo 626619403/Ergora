@@ -80,6 +80,8 @@ ergora serve
 
 优化方向当前使用 `proposal-leaves`：每次显式调用一叶，操作者完整传递前驱结果。安装 preset 不会自动运行整张提案图、安装 GPU 工具或提交训练。真实实验继续沿 workload／baseline／experiment → 可信 runner → 独立评价 → 精确 evidence SHA 人工批准 → 项目集成复验，见 [训练优化手册](docs/TRAINING.md)。
 
+已有原实验可在控制台“训练实验”或 `ergora training list/show` 中[只读查看](docs/TRAINING.md#在控制台查看原实验)：同一项目的 baseline、精确 manifest／spec、runner／job、门禁、负结果和 MLflow ID 沿用原记录。页面不自动启动、重提或批准实验；实时状态与原生执行仍由原训练 owner 管理。
+
 ## 仍在补齐的模板与功能
 
 十八个细分优化方向现已提供只读资料模板，其中 `optimization-kernel` 复用 design／profile→kernel→measurement 四叶，覆盖算子、wrapper、独立正确性与测量方案。真实实验和完整原生流程仍按下列边界接入、验收。

@@ -32,6 +32,24 @@ init / runner-add → prepare → worker-start → start
 
 `run-local` 逐实验显式执行；没有常驻训练队列消费者。审批、结果、取消和恢复沿用原实验身份。未知结果需要对账，不直接用新 ID 重跑。候选模型或 Agent 的报告不能替代可信 runner 的验证；实验失败和负结果也要保存。
 
+## 在控制台查看原实验
+
+先按[项目登记说明](USAGE.md)用 `project register` 登记已有 Git 项目，选择 `training-optimization`，并指定原生参考安装、配置和执行状态目录。已有原实验保留原目录与身份，无需导入另一份实验数据库。基础安装的查询不要求启动 Temporal、MLflow 或 GPU；完整训练执行仍按上一节配置。
+
+```bash
+ergora training list my-project --limit 20
+ergora training list my-project --limit 20 --after CURSOR_FROM_PREVIOUS_PAGE
+ergora training show my-project EXPERIMENT_ID
+```
+
+打开控制台“训练实验”，可查看当前 baseline、分页原实验、完整 manifest／spec、当前 runner 与已冻结 job 请求、执行结果、门禁报告摘要、取消围栏、负结果及已有 MLflow run ID。完整原件附文件 SHA；当前基线不匹配会明确显示。页面同时列出本项目已有 Forge 候选记录，原生候选操作仍在工作流设计的训练模板中。
+
+CLI、页面和 `GET /api/projects/{project}/training[/{experiment_id}]` 共用同一只读查询。列表的 `limit` 为每页实际检查的条目数，坏条目单列错误并继续推进游标，不会把后续实验藏起来。每个 JSON 文件最多读取 1 MiB；不接受越界路径或 symlink。文件正在发布时可能暂时缺失或不一致，重新读取即可核对；查询不修写原件。
+
+原作业请求中的冻结 runner 或当前 runner 至少保留一份，用于核对项目和 Git 根；两者均缺失时明确报告归属无法核实。配置目录与状态目录可以共用同一文件夹，仍分别标记两种资料来源。
+
+所有响应保留 `runtime_status: not_queried`。开始文件存在不能证明作业仍在运行，未读到结果也不能判为失败；`recorded_result_state: SUCCEEDED` 只描述原执行结果，门禁仍可能失败。门禁摘要核对原 result 引用的 report SHA 与 manifest／job binding，但不会重新执行统计、正确性或质量评价。详情没有自动批准、重提或停止操作；查询当前状态、取消、对账和精确 evidence SHA 批准仍沿原 `agentflow training` 流程。
+
 ## 从专家提案填写原实验合同
 
 先完成下文的[专家提案及手动交接](#可选的实验专家提案)，保存完整manifest、所选叶input、原result及实际后端记录。原result的自由文本供人审阅，不能直接当作`experiment.json`。以下步骤适用于各优化方向；真实文件仍使用`ergora templates copy training-optimization`给出的原模板，执行命令沿[完整参考手册](../src/ergora/data/reference/platform/docs/TRAINING.md)。
