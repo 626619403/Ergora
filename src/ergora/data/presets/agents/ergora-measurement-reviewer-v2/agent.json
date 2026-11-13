@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "id": "ergora-measurement-reviewer",
+  "version": "2.0.0",
+  "description": "Independently assess candidate-bound correctness, quality, measurement validity, uncertainty and end-to-end cost.",
+  "roles": [
+    "reviewer"
+  ],
+  "specialties": [
+    "measurement-validity",
+    "quality-and-correctness-evidence",
+    "paired-comparison",
+    "end-to-end-cost"
+  ],
+  "backend": {
+    "tool": "claude-code"
+  },
+  "resources": [
+    {
+      "id": "ergora-measurement-reviewer-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "23702632665e70cb52337b61e8c11857f270793d2f1d1e3aa8e0037ee0b4aa93"
+    },
+    {
+      "id": "ergora-measurement-reviewer-skill",
+      "kind": "skill",
+      "path": "skills/ergora-measurement-reviewer",
+      "digest": "cc78c62c9d78f6cdb65d6d7afd166fdc4d44bb5daf63e6d98cff96e03bbb67f7"
+    }
+  ]
+}

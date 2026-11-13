@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "id": "ergora-performance-analyst",
+  "version": "2.0.0",
+  "description": "Diagnose a supplied critical path across traces, memory, ranks, communication and data flow without inventing a profile.",
+  "roles": [
+    "performance-analyst"
+  ],
+  "specialties": [
+    "critical-path-diagnosis",
+    "memory-and-rank-analysis",
+    "communication-overlap",
+    "measurement-uncertainty"
+  ],
+  "backend": {
+    "tool": "codex"
+  },
+  "resources": [
+    {
+      "id": "ergora-performance-analyst-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "964fb91d3bff310b57077dcad65f7b64a772d04e0afc77e236e622791100ab2a"
+    },
+    {
+      "id": "ergora-performance-analyst-skill",
+      "kind": "skill",
+      "path": "skills/ergora-performance-analyst",
+      "digest": "d158fcac4b2cdb0b5a9424c76830fe0080f48992bcad6263a21ed7f2f688082e"
+    }
+  ]
+}

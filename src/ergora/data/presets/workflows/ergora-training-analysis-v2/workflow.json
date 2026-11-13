@@ -1,0 +1,98 @@
+{
+  "schema_version": 2,
+  "id": "ergora-training-analysis",
+  "version": "2.0.0",
+  "description": "Develop independent experiment-design and evidence-based performance hypotheses from the same fixed workload.",
+  "resources": [
+    {
+      "id": "ergora-training-analysis-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "6f29e0901e109099ae9d2fec6ea1b28915fe6269b4a57490adff51428873fedd"
+    }
+  ],
+  "permissions": {
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "write": [],
+    "shell": false,
+    "network": []
+  },
+  "limits": {
+    "depth": 8,
+    "instances": 128,
+    "concurrency": 4,
+    "material_bytes": 262144
+  },
+  "inputs": [
+    "task"
+  ],
+  "outputs": {
+    "result": {
+      "node": "gather",
+      "output": "result"
+    }
+  },
+  "nodes": [
+    {
+      "id": "design",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-experiment-designer",
+        "version": "2.0.0",
+        "digest": "cd88d273d84b35d1a93c6a537897ba0d8d58a1e9a69ed9a26d2ab0b970de10c3"
+      },
+      "role": "experiment-planner",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      }
+    },
+    {
+      "id": "profile",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-performance-analyst",
+        "version": "2.0.0",
+        "digest": "4a64971f5414f22057b95b0d16f88bce4922bf8293dc5dab9bdda1be2f7b1983"
+      },
+      "role": "performance-analyst",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      }
+    },
+    {
+      "id": "gather",
+      "join": "all",
+      "depends_on": [
+        "design",
+        "profile"
+      ]
+    }
+  ]
+}

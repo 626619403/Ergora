@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "id": "ergora-experiment-designer",
+  "version": "2.0.0",
+  "description": "Design bounded cross-domain optimization experiments from a fixed workload, baseline and quality contract.",
+  "roles": [
+    "experiment-planner"
+  ],
+  "specialties": [
+    "experiment-design",
+    "cross-domain-interventions",
+    "quality-contracts",
+    "budgeted-candidate-comparison"
+  ],
+  "backend": {
+    "tool": "codex"
+  },
+  "resources": [
+    {
+      "id": "ergora-experiment-designer-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "c07caa580818743bbb5f7826f294d0c9846e9eb4f42923aa3203d8bb79808536"
+    },
+    {
+      "id": "ergora-experiment-designer-skill",
+      "kind": "skill",
+      "path": "skills/ergora-experiment-designer",
+      "digest": "7d5eab705ee222c5d3ef2d063cbb0804d7ff336b7b76b759cfb141a8bafb796e"
+    }
+  ]
+}

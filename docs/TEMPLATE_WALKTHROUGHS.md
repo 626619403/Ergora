@@ -4,11 +4,12 @@
 
 先按[源码分支选择](USAGE.md#从空环境安装)安装本文对应的开发分支或固定提交；包版本号相同不保证具有下文的preset／组合命令。
 
-|模板／preset|根ID，版本1.0.0|专家关系与入口|
+|模板／preset|根ID，除标注外1.0.0|专家关系与入口|
 |---|---|---|
 |repository-governance|`ergora-governance-delivery`|knowledge-map与boundary-test并行，接可信集成／验证及结构、正确性、测试价值审查|
 |large-change|`ergora-large-change-delivery`|contract→server／client并行→integration-tests，再接可信集成／验证和三审查|
 |training-optimization|`ergora-training-proposal`|实验设计／性能分析→kernel设计→测量审查；独立只读提案，实际实验由可信runner执行|
+|training-optimization-v2|`ergora-training-proposal@2.0.0`|跨域实验约束／关键路径诊断→kernel与wrapper设计→独立测量证据审查；显式新版本，保留v1|
 |refactoring|`ergora-refactoring-template`|准备→rewrite→compatibility→原可信集成／验证→三审查；普通父引用一个原生large-change六阶段实例|
 
 每个Agent是独立版本包，可有自己的专长、初始指令、Skill和后端。结构父链完整累加资料并限制子权限；依赖边安排执行先后，具名端口传递结果。这三种关系可在“Agent 与组合库”展开查看。[定义格式与继承规则](WORKFLOW_DEFINITIONS.md)。

@@ -213,3 +213,45 @@ def test_refactoring_preset_prepares_the_original_large_change_native_contract(r
     runtime = Path(project['execution']['state_directory'])
     assert not (runtime / 'tasks' / definition['task_id']).exists()
     assert not (runtime / 'requests-composition-v10').exists()
+
+
+def test_training_v2_keeps_v1_and_prepares_four_readonly_experts_with_skill_references(tmp_path):
+    state = State(tmp_path / 'state')
+    old = workflows.install_preset(state, 'training-optimization')
+    old_root = workflows.get(state, old['root']['id'], old['root']['version'])
+    selected = workflows.install_preset(state, 'training-optimization-v2')
+    assert selected == workflows.install_preset(state, 'training-optimization-v2')
+    assert workflows.install_preset(state, 'training-optimization') == old
+    assert workflows.get(state, old['root']['id'], old['root']['version']) == old_root
+    assert selected['root']['id'] == old['root']['id']
+    assert selected['root']['version'] == '2.0.0'
+    root = workflows.get(state, selected['root']['id'], selected['root']['version'])['definition']
+    grant = {'schema_version': 1, 'permissions': root['permissions'], 'limits': root['limits']}
+    manifest = workflows.prepare_manifest(state.root, root['id'], root['version'], grant, tmp_path / 'manifest')
+    graph = workflows.inspect_manifest(Path(manifest['path']), material=True)['composition']
+    instances = {item['path']: item for item in graph['instances']}
+    leaves = {item['path']: item for item in graph['instances'] if item['kind'] == 'agent'}
+    assert {path: leaf['role'] for path, leaf in leaves.items()} == {
+        'root/analysis/design': 'experiment-planner', 'root/analysis/profile': 'performance-analyst',
+        'root/kernel': 'kernel-tuner', 'root/measurement/review': 'reviewer'}
+    assert all(leaf['ref']['version'] == '2.0.0' for leaf in leaves.values())
+    assert all(not leaf['permissions']['write'] and not leaf['permissions']['shell']
+               and not leaf['permissions']['network'] for leaf in leaves.values())
+    shutil.rmtree(state.root / 'agent-definitions')
+    shutil.rmtree(state.root / 'workflow-definitions')
+    for path, leaf in leaves.items():
+        ancestors = set()
+        current = leaf
+        while current is not None:
+            ancestors.add(current['path'])
+            current = instances[current['parent']] if current['parent'] is not None else None
+        assert {source['instance'] for resource in leaf['resources'] for source in resource['sources']} == ancestors
+        prepared = workflows.prepare_input_from_manifest(Path(manifest['path']), path,
+            b'Analyze only supplied evidence; missing measurement remains unverified.',
+            tmp_path / path.replace('/', '-'), 100000)
+        actual = workflows.inspect_input(Path(prepared['path']), material=True)
+        assert all(resource['text'] in actual['prompt'] for resource in leaf['resources'])
+        reference = Path(prepared['path']) / 'assets/agent-definitions/objects' / leaf['ref']['digest']
+        source = Path(__file__).parents[1] / 'src/ergora/data/presets/agents' / (leaf['ref']['id'] + '-v2')
+        relative = 'skills/' + leaf['ref']['id'] + '/references/evidence-contract.md'
+        assert (reference / relative).read_bytes() == (source / relative).read_bytes()

@@ -60,3 +60,16 @@ init / runner-add → prepare → worker-start → start
 ## 可选的实验专家提案
 
 `ergora composition install-preset training-optimization`导入实验设计、性能分析、kernel设计和测量复现审查的独立专家及子模板。根为`ergora-training-proposal`，当前版本1.0.0；[完整使用范围](WORKFLOW_DEFINITIONS.md#使用内置领域组合)说明可独立调用的只读叶子及输入准备。它们的提案和审查意见供操作者据此填写原workload/baseline/experiment，保持本手册的可信runner、独立测量和原证据摘要人工批准流程。静态图没有自动运行训练实验，模型生成代码或Forge原生完成也不构成实验采用。
+
+显式选择新版跨域专家时安装`training-optimization-v2`，根仍为`ergora-training-proposal`、版本为`2.0.0`。四个Agent和analysis／measurement／proposal子模板均固定v2；原v1和原任务保持，可在同一库并存。根不默认挂载全部方向的工具库，各叶读取本项目短Skill及随包离线证据合同；其中的来源链接是研究出处，不表示工具已安装或模型实际联网读取过资料。
+
+|叶路径|主要职责与所需资料|结果边界|
+|---|---|---|
+|`root/analysis/design`|固定workload／baseline、目标单位与质量门禁，按瓶颈选择有限动作；列组合干预、预算、停止及回退|给原runner的实验提案，不分配资源或执行搜索|
+|`root/analysis/profile`|分析提供的trace／memory／rank／拓扑和数据路径，区分采集条件、关键路径与不确定性|已有报告分析与可证伪假设，不虚构新profile|
+|`root/kernel`|冻结shape／stride／precision／alias／RNG／导数及真实wrapper，结合fusion／graph／memory／communication|文本或设计是candidate，未编译／未独立验证不称可用kernel|
+|`root/measurement/review`|核精确候选、独立正确性／质量、配对窗口／rank／方差和总成本；区分kernel／wrapper／step或服务|有范围的审查意见，缺失／失败／no_gain／noise／unknown不改为收益，也不批准采用|
+
+先为该精确根生成grant和完整manifest，再按[单叶调用](WORKFLOW_DEFINITIONS.md#调用一个准备好的叶子)准备一个叶输入。带Skill附件时选Linux／WSL2的`task-mcp`模式并确保实际读取完整固定资源。单次`run-input`不会执行其图前驱：操作者把design／profile的完整原产物和摘要明确交给kernel，再把全部相关输入与真实实验材料交给measurement；缺少的报告、硬件或实验数据须保持未验，不用占位数字充当实测。后端覆盖按实际叶路径保存原因，measurement优先异于执行后端；不可用时显式记录已授权的同后端回退。
+
+跨域专家可复用于多个方向子模板，单份kernel设计也可覆盖精度、布局、融合和通信等关系。方向知识与原生执行能力分别接入；安装v2提案不等于已接入Forge／KDA内部全流程或任意外部MCP。实际实验继续使用本手册前述原manifest、可信runner、独立评价和精确evidence SHA批准。

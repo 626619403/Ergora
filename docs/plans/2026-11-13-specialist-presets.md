@@ -1,6 +1,6 @@
 # D2：版本化专家、重构入口与优化方向子模板
 
-日期：2026-11-13。承接[专家模板重整](2026-11-12-specialist-template-refresh.md)、[D0采用矩阵](../research/2026-11-12-specialist-adoption.md)和[D1六阶段消费者](2026-11-12-six-stage-native-consumer.md)。本文是待实施设计，不是独立产品审查或运行验收。恢复时先读[PLAN](../PLAN.md)与各片交付记录，再核实际工作树；研究报告中旧版本的“当前”不覆盖新源码。
+日期：2026-11-13。承接[专家模板重整](2026-11-12-specialist-template-refresh.md)、[D0采用矩阵](../research/2026-11-12-specialist-adoption.md)和[D1六阶段消费者](2026-11-12-six-stage-native-consumer.md)。本文区分设计与逐片实施状态，具体出口见末尾和所属交付记录；设计内容本身不是独立产品审查或运行验收。恢复时先读[PLAN](../PLAN.md)与各片交付记录，再核实际工作树；研究报告中旧版本的“当前”不覆盖新源码。
 
 原设计调查工作树以产品提交`a00896146c6499f58ae86a5b6b76fa13c3c7c796`及当时未提交C片为基础。C已实现definition6／input10及原`WorkflowInput`注册，隔离安装458产品／两RECORD／283冻结和受影响73项通过；实际D旅程由原D1片推进。设计调查阶段只读源码与文档；后续D2-A1实施以`5af9882367bbe5708f1a86ddabc16b2b665e9a49`为基线，实际验证与未验范围见[交付记录](../delivery/2026-11-13-refactoring-preset.md)。设计、实施、静态验收、模型旅程及独立评审分别记录，历史通过只授予原精确候选。
 
@@ -86,7 +86,7 @@ flowchart TD
 
 ### B1：复用四份专家，先改变交付内容
 
-发布原四个训练Agent的v2与`ergora-training-analysis`、`ergora-training-proposal`的v2，保留v1全部字节。四个专家仍分别使用已支持的experiment-planner、performance-analyst、kernel-tuner、reviewer角色；通过多项specialties表达交叉能力，暂不增加新role／capability或AgentBackend implementation。
+发布原四个训练Agent的v2与`ergora-training-analysis`、`ergora-measurement-review`、`ergora-training-proposal`的v2，保留v1全部字节。实施前核对发现旧measurement子模板精确引用reviewer v1，因此须同时发布该子模板v2，否则新根仍会使用旧专家；这是原精确引用的必要数据依赖，不增加新的运行角色。四个专家仍分别使用已支持的experiment-planner、performance-analyst、kernel-tuner、reviewer角色；通过多项specialties表达交叉能力，暂不增加新role／capability或AgentBackend implementation。
 
 |精确定义的新内容|必要交付与独立职责|
 |---|---|
@@ -97,7 +97,7 @@ flowchart TD
 
 根只带共同优化合同：目标、baseline、原候选身份、允许干预、预算、原件和交接。方向资料放选中的子模板，避免每叶默认累加整套外部技能库。v2默认图仍为只读proposal，`runtime`保持`proposal-leaves`；`run-input`每次只运行所选叶，操作者提供完整前驱产物。图中的先后边及all-join没有新增运行权。完整自动提案图、动态选方向及混合训练图另立真实消费者后再实现。
 
-**实际改／增文件：**`data/presets/agents/`下上述四个`*-v2/`包、`workflows/ergora-training-analysis-v2/`及`ergora-training-proposal-v2/`，catalog；`docs/TRAINING.md`、`docs/TEMPLATE_WALKTHROUGHS.md`及`tests/test_presets.py`。根不内联巨大官方库；新增Skill有短的有序步骤、可检查完成条件和按方向分包的references。完整资料交付仍按原Skill树处理，选定祖先已经声明的资料全部保留，不能把一个外网URL清单当实际正文。
+**实际改／增文件：**`data/presets/agents/`下上述四个`*-v2/`包、`workflows/ergora-training-analysis-v2/`、`ergora-measurement-review-v2/`及`ergora-training-proposal-v2/`，catalog；`docs/TRAINING.md`、`docs/TEMPLATE_WALKTHROUGHS.md`及`tests/test_presets.py`。根不内联巨大官方库；新增Skill有短的有序步骤、可检查完成条件和按方向分包的references。完整资料交付仍按原Skill树处理，选定祖先已经声明的资料全部保留，不能把一个外网URL清单当实际正文。
 
 **B1完成条件：**v1／v2可分别安装、导出和从完整manifest恢复；每个v2叶确为只读、shell=false、network=[]，换后端仍满足mode和完整资源合同；真实单叶运行分别交付上述有来源的提案／分析／审查，不能将其称GPU实测。不同职能的实际role、specialties、请求binding、实际binding与回退理由在原证据中可区分。
 
@@ -203,3 +203,11 @@ D2在`docs/AGENT_BACKENDS.md`和`docs/TRAINING.md`如实说明这些事实，保
 基线`5af9882367bbe5708f1a86ddabc16b2b665e9a49`上已新增refactoring配方、3个Agent／4个Workflow包及可填写示例；运行owner、后端、旧包及参考发行保持。源码最小preset suite 11通过；修正页面开发类别元数据后，受影响3项通过。完整祖先、版本并存及definition6→input10准备合同已有证据，详情和精确候选见[本片交付](../delivery/2026-11-13-refactoring-preset.md)。
 
 实现、源码11项及元数据修正后3项、隔离安装475产品／两RECORD／283及11项、本项目原结构模板32.257秒approve／22件完整内联，以及新fresh-context完整两轴／原件补核已通过，A1本地出口完成；普通发布／自己的必要CI仍开放。A2真实串行工作、行为保持与隔离回退按[独立旅程](../delivery/2026-11-13-refactoring-journey.md)推进，不借A1静态或治理并行旅程授予成功。D2-B／C未由本片实现。
+
+## D2-B1实施检查点
+
+A1已本地提交3122487，A2沿其已核安装包独立运行；B1从后续文档提交00922d3开始，仅新增四份跨域只读专家v2、三份必要子模板v2和显式新catalog键。旧精确定义和原运行owner保持；计划中的两Workflow数量已按实际measurement引用依赖修正为三份。每步验证记录在[B1交付](../delivery/2026-11-13-optimization-experts-v2.md)。
+
+B1修正r2包497产品／两RECORD／283及受影响安装检查通过；四叶实际Codex完成、19资源21,036B和手动全前驱链核准，测量因缺原实验材料request-changes；自身原结构模板54.533秒approve／24件49,304B完整stdin。安装／模型原件与最终文档由原fresh-context评审补核中，B2方向包尚未实施。A2首轮BLOCKED、恢复及隔离候选实证分别记录；第二轮独立新task运行中，不覆盖首轮预算或结果。
+
+B1的完整r3及安装／模型原件已获原fresh-context独立补核，Spec／Standards开放0／0、SP1关闭，本地出口完成；普通提交与自己的CI另记。下一B2a仅交付memory-tuning／activation-recompute／cpu-offloading三个可独立选择的只读方向根，复用B1的analysis／measurement和三位专家，不改变v2共享包。

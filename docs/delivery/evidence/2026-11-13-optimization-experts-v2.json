@@ -1,0 +1,189 @@
+{
+  "schema_version": 1,
+  "kind": "optimization-v2-readonly-leaf-evidence",
+  "baseline_commit": "00922d302daa371ab980093889a8468694c10a94",
+  "root_digest": "f82061705d1b7a0f8bc6b480327aa0602b8b3519c35aa2a985e1deeadfbb33fa",
+  "wheel_sha256": "396e37a80c70637deef330b152163b821272db097f926a8a6d430af389b53a61",
+  "source_wheel_installed_product_files": 497,
+  "frozen_reference_files": 283,
+  "workload": {
+    "kind": "operator-specified inference proposal fixture, no torch/GPU execution",
+    "source_sha256": "c8a27ba40b8693fd64e6f4723cf58f478df71fa470661ce43e83df719651fab7",
+    "scope": "F.layer_norm FP32 inference contract, numerical gates/hardware/runtime/caller/measurements missing"
+  },
+  "calls": [
+    {
+      "name": "measurement",
+      "instance": "root/measurement/review",
+      "run_id": "4f30741fa8314f189817ac2512cbf027",
+      "status": "succeeded",
+      "seconds": 64.39466868899763,
+      "cli_exit": 0,
+      "input_digest": "0777f103f8814dc39c52eb37fbcd68b1bac337cafdfca7a4b3a9ebde05ab10e9",
+      "prompt_sha256": "a489062e7fb03fc8cf55af58b23b4ee3155af8484da7fa1e9ec7d80609727be6",
+      "result_sha256": "72b415631e8e889868828aeff3c976cb4a0dc668b386220345b3f199ef1596e0",
+      "decision": "request-changes",
+      "complete_original_predecessors": [
+        "design",
+        "profile",
+        "kernel"
+      ],
+      "predecessor_sha256": {
+        "design": "694fcd0e1c266d76b7cfca64f37f9f44ffc8bccb05a11676092e9ffaf360873e",
+        "profile": "5d544fd2b2249d3b1248204b5fb365ea7ce42b0984c942a3798cc2045cc7d6b8",
+        "kernel": "e6e84c6d5def972bf4f89341d2a96357838836754053a81f1bd4013850857f63"
+      },
+      "requested_binding": {
+        "tool": "claude-code"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      },
+      "backend_reason": "Explicit user-authorized Codex fallback after retained Claude failure; independent sessions, no heterogeneous-backend claim",
+      "native_receipt_sha256": "9aab62042fdcb384404aa404edbe91eb5a1fd7d2fdb27f33a479cd9facb6ecef",
+      "native_stream_sha256": "16118bfbcc18da3419aed90f52107513af6c24eade88794529686110b357f5b3",
+      "failed_mcp_calls": 0,
+      "fixed_resource_files": 5,
+      "fixed_resource_bytes": 5309,
+      "all_fixed_resources_continuous_utf8_to_null": true
+    },
+    {
+      "name": "kernel",
+      "instance": "root/kernel",
+      "run_id": "3b7d45e749f342c9a63b39096a3eed6c",
+      "status": "succeeded",
+      "seconds": 82.36803003912792,
+      "cli_exit": 0,
+      "input_digest": "6ebf2702eda8145bdf096dd374591f59c20276fa2a07bb902d9fb7a7522185dd",
+      "prompt_sha256": "471194aa0671d6cf95071cbcea3c24fae4d10dc555ff35032f1e954e189aacd2",
+      "result_sha256": "e6e84c6d5def972bf4f89341d2a96357838836754053a81f1bd4013850857f63",
+      "decision": null,
+      "complete_original_predecessors": [
+        "design",
+        "profile"
+      ],
+      "predecessor_sha256": {
+        "design": "694fcd0e1c266d76b7cfca64f37f9f44ffc8bccb05a11676092e9ffaf360873e",
+        "profile": "5d544fd2b2249d3b1248204b5fb365ea7ce42b0984c942a3798cc2045cc7d6b8"
+      },
+      "requested_binding": {
+        "tool": "codex"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      },
+      "backend_reason": "Explicit user-authorized Codex fallback after retained Claude failure; independent sessions, no heterogeneous-backend claim",
+      "native_receipt_sha256": "9b41d99f4d31bbf94ad07cd25969e7ad585d95269506d1406c1a94d6eba637c3",
+      "native_stream_sha256": "1c874231893bc951f688385070baa0956373586f760b508d790d4e1ce32b44d8",
+      "failed_mcp_calls": 0,
+      "fixed_resource_files": 4,
+      "fixed_resource_bytes": 5044,
+      "all_fixed_resources_continuous_utf8_to_null": true
+    },
+    {
+      "name": "profile",
+      "instance": "root/analysis/profile",
+      "run_id": "19a5a8dd1f5f488d9325ef206dd6445b",
+      "status": "succeeded",
+      "seconds": 55.68405054323375,
+      "cli_exit": 0,
+      "input_digest": "89a5c888abdbd771fb6a0a3dfd7d0e5ec4857728a14798be4123cefaf98527b8",
+      "prompt_sha256": "e35df84b8bd24852f7687e230ea02ee83726323fb20b771a0efde8987e1bfc34",
+      "result_sha256": "5d544fd2b2249d3b1248204b5fb365ea7ce42b0984c942a3798cc2045cc7d6b8",
+      "decision": null,
+      "complete_original_predecessors": [],
+      "predecessor_sha256": {},
+      "requested_binding": {
+        "tool": "codex"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      },
+      "backend_reason": "Explicit user-authorized Codex fallback after retained Claude failure; independent sessions, no heterogeneous-backend claim",
+      "native_receipt_sha256": "ef423206b117a22c421288653edae55177eeff037b17662e6954b841606732e3",
+      "native_stream_sha256": "eb9da8382555ba9eeb80d1be908c03e49b3d3ea5e8c6b6f2227971eb75c72d6c",
+      "failed_mcp_calls": 0,
+      "fixed_resource_files": 5,
+      "fixed_resource_bytes": 5288,
+      "all_fixed_resources_continuous_utf8_to_null": true
+    },
+    {
+      "name": "design",
+      "instance": "root/analysis/design",
+      "run_id": "c24bea37184246c7931a9dabd25764fb",
+      "status": "succeeded",
+      "seconds": 85.37055442901328,
+      "cli_exit": 0,
+      "input_digest": "d95ef1c41c9d3ab4689d1a219ac216f7bab785d30c97f281ed1698a1a1bf1e58",
+      "prompt_sha256": "59774586d01f2fa065465a0dae88de48853bf9e55ae8edb5f409f33bb8a847b1",
+      "result_sha256": "694fcd0e1c266d76b7cfca64f37f9f44ffc8bccb05a11676092e9ffaf360873e",
+      "decision": null,
+      "complete_original_predecessors": [],
+      "predecessor_sha256": {},
+      "requested_binding": {
+        "tool": "codex"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      },
+      "backend_reason": "Explicit user-authorized Codex fallback after retained Claude failure; independent sessions, no heterogeneous-backend claim",
+      "native_receipt_sha256": "fe007502e1192aa80329692f65a9f516ff299481ad2f0728dccc3ebced9850c1",
+      "native_stream_sha256": "ff3cc58e978a4a77d3159d166280c7a29ef2e92b1d043149001179ee00f00c2f",
+      "failed_mcp_calls": 0,
+      "fixed_resource_files": 5,
+      "fixed_resource_bytes": 5395,
+      "all_fixed_resources_continuous_utf8_to_null": true
+    }
+  ],
+  "all_full_structural_materials_and_manual_predecessor_bytes_verified": true,
+  "resource_occurrences": 19,
+  "resource_bytes": 21036,
+  "measurement_decision": "request-changes for missing mandatory experiment evidence; no measured performance or adoption approval",
+  "self_review": {
+    "run_id": "b5d851f5f52944dfbcd1bf825a447f49",
+    "status": "succeeded",
+    "decision": "approve",
+    "packet_files": 24,
+    "packet_bytes": 49304,
+    "prompt_bytes": 57651,
+    "prompt_sha256": "789852815045054b9a9ab330dd793d5894c6798d432f27c7048f9ffa10aaf8ac",
+    "input_digest": "baa8e2d58a9e3a844520f455c7f1403825483ae071a90ff2345c097a15cb6297",
+    "structural_resources": [
+      {
+        "id": "ergora-structure-review-instructions",
+        "bytes": 163,
+        "content_digest": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823",
+        "source_instances": [
+          "root"
+        ]
+      },
+      {
+        "id": "ergora-structure-reviewer-instructions",
+        "bytes": 354,
+        "content_digest": "3cc9c450f0c03da5ea4a1434ac6182d50df6a4985cffdee2a59fe9fe477c6b43",
+        "source_instances": [
+          "root/review"
+        ]
+      },
+      {
+        "id": "ergora-structure-reviewer-skill",
+        "bytes": 521,
+        "content_digest": "d973c911f2a49a29e517425f14a80041d6d9e067e0bdb8b38be708341ceb7de7",
+        "source_instances": [
+          "root/review"
+        ]
+      }
+    ],
+    "result_sha256": "fb309e629e973543fefd8d38eb714e24252e408d8577490605fda8d6bf7eb0b0",
+    "seconds": 54.53261290304363
+  },
+  "original_evidence_sha256": {
+    "install-r2/package-identity.json": "9daa4218ed435aeaaaba3c220821c538b7281a6d0ecb61f1e24a93d7fb7134d9",
+    "install-r2/affected-r2/result.json": "fb96c34c67d37fd49fb8c42f34b5e295f4ec943cd697b7e0878ece377711ab60",
+    "real-leaves-r1/audit.json": "18736c66360458c59ce95a5e371ca222c67f19fa21059ecc0603240e8bddf926",
+    "real-leaves-r1/completed.json": "00b0b95c959c9924131e37056367155772fb5b7f9eb76ad1e840df68956474e4",
+    "self-review-r1-codex.json": "cf7527e20f99395ab515e9116390fe91dcf8dc95bbcfc29c377cdd97347c8161",
+    "self-review-audit-r1.json": "e638a666ed612aca592e8a621d6c2a8f0ee413347527bb4b4d2166bda1b925dd"
+  },
+  "scope": "Four actual independent readonly single-leaf Codex calls with full manually supplied predecessor artifacts, not an automatic proposal graph. Full bytes verified, not model comprehension or billing. No GPU, external optimization-tool execution, heterogeneous backend success, improvement or adoption claim."
+}

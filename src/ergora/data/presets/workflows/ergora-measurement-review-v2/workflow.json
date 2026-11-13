@@ -1,0 +1,66 @@
+{
+  "schema_version": 2,
+  "id": "ergora-measurement-review",
+  "version": "2.0.0",
+  "description": "Independently review the exact supplied optimization proposal/candidate and original measurement evidence.",
+  "resources": [
+    {
+      "id": "ergora-measurement-review-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "539f90bfb214dad27f61984cc04b7a65a9d14024a6eccf0b28b846dd568d6392"
+    }
+  ],
+  "permissions": {
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "write": [],
+    "shell": false,
+    "network": []
+  },
+  "limits": {
+    "depth": 8,
+    "instances": 128,
+    "concurrency": 4,
+    "material_bytes": 262144
+  },
+  "inputs": [
+    "task"
+  ],
+  "outputs": {
+    "result": {
+      "node": "review",
+      "output": "result"
+    }
+  },
+  "nodes": [
+    {
+      "id": "review",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-measurement-reviewer",
+        "version": "2.0.0",
+        "digest": "6bca95faaec581831e132a5b372b7f6f2b39ad657c98d7c282b3102468eaab1c"
+      },
+      "role": "reviewer",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      },
+      "review_requirement": "required"
+    }
+  ]
+}

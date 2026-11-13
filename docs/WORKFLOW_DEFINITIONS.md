@@ -15,6 +15,7 @@ ergora composition presets
 ergora composition install-preset repository-governance
 ergora composition install-preset large-change
 ergora composition install-preset training-optimization
+ergora composition install-preset training-optimization-v2
 ergora composition install-preset refactoring
 ergora composition show ergora-large-change-delivery 1.0.0 --material
 ergora agent definition show ergora-server-implementer 1.0.0 --material
@@ -22,11 +23,12 @@ ergora agent definition show ergora-server-implementer 1.0.0 --material
 
 `presets`只读发行内容，不创建State。`install-preset`沿依赖顺序导入精确版本；重复执行保持同一身份，已有同ID/version的不同内容会拒绝。各定义分别原子发布，整套安装不是跨库事务；中断后可重试。安装不改变项目绑定或权限，不安装/认证Agent CLI，也不授予执行或批准权限。新默认库的权威资源在 [data/presets](../src/ergora/data/presets/presets.json)，可以沿原export/new-version/import流程替换专家及子模板；已有examples的身份保持。
 
-|组合|根ID（当前版本1.0.0）|默认关系与使用范围|
+|组合|根ID（除标注外1.0.0）|默认关系与使用范围|
 |---|---|---|
 |repository-governance|`ergora-governance-delivery`|知识地图、架构回归两个专家并行，再经可信integrate/verify接三审查；默认work-units-v2／正式v6|
 |large-change|`ergora-large-change-delivery`|接口合同 → 服务端与客户端并行 → 集成/兼容验证 → 三审查；默认work-units-v2／正式v6|
 |training-optimization|`ergora-training-proposal`|实验设计与性能分析 → kernel候选设计 → 测量复现审查；完整静态组合及可独立调用的只读提案叶|
+|training-optimization-v2|`ergora-training-proposal@2.0.0`|跨域约束／实验设计和关键路径诊断 → kernel／wrapper候选 → 独立测量证据审查；四专家与三子模板精确v2，只读叶调用|
 |refactoring|`ergora-refactoring-template`|普通父 → 原生六阶段：准备 → rewrite／compatibility串行工作 → 三类独立审查；正式task type沿用large-change，显式definition6／input10|
 
 开发组合共用 `ergora-delivery-review`，它引用结构、正确性、测试价值三份可单独使用的子模板。每份专家有独立初始指令、专长和Skill，沿自己的结构父链完整装载资料。开发writer默认Codex，reviewer默认Claude Code；支持的后端可以逐实例明确覆盖。实际可用性和认证仍由调用准入核验；同后端回退需遵守所选多样性政策并记录原因。
@@ -36,6 +38,8 @@ ergora agent definition show ergora-server-implementer 1.0.0 --material
 `refactoring`使用[原生六阶段选择](USAGE.md#使用重构配方)：实例为`root/development`，work／review在其内部，准备阶段也由独立专家会话承担。其[完整任务示例](../examples/composition/refactoring/task.example.json)提供definition6、unit分配、预算与显式writer信任；需要替换真实baseline、caller、范围、验收和manifest。它是新增的组合配方，旧三个配方、旧validator v1和原任务类型保持。catalog的`development-v5`是既有页面的开发类别标签，真实执行合同由任务定义选择；该标签不会把新任务降为input5。图形任务向导暂不生成原生v10合同，使用CLI／HTTP提交完整定义。
 
 训练组合的`root/analysis/design`、`root/analysis/profile`、`root/kernel`和`root/measurement/review`可按[单叶调用](#调用一个准备好的叶子)使用；操作者需要在任务文件中提供完整workload、baseline和相应前驱输出。独立`run-input`不执行图前驱。生成的提案/代码文本及模型review不是实验结果或采用批准，真实CPU/GPU、Forge候选和测量仍按[训练手册](TRAINING.md)使用原可信runner/gate。目录中的`runtime`只描述本发行支持的使用范围，不表示后端、服务或硬件已经就绪。
+
+训练v2显式新选择保留v1，路径相同但引用版本与资料不同。四叶有各自的跨域专长和离线Skill附件，默认权限均为只读、shell=false、network=[]；带附件的实际调用使用受支持的task-MCP。先行资料须由操作者完整提供，缺少数据直接报告缺口。测量审查默认请求Claude Code，实际后端及覆盖原因由原run记录；没有用静态默认值证明异构验证。详细输入与交接见[训练手册](TRAINING.md#可选的实验专家提案)。
 
 ## 运行示例
 

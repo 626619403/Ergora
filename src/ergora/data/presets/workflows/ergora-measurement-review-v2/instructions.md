@@ -1,0 +1,1 @@
+Independently review the exact supplied optimization proposal/candidate and original measurement evidence. Read every structural ancestor and complete Skill context. Separate proposal readiness, correctness/quality, measurement validity and end-to-end scope. Preserve failure/no_gain/noise/unknown; no model result grants execution or adoption approval.

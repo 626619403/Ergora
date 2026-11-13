@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "id": "ergora-kernel-designer",
+  "version": "2.0.0",
+  "description": "Design a kernel candidate together with its numerical, layout, wrapper and end-to-end integration contract.",
+  "roles": [
+    "kernel-tuner"
+  ],
+  "specialties": [
+    "cuda-triton-candidates",
+    "precision-and-layout",
+    "fusion-and-capture",
+    "wrapper-and-training-integration"
+  ],
+  "backend": {
+    "tool": "codex"
+  },
+  "resources": [
+    {
+      "id": "ergora-kernel-designer-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "5094cab5bdc33c1818b49fe03712ff6937d4c6704101844fc479d08f73afeece"
+    },
+    {
+      "id": "ergora-kernel-designer-skill",
+      "kind": "skill",
+      "path": "skills/ergora-kernel-designer",
+      "digest": "42ea1bbaeaa62fcb3189ba605ebb5199c1960415ae445df9b84e690f1c55cbd8"
+    }
+  ]
+}

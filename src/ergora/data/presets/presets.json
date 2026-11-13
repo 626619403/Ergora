@@ -81,6 +81,22 @@
         "ergora-refactoring-delivery",
         "ergora-refactoring-template"
       ]
+    },
+    "training-optimization-v2": {
+      "description": "Cross-domain experiment design, critical-path diagnosis, kernel/wrapper candidates and independent evidence review; readonly v2 proposals with original trusted experiment ownership.",
+      "runtime": "proposal-leaves",
+      "root": "ergora-training-proposal-v2",
+      "agents": [
+        "ergora-experiment-designer-v2",
+        "ergora-performance-analyst-v2",
+        "ergora-kernel-designer-v2",
+        "ergora-measurement-reviewer-v2"
+      ],
+      "workflows": [
+        "ergora-training-analysis-v2",
+        "ergora-measurement-review-v2",
+        "ergora-training-proposal-v2"
+      ]
     }
   }
 }
