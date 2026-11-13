@@ -62,3 +62,34 @@ Spec：SP1/P3 关闭，开放 0；Standards：独立确认的同处 P3 关闭，
 ## 最终状态补核
 
 协调者已直接核 r5 完整 16 文件快照，manifest SHA256 为 `fe6be217c154ef6bb05ff79e8dbb8b74bf8d5126a0986e2fa4903adb893833bf`。全部冻结长度／SHA 与 live 相符，无清单外改动；八份产品／测试和公开投影与 r4 保持，差异只有四份状态 Markdown 及本报告。四处状态均准确记录两轴本地通过、SP1/P3 关闭／开放 0／0，并保持普通发布及自己的精确候选 CI 开放。173 个本地 Markdown 目标存在，报告相对链接已指向实际文件。此次补核只检查同片记录，没有新增测试、模型调用或行为变更；后续绑定本报告补核文字的冻结不构成新实施片。
+
+## 普通发布身份补核
+
+随后普通提交为 `99b953fcff931cda60e4ff41ff66a8870b7f7866`，父提交仍为 `e85b1e6eb38ac568142b2a73b9ca3bae1d248f8a`。协调者直接读取 Git 对象，核准完整 16 文件与 r6 manifest／冻结字节、ready 的逐文件身份及 staged object 一致；r6 manifest SHA256 为 `09042c446a2d624a16be91a12f22ccc6a63b4f581910d711fd19420d8028183a`。r5→r6 只有本报告的最终状态补核尾注；536 产品在该 Git 提交、实施归档、wheel、installed 及 live 中逐项相同。提交后的四份状态 Markdown 只记录普通发布与 CI 在途，产品没有变化。前文 HEAD 和发布开放的描述保留实施审查时的范围。
+
+**PB1/P3，已修复复核关闭。** 发布辅助 producer 的 `review_report_sha256` 字段误读上一片 communication 评审，值为 `9954a00…`；原 ready 的本片文件条目和 staged object 原已正确。错误字段可能使读取辅助回执的人误认本片评审身份。最小修正为保留原 ready／producer，追加说明和精确更正身份，无需重做提交、推送、模型或测试。新增更正回执的 SHA256 为 `d4535815f6d98fc7108fde01061bb5b4572816fa48132b86dcd9aa9af6fc8f29`，直接核准已提交本报告为 8,923B、SHA256 `189e8e5dfb56b6bdc8aa0cf23bb4fa77c44ad2ba58c90393eb90c4092512c8fb`、Git blob `34ba5d4e0156ccbc381b11f889e89bb4cacffe57`；旧字段确实绑定上一片报告。原错误回执保持，没有被当作完全无误的回执覆盖。
+
+原 commit／普通 push／作者 SSH `ls-remote` 回执均 exit 0，推送没有 force 参数，作者分支 Ref 为完整 `99b953fcff931cda60e4ff41ff66a8870b7f7866`。本次是对作者回执和本地 Git 对象的独立只读补核，评审者没有调用网络，不称独立直接远端读取。
+
+自己的 [CI43420340258](https://github.com/626619403/Ergora/actions/runs/43420340258) 初始三份官方 UI 原件均为 HTTP200，长度与 SHA 核准；Actions 列表和 run HTML 的完整 commit 链接均绑定本候选。原 job-groups JSON 列出八个 job：plan 已 completed／success，六 Linux 分组和 Windows job 当时仍 in_progress。这里只确认精确候选的初始在途身份，自己的完整 CI 与必要步骤终态验收仍开放；未新增模型、测试或网络操作。
+
+## 精确候选自己的 CI 终核
+
+协调者随后直接离线解析九份官方原 HTML 与 receipts：第三份 run HTML、第三份 Windows job HTML，以及 plan／六 Linux job 各第一份 HTML。九份均为 HTTP200，实际长度与 SHA 逐一相符。原 run 的 Status 为 **Success**，完整 commit 链接绑定 `99b953fcff931cda60e4ff41ff66a8870b7f7866`；原 UI metadata／job-groups 核定同一 run 的八个新 job 身份，终态逐步取自各 job HTML，未把早期 batch 的在途字段改写为终态。
+
+|job|原 job ID|必要步骤全部成功完成|回归秒数|
+|---|---|---|---|
+|plan|131868450824|1|—|
+|Linux group 0|131868514009|4|209|
+|Linux group 1|131868513972|4|282|
+|Linux group 2|131868513788|4|202|
+|Linux group 3|131868513853|4|152|
+|Linux group 4|131868513819|4|202|
+|Linux group 5|131868513889|4|228|
+|Windows group all|131868514016|5|671|
+
+全部 30 个必要步骤均为 success，具有非空 `data-completed-at` 和 `data-job-completed` 标记；非空 log URL 的完整候选 SHA、job ID 与 step number 逐一对应。必要步骤包括 plan 读取显式分组、七个 native job 各自的 wheel 安装／reference 身份／回归／观察上传，以及 Windows PS5.1 安装升级。另核全部 76 条成功步骤元数据，日志链接也均绑定相同精确提交；Linux 条件不满足而 skipped 的 PS5.1 步骤不计入必要步骤。
+
+Windows 原 UTC 时间为：回归 `11:52:03→12:03:14`，671 秒；PS5.1 安装升级 `12:03:14→12:03:56`，42 秒；上传 `12:03:56→12:03:57`，1 秒。第三份 run HTML 的 SHA256 为 `6734f81b84fb867d810f0dd9a4f21b6911b4cec5b4ed12db3d6b46da1040c1dd`，第三份 Windows HTML 为 `9c45b9cd63ab84c8314377cf8b5ba7eb4b0a6abf67a8ee40858c85ad6f9cf70b`。前两份 Windows 在途原件及其 27／30、28／30 结果保持，未覆盖或提升早期样本。
+
+本次关闭该精确候选自己的 CI 终态出口，八 job／30 必要步骤独立终核通过；SP1/P3、PB1/P3 的原 finding 与修正历史保持。核验仅针对作者保存的官方 UI 原件及步骤元数据，没有评审者直接网络请求、全日志下载、模型、测试或安装操作；没有据此扩大到 parser／GPU、训练质量或实测收益验收。同片五份 Markdown 的结案普通提交／推送由主线另记。

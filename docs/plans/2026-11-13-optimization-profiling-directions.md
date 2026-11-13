@@ -1,6 +1,6 @@
 # B2e：Profiling 与内存快照方向
 
-日期：2026-11-13。承接 [D2 专家计划](2026-11-13-specialist-presets.md)与 [R7 调查](../research/2026-11-12-optimization-profiling-agents.md)。产品基线为 `2c93ef687f344138127fd1d9018c36ef003352e0`，其自己的 CI43413954876 八 job／30 必要步骤及原独立终核均通过；实际实施起点 `e85b1e6eb38ac568142b2a73b9ca3bae1d248f8a` 只增加五份同片结案 Markdown，普通推送与作者 SSH 完整 Ref 均已核准。两根／catalog／原参数表与两手册、独立安装及六真实叶已核，自身与新独立两轴通过，SP1/P3关闭／开放0／0，本地出口完成；普通发布和自己CI仍开放，不继承旧候选的CI。
+日期：2026-11-13。承接 [D2 专家计划](2026-11-13-specialist-presets.md)与 [R7 调查](../research/2026-11-12-optimization-profiling-agents.md)。产品基线为 `2c93ef687f344138127fd1d9018c36ef003352e0`，其自己的 CI43413954876 八 job／30 必要步骤及原独立终核均通过；实际实施起点 `e85b1e6eb38ac568142b2a73b9ca3bae1d248f8a` 只增加五份同片结案 Markdown，普通推送与作者 SSH 完整 Ref 均已核准。两根／catalog／原参数表与两手册、独立安装及六真实叶已核，自身与新独立两轴通过，SP1/P3关闭／开放0／0，本地出口完成；已普通提交／推送99b953f，精确Git和作者SSH Ref核准；自己的CI43420340258第三官方run HTML为Success，八job／30必要步骤success／completed且每步非空完整SHA日志URL获原独立协调者终核通过；Windows回归671秒／PS5.1升级42秒，精确交付终结，不继承旧候选的CI。
 
 ## 范围与归属
 
@@ -29,7 +29,7 @@
 |B2e.1 资料与数据|两只读根与完整 context、catalog／原参数表／两手册同步，原包保持|十一资料原件／SHA已核，两根／catalog／两手册／原参数表已实现；原十六条保持|
 |B2e.2 安装与合同|新 Python3.11 非 editable 包 source／wheel／installed、两 RECORD／283、原安装 preset suite；正式七次 collection 核新全集与六组并集|Python3.11非editable536／两RECORD／283通过；安装25项／100.09秒；1713全集＝六组并集、交集0，仅collection|
 |B2e.3 真实叶交接|两方向各三次独立 task-MCP 调用，完整祖先 UTF-8 读取至末页、精确 input／stdin／scope／native／结果与原前驱全文|六叶均成功，共36资源75,319B连续UTF8完整链／手动原前驱核准；profiling仅批准补证据方案，snapshot要求补实验条件；无parser／GPU测量|
-|B2e.4 审查与发布|自身原结构模板接收八份完整产品／测试文件；新 fresh-context Spec／Standards、修正复核；普通提交推送及自己完整 CI／独立终核|自身26.700秒approve／八全文51,307B与三资源核准；新fresh独立两轴完整原件及文档通过，SP1/P3关闭／开放0／0，本地出口完成；普通发布及自己CI开放|
+|B2e.4 审查与发布|自身原结构模板接收八份完整产品／测试文件；新 fresh-context Spec／Standards、修正复核；普通提交推送及自己完整 CI／独立终核|自身26.700秒approve／八全文51,307B与三资源核准；新fresh独立两轴完整原件及文档通过，SP1/P3关闭／开放0／0，本地出口完成；已普通提交／推送99b953f，精确16Git及作者SSH Ref核准；自己的CI43420340258第三官方run HTML为Success，八job／30必要步骤success／completed且每步非空完整SHA日志URL获原独立协调者终核通过；Windows回归671秒／PS5.1升级42秒，精确交付终结|
 
 真实调用 fixture 只包含明确 synthetic 文本：10ms 窗口的 compute `[0,4]`／`[6,9]` 与 dispatcher `[2,6]`；无 dependency／clock／其他 rank timing，不可推出 recoverable critical path。两份 toy snapshot summary 区分 active／awaiting-free／可复用空间，但没有原 pickle、parser、历史／step marker／设备总占用。审查应指出这些缺项，不能把 fixture 算术当真实 GPU／parser 验收。每调用 240 秒、外层 290 秒；失败保留原件，必要重试另目录，成功叶不无故重跑。进程核验只报告实际观察范围。
 

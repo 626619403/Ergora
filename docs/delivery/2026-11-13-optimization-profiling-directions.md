@@ -1,6 +1,6 @@
 # B2e Profiling／内存快照交付记录
 
-日期：2026-11-13。[计划及范围](../plans/2026-11-13-optimization-profiling-directions.md)为本片验收依据。实施基线 `e85b1e6eb38ac568142b2a73b9ca3bae1d248f8a` 只比已通过自己 CI 的通信候选多五份结案 Markdown；五对象／作者普通 push／完整 SSH Ref 已核准。当前状态：固定资料、两只读根／catalog／原参数表／两手册与独立安装检查已完成；六真实叶、完整原件和自身原结构模板已完成；新fresh独立双轴已通过，SP1/P3关闭，开放0／0，本地出口完成；本候选发布／CI尚未完成。
+日期：2026-11-13。[计划及范围](../plans/2026-11-13-optimization-profiling-directions.md)为本片验收依据。实施基线 `e85b1e6eb38ac568142b2a73b9ca3bae1d248f8a` 只比已通过自己 CI 的通信候选多五份结案 Markdown；五对象／作者普通 push／完整 SSH Ref 已核准。当前状态：固定资料、两只读根／catalog／原参数表／两手册与独立安装检查已完成；六真实叶、完整原件和自身原结构模板已完成；新fresh独立双轴已通过，SP1/P3关闭，开放0／0，本地出口完成；已普通提交／推送99b953f，精确Git与作者SSH Ref核准；自己的CI43420340258第三官方run HTML为Success，八job／30必要步骤及原独立终核通过，精确交付终结。
 
 ## 已核资料与实施选择
 
@@ -31,8 +31,26 @@ Profiling原measurement为approve，范围明确限定为evidence-request propos
 
 [公开投影](evidence/2026-11-13-optimization-profiling-directions.json)SHA256为`de60ee4a402a76c552cd1aedf414fd8982efa426bb07d5b2a4b2d9e87cad54e6`，由两原audit、安装／collection／自身原件产生；不替代原实验数据。结束后的单次/proc命令行观察在本片私有根及指定可执行名选择范围内无匹配；未做全程PID或脱离后代采样，不能据此宣称整个进程树全程被追踪或OS强隔离。
 
-新独立审查完整来源、包、六叶原件与公开投影通过，开放0／0；普通发布与本候选自己CI仍开放，不得借通信候选关闭。后续仍按计划接recipe／model、cluster和kernel／low-precision；原实验runner与Forge内部模型循环另片。
+新独立审查完整来源、包、六叶原件与公开投影通过，开放0／0；当时普通发布与本候选自己CI开放，后续精确结果见末节，不得借通信候选关闭。后续仍按计划接recipe／model、cluster和kernel／low-precision；原实验runner与Forge内部模型循环另片。
 
 ## 独立审查修正
 
-Spec轴SP1/P3指出上述前驱SHA的保存位置描述不准确：原measurement正文确含前驱完整原文，前驱SHA实际保存在原audit／公开投影而非任务正文。已仅修正文案并保留完整原件；产品、模型输入与结果不变，无需重跑。原两轴已复核修正并关闭SP1/P3，完整独立两轴开放0／0。本地只读提案出口通过，原r2／r3／r4快照及finding保留；普通发布和本候选自己的CI仍开放。
+Spec轴SP1/P3指出上述前驱SHA的保存位置描述不准确：原measurement正文确含前驱完整原文，前驱SHA实际保存在原audit／公开投影而非任务正文。已仅修正文案并保留完整原件；产品、模型输入与结果不变，无需重跑。原两轴已复核修正并关闭SP1/P3，完整独立两轴开放0／0。本地只读提案出口通过，原r2／r3／r4快照及finding保留；该审查时点普通发布和本候选自己的CI开放，末节记录后续终核。
+
+## 普通发布与自己的 CI
+
+最终16文件r6 manifest SHA256为`09042c446a2d624a16be91a12f22ccc6a63b4f581910d711fd19420d8028183a`；八产品／测试及公开投影与独立r5相同，最后评审尾注属于同片记账。静态核16文件／173本地目标／5个已加载凭据值，issue0，无个人绝对路径。普通提交`99b953fcff931cda60e4ff41ff66a8870b7f7866`的16个Git对象与ready.files／staged_objects逐项相同，父e85b1e6，提交时工作树清洁；普通push及作者SSH ls-remote均exit0，完整Ref同SHA。原件commit-r1／git-identity-r1／push-r1／ref-r1保留；未称独立直接远端读取。
+
+官方Actions列表以完整commit链接绑定本候选自己的[CI43420340258](https://github.com/626619403/Ergora/actions/runs/43420340258)，初始状态为In progress，终态尚待。沿上一片已核的官方UI读取方法，不重复探测匿名REST限额，也不把旧候选CI借给本片。发布身份与CI的原独立补核另记。
+
+发布补核PB1/P3发现原ready的辅助`review_report_sha256`字段仍读取上一片communication报告（9954a00…），而同一ready的本片files／staged_objects及提交对象原已正确。已保留原ready和producer，新增append-only publication-identity-correction-r1回执，直接绑定本片已提交报告8,923B／SHA`189e8e5dfb56b6bdc8aa0cf23bb4fa77c44ad2ba58c90393eb90c4092512c8fb`及blob`34ba5d4e0156ccbc381b11f889e89bb4cacffe57`，并复核全部16对象。该辅助字段误指不改变产品／原输入／提交身份；原独立协调者已直接补核更正并关闭PB1/P3，16Git／536包及作者普通push／SSH Ref亦获补核，无需重做提交或测试。
+
+本候选八个新job原HTML及原UI batch与完整99b953f日志路径核准：plan与六Linux四必要步骤均success／completed，Windows安装／reference成功，回归／PS5.1升级／上传尚待；当前是27／30必要步骤成功，尚不称全部CI通过。该在途样本与原件保留。
+
+第二份官方run／Windows原HTML保留：Windows完整回归已success，持续671秒；PowerShell 5.1安装升级／上传尚待，当前28／30步骤成功，仍未授全部终态。六Linux回归分别209／282／202／152／202／228秒。
+
+## CI 终态与精确结案
+
+第三份官方 run HTML 已为 Success；原八 job 的30个必要步骤均 success／completed，包含七组观察上传。每步非空日志 URL 精确绑定完整候选 `99b953fcff931cda60e4ff41ff66a8870b7f7866`、该 job 和步骤号。Windows 原回归11:52:03→12:03:14为671秒，PS5.1安装升级12:03:14→12:03:56为42秒；六Linux回归为209／282／202／152／202／228秒。原独立协调者已从九份HTTP200原HTML及原UI metadata／batch、长度／SHA逐项离线终核通过；不是评审者直接访问远端或下载全部日志。
+
+原两份在途样本27／30、28／30及其SHA保持；本片直接沿官方UI读取，没有新增匿名REST失败请求。PB1/P3的原错误与append-only更正继续保留。普通产品发布、精确作者Ref、自己的跨平台CI及独立终核均完成，本片精确交付终结；五份同片Markdown结案提交不产生新产品验收。下一模型／配方与模型验证方向沿新片推进。

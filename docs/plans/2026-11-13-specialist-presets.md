@@ -236,4 +236,4 @@ B2c及Linux六组CI片已随9250bf8普通推送并通过自己的八job／30必�
 
 ## D2-B2e实施检查点
 
-[Profiling／memory-snapshot计划](2026-11-13-optimization-profiling-directions.md)从通信五MD结案提交e85b1e6开始，仅接两个共享v2专家的只读资料根。十一份固定Bridge原件已核，两根／catalog／原参数表和两手册已实现；独立安装536／两RECORD／283与25项通过，1713全集与六组collection无遗漏／交集；六叶成功／36资源75,319B完整原件和手动前驱核准；自身26.700秒approve／八全文核准，新fresh两轴完整原件及文档通过，SP1/P3关闭／开放0／0，本地出口完成；普通发布及自己CI开放。[交付记录](../delivery/2026-11-13-optimization-profiling-directions.md)逐项追加实际结果；synthetic报告摘要不充当原parser／GPU验收。
+[Profiling／memory-snapshot计划](2026-11-13-optimization-profiling-directions.md)从通信五MD结案提交e85b1e6开始，仅接两个共享v2专家的只读资料根。十一份固定Bridge原件已核，两根／catalog／原参数表和两手册已实现；独立安装536／两RECORD／283与25项通过，1713全集与六组collection无遗漏／交集；六叶成功／36资源75,319B完整原件和手动前驱核准；自身26.700秒approve／八全文核准，新fresh两轴完整原件及文档通过，SP1/P3关闭／开放0／0，本地出口完成；已普通提交／推送99b953f，精确16Git／作者SSH Ref核准；自己的CI43420340258第三官方run HTML为Success，八job／30必要步骤success／completed且每步非空完整SHA日志URL获原独立协调者终核通过；Windows回归671秒／PS5.1升级42秒，精确交付终结。[交付记录](../delivery/2026-11-13-optimization-profiling-directions.md)逐项追加实际结果；synthetic报告摘要不充当原parser／GPU验收。
