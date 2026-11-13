@@ -1,6 +1,6 @@
 # B2d communication-direction independent review
 
-Date: 2026-11-13. **Final local verdict: Spec passes within the readonly-proposal scope; Standards passes, ST1 closed, no new findings.** The package/material and nine-call handoff evidence is accepted. Ordinary publication and this candidate's own CI remain pending. This does not grant native training, performance, numerical/quality/recovery, GPU/multirank, heterogeneous-backend or adoption acceptance.
+Date: 2026-11-13. **Final verdict: Spec and Standards pass, ST1 closed, no open findings; exact publication and own-candidate CI gates pass.** The package/material and nine-call handoff evidence is accepted. Ordinary publication identity is verified in the [publication supplement](#publication-supplement); candidate `2c93ef687f344138127fd1d9018c36ef003352e0` has its own successful CI, independently checked in the [terminal CI supplement](#own-candidate-ci-terminal-supplement). This does not grant native training, performance, numerical/quality/recovery, GPU/multirank, heterogeneous-backend or adoption acceptance.
 
 The initial r2 review below is preserved with its original finding and pending evidence. The [final r3 re-review](#final-re-review-of-r3) records their disposition and supersedes those local pending items.
 
@@ -143,3 +143,45 @@ ST1 is closed by the checkpoint correction and independent Standards recheck. Al
 Ordinary publication, precise remote identity and this candidate's own required CI remain open. B3 still requires a real workload/manifest, compatible initialized runtime, independent all-rank numerical/quality/recovery and paired performance evidence, followed by the original owner's approval; no result here closes that work. The documented next data-only direction is profiling/memory-snapshot, without repeating broad research or changing the existing training/Forge owners.
 
 Final open findings by axis: Standards 0 (historical P3 ST1 closed); Spec 0. The local readonly-proposal acceptance passes; publication and own CI have no pass claim.
+
+## Publication supplement
+
+This is a same-slice identity/receipt follow-up, superseding the earlier publication-pending state without reopening implementation review. The coordinator independently inspected ordinary commit `2c93ef687f344138127fd1d9018c36ef003352e0`, its sole parent `a9fcc17d17a91d1df54fbfb65ed8921837d3eb1a`, and the exact nineteen changed paths. All nineteen regular-file Git blob identities and complete contents match `git-ready-r1.json` and the frozen `review-r4/manifest.json`, SHA256 `b15c7795ac6eb162e76321470ca7b81dfc36699d34eb45b3d3e2b2aa07a9dbe5`. The committed review report has its previously accepted SHA256 `34795a7956c8d58635e5b0c4e635ee5e2f67b2113f9fa47d5dd6d1406f5b4678`.
+
+All eleven product/test files remain identical to reviewed r3. Independently compared committed package contents with the validation source, wheel and installed package: all 530 files are byte-equal, the wheel retains its recorded SHA256, and all 283 frozen reference files equal the baseline. Among 521 existing product files only the catalog changed, with nine new data files. R3-to-r4 changes are the four status documents recording the completed local verdict and the review extension. The coordinator also checked 171 resolving local Markdown links; the recorded static-r2 result reports nineteen files, five credential values checked and no issues, without requiring reviewers to load those values.
+
+The original `commit-r1.json`, `git-identity-r1.json`, `push-r1.json` and `ref-r1.json` receipts agree. The author's ordinary, non-force push exited 0; its subsequent SSH `ls-remote` exited 0 and returned the complete candidate SHA for `refs/heads/refactor/architecture-foundations`. This accepts the author-provided publication receipts and independently verified local Git objects; it is **not** a claim of a reviewer-performed remote request. Subsequent live edits to the same four status documents record publication and CI still pending; they contain no product changes. This supplement is later bookkeeping and is not claimed to be part of commit `2c93ef6`.
+
+**Own-candidate CI remains OPEN.** No terminal candidate-bound CI evidence has been accepted in this supplement. Prior `9250bf8` CI, local preset passes, collect-only coverage, successful push and matching remote-ref receipts do not close that gate. No installation, model/test run, commit, push or external request was performed by the reviewer.
+
+## Own-candidate CI terminal supplement
+
+The same independent reviewer completed an offline original-evidence follow-up for candidate `2c93ef687f344138127fd1d9018c36ef003352e0` and its own [Portability run 43413954876](https://github.com/626619403/Ergora/actions/runs/43413954876). **The candidate-bound CI gate passes.** This supersedes the earlier CI-open state while preserving that earlier inspection's actual scope.
+
+The reviewer parsed the final run HTML and eight original job HTML bodies directly, using `ci-run-html-r2`, `ci-job-131847125432-html-r2` for Windows, and the other seven job samples at r1. Every receipt has HTTP 200, the exact official run/job URL and matching final URL; every original body's length and SHA256 was independently recomputed. The final run's Status is `Success` and its commit link names the exact complete candidate SHA. The official UI batch `ci-job-groups-r3/body.json` supplies exactly the expected eight unique job IDs/names/hrefs, with `totalCount:8` and `hasMore:false`; its 2,733-byte body and SHA256 `46b3aee88af28664eea382e77410f4f2929ab9c7611bac9750d01d05994c6ee5` match the receipt and metadata source identity. That earlier batch still shows Windows in progress; the new Windows original HTML establishes its terminal state.
+
+|Final original HTML sample|Body bytes|Body SHA256|
+|---|---:|---|
+|`ci-run-html-r2`|213,240|`32dbc496a650ed8e9ea68fc77381777dc0e2555a91343edc4f2e1055b4e42fad`|
+|`ci-job-131847059028-html-r1` — plan|158,776|`74d7d0f622fedc040fdfce8b993a0f16e8d46e84bf0a3c517638cf9932241003`|
+|`ci-job-131847125482-html-r1` — Linux group 0|162,466|`a1b321fdcba097b04dfaa7a4f61120e205e8acfed129cf603cdb4cbdef45ae2f`|
+|`ci-job-131847125388-html-r1` — Linux group 1|162,472|`2c106d9e295efaaeff4f3497a3c8a6efdcbb64a2ac0741c4911c316d0bbef87c`|
+|`ci-job-131847125967-html-r1` — Linux group 2|162,466|`6d90aca2821e86f320c40065d8ff7c7aa04bc8f243195e1fc9e3af7b35626ca9`|
+|`ci-job-131847125684-html-r1` — Linux group 3|162,457|`da93ba85ef156dbfec456d5e1bd57e62fa261d303ebe111af7b40634a4c14116`|
+|`ci-job-131847125438-html-r1` — Linux group 4|162,466|`78a480e0bf3fe102205aafff4dc79aaf68233cf589b33c0b96fed0bf2eb32445`|
+|`ci-job-131847125366-html-r1` — Linux group 5|162,465|`7c80cd782022f388f0824b63f9935c7cf40c48d9dfb9673c27619f9857f8ca0e`|
+|`ci-job-131847125432-html-r2` — Windows all|160,049|`593a896e415c0dffbb68a2813f4bf0cc5c5c1ec30dffe529ec385d7b6672d429`|
+
+Each job HTML identifies the expected job name, a `completed successfully:` header icon, `check-steps data-job-status="completed"`, and a successful `Complete job` step. Required steps were derived from the committed `.github/workflows/portability.yml` and six-group configuration, then checked individually for unique presence, `data-conclusion="success"`, `data-job-completed`, and ordered start/completion timestamps:
+
+- Plan: `Read explicit test groups` — one required step.
+- Each of six Linux jobs: wheel build/install, packaged-reference identity, native application regression and observation upload — twenty-four required steps.
+- Windows: the same four steps plus PowerShell 5.1 installer/upgrade — five required steps.
+
+All **30 necessary steps** pass. For every one, the reviewer required a present, nonempty log path exactly equal to `/626619403/Ergora/commit/2c93ef687f344138127fd1d9018c36ef003352e0/checks/JOB_ID/logs/STEP_NUMBER`, including agreement with that page's job ID and step number. This was an unconditional identity check for all thirty paths, not an optional `if log` projection. Plan uses log step 3; each Linux job uses 4/5/6/8; Windows uses 4/5/6/7/8. All thirty paths are distinct and bind the original successful steps to this candidate. `ci-html-r2.json` agrees with these independently parsed bodies, identities, required steps and timestamps.
+
+Windows regression ran from `2026-11-13T11:04:26Z` to `11:15:16Z`: **650 seconds**. PowerShell 5.1 installer/upgrade ran from `11:15:16Z` to `11:15:54Z`: **38 seconds**. Linux regression durations for groups 0–5 are respectively **283, 209, 230, 166, 200 and 217 seconds**, computed from each original step's UTC timestamps. These are step durations for this CI run, not GPU benchmarks or billing measurements.
+
+The original anonymous REST403 body/receipt, navigation404, both batch400 responses, earlier run HTML `In progress`, and earlier Windows HTML/batch `in_progress` remain preserved. Their saved body hashes/lengths were checked; no failed or in-flight observation was rewritten as a terminal pass. This acceptance uses the later official HTML evidence and does not claim a successful terminal REST response, full log/archive download, or reviewer-performed network request. Reviewers ran no models, suites or installations and made no commits or pushes.
+
+Together with the previously accepted exact nineteen Git objects, author push/ref receipts and local dual-axis verdict, this closes B2d's delivery gates for candidate `2c93ef687f344138127fd1d9018c36ef003352e0`. The later status/report bookkeeping is separate from that product commit. Native training, all-rank numerical/quality/recovery, measured optimization benefit, heterogeneous-backend and adoption acceptance remain outside this readonly slice.

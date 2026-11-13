@@ -8,7 +8,7 @@
 |B2d.1 资料／数据|六份固定Bridge原件／内容SHA复核；三个只读根与完整方向context、catalog／训练／walkthrough说明及既有参数扩展已实现，十三旧catalog条目保持|
 |B2d.2 安装／合同|新Python3.11.15非editable530产品／两RECORD／283核准；安装preset suite23通过／96.46秒（外层98.197秒）；十三旧catalog条目、521原包文件除catalog外字节保持|
 |B2d.3 实际叶|两轮九成功叶／54资源96,303B完整连续UTF8／原前驱全文手动交接核准，三measurement缺证据request-changes；原网络超时602.224秒保留，仅该方向重试。终后进程观察无匹配，未做全程PID采样|
-|B2d.4 审查／发布|自身原结构模板35.619秒approve；十一完整产品／测试54,212B、实际stdin／prompt／protocol60,445B及三资源核准；新fresh双轴完整原件／最终文档终核通过，ST1/P3关闭／开放0／0，本地只读提案出口完成；精确发布及本候选自己的CI待做|
+|B2d.4 审查／发布|自身原结构模板35.619秒approve；十一完整产品／测试54,212B、实际stdin／prompt／protocol60,445B及三资源核准；新fresh双轴完整原件／最终文档终核通过，ST1/P3关闭／开放0／0，本地只读提案出口完成；已普通提交／推送2c93ef6、精确19Git及作者SSH Ref核准；本候选CI待核|
 
 三个根复用同一组精确analysis／measurement v2和design／profile／measurement专家；没有新Agent实现、运行协议、调度、实验账本或GPU库安装。每个根只带自身完整方向资料，继承所有结构祖先，自身Skill及context完整交付；兄弟和前驱文本不授予权限。`run-input`仍为单叶，操作者显式交接前两份完整原结果给measurement。
 
@@ -33,3 +33,13 @@ TP/DP的18资源31,409B、dispatcher的18资源32,192B、MoE overlap的18资源3
 所供输入只是一份未来MoE/BF16/AdamW/8rank/TP2/PP2/DP2/CP1/EP4/ETP1场景，实际模型、mesh、backend、设备与collective均未实例化。三measurement均request-changes：要求精确候选及兼容／生效证明、全rank数值／梯度／optimizer／质量、恢复与未profile配对step／token及显存证据。dispatcher审查还指出两位前驱的测量次数不同；overlap审查指出其baseline/candidate字母标记相反且dispatcher未统一，要求按精确配置对齐。此为互补提案的实际交叉检查，不把文字规划当已运行实验，也不由Agent批准采用。
 
 新fresh-context审查按Spec／Standards分别进行。初审发现PLAN仍把已完成自身审查记待做的ST1/P3，已同步修正；原finding与后续复核分别保留。[完整包、来源、九成功／原超时及公开投影终核](2026-11-13-optimization-communication-directions-review.md)已由同片独立评审完成，Spec／Standards开放0／0，ST1/P3关闭，本地只读提案出口通过。初始审查与原失败保持；普通发布与本候选自己的CI未提前记过。
+
+## 普通发布与自己的CI
+
+最终19文件r4 manifest SHA256为`b15c7795ac6eb162e76321470ca7b81dfc36699d34eb45b3d3e2b2aa07a9dbe5`，完整source／test与独立r3相同，仅结案状态及评审报告扩展。静态核19文件／171本地目标／5个已加载凭据值，issue0；无个人绝对路径。普通提交`2c93ef687f344138127fd1d9018c36ef003352e0`的19个Git对象与暂存ready逐一相等，父a9fcc17，工作树清洁；普通push及原作者SSH ls-remote均退出0，完整Ref同SHA。原件分别保留commit-r1／git-identity-r1／push-r1／ref-r1，不是独立直接网络成功声明。
+
+该候选自己的首份匿名REST样本返回403，原body及回执保留；尚未取得必要CI终态，改由官方Actions HTML逐项核对，不能借9250的成功授予本片。提交后的本节属于同片状态记账，独立发布／CI补核另记。
+
+本候选[CI43413954876](https://github.com/626619403/Ergora/actions/runs/43413954876)首份官方run HTML为In progress；同一run的官方UI JSON batch提供八个新job ID，逐job原HTML的完整commit日志URL与2c93ef6绑定，未复用旧CI的ID。plan及六Linux四必要步骤均success／completed，Windows只完成安装和reference核验，回归／PS5.1安装升级／上传仍待，不将27已成功步骤写成全部30通过。无JSON客户端参数／头的导航404和batch400原件保留，完整UI请求200不称api.github.com终态REST成功。
+
+第二份官方run原HTML已为Success，Windows第二份job原HTML补齐终态，八job／全部30必要步骤均success／completed，完整提交身份仍为`2c93ef687f344138127fd1d9018c36ef003352e0`。六Linux回归分别283／209／230／166／200／217秒，Windows回归650秒、PowerShell 5.1安装升级38秒。原HTML、receipt及离线投影ci-html-r2保留，原独立协调者已从九原HTML逐条强制核非空fullSHA日志路径、8个job及30必要步骤终态，官方UI batch与所有receipt的URL／长度／SHA一致，精确交付终结。原403／404／400和早期在途样本保持；未称全日志或artifact archive下载。
