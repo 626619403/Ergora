@@ -80,3 +80,15 @@ r3 仅改该行及本片交付的 finding 记录；逐字复核两份 Markdown �
 本片本地只读资料模板可以关闭；H5 的普通提交／推送、精确远端身份、该候选自己的完整 CI 及对应独立终核继续开放。该出口不能由基线 cluster 的 CI 代替。
 
 真实 ModelOpt／AutoRound／Olive／TE 安装与支持组合、模型／数据、搜索恢复、量化／导出／加载、QAT／QAD／TE 训练、梯度及 all-rank 恢复、目标硬件正确性／质量／成本／收益均未验；B3 真实实验、C2 内部模型完整嵌套与 B2i 独立 kernel 根仍按原计划分别验收。本报告不授予这些通过状态。
+
+## 精确发布补核：d683c018
+
+同一独立评审者按作者后续授权，仅对本片普通发布做离线补核。候选为 `d683c018344fb604be115a3ed2a02bd9d50d4eff`，唯一 parent 为 `8f0b5802274f5db80b804d99979d074cdd3e1338`，tree 为 `ea09721e293faf1bc5b223c6a1e151789db788a7`，分支为 `refactor/architecture-foundations`。补核开始时 HEAD 等于候选且工作树清洁；随后作者开始 B2i，因此以下身份和链接均以 d683 的 Git 树及 r4 完整快照为准。该树的 catalog 恰为 22 条。
+
+最终 `review-r4/manifest.json` 共 17 文件，SHA-256 为 `a6d1c820d4a44e41d8574b1198e3c581bbd9f4f7794d1bd73227b75082612231`。逐文件核准基线至候选的完整文件集、Git blob 字节／长度／SHA-256、Git object ID、r4 保存原件及 ready 的 staged object，全部一致；原 commit 对象的 parent／tree 也一致。提交内本报告为 13,291B，SHA-256 `9d9a8df2cc6c062ae0d145ce50f5c8a215bbde95a64e35e6b108b88f3ccdc8c9`，与 ready 固定的报告身份相同。
+
+已完整阅读 r3→r4 差异：只增加上述原审查报告及更新状态 Markdown，其中 B2g 自己的 CI 由原独立评审者另行终核，相关结案仅核记账一致性。五产品／测试与本片公开证据投影保持。另将 d683 树的全部 548 产品逐字复核构建源／wheel／installed，wheel SHA-256 仍为 `1b9b01d2a5d1692a3a8681293d36907ae10911c4c299ced6a6961653ba192111`；556 wheel 文件、两份 RECORD、561 行安装记录和 283 冻结文件无差异。本候选 13 份 Markdown 的本地链接检查覆盖 287 个目标／65 个锚点，无缺失；基线至 d683 的 `git diff --check` 通过。
+
+原 commit 回执退出 0、17 文件；push 回执退出 0，实际 argv 为普通 `HEAD:refs/heads/refactor/architecture-foundations`，没有 force。作者随后 SSH `ls-remote` 回执退出 0，其完整 stdout 精确为候选 SHA、tab、该分支完整 Ref 和换行。由此核准本候选的普通提交／推送、精确 Git 身份及作者 SSH Ref 原件；本次没有发起独立网络探测，不能称为独立联网核准。最后一致性检查保存在本片私有 `publication-independent-review-r1.json`，SHA-256 为 `da16f12a898e67f5a1c589dddab1feadf0bd5d47443d175eea8c803c7560091d`。
+
+需求符合性、可维护性通过及 SP1 关闭保持，开放 finding 0／0。上文普通发布／精确身份的待做状态由本补核关闭；**d683 本候选自己的完整 CI 与对应独立终核仍开放**，不能借 B2g 结果关闭。未重新安装、运行 suite、调用模型或联网；真实量化／训练／GPU／质量／收益等未验范围保持。本追加章节尚未提交，不属于 d683 已发布的报告字节。

@@ -22,6 +22,7 @@
 |optimization-model-verification|`ergora-opt-model-verification-proposal`|逐项核转换／forward／训练／恢复／质量声明，消费原指标而非只看exit0；执行交原所有者|
 |optimization-cluster-resiliency|`ergora-opt-cluster-resiliency-proposal`|启动／原job身份、日志与checkpoint／恢复证据，复用三位v2只读专家；集群动作仍交原执行器|
 |optimization-low-precision|`ergora-opt-low-precision-proposal`|design／profile→kernel→measurement的只读低精度方案；原实验与质量／性能门禁保持|
+|optimization-kernel|`ergora-opt-kernel-proposal`|design／profile→kernel→measurement的算子／wrapper及独立验证方案；原生流程与真实测量另验|
 |refactoring|`ergora-refactoring-template`|准备→rewrite→compatibility→原可信集成／验证→三审查；普通父引用一个原生large-change六阶段实例|
 
 每个Agent是独立版本包，可有自己的专长、初始指令、Skill和后端。结构父链完整累加资料并限制子权限；依赖边安排执行先后，具名端口传递结果。这三种关系可在“Agent 与组合库”展开查看。[定义格式与继承规则](WORKFLOW_DEFINITIONS.md)。
@@ -125,7 +126,7 @@ ergora composition run-input PROJECT_ID ./prepared-design --mode task-mcp --back
 
 其他叶子为`root/analysis/profile`、`root/kernel`、`root/measurement/review`。单叶调用没有自动执行前驱，操作者应在新任务正文中明确提供完整来源和前驱回复。审查尽量使用另一后端；调用失败后保留原run，再用明确的`--backend`和`--backend-reason`建立回退调用，不会自动更换后端。认证检查成功仍需真实小调用确认推理可用；上游API错误不能用放宽工具权限来证明已修复。
 
-若任务需要细方向知识，可按[独立优化方向表](TRAINING.md#独立的优化方向子模板)选择已提供的方向。它们读取所选方向完整context并复用v2专家；多数保留design／profile／measurement三叶，手动把前两份完整原结果交给measurement。低精度方向还含kernel叶，先接收两份完整分析，再把三份完整原结果交给measurement。安装这些提案包不会安装GPU工具、开启原生搜索或运行整个图。
+若任务需要细方向知识，可按[独立优化方向表](TRAINING.md#独立的优化方向子模板)选择已提供的方向。它们读取所选方向完整context并复用v2专家；多数保留design／profile／measurement三叶，手动把前两份完整原结果交给measurement。低精度和kernel方向还含kernel叶，先接收两份完整分析，再把三份完整原结果交给measurement。安装这些提案包不会安装GPU工具、开启原生搜索或运行整个图。
 
 提案和模型审查供操作者准备实验。实际流程为固定workload／baseline／experiment→可信runner执行→独立正确性／性能复验→人工批准原evidence SHA→该项目开发任务集成复验。ForgeKernel是可选候选生成器，有独立版本、模型与设备要求；生成器完成不代表性能通过或采用。CPU／GPU、数据、ML依赖按项目安装，控制台不会配置CUDA或申请设备。[训练手册](TRAINING.md)说明runner、负结果、取消与采用。
 

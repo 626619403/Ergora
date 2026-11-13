@@ -254,8 +254,12 @@ B2f两根／catalog／原参数表与两手册已实现；非editable542／两RE
 |四位跨域优化专家v2|B1完整定义／资源与真实单叶调用已交付|不同后端、工具及真实workload分别验收|
 |显存3、图／packing2、并行3、通信3、profiling2、模型2方向|B2a–B2f共15个只读子模板已实现，B2f自己的CI及独立终核已通过|未验硬件与训练不从资料／synthetic测试升级通过|
 |cluster-resiliency|[B2g](2026-11-13-optimization-cluster-directions.md)r2安装／三叶及新独立两轴通过；8f0b580已普通推送，精确Git／作者SSH Ref获原独立补核；自己的CI43451540232八job／30必要步骤获原独立终核通过，精确交付终结|唯一rank／job／恢复所有者、checkpoint与日志证据；集群提交／重启另片|
-|low-precision|[B2h](2026-11-13-optimization-low-precision-directions.md)四叶根／catalog／原测试与手册已实现；安装548／两RECORD／283、29项和四叶23资源63,232B／两处完整手动原前驱、自身结构及新独立双轴完整原件通过，SP1/P3关闭／开放0／0；发布／自己的CI开放|PTQ／QAD／训练TE及质量门禁方案；实际工具与实验仍由原所有者执行|
-|kernel专门方向根|总训练组合已有kernel designer，独立kernel方向包尚未发布|B2i：独立可引用的kernel方案／wrapper／正确性／测量交接，保留原生campaign所有者|
+|low-precision|[B2h](2026-11-13-optimization-low-precision-directions.md)四叶根／catalog／原测试与手册已实现；安装548／两RECORD／283、29项和四叶23资源63,232B／两处完整手动原前驱、自身结构及新独立双轴完整原件通过，SP1/P3关闭／开放0／0；d683c01已普通推送，17Git／作者完整Ref获原独立补核；自己的CI43455797163八job／30必要步骤作者终核通过，原独立终核中|PTQ／QAD／训练TE及质量门禁方案；实际工具与实验仍由原所有者执行|
+|kernel专门方向根|[B2i](2026-11-13-optimization-kernel-direction.md)已立计划，21原件／十一回执核准；只读四叶根／catalog／原测试及手册已实现，noneditable551／两RECORD／283已核，30项及自身原结构模板通过，四叶23资源66,552B及两处完整手动原前驱已核，新独立双轴通过，SP1/P3关闭／开放0／0，本地出口完成；发布／自己的CI开放|B2i：独立可引用的kernel方案／wrapper／正确性／测量交接，保留原生campaign所有者|
 |Forge完整嵌套及其他原生系统|现有Forge顶层操作保留；C2父合同／全部会话／停止等缺口仍在，其他候选按D0条件准入|按C2逐项证明真实消费者，不以新增资料包关闭原生接入|
 
 本轮README文档片已完成：顶层提供可复制试用命令、当前分支、四个主要入口、十五方向与共享专家说明、运行前置条件、原生Windows边界、未完成项及两手册入口。六条安装版CLI和文档静态检查通过，新fresh-context独立两轴通过，SP1/P2权限归属已修正关闭；没有重跑模型／GPU，也不将本片文档通过视为产品CI通过。[交付记录](../delivery/2026-11-13-colleague-onboarding.md)。下一按B2g→B2h→B2i补资料子模板，再推进B3／C2真实交接；每片沿既有安装、实际叶输入、自身模板及fresh-context独立审查出口。
+
+## 后续日常安装收口
+
+2026-11-14只读核对发现，日常PATH启动器仍列3个preset；本批23个preset目前在源码及各片隔离安装中，不能据此称日常入口已升级。十八方向普通发布及自己的CI收口后，先做U3：保留原应用完整备份、依赖／配置／状态身份，以已验wheel离线升级原home应用；沿日常入口核23条目、四主入口／方向完整manifest、CLI与页面必要读取和旧数据保持，再获fresh-context独立验收。具体执行前另立安装交付记录，不通过重跑已成功模型旅程替代安装身份。B3／C2仍分别验真实实验和native完整父合同。

@@ -1,10 +1,12 @@
 # Ergora 实施计划与进度
 
-最后更新：2026-11-13。本文件只保留恢复入口、当前状态及稳定规则；旧逐片记录完整保存在[11月10日检查点归档](PLAN-history-2026-11-10.md)和[更早历史](PLAN-history-2026-11-09.md)。旧文的“当前”只代表当时快照。
+最后更新：2026-11-14。本文件只保留恢复入口、当前状态及稳定规则；旧逐片记录完整保存在[11月10日检查点归档](PLAN-history-2026-11-10.md)和[更早历史](PLAN-history-2026-11-09.md)。旧文的“当前”只代表当时快照。
 
 ## 当前检查点
 
-- [B2h低精度／量化](plans/2026-11-13-optimization-low-precision-directions.md)：十八固定原件470,878B／新研究请求0；四叶根／catalog／原测试与手册已实现，545旧产品除catalog和21旧条目保持。noneditable548／两RECORD／283、29项／115.59秒、四真实叶23资源63,232B与两处完整原前驱、自身30.278秒approve／五全文48,318B均已核；measurement保留request-changes。新fresh独立两轴完整原件通过，SP1/P3关闭、开放0／0，本地出口完成；普通发布／自己的CI开放，[交付](delivery/2026-11-13-optimization-low-precision-directions.md)逐步记录。B2g自己的CI及原独立终核已完成，可继续发布本片；独立kernel随后。
+- [B2i独立kernel方向](plans/2026-11-13-optimization-kernel-direction.md)：从已普通推送的d683c01开始，工作树初始清洁；R1／X2二十一原件920,972B及十一原HTTP回执已核，新研究请求0。复用四位v2专家的只读方向根、catalog、原测试及README／两手册已实现，548旧产品除catalog与22旧条目保持；独立noneditable551／两RECORD／283通过，原suite30通过／119.64秒与自身29.578秒approve／五全文49,861B已核；四实际叶23资源66,552B与两处完整原前驱已核，measurement保留request-changes；新fresh独立两轴完整原件通过，SP1/P3关闭／开放0／0，本地出口完成；普通发布／自己的CI开放。B2h自己的CI单独收口，新产品发布前核准依赖。
+
+- [B2h低精度／量化](plans/2026-11-13-optimization-low-precision-directions.md)：十八固定原件470,878B／新研究请求0；四叶根／catalog／原测试与手册已实现，545旧产品除catalog和21旧条目保持。noneditable548／两RECORD／283、29项／115.59秒、四真实叶23资源63,232B与两处完整原前驱、自身30.278秒approve／五全文48,318B均已核；measurement保留request-changes。新fresh独立两轴完整原件通过，SP1/P3关闭、开放0／0，本地出口完成；已普通提交／推送d683c01，作者SSH完整Ref核准；17Git／作者Ref获原独立补核；自己的CI43455797163八job／30必要步骤已获作者终态核准，原独立终核中，[交付](delivery/2026-11-13-optimization-low-precision-directions.md)逐步记录。B2g自己的CI及原独立终核已完成；B2i已立计划并开始。
 
 - [B2g集群／恢复方向](plans/2026-11-13-optimization-cluster-directions.md)：r1原件保持，SP1/P3的NSys范围已修正；r2非editable545／两RECORD／283、28项／109.49秒、三叶18资源44,924B与手动原前驱及新独立两轴终核通过，开放0／0。已普通提交／推送8f0b580，15Git／新包／作者SSH完整Ref获原独立补核；自己的CI43451540232官方Success，八job／30必要步骤及完整SHA日志路径获原独立终核通过，精确交付终结。[交付](delivery/2026-11-13-optimization-cluster-directions.md)逐步记录。
 
@@ -47,7 +49,7 @@
 
 ## 下一可执行项
 
-0. [专家模板重整](plans/2026-11-12-specialist-template-refresh.md)的U1／U2安装与旅程、R1–R10纵向及X1–X3横向研究、D0采用决策均已完成各自范围；D1已有完整材料／总预算／单实例六阶段消费者和真实治理旅程。接续[D2计划](plans/2026-11-13-specialist-presets.md)：A1重构配方与A2第三轮真实重构已验，B1四位共享专家v2及B2a–B2g十六方向资料已发布，B2g自己的CI43451540232及原独立终核已通过。README试用说明及独立文档评审已完成；B2h低精度本地出口已通过，待普通发布／自己的CI；下一B2i独立kernel方向，B3原实验runner交接与C2 Forge全部内部会话／权限／停止分别验收。原A2前两轮失败保持历史，不再作为当前下一任务；不重复已成功模型旅程，不将资料包当自动图或GPU收益。
+0. [专家模板重整](plans/2026-11-12-specialist-template-refresh.md)的U1／U2安装与旅程、R1–R10纵向及X1–X3横向研究、D0采用决策均已完成各自范围；D1已有完整材料／总预算／单实例六阶段消费者和真实治理旅程。接续[D2计划](plans/2026-11-13-specialist-presets.md)：A1重构配方与A2第三轮真实重构已验，B1四位共享专家v2及B2a–B2g十六方向资料已发布，B2g自己的CI43451540232及原独立终核已通过。README试用说明及独立文档评审已完成；B2h低精度本地出口已通过，d683c01已普通推送、作者Ref核准，17Git／作者Ref获原独立补核；自己的CI43455797163八job／30必要步骤已获作者终态核准，原独立终核中；B2i独立kernel方向开始，十八方向发布收口后，先补U3日常home安装升级：实际PATH入口仍为3 preset，需备份原环境／状态身份后更新为本批已验23 preset，核默认CLI、完整资源与原配置保持；独立安装不自动更新默认入口。B3原实验runner交接与C2 Forge全部内部会话／权限／停止分别验收。原A2前两轮失败保持历史，不再作为当前下一任务；不重复已成功模型旅程，不将资料包当自动图或GPU收益。
 
 1. C3d及C4a精确交付均已终结，既有非终态样本保持；不重复产品/模型或远端终核。
 2. C4b.1完整最终候选本地出口已通过，8ce9aba已普通推送、原评审精确20Git对象/436包/283冻结及一次HTTPS同SHA通过；自己的CI42825342126第三样本双OS七必要步骤与原评审离线终核通过，精确交付终结；前两In progress样本保持。已过行为与模型不重复。

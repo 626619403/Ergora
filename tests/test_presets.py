@@ -17,7 +17,7 @@ from test_registrations import installation, registration
 
 @pytest.mark.parametrize('direction', ['memory-tuning', 'activation-recompute', 'cpu-offloading',
     'cuda-graphs', 'sequence-packing', 'parallelism', 'megatron-fsdp', 'hierarchical-cp',
-    'tp-dp-overlap', 'moe-dispatcher', 'moe-overlap', 'profiling', 'memory-snapshot', 'recipe-model', 'model-verification', 'cluster-resiliency', 'low-precision'])
+    'tp-dp-overlap', 'moe-dispatcher', 'moe-overlap', 'profiling', 'memory-snapshot', 'recipe-model', 'model-verification', 'cluster-resiliency', 'low-precision', 'kernel'])
 def test_direction_roots_keep_full_context_when_reusing_v2_experts(tmp_path, direction):
     state = State(tmp_path / 'state')
     installed = workflows.install_preset(state, 'optimization-' + direction)
@@ -29,7 +29,7 @@ def test_direction_roots_keep_full_context_when_reusing_v2_experts(tmp_path, dir
     expected = {'root/analysis/design': 'ergora-experiment-designer',
                 'root/analysis/profile': 'ergora-performance-analyst',
                 'root/measurement/review': 'ergora-measurement-reviewer'}
-    if direction == 'low-precision':
+    if direction in ('low-precision', 'kernel'):
         expected['root/kernel'] = 'ergora-kernel-designer'
     leaves = {item['path']: item for item in graph['instances'] if item['kind'] == 'agent'}
     assert set(leaves) == set(expected)

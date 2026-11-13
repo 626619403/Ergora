@@ -1,0 +1,281 @@
+{
+  "baseline": "d683c018344fb604be115a3ed2a02bd9d50d4eff",
+  "wheel_sha256": "34e6b375c8771fa67bb1b02a71070f289ec72d5b0c99badac3afd28373fee208",
+  "package_files": 551,
+  "frozen_files": 283,
+  "installed_presets": {
+    "passed": 30,
+    "pytest_seconds": 119.64,
+    "controller_seconds": 121.1638172888197
+  },
+  "native_successful_calls": 4,
+  "resource_occurrences": 23,
+  "resource_bytes": 66552,
+  "all_resources_continuous_utf8": true,
+  "full_manual_predecessor_results": true,
+  "calls": [
+    {
+      "direction": "kernel",
+      "name": "measurement",
+      "instance": "root/measurement/review",
+      "run_id": "fb166c2a63084a2aa4da3fce162e779e",
+      "status": "succeeded",
+      "seconds": 58.63994127465412,
+      "input_digest": "fe1f1bc613b41642dcc94679858f05dfb022dca08e9fb02c11787bfff8c18085",
+      "prompt_sha256": "8995769878bb068ba1dc6c032b3550a7adf6c97e1eaf748d78f1b30bb613ee4f",
+      "result_sha256": "9128d39afc755c85a88ab739881bfc91a87bc3b3b5b73d1d63151e4f6306ea68",
+      "decision": "request-changes",
+      "predecessor_sha256": {
+        "design": "cd0f4efab41b552821b14ec97c93247d694c3359951447503aefc1290501e210",
+        "profile": "9b4c55ed7f045521b37be6b9d561ac58cd5a77c40d6506ef3eb379a7986a9f70",
+        "kernel": "a6beba1a43d0b8c071227813bea58a01bbcc3622c816fcc06fdbdc4577b10b04"
+      },
+      "requested_binding": {
+        "tool": "claude-code"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      },
+      "backend_reason": "User-authorized explicit Codex fallback after retained Claude failure; independent sessions, no heterogeneous-backend claim."
+    },
+    {
+      "direction": "kernel",
+      "name": "kernel",
+      "instance": "root/kernel",
+      "run_id": "4121389c22a24070845139e433bb50e7",
+      "status": "succeeded",
+      "seconds": 76.1113154059276,
+      "input_digest": "23f88cf96697f2e0b87860b1cf82d2db9db9d8a977bb0f41bf1ef27f84f5af25",
+      "prompt_sha256": "c7265e964d6b87b46f57a082c3255e1123ba27831fb7ee1f870411fd38f76e36",
+      "result_sha256": "a6beba1a43d0b8c071227813bea58a01bbcc3622c816fcc06fdbdc4577b10b04",
+      "decision": null,
+      "predecessor_sha256": {
+        "design": "cd0f4efab41b552821b14ec97c93247d694c3359951447503aefc1290501e210",
+        "profile": "9b4c55ed7f045521b37be6b9d561ac58cd5a77c40d6506ef3eb379a7986a9f70"
+      },
+      "requested_binding": {
+        "tool": "codex"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      },
+      "backend_reason": "User-authorized explicit Codex fallback after retained Claude failure; independent sessions, no heterogeneous-backend claim."
+    },
+    {
+      "direction": "kernel",
+      "name": "profile",
+      "instance": "root/analysis/profile",
+      "run_id": "990746a10a2144e68f4ab5c0ed45e3e0",
+      "status": "succeeded",
+      "seconds": 54.434537638910115,
+      "input_digest": "0d43f84ba1310d4f44080ac5d99ac16c4114152619c8cf37f8a9e76b860e8224",
+      "prompt_sha256": "e82ad7c709fe8e35bf30a2e434aad5fe2c8ebf8eebaa539791ab55ea4122af3e",
+      "result_sha256": "9b4c55ed7f045521b37be6b9d561ac58cd5a77c40d6506ef3eb379a7986a9f70",
+      "decision": null,
+      "predecessor_sha256": {},
+      "requested_binding": {
+        "tool": "codex"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      },
+      "backend_reason": "User-authorized explicit Codex fallback after retained Claude failure; independent sessions, no heterogeneous-backend claim."
+    },
+    {
+      "direction": "kernel",
+      "name": "design",
+      "instance": "root/analysis/design",
+      "run_id": "22a304e865384576a6cece1363becee8",
+      "status": "succeeded",
+      "seconds": 84.22079420182854,
+      "input_digest": "386fafe5551b8ba5352350c75a9c4f734fdfbab360a737e51cef642243bc57ce",
+      "prompt_sha256": "ec3416d76047f23fe5ca7cb72729b41b50f12d02a224bf9a450ea5b38f6eaf14",
+      "result_sha256": "cd0f4efab41b552821b14ec97c93247d694c3359951447503aefc1290501e210",
+      "decision": null,
+      "predecessor_sha256": {},
+      "requested_binding": {
+        "tool": "codex"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      },
+      "backend_reason": "User-authorized explicit Codex fallback after retained Claude failure; independent sessions, no heterogeneous-backend claim."
+    }
+  ],
+  "fixture_sha256": "02b523a8ff5b2d6d45957a60cf4e8f57c9e7232b8700828e5177583e08b95bbc",
+  "fixed_sources": [
+    {
+      "file": "r1-kda_pinned_flow.md",
+      "url": "https://github.com/NVlabs/kda/tree/acdd79343c5e9d0c7cb96289f26fd3f1051ce785",
+      "bytes": 2118,
+      "sha256": "c0bf00c893197cbcebdb8dbbbe742c0fd4b51ac7b34e5bab5c3ea4cd94cdb7de",
+      "identity_source": "R1 saved_files and documented fixed snapshot; not a new HTTP receipt"
+    },
+    {
+      "file": "r1-kda_pinned_readme.md",
+      "url": "https://github.com/NVlabs/kda/tree/acdd79343c5e9d0c7cb96289f26fd3f1051ce785",
+      "bytes": 6200,
+      "sha256": "0601f3bcdada46ddeaf71245a7975ca6d8bafacf5eb871cd32024c0981f7977d",
+      "identity_source": "R1 saved_files and documented fixed snapshot; not a new HTTP receipt"
+    },
+    {
+      "file": "r1-meta_pinned_agent.md",
+      "url": "https://github.com/meta-pytorch/KernelAgent/tree/e0647170da36ef9b059ac0bd3d60103aa4ed378b",
+      "bytes": 21156,
+      "sha256": "6701fad482929c8f1948f03d5c728fcbf6fd89e36f575b17faec8152f22cb36c",
+      "identity_source": "R1 saved_files and documented fixed snapshot; not a new HTTP receipt"
+    },
+    {
+      "file": "r1-meta_pinned_readme.md",
+      "url": "https://github.com/meta-pytorch/KernelAgent/tree/e0647170da36ef9b059ac0bd3d60103aa4ed378b",
+      "bytes": 14171,
+      "sha256": "a44ab32292e4fbeb06c31ba4c476c8e5565878529ca94bab4168bff9d5e7ab0c",
+      "identity_source": "R1 saved_files and documented fixed snapshot; not a new HTTP receipt"
+    },
+    {
+      "file": "r1-sakana_pinned_readme.md",
+      "url": "https://github.com/SakanaAI/robust-kbench/tree/078f5bab29934a822268d59a4e707d449abf9b4e",
+      "bytes": 8495,
+      "sha256": "949fdecc55d48daa90a419536cae60c605eb7690d2f2159dbce71984bc96e3dd",
+      "identity_source": "R1 saved_files and documented fixed snapshot; not a new HTTP receipt"
+    },
+    {
+      "file": "r1-akg_active_readme_pinned.md",
+      "url": "https://github.com/mindspore-ai/akg/blob/64b84b59541c134279f5d2ee0a5f35de0ec40022/akg_agents/README_CN.md",
+      "bytes": 12558,
+      "sha256": "824685f09c98b3e7ee216d96350250234253da9f94050ac21b8a749cf34e2cb8",
+      "identity_source": "R1 saved_files and documented fixed snapshot; not a new HTTP receipt"
+    },
+    {
+      "file": "r1-akg_active_autoresearch.md",
+      "url": "https://github.com/mindspore-ai/akg/blob/64b84b59541c134279f5d2ee0a5f35de0ec40022/akg_agents/docs/v2/CN/AutoResearch.md",
+      "bytes": 45756,
+      "sha256": "594dd989ace95e81696d31f16c69f55c2f154d2b4e2131aebf0b44d3bbad03dc",
+      "identity_source": "R1 saved_files and documented fixed snapshot; not a new HTTP receipt"
+    },
+    {
+      "file": "r1-geak_pinned_readme.md",
+      "url": "https://github.com/AMD-AGI/GEAK/tree/ec97e49ca886f8d02f8415192fdaac45d1005d2a",
+      "bytes": 14030,
+      "sha256": "e734c3de63fd4aae0d6cb75f49506498f2d06ed38fa76e6c6a58f8564f85e1bb",
+      "identity_source": "R1 saved_files and documented fixed snapshot; not a new HTTP receipt"
+    },
+    {
+      "file": "r1-geak_interface.md",
+      "url": "https://github.com/AMD-AGI/GEAK/blob/ec97e49ca886f8d02f8415192fdaac45d1005d2a/interface/run_e2e.md",
+      "bytes": 53165,
+      "sha256": "a94e1ff76fa5a1a9982c9c2e4aae9ae98495290ab895932c83428244716284e9",
+      "identity_source": "R1 saved_files and documented fixed snapshot; not a new HTTP receipt"
+    },
+    {
+      "file": "r1-forge_judge.md",
+      "url": "https://github.com/OpenBMB/ForgeKernel/tree/b2c8ae8510e02c28576808910a6b8827721ab7dc",
+      "bytes": 13068,
+      "sha256": "e8eca327bb3ad857b5fc83e5f02815479665377c56fcffcd53ef4e9ea89dca9f",
+      "identity_source": "R1 saved_files verifies exact saved Python judge bytes; fixed repository tree locates the research snapshot, not a document-byte URL or a new HTTP receipt"
+    },
+    {
+      "file": "x2-forge-launch-adapter-pin.raw",
+      "url": "https://raw.githubusercontent.com/OpenBMB/ForgeKernel/5030503d3ff71851aa34c14b9caf13ebfa9d9a78/src/forgekernel/launch.py",
+      "bytes": 31526,
+      "sha256": "29e05014af8afcfb4d51eefc6154dea3fa8c499462d24e38c11f354b8b8676e1",
+      "identity_source": "Original X2 HTTP receipt plus indexed original; no new network request",
+      "original_http_status": 200
+    },
+    {
+      "file": "x2-forge-agent-script.raw",
+      "url": "https://raw.githubusercontent.com/OpenBMB/ForgeKernel/5030503d3ff71851aa34c14b9caf13ebfa9d9a78/scripts/agent-claude.sh",
+      "bytes": 1897,
+      "sha256": "432103ad440798ec3343831b76edd23544908f00e89ef0a433050d33697f5ea1",
+      "identity_source": "Original X2 HTTP receipt plus indexed original; no new network request",
+      "original_http_status": 200
+    },
+    {
+      "file": "x2-forge-agent-policy.raw",
+      "url": "https://raw.githubusercontent.com/OpenBMB/ForgeKernel/5030503d3ff71851aa34c14b9caf13ebfa9d9a78/src/forgekernel/loop/agent_policy.py",
+      "bytes": 32986,
+      "sha256": "72b27c1ff62a0a7e35660a71fa5a81844b46b709eb8348da18ab9c469f7480e2",
+      "identity_source": "Original X2 HTTP receipt plus indexed original; no new network request",
+      "original_http_status": 200
+    },
+    {
+      "file": "x2-geak-e2e-js.raw",
+      "url": "https://raw.githubusercontent.com/AMD-AGI/GEAK/ec97e49ca886f8d02f8415192fdaac45d1005d2a/e2e_workflow/e2e_workflow.js",
+      "bytes": 435489,
+      "sha256": "caa80d231f50bb317f56196128b3ef1db64da659f3cf7de158cc67cfd995f6fd",
+      "identity_source": "Original X2 HTTP receipt plus indexed original; no new network request",
+      "original_http_status": 200
+    },
+    {
+      "file": "x2-geak-kernel-lane.raw",
+      "url": "https://raw.githubusercontent.com/AMD-AGI/GEAK/ec97e49ca886f8d02f8415192fdaac45d1005d2a/kernel_workflow/kernel_lane.js",
+      "bytes": 145216,
+      "sha256": "13887c03ab681625799756081177ae782be4fd82beecfb72ec3bb2da13d1edd2",
+      "identity_source": "Original X2 HTTP receipt plus indexed original; no new network request",
+      "original_http_status": 200
+    },
+    {
+      "file": "x2-geak-backend-generic.raw",
+      "url": "https://raw.githubusercontent.com/AMD-AGI/GEAK/ec97e49ca886f8d02f8415192fdaac45d1005d2a/interface/runtime/engine/backends/generic.mjs",
+      "bytes": 2192,
+      "sha256": "750512b0ad198b21422cd8b69a6556a3f9f20f2231d38b7eb09130c04a59e678",
+      "identity_source": "Original X2 HTTP receipt plus indexed original; no new network request",
+      "original_http_status": 200
+    },
+    {
+      "file": "x2-akg-ar-config.raw",
+      "url": "https://raw.githubusercontent.com/mindspore-ai/akg/64b84b59541c134279f5d2ee0a5f35de0ec40022/akg_agents/python/akg_agents/op/autoresearch/framework/config.py",
+      "bytes": 11087,
+      "sha256": "bf3ec6726176e378f5e12648d12992adf60bb5ad388f8b246904e6298735451f",
+      "identity_source": "Original X2 HTTP receipt plus indexed original; no new network request",
+      "original_http_status": 200
+    },
+    {
+      "file": "x2-akg-ar-prompt.raw",
+      "url": "https://raw.githubusercontent.com/mindspore-ai/akg/64b84b59541c134279f5d2ee0a5f35de0ec40022/akg_agents/python/akg_agents/op/autoresearch/agent/prompt_builder.py",
+      "bytes": 16685,
+      "sha256": "38e6fda6bf3db32b907063e1317ba657d680f114cd562c4b731d189b4253fa3b",
+      "identity_source": "Original X2 HTTP receipt plus indexed original; no new network request",
+      "original_http_status": 200
+    },
+    {
+      "file": "x2-fuser-orchestrator.raw",
+      "url": "https://raw.githubusercontent.com/meta-pytorch/KernelAgent/e0647170da36ef9b059ac0bd3d60103aa4ed378b/Fuser/orchestrator.py",
+      "bytes": 13532,
+      "sha256": "f8a29c3bcbfd63c51fe1bcd30c76f659f37c21295ac5485caf72b09f2a5e6988",
+      "identity_source": "Original X2 HTTP receipt plus indexed original; no new network request",
+      "original_http_status": 200
+    },
+    {
+      "file": "x2-fuser-worker.raw",
+      "url": "https://raw.githubusercontent.com/meta-pytorch/KernelAgent/e0647170da36ef9b059ac0bd3d60103aa4ed378b/Fuser/worker.py",
+      "bytes": 8988,
+      "sha256": "4c6162c5238fc120153fd6693973ff6d647a1c5a8713b7f645e04a2b94811283",
+      "identity_source": "Original X2 HTTP receipt plus indexed original; no new network request",
+      "original_http_status": 200
+    },
+    {
+      "file": "x2-kernelagent-worker.raw",
+      "url": "https://raw.githubusercontent.com/meta-pytorch/KernelAgent/e0647170da36ef9b059ac0bd3d60103aa4ed378b/triton_kernel_agent/worker.py",
+      "bytes": 30657,
+      "sha256": "8cdb5b2cae868a3cfa8ffaadbce06707b82f6bb094e8528e52e8c1fd49f322ca",
+      "identity_source": "Original X2 HTTP receipt plus indexed original; no new network request",
+      "original_http_status": 200
+    }
+  ],
+  "self_review": {
+    "run_id": "afc02523a0ee484eb8b12877fd42412e",
+    "status": "succeeded",
+    "decision": "approve",
+    "packet_files": 5,
+    "packet_bytes": 49861,
+    "prompt_sha256": "5e7fa6239ca2897ac8abe6167ffa7184adebf60d954b655908a1903051158a27",
+    "input_digest": "c38270522ac3e3d5a37faa3c7c5dff843a7e93126288d9e98c48bbb83ecb886f",
+    "result_sha256": "98a0486db02abfa5321daf4002e96c19e5186468cfc0a5e2511339d8ddfade60"
+  },
+  "raw_audit_sha256": "71e4a865f8e9d6116cb0be6cd99d0f0bbe377090a88da6f9afcdb7a209ae4da7",
+  "self_review_audit_sha256": "86291054464e3a478805f1aeb590b437fc3ac708470f079395020524e23f38ee",
+  "installed_test_stdout_sha256": "8000b99e9f8f21cc6d61ab78e54cf7553c7145a2b01f5259be7d766799589518",
+  "post_call_process_observation_sha256": "f120f2f4f6549f182f53f8f4fffbec2cfcfca2152bc097f49cd36e671b2cd3b6",
+  "scope": "Four real independent readonly model calls on an explicitly synthetic kernel/baseline/wrapper/gradient/native-route fixture; complete inherited resource transport and full manual original predecessor transfer to kernel and measurement. Original per-call results and measurement decision are retained. No actual native tool, generated/compiled kernel, GPU experiment, numerical/gradient/integration/quality/performance, heterogeneous-backend or adoption acceptance. Own text-only structure review covers five complete inline files. Independent review, ordinary publication and own exact-candidate CI recorded separately. No local full-suite or seven-group collection was run for this slice; process receipt is one bounded end observation."
+}

@@ -353,6 +353,22 @@
         "ergora-measurement-review-v2",
         "ergora-opt-low-precision-proposal"
       ]
+    },
+    "optimization-kernel": {
+      "description": "Kernel and wrapper proposals with fair baselines, independent correctness and measurement, and explicit native-workflow admission limits. Readonly v2 experts; original campaigns, runner, evaluator and adoption owners remain separate.",
+      "runtime": "proposal-leaves",
+      "root": "ergora-opt-kernel-proposal",
+      "agents": [
+        "ergora-experiment-designer-v2",
+        "ergora-performance-analyst-v2",
+        "ergora-kernel-designer-v2",
+        "ergora-measurement-reviewer-v2"
+      ],
+      "workflows": [
+        "ergora-training-analysis-v2",
+        "ergora-measurement-review-v2",
+        "ergora-opt-kernel-proposal"
+      ]
     }
   }
 }

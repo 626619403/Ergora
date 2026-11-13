@@ -38,3 +38,11 @@ Kernel只提出实际shape／stride／alias／packing／数值与wrapper合同�
 ## 独立终核与本地出口
 
 [独立报告](2026-11-13-optimization-low-precision-directions-review.md)核准r3完整16文件快照，manifest SHA256为`1649f21203704d58617ea681c64f1a5b772f44161676a48de54ca40b136dc68b`；五产品／测试从初始候选保持。十八固定来源、548产品／两RECORD／283、29原测试、自身原结构模板及四叶23资源63,232B、kernel两份／measurement三份完整原前驱均获独立终核。276本地目标／65锚点和diff检查通过，SP1/P3关闭，需求／可维护性开放0／0。本地只读资料出口完成；普通发布、精确远端身份和本候选自己的CI仍须分别验收，不借B2g结果关闭。
+
+## 普通发布与自己的CI
+
+最终17文件manifest SHA256为`a6d1c820d4a44e41d8574b1198e3c581bbd9f4f7794d1bd73227b75082612231`；普通提交`d683c018344fb604be115a3ed2a02bd9d50d4eff`的Git blob逐项等于ready／staged，父为8f0b580，提交后工作树清洁。普通push退出0，作者SSH完整Ref同SHA；原fresh-context评审已获原件，精确发布独立补核及本提交自己的CI分别待验。B2g自己的CI结案Markdown随本提交保存，没有借其关闭本片CI；B2i可先进行本地实现与验收。
+
+精确发布已获原独立评审补核：17Git文件／manifest／ready、父与tree、普通push和作者完整SSH Ref一致，287本地目标／65锚点及diff通过。其补核仅使用d683c01 Git树与r4原件，不把B2i工作树当成本片产品。官方Actions列表以完整commit链接绑定自己的[CI43455797163](https://github.com/626619403/Ergora/actions/runs/43455797163)，初始In progress；run原HTML／UI batch已保存并枚举八个预期job，必要步骤终态仍待核。
+
+官方第三run HTML为Success，六Linux、plan及Windows终态八job／30必要步骤均已由作者核准；完整SHA日志URL、完成标记与有序时间齐全。原fresh-context评审正在从原HTML／回执及候选Git树独立终核。前两run与前两Windows未完成、terminal-r1／r2 false保留；未在独立终核之前关闭H5。
