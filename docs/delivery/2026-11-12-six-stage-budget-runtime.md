@@ -96,3 +96,9 @@ self-review-r2-codex实际760.63秒succeeded／request-changes，Codex／medium�
 产品代码此后不变。用户手册／架构／上层计划共七文档补齐后，完整公开候选31文件做文档扩大范围独立补核；最终静态、普通提交／推送及本候选自己的必要双OS CI继续，不能借B2a CI关闭本片。下一可执行片C先设计单父／单六阶段实例的精确映射及拒绝范围，复用原creation／submission／预算和运行查询；本片不发布通用嵌套图调度或专家模板已接入的结论。
 
 完整r4扩大范围已由同片原独立两轴补核并写入[评审记录](2026-11-13-six-stage-budget-runtime-review.md)：31文件741,589B，Spec／Standards均approve、开放0／0，原发现全部关闭。七产品／十测试与r3一致，未重复模型或行为检查。模型原request-changes及不采纳理由保持。本地出口完成，以下提交与CI记录另按精确提交追加，不能由本结论推断远端或Windows已通过。
+
+## 本地提交与网络范围
+
+最终静态static-r3为31文件／314本地链接目标／六已加载秘密值issue0、空白通过；冻结ready-r1清单SHA256 `f3505cdee95b0e357567bf96e8219d94c985198c1b2c99d085e6d541e3ce7917`。普通提交为`a00896146c6499f58ae86a5b6b76fa13c3c7c796`，31件Git blob与mode逐字等于ready；同片原评审已独立核精确对象和提交内评审报告身份，详见原评审补记。
+
+首次普通SSH push在banner exchange超时exit128；第二轮45秒无返回，另用既有密钥及host-key身份经GitHub SSH443连接也在握手超时exit128。HTTPS公共仓库读取和两个远端TCP探测同期超时，尚未到密钥认证；不能称密钥失效、推送成功或远端Ref已更新。没有修改SSH配置、私钥、权限或强推。原件位于私有closure目录；自己的CI仍待成功推送后验收。网络不阻断本地C设计与实现，待连接恢复再发布该精确提交。

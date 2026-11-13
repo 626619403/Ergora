@@ -1,6 +1,6 @@
 # B2b／c 运行预算独立评审
 
-当前已完成 r4 完整 31 文件本地出口：**Standards approve、开放 0；Spec approve、开放 0**。ST1／ST2／ST3／SP1／SP2 均已修正复核关闭；r3 的 7 份产品和 10 份测试文件在 r4 逐字保持。自身模型首轮超时无判词，次轮原判词仍为 request-changes，唯一意见经独立核原合同及实际原件后不采纳，处置详见下文。普通提交／推送、精确远端 Ref 和本候选自己的必要 CI 仍待后续出口；本报告不宣称发布完成。
+当前已完成 r4 完整 31 文件本地出口：**Standards approve、开放 0；Spec approve、开放 0**。ST1／ST2／ST3／SP1／SP2 均已修正复核关闭；r3 的 7 份产品和 10 份测试文件在 r4 逐字保持。自身模型首轮超时无判词，次轮原判词仍为 request-changes，唯一意见经独立核原合同及实际原件后不采纳，处置详见下文。普通本地提交 `a00896146c6499f58ae86a5b6b76fa13c3c7c796` 的精确对象补核已通过；推送、精确远端 Ref 和本候选自己的必要 CI 仍待后续出口，本报告不宣称发布完成。
 
 以下保留各候选自己的判词与失败范围，不把后续修正追溯为旧候选通过。报告末尾的本轮状态优先于 r1／r2 中作为历史保留的开放状态。
 
@@ -195,3 +195,15 @@ r4 在原 24 文件基础上增加 `README.md`、`docs/USAGE.md`、`docs/WORKFLO
 作者静态原件 `static-r2/result.json` 对冻结 31 文件、312 个本地 Markdown 目标和六个已加载 secret 值检查，issues 为空、whitespace 通过，未新增依赖。该检查不覆盖 anchors、Mermaid 渲染、外部 URL 或运行行为，也不覆盖本次报告持久化后的新字节；后者单独核本地链接及空白。测试、安装、模型和静态通过次数均未替代独立两轴结论。
 
 本轮只读审查及本报告写入已完成，未改产品、测试、计划或其他公开文档，也未执行测试、安装、模型或网络操作。**完整本地最终两轴为 Standards 0／Spec 0；普通发布、精确 Git／远端 Ref、本候选自己的必要 CI 及相应终核仍待。** Windows 实际执行不能由本轮静态关闭或 Linux skip 证明；最终 C／D 仍沿原阶段验收，受控九 job／七 slot 旅程和局部真实 Temporal 七场景不提前关闭它们。
+
+## 普通本地提交的精确发布补核
+
+日期：2026-11-13。本次仅核已生成的 Git 对象及作者原件，不借用可能继续推进 C 的当前工作树字节，也未执行网络操作。精确提交为 `a00896146c6499f58ae86a5b6b76fa13c3c7c796`，题名 `feat: enforce shared budgets across six-stage job lifecycles`，其唯一父提交为原基线 `c46f3834df08927f7d266757c0f7d3fae8308fb8`，tree 为 `c2d54a991115abd6d65d8befdc50bc3b59ac1daf`。作者 `closure/commit.json`／stdout 保存普通 `git commit` 成功，exit 0、1.11 秒；Git 对象也独立确认该提交已经存在。
+
+协调者逐件用 `git cat-file`／`ls-tree` 核了该提交的全部 31 个变更路径，与 `.ergora/checks/six-stage-budget-runtime/closure/ready-r1/manifest.json` 及完整 `files/` 相等：共 754447 字节，blob 正文、大小、SHA256 和 `100644` 模式全部匹配，无额外变更路径。ready manifest SHA256 为 `f3505cdee95b0e357567bf96e8219d94c985198c1b2c99d085e6d541e3ce7917`，与作者 `closure/commit-identity.json` 相符。17 份产品／测试文件仍与 r4 逐字一致；相较 r4 的四份文档变化只是 PLAN／预算计划／运行记录的已完成本地出口状态，以及本报告补齐的 r3／r4 与模型处置，未引入产品变化。
+
+该提交内本报告的正文 SHA256 为 `c27efcf637ac3bab3d5aa5f75aa2b5ea99ff229c150aea1618f71c0d023fb016`，26953 字节，Git blob 为 `09952c0d2818c2db8ea34cd5b68c39b239b1bdf6`、mode `100644`，精确对应先前交回实现者的最终本地报告。这一身份不会被当前追加文字追溯改写；本节自身是后续发布记账，尚不属于 `a008961` 的正文。
+
+作者 `static-r3/result.json` 的全部 31 项路径／大小／SHA256 均与该提交对象匹配，记录 314 个本地目标、六个已加载 secret 值检查、issues 为空及 whitespace 通过。它覆盖提交时的完整报告字节；不覆盖本节新增文字，也仍不证明 anchors、Mermaid、外部 URL 或运行行为。
+
+首次作者普通推送保留于 `closure/push.json`／stdout／stderr：明确 `force=false`，目标 `HEAD:refs/heads/refactor/architecture-foundations`，15.14 秒后 exit 128，stderr 为 `Connection timed out during banner exchange`。这是 SSH banner 交换未完成的失败原件，不能记作推送通过或认证拒绝。补核时所读 `closure/push-r2.json` 仍为 `exit=null`，stdout／stderr 为空；没有可据以确认成功的第二轮终态或精确远端 Ref。本地提交身份已通过，**推送、远端完整 SHA 及本候选自己的必要 CI 继续待核**；不借 B2a 的 Ref 或双 OS 结果关闭本片。

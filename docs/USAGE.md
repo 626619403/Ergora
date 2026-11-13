@@ -562,7 +562,7 @@ ergora composition verify-manifest ./review-requirements-manifest
 
 选择需要的 `preparation.repository_paths`，纳入任务所需源码／配置；适用的 `AGENTS.md` 也受 read 上限约束。Skill 有附件时选 task-mcp，前两阶段无 shell／写／任意仓库工具。容量不足、附件读取不完整或原 inventory 产物变动会在对应阶段失败，不截断为成功。可选工单 `source` 沿原快照合同冻结，进入四类模型阶段；所有运行身份与恢复仍由原任务所有者维护。
 
-安装并重启新版 worker／executor 才能消费 v8 队列；与 v7 一样按实际冻结后端和本地执行条件准入，所需服务可显式启动 `temporal worker executor`。v8保留原阶段时限；需要从准备开始的统一预算时，按下一节显式选择v5定义／input9。可引用的原生六阶段子模板另行交付。
+安装并重启新版 worker／executor 才能消费 v8 队列；与 v7 一样按实际冻结后端和本地执行条件准入，所需服务可显式启动 `temporal worker executor`。v8保留原阶段时限；需要从准备开始的统一预算时，按下一节显式选择v5定义／input9。普通父模板内的单实例选择见下文“将六阶段作为一个子模板调用”。
 
 ### 一次授权的预算准备
 
@@ -586,6 +586,23 @@ ergora task create my-project --definition task-definition.json --revision 1 --p
 这条入口仍是原六阶段正式任务；把整个六阶段作为父图中可引用的子模板、多个native或任意混合图调度有独立的后续合同。
 
 API 对应 `POST .../tasks/prepare`（`definition/revision`）、`GET .../tasks/TASK_ID/preparation`，以及原 preview/create；v5 create 另传 `prepare_sha256`，写请求保留同源与 `X-Ergora-Request: 1`。备份需同时保留登记执行状态中的 `ergora/task-creations` 和控制目录 `operations/task-preparations`；控制库单独备份不包含全部材料。跨 boot／主机或 UTC 与单调时钟明显不一致时，新工作拒绝恢复；静态合同仍可读取。
+
+### 将六阶段作为一个子模板调用
+
+task-definition v6／正式input v10在上述预算合同中增加 `composition.native`，把普通父模板内的一次调用绑定到原六阶段任务。示例 [native-development](../examples/composition/native-development/workflow.json) 引用 [prepared-delivery](../examples/composition/prepared-delivery/workflow.json)；先按[示例依赖顺序](../examples/composition/README.md)导入准备、工作、审查包，再导入父包并生成完整manifest。
+
+保留v5的输入、预算和模式，将 `schema_version` 改为 `6`，使用父manifest的实际path／digest，并把选择路径移入该实例：
+
+```json
+{"native":{"protocol":"six-stage-v1","instance":"root/development"},
+ "review_instance":"root/development/review"}
+```
+
+上面两项写在 `composition` 内，其他必需字段见 [v6 schema](../src/ergora/data/schemas/task-definition-v6.json)。对应的 `execution.instance` 是 `root/development/work`，各unit分配到其实际Agent叶；`preparation.inventory/plan` 是 `root/development/preparation/inventory`、`root/development/preparation/plan`。`backend_overrides`也使用新的完整路径。仍须显式选择可信writer边界，并遵守执行／审查后端多样性政策。
+
+沿同一 `task prepare → preview → create → start` 操作，create仍确认prepare和preview两个摘要，随后批准原计划。升级并重启worker／executor后使用 `.composition-v10` 队列及 `requests-composition-v10` 请求根；旧版本队列和history保持。原task创建记录的 `composition.native` 保存精确父定义链，原status及终态结果的 `native_invocation` 投影同一调用；task/run/candidate、批准、取消、unknown恢复和证据仍归原所有者。
+
+首形状要求祖先只含这次调用并直接转发task及结果；work和review是所选六阶段实例的直接子模板，盘点／规划可有自己的结构包装。准备时拒绝额外父分支、第二实例、未执行的外部输入或控制依赖。内部工作／审查继续支持原有串并行DAG；这不授予任意外层图的执行权。图形任务向导目前生成原v6工作材料信封，新的v10合同使用完整JSON经CLI／HTTP提交。
 
 ### 查询正式任务运行状态
 

@@ -412,8 +412,29 @@ class BudgetedInput(FullStageMaterialsInput):
         claim_model(self.document, stage, member)
 
 
+class NativeSixStageInput(BudgetedInput):
+    """One selected template call retains the original budgeted task lifecycle."""
+
+    version = 10
+    queue_suffix = '.composition-v10'
+    requests_suffix = '-composition-v10'
+
+    @classmethod
+    def adapter(cls, config: dict):
+        from .reference_workflows import NativeSixStageAdapter
+
+        return NativeSixStageAdapter({**config, 'requests': str(cls.request_root(Path(config['requests'])))})
+
+    @classmethod
+    def workflow_type(cls):
+        from .reference_workflows import NativeSixStageWorkflow
+
+        return NativeSixStageWorkflow
+
+
 _INPUTS = {1: LegacyInput, 2: CompositionInput, 3: ReviewRequirementsInput, 4: ReviewDAGInput,
-           5: WorkDeliveryInput, 6: StageResultsInput, 7: IssueSourceInput, 8: FullStageMaterialsInput, 9: BudgetedInput}
+           5: WorkDeliveryInput, 6: StageResultsInput, 7: IssueSourceInput, 8: FullStageMaterialsInput,
+           9: BudgetedInput, 10: NativeSixStageInput}
 
 
 def workers(client, queue: str, config: dict) -> list:

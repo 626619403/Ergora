@@ -14,7 +14,7 @@ from .task_envelopes import identity
 
 
 _DEFINITIONS = {version: json.loads((Path(__file__).parent / f'data/schemas/task-definition-v{version}.json').read_text(encoding='utf-8'))
-                for version in (1, 2, 3, 4, 5)}
+                for version in (1, 2, 3, 4, 5, 6)}
 
 
 def _project(state: State, project_id: str, *, validate_runtime: bool = True) -> dict:
@@ -44,7 +44,7 @@ def _definition(state: State, project: dict, definition: dict) -> dict:
         raise ValueError('Task definition exceeds 1 MiB')
     selection = bindings.development_snapshot(project, projects.effective_configuration(project))
     result = {'definition': definition, 'selection': selection}
-    if version in (2, 3, 4, 5):
+    if version in (2, 3, 4, 5, 6):
         result['composition'] = _composition(definition, selection)
     if 'source' in definition:
         from .task_envelopes import manifest_graph
@@ -166,6 +166,10 @@ def _composition(definition: dict, selection: dict) -> dict:
             **({'preparation': {**option['preparation'], 'members': preparation}} if preparing else {}),
             'diversity': {**diversity, **({'implementer_backends': sorted(implementers)} if work else
                                         {'implementer_backend': implementer}), 'same_backend_members': same}}
+    if 'native' in option:
+        from .native_six_stage import invocation
+
+        composition['native'] = invocation(graph, option, definition['task_type'])
     if 'review_protocol' in option:
         from .task_envelopes import review_members
 
@@ -185,7 +189,7 @@ def _run_id(value: str) -> None:
 
 def preview(state: State, project_id: str, definition: dict, expected_revision: int) -> dict:
     """Compile in temporary storage and return the exact proposed task and bindings."""
-    if isinstance(definition, dict) and type(definition.get('schema_version')) is int and definition['schema_version'] == 5:
+    if isinstance(definition, dict) and type(definition.get('schema_version')) is int and definition['schema_version'] in (5, 6):
         project = _budget_project(state, project_id, definition, expected_revision)
         return reference.task_creation(project, state.root, 'preview', {'definition': definition, 'budgeted': True})
     project = _project(state, project_id)
@@ -197,7 +201,7 @@ def create(state: State, project_id: str, definition: dict, expected_revision: i
            *, prepare_sha256: str | None = None) -> dict:
     """Publish only an explicitly previewed immutable task, after saving its intent."""
     _digest(preview_sha256, 'Preview')
-    if isinstance(definition, dict) and type(definition.get('schema_version')) is int and definition['schema_version'] == 5:
+    if isinstance(definition, dict) and type(definition.get('schema_version')) is int and definition['schema_version'] in (5, 6):
         _digest(prepare_sha256, 'Preparation')
         project = _budget_project(state, project_id, definition, expected_revision)
         return task_preparation(project, state.root, 'create', {'definition': definition,
@@ -237,7 +241,9 @@ def resume_create(state: State, project_id: str, task_id: str, expected_revision
 
 def _budget_project(state: State, project_id: str, definition: dict, expected_revision: int) -> dict:
     """Only bounded input/identity admission may precede durable authorization."""
-    contracts.validate(definition, _DEFINITIONS[5], 'Budgeted task definition')
+    version = definition.get('schema_version') if isinstance(definition, dict) else None
+    schema = _DEFINITIONS[6] if type(version) is int and version == 6 else _DEFINITIONS[5]
+    contracts.validate(definition, schema, 'Budgeted task definition')
     reference_budget.validate_policy(definition['budget'])
     if len(json.dumps(definition, ensure_ascii=False, allow_nan=False).encode('utf-8')) > 1_048_576:
         raise ValueError('Task definition exceeds 1 MiB')

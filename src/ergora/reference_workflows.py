@@ -530,3 +530,26 @@ class BudgetedWorkflow(FullStageMaterialsWorkflow):
             'deadline_at': instance['deadline_at'], 'utc_observed_at': workflow.now().isoformat(),
             'work_exhausted': self.remaining() <= 0,
             'utc_overrun_seconds': max(0, -self.remaining(cleanup=True))}}
+
+
+class NativeSixStageAdapter(BudgetedAdapter):
+    envelope_version = 10
+
+
+@workflow.defn(name='ErgoraCompositionWorkflowV10')
+class NativeSixStageWorkflow(BudgetedWorkflow):
+    """Project the parent call onto the same task, run and candidate evidence."""
+
+    envelope_version = 10
+
+    @workflow.query
+    def status(self) -> dict:
+        result = super().status()
+        if self.admission is not None:
+            result['native_invocation'] = self.admission['composition']['native']
+        return result
+
+    @workflow.run
+    async def run(self, document: dict) -> dict:
+        outcome = await super().run(document)
+        return {**outcome, 'native_invocation': self.admission['composition']['native']}

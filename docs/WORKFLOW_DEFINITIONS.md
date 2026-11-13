@@ -259,7 +259,7 @@ v8 中，只要选中结构链有未内联 Skill 附件，text-only 就在创建
 
 继续使用原 `task preview/create/start`，原计划批准及候选证据入口不变。v4 也可加入与 v3 相同的可选 `source: {"snapshot_sha256": "实际快照摘要"}`，完整来源进入全部选中阶段，并保存在原 input／evidence／handoff。升级并重启 worker／executor 后才能接收 `.composition-v8` 队列；按冻结选择只检查实际依赖。图形任务向导仍生成 v6，v8 通过 CLI／共用 API 提交完整定义。
 
-此v8合同保留原阶段时限。需要材料准备、队列、人工等待、执行和收尾共用总预算时，显式使用[task-definition v5／input9](USAGE.md#一次授权的预算准备)：先prepare、确认两个摘要创建，再沿原start／批准／取消／恢复入口运行。v9拥有独立队列及专用job owner，静态图本身不授予执行权。六阶段可引用原生实例与最终完整旅程仍按其后续合同验收。旧定义／input、已冻结manifest和history不自动迁移。
+此v8合同保留原阶段时限。需要材料准备、队列、人工等待、执行和收尾共用总预算时，显式使用[task-definition v5／input9](USAGE.md#一次授权的预算准备)：先prepare、确认两个摘要创建，再沿原start／批准／取消／恢复入口运行。v9拥有独立队列及专用job owner，静态图本身不授予执行权。将六阶段置于普通父模板时使用[definition6／input10的单实例选择](USAGE.md#将六阶段作为一个子模板调用)，沿相同原task生命周期保存精确祖先链。旧定义／input、已冻结manifest和history不自动迁移。
 
 ## 完整继承与冲突
 

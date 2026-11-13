@@ -1,0 +1,45 @@
+{
+  "at": "2026-11-13T02:25:39.415365+00:00",
+  "status": "succeeded",
+  "run_id": "649ac7beb0cc46e2830912cb775e3be2",
+  "cli_exit": 0,
+  "seconds": 175.92910255724564,
+  "packet": [
+    {
+      "path": "complete-product-diff.patch",
+      "bytes": 22752,
+      "sha256": "57bbd6b92563756b2c3a8446fb4c24159627ba32dd30bf9f44cbfa08c7cb0832"
+    },
+    {
+      "path": "src/ergora/native_six_stage.py",
+      "bytes": 3695,
+      "sha256": "fd1de87829d5c4445be180600b5a1247c5b074777798a11c826cca7036b2bcbd"
+    },
+    {
+      "path": "tests/test_native_six_stage.py",
+      "bytes": 10375,
+      "sha256": "515b06b379749029640872e823dad0a57ba4578bc2ed7a0a7860c881e66470d3"
+    },
+    {
+      "path": "examples/composition/native-development/workflow.json",
+      "bytes": 1162,
+      "sha256": "0f191ddc099ccb9db07b0678fc74fb854d93fdca07abe153fb1c96476ebf1e43"
+    }
+  ],
+  "input_digest": "df8021d9d2394957f6888b12d8c0a72689077d69e2152bc983de93ff9c40c897",
+  "prompt_sha256": "c28ffd9ecb29d286191b577d188752ad6ecd167ee8abb9b6ca43f85033648545",
+  "complete_focused_text_in_stdin": true,
+  "mcp": false,
+  "scope": "Installed bundled structure template, complete focused inline packet; complete independent review separate.",
+  "decision": "approve",
+  "result_sha256": "776b43b0552a0180802b5b4c0ae617b0d57e19032ef982e579136bac9d60bb2c",
+  "prior_attempt": {
+    "status": "timed_out",
+    "seconds": 602.0616022180766,
+    "decision": null,
+    "candidate_utf8_bytes_read": 36000,
+    "candidate_bytes": 72767,
+    "sampled_processes": 4,
+    "live_sampled_processes": 0
+  }
+}

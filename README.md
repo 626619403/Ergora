@@ -172,7 +172,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1 -A
 
 开发者可用独立的[图与表单比较例子](examples/editor-comparison/README.md)复现技术选型。Node仅用于该例子构建，默认安装保持原要求；例子只编辑试验草稿，正式功能状态见[实施计划](docs/PLAN.md)。
 
-基础安装可在“Agent 与组合库”编辑字段或JSON/YAML，明确检查并发布保留原附件的新版本；也可检查和预览[可嵌套工作流定义](docs/WORKFLOW_DEFINITIONS.md)：精确引用专家或子模板，表达串并行/all-join，完整累加祖先材料并校验整链权限与总预算。`prepare-manifest`可携带完整图和全部资产，接收者独立核验后用`prepare-from-manifest`生成叶子输入。可显式准备并调用单个叶子；默认text-only，Linux的task-mcp可按授权URI读取固定Skill附件。调用前用`ergora composition check-input PROJECT DIRECTORY`查看完整祖先权限链与实际能力合同，不会启动模型或服务；真实调用会重新准入并保存同结构报告。需要从材料准备开始共用总时长时，使用[一次授权预算](docs/USAGE.md#一次授权的预算准备)的v5任务定义／input9，保留原六阶段批准与恢复。通用串行调度沿计划接入；正式开发沿原六阶段和owner批准，可运行单叶或显式all-join的多个嵌套只读审查者，分别配置必需/建议职责，入口见[正式任务手册](docs/USAGE.md#为正式任务冻结审查组合)。
+基础安装可在“Agent 与组合库”编辑字段或JSON/YAML，明确检查并发布保留原附件的新版本；也可检查和预览[可嵌套工作流定义](docs/WORKFLOW_DEFINITIONS.md)：精确引用专家或子模板，表达串并行/all-join，完整累加祖先材料并校验整链权限与总预算。`prepare-manifest`可携带完整图和全部资产，接收者独立核验后用`prepare-from-manifest`生成叶子输入。可显式准备并调用单个叶子；默认text-only，Linux的task-mcp可按授权URI读取固定Skill附件。调用前用`ergora composition check-input PROJECT DIRECTORY`查看完整祖先权限链与实际能力合同，不会启动模型或服务；真实调用会重新准入并保存同结构报告。需要从材料准备开始共用总时长时，使用[一次授权预算](docs/USAGE.md#一次授权的预算准备)的v5任务定义／input9，保留原六阶段批准与恢复。需要把六阶段作为子模板时，使用[单实例原生调用](docs/USAGE.md#将六阶段作为一个子模板调用)的definition6／input10，冻结完整父链并沿原task执行。通用外层串行调度沿计划接入；正式开发沿原六阶段和owner批准，可运行单叶或显式all-join的多个嵌套只读审查者，分别配置必需/建议职责，入口见[正式任务手册](docs/USAGE.md#为正式任务冻结审查组合)。
 
 统一注册项目可用 `ergora services status/start/stop/logs/shutdown` 显式管理 Linux/WSL2 中的所选 Supervisor 服务。版本/凭据/TCP 诊断和服务进程状态分别报告；停止需确认，未确认的结果先对账。命令、共享服务栈与日志游标见[使用手册](docs/USAGE.md#显式服务管理)。
 

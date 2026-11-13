@@ -21,7 +21,7 @@ from ergora.reference_inputs import execution_input
 payload = json.load(sys.stdin)
 sys.stdin = io.StringIO(json.dumps(payload))
 scenario = os.environ.get('ERGORA_TEST_SUBMISSION_SCENARIO', 'normal')
-selected_input = core.task_spec(payload['task_id']).get('schema_version') in (7, 8, 9)
+selected_input = core.task_spec(payload['task_id']).get('schema_version') in (7, 8, 9, 10)
 fixture = Path(payload['project']['registration']['definition']['execution']['state_directory']) / 'sdk-fixture'
 fixture.mkdir(exist_ok=True)
 server = fixture / 'server.json'

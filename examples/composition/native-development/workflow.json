@@ -1,0 +1,57 @@
+{
+  "schema_version": 2,
+  "id": "native-development",
+  "version": "1.0.0",
+  "description": "An ordinary parent forwards a single six-stage development instance to the original task owner.",
+  "resources": [
+    {
+      "id": "native-parent-context",
+      "kind": "context",
+      "path": "instructions.md",
+      "sha256": "d02aa5023a04b59156dabbb4542f0233f39b45869789a0ceb9e05ff24efc7ab3"
+    }
+  ],
+  "permissions": {
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "write": [
+      "workspace"
+    ],
+    "shell": true,
+    "network": []
+  },
+  "limits": {
+    "depth": 8,
+    "instances": 128,
+    "concurrency": 4,
+    "material_bytes": 262144
+  },
+  "inputs": [
+    "task"
+  ],
+  "outputs": {
+    "result": {
+      "node": "development",
+      "output": "result"
+    }
+  },
+  "nodes": [
+    {
+      "id": "development",
+      "ref": {
+        "kind": "workflow",
+        "id": "prepared-delivery",
+        "version": "1.0.0",
+        "digest": "ac4ee0a5bdd48095df4a07b973e0b7d2bc0200816d44eb7feab0d85cbbca3cd5"
+      },
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      }
+    }
+  ]
+}

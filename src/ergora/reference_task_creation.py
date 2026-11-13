@@ -116,7 +116,7 @@ class _Creation:
         files = {name: self.document(temporary / 'tasks' / self.task_id / name)
                  for name in _FILES if name != 'agent-bindings.json'}
         files['agent-bindings.json'] = self.payload['selection']
-        if definition['schema_version'] in (2, 3, 4, 5):
+        if definition['schema_version'] in (2, 3, 4, 5, 6):
             files['task.spec.json'] = task_envelopes.wrap(files['task.spec.json'], self.payload['composition'],
                                                        self.payload.get('issue_source'), budget=self.payload.get('budget'))
         record = {'schema_version': definition['schema_version'], 'control_home': self.payload['control_home'],
@@ -137,7 +137,7 @@ class _Creation:
         expected = {'schema_version', 'control_home', 'project', 'repo', 'project_revision',
                     'registration_sha256', 'execution', 'definition', 'files'}
         if (set(record) != expected or type(record['schema_version']) is not int
-                or record['schema_version'] not in (1, 2, 3, 4, 5) or record['schema_version'] != record['definition']['schema_version']):
+                or record['schema_version'] not in (1, 2, 3, 4, 5, 6) or record['schema_version'] != record['definition']['schema_version']):
             raise ValueError('Unsupported creation intent format')
         if (record['control_home'] != self.payload['control_home'] or record['project'] != self.project['id']
                 or record['repo'] != self.project['repo'] or record['execution'] != self.execution
@@ -151,15 +151,17 @@ class _Creation:
         self.check_size(record, _INTENT_LIMIT, 'creation intent')
         compiled = self.portable.validate_compiled(files['compiled.json'])
         spec, composition = task_envelopes.unwrap(files['task.spec.json'])
-        if spec != compiled['spec'] or (composition is not None) != (record['schema_version'] in (2, 3, 4, 5)):
+        if spec != compiled['spec'] or (composition is not None) != (record['schema_version'] in (2, 3, 4, 5, 6)):
             raise ValueError('Creation intent execution envelope differs from its original spec')
         if ('issue_source' in files['task.spec.json']) != ('source' in record['definition']):
             raise ValueError('Creation intent source differs from its versioned definition')
-        if (composition is not None and 'preparation' in composition) != (record['schema_version'] in (4, 5)):
+        if (composition is not None and 'preparation' in composition) != (record['schema_version'] in (4, 5, 6)):
             raise ValueError('Creation intent preparation differs from its versioned definition')
-        if ('budget' in files['task.spec.json']) != (record['schema_version'] == 5):
+        if ('budget' in files['task.spec.json']) != (record['schema_version'] in (5, 6)):
             raise ValueError('Creation intent budget differs from its versioned definition')
-        if record['schema_version'] == 5:
+        if (composition is not None and 'native' in composition) != (record['schema_version'] == 6):
+            raise ValueError('Creation native invocation differs from its versioned definition')
+        if record['schema_version'] in (5, 6):
             instance = files['task.spec.json']['budget']['instance']
             if (instance['scope'] != reference_budget.scope({**self.project, 'revision': record['project_revision']},
                                                           Path(record['control_home']), record['definition'])
@@ -209,6 +211,8 @@ class _Creation:
             if (composition['manifest']['digest'] != option['manifest_digest']
                     or composition['review_instance'] != option['review_instance']
                     or composition.get('review_protocol') != option.get('review_protocol')
+                    or (None if 'native' not in composition else {key: composition['native'][key]
+                        for key in ('protocol', 'instance')}) != option.get('native')
                     or (None if work is None else {key: value for key, value in work.items() if key != 'members'}) != option.get('execution')
                     or (None if preparation is None else {key: value for key, value in preparation.items() if key != 'members'}) != option.get('preparation')
                     or overrides.keys() - selected.keys() or saved_diversity != diversity):
@@ -226,7 +230,7 @@ class _Creation:
             if definition['source'] != {'snapshot_sha256': source['sha256']}:
                 raise ValueError('Creation intent source differs from its selected snapshot')
             issue_sources.bind_snapshot(source, record['project'], configuration['layers']['tracker']['binding'], request['tracker'])
-        if record['schema_version'] in (3, 4, 5):
+        if record['schema_version'] in (3, 4, 5, 6):
             # Inventory has no dynamic receipts or approval yet, so its exact
             # complete context is known before publication. Later stages keep
             # their original complete-material checks as results arrive.
@@ -277,7 +281,7 @@ class _Creation:
                 'compiled_sha256': self.sha(record['files']['compiled.json']),
                 'agent_bindings': record['files']['agent-bindings.json'],
                 **({'composition': task_envelopes.summary(record['files']['task.spec.json'])}
-                   if record['schema_version'] in (2, 3, 4, 5) else {})}
+                   if record['schema_version'] in (2, 3, 4, 5, 6) else {})}
 
     def publish(self, record: dict, *, save_intent: bool) -> dict:
         self.check_registration()
@@ -481,7 +485,7 @@ class _Creation:
                         or current.get('registration') != self.project['registration']):
                     raise ValueError('Project revision changed before budget publication')
             record = self.prepared_record() if operation in ('preview', 'create') else self.load()
-            if record is None or record['schema_version'] != 5:
+            if record is None or record['schema_version'] not in (5, 6):
                 raise ValueError('Budget operation requires the original budgeted preparation')
             instance = record['files']['task.spec.json']['budget']['instance']
             self.active_budget = instance
@@ -521,7 +525,7 @@ class _Creation:
             return self.budget_run()
         if operation == 'preparation':
             return self.preparation()
-        if self.payload.get('definition', {}).get('schema_version') == 5:
+        if self.payload.get('definition', {}).get('schema_version') in (5, 6):
             raise ValueError('Budgeted creation requires its original preparation owner')
         if operation in ('create', 'resume') and self.prepare_path.exists():
             raise ValueError('Task ID has an original budget preparation; use its original preparation owner')
@@ -548,7 +552,7 @@ class _Creation:
                 if self.sha(saved) != self.payload['intent_sha256']:
                     raise ValueError('Creation intent digest changed; inspect the original intent before resuming')
                 record = saved
-                if record['schema_version'] == 5:
+                if record['schema_version'] in (5, 6):
                     raise ValueError('Budgeted recovery requires its original preparation owner')
             elif saved is not None:
                 if self.sha(saved) != self.sha(record):

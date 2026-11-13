@@ -315,3 +315,20 @@ flowchart LR
 Executor安装级并发取持久OWNED与本进程active的并集；重启只观察原attempt，unknown／rejected不退款。已链接receipt但账本未更新的原job仍进入对账，不能因receipt存在永久跳过。单次request入口沿同一容量门禁；没有另建调度器或表。现有版本的调度、终态与冻结参考保持；可信当前容器仍不是本工具提供的OS隔离。
 
 统一预算只覆盖单机／同boot的原六阶段输入，原生嵌套六阶段调用另片；trusted writer的advisory能力保持。当前图形向导仍生成v6；新合同从CLI／共用API使用。材料传递和原生夹具的实际验收见[B1交付](../delivery/2026-11-12-six-stage-materials.md)，不得借旧候选结果推导新版本成功。
+
+
+## 单实例原生六阶段 input10
+
+`tasks`与`task_envelopes`共用纯stdlib `native_six_stage.invocation`，从既有WorkflowDefinition的完整图核单次调用形状及精确祖先链；definition6/input10不引入新图格式。父链只能直接转发task和结果，全部阶段属于同一所选实例，原WorkDelivery继续拥有叶覆盖、角色和依赖核验。原creation保存完整定义、项目revision、baseline、能力和同一预算；新WorkflowInput实现注册独立版本的queue、请求根、adapter和workflow。
+
+```mermaid
+flowchart LR
+  Parent[普通父模板及精确祖先链] --> Native[一个原生六阶段实例]
+  Native --> Prepare[原prepare / 双摘要create]
+  Prepare --> Submit[原start / 同一task与run]
+  Submit --> Run[原预算Temporal及job owner]
+  Run --> Candidate[原候选 / receipt / evidence]
+  Candidate --> Projection[父调用只读结果投影]
+```
+
+`NativeSixStageWorkflow`继承BudgetedWorkflow，只为原status/outcome追加`native_invocation`；没有新的父执行状态、调度或批准。单实例内部的准备/工作/审查仍沿原阶段消费者；多次native、额外父分支和未执行外部输入在原prepare内失败。完整用法见[单实例说明](../USAGE.md#将六阶段作为一个子模板调用)。
