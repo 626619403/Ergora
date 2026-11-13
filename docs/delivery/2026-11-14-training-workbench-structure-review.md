@@ -64,3 +64,34 @@ r1实际浏览器1440／960／390三视口的整页无横向溢出成绩保留�
 `browser-cleanup-r3.json` 明确记录旧／新演示controller及监听均已停止、浏览器CLI已关闭、18原件保持。实际process记录为受控取消、returncode=-9；这是本地演示Web进程的停止收尾，不证明原训练作业停止或取消结果。已核[可公开验收摘要](evidence/2026-11-14-training-workbench.json)的分轮身份、数字及范围与所读原件一致；摘要保留分轮候选和原request-changes，未含原始缓存或本机绝对路径。
 
 本轴最终本地出口通过：2条P2关闭、开放0；无额外结构／性能／冗余 finding。普通发布、本候选自己的CI和需求轴最终结论仍由所属记录单独收口，不能借H3b或其他候选成功。F9b–d、真实B3、完整C2、跨平台实际运行与完整F9均不由本报告关闭。
+
+## 精确发布身份补核（CI待验）
+
+本次仅使用 `git show 8182499fa46c61adecea2f6defd2c777a433eed5:PATH` 与原提交／推送／远端Ref记录核对已发布候选，没有使用其后 F9b1 工作树的产品内容。该提交父对象恰为本片基线 `47443840b68693f63ee011dc6fbe29421a42223f`；本轴独立重读23个 Git blob，文件集合、逐文件字节数及SHA256均与冻结 `static-r2.json` 完全相同。9个产品／测试／CI文件的包摘要按原算法从这些 Git blob 重算为 `842507cbc547d9f9937f4eeca9ea8c2d17c9f18464972cbab90bbd3f1ea094cf`，与本地已验候选一致。静态原件另记录217个本地链接无坏链、无列出的机器私有标识、diff检查通过；邻片H3b状态文件仍仅作记账。
+
+`commit-r1.json`、`push-r1.json` 与 `ref-r1.json` 已核：普通推送退出0，推进开发分支 `refactor/architecture-foundations`；随后的精确 `ls-remote` 退出0，完整远端Ref为 `8182499fa46c61adecea2f6defd2c777a433eed5`。这证明该时点的精确发布身份与已审包相符，不证明远端Ref永远不变。
+
+本轴发布身份补核通过，维持2条P2关闭、开放0。该候选自己的CI仍待验；没有原HTTP终态原件前不预判成功，不以本地出口或旧候选CI代替。F9b1及其他后续片不在本次补核范围。
+
+## 本候选 CI 与精确发布终核
+
+本节收口上文历史“CI待验”。已独立核 [Portability run 43500423499](https://github.com/626619403/Ergora/actions/runs/43500423499) 的原始官方 HTML `ci-run-html-r4`，状态为 Success，提交链接为完整 `8182499fa46c61adecea2f6defd2c777a433eed5`。原HTTP为200、实际213,211B，重算SHA256 `8ae430a89141444f5dd522534911400351df9231b16032e79d37562c1b63f66e` 与receipt及 `ci-parsed-r3.json` 一致。
+
+本轴从该提交的 `.github/workflows/portability.yml` 及 Linux分组 Git blob 确定应有 plan、6个Linux分组与1个Windows job，再独立解析8份 job 原HTML，而非只接受作者parser结论。9份run／job原HTTP的官方URL、200状态、实际长度和SHA256逐份匹配；plan为158,751B，6份Linux各162,441B。最终Windows原件 `ci-job-132144516729-html-r3` 为160,022B，SHA256 `3c6ae41e754c04546e32dbed84787d63ecaa2d7b9eeed1f0e00f7843176008a0`。另核最初UI job批次原JSON的长度／摘要与8个job身份对应；早期 in_progress 只作身份来源，终态取各job后续原HTML。
+
+全部30个必要步骤均为 success，存在完成时间及 job-completed 标记，开始不晚于完成；每个原 `data-log-url` 均精确为 `/626619403/Ergora/commit/8182499fa46c61adecea2f6defd2c777a433eed5/checks/JOB_ID/logs/STEP_NUMBER`。逐步名称、时间和日志路径与解析摘要一致；其中Windows另包含 PowerShell 5.1安装／升级步骤。
+
+|job|原job ID|必要步骤|最后必要步骤完成时间（UTC）|
+|---|---|---|---|
+|plan|132144429432|1|2026-11-13 20:19:09|
+|Linux group 0|132144516728|4|2026-11-13 20:22:52|
+|Linux group 1|132144516627|4|2026-11-13 20:24:33|
+|Linux group 2|132144516649|4|2026-11-13 20:23:04|
+|Linux group 3|132144517006|4|2026-11-13 20:21:37|
+|Linux group 4|132144517189|4|2026-11-13 20:23:11|
+|Linux group 5|132144516667|4|2026-11-13 20:23:35|
+|Windows all|132144516729|5|2026-11-13 20:35:45|
+
+终核再次从候选 Git blob 重算9文件产品包摘要 `842507cbc547d9f9937f4eeca9ea8c2d17c9f18464972cbab90bbd3f1ea094cf`，并核原普通推送与完整远端Ref回执，均绑定同一完整候选。当前HEAD亦为该提交；未用F9b1未提交产品替换证据。本次只读原件与Git对象，没有重跑测试、模型或服务，也没有下载／核验artifact压缩包内容。
+
+本轴 F9a 精确发布及自己的CI终核通过，2条P2关闭、开放0。此结论不代表需求轴也已补核CI；其状态由原需求报告独立登记。F9b–d、真实B3、完整C2及未验的执行／GPU／采用范围保持开放。

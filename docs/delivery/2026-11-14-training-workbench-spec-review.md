@@ -38,3 +38,9 @@ r1 精确15文件清单／完整SHA在私有 `review-r1-files.json`（SHA256 `64
 - **自身模板**：r2完整11文件187,590B、r3完整六前端25,122B逐文件SHA已核；实际stdin与prompt逐字一致，三项祖先资源完整进入stdin。原result及持久run result逐字／SHA匹配，分别23.977秒和23.370秒 `approve`。两次仅为所给源码的原模板审查；Codex授权回退与首轮request-changes保留，不扩大为异后端或独立执行验收。
 
 **需求与行为轴本地出口通过，开放finding 0。** 维护性结论见另一独立报告；本报告未核定普通发布、精确远端身份或本候选自己的CI，这些仍须随后补核。[公开验收摘要](evidence/2026-11-14-training-workbench.json)与已查原件范围一致。所有状态仍为原件观察：`not_queried`、started、runner SUCCEEDED和gate摘要SHA匹配均不证明实时运行、重新独立测量或采用。没有Temporal workflow、runner执行、MLflow查询、真实模型／数据、GPU、统计或采用验收；F9b–d、真实B3和完整C2保持开放。
+
+## 发布身份补核
+
+审查对象为已提交的 `8182499fa46c61adecea2f6defd2c777a433eed5` Git对象，唯一父提交为原基线 `47443840b68693f63ee011dc6fbe29421a42223f`。本轮逐项读取该候选23个变更Git blob，与 `static-r2.json` 冻结的长度／SHA全部一致；其中9个产品／测试／CI文件的packet SHA256独立重算为 `842507cbc547d9f9937f4eeca9ea8c2d17c9f18464972cbab90bbd3f1ea094cf`，对应本片最终本地验收身份。候选内217个相对Markdown链接目标均存在，约定机器私有标识扫描无命中，候选相对基线的 `diff --check`通过。H3b报告状态追加仍按原片记账；后续F9b1工作树不在本次审查范围。
+
+已读 `commit-r1.json`、`push-r1.json`、`ref-r1.json` 原件：普通push退出0，记录的完整远端 `refs/heads/refactor/architecture-foundations` 为上述完整候选SHA；没有force参数。**本轴提交／普通推送身份核对通过，开放finding 0。** 本候选自己的CI最终证据尚未核定，不据此判CI或整体发布终验通过。

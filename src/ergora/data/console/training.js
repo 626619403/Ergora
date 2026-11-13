@@ -27,6 +27,26 @@ export function trainingView(data, base) {
       if (!active() || sequence !== detailSequence) return;
       const item = observed.experiment;
       const gate = item.recorded_gate;
+      const live = node("div", { "aria-live": "polite" }, empty("尚未实时查询。"));
+      let runtimeSequence = 0;
+      async function queryRuntime() {
+        const attempt = ++runtimeSequence;
+        live.replaceChildren(empty("正在查询原运行状态…"));
+        try {
+          const result = await api(`${base}/training/${encodeURIComponent(id)}/status`);
+          if (!active() || sequence !== detailSequence || attempt !== runtimeSequence) return;
+          live.replaceChildren(result.runtime_status === "not_found"
+            ? empty("原运行时明确未找到该工作流；本次查询没有提交实验。")
+            : node("div", {}, table(["实时查询", "结果"], [
+              ["原工作流", result.workflow_id], ["原运行 ID", result.run_id],
+              ["控制工作流状态", result.temporal_status], ["原实验阶段", result.phase],
+              ["控制工作流已结束", result.terminal ? "是；外部作业停止仍须核对" : "否"],
+            ]), node("details", {}, node("summary", {}, "完整运行状态"), pre(result))));
+        } catch (error) {
+          if (active() && sequence === detailSequence && attempt === runtimeSequence)
+            live.replaceChildren(panel("未取得实时状态", error.message));
+        }
+      }
       detail.replaceChildren(panel(`实验 ${item.experiment_id}`, "这些是原记录；运行状态未实时查询，统计和正确性未重新复验，也未授予采用。",
         table(["记录", "值"], [
           ["原作业 ID", item.job_id || "尚未读到作业请求"],
@@ -40,7 +60,8 @@ export function trainingView(data, base) {
           ["排队加执行窗口（秒）", item.max_run_seconds],
         ]),
         node("details", {}, node("summary", {}, "完整原件与文件摘要"), pre(observed)),
-      ));
+      ), panel("原运行状态", "点击后查询一次原工作流。查询不会启动、取消或批准训练，负结果与未确认取消会原样保留。",
+        live, button("查询原运行状态", queryRuntime)));
     } catch (error) {
       if (active() && sequence === detailSequence)
         detail.replaceChildren(panel("未取得一致的实验记录", error.message,

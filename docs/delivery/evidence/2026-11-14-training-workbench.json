@@ -85,6 +85,25 @@
       "result_sha256": "1c34e2d73b59b4e47c1ae879e548951eb8566df2dc04d837771bf414dafe7f77"
     }
   ],
-  "independent_reviews": "Two fresh-context directions verified fixes, r2 core and r3 final package/browser/native/self-review evidence; local exit passed with zero open findings. Exact publication and own CI pending.",
-  "scope": "Offline original registry navigation and native CPU prepare/job receipt/fence only; no Temporal workflow, runner execution, MLflow query, model workload, GPU, statistics, adoption or cross-backend diversity claim."
+  "independent_reviews": "Two fresh-context directions verified fixes and all final local evidence with zero open findings, then exact commit/push/ref identity. The original structural reviewer additionally verified this candidate own CI: 8 jobs and 30 required steps; no spec-axis CI recheck claim.",
+  "scope": "Offline original registry navigation and native CPU prepare/job receipt/fence only; no Temporal workflow, runner execution, MLflow query, model workload, GPU, statistics, adoption or cross-backend diversity claim.",
+  "publication": {
+    "commit": "8182499fa46c61adecea2f6defd2c777a433eed5",
+    "ordinary_push": true,
+    "exact_remote_ref_verified": true,
+    "changed_files": 23,
+    "product_packet_sha256": "842507cbc547d9f9937f4eeca9ea8c2d17c9f18464972cbab90bbd3f1ea094cf"
+  },
+  "own_ci": {
+    "run_id": 43500423499,
+    "conclusion": "Success",
+    "jobs": 8,
+    "required_steps": 30,
+    "required_steps_passed": true,
+    "platforms": [
+      "ubuntu-latest / Python 3.11",
+      "windows-latest / Python 3.12"
+    ],
+    "source": "Official public Actions UI HTML with exact full-SHA log paths; no artifact archive download claim."
+  }
 }

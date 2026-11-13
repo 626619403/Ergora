@@ -87,11 +87,14 @@ def template_details(kind: str) -> dict:
             "input": json.loads((directory / "input.json").read_text(encoding="utf-8"))}
 
 
-def validate_installation(installation: Path) -> Path:
+def validate_installation(installation: Path, *, training: bool = False) -> Path:
     installation = installation.expanduser().resolve(strict=True)
     manifest = json.loads((DATA / "reference-manifest.json").read_text(encoding="utf-8"))
+    prefixes = ("platform/local/", "platform/upstream/platform/")
+    if training:
+        prefixes += ("platform/upstream/temporal/perf_temporal/",)
     for relative, expected in manifest["files"].items():
-        if relative.startswith(("platform/local/", "platform/upstream/platform/")) and relative.endswith(".py"):
+        if relative.startswith(prefixes) and relative.endswith(".py"):
             file = installation / relative.removeprefix("platform/")
             if not file.is_file() or file.is_symlink() or hashlib.sha256(file.read_bytes()).hexdigest() != expected:
                 raise ValueError(f"Unsupported reference runtime identity: {relative}")
@@ -349,6 +352,31 @@ def training_files(project: dict, *, experiment_id: str | None = None, limit: in
     if result.returncode:
         lines = result.stderr.strip().splitlines()
         raise ValueError(lines[-1] if lines else f'Training record reader exited with status {result.returncode}')
+    return json.loads(result.stdout)
+
+
+def training_runtime_status(project: dict, spec: dict, *, run_id: str | None, timeout: int) -> dict:
+    """Explicitly query the native training workflow, pinned to its original input."""
+    if importlib.util.find_spec('temporalio') is None:
+        raise ValueError('Training runtime queries require the optional Temporal SDK; install ergora[temporal] in this environment')
+    execution = project['registration']['definition']['execution']
+    installation = validate_installation(Path(execution['installation']), training=True)
+    environment = dict(os.environ, PYTHONDONTWRITEBYTECODE='1', PYTHONUTF8='1',
+                       AGENTFLOW_CONFIG_DIR=execution['config_directory'],
+                       AGENTFLOW_STATE_DIR=execution['state_directory'])
+    environment['PYTHONPATH'] = os.pathsep.join(map(str, (
+        Path(__file__).parent.parent, installation / 'local', installation / 'upstream/platform',
+        installation / 'upstream/temporal')))
+    try:
+        result = subprocess.run([sys.executable, '-P', '-c',
+                                 'from ergora.reference_training_runtime import main;main()'],
+                                input=json.dumps({'spec': spec, 'run_id': run_id, 'timeout': timeout}, allow_nan=False),
+                                capture_output=True, text=True, encoding='utf-8', env=environment, timeout=timeout + 5)
+    except subprocess.TimeoutExpired as error:
+        raise ValueError('Training runtime query process timed out; execution state remains unknown') from error
+    if result.returncode:
+        lines = result.stderr.strip().splitlines()
+        raise ValueError(lines[-1] if lines else f'Training runtime query process exited with status {result.returncode}')
     return json.loads(result.stdout)
 
 

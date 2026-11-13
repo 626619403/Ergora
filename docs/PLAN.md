@@ -4,13 +4,13 @@
 
 ## 当前检查点
 
-开发分支 `refactor/architecture-foundations`；H3b 产品 `47443840b68693f63ee011dc6fbe29421a42223f` 已普通推送、完整远端Ref一致，自己的 CI `43495562208` Success（8 job／30必要步骤）及原独立两轴终核通过。F9a只读训练工作台已实现；r1安装121项、修后r2安装33项、原生CPU读取及自身r2 approve／两独立源码复核已过，r3最终包／浏览器／聚焦自身approve也已验，新的独立两轴本地终核通过、开放0／0，正在发布并核本片自己的CI。普通推送当前分支，不合入 `main`。
+开发分支 `refactor/architecture-foundations`；H3b 产品 `47443840b68693f63ee011dc6fbe29421a42223f` 已普通推送、完整远端Ref一致，自己的 CI `43495562208` Success（8 job／30必要步骤）及原独立两轴终核通过。F9a只读训练工作台已实现；r1安装121项、修后r2安装33项、原生CPU读取及自身r2 approve／两独立源码复核已过，r3最终包／浏览器／聚焦自身approve也已验，新的独立两轴本地终核通过、开放0／0，产品 `8182499fa46c61adecea2f6defd2c777a433eed5` 已普通推送并核完整远端Ref，自己的CI `43500423499` Success（8 job／30必要步骤），原独立结构轴精确终核通过。普通推送当前分支，不合入 `main`。
 
 |节点|实际状态|接续动作与权威记录|
 |---|---|---|
 |S1 工程 Skill|两标准 Skill、`refactoring-quality`／`optimization-performance-diagnosis` 已发布；561 产品／两 RECORD／283 冻结、33 安装测试、四实际只读叶、自身原结构模板及新 fresh-context 两轴通过；原23条目保持，共25 preset|自己的 CI `43485238011`：第五官方run HTML Success，八job／30必要步骤及十八原HTTP获原独立终核通过，精确交付完成。[计划](plans/2026-11-14-engineering-skills.md)／[交付](delivery/2026-11-14-engineering-skills.md)／[评审](delivery/2026-11-14-engineering-skills-review.md)|
 |W1 真实参考源码试用|固定十三源码／93,748B；Ergora design 142.704秒、profile 138.210秒、measurement 91.065秒均成功。原源码、两完整前驱JSON、十五inline／六参考12,954B的实际交付已核|精确文档发布 `6796609` 及原独立发布终核通过、开放0／0；measurement保留补证据的`request-changes`。无产品变化，不新增CI成功主张。[计划](plans/2026-11-14-workload-source-trial.md)／[交付](delivery/2026-11-14-workload-source-trial.md)／[评审](delivery/2026-11-14-workload-source-trial-review.md)|
-|F9a 训练实验只读工作台|r1六suite121通过；修后r2三suite33通过，r3最终563／两RECORD／283、原生18件保持、实际浏览器两交错／三视口、自身核心及展示approve、新独立两轴本地终核通过，开放0／0|普通发布与自己的CI待终验；下片F9b先接原生实时查询。[计划](plans/2026-11-14-training-workbench.md)／[交付](delivery/2026-11-14-training-workbench.md)|
+|F9a 训练实验只读工作台|r1六suite121通过；修后r2三suite33通过，r3最终563／两RECORD／283、原生18件保持、实际浏览器两交错／三视口、自身核心及展示approve、新独立两轴本地终核通过，开放0／0|`8182499`已推送、精确Ref一致；自己的CI `43500423499`八job／30必要步骤成功、原结构轴终核通过。F9b1接原生实时查询。[计划](plans/2026-11-14-training-workbench.md)／[交付](delivery/2026-11-14-training-workbench.md)|
 |F8-H3a 归档读取|`560bfdf`精确交付完成；r3包551／两RECORD／283、安装60项、两原生历史逐字分页及网页生命周期通过；自身approve、新独立两轴及自己的CI `43481386288`八job／30必要步骤终核通过|原三P2及首修失败保留并已修正；只提供归档观察。[计划](plans/2026-11-14-harness-session-readback.md)／[交付](delivery/2026-11-14-harness-session-readback.md)／[接缝](architecture/2026-11-14-harness-session-seam.md)|
 |F8-H2 真实后端|`322007f`精确交付完成：显式Responses、真实只读调用／完整资源链、自身及新独立两轴、自己的CI `43475349587`通过；原completions HTTP400保留|不等于续接、OpenHands受限准入或workspace支持。[计划](plans/2026-11-14-harness-real-model.md)／[交付](delivery/2026-11-14-harness-real-model.md)|
 |C2.1 Forge身份准入|`a0a42ba`精确交付完成；原kernel owner包／scripts Git身份门禁、安装23通过／9跳过、自身回退、新独立两轴及自己的CI通过|完整C2开放，不关闭原`failIfUnavailable`绕过隔离限制。[计划](plans/2026-11-14-forge-native-admission.md)／[交付](delivery/2026-11-14-forge-native-admission.md)|
@@ -20,7 +20,7 @@ W1仅验源码提案与交接：共享仓库HEAD／213条status字节保持，�
 ## 下一可执行项
 
 1. **F8-H3b实际续接**：精确交付完成，自己的CI与原独立两轴终核通过，详见[计划](plans/2026-11-14-harness-session-continuation.md)／[交付](delivery/2026-11-14-harness-session-continuation.md)。r3包561／两RECORD／283、安装133通过／12跳过；实际SDK四场景与真实模型两调用成功、自身approve。原两个P2及失败保留并已修复。冻结原项目／资料／权限／后端／schema，原home／cwd／session不分叉；unknown不自动重发，正式恢复归原owner。
-2. **F9实验导航**：已按[F9a–d计划](plans/2026-11-14-training-workbench.md)拆分，先实现原实验的项目级只读CLI／HTTP／页面，再接原owner操作、精确证据采用与真实旅程；进度见[交付](delivery/2026-11-14-training-workbench.md)。将既有workload、baseline、experiment、可信runner、compare／gate、MLflow及Forge交接接到同一入口；复用原训练owner和账本。CPU合同与真实GPU分别验收。
+2. **F9实验导航**：F9a精确发布／自己的CI与原结构轴终核通过；F9b1已实现，r1安装564／两RECORD／283、48项通过，原生同一run实时负结果与离线取消区分、浏览器三交错／三视口和收尾通过；自身approve、独立两轴最终本地补核通过、开放0／0，普通发布／自己的CI待验。当前活动片为[F9b1实时查询](plans/2026-11-14-training-runtime.md)／[交付](delivery/2026-11-14-training-runtime.md)。已按[F9a–d计划](plans/2026-11-14-training-workbench.md)拆分，先实现原实验的项目级只读CLI／HTTP／页面，再接原owner操作、精确证据采用与真实旅程；进度见[交付](delivery/2026-11-14-training-workbench.md)。将既有workload、baseline、experiment、可信runner、compare／gate、MLflow及Forge交接接到同一入口；复用原训练owner和账本。CPU合同与真实GPU分别验收。
 3. **F10受评价改进**：沿记忆／Skill／评价／采用owner，补正式任务可选冻结、来源／失效／容量可见及复盘候选／明确采用回退。复用AC3资料合同，不让生成器改可信评价或扩大权限，见[总计划F10](plans/2026-11-01-all-in-one.md#8-p1低代码更多真实工具与演进闭环)。
 4. **G1集成交接**：开发／治理／训练公开旅程，核新安装、配置、角色替换、工单、演进、旧项目升级／回退、跨机重建；更新[架构](architecture/current.md)、README、[使用手册](USAGE.md)、[训练手册](TRAINING.md)与Windows手册，再完成相关完整回归、独立审查与推送。U3日常安装只覆盖其精确旧包，不代表S1等新包已升级。
 

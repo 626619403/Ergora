@@ -34,7 +34,7 @@ init / runner-add → prepare → worker-start → start
 
 ## 在控制台查看原实验
 
-先按[项目登记说明](USAGE.md)用 `project register` 登记已有 Git 项目，选择 `training-optimization`，并指定原生参考安装、配置和执行状态目录。已有原实验保留原目录与身份，无需导入另一份实验数据库。基础安装的查询不要求启动 Temporal、MLflow 或 GPU；完整训练执行仍按上一节配置。
+先按[项目登记说明](USAGE.md)用 `project register` 登记已有 Git 项目，选择 `training-optimization`，并指定原生参考安装、配置和执行状态目录。已有原实验保留原目录与身份，无需导入另一份实验数据库。基础安装的列表／详情不要求启动 Temporal、MLflow 或 GPU；显式实时查询和完整训练执行分别按下文及上一节配置。
 
 ```bash
 ergora training list my-project --limit 20
@@ -48,7 +48,20 @@ CLI、页面和 `GET /api/projects/{project}/training[/{experiment_id}]` 共用�
 
 原作业请求中的冻结 runner 或当前 runner 至少保留一份，用于核对项目和 Git 根；两者均缺失时明确报告归属无法核实。配置目录与状态目录可以共用同一文件夹，仍分别标记两种资料来源。
 
-所有响应保留 `runtime_status: not_queried`。开始文件存在不能证明作业仍在运行，未读到结果也不能判为失败；`recorded_result_state: SUCCEEDED` 只描述原执行结果，门禁仍可能失败。门禁摘要核对原 result 引用的 report SHA 与 manifest／job binding，但不会重新执行统计、正确性或质量评价。详情没有自动批准、重提或停止操作；查询当前状态、取消、对账和精确 evidence SHA 批准仍沿原 `agentflow training` 流程。
+上述离线列表／详情保留 `runtime_status: not_queried`。开始文件存在不能证明作业仍在运行，未读到结果也不能判为失败；`recorded_result_state: SUCCEEDED` 只描述原执行结果，门禁仍可能失败。门禁摘要核对原 result 引用的 report SHA 与 manifest／job binding，但不会重新执行统计、正确性或质量评价。详情没有自动批准、重提或停止操作；取消、对账和精确 evidence SHA 批准仍沿原 `agentflow training` 流程。
+
+### 显式查询原运行状态
+
+在运行 Ergora 的环境安装 `temporal` extra（从仓库安装时使用 `python -m pip install ".[web,temporal]"`），并按完整参考手册启动同一原生 Temporal 服务与训练控制 worker。已有实验无需重新提交；连接环境沿已登记的参考安装。
+
+```bash
+ergora training status my-project EXPERIMENT_ID --timeout 20
+ergora training status my-project EXPERIMENT_ID --run-id ORIGINAL_RUN_ID
+```
+
+页面先选择实验，再点击“查询原运行状态”；`GET /api/projects/{project}/training/{experiment_id}/status` 使用相同语义，支持可选 `run_id` 与1–60秒 `timeout`。没有自动轮询。查询先核原manifest／spec及仓库归属，再核原工作流第一历史事件中的完整Experiment输入，固定实际run ID读取原Status或Outcome；SDK和新增使用的原生源码均须匹配受支持版本。
+
+`runtime_status: queried`只证明本次取得绑定的原运行时事实，`not_found`仅来自原运行时明确的不存在答复。缺历史、输入或binding不一致、网络错误和超时会直接报错，不会回退为本地“运行成功”或自动重提。`GATE_FAILED`、`CANCEL_UNCONFIRMED`等原结果保留；控制工作流结束不等于外部作业已停止，集成票据也不表示自动合并。列表／详情的已保存证据仍单独显示，实时查询不会重算门禁、批准或修改训练原件。
 
 ## 从专家提案填写原实验合同
 

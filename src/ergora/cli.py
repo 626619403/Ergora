@@ -462,7 +462,7 @@ def parser() -> argparse.ArgumentParser:
     preview.add_argument("--history-offset", type=int, default=0, help="Byte offset returned by the previous history page")
     preview.add_argument("--history-limit", type=int, default=65536, help="UTF-8 byte window, 4–65536 bytes")
     preview.add_argument("--history-revision", help="Observation revision required after the first history page")
-    experiments = commands.add_parser("training", help="Read original training contracts and recorded evidence without querying or executing jobs")
+    experiments = commands.add_parser("training", help="Read original training records or explicitly query their native runtime")
     operations = experiments.add_subparsers(dest="operation", required=True)
     for name in ("list", "show"):
         operation = operations.add_parser(name)
@@ -472,6 +472,11 @@ def parser() -> argparse.ArgumentParser:
         else:
             operation.add_argument("--limit", type=int, default=50)
             operation.add_argument("--after", help="Directory cursor from the previous page")
+    live = operations.add_parser("status", help="Query the original workflow; never start, cancel or approve an experiment")
+    live.add_argument("project")
+    live.add_argument("experiment_id")
+    live.add_argument("--run-id", help="Pin the query to an existing native run ID")
+    live.add_argument("--timeout", type=int, default=20)
     kernels = commands.add_parser("kernel", help="Native ForgeKernel campaigns; independent project validation still required")
     operations = kernels.add_subparsers(dest="operation", required=True)
     for name in ("plan", "prepare", "list", "run", "status"):
@@ -888,8 +893,11 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(output, ensure_ascii=False, indent=2))
             return 0 if args.operation != "run" or output["status"] == "succeeded" else 1
         elif args.command == "training":
-            output = training.inspect(State(args.home), args.project, getattr(args, "experiment_id", None),
-                                      limit=getattr(args, "limit", 50), after=getattr(args, "after", None))
+            if args.operation == "status":
+                output = training.status(State(args.home), args.project, args.experiment_id, run_id=args.run_id, timeout=args.timeout)
+            else:
+                output = training.inspect(State(args.home), args.project, getattr(args, "experiment_id", None),
+                                          limit=getattr(args, "limit", 50), after=getattr(args, "after", None))
         elif args.command == "kernel":
             state = State(args.home)
             if args.operation == "list":

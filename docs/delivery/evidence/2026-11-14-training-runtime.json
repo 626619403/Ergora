@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "baseline": "8182499fa46c61adecea2f6defd2c777a433eed5",
+  "wheel_sha256": "7ac58997490fac91b3ed15d75f6a5c13b7f36b3b4a517b7dcb069f3295e59adf",
+  "source_wheel_installed_equal": 564,
+  "wheel_and_installed_records_verified": true,
+  "frozen_reference_files": 283,
+  "installed_regression": {
+    "passed": 48,
+    "pytest_seconds": 54.67,
+    "process_seconds": 56.437748843804
+  },
+  "native_cpu": {
+    "workflow_id": "perf-experiment/native-runtime",
+    "run_id": "01a1d697-a2a0-7d4d-9a52-37e76b5bc8ad",
+    "initial_observation": "not_found",
+    "running_phase": "QUEUED",
+    "saved_executor_result": "CANCELLED",
+    "original_domain_outcome": "CANCEL_UNCONFIRMED",
+    "same_original_run_recovered": true,
+    "start_and_cancel_not_repeated": true,
+    "original_history_events": 42,
+    "history_sha256": "3c051d136e32d298ad026e1a1d875742d7d4f9beabfe2438f50d79ed75484e4b",
+    "complete_original_input_verified": true,
+    "original_files_unchanged_by_queries": 21
+  },
+  "browser": {
+    "no_runtime_query_during_initial_navigation": true,
+    "original_outcome_and_offline_record_separate": true,
+    "late_runtime_after_project_switch": "passed",
+    "late_runtime_after_detail_reselection": "passed",
+    "older_runtime_after_newer_runtime": "passed",
+    "viewports": [
+      [
+        1440,
+        1000
+      ],
+      [
+        960,
+        800
+      ],
+      [
+        390,
+        844
+      ]
+    ],
+    "no_page_horizontal_overflow": true,
+    "get_http200_requests": 45,
+    "explicit_runtime_requests": 6,
+    "training_js_sha256": "ded3344bb32ddcb31028d92ae8da999444d0c1d408f470aa7dbe987b9d820060",
+    "private_validation_processes_stopped": true
+  },
+  "self_review": {
+    "status": "succeeded",
+    "run_id": "9897c6fe75bd43429d4f49e832b86df1",
+    "seconds": 46.247896761167794,
+    "packet_files": 14,
+    "packet_bytes": 197068,
+    "input_digest": "125da02d1a62301dd91543a9c42ac124d988bac23ea45e4758caac0952bb7f31",
+    "result_sha256": "70d3aeb687eeb092dbfa79e1785d241188575f7103c60714cdc1447db4dfa559",
+    "decision": "approve"
+  },
+  "independent_reviews": "Two fresh-context directions independently verified final source, installed identity/regression, original run/history and negative outcome, complete self-review input, browser/lifecycle and cleanup. Local exit passed with zero open findings; publication and own CI pending.",
+  "scope": "Actual native CPU control-flow and original-run read/recovery; the original CANCEL_UNCONFIRMED is retained after validation helper interruptions. No runner command, model workload, MLflow, GPU, numerical/performance comparison, adoption or backend-diversity claim."
+}

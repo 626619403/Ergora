@@ -82,6 +82,7 @@
       "tests/test_services.py",
       "tests/test_state_backups.py",
       "tests/test_training.py",
+      "tests/test_training_runtime.py",
       "tests/test_task_budget.py",
       "tests/test_task_evidence_index.py",
       "tests/test_task_external_status.py",

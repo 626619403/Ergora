@@ -441,6 +441,10 @@ def create_app(home: Path | None = None) -> FastAPI:
     def training_experiment(project_id: str, experiment_id: str):
         return training.inspect(state, project_id, experiment_id)
 
+    @application.get("/api/projects/{project_id}/training/{experiment_id}/status")
+    def training_status(project_id: str, experiment_id: str, run_id: str | None = None, timeout: int = 20):
+        return training.status(state, project_id, experiment_id, run_id=run_id, timeout=timeout)
+
     @application.get("/api/projects/{project_id}/issues/{issue_id}")
     def project_issue(project_id: str, issue_id: str):
         return issues.show(state, project_id, issue_id)
