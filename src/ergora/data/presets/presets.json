@@ -172,6 +172,51 @@
         "ergora-measurement-review-v2",
         "ergora-opt-sequence-packing-proposal"
       ]
+    },
+    "optimization-parallelism": {
+      "description": "Finite parallel meshes, topology constraints and independently verified training proposals. Readonly v2 experts; original runner owns actual experiments.",
+      "runtime": "proposal-leaves",
+      "root": "ergora-opt-parallelism-proposal",
+      "agents": [
+        "ergora-experiment-designer-v2",
+        "ergora-performance-analyst-v2",
+        "ergora-measurement-reviewer-v2"
+      ],
+      "workflows": [
+        "ergora-training-analysis-v2",
+        "ergora-measurement-review-v2",
+        "ergora-opt-parallelism-proposal"
+      ]
+    },
+    "optimization-megatron-fsdp": {
+      "description": "Version-matched state sharding, checkpoint compatibility and recovery proposals. Readonly v2 experts; original runner owns actual experiments.",
+      "runtime": "proposal-leaves",
+      "root": "ergora-opt-megatron-fsdp-proposal",
+      "agents": [
+        "ergora-experiment-designer-v2",
+        "ergora-performance-analyst-v2",
+        "ergora-measurement-reviewer-v2"
+      ],
+      "workflows": [
+        "ergora-training-analysis-v2",
+        "ergora-measurement-review-v2",
+        "ergora-opt-megatron-fsdp-proposal"
+      ]
+    },
+    "optimization-hierarchical-cp": {
+      "description": "Explicit hierarchical CP transport, active process groups and numerical evidence proposals. Readonly v2 experts; original runner owns actual experiments.",
+      "runtime": "proposal-leaves",
+      "root": "ergora-opt-hierarchical-cp-proposal",
+      "agents": [
+        "ergora-experiment-designer-v2",
+        "ergora-performance-analyst-v2",
+        "ergora-measurement-reviewer-v2"
+      ],
+      "workflows": [
+        "ergora-training-analysis-v2",
+        "ergora-measurement-review-v2",
+        "ergora-opt-hierarchical-cp-proposal"
+      ]
     }
   }
 }

@@ -85,6 +85,9 @@ init / runner-add → prepare → worker-start → start
 |`optimization-cpu-offloading`|`ergora-opt-cpu-offloading-proposal`|层级激活、细粒度激活、优化器三个机制分开；host／pinned／NUMA／传输／CPU计算和总成本|
 |`optimization-cuda-graphs`|`ergora-opt-cuda-graphs-proposal`|host关键路径、实际capture／replay／optimizer范围、地址／RNG／pool寿命和setup摊销|
 |`optimization-sequence-packing`|`ergora-opt-sequence-packing-proposal`|offline／in-batch／worker buffer／global-batch四路径，样本边界／MTP／loss权重／有效token与恢复|
+|`optimization-parallelism`|`ergora-opt-parallelism-proposal`|dense／expert两mesh的合法性、rank／stage与拓扑、有限布局及独立训练／恢复证据|
+|`optimization-megatron-fsdp`|`ergora-opt-megatron-fsdp-proposal`|状态容量／通信权衡、实际DDP flag、checkpoint格式、权重reshard与完整续训分开|
+|`optimization-hierarchical-cp`|`ergora-opt-hierarchical-cp-proposal`|HCP选择依据、内外组／MPU／TE路径、真实attention／梯度和端到端收益证据|
 
 例如选择容量诊断，先准备项目、后端、根grant及真实UTF-8任务正文，再使用原命令：
 
@@ -102,3 +105,5 @@ grant的`permissions`／`limits`从该精确根读取，按[完整manifest准备
 单次调用只运行所选叶。独立准备profile输入后，把design和profile的完整原产物、来源摘要及真实实验材料一起放入measurement的新任务正文。measurement默认优先异于执行后端，覆盖及回退须显式记录原因。配置能解析、估算低于容量、未OOM或有限短loss都不等于端到端性能／质量通过；资料中引用的Bridge／Core版本是知识来源，不表示这些依赖已安装，也不证明该组合适合当前运行版本。多个方向可作为普通精确引用子模板组合，但静态图不会获得自动训练执行权。
 
 Graph提案需提供实际trace／shape分布／地址和RNG生命周期、当前编译及capture范围；capture成功与实际replay、冷启动和稳态收益分别核对。Packing提案还需数据／tokenizer身份、真实样本边界／mask／loss分母、原生路径和resume状态；按所选版本区分runtime THD与offline／in-batch限制，配置token容量不能当有效源token吞吐。缺项保留未验，由原runner和owner决定实验／采用。
+
+并行方向还需实际dense／expert mesh、局部head／expert／layer划分、rank顺序和节点链路。普通mesh的两组整除下界不替代原生validator或自定义layout／GTP支持。FSDP需区分实际实现与配置版本：引用快照使用`ddp.use_megatron_fsdp`，旧`dist`字段已移除；保存／加载前核`fsdp_dtensor`，并分别验证权重重分片及optimizer／RNG／数据顺序的完整恢复。HCP仅显式选择，需核hierarchical groups真实传入attention和独立数值证据；TE最低版本、建组或短loss均不能单独证明组合正确。库和solver仍是原生工具，不因出现于context就成为已安装Agent或获得执行权限。

@@ -223,3 +223,9 @@ B1已普通提交`e2bbde0bec4750b2e3a1d09d8597bf94196ba1bd`；下一[三内存�
 第三轮原run已REVIEW_READY：9 job／7会话、实际串行、38资源23,329B完整读取、精确导出复验／handoff、623事件重放／原ID重启及9 owner／7槽／claim清理均已补核。新的独立A2评审已终核通过，开放0／0。B2a非editable包506产品／两RECORD／283与安装15项通过，九个真实只读叶及其手动前驱交接已完成；未宣称自动图或GPU测量。CI成本只读审计及单迁移case分phase探针完成，整体超限根因仍待完整分阶段计时。
 
 后续B2a九叶已完成，54资源88,611B完整读取／手动前驱链及自身原结构模板42.021秒approve已核，新独立双轴已通过，开放0／0。[B2b执行图／packing](../delivery/2026-11-13-optimization-execution-directions.md)按R6实现两根六数据、catalog及使用入口，复用三位共享v2专家；512产品／两RECORD／283与安装17项、六叶36资源62,230B完整读取及手动交接、自身原结构模板108.003秒approve已过；八文件按原字节提升，最终13文件及包／模型／来源原件的新fresh-context双轴通过，开放0／0、过期catalog状态P3已修复复核，本地出口完成。发布／自己的CI开放。完整Linux phase采样继续，不先放宽CI期限或删测试。
+
+## D2-B2c实施检查点
+
+B2b已普通提交`a711539`。下一片[并行策略／FSDP／分层CP](../delivery/2026-11-13-optimization-parallelism-directions.md)沿R4仅增三个只读资料根，复用相同三位v2专家和原catalog。先核固定资料与实际配置差异，再安装／完整继承、实际单叶及手动前驱、自身模板和独立双轴分别验收；不将并行库／solver改名为Agent，也不新增训练调度器。补取的同pin HCP Skill／guide和FSDP guide只作证据，不再分发上游正文。Linux完整phase成本采样独立继续，最终CI修改不能借本方向安装检查关闭。
+
+本片九数据及catalog、原测试三参数、两手册入口已实现；同pin确认`dist.use_megatron_fsdp`已删除，R4表同步纠正。隔离noneditable521产品／两RECORD／283及安装20项／84.42秒通过，产品／测试仅11个明确覆盖；自身原结构模板44.874秒approve、十一文件51,577B完整实际stdin核准。九叶真实调用成功，54资源94,170B完整连续UTF8／原前驱手动交接通过，三measurement缺证据request-changes；最终17文件及所有包／来源／模型原件／公开投影的新独立双轴终核通过，开放0／0，本地出口完成。普通发布／自己的CI另记；未改其他运行owner或旧包，未授予GPU／完整图／恢复或采用。

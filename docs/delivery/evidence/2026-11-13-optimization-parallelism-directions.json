@@ -1,0 +1,162 @@
+{
+  "baseline": "a711539617ca8d2892d240079e76cb243784c55d",
+  "wheel_sha256": "e91f7d2daf15dd0a8bd58afd366670909af43b9f6aa004c598ae64c1aa312837",
+  "package_files": 521,
+  "frozen_files": 283,
+  "installed_presets": {
+    "passed": 20,
+    "pytest_seconds": 84.42,
+    "controller_seconds": 86.600053826347
+  },
+  "native_calls": 9,
+  "resource_occurrences": 54,
+  "resource_bytes": 94170,
+  "all_resources_continuous_utf8": true,
+  "full_manual_predecessor_results": true,
+  "calls": [
+    {
+      "direction": "parallelism",
+      "name": "design",
+      "instance": "root/analysis/design",
+      "run_id": "c35b6fc4a0684f39bbc1f33a6a65836a",
+      "status": "succeeded",
+      "seconds": 106.59803024260327,
+      "input_digest": "a80ae99391dedcde22a39a2ed265973522a7c918e0399f717db7a685c3b23419",
+      "prompt_sha256": "d9ca9ae69c242d37c5abde51cea6b91d30c8cabced02a2d802662d7e36552392",
+      "result_sha256": "136c4757eda5204a37519fbad5b9429793ae2a51d97dad32fa10a89fe56b39c4",
+      "decision": null,
+      "predecessor_sha256": {}
+    },
+    {
+      "direction": "parallelism",
+      "name": "profile",
+      "instance": "root/analysis/profile",
+      "run_id": "49a383ab327149f5b42ddb21d4ec97c2",
+      "status": "succeeded",
+      "seconds": 98.2388529847376,
+      "input_digest": "1d72cf0e4937e375e2f6611c378fc07ad8ea1ea7c160b1e91a610a93e7ca7cac",
+      "prompt_sha256": "5b03b81b3992fd22e7759d3571ff4dfb2201198e6ada93d9b92be1576cdad3fd",
+      "result_sha256": "9a8e1c3694cd2fd8dae5a066d6532cca7cdb013ea5fbb4f0ad023825286c86a2",
+      "decision": null,
+      "predecessor_sha256": {}
+    },
+    {
+      "direction": "parallelism",
+      "name": "measurement",
+      "instance": "root/measurement/review",
+      "run_id": "8d330ed07fb94a78846f89b5f047c320",
+      "status": "succeeded",
+      "seconds": 65.84912823000923,
+      "input_digest": "133780c66c4d2c85b365ab14a0f4ae8d1679e8acbeb43cc7b3765dce6e9290df",
+      "prompt_sha256": "86d036ac7c6b2d8c9bf2c2be795ca2a6d136814b3de84baa5453f95fe32f0728",
+      "result_sha256": "8f33d49f2e4da662661aa36fb83c8758098cce9388825811dcc97a28a668d07a",
+      "decision": "request-changes",
+      "predecessor_sha256": {
+        "design": "136c4757eda5204a37519fbad5b9429793ae2a51d97dad32fa10a89fe56b39c4",
+        "profile": "9a8e1c3694cd2fd8dae5a066d6532cca7cdb013ea5fbb4f0ad023825286c86a2"
+      }
+    },
+    {
+      "direction": "megatron-fsdp",
+      "name": "design",
+      "instance": "root/analysis/design",
+      "run_id": "9282be9f91d34c91997eee32fcd1f92f",
+      "status": "succeeded",
+      "seconds": 82.74271624814719,
+      "input_digest": "16dfe9db5c1fd7fcafb03aa5967e0e184b137bbddd06d4bfc948edddd1ab3a67",
+      "prompt_sha256": "30ce9135fc613c2cedc0d237c62ffd7040833436321ed5faeba41cf82c27c7e5",
+      "result_sha256": "0e663419c6866914a6336175569c14925d76fff341bcf0626f16e52d016b61a3",
+      "decision": null,
+      "predecessor_sha256": {}
+    },
+    {
+      "direction": "megatron-fsdp",
+      "name": "profile",
+      "instance": "root/analysis/profile",
+      "run_id": "519851a34fc44a6f9c586242a975f958",
+      "status": "succeeded",
+      "seconds": 87.89492316218093,
+      "input_digest": "a250ea86255c3bf45f6a8a3428134c48996e3a31d588d4e280b2b34038468bde",
+      "prompt_sha256": "8b635e0ffc68bd0d1fe2bd7ef72c1f4e2968456247162d5e1e699a3b762a5b83",
+      "result_sha256": "bd031fc64234cc656b79fc14973e8d6adafde7097d039314638bfb89c30bd6ae",
+      "decision": null,
+      "predecessor_sha256": {}
+    },
+    {
+      "direction": "megatron-fsdp",
+      "name": "measurement",
+      "instance": "root/measurement/review",
+      "run_id": "a58c61d9ec9c407385e7bbcfe711025f",
+      "status": "succeeded",
+      "seconds": 60.517244196962565,
+      "input_digest": "3e7eee178d3511bb78924435d41a97bbd6f7fb0124a595950dd14f351dfdbd1e",
+      "prompt_sha256": "21c68bffa39aed957b70e4943c307d9f7e139b68a6f091c87a6ace38a29f7662",
+      "result_sha256": "d1f6166a3a93c5b8081f6e900df996e2073b625ce4368262ae61f9d13edcae74",
+      "decision": "request-changes",
+      "predecessor_sha256": {
+        "design": "0e663419c6866914a6336175569c14925d76fff341bcf0626f16e52d016b61a3",
+        "profile": "bd031fc64234cc656b79fc14973e8d6adafde7097d039314638bfb89c30bd6ae"
+      }
+    },
+    {
+      "direction": "hierarchical-cp",
+      "name": "design",
+      "instance": "root/analysis/design",
+      "run_id": "3edf8df5cb764dc39c5396cd0e584ba6",
+      "status": "succeeded",
+      "seconds": 96.10971869993955,
+      "input_digest": "d8639f75f2564e697f15c10966f72a8a0cae0e3a020e080efd2afbf12f1bd101",
+      "prompt_sha256": "097335f09ce49bd2e336ab5b4498e3e1c33c33f9ae9efcbb7457db0835c8a63a",
+      "result_sha256": "4d9063c37cd774eddeebb6e232d7f0cb3ca4159f446049c691acd395ab4dd9a0",
+      "decision": null,
+      "predecessor_sha256": {}
+    },
+    {
+      "direction": "hierarchical-cp",
+      "name": "profile",
+      "instance": "root/analysis/profile",
+      "run_id": "ceb2f7b146da4a48aedd9784644e2498",
+      "status": "succeeded",
+      "seconds": 104.19288087822497,
+      "input_digest": "841b7ceee917e5ac2ce8aa231921451a55bc4054980e1e595acaa946a1064270",
+      "prompt_sha256": "393c4e7f1df10c960e129b33b13b2bf5ac339489dba4dcd60924150df75992ee",
+      "result_sha256": "cd839f2a7ed8aa5a7776159f102fc622d17817f1ed813e86300ac60246e1d84c",
+      "decision": null,
+      "predecessor_sha256": {}
+    },
+    {
+      "direction": "hierarchical-cp",
+      "name": "measurement",
+      "instance": "root/measurement/review",
+      "run_id": "3a196b2505ed4f059acd7adf8b75670b",
+      "status": "succeeded",
+      "seconds": 55.58450659830123,
+      "input_digest": "35d569cd878172ed70b38e3c0ad20e5c8a694cff8c8e8275ab2f8f7067475897",
+      "prompt_sha256": "33d916c5a4a888bc210caedeeea1d35928eaf19ab5a1363d114587ca3f43ea82",
+      "result_sha256": "a0ee9094c04e9af98d59c7d5e8289976bad18f6a275843e45565b6c9bf72786d",
+      "decision": "request-changes",
+      "predecessor_sha256": {
+        "design": "4d9063c37cd774eddeebb6e232d7f0cb3ca4159f446049c691acd395ab4dd9a0",
+        "profile": "cd839f2a7ed8aa5a7776159f102fc622d17817f1ed813e86300ac60246e1d84c"
+      }
+    }
+  ],
+  "self_review": {
+    "run_id": "e624c7556c9c40498fdab64f806decf5",
+    "status": "succeeded",
+    "decision": "approve",
+    "packet_files": 11,
+    "packet_bytes": 51577,
+    "prompt_bytes": 57443,
+    "prompt_sha256": "71f51921c0e3c11f38e7e965b923e8800c65963686087a3ac151a50aae717fec",
+    "input_digest": "5dd502ba3b4dfd2dc069b936daf76b14ae4104b844d18b02cbcb8798da01d72b",
+    "result_sha256": "8888966502c43f41052c6344c08e03019c2398de8e3da6d56591235f678205bd"
+  },
+  "raw_audit_sha256": {
+    "parallelism": "7b9085e61a76d08fb96ad317d65e0409122687c124c71e6c36e7d5185ba4bce3",
+    "megatron-fsdp": "9ad238e6131ba5e5ef3b28db528f94a8e97b7a66881d82c7b6ac76abfca725e9",
+    "hierarchical-cp": "640e9a3b7f4b16a246ae127bdea4c3d7b68fa883d46abece2d476e82a2cac41a"
+  },
+  "self_review_audit_sha256": "caf9f712cbb7ae2867428f2e01be685e998e5e4c9e901714df78711faee4ff48",
+  "scope": "Nine independent readonly calls; saved future MoE training specifications, not instantiated model/mesh/hardware or measured training. Complete manual original predecessor transfer. No automatic graph, GPU gain, checkpoint recovery, adoption or heterogeneous-backend acceptance. Own review used inline material; built-in metadata calls returned empty, no Ergora task-MCP transport for that review. Independent review/publication separate."
+}

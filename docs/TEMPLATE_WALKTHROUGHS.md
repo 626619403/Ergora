@@ -116,7 +116,7 @@ ergora composition run-input PROJECT_ID ./prepared-design --mode task-mcp --back
 
 其他叶子为`root/analysis/profile`、`root/kernel`、`root/measurement/review`。单叶调用没有自动执行前驱，操作者应在新任务正文中明确提供完整来源和前驱回复。审查尽量使用另一后端；调用失败后保留原run，再用明确的`--backend`和`--backend-reason`建立回退调用，不会自动更换后端。认证检查成功仍需真实小调用确认推理可用；上游API错误不能用放宽工具权限来证明已修复。
 
-若任务涉及显存、重计算、CPU卸载、CUDA Graphs或sequence packing，可选[五个独立优化方向根](TRAINING.md#独立的优化方向子模板)。它们保留design／profile／measurement三叶，读取所选方向的完整context并复用v2专家，不含kernel叶；将前两份完整原结果手动交给measurement。安装这些提案包不会安装GPU工具、开启原生搜索或运行整个图。
+若任务需要细方向知识，可按[独立优化方向表](TRAINING.md#独立的优化方向子模板)选择显存、重计算、CPU卸载、CUDA Graphs、sequence packing、并行策略、Megatron FSDP或分层CP。它们保留design／profile／measurement三叶，读取所选方向的完整context并复用v2专家，不含kernel叶；将前两份完整原结果手动交给measurement。安装这些提案包不会安装GPU工具、开启原生搜索或运行整个图。
 
 提案和模型审查供操作者准备实验。实际流程为固定workload／baseline／experiment→可信runner执行→独立正确性／性能复验→人工批准原evidence SHA→该项目开发任务集成复验。ForgeKernel是可选候选生成器，有独立版本、模型与设备要求；生成器完成不代表性能通过或采用。CPU／GPU、数据、ML依赖按项目安装，控制台不会配置CUDA或申请设备。[训练手册](TRAINING.md)说明runner、负结果、取消与采用。
 
