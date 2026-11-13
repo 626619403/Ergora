@@ -6,7 +6,7 @@
 
 已核原baseline／experiment／workload／runner模板、`training.prepare/register_runner`和`perfctl.validate/baseline_ok/gate`：canonical提交在prepare补别名，真实commit必须存在于runner仓库；baseline／workload／比较器匹配，批准合同之后冻结manifest。`checks_required`是非空唯一列表，不强制把模板全部检查用于每个workload；`quality_required`显式，N／A必须为true。runner执行walltime与排队加执行窗口分开。
 
-自由文本提案及原result不自动转实验合同，摘要也不能代替代码／配置／数据内容身份。原source引用和手动追溯可记录于说明表；原validator不会自动核该表或证明实际运行。下一补训练手册，再用既有B2i原产物走查，明确实际workload与运行仍缺，随后独立审查和普通发布。
+自由文本提案及原result不自动转实验合同，摘要也不能代替代码／配置／数据内容身份。原source引用和手动追溯可记录于说明表；原validator不会自动核该表或证明实际运行。现有训练手册22／6／6字段说明、B2i四原产物及完整前驱走查、新fresh-context需求／可维护性两轴均通过，开放0／0；资料已随6d4006e普通发布。完整B3仍缺真实workload与实验／独立评价／批准，保持开放。
 
 ## B3a.1 手册与B3a.2走查
 
@@ -21,3 +21,7 @@
 ## B3a.3 独立审查
 
 [新fresh-context报告](2026-11-14-proposal-experiment-handoff-review.md)已核六文件完整快照、所有原result响应、四input树／task／prompt／run／MCP原件与两处完整前驱，八源与283冻结、相关23本地目标／10锚点和diff通过。需求／可维护性两轴通过，开放0／0，无必要修正。报告6,101B，SHA256为`7252a86848f9f8db9e8646d365ebd1b6eeca71f0eac8cd70e2a0c25c08454d80`；作者较宽工作树的秘密值检查未冒称独立重读。资料本地出口完成，普通发布仍待做；完整B3真实项目与实验链保持开放。
+
+## B3a.4普通发布
+
+本片已审资料随十七文件文档提交`6d4006e4cde609da90a97b88f0ce871923385c9f`普通推送，父41dd5aa；最终快照manifest SHA256为`4b00445fb6fc14e9b2d955d99909d786d1822321a63320d2d71fdcd82f18140d`，staged与Git blob逐项相等，push退出0、作者完整SSH Ref核准。文档比例静态208目标／17锚点、4凭据值、283冻结及diff通过，没有新产品行为、依赖、测试或CI改动，不声称文档自己的完整CI通过。B3a资料交付完成；真实B3实验与C2接入保持各自开放范围。

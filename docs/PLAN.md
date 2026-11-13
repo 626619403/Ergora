@@ -4,9 +4,9 @@
 
 ## 当前检查点
 
-- [B3a提案交接资料](plans/2026-11-14-proposal-experiment-handoff.md)：等待B2i自己的CI／U3安装期间，沿原训练owner核字段和门禁；现有训练手册22／6／6字段说明、四原调用及两处完整前驱走查和比例静态检查及新fresh独立需求／可维护性两轴通过，开放0／0；本地资料出口完成，普通发布待做；不新建执行器／账本／schema，不修改283冻结文件。真实workload、原manifest及运行／独立评价／批准仍属于B3开放验收。
+- [B3a提案交接资料](plans/2026-11-14-proposal-experiment-handoff.md)：等待B2i自己的CI／U3安装期间，沿原训练owner核字段和门禁；现有训练手册22／6／6字段说明、四原调用及两处完整前驱走查和比例静态检查及新fresh独立需求／可维护性两轴通过，开放0／0；资料已随6d4006e普通发布／作者完整SSH Ref核准；不新建执行器／账本／schema，不修改283冻结文件。真实workload、原manifest及运行／独立评价／批准仍属于B3开放验收。
 
-- [U3日常安装升级](plans/2026-11-14-daily-installation-refresh.md)：升级前PATH入口为3 preset／452产品／38 distributions。前像和完整私有venv备份已完成，归档38,626,813B／6,190成员、5,051文件与symlink逐项核准；限定活动进程观察0，默认业务state不存在。B2i发布／自己的CI及独立终核已完成，已核精确release gate，同一551产品wheel已离线安装到原应用，两RECORD／283、38依赖及4,550非应用文件／symlink和启动器保持；实际日常入口65命令／72检查／10 HTTP和8代表根均通过，23条目可见、所属server／端口清理通过；原fresh独立终验两轴通过，开放0／0；另新日常自身原结构模板41.303秒approve／五全文54,066B及独立原件核准，本地出口完成，文档发布待做。[交付](delivery/2026-11-14-daily-installation-refresh.md)逐步更新。
+- [U3日常安装升级](plans/2026-11-14-daily-installation-refresh.md)：升级前PATH入口为3 preset／452产品／38 distributions。前像和完整私有venv备份已完成，归档38,626,813B／6,190成员、5,051文件与symlink逐项核准；限定活动进程观察0，默认业务state不存在。B2i发布／自己的CI及独立终核已完成，已核精确release gate，同一551产品wheel已离线安装到原应用，两RECORD／283、38依赖及4,550非应用文件／symlink和启动器保持；实际日常入口65命令／72检查／10 HTTP和8代表根均通过，23条目可见、所属server／端口清理通过；原fresh独立终验两轴通过，开放0／0；另新日常自身原结构模板41.303秒approve／五全文54,066B及独立原件核准，本片已随6d4006e普通发布／作者完整SSH Ref核准，完成。[交付](delivery/2026-11-14-daily-installation-refresh.md)逐步更新。
 
 - [B2i独立kernel方向](plans/2026-11-13-optimization-kernel-direction.md)：从已普通推送的d683c01开始，工作树初始清洁；R1／X2二十一原件920,972B及十一原HTTP回执已核，新研究请求0。复用四位v2专家的只读方向根、catalog、原测试及README／两手册已实现，548旧产品除catalog与22旧条目保持；独立noneditable551／两RECORD／283通过，原suite30通过／119.64秒与自身29.578秒approve／五全文49,861B已核；四实际叶23资源66,552B与两处完整原前驱已核，measurement保留request-changes；新fresh独立两轴完整原件通过，SP1/P3关闭／开放0／0，本地出口完成；41dd5aa已普通推送、作者完整Ref核准，原独立发布补核通过，自己的CI43459951488八job／30必要步骤及原独立终核通过，精确交付终结。B2h自己的CI及原独立终核已通过。
 
@@ -53,7 +53,7 @@
 
 ## 下一可执行项
 
-0. [专家模板重整](plans/2026-11-12-specialist-template-refresh.md)的研究／D0、D1六阶段材料／预算／消费者、D2-A1／A2重构与B1共享专家已分别验收；B2a–B2i十八优化方向均已发布，最新41dd5aa自己的CI43459951488及原独立终核通过。接续[U3](plans/2026-11-14-daily-installation-refresh.md)：原home应用已升级为551产品／23 preset，65命令／72检查／10 HTTP和8代表根通过，独立终验和额外自身模板补验均通过，本地出口完成、文档发布待做。[B3a](plans/2026-11-14-proposal-experiment-handoff.md)字段手册／原产物走查及新独立两轴通过；完整B3仍需真实workload与原实验／独立评价／精确证据批准。下一先按[D2-C2](plans/2026-11-13-specialist-presets.md#c2第一个执行适配片的准入设计)核固定Forge的普通teacher／student／judge调用接缝、父完整材料／权限交集和原预算／恢复／真实停止，再设计有真实消费者的最小执行适配；复用X2固定源码研究，不重复完成市场调查或成功模型旅程。Apache-2.0已落实；不自动合main，不把资料包／安装／页面当GPU或原生嵌套完成。
+0. [专家模板重整](plans/2026-11-12-specialist-template-refresh.md)的研究／D0、D1六阶段材料／预算／消费者、D2-A1／A2重构与B1共享专家已分别验收；B2a–B2i十八优化方向均已发布，最新41dd5aa自己的CI43459951488及原独立终核通过。接续[U3](plans/2026-11-14-daily-installation-refresh.md)：原home应用已升级为551产品／23 preset，65命令／72检查／10 HTTP和8代表根通过，独立终验和额外自身模板补验均通过，已随6d4006e普通发布／作者完整SSH Ref核准，本片完成。[B3a](plans/2026-11-14-proposal-experiment-handoff.md)字段手册／原产物走查及新独立两轴通过；完整B3仍需真实workload与原实验／独立评价／精确证据批准。下一先按[D2-C2](plans/2026-11-13-specialist-presets.md#c2第一个执行适配片的准入设计)核固定Forge的普通teacher／student／judge调用接缝、父完整材料／权限交集和原预算／恢复／真实停止，再设计有真实消费者的最小执行适配；复用X2固定源码研究，不重复完成市场调查或成功模型旅程。Apache-2.0已落实；不自动合main，不把资料包／安装／页面当GPU或原生嵌套完成。
 
 1. C3d及C4a精确交付均已终结，既有非终态样本保持；不重复产品/模型或远端终核。
 2. C4b.1完整最终候选本地出口已通过，8ce9aba已普通推送、原评审精确20Git对象/436包/283冻结及一次HTTPS同SHA通过；自己的CI42825342126第三样本双OS七必要步骤与原评审离线终核通过，精确交付终结；前两In progress样本保持。已过行为与模型不重复。
