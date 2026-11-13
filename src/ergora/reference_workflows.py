@@ -2,7 +2,7 @@
 
 import asyncio
 from contextlib import AsyncExitStack
-from datetime import timedelta
+from datetime import datetime, timedelta
 import json
 
 from temporalio import activity, workflow
@@ -11,8 +11,8 @@ from temporalio.exceptions import ApplicationError
 with workflow.unsafe.imports_passed_through():
     from dev_platform.activities import Activities
     from dev_platform.adapter import FileAdapter, ContractViolation
-    from dev_platform.workflow import DevelopmentWorkflow, StopWork
-    from ergora import task_envelopes
+    from dev_platform.workflow import DevelopmentWorkflow, RETRY, StopWork
+    from ergora import reference_budget, task_envelopes
     from ergora.reference_review_opinions import review_observation
 
 
@@ -21,7 +21,7 @@ class CompositionAdapter(FileAdapter):
 
     envelope_version = 2
 
-    async def submit(self, context):
+    def validate_submission(self, context):
         try:
             spec, composition = task_envelopes.unwrap(context['admission'])
             if (composition is None or context['admission']['schema_version'] != self.envelope_version
@@ -29,6 +29,9 @@ class CompositionAdapter(FileAdapter):
                 raise ValueError('Composition context differs from its complete admission')
         except (ValueError, TypeError, KeyError) as error:
             raise ContractViolation(str(error)) from error
+
+    async def submit(self, context):
+        self.validate_submission(context)
         return await super().submit(context)
 
 
@@ -125,8 +128,11 @@ class CompositionDevelopmentWorkflow(DevelopmentWorkflow):
         except (ValueError, TypeError, KeyError) as error:
             raise ApplicationError(str(error), type="ContractViolation", non_retryable=True) from error
         self.admission = document
-        outcome = await super().run(spec)
+        outcome = await self.run_spec(spec)
         return {**outcome, "admission_sha256": document["sha256"]}
+
+    async def run_spec(self, spec: dict) -> dict:
+        return await super().run(spec)
 
     @workflow.run
     async def run(self, document: dict) -> dict:
@@ -437,3 +443,90 @@ class FullStageMaterialsWorkflow(StageResultsWorkflow):
     @workflow.run
     async def run(self, document: dict) -> dict:
         return await self._run_document(document)
+
+
+class BudgetedAdapter(FullStageMaterialsAdapter):
+    envelope_version = 9
+
+    def validate_submission(self, context):
+        super().validate_submission(context)
+        try:
+            reference_budget.require_remaining(context['admission']['budget']['instance'])
+        except ValueError as error:
+            raise ContractViolation(str(error)) from error
+
+
+@workflow.defn(name='ErgoraCompositionWorkflowV9')
+class BudgetedWorkflow(FullStageMaterialsWorkflow):
+    """Bound the original orchestration, including waits outside stage polling."""
+
+    envelope_version = 9
+
+    def remaining(self, *, cleanup=False):
+        instance = self.admission['budget']['instance']
+        deadline = datetime.fromisoformat(instance['deadline_at'])
+        if not cleanup:
+            deadline -= timedelta(seconds=instance['policy']['cleanup_seconds'])
+        return (deadline - workflow.now()).total_seconds()
+
+    @workflow.query
+    def status(self) -> dict:
+        result = super().status()
+        if self.admission is not None:
+            instance = self.admission['budget']['instance']
+            result['budget'] = {key: instance[key] for key in ('id', 'sha256', 'authorized_at', 'deadline_at')}
+        return result
+
+    async def call(self, name, value, result_type=dict):
+        cleanup = name == 'dev_fence'
+        remaining = self.remaining(cleanup=cleanup)
+        if not cleanup and remaining <= 0:
+            raise StopWork('Original budget work cutoff reached')
+        # A fence is safety work, never a fresh business grant. If even its
+        # reserve elapsed, the bounded attempt may remain unconfirmed; the job
+        # owner still owns its independent stop and cleanup.
+        timeout = max(.001, remaining)
+        return await workflow.execute_activity(self.operations.get(name, name), value, result_type=result_type,
+            start_to_close_timeout=timedelta(seconds=min(30, timeout)),
+            schedule_to_close_timeout=timedelta(seconds=min(180, timeout)), retry_policy=RETRY)
+
+    async def stop(self, reason):
+        if self.remaining() <= 0 and not self.cancel_reason:
+            self.cancel_reason = 'Original budget work cutoff reached'
+        return await super().stop(self.cancel_reason or reason)
+
+    async def run_spec(self, spec: dict) -> dict:
+        remaining = self.remaining()
+        if remaining <= 0:
+            # Let the original run initialize the task and take its ordinary
+            # StopWork -> fence path before the first control activity.
+            return await super().run_spec(spec)
+        pending = asyncio.create_task(super().run_spec(spec))
+        try:
+            try:
+                await workflow.wait_condition(pending.done, timeout=timedelta(seconds=remaining))
+            except asyncio.TimeoutError:
+                self.cancel_reason = self.cancel_reason or 'Original budget work cutoff reached'
+                if not pending.done() and self.phase != 'FENCING':
+                    pending.cancel()
+            outcome = await pending
+            if outcome['status'] == 'REVIEW_READY' and self.remaining() <= 0:
+                return await self.stop('Original budget work cutoff reached')
+            return outcome
+        except asyncio.CancelledError:
+            if not pending.done() and self.phase != 'FENCING':
+                pending.cancel()
+            return await asyncio.shield(pending)
+        finally:
+            if not pending.done():
+                pending.cancel()
+                await asyncio.gather(pending, return_exceptions=True)
+
+    @workflow.run
+    async def run(self, document: dict) -> dict:
+        outcome = await self._run_document(document)
+        instance = self.admission['budget']['instance']
+        return {**outcome, 'budget': {'id': instance['id'], 'sha256': instance['sha256'],
+            'deadline_at': instance['deadline_at'], 'utc_observed_at': workflow.now().isoformat(),
+            'work_exhausted': self.remaining() <= 0,
+            'utc_overrun_seconds': max(0, -self.remaining(cleanup=True))}}

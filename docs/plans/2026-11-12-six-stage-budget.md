@@ -1,6 +1,6 @@
 # B2：一次授权、全程共用的六阶段预算
 
-产品基线`f394945db894740ad23a81c62b4ad87c85a84511`。承接[D1的B2合同](2026-11-12-six-stage-native-consumer.md)及[B1完整材料](2026-11-12-six-stage-materials.md)。本文件是下一片的设计与实施计划，B2a准备合同已实现、正在行为与独立出口验收；B2b／c运行消费者未实现，独立设计复核开放0／0；[交付记录](../delivery/2026-11-12-six-stage-budget.md)逐节点保存实际证据，恢复时先核[PLAN](../PLAN.md)、本文件、Git和所属交付。B1自己的CI另按原候选记录，不作为B2验收。
+产品基线`f394945db894740ad23a81c62b4ad87c85a84511`。承接[D1的B2合同](2026-11-12-six-stage-native-consumer.md)及[B1完整材料](2026-11-12-six-stage-materials.md)。B2a已精确交付c46f383；B2b／c运行消费者已接入未发布源码，真实Temporal七场景及受控串行预算旅程完成，最终代码独立两轴开放0／0，正在验收手册及发布出口；设计复核开放0／0不代表实现评审通过。[B2a记录](../delivery/2026-11-12-six-stage-budget.md)与[运行片记录](../delivery/2026-11-12-six-stage-budget-runtime.md)逐节点保存实际证据，恢复时先核[PLAN](../PLAN.md)、本文件、Git和所属交付。各片自己的CI分别验收。
 
 ## 行为与范围
 
@@ -39,7 +39,7 @@ flowchart LR
   Prepare -.同一身份与截止.-> Job
 ```
 
-这是待实现的调用关系，不是当前已经可运行的新版本。
+图为本片调用关系；当前源码已连接，公开产品仍为B2a，运行片完成独立出口前不宣称新版本验收通过。
 
 ## 预算与调用合同
 
@@ -58,9 +58,9 @@ flowchart LR
 |节点|交付与主要所有者|必要证据|状态|
 |---|---|---|---|
 |B2.0 实际执行接缝|小型独立进程探针，验证绝对截止覆盖准备延迟、阻塞锁和另建session的后代；只用既有进程监督原语，探针不进入产品或CI。|真实PID／starttime、原返回与清理结果；失败保持，不能用算术对象测试替代。探针只验证监督原语，真实prepare材料与正式receipt门禁仍须各片验收。|三种实际进程探针及原件独立补核通过，观察者未代清理；设计SP1／DS1两P2已关闭、开放0／0|
-|B2a 持久预算与准备合同|`tasks`／CLI／HTTP共用prepare；原`reference_task_creation`保存一次原件，新schema及WorkflowInput读完整实例；完整材料遍历／编译／收集及清理由prepare worker受同一deadline监督，preview/create/resume保持精确身份。|首次prepare丢回执／重复／并发返回同实例；时钟前进preview不变；慢manifest／编译在实际入口停止且不漏清理；冲突／到期不发布；旧合同保持。新输入的start显式unsupported，不能注册一个可绕过预算的worker。|已实现；三处独立P2及模型preview P2已修、原四red／源码24项通过。r2包455／两RECORD／283冻结及安装核心80项通过，自身聚焦145.60秒approve／五scope全文、原恢复54项／代表旅程5项通过；新增SP3／ST3最终witness慢fsync在r2包真实red已修，r3安装25项及自身聚焦106.92秒approve／五scope全文通过；完整21文件独立两轴开放0／0、六finding关闭，本地出口通过；普通提交／推送及自己的CI继续，原失败／partial保持|
-|B2b 原workflow消费者|原submission／WorkflowInput／Temporal共用deadline与slot，涵盖队列、owner、semaphore、poll、重试及原fence。|真实workflow调度的过期排队／owner等待、并发准入；丢start回执后到期仍只lookup，wrong memo／完整input保持。不能拿手工stage序列冒充Temporal生命周期。|依赖B2a；仍不开放新执行|
-|B2c 实际进程与收集闭合|原Executor／进程所有者适配整个job的构造、Git／锁、可信命令、MCP／模型、快照、读取／hash及清理；child返回待核结果，原finalizer清理确认后唯一发布全部正式终态及ledger更新，最后才开放新start。|慢Git／被占锁／慢preflight或收集、TERM抵抗及脱离组孙进程；child结果已返回而后代仍存活时原poll／fence仍unresolved，不因FAILED／CANCELLED误确认；真实spawn数不超过slot；原ID恢复、旧进程原件和283身份。|依赖B2.0／a／b|
+|B2a 持久预算与准备合同|`tasks`／CLI／HTTP共用prepare；原`reference_task_creation`保存一次原件，新schema及WorkflowInput读完整实例；完整材料遍历／编译／收集及清理由prepare worker受同一deadline监督，preview/create/resume保持精确身份。|首次prepare丢回执／重复／并发返回同实例；时钟前进preview不变；慢manifest／编译在实际入口停止且不漏清理；冲突／到期不发布；旧合同保持。新输入的start显式unsupported，不能注册一个可绕过预算的worker。|已实现；三处独立P2及模型preview P2已修、原四red／源码24项通过。r2包455／两RECORD／283冻结及安装核心80项通过，自身聚焦145.60秒approve／五scope全文、原恢复54项／代表旅程5项通过；新增SP3／ST3最终witness慢fsync在r2包真实red已修，r3安装25项及自身聚焦106.92秒approve／五scope全文通过；完整21文件独立两轴开放0／0、六finding关闭，本地出口通过；c46f383已普通提交／推送、作者SSH完整Ref相等；自己的CI43226350116双OS七必要步骤及新独立精确终核通过，B2a精确交付终结，原失败／partial保持|
+|B2b 原workflow消费者|原submission／WorkflowInput／Temporal共用deadline与slot，涵盖队列、owner、semaphore、poll、重试及原fence。|真实workflow调度的过期排队／owner等待、并发准入；丢start回执后到期仍只lookup，wrong memo／完整input保持。不能拿手工stage序列冒充Temporal生命周期。|源码已接入，真实Temporal四场景40.78秒及原生取消／FENCING／review并发三场景通过，提交到期恢复三项通过；夹具失败保持，与B2c同一未发布片完成最终出口|
+|B2c 实际进程与收集闭合|原Executor／进程所有者适配整个job的构造、Git／锁、可信命令、MCP／模型、快照、读取／hash及清理；child返回待核结果，原finalizer清理确认后唯一发布全部正式终态及ledger更新，最后才开放新start。|慢Git／被占锁／慢preflight或收集、TERM抵抗及脱离组孙进程；child结果已返回而后代仍存活时原poll／fence仍unresolved，不因FAILED／CANCELLED误确认；真实spawn数不超过slot；原ID恢复、旧进程原件和283身份。|专用owner／pending／唯一finalizer已接入；真实Git锁、三终态未确认后代、慢收集／fsync及两恢复场景通过。源码完整消费者及九job／七slot受控旅程已连接；SP1重启超售／SP2服务终态恢复均真实red并最小修正，r2包456／两RECORD／283及受影响25项通过；完整31文件最终独立两轴开放0／0、本地出口通过，自身聚焦request-changes唯一意见经独立核原合同不采纳；普通提交／推送及自己的必要CI待|
 |B2d 独立出口与发布|受影响行为检查、非editable安装、实际自身审查模板、新fresh-context两轴及普通提交／推送和自己的必要CI。|每片实际命令、失败／未验范围、finding修正复核及精确身份。最终真实六阶段旅程归D，不因本片受控进程通过提前关闭。|各可独立交付片分别执行|
 
 B2a／b可分片交付准备合同及控制消费者，但新运行始终阻断至B2c验收；若过渡版本产生无实际价值的空Interface，则保留为同一未发布片的实施节点，在真实消费者闭合后一起发布。每次公开版本的既有语义保持，后续扩展不能偷偷改变已发布的严格合同。
@@ -82,3 +82,7 @@ B2a／b可分片交付准备合同及控制消费者，但新运行始终阻断�
 准备worker使用总额内的工作截止请求停止，原subreaper监督覆盖另建session的后代。收集／清理使用同一总截止；不响应的清理保持原attempt与unknown，观察调用30秒结束不会杀掉安全清理或重启body。确认后仍超期则记录exhausted和实际overrun，不开放新合同。首片不承诺内核强实时；整个job的正式receipt finalizer仍归B2c，不能借prepare witness称其已经实现。失败／未知的prepare不自动重做body；只观察原ID，新的授权须使用新task ID。
 
 准备完成witness采用先持久化小候选、后重核总截止、最后链接原字节的顺序。迟到候选只可发布exhausted；elapsed／recorded_at是候选决策处的采样，超期落盘继续作为安全收尾，不宣称内核强实时或测得自身最终原子链接返回时刻。SP3原r2慢fsync失败及r3修正证据分别记录，不能把r2模型approve扩为该修正的判词。
+
+## B2b／c 当前实施
+
+B2a产品c46f383已普通推送且自己的CI／独立终核通过。本运行片[交付记录](../delivery/2026-11-12-six-stage-budget-runtime.md)保存真实Temporal七场景、专用owner／正式终态门禁、提交恢复及源码完整消费者连接的证据；受控九job／七slot串行旅程已通过，尚不是Temporal完整六阶段／真实模型旅程。首轮独立r1发现SP1重启安装并发漏计、ST1 Windows导入、ST2当前状态文档冲突；原ledger保留未知资源占用、正式receipt后服务对账已修正，真实red／green及最终r2受影响25项通过，完整24文件最终代码独立两轴开放0／0。新源码v9 start／worker／请求根已连接，尚未发布；最终安装、自身模板与完整独立补核继续，不单独发布无消费者的过渡Interface。历史段的“未实现／关闭”只代表当时快照。

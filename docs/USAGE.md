@@ -562,11 +562,11 @@ ergora composition verify-manifest ./review-requirements-manifest
 
 选择需要的 `preparation.repository_paths`，纳入任务所需源码／配置；适用的 `AGENTS.md` 也受 read 上限约束。Skill 有附件时选 task-mcp，前两阶段无 shell／写／任意仓库工具。容量不足、附件读取不完整或原 inventory 产物变动会在对应阶段失败，不截断为成功。可选工单 `source` 沿原快照合同冻结，进入四类模型阶段；所有运行身份与恢复仍由原任务所有者维护。
 
-安装并重启新版 worker／executor 才能消费 v8 队列；与 v7 一样按实际冻结后端和本地执行条件准入，所需服务可显式启动 `temporal worker executor`。这是完整材料支持，统一总预算与原生嵌套调用仍待各自交付。
+安装并重启新版 worker／executor 才能消费 v8 队列；与 v7 一样按实际冻结后端和本地执行条件准入，所需服务可显式启动 `temporal worker executor`。v8保留原阶段时限；需要从准备开始的统一预算时，按下一节显式选择v5定义／input9。可引用的原生六阶段子模板另行交付。
 
 ### 一次授权的预算准备
 
-Linux／WSL2 可先使用 task-definition v5 准备完整预算合同：在上述 v4 定义中将 `schema_version` 改为 `5`，增加 `budget`，例如 `{"wall_seconds":3600,"cleanup_seconds":60,"model_invocations":16}`。清理预留包含在总额内；调用上限涵盖 inventory、plan、每个 work unit 和每个 reviewer（含建议审查），至少应覆盖这些已知 slot。这里计模型启动槽，不计后端内部 API 请求、token 或费用。
+Linux／WSL2 使用 task-definition v5 为原六阶段设置一次授权的总预算：在上述 v4 定义中将 `schema_version` 改为 `5`，增加 `budget`，例如 `{"wall_seconds":3600,"cleanup_seconds":60,"model_invocations":16}`。清理预留包含在总额内；调用上限涵盖 inventory、plan、每个 work unit 和每个 reviewer（含建议审查），至少应覆盖这些已知 slot。这里计模型启动槽，不计后端内部 API 请求、token 或费用。
 
 ```bash
 ergora task prepare my-project --definition task-definition.json --revision 1
@@ -577,7 +577,13 @@ ergora task create my-project --definition task-definition.json --revision 1 --p
 
 首次 prepare 在读取安装和材料之前保存唯一预算；重复或丢回执后继续读原 TASK_ID，不刷新起点。只在 prepare 的 `status: prepared` 后预览和创建。preview 读取完整冻结成果，包含两个需确认的 SHA，时间前进不改变其正文。create 到期不再发布；已保存的 intent 继续使用原 `creation/resume-create`，不重编材料。准备绑定项目修订和注册身份，修改后不能把旧授权换成新预算。
 
-`authorized` 表示预算已存但尚未开始 body，`unknown` 表示原 attempt 或清理仍未确认，`failed/exhausted` 不发布可用准备成果；检查 `budget_status` 与原私有输出。失败或未知不自动重跑 body，先对账原身份；新的独立授权需新 task ID。单次观察超过30秒会返回 unknown 并保留原清理进程，不增加业务时长。`prepared` 只证明本次准备完成；**当前 v9 正式执行仍明确 unsupported**，worker／executor 不启动它。完整等待、执行与收集的预算消费者尚待交付；已有 v1–v8 运行保持原合同。
+`authorized` 表示预算已存但尚未开始 body，`unknown` 表示原 attempt 或清理仍未确认，`failed/exhausted` 不发布可用准备成果；检查 `budget_status` 与原私有输出。失败或未知不自动重跑 body，先对账原身份；新的独立授权需新 task ID。单次观察超过30秒会返回 unknown 并保留原清理进程，不增加业务时长。`prepared`只证明准备完成。创建后沿原`task start/submission/resume-start/status/plan/approve`执行；升级并重启本版worker／executor才能消费`.composition-v9`队列和`requests-composition-v9`请求根，按[服务管理](#显式服务管理)显式启动所需栈。预算从首次prepare起算，材料读取、排队、人工批准、重试、并发名额等待、模型／可信命令、结果收集和进程清理都消耗同一授权，重启不续时。请先准备服务和认证，再授权实际任务。已有v1–v8运行保持原合同。
+
+工作截止为总额减清理预留；到达后停止新增工作，沿原fence收尾。总额用尽但停止尚未确认时保留原unknown／CANCEL_UNCONFIRMED；已确认停止的晚结果只能成为失败终态，不能发布过期SUCCEEDED。一次Agent CLI不等于一次provider API调用；预留slot也不等于实际启动。输入预算与原outcome的`budget`保存原身份、截止和观察事实，不是费用账单或内核强实时保证。
+
+发送前到期的首次start不会创建新运行；已有attempt的`resume-start`只查询原workflow／run及完整input，不再发送，即使新配置已关闭执行。执行中重启Executor会继续计入原jobs账本中的OWNED占用；live或unknown的原job不会因Future或Temporal结束退款。正式回执已链接而账本更新丢失时，daemon只对账原终态，不重跑body。未知占用可能阻塞安装级`max_parallel_jobs`，应保留原请求、attempt、owner、停止／收集witness并调查；不要删除账本或手改终态来释放名额。此上限与单task的祖先并发是不同约束，不代表跨task项目总配额。
+
+这条入口仍是原六阶段正式任务；把整个六阶段作为父图中可引用的子模板、多个native或任意混合图调度有独立的后续合同。
 
 API 对应 `POST .../tasks/prepare`（`definition/revision`）、`GET .../tasks/TASK_ID/preparation`，以及原 preview/create；v5 create 另传 `prepare_sha256`，写请求保留同源与 `X-Ergora-Request: 1`。备份需同时保留登记执行状态中的 `ergora/task-creations` 和控制目录 `operations/task-preparations`；控制库单独备份不包含全部材料。跨 boot／主机或 UTC 与单调时钟明显不一致时，新工作拒绝恢复；静态合同仍可读取。
 
@@ -725,7 +731,7 @@ API：`GET /api/projects/PROJECT_ID/tasks/TASK_ID/evidence?run_id=RUN_ID&timeout
 
 索引限1 MiB响应，但仍扫描完整原history，并通过FileAdapter读取和核对每份产物（每份最多16 MiB）；它不限制总IO或总内存到1 MiB。结果是当前材料观察，后续读取仍须重新核验。`context_snapshots`中的评价集、Skill、记忆及来源采用快照若未被原任务记录，均为`not_recorded`，不会用当前配置补写历史。查询不启动服务、不执行模型、不写fence、不释放租约或修改Git ref。
 
-`budget`读取同一冻结profile的`limits`、阶段等待、人工批准等待和轮询间隔，附原profile SHA及`workflow_admission_and_waiting`范围。`max_parallel_units`约束work单元调度，不是所有外部进程的全局并发上限。stage期限从原dev_submit返回后建立，并在空回执poll后检查；它不保证外部进程硬截止，也不是任务总时长或费用上限。历史执行器的独立walltime不能从当前配置补造。
+`budget`字段仍投影同一冻结profile的`limits`、阶段等待、人工批准等待和轮询间隔，附原profile SHA及`workflow_admission_and_waiting`范围。`max_parallel_units`约束work单元调度，不是所有外部进程的全局并发上限。stage期限从原dev_submit返回后建立，并在空回执poll后检查；它不保证外部进程硬截止，也不是任务总时长或费用上限。历史执行器的独立walltime不能从当前配置补造。 v9的统一授权另在`contract.original_input.budget`，运行观察在`original_outcome.budget`；不要把旧profile投影当作这份持久授权或实际模型调用计费。
 
 `usage`列出完整原history的事件数、activity调度、实际记录的activity-start、signal、dev_submit事件数和不同job数，并给出冻结request的work单元数。SDK会合并部分重试历史，因此这些计数不能推导全部重试、模型调用或计费。`workflow_span`按原首/终事件的Timestamp计算秒数并附event引用，包含排队、人工等待、并发和服务停止时间；它不是模型运行时长或job时长之和。缺时间戳为`not_recorded`，反向为`invalid_timestamps`且值null，真实零跨度才为0。`model_calls/tokens/cost`没有按原job验证的结构化用量来源时均为`not_recorded/value: null`，费用币种和来源亦null；不从材料文本或当前价格表自动推估。
 

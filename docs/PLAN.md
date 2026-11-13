@@ -1,12 +1,12 @@
 # Ergora 实施计划与进度
 
-最后更新：2026-11-12。本文件只保留恢复入口、当前状态及稳定规则；旧逐片记录完整保存在[11月10日检查点归档](PLAN-history-2026-11-10.md)和[更早历史](PLAN-history-2026-11-09.md)。旧文的“当前”只代表当时快照。
+最后更新：2026-11-13。本文件只保留恢复入口、当前状态及稳定规则；旧逐片记录完整保存在[11月10日检查点归档](PLAN-history-2026-11-10.md)和[更早历史](PLAN-history-2026-11-09.md)。旧文的“当前”只代表当时快照。
 
 ## 当前检查点
 
-- [B1完整材料输入](plans/2026-11-12-six-stage-materials.md)已普通提交／推送为`f394945db894740ad23a81c62b4ad87c85a84511`，作者SSH Ref同完整SHA；[交付记录](delivery/2026-11-12-six-stage-materials.md)保存definition4／input8、准备叶及完整材料：整理后源码295项／隔离wheel58项、453产品／两RECORD／283冻结通过。实际Codex377.86秒approve／五scope完整读取、完整36文件新独立两轴及原件补核开放0／0，本地出口通过；Claude原API400保持。原评审精确Git／作者Ref原件及自己的CI43211896925双OS七必要步骤终核通过，B1精确交付终结；原独立官方Ref403及早期在途保持。下一B2按持久授权准备、原workflow和进程清理分片推进，B2／C／D及新专家执行模板仍未实现。
+- [B1完整材料输入](plans/2026-11-12-six-stage-materials.md)已普通提交／推送为`f394945db894740ad23a81c62b4ad87c85a84511`，作者SSH Ref同完整SHA；[交付记录](delivery/2026-11-12-six-stage-materials.md)保存definition4／input8、准备叶及完整材料：整理后源码295项／隔离wheel58项、453产品／两RECORD／283冻结通过。实际Codex377.86秒approve／五scope完整读取、完整36文件新独立两轴及原件补核开放0／0，本地出口通过；Claude原API400保持。原评审精确Git／作者Ref原件及自己的CI43211896925双OS七必要步骤终核通过，B1精确交付终结；原独立官方Ref403及早期在途保持。下一B2按持久授权准备、原workflow和进程清理分片推进，B2运行片尚未交付，C／D及新专家执行模板仍未实现。
 
-- [B2总预算细化计划](plans/2026-11-12-six-stage-budget.md)及[交付记录](delivery/2026-11-12-six-stage-budget.md)已立：选择原creation先持久prepare，按执行接缝探针→B2a准备合同→B2b原workflow→B2c实际进程／收集／清理推进。源码只读调查完成，新独立设计复核开放0／0，SP1／DS1两P2关闭；三种进程原语探针及原件补核通过；B2a已实现并修正独立三处P2／模型preview P2，原四red和源码24项、r2包455／两RECORD／283／安装核心80项通过，自身聚焦145.60秒approve／五scope全文通过；原恢复54项／代表旅程5项通过；新增SP3／ST3最终witness慢fsync真实red已修，r3包455／两RECORD／283、安装25项及自身聚焦106.92秒approve／五scope全文通过；完整21文件独立两轴开放0／0、六finding关闭，本地出口通过，普通提交／推送及自己的CI继续；B2b／c未实现且新start保持unsupported；B1自己的CI独立终核，不借前片结果关闭B2。
+- [B2总预算细化计划](plans/2026-11-12-six-stage-budget.md)及[交付记录](delivery/2026-11-12-six-stage-budget.md)已立：选择原creation先持久prepare，按执行接缝探针→B2a准备合同→B2b原workflow→B2c实际进程／收集／清理推进。源码只读调查完成，新独立设计复核开放0／0，SP1／DS1两P2关闭；三种进程原语探针及原件补核通过；B2a已实现并修正独立三处P2／模型preview P2，原四red和源码24项、r2包455／两RECORD／283／安装核心80项通过，自身聚焦145.60秒approve／五scope全文通过；原恢复54项／代表旅程5项通过；新增SP3／ST3最终witness慢fsync真实red已修，r3包455／两RECORD／283、安装25项及自身聚焦106.92秒approve／五scope全文通过；完整21文件独立两轴开放0／0、六finding关闭，本地出口通过；c46f383已普通提交／推送、作者SSH完整Ref相等；自己的CI43226350116双OS七必要步骤及新独立精确终核通过，B2a精确交付终结；B2b真实Temporal七场景及提交到期恢复三项通过，B2c专用owner／pending／唯一finalizer已接入；源码v9启动已连接并通过受控九job／七slot串行旅程，未发布。首轮独立SP1重启并发漏计已真实两red并修正，按原ledger保存OWNED至正式终态；源码受影响33通过／4个Windows专属跳过，新非editable包456／两RECORD／283身份通过，隔离安装core40／旧流程46／真实Temporal7通过；新增daemon receipt后ledger更新丢失SP2在r1包真实red已修，源码三项通过，新r2包456／两RECORD／283身份和受影响job／架构25项通过。自身完整材料审查1801.98秒超时无判词，全文交付保持；八件聚焦复核760.63秒request-changes／五scope全文通过，唯一FAILED后到取消优先级意见经独立轴核原合同不采纳，未称模型approve；完整31文件最终独立两轴开放0／0、原finding全部关闭，本地出口通过；最终静态／普通发布及本候选自己的必要CI继续；B1／B2a自己的CI独立终核，不借前片结果关闭B2。
 
 - 当前产品`5ab6d350024de8515487d0bedb3b950be60ac867`的[F8-H1](delivery/2026-11-12-harness-probes.md)自己的CI43170918496双OS七必要步骤及原评审精确终核通过，精确交付终结；原匿名／独立Ref403、导航404和早期在途保持。日常安装已备份升级，43命令／52检查／10HTTP及新独立原件验收通过；当前优先按[专家模板重整](plans/2026-11-12-specialist-template-refresh.md)完成Skill Reference纵向及跨方向横向研究，再调整运行接口与模板。下列较早节点保留其完成身份。
 

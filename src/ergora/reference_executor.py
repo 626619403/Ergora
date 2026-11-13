@@ -43,6 +43,7 @@ class Executor(original.Executor):
         document = read(published) if published.exists() else spec
         self.input = execution_input(document)
         self.input.require_submission()
+        self.input.require_job_owner(envelope)
         composition = document.get('composition')
         if composition is not None:
             require(envelope['job_sha256'] == original.sha(context), 'Stage context digest mismatch')
@@ -662,6 +663,7 @@ class Executor(original.Executor):
             return self.receipt('CANCELLED' if self.fence.exists() else 'FAILED', str(error)[:1500])
 
     def model(self, names: list[str], *, review: bool = False) -> dict:
+        self.input.claim_model(self.context['stage'], self.member if self.composition is not None else None)
         role = self.spec["profile"]["roles"][self.stage]
         compiled = validate_compiled(read(STATE / "tasks" / self.task_id / "compiled.json"))
         require(compiled["spec"] == self.spec, "Compiled task differs from stage spec")
@@ -768,8 +770,8 @@ Return exactly one JSON object matching result_schema; include concrete artifact
         return receipt
 
 
-def process(path: Path, home: Path) -> dict:
-    envelope = read(path)
+def _execute(envelope: dict, home: Path) -> dict:
+    """Return pending evidence; the job owner alone publishes formal terminals."""
     try:
         executor = Executor(envelope, home)
     except (Blocked, OSError, ValueError, KeyError) as error:
@@ -793,19 +795,38 @@ def process(path: Path, home: Path) -> dict:
     else:
         receipt = executor.execute()
         task_id, job_id = executor.task_id, executor.job_id
-    adapter = FileAdapter(read(CONFIG / "adapter.json"))
-    adapter.verify_receipt({"job_id": job_id, "job_sha256": envelope["job_sha256"]}, receipt)
-    publish(STATE / "receipts" / task_id / (job_id + ".json"), receipt)
-    with closing(original.ledger()) as db, db:
-        db.execute("UPDATE jobs SET state=? WHERE id=?", (receipt["state"], job_id))
     return receipt
+
+
+def process(path: Path, home: Path) -> dict:
+    envelope = read(path)
+    spec = validate_spec(envelope['context']['spec'])
+    task_id = slug(spec['request']['task_id'])
+    published = STATE / 'tasks' / task_id / 'task.spec.json'
+    selected = execution_input(read(published) if published.exists() else spec)
+    return selected.job(path, home, _execute).run()
+
+
+def pending_job() -> None:
+    """Dedicated budget worker: constructor, Git, commands and model stay here."""
+    payload = json.load(sys.stdin)
+    envelope = read(Path(payload['request']))
+    receipt = _execute(envelope, Path(payload['home']))
+    publish(Path(payload['pending']), receipt)
 
 
 def main(home: Path, request: Path | None = None) -> dict | None:
     STATE.mkdir(parents=True, exist_ok=True)
     with (STATE / "executor.lock").open("a", encoding="utf-8") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        def retained_jobs():
+            with closing(original.ledger()) as db:
+                return {row[0] for row in db.execute("SELECT id FROM jobs WHERE state='OWNED'")}
+
         if request:
+            retained = retained_jobs()
+            require(read(request)['job_id'] in retained or len(retained) < settings()['max_parallel_jobs'],
+                    'Installation capacity remains occupied by unconfirmed original jobs')
             return process(request, home)
         logging.basicConfig(level=logging.INFO)
         active = {}
@@ -820,9 +841,20 @@ def main(home: Path, request: Path | None = None) -> dict | None:
                             write(STATE / "rejected-envelopes" / (hashlib.sha256(str(path).encode()).hexdigest() + ".json"),
                                   {"request_file": str(path), "error_type": type(error).__name__, "detail": str(error)[:4000]})
                         del active[path]
+                retained = retained_jobs()
+                occupied = retained | {path.stem for path in active}
                 for path in sorted(path for root in request_roots(STATE / "requests") for path in root.glob("*/*.json")):
                     receipt = STATE / "receipts" / path.parent.name / path.name
                     rejected = STATE / "rejected-envelopes" / (hashlib.sha256(str(path).encode()).hexdigest() + ".json")
-                    if path not in active and not receipt.exists() and not rejected.exists() and len(active) < settings()["max_parallel_jobs"]:
-                        active[path] = pool.submit(process, path, home)
+                    # A finalizer can lose its ledger update after linking the
+                    # receipt. Recover that original terminal even if the old
+                    # observer recorded a rejection; never execute its body.
+                    recover_terminal = path.stem in retained and receipt.exists()
+                    if path not in active and (recover_terminal or (not receipt.exists() and not rejected.exists())):
+                        # Recover already-owned jobs even at capacity. Their
+                        # owner lock/attempt permits observation, never a new
+                        # body. A rejected/unknown future does not refund them.
+                        if path.stem in retained or len(occupied) < settings()["max_parallel_jobs"]:
+                            active[path] = pool.submit(process, path, home)
+                            occupied.add(path.stem)
                 time.sleep(2)

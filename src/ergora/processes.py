@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 import time
+from collections.abc import Callable
 
 
 _cancel_requested = False
@@ -100,7 +101,8 @@ def _reap_children() -> None:
 
 def run(argv: list[str], cwd: Path, output: Path, timeout: int, stdin: str = "",
         env: dict | None = None, *, supervised: bool = False, lock_fd: int | None = None,
-        command_record: Path | None = None) -> dict:
+        command_record: Path | None = None, stop_requested: Callable[[], bool] | None = None) -> dict:
+    should_stop = stop_requested or (lambda: _cancel_requested)
     output.mkdir(parents=True, exist_ok=False, mode=0o700)
     (output / "stdin.txt").write_text(stdin, encoding="utf-8", newline="\n")
     if os.name == "nt":
@@ -117,7 +119,7 @@ def run(argv: list[str], cwd: Path, output: Path, timeout: int, stdin: str = "",
     with (output / "stdout.txt").open("w", encoding="utf-8") as stdout, (output / "stderr.txt").open("w", encoding="utf-8") as stderr:
         process = None
         try:
-            if not (supervised and _cancel_requested):
+            if not (supervised and should_stop()):
                 process = subprocess.Popen(
                     argv, cwd=cwd, env=env, stdin=subprocess.PIPE, stdout=stdout, stderr=stderr,
                     text=True, start_new_session=not supervised,
@@ -126,7 +128,7 @@ def run(argv: list[str], cwd: Path, output: Path, timeout: int, stdin: str = "",
                     if supervised:
                         # TERM only requests cancellation, including during final cleanup.
                         payload = stdin
-                        while not _cancel_requested:
+                        while not should_stop():
                             try:
                                 process.communicate(payload, timeout=0.2)
                                 break
@@ -152,7 +154,7 @@ def run(argv: list[str], cwd: Path, output: Path, timeout: int, stdin: str = "",
             if supervised:
                 _reap_children()
     code = process.returncode if process is not None else None
-    if supervised and _cancel_requested:
+    if supervised and should_stop():
         status = "cancelled"
     if code and status == "succeeded":
         status = "failed"

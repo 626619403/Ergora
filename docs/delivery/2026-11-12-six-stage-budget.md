@@ -1,6 +1,6 @@
 # B2 总预算交付记录
 
-产品基线`f394945db894740ad23a81c62b4ad87c85a84511`；范围和分片以[B2计划](../plans/2026-11-12-six-stage-budget.md)为准。当前B2a准备合同已实现并开始实际入口验收；B2b／c消费者未实现，没有正式预算六阶段流程的运行通过结论。[新的独立设计审查](2026-11-12-six-stage-budget-design-review.md)同片复核开放0／0；B1自己的CI与精确交付另在[B1记录](2026-11-12-six-stage-materials.md)记录。
+产品基线`f394945db894740ad23a81c62b4ad87c85a84511`；范围和分片以[B2计划](../plans/2026-11-12-six-stage-budget.md)为准。本记录保存B2a从设计到c46f383精确交付的历史，自己的CI与独立终核已关闭；后续B2b／c运行消费者、验证及独立出口见[运行片记录](2026-11-12-six-stage-budget-runtime.md)，不以此记录的历史“未实现”作为当前状态。[新的独立设计审查](2026-11-12-six-stage-budget-design-review.md)同片复核开放0／0；B1自己的CI与精确交付另在[B1记录](2026-11-12-six-stage-materials.md)记录。
 
 ## 源码调查与选择
 
@@ -71,3 +71,13 @@ r3非editable Python3.12.11 wheel SHA256为`e3d294ff82fc1baaf12750ee631327ff62f1
 ## B2a 完整本地出口
 
 原fresh-context协调者与两独立子轴已核最终完整21文件、r3修正及原件，Spec／Standards开放0／0，SP1–SP3和ST1–ST3全部关闭；[唯一评审报告](2026-11-12-six-stage-budget-preparation-review.md)保留r1／r2失败和r3补核。最终静态21文件177个本地链接目标／六秘密值issue0，JSON及Git空白通过。B2a本地出口通过，普通提交／推送、精确Git与远端及本产品自己的必要CI继续；不借B1 CI结案。B2b／c仍未实现，新start关闭；准备完成不等于总预算六阶段已跑通。
+
+## B2a 普通发布与精确身份
+
+最终21文件ready清单SHA256为`5ce90d1a0fd7fd94bafe64febeb2b1d9ae48e97ea59b63c2dd53b28b702deef4`，Git对象及mode逐项相等；已普通提交为`c46f3834df08927f7d266757c0f7d3fae8308fb8`，普通push退出0，作者SSH `ls-remote`同完整SHA。没有强推或合入main。最后静态177个本地链接目标／六秘密值issue0；前173／174样本保留各自字节范围。自己的必要CI及原评审精确终核继续，不借B1结果。
+
+## B2a 自己的CI与交付终核
+
+自己的[Portability43226350116](https://github.com/626619403/Ergora/actions/runs/43226350116)第二官方run HTML为Success；Windows131210421168四个／Linux131210421450三个必要步骤均completed／success，完整日志路径绑定c46。新的fresh-context[发布终核](2026-11-13-six-stage-budget-ci-review.md)直接核四对HTML／receipt、精确21份Git对象／mode／ready及作者原SSH Ref，Spec／Standards开放0／0，B2a精确交付终结。原实现评审仍为原完整两轴；本次仅补发布终核，没有模型／行为重跑或独立网络请求。
+
+匿名REST403、最初In progress及第二样本只识别job尚未核步骤的范围均保留。原件为私有b2a-closure的ci-run-html-r2、两ci-job目录及ci-terminal-r3.json；不称REST成功、完整日志下载或预算六阶段全生命周期通过。B2b／c继续使用自己的交付记录和独立出口。

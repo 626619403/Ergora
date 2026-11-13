@@ -178,8 +178,11 @@ async def main():
                 task_definition['composition']['backend_overrides'] = {
                     'root/review': {'binding': {'tool': 'codex', 'model': model}, 'reason': 'Explicit native protocol failure fixture'}}
         revision = state.project('demo')['revision']
+        if task_definition['schema_version'] == 5:
+            assert tasks.prepare(state, 'demo', task_definition, revision)['status'] == 'prepared'
         preview = tasks.preview(state, 'demo', task_definition, revision)
-        tasks.create(state, 'demo', task_definition, revision, preview['preview_sha256'])
+        tasks.create(state, 'demo', task_definition, revision, preview['preview_sha256'],
+                     **({'prepare_sha256': preview['prepare_sha256']} if task_definition['schema_version'] == 5 else {}))
         shutil.rmtree(Path(task_definition['composition']['manifest']))
         shutil.rmtree(state.root / 'agent-definitions')
         shutil.rmtree(state.root / 'workflow-definitions')

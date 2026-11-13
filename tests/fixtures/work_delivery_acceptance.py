@@ -116,6 +116,8 @@ def prepare(root, state, task_input, kind, examples, mode):
                  'fixture-capacity-inventory' if mode.endswith('-capacity') else 'fixture-complete-inventory')
         definition['composition']['backend_overrides']['root/preparation/inventory'] = {
             'binding': {'tool': 'codex', 'model': model}, 'reason': 'Deterministic complete-material protocol fixture'}
+        if mode.endswith('-budget'):
+            definition.update(schema_version=5, budget={'wall_seconds': 180, 'cleanup_seconds': 15, 'model_invocations': 7})
     return definition
 
 
@@ -281,8 +283,11 @@ async def exercise(root, case, app, activities, installation, state, runtime, re
     before = len(agent_runs.runs(state, 'demo'))
     for stage in work_stages:
         receipt = records[stage]
-        envelope = read(requests / 'task-1' / (receipt['job_id'] + '.json'))
-        assert Executor(envelope, state.root).execute() == receipt
+        path = requests / 'task-1' / (receipt['job_id'] + '.json')
+        if 'budget' in app.admission:
+            assert await asyncio.to_thread(process, path, state.root) == receipt
+        else:
+            assert Executor(read(path), state.root).execute() == receipt
     assert len(agent_runs.runs(state, 'demo')) == before == len(work_stages) + 3 + (2 if case.startswith('materials') else 0)
     assert len({receipt['actor']['session_id'] for receipt in records.values()}) == len(records)
     return {'case': case, 'original_owners': True, 'candidate': candidate, 'work_calls': len(work_stages), 'review_calls': 3,

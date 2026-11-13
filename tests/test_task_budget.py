@@ -88,34 +88,27 @@ def test_lost_preparation_reply_keeps_one_budget_and_preview_is_read_only(budget
     assert selected.document == document and document['schema_version'] == 9
     assert document['budget']['instance'] == result['budget']
     assert len(document['budget']['slots']) == 2 + len(definition['input']['work_units']) + len(document['composition']['members'])
-    assert Path('requests-composition-v9') not in request_roots(Path('requests'))
-    with pytest.raises(ValueError, match='unsupported'):
-        selected.require_submission()
+    assert Path('requests-composition-v9') in request_roots(Path('requests'))
+    selected.require_submission()
     assert preview['prepare_sha256'] == restored['prepare_sha256']
     for prepare_sha, preview_sha in [('0' * 64, preview['preview_sha256']), (preview['prepare_sha256'], '0' * 64)]:
         with pytest.raises(ValueError, match='Preparation or preview changed'):
             tasks.create(state, 'demo', definition, 1, preview_sha, prepare_sha256=prepare_sha)
     shutil.rmtree(definition['composition']['manifest'])
     created = tasks.create(state, 'demo', definition, 1, preview['preview_sha256'], prepare_sha256=preview['prepare_sha256'])
-    assert created['status'] == 'published' and created['composition']['runtime_supported'] is False
+    assert created['status'] == 'published' and created['composition']['runtime_supported'] is True
     assert tasks.resume_create(state, 'demo', definition['task_id'], 1, created['intent_sha256']) == created
-    # A readable, published contract must not register or start an unbudgeted worker.
-    interpreter = Path(registered['execution']['installation']) / '.venv'
-    interpreter.symlink_to(sys.prefix, target_is_directory=True)
-    with pytest.raises(ValueError, match='unsupported'):
-        tasks.start(state, 'demo', definition['task_id'], 1, created['intent_sha256'])
     assert not any((_root(registered) / name).exists() for name in ('ergora/task-submissions', 'requests-composition-v9', 'ingress'))
     environment = dict(os.environ, AGENTFLOW_CONFIG_DIR=registered['execution']['config_directory'],
                        AGENTFLOW_STATE_DIR=registered['execution']['state_directory'],
                        PYTHONPATH=os.pathsep.join((str(Path(tasks.__file__).parent.parent),
                            str(reference.ROOT / 'platform/local'), str(reference.ROOT / 'platform/upstream/platform'))))
-    # An explicit executor request must hit the same refusal before creating
-    # a checkout, model process or native claim, even without a queue worker.
+    # Constructing a budgeted Executor directly cannot bypass its job owner.
     direct = subprocess.run([sys.executable, '-c',
         'import json,sys;from pathlib import Path;from ergora.reference_executor import Executor;'
         'Executor({"context":{"spec":json.load(sys.stdin)}},Path(sys.argv[1]))', str(state.root)],
         input=json.dumps(document['legacy_spec']), env=environment, capture_output=True, text=True, timeout=20)
-    assert direct.returncode != 0 and 'Budgeted six-stage execution is unsupported' in direct.stderr
+    assert direct.returncode != 0 and 'requires its original dedicated owner' in direct.stderr
     assert not (_root(registered) / 'workspaces').exists()
 
 

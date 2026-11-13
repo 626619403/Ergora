@@ -101,13 +101,13 @@ def test_text_only_cannot_silently_drop_required_skill_attachments(full_creation
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Native stage monitor requires Linux/WSL2')
-@pytest.mark.parametrize('case', ['full', 'capacity', 'unread', 'source-artifact', 'issue-source'])
+@pytest.mark.parametrize('case', ['full', 'capacity', 'unread', 'source-artifact', 'issue-source', 'budget'])
 def test_real_preparation_calls_and_original_stage_results(tmp_path, case):
     pytest.importorskip('temporalio')
     pytest.importorskip('mcp')
     fixture = Path(__file__).parent / 'fixtures/reference_acceptance.py'
     result = subprocess.run([sys.executable, str(fixture), str(tmp_path), 'repository-governance', 'command',
-        'composition-work-materials-' + case], capture_output=True, text=True, timeout=150)
+        'composition-work-materials-' + case], capture_output=True, text=True, timeout=210 if case == 'budget' else 150)
     assert result.returncode == 0, result.stdout + result.stderr
     record = json.loads(result.stdout)
     if record.get('skip'):

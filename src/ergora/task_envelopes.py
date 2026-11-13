@@ -471,8 +471,8 @@ def summary(document: dict) -> dict:
             **({'review_protocol': composition['review_protocol']} if 'review_protocol' in composition else {}),
             **({'execution': composition['execution']} if 'execution' in composition else {}),
             **({'preparation': composition['preparation']} if 'preparation' in composition else {}),
-            'members': composition['members'], 'diversity': composition['diversity'], 'runtime_supported': supported and document['schema_version'] != 9,
-            **({'budget': document['budget'], 'execution_limitation': 'Budget lifecycle consumer is not yet supported'}
+            'members': composition['members'], 'diversity': composition['diversity'], 'runtime_supported': supported,
+            **({'budget': document['budget']}
                if document['schema_version'] == 9 else {}),
             **({'issue_source': {'snapshot_sha256': document['issue_source']['sha256'],
                 'source': document['issue_source']['payload']['observation']['source'],

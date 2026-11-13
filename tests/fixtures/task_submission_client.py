@@ -21,7 +21,7 @@ from ergora.reference_inputs import execution_input
 payload = json.load(sys.stdin)
 sys.stdin = io.StringIO(json.dumps(payload))
 scenario = os.environ.get('ERGORA_TEST_SUBMISSION_SCENARIO', 'normal')
-source_input = core.task_spec(payload['task_id']).get('schema_version') == 7
+selected_input = core.task_spec(payload['task_id']).get('schema_version') in (7, 8, 9)
 fixture = Path(payload['project']['registration']['definition']['execution']['state_directory']) / 'sdk-fixture'
 fixture.mkdir(exist_ok=True)
 server = fixture / 'server.json'
@@ -34,13 +34,13 @@ def log(event):
 
 def report():
     log('doctor')
-    if source_input:
+    if selected_input:
         raise AssertionError('Source admission must not call the broad fixture doctor')
     return {'ready_for_real_tasks': scenario != 'doctor-blocked'}
 
 
 doctor.report = report
-if source_input:
+if selected_input:
     from agent_platform.sandbox import Sandbox
     from ergora import processes, task_mcp
 
@@ -87,6 +87,10 @@ if scenario == 'policy-blocked':
 class Handle:
     async def describe(self, **kwargs):
         log('describe')
+        if scenario == 'budget-expire-during-lookup':
+            from ergora import reference_budget
+            instance = core.task_spec(payload['task_id'])['budget']['instance']
+            await asyncio.sleep(max(0, reference_budget.remaining(instance)) + .1)
         if scenario == 'lookup-unavailable':
             raise RPCError('unavailable', RPCStatusCode.UNAVAILABLE, b'')
         if not server.exists():
@@ -153,6 +157,12 @@ def initialize(self, *args):
     original_init(self, *args)
     write = self.core.write
     def interrupted(path, value, **kwargs):
+        if path == self.attempt_path and scenario == 'budget-slow-attempt':
+            import time
+            from ergora import reference_budget
+            write(path, value, **kwargs)
+            time.sleep(max(0, reference_budget.remaining(self.input.document['budget']['instance'])) + .1)
+            return
         if path == self.rejection_path and scenario == 'race-rejection-lost':
             raise OSError('Fixture rejection write was lost')
         for name, target in (('intent', self.intent_path), ('attempt', self.attempt_path), ('result', self.result_path)):

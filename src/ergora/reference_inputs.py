@@ -78,6 +78,20 @@ class WorkflowInput(ABC):
     def require_submission(self) -> None:
         """Refuse unsupported formal execution before dispatch or journal writes."""
 
+    def require_dispatch(self) -> None:
+        """Validate a new send; observing an existing attempt is a separate operation."""
+
+    def job(self, path: Path, home: Path, body):
+        from .reference_job_lifecycle import DirectJob
+
+        return DirectJob(path, home, self.document, body)
+
+    def require_job_owner(self, envelope: dict) -> None:
+        """Existing inputs keep their original executor construction contract."""
+
+    def claim_model(self, stage: str, member: str | None) -> None:
+        """Existing inputs keep their original native invocation checkpoints."""
+
     def stage_material(self) -> dict:
         """Additional frozen task data outside the structural resource tree."""
         return {}
@@ -347,19 +361,55 @@ class FullStageMaterialsInput(StageResultsInput):
 
 
 class BudgetedInput(FullStageMaterialsInput):
-    """Readable persisted input; execution stays closed until all owners consume it."""
+    """The original six stages share one authorization through all job owners."""
 
     version = 9
     queue_suffix = '.composition-v9'
     requests_suffix = '-composition-v9'
-    execution_enabled = False
+
+    @classmethod
+    def adapter(cls, config: dict):
+        from .reference_workflows import BudgetedAdapter
+
+        return BudgetedAdapter({**config, 'requests': str(cls.request_root(Path(config['requests'])))})
 
     @classmethod
     def workflow_type(cls):
-        raise ValueError('Budgeted six-stage execution is unsupported until the complete lifecycle consumer is available')
+        from .reference_workflows import BudgetedWorkflow
+
+        return BudgetedWorkflow
 
     def require_submission(self) -> None:
-        self.workflow_type()
+        super().require_submission()
+
+    def require_dispatch(self) -> None:
+        from . import reference_budget
+
+        reference_budget.require_remaining(self.document['budget']['instance'])
+
+    async def start(self, client, **options):
+        from datetime import timedelta
+        from . import reference_budget
+
+        remaining = reference_budget.require_remaining(self.document['budget']['instance'])
+        options['rpc_timeout'] = min(options.get('rpc_timeout', timedelta(seconds=20)), timedelta(seconds=remaining))
+        return await super().start(client, **options)
+
+    def job(self, path: Path, home: Path, body):
+        from .reference_job_lifecycle import BudgetedJob
+
+        self.require_submission()
+        return BudgetedJob(path, home, self.document)
+
+    def require_job_owner(self, envelope: dict) -> None:
+        from .reference_job_lifecycle import require_owner
+
+        require_owner(self.document, envelope)
+
+    def claim_model(self, stage: str, member: str | None) -> None:
+        from .reference_job_lifecycle import claim_model
+
+        claim_model(self.document, stage, member)
 
 
 _INPUTS = {1: LegacyInput, 2: CompositionInput, 3: ReviewRequirementsInput, 4: ReviewDAGInput,

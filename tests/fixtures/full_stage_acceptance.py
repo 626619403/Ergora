@@ -112,4 +112,14 @@ async def exercise(root, case, app, activities, adapter, installation, state, ru
     app.approved_plan = {'plan_sha256': plan_sha, 'receipt': plan, 'approval': authorization}
     result = await original_work(root, 'materials-issue-source' if case == 'issue-source' else 'materials', app, activities,
         installation, state, runtime, requests, records)
+    if case == 'budget':
+        instance = app.admission['budget']['instance']
+        owners = [runtime / 'workspaces/task-1/jobs' / receipt['job_id'] / 'budget' for receipt in records.values()]
+        attempts = [read(owner / 'model-attempt.json') for owner in owners if (owner / 'model-attempt.json').exists()]
+        assert len(owners) == 9 and len(attempts) == len(app.admission['budget']['slots']) == 7
+        assert {item['budget_sha256'] for item in attempts} == {instance['sha256']}
+        assert {item['stage'] for item in attempts} == set(app.admission['budget']['slots'])
+        assert all(read(owner / 'stopped.json')['cleanup_confirmed'] is True
+                   and read(owner / 'collection-stopped.json')['cleanup_confirmed'] is True for owner in owners)
+        result.update(budget_job_owners=len(owners), original_model_slot_attempts=len(attempts))
     return {**result, 'case': case, 'complete_preparation': True}

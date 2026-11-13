@@ -65,7 +65,7 @@ flowchart TB
 |`task_envelopes`、`review_dags`|版本化正式身份、历史校验；冻结图的StageDAG／WorkDelivery投影|标准库数据规则不启动SDK；工作与审查各消费同一图的阶段投影|
 |`reference_review_opinions`|SDK无关的可信审查意见读取|原workflow活动与Executor共用候选／job／调用绑定规则，不各解释一套建议意见|
 |`reference_inputs`、`reference_workflows`、`reference_worker`|按版本构造队列／请求根／活动与workflow、共同worker生命周期|保留旧版本路由与history；扩展原六阶段，不新建调度／账本|
-|`reference_executor`、`stage_driver`|原checkout／检查／可信commit／receipt，以及Agent桥接|原Executor拥有可信候选；Agent写入或后端成功不能代替门禁|
+|`reference_executor`、`reference_job_lifecycle`、`stage_driver`|原checkout／检查／可信commit／receipt，以及Agent桥接；v9专用job owner和停止后唯一finalizer|原Executor拥有可信候选；pending不是终态；原jobs ledger保留未知资源占用|
 |`handoff`|受限ZIP格式、内部字节与引用校验；仅依赖纯envelope／来源合同，不依赖运行Input|离线核包不执行材料、不认证来源，也不重放完整history|
 |`skill_assets`、`evaluation`、`skills`、`optimization`|Skill版本、固定评价、评价后采用／回退、可选GEPA搜索|生成器不改评分；采用核精确baseline和revision，没有绕过评价的另一入口|
 |`memory`、`research`|带来源的记忆、可选ReMe投影、有界资料快照／提案|SQLite是记忆权威；新资料须审阅，不自动写成有效记忆|
@@ -287,7 +287,7 @@ flowchart LR
 
 原Executor统一选择实际member；inventory／plan复用原stage_driver与run_input，在新空cwd执行，完整资料由原快照和固定MCP提供。精确Git对象批量读取由原Executor内聚共享算法承担，review保留base／candidate，准备阶段提供starting及所需AGENTS。plan先核原inventory请求／收据／claim／调用与产物身份；完整输入超过限额直接失败。`task_mcp`记录成功read返回范围，v8阶段接受前核未内联附件连续覆盖；旧版本仍按原握手准入，不重写旧输入。
 
-## 预算准备 input9
+## 全程共用预算 input9
 
 `tasks.prepare`和CLI／HTTP共用原creation所有者：先在task-creations持久授权及唯一attempt，再由独立supervised worker遍历安装、读取完整manifest／材料及编译。原subreaper等待拥有进程树退出，原owner清理编译scratch后才发布准备成果与完成witness。`reference_budget`只拥有实例、时钟和已知slot的stdlib合同；时间状态另投影，不改变完整preview身份。create确认prepare／preview两个SHA并在同一工作截止内逐文件发布，resume不重编或重新授权。
 
@@ -299,9 +299,19 @@ flowchart LR
   Cleanup --> Frozen[原prepare成果与完成witness]
   Frozen --> Preview[确定性只读preview]
   Preview --> Create[双摘要create / 原intent恢复]
-  Create --> Closed[v9执行入口unsupported]
+  Create --> Submit[原提交intent与attempt]
+  Submit --> Workflow[原Temporal共用工作截止]
+  Workflow --> Owner[专用job owner监督整个body]
+  Owner --> Collect[停止后监督collection]
+  Collect --> Finalizer[唯一finalizer核总截止与取消]
+  Finalizer --> Ledger[原receipt与jobs ledger]
+  Workflow --> Fence[原fence与未知对账]
 ```
 
-单次观察结束不终止仍在安全清理的owner；未知attempt不重跑。跨boot／主机及明显时钟跳变不授权新工作。当前只实现准备消费者，正式Temporal等待及整个job的最终receipt发布仍待B2b／c；v9不注册worker或请求扫描根，显式Executor也拒绝。现有版本的调度、终态与冻结参考保持；可信当前容器依然不是本工具提供的OS隔离。
+单次准备观察结束不终止仍在安全清理的owner；未知attempt不重跑。跨boot／主机及明显时钟跳变不授权新工作。v9沿原WorkflowInput共同构造Interface注册专属queue／请求根；原workflow监督排队、owner批准、stage、semaphore、poll／重试及fence。固定UTC截止用于Temporal；Linux消费者同时核原same-boot单调起点，重试／重启不重新计时。
 
-此片不实现统一总预算或原生嵌套六阶段调用，trusted writer的advisory能力保持。当前图形向导仍生成v6；新合同从CLI／共用API使用。材料传递和原生夹具的实际验收见[B1交付](../delivery/2026-11-12-six-stage-materials.md)，不得借旧候选结果推导新版本成功。
+`WorkflowInput.job`选择DirectJob或BudgetedJob，Executor不按后端分派生命周期。旧输入沿原线程内执行／发布；v9独立owner在启动前沿原jobs表持久化OWNED，由原processes的subreaper监督构造／Git／模型／可信命令和后代。child只产pending；确认整个树停止后独立监督collection。唯一finalizer先持久化候选，再重核同实例截止／取消，最后链接原字节为正式receipt并更新原账本，三种终态均受停止门禁。慢fsync不能发布旧success，未知停止不会先发FAILED来误确认fence。
+
+Executor安装级并发取持久OWNED与本进程active的并集；重启只观察原attempt，unknown／rejected不退款。已链接receipt但账本未更新的原job仍进入对账，不能因receipt存在永久跳过。单次request入口沿同一容量门禁；没有另建调度器或表。现有版本的调度、终态与冻结参考保持；可信当前容器仍不是本工具提供的OS隔离。
+
+统一预算只覆盖单机／同boot的原六阶段输入，原生嵌套六阶段调用另片；trusted writer的advisory能力保持。当前图形向导仍生成v6；新合同从CLI／共用API使用。材料传递和原生夹具的实际验收见[B1交付](../delivery/2026-11-12-six-stage-materials.md)，不得借旧候选结果推导新版本成功。

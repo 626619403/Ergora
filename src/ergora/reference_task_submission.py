@@ -146,7 +146,9 @@ class _Submission:
                     operation.core.write(operation.rejection_path,
                                          operation.rejection(intent, 'preexisting_run', description.run_id))
                     raise ValueError('Workflow already exists without this submission attempt; reconcile its owner')
+                operation.input.require_dispatch()
                 operation.core.write(operation.attempt_path, operation.attempt(intent))
+                operation.input.require_dispatch()
                 native_start = self.client.start_workflow
 
                 async def exclusive_start(*args, **kwargs):
@@ -242,6 +244,7 @@ class _Submission:
                 return status
             if status['attempt_saved']:
                 return await self.reconcile(intent) if operation == 'resume' else status
+            self.input.require_dispatch()
             return await self.dispatch(intent)
 
 
