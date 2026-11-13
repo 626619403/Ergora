@@ -7,6 +7,8 @@ name = "ergora"
 version = "0.2.0"
 description = "Project contracts and evidence for multi-agent delivery and continuous improvement"
 readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md"]
 requires-python = ">=3.11"
 dependencies = ["PyYAML>=6.0.2,<7", "jsonschema==4.24.0"]
 

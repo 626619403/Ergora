@@ -1,7 +1,9 @@
 # Third-party sources
 
-Ergora's own license is pending maintainer selection. This does not change the
-licenses of the third-party components listed below.
+Ergora-authored code and documentation are licensed under
+[Apache-2.0](LICENSE); see also [NOTICE](NOTICE). Third-party material retains
+its original license and notices. The root license does not relicense the
+components below or grant a license to material of unresolved provenance.
 
 ## Bundled browser component
 

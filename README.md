@@ -431,4 +431,4 @@ agentflow verify
 
 当前参考分发面向单机和可信容器。团队级身份、独立执行隔离、生产 Temporal 部署及其他执行后端需要后续工程接入和验收。任务中的角色字段和摘要不构成团队身份认证。
 
-项目许可证尚待维护者确定；第三方组件适用各自许可证，来源与随包许可见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。当前源码与研究分支不代表已完成开源许可证发布。
+Ergora 自有代码与文档使用 [Apache-2.0](LICENSE)，附 [NOTICE](NOTICE)。第三方组件保留各自许可证；冻结参考资料中尚未明确原许可的内容不获得新的授权，来源与边界见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
