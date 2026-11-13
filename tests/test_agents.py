@@ -235,6 +235,31 @@ def test_forge_failed_observation_preserves_crash_reconciliation(tmp_path, monke
         kernel.operate(State(state.root), "demo", prepared["id"], "run")
 
 
+@pytest.mark.parametrize("relative", ["scripts/timeout-run.py", "src/forgekernel/ergora_untracked.py"])
+def test_forge_runtime_source_drift_blocks_doctor_and_prepare(tmp_path, monkeypatch, relative):
+    source, python = os.environ.get("ERGORA_FORGE_TEST_CHECKOUT"), os.environ.get("ERGORA_FORGE_TEST_PYTHON")
+    if not source or not python:
+        pytest.skip("Explicit pinned Forge installation required; CPU only")
+    checkout = tmp_path / "forge-source"
+    subprocess.run(["git", "clone", "--shared", source, str(checkout)], check=True, capture_output=True)
+    monkeypatch.setenv("PYTHONPATH", str(checkout / "src"))
+    state, _ = project(tmp_path)
+    binding = {"tool": "forgekernel", "checkout": str(checkout), "python": python,
+               "task": str(checkout / "tasks/rmsnorm")}
+    projects.bind(state, "demo", "kernel", binding, 1)
+    assert kernel.available(binding)["version"] == "pinned"
+    path = checkout / relative
+    with path.open("a") as stream:
+        stream.write("\n# source identity regression; never executed\n")
+    check = next(item for item in tools.doctor(state, "demo")["checks"] if item["layer"] == "kernel")
+    assert check["version"] == "unsupported" and check["task_availability"] == "blocked"
+    assert check["installed"] and not check["source_clean"]
+    refused = kernel.create(state, "demo", "prepare")
+    assert refused["status"] == "failed" and "execution scripts" in refused["error"]
+    assert "operations" not in refused and "campaign" not in refused
+    assert not (state.root / "kernel" / refused["id"] / "native").exists()
+
+
 def test_forge_config_drift_and_cuda_candidate_identity(tmp_path, monkeypatch):
     source, python = os.environ.get("ERGORA_FORGE_TEST_CHECKOUT"), os.environ.get("ERGORA_FORGE_TEST_PYTHON")
     if not source or not python:

@@ -4,6 +4,8 @@
 
 ## 当前检查点
 
+- [C2 原生准入](plans/2026-11-14-forge-native-admission.md)从 f4da08b 清洁基线继续：C2.0 接缝调查完成；C2.1 原 `kernel` owner 已统一包／scripts Git 身份门禁，基线两 red、551 产品／两 RECORD／283 与安装 23 通过／9 跳过、自身 Codex 回退 37.233 秒 approve 及新独立两轴通过，开放 0／0，本地出口完成，普通发布／自己的 CI 另记。Claude 简单只读 5.275 秒成功与完整审查 240.495 秒超时分别保留；bwrap 实际拒绝，完整 C2／真实训练 B3 仍开放。可独立继续 F8-H2 的真实只读模型兼容验收。[交付](delivery/2026-11-14-forge-native-admission.md)逐步记录。
+
 - [B3a提案交接资料](plans/2026-11-14-proposal-experiment-handoff.md)：等待B2i自己的CI／U3安装期间，沿原训练owner核字段和门禁；现有训练手册22／6／6字段说明、四原调用及两处完整前驱走查和比例静态检查及新fresh独立需求／可维护性两轴通过，开放0／0；资料已随6d4006e普通发布／作者完整SSH Ref核准；不新建执行器／账本／schema，不修改283冻结文件。真实workload、原manifest及运行／独立评价／批准仍属于B3开放验收。
 
 - [U3日常安装升级](plans/2026-11-14-daily-installation-refresh.md)：升级前PATH入口为3 preset／452产品／38 distributions。前像和完整私有venv备份已完成，归档38,626,813B／6,190成员、5,051文件与symlink逐项核准；限定活动进程观察0，默认业务state不存在。B2i发布／自己的CI及独立终核已完成，已核精确release gate，同一551产品wheel已离线安装到原应用，两RECORD／283、38依赖及4,550非应用文件／symlink和启动器保持；实际日常入口65命令／72检查／10 HTTP和8代表根均通过，23条目可见、所属server／端口清理通过；原fresh独立终验两轴通过，开放0／0；另新日常自身原结构模板41.303秒approve／五全文54,066B及独立原件核准，本片已随6d4006e普通发布／作者完整SSH Ref核准，完成。[交付](delivery/2026-11-14-daily-installation-refresh.md)逐步更新。

@@ -14,6 +14,16 @@ from .state import State, file_lock, now
 FORGE_COMMIT = components.COMPONENTS["forgekernel"]["installation"]["commit"]
 
 
+def _source_identity(checkout: Path) -> tuple[str, bool]:
+    """Check the package and the scripts used by its agent, timeout and policy paths."""
+    command = ["git", "-C", str(checkout)]
+    commit = subprocess.check_output([*command, "rev-parse", "HEAD"], text=True,
+                                     stderr=subprocess.DEVNULL, encoding="utf-8", timeout=5).strip()
+    changes = subprocess.check_output([*command, "status", "--porcelain", "--untracked-files=all", "--",
+                                       "src/forgekernel", "scripts"], stderr=subprocess.DEVNULL, timeout=5)
+    return commit, not changes
+
+
 def validate_binding(binding: dict) -> None:
     tool = binding.get("tool")
     if tool not in components.CATALOG["kernel"]:
@@ -33,11 +43,12 @@ def available(binding: dict) -> dict:
         return {"installed": False, "version": "unsupported_platform", "reason": "ForgeKernel requires Linux; use WSL2"}
     try:
         checkout = Path(binding["checkout"]).expanduser().resolve(strict=True)
-        commit = subprocess.check_output(["git", "-C", str(checkout), "rev-parse", "HEAD"], text=True, stderr=subprocess.DEVNULL, encoding="utf-8", timeout=5).strip()
+        commit, clean = _source_identity(checkout)
         result = subprocess.run([str(Path(binding["python"]).expanduser()), "-c",
             "from forgekernel.paths import repo_root;print(repo_root())"], capture_output=True, text=True, timeout=5, encoding="utf-8")
         installed = result.returncode == 0 and Path(result.stdout.strip()).resolve() == checkout
-        return {"installed": installed, "version": "pinned" if commit == FORGE_COMMIT else "unsupported", "commit": commit}
+        return {"installed": installed, "version": "pinned" if commit == FORGE_COMMIT and clean else "unsupported",
+                "commit": commit, "source_clean": clean}
     except (OSError, ValueError, subprocess.SubprocessError):
         return {"installed": False, "version": "not_checked"}
 
@@ -76,11 +87,11 @@ def _call(state: State, project_id: str, document: dict, action: str, timeout: i
             document["requires_reconciliation"] = True
         binding = document["binding"]
         checkout = Path(binding["checkout"]).expanduser().resolve(strict=True)
-        source = subprocess.check_output(["git", "-C", str(checkout), "rev-parse", "HEAD"], text=True, encoding="utf-8").strip()
+        source, clean = _source_identity(checkout)
         if source != FORGE_COMMIT:
             raise ValueError(f"ForgeKernel adapter requires fixed commit {FORGE_COMMIT}")
-        if subprocess.run(["git", "-C", str(checkout), "diff", "--quiet", "HEAD", "--", "src/forgekernel"], check=False).returncode:
-            raise ValueError("ForgeKernel source differs from the pinned adapter version")
+        if not clean:
+            raise ValueError("ForgeKernel package or execution scripts differ from the pinned adapter version")
         if action == "run" and not document.get("campaign"):
             raise ValueError("Prepare a campaign or reconcile it with status before running")
         if action == "run" and (document.get("requires_reconciliation") or document["status"] in ("running", "outcome_unknown") or
