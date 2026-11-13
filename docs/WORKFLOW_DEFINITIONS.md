@@ -17,6 +17,8 @@ ergora composition install-preset large-change
 ergora composition install-preset training-optimization
 ergora composition install-preset training-optimization-v2
 ergora composition install-preset refactoring
+ergora composition install-preset refactoring-quality
+ergora composition install-preset optimization-performance-diagnosis
 ergora composition show ergora-large-change-delivery 1.0.0 --material
 ergora agent definition show ergora-server-implementer 1.0.0 --material
 ```
@@ -30,6 +32,8 @@ ergora agent definition show ergora-server-implementer 1.0.0 --material
 |training-optimization|`ergora-training-proposal`|实验设计与性能分析 → kernel候选设计 → 测量复现审查；完整静态组合及可独立调用的只读提案叶|
 |training-optimization-v2|`ergora-training-proposal@2.0.0`|跨域约束／实验设计和关键路径诊断 → kernel／wrapper候选 → 独立测量证据审查；四专家与三子模板精确v2，只读叶调用|
 |refactoring|`ergora-refactoring-template`|普通父 → 原生六阶段：准备 → rewrite／compatibility串行工作 → 三类独立审查；正式task type沿用large-change，显式definition6／input10|
+|refactoring-quality|`ergora-refactoring-template` 1.1.0|原重构流程及实例不变，父 Skill 补充目标仓库规范、实际依赖与测试接缝；显式选择新版本|
+|optimization-performance-diagnosis|`ergora-opt-performance-diagnosis-proposal`|同症状复现与兼容报告 reader；只读 design／profile→measurement 提案叶，原 runner 保留实验执行|
 
 开发组合共用 `ergora-delivery-review`，它引用结构、正确性、测试价值三份可单独使用的子模板。每份专家有独立初始指令、专长和Skill，沿自己的结构父链完整装载资料。开发writer默认Codex，reviewer默认Claude Code；支持的后端可以逐实例明确覆盖。实际可用性和认证仍由调用准入核验；同后端回退需遵守所选多样性政策并记录原因。
 

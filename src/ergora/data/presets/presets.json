@@ -369,6 +369,44 @@
         "ergora-measurement-review-v2",
         "ergora-opt-kernel-proposal"
       ]
+    },
+    "refactoring-quality": {
+      "description": "Behavior-preserving six-stage refactoring with repository-specific style, module ownership and realistic test-seam guidance.",
+      "runtime": "development-v5",
+      "root": "ergora-refactoring-template-v1.1",
+      "agents": [
+        "ergora-structure-reviewer",
+        "ergora-correctness-reviewer",
+        "ergora-test-value-reviewer",
+        "ergora-development-preparer",
+        "ergora-refactoring-engineer",
+        "ergora-compatibility-validator-v2"
+      ],
+      "workflows": [
+        "ergora-structure-review",
+        "ergora-correctness-review",
+        "ergora-test-value-review",
+        "ergora-delivery-review",
+        "ergora-development-preparation",
+        "ergora-refactoring-work",
+        "ergora-refactoring-delivery",
+        "ergora-refactoring-template-v1.1"
+      ]
+    },
+    "optimization-performance-diagnosis": {
+      "description": "Symptom-preserving feedback commands, compatible report readers and bounded performance proposals with independent evidence review. Readonly leaves; original runner retains execution and adoption.",
+      "runtime": "proposal-leaves",
+      "root": "ergora-opt-performance-diagnosis-proposal",
+      "agents": [
+        "ergora-experiment-designer-v2",
+        "ergora-performance-analyst-v2",
+        "ergora-measurement-reviewer-v2"
+      ],
+      "workflows": [
+        "ergora-training-analysis-v2",
+        "ergora-measurement-review-v2",
+        "ergora-opt-performance-diagnosis-proposal"
+      ]
     }
   }
 }

@@ -115,6 +115,25 @@ prepare返回的实验ID／manifest SHA → 原runner／job → evidence SHA／�
 
 跨域专家可复用于多个方向子模板，单份kernel设计也可覆盖精度、布局、融合和通信等关系。方向知识与原生执行能力分别接入；安装v2提案不等于已接入Forge／KDA内部全流程或任意外部MCP。实际实验继续使用本手册前述原manifest、可信runner、独立评价和精确evidence SHA批准。
 
+## 通用性能诊断
+
+```bash
+ergora composition install-preset optimization-performance-diagnosis
+```
+
+根为 `ergora-opt-performance-diagnosis-proposal`、版本 1.0.0，复用 v2 的 design／profile／measurement 三叶。父模板提供标准 [`ergora-performance-diagnosis`](../src/ergora/data/presets/workflows/ergora-opt-performance-diagnosis-proposal/skills/ergora-performance-diagnosis/SKILL.md)：先固定同症状反馈命令，再按实际格式、版本、phase 和硬件选择已有报告 reader。没有可比证据或 trace 来自不同场景时保留 unknown，向原 runner 提出有限补测请求。
+
+沿[单叶输入与调用](WORKFLOW_DEFINITIONS.md#准备完整的单叶输入)为该精确根准备 grant／manifest，显式选 `root/analysis/design` 或 `root/analysis/profile`；之后把两份完整原结果交给 `root/measurement/review`。资料通过父链累加，权限仍为只读、无 shell／网络；安装不执行整图、采集器、parser 或实验。工具路线是选择依据，具体工具的安装、可用性和授权分别核实。真实收益仍按本手册的原 runner／evidence gate 验收。
+
+若仅需要项目级 Skill，可在本仓库 checkout 根、已登记实际项目后执行：
+
+```bash
+ergora skill import my-project \
+  src/ergora/data/presets/workflows/ergora-opt-performance-diagnosis-proposal/skills/ergora-performance-diagnosis
+```
+
+首次 import 是初始 baseline；后续候选不自动采用。独立 `agent run --skill ergora-performance-diagnosis` 不修改模板固定资料，完整选择区别见[重构手册](USAGE.md#使用重构配方)。
+
 ## 独立的优化方向子模板
 
 按任务选择下列配方，不必让每个专家加载全部方向资料。每个根的版本为1.0.0，组合共享的analysis／measurement v2及designer／analyst／measurement reviewer；基础三叶路径为`root/analysis/design`、`root/analysis/profile`和`root/measurement/review`；low-precision与kernel方向另含`root/kernel`。每叶继承本方向完整context、自身Skill与全部结构祖先资料。

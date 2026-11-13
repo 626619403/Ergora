@@ -17,7 +17,7 @@ from test_registrations import installation, registration
 
 @pytest.mark.parametrize('direction', ['memory-tuning', 'activation-recompute', 'cpu-offloading',
     'cuda-graphs', 'sequence-packing', 'parallelism', 'megatron-fsdp', 'hierarchical-cp',
-    'tp-dp-overlap', 'moe-dispatcher', 'moe-overlap', 'profiling', 'memory-snapshot', 'recipe-model', 'model-verification', 'cluster-resiliency', 'low-precision', 'kernel'])
+    'tp-dp-overlap', 'moe-dispatcher', 'moe-overlap', 'profiling', 'memory-snapshot', 'recipe-model', 'model-verification', 'cluster-resiliency', 'low-precision', 'kernel', 'performance-diagnosis'])
 def test_direction_roots_keep_full_context_when_reusing_v2_experts(tmp_path, direction):
     state = State(tmp_path / 'state')
     installed = workflows.install_preset(state, 'optimization-' + direction)
@@ -34,7 +34,8 @@ def test_direction_roots_keep_full_context_when_reusing_v2_experts(tmp_path, dir
     leaves = {item['path']: item for item in graph['instances'] if item['kind'] == 'agent'}
     assert set(leaves) == set(expected)
     materials = workflows.get(state, root['id'], root['version'], material=True)['resources']
-    context = next(resource for resource in materials if resource['kind'] == 'context')
+    parent_materials = [resource for resource in materials if resource['kind'] in ('context', 'skill')]
+    assert parent_materials
     shutil.rmtree(state.root / 'agent-definitions')
     shutil.rmtree(state.root / 'workflow-definitions')
     for path, leaf in leaves.items():
@@ -44,10 +45,11 @@ def test_direction_roots_keep_full_context_when_reusing_v2_experts(tmp_path, dir
             b'Use supplied original experiment evidence; retain missing measurements.',
             tmp_path / path.replace('/', '-'), 100000)
         actual = workflows.inspect_input(Path(prepared['path']), material=True)
-        assert context['text'] in actual['prompt']
-        inherited = next(resource for resource in leaf['resources'] if resource['id'] == context['id'])
-        assert inherited['text'] == context['text']
-        assert {source['instance'] for source in inherited['sources']} == {'root'}
+        for material in parent_materials:
+            assert material['text'] in actual['prompt']
+            inherited = next(resource for resource in leaf['resources'] if resource['id'] == material['id'])
+            assert inherited['text'] == material['text']
+            assert {source['instance'] for source in inherited['sources']} == {'root'}
 
 
 @pytest.mark.parametrize('kind', reference.TEMPLATES)
@@ -149,12 +151,17 @@ def test_development_preset_creates_original_unit_contract_without_starting(regi
     assert not (Path(project['execution']['state_directory']) / 'requests-composition-v5').exists()
 
 
-def test_refactoring_preset_restarts_with_old_versions_and_complete_parent_materials(tmp_path):
+@pytest.mark.parametrize('preset', ['refactoring', 'refactoring-quality'])
+def test_refactoring_preset_restarts_with_old_versions_and_complete_parent_materials(tmp_path, preset):
     state = State(tmp_path / 'state')
     original = workflows.install_preset(state, 'large-change')
     old_validator = agent_definitions.get(state, 'ergora-compatibility-validator', '1.0.0')
-    installed = workflows.install_preset(state, 'refactoring')
-    assert installed == workflows.install_preset(state, 'refactoring')
+    original_refactoring = workflows.install_preset(state, 'refactoring')
+    old_root = workflows.get(state, 'ergora-refactoring-template', '1.0.0')
+    installed = workflows.install_preset(state, preset)
+    assert installed == workflows.install_preset(state, preset)
+    assert workflows.install_preset(state, 'refactoring') == original_refactoring
+    assert workflows.get(state, 'ergora-refactoring-template', '1.0.0') == old_root
     assert workflows.install_preset(state, 'large-change') == original
     assert agent_definitions.get(state, 'ergora-compatibility-validator', '1.0.0') == old_validator
     validator = agent_definitions.get(state, 'ergora-compatibility-validator', '2.0.0')
@@ -196,7 +203,8 @@ def test_refactoring_preset_restarts_with_old_versions_and_complete_parent_mater
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Budgeted native preparation requires Linux/WSL2')
-def test_refactoring_preset_prepares_the_original_large_change_native_contract(registration, tmp_path):
+@pytest.mark.parametrize('preset', ['refactoring', 'refactoring-quality'])
+def test_refactoring_preset_prepares_the_original_large_change_native_contract(registration, tmp_path, preset):
     state, project = registration
     example = Path(__file__).parents[1] / 'examples/composition/refactoring/task.example.json'
     definition = json.loads(example.read_bytes())
@@ -218,7 +226,7 @@ def test_refactoring_preset_prepares_the_original_large_change_native_contract(r
     definition['issue_id'] = '1'
     project['allowed_paths'] = definition['input']['allowed_paths']
     registrations.register(state, project, 0)
-    installed = workflows.install_preset(state, 'refactoring')
+    installed = workflows.install_preset(state, preset)
     root = workflows.get(state, installed['root']['id'], installed['root']['version'])['definition']
     grant = {'schema_version': 1, 'permissions': root['permissions'], 'limits': root['limits']}
     manifest = workflows.prepare_manifest(state.root, root['id'], root['version'], grant, tmp_path / 'manifest')

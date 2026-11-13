@@ -621,6 +621,26 @@ ergora composition prepare-manifest ergora-refactoring-template 1.0.0 \
 
 新配方不会重写旧版本或在途任务。回退新任务的选择时重新选择旧精确包／manifest并prepare；已经启动的任务继续用原task／run观察、取消或对账。
 
+要让各角色同时获得仓库规范、模块依赖与真实测试接缝指导，显式选择 `refactoring-quality`：
+
+```bash
+ergora composition install-preset refactoring-quality
+ergora composition prepare-manifest ergora-refactoring-template 1.1.0 \
+  --grant examples/composition/refactoring/grant.json \
+  --directory ./refactoring-quality-manifest
+```
+
+它只给父模板增加一份标准 [`ergora-codebase-quality`](../src/ergora/data/presets/workflows/ergora-refactoring-template-v1.1/skills/ergora-codebase-quality/SKILL.md)，所有后代继承完整 Skill 包；原子流程、实例路径、权限、预算、后端与任务示例均沿用上文。将新 manifest 路径／摘要填入自己的新任务；旧 1.0.0 和已冻结任务不会随安装升级。角色依目标仓库适用的规范与配置工作，不套用其他训练框架的格式规定。
+
+只想在独立项目调用中使用 Skill 时，可从本仓库 checkout 根执行下列命令，先登记真实 `my-project`：
+
+```bash
+ergora skill import my-project \
+  src/ergora/data/presets/workflows/ergora-refactoring-template-v1.1/skills/ergora-codebase-quality
+```
+
+独立 `agent run --skill ergora-codebase-quality` 消费项目当前采用版本；这与模板内固定的 Skill 是两个明确选择。首次同名 import 成为初始 baseline，后续候选仍需[评价与采用](INTEGRATIONS.md#skill-候选评价与采用)。项目 import 或编辑宿主 Skill 不会修改冻结模板；正式任务换资料须选择新版本与 manifest。
+
 ### 查询正式任务运行状态
 
 安装development组合或 `ergora[temporal]`，并准备所登记的参考运行时。通过CLI或 `GET /api/projects/ID/tasks/TASK_ID/status?run_id=RUN_ID&timeout=20` 只读查询原生运行事实：
