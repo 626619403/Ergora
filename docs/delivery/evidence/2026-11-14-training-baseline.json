@@ -184,12 +184,21 @@
     "scope": "Final r2 actual baseline UI and original files. Original r1 lifecycle timeout retained; no claimed Windows OS/GPU/training/performance/quality/approval."
   },
   "independent_review": {
-    "requirements": "final local passed; two P2 closed, zero open findings; own publication/CI pending",
-    "structure": "final local passed; zero open findings; own publication/CI pending"
+    "requirements": "final local and fixed Git publication identity passed; zero open findings",
+    "structure": "final local, fixed Git publication identity and own exact CI final passed; zero open findings"
   },
   "publication": {
-    "status": "pending",
-    "policy": "Ordinary push of current development branch; own exact-commit CI still required. No main merge."
+    "candidate": "fe26796a54b3804aac9272a9ea86643320a7f0b3",
+    "ordinary_push": true,
+    "exact_remote_ref": true,
+    "verified_git_blobs": 27,
+    "independent_fixed_git_identity": "passed both original axes",
+    "ci_run_id": 43520929146,
+    "ci_url": "https://github.com/626619403/Ergora/actions/runs/43520929146",
+    "ci_status": "Success",
+    "ci_jobs": 8,
+    "necessary_steps": 30,
+    "ci_independent_final_review": "original structure axis passed; no new requirements-axis CI claim"
   },
   "private_raw_artifacts": [
     {
@@ -334,5 +343,147 @@
     "total": 1810,
     "deselected": 1453,
     "execution_claim": false
-  }
+  },
+  "publication_raw_references": [
+    {
+      "path": "commit-r1.json",
+      "bytes": 1084,
+      "sha256": "9df67f61c58f9ef98d87787ade898e917edd15d93150d7dd4afc03fe52dbf847"
+    },
+    {
+      "path": "push-r1.json",
+      "bytes": 749,
+      "sha256": "a253af6172dee6445cb23871b68fbc656e84ea92e42d9cba7658dad11b2a873f"
+    },
+    {
+      "path": "ref-r1.json",
+      "bytes": 738,
+      "sha256": "b8d1dc0ac46c0d8ef7e572d115f1bf83ee400589e81cfdb26bccccc960f1b786"
+    },
+    {
+      "path": "ci-discovery-r1.json",
+      "bytes": 437,
+      "sha256": "6c74f46f4c0787a35e84a167fa4d67f3b3a9b5a53e9178ca27ee0fcadbbe8fba"
+    },
+    {
+      "path": "ci-ui-metadata-r1.json",
+      "bytes": 2128,
+      "sha256": "36d4827cd96f40a7254c023dbe63714239f32d0c770f94494f6e7fb7ad5a77eb"
+    },
+    {
+      "path": "ci-terminal-r4.json",
+      "bytes": 13357,
+      "sha256": "3804bc134c542145d497185b08c94f2a9eb6eb0491af01993b0c84770e717e28"
+    },
+    {
+      "path": "ci-run-html-r1/page.html",
+      "bytes": 176260,
+      "sha256": "330f64c2d1059aa90acf47e44821375ef5859090871ad50c7ad31b9040f5070c"
+    },
+    {
+      "path": "ci-run-html-r1/receipt.json",
+      "bytes": 5975,
+      "sha256": "7f8bde71475e1e3372c9bb3498ee6045cc4cbecf26803b680669afe6eb7084c3"
+    },
+    {
+      "path": "ci-run-html-r4/page.html",
+      "bytes": 213277,
+      "sha256": "7c7988f3b113eb1e15e1231ab5bf422d14173aef282a66355fc912b0bba9d687"
+    },
+    {
+      "path": "ci-run-html-r4/receipt.json",
+      "bytes": 5968,
+      "sha256": "bde9d414da23bb00314b18aa2379264332283229f3668e2e44df9ee42bfd5841"
+    },
+    {
+      "path": "ci-job-batch-r1/body.json",
+      "bytes": 2724,
+      "sha256": "67c51a5b56a7b253187f70a21aea272bf0c97ef6666134fe631c65ab8e3e5ec6"
+    },
+    {
+      "path": "ci-job-batch-r1/receipt.json",
+      "bytes": 766,
+      "sha256": "364db73de02fb5d865fe4ef7560a135ac3b3f71a5c483ab6d22a57492196bc74"
+    },
+    {
+      "path": "ci-job-132214685878-html-r1/page.html",
+      "bytes": 158819,
+      "sha256": "370a6b95a46794e56b9bbd710f6f3c4efe0b0e5e4b2a4d921839c72b4da87e68"
+    },
+    {
+      "path": "ci-job-132214685878-html-r1/receipt.json",
+      "bytes": 5992,
+      "sha256": "21cfc180ffd72ce7d6b8d6ee67e895584acc9459c727b93f698380d455a80f86"
+    },
+    {
+      "path": "ci-job-132214743129-html-r2/page.html",
+      "bytes": 162514,
+      "sha256": "2b9ffe58280d4ce59483908a3608abb8915e1ee16415695827dc041c1f91c72c"
+    },
+    {
+      "path": "ci-job-132214743129-html-r2/receipt.json",
+      "bytes": 6001,
+      "sha256": "0071d6337d646117f2a0c21b5f23adab1f7a145e41bcff638de573b5a6016967"
+    },
+    {
+      "path": "ci-job-132214742962-html-r1/page.html",
+      "bytes": 162510,
+      "sha256": "89d192abbab05db5c10595ac59b652f3bf840e5e66a7ef4166df2df7dd2928b9"
+    },
+    {
+      "path": "ci-job-132214742962-html-r1/receipt.json",
+      "bytes": 6003,
+      "sha256": "f81f86cfbbc77cabeca1ff947d5af1723e014bce79421f9c7613283b89f08a5a"
+    },
+    {
+      "path": "ci-job-132214742996-html-r1/page.html",
+      "bytes": 162508,
+      "sha256": "0f18b68286d45e92ac3e3e3b701a1511618472766721011c58cd1e8095ac7132"
+    },
+    {
+      "path": "ci-job-132214742996-html-r1/receipt.json",
+      "bytes": 5998,
+      "sha256": "95c63cc20e85730a4e5845404d7752b0b7cbf93b2f213400aafb7d19e026ed0a"
+    },
+    {
+      "path": "ci-job-132214743147-html-r1/page.html",
+      "bytes": 162508,
+      "sha256": "56560ceac1126a805d836c8328a7e88ae0061fa8235bdfc06b9a44e4006c350c"
+    },
+    {
+      "path": "ci-job-132214743147-html-r1/receipt.json",
+      "bytes": 5999,
+      "sha256": "017929db68f644ab771a49c5ef158ea85fc44124df52926527d7a1272d96ec11"
+    },
+    {
+      "path": "ci-job-132214743076-html-r1/page.html",
+      "bytes": 162510,
+      "sha256": "346138922a3fdf23e9371f31051f8f7aec62913806279271a0d99a201c83c648"
+    },
+    {
+      "path": "ci-job-132214743076-html-r1/receipt.json",
+      "bytes": 5995,
+      "sha256": "3c053fd17627e6ec044e4ff611211f26bcf25d73b934d071eb3529701d556dd0"
+    },
+    {
+      "path": "ci-job-132214742945-html-r2/page.html",
+      "bytes": 162510,
+      "sha256": "fd7ffed4d6d2ce73f710fac30301a422587d8d0426eacaf2d77f13a79539bff3"
+    },
+    {
+      "path": "ci-job-132214742945-html-r2/receipt.json",
+      "bytes": 5997,
+      "sha256": "ff6debf40dc30a270d8afed95bc56b868efa19e3ce9e79188158c3065bb227b1"
+    },
+    {
+      "path": "ci-job-132214742991-html-r4/page.html",
+      "bytes": 160090,
+      "sha256": "7b8e579890a58ccdbf0431e45ae419f961f16598d6e329c68898ef7811568e26"
+    },
+    {
+      "path": "ci-job-132214742991-html-r4/receipt.json",
+      "bytes": 5994,
+      "sha256": "6cb439194e4492ad81156c729e49c0d040fe7f698d73481580fe85708c31ce4b"
+    }
+  ]
 }

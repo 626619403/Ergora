@@ -2,7 +2,7 @@
 
 日期：2026-11-14。评审员：fresh-context 独立需求轴；先读原始要求、原 owner 和候选源码，随后读取作者交付与验收原件。本次只读源码／证据并写本报告，未改产品、安装、启动服务、运行训练或提交。
 
-当前结论（最终本地出口）：**需求／正确性通过，首轮 2 个 P2 已关闭，开放 finding 0。** 本轴所查维护边界也无额外 finding；完整独立结构轴另见其报告。r2 包／必要安装回归、实际 SDK-free、完整真实页面与原件／收尾、原模板自身聚焦调用均已补核。普通精确发布／远端 Ref／本片自己的 CI 仍待验；不借 F9b3 CI 关闭本片。以下首轮问题、失败和较早待验状态均保留其当时范围，以文末本地补核为准。
+当前结论（本地与发布身份）：**需求／正确性通过，首轮 2 个 P2 已关闭，开放 finding 0。** 本轴所查维护边界也无额外 finding；完整独立结构轴另见其报告。r2 包／必要安装回归、实际 SDK-free、完整真实页面与原件／收尾、原模板自身聚焦调用均已补核。普通发布 `fe26796a54b3804aac9272a9ea86643320a7f0b3` 的固定 Git 对象／27 个 blob／保存的完整远端 Ref 已核；本片自己的 CI 仍待终态，不借 F9b3 CI 关闭本片。以下首轮问题、失败和较早待验状态均保留其当时范围，以文末补核为准。
 
 ## 首轮结论与身份
 
@@ -81,3 +81,17 @@ HEAD 仍为上述固定 baseline，候选未提交。按同一 11 产品路径�
 - **自身模板与公开证据**：第二轮原结构模板为 5 完整文件／95,335B、approve／23.170 秒，原结果 SHA `f7a1fce083795dcfbf1aba2731c339a51136588e6a0c43845b4251134610a69e`。本评审独立核实际 prompt 与 stdin 相同、5 件完整材料长度／SHA及当前产品一致，祖先／叶的 3 件资源和叶 prompt 均在实际 stdin；不以脚本布尔值代替材料复核。公开 JSON 引用的 24 份私有原件长度／SHA 全部复算匹配，公开计划／交付区分了各包、失败、分段范围和未验平台。
 
 **本地结论**：原始 F9b4a 的基线预览、精确 revision／canonical SHA 确认、原子且不覆盖的原 init、SDK-free、页面生命周期与原件保持已在上述范围通过；没有新增产品或责任边界 finding。后续只待本片普通精确发布、完整远端 Ref 及自己的必要 CI 补核。真实训练／GPU／质量或性能收益、runner 登记／prepare、原 evidence 批准／采用、原生 Windows OS 实测继续按原合同开放，不由本次本地评审关闭。
+
+## 普通发布身份补核
+
+本次全部产品身份从固定 Git 对象读取。候选 `fe26796a54b3804aac9272a9ea86643320a7f0b3` 的唯一父提交为原 baseline `fad53478c9261157b3016563b410b9d4b4d85b9d`。本评审以 `git cat-file blob COMMIT:PATH` 逐件重算 `static-final-r1.json` 的 27 件长度／SHA，并与该提交实际 changed-file 集合核对，全部一致。11 件产品／测试／CI 的组合 SHA 仍为 `426d271430bdba818bd999be46c2ae5b06bdc6ec85c2b138e0318fe0712001ef`，与前述最终本地验收候选相同。新增或更新的旧 F9b3 发布／CI记账仍只归其原片，不作为本片产品证据。
+
+保存的 `commit-r1.json`、`push-r1.json`、`ref-r1.json` 均退出 0 且指向同一完整候选。原 push argv 是当前开发分支的普通 `HEAD:refs/heads/refactor/architecture-foundations` 推送，无 force／mirror／main 合并；原 stdout／stderr 记录 `fad5347..fe26796` 的前进。其后保存的 `ls-remote` stdout 精确为 `fe26796a54b3804aac9272a9ea86643320a7f0b3` 与完整 `refs/heads/refactor/architecture-foundations`，本评审未另发远端请求。
+
+|发布原件|字节|SHA256|
+|---|---:|---|
+|`commit-r1.json`|1,084|`9df67f61c58f9ef98d87787ade898e917edd15d93150d7dd4afc03fe52dbf847`|
+|`push-r1.json`|749|`a253af6172dee6445cb23871b68fbc656e84ea92e42d9cba7658dad11b2a873f`|
+|`ref-r1.json`|738|`b8d1dc0ac46c0d8ef7e572d115f1bf83ee400589e81cfdb26bccccc960f1b786`|
+
+**发布身份通过，开放产品 finding 0；本片自己的 CI 仍待发现和终态补核。** 此次仅补记原片发布身份，未将后续 F9b4b 工作树纳入候选，也未重跑 suite／服务或继承 F9b3 的 CI 成功。

@@ -83,6 +83,7 @@
       "tests/test_state_backups.py",
       "tests/test_training.py",
       "tests/test_training_baseline.py",
+      "tests/test_training_runner.py",
       "tests/test_training_runtime.py",
       "tests/test_training_submission.py",
       "tests/test_training_cancellation.py",

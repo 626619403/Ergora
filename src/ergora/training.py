@@ -15,15 +15,20 @@ def preview_baseline(state: State, project_id: str, baseline: dict) -> dict:
 def initialize_baseline(state: State, project_id: str, baseline: dict, expected_revision: int,
                         baseline_sha256: str) -> dict:
     """Confirm one baseline; retrying identical content never replaces a different one."""
-    if type(expected_revision) is not int or expected_revision < 1:
-        raise ValueError('Expected project revision must be a positive integer')
-    with state.connect() as db:
-        db.execute('BEGIN IMMEDIATE')
-        project = _project(state, project_id)
-        if project['revision'] != expected_revision:
-            raise ValueError('Project revision changed; preview the baseline again')
-        return reference.training_setup(project, state.root, 'init-baseline',
-                                        {'baseline': baseline, 'baseline_sha256': baseline_sha256})
+    return _setup(state, project_id, expected_revision, 'init-baseline',
+                  {'baseline': baseline, 'baseline_sha256': baseline_sha256})
+
+
+def preview_runner(state: State, project_id: str, runner: dict) -> dict:
+    """Use the native registrar in temporary configuration, without running argv."""
+    return reference.training_setup(_project(state, project_id), state.root, 'preview-runner', {'runner': runner})
+
+
+def register_runner(state: State, project_id: str, runner: dict, expected_revision: int,
+                    runner_sha256: str) -> dict:
+    """Confirm one project-bound native runner; existing IDs remain immutable."""
+    return _setup(state, project_id, expected_revision, 'register-runner',
+                  {'runner': runner, 'runner_sha256': runner_sha256})
 
 
 def inspect(state: State, project_id: str, experiment_id: str | None = None, *,
@@ -112,6 +117,18 @@ def _project(state: State, project_id: str) -> dict:
     if registration.get('status') != 'published' or 'training-optimization' not in registration['definition']['templates']:
         raise ValueError('Training operations require a published project with training-optimization selected')
     return project
+
+
+def _setup(state: State, project_id: str, expected_revision: int, operation: str, payload: dict) -> dict:
+    if type(expected_revision) is not int or expected_revision < 1:
+        raise ValueError('Expected project revision must be a positive integer')
+    # Both operations publish local immutable files; no remote I/O under this reservation.
+    with state.connect() as db:
+        db.execute('BEGIN IMMEDIATE')
+        project = _project(state, project_id)
+        if project['revision'] != expected_revision:
+            raise ValueError('Project revision changed; preview the setup document again')
+        return reference.training_setup(project, state.root, operation, payload)
 
 
 def _submission(state: State, project_id: str, experiment_id: str, expected_revision: int,

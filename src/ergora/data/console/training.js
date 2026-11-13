@@ -9,6 +9,7 @@ export function trainingView(data, base) {
   const entries = node("div", { "aria-live": "polite" });
   const baseline = node("div");
   const setup = node("div");
+  const runnerSetup = node("div");
   const note = node("p", { className: "form-note" });
   const detail = node("div", { className: "task-detail", "aria-live": "polite" }, empty("选择一个实验，查看完整合同与已保存证据。"));
   let pageSequence = 0, detailSequence = 0, pageIndex = 0, page;
@@ -17,68 +18,77 @@ export function trainingView(data, base) {
   const next = button("下一页", () => { cursors[++pageIndex] = page.next_after; load(); });
   const view = node("div", { className: "task-layout training-workbench" },
     node("div", {}, panel("当前基线", null, baseline, setup),
+      panel("可信 runner", "明确登记项目命令；登记不会执行 argv。", runnerSetup),
       panel("原实验记录", "列表读取已保存文件；不会查询或启动训练。", entries, note,
         row(previous, next, button("重新读取列表", () => { pageIndex = 0; load(); })))), detail);
   const active = () => view.isConnected && app.project === project && app.tab === "training" && app.bootstrap.state_directory === home;
 
-  function baselineSetup() {
+  function setupDocument(kind) {
+    const isBaseline = kind === "baseline", label = isBaseline ? "基线" : "runner";
+    const publishLabel = isBaseline ? "初始化基线" : "登记 runner";
+    const previewOperation = isBaseline ? "baseline-preview" : "runner-preview";
+    const publishOperation = isBaseline ? "init-baseline" : "register-runner";
+    const shaKey = `${kind}_sha256`;
     let sequence = 0, sending = false;
     const result = node("div", { "aria-live": "polite" });
-    const source = node("textarea", { rows: 12, "aria-label": "完整 baseline JSON", spellcheck: "false",
-      placeholder: "粘贴已审阅的完整 baseline.json", oninput: () => { sequence++; result.replaceChildren(); } });
-    const preview = button("预览基线", async () => {
+    const source = node("textarea", { rows: 12, "aria-label": `完整 ${kind} JSON`, spellcheck: "false",
+      placeholder: `粘贴已审阅的完整 ${kind} JSON`, oninput: () => { sequence++; result.replaceChildren(); } });
+    const preview = button(`预览${label}`, async () => {
       if (sending) return;
       const text = source.value, request = ++sequence;
-      const baselineDocument = JSON.parse(text);
-      result.replaceChildren(empty("正在验证基线…"));
+      const document = JSON.parse(text);
+      result.replaceChildren(empty(`正在验证${label}…`));
       try {
-        const observed = await api(`${base}/training/baseline-preview`, { baseline: baselineDocument });
+        const observed = await api(`${base}/training/${previewOperation}`, { [kind]: document });
         if (!active() || request !== sequence || source.value !== text) return;
         result.replaceChildren(pre(observed));
         if (observed.status === "conflict") {
-          result.append(empty("当前基线与输入不同；需要经过审阅的基线迁移，此处不覆盖。"));
+          result.append(empty(isBaseline ? "当前基线与输入不同；需要经过审阅的基线迁移，此处不覆盖。"
+            : "同 ID 的 runner 与输入不同；请为新版本选用新的 runner_template_id。"));
           return;
         }
         if (app.bootstrap.platform !== "linux") {
-          result.append(empty("此处可预览；原生初始化请在登记的 Linux／WSL2 环境执行。"));
+          result.append(empty("原生初始化与 runner 登记请在登记的 Linux／WSL2 环境执行。"));
           return;
         }
-        const confirm = node("input", { type: "text", "aria-label": "确认 baseline 内容 SHA256",
-          autocomplete: "off", spellcheck: "false", placeholder: "粘贴预览返回的完整 baseline_sha256" });
-        const initialize = button("确认初始化基线", async () => {
+        const confirm = node("input", { type: "text", "aria-label": `确认 ${kind} 内容 SHA256`,
+          autocomplete: "off", spellcheck: "false", placeholder: `粘贴预览返回的完整 ${shaKey}` });
+        const initialize = button(`确认${publishLabel}`, async () => {
           if (!active() || sending || request !== sequence || source.value !== text) return;
-          if (confirm.value !== observed.baseline_sha256) throw new Error("请确认预览中的完整 baseline 内容 SHA256。");
+          if (confirm.value !== observed[shaKey]) throw new Error(`请确认预览中的完整 ${kind} 内容 SHA256。`);
           sending = true;
           source.disabled = preview.disabled = confirm.disabled = initialize.disabled = true;
           try {
-            const reply = await api(`${base}/training/init-baseline`, {
-              baseline: baselineDocument, revision: observed.project_revision, baseline_sha256: observed.baseline_sha256,
+            const reply = await api(`${base}/training/${publishOperation}`, {
+              [kind]: document, revision: observed.project_revision, [shaKey]: observed[shaKey],
             });
             if (active() && request === sequence) {
-              result.replaceChildren(pre(reply), empty("已读取原基线文件。此登记不证明测量、质量或训练收益。"));
+              result.replaceChildren(pre(reply), empty(`已读取原${label}文件。此登记不证明测量、质量或训练收益。`));
               load();
             }
           } catch (error) {
             if (active() && request === sequence)
-              result.replaceChildren(panel("未取得初始化确认", error.message,
-                node("p", {}, "重新读取基线，再预览相同内容。已有不同基线不会被覆盖。"),
-                button("重新读取原基线", () => load())));
+              result.replaceChildren(panel(`未取得${publishLabel}确认`, error.message,
+                node("p", {}, `重新预览相同内容以读取原${label}文件，再明确确认重试。已有不同内容不会被覆盖。`),
+                ...(isBaseline ? [button("重新读取原基线", () => load())] : [])));
           } finally {
             sending = false;
             source.disabled = preview.disabled = false;
           }
         }, "primary");
-        result.append(node("p", {}, "核对完整基线和项目修订，粘贴内容SHA后初始化。相同内容可重试；原文件字节SHA在回执中另列。"), confirm, initialize);
+        result.append(node("p", {}, `核对完整${label}和项目修订，粘贴内容SHA后${publishLabel}。相同内容可重试；原文件字节SHA在回执中另列。`), confirm, initialize);
       } catch (error) {
-        if (active() && request === sequence) result.replaceChildren(panel("未取得基线预览", error.message));
+        if (active() && request === sequence) result.replaceChildren(panel(`未取得${label}预览`, error.message));
       }
     });
-    return node("details", {}, node("summary", {}, "预览与初始化基线"),
-      node("p", {}, "使用训练模板中的 baseline.json 填写真实代码、配置和 workload。预览与初始化无需启动服务。"),
+    return node("details", {}, node("summary", {}, `预览与${publishLabel}`),
+      node("p", {}, isBaseline ? "使用训练模板中的 baseline.json 填写真实代码、配置和 workload。预览与初始化无需启动服务。"
+        : "使用 runner-template.example.json 填写当前项目、Git 根、argv 和超时。需要 Linux／WSL2 与 ergora[temporal]，无需启动服务；只登记，不运行命令。"),
       source, preview, result);
   }
 
-  setup.append(baselineSetup());
+  setup.append(setupDocument("baseline"));
+  runnerSetup.append(setupDocument("runner"));
 
   function submissionPanel(id, selected, cancellation) {
     const submission = node("div", { "aria-live": "polite" });

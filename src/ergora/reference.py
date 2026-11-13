@@ -363,11 +363,12 @@ def training_runtime_status(project: dict, spec: dict, *, run_id: str | None, ti
 
 
 def training_setup(project: dict, home: Path, operation: str, payload: dict) -> dict:
-    """Preview locally or initialize the selected native baseline, without starting work."""
-    if operation == 'init-baseline' and sys.platform != 'linux':
-        raise ValueError('Native training initialization requires Linux; use the registered runtime in WSL2')
+    """Preview or publish native baseline/runner configuration without starting work."""
+    runner = operation in ('preview-runner', 'register-runner')
+    if (operation == 'init-baseline' or runner) and sys.platform != 'linux':
+        raise ValueError('Native training initialization and runner registration require Linux; use the registered runtime in WSL2')
     return _training_process(project, 'setup', {'project': project, 'control_home': str(home),
-                             'operation': operation, **payload}, 20, sdk=False)
+                             'operation': operation, **payload}, 20, sdk=runner)
 
 
 def training_submission(project: dict, home: Path, operation: str, payload: dict, *, timeout: int) -> dict:

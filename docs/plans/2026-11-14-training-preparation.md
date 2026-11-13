@@ -28,3 +28,5 @@
 复用现有registration／training／runtime夹具和显式CI分组；新增检查只保护错项目、漂移、无回复重试、路径越界、旧预览或错误SHA等可能静默损坏。不得为可见普通错误／文案堆测试，不无理由重跑全部仓库。安装包核源码／两RECORD／283；实际CLI和HTTP同合同，浏览器生命周期与原件保持；用原结构审查模板检查本仓库，再以新的fresh-context reviewer做需求／结构两轴。
 
 当前：F9b4a实现及本地实际验收完成。首轮独立两个P2（CLI原文件限读／Windows预览Git路径）最小修复后，r2包570／两RECORD／283、受影响20安装测试／11.39秒、实际SDK-free和完整页面／27原件／收尾、自身聚焦approve均核过；r1五suite57通过／232.41秒保留其旧包范围。r1页面脚本重复选择导致timeout原件保留，r2仅修验收同步并完整重验。新的独立两轴最终本地原件补核通过、开放0／0；精确发布／自己的CI尚待。后续记录见[交付](../delivery/2026-11-14-training-baseline.md)及[公开证据](../delivery/evidence/2026-11-14-training-baseline.json)。
+
+接续：F9b4a `fe26796a…`普通发布、27个Git blob／完整Ref及原两轴固定发布身份补核已通过，自己的CI `43520929146`第四份原run／8job／30必要步骤Success，原结构轴CI终核通过。F9b4b已按[单独计划](2026-11-14-training-runner.md)完成r1包／安装40项／真实CLI与页面／原件及收尾／自身审查，新独立两轴最终原件补核通过0／0，未借本片CI关闭runner自己的发布要求。F9b4c下一片细化原多件恢复语义。

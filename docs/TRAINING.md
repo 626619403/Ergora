@@ -48,7 +48,24 @@ ergora training list my-project
 
 内容SHA由完整对象的canonical JSON计算，保留额外说明字段、忽略键顺序与排版；使用预览返回值，不能拿文件的 `sha256sum` 代替。回执的 `current_baseline_file_sha256` 则是原文件字节SHA。CLI原始输入文件和原生序列化文件各最多1MiB；HTTP沿控制台既有4MB请求上限，解析后的baseline还须满足原生1MiB容量。预览和初始化无需Temporal SDK、服务或GPU；实际原子初始化使用原perfctl锁，只支持Linux／WSL2，Windows原生可预览。
 
-预览的`not_initialized`表示尚无原基线，`already_initialized`表示已有完整同内容，`conflict`表示不同内容。初始化成功返回`initialized`或`already_initialized`，CLI退出0；错误／冲突退出非零。若初始化请求失联，先重新读取列表，再预览相同JSON并显式重试；已发布的同内容文件保持原字节，不另建基线，不覆盖不同内容。已有不同基线须走经过审阅的迁移流程，此入口不提供替换。runner登记与实验prepare暂沿下面的原生流程。
+预览的`not_initialized`表示尚无原基线，`already_initialized`表示已有完整同内容，`conflict`表示不同内容。初始化成功返回`initialized`或`already_initialized`，CLI退出0；错误／冲突退出非零。若初始化请求失联，先重新读取列表，再预览相同JSON并显式重试；已发布的同内容文件保持原字节，不另建基线，不覆盖不同内容。已有不同基线须走经过审阅的迁移流程，此入口不提供替换。
+
+### 预览与登记可信 runner
+
+在 Linux／WSL2 的控制环境安装 `ergora[temporal]`，填写训练模板中的 `runner-template.example.json`。预览与登记不需要 Temporal 服务或 GPU。runner 是可信操作者授权的逐实验命令，登记会保存 argv，但不会运行它；其 `{manifest}`／`{output}` 占位符由后续原生 `run-local` 执行时替换。
+
+```bash
+ergora training runner-preview my-project --runner ./training-task/runner-template.example.json
+# 核对完整规范化 runner、project_revision 和 runner_sha256
+ergora training register-runner my-project --runner ./training-task/runner-template.example.json \
+  --revision REVISION --runner-sha256 PREVIEW_RUNNER_CONTENT_SHA256
+```
+
+`project` 必须是当前已登记项目，`repo` 必须指向其 Git 根；回执显示 resolve 后的规范路径。字段／argv／超时由原 `agentflow training runner-add` 的登记逻辑验证；`schema_version`须为整数1，超时为1–82800秒。预览只在隔离子进程的临时配置目录运行原登记器，不修改真实配置；确认后仍由原登记器不可变写入真实 `training-runners/RUNNER_ID.json`。共享配置目录中的ID全局唯一，建议使用带项目名称和版本的ID。
+
+控制台“训练实验”→“可信 runner”→“预览与登记 runner”提供同一流程。HTTP为`POST /api/projects/{project}/training/runner-preview`（`runner`对象）及`POST .../register-runner`（再加`revision / runner_sha256`）。编辑或切项目使旧预览失效，确认内容SHA与原文件字节SHA分列；CLI原文件和原生序列化文件各最多1MiB，HTTP沿既有4MB封套。
+
+预览状态为`not_registered / already_registered / conflict`；确认成功返回`registered / already_registered`。同内容重试保留原文件字节；同ID不同内容拒绝，更新命令需要新的已审阅ID。ID属于其他项目时拒绝且不展示其命令。回执丢失后先重新预览相同JSON，读取当前原件，再显式确认重试。实验 `prepare` 暂沿原生流程；登记不提交实验或批准训练合同。
 
 ## 在控制台查看原实验
 

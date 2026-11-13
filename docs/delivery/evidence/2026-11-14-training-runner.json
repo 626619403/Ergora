@@ -1,0 +1,238 @@
+{
+  "slice": "F9b4b",
+  "baseline": "fe26796a54b3804aac9272a9ea86643320a7f0b3",
+  "implementation": "Native registrar preview and exact immutable publication; CLI/HTTP/shared local UI lifecycle",
+  "product_packet_sha256": "43634fafdf354cb60f212face64c28caa27e7d5f0979c32362dacfcf64f8f583",
+  "installed": {
+    "wheel_sha256": "8d53c60ee378fecfdbbb994cbe174e6eda5657211bcede3fe46050ce59222860",
+    "product_files": 570,
+    "frozen_reference_files": 283,
+    "two_records_verified": true,
+    "suites": 4,
+    "passed": 40,
+    "test_seconds": 65.54,
+    "monitor_seconds": 67.54349511675537
+  },
+  "native": {
+    "cli_preview_confirm_retry": true,
+    "wrong_sha_no_registry": true,
+    "actual_sdk_free_baseline_init": true,
+    "runner_command_executed": false
+  },
+  "browser": {
+    "groups": [
+      "runner",
+      "lifecycle",
+      "baseline"
+    ],
+    "actual_server_responses": true,
+    "lost_success_reply_and_same_content_retry": true,
+    "stale_input_project_results_ignored": true,
+    "publish_double_click_posts": 1,
+    "foreign_id_no_command_disclosure": true,
+    "widths": [
+      1440,
+      960,
+      390
+    ],
+    "two_expected_console_errors": [
+      "deliberately aborted actual successful registration reply",
+      "HTTP400 on foreign-project runner ID"
+    ]
+  },
+  "originals_and_cleanup": {
+    "protected_files": 32,
+    "project_runner_files": 4,
+    "baseline_files": 2,
+    "no_training_records_or_argv_execution": true,
+    "browser_closed": true,
+    "web_group_stopped": true,
+    "port_not_listening": true
+  },
+  "self_review": {
+    "template": "ergora-structure-review",
+    "packet_files": 10,
+    "packet_bytes": 214529,
+    "seconds": 53.35947331413627,
+    "decision": "approve",
+    "backend": "user-authorized Codex fallback",
+    "all_inline_files_and_inherited_resources_in_actual_stdin": true,
+    "result_sha256": "b972a28c8ff913ff8d43e129da4eb98af8859a6749d383e80162a49f536b32d0",
+    "scope": "Full changed first-party files, tests, CI and plan/delivery input. Native owner implementations not in model packet; independent reviewers read them. No heterogeneous review claim."
+  },
+  "independent_review": {
+    "requirements": "final local passed; zero open findings",
+    "structure": "final local passed; zero open findings",
+    "publication_and_own_ci": "pending"
+  },
+  "publication": {
+    "state": "not_committed"
+  },
+  "raw_evidence": {
+    "private_base": ".ergora/checks/training-runner/",
+    "references": [
+      {
+        "path": "install-r1/package-identity.json",
+        "bytes": 486,
+        "sha256": "5fc9b141796db14de966c94d187bba30a7d7cad9bfcf194cf35d42a74dbf943f"
+      },
+      {
+        "path": "product-current-r1.json",
+        "bytes": 159,
+        "sha256": "3f81cadb2f607f707c0a53873ddff7cc0277a8babd3df0105e8c804f40ac4c18"
+      },
+      {
+        "path": "install-r1/source-manifest.json",
+        "bytes": 1993,
+        "sha256": "0915ce1edbba4b225fbd1b68c6023fc5b725213902b564ba97967980d989fb23"
+      },
+      {
+        "path": "install-r1/regression-r1/result.json",
+        "bytes": 732,
+        "sha256": "0fd75a7d30bae658eb8cc05958912277ba72327ced508019631646c4b36a8af8"
+      },
+      {
+        "path": "install-r1/regression-r1/process/stdout.txt",
+        "bytes": 7047,
+        "sha256": "f3cebd5fa556c5ab8d8f48b11ceb50575efdc65934417a1791f72ee23612e439"
+      },
+      {
+        "path": "install-r1/regression-r1/process/stderr.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r1/commands.json",
+        "bytes": 2511,
+        "sha256": "01c4b86b2de8414d033e6517885c1cddfca384c18537403ad217e1ece59e4c7e"
+      },
+      {
+        "path": "native-r1/result.json",
+        "bytes": 485,
+        "sha256": "8b5599608520a2cb772a692278909cdd48ef464ed5464e22af8e0963baa143c1"
+      },
+      {
+        "path": "native-r1/preview.stdout",
+        "bytes": 2193,
+        "sha256": "a06408580c585f40e463df4d831d98f52b868b93d36cd9fa2d9ea320a7969f93"
+      },
+      {
+        "path": "native-r1/register.stdout",
+        "bytes": 4124,
+        "sha256": "1bab60775777b4b27e5257e6f1924d51941d2e6bbe6d9cfa407894ef0bbb3ee8"
+      },
+      {
+        "path": "native-r1/retry.stdout",
+        "bytes": 4132,
+        "sha256": "5f7d2cf14802e965e602d4c8815ab806523a1a0a6890ca2394365e2487879ad0"
+      },
+      {
+        "path": "native-r1/wrong-sha.stderr",
+        "bytes": 67,
+        "sha256": "d80db81115723242b74557e9a8240c8a5544bd467ed3ff01dd0ac62ed52886f8"
+      },
+      {
+        "path": "native-r1/sdk-free.stdout",
+        "bytes": 1120,
+        "sha256": "888bb9e219f7f0d951dc38c6df8987cbe5248f9e83581a0009ad569768f77fce"
+      },
+      {
+        "path": "native-r1/sdk-free.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r1/protected-before.json",
+        "bytes": 3764,
+        "sha256": "44fa4b80aebb18e34a1678635e8d3e59fa799134b2e29e1fd7d2bce0f0bbe5c2"
+      },
+      {
+        "path": "browser-r1/runner.js",
+        "bytes": 18121,
+        "sha256": "1b35cfa90967feb1040e6243ea2fec3096fc66f8fba9d334fc0c0b42671dce42"
+      },
+      {
+        "path": "browser-r1/runner.stdout",
+        "bytes": 22423,
+        "sha256": "d5a67dcc7814029b9a03ed851b923576009b78b049b456405e17f0a50a11da0f"
+      },
+      {
+        "path": "browser-r1/lifecycle.js",
+        "bytes": 19258,
+        "sha256": "7311342125f1bdd9ec40c7c0d80c9097f91dab21ce0f0f78c22d22be108ac298"
+      },
+      {
+        "path": "browser-r1/lifecycle.stdout",
+        "bytes": 27748,
+        "sha256": "d2dee8e8b1979401d3dc3ae326c277dabff67e0e749fd84336b3b3675477c542"
+      },
+      {
+        "path": "browser-r1/baseline.js",
+        "bytes": 4982,
+        "sha256": "a5f474133f58b529ad507fa376b44b8f1af6c68c909c8b7c2f106454b22d04f5"
+      },
+      {
+        "path": "browser-r1/baseline.stdout",
+        "bytes": 6407,
+        "sha256": "36abe8cdf37dd387c6ae3f94a5fcc9e9ba0c8f33b851f5f6fdf8a1740df05d78"
+      },
+      {
+        "path": "browser-r1/requests.jsonl",
+        "bytes": 15901,
+        "sha256": "7a305d6ebc0043c6cf6e242bacb6dcab76488e3546f0dea3cb03655ee0c939ef"
+      },
+      {
+        "path": "browser-r1/console.stdout",
+        "bytes": 351,
+        "sha256": "3cd5dc485bc5d9a9d1545dcc54ce98754a87a4b8b86e529002ce72d4674d1d1c"
+      },
+      {
+        "path": "browser-r1/cleanup.json",
+        "bytes": 149,
+        "sha256": "f499fc65209b2367b0083e4537696b07e13b708fd782014b5eb6559aa09087a5"
+      },
+      {
+        "path": "browser-r1/close.stdout",
+        "bytes": 35,
+        "sha256": "8768972affb513868e9c71db42c0b44635d3f87070490597a8815d725449e282"
+      },
+      {
+        "path": "self-review-r1-codex.json",
+        "bytes": 2368,
+        "sha256": "f9a7f480989398479910c22fd9fe2b6747070e767af06b731ecc126f2c1c6e5b"
+      },
+      {
+        "path": "self-review-r1-codex/original-result.json",
+        "bytes": 880,
+        "sha256": "b972a28c8ff913ff8d43e129da4eb98af8859a6749d383e80162a49f536b32d0"
+      },
+      {
+        "path": "final-observations.json",
+        "bytes": 1734,
+        "sha256": "c4ac1e5d392c6b3f03d59f9c358e8180fdf65fbf3e78546b31466856771a55dc"
+      },
+      {
+        "path": "ci-group-collect-r1/observations/result.json",
+        "bytes": 53,
+        "sha256": "f6f5ce2cc4a436e02e4597140f36466e962b59cdf8d0989174eee316dbf01be6"
+      },
+      {
+        "path": "ci-group-collect-r1/observations/stdout.txt",
+        "bytes": 37082,
+        "sha256": "c4ce836f0ce2810fa7743a623ac64244f29125af1ff24a57b3b55e2888ff903a"
+      }
+    ]
+  },
+  "limits": [
+    "No native Windows OS execution; runner supports Linux/WSL2 only",
+    "No Temporal server, training command, GPU, quality or performance acceptance, evidence approval or adoption",
+    "Experiment prepare remains a separate slice",
+    "Initial browser open failed because default Chrome absent; actual checks use existing private Chromium config"
+  ],
+  "ci_group_collection": {
+    "selected": 364,
+    "total": 1817,
+    "deselected": 1453,
+    "execution_claim": false
+  }
+}

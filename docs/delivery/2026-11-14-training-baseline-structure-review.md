@@ -2,7 +2,7 @@
 
 审查者：fresh-context 独立结构轴 `baseline_structure_review`；日期：2026-11-14。未继承实现对话；先读项目 `AGENTS.md`、[当前计划](../PLAN.md)、[原始准备合同](../plans/2026-11-14-training-preparation.md)，再查原训练／发布／读取 owner、实际差异和新增文件全文，最后读[作者交付](2026-11-14-training-baseline.md)。采用 AIHERO 索引中的 maintainable-project-delivery、codebase-design 及 code-review 的职责、耦合和冗余标准；本轴本身是该方向的新独立审查，不递归委托审查。
 
-**当前最终本地结论：结构／维护性通过，开放 finding 0；首轮 1 个 P2 已经最小修复及 r2 安装补核关闭。** 精确 r2 产品、实际浏览器生命周期、保护原件、收尾、自身原模板和公开证据已完成本轴补核；所查需求符合性中的 CLI 输入容量缺口已关闭，完整需求／正确性结论仍归[独立需求轴](2026-11-14-training-baseline-spec-review.md)。普通发布／远端 Ref 与本片自己的 CI 仍待。以下保留首轮身份、finding 和当轮待验范围，最终本地结论见末节。
+**当前结论：结构／维护性、精确发布身份及本片自己的 CI 结构轴终核均通过，开放 finding 0；首轮 1 个 P2 已经最小修复及 r2 安装补核关闭。** 精确 r2 产品、实际浏览器生命周期、保护原件、收尾、自身原模板和公开证据已完成本轴补核；固定产品 `fe26796a54b3804aac9272a9ea86643320a7f0b3` 的 Git 对象、普通推送／完整 Ref，以及自己的 CI `43520929146` 的官方终态、8 job／30 必要步骤已核过。所查需求符合性中的 CLI 输入容量缺口已关闭，完整需求／正确性结论仍归[独立需求轴](2026-11-14-training-baseline-spec-review.md)；本次 CI 终核只代表结构轴。以下保留各轮身份、finding 和当轮待验范围，当前状态见末节。
 
 ## 固定范围与身份
 
@@ -86,3 +86,40 @@ CLI 的两个 baseline 操作现共用局部二进制限读：读取上限为 1 
 本次检查的[公开证据](evidence/2026-11-14-training-baseline.json)为 **11,613B**，SHA256 **`c3bfb0cf989d5f1bb6c2ab68dd0ffcb3ef52debdfcc34611d27a4b21be92c8c3`**；其 **26** 份私有原件引用已逐项重算长度／SHA，全部相符。公开结果对 r1 原失败、r1 57 项与最终 r2 20 项、最终同内容 SDK-free 回执、页面、两轮自身模板及未验维度的区分与原件一致。其评审状态字段在报告写入后的常规更新不被当成产品变化。
 
 **最终本地结构／维护性验收通过，开放 finding 0。** 未发现还需修改的所有权、依赖、复用、单用抽象、防护或测试问题。本轴未重跑 suite、安装、模型、浏览器或服务，未进行远端查询／写入；普通提交／推送、精确远端 Ref 及本片自己的必要 CI 尚待发布后原件。F9b3 的终态 CI 只属于其原候选，不关闭本片发布出口。Windows 原生 OS 实测、runner 登记／prepare、F9c／F9d、真实训练／GPU、质量／性能、证据批准及采用继续保持原边界。
+
+## 普通发布与完整 Ref 补核：通过，自己的 CI 待验
+
+固定产品提交为 **`fe26796a54b3804aac9272a9ea86643320a7f0b3`**，唯一父提交确为原基线 `fad53478c9261157b3016563b410b9d4b4d85b9d`。本轴直接读取不可变 Git 对象：父→候选恰为 27 个改动路径，全部完整字节数／SHA 与 `static-final-r1.json` 相等；该清单 SHA256 为 **`601695ac6c928f6cb5af2a9775e2281464f332d1056952402732f06b15f6d57e`**。11 个产品／测试／CI 路径按 Git blob 重算的组合 SHA 仍为 **`426d271430bdba818bd999be46c2ae5b06bdc6ec85c2b138e0318fe0712001ef`**，与本地通过候选一致。
+
+已将原 r2 wheel 的全部 **570 个产品文件**逐字对照该固定提交的 Git blob，全部相等；283 个参考文件也逐项符合候选内的冻结 manifest。候选所含本轴报告恰为最终本地通过时的 17,191B 原报告。提交内公开证据为 **11,602B**，SHA256 **`9be3ddfc07820ffef47b41733d4dd2e5ed89a167711feee3c5c1c3a62de969ac`**，26 份私有原件长度／SHA 均重新核对相符；最终评审状态更新没有改变产品或已有运行范围。对两个固定提交运行完整 `git diff --check`，退出 0；以候选 Git tree 核 251 个本地 Markdown 链接均存在，27 个改动 blob 未含原检查列举的私有机器字符串。
+
+已读 `commit.py`、`publish.py` 和原 `commit-r1.json`、`push-r1.json`、`ref-r1.json`。提交记录绑定同一 40 位候选，退出 0，完整 staged whitespace、精确 27 个 staged 路径、提交后 Git blob 一致及当时工作树 clean 的门槛均已通过。普通 push 退出 0，目标为 `HEAD:refs/heads/refactor/architecture-foundations`，argv 无强推参数；原回复从 `fad5347` 前进至 `fe26796`。保存的完整 `ls-remote` 回执退出 0、stderr 为空，精确返回该候选与 `refs/heads/refactor/architecture-foundations`。Ref 结论绑定原回执当时的实际返回，本轴没有再发远端请求。
+
+**精确产品／普通发布／原完整 Ref 补核通过，结构轴开放 0。** 后续 F9b4b 工作树、runner 计划或产品不参与本结论。本片自己的 CI 尚待发现及官方 run／必要 job／step 终态原件；本地检查、F9b3 CI 与只有 run ID 都不能替代。此次仅补本报告，未运行 suite／服务、安装、提交、推送或其他外部写入。
+
+## 自己的 CI 结构轴终核：通过，开放 0
+
+本轴只读保存的原 HTTP／HTML／UI JSON 和固定 Git 对象，核本片自己的 [Portability run `43520929146`](https://github.com/626619403/Ergora/actions/runs/43520929146)。原最终 `ci-run-html-r4/page.html` 的 Status 为 **Success**，其推送摘要直接链接完整候选 **`fe26796a54b3804aac9272a9ea86643320a7f0b3`**。原 HTTP 回执为 200，requested／final URL 均为该官方 run；完整 body 为 213,277B，SHA256 **`7c7988f3b113eb1e15e1231ab5bf422d14173aef282a66355fc912b0bba9d687`**，实算相符。
+
+重新读取该固定提交的 `.github/workflows/portability.yml` 和 `scripts/ci/linux-groups.json`，实际应有 plan、六个 Linux 分组和一个 Windows job；新 baseline suite 在分组 5 唯一登记。`ci-ui-metadata-r1.json` 与原 r1 官方 run HTML、`ci-job-batch-r1/body.json`／receipt 逐项相符：batch 来自同 run 的官方 UI `job_groups_batch` 路径，HTTP 200、totalCount 8、hasMore false，完整 job 名、ID 和 href 都绑定此 run；初始 batch 的 in_progress 状态保持原样，没有改写为当时已经成功。
+
+本轴直接解析 terminal 引用的 8 份原 job HTML 的 `check-step` 属性，逐项核对官方 requested／final URL、HTTP 200、原 body 字节数／SHA。每个必要步骤均为 success，具有 started／completed 时间、`data-job-completed`，且 log URL 包含完整候选 SHA、原 job ID 和该步编号。原投影与 `ci-terminal-r4.json` 的 30 条记录逐项一致：
+
+|job|原 ID|采用 HTML 轮次|必要步骤|
+|---|---:|---|---:|
+|plan|132214685878|r1|1|
+|Linux group 0|132214743129|r2|4|
+|Linux group 1|132214742962|r1|4|
+|Linux group 2|132214742996|r1|4|
+|Linux group 3|132214743147|r1|4|
+|Linux group 4|132214743076|r1|4|
+|Linux group 5|132214742945|r2|4|
+|Windows group all|132214742991|r4|5|
+
+必要步骤由固定 workflow 的真实配置得出：plan 读取显式分组；各 native job 构建并安装 wheel、核打包参考身份、执行原生回归并上传观察；Windows 另有 PowerShell 5.1 安装／升级。总数为 **1＋6×4＋5＝30**，全部满足终态条件。原 Windows 官方 runner 的原生回归及 PowerShell 安装／升级步骤已成功；本地未实测 Windows 的历史记录保留，原生初始化仍沿 Linux／WSL2 支持边界。
+
+已额外读原 group 0 的 r1 HTML：upload 步虽出现瞬时 success，但 log URL 为空，不能用于完整终态结论；采用的 r2 具有正确完整路径。六 Linux 终态和 Windows r4 的真实成功不会覆盖早轮在途／不完整原件。本次没有下载 step log 正文、REST 结果或 artifact archive，不以这些未取得材料增加测试数量、GPU 或交互旅程主张。
+
+`ci-terminal-r4.json` 为 13,357B，SHA256 **`3804bc134c542145d497185b08c94f2a9eb6eb0491af01993b0c84770e717e28`**。本次检查的公开 evidence 为 16,610B，SHA256 **`ae59c0aaa44e192d45b5daf2741ae904502acea3d16a3d460cc4425bc7687854`**；原 26 份本地引用及新增 `publication_raw_references` 的 **28** 份发布／CI 原件均逐项重算长度／SHA，相符。公开 publication 当时标独立 CI 终核 pending；本报告写入后的常规状态更新不构成新产品或新运行证据。
+
+**固定 F9b4a 产品的自己的 CI 结构轴终核通过，开放 finding 0。** 结合先前最终本地、固定 Git 身份、普通发布及原 Ref 补核，本轴所需出口已完成。需求轴此前固定发布身份通过仍归其原记录，本次没有代称另一轴重新核过 CI。后续 runner 工作树不参与判定；本轴只补本报告，没有运行 suite、安装、模型、浏览器、服务或远端请求，也没有提交、推送或外部写入。

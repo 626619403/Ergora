@@ -152,6 +152,15 @@ class TrainingBaselineInitPayload(TrainingBaselinePreviewPayload):
     baseline_sha256: str = Field(pattern="^[0-9a-f]{64}$")
 
 
+class TrainingRunnerPreviewPayload(Payload):
+    runner: dict
+
+
+class TrainingRunnerRegistrationPayload(TrainingRunnerPreviewPayload):
+    revision: int = Field(strict=True, ge=1)
+    runner_sha256: str = Field(pattern="^[0-9a-f]{64}$")
+
+
 class TrainingStartPayload(Payload):
     revision: int = Field(strict=True, ge=1)
     manifest_sha256: str = Field(pattern="^[0-9a-f]{64}$")
@@ -477,6 +486,14 @@ def create_app(home: Path | None = None) -> FastAPI:
     @application.post("/api/projects/{project_id}/training/init-baseline")
     def training_baseline_init(project_id: str, body: TrainingBaselineInitPayload):
         return training.initialize_baseline(state, project_id, body.baseline, body.revision, body.baseline_sha256)
+
+    @application.post("/api/projects/{project_id}/training/runner-preview")
+    def training_runner_preview(project_id: str, body: TrainingRunnerPreviewPayload):
+        return training.preview_runner(state, project_id, body.runner)
+
+    @application.post("/api/projects/{project_id}/training/register-runner")
+    def training_runner_registration(project_id: str, body: TrainingRunnerRegistrationPayload):
+        return training.register_runner(state, project_id, body.runner, body.revision, body.runner_sha256)
 
     @application.get("/api/projects/{project_id}/training/{experiment_id}")
     def training_experiment(project_id: str, experiment_id: str):
