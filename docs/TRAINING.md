@@ -73,3 +73,28 @@ init / runner-add → prepare → worker-start → start
 先为该精确根生成grant和完整manifest，再按[单叶调用](WORKFLOW_DEFINITIONS.md#调用一个准备好的叶子)准备一个叶输入。带Skill附件时选Linux／WSL2的`task-mcp`模式并确保实际读取完整固定资源。单次`run-input`不会执行其图前驱：操作者把design／profile的完整原产物和摘要明确交给kernel，再把全部相关输入与真实实验材料交给measurement；缺少的报告、硬件或实验数据须保持未验，不用占位数字充当实测。后端覆盖按实际叶路径保存原因，measurement优先异于执行后端；不可用时显式记录已授权的同后端回退。
 
 跨域专家可复用于多个方向子模板，单份kernel设计也可覆盖精度、布局、融合和通信等关系。方向知识与原生执行能力分别接入；安装v2提案不等于已接入Forge／KDA内部全流程或任意外部MCP。实际实验继续使用本手册前述原manifest、可信runner、独立评价和精确evidence SHA批准。
+
+## 独立的内存方向子模板
+
+按任务选择下列配方，不必让每个专家加载全部方向资料。每个根的版本为1.0.0，组合共享的analysis／measurement v2及designer／analyst／measurement reviewer；三个叶路径为`root/analysis/design`、`root/analysis/profile`和`root/measurement/review`。每叶继承本方向完整context、自身Skill与全部结构祖先资料。
+
+|安装用preset|根ID|准备的方向资料与输出|
+|---|---|---|
+|`optimization-memory-tuning`|`ergora-opt-memory-tuning-proposal`|最热rank与阶段的状态／激活／workspace／allocator容量分解，估算缺项、碎片假设和有限对照|
+|`optimization-activation-recompute`|`ergora-opt-activation-recompute-proposal`|实际版本的selective／full层边界、RNG／数值／梯度／通信重放、图与卸载兼容性|
+|`optimization-cpu-offloading`|`ergora-opt-cpu-offloading-proposal`|层级激活、细粒度激活、优化器三个机制分开；host／pinned／NUMA／传输／CPU计算和总成本|
+
+例如选择容量诊断，先准备项目、后端、根grant及真实UTF-8任务正文，再使用原命令：
+
+```bash
+ergora composition install-preset optimization-memory-tuning
+ergora composition show ergora-opt-memory-tuning-proposal 1.0.0
+ergora composition prepare-manifest ergora-opt-memory-tuning-proposal 1.0.0 --grant ./grant.json --directory ./memory-manifest
+ergora composition prepare-from-manifest ./memory-manifest root/analysis/design --task ./memory-task.txt --directory ./memory-design --max-prompt-bytes 100000
+ergora composition check-input PROJECT_ID ./memory-design --mode task-mcp --backend codex --backend-reason "Explicit design backend"
+ergora composition run-input PROJECT_ID ./memory-design --mode task-mcp --backend codex --backend-reason "Explicit design backend" --timeout 600
+```
+
+grant的`permissions`／`limits`从该精确根读取，按[完整manifest准备](WORKFLOW_DEFINITIONS.md#保存和分享完整组合)设置；若需要新增权限，先修订所有相关父级上限再修订子模板，不能用task正文越权。正文提供实际code／config／依赖版本、模型与token／batch、精度／optimizer／PEFT、mesh／rank、失败阶段与原trace／snapshot／峰值、目标与独立数值／质量门禁、允许改动、资源／时间预算及恢复要求；缺项标为未知，不填写虚构测量。
+
+单次调用只运行所选叶。独立准备profile输入后，把design和profile的完整原产物、来源摘要及真实实验材料一起放入measurement的新任务正文。measurement默认优先异于执行后端，覆盖及回退须显式记录原因。配置能解析、估算低于容量、未OOM或有限短loss都不等于端到端性能／质量通过；资料中引用的Bridge／Core版本是知识来源，不表示这些依赖已安装，也不证明该组合适合当前运行版本。多个方向可作为普通精确引用子模板组合，但静态图不会获得自动训练执行权。

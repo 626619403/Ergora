@@ -10,6 +10,9 @@
 |large-change|`ergora-large-change-delivery`|contract→server／client并行→integration-tests，再接可信集成／验证和三审查|
 |training-optimization|`ergora-training-proposal`|实验设计／性能分析→kernel设计→测量审查；独立只读提案，实际实验由可信runner执行|
 |training-optimization-v2|`ergora-training-proposal@2.0.0`|跨域实验约束／关键路径诊断→kernel与wrapper设计→独立测量证据审查；显式新版本，保留v1|
+|optimization-memory-tuning|`ergora-opt-memory-tuning-proposal`|容量／allocator方向资料＋共享设计／诊断专家，接独立测量证据审查|
+|optimization-activation-recompute|`ergora-opt-activation-recompute-proposal`|重计算边界、数值与图／卸载约束；复用v2专家的只读子模板|
+|optimization-cpu-offloading|`ergora-opt-cpu-offloading-proposal`|分开三种卸载接口及host／传输／计算成本；复用v2专家的只读子模板|
 |refactoring|`ergora-refactoring-template`|准备→rewrite→compatibility→原可信集成／验证→三审查；普通父引用一个原生large-change六阶段实例|
 
 每个Agent是独立版本包，可有自己的专长、初始指令、Skill和后端。结构父链完整累加资料并限制子权限；依赖边安排执行先后，具名端口传递结果。这三种关系可在“Agent 与组合库”展开查看。[定义格式与继承规则](WORKFLOW_DEFINITIONS.md)。
@@ -112,6 +115,8 @@ ergora composition run-input PROJECT_ID ./prepared-design --mode task-mcp --back
 `check-input`只检查能力与输入，不调用模型。完整流程见[单叶调用与读取核验](WORKFLOW_DEFINITIONS.md#调用一个准备好的叶子)。
 
 其他叶子为`root/analysis/profile`、`root/kernel`、`root/measurement/review`。单叶调用没有自动执行前驱，操作者应在新任务正文中明确提供完整来源和前驱回复。审查尽量使用另一后端；调用失败后保留原run，再用明确的`--backend`和`--backend-reason`建立回退调用，不会自动更换后端。认证检查成功仍需真实小调用确认推理可用；上游API错误不能用放宽工具权限来证明已修复。
+
+若任务只涉及显存、重计算或CPU卸载，可选[三个独立内存方向根](TRAINING.md#独立的内存方向子模板)。它们保留design／profile／measurement三叶，读取所选方向的完整context并复用v2专家，不含kernel叶；将前两份完整原结果手动交给measurement。安装这些提案包不会安装GPU工具、开启原生搜索或运行整个图。
 
 提案和模型审查供操作者准备实验。实际流程为固定workload／baseline／experiment→可信runner执行→独立正确性／性能复验→人工批准原evidence SHA→该项目开发任务集成复验。ForgeKernel是可选候选生成器，有独立版本、模型与设备要求；生成器完成不代表性能通过或采用。CPU／GPU、数据、ML依赖按项目安装，控制台不会配置CUDA或申请设备。[训练手册](TRAINING.md)说明runner、负结果、取消与采用。
 

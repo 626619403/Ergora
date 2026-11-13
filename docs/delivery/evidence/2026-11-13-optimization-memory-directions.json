@@ -1,0 +1,168 @@
+{
+  "wheel_sha256": "06f9ad909396597409dcebe86c6fbe63bffefd0aec16867d56fbe238e4aa039a",
+  "package_files": 506,
+  "frozen_files": 283,
+  "installed_presets": {
+    "passed": 15,
+    "pytest_seconds": 59.22,
+    "controller_seconds": 61.03081421600655
+  },
+  "native_calls": 9,
+  "resource_occurrences": 54,
+  "resource_bytes": 88611,
+  "all_resources_continuous_utf8": true,
+  "full_manual_predecessor_results": true,
+  "calls": [
+    {
+      "direction": "memory-tuning",
+      "name": "measurement",
+      "instance": "root/measurement/review",
+      "run_id": "67a27412a5254eeca9fea42cf852d7ba",
+      "status": "succeeded",
+      "seconds": 63.696644072886556,
+      "input_digest": "300d6cc6eddc73c66fb806482995e446006f427ee5eae9c6441d94dd2099f557",
+      "prompt_sha256": "30deb772fd32e1d623047289add91172b9e011e1477aa451e39088357938f4a0",
+      "result_sha256": "f51d36482df1e1fad01dc3a5b4e5111f2a5dd043b14d686489b08b94cf869b2f",
+      "decision": "request-changes",
+      "predecessor_sha256": {
+        "design": "ff7804de1a271a9b242a8b71ffc8bdd0a896cc5c1197cf662a874347bc81acb4",
+        "profile": "19d4521385023c8b069ae89124ebd0b6c94c7609c041526f604fd3ae1b6f5424"
+      }
+    },
+    {
+      "direction": "memory-tuning",
+      "name": "profile",
+      "instance": "root/analysis/profile",
+      "run_id": "ea5bed8876744704bc4af45147ede2ff",
+      "status": "succeeded",
+      "seconds": 68.50429832888767,
+      "input_digest": "459e1c82e1d9d6f979744026c617119b4a89031dcfa2207cfe87f10779d796da",
+      "prompt_sha256": "4fb7beb1c460604f0ba3b9741616da63c5b8e76d07f53d2971110fca205b3615",
+      "result_sha256": "19d4521385023c8b069ae89124ebd0b6c94c7609c041526f604fd3ae1b6f5424",
+      "decision": null,
+      "predecessor_sha256": {}
+    },
+    {
+      "direction": "memory-tuning",
+      "name": "design",
+      "instance": "root/analysis/design",
+      "run_id": "ced155fc3b5a46d48d220934741a60af",
+      "status": "succeeded",
+      "seconds": 99.54359170421958,
+      "input_digest": "95fc335744b098eed0854291663f63d7f1de85b75c13ffe6625192059f577bc7",
+      "prompt_sha256": "42d9edcc0a9fa567c821b48aaee1fd1b2eaf7426de5ca7e522a66aa743b20f7f",
+      "result_sha256": "ff7804de1a271a9b242a8b71ffc8bdd0a896cc5c1197cf662a874347bc81acb4",
+      "decision": null,
+      "predecessor_sha256": {}
+    },
+    {
+      "direction": "activation-recompute",
+      "name": "measurement",
+      "instance": "root/measurement/review",
+      "run_id": "12cdc2e01410481a8f31f5e11a2eee80",
+      "status": "succeeded",
+      "seconds": 63.04892616998404,
+      "input_digest": "276459233cc2acf2232240a6489573c137c17f495340c90721b63d9b2a59a015",
+      "prompt_sha256": "96efd62ca23c5a986f9c86a7fac89ce58d39d39a6753f215182205a2b303a037",
+      "result_sha256": "2622faa28d5618da5914e45543d1e88b4341bb82dcff032f0b65bb7599f8d373",
+      "decision": "request-changes",
+      "predecessor_sha256": {
+        "design": "2bf3175bb79c9a76368d114432e75be19e0428ad4d150d031f7b08f9644fb047",
+        "profile": "6e8bffa33ab4e67331bd2d5d431adaa1e11419c2cb5ae3d2dadc4c44a60747ec"
+      }
+    },
+    {
+      "direction": "activation-recompute",
+      "name": "profile",
+      "instance": "root/analysis/profile",
+      "run_id": "0b4eb76797e64aab924f3215fe470a3e",
+      "status": "succeeded",
+      "seconds": 64.54979686997831,
+      "input_digest": "8b7f645e31d8aaa6c82c37765e04c8eb0b4b7d08a4b28eaadbed0df216f424b3",
+      "prompt_sha256": "ad56c757e240c56d008829962fdc1f72c98a0473848193b4615ad0e5718e297d",
+      "result_sha256": "6e8bffa33ab4e67331bd2d5d431adaa1e11419c2cb5ae3d2dadc4c44a60747ec",
+      "decision": null,
+      "predecessor_sha256": {}
+    },
+    {
+      "direction": "activation-recompute",
+      "name": "design",
+      "instance": "root/analysis/design",
+      "run_id": "8b28dcd8a12c4ba7af69e89ba0940fcc",
+      "status": "succeeded",
+      "seconds": 83.072391979862,
+      "input_digest": "462da4a5ab53d994e47edf6bb9a1cfa9c01b93c4179a39c74189a25de4f38c4e",
+      "prompt_sha256": "dd46f5c4bd0488d62081128db91b4ae4319b5bded4dba573ed2b13ee5194c91b",
+      "result_sha256": "2bf3175bb79c9a76368d114432e75be19e0428ad4d150d031f7b08f9644fb047",
+      "decision": null,
+      "predecessor_sha256": {}
+    },
+    {
+      "direction": "cpu-offloading",
+      "name": "measurement",
+      "instance": "root/measurement/review",
+      "run_id": "1057f0a51a15475c84209091721a72a5",
+      "status": "succeeded",
+      "seconds": 56.59524433594197,
+      "input_digest": "967c9a6a7b9074218e27f494099cee415a5077484ad28a035066efc08189404c",
+      "prompt_sha256": "b5c8bb7a53dd12ca292fc0a819263a4bba8f6a988703a920ed1e3cca1e67a002",
+      "result_sha256": "163a73f2b48ef5a7038c3b3bedc93d9618e3d124ab1a81026f138e4ed883aebb",
+      "decision": "request-changes",
+      "predecessor_sha256": {
+        "design": "8ac847c912d5a1f139cf85db6da9074b02b4fd2468d69fd5cfebc310716095aa",
+        "profile": "fe5e1009edddd060c1b993c60d83c97e148ce8bb3e91dd52199dd4c9b2911f6e"
+      }
+    },
+    {
+      "direction": "cpu-offloading",
+      "name": "profile",
+      "instance": "root/analysis/profile",
+      "run_id": "59a739e5b61b43a1b16bd740e512b99c",
+      "status": "succeeded",
+      "seconds": 79.73016997473314,
+      "input_digest": "04b1456f1c954d58b297dc86de312f1242e13903a6cbfb43bf30e4a94c66d456",
+      "prompt_sha256": "5cb754cdc230f673a823251fe11ed514dd6516e7a684664a47de3c2ce6aa37e5",
+      "result_sha256": "fe5e1009edddd060c1b993c60d83c97e148ce8bb3e91dd52199dd4c9b2911f6e",
+      "decision": null,
+      "predecessor_sha256": {}
+    },
+    {
+      "direction": "cpu-offloading",
+      "name": "design",
+      "instance": "root/analysis/design",
+      "run_id": "e5ed88c7c0b9490b9b3a66477bd05975",
+      "status": "succeeded",
+      "seconds": 77.36760046891868,
+      "input_digest": "8bf290d160ddbf4137f525ce054cc93be5266f0b7115559283c2bca8247679bd",
+      "prompt_sha256": "bc3010a1a35fb5228f8cff252bcb96b0d63d5b90bed0f78246084921f8ec475b",
+      "result_sha256": "8ac847c912d5a1f139cf85db6da9074b02b4fd2468d69fd5cfebc310716095aa",
+      "decision": null,
+      "predecessor_sha256": {}
+    }
+  ],
+  "self_review": {
+    "run_id": "977615dca57c4c36b49458941ced6aec",
+    "status": "succeeded",
+    "decision": "approve",
+    "packet_files": 11,
+    "packet_bytes": 46784,
+    "prompt_bytes": 52904,
+    "prompt_sha256": "e7d69125b39bb3553492195b7e8935602fa76f5a1258a90da6b7f015789a3ca1",
+    "input_digest": "060d1475029f95e8792313b9f3d7ea311add0321253fe01c2a50cb2f25ee7703",
+    "result_sha256": "66cc297403e7709b7cb1486321cb46017a3e68da9d6db4ca8276cc41004e8bb9"
+  },
+  "raw_audit_sha256": {
+    "memory-tuning-audit": "500f610570c783fcfcef8af52306f90d482e27b625109f4cfeddbdd5cd927c0a",
+    "activation-recompute-audit": "838373449e6b16e5ed693540facb0146de0dfdeb870d937e4cf4cf13030d9c9d",
+    "cpu-offloading-audit": "3938d766ca1028e4ab6895929252aafe44e65bfb9b0e3d6b51305121c84de583"
+  },
+  "scope": "Nine independent readonly calls; fixed training scenario only, full manual predecessor transfer. No automatic graph execution, model/GPU run, measured gain, adoption or heterogeneous-backend claim. Independent review and publication tracked separately.",
+  "independent_review": {
+    "report": "2026-11-13-optimization-memory-directions-review.md",
+    "sha256": "62c15115ffcdc6380bf2475251946363c8f4d91d3f49ff71b54a5b7cd12dcfc8",
+    "spec_open": 0,
+    "standards_open": 0,
+    "closed": "P3 obsolete plan checkpoint corrected and rechecked",
+    "scope": "Final16file snapshot, source/install/native/resource/source-provenance evidence; no reruns or hardware gain"
+  }
+}

@@ -15,6 +15,37 @@ from ergora.state import State
 from test_registrations import installation, registration
 
 
+@pytest.mark.parametrize('direction', ['memory-tuning', 'activation-recompute', 'cpu-offloading'])
+def test_memory_direction_roots_keep_full_context_when_reusing_v2_experts(tmp_path, direction):
+    state = State(tmp_path / 'state')
+    installed = workflows.install_preset(state, 'optimization-' + direction)
+    assert installed == workflows.install_preset(state, 'optimization-' + direction)
+    root = workflows.get(state, installed['root']['id'], installed['root']['version'])['definition']
+    grant = {'schema_version': 1, 'permissions': root['permissions'], 'limits': root['limits']}
+    manifest = workflows.prepare_manifest(state.root, root['id'], root['version'], grant, tmp_path / 'manifest')
+    graph = workflows.inspect_manifest(Path(manifest['path']), material=True)['composition']
+    expected = {'root/analysis/design': 'ergora-experiment-designer',
+                'root/analysis/profile': 'ergora-performance-analyst',
+                'root/measurement/review': 'ergora-measurement-reviewer'}
+    leaves = {item['path']: item for item in graph['instances'] if item['kind'] == 'agent'}
+    assert set(leaves) == set(expected)
+    materials = workflows.get(state, root['id'], root['version'], material=True)['resources']
+    context = next(resource for resource in materials if resource['kind'] == 'context')
+    shutil.rmtree(state.root / 'agent-definitions')
+    shutil.rmtree(state.root / 'workflow-definitions')
+    for path, leaf in leaves.items():
+        assert leaf['ref']['id'] == expected[path] and leaf['ref']['version'] == '2.0.0'
+        assert not leaf['permissions']['write'] and not leaf['permissions']['shell'] and not leaf['permissions']['network']
+        prepared = workflows.prepare_input_from_manifest(Path(manifest['path']), path,
+            b'Use supplied original experiment evidence; retain missing measurements.',
+            tmp_path / path.replace('/', '-'), 100000)
+        actual = workflows.inspect_input(Path(prepared['path']), material=True)
+        assert context['text'] in actual['prompt']
+        inherited = next(resource for resource in leaf['resources'] if resource['id'] == context['id'])
+        assert inherited['text'] == context['text']
+        assert {source['instance'] for source in inherited['sources']} == {'root'}
+
+
 @pytest.mark.parametrize('kind', reference.TEMPLATES)
 def test_bundled_recipe_is_restartable_and_freezes_complete_ancestors(tmp_path, kind):
     state = State(tmp_path / 'state')

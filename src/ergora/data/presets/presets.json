@@ -97,6 +97,51 @@
         "ergora-measurement-review-v2",
         "ergora-training-proposal-v2"
       ]
+    },
+    "optimization-memory-tuning": {
+      "description": "Capacity, allocation and hottest-rank memory diagnosis; three readonly v2 experts, no experiment execution or automatic graph runner.",
+      "runtime": "proposal-leaves",
+      "root": "ergora-opt-memory-tuning-proposal",
+      "agents": [
+        "ergora-experiment-designer-v2",
+        "ergora-performance-analyst-v2",
+        "ergora-measurement-reviewer-v2"
+      ],
+      "workflows": [
+        "ergora-training-analysis-v2",
+        "ergora-measurement-review-v2",
+        "ergora-opt-memory-tuning-proposal"
+      ]
+    },
+    "optimization-activation-recompute": {
+      "description": "Version-matched selective and full-layer recomputation tradeoffs; three readonly v2 experts, no experiment execution or automatic graph runner.",
+      "runtime": "proposal-leaves",
+      "root": "ergora-opt-activation-recompute-proposal",
+      "agents": [
+        "ergora-experiment-designer-v2",
+        "ergora-performance-analyst-v2",
+        "ergora-measurement-reviewer-v2"
+      ],
+      "workflows": [
+        "ergora-training-analysis-v2",
+        "ergora-measurement-review-v2",
+        "ergora-opt-activation-recompute-proposal"
+      ]
+    },
+    "optimization-cpu-offloading": {
+      "description": "Distinct layer, fine-grained activation and optimizer offload contracts; three readonly v2 experts, no experiment execution or automatic graph runner.",
+      "runtime": "proposal-leaves",
+      "root": "ergora-opt-cpu-offloading-proposal",
+      "agents": [
+        "ergora-experiment-designer-v2",
+        "ergora-performance-analyst-v2",
+        "ergora-measurement-reviewer-v2"
+      ],
+      "workflows": [
+        "ergora-training-analysis-v2",
+        "ergora-measurement-review-v2",
+        "ergora-opt-cpu-offloading-proposal"
+      ]
     }
   }
 }
