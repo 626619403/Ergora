@@ -4,7 +4,9 @@
 
 ## 当前检查点
 
-- [C2 原生准入](plans/2026-11-14-forge-native-admission.md)从 f4da08b 清洁基线继续：C2.0 接缝调查完成；C2.1 原 `kernel` owner 已统一包／scripts Git 身份门禁，基线两 red、551 产品／两 RECORD／283 与安装 23 通过／9 跳过、自身 Codex 回退 37.233 秒 approve 及新独立两轴通过，开放 0／0，本地出口完成，普通发布／自己的 CI 另记。Claude 简单只读 5.275 秒成功与完整审查 240.495 秒超时分别保留；bwrap 实际拒绝，完整 C2／真实训练 B3 仍开放。可独立继续 F8-H2 的真实只读模型兼容验收。[交付](delivery/2026-11-14-forge-native-admission.md)逐步记录。
+- [F8-H2 真实模型](plans/2026-11-14-harness-real-model.md)从已推送 a0a42ba 开始：第一 completions 真实调用因网关 HTTP400 明确失败并保留；固定 SDK 原支持两协议，现有 schema／driver 已增显式可选 Responses、默认不变。新 noneditable 551／两 RECORD／283 及原安装 suite 38 项通过；与 Codex 完全相同的输入在 DSH Responses 下 45.849 秒成功。原 kernel 专家叶 45.695 秒成功、六资源 16,774B 与原生全文链通过，六采样身份清理；新自身模板 29.628 秒 approve／五全文 64,066B 与新独立两轴通过，SP1状态句关闭／开放0／0，本地出口完成；普通发布和自己的CI待核；未关闭 H3 会话或完整 C2／B3。[交付](delivery/2026-11-14-harness-real-model.md)逐步更新。
+
+- [C2 原生准入](plans/2026-11-14-forge-native-admission.md)从 f4da08b 清洁基线继续：C2.0 接缝调查完成；C2.1 原 `kernel` owner 已统一包／scripts Git 身份门禁，基线两 red、551 产品／两 RECORD／283 与安装 23 通过／9 跳过、自身 Codex 回退 37.233 秒 approve 及新独立两轴通过，开放 0／0，本地出口完成，a0a42ba已普通推送，八Git与完整作者Ref获原评审补核，自己的CI43471215671八job／30必要步骤及完整SHA日志路径获原独立终核，C2.1精确交付完成。Claude 简单只读 5.275 秒成功与完整审查 240.495 秒超时分别保留；bwrap 实际拒绝，完整 C2／真实训练 B3 仍开放。可独立继续 F8-H2 的真实只读模型兼容验收。[交付](delivery/2026-11-14-forge-native-admission.md)逐步记录。
 
 - [B3a提案交接资料](plans/2026-11-14-proposal-experiment-handoff.md)：等待B2i自己的CI／U3安装期间，沿原训练owner核字段和门禁；现有训练手册22／6／6字段说明、四原调用及两处完整前驱走查和比例静态检查及新fresh独立需求／可维护性两轴通过，开放0／0；资料已随6d4006e普通发布／作者完整SSH Ref核准；不新建执行器／账本／schema，不修改283冻结文件。真实workload、原manifest及运行／独立评价／批准仍属于B3开放验收。
 

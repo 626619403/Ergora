@@ -42,7 +42,7 @@ def main():
     patch = [{"id": name, "disabled": True} for name in (
         "persistent-bash", "persistent-pwsh", "tool-fs", "tool-working-directory", "mcp-resources", "llm-deepseek")]
     patch.append({"insert": [{"id": "llm-ergora", "name": "@deepseek-ai/dsh-llm-pi-ai", "config": {"providers": {
-        "ergora": {"apiKeyEnv": credential, "api": "openai-completions", "baseURL": binding["base_url"],
+        "ergora": {"apiKeyEnv": credential, "api": binding.get("api", "openai-completions"), "baseURL": binding["base_url"],
                    "models": [{"id": binding["model"], "contextWindow": binding.get("context_window", 131072),
                                "maxTokens": binding.get("max_tokens", 4096)}],
                    "retryPolicy": {"mode": "normal", "maxRetries": 0}}}}}]})

@@ -48,3 +48,29 @@ Forge pin 仍为 `5030503d3ff71851aa34c14b9caf13ebfa9d9a78`，原安装在只读
 ## 出口
 
 C2.1 源码维护、现有本地验收和独立两轴审查可关闭；阻塞发现为0。普通提交／推送、精确远端身份与本候选自己的 CI 尚需另记，不能借本报告提前关闭。完整 C2 的父合同、全部工作会话与附件继承、权限交集、跨恢复预算、真实停止及外部同候选评价，以及真实训练 B3，保持原开放范围。
+
+## 同片发布补核
+
+2026-11-14，独立核准普通提交 `a0a42ba009bdcd541c9ee42d11838db835e0dcd3`，唯一父提交为上述 `f4da08b9ff7c1dae92222677a43d8b56b87c78b0`。改动精确包含已审七文件及本报告，共八个 Git blob；逐项核其对象身份与内容。产品、测试、手册和接缝报告与最终已审快照相同，PLAN／本片计划／交付仅回填实际独立通过状态，未扩大完成声明。新 F8-H2 的两份文档未进入该提交。
+
+从该提交直接读取的551个产品与原已测 wheel 完整集合及字节相同；构建源码、当前源码、安装副本、两份 RECORD 和283个冻结文件再次核准。未重新安装或运行模型／昂贵测试。
+
+普通 push 原回执退出0，随后作者 SSH `ls-remote` 原 stdout 将 `refs/heads/refactor/architecture-foundations` 完整解析为同一 `a0a42ba009bdcd541c9ee42d11838db835e0dcd3`。本评审只核保留原件，没有另发网络探测。精确发布补核通过，新增发现0；私有 `publication-audit.json` 保存八对象及发行包、push／Ref原件身份。本候选自己的 CI 尚未核到终态，继续开放；以上补核不关闭完整 C2 或 B3。
+
+## 同片自己的 CI 终态补核
+
+2026-11-14，独立补核 [Portability run 43471215671](https://github.com/626619403/Ergora/actions/runs/43471215671)。官方第六份 run HTML 原件明确为 **Success**，其提交链接是完整 `a0a42ba009bdcd541c9ee42d11838db835e0dcd3`，分支为 `refactor/architecture-foundations`；该原件213,222B，SHA256为 `ea04ed3bd85d9322671b72d69784050d27e182ba4163907250bd7ba30e051b27`。
+
+评审使用独立 HTMLParser 直接提取原页面，不以作者汇总为判据：从官方 `job_groups_batch` 原 JSON 核八个 job 的 ID／名称／run 路径，再逐个核最终 job HTML 的 `succeeded` header、`data-job-status=completed` 和实际步骤。以该提交内的 workflow 及六组配置核必要步骤集合，结果为：
+
+|范围|job 数|必要步骤|原件结果|
+|---|---:|---:|---|
+|plan|1|1|读取显式测试组成功|
+|Linux Python 3.11 六组|6|24|各组构建安装、reference 身份、应用回归、观测上传全部成功；回归139–266秒|
+|Windows Python 3.12|1|5|上述四步及 PowerShell 5.1 安装升级全部成功|
+
+八个 job 均 completed／succeeded，三十个必要步骤均 `success` 且带 job-completed 标记；三十条日志路径非空、唯一，逐项包含完整提交 SHA、对应 job ID 与 step number。Windows 回归原时间为 UTC 2026-11-13 17:17:57–17:34:00，共963秒；随后 PowerShell 5.1 阶段17:34:00–17:35:04，共64秒。
+
+最终九份 run／job HTML、原 batch JSON，以及五份较早 run 和四份较早 Windows HTML，共十九份 HTTP 原件的200状态、URL、实际大小与 SHA256 均与收据一致。较早 run 五份仍为 In progress，较早 Windows 四份及旧 batch 的 Windows 仍为 in_progress，未改写成成功；终态分别依据第六份 run 和第五份 Windows 页面。逐项独立提取结果与作者终态汇总一致，私有 `ci-terminal-audit.json` 保存详情，新增发现0。
+
+本补核未发网络请求，未读取日志正文或下载 artifact archive，未运行模型、安装或测试，也未将后续 H2／H3 工作树纳入本候选。C2.1 精确提交自己的 CI 与发布验收可关闭；完整 C2、B3及后续 slice 的各自验收范围保持不变。

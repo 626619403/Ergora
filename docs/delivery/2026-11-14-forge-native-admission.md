@@ -31,3 +31,13 @@
 新 fresh-context 评审者已核原源码、测试、wheel／安装、模型与失败原件，[本片独立审查](2026-11-14-forge-native-admission-review.md)需求／可维护性通过，开放 0／0。最终七文件快照 manifest SHA256 `0bd91926c679334f5d16a91ce0c681ab136d565c8fca02304ffac6027fd8bca1`，产品／测试／手册与已验包及模型输入身份一致；后续状态记账不改变行为。
 
 完整 C2 的工作会话／compact 继承、权限、绝对预算及真实停止仍开放；纯连接验证／标题元数据与工作子 Agent 按实际影响分开，不能只因存在辅助请求就预建通用代理。下一可独立推进 F8-H2 真实只读 Harness 调用；B3 等待实际 workload，旧原件与未验范围不改写。
+
+## 普通发布与自己的 CI
+
+本片八文件已普通提交 `a0a42ba009bdcd541c9ee42d11838db835e0dcd3`，parent 为上述 f4da08b 基线。普通 SSH 推送退出 0，6.477 秒；完整分支 Ref 读取退出 0，1.426 秒，与本提交一致。原独立评审已补核八 Git blob、原七文件 manifest、包及作者 push／Ref 原件，未合入 main。
+
+自己的 [CI 43471215671](https://github.com/626619403/Ergora/actions/runs/43471215671) 已从官方页面绑定本提交。第二 run 页面及八 job 原 HTML 已保存，plan 和六 Linux 组的必要步骤全部完成／成功；Windows 构建及冻结身份成功，回归／安装升级仍在途，尚未记 CI 通过。不借前片 CI，也不声称下载完整日志或 artifacts。
+
+第六官方 run 页面已为 Success；八 job／30 必要步骤均完成／成功，每步日志 URL 含本提交的完整 SHA，作者离线核准。Windows 原回归 963 秒，PowerShell 5.1 安装升级随后成功；原在途页面均保留，不回写。原独立评审正在从九份原 HTML 及收据终核，尚不把作者解析当独立通过。
+
+原评审已直接解析官方 run／八 job HTML 与原 batch 映射，并重算 19 份最终／历史／batch HTTP 原件的长度及 SHA；八 job、30 必要步骤和 30 条非空完整 SHA 日志路径独立通过。Linux 六组回归 139–266 秒，Windows 回归 963 秒、PowerShell 5.1 安装升级 64 秒。自己的 CI 终核完成，C2.1 精确交付终结；前五 run 与前四 Windows 在途样本保持，完整 C2／B3 仍未关闭。

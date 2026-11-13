@@ -9,7 +9,7 @@
 |C2.0 调用核对|核 judge／teacher／student 的共同入口、原角色隔离、恢复预算及 CLI 辅助模型请求；保存独立源码调查|已完成[只读调查](../delivery/2026-11-14-forge-native-seam-design-review.md)，不是运行准入|
 |C2.1 源码身份维护|`kernel.available` 与真实 `_call` 共用源码检查；拒绝包或执行脚本相对 HEAD 的修改以及未跟踪代码。global_config 仍按原 campaign 摘要核定|已实现|
 |C2.1 验证|原 pin 的真实 CPU prepare／status，以及修改脚本／新增运行时代码的拒绝回归；隔离 wheel、原结构审查模板和新独立两轴审查|基线两 red、新安装 23 通过／9 跳过；551 产品／两 RECORD／283 通过；自身 Claude 240 秒超时，Codex 回退 37.233 秒 approve，[新独立两轴](../delivery/2026-11-14-forge-native-admission-review.md)通过，开放 0／0，本地出口完成|
-|C2.1 发布|普通提交／推送当前分支并核完整远端 Ref；自己的 CI 单独记账|待做|
+|C2.1 发布|普通提交／推送当前分支并核完整远端 Ref；自己的 CI 单独记账|已普通推送 a0a42ba，完整 Ref 及八 Git 对象获原评审补核；自己的 CI 43471215671 第六官方 run 页面为 Success，八 job／30 必要步骤及完整 SHA 日志路径获原评审原件终核，C2.1 精确交付完成|
 |C2.2 完整父合同|只有选定的真实执行入口能覆盖所有模型请求、父权限和原绝对预算，才设计冻结合同及可调用子模板|开放，依赖 C2.0 的接缝结论|
 
 源码身份由原 `kernel.py` 所有，driver 的导入／global_config 校验及进程归属保持。不建立新 scheduler、通用 NativeBackend 或第二账本，不修改 283 个冻结参考文件。`available` 的 `installed` 只表示导入位置可用；`version=unsupported` 要能阻止 doctor 将已修改代码视作固定版本。修改错误必须在原生 driver 启动前出现。

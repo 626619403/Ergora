@@ -954,6 +954,12 @@
             "title": "API key 环境变量名",
             "pattern": "^[A-Za-z_][A-Za-z0-9_]*(?![\\s\\S])"
           },
+          "api": {
+            "type": "string",
+            "title": "推理 API 协议",
+            "enum": ["openai-completions", "openai-responses"],
+            "default": "openai-completions"
+          },
           "context_window": {
             "type": "integer",
             "title": "模型上下文窗口（token）",

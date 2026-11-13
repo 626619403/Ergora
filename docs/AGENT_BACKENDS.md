@@ -116,12 +116,13 @@ uv pip install --python "$ERGORA_DSH_ENV/bin/python" \
   "model": "YOUR_MODEL_ID",
   "base_url": "https://YOUR_PROVIDER/v1",
   "api_key_env": "LINGZHI_API_KEY",
+  "api": "openai-responses",
   "context_window": 131072,
   "max_tokens": 4096
 }
 ```
 
-当前推理路由只使用 OpenAI-compatible Chat Completions；服务还须兼容模型的工具调用及 SSE。环境变量由启动 Ergora 的 shell 提供，不把密钥填入JSON。`context_window`和`max_tokens`按实际模型配置，默认值不证明服务支持相同容量。包版本诊断不调用模型，也不证明认证、网关或模型质量通过。
+`api` 显式选择 `openai-responses` 或 `openai-completions`；省略时保持 Chat Completions。选择服务实际提供的入口，平台不会因失败自动切换协议；task-MCP 还须兼容所选协议的工具调用及 SSE。环境变量由启动 Ergora 的 shell 提供，不把密钥填入JSON。`context_window`和`max_tokens`按实际模型配置，默认值不证明服务支持相同容量。包版本诊断不调用模型，也不证明认证、网关或模型质量通过。
 
 发布新的 Agent 版本并沿父引用准备新输入，保留完整祖先资料及权限上限，然后调用：
 
@@ -136,7 +137,7 @@ ergora agent output my-project RUN_ID
 
 每次调用使用新原生home／session、固定最小profile与生成的patch；无原生shell、文件、工作目录及额外MCP工具。task-mcp只提供原scope的list/read。适配保存原生身份、完整prompt、事件和终值到本次`.protocol`目录，整体时限／停止仍由原进程owner负责。这不提供OS隔离。
 
-必须同时核对完成状态、严格JSON／原结果schema和原MCP连接回执；任一原生工具错误使本次调用失败，不隐式重试或续接会话。上游可能在插件失败或断连后仍返回completed，因此最终文本本身不能代表成功。失败或结果不明先按原run ID查看证据，不创建另一次调用冒充恢复。当前发行包／loopback验收与尚未验证的真实模型、同模板六阶段及平台范围见[本片交付](delivery/2026-11-12-harness-probes.md)。
+必须同时核对完成状态、严格JSON／原结果schema和原MCP连接回执；任一原生工具错误使本次调用失败，不隐式重试或续接会话。上游可能在插件失败或断连后仍返回completed，因此最终文本本身不能代表成功。失败或结果不明先按原run ID查看证据，不创建另一次调用冒充恢复。固定发行包与loopback／停止探针见[H1交付](delivery/2026-11-12-harness-probes.md)；显式Responses的真实禁工具调用及同模板专家叶task-MCP全文验收见[H2交付](delivery/2026-11-14-harness-real-model.md)。这两次只读成功不证明正式六阶段、持久会话或其他平台已经准入。
 
 ## 可选的正式六阶段执行桥接
 
