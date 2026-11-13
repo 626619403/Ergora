@@ -16,6 +16,8 @@
 |optimization-tp-dp-overlap|`ergora-opt-tp-dp-overlap-proposal`|实际TP／DP／PP overlap路径、关键路径和独立测量；只读提案|
 |optimization-moe-dispatcher|`ergora-opt-moe-dispatcher-proposal`|固定backend／ABI／拓扑、路由与全rank证据；只读提案|
 |optimization-moe-overlap|`ergora-opt-moe-overlap-proposal`|普通EP overlap／delayed wgrad分别归因，复用同一组v2专家|
+|optimization-profiling|`ergora-opt-profiling-proposal`|稳态trace／rank／区间并集及真实依赖证据，共享设计／诊断接独立测量审查|
+|optimization-memory-snapshot|`ergora-opt-memory-snapshot-proposal`|受信摘要的allocator／历史／step差异分析，解析／采集继续交原所有者|
 |refactoring|`ergora-refactoring-template`|准备→rewrite→compatibility→原可信集成／验证→三审查；普通父引用一个原生large-change六阶段实例|
 
 每个Agent是独立版本包，可有自己的专长、初始指令、Skill和后端。结构父链完整累加资料并限制子权限；依赖边安排执行先后，具名端口传递结果。这三种关系可在“Agent 与组合库”展开查看。[定义格式与继承规则](WORKFLOW_DEFINITIONS.md)。

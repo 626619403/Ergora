@@ -233,3 +233,7 @@ B2b已普通提交`a711539`。下一片[并行策略／FSDP／分层CP](../deliv
 ## D2-B2d实施检查点
 
 B2c及Linux六组CI片已随9250bf8普通推送并通过自己的八job／30必要步骤及独立终核，结案MD为a9fcc17。[通信方向片](../delivery/2026-11-13-optimization-communication-directions.md)仅增加TP/DP overlap、MoE dispatcher、MoE overlap三个只读根，复用design／profile／measurement，原生kernel调用另片。非editable530产品／两RECORD／283与安装23项通过；两轮共九成功叶／54资源96,303B完整读取和原前驱手动交接核准，原网络超时保持；自身35.619秒approve。新独立双轴完整证据终核通过，状态P3关闭／开放0／0，本地出口完成；已普通提交／推送2c93ef6，精确Git及作者SSH Ref核准，自己的CI43413954876第二run原HTML为Success，八job／30必要步骤及非空完整SHA日志URL经原独立协调者终核通过，精确交付终结。下一方向为profiling／memory-snapshot，不重复已完成市场调查，不改原训练runner或Forge固定pin。
+
+## D2-B2e实施检查点
+
+[Profiling／memory-snapshot计划](2026-11-13-optimization-profiling-directions.md)从通信五MD结案提交e85b1e6开始，仅接两个共享v2专家的只读资料根。十一份固定Bridge原件已核，两根／catalog／原参数表和两手册已实现；独立安装536／两RECORD／283与25项通过，1713全集与六组collection无遗漏／交集；六叶成功／36资源75,319B完整原件和手动前驱核准；自身26.700秒approve／八全文核准，新fresh两轴完整原件及文档通过，SP1/P3关闭／开放0／0，本地出口完成；普通发布及自己CI开放。[交付记录](../delivery/2026-11-13-optimization-profiling-directions.md)逐项追加实际结果；synthetic报告摘要不充当原parser／GPU验收。

@@ -1,0 +1,266 @@
+{
+  "baseline": "e85b1e6eb38ac568142b2a73b9ca3bae1d248f8a",
+  "wheel_sha256": "e171c36d00d84028fdefb40164e157d1af2661220f44dd0e722ce53416b03860",
+  "package_files": 536,
+  "frozen_files": 283,
+  "installed_presets": {
+    "passed": 25,
+    "pytest_seconds": 100.09,
+    "controller_seconds": 101.88703164597973
+  },
+  "native_successful_calls": 6,
+  "resource_occurrences": 36,
+  "resource_bytes": 75319,
+  "all_resources_continuous_utf8": true,
+  "full_manual_predecessor_results": true,
+  "calls": [
+    {
+      "direction": "profiling",
+      "name": "measurement",
+      "instance": "root/measurement/review",
+      "run_id": "9029442ab58c43f7b043631c11d88809",
+      "status": "succeeded",
+      "seconds": 47.825894167646766,
+      "input_digest": "cb1e3e5e75d82d59bbe1fa00ac8aa6d60ed40ef097a3857d554423baa3d51d10",
+      "prompt_sha256": "c37336efa2a496dd1539af1f8d3a72328962a5083d3ba84da6f97275cf82c383",
+      "result_sha256": "8e01845778ea84239ce8f99ddd7b04c9601ecb70ca9e28473ba01dd59e49e33d",
+      "decision": "approve",
+      "predecessor_sha256": {
+        "design": "7eddeaae0db142b15edb1675aed916371840c8657381d425418200c568ed6b4e",
+        "profile": "f4822d859aad79d69ac87d075e3a2fda7e31d60830385a6bf8563f3181a08b0c"
+      },
+      "requested_binding": {
+        "tool": "claude-code"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      }
+    },
+    {
+      "direction": "profiling",
+      "name": "profile",
+      "instance": "root/analysis/profile",
+      "run_id": "47ad928de7864de3a08c45242843af55",
+      "status": "succeeded",
+      "seconds": 57.03678877232596,
+      "input_digest": "5b3f1aae2a70c7603d91dbde7c95dec1a103007c8891d8988915af1b94bc3419",
+      "prompt_sha256": "ffd3a4f360379fde2c2cdf70e8bd1149ffb440d0dc1389908c2c3784edd1f981",
+      "result_sha256": "f4822d859aad79d69ac87d075e3a2fda7e31d60830385a6bf8563f3181a08b0c",
+      "decision": null,
+      "predecessor_sha256": {},
+      "requested_binding": {
+        "tool": "codex"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      }
+    },
+    {
+      "direction": "profiling",
+      "name": "design",
+      "instance": "root/analysis/design",
+      "run_id": "cfdbef2ff32f4527ac28cafd296c6e03",
+      "status": "succeeded",
+      "seconds": 59.765819357242435,
+      "input_digest": "7e8f8a048078842d8c34abd1363906aed1ebc901bb059ca03467ca682db1ecc8",
+      "prompt_sha256": "6b3b579a6b9477d8b7bfc37c09f155c3d836b13ac970411ad3486e158d25ea52",
+      "result_sha256": "7eddeaae0db142b15edb1675aed916371840c8657381d425418200c568ed6b4e",
+      "decision": null,
+      "predecessor_sha256": {},
+      "requested_binding": {
+        "tool": "codex"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      }
+    },
+    {
+      "direction": "memory-snapshot",
+      "name": "measurement",
+      "instance": "root/measurement/review",
+      "run_id": "62a229f2ce834b899e69a45465e9bd78",
+      "status": "succeeded",
+      "seconds": 47.77657653018832,
+      "input_digest": "5ba1fc72fecd15f874489876e5fbffe281a5c0875c8bb190c41654164e65ebbb",
+      "prompt_sha256": "1ebcd573fff0b7416a3411ebd71e85f462506e0032e7ab73f8b079a79f6b3aa9",
+      "result_sha256": "c55a0c32424d4be331b4e89d0c83b8285073a0abe26b7f5f63aa243190ef93b4",
+      "decision": "request-changes",
+      "predecessor_sha256": {
+        "design": "c7818a6d3c7307f1de89765c1106d9e2854ec66fd9779a65573857c227b6349d",
+        "profile": "64449fc1b7753909b0a0f258d2357209e3106a31ba5b15b2230bc2048e9c617a"
+      },
+      "requested_binding": {
+        "tool": "claude-code"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      }
+    },
+    {
+      "direction": "memory-snapshot",
+      "name": "profile",
+      "instance": "root/analysis/profile",
+      "run_id": "b6a258f8fcb74cc7844c88edb9181900",
+      "status": "succeeded",
+      "seconds": 52.43248808104545,
+      "input_digest": "e8b33ecd235a195f95c5548a16cf4714841e43d4a3480e835d903ce326c15cde",
+      "prompt_sha256": "5a1a5546dd4796559fc8a5704d6d9b3406e45d1eac126741c447b0c907e29b7c",
+      "result_sha256": "64449fc1b7753909b0a0f258d2357209e3106a31ba5b15b2230bc2048e9c617a",
+      "decision": null,
+      "predecessor_sha256": {},
+      "requested_binding": {
+        "tool": "codex"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      }
+    },
+    {
+      "direction": "memory-snapshot",
+      "name": "design",
+      "instance": "root/analysis/design",
+      "run_id": "186b5d4e1abe4be19a0210a2308e0500",
+      "status": "succeeded",
+      "seconds": 51.632970463018864,
+      "input_digest": "db786be2c6437d646da3856a3e4af26bfa9369eba6c8171f26e521377879f08f",
+      "prompt_sha256": "45f9dba2dcacec3363c1b3fd09f19a2119d8e922a3ba3d580469fac737305c1e",
+      "result_sha256": "c7818a6d3c7307f1de89765c1106d9e2854ec66fd9779a65573857c227b6349d",
+      "decision": null,
+      "predecessor_sha256": {},
+      "requested_binding": {
+        "tool": "codex"
+      },
+      "actual_binding": {
+        "tool": "codex"
+      }
+    }
+  ],
+  "fixture_sha256": {
+    "profiling": "d4f309fe1bb31bae02e7597dc51ca6a1f482f2ff8cf9f24ff22f226f66a26656",
+    "memory-snapshot": "385f6f252e6b55928e9c9b7ffa03212a764939b572e1cbc6dc39a3b1eaac7c6b"
+  },
+  "fixed_sources": [
+    {
+      "path": "skills/nemo-mbridge-perf-nsys-analysis/SKILL.md",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Megatron-Bridge/55694838ce73cd23b00ff95bd00512aefb963ce0/skills/nemo-mbridge-perf-nsys-analysis/SKILL.md",
+      "bytes": 17141,
+      "sha256": "eef76abb5d6d44ab74edd86185661aa6a60c4646a8b267f889e358c7ae8e0cbb"
+    },
+    {
+      "path": "skills/nemo-mbridge-perf-nsys-analysis/references/pitfalls.md",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Megatron-Bridge/55694838ce73cd23b00ff95bd00512aefb963ce0/skills/nemo-mbridge-perf-nsys-analysis/references/pitfalls.md",
+      "bytes": 4728,
+      "sha256": "0a6eabb591cf959cbb2c05355605b86228f30bbb84ade503e127e0920d45c058"
+    },
+    {
+      "path": "skills/nemo-mbridge-perf-nsys-analysis/references/sql-recipes.md",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Megatron-Bridge/55694838ce73cd23b00ff95bd00512aefb963ce0/skills/nemo-mbridge-perf-nsys-analysis/references/sql-recipes.md",
+      "bytes": 9737,
+      "sha256": "f72d322d70191bf0814ed9cf469d240d10a52f460de8bd7144b787e4f14c41fc"
+    },
+    {
+      "path": "skills/nemo-mbridge-memory-snapshot-analysis/SKILL.md",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Megatron-Bridge/55694838ce73cd23b00ff95bd00512aefb963ce0/skills/nemo-mbridge-memory-snapshot-analysis/SKILL.md",
+      "bytes": 20094,
+      "sha256": "a9953be925e658f4f09d58c1b09eb28f9d350c09c94be2bd16fe2534ed5fd22e"
+    },
+    {
+      "path": "skills/nemo-mbridge-memory-snapshot-analysis/scripts/common.py",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Megatron-Bridge/55694838ce73cd23b00ff95bd00512aefb963ce0/skills/nemo-mbridge-memory-snapshot-analysis/scripts/common.py",
+      "bytes": 16455,
+      "sha256": "eab7be1697c9b9c8c6975c38515d85386e0d0c7bbace316a2d09ab99788ff876"
+    },
+    {
+      "path": "skills/nemo-mbridge-memory-snapshot-analysis/scripts/compare_snapshots.py",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Megatron-Bridge/55694838ce73cd23b00ff95bd00512aefb963ce0/skills/nemo-mbridge-memory-snapshot-analysis/scripts/compare_snapshots.py",
+      "bytes": 20870,
+      "sha256": "db6474d77cd0c7fc52877c4cece30124c3aa57cb6397a826ae7a27b836237b0d"
+    },
+    {
+      "path": "skills/nemo-mbridge-memory-snapshot-analysis/scripts/plot_timeline.py",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Megatron-Bridge/55694838ce73cd23b00ff95bd00512aefb963ce0/skills/nemo-mbridge-memory-snapshot-analysis/scripts/plot_timeline.py",
+      "bytes": 18152,
+      "sha256": "450ce7ca723a3905c626a6fe76d91e0cc2a8ec93d9277cff371861c9d0dba36f"
+    },
+    {
+      "path": "src/megatron/bridge/training/config.py",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Megatron-Bridge/55694838ce73cd23b00ff95bd00512aefb963ce0/src/megatron/bridge/training/config.py",
+      "bytes": 127748,
+      "sha256": "65e7123b35ef80b9d7920cd01c855a3bdc93f70cd36667f0a38862d685d12497"
+    },
+    {
+      "path": "src/megatron/bridge/training/setup.py",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Megatron-Bridge/55694838ce73cd23b00ff95bd00512aefb963ce0/src/megatron/bridge/training/setup.py",
+      "bytes": 39154,
+      "sha256": "fb5b97b32202e9ad0caa22f3d8616f9ba8dfcd36857ef1c531eafae5fed1c9cb"
+    },
+    {
+      "path": "src/megatron/bridge/training/utils/train_utils.py",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Megatron-Bridge/55694838ce73cd23b00ff95bd00512aefb963ce0/src/megatron/bridge/training/utils/train_utils.py",
+      "bytes": 85505,
+      "sha256": "d3f92321f6ff1a8b24783d1248e8b5f1b024245578d8ef9eeb2b3b0969dfd3f3"
+    },
+    {
+      "path": "src/megatron/bridge/training/profiling.py",
+      "url": "https://raw.githubusercontent.com/NVIDIA-NeMo/Megatron-Bridge/55694838ce73cd23b00ff95bd00512aefb963ce0/src/megatron/bridge/training/profiling.py",
+      "bytes": 5666,
+      "sha256": "bce7326d9aba4571a63ee5798131b7ccccaf3a6eadb18ec7622ead1e0e5a7c73"
+    }
+  ],
+  "self_review": {
+    "run_id": "28a620a0c7bf4266a144a38c8f629490",
+    "status": "succeeded",
+    "decision": "approve",
+    "packet_files": 8,
+    "packet_bytes": 51307,
+    "prompt_bytes": 57260,
+    "prompt_sha256": "00e639cf081b4427303d0e7406567da490c87ccc4eb3769a1e09bedc965d7b4d",
+    "input_digest": "62fc7c5e22d91b2addc7c7dda45acd571787392d28c5a3dad765cb2366c1a862",
+    "result_sha256": "fb216f1dd8b1a6c97530fe52765e0b8c98e3f72de58179c4816e34b398f85e27"
+  },
+  "ci_collection": {
+    "full_collection": 1713,
+    "group_collections": [
+      {
+        "group": 0,
+        "nodes": 254,
+        "phase_sha256": "c90f68bcc301258bae07ca95e92b3487b09ec99e97b084314575b2db8965d5c8"
+      },
+      {
+        "group": 1,
+        "nodes": 250,
+        "phase_sha256": "a3f4eae7d0260f69e59b1966ef4170a753b23828761cc5b1b8e858317d056082"
+      },
+      {
+        "group": 2,
+        "nodes": 342,
+        "phase_sha256": "c261aa2eaab13e99c203f5638e58c33a4eb7898e73150f0d0284bb32c11cafa5"
+      },
+      {
+        "group": 3,
+        "nodes": 312,
+        "phase_sha256": "637cf9ba0d3cfb9d4baed3c397f2b66281640186b3b282741ea933abe769ad3d"
+      },
+      {
+        "group": 4,
+        "nodes": 256,
+        "phase_sha256": "325a3036c93ba99bbb01c01ef81b2a601fda0a410059dd9b79276d433b9b0b9b"
+      },
+      {
+        "group": 5,
+        "nodes": 299,
+        "phase_sha256": "d2c2ce60d8ac09903951d1548f2afe4e3049cc625e915ad3cacc8cbd03b26dc7"
+      }
+    ],
+    "union_equals_full": true,
+    "pairwise_intersection": 0,
+    "scope": "Seven collect-only calls to formal CI runner with the noneditable candidate; no regression-test execution."
+  },
+  "raw_audit_sha256": {
+    "profiling": "1ff70ec3502539f81ad29f4377dbb9773e9e5cda5122d1c397de5e832eb78a51",
+    "memory-snapshot": "d5cf15af44df4f6f3e9be3dce83ba1f417f8d00574fcae9637d8093165d6c9be"
+  },
+  "self_review_audit_sha256": "c05e1320d0b06b08526d22c6556539e85553b2c365adc307fcb5410679970c79",
+  "post_call_process_observation_sha256": "0d19242d38f97a0fb18d603e5929d340e072858fa4e15b560e55978a59b42499",
+  "scope": "Six independent readonly calls on explicitly synthetic report summaries; complete inherited resources and full manual original predecessor transfer. Profiling approves only the evidence-request proposal; memory-snapshot requests changes before experiment freeze. Neither grants actual parser/collector/runtime/GPU, all-rank correctness/quality/recovery, measured gain, heterogeneous-backend or adoption acceptance. Own structure review covers eight complete inline files; independent review, publication and exact-candidate CI recorded separately. Process receipt is one bounded end observation."
+}

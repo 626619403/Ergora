@@ -262,6 +262,36 @@
         "ergora-measurement-review-v2",
         "ergora-opt-moe-overlap-proposal"
       ]
+    },
+    "optimization-profiling": {
+      "description": "Trace identity, interval-union budgets, dependency evidence and bounded critical-path diagnosis proposals. Readonly v2 experts; original parser, collector and runner retain execution ownership.",
+      "runtime": "proposal-leaves",
+      "root": "ergora-opt-profiling-proposal",
+      "agents": [
+        "ergora-experiment-designer-v2",
+        "ergora-performance-analyst-v2",
+        "ergora-measurement-reviewer-v2"
+      ],
+      "workflows": [
+        "ergora-training-analysis-v2",
+        "ergora-measurement-review-v2",
+        "ergora-opt-profiling-proposal"
+      ]
+    },
+    "optimization-memory-snapshot": {
+      "description": "Trusted allocator summaries, retained-history limits and aligned memory-snapshot difference proposals. Readonly v2 experts; original parser, collector and runner retain execution ownership.",
+      "runtime": "proposal-leaves",
+      "root": "ergora-opt-memory-snapshot-proposal",
+      "agents": [
+        "ergora-experiment-designer-v2",
+        "ergora-performance-analyst-v2",
+        "ergora-measurement-reviewer-v2"
+      ],
+      "workflows": [
+        "ergora-training-analysis-v2",
+        "ergora-measurement-review-v2",
+        "ergora-opt-memory-snapshot-proposal"
+      ]
     }
   }
 }

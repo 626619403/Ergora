@@ -91,6 +91,8 @@ init / runner-add → prepare → worker-start → start
 |`optimization-tp-dp-overlap`|`ergora-opt-tp-dp-overlap-proposal`|TP／DP／PP实际生效路径、bucket／精度／launch归属、关键路径与争用|
 |`optimization-moe-dispatcher`|`ergora-opt-moe-dispatcher-proposal`|实际dispatcher／backend初始化、ABI／拓扑、自然路由与独立全rank正确性|
 |`optimization-moe-overlap`|`ergora-opt-moe-overlap-proposal`|普通EP overlap与delayed wgrad分开，版本／graph／重计算约束及独立测量|
+|`optimization-profiling`|`ergora-opt-profiling-proposal`|原trace／稳态窗口／rank覆盖，区间并集、依赖归因和有限关键路径机会|
+|`optimization-memory-snapshot`|`ergora-opt-memory-snapshot-proposal`|受信报告、allocator／历史口径、step对齐和快照差异；缺失峰值或设备总量保持未知|
 
 例如选择容量诊断，先准备项目、后端、根grant及真实UTF-8任务正文，再使用原命令：
 
@@ -112,3 +114,7 @@ Graph提案需提供实际trace／shape分布／地址和RNG生命周期、当�
 并行方向还需实际dense／expert mesh、局部head／expert／layer划分、rank顺序和节点链路。普通mesh的两组整除下界不替代原生validator或自定义layout／GTP支持。FSDP需区分实际实现与配置版本：引用快照使用`ddp.use_megatron_fsdp`，旧`dist`字段已移除；保存／加载前核`fsdp_dtensor`，并分别验证权重重分片及optimizer／RNG／数据顺序的完整恢复。HCP仅显式选择，需核hierarchical groups真实传入attention和独立数值证据；TE最低版本、建组或短loss均不能单独证明组合正确。库和solver仍是原生工具，不因出现于context就成为已安装Agent或获得执行权限。
 
 通信方向先固定真实mesh／rank↔GPU↔NIC、原baseline和精确框架／库版本。TP请求可能被原实现禁用；DP配置需对应真实DDP／optimizer消费者，bucket按参数数量计，不能把FSDP当同一个开关。MoE先证明所选flex后端已在目标环境初始化，不把缺包失败当性能结果；固定Bridge源码识别deepep／hybridep／ncclep，显式None选择alltoall，不支持的最终后端不会静默替换。MoE overlap与delayed wgrad须分别对照，harness一次同时开启两项不能用于单项归因。强制负载均衡改变路由语义；自然路由、全rank数值／梯度／恢复和未profile的配对step测量仍须独立通过。方向资源详列固定实现的必要条件，不能代替实际版本的完整validator或训练质量门禁。
+
+Profiling方向先提供可信原报告的身份、工具／schema、稳态step、所有已采集rank与PP stage、时钟及丢事件情况；由原工具所有者准备完整文本／JSON分析结果。这些叶不能执行SQL／采集或安装依赖，`nsys query`等操作还可能生成缓存或自动安装包，须单独核操作与资源权限。预算按裁剪区间并集计算；暴露的通信／copy只有真实producer依赖支持时才可归因于阻塞，缺计数器保持未知。profile中的机会范围不能当实际speedup，实际变化仍须独立未profile配对测量与质量验证。
+
+Memory-snapshot方向优先提供原parser产生的完整可信文本／JSON及原snapshot摘要。不要把任意pickle交给只读Agent执行：反序列化、来源信任及RAM／事件／时间预算由已授权parser所有者负责。说明真实recording起点、selected device／rank、history丢失、step markers、graph／allocator和对齐方式；dump时的allocated／active／awaiting-free／inactive与重建历史peak、设备总占用分别报告。等待释放的块尚不可复用；缺原alloc／step或其他rank不能推出全局headroom、泄漏、性能或采用结论。固定来源的Plotly绘图依赖CDN，不因生成HTML就称完全离线。两方向均可单独选preset并沿上述三叶手动交接，不会安装Nsight／snapshot parser或隐式获得新权限。
