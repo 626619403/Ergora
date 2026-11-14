@@ -33,4 +33,4 @@ r1修正原五suite最终93通过／352.03秒（monitor352.930秒），仅归r1�
 原reviewer固定发布两轴补核approve／开放0／0，16blob／602产品／两RECORD／283及fixed875→post879、普通精确Ref均独立核同；补核两原件另列。本片自己的CI为43563900923（6b7ebcc），当前运行中，终态及原reviewer后继终核待。
 ## 自己的 CI 终态
 
-固定候选 `6b7ebcc83f18c9b5d203eb47735bf3867f73b44d` 的原 CI `43563900923` 已从官方 run／job HTML 核为 **Success**：plan、六 Linux 分组与 Windows 共八 job，全部 30 个必要步骤成功，包含 PowerShell 5.1 安装／升级与 observations upload。最终 r5、早期在途观察和固定提交的完整 SHA 日志路径分别保留。新增 29 个 CI 原件引用独立于原固定 875／发布后 879 前缀，不重写原件；原 reviewer 终态补核待，不先以解析器成功代称独立通过。
+固定候选 `6b7ebcc83f18c9b5d203eb47735bf3867f73b44d` 的原 CI `43563900923` 已从官方 run／job HTML 核为 **Success**：plan、六 Linux 分组与 Windows 共八 job，全部 30 个必要步骤成功，包含 PowerShell 5.1 安装／升级与 observations upload。最终 r5、早期在途观察和固定提交的完整 SHA 日志路径分别保留。另列 78 个 CI／独立审计原件引用，原固定 875／发布后 879 前缀保持。原 reviewer 已纯离线直接核73份输入／33回执、完整SHA与30步终态，Standards／Spec均approve，开放0／0；不继承后继片结果。

@@ -19,6 +19,11 @@
 - [x] 最终 r3 非 editable 603 产品／两 RECORD 611／616／283，原 web9通过；同原包实际下载→CLI／HTTP完整对象同一，原文件与数据库保持。
 - [x] 错 SHA／跨项目／非 UTF-8／NUL／完整超容量拒绝；主旅程39／生命周期31、4真实迟到回复／两夹具503／三宽／两次Tab及服务浏览器收尾通过；Home与完整键盘／生命周期矩阵未动态验。
 - [x] 自身原审查模板 Codex58.062秒approve；新 fresh-context 独立最终本地两轴／266原引用终核approve，开放0／0，R1／R2关闭。
-- [ ] 普通推送／完整 Ref／本片自己的 CI 与原 reviewer 后继补核；前片自己的 Windows 安装升级 CI 仍在途，不预批发布。
+- [x] 普通推送203973f／18blob／完整 Ref 同一，原reviewer固定发布两轴approve／开放0／0；前片自己的CI及原终核已闭合。
+- [ ] 本片自己的CI43566484193终态与原 reviewer 后继补核。
 
 每节点更新[交付记录](../delivery/2026-11-14-retrospective-evidence-console.md)和[当前计划](../PLAN.md)。F10d3b 再接三类候选 prepare/check/export，原单叶调用页面与完整评价／明确采用／回退旅程另续；不因本片可选证据而关闭完整 F10、F9d、G1 或真实 GPU／业务验收。
+
+CI终态更新：自己的43566484193八job／30必要步骤全部成功，官方原HTML和完整SHA步骤链接已离线核；原独立终态补核待。
+
+原reviewer自身CI终态补核已完成，两轴approve／开放0／0；F10d3a自己的精确发布与CI闭合。

@@ -178,12 +178,31 @@ def prepare(state: State, project_id: str, packet: Path, selection: list[dict], 
                                                              destination, max_prompt_bytes)
 
 
+def _read_request(source: Path, request_schema: dict | None = None) -> tuple[dict, dict]:
+    """Verify complete original input bytes before interpreting a retrospective request."""
+    prepared = workflow_definitions.inspect_input(source, material=True)
+    task = definition_bundles.read_json(Path(prepared['path']) / 'task.txt', prepared['request']['task_sha256'])
+    if request_schema is None:
+        request_schema = next((schema for schema in (_REQUEST, _MEMORY_REQUEST, _WORKFLOW_REQUEST)
+                               if isinstance(task, dict) and task.get('format') == schema['properties']['format']['const']), None)
+        if request_schema is None:
+            raise ValueError('Input does not contain a supported retrospective request')
+    contracts.validate(task, request_schema, 'Frozen retrospective request')
+    return prepared, task
+
+
+def inspect_input(source: Path, *, project_id: str) -> dict:
+    """Read an existing complete retrospective input for its explicitly selected project."""
+    prepared, task = _read_request(source)
+    if task['project'] != project_id:
+        raise ValueError('Retrospective input belongs to a different project')
+    return {**prepared, 'retrospective_request': task}
+
+
 def _read_proposal(source: Path, result: Path, result_sha256: str | None,
                    request_schema: dict, proposal_schema: dict) -> tuple[dict, dict, dict, dict, str]:
     """Read one bounded original result and its complete frozen request for either target."""
-    prepared = workflow_definitions.inspect_input(source, material=True)
-    task = definition_bundles.read_json(Path(prepared['path']) / 'task.txt', prepared['request']['task_sha256'])
-    contracts.validate(task, request_schema, 'Frozen retrospective request')
+    prepared, task = _read_request(source, request_schema)
     with result.open('rb') as stream:
         raw = stream.read(RESULT_LIMIT + 1)
     if len(raw) > RESULT_LIMIT:

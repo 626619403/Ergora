@@ -91,6 +91,8 @@ def test_workflow_retrospective_complete_offline_revision_export_import_and_old_
     shutil.rmtree(options['target_manifest'])
     shutil.rmtree(tmp_path / 'target')
     packet.unlink()
+    readback = retrospectives.inspect_input(options['destination'], project_id='demo')
+    assert readback['digest'] == prepared['digest'] and readback['retrospective_request'] == task
     unused = tmp_path / 'unused-state'
     assert cli.main(['--home', str(unused), 'retrospective', 'check-workflow', str(options['destination']), str(result),
                      '--result-sha256', sha]) == 0

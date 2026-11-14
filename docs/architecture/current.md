@@ -377,3 +377,5 @@ F10c2b1在同一retrospectives owner提供记忆prepare/check/export，复用原
 F10c2b2在原retrospectives owner提供工作流prepare/check/export；Skill与工作流共享完整有界UTF-8文件读取。完整目标manifest及递归资源冻结到原作者input，离线检查只在私有scratch调用原restore_manifest、library.revise的preview／accepted_candidate和原grant编译。生成器固定原权限／引用／端口／审查要求与已有图边，允许根资料／description和额外依赖。原library.export与no-replace负责导出；正式导入／版本选择与旧manifest不变，不增加版本库、调度器或采用权威。
 
 F10d3a的`retrospectives.js`是`app.js`既有view接口的实现，内聚当前交接包、显式原件选择、两代际及下载。唯一新增项目`handoff/evidence`读取直接调用原`handoff.evidence`，核整包／来源／完整正文，结果project不同时拒绝关联；不建立服务器会话或新存储。空选择读索引、明确选择读完整原文，失效／容量及canonical身份仍由原owner决定；后续三类候选与评价采用入口分别接续。
+
+F10d3b1沿三个原retrospectives准备函数增加薄HTTP消费者，传输payload共享路径构造，工作流payload只特化额外target-manifest路径；原owner继续持有基线／证据／grant／完整材料／容量与原子不覆盖。完整已存input读取与原proposal reader共用同一私有request读取路径，沿原workflow inspector核原字节与三类原schema，项目匹配后才返回原请求和全部继承材料。现有view内的准备表单只消费当前完整证据选择，保留上次提交路径，失败不自动重发；独立复读走只读代际规则。没有新状态机、目标注册器或模型调度，结果检查／导出及原单叶调用页面另接。

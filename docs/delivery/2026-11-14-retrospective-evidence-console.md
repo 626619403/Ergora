@@ -29,3 +29,11 @@ r1非editable603／两RECORD611／616／283参考哈希一致，原web＋handoff
 [公开证据清单](evidence/2026-11-14-retrospective-evidence-console.json)已记录最终产品、包、原件范围与 **266 个**持久原引用的大小／SHA；运行原件留在本机忽略目录，公开文档不复制凭据或机器配置。[新独立最终本地两轴](2026-11-14-retrospective-evidence-console-review.md)已直接核全部引用／产品／运行／原件与收尾，**approve／开放 0／0**，R1／R2 最终关闭。后续发布／自己的 CI 仍单列，不把本地通过当作远端终态。
 
 后续先 F10d3b 的三类候选准备／检查／导出页面，再原单叶调用与评价／明确采用回退旅程；完整 F10、F9d、G1、真实 GPU 和完整 Forge C2 继续按各自合同验收。
+
+## 普通发布
+
+已普通推送固定 `203973f9fbb2e6d97bf59961b49482cb875f2d0d`，18份变更blob与完整远端Ref相同；未合入main。原reviewer已补核固定Git／r3／两RECORD／283以及固定266／发布后270引用，最终两轴approve／开放0／0。自己的CI终态另行核对，后继源码不属于该固定候选。前片自己的CI43563900923及原reviewer终态两轴已通过。
+
+自己的CI43566484193已终态Success：官方第三run HTML／Windows第二job HTML及其余七job原件绑定完整203973f，八job／30必要步骤全部成功。固定266／发布后270原引用保持，另列37条CI引用；原reviewer终态补核待，不替后继包背书。
+
+原reviewer已完成自身CI终态两轴approve／开放0／0，独立核37条CI原件及固定266／发布后270前缀；另2份独立终核证明单列，不重写旧In progress或扩大后继包验收。F10d3a精确交付闭合。

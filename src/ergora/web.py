@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from . import __version__, agent_definitions, agent_runs, components, definition_bundles, drafts, evaluation, handoff, issues, issue_writebacks, kernel, memory, optimization, projects, reference, registrations, research, services, task_envelopes, tasks, skill_assets, skills, tools, training, workflow_definitions
+from . import __version__, agent_definitions, agent_runs, components, definition_bundles, drafts, evaluation, handoff, issues, issue_writebacks, kernel, memory, optimization, projects, reference, registrations, research, retrospectives, services, task_envelopes, tasks, skill_assets, skills, tools, training, workflow_definitions
 from .state import State
 
 
@@ -29,6 +29,46 @@ class HandoffEvidencePayload(Payload):
     packet: str
     packet_sha256: str
     selection: list[dict] = Field(default_factory=list)
+
+
+class RetrospectivePreparePayload(HandoffEvidencePayload):
+    objective: str
+    manifest: str
+    instance: str
+    destination: str
+    max_prompt_bytes: int = Field(strict=True)
+
+    def arguments(self) -> dict:
+        values = self.model_dump()
+        for name in ('packet', 'manifest', 'destination'):
+            values[name] = Path(values[name])
+        return values
+
+
+class SkillRetrospectivePreparePayload(RetrospectivePreparePayload):
+    name: str
+    digest: str
+    head_revision: int = Field(strict=True)
+
+
+class MemoryRetrospectivePreparePayload(RetrospectivePreparePayload):
+    memory_id: str | None
+    revision: int = Field(strict=True)
+
+
+class WorkflowRetrospectivePreparePayload(RetrospectivePreparePayload):
+    target_manifest: str
+    target_digest: str
+    next_version: str
+
+    def arguments(self) -> dict:
+        values = super().arguments()
+        values['target_manifest'] = Path(values['target_manifest'])
+        return values
+
+
+class RetrospectiveInputPayload(Payload):
+    directory: str
 
 
 class BindingPayload(Payload):
@@ -475,6 +515,23 @@ def create_app(home: Path | None = None) -> FastAPI:
         if selected["index"]["project"] != project_id:
             raise ValueError("Handoff evidence belongs to a different project")
         return selected
+
+    @application.post("/api/projects/{project_id}/retrospectives/skills/prepare")
+    def prepare_skill_retrospective(project_id: str, body: SkillRetrospectivePreparePayload):
+        return retrospectives.prepare(state, project_id, **body.arguments())
+
+    @application.post("/api/projects/{project_id}/retrospectives/memories/prepare")
+    def prepare_memory_retrospective(project_id: str, body: MemoryRetrospectivePreparePayload):
+        return retrospectives.prepare_memory(state, project_id, **body.arguments())
+
+    @application.post("/api/projects/{project_id}/retrospectives/workflows/prepare")
+    def prepare_workflow_retrospective(project_id: str, body: WorkflowRetrospectivePreparePayload):
+        return retrospectives.prepare_workflow(state, project_id, **body.arguments())
+
+    @application.post("/api/projects/{project_id}/retrospectives/inputs/inspect")
+    def inspect_retrospective_input(project_id: str, body: RetrospectiveInputPayload):
+        state.project(project_id)
+        return retrospectives.inspect_input(Path(body.directory), project_id=project_id)
 
     @application.post("/api/project-registrations")
     def register_project(body: RegistrationPayload):

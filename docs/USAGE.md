@@ -858,6 +858,14 @@ ergora handoff read ./task-handoff.zip --selection ./selection.json --sha256 EXP
 
 页面可选择“复盘改进”，填写控制台所在机器的交接包路径与下载时核对的整包SHA，再“读取交接包目录”。目录须与当前项目ID一致，默认不勾选；按原job／材料名称选择后，“读取选中完整材料”展示全部原文、来源和选择身份，支持下载CLI兼容的`selected-artifacts.json`以及完整`retrospective-evidence.json`。后者内部sha256仍是上述canonical身份，不是JSON文件的字节摘要。修改来源或重读目录使旧选择不可用；成功重读清空勾选，读取失败保留输入和失败状态。二进制、NUL和完整超容量沿原owner拒绝，不用窗口或截断绕过。此页不生成、评价或采用候选；这些操作继续按下面各节明确执行。
 
+### 在页面准备完整复盘输入
+
+在“复盘改进”读取选中的完整材料后，“准备复盘候选输入”表单才可提交。选择 Skill、项目记忆或工作流方向；Skill 要“读取当前基线”并明确选择活动 head，记忆要明确选择有效修订或“新建记忆”。工作流另填待改进的完整 target manifest、其 digest 和目标根的新版本；它与候选作者的 manifest 是两个不同的输入。
+
+填写改进目标、已保存的作者完整 manifest 路径、作者实例、新输入目录和完整 prompt 字节上限，再点击“保存完整候选输入”。所需三个 preset 与作者 manifest 的准备方式见下文各方向。服务端重新核基线、证据和完整权限／资源／容量，已有目录不覆盖。保存成功只产生完整原 input；模型调用、原结果检查、候选导出、评价和采用按下文分别明确执行。
+
+若准备报错、丢回复或页面已切换，保留原提交目录，在“复读已保存输入”填写该路径并明确读取。这里核完整原 input／请求／继承材料及所属项目，不根据新表单重建，也不自动重新准备。源 head 或记忆后来失效不改写已存输入；新的准备仍使用当前有效来源。换电脑时需要携带整个输入目录，不能只复制页面返回的 JSON。原 `ergora composition verify-input INPUT_DIRECTORY --material` 可离线核完整目录；实际 `run-input` 仍重新执行当前后端准入。
+
 ### 生成来源绑定的Skill复盘候选
 
 先有一个已注册的项目、可核验的交接包，以及该项目已导入的基线Skill。`ergora skill list my-project`返回当前`active`中的name、digest和revision；首次导入只建立baseline，不代表测得改进。用上节的selection JSON选择完整来源，再写一个UTF-8的`objective.txt`说明本次要改进什么。

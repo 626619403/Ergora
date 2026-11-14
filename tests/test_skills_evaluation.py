@@ -447,6 +447,10 @@ def test_retrospective_freezes_full_baseline_and_rechecks_without_live_sources(r
     proposal = retrospective_result(options['destination'], result_path)
     packet.unlink()
     shutil.rmtree(baseline['path'])
+    readback = retrospectives.inspect_input(options['destination'], project_id='demo')
+    assert readback['digest'] == prepared['digest'] and readback['retrospective_request'] == task
+    with pytest.raises(ValueError, match='different project'):
+        retrospectives.inspect_input(options['destination'], project_id='another-project')
     checked = retrospectives.check(options['destination'], result_path)
     assert checked['request'] == task and checked['input_digest'] == prepared['digest']
     assert checked['quality_evaluated'] is checked['adoption_authorized'] is False

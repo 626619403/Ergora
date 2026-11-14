@@ -248,6 +248,8 @@ def test_memory_retrospective_exports_full_offline_text_for_original_save_and_re
     sha = hashlib.sha256(result.read_bytes()).hexdigest()
     packet.unlink()
     shutil.rmtree(options['manifest'])
+    readback = retrospectives.inspect_input(options['destination'], project_id='alpha')
+    assert readback['digest'] == prepared['digest'] and readback['retrospective_request'] == task
     unused = tmp_path / 'unused-state'
     assert cli.main(['--home', str(unused), 'retrospective', 'check-memory', str(options['destination']), str(result),
                      '--result-sha256', sha]) == 0
