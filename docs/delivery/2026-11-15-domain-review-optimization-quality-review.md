@@ -37,3 +37,24 @@
 没有穷举抓取全部外部 URL、通读全部上游仓库、论文全文或许可例外；公开来源为上述抽核，动态官方文档只代表本次读取。未运行新领域 reviewer、产品测试、真实训练／GPU／profiler或性能／质量实验；未核安装／平台权限、发布与 CI。现有 Codex text-only 调用不证明 Claude 审查能力或异后端成功。
 
 Q0 本地文档内容可结束独立审查；发布按实际最终文件与远端／适用 CI 另记。下一实现片为 Q1.1 精确本地审查包；Q3.1 与 Q5.1 的只读盘点可按计划推进，各片仍须固定身份、运行其相关验证并独立评审。
+
+## 固定发布补核
+
+2026-11-15，原评审者补核实际发布 `7ed4391693510d9c69bb57ffddeffd8ddafec8e7`，父提交为完整基线 `871cc4b6b2c21420307a002bf5b983707720fe90`。开始补核时 HEAD 为该 SHA、工作树干净；以下六项是该提交相对父提交的全部改动，直接从 Git 对象读取的 blob、字节数及 SHA-256 均与 `publication-r1`／最终文档检查记录相符，且当时工作树逐字一致。
+
+|固定发布文件|Git blob|
+|---|---|
+|`docs/PLAN.md`|`93a8997ee6ab8f499d9d48145fce3946009b7f63`|
+|`docs/delivery/2026-11-15-domain-review-optimization-quality-review.md`|`9a5fd0ad01246ab00c6643f23bc28e9a71a76a42`|
+|`docs/delivery/2026-11-15-domain-review-optimization-quality.md`|`3c1affdd88d1110eedb5c40e97eb53cde7196ae9`|
+|`docs/plans/2026-11-15-domain-review-optimization-quality.md`|`c45f9d67eb4ac9c282421aefcace3a50701afc19`|
+|`docs/research/2026-11-15-iterative-optimization-architecture.md`|`b024d7b0db53a0f073307c221ae3998924882be1`|
+|`docs/research/2026-11-15-pr-mr-review-tools.md`|`87c68c201f90dc0186d16b24f88f1bc101f155dd`|
+
+与 `review-scope-r1` 五份作者文档逐字比较：两份研究不变；PLAN、Q 计划和交付只更新本地完成状态、独立报告链接及终核记账，未改设计或后续验收合同。发布中的本报告是已核的 6,127B 版本，SHA-256 `437ef8b624e6d2dfef2f542f3e506a5cad05fc95eb831e54add28bef843bc287`，包含“三份声明的父／叶资料”措辞修正；本补核段落是其后的记录。自身模板原结果仍为前述 `d74aec37…`，未用后续记账替换原调用输入或结果。
+
+独立读取固定六份文档并规范化相对路径后，159 个本地目标、其中 7 个简单标题 fragment、116 个引用定义及空白检查无误；107 处外部 URL 仅统计，未重复抓取。`git diff 871cc4b6b2c21420307a002bf5b983707720fe90 7ed4391693510d9c69bb57ffddeffd8ddafec8e7 --check` exit 0，包含全部新增文件；`src / tests / scripts / pyproject.toml / .github` 与基线差异仍为空。
+
+普通 push 原件记录 exit 0；本次另执行 `git ls-remote --exit-code origin refs/heads/refactor/architecture-foundations`，exit 0，完整 Ref 返回上述 `7ed4391693510d9c69bb57ffddeffd8ddafec8e7`，与保存的远端读取原件相符。固定提交的原 Portability workflow 未改：分支匹配 `refactor/**`，六条路径全部命中 push 的 `paths-ignore: docs/**.md`。本补核仅确认忽略规则适用，不声称出现或通过新的产品 CI，也未借旧 CI 为此 SHA 背书；没有触发未变产品的全量测试。
+
+**固定发布的需求符合性／可维护性两轴仍为 approve；实质 finding 0、开放阻断 0。** 此次只补核精确发布、文档范围与记录，不扩大为 Q1–Q6 或真实 B3 验收。后续同片发布身份和最终状态的例行同步，仍按仓库 AGENTS 的记账例外处理，不递归建立新审查。

@@ -45,8 +45,8 @@
 
 |节点／优先级|工作与现有 owner|可验收产物／边界|当前状态|
 |---|---|---|---|
-|Q0.1／P0|两方向一手调研；复用已有 [专家采用矩阵](../research/2026-11-12-specialist-adoption.md)|指定 BBuf 版本、Anthropic 各产品与领域审查工具的证据；成熟框架组件实例、优化方法与论文；来源、许可、限制、采用决定明确|两份研究完成，独立抽核通过|
-|Q0.2／P0|本计划与 PLAN／交付对齐，新独立评审|逐条覆盖用户要求、当前实现和下一步；链接／源码对应检查；记录 finding 和处置|本地文档检查／自身模板／新独立两轴通过，0 实质 finding；固定发布另记|
+|Q0.1／P0|两方向一手调研；复用已有 [专家采用矩阵](../research/2026-11-12-specialist-adoption.md)|指定 BBuf 版本、Anthropic 各产品与领域审查工具的证据；成熟框架组件实例、优化方法与论文；来源、许可、限制、采用决定明确|已精确交付 `7ed4391`，原独立固定发布补核通过|
+|Q0.2／P0|本计划与 PLAN／交付对齐，新独立评审|逐条覆盖用户要求、当前实现和下一步；链接／源码对应检查；记录 finding 和处置|已精确交付 `7ed4391`；文档检查／自身模板／独立本地及固定发布两轴通过，0 实质 finding|
 |Q1.1／P0|精确本地 PR／MR 审查包，沿 Git／完整资料读取 owner|冻结明确 base／head／实际 diff-base、变更清单、完整相关源码／调用者／规范／可信检查与用户需求。离线可重复，不依赖提交作者说明；超限明确列出未覆盖并拒绝称完整，支持后继补包而不静默截断|待实施，依 Q0|
 |Q1.2／P1|GitHub／GitLab 只读来源适配，沿本族 backend|从固定仓库身份＋PR number／MR iid 采集真实 base/head 和所需源码，分页／截断／二进制／重命名／子模块明确处理；head 漂移产生新包，不篡改旧包。fork 首版可明确 unsupported；不借原 candidate-review-link 冒充任意 PR 审查|待实施，依 Q1.1|
 |Q2.1／P0|预训练专长 reviewer／组合，沿 AgentDefinition／preset／ReviewDAG|把下节领域清单落为有来源的角色、完整 Skill 和最小示例；一个带已知领域缺陷的候选和一个有效配置变体可通过真实只读叶审阅；模型意见不代替数值／分布式检查|待实施，依 Q1.1|
@@ -146,3 +146,4 @@ flowchart TD
 - [PR／MR 与领域审查工具全文](../research/2026-11-15-pr-mr-review-tools.md)与[循环优化／组件架构全文](../research/2026-11-15-iterative-optimization-architecture.md)记录完整来源、未读范围和失败请求；研究建议不等于安装或接入。
 - [原本地工程 Skill 盘点](../research/2026-11-14-local-engineering-skills.md)、[原横向实验研究](../research/2026-11-12-horizontal-experiment-agents.md)：保留既有来源／验收边界，不重做已完成安装或另建顶层实验系统。
 - 2026-11-15：记录用户原要求、固定基线和现状差异；两个 fresh-context 一手研究已完成，按其结果收敛采用决定。文档检查、原结构模板真实 Codex 调用及新 fresh-context [独立审查](../delivery/2026-11-15-domain-review-optimization-quality-review.md)两轴通过，实质 finding 0，产品未改；固定发布与最后记账在 [本轮交付](../delivery/2026-11-15-domain-review-optimization-quality.md) 逐步记录，并回写本表。
+- 2026-11-15：已普通推送 `7ed4391693510d9c69bb57ffddeffd8ddafec8e7`，六份 Markdown、完整远端 Ref 和原独立固定发布补核通过。既有 push 文档过滤适用，不声明新产品 CI 成功；Q0 完成，下一片 Q1.1。本行及发布补核是记录同步，不提前批准 Q1–Q6。

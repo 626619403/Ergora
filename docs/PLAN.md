@@ -4,7 +4,7 @@
 
 ## 当前检查点
 
-**当前检查点：Q0领域 PR／MR 审查、循环优化与发布质量计划本地已通过。** 用户新增要求见[Q计划](plans/2026-11-15-domain-review-optimization-quality.md)，[逐步交付](delivery/2026-11-15-domain-review-optimization-quality.md)。基线871cc4b，已核通用三路审查和原候选关联；领域 PR／MR 组合、按瓶颈选方向及连续实验循环属于待补功能。两份一手研究完成，计划已收敛；文档检查／自身模板真实调用及新独立终核两轴approve，0实质finding，固定发布另记。本片不改产品、不关闭真实B3；发布后从Q1.1精确本地审查包推进，每步更新两文档。
+**当前检查点：Q0已精确交付，下一片Q1.1精确本地PR／MR审查包。** 用户新增要求见[Q计划](plans/2026-11-15-domain-review-optimization-quality.md)，[逐步交付](delivery/2026-11-15-domain-review-optimization-quality.md)。基线871cc4b，计划和两份一手研究已普通发布 `7ed4391693510d9c69bb57ffddeffd8ddafec8e7`，六文档／完整Ref及原独立固定发布补核通过；文档检查／自身模板真实调用和新独立本地／发布两轴approve，0实质finding。原push文档过滤适用，不声明新产品CI成功。本片未改产品、不关闭真实B3；领域PR／MR组合、按瓶颈选方向与连续实验循环待按Q1–Q6实施，每步更新计划和交付。
 
 **前一节点G1当前功能的安装与公开交接已完成。** 开发分支`refactor/architecture-foundations`，不合main。产品固定506cc57的611文件／283参考；G1b安装／升级／匹配回退和日常入口已精确交付6c7c45f，自己的CI43589988699及原独立终核通过。G1c七用户手册／新路径新项目重建和G1d-CI单项过滤共同发布77d1736，自己的CI43591668528八job／30必要步骤、原两reviewer本地／固定发布／CI终态两轴均approve，开放0／0。详见[G1总交接](plans/2026-11-14-integrated-handoff.md)。
 
