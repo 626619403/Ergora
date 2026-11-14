@@ -3,8 +3,9 @@ import { node, button, pre, heading, panel, empty, row, table, short } from "./u
 import { app } from "./state.js";
 import { trainingCancellationPanel } from "./training-cancellation.js";
 import { trainingPreparationPanel } from "./training-preparation.js";
+import { trainingEvidencePanel } from "./training-evidence.js";
 
-export function trainingView(data, base) {
+export function trainingView(data, base, { render }) {
   const project = data.project.id;
   const home = app.bootstrap.state_directory;
   const entries = node("div", { "aria-live": "polite" });
@@ -176,7 +177,8 @@ export function trainingView(data, base) {
     const records = node("div", {}, empty(`正在读取实验 ${id}…`));
     const cancellation = trainingCancellationPanel(base, id, selected);
     const submission = submissionPanel(id, selected, cancellation);
-    detail.replaceChildren(records, submission.element, cancellation.element);
+    const evidence = trainingEvidencePanel(base, id, selected, app.bootstrap.platform, () => { app.tab = "tasks"; render(); });
+    detail.replaceChildren(records, submission.element, cancellation.element, evidence);
     try {
       const observed = await api(`${base}/training/${encodeURIComponent(id)}`);
       if (!active() || sequence !== detailSequence) return;
@@ -268,7 +270,7 @@ export function trainingView(data, base) {
     view,
     panel("开始与执行实验", "先准备真实合同、数据、环境和预算，再按训练手册使用原生执行流程。",
       pre(`ergora templates copy training-optimization ./training-task\nergora training list ${project}\nergora training show ${project} EXPERIMENT_ID`),
-      node("p", {}, "在上方预览并确认准备实验，或按稳定 ID 读取原准备意图恢复，再在详情确认提交。已确认原运行可用稳定请求 ID 取消、按原意图恢复并读取停止事实。run-local／approve沿用原实验 ID；执行和 evidence SHA 批准见仓库 docs/TRAINING.md。")),
+      node("p", {}, "在上方预览并确认准备实验，或按稳定 ID 读取原准备意图恢复，再在详情确认提交。已确认原运行可用稳定请求 ID 取消、按原意图恢复并读取停止事实。在详情明确读取归档、核原文本窗口，再确认原run／evidence作owner批准；丢回复按原意图恢复。逐实验run-local及真实复验见 docs/TRAINING.md。")),
     panel("Forge 候选来源", "原生 campaign 是候选材料；完成不代表实验通过或已经采用。在工作流设计中选择训练模板可操作原生工具。",
       pre(`ergora kernel list ${project}`),
       data.kernel_runs.length ? table(["原记录 ID", "记录状态"], data.kernel_runs.map((item) => [item.id, item.status])) : empty("尚无 Forge 候选记录。")),

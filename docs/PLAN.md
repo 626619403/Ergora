@@ -4,7 +4,9 @@
 
 ## 当前检查点
 
-开发分支 `refactor/architecture-foundations`；F9b4b可信runner登记、F9b4c C1实验准备及C2图形化准备／恢复均已完成最终安装、实际入口、自身模板、新独立两轴、普通精确发布、自己的八job／30必要步骤CI与原结构轴终核。C2固定候选`2181cc5c6ab92ac01664f8e769298cce350f65a5`、自己的CI43530156938终核通过。当前[F9c C1原证据只读](plans/2026-11-14-training-evidence.md)最终r2 573／两RECORD／283及安装46项／38.99秒、实际CLI／SDK-free／HTTP六GET／原件收尾及自身原模板、新独立两轴本地通过，开放0／0；原测试与私有验收脚本失败保留。C1已普通推送`c3c7c3e218e9d2efc89498e8c208bf5981b9a0d9`，23件blob／完整Ref一致；原两轴固定发布补核通过；自己的CI43532534314六Linux组成功，Windows一项CRLF测试预期失败，修正与新候选CI待。已建立[C2精确owner批准／恢复](plans/2026-11-14-training-release.md)独立合同，最终r2包574／两RECORD／283、修后安装49项／248.18秒、实际三原run／CLI／HTTP／SDK-free与原件收尾、自身原模板approve已通过；新独立两轴最终本地approve、开放0／0；修前80项与两P2／私有脚本失败保留，精确发布／自己的CI待；C3页面随后单列。普通推送当前分支，不合入 `main`。
+开发分支 `refactor/architecture-foundations`；F9b4b及F9b4c实验准备／页面均已精确交付。F9c C1原证据只读原候选`c3c7c3e218e9d2efc89498e8c208bf5981b9a0d9`自己的CI43532534314因Windows一项CRLF测试预期失败，历史保留；最小测试修正随C2固定候选`1eef90d7453c64579ddc25bd5a7775eecd20c2cc`普通发布，其自己的CI43536265177八job／30必要步骤全成功、原结构轴终核通过。C2最终r2包574／两RECORD／283、安装49项／248.18秒、实际原三run／CLI／HTTP／SDK-free／原件与收尾、自身模板及新独立两轴和固定发布均通过，开放0／0。
+
+当前活动是[C3证据／批准页面](plans/2026-11-14-training-evidence-console.md)：最终r4包575／两RECORD／283、安装33项／25.02秒、自身原模板approve通过；原首三个run的页面批准／中断恢复保留r3身份，最终r4另验第四run缺源／HTTP丢回复、真实读响应交错与三宽视觉；四run各唯1signal，24／109原件保持，四组进程／两浏览器／三端口已收尾。新fresh-context两轴最终本地approve、开放0／0，143引用已直接核；普通精确发布及自己的CI待。迟到mutation／旧finally与home切换仅静态核，旧start／cancel本片无动态回归，完整F9d另验，不称全矩阵或真实GPU／质量／性能成功。普通推送当前分支，不合入 `main`。
 
 |节点|实际状态|接续动作与权威记录|
 |---|---|---|
@@ -20,7 +22,7 @@ W1仅验源码提案与交接：共享仓库HEAD／213条status字节保持，�
 ## 下一可执行项
 
 1. **F8-H3b实际续接**：精确交付完成，自己的CI与原独立两轴终核通过，详见[计划](plans/2026-11-14-harness-session-continuation.md)／[交付](delivery/2026-11-14-harness-session-continuation.md)。r3包561／两RECORD／283、安装133通过／12跳过；实际SDK四场景与真实模型两调用成功、自身approve。原两个P2及失败保留并已修复。冻结原项目／资料／权限／后端／schema，原home／cwd／session不分叉；unknown不自动重发，正式恢复归原owner。
-2. **F9实验导航**：F9a／b1／b2／[b3取消与停止观察](delivery/2026-11-14-training-cancellation.md)已精确交付。F9b4a基线初始化已普通发布、自有CI及原结构轴终核通过；[F9b4b runner登记](plans/2026-11-14-training-runner.md)完成最终包、安装40项／实际CLI与页面／SDK-free基线／原件及收尾／自身模板、新独立两轴最终本地通过0／0，已普通发布并核完整Ref，自己的CI43523861953八job／30步骤及原结构轴终核通过。F9b4c C1最终包／15项／实际CLI HTTP、新独立两轴、普通发布和自己的CI及原结构轴终核均通过；C2页面已完成最终本地、新独立两轴、固定发布和自己的CI及原结构轴终核；推进[F9c原evidence读取／精确批准](plans/2026-11-14-training-evidence.md)，先C1原证据只读、再C2批准／C3页面；F9d真实旅程另验；复用原训练owner，不把CPU合同当真实GPU验收。
+2. **F9实验导航**：F9a／b1／b2／[b3取消与停止观察](delivery/2026-11-14-training-cancellation.md)已精确交付。F9b4a基线初始化已普通发布、自有CI及原结构轴终核通过；[F9b4b runner登记](plans/2026-11-14-training-runner.md)完成最终包、安装40项／实际CLI与页面／SDK-free基线／原件及收尾／自身模板、新独立两轴最终本地通过0／0，已普通发布并核完整Ref，自己的CI43523861953八job／30步骤及原结构轴终核通过。F9b4c C1最终包／15项／实际CLI HTTP、新独立两轴、普通发布和自己的CI及原结构轴终核均通过；C2页面已完成最终本地、新独立两轴、固定发布和自己的CI及原结构轴终核；F9c C1换行修正与C2已精确交付；当前[C3页面](plans/2026-11-14-training-evidence-console.md)本地与独立终核／发布收尾，F9d完整旅程另验；复用原训练owner，不把CPU合同当真实GPU验收。
 3. **F10受评价改进**：沿记忆／Skill／评价／采用owner，补正式任务可选冻结、来源／失效／容量可见及复盘候选／明确采用回退。复用AC3资料合同，不让生成器改可信评价或扩大权限，见[总计划F10](plans/2026-11-01-all-in-one.md#8-p1低代码更多真实工具与演进闭环)。
 4. **G1集成交接**：开发／治理／训练公开旅程，核新安装、配置、角色替换、工单、演进、旧项目升级／回退、跨机重建；更新[架构](architecture/current.md)、README、[使用手册](USAGE.md)、[训练手册](TRAINING.md)与Windows手册，再完成相关完整回归、独立审查与推送。U3日常安装只覆盖其精确旧包，不代表S1等新包已升级。
 

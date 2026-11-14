@@ -87,7 +87,7 @@
   "independent_review": {
     "requirements": "final local passed; Host test P2 fixed and independently closed; zero open findings",
     "structure": "final local passed; zero open findings",
-    "publication_and_own_ci": "both original axes passed fixed publication; own CI43532534314 failed one Windows newline expectation; fix and corrected candidate CI pending"
+    "publication_and_own_ci": "Original fixed c3 publication passed; original CI43532534314 Failure retained; corrected test in exact1eef own CI43536265177 all8 jobs/30 required steps success, independently closed by original C1 structure axis"
   },
   "publication": {
     "state": "pushed",
@@ -594,5 +594,15 @@
     },
     "retained_private_failure": "windows-fix-r1 resolved venv executable symlink to base interpreter without pytest; no valid reproduction claim",
     "corrected_candidate_and_own_ci": "pending combined C1 correction / C2 candidate"
+  },
+  "correction_candidate": {
+    "candidate": "1eef90d7453c64579ddc25bd5a7775eecd20c2cc",
+    "test_only": "read_bytes().decode replaces universal-newline read_text expected artifact text",
+    "own_ci_run_id": 43536265177,
+    "own_ci_run_status": "Success",
+    "all8_jobs_30_required_steps": true,
+    "original_c3_ci_remains": "Failure",
+    "raw_ci_evidence_owner": "2026-11-14-training-release.json",
+    "original_axis_correction_final_check": "passed: original C1 structure axis independently checked fixed1eef single test change and own8-job/30-step CI, Windows5/5"
   }
 }

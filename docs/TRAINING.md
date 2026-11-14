@@ -205,7 +205,7 @@ ergora training evidence my-project EXPERIMENT_ID \
 
 `archive.evidence.artifacts`保留原路径和声明摘要，`artifact_content_status: not_read`明确尚未核所有文件内容。指定其中一个artifact和本次完整evidence SHA后，入口先读整个文件并校验原SHA，再返回UTF-8文本的Unicode字符窗口；下一段沿`next_offset`读取。JSON每份最多1MiB、所选artifact最多16MiB、返回窗口最多65,536字符、总响应最多8MiB；超限／二进制／NUL／摘要漂移／symlink或越界明确拒绝，不截断后宣称完整。大型或二进制profile继续使用原索引位置与对应工具，不经此文本入口解码。
 
-HTTP同样使用`GET /api/projects/{project}/training/{experiment}/evidence`，可选`artifact / evidence_sha256 / offset / limit`。此操作不发RPC、不重跑comparator／runner、不生成owner receipt、不批准或采用。它核保存材料的身份并供人审阅；真实质量、作者可信性、当前批准资格与实际集成效果仍须原独立流程。精确owner批准CLI／HTTP见下一节；图形批准入口在后续片接入，勿把“已归档”当“已采用”。
+HTTP同样使用`GET /api/projects/{project}/training/{experiment}/evidence`，可选`artifact / evidence_sha256 / offset / limit`。此操作不发RPC、不重跑comparator／runner、不生成owner receipt、不批准或采用。它核保存材料的身份并供人审阅；真实质量、作者可信性、当前批准资格与实际集成效果仍须原独立流程。精确owner批准CLI／HTTP见下一节；图形入口见下方控制台步骤。
 
 ## 精确 owner 批准与投递恢复
 
@@ -225,7 +225,18 @@ ergora training resume-approve my-project EXPERIMENT_ID --revision REVISION \
 
 一个实验仅有一个本入口批准意图，不提供更换request ID绕过unknown。首次发送前来源／baseline必须保持、不得有fence；过期／撤销／非私有或漂移的原receipt保持原件并拒绝，不自动续期或批准另一个evidence。再次人工决策须先由原owner明确对账，本入口不自动覆盖；不要删除checkpoint或换实验ID绕过。发送后恢复不要求已变化／删除的manifest、runner、baseline或archive仍在，不会因此新发信号。
 
-HTTP复用同一用例：`GET .../training/{experiment}/approval`；`POST .../approve`（`revision / run_id / evidence_sha256 / confirm: true / timeout`）；`POST .../resume-approve`（`revision / intent_sha256 / confirm: true / timeout`），timeout为1–60秒。Windows原生支持本地已保存记录读取；批准与恢复使用登记的Linux／WSL2环境。图形批准入口在后续片接入。
+HTTP复用同一用例：`GET .../training/{experiment}/approval`；`POST .../approve`（`revision / run_id / evidence_sha256 / confirm: true / timeout`）；`POST .../resume-approve`（`revision / intent_sha256 / confirm: true / timeout`），timeout为1–60秒。Windows原生支持本地已保存记录读取；批准与恢复使用登记的Linux／WSL2环境。
+
+## 在控制台审阅证据与批准
+
+在“训练实验”选择原实验的“查看原件”，进入“证据审阅与 owner 批准”。页面只在点击后读取原归档和本地批准记录，不自动查询运行时或批准。
+
+1. 点击“读取原归档证据”，展开完整 gate、binding、evidence、manifest、baseline 和摘要，核对当前基线。artifact 索引不代表正文已核；展开文本窗口，选择原路径、粘贴本次完整 evidence SHA，填写字符 offset／limit 后读取。按“读取下一证据窗口”继续；二进制及超限材料沿原索引使用对应工具。
+2. 点击“读取本地批准记录”。尚无意图且本次归档可读时，核对完整原 run ID 和 evidence SHA，填写确认后点击“确认 owner 批准”。重新读取证据会重建确认栏，应先完成读取、再填写确认。批准入口只在 Linux／WSL2 显示。
+3. 已有 `prepared` 或 `unknown` 时，确认原 intent SHA 后点击“恢复原批准意图”。已有发送 attempt 的恢复只查原固定 run 历史；原实验详情或当前归档不可读，也可独立读取与恢复已有意图。凭据创建 unknown 与信号投递 unknown 分别显示。
+4. 未取得回复时，先点击“读取原批准记录恢复”，再按原意图显式操作；页面不自动重试。`requested` 仅表示投递。读取原运行与原票据，使用“前往正式任务页”手动绑定原候选和 evidence，完成项目集成复验；此按钮不创建任务、工单、合并或采用。
+
+切换实验或项目后，重新明确读取对应材料。发送期间本面板控件禁用；同一份证据的在途读取仍可完成，重新选择或修改窗口会废弃旧正文。
 
 ## 从专家提案填写原实验合同
 

@@ -41,3 +41,7 @@ C1已普通发布`c3c7c3e218e9d2efc89498e8c208bf5981b9a0d9`，23件Git blob与�
 自己的CI43532534314已终态Failure：六Linux组必要步骤全部success；Windows原回归1030通过／756跳过／16 subtests，一项新正例失败。原artifact按Windows写入为CRLF，产品按原字节UTF-8解码正确返回24字符；测试read_text通用换行归一化后期待22。应修测试为read_bytes().decode，保留原fixture与产品字符语义；先本地CRLF复现／修后验证，随下个完整候选再验Windows，不称原候选CI成功。
 
 换行预期最小修正已做：仅test用原bytes.decode；私有windows-fix-r2在原C1已安装573产品上用CRLF归档，原测试明确复现24／22失败，修后同场景1通过。windows-fix-r1误resolve虚拟环境解释器而缺pytest，原失败保留、不称复现成功。后续C1修正与C2完整候选一并精确发布，再验该候选自己的Windows／Linux；原c3的Failure保持。
+
+C1换行预期修正已随固定1eef90d7453c64579ddc25bd5a7775eecd20c2cc发布，其自己的CI43536265177八job／30必要步骤现全部成功，包括Windows原回归。原c3自己的CI43532534314仍为Failure，原CRLF夹具／产品语义保持；修正候选终态原结构轴补核待，原件由[C2证据](evidence/2026-11-14-training-release.json)（交付目录）统一持有。
+
+原C1结构轴已终核固定1eef单行修正及其自己的CI43536265177原run／八job／receipt／batch：30／30步骤成功，Windows5／5；修正片闭合，开放0／0。原c3的Failure保持，不扩大为C2／C3行为验收。

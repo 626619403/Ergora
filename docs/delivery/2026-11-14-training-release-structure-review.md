@@ -6,8 +6,8 @@
 
 ## 当前结论
 
-- **需求符合性：本地实现与验收 approve，开放 0。** S1／S2 已修复，r2 最终安装49项、实际原生三run旅程、SDK-free／CLI／HTTP、原件与收尾及自身原模板原回复均直接核过。原问题、失败与修前范围保留，修后结论绑定下述精确 r2 身份。普通精确发布／完整Ref及自己的必要CI仍待，不据本地通过宣称整个交付已完成。
-- **维护性：本地 approve，开放 0。** receipt 创建 checkpoint 已统一承担原字节／expiry身份冻结，复用原有 serializer；新模块持有完整、独立的 owner receipt 生命周期，沿用原 start／runtime／history／process owners。未发现新增重复权威、无真实消费者的通用抽象或无可达理由的 guard／测试。发布／CI阶段仍须原结构轴终核。
+- **需求符合性：本地实现／验收、固定普通发布及自身必要CI终核 approve，开放 0。** S1／S2 已修复，r2 最终安装49项、实际原生三run旅程、SDK-free／CLI／HTTP、原件与收尾及自身原模板原回复均直接核过；固定 `1eef90d7453c64579ddc25bd5a7775eecd20c2cc` 的28件blob、普通push与完整原Ref亦通过。自己的CI `43536265177` 为 Success，八job／30必要步骤已逐件核原HTML及HTTP身份。原问题、失败与修前范围保留。
+- **维护性：本地、固定发布及自身必要CI终核 approve，开放 0。** receipt 创建 checkpoint 已统一承担原字节／expiry身份冻结，复用原有 serializer；新模块持有完整、独立的 owner receipt 生命周期，沿用原 start／runtime／history／process owners。未发现新增重复权威、无真实消费者的通用抽象或无可达理由的 guard／测试。固定CI配置与实际必要步骤一致，原结构轴终核通过。
 
 ## S1 — P2：ready 前丢失原 receipt 会重新 mint 并刷新到期时间
 
@@ -69,6 +69,41 @@
 - **自身原模板。** 原 `ergora-structure-review` 经用户已授权的Codex回退，r2原reply为 approve，原结果 SHA `e632aa609e13a028e707fedf2106fd902121b47b2a5de55338a3473feed1008c`。独立核实际stdin = prepared prompt，prompt SHA匹配，15完整文件／281,510B的内嵌原字节逐份匹配packet摘要；原脚本还核全部继承资源实际进入stdin。53.813秒结果仅给出源码结构意见，明确其调用时r2运行证据尚待；本 reviewer 另以上述最终原件补核运行结果。r1原request-changes与S2原回复保留。
 - **CI接线。** 新suite仅在Linux group5登记；原插件实际collection为414／1867项（1453 deselected）／4.39秒、returncode0。这只是收集证据，未执行CI测试，也不代表新候选Windows／Linux必要job通过。
 
-首轮源码 source-r1 的20点／cancelled／-9与未完成范围、S1修后23项旧身份、旧安装80项、native-r1私有脚本误取扁平ticket字段的失败与同原run续验均保留，没有因r2成功改写为成功。当前本地源码／验收无开放需求或维护性finding；下一步是普通精确发布、完整Ref与自己候选的必要Windows／Linux CI，再由原结构轴核固定候选。
+首轮源码 source-r1 的20点／cancelled／-9与未完成范围、S1修后23项旧身份、旧安装80项、native-r1私有脚本误取扁平ticket字段的失败与同原run续验均保留，没有因r2成功改写为成功。本地源码／验收无开放需求或维护性finding；本地终核时剩余普通精确发布、完整Ref与自己候选的必要Windows／Linux CI，固定发布补核如下。
 
 本结论仅覆盖精确 r2 本地合同与合成archive上的真实原生控制／receipt／history／票据旅程。未进行真实训练、GPU、质量／性能测量、真实集成复验或采用；F9d／B3、C3与F10／G1仍各自开放。
+
+## 固定普通发布补核
+
+只读固定 Git 对象 `1eef90d7453c64579ddc25bd5a7775eecd20c2cc`，唯一父为原基线 `c3c7c3e218e9d2efc89498e8c208bf5981b9a0d9`，tree 为 `63dd172a752d27ee5f1b9fc7ec54c8d458d5cb47`。`static-final-r1.json` 的全部28件与该提交实际差异集合完全一致；逐件读取提交blob验证长度／SHA-256与普通文件类型，全部匹配，未以随后工作树代替固定对象。
+
+固定C2九件映射仍为 `9485aaaec5042b912fe1847d15b3babcb6b78610a364736583827d4bb5b3b150`；直接比较全部574件固定产品blob与已验r2 wheel（`173be7d224743fa85cf8992820e86ab181dab6e1e6680a5cb803a49230ff6617`），逐字一致，原两RECORD／283验收身份保持。共同候选中C1唯一测试修正仍仅为保留原CRLF字节的预期读取；固定公开JSON的90份原引用再次逐件核长度／摘要一致。
+
+已核 `commit-r1.json`、`push-r1.json` 与 `ref-r1.json`：commit／普通无force push均exit0，保存的完整远端原Ref `refs/heads/refactor/architecture-foundations` 的完整值逐字等于 `1eef90d7453c64579ddc25bd5a7775eecd20c2cc`。固定普通发布与精确Ref补核通过，需求／维护性仍开放0／0。本 reviewer未调用远端；后续C3工作树不属于本结论。该次发布补核时，自己的必要Windows／Linux CI仍待；最终CI终核如下。
+
+## 固定候选自身CI最终终核
+
+固定对象仍为 `1eef90d7453c64579ddc25bd5a7775eecd20c2cc`。直接读取该对象的 `.github/workflows/portability.yml`、六组清单及CI入口：plan要求读取显式分组，六个Linux组各有四个必要步骤，Windows Python3.12的all组另有PowerShell5.1安装／升级，共八job／30必要步骤。新release suite唯一归Linux group5；Windows all执行完整tests选择，含原C1单行CRLF预期修正，无该测试的Windows跳过。
+
+独立离线核验 `ci-terminal-r3.json` 与原run `43536265177` 的 `ci-run-html-r4/page.html`：最终状态为 **Success**，原页面完整提交链接绑定上述完整SHA。早期 `ci-job-batch-r1/body.json` 仅用于八个job的ID／名称／href映射，totalCount为8、hasMore为false；各job终态由下列原HTML逐件确认。
+
+|job|ID|终态HTML样本|必要步骤|
+|---|---|---|---|
+|plan|132265897994|`ci-job-132265897994-html-r1`|1／1 success|
+|Linux group0|132265959612|`ci-job-132265959612-html-r1`|4／4 success|
+|Linux group1|132265959599|`ci-job-132265959599-html-r1`|4／4 success|
+|Linux group2|132265959817|`ci-job-132265959817-html-r1`|4／4 success|
+|Linux group3|132265959636|`ci-job-132265959636-html-r1`|4／4 success|
+|Linux group4|132265959613|`ci-job-132265959613-html-r1`|4／4 success|
+|Linux group5|132265959567|`ci-job-132265959567-html-r1`|4／4 success|
+|Windows3.12 groupall|132265959683|`ci-job-132265959683-html-r3`|5／5 success|
+
+30个必要 `<check-step>` 的success、开始／完成时间、`data-job-completed` 标记及完整SHA／job／step日志URL，均独立解析并与terminal记录逐字段一致。必要步骤为plan的 `Read explicit test groups`；各native job的 `Build and install wheel`、`Packaged reference identity`、`Native application regression`、`Upload regression observations`；以及Windows的 `Windows PowerShell 5.1 installer and upgrade`。
+
+run、batch与八job共10份原HTTP回执均为200，精确请求／最终URL、字节数与SHA-256全部匹配。最终run页面213,426B，SHA `c845f85f2c46095a1c8c4c6b4a36a4d277471bc36ab366548ec61637890acffd`；Windows最终r3页面160,233B，SHA `7ef16f57d2cb119058adc90d61b23e5d448b8de33bcbdb406344006b019428a6`；terminal记录SHA `d4df32b89dd918e1979a14636fde3685041afaecc9024076e81aa8aa1d78003d`。本补核只读已存原件，未重跑测试或访问远端。
+
+自己的Windows all组原regression步骤成功，覆盖固定候选内的C1 CRLF测试修正；原C1提交 `c3c7c3e218e9d2efc89498e8c208bf5981b9a0d9` 的CI `43532534314` Failure仍保留在固定原证据中。本次未另下载逐测试artifact，不扩大为逐测试日志核验。
+
+另按 `static.py` 的原算法，从固定Git对象对十件产品／测试／CI路径排序，逐件连接路径UTF-8、NUL、blob原字节、NUL后重算SHA-256，确为 `14f9e0dab83aa0d894f2d1b5d19778e72396246d8cac0db931352bfc0af4f896`；该字节流packet摘要与前述九件JSON映射摘要各自匹配。
+
+**固定C2本地、普通发布／完整Ref及自身必要CI的结构轴最终approve，需求／维护性开放0／0。** S1／S2及历史失败记录保持；范围仍限本报告原合同，不新增真实训练、质量／性能、集成复验或采用主张。

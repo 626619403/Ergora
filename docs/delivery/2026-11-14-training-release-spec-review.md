@@ -8,7 +8,7 @@
 
 独立检查当前五件产品 `reference_training_release.py`、`reference.py`、`training.py`、`cli.py`、`web.py`，新 release suite／服务 fixture、architecture 名单与 Linux group 5；补核相邻 C1 evidence 测试一行 CRLF 预期修正，按原字节 decode 与生产语义一致。相邻核对原批准 CLI、原 adapter 授权及票据、原 release 客户端、start／cancel checkpoint、runtime lookup、完整 history matcher、immutable writer、项目 revision 预约与 HTTP 本地请求 guard。
 
-- **需求轴：最终本地 approve。** 原 P2 已修并完成最终安装级验证，当前需求阻断 0；发布／本片 CI 单独待验。
+- **需求轴：最终本地 approve，固定发布／Ref 补核通过。** 原 P2 已修并完成最终安装级验证，当前需求阻断 0；本片自己的 CI 单独待验。
 - **维护性轴：本次需求检查范围内无另加 finding。** 批准 checkpoint 留在独立 release owner；CLI／HTTP 共用应用用例；原 adapter 继续拥有授权和票据。该结论不代替本片独立结构轴。
 
 ## Finding
@@ -62,4 +62,12 @@
 
 ## 剩余验收
 
-本报告检查范围内无开放需求 finding，最终本地需求验收通过。终读交付／主计划已区分最终 r2 的 49 项与修前 80 项、保留原失败，并明确精确发布／自己的 CI 待验。普通精确发布、完整 Ref、本片自己的必要 Windows／Linux CI 与原结构轴终核在后续发布检查中独立验收。本报告不将本地通过等同于整片精确交付完成，不关闭 C3、真实 F9d／B3 或 G1。
+本报告检查范围内无开放需求 finding，最终本地需求验收通过。终读交付／主计划已区分最终 r2 的 49 项与修前 80 项、保留原失败。普通精确发布及完整 Ref 已获下述固定补核；本片自己的必要 Windows／Linux CI 与原结构轴终核仍需单独验收。本报告不将本地通过等同于整片精确交付完成，不关闭 C3、真实 F9d／B3 或 G1。
+
+## 固定发布补核
+
+固定候选 `1eef90d7453c64579ddc25bd5a7775eecd20c2cc`，唯一父提交为 `c3c7c3e218e9d2efc89498e8c208bf5981b9a0d9`。直接读取 Git 对象，全部 28 件变更路径、blob 字节数与 SHA-256 均匹配 `static-final-r1.json`；该发布快照 SHA-256 为 `f3b7f6bc047293992b7c8b768abea538de01a3e0da481fa82ed462e75c7a6d8d`。九件 C2 映射仍为 `9485aaaec5042b912fe1847d15b3babcb6b78610a364736583827d4bb5b3b150`；含相邻 C1 唯一 CRLF 测试修正的十路径原字节 packet 重算为 `14f9e0dab83aa0d894f2d1b5d19778e72396246d8cac0db931352bfc0af4f896`，与 commit 原记录一致。
+
+固定提交中全部 574 件产品逐字匹配最终 r2 wheel／安装，wheel 仍为 `173be7d224743fa85cf8992820e86ab181dab6e1e6680a5cb803a49230ff6617`；两 RECORD 的 582／587 行、283 冻结参考重新只读核对通过。固定公开证据 JSON 的 SHA-256 为 `efce1f65311ac76e7507b3515c51c152693c42c590c1d0c9579631ba6fd12cda`，其中 90 条原引用逐件字节数及 SHA 均匹配，历史／最终范围与限制保持。
+
+已直接核 `commit-r1.json`、`push-r1.json`、`ref-r1.json`：提交／普通 push／原完整 Ref 查询均退出 0，push 记录无 force 参数；原远端输出完整匹配 `1eef90d7453c64579ddc25bd5a7775eecd20c2cc` 与 `refs/heads/refactor/architecture-foundations`。**该固定候选的普通发布／精确 Ref 补核通过，需求开放 0。** 本次未执行测试、安装或远端请求；本片自己的 CI 尚待原件终核，后续 C3 工作树与本补核分别验收。

@@ -4,7 +4,7 @@
 
 ## 当前结论
 
-**本地与固定发布身份的结构结论保持通过，没有开放产品结构 finding；原候选自己的 CI 最终为 Failure，C1 尚不能标记精确交付完成。** 候选 `c3c7c3e218e9d2efc89498e8c208bf5981b9a0d9` 的六 Linux 组通过，Windows 一项测试错误地归一化 CRLF 后期望 22 个字符、产品按原字节解码得到 24；最小测试修正和局部 CRLF before／after 已补核，修后固定共同候选及其自己的 CI 仍待。前述最终 r2 安装、实际 CLI／HTTP／SDK-free、原件保持、自身模板、23 个固定 blob 与普通发布／当时原完整 Ref 保持原通过范围，不扩大为原候选 CI 绿色。
+**本轴结构结论通过，没有开放产品结构 finding；C1 的单行换行测试修正已在固定共同候选及其自己的 CI 上独立闭合。** 原候选 `c3c7c3e218e9d2efc89498e8c208bf5981b9a0d9`／run `43532534314` 仍为 **Failure**：Windows 测试错误地归一化 CRLF 后期望 22 个字符，产品按原字节解码得到 24。修后固定候选 `1eef90d7453c64579ddc25bd5a7775eecd20c2cc` 保留该最小修正，其 own run `43536265177` 的原始页面、八 job 和 30 个必要 step 已直接核为全部 success，包括 Windows 五项；详见末节。前述最终 r2 安装、实际 CLI／HTTP／SDK-free、原件保持、自身模板、23 个固定 blob 与普通发布／当时原完整 Ref 保持各自范围；本次只关闭 C1 修正，不接受邻片 C2／后续 C3 的产品行为，也不改写原候选失败历史。
 
 本轮只读源代码、Git 和验收原件，进行了轻量 AST／路径／摘要／RECORD 静态核验；只写本文，没有安装、重跑 suite、启动浏览器／服务、访问远端、执行训练、批准或采用。
 
@@ -60,9 +60,9 @@
 
 ## 下一步与支持范围
 
-本片本地验收和固定普通发布身份已补核，**没有开放产品结构 finding**；原候选自己的 CI 已明确 Failure。下一步核包含这一行测试修正的固定共同候选、普通发布身份及其自己的必要 CI job／step 终态。原六 Linux 组、局部 CRLF 复现、collection 或其他候选的 CI 均不能关闭修后候选的完整责任。
+本片本地验收和原固定普通发布身份已补核，**没有开放产品结构 finding**。原候选自己的 CI 保持 Failure；C1 修正的固定候选身份及其 own run 的全部必要 job／step 终态已由末节直接原件核查关闭，本轴没有待补的 C1 修正核验。结论没有借用原六 Linux 组、局部 CRLF 复现、collection 或邻片评审。
 
-原生 Windows、真实 Temporal 服务、训练／GPU、质量／性能、owner evidence 批准、实际集成或采用均没有本片运行主张；C2／C3、F9d／B3 保持原计划范围。
+本轴没有独立运行原生 Windows；Windows 结论只来自末节所列固定候选自己的原 CI。真实 Temporal 服务、训练／GPU、质量／性能、owner evidence 批准、实际集成或采用均没有本片运行主张；C2／C3、F9d／B3 保持原计划范围。
 
 ## r2 修后安装与自身模板补核
 
@@ -157,3 +157,46 @@ Windows 原 HTML 737–770 行保存了唯一失败全文：`test_original_archi
 |`windows-fix-r2/after.stdout`|98|`c2f051c7ed60a4b262e463dafd27e66ad9009ff5b296ceb2dd964d6bd8a496e6`|
 
 维护性结论保持通过，当前无开放产品结构 finding；一项 Windows 测试合同缺陷已有最小源码修正和局部 before／after 支持。原 `c3c7c3e…` 的 CI **保持 Failure**；修正将随邻片共同候选发布，其固定身份、自己的完整 CI 与 Windows 终态仍须另核，不能由本局部结果预先关闭。
+
+## 2026-11-14 固定修正候选与自己的 CI 终核
+
+本节关闭上一节的“修后固定身份／自己的完整 CI／Windows 终态待”，只针对 C1 的换行测试修正。检查对象固定为 `1eef90d7453c64579ddc25bd5a7775eecd20c2cc`，不取当前后续 C3 工作树；直接读 Git blob 与 `.ergora/checks/training-release/` 保存的原 HTML、receipt、UI metadata、job batch 和 terminal，没有借用邻片 C2 评审，也没有访问远端、安装、运行测试或服务。原候选 `c3c7c3e…`／run `43532534314` 的 **Failure** 及前述两轮失败历史均保持。
+
+### 固定 C1 修正身份
+
+直接读 commit 对象，固定修正候选唯一父提交正是 `c3c7c3e218e9d2efc89498e8c208bf5981b9a0d9`。对父／候选的 `tests/test_training_evidence.py` 原 blob 比较，差异只有第 43 行改成 `text = (folder / 'notes.txt').read_bytes().decode('utf-8')`，修后 SHA-256 为 `6d2b94dd69723bcdd6d3368af9c1fc7b1a7102e0743d90df19fab4bf7d569495`，与已补核局部 after 的源码一致。`src/ergora/reference_training_evidence.py` 和 `tests/fixtures/training_evidence_archive.py` 在两固定提交间逐字不变；原字节读取／字符语义和仓库 fixture 没有因这次修正调整。
+
+固定候选的 `.github/workflows/portability.yml` 与原 C1 逐字相同，SHA-256 仍为 `ec2816e893c25ff3a7f96513e677bdf53f42d90b3cd79fe585e474a27c0121b2`。固定 groups SHA-256 为 `a962cf6f6445c57720f4a18c6043a93ee43736d83e959873eb664d7ec88666f0`；按两份固定配置重建应有的 plan、六 Linux／Python 3.11 组和 Windows／Python 3.12 全组，C1 evidence suite 在 Linux group 5 唯一登记、Windows 为 all。这里仅核 C1 登记及这次 own CI 的必要集合，不评定邻片新增 suite 的行为。
+
+### 直接原页面核查
+
+修后 own run 为 [43536265177](https://github.com/626619403/Ergora/actions/runs/43536265177)。原 run HTML 自身状态为 **Success**，完整 commit 链接为 `1eef90d7453c64579ddc25bd5a7775eecd20c2cc`，与 terminal 和 UI metadata 的 run／candidate 相符。run 加八个 job 的九份 receipt 均为 HTTP 200，原完整 URL、原页面字节数／SHA 全相符。原 job batch 的 body 大小／SHA 与 receipt 相符，`count: 8`、`hasMore: false`，恰为固定 workflow 所需的八个 job，ID／名称／run 下 href 与逐份 job 页面一致。
+
+本轴独立解析每个必要 step 的结论、非空开始／完成时间、job 完成标记及包含完整修后候选 SHA 的原 log 路径，结果为 **30／30 success**，没有用 terminal 投影代替原页面。Windows 的 build／install、reference identity、native application regression、PowerShell 5.1 installer／upgrade、observations upload 五项全部 success；原 C1 失败所在的 application regression 已在此修正候选自己的 Windows job 成功。本次原件核查不另造成功 CI 的测试条目数或运行时长。
+
+下表路径相对 `.ergora/checks/training-release/`，均为本轴直接核过的原 `page.html`；必要 step 总数为 plan 1、六 Linux 各 4、Windows 5：
+
+|范围／job ID|原样本目录|必要 step|字节|SHA-256|
+|---|---|---|---:|---|
+|run 43536265177|`ci-run-html-r4`|Success|213,426|`c845f85f2c46095a1c8c4c6b4a36a4d277471bc36ab366548ec61637890acffd`|
+|plan 132265897994|`ci-job-132265897994-html-r1`|1／1 success|158,932|`dba63d0709e0327ce2e891178d796ee632642d8d27f351bc1c762af9dab03208`|
+|Linux 0 132265959612|`ci-job-132265959612-html-r1`|4／4 success|162,622|`a9c064684d6141a4fd254030164e9508821f7741c06a028b3db20b095c739712`|
+|Linux 1 132265959599|`ci-job-132265959599-html-r1`|4／4 success|162,622|`2e494637c290689ead56c86e92038eb361230447ab688af6d1bca0972f30e647`|
+|Linux 2 132265959817|`ci-job-132265959817-html-r1`|4／4 success|162,621|`ef280a1b072d9f6d8af4652272d5b3282f616aa37b28f74d78b8f00d10600da9`|
+|Linux 3 132265959636|`ci-job-132265959636-html-r1`|4／4 success|162,622|`04b581022624fba962dcafc4908270baee921e29478345636175d06b2a77bf3b`|
+|Linux 4 132265959613|`ci-job-132265959613-html-r1`|4／4 success|162,621|`f7af099e06fbdfa958db9028dbd7f0dc75737fb2909d0d579b2f6f0c439f3597`|
+|Linux 5 132265959567|`ci-job-132265959567-html-r1`|4／4 success|162,621|`580b1676192775600313cab37ecb77e5898c2ba03747cb3b7606df11711a97d7`|
+|Windows all 132265959683|`ci-job-132265959683-html-r3`|5／5 success|160,233|`7ef16f57d2cb119058adc90d61b23e5d448b8de33bcbdb406344006b019428a6`|
+
+补充原件摘要如下；全部原 HTML／receipt、batch 内容和固定配置的独立解析均已完成：
+
+|原件|字节|SHA-256|
+|---|---:|---|
+|`ci-terminal-r3.json`|13,357|`d4df32b89dd918e1979a14636fde3685041afaecc9024076e81aa8aa1d78003d`|
+|`ci-ui-metadata-r1.json`|2,128|`48f1e67864d46841cbc102559e83385fcbddde16be3253e917af062afebd6cc2`|
+|`ci-job-batch-r1/body.json`|2,724|`2a16d3a4b2583476c3b1f599a8abdbdf377b2ec9cf39ae336191299cda404d16`|
+|`ci-job-batch-r1/receipt.json`|766|`766167ca2ca67971ad2d022983fad59287e85e33e5d1b785878fe49e8ebf9f3e`|
+|`ci-run-html-r4/receipt.json`|5,959|`c4bd0f8e52083e49d4ea857a11e7474358129f59af483e1324dac541289f1d8b`|
+|`ci-job-132265959683-html-r3/receipt.json`|5,999|`7c91eefc5f5c3d6bd97e699cf1d515b3ab742bbabcd6cb778d636ff23f5b517f`|
+
+本轴结论：C1 原产品结构仍通过、开放 finding **0／0**；单行原字节测试修正的固定身份与修后候选自己的完整必要 CI 已闭合，原 `c3c7c3e…` 的 Failure 没有被重写。此结论限 C1 修正，不构成对共同候选内 C2 行为、后续 C3 树或真实训练／质量／性能／批准／集成／采用的复核或接受。
