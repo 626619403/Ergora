@@ -23,3 +23,15 @@
 ## 独立本地终核
 
 新[fresh-context报告](2026-11-15-component-change-protocols-review.md)沿真实构造／调用／恢复接口复核最终14作者文件／200,131B；固定Git750／640产品、两个不同身份wheel／原安装、283参考、76／312／28静态清单和原自身22文件／三resource／input／stdin／result均直接核同。最终作者13Markdown／262本地链接零错；需求／维护性两轴approve、开放0／0。未增加测试、CI job、runtime抽象或业务改动。报告明确新目录AGENTS在既有push过滤外，因此本片仍需自己的实际CI；前片终态前不推后继触发提交。
+
+## 普通发布
+
+已普通发布705cbe428dce73ff222dbdaec3c67329a310c06d，唯一父750dd68ff2b1e41f6fe390d6a52e651bf41d5642、tree9516f1710d131f7c70acd7d657a79fd66d7cdbbf；全部15blob与暂存一致，实时远端完整Ref一致。最终含报告14Markdown／277本地链接零错。前片Q4.1自己的CI及原独立终态通过后才推送；本片新目录AGENTS触发自己的CI，终态及原固定发布补核待完成，不能借750的成功认证。
+
+原独立固定发布补核已追加原报告：15blob／完整远端Ref、固定640产品／283参考同一、14Markdown277链接及完整diff通过，新增finding0／0。自己的CI43631156705已核完整705身份，最新观察28／30、七job完成成功／Windows在途；保存的terminal-r1／terminal-r2后缀仍为中间态，不将文件名当终态认证。
+
+## 自己CI与精确交付闭合
+
+[Portability43631156705](https://github.com/626619403/Ergora/actions/runs/43631156705)绑定完整705cbe428dce73ff222dbdaec3c67329a310c06d，terminal-r6于2026-11-14T19:37:17UTC观察八job／30必要步骤全成功。原独立reviewer直接核官方run／完整分页／八job原页／30步骤log身份和时序，以及固定15blob／640产品／283，终态两轴approve／开放0／0、片内剩余验收0，Q5.1精确交付闭合。原11,420B报告前缀保持。
+
+原所有早期捕获保持中间态：terminal-r5虽30步骤通过，Windows job尚在途；observation-r2的group5分页读取时在途，随后job页已完成，分别记录两个顺序观察，不冒称原子快照。只有r6提供一致的全终态；原顺序观察差异不通过重写或补跑隐藏。没有以Q1.2后继源码／wheel认证705，也没有重跑不变产品。

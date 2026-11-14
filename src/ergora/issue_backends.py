@@ -115,6 +115,10 @@ class IssueBackend(ABC):
         return document, {'observed_at': now(), 'http_status': 200, 'response_sha256': hashlib.sha256(raw).hexdigest()}
 
     @abstractmethod
+    def repository(self) -> dict:
+        """Read this configured repository's native identity without resolving branches."""
+
+    @abstractmethod
     def repository_refs(self, head_branch: str, base_branch: str) -> dict:
         """Read two refs after export-owner branch validation; no publication receipt or CAS."""
 
@@ -125,6 +129,10 @@ class IssueBackend(ABC):
     @abstractmethod
     def review_request(self, document: dict, repository: dict, number: str) -> dict:
         """Map native review fields and verify both endpoints belong to this repository."""
+
+    @abstractmethod
+    def review_commits(self, review: dict) -> dict:
+        """Interpret an observed review's exact base/head and optional required merge-base."""
 
     def read_review_request(self, repository: dict, number: str) -> dict:
         self._identifier(number)
@@ -316,6 +324,11 @@ class GitHubBackend(IssueBackend):
             'head': {'branch': document['head']['ref'], 'sha': document['head']['sha']},
             'base': {'branch': document['base']['ref'], 'response_sha': document['base']['sha']}, 'diff_refs': None}
 
+    def review_commits(self, review: dict) -> dict:
+        if review['merged']:
+            raise ValueError('Merged GitHub pull requests require historical comparison data; collection is unsupported')
+        return {'base': review['base']['response_sha'], 'head': review['head']['sha'], 'diff_base': None}
+
     def comment_path(self, issue_id: str, comment_id: str | None = None) -> str:
         if comment_id is None:
             return self.path(issue_id) + '/comments'
@@ -332,7 +345,7 @@ class GitHubBackend(IssueBackend):
         # Return a page number, never follow a supplied URL with credentials.
         return self._next_link_page(headers, issue_id, page)
 
-    def repository_refs(self, head_branch: str, base_branch: str) -> dict:
+    def repository(self) -> dict:
         root = '/repos/' + quote(self.binding['project'], safe='/')
         document, receipt = self._document(root)
         try:
@@ -344,6 +357,11 @@ class GitHubBackend(IssueBackend):
                           'project': document['full_name'], **receipt}
         except (KeyError, TypeError, ValueError):
             raise ValueError('Tracker returned an unsupported or different repository identity') from None
+        return repository
+
+    def repository_refs(self, head_branch: str, base_branch: str) -> dict:
+        repository = self.repository()
+        root = '/repos/' + quote(self.binding['project'], safe='/')
         return {'repository': repository, 'head': self._branch(root, head_branch), 'base': self._branch(root, base_branch)}
 
     def _branch(self, root: str, branch: str) -> dict:
@@ -484,7 +502,13 @@ class GitLabBackend(IssueBackend):
             'head': {'branch': document['source_branch'], 'sha': document['sha']},
             'base': {'branch': document['target_branch'], 'response_sha': None}, 'diff_refs': document['diff_refs']}
 
-    def repository_refs(self, head_branch: str, base_branch: str) -> dict:
+    def review_commits(self, review: dict) -> dict:
+        refs = review['diff_refs']
+        if not refs or refs['head_sha'] != review['head']['sha']:
+            raise ValueError('GitLab review diff_refs are not ready or conflict with the observed head')
+        return {'base': refs['start_sha'], 'head': refs['head_sha'], 'diff_base': refs['base_sha']}
+
+    def repository(self) -> dict:
         document, receipt = self._document('/projects/' + quote(self.binding['project'], safe=''))
         try:
             if (type(document['id']) is not int or document['id'] < 1
@@ -493,6 +517,10 @@ class GitLabBackend(IssueBackend):
             repository = {'native_id': document['id'], 'project': document['path_with_namespace'], **receipt}
         except (KeyError, TypeError, ValueError):
             raise ValueError('Tracker returned an unsupported or different repository identity') from None
+        return repository
+
+    def repository_refs(self, head_branch: str, base_branch: str) -> dict:
+        repository = self.repository()
         root = '/projects/' + str(repository['native_id'])
         return {'repository': repository, 'head': self._branch(root, head_branch), 'base': self._branch(root, base_branch)}
 

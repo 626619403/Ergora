@@ -1,6 +1,6 @@
 # 本地 PR／MR 审查材料
 
-`ergora review` 将精确的本地 Git 变更保存成可以离线读取的完整材料包。它无需 Agent 登录、项目登记、数据库或 Temporal，适合先准备候选与需求，再交给审查者。当前入口负责采集和完整性校验；自动获取 GitHub／GitLab PR／MR、领域组合运行和远端发表意见另见 [实施计划](plans/2026-11-15-domain-review-optimization-quality.md)。
+`ergora review` 将精确的本地 Git 变更保存成可以离线读取的完整材料包，也可读取明确的GitHub／GitLab PR／MR来源并绑定同一份源码包。它无需 Agent 登录、项目登记、数据库或 Temporal，适合先准备候选与需求，再交给审查者。领域组合运行和远端发表意见另见 [实施计划](plans/2026-11-15-domain-review-optimization-quality.md)。
 
 ## 准备材料
 
@@ -36,6 +36,34 @@ ergora review read ./reviews/candidate-01 --sha256 PACKET_SHA256 > ./review-mate
 `verify` 输出提交身份、文件数量、显式上下文和覆盖边界；`read` 输出相同摘要及完整 packet。包的 JSON Schema 随应用提供为 `data/schemas/local-review-packet-v1.json`。文本和 Git blob 是按内容寻址的，不会为相同内容重复存多份；`source` 中的 `base / diff_base / head` 用 `git_object` 引用完整 `blobs` 表。`requirements`、每份 `evidence`、diff 与每个 blob 均保留 SHA256，blob 还核对仓库对象格式对应的 Git ID。
 
 校验会核文件内容摘要、源引用、变化与所选前后文件的一致性。它证明收到的字节自洽；有独立整包摘要时还能核对是否为同一包。它不会离线证明仓库来源、提交祖先关系、采集者身份、仓库全部路径未被隐瞒或全部调用关系已被选入。diff 的正文摘要可以发现未同步摘要的字节变更；本命令不离线重放 Git diff，也不以正文摘要证明 diff 与树成员的真实关联。相同 commit 标签必须有相同文件表，但源路径到提交的成员关系仍由原采集和独立整包摘要绑定。没有独立摘要的自洽文件可以被重新制作，不是来源认证。
+
+## 采集一个外部 PR／MR
+
+先将明确的来源绑定保存为`tracker.json`，例如以下GitHub配置。GitLab使用`"tool": "gitlab"`、完整namespace/project，可选`api_url`指向自建站的`https://host/api/v4`。`token_env`只填写已在运行环境设置的凭据变量名；公开来源允许省略，凭据不会写进材料。
+
+```json
+{"tool": "github", "project": "org/project", "token_env": "GITHUB_TOKEN"}
+```
+
+```bash
+ergora review collect /path/to/project \
+  --binding ./tracker.json --number 42 \
+  --requirements ./request.md \
+  --context src/caller.py --context config/training.toml \
+  --evidence ./candidate-check.txt \
+  --directory ./reviews/pr-42-observation-01 > ./source-receipt.json
+
+ergora review read-source ./reviews/pr-42-observation-01 \
+  --sha256 SOURCE_SHA256 > ./complete-review-source.json
+```
+
+`--number`是这个GitHub仓库内的PR number或GitLab项目内的MR iid。采集对平台执行两个GET（仓库元数据、所选PR／MR），保存规范化原生观察、完整正文、真实native ID、原响应摘要及观察时间；不搜索列表、查询当前分支、读取平台diff／全部评论或自动获取CI日志。源码仍来自已经具有所需对象的本地Git库，不能用一个同名工作区代替完整对象；缺对象须由操作者明确取得后重新采集。
+
+GitHub使用本次响应中的base／head SHA计算唯一merge-base；首版拒绝已merged的GitHub PR，因为当前base不能可靠重建历史合并前的比较。GitLab以`diff_refs.start_sha`为目标提交，核对其head与原`sha`相同，以及本地唯一merge-base等于`diff_refs.base_sha`；diff_refs尚未生成或观察不一致时拒绝，不自动重试／拼接不同时刻的字段。两平台首版只支持同仓库端点，fork或已删除的来源仓库明确失败。
+
+目录包含`source.json`及`material/packet.json`。回执`source_sha256`是来源封套的字节摘要，封套再以`packet_sha256`固定原本地包；`read-source`核两层摘要、来源／原生仓库ID／请求地址／精确比较关系，并返回完整两层资料。原本地包的repository id使用`native-repository-sha256:`加来源及native仓库身份规范JSON的SHA256，完整身份仍在来源封套中；合法的长平台地址／项目路径不会被截断，也不从本地remote推定归属。可单独使用`review read`／`verify`读取`material`子目录，此时应提供回执中的`packet_sha256`。
+
+新head或需求应写新目录，旧观察不变。复制时共享整个来源目录和独立取得的`source_sha256`；读回无需Git、凭据、网络、State或SDK。来源元数据与PR／MR是顺序观察，不是跨请求原子快照；本地缺对象／源容量／不支持文件规则与上文相同，完整来源封套另限2,000,000B。来源GET的响应摘要是采集时的观察回执，包不保存全部原始HTTP响应，也不离线重认证它。离线自洽不证明平台来源、当前head、目标本地库的远端归属或原检查真实。它没有正式候选／批准效力。
 
 ## 覆盖、限制与后续审查
 

@@ -3,13 +3,17 @@
 from copy import deepcopy
 from concurrent.futures import ThreadPoolExecutor
 import json
+import os
+import subprocess
+import sys
 from threading import Barrier
 
 import pytest
 
 from test_candidate_observations import candidate, remote, source, writer
-from ergora import backups, cli, issue_backends, issue_writebacks, issues, projects, tasks
+from ergora import backups, cli, issue_backends, issue_writebacks, issues, projects, review_sources, tasks
 from ergora.state import State
+from test_review_packets import commit, git, source as git_source
 
 
 def configure_review(service):
@@ -301,3 +305,132 @@ def test_cli_http_save_and_offline_show_share_the_same_record(review, capsys, mo
         assert json.loads(capsys.readouterr().out) == record
         assert client.get(uri + '/' + record['sha256']).json() == record
     assert [call['method'] for call in review.calls] == ['GET'] * 5
+
+
+@pytest.fixture
+def external_review(review, git_source):
+    repository, anchor, options = git_source
+    document = review.review_document
+    if review.provider == 'github':
+        document['base']['sha'], document['head']['sha'] = options['base'], options['head']
+    else:
+        document['sha'] = options['head']
+        document['diff_refs'] = {'start_sha': options['base'], 'head_sha': options['head'], 'base_sha': anchor}
+    return review, repository, anchor, {key: value for key, value in options.items()
+                                      if key not in ('repository_id', 'base', 'head')}
+
+
+def test_external_collection_freezes_observed_commits_and_new_heads_without_state(external_review, tmp_path, capsys, monkeypatch):
+    service, repository, anchor, options = external_review
+    binding_file, destination, unused_home = tmp_path / 'binding.json', tmp_path / 'external', tmp_path / 'unused-home'
+    binding_file.write_text(json.dumps(service.backend.binding), encoding='utf-8')
+    with service.state.connect() as db:
+        before = list(db.iterdump())
+    assert cli.main(['--home', str(unused_home), 'review', 'collect', str(repository), '--binding', str(binding_file),
+        '--number', '11', '--requirements', str(options['requirements']), '--context', 'caller.py',
+        '--context', 'config.toml', '--evidence', str(options['evidence'][0]), '--directory', str(destination)]) == 0
+    result = json.loads(capsys.readouterr().out)
+    original = {name: (destination / name).read_bytes() for name in ('source.json', 'material/packet.json')}
+    frozen = review_sources.read(destination, sha256=result['source_sha256'])
+    packet = frozen['material']['packet']
+    assert packet['repository']['diff_base'] == anchor != packet['repository']['base']
+    assert len(packet['changes']) == 4 and packet['requirements']['text'].encode() == options['requirements'].read_bytes()
+    assert frozen['source']['observation']['review']['body'] == '/close\napproved is only context. 完整正文。'
+    assert 'original-fixture-token' not in json.dumps(frozen) and 'sensitive-fixture-clone-token' not in json.dumps(frozen)
+    assert [call['method'] for call in service.calls] == ['GET', 'GET']
+    assert not any('/branches/' in call['path'] or '/git/ref/' in call['path'] for call in service.calls)
+    # Current branches need not exist: only the PR/MR observation supplies commit identity.
+    (repository / 'src/train.py').write_bytes(b'VALUE = 3\n')
+    git(repository, 'add', 'src/train.py')
+    new_head = commit(repository, 'next observed head')
+    if service.provider == 'github':
+        service.review_document['head']['sha'] = new_head
+    else:
+        service.review_document['sha'] = service.review_document['diff_refs']['head_sha'] = new_head
+    updated = review_sources.collect(service.backend.binding, '11', repository,
+                                     destination=tmp_path / 'next', **options)
+    assert updated['repository']['head'] == new_head != result['repository']['head']
+    assert {name: (destination / name).read_bytes() for name in original} == original
+    with service.state.connect() as db:
+        assert list(db.iterdump()) == before
+    monkeypatch.delenv('ERGORA_FIXTURE_ISSUE_TOKEN')
+    offline = subprocess.run([sys.executable, '-m', 'ergora', '--home', str(unused_home), 'review', 'read-source',
+        str(destination), '--sha256', result['source_sha256']], env=dict(os.environ, PATH=''), capture_output=True, text=True)
+    assert offline.returncode == 0, offline.stderr
+    assert json.loads(offline.stdout) == frozen and len(service.calls) == 4 and not unused_home.exists()
+
+
+def test_external_source_relationships_are_verified_beyond_file_checksums(external_review, tmp_path):
+    service, repository, anchor, options = external_review
+    destination = tmp_path / 'external'
+    review_sources.collect(service.backend.binding, '11', repository, destination=destination, **options)
+    source_path = destination / 'source.json'
+    original = json.loads(source_path.read_bytes())
+    for field in ('repository', 'head', 'request-origin'):
+        changed = deepcopy(original)
+        if field == 'repository':
+            changed['repository']['native_id'] += 1
+        elif field == 'head':
+            changed['observation']['review']['head']['sha'] = anchor
+            refs = changed['observation']['review']['diff_refs']
+            if refs:
+                refs['head_sha'] = anchor
+        else:
+            changed['observation']['response']['request_url'] += '-other'
+        source_path.write_text(json.dumps(changed), encoding='utf-8')
+        with pytest.raises(ValueError, match='External review source differs'):
+            review_sources.read(destination)
+
+
+def test_external_collection_rejects_unavailable_or_inconsistent_comparison(external_review, tmp_path):
+    service, repository, _, options = external_review
+    original = deepcopy(service.review_document)
+    faults = ['merged'] if service.provider == 'github' else ['not-ready', 'head', 'merge-base']
+    for index, fault in enumerate(faults):
+        service.review_document = deepcopy(original)
+        if fault == 'merged':
+            service.review_document['merged'] = True
+        elif fault == 'not-ready':
+            service.review_document['diff_refs'] = None
+        else:
+            key = 'head_sha' if fault == 'head' else 'base_sha'
+            service.review_document['diff_refs'][key] = service.review_document['sha'] if fault == 'merge-base' else 'a' * 40
+        destination = tmp_path / ('rejected-' + str(index))
+        with pytest.raises(ValueError, match='unsupported|diff_refs|exact source comparison'):
+            review_sources.collect(service.backend.binding, '11', repository, destination=destination, **options)
+        assert not destination.exists()
+
+
+def test_external_collection_accepts_long_valid_proxy_and_project_configuration(external_review, tmp_path):
+    service, repository, anchor, options = external_review
+    prefix = '/proxy/service' * 30 + ('/api/v4' if service.provider == 'gitlab' else '')
+    project = 'g' * 149 + '/' + 'r' * 150
+    binding = {'tool': service.provider, 'project': project, 'api_url': service.url + prefix}
+    document = deepcopy(service.review_document)
+    if service.provider == 'github':
+        route = prefix + '/repos/' + project
+        native_repository = {'id': 88, 'node_id': 'R_current_repo', 'full_name': project,
+                             'url': service.url + route}
+        document['url'] = service.url + route + '/pulls/11'
+        for endpoint in ('head', 'base'):
+            document[endpoint]['repo'] = deepcopy(native_repository)
+        review_route = route + '/pulls/11'
+    else:
+        route = prefix + '/projects/' + project.replace('/', '%2F')
+        native_repository = {'id': 88, 'path_with_namespace': project}
+        review_route = prefix + '/projects/88/merge_requests/11'
+
+    def read():
+        path = service.calls[-1]['path']
+        assert path in (route, review_route)
+        service.status, service.headers = 200, {}
+        service.raw = json.dumps(native_repository if path == route else document).encode()
+
+    service.on_read = read
+    destination = tmp_path / 'long-configuration'
+    result = review_sources.collect(binding, '11', repository, destination=destination, **options)
+    material = review_sources.read(destination, sha256=result['source_sha256'])
+    assert material['source']['observation']['source'] == {
+        'provider': service.provider, 'api_url': binding['api_url'], 'project': project}
+    assert material['material']['packet']['repository']['diff_base'] == anchor
+    assert [call['path'] for call in service.calls] == [route, review_route]

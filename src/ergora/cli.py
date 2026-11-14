@@ -52,7 +52,7 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--version", action="version", version=__version__)
     result.add_argument("--home", type=Path, help="Persistent state directory (default: ERGORA_HOME, LocalAppData on Windows, or XDG data)")
     commands = result.add_subparsers(dest="command", required=True)
-    review = commands.add_parser("review", help="Prepare and verify exact local review material without state, services or agents")
+    review = commands.add_parser("review", help="Collect and verify exact review material without state, services or agents")
     operations = review.add_subparsers(dest="operation", required=True)
     preparing = operations.add_parser("prepare", help="Read full local Git objects; never checkout, fetch or execute target code")
     preparing.add_argument("repository", type=Path)
@@ -65,6 +65,18 @@ def parser() -> argparse.ArgumentParser:
     preparing.add_argument("--evidence", action="append", type=Path, default=[], help="Operator-supplied UTF-8 check output; repeatable, not trusted automatically")
     preparing.add_argument("--max-source-bytes", type=int, default=1_000_000, help="Full Git material limit, up to 10000000; no truncation")
     preparing.add_argument("--directory", type=Path, required=True, help="New directory; never overwrites an existing packet")
+    collecting = operations.add_parser("collect", help="Read one same-repository PR/MR and local exact objects; provider GET only")
+    collecting.add_argument("repository", type=Path)
+    collecting.add_argument("--binding", type=Path, required=True, help="GitHub/GitLab binding JSON; credentials only through token_env")
+    collecting.add_argument("--number", required=True, help="Repository PR number or project MR iid")
+    collecting.add_argument("--requirements", type=Path, required=True)
+    collecting.add_argument("--context", action="append", default=[], help="Exact repository-relative caller/config file; repeatable")
+    collecting.add_argument("--evidence", action="append", type=Path, default=[], help="Operator-supplied UTF-8 checks; repeatable, unverified")
+    collecting.add_argument("--max-source-bytes", type=int, default=1_000_000, help="Complete Git material limit, up to 10000000")
+    collecting.add_argument("--directory", type=Path, required=True, help="New source directory; never replaces an existing one")
+    source_read = operations.add_parser("read-source", help="Read and verify a complete saved PR/MR source offline")
+    source_read.add_argument("directory", type=Path)
+    source_read.add_argument("--sha256", help="Independently obtained source.json SHA256")
     for name in ("verify", "read"):
         operation = operations.add_parser(name, help="Offline integrity check; does not authenticate Git origin or checks")
         operation.add_argument("directory", type=Path)
@@ -730,7 +742,16 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "review":
             from . import review_packets
 
-            if args.operation == "prepare":
+            if args.operation in ("collect", "read-source"):
+                from . import review_sources
+
+                if args.operation == "collect":
+                    output = review_sources.collect(definition_bundles.read_json(args.binding), args.number, args.repository,
+                        requirements=args.requirements, destination=args.directory, context_paths=args.context,
+                        evidence=args.evidence, max_source_bytes=args.max_source_bytes)
+                else:
+                    output = review_sources.read(args.directory, sha256=args.sha256)
+            elif args.operation == "prepare":
                 output = review_packets.prepare(args.repository, repository_id=args.repository_id, base=args.base,
                     head=args.head, requirements=args.requirements, destination=args.directory,
                     context_paths=args.context, evidence=args.evidence, comparison=args.comparison,

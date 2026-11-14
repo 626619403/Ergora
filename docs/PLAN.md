@@ -4,13 +4,13 @@
 
 ## 当前检查点
 
-**当前检查点：Q3.3已精确交付eadabc0，自己的CI八job／30必要步骤及原独立终核通过；Q4.1多轮证据索引已实现，640独立安装／原CPU失败与批准只读旅程／安装74项已验，自身及新独立本地／固定发布两轴通过，已普通发布750dd68／自己的CI43629303623在途；Q5.1组件协议已实现，自身及新独立本地两轴通过，普通发布待完成。Q3.1／Q3.2与Q2精确交付闭合。** Q1 本地精确审查包先发布 `ad168810…`，其 Windows 两项 fixture 的只读 Git 对象删除失败保持；五行测试修正经原独立审查后单独发布 `a38dd21891ac200c575e8520c49cc82f97c9d478`，自己的 CI `43620231340` 八 job／30 必要步骤全成功，原独立终态两轴 approve／开放0／0，Q1.1 精确交付完成。[Q1 交付](delivery/2026-11-15-local-review-packets.md)保留全部身份与旧失败。
+**当前检查点：Q1.1／Q2.1／Q2.2／Q3.1–Q3.3／Q4.1已精确交付并闭合各自CI与原独立终核。Q5.1已精确交付705cbe4，自己的CI八job／30步骤及原独立终核两轴通过／开放0／0。当前Q1.2外部PR／MR只读采集r2：642安装产品／283参考、119项／14CLI、自身38.800秒及新独立两轴通过／开放0／0，合法长配置R1实红后修正并关闭，普通发布／自己CI待完成。** Q1 本地精确审查包先发布 `ad168810…`，其 Windows 两项 fixture 的只读 Git 对象删除失败保持；五行测试修正经原独立审查后单独发布 `a38dd21891ac200c575e8520c49cc82f97c9d478`，自己的 CI `43620231340` 八 job／30 必要步骤全成功，原独立终态两轴 approve／开放0／0，Q1.1 精确交付完成。[Q1 交付](delivery/2026-11-15-local-review-packets.md)保留全部身份与旧失败。
 
 [Q2.1／Q2.2 领域审查](plans/2026-11-15-training-domain-reviews.md)／[交付](delivery/2026-11-15-training-domain-reviews.md)已精确交付 `0b5b5f1ff7a3463fcb10cf5a05e5f7c7bcae7c62`：25 blob／远端、628产品及283参考、原61项＋页面21项、两域四次真实CPU合同审阅、自身及新独立两轴通过；自己的 CI `43621692177` 八job／30必要步骤全部成功，原独立终核approve／开放0／0。两个缺陷与两个有效变体只说明所给CPU合同，不扩大为训练／分布式／质量或总体检出率。
 
 [Q3.1流程图谱](plans/2026-11-15-training-flow-maps.md)已普通发布 `2729b81a4c10e4bf8c77bd78ea4165b0a64cb0c0`，19blob／远端、633产品／283参考、原54项、真实源码图谱218.156秒及自身39.202秒approve、新独立本地／固定发布两轴通过。自己的 CI `43623853327` 八job／30必要步骤全成功、原独立终态两轴approve／开放0／0，精确交付闭合，未借Q2认证。外部runtime缺口及无训练／收益主张保持。[Q3.2成对测量合同](plans/2026-11-15-training-measurement-contracts.md)已精确文档交付 `29cdcfe2f45a66dcaad1835c0860c24a78290529`：原39项／八反例／633保持、自身35.945秒、新独立本地与固定发布两轴通过／开放0／0；R1区间交叠分类说明已修正，纯docs沿原CI过滤，不新称产品CI成功。
 
-[Q3.3新总路径](plans/2026-11-15-training-bottleneck-path.md)／[逐步交付](delivery/2026-11-15-training-bottleneck-path.md)：新增v3根、kernel-assessment子模板及根Skill，保持原任务，按flow→并行分析→保留kernel评估→measurement组合，旧v1／v2／runtime保持。r2独立安装638源／wheel／安装一致、283参考和原55项通过，自身结构审查25.636秒approve；两例十叶均完成，主机kernel无需修改／算子kernel给有条件设计，两measurement保留缺执行证据的request-changes。新独立完整资料／原件／文档及固定发布两轴approve／开放0／0，已普通发布 `eadabc0441991a02acc06e17efd8d6c16b7d9d27`；自己的CI `43626456436` 八job／30必要步骤全成功、原独立终态两轴approve／开放0／0，精确交付闭合。专家允许无需算子修改。下一片[Q4.1多轮证据索引](plans/2026-11-15-training-round-chains.md)／[交付](delivery/2026-11-15-training-round-chains.md)已实现原owner上的不可变索引／两CLI，640源包安装逐字／283和安装60项、两原CPU失败／原C3三运行只读旅程已验，扩大原submission／lost-ack安装74项通过，自身及新独立本地两轴approve／开放0／0，已普通发布750dd68／固定发布两轴通过，自己CI43629303623在途；原实验／统计／批准不分叉，前片CI终态前不推送后继产品。Q4多轮／预算、Q5组件协议、真实B3／完整Forge等保持原开放条件；每步更新本页与交付。
+[Q3.3新总路径](plans/2026-11-15-training-bottleneck-path.md)／[逐步交付](delivery/2026-11-15-training-bottleneck-path.md)：新增v3根、kernel-assessment子模板及根Skill，保持原任务，按flow→并行分析→保留kernel评估→measurement组合，旧v1／v2／runtime保持。r2独立安装638源／wheel／安装一致、283参考和原55项通过，自身结构审查25.636秒approve；两例十叶均完成，主机kernel无需修改／算子kernel给有条件设计，两measurement保留缺执行证据的request-changes。新独立完整资料／原件／文档及固定发布两轴approve／开放0／0，已普通发布 `eadabc0441991a02acc06e17efd8d6c16b7d9d27`；自己的CI `43626456436` 八job／30必要步骤全成功、原独立终态两轴approve／开放0／0，精确交付闭合。专家允许无需算子修改。下一片[Q4.1多轮证据索引](plans/2026-11-15-training-round-chains.md)／[交付](delivery/2026-11-15-training-round-chains.md)已实现原owner上的不可变索引／两CLI，640源包安装逐字／283和安装60项、两原CPU失败／原C3三运行只读旅程已验，扩大原submission／lost-ack安装74项通过，自身及新独立本地两轴approve／开放0／0，已普通发布750dd68／固定发布两轴通过，自己的CI43629303623八job／30必要步骤全部成功、原独立终核两轴approve／开放0／0，精确交付闭合；原实验／统计／批准不分叉，前片CI终态前不推送后继产品。Q4多轮／预算、Q5组件协议、真实B3／完整Forge等保持原开放条件；每步更新本页与交付。
 
 **前一节点G1当前功能的安装与公开交接已完成。** 开发分支`refactor/architecture-foundations`，不合main。产品固定506cc57的611文件／283参考；G1b安装／升级／匹配回退和日常入口已精确交付6c7c45f，自己的CI43589988699及原独立终核通过。G1c七用户手册／新路径新项目重建和G1d-CI单项过滤共同发布77d1736，自己的CI43591668528八job／30必要步骤、原两reviewer本地／固定发布／CI终态两轴均approve，开放0／0。详见[G1总交接](plans/2026-11-14-integrated-handoff.md)。
 
@@ -37,7 +37,7 @@ W1仅验源码提案与交接：共享仓库HEAD／213条status字节保持，�
 
 ## 下一可执行项
 
-**新增优先工作Q**：[领域审查／循环优化／质量计划](plans/2026-11-15-domain-review-optimization-quality.md)的研究与独立评审已完成；Q1.1／Q2.1／Q2.2精确交付，Q3.1／Q3.2精确交付；Q3.3保留kernel评估的新总路径已闭合，当前沿原owner补多轮证据、组件协议、领域审查统一入口及严格发布验收。下列旧节点保留其原完成状态和外部条件，不因新计划重做已验交付。
+**新增优先工作Q**：[领域审查／循环优化／质量计划](plans/2026-11-15-domain-review-optimization-quality.md)的研究与独立评审已完成；Q1.1／Q2.1／Q2.2精确交付，Q3.1／Q3.2精确交付；Q3.3保留kernel评估的新总路径已闭合，多轮索引已闭合；当前先完成组件协议发布，再按[Q1.2具体计划](plans/2026-11-15-external-review-sources.md)／[交付](delivery/2026-11-15-external-review-sources.md)实现外部只读采集，后接领域审查统一入口、有界循环及严格发布验收。下列旧节点保留其原完成状态和外部条件，不因新计划重做已验交付。
 
 1. **F8-H3b实际续接**：精确交付完成，自己的CI与原独立两轴终核通过，详见[计划](plans/2026-11-14-harness-session-continuation.md)／[交付](delivery/2026-11-14-harness-session-continuation.md)。r3包561／两RECORD／283、安装133通过／12跳过；实际SDK四场景与真实模型两调用成功、自身approve。原两个P2及失败保留并已修复。冻结原项目／资料／权限／后端／schema，原home／cwd／session不分叉；unknown不自动重发，正式恢复归原owner。
 2. **F9实验导航**：F9a／b1／b2／[b3取消与停止观察](delivery/2026-11-14-training-cancellation.md)已精确交付。F9b4a基线初始化已普通发布、自有CI及原结构轴终核通过；[F9b4b runner登记](plans/2026-11-14-training-runner.md)完成最终包、安装40项／实际CLI与页面／SDK-free基线／原件及收尾／自身模板、新独立两轴最终本地通过0／0，已普通发布并核完整Ref，自己的CI43523861953八job／30步骤及原结构轴终核通过。F9b4c C1最终包／15项／实际CLI HTTP、新独立两轴、普通发布和自己的CI及原结构轴终核均通过；C2页面已完成最终本地、新独立两轴、固定发布和自己的CI及原结构轴终核；F9c C1换行修正与C2已精确交付；[C3页面](plans/2026-11-14-training-evidence-console.md)已完成本地与独立终核／发布及自己的CI，F9d完整旅程另验；复用原训练owner，不把CPU合同当真实GPU验收。
@@ -125,6 +125,8 @@ G1c新路径原安装器611／806 RECORD、35命令／21检查、五完整manife
 
 G1最终收尾：5cc463b纯记录同步的7原件13,596B／3观察件324,614B与原CI归属均获原reviewer最终两轴approve／开放0／0，G1d-CI最后门禁闭合；报告20,912B及不可变快照另存。接续仅完成报告记账的普通同步和最终Ref核对，不新增产品／模型运行。
 
-## 活动片：Q5.1组件变更协议
+## 活动片：Q1.2外部PR／MR只读来源
 
-[具体计划](plans/2026-11-15-component-change-protocols.md)／[逐步交付](delivery/2026-11-15-component-change-protocols.md)固定基线750dd68；先写计划，新增源码／测试／脚本局部入口与唯一分支指南，补真实owner／格式／恢复／最小检查及目标训练项目协议责任。静态固定清单76模块／312边无环、28JS，架构图补原多轮索引；协议／文档片不引入runtime抽象或改业务仓库。640产品／283保持、12MD259链接零错、自身原模板25.034秒approve；新独立本地两轴approve／开放0／0，最终13MD262链接零错，普通发布／自己CI待完成。Q4.1自己的CI终态前不推后继触发提交；Q4.2有界循环、Q1.2／Q2.3、Q5.2实证重构及Q6继续开放。
+[具体计划](plans/2026-11-15-external-review-sources.md)／[逐步交付](delivery/2026-11-15-external-review-sources.md)固定基线705cbe4。两本族repository／review_commits、原本地包上的来源封套及collect／read-source已实现；不查询当前分支、不取平台diff、不建task／export、不执行目标代码。642源码／wheel／独立安装逐字、283参考保持；原四suite修后r2安装119通过／61.54秒，两HTTP替身＋真实Git的14CLI通过，真实GitHub元数据200／PR1为404仅按原错误报告。r1合法长配置R1实红后修为完整身份的固定摘要，r2安装119／14CLI／自身38.800秒及原独立两轴approve／开放0／0、R1关闭；普通发布及自己的CI待本地与前片门禁闭合。
+
+Q5.1协议固定705cbe428dce73ff222dbdaec3c67329a310c06d已普通发布、原独立固定发布两轴approve／开放0／0；自己的CI43631156705于19:37UTC观察八job／30必要步骤成功，原独立终态补核两轴approve／开放0／0，Q5.1精确交付闭合，原中间态保持，不借Q4.1成功。Q4.1固定750dd68自己的CI八job／30步骤及原独立终态两轴通过、精确交付闭合。Q5.1终态及原独立CI补核已闭合，可在Q1.2本地验收／审查通过后普通推送，不取消前片。在等待时只读盘点Q2.3的原StageDAG／完整manifest／agent_runs结果owner，不先造另一调度器或正式批准。Q4.2有界循环、Q5.2实证重构、Q6与真实B3／完整Forge外部条件继续开放。
