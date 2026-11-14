@@ -1,6 +1,6 @@
 # F10a：记忆有效期交付
 
-日期：2026-11-14；固定基线`f47cd50fcce600fba92f64aff73982012f6e31c9`。[合同](../plans/2026-11-14-memory-validity.md)／[证据摘要](evidence/2026-11-14-memory-validity.json)。最终r1安装、实际CLI／HTTP／页面、自身模板与收尾已验；新的独立两轴最终本地approve，开放0／0。普通发布及自己的CI待。
+日期：2026-11-14；固定基线`f47cd50fcce600fba92f64aff73982012f6e31c9`。[合同](../plans/2026-11-14-memory-validity.md)／[证据摘要](evidence/2026-11-14-memory-validity.json)。最终r1安装、实际CLI／HTTP／页面、自身模板与收尾已验；新的独立两轴最终本地approve，开放0／0。固定候选已普通发布，自己的CI及原结构轴终核通过。
 
 沿原memory／State／backup／CLI／HTTP／页面owner实现；省略有效期的更正保留原期限，null明确清除，恢复原过期修订不会续期。schema v5只更新原writer fence，不重写记录或增加表。需先停止旧进程再升级，不能撤销旧reader已取的资料。
 
@@ -18,7 +18,7 @@ F10b正式Task上下文选择、F9d完整旅程和真实B3另验，不借本片�
 
 ## 安装与CLI阶段
 
-最终候选r1非editable wheel SHA256 `493e735b49e3741430211d07999754f058cd3968c3083a6015334c0aed82d3b2`，575产品与快照／wheel／安装逐字一致；两RECORD583／588、283冻结通过。安装七suite78通过／7平台跳过，48.96秒（原monitor50.538秒）；Windows原生尚待本片自己的CI，Linux跳过不冒称Windows成功。
+最终候选r1非editable wheel SHA256 `493e735b49e3741430211d07999754f058cd3968c3083a6015334c0aed82d3b2`，575产品与快照／wheel／安装逐字一致；两RECORD583／588、283冻结通过。安装七suite78通过／7平台跳过，48.96秒（原monitor50.538秒）；此处Linux跳过不冒称Windows成功；后补自己的固定候选CI另行确认Windows all组与PowerShell安装／升级步骤成功。
 
 实际安装CLI与固定C3原State完成v4→v5：原记忆行保持、原v4备份schema与记忆行保持，旧实例重开拒绝v5、旧已开writer触发原fence；已开reader仍能读，符合停止旧进程的界限。实际保存／list／catalog／更正省略／明确清除／历史恢复／检索、完整离线backup／verify／原home恢复均通过；原过期历史保持、演示Git状态保持。18条记录含Git、旧／新CLI，不能全称18次memory命令。
 
@@ -34,6 +34,10 @@ F10b正式Task上下文选择、F9d完整旅程和真实B3另验，不借本片�
 
 ## 界限与后续
 
-ReMe真实本地HTTP原suite验证协议与projection，三类在途变化由同owner故障注入验证，不声称外部ReMe部署。默认dashboard与catalog是观察快照，已打开旧reader或旧缓存不可撤销；无计时刷新或未来仍有效保证。本片未增加正式Task字段、未修改原运行归档，未做GPU／训练／质量／性能或真实业务采用。Windows原生能力由本片自己的CI另验。
+ReMe真实本地HTTP原suite验证协议与projection，三类在途变化由同owner故障注入验证，不声称外部ReMe部署。默认dashboard与catalog是观察快照，已打开旧reader或旧缓存不可撤销；无计时刷新或未来仍有效保证。本片未增加正式Task字段、未修改原运行归档，未做GPU／训练／质量／性能或真实业务采用。Windows原生suite与安装／升级由本片自己的CI另验通过，不扩大为原生页面或正式任务执行。
 
-新的[需求](2026-11-14-memory-validity-spec-review.md)／[结构](2026-11-14-memory-validity-structure-review.md)最终本地核对通过、开放0／0；两轴均直接核86原引用、最终包、原行／实际旅程／模板及收尾。普通发布、完整Ref和自己的CI另验。C3自己的CI已独立关闭，仅解除推下一片的依赖，不借给本片。
+新的[需求](2026-11-14-memory-validity-spec-review.md)／[结构](2026-11-14-memory-validity-structure-review.md)最终本地核对通过、开放0／0；两轴均直接核86原引用、最终包、原行／实际旅程／模板及收尾。普通发布、完整Ref与自己的CI的后补结果见下文。C3自己的CI已独立关闭，仅解除推下一片的依赖，不借给本片。
+
+已普通发布`a2899e84bc174c9abd331a7c9d01f7c7a63297ae`，23件Git blob与最终清单匹配，完整远端Ref相同；固定候选86原引用，后补四份发布原件为90。原两轴固定发布补核approve、开放0／0，不合main。
+
+自己的CI [`43542024437`](https://github.com/626619403/Ergora/actions/runs/43542024437)官方第五run HTML为Success，八job／30必要步骤均成功并completed，含Windows all与PowerShell 5.1安装／升级。全部原job日志链接绑定本候选完整SHA，原结构轴直接核11组receipt／body、metadata、固定workflow及组覆盖后终核approve、开放0／0。证据摘要保留固定86原引用、后补四份发布原件为90，CI另列24份原引用；只读官方UI原件，不声称REST、日志正文或artifact下载。F10a在此精确范围交付完成，F10b继续独立验收。

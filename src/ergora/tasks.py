@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 import re
 
-from . import agent_backends, agents, bindings, contracts, issue_snapshots, issue_sources, projects, reference, reference_budget, workflow_definitions
+from . import agent_backends, agents, bindings, contracts, issue_snapshots, issue_sources, projects, reference, reference_budget, task_context, workflow_definitions
 from .reference_creation_process import task_preparation
 from .asset_trees import inventory_tree
 from .state import State
@@ -14,7 +14,7 @@ from .task_envelopes import identity
 
 
 _DEFINITIONS = {version: json.loads((Path(__file__).parent / f'data/schemas/task-definition-v{version}.json').read_text(encoding='utf-8'))
-                for version in (1, 2, 3, 4, 5, 6)}
+                for version in (1, 2, 3, 4, 5, 6, 7)}
 
 
 def _project(state: State, project_id: str, *, validate_runtime: bool = True) -> dict:
@@ -34,7 +34,7 @@ def _revision(project: dict, expected_revision: int) -> None:
         raise ValueError('Project revision changed; reload before the task operation')
 
 
-def _definition(state: State, project: dict, definition: dict) -> dict:
+def _definition(state: State, project: dict, definition: dict, *, working_directory: Path | None = None) -> dict:
     version = definition.get('schema_version') if isinstance(definition, dict) else None
     schema = _DEFINITIONS.get(version, _DEFINITIONS[1]) if type(version) is int else _DEFINITIONS[1]
     contracts.validate(definition, schema, 'Task definition')
@@ -44,7 +44,13 @@ def _definition(state: State, project: dict, definition: dict) -> dict:
         raise ValueError('Task definition exceeds 1 MiB')
     selection = bindings.development_snapshot(project, projects.effective_configuration(project))
     result = {'definition': definition, 'selection': selection}
-    if version in (2, 3, 4, 5, 6):
+    if version == 7:
+        if working_directory is None:
+            raise ValueError('Selected task context requires the original supervised preparation directory')
+        with task_context.selected_manifest(state, project['id'], definition['composition'], definition['context'], working_directory) as (option, context):
+            result['composition'] = _composition({**definition, 'composition': option}, selection)
+            result['context'] = context
+    elif version in (2, 3, 4, 5, 6):
         result['composition'] = _composition(definition, selection)
     if 'source' in definition:
         from .task_envelopes import manifest_graph
@@ -189,7 +195,7 @@ def _run_id(value: str) -> None:
 
 def preview(state: State, project_id: str, definition: dict, expected_revision: int) -> dict:
     """Compile in temporary storage and return the exact proposed task and bindings."""
-    if isinstance(definition, dict) and type(definition.get('schema_version')) is int and definition['schema_version'] in (5, 6):
+    if isinstance(definition, dict) and type(definition.get('schema_version')) is int and definition['schema_version'] in (5, 6, 7):
         project = _budget_project(state, project_id, definition, expected_revision)
         return reference.task_creation(project, state.root, 'preview', {'definition': definition, 'budgeted': True})
     project = _project(state, project_id)
@@ -201,7 +207,7 @@ def create(state: State, project_id: str, definition: dict, expected_revision: i
            *, prepare_sha256: str | None = None) -> dict:
     """Publish only an explicitly previewed immutable task, after saving its intent."""
     _digest(preview_sha256, 'Preview')
-    if isinstance(definition, dict) and type(definition.get('schema_version')) is int and definition['schema_version'] in (5, 6):
+    if isinstance(definition, dict) and type(definition.get('schema_version')) is int and definition['schema_version'] in (5, 6, 7):
         _digest(prepare_sha256, 'Preparation')
         project = _budget_project(state, project_id, definition, expected_revision)
         return task_preparation(project, state.root, 'create', {'definition': definition,
@@ -242,7 +248,7 @@ def resume_create(state: State, project_id: str, task_id: str, expected_revision
 def _budget_project(state: State, project_id: str, definition: dict, expected_revision: int) -> dict:
     """Only bounded input/identity admission may precede durable authorization."""
     version = definition.get('schema_version') if isinstance(definition, dict) else None
-    schema = _DEFINITIONS[6] if type(version) is int and version == 6 else _DEFINITIONS[5]
+    schema = _DEFINITIONS[version] if type(version) is int and version in (5, 6, 7) else _DEFINITIONS[5]
     contracts.validate(definition, schema, 'Budgeted task definition')
     reference_budget.validate_policy(definition['budget'])
     if len(json.dumps(definition, ensure_ascii=False, allow_nan=False).encode('utf-8')) > 1_048_576:

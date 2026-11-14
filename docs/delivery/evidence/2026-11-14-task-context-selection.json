@@ -1,0 +1,1041 @@
+{
+  "slice": "F10b explicit selected task context",
+  "baseline": "a2899e84bc174c9abd331a7c9d01f7c7a63297ae",
+  "at": "2026-11-14T02:13:29.672426+00:00",
+  "implementation": "Final local acceptance complete; both fresh-context axes approve with zero open findings. Publication and own CI pending.",
+  "products_and_tests": {
+    "src/ergora/cli.py": {
+      "bytes": 77760,
+      "sha256": "0a897a10db66224dc0576d416fc974e60c77bd9f77e458994bc2558d1bd52bb6"
+    },
+    "src/ergora/data/schemas/task-definition-v7.json": {
+      "bytes": 8143,
+      "sha256": "58537be6e181bc33f91e3d3774848f9ab6c201b38cf08c83372c39e4c37850ac"
+    },
+    "src/ergora/reference_inputs.py": {
+      "bytes": 17642,
+      "sha256": "c116d153b867aff6f013f1d980c9bf3c874d74013c2e32770d8b768c42aae09b"
+    },
+    "src/ergora/reference_task_creation.py": {
+      "bytes": 40356,
+      "sha256": "7bf31161ba500384b060410becea33586ea5fe1150be48ae1d0c5bf10923b173"
+    },
+    "src/ergora/reference_workflows.py": {
+      "bytes": 27325,
+      "sha256": "15cc616591bc9ab914092aa9f1245f4a95cf904311c05dff88ecd54a0c962be7"
+    },
+    "src/ergora/skill_assets.py": {
+      "bytes": 8373,
+      "sha256": "e14b2ae3d9227220e9979cce711e16776e52329060c68003b027b939cad9e096"
+    },
+    "src/ergora/task_context.py": {
+      "bytes": 7649,
+      "sha256": "2b28dd8f538d14db37d295d4bccf0419bdcb5faa83b2702aaa5bb84c83e61c55"
+    },
+    "src/ergora/task_envelopes.py": {
+      "bytes": 36397,
+      "sha256": "6f506429c9d91dd4696a8d0cd89ccefb1ca182849430bb4242d974b45f7cd2cf"
+    },
+    "src/ergora/tasks.py": {
+      "bytes": 37320,
+      "sha256": "1ed05e57a9f4c673976b965fcaeaa648457a39ac55afb5272e9fe01cf1db4ab1"
+    },
+    "tests/test_native_six_stage.py": {
+      "bytes": 20029,
+      "sha256": "8ebe1f26f5bd8c36548d286c5071f5a3915b78b68e0e40dba7e0d464a04c276c"
+    },
+    "tests/fixtures/full_stage_acceptance.py": {
+      "bytes": 9938,
+      "sha256": "2ce425abd45e349d9bd275cb95e8e349c29265b4c4c99827d092a07db8a8bf92"
+    },
+    "tests/fixtures/reference_acceptance.py": {
+      "bytes": 40613,
+      "sha256": "5398128afcc717b71e27ec59ddb5e48c8bc6e97345dd4def11070cf818fdbb04"
+    },
+    "tests/fixtures/stage_agent.py": {
+      "bytes": 4687,
+      "sha256": "f32eda82732b14689931ece96309a07e66e12f03f70b5a77b64ffec8e17d6cf4"
+    },
+    "tests/fixtures/work_delivery_acceptance.py": {
+      "bytes": 22518,
+      "sha256": "8ba563699fabb28d728d3b14248eca42ad31a32e3115207e112bff0946ae9b45"
+    }
+  },
+  "installed": {
+    "at": "2026-11-14T02:01:40.215427+00:00",
+    "wheel_sha256": "3f677bcf50ffcb514c1a029ae9ca78857f12aaf4a72d5d32ecf17f25f79e1a21",
+    "wheel_files": 585,
+    "package_files": 577,
+    "wheel_and_installed_records_verified": true,
+    "installed_record_rows": 590,
+    "source_and_installed_package_equal": true,
+    "frozen_files": 283,
+    "editable": false
+  },
+  "installed_regression": {
+    "passed": 229,
+    "skipped": 6,
+    "pytest_seconds": 412.3,
+    "monitor_seconds": 414.1627718638629,
+    "scope": "Final installed original ten suites. Six Windows-only skips on Linux; native v7 preparation remains Linux/WSL2."
+  },
+  "actual_cli_http": {
+    "at": "2026-11-14T02:05:56.237497+00:00",
+    "status": "passed-combined-journey-with-read-only-continuation",
+    "first_harness": {
+      "exit": 1,
+      "exception": "KeyError: detail",
+      "scope": "Final error-body assertion after all seven CLI commands and four HTTP requests; original finally stopped the server."
+    },
+    "continuation_mutations": 0,
+    "first_read_only_continuation": "AssertionError from checking the publication parent (which retains its lock), corrected to check the saved version document's actual bundle path; no mutation or CLI/HTTP request was repeated.",
+    "envelope_version": 11,
+    "intent_sha256": "3ae0561334e7b8f2be4beef0ec5ff6f214d964cc3bc0cee8da12d3d361e43caa",
+    "original_envelope_sha256": "10c5ff097842e31e85f2d950f09d486bd49d3a2df930869a71bef3b5785fc1e7",
+    "same_cli_http_preview": true,
+    "original_recovery_after_canonical_change_and_source_loss": true,
+    "frozen_read_after_source_loss": true,
+    "stale_preview_http_status": 400,
+    "git_status_preserved": true,
+    "cli_commands": 7,
+    "http_requests": 4,
+    "server_stopped_and_port_closed": true,
+    "scope": "Installed CLI subprocesses and actual Uvicorn loopback HTTP; synthetic project, no model/GPU/quality/performance/adoption claim. This is not an unattended pass of the first harness."
+  },
+  "actual_original_materials": {
+    "status": "passed",
+    "original_job_owners": 9,
+    "original_model_slots": 7,
+    "seven_complete_selected_attachments": true,
+    "all_original_owners_stopped_and_collected": true,
+    "intent_file_sha256": "d9962eee18104398ed180d56d20a7b24e5b8c8a0ae3a3c6002bb59a330a65474",
+    "calls": [
+      {
+        "member": "root/development/review/test-value/review",
+        "selected_attachment_bytes": [
+          75600
+        ],
+        "prompt_equals_actual_stdin": true
+      },
+      {
+        "member": "root/development/review/correctness/review",
+        "selected_attachment_bytes": [
+          75600
+        ],
+        "prompt_equals_actual_stdin": true
+      },
+      {
+        "member": "root/development/preparation/plan",
+        "selected_attachment_bytes": [
+          75600
+        ],
+        "prompt_equals_actual_stdin": true
+      },
+      {
+        "member": "root/development/preparation/inventory",
+        "selected_attachment_bytes": [
+          75600
+        ],
+        "prompt_equals_actual_stdin": true
+      },
+      {
+        "member": "root/development/work/implementation",
+        "selected_attachment_bytes": [
+          75600
+        ],
+        "prompt_equals_actual_stdin": true
+      },
+      {
+        "member": "root/development/review/structure/review",
+        "selected_attachment_bytes": [
+          75600
+        ],
+        "prompt_equals_actual_stdin": true
+      },
+      {
+        "member": "root/development/work/validation",
+        "selected_attachment_bytes": [
+          75600
+        ],
+        "prompt_equals_actual_stdin": true
+      }
+    ],
+    "scope": "Final installed deterministic original six-stage contract; no model-quality/GPU/performance claim."
+  },
+  "admission_counterexamples": {
+    "status": "passed",
+    "counterexamples": 3,
+    "created_task_intents": 0,
+    "read_scope": "Production selected_manifest against valid exact-read static parent; not a native six-stage execution.",
+    "original_v7_prepare_scope": [
+      "Inherited Skill name conflict",
+      "Complete inherited material capacity"
+    ],
+    "temporary_derived_tree_removed": true,
+    "retained_harness_failures": [
+      "r2 KeyError graph before task preparation",
+      "r3 expected precise worker error in aggregate response instead of original stderr; retained original failed preparation, continued by read-only observation without repeating it"
+    ]
+  },
+  "self_review": {
+    "status": "succeeded",
+    "run_id": "db237473637748259ce40ed1fc080c67",
+    "cli_exit": 0,
+    "seconds": 38.840359177906066,
+    "packet_files": 15,
+    "packet_bytes": 288364,
+    "prompt_sha256": "68230712f1748039708549eb7c915001655b1efbfab2fede33a1cbec897c2091",
+    "input_digest": "d60ebb321cbb84b58b55e4589743b230bdffde7958b60e0297e408970c35c9d3",
+    "all_inline_files_and_inherited_resources_in_stdin": true,
+    "scope": "Installed original structure-review template, F10b selected task context with original owners; no independent/GPU/quality acceptance claim.",
+    "decision": "approve",
+    "result_sha256": "5b0fc07c370c1fbff6f011c54e14a048390bb28760a69ea867de1f222d0bd158"
+  },
+  "retained_failures": [
+    "Development r1: 6 failed/36.42s from eager YAML in stdlib publisher; fixed. r2: 6 failed/54.52s from text-only review fixture with selected attachments; product correctly refused, fixture made task-mcp explicit. r3: 6 passed/59.96s.",
+    "Materials r1: 1 failed/37.02s because fixture probed only first attachment page; fixed complete paging. Materials r2: 1 passed/56.92s, before review fixes.",
+    "Independent structure review reproduced slow Skill get spanning memory expiry. Skill hashing now precedes final memory catalog observation; original expiry parameter 1 passed/10.07s and final installed suite covers same failure. Skill head-only projection avoids loading all candidate/event history.",
+    "Pre-fix source regression220/403.38s and installed-r1 229/6/412.98s retain old identity; they do not replace final installed-r2.",
+    "Actual CLI/HTTP first harness KeyError(detail) after all actions; first read-only continuation checked retained publication parent instead of deleted bundle. Corrected read-only continuation preserved originals with zero repeated mutations.",
+    "Admission r2 harness KeyError(graph) before preparation; r3 found aggregate failed status but expected precise worker error there. Read-only continuation consumed original private stderr, did not repeat conflict preparation, then performed capacity and exact-read counterexamples."
+  ],
+  "limits": [
+    "Frozen sources survive later canonical deletion, expiry or head changes after original creation intent; deletion does not revoke archived/exported copies.",
+    "Explicit baseline Skill may be selected; initial import is not measured improvement. No automatic recall/adoption or evaluator/permission changes.",
+    "Exact-read counterexample exercises production selected_manifest on a valid static parent; two other counterexamples exercise full original v7 tasks.prepare. No exact-read native six-stage execution claim.",
+    "UI selection belongs to F10d. No native Windows v7 task preparation, GPU/training/model-quality/performance or real business adoption claim.",
+    "Same authorized Codex fallback for own template; it is not fresh-context independence or heterogeneous-backend success."
+  ],
+  "independent_review": {
+    "requirements": "Fresh-context final local approve; zero open findings; independently checked164raw references and exact installed/runtime scope",
+    "structure": "Fresh-context final local approve; zero open findings; original expiry P2 and head-read cost fixed/rechecked; independently checked164raw references and exact installed/runtime scope"
+  },
+  "publication": {
+    "state": "pending"
+  },
+  "raw_evidence": {
+    "private_base": ".ergora/checks/task-context-selection/",
+    "references": [
+      {
+        "path": "admission-negative-r2.py",
+        "bytes": 6769,
+        "sha256": "0731b1ab4ec5dd6b11f6dfdf50b50b5e731b4c9721ec58e2c44fbdae88827bc9"
+      },
+      {
+        "path": "admission-negative-r3-continuation.py",
+        "bytes": 4747,
+        "sha256": "dd260a2e6fe31b28621eb53f92930549bcd1376c3f5cf3fcdede4d3f4922a91e"
+      },
+      {
+        "path": "admission-negative-r3.py",
+        "bytes": 6790,
+        "sha256": "9185a60183b392b9ba74b6b276bff453f5acf0c05bcbe820a88abd381bcc2934"
+      },
+      {
+        "path": "admission-negative-r3/capacity-input.json",
+        "bytes": 2662,
+        "sha256": "29afccda297bddf12648d281c35c81903d874b408d67d5bc90efe7911442baf7"
+      },
+      {
+        "path": "admission-negative-r3/capacity.json",
+        "bytes": 5647,
+        "sha256": "7eba8bcdbe778f91ee86b8aca6872eee9a7ce7e94a81fe3f7e965cb7e0df8574"
+      },
+      {
+        "path": "admission-negative-r3/conflict-input.json",
+        "bytes": 2663,
+        "sha256": "cfb1f92f7bfdfca43fefedcc6bc96b798065cfaf073ee8e0a14d625057051cb8"
+      },
+      {
+        "path": "admission-negative-r3/conflict.json",
+        "bytes": 5969,
+        "sha256": "d4d129dbe5be1f0ec1e1463906529946351f3d7fe4dd5dd4d84da3144fd0e1c0"
+      },
+      {
+        "path": "admission-negative-r3/read-input.json",
+        "bytes": 1273,
+        "sha256": "b51e6ecfdf31cd03a653e0b008fd404274dd95a1a4be7c2c820a052f09ac5969"
+      },
+      {
+        "path": "admission-negative-r3/read.json",
+        "bytes": 172,
+        "sha256": "46d60af5ec879ed0c46629b2daabaa12ba2dfe6a835b07422406730d2d054a57"
+      },
+      {
+        "path": "admission-negative-r3/result.json",
+        "bytes": 630,
+        "sha256": "bc8376ccca1486996e2acbd7fbc65eedf79ef73b7f807077eaacb3bb3c31060c"
+      },
+      {
+        "path": "admission-negative-r3/setup/runtime/ergora/task-creations/selected-capacity.prepare-result.json",
+        "bytes": 439,
+        "sha256": "3347153b3501a2c9491b57a81f369b725b6874a4b1461f93824b39a8c0221431"
+      },
+      {
+        "path": "admission-negative-r3/setup/runtime/ergora/task-creations/selected-capacity.prepare-work/process/stderr.txt",
+        "bytes": 3127,
+        "sha256": "84a05d27b87f3a792c54e6aeb3ef886e07eb4e7631f55c708d64e60b84e07c4a"
+      },
+      {
+        "path": "admission-negative-r3/setup/runtime/ergora/task-creations/selected-capacity.prepare.json",
+        "bytes": 1407,
+        "sha256": "8c5b1c468a1f0fae512b055a2aff2fd0815e106fca91ab20dddcb132f02309ec"
+      },
+      {
+        "path": "admission-negative-r3/setup/runtime/ergora/task-creations/selected-conflict.prepare-result.json",
+        "bytes": 439,
+        "sha256": "295eff4b7805690d735e90b3f3bce758e7dcd2fd17d2b2d0313e39cc50d1f9a0"
+      },
+      {
+        "path": "admission-negative-r3/setup/runtime/ergora/task-creations/selected-conflict.prepare-work/process/stderr.txt",
+        "bytes": 3435,
+        "sha256": "1ee1fce52c2a1e73f8276c65e60da9557227d20f2d2f12bc509888b1f23c44c8"
+      },
+      {
+        "path": "admission-negative-r3/setup/runtime/ergora/task-creations/selected-conflict.prepare.json",
+        "bytes": 1407,
+        "sha256": "420b35eba383b7d1b4f2c5709c20003418105ebb5bf6b50ebf0181f6d4fa81b6"
+      },
+      {
+        "path": "admission-negative-r3/task.json",
+        "bytes": 2653,
+        "sha256": "941545a90df8772d5733543d349fc822e05ad99d32575451519e906d44b21d0b"
+      },
+      {
+        "path": "current-identity-r2.json",
+        "bytes": 2368,
+        "sha256": "e0b224679e45e7b696d9ae3b06469d5b7299e599d05a86f3c32de311edeb7085"
+      },
+      {
+        "path": "development-r1/stdout.txt",
+        "bytes": 31124,
+        "sha256": "4299c2ad3ce4b6c96c76f1d323d86cc7a7e97c26680b093ea867eb48247a6442"
+      },
+      {
+        "path": "development-r2/stdout.txt",
+        "bytes": 11541,
+        "sha256": "750b3cf3bb606e7a1671bbe5ae7b72c81442bd5e3b9ce41cba0e74af965e8c66"
+      },
+      {
+        "path": "development-r3/stdout.txt",
+        "bytes": 113,
+        "sha256": "194fb21c5efb0ee104931ae35308d57201e317ea1c3eee74eb370a9322d4f8d3"
+      },
+      {
+        "path": "expiry-fix-r1/stdout.txt",
+        "bytes": 114,
+        "sha256": "3f022534ccebb3b0231eb633a1e914050d511dc41faac60593e96bcdfc507f31"
+      },
+      {
+        "path": "install-r1.py",
+        "bytes": 2206,
+        "sha256": "f827bfc1360bd47ad3ed77987777b0d65ac42f5bc9c39b0d02b4df656f8b133b"
+      },
+      {
+        "path": "install-r1/package-identity.json",
+        "bytes": 493,
+        "sha256": "baf722b341270274b7a7b42be56ee844070778f4e102e561593ce1db1c3a5571"
+      },
+      {
+        "path": "install-r1/regression-r1/process/stdout.txt",
+        "bytes": 31063,
+        "sha256": "e615974189af5e4682e3988dc9f18c847e237bf5bcf52c06f00ec0d3934957c9"
+      },
+      {
+        "path": "install-r1/regression-r1/result.json",
+        "bytes": 984,
+        "sha256": "a1cabed3a1d0c171e1b6cc7df3e0c0fe33689ded9f8938d468d5161f44be3156"
+      },
+      {
+        "path": "install-r2.py",
+        "bytes": 2206,
+        "sha256": "5cc7282343f19d3d17541f155e18222d5645cf6b0957ff5cce847804343048e3"
+      },
+      {
+        "path": "install-r2/build.stderr",
+        "bytes": 62,
+        "sha256": "3fbf5c81df4d6f7774a09a7694742996e64ed07ccaea033ef3d34574059a981c"
+      },
+      {
+        "path": "install-r2/build.stdout",
+        "bytes": 257976,
+        "sha256": "e4ee5b642dc3a3507867ec15fd865ffd5c32876dab181536ca17d8c92a691cdc"
+      },
+      {
+        "path": "install-r2/install.stderr",
+        "bytes": 1323,
+        "sha256": "963d618b889c5f1b9b24fdf4798524b99d2238ffcc0a4fe85c5cd8d35c1e494e"
+      },
+      {
+        "path": "install-r2/install.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "install-r2/package-identity.json",
+        "bytes": 493,
+        "sha256": "c1febaf616639ee838ca3b65f73304a6dea411ee3ed42ce51355dd8845b07a7a"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/control/runs/2139dbe6575547049c46f566ce22aab7/stdin.txt",
+        "bytes": 96347,
+        "sha256": "f6bfecfadeff9245438966a8c9dc3948fc9b2d634bf243ae24591ea86a9a31d3"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/control/runs/5f584674e3004fbbbf797190fc8a8615/stdin.txt",
+        "bytes": 32203,
+        "sha256": "41e29a48e962854919f3914f5ce3dfca2bf0c1c14bbc4ab90d8f0b968a682d4a"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/control/runs/7a8aeea5f42d43f19db57347cbe1f789/stdin.txt",
+        "bytes": 21274,
+        "sha256": "5755e1f42edf8eb4227112c3f40ef51a90e09df3463359f1c95badc830bbca29"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/control/runs/b6404a7d3f904bf1a5b2926bc8d8bca0/stdin.txt",
+        "bytes": 25967,
+        "sha256": "95161c34088d77a002fb90e40fbb36d34f6eb477a580897b6430528cd9169c27"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/control/runs/cf6705a7e8484b57964706d8614a858e/stdin.txt",
+        "bytes": 17873,
+        "sha256": "84646ad33953ea204acf18c6f8597fe3b8de02aa8fbc47cf684dc4be29441e6f"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/control/runs/d27ae296f30d4823b388531812e7c85a/stdin.txt",
+        "bytes": 34350,
+        "sha256": "8e9afd943e0bf67c4912fcbf2a162673fe03e784eb4027f4ebf54e9c7bdc6c6e"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/control/runs/dba4a5c3652a4d6aac5fc9d93c4823e3/stdin.txt",
+        "bytes": 32181,
+        "sha256": "64820692571bcd2bea6846fa3c2eb86219b9d528e154a2b52c7858ce3c88b22a"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/artifacts/task-1/task-1-1145684cfd52f66b3691fd82/composition-resource-coverage.json",
+        "bytes": 451,
+        "sha256": "13c0ee8133d74a7e51357bdff84748d53de1f7839fd3606b4d39dc9d638a8f6c"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/artifacts/task-1/task-1-27394aae724aee4260cbddb2/composition-resource-coverage.json",
+        "bytes": 451,
+        "sha256": "13c0ee8133d74a7e51357bdff84748d53de1f7839fd3606b4d39dc9d638a8f6c"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/artifacts/task-1/task-1-29c77e683944f0250f07816e/composition-resource-coverage.json",
+        "bytes": 697,
+        "sha256": "1903fee3b9286273847e337066e1c3e122a04a56b58bc6fb80178da913faab37"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/artifacts/task-1/task-1-468519c303ac175bf7c8fabb/composition-resource-coverage.json",
+        "bytes": 697,
+        "sha256": "1903fee3b9286273847e337066e1c3e122a04a56b58bc6fb80178da913faab37"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/artifacts/task-1/task-1-5ab9a1f44e56770c58a41bdd/composition-resource-coverage.json",
+        "bytes": 451,
+        "sha256": "13c0ee8133d74a7e51357bdff84748d53de1f7839fd3606b4d39dc9d638a8f6c"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/artifacts/task-1/task-1-7a38a723440b2a99a56774ae/composition-resource-coverage.json",
+        "bytes": 451,
+        "sha256": "13c0ee8133d74a7e51357bdff84748d53de1f7839fd3606b4d39dc9d638a8f6c"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/artifacts/task-1/task-1-acfeccd59ee0e0bbea4fee9c/composition-resource-coverage.json",
+        "bytes": 451,
+        "sha256": "13c0ee8133d74a7e51357bdff84748d53de1f7839fd3606b4d39dc9d638a8f6c"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/ergora/task-creations/task-1.intent.json",
+        "bytes": 555896,
+        "sha256": "d9962eee18104398ed180d56d20a7b24e5b8c8a0ae3a3c6002bb59a330a65474"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-1145684cfd52f66b3691fd82/budget/collection-stopped.json",
+        "bytes": 664,
+        "sha256": "d3f6d0048a0ec6774b7d9a3f4ba5acdc485740cdb7a24856446139fbbe59286f"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-1145684cfd52f66b3691fd82/budget/model-attempt.json",
+        "bytes": 341,
+        "sha256": "c21fd4bab7d9cac232b85bd441cd2c443716b79c1f047c06b14c2bdf965b1852"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-1145684cfd52f66b3691fd82/budget/stopped.json",
+        "bytes": 652,
+        "sha256": "1e064f78017ff89b966cb522f36e9f819e55dc3c68bed4549cf5c343079330b9"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-1145684cfd52f66b3691fd82/output/selected-agent/invocation.json",
+        "bytes": 11004,
+        "sha256": "e67bae6a11649130846dd8b8c81ac12ae19fe1ca4f9a2eb757a24c95467eac10"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-1145684cfd52f66b3691fd82/selected-agent/formal-call.json",
+        "bytes": 3590,
+        "sha256": "ea080bae1ee761b4938bd66c340f52562b7bd106942675bff2c2905295b9eb80"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-1145684cfd52f66b3691fd82/selected-agent/input/prompt.txt",
+        "bytes": 32203,
+        "sha256": "41e29a48e962854919f3914f5ce3dfca2bf0c1c14bbc4ab90d8f0b968a682d4a"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-1145684cfd52f66b3691fd82/selected-agent/input/request.json",
+        "bytes": 814,
+        "sha256": "bc14da01325bccf3f618810df93c8027f9f7e9d87a58831d709a7290ffca3fec"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-1145684cfd52f66b3691fd82/selected-agent/materials.json",
+        "bytes": 29690,
+        "sha256": "2e88d28cd98ae8381bc5a22309681310a31e8defa597f2fd09ad9173312a0f79"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-27394aae724aee4260cbddb2/budget/collection-stopped.json",
+        "bytes": 664,
+        "sha256": "3a125fde5d3ddddf0a675d3db1709436b3898f64801c72b7854aaf52be9a842a"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-27394aae724aee4260cbddb2/budget/model-attempt.json",
+        "bytes": 343,
+        "sha256": "45634aab496e8aec1ffae916e01770b5e66d53fe7aa1e2d9fa89cef8890e7fe6"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-27394aae724aee4260cbddb2/budget/stopped.json",
+        "bytes": 652,
+        "sha256": "56d8a6ff5e86b4ebcdd4e9e9d205982b134a69972b0a5aa4da4afb7a73f4dbd9"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-27394aae724aee4260cbddb2/output/selected-agent/invocation.json",
+        "bytes": 11026,
+        "sha256": "a172cd31df1fec50e9f8f3bee359bc2a6801cde748cd106e8584289d9b7f5c03"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-27394aae724aee4260cbddb2/selected-agent/formal-call.json",
+        "bytes": 3597,
+        "sha256": "b4b0542ae1090f83491d6ab2e01f0838887a16c037bd2009ac5d4e297cbc95be"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-27394aae724aee4260cbddb2/selected-agent/input/prompt.txt",
+        "bytes": 32181,
+        "sha256": "64820692571bcd2bea6846fa3c2eb86219b9d528e154a2b52c7858ce3c88b22a"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-27394aae724aee4260cbddb2/selected-agent/input/request.json",
+        "bytes": 815,
+        "sha256": "ed403ee723011682bd45844084cf449138812a9adffab8c68fc8e8b9914c25cb"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-27394aae724aee4260cbddb2/selected-agent/materials.json",
+        "bytes": 29691,
+        "sha256": "a34c4e17530ee9f2520391032ae7a667dc9cc0e89b107553115bcdcffe7ca60e"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-29c77e683944f0250f07816e/budget/collection-stopped.json",
+        "bytes": 664,
+        "sha256": "9cfb8a6ee562cda088108e39c5e9729e50547271da176ad7e4cd08fbb8060c85"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-29c77e683944f0250f07816e/budget/model-attempt.json",
+        "bytes": 289,
+        "sha256": "419e8d41eec9e2c9a695fe512ef9f44d0583f5fab9e0db45d10ffaa94693686f"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-29c77e683944f0250f07816e/budget/stopped.json",
+        "bytes": 652,
+        "sha256": "38f03baaaa46feb687a30526a1dfdac62e1a6dcd02f16a550159f85578d9bb40"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-29c77e683944f0250f07816e/output/selected-agent/invocation.json",
+        "bytes": 10973,
+        "sha256": "112bbbccbd201b486e57e1578c89b86ec1950fe78cf10c97c1f28ecdfb11efd7"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-29c77e683944f0250f07816e/selected-agent/formal-call.json",
+        "bytes": 3471,
+        "sha256": "6dcda6badb359f1055a33a1cf0691dfa09f88e4d75de2caf8b1af95c2959e100"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-29c77e683944f0250f07816e/selected-agent/input/prompt.txt",
+        "bytes": 96347,
+        "sha256": "f6bfecfadeff9245438966a8c9dc3948fc9b2d634bf243ae24591ea86a9a31d3"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-29c77e683944f0250f07816e/selected-agent/input/request.json",
+        "bytes": 806,
+        "sha256": "89cf8770db817c7f2e00190f84e047193d738875d03453ce0326c1f40879aa8f"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-29c77e683944f0250f07816e/selected-agent/materials.json",
+        "bytes": 90360,
+        "sha256": "86b90a2d40148b06303b23a6a3a4b9400d08d2d4dab4960ebec4d72405eecc0e"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-468519c303ac175bf7c8fabb/budget/collection-stopped.json",
+        "bytes": 664,
+        "sha256": "b5d22f9486158e8f62efacbc774b37c2d5073eb075584b9dad695973dad4a792"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-468519c303ac175bf7c8fabb/budget/model-attempt.json",
+        "bytes": 299,
+        "sha256": "e3ef19803d7fc853525d916999f99c30231178dcd77e8b3636efbdcbcb21baa8"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-468519c303ac175bf7c8fabb/budget/stopped.json",
+        "bytes": 652,
+        "sha256": "e0207960bdc26ba17847e4b45fa9c517e53a025783534f9f5ee2d5eb76acbc05"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-468519c303ac175bf7c8fabb/output/selected-agent/invocation.json",
+        "bytes": 11055,
+        "sha256": "4eaebe214ce65ca0c403e3040cafb222d570687e9b7864a0e4d3cb27d72df3f6"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-468519c303ac175bf7c8fabb/selected-agent/formal-call.json",
+        "bytes": 3544,
+        "sha256": "1f7cf92b79ac7561dc31ee6f5b11a0e8b718e55bbaacf0d275ba08e62f29784a"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-468519c303ac175bf7c8fabb/selected-agent/input/prompt.txt",
+        "bytes": 17873,
+        "sha256": "84646ad33953ea204acf18c6f8597fe3b8de02aa8fbc47cf684dc4be29441e6f"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-468519c303ac175bf7c8fabb/selected-agent/input/request.json",
+        "bytes": 811,
+        "sha256": "6e0d89074511da5013d1f8e7448a421dfee23f64e0a314c1acaaff15511359fd"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-468519c303ac175bf7c8fabb/selected-agent/materials.json",
+        "bytes": 10924,
+        "sha256": "6a31fb3f62d75f8c79e875d946708f588d78865dbc4e77a1fbc050a41842432d"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-5ab9a1f44e56770c58a41bdd/budget/collection-stopped.json",
+        "bytes": 664,
+        "sha256": "308b7d089dd981896247b58ce3c34d5c71432b200838a93b846bd56f2605c796"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-5ab9a1f44e56770c58a41bdd/budget/model-attempt.json",
+        "bytes": 307,
+        "sha256": "acd81b3f8a2f0f1269e2a44eb691d6170ac44306ba6d9da6a5742e595c551cc1"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-5ab9a1f44e56770c58a41bdd/budget/stopped.json",
+        "bytes": 652,
+        "sha256": "1b0468be0daf61e67e085b1373eb147c7f8948cf4da8606cf6f80fca26375575"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-5ab9a1f44e56770c58a41bdd/output/selected-agent/invocation.json",
+        "bytes": 14635,
+        "sha256": "c3997710d5d2fb849d3196a1d8d00b3f0b3a2c24b5ca8d2fdb94ab23370e240e"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-5ab9a1f44e56770c58a41bdd/selected-agent/formal-call.json",
+        "bytes": 4087,
+        "sha256": "061d845835653c2032c2c8cf88bbb52ed6bda09b9aa2c8a7eb1a2d7de389cd7c"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-5ab9a1f44e56770c58a41bdd/selected-agent/input/prompt.txt",
+        "bytes": 21274,
+        "sha256": "5755e1f42edf8eb4227112c3f40ef51a90e09df3463359f1c95badc830bbca29"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-5ab9a1f44e56770c58a41bdd/selected-agent/input/request.json",
+        "bytes": 809,
+        "sha256": "5a0e51ed920e23d6ef1f5a44e8a510aa82a42ef08af44cb33af67bc7fb037159"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-5ab9a1f44e56770c58a41bdd/selected-agent/materials.json",
+        "bytes": 14884,
+        "sha256": "b2f8a107161ac17922f7c6ab6843f3d2b9b58b224b34d068394d0e387df380b2"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-5ef460a3142b5ab94c4ff7a4/budget/collection-stopped.json",
+        "bytes": 664,
+        "sha256": "18da7ee016a9290651663c2ee4d0105d4e89d723f6f1b937fb6781755a62553e"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-5ef460a3142b5ab94c4ff7a4/budget/stopped.json",
+        "bytes": 652,
+        "sha256": "9410f2994ba5d4fbe4f4cfe4229cb32e9babcb11acdce6bf837f5ffe05de3412"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-65bd4e363e016ec396722c0a/budget/collection-stopped.json",
+        "bytes": 664,
+        "sha256": "4dd6f7311c879708bc8abf0f8abc9214c2a13c63dcc0b229ae245903a656866c"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-65bd4e363e016ec396722c0a/budget/stopped.json",
+        "bytes": 652,
+        "sha256": "481befc76b30e4ef9d7422750b3df4c854781724808cd0fe918b4f01dece33ed"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-7a38a723440b2a99a56774ae/budget/collection-stopped.json",
+        "bytes": 664,
+        "sha256": "34411f7768f9dc79e6ca191a8e2ebe2a80e74b39ef153b25db72d074a939b459"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-7a38a723440b2a99a56774ae/budget/model-attempt.json",
+        "bytes": 339,
+        "sha256": "7bfa80592c7c13f02c0e22ec9f6af1ebd4b745d9dbf468c1b04ba6e9fc4e8876"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-7a38a723440b2a99a56774ae/budget/stopped.json",
+        "bytes": 652,
+        "sha256": "f3545facebb21bc726d798f2a98ca8c4b661afcc46754b571f082c10d34295af"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-7a38a723440b2a99a56774ae/output/selected-agent/invocation.json",
+        "bytes": 12565,
+        "sha256": "eb3019b2322f7598725b5f87c24b7d52bff032311eff4e1db7e81fb690dd908a"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-7a38a723440b2a99a56774ae/selected-agent/formal-call.json",
+        "bytes": 3589,
+        "sha256": "53000a3a4a7f89ad3f8116f6a15b84b97fcc597e52c200553249ca6e7b993648"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-7a38a723440b2a99a56774ae/selected-agent/input/prompt.txt",
+        "bytes": 34350,
+        "sha256": "8e9afd943e0bf67c4912fcbf2a162673fe03e784eb4027f4ebf54e9c7bdc6c6e"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-7a38a723440b2a99a56774ae/selected-agent/input/request.json",
+        "bytes": 813,
+        "sha256": "4195af08e3f6f7d562da448dcc69e630f7dc661ff075d992808e15a7833a1374"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-7a38a723440b2a99a56774ae/selected-agent/materials.json",
+        "bytes": 29689,
+        "sha256": "22477dd7434d652dce817c52ac142c70ee45e7d090b35aa91ed71ac5002d5f08"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-acfeccd59ee0e0bbea4fee9c/budget/collection-stopped.json",
+        "bytes": 664,
+        "sha256": "0e3d7a5a3e35a3065fb1493a9e1b55381c2839c30fe241e38e45818530d0dfdd"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-acfeccd59ee0e0bbea4fee9c/budget/model-attempt.json",
+        "bytes": 299,
+        "sha256": "db250c768a110b11f079a07db7b44b79f32ab6b901866890fef5d6f65c4ab891"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-acfeccd59ee0e0bbea4fee9c/budget/stopped.json",
+        "bytes": 652,
+        "sha256": "c2e5c4318bc4f7986eb78d6ad0ed6a6b7d27aa24994040863e3d04e721de143e"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-acfeccd59ee0e0bbea4fee9c/output/selected-agent/invocation.json",
+        "bytes": 13092,
+        "sha256": "0844496c1d228341b5017a24c0f852e47259ee05938a5ca90666cec2fffc94e8"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-acfeccd59ee0e0bbea4fee9c/selected-agent/formal-call.json",
+        "bytes": 4113,
+        "sha256": "af150e682bcf91dbfc3efb382be887d0f8c2ade49305996cec3bd607f90b9df0"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-acfeccd59ee0e0bbea4fee9c/selected-agent/input/prompt.txt",
+        "bytes": 25967,
+        "sha256": "95161c34088d77a002fb90e40fbb36d34f6eb477a580897b6430528cd9169c27"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-acfeccd59ee0e0bbea4fee9c/selected-agent/input/request.json",
+        "bytes": 805,
+        "sha256": "d0cb70262a6161cbf18925fe7dd0100daa37fc3609525125824dc07e1baa9997"
+      },
+      {
+        "path": "install-r2/regression-r1/cases/test_original_stages_receive_s0/runtime/workspaces/task-1/jobs/task-1-acfeccd59ee0e0bbea4fee9c/selected-agent/materials.json",
+        "bytes": 23490,
+        "sha256": "a033852cfa0cb94f4df84debb570cb95ce1dc7ef92f5d060807cd90684b10e5a"
+      },
+      {
+        "path": "install-r2/regression-r1/process/stderr.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "install-r2/regression-r1/process/stdout.txt",
+        "bytes": 31063,
+        "sha256": "e47de30cdfd61c72b8aab51513ae00cfa5bae4d6b8f7dfc762961c93aa99c0ca"
+      },
+      {
+        "path": "install-r2/regression-r1/result.json",
+        "bytes": 984,
+        "sha256": "66f4ed21f0ad083dd8f56ac9af4be2825a0b6f9858da036b946cf68b536c79e1"
+      },
+      {
+        "path": "install-r2/setup.json",
+        "bytes": 1352,
+        "sha256": "1e9e574adca0c23713ce6fc086255cede9faa594675e46bcb51ae6c06cc2662d"
+      },
+      {
+        "path": "install-r2/source-manifest.json",
+        "bytes": 3121,
+        "sha256": "72ac8f711e331d617c0d6b8c58b501ba246d7ad5d05b007e9ec9fa396b523c22"
+      },
+      {
+        "path": "materials-final-r2.json",
+        "bytes": 1604,
+        "sha256": "e8e309cf42094cadffac93d2742c47bf0dd94964f972d803b0aaf5c3928cfa2f"
+      },
+      {
+        "path": "materials-r1/stdout.txt",
+        "bytes": 12552,
+        "sha256": "2cd368178566ebe9e476426d6f11b91721c05199d0e0ea414fd6563784101afe"
+      },
+      {
+        "path": "materials-r2/stdout.txt",
+        "bytes": 114,
+        "sha256": "8d91c7aa810c905f40612ca1897017e2721fa4d3874cfe9f71e6830ee82aa752"
+      },
+      {
+        "path": "native-r2-continuation.py",
+        "bytes": 4512,
+        "sha256": "2857d179aa8d36c09ac52d6ac7d281e6b0c4c6aa1c3f282e0b179162b6d630e3"
+      },
+      {
+        "path": "native-r2.py",
+        "bytes": 7825,
+        "sha256": "d38198b96715a0f0dbb17e96f92bfda0b08b19ef7f7b0ea4b52d2672fac09e52"
+      },
+      {
+        "path": "native-r2/catalog.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r2/catalog.stdout",
+        "bytes": 506,
+        "sha256": "dcbd8adf7881f0fa07202811cf9066beaa0a2b070a571a2eb8e982210067ea93"
+      },
+      {
+        "path": "native-r2/cleanup.json",
+        "bytes": 53,
+        "sha256": "d638fed27f631f5a50caa6e2cbffaf428d8e9d044dfc6607062fba6ee1cb64b7"
+      },
+      {
+        "path": "native-r2/cli-preview.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r2/cli-preview.stdout",
+        "bytes": 335748,
+        "sha256": "422b11066a2651eb029e25eba4860e94ce78b97e7b11d765120ef107c99c6ae5"
+      },
+      {
+        "path": "native-r2/commands.json",
+        "bytes": 3866,
+        "sha256": "88cb9f253198673f012b55942b54de887b63d252d5612e238f2376cd8d7e9213"
+      },
+      {
+        "path": "native-r2/create.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r2/create.stdout",
+        "bytes": 33162,
+        "sha256": "d5c663a978d053fe2f65a96d13eb886eab51bb175de9139337b2ce2c8d87986e"
+      },
+      {
+        "path": "native-r2/delete-memory.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r2/delete-memory.stdout",
+        "bytes": 272,
+        "sha256": "ef38eb0d30a41c56a385180d11057d8bdf66589939f51a31c4cdafea291131c3"
+      },
+      {
+        "path": "native-r2/git-before.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r2/move-head.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r2/move-head.stdout",
+        "bytes": 307,
+        "sha256": "52af0c4142cc0cc47d954035d602e8f2191ee247d2fade96c5b7c86c7cb5c832"
+      },
+      {
+        "path": "native-r2/prepare.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r2/prepare.stdout",
+        "bytes": 2217,
+        "sha256": "8ff5ea03676deae203e6f9e12f71436c04e5a5e48ace6076b70b22cfb21001c8"
+      },
+      {
+        "path": "native-r2/preview.request.json",
+        "bytes": 3185,
+        "sha256": "297958abff054fa57f7b83d6c8bca3b01be05f0f55485cee3975d73e763477fb"
+      },
+      {
+        "path": "native-r2/preview.response.json",
+        "bytes": 307586,
+        "sha256": "8037410e68cafba868027877862e570721d7b271d1cbcf28e890c9e4408346b2"
+      },
+      {
+        "path": "native-r2/requests.json",
+        "bytes": 923,
+        "sha256": "499d0fcc8c083c201844a94e3b5c315b8f09dd6a11edcedc382a30d0deec0aec"
+      },
+      {
+        "path": "native-r2/result.json",
+        "bytes": 1286,
+        "sha256": "0b963e870d00b08e9e532caf03761806fb807a240967b1fb592c208d3c5d19f5"
+      },
+      {
+        "path": "native-r2/resume-create.request.json",
+        "bytes": 209,
+        "sha256": "e326786b8ba9519a5c2e64a27076699ca058da246c47d4436c7717cdd3700c6c"
+      },
+      {
+        "path": "native-r2/resume-create.response.json",
+        "bytes": 21276,
+        "sha256": "9ddacbda47ef78c4839f7a4a38dca24026ab6c11e0e054f7eef93f11900cf26b"
+      },
+      {
+        "path": "native-r2/show.request.json",
+        "bytes": 86,
+        "sha256": "f8446a576a1e0d3c0c8cc933a9972787749594b06b963f8a8b46c977c0bd9372"
+      },
+      {
+        "path": "native-r2/show.response.json",
+        "bytes": 289482,
+        "sha256": "0a5fb05903f9f0381037b1b67179e9b500ffcea38276d722fa7a833dc71c0555"
+      },
+      {
+        "path": "native-r2/skills.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r2/skills.stdout",
+        "bytes": 1489,
+        "sha256": "f8fb90f836b0a8dea5e5f19aadd5ab89d2f07a6397fb293bbb4c6dcc9a6e6772"
+      },
+      {
+        "path": "native-r2/stale-preview.request.json",
+        "bytes": 3185,
+        "sha256": "297958abff054fa57f7b83d6c8bca3b01be05f0f55485cee3975d73e763477fb"
+      },
+      {
+        "path": "native-r2/stale-preview.response.json",
+        "bytes": 117,
+        "sha256": "8d1a9f4146ab5f453f13adfa1d159b59a9ca2fb4777d771b5a492da18cdf7d42"
+      },
+      {
+        "path": "native-r2/task.json",
+        "bytes": 2641,
+        "sha256": "f8114d5a3381570c5da494b2d0412881b0edc919c08f5f3a78dcba671cf3a356"
+      },
+      {
+        "path": "regression-r1/stdout.txt",
+        "bytes": 352,
+        "sha256": "f385a3e3f0696cd584d0b042ba7c26210a859165ac8594bfea75ae820beac8d3"
+      },
+      {
+        "path": "run-installed-r1.py",
+        "bytes": 916,
+        "sha256": "8dacdd2814daa0c341e53ef289506e8836405723ae88c86928721525405727c9"
+      },
+      {
+        "path": "run-installed-r2.py",
+        "bytes": 916,
+        "sha256": "8f02f6c99505881f311943b529f3f3e8f41c80d5a81cb788095dd02d84765494"
+      },
+      {
+        "path": "self-review-r1-codex.json",
+        "bytes": 3245,
+        "sha256": "986e05ddc85d4960de33f290356facb79b2540aa5872546adcf1505f0afafbcf"
+      },
+      {
+        "path": "self-review-r2-codex.json",
+        "bytes": 3246,
+        "sha256": "f83f7d3f604a5fdb185c1dae7f701f3a65f0bbf214cd971955e234ca4e1a5a95"
+      },
+      {
+        "path": "self-review-r2-codex/admission.json",
+        "bytes": 7831,
+        "sha256": "0cd6230ac65b34b008cd7f2392d2df393696b0d4995d4bc889a89db84c0826a2"
+      },
+      {
+        "path": "self-review-r2-codex/native.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "self-review-r2-codex/native.stdout",
+        "bytes": 8597,
+        "sha256": "be41ab7222375ba20e271ae76ac8c04758a098b1a57747fdfbc52714b4a674fc"
+      },
+      {
+        "path": "self-review-r2-codex/original-result.json",
+        "bytes": 869,
+        "sha256": "5b0fc07c370c1fbff6f011c54e14a048390bb28760a69ea867de1f222d0bd158"
+      },
+      {
+        "path": "self-review-r2-codex/packet-index.json",
+        "bytes": 2407,
+        "sha256": "0535d17c100bb09878b7ffc12b7020b2716de000775bede834683946688a9010"
+      },
+      {
+        "path": "self-review-r2-codex/review.md",
+        "bytes": 733,
+        "sha256": "db0fa0c46ef9c60cd2061fb76343716b15aa511de26cbea14fdb6ac6b68833ab"
+      },
+      {
+        "path": "self-review-r2-codex/state/runs/db237473637748259ce40ed1fc080c67.input/composition.json",
+        "bytes": 7878,
+        "sha256": "0446ac008f690f5e2a16e493b9e82c1a818f7acf0ca9753ae560838e0bcf722e"
+      },
+      {
+        "path": "self-review-r2-codex/state/runs/db237473637748259ce40ed1fc080c67.input/prompt.txt",
+        "bytes": 293874,
+        "sha256": "68230712f1748039708549eb7c915001655b1efbfab2fede33a1cbec897c2091"
+      },
+      {
+        "path": "self-review-r2-codex/state/runs/db237473637748259ce40ed1fc080c67.input/request.json",
+        "bytes": 779,
+        "sha256": "31ccc60910f2a887058d36c2d04808c218000a5a806a6b7608226544c5074cce"
+      },
+      {
+        "path": "self-review-r2-codex/state/runs/db237473637748259ce40ed1fc080c67.input/task.txt",
+        "bytes": 291475,
+        "sha256": "9d4153a60d3f071c23c430ac2e30277e5df2750212c20dfab45ca6f28a85e1bc"
+      },
+      {
+        "path": "self-review-r2-codex/state/runs/db237473637748259ce40ed1fc080c67/result.json",
+        "bytes": 869,
+        "sha256": "5b0fc07c370c1fbff6f011c54e14a048390bb28760a69ea867de1f222d0bd158"
+      },
+      {
+        "path": "self-review-r2-codex/state/runs/db237473637748259ce40ed1fc080c67/stdin.txt",
+        "bytes": 293874,
+        "sha256": "68230712f1748039708549eb7c915001655b1efbfab2fede33a1cbec897c2091"
+      },
+      {
+        "path": "verify-installed-r1.py",
+        "bytes": 2445,
+        "sha256": "8597905c3ce7bb7e2dc3f9cf923f30115d1b8b92d9bc0fa18595cb92e2d2d6e7"
+      },
+      {
+        "path": "verify-installed-r2.py",
+        "bytes": 2445,
+        "sha256": "f1da989e1b07a5642435e054202b0526a94458d4e75c478263339c20ea2b3607"
+      }
+    ]
+  }
+}

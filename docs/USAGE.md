@@ -604,6 +604,26 @@ task-definition v6／正式input v10在上述预算合同中增加 `composition.
 
 首形状要求祖先只含这次调用并直接转发task及结果；work和review是所选六阶段实例的直接子模板，盘点／规划可有自己的结构包装。准备时拒绝额外父分支、第二实例、未执行的外部输入或控制依赖。内部工作／审查继续支持原有串并行DAG；这不授予任意外层图的执行权。图形任务向导目前生成原v6工作材料信封，新的v10合同使用完整JSON经CLI／HTTP提交。
 
+### 为正式任务选择项目记忆与活动 Skill
+
+Linux／WSL2 可在上述原生六阶段定义上使用 [task-definition v7](../src/ergora/data/schemas/task-definition-v7.json)／正式 input v11。先用 `ergora memory catalog PROJECT` 查看当前有效记忆的 `id`／`revision`，用 `ergora skill list PROJECT` 查看活动head的 `name`／`digest`／`revision`。将用户定义的 `schema_version` 改为 `7`，追加以下字段，替换示例身份：
+
+```json
+{
+  "context": {
+    "root_version": "1.0.1",
+    "memories": [{"id": "MEMORY_ID", "revision": 2}],
+    "skills": [{"name": "your-skill", "digest": "ACTIVE_SHA256", "revision": 1}]
+  }
+}
+```
+
+两个列表至少一项非空；只接受本项目当前有效的最新记忆修订，以及当前活动Skill的精确head。初次导入的baseline可以选择，但不代表已经测得改善。`root_version` 是所选manifest根定义的新版本，须不同于原根；系统保持同一根id、所有成员路径、原权限和limits，仅追加来源context与完整Skill目录。派生包随该任务冻结，不改变活动Skill或全局定义库。Skill附件需要对应实例的 `task-mcp`／`workspace-task-mcp` 模式；read未覆盖新根资源URI、同名Skill内容冲突或容量不足均明确拒绝。修改权限须先按原父子定义修订流程操作，再选择新的manifest。
+
+沿原 `task prepare → preview → create → start` 使用，create仍明确确认prepare和preview两个摘要。preview的 `files["task.spec.json"].context` 给出所选身份；`composition.manifest`携带完整来源和文件，`task_envelopes.selected_context`可离线核对原正文、来源、期限和Skill附件身份；图中的每叶 `material_bytes` 及各scope的 `usage`／`limits` 显示静态容量。动态仓库、前驱结果和完整prompt仍在实际阶段核对，不能把静态余量当作未来成功保证。
+
+更正、删除、到期或活动head变化后，旧选择不能首次发布。已经保存完整creation intent的中断恢复使用原快照，包括后来失效的资料；`task creation`检查原意图，`task resume-create`按其SHA恢复，不重新选资料或续预算。归档输入是运行证据，删除canonical记忆不会清除已冻结的任务及独立备份。新协议注册 `.composition-v11` 队列与 `requests-composition-v11` 请求根，升级并重启worker／executor后使用。CLI及HTTP共用上述合同；图形选择表单尚未接入。
+
 ### 使用重构配方
 
 `refactoring`把行为保持重构交给原`large-change`六阶段所有者。默认依次安排资料盘点、计划及原owner批准；重构执行者完成`rewrite`后，兼容性专家在集成了前驱的候选上完成`compatibility`；原可信integrate／verify之后，结构、正确性和测试价值三个必需reviewer并行审查。

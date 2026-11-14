@@ -60,8 +60,9 @@ def manifest_identity(snapshot: dict) -> str:
     return digest
 
 
-def wrap(spec: dict, composition: dict, issue_source: dict | None = None, *, budget: dict | None = None) -> dict:
-    version = (10 if budget is not None and 'native' in composition else 9 if budget is not None else 8 if 'preparation' in composition else 7 if issue_source is not None else
+def wrap(spec: dict, composition: dict, issue_source: dict | None = None, *, budget: dict | None = None,
+         context: dict | None = None) -> dict:
+    version = (11 if context is not None else 10 if budget is not None and 'native' in composition else 9 if budget is not None else 8 if 'preparation' in composition else 7 if issue_source is not None else
                6 if composition.get('execution', {}).get('protocol') == 'work-units-v2' else
                5 if 'execution' in composition else 4 if 'review_protocol' in composition else
                3 if any('review_requirement' in member for member in composition['members'].values()) else 2)
@@ -70,7 +71,82 @@ def wrap(spec: dict, composition: dict, issue_source: dict | None = None, *, bud
         value['issue_source'] = issue_source
     if budget is not None:
         value['budget'] = budget
+    if context is not None:
+        value['context'] = context
     return {**value, 'sha256': identity(value)}
+
+
+def selected_context(document: dict) -> dict:
+    """Read and bind explicit sources to their complete, inherited root resources.
+
+    This validates frozen identity only. Current validity belongs to first
+    publication; offline readers and recovery must never consult live stores.
+    """
+    from datetime import datetime
+
+    try:
+        context, composition = document['context'], document['composition']
+        if set(context) != {'project', 'base_manifest_digest', 'selection', 'resource_sha256'}:
+            raise ValueError('Invalid selected context fields')
+        root = composition['root']
+        prefix = 'assets/workflow-definitions/objects/' + root['digest'] + '/'
+        files = composition['manifest']['files']
+        raw = base64.b64decode(files[prefix + 'selected-context/selection.json']['content_base64'], validate=True)
+        if hashlib.sha256(raw).hexdigest() != context['resource_sha256']:
+            raise ValueError('Selected context resource digest changed')
+        saved = json.loads(raw)
+        if (set(saved) != {'schema_version', 'project', 'base_manifest_digest', 'base_root',
+                          'base_definition', 'selection', 'observed_at', 'memories', 'skills'}
+                or type(saved['schema_version']) is not int or saved['schema_version'] != 1
+                or any(saved[key] != context[key] for key in ('project', 'base_manifest_digest', 'selection'))):
+            raise ValueError('Selected context source differs from its envelope')
+        selection = saved['selection']
+        if set(selection) != {'root_version', 'memories', 'skills'} or not (selection['memories'] or selection['skills']):
+            raise ValueError('Selected context requires explicit source selections')
+        observed = datetime.fromisoformat(saved['observed_at'])
+        if observed.tzinfo is None or observed.utcoffset() is None:
+            raise ValueError('Selected context observation requires a timezone')
+        if [{'id': item['id'], 'revision': item['revision']} for item in saved['memories']] != selection['memories']:
+            raise ValueError('Frozen memories differ from their explicit selections')
+        if len({item['id'] for item in saved['memories']}) != len(saved['memories']):
+            raise ValueError('Frozen selected memories must be unique')
+        for item in saved['memories']:
+            if item['project'] != saved['project'] or item['status'] != 'active':
+                raise ValueError('Selected memory belongs to another project or was deleted')
+            if item.get('expires_at') is not None:
+                expiry = datetime.fromisoformat(item['expires_at'])
+                if expiry.tzinfo is None or expiry.utcoffset() is None or observed >= expiry:
+                    raise ValueError('Selected memory was expired when frozen')
+        if [{key: item[key] for key in ('name', 'digest', 'revision')} for item in saved['skills']] != selection['skills']:
+            raise ValueError('Frozen Skills differ from their explicit head selections')
+        if len({item['name'] for item in saved['skills']}) != len(saved['skills']):
+            raise ValueError('Frozen selected Skill names must be unique')
+        additions = [{'id': 'ergora-selected-context', 'kind': 'context', 'path': 'selected-context/selection.json',
+                      'sha256': context['resource_sha256']}]
+        for index, skill in enumerate(saved['skills']):
+            path = 'selected-context/skills/' + skill['name']
+            additions.append({'id': 'ergora-selected-skill-' + str(index), 'kind': 'skill',
+                              'path': path, 'digest': skill['digest']})
+            skill_prefix = prefix + path + '/'
+            inventory = {name.removeprefix(skill_prefix): {
+                'sha256': hashlib.sha256(base64.b64decode(value['content_base64'], validate=True)).hexdigest(),
+                'executable_bits': value['executable_bits']}
+                for name, value in files.items() if name.startswith(skill_prefix)}
+            digest = hashlib.sha256(json.dumps(dict(sorted(inventory.items())), sort_keys=True).encode()).hexdigest()
+            if inventory != skill['provenance']['files'] or digest != skill['digest']:
+                raise ValueError('Selected Skill complete directory differs from its frozen head')
+        base = saved['base_definition']
+        if (root['kind'] != 'workflow' or saved['base_root']['kind'] != 'workflow'
+                or base['id'] != root['id'] or base['id'] != saved['base_root']['id']
+                or base['version'] != saved['base_root']['version'] or base['version'] == selection['root_version']
+                or root['version'] != selection['root_version']):
+            raise ValueError('Selected context root differs from its original lineage')
+        derived = json.loads(base64.b64decode(files[prefix + 'workflow.json']['content_base64'], validate=True))
+        if derived != {**base, 'version': selection['root_version'], 'resources': base['resources'] + additions}:
+            raise ValueError('Selected context may only append resources and revise the root version')
+        return saved
+    except (KeyError, TypeError, ValueError, OverflowError) as error:
+        raise ValueError('Invalid frozen selected task context: ' + str(error)) from error
 
 
 def _binding(value: dict) -> None:
@@ -275,32 +351,34 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
     if document.get('kind') != _KIND and 'schema_version' not in document:
         return document, None
     fields = {'schema_version', 'kind', 'legacy_spec', 'composition', 'sha256'}
-    if document.get('schema_version') == 7 or (document.get('schema_version') in (8, 9, 10) and 'issue_source' in document):
+    if document.get('schema_version') == 7 or (document.get('schema_version') in (8, 9, 10, 11) and 'issue_source' in document):
         fields.add('issue_source')
-    if document.get('schema_version') in (9, 10):
+    if document.get('schema_version') in (9, 10, 11):
         fields.add('budget')
+    if document.get('schema_version') == 11:
+        fields.add('context')
     if (set(document) != fields
-            or type(document['schema_version']) is not int or document['schema_version'] not in (2, 3, 4, 5, 6, 7, 8, 9, 10)
+            or type(document['schema_version']) is not int or document['schema_version'] not in (2, 3, 4, 5, 6, 7, 8, 9, 10, 11)
             or document['kind'] != _KIND):
         raise ValueError('Unsupported formal task admission envelope')
     if document['sha256'] != identity({key: value for key, value in document.items() if key != 'sha256'}):
         raise ValueError('Formal task admission envelope digest mismatch')
     composition = document['composition']
     fields = {'manifest', 'root', 'preview_sha256', 'review_instance', 'members', 'diversity'}
-    if document['schema_version'] in (4, 5, 6, 7, 8, 9, 10):
+    if document['schema_version'] in (4, 5, 6, 7, 8, 9, 10, 11):
         fields.add('review_protocol')
-    if document['schema_version'] in (5, 6, 7, 8, 9, 10):
+    if document['schema_version'] in (5, 6, 7, 8, 9, 10, 11):
         fields.add('execution')
-    if document['schema_version'] in (8, 9, 10):
+    if document['schema_version'] in (8, 9, 10, 11):
         fields.add('preparation')
-    if document['schema_version'] == 10:
+    if document['schema_version'] in (10, 11):
         fields.add('native')
     if (not isinstance(composition, dict) or set(composition) != fields
-            or (document['schema_version'] in (4, 5, 6, 7, 8, 9, 10) and composition['review_protocol'] != 'dag-v1')):
+            or (document['schema_version'] in (4, 5, 6, 7, 8, 9, 10, 11) and composition['review_protocol'] != 'dag-v1')):
         raise ValueError('Invalid formal composition selection')
     manifest_identity(composition['manifest'])
     graph = manifest_graph(composition['manifest'])
-    requirements = document['schema_version'] in (3, 4, 5, 6, 7, 8, 9, 10)
+    requirements = document['schema_version'] in (3, 4, 5, 6, 7, 8, 9, 10, 11)
     if document['schema_version'] == 3 and graph['schema_version'] != 2:
         raise ValueError('Formal v3 admission requires a versioned review requirements graph')
     if graph['root'] != composition['root'] or graph['preview_sha256'] != composition['preview_sha256']:
@@ -336,7 +414,7 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
             raise ValueError('Formal composition requested binding differs from its frozen graph')
         _policy(member['policy'], member['mode'])
     diversity = composition['diversity']
-    if document['schema_version'] in (8, 9, 10):
+    if document['schema_version'] in (8, 9, 10, 11):
         preparation = composition['preparation']
         if (not isinstance(preparation, dict)
                 or set(preparation) != {'protocol', 'inventory', 'plan', 'mode', 'repository_paths', 'members'}
@@ -358,10 +436,10 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
             _binding(member['binding'])
             _binding(member['requested_binding'])
             _policy(member['policy'], member['mode'])
-    if document['schema_version'] in (5, 6, 7, 8, 9, 10):
+    if document['schema_version'] in (5, 6, 7, 8, 9, 10, 11):
         execution = composition['execution']
         if (not isinstance(execution, dict) or set(execution) != {'protocol', 'instance', 'assignments', 'mode', 'members'}
-                or execution['protocol'] != ('work-units-v2' if document['schema_version'] in (6, 7, 8, 9, 10) else 'work-units-v1')
+                or execution['protocol'] != ('work-units-v2' if document['schema_version'] in (6, 7, 8, 9, 10, 11) else 'work-units-v1')
                 or execution['mode'] != 'workspace-task-mcp'
                 or not isinstance(execution['assignments'], dict) or not isinstance(execution['members'], dict)):
             raise ValueError('Invalid formal work execution selection')
@@ -406,9 +484,9 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
             or (same and diversity['policy'] == 'require-distinct')
             or (same and diversity['policy'] == 'prefer-distinct' and not diversity.get('reason'))):
         raise ValueError('Formal composition diversity differs from its selected member backends')
-    if document['schema_version'] in (4, 5, 6, 7, 8, 9, 10):
+    if document['schema_version'] in (4, 5, 6, 7, 8, 9, 10, 11):
         review_members(composition)
-    if document['schema_version'] in (8, 9, 10):
+    if document['schema_version'] in (8, 9, 10, 11):
         # SKILL.md and ordinary resources are already complete inline text.
         # Other Skill files require the fixed MCP resource reader; naming an
         # attachment in a prompt is not byte delivery in text-only mode.
@@ -432,7 +510,7 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
         if document['legacy_spec']['request']['tracker'] != {
                 'kind': source['provider'], 'project': source['project'], 'issue_id': source['issue_id']}:
             raise ValueError('Formal issue source differs from its original native tracker')
-    if document['schema_version'] == 10:
+    if document['schema_version'] in (10, 11):
         from .native_six_stage import invocation
 
         native = composition['native']
@@ -441,10 +519,12 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
         selection = {**composition, 'native': {key: native[key] for key in ('protocol', 'instance')}}
         if native != invocation(graph, selection, document['legacy_spec']['request']['task_type']):
             raise ValueError('Native six-stage invocation differs from its frozen instance and ancestors')
-    if document['schema_version'] in (9, 10):
+    if document['schema_version'] in (9, 10, 11):
         from .reference_budget import validate_contract
 
         validate_contract(document['budget'], composition, document['legacy_spec'])
+    if document['schema_version'] == 11:
+        selected_context(document)
     return document['legacy_spec'], composition
 
 
@@ -485,7 +565,8 @@ def summary(document: dict) -> dict:
             **({'native': composition['native']} if 'native' in composition else {}),
             'members': composition['members'], 'diversity': composition['diversity'], 'runtime_supported': supported,
             **({'budget': document['budget']}
-               if document['schema_version'] in (9, 10) else {}),
+               if document['schema_version'] in (9, 10, 11) else {}),
+            **({'context': document['context']} if 'context' in document else {}),
             **({'issue_source': {'snapshot_sha256': document['issue_source']['sha256'],
                 'source': document['issue_source']['payload']['observation']['source'],
                 'native_id': document['issue_source']['payload']['observation']['issue']['native_id'],

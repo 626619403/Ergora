@@ -1,10 +1,10 @@
 # F10a 记忆有效期：独立需求审查
 
-日期：2026-11-14。固定基线 `f47cd50fcce600fba92f64aff73982012f6e31c9`，候选为其上的未提交工作树，包含新增计划／交付文件。按原始[具体合同](../plans/2026-11-14-memory-validity.md)和[F10 总计划](../plans/2026-11-14-evaluated-improvement.md)独立核对；未预设结论。源码初核后沿同一需求轴补核[最终交付](2026-11-14-memory-validity.md)及[证据摘要](evidence/2026-11-14-memory-validity.json)的实际原件，形成最终本地结论；固定发布及自己的 CI 另验。
+日期：2026-11-14。固定基线 `f47cd50fcce600fba92f64aff73982012f6e31c9`；源码初核候选为其上的未提交工作树，现固定发布 `a2899e84bc174c9abd331a7c9d01f7c7a63297ae`。按原始[具体合同](../plans/2026-11-14-memory-validity.md)和[F10 总计划](../plans/2026-11-14-evaluated-improvement.md)独立核对；未预设结论。源码初核后沿同一需求轴补核[最终交付](2026-11-14-memory-validity.md)及[证据摘要](evidence/2026-11-14-memory-validity.json)的实际原件，再核固定 Git 内容与发布回执；自己的 CI 另验。
 
 ## Compliance
 
-**最终本地需求审查 approve，实证 finding 0；固定发布及自己的 CI 待补核。** 没有发现需要提出修正的漏项、错误实现或越界功能。
+**最终本地及固定发布需求审查 approve，实证 finding 0；自己的 CI 待补核。** 没有发现需要提出修正的漏项、错误实现或越界功能。
 
 |核对范围|源码／调用路径与结论|
 |---|---|
@@ -29,7 +29,7 @@
 - Node 对实际 `memory.js` 配轻量 DOM 替身执行，逆序读取和脱离视图后的结果均被丢弃；这不等同真实浏览器旅程或视觉验收。
 - 首次探针所用系统 Python 缺 FastAPI，未执行行为检查；改用已有候选环境通过，未安装依赖。首轮 fence 探针误将空表 DELETE 无操作当成写入，修正为实际行写入后通过；这是探针假设修正，未发现产品失败。
 
-本审查未改源码、测试或 Git 状态，未安装、运行完整 suite 或外部写入；只写本报告。
+本审查未改源码、测试，未安装、重跑完整 suite、提交、推送或外部写入；只写本报告。
 
 ## 最终本地证据补核
 
@@ -41,6 +41,14 @@
 - 原浏览器脚本及结果覆盖实际 loopback HTTP 的目录／检索逆序、切项目后旧历史、切 tab 后旧目录三场景；没有把 DOM 替身结果冒称真实 HTTP 验收。独立目视1440／960／390目录与更正表单六截图，状态／判定时刻／期限及操作可读，无 document 横溢；原测量及 console 0 error／0 warning相符。原 monitor 按 stop 文件收尾；补核时原 web service 进程及浏览器 daemon 不在，loopback端口已关闭。
 - 原 `ergora-structure-review` 模板调用实际 succeeded／approve，34.835秒。直接从 prompt 提取10个完整文件，215,539B及各 SHA 与 packet index 相同；原 prompt 与实际 stdin 逐字相等，3份继承资源全文均在其中，input digest相符。prompt SHA256 `59c8e13c39be76e08dab3faeb7aecd5510395b61598fa1fa043f6febf2a6cbe9`，原结果 SHA256 `700c49fdba308eab776980f85097f5c379a21d121aa488a666f20c7c26f87d29`。这是用户授权的 Codex 回退自身模板审查，不称异后端或独立验收；其当时尚待页面／独立审查的范围没有被改写。
 
+## 固定发布补核
+
+固定候选 `a2899e84bc174c9abd331a7c9d01f7c7a63297ae` 的唯一父提交为原基线。逐件以 `git show` 读取其23个改动 blob，实际 bytes／SHA 与最终 static 清单全部一致；不以工作树后补文档替代固定候选。五产品聚合仍为上述 `d716290c…`，九个产品／测试路径的原字节聚合为 `6332c1c2233bbe6d80d53772c6e2d91300fd05a696b4f69f1cf6271e7352e62c`；固定 Git 的全部575产品逐字等于已验 r1 wheel／安装／构建快照，原功能、回归和失败范围保持。
+
+固定提交的公开证据 JSON 含原86引用，全部 bytes／SHA 再核一致；工作树后补为90项，其中原86项结构完全相同，另4项仅为 static／commit／push／ref 发布回执，并已核其原件 bytes／SHA。固定计划中的 F10b接缝仍明确仅设计，不当成已交付功能。
+
+原 commit、普通 push 与完整 `ls-remote` 回执均 exit 0，push无强推参数；记录的完整远端 `refs/heads/refactor/architecture-foundations` 为上述40位候选。结论绑定这些原回执的时刻，本轮没有网络查询或外部写入。固定发布结论 approve、开放 finding 0；本需求轴至此停止写入，自己的 CI 由原结构轴另行终核，不推断在途 CI 终态。
+
 ## 待补核
 
-自己的固定发布／精确远端及必要 CI、Windows 原生仍待；C3 CI 只解除前置依赖，不代表本候选 CI。ReMe 外部部署、不能撤销的旧 reader／缓存、未来有效保证均不在已验范围。F10b 正式 Task 冻结、F9d 完整旅程、真实 GPU／训练／质量／性能分别保留，不由本地审查通过关闭。
+自己的必要 CI、Windows 原生仍待；C3 CI 只解除前置依赖，不代表本候选 CI。ReMe 外部部署、不能撤销的旧 reader／缓存、未来有效保证均不在已验范围。F10b 正式 Task 冻结、F9d 完整旅程、真实 GPU／训练／质量／性能分别保留，不由本地及固定发布审查通过关闭。

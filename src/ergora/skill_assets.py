@@ -7,13 +7,13 @@ import re
 import shutil
 import tempfile
 
-import yaml
-
 from .state import State, file_lock, now
 from .asset_trees import digest_tree
 
 
 def metadata(directory: Path) -> dict:
+    import yaml
+
     text = (directory / "SKILL.md").read_text(encoding="utf-8-sig")
     if not text.startswith("---\n") or "\n---\n" not in text[4:]:
         raise ValueError("SKILL.md requires YAML frontmatter")
@@ -31,12 +31,15 @@ def metadata(directory: Path) -> dict:
     return {"name": name, "description": description}
 
 
-def versions(state: State, project_id: str) -> dict:
+def versions(state: State, project_id: str, *, heads_only: bool = False) -> dict:
     state.project(project_id)
     with state.connect() as db:
+        active = [dict(row) for row in db.execute("SELECT * FROM skill_heads WHERE project=?", (project_id,))]
+        if heads_only:
+            return {"active": active}
         return {"versions": [json.loads(row[0]) for row in db.execute(
                     "SELECT document FROM skill_versions WHERE project=? ORDER BY rowid DESC", (project_id,))],
-                "active": [dict(row) for row in db.execute("SELECT * FROM skill_heads WHERE project=?", (project_id,))],
+                "active": active,
                 "history": [json.loads(row[0]) for row in db.execute(
                     "SELECT document FROM skill_events WHERE project=? ORDER BY rowid DESC", (project_id,))]}
 

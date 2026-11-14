@@ -570,3 +570,18 @@ class NativeSixStageWorkflow(BudgetedWorkflow):
     async def run(self, document: dict) -> dict:
         outcome = await super().run(document)
         return {**outcome, 'native_invocation': self.admission['composition']['native']}
+
+
+class SelectedContextAdapter(NativeSixStageAdapter):
+    envelope_version = 11
+
+
+@workflow.defn(name='ErgoraCompositionWorkflowV11')
+class SelectedContextWorkflow(NativeSixStageWorkflow):
+    """Retain the original native lifecycle for explicitly frozen sources."""
+
+    envelope_version = 11
+
+    @workflow.run
+    async def run(self, document: dict) -> dict:
+        return await super().run(document)

@@ -1,12 +1,12 @@
 # F10a 记忆有效期：独立结构审查
 
-日期：2026-11-14。审查者：fresh-context `memory_validity_structure_review`；未继承实现对话。固定基线为 `f47cd50fcce600fba92f64aff73982012f6e31c9`，审查对象为其上的未提交 F10a 工作树。依据 [原合同](../plans/2026-11-14-memory-validity.md)、`AGENTS.md`、本地 `maintainable-project-delivery`（含 independent-review brief）及 `codebase-design`。本审查仅写本报告；未修改源码、安装、执行外部写入或提交。
+日期：2026-11-14。审查者：fresh-context `memory_validity_structure_review`；未继承实现对话。固定基线为 `f47cd50fcce600fba92f64aff73982012f6e31c9`，首审对象为其上的未提交 F10a 工作树，随后固定发布身份见文末补核。依据 [原合同](../plans/2026-11-14-memory-validity.md)、`AGENTS.md`、本地 `maintainable-project-delivery`（含 independent-review brief）及 `codebase-design`。本审查仅写本报告；未修改源码、安装、执行外部写入或提交。
 
 ## 分轴结论与范围
 
-- **Compliance：最终本地 approve。** 有效期、继承／明确清除／恢复、默认有效列表、显式目录、ReMe 在途过滤及 schema v5 的职责符合原合同；最终安装、实际旅程、自身模板与收尾原件已由本轴补核。未发现需要源码修复的实证 finding。精确发布及自己的CI尚待，不能据此关闭发布验收。
-- **Maintainability：最终本地 approve。** 语义集中于原 memory／State owner；未引入第二记忆权威、调度器、插件 seam、新依赖或额外表。新增函数／局部辅助有实际调用或明确的内聚职责；最终产品与源码审查身份相同。必要性能静态检查未发现新增阻塞项；不代表规模性能实测。
-- 当前开放 finding **0**；本片精确发布／自己的CI待补核，Windows原生尚未作为本候选通过范围。
+- **Compliance：最终本地、固定发布及自己的CI终核 approve。** 有效期、继承／明确清除／恢复、默认有效列表、显式目录、ReMe 在途过滤及 schema v5 的职责符合原合同；最终安装、实际旅程、自身模板与收尾原件已由本轴补核，固定候选及完整Ref与已验产品一致。自己的CI43542024437已由官方原件确认Success；未发现需要源码修复的实证 finding。
+- **Maintainability：最终本地、固定发布及自己的CI终核 approve。** 语义集中于原 memory／State owner；未引入第二记忆权威、调度器、插件 seam、新依赖或额外表。新增函数／局部辅助有实际调用或明确的内聚职责；固定发布产品与源码审查身份相同，原CI分组及必要步骤完整通过。必要性能静态检查未发现新增阻塞项；不代表规模性能实测。
+- 当前开放 finding **0／0**；Windows原生回归及PowerShell安装升级仅在本候选workflow所定义CI范围内通过，其它未验界限保持。
 
 直接审查五份生产文件 `src/ergora/{memory,state,cli,web}.py`、`src/ergora/data/console/memory.js`，四份回归 `tests/test_{memory,state_migrations,state_backups,web}.py`，以及 F10a 新计划／交付、F10 总计划、`docs/PLAN.md`、使用手册和当前架构。读取邻接的 `agent_runs.py`、控制台 `app.js`／`api.js`／`ui.js`、CI 分组和迁移／备份调用。C3 文档变化仅作为上一片发布账补核识别，不在本片产品行为结论内。
 
@@ -69,3 +69,38 @@ ReMe search（203–221行）保留请求前 revision 集合，请求后重读�
 **自身原模板。** 用最终安装的只读 `inspect_input` 对原prepared input及实际run input重新编译／校验，两者均为摘要 `ee3a6d7153ba7abd697c98c909628af9dacc7f80c7b30fa7615ad035127cdf7c`。10份完整文件215,539B分别与构建快照／packet-index的大小和SHA相符，全部原字节位于task，完整task位于prompt。root及root/review的全部三项祖先／叶resources位于实际stdin，prompt与stdin逐字相同；prompt SHA `59c8e13c39be76e08dab3faeb7aecd5510395b61598fa1fa043f6febf2a6cbe9`，实际run结果与保留original-result逐字相同，结果SHA `700c49fdba308eab776980f85097f5c379a21d121aa488a666f20c7c26f87d29`，decision approve。原34.835秒调用binding为Codex，授权fallback记录明确，未计作异后端或替代本独立轴。其输入文档保留当时尚未完成UI／独立评审的状态；生产文件与最终候选相同，没有把历史模板输出扩大为后续旅程实测。
 
 最终本地补核未产生新的compliance或maintainability finding，开放 **0／0**。可继续本片普通发布与精确远端、自己的必要CI核对；此时发布／CI尚未发生，C3的CI成功不用于本候选。ReMe外部部署、Windows原生、规模性能、GPU／训练／质量、正式Task新冻结及后续真实业务采用继续保持未验范围。
+
+## 同轴固定发布补核（2026-11-14）
+
+固定候选为 `a2899e84bc174c9abd331a7c9d01f7c7a63297ae`，唯一父提交为原基线 `f47cd50fcce600fba92f64aff73982012f6e31c9`。本次只读本地Git对象及四份发布原件，不执行网络查询或外部写入。直接取固定提交的23份变化Git blob，文件集合、大小与SHA全部吻合static-final清单；固定提交diff空白检查通过。九份源码／测试聚合重算为 `6332c1c2233bbe6d80d53772c6e2d91300fd05a696b4f69f1cf6271e7352e62c`，五份生产聚合仍为 `d716290cb8293ae4f34e152f37cda0186e65eb2bfe13c2fbbf8d85bca6eb24db`。
+
+从固定提交归档读取完整575份产品，文件集合及原字节再次与原r1 wheel、安装和构建源码快照逐一相同；没有用工作树后补内容代替候选。固定提交公开JSON仍为86原引用，逐条读取原件后大小／SHA全部相符。工作树后补公开JSON为90引用，新增仅static-final／commit／push／ref四份发布原件，四项也分别核对相符；二者计数与所处阶段分别保留。
+
+commit原件记录普通提交退出0；push原件为普通 `push` 当前开发分支、退出0、记录 `f47cd50..a2899e8`；ref原件退出0且完整分支Ref为 `a2899e84bc174c9abd331a7c9d01f7c7a63297ae`。这支持原查询时刻的固定发布身份，不宣称补核时又作远端查询。固定workflow已用 `git show` 读取，自己的CI尚无终态；未把C3终态或当前工作树状态计作本候选CI成功。
+
+固定发布身份compliance／maintainability **approve，开放0／0**。原旧writer／旧reader限制、首basic失败后同一记录复合续接、真实ReMe部署及其它未验范围全部保持。本次写入到此结束；待自己的CI终态后由同轴继续补核。
+
+## 同轴固定候选CI终核（2026-11-14）
+
+固定候选仍为 `a2899e84bc174c9abd331a7c9d01f7c7a63297ae`；只审查其自己的[Portability run 43542024437](https://github.com/626619403/Ergora/actions/runs/43542024437)。当前工作树已进入F10b，本次不以当前源码／测试或后补文档替代固定候选。未联网、下载日志或artifact，未运行产品／测试；仅离线读取官方HTML／UI JSON原件、本地Git固定对象，并修改本报告。
+
+直接复核 **11组**原始receipt与body：run首样本r1、run终态r5、job batch r1及下表八个job终态样本。每组HTTP200，请求URL／最终URL均为本run的精确官方路径，body大小和SHA逐字相符。run终态r5为213,402B，SHA `e1813d85c05aa88a5a25ccf5238d54ff2141f79b8bee9e6ef61f1af4270af009`，页面Status为 **Success**，含固定候选完整commit链接。`ci-observation-r5.json` 的SHA为 `b255c35c7570781e35002f33893e4a1caba005ee7a05b976b2110a51195d373d`，其投影逐项与原HTML独立解析结果相同。
+
+首run样本完整SHA与 `ci-ui-metadata-r1` 所记首样本hash相符；UI batch原JSON为8个互异job、`totalCount=8`／`hasMore=false`，id／name／href与metadata逐条相同，各href均归属同一run。最初metadata的部分in_progress状态保留为历史；最终成功依据是下表各终态HTML，未把历史状态改写为终态。
+
+|固定job|Job ID|采用终态样本|必要步骤|
+|---|---|---|---|
+|plan|132284514917|r1|1|
+|Linux group 0|132284555262|r1|4|
+|Linux group 1|132284555258|r2|4|
+|Linux group 2|132284555239|r2|4|
+|Linux group 3|132284555261|r1|4|
+|Linux group 4|132284555179|r1|4|
+|Linux group 5|132284555197|r2|4|
+|Windows all|132284555215|r5|5|
+
+八job页面均显示succeeded／completed successfully。直接解析的 **30个必要步骤**全部为success，有开始／完成时间且顺序合法，均有 `data-job-completed` 标记；每条日志路径均逐字绑定 `/commit/a2899e84bc174c9abd331a7c9d01f7c7a63297ae/checks/<本job ID>/logs/<本step编号>`，未借其它候选或其它run。必要步骤为plan读取分组、七个native job各自构建安装／参考身份／回归／上传，以及Windows额外PowerShell 5.1安装升级。
+
+用 `git show` 读取固定workflow、groups、runner及pytest分组插件。workflow SHA为 `ec2816e893c25ff3a7f96513e677bdf53f42d90b3cd79fe585e474a27c0121b2`，groups SHA为 `a962cf6f6445c57720f4a18c6043a93ee43736d83e959873eb664d7ec88666f0`。固定workflow要求plan＋Linux 3.11六分组＋Windows 3.12全选择，正好八job／30必要步骤。84个配置文件均在固定Git树中存在且各分配一次，覆盖80份应用suite与Linux路径选取的四份upstream suite；各组分别12／13／13／14／12／20文件。F10a的memory／迁移在group0、HTTP在group1、backup在group5；Windows使用all，PowerShell额外步骤确实success。这里的覆盖指固定runner／分组的配置覆盖，不凭HTML推定具体测试通过／跳过数量。
+
+CI终核 **approve，compliance／maintainability开放0／0**；原本待核的本候选CI终态条件已满足。公共CI状态与引用可按上述原件补账，不更改固定提交的原86引用身份。未下载或逐行验证CI日志／artifact／JUnit，故不主张其具体内容或各suite计数；也不扩展成其它Windows手动旅程、外部ReMe、GPU／训练／质量／规模性能或F10b成功。旧reader不可撤销、停止旧进程升级及首basic失败后的复合续接界限继续保持。本轴到此完成并停止写入。

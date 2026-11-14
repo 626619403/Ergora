@@ -295,7 +295,7 @@ def parser() -> argparse.ArgumentParser:
         operation.add_argument("--revision", type=int, required=True)
         if name == "create":
             operation.add_argument("--preview-sha256", required=True)
-            operation.add_argument("--prepare-sha256", help="Required for a budgeted v5 task's original authorization")
+            operation.add_argument("--prepare-sha256", help="Required for a budgeted v5–v7 task's original authorization")
     for name in ("preparation", "creation", "resume-create"):
         operation = operations.add_parser(name)
         operation.add_argument("project")

@@ -31,7 +31,8 @@ if '--model' in sys.argv and sys.argv[sys.argv.index('--model') + 1] in ('fixtur
     subprocess.Popen([sys.executable, '-c', child], stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     time.sleep(40)
     raise SystemExit(2)
-if '"kind": "formal-preparation-materials"' in prompt or ('decision' not in schema['required'] and '"kind": "formal-work-materials"' in prompt):
+if ('"selected_context": {' in prompt or '"kind": "formal-preparation-materials"' in prompt
+        or ('decision' not in schema['required'] and '"kind": "formal-work-materials"' in prompt)):
     import asyncio
     from ergora import task_mcp
 
@@ -40,7 +41,7 @@ if '"kind": "formal-preparation-materials"' in prompt or ('decision' not in sche
     server = {key.removeprefix('mcp_servers.ergora_task.'): value for key, value in settings.items()
               if key.startswith('mcp_servers.ergora_task.')}
     server = {key: value for key, value in server.items() if key in ('command', 'args', 'env')}
-    if '"kind": "formal-preparation-materials"' in prompt and 'fixture-unread-inventory' not in sys.argv:
+    if '"selected_context": {' in prompt or ('"kind": "formal-preparation-materials"' in prompt and 'fixture-unread-inventory' not in sys.argv):
         import runpy
 
         read_all = runpy.run_path(str(Path(__file__).with_name('full_stage_resources.py')))['read_all']

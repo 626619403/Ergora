@@ -78,8 +78,9 @@ async def exercise(root, case, app, activities, adapter, installation, state, ru
         leaf = next(node for node in prepared['composition']['instances'] if node['path'] == call_record['member'])
         assert invocation['status'] == 'succeeded' and invocation['binding'] == call_record['selection']['binding']
         assert all(resource['text'] in prepared['prompt'] for resource in leaf['resources'])
+        parts = call_record['member'].split('/')
         assert {source['instance'] for resource in leaf['resources'] for source in resource['sources']} == {
-            'root', 'root/preparation', 'root/preparation/' + stage}
+            '/'.join(parts[:index]) for index in range(1, len(parts) + 1)}
         assert (prepared['prompt'].encode() == (folder / 'input/prompt.txt').read_bytes()
                 == (Path(invocation['output']) / 'stdin.txt').read_bytes())
         files = materials['repository']['starting']['files']
@@ -112,7 +113,7 @@ async def exercise(root, case, app, activities, adapter, installation, state, ru
     app.approved_plan = {'plan_sha256': plan_sha, 'receipt': plan, 'approval': authorization}
     result = await original_work(root, 'materials-issue-source' if case == 'issue-source' else 'materials', app, activities,
         installation, state, runtime, requests, records)
-    if case == 'budget':
+    if case in ('budget', 'context'):
         instance = app.admission['budget']['instance']
         owners = [runtime / 'workspaces/task-1/jobs' / receipt['job_id'] / 'budget' for receipt in records.values()]
         attempts = [read(owner / 'model-attempt.json') for owner in owners if (owner / 'model-attempt.json').exists()]
@@ -122,4 +123,29 @@ async def exercise(root, case, app, activities, adapter, installation, state, ru
         assert all(read(owner / 'stopped.json')['cleanup_confirmed'] is True
                    and read(owner / 'collection-stopped.json')['cleanup_confirmed'] is True for owner in owners)
         result.update(budget_job_owners=len(owners), original_model_slot_attempts=len(attempts))
+    if case == 'context':
+        from ergora import memory, skill_assets, task_envelopes
+
+        frozen = task_envelopes.selected_context(app.admission)
+        assert memory.records(state, 'demo') == []
+        assert skill_assets.versions(state, 'demo')['active'][0]['revision'] == 2
+        calls = []
+        for stage, receipt in records.items():
+            if stage in ('integrate', 'verify'):
+                continue
+            folder = runtime / 'workspaces/task-1/jobs' / receipt['job_id'] / 'selected-agent'
+            invocation = read(runtime / 'workspaces/task-1/jobs' / receipt['job_id'] / 'output/selected-agent/invocation.json')
+            prepared = workflows.inspect_input(folder / 'input', material=True)
+            materials = read(folder / 'materials.json')
+            assert materials['selected_context'] == app.admission['context']
+            assert frozen['memories'][0]['text'] in prepared['prompt']
+            assert prepared['prompt'].encode() == (Path(invocation['output']) / 'stdin.txt').read_bytes()
+            artifact = next(item for item in receipt['artifacts'] if item['name'] == 'composition-resource-coverage')
+            coverage = read(runtime / 'artifacts' / artifact['path'])['attachments']
+            selected = [item for uri, item in coverage.items() if '/selected-context/skills/' in uri]
+            assert selected and all(item['covered_bytes'] == item['size'] for item in selected)
+            calls.append(stage)
+        assert len(calls) == len(app.admission['budget']['slots'])
+        result.update(selected_context_calls=calls, canonical_changed_after_intent=True,
+                      original_input_sha256=task_envelopes.identity(app.admission))
     return {**result, 'case': case, 'complete_preparation': True}

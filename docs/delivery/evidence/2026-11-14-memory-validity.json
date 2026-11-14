@@ -2,7 +2,7 @@
   "slice": "F10a memory validity",
   "baseline": "f47cd50fcce600fba92f64aff73982012f6e31c9",
   "at": "2026-11-14T01:35:47.703462+00:00",
-  "implementation": "Final local acceptance complete; fresh-context requirements and structure approve with zero open findings; publication and own CI pending.",
+  "implementation": "Fixed candidate published; fresh-context requirements/structure approve with zero open findings; own CI terminal success and original structure-axis CI supplement approve.",
   "products": {
     "src/ergora/cli.py": {
       "bytes": 77755,
@@ -43,7 +43,7 @@
     "skipped": 7,
     "pytest_seconds": 48.96,
     "monitor_seconds": 50.538232737220824,
-    "scope": "Installed original7 suites, Linux run; native Windows awaits own CI."
+    "scope": "Installed original7 suites, Linux run. Own fixed-candidate CI separately confirms Windows all group and PowerShell installer/upgrade step success; no downloaded-log test-count claim."
   },
   "actual_journey": {
     "upgrade": "Fixed original v4 State source and real schema upgrade: original memory rows and pre-migration v4 backup rows unchanged; old reopen/write refused, existing reader remains possible. Actual new CLI explicit expiry/omitted correction/clear/restore/search and original offline backup verify restore.",
@@ -79,15 +79,28 @@
     "Old open SQLite reader/cache cannot be revoked; stop old processes before v5 upgrade.",
     "ReMe projection remains eventual, no external hosted ReMe-deployment claim.",
     "Formal Task selected memory/Skill freezing belongs to F10b. No GPU/training/quality/performance/adoption claim.",
-    "Native Windows and publication own CI not yet accepted for this candidate."
+    "Native Windows supported suite and installer/upgrade step succeeded in own CI; no native Windows browser or formal Task context execution claim."
   ],
   "independent_review": {
-    "requirements": "Fresh-context final local approve, zero findings; independently checked all86 raw references and installed/runtime scope",
-    "structure": "Fresh-context final local approve, zero findings; independently checked all86 raw references and installed/runtime scope"
+    "requirements": "Fresh-context final local approve, zero findings; independently checked all86 raw references and installed/runtime scope; original-axis fixed-publication approve0/0",
+    "structure": "Fresh-context final local approve, zero findings; independently checked all86 raw references and installed/runtime scope; original-axis fixed-publication and own-CI final approve0/0"
   },
   "publication": {
-    "state": "pending",
-    "own_ci": "pending"
+    "state": "pushed",
+    "candidate": "a2899e84bc174c9abd331a7c9d01f7c7a63297ae",
+    "verified_git_blobs": 23,
+    "ordinary_push": true,
+    "full_remote_ref_matches": true,
+    "own_ci": {
+      "run_id": 43542024437,
+      "url": "https://github.com/626619403/Ergora/actions/runs/43542024437",
+      "candidate": "a2899e84bc174c9abd331a7c9d01f7c7a63297ae",
+      "status": "Success",
+      "jobs": 8,
+      "required_steps": 30,
+      "original_structure_review": "approve; open compliance0/maintainability0",
+      "scope": "Stored official unauthenticated HTML, exact commit links and full SHA step log paths. Job IDs/names are from the exact current run UI JSON batch, bound to full SHA via original step log URLs; Earlier session API limitations are separate; this slice uses official UI HTML directly. No REST or artifact archive download claim."
+    }
   },
   "raw_evidence": {
     "private_base": ".ergora/checks/memory-validity/",
@@ -521,7 +534,150 @@
         "path": "self-review-r1-codex/state/runs/a8c37a9d5d8c42febb47ad7466ba2ca0/stdin.txt",
         "bytes": 220305,
         "sha256": "59c8e13c39be76e08dab3faeb7aecd5510395b61598fa1fa043f6febf2a6cbe9"
+      },
+      {
+        "path": "static-final-r1.json",
+        "bytes": 5001,
+        "sha256": "6f3f02902efd543df61aeb4e0aa039259e14cb43976b3d64018f716a13654e14"
+      },
+      {
+        "path": "commit-r1.json",
+        "bytes": 969,
+        "sha256": "74f58455d3db398dd6354adc42539fd2a3b39afdad43d8f03657756a9d6a9838"
+      },
+      {
+        "path": "push-r1.json",
+        "bytes": 749,
+        "sha256": "66b6474dc8cdfec081cbf07fa2f51181eacba044516117fa82550c55b89b15dd"
+      },
+      {
+        "path": "ref-r1.json",
+        "bytes": 737,
+        "sha256": "78409295da41bc054f0a60c2405ef5ee61a601d7c2000370939af40dd3e0a109"
       }
-    ]
+    ],
+    "ci_references": [
+      {
+        "path": "ci-observation-r5.json",
+        "bytes": 13357,
+        "sha256": "b255c35c7570781e35002f33893e4a1caba005ee7a05b976b2110a51195d373d"
+      },
+      {
+        "path": "ci-ui-metadata-r1.json",
+        "bytes": 2119,
+        "sha256": "7b12e7a9d0ffb7a43182cee1d86cc54da05f12a5d8f7dc16055cf89ab6c12831"
+      },
+      {
+        "path": "ci-run-html-r1/page.html",
+        "bytes": 159066,
+        "sha256": "c43e10e9be59e00a362348b41ae78c23b07fa101852bade2351672b7bd396dec"
+      },
+      {
+        "path": "ci-run-html-r1/receipt.json",
+        "bytes": 5958,
+        "sha256": "1d68c7baeddd38349e0234bc56918aebad91290d963d985cfbf25c5c9a9ce2ba"
+      },
+      {
+        "path": "ci-run-html-r5/page.html",
+        "bytes": 213402,
+        "sha256": "e1813d85c05aa88a5a25ccf5238d54ff2141f79b8bee9e6ef61f1af4270af009"
+      },
+      {
+        "path": "ci-run-html-r5/receipt.json",
+        "bytes": 5969,
+        "sha256": "5dc27325161746ee46fc87a9b292af557c887dc7db2e5cd025363ca191401bb0"
+      },
+      {
+        "path": "ci-job-batch-r1/body.json",
+        "bytes": 2715,
+        "sha256": "17b33798cd80aa53f7d35b7e8a2ff9485041e45a3ae7650a801e9f6deff6595c"
+      },
+      {
+        "path": "ci-job-batch-r1/receipt.json",
+        "bytes": 766,
+        "sha256": "90cf93f08d843fa89460e286db215abdfd3a10ab87f2f376d4d51fcb69a57b1f"
+      },
+      {
+        "path": "ci-job-132284514917-html-r1/page.html",
+        "bytes": 158941,
+        "sha256": "4147e62a417769ffba05d43d4dfac705887c488515ae5f8debfe9b100e3b2d27"
+      },
+      {
+        "path": "ci-job-132284514917-html-r1/receipt.json",
+        "bytes": 6002,
+        "sha256": "4af0408ccbc7c1b978086efbc1bb64852cb0b520a48b8fbe6e79d2bd9973b27a"
+      },
+      {
+        "path": "ci-job-132284555262-html-r1/page.html",
+        "bytes": 162632,
+        "sha256": "f542d4626a2c6c61c30346243a0c82e7c79b416e61f4870ae24f5156352d6de9"
+      },
+      {
+        "path": "ci-job-132284555262-html-r1/receipt.json",
+        "bytes": 6005,
+        "sha256": "d9c58da1099bca347049fd9b41499f7c202531653b36f8f15896a88b03063652"
+      },
+      {
+        "path": "ci-job-132284555258-html-r2/page.html",
+        "bytes": 162632,
+        "sha256": "fc4485395d9f9d36d34186db66aab88ec94c07c427d79a5fb58ce542b959e440"
+      },
+      {
+        "path": "ci-job-132284555258-html-r2/receipt.json",
+        "bytes": 5993,
+        "sha256": "bbc1d047a558c5950e47b8a445341c9b865bd914d4f45baf8fd8ecd7996ca297"
+      },
+      {
+        "path": "ci-job-132284555239-html-r2/page.html",
+        "bytes": 162632,
+        "sha256": "5f2c044dba4051b6332615d8518e48b95b5a909d2fba9935024d92b04ead2aba"
+      },
+      {
+        "path": "ci-job-132284555239-html-r2/receipt.json",
+        "bytes": 6001,
+        "sha256": "021efa787c7d044d73716b8510cb0070a72bbda260bcbcebcb252a51d1ba7ba8"
+      },
+      {
+        "path": "ci-job-132284555261-html-r1/page.html",
+        "bytes": 162632,
+        "sha256": "3ba22369c56213430f9469426618dd9de2ac78ea6e7e37afebe1275213c806a6"
+      },
+      {
+        "path": "ci-job-132284555261-html-r1/receipt.json",
+        "bytes": 6001,
+        "sha256": "db693d900eeabc18bf487516874a3b7a88a205b212c0b45749f5a6ca1566aab2"
+      },
+      {
+        "path": "ci-job-132284555179-html-r1/page.html",
+        "bytes": 162636,
+        "sha256": "8f741179beab7cfa472d56dae2299d494c90aaf9531c367af4366c6222577bbd"
+      },
+      {
+        "path": "ci-job-132284555179-html-r1/receipt.json",
+        "bytes": 5999,
+        "sha256": "00e0c2d0dc7a6465a5671a15a478667a61fd5de2cc97ff26b7326240c5e413a5"
+      },
+      {
+        "path": "ci-job-132284555197-html-r2/page.html",
+        "bytes": 162632,
+        "sha256": "889ac1d4d4217fe71a602738819c9b9a212d2d344995e0bae564bac00a063158"
+      },
+      {
+        "path": "ci-job-132284555197-html-r2/receipt.json",
+        "bytes": 5995,
+        "sha256": "c8a9e584539dd8d169802fef08e8643912551c400762d70ac7c331b1c48bd4ca"
+      },
+      {
+        "path": "ci-job-132284555215-html-r5/page.html",
+        "bytes": 160213,
+        "sha256": "3bf07155f570bd8c055d43a803f4761242a0a59705dbe9900def8478d041b860"
+      },
+      {
+        "path": "ci-job-132284555215-html-r5/receipt.json",
+        "bytes": 5991,
+        "sha256": "996c5616f6f8bcae70f260cd19a871862a95b51dcf27be5e39187f6f8d1e64a8"
+      }
+    ],
+    "reference_scope": "Fixed publication retained86 local references; later publication supplement4 (90 references above), then CI references separately below. No rewriting fixed-candidate evidence identities."
   }
 }

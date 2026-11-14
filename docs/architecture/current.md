@@ -345,3 +345,23 @@ flowchart LR
 ```
 
 `NativeSixStageWorkflow`继承BudgetedWorkflow，只为原status/outcome追加`native_invocation`；没有新的父执行状态、调度或批准。单实例内部的准备/工作/审查仍沿原阶段消费者；多次native、额外父分支和未执行外部输入在原prepare内失败。完整用法见[单实例说明](../USAGE.md#将六阶段作为一个子模板调用)。
+
+## 显式项目来源 input11
+
+definition7在definition6上要求项目内当前记忆revision与活动Skill head的显式选择。`task_context`复用memory catalog、Skill版本／head和原定义库，在监督准备目录内复制原manifest，通过`DefinitionLibrary.revise`为同id新根追加来源context与完整Skill目录，再由原manifest／逐叶输入准入。根其余字段、节点引用、成员路径、grant与limits保持；祖先read、同名Skill和附件连续读取不能绕过。临时树沿原prepare scratch清理，完整成果进入原prepared／intent，不产生第二资源或记忆库。
+
+`task_envelopes`以标准库核来源资源SHA、精确选择、原根与派生根差异、完整Skill目录身份；`SelectedContextInput`通过原stage_material接口交付来源指针，正文和SKILL.md沿原祖先资源内联，附件沿原MCP list/read。input11继承input10的预算、job、准入和证据接口，仅注册自己的版本队列／请求根与原workflow子类。
+
+```mermaid
+flowchart LR
+  Selection[明确选择当前记忆 / 活动Skill] --> Preparation[原预算监督准备]
+  Original[已选完整manifest] --> Preparation
+  Preparation --> Resources[同id新根 / 追加完整资源]
+  Resources --> Frozen[原prepared / 完整预览]
+  Frozen --> Check[原SQLite写预留与task锁 / 核当前来源]
+  Check --> Intent[原持久creation intent]
+  Intent --> Stages[原库存 / 计划 / work / review]
+  Intent --> Recovery[按原SHA恢复 / 不再选资料]
+```
+
+首次intent保存前核canonical有效性和完整来源，预览后变更拒绝；已经持久化intent的恢复不重新读活动资料，不热换或撤销归档。schema v5没有新增表或迁移。用法见[显式选择](../USAGE.md#为正式任务选择项目记忆与活动-skill)，实际验收与未验范围见[F10b交付](../delivery/2026-11-14-task-context-selection.md)。

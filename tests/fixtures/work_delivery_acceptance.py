@@ -116,8 +116,43 @@ def prepare(root, state, task_input, kind, examples, mode):
                  'fixture-capacity-inventory' if mode.endswith('-capacity') else 'fixture-complete-inventory')
         definition['composition']['backend_overrides']['root/preparation/inventory'] = {
             'binding': {'tool': 'codex', 'model': model}, 'reason': 'Deterministic complete-material protocol fixture'}
-        if mode.endswith('-budget'):
+        if mode.endswith(('-budget', '-context')):
             definition.update(schema_version=5, budget={'wall_seconds': 180, 'cleanup_seconds': 15, 'model_invocations': 7})
+        if mode.endswith('-context'):
+            from pathlib import Path
+            import shutil
+            from ergora import memory, skill_assets
+
+            parent = root / 'native-context-parent'
+            shutil.copytree(examples / 'composition/native-development', parent)
+            document = json.loads((parent / 'workflow.json').read_bytes())
+            child = workflows.get(state, identity, version)
+            document['nodes'][0]['ref'].update(id=identity, version=version, digest=child['digest'])
+            (parent / 'workflow.json').write_text(json.dumps(document))
+            workflows.import_bundle(state, parent)
+            manifest = workflows.prepare_manifest(state.root, document['id'], document['version'], grant, root / 'native-manifest')
+            option = definition['composition']
+            def nested(path):
+                return 'root/development/' + path.removeprefix('root/')
+            option['review_instance'] = nested(option['review_instance'])
+            option['mode'] = 'task-mcp'
+            option['execution']['instance'] = nested(option['execution']['instance'])
+            option['execution']['assignments'] = {key: nested(path) for key, path in option['execution']['assignments'].items()}
+            for stage in ('inventory', 'plan'):
+                option['preparation'][stage] = nested(option['preparation'][stage])
+            option['backend_overrides'] = {nested(path): value for path, value in option['backend_overrides'].items()}
+            option.update(manifest=manifest['path'], manifest_digest=manifest['digest'],
+                          native={'protocol': 'six-stage-v1', 'instance': 'root/development'})
+            record = memory.save(state, 'demo', 'Frozen explicit context survives canonical deletion.',
+                                 {'uri': 'repo://selected-memory', 'revision': 'fixture-v1'})
+            source = root / 'selected-context-evidence'
+            (source / 'references').mkdir(parents=True)
+            (source / 'SKILL.md').write_text('---\nname: selected-context-evidence\ndescription: Selected full material fixture\n---\nRead references/complete.md completely.\n')
+            (source / 'references/complete.md').write_bytes(b'Explicit selected Skill attachment.\n' * 2100)
+            skill = skill_assets.import_bundle(state, 'demo', source)
+            definition.update(schema_version=7, context={'root_version': '1.0.1',
+                'memories': [{'id': record['id'], 'revision': record['revision']}],
+                'skills': [{'name': skill['name'], 'digest': skill['digest'], 'revision': 1}]})
     return definition
 
 
@@ -246,7 +281,7 @@ async def exercise(root, case, app, activities, installation, state, runtime, re
                     assert source['artifacts'] == {item['name']: (runtime / 'artifacts' / item['path']).read_text()
                                                    for item in source['receipt']['artifacts'] if item['name'] in source['artifacts']}
             elif case == 'issue-source' or case.startswith('materials'):
-                source = materials['work_inputs']['results']['root/work/implementation']
+                source = materials['work_inputs']['results'][app.admission['composition']['execution']['assignments']['implementation']]
                 assert source['receipt'] == records['work:implementation']
                 assert set(source['artifacts']) == {'change-summary', 'test-results'}
                 assert 'composition-materials' not in source['artifacts']
@@ -271,7 +306,7 @@ async def exercise(root, case, app, activities, installation, state, runtime, re
             assert json.loads((folder / 'input/task.txt').read_text().splitlines()[-1])['issue_source'] == app.admission['issue_source']
             assert materials['artifact_protocol'] == 'stage-artifacts-v1'
         if case != 'results' or path == 'root/review/structure/review':
-            assert materials['review_inputs']['results']['root/work/validation']['receipt'] == records['work:validation']
+            assert materials['review_inputs']['results'][app.admission['composition']['execution']['assignments']['validation']]['receipt'] == records['work:validation']
         else:
             source = materials['review_inputs']['results']['root/review/structure/review']
             assert source['receipt'] == records['review:root/review/structure/review']

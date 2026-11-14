@@ -432,9 +432,32 @@ class NativeSixStageInput(BudgetedInput):
         return NativeSixStageWorkflow
 
 
+class SelectedContextInput(NativeSixStageInput):
+    """Explicit sources use the same native stages, budget and full resources."""
+
+    version = 11
+    queue_suffix = '.composition-v11'
+    requests_suffix = '-composition-v11'
+
+    @classmethod
+    def adapter(cls, config: dict):
+        from .reference_workflows import SelectedContextAdapter
+
+        return SelectedContextAdapter({**config, 'requests': str(cls.request_root(Path(config['requests'])))})
+
+    @classmethod
+    def workflow_type(cls):
+        from .reference_workflows import SelectedContextWorkflow
+
+        return SelectedContextWorkflow
+
+    def stage_material(self) -> dict:
+        return {**super().stage_material(), 'selected_context': self.document['context']}
+
+
 _INPUTS = {1: LegacyInput, 2: CompositionInput, 3: ReviewRequirementsInput, 4: ReviewDAGInput,
            5: WorkDeliveryInput, 6: StageResultsInput, 7: IssueSourceInput, 8: FullStageMaterialsInput,
-           9: BudgetedInput, 10: NativeSixStageInput}
+           9: BudgetedInput, 10: NativeSixStageInput, 11: SelectedContextInput}
 
 
 def workers(client, queue: str, config: dict) -> list:
