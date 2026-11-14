@@ -75,11 +75,18 @@
     "open_findings": {
       "requirements": 0,
       "maintainability": 0
-    }
+    },
+    "fixed_publication": "approve",
+    "own_ci": "approve; exact run43583053417; original reviewer terminal supplement"
   },
   "publication": {
-    "status": "pending",
-    "predecessor_own_ci": "43580979082 exact 3a56508 Success; eight jobs/30 required steps and original reviewer both axes approve/open0"
+    "status": "complete",
+    "predecessor_own_ci": "43580979082 exact 3a56508 Success; eight jobs/30 required steps and original reviewer both axes approve/open0",
+    "candidate": "8d739c298668ab9f7d88fdaa205a21f304d9586c",
+    "changed_blobs": 15,
+    "full_remote_ref_matches": true,
+    "independent_supplement": "approve; requirements and maintainability open0/0; original reviewer fixed publication supplement",
+    "own_ci": "43583053417 Success; eight jobs/30 required steps; original reviewer terminal both axes approve/open0/0"
   },
   "raw_evidence": {
     "base": ".ergora/checks/improvement-freeze-journey",
@@ -1162,5 +1169,305 @@
     "Synthetic source/scorer prove contracts, not actual quality, performance, training, GPU, ReMe or full native Forge.",
     "Final UI uses a new wheel on the same preserved r4 project; the whole combined journey was not repeated.",
     "Desktop readback here; prior three-width and lifecycle matrices keep their original scope."
-  ]
+  ],
+  "publication_evidence": {
+    "base": ".ergora/checks/improvement-freeze-journey",
+    "references": [
+      {
+        "path": "publish-r1.py",
+        "bytes": 6068,
+        "sha256": "fa42f4af93cb122fca3a2b76b61da796bc356e33f56482a7d1b5baf4407de43b"
+      },
+      {
+        "path": "static-final-r1.json",
+        "bytes": 3138,
+        "sha256": "27166bd92765bbb0abcb3e506bb7345e6593ba6e9da93da0ead0b2eeaba557bc"
+      },
+      {
+        "path": "commit-r1.json",
+        "bytes": 708,
+        "sha256": "c2b5b3e9ef171213c6761376aed65cb79825a85b0728e6d808cd3b887687fa68"
+      },
+      {
+        "path": "push-r1.json",
+        "bytes": 465,
+        "sha256": "982f2ef809cdb9b57de6708b65fc75553788ab3c9f63bd4fd10aa77be8245f2d"
+      },
+      {
+        "path": "ref-r1.json",
+        "bytes": 382,
+        "sha256": "536422c958b378b16627e2fb8d8d22569f3bb148a81c15caad47d50b9a6f7d6c"
+      }
+    ],
+    "scope": "Separate fixed publication appendix; original214 references remain unchanged."
+  },
+  "ci_evidence": {
+    "base": ".ergora/checks/improvement-freeze-journey",
+    "references": [
+      {
+        "path": "ci-discovery-r1.json",
+        "bytes": 369,
+        "sha256": "88599f275ff9a87c5577a10f1c77d9e5fb9d5c96eebb779831582fdccccb44c9"
+      },
+      {
+        "path": "ci-job-132411702159-html-r1/page.html",
+        "bytes": 158818,
+        "sha256": "afa6624d5ec49e1e0ade3e84fd3619184277e5ad45c7e634715e6424ebc32014"
+      },
+      {
+        "path": "ci-job-132411702159-html-r1/receipt.json",
+        "bytes": 5997,
+        "sha256": "84cc22b8ddbc4315a8d56c96aaf79d1c62f4fecf7bda1546a43037060e0f1f3b"
+      },
+      {
+        "path": "ci-job-132411728902-html-r1/page.html",
+        "bytes": 162512,
+        "sha256": "f1eb7ef95043ee22aaaddc37ad58ba51e3bdd6634d7fc828b09c4031fd32224d"
+      },
+      {
+        "path": "ci-job-132411728902-html-r1/receipt.json",
+        "bytes": 6005,
+        "sha256": "8b997c079a612cecff40254a22010c0c924d589b5645fb034f0221d60a639de1"
+      },
+      {
+        "path": "ci-job-132411728914-html-r1/page.html",
+        "bytes": 162499,
+        "sha256": "65ecf5514a2f69e17b5a8868a36cebbae2bc2bf651c00326d2e0b951545f18c6"
+      },
+      {
+        "path": "ci-job-132411728914-html-r1/receipt.json",
+        "bytes": 5985,
+        "sha256": "0629ed799b40cadace982bce08e5a0935e85180b159d930278e1186cd25642c6"
+      },
+      {
+        "path": "ci-job-132411728916-html-r1/page.html",
+        "bytes": 162507,
+        "sha256": "bb9de966c372fc7f5e7e154f007eb836981d49d461a5e85da5de178d0454400d"
+      },
+      {
+        "path": "ci-job-132411728916-html-r1/receipt.json",
+        "bytes": 5999,
+        "sha256": "453593f681eb9b04a09ceac674e97eb87527638f53e1e28dbd68594c50619a06"
+      },
+      {
+        "path": "ci-job-132411728930-html-r1/page.html",
+        "bytes": 154844,
+        "sha256": "ca3622fcbce1c1668e2d0404f6dd73f0a3b1ebd07c114355cf8217694e5e50a6"
+      },
+      {
+        "path": "ci-job-132411728930-html-r1/receipt.json",
+        "bytes": 6007,
+        "sha256": "6ff8ba4ab130ad0d5393c53d009074e0308b08a2bd0465c394f3d5e62e5b22d7"
+      },
+      {
+        "path": "ci-job-132411728930-html-r2/page.html",
+        "bytes": 162506,
+        "sha256": "e33e330384a62da8f0a407282150ca13a077191a6eb098c97ed9f1170adfce12"
+      },
+      {
+        "path": "ci-job-132411728930-html-r2/receipt.json",
+        "bytes": 6002,
+        "sha256": "7850d1f9074d1c27135883fbe2bbc3bdba473e914ec711660ebc037aebe15b56"
+      },
+      {
+        "path": "ci-job-132411728936-html-r1/page.html",
+        "bytes": 154844,
+        "sha256": "7a49fd47f59b6f4431ec4a707155bca02fe72f0732c7c96ebdb8783014123951"
+      },
+      {
+        "path": "ci-job-132411728936-html-r1/receipt.json",
+        "bytes": 6001,
+        "sha256": "ac6b8339e3ea3513f5a63f5a5b31ed83eb8fffcc5dbcf1772f2df2b7484f457e"
+      },
+      {
+        "path": "ci-job-132411728936-html-r2/page.html",
+        "bytes": 162508,
+        "sha256": "5dce2b37cbef5f198317debd203f81b23d01d2f7f914559aa8ca9e7cc488f151"
+      },
+      {
+        "path": "ci-job-132411728936-html-r2/receipt.json",
+        "bytes": 6003,
+        "sha256": "548ce20ddedc42fb4e50a5aa258e2b8fd4b6d1dbcf613eb9cd65571d7b09d20a"
+      },
+      {
+        "path": "ci-job-132411728947-html-r1/page.html",
+        "bytes": 154852,
+        "sha256": "c8e9e78a55af8c854a2a87d0237d90303d374168de3acc4a356a24660c0910d6"
+      },
+      {
+        "path": "ci-job-132411728947-html-r1/receipt.json",
+        "bytes": 5994,
+        "sha256": "6b1dfe2a38d8142b22376e4e3378b4dae87bb56b21cf4af433cf224a8b5a815f"
+      },
+      {
+        "path": "ci-job-132411728947-html-r2/page.html",
+        "bytes": 154853,
+        "sha256": "ff1b31d326029bb395f6a633a3a45135ade3ec63ccdf90c3a412c4b0e6183486"
+      },
+      {
+        "path": "ci-job-132411728947-html-r2/receipt.json",
+        "bytes": 6001,
+        "sha256": "78b3e489f44fb983800141ca6cc4f6cdc6876e092fd03730a7eddf4f8176f6e0"
+      },
+      {
+        "path": "ci-job-132411728947-html-r3/page.html",
+        "bytes": 154987,
+        "sha256": "e4f278360d68378a3872994209994d1e51d877b7761a964b21172bc92a3f9035"
+      },
+      {
+        "path": "ci-job-132411728947-html-r3/receipt.json",
+        "bytes": 5996,
+        "sha256": "9bb2711e3255ea208c2c695581b460f32560e540030e1ad7b5f85c5af6a44113"
+      },
+      {
+        "path": "ci-job-132411728947-html-r4/page.html",
+        "bytes": 160088,
+        "sha256": "d54b1c73b65365659c43fba6b3006647a7e5edd832ef3c5b0246b75600d172d8"
+      },
+      {
+        "path": "ci-job-132411728947-html-r4/receipt.json",
+        "bytes": 6005,
+        "sha256": "49667844634be166d9f1e78fa1ea80bab11667a7e62b63007a173fe10a82a2ea"
+      },
+      {
+        "path": "ci-job-132411728959-html-r1/page.html",
+        "bytes": 154844,
+        "sha256": "5245fee03e9722cd0453d5f71abc115af19915901f0956d02e655b435e0dfb56"
+      },
+      {
+        "path": "ci-job-132411728959-html-r1/receipt.json",
+        "bytes": 5999,
+        "sha256": "9bec6e5e308ed751f41fc099e1dac856caf111c79654f4298a0c71e7251eed23"
+      },
+      {
+        "path": "ci-job-132411728959-html-r2/page.html",
+        "bytes": 162508,
+        "sha256": "30ccc7dc416c275446164f0c1a3ff2e817a6323b273461cd5b405704f5b946ae"
+      },
+      {
+        "path": "ci-job-132411728959-html-r2/receipt.json",
+        "bytes": 6005,
+        "sha256": "4eeb5e465523c60c9933baa82c013e29b49553b5e292f3dfdf307d458c8ef79d"
+      },
+      {
+        "path": "ci-job-batch-r1/body.json",
+        "bytes": 2721,
+        "sha256": "c6ae36d2f0f5c25a66bef189adf6d1e188d2111d8ccd416d67b9b549230d70ec"
+      },
+      {
+        "path": "ci-job-batch-r1/receipt.json",
+        "bytes": 766,
+        "sha256": "cb399bf7f8d4d5fca56a75224556db4927080600bae88078cc0f6189e7068ccc"
+      },
+      {
+        "path": "ci-list-html-r1/page.html",
+        "bytes": 317863,
+        "sha256": "5e65feb5769ef1dabd2cfd43fcd7cbe377996acaaaf9b1a9e25a956d7df0b8bc"
+      },
+      {
+        "path": "ci-list-html-r1/receipt.json",
+        "bytes": 5923,
+        "sha256": "fcbdcecc054bd77966fe3be39cfbe3e1dad6c34aba953938f5d994c8846ffa49"
+      },
+      {
+        "path": "ci-observation-r1.json",
+        "bytes": 12244,
+        "sha256": "63108302215b8278307a681ae63837c9458cb32067c6e80053b3101bbe74c938"
+      },
+      {
+        "path": "ci-observation-r2.json",
+        "bytes": 12982,
+        "sha256": "a764b855c963b93cc1bcaefcc20d182f1f82a7c164dac3282d8c3e6b10a37500"
+      },
+      {
+        "path": "ci-observation-r3.json",
+        "bytes": 13117,
+        "sha256": "ddb967758ad37af37517bb350d7c2d2be0b47ff24210e8d2981b2aa4a75fb1a6"
+      },
+      {
+        "path": "ci-run-html-r1/page.html",
+        "bytes": 171827,
+        "sha256": "915afc63147f1c7c9175a2368886a9c9e2ab0636c8ffde9a7cb20834f8cccc47"
+      },
+      {
+        "path": "ci-run-html-r1/receipt.json",
+        "bytes": 5961,
+        "sha256": "e62ef147061193ad8ef03de082211b0814eb47593c7956a00145b26542bb4a52"
+      },
+      {
+        "path": "ci-run-html-r2/page.html",
+        "bytes": 208084,
+        "sha256": "2c52fc8cf5de816fc1e298545bddc64876179e6c3617f11be2d31a85108bcda2"
+      },
+      {
+        "path": "ci-run-html-r2/receipt.json",
+        "bytes": 5965,
+        "sha256": "1f47503673506bbd02a0f8b04c2c4410a0c2903771066543744b356e63b4c89f"
+      },
+      {
+        "path": "ci-run-html-r3/page.html",
+        "bytes": 208084,
+        "sha256": "6201a6e9f711b9d1a11675d4323200b0dfa6b80d37b34919aec269ca3e798ad5"
+      },
+      {
+        "path": "ci-run-html-r3/receipt.json",
+        "bytes": 5969,
+        "sha256": "0df1bff9eb63d02a92eb69b977ac3954c517ee6391c35a1c5cb19069a3bc6f5b"
+      },
+      {
+        "path": "ci-run-html-r4/page.html",
+        "bytes": 208084,
+        "sha256": "fe3a1c3812c525ed56767b94db0f4c1c431ac25ed5e4904b7a3a751588eb085a"
+      },
+      {
+        "path": "ci-run-html-r4/receipt.json",
+        "bytes": 5961,
+        "sha256": "c27b714eb4f54b05cd1522daedaa8d5f7f980c36c6ab4bc826669803ce6ad18b"
+      },
+      {
+        "path": "ci-run-html-r5/page.html",
+        "bytes": 213278,
+        "sha256": "2df53b476acbf54b90291e9b99ef184045266441276916ff5d00c1362fed3b82"
+      },
+      {
+        "path": "ci-run-html-r5/receipt.json",
+        "bytes": 5975,
+        "sha256": "58005e7748b4ad8b713f7c0031ffbce67597de18c4e3902eff64e55fb7d9abb2"
+      },
+      {
+        "path": "ci-terminal-r1.json",
+        "bytes": 13357,
+        "sha256": "2de6c5bc39dbfe23d4d393a8d76ede2dace18f73af1388195a77d97766528642"
+      },
+      {
+        "path": "ci-ui-metadata-r1.json",
+        "bytes": 2125,
+        "sha256": "ac9f83367e0054a0d0a618ece1773d9e82218b5791467a3d84c83bd6ba0c92ef"
+      },
+      {
+        "path": "discover-ci-r1.py",
+        "bytes": 1188,
+        "sha256": "708ce99376c4f5cfe5d566c51725cfc8669b79b784e1a5934fa907cabb444bc1"
+      },
+      {
+        "path": "fetch-actions-page.py",
+        "bytes": 1213,
+        "sha256": "77cb744eb3f51e9e57c6301f5461846220ed7d4fab0f2ccb74fb839781a0d8d8"
+      },
+      {
+        "path": "fetch-ci-jobs.py",
+        "bytes": 3060,
+        "sha256": "7076d6bde168c5cc1398b28981bb0e518569ac8b8da79d44480415e3c8dd1600"
+      },
+      {
+        "path": "parse-ci-html.py",
+        "bytes": 3980,
+        "sha256": "111ffdfc5c11a7ec807bba9a54472db33f1ed84d2a0c956420fce52d1345c597"
+      }
+    ],
+    "scope": "Exact candidate own official Actions UI raw observations; separately appended, fixed original214 and publication5 unchanged.",
+    "run_id": 43583053417,
+    "candidate": "8d739c298668ab9f7d88fdaa205a21f304d9586c",
+    "required_steps_passed": true
+  }
 }

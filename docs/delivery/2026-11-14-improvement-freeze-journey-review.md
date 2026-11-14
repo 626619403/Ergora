@@ -4,7 +4,7 @@ Reviewer：fresh-context 独立 agent `improvement_freeze_journey_review`；日�
 
 ## 身份与检查范围
 
-固定基线／当前 HEAD：`3a56508791a33871016acff4a7cad268aaf0be50`，分支 `refactor/architecture-foundations`。已检查 tracked diff 与 untracked 新文件，产品为后文列明的两个原 owner；文档精确范围如下：
+本地审查时固定基线／HEAD：`3a56508791a33871016acff4a7cad268aaf0be50`，分支 `refactor/architecture-foundations`。已检查 tracked diff 与 untracked 新文件，产品为后文列明的两个原 owner；文档精确范围如下：
 
 ```text
 README.md
@@ -27,10 +27,10 @@ docs/delivery/evidence/2026-11-14-workflow-improvement-console.json
 
 ## 两轴结论
 
-- **需求轴：最终本地 approve。** 原 r4 组合冻结合同的实际范围成立，手册与原接口一致；R1 已以最终安装件及真实页面读回闭合。最终包对同一存档的 HTTP／CLI 和来源离线解码完全相同，旧文件字节保持，收尾与原件身份核实。
-- **可维护性轴：最终本地 approve。** 产品修正限于原 HTTP 读接口及原详情折叠区，复用既有冻结解析器，无新模块、schema、解析器、权威账本或采用／编译路径。来源验证和解析继续归原 envelope owner，HTTP 只追加完整读取结果，前端继续使用既有 disclosure。新增条件只识别旧合同缺少 context 的可达兼容场景，没有额外 guard、fallback 或异常吞没。
+- **需求轴：最终本地、固定发布及自身 CI 终态均 approve。** 原 r4 组合冻结合同的实际范围成立，手册与原接口一致；R1 已以最终安装件及真实页面读回闭合。最终包对同一存档的 HTTP／CLI 和来源离线解码完全相同，旧文件字节保持，收尾与原件身份核实。固定候选自己的八 job／30 必要步骤已独立核验闭合。
+- **可维护性轴：最终本地、固定发布及自身 CI 终态均 approve。** 产品修正限于原 HTTP 读接口及原详情折叠区，复用既有冻结解析器，无新模块、schema、解析器、权威账本或采用／编译路径。来源验证和解析继续归原 envelope owner，HTTP 只追加完整读取结果，前端继续使用既有 disclosure。新增条件只识别旧合同缺少 context 的可达兼容场景，没有额外 guard、fallback 或异常吞没。
 
-最终本地开放 finding：**需求 0，可维护性 0；R1 已关闭**。在上述已检查范围没有其他 finding。本片自己的固定发布及必要 CI 仍 pending，不由本地结论预批。
+最终开放 finding：**需求 0，可维护性 0；R1 已关闭**。在上述已检查范围没有其他 finding。本结论绑定固定候选 `8d739c298668ab9f7d88fdaa205a21f304d9586c` 及自己的 run `43583053417`，不代审后继 F9d1。
 
 ## Finding 与最小修正
 
@@ -73,4 +73,44 @@ docs/delivery/evidence/2026-11-14-workflow-improvement-console.json
 
 七个叶仅实际准备输入，未在本片执行模型调用。合成来源和 scorer 不证明真实训练、工程质量、GPU／性能或外部 ReMe／Forge 可用性。本片只做桌面读取，不继承前片全宽度／迟到矩阵。前继固定 `3a56508` 自己的 CI `43580979082` 由其原 reviewer 记录八 job／30 必要步骤及两轴终核闭合；不把它当成本片 CI。
 
-本片自己的普通发布、精确远端 ref 与必要 CI **尚待**，发布后沿本报告补核固定提交／原证据身份及自己的 CI；不得借前继通过。本报告未联网读取远端，未预批本片发布／CI。不合 main，不强推。接续工作仍为 F9d 完整实验旅程和 G1 安装／升级回退／跨机重建，真实外部能力按各自原准入条件执行。
+本地审查出口时普通发布、精确远端 ref 与必要 CI 尚待；固定发布后的补核见下节，自己的 CI 仍另验。接续工作仍为 F9d 完整实验旅程和 G1 安装／升级回退／跨机重建，真实外部能力按各自原准入条件执行。
+
+## 固定发布补核
+
+2026-11-14，原 reviewer 沿本报告只读补核 `8d739c298668ab9f7d88fdaa205a21f304d9586c`：**需求轴 approve，可维护性轴 approve，开放 finding 0／0，R1 保持关闭。** 未联网、重跑、安装、修改产品／原件数组、提交或推送。
+
+- 固定提交唯一父为原完整基线 `3a56508791a33871016acff4a7cad268aaf0be50`。直接读取 Git 对象的 **15** 个变更 blob，与 `static-final-r1.json` 中每项 bytes／SHA256 完全相同；文件集合也完全相同。固定原最终本地报告为 **11,985B／`17ab5c6f31122c2e4151c587884d39081a087f2fe5b8a6e153ff983250faac45`**；本节是发布后的补核，不把它当成固定报告当时已有的内容。原完整 staged diff check、Python AST 与 JS 语法的记录均为 exit0，文档链接检查通过；本次读取原静态结果，未重跑。
+- 从固定 Git tree 逐件读取全部 **604** 产品文件，bytes 全等于最终 wheel、非 editable 安装、构建快照及当前源文件。因此该固定候选对应原最终安装／web／页面及 CLI 补证的产品；仍不把原基线 r4 完整组合旅程改写成修后整条运行。
+- 固定提交内 `raw_evidence.references` 与发布后数组逐项相同，仍为 **214** 条，规范数组指纹仍为 **`1e3cdded31248b39867682ba3963aee949fec5ff7a84c1ade34a8e8929784b74`**；214 份原件重新读回的 bytes／SHA256 全部相同。发布后单列 `publication_evidence` 的 **五** 份调用／回执也逐件重算相同，未替换本地证据。
+- 直接阅读 `publish-r1.py`、commit／push／ref 原回执：commit exit0；唯一普通 push argv 为 `git push origin 8d739c298668ab9f7d88fdaa205a21f304d9586c:refs/heads/refactor/architecture-foundations`，无 force、`+` refspec、main 或 merge 操作，exit0。保存的 `git ls-remote` 在 **2026-11-14T09:58:46.629382+00:00** 返回同一完整 SHA 与分支，本机 remote-tracking ref 亦同一。远端结论绑定保存回执的观察时刻，本次未重新联网读取。
+- 固定提交已包含前继原 reviewer 的自身 CI 终态两轴 approve／开放 0／0，以及完整前继候选 `3a56508791a33871016acff4a7cad268aaf0be50` 的 run **43580979082**、八 job／30 必要步骤成功。核前继终态元数据和单列 **52** 条 CI 引用，bytes／SHA 全部同一；原 `ci-terminal-r1.json` 时刻 **09:51:20.520160 UTC** 早于新 commit **09:58:39**／push **09:58:45**，原 reviewer 终态结论已在新固定 tree 内。前继门禁先于新发布闭合，没有借其结果通过本片自己的 CI。
+- 当前发布后仅有本片计划／交付／证据元数据的四份记账差异，无后继产品变化；本报告追加补核后另形成 reviewer 记账差异。
+
+固定发布补核当时本片自己的必要 CI 仍 pending，仅闭合本地与固定发布身份门禁；其后提供的自身 CI 终态原件见下节。不合 main，不强推。
+
+## 自身 CI 终态补核
+
+2026-11-14，原 reviewer 仅按本片原合同，对固定完整候选 **`8d739c298668ab9f7d88fdaa205a21f304d9586c`**、自己的 **run `43583053417`** 独立补核：**需求轴 approve，可维护性轴 approve，开放 finding 0／0；R1 保持关闭。** 本轮只读固定 Git 对象、必要原件及交付范围，并更新本报告；未联网、重跑、安装、修改产品、提交或推送。
+
+- 直接解析原 `ci-list-html-r1/page.html` 的官方 embedded JSON：唯一关联该完整 commit 链接、run、`refactor/architecture-foundations` 分支及 `.github/workflows/portability.yml`，run number 为 205。原列表的 In progress 是发现身份时的历史观察，未覆盖它来伪装终态。
+- `ci-run-html-r5/page.html` 的实际 Status 卡片为 **Success**，原 commit anchor 为该完整 SHA。抓取回执为 HTTP200、原 URL 与 final URL 同为官方该 run 路径，时间 **2026-11-14T10:19:06.245947+00:00**，正文 **213,278B／`2df53b476acbf54b90291e9b99ef184045266441276916ff5d00c1362fed3b82`**；bytes／SHA256 均独立重算同一。
+- 从固定 tree 读取 workflow 和 `scripts/ci/linux-groups.json`：预期为 plan、六个 Linux 分组及 Windows all，共 **八** job。原 `ci-job-batch-r1/body.json` 的 `totalCount=8`、`hasMore=false`，八个 ID 唯一、名称和各自 run/job 路径完全一致；与原 metadata 一一对应，metadata 所绑定的 run1 原页面亦含该完整 commit。早期 batch 的在途状态只用于身份发现，终态另读下表实际 job HTML。
+
+|Job|固定 job ID|终态原件|必要步骤成功数|Complete job UTC|
+|---|---:|---|---:|---|
+|plan|132411702159|`ci-job-132411702159-html-r1`|1|09:58:52|
+|Linux group 0|132411728936|`ci-job-132411728936-html-r2`|4|10:03:35|
+|Linux group 1|132411728959|`ci-job-132411728959-html-r2`|4|10:04:23|
+|Linux group 2|132411728914|`ci-job-132411728914-html-r1`|4|10:02:58|
+|Linux group 3|132411728902|`ci-job-132411728902-html-r1`|4|10:01:26|
+|Linux group 4|132411728916|`ci-job-132411728916-html-r1`|4|10:01:59|
+|Linux group 5|132411728930|`ci-job-132411728930-html-r2`|4|10:05:00|
+|Windows all|132411728947|`ci-job-132411728947-html-r4`|5|10:16:59|
+
+- 用独立 HTML 解析器逐个读取原 `check-steps`／`check-step`：八个 job 均为 completed，且各有唯一成功的 `Complete job`。**30 个必要步骤全部 success、带完成时间及 `data-job-completed`**：plan 的 `Read explicit test groups`，七个执行 job 各自的 wheel 构建安装、参考身份、原回归、观察上传，以及 Windows 的 `Windows PowerShell 5.1 installer and upgrade`。
+- 全部 **76** 个 success 步骤的日志 URL 均精确包含该完整 SHA、对应 job ID 与各自 `data-number`；开始不晚于完成，完成不晚于原抓取时刻。另有 **六** 个 skipped，恰为固定 workflow 在 Linux 排除的 Windows 安装步骤，没有其他失败或跳过。独立重建的八 job／30 必要步骤与 `ci-terminal-r1.json` 完整投影逐项相同，原 terminal SHA256 为 **`2de6c5bc39dbfe23d4d393a8d76ede2dace18f73af1388195a77d97766528642`**。
+- 直接阅读发现、抓取、metadata 和 parser 脚本，未执行它们。新单列 **52** 条 CI 引用均为唯一不同路径，与原 **214** 及发布 **五** 件不交叉，所有 bytes／SHA256 重新读取相同；实际终态 run／job／batch 回执的 URL、HTTP200、长度和正文摘要也均核实。证据是官方 UI HTML／UI job batch，未扩大为已读取步骤日志正文、REST 响应或下载产物归档。
+- 固定 **15** 个 Git blob 仍与原静态清单逐件同一，唯一父保持原基线；原214数组与固定 Git 逐项同一，指纹仍为 `1e3cdded31248b39867682ba3963aee949fec5ff7a84c1ade34a8e8929784b74`，214 原件及发布五件再次重算全部相同。原最终604产品与本地／固定发布结论保持，后继工作树不属于本次 CI 身份。
+- 总计划／本片计划和交付明确把这次 CI 归于固定 `8d739c2`，将原 r4 合成组合、新包读取与自身 CI 分列；等待本报告的独立终核状态可据本结论更新。F9d1 有自己的合同及 reviewer，本次不对其工作、GPU／训练或质量作结论。
+
+**该固定 F10d7 候选的最终本地、普通固定发布和自身必要 CI 三个门禁均已闭合，两轴 approve、开放 finding 0／0。** 仅覆盖本报告原合同与实际证据范围；七叶仍只是准备输入，合成 scorer 仍只证明合同，F9d1／G1 和真实外部能力继续分别验收。不合 main，不强推。
