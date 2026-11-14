@@ -51,7 +51,7 @@ ergora composition run-input training-review ./domain-review-input --backend cod
 
 完整输入超限会拒绝，调整所选资料／预算后重新准备；不可静默摘取摘要称完整。`text-only` 将声明的完整资源放进提示词，不提供任意 shell、文件系统或网络工具。返回原 run／输入摘要／结果路径，结果中的 response 保存发现与覆盖缺口。
 
-独立 `run-input` **只调用指定叶**；不会因根有 all-join 而自动运行另外三路。需要互补意见时对三个 general 路径分别准备相同完整 task 并明确调用，保留每份结果和缺失分支。Q2.3 的统一运行／本地报告入口另片。正式开发任务则可按原 `review_protocol: dag-v1` 选择整个根，交原六阶段执行四路及 all-join，保留精确候选、required 分支、批准和恢复；方法见 [原模板旅程](TEMPLATE_WALKTHROUGHS.md)。
+独立 `run-input` **只调用指定叶**；不会因根有 all-join 而自动运行另外三路。需要互补意见时对三个 general 路径分别准备相同完整 task 并明确调用，保留每份结果和缺失分支。使用来源绑定入口准备的run，可按[完整多分支报告](LOCAL_REVIEW.md#汇总完整的多分支审查)显式选择来源／manifest及四个实例的原run ID，生成JSON／Markdown；漏叶／失败保持incomplete，任一已核反对意见都保留。通用composition输入方式的task不含该来源绑定合同，不能自动冒充来源报告。正式开发任务则可按原 `review_protocol: dag-v1` 选择整个根，交原六阶段执行四路及 all-join，保留精确候选、required 分支、批准和恢复；方法见 [原模板旅程](TEMPLATE_WALKTHROUGHS.md)。
 
 ## 一次生成 CPU 合同样例
 

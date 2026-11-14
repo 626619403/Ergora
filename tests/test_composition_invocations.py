@@ -97,7 +97,7 @@ def test_exact_run_inspection_survives_history_limit_and_relocation_without_curr
         assert list(db.iterdump()) == before
 
 
-@pytest.mark.parametrize("changed", ["input", "recursive-input", "prompt", "result", "recursive-result",
+@pytest.mark.parametrize("changed", ["input", "recursive-input", "prompt", "result", "recursive-result", "nonfinite-result", "overflow-result",
                                      "missing-result", "unrecorded-result", "capacity"])
 def test_run_inspection_retains_original_state_and_other_material_when_one_artifact_is_unverifiable(recorded_run, changed):
     state, _, run, result = recorded_run
@@ -114,6 +114,12 @@ def test_run_inspection_retains_original_state_and_other_material_when_one_artif
             run = {**run, "result_sha256": hashlib.sha256(raw).hexdigest()}
             with state.connect() as db:
                 db.execute("UPDATE agent_runs SET document=? WHERE id=?", (json.dumps(run), run_id))
+    elif changed in ("nonfinite-result", "overflow-result"):
+        raw = b'{"original_value":' + (b'NaN' if changed == "nonfinite-result" else b'1e309') + b'}'
+        (storage / run_id / "result.json").write_bytes(raw)
+        run = {**run, "result_sha256": hashlib.sha256(raw).hexdigest()}
+        with state.connect() as db:
+            db.execute("UPDATE agent_runs SET document=? WHERE id=?", (json.dumps(run), run_id))
     elif changed == "prompt":
         (storage / (run_id + ".protocol") / "prompt.txt").write_text("A different prompt", encoding="utf-8")
     elif changed == "result":
@@ -138,6 +144,29 @@ def test_run_inspection_retains_original_state_and_other_material_when_one_artif
         assert observed["prompt"]["sha256"] == run["prompt_sha256"]
     with state.connect() as db:
         assert json.loads(db.execute("SELECT document FROM agent_runs WHERE id=?", (run_id,)).fetchone()[0]) == run
+
+
+@pytest.mark.parametrize("depth,available", [(62, True), (80, False)])
+def test_original_custom_schema_results_obey_observation_tree_capacity(prepared, monkeypatch, depth, available):
+    state, _, source = prepared()
+    raw = b'{"extra":' + b'[' * depth + b'0' + b']' * depth + b'}'
+
+    def native(argv, cwd, output, *args, **kwargs):
+        Path(argv[argv.index("--output-last-message") + 1]).write_bytes(raw)
+        output.mkdir()
+        return {"status": "succeeded", "returncode": 0}
+
+    monkeypatch.setattr(processes, "run", native)
+    run = agent_runs.run_input(state, "demo", source, result_schema={"type": "object"})
+    assert run["status"] == "succeeded"
+    original = Path(run["result"]).read_bytes()
+    observed = agent_runs.inspect_run(state, "demo", run["id"])
+    assert observed["result"]["available"] == available and observed["input"]["available"] and observed["prompt"]["available"]
+    if available:
+        assert observed["result"]["document"] == json.loads(raw)
+    else:
+        assert "64 levels" in observed["result"]["error"]
+    assert Path(run["result"]).read_bytes() == original
 
 
 @pytest.mark.parametrize("backend", ["codex", "claude-code"])

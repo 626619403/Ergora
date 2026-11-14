@@ -52,7 +52,7 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--version", action="version", version=__version__)
     result.add_argument("--home", type=Path, help="Persistent state directory (default: ERGORA_HOME, LocalAppData on Windows, or XDG data)")
     commands = result.add_subparsers(dest="command", required=True)
-    review = commands.add_parser("review", help="Collect and verify exact review material without state, services or agents")
+    review = commands.add_parser("review", help="Collect exact review material and report explicit original runs without redispatch")
     operations = review.add_subparsers(dest="operation", required=True)
     preparing = operations.add_parser("prepare", help="Read full local Git objects; never checkout, fetch or execute target code")
     preparing.add_argument("repository", type=Path)
@@ -95,6 +95,16 @@ def parser() -> argparse.ArgumentParser:
         operation = operations.add_parser(name, help="Offline integrity check; does not authenticate Git origin or checks")
         operation.add_argument("directory", type=Path)
         operation.add_argument("--sha256", help="Independently obtained packet.json SHA256")
+    reporting = operations.add_parser("report", help="Read every declared reviewer against explicit source, manifest and original run IDs")
+    reporting.add_argument("project")
+    reporting.add_argument("source", type=Path)
+    reporting.add_argument("--source-kind", choices=("local", "external"), required=True)
+    reporting.add_argument("--source-sha256", required=True)
+    reporting.add_argument("--manifest", type=Path, required=True)
+    reporting.add_argument("--manifest-digest", required=True)
+    reporting.add_argument("--runs", type=Path, required=True, help="JSON object mapping exact instance paths to original run IDs; omitted members stay incomplete")
+    reporting.add_argument("--max-result-bytes", type=int, default=8_388_608)
+    reporting.add_argument("--format", choices=("json", "markdown"), default="json")
     handoff = commands.add_parser("handoff", help="Verify portable evidence without services or local state")
     operations = handoff.add_subparsers(dest="operation", required=True)
     for name in ("verify", "read"):
@@ -760,16 +770,24 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "review":
             from . import review_packets
 
-            if args.operation in ("prepare-input", "verify-input"):
+            if args.operation in ("prepare-input", "verify-input", "report"):
                 from . import review_requests
 
                 if args.operation == "prepare-input":
                     output = review_requests.prepare(args.source, source_kind=args.source_kind, source_sha256=args.source_sha256,
                         manifest=args.manifest, manifest_digest=args.manifest_digest, instance=args.instance,
                         destination=args.directory, max_prompt_bytes=args.max_prompt_bytes)
-                else:
+                elif args.operation == "verify-input":
                     output = review_requests.verify(args.input, input_digest=args.input_digest, source=args.source,
                         source_kind=args.source_kind, source_sha256=args.source_sha256, manifest_digest=args.manifest_digest)
+                else:
+                    output = review_requests.report(State(args.home), args.project, args.source,
+                        source_kind=args.source_kind, source_sha256=args.source_sha256, manifest=args.manifest,
+                        manifest_digest=args.manifest_digest, runs=definition_bundles.read_json(args.runs),
+                        max_result_bytes=args.max_result_bytes)
+                    if args.format == "markdown":
+                        print(review_requests.markdown(output), end="")
+                        return 0
             elif args.operation in ("collect", "read-source"):
                 from . import review_sources
 

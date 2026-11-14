@@ -31,3 +31,9 @@ r2八实际CLI读取两条原真实run，继续核完整结果／原SHA、容量
 r2自身原结构模板run `2714f6e314a24c17a5fa17cff88c2bdd`，45.809秒、21完整文件／439,899B／3资源完整进入实际stdin；input digest `83f3a21f1124ba6a3b0e25ecdc5de08fbe62e2a0c47ed309378a32199297f91d`，result SHA `fafca90f49a3e4f9183231f6327c59f4548eacdd48f12f0c3c402c881b3e8798`，decision为approve。同一fresh-context reviewer已接新冻结r2范围，独立复核结论待完成；不以模型意见替代其原件核验。
 
 同reviewer已直接核新冻结13路径／diff、r2包、原红测试／新34及69项、八CLI原stdout／stderr／38与19原文件、完整新模型资料／input／prompt／stdin／result，并独立复现input漂移／整个input缺失／递归input／递归result、禁用后端及模型入口的读取。最终需求与结构两轴approve，R1／R2关闭、开放0／0，r1原报告前缀保持；[复核记录](2026-11-15-composition-run-inspection-review.md)是其结论。新包、源码和手册保持r2身份，后续只有结果记账。十Markdown的202个本地链接／片段核过；初次私有检查器未识别源码`:行号`后缀，保留失败原件并修正检查器后通过，不因此修改审查报告。当前完成本地验收，固定发布／完整Ref和本片自己的CI／原终核仍待。
+
+## 固定发布
+
+已建立并普通推送`96b4bb5454714a73e1d5f60b880a479c195e5269`，13blob，完整远端Ref相同。前片Q2.3a自己的CI及原终核通过后才推送本片；不合main。原reviewer已直接核13固定Git blob、全部643固定产品与r2wheel／安装及283参考，两轴approve／开放0／0；随后独立核远端Ref，并发现本片自己的Portability run `43638408686`／attempt1，CI终态在途。后继本地编辑不进入本片认证。
+
+原reviewer已完成终核：自己的run `43638408686`／attempt1绑定完整`96b4bb5454714a73e1d5f60b880a479c195e5269`，官方run、精确attempt jobs及八官方job页交叉核八job／30必要步骤全成功；再次远端Ref完整相同。39次有界匿名GET／109捕获文件及全部SHA直接核验，私有终核汇总SHA `20513735ff01b4a87d29f9416891e12564ed961dcfd39135b669d0d3d696b461`。原[报告](2026-11-15-composition-run-inspection-review.md)追加最终两轴approve／开放0／0，精确交付闭合；本结论不认证后继b2工作树。

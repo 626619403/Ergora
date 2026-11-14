@@ -5,8 +5,9 @@ import json
 from pathlib import Path
 import tempfile
 
-from . import review_dags, review_packets, review_sources, workflow_definitions
+from . import agent_definitions, agent_runs, agents, contracts, review_dags, review_packets, review_sources, workflow_definitions
 from .asset_trees import publish_directory
+from .state import State
 
 
 def _material(source: Path, kind: str, sha256: str) -> tuple[dict, dict]:
@@ -88,3 +89,91 @@ def verify(directory: Path, *, input_digest: str, source: Path, source_kind: str
     return {"input_digest": prepared["digest"], "source_kind": source_kind, "source_sha256": source_sha256,
             "manifest_digest": manifest_digest, "root": prepared["request"]["root"],
             "instance": prepared["request"]["instance"], "execution_authorized": False}
+
+
+def report(state: State, project_id: str, source: Path, *, source_kind: str, source_sha256: str,
+           manifest: Path, manifest_digest: str, runs: dict[str, str], max_result_bytes: int = 8_388_608) -> dict:
+    """Observe every declared reviewer against explicit source, manifest and original run IDs."""
+    state.project(project_id)
+    contracts.validate(runs, {"type": "object", "additionalProperties": {"type": "string", "minLength": 1}}, "Review runs")
+    contracts.validate(max_result_bytes, {"type": "integer", "minimum": 1}, "Result byte limit")
+    if len(set(runs.values())) != len(runs):
+        raise ValueError("Each reviewer requires a distinct original run ID")
+    material, packet = _material(source, source_kind, source_sha256)
+    frozen = workflow_definitions.inspect_manifest(manifest, material=True)
+    if frozen["digest"] != manifest_digest:
+        raise ValueError("Review manifest differs from the explicitly selected digest")
+    composition = frozen["composition"]
+    members = {item["path"]: item for item in composition["instances"] if item["kind"] == "agent"}
+    if not members or runs.keys() - members.keys():
+        raise ValueError("Review runs must select declared reviewer instances in a nonempty composition")
+    definitions = agent_definitions.library(Path(frozen["path"]) / "assets")
+    selected = {}
+    for path, leaf in members.items():
+        _reviewer(composition, path, packet)
+        agent = definitions.get(leaf["ref"]["id"], leaf["ref"]["version"])
+        if agent["digest"] != leaf["ref"]["digest"]:
+            raise ValueError("Review Agent definition differs from its frozen manifest reference")
+        selected[path] = agent["definition"]
+    task_sha256 = hashlib.sha256(_task(material, source_kind, source_sha256, manifest_digest)).hexdigest()
+    branches = []
+    for path in sorted(members):
+        branch = {"instance": path, "agent": selected[path], "run_id": runs.get(path),
+                  "verified": False, "completed": False, "decision": None}
+        branches.append(branch)
+        if path not in runs:
+            branch["error"] = "No original run selected for this reviewer"
+            continue
+        try:
+            observed = agent_runs.inspect_run(state, project_id, runs[path], max_result_bytes=max_result_bytes)
+            branch["observation"] = observed
+            missing = [name for name in ("input", "prompt", "result") if not observed[name]["available"]]
+            if missing:
+                raise ValueError("Original run material is unverifiable: " + "; ".join(
+                    name + ": " + observed[name]["error"] for name in missing))
+            prepared = observed["input"]
+            if (prepared["request"]["instance"] != path or prepared["composition"] != composition
+                    or prepared["request"]["task_sha256"] != task_sha256):
+                raise ValueError("Original run differs from the selected reviewer, complete manifest or source task")
+            result = agents.validate_result(observed["result"]["document"], agents.result_schema(["response"], review=True))
+            branch.update(verified=True, completed=observed["run"].get("status") == "succeeded", decision=result["decision"])
+        except (OSError, ValueError, RecursionError) as error:
+            branch["error"] = str(error)
+    complete = all(branch["completed"] for branch in branches)
+    changes = [branch["instance"] for branch in branches if branch["decision"] == "request-changes"]
+    return {"schema_version": 1, "kind": "source-bound-advisory-review-report", "project": project_id,
+            "source_kind": source_kind, "source_sha256": source_sha256, "material": material,
+            "manifest": frozen, "branches": branches,
+            "coverage": {"expected": len(branches), "selected": len(runs),
+                         "verified": sum(branch["verified"] for branch in branches),
+                         "completed": sum(branch["completed"] for branch in branches), "complete": complete},
+            "request_changes": changes,
+            "decision": "incomplete" if not complete else "request-changes" if changes else "approve",
+            "formal_execution_authorized": False}
+
+
+def _literal_lines(text: str) -> list[str]:
+    # CommonMark treats bare CR and CRLF as line endings; keep each display line literal.
+    return ["    " + line for line in text.replace("\r\n", "\n").replace("\r", "\n").split("\n")]
+
+
+def markdown(document: dict) -> str:
+    """Render this same observation; indented code retains untrusted replies literally."""
+    coverage = document["coverage"]
+    lines = ["# Ergora advisory review", "", "Decision: " + document["decision"],
+             f"Coverage: {coverage['completed']}/{coverage['expected']} completed; "
+             f"{coverage['verified']} verified; {coverage['selected']} selected.",
+             "Source SHA256: " + document["source_sha256"], "Manifest digest: " + document["manifest"]["digest"],
+             "", "This is a local advisory report; original run states and uncovered scope remain in the observations."]
+    for branch in document["branches"]:
+        lines.extend(["", "## " + branch["instance"], "", "Run:", "", *_literal_lines(branch["run_id"] or "not selected"), "",
+                      "Decision: " + (branch["decision"] or "unavailable"),
+                      "Completed: " + str(branch["completed"]).lower()])
+        if branch.get("error"):
+            lines.extend(["", "Observation error:", "", *_literal_lines(branch["error"])])
+        if branch["verified"]:
+            response = branch["observation"]["result"]["document"]["artifacts"]["response"]
+            lines.extend(["", "Original reply:", "", *_literal_lines(response)])
+    full = json.dumps(document, ensure_ascii=False, allow_nan=False, indent=2)
+    lines.extend(["", "## Complete source and original observations", "", *("    " + line for line in full.split("\n"))])
+    return "\n".join(lines) + "\n"

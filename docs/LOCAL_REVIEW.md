@@ -109,12 +109,47 @@ ergora composition run-input demo ./reviews/domain-input \
 
 完成调用后可用`ergora composition inspect-run demo RUN_ID > ./original-run.json`[按精确ID读取](WORKFLOW_DEFINITIONS.md#按精确-id-读取原组合运行)完整原输入和result，核`run.input_digest`与所选回执一致，以及各项`available`／原状态；不会自动补跑其他分支或重新调用模型。
 
+## 汇总完整的多分支审查
+
+用同一来源包和同一manifest，分别为需要的叶执行上述prepare／check／run-input。把原回执中的精确run ID写入`review-runs.json`；预训练和后训练根均可使用以下四个路径：
+
+```json
+{
+  "root/domain/review": "DOMAIN_RUN_ID",
+  "root/general/structure/review": "STRUCTURE_RUN_ID",
+  "root/general/correctness/review": "CORRECTNESS_RUN_ID",
+  "root/general/test-value/review": "TEST_VALUE_RUN_ID"
+}
+```
+
+然后生成完整JSON，或由同一观察生成Markdown：
+
+```bash
+ergora review report demo ./reviews/candidate-01 \
+  --source-kind local --source-sha256 PACKET_SHA256 \
+  --manifest ./reviews/pretraining-manifest --manifest-digest MANIFEST_DIGEST \
+  --runs ./review-runs.json > ./review-report.json
+
+ergora review report demo ./reviews/candidate-01 \
+  --source-kind local --source-sha256 PACKET_SHA256 \
+  --manifest ./reviews/pretraining-manifest --manifest-digest MANIFEST_DIGEST \
+  --runs ./review-runs.json --format markdown > ./review-report.md
+```
+
+外部PR／MR同样选择整个来源目录、`--source-kind external`及SOURCE_SHA256。报告按明确manifest的全部Agent叶列出预期成员，核每份原input的实例／完整编译图／来源task、原prompt及result SHA，再按可信reviewer结果合同解释意见。单独叶或自定义嵌套只读审查模板也可用；每个叶都须直接读取根task，不能跳过串行前驱。定义中的专长／后端与原run实际binding／选择原因分别保留，历史读取不要求当前后端、认证、Git或网络。
+
+`coverage`分别给出expected、selected、verified和completed；complete要求全部预期叶的证据可核且原status为succeeded。只有完整覆盖且全部approve才总体approve；任一request-changes都保留并使完整报告为request-changes。漏选、未知run、失败／运行中、错源或坏原件使总体为incomplete，`request_changes`仍列出已核反对分支，完整回复与错误继续保存在branches中。未知实例或重复run映射直接拒绝，不能用同一run填满多位专家。
+
+报告成功返回观察时exit0，脚本应检查`coverage.complete`、`decision`及各分支原状态。默认每份result最多8,388,608B，可显式提高`--max-result-bytes`后重新读取；超限返回对应分支不可核，绝不截断。重复生成只读原run，不补跑缺叶、重发失败／unknown、写平台或授予正式批准；正式六阶段任务仍使用原runtime。Markdown含每份已核回复及完整JSON观察，分享时保留项目原有源码访问范围。
+
+原run记录和result的JSON观察还要求有限数字，并使用定义文档原有的64层／100,000值结构容量；NaN／Infinity、指数溢出或超出结构容量均明确不可核，不让一个分支破坏整份导出。该容量与结果字节上限分别检查，提高字节上限不改变结构容量；原始文件和摘要保持，不截断、重写或自动重新调用。
+
 ## 覆盖、限制与后续审查
 
 - Git 读取禁用 replace objects、hook、textconv、外部 diff 与隐式 lazy fetch，剔除继承的 `GIT_*` 变量，不 checkout 或执行目标脚本。文件正文和其中的指令只是待审材料，不授予权限。
 - 首版只收普通 UTF-8 Git 文件和可移植相对路径。二进制／无效 UTF-8、符号链接、gitlink／子模块、LFS 指针及缺少对象都会拒绝整个包，不会自动读取它们指向的工作区或远端内容。
 - 默认完整 Git 材料上限为 1,000,000B，可用 `--max-source-bytes` 调整到最多 10,000,000B；它限制每次 Git 输出和去重 blob batch 的总字节（含 batch 头）。需求与全部 evidence 在读取时共用 10,000,000B 预算，最多 500 份 evidence；最终 JSON（含 diff、需求和 evidence）还受独立的 10,000,000B 上限，选择最多 500 个路径。超限不截断、不发布部分成功包；已获得清单时错误列出本次不承诺覆盖的全部选择。调整选择、容量或候选后重新生成新包。
 - evidence 是操作者提供的原件，当前命令不运行检查、不确认检查绑定的提交、执行环境、签名或真实性；省略时为空。检查可信性、必要资料是否齐备和哪些运行还缺失，由后续审查和既有可信验证流程判断。
-- 采集和输入准备本身没有模型审查、正式候选批准或平台 approve。领域专长可按上述入口显式调用，完整跨分支报告另接原run；源码材料和一份模型回复不能证明预训练／后训练语义已经验收。
+- 采集和输入准备本身没有模型审查、正式候选批准或平台 approve。领域专长可按上述入口显式调用，再按原run生成完整跨分支建议报告；源码材料和模型意见不能证明预训练／后训练语义已经验收。
 
 Linux 支持原子目录发布；Windows 的原生实现随同一 CLI 提供，实际平台验收记录见 [Q1.1 交付](delivery/2026-11-15-local-review-packets.md)。完整正式开发执行的 Linux／WSL2 约束不因这一独立入口改变。材料包含完整项目源码和检查信息，应只通过该项目已授权的存储和审查渠道分享。

@@ -59,3 +59,36 @@
 完整 baseline→固定提交 `git diff --check` 通过，覆盖新增文件。固定 Git 的 18 份 Markdown 共 313 个本地引用：312 个目标／fragment 在固定 Git 内解析通过；前片报告另有一条明确指向私有 CI 审计原件的链接，其本地 104,860B 和声明摘要已直接核同，不将该 ignored 原件声称为公开 Git 内容。
 
 已用匿名、有界、无重定向的官方 API GET 按完整 SHA 发现唯一 Portability run [43636049607](https://github.com/626619403/Ergora/actions/runs/43636049607)，attempt 1。随后直接保存该 run、完整 job 分页与八个原 job 页面十份响应；2026-11-14T20:14:24.596665Z 解析时仍为 In progress、24／30 必要步骤成功，不能据此关闭门禁。发现响应、各次请求回执及原页面分存本片 `.ergora/checks/source-bound-review-inputs/ci/`，没有借前片 CI。剩余验收为此固定提交自己的完整 CI 终态及同片补核；不重跑模型／测试或推送。
+
+## 固定 f1fc450 自己的 CI 终态补核（2026-11-15）
+
+同一 reviewer 已直接取得并重解析上述 Portability run `43636049607`／attempt 1 的官方 API 和原页面终态。完整 SHA 仍为 `f1fc4501b8f15060eee7502caf6531c8f44a1b5f`，parent／tree 由固定 Git 再次核同。**需求符合性 approve；结构可维护性／测试价值 approve；开放实质 finding 0／0，Q2.3a 片内剩余验收 0。** 本节关闭前文待固定发布／本片自有 CI 的事项，不认证任何后继工作树或后继提交。
+
+官方 API 于 **2026-11-14T20:33:48.248785Z** 返回 run completed／success、八个 job completed／success、30／30 必要步骤 success。随后独立取得的终轮原页面窗口为 **20:34:06.636823Z–20:34:10.066255Z**；run 显示 Success，完整分页 `totalCount=8`／`hasMore=false`，八个唯一 job 无漏项或重复，分页和各自原页终态一致：
+
+|固定 job|ID|必要步骤成功数|
+|---|---|---:|
+|plan|`132572973523`|1/1|
+|Ubuntu／Python 3.11／group 0|`132573018819`|4/4|
+|Ubuntu／Python 3.11／group 1|`132573018825`|4/4|
+|Ubuntu／Python 3.11／group 2|`132573018902`|4/4|
+|Ubuntu／Python 3.11／group 3|`132573018813`|4/4|
+|Ubuntu／Python 3.11／group 4|`132573018842`|4/4|
+|Ubuntu／Python 3.11／group 5|`132573018826`|4/4|
+|Windows／Python 3.12／group all|`132573018794`|5/5|
+
+必要步骤由固定 workflow／六组配置及 runner 确认：plan 的 `Read explicit test groups`，七个 native 的 `Run actions/setup-python@v5`、`Build and install wheel`、`Packaged reference identity`、`Native application regression`，加 Windows 的 `Windows PowerShell 5.1 installer and upgrade`，合计 30 项。逐项核完整终态属性、非空起止时间、步骤次序与 plan 先于 native；原 log URL 精确绑定本完整 SHA／本 job ID／步骤号。终轮 API 与 HTML 的 30 项名称、编号、状态及起止时间全部相同。Windows 回归于 **20:32:40Z** 成功，PS5.1 安装升级于 **20:33:39Z** 成功。
+
+本轮共保存 **55 个匿名 GET**：一次完整 SHA 发现、17 轮 run／attempt-1 jobs API 观察，以及两轮 run／完整分页／八 job 原页。每请求 timeout 20 秒、响应上限 2 MiB，拒绝重定向，不带凭据，无自动重试或平台写入。24／27／28／29 项成功的在途观察原样保留；终态没有借其他 SHA、重新分派 CI 或模型来替代。
+
+已直接读取 **94 份审计输入** 并建立字节数／摘要清单，其中 55 份 HTTP 原响应逐项匹配请求回执，均为预期 URL 的 HTTP 200；另核 API／页面身份、完整分页和固定配置。独立审计结果为本片 `ci/reviewer-ci-terminal-r1.json`，49,976B／SHA256 `4250af640da0947fd71fd55e549ef49a89233b789fc4c484b0c1903e5e057da7`，保存全部原件清单、两轮完整 job／步骤及 17 轮 API 状态。关键原件如下，八个 job 原页的逐项身份见该结果：
+
+|本片 CI 原件|字节数|SHA256|
+|---|---:|---|
+|`api-run-reviewer-r17.json`|11984|`51d0777a55f94c7bf3d44818d1b2312526cbd037467e259bf87435ad0c5b2874`|
+|`api-jobs-reviewer-r17.json`|21121|`444d81408a7bc62031e2198503ca158619188a0ab9cb2d5e0483c1caf417f3ff`|
+|`run-reviewer-r2.html`|213348|`b4626291c7871801b5b5c5de79445c467370825bac801a53a152f4944e67265f`|
+|`job-groups-reviewer-r2.json`|2736|`57ebc70b5a27c9c9f832a95ef75c533acc99afd3fcc087bb8720cf67b7269940`|
+|`receipts-reviewer-r2.json`|7626|`35028f51bc4e760e3940b8034ddec6587302990497f73155add93e60b1e3f6fe`|
+
+原 8,754B 报告及固定发布补核后的 11,166B 前缀均保持。没有下载逐测试日志／JUnit，也不编造 Windows passed／skipped 数；本次未安装、重跑测试／模型、训练、推送或修改其他产品／文档。Q2.3b 的报告／覆盖、真实平台完整采集、四路 all-join、训练／GPU／分布式／质量／性能与完整 Forge 的原未验范围保持，不因本片 CI 成功关闭。

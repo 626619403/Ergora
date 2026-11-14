@@ -62,3 +62,27 @@ r2wheel SHA256 `6a38e336970627e20ca1f6890bce3552166bcf681c5fbd9bea4fee1baff31956
 八条保存CLI的stdout／stderr SHA均直接核过。前七条run仍等于两原DB记录，所有可用result等于原完整文件／SHA／JSON；第3条只报告容量不足，第4条完整读，第5条迁移读，第6／7条仅隔离副本input故障。第8条副本record只有测试所需result摘要变化，原State writer写入后result递归错误被隔离，原status及其它材料保持。两条原run的38／19文件和DB记录仍与r1原前后清单逐字相同。首driver裸SQLite更新副本被writer guard拒绝的原stderr仍在；核了续接driver只修fixture并执行第8次读取，没有改产品绕过保护，也没有重发模型。
 
 新自身模板run `2714f6e314a24c17a5fa17cff88c2bdd`的原DB行／native stdout、21完整scope文件（439,899B）、完整task及3继承资源已直接核；产品／测试／两手册与r2冻结范围一致，冻结prompt／protocol prompt／实际stdin逐字相同。原input digest为`83f3a21f1124ba6a3b0e25ecdc5de08fbe62e2a0c47ed309378a32199297f91d`，result SHA为`fafca90f49a3e4f9183231f6327c59f4548eacdd48f12f0c3c402c881b3e8798`，decision为approve。其意见仅覆盖supplied-text；本reviewer以上述实际原件和独立复现自行得出结论，仍不声称异后端成功、Windows实际验收或训练／GPU／收益通过。
+
+## 本地固定提交复核
+
+固定提交`96b4bb5454714a73e1d5f60b880a479c195e5269`，直接父提交为原baseline `f1fc4501b8f15060eee7502caf6531c8f44a1b5f`。本次仅用`git show`／`git cat-file`读取固定对象及已验r2原件，不将后继工作树纳入认证。
+
+独立核定相对baseline的13路径与r2冻结范围一致，逐一读取13个blob／OID／完整字节：9个与冻结r2逐字相同；另外4个为`docs/PLAN.md`、本片plan、delivery及本review报告，只更新已核自身模板／独立复核和后续门禁状态，没有新增行为。原r1段和r2结论完整保留。13路径→blob OID映射按键排序、紧凑JSON的SHA256为`3583c3b97cf73e63057753f05c7d78e0451cf5f9b679623102b2fde04b692ae8`。
+
+固定产品blob仍为agent_runs `29b44d679f776519a06725f35502e8a0ecb46c74`、cli `d7695d94af8e0e90c38946f04a23caa78b9fd5a2`，原invocation测试为`fc99084a500a201f996b6f51b81d849c448b4e68`。另从固定Git对象逐份重比全部643产品与r2wheel／独立安装及原package字节／SHA清单，全部相符，283参考包含于同一核验；r2wheel SHA仍为`6a38e336970627e20ca1f6890bce3552166bcf681c5fbd9bea4fee1baff31956`。固定diff空白检查通过。新增记账与已核原件相符；链接检查保留首个不识别`:行号`的失败原件及修正后的202项结果，没有更换r1报告或夸大运行验收。
+
+**本地固定提交需求正确性approve、结构与维护approve，开放0／0。** 此时尚未推送，完整远端Ref、本片自己的CI终态及原reviewer终核仍待；前片CI不认证本提交，后续改动也不继承本结论。未新增模型调用、安装或重复既验回归。
+
+## 固定发布与自己的CI终核
+
+2026-11-14 21:00 UTC完成终核。两次独立`git ls-remote`均返回完整`96b4bb5454714a73e1d5f60b880a479c195e5269`对应`refs/heads/refactor/architecture-foundations`，原stdout／stderr及最终命令回执已保存。本次继续只认证该固定Git对象、r2原件和它自己的CI，没有读取后继产品工作树作为验收依据。
+
+按完整head SHA的官方API查询发现唯一[Portability运行43638408686](https://github.com/626619403/Ergora/actions/runs/43638408686)，event为push、attempt为1、workflow为固定`.github/workflows/portability.yml`。独立跟踪并保存过程原件后，最终官方run API为completed／success；精确attempt jobs API的8个job与原发现ID集合完全相同，全部completed／success。主run页面也显示Success和同一完整提交。
+
+直接逐页核8个官方job页面，并与API中的步骤名称／编号／状态交叉核验：plan的1个必要步骤、六个Linux分组各4个、Windows分组5个，共30个必要步骤全部success。各原步骤的开始／结束时间存在，log URL均绑定完整`96b4bb5…`及对应原job ID。Windows原生回归于20:57:30 UTC成功完成，PowerShell 5.1安装／升级于20:58:26 UTC成功完成；本地阶段未验Windows的范围现由该固定提交自己的Windows CI接缝补足，未扩大为真实模型后端或训练验收。
+
+固定workflow、显式分组和runner分别从该提交保存，SHA仍为`be814a956237b8a64258f396fa81a972ff764ceaa3ea16ffefa8e82be89a4353`／`b50d95a1954d6e2612183feccc7b5a764c9109c479997dec7fe628127b55981e`／`cc465950dd63ad1b73b6abe611358b87e756ef011daca18d06894941e503f1d8`。确认包含本片原invocation与共享output的原归档／续接接缝，没有使用前片成功代替它们。
+
+私有`composition-run-inspection/ci/`保存本reviewer的39个匿名GET原body及HTTP元数据，单请求超时30秒、显式容量4,000,000B，原响应合计2,264,827B；109份捕获文件及其清单逐份重算字节／SHA相符。原发现分页也保留，后续显式完整八job观察及最终API无缺页。终核汇总`reviewer-ci-terminal-r1.json`为28,763B，SHA256 `20513735ff01b4a87d29f9416891e12564ed961dcfd39135b669d0d3d696b461`。只作GET及远端Ref读取，未重跑CI、发起平台写入、安装或调用模型。
+
+**固定提交的发布／自己的CI／原独立终核门禁关闭：需求正确性approve、结构与维护approve，开放0／0。** r1失败与r2修正的原记录保持；本结论不认证后继b2工作树，也不增加训练、GPU、质量、性能、异后端或正式批准主张。

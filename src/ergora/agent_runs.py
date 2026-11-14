@@ -365,7 +365,7 @@ def _record(state: State, project_id: str, run_id: str) -> dict:
         row = db.execute("SELECT document FROM agent_runs WHERE project=? AND id=?", (project_id, run_id)).fetchone()
     if row is None:
         raise ValueError("Unknown agent run in this project")
-    document = parse_json(row[0], "Agent run record")
+    document = parse_json(row[0], "Agent run record", finite=True, bounded=True)
     if not isinstance(document, dict) or document.get("id") != run_id or document.get("project") != project_id:
         raise ValueError("Saved agent run differs from its selected project or run ID")
     return document
@@ -427,7 +427,7 @@ def inspect_run(state: State, project_id: str, run_id: str, *, max_result_bytes:
             if digest != document["result_sha256"]:
                 raise ValueError("Structured result differs from its original run SHA256")
             observed["result"] = {"available": True, "bytes": len(raw), "sha256": digest,
-                                  "document": parse_json(raw.decode("utf-8"), "Agent result")}
+                                  "document": parse_json(raw.decode("utf-8"), "Agent result", finite=True, bounded=True)}
         except (OSError, ValueError, RecursionError) as error:
             observed["result"]["error"] = str(error)
     return observed

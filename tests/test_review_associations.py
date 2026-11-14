@@ -4,6 +4,7 @@ from copy import deepcopy
 from concurrent.futures import ThreadPoolExecutor
 import json
 import os
+from pathlib import Path
 import subprocess
 import sys
 from threading import Barrier
@@ -11,7 +12,7 @@ from threading import Barrier
 import pytest
 
 from test_candidate_observations import candidate, remote, source, writer
-from ergora import backups, cli, issue_backends, issue_writebacks, issues, projects, review_requests, review_sources, tasks
+from ergora import agent_runs, backups, cli, issue_backends, issue_writebacks, issues, processes, projects, review_requests, review_sources, tasks
 from ergora import workflow_definitions as workflows
 from ergora.state import State
 from test_review_packets import commit, git, review_manifest, source as git_source
@@ -390,6 +391,8 @@ def test_external_review_input_keeps_full_observation_and_source_without_new_pla
     receipt = review_sources.collect(service.backend.binding, '11', repository, destination=source, **options)
     manifest = review_manifest('posttraining')
     original = {name: (source / name).read_bytes() for name in ('source.json', 'material/packet.json')}
+    state = State(tmp_path / 'external-runs')
+    projects.create(state, 'demo', repository)
     monkeypatch.delenv('ERGORA_FIXTURE_ISSUE_TOKEN')
     monkeypatch.setenv('PATH', '')
     unused_home = tmp_path / 'unused-home'
@@ -402,6 +405,22 @@ def test_external_review_input_keeps_full_observation_and_source_without_new_pla
     verified = review_requests.verify(destination, input_digest=selected['input_digest'], source=source,
         source_kind='external', source_sha256=receipt['source_sha256'], manifest_digest=manifest['digest'])
     assert verified['input_digest'] == workflows.inspect_input(destination)['digest']
+    model_calls = []
+
+    def native(argv, cwd, output, timeout, stdin, env, **kwargs):
+        model_calls.append(argv)
+        result = {'summary': 'External original', 'decision': 'request-changes', 'artifacts': {'response': 'Complete original reply'}}
+        Path(argv[argv.index('--output-last-message') + 1]).write_text(json.dumps(result), encoding='utf-8')
+        output.mkdir()
+        return {'status': 'succeeded', 'returncode': 0, 'output': str(output)}
+
+    monkeypatch.setattr(processes, 'run', native)
+    run = agent_runs.run_input(state, 'demo', destination, backend='codex', reason='Explicit fixture review backend')
+    observed = review_requests.report(state, 'demo', source, source_kind='external', source_sha256=receipt['source_sha256'],
+        manifest=Path(manifest['path']), manifest_digest=manifest['digest'], runs={'root/domain/review': run['id']})
+    assert observed['material'] == task['material'] and observed['decision'] == 'incomplete'
+    assert observed['coverage'] == {'expected': 4, 'selected': 1, 'verified': 1, 'completed': 1, 'complete': False}
+    assert observed['request_changes'] == ['root/domain/review'] and len(model_calls) == 1
     assert {name: (source / name).read_bytes() for name in original} == original
     assert len(service.calls) == 2 and not unused_home.exists()
 

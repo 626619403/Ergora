@@ -4,6 +4,7 @@ import base64
 from copy import deepcopy
 import hashlib
 import json
+import math
 from pathlib import Path, PurePosixPath, PureWindowsPath
 import shutil
 import stat
@@ -26,8 +27,21 @@ def relative_path(value: str, label: str = "Definition") -> Path:
     return Path(*path.parts)
 
 
-def parse_json(text: str, label: str) -> dict:
-    """Decode ordinary JSON while preserving the duplicate-key rejection contract."""
+def _check_document_tree(value, label: str) -> None:
+    pending, values = [(value, 1)], 0
+    while pending:
+        item, depth = pending.pop()
+        values += 1
+        if depth > 64 or values > 100_000:
+            raise ValueError(f"{label} exceeds 64 levels / 100000 values")
+        if isinstance(item, dict):
+            pending.extend((child, depth + 1) for pair in item.items() for child in pair)
+        elif isinstance(item, list):
+            pending.extend((child, depth + 1) for child in item)
+
+
+def parse_json(text: str, label: str, *, finite: bool = False, bounded: bool = False) -> dict:
+    """Decode JSON; observation callers can require finite and bounded data trees."""
     def unique(pairs):
         value = {}
         for key, item in pairs:
@@ -36,7 +50,17 @@ def parse_json(text: str, label: str) -> dict:
             value[key] = item
         return value
 
-    return json.loads(text, object_pairs_hook=unique)
+    def number(token):
+        value = float(token)
+        if not math.isfinite(value):
+            raise ValueError(f"Non-finite JSON number in {label}: {token}")
+        return value
+
+    value = json.loads(text, object_pairs_hook=unique, parse_float=number if finite else None,
+                       parse_constant=number if finite else None)
+    if bounded:
+        _check_document_tree(value, label)
+    return value
 
 
 def read_json(path: Path, expected: str | None = None) -> dict:
@@ -93,16 +117,7 @@ def convert_document(text: str, format: str = "json") -> dict:
             raise ValueError(f"Unsupported definition document format: {format}")
         if not isinstance(definition, dict):
             raise ValueError("Definition document requires an object root")
-        pending, values = [(definition, 1)], 0
-        while pending:
-            value, depth = pending.pop()
-            values += 1
-            if depth > 64 or values > 100_000:
-                raise ValueError("Definition document exceeds 64 levels / 100000 values")
-            if isinstance(value, dict):
-                pending.extend((item, depth + 1) for pair in value.items() for item in pair)
-            elif isinstance(value, list):
-                pending.extend((item, depth + 1) for item in value)
+        _check_document_tree(definition, "Definition document")
         encoded = json.dumps(definition, sort_keys=True, indent=2, ensure_ascii=False, allow_nan=False) + "\n"
         return {"definition": definition, "json": encoded,
                 "yaml": yaml.safe_dump(definition, sort_keys=True, allow_unicode=True)}

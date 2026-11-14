@@ -10,7 +10,7 @@ import sys
 
 import pytest
 
-from ergora import cli, review_packets, review_requests, workflow_definitions as workflows
+from ergora import agent_backends, agent_runs, agents, cli, processes, projects, review_packets, review_requests, workflow_definitions as workflows
 from ergora.state import State
 from test_composition_invocations import prepared as restricted_input
 
@@ -184,6 +184,200 @@ def test_source_bound_input_exceeding_full_prompt_capacity_is_not_truncated_or_p
             manifest=Path(manifest["path"]), manifest_digest=manifest["digest"], instance="root/domain/review",
             destination=destination, max_prompt_bytes=100)
     assert not destination.exists() and not list(tmp_path.glob(".review-input-*"))
+
+
+@pytest.fixture
+def reviewed_source(source, review_manifest, tmp_path, monkeypatch):
+    repository, _, options = source
+    state = State(tmp_path / "review-runs")
+    projects.create(state, "demo", repository)
+
+    def native(argv, cwd, output, timeout, stdin, env, **kwargs):
+        run = agent_runs.runs(state, "demo")[0]
+        path = run["input_request"]["instance"]
+        response = "Original reply for " + path + ":\n````\nUnicode: \u0085\u2028\u2029\r\n" + "完整审查意见。" * 10000
+        result = {"summary": path, "artifacts": {"response": response},
+                  "decision": decision if path == "root/domain/review" else "approve"}
+        Path(argv[argv.index("--output-last-message") + 1]).write_text(json.dumps(result), encoding="utf-8")
+        output.mkdir()
+        return {"status": "succeeded", "returncode": 0, "output": str(output)}
+
+    monkeypatch.setattr(processes, "run", native)
+    decision = "request-changes"
+
+    def build(domain="pretraining", domain_decision="request-changes"):
+        nonlocal decision
+        decision = domain_decision
+        packet = tmp_path / "report-packet"
+        receipt = review_packets.prepare(repository, destination=packet, **options)
+        manifest = review_manifest(domain)
+        graph = workflows.inspect_manifest(Path(manifest["path"]), material=True)["composition"]
+        selections = {}
+        for number, leaf in enumerate(item for item in graph["instances"] if item["kind"] == "agent"):
+            directory = tmp_path / ("report-input-" + str(number))
+            review_requests.prepare(packet, source_kind="local", source_sha256=receipt["packet_sha256"],
+                manifest=Path(manifest["path"]), manifest_digest=manifest["digest"], instance=leaf["path"],
+                destination=directory, max_prompt_bytes=1_000_000)
+            run = agent_runs.run_input(state, "demo", directory, backend="codex", reason="Explicit fixture backend")
+            assert run["status"] == "succeeded"
+            selections[leaf["path"]] = run["id"]
+        return state, packet, {"source_kind": "local", "source_sha256": receipt["packet_sha256"],
+            "manifest": Path(manifest["path"]), "manifest_digest": manifest["digest"], "runs": selections}
+
+    return build
+
+
+@pytest.mark.parametrize("domain,decision", [("pretraining", "request-changes"), ("posttraining", "request-changes"),
+                                            ("pretraining", "approve")])
+def test_complete_review_report_retains_each_original_and_minority_without_redispatch(reviewed_source, tmp_path,
+                                                                                    monkeypatch, capsys, domain, decision):
+    state, packet, options = reviewed_source(domain, decision)
+    with state.connect() as db:
+        before = list(db.iterdump())
+    originals = {str(p): p.read_bytes() for directory in (packet, options["manifest"], state.root / "runs")
+                 for p in directory.rglob("*") if p.is_file()}
+    monkeypatch.setenv("PATH", "")
+    monkeypatch.setattr(agent_backends, "for_binding", lambda *a, **k: pytest.fail("Report must not readmit a backend"))
+    monkeypatch.setattr(agents, "invoke", lambda *a, **k: pytest.fail("Report must not redispatch"))
+    observed = review_requests.report(state, "demo", packet, **options)
+    assert observed["coverage"] == {"expected": 4, "selected": 4, "verified": 4, "completed": 4, "complete": True}
+    assert observed["decision"] == decision and not observed["formal_execution_authorized"]
+    assert observed["request_changes"] == (["root/domain/review"] if decision == "request-changes" else [])
+    for branch in observed["branches"]:
+        original = branch["observation"]
+        assert original["result"]["bytes"] > 65536 and original["run"]["id"] == options["runs"][branch["instance"]]
+        assert original["run"]["binding"]["tool"] == "codex" and branch["agent"]["specialties"]
+        assert original["input"]["composition"] == observed["manifest"]["composition"]
+        assert original["result"]["document"]["summary"] == branch["instance"]
+    mapping = tmp_path / "runs.json"
+    mapping.write_text(json.dumps(options["runs"]), encoding="utf-8")
+    argv = ["--home", str(state.root), "review", "report", "demo", str(packet), "--source-kind", "local",
+            "--source-sha256", options["source_sha256"], "--manifest", str(options["manifest"]),
+            "--manifest-digest", options["manifest_digest"], "--runs", str(mapping)]
+    assert cli.main(argv) == 0 and json.loads(capsys.readouterr().out) == observed
+    assert cli.main(argv + ["--format", "markdown"]) == 0
+    rendered = capsys.readouterr().out
+    assert "Decision: " + decision in rendered and "    ````" in rendered
+    encoded = rendered.split("## Complete source and original observations\n\n", 1)[1]
+    recovered = "\n".join(line[4:] for line in encoded.split("\n") if line.startswith("    "))
+    assert json.loads(recovered) == observed
+    for branch in observed["branches"]:
+        response = branch["observation"]["result"]["document"]["artifacts"]["response"]
+        assert all("    " + line in rendered for line in response.replace("\r\n", "\n").replace("\r", "\n").split("\n"))
+    with state.connect() as db:
+        assert list(db.iterdump()) == before
+    assert {name: Path(name).read_bytes() for name in originals} == originals
+
+
+def test_review_report_keeps_original_unfinished_states_separate_from_evidence_and_opinion(reviewed_source):
+    state, packet, options = reviewed_source()
+    run_id = options["runs"]["root/general/structure/review"]
+    for status in ("failed", "running", "preparing", "unknown"):
+        with state.connect() as db:
+            run = json.loads(db.execute("SELECT document FROM agent_runs WHERE id=?", (run_id,)).fetchone()[0])
+            run["status"] = status
+            db.execute("UPDATE agent_runs SET document=? WHERE id=?", (json.dumps(run), run_id))
+        observed = review_requests.report(state, "demo", packet, **options)
+        branch = next(item for item in observed["branches"] if item["run_id"] == run_id)
+        assert branch["verified"] and not branch["completed"] and branch["observation"]["run"] == run
+        assert observed["coverage"]["verified"] == 4 and observed["coverage"]["completed"] == 3
+        assert observed["decision"] == "incomplete" and observed["request_changes"] == ["root/domain/review"]
+
+
+@pytest.mark.parametrize("fault", ["missing", "unknown", "invalid-id", "wrong-instance", "bad-result", "nonfinite-result", "nonfinite-record", "nested-result",
+                                   "missing-input", "capacity"])
+def test_review_report_preserves_other_branches_and_raw_results_when_one_selection_is_unverifiable(reviewed_source, fault):
+    state, packet, options = reviewed_source()
+    path = "root/general/structure/review"
+    run_id = options["runs"][path]
+    if fault == "missing":
+        del options["runs"][path]
+    elif fault == "unknown":
+        options["runs"][path] = "not-a-saved-run"
+    elif fault == "invalid-id":
+        options["runs"][path] = 'not-a-run\n<img src=x onerror=alert(1)>\r<script>alert(1)</script>'
+    elif fault == "wrong-instance":
+        other = "root/general/correctness/review"
+        options["runs"][path], options["runs"][other] = options["runs"][other], run_id
+    elif fault == "missing-input":
+        (state.root / "runs" / (run_id + ".input") / "task.txt").unlink()
+    elif fault == "nonfinite-record":
+        with state.connect() as db:
+            run = json.loads(db.execute("SELECT document FROM agent_runs WHERE id=?", (run_id,)).fetchone()[0])
+            run["reported_detail"] = float("nan")
+            db.execute("UPDATE agent_runs SET document=? WHERE id=?", (json.dumps(run), run_id))
+    elif fault in ("bad-result", "nonfinite-result", "nested-result"):
+        raw = (b'{"decision":"approve","artifacts":{"response":NaN},"summary":"Non-finite result"}'
+               if fault == "nonfinite-result" else
+               b'{"extra":' + b'[' * 990 + b'0' + b']' * 990 + b'}' if fault == "nested-result" else
+               json.dumps({"decision": "approve", "artifacts": {}, "summary": "No required response"}).encode())
+        (state.root / "runs" / run_id / "result.json").write_bytes(raw)
+        (state.root / "runs" / (run_id + ".protocol") / "schema.json").write_text("{}", encoding="utf-8")
+        with state.connect() as db:
+            run = json.loads(db.execute("SELECT document FROM agent_runs WHERE id=?", (run_id,)).fetchone()[0])
+            run["result_sha256"] = hashlib.sha256(raw).hexdigest()
+            db.execute("UPDATE agent_runs SET document=? WHERE id=?", (json.dumps(run), run_id))
+    else:
+        options["max_result_bytes"] = 1
+    observed = review_requests.report(state, "demo", packet, **options)
+    branch = next(item for item in observed["branches"] if item["instance"] == path)
+    assert not branch["verified"] and branch["error"] and observed["decision"] == "incomplete"
+    if fault != "capacity":
+        domain = next(item for item in observed["branches"] if item["instance"] == "root/domain/review")
+        assert domain["completed"] and observed["request_changes"] == ["root/domain/review"]
+    if fault in ("wrong-instance", "bad-result", "missing-input"):
+        assert branch["observation"]["result"]["available"]
+    if fault == "invalid-id":
+        rendered = review_requests.markdown(observed)
+        assert all(line.startswith("    ") for line in rendered.split("\n") if "<img" in line or "<script" in line)
+    if fault in ("nonfinite-result", "nested-result"):
+        rendered = review_requests.markdown(observed)
+        assert "root/domain/review" in rendered and not branch["observation"]["result"]["available"]
+
+
+@pytest.mark.parametrize("fault", ["source", "manifest", "duplicate-run", "unknown-instance"])
+def test_review_report_rejects_ambiguous_selection_instead_of_silently_changing_scope(source, review_manifest, tmp_path, fault):
+    repository, _, original = source
+    state = State(tmp_path / "report-state")
+    projects.create(state, "demo", repository)
+    packet = tmp_path / "report-packet"
+    receipt = review_packets.prepare(repository, destination=packet, **original)
+    manifest = review_manifest("pretraining")
+    options = {"source_kind": "local", "source_sha256": receipt["packet_sha256"],
+               "manifest": Path(manifest["path"]), "manifest_digest": manifest["digest"],
+               "runs": {"root/domain/review": "domain", "root/general/structure/review": "structure"}}
+    if fault == "source":
+        options["source_sha256"] = "0" * 64
+    elif fault == "manifest":
+        options["manifest_digest"] = "0" * 64
+    elif fault == "duplicate-run":
+        options["runs"]["root/general/structure/review"] = options["runs"]["root/domain/review"]
+    else:
+        options["runs"]["root/not-declared"] = "not-a-run"
+    with pytest.raises(ValueError):
+        review_requests.report(state, "demo", packet, **options)
+
+
+@pytest.mark.parametrize("changed", ["source", "manifest"])
+def test_review_report_does_not_attribute_valid_original_runs_to_a_different_valid_source_or_manifest(
+        reviewed_source, source, review_manifest, tmp_path, changed):
+    state, packet, options = reviewed_source()
+    if changed == "source":
+        repository, _, original = source
+        request = tmp_path / "other-request.md"
+        request.write_text("A different complete original requirement", encoding="utf-8")
+        packet = tmp_path / "other-source"
+        receipt = review_packets.prepare(repository, destination=packet, **{**original, "requirements": request})
+        options["source_sha256"] = receipt["packet_sha256"]
+    else:
+        manifest = review_manifest("posttraining")
+        options.update(manifest=Path(manifest["path"]), manifest_digest=manifest["digest"])
+    observed = review_requests.report(state, "demo", packet, **options)
+    assert observed["decision"] == "incomplete" and observed["coverage"]["verified"] == 0
+    assert observed["request_changes"] == []
+    for branch in observed["branches"]:
+        assert branch["error"] and not branch["verified"]
+        assert all(branch["observation"][name]["available"] for name in ("input", "prompt", "result"))
 
 
 def test_complete_diverged_sources_ignore_worktree_and_survive_repository_removal(source, tmp_path):
