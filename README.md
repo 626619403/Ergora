@@ -64,13 +64,13 @@ ergora serve
 |整理已有仓库、约束模块依赖、沉淀项目知识|`repository-governance`|盘点基线、建立导航与架构检查，在限定范围内修改并验证|
 |跨模块功能、接口调整、可回滚迁移|`large-change`|按依赖和路径所有权拆工作单元，增加集成、兼容、迁移回滚检查|
 |保持行为的模块重构、调用者迁移|`refactoring`|准备→重构→兼容验证→可信集成／验证→三路审查，引用一个原生六阶段任务|
-|训练性能与配方方案|`training-optimization-v2`|跨域实验设计、性能分析、kernel／wrapper 设计与独立测量审查；实际实验交可信 runner|
+|训练性能与配方方案|`training-optimization-v3`|源码流程图谱、按瓶颈分析、保留 kernel 评估与测量审查；只读叶显式交接，实际实验交可信 runner|
 
 适合需要管理多个 agent 的交接、恢复长任务、保留验收依据的项目维护者。每个业务项目拥有自己的 Git 仓库和工单；每个开发任务导出自己的分支。平台共享工具和运行记录。
 
 安装后运行`ergora composition presets`查看内置专家组合；`ergora composition install-preset large-change`一次导入该领域的Agent与子模板。治理和开发可将互补专家映射到原工作单元，再接结构、正确性、测试价值三份审查子模板；训练组合提供只读提案，真实实验保留可信runner/gate。[使用与后端选择](docs/WORKFLOW_DEFINITIONS.md#使用内置领域组合)。
 
-当前内置 **31 个 preset**：上表四个入口、保留的 `training-optimization` v1、以下 **18 个优化方向子模板**，以及 `refactoring-quality`／`optimization-performance-diagnosis`、`retrospective` 、`memory-retrospective` 和 `workflow-retrospective`，以及 `pretraining-review`／`posttraining-review` 和 `training-flow-map`。方向完整 ID、根版本和调用方式见 [训练手册](docs/TRAINING.md#独立的优化方向子模板)。 `retrospective`提供绑定原证据和完整Skill基线的候选作者与审查者；[准备、检查、审查与显式导出](docs/USAGE.md#生成来源绑定的skill复盘候选)沿现有只读后端和Skill库运行，评价和明确采用分别进行。`memory-retrospective`支持[新建／更正记忆建议及完整导出](docs/USAGE.md#生成来源绑定的记忆复盘候选)，明确保存／修订冲突／有效期和恢复仍由原记忆接口处理。`workflow-retrospective`支持[完整流程基线、受限根修订与显式导出](docs/USAGE.md#生成来源绑定的工作流复盘候选)，正式导入和运行选择由原版本库与manifest处理。
+当前内置 **32 个 preset**：上表四个入口、保留的 `training-optimization` v1 和 `training-optimization-v2`、以下 **18 个优化方向子模板**，以及 `refactoring-quality`／`optimization-performance-diagnosis`、`retrospective` 、`memory-retrospective` 和 `workflow-retrospective`，以及 `pretraining-review`／`posttraining-review` 和 `training-flow-map`。方向完整 ID、根版本和调用方式见 [训练手册](docs/TRAINING.md#独立的优化方向子模板)。 `retrospective`提供绑定原证据和完整Skill基线的候选作者与审查者；[准备、检查、审查与显式导出](docs/USAGE.md#生成来源绑定的skill复盘候选)沿现有只读后端和Skill库运行，评价和明确采用分别进行。`memory-retrospective`支持[新建／更正记忆建议及完整导出](docs/USAGE.md#生成来源绑定的记忆复盘候选)，明确保存／修订冲突／有效期和恢复仍由原记忆接口处理。`workflow-retrospective`支持[完整流程基线、受限根修订与显式导出](docs/USAGE.md#生成来源绑定的工作流复盘候选)，正式导入和运行选择由原版本库与manifest处理。
 
 `refactoring-quality` 为原重构根的 1.1.0 版本，通过父 Skill 补充目标仓库编码规范、真实调用者和测试接缝，沿用原角色及六阶段。`optimization-performance-diagnosis` 提供同症状复现、按输入选择报告 reader 的只读提案与独立测量审查。两者显式选择，旧定义与在途任务保持；[重构使用方式](docs/USAGE.md#使用重构配方)与[诊断入口](docs/TRAINING.md#通用性能诊断)说明如何准备完整资料。
 

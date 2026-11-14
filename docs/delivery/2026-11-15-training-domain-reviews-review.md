@@ -57,3 +57,16 @@ python -B -I -m ergora reference verify
 本次以固定提交的 Git blob 重新对照 r2 wheel 及保留的 Q2 非 editable 安装，**628 产品文件逐字相同**；没有用随后 Q3 的未提交工作树作为 Q2 源码。`check-docs-r3.json` 中 **16 份 Markdown** 的身份也与固定提交相同，记录的 **325 个本地链接／fragment、0 error** 保持其原静态范围。
 
 固定发布两轴继续 **approve**，新增实质 finding **0**。自己的 CI `43621692177` 的官方 `ci/run-r1.html` 明确绑定上述完整 Q2 SHA；r1 原件为 **In progress**，八 job 中 plan 成功，其余七项仍在途。故本次只关闭固定发布身份补核，**不认证 CI 成功**；后续须核该 run 自己的终态及必要步骤。Q1 修正的独立 CI 不代替 Q2 CI，后续 Q3 改动不继承本报告的产品验收。
+
+## 自有 CI 终态补核（2026-11-15）
+
+已读取同一私有 `ci/` 目录的 `observation-terminal-r1.json`、`job-groups-terminal-r1.json`、`run-terminal-r1.html` 及八份 `job-*-terminal-r1.html`。官方 run 页面为 **Success**，绑定完整提交 `0b5b5f1ff7a3463fcb10cf5a05e5f7c7bcae7c62` 与自己的 run `43621692177`。完整分页为 `totalCount: 8 / hasMore: false`，八个唯一 job 全部 completed／success；与该固定提交的 workflow 及六组 Linux matrix 一致。
+
+独立从八份原 job HTML 解析必要 step 的名称、conclusion、起止时间与 log URL：**30／30 success**，每个 URL 均绑定上述完整 SHA 和对应 job／step。包括 plan 的分组读取、六组 Linux 的 Python／wheel 安装／参考身份／应用回归，以及 Windows 的同四项和额外 `Windows PowerShell 5.1 installer and upgrade`。其中 Windows 应用回归与安装升级均实际终态 success，无取消或跳过替代。
+
+|最终审查轴|结论与开放数|
+|---|---|
+|需求符合性|**approve；Q2.1／Q2.2 本地、固定发布、自有 CI 验收闭合；开放 finding 0，片内验收缺口 0。**|
+|可维护性|**approve；C1 已关闭，开放实质／记录 finding 0／0。**|
+
+较早 r1–r8 的在途观测保持原件及当时范围，终态补核不改写其历史。本次仅补核上述固定 Q2 的 CI，不重跑测试、安装或模型调用，也不以随后 Q3.1 的 `2729b81`／633 产品文件认证 Q2；Q2 仍绑定原 628 产品身份。Q2.3、整根四路实际旅程、GPU／分布式／质量／性能、真实 B3 与完整 Forge 等范围继续按原边界开放，不计作本片已完成能力。

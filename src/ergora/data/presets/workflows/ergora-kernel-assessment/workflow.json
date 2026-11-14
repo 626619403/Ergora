@@ -1,0 +1,72 @@
+{
+  "schema_version": 2,
+  "id": "ergora-kernel-assessment",
+  "version": "1.0.0",
+  "description": "Assess whether a kernel intervention is warranted; a reasoned no-change outcome is valid.",
+  "resources": [
+    {
+      "id": "ergora-kernel-assessment-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "6164b3966b6a45ae2b65c7b2d0d5abec0e529b4f5afa7e8f41685b39cac23649"
+    }
+  ],
+  "permissions": {
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "write": [],
+    "shell": false,
+    "network": []
+  },
+  "limits": {
+    "depth": 8,
+    "instances": 128,
+    "concurrency": 4,
+    "material_bytes": 262144
+  },
+  "inputs": [
+    "task"
+  ],
+  "outputs": {
+    "result": {
+      "node": "gather",
+      "output": "result"
+    }
+  },
+  "nodes": [
+    {
+      "id": "assess",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-kernel-designer",
+        "version": "2.0.0",
+        "digest": "fd1528529bd17b355cca28653f698843666b587066c477391c9e5e064ff4a13e"
+      },
+      "role": "kernel-tuner",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      }
+    },
+    {
+      "id": "gather",
+      "join": "all",
+      "depends_on": [
+        "assess"
+      ]
+    }
+  ]
+}

@@ -495,6 +495,25 @@
       "workflows": [
         "ergora-training-flow-map"
       ]
+    },
+    "training-optimization-v3": {
+      "description": "Readonly flow maps, bottleneck-led interventions, retained kernel assessment (including no-change) and measurement review; manual complete handoffs, no automatic graph/experiment runner.",
+      "runtime": "proposal-leaves",
+      "root": "ergora-training-proposal-v3",
+      "agents": [
+        "ergora-training-flow-analyst",
+        "ergora-experiment-designer-v2",
+        "ergora-performance-analyst-v2",
+        "ergora-kernel-designer-v2",
+        "ergora-measurement-reviewer-v2"
+      ],
+      "workflows": [
+        "ergora-training-flow-map",
+        "ergora-training-analysis-v2",
+        "ergora-kernel-assessment",
+        "ergora-measurement-review-v2",
+        "ergora-training-proposal-v3"
+      ]
     }
   }
 }

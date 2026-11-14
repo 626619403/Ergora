@@ -126,6 +126,41 @@ def test_flow_map_freezes_complete_material_without_changing_training_versions(t
     assert {source['instance'] for resource in leaf['resources'] for source in resource['sources']} == {'root', 'root/map'}
 
 
+def test_bottleneck_path_retains_kernel_assessment_and_original_task_in_frozen_leaves(tmp_path):
+    state = State(tmp_path / 'state')
+    previous = [workflows.install_preset(state, name)['root']
+                for name in ('training-optimization', 'training-optimization-v2', 'training-flow-map')]
+    installed = workflows.install_preset(state, 'training-optimization-v3')
+    assert workflows.install_preset(state, 'training-optimization-v3') == installed
+    assert [workflows.get(state, item['id'], item['version'])['digest'] for item in previous] == [
+        item['digest'] for item in previous]
+    definition = workflows.get(state, installed['root']['id'], installed['root']['version'])['definition']
+    nodes = {item['id']: item for item in definition['nodes']}
+    assert definition['version'] == '3.0.0'
+    assert {name: nodes[name]['depends_on'] for name in ('flow', 'analysis', 'kernel', 'measurement')} == {
+        'flow': [], 'analysis': ['flow'], 'kernel': ['analysis'], 'measurement': ['kernel']}
+    assert set(nodes['gather']['depends_on']) == {'flow', 'analysis', 'kernel', 'measurement'}
+    assert all(nodes[name]['inputs'] == {'task': {'input': 'task'}}
+               for name in ('flow', 'analysis', 'kernel', 'measurement'))
+    grant = {'schema_version': 1, 'permissions': definition['permissions'], 'limits': definition['limits']}
+    manifest = workflows.prepare_manifest(state.root, definition['id'], definition['version'], grant, tmp_path / 'manifest')
+    graph = workflows.inspect_manifest(Path(manifest['path']), material=True)['composition']
+    leaves = {item['path']: item for item in graph['instances'] if item['kind'] == 'agent'}
+    assert set(leaves) == {'root/flow/map', 'root/analysis/design', 'root/analysis/profile',
+                           'root/kernel/assess', 'root/measurement/review'}
+    shutil.rmtree(state.root / 'agent-definitions')
+    shutil.rmtree(state.root / 'workflow-definitions')
+    task = b'Original exact source and contract. Complete supplied predecessor result envelopes remain task data.'
+    for path, leaf in leaves.items():
+        assert not leaf['permissions']['write'] and not leaf['permissions']['shell'] and not leaf['permissions']['network']
+        prepared = workflows.prepare_input_from_manifest(Path(manifest['path']), path, task,
+            tmp_path / path.replace('/', '-'), 100000)
+        actual = workflows.inspect_input(Path(prepared['path']), material=True)
+        assert actual['composition'] == graph and task.decode() in actual['prompt']
+        assert all(resource['text'] in actual['prompt'] for resource in leaf['resources'])
+        assert any(source['instance'] == 'root' for resource in leaf['resources'] for source in resource['sources'])
+
+
 @pytest.mark.parametrize('identity,preset', [
     ('ergora-structure-review', 'repository-governance'),
     ('ergora-correctness-review', 'repository-governance'),

@@ -9,6 +9,7 @@
 |当前目标|操作入口|
 |---|---|
 |先理解算法、执行依赖和状态驻留|[源码锚定的流程图谱](#源码锚定的流程图谱)|
+|组合图谱、分析、kernel评估和测量审查|[按瓶颈组织完整提案](#按瓶颈组织完整提案)，v3各叶显式交接|
 |先分析已有代码、trace或显存报告|[通用性能诊断](#通用性能诊断)或[细方向子模板](#独立的优化方向子模板)|
 |把专家提案变成可执行实验|[提案到原实验合同](#从专家提案填写原实验合同)，然后预览／确认baseline、runner和实验|
 |先在 CPU 核对测量合同与原门禁|[离线成对测量演示](#离线成对测量演示)，无需模型、密钥或训练服务|
@@ -380,7 +381,46 @@ ergora composition run-input my-project ./flow-map-input --backend codex \
 
 结果沿原 run 的 response 保存三类材料：源码锚定的算法图、执行／通信／并行依赖图，以及关键状态生命周期表；同时给出必要依赖、可证伪的去冗余假设与最小补证据请求。它区分已读源码、推断、配置声明与实际 runtime；缺少外部模块或 trace 时明确图谱不完整。相同代码、数学零项或重复存储都须先核生产者／消费者、梯度／collective、版本和生命周期，不能据外观直接删除。
 
-先保留原始参照及工作负载／语义，再由原 runner 固定可比 baseline 和测量。图谱本身不证明瓶颈、已实现并行或收益。把该叶的完整原结果明确交给设计／诊断专家；它不自动调用后续节点。kernel 专家评估继续保留在总优化路径，结论可以是无需 kernel 修改；实际干预按去耦合／去冗余、内存、通信、主机调度或算子等证据选择。现有 v1／v2 定义保持，新的总路径与多轮执行按各自计划推进，不能用本叶代替训练或采用批准。
+先保留原始参照及工作负载／语义，再由原 runner 固定可比 baseline 和测量。图谱本身不证明瓶颈、已实现并行或收益。把该叶的完整原结果明确交给设计／诊断专家；它不自动调用后续节点。kernel 专家评估继续保留在下节的新总路径，结论可以是无需 kernel 修改；实际干预按去耦合／去冗余、内存、通信、主机调度或算子等证据选择。现有 v1／v2 定义保持，多轮执行仍另行推进，不能用本叶代替训练或采用批准。
+
+## 按瓶颈组织完整提案
+
+```bash
+ergora composition install-preset training-optimization-v3
+ergora composition show ergora-training-proposal 3.0.0 --material
+```
+
+新根 `ergora-training-proposal@3.0.0` 与旧 v1／v2 共存，复用原图谱与四位 v2 专家。根 Skill 负责证据与方向选择，子 Skill 保留各自方法。顺序如下，design／profile 读取相同资料、可以独立进行：
+
+```mermaid
+flowchart LR
+  F[flow/map 源码图谱] --> D[analysis/design 实验设计]
+  F --> P[analysis/profile 性能诊断]
+  D --> K[kernel/assess 保留专家评估]
+  P --> K
+  K --> M[measurement/review 测量审查]
+```
+
+|叶路径|调用时须完整提供|
+|---|---|
+|`root/flow/map`|原需求／精确源码／调用者／配置及已有原报告|
+|`root/analysis/design`、`root/analysis/profile`|同一原任务／源码，加 flow 的完整原 result|
+|`root/kernel/assess`|原任务／源码，加 flow／design／profile 的全部完整原 result|
+|`root/measurement/review`|原任务／源码，加上述四叶全部完整原 result，以及实际候选／实验／独立检查原件；缺失须明说|
+
+根各阶段绑定原 root task，依赖边表达次序；`prepare-input/run-input` 仍仅准备／调用指定叶，不自动执行前驱或收集端口内容。调用者按上表将原 JSON 结果封套及 input／result 身份加入 task，保留全部 response、失败和未覆盖范围；摘要不能代替原件。最终 all-join 保留所有阶段，不能只选最后一份有利意见。具体 grant／manifest 沿[现有分享与单叶入口](WORKFLOW_DEFINITIONS.md#准备完整的单叶输入)。例如先在 checkout 使用公开小任务：
+
+```bash
+ergora composition prepare-from-manifest ./training-v3-manifest root/flow/map \
+  --task examples/training/host-redundancy.md --directory ./v3-flow-input \
+  --max-prompt-bytes 1000000
+ergora composition run-input my-project ./v3-flow-input \
+  --mode text-only --backend codex --timeout 600
+```
+
+[CPU去冗余任务](../examples/training/host-redundancy.md)允许 kernel 专家明确判断无需算子修改；[有条件kernel设计任务](../examples/training/kernel-hypothesis.md)以明确的诊断假设演示候选设计。两者都只是 authored 提案练习，不提供实际训练／trace／质量／收益证据；测量审查必须保留这些缺口。调用其他叶时使用上表路径及已补齐原件的新 task，不重用只有最初源码的输入冒充完整交接。
+
+kernel 评估不会被方向选择跳过。实际干预可为去冗余／解依赖、内存、并行、通信、调度或算子；根 Skill 列出既有方向 preset 的适用问题。选定方向后显式安装／冻结／调用相应子模板，再交回完整结果；本根不动态运行或挂接所有方向。真实实验／取消／unknown恢复、成对比较、独立质量和 owner 采用继续由原合同持有；自动分支、连续循环和跨轮预算尚未由该配方实现。
 
 ## 通用性能诊断
 

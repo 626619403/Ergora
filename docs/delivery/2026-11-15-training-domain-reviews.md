@@ -7,9 +7,9 @@
 |恢复与合同|已核 Q1.1 固定发布、原领域研究、Agent／Workflow／preset／ReviewDAG owners；具体片计划已写。开始时 Q1 CI 在途，随后其 Windows fixture 失败及修正单独发布；新 SHA CI 仍待终态。|
 |方法|延续工程／代码质量 Skill，新增领域 Skill 编写采用 writing-for-agents 与 skill-creator；引用 Q0 固定来源，不复制未知许可工具。|
 |实现|已新增两位领域 Agent／完整 Skill、两份独立叶与两份四路嵌套 all-join 根，在原 catalog 注册；旧定义未改。标准库 CPU 样例与四次真实领域叶调用均完成。|
-|验证／审查／发布|两份 Skill 原 quick_validate 通过；首轮 source-only 45 通过／1 环境失败保留。独立 venv 非 editable 安装后原 preset／ReviewDAG／导入边界 **61 passed／76.43 秒**，零跳过；补 Web 依赖后原页面 suite **21 passed／24.92 秒**。628 产品源／wheel／安装逐字相同，283 参考 PASS；四次真实领域叶均完成。自身模板和新独立两轴 **approve**，开放 0／0；已普通发布 0b5b5f1／完整 Ref 一致，其自己的 CI 在途。|
+|验证／审查／发布|两份 Skill 原 quick_validate 通过；首轮 source-only 45 通过／1 环境失败保留。独立 venv 非 editable 安装后原 preset／ReviewDAG／导入边界 **61 passed／76.43 秒**，零跳过；补 Web 依赖后原页面 suite **21 passed／24.92 秒**。628 产品源／wheel／安装逐字相同，283 参考 PASS；四次真实领域叶均完成。自身模板和新独立两轴 **approve**，开放 0／0；已普通发布 0b5b5f1／完整 Ref 一致，其自己的 CI 八job／30必要步骤全成功，原独立终核两轴approve／开放0／0。|
 
-固定发布独立补核已完成，两轴 approve／开放0／0；下一步完成自己的 CI 终核。Q2.3 自动报告和真实训练均另片。
+固定发布独立补核及自己的CI终核均完成，两轴 approve／开放0／0。Q2.3 自动报告和真实训练均另片。
 
 ## 安装与 CPU 样例
 
@@ -47,3 +47,7 @@
 已普通发布 `0b5b5f1ff7a3463fcb10cf5a05e5f7c7bcae7c62`，唯一父 `a38dd21891ac200c575e8520c49cc82f97c9d478`，25 个文件含独立报告。暂存全范围空白检查通过，16 份本片 Markdown／325 个本地链接或 fragment／零错误；25 个实际提交 blob 与暂存记录逐字相同，完整远端 Ref 相同。Q3 的新产品／资料保持未提交，未混入该 SHA。
 
 自己的 [Portability 43621692177](https://github.com/626619403/Ergora/actions/runs/43621692177) 仍待终态；第二次官方完整分页观察为 plan／Linux 六组成功，Windows 应用回归仍在运行，不能用前片成功认证 Q2。Q1 修正自己的全部 30 必要步骤已在 Q2 推送前成功。原独立审查者已补核固定提交 25 blob、完整远端 Ref 及 628 固定提交／wheel／安装产品，两轴 approve／开放0／0，未借更新中的 Q3 worktree 认证。真实 B3、完整 Forge、整根四路实际运行及 Q2.3 保持原范围。
+
+## 自己的 CI 终态
+
+`43621692177` 官方完整分页 totalCount=8／hasMore=false，八job及30必要步骤全部success，包含Windows应用与PowerShell安装／升级。所有run／job原页及成功step日志URL绑定完整0b5b5f1提交，旧在途观察保持。原独立reviewer已直接核原页、固定628身份和两Windows步骤，最终需求／维护性两轴approve／开放0／0，Q2.1／Q2.2精确交付闭合；Q2.3仍另片。上述固定发布段中的在途描述保留当次观察，由本终态覆盖；Q3不是本片的验收材料。

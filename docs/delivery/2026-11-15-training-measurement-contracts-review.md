@@ -58,3 +58,34 @@
 六文档／179 条本地链接及 fragment 的作者修后检查已读；独立复用既有本地链接检查器，仅将基线换成本片固定基线，连同本报告共 **7 份文档／181 个本地链接及 fragment／零错误**，全范围 `git diff --check` 通过。外网未验证。
 
 未运行真实训练、GPU、profiler、Windows、模型／数据读取、独立数值／分布式／恢复／长程质量或真实收益验证；没有平台写入、提交或推送。Q3.3 总路径、Q4 多轮／预算及真实 B3／完整 Forge 的原条件保持开放。
+
+## 固定发布补核（2026-11-15）
+
+原 reviewer 对固定提交 `29cdcfe2f45a66dcaad1835c0860c24a78290529` 补核，唯一父提交为本片基线 `2729b81a4c10e4bf8c77bd78ea4165b0a64cb0c0`。本节只追加发布事实；上文 10,020B 原报告及 R1 发现／修正／关闭过程逐字保留，原前缀 SHA256 仍为 `9e74929e7979ba64c9a58619411c329ea8ee33084e7669e830eb07315b7f82e3`。当前 Q3.3 工作树不在本补核范围，产品取证全部读取固定 Git 对象及原包／安装。
+
+直接核本地原 `staged-r1.json`、`local-publication-r1.json`、`publication-r1.json` 与 `remote-r1.txt`：本地记录先保留 `remote_published=false`，发布记录再记 true，没有改写前一观察；其提交、父、七文件范围和原内容身份均与实际 Git 对象一致。四原件合计 2,060B，SHA256 如下，私有原件继续留在 ignored checks。
+
+|原件|SHA256|
+|---|---|
+|`staged-r1.json`|`d63eff727a8aa7299ebb19571392a6a5cc545688c52e96aaf0cf7f4623def8a2`|
+|`local-publication-r1.json`|`7e6ac93a78b6ebcdaf3cb9e7598f80c297cf87dcc1ff559186d209e5db678d2c`|
+|`publication-r1.json`|`90a2f61767056ca87972b0edc5b2943e6ae5a55791f3478879a12aadab5f9fb9`|
+|`remote-r1.txt`|`45e22f099531152482cf84ee5e4019cd599237ad8f07aced3024f49284619daf`|
+
+七个实际 blob 的长度／SHA256 逐项匹配原暂存清单，真实差异只有以下 Markdown，无私有记录、产品、测试、依赖、脚本或 CI 变化。
+
+|文件|固定 Git blob|
+|---|---|
+|`docs/PLAN.md`|`1ce604eb93bf0759a5c353760a64f43fb485a2db`|
+|`docs/TRAINING.md`|`cbeecf82b4b6682b9bc03d5f36df0b845d328939`|
+|`docs/delivery/2026-11-15-training-flow-maps.md`|`708cbaedebbd9da0d056012f5fba4ebcd27ec27b`|
+|`docs/delivery/2026-11-15-training-measurement-contracts-review.md`|`6502f4942eef46f75ea3753fe72d49ec9d6bdfc8`|
+|`docs/delivery/2026-11-15-training-measurement-contracts.md`|`8902ecb23de36c76c113c8e0745d86b2ccfc086c`|
+|`docs/plans/2026-11-15-domain-review-optimization-quality.md`|`9b73f691a977e711922724d340899ac145d949c5`|
+|`docs/plans/2026-11-15-training-measurement-contracts.md`|`5677ff4a8dfe9c52d0fddbe4b67d930db6acd624`|
+
+本次独立只读 `git ls-remote --refs origin refs/heads/refactor/architecture-foundations` 返回完整 `29cdcfe2f45a66dcaad1835c0860c24a78290529`，与保存原远端观察相同。固定提交的 `src/ergora` 文件集合恰为原清单 **633 文件**；逐份核 Git blob、原清单长度／SHA256、原 wheel 内容及非 editable 安装件，全部逐字一致，其中 **283 份冻结参考**保持。原 wheel SHA256 仍为 `01dc68055211060a3193efb35480178087f549d33787ecfe042c66e38d4d3e28`，原安装仍不继承 system-site-packages。本节没有从新的工作树产品推导原发布身份。
+
+固定提交相对父提交的产品／测试／脚本／依赖／`.github` diff 为空，完整提交差异空白检查通过。固定提交和父提交的原 Portability 配置相同，七文件全部适用既有 push `paths-ignore: docs/**.md`；本片无需新建文档 CI，不声明新的 CI 成功。Q3.1 的产品 CI `43623853327` 对应其固定 `2729b81`，归原片另核，本节不认证其终态。
+
+固定发布补核后，**需求符合性 approve／可维护性 approve，开放 0／0**，本片上述精确文档发布条件已核。此次没有运行测试、模型、训练或安装，没有提交、推送或平台写入；只追加本报告。真实训练／质量／性能及 Q3.3、Q4 等开放条件不变。

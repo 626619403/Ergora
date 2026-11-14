@@ -7,7 +7,7 @@
 |盘点／决定|已读原 baseline／prepare／evidence、冻结 perfctl／比较器／demo 及原测量 Skill。所需机器绑定已由原 owner 持有；本片补使用入口并实跑原合同，不新建指标／评分／批准权威。|
 |用户入口|已补训练手册的包内 CPU 演示、逐字重算及原 gate 命令；已有合同字段表保持单一权威，不新增用户脚本。|
 |安装验证|原 demo／重算／gate 及八类反例完成；原比较器9项、registry14项和原基线／归档16项通过。633 安装件未变，283参考PASS。|
-|审查／发布|自身原结构模板 35.945 秒／approve；新 fresh-context 独立两轴 approve／开放0／0，R1已修正关闭；普通发布尚未完成。|
+|审查／发布|自身原结构模板 35.945 秒／approve；新 fresh-context 独立两轴 approve／开放0／0，R1已修正关闭；已普通发布29cdcfe、完整远端与原独立固定发布两轴通过；纯docs沿原CI过滤。|
 
 源码图不能认证真实瓶颈，合成 elapsed／attestation 不能认证训练、质量或性能。真实资产／GPU／B3、Q3.3 新总路径及 Q4 多轮继续开放。
 
@@ -48,3 +48,7 @@
 新 [fresh-context 独立报告](2026-11-15-training-measurement-contracts-review.md)先核原要求和六文件快照，再直接检查实际 owner、633 源／安装身份、283参考、15组原命令日志及九bundle的72个artifact摘要。原 reviewer 另在新目录完成原demo→重算→gate、重复目录保留和阈值交叠反例；作者274个原文件前后摘要保持，自身模板17份完整材料及原输入／结果也独立核同。最终需求／维护性两轴 **approve／开放0／0**，R1关闭。七Markdown／181本地链接与fragment零错误，外网未验证。
 
 本片全为 docs Markdown，沿原Portability push过滤，不新增文档CI或假称新产品CI。普通发布及完整远端身份待核；633产品的CI仍归Q3.1自己的固定提交。
+
+## 固定发布终核
+
+已普通发布 `29cdcfe2f45a66dcaad1835c0860c24a78290529`，唯一父2729b81，七份Markdown实际blob与暂存清单逐字一致，完整远端Ref同一。最终作者文档检查七MD／182本地链接与fragment零错误（新增终核链接前的独立计数为181）。原reviewer已补核七blob、实时远端、固定633源／wheel／安装与283参考、产品／测试／依赖／CI无差异及原docs push过滤，两轴approve／开放0／0；精确文档交付完成。Q3.1自己的CI仍单独跟踪，不用更新中的Q3.3产品替代633身份。

@@ -20,6 +20,7 @@ ergora composition install-preset refactoring
 ergora composition install-preset refactoring-quality
 ergora composition install-preset optimization-performance-diagnosis
 ergora composition install-preset training-flow-map
+ergora composition install-preset training-optimization-v3
 ergora composition install-preset pretraining-review
 ergora composition install-preset posttraining-review
 ergora composition show ergora-large-change-delivery 1.0.0 --material
@@ -40,6 +41,7 @@ ergora agent definition show ergora-server-implementer 1.0.0 --material
 |refactoring-quality|`ergora-refactoring-template` 1.1.0|原重构流程及实例不变，父 Skill 补充目标仓库规范、实际依赖与测试接缝；显式选择新版本|
 |optimization-performance-diagnosis|`ergora-opt-performance-diagnosis-proposal`|同症状复现与兼容报告 reader；只读 design／profile→measurement 提案叶，原 runner 保留实验执行|
 |training-flow-map|`ergora-training-flow-map`|只读 `root/map` 分别产出算法／执行依赖图、状态生命周期和可证伪冗余假设；不自动运行后续专家或训练|
+|training-optimization-v3|`ergora-training-proposal@3.0.0`|流程图谱 → 并行设计／诊断 → 保留 kernel 评估（可无需改算子）→ 测量审查；五叶均接原 task，完整前驱须显式提供，不自动调度|
 |pretraining-review|`ergora-pretraining-review`|原通用三路与预训练专家并列 required／all-join；领域叶可独立调用|
 |posttraining-review|`ergora-posttraining-review`|原通用三路与后训练专家并列 required／all-join；领域叶可独立调用|
 
