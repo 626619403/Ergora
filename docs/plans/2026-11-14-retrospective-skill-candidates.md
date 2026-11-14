@@ -29,7 +29,7 @@
 - [x] 原suite增量保护来源或引用误绑、current head冲突、完整祖先／Skill文件、拒绝越界路径与不泄出部分候选；不测试固定文案／默认值。
 - [x] 最终r4非editable包586／两RECORD594／599／283，八suite291通过／7平台跳过；实际八CLI及真实Codex作者→原结果→Claude审查通过，核完整原输入／stdin／reply。所有harness／调用终态，访问范围内无本片cwd进程；收尾范围见原件。
 - [x] 原自身结构模板完整同input授权Codex回退approve，Claude超时保留；新fresh-context独立最终本地两轴approve／开放0／0，236原引用已核，R1–R4关闭。交付／PLAN已更新。
-- [ ] 上片自己的CI终态与原补核后普通发布／完整Ref、本片自己的CI及原独立补核，不合main。
+- [ ] 上片CI及原补核通过；已普通发布a60a8f6／28blob／完整Ref同一，原fixed发布补核两轴approve／开放0／0，本片自己的CI43551217945八job／30必要步骤已全部成功，原独立CI终核approve／开放0／0、原CI补核待，不合main。
 
 每项结果写[交付](../delivery/2026-11-14-retrospective-skill-candidates.md)。F10c2b记忆／流程候选、F10c3原评价／明确采用回退、F10d页面、F9d／G1、真实B3与完整Forge分别保留。
 

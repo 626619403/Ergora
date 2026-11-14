@@ -883,7 +883,27 @@ ergora composition run-input my-project ./retrospective-review-input --backend c
 
 check有界读取最多8 MiB的原结果，给完整文件在response字符串中的嵌套JSON转义留出空间。后继审查沿上面的原composition准备命令显式接收完整checked JSON；该preset审查叶返回文字审查，不再调用retrospective check。后继完整prompt仍须单独通过原容量门禁，大结果可离线检查不代表它能放进任意后继prompt。静态depends_on本身不会自动执行端口。可在原`composition run-input`中选其他受支持后端，尽量让作者／审查者不同；Claude不可用时显式选Codex并记录`--backend-reason`，同后端回退不能当异后端成功。检查或模型调用失败先保留原input、run和reply，不自动重发；原Agent记录是调用事实的权威。
 
-本片不自动写候选目录、导入或移动活动head。审阅后的Skill仍通过原`skill import → evaluation run → skill adopt`和`skill rollback`进行明确操作，详见[Skill候选评价与采用](INTEGRATIONS.md#skill-候选评价与采用)；记忆／流程候选另接各自原版本接口。
+有非null候选并审阅完整内容后，从check返回值取得`candidate_digest`，明确导出到末级名称等于Skill name的新目录：
+
+```bash
+ergora retrospective export ./retrospective-author-input AUTHOR_RESULT ./candidates/SKILL_NAME --result-sha256 AUTHOR_RESULT_SHA --candidate-digest CANDIDATE_DIGEST
+ergora skill import my-project ./candidates/SKILL_NAME --hypothesis '填写可检验的改进假设'
+```
+
+导出重新核原input和两个显式摘要，保存完整文件原字节及执行位；不执行文件、不创建State、查询实时来源或导入／采用。目标存在、位于冻结input内部、身份无法保持或结果无候选时拒绝；发布不会替换同时出现的空目录。失败清理本次私有staging，已有目标保持。回复丢失时先保留原input／result／候选摘要，检查已有目标；不要覆盖或删除它来绕过拒绝。明确import后的返回digest必须与选定候选一致；初始基线已存在时，import只登记候选，活动head不动。
+
+使用维护者预先准备的可信评价器和评价集，给基线与候选运行同一suite；不能把模型提案的evaluation_plan或自报评分直接视为可信suite：
+
+```bash
+ergora evaluation register my-project ./evaluation.json
+ergora evaluation run my-project BASELINE_DIGEST --suite SUITE_DIGEST
+ergora evaluation run my-project CANDIDATE_DIGEST --suite SUITE_DIGEST
+ergora evaluation compare my-project BASELINE_RUN_ID CANDIDATE_RUN_ID
+ergora skill adopt my-project --baseline-run BASELINE_RUN_ID --candidate-run CANDIDATE_RUN_ID --revision HEAD_REVISION --reason '填写审阅评价证据后的采用理由'
+ergora skill rollback my-project SKILL_NAME BASELINE_DIGEST --revision ADOPTED_HEAD_REVISION --reason '填写回退理由'
+```
+
+用register和两次run返回的精确suite digest／run ID填入对应占位符。compare的eligible、完整可信证据、当前head和显式理由共同决定采用；head变化时原采用会拒绝，应重新选当前基线并评价，不能只改revision强套旧结果。rollback使用采用后原head的revision，追加历史而不删除候选或旧评价。null候选无需导出或强造改进。详细suite合同见[Skill候选评价与采用](INTEGRATIONS.md#skill-候选评价与采用)；记忆／流程候选另接各自原版本接口。
 
 ### 网页证据、预算与交接
 

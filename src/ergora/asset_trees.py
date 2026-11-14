@@ -1,9 +1,12 @@
 """Bounded ordinary-file trees with the original Agent Skills content identity."""
 
+import ctypes
 import hashlib
 import json
+import os
 from pathlib import Path
 import stat
+import sys
 
 
 def manifest_digest(files: dict) -> str:
@@ -54,3 +57,20 @@ def digest_tree(directory: Path) -> tuple[str, dict]:
     """Keep the established Skill interface, identity and directory acceptance."""
     digest, files, _ = inventory_tree(directory)
     return digest, files
+
+
+def publish_directory(staged: Path, destination: Path) -> None:
+    """Publish once without replacing even a concurrently created empty directory."""
+    if os.name == "nt":
+        staged.rename(destination)
+    elif sys.platform == "linux":
+        rename = getattr(ctypes.CDLL(None, use_errno=True), "renameat2", None)
+        if rename is None:
+            raise ValueError("Atomic directory publication requires Linux renameat2 or Windows")
+        rename.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint]
+        rename.restype = ctypes.c_int
+        if rename(-100, os.fsencode(staged), -100, os.fsencode(destination), 1) != 0:  # AT_FDCWD, RENAME_NOREPLACE
+            code = ctypes.get_errno()
+            raise OSError(code, os.strerror(code), str(destination))
+    else:
+        raise ValueError("Atomic directory publication is supported on Linux and Windows")

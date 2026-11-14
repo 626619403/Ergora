@@ -79,6 +79,12 @@ def parser() -> argparse.ArgumentParser:
     checking.add_argument("input", type=Path)
     checking.add_argument("result", type=Path)
     checking.add_argument("--result-sha256")
+    exporting = operations.add_parser("export", help="Explicitly save one checked complete Skill candidate to a new directory; never adopt")
+    exporting.add_argument("input", type=Path)
+    exporting.add_argument("result", type=Path)
+    exporting.add_argument("destination", type=Path)
+    exporting.add_argument("--result-sha256", required=True)
+    exporting.add_argument("--candidate-digest", required=True)
     maintenance = commands.add_parser("state", help="Inspect, back up, verify or restore offline local state")
     operations = maintenance.add_subparsers(dest="operation", required=True)
     operations.add_parser("info")
@@ -693,6 +699,9 @@ def main(argv: list[str] | None = None) -> int:
 
             if args.operation == "check":
                 output = retrospectives.check(args.input, args.result, result_sha256=args.result_sha256)
+            elif args.operation == "export":
+                output = retrospectives.export(args.input, args.result, args.destination,
+                    result_sha256=args.result_sha256, candidate_digest=args.candidate_digest)
             else:
                 with args.objective.open('rb') as stream:
                     raw = stream.read(262145)

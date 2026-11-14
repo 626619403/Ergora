@@ -29,3 +29,11 @@ r3包已构建并核586产品／两RECORD594／599／283，wheel `0db77316516597
 同一原input的Codex结构复审45.359秒成功、decision approve；23完整文件303,397B、prompt SHA `d2016ca8b22c18e160b83a19e0d2b9d0e262094cc35e37faac0bda36e0e68f07`、input digest `10b4e93a376dff1bb0047540f4e1ee4bae690dec13de09fc5aa642d5356cd0df`与Claude超时原件相同。原reply SHA `56649e900dba67998a838b061e33d0bd7838bd5c273058280979a7d8d4922c38`；没有用自身静态approve替代独立最终验收。全部本片harness／调用已终态，可访问/proc中无cwd归本片的在途进程（10个进程不可读，范围据实保留），未启动服务／端口／浏览器。公开[最终证据](evidence/2026-11-14-retrospective-skill-candidates.json)含236原引用、完整产品／快照／wheel／安装及两RECORD／283身份，最终fresh-context补核待，尚未发布。
 
 原fresh-context reviewer最终本地两轴 **approve／开放0／0**，R1–R4全部关闭；直接核最终r4产品／快照／wheel／安装、两RECORD／283、291／7、实际双后端和236原引用。保持真实null候选与自身Claude超时／同input Codex回退边界，不继承为效果或采用成功。现在普通提交／推送本分支，固定发布与自己的CI随后另核，不合main。
+
+已普通发布 `a60a8f68513a46ef7e6c18add0832f8bcee3eccc`，28个Git blob与完整远端Ref已逐字核同。固定提交的236原引用保持，工作树另补四份静态／commit／push／Ref回执共240；原fixed发布补核和自己的CI待，未合main。
+
+原fresh-context固定发布补核两轴approve／开放0／0：28blob、15源码／测试与固定236／发布后240引用及完整Ref分别一致。自己的CI43551217945已从官方列表及完整SHA绑定到此候选，八job在途；CI原件另列，未借前片CI。
+
+自己的固定候选a60a8f6的CI43551217945最终官方run HTML r4为Success，八job／30必要步骤全部success且完成，Windows r3及其余七job r2的完整SHA日志路径已离线核。新增CI引用58份，与固定236／发布后240原引用分列；原独立reviewer正在作同片终核，尚未以作者观察代替独立结论。
+
+原fresh-context reviewer已追加自己的CI终核：8job／30必要步骤、完整SHA及时间、58独立CI引用和固定236／发布后240全部核对，approve／开放0／0。F10c2a精确交付闭合，R1–R4仍全部关闭；后续片保持独立身份。

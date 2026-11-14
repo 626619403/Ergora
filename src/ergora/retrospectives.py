@@ -3,9 +3,10 @@
 import hashlib
 import json
 from pathlib import Path
+import tempfile
 
 from . import agents, contracts, definition_bundles, handoff, skill_assets, workflow_definitions
-from .asset_trees import manifest_digest
+from .asset_trees import digest_tree, manifest_digest, publish_directory
 from .state import State
 
 BASELINE_LIMIT = 1_048_576
@@ -121,8 +122,8 @@ def prepare(state: State, project_id: str, packet: Path, selection: list[dict], 
                                                              destination, max_prompt_bytes)
 
 
-def check(source: Path, result: Path, *, result_sha256: str | None = None) -> dict:
-    """Check declared links against frozen bytes; never import, score or adopt a proposal."""
+def _checked_proposal(source: Path, result: Path, result_sha256: str | None) -> tuple[dict, dict]:
+    """Validate once and retain the parsed proposal for either inspection or export."""
     prepared = workflow_definitions.inspect_input(source, material=True)
     task = definition_bundles.read_json(Path(prepared['path']) / 'task.txt', prepared['request']['task_sha256'])
     contracts.validate(task, _REQUEST, 'Frozen retrospective request')
@@ -158,9 +159,49 @@ def check(source: Path, result: Path, *, result_sha256: str | None = None) -> di
         if not proposal['observations']:
             raise ValueError('A retrospective candidate requires source-cited observations')
         candidate_digest = manifest_digest(_file_manifest(candidate['files'], candidate['name']))
-    return {'schema_version': 1, 'format': 'ergora-skill-retrospective-check',
+    checked = {'schema_version': 1, 'format': 'ergora-skill-retrospective-check',
             'input_digest': prepared['digest'], 'result_sha256': observed_sha256,
             'candidate_digest': candidate_digest, 'content_changed': candidate_digest not in (None, baseline['digest']),
             'quality_evaluated': False, 'adoption_authorized': False, 'origin_authenticated': False,
             'verification_scope': 'frozen_input_and_declared_candidate_links',
             'request': task, 'agent_result': outer}
+    return checked, proposal
+
+
+def check(source: Path, result: Path, *, result_sha256: str | None = None) -> dict:
+    """Check declared links against frozen bytes; never import, score or adopt a proposal."""
+    return _checked_proposal(source, result, result_sha256)[0]
+
+
+def export(source: Path, result: Path, destination: Path, *, result_sha256: str, candidate_digest: str) -> dict:
+    """Explicitly export a selected complete candidate; original owners still evaluate and adopt."""
+    checked, proposal = _checked_proposal(source, result, result_sha256)
+    candidate = proposal['candidate']
+    if candidate is None:
+        raise ValueError('Retrospective has no Skill candidate to export')
+    if checked['candidate_digest'] != candidate_digest:
+        raise ValueError('Retrospective candidate differs from the explicitly selected digest')
+    destination = destination.expanduser().absolute()
+    if destination.name != candidate['name']:
+        raise ValueError('Export directory name must match the Skill name')
+    if destination.resolve().is_relative_to(source.expanduser().resolve()):
+        raise ValueError('Retrospective export cannot change its frozen input directory')
+    if destination.exists() or destination.is_symlink():
+        raise ValueError('Choose a new retrospective export directory')
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix='.retrospective-skill-', dir=destination.parent) as temporary:
+        staged = Path(temporary) / candidate['name']
+        staged.mkdir(mode=0o700)
+        for name, file in candidate['files'].items():
+            path = staged / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(file['text'].encode('utf-8'))
+            path.chmod(0o600 | file['executable_bits'])
+        if digest_tree(staged)[0] != candidate_digest:
+            raise ValueError('Exported Skill cannot preserve the selected complete content and execution bits')
+        publish_directory(staged, destination)
+    return {'schema_version': 1, 'format': 'ergora-skill-retrospective-export',
+            'input_digest': checked['input_digest'], 'result_sha256': checked['result_sha256'],
+            'baseline': {key: checked['request']['baseline'][key] for key in ('name', 'digest', 'head_revision')},
+            'candidate_digest': candidate_digest, 'destination': str(destination),
+            'quality_evaluated': False, 'adoption_authorized': False, 'origin_authenticated': False}

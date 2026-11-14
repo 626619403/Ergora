@@ -147,3 +147,42 @@ R1–R4 **源码全部关闭，开放 0**。两轴源码范围 **approve**；最
 文档已明确独立基线 1 MiB／结果 8 MiB、每个后继完整 prompt 的独立容量，preset 的文字审查与 proposal-producing 叶入口不同；后继手册指向原 `evaluation run`／`skill adopt`／`skill rollback`。F10c3a 优先闭合现有 Skill 的原评价／采用／回退，再扩记忆／流程，属于后续顺序调整，无新产品混入。相关文档路径／既有手册锚点和 `git diff --check` 已核。
 
 **最终本地需求轴 approve；结构／成本轴 approve，R1–R4 全部关闭，开放 0／0。** 无其他已证实阻塞项。本 reviewer 未联网、安装、运行 suite、改产品、提交或发送外部消息；执行的均是源码／原件读取、纯函数探针和只读身份校验。普通发布、完整远端 Ref、该候选自己的 CI 及固定发布补核仍待，不能从此前候选或本地验收继承。F10c3a／记忆流程／页面、原生 Windows、真实业务／GPU／质量与完整 Forge 保持后续责任。
+
+## 固定普通发布补核
+
+固定候选为 `a60a8f68513a46ef7e6c18add0832f8bcee3eccc`，唯一父提交精确为原基线 `396e9d175cbbcd120dac29b45a2665002984a53b`。补核开始时 HEAD 为该候选，完整 status 只有 PLAN、本片计划／交付／evidence 四份发布状态文档变更；没有后续片产品或测试变化。
+
+直接从固定 Git object 读取 **28 个 blob**，逐份与 `static-final-r1.json` 的路径集合、字节数、SHA256 比对，全部相同；其中文档含原 F10c1 的独立发布／CI 补记。固定提交的 **15 份 source／test** 又与最终 r4 已验快照及当前源文件逐字相同，产品与测试没有在验收后变更，本地两轴结论适用于这个精确发布候选。
+
+直接读取原 `commit-r1.json`、`push-r1.json`、`ref-r1.json`：三份 exit 均为 0、candidate 均为上述完整 SHA；普通 push 命令为 `git push origin HEAD:refs/heads/refactor/architecture-foundations`，没有 force 或 main 目标。原完整 Ref 查询回执 stdout 精确为 `a60a8f68513a46ef7e6c18add0832f8bcee3eccc\trefs/heads/refactor/architecture-foundations\n`。本 reviewer 核的是已保存的原 push／Ref 回执，未重新联网。
+
+固定提交 evidence 的 **236 份原引用**与发布后工作树前 236 项逐项一致；发布后仅增加 static-final／commit／push／Ref 四份回执，合计 **240 份**，已重新逐份核 bytes／SHA，无缺失或差异。`git diff --check` 通过；发布后四份文档仅补普通发布身份／回执和仍待自己的 CI 的状态。
+
+**固定发布需求轴 approve；结构／成本轴 approve；开放 0／0。** R1–R4 保持关闭，真实 null 候选、模板 Claude 超时／同 input Codex 回退以及各未验范围保持。该精确候选自己的 CI 尚未由本次补核验收，须另取其终态与必要步骤原件，不借 F10c1 或其他候选通过。
+
+## 固定候选自己的 CI 终核
+
+本次只核固定 `a60a8f68513a46ef7e6c18add0832f8bcee3eccc` 的 [run 43551217945](https://github.com/626619403/Ergora/actions/runs/43551217945)。开始时 HEAD 仍是该候选，完整 status 已有 F10c3a 的在途产品／测试／文档；这些后续变化不在本次补核范围，没有用当前源码冒充固定 CI 身份，也未重新审查后续片。
+
+直接读取 `ci-run-html-r4/page.html` 和原 receipt：HTTP 200、原 URL／final URL 均为该官方 run，bytes／SHA 与回执一致；页面 Status 为 **Success**，链接精确指向上述完整 commit SHA 和原分支。该页取得于 **2026-11-14T03:40:23.004398Z**。初始 run HTML 的完整 SHA、`ci-ui-metadata-r1.json` 的 run 身份／body SHA，与原 UI jobs batch 的八 job ID／名称／链接逐项一致；batch 的 totalCount=8、hasMore=false。初始 batch 的在途状态仍按原时刻保留，未拿它代替最终 job 终态。
+
+按固定提交自己的 `.github/workflows/portability.yml` 与 `scripts/ci/linux-groups.json` 核应有矩阵：plan、六个 Ubuntu group、一个 Windows all。终态使用 plan／六个 Ubuntu 的 `html-r2`，Windows `132313904476` 的 `html-r3`。逐份核官方 job URL、HTTP 200、完整 body bytes／SHA，然后用独立只读 HTML parser 重取原 `check-step` 属性，未执行会写文件的 `parse-ci-html.py`。
+
+|Job|ID|必要步骤数|最后必要步骤完成时刻（UTC，2026-11-14）|
+|---|---|---:|---|
+|plan|132313858647|1|03:21:40|
+|Ubuntu group 0|132313904480|4|03:25:41|
+|Ubuntu group 1|132313904471|4|03:27:21|
+|Ubuntu group 2|132313904467|4|03:25:36|
+|Ubuntu group 3|132313904489|4|03:24:11|
+|Ubuntu group 4|132313904458|4|03:25:57|
+|Ubuntu group 5|132313904540|4|03:29:08|
+|Windows all|132313904476|5|03:40:09|
+
+**八 job／30 个必要步骤全部 success**：plan 的分组读取；七个 native job 的 build/install、packaged reference、application regression、observations upload；以及 Windows 的 PowerShell 5.1 安装／升级。每项都有 `data-job-completed`、非空起止时刻，且日志 URL 精确为该完整 SHA 下本 job 的原 step 路径。开始时刻不晚于完成时刻，完成时刻不晚于相应原 HTML 取得时刻；必要步骤范围为 **03:21:40Z–03:40:09Z**。所有原 check-step 中也未见 failure／cancelled／unknown；六个 Ubuntu 的 Windows-only 条件步骤各为 skipped。
+
+Windows application regression 的原完成时刻为 **03:39:13Z**；随后 PowerShell 安装／升级 **03:39:13Z–03:40:07Z** 成功，upload 于 **03:40:09Z** 成功。这关闭该固定候选原 CI 所覆盖的 Windows 应用／安装验证，不扩大为原生 Windows 模型后端或其他未验能力成功。逐项原属性投影与 `ci-observation-r3.json` 一致；前两次未终态观测及较早原件保留，没有改写失败或在途记录。
+
+公开 evidence 的 `publication.own_ci` 精确指向此 run、8 job／30 步与 r3 观测；独立 `raw_evidence.ci_references` **58 份**已逐份核 bytes／SHA，无缺失或差异。原固定 **236** 项仍与固定 Git blob 内列表逐项一致，发布后原 **240** 项亦重新核验且未变；CI 58 项另列，没有混充固定提交原引用。
+
+**该精确候选自己的 CI 终核 approve，开放 0／0。** F10c2a 的本地验收、固定发布及其自己的必要 CI 证据在本报告中闭合；R1–R4 保持关闭。这里只核官方存档 HTML／回执及固定脚本合同，未下载或声称读取 CI artifact archive／完整测试日志，未另报远端 pytest 数量。本 reviewer 未联网、安装、重跑 suite、改产品或操作 CI，仅追加本报告；本次结论不覆盖当前 F10c3a，也不扩大为真实改进效果、自动采用或其他后续范围。

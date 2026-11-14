@@ -657,13 +657,13 @@ def test_input_verification_rejects_index_changes_during_compilation(base, monke
 def test_input_publish_keeps_a_concurrently_created_empty_destination(base, monkeypatch):
     state, agent, directory = base
     imported(base, definition("review", [leaf("review", agent)]))
-    original = workflows._publish_bundle
+    original = workflows.publish_directory
     created = []
     def competing(staged, destination):
         destination.mkdir()
         created.append(destination.stat().st_ino)
         original(staged, destination)
-    monkeypatch.setattr(workflows, "_publish_bundle", competing)
+    monkeypatch.setattr(workflows, "publish_directory", competing)
     target = directory / "prepared"
     with pytest.raises(FileExistsError):
         workflows.prepare_input(state.root, "review", "1.0.0", "root/review", grant(), b"Review.", target, 30000)

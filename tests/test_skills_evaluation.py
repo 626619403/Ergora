@@ -552,3 +552,71 @@ def test_retrospective_checks_complete_candidate_with_nested_json_larger_than_in
     assert checked['request']['baseline']['files']['references/evidence.md']['text'] == reference
     assert checked['agent_result']['artifacts']['response'] == json.dumps(proposal)
     assert checked['content_changed'] and not checked['quality_evaluated']
+
+
+@pytest.mark.parametrize('crlf', [False, True])
+def test_retrospective_exports_complete_skill_for_original_import_without_adoption(retrospective_case, tmp_path, crlf):
+    import hashlib
+    from ergora import retrospectives, skill_assets, workflow_definitions as workflows
+
+    state, packet, source, baseline, options = retrospective_case
+    prepared = retrospectives.prepare(state, 'demo', packet, [{'job_id': 'job-1', 'name': 'record'}], **options)
+    result = tmp_path / 'result.json'
+    proposal = retrospective_result(options['destination'], result)
+    proposal['candidate']['files']['scripts/check.py'] = {'text': 'print("Keep this complete resource.")\n',
+                                                        'executable_bits': 0 if os.name == 'nt' else 0o100}
+    if crlf:
+        for file in proposal['candidate']['files'].values():
+            file['text'] = file['text'].replace('\n', '\r\n')
+    result.write_bytes(json.dumps({'summary': 'Proposed.', 'artifacts': {'response': json.dumps(proposal)}}).encode('utf-8'))
+    sha = hashlib.sha256(result.read_bytes()).hexdigest()
+    checked = retrospectives.check(options['destination'], result, result_sha256=sha)
+    before = skill_assets.versions(state, 'demo')
+    target = tmp_path / 'export' / baseline['name']
+    exported = retrospectives.export(options['destination'], result, target, result_sha256=sha,
+                                     candidate_digest=checked['candidate_digest'])
+    assert skill_assets.digest_tree(target)[0] == checked['candidate_digest']
+    for name, file in proposal['candidate']['files'].items():
+        assert (target / name).read_bytes() == file['text'].encode('utf-8')
+    assert exported['result_sha256'] == sha and exported['input_digest'] == prepared['digest']
+    assert exported['quality_evaluated'] is exported['adoption_authorized'] is exported['origin_authenticated'] is False
+    assert skill_assets.versions(state, 'demo') == before
+    imported = skill_assets.import_bundle(state, 'demo', target, 'Explicitly imported retrospective proposal')
+    assert imported['digest'] == checked['candidate_digest'] and imported['parent'] == baseline['digest']
+    assert skill_assets.versions(state, 'demo')['active'] == before['active']
+    assert workflows.inspect_input(options['destination'])['digest'] == prepared['digest']
+    assert not list(target.parent.glob('.retrospective-skill-*'))
+
+
+@pytest.mark.parametrize(('case', 'reason'), [
+    ('selection', 'explicitly selected digest'), ('null', 'no Skill candidate'),
+    ('existing', 'new retrospective export directory'), ('input', 'frozen input directory'),
+])
+def test_retrospective_export_rejects_before_partial_output_or_changing_existing_files(retrospective_case, tmp_path, capsys, case, reason):
+    import hashlib
+    from ergora import cli, retrospectives, workflow_definitions as workflows
+
+    state, packet, source, baseline, options = retrospective_case
+    prepared = retrospectives.prepare(state, 'demo', packet, [{'job_id': 'job-1', 'name': 'record'}], **options)
+    result = tmp_path / 'result.json'
+    proposal = retrospective_result(options['destination'], result)
+    if case == 'null':
+        proposal['candidate'] = None
+        result.write_bytes(json.dumps({'summary': 'No change.', 'artifacts': {'response': json.dumps(proposal)}}).encode('utf-8'))
+    checked = retrospectives.check(options['destination'], result)
+    target = (options['destination'] if case == 'input' else tmp_path / 'export') / baseline['name']
+    if case == 'existing':
+        target.mkdir(parents=True)
+        (target / 'sentinel').write_bytes(b'Keep existing bytes.')
+    digest = checked['candidate_digest'] if case not in ('selection', 'null') else '0' * 64
+    unused = tmp_path / 'unused-state'
+    assert cli.main(['--home', str(unused), 'retrospective', 'export', str(options['destination']), str(result), str(target),
+        '--result-sha256', hashlib.sha256(result.read_bytes()).hexdigest(), '--candidate-digest', digest]) == 2
+    captured = capsys.readouterr()
+    assert captured.out == '' and reason in captured.err and not unused.exists()
+    if case == 'existing':
+        assert list(target.iterdir()) == [target / 'sentinel'] and (target / 'sentinel').read_bytes() == b'Keep existing bytes.'
+    else:
+        assert not target.exists()
+    assert workflows.inspect_input(options['destination'])['digest'] == prepared['digest']
+    assert not list(target.parent.glob('.retrospective-skill-*'))

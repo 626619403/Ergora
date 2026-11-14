@@ -366,4 +366,4 @@ flowchart LR
 
 首次intent保存前核canonical有效性和完整来源，预览后变更拒绝；已经持久化intent的恢复不重新读活动资料，不热换或撤销归档。schema v5没有新增表或迁移。用法见[显式选择](../USAGE.md#为正式任务选择项目记忆与活动-skill)，实际验收与未验范围见[F10b交付](../delivery/2026-11-14-task-context-selection.md)。
 
-F10c2a的`retrospectives`聚合原handoff、Skill版本和组合input，提供完整来源／当前Skill基线准备与离线候选链接检查；原`asset_trees.manifest_digest`与`skill_assets.parse_metadata`分别拥有磁盘与内联文件的同一身份／元数据合同，`definition_bundles.parse_json`共享原重复键拒绝。新普通`retrospective` preset包含只读作者→来源审查的静态依赖；原Agent持有每次显式调用，模型候选不能修改活动head或可信suite，检查不计为质量评价。记忆／流程候选与原评价／采用旅程分别接续。
+F10c2a的`retrospectives`聚合原handoff、Skill版本和组合input，提供完整来源／当前Skill基线准备与离线候选链接检查；原`asset_trees.manifest_digest`与`skill_assets.parse_metadata`分别拥有磁盘与内联文件的同一身份／元数据合同，`definition_bundles.parse_json`共享原重复键拒绝。新普通`retrospective` preset包含只读作者→来源审查的静态依赖；原Agent持有每次显式调用，模型候选不能修改活动head或可信suite，检查不计为质量评价。记忆／流程候选另接各自合同。F10c3a显式export复用同一次完整验证所得的内存候选，按原Skill目录身份核全树后发布；通用具体no-replace目录发布器由asset_trees持有，原组合prepare／restore与导出直接使用。导出不创建State或调用模型，评价／采用／回退仍走原Skill与evaluation owner。

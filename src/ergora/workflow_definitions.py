@@ -2,20 +2,17 @@
 
 from copy import deepcopy
 import base64
-import ctypes
 from graphlib import CycleError, TopologicalSorter
 import hashlib
 import ipaddress
 import json
-import os
 from pathlib import Path, PurePosixPath
 import re
-import sys
 import tempfile
 from urllib.parse import urlsplit
 
 from . import agent_definitions, contracts, definition_bundles
-from .asset_trees import inventory_tree
+from .asset_trees import inventory_tree, publish_directory
 from .state import State, file_lock
 
 
@@ -479,27 +476,10 @@ def restore_manifest(snapshot: dict, destination: Path) -> dict:
             checked = inspect_manifest(staged, material=True)
             if checked['digest'] != snapshot['digest']:
                 raise ValueError('Frozen composition manifest changed')
-            _publish_bundle(staged, destination)
+            publish_directory(staged, destination)
     if checked['digest'] != snapshot['digest']:
         raise ValueError('Frozen composition manifest changed')
     return {**checked, 'path': str(destination)}
-
-
-def _publish_bundle(staged: Path, destination: Path) -> None:
-    """Publish once without replacing even a concurrently created empty directory."""
-    if os.name == "nt":
-        staged.rename(destination)
-    elif sys.platform == "linux":
-        rename = getattr(ctypes.CDLL(None, use_errno=True), "renameat2", None)
-        if rename is None:
-            raise ValueError("Atomic composition publication requires Linux renameat2 or Windows")
-        rename.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint]
-        rename.restype = ctypes.c_int
-        if rename(-100, os.fsencode(staged), -100, os.fsencode(destination), 1) != 0:  # AT_FDCWD, RENAME_NOREPLACE
-            code = ctypes.get_errno()
-            raise OSError(code, os.strerror(code), str(destination))
-    else:
-        raise ValueError("Atomic composition publication is supported on Linux and Windows")
 
 
 def _prepare_bundle(root: Path, composition: dict, destination: Path, documents: dict[str, bytes], inspector) -> dict:
@@ -541,7 +521,7 @@ def _prepare_bundle(root: Path, composition: dict, destination: Path, documents:
         verified = inspector(staged)
         if destination.exists() or destination.is_symlink():
             raise ValueError("Composition bundle destination appeared; it was not replaced")
-        _publish_bundle(staged, destination)
+        publish_directory(staged, destination)
     return {**verified, "path": str(destination)}
 
 
