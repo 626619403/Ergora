@@ -558,7 +558,7 @@ ergora composition verify-manifest ./review-requirements-manifest
 
 ### 为盘点和规划选择模板 Agent
 
-[完整材料配置](WORKFLOW_DEFINITIONS.md#盘点与规划的完整材料)使用 task-definition v4／正式 input v8，将 inventory 和 plan 也绑定到精确叶实例、独立后端与全部结构祖先资料。沿原 `task preview/create/start` 运行，owner 批准和可信候选流程保持；CLI 与 API 接受完整定义，当前图形任务向导仍生成 v6。
+[完整材料配置](WORKFLOW_DEFINITIONS.md#盘点与规划的完整材料)使用 task-definition v4／正式 input v8，将 inventory 和 plan 也绑定到精确叶实例、独立后端与全部结构祖先资料。沿原 `task preview/create/start` 运行，owner 批准和可信候选流程保持；CLI与API接受完整定义；当前图形任务向导可用带预算的原生入口（definition6／input10）配置准备阶段，独立definition4／input8仍由CLI／API接入。
 
 选择需要的 `preparation.repository_paths`，纳入任务所需源码／配置；适用的 `AGENTS.md` 也受 read 上限约束。Skill 有附件时选 task-mcp，前两阶段无 shell／写／任意仓库工具。容量不足、附件读取不完整或原 inventory 产物变动会在对应阶段失败，不截断为成功。可选工单 `source` 沿原快照合同冻结，进入四类模型阶段；所有运行身份与恢复仍由原任务所有者维护。
 
@@ -602,7 +602,7 @@ task-definition v6／正式input v10在上述预算合同中增加 `composition.
 
 沿同一 `task prepare → preview → create → start` 操作，create仍确认prepare和preview两个摘要，随后批准原计划。升级并重启worker／executor后使用 `.composition-v10` 队列及 `requests-composition-v10` 请求根；旧版本队列和history保持。原task创建记录的 `composition.native` 保存精确父定义链，原status及终态结果的 `native_invocation` 投影同一调用；task/run/candidate、批准、取消、unknown恢复和证据仍归原所有者。
 
-首形状要求祖先只含这次调用并直接转发task及结果；work和review是所选六阶段实例的直接子模板，盘点／规划可有自己的结构包装。准备时拒绝额外父分支、第二实例、未执行的外部输入或控制依赖。内部工作／审查继续支持原有串并行DAG；这不授予任意外层图的执行权。图形任务向导目前生成原v6工作材料信封，新的v10合同使用完整JSON经CLI／HTTP提交。
+首形状要求祖先只含这次调用并直接转发task及结果；work和review是所选六阶段实例的直接子模板，盘点／规划可有自己的结构包装。准备时拒绝额外父分支、第二实例、未执行的外部输入或控制依赖。内部工作／审查继续支持原有串并行DAG；这不授予任意外层图的执行权。图形任务向导可按[页面组合步骤](WORKFLOW_DEFINITIONS.md#在正式任务页面选择组合)选择原生六阶段，显式授权准备后预览与创建definition6／input10；CLI／HTTP仍可提交完整定义。
 
 ### 为正式任务选择项目记忆与活动 Skill
 
@@ -1162,7 +1162,7 @@ ssh -L 8977:127.0.0.1:8977 user@server
 4. 在已发布嵌套关系图中选择实例，或用键盘操作下方实例表的按钮，查看完整祖先资源、来源、权限、端口、预算和装配提示。嵌套框/虚线依赖/蓝色具名数据分别表示三种关系；完整路径区分重复引用。“打开所选精确定义”及“打开结构父定义”回到对应编辑表单。可下载精确预览JSON，供检查与比较。
 5. 审阅后点击“保存当前预览为完整 manifest”，保存当前根及全部定义和 Skill 附件到持久控制目录。成功结果的`path`和`digest`可填入正式任务定义；保存不会创建或启动任务。回复丢失时先“按当前摘要读取已保存包”，源库不可用时可用`ergora composition show-manifest PREVIEW_SHA256`独立核验；[完整步骤](WORKFLOW_DEFINITIONS.md#固定当前预览到持久控制目录)。
 
-导入不安装或认证后端，也不启动任务或服务。预览显示的后端字段是请求；实际调用仍要通过能力准入和认证。选择精确版本后，可在“编辑定义并派生新版本”中修改字段或 JSON/YAML，明确应用、检查并发布新修订；原附件和旧版本保持。完整步骤与浏览器缓冲边界见[Agent编辑](AGENT_DEFINITIONS.md#在页面编辑专长-agent)和[工作流修订](WORKFLOW_DEFINITIONS.md#在页面修订工作流)。图显示已发布版本，草稿不会自动进入图；可独立折叠子工作流、按职责/专长/后端查找并展开祖先定位，摘要线可回查完整原端点。布局/折叠/查找与合同分开，刷新重置，组件缺失时表格继续可用。操作见[关系图手册](WORKFLOW_DEFINITIONS.md#查看已发布嵌套关系图)。选择比较目标后，可用同一显式上限[比较两个已发布组合](WORKFLOW_DEFINITIONS.md#比较两个已发布组合)，逐路径核对引用/权限/材料等差异并下载两份完整preview。完整manifest可在此页保存，再按[任务页面组合选择](WORKFLOW_DEFINITIONS.md#在正式任务页面选择组合)读取原摘要、分配工作单元并设置逐实例后端；原项目角色入口继续可用。
+导入不安装或认证后端，也不启动任务或服务。预览显示的后端字段是请求；实际调用仍要通过能力准入和认证。选择精确版本后，可在“编辑定义并派生新版本”中修改字段或 JSON/YAML，明确应用、检查并发布新修订；原附件和旧版本保持。完整步骤与浏览器缓冲边界见[Agent编辑](AGENT_DEFINITIONS.md#在页面编辑专长-agent)和[工作流修订](WORKFLOW_DEFINITIONS.md#在页面修订工作流)。图显示已发布版本，草稿不会自动进入图；可独立折叠子工作流、按职责/专长/后端查找并展开祖先定位，摘要线可回查完整原端点。布局/折叠/查找与合同分开，刷新重置，组件缺失时表格继续可用。操作见[关系图手册](WORKFLOW_DEFINITIONS.md#查看已发布嵌套关系图)。选择比较目标后，可用同一显式上限[比较两个已发布组合](WORKFLOW_DEFINITIONS.md#比较两个已发布组合)，逐路径核对引用/权限/材料等差异并下载两份完整preview。完整manifest可在此页保存，再按[任务页面组合选择](WORKFLOW_DEFINITIONS.md#在正式任务页面选择组合)读取原摘要、分配工作单元并设置逐实例后端；原生六阶段入口还可配置盘点／计划Agent与预算，显式授权准备后再预览、创建。原项目角色入口继续可用。
 
 修改 instructions/context、完整Skill目录及普通附件可使用[CLI资源修订](AGENT_DEFINITIONS.md#修订完整资源文件)：固定原包，预览完整差异及建议摘要，明确接受同一候选，再检查和发布新版本。两类定义共用同一合同；二进制、文件执行位和空目录保持明确，历史文件可按字节窗口读取。页面也可在“资源与附件编辑”中完整读取/上传、暂存文件操作、预览差异并明确采用摘要，再检查和发布；详见[页面资源步骤](AGENT_DEFINITIONS.md#在页面编辑资源与附件)。正文、操作和接受身份共同进入历史，未应用字节独立保留；下载编辑缓冲不包含未编辑原包。
 

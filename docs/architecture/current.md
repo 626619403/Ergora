@@ -327,10 +327,12 @@ flowchart LR
 
 Executor安装级并发取持久OWNED与本进程active的并集；重启只观察原attempt，unknown／rejected不退款。已链接receipt但账本未更新的原job仍进入对账，不能因receipt存在永久跳过。单次request入口沿同一容量门禁；没有另建调度器或表。现有版本的调度、终态与冻结参考保持；可信当前容器仍不是本工具提供的OS隔离。
 
-统一预算只覆盖单机／同boot的原六阶段输入，原生嵌套六阶段调用另片；trusted writer的advisory能力保持。当前图形向导仍生成v6；新合同从CLI／共用API使用。材料传递和原生夹具的实际验收见[B1交付](../delivery/2026-11-12-six-stage-materials.md)，不得借旧候选结果推导新版本成功。
+统一预算只覆盖单机／同boot的原六阶段输入，原生嵌套六阶段调用另片；trusted writer的advisory能力保持。当前图形向导的原生入口已沿下节definition6／input10补齐准备和预算，旧入口仍使用既有版本。材料传递和原生夹具的实际验收见[B1交付](../delivery/2026-11-12-six-stage-materials.md)，不得借旧候选结果推导新版本成功。
 
 
 ## 单实例原生六阶段 input10
+
+控制台由原`task-composition.js`收集实例／角色对应的后端、工作单元、准备路径及预算，原`tasks.js`显式授权prepare，再preview与双摘要create；原ID查询不重发未知操作，关闭前可下载完整授权输入。`style.css`仅在任务表单内约束grid／fieldset／长路径legend，保留材料和表格滚动。服务端合同／编译／预算／调度owner保持，[页面交付](../delivery/2026-11-14-native-task-console.md)区分实际原HTTP、故障与静态生命周期范围。
 
 `tasks`与`task_envelopes`共用纯stdlib `native_six_stage.invocation`，从既有WorkflowDefinition的完整图核单次调用形状及精确祖先链；definition6/input10不引入新图格式。父链只能直接转发task和结果，全部阶段属于同一所选实例，原WorkDelivery继续拥有叶覆盖、角色和依赖核验。原creation保存完整定义、项目revision、baseline、能力和同一预算；新WorkflowInput实现注册独立版本的queue、请求根、adapter和workflow。
 

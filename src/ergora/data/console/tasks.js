@@ -30,6 +30,7 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
       pre(`ergora project register project.json --revision ${data.project.revision}\nergora project registration ${data.project.id}`))];
 
   const selectionKey = `ergora-task:${data.project.id}`;
+  const preparationKey = `ergora-preparation:${data.project.id}`;
   let selected = sessionStorage.getItem(selectionKey) || "";
   let listSequence = 0;
   let detailSequence = 0;
@@ -52,7 +53,38 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
   actions.prepend(
     button(sourceSnapshot ? "从所选快照预览与创建" : "预览与创建", () => creationDialog(sourceSnapshot), "primary"),
     button("按 ID 读取创建记录", () => creationLookup()),
+    button("按 ID 读取准备记录", () => preparationLookup()),
   );
+
+  function preparationLookup() {
+    const idField = field("原任务 ID", "task_id", sessionStorage.getItem(preparationKey) || "", "text", {
+      required: true, maxlength: 80, autocomplete: "off",
+    });
+    const result = node("div", { "aria-live": "polite" });
+    let sequence = 0;
+    const content = node("div", {}, form([idField], "读取准备记录", async (values) => {
+      const reading = ++sequence;
+      await readPreparation(values.get("task_id"), result,
+        () => view.isConnected && content.isConnected && $("#dialog").open && reading === sequence);
+    }), result);
+    idField.addEventListener("input", () => { sequence++; result.replaceChildren(); });
+    modal("按原 ID 读取准备", content);
+  }
+
+  async function readPreparation(taskId, target, active) {
+    target.replaceChildren(empty(`正在读取原任务 ${taskId} 的准备记录…`));
+    try {
+      const record = await api(`${base}/tasks/${encodeURIComponent(taskId)}/preparation`);
+      if (!active()) return;
+      target.replaceChildren(panel(`准备记录：${record.status}`,
+        "读取不会重新授权、延长预算或载入创建表单。prepared 表示材料已冻结；须回到原表单或用已下载的授权输入通过 CLI 预览。关闭表单前请下载完整授权输入；修改已授权输入须使用新的任务 ID。",
+        disclosure("完整准备与预算记录", record),
+        row(button("重新读取原准备记录", () => { if (active()) readPreparation(taskId, target, active); }))));
+    } catch (error) {
+      if (active()) target.replaceChildren(panel("准备记录读取失败", error.message,
+        row(button("重新读取原准备记录", () => { if (active()) readPreparation(taskId, target, active); }))));
+    }
+  }
 
   function selectPublished(record) {
     if (record.status !== "published") return;
@@ -167,9 +199,10 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
     const result = node("div", { "aria-live": "polite" });
     let sequence = 0;
     let creationLocked = false;
+    let preparationPending = false;
     const compositionEditor = taskComposition({
       tools: app.bootstrap.tools, projectId: data.project.id,
-      input: () => JSON.parse(input.value), active: () => active(), invalidate,
+      input: () => JSON.parse(input.value), active: () => active(), invalidate, prepare: prepareNative,
     });
     const fields = node("fieldset", { className: "task-creation-fields" },
       node("label", {}, "已登记开发模板", kind),
@@ -188,24 +221,68 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
       inputField,
       compositionEditor.element,
     );
+    function definitionFrom(values) {
+      const definition = {
+        schema_version: 1, task_id: values.get("task_id"), task_type: values.get("task_type"),
+        issue_id: values.get("issue_id"), input: JSON.parse(values.get("input")),
+      };
+      const selected = compositionEditor.read();
+      if (selected) Object.assign(definition, { schema_version: selected.budget ? 6 : 2, ...selected });
+      if (sourceSha.value.trim()) {
+        if (savedSource?.sha256 !== sourceSha.value.trim()) throw new Error("请先读取当前 SHA256 对应的来源快照。");
+        if (!selected?.composition.execution) throw new Error("来源任务须选择完整 manifest 的组合执行与审查，并分配工作单元。");
+        Object.assign(definition, { schema_version: selected.budget ? 6 : 3, source: { snapshot_sha256: savedSource.sha256 } });
+      }
+      if (values.get("starting_sha")) definition.starting_sha = values.get("starting_sha");
+      return definition;
+    }
+    function prepareNative() {
+      if (!active() || creationLocked || preparationPending || !editor.reportValidity()) return;
+      invalidate();
+      const reading = sequence;
+      let definition;
+      try {
+        definition = definitionFrom(new FormData(editor));
+        if (!definition.budget) throw new Error("请先选择完整 manifest 的原生六阶段入口并填写准备与预算配置。");
+      } catch (error) {
+        result.replaceChildren(panel("准备配置失败", error.message));
+        return;
+      }
+      result.replaceChildren(panel("授权准备前确认", "确认后保存此输入并开始预算计时，只冻结材料；模型执行仍需创建并另外启动。输入一旦授权不得在同一任务 ID 下修改。",
+        disclosure("将授权的完整输入", definition),
+        row(button("下载完整授权输入", () => download(`${definition.task_id}.authorized-definition.json`, JSON.stringify(definition, null, 2) + "\n", "application/json"))),
+        node("p", {}, "关闭或刷新页面会释放此表单；请先下载。原ID查询只读准备状态，CLI可用下载文件继续预览和创建，预算仍按原期限计算。"),
+        form([], "确认授权准备（开始预算计时）", async () => {
+          if (!current(reading) || creationLocked || preparationPending) return;
+          preparationPending = true;
+          fields.disabled = true;
+          sessionStorage.setItem(preparationKey, definition.task_id);
+          result.replaceChildren(empty(`正在准备 ${definition.task_id}；请保留此原任务 ID，关闭页面不会撤销授权。`));
+          try {
+            const record = await api(`${base}/tasks/prepare`, { definition, revision: data.project.revision });
+            if (current(reading)) result.replaceChildren(panel(`准备记录：${record.status}`,
+              "预算已开始计时。prepared 后可预览原输入，再明确创建；预览不会续期。失败时保留原记录，修订输入须换新任务 ID。",
+              disclosure("完整准备与预算记录", record),
+              row(button("下载完整授权输入", () => download(`${definition.task_id}.authorized-definition.json`, JSON.stringify(definition, null, 2) + "\n", "application/json"))),
+              row(button("读取原准备记录", () => { if (current(reading)) readPreparation(definition.task_id, result, () => current(reading)); }))));
+          } catch (error) {
+            if (current(reading)) result.replaceChildren(panel("准备结果尚未确认", error.message,
+              node("p", {}, `请按原任务 ID ${definition.task_id} 读取准备记录；页面不会自动重发授权。`),
+              row(button("下载完整授权输入", () => download(`${definition.task_id}.authorized-definition.json`, JSON.stringify(definition, null, 2) + "\n", "application/json"))),
+              row(button("读取原准备记录", () => { if (current(reading)) readPreparation(definition.task_id, result, () => current(reading)); }))));
+          } finally {
+            preparationPending = false;
+            if (active() && !creationLocked) fields.disabled = false;
+          }
+        })));
+    }
     const editor = form([fields], "预览冻结合同", async (values) => {
-      if (!active() || creationLocked) return;
+      if (!active() || creationLocked || preparationPending) return;
       const reading = ++sequence;
       result.replaceChildren(empty("正在编译预览…"));
       let snapshot;
       try {
-        const definition = {
-          schema_version: 1, task_id: values.get("task_id"), task_type: values.get("task_type"),
-          issue_id: values.get("issue_id"), input: JSON.parse(values.get("input")),
-        };
-        const composition = compositionEditor.read();
-        if (composition) Object.assign(definition, { schema_version: 2, composition });
-        if (sourceSha.value.trim()) {
-          if (savedSource?.sha256 !== sourceSha.value.trim()) throw new Error("请先读取当前 SHA256 对应的来源快照。");
-          if (!composition?.execution) throw new Error("来源任务须选择完整 manifest 的组合执行与审查，并分配工作单元。");
-          Object.assign(definition, { schema_version: 3, source: { snapshot_sha256: savedSource.sha256 } });
-        }
-        if (values.get("starting_sha")) definition.starting_sha = values.get("starting_sha");
+        const definition = definitionFrom(values);
         snapshot = await api(`${base}/tasks/preview`, { definition, revision: data.project.revision });
       } catch (error) {
         if (current(reading)) result.replaceChildren(panel("预览失败", error.message));
@@ -221,15 +298,20 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
           ["来源快照 SHA256", snapshot.definition.source?.snapshot_sha256 ?? "未选择"],
           ["基线提交", snapshot.files["compiled.json"].spec.request.repository.base_sha],
           ["预览 SHA256", snapshot.preview_sha256],
+          ...(snapshot.prepare_sha256 ? [["准备 SHA256", snapshot.prepare_sha256]] : []),
         ]),
         node("h3", {}, "冻结项目角色"),
         table(["角色", "工具", "模型"], Object.entries(bindings.bindings).map(([role, binding]) =>
           [role, binding.tool, binding.model ?? "未指定"])),
         frozen ? node("div", {}, node("h3", {}, "本任务组合成员"),
           table(["实例", "职能", "工具", "模型", "模式", "选择理由"],
-            Object.entries({ ...frozen.execution?.members, ...frozen.members }).map(([path, member]) =>
+            Object.entries({ ...frozen.preparation?.members, ...frozen.execution?.members, ...frozen.members }).map(([path, member]) =>
               [path, member.role, member.binding.tool, member.binding.model ?? "采用工具配置", member.mode, member.backend_reason])),
-          disclosure("完整组合后端、信任和差异策略", { review: frozen.members, execution: frozen.execution, diversity: frozen.diversity }),
+          frozen.native ? disclosure("冻结六阶段调用与完整父链", frozen.native) : null,
+          snapshot.definition.budget ? disclosure("原授权预算与期限（已开始计时）", snapshot.files["task.spec.json"].budget) : null,
+          disclosure("完整组合后端、信任和差异策略", {
+            review: frozen.members, execution: frozen.execution, preparation: frozen.preparation, diversity: frozen.diversity,
+          }),
         ) : null,
         disclosure("完整服务端预览与冻结文件", snapshot),
         form([], "确认创建冻结合同", async () => {
@@ -245,6 +327,7 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
             record = await api(`${base}/tasks`, {
               definition: snapshot.definition, revision: snapshot.project_revision,
               preview_sha256: snapshot.preview_sha256,
+              ...(snapshot.prepare_sha256 ? { prepare_sha256: snapshot.prepare_sha256 } : {}),
             });
           } catch (error) {
             if (current(reading)) creationUnknown(snapshot.definition.task_id, error, result, () => current(reading));

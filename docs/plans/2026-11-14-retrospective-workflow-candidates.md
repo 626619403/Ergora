@@ -28,3 +28,5 @@
 最终r2安装204通过／6平台跳过／250.00秒；实际native-r3 11CLI、最终r2真实双后端null／approve与自身结构35.499秒approve，修复代码已获原reviewer核包／八探针通过，最终全部证据／独立终核与发布自己的CI仍待。旧r1与调用器fixture失败原件保留。
 
 原fresh-context最终本地两轴及411全部原引用已终核approve／开放0／0，R1／R2关闭；普通推送／固定发布补核／本片自己的CI仍待。
+
+已普通发布`54fcd0b188f1f1dc46229dfe504f5dddb9c4aaea`，28固定blob／完整远端Ref相同；固定411／发布后415原引用，原四回执单独追加。原reviewer固定发布补核与本片自己的必要CI待，不合main。

@@ -1,12 +1,13 @@
 import { api } from "./api.js";
-import { node, field, select, button, pre, empty, row } from "./ui.js";
+import { node, field, select, button, pre, empty, row, lines } from "./ui.js";
 import { bindingFields } from "./binding-fields.js";
 
 // This editor collects choices; tasks._composition owns formal admission.
-export function taskComposition({ tools, projectId, input, active, invalidate }) {
+export function taskComposition({ tools, projectId, input, active, invalidate, prepare }) {
   const source = select([
     ["project", "项目角色（原入口）"], ["review", "完整 manifest · 仅组合审查"],
     ["delivery", "完整 manifest · 组合执行与审查"],
+    ["native", "完整 manifest · 原生六阶段（Linux／WSL2）"],
   ], "project", "agent_selection");
   const shaField = field("已保存组合的预览 SHA256", "manifest_preview_sha256", "", "text", {
     required: true, autocomplete: "off", spellcheck: "false",
@@ -16,6 +17,28 @@ export function taskComposition({ tools, projectId, input, active, invalidate })
   const review = select([], "", "review_instance");
   const work = select([], "", "work_instance");
   review.required = work.required = true;
+  const native = select([], "", "native_instance");
+  const inventory = select([], "", "inventory_instance");
+  const plan = select([], "", "plan_instance");
+  native.required = inventory.required = plan.required = true;
+  const preparationMode = select([["task-mcp", "固定任务 MCP 资料读取"], ["text-only", "完整文本输入"]], "task-mcp", "preparation_mode");
+  const repositoryPaths = field("准备阶段可读取的仓库相对路径（每行一个）", "repository_paths", "", "textarea", { required: true });
+  const nativeSection = node("fieldset", {},
+    node("legend", {}, "原生六阶段调用与准备"),
+    node("p", {}, "选择普通父模板中的六阶段调用，以及其内部的盘点、计划、执行和审查实例。完整父链和全部阶段由服务端核对。原生执行支持 Linux／WSL2。"),
+    node("label", {}, "六阶段工作流实例", native),
+    node("label", {}, "盘点 Agent 实例", inventory),
+    node("label", {}, "计划 Agent 实例", plan),
+    node("label", {}, "准备资料模式", preparationMode), repositoryPaths,
+  );
+  const budgetSection = node("fieldset", {},
+    node("legend", {}, "总任务预算"),
+    node("p", {}, "填写总时间、预留清理时间和模型调用次数。预算由服务端核对；授权准备后开始计时，预览和重读不会重置预算。"),
+    field("总时间（秒）", "wall_seconds", "", "number", { required: true, min: 2, step: 1 }),
+    field("清理时间（秒）", "cleanup_seconds", "", "number", { required: true, min: 1, step: 1 }),
+    field("模型调用次数上限", "model_invocations", "", "number", { required: true, min: 1, step: 1 }),
+    row(button("准备原生六阶段", prepare)),
+  );
   const mode = select([["task-mcp", "固定任务 MCP 资料读取"], ["text-only", "完整文本输入"]], "task-mcp", "review_mode");
   const diversity = select([
     ["prefer-distinct", "优先不同后端 · 同后端需理由"], ["require-distinct", "必须不同后端"],
@@ -37,11 +60,12 @@ export function taskComposition({ tools, projectId, input, active, invalidate })
   );
   const settings = node("fieldset", { disabled: true, hidden: true },
     node("legend", {}, "正式任务组合配置"),
+    nativeSection,
     node("label", {}, "审查工作流实例", review),
     node("label", {}, "审查资料模式", mode), workSection,
     node("label", {}, "执行与审查后端策略", diversity), diversityReason,
     node("p", {}, "执行者须显式覆盖后端并配置可信执行边界，静态定义不会自动授信。审查者可沿用定义或单独覆盖；每份覆盖需理由。服务端会重新检查模式、权限、全部成员和依赖。"),
-    members,
+    members, budgetSection,
   );
   const composition = node("fieldset", { disabled: true, hidden: true },
     node("legend", {}, "读取完整组合"),
@@ -53,7 +77,9 @@ export function taskComposition({ tools, projectId, input, active, invalidate })
   function applySource() {
     lookupSequence++;
     composition.disabled = composition.hidden = source.value === "project";
-    workSection.disabled = workSection.hidden = source.value !== "delivery";
+    workSection.disabled = workSection.hidden = !["delivery", "native"].includes(source.value);
+    nativeSection.disabled = nativeSection.hidden = source.value !== "native";
+    budgetSection.disabled = budgetSection.hidden = source.value !== "native";
     renderMembers();
   }
 
@@ -72,7 +98,10 @@ export function taskComposition({ tools, projectId, input, active, invalidate })
         clearManifest();
         const choices = [["", "选择精确工作流实例…"], ...checked.composition.instances
           .filter((item) => item.kind === "workflow").map((item) => [item.path, `${item.path} · ${item.ref.id}@${item.ref.version}`])];
-        for (const target of [review, work]) target.replaceChildren(...select(choices, "").children);
+        for (const target of [review, work, native]) target.replaceChildren(...select(choices, "").children);
+        const leaves = [["", "选择精确 Agent 实例…"], ...checked.composition.instances
+          .filter((item) => item.kind === "agent").map((item) => [item.path, `${item.path} · ${item.role}`])];
+        for (const target of [inventory, plan]) target.replaceChildren(...select(leaves, "").children);
       }
       manifest = checked;
       settings.disabled = settings.hidden = false;
@@ -89,15 +118,16 @@ export function taskComposition({ tools, projectId, input, active, invalidate })
     memberEditors.clear();
     visibleMembers = [];
     members.replaceChildren();
-    for (const target of [review, work]) target.replaceChildren();
+    for (const target of [review, work, native, inventory, plan]) target.replaceChildren();
     assigned = null;
     assignments.replaceChildren();
     settings.disabled = settings.hidden = true;
   }
 
-  function memberEditor(leaf, writer) {
+  function memberEditor(leaf, role) {
+    const writer = role === "work";
     const prefix = `member:${leaf.path}:`;
-    const choices = tools[writer ? "implementer" : "reviewer"];
+    const choices = tools[leaf.role];
     const choice = select([
       ["", writer ? "请选择覆盖后端及执行边界…" : `沿用定义 · ${leaf.backend_request.tool}`],
       ...choices.map((item) => [item.tool, item.supported === false ? `${item.tool} · WSL2/Linux` : item.tool]),
@@ -118,7 +148,7 @@ export function taskComposition({ tools, projectId, input, active, invalidate })
     });
     return {
       element: node("fieldset", { "data-member-path": leaf.path },
-        node("legend", {}, `${writer ? "执行" : "审查"} · ${leaf.path}`),
+        node("legend", {}, `${{ work: "执行", review: "审查", preparation: "准备" }[role]} · ${leaf.path}`),
         node("details", {}, node("summary", {}, "定义请求的后端"), pre(leaf.backend_request)),
         node("label", {}, "本实例后端", choice), options),
       read() {
@@ -135,11 +165,13 @@ export function taskComposition({ tools, projectId, input, active, invalidate })
     visibleMembers = [];
     if (manifest && source.value !== "project") {
       for (const leaf of manifest.composition.instances.filter((item) => item.kind === "agent")) {
-        const writer = source.value === "delivery" && work.value && leaf.path.startsWith(work.value + "/");
+        const writer = ["delivery", "native"].includes(source.value) && work.value && leaf.path.startsWith(work.value + "/");
         const reviewer = review.value && leaf.path.startsWith(review.value + "/");
-        if (!writer && !reviewer) continue;
-        const key = `${writer ? "work" : "review"}:${leaf.path}`;
-        if (!memberEditors.has(key)) memberEditors.set(key, memberEditor(leaf, writer));
+        const preparing = source.value === "native" && [inventory.value, plan.value].includes(leaf.path);
+        if (!writer && !reviewer && !preparing) continue;
+        const role = writer ? "work" : reviewer ? "review" : "preparation";
+        const key = `${role}:${leaf.path}`;
+        if (!memberEditors.has(key)) memberEditors.set(key, memberEditor(leaf, role));
         visibleMembers.push({ path: leaf.path, editor: memberEditors.get(key) });
       }
     }
@@ -176,6 +208,8 @@ export function taskComposition({ tools, projectId, input, active, invalidate })
     status.replaceChildren(empty("摘要已更改。已有配置仅保留显示，重新读取完整包后才可使用；不同包会重新选择实例。"));
   });
   review.addEventListener("change", renderMembers);
+  inventory.addEventListener("change", renderMembers);
+  plan.addEventListener("change", renderMembers);
   work.addEventListener("change", () => {
     assigned = null;
     assignments.replaceChildren(empty("执行子流程已更改，请重新载入当前工作单元。"));
@@ -199,14 +233,25 @@ export function taskComposition({ tools, projectId, input, active, invalidate })
       };
       const reason = diversityReason.querySelector("textarea").value;
       if (reason) composition.diversity.reason = reason;
-      if (source.value === "delivery") {
+      if (["delivery", "native"].includes(source.value)) {
         if (!assigned) throw new Error("请从当前任务输入载入并分配工作单元。");
         composition.execution = {
           protocol: "work-units-v2", instance: work.value, mode: "workspace-task-mcp",
           assignments: Object.fromEntries(assigned.map(({ id, choice }) => [id, choice.value])),
         };
       }
-      return composition;
+      if (source.value === "native") {
+        composition.native = { protocol: "six-stage-v1", instance: native.value };
+        composition.preparation = {
+          protocol: "preparation-v1", inventory: inventory.value, plan: plan.value,
+          mode: preparationMode.value,
+          repository_paths: lines(repositoryPaths.querySelector("textarea").value),
+        };
+        const budget = Object.fromEntries([...budgetSection.querySelectorAll("input")]
+          .map((item) => [item.name, item.valueAsNumber]));
+        return { composition, budget };
+      }
+      return { composition };
     },
   };
 }

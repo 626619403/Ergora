@@ -39,7 +39,7 @@ ergora agent definition show ergora-server-implementer 1.0.0 --material
 
 在明确的preview grant下，按[完整组合分享](#保存和分享完整组合)执行`prepare-manifest`，把上面的根ID/版本换入即可。开发正式选择沿[work-units-v2](#专长执行者与原工作单元)，使用`root/work`和`root/review`；unit ID直接映射同名叶子，例如`contract`→`root/work/contract`。原`templates copy`取得的领域input包含对应unit ID、路径和依赖；改变原units关系时，应同时修订对应工作子模板。workspace写调用仍要求每个writer显式选择可信current-container；导入组合不会自动选择此边界。
 
-`refactoring`使用[原生六阶段选择](USAGE.md#使用重构配方)：实例为`root/development`，work／review在其内部，准备阶段也由独立专家会话承担。其[完整任务示例](../examples/composition/refactoring/task.example.json)提供definition6、unit分配、预算与显式writer信任；需要替换真实baseline、caller、范围、验收和manifest。它是新增的组合配方，旧三个配方、旧validator v1和原任务类型保持。catalog的`development-v5`是既有页面的开发类别标签，真实执行合同由任务定义选择；该标签不会把新任务降为input5。图形任务向导暂不生成原生v10合同，使用CLI／HTTP提交完整定义。
+`refactoring`使用[原生六阶段选择](USAGE.md#使用重构配方)：实例为`root/development`，work／review在其内部，准备阶段也由独立专家会话承担。其[完整任务示例](../examples/composition/refactoring/task.example.json)提供definition6、unit分配、预算与显式writer信任；需要替换真实baseline、caller、范围、验收和manifest。它是新增的组合配方，旧三个配方、旧validator v1和原任务类型保持。catalog的`development-v5`是既有页面的开发类别标签，真实执行合同由任务定义选择；该标签不会把新任务降为input5。图形任务向导可按下文选择原生六阶段、准备阶段与预算，并沿原definition6生成input10合同。
 
 训练组合的`root/analysis/design`、`root/analysis/profile`、`root/kernel`和`root/measurement/review`可按[单叶调用](#调用一个准备好的叶子)使用；操作者需要在任务文件中提供完整workload、baseline和相应前驱输出。独立`run-input`不执行图前驱。生成的提案/代码文本及模型review不是实验结果或采用批准，真实CPU/GPU、Forge候选和测量仍按[训练手册](TRAINING.md)使用原可信runner/gate。目录中的`runtime`只描述本发行支持的使用范围，不表示后端、服务或硬件已经就绪。
 
@@ -117,12 +117,13 @@ ergora composition show-manifest PREVIEW_SHA256 --material
 
 先完成[项目登记](PROJECTS.md)，再打开“正式任务”→“预览与创建”。原“项目角色”入口保持使用项目绑定，不自动套用定义库中的组合。
 
-1. 载入已登记开发模板或兼容草稿，填写任务ID、工单和完整输入。选择“本任务 Agent 来源”：仅组合审查，或组合执行与审查。训练优化仍使用独立入口。
+1. 载入已登记开发模板或兼容草稿，填写任务ID、工单和完整输入。选择“本任务 Agent 来源”：仅组合审查、组合执行与审查，或原生六阶段（Linux／WSL2）。训练优化仍使用独立入口。
 2. 粘贴前文保存包返回的`manifest.preview_sha256`，点“读取完整 manifest”。此摘要不是manifest目录digest；页面从当前控制目录读取并核原完整包，再显示根身份和manifest digest。读取历史包不等于允许今天的正式调用。
 3. 选择完整实例路径的审查子流程。执行与审查组合还要选执行子流程，点击“从当前输入载入工作单元”，逐个选择对应执行Agent。内置开发组合通常为`root/work`和`root/review`；单元ID对应同名work叶子。修改work子流程后重新载入分配；载入失败保留旧输入及分配，原任务预览会核全部unit和依赖。
 4. 审查者可沿用精确定义的后端请求；覆盖时选择后端、配置模型等字段并写明理由。执行者须逐一显式覆盖；可写模式沿原后端合同要求可信Linux绑定，目前由Codex的“执行边界”选择“已信任的当前容器 / 用户”。页面不会从静态定义自动选择这一信任。认证仍由外部工具配置提供，不在此填写密钥。其他后端或不支持的模式会由服务端明确拒绝。
 5. 默认优先不同执行/审查后端；同后端回退须填写策略说明。可明确要求不同后端或允许相同后端，仍沿原diversity合同。不同名称或不同模型选择本身不证明独立错误概率。
-6. 点“预览冻结合同”，审阅服务端完整冻结文件与每成员binding/policy，再“确认创建冻结合同”。创建只发布合同，不启动、批准或执行。后续按[正式操作顺序](USAGE.md#正式任务的操作顺序与恢复)启动及批准原计划。
+6. 原生六阶段还须选择普通父模板内的六阶段调用、盘点与计划Agent，填写准备模式、仓库相对路径（每行一个）和总时间／预留清理时间／模型调用次数。准备成员也可逐实例覆盖后端。内置`refactoring`选择`root/development`、`root/development/preparation/inventory`和`root/development/preparation/plan`，执行／审查分别位于`root/development/work`和`root/development/review`；用[完整示例](../examples/composition/refactoring/task.example.json)适配真实输入与工作单元。点“准备原生六阶段”，核完整输入后明确“确认授权准备（开始预算计时）”；`prepared`后才可预览。此时预算已开始，读取和预览均不续期；修改已授权输入须换新任务ID。授权前可“下载完整授权输入”，准备结果或未知结果也提供此下载。关闭或刷新页面会释放表单；按ID查询只读状态、不装载原表单，可用下载文件沿原CLI的`task preview --definition ... --revision ...`及双摘要`task create`继续。响应丢失先“读取原准备记录”，或重新打开“按ID读取准备记录”，不要自动重发授权。
+7. 点“预览冻结合同”，审阅服务端完整冻结文件与全部准备／执行／审查成员、六阶段父链及原预算期限，再“确认创建冻结合同”。页面保留原准备和预览两个摘要；可选来源快照与六阶段组合可同时使用。创建只发布合同，不启动、批准或执行。后续按[正式操作顺序](USAGE.md#正式任务的操作顺序与恢复)启动及批准原计划。旧仅审查／执行组合无需授权准备步骤。
 
 字段变化使旧任务预览失效，迟到manifest或预览回复不能恢复旧选择。读取/预览失败保留输入；创建发出后锁定原合同。创建回复丢失时按页面保留的原任务ID只读查询原创建记录，再决定是否恢复，不能换ID重发。组合、后端覆盖和理由只属于本次冻结任务，不修改模板或项目默认绑定；各祖先资料、权限和candidate/批准仍由原所有者核验。当前表单随对话框关闭而释放，关闭前另存任务输入；定义库中的完整manifest仍持久保存。
 
@@ -269,7 +270,7 @@ inventory 和 plan 实际走只读叶调用、新空工作目录和原进程监�
 
 v8 中，只要选中结构链有未内联 Skill 附件，text-only 就在创建前拒绝；使用 task-mcp。模型必须完整读取必要附件，实际成功服务响应记录 URI、SHA、大小、offset 和返回字节数。原 Executor 在接受阶段结果前核连续覆盖，握手／list 成功或模型自称已读不能替代。完整正文已在 prompt 内，无须为了满足附件门禁再次读取同一正文。此证据证明字节交付，不证明模型理解。
 
-继续使用原 `task preview/create/start`，原计划批准及候选证据入口不变。v4 也可加入与 v3 相同的可选 `source: {"snapshot_sha256": "实际快照摘要"}`，完整来源进入全部选中阶段，并保存在原 input／evidence／handoff。升级并重启 worker／executor 后才能接收 `.composition-v8` 队列；按冻结选择只检查实际依赖。图形任务向导仍生成 v6，v8 通过 CLI／共用 API 提交完整定义。
+继续使用原 `task preview/create/start`，原计划批准及候选证据入口不变。v4 也可加入与 v3 相同的可选 `source: {"snapshot_sha256": "实际快照摘要"}`，完整来源进入全部选中阶段，并保存在原 input／evidence／handoff。升级并重启 worker／executor 后才能接收 `.composition-v8` 队列；按冻结选择只检查实际依赖。图形任务向导的原生六阶段入口支持完整准备与预算（definition6／input10）；单独definition4／input8仍通过CLI／共用API提交。
 
 此v8合同保留原阶段时限。需要材料准备、队列、人工等待、执行和收尾共用总预算时，显式使用[task-definition v5／input9](USAGE.md#一次授权的预算准备)：先prepare、确认两个摘要创建，再沿原start／批准／取消／恢复入口运行。v9拥有独立队列及专用job owner，静态图本身不授予执行权。将六阶段置于普通父模板时使用[definition6／input10的单实例选择](USAGE.md#将六阶段作为一个子模板调用)，沿相同原task生命周期保存精确祖先链。旧定义／input、已冻结manifest和history不自动迁移。
 
