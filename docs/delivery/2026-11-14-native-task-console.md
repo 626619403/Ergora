@@ -33,3 +33,13 @@
 最终自身原结构模板沿实际Claude240.539秒超时使用授权Codex回退：93.159秒／approve，完整六文件135282B，input `785c21f47db106bfa1f425e35ad9ad360b642ce5e54efb1adc551f3729a09100`，result `575278c081471b54a90080016da33d64e3f5e7fb785d099d63c381fb41c342a9`；全部祖先资料与完整stdin已核，静态自审不替代fresh-context独立终核。三个web／provider组共六端口均关闭，主／独立浏览器均有close，所有可访问本片proc cwd无残留；不可读项保持未验。独立两轴最终终核、普通发布和本片自己的CI仍待。
 
 原fresh-context独立终核已落盘：两轴approve／开放0／0，R1–R3关闭；原680引用与最终602／两RECORD／283、84浏览器检查／111HTTP／完整模型输入及收尾均已直接核对。三份原独立终核原件只在原前缀之后追加，总683引用。准许按原普通发布流程发布；自己的远端Ref及CI仍待，不借其他SHA结果。
+
+已普通发布`0a311eeb2a46d0db48ec44515a8413239e0c772c`，15固定blob／完整远端Ref相同；固定683／发布后687引用保持，仅四回执后追加。原完整暂存检查覆盖新增文件。原reviewer固定发布补核、本片自己的必要CI与原终态补核待，不合main。
+
+本片自己的[CI43561420980](https://github.com/626619403/Ergora/actions/runs/43561420980)已发现，精确绑定0a311ee／八job运行中；终态及原reviewer补核另跟踪。
+
+原reviewer固定普通发布补核已完成：两轴approve／开放0／0，固定15blob／602产品／两RECORD／283、固定683→687引用及完整远端Ref均直接核对；两份原补核audit单列，不改原前缀。自己的CI43561420980仍在运行。后继F10d2现可在独立基线开发，不能将其新源码等同于本片0a311ee。
+
+本片自己的CI43561420980已终态Success，八job／30必要步骤全部成功；读取的是精确0a311eeb完整SHA对应官方run／各step日志URL，不借其他候选结果。单列CI原件引用于evidence，原reviewer终态补核待。
+
+原reviewer终态补核两轴approve／开放0／0。55份CI原件3786880B、8job／30必要步骤与固定workflow／group及全SHA日志身份独立核同；Windows app13分15秒、installer39秒、upload2秒均success；追加独立终核两原件单列，不更改原683／687及publication补核身份。本片精确交付闭合。

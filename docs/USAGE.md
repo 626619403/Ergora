@@ -622,7 +622,9 @@ Linux／WSL2 可在上述原生六阶段定义上使用 [task-definition v7](../
 
 沿原 `task prepare → preview → create → start` 使用，create仍明确确认prepare和preview两个摘要。preview的 `files["task.spec.json"].context` 给出所选身份；`composition.manifest`携带完整来源和文件，`task_envelopes.selected_context`可离线核对原正文、来源、期限和Skill附件身份；图中的每叶 `material_bytes` 及各scope的 `usage`／`limits` 显示静态容量。动态仓库、前驱结果和完整prompt仍在实际阶段核对，不能把静态余量当作未来成功保证。
 
-更正、删除、到期或活动head变化后，旧选择不能首次发布。已经保存完整creation intent的中断恢复使用原快照，包括后来失效的资料；`task creation`检查原意图，`task resume-create`按其SHA恢复，不重新选资料或续预算。归档输入是运行证据，删除canonical记忆不会清除已冻结的任务及独立备份。新协议注册 `.composition-v11` 队列与 `requests-composition-v11` 请求根，升级并重启worker／executor后使用。CLI及HTTP共用上述合同；图形选择表单尚未接入。
+更正、删除、到期或活动head变化后，旧选择不能首次发布。已经保存完整creation intent的中断恢复使用原快照，包括后来失效的资料；`task creation`检查原意图，`task resume-create`按其SHA恢复，不重新选资料或续预算。归档输入是运行证据，删除canonical记忆不会清除已冻结的任务及独立备份。新协议注册 `.composition-v11` 队列与 `requests-composition-v11` 请求根，升级并重启worker／executor后使用。CLI及HTTP共用上述合同。
+
+在“正式任务 → 预览与创建”选择原生六阶段并读取完整manifest后，“本任务资料来源”默认仅继承模板资料。要追加项目资料，选“继承模板并追加项目资料”，填写新的派生根精确版本，点“读取当前资料目录”，再明确勾选记忆和活动Skill。页面显示完整记忆正文／来源／期限、不可选状态及Skill精确head；到期和删除记录不可选。刷新目录会清空勾选，读取失败后须重新读取成功才能使用。目录只是观察快照，原准入会再次核对。随后显式授权准备、检查冻结来源与完整文件，再用两个摘要确认创建。授权输入下载包含完整context选择；已有全部祖先资料仍继承，页面不提供删减祖先资源或扩大权限的操作。轻量只读 `GET /api/projects/PROJECT_ID/skills/heads` 仅返回当前活动head，不调用工具诊断。
 
 ### 使用重构配方
 

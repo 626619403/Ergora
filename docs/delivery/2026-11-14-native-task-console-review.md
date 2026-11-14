@@ -79,3 +79,44 @@ inventory／plan 是原 `inspector`／`planner` 角色，但表单使用 `tools.
 公开[证据索引](evidence/2026-11-14-native-task-console.json)在终核时有 **680引用／33,839,213B**，独立逐项bytes／SHA相符、无重复。终核投影131878B、SHA `244679aef0d3b9b8dbd635eeddb0ea784638d138c337039797eaffe9273f62d9`；原679条与新增未执行发布脚本分列，package／HTTP／产品等公开事实对应私有原件。公开manifest键改为相对路径、交付首段当前状态已纠正，私有原记录不改；随后新写的独立closeout脚本／结果不在该680中，后续追加另核。该索引在此刻仍正确标明独立终核在途，最终状态记账由本报告结论更新。
 
 **最终裁定：需求／行为 approve，结构／维护成本 approve，开放0／0；R1–R3均关闭。** 本片本地验收可进入原普通发布流程。没有执行或证明真实任务模型／Temporal／GPU／质量／性能、原生Windows、完整Forge、F9d／G1、F10d2资料选择；未提交／推送，也未核本片固定远端Ref或自己的必要CI。前片54fcd0b的CI与原审查已单独闭合，不转授本片。
+
+## 固定普通发布补核
+
+同一 reviewer 现已补核普通发布的完整候选 **`0a311eeb2a46d0db48ec44515a8413239e0c772c`**，其直接父为本片固定基线 `54fcd0b188f1f1dc46229dfe504f5dddb9c4aaea`。本节保留上文发布前的原状态，更新为：**固定发布需求／行为轴 approve，结构／维护成本轴 approve，开放0／0。** 原R1–R3保持关闭，本片自己的必要CI与其独立终态补核仍待。
+
+独立从固定 Git tree 取全部产品，逐件核 **602份 fixed Git＝最终r5 source snapshot＝原wheel＝installed＝本轮核验时当前源码**，文件路径集合也相同。wheel SHA仍为 `4e6ff29ad9901a530dfc862a808214a0672c91da99d2becdfd98aaddd18db7cb`；两 RECORD **610／615** 行重新逐行核大小与SHA，原 **283 reference** 的摘要及固定Git／snapshot／wheel／installed执行位相同。三个变更产品保持末节身份。原 `tests/test_web.py` 为 **14796B／SHA `aa535bd8b3eebc1705b95def376bb397e9e24c879bf1c8977e0bcec6ed3a1bd7`**，fixed Git＝r5运行快照＝原基线；测试文件不随wheel打包，本节没有把它称为wheel成员或重跑原suite。
+
+固定提交的全部 **15份Git blob** 大小／SHA逐份等于 `static-final-r1.json`，包含原新增计划、交付、公开证据和本review报告。固定review为 **14505B／SHA `20dca04f7832a175e980d47ed624982584eef69c60b8902d97927aadda18f1b7`**，即上文最终本地原报告，本节是其后追加。原暂存检查在新增文件入index后执行，`git diff --cached --check` exit0；本reviewer另对固定提交执行 `git show --format= --check`，exit0。
+
+固定公开索引 **683项** 是原680项后追加独立closeout脚本／结果与final-review结果；本轮发布后 **687项** 的前683项逐项等于固定索引，余下仅 `static-final-r1.json`、commit／push／Ref四回执。已逐件重核687份原件，**33,858,173B** 的大小／SHA全部相同、无重复路径。原commit／push／Ref回执均exit0，push确为 `HEAD:refs/heads/refactor/architecture-foundations`、未带force；本reviewer另以只读 `git ls-remote` 核完整分支Ref，仍等于上述固定候选，不涉及main。
+
+发布依赖另从该固定提交中的前片报告／公开证据读取：`54fcd0b` 自己的 **run43558321321／八job／30必要步骤** 已由其原fresh-context reviewer终态approve、开放0／0；相应 **58份独立CI引用**重新逐件核bytes／SHA相符。该原审查只满足本片发布依赖，不能代替 `0a311ee` 自己的CI。后继F10d2新计划／交付不属于本固定候选验收，其产品与新的fresh-context审查另行进行。
+
+私有 `independent/publication-audit-r1.json` 记录本轮原件身份与零差异。首次私有inline探针误用前片 `raw_evidence.base`（实际为 `private_base`），在前片引用／远端核验前以KeyError终止，修正后完成本轮核验，未改产品。此轮仅廉价Git／RECORD／原件比较、只读远端Ref与追加本报告；没有安装、运行suite／模型、修改产品、提交或推送。真实模型／GPU／质量／性能、原生Windows及上文静态生命周期等范围限制保持。
+
+## 本片自己的 CI 终态补核
+
+原独立 reviewer 已完成固定候选 **`0a311eeb2a46d0db48ec44515a8413239e0c772c`** 自己的 GitHub Actions **run `43561420980`** 终态补核。**需求／行为轴 approve，结构／维护成本轴 approve，开放0／0。** 本节将前文“本片自己的必要CI／独立终态仍待”更新为已闭合；初审finding、修复、私有探针失败、各包与前片run的历史身份均保留。本节只核此固定候选，当前F10d2产品及其新fresh-context审查属于后继片。
+
+从固定Git读取 `.github/workflows/portability.yml` 和 `scripts/ci/linux-groups.json`，独立推导plan、六组Ubuntu3.11及Windows3.12 all，合计 **8job／30必要步骤**。使用原r5安装解释器 `-I` 和现有YAML reader，从原HTML独立解析步骤，没有执行作者的 `parse-ci-html.py`。实际job ID／name／href与该run原UI batch逐项相同，batch totalCount8、hasMorefalse；其早期in_progress投影保留原采样身份，终态来自后续原件。
+
+|job|固定job ID|终态采样|必要步骤success|
+|---|---:|---|---:|
+|plan|132345733129|r2|1|
+|Ubuntu3.11 group0|132345787849|r2|4|
+|Ubuntu3.11 group1|132345787839|r2|4|
+|Ubuntu3.11 group2|132345787842|r2|4|
+|Ubuntu3.11 group3|132345787879|r2|4|
+|Ubuntu3.11 group4|132345787831|r2|4|
+|Ubuntu3.11 group5|132345787860|r2|4|
+|Windows3.12 all|132345787832|r3|5|
+
+八份原页面的check-steps均completed、Complete job均success，没有failed／cancelled或未终态步骤。逐项核必要step在固定workflow中的序号、success、data-job-completed，以及开始≤完成≤原采样时刻；每条日志URL都精确等于 `/626619403/Ergora/commit/0a311eeb2a46d0db48ec44515a8413239e0c772c/checks/<实际jobID>/logs/<原step编号>`。独立提取的全部jobs／30步骤投影逐项等于作者 `ci-terminal-r1.json`，没有仅依据摘要的success字段。
+
+原 `ci-run-html-r3/page.html` 为 **213246B／SHA `e459ec42b155e1c9d476ce0d02bf935d91986592b3a1d26f679d60d88d503636`**，采样 **2026-11-14T05:43:47.269178+00:00**；页面Status为Success，完整commit anchor指向本候选，分支为refactor/architecture-foundations。Windows最终r3为 **160058B／SHA `6e61b1dbf60609b594c933a8176917ccdb165377a48c4fe4d22d1eb53e054b8d`**。run／八job原回执均HTTP200，原URL与final URL相同并精确绑定该run／job，body原大小与SHA独立相符。
+
+Windows五项成功时刻均为 **2026-11-14 UTC**：构建安装05:25:21–05:25:54；packaged reference05:25:54–05:25:55；应用回归05:25:55–05:39:10（13分15秒）；PowerShell5.1安装升级05:39:10–05:39:49（39秒）；上传05:39:49–05:39:51（2秒）。这些步骤均在原05:42:39.826046采样前完成。该结果关闭本片自己的Windows必要CI，不扩大为原生Windows模型或业务场景验收。
+
+公开 `raw_evidence.own_ci_references` 的 **55份原件／3,786,880B** 已逐件核bytes／SHA，全相同且路径唯一；与原687引用和发布补核2项互不重叠。固定683仍逐项等于原687的前缀；发布补核两原件也相符。公开own_ci的完整候选、run ID、success、八job／30步骤与原件一致，其independent_supplement待主agent依据本报告更新。本轮私有独立解析与结果记于 `independent/ci-terminal-audit-r1.{py,json}`；追加前原报告 **17683B／SHA `12e2e52a830471c890337d9f352f1b2342877b449163b2b4ea105065d7fc1f23`** 保持完整前缀。
+
+**本片自己的CI与原独立终态补核现已闭合；R1–R3保持关闭，两轴最终approve／开放0／0。** 原父54fcd0b／run43558321321只作为此前发布依赖，本节核的是0a311ee／run43561420980，没有混用。此轮仅本地读取固定Git及原HTML／JSON／回执、独立解析和摘要核验，并追加本报告；没有联网、下载artifact／完整远端日志、安装、运行suite／模型、修改产品、提交或推送。页面成功不推出远端pytest用例数量或远端wheel逐字身份；本地包与suite身份仍依前文。真实任务模型／Temporal／GPU／质量／性能、home与迟到create的静态范围、完整Forge／F9d／G1及F10d2资料选择等限制继续保持。

@@ -1,9 +1,9 @@
 import { api } from "./api.js";
-import { node, field, select, button, pre, empty, row, lines } from "./ui.js";
+import { node, field, select, button, pre, empty, row, lines, checkbox } from "./ui.js";
 import { bindingFields } from "./binding-fields.js";
 
 // This editor collects choices; tasks._composition owns formal admission.
-export function taskComposition({ tools, projectId, input, active, invalidate, prepare }) {
+export function taskComposition({ tools, projectId, base, input, active, invalidate, prepare }) {
   const source = select([
     ["project", "项目角色（原入口）"], ["review", "完整 manifest · 仅组合审查"],
     ["delivery", "完整 manifest · 组合执行与审查"],
@@ -31,6 +31,26 @@ export function taskComposition({ tools, projectId, input, active, invalidate, p
     node("label", {}, "计划 Agent 实例", plan),
     node("label", {}, "准备资料模式", preparationMode), repositoryPaths,
   );
+  const contextMode = select([
+    ["inherited", "仅继承模板资料"], ["selected", "继承模板并追加项目资料"],
+  ], "inherited", "context_selection");
+  const rootVersion = field("派生根精确版本（须不同于原根）", "context_root_version", "", "text", { required: true, maxlength: 64 });
+  const contextStatus = node("div", { "aria-live": "polite" });
+  const contextCount = node("p", { className: "form-note", "aria-live": "polite" }, "已选 0 条记忆、0 个 Skill。");
+  const contextChoices = node("fieldset", { disabled: true });
+  const readContext = button("读取当前资料目录", loadContext);
+  const contextFields = node("fieldset", { disabled: true, hidden: true },
+    rootVersion, row(readContext), contextStatus, contextChoices,
+  );
+  const contextSection = node("fieldset", { disabled: true, hidden: true, className: "task-context-selection" },
+    node("legend", {}, "追加项目记忆与活动 Skill"),
+    node("p", {}, "全部父模板资料始终继承。追加资料不会扩大权限。目录是读取时快照；授权准备与后续准入会重新核来源和完整附件，失效或超出容量会明确拒绝。带 Skill 的成员需使用受支持的任务 MCP 资料模式。"),
+    node("label", {}, "本任务资料来源", contextMode), contextFields,
+  );
+  let contextSequence = 0;
+  let contextReady = false;
+  let memoryChoices = [];
+  let skillChoices = [];
   const budgetSection = node("fieldset", {},
     node("legend", {}, "总任务预算"),
     node("p", {}, "填写总时间、预留清理时间和模型调用次数。预算由服务端核对；授权准备后开始计时，预览和重读不会重置预算。"),
@@ -60,7 +80,7 @@ export function taskComposition({ tools, projectId, input, active, invalidate, p
   );
   const settings = node("fieldset", { disabled: true, hidden: true },
     node("legend", {}, "正式任务组合配置"),
-    nativeSection,
+    nativeSection, contextSection,
     node("label", {}, "审查工作流实例", review),
     node("label", {}, "审查资料模式", mode), workSection,
     node("label", {}, "执行与审查后端策略", diversity), diversityReason,
@@ -80,7 +100,62 @@ export function taskComposition({ tools, projectId, input, active, invalidate, p
     workSection.disabled = workSection.hidden = !["delivery", "native"].includes(source.value);
     nativeSection.disabled = nativeSection.hidden = source.value !== "native";
     budgetSection.disabled = budgetSection.hidden = source.value !== "native";
+    contextSection.disabled = contextSection.hidden = source.value !== "native";
+    resetContext();
     renderMembers();
+  }
+
+  function resetContext() {
+    contextSequence++;
+    contextReady = false;
+    contextChoices.disabled = true;
+    readContext.disabled = false;
+    contextFields.disabled = contextFields.hidden = contextMode.value !== "selected";
+    contextStatus.replaceChildren(empty("读取当前资料目录后，明确选择精确修订。已有目录仅保留显示。"));
+  }
+
+  async function loadContext() {
+    if (!active() || source.value !== "native" || contextMode.value !== "selected" || readContext.disabled) return;
+    resetContext();
+    const reading = contextSequence;
+    readContext.disabled = true;
+    invalidate();
+    contextStatus.replaceChildren(empty("正在读取当前项目资料…"));
+    try {
+      const [catalog, heads] = await Promise.all([api(`${base}/memory-catalog`), api(`${base}/skills/heads`)]);
+      if (!active() || reading !== contextSequence) return;
+      memoryChoices = catalog.records.map(({ record, validity }, index) => {
+        const label = checkbox(`${record.id} · 修订 ${record.revision} · ${{ valid: "有效快照", expired: "已到期", deleted: "已删除" }[validity]}`, `context-memory:${index}`);
+        const choice = label.querySelector("input");
+        choice.disabled = validity !== "valid";
+        return { selection: { id: record.id, revision: record.revision }, choice,
+          element: node("div", {}, label,
+            node("details", {}, node("summary", {}, "完整记忆正文与来源"),
+              pre({ text: record.text, source: record.source, expires_at: record.expires_at, validity }))) };
+      });
+      skillChoices = heads.active.map((head, index) => {
+        const label = checkbox(`${head.name} · 修订 ${head.revision}`, `context-skill:${index}`);
+        return { selection: { name: head.name, digest: head.digest, revision: head.revision }, choice: label.querySelector("input"),
+          element: node("div", {}, label, pre(head)) };
+      });
+      contextChoices.replaceChildren(
+        node("legend", {}, "明确选择要追加的资料"),
+        contextCount,
+        node("h3", {}, "项目记忆"),
+        ...(memoryChoices.length ? memoryChoices.map((item) => item.element) : [empty("项目没有记忆记录。")]),
+        node("h3", {}, "活动 Skill"),
+        ...(skillChoices.length ? skillChoices.map((item) => item.element) : [empty("项目没有活动 Skill。")]),
+      );
+      contextChoices.disabled = false;
+      contextReady = true;
+      contextCount.textContent = "已选 0 条记忆、0 个 Skill。";
+      contextStatus.replaceChildren(node("p", {}, `记忆观察时刻：${catalog.observed_at}。本次读取 ${memoryChoices.length} 条记忆、${skillChoices.length} 个活动 Skill；重新读取会清空本次勾选，须重新选择。`));
+    } catch (error) {
+      if (active() && reading === contextSequence)
+        contextStatus.replaceChildren(empty(`资料目录读取失败：${error.message}。已有选择仅保留显示，重新读取成功前不能使用。`));
+    } finally {
+      if (active() && reading === contextSequence) readContext.disabled = false;
+    }
   }
 
   async function loadManifest() {
@@ -202,6 +277,10 @@ export function taskComposition({ tools, projectId, input, active, invalidate, p
   }
 
   source.addEventListener("change", applySource);
+  contextMode.addEventListener("change", resetContext);
+  contextChoices.addEventListener("change", () => {
+    contextCount.textContent = `已选 ${memoryChoices.filter((item) => item.choice.checked).length} 条记忆、${skillChoices.filter((item) => item.choice.checked).length} 个 Skill。`;
+  });
   sha.addEventListener("input", () => {
     lookupSequence++;
     settings.disabled = true;
@@ -249,6 +328,14 @@ export function taskComposition({ tools, projectId, input, active, invalidate, p
         };
         const budget = Object.fromEntries([...budgetSection.querySelectorAll("input")]
           .map((item) => [item.name, item.valueAsNumber]));
+        if (contextMode.value === "selected") {
+          if (!contextReady || contextChoices.disabled) throw new Error("请读取当前资料目录并明确选择本次资料。");
+          return { composition, budget, context: {
+            root_version: rootVersion.querySelector("input").value,
+            memories: memoryChoices.filter((item) => item.choice.checked && !item.choice.disabled).map((item) => item.selection),
+            skills: skillChoices.filter((item) => item.choice.checked).map((item) => item.selection),
+          } };
+        }
         return { composition, budget };
       }
       return { composition };

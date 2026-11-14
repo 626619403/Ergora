@@ -12,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
-from . import __version__, agent_definitions, agent_runs, components, definition_bundles, drafts, evaluation, handoff, issues, issue_writebacks, kernel, memory, optimization, projects, reference, registrations, research, services, tasks, skill_assets, skills, tools, training, workflow_definitions
+from . import __version__, agent_definitions, agent_runs, components, definition_bundles, drafts, evaluation, handoff, issues, issue_writebacks, kernel, memory, optimization, projects, reference, registrations, research, services, task_envelopes, tasks, skill_assets, skills, tools, training, workflow_definitions
 from .state import State
 
 
@@ -675,7 +675,11 @@ def create_app(home: Path | None = None) -> FastAPI:
 
     @application.post("/api/projects/{project_id}/tasks/preview")
     def preview_formal_task(project_id: str, body: TaskDefinitionPayload):
-        return tasks.preview(state, project_id, body.definition, body.revision)
+        snapshot = tasks.preview(state, project_id, body.definition, body.revision)
+        document = snapshot["files"]["task.spec.json"]
+        if "context" in document:
+            snapshot["selected_context"] = task_envelopes.selected_context(document)
+        return snapshot
 
     @application.post("/api/projects/{project_id}/tasks")
     def create_formal_task(project_id: str, body: TaskCreationPayload):
@@ -872,6 +876,10 @@ def create_app(home: Path | None = None) -> FastAPI:
     @application.get("/api/projects/{project_id}/memory-search")
     def search_memory(project_id: str, query: str):
         return memory.search(state, project_id, query)
+
+    @application.get("/api/projects/{project_id}/skills/heads")
+    def skill_heads(project_id: str):
+        return skill_assets.versions(state, project_id, heads_only=True)
 
     @application.post("/api/projects/{project_id}/skills/import")
     def import_skill(project_id: str, body: ImportPayload):

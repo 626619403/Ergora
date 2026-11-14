@@ -23,3 +23,7 @@
 - [ ] 修复实证finding并终核，普通推送／完整Ref／自己的必要CI及原reviewer补核。
 
 逐步结果写[交付](../delivery/2026-11-14-native-task-console.md)。Linux／WSL2原native准备与Windows原生限制保持；页面通过不证明真实模型／GPU／业务优化、完整Forge或F9d／G1完成。
+
+本地原独立终核完成后已普通发布0a311ee／15blob／完整Ref相同；固定发布补核及自己的CI仍待，不能用其他SHA的结果关闭本项。
+
+本片自己的CI43561420980终态八job／30必要步骤全部成功，原reviewer两轴终核approve／开放0／0，精确交付闭合；后继F10d2不继承本片产品／浏览器或模型证据。

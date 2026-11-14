@@ -368,6 +368,8 @@ flowchart LR
 
 首次intent保存前核canonical有效性和完整来源，预览后变更拒绝；已经持久化intent的恢复不重新读活动资料，不热换或撤销归档。schema v5没有新增表或迁移。用法见[显式选择](../USAGE.md#为正式任务选择项目记忆与活动-skill)，实际验收与未验范围见[F10b交付](../delivery/2026-11-14-task-context-selection.md)。
 
+F10d2在原`task-composition.js`收集显式目录选择和新根版本，唯一调用者`tasks.js`产生已有definition7并保留可选source，展示原`task_envelopes.selected_context`从冻结文件核出的完整正文／来源／期限、根派生与附件元数据；不重读活动资料，默认仅继承仍为原definition6。目录沿原`memory.catalog`及轻量`GET skills/heads → skill_assets.versions(heads_only=True)`，不借dashboard做工具诊断。目录异步代际和失效状态只属于当前表单，精确来源、完整附件、容量与首次发布准入仍归原`task_context`；没有新增资料库或迁移。
+
 F10c2a的`retrospectives`聚合原handoff、Skill版本和组合input，提供完整来源／当前Skill基线准备与离线候选链接检查；原`asset_trees.manifest_digest`与`skill_assets.parse_metadata`分别拥有磁盘与内联文件的同一身份／元数据合同，`definition_bundles.parse_json`共享原重复键拒绝。新普通`retrospective` preset包含只读作者→来源审查的静态依赖；原Agent持有每次显式调用，模型候选不能修改活动head或可信suite，检查不计为质量评价。记忆候选另见下述F10c2b1，流程候选继续按原修订合同接入。F10c3a显式export复用同一次完整验证所得的内存候选，按原Skill目录身份核全树后发布；通用具体no-replace目录发布器由asset_trees持有，原组合prepare／restore与导出直接使用。导出不创建State或调用模型，评价／采用／回退仍走原Skill与evaluation owner。
 
 F10c2b1在同一retrospectives owner提供记忆prepare/check/export，复用原memory.catalog、handoff、完整组合输入和no-replace发布。原Skill与新记忆共用本地有界原结果读取／普通Agent封套和来源引用检查；两者的基线／候选语义仍各自检查，无目标注册器或第二状态机。记忆候选只含正文及可检验假设，来源派生自冻结整包／选择SHA，ID／expected_revision固定自原记录；模型不写expiry。独立`memory-retrospective` preset保留旧Skill定义身份，作者／审查者及其祖先资源仍沿原Agent和组合编译。导出只落完整文本和receipt，原memory.save/history/restore持有明确写入、并发修订和有效期；不建可信评分器或自动采用入口。

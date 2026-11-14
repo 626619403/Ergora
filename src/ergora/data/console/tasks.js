@@ -201,7 +201,7 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
     let creationLocked = false;
     let preparationPending = false;
     const compositionEditor = taskComposition({
-      tools: app.bootstrap.tools, projectId: data.project.id,
+      tools: app.bootstrap.tools, projectId: data.project.id, base,
       input: () => JSON.parse(input.value), active: () => active(), invalidate, prepare: prepareNative,
     });
     const fields = node("fieldset", { className: "task-creation-fields" },
@@ -227,11 +227,11 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
         issue_id: values.get("issue_id"), input: JSON.parse(values.get("input")),
       };
       const selected = compositionEditor.read();
-      if (selected) Object.assign(definition, { schema_version: selected.budget ? 6 : 2, ...selected });
+      if (selected) Object.assign(definition, { schema_version: selected.context ? 7 : selected.budget ? 6 : 2, ...selected });
       if (sourceSha.value.trim()) {
         if (savedSource?.sha256 !== sourceSha.value.trim()) throw new Error("请先读取当前 SHA256 对应的来源快照。");
         if (!selected?.composition.execution) throw new Error("来源任务须选择完整 manifest 的组合执行与审查，并分配工作单元。");
-        Object.assign(definition, { schema_version: selected.budget ? 6 : 3, source: { snapshot_sha256: savedSource.sha256 } });
+        Object.assign(definition, { schema_version: selected.context ? 7 : selected.budget ? 6 : 3, source: { snapshot_sha256: savedSource.sha256 } });
       }
       if (values.get("starting_sha")) definition.starting_sha = values.get("starting_sha");
       return definition;
@@ -309,6 +309,7 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
               [path, member.role, member.binding.tool, member.binding.model ?? "采用工具配置", member.mode, member.backend_reason])),
           frozen.native ? disclosure("冻结六阶段调用与完整父链", frozen.native) : null,
           snapshot.definition.budget ? disclosure("原授权预算与期限（已开始计时）", snapshot.files["task.spec.json"].budget) : null,
+          snapshot.selected_context ? disclosure("冻结项目资料与派生根来源", snapshot.selected_context) : null,
           disclosure("完整组合后端、信任和差异策略", {
             review: frozen.members, execution: frozen.execution, preparation: frozen.preparation, diversity: frozen.diversity,
           }),
