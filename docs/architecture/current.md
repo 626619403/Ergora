@@ -171,7 +171,7 @@ Input还拥有准入报告的版本差异：v1–v6调用原doctor，v7从冻结
 
 普通角色路径是 `CLI/HTTP → agent_runs → 项目/Skill/记忆快照 → agents.invoke → 后端Adapter → processes → 归档`。组合单叶另冻结完整manifest／输入／祖先scope，但不替操作者执行图前驱。原生工具调用、完整资源可用、模型实际读取和可信业务验收分别记录。
 
-Skill采用沿 `skills.adopt → evaluation.compare → skill_assets.move_head`，同事务核旧revision与精确baseline。GEPA只提出候选；资料观察／研究调度只提出带来源材料；ReMe只是可重建的记忆投影。
+Skill采用沿 `skills.adopt → evaluation.compare → skill_assets.move_head`，同事务核旧revision与精确baseline。GEPA只提出候选；资料观察／研究调度只提出带来源材料；ReMe只是可重建的记忆投影。记忆有效期由原memory模块按服务端时刻判定；catalog可审阅所有状态，新检索只取有效当前修订，并在远端请求后重新核本地版本。schema v5沿原State迁移更新writer fence，升级停止旧进程，旧归档不重写。
 
 训练领域组合提供实验设计／kernel／性能／测量审查的只读提案叶。实际实验仍走 `prepare → start（控制排队）→ 操作者run-local + manifest SHA → 可信统计门禁 → owner evidence SHA → 集成复验`。控制worker不自动启动训练，Forge内部judge不替代可信门禁；GPU结果和完整实验图须有独立实测，见[训练手册](../TRAINING.md)。
 
@@ -228,7 +228,7 @@ flowchart TB
 
 ```mermaid
 flowchart LR
-  Control[项目 / 工单上下文与回写 / 记忆 / Skill / 评价等用例] --> DB[(Ergora SQLite / 21表 / schema v4)]
+  Control[项目 / 工单上下文与回写 / 记忆 / Skill / 评价等用例] --> DB[(Ergora SQLite / 21表 / schema v5)]
   Control --> Assets[Skill / 定义版本 / run / 来源文件]
   Memory[memory] --> DB
   Memory --> ReMe[ReMe可重建投影]

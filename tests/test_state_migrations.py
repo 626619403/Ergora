@@ -19,7 +19,8 @@ LEGACY_SQL = (Path(__file__).parent / "fixtures/compatibility-v0_2_0/schema.sql"
 LEGACY_TABLES = set(re.findall(r"CREATE TABLE (\w+)", LEGACY_SQL))
 V2_TABLES = LEGACY_TABLES | {'issue_snapshots', 'issue_task_links'}
 V3_TABLES = V2_TABLES | {'issue_writebacks', 'issue_writeback_observations'}
-CURRENT_TABLES = V3_TABLES | {'candidate_review_links'}
+V4_TABLES = V3_TABLES | {'candidate_review_links'}
+CURRENT_TABLES = V4_TABLES
 
 
 def _fixed_v1(db):
@@ -59,6 +60,20 @@ def _fixed_v3(db):
     db.execute('PRAGMA user_version=3')
 
 
+def _fixed_v4(db):
+    _fixed_v3(db)
+    db.execute('CREATE TABLE candidate_review_links (project TEXT NOT NULL, scope TEXT NOT NULL, sha TEXT NOT NULL, document TEXT NOT NULL, PRIMARY KEY(project,scope), UNIQUE(project,sha))')
+    for table in V3_TABLES:
+        for operation in ('insert', 'update', 'delete'):
+            db.execute(f'DROP TRIGGER "ergora_writer_v3_{table}_{operation}"')
+    for table in V4_TABLES:
+        for operation in ('INSERT', 'UPDATE', 'DELETE'):
+            db.execute(f'''CREATE TRIGGER "ergora_writer_v4_{table}_{operation.lower()}"
+                BEFORE {operation} ON "{table}" WHEN ergora_writer_schema_version() IS NOT 4
+                BEGIN SELECT RAISE(ABORT, 'Incompatible Ergora writer; upgrade before writing'); END''')
+    db.execute('PRAGMA user_version=4')
+
+
 @pytest.fixture
 def old_home(tmp_path):
     root = tmp_path / "data"
@@ -93,7 +108,7 @@ def test_new_state_has_complete_schema_without_lazy_ddl_or_backup(tmp_path):
 
 
 @pytest.mark.parametrize("journal_mode", ["delete", "wal"])
-@pytest.mark.parametrize("schema_version", [0, 1, 2, 3])
+@pytest.mark.parametrize("schema_version", [0, 1, 2, 3, 4])
 def test_upgrade_preserves_rows_extra_objects_assets_and_restorable_backup(old_home, journal_mode, schema_version):
     root, document = old_home
     asset = root / "sources/demo/synthetic.raw"
@@ -105,6 +120,8 @@ def test_upgrade_preserves_rows_extra_objects_assets_and_restorable_backup(old_h
             _fixed_v2(db)
         elif schema_version == 3:
             _fixed_v3(db)
+        elif schema_version == 4:
+            _fixed_v4(db)
         assert db.execute(f"PRAGMA journal_mode={journal_mode}").fetchone()[0] == journal_mode
         original = list(db.iterdump())
     archive = root.parent / 'old-schema-archive'
@@ -121,7 +138,7 @@ def test_upgrade_preserves_rows_extra_objects_assets_and_restorable_backup(old_h
         assert list(backup.iterdump()) == original
         # A pre-migration backup remains writable by an unmodified old client.
         with backup:
-            if schema_version in (1, 2, 3):
+            if schema_version in (1, 2, 3, 4):
                 backup.create_function('ergora_writer_schema_version', 0, lambda: schema_version)
             backup.execute("UPDATE projects SET document=document WHERE id='demo'")
     with state.connect() as db:
@@ -162,7 +179,7 @@ def test_already_open_legacy_client_cannot_write_any_current_table(old_home):
                     with old:
                         old.execute(sql)
         assert json.loads(old.execute("SELECT document FROM projects").fetchone()[0]) == document
-        for version in (0, 1, 2, 3, storage.SCHEMA_VERSION + 1, None):
+        for version in (0, 1, 2, 3, 4, storage.SCHEMA_VERSION + 1, None):
             old.create_function("ergora_writer_schema_version", 0, lambda: version)
             with pytest.raises(sqlite3.IntegrityError, match="Incompatible Ergora writer"):
                 with old:
@@ -172,12 +189,12 @@ def test_already_open_legacy_client_cannot_write_any_current_table(old_home):
     assert state.project("demo") == document
 
 
-@pytest.mark.parametrize('version', [1, 2, 3])
+@pytest.mark.parametrize('version', [1, 2, 3, 4])
 def test_open_previous_writer_is_fenced_on_old_and_new_tables(old_home, version):
     root, document = old_home
     with closing(sqlite3.connect(root / 'ergora.sqlite3')) as old:
         old.create_function('ergora_writer_schema_version', 0, lambda: version)
-        {1: _fixed_v1, 2: _fixed_v2, 3: _fixed_v3}[version](old)
+        {1: _fixed_v1, 2: _fixed_v2, 3: _fixed_v3, 4: _fixed_v4}[version](old)
         old.execute('UPDATE projects SET document=document')
         old.commit()
         state = State(root)

@@ -183,7 +183,7 @@ HTTP与CLI共用相同用例；POST沿用本地Origin及`X-Ergora-Request: 1`保
 |关联|`POST /api/projects/PROJECT/issue-links`，`{"snapshot_sha256":"…","task_id":"TASK","creation_sha256":"…","revision":2,"reason":"…"}`|
 |关联列表|`GET /api/projects/PROJECT/issue-links?task_id=TASK&snapshot_sha256=SNAPSHOT_SHA&limit=20`，两过滤条件可选，可带`after`|
 
-快照与关联保存在控制面的SQLite中，由原`state backup / verify-backup / restore`完整离线备份恢复；当前数据库为schema v4，升级先保留旧库备份，旧客户端不能写新库。完整备份仍要求停写、同平台及原home；外置执行目录须另行保存，不会从上下文关联重建任务。来源派工见下一节，候选评论见[回写说明](#为已导出的候选发布工单评论)，来源阅读可使用下节页面；其余工单动作页面按[F7计划](plans/2026-11-11-project-trackers.md)分片交付。
+快照与关联保存在控制面的SQLite中，由原`state backup / verify-backup / restore`完整离线备份恢复；当前数据库为schema v5，升级先停止旧进程并保留旧库备份，旧客户端不能写新库；见[有效期与升级说明](#记忆有效期与检索)。完整备份仍要求停写、同平台及原home；外置执行目录须另行保存，不会从上下文关联重建任务。来源派工见下一节，候选评论见[回写说明](#为已导出的候选发布工单评论)，来源阅读可使用下节页面；其余工单动作页面按[F7计划](plans/2026-11-11-project-trackers.md)分片交付。
 
 ### 在页面读取与保存工单
 
@@ -939,10 +939,31 @@ ergora agent output my-project RUN_ID
 
 独立Agent调用在启动工具前将该视图保存到运行记录的`configuration`，并沿用原`binding/project_revision`；通过主入口创建的正式任务在创建时冻结该视图；旧创建方式在首次接入可选执行器时把它加入`agent-bindings.json`。之后修改项目或推荐默认不会更新在途任务。旧任务没有此附加字段时继续读取原绑定快照，不补造历史来源；旧运行记录也不回写。Skill/记忆实际上下文仍单独保存在调用记录，当前快照不声明冻结所有外部工具内部行为。
 
+## 记忆有效期与检索
+
+记忆可设置带时区的ISO 8601到期时间，保存为UTC。服务端判定时刻达到到期时间便退出新检索；到期保留正文和历史，默认`memory list`、dashboard及`memory search`只返回有效的当前修订。`memory catalog`或`GET /api/projects/PROJECT_ID/memory-catalog`显式读取全部状态、原记录与`observed_at`，用于审阅，不能当成自动召回结果。判定时刻是一次观察，此后可能到期。
+
+```bash
+ergora memory save my-project --text observation.md --source git:docs/design.md --source-revision COMMIT_SHA --expires-at 2027-01-01T00:00:00+08:00
+ergora memory list my-project
+ergora memory catalog my-project
+ergora memory search my-project "性能基线"
+# 更正省略有效期时，保留最新修订的期限
+ergora memory save my-project --text correction.md --source git:docs/design.md --source-revision NEW_COMMIT_SHA --id MEMORY_ID --revision CURRENT_REVISION
+# 明确移除期限；也可用 --expires-at 指定新时间
+ergora memory save my-project --text correction.md --source git:docs/design.md --source-revision NEW_COMMIT_SHA --id MEMORY_ID --revision CURRENT_REVISION --no-expiry
+```
+
+原HTTP保存接口`POST /api/projects/PROJECT_ID/memories`接受可选`expires_at`：缺失时更正保留原期限，新建无限期；明确`null`移除期限。新时间创建新修订，仍核原revision。恢复历史修订会复制其有效期，包括已到期时间；恢复本身不会续期。删除沿原规则清空全部历史正文／来源且不可恢复；已归档输入及独立备份分别保留。
+
+ReMe同步会清理已到期／已删除的投影；无需定时器。远端检索返回后重新核本地有效性与revision，丢弃在途到期、删除或更正的命中，远端正文始终不作为canonical。远端索引清理仍受watcher延迟影响，不保证瞬时删除，可显式同步或重建。
+
+数据库当前为schema v5，升级不改写旧记忆且先保存原库备份。**先停止旧CLI任务、控制台及worker，再统一升级并显式重启**；重新打开的旧客户端拒绝新版本，已打开的旧writer被原触发器拒绝。SQLite不能撤销旧reader已取的资料或缓存，不支持新旧进程并行使用同一home；回退需在原home恢复升级前完整离线备份，新版本产生的数据应另行保留。
+
 ## 页面操作
 
 1. **项目总览**展示真实记忆、Skill、资料提案和工具调用。可单次启动所选角色，并附带活动 Skill、项目记忆检索及可选模板产物要求。记录中可预览标准 / 诊断输出，每路最多 64 KiB；完整文件保留在持久运行归档。固定六阶段图是协议说明，不是伪造的任务状态。
-2. **长期记忆**保存正文、来源 URI 和来源版本。更正创建新修订；历史可恢复为新修订。删除会清空该记忆全部历史正文及来源；需要同步 ReMe 的删除时另行执行同步并核对结果。检索使用当前绑定的后端。
+2. **长期记忆**保存正文、来源 URI、来源版本和可选到期时间。表单时间须含时区；更正预填原期限，清空明确移除。默认仅显示有效快照；“读取全部状态”展示已到期和已删除目录及服务端判定时刻。空查询重新读取有效列表。历史恢复沿用原有效期，删除不可恢复；ReMe同步结果需另行核对。详见[有效期说明](#记忆有效期与检索)。
 3. **Skill 演进**导入完整标准目录，首个版本建立初始基线。后续导入成为候选。先比较文件 / 文本差异，注册可信评价集，再运行双方评价和比较。达到门禁后填写采用理由；曾经活动的版本可填写理由回退。GEPA 只搜索候选，不自动采用。
 4. **资料观察**填写 URL、总字节及时间预算。内容变化产生待核对提案；显示的正文仅是文本。审阅不自动写入记忆或修改 Skill。执行时可以刷新列表并请求取消，随后确认实际终态。异常退出的未决传输可能保守耗尽预算，需要明确创建新的观察任务。
 5. **工作流设计**提供治理和大型开发的工作单元 DAG，编辑依赖、路径和说明，或载入完整 JSON。服务端调用原合同编译器拒绝环、冲突和非法范围。保存是持久草稿；下载 `input.json` 后继续走参考任务冻结和执行。训练模板提供 workload / experiment 等文件预览和下载，完整目录可从 CLI 复制。

@@ -96,7 +96,18 @@ def _schema_v4(db: sqlite3.Connection) -> None:
         _writer_fences(db, table, 4)
 
 
-_MIGRATIONS = (_schema_v1, _schema_v2, _schema_v3, _schema_v4)
+def _schema_v5(db: sqlite3.Connection) -> None:
+    # Memory expiry changes persisted semantics, without changing table layouts.
+    # Previous clients must not overwrite limits they cannot interpret.
+    tables = (*_TABLES, 'issue_snapshots', 'issue_task_links',
+              'issue_writebacks', 'issue_writeback_observations', 'candidate_review_links')
+    for table in tables:
+        for operation in ('insert', 'update', 'delete'):
+            db.execute(f'DROP TRIGGER "ergora_writer_v4_{table}_{operation}"')
+        _writer_fences(db, table, 5)
+
+
+_MIGRATIONS = (_schema_v1, _schema_v2, _schema_v3, _schema_v4, _schema_v5)
 SCHEMA_VERSION = len(_MIGRATIONS)
 
 

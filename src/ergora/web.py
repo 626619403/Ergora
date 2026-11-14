@@ -255,6 +255,7 @@ class MemoryPayload(RevisionPayload):
     text: str
     source: dict[str, str]
     id: str | None = None
+    expires_at: str | None = None
 
 
 class RestorePayload(RevisionPayload):
@@ -845,7 +846,12 @@ def create_app(home: Path | None = None) -> FastAPI:
 
     @application.post("/api/projects/{project_id}/memories")
     def save_memory(project_id: str, body: MemoryPayload):
-        return memory.save(state, project_id, body.text, body.source, body.id, body.revision)
+        return memory.save(state, project_id, body.text, body.source, body.id, body.revision,
+                           **body.model_dump(include={"expires_at"}, exclude_unset=True))
+
+    @application.get("/api/projects/{project_id}/memory-catalog")
+    def memory_catalog(project_id: str):
+        return memory.catalog(state, project_id)
 
     @application.delete("/api/projects/{project_id}/memories/{memory_id}")
     def delete_memory(project_id: str, memory_id: str, body: RevisionPayload):

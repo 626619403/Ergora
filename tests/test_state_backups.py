@@ -21,7 +21,8 @@ def archive_state(tmp_path):
     subprocess.run(["git", "init", str(repo)], check=True, capture_output=True)
     state = State(tmp_path / "data")
     projects.create(state, "demo", repo)
-    memory.save(state, "demo", "Persistent observation", {"uri": "manual:note", "revision": "one"})
+    memory.save(state, "demo", "Persistent observation", {"uri": "manual:note", "revision": "one"},
+                expires_at="2001-01-01T00:00:00Z")
     source = tmp_path / "demo-skill"
     source.mkdir()
     (source / "SKILL.md").write_text("---\nname: demo-skill\ndescription: Test fixture\n---\nKeep evidence.\n", encoding="utf-8")

@@ -48,6 +48,77 @@ def test_memory_scope_corrections_deletion_and_backup_restore(memories, tmp_path
         memory.history(state, "beta", first["id"])
 
 
+def test_expiry_boundary_corrections_and_restoration_preserve_limits(memories, monkeypatch):
+    state = memories
+    clock = {"now": "2030-04-01T02:00:00+00:00"}
+    monkeypatch.setattr(memory, "now", lambda: clock["now"])
+    source = {"uri": "manual:measurement", "revision": "fixed-source"}
+    permanent = memory.save(state, "alpha", "permanent observation", source)
+    bounded = memory.save(state, "alpha", "bounded observation", source,
+                          expires_at="2030-04-01T10:30:00+08:00")
+    assert "expires_at" not in permanent
+    assert bounded["expires_at"] == "2030-04-01T02:30:00+00:00"
+    assert len(memory.search(state, "alpha", "observation")["results"]) == 2
+    clock["now"] = bounded["expires_at"]
+    assert memory.search(state, "alpha", "observation")["results"] == [permanent]
+    catalog = memory.catalog(state, "alpha")
+    assert catalog["observed_at"] == clock["now"]
+    assert catalog["records"][0] == {"record": bounded, "validity": "expired"}
+    assert memory.history(state, "alpha", bounded["id"]) == [bounded]
+    corrected = memory.save(state, "alpha", "corrected observation", source, bounded["id"], 1)
+    assert corrected["expires_at"] == bounded["expires_at"]
+    assert memory.records(state, "alpha") == [permanent]
+    with pytest.raises(ValueError, match="timezone"):
+        memory.save(state, "alpha", "invalid limit", source, bounded["id"], 2,
+                    expires_at="2030-04-01T03:00:00")
+    assert len(memory.history(state, "alpha", bounded["id"])) == 2
+    unlimited = memory.save(state, "alpha", "explicitly renewed", source, bounded["id"], 2, expires_at=None)
+    assert "expires_at" not in unlimited and unlimited in memory.records(state, "alpha")
+    restored = memory.restore(state, "alpha", bounded["id"], 1, 3)
+    assert restored["expires_at"] == bounded["expires_at"] and restored["text"] == bounded["text"]
+    assert memory.records(state, "alpha") == [permanent]
+    memory.delete(state, "alpha", bounded["id"], 4)
+    assert memory.catalog(state, "alpha")["records"][0]["validity"] == "deleted"
+    with pytest.raises(ValueError, match="cannot be restored"):
+        memory.restore(state, "alpha", bounded["id"], 1, 5)
+
+
+def test_reme_revalidates_inflight_results_and_cleans_expired_mirrors(memories, monkeypatch):
+    state = memories
+    clock = {"now": "2030-04-01T02:00:00+00:00"}
+    monkeypatch.setattr(memory, "now", lambda: clock["now"])
+    projects.bind(state, "alpha", "memory", {"tool": "reme", "endpoint": "http://reme.invalid"}, 1)
+    source = {"uri": "manual:measurement", "revision": "fixed-source"}
+    bounded = memory.save(state, "alpha", "expiring observation", source, expires_at="2030-04-01T02:30:00Z")
+    deleted = memory.save(state, "alpha", "deleted observation", source)
+    corrected = memory.save(state, "alpha", "old observation", source)
+    files, calls = {}, []
+
+    def remote(binding, operation, payload):
+        calls.append((operation, payload))
+        if operation == "write":
+            files[payload["path"]] = payload["content"]
+        elif operation == "delete":
+            files.pop(payload["path"], None)
+        else:
+            # Local state changes while the remote request is in flight.
+            clock["now"] = bounded["expires_at"]
+            memory.delete(state, "alpha", deleted["id"], 1)
+            memory.save(state, "alpha", "new observation", source, corrected["id"], 1)
+            return {"success": True, "metadata": {"results": [
+                {"path": path, "text": "untrusted remote text"} for path in [*files, "digest/ergora/beta/foreign.md"]]}}
+        return {"success": True, "metadata": {}}
+
+    monkeypatch.setattr(memory, "_job", remote)
+    result = memory.search(state, "alpha", "observation")
+    assert result["observed_at"] == clock["now"] and result["results"] == []
+    assert len(files) == 3
+    assert memory.sync(state, "alpha")["changes_acknowledged"] == 3
+    assert files == {f"digest/ergora/alpha/{corrected['id']}.md": "new observation"}
+    assert len([operation for operation, _ in calls if operation == "delete"]) == 2
+    assert memory.sync(state, "alpha")["changes_acknowledged"] == 0
+
+
 def test_reme_protocol_sync_filters_scope_and_propagates_deletion(memories, monkeypatch):
     calls, files = [], {}
     fail = {"search": False}

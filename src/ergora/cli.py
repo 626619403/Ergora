@@ -558,7 +558,7 @@ def parser() -> argparse.ArgumentParser:
             operation.add_argument("--timeout", type=int, default=30 if name != "run" else 3600)
     memories = commands.add_parser("memory", help="Project-scoped memories, provenance and revisions")
     operations = memories.add_subparsers(dest="operation", required=True)
-    for name in ("list", "sync", "search", "save", "history", "delete", "restore"):
+    for name in ("list", "catalog", "sync", "search", "save", "history", "delete", "restore"):
         operation = operations.add_parser(name)
         operation.add_argument("project")
         if name in ("history", "delete", "restore"):
@@ -573,6 +573,11 @@ def parser() -> argparse.ArgumentParser:
             operation.add_argument("--source", required=True)
             operation.add_argument("--source-revision", required=True)
             operation.add_argument("--id")
+            expiry = operation.add_mutually_exclusive_group()
+            expiry.add_argument("--expires-at", default=argparse.SUPPRESS,
+                                help="ISO 8601 timestamp with timezone; omitted corrections preserve the previous limit")
+            expiry.add_argument("--no-expiry", dest="expires_at", action="store_const", const=None,
+                                default=argparse.SUPPRESS, help="Explicitly remove an expiry limit")
         if name in ("save", "delete", "restore"):
             operation.add_argument("--revision", type=int, default=0 if name == "save" else None, required=name != "save")
         if name == "restore":
@@ -1039,6 +1044,8 @@ def main(argv: list[str] | None = None) -> int:
             state = State(args.home)
             if args.operation == "list":
                 output = memory.records(state, args.project)
+            elif args.operation == "catalog":
+                output = memory.catalog(state, args.project)
             elif args.operation == "search":
                 output = memory.search(state, args.project, args.query, args.limit)
             elif args.operation == "sync":
@@ -1051,7 +1058,8 @@ def main(argv: list[str] | None = None) -> int:
                 output = memory.restore(state, args.project, args.id, args.from_revision, args.revision)
             else:
                 output = memory.save(state, args.project, args.text.read_text(encoding="utf-8-sig"),
-                                     {"uri": args.source, "revision": args.source_revision}, args.id, args.revision)
+                                     {"uri": args.source, "revision": args.source_revision}, args.id, args.revision,
+                                     **({"expires_at": args.expires_at} if hasattr(args, "expires_at") else {}))
         elif args.command == "skill":
             state = State(args.home)
             if args.operation == "import":

@@ -128,6 +128,15 @@ def test_memory_provenance_search_conflict_and_restore(console):
     assert searched["results"][0]["id"] == created["id"]
     assert client.get("/api/projects/other/dashboard").json()["memories"] == []
     assert client.request("DELETE", f"{base}/{created['id']}", json={"revision": 3}).status_code == 200
+    expired = client.post(base, json={**payload, "expires_at": "2001-01-01T08:00:00+08:00"}).json()
+    assert client.get("/api/projects/demo/dashboard").json()["memories"] == []
+    catalog = client.get("/api/projects/demo/memory-catalog").json()
+    assert catalog["records"][0] == {"record": expired, "validity": "expired"} and catalog["observed_at"]
+    corrected = client.post(base, json={**payload, "id": expired["id"], "revision": 1}).json()
+    assert corrected["expires_at"] == expired["expires_at"]
+    renewed = client.post(base, json={**payload, "id": expired["id"], "revision": 2, "expires_at": None}).json()
+    assert "expires_at" not in renewed
+    assert client.get("/api/projects/demo/memory-search", params={"query": "observed"}).json()["results"] == [renewed]
 
 
 def test_all_templates_and_formal_dag_constraints(console):

@@ -136,10 +136,22 @@
   "independent_review": {
     "requirements": "Fresh-context final local approve; zero open findings; all143 raw references independently matched",
     "structure": "Fresh-context final local approve; S1/M1/M2 fixed and closed; zero open findings; all143 raw references independently matched",
-    "publication_and_own_ci": "pending"
+    "publication_and_own_ci": "Original two axes fixed-publication supplements approve, zero open; own CI43539314720 eight jobs/30 required steps Success independently verified by original structure reviewer. Fixed commit143 references; later publication/CI supplements separately retained."
   },
   "publication": {
-    "state": "not_committed"
+    "state": "pushed",
+    "candidate": "f47cd50fcce600fba92f64aff73982012f6e31c9",
+    "verified_git_blobs": 19,
+    "ordinary_push": true,
+    "full_remote_ref_matches": true,
+    "own_ci": {
+      "run_id": 43539314720,
+      "url": "https://github.com/626619403/Ergora/actions/runs/43539314720",
+      "state": "success",
+      "jobs": 8,
+      "required_steps": 30,
+      "original_structure_supplement": "approve, zero open findings"
+    }
   },
   "raw_evidence": {
     "private_base": ".ergora/checks/training-evidence-console/",
@@ -858,6 +870,136 @@
         "path": "browser-r3/output/playwright/missing-source-recovery-1440.png",
         "bytes": 383588,
         "sha256": "19f8cb8b6dfc94b0875b32e7e83c5d39004d9c6d28380192d8cf62f1b98e8a71"
+      },
+      {
+        "path": "static-final-r1.json",
+        "bytes": 4413,
+        "sha256": "20de84a4117a9f16908dd8bc77834e0189c65b60d669749ca8aab27600daddaf"
+      },
+      {
+        "path": "commit-r1.json",
+        "bytes": 1015,
+        "sha256": "882cab3ac46e84f40c47baa860d7aed0120280d5b7f71f2e6023dc724c109b65"
+      },
+      {
+        "path": "push-r1.json",
+        "bytes": 749,
+        "sha256": "29b042f0b2bc67d66c06cd6782d14da01e1585e98f5f392ba00e0cfd306eed66"
+      },
+      {
+        "path": "ref-r1.json",
+        "bytes": 738,
+        "sha256": "4e313c68fd2fcca8767d0e475d55d2382fc906bd629146d2a73c58d1724277b1"
+      },
+      {
+        "path": "ci-observation-r4.json",
+        "bytes": 13357,
+        "sha256": "09eb7eb1ae552135a795e3fb2f9adb665e0f1fcc5cb0a46cd92133c1247f563a"
+      },
+      {
+        "path": "ci-ui-metadata-r1.json",
+        "bytes": 2119,
+        "sha256": "e84063350446f3b3cba3ba01c31a18832ede6d779e8cf79bf8fb3c49fe2daafb"
+      },
+      {
+        "path": "ci-job-batch-r1/body.json",
+        "bytes": 2715,
+        "sha256": "fc8cae211fa4635e1597aa1ad006bd2866e1a3a2d53a49397605d89e77d446ef"
+      },
+      {
+        "path": "ci-job-batch-r1/receipt.json",
+        "bytes": 766,
+        "sha256": "f32bd64cb6c6824ddfe009b042f82cd759425d1ca8f4f67770f03850a2c399bd"
+      },
+      {
+        "path": "ci-run-html-r4/page.html",
+        "bytes": 213382,
+        "sha256": "97e7ee17f3b95e1bda1cd06a389afa9ced63d95e83065ecf45b8496fad38fb83"
+      },
+      {
+        "path": "ci-run-html-r4/receipt.json",
+        "bytes": 5957,
+        "sha256": "dc9faae57cadeaa592cb6f353c8d30566b3fa3f991666880cc52958a5fe94c18"
+      },
+      {
+        "path": "ci-job-132275876351-html-r1/page.html",
+        "bytes": 158922,
+        "sha256": "594fd4570376742fbc871dee7d6aa8c4c2e765f81cbeef21ff04953881d933d9"
+      },
+      {
+        "path": "ci-job-132275876351-html-r1/receipt.json",
+        "bytes": 5997,
+        "sha256": "e7bd5644ca50172fdb3141e8c71b23d616aed6a5a2d906e71212f3d56c6ce9cb"
+      },
+      {
+        "path": "ci-job-132275928067-html-r2/page.html",
+        "bytes": 162612,
+        "sha256": "6f0b2894ddafb5f27ac425d950d4131b41531e8dfa24858a7146423fe958d113"
+      },
+      {
+        "path": "ci-job-132275928067-html-r2/receipt.json",
+        "bytes": 5995,
+        "sha256": "3b4b7dc39c0907a363c5b187cccb628f969435a340b583353e1b526e2f6cff4d"
+      },
+      {
+        "path": "ci-job-132275927865-html-r1/page.html",
+        "bytes": 162612,
+        "sha256": "9d8dd7a6565381953405ed856a504204ee1e26d82444eb3aafc916b6a8096dc3"
+      },
+      {
+        "path": "ci-job-132275927865-html-r1/receipt.json",
+        "bytes": 6001,
+        "sha256": "b500d192047d3a864dd51af7da478b4bab8b03d16e1c9aca17fb93a9fc4bbf2a"
+      },
+      {
+        "path": "ci-job-132275927902-html-r1/page.html",
+        "bytes": 162612,
+        "sha256": "58fa8dd2d062fc58aa9db7652e84cfab5653e7dcece58766f5089fa5fe8242e8"
+      },
+      {
+        "path": "ci-job-132275927902-html-r1/receipt.json",
+        "bytes": 6011,
+        "sha256": "33c6677011ca22a3beeba9498b8482b4cae1a78ec01d1cc5e4bed0d90e2effea"
+      },
+      {
+        "path": "ci-job-132275927887-html-r1/page.html",
+        "bytes": 162612,
+        "sha256": "d32f2af8ad489b6c635caef21689dde40a24baba899eae86b6e78120ccf4daa1"
+      },
+      {
+        "path": "ci-job-132275927887-html-r1/receipt.json",
+        "bytes": 6001,
+        "sha256": "c64c23451ce5c62c85dc9afa0e28a72cd948c74849ee85b789229d36c8245c9c"
+      },
+      {
+        "path": "ci-job-132275928029-html-r1/page.html",
+        "bytes": 162612,
+        "sha256": "a668402d687de702a8af6ef97e4350e461f97b0e385247010017622a73171c8e"
+      },
+      {
+        "path": "ci-job-132275928029-html-r1/receipt.json",
+        "bytes": 5991,
+        "sha256": "f8945f569f6cdd91c764c3a17321219239e38172d9df0c1f58cab9625ba98f2e"
+      },
+      {
+        "path": "ci-job-132275927880-html-r2/page.html",
+        "bytes": 162611,
+        "sha256": "a47bd8a2c2ac466c2c404a2cd0a17c87cb8fb8483571ec7167e9010cbec5a044"
+      },
+      {
+        "path": "ci-job-132275927880-html-r2/receipt.json",
+        "bytes": 6011,
+        "sha256": "e243b65f6b5d10f27344d131d482901266911dccdfb369e686044f6dd8516bd1"
+      },
+      {
+        "path": "ci-job-132275927972-html-r3/page.html",
+        "bytes": 160193,
+        "sha256": "989b12861efff6826592b8b13d3a70979df674310a9472ede17291e660875d3c"
+      },
+      {
+        "path": "ci-job-132275927972-html-r3/receipt.json",
+        "bytes": 6005,
+        "sha256": "cf04fd4201c02b9a8b7d3c7ffc7f81f3ecc32ea5f63499ffeb30ca364c6118ac"
       }
     ]
   }

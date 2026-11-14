@@ -8,7 +8,7 @@
 
 本次已读取 `AGENTS.md`、`docs/PLAN.md`、交付记录、maintainable-project-delivery 及其 independent-review brief、codebase-design。也直接沿调用链读取 `api.js`、`ui.js`、`state.js`、`app.js`、原取消／准备面板，以及 `training.py`、`web.py`、`reference_training_evidence.py`、`reference_training_release.py` 和相关现有测试／样式。
 
-- **需求合规：本片最终本地范围 approve。** 首次完整 run／evidence 确认、原 intent 恢复、unknown 仅查历史、sources 失败独立读取、requested 不升级为授权或采用、手动任务入口都可追溯到原 owner；最终包及实际入口证据已按下述范围复核。发布与本片自己的必要 CI 继续独立验收。
+- **需求合规：本片最终本地范围 approve。** 首次完整 run／evidence 确认、原 intent 恢复、unknown 仅查历史、sources 失败独立读取、requested 不升级为授权或采用、手动任务入口都可追溯到原 owner；最终包及实际入口证据已按下述范围复核。固定发布与本片自己的必要 CI 均已完成文末补核。
 - **结构／性能／维护性：最终本地 approve，开放 finding 0／0。** S1 及关联加载状态已获源码与实际异步交错复核，M1、浏览器发现的 M2 已关闭。没有未解决的结构阻断项；性能结论限于交互、容量与请求路径，未作 GPU 或性能收益主张。
 
 最终直接复读产品身份：`training.js` SHA256 `9893dc084b3223d9d0be4f02fc6f4599ea6a2e0e06a0008dd69632619ecf5338`；`training-evidence.js` SHA256 `e6b756487009b2aa2e19dcf5fd318958aa081180949629c963ece110f4348a60`。最终 r4 wheel SHA256 `0e0518ed2e97eb343fb3866bc8646dc16c3109d2310870ab737c32951544cb16`；两产品路径／原字节摘要 `f9f40ac06c9e95a915bba6a9301e80f32b90870fc1ed87121466fa4a388a69d6`。也核对了新增 README 入口与训练手册实际 UI 步骤。后续产品修改须按新身份重新核对。
@@ -70,4 +70,38 @@ tracked diff 与 untracked 清单确认没有 Python、HTTP、CI 或测试文件
 
 ## 剩余范围
 
-本地开放 finding 为 0／0。home guard、旧 mutation／finally 跨视图隔离由原 `active`／闭包 ownership 静态核对；动态 lifecycle 只覆盖上述真实读响应。原 start／cancel 本片以 diff／callpath 核对保持，没有新增其 UI mutation 旅程或专属 suite 成功主张。完整 F9d 旅程、真实 GPU／训练／质量／性能／集成复验／采用继续另验；合成 archive 只证明此入口合同。Linux Chromium 已验，Windows 原生 mutation 未宣称支持。C3 精确发布与自己的必要 CI 尚待，不借 C2 的 CI 关闭。
+本地开放 finding 为 0／0。home guard、旧 mutation／finally 跨视图隔离由原 `active`／闭包 ownership 静态核对；动态 lifecycle 只覆盖上述真实读响应。原 start／cancel 本片以 diff／callpath 核对保持，没有新增其 UI mutation 旅程或专属 suite 成功主张。完整 F9d 旅程、真实 GPU／训练／质量／性能／集成复验／采用继续另验；合成 archive 只证明此入口合同。Linux Chromium 已验，Windows 原生 mutation 未宣称支持。C3 精确发布和自己的必要 CI 已独立补核，具体范围见后文。
+
+## 固定发布补核
+
+2026-11-14：本轮仅读取本地 Git 对象和保存的发布原件，并补本报告；未执行网络、安装、提交或产品写操作。固定候选为 `f47cd50fcce600fba92f64aff73982012f6e31c9`，唯一父为 `1eef90d7453c64579ddc25bd5a7775eecd20c2cc`。通过 `git show`、固定父子 diff 及 `git cat-file --batch` 直接读取候选 blob，得到以下结果。
+
+- 固定 diff 恰有 19 件，与 `static-final-r1.json` 的文件集合完全相同；19 件 Git blob 的字节长度和 SHA256 逐项匹配。固定对象中的本报告 SHA256 为 `6786a78be4929a1e5dc9cf986936c00e32b45e815fe35f3173a9ad4eb2d20d67`，当前这一补核段属于发布后的记录。
+- 固定两 JS 的原字节聚合仍为 `f9f40ac06c9e95a915bba6a9301e80f32b90870fc1ed87121466fa4a388a69d6`。固定候选全部 575 产品文件与已验 r4 wheel、源码快照及安装目录逐字一致；再次核对两 RECORD 的 583／588 行及固定 283 文件，全部匹配。
+- 固定公开 evidence JSON SHA256 为 `1f621bd7abdb403fc8c67363a93a4ae2e2d3660464036bb6f5de18ef785a6b5d`，包含原 143 项引用，原件字节／摘要全部相符。发布后工作树的 147 项是在这些原引用上仅追加 `static-final-r1.json`、`commit-r1.json`、`push-r1.json`、`ref-r1.json`；原 143 项未改变，新增四件也已核对。候选内的 `not_committed` 与 CI pending 是冻结时状态，发布后的状态记录另计。
+- `commit-r1.json` 保存 commit exit 0 和固定候选；`push-r1.json` 是普通 `HEAD:refs/heads/refactor/architecture-foundations` push，exit 0，未使用 force；`ref-r1.json` 保存完整 `f47cd50fcce600fba92f64aff73982012f6e31c9\trefs/heads/refactor/architecture-foundations`，exit 0。此结论基于保存的实际原件，审查者未再次联网查询。
+
+固定发布补核 **approve，开放 0／0**。当前工作树后补发布状态和后续 F10 计划未纳入上述候选身份。发布补核时自己的 CI `43539314720` 尚待原件与终态复核；该轮完成后停止修改等待，其终核记录如下。
+
+## C3 自己的 CI 终核
+
+2026-11-14：只读固定候选 `f47cd50fcce600fba92f64aff73982012f6e31c9` 的 `.github/workflows/portability.yml`、`scripts/ci/linux-groups.json` 和本片私有原件；仅补本报告，未发网络请求、安装、改产品、提交或重写 `ci-observation-r4.json`。工作树后续 F10 产品／文档不属于本次候选。
+
+直接读取并重新解析 `ci-run-html-r4/page.html`，本片自己的 [run 43539314720](https://github.com/626619403/Ergora/actions/runs/43539314720) 为 **Success**，页面包含完整候选 commit 链接和原分支；原页面 SHA256 `97e7ee17f3b95e1bda1cd06a389afa9ced63d95e83065ecf45b8496fad38fb83`。`ci-ui-metadata-r1.json` 与 `ci-job-batch-r1/body.json` 的八个名称／ID／run URL 逐项一致，batch 为 `totalCount: 8`、`hasMore: false`。这些早期 metadata 的在途状态保留；最终成功来自下列较后 job 原页面的 `check-step` 属性和最终 run 页面。
+
+| 固定 workflow 中的 job | 原 job ID | 实际终核 sample | 必要步骤成功数 |
+| --- | --- | --- | --- |
+| plan | 132275876351 | `ci-job-132275876351-html-r1` | 1 |
+| Linux 3.11 group 0 | 132275928067 | `ci-job-132275928067-html-r2` | 4 |
+| Linux 3.11 group 1 | 132275927865 | `ci-job-132275927865-html-r1` | 4 |
+| Linux 3.11 group 2 | 132275927902 | `ci-job-132275927902-html-r1` | 4 |
+| Linux 3.11 group 3 | 132275927887 | `ci-job-132275927887-html-r1` | 4 |
+| Linux 3.11 group 4 | 132275928029 | `ci-job-132275928029-html-r1` | 4 |
+| Linux 3.11 group 5 | 132275927880 | `ci-job-132275927880-html-r2` | 4 |
+| Windows 3.12 group all | 132275927972 | `ci-job-132275927972-html-r3` | 5 |
+
+固定分组定义确有六个 Linux group，另加 Windows all，与八 job 完全覆盖。必要步骤为 plan 的 `Read explicit test groups`；七个 Native job 的 `Build and install wheel`、`Packaged reference identity`、`Native application regression`、`Upload regression observations`；Windows 另含 `Windows PowerShell 5.1 installer and upgrade`，共 **30 项**。每项原属性均为 `success`，有起止时间与 `data-job-completed`，日志路径逐项匹配 `/626619403/Ergora/commit/f47cd50fcce600fba92f64aff73982012f6e31c9/checks/{原job ID}/logs/{原step number}`。所有 job 原页面未见其他失败／取消／超时步骤。
+
+重新核对最初 run 页面、最终 run 页面、job batch 和八个终核 job 页面共 **11 份 HTTP200 原件**：receipt 的请求／最终 URL、原字节长度、SHA256 全部一致；逐项重新生成的必要步骤字段与 `ci-observation-r4.json` 完全一致。此范围是保存的官方 UI HTML／JSON、完整候选绑定和必要步骤结论；未下载 REST job 记录、日志正文或 artifact 压缩包，不补造测试数量或产物内部断言。此前固定 19 blob／575 产品／143 原引用的发布核对仍指原候选，CI 后补原件不改写那份冻结清单。
+
+**CI 终核 approve；本片结构轴最终开放 0／0。** 本片自己的 run 已完成必要 CI 条件，解除上一阶段 CI 待验状态。home／迟到 mutation 静态范围、原 start／cancel 的本片动态限制，以及 F9d／真实训练／质量／性能／采用等未验范围继续保持。

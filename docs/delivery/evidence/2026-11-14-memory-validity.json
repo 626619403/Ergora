@@ -1,0 +1,527 @@
+{
+  "slice": "F10a memory validity",
+  "baseline": "f47cd50fcce600fba92f64aff73982012f6e31c9",
+  "at": "2026-11-14T01:35:47.703462+00:00",
+  "implementation": "Final local acceptance complete; fresh-context requirements and structure approve with zero open findings; publication and own CI pending.",
+  "products": {
+    "src/ergora/cli.py": {
+      "bytes": 77755,
+      "sha256": "e7ff0f4ac177fbe417b66b96efbc94bb9384a208bd9116469d44b2091b60c6de"
+    },
+    "src/ergora/data/console/memory.js": {
+      "bytes": 8844,
+      "sha256": "637324029b5a741dc84224f23c4c4f4ee20d8df4d2051aac9f4a36d8350f4bde"
+    },
+    "src/ergora/memory.py": {
+      "bytes": 12487,
+      "sha256": "d1be8d9e4199ce1e87ea487a5a06badd1a84e5a7979f27a99cbee4d692fd7475"
+    },
+    "src/ergora/state.py": {
+      "bytes": 11299,
+      "sha256": "4bb638c9435a0c39e306109b628c6c79b96f1d8381b84140d78be188ed68f0f9"
+    },
+    "src/ergora/web.py": {
+      "bytes": 45577,
+      "sha256": "376164391f9660c4bc4e7b2be077e14a5a5a23c291779e57522097fbffeffb02"
+    }
+  },
+  "product_path_bytes_sha256": "d716290cb8293ae4f34e152f37cda0186e65eb2bfe13c2fbbf8d85bca6eb24db",
+  "product_digest_algorithm": "SHA256 sorted UTF8 path + NUL + raw bytes + NUL repeated",
+  "installed": {
+    "at": "2026-11-14T01:26:20.696928+00:00",
+    "wheel_sha256": "493e735b49e3741430211d07999754f058cd3968c3083a6015334c0aed82d3b2",
+    "wheel_files": 583,
+    "package_files": 575,
+    "wheel_and_installed_records_verified": true,
+    "installed_record_rows": 588,
+    "source_and_installed_package_equal": true,
+    "frozen_files": 283,
+    "editable": false
+  },
+  "installed_regression": {
+    "passed": 78,
+    "skipped": 7,
+    "pytest_seconds": 48.96,
+    "monitor_seconds": 50.538232737220824,
+    "scope": "Installed original7 suites, Linux run; native Windows awaits own CI."
+  },
+  "actual_journey": {
+    "upgrade": "Fixed original v4 State source and real schema upgrade: original memory rows and pre-migration v4 backup rows unchanged; old reopen/write refused, existing reader remains possible. Actual new CLI explicit expiry/omitted correction/clear/restore/search and original offline backup verify restore.",
+    "console": "Original installed real HTTP console creates expired, clears limit, restores original expiry, deletes and reads redacted history. Exactly4 mutations (3 POST,1 DELETE), all200, original revisions1–4.",
+    "read_lifecycle": [
+      "reverse catalog/search",
+      "history after project switch",
+      "catalog after tab switch"
+    ],
+    "visual": "1440/960/390 catalog and expiry form, no document overflow, six screenshots visually inspected.",
+    "preserved": "Legacy memory and native CLI expired original history unchanged; beta empty; synthetic Git status unchanged.",
+    "cleanup": "Browser daemon absent, loopback port closed, original monitor stopped web; console0errors0warnings."
+  },
+  "self_review": {
+    "status": "succeeded",
+    "seconds": 34.834961905609816,
+    "packet_files": 10,
+    "packet_bytes": 215539,
+    "prompt_sha256": "59c8e13c39be76e08dab3faeb7aecd5510395b61598fa1fa043f6febf2a6cbe9",
+    "input_digest": "ee3a6d7153ba7abd697c98c909628af9dacc7f80c7b30fa7615ad035127cdf7c",
+    "all_inline_files_and_inherited_resources_in_stdin": true,
+    "decision": "approve",
+    "result_sha256": "700c49fdba308eab776980f85097f5c379a21d121aa488a666f20c7c26f87d29",
+    "scope": "Installed original structure-review template, F10a memory expiry with original owners; no independent/GPU/quality acceptance claim."
+  },
+  "retained_failures": [
+    "Initial developer attempt accidentally ran new tests with unchanged prior installed C3 package, not F10a; no full local stdout retained, transcript kept.",
+    "First source collection had mismatched dictionary bracket, fixed; source-r1 failed and source-r2 passed78/1 before final OverflowError conversion.",
+    "Browser basic-r1 failed after clear succeeded, asserting before dashboard refresh settled. Fresh snapshot/read-only confirmation then same-record continuation completed original history/deletion/search, no repeated save; combined journey, not unattended initial-script pass."
+  ],
+  "limits": [
+    "Catalog/dashboard are time-bound observations, not future validity guarantees.",
+    "Old open SQLite reader/cache cannot be revoked; stop old processes before v5 upgrade.",
+    "ReMe projection remains eventual, no external hosted ReMe-deployment claim.",
+    "Formal Task selected memory/Skill freezing belongs to F10b. No GPU/training/quality/performance/adoption claim.",
+    "Native Windows and publication own CI not yet accepted for this candidate."
+  ],
+  "independent_review": {
+    "requirements": "Fresh-context final local approve, zero findings; independently checked all86 raw references and installed/runtime scope",
+    "structure": "Fresh-context final local approve, zero findings; independently checked all86 raw references and installed/runtime scope"
+  },
+  "publication": {
+    "state": "pending",
+    "own_ci": "pending"
+  },
+  "raw_evidence": {
+    "private_base": ".ergora/checks/memory-validity/",
+    "references": [
+      {
+        "path": "install-r1.py",
+        "bytes": 2179,
+        "sha256": "780765a7707a4b9e7be5b28a37120335e797b4952b1dddc4e35f8d0bbcce5a6b"
+      },
+      {
+        "path": "verify-installed-r1.py",
+        "bytes": 2445,
+        "sha256": "8597905c3ce7bb7e2dc3f9cf923f30115d1b8b92d9bc0fa18595cb92e2d2d6e7"
+      },
+      {
+        "path": "run-installed-r1.py",
+        "bytes": 916,
+        "sha256": "8dacdd2814daa0c341e53ef289506e8836405723ae88c86928721525405727c9"
+      },
+      {
+        "path": "source-regression-r1.log",
+        "bytes": 6384,
+        "sha256": "de5b21574dc2fe60b4dd87811abd5a14e8c78fa77e72de1216b653c083eac49d"
+      },
+      {
+        "path": "source-regression-r2.log",
+        "bytes": 191,
+        "sha256": "26b3453c0404de7177f8512270e54a7a2ff889ddcaac43aa18024a46712aa9ed"
+      },
+      {
+        "path": "development-checks.json",
+        "bytes": 697,
+        "sha256": "a985899ebb969b984540988d935889e9c1abb51c12a7ce2167d502dce20053d2"
+      },
+      {
+        "path": "install-r1/source-manifest.json",
+        "bytes": 2366,
+        "sha256": "20811eadf2bc2253f18cc2f6212f4596d5509ca7a2af35889176819197c5275b"
+      },
+      {
+        "path": "install-r1/setup.json",
+        "bytes": 1316,
+        "sha256": "d284bbc6eaadc92b1305b36891760210bf06f90661177373d032aac623238a44"
+      },
+      {
+        "path": "install-r1/package-identity.json",
+        "bytes": 486,
+        "sha256": "020741932106cfe0e3f70925313f36b664d4f6ef810315305978ddf1858cf2fc"
+      },
+      {
+        "path": "install-r1/dist/ergora-0.2.0-py3-none-any.whl",
+        "bytes": 1918816,
+        "sha256": "493e735b49e3741430211d07999754f058cd3968c3083a6015334c0aed82d3b2"
+      },
+      {
+        "path": "install-r1/regression-r1/result.json",
+        "bytes": 826,
+        "sha256": "6e939a1ab1e4e8cffacb6917bc0f1fbaf74c08147fa202ef267bb8fa7ef925cd"
+      },
+      {
+        "path": "install-r1/regression-r1/process/stdout.txt",
+        "bytes": 11803,
+        "sha256": "e9e45acd9537158584c78daf45e5d810e007a3accbdc3a25d48d14e787b02f6a"
+      },
+      {
+        "path": "install-r1/regression-r1/process/stderr.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r1.py",
+        "bytes": 6274,
+        "sha256": "ea231c9b110221912b7ddfc20277e3a7240f01656422d6e51388b835ea99ea0b"
+      },
+      {
+        "path": "native-r1/commands.json",
+        "bytes": 7966,
+        "sha256": "2d9fc0c0533f70ff80c27fb17ccb716a14d986c519b8c1397a408967be5d1121"
+      },
+      {
+        "path": "native-r1/upgrade.json",
+        "bytes": 493,
+        "sha256": "f856ab1f911c5724d62677eb20646e8124343439af76d51b123815b883a9d9d6"
+      },
+      {
+        "path": "native-r1/result.json",
+        "bytes": 950,
+        "sha256": "9b73dd6aa543bd91228739f8f4ac1dd4724eff3ecffd81b9942cd82fbb8c1b43"
+      },
+      {
+        "path": "native-r1/snapshot/manifest.json",
+        "bytes": 640,
+        "sha256": "9989c5590b4c2b183786ca4fd35b0f1e9ed151c943e5b6c6c4a56844ac586746"
+      },
+      {
+        "path": "audit-r1.py",
+        "bytes": 2892,
+        "sha256": "c2155941d3113dcca6dc0502614355b601d39c0fb5c0735d2c33099f5478d318"
+      },
+      {
+        "path": "audit-r1.json",
+        "bytes": 2853,
+        "sha256": "111a35554bb49c98e4624c5eeab73a5e7c6e6faa1ffcbd55ed79becda6f1d644"
+      },
+      {
+        "path": "browser-command-r1.py",
+        "bytes": 773,
+        "sha256": "28f703e9362e6366566710bbe928dcf3a8013a6ce8e14511617fa4aa7a656a28"
+      },
+      {
+        "path": "browser-r1/service.py",
+        "bytes": 1262,
+        "sha256": "e853ffa5a22da1a9b744adc5726c5825492cdc34c07297ae95e97ee708798bcd"
+      },
+      {
+        "path": "web-r1.py",
+        "bytes": 595,
+        "sha256": "6c959bc51005ecd8c11b9a6c6e4fd7b7f72691c4a6beea558051d00bb9c6b09f"
+      },
+      {
+        "path": "browser-r1/requests.jsonl",
+        "bytes": 462983,
+        "sha256": "889c2e1d00480a88939b5372c977ab18ea91ce8fa881e2e56329ed7f8deee65e"
+      },
+      {
+        "path": "browser-r1/cleanup.json",
+        "bytes": 215,
+        "sha256": "f67ab79d18b8b9356a619910e651382b7d723a94743aa68a28580f0816138d77"
+      },
+      {
+        "path": "self-review-r1.py",
+        "bytes": 6372,
+        "sha256": "a4cc14155cd9c0aa12dcaed48eac9a2d7f43c26863baf34693e4326f2f36024d"
+      },
+      {
+        "path": "self-review-r1-codex.json",
+        "bytes": 2303,
+        "sha256": "4858a61446c6c107a7bac8c45d62d6d0a8116c996dc352d158f0031348bbb1cf"
+      },
+      {
+        "path": "self-review-r1-codex/packet-index.json",
+        "bytes": 1522,
+        "sha256": "ac53ee7aa5a519df7c7faf4dc2714d233ba202d12bdbb93ca53d688280a8b57f"
+      },
+      {
+        "path": "self-review-r1-codex/original-result.json",
+        "bytes": 907,
+        "sha256": "700c49fdba308eab776980f85097f5c379a21d121aa488a666f20c7c26f87d29"
+      },
+      {
+        "path": "self-review-r1-codex/admission.json",
+        "bytes": 7831,
+        "sha256": "2029dc81ee23faf61c78927dcf86e41b0a067be6cf4515b7cc5295f0c4de2fd6"
+      },
+      {
+        "path": "self-review-r1-codex/native.stdout",
+        "bytes": 8576,
+        "sha256": "682b899814d312f56240b72061bceaec9a1b6e1bb63f466893e367a2d5ba6de0"
+      },
+      {
+        "path": "self-review-r1-codex/native.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r1/old-memory.stdout",
+        "bytes": 281,
+        "sha256": "f61c3638841375f64f45ca8842a2ebb2d3d6263b2bcda73bdfa26dc24670fcb2"
+      },
+      {
+        "path": "native-r1/expired-save.stdout",
+        "bytes": 344,
+        "sha256": "8beaa08d053da012e61016863bf35a22bddb22aa8cef07d00edaaf2c2a88748c"
+      },
+      {
+        "path": "native-r1/list-valid.stdout",
+        "bytes": 309,
+        "sha256": "70dd3ebcf290efe9e85432b6073d550763f01f6dd6437eced95f509dd6e876ad"
+      },
+      {
+        "path": "native-r1/catalog.stdout",
+        "bytes": 974,
+        "sha256": "6a4e9b4fccb1985a8e869bd773d72297a1d3214649a0e7e9c05a9b0fd6788e63"
+      },
+      {
+        "path": "native-r1/correct-preserve.stdout",
+        "bytes": 318,
+        "sha256": "c7308d8c11525f40164db6725c7bf7152165a407a4799c9055d99d03847a61de"
+      },
+      {
+        "path": "native-r1/clear-expiry.stdout",
+        "bytes": 273,
+        "sha256": "d4ac816477e538d01f544ee57b5a11ace6438ff6eaaf7f11b3a10ad311279118"
+      },
+      {
+        "path": "native-r1/restore-original-expiry.stdout",
+        "bytes": 344,
+        "sha256": "fee2ea2e74e2d796f6f4bcef99987acd02972f35de2b5e3e4c5d362dc1f88282"
+      },
+      {
+        "path": "native-r1/search-excludes.stdout",
+        "bytes": 118,
+        "sha256": "831ad1deabb09e22952992d85eb048dd9cabff363505c2c67ca5da2f0e62cc02"
+      },
+      {
+        "path": "native-r1/backup.stdout",
+        "bytes": 621,
+        "sha256": "02b5b2d7cc6a319566720602fad2a48d0583c2d6bbbb9c6d31f86e5c76975a20"
+      },
+      {
+        "path": "native-r1/verify-backup.stdout",
+        "bytes": 620,
+        "sha256": "dd414b1045566316801699a5398792f315e904030783aa84b9bfc8cc0b75e1f5"
+      },
+      {
+        "path": "native-r1/restore-backup.stdout",
+        "bytes": 714,
+        "sha256": "5f377113ea5672fb78e831791d86acb99596aa7972efc9dfe4636f1202cb0778"
+      },
+      {
+        "path": "native-r1/git-status-before.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r1/git-status-after.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "browser-r1/new-save.json",
+        "bytes": 227,
+        "sha256": "526ba3dffc99e1e7fc4a6c6e879797108027b5a708f3f6c1b93396a1223855a7"
+      },
+      {
+        "path": "browser-r1/new-save.stdout",
+        "bytes": 262,
+        "sha256": "f5cb9fc1c717216ae2557277b70d191cb082bceaa8c72be53318de6c05db976a"
+      },
+      {
+        "path": "browser-r1/new-save.stderr",
+        "bytes": 98,
+        "sha256": "0a7d62fa6ddd0e2f30b2073b136f5f76a6e7bb33eabf353af70d1225ab2b26f9"
+      },
+      {
+        "path": "browser-r1/basic-r1.json",
+        "bytes": 5997,
+        "sha256": "a63e5a7e0ae2a0ab10b206857fec412f2e2fd73c6aa123f5b284d55d8e2dbeb0"
+      },
+      {
+        "path": "browser-r1/basic-r1.stdout",
+        "bytes": 51,
+        "sha256": "6ce6d4b2ccf44207b438a5c2014f7aac77d3df5b1e998164180f84bf752ad425"
+      },
+      {
+        "path": "browser-r1/basic-r1.stderr",
+        "bytes": 6222,
+        "sha256": "78b393dcb3d31e0ddafa50698a413d5cea6c72107e0e3b061ee5db4beff39dd9"
+      },
+      {
+        "path": "browser-r1/basic-continuation-r1.json",
+        "bytes": 5216,
+        "sha256": "713fb9793965f1a63a7b731052017c0d5ea407a4a36e5ccbb7cc2b2e3b70bd90"
+      },
+      {
+        "path": "browser-r1/basic-continuation-r1.stdout",
+        "bytes": 4998,
+        "sha256": "a29461c97f7e3daa7111860f655b33090fc6d8adc491479633fcd2d8bb73c687"
+      },
+      {
+        "path": "browser-r1/basic-continuation-r1.stderr",
+        "bytes": 5375,
+        "sha256": "4f49304ad47f5a0b95515ed3f465dafe05e6e2c6bc190d5ecadf60afba9fef58"
+      },
+      {
+        "path": "browser-r1/lifecycle-r1.json",
+        "bytes": 3889,
+        "sha256": "d661e2fb46201985b4b88514b520a49351c51e9e828874faddd7cc7600de5a4a"
+      },
+      {
+        "path": "browser-r1/lifecycle-r1.stdout",
+        "bytes": 3652,
+        "sha256": "3c7b92fa5f1e73c4b63385a9b566729f8eeebcfea0851dd2e3d57c6640c1d1c2"
+      },
+      {
+        "path": "browser-r1/lifecycle-r1.stderr",
+        "bytes": 3952,
+        "sha256": "f50dfec98249332be4b32a6c32eb7d48bf1fcf699a9b9589c3410ccafa31ea8a"
+      },
+      {
+        "path": "browser-r1/visual-r1.json",
+        "bytes": 1144,
+        "sha256": "87698db8eae961cc3e4a1603b667ddbc88d237c7eab84f1e380854e433fdb6ad"
+      },
+      {
+        "path": "browser-r1/visual-r1.stdout",
+        "bytes": 1146,
+        "sha256": "37399cc17e141e82ed864e9b7d59ef0d25c5e69c7c4724a4795786efde50328b"
+      },
+      {
+        "path": "browser-r1/visual-r1.stderr",
+        "bytes": 1155,
+        "sha256": "eae0d84ebab524ad19412c10b943111e782d5b2e0dd7a3082324aff9395ed07f"
+      },
+      {
+        "path": "browser-r1/modal-visual-r1.json",
+        "bytes": 1188,
+        "sha256": "4382bb69d44350b31745c6978562d9c636aafe485a9a44c4d15f56a53181270d"
+      },
+      {
+        "path": "browser-r1/modal-visual-r1.stdout",
+        "bytes": 1253,
+        "sha256": "fd0b2dbc00a2212b46f5a8f72234bb3e27da3b05c7ebb0fbcc944f3ddba8382e"
+      },
+      {
+        "path": "browser-r1/modal-visual-r1.stderr",
+        "bytes": 1197,
+        "sha256": "1e8fecb1d9d1af4da2e809e7701dddfa58841e2089cf2ee30550b608a680ba7f"
+      },
+      {
+        "path": "browser-r1/console-final.json",
+        "bytes": 216,
+        "sha256": "5f970e0a1025780b8c6b3ec2c03eea80cb17ae73e1f2560284b74020575dfbce"
+      },
+      {
+        "path": "browser-r1/console-final.stdout",
+        "bytes": 55,
+        "sha256": "d0e5634bb0c1271965327ad2ac18107af18fa7da6d2c9ce13e03eeda6cb603db"
+      },
+      {
+        "path": "browser-r1/console-final.stderr",
+        "bytes": 95,
+        "sha256": "343c77977182a1d8fc0a2eb3841421e678b11522dd1ae666d9e7f2d63dcb3c50"
+      },
+      {
+        "path": "browser-r1/close-final.json",
+        "bytes": 214,
+        "sha256": "8296b9e4bec75de314a7884ba9370593103e103baf51b94deb82af7625df82de"
+      },
+      {
+        "path": "browser-r1/close-final.stdout",
+        "bytes": 44,
+        "sha256": "b62f1c471e781ef38f4edff7d5297cc11da83259d961633f85fd70089f62e28c"
+      },
+      {
+        "path": "browser-r1/close-final.stderr",
+        "bytes": 93,
+        "sha256": "8c3006d41ebc11eacbd7cc4021031e7b9a49e706dce1cfb807a0ab88634552b4"
+      },
+      {
+        "path": "browser-r1/basic-r1.js",
+        "bytes": 5256,
+        "sha256": "a96e4f74233bc9fe4349114361cf2707e1f8a850350ec67e556598dc3b068f34"
+      },
+      {
+        "path": "browser-r1/basic-continuation-r1.js",
+        "bytes": 4559,
+        "sha256": "625c97e417689352d77559ac82406aeb9580db55f76fd736b50504703401e193"
+      },
+      {
+        "path": "browser-r1/lifecycle-r1.js",
+        "bytes": 3301,
+        "sha256": "47713c8feaf4d2b56503163ecbf292127f2ba7ebe66dfa5de530e4b15c5192fd"
+      },
+      {
+        "path": "browser-r1/visual-r1.js",
+        "bytes": 879,
+        "sha256": "c0f1518f5fb05450fa8b5719f5e709dbc3380d61e542a9b2b69df1df820a231c"
+      },
+      {
+        "path": "browser-r1/modal-visual-r1.js",
+        "bytes": 921,
+        "sha256": "f80412d7c934aed5d32a5cc4f31be037ec20c2e83b23ca7573c9f6993ddd561e"
+      },
+      {
+        "path": "browser-r1/basic-continuation-r1-result.json",
+        "bytes": 407,
+        "sha256": "3009a734a937f8fbaf00e41c6b3c35f00767e042bcff99752adb2d94f1f725a9"
+      },
+      {
+        "path": "browser-r1/lifecycle-r1-result.json",
+        "bytes": 321,
+        "sha256": "dbfd3fddd06bf18dfe2704eec1f878d88392a7415227ad0b9db8a21825ac58a7"
+      },
+      {
+        "path": "browser-r1/visual-r1-result.json",
+        "bytes": 344,
+        "sha256": "252302a035890518551b14efae0023525375140615f3eda594dc8423ebabc4bb"
+      },
+      {
+        "path": "browser-r1/modal-visual-r1-result.json",
+        "bytes": 413,
+        "sha256": "6d3eab0e48d8ba2df9d2fc334d080cb642643982a53ce58a5ac8be4796cd00fb"
+      },
+      {
+        "path": "browser-r1/output/playwright/memory-catalog-1440.png",
+        "bytes": 116115,
+        "sha256": "f098964ee55fa9ef71482019dded2ac7e81c85e4c9c928cdf7bffccac55faff5"
+      },
+      {
+        "path": "browser-r1/output/playwright/memory-catalog-390.png",
+        "bytes": 88258,
+        "sha256": "271306973cb4171ecbe70d10f4e07421a34be8eb39f44d7c817541b0bc76d6ea"
+      },
+      {
+        "path": "browser-r1/output/playwright/memory-catalog-960.png",
+        "bytes": 116494,
+        "sha256": "44787d5f220a7e10975a206be5d9fa9a860c029c474599441a7144d9eba6ffeb"
+      },
+      {
+        "path": "browser-r1/output/playwright/memory-expiry-dialog-1440.png",
+        "bytes": 180934,
+        "sha256": "4a0bc041952e31f294257f0822630e4624b576bf9c2a0b446d4275ff1267e21f"
+      },
+      {
+        "path": "browser-r1/output/playwright/memory-expiry-dialog-390.png",
+        "bytes": 106476,
+        "sha256": "bd456f5879b5fcea27a48cc63c0106aab23de5fc43daac2d215b82284918db70"
+      },
+      {
+        "path": "browser-r1/output/playwright/memory-expiry-dialog-960.png",
+        "bytes": 162264,
+        "sha256": "6bc77a68f8d14672d95037522fa2ac17d468d3b4c8de28e3088bec6720f7f74e"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/a8c37a9d5d8c42febb47ad7466ba2ca0.input/prompt.txt",
+        "bytes": 220305,
+        "sha256": "59c8e13c39be76e08dab3faeb7aecd5510395b61598fa1fa043f6febf2a6cbe9"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/a8c37a9d5d8c42febb47ad7466ba2ca0/stdin.txt",
+        "bytes": 220305,
+        "sha256": "59c8e13c39be76e08dab3faeb7aecd5510395b61598fa1fa043f6febf2a6cbe9"
+      }
+    ]
+  }
+}

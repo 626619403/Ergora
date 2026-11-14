@@ -63,3 +63,15 @@
 |公开证据身份|已逐项只读核[公开证据摘要](evidence/2026-11-14-training-evidence-console.json)143个引用的原字节数／SHA，以及两个产品 path+NUL+bytes 组合 `f9f40ac06c9e95a915bba6a9301e80f32b90870fc1ed87121466fa4a388a69d6`。r3前三 run 的证明保持 r3身份；r4只修缺省输入显示并有第四原 run及最终三suite证明，不将历史执行重新标成 r4。|
 
 当前本地需求结论 approve、开放产品 finding 0；公开摘要和交付须继续保留上述失败／续交互／静态及未验范围。精确普通发布、固定提交身份补核及本片自己的 CI 尚待，不借 C2 的 CI 成功关闭；F9d／真实 B3 与真正集成复验／采用继续另验。
+
+## 固定发布补核（2026-11-14）
+
+结论：**固定发布需求补核 approve，开放 finding 0**。本次直接使用 `git show f47cd50fcce600fba92f64aff73982012f6e31c9:PATH` 读取固定对象，不以当前工作树中的发布补记或后续 F10 计划替代候选内容。
+
+- 固定提交 `f47cd50fcce600fba92f64aff73982012f6e31c9` 的唯一父提交为原基线 `1eef90d7453c64579ddc25bd5a7775eecd20c2cc`。19 个实际变更路径与 `static-final-r1.json` 清单集合相同，每个固定 Git blob 的原字节数与 SHA256 逐项匹配。
+- 两份固定 JS 的 path+NUL+bytes 组合保持 `f9f40ac06c9e95a915bba6a9301e80f32b90870fc1ed87121466fa4a388a69d6`。固定 `src/ergora` 全部575份产品与已验 r4 wheel／安装逐字相同；wheel SHA256 仍为 `0e0518ed2e97eb343fb3866bc8646dc16c3109d2310870ab737c32951544cb16`。再次只读核两 RECORD 583／588行的全部有效哈希与长度，以及固定 manifest 的283份冻结文件，均匹配。
+- 固定公开 JSON blob SHA256 为 `1f621bd7abdb403fc8c67363a93a4ae2e2d3660464036bb6f5de18ef785a6b5d`，其中原143个引用均逐项匹配本地原件字节数／SHA。当前工作树 JSON 的147个引用另行核对：原143项未改，新增项仅 `static-final-r1.json`、`commit-r1.json`、`push-r1.json`、`ref-r1.json` 四份发布原件，四项哈希及长度均匹配；147项不属于该固定 JSON blob。
+- 已读四份发布原件。`commit-r1`、普通非 force 的 `push-r1`、`ref-r1` 均 exit 0；原远端读取记录完整匹配 `refs/heads/refactor/architecture-foundations = f47cd50fcce600fba92f64aff73982012f6e31c9`。这是对发布时原记录的核对，本轴未执行网络或重新推送。
+- 本片自己的 CI `43539314720` 仍待终态核验，不把 push／Ref 成功称为 CI 成功；后续 CI 由原结构轴终核。本地证据的实际／静态／未验范围保持上文原边界，F9d／真实 B3 不因精确发布而关闭。
+
+本次只补本文，未改产品、安装、网络或提交；固定发布补核完成，停止修改。

@@ -3,18 +3,49 @@
 import json
 import os
 import uuid
+from datetime import datetime, timezone
+from types import EllipsisType
 from urllib.request import Request, urlopen
 
 from . import components
 from .state import State, file_lock, now
 
 
-def records(state: State, project_id: str, include_deleted: bool = False) -> list[dict]:
+def _expiry(value: str | None) -> datetime | None:
+    if value is None:
+        return None
+    try:
+        instant = datetime.fromisoformat(value)
+        if instant.tzinfo is None or instant.utcoffset() is None:
+            raise ValueError("Timezone is required")
+        return instant.astimezone(timezone.utc)
+    except (TypeError, ValueError, OverflowError) as error:
+        raise ValueError("Memory expires_at must be an ISO 8601 timestamp with timezone, or null") from error
+
+
+def _validity(document: dict, observed: datetime) -> str:
+    if document["status"] == "deleted":
+        return "deleted"
+    expiry = _expiry(document.get("expires_at"))
+    return "expired" if expiry is not None and observed >= expiry else "valid"
+
+
+def catalog(state: State, project_id: str) -> dict:
+    """Review all latest revisions at one server time; this is not a recall source."""
     state.project(project_id)
     with state.connect() as db:
         rows = db.execute("""SELECT document FROM memories m WHERE project=? AND revision=(
             SELECT MAX(revision) FROM memories WHERE project=m.project AND id=m.id) ORDER BY rowid DESC""", (project_id,))
-        return [doc for row in rows if (doc := json.loads(row[0]))["status"] == "active" or include_deleted]
+        documents = [json.loads(row[0]) for row in rows]
+    observed = now()
+    instant = datetime.fromisoformat(observed)
+    return {"project": project_id, "observed_at": observed,
+            "records": [{"record": doc, "validity": _validity(doc, instant)} for doc in documents]}
+
+
+def records(state: State, project_id: str, include_deleted: bool = False) -> list[dict]:
+    return [item["record"] for item in catalog(state, project_id)["records"]
+            if item["validity"] == "valid" or (include_deleted and item["validity"] == "deleted")]
 
 
 def history(state: State, project_id: str, memory_id: str) -> list[dict]:
@@ -28,7 +59,8 @@ def history(state: State, project_id: str, memory_id: str) -> list[dict]:
 
 
 def save(state: State, project_id: str, text: str, source: dict, memory_id: str | None = None,
-         expected_revision: int = 0) -> dict:
+         expected_revision: int = 0, *, expires_at: str | None | EllipsisType = ...) -> dict:
+    """Omitted expiry preserves the latest revision's limit; explicit null clears it."""
     state.project(project_id)
     if not isinstance(text, str) or not text.strip() or len(text) > 100_000:
         raise ValueError("Memory requires 1–100000 characters")
@@ -36,6 +68,9 @@ def save(state: State, project_id: str, text: str, source: dict, memory_id: str 
         not isinstance(source[k], str) or not source[k].strip() for k in ("uri", "revision")
     ):
         raise ValueError("Source must contain nonempty uri and revision strings")
+    if expires_at is not ...:
+        expiry = _expiry(expires_at)
+        expires_at = expiry.isoformat() if expiry is not None else None
     is_correction = memory_id is not None
     memory_id = memory_id or uuid.uuid4().hex
     with state.connect() as db:
@@ -45,8 +80,14 @@ def save(state: State, project_id: str, text: str, source: dict, memory_id: str 
             raise ValueError("Unknown memory in this project")
         if (latest or 0) != expected_revision:
             raise ValueError("Memory revision changed; reload before saving")
+        if expires_at is ...:
+            previous = db.execute("SELECT document FROM memories WHERE project=? AND id=? AND revision=?",
+                                  (project_id, memory_id, latest)).fetchone()
+            expires_at = json.loads(previous[0]).get("expires_at") if previous else None
         document = {"project": project_id, "id": memory_id, "revision": expected_revision + 1,
                     "text": text, "source": source, "observed": now(), "status": "active"}
+        if expires_at is not None:
+            document["expires_at"] = expires_at
         db.execute("INSERT INTO memories VALUES (?, ?, ?, ?)",
                    (project_id, memory_id, document["revision"], json.dumps(document)))
     return document
@@ -78,7 +119,8 @@ def restore(state: State, project_id: str, memory_id: str, revision: int, expect
     selected = next((v for v in versions if v["revision"] == revision), None)
     if selected is None or selected["status"] != "active":
         raise ValueError("Revision unavailable; deleted content cannot be restored")
-    return save(state, project_id, selected["text"], selected["source"], memory_id, expected_revision)
+    return save(state, project_id, selected["text"], selected["source"], memory_id, expected_revision,
+                expires_at=selected.get("expires_at"))
 
 
 def _job(binding: dict, operation: str, payload: dict) -> dict:
@@ -108,19 +150,20 @@ def sync(state: State, project_id: str, rebuild: bool = False, *, project: dict 
     lockdir = state.root / "locks"
     lockdir.mkdir(exist_ok=True)
     with file_lock(lockdir / f"memory-{project_id}.lock"):
-        current = {doc["id"]: doc for doc in records(state, project_id, include_deleted=True)}
+        current = {item["record"]["id"]: item for item in catalog(state, project_id)["records"]}
         binding = components.resolve_binding(project, "memory")["binding"]
         with state.connect() as db:
             if binding["tool"] == "reme":
-                for doc in current.values():
-                    if doc["status"] == "deleted":
+                for item in current.values():
+                    if item["validity"] != "valid":
                         continue
+                    doc = item["record"]
                     db.execute("INSERT OR IGNORE INTO memory_mirrors VALUES (?, ?, ?, 0, ?)",
                                (project_id, binding["endpoint"], doc["id"], json.dumps(binding)))
             mirrors = list(db.execute("SELECT * FROM memory_mirrors WHERE project=?", (project_id,)))
         changed = 0
         for row in mirrors:
-            doc = current[row["id"]]
+            doc = current[row["id"]]["record"]
             remote_binding = json.loads(row["binding"])
             if binding["tool"] == "reme" and binding["endpoint"] == row["endpoint"]:
                 remote_binding = binding
@@ -128,7 +171,7 @@ def sync(state: State, project_id: str, rebuild: bool = False, *, project: dict 
                     db.execute("UPDATE memory_mirrors SET binding=? WHERE project=? AND endpoint=? AND id=?",
                                (json.dumps(binding), project_id, row["endpoint"], doc["id"]))
             path = f"digest/ergora/{project_id}/{doc['id']}.md"
-            if doc["status"] == "deleted":
+            if _validity(doc, datetime.fromisoformat(now())) != "valid":
                 _job(remote_binding, "delete", {"path": path})
                 with state.connect() as db:
                     db.execute("DELETE FROM memory_mirrors WHERE project=? AND endpoint=? AND id=?",
@@ -136,7 +179,8 @@ def sync(state: State, project_id: str, rebuild: bool = False, *, project: dict 
                 changed += 1
             elif rebuild or row["revision"] != doc["revision"]:
                 _job(remote_binding, "write", {"path": path, "name": doc["id"], "content": doc["text"],
-                     "metadata": {"ergora_project": project_id, "ergora_revision": doc["revision"], "source": doc["source"]}})
+                     "metadata": {"ergora_project": project_id, "ergora_revision": doc["revision"],
+                                  "source": doc["source"], "expires_at": doc.get("expires_at")}})
                 with state.connect() as db:
                     db.execute("UPDATE memory_mirrors SET revision=?, binding=? WHERE project=? AND endpoint=? AND id=?",
                                (doc["revision"], json.dumps(remote_binding), project_id, row["endpoint"], doc["id"]))
@@ -148,9 +192,10 @@ def search(state: State, project_id: str, query: str, limit: int = 10, *, projec
     if not query.strip() or not 1 <= limit <= 100:
         raise ValueError("Require a query and limit of 1–100")
     project = state.project(project_id) if project is None else project
-    docs = records(state, project_id)
     binding = components.resolve_binding(project, "memory")["binding"]
     if binding["tool"] == "sqlite":
+        view = catalog(state, project_id)
+        docs = [item["record"] for item in view["records"] if item["validity"] == "valid"]
         terms = query.casefold().split()
         scored = [(sum(term in doc["text"].casefold() for term in terms), doc) for doc in docs]
         matches = [doc for score, doc in sorted(scored, key=lambda pair: pair[0], reverse=True) if score > 0][:limit]
@@ -158,14 +203,20 @@ def search(state: State, project_id: str, query: str, limit: int = 10, *, projec
         sync(state, project_id, project=project)
         by_path = {f"digest/ergora/{project_id}/{doc['id']}.md": doc for doc in records(state, project_id)}
         if not by_path:
-            return {"project": project_id, "backend": "reme", "results": []}
+            return {"project": project_id, "backend": "reme", "observed_at": now(), "results": []}
         response = _job(binding, "search", {"query": query, "limit": limit, "expand_links": False,
                                           "search_filter": {"paths": list(by_path)}})
+        # RPC may outlive expiry or a local correction/deletion. Remote text and
+        # ranking never authorize a stale or newly substituted local revision.
+        view = catalog(state, project_id)
+        current = {f"digest/ergora/{project_id}/{item['record']['id']}.md": item["record"]
+                   for item in view["records"] if item["validity"] == "valid"}
         matches = []
         seen = set()
         for hit in response["metadata"]["results"]:
             path = hit["path"]
-            if path in by_path and path not in seen:
-                matches.append(by_path[path])
+            if (path in by_path and path in current and path not in seen
+                    and current[path]["revision"] == by_path[path]["revision"]):
+                matches.append(current[path])
                 seen.add(path)
-    return {"project": project_id, "backend": binding["tool"], "results": matches[:limit]}
+    return {"project": project_id, "backend": binding["tool"], "observed_at": view["observed_at"], "results": matches[:limit]}

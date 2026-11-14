@@ -1,6 +1,6 @@
 # F9c C3：训练证据与批准页面交付
 
-日期：2026-11-14；基线 `1eef90d7453c64579ddc25bd5a7775eecd20c2cc`。[合同](../plans/2026-11-14-training-evidence-console.md)／[证据摘要](evidence/2026-11-14-training-evidence-console.json)。页面已实现，最终本地验收完成；新的独立两轴最终本地通过，开放0／0；普通发布及自己的CI尚待。
+日期：2026-11-14；基线 `1eef90d7453c64579ddc25bd5a7775eecd20c2cc`。[合同](../plans/2026-11-14-training-evidence-console.md)／[证据摘要](evidence/2026-11-14-training-evidence-console.json)。页面已实现，最终本地验收完成；新的独立两轴最终本地通过，开放0／0；普通发布／完整Ref、原两轴固定发布及自己的CI／原结构轴终核通过，精确交付完成。
 
 ## 行为与所有权
 
@@ -44,3 +44,5 @@ r3与最终r4仅可选run输入spread一行展示修正；首三个运行的浏�
 动态生命周期覆盖上述**读响应**；迟到mutation／旧finally隔离及home切换沿selected与局部view／sending静态核对，未动态穷尽。旧start／cancel仅diff与调用链核保持，本片没有其UI mutation旅程，也未执行training_submission／cancellation suite；F9d完整旅程另验。Windows原生页面mutation、真实GPU／训练／质量／性能／实际集成复验与采用均未由此片证明；原归档／attestation是合成材料。本地可信当前用户边界不变。
 
 新的fresh-context[需求](2026-11-14-training-evidence-console-spec-review.md)／[结构](2026-11-14-training-evidence-console-structure-review.md)已直接核最终包／回归／四原history及原件／收尾、143引用及上述界限，最终本地approve、开放0／0；随后普通推送当前开发分支，核固定Git／完整远端Ref及本片自己的必要CI，不合main。C2自己的CI43536265177八job／30必要步骤成功独立归C2，不借给本片。
+
+已普通发布`f47cd50fcce600fba92f64aff73982012f6e31c9`，19件Git blob与最终清单逐字匹配，完整远端Ref相同；固定候选内143引用，后补四份发布原件摘要为147。原两轴固定发布补核approve、开放0／0，自己的CI43539314720八job／30必要步骤成功、原结构轴CI终核通过；固定提交143引用与后补发布／CI分别记录，不借前片成功。
