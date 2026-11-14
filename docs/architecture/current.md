@@ -6,6 +6,8 @@ Ergora 把项目合同、可组合的专长 Agent、正式执行和可核对证�
 
 逐次实施说明已[逐字归档](current-history-2026-11-11.md)，[C6d原源码清单](../delivery/evidence/2026-11-11-architecture-source-inventory.json)的53模块／203边／18JS保持原身份，不当作当前清单。当前验证与开放条件以[PLAN](../PLAN.md)及各片交付为准；静态图本身不证明全部动态路径或性能。
 
+Q1.1 增量增加 `review_packets` 与标准库 `git_materials` 两个 owner；上述固定基线清单保持原身份。离线包入口在创建 State 前分派，正式 executor 和离线采集共用有界 Git 读取／完整 blob；新入口不依赖任务、平台后端、模型或服务。具体合同与实际验证见[本地审查包](../LOCAL_REVIEW.md)和[逐步交付](../delivery/2026-11-15-local-review-packets.md)。
+
 ## 模块与依赖
 
 自有Python保持一个 `ergora` 包。下图是主要调用方向；组合框表示职责集合，不表示框内模块互相依赖，也不是完整的导入图。
@@ -13,6 +15,9 @@ Ergora 把项目合同、可组合的专长 Agent、正式执行和可核对证�
 ```mermaid
 flowchart TB
   CLI[cli / 命令行] --> Uses[应用用例]
+  CLI --> ReviewPackets[review_packets / 离线本地审查包]
+  ReviewPackets --> GitMaterials[git_materials / 有界完整 Git 对象]
+  ReviewPackets --> Bundles
   HTTP[web / HTTP] --> Uses
   Uses --> Project[projects / registrations / bindings]
   Uses --> Tasks[tasks / 正式任务操作]
@@ -39,6 +44,7 @@ flowchart TB
   Input --> Flow[reference_workflows / 原Temporal六阶段]
   Flow --> Files[原FileAdapter / job / ledger / receipt]
   Files --> Executor[reference_executor / 原Executor]
+  Executor --> GitMaterials
   Executor --> Driver[stage_driver / 独立执行进程]
   Driver --> Runs
   Runs --> Agents[agents / agent_backends]
@@ -66,6 +72,7 @@ flowchart TB
 |`definition_bundles`|两类定义共用的完整资源树、检查／修订／不可变版本发布|修订派生新包；逐定义发布，根最后发布，不是跨库事务|
 |`agent_runs`|独立叶子／角色的输入冻结、准入、调用和归档|原项目／定义／后端绑定保持；普通调用成功不生成正式任务通过|
 |`task_context`|按显式选择读取当前有效记忆／活动Skill，在原准备目录派生并冻结完整根|复用原定义／manifest和资产所有者，首次intent前核来源；恢复已存意图不随当前head重建，没有第二资源库|
+|`review_packets`、`git_materials`|state-free 精确 base／head／diff-base 本地包、显式上下文／祖先规范、离线摘要与引用校验；与原 executor 共用有界二进制 Git／批量完整 blob|Git 2.43+、本地普通文本对象；原叶权限由 executor 回调核对。新目录原子发布，不执行目标代码或获取缺对象；自洽不认证来源、祖先或检查，无正式任务／批准身份|
 |`retrospectives`|从原交接包完整文本准备三类复盘输入，核来源／结果及明确导出|生成与导出不采用；Skill交原评价／采用，记忆交原保存／修订，流程交原不可变定义导入。原基线／权限／图边保持，不改可信评价或批准|
 |`agents`、`agent_backends`|角色输出合同与可替换后端Adapter|调用者走同一Interface；实现拥有原生命令、配置、结果提取及支持模式|
 |`task_mcp`|单次调用的完整声明资源投影与连接回执|只有固定 `list/read`，没有任意路径／shell工具；当前要求Linux和可选SDK|

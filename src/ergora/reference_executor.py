@@ -12,7 +12,6 @@ import json
 import logging
 import os
 from pathlib import Path, PurePosixPath
-import selectors
 import subprocess
 import sys
 import tempfile
@@ -25,6 +24,7 @@ from dev_platform.contracts import canonical_sha, path_contains, validate_spec
 from dev_platform.portable import validate_compiled
 
 from . import agent_backends, agents, bindings, projects, task_envelopes, task_mcp, workflow_definitions
+from .git_materials import GitMaterials
 from .reference_creation_process import task_creation
 from .reference_inputs import execution_input, request_roots
 from .reference_review_opinions import review_observation
@@ -98,6 +98,7 @@ class Executor(original.Executor):
         else:
             require('admission' not in context, 'Composition admission does not match the published task')
         super().__init__(envelope)
+        self.materials = GitMaterials(self.checkout, git='/usr/bin/git', scratch=self.scratch)
         snapshot = STATE / "tasks" / self.task_id / "agent-bindings.json"
         if snapshot.exists():
             self.selection = read(snapshot)
@@ -167,97 +168,14 @@ class Executor(original.Executor):
         self.checks = [{'id': name, 'status': 'pass', 'artifact': 'check-results'}
                        for name in self.spec['profile']['required_checks']]
 
-    def _git_bytes(self, *arguments: str, limit: int = 1_000_000, input_data: bytes | None = None) -> bytes:
-        """Bound raw Git output without text/newline conversion or working-tree reads."""
-        env = {key: value for key, value in os.environ.items() if not key.startswith('GIT_')}
-        env.update(GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL='/dev/null', GIT_TERMINAL_PROMPT='0')
-        command = ['/usr/bin/git', '--no-replace-objects', '--literal-pathspecs', '-c', 'core.hooksPath=/dev/null',
-                   '-C', str(self.checkout), *arguments]
-        # Input is already bounded metadata. A file avoids pipe deadlock while
-        # batch Git simultaneously reads requests and emits raw object bodies.
-        with tempfile.TemporaryFile(dir=self.scratch) as source:
-            source.write(input_data or b'')
-            source.seek(0)
-            with subprocess.Popen(command, env=env, stdin=source, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
-                content, errors = bytearray(), bytearray()
-                deadline = time.monotonic() + 60
-                try:
-                    with selectors.DefaultSelector() as streams:
-                        streams.register(process.stdout, selectors.EVENT_READ, content)
-                        streams.register(process.stderr, selectors.EVENT_READ, errors)
-                        while streams.get_map():
-                            remaining = deadline - time.monotonic()
-                            if remaining <= 0:
-                                raise subprocess.TimeoutExpired(command, 60)
-                            for key, _ in streams.select(remaining):
-                                chunk = os.read(key.fd, 65536)
-                                if not chunk:
-                                    streams.unregister(key.fileobj)
-                                elif key.data is content:
-                                    content.extend(chunk)
-                                    require(len(content) <= limit, 'Complete candidate material exceeds the input byte limit')
-                                else:
-                                    errors.extend(chunk)
-                                    del errors[1500:]
-                    process.wait(timeout=max(0.001, deadline - time.monotonic()))
-                    require(process.returncode == 0, 'Candidate material read failed: ' + errors.decode('utf-8', errors='replace'))
-                finally:
-                    if process.poll() is None:
-                        process.kill()
-                    process.wait()
-        return bytes(content)
-
     def _repository(self, commits: dict, paths: list[str], read_scope: list[str]) -> dict:
-        """Read each exact blob once, after a batched size check bounds the payload."""
-        repository, objects = {}, set()
-        for label, commit in commits.items():
-            files = {}
-            tree = self._git_bytes('ls-tree', '-r', '-z', commit, '--', *paths)
-            for entry in tree.split(b'\0'):
-                if not entry:
-                    continue
-                metadata, name = entry.split(b'\t', 1)
-                mode, kind, oid = metadata.decode('ascii').split()
-                path = name.decode('utf-8')
-                require(kind == 'blob' and mode in ('100644', '100755'), 'Review source must be an ordinary Git file: ' + path)
-                require(any(path_contains(prefix, 'workspace/' + path) for prefix in read_scope),
-                        'Review source exceeds the leaf read scope: ' + path)
-                files[path] = {'git_object': oid, 'mode': mode}
-                objects.add(oid)
-            repository[label] = {'commit': commit, 'files': files}
-        # A content-addressed table preserves full before/after trees without
-        # repeating unchanged source or launching one subprocess per small file.
-        ordered = sorted(objects)
-        requests = ''.join(oid + '\n' for oid in ordered).encode('ascii')
-        sizes = self._git_bytes('cat-file', '--batch-check', input_data=requests).splitlines()
-        require(len(sizes) == len(ordered), 'Incomplete Git object size response')
-        expected, total = {}, 0
-        for oid, header in zip(ordered, sizes):
-            actual, kind, size = header.decode('ascii').split()
-            require(actual == oid and kind == 'blob', 'Review object is not the requested Git blob')
-            expected[oid] = int(size)
-            total += int(size) + len(header) + 2
-        require(total <= 1_000_000, 'Complete candidate material exceeds the input byte limit')
-        raw = self._git_bytes('cat-file', '--batch', input_data=requests)
-        offset, blobs = 0, {}
-        for oid in ordered:
-            end = raw.index(b'\n', offset)
-            require(raw[offset:end] == f'{oid} blob {expected[oid]}'.encode('ascii'), 'Git blob header changed')
-            start, finish = end + 1, end + 1 + expected[oid]
-            content = raw[start:finish]
-            require(len(content) == expected[oid] and raw[finish:finish + 1] == b'\n', 'Incomplete Git blob response')
-            require(b'\0' not in content, 'Complete review source contains binary content')
-            blobs[oid] = {'sha256': hashlib.sha256(content).hexdigest(), 'text': content.decode('utf-8')}
-            offset = finish + 1
-        require(offset == len(raw), 'Unexpected trailing Git blob response')
-        repository['blobs'] = blobs
-        repository['scope'] = paths
-        return repository
+        return self.materials.repository_sources(commits, paths,
+            authorize=lambda path: any(path_contains(prefix, 'workspace/' + path) for prefix in read_scope))
 
     def _review_repository(self, read_scope: list[str]) -> dict:
         repository = self._repository({'base': self.request['repository']['base_sha'], 'candidate': self.candidate},
                                       self.request['input']['allowed_paths'], read_scope)
-        repository['diff'] = self._git_bytes('diff', '--no-ext-diff', '--no-textconv', '--no-renames',
+        repository['diff'] = self.materials.read('diff', '--no-ext-diff', '--no-textconv', '--no-renames',
             self.request['repository']['base_sha'], self.candidate, '--', *repository['scope']).decode('utf-8')
         return repository
 

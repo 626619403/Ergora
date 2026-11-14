@@ -22,7 +22,7 @@
 |---|---|---|
 |通用代码审查|[`ergora-delivery-review`](../../src/ergora/data/presets/workflows/ergora-delivery-review/workflow.json) 将结构、正确性、测试价值三路只读子模板显式 all-join；[`refactoring-quality`](../../src/ergora/data/presets/presets.json) 使用原六阶段与工程 Skill|领域特定检查、独立外部 PR／MR 的完整输入与可复现入口。已有通用审查不能宣称覆盖预训练／后训练语义。|
 |PR／MR 上下文|[`issues.link_review`](../../src/ergora/issues.py) 和 [`IssueBackend`](../../src/ergora/issue_backends.py) 读取、核对并关联原已导出候选与同来源仓库的已有 PR／MR；历史关联可离线读|任意外部 PR／MR 的审查材料不是这个关联合同；不能伪造本地 task／export 来复用它。原关联也不表示已评审、已发布意见或已批准。|
-|优化组合|28 个 preset 中已有共享 v2 专家和 18 个纵向方向；[`training-optimization-v2`](../../src/ergora/data/presets/workflows/ergora-training-proposal-v2/workflow.json) 固定 analysis → kernel → measurement；性能诊断另有三叶组合|新总模板按实际瓶颈选择方向，增加算法／执行图与冗余分析；取消总模板必经 kernel。保留具体 kernel 子模板。|
+|优化组合|28 个 preset 中已有共享 v2 专家和 18 个纵向方向；[`training-optimization-v2`](../../src/ergora/data/presets/workflows/ergora-training-proposal-v2/workflow.json) 固定 analysis → kernel → measurement；性能诊断另有三叶组合|新总模板按实际瓶颈选择干预，增加算法／执行图与冗余分析；保留路径中的 kernel 专家评估节点，允许其明确判断无需算子干预。|
 |优化执行|[`training.py`](../../src/ergora/training.py) 及 reference training owners 已管理 baseline、runner、实验准备、提交、取消、证据和精确批准；[训练手册](../TRAINING.md)说明提案到实验交接|这些只读提案叶不自动执行前驱或整个实验图，也没有完成持续多轮训练优化。需串接原实验身份和跨轮证据，而非另造实验／审批系统。|
 |可组合性|[`workflow_definitions`](../../src/ergora/workflow_definitions.py)、[`review_dags`](../../src/ergora/review_dags.py) 与 [`AgentBackend`](../../src/ergora/agent_backends.py) 已拥有版本、祖先资料、权限、静态 DAG 和后端契约|复用现有 JSON、叶输入、版本和工厂。迭代不能直接在无环图里加回边，也不先发明图格式／通用插件层。|
 |Skill 改进|[`optimization.py`](../../src/ergora/optimization.py) 是 GEPA 文本 Skill 搜索；记忆／Skill／工作流候选沿原评价和明确采用|不能把文本搜索叫训练加速；本计划的跨轮训练证据由训练领域持有。|
@@ -32,6 +32,7 @@
 - **职责、专长、后端和平台分开。** 同一 pretraining reviewer 可以使用不同受支持后端；Claude 的托管产品、CLI 插件、Actions 和 Skill 不视为同一可替换程序。优先作者／审查者异后端；不等于消除相关错误。同后端回退保留原因、独立会话和实际覆盖。
 - **先完整输入，再领域组合，再远端写回。** 第一入口可以离线审精确 Git 对象；远端只读采集是独立小片。预训练／后训练组合复用三类通用审查并加领域专家，使用现有 required／advisory 合同，不重复调度。汇总必须保留少数意见、失败和未覆盖范围。
 - **完整理解与实测相互校验。** 先静态梳理算法和关键路径，尽早保存原始可复现参照，再做去冗余候选。不能在原始结果丢失后追认收益，也不能凭源码图证明某依赖可删除。映射／profiling 的有扰动运行与正式稳态计时分开。
+- **Kernel 专家保留，干预由证据决定。** 按用户后续补充保留总路径中的专家评估；结论可以是无需 kernel 改动，去耦合、去冗余、内存、通信或主机调度仍可成为本轮实际干预。此决定覆盖 Q0 研究中取消必经节点的建议；历史研究和审查保留当时范围，不改写旧 v2 模板。
 - **循环在原生命周期之上。** 每轮使用原 experiment／candidate／runner／evidence；第一增量可为不可变链接报告与明确的下一步，只有真实自动运行消费者出现才给原训练 owner 增加受预算控制的外层循环。保留原无环组合，不建立第二调度器或实验数据库。
 - **比较同时保留两个参照。** 记录初始锚点与本轮实际比较对象；被采用的候选可以是下一轮参考，原 baseline 仍不可隐式重写。若原合同不支持同 campaign 推进基线，建立明确的新实验／campaign 关联，先定义兼容准入，不能绕过旧 evidence gate。
 - **变项归自身 owner。** Ergora 的 Agent／执行／工单／评价适配器，与目标训练框架的 optimizer／forward／model／dataset／loss 是不同层。研究目标框架现有接口；优先使用其原生组件，不把训练实现搬入控制面。真正存在多个实现和真实调用者时才补共同 Protocol／ABC／本族工厂。
@@ -47,14 +48,14 @@
 |---|---|---|---|
 |Q0.1／P0|两方向一手调研；复用已有 [专家采用矩阵](../research/2026-11-12-specialist-adoption.md)|指定 BBuf 版本、Anthropic 各产品与领域审查工具的证据；成熟框架组件实例、优化方法与论文；来源、许可、限制、采用决定明确|已精确交付 `7ed4391`，原独立固定发布补核通过|
 |Q0.2／P0|本计划与 PLAN／交付对齐，新独立评审|逐条覆盖用户要求、当前实现和下一步；链接／源码对应检查；记录 finding 和处置|已精确交付 `7ed4391`；文档检查／自身模板／独立本地及固定发布两轴通过，0 实质 finding|
-|Q1.1／P0|精确本地 PR／MR 审查包，沿 Git／完整资料读取 owner|冻结明确 base／head／实际 diff-base、变更清单、完整相关源码／调用者／规范／可信检查与用户需求。离线可重复，不依赖提交作者说明；超限明确列出未覆盖并拒绝称完整，支持后继补包而不静默截断|待实施，依 Q0|
+|Q1.1／P0|精确本地 PR／MR 审查包，沿 Git／完整资料读取 owner|冻结明确 base／head／实际 diff-base、变更清单、完整相关源码／调用者／规范／检查原件与用户需求。离线可重复，不依赖提交作者说明；超限明确列出未覆盖并拒绝称完整，支持后继补包而不静默截断；操作员提供的检查不自动升级为可信验证|本地已审查；r2 安装 38 项、原自身模板和新独立两轴通过，待精确发布／自有 CI；[具体计划](2026-11-15-local-review-packets.md)／[交付](../delivery/2026-11-15-local-review-packets.md)|
 |Q1.2／P1|GitHub／GitLab 只读来源适配，沿本族 backend|从固定仓库身份＋PR number／MR iid 采集真实 base/head 和所需源码，分页／截断／二进制／重命名／子模块明确处理；head 漂移产生新包，不篡改旧包。fork 首版可明确 unsupported；不借原 candidate-review-link 冒充任意 PR 审查|待实施，依 Q1.1|
 |Q2.1／P0|预训练专长 reviewer／组合，沿 AgentDefinition／preset／ReviewDAG|把下节领域清单落为有来源的角色、完整 Skill 和最小示例；一个带已知领域缺陷的候选和一个有效配置变体可通过真实只读叶审阅；模型意见不代替数值／分布式检查|待实施，依 Q1.1|
 |Q2.2／P0|后训练专长 reviewer／组合，同上|覆盖 rollout→训练与异步版本／样本关系；用针对该领域的正反例核审查范围及缺证据输出。与预训练共享通用模板，但不混用领域假设|待实施，依 Q2.1 合同|
 |Q2.3／P1|领域审查交互／报告，复用原 run 与结果封套|CLI 可选择领域、专长和叶后端，保存精确材料、覆盖范围与原回复；本地报告先可用。远端行级意见或自动 review 发表另片，只有具体需求和权限才接，保留发送意图／unknown 恢复；不默认 approve／merge|待实施，依 Q2.1／Q2.2|
 |Q3.1／P0|完整算法／执行图与冗余分析，沿准备阶段和只读分析专家|产出源码锚定的算法图、实际执行／通信／并行图、关键张量／状态生命周期表，区分“算法必须”与“实现偶然”；至少列出一个可证伪假设、所需证据与不允许删的依赖|待实施，可与 Q1 并行|
 |Q3.2／P0|固定语义和成对测量合同，沿原 baseline／runner／evidence owner|机器可复核的工作负载身份、端到端指标、质量门槛、环境、计时窗口和预算；新指标仅为已有 owner 的真实缺口扩展，不添加重复评分器|待实施，依 Q3.1|
-|Q3.3／P0|新总优化模板，沿现有版本与明确选择的子模板|按诊断选择去耦合／去冗余、内存、并行、通信、调度、kernel 等方向；无证据时返回补采集请求。验证一个非 kernel 路径与一个 kernel 路径，保持旧 v2 字节／旧任务不变|待实施，依 Q3.1／Q3.2|
+|Q3.3／P0|新总优化模板，沿现有版本与明确选择的子模板|保留 kernel 专家评估，按诊断选择去耦合／去冗余、内存、并行、通信、调度、kernel 等干预；无证据时返回补采集请求。验证保留评估但无需算子改动的案例和需要 kernel 干预的案例，保持旧 v2 字节／旧任务不变|待实施，依 Q3.1／Q3.2|
 |Q4.1／P0|多轮证据链，沿原 training 与 artifact owner|至少两轮完整独立结果：含初始锚点、本轮参照、候选／父迭代、变化、原数据／报告摘要、批准和后继瓶颈。加入无收益或失败轮也保留；重启读回相同原件|待实施，依 Q3.3|
 |Q4.2／P1|有界自动循环与停止，沿原 Temporal／process／budget owner|仅在 Q4.1 手动旅程成立后实施；预算跨轮和恢复计入，平台调用按真实限制计量。时间／费用或试次耗尽、无可信证据、收益低于预设阈值、质量退化、用户取消均有明确终态；unknown 先对账，不自动重发|待实施，依 Q4.1|
 |Q5.1／P0|目录级 Agent 变更协议，沿真实组件 owner|先盘点现有规范和变量族，再为缺口编写局部协议：可改点、稳定边界、扩展步骤、配置／数据格式、调用和资源／恢复、最小检查、实例和基类位置。父规则与子补充单一权威，不复制整套 AGENTS|待实施，依 Q0，可逐族推进|

@@ -1,0 +1,313 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ergora.dev/schemas/local-review-packet-v1.json",
+  "title": "Local advisory source review packet (not formal approval)",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "kind",
+    "repository",
+    "changes",
+    "context_paths",
+    "source",
+    "requirements",
+    "evidence",
+    "limits",
+    "coverage"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "kind": {
+      "const": "local-source-review"
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "object_format",
+        "base",
+        "head",
+        "diff_base",
+        "comparison"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "object_format": {
+          "enum": [
+            "sha1",
+            "sha256"
+          ]
+        },
+        "base": {
+          "$ref": "#/$defs/oid"
+        },
+        "head": {
+          "$ref": "#/$defs/oid"
+        },
+        "diff_base": {
+          "$ref": "#/$defs/oid"
+        },
+        "comparison": {
+          "enum": [
+            "merge-base",
+            "base"
+          ]
+        }
+      }
+    },
+    "changes": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "path",
+          "status",
+          "before",
+          "after"
+        ],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          },
+          "status": {
+            "enum": [
+              "A",
+              "D",
+              "M"
+            ]
+          },
+          "before": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/file"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "after": {
+            "oneOf": [
+              {
+                "$ref": "#/$defs/file"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "context_paths": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1024
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "base",
+        "diff_base",
+        "head",
+        "scope",
+        "blobs",
+        "diff",
+        "diff_sha256"
+      ],
+      "properties": {
+        "base": {
+          "$ref": "#/$defs/source"
+        },
+        "diff_base": {
+          "$ref": "#/$defs/source"
+        },
+        "head": {
+          "$ref": "#/$defs/source"
+        },
+        "scope": {
+          "type": "array",
+          "maxItems": 500,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          }
+        },
+        "blobs": {
+          "type": "object",
+          "maxProperties": 1500,
+          "propertyNames": {
+            "$ref": "#/$defs/oid"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "sha256",
+              "text"
+            ],
+            "properties": {
+              "sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              },
+              "text": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "diff": {
+          "type": "string"
+        },
+        "diff_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "requirements": {
+      "$ref": "#/$defs/document"
+    },
+    "evidence": {
+      "type": "array",
+      "maxItems": 500,
+      "items": {
+        "$ref": "#/$defs/document"
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_source_bytes"
+      ],
+      "properties": {
+        "max_source_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000000
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "changed_sources",
+        "context",
+        "instructions",
+        "checks",
+        "execution_authorized",
+        "platform_approval"
+      ],
+      "properties": {
+        "changed_sources": {
+          "const": "complete"
+        },
+        "context": {
+          "const": "explicit-files-only"
+        },
+        "instructions": {
+          "const": "ancestor-AGENTS.md"
+        },
+        "checks": {
+          "const": "operator-supplied-unverified"
+        },
+        "execution_authorized": {
+          "const": false
+        },
+        "platform_approval": {
+          "const": false
+        }
+      }
+    }
+  },
+  "$defs": {
+    "oid": {
+      "type": "string",
+      "pattern": "^([0-9a-f]{40}|[0-9a-f]{64})$"
+    },
+    "file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "git_object",
+        "mode"
+      ],
+      "properties": {
+        "git_object": {
+          "$ref": "#/$defs/oid"
+        },
+        "mode": {
+          "enum": [
+            "100644",
+            "100755"
+          ]
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "commit",
+        "files"
+      ],
+      "properties": {
+        "commit": {
+          "$ref": "#/$defs/oid"
+        },
+        "files": {
+          "type": "object",
+          "maxProperties": 500,
+          "additionalProperties": {
+            "$ref": "#/$defs/file"
+          }
+        }
+      }
+    },
+    "document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "sha256",
+        "text"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "text": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

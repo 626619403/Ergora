@@ -55,6 +55,7 @@
       "tests/test_processes.py",
       "tests/test_project_configuration.py",
       "tests/test_review_dag_runtime.py",
+      "tests/test_review_packets.py",
       "tests/test_task_inputs.py",
       "tests/test_task_mcp.py",
       "tests/test_task_plan.py",

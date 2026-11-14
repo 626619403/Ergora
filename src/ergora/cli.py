@@ -52,6 +52,23 @@ def parser() -> argparse.ArgumentParser:
     result.add_argument("--version", action="version", version=__version__)
     result.add_argument("--home", type=Path, help="Persistent state directory (default: ERGORA_HOME, LocalAppData on Windows, or XDG data)")
     commands = result.add_subparsers(dest="command", required=True)
+    review = commands.add_parser("review", help="Prepare and verify exact local review material without state, services or agents")
+    operations = review.add_subparsers(dest="operation", required=True)
+    preparing = operations.add_parser("prepare", help="Read full local Git objects; never checkout, fetch or execute target code")
+    preparing.add_argument("repository", type=Path)
+    preparing.add_argument("--repository-id", required=True, help="Operator-asserted repository identity; not authenticated")
+    preparing.add_argument("--base", required=True, help="Full target commit ID")
+    preparing.add_argument("--head", required=True, help="Full candidate commit ID")
+    preparing.add_argument("--comparison", choices=("merge-base", "base"), default="merge-base")
+    preparing.add_argument("--requirements", type=Path, required=True)
+    preparing.add_argument("--context", action="append", default=[], help="Exact repository-relative caller/config file; repeatable")
+    preparing.add_argument("--evidence", action="append", type=Path, default=[], help="Operator-supplied UTF-8 check output; repeatable, not trusted automatically")
+    preparing.add_argument("--max-source-bytes", type=int, default=1_000_000, help="Full Git material limit, up to 10000000; no truncation")
+    preparing.add_argument("--directory", type=Path, required=True, help="New directory; never overwrites an existing packet")
+    for name in ("verify", "read"):
+        operation = operations.add_parser(name, help="Offline integrity check; does not authenticate Git origin or checks")
+        operation.add_argument("directory", type=Path)
+        operation.add_argument("--sha256", help="Independently obtained packet.json SHA256")
     handoff = commands.add_parser("handoff", help="Verify portable evidence without services or local state")
     operations = handoff.add_subparsers(dest="operation", required=True)
     for name in ("verify", "read"):
@@ -701,7 +718,18 @@ def main(argv: list[str] | None = None) -> int:
         return reference.workflow(argv[1:])
     args = parser().parse_args(argv)
     try:
-        if args.command == "handoff":
+        if args.command == "review":
+            from . import review_packets
+
+            if args.operation == "prepare":
+                output = review_packets.prepare(args.repository, repository_id=args.repository_id, base=args.base,
+                    head=args.head, requirements=args.requirements, destination=args.directory,
+                    context_paths=args.context, evidence=args.evidence, comparison=args.comparison,
+                    max_source_bytes=args.max_source_bytes)
+            else:
+                operation = review_packets.read if args.operation == "read" else review_packets.verify
+                output = operation(args.directory, sha256=args.sha256)
+        elif args.command == "handoff":
             from . import handoff
 
             output = (handoff.verify(args.path, sha256=args.sha256) if args.operation == "verify" else

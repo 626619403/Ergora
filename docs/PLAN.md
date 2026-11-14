@@ -4,7 +4,7 @@
 
 ## 当前检查点
 
-**当前检查点：Q0已精确交付，下一片Q1.1精确本地PR／MR审查包。** 用户新增要求见[Q计划](plans/2026-11-15-domain-review-optimization-quality.md)，[逐步交付](delivery/2026-11-15-domain-review-optimization-quality.md)。基线871cc4b，计划和两份一手研究已普通发布 `7ed4391693510d9c69bb57ffddeffd8ddafec8e7`，六文档／完整Ref及原独立固定发布补核通过；文档检查／自身模板真实调用和新独立本地／发布两轴approve，0实质finding。原push文档过滤适用，不声明新产品CI成功。本片未改产品、不关闭真实B3；领域PR／MR组合、按瓶颈选方向与连续实验循环待按Q1–Q6实施，每步更新计划和交付。
+**当前检查点：Q1.1 精确本地 PR／MR 审查包实施中。** Q0 已精确交付；当前固定基线 `eecd90aa70c9268144af1161ade9076790dabf92`，见[具体计划](plans/2026-11-15-local-review-packets.md)／[逐步交付](delivery/2026-11-15-local-review-packets.md)。先提取原完整 Git 资料读取供正式 executor 与离线入口共用，不创建第二任务／批准系统；已实现离线入口与共有读取，r1 安装四 suite 70 项通过；自身模板与独立评审发现聚合资料预算／同提交文件表两项问题，已修并保留实红；r2 安装 38 项／原 full 材料通过、614 源／包／安装逐字匹配，原自身模板 r2 真实 Codex approve，新独立本地两轴 approve／R1–R2 关闭，待精确发布／自己的 CI。按用户补充，[Q 总计划](plans/2026-11-15-domain-review-optimization-quality.md)保留 kernel 专家评估节点，允许其判断无需算子干预。真实 B3／完整 Forge 等原开放条件保持；每个完成步骤更新本页与交付。
 
 **前一节点G1当前功能的安装与公开交接已完成。** 开发分支`refactor/architecture-foundations`，不合main。产品固定506cc57的611文件／283参考；G1b安装／升级／匹配回退和日常入口已精确交付6c7c45f，自己的CI43589988699及原独立终核通过。G1c七用户手册／新路径新项目重建和G1d-CI单项过滤共同发布77d1736，自己的CI43591668528八job／30必要步骤、原两reviewer本地／固定发布／CI终态两轴均approve，开放0／0。详见[G1总交接](plans/2026-11-14-integrated-handoff.md)。
 
@@ -31,7 +31,7 @@ W1仅验源码提案与交接：共享仓库HEAD／213条status字节保持，�
 
 ## 下一可执行项
 
-**新增优先工作Q**：先完成[领域审查／循环优化／质量计划](plans/2026-11-15-domain-review-optimization-quality.md)的研究与独立评审，再分片补本地精确PR／MR包、预训练／后训练专长组合、源码锚定流程图与按瓶颈选择、成对基线／多轮证据、组件协议及严格发布验收。下列旧节点保留其原完成状态和外部条件，不因新计划重做已验交付。
+**新增优先工作Q**：[领域审查／循环优化／质量计划](plans/2026-11-15-domain-review-optimization-quality.md)的研究与独立评审已完成；当前实施 Q1.1 本地精确 PR／MR 包，之后分片补预训练／后训练专长组合、源码锚定流程图与按瓶颈选择、成对基线／多轮证据、组件协议及严格发布验收。下列旧节点保留其原完成状态和外部条件，不因新计划重做已验交付。
 
 1. **F8-H3b实际续接**：精确交付完成，自己的CI与原独立两轴终核通过，详见[计划](plans/2026-11-14-harness-session-continuation.md)／[交付](delivery/2026-11-14-harness-session-continuation.md)。r3包561／两RECORD／283、安装133通过／12跳过；实际SDK四场景与真实模型两调用成功、自身approve。原两个P2及失败保留并已修复。冻结原项目／资料／权限／后端／schema，原home／cwd／session不分叉；unknown不自动重发，正式恢复归原owner。
 2. **F9实验导航**：F9a／b1／b2／[b3取消与停止观察](delivery/2026-11-14-training-cancellation.md)已精确交付。F9b4a基线初始化已普通发布、自有CI及原结构轴终核通过；[F9b4b runner登记](plans/2026-11-14-training-runner.md)完成最终包、安装40项／实际CLI与页面／SDK-free基线／原件及收尾／自身模板、新独立两轴最终本地通过0／0，已普通发布并核完整Ref，自己的CI43523861953八job／30步骤及原结构轴终核通过。F9b4c C1最终包／15项／实际CLI HTTP、新独立两轴、普通发布和自己的CI及原结构轴终核均通过；C2页面已完成最终本地、新独立两轴、固定发布和自己的CI及原结构轴终核；F9c C1换行修正与C2已精确交付；[C3页面](plans/2026-11-14-training-evidence-console.md)已完成本地与独立终核／发布及自己的CI，F9d完整旅程另验；复用原训练owner，不把CPU合同当真实GPU验收。

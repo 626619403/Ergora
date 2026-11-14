@@ -14,6 +14,7 @@ Ergora 用任务合同明确目标、角色、修改范围和验收标准，把�
 |---|---|
 |先安装、设计关系和查看模板|[快速试用](#快速试用)与[安装手册](docs/USAGE.md)|
 |治理仓库、开发或行为保持重构|[三模板旅程](docs/TEMPLATE_WALKTHROUGHS.md)与[重构配方](docs/USAGE.md#使用重构配方)|
+|准备可离线核对的本地 PR／MR 材料|[精确本地审查包](docs/LOCAL_REVIEW.md)：完整 Git 源、需求与显式上下文；采集本身不调用审查模型|
 |诊断训练性能、选择优化方向并准备实验|[训练手册](docs/TRAINING.md)|
 |把复盘结果用于下一次任务|[记忆／Skill／工作流完整改进旅程](docs/IMPROVEMENT_WORKFLOW.md)|
 |换电脑或恢复历史任务|[换机说明](docs/USAGE.md#换机与新项目重建)与[联合备份](docs/BACKUP_RECOVERY.md)|
