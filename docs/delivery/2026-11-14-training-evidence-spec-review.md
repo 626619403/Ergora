@@ -2,7 +2,7 @@
 
 日期：2026-11-14。评审者：fresh-context 独立 agent `training_evidence_spec_review`。先读 `AGENTS.md`、[主计划](../PLAN.md)、[C1 原始合同](../plans/2026-11-14-training-evidence.md)、maintainable-project-delivery 及 independent-review brief，再读实际差异、原训练／archive／gate／release owner，最后核作者交付与验收原件。没有继承实现对话；只读产品、Git 和已有原件，仅写本文。未安装、重跑 suite、启动服务、访问远端、执行训练或修改业务项目。
 
-**最终本地结论：需求／正确性通过，首轮验收测试 Host 问题已由最终 r2 实跑关闭，开放 finding 0。** 当前产品、r2 包／安装四 suite、真实 CLI／loopback HTTP／SDK-free、原件保持与收尾、自身原模板均已独立补核；所查维护性无新增 finding，但不替代另一结构轴结论。普通精确发布、完整 Ref 与本片自己的 CI 仍待，不能称全部精确交付完成。前片 C2 的发布／CI 记账不构成本片验证。
+**最终本地及固定发布身份结论：需求／正确性通过，首轮验收测试 Host 问题已由最终 r2 实跑关闭，开放 finding 0。** 当前产品、r2 包／安装四 suite、真实 CLI／loopback HTTP／SDK-free、原件保持与收尾、自身原模板均已独立补核；所查维护性无新增 finding，但不替代另一结构轴结论。固定候选 `c3c7c3e218e9d2efc89498e8c208bf5981b9a0d9` 的 23 个 Git blob、普通精确发布与原完整 Ref 已补核，本片自己的 CI 执行结果仍待，不能称全部精确交付完成。前片 C2 的发布／CI 记账不构成本片验证。
 
 ## 固定身份与检查范围
 
@@ -76,3 +76,24 @@
 直接重算[公开证据](evidence/2026-11-14-training-evidence.json)所引 **54** 份私有原件的长度／SHA，全部相符；失败与成功均保留。另修正本文三处源码链接由本地 `:行号` 格式改成仓库 Markdown 的 `#L行号`，本轮按完整相对路径重新确认文件存在与行号有效。
 
 **最终本地需求／正确性通过，首轮 P2 已关闭，开放产品／验收 finding 0；所查维护性无新增问题。** 普通精确发布、原完整 Ref 与本片自己的 CI 尚待。C2 批准／C3 页面、Temporal 终态、实际集成复验、采用、F9d／B3、真实训练／GPU／质量／性能及原生 Windows 均保持各自未验范围。
+
+## 固定 Git 普通发布身份补核
+
+本节关闭上一节的普通发布／原完整 Ref 待验；本片自己的 CI 执行继续单独待核。本轮只读固定 Git 对象和保存的私有发布／collection 原件，没有读取后续产品工作树，没有访问远端、安装、重跑测试或启动服务；只补本文。候选为 **`c3c7c3e218e9d2efc89498e8c208bf5981b9a0d9`**，直接读 commit 对象，唯一父提交恰为原基线 **`2181cc5c6ab92ac01664f8e769298cce350f65a5`**，题为 `feat: inspect native training evidence and verified text windows`。
+
+亲读固定父→候选的完整变更路径，恰为 **23** 件，与 `static-final-r1.json.files` 集合完全相同；以 `git cat-file --batch` 直接取固定候选 blob 原字节，23 件大小／SHA 全部匹配该清单。固定九件产品／测试／CI 组合仍为 **`bca645238f08d12e639da8b8f3732cdda651bd31e5aae735b97ee025a345aca9`**。同时读取固定候选全 **573** 个产品 blob，其路径集合与前述最终 r2 wheel 完全相同，每件内容逐字相等；wheel SHA 仍为 **`d67ced0f3f65e21db69ee34a113552e9af64413f3384edcb5efe080dc785a98a`**，候选内 **283** 冻结文件逐件匹配固定 manifest。因此前述 r2 的 46 项与实际入口验收对应正式发布产品，没有将后续工作树借入候选身份。
+
+固定候选内本文仍为上述最终本地版 **14,148B**、SHA **`8790d876a6507f94e4abc555cbdbe00c2d57a83b85ae33ddd1ecd3beb52fd8f7`**；本轮追加不改变该已提交版本。候选内[公开证据](evidence/2026-11-14-training-evidence.json)为 **14,613B**、SHA **`cbdf72ddba2502f507856d1fbc5657884cfd25465f18893b28dffb9148c07bcc`**，其 `publication.state: not_committed` 是提交前历史状态，未冒称当时已知后续发布结果。依该固定 blob 逐一重算所引 **57** 份私有原件的大小／SHA，全部相符；相对前轮 54 份，只增加三份 CI collection 原件。固定父→候选 `git diff --check` 退出 0、无诊断；依候选 Git tree 核改动 Markdown 的 **223** 个本地文件链接全部存在，没有用当前工作树路径替代。
+
+亲读原 `commit.py`、`publish.py` 与三份发布回执。提交脚本先核原基线与开发分支，完整 staged 路径集合与 static 清单相等、staged whitespace 通过，提交后再次读固定 blob；原 commit 退出 0，记录完整候选及 23 blob。原 push argv 为普通 `HEAD:refs/heads/refactor/architecture-foundations`，未带 force／mirror，没有合入 main；退出 0，原回复记录 `2181cc5..c3c7c3e` 前进。随后原 `ls-remote` 退出 0、stderr 为空，stdout 精确为完整候选 SHA 与完整 `refs/heads/refactor/architecture-foundations`。这是原回执记录时的远端事实，本轮没有查询现在的远端，也没有用本地 tracking ref 替代。
+
+|发布原件（相对私有根）|字节|SHA256|
+|---|---:|---|
+|`static-final-r1.json`|5,331|`98e8af1e133d339dac232468236676a716bad64d6869334222367a8036ca550d`|
+|`commit-r1.json`|1,090|`1d479044ac963c8bdeba75da7a5697d4a22c2a12c8e314a8c868909c312f531c`|
+|`push-r1.json`|749|`d88bd2518ae0773c3f6ef28ec4895d89951dad93a5407f17dbe0712d6f6eda52`|
+|`ref-r1.json`|738|`f6be7625d1b1748afe3be7d3e9b19fe95db3ddb74e5fd5cb53883e6fe6a424cc`|
+
+新增三份 `ci-group-collect-r1/{request.json,result.json,stdout.txt}` 已直接读原内容：argv 明确为 `--ci-group 5 --collect-only`，原 stdout 是 **389／1,842 collected、1,453 deselected，6.75s**，原进程退出 0。此结果仅证明分组收集，没有执行这 389 项，也不是本片自己的 CI job／step 终态；固定公开证据的 `execution_claim: false` 与原件一致。
+
+**本地需求／正确性、固定产品身份、普通发布与原完整 Ref 均通过，开放 finding 仍为 0；所查维护性无新增问题。本片自己的 CI 执行结果尚待单独终核。** 前述平台、真实训练／GPU／质量／性能、批准／集成复验／采用及后续片范围保持。

@@ -29,3 +29,11 @@ HTTP为`GET /api/projects/{project}/training/{experiment}/evidence`，可带arti
 C1最终r2 573／两RECORD／283及当前源码一致，安装四suite46通过／38.99秒，真实CLI四操作、实际SDK-free、loopback HTTP六GET／零mutation、14／37原件保持与原monitor收尾、自身原模板approve已完成。首轮Host测试P2修后关闭，原两轮源码测试准备／预期及两私有入口脚本失败原件保留。新独立两轴最终原件补核与普通精确发布／自己的CI待。
 
 最终新的独立两轴本地通过、开放0／0；原Host测试P2由r2关闭，报告链接已修，产品bca645…不变。原分组5仅collection389／1842，1453 deselected，不称执行。普通提交／推送、固定发布身份及自己的CI待，C2／C3另片。
+
+C1已普通发布`c3c7c3e218e9d2efc89498e8c208bf5981b9a0d9`，23件Git blob与最终清单逐字一致，完整远端Ref匹配。公开证据增四份静态／commit／push／ref原件摘要；原两轴固定发布补核与自己的CI待。产品／测试／CI组合及最终包不变。
+
+原两轴已直接核固定c3c7c3e的23blob／573产品／283与57原引用、普通push及完整Ref，通过0／0；自己的CI43532534314已发现，六Linux组必要步骤成功、Windows在途，尚不作完整终态成功主张。
+
+自己的CI43532534314已终态Failure：六Linux组必要步骤全部success；Windows原回归1030通过／756跳过／16 subtests，一项新正例失败。原artifact按Windows写入为CRLF，产品按原字节UTF-8解码正确返回24字符；测试read_text通用换行归一化后期待22。应修测试为read_bytes().decode，保留原fixture与产品字符语义；先本地CRLF复现／修后验证，随下个完整候选再验Windows，不称原候选CI成功。
+
+换行预期最小修正已做：仅test用原bytes.decode；私有windows-fix-r2在原C1已安装573产品上用CRLF归档，原测试明确复现24／22失败，修后同场景1通过。windows-fix-r1误resolve虚拟环境解释器而缺pytest，原失败保留、不称复现成功。后续C1修正与C2完整候选一并精确发布，再验该候选自己的Windows／Linux；原c3的Failure保持。

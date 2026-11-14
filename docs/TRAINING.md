@@ -205,7 +205,27 @@ ergora training evidence my-project EXPERIMENT_ID \
 
 `archive.evidence.artifacts`保留原路径和声明摘要，`artifact_content_status: not_read`明确尚未核所有文件内容。指定其中一个artifact和本次完整evidence SHA后，入口先读整个文件并校验原SHA，再返回UTF-8文本的Unicode字符窗口；下一段沿`next_offset`读取。JSON每份最多1MiB、所选artifact最多16MiB、返回窗口最多65,536字符、总响应最多8MiB；超限／二进制／NUL／摘要漂移／symlink或越界明确拒绝，不截断后宣称完整。大型或二进制profile继续使用原索引位置与对应工具，不经此文本入口解码。
 
-HTTP同样使用`GET /api/projects/{project}/training/{experiment}/evidence`，可选`artifact / evidence_sha256 / offset / limit`。此操作不发RPC、不重跑comparator／runner、不生成owner receipt、不批准或采用。它核保存材料的身份并供人审阅；真实质量、作者可信性、当前批准资格与实际集成效果仍须原独立流程。精确owner批准的统一CLI／页面入口仍在后续片；目前继续按原参考手册操作，勿把“已归档”当“已采用”。
+HTTP同样使用`GET /api/projects/{project}/training/{experiment}/evidence`，可选`artifact / evidence_sha256 / offset / limit`。此操作不发RPC、不重跑comparator／runner、不生成owner receipt、不批准或采用。它核保存材料的身份并供人审阅；真实质量、作者可信性、当前批准资格与实际集成效果仍须原独立流程。精确owner批准CLI／HTTP见下一节；图形批准入口在后续片接入，勿把“已归档”当“已采用”。
+
+## 精确 owner 批准与投递恢复
+
+先阅读原归档证据，明确确认项目 revision、原 `submission` 的完整 run ID 和完整 evidence SHA：
+
+```bash
+ergora training approve my-project EXPERIMENT_ID --revision REVISION \
+  --run-id RUN_ID --evidence-sha256 EVIDENCE_SHA256 --confirm
+ergora training approval my-project EXPERIMENT_ID
+ergora training resume-approve my-project EXPERIMENT_ID --revision REVISION \
+  --intent-sha256 ORIGINAL_INTENT_SHA256 --confirm
+```
+
+调用者以当前 Linux 用户身份作出 owner 决策；本地可信项目／当前用户边界仍适用，不是团队多用户认证。原批准 CLI 检查 AWAITING_RELEASE、binding与evidence，生成私有 owner receipt；原 release 客户端发送，原 adapter 决定授权和本地集成复验票据。应用记录 `ergora/training-approvals/EXPERIMENT_ID.*.json`，须与原 `training/approvals/`、start／job／archive及Temporal history一起保存。
+
+`prepared` 表示原意图已保存，可能已有原receipt而尚未发送；显式恢复保留其原字节与到期时间，不续期。`owner_receipt_status: unknown`表示原receipt创建尝试已保存但尚无ready事实；若原件缺失，恢复拒绝重新生成，由owner对账。`unknown` 表示attempt已保存、投递尚未确认；恢复只在原固定run历史查完整release信号，未找到仍保持unknown，不重复发送。`requested` 表示发送ack或完整历史匹配，仅证明投递，`authorization_status: not_evaluated`，不表示原owner采纳、票据已创建、真实集成通过或候选采用。分别用原 `status` 与 `evidence` 核对后续事实。`approval` 不需要SDK／服务，成功读取退出0；`approve`／`resume-approve`仅requested退出0、其他记录状态退出1，输入／运行错误沿通用退出2。
+
+一个实验仅有一个本入口批准意图，不提供更换request ID绕过unknown。首次发送前来源／baseline必须保持、不得有fence；过期／撤销／非私有或漂移的原receipt保持原件并拒绝，不自动续期或批准另一个evidence。再次人工决策须先由原owner明确对账，本入口不自动覆盖；不要删除checkpoint或换实验ID绕过。发送后恢复不要求已变化／删除的manifest、runner、baseline或archive仍在，不会因此新发信号。
+
+HTTP复用同一用例：`GET .../training/{experiment}/approval`；`POST .../approve`（`revision / run_id / evidence_sha256 / confirm: true / timeout`）；`POST .../resume-approve`（`revision / intent_sha256 / confirm: true / timeout`），timeout为1–60秒。Windows原生支持本地已保存记录读取；批准与恢复使用登记的Linux／WSL2环境。图形批准入口在后续片接入。
 
 ## 从专家提案填写原实验合同
 

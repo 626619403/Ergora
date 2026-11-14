@@ -87,10 +87,23 @@
   "independent_review": {
     "requirements": "final local passed; Host test P2 fixed and independently closed; zero open findings",
     "structure": "final local passed; zero open findings",
-    "publication_and_own_ci": "pending exact ordinary publication and own CI"
+    "publication_and_own_ci": "both original axes passed fixed publication; own CI43532534314 failed one Windows newline expectation; fix and corrected candidate CI pending"
   },
   "publication": {
-    "state": "not_committed"
+    "state": "pushed",
+    "candidate": "c3c7c3e218e9d2efc89498e8c208bf5981b9a0d9",
+    "verified_git_blobs": 23,
+    "ordinary_push": true,
+    "full_remote_ref_matches": true,
+    "own_ci": {
+      "run_id": 43532534314,
+      "url": "https://github.com/626619403/Ergora/actions/runs/43532534314",
+      "run_status": "Failure",
+      "jobs": 8,
+      "required_steps": 30,
+      "all_required_steps_passed": false,
+      "cause": "Windows positive Unicode count expectation used universal-newline read_text; artifact is byte-bound CRLF and product correctly counted decoded original characters. One failure, 1030 pass, 756 skip, 16 subtests; fix pending."
+    }
   },
   "raw_evidence": {
     "private_base": ".ergora/checks/training-evidence/",
@@ -379,6 +392,181 @@
         "path": "ci-group-collect-r1/stdout.txt",
         "bytes": 39923,
         "sha256": "cfb065c1648c9d000c77795174f09ee10b4552b5e0ca9374c29b1a79dc485674"
+      },
+      {
+        "path": "static-final-r1.json",
+        "bytes": 5331,
+        "sha256": "98e8af1e133d339dac232468236676a716bad64d6869334222367a8036ca550d"
+      },
+      {
+        "path": "commit-r1.json",
+        "bytes": 1090,
+        "sha256": "1d479044ac963c8bdeba75da7a5697d4a22c2a12c8e314a8c868909c312f531c"
+      },
+      {
+        "path": "push-r1.json",
+        "bytes": 749,
+        "sha256": "d88bd2518ae0773c3f6ef28ec4895d89951dad93a5407f17dbe0712d6f6eda52"
+      },
+      {
+        "path": "ref-r1.json",
+        "bytes": 738,
+        "sha256": "f6be7625d1b1748afe3be7d3e9b19fe95db3ddb74e5fd5cb53883e6fe6a424cc"
+      },
+      {
+        "path": "ci-discovery-r1.json",
+        "bytes": 437,
+        "sha256": "6e03cb7e6aee678ff0b44ccaf94bb11845e306fb1756e38d6d67ea69e36f2982"
+      },
+      {
+        "path": "ci-ui-metadata-r1.json",
+        "bytes": 2128,
+        "sha256": "93196b76587a2771b2603d635e9ed4ec2561027a4fad14a405b5b495a07cf6d5"
+      },
+      {
+        "path": "ci-job-batch-r1/body.json",
+        "bytes": 2724,
+        "sha256": "80056d6a99e0c41879c7fdd6e4729e1cbd8080c59f1906425b2495968bcf75b7"
+      },
+      {
+        "path": "ci-job-batch-r1/receipt.json",
+        "bytes": 766,
+        "sha256": "8bcdc0a0d06c69e7f36f7b319a9df0f9158bf37371eaf59ab5412ff9a5e95474"
+      },
+      {
+        "path": "ci-run-html-r3/page.html",
+        "bytes": 223195,
+        "sha256": "cb17e0abb7261332f2453d9c1f0d15f8f930587691925d7a4aa47e3bfd0b7b5e"
+      },
+      {
+        "path": "ci-run-html-r3/receipt.json",
+        "bytes": 5969,
+        "sha256": "ac56efc815f09feb59e6df4b99ee4f1d83591bc1674177ece46fbbf86497f0e5"
+      },
+      {
+        "path": "ci-terminal-r3.json",
+        "bytes": 13358,
+        "sha256": "aba03244b7ec90a2acdcfbe7d236d254f7a16418518d3dde01e0dc777b15a1c6"
+      },
+      {
+        "path": "ci-job-132253517296-html-r1/page.html",
+        "bytes": 158902,
+        "sha256": "89b0a088b4f9b5da8e3feb450a1e3345e54e6225be5d7404cabed2f1f5d3fd62"
+      },
+      {
+        "path": "ci-job-132253517296-html-r1/receipt.json",
+        "bytes": 5993,
+        "sha256": "9b7cdc48cfc22c822f75f24200f11ca25e6e65b83d1cec764d83592bd5f55718"
+      },
+      {
+        "path": "ci-job-132253562998-html-r1/page.html",
+        "bytes": 162592,
+        "sha256": "fa52783272b09ad03032cf769daf4b4daa2931b728e1b2e846eb0bd645ab3b62"
+      },
+      {
+        "path": "ci-job-132253562998-html-r1/receipt.json",
+        "bytes": 5999,
+        "sha256": "1f9428bae778de5714e2d6500e978c5b42d23d7b578266c826a7fec0726b1813"
+      },
+      {
+        "path": "ci-job-132253563056-html-r1/page.html",
+        "bytes": 162592,
+        "sha256": "d954bc9ca0034d8cf1fbc2b0d79129a5b974596f12cbb68b4e0472c77f3e65ad"
+      },
+      {
+        "path": "ci-job-132253563056-html-r1/receipt.json",
+        "bytes": 5997,
+        "sha256": "c2b29c414ed29b0c63d3d0a0e798c9898f39ca24b414c67c63221d9a59dd9dde"
+      },
+      {
+        "path": "ci-job-132253563037-html-r1/page.html",
+        "bytes": 162592,
+        "sha256": "656cff86478329ae48219e1c87b33e8274262d63d86615573d185f7395825bb0"
+      },
+      {
+        "path": "ci-job-132253563037-html-r1/receipt.json",
+        "bytes": 6007,
+        "sha256": "c9cabe88ea912e1253f6157f3b796511bf416babc6c44517caca52ae8462e0f6"
+      },
+      {
+        "path": "ci-job-132253562972-html-r1/page.html",
+        "bytes": 162591,
+        "sha256": "99a62df32939b5cc8383f967368020502db91f1006adf917543ce70ff3d28d65"
+      },
+      {
+        "path": "ci-job-132253562972-html-r1/receipt.json",
+        "bytes": 5995,
+        "sha256": "9c9c72eb85569c7a42cae928965b5807d8dd7d4dda870aaf9a94885c241ff8d7"
+      },
+      {
+        "path": "ci-job-132253562939-html-r1/page.html",
+        "bytes": 162592,
+        "sha256": "bb6a97af2fefd8752f111a4196b3bf7d784ed3bbdedc3a04eee93b09091cdd53"
+      },
+      {
+        "path": "ci-job-132253562939-html-r1/receipt.json",
+        "bytes": 5991,
+        "sha256": "f0ac920167761538b57c38c77f5daeb358e5a2a5dda5f5e0491183c49fdbd679"
+      },
+      {
+        "path": "ci-job-132253562990-html-r1/page.html",
+        "bytes": 162592,
+        "sha256": "2ca7375296a250094a26a08985a6a2bec11a3ba5ae25e858bbe61ad28935d31b"
+      },
+      {
+        "path": "ci-job-132253562990-html-r1/receipt.json",
+        "bytes": 6001,
+        "sha256": "a22bb824992d41d034bda6eedeac69145e792372b6be7e0f99457a27dca2a595"
+      },
+      {
+        "path": "ci-job-132253563032-html-r5/page.html",
+        "bytes": 169779,
+        "sha256": "e3513bee032a9e600814faaeaf3364b7aafd1641020ba6464de7e91b52d4580e"
+      },
+      {
+        "path": "ci-job-132253563032-html-r5/receipt.json",
+        "bytes": 5993,
+        "sha256": "691ca8f8d2b6a877ccf13b06929fb8cf0be8f749ec5ef3389218c8fa4b759e2e"
+      },
+      {
+        "path": "windows-fix-r1/results.json",
+        "bytes": 1018,
+        "sha256": "82dd92ebfaf31f4ca7eff83ebd4dabc16315a6905bb36ca261fb10f12c63d031"
+      },
+      {
+        "path": "windows-fix-r1/before.stderr",
+        "bytes": 112,
+        "sha256": "a775c4b64867aa153f0dbc1acdd101d378a238a63eb881607c6cf70e28479966"
+      },
+      {
+        "path": "windows-fix-r1/after.stderr",
+        "bytes": 112,
+        "sha256": "a775c4b64867aa153f0dbc1acdd101d378a238a63eb881607c6cf70e28479966"
+      },
+      {
+        "path": "windows-fix-r2/results.json",
+        "bytes": 1034,
+        "sha256": "275a1750f57d7bd85ba0a911ac203ed2ca7ad6df5ef0ab0eebca151f717e3b0a"
+      },
+      {
+        "path": "windows-fix-r2/before.stdout",
+        "bytes": 894,
+        "sha256": "e021476ccc608fcacce60126ef562cde45b2f1e57b6722cbce3ea180f5f45607"
+      },
+      {
+        "path": "windows-fix-r2/before.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "windows-fix-r2/after.stdout",
+        "bytes": 98,
+        "sha256": "c2f051c7ed60a4b262e463dafd27e66ad9009ff5b296ceb2dd964d6bd8a496e6"
+      },
+      {
+        "path": "windows-fix-r2/after.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       }
     ]
   },
@@ -395,5 +583,16 @@
     "deselected": 1453,
     "collection_seconds": 6.75,
     "execution_claim": false
+  },
+  "windows_newline_fix": {
+    "test": "Original artifact text expectation reads original bytes then UTF-8 decode; no universal-newline normalization",
+    "product_change": false,
+    "local_crlf_original_installed_product": {
+      "before": "1 failed: original CRLF character count 24 vs normalized test22",
+      "after": "1 passed",
+      "same_original_c1_installed_package": true
+    },
+    "retained_private_failure": "windows-fix-r1 resolved venv executable symlink to base interpreter without pytest; no valid reproduction claim",
+    "corrected_candidate_and_own_ci": "pending combined C1 correction / C2 candidate"
   }
 }

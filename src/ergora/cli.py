@@ -517,6 +517,19 @@ def parser() -> argparse.ArgumentParser:
             operation.add_argument("--revision", type=int, required=True)
             operation.add_argument("--manifest-sha256" if name == "start" else "--intent-sha256", required=True)
             operation.add_argument("--timeout", type=int, default=20)
+    for name in ("approval", "approve", "resume-approve"):
+        operation = operations.add_parser(name, help="Read or explicitly confirm the original owner decision; delivery is not authorization")
+        operation.add_argument("project")
+        operation.add_argument("experiment_id")
+        if name != "approval":
+            operation.add_argument("--revision", type=int, required=True)
+            operation.add_argument("--confirm", action="store_true", required=True)
+            operation.add_argument("--timeout", type=int, default=20)
+            if name == "approve":
+                operation.add_argument("--run-id", required=True)
+                operation.add_argument("--evidence-sha256", required=True)
+            else:
+                operation.add_argument("--intent-sha256", required=True)
     for name in ("cancellation", "cancel", "resume-cancel", "stop-status"):
         operation = operations.add_parser(name)
         operation.add_argument("project")
@@ -982,6 +995,15 @@ def main(argv: list[str] | None = None) -> int:
             elif args.operation == "resume-start":
                 output = training.resume_start(State(args.home), args.project, args.experiment_id, args.revision,
                                                args.intent_sha256, timeout=args.timeout)
+            elif args.operation == "approval":
+                output = training.approval(State(args.home), args.project, args.experiment_id)
+            elif args.operation == "approve":
+                output = training.approve(State(args.home), args.project, args.experiment_id, args.revision,
+                                           run_id=args.run_id, evidence_sha256=args.evidence_sha256,
+                                           confirm=args.confirm, timeout=args.timeout)
+            elif args.operation == "resume-approve":
+                output = training.resume_approve(State(args.home), args.project, args.experiment_id, args.revision,
+                                                  args.intent_sha256, confirm=args.confirm, timeout=args.timeout)
             elif args.operation == "cancellation":
                 output = training.cancellation(State(args.home), args.project, args.experiment_id, args.request_id)
             elif args.operation == "cancel":
@@ -998,6 +1020,8 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(output, ensure_ascii=False, indent=2))
             if args.operation in ("start", "resume-start"):
                 return 0 if output["status"] == "submitted" else 1
+            if args.operation in ("approve", "resume-approve"):
+                return 0 if output["status"] == "requested" else 1
             if args.operation in ("cancel", "resume-cancel"):
                 return 0 if output["status"] in ("requested", "already_closed") else 1
             return 0

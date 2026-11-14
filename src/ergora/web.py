@@ -189,6 +189,18 @@ class TrainingResumeStartPayload(Payload):
     timeout: int = Field(default=20, strict=True, ge=1, le=60)
 
 
+class TrainingApprovalPayload(Payload):
+    revision: int = Field(strict=True, ge=1)
+    run_id: str = Field(min_length=1, max_length=128)
+    evidence_sha256: str = Field(pattern="^[0-9a-f]{64}$")
+    confirm: bool = Field(strict=True)
+    timeout: int = Field(default=20, strict=True, ge=1, le=60)
+
+
+class TrainingResumeApprovalPayload(TrainingResumeStartPayload):
+    confirm: bool = Field(strict=True)
+
+
 class TrainingCancelPayload(Payload):
     revision: int = Field(strict=True, ge=1)
     request_id: str = Field(min_length=1, max_length=120)
@@ -554,6 +566,20 @@ def create_app(home: Path | None = None) -> FastAPI:
     @application.post("/api/projects/{project_id}/training/{experiment_id}/resume-start")
     def training_resume_start(project_id: str, experiment_id: str, body: TrainingResumeStartPayload):
         return training.resume_start(state, project_id, experiment_id, body.revision, body.intent_sha256, timeout=body.timeout)
+
+    @application.get("/api/projects/{project_id}/training/{experiment_id}/approval")
+    def training_approval(project_id: str, experiment_id: str):
+        return training.approval(state, project_id, experiment_id)
+
+    @application.post("/api/projects/{project_id}/training/{experiment_id}/approve")
+    def training_approve(project_id: str, experiment_id: str, body: TrainingApprovalPayload):
+        return training.approve(state, project_id, experiment_id, body.revision, run_id=body.run_id,
+                               evidence_sha256=body.evidence_sha256, confirm=body.confirm, timeout=body.timeout)
+
+    @application.post("/api/projects/{project_id}/training/{experiment_id}/resume-approve")
+    def training_resume_approve(project_id: str, experiment_id: str, body: TrainingResumeApprovalPayload):
+        return training.resume_approve(state, project_id, experiment_id, body.revision, body.intent_sha256,
+                                      confirm=body.confirm, timeout=body.timeout)
 
     @application.get("/api/projects/{project_id}/training/{experiment_id}/cancellations/{request_id}")
     def training_cancellation(project_id: str, experiment_id: str, request_id: str):

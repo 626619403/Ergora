@@ -63,7 +63,8 @@ flowchart TB
 |`reference_training_submission`、`reference_training_cancellation`、`reference_training_runtime`|原训练start身份、固定run取消意图与投递恢复、共享原Status／Outcome观察|取消引用原start意图与receipt，不复制大manifest；原client核binding并发送，原ClusterAdapter核job／executor；原负结果保持|
 |`reference_training_context`、`reference_training_setup`|setup与原submission共用注册身份／路径；完整baseline与runner预览及确认登记|baseline发布交原perfctl锁／原子init；runner在隔离临时CONFIG调用原register_runner预览，确认后交同一不可变writer。同内容可重试、不同内容不覆盖，不新建实验账本|
 |`reference_training_preparation`|原prepare的完整暂存预览、确认意图及三件发布／显式恢复|共用context／有界serializer，直接原prepare生成字段／Binding并发布。原state保存恢复checkpoint，status SDK-free逐件读事实；不接管不明旧文件、执行或实验状态权威|
-|`reference_history`|Task批准／取消和训练取消共用的完整signal payload分页匹配|只读固定run的原history；同原因或错误操作SHA不能补回执|
+|`reference_training_release`|固定原start／run／evidence的owner批准、原receipt／attempt与投递恢复|桥接原approve CLI和release客户端；原receipt不续期，attempt后只按完整receipt身份查原history，源漂移不重发；原adapter仍唯一授权／票据owner|
+|`reference_history`|Task批准／取消和训练批准／取消共用的完整signal payload分页匹配|只读固定run的原history；同原因或错误操作SHA不能补回执|
 |`reference`、`reference_creation_process`|随包参考资源和专用进程装载|编译／读取与执行分开；不在Web请求中直接改原生进程全局|
 |`reference_task_creation`、`reference_task_submission`、`reference_task_runtime`|原合同发布、attempt-before-send及原运行查询|操作先持久化意图，后做外部变更；原spec/memo/run必须匹配|
 |`reference_task_approval`、`reference_task_cancellation`|完整计划读取、精确批准、取消请求和投递恢复|requested是投递事实；授权采纳／外部停止需另核|

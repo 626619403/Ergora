@@ -4,7 +4,7 @@
 
 ## 结论
 
-最终本地结构复核通过；在本轴所查需求范围内实现与最终证据一致，开放阻塞 finding 为 0，非阻塞 finding 为 0。需求轴首轮窗口 `badInput` P2 已经最小修复并由 r2 实际浏览器补验关闭。最终 r2 包、basic／第三轮 lifecycle／visual、原文件和收尾、Ergora 自身原模板调用均已独立补核；固定候选 `2181cc5c6ab92ac01664f8e769298cce350f65a5` 的 16 blob／正式普通发布及原完整远端 Ref 已补核通过，本片自己的 CI 仍待，不在此宣称全部精确交付完成。
+最终本地结构复核通过；在本轴所查需求范围内实现与最终证据一致，开放阻塞 finding 为 0，非阻塞 finding 为 0。需求轴首轮窗口 `badInput` P2 已经最小修复并由 r2 实际浏览器补验关闭。最终 r2 包、basic／第三轮 lifecycle／visual、原文件和收尾、Ergora 自身原模板调用均已独立补核；固定候选 `2181cc5c6ab92ac01664f8e769298cce350f65a5` 的 16 blob／正式普通发布及原完整远端 Ref 通过。本片自己的 CI `43530156938` 已由本轴直接核原 run／八 job HTML、收据、固定 workflow／分组及 30 个必要步骤终态，Success；本结构轴的实现、发布身份和 CI 验收已收口。
 
 最终两产品路径组合 SHA256 为 `893a738a2a33ac3767be11e983afc7ee952ddb00a6fb595daea2fa6cd8b20ff5`。本轴未新增产品 finding；前两轮 lifecycle 的真实脚本失败及已发布原件保持，未把失败改写为成功。最终裁定与证据详见本文末节；此前“待验”均为当轮历史状态。
 
@@ -138,3 +138,35 @@ Ergora 自身原结构模板也已补核：实读 actual native run、packet ind
 |`ref-r1.json`|737|`14048d1e95319d46bbfd5d3cee5a8b25ecc0454025f8fd3038f71be5120c1b66`|
 
 固定发布身份补核通过，本轴开放产品 finding 仍为 0／0。本次仅更新原报告的发布记账；本片自己的 CI 尚在发现，未以 C1 的通过代替，也未对后续工作树作发布或验收主张。
+
+## 本片自己的 CI 终核
+
+本节关闭前文 CI 在途状态。终核对象仅为固定候选 `2181cc5c6ab92ac01664f8e769298cce350f65a5` 的 [Portability run 43530156938](https://github.com/626619403/Ergora/actions/runs/43530156938)。检查时当前 `HEAD` 已为后续 F9c C1 的 `c3c7c3e218e9d2efc89498e8c208bf5981b9a0d9`；本轴没有用其产品、workflow 或新分组替代 C2，也没有再次请求远端、安装或重测。
+
+实读固定 Git 对象 `.github/workflows/portability.yml` 与 `scripts/ci/linux-groups.json`，而非只读终态 summary：
+
+- 固定 workflow SHA256 为 `ec2816e893c25ff3a7f96513e677bdf53f42d90b3cd79fe585e474a27c0121b2`，固定 groups SHA256 为 `b3a2ac6610b225c419824f70cab5b81340eb6c7c58bf0c428906f9c6fe18c5a5`。固定配置是 plan＋六个 Linux 3.11 group＋一个 Windows 3.12 all，共八 job。
+- 从固定 workflow 提取必要步骤：plan 的 `Read explicit test groups`；每个 native 的 build/install、packaged reference identity、native application regression、upload observations；Windows 额外 PowerShell 5.1 installer／upgrade。Linux 的 Windows 条件步骤正常 skipped，不计必要成功项。必要步骤合计 `1 + 6×4 + 5 = 30`。
+- 直接读原 `ci-job-batch-r1/body.json`，其八个原 job ID／name／href 与 metadata 逐项一致，`totalCount=8 / hasMore=false`。batch 抓取时部分 job 仍在运行，只用于发现身份，未当作终态；该 body 与原 receipt 的 HTTP 200、完整 URL、字节数和 SHA256 相符。metadata 的来源摘要及早期 run summary 的完整候选链接也一致。
+- 直接读 `ci-run-html-r4/page.html` 与 receipt，HTML 内完整 commit 链接为 `2181cc5…`、分支为原发布分支、Status 为 `Success`；原收据 request／final URL 均为本 run，HTTP 200，213,372B，独立重算正文 SHA256 为 `c999b88730fefe5bf0e8fa2e488da0bbf42ca96c514be442c047a1356210dbad`。
+
+逐个 job 的最终原件与必要步骤补核如下；所有页面均重新核 request／final URL、HTTP 200、正文大小／SHA256 与原收据一致：
+
+|job|原 ID|最终 HTML 样本|必要成功步骤|最后必要步骤完成时间（UTC）|
+|---|---:|---|---:|---|
+|plan|132245558096|`ci-job-132245558096-html-r1`|1|2026-11-13 23:51:27|
+|Linux group 0|132245634584|`ci-job-132245634584-html-r1`|4|2026-11-13 23:56:34|
+|Linux group 1|132245634641|`ci-job-132245634641-html-r1`|4|2026-11-13 23:56:56|
+|Linux group 2|132245634595|`ci-job-132245634595-html-r1`|4|2026-11-13 23:55:32|
+|Linux group 3|132245634600|`ci-job-132245634600-html-r1`|4|2026-11-13 23:53:48|
+|Linux group 4|132245634620|`ci-job-132245634620-html-r1`|4|2026-11-13 23:54:44|
+|Linux group 5|132245634653|`ci-job-132245634653-html-r1`|4|2026-11-13 23:57:35|
+|Windows all|132245634563|`ci-job-132245634563-html-r3`|5|2026-11-14 00:08:47|
+
+本轴以独立只读 HTML 解析直接检查 30 个原 `check-step`：步骤集合与固定 workflow 相符，无遗漏或多算；每项 `data-conclusion=success`，有 started／completed 时间且顺序成立，具有原 `data-job-completed` 属性。每个原 `data-log-url` 都精确等于 `/626619403/Ergora/commit/2181cc5c6ab92ac01664f8e769298cce350f65a5/checks/{原job ID}/logs/{原step number}`，没有借 C1 或后续 F9c 的绿色状态。独立结果逐项与 `ci-terminal-r4.json` 的摘要、时间、路径一致。
+
+Windows 使用第三份原样本：native regression 在 00:07:51Z 完成，PowerShell installer／upgrade 在 00:08:46Z 成功，upload 在 00:08:47Z 完成。未以 Windows 更早仍在途的 r1／r2 样本代替终态。最后必要步骤早于最终原 run HTML 的 00:11:12Z 收据，终态观察顺序相符。
+
+另独立重算公开 JSON 新列的 23 份 CI 原件引用大小／SHA256，全部匹配。此终核采用原 UI HTML／JSON、原收据和固定 Git 配置，没有声明 REST 查询、artifact archive 下载、逐行测试日志内容复核或本地重跑；完整 SHA 日志路径已核，但未重新下载其日志。Windows 的标准 CI 成功不扩大 Linux／WSL2 原生准备支持范围，也不替代真实训练／GPU／质量／性能或批准验收。
+
+本片自己的 CI 终核通过，原固定发布身份及本结构轴开放 finding 维持 0／0；本轴无剩余阻塞项。后续 F9c 与更广训练验收继续沿各自固定候选、计划和证据，不继承本片 CI。

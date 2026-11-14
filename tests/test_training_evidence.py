@@ -40,7 +40,7 @@ def test_original_archive_and_unicode_window_preserve_records_without_sdk_or_ser
     assert result['execution_success'] is result['integration_verified'] is None
     assert result['archive']['artifact_content_status'] == 'not_read' and result['integration_ticket'] is None
     window = training.evidence(state, 'demo', 'alpha', artifact='notes.txt', evidence_sha256=report['evidence_sha256'], offset=2, limit=4)['artifact']
-    text = (folder / 'notes.txt').read_text(encoding='utf-8')
+    text = (folder / 'notes.txt').read_bytes().decode('utf-8')
     assert window['text'] == text[2:6] and window['next_offset'] == 6 and window['characters'] == len(text)
     assert all(path.read_bytes() == raw for path, raw in before.items())
     assert not (runtime / 'ergora').exists()

@@ -124,6 +124,32 @@ def resume_start(state: State, project_id: str, experiment_id: str, expected_rev
                        'prepare-resume', 'intent_sha256', timeout)
 
 
+def approval(state: State, project_id: str, experiment_id: str) -> dict:
+    """Read the original local owner decision; no authorization or RPC implied."""
+    return reference.training_release(_project(state, project_id), state.root, 'status',
+                                       {'experiment_id': experiment_id}, timeout=20)
+
+
+def approve(state: State, project_id: str, experiment_id: str, expected_revision: int, *,
+            run_id: str, evidence_sha256: str, confirm: bool, timeout: int = 20) -> dict:
+    """Confirm one exact owner decision, then deliver its original release once."""
+    if not isinstance(run_id, str) or not 1 <= len(run_id) <= 128 or run_id.strip() != run_id:
+        raise ValueError('Training approval requires the exact original run ID')
+    if not isinstance(evidence_sha256, str) or re.fullmatch('[a-f0-9]{64}', evidence_sha256) is None:
+        raise ValueError('Training approval requires the exact original evidence SHA-256')
+    return _release(state, project_id, experiment_id, expected_revision, 'prepare',
+                    {'run_id': run_id, 'evidence_sha256': evidence_sha256}, confirm, timeout)
+
+
+def resume_approve(state: State, project_id: str, experiment_id: str, expected_revision: int,
+                   intent_sha256: str, *, confirm: bool, timeout: int = 20) -> dict:
+    """Continue an unsent decision, or only reconcile the original attempted signal."""
+    if not isinstance(intent_sha256, str) or re.fullmatch('[a-f0-9]{64}', intent_sha256) is None:
+        raise ValueError('Training approval recovery requires the exact original intent SHA-256')
+    return _release(state, project_id, experiment_id, expected_revision, 'prepare-resume',
+                    {'intent_sha256': intent_sha256}, confirm, timeout)
+
+
 def cancellation(state: State, project_id: str, experiment_id: str, request_id: str) -> dict:
     """Read a local cancellation record; no signal or runtime query."""
     return reference.training_cancellation(_project(state, project_id), state.root, 'status',
@@ -226,4 +252,26 @@ def _cancellation(state: State, project_id: str, experiment_id: str, request_id:
         if observed['status'] in ('requested', 'already_closed'):
             return observed
     return reference.training_cancellation(project, state.root, 'dispatch' if operation == 'prepare' else 'resume',
+                    {**identity, 'intent_sha256': observed['intent_sha256']}, timeout=timeout)
+
+
+def _release(state: State, project_id: str, experiment_id: str, expected_revision: int,
+             operation: str, payload: dict, confirm: bool, timeout: int) -> dict:
+    if confirm is not True:
+        raise ValueError('Explicit owner confirmation is required for training approval and recovery')
+    if type(expected_revision) is not int or expected_revision < 1:
+        raise ValueError('Expected project revision must be a positive integer')
+    if type(timeout) is not int or not 1 <= timeout <= 60:
+        raise ValueError('Training approval timeout must be 1–60 seconds')
+    identity = {'experiment_id': experiment_id}
+    with state.connect() as db:
+        db.execute('BEGIN IMMEDIATE')
+        project = _project(state, project_id)
+        if project['revision'] != expected_revision:
+            raise ValueError('Project revision changed; reload before the training approval')
+        prepared = reference.training_release(project, state.root, operation, {**identity, **payload}, timeout=timeout)
+    observed = prepared['approval'] if operation == 'prepare' else prepared
+    if (operation == 'prepare' and not prepared['created']) or observed['status'] == 'requested':
+        return observed
+    return reference.training_release(project, state.root, 'dispatch' if operation == 'prepare' else 'resume',
                     {**identity, 'intent_sha256': observed['intent_sha256']}, timeout=timeout)

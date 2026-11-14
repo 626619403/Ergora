@@ -33,3 +33,11 @@ Ergora自身原结构模板实际审12完整文件／240,476B、44.448秒approve
 新的fresh-context[需求](2026-11-14-training-evidence-spec-review.md)／[结构](2026-11-14-training-evidence-structure-review.md)已直接核最终r2全部产品与两RECORD／283、安装46项及首轮失败、实际CLI／SDK-free／HTTP两侧原响应、14／37原件与收尾、自身原完整输入和54原件摘要；需求轴Host验收测试P2修后关闭，最终本地通过、开放0／0。初轮三个报告链接改为仓库#L行锚，未改产品。随后仅补原CI插件的collection：分组5选中389／总1842、1453 deselected，6.75秒；新增10项唯一归属，不称389项执行。公开证据现57引用（增加三个collection原件），产品／测试／CI组合bca645…保持。
 
 剩余：普通提交／推送、固定Git blob与完整远端Ref、原两轴固定发布补核和本片自己的CI。C2批准／C3页面、真实F9d／B3、GPU／质量／性能与采用继续另验。
+
+C1已普通发布`c3c7c3e218e9d2efc89498e8c208bf5981b9a0d9`，23件Git blob与最终清单逐字一致，完整远端Ref匹配。公开证据增四份静态／commit／push／ref原件摘要；原两轴固定发布补核与自己的CI待。产品／测试／CI组合及最终包不变。
+
+原两轴已直接核固定c3c7c3e的23blob／573产品／283与57原引用、普通push及完整Ref，通过0／0；自己的CI43532534314已发现，六Linux组必要步骤成功、Windows在途，尚不作完整终态成功主张。
+
+自己的CI43532534314已终态Failure：六Linux组必要步骤全部success；Windows原回归1030通过／756跳过／16 subtests，一项新正例失败。原artifact按Windows写入为CRLF，产品按原字节UTF-8解码正确返回24字符；测试read_text通用换行归一化后期待22。应修测试为read_bytes().decode，保留原fixture与产品字符语义；先本地CRLF复现／修后验证，随下个完整候选再验Windows，不称原候选CI成功。
+
+换行预期最小修正已做：仅test用原bytes.decode；私有windows-fix-r2在原C1已安装573产品上用CRLF归档，原测试明确复现24／22失败，修后同场景1通过。windows-fix-r1误resolve虚拟环境解释器而缺pytest，原失败保留、不称复现成功。后续C1修正与C2完整候选一并精确发布，再验该候选自己的Windows／Linux；原c3的Failure保持。

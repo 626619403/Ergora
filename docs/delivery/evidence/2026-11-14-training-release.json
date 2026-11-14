@@ -1,0 +1,581 @@
+{
+  "slice": "F9c C2",
+  "baseline": "c3c7c3e218e9d2efc89498e8c208bf5981b9a0d9",
+  "implementation": "Original native owner approve CLI and release client, exact original submitted run/evidence/actor, immutable receipt creation/ready/attempt/delivery checkpoints, history-only uncertain recovery; no new authorization authority",
+  "c2_product_test_ci_mapping_sha256": "9485aaaec5042b912fe1847d15b3babcb6b78610a364736583827d4bb5b3b150",
+  "c1_newline_test_correction": {
+    "path": "tests/test_training_evidence.py",
+    "sha256": "6d2b94dd69723bcdd6d3368af9c1fc7b1a7102e0743d90df19fab4bf7d569495"
+  },
+  "installed_final": {
+    "wheel_sha256": "173be7d224743fa85cf8992820e86ab181dab6e1e6680a5cb803a49230ff6617",
+    "product_files": 574,
+    "two_records_verified": true,
+    "wheel_record_rows": 582,
+    "installed_record_rows": 587,
+    "frozen_reference_files": 283,
+    "current_source_snapshot_wheel_install_equal": true,
+    "suites": 3,
+    "passed": 49,
+    "test_seconds": 248.18,
+    "monitor_seconds": 250.29194618109614
+  },
+  "retained_earlier_scopes": [
+    {
+      "run": "source-r1",
+      "state": "cancelled/-9 after180.080s, 20 dots; no complete suite success",
+      "scope": "Pre-S1 source; exact full product digest not captured at this early source run"
+    },
+    {
+      "run": "source-r2",
+      "state": "23 passed205.16s/monitor205.884s",
+      "scope": "After missing receipt fix, before original-byte/expiry fix"
+    },
+    {
+      "run": "install-r1",
+      "state": "80 passed445.97s/monitor447.761s; 574/twoRECORD/283",
+      "scope": "Broader release/evidence/cancel/start/web/architecture before S2; not post-fix full-suite success"
+    },
+    {
+      "run": "native-r1",
+      "state": "private script KeyError automatic_merge",
+      "scope": "API correct nested integration_ticket.record; same-run continuation fixes private expectation, resends nothing"
+    },
+    {
+      "run": "native-continuation-r1",
+      "state": "passed; same original3 runs/histories",
+      "scope": "Still pre-S2 package"
+    }
+  ],
+  "fixed_findings": [
+    {
+      "id": "S1",
+      "severity": "P2",
+      "scenario": "Owner receipt created then missing before ready could be minted again",
+      "fix": "Creation-attempt saved before original writer; attempted missing original is never recreated",
+      "coverage": "before-owner and after-owner missing-original cases"
+    },
+    {
+      "id": "S2",
+      "severity": "P2",
+      "scenario": "Ready absent allowed still-valid future expiry or raw-byte drift to become original",
+      "fix": "Creation-attempt freezes original serializer bytesSHA/expiry before writer; receipt and ready match this checkpoint",
+      "coverage": "future-expiry/raw-bytes plus existing expired/revoked/public/actor/evidence cases"
+    }
+  ],
+  "native_final": {
+    "seconds": 70.482214437332,
+    "actual_local_temporal_and_original_worker": true,
+    "native_posix_archive_lock": true,
+    "synthetic_archives": 3,
+    "fixed_runs": 3,
+    "signals_each": 1,
+    "original_owner_integration_tickets": 3,
+    "actual_server_ack_withheld_and_original_history_recovered": true,
+    "same_original_receipt_recovered_after_owner_write_interruption": true,
+    "original_receipt_bytes_and_expiry_preserved": true,
+    "original_source_spec_baseline_runner_archive_absent_during_history_recovery": true,
+    "actual_installed_cli_commands": 6,
+    "actual_sdk_free_status": true,
+    "actual_loopback_http_requests": 6,
+    "protected_preparation_files": 24,
+    "read_original_files": 105,
+    "all_originals_unchanged": true,
+    "repo_git_clean": true,
+    "no_runner_executor_start_or_fence": true,
+    "all_three_process_groups_stopped_and_ports_closed": true,
+    "scope": "Synthetic archives and attestations over actual native control/receipt/history/tickets, no real training/quality/performance/integration/adoption"
+  },
+  "self_review": {
+    "template": "ergora-structure-review",
+    "backend": "user-authorized Codex fallback",
+    "r1": "request-changes; actual original response retained",
+    "final_packet_files": 15,
+    "final_packet_bytes": 281510,
+    "final_seconds": 53.813212275039405,
+    "final_decision": "approve",
+    "result_sha256": "e632aa609e13a028e707fedf2106fd902121b47b2a5de55338a3473feed1008c",
+    "prompt_sha256": "c4c1a7fea2a36c9689fdd7c6d73ef1bf1118938d093b47558bbbaed5eca42003",
+    "all_complete_files_and_inherited_resources_in_actual_stdin": true
+  },
+  "independent_review": {
+    "requirements": "final local passed; S2 independently fixed and closed; zero open findings",
+    "structure": "final local passed; S1 and S2 fixed and independently closed; zero open findings",
+    "publication_and_own_ci": "pending exact ordinary publication and own CI"
+  },
+  "publication": {
+    "state": "not_committed"
+  },
+  "raw_evidence": {
+    "private_base": ".ergora/checks/training-release/",
+    "references": [
+      {
+        "path": "source-r1.py",
+        "bytes": 876,
+        "sha256": "b301ccb204bdca21c5c8e8d27cab64c99537df6ee2073557a2c296db24e1deb0"
+      },
+      {
+        "path": "source-r1/result.json",
+        "bytes": 644,
+        "sha256": "1703bb57c1694211ac8b977bedc23eeae4877a346f0fb02e964e188be144b3c6"
+      },
+      {
+        "path": "source-r1/process/stdout.txt",
+        "bytes": 20,
+        "sha256": "5ed321bce1f0091ed4b438161637abb3bc8b8e8e4e459d07f3a64593ea0e5b2c"
+      },
+      {
+        "path": "source-r1/process/stderr.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "source-r2.py",
+        "bytes": 739,
+        "sha256": "8477bd58376fb8a12491941996a3848aafbaf2f2d07a7c6672ef11f6233d5d0d"
+      },
+      {
+        "path": "source-r2/result.json",
+        "bytes": 486,
+        "sha256": "b44a705b9c635b65b0051a2776d8719f0b34c8c7e36f5b1edaa1691e5c46af87"
+      },
+      {
+        "path": "source-r2/process/stdout.txt",
+        "bytes": 111,
+        "sha256": "c9ce4815cc1868ad9888fd6b716daed7a95f5ddf29ba1fa65c9a038d5545ce5b"
+      },
+      {
+        "path": "source-r2/process/stderr.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "product-packet-r1.json",
+        "bytes": 1039,
+        "sha256": "67397d4ba1e78c91845ddc457571aeea696d0c8c3e1617d67f674037524b9290"
+      },
+      {
+        "path": "product-packet-r2.json",
+        "bytes": 1270,
+        "sha256": "1b66de0978262d192553a1f3f1fe251a659159983814dd8dfea493a3597a3958"
+      },
+      {
+        "path": "install-r1/source-manifest.json",
+        "bytes": 3074,
+        "sha256": "58792b5df92ba5f0e2edfad6e2868cceb2d402529d1e7da02ff1e9f7bf024037"
+      },
+      {
+        "path": "install-r1/setup.json",
+        "bytes": 1320,
+        "sha256": "67a6ebae075c1b2371b65b3972a97f68621f9f26af8c0e651489afb794e4574e"
+      },
+      {
+        "path": "install-r1/package-identity.json",
+        "bytes": 487,
+        "sha256": "80b4bb7da8e54cb3c1cc6a6cb3f1452c2319c93e07d8c1906217f726287f1dc6"
+      },
+      {
+        "path": "install-r1/regression-r1/result.json",
+        "bytes": 816,
+        "sha256": "65db50a1d97eb31aac24138acea659ebed720401aee976b8201e068c8ede74ee"
+      },
+      {
+        "path": "install-r1/regression-r1/process/stdout.txt",
+        "bytes": 12326,
+        "sha256": "32116d54b5f4d113d19baabc5e615a91f12669401e5b532c202f67483403ffc7"
+      },
+      {
+        "path": "install-r1/regression-r1/process/stderr.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "self-review-r1.py",
+        "bytes": 7146,
+        "sha256": "1f6654abc635e6400f30ffacd17d70611d8bf3c4b35d732b2ab7b886204a8584"
+      },
+      {
+        "path": "self-review-r1-codex.json",
+        "bytes": 3166,
+        "sha256": "01d6cb75f9b6c085d0a262fafd2634231de1cef573fc3b3ab94ab21c6490779b"
+      },
+      {
+        "path": "self-review-r1-codex/original-result.json",
+        "bytes": 1629,
+        "sha256": "567d20d3c9c398883bfcdee5a7889cfce10e019cdd7f3b66faa3bfac438f4a34"
+      },
+      {
+        "path": "self-review-r1-codex/packet-index.json",
+        "bytes": 2292,
+        "sha256": "92b372001b8f0cafa5e78a6b0a6824ec2421d44113cfe1933385849ed967a3ba"
+      },
+      {
+        "path": "native-r1.py",
+        "bytes": 18628,
+        "sha256": "f8ef738929589bd875d1daf4186fe3a9981d9ec6678cd1120ddecf91ff9c3537"
+      },
+      {
+        "path": "native-r1/runs.json",
+        "bytes": 4532,
+        "sha256": "ed35319697368c51e2397679062476e3b9aaca68631b1d329a88d1233a070560"
+      },
+      {
+        "path": "native-r1/archives.json",
+        "bytes": 22196,
+        "sha256": "5edd97d8e2b67a36ae375cc357ef63cbd846935339446c51433444c8edb3aacc"
+      },
+      {
+        "path": "native-r1/protected-before.json",
+        "bytes": 2824,
+        "sha256": "2413d61be36a99734bc2fc3b0dc78a95ada5d2520a1b2cddfbfb834b8fbacb54"
+      },
+      {
+        "path": "native-r1/read-originals.json",
+        "bytes": 19180,
+        "sha256": "7a51d463823308c5c996abbc84d17e34020f2e5d56faa6f7697349f5b732a103"
+      },
+      {
+        "path": "native-r1/commands.jsonl",
+        "bytes": 2855,
+        "sha256": "92430f6f15880c708739504c560affe5af066669140dc0d6d158d2198513a221"
+      },
+      {
+        "path": "native-r1/cleanup.json",
+        "bytes": 629,
+        "sha256": "ca2d253b62b39e24b93c374aedbdd2d1d60854706293ca96513e5f81c3445abe"
+      },
+      {
+        "path": "native-r1/http-service.py",
+        "bytes": 659,
+        "sha256": "49a5503e9d59e58918a1e841476339c2f09f43d2b44ebaa8eaf4f1940e35eeb7"
+      },
+      {
+        "path": "native-r1/requests.jsonl",
+        "bytes": 543,
+        "sha256": "f8fd48a169e947a773778c328b1b67aa314b1ebcee026adb64102dad8988710c"
+      },
+      {
+        "path": "native-r1/lose-ack.py",
+        "bytes": 874,
+        "sha256": "fd431b0f12dd59fd8f5689927d04899d87f4ec7b27b6db44f7615eb7508649b1"
+      },
+      {
+        "path": "native-r1/interrupt-owner.py",
+        "bytes": 268,
+        "sha256": "aab05a5b67ea0b7cbe961df6bd66f2a6994c5b574a890449a164ffd357b8fc7d"
+      },
+      {
+        "path": "native-r1/beta-unknown.json",
+        "bytes": 1025,
+        "sha256": "16ebe9380c62ab7e3600eac6debc7cf7c18e085a805118890a62e429fa30f056"
+      },
+      {
+        "path": "native-r1/gamma-prepared.json",
+        "bytes": 719,
+        "sha256": "ca64c706c0de3b35d8f7f466305d958c888d8c9dcb0ad35f06eb378f6636b246"
+      },
+      {
+        "path": "native-r1/http-prepared.json",
+        "bytes": 945,
+        "sha256": "a0b5da4455796b652a1b662083608813043cf2feb206b22d02100edcd1d53d40"
+      },
+      {
+        "path": "native-r1/http-no-confirm.json",
+        "bytes": 282,
+        "sha256": "fe28e6b4b5be335d00a539194c2a506ebddc9b320fd79ca1a3d5f2f168d397e1"
+      },
+      {
+        "path": "native-r1/http-wrong-intent.json",
+        "bytes": 293,
+        "sha256": "4783dc77676c0b5b1ca8783a7c44f9e9c99b7b47add7b98bb10fa6c60244981b"
+      },
+      {
+        "path": "native-r1/http-recover.json",
+        "bytes": 1284,
+        "sha256": "96d909e2d24ae97d9cf8d6ff11e0e5505d8d8dbfb9e615b450f1509324240993"
+      },
+      {
+        "path": "native-r1/http-duplicate.json",
+        "bytes": 1284,
+        "sha256": "96d909e2d24ae97d9cf8d6ff11e0e5505d8d8dbfb9e615b450f1509324240993"
+      },
+      {
+        "path": "native-r1/http-ticket.json",
+        "bytes": 28274,
+        "sha256": "dafebf877cbc92976e70bfa26e561000b624c444d69d29ed925882f069afb9fb"
+      },
+      {
+        "path": "install-r2/source-manifest.json",
+        "bytes": 3313,
+        "sha256": "3068f69a292a7c253aa0e1e297e7d999b1b6542e50f673f2d28465cbdb96c4d3"
+      },
+      {
+        "path": "install-r2/setup.json",
+        "bytes": 1319,
+        "sha256": "518da1358f9c47c38024582edaf3f3016af7c4cb98bb3d5e5ff2440b45f6420b"
+      },
+      {
+        "path": "install-r2/package-identity.json",
+        "bytes": 487,
+        "sha256": "a3378eaa7cdea624f8e8db206d9cf1921b196a1681f6ce8146a35580e770b0b6"
+      },
+      {
+        "path": "install-r2/regression-r1/result.json",
+        "bytes": 707,
+        "sha256": "727c4fa1bfa267012b8ca6c65749e3f1d9602bf4327e777752c6e988093069d6"
+      },
+      {
+        "path": "install-r2/regression-r1/process/stdout.txt",
+        "bytes": 8757,
+        "sha256": "9b5f9bd3d55b0ab6d466f5f46cf3f834e41a13d7dbff09b4128ce9386023e9d5"
+      },
+      {
+        "path": "install-r2/regression-r1/process/stderr.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "self-review-r2.py",
+        "bytes": 7753,
+        "sha256": "d369e324fb34fb7183ba2303924b74e1812c2cff340a63099ed8319b5ee7b0f9"
+      },
+      {
+        "path": "self-review-r2-codex.json",
+        "bytes": 3325,
+        "sha256": "7d1d7f258a61bd25ef3f28a39f4797cd3c1e5e5336ef2cc9ac4038a869b30e7b"
+      },
+      {
+        "path": "self-review-r2-codex/original-result.json",
+        "bytes": 710,
+        "sha256": "e632aa609e13a028e707fedf2106fd902121b47b2a5de55338a3473feed1008c"
+      },
+      {
+        "path": "self-review-r2-codex/packet-index.json",
+        "bytes": 2448,
+        "sha256": "8955e5fdff06907e578da33f93391575cb469e79a2aa764db566eb8650eb042b"
+      },
+      {
+        "path": "native-r2.py",
+        "bytes": 18648,
+        "sha256": "3440c8cd517fec8406546ebd60103663b70097639f76ce3003197b8e18e42229"
+      },
+      {
+        "path": "native-r2/runs.json",
+        "bytes": 4532,
+        "sha256": "35412a3ad2b4c828d9d0833a7615c76877da31c21542f2c5c80b1c14d76ea84e"
+      },
+      {
+        "path": "native-r2/archives.json",
+        "bytes": 22196,
+        "sha256": "1ecdef36728851cb34e419536817e54d3fcd3d7bd73ee3815185ed5290067bad"
+      },
+      {
+        "path": "native-r2/protected-before.json",
+        "bytes": 2824,
+        "sha256": "99973203671acaeb4ae4c5e2ca3bcf213219478f71761e462b7680bea1b30e5b"
+      },
+      {
+        "path": "native-r2/read-originals.json",
+        "bytes": 19180,
+        "sha256": "94cd2c1a94d5e17f36751fb8e37e86e89b1926c6f89eb0ce33cc919c8c185945"
+      },
+      {
+        "path": "native-r2/commands.jsonl",
+        "bytes": 2854,
+        "sha256": "4eaec3f23a537d0bb7de0cc32d0e13cd1f7a9c4aa4c19238d6a88d098a37b6c0"
+      },
+      {
+        "path": "native-r2/cleanup.json",
+        "bytes": 629,
+        "sha256": "81aaf78d9eb78aeecef527caae332c7c7db75e74cd79bcef58ece7924707d5ec"
+      },
+      {
+        "path": "native-r2/http-service.py",
+        "bytes": 659,
+        "sha256": "49a5503e9d59e58918a1e841476339c2f09f43d2b44ebaa8eaf4f1940e35eeb7"
+      },
+      {
+        "path": "native-r2/requests.jsonl",
+        "bytes": 543,
+        "sha256": "f8fd48a169e947a773778c328b1b67aa314b1ebcee026adb64102dad8988710c"
+      },
+      {
+        "path": "native-r2/lose-ack.py",
+        "bytes": 874,
+        "sha256": "55c9f605399e41c90a83811018850288f6d0644a2d08f154e735e541a9b65019"
+      },
+      {
+        "path": "native-r2/interrupt-owner.py",
+        "bytes": 268,
+        "sha256": "aab05a5b67ea0b7cbe961df6bd66f2a6994c5b574a890449a164ffd357b8fc7d"
+      },
+      {
+        "path": "native-r2/beta-unknown.json",
+        "bytes": 1026,
+        "sha256": "559c9b117f9f05466cd1face1f811dea02cd8e90603d80cb1af17f0b1662ffde"
+      },
+      {
+        "path": "native-r2/gamma-prepared.json",
+        "bytes": 719,
+        "sha256": "ad11e2dc945ff773f52231171bdd586f0eb43ee1e62577a0603762419a38bdd0"
+      },
+      {
+        "path": "native-r2/http-prepared.json",
+        "bytes": 945,
+        "sha256": "df36510ae4c35e02b0df5dd4add64320eed1fc065814db3c7137dcd0bc8304b8"
+      },
+      {
+        "path": "native-r2/http-no-confirm.json",
+        "bytes": 282,
+        "sha256": "fe28e6b4b5be335d00a539194c2a506ebddc9b320fd79ca1a3d5f2f168d397e1"
+      },
+      {
+        "path": "native-r2/http-wrong-intent.json",
+        "bytes": 293,
+        "sha256": "4783dc77676c0b5b1ca8783a7c44f9e9c99b7b47add7b98bb10fa6c60244981b"
+      },
+      {
+        "path": "native-r2/http-recover.json",
+        "bytes": 1283,
+        "sha256": "d1699d227fbdc916253ec23ff910935f272d6e8663941076b5779472f5a61154"
+      },
+      {
+        "path": "native-r2/http-duplicate.json",
+        "bytes": 1283,
+        "sha256": "d1699d227fbdc916253ec23ff910935f272d6e8663941076b5779472f5a61154"
+      },
+      {
+        "path": "native-r2/http-ticket.json",
+        "bytes": 28274,
+        "sha256": "6d52210b0d7c0fbf09a9593b11e2374002034d8336f69aa7490ca7deaf420fdf"
+      },
+      {
+        "path": "native-r1/failure.txt",
+        "bytes": 28,
+        "sha256": "ca9dde744764c0da13bb78d0ca2f349f69842bbd91029de4bc50ede224198809"
+      },
+      {
+        "path": "native-continuation-r1.py",
+        "bytes": 8500,
+        "sha256": "e43cbf30d6cb9d9acc786ccef28bea9eda0370ceb8c382a1122429a826928b4b"
+      },
+      {
+        "path": "native-continuation-r1/result.json",
+        "bytes": 977,
+        "sha256": "3201a83b2c49171bb7a3735073c3bf5e67464de2decd0724054e88ce6304d648"
+      },
+      {
+        "path": "native-continuation-r1/cleanup.json",
+        "bytes": 487,
+        "sha256": "ff62312ab5aef16f72b4f7082fcc69e19ea900690fb2f7134ba82e86f6d44332"
+      },
+      {
+        "path": "native-continuation-r1/histories.json",
+        "bytes": 6445,
+        "sha256": "0ef02c1154269e0681e954b89aabbef75b89e217f0014e4d9a013b25318a4f47"
+      },
+      {
+        "path": "native-continuation-r1/sdk-free.stdout",
+        "bytes": 975,
+        "sha256": "5d02a7ca11d44caa0041a3445b37411f4cb949ed93b97497ae1116e7496965a3"
+      },
+      {
+        "path": "native-continuation-r1/sdk-free.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-continuation-r1/original-operation-observations.json",
+        "bytes": 38779,
+        "sha256": "dbf3e7fbf340ea148cb3c6df62a75a846d21cc9f297f340161b80d0c53243d8d"
+      },
+      {
+        "path": "native-continuation-r1/alpha-history.json",
+        "bytes": 35766,
+        "sha256": "667e878c541c039587da15be43adbc2268c81a375bedfbaa99f1d327ebda6eec"
+      },
+      {
+        "path": "native-continuation-r1/beta-history.json",
+        "bytes": 35733,
+        "sha256": "f4a4d8603e9efce73378bf9a6391817d5a9d7a4d4f240b6ff60e32c9a74ba0bf"
+      },
+      {
+        "path": "native-continuation-r1/gamma-history.json",
+        "bytes": 35766,
+        "sha256": "3046427a0e2ccbbb34fb523cc7d9e57a021ad2ee0aa35365ffba3adbd6e859ca"
+      },
+      {
+        "path": "native-r2/result.json",
+        "bytes": 709,
+        "sha256": "736285387584d65df7c17990f36ed70d3663b30643468085932c89332662e958"
+      },
+      {
+        "path": "native-r2/results.json",
+        "bytes": 3303,
+        "sha256": "416a9a6348fcf1fd1603835fdcf6f77b83cd480bcba7024ad94056cfa39a0c09"
+      },
+      {
+        "path": "native-r2/sdk-free.stdout",
+        "bytes": 974,
+        "sha256": "c44911d5b14dab3969de73ea1b73cdbef9e8086f62ff6bd9f614fde647e4cf19"
+      },
+      {
+        "path": "native-r2/sdk-free.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r2/histories.json",
+        "bytes": 6026,
+        "sha256": "f5bd798bdfe6db208bcfc2f4596fb60b35765f4632ee19a6b3f47172a241cb0f"
+      },
+      {
+        "path": "native-r2/alpha-history.json",
+        "bytes": 35766,
+        "sha256": "0cc3453ffa1423993aea7b874d9c6cefe7e32d8d8e767f3f591b1490e48124a1"
+      },
+      {
+        "path": "native-r2/beta-history.json",
+        "bytes": 35733,
+        "sha256": "4ebb4036f2b1444226500fafe3f0353828e2121792ae64e6f74cc59fb89dbf6f"
+      },
+      {
+        "path": "native-r2/gamma-history.json",
+        "bytes": 35766,
+        "sha256": "99f44c8ad42d1e6c12a0e1bdcb2e5983cd9e6cd840a20aff6581c0cf248a606a"
+      },
+      {
+        "path": "ci-group-collect-r1/request.json",
+        "bytes": 1552,
+        "sha256": "a564f952dd126044e2b448884625a19f5fbfeb1df912f71f6ca3771b3af6f2a0"
+      },
+      {
+        "path": "ci-group-collect-r1/result.json",
+        "bytes": 54,
+        "sha256": "dbb1a7d85bf18c1dab2a25da99d1f7cd8e4a74945ec82eedd3ca6a981927cf0c"
+      },
+      {
+        "path": "ci-group-collect-r1/stdout.txt",
+        "bytes": 42547,
+        "sha256": "c7b7686aebd158fbfa4cea490f8250ab35970cad6c3bd94069900b220db42c0e"
+      }
+    ]
+  },
+  "limits": [
+    "One owner-decision intent per experiment; a new expired/rejected decision requires explicit original owner reconciliation, no auto renewal",
+    "Requested means delivery only, not authorization/ticket/actual integration or adoption",
+    "Trusted local current-user boundary; no new multi-user identity or OS isolation",
+    "Mutations use registered Linux/WSL2 owner; SDK-free saved status is separate from Windows mutation support",
+    "C1 original c3 CI remains Failure due test newline expectation; local fixed CRLF passes, combined corrected candidate own CI pending",
+    "No real GPU/training/quality/performance validation or candidate adoption",
+    "Self template fallback is not heterogeneous or independent review success"
+  ],
+  "ci_group_collection": {
+    "selected": 414,
+    "total": 1867,
+    "deselected": 1453,
+    "collection_seconds": 4.39,
+    "executed": false,
+    "new_suite_unique_group": "5"
+  }
+}
