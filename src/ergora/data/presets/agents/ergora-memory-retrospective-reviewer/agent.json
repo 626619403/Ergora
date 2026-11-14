@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "id": "ergora-memory-retrospective-reviewer",
+  "version": "1.0.0",
+  "description": "Source-bound memory retrospective reviewer.",
+  "roles": [
+    "reviewer"
+  ],
+  "specialties": [
+    "project-memory",
+    "retrospective-analysis"
+  ],
+  "backend": {
+    "tool": "claude-code"
+  },
+  "resources": [
+    {
+      "id": "ergora-memory-retrospective-reviewer-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "5fef0693958ea6495f52c8b7c824d3621f23b2966153446816ae38a6d9c39441"
+    }
+  ]
+}

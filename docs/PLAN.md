@@ -28,7 +28,9 @@ F10c1：[F10c1完整原证据选择](plans/2026-11-14-retrospective-evidence.md)
 
 F10c接续活动片：[F10c2a Skill复盘候选](plans/2026-11-14-retrospective-skill-candidates.md)已固定普通preset与原输入准备／离线来源检查合同，先闭合标准Skill候选；记忆／流程候选、原评价／采用回退和页面后接。R1／R2源码已修并独立关闭；自身原模板真实Claude发现容量R3，独立实证确认，现分开1 MiB基线／8 MiB结果并补完整大候选回归。旧安装件实红1失败／1.48秒，源码11通过／11.27秒；R4测试换行假设已修；最终r4包586／两RECORD／283、安装291通过／7平台跳过、真实Codex→Claude八CLI完整双叶通过；自身原模板Claude360.552秒超时保留，同一完整input的授权Codex复审45.359秒approve，236原引用已汇总并经原fresh-context最终本地两轴approve／开放0／0；R1–R4关闭，已普通发布a60a8f6／28blob／完整Ref同一，固定236／发布后240引用保持；原固定发布补核approve／开放0／0，自己的CI43551217945八job／30必要步骤已全部成功，原独立CI终核approve／开放0／0。每步更新[交付](delivery/2026-11-14-retrospective-skill-candidates.md)。该片发布闭合后，先F10c3a打通已有Skill候选的落盘／原评价／明确采用回退，随后扩展记忆／流程候选，再接页面；原范围保留，理由见[F10顺序调整](plans/2026-11-14-evaluated-improvement.md#f10c后续顺序调整)。
 
-F10当前接续：[F10c3a Skill导出与原评价采用](plans/2026-11-14-retrospective-skill-adoption.md)，固定基线a60a8f6，已实现显式完整导出与共享原具体no-replace发布器，原定向18通过／18.41秒；r1包586／两RECORD／283，安装140通过／6平台跳过，另补原manifest恢复14通过，实际14CLI合成正候选→原评价／明确采用→回退完成；自身原模板Claude超时保留、同input授权Codex58.631秒approve；130原引用及收尾已获新fresh-context最终本地两轴approve／开放0／0；前片CI八job／30必要步骤全成功、原独立CI终核approve／开放0／0，后续发布保留依赖。
+F10c3a：[Skill导出与原评价采用](plans/2026-11-14-retrospective-skill-adoption.md)已普通发布`c4aa7acb555a5d55fec7e7a483544834e8afe44f`，18blob／完整Ref同一，586产品／两RECORD／283、原五suite140／6及另补恢复14项、实际14CLI合成正候选→原评价／明确采用回退均通过；自身原模板Claude超时保持、同input Codex58.631秒approve，新独立本地与固定发布两轴approve／开放0／0，固定130／发布后134引用保持。自己的CI43553150941最终因Windows20分钟总上限Cancelled，29／30必要步骤成功、installer未完成，原取消保持。原reviewer终态原因已核，[单独CI预算修正](plans/2026-11-14-windows-ci-budget.md)也获新独立两轴approve／开放0／0，后继新SHA须通过自己的全部必要CI，不重写本历史。
+
+**F10活动片：[F10c2b1记忆候选](plans/2026-11-14-retrospective-memory-candidates.md)**，完整基线c4aa7ac。原prepare/check/export与第27个标准preset已实现；最终r2包594／两RECORD602／607／283，原七suite188通过／6平台跳过／215.43秒、实际16CLI新建／更正／导出／原保存冲突拒绝／恢复及自身原模板Codex41.793秒approve。r1真实Codex19.745秒→Claude20.763秒null／approve保持原包身份，r2另核原check逐字相同。实际CLI暴露CRLF规范化R1，原入口修复完整Unicode后已独立关闭；旧失败与新包分列。259引用及收尾已获新fresh-context最终本地两轴approve／开放0／0。前片CI总预算取消，原终态原因与单独fresh-context CI修正均已核对通过，准备共同普通发布；新候选全CI门槛保持，本片未发布。每步见[交付](delivery/2026-11-14-retrospective-memory-candidates.md)。之后流程候选、F10d页面与F9d／G1分别接续，不增记忆／评价／批准权威。
 
 4. **G1集成交接**：开发／治理／训练公开旅程，核新安装、配置、角色替换、工单、演进、旧项目升级／回退、跨机重建；更新[架构](architecture/current.md)、README、[使用手册](USAGE.md)、[训练手册](TRAINING.md)与Windows手册，再完成相关完整回归、独立审查与推送。U3日常安装只覆盖其精确旧包，不代表S1等新包已升级。
 
@@ -56,7 +58,7 @@ F10当前接续：[F10c3a Skill导出与原评价采用](plans/2026-11-14-retros
 |重构模板／实际旅程|[A1配方](delivery/2026-11-13-refactoring-preset.md)、[A2第三轮](delivery/2026-11-13-refactoring-journey.md)，前两失败保留；S1新根复用原全部子角色／权限／预算|
 |跨域专家／十八优化方向|[采用矩阵](research/2026-11-12-specialist-adoption.md)、[D2方向计划](plans/2026-11-13-specialist-presets.md)、[共享v2专家](delivery/2026-11-13-optimization-experts-v2.md)，B2a–B2i各交付；最新kernel `41dd5aa`自己的CI及独立终核通过|
 |Linux CI／Windows|[分组计划](plans/2026-11-13-linux-ci-shards.md)／[交付](delivery/2026-11-13-linux-ci-shards.md)，保留原取消与诊断失败；分段覆盖不同于单次全套|
-|同事试用／日常安装|[试用入口](delivery/2026-11-13-colleague-onboarding.md)、[U3安装](delivery/2026-11-14-daily-installation-refresh.md)，README的25 preset来自S1，新包升级另验|
+|同事试用／日常安装|[试用入口](delivery/2026-11-13-colleague-onboarding.md)、[U3安装](delivery/2026-11-14-daily-installation-refresh.md)，S1原25 preset保持；后续新增入口按各片记录，新包升级另验|
 |F7来源／任务／候选／写回页面|[来源](delivery/2026-11-12-issue-console.md)、[来源任务](delivery/2026-11-12-source-task-console.md)、[候选观察](delivery/2026-11-12-candidate-observation-console.md)、[PR／MR](delivery/2026-11-12-review-context-console.md)、[评论／标签](delivery/2026-11-12-issue-writeback-console.md)，各精确提交／自己的CI及独立终核已完成|
 |F8可选后端|[准入总计划](plans/2026-11-12-harness-admission.md)、[H1探针／实现](delivery/2026-11-12-harness-probes.md)、H2／H3a当前记录；研究不等于兼容结论|
 |工程经验／标准Skill|[本地盘点](research/2026-11-14-local-engineering-skills.md)、S1当前记录；原创可移植包与用户本地修改分别处理|

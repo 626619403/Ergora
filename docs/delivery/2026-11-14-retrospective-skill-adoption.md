@@ -15,3 +15,9 @@ F10c2a已普通推送，自己的CI在途，原fixed发布补核另核。本片�
 同一完整原input的授权Codex复审 **58.631秒／approve**，原run eb9712fb21174665b20f7e191b76c9b9，input digest `6e259ad52c19f39bec9954892e35df75aa30469d0713c88227ec5585fd96e868`／prompt SHA `e7c9d91a1f9216c5c4357cb5d41fe53425de92646edd2f699a7030ebd2b36625`保持；reply SHA `90414ffd2f022439eb7a292304b18f094a30fc781cc64d488091d2984d9570a0`。静态模板approve不代替独立最终验收。全部本片harness／调用已终态，访问范围内无本片cwd进程，10个/proc条目不可读据实保留，未启动服务／端口／浏览器。[最终公开证据](evidence/2026-11-14-retrospective-skill-adoption.json)含130份原引用、最终586产品／两RECORD／283、原五suite及14项恢复补测分别记账、14CLI及两模板调用。最终fresh-context补核待，前片自己的Windows CI尚在途，本片未发布。
 
 新fresh-context独立最终本地补核已追加原报告：需求轴与结构／成本轴均approve，确证及开放finding0／0；同r1恢复14项、586产品／两RECORD／283、130原引用、两run同完整输入与实际原回复及收尾限制均直接核过。前片CI八job／30必要步骤已全成功，原reviewer终核approve／开放0／0。本片仍待普通发布及自己的CI，不由本地结论预批。
+
+F10c3a已普通发布`c4aa7acb555a5d55fec7e7a483544834e8afe44f`，18个固定blob／完整远端Ref相同，固定130／发布后134原引用分列。新独立最终本地两轴approve／开放0／0保持；原固定发布补核和自己的CI待，后续记忆候选可先固定本地合同，发布继续等待前片闭合。
+
+F10c3a原固定发布补核两轴approve／开放0／0：18blob／586固定产品、130→134引用及fullRef已核；自己的CI为43553150941，当前在途，与后续记忆候选分开记账。
+
+自己的CI43553150941最终Cancelled：29／30必要步骤成功，Windows应用回归已成功，但官方job注释20m0s总上限导致installer在31秒后取消。原r5 HTML／回执与66份CI引用保留，不称完整CI通过。后继将[Windows预算修正](../plans/2026-11-14-windows-ci-budget.md)与独立本地通过的记忆片一并普通发布，用新SHA自身全部CI验收，不能重写本候选历史。原reviewer将补核终态原因及范围。

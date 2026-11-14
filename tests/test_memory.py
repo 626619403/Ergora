@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import shutil
 import subprocess
@@ -186,3 +187,183 @@ def test_reme_protocol_sync_filters_scope_and_propagates_deletion(memories, monk
         server.shutdown()
         server.server_close()
         thread.join()
+
+
+@pytest.fixture
+def memory_retrospective(memories, tmp_path):
+    from ergora import handoff, workflow_definitions as workflows
+    from test_handoff import evidence, text_evidence
+
+    index, blobs = text_evidence(evidence.__wrapped__(), ['A failed source observation; cost was not recorded.\r\n'])
+    index['project'] = 'alpha'
+    packet = tmp_path / 'source.zip'
+    collected = handoff.create(index, lambda artifact: blobs[artifact['sha256']], packet)
+    installed = workflows.install_preset(memories, 'memory-retrospective')
+    root = workflows.get(memories, installed['root']['id'], installed['root']['version'])['definition']
+    manifest = workflows.prepare_manifest(memories.root, root['id'], root['version'],
+        {'schema_version': 1, 'permissions': root['permissions'], 'limits': root['limits']}, tmp_path / 'manifest')
+    record = memory.save(memories, 'alpha', '保留原始限定和完整项目知识。\r\n' * 500,
+                         {'uri': 'manual:project', 'revision': 'r1'}, expires_at='2099-01-01T00:00:00Z')
+    return memories, packet, record, {
+        'packet_sha256': collected['sha256'], 'memory_id': record['id'], 'revision': record['revision'],
+        'objective': 'Preserve original uncertainty in useful future project knowledge.',
+        'manifest': Path(manifest['path']), 'instance': 'root/propose', 'destination': tmp_path / 'input',
+        'max_prompt_bytes': 300000}
+
+
+def memory_proposal(input_path, result_path, text):
+    task = json.loads((input_path / 'task.txt').read_bytes())
+    artifact = task['evidence']['artifacts'][0]
+    proposal = {'schema_version': 1, 'evidence_sha256': task['evidence']['sha256'],
+        'baseline_digest': task['baseline']['digest'],
+        'observations': [{'claim': 'The source records one failed observation.', 'uncertainty': 'General applicability is unmeasured.',
+            'citations': [{'job_id': artifact['job_id'], 'name': artifact['artifact']['name'], 'sha256': artifact['artifact']['sha256']}]}],
+        'negative_results': ['Original failure retained.'], 'cost_and_uncertainty': 'Original cost unknown; no measured gain.',
+        'candidate': None if text is None else {'text': text, 'hypothesis': 'Qualified knowledge may generalize better.',
+            'applicability': 'This project and the stated source limitations.', 'evaluation_plan': 'Check a distinct holdout observation.'}}
+    result_path.write_bytes(json.dumps({'summary': 'Source-bound proposal.', 'artifacts': {'response': json.dumps(proposal)}}).encode())
+    return proposal
+
+
+@pytest.mark.parametrize('creating', [False, True])
+def test_memory_retrospective_exports_full_offline_text_for_original_save_and_restore(memory_retrospective, tmp_path, capsys, creating):
+    import hashlib
+    from ergora import cli, retrospectives, workflow_definitions as workflows
+
+    state, packet, record, options = memory_retrospective
+    if creating:
+        options.update(memory_id=None, revision=0)
+    before = memory.catalog(state, 'alpha')
+    prepared = retrospectives.prepare_memory(state, 'alpha', packet, [{'job_id': 'job-1', 'name': 'record'}], **options)
+    frozen = workflows.inspect_input(options['destination'], material=True)
+    task = json.loads((options['destination'] / 'task.txt').read_bytes())
+    assert task['baseline']['record'] == (None if creating else record)
+    assert task['evidence']['artifacts'][0]['text'].endswith('\r\n')
+    for leaf in (item for item in frozen['composition']['instances'] if item['kind'] == 'agent'):
+        assert all(resource['text'] in leaf['prompt'] for resource in leaf['resources'])
+        assert not leaf['permissions']['write'] and not leaf['permissions']['shell'] and not leaf['permissions']['network']
+    text = '\ufeff' + record['text'] + '这只是原观察；适用性和成本仍待验证。\r\n'
+    result = tmp_path / 'result.json'
+    memory_proposal(options['destination'], result, text)
+    sha = hashlib.sha256(result.read_bytes()).hexdigest()
+    packet.unlink()
+    shutil.rmtree(options['manifest'])
+    unused = tmp_path / 'unused-state'
+    assert cli.main(['--home', str(unused), 'retrospective', 'check-memory', str(options['destination']), str(result),
+                     '--result-sha256', sha]) == 0
+    checked = json.loads(capsys.readouterr().out)
+    assert checked['input_digest'] == prepared['digest'] and not unused.exists()
+    assert checked['save']['source'] == {'uri': 'ergora-handoff:sha256:' + options['packet_sha256'],
+                                       'revision': task['evidence']['sha256']}
+    target = tmp_path / 'candidate'
+    receipt = retrospectives.export_memory(options['destination'], result, target, result_sha256=sha,
+                                           candidate_digest=checked['candidate_digest'])
+    assert (target / 'memory.txt').read_bytes() == text.encode('utf-8')
+    assert json.loads((target / 'receipt.json').read_bytes()) == receipt
+    assert memory.catalog(state, 'alpha')['records'] == before['records']
+    save_args = ['--home', str(state.root), 'memory', 'save', 'alpha', '--text', str(target / 'memory.txt'),
+                 '--source', checked['save']['source']['uri'], '--source-revision', checked['save']['source']['revision']]
+    if not creating:
+        save_args.extend(['--id', record['id'], '--revision', str(record['revision'])])
+    assert cli.main(save_args) == 0
+    saved = json.loads(capsys.readouterr().out)
+    assert saved['text'] == text and saved['source'] == checked['save']['source']
+    if creating:
+        assert saved['revision'] == 1 and 'expires_at' not in saved and saved['id'] != record['id']
+    else:
+        assert saved['expires_at'] == record['expires_at']
+        with pytest.raises(ValueError, match='revision changed'):
+            memory.save(state, 'alpha', **checked['save'])
+        restored = memory.restore(state, 'alpha', record['id'], record['revision'], saved['revision'])
+        assert restored['text'] == record['text'] and restored['expires_at'] == record['expires_at']
+    assert retrospectives.check_memory(options['destination'], result) == checked
+
+
+@pytest.mark.parametrize('change', ['revision', 'deleted', 'expired'])
+def test_memory_retrospective_observes_current_validity_after_source_io(memory_retrospective, monkeypatch, change):
+    from ergora import handoff, retrospectives
+
+    state, packet, record, options = memory_retrospective
+    original = handoff.evidence
+
+    def reading(*args, **kwargs):
+        selected = original(*args, **kwargs)
+        if change == 'revision':
+            memory.save(state, 'alpha', 'A newer observation.', record['source'], record['id'], record['revision'])
+        elif change == 'deleted':
+            memory.delete(state, 'alpha', record['id'], record['revision'])
+        else:
+            monkeypatch.setattr(memory, 'now', lambda: record['expires_at'])
+        return selected
+
+    monkeypatch.setattr(handoff, 'evidence', reading)
+    with pytest.raises(ValueError, match='changed, expired or was deleted'):
+        retrospectives.prepare_memory(state, 'alpha', packet, [{'job_id': 'job-1', 'name': 'record'}], **options)
+    assert not options['destination'].exists()
+
+
+@pytest.mark.parametrize('change,reason', [
+    ('baseline', 'frozen source or baseline'), ('citation', 'citation is absent'),
+    ('expiry', 'Retrospective proposal at /candidate'), ('source', 'Retrospective proposal at /candidate'),
+    ('oversize', 'Retrospective proposal at /candidate'),
+])
+def test_memory_retrospective_rejects_misbound_or_authority_changing_results(memory_retrospective, tmp_path, capsys, change, reason):
+    from ergora import cli, retrospectives
+
+    state, packet, record, options = memory_retrospective
+    retrospectives.prepare_memory(state, 'alpha', packet, [{'job_id': 'job-1', 'name': 'record'}], **options)
+    result = tmp_path / 'result.json'
+    proposal = memory_proposal(options['destination'], result, 'A qualified proposed observation.')
+    if change == 'baseline':
+        proposal['baseline_digest'] = '0' * 64
+    elif change == 'citation':
+        proposal['observations'][0]['citations'][0]['sha256'] = '0' * 64
+    elif change == 'expiry':
+        proposal['candidate']['expires_at'] = None
+    elif change == 'source':
+        proposal['candidate']['source'] = record['source']
+    else:
+        proposal['candidate']['text'] = 'a' * 100001
+    outer = json.loads(result.read_bytes())
+    outer['artifacts']['response'] = json.dumps(proposal)
+    result.write_bytes(json.dumps(outer).encode())
+    unused = tmp_path / 'unused-state'
+    assert cli.main(['--home', str(unused), 'retrospective', 'check-memory', str(options['destination']), str(result)]) == 2
+    captured = capsys.readouterr()
+    assert not captured.out and reason in captured.err and not unused.exists()
+    assert memory.history(state, 'alpha', record['id']) == [record]
+
+
+def test_memory_retrospective_null_and_explicit_export_selection_cannot_overwrite_input_or_target(memory_retrospective, tmp_path):
+    import hashlib
+    from ergora import retrospectives, workflow_definitions as workflows
+
+    state, packet, record, options = memory_retrospective
+    prepared = retrospectives.prepare_memory(state, 'alpha', packet, [{'job_id': 'job-1', 'name': 'record'}], **options)
+    result = tmp_path / 'result.json'
+    target = tmp_path / 'candidate'
+    memory_proposal(options['destination'], result, None)
+    sha = hashlib.sha256(result.read_bytes()).hexdigest()
+    assert retrospectives.check_memory(options['destination'], result)['candidate_digest'] is None
+    with pytest.raises(ValueError, match='no memory candidate'):
+        retrospectives.export_memory(options['destination'], result, target, result_sha256=sha, candidate_digest='0' * 64)
+    memory_proposal(options['destination'], result, 'The source supports only a qualified observation.')
+    sha = hashlib.sha256(result.read_bytes()).hexdigest()
+    checked = retrospectives.check_memory(options['destination'], result)
+    for result_sha, digest, destination, reason in [
+        ('0' * 64, checked['candidate_digest'], target, 'original bytes'),
+        (sha, '0' * 64, target, 'explicitly selected'),
+        (sha, checked['candidate_digest'], options['destination'] / 'candidate', 'frozen input'),
+    ]:
+        with pytest.raises(ValueError, match=reason):
+            retrospectives.export_memory(options['destination'], result, destination,
+                                         result_sha256=result_sha, candidate_digest=digest)
+    target.mkdir()
+    (target / 'preserve.txt').write_bytes(b'keep original\r\n')
+    with pytest.raises(ValueError, match='new retrospective export'):
+        retrospectives.export_memory(options['destination'], result, target,
+                                     result_sha256=sha, candidate_digest=checked['candidate_digest'])
+    assert {p.name: p.read_bytes() for p in target.iterdir()} == {'preserve.txt': b'keep original\r\n'}
+    assert workflows.inspect_input(options['destination'])['digest'] == prepared['digest']
+    assert memory.history(state, 'alpha', record['id']) == [record]
+    assert not list(tmp_path.glob('.retrospective-memory-*'))

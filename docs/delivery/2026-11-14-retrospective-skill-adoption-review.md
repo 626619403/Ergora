@@ -123,3 +123,37 @@ Reviewer 另以 `PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src` 和既有解释器 `-
 公开 evidence 的 **130 份原引用**已逐份读取，路径唯一、字节数与 SHA256 全部相同，无缺失。公开汇总的七份 current／snapshot 源码及测试身份、两项分开记录的安装回归、14 次实际 CLI、两次自身模板身份与原件相符；publication 仍为 pending。原 `cleanup-r1.json` 的终态记录与已见调用／harness 原终态一致：可访问 `/proc` cwd 范围内无本片在途进程，**10 个不可读条目**、未启动服务／端口／浏览器的范围和“不证明系统全部进程”限制均保持。`git diff --check BASELINE` 再次通过。此 reviewer 本次仍仅作读取／纯函数校验和追加本报告，未联网、重跑 suite、安装、改产品或提交。
 
 **最终本地需求轴 approve；结构／成本轴 approve；确证 finding 0／0、开放 0／0。** 本地待验项已补齐，原实际 CLI 的合成提案／fixture scorer 只证明完整合同及采用／回退门禁；不声称模型生成了正候选、真实改进、泛化、质量／性能、GPU 或业务效果。原生 Windows 六项仍跳过，完整 Forge、记忆／流程候选、F10d 页面、F9d／G1 保留各自范围。前片 CI43551217945 的 Windows 终态／原补核、本片普通发布／精确固定提交及完整 Ref、本片自己的 CI 与原独立发布／CI 补核均尚待；本节不预先批准或借用这些结果。
+
+## 固定普通发布补核
+
+固定候选为 `c4aa7acb555a5d55fec7e7a483544834e8afe44f`，唯一父提交精确为原基线 `a60a8f68513a46ef7e6c18add0832f8bcee3eccc`。补核开始时 HEAD 为该候选、分支保持 `refactor/architecture-foundations`，完整 status 只有 PLAN、本片计划／交付／evidence 四份发布状态文档变化。补核中随后出现的后续记忆候选计划／交付不在本报告范围，未审其内容；没有后续产品／测试变化。
+
+从固定 Git object 直接读取全部 **18 个变更 blob**，路径集合、字节数和 SHA256 与原 `static-final-r1.json` 完整清单全部相同。固定独立本地报告原字节为 **19,680B**／SHA256 `b22b1560cfbb891c6ff35641e0c912f9f0092441666ff4460bb476368fc64be5`，恰为本 reviewer 的最终本地补核版本。六份本片源码／测试与原最终 r1 已验快照、当前源码逐字相同；又直接从固定 Git tree 读取全部 **586 个产品 blob**，逐份核为 **fixed Git=current=source snapshot=wheel=installed**，wheel SHA 保持 `d78d387cccdb5571d866c8b096e8dbf2d7a52d584ff989f233e87dbd25157893`。前五 suite 加原恢复 suite 的六份测试文件也与固定 Git／原快照／当前原件逐字相同。此前已核两 RECORD **594／599**、283 原参考身份、140／6 与另 14 项恢复、14CLI 与两原模板调用的实证因此适用于此精确发布候选，没有在验收后偷换产品身份。
+
+直接读取 `commit-r1.json`、`push-r1.json`、`ref-r1.json`：三份 exit 均为 0，candidate 均为上述完整 SHA；普通 push 命令精确为 `git push origin HEAD:refs/heads/refactor/architecture-foundations`，无 force 或 main 目标。完整 Ref 原回执 stdout 精确为 `c4aa7acb555a5d55fec7e7a483544834e8afe44f\trefs/heads/refactor/architecture-foundations\n`，stderr 空。此 reviewer 核的是保存的原提交／push／Ref 回执，未重新联网。
+
+固定提交的公开 evidence 含 **130** 份原引用；发布后工作树前 130 项与固定列表逐项相同，原路径、字节数、SHA 均未变。仅追加 static-final／commit／push／Ref 四份回执，合计 **134** 份；已逐份重新读取核验全部 134 项 bytes／SHA，无缺失或差异。发布后的四份状态文档只追加普通发布、完整 Ref、130→134 对应关系与自己的 CI 待发现状态，没有新增运行或效果主张。`git diff --check BASELINE` 通过。
+
+前片原 reviewer 的 CI 终核记录已明确关闭前片精确候选的八 job／30 必要步骤；该记录只处理既有发布依赖，不作为本片 CI 验收。**本固定发布需求轴 approve；结构／成本轴 approve；开放 finding 0／0。** 原 Claude 超时／同 input Codex 授权回退、合成正提案／fixture scorer 合同及全部未验范围保持。本片自己的 CI 当前仍为 `pending_discovery`，尚未获得终态或本 reviewer 的 CI 补核，不能借前片 CI 或本地运行宣称该候选 CI 通过。
+
+## 自己的 CI 终态与取消原因补核
+
+本节核固定候选 `c4aa7acb555a5d55fec7e7a483544834e8afe44f` 自己的 run **43553150941** 的已保存官方原件。结论是 **Cancelled，完整 CI 尚未通过**，不是 CI 成功批准。补核时 HEAD 仍为该固定候选，但工作树已含后继记忆候选及 Windows CI 预算修正；本 reviewer 不在这里审这些变更，也不让当前工作树冒充固定候选。
+
+直接解析 `ci-run-html-r5/page.html`、Windows `ci-job-132319976802-html-r5/page.html` 与其余七 job 的 r2 HTML，并核各自 receipt 的 URL／HTTP 200／原字节／SHA。run 原页面的 commit 链接精确指向上述完整 SHA，Status 为 **Cancelled**；八个 job 的 **30 个必要步骤**均有原 `data-job-completed`、非空开始／结束时刻，log URL 全部精确落在该 SHA 和本 job ID 下。每项开始不晚于结束，结束不晚于对应原 HTML 取得时刻。原 `ci-ui-metadata-r1.json` 的八个 job ID／name 来自该 run 的原 UI JSON batch，batch 与初次 run summary 的 SHA 绑定保持；早期 in_progress 状态没有覆盖为成功历史。
+
+独立从固定提交的 `portability.yml` 确定必要步骤，再从原 HTML 投影核对：plan 的 1 项、六个 Linux job 各 4 项共 **25 项成功**；Windows 五项中 **4 成功／1 cancelled**，总计 **29／30 success**。原步骤投影与 `ci-observation-r5.json` 一致，`required_steps_passed:false`。Windows 原步骤如下，时刻均为 2026-11-14 UTC：
+
+|Windows 必要步骤|原时段|原 conclusion|
+|---|---|---|
+|Build and install wheel|03:44:38–03:45:38|success|
+|Packaged reference identity|03:45:38–03:45:40|success|
+|Native application regression|03:45:40–04:04:00|success|
+|Windows PowerShell 5.1 installer and upgrade|04:04:00–04:04:31|cancelled|
+|Upload regression observations|04:04:31–04:04:33|success|
+
+run 和 Windows job 两份原 HTML 均有官方注释 **“The job has exceeded the maximum execution time of 20m0s”**。固定候选的原 native job 确实设置 `timeout-minutes: 20`。原 job 从 03:44:30 开始；应用回归用时 18 分 20 秒并成功结束，installer 开始时已消耗 19 分 30 秒总 job 时间，随后 31 秒即被取消。upload 使用原 `if: always()`，其成功不能补足 installer 门禁。原 HTML 没有给出 installer／upgrade 完成成功的证据，故这个范围仍未验收；这里只核官方超时原因和可见步骤终态，没有下载或声称读取 artifact archive／完整远端测试日志，也不另报远端 pytest 数量。
+
+公开 evidence 独立列出的 **66 份 CI 引用**已逐份直接读 bytes／SHA，无缺失或差异；与原非 CI 引用集合不重叠。固定 Git blob 内的 **130** 份原引用仍与发布后列表前 130 项逐项相同；原发布后的 **134** 份也全部重新读取核过，仅原四份 static／commit／push／Ref 回执追加关系保持。CI 的多次未终态采样和最终取消原件分别保留，没有混充固定提交引用或改写失败历史。`git diff --check` 通过。
+
+**本次终态／取消原因核对完成，完整 CI 不通过，剩余范围明确为 Windows PowerShell 5.1 安装／升级门禁。** 前述源码、本地合同及固定普通发布结论保持各自范围，不能提升为该候选全部 CI 成功。后继 Windows 30／Linux 20 的预算修正由新独立 reviewer 审查，并将与后继已本地验收的记忆产品以新 SHA 普通发布；须验新 SHA 自己的完整必要 CI，本报告不预批该修正或新运行，也不重写原 `c4aa7ac` 的取消结果。本 reviewer 此轮仅读取本片固定 CI 原件和追加本报告，未联网、运行 suite、修改产品或操作 CI。

@@ -903,7 +903,46 @@ ergora skill adopt my-project --baseline-run BASELINE_RUN_ID --candidate-run CAN
 ergora skill rollback my-project SKILL_NAME BASELINE_DIGEST --revision ADOPTED_HEAD_REVISION --reason '填写回退理由'
 ```
 
-用register和两次run返回的精确suite digest／run ID填入对应占位符。compare的eligible、完整可信证据、当前head和显式理由共同决定采用；head变化时原采用会拒绝，应重新选当前基线并评价，不能只改revision强套旧结果。rollback使用采用后原head的revision，追加历史而不删除候选或旧评价。null候选无需导出或强造改进。详细suite合同见[Skill候选评价与采用](INTEGRATIONS.md#skill-候选评价与采用)；记忆／流程候选另接各自原版本接口。
+用register和两次run返回的精确suite digest／run ID填入对应占位符。compare的eligible、完整可信证据、当前head和显式理由共同决定采用；head变化时原采用会拒绝，应重新选当前基线并评价，不能只改revision强套旧结果。rollback使用采用后原head的revision，追加历史而不删除候选或旧评价。null候选无需导出或强造改进。详细suite合同见[Skill候选评价与采用](INTEGRATIONS.md#skill-候选评价与采用)。
+
+### 生成来源绑定的记忆复盘候选
+
+用同项目的完整交接包和selection准备记忆建议。安装`memory-retrospective`，再按[manifest步骤](WORKFLOW_DEFINITIONS.md#固定当前预览到持久控制目录)固定其根`ergora-memory-retrospective 1.0.0`，保存到`memory-retrospective-manifest`。该模板的`root/propose`与`root/review`默认分别为Codex、Claude；权限与显式调用方式同上，所有叶读取全部祖先资料。
+
+```bash
+ergora composition install-preset memory-retrospective
+ergora memory catalog my-project
+ergora retrospective prepare-memory my-project ./task-handoff.zip --selection ./selection.json --packet-sha256 PACKET_SHA --memory-id MEMORY_ID --revision MEMORY_REVISION --objective ./objective.txt --manifest ./memory-retrospective-manifest --instance root/propose --directory ./memory-author-input --max-prompt-bytes 500000
+ergora composition run-input my-project ./memory-author-input --backend codex --mode text-only --timeout 240
+```
+
+更正必须选catalog中当前有效的精确ID／revision，陈旧、到期、删除或其他项目记录会拒绝。新建建议将`--memory-id MEMORY_ID --revision MEMORY_REVISION`替换成`--new-memory`，其基线明确为null、revision为0。prepare先核完整原证据，再观察canonical记录，冻结完整正文、来源、有效期和观察时刻；该时刻不保证未来仍有效。原prompt容量另核，超限明确失败，完整正文不会截断。
+
+取得作者回执的原`result`与`result_sha256`后，离线检查，并把完整checked JSON交给原审查叶：
+
+```bash
+ergora retrospective check-memory ./memory-author-input AUTHOR_RESULT --result-sha256 AUTHOR_RESULT_SHA > ./memory-checked.json
+ergora composition prepare-from-manifest ./memory-retrospective-manifest root/review --task ./memory-checked.json --directory ./memory-review-input --max-prompt-bytes 500000
+ergora composition run-input my-project ./memory-review-input --backend claude-code --mode text-only --timeout 600
+```
+
+作者按冻结schema提供完整候选正文（最多100000字符）、假设、适用范围和验证计划，也可返回null。原失败、未知成本和每项观察的精确材料引用保持。模型不能选来源、有效期或修订；check的`save`只包含可供原记忆接口使用的完整正文、由整包SHA与选择SHA派生的固定来源，以及原ID／expected_revision。candidate_digest绑定完整save内容和基线身份；离线检查不创建State、查询实时记忆或认证来源作者，也不证明当前有效或质量提升。原结果上限8 MiB，审查完整prompt仍另核容量。后端不可用时可按前节显式回退并记录原因。
+
+有非null候选、审阅原证据及验证计划后，明确导出：
+
+```bash
+ergora retrospective export-memory ./memory-author-input AUTHOR_RESULT ./candidates/project-memory --result-sha256 AUTHOR_RESULT_SHA --candidate-digest CANDIDATE_DIGEST
+```
+
+新目录含完整UTF-8原字节的`memory.txt`及`receipt.json`，命令也返回receipt。其`save.source.uri`、`save.source.revision`、`save.memory_id`和`save.expected_revision`分别填入以下原保存命令；项目必须与receipt.project相同。`memory save --text`保留原换行和全部Unicode字符，包括开头的U+FEFF；读取人工文本时也不自动移除该字符。目录发布拒绝既有目标或冻结input内部，不自动保存，不改变原记忆或ReMe投影。回复丢失先核原目录／receipt和文本SHA，不覆盖重导。
+
+```bash
+ergora memory save my-project --text ./candidates/project-memory/memory.txt --source SOURCE_URI --source-revision SOURCE_REVISION --id MEMORY_ID --revision MEMORY_REVISION
+ergora memory history my-project MEMORY_ID
+ergora memory restore my-project MEMORY_ID --from-revision BASELINE_REVISION --revision CURRENT_REVISION
+```
+
+新建时省略`--id`和`--revision`，使用原save返回的新ID。更正省略expiry参数，沿原owner保留原有效期；即使候选生成后已经到期，保存也不会续期或使其进入召回。用户需续期时在原save另作显式选择。原修订变更或删除会拒绝陈旧保存，应重新选择基线；save回复不确定时先核catalog／history，尤其新建不能自动重试。恢复追加原修订并保留其有效期，已删内容不可恢复。这里没有Skill的可信suite采用门禁，模型approve只审阅提案；验证与明确写入仍分别进行。流程候选另接原definition修订合同。
 
 ### 网页证据、预算与交接
 

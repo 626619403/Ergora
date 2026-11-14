@@ -1,0 +1,154 @@
+{
+  "slice": "Windows CI budget correction",
+  "baseline": "c4aa7acb555a5d55fec7e7a483544834e8afe44f",
+  "static": {
+    "at": "2026-11-14T04:09:05.754268+00:00",
+    "baseline": "c4aa7acb555a5d55fec7e7a483544834e8afe44f",
+    "path": ".github/workflows/portability.yml",
+    "before_sha256": "ec2816e893c25ff3a7f96513e677bdf53f42d90b3cd79fe585e474a27c0121b2",
+    "after_sha256": "4a23020b277de1fa3d07db42918314127a013e01cad8ebf0cd9e020109774b64",
+    "yaml_parsed": true,
+    "only_yaml_value_change": "jobs.native.timeout-minutes",
+    "windows_minutes": 30,
+    "linux_minutes": 20,
+    "jobs_and_steps_tests_installer_unchanged": true,
+    "github_expression_runtime_not_locally_executed": true
+  },
+  "original_ci": {
+    "run_id": 43553150941,
+    "status": "Cancelled",
+    "required_steps_success": 29,
+    "required_steps_total": 30,
+    "unpassed": "Windows PowerShell 5.1 installer and upgrade",
+    "official_reason": "The job has exceeded the maximum execution time of20m0s",
+    "original_reviewer_termination_supplement": "verified terminal cancellation; original F10c3a reviewer independently checked29success/1cancelled20minute total cutoff,66CIrefs and preserved130/134, explicitly not full CI approve."
+  },
+  "independent_review": {
+    "requirements": "Final local approve; zero open findings. Fresh CI reviewer directly checked raw original run/eightjob HTML, exactSHA/timestamps/reason and unchanged full workflow except timeout.",
+    "structure": "Final local approve; zero open findings. Windows30/Linux20 expression in original owner; original eightjobs/30steps/full regression/installer retained, no new scheduler or group."
+  },
+  "publication": {
+    "state": "pending shared publication with F10c2b1",
+    "new_candidate_full_own_ci_required": true
+  },
+  "raw_evidence": {
+    "private_base": ".ergora/checks/",
+    "references": [
+      {
+        "path": "windows-ci-budget/static-r1.json",
+        "bytes": 565,
+        "sha256": "f74c97f8b7560cce90e0b18c34c5a4832f1b99337ea1b18b8bfc3df1481de316"
+      },
+      {
+        "path": "retrospective-skill-adoption/ci-observation-r5.json",
+        "bytes": 13362,
+        "sha256": "608a8f7112affd667bff9a1f01b704a98006e02f59f64be358c6271c40062b64"
+      },
+      {
+        "path": "retrospective-skill-adoption/ci-ui-metadata-r1.json",
+        "bytes": 2119,
+        "sha256": "d82eeb0c0c395e677208d35affaff3136ca62cf152326385df867c9ed75aaadf"
+      },
+      {
+        "path": "retrospective-skill-adoption/ci-job-batch-r1/body.json",
+        "bytes": 2715,
+        "sha256": "2d49fe16c0b3886becceff2831938d41af9255aa2ec52370042ece8b2e8f1ce9"
+      },
+      {
+        "path": "retrospective-skill-adoption/ci-job-batch-r1/receipt.json",
+        "bytes": 766,
+        "sha256": "4f636cc8351236f90b4a184c05209bb7a3035971a465da11a15124af33af1465"
+      },
+      {
+        "path": "retrospective-skill-adoption/ci-run-html-r5/page.html",
+        "bytes": 217758,
+        "sha256": "5bfb71604c9d7b118c0cef44292556228175ff462e4cd6273099b552a1f290fe"
+      },
+      {
+        "path": "retrospective-skill-adoption/ci-run-html-r5/receipt.json",
+        "bytes": 5980,
+        "sha256": "b8d863593b69a9e1550a804b3d927e55480f913c2e328f99cad0085c7a02b9ae"
+      },
+      {
+        "path": "retrospective-skill-adoption/ci-job-132319937767-html-r2/page.html",
+        "bytes": 158797,
+        "sha256": "c449b34a03438944f3c37c938b5067e6a3d1986c563bbb9aacc8ad3bf8f32e95"
+      },
+      {
+        "path": "retrospective-skill-adoption/ci-job-132319937767-html-r2/receipt.json",
+        "bytes": 6010,
+        "sha256": "b8dc111b61bd30588cb3c6495e230e614976b76d29396c9ddc436c3616d690b2"
+      },
+      {
+        "path": "retrospective-skill-adoption/ci-job-132319976727-html-r2/page.html",
+        "bytes": 162482,
+        "sha256": "55361d46072d8d44f8052ceed48d707082849953f8fe513355330a1be2221410"
+      },
+      {
+        "path": "retrospective-skill-adoption/ci-job-132319976727-html-r2/receipt.json",
+        "bytes": 6005,
+        "sha256": "dc21e48cf025ee68602633ad1596604789e884ae8e4b670311b67ca6058b4bfc"
+      },
+      {
+        "path": "retrospective-skill-adoption/ci-job-132319976743-html-r2/page.html",
+        "bytes": 162482,
+        "sha256": "933d8fca492288f327a4eef13d98d71462e0594da24f804d413e3d14a726d5ff"
+      },
+      {
+        "path": "retrospective-skill-adoption/ci-job-132319976743-html-r2/receipt.json",
+        "bytes": 5998,
+        "sha256": "1612a224a7731b6dea1bd1f93de9426aa49e8ed0c86c7cecd90a071945c50275"
+      },
+      {
+        "path": "retrospective-skill-adoption/ci-job-132319976779-html-r2/page.html",
+        "bytes": 162487,
+        "sha256": "cd350fc049e38669167b2190cb7c8a521cb9841e3462439d0ef4b0d6c5b2b4a1"
+      },
+      {
+        "path": "retrospective-skill-adoption/ci-job-132319976779-html-r2/receipt.json",
+        "bytes": 6006,
+        "sha256": "c84657c22ddd0fa2c098471df0df4ef51447adac6abd125e4cd36ab646d96a89"
+      },
+      {
+        "path": "retrospective-skill-adoption/ci-job-132319976745-html-r2/page.html",
+        "bytes": 162487,
+        "sha256": "5f5ab96de98ec82d35c25a607816c55a451ddd1a009ffcc0a815a3f0e2a98277"
+      },
+      {
+        "path": "retrospective-skill-adoption/ci-job-132319976745-html-r2/receipt.json",
+        "bytes": 6004,
+        "sha256": "969d4042bcc28fcaab9d74c77a659752f36a569826e92510fea70f870facc0f1"
+      },
+      {
+        "path": "retrospective-skill-adoption/ci-job-132319976741-html-r2/page.html",
+        "bytes": 162487,
+        "sha256": "a11d2c1d46ba49a92a74c3b39630b071cd10d54770f5a0ef9114f2b52c85e540"
+      },
+      {
+        "path": "retrospective-skill-adoption/ci-job-132319976741-html-r2/receipt.json",
+        "bytes": 5994,
+        "sha256": "baf073217c3676ba2eae019682bbe26e7a9409fd551c25f0771a5f71f70a0aa7"
+      },
+      {
+        "path": "retrospective-skill-adoption/ci-job-132319976756-html-r2/page.html",
+        "bytes": 162486,
+        "sha256": "43c9196cd376beaf8e8b41ce6f8ade582e4bab304e2549f5755c17a696157e4c"
+      },
+      {
+        "path": "retrospective-skill-adoption/ci-job-132319976756-html-r2/receipt.json",
+        "bytes": 5994,
+        "sha256": "20a252c8e5be6fc50e36cb5785736e7ac0974ea7bd72b789d7fdef0de31310c8"
+      },
+      {
+        "path": "retrospective-skill-adoption/ci-job-132319976802-html-r5/page.html",
+        "bytes": 164354,
+        "sha256": "5d6f3fab25582e998642b82567b20da1ce6e3f28fdfa958f6276d4259a46a66e"
+      },
+      {
+        "path": "retrospective-skill-adoption/ci-job-132319976802-html-r5/receipt.json",
+        "bytes": 5998,
+        "sha256": "074f63e5dfc094082d0a4e37c74fdcbc7ad8a41870717d8fce66d1624db177dd"
+      }
+    ]
+  }
+}

@@ -60,31 +60,40 @@ def parser() -> argparse.ArgumentParser:
         operation.add_argument("--sha256", help="Independently obtained whole-packet SHA256")
         if name == "read":
             operation.add_argument("--selection", type=Path, help="JSON array of exact job_id/name pairs; omitted reads the complete index")
-    retrospective = commands.add_parser("retrospective", help="Prepare source-bound Skill proposals and check their frozen links; never adopt")
+    retrospective = commands.add_parser("retrospective", help="Prepare, check or export source-bound Skill and memory proposals; never adopt")
     operations = retrospective.add_subparsers(dest="operation", required=True)
-    preparing = operations.add_parser("prepare", help="Freeze evidence and the complete Skill (up to 1 MiB) for a proposal-producing leaf")
-    preparing.add_argument("project")
-    preparing.add_argument("packet", type=Path)
-    preparing.add_argument("--selection", type=Path, required=True)
-    preparing.add_argument("--packet-sha256", required=True)
-    preparing.add_argument("--skill", required=True)
-    preparing.add_argument("--digest", required=True)
-    preparing.add_argument("--head-revision", type=int, required=True)
-    preparing.add_argument("--objective", type=Path, required=True)
-    preparing.add_argument("--manifest", type=Path, required=True)
-    preparing.add_argument("--instance", required=True)
-    preparing.add_argument("--directory", type=Path, required=True)
-    preparing.add_argument("--max-prompt-bytes", type=int, required=True)
-    checking = operations.add_parser("check", help="Check a proposal-producing leaf's structured result (up to 8 MiB) against its frozen input, offline")
-    checking.add_argument("input", type=Path)
-    checking.add_argument("result", type=Path)
-    checking.add_argument("--result-sha256")
-    exporting = operations.add_parser("export", help="Explicitly save one checked complete Skill candidate to a new directory; never adopt")
-    exporting.add_argument("input", type=Path)
-    exporting.add_argument("result", type=Path)
-    exporting.add_argument("destination", type=Path)
-    exporting.add_argument("--result-sha256", required=True)
-    exporting.add_argument("--candidate-digest", required=True)
+    for name in ("prepare", "prepare-memory"):
+        preparing = operations.add_parser(name, help="Freeze complete evidence and the selected baseline for a proposal-producing leaf")
+        preparing.add_argument("project")
+        preparing.add_argument("packet", type=Path)
+        preparing.add_argument("--selection", type=Path, required=True)
+        preparing.add_argument("--packet-sha256", required=True)
+        if name == "prepare":
+            preparing.add_argument("--skill", required=True)
+            preparing.add_argument("--digest", required=True)
+            preparing.add_argument("--head-revision", type=int, required=True)
+        else:
+            target = preparing.add_mutually_exclusive_group(required=True)
+            target.add_argument("--new-memory", action="store_true")
+            target.add_argument("--memory-id")
+            preparing.add_argument("--revision", type=int, default=0, help="Exact current memory revision; zero for explicit creation")
+        preparing.add_argument("--objective", type=Path, required=True)
+        preparing.add_argument("--manifest", type=Path, required=True)
+        preparing.add_argument("--instance", required=True)
+        preparing.add_argument("--directory", type=Path, required=True)
+        preparing.add_argument("--max-prompt-bytes", type=int, required=True)
+    for name in ("check", "check-memory"):
+        checking = operations.add_parser(name, help="Check a structured result (up to 8 MiB) against its frozen input, offline")
+        checking.add_argument("input", type=Path)
+        checking.add_argument("result", type=Path)
+        checking.add_argument("--result-sha256")
+    for name in ("export", "export-memory"):
+        exporting = operations.add_parser(name, help="Explicitly save one checked complete candidate to a new directory; never adopt")
+        exporting.add_argument("input", type=Path)
+        exporting.add_argument("result", type=Path)
+        exporting.add_argument("destination", type=Path)
+        exporting.add_argument("--result-sha256", required=True)
+        exporting.add_argument("--candidate-digest", required=True)
     maintenance = commands.add_parser("state", help="Inspect, back up, verify or restore offline local state")
     operations = maintenance.add_subparsers(dest="operation", required=True)
     operations.add_parser("info")
@@ -699,19 +708,30 @@ def main(argv: list[str] | None = None) -> int:
 
             if args.operation == "check":
                 output = retrospectives.check(args.input, args.result, result_sha256=args.result_sha256)
+            elif args.operation == "check-memory":
+                output = retrospectives.check_memory(args.input, args.result, result_sha256=args.result_sha256)
             elif args.operation == "export":
                 output = retrospectives.export(args.input, args.result, args.destination,
+                    result_sha256=args.result_sha256, candidate_digest=args.candidate_digest)
+            elif args.operation == "export-memory":
+                output = retrospectives.export_memory(args.input, args.result, args.destination,
                     result_sha256=args.result_sha256, candidate_digest=args.candidate_digest)
             else:
                 with args.objective.open('rb') as stream:
                     raw = stream.read(262145)
                 if len(raw) > 262144:
                     raise ValueError('Retrospective objective exceeds 256 KiB')
-                output = retrospectives.prepare(State(args.home), args.project, args.packet,
-                    definition_bundles.read_json(args.selection), packet_sha256=args.packet_sha256,
-                    name=args.skill, digest=args.digest, head_revision=args.head_revision, objective=raw.decode('utf-8-sig'),
-                    manifest=args.manifest, instance=args.instance, destination=args.directory,
-                    max_prompt_bytes=args.max_prompt_bytes)
+                options = {'packet_sha256': args.packet_sha256, 'objective': raw.decode('utf-8-sig'),
+                           'manifest': args.manifest, 'instance': args.instance,
+                           'destination': args.directory, 'max_prompt_bytes': args.max_prompt_bytes}
+                if args.operation == "prepare-memory":
+                    output = retrospectives.prepare_memory(State(args.home), args.project, args.packet,
+                        definition_bundles.read_json(args.selection), memory_id=args.memory_id,
+                        revision=args.revision, **options)
+                else:
+                    output = retrospectives.prepare(State(args.home), args.project, args.packet,
+                        definition_bundles.read_json(args.selection), name=args.skill, digest=args.digest,
+                        head_revision=args.head_revision, **options)
         elif args.command == "state":
             from . import backups
 
@@ -1105,7 +1125,7 @@ def main(argv: list[str] | None = None) -> int:
             elif args.operation == "restore":
                 output = memory.restore(state, args.project, args.id, args.from_revision, args.revision)
             else:
-                output = memory.save(state, args.project, args.text.read_text(encoding="utf-8-sig"),
+                output = memory.save(state, args.project, args.text.read_bytes().decode("utf-8"),
                                      {"uri": args.source, "revision": args.source_revision}, args.id, args.revision,
                                      **({"expires_at": args.expires_at} if hasattr(args, "expires_at") else {}))
         elif args.command == "skill":

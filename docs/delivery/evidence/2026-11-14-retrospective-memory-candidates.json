@@ -1,0 +1,1534 @@
+{
+  "slice": "F10c2b1 source-bound memory retrospective candidates",
+  "baseline": "c4aa7acb555a5d55fec7e7a483544834e8afe44f",
+  "at": "2026-11-14T04:00:39.033623+00:00",
+  "implementation": "Final local independently approved; publication pending separately reviewed Windows CI budget correction and original preceding CI termination verification.",
+  "current_identity": {
+    "at": "2026-11-14T04:00:38.361220+00:00",
+    "products": 594,
+    "wheel_sha256": "6832763f8f07ccb1c32d130e14e5da4c85dd8ce31bbc9aa607e6b00232e49b9a",
+    "current_snapshot_wheel_installed_equal": true,
+    "record_rows": [
+      602,
+      607
+    ],
+    "both_records_verified": true,
+    "frozen_manifest_and_baseline_blobs_and_modes": 283,
+    "source_and_tests": [
+      {
+        "path": "src/ergora/retrospectives.py",
+        "bytes": 20952,
+        "sha256": "f735fa10290b8d8d6a938570b8bf2bfe0e6bf47a05f17d4c7cf7e2bea4df17c4"
+      },
+      {
+        "path": "src/ergora/cli.py",
+        "bytes": 82559,
+        "sha256": "2921e4661d0fba4a4710fb382cce376fe2983721577d3d4a4a286fdaf4e3b794"
+      },
+      {
+        "path": "tests/test_memory.py",
+        "bytes": 21074,
+        "sha256": "42b495ddbba4834b753c1f02224975dc8a9a68eea9143ed588c3e250a93d55fd"
+      },
+      {
+        "path": "tests/test_skills_evaluation.py",
+        "bytes": 37013,
+        "sha256": "283d847674a41a7c3f5fe5062e28e37f0a9fade0c06ec59dcb58dc98ecc6a242"
+      },
+      {
+        "path": "tests/test_workflow_definitions.py",
+        "bytes": 39158,
+        "sha256": "2dcc3ef39f845b221e6ba171cc136e8b6710abae939d52e0be6629dd1faf7bec"
+      },
+      {
+        "path": "tests/test_presets.py",
+        "bytes": 20953,
+        "sha256": "6abb04fe9aa592a10dfd7ab974114bbd777d4724e17dc7879a453e1547333cab"
+      },
+      {
+        "path": "tests/test_architecture_boundaries.py",
+        "bytes": 3695,
+        "sha256": "a11fc54e883cc166327068366a235f959b4a0f4a03e64eb95593d3ffe48595d2"
+      },
+      {
+        "path": "tests/test_compatibility_baseline.py",
+        "bytes": 8746,
+        "sha256": "d987abad89e863206b4f06fe3c9f099244cc01ad15681c03c1d437273648f943"
+      },
+      {
+        "path": "tests/test_windows.py",
+        "bytes": 7040,
+        "sha256": "6d019f96f3de7a42ebe16dac0efa8074fadd2fe4be9bb8540a541485f67778d6"
+      }
+    ]
+  },
+  "installed_regression": {
+    "passed": 188,
+    "skipped": 6,
+    "pytest_seconds": 215.43,
+    "monitor_seconds": 216.94233832415193,
+    "suites": [
+      "test_memory.py",
+      "test_skills_evaluation.py",
+      "test_workflow_definitions.py",
+      "test_presets.py",
+      "test_architecture_boundaries.py",
+      "test_compatibility_baseline.py",
+      "test_windows.py"
+    ],
+    "scope": "Final r2 installed original seven suites. Six native Windows skips; no local native Windows model/runtime acceptance."
+  },
+  "actual_cli": {
+    "at": "2026-11-14T03:55:40.270418+00:00",
+    "status": "passed",
+    "commands": 16,
+    "identities": [
+      {
+        "kind": "correct",
+        "input_digest": "964f208215fb057d801d32b174658456ef104f286cfe64132b59cda6c2cb15ee",
+        "result_sha256": "83f4ce81229365a1acff9e11f32eeb0edcf81d0910cde0d57d5460cb72507af9",
+        "baseline_digest": "9f827c1f45e87080659d45bac28b8027fe7286a55e0c601b1c300462ac8cbe7c",
+        "candidate_digest": "50fcffcd93e4158360ca48699edbf253711398f35688252b7732808a6f02f060",
+        "text_sha256": "0c5d788c3953ca6b0363252ecdb715813d7f65856869e5143fca4171b07e3963",
+        "source": {
+          "uri": "ergora-handoff:sha256:d3b9eba8982e51a0bf6cc69a81507aadec75d7fc4a028d960bfdcbea8072da0c",
+          "revision": "57415991ab32c97f9c0ae86c990cf673f4271bebaa58923026b07f30bcf8ba9e"
+        },
+        "saved_id": "36ab3a8219f44aa58659435f084a1f3a",
+        "saved_revision": 2
+      },
+      {
+        "kind": "create",
+        "input_digest": "02aa1f5834ba9ba588b1d250bfe7e802b296013a662bdaab2fa78a1b65b1b762",
+        "result_sha256": "3e0bb37765fd5bdef949b02e1f690388da8177422aec6c4f6091e1f4f291106a",
+        "baseline_digest": "f9d0962d8e0649e20eead5b2c8bf1adc86a6b70a7d447c2c24f8da9fdba6e2be",
+        "candidate_digest": "e4956ca8fcd54bd5656008644cad8755e920a08238b42ab9814365550556e706",
+        "text_sha256": "0c5d788c3953ca6b0363252ecdb715813d7f65856869e5143fca4171b07e3963",
+        "source": {
+          "uri": "ergora-handoff:sha256:d3b9eba8982e51a0bf6cc69a81507aadec75d7fc4a028d960bfdcbea8072da0c",
+          "revision": "57415991ab32c97f9c0ae86c990cf673f4271bebaa58923026b07f30bcf8ba9e"
+        },
+        "saved_id": "7b9f35e1524343c28e44c8bf95e31782",
+        "saved_revision": 1
+      }
+    ],
+    "source_packet_and_fixture_git_and_frozen_inputs_results_unchanged": true,
+    "offline_check_export_no_state": true,
+    "export_no_write_to_canonical_memory": true,
+    "correction_head_revisions": [
+      1,
+      2,
+      3
+    ],
+    "restored_original_text_and_expiry": true,
+    "stale_correction_no_change": true,
+    "new_record_revision": 1,
+    "scope": "Actual final installed CLI with explicitly synthetic positive creation/correction proposals. Contract only; no model-positive, measured quality/performance, origin-authentication, business or GPU claim."
+  },
+  "actual_models_r1": {
+    "at": "2026-11-14T03:54:07.972146+00:00",
+    "status": "passed",
+    "commands": 7,
+    "candidate_present": false,
+    "candidate_digest": null,
+    "review_decision": "approve",
+    "materials": [
+      {
+        "run_id": "9f65aeeb24c64043b54fa180df3e7795",
+        "binding": {
+          "tool": "codex"
+        },
+        "status": "succeeded",
+        "input_digest": "e7ffad046e49544daeb09c2c7f5bf68e5c2fdfee0510eb2b00114139a9fc6f68",
+        "prompt_bytes": 32558,
+        "prompt_sha256": "e5b97f949ae5c09c7d3ceeeff88b2b71bfee0644f933e491ae6b16eac320a9f0",
+        "actual_stdin_equal": true,
+        "all_ancestor_resources_present": true,
+        "result_sha256": "f32d1c4cd772f89553c4dcd6d0de77fc1f53799b84d0385af685927f05a4e4c4"
+      },
+      {
+        "run_id": "46b7b5589cdb48ca973b6f88d022ff8a",
+        "binding": {
+          "tool": "claude-code"
+        },
+        "status": "succeeded",
+        "input_digest": "e07d15b4ad8f312ee2a14991b820fa1efb064762e861dcf3b4934b52310201b7",
+        "prompt_bytes": 38296,
+        "prompt_sha256": "054751f25783747b214bbad035f810f0eb0f71fd781c87de9d5f5f7bed9b6855",
+        "actual_stdin_equal": true,
+        "all_ancestor_resources_present": true,
+        "result_sha256": "4e91647a760da1709b0fded357b47e0e2a4cb854d1634260a820ac096f0cbe9d"
+      }
+    ],
+    "full_checked_predecessor_in_review_prompt": true,
+    "offline_check_no_state": true,
+    "canonical_records_and_source_packet_and_fixture_git_unchanged": true,
+    "scope": "Actual installed original model/CLI journey on a synthetic failed source observation; proposal review only, no memory save/adoption or measured quality/performance/business/GPU/origin claim."
+  },
+  "actual_models_final_r2_check": {
+    "r1_r2_changed_product_files": [
+      "ergora/cli.py"
+    ],
+    "sole_change_is_original_memory_save_utf8_read": true,
+    "actual_model_r1_scope_preserved": true,
+    "final_r2_check_equal_to_original_r1_model_check": true,
+    "exit": 0,
+    "stdout_sha256": "bc086eac169891610cf03b4c795dbdbe578063e707e6ea42a8e881e2eed8b32e",
+    "model_calls_not_repeated": "Producer/reader/backends and original check result unchanged; no additional model calls after memory-save-only fix."
+  },
+  "self_review": {
+    "status": "succeeded",
+    "run_id": "5dba301b185e4c71be0d44c437b2d154",
+    "cli_exit": 0,
+    "seconds": 41.792663663160056,
+    "packet_files": 14,
+    "packet_bytes": 157589,
+    "prompt_sha256": "0871876c6e8d8272e1d52a68c864f330b58ac14a2ddb9ffc485826aee3bfc2b2",
+    "input_digest": "230d8c844c26031193c7913ae4570e15aa5d0bed80d34915124ad19bb0ea58a4",
+    "all_inline_files_and_inherited_resources_in_stdin": true,
+    "backend_selection_reason": "The preceding two complete structure reviews on this repository timed out at360s using Claude; select user-authorized Codex for this slice, preserving those historical outcomes. Native small memory proposal review still uses Claude.",
+    "scope": "Final installed original structure-review template using user-authorized Codex selection for F10c2b1; no independent/GPU/quality acceptance claim.",
+    "decision": "approve",
+    "result_sha256": "2e59b6e31c320ef1cf945f81628bca90fd282b898bdd22937f3551b51f6708d3"
+  },
+  "cleanup": {
+    "at": "2026-11-14T04:00:38.802724+00:00",
+    "all_slice_harness_and_model_calls_terminal": true,
+    "accessible_proc_cwds_under_slice": [],
+    "unreadable_proc_entries": 11,
+    "services_ports_browsers_started": false,
+    "scope": "Accessible proc cwd inspection only; unreadable processes explicitly unverified. No OS isolation claim."
+  },
+  "retained_failure": {
+    "development_r1": "25passed/3test-wording failures/28.02s; fixed external oneOf-path expectations in development-r2 (28passed/27.88s).",
+    "native_r1": "Original CLI saved CRLF-normalized text; actual assertion failed after save exit0. Independent P2 R1 confirmed; final r2 fixes original CLI raw UTF-8 read and tests public save with U+FEFF/CRLF.",
+    "installed_r1": "188passed/6skipped/216.27s on pre-fix r1; distinct from final r2 and does not close original CLI failure."
+  },
+  "limits": [
+    "Synthetic positive CLI proposals only demonstrate original create/correct/export/save/conflict/history/restore contracts, not model-positive generation, quality/generalization/performance or business/GPU results.",
+    "Actual Codex/Claude calls ran on original r1. All594products changed only original CLI memory-save decoding in r2; final r2 check of original model result is byte-identical. No repeated model or invented final-r2-generation claim.",
+    "Own original structure template on final r2 used explicit user-authorized Codex selection based on two retained preceding Claude large-input timeouts. This slice did not make another failed Claude structure call. Actual small proposal review uses Claude. Static self-review is separate from independent approval.",
+    "Memory save CLI now preserves original Unicode including leading U+FEFF and line endings; previously UTF-8-BOM was removed and CRLF/CR normalized. HTTP/API original memory owner, expiry, revisions and restore unchanged.",
+    "Offline checks verify frozen identities/declared links, not current validity or origin authentication. Candidate export cannot authorize/save/renew memory; original owner retains explicit save and restore. Workflow candidates, UI, F9d/G1, full Forge and native Windows model/runtime remain separate.",
+    "Actual original Codex author run has141B nonfatal local diagnostic stderr; original succeeded/return0 and complete raw result retained. No all-stderr-empty claim."
+  ],
+  "independent_review": {
+    "requirements": "Final local approve; zero open findings. Final594products/twoRECORD/283,188passed6skipped,16CLI create/correct/save/restore,original r1 models/final r2 recheck,259raw references and cleanup directly checked.",
+    "structure": "Final local approve; zero open findings. R1 UTF-8/CRLF/semantic U+FEFF original CLI reading fixed and independently checked; original source/expiry/revision/owner and complete model/self-review inputs preserved."
+  },
+  "publication": {
+    "state": "pending"
+  },
+  "raw_evidence": {
+    "private_base": ".ergora/checks/retrospective-memory-candidates/",
+    "references": [
+      {
+        "path": "cleanup-r1.json",
+        "bytes": 338,
+        "sha256": "4b866dae218817022d5718071c533bb5534c2b3cf74423dda7a03cb046a2b805"
+      },
+      {
+        "path": "create-preset-r1.py",
+        "bytes": 5514,
+        "sha256": "685f69949234249c92461d0a4c6567e04d4b6c52572a5fa1a0726cf8a1b8dce1"
+      },
+      {
+        "path": "current-identity-r1.json",
+        "bytes": 1825,
+        "sha256": "29bdf6101173ad3d06e825a577c125d567937e014e0fa9abda42e9c1764eeb5c"
+      },
+      {
+        "path": "development-r1/result.json",
+        "bytes": 493,
+        "sha256": "c87adeff3803cd5392f0b5397d1cafc6eda7c7da6982272ac846c0886f35d0b2"
+      },
+      {
+        "path": "development-r1/stderr.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "development-r1/stdout.txt",
+        "bytes": 18782,
+        "sha256": "f2ef7a48dbb55009dfb66e40575e1908fb4da31814b217f85532293e38f2d0f7"
+      },
+      {
+        "path": "development-r1.py",
+        "bytes": 885,
+        "sha256": "cad18fa7f58d764f8e98291b8e028176bf561e7f789f39b59f036e34098bb0da"
+      },
+      {
+        "path": "development-r2/result.json",
+        "bytes": 492,
+        "sha256": "9f1b5e96ef459b72127017e7f7f3f04d304d0d313398cf957aea113a4cec395f"
+      },
+      {
+        "path": "development-r2/stderr.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "development-r2/stdout.txt",
+        "bytes": 4543,
+        "sha256": "843afe69620cae9b5ebe26cc6d0832ef65976587941052ea70324f334713a278"
+      },
+      {
+        "path": "development-r2.py",
+        "bytes": 885,
+        "sha256": "8d971e374ae926791c0f1a1d31dce4b369c2d2bbc70c32d04e27e867343eeaa2"
+      },
+      {
+        "path": "install-r1/build.stderr",
+        "bytes": 62,
+        "sha256": "3fbf5c81df4d6f7774a09a7694742996e64ed07ccaea033ef3d34574059a981c"
+      },
+      {
+        "path": "install-r1/build.stdout",
+        "bytes": 266761,
+        "sha256": "5dd190a91ce1336cd1c3a505ed2330e2de87adfb8735e1863a036e133e29b0e3"
+      },
+      {
+        "path": "install-r1/install.stderr",
+        "bytes": 1341,
+        "sha256": "767a46f4a24ace91d271872c12ee1ad23fc9b20acfb3cec4e0a6a13fb1bf5ffa"
+      },
+      {
+        "path": "install-r1/install.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "install-r1/package-identity.json",
+        "bytes": 502,
+        "sha256": "44ae6c31a3d144c1b4bc290b7a4f7a14e8b636d16ca70a4c88c061d3335be792"
+      },
+      {
+        "path": "install-r1/regression-r1/process/stderr.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "install-r1/regression-r1/process/stdout.txt",
+        "bytes": 26702,
+        "sha256": "b01cd74d97e960f94952ce83d5bc596476e8c1248642f25182657341a067b39b"
+      },
+      {
+        "path": "install-r1/regression-r1/result.json",
+        "bytes": 886,
+        "sha256": "172d40ce5510cf02b9f1d8c77d8fbf73625c74251981135d7368591391f0dea3"
+      },
+      {
+        "path": "install-r1/setup.json",
+        "bytes": 1395,
+        "sha256": "ed7b20ea95abaf83e52703c00a59efbd70f78e0a16c003b5e993d8eecb12d360"
+      },
+      {
+        "path": "install-r1/source-manifest.json",
+        "bytes": 3066,
+        "sha256": "5bb5b930ee14297c7b159cdc000c0bd0c055fca6d1b56f6289677e0b603c0d20"
+      },
+      {
+        "path": "install-r1/venv.stderr",
+        "bytes": 308,
+        "sha256": "48c952c03ea68bd8ab32b423e241cd2b72e25a0340f65764b39c0cc3b3e7068e"
+      },
+      {
+        "path": "install-r1/venv.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "install-r1.py",
+        "bytes": 2258,
+        "sha256": "365b75dd3d83768620cb73177e58b70e3a21d7ba84bf8b7dec2eabe29c612dd9"
+      },
+      {
+        "path": "install-r2/build.stderr",
+        "bytes": 62,
+        "sha256": "3fbf5c81df4d6f7774a09a7694742996e64ed07ccaea033ef3d34574059a981c"
+      },
+      {
+        "path": "install-r2/build.stdout",
+        "bytes": 266761,
+        "sha256": "82b10260f6e612819399be196b701ace23ee3bb7982ed8e96c8008f18a18de94"
+      },
+      {
+        "path": "install-r2/install.stderr",
+        "bytes": 1341,
+        "sha256": "b4f9c0dedd7296a97c0c7eec5dd3913c57584ff5a391bd4447cf2f1e89825d50"
+      },
+      {
+        "path": "install-r2/install.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "install-r2/package-identity.json",
+        "bytes": 502,
+        "sha256": "cdd9676cb9e4bcbd62f6fc03069a00fe7f69f6a6f3ffbbb9a5be1cd1a7cb9b79"
+      },
+      {
+        "path": "install-r2/regression-r1/process/stderr.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "install-r2/regression-r1/process/stdout.txt",
+        "bytes": 26701,
+        "sha256": "bb42bd3d372e58babcebd40d25afbb0e6ab31516bdedebd34d98e8cc34d92e43"
+      },
+      {
+        "path": "install-r2/regression-r1/result.json",
+        "bytes": 886,
+        "sha256": "a5724fcfbe3c3c489e59689a78b9592509a3aeb2bc56418beb106086942fe247"
+      },
+      {
+        "path": "install-r2/setup.json",
+        "bytes": 1396,
+        "sha256": "15ea8a44306ee24aebdb4e74a994669f12b1f8d0043885ed7739dd887ece4d8c"
+      },
+      {
+        "path": "install-r2/source-manifest.json",
+        "bytes": 3066,
+        "sha256": "d80fb50258631624d20bd47354e3bcda85785f0d0f392f950c25570fb6f3f2e3"
+      },
+      {
+        "path": "install-r2/venv.stderr",
+        "bytes": 308,
+        "sha256": "195f3d485c995573cfe1822890cdbd77a8abd5f1de631d32d3b61ddcdee19535"
+      },
+      {
+        "path": "install-r2/venv.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "install-r2.py",
+        "bytes": 2258,
+        "sha256": "30e593097d0bb64c708510d0e46aa1946afa466c125fe375459bf1f545622fda"
+      },
+      {
+        "path": "local-static-r1.json",
+        "bytes": 1481,
+        "sha256": "14ddacf86585a59e00823bfb5a62294ff571747f69013e83d5350bf8fbbb77f8"
+      },
+      {
+        "path": "models-r1/admit-author.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "models-r1/admit-author.stdout",
+        "bytes": 7948,
+        "sha256": "bc1dac2a88ed377adc6e87afdfe3fc556e0c95ac18f7249a3e52e016d6e67eca"
+      },
+      {
+        "path": "models-r1/admit-review.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "models-r1/admit-review.stdout",
+        "bytes": 7966,
+        "sha256": "a4003ce51ca4008a1fa5066867f49a1be3f99d8e8485e03f4e834c785db8a46a"
+      },
+      {
+        "path": "models-r1/author-input/assets/agent-definitions/index.json",
+        "bytes": 317,
+        "sha256": "6e1a98f6d25edcde8cefdc9a1fbed0b0e4883d2c2a24b64a2102cecbfd381bfd"
+      },
+      {
+        "path": "models-r1/author-input/assets/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/agent.json",
+        "bytes": 559,
+        "sha256": "f7d4e1b02382ad5dc2dc1e7a943ffe96ce1c3bdae6504fc0b4d196c39d3ba8ed"
+      },
+      {
+        "path": "models-r1/author-input/assets/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/instructions.md",
+        "bytes": 447,
+        "sha256": "5fef0693958ea6495f52c8b7c824d3621f23b2966153446816ae38a6d9c39441"
+      },
+      {
+        "path": "models-r1/author-input/assets/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/agent.json",
+        "bytes": 550,
+        "sha256": "727e473843ff7990fa1af05f78e9e7fbda275c433bbad408de060fa76fe167b4"
+      },
+      {
+        "path": "models-r1/author-input/assets/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/instructions.md",
+        "bytes": 397,
+        "sha256": "0ff08dc1bc1de6a350b9d09cb41fe596e26f68dec652324990b361b123906af7"
+      },
+      {
+        "path": "models-r1/author-input/assets/workflow-definitions/index.json",
+        "bytes": 175,
+        "sha256": "d56d629209cd3aeae34889e8534849fc10f5027989786023a9bea2b3d7800815"
+      },
+      {
+        "path": "models-r1/author-input/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/instructions.md",
+        "bytes": 345,
+        "sha256": "8f67827c815fbdcf0b62bfb858ecd1f0745016ff85f9c6f459d581f9b7a80998"
+      },
+      {
+        "path": "models-r1/author-input/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/skills/ergora-memory-retrospective/SKILL.md",
+        "bytes": 1805,
+        "sha256": "78ac07b2b2142ffc20bdc9a75aaaec984e98f8efc2718f93bf1865d0030ed628"
+      },
+      {
+        "path": "models-r1/author-input/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/workflow.json",
+        "bytes": 2410,
+        "sha256": "254a869c796dd3418677838967135160c0c61c3f40246b7a40b4638c71e5741d"
+      },
+      {
+        "path": "models-r1/author-input/composition.json",
+        "bytes": 21076,
+        "sha256": "ef3eb4070ed253122f17bc0f2524e7c4d6742a350f13e00ab220498958202438"
+      },
+      {
+        "path": "models-r1/author-input/prompt.txt",
+        "bytes": 32558,
+        "sha256": "e5b97f949ae5c09c7d3ceeeff88b2b71bfee0644f933e491ae6b16eac320a9f0"
+      },
+      {
+        "path": "models-r1/author-input/request.json",
+        "bytes": 783,
+        "sha256": "ccc178ed6ae30e157c55be75c488a486dfd0939816e9adc668a75196db67d2a4"
+      },
+      {
+        "path": "models-r1/author-input/task.txt",
+        "bytes": 28568,
+        "sha256": "a613accce75ba76bdcaa8109028cc3224aeb6be6c0b80e2454d34a6b88c186a3"
+      },
+      {
+        "path": "models-r1/check-author.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "models-r1/check-author.stdout",
+        "bytes": 34249,
+        "sha256": "bc086eac169891610cf03b4c795dbdbe578063e707e6ea42a8e881e2eed8b32e"
+      },
+      {
+        "path": "models-r1/commands.json",
+        "bytes": 7320,
+        "sha256": "b9371dfea3bd39dbd3ffc31de6c78e17054a938b0089955bc9841dcf8bfe3471"
+      },
+      {
+        "path": "models-r1/git-before.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "models-r1/objective.txt",
+        "bytes": 257,
+        "sha256": "eb77acbedcc8d59a126884952cd524c0a7645ac93d965edbff54d2ec31c8ea0b"
+      },
+      {
+        "path": "models-r1/prepare-review.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "models-r1/prepare-review.stdout",
+        "bytes": 1261,
+        "sha256": "7cac94d83b0eceaa4619df5c3d99b41fa618d45124b31d90f89854896f302f8f"
+      },
+      {
+        "path": "models-r1/prepare.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "models-r1/prepare.stdout",
+        "bytes": 1262,
+        "sha256": "7519a23dd8ad34449c11c5310f046a6e4d872cf8371a64f7b5d58f392bcc19a8"
+      },
+      {
+        "path": "models-r1/records-before.json",
+        "bytes": 23385,
+        "sha256": "5257623fd572a99f72d67eeaab56d5a5679b49b0240de456c9de6d1b10630f87"
+      },
+      {
+        "path": "models-r1/result.json",
+        "bytes": 1620,
+        "sha256": "d320d7ddb978b2959f87544775b6542bee0e9bf3a681e2a7b45dd0c906025ff1"
+      },
+      {
+        "path": "models-r1/review-input/assets/agent-definitions/index.json",
+        "bytes": 317,
+        "sha256": "6e1a98f6d25edcde8cefdc9a1fbed0b0e4883d2c2a24b64a2102cecbfd381bfd"
+      },
+      {
+        "path": "models-r1/review-input/assets/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/agent.json",
+        "bytes": 559,
+        "sha256": "f7d4e1b02382ad5dc2dc1e7a943ffe96ce1c3bdae6504fc0b4d196c39d3ba8ed"
+      },
+      {
+        "path": "models-r1/review-input/assets/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/instructions.md",
+        "bytes": 447,
+        "sha256": "5fef0693958ea6495f52c8b7c824d3621f23b2966153446816ae38a6d9c39441"
+      },
+      {
+        "path": "models-r1/review-input/assets/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/agent.json",
+        "bytes": 550,
+        "sha256": "727e473843ff7990fa1af05f78e9e7fbda275c433bbad408de060fa76fe167b4"
+      },
+      {
+        "path": "models-r1/review-input/assets/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/instructions.md",
+        "bytes": 397,
+        "sha256": "0ff08dc1bc1de6a350b9d09cb41fe596e26f68dec652324990b361b123906af7"
+      },
+      {
+        "path": "models-r1/review-input/assets/workflow-definitions/index.json",
+        "bytes": 175,
+        "sha256": "d56d629209cd3aeae34889e8534849fc10f5027989786023a9bea2b3d7800815"
+      },
+      {
+        "path": "models-r1/review-input/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/instructions.md",
+        "bytes": 345,
+        "sha256": "8f67827c815fbdcf0b62bfb858ecd1f0745016ff85f9c6f459d581f9b7a80998"
+      },
+      {
+        "path": "models-r1/review-input/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/skills/ergora-memory-retrospective/SKILL.md",
+        "bytes": 1805,
+        "sha256": "78ac07b2b2142ffc20bdc9a75aaaec984e98f8efc2718f93bf1865d0030ed628"
+      },
+      {
+        "path": "models-r1/review-input/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/workflow.json",
+        "bytes": 2410,
+        "sha256": "254a869c796dd3418677838967135160c0c61c3f40246b7a40b4638c71e5741d"
+      },
+      {
+        "path": "models-r1/review-input/composition.json",
+        "bytes": 21076,
+        "sha256": "ef3eb4070ed253122f17bc0f2524e7c4d6742a350f13e00ab220498958202438"
+      },
+      {
+        "path": "models-r1/review-input/prompt.txt",
+        "bytes": 38296,
+        "sha256": "054751f25783747b214bbad035f810f0eb0f71fd781c87de9d5f5f7bed9b6855"
+      },
+      {
+        "path": "models-r1/review-input/request.json",
+        "bytes": 782,
+        "sha256": "76893c8e369fe50aac79f7cf23da84b7cb46142b5f03c881935ec8b3972240d3"
+      },
+      {
+        "path": "models-r1/review-input/task.txt",
+        "bytes": 34249,
+        "sha256": "bc086eac169891610cf03b4c795dbdbe578063e707e6ea42a8e881e2eed8b32e"
+      },
+      {
+        "path": "models-r1/run-author.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "models-r1/run-author.stdout",
+        "bytes": 8723,
+        "sha256": "170a8741e9fe3960217f9c700cfc0a0890899386e1350ac8af9892fe16c145ed"
+      },
+      {
+        "path": "models-r1/run-review-claude.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "models-r1/run-review-claude.stdout",
+        "bytes": 8741,
+        "sha256": "b30cd727bfa42e992a7720d3a785395e0db095dba557352b8cf78f0050bd5702"
+      },
+      {
+        "path": "models-r1/selection.json",
+        "bytes": 40,
+        "sha256": "56bec4e76c7a669418982d00411148642834dd063f64dd0f660a9325071a64e3"
+      },
+      {
+        "path": "models-r1/setup/data/runs/46b7b5589cdb48ca973b6f88d022ff8a/result.json",
+        "bytes": 3010,
+        "sha256": "4e91647a760da1709b0fded357b47e0e2a4cb854d1634260a820ac096f0cbe9d"
+      },
+      {
+        "path": "models-r1/setup/data/runs/46b7b5589cdb48ca973b6f88d022ff8a/stderr.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "models-r1/setup/data/runs/46b7b5589cdb48ca973b6f88d022ff8a/stdin.txt",
+        "bytes": 38296,
+        "sha256": "054751f25783747b214bbad035f810f0eb0f71fd781c87de9d5f5f7bed9b6855"
+      },
+      {
+        "path": "models-r1/setup/data/runs/46b7b5589cdb48ca973b6f88d022ff8a/stdout.txt",
+        "bytes": 7780,
+        "sha256": "2d169a38ef156c24d56823240a0e5d6110e28fc592fc5d4859c8d718af332924"
+      },
+      {
+        "path": "models-r1/setup/data/runs/46b7b5589cdb48ca973b6f88d022ff8a.input/assets/agent-definitions/index.json",
+        "bytes": 317,
+        "sha256": "6e1a98f6d25edcde8cefdc9a1fbed0b0e4883d2c2a24b64a2102cecbfd381bfd"
+      },
+      {
+        "path": "models-r1/setup/data/runs/46b7b5589cdb48ca973b6f88d022ff8a.input/assets/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/agent.json",
+        "bytes": 559,
+        "sha256": "f7d4e1b02382ad5dc2dc1e7a943ffe96ce1c3bdae6504fc0b4d196c39d3ba8ed"
+      },
+      {
+        "path": "models-r1/setup/data/runs/46b7b5589cdb48ca973b6f88d022ff8a.input/assets/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/instructions.md",
+        "bytes": 447,
+        "sha256": "5fef0693958ea6495f52c8b7c824d3621f23b2966153446816ae38a6d9c39441"
+      },
+      {
+        "path": "models-r1/setup/data/runs/46b7b5589cdb48ca973b6f88d022ff8a.input/assets/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/agent.json",
+        "bytes": 550,
+        "sha256": "727e473843ff7990fa1af05f78e9e7fbda275c433bbad408de060fa76fe167b4"
+      },
+      {
+        "path": "models-r1/setup/data/runs/46b7b5589cdb48ca973b6f88d022ff8a.input/assets/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/instructions.md",
+        "bytes": 397,
+        "sha256": "0ff08dc1bc1de6a350b9d09cb41fe596e26f68dec652324990b361b123906af7"
+      },
+      {
+        "path": "models-r1/setup/data/runs/46b7b5589cdb48ca973b6f88d022ff8a.input/assets/workflow-definitions/index.json",
+        "bytes": 175,
+        "sha256": "d56d629209cd3aeae34889e8534849fc10f5027989786023a9bea2b3d7800815"
+      },
+      {
+        "path": "models-r1/setup/data/runs/46b7b5589cdb48ca973b6f88d022ff8a.input/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/instructions.md",
+        "bytes": 345,
+        "sha256": "8f67827c815fbdcf0b62bfb858ecd1f0745016ff85f9c6f459d581f9b7a80998"
+      },
+      {
+        "path": "models-r1/setup/data/runs/46b7b5589cdb48ca973b6f88d022ff8a.input/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/skills/ergora-memory-retrospective/SKILL.md",
+        "bytes": 1805,
+        "sha256": "78ac07b2b2142ffc20bdc9a75aaaec984e98f8efc2718f93bf1865d0030ed628"
+      },
+      {
+        "path": "models-r1/setup/data/runs/46b7b5589cdb48ca973b6f88d022ff8a.input/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/workflow.json",
+        "bytes": 2410,
+        "sha256": "254a869c796dd3418677838967135160c0c61c3f40246b7a40b4638c71e5741d"
+      },
+      {
+        "path": "models-r1/setup/data/runs/46b7b5589cdb48ca973b6f88d022ff8a.input/composition.json",
+        "bytes": 21076,
+        "sha256": "ef3eb4070ed253122f17bc0f2524e7c4d6742a350f13e00ab220498958202438"
+      },
+      {
+        "path": "models-r1/setup/data/runs/46b7b5589cdb48ca973b6f88d022ff8a.input/prompt.txt",
+        "bytes": 38296,
+        "sha256": "054751f25783747b214bbad035f810f0eb0f71fd781c87de9d5f5f7bed9b6855"
+      },
+      {
+        "path": "models-r1/setup/data/runs/46b7b5589cdb48ca973b6f88d022ff8a.input/request.json",
+        "bytes": 782,
+        "sha256": "76893c8e369fe50aac79f7cf23da84b7cb46142b5f03c881935ec8b3972240d3"
+      },
+      {
+        "path": "models-r1/setup/data/runs/46b7b5589cdb48ca973b6f88d022ff8a.input/task.txt",
+        "bytes": 34249,
+        "sha256": "bc086eac169891610cf03b4c795dbdbe578063e707e6ea42a8e881e2eed8b32e"
+      },
+      {
+        "path": "models-r1/setup/data/runs/9f65aeeb24c64043b54fa180df3e7795/result.json",
+        "bytes": 1557,
+        "sha256": "f32d1c4cd772f89553c4dcd6d0de77fc1f53799b84d0385af685927f05a4e4c4"
+      },
+      {
+        "path": "models-r1/setup/data/runs/9f65aeeb24c64043b54fa180df3e7795/stderr.txt",
+        "bytes": 141,
+        "sha256": "913587bc5ad818ed2fd1a69fa7778ebb00ddc9f68a861a2009e70ecf25cbb728"
+      },
+      {
+        "path": "models-r1/setup/data/runs/9f65aeeb24c64043b54fa180df3e7795/stdin.txt",
+        "bytes": 32558,
+        "sha256": "e5b97f949ae5c09c7d3ceeeff88b2b71bfee0644f933e491ae6b16eac320a9f0"
+      },
+      {
+        "path": "models-r1/setup/data/runs/9f65aeeb24c64043b54fa180df3e7795/stdout.txt",
+        "bytes": 2253,
+        "sha256": "aa48311a5300249ecaae174a5db53157d033c536d6da43b578fc6f880430e398"
+      },
+      {
+        "path": "models-r1/setup/data/runs/9f65aeeb24c64043b54fa180df3e7795.input/assets/agent-definitions/index.json",
+        "bytes": 317,
+        "sha256": "6e1a98f6d25edcde8cefdc9a1fbed0b0e4883d2c2a24b64a2102cecbfd381bfd"
+      },
+      {
+        "path": "models-r1/setup/data/runs/9f65aeeb24c64043b54fa180df3e7795.input/assets/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/agent.json",
+        "bytes": 559,
+        "sha256": "f7d4e1b02382ad5dc2dc1e7a943ffe96ce1c3bdae6504fc0b4d196c39d3ba8ed"
+      },
+      {
+        "path": "models-r1/setup/data/runs/9f65aeeb24c64043b54fa180df3e7795.input/assets/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/instructions.md",
+        "bytes": 447,
+        "sha256": "5fef0693958ea6495f52c8b7c824d3621f23b2966153446816ae38a6d9c39441"
+      },
+      {
+        "path": "models-r1/setup/data/runs/9f65aeeb24c64043b54fa180df3e7795.input/assets/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/agent.json",
+        "bytes": 550,
+        "sha256": "727e473843ff7990fa1af05f78e9e7fbda275c433bbad408de060fa76fe167b4"
+      },
+      {
+        "path": "models-r1/setup/data/runs/9f65aeeb24c64043b54fa180df3e7795.input/assets/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/instructions.md",
+        "bytes": 397,
+        "sha256": "0ff08dc1bc1de6a350b9d09cb41fe596e26f68dec652324990b361b123906af7"
+      },
+      {
+        "path": "models-r1/setup/data/runs/9f65aeeb24c64043b54fa180df3e7795.input/assets/workflow-definitions/index.json",
+        "bytes": 175,
+        "sha256": "d56d629209cd3aeae34889e8534849fc10f5027989786023a9bea2b3d7800815"
+      },
+      {
+        "path": "models-r1/setup/data/runs/9f65aeeb24c64043b54fa180df3e7795.input/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/instructions.md",
+        "bytes": 345,
+        "sha256": "8f67827c815fbdcf0b62bfb858ecd1f0745016ff85f9c6f459d581f9b7a80998"
+      },
+      {
+        "path": "models-r1/setup/data/runs/9f65aeeb24c64043b54fa180df3e7795.input/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/skills/ergora-memory-retrospective/SKILL.md",
+        "bytes": 1805,
+        "sha256": "78ac07b2b2142ffc20bdc9a75aaaec984e98f8efc2718f93bf1865d0030ed628"
+      },
+      {
+        "path": "models-r1/setup/data/runs/9f65aeeb24c64043b54fa180df3e7795.input/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/workflow.json",
+        "bytes": 2410,
+        "sha256": "254a869c796dd3418677838967135160c0c61c3f40246b7a40b4638c71e5741d"
+      },
+      {
+        "path": "models-r1/setup/data/runs/9f65aeeb24c64043b54fa180df3e7795.input/composition.json",
+        "bytes": 21076,
+        "sha256": "ef3eb4070ed253122f17bc0f2524e7c4d6742a350f13e00ab220498958202438"
+      },
+      {
+        "path": "models-r1/setup/data/runs/9f65aeeb24c64043b54fa180df3e7795.input/prompt.txt",
+        "bytes": 32558,
+        "sha256": "e5b97f949ae5c09c7d3ceeeff88b2b71bfee0644f933e491ae6b16eac320a9f0"
+      },
+      {
+        "path": "models-r1/setup/data/runs/9f65aeeb24c64043b54fa180df3e7795.input/request.json",
+        "bytes": 783,
+        "sha256": "ccc178ed6ae30e157c55be75c488a486dfd0939816e9adc668a75196db67d2a4"
+      },
+      {
+        "path": "models-r1/setup/data/runs/9f65aeeb24c64043b54fa180df3e7795.input/task.txt",
+        "bytes": 28568,
+        "sha256": "a613accce75ba76bdcaa8109028cc3224aeb6be6c0b80e2454d34a6b88c186a3"
+      },
+      {
+        "path": "models-r1/setup/source.zip",
+        "bytes": 2789,
+        "sha256": "d3b9eba8982e51a0bf6cc69a81507aadec75d7fc4a028d960bfdcbea8072da0c"
+      },
+      {
+        "path": "models-r1-final-r2-check.json",
+        "bytes": 1153,
+        "sha256": "e85a3a4eece8097287403800ec52c572400283e6777ce268b81ca1a9cebee47f"
+      },
+      {
+        "path": "models-r1-final-r2-check.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "models-r1-final-r2-check.stdout",
+        "bytes": 34249,
+        "sha256": "bc086eac169891610cf03b4c795dbdbe578063e707e6ea42a8e881e2eed8b32e"
+      },
+      {
+        "path": "models-r1.py",
+        "bytes": 5507,
+        "sha256": "f228766da051532ee4146c78063f41390edf2b5ec52993b09537bdcb94b58196"
+      },
+      {
+        "path": "native-r1/commands.json",
+        "bytes": 7201,
+        "sha256": "3aa32b867f2d0853bd5f5f8bddaf96595c5c1b9c8a4b2a4c0be5136a4aa9b24c"
+      },
+      {
+        "path": "native-r1/correct-candidate/memory.txt",
+        "bytes": 22059,
+        "sha256": "0fcb6ce8501cbbe51c6dd0538756e358f8555935b6926f113391eee353b57360"
+      },
+      {
+        "path": "native-r1/correct-candidate/receipt.json",
+        "bytes": 24359,
+        "sha256": "7c43087d380b5a3f5431b4c0bea2c21aa66f38373d60ed5285e9d84dc9171572"
+      },
+      {
+        "path": "native-r1/correct-check.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r1/correct-check.stdout",
+        "bytes": 108925,
+        "sha256": "de8966e5a9be50fa1cb27f92f85b5ff04c93dac0fe461c9a202fa0a9262df45a"
+      },
+      {
+        "path": "native-r1/correct-existing.stderr",
+        "bytes": 51,
+        "sha256": "218d8ccd3cdcda4084fadea234f0c04681e5b8e24a2ea87e866df26e8d44ebe9"
+      },
+      {
+        "path": "native-r1/correct-existing.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r1/correct-export.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r1/correct-export.stdout",
+        "bytes": 24580,
+        "sha256": "aa5272a802269045071165bbed6685aa8368dd72a962c5de88bc6b2cbf915d51"
+      },
+      {
+        "path": "native-r1/correct-input/assets/agent-definitions/index.json",
+        "bytes": 317,
+        "sha256": "6e1a98f6d25edcde8cefdc9a1fbed0b0e4883d2c2a24b64a2102cecbfd381bfd"
+      },
+      {
+        "path": "native-r1/correct-input/assets/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/agent.json",
+        "bytes": 559,
+        "sha256": "f7d4e1b02382ad5dc2dc1e7a943ffe96ce1c3bdae6504fc0b4d196c39d3ba8ed"
+      },
+      {
+        "path": "native-r1/correct-input/assets/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/instructions.md",
+        "bytes": 447,
+        "sha256": "5fef0693958ea6495f52c8b7c824d3621f23b2966153446816ae38a6d9c39441"
+      },
+      {
+        "path": "native-r1/correct-input/assets/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/agent.json",
+        "bytes": 550,
+        "sha256": "727e473843ff7990fa1af05f78e9e7fbda275c433bbad408de060fa76fe167b4"
+      },
+      {
+        "path": "native-r1/correct-input/assets/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/instructions.md",
+        "bytes": 397,
+        "sha256": "0ff08dc1bc1de6a350b9d09cb41fe596e26f68dec652324990b361b123906af7"
+      },
+      {
+        "path": "native-r1/correct-input/assets/workflow-definitions/index.json",
+        "bytes": 175,
+        "sha256": "d56d629209cd3aeae34889e8534849fc10f5027989786023a9bea2b3d7800815"
+      },
+      {
+        "path": "native-r1/correct-input/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/instructions.md",
+        "bytes": 345,
+        "sha256": "8f67827c815fbdcf0b62bfb858ecd1f0745016ff85f9c6f459d581f9b7a80998"
+      },
+      {
+        "path": "native-r1/correct-input/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/skills/ergora-memory-retrospective/SKILL.md",
+        "bytes": 1805,
+        "sha256": "78ac07b2b2142ffc20bdc9a75aaaec984e98f8efc2718f93bf1865d0030ed628"
+      },
+      {
+        "path": "native-r1/correct-input/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/workflow.json",
+        "bytes": 2410,
+        "sha256": "254a869c796dd3418677838967135160c0c61c3f40246b7a40b4638c71e5741d"
+      },
+      {
+        "path": "native-r1/correct-input/composition.json",
+        "bytes": 21076,
+        "sha256": "ef3eb4070ed253122f17bc0f2524e7c4d6742a350f13e00ab220498958202438"
+      },
+      {
+        "path": "native-r1/correct-input/prompt.txt",
+        "bytes": 32378,
+        "sha256": "b7667c862bbef59a6eb48aebe0339b9dbea39ff667187a8be7b0a8b390f5ab9b"
+      },
+      {
+        "path": "native-r1/correct-input/request.json",
+        "bytes": 783,
+        "sha256": "202982dcb51162c1219f256a2f3e2d09e1e271566c5594c940c43504a64a464c"
+      },
+      {
+        "path": "native-r1/correct-input/task.txt",
+        "bytes": 28388,
+        "sha256": "41bfa7c8cb0590be7abde95032fd71a58252929b1648680e1bc4c7f1e38aaf6a"
+      },
+      {
+        "path": "native-r1/correct-prepare.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r1/correct-prepare.stdout",
+        "bytes": 1263,
+        "sha256": "2ecfcd903af22cc89f02dc089b38eac39d9b3101aa19d75ab114dbab7acf1846"
+      },
+      {
+        "path": "native-r1/correct-save.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r1/correct-save.stdout",
+        "bytes": 22479,
+        "sha256": "00425a8019801f9cbe12ec718f4113ab23b77879c7d5cc0e51936af62e0c4e51"
+      },
+      {
+        "path": "native-r1/correct-synthetic-result.json",
+        "bytes": 52983,
+        "sha256": "48f774f6120725ae5132be9095b133edcbf20f9e255a7071e176898c1348b67e"
+      },
+      {
+        "path": "native-r1/correct-wrong-selection.stderr",
+        "bytes": 75,
+        "sha256": "df3c9f89e3dfcecef710d3c085463fc5b745acc11f6ed04d4169ea8475826c92"
+      },
+      {
+        "path": "native-r1/correct-wrong-selection.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r1/git-before.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r1/objective.txt",
+        "bytes": 77,
+        "sha256": "2b4cefe36d858ecd28b3f98a08ca8721f4de367684b38f33f673560be2cba208"
+      },
+      {
+        "path": "native-r1/original-record.json",
+        "bytes": 23286,
+        "sha256": "332972a6e7f837389dde0f8ee1ff1cc1a629125f5311713df87f0abb8dbd07f7"
+      },
+      {
+        "path": "native-r1/selection.json",
+        "bytes": 40,
+        "sha256": "56bec4e76c7a669418982d00411148642834dd063f64dd0f660a9325071a64e3"
+      },
+      {
+        "path": "native-r1/setup/source.zip",
+        "bytes": 2789,
+        "sha256": "d3b9eba8982e51a0bf6cc69a81507aadec75d7fc4a028d960bfdcbea8072da0c"
+      },
+      {
+        "path": "native-r1.py",
+        "bytes": 5838,
+        "sha256": "e98ea40175a76c6a89140ebf45485123b2a82342caa42d124dd9fc9a8a6900b9"
+      },
+      {
+        "path": "native-r2/catalog-final.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r2/catalog-final.stdout",
+        "bytes": 47072,
+        "sha256": "ffc00960d45227e2b7e9d36c8a4b9b1b9da78530f2d121f0d6d556614f713fea"
+      },
+      {
+        "path": "native-r2/commands.json",
+        "bytes": 17360,
+        "sha256": "11619cd90aec8f09b184aa69318dca7ef0e31be748a4a03106ac17e43b1a663e"
+      },
+      {
+        "path": "native-r2/correct-candidate/memory.txt",
+        "bytes": 22062,
+        "sha256": "0c5d788c3953ca6b0363252ecdb715813d7f65856869e5143fca4171b07e3963"
+      },
+      {
+        "path": "native-r2/correct-candidate/receipt.json",
+        "bytes": 24359,
+        "sha256": "b45cd86bb0eea1a974d3cc3099dac5b88f88a8fe1a4e097e4c6491f2378b0c9e"
+      },
+      {
+        "path": "native-r2/correct-check.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r2/correct-check.stdout",
+        "bytes": 108935,
+        "sha256": "cb81e765229148652613a81fa77f6909742d3bfba3377f77ee4487e8b60fe82e"
+      },
+      {
+        "path": "native-r2/correct-existing.stderr",
+        "bytes": 51,
+        "sha256": "218d8ccd3cdcda4084fadea234f0c04681e5b8e24a2ea87e866df26e8d44ebe9"
+      },
+      {
+        "path": "native-r2/correct-existing.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r2/correct-export.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r2/correct-export.stdout",
+        "bytes": 24580,
+        "sha256": "4156771aa5fd25e03d9428e265c9eb669a69af8781af5b937f8281dcebdc8eca"
+      },
+      {
+        "path": "native-r2/correct-history.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r2/correct-history.stdout",
+        "bytes": 46827,
+        "sha256": "c74f949bb25e80ab37e91cc4e1cc4ff04dff7fa34ad55a8a1145b068c6ce440b"
+      },
+      {
+        "path": "native-r2/correct-input/assets/agent-definitions/index.json",
+        "bytes": 317,
+        "sha256": "6e1a98f6d25edcde8cefdc9a1fbed0b0e4883d2c2a24b64a2102cecbfd381bfd"
+      },
+      {
+        "path": "native-r2/correct-input/assets/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/agent.json",
+        "bytes": 559,
+        "sha256": "f7d4e1b02382ad5dc2dc1e7a943ffe96ce1c3bdae6504fc0b4d196c39d3ba8ed"
+      },
+      {
+        "path": "native-r2/correct-input/assets/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/instructions.md",
+        "bytes": 447,
+        "sha256": "5fef0693958ea6495f52c8b7c824d3621f23b2966153446816ae38a6d9c39441"
+      },
+      {
+        "path": "native-r2/correct-input/assets/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/agent.json",
+        "bytes": 550,
+        "sha256": "727e473843ff7990fa1af05f78e9e7fbda275c433bbad408de060fa76fe167b4"
+      },
+      {
+        "path": "native-r2/correct-input/assets/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/instructions.md",
+        "bytes": 397,
+        "sha256": "0ff08dc1bc1de6a350b9d09cb41fe596e26f68dec652324990b361b123906af7"
+      },
+      {
+        "path": "native-r2/correct-input/assets/workflow-definitions/index.json",
+        "bytes": 175,
+        "sha256": "d56d629209cd3aeae34889e8534849fc10f5027989786023a9bea2b3d7800815"
+      },
+      {
+        "path": "native-r2/correct-input/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/instructions.md",
+        "bytes": 345,
+        "sha256": "8f67827c815fbdcf0b62bfb858ecd1f0745016ff85f9c6f459d581f9b7a80998"
+      },
+      {
+        "path": "native-r2/correct-input/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/skills/ergora-memory-retrospective/SKILL.md",
+        "bytes": 1805,
+        "sha256": "78ac07b2b2142ffc20bdc9a75aaaec984e98f8efc2718f93bf1865d0030ed628"
+      },
+      {
+        "path": "native-r2/correct-input/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/workflow.json",
+        "bytes": 2410,
+        "sha256": "254a869c796dd3418677838967135160c0c61c3f40246b7a40b4638c71e5741d"
+      },
+      {
+        "path": "native-r2/correct-input/composition.json",
+        "bytes": 21076,
+        "sha256": "ef3eb4070ed253122f17bc0f2524e7c4d6742a350f13e00ab220498958202438"
+      },
+      {
+        "path": "native-r2/correct-input/prompt.txt",
+        "bytes": 32378,
+        "sha256": "b1e318114204f36b9b4c222efe3c91253ce4532deed30bad6b9d9a8cd2c8f732"
+      },
+      {
+        "path": "native-r2/correct-input/request.json",
+        "bytes": 783,
+        "sha256": "56e23e334024b7673f39134c996c5e5cd1816aa342c54a509d90c89f35db5eda"
+      },
+      {
+        "path": "native-r2/correct-input/task.txt",
+        "bytes": 28388,
+        "sha256": "3173632cccfd0c8214b771f3302854870587d85c0f30508d39d7fc28c4d2dc81"
+      },
+      {
+        "path": "native-r2/correct-prepare.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r2/correct-prepare.stdout",
+        "bytes": 1263,
+        "sha256": "9f1d4c1c725c1a3084ac92242cc3752d9fd103476e58e2011dd8bc0511142ea8"
+      },
+      {
+        "path": "native-r2/correct-restore.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r2/correct-restore.stdout",
+        "bytes": 23286,
+        "sha256": "33f7fc2f0869bf1f70a3764db2ece5363083b3a593ba1d9ad6fe55067927b739"
+      },
+      {
+        "path": "native-r2/correct-save.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r2/correct-save.stdout",
+        "bytes": 23484,
+        "sha256": "f32b74a068691642e845dce8f9773de24644b079c0287f0148e7dbc54bac4b51"
+      },
+      {
+        "path": "native-r2/correct-synthetic-result.json",
+        "bytes": 52990,
+        "sha256": "83f4ce81229365a1acff9e11f32eeb0edcf81d0910cde0d57d5460cb72507af9"
+      },
+      {
+        "path": "native-r2/correct-wrong-selection.stderr",
+        "bytes": 75,
+        "sha256": "df3c9f89e3dfcecef710d3c085463fc5b745acc11f6ed04d4169ea8475826c92"
+      },
+      {
+        "path": "native-r2/correct-wrong-selection.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r2/create-candidate/memory.txt",
+        "bytes": 22062,
+        "sha256": "0c5d788c3953ca6b0363252ecdb715813d7f65856869e5143fca4171b07e3963"
+      },
+      {
+        "path": "native-r2/create-candidate/receipt.json",
+        "bytes": 1095,
+        "sha256": "3444a6ed444e29203891a8c1de191c4b3c71d019ba4ed5ebe3a2701f902f9e82"
+      },
+      {
+        "path": "native-r2/create-check.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r2/create-check.stdout",
+        "bytes": 85552,
+        "sha256": "f33dcb721c56ed1593dd68c4839de853137632d9976acc1203211e2841354a08"
+      },
+      {
+        "path": "native-r2/create-existing.stderr",
+        "bytes": 51,
+        "sha256": "218d8ccd3cdcda4084fadea234f0c04681e5b8e24a2ea87e866df26e8d44ebe9"
+      },
+      {
+        "path": "native-r2/create-existing.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r2/create-export.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r2/create-export.stdout",
+        "bytes": 1220,
+        "sha256": "6543c40b8cafb95bcb44a148194a5e874280ef6772a50582a5bbee0019523f66"
+      },
+      {
+        "path": "native-r2/create-input/assets/agent-definitions/index.json",
+        "bytes": 317,
+        "sha256": "6e1a98f6d25edcde8cefdc9a1fbed0b0e4883d2c2a24b64a2102cecbfd381bfd"
+      },
+      {
+        "path": "native-r2/create-input/assets/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/agent.json",
+        "bytes": 559,
+        "sha256": "f7d4e1b02382ad5dc2dc1e7a943ffe96ce1c3bdae6504fc0b4d196c39d3ba8ed"
+      },
+      {
+        "path": "native-r2/create-input/assets/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/instructions.md",
+        "bytes": 447,
+        "sha256": "5fef0693958ea6495f52c8b7c824d3621f23b2966153446816ae38a6d9c39441"
+      },
+      {
+        "path": "native-r2/create-input/assets/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/agent.json",
+        "bytes": 550,
+        "sha256": "727e473843ff7990fa1af05f78e9e7fbda275c433bbad408de060fa76fe167b4"
+      },
+      {
+        "path": "native-r2/create-input/assets/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/instructions.md",
+        "bytes": 397,
+        "sha256": "0ff08dc1bc1de6a350b9d09cb41fe596e26f68dec652324990b361b123906af7"
+      },
+      {
+        "path": "native-r2/create-input/assets/workflow-definitions/index.json",
+        "bytes": 175,
+        "sha256": "d56d629209cd3aeae34889e8534849fc10f5027989786023a9bea2b3d7800815"
+      },
+      {
+        "path": "native-r2/create-input/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/instructions.md",
+        "bytes": 345,
+        "sha256": "8f67827c815fbdcf0b62bfb858ecd1f0745016ff85f9c6f459d581f9b7a80998"
+      },
+      {
+        "path": "native-r2/create-input/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/skills/ergora-memory-retrospective/SKILL.md",
+        "bytes": 1805,
+        "sha256": "78ac07b2b2142ffc20bdc9a75aaaec984e98f8efc2718f93bf1865d0030ed628"
+      },
+      {
+        "path": "native-r2/create-input/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/workflow.json",
+        "bytes": 2410,
+        "sha256": "254a869c796dd3418677838967135160c0c61c3f40246b7a40b4638c71e5741d"
+      },
+      {
+        "path": "native-r2/create-input/composition.json",
+        "bytes": 21076,
+        "sha256": "ef3eb4070ed253122f17bc0f2524e7c4d6742a350f13e00ab220498958202438"
+      },
+      {
+        "path": "native-r2/create-input/prompt.txt",
+        "bytes": 9145,
+        "sha256": "c3b0929ead2a5d5b511eeadbc1ea258b7086cec8b3121c7700fdafaae7ed49e3"
+      },
+      {
+        "path": "native-r2/create-input/request.json",
+        "bytes": 782,
+        "sha256": "969f79daee2d1c0711ef0b8e56fdb24b328c3d7e2042609033124c0d536031a7"
+      },
+      {
+        "path": "native-r2/create-input/task.txt",
+        "bytes": 5155,
+        "sha256": "17bc21f7a2d08dc6ec9f8f393e7c2aa351e2c56f80cdedce0c7b32ae97a7fcd0"
+      },
+      {
+        "path": "native-r2/create-prepare.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r2/create-prepare.stdout",
+        "bytes": 1261,
+        "sha256": "0afac27c082a83c830288d287fd6c7fde99fab2e8e4596a9dea6de09bea56a0b"
+      },
+      {
+        "path": "native-r2/create-save.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r2/create-save.stdout",
+        "bytes": 23439,
+        "sha256": "bb50cb496fa3d78fb4bab64c4f0c27c018d5408e5769b5c1b7d0e92e3f0af9c0"
+      },
+      {
+        "path": "native-r2/create-synthetic-result.json",
+        "bytes": 52990,
+        "sha256": "3e0bb37765fd5bdef949b02e1f690388da8177422aec6c4f6091e1f4f291106a"
+      },
+      {
+        "path": "native-r2/create-wrong-selection.stderr",
+        "bytes": 75,
+        "sha256": "df3c9f89e3dfcecef710d3c085463fc5b745acc11f6ed04d4169ea8475826c92"
+      },
+      {
+        "path": "native-r2/create-wrong-selection.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r2/git-before.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r2/objective.txt",
+        "bytes": 77,
+        "sha256": "2b4cefe36d858ecd28b3f98a08ca8721f4de367684b38f33f673560be2cba208"
+      },
+      {
+        "path": "native-r2/original-record.json",
+        "bytes": 23286,
+        "sha256": "50344b0a214e6a3c0d2115b999083f4d685fd7198198704e9688fd41794f594e"
+      },
+      {
+        "path": "native-r2/result.json",
+        "bytes": 2247,
+        "sha256": "041356fdfd4048c830f5ee9dc28bcfc9264b9691a4a4537c6a576b9a7d920f4a"
+      },
+      {
+        "path": "native-r2/selection.json",
+        "bytes": 40,
+        "sha256": "56bec4e76c7a669418982d00411148642834dd063f64dd0f660a9325071a64e3"
+      },
+      {
+        "path": "native-r2/setup/source.zip",
+        "bytes": 2789,
+        "sha256": "d3b9eba8982e51a0bf6cc69a81507aadec75d7fc4a028d960bfdcbea8072da0c"
+      },
+      {
+        "path": "native-r2/stale-correct-save.stderr",
+        "bytes": 53,
+        "sha256": "b9362afa4198977adae8f61e42bbd0bff16817f2c007f04ddbbdcbfa53654a02"
+      },
+      {
+        "path": "native-r2/stale-correct-save.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r2.py",
+        "bytes": 5847,
+        "sha256": "6bb8cb5492cbd38d93bd2da0e06e5f9f1fdbb8f96650f8a7687e78d62e1f9163"
+      },
+      {
+        "path": "run-installed-r1.py",
+        "bytes": 916,
+        "sha256": "8dacdd2814daa0c341e53ef289506e8836405723ae88c86928721525405727c9"
+      },
+      {
+        "path": "run-installed-r2.py",
+        "bytes": 916,
+        "sha256": "8f02f6c99505881f311943b529f3f3e8f41c80d5a81cb788095dd02d84765494"
+      },
+      {
+        "path": "self-review-r1-codex/admission.json",
+        "bytes": 7945,
+        "sha256": "f23aa1ed0b57fdc16d124d2c34c460a1d5ccd08080df7a70bbbeb77aa98c8973"
+      },
+      {
+        "path": "self-review-r1-codex/admission.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "self-review-r1-codex/native.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "self-review-r1-codex/native.stdout",
+        "bytes": 8738,
+        "sha256": "3f8c2025621a2c3cb79cdcf46077a34cd5e72c21cd9a6f762632320cce14cfe1"
+      },
+      {
+        "path": "self-review-r1-codex/original-result.json",
+        "bytes": 604,
+        "sha256": "2e59b6e31c320ef1cf945f81628bca90fd282b898bdd22937f3551b51f6708d3"
+      },
+      {
+        "path": "self-review-r1-codex/packet-index.json",
+        "bytes": 2604,
+        "sha256": "04f1ac88a2946dd0829b6b209164b7f850e0121f1abe1d5826241231ffcd95d4"
+      },
+      {
+        "path": "self-review-r1-codex/review.md",
+        "bytes": 476,
+        "sha256": "1a8fb806bb22b31362b64492853f82a08090a5df359af539977f34514569a1a2"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/5dba301b185e4c71be0d44c437b2d154/result.json",
+        "bytes": 604,
+        "sha256": "2e59b6e31c320ef1cf945f81628bca90fd282b898bdd22937f3551b51f6708d3"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/5dba301b185e4c71be0d44c437b2d154/stderr.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/5dba301b185e4c71be0d44c437b2d154/stdin.txt",
+        "bytes": 162920,
+        "sha256": "0871876c6e8d8272e1d52a68c864f330b58ac14a2ddb9ffc485826aee3bfc2b2"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/5dba301b185e4c71be0d44c437b2d154/stdout.txt",
+        "bytes": 1212,
+        "sha256": "d6342d1e02625b0ecc00dcd66161428c440eb4448e8227a947b4d1105ee2718d"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/5dba301b185e4c71be0d44c437b2d154.input/assets/agent-definitions/index.json",
+        "bytes": 173,
+        "sha256": "852b1e2b14bc716dd54b6bc7893015349b7758e764e278077fcaf6591d239c77"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/5dba301b185e4c71be0d44c437b2d154.input/assets/agent-definitions/objects/97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c/agent.json",
+        "bytes": 788,
+        "sha256": "64be372b8c5e1d7bd694f492ef6539ddc664814d818a546c35fdfbf07e54c7bd"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/5dba301b185e4c71be0d44c437b2d154.input/assets/agent-definitions/objects/97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c/instructions.md",
+        "bytes": 354,
+        "sha256": "3cc9c450f0c03da5ea4a1434ac6182d50df6a4985cffdee2a59fe9fe477c6b43"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/5dba301b185e4c71be0d44c437b2d154.input/assets/agent-definitions/objects/97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c/skills/ergora-structure-reviewer/SKILL.md",
+        "bytes": 521,
+        "sha256": "d6b69570bcca408d3d06ca5adf1cb44a4a9e43c2901f05c38a68c096f23a4ac8"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/5dba301b185e4c71be0d44c437b2d154.input/assets/workflow-definitions/index.json",
+        "bytes": 171,
+        "sha256": "e2d5c1ad28b450c5ba3b1deb3d39580061e84223efa3be68f9cef86f9dbcbe8a"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/5dba301b185e4c71be0d44c437b2d154.input/assets/workflow-definitions/objects/996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9/instructions.md",
+        "bytes": 163,
+        "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/5dba301b185e4c71be0d44c437b2d154.input/assets/workflow-definitions/objects/996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9/workflow.json",
+        "bytes": 1465,
+        "sha256": "062a56396ec6c57d2038f7ea6a0629d7514c0314d5657d5033d9920d8895f653"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/5dba301b185e4c71be0d44c437b2d154.input/composition.json",
+        "bytes": 7878,
+        "sha256": "0446ac008f690f5e2a16e493b9e82c1a818f7acf0ca9753ae560838e0bcf722e"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/5dba301b185e4c71be0d44c437b2d154.input/prompt.txt",
+        "bytes": 162920,
+        "sha256": "0871876c6e8d8272e1d52a68c864f330b58ac14a2ddb9ffc485826aee3bfc2b2"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/5dba301b185e4c71be0d44c437b2d154.input/request.json",
+        "bytes": 779,
+        "sha256": "c0f2b188ac5548cffee76616657bdc3b083fea0b979623d5794dfb14412c4522"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/5dba301b185e4c71be0d44c437b2d154.input/task.txt",
+        "bytes": 160521,
+        "sha256": "4f49d860b02bd280d6dedab7bf01518846284b198511860fe70b3a94822feabb"
+      },
+      {
+        "path": "self-review-r1-codex.json",
+        "bytes": 3706,
+        "sha256": "79175994d9cb3182d00cc583851249acde1b786676ffc3e2e327a96a70ebaa83"
+      },
+      {
+        "path": "self-review-r1.py",
+        "bytes": 6525,
+        "sha256": "87b326ba2da6168faaead53acb06c10dacf269192fa90d6b2797a41e77eefbe7"
+      },
+      {
+        "path": "summarize-final-r1.py",
+        "bytes": 11318,
+        "sha256": "bc938e8e6255e089cbaf1c0d70ef9ead01d608beda5d21cfdc8dd98dc18a4251"
+      },
+      {
+        "path": "verify-installed-r1.py",
+        "bytes": 2445,
+        "sha256": "8597905c3ce7bb7e2dc3f9cf923f30115d1b8b92d9bc0fa18595cb92e2d2d6e7"
+      },
+      {
+        "path": "verify-installed-r2.py",
+        "bytes": 2445,
+        "sha256": "f1da989e1b07a5642435e054202b0526a94458d4e75c478263339c20ea2b3607"
+      }
+    ]
+  },
+  "publication_dependency_adjustment": {
+    "plan": "docs/plans/2026-11-14-windows-ci-budget.md",
+    "preceding_candidate": "c4aa7acb555a5d55fec7e7a483544834e8afe44f",
+    "preceding_own_ci_run": 43553150941,
+    "preceding_ci_status": "cancelled",
+    "preceding_required_steps_success": 29,
+    "preceding_required_steps_total": 30,
+    "reason": "Original Windows total20minute job timeout cancelled installer after successful complete app regression. Preserve historical incomplete CI; new SHA must pass all original required checks using Windows30/Linux20 budget. Separate new CI-scope independent review and original preceding termination supplement required before publication.",
+    "original_ci_termination_review": "verified terminal cancellation; original reviewer checked all30steps/official20minute reason/66refs and preserved fixed130post134. Full prior CI remains incomplete; new candidate full CI required.",
+    "ci_budget_independent_review": "approve; new fresh-context CI reviewer independently verified one-line change,original cause and all8jobs/30required steps unchanged; no CI success preapproval.",
+    "new_candidate_full_ci_required": true
+  }
+}
