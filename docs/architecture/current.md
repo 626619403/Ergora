@@ -173,7 +173,9 @@ Input还拥有准入报告的版本差异：v1–v6调用原doctor，v7从冻结
 
 Skill采用沿 `skills.adopt → evaluation.compare → skill_assets.move_head`，同事务核旧revision与精确baseline。GEPA只提出候选；资料观察／研究调度只提出带来源材料；ReMe只是可重建的记忆投影。记忆有效期由原memory模块按服务端时刻判定；catalog可审阅所有状态，新检索只取有效当前修订，并在远端请求后重新核本地版本。schema v5沿原State迁移更新writer fence，升级停止旧进程，旧归档不重写。
 
-Skill控制台在原`skills.js`内保存当前view的选择代际：选择变化撤回旧比较／采用表单，评价共享按控制目录与项目隔离的本窗口未决请求锁（非持久账本）；完整回复释放，未知回复需用户核原记录后明确解除。Skill与记忆页共用`submissions.js`的局部提交回执：原`ui.form`持有单次提交锁，异步payload准备前后核原view／form／dialog，已发出表单只保留提交和原回复，不自动关闭、刷新或重发。业务选择、比较代际、评价锁、文本和历史仍留在所属页面，完整可信证据和并发核验仍归原后端owner；没有新增HTTP入口、持久状态、评价器或采用权威。
+Skill控制台在原`skills.js`内保存当前view的选择代际：选择变化撤回旧比较／采用表单，评价共享按控制目录与项目隔离的本窗口未决请求锁（非持久账本）；完整回复释放，未知回复需用户核原记录后明确解除。Skill、记忆与工作流目录导入页共用`submissions.js`的局部提交回执：原`ui.form`持有单次提交锁，异步payload准备前后核原view／form／dialog，发送前仍核来源 view；已发出请求的回执只跟随仍连接的原表单，来源 view 被后台读取重绘不丢原回执，不自动关闭、刷新或重发。业务选择、比较代际、评价锁、文本和历史仍留在所属页面，完整可信证据和并发核验仍归原后端owner；共享表单不拥有持久状态、评价器或采用权威。
+
+`definitions.js`的目录导入表单绑定原 DOM view 与控制目录，沿薄 `POST /api/workflow-definitions/import → workflow_definitions.import_bundle → DefinitionLibrary.import_bundle` 发布原不可变版本。完整回执留在原窗口；明确刷新定义库、精确选择、原 grant 预览与 manifest 保存仍分别由原接口处理。导入只发布根包，原 import_inspector 先编译并核全依赖、资源与权限，再由原库校验不可变 ID／版本；原预览继续按显式 grant 核查。共享定义库不按项目隔离，导入不改变旧 manifest 或运行输入。
 
 原`memory.js`将历史读取绑定到点击时立即建立的窗口内容；回复不能替换后开的modal。保存可严格读取UTF-8文件并保留BOM／换行，未编辑更正发送原字符串。恢复、删除与投影同步沿同一显式表单回执，用户刷新核原记录；恢复的期限和删除的不可逆语义仍由`memory`实现。跨窗口执行去重没有由前端表单保证。
 

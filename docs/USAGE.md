@@ -1213,6 +1213,14 @@ ssh -L 8977:127.0.0.1:8977 user@server
 
 修改父子权限时，按[联合修订步骤](WORKFLOW_DEFINITIONS.md#联合修订父子权限)从内层到根逐版本发布，最后给出明确grant并检查实际调用能力。并行增加同一专家的多个实例时，使用不同节点ID和完整all-join；不同审查职责须另发子模板版本，见[重复实例与后端选择](WORKFLOW_DEFINITIONS.md#重复实例职责和后端选择)。
 
+### 在页面导入完整工作流目录
+
+在“Agent 与组合库”点击“导入工作流目录”，填写控制台机器上包含 `workflow.json` 与全部自身资源的目录（可使用下节复盘候选的导出目录），核对显示的控制目录后明确提交。此库在同一控制目录共享，不依赖当前项目。回执包含原 ID／版本／digest、定义及文件资源身份；保留回执，关闭窗口并点击本页的“刷新定义库”，再选择回执中的精确版本。顶部全局“刷新”不重新读取定义列表。
+
+相同内容和版本保持同一身份；同版本不同内容被拒绝，需选择新版本。导入仅发布此根包，子工作流和 Agent 依赖须预先导入；原导入与预览均核查完整引用、祖先资源与权限。选择新版本后按上文原上限预览，再明确保存新 manifest；回退可重新选原版本／manifest，旧任务保留原材料。导入不自动选中新版、预览、保存或执行。
+
+请求异常可能已经执行。先刷新定义库，选择原 ID／版本核对 digest；也可用 `ergora composition show WORKFLOW_ID VERSION --material` 读取原包。不要通过删除原记录强制重试。关闭窗口或离开来源页面后，迟到回复不会操作后来窗口；重新打开后须重新核对原记录。HTTP 等价入口是 `POST /api/workflow-definitions/import`，正文 `{"directory":"/path/to/workflow-bundle"}`，沿用同源保护和 `X-Ergora-Request: 1`。
+
 ### 生成来源绑定的工作流复盘候选
 
 安装`workflow-retrospective`，再按[完整manifest步骤](WORKFLOW_DEFINITIONS.md#固定当前预览到持久控制目录)为根`ergora-workflow-retrospective 1.0.0`保存`workflow-retrospective-manifest`。另为待改进的根保存完整`target-manifest`，记录原检查返回的完整digest。前者是作者／审查图，后者是目标图。handoff、selection与objective沿[Skill候选](#生成来源绑定的skill复盘候选)步骤准备，均须来自同一项目。
@@ -1241,4 +1249,4 @@ ergora composition check ./candidates/workflow-root
 ergora composition import ./candidates/workflow-root
 ```
 
-导出目录须为新目录，完整根bundle及引用身份保持；stdout回执另存，目录内没有额外receipt污染包身份。其他机器须先具备相同子定义，原import会核依赖与ID／版本冲突。导入成功后用原步骤为新版本准备manifest并明确选择；回退时重新选原根／manifest，旧run始终保留旧快照。导出、模型approve及图准入都不等于质量／性能评价或采用授权；效果比较仍需相同可信workload和独立验证。
+导出目录须为新目录，完整根bundle及引用身份保持；stdout回执另存，目录内没有额外receipt污染包身份。其他机器须先具备相同子定义，原 import 会核依赖与 ID／版本冲突。导入成功后用原步骤为新版本准备manifest并明确选择；回退时重新选原根／manifest，旧run始终保留旧快照。导出、模型approve及图准入都不等于质量／性能评价或采用授权；效果比较仍需相同可信workload和独立验证。

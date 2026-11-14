@@ -40,3 +40,7 @@ r1非editable包604产品、wheel612条／安装617条RECORD、283冻结逐字�
 本地验收与收尾已完成，原fresh-context独立reviewer已直接核242固定引用、全部604产品／两RECORD／283、130原HTTP及原trace、77项页面旅程、CLI全文／来源、自身原模板完整stdin、原件与收尾；最终本地需求／可维护性两轴approve，开放0／0，R1已实红／实绿关闭。[证据索引](evidence/2026-11-14-memory-improvement-console.json)保持242原引用，普通发布、完整Ref和本片自己的CI另验。前片F10d5固定发布与自己的CI43576070452已获原reviewer两轴终核approve／开放0／0。
 
 候选提案和scorer使用显式合成夹具，仅验证合同。没有真实质量、训练性能或外部ReMe可用性结论；前端表单不构成跨浏览器执行去重。后继F10d6b沿原workflow import和精确新版本选择，之后F10汇总、F9d和G1分别验收。
+
+## 普通发布
+
+已普通发布`0fd74b16c98185081e06c4ef356700b881c781e7`至当前开发分支，14固定blob与完整远端Ref同一；未合main。242固定原引用保持，5份发布调用／回执另列。原reviewer固定发布补核已两轴approve／开放0／0，242原引用及五份发布调用／回执直接核同一。本片自己的CI43578921368八job／30必要步骤全部成功，原reviewer终态两轴approve／开放0／0；40条原CI引用单列，精确交付闭合。

@@ -1,0 +1,854 @@
+{
+  "slice": "F10d6b",
+  "baseline": "0fd74b16c98185081e06c4ef356700b881c781e7",
+  "branch": "refactor/architecture-foundations",
+  "implementation": {
+    "changed_product_files": {
+      "src/ergora/web.py": "cb17ff680dc1ba45c6dd4b6ac1ed9d7d4665f4b47590df004be35619544a593e",
+      "src/ergora/data/console/definitions.js": "761ee783145dd0de99017f8240788fbf3a8c142dc1245c2d44e0e7f96a6ddc4c",
+      "src/ergora/data/console/submissions.js": "5e235b8c5d23ac9a4c8e3ad822b43d14be470adbdac7e4dedc36fd967eba4d60"
+    },
+    "new_product_modules": 0,
+    "new_tests_or_ci": false,
+    "owners_retained": [
+      "workflow_definitions",
+      "definition_bundles.DefinitionLibrary",
+      "composition preview/manifest"
+    ]
+  },
+  "validation": {
+    "final_installation": {
+      "wheel_sha256": "304a2898c1d6fb5d3c285aea3786be4aeba4eb81e582d2bfe801d9dce9e33f8c",
+      "wheel_files": 612,
+      "package_files": 604,
+      "installed_record_rows": 617,
+      "frozen_files": 283,
+      "editable": false
+    },
+    "original_suites_r1": {
+      "passed": 107,
+      "seconds": 72.71,
+      "scope": "Original workflow definitions and web suites; Python owners match final r3. Final JS verified separately."
+    },
+    "final_web_r3": {
+      "passed": 9,
+      "seconds": 11.73
+    },
+    "final_browser": {
+      "checks": 47,
+      "samples": 19,
+      "journeys": [
+        "journey-r3",
+        "receipt-green-r3",
+        "receipt-error-r3",
+        "shared-callers-r3"
+      ],
+      "viewports": [
+        1440,
+        960,
+        390
+      ]
+    },
+    "cli_operations": 10,
+    "root_resource_bytes": 14100,
+    "http": [
+      {
+        "scope": "browser-r1",
+        "original_http": 2,
+        "held": 0,
+        "fixture_lost_replies": 0,
+        "originals_unchanged": true,
+        "service_pid": 2633428,
+        "port": 33077,
+        "service_pid_and_port_gone": true
+      },
+      {
+        "scope": "browser-r2",
+        "original_http": 19,
+        "held": 1,
+        "fixture_lost_replies": 0,
+        "originals_unchanged": true,
+        "service_pid": 2636858,
+        "port": 42965,
+        "service_pid_and_port_gone": true
+      },
+      {
+        "scope": "browser-r3",
+        "original_http": 75,
+        "held": 6,
+        "fixture_lost_replies": 1,
+        "originals_unchanged": true,
+        "service_pid": 2643445,
+        "port": 38079,
+        "service_pid_and_port_gone": true
+      }
+    ],
+    "own_structure_template": {
+      "status": "succeeded",
+      "decision": "approve",
+      "seconds": 37.295,
+      "run_id": "3f0bcfb49d2c45d195a49d85bf8c9f1b",
+      "backend": "codex",
+      "packet_files": 12,
+      "packet_bytes": 234292,
+      "all_inline_and_inherited_resources_in_stdin": true
+    },
+    "observed_process_cleanup": true
+  },
+  "findings": {
+    "R1": {
+      "description": "An unrelated library redraw discarded the original response from an open admitted form.",
+      "original_red": "receipt-red-r2.json",
+      "final_green": [
+        "receipt-green-r3.json",
+        "receipt-error-r3.json",
+        "shared-callers-r3.json"
+      ],
+      "state": "closed; independent original red and final green directly checked"
+    }
+  },
+  "raw_evidence": {
+    "directory": ".ergora/checks/workflow-improvement-console",
+    "references": [
+      {
+        "path": ".ergora/checks/workflow-improvement-console/audit-r3.json",
+        "bytes": 1174,
+        "sha256": "5886e02ef0b60fcbc41c100b28ceb62392522b23e0280ae70213573e49797828"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/audit-r3.py",
+        "bytes": 4914,
+        "sha256": "fc34d951759a120f4d88a2192f6678535c81c46c1ff4b42fb0fbfa0789ea01fe"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r1/before.json",
+        "bytes": 211344,
+        "sha256": "9257a68eac8cc533b6ba36606ed8eeeb8781be145bbfc1c14ae551663801a509"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r1/check.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r1/check.stdout",
+        "bytes": 129064,
+        "sha256": "e61eb805de03a6b32b90e316947493e068c80e3891d006711cf6894a94779390"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r1/cleanup.json",
+        "bytes": 43944,
+        "sha256": "b88c267bfb6225af675f1311de09abd954bbaee739675400010c31baa52cb474"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r1/commands.json",
+        "bytes": 4938,
+        "sha256": "fdba80b0d7d14595763d296bf4161d91d2b22f1ea50b77c3d8295b99e3176c80"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r1/export.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r1/export.stdout",
+        "bytes": 4348,
+        "sha256": "d5bdaa7ec00dd0dde070a561b86071152bcb057f378c0e0f7dc31bcbdfc9be5b"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r1/old-leaf.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r1/old-leaf.stdout",
+        "bytes": 1249,
+        "sha256": "e70ed5be4c8925f94ea684c50434da4386eb3f9546d488a6f3c4a9e3b2dc1b8d"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r1/open-r1.stderr",
+        "bytes": 1331,
+        "sha256": "376281473723f20d269011d092ea696773636005aa69fc1be9632842a40c736c"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r1/open-r1.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r1/open-r2.json",
+        "bytes": 288,
+        "sha256": "35b7eae4bb20eeecdea25b800a1f96b3e85673edc8b2054fef9e086ed4d23b8a"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r1/open-r2.stdout",
+        "bytes": 314,
+        "sha256": "a62015c291a86e928fd6279fcff8e75d66e4304f11f3400248bbd2345a443de6"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r1/output/playwright/workflow-definition-1440.png",
+        "bytes": 145775,
+        "sha256": "d4d5bebb71f915fec17b90d6c39349782f4f7f72bd98cb622dd02037896ff5d9"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r1/output/playwright/workflow-definition-390.png",
+        "bytes": 71492,
+        "sha256": "51eabb0d2599391d814c6a1447492bdc5123957ade5a5d25a6f2359b20b99a0b"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r1/output/playwright/workflow-definition-960.png",
+        "bytes": 132838,
+        "sha256": "3b373209c93c2df3e6c473e4a22af159960f077eebd85f7ff69541b0e1416ec0"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r1/output/playwright/workflow-import-1440.png",
+        "bytes": 245379,
+        "sha256": "5e7e20b55112fc29d65146f13f63cd3c4d24f6760104dbec8981d1bd7f4a78e4"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r1/output/playwright/workflow-import-390.png",
+        "bytes": 95512,
+        "sha256": "f55d9733d6e134aecaf5d1e102acfc82aac2173b0d9db49a5f32a1fe037ca7cc"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r1/output/playwright/workflow-import-960.png",
+        "bytes": 191053,
+        "sha256": "6f080cc7deecba64db7dec6cfe95dadb1ecce5c5e63fcc426171e47851d215af"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r1/prepare.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r1/prepare.stdout",
+        "bytes": 1263,
+        "sha256": "64f87a35d43a087736ac09757cef3e1fe7de99061c8a90ae1706e3704594f5b2"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r1/trace.json",
+        "bytes": 889,
+        "sha256": "357f9bbd6b9c9e3bdb84a705192c99d06886b18ba02fa1bc2c4be6b9e34b6437"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r2/before.json",
+        "bytes": 211344,
+        "sha256": "ccdf4f6666de32a69b628b41646e582b97100b1ee31c001fe4931c2286e3d5a4"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r2/check.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r2/check.stdout",
+        "bytes": 129064,
+        "sha256": "e61eb805de03a6b32b90e316947493e068c80e3891d006711cf6894a94779390"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r2/cleanup.json",
+        "bytes": 48347,
+        "sha256": "462ee88bba75133f474d1a0f2c5f6b9d9836a19be7c5b9755612927272869bb5"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r2/commands.json",
+        "bytes": 4938,
+        "sha256": "670e3d204383c7b568d20d6cb41fc6201ed15338da2abbf844c6759baf3c83cd"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r2/export.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r2/export.stdout",
+        "bytes": 4348,
+        "sha256": "00eef239ee6c8cf0a90723e8bd42add87e9c932f173670fa31bd469cb8c4902c"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r2/old-leaf.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r2/old-leaf.stdout",
+        "bytes": 1249,
+        "sha256": "6dc3c78061640fb4a1f8834eeaffd2385917fb11e3d57e1d76e6b9395b7c7e57"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r2/prepare.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r2/prepare.stdout",
+        "bytes": 1263,
+        "sha256": "d327a347a350f6c62e87a426162efdb9803e4872f665abd731d180b09cc17f90"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r2/trace.json",
+        "bytes": 8468,
+        "sha256": "712010575486afcade461dac0212d1e4325e09bd772fd510f345220551f3a7c6"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r3/before.json",
+        "bytes": 211344,
+        "sha256": "51ea66fb111552d85a400d7972003c1266e9da97358e260470456b2d64bcf279"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r3/check.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r3/check.stdout",
+        "bytes": 129064,
+        "sha256": "e61eb805de03a6b32b90e316947493e068c80e3891d006711cf6894a94779390"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r3/cleanup.json",
+        "bytes": 50557,
+        "sha256": "1a3d2bb36df5a32adb288a5d01722905fb4a3d559fff8336a0bc5c2a04b3fc4c"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r3/close-r1.json",
+        "bytes": 225,
+        "sha256": "a5996cc4e48a424fcd36c8597ecc57083c23f5d32230a081a0510655acba6f8d"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r3/close-r1.stdout",
+        "bytes": 54,
+        "sha256": "a39a08f966564558fff27ef20f32e9c171ed51566872abcbab734f12eaa7e1c6"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r3/commands.json",
+        "bytes": 4938,
+        "sha256": "c237bf77a1b9a0e6ed973b7772acd0f0278851ca6f5c97e7519d4dc123bdc27f"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r3/export.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r3/export.stdout",
+        "bytes": 4348,
+        "sha256": "48b1ecfc18fe6fe9c4f1e9a4dba7fe12df627f188a756054f9fb00a8d03e7488"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r3/old-leaf.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r3/old-leaf.stdout",
+        "bytes": 1249,
+        "sha256": "2d97c57197e84752a29c235b4bc768863b7e7deed5356d6366df586bea8dc57e"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r3/prepare.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r3/prepare.stdout",
+        "bytes": 1263,
+        "sha256": "27fb06287a7f1fec0cacf48ca07c92777764de56583f232d0d736d255361c582"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/browser-r3/trace.json",
+        "bytes": 35026,
+        "sha256": "fb8d3e540bc4d4df3e227d3c68bf2498768b25e459f01646ad6b0d128e033dbb"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/cli-r3/commands.json",
+        "bytes": 4322,
+        "sha256": "2dc2ee01d322361dd6077221b53f4ac0cb9efa321cca6d1469d2c33e9ab2ac63"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/cli-r3/frozen.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/cli-r3/frozen.stdout",
+        "bytes": 103425,
+        "sha256": "1cc2f4d332e0b037b7815b1c151784b0ed7a07f3edff96064628a29a7ec927d4"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/cli-r3/new-definition.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/cli-r3/new-definition.stdout",
+        "bytes": 18156,
+        "sha256": "a7246b87a9a072c7c572d0a6a11f39ca548741a394db3230c857c2fb8c801bb9"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/cli-r3/old-definition.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/cli-r3/old-definition.stdout",
+        "bytes": 10886,
+        "sha256": "10e8f6018de300e9f5f0c8dda0868c9ae7407bc443c1a63e9e1565762d58a1b5"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/cli-r3/old-leaf.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/cli-r3/old-leaf.stdout",
+        "bytes": 89486,
+        "sha256": "59517055478feb1c3377b161a48e4dfc024bb80fca89f5225d44d768d013506f"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/cli-r3/original.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/cli-r3/original.stdout",
+        "bytes": 74492,
+        "sha256": "19cfaf8725882d3c467c2047004b7d90a3ecceb4773c8532a32e41142e80e717"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/cli-r3/result.json",
+        "bytes": 835,
+        "sha256": "447ef107188f028b352378a55d5830d57be44d5c7961ede8382f54e9826f7cf2"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/cli-r3/source.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/cli-r3/source.stdout",
+        "bytes": 18058,
+        "sha256": "240c16a6de83ea57dc485b5cfeb14d08b912b1ec7f3e3780286ad722a517d443"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/cli-readback-r3.py",
+        "bytes": 3983,
+        "sha256": "66e08b93cb9d20036230091ce39d3c499cf8ef6275b8e05eff7c701bf4b9c39f"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/install-r1/build.stderr",
+        "bytes": 62,
+        "sha256": "3fbf5c81df4d6f7774a09a7694742996e64ed07ccaea033ef3d34574059a981c"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/install-r1/build.stdout",
+        "bytes": 271738,
+        "sha256": "53a9770f5aced5e47bba346c034c9182bc5b160ebe5376a19f480249a9ad5ba5"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/install-r1/final-tests/process/stderr.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/install-r1/final-tests/process/stdout.txt",
+        "bytes": 16117,
+        "sha256": "cac64318cb1746feb42cdaf40450f32fc26d2a1892f6bf3585f8adc6a3c6e684"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/install-r1/final-tests/result.json",
+        "bytes": 683,
+        "sha256": "079a89334333cf91bddf4c20b4eb887a7ffbb76fce4c32b4434402a9e5b18658"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/install-r1/install.stderr",
+        "bytes": 1335,
+        "sha256": "4e0e5738221cbde24414f833bcc997edb92c46ef127d9564be81744fb61ad473"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/install-r1/install.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/install-r1/package-identity.json",
+        "bytes": 499,
+        "sha256": "833997b5cc5ba536253b19fb5c4d5a71a17e8a4ba7155706060f332bb8a49753"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/install-r1/setup.json",
+        "bytes": 1380,
+        "sha256": "0bba21ccb1d10edeb5e5179c21c960d522903cb01546007cdfb6a4063e19773a"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/install-r1/source-manifest.json",
+        "bytes": 1402,
+        "sha256": "8bc03234d001906d185d99b2f13035f6166bc068c7767d80e68956690639940e"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/install-r2/build.stderr",
+        "bytes": 62,
+        "sha256": "3fbf5c81df4d6f7774a09a7694742996e64ed07ccaea033ef3d34574059a981c"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/install-r2/build.stdout",
+        "bytes": 271738,
+        "sha256": "c5788bc1f89632a50bf3fef0b50e00a1e59df67a1f3cc81ae9d906162b4a63a6"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/install-r2/final-tests/process/stderr.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/install-r2/final-tests/process/stdout.txt",
+        "bytes": 2782,
+        "sha256": "bc41eb2995d4aa95db27c8948714920c0f561ce072d647bbcdbdf5ea72815f44"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/install-r2/final-tests/result.json",
+        "bytes": 642,
+        "sha256": "b6566e188b0980d3923eca343d2bed507a3291b420706481c9078c10a4f3f643"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/install-r2/install.stderr",
+        "bytes": 1335,
+        "sha256": "56d86cf74240bd20314d67a3a468296d9e014a3e2091e50778183236e3d13523"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/install-r2/install.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/install-r2/package-identity.json",
+        "bytes": 499,
+        "sha256": "98d257cfa562778d093824edd07f681de45449ae56c6d63984b031ee1b20e114"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/install-r2/setup.json",
+        "bytes": 1380,
+        "sha256": "38f03ce268942b9b19e61f23704ce6a78b5b8066b0ac2aedd4cb2954b1522f66"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/install-r2/source-manifest.json",
+        "bytes": 1595,
+        "sha256": "925711cb60b6c5cec0e2be14e362e3ba92a3cde87a8e12fbfdc7fe361495821e"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/install-r3/build.stderr",
+        "bytes": 62,
+        "sha256": "3fbf5c81df4d6f7774a09a7694742996e64ed07ccaea033ef3d34574059a981c"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/install-r3/build.stdout",
+        "bytes": 271738,
+        "sha256": "12889433fde1c7eec7125448831586ac7b56298124c13b655ab87c2dbbc44938"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/install-r3/final-tests/process/stderr.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/install-r3/final-tests/process/stdout.txt",
+        "bytes": 2782,
+        "sha256": "6a7634e016e2bed2530e297dca50015972c4e87df3f3cf73c18670c935b6b1e5"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/install-r3/final-tests/result.json",
+        "bytes": 642,
+        "sha256": "b9268d4dc254a58c528b9f001e2867462a1471603853f168ae394cf2f425defe"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/install-r3/install.stderr",
+        "bytes": 1335,
+        "sha256": "640d82afe918fe2f005c9f3b37282ce02bfb322d73dc15a659c9f6b4daeb9e24"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/install-r3/install.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/install-r3/package-identity.json",
+        "bytes": 499,
+        "sha256": "3275b422220a05958f0c7eef8a5d376e6c0bdab4c3fa118e55e629ca8f67027e"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/install-r3/setup.json",
+        "bytes": 1381,
+        "sha256": "5482b7e799ea2b3429e4062a20c2af5c36ca43d38b34c2a26186c82562b58096"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/install-r3/source-manifest.json",
+        "bytes": 1595,
+        "sha256": "d1e8234244cf498d4e3f5ebcfb17637962d1244df5cfa005e60ec33409585745"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/install-r3.py",
+        "bytes": 2214,
+        "sha256": "1b98f0ee2b583635152f87afa3f2f0628831f5067adbc876ac124682cf3ab759"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/journey-r2.js",
+        "bytes": 16010,
+        "sha256": "03e06a31faee2ce5718f8830518b9562b95b384d2a08287b1fac0263c27fb9e2"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/journey-r2.json",
+        "bytes": 3565,
+        "sha256": "c5877894ee668976ddca65f841b267a722d003bc107f0cabbf815f6340c530ec"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/journey-r2.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/journey-r2.stdout",
+        "bytes": 19448,
+        "sha256": "b4a40d778a2e73077f3df0b17051e504bfb55695a690d59d79584fa098533e83"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/journey-r2b.js",
+        "bytes": 16072,
+        "sha256": "c68d032f1239ab3a5aeace42faf2a57382f04370e16551267824c95336151f65"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/journey-r2b.json",
+        "bytes": 24668,
+        "sha256": "e59070d42955eefee6d2748e947e0083c30ad4a90bef4d836377dacc3b3b2554"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/journey-r2b.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/journey-r2b.stdout",
+        "bytes": 30184,
+        "sha256": "c057aa6b1a14a8dd8566adee267f0b9dcb075c6ef664c8454dd3d284e05e0df1"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/journey-r3.js",
+        "bytes": 16126,
+        "sha256": "e401a590b7a3f98a48dc448071727855cc79a2d77a94e5695b887f8998e1204b"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/journey-r3.json",
+        "bytes": 459522,
+        "sha256": "3ed2d835893bd0beeced258e5579560ee1c56003e68a4297daa176ea81a46777"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/journey-r3.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/journey-r3.stdout",
+        "bytes": 281647,
+        "sha256": "a5bde531f021d27b0cc31623089c0c122135e424033157dcc22dd4bb18a1b134"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/package-current-r3.json",
+        "bytes": 103246,
+        "sha256": "644bbb2744522eaafbf5260ed027e214087b4cf7d218db0f80da48dc823a2b8a"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/receipt-error-r3.js",
+        "bytes": 4728,
+        "sha256": "9e154912697adde8a8f1529133cad30f23d7c79181c871dbfbb50c224dfc4207"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/receipt-error-r3.json",
+        "bytes": 1758,
+        "sha256": "631a777250ecabc3c953b00a85e04bae9625d23cbfb5806c5f6aa3273e52387a"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/receipt-error-r3.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/receipt-error-r3.stdout",
+        "bytes": 6243,
+        "sha256": "6effa33c08d8f730e2444dc0fa36fbc26d9a3ea3ad695033c3642aefc1d18a9b"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/receipt-green-r3.js",
+        "bytes": 4746,
+        "sha256": "a11656bf69b97acf6a1fc8d43081eac53c44714737d35f66db341924592549e8"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/receipt-green-r3.json",
+        "bytes": 9392,
+        "sha256": "1ee52b9e40d4db319b591ab12bf32dbaef11a64769cd4acfd98ed87c647aff0f"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/receipt-green-r3.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/receipt-green-r3.stdout",
+        "bytes": 11823,
+        "sha256": "f651ad4d3ec1899a1c5abbc5667f719fa35cbb78647a217a98bd4a5d3c43bf7e"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/receipt-red-r2.js",
+        "bytes": 3999,
+        "sha256": "b32de310a34e6edd8ffc05988122e19c4842f291b0f243ceb836a880b0c942e0"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/receipt-red-r2.json",
+        "bytes": 5427,
+        "sha256": "70036b12cfcb4e471c970b17d9ab4c140954face6448ac5cbc18a3bb07f080d5"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/receipt-red-r2.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/receipt-red-r2.stdout",
+        "bytes": 7130,
+        "sha256": "0f7d88c2220c2735b2c0caa3e7abb90d10d5eca94197cb2378ac5c1a66725726"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/run-browser.py",
+        "bytes": 1399,
+        "sha256": "3ad2ac9a5e595c857ec549d95257c68c1722266bdd74f041807a16e20ff35301"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/run-installed-r3.py",
+        "bytes": 916,
+        "sha256": "4f3eeebfb1298a7b671fd772c76c2be492d24d50100f7f38b647cf660477230d"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/self-review-r2-codex/native.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/self-review-r2-codex/native.stdout",
+        "bytes": 8639,
+        "sha256": "5e1bda81e5151857e832812555f14713e4306724a4637695316aca1923f267f1"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/self-review-r2-codex/original-result.json",
+        "bytes": 1193,
+        "sha256": "0bf00a5619196e697d4c83fee04fbdd25575cf8820cee7e16b6de300809da873"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/self-review-r2-codex/packet-index.json",
+        "bytes": 1613,
+        "sha256": "d3af7dcff3d32aab074ba593ac55583d31e774eb8f410737ea9c6492e864913a"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/self-review-r2-codex/review.md",
+        "bytes": 1023,
+        "sha256": "97f9bc3a110e350acd7f013e48b6633721f0c52d2a49dcc1bdf5cfaed51bd00b"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/self-review-r2-codex.json",
+        "bytes": 2584,
+        "sha256": "14f7afd20911d69d1610ee9a2f5243f6a863032925b82e8766dceb8d98b7dc8a"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/self-review-r2.py",
+        "bytes": 5949,
+        "sha256": "37f68db14393a2faa5fc98ae00027318f366f24d17ce02b91d70c6ccaadf53c6"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/self-review-r3-codex/native.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/self-review-r3-codex/native.stdout",
+        "bytes": 8639,
+        "sha256": "5204f61dcfee9767dae9a2c6c7d2f1e0f2008d3e3f766b6714312adb6ad223a0"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/self-review-r3-codex/original-result.json",
+        "bytes": 1022,
+        "sha256": "42168d6f010da891932176bd9c6a05f87b84d6e9d91a0cee9f53a5d45fa1369c"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/self-review-r3-codex/packet-index.json",
+        "bytes": 1931,
+        "sha256": "f305f508a4e04bdea1b9e1586eff11a6fe76b156da383d32c0eaa65020103d7f"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/self-review-r3-codex/review.md",
+        "bytes": 861,
+        "sha256": "a5b4abdb30f9608e537997a86055f6ebef3055e18430c545b798071df4ef5ba7"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/self-review-r3-codex.json",
+        "bytes": 2915,
+        "sha256": "ab95847b3ec451ccfd6354a2b78db7eca1a84fd1c06b920477f3e741607532f1"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/self-review-r3.py",
+        "bytes": 6511,
+        "sha256": "43e35dc0961a4f10de7155a5c2e94174988d53b6e8f4f7797efc5dfd2a325a24"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/service-r3.py",
+        "bytes": 9762,
+        "sha256": "0d6ff5f0e07a6d60d9dcb96a7a415f2cf75807d79dfdf3997dbd9c4a00d1d0c2"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/shared-callers-r3.js",
+        "bytes": 3753,
+        "sha256": "dab094543639a414558a623d8ea557657d3ab04caa5e6a1a34ae21f7ccfeb0e6"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/shared-callers-r3.json",
+        "bytes": 2603,
+        "sha256": "0e86b64d7a3c852203abb2ddc7267a3bd83126c17d109b728931de7adc272401"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/shared-callers-r3.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/shared-callers-r3.stdout",
+        "bytes": 5724,
+        "sha256": "6f7e76b5e1cb77540fbea724a9212faeb30300ac3ec42e3e6eff5706bd23b046"
+      },
+      {
+        "path": ".ergora/checks/workflow-improvement-console/verify-installed-r3.py",
+        "bytes": 2445,
+        "sha256": "0bdf6a48bc3c6d96afecc55dec928f9a5f5c0395552faca41813fda45a3132c2"
+      }
+    ],
+    "reference_count": 143,
+    "scope": "Fixed original summaries/scripts/logs/screenshots. Each complete original HTTP trace binds its per-number request and response through recorded SHA256, directly checked by audit-r3. Build snapshot, wheel and installed contents are verified by both RECORDs and package-current inventory; do not regenerate this fixed array after review."
+  },
+  "independent_review": {
+    "report": "docs/delivery/2026-11-14-workflow-improvement-console-review.md",
+    "source_requirements": "approve",
+    "source_maintainability": "approve",
+    "open_source_findings": 0,
+    "final_local": "approved",
+    "requirements": "approve",
+    "maintainability": "approve",
+    "open_findings": {
+      "requirements": 0,
+      "maintainability": 0
+    }
+  },
+  "publication": {
+    "status": "ready_for_ordinary_push",
+    "predecessor_own_ci": "43578921368 exact 0fd74b1 Success; eight jobs/30 required steps and original independent both axes approve/0"
+  },
+  "limitations": [
+    "Synthetic workflow proposal is contract acceptance, not measured quality or performance.",
+    "No training, GPU, ReMe availability or full native Forge acceptance.",
+    "Local frontend submission lock is not cross-window or durable execution deduplication."
+  ]
+}

@@ -2,7 +2,8 @@ import { api } from "./api.js";
 import { app } from "./state.js";
 import { compositionGraphView } from "./composition-graph.js";
 import { compositionComparisonView } from "./composition-comparison.js";
-import { node, button, pre, heading, panel, empty, row, select, field, lines, badge, download, table } from "./ui.js";
+import { submissionForm } from "./submissions.js";
+import { node, button, pre, heading, panel, empty, row, select, field, lines, badge, download, table, modal } from "./ui.js";
 
 // Library assets belong to the control directory, independently of project selection.
 const library = {
@@ -1082,6 +1083,9 @@ export function definitionsView(render) {
     const home = library.controlDirectory;
     queueMicrotask(() => { if (currentLibrary(home)) loadLibrary(render); });
   }
+  const view = node("div");
+  const home = library.controlDirectory;
+  const current = () => currentLibrary(home) && app.tab === "definitions" && view.isConnected;
   const selected = library.selection;
   const agentIndex = selected?.kind === "agent" ? library.agents.findIndex(
     (item) => item.id === selected.id && item.version === selected.version) : -1;
@@ -1101,9 +1105,16 @@ export function definitionsView(render) {
   workflowChoice.addEventListener("change", () => {
     if (workflowChoice.value !== "") openDefinition("workflow", library.workflows[Number(workflowChoice.value)], render);
   });
-  return [
+  view.append(...[
     heading("Agent 与组合库", "复用专长 Agent 与嵌套子工作流。此库在同一控制目录内共享，可在注册项目之前使用。",
-      button(library.loading ? "正在读取…" : "刷新定义库", () => loadLibrary(render), "secondary", { disabled: library.loading })),
+      row(button(library.loading ? "正在读取…" : "刷新定义库", () => loadLibrary(render), "secondary", { disabled: library.loading }),
+        button("导入工作流目录", () => modal("导入工作流目录", submissionForm([
+          node("p", {}, "将服务端可读的完整工作流目录导入下列共享定义库。导入增加不可变版本；不会替换旧定义或在途任务。"),
+          pre({ state_directory: home }),
+          field("完整工作流目录", "directory", "", "text", { required: true }),
+          node("p", { className: "form-note" }, "目录需含 workflow.json 和全部自身资源。子工作流与 Agent 依赖须预先导入；原导入与预览都会检查完整组合。"),
+          node("p", { className: "form-note" }, "保留导入回执，关闭此窗口后明确点击“刷新定义库”，选择回执中的精确版本，再预览与保存 manifest。回复丢失时先刷新核对原 ID／版本／digest，不自动重发。"),
+        ], "明确导入工作流", "/api/workflow-definitions/import", (values) => ({ directory: values.get("directory") }), current))))),
     library.error ? panel("库操作未完成", library.error) : null,
     library.message ? node("p", { role: "status" }, library.message) : null,
     panel("内置领域组合", "导入版本化定义以供后续选择；执行时另行确认项目授权与后端能力。后端工具的安装和认证在工具绑定中处理。",
@@ -1118,5 +1129,6 @@ export function definitionsView(render) {
     panel("选择定义", `${library.agents.length} 个 Agent 版本 · ${library.workflows.length} 个工作流版本。后端字段表示默认请求，可用性由实际调用核验。`,
       node("label", {}, "Agent 精确版本", agentChoice), node("label", {}, "子工作流精确版本", workflowChoice)),
     ...detailView(render),
-  ].filter(Boolean);
+  ].filter(Boolean));
+  return [view];
 }

@@ -7,11 +7,11 @@
 - **需求正确性：approve；开放 finding 0。** 修后源码、最终非 editable r2、原完整候选保存／更正／恢复旅程、最终新夹具的一次完整生命周期、共享 Skill 旅程与收尾原件均已独立核实。自身模板 R1 已实红／实绿关闭。
 - **可维护性：approve；开放 finding 0。** 共享实现有 memory／skills 两个真实生产文件，仍沿原页面和原业务 owner；未引入业务账本、权限、评价器或新增测试／CI。公开操作说明、架构和交付状态与实际证据一致。
 
-这是最终本地审查结论。本片尚未普通发布，精确提交／远端 Ref 与自己的必要 CI 仍待实施方完成并提交原 reviewer 补核；不标精确交付完成，不借前片 CI 证明本片。
+最终本地结论保持。固定候选 `0fd74b16c98185081e06c4ef356700b881c781e7` 已普通发布，其自身 run `43578921368` 的必要 CI 终态已独立核实；最终本地、固定发布与自身 CI 三项门禁均闭合。两次后续补核见文末，需求及维护性保持 approve，开放 finding 0／0。
 
 ## 精确范围
 
-基线为 `ed7fac5ba6bbe5ec73da0fed7175c4705116ea5b`；工作分支 `refactor/architecture-foundations`，当前 HEAD 仍为该基线。直接读取对基线的 tracked diff 和未跟踪新文件，产品仅下列三件；相邻 Skill 发布／CI 文档 WIP 不纳入本片源码结论。
+基线为 `ed7fac5ba6bbe5ec73da0fed7175c4705116ea5b`；工作分支 `refactor/architecture-foundations`，首轮源码及最终本地审查时 HEAD 为该基线。直接读取对基线的 tracked diff 和未跟踪新文件，产品仅下列三件；相邻 Skill 发布／CI 文档记账不纳入本片源码结论。
 
 |文件|字节|受审 SHA-256|
 |---|---:|---|
@@ -57,4 +57,40 @@
 
 `process-results-r2.json` 保留两个旧 memory 驱动在 uvicorn 已关闭 socket 后调用 `getsockname` 的退出错误。因此不声称这两份原 finally 成功；原 HTTP 已保存，`audit-final-r2.py/.json` 的独立只读补核确认原件和进程／端口状态，本审查亦重新核实。最终新生命周期和两份 Skill 驱动原 cleanup 均正常完成。
 
-合计最终页面 77 项／35 样本与 14 次原 CLI 的合同范围成立；不外推为真实模型质量／训练性能、外部 ReMe 可用性、所有错误排列或跨浏览器执行去重。流程 import、F10 汇总、F9d／G1 均属后继片。最终本地需求及维护性两轴通过；剩余出口仅为本片普通发布、精确 Ref、自己的必要 CI 和原 reviewer 发布补核。
+合计最终页面 77 项／35 样本与 14 次原 CLI 的合同范围成立；不外推为真实模型质量／训练性能、外部 ReMe 可用性、所有错误排列或跨浏览器执行去重。流程 import、F10 汇总、F9d／G1 均属后继片。最终本地需求及维护性两轴通过；固定发布及自身 CI 终态补核如下。
+
+## 固定发布补核
+
+2026-11-14，原 reviewer 只读核固定提交 `0fd74b16c98185081e06c4ef356700b881c781e7`。**需求正确性 approve、可维护性 approve，开放 finding 0／0，R1 保持关闭。** 此次未联网、未重跑测试／浏览器／模型、未提交或推送，也未将后继文档或其他片 WIP 纳入原源码结论。
+
+- 直接读取 Git 对象：该提交唯一父为原基线 `ed7fac5ba6bbe5ec73da0fed7175c4705116ea5b`，恰有 14 个变更 blob。逐个比较固定 blob 与 `static-final-r1.json` 的字节／SHA，全部同一；源码范围仍仅原三产品。原最终本地报告固定 blob 为 10,028B／`bcc410b3576fb718295e2720e428f34bc72cdbadf993411c13a4aa97c0a4c873`，包含已通过的原两轴及 R1 处置；本节为其后续补核。
+- 固定提交的三个产品逐字对齐原受审 SHA、r2 构建快照、wheel、非 editable 安装及当前同路径源码；固定 USAGE／架构也是原已审文案。原 `static-final-r1.json` 记录完整 staged diff check 为 exit0、三份 JS syntax check 为 exit0；此次读取原检查记录，没有重跑。
+- 固定提交内证据索引的 `raw_evidence.references` 与发布后数组逐项相同，仍为 242 条；重新读取全部原件验证字节／SHA。发布后的 `publication_evidence` 为单列五件 `publish-r1.py`、`static-final-r1.json`、`commit-r1.json`、`push-r1.json`、`ref-r1.json`，五件字节／SHA 亦逐项相同，没有改写固定证据身份。
+- 直接读发布调用脚本和原回执：commit exit0；push argv 为 `git push origin 0fd74b16c98185081e06c4ef356700b881c781e7:refs/heads/refactor/architecture-foundations`，无 force／merge／main 操作，exit0。原 `ref-r1.json` 在 `2026-11-14T09:06:03.341575+00:00` 的 `git ls-remote` 完整输出与该 SHA／分支完全相同，本地 remote-tracking Ref 也同一。远端结论绑定此次保存的原回执时刻，不声称本审查重新联网读取当前远端。
+- 前继原独立 `skill-improvement-console/independent/ci-terminal-r1.json` 固定 ed7fac5／自己的 run43576070452，8 job／30 必要步骤、原完整 SHA 与 logs 对齐，需求及维护性 approve／开放0／0；其 `08:51:26.450229+00:00` 终核早于本次 commit／push。固定提交中的前继证据元数据一致，故本片未越过尚未闭合的前继门禁。
+
+固定提交记录的是当时最终本地就绪状态，发布后文档另记普通发布结果；二者没有作为同一时刻状态混用。**本次固定发布补核时只通过发布身份门禁；当时本片自己的 CI 发现／抓取及终态证据仍待，没有预批 CI。其后完成的自身 CI 终核见下。**
+
+## 自身 CI 终态补核
+
+2026-11-14，原 reviewer 只读核本地保存的官方 HTML、抓取回执、Git 对象和原证据。对象仍为固定候选 `0fd74b16c98185081e06c4ef356700b881c781e7`，自身 run 为 `43578921368`。**需求正确性 approve、可维护性 approve，开放 finding 0／0，R1 保持关闭。** 本次未联网，未重跑测试／模型／浏览器，未修改产品或证据索引，未提交／推送；当前 `web.py`、`definitions.js`、`submissions.js` 的 F10d6b 工作树变化不在本次审查范围。
+
+- 官方 run 的 `ci-run-html-r4/page.html` 显示 **Success**，完整提交链接、分支及标题均对应该固定候选；原回执抓取时间为 `2026-11-14T09:25:23.441768+00:00`，213,308B，SHA 为 `ba389c8b975d3625e6d4c9e8771f4973d2f6b31975a0588b84505cbd78ccc094`。`ci-list-html-r2` 亦唯一关联该完整候选、该 run 与 `.github/workflows/portability.yml`。早期 run r1／r2／r3 的 In progress 状态保留为历史。
+- 从固定 Git 读取 workflow 及 `scripts/ci/linux-groups.json`：预期为 plan、六个 Linux group、Windows all，共八个 job。原 `ci-job-batch-r1` 为八个唯一 job、`totalCount=8`、`hasMore=false`；其早期状态只用于身份核对。最终逐个读取下表原 job HTML，检查回执 HTTP 200、URL／final_url、字节及 SHA，并直接解析全部原 check-step 元素；八个 job 的 `Complete job` 均成功且已完成。
+
+|Job|固定 job ID|终态原件|必要步骤成功数|Complete job UTC|
+|---|---:|---|---:|---|
+|plan|132399234033|`ci-job-132399234033-html-r1`|1|09:06:09|
+|Linux group 0|132399261899|`ci-job-132399261899-html-r1`|4|09:10:24|
+|Linux group 1|132399261903|`ci-job-132399261903-html-r1`|4|09:11:32|
+|Linux group 2|132399261939|`ci-job-132399261939-html-r1`|4|09:10:07|
+|Linux group 3|132399261936|`ci-job-132399261936-html-r1`|4|09:09:39|
+|Linux group 4|132399261920|`ci-job-132399261920-html-r1`|4|09:10:29|
+|Linux group 5|132399261976|`ci-job-132399261976-html-r1`|4|09:11:51|
+|Windows all|132399261980|`ci-job-132399261980-html-r2`|5|09:24:55|
+
+- 必要步骤共 30 项：plan 的 `Read explicit test groups`；七个执行 job 各自的 `Build and install wheel`、`Packaged reference identity`、`Native application regression`、`Upload regression observations`；Windows 另有 `Windows PowerShell 5.1 installer and upgrade`。30 项全部 success，有非空开始／完成时间及 `data-job-completed`，完成时间均不晚于抓取。全部 76 个 success 步骤的 log URL 均带固定完整 SHA、对应 job ID 与原 `data-number`；六项 skipped 恰为 Linux 上受 workflow 条件排除的 Windows 安装步骤。
+- Windows r1 抓取时尚未结束，终态使用 r2：抓取时间 `2026-11-14T09:26:35.885558+00:00`，160,119B，SHA `2b3624c269c86a19e9f9e052da1753d9fb23974168029ecaad41dab5d6c8fe4d`。直接从原 HTML 重建的八 job／30 必要步骤结果与实施方 `ci-terminal-r1.json` 逐项同一；后者 SHA 为 `ddf8b7a5f126eceb691fbef7e9da7da613a1c813c315ff4bcf4df5b8b239724b`，`required_steps_passed` 为 true。已读取解析、抓取及发现脚本，未执行这些脚本；未把 HTML 步骤状态外推为已读取 REST 响应、日志正文或产物归档。
+- 证据索引固定 `raw_evidence.references` 仍与固定提交的 242 条数组逐项同一，发布五件引用保持；新增 CI 层为 40 条唯一引用，与固定 242 条路径不交叉，40 条字节／SHA 全部重算相符。没有改写任何证据数组。另重核固定 14 个 Git blob 与原静态身份，以及固定三产品与原受审身份，均保持同一。
+
+**该固定 F10d6a 候选的最终本地、固定发布和自身必要 CI 门禁均已闭合；两轴 approve、开放 finding 0／0。** 结论仅覆盖本片已述合同，不借前继 run `43576070452` 代替自身 CI，不外推为真实 ReMe／模型质量、后继 F10d6b 或其他片的完成。

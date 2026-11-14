@@ -122,6 +122,10 @@ class RevisionPayload(Payload):
     revision: int
 
 
+class DefinitionImportPayload(Payload):
+    directory: str
+
+
 class DefinitionRevisionPayload(Payload):
     base_digest: str = Field(pattern=r"^[a-f0-9]{64}$")
     definition: dict
@@ -505,6 +509,10 @@ def create_app(home: Path | None = None) -> FastAPI:
     @application.get("/api/workflow-definitions")
     def workflow_library():
         return workflow_definitions.definitions(state)
+
+    @application.post("/api/workflow-definitions/import")
+    def import_workflow_definition(body: DefinitionImportPayload):
+        return workflow_definitions.import_bundle(state, Path(body.directory))
 
     @application.get("/api/workflow-definitions/{identity}/{version}")
     def workflow_definition(identity: str, version: str):
