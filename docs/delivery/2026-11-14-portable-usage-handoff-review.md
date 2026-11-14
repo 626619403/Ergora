@@ -85,3 +85,52 @@
 本轮曾发现一个P3记录精度问题并已关闭：`docs/delivery/2026-11-14-portable-usage-handoff.md:23`将自身模板的三份总声明资源称为“三祖先资源”。实读原composition显示1份来自父`root`的instructions，2份来自叶`root/review`自身的instructions和Skill；原措辞会误报祖先资料数量。作者已作最小修正为“三份声明资源（含父模板与叶自身）一致”，本轮已直接复核，原输入／输出及391索引均未改。没有由该问题推导新的产品缺陷。
 
 本轮记录快照：G1c计划3274B／SHA`d79415e9af221bcb6c5bc56939d8f7a9490343f5d40a9f77f80accc288d0d06b`，G1c交付5134B／SHA`16c68a8793c1817adcdacabdaf257f262f8c62529b16b17a340610122a5e51f0`；当前PLAN36996B／SHA`c7917923539a2ae439177b083f925f1eea67c053639fdf017dcb7fcef12762d8`的G1c检查点明确本地通过与后续终核，并保留前继CI等待。后续仅状态记账与本报告追加不递归触发新的实现审查；若七用户文档、产品合同或CI配置有实质变化，则按其所属切片提供新身份和证据。
+
+## 固定发布补核
+
+同一reviewer只读核实际共同发布提交`77d173675f3eb65e6821ebe57ce9087a05e4caaa`。**G1c固定发布需求符合性approve、维护性approve，开放finding 0／0。** 本轮没有联网、Git写操作或执行产品；提交自己的CI尚未检查，不批准其结果。G1d-CI语义仍由该片独立reviewer负责，本轮仅核其文件位于共同发布范围且字节匹配。
+
+- 本地固定Git对象的唯一父为`6c7c45f79e499dde83d9880043342710a28d7809`。实际22路径与`static-final-r1.json`完全一致，逐项重读Git blob并核长度／SHA，包括所有新增计划、交付、审查报告和公共JSON。三份JSON均可解析。固定tree中的本报告为12065B／SHA`e59fbdac965c848f3316594ae8ced435650d974b0f897e3a96b168edbf12b799`，不把本次事后追加当作原提交内容。
+- 原发布driver在明确列出的22路径完整暂存后执行`git diff --cached --check`，原receipt为exit0／空输出；本轮另对父提交至固定提交执行完整`git diff --check`，新增文件也在其中，exit0／空输出。产品源码、测试、安装器及依赖相对父提交为空diff。唯一CI文件SHA为`be814a956237b8a64258f396fa81a972ff764ceaa3ea16ffefa8e82be89a4353`，与独立片声明的固定文件一致。
+- 原`commit-r1.json`为exit0；`push-r1.json`的实际argv为将完整候选SHA普通推送到`refs/heads/refactor/architecture-foundations`，没有force或`+`前缀，exit0，原stderr记录`6c7c45f..77d1736`。原`ref-r1.json`随后在11:47:13 UTC成功读取该分支，stdout为完整`77d173675f3eb65e6821ebe57ce9087a05e4caaa`与精确Ref。这里核已保存的真实网络回执，没有宣称本轮联网实时查询。
+- `publication_evidence`八件／19,796B逐件重算长度和SHA相符，与原391引用分列；其中static-final原件SHA为`177757bb2ec448be8bbd0b4110142c53846511d4739a902fb7c87248094a1890`，push原件为`2a1cfeaee5279c35ae9791c4c88a9f32294800a96521a5754992f0259ad0a319`，Ref原件为`19f7ca021138a1833b11681922587f913ca78d4ff6743cc2282b33a251ad3d46`。公共publication准确记录已发布、22blob、普通推送和完整Ref匹配，并保留固定发布终核及own CI的独立状态。
+- 固定提交与当前公共索引的391引用数组完全相同；再次逐件核长度／SHA，仍为3,736,857B，规范SHA仍是`2bd19647c342b37d6ff3e392ff3d8c49fd014f4b2e1a4d2acb2379e34a607c06`。七用户文档逐字等于原自身模板packet。新增F8／F9／F10／G1总计划概览与PLAN当前活动提示只同步已有逐片交付，并保留真实GPU／B3、完整Forge及其余外部未验范围，没有扩大本片运行主张。
+- 不依赖工作树，直接读取固定Git tree中的18份Markdown和全部本地目标，独立核585条本地链接／标题fragment，无错误。`check-docs-r3.json`的18份文件长度／SHA全部等于固定tree；原receipt为18／585，无错误，整文件SHA`0b3b6a186ffc925de65374711171594e33da2593c1d141e88e5d6724485bcd24`。旧r1／r2身份保持，不互相覆盖。
+
+前继门禁也已精确核对：`predecessor-gate-r1.json`为456B／SHA`e456b852926b9be452bf61c620b8c3596be6e535c2575a6680a5ef14590656d1`，绑定原父提交和run43589988699；它引用的原G1b终态receipt SHA`04cea53985e0e0d1933be1e740ceb60425fae4516cefbd700931c00acdab03dc`重新计算相同。该终态记录的八job／30必要步骤均成功且完成；固定tree中的G1b公共记录与原独立报告已明确同一候选、同一run、两轴approve／开放0／0。原driver检查这些字段后才写gate，原时间顺序为终态receipt11:40:39、gate11:47:05、static快照、commit11:47:06、push11:47:12、Ref11:47:13 UTC。本轮核门禁身份、原报告及终态记录，没有替原G1breviewer重新解析其全部云端页面。
+
+本片本地和固定发布两个门禁现已核对；共同候选自己的必要CI与相应原reviewer终核仍须在实际结束后检查。发布后的状态记账未混入上述固定tree或冻结原件身份。
+
+## 固定候选自身CI终态补核
+
+同一reviewer接续只读核固定提交`77d173675f3eb65e6821ebe57ce9087a05e4caaa`自身Portability run`43591668528`的已保存官方页面，未联网、重跑CI、安装依赖、执行模型／服务或修改产品。
+
+|方向|CI终态结论|已核范围|
+|---|---|---|
+|需求符合性|approve；开放finding 0|固定候选、准确run、八job矩阵及30必要步骤的success／completed原始页面事实|
+|维护性|approve；开放finding 0|原件可追溯性、早期状态保留、失败归类、公共索引一致性与独立门禁边界|
+
+以固定Git对象中的`.github/workflows/portability.yml`和`scripts/ci/linux-groups.json`独立重建预期：一个plan、六个Ubuntu／Python3.11分组和一个Windows／Python3.12全组。plan必要步骤1项，每个Linux job4项，Windows job5项，共30项；Windows安装器条件与`Upload regression observations`的`always()`均直接读自固定workflow。这里核必要检查的实际执行结果，G1d-CI触发策略语义继续沿其所属独立审查。
+
+38份保存的官方HTTP回执及body逐件重核：一份Actions列表、12份run页面、24份job页面和一份UI job batch，全部HTTP200，精确请求URL与final URL一致，字节数／SHA匹配。列表中的唯一完整提交链接绑定run43591668528、Portability／`.github/workflows/portability.yml`、run number209及`refs/heads/refactor/architecture-foundations`，不是按短SHA或最近一次run猜测。UI batch的`totalCount=8`、`hasMore=false`，八个名称／job ID／run内href与终态逐项相符；最初plan成功、其他七job仍进行中的状态保持原样。
+
+最终run样本`ci-run-html-r12`的回执时间为2026-11-14 12:09:05.739680 UTC，页面213397B／SHA`7e23075071b07f67a3d1e29346d7d5335b46674fa654afa4e64aafff230763dd`；页面精确完整提交链接、分支和Status=`Success`均独立解析相符。其余11份旧run页面仍为`In progress`，没有将早期观察覆盖成终态。八份最终job原件如下，完成时间均为2026-11-14 UTC：
+
+|job|job ID|最终样本|必要步骤|Complete job完成|
+|---|---:|---|---:|---|
+|plan|132437516961|`ci-job-132437516961-html-r1`|1|11:47:20|
+|Ubuntu group0|132437548232|`ci-job-132437548232-html-r3`|4|11:53:01|
+|Ubuntu group1|132437548220|`ci-job-132437548220-html-r3`|4|11:52:59|
+|Ubuntu group2|132437548238|`ci-job-132437548238-html-r2`|4|11:51:00|
+|Ubuntu group3|132437548244|`ci-job-132437548244-html-r1`|4|11:49:38|
+|Ubuntu group4|132437548235|`ci-job-132437548235-html-r2`|4|11:50:52|
+|Ubuntu group5|132437548243|`ci-job-132437548243-html-r3`|4|11:53:11|
+|Windows group all|132437548222|`ci-job-132437548222-html-r9`|5|12:08:19|
+
+直接以独立HTMLParser读取最终job页面的`check-steps`／`check-step`属性：八job各有唯一`completed`组及成功的`Complete job`；30必要步骤逐项为success、含有效起止时间与job-completed标记，结束不晚于本job完成和回执观察时间。每项log URL精确包含完整候选SHA、对应job ID及步骤号，重新投影的全部字段与`ci-terminal-r1.json`相等，不只读取该汇总的布尔值。所有最终步骤合计76 success及6 skipped；六个skipped仅为Linux上的Windows安装器条件步骤，没有其他失败／跳过。Windows最终页面SHA为`6ec5b853772fa244828ad1d7e7213594cb67d500cf7eb3d4804458caf4c9d3f5`，其应用回归、PowerShell5.1安装／升级和上传均成功完成。另16份旧job页面仍保留`in_progress`。
+
+G1c与G1d公共JSON的`ci_evidence`完全相同。CI的89条引用逐件重读，均为唯一、安全相对路径的普通非symlink文件，合计6803890B；按声明数组顺序重新计算规范引用SHA为`6fc04ac5f152022b5196ae160f96f0f530db5614177b1836d74fcdcf68a79ff4`，与`ci-collection-r1.json`一致。终态汇总于12:09:20.625824 UTC生成，文件SHA为`4e98fc3f8018bf65a584fe8615419669c3c99a11d128ded3c1aa6d1098c4a69e`。原391件／3736857B、共同发布8件／19796B及新CI89件相互分列且不重叠，原件长度／SHA再次相符，原391规范SHA仍为`2bd19647c342b37d6ff3e392ff3d8c49fd014f4b2e1a4d2acb2379e34a607c06`。公共入口见[G1c证据索引](evidence/2026-11-14-portable-usage-handoff.json)与[G1d证据索引](evidence/2026-11-14-records-ci-scope.json)，没有公开私有响应头或原件正文。此前本地与发布审查快照也保持为本报告追加前的原始前缀。
+
+查询编排失败单独保留于`ci-discovery-launch-r1.json`，566B／SHA`87697c6351ff0f89f855e56af84356f28936f6b2edfe7cc73055e709b8edde45`：保存的错误摘要说明fetch仍在进行时提前启动parser，因列表body尚不存在而exit1／FileNotFoundError；随后列表HTTP200且顺序解析成功，12:09终态为本次实际CI结果。这里核的是保留摘要及后续成功原件，没有声称另读过未单独保留的原始traceback，也未将该编排错误记作产品、模型或CI测试失败。
+
+本结论依据已保存官方HTML／UI JSON、完整SHA步骤log路径与HTTP回执；没有REST终态查询、步骤日志正文读取或artifact归档下载主张。本轮只补核上述固定候选自身CI，未扩大Windows／WSL2换机、真实GPU／B3、完整Forge等原先未验范围。最终记录同步的工作树、后续提交／推送及远端Ref仍须按其实际文件与回执另核，本节不预批最终记录发布。
