@@ -379,3 +379,5 @@ F10c2b2在原retrospectives owner提供工作流prepare/check/export；Skill与�
 F10d3a的`retrospectives.js`是`app.js`既有view接口的实现，内聚当前交接包、显式原件选择、两代际及下载。唯一新增项目`handoff/evidence`读取直接调用原`handoff.evidence`，核整包／来源／完整正文，结果project不同时拒绝关联；不建立服务器会话或新存储。空选择读索引、明确选择读完整原文，失效／容量及canonical身份仍由原owner决定；后续三类候选与评价采用入口分别接续。
 
 F10d3b1沿三个原retrospectives准备函数增加薄HTTP消费者，传输payload共享路径构造，工作流payload只特化额外target-manifest路径；原owner继续持有基线／证据／grant／完整材料／容量与原子不覆盖。完整已存input读取与原proposal reader共用同一私有request读取路径，沿原workflow inspector核原字节与三类原schema，项目匹配后才返回原请求和全部继承材料。现有view内的准备表单只消费当前完整证据选择，保留上次提交路径，失败不自动重发；独立复读走只读代际规则。没有新状态机、目标注册器或模型调度，结果检查／导出及原单叶调用页面另接。
+
+F10d3b2沿原retrospectives reader将可选project/input digest绑定到同次check/export读取，旧CLI默认离线合同保持；六条薄HTTP与原view只消费完整检查和明确导出，不接管原库、评价或采用。验收状态见[本片交付](../delivery/2026-11-14-retrospective-results-console.md)。

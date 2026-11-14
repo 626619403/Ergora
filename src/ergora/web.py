@@ -71,6 +71,28 @@ class RetrospectiveInputPayload(Payload):
     directory: str
 
 
+class RetrospectiveResultPayload(RetrospectiveInputPayload):
+    input_digest: str
+    result: str
+    result_sha256: str
+
+    def arguments(self) -> dict:
+        values = self.model_dump()
+        values['source'] = Path(values.pop('directory'))
+        values['result'] = Path(values['result'])
+        return values
+
+
+class RetrospectiveExportPayload(RetrospectiveResultPayload):
+    candidate_digest: str
+    destination: str
+
+    def arguments(self) -> dict:
+        values = super().arguments()
+        values['destination'] = Path(values['destination'])
+        return values
+
+
 class BindingPayload(Payload):
     binding: dict
     revision: int
@@ -532,6 +554,36 @@ def create_app(home: Path | None = None) -> FastAPI:
     def inspect_retrospective_input(project_id: str, body: RetrospectiveInputPayload):
         state.project(project_id)
         return retrospectives.inspect_input(Path(body.directory), project_id=project_id)
+
+    @application.post("/api/projects/{project_id}/retrospectives/skills/check")
+    def check_skill_retrospective(project_id: str, body: RetrospectiveResultPayload):
+        state.project(project_id)
+        return retrospectives.check(project_id=project_id, **body.arguments())
+
+    @application.post("/api/projects/{project_id}/retrospectives/memories/check")
+    def check_memory_retrospective(project_id: str, body: RetrospectiveResultPayload):
+        state.project(project_id)
+        return retrospectives.check_memory(project_id=project_id, **body.arguments())
+
+    @application.post("/api/projects/{project_id}/retrospectives/workflows/check")
+    def check_workflow_retrospective(project_id: str, body: RetrospectiveResultPayload):
+        state.project(project_id)
+        return retrospectives.check_workflow(project_id=project_id, **body.arguments())
+
+    @application.post("/api/projects/{project_id}/retrospectives/skills/export")
+    def export_skill_retrospective(project_id: str, body: RetrospectiveExportPayload):
+        state.project(project_id)
+        return retrospectives.export(project_id=project_id, **body.arguments())
+
+    @application.post("/api/projects/{project_id}/retrospectives/memories/export")
+    def export_memory_retrospective(project_id: str, body: RetrospectiveExportPayload):
+        state.project(project_id)
+        return retrospectives.export_memory(project_id=project_id, **body.arguments())
+
+    @application.post("/api/projects/{project_id}/retrospectives/workflows/export")
+    def export_workflow_retrospective(project_id: str, body: RetrospectiveExportPayload):
+        state.project(project_id)
+        return retrospectives.export_workflow(project_id=project_id, **body.arguments())
 
     @application.post("/api/project-registrations")
     def register_project(body: RegistrationPayload):

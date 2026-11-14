@@ -178,7 +178,8 @@ def prepare(state: State, project_id: str, packet: Path, selection: list[dict], 
                                                              destination, max_prompt_bytes)
 
 
-def _read_request(source: Path, request_schema: dict | None = None) -> tuple[dict, dict]:
+def _read_request(source: Path, request_schema: dict | None = None, *,
+                  project_id: str | None = None, input_digest: str | None = None) -> tuple[dict, dict]:
     """Verify complete original input bytes before interpreting a retrospective request."""
     prepared = workflow_definitions.inspect_input(source, material=True)
     task = definition_bundles.read_json(Path(prepared['path']) / 'task.txt', prepared['request']['task_sha256'])
@@ -188,21 +189,24 @@ def _read_request(source: Path, request_schema: dict | None = None) -> tuple[dic
         if request_schema is None:
             raise ValueError('Input does not contain a supported retrospective request')
     contracts.validate(task, request_schema, 'Frozen retrospective request')
+    if project_id is not None and task['project'] != project_id:
+        raise ValueError('Retrospective input belongs to a different project')
+    if input_digest is not None and prepared['digest'] != input_digest:
+        raise ValueError('Retrospective input differs from the explicitly selected digest')
     return prepared, task
 
 
 def inspect_input(source: Path, *, project_id: str) -> dict:
     """Read an existing complete retrospective input for its explicitly selected project."""
-    prepared, task = _read_request(source)
-    if task['project'] != project_id:
-        raise ValueError('Retrospective input belongs to a different project')
+    prepared, task = _read_request(source, project_id=project_id)
     return {**prepared, 'retrospective_request': task}
 
 
 def _read_proposal(source: Path, result: Path, result_sha256: str | None,
-                   request_schema: dict, proposal_schema: dict) -> tuple[dict, dict, dict, dict, str]:
+                   request_schema: dict, proposal_schema: dict, *,
+                   project_id: str | None = None, input_digest: str | None = None) -> tuple[dict, dict, dict, dict, str]:
     """Read one bounded original result and its complete frozen request for either target."""
-    prepared, task = _read_request(source, request_schema)
+    prepared, task = _read_request(source, request_schema, project_id=project_id, input_digest=input_digest)
     with result.open('rb') as stream:
         raw = stream.read(RESULT_LIMIT + 1)
     if len(raw) > RESULT_LIMIT:
@@ -233,9 +237,11 @@ def _check_sources(task: dict, proposal: dict) -> None:
         raise ValueError('A retrospective candidate requires source-cited observations')
 
 
-def _checked_proposal(source: Path, result: Path, result_sha256: str | None) -> tuple[dict, dict]:
+def _checked_proposal(source: Path, result: Path, result_sha256: str | None, *,
+                      project_id: str | None = None, input_digest: str | None = None) -> tuple[dict, dict]:
     """Validate once and retain the parsed Skill proposal for either inspection or export."""
-    prepared, task, outer, proposal, observed_sha256 = _read_proposal(source, result, result_sha256, _REQUEST, _SCHEMA)
+    prepared, task, outer, proposal, observed_sha256 = _read_proposal(
+        source, result, result_sha256, _REQUEST, _SCHEMA, project_id=project_id, input_digest=input_digest)
     _check_sources(task, proposal)
     baseline = task['baseline']
     if manifest_digest(_file_manifest(baseline['files'], baseline['name'])) != baseline['digest']:
@@ -257,9 +263,10 @@ def _checked_proposal(source: Path, result: Path, result_sha256: str | None) -> 
     return checked, proposal
 
 
-def check(source: Path, result: Path, *, result_sha256: str | None = None) -> dict:
+def check(source: Path, result: Path, *, result_sha256: str | None = None,
+          project_id: str | None = None, input_digest: str | None = None) -> dict:
     """Check declared links against frozen bytes; never import, score or adopt a proposal."""
-    return _checked_proposal(source, result, result_sha256)[0]
+    return _checked_proposal(source, result, result_sha256, project_id=project_id, input_digest=input_digest)[0]
 
 
 def _export_location(source: Path, destination: Path) -> Path:
@@ -272,9 +279,10 @@ def _export_location(source: Path, destination: Path) -> Path:
     return destination
 
 
-def export(source: Path, result: Path, destination: Path, *, result_sha256: str, candidate_digest: str) -> dict:
+def export(source: Path, result: Path, destination: Path, *, result_sha256: str, candidate_digest: str,
+           project_id: str | None = None, input_digest: str | None = None) -> dict:
     """Explicitly export a selected complete candidate; original owners still evaluate and adopt."""
-    checked, proposal = _checked_proposal(source, result, result_sha256)
+    checked, proposal = _checked_proposal(source, result, result_sha256, project_id=project_id, input_digest=input_digest)
     candidate = proposal['candidate']
     if candidate is None:
         raise ValueError('Retrospective has no Skill candidate to export')
@@ -327,9 +335,10 @@ def prepare_memory(state: State, project_id: str, packet: Path, selection: list[
     return workflow_definitions.prepare_input_from_manifest(manifest, instance, _encoded(task), destination, max_prompt_bytes)
 
 
-def _checked_memory(source: Path, result: Path, result_sha256: str | None) -> tuple[dict, dict]:
+def _checked_memory(source: Path, result: Path, result_sha256: str | None, *,
+                    project_id: str | None = None, input_digest: str | None = None) -> tuple[dict, dict]:
     prepared, task, outer, proposal, observed_sha256 = _read_proposal(
-        source, result, result_sha256, _MEMORY_REQUEST, _MEMORY_SCHEMA)
+        source, result, result_sha256, _MEMORY_REQUEST, _MEMORY_SCHEMA, project_id=project_id, input_digest=input_digest)
     _check_sources(task, proposal)
     baseline, evidence = task['baseline'], task['evidence']
     record = baseline['record']
@@ -351,14 +360,16 @@ def _checked_memory(source: Path, result: Path, result_sha256: str | None) -> tu
             'verification_scope': 'frozen_input_and_declared_candidate_links', 'request': task, 'agent_result': outer}, proposal
 
 
-def check_memory(source: Path, result: Path, *, result_sha256: str | None = None) -> dict:
+def check_memory(source: Path, result: Path, *, result_sha256: str | None = None,
+                 project_id: str | None = None, input_digest: str | None = None) -> dict:
     """Verify declared memory proposal links offline, independently of current State."""
-    return _checked_memory(source, result, result_sha256)[0]
+    return _checked_memory(source, result, result_sha256, project_id=project_id, input_digest=input_digest)[0]
 
 
-def export_memory(source: Path, result: Path, destination: Path, *, result_sha256: str, candidate_digest: str) -> dict:
+def export_memory(source: Path, result: Path, destination: Path, *, result_sha256: str, candidate_digest: str,
+                  project_id: str | None = None, input_digest: str | None = None) -> dict:
     """Export text and exact original-save coordinates, without saving or renewing memory."""
-    checked, proposal = _checked_memory(source, result, result_sha256)
+    checked, proposal = _checked_memory(source, result, result_sha256, project_id=project_id, input_digest=input_digest)
     if proposal['candidate'] is None:
         raise ValueError('Retrospective has no memory candidate to export')
     if checked['candidate_digest'] != candidate_digest:
@@ -438,10 +449,11 @@ def _workflow_scope(baseline: dict, definition: dict) -> None:
 
 
 @contextmanager
-def _workflow_proposal(source: Path, result: Path, result_sha256: str | None):
+def _workflow_proposal(source: Path, result: Path, result_sha256: str | None, *,
+                       project_id: str | None = None, input_digest: str | None = None):
     """Original restore/revise/compiler own all scratch material and graph validation."""
     prepared, task, outer, proposal, observed_sha256 = _read_proposal(
-        source, result, result_sha256, _WORKFLOW_REQUEST, _WORKFLOW_SCHEMA)
+        source, result, result_sha256, _WORKFLOW_REQUEST, _WORKFLOW_SCHEMA, project_id=project_id, input_digest=input_digest)
     _check_sources(task, proposal)
     baseline = task['baseline']
     if task['evidence']['index']['project'] != task['project']:
@@ -500,15 +512,17 @@ def _workflow_proposal(source: Path, result: Path, result_sha256: str | None):
         yield checked, library
 
 
-def check_workflow(source: Path, result: Path, *, result_sha256: str | None = None) -> dict:
+def check_workflow(source: Path, result: Path, *, result_sha256: str | None = None,
+                   project_id: str | None = None, input_digest: str | None = None) -> dict:
     """Check offline using private temporary files; never publish into a user's library."""
-    with _workflow_proposal(source, result, result_sha256) as (checked, _):
+    with _workflow_proposal(source, result, result_sha256, project_id=project_id, input_digest=input_digest) as (checked, _):
         return checked
 
 
-def export_workflow(source: Path, result: Path, destination: Path, *, result_sha256: str, candidate_digest: str) -> dict:
+def export_workflow(source: Path, result: Path, destination: Path, *, result_sha256: str, candidate_digest: str,
+                    project_id: str | None = None, input_digest: str | None = None) -> dict:
     """Export a complete selected root bundle for the original explicit import/selection."""
-    with _workflow_proposal(source, result, result_sha256) as (checked, library):
+    with _workflow_proposal(source, result, result_sha256, project_id=project_id, input_digest=input_digest) as (checked, library):
         if checked['candidate_digest'] is None:
             raise ValueError('Retrospective has no workflow candidate to export')
         if checked['candidate_digest'] != candidate_digest:

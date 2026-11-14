@@ -453,8 +453,23 @@ def test_retrospective_freezes_full_baseline_and_rechecks_without_live_sources(r
         retrospectives.inspect_input(options['destination'], project_id='another-project')
     checked = retrospectives.check(options['destination'], result_path)
     assert checked['request'] == task and checked['input_digest'] == prepared['digest']
+    assert retrospectives.check(options['destination'], result_path, project_id='demo', input_digest=prepared['digest']) == checked
     assert checked['quality_evaluated'] is checked['adoption_authorized'] is False
     assert skill_assets.versions(state, 'demo') == before
+    changed = workflows.prepare_input_from_manifest(options['manifest'], options['instance'],
+        json.dumps({**task, 'objective': 'Review the same evidence for a different objective.'}).encode(),
+        tmp_path / 'other-input', options['max_prompt_bytes'])
+    changed_source = Path(changed['path'])
+    assert retrospectives.check(changed_source, result_path)['candidate_digest'] == checked['candidate_digest']
+    blocked = tmp_path / 'blocked' / baseline['name']
+    for project_id, input_digest, reason in [('another-project', changed['digest'], 'different project'),
+                                            ('demo', prepared['digest'], 'input differs')]:
+        with pytest.raises(ValueError, match=reason):
+            retrospectives.check(changed_source, result_path, project_id=project_id, input_digest=input_digest)
+        with pytest.raises(ValueError, match=reason):
+            retrospectives.export(changed_source, result_path, blocked, result_sha256=checked['result_sha256'],
+                candidate_digest=checked['candidate_digest'], project_id=project_id, input_digest=input_digest)
+        assert not blocked.exists()
     candidate_dir = tmp_path / 'candidate' / baseline['name']
     for name, file in proposal['candidate']['files'].items():
         path = candidate_dir / name
@@ -578,7 +593,7 @@ def test_retrospective_exports_complete_skill_for_original_import_without_adopti
     before = skill_assets.versions(state, 'demo')
     target = tmp_path / 'export' / baseline['name']
     exported = retrospectives.export(options['destination'], result, target, result_sha256=sha,
-                                     candidate_digest=checked['candidate_digest'])
+                                     candidate_digest=checked['candidate_digest'], project_id='demo', input_digest=prepared['digest'])
     assert skill_assets.digest_tree(target)[0] == checked['candidate_digest']
     for name, file in proposal['candidate']['files'].items():
         assert (target / name).read_bytes() == file['text'].encode('utf-8')

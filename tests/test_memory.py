@@ -255,11 +255,12 @@ def test_memory_retrospective_exports_full_offline_text_for_original_save_and_re
                      '--result-sha256', sha]) == 0
     checked = json.loads(capsys.readouterr().out)
     assert checked['input_digest'] == prepared['digest'] and not unused.exists()
+    assert retrospectives.check_memory(options['destination'], result, project_id='alpha', input_digest=prepared['digest']) == checked
     assert checked['save']['source'] == {'uri': 'ergora-handoff:sha256:' + options['packet_sha256'],
                                        'revision': task['evidence']['sha256']}
     target = tmp_path / 'candidate'
     receipt = retrospectives.export_memory(options['destination'], result, target, result_sha256=sha,
-                                           candidate_digest=checked['candidate_digest'])
+                                           candidate_digest=checked['candidate_digest'], project_id='alpha', input_digest=prepared['digest'])
     assert (target / 'memory.txt').read_bytes() == text.encode('utf-8')
     assert json.loads((target / 'receipt.json').read_bytes()) == receipt
     assert memory.catalog(state, 'alpha')['records'] == before['records']

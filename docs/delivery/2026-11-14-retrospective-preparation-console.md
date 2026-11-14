@@ -25,3 +25,9 @@ r1 最终安装件已逐份核603产品、两RECORD611／616及283参考保持�
 [最终本地证据](evidence/2026-11-14-retrospective-preparation-console.json)暂列374原引用，r1产品不变；自身模板和新源码两轴通过，新的最终本地补核待。已人工看390px完整截图并核三宽测量，无横溢。未动态验证Home切换、全部键盘／异常排列或规模性能，不扩大真实训练／质量验收。
 
 新fresh-context最终本地需求／维护性两轴均approve／开放0／0，reviewer独立逐份核原374件和实际runtime／CLI／自身原模板／收尾。另追加其4份独立终核证明和5份待发布调用器，共383引用；原374前缀保持。输入与目录资产mode仅核规范执行位，交接包核完整文件mode；无规模性能收益主张。前片自身CI及原reviewer终核已闭合，本片普通发布／自身CI待。
+
+已普通发布 `f7a4d28e82f2db99245885eaa24229299f7f73d7`，21变更blob逐份等于最终暂存，完整远端Ref相同；无force／合main。固定383／发布后387引用分列，原reviewer固定发布补核及本片自身CI单列待。
+
+原两轴固定发布补核approve／开放0／0，独立核21blob、固定全603与原snapshot／wheel／安装件、两RECORD／283及固定383／发布后387引用、普通完整Ref；3份独立证明另列。自己的CI43568843549已确认绑定完整f7a4d28，终态及原reviewer补核待。首次CI调用器将全workflow列表误用per-workflow字段的KeyError保留，改用实际原HTML的allWorkflowRunsRoute；没有更改固定原helper。
+
+自己的CI43568843549已终态Success：官方第三run及Windows第二job、其余七job第一份HTML绑定完整f7a4d28，八job／30必要步骤全部成功，另列38原CI引用；原383／发布后387前缀保持，原reviewer终态补核待。

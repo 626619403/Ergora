@@ -98,9 +98,10 @@ def test_workflow_retrospective_complete_offline_revision_export_import_and_old_
                      '--result-sha256', sha]) == 0
     checked = json.loads(capsys.readouterr().out)
     assert not unused.exists() and checked['input_digest'] == prepared['digest']
+    assert retrospectives.check_workflow(options['destination'], result, project_id='demo', input_digest=prepared['digest']) == checked
     destination = tmp_path / 'candidate'
     receipt = retrospectives.export_workflow(options['destination'], result, destination, result_sha256=sha,
-                                              candidate_digest=checked['candidate_digest'])
+                                              candidate_digest=checked['candidate_digest'], project_id='demo', input_digest=prepared['digest'])
     assert (destination / 'instructions.md').read_bytes() == text
     assert (destination / 'skills/target-guide/references/empty').is_dir()
     assert checked['revision_preview']['directory_changes']['removed'] == []

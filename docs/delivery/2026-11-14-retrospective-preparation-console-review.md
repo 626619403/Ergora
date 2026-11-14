@@ -2,7 +2,7 @@
 
 审查者：本片 fresh-context 独立主审，以及两个 `fork_turns=none` 的 Standards／Spec 子轴。原始输入为 `AGENTS.md`、`docs/PLAN.md`、[本片合同](../plans/2026-11-14-retrospective-preparation-console.md)，随后独立读取实际源码、邻接生产 caller／owner 与[本片交付](2026-11-14-retrospective-preparation-console.md)。依 `code-review` 两轴和 `independent-review` brief；未复用实现者预设结论。
 
-**最终本地结论：Standards approve／Spec approve，开放 0／0。** 原两轴已在同片恢复，补核实际安装、HTTP／CLI／浏览器、恢复／收尾与自身模板证据；发布及本片自己的 CI 仍待单独补核。
+**最终本地结论：Standards approve／Spec approve，开放 0／0。** 原两轴已在同片恢复，补核实际安装、HTTP／CLI／浏览器、恢复／收尾与自身模板证据；固定发布亦已由原两轴补核通过，详见文末。本片自己的 CI 仍待单独补核。
 
 固定基线及审查时 HEAD 均为 `203973f9fbb2e6d97bf59961b49482cb875f2d0d`。`git diff <baseline>...HEAD` 和提交区间为空；本次候选是明确的未提交工作区差异：`src/ergora/retrospectives.py`、`src/ergora/web.py`、`src/ergora/data/console/retrospectives.js`、`tests/test_skills_evaluation.py`、`tests/test_memory.py`、`tests/test_workflow_definitions.py`，另读取本片新交付／公开证据全文、本片计划状态，以及 `docs/USAGE.md` 和 `docs/architecture/current.md` 的本片交接增量。前片 F10d2／F10d3a 的 CI、发布及记账差异不计为本片产品或验收；后继纯计划不计本片实现。精确六文件 SHA 与原差异命令保存在本片私有 `independent/source-review-r1.json`，最终补核再次确认六文件未变，仍为同一 r1。
 
@@ -26,6 +26,16 @@ HTTP payload 与四入口只拥有传输字段及项目边界；三个准备入�
 
 自身原结构模板的 **35.137 秒／exit 0／approve** 原结果已核；10 份完整文件共 261,359B、原 task 和祖先资源实际进入 stdin，输入与 stdin 摘要相同。其原回复明确仅批准所给源码审查，不替代本次独立验收。初始浏览器选择器与审计调用器错误保留；没有将它们重标为最终产品失败或成功。主审只读补核脚本及原结果保存于本片私有 `independent/verify-final-local-r1.py`、`final-local-r1.json`，两轴原结论单列保存。
 
-未动态验证 Home 切换、完整键盘／异常排列或规模性能，不作全矩阵、真实 GPU／训练／质量／性能收益主张。普通发布、精确远端 Ref 及本片自己的 CI 仍待各自实际证据；前片 CI 属另一片审查，不作为本片成功。原源码阶段的 pending 结论保存在原独立证据中，本次补核只关闭本地验收缺项。
+未动态验证 Home 切换、完整键盘／异常排列或规模性能，不作全矩阵、真实 GPU／训练／质量／性能收益主张。最终本地阶段仅关闭本地验收缺项，固定发布的后继补核见下节，本片自己的 CI 仍待实际终态及独立补核。前片 CI 属另一片审查，不作为本片成功；原源码阶段的 pending 结论保存在原独立证据中。
 
-两轴分别为 Standards 0、Spec 0；最终本地 approve，开放 0／0，发布与自身 CI 待补核。
+本地阶段两轴分别为 Standards 0、Spec 0，最终本地 approve／开放 0／0；后继固定发布见下节。
+
+## 固定发布补核
+
+原主审及原两轴对普通发布 `f7a4d28e82f2db99245885eaa24229299f7f73d7` 分别 **approve，开放 0／0**。此后已有 b2 工作区产品改动，补核仅使用固定 Git 对象及原 r1 原件，不将后继 WIP 归给本候选。父提交精确为原基线 `203973f9fbb2e6d97bf59961b49482cb875f2d0d`；21 个变更 blob 的路径、字节数、SHA 全部匹配 `static-final-r1.json`。其中前片状态记账及下一片纯计划保持各自范围，不计本片新产品或验收。
+
+再次只读核固定 Git、r1 安装源码快照、wheel 与安装件的 **603 产品逐字一致**，原六源码／测试身份保持，两份 RECORD 全行摘要／大小正确，行数为 611／616，283 冻结参考正确，wheel SHA 保持原 `63d796f80ee091db697df5269b323208bc480294eb416bbb6abe6c880f7a503b`。固定 Git 中 **383 引用**全部保持为发布后 **387 引用**的完整前缀；仅追加 static／commit／push／ref 四件，387 件唯一引用的字节和 SHA 全部匹配。
+
+原 push 明确使用完整候选到当前分支，无 force；原回执为 `203973f..f7a4d28`，原完整远端 Ref 匹配。主审另一次实际只读 `git ls-remote --refs` 返回同一完整候选与 `refs/heads/refactor/architecture-foundations`。固定文档保留冻结时的发布前状态，四件后继记录证明实际发布；没有扩大本地验收或提前声明 CI 成功。原证明及只读脚本在本片私有 `independent/publication-r1.json`、`verify-publication-r1.py`，原两轴结论单列 `axes-publication-r1.json`。未重跑产品、suite、模型或浏览器。
+
+本片自身 CI 仍待其终态及独立补核；本次不予预批。固定发布两轴 Standards 0、Spec 0，approve／开放 0／0。

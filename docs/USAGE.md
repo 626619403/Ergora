@@ -866,6 +866,14 @@ ergora handoff read ./task-handoff.zip --selection ./selection.json --sha256 EXP
 
 若准备报错、丢回复或页面已切换，保留原提交目录，在“复读已保存输入”填写该路径并明确读取。这里核完整原 input／请求／继承材料及所属项目，不根据新表单重建，也不自动重新准备。源 head 或记忆后来失效不改写已存输入；新的准备仍使用当前有效来源。换电脑时需要携带整个输入目录，不能只复制页面返回的 JSON。原 `ergora composition verify-input INPUT_DIRECTORY --material` 可离线核完整目录；实际 `run-input` 仍重新执行当前后端准入。
 
+### 在页面检查结果并导出完整候选
+
+在“复盘改进”的“检查结果与导出候选”中，选择结果所属方向，填写完整原 input 目录及其 digest、原 Agent 结果文件及其原 SHA256，然后明确检查。可用本节上方的输入复读或原 `composition verify-input` 核对 input digest；原模型调用回执给出 result 文件与 SHA。这里不依赖当前上方证据选择，使用冻结输入中的原来源。
+
+检查展示完整原请求和 Agent 回复，并可下载完整 `retrospective-checked.json`；摘要对应原 input／原结果／候选，而下载 JSON 的文件摘要另算。来源改变后须重新检查。null 候选无需导出；有候选时先审阅完整内容，再填写新候选导出目录并明确提交。Skill 目录的末级名称必须等于候选 name。
+
+导出按同次选中的项目／input／结果／候选身份重新核对，再原子保存完整文件和执行位；已有目录不覆盖，不能导出到冻结 input 内。失败或丢回复保留上次目录且不自动重发，先按下文各方向的原 CLI 检查已有目标；不要删除目标来强制重试。导出不导入、评价或采用，后续继续按下面的原流程明确执行。
+
 ### 生成来源绑定的Skill复盘候选
 
 先有一个已注册的项目、可核验的交接包，以及该项目已导入的基线Skill。`ergora skill list my-project`返回当前`active`中的name、digest和revision；首次导入只建立baseline，不代表测得改进。用上节的selection JSON选择完整来源，再写一个UTF-8的`objective.txt`说明本次要改进什么。

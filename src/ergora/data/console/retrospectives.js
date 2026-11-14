@@ -19,6 +19,7 @@ export function retrospectivesView(data, base) {
     return readDirectory();
   } }, packetField, digestField, row(directoryButton));
   const preparation = preparationPanel(base, () => view.isConnected);
+  const results = resultPanel(base, () => view.isConnected);
   const view = node("div", { className: "retrospective-evidence" },
     heading("复盘改进", "从原交接包明确选择完整材料，保留任务、运行、回执与成本来源。"),
     panel("核对原交接包", "先在正式任务页下载交接包，并保存到控制台所在机器。填写保存路径和该次下载的整包 SHA256；读取不提取文件或改写原包。",
@@ -26,7 +27,8 @@ export function retrospectivesView(data, base) {
     panel("完整复盘材料", "目录不会自动选择原件。明确选择后读取完整 UTF-8 正文；二进制、NUL 或超出原容量时整次拒绝，不截断。",
       choices, result),
     preparation.element,
-    panel("后续候选", "准备成功只保存完整输入；本页不调用 Agent、不检查结果、不评价或采用候选。模型调用、候选检查与导出继续按使用手册的原 CLI 明确执行。",
+    results,
+    panel("后续执行与采用", "本页不调用 Agent、不评价或采用候选。原模型调用、可信评价、明确采用与回退继续按使用手册的原 CLI 分别执行。",
       pre("ergora handoff read HANDOFF.zip --sha256 PACKET_SHA --selection selected-artifacts.json")),
   );
   const active = () => view.isConnected;
@@ -131,6 +133,92 @@ export function retrospectivesView(data, base) {
     count.textContent = `已选 ${entries.filter((item) => item.choice.checked).length} 份原件。`;
   });
   return [view];
+}
+
+function resultPanel(base, active) {
+  const checkButton = node("button", { type: "submit", className: "primary" }, "检查完整原结果");
+  const checkedStatus = node("div", { "aria-live": "polite" });
+  const form = node("form", { onsubmit: (event) => { event.preventDefault(); return check(); } },
+    selectField("结果所属方向", [["skills", "Skill"], ["memories", "项目记忆"], ["workflows", "工作流"]], "skills", "kind"),
+    field("受检完整输入目录", "directory", "", "text", { required: true, autocomplete: "off" }),
+    field("受检输入 digest", "input_digest", "", "text", { required: true, spellcheck: "false" }),
+    field("原 Agent 结果路径", "result", "", "text", { required: true, autocomplete: "off" }),
+    field("原结果 SHA256", "result_sha256", "", "text", { required: true, spellcheck: "false" }), row(checkButton));
+  const exportStatus = node("div", { "aria-live": "polite" });
+  const attempted = node("p", { "aria-live": "polite" });
+  const exportFields = node("fieldset", { disabled: true }, node("legend", {}, "明确导出已检查的候选"),
+    field("新候选导出目录", "destination", "", "text", { required: true, autocomplete: "off" }),
+    row(node("button", { type: "submit", className: "primary" }, "导出完整候选")));
+  const exportForm = node("form", { onsubmit: (event) => { event.preventDefault(); return exportCandidate(); } }, exportFields);
+  let sequence = 0;
+  let selected = null;
+  let exporting = false;
+
+  function invalidate() {
+    sequence++;
+    selected = null;
+    checkButton.disabled = false;
+    exportFields.disabled = true;
+    checkedStatus.replaceChildren(empty("输入已更改；请按原 input 和结果摘要明确重新检查。"));
+  }
+
+  async function check() {
+    if (!active() || checkButton.disabled) return;
+    const { kind, ...payload } = Object.fromEntries(new FormData(form));
+    invalidate();
+    const reading = sequence;
+    checkButton.disabled = true;
+    checkedStatus.replaceChildren(empty("正在核对同一份完整 input、项目与原结果…"));
+    try {
+      const checked = await api(`${base}/retrospectives/${kind}/check`, payload);
+      if (!active() || reading !== sequence) return;
+      selected = { kind, payload, checked };
+      exportFields.disabled = exporting || checked.candidate_digest === null;
+      checkedStatus.replaceChildren(panel("完整原结果已检查", "只核冻结来源与声明关联；不认证来源，不证明质量，也不授权采用。下方保留完整原请求与 Agent 回复。",
+        table(["身份", "原记录"], [["输入 digest", checked.input_digest], ["原结果 SHA256", checked.result_sha256],
+          ["候选 digest", checked.candidate_digest ?? "无候选"], ["质量评价", "未进行"], ["采用授权", "未授予"]]),
+        pre(checked), checked.candidate_digest === null ? empty("本次没有候选，无需导出。") :
+          node("p", {}, "审阅完整候选后，明确填写新导出目录。Skill 的末级目录名必须等于候选 name。"),
+        row(button("下载完整原检查", () => {
+          if (active() && reading === sequence)
+            download("retrospective-checked.json", JSON.stringify(checked, null, 2) + "\n", "application/json");
+        }))));
+    } catch (error) {
+      if (active() && reading === sequence) checkedStatus.replaceChildren(panel("原结果检查失败", error.message));
+    } finally {
+      if (active() && reading === sequence) checkButton.disabled = false;
+    }
+  }
+
+  async function exportCandidate() {
+    if (!active() || exporting || !selected || selected.checked.candidate_digest === null) return;
+    const selection = selected;
+    const destination = new FormData(exportForm).get("destination");
+    exporting = true;
+    exportFields.disabled = true;
+    attempted.textContent = `上次明确提交的导出目录：${destination}。更改检查来源不撤销已导出的文件。`;
+    exportStatus.replaceChildren(empty("正在重新核对原身份并导出完整候选…"));
+    try {
+      const receipt = await api(`${base}/retrospectives/${selection.kind}/export`, {
+        ...selection.payload, destination, candidate_digest: selection.checked.candidate_digest,
+      });
+      if (!active()) return;
+      exportStatus.replaceChildren(panel(selected === selection ? "完整候选已导出" : "上次检查的候选已导出",
+        selected === selection ? "只保存完整候选；未导入、评价或采用。" : "检查来源已更改；这是上次提交的原导出结果，不能当作当前检查的候选。",
+        pre(receipt)));
+    } catch (error) {
+      if (active()) exportStatus.replaceChildren(panel("导出未获确认", error.message,
+        "原提交目录保留，没有自动重发。先核对已有目标与原 input／结果／候选摘要；不要删除或覆盖目标来绕过拒绝。"));
+    } finally {
+      exporting = false;
+      if (active()) exportFields.disabled = !selected || selected.checked.candidate_digest === null;
+    }
+  }
+
+  form.addEventListener("input", invalidate);
+  form.addEventListener("change", invalidate);
+  return panel("检查结果与导出候选", "使用控制台所在机器的完整原 input 和 Agent 结果；明确填写其原摘要。无需重新选择上方证据，检查始终使用已冻结的原来源。",
+    form, checkedStatus, exportForm, attempted, exportStatus);
 }
 
 function preparationPanel(base, active) {
