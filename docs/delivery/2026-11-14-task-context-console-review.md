@@ -68,3 +68,27 @@ Reviewer 另外直接读原 worker stderr，错误根、资料模式与容量分
 公开[证据索引](evidence/2026-11-14-task-context-console.json)终核读取时共有 **872引用／30,805,552B**：原871件保持，另增加尚未执行的普通发布脚本。Reviewer 逐项核所有路径、大小与 SHA，无重复；该时刻索引 **162315B／SHA `5650d9cb5c6a5834f4cffcf371a581a7309ef069126171c2217db9c71780f4c6`**，仍正确标记最终独立终核在途，随后由本报告结论作状态记账。新私有 `local_final_r1.py`／`local-final-r1.json`／`local-final-r1-failed.json` 未覆盖该固定前缀，后续可只追加原件引用。
 
 **最终裁定：Standards approve，Spec approve，开放0／0；R1 关闭，本片可进入原普通发布流程。** 目录与 manifest 同时变化、Home 切换、迟到 mutation 在本片仅静态追踪，旧2／3与 unknown mutation 原动态证据属于前片；本片不声称完整动态矩阵。未提交、推送或核本片自己的 CI，不证明真实业务／GPU／质量／性能、原生 Windows 模型、完整 Forge、F9d／G1 或复盘候选／评价／采用完整页面旅程。
+
+## 固定普通发布补核
+
+同一 reviewer 独立补核固定候选 **`6b7ebcc83f18c9b5d203eb47735bf3867f73b44d`**，直接父为本片基线 `0a311eeb2a46d0db48ec44515a8413239e0c772c`。**固定发布 Standards approve，Spec approve，开放0／0，R1 保持关闭。** 本节保留前述本地验收的原范围，不替代本片自己的必要 CI 及终态补核。
+
+固定 Git 的全部 **16份变更 blob** 大小／SHA 与原 `static-final-r1.json` 逐件相同，包括本报告当时版本和新增计划／交付／证据文件。原新文件入 index 后的完整 `git diff --cached --check` 回执为 exit0；reviewer 另对固定提交执行 `git show --format= --check`，exit0。
+
+从固定 Git tree 批量取出全部 **602产品**，逐件核 **fixed Git＝最终r2 source snapshot＝原wheel＝installed**，产品路径集合相同；两 RECORD 的 **610／615行**重新逐行核大小与 SHA，全部 **283 reference** 的摘要及固定 Git／snapshot／wheel／installed 执行位相同。四个变更产品与上表身份完全相同，wheel SHA 仍为 `bde460575dc23751552eb63933373b1ad9f3ed75fb03b62923ac7bed675e0058`。本轮核验时当前源码也相同，但本结论绑定固定 Git／r2，不要求后继开发源码保持旧字节。
+
+固定证据索引为 **875引用**；发布后当前 **879引用／30,823,761B** 的前875项逐项与固定索引相同，只追加 static-final、commit、push、Ref四份回执。Reviewer 重核879份原件的路径、大小及 SHA，无重复；固定／当前索引 SHA 分别为 `150231010c9fd3062928d9db51b10b912e0aee1101de8636bec09a6476541640`／`d99162379c1e0fdca4fd933cb8dce5701039331307eb4b1b1a1f46d40fb43390`，后续状态记账不改写该前缀。
+
+commit／push／Ref 原回执均 exit0；push 确为 `HEAD:refs/heads/refactor/architecture-foundations`，没有 force。Reviewer 另以只读 `git ls-remote` 核完整远端 Ref，仍为上述固定候选。固定文件中的前片记录明确保留其自己的 CI43561420980 success 与原 reviewer approve，作为已满足的发布依赖；不将其算作本候选 CI。
+
+新增私有 `independent/publication-audit-r1.py`／`publication-audit-r1.json` 记录本轮核验，未覆盖原875件。本轮只读 Git／RECORD／原件与远端 Ref，并追加本报告；没有安装、重跑 suite／浏览器／模型、修改产品、提交或推送。本候选自己的必要 CI 及其独立终态补核仍待，其余未验边界保持。
+
+## 自身 CI 终态补核
+
+同一 reviewer 仅用已保存的官方原件，独立补核固定候选 **`6b7ebcc83f18c9b5d203eb47735bf3867f73b44d`** 自己的 [Portability run 43563900923](https://github.com/626619403/Ergora/actions/runs/43563900923)。**终态 Success；Standards approve，Spec approve，开放0／0，R1 保持关闭。** 前述本地及固定发布范围保持，本节关闭本候选自己的必要 CI 待项。
+
+从固定 Git 的 `portability.yml` 和 `linux-groups.json` 重建 plan＋六 Linux 分组＋Windows 的 **8 job／30必要步骤**，再从原官方 UI batch 核名称、job ID、run与attempt1绑定，不以历史 batch 的 in_progress 字段推定终态。最终 run 及 Windows job 用 r5 原 HTML，其余七 job 用 r3；全部原 URL／最终 URL、HTTP200、响应字节与 SHA 均核同。独立 HTML 解析核 run 的完整提交及分支链接、每个 job 名称／成功图标／Complete job，以及30步的 success、起止时间、job-completed 标记和完整候选 SHA 的原日志链接；无必要步骤跳过、取消或待定。
+
+Windows 原回归为 **05:57:31–06:17:24Z**，PowerShell 5.1 安装／升级为 **06:17:24–06:18:26Z**，上传为 **06:18:26–06:18:27Z**，日期均为2026-11-14。其余原 setup／post／complete 步骤也成功；六 Linux job 的 Windows 专属步骤依原条件跳过，不计入30项。r2／r3／r4 的 In progress 投影与各自原页面保持一致，没有改写早期历史。
+
+新增私有 `independent/ci-final-r1.py`／`ci-final-r1.json` 保存独立解析及逐件引用，共核 **73份原CI输入／5,732,934B**，含33份原HTTP回执、对应HTML／batch、元数据与历史解析。固定875及普通发布879引用前缀保持；本轮只追加本报告和新私有核查原件，后续CI引用由交付方单列追加。没有新网络调用、安装、重跑suite／浏览器／模型、提交或推送；未获取REST结果、完整日志或artifact压缩包，不据此扩大为真实GPU／业务质量／性能、原生Windows模型、完整Forge、F9d／G1或复盘评价／采用完整旅程验收。结论绑定固定F10d2候选，不要求后继开发工作区保持旧产品字节。

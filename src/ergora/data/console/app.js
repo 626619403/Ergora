@@ -7,6 +7,7 @@ import { toolsView } from "./tools.js";
 import { memoryView } from "./memory.js";
 import { skillsView } from "./skills.js";
 import { researchView } from "./research.js";
+import { retrospectivesView } from "./retrospectives.js";
 import { tasksView } from "./tasks.js";
 import { issuesView } from "./issues.js";
 import { trainingView } from "./training.js";
@@ -167,6 +168,7 @@ function render({ sourceSnapshot = "" } = {}) {
     memory: memoryView,
     skills: skillsView,
     research: researchView,
+    retrospectives: retrospectivesView,
     tasks: tasksView,
     issues: issuesView,
     training: trainingView,

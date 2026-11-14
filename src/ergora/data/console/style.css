@@ -895,6 +895,12 @@ summary {
 .task-context-selection {
   overflow-wrap: anywhere;
 }
+.retrospective-evidence {
+  overflow-wrap: anywhere;
+}
+.retrospective-evidence fieldset {
+  min-width: 0;
+}
 .task-choice {
   text-align: left;
   overflow-wrap: anywhere;

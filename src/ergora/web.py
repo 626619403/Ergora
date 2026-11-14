@@ -25,6 +25,12 @@ class ProjectPayload(Payload):
     repo: str
 
 
+class HandoffEvidencePayload(Payload):
+    packet: str
+    packet_sha256: str
+    selection: list[dict] = Field(default_factory=list)
+
+
 class BindingPayload(Payload):
     binding: dict
     revision: int
@@ -461,6 +467,14 @@ def create_app(home: Path | None = None) -> FastAPI:
     @application.post("/api/projects")
     def add_project(body: ProjectPayload):
         return projects.create(state, body.id, Path(body.repo))
+
+    @application.post("/api/projects/{project_id}/handoff/evidence")
+    def handoff_evidence(project_id: str, body: HandoffEvidencePayload):
+        state.project(project_id)
+        selected = handoff.evidence(Path(body.packet), body.selection, sha256=body.packet_sha256)
+        if selected["index"]["project"] != project_id:
+            raise ValueError("Handoff evidence belongs to a different project")
+        return selected
 
     @application.post("/api/project-registrations")
     def register_project(body: RegistrationPayload):

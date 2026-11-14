@@ -856,6 +856,8 @@ ergora handoff read ./task-handoff.zip --selection ./selection.json --sha256 EXP
 
 输出为版本1普通JSON`ergora-handoff-selection`；`sha256`是其余字段按UTF-8、键排序、无多余空格的规范JSON摘要。它可以作为原`composition prepare --task`的显式资料输入；原`execution_success: null`、`origin_authenticated: false`和核包范围保持。它不更新记忆或活动Skill，复盘候选、独立评价和明确采用仍为后续操作。
 
+页面可选择“复盘改进”，填写控制台所在机器的交接包路径与下载时核对的整包SHA，再“读取交接包目录”。目录须与当前项目ID一致，默认不勾选；按原job／材料名称选择后，“读取选中完整材料”展示全部原文、来源和选择身份，支持下载CLI兼容的`selected-artifacts.json`以及完整`retrospective-evidence.json`。后者内部sha256仍是上述canonical身份，不是JSON文件的字节摘要。修改来源或重读目录使旧选择不可用；成功重读清空勾选，读取失败保留输入和失败状态。二进制、NUL和完整超容量沿原owner拒绝，不用窗口或截断绕过。此页不生成、评价或采用候选；这些操作继续按下面各节明确执行。
+
 ### 生成来源绑定的Skill复盘候选
 
 先有一个已注册的项目、可核验的交接包，以及该项目已导入的基线Skill。`ergora skill list my-project`返回当前`active`中的name、digest和revision；首次导入只建立baseline，不代表测得改进。用上节的selection JSON选择完整来源，再写一个UTF-8的`objective.txt`说明本次要改进什么。
