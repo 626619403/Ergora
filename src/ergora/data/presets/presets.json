@@ -423,13 +423,16 @@
     "memory-retrospective": {
       "description": "Complete source-bound memory text proposal and complementary readonly evidence review; original explicit save and restore remain separate.",
       "runtime": "proposal-leaves",
-      "root": "ergora-memory-retrospective",
+      "root": "ergora-memory-retrospective-v1.0.1",
       "agents": [
         "ergora-memory-retrospective-author",
-        "ergora-memory-retrospective-reviewer"
+        "ergora-memory-retrospective-reviewer",
+        "ergora-memory-retrospective-author-v1.0.1",
+        "ergora-memory-retrospective-reviewer-v1.0.1"
       ],
       "workflows": [
-        "ergora-memory-retrospective"
+        "ergora-memory-retrospective",
+        "ergora-memory-retrospective-v1.0.1"
       ]
     },
     "workflow-retrospective": {

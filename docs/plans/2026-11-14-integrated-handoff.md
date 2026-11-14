@@ -1,16 +1,20 @@
 # G1：安装、升级与公开交接
 
-承接 [总计划](2026-11-01-all-in-one.md)、[改进组合旅程](2026-11-14-improvement-freeze-journey.md)和 [训练控制组合](2026-11-14-training-control-journey.md)。当前仅细化待验节点，尚未实施或取得本片验收；每个实施片开始时另固定基线、实际安装及完整差异。前片自己的 CI 与原独立终核闭合后再普通推送后继。
+承接 [总计划](2026-11-01-all-in-one.md)、[改进组合旅程](2026-11-14-improvement-freeze-journey.md)和 [训练控制组合](2026-11-14-training-control-journey.md)。总体按分片逐步实施；G1a已固定[具体合同](2026-11-14-memory-preset-patch.md)，尚未取得本片运行／审查通过；每个实施片开始时另固定基线、实际安装及完整差异。前片自己的 CI 与原独立终核闭合后再普通推送后继。
 
 目标是让同事能从空控制环境安装当前工具，选择并替换角色，在自己的项目使用模板；已有使用者能核对升级、回退及换机所需资料。控制面安装、原生执行和真实训练分别说明，不把安装成功当作全部可选能力验收。
 
 ## G1a：不可变模板补丁
+
+活动片见[具体计划](2026-11-14-memory-preset-patch.md)／[逐步交付](../delivery/2026-11-14-memory-preset-patch.md)，固定基线593da96。
 
 - 为记忆候选 author／reviewer 提示中的两处行尾空白发布新的 Agent patch 包与引用它们的新 root patch；保留已发布 1.0.0 的完整字节与身份。
 - 沿既有 preset 注册和精确定义导入；不改变资源、权限、后端、串并行或采用协议。已经导入的旧版本、已冻结 manifest 和在途输入保持原样，新安装明确选择新版本。
 - 验收：原旧库再安装当前 preset，旧定义／manifest 保持，新根可编译并准备两个叶，全部祖先与 Skill 附件完整；原有定义／preset suite 与受影响安装行为。暂存后检查包括新增文件的完整差异，不能再以 tracked-only 检查漏过新文件。
 
 ## G1b：安装与已有项目升级／回退
+
+已固定[本片合同](2026-11-14-install-upgrade-rollback.md)／[逐步交付](../delivery/2026-11-14-install-upgrade-rollback.md)，使用G1a最终611映射先验隔离路径；日常替换须等G1a精确发布／自己的CI。
 
 - 用当前候选构建非 editable wheel，沿现有 Linux 安装器验证一个新的隔离安装，核 source／wheel／installed RECORD、283 参考文件、CLI 和实际 HTTP 静态资源。可选 SDK 与外部 Agent／服务仍按所选 profile 分别配置。
 - 升级前核日常入口的原安装、认证之外的依赖、活动进程及已知持久目录，完整备份原应用。保留原默认控制 home，演示旅程用独立状态，不能用日常业务数据烟测。

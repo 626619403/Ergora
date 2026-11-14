@@ -1,0 +1,2189 @@
+{
+  "slice": "G1a",
+  "baseline": "593da960f9eb4039518cfae9119ddafc1f7a847b",
+  "branch": "refactor/architecture-foundations",
+  "implementation": {
+    "new_bundled_data_files": 7,
+    "changed_catalogs": 1,
+    "python_schema_dependencies_tests_ci_changed": false,
+    "original_published_files_preserved": 7,
+    "presets": 28,
+    "new_version": "1.0.1",
+    "prompt_change": "One trailing space removed from the first line of each new author/reviewer prompt; original 1.0.0 bytes retained.",
+    "root_change": "Version and exact two Agent refs only; original permissions/limits/edges/resources/backends and output contracts retained."
+  },
+  "validation": {
+    "package": {
+      "wheel_sha256": "a2009e901fefb6e0507d6fedb14dff27c662feabeddf71b5e5f6a6a89f4619f9",
+      "package_files": 611,
+      "wheel_files": 619,
+      "installed_record_rows": 624,
+      "source_and_installed_package_equal": true,
+      "wheel_and_installed_records_verified": true,
+      "frozen_files": 283,
+      "editable": false
+    },
+    "regression": {
+      "suites": [
+        "test_presets.py",
+        "test_memory.py"
+      ],
+      "passed": 48,
+      "pytest_seconds": 155.29,
+      "process_owner_seconds": 156.773716093041,
+      "exit": 0
+    },
+    "actual_cli_journey": {
+      "checks": 20,
+      "cli": 24,
+      "seconds": 9.56140538584441,
+      "old_root": {
+        "kind": "workflow",
+        "id": "ergora-memory-retrospective",
+        "version": "1.0.0",
+        "digest": "0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5"
+      },
+      "new_root": {
+        "kind": "workflow",
+        "id": "ergora-memory-retrospective",
+        "version": "1.0.1",
+        "digest": "f80ea1f1512d5ac0d31ec90cd16a4c1360fd06aeee56a46eca76f04d419cd18b"
+      },
+      "original_library_files": 7,
+      "original_frozen_files": 37,
+      "complete_old_trees_and_digest_prompt_preserved": true,
+      "all_two_leaf_ancestor_resources_in_prompt": true
+    },
+    "own_structure_template": {
+      "status": "succeeded",
+      "run_id": "4f7fd8e3a1284ef582dc092b29268141",
+      "cli_exit": 0,
+      "seconds": 19.567424814682454,
+      "packet_files": 24,
+      "packet_bytes": 112775,
+      "decision": "approve",
+      "input_digest": "b0348a3608e1dafa5c1356bc8ff000dbac26eee10086982ed5301fafa8c54587",
+      "result_sha256": "b1ac719487805472a6477304f06dfe08eeee2f88aa2760cc355bac93721e4ab3",
+      "all_inline_files_and_inherited_resources_in_stdin": true
+    },
+    "final_audit": {
+      "status": "passed",
+      "source_equals_fixed_noneditable_install": true,
+      "inherited_own_review_resources": 3,
+      "matching_service_pids": []
+    }
+  },
+  "independent_review": {
+    "report": "docs/delivery/2026-11-14-memory-preset-patch-review.md",
+    "final_local": "approved",
+    "requirements": "approve",
+    "maintainability": "approve",
+    "open_findings": {
+      "requirements": 0,
+      "maintainability": 0
+    },
+    "local_snapshot": {
+      "path": ".ergora/checks/memory-preset-patch/independent-local-r1.md",
+      "bytes": 9249,
+      "sha256": "8f4781869a0d89ddd4cae674a3447e79edf44db8ffd828f3d618671f0c3c27fc"
+    }
+  },
+  "publication": {
+    "status": "pending",
+    "predecessor_own_ci": "43585798832 exact593da96 Success; eight jobs/30 required steps and original reviewer both axes approve/open0/0, all predecessor gates complete",
+    "own_ci": "pending"
+  },
+  "raw_evidence": {
+    "base": ".ergora/checks/memory-preset-patch",
+    "scope": "Stable original failure, final installed boundary checks, full inline own model input and audit. Credentials/config, entire testcase trees and duplicate build source omitted. Original independent report is not recursively hashed; publication/CI will be separate.",
+    "references": [
+      {
+        "path": "audit-r1.json",
+        "bytes": 1666,
+        "sha256": "c0a32cdeb8f1391a9598cb4eb1e3a050ee0436beb53426a0d3c8ff93e7d6a1f6"
+      },
+      {
+        "path": "audit-r1.py",
+        "bytes": 6520,
+        "sha256": "8683e0d8fecfc3674dab5f704da6fd8b18728756968c804a2a74801169e52cdf"
+      },
+      {
+        "path": "baseline.json",
+        "bytes": 449,
+        "sha256": "0d63ce25c7ff809669b02b74eca14b6f3ae45f18bf77b0f2661f9ea53211ad4e"
+      },
+      {
+        "path": "collect-r1.py",
+        "bytes": 5187,
+        "sha256": "b14b4ba709b7956e97653fd152380a0ad7742c29677438fb9782061b31069b03"
+      },
+      {
+        "path": "install-r1/build.stderr",
+        "bytes": 62,
+        "sha256": "3fbf5c81df4d6f7774a09a7694742996e64ed07ccaea033ef3d34574059a981c"
+      },
+      {
+        "path": "install-r1/build.stdout",
+        "bytes": 276132,
+        "sha256": "6d614bce232b078ac7822f557d0afbd292d79d5f75cd9c1a05ea8b7f90c7ca86"
+      },
+      {
+        "path": "install-r1/install.stderr",
+        "bytes": 1317,
+        "sha256": "8bd26617b5b45f12be54482195b7fdf6252247047425eac87a7320917477dd03"
+      },
+      {
+        "path": "install-r1/install.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "install-r1/package-identity.json",
+        "bytes": 490,
+        "sha256": "ddb4203294e8159140bcc14afb311e5934718deddb9c25d511bc4fe4e898107b"
+      },
+      {
+        "path": "install-r1/regression-r1/process/stderr.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "install-r1/regression-r1/process/stdin.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "install-r1/regression-r1/process/stdout.txt",
+        "bytes": 8257,
+        "sha256": "8a5246372c9ed3737b41325bb6a17101072f2d89c33c83e0d9733004f4b02673"
+      },
+      {
+        "path": "install-r1/regression-r1/result.json",
+        "bytes": 649,
+        "sha256": "5eedc7c528255f6580e3eed569f449d5bf35a676704b5d7e546bbb075ec47bef"
+      },
+      {
+        "path": "install-r1/setup.json",
+        "bytes": 1333,
+        "sha256": "a042b5f0dbcf48958e67848ec2a31466f0e4685d13f3a6d9622c3eefcfb9a57f"
+      },
+      {
+        "path": "install-r1/source-manifest.json",
+        "bytes": 2463,
+        "sha256": "897ad58447dd9457850004439b20b864ffd3185cad715da7d4c8f781b1b5cbcb"
+      },
+      {
+        "path": "install-r1/venv.stderr",
+        "bytes": 284,
+        "sha256": "f8e6739d807266dfffda7a68a160a4d5ef0758dad8021a3cd13a7d28efdc5bde"
+      },
+      {
+        "path": "install-r1/venv.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "install-r1.py",
+        "bytes": 2235,
+        "sha256": "7d2ca66ca394b07c3d9e02c0058ff65da4f767a8c174a11554d2c9d712dd6561"
+      },
+      {
+        "path": "install-r1.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "install-r1.stdout",
+        "bytes": 41,
+        "sha256": "38892bb205e6031dbf7d8c9d585f2ea7634e4677b1cbb1cf4932931d4cbbc4ae"
+      },
+      {
+        "path": "journey-r1/commands.json",
+        "bytes": 18497,
+        "sha256": "7eab663cbdab002fa4d483a50fe5a0f10f8896e77737ee1a186b20f266d53712"
+      },
+      {
+        "path": "journey-r1/failure.json",
+        "bytes": 1580,
+        "sha256": "a41210385043bb5e2fe7f07de6572628782d4532c391ff6d4ec6dbcb8eb1a205"
+      },
+      {
+        "path": "journey-r1/grant.json",
+        "bytes": 273,
+        "sha256": "adb9d17e1e54869f854d9fdbb63fc568368e3dead0547cd3abd25ec32d7a8bc6"
+      },
+      {
+        "path": "journey-r1/new-client-old-propose.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r1/new-client-old-propose.stdout",
+        "bytes": 31322,
+        "sha256": "74a5c21238b5891c1c576e6d69b0ebf321f414ba7a7f2cb3121fc3850f30f899"
+      },
+      {
+        "path": "journey-r1/new-client-old-review.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r1/new-client-old-review.stdout",
+        "bytes": 31377,
+        "sha256": "5638ebe9318385e8ceecdc15570f613a9ef651b1730f8691a6cf5a26b96a88a2"
+      },
+      {
+        "path": "journey-r1/new-client-old-root.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r1/new-client-old-root.stdout",
+        "bytes": 6415,
+        "sha256": "4a357bd65a2babc08268865effca2cc0418af0d0d8a7ab868444add6d2a40812"
+      },
+      {
+        "path": "journey-r1/new-client-reprepare-old-propose.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r1/new-client-reprepare-old-propose.stdout",
+        "bytes": 1259,
+        "sha256": "8748865377567b4018de340c36fc68f3e3b0720c68d3b1cb8ba396609ecad6ce"
+      },
+      {
+        "path": "journey-r1/new-client-reprepare-old-review.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r1/new-client-reprepare-old-review.stdout",
+        "bytes": 1257,
+        "sha256": "e709c653ae25f6e91b1c167d0cb2622ea989074d743fafa229db472254622dec"
+      },
+      {
+        "path": "journey-r1/new-install-repeat.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r1/new-install-repeat.stdout",
+        "bytes": 1492,
+        "sha256": "5602f8d531da2e7541df4120e0b01560ecaf79f1f46ca44e682fbb59e57d4a00"
+      },
+      {
+        "path": "journey-r1/new-install.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r1/new-install.stdout",
+        "bytes": 1492,
+        "sha256": "5602f8d531da2e7541df4120e0b01560ecaf79f1f46ca44e682fbb59e57d4a00"
+      },
+      {
+        "path": "journey-r1/new-manifest/assets/agent-definitions/index.json",
+        "bytes": 317,
+        "sha256": "fc127a3c7d00f8ce89f6f7b44bb5e6e4d9bef9bd67128abe966ec76dff674e40"
+      },
+      {
+        "path": "journey-r1/new-manifest/assets/agent-definitions/objects/1a6c669477fa24fed91b000914adadcdafd2d8f74965e6ad2c3e37c94ca984ec/agent.json",
+        "bytes": 559,
+        "sha256": "fb0e4e70b31291a53dd4a0f145b6042b318a062f347ef61238e970528ed2aa96"
+      },
+      {
+        "path": "journey-r1/new-manifest/assets/agent-definitions/objects/1a6c669477fa24fed91b000914adadcdafd2d8f74965e6ad2c3e37c94ca984ec/instructions.md",
+        "bytes": 446,
+        "sha256": "c5f81d8e39e8139a0cf096bf5a30a11982199e9303837cd0dc18d0687882dde5"
+      },
+      {
+        "path": "journey-r1/new-manifest/assets/agent-definitions/objects/90e09768e797c95b746892f517676a325c478096f86994043d9c78f8bc6ad1e2/agent.json",
+        "bytes": 550,
+        "sha256": "b483b553a3c45800efafcc5f65d8c485361d9aee5b886c8ffe713817d381692a"
+      },
+      {
+        "path": "journey-r1/new-manifest/assets/agent-definitions/objects/90e09768e797c95b746892f517676a325c478096f86994043d9c78f8bc6ad1e2/instructions.md",
+        "bytes": 396,
+        "sha256": "481a0826438a845738046630e7efd2e4c826c33f501af69595432eb488222c2d"
+      },
+      {
+        "path": "journey-r1/new-manifest/assets/workflow-definitions/index.json",
+        "bytes": 175,
+        "sha256": "2c92ad25a4b319d90d1a6fe40aeb6c72e8471fdaeaa7dca366bdbdf863f5b0ce"
+      },
+      {
+        "path": "journey-r1/new-manifest/assets/workflow-definitions/objects/f80ea1f1512d5ac0d31ec90cd16a4c1360fd06aeee56a46eca76f04d419cd18b/instructions.md",
+        "bytes": 345,
+        "sha256": "8f67827c815fbdcf0b62bfb858ecd1f0745016ff85f9c6f459d581f9b7a80998"
+      },
+      {
+        "path": "journey-r1/new-manifest/assets/workflow-definitions/objects/f80ea1f1512d5ac0d31ec90cd16a4c1360fd06aeee56a46eca76f04d419cd18b/skills/ergora-memory-retrospective/SKILL.md",
+        "bytes": 1805,
+        "sha256": "78ac07b2b2142ffc20bdc9a75aaaec984e98f8efc2718f93bf1865d0030ed628"
+      },
+      {
+        "path": "journey-r1/new-manifest/assets/workflow-definitions/objects/f80ea1f1512d5ac0d31ec90cd16a4c1360fd06aeee56a46eca76f04d419cd18b/workflow.json",
+        "bytes": 2410,
+        "sha256": "5dc839643e41c3c4b60bfb8f813ab2309068449bdcb7e5e22956984938528bc6"
+      },
+      {
+        "path": "journey-r1/new-manifest/composition.json",
+        "bytes": 21072,
+        "sha256": "a3faf7023c619d81784a3cb843330fd0a80d8fb52905f3ca70116e24815939be"
+      },
+      {
+        "path": "journey-r1/new-manifest/manifest.json",
+        "bytes": 514,
+        "sha256": "c3df18e2907c7b9eb4f86574e0d9c76c60206882052e8146ec3d0ba477c00047"
+      },
+      {
+        "path": "journey-r1/new-manifest-verified.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r1/new-manifest-verified.stdout",
+        "bytes": 26723,
+        "sha256": "1f050c0d87f9978b6f244553ffbc250881d6f2a2b6df9e556806b2cb8418e921"
+      },
+      {
+        "path": "journey-r1/new-manifest.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r1/new-manifest.stdout",
+        "bytes": 947,
+        "sha256": "689050cec5a93e56c16ce529d0ad93752091e5f99f563aab0958a7d005c2f90a"
+      },
+      {
+        "path": "journey-r1/new-presets.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r1/new-presets.stdout",
+        "bytes": 12934,
+        "sha256": "a10cbff3e12129e72c074c11b243d2ca5146928a1df8b4d5a9a35426acbe06e8"
+      },
+      {
+        "path": "journey-r1/new-propose/assets/agent-definitions/index.json",
+        "bytes": 317,
+        "sha256": "fc127a3c7d00f8ce89f6f7b44bb5e6e4d9bef9bd67128abe966ec76dff674e40"
+      },
+      {
+        "path": "journey-r1/new-propose/assets/agent-definitions/objects/1a6c669477fa24fed91b000914adadcdafd2d8f74965e6ad2c3e37c94ca984ec/agent.json",
+        "bytes": 559,
+        "sha256": "fb0e4e70b31291a53dd4a0f145b6042b318a062f347ef61238e970528ed2aa96"
+      },
+      {
+        "path": "journey-r1/new-propose/assets/agent-definitions/objects/1a6c669477fa24fed91b000914adadcdafd2d8f74965e6ad2c3e37c94ca984ec/instructions.md",
+        "bytes": 446,
+        "sha256": "c5f81d8e39e8139a0cf096bf5a30a11982199e9303837cd0dc18d0687882dde5"
+      },
+      {
+        "path": "journey-r1/new-propose/assets/agent-definitions/objects/90e09768e797c95b746892f517676a325c478096f86994043d9c78f8bc6ad1e2/agent.json",
+        "bytes": 550,
+        "sha256": "b483b553a3c45800efafcc5f65d8c485361d9aee5b886c8ffe713817d381692a"
+      },
+      {
+        "path": "journey-r1/new-propose/assets/agent-definitions/objects/90e09768e797c95b746892f517676a325c478096f86994043d9c78f8bc6ad1e2/instructions.md",
+        "bytes": 396,
+        "sha256": "481a0826438a845738046630e7efd2e4c826c33f501af69595432eb488222c2d"
+      },
+      {
+        "path": "journey-r1/new-propose/assets/workflow-definitions/index.json",
+        "bytes": 175,
+        "sha256": "2c92ad25a4b319d90d1a6fe40aeb6c72e8471fdaeaa7dca366bdbdf863f5b0ce"
+      },
+      {
+        "path": "journey-r1/new-propose/assets/workflow-definitions/objects/f80ea1f1512d5ac0d31ec90cd16a4c1360fd06aeee56a46eca76f04d419cd18b/instructions.md",
+        "bytes": 345,
+        "sha256": "8f67827c815fbdcf0b62bfb858ecd1f0745016ff85f9c6f459d581f9b7a80998"
+      },
+      {
+        "path": "journey-r1/new-propose/assets/workflow-definitions/objects/f80ea1f1512d5ac0d31ec90cd16a4c1360fd06aeee56a46eca76f04d419cd18b/skills/ergora-memory-retrospective/SKILL.md",
+        "bytes": 1805,
+        "sha256": "78ac07b2b2142ffc20bdc9a75aaaec984e98f8efc2718f93bf1865d0030ed628"
+      },
+      {
+        "path": "journey-r1/new-propose/assets/workflow-definitions/objects/f80ea1f1512d5ac0d31ec90cd16a4c1360fd06aeee56a46eca76f04d419cd18b/workflow.json",
+        "bytes": 2410,
+        "sha256": "5dc839643e41c3c4b60bfb8f813ab2309068449bdcb7e5e22956984938528bc6"
+      },
+      {
+        "path": "journey-r1/new-propose/composition.json",
+        "bytes": 21072,
+        "sha256": "a3faf7023c619d81784a3cb843330fd0a80d8fb52905f3ca70116e24815939be"
+      },
+      {
+        "path": "journey-r1/new-propose/prompt.txt",
+        "bytes": 4146,
+        "sha256": "c67ee78e07a1bf541235b361b72a40ad56f7b1e75b9b5f1322cb4ee714cae878"
+      },
+      {
+        "path": "journey-r1/new-propose/request.json",
+        "bytes": 782,
+        "sha256": "2412d7fc6acd80ebad6ab8e0aa3bd7e0c95b01caabdabf0499e7d5e901ee438e"
+      },
+      {
+        "path": "journey-r1/new-propose/task.txt",
+        "bytes": 157,
+        "sha256": "f9d264cfd91ce5026d62f8d5b4127d5fef003896440768be7155e92ed1fdd039"
+      },
+      {
+        "path": "journey-r1/new-propose-verified.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r1/new-propose-verified.stdout",
+        "bytes": 31317,
+        "sha256": "d587556cf037217bc7d163c492c8edf20caef3aeaa4880391e1bb7dffdf41705"
+      },
+      {
+        "path": "journey-r1/new-propose.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r1/new-propose.stdout",
+        "bytes": 1249,
+        "sha256": "4931afa9c46ef43b4d9abf7dadd9570cbc4dd2da678752cae879a7cb0056c055"
+      },
+      {
+        "path": "journey-r1/new-review/assets/agent-definitions/index.json",
+        "bytes": 317,
+        "sha256": "fc127a3c7d00f8ce89f6f7b44bb5e6e4d9bef9bd67128abe966ec76dff674e40"
+      },
+      {
+        "path": "journey-r1/new-review/assets/agent-definitions/objects/1a6c669477fa24fed91b000914adadcdafd2d8f74965e6ad2c3e37c94ca984ec/agent.json",
+        "bytes": 559,
+        "sha256": "fb0e4e70b31291a53dd4a0f145b6042b318a062f347ef61238e970528ed2aa96"
+      },
+      {
+        "path": "journey-r1/new-review/assets/agent-definitions/objects/1a6c669477fa24fed91b000914adadcdafd2d8f74965e6ad2c3e37c94ca984ec/instructions.md",
+        "bytes": 446,
+        "sha256": "c5f81d8e39e8139a0cf096bf5a30a11982199e9303837cd0dc18d0687882dde5"
+      },
+      {
+        "path": "journey-r1/new-review/assets/agent-definitions/objects/90e09768e797c95b746892f517676a325c478096f86994043d9c78f8bc6ad1e2/agent.json",
+        "bytes": 550,
+        "sha256": "b483b553a3c45800efafcc5f65d8c485361d9aee5b886c8ffe713817d381692a"
+      },
+      {
+        "path": "journey-r1/new-review/assets/agent-definitions/objects/90e09768e797c95b746892f517676a325c478096f86994043d9c78f8bc6ad1e2/instructions.md",
+        "bytes": 396,
+        "sha256": "481a0826438a845738046630e7efd2e4c826c33f501af69595432eb488222c2d"
+      },
+      {
+        "path": "journey-r1/new-review/assets/workflow-definitions/index.json",
+        "bytes": 175,
+        "sha256": "2c92ad25a4b319d90d1a6fe40aeb6c72e8471fdaeaa7dca366bdbdf863f5b0ce"
+      },
+      {
+        "path": "journey-r1/new-review/assets/workflow-definitions/objects/f80ea1f1512d5ac0d31ec90cd16a4c1360fd06aeee56a46eca76f04d419cd18b/instructions.md",
+        "bytes": 345,
+        "sha256": "8f67827c815fbdcf0b62bfb858ecd1f0745016ff85f9c6f459d581f9b7a80998"
+      },
+      {
+        "path": "journey-r1/new-review/assets/workflow-definitions/objects/f80ea1f1512d5ac0d31ec90cd16a4c1360fd06aeee56a46eca76f04d419cd18b/skills/ergora-memory-retrospective/SKILL.md",
+        "bytes": 1805,
+        "sha256": "78ac07b2b2142ffc20bdc9a75aaaec984e98f8efc2718f93bf1865d0030ed628"
+      },
+      {
+        "path": "journey-r1/new-review/assets/workflow-definitions/objects/f80ea1f1512d5ac0d31ec90cd16a4c1360fd06aeee56a46eca76f04d419cd18b/workflow.json",
+        "bytes": 2410,
+        "sha256": "5dc839643e41c3c4b60bfb8f813ab2309068449bdcb7e5e22956984938528bc6"
+      },
+      {
+        "path": "journey-r1/new-review/composition.json",
+        "bytes": 21072,
+        "sha256": "a3faf7023c619d81784a3cb843330fd0a80d8fb52905f3ca70116e24815939be"
+      },
+      {
+        "path": "journey-r1/new-review/prompt.txt",
+        "bytes": 4203,
+        "sha256": "de739f8b5396d569324e25bdd2dfe5da89c7be9fbed84bca3533852d802339a3"
+      },
+      {
+        "path": "journey-r1/new-review/request.json",
+        "bytes": 781,
+        "sha256": "8f60374af3e61f335a3107bf7694b0adf9f9de3ebbd2871e592f059911bbc1de"
+      },
+      {
+        "path": "journey-r1/new-review/task.txt",
+        "bytes": 157,
+        "sha256": "f9d264cfd91ce5026d62f8d5b4127d5fef003896440768be7155e92ed1fdd039"
+      },
+      {
+        "path": "journey-r1/new-review-verified.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r1/new-review-verified.stdout",
+        "bytes": 31372,
+        "sha256": "76456aa0ef35efefbce9e73d24d077b4ee2f13875ac1d31e7226bb81ac3c0286"
+      },
+      {
+        "path": "journey-r1/new-review.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r1/new-review.stdout",
+        "bytes": 1247,
+        "sha256": "a23b3c5c3e924b7d94be9bb0be63c0ae90b65b44c969a1205b34265fa2d5b335"
+      },
+      {
+        "path": "journey-r1/new-root.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r1/new-root.stdout",
+        "bytes": 6415,
+        "sha256": "172b6df95c92cd5cc547584c55613a60c732ce84ca4e31e1bf93afd7e6c3dcbf"
+      },
+      {
+        "path": "journey-r1/old-frozen.json",
+        "bytes": 7391,
+        "sha256": "99f334b47f026fa2fcdfa3d5cf4948ce26e7152861b6d4e5cd67f12bbe976256"
+      },
+      {
+        "path": "journey-r1/old-install.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r1/old-install.stdout",
+        "bytes": 909,
+        "sha256": "a4bc7f35ca80182ef6f297c4ba06afadf5a31d6803e5fb6af43c2abbcd871ac8"
+      },
+      {
+        "path": "journey-r1/old-manifest/assets/agent-definitions/index.json",
+        "bytes": 317,
+        "sha256": "6e1a98f6d25edcde8cefdc9a1fbed0b0e4883d2c2a24b64a2102cecbfd381bfd"
+      },
+      {
+        "path": "journey-r1/old-manifest/assets/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/agent.json",
+        "bytes": 559,
+        "sha256": "f7d4e1b02382ad5dc2dc1e7a943ffe96ce1c3bdae6504fc0b4d196c39d3ba8ed"
+      },
+      {
+        "path": "journey-r1/old-manifest/assets/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/instructions.md",
+        "bytes": 447,
+        "sha256": "5fef0693958ea6495f52c8b7c824d3621f23b2966153446816ae38a6d9c39441"
+      },
+      {
+        "path": "journey-r1/old-manifest/assets/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/agent.json",
+        "bytes": 550,
+        "sha256": "727e473843ff7990fa1af05f78e9e7fbda275c433bbad408de060fa76fe167b4"
+      },
+      {
+        "path": "journey-r1/old-manifest/assets/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/instructions.md",
+        "bytes": 397,
+        "sha256": "0ff08dc1bc1de6a350b9d09cb41fe596e26f68dec652324990b361b123906af7"
+      },
+      {
+        "path": "journey-r1/old-manifest/assets/workflow-definitions/index.json",
+        "bytes": 175,
+        "sha256": "d56d629209cd3aeae34889e8534849fc10f5027989786023a9bea2b3d7800815"
+      },
+      {
+        "path": "journey-r1/old-manifest/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/instructions.md",
+        "bytes": 345,
+        "sha256": "8f67827c815fbdcf0b62bfb858ecd1f0745016ff85f9c6f459d581f9b7a80998"
+      },
+      {
+        "path": "journey-r1/old-manifest/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/skills/ergora-memory-retrospective/SKILL.md",
+        "bytes": 1805,
+        "sha256": "78ac07b2b2142ffc20bdc9a75aaaec984e98f8efc2718f93bf1865d0030ed628"
+      },
+      {
+        "path": "journey-r1/old-manifest/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/workflow.json",
+        "bytes": 2410,
+        "sha256": "254a869c796dd3418677838967135160c0c61c3f40246b7a40b4638c71e5741d"
+      },
+      {
+        "path": "journey-r1/old-manifest/composition.json",
+        "bytes": 21076,
+        "sha256": "ef3eb4070ed253122f17bc0f2524e7c4d6742a350f13e00ab220498958202438"
+      },
+      {
+        "path": "journey-r1/old-manifest/manifest.json",
+        "bytes": 514,
+        "sha256": "88234476e71facb226adae8d608644c692acb833192c60971dd958e551da6feb"
+      },
+      {
+        "path": "journey-r1/old-manifest.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r1/old-manifest.stdout",
+        "bytes": 947,
+        "sha256": "779c08d9ce7c3c5ef16c0510cd2fec03259f38f49bca246fb65bd476e9c6c52d"
+      },
+      {
+        "path": "journey-r1/old-objects.json",
+        "bytes": 1598,
+        "sha256": "e97b5312a1e175739f2793713616ab1c21e110b7a7c9dad066c4bd95da914e5c"
+      },
+      {
+        "path": "journey-r1/old-project.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r1/old-project.stdout",
+        "bytes": 882,
+        "sha256": "3347e3dd2742d25a0af1b6a48f22088f1d0b61c68cd56ffa763c29ff5327b54c"
+      },
+      {
+        "path": "journey-r1/old-propose/assets/agent-definitions/index.json",
+        "bytes": 317,
+        "sha256": "6e1a98f6d25edcde8cefdc9a1fbed0b0e4883d2c2a24b64a2102cecbfd381bfd"
+      },
+      {
+        "path": "journey-r1/old-propose/assets/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/agent.json",
+        "bytes": 559,
+        "sha256": "f7d4e1b02382ad5dc2dc1e7a943ffe96ce1c3bdae6504fc0b4d196c39d3ba8ed"
+      },
+      {
+        "path": "journey-r1/old-propose/assets/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/instructions.md",
+        "bytes": 447,
+        "sha256": "5fef0693958ea6495f52c8b7c824d3621f23b2966153446816ae38a6d9c39441"
+      },
+      {
+        "path": "journey-r1/old-propose/assets/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/agent.json",
+        "bytes": 550,
+        "sha256": "727e473843ff7990fa1af05f78e9e7fbda275c433bbad408de060fa76fe167b4"
+      },
+      {
+        "path": "journey-r1/old-propose/assets/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/instructions.md",
+        "bytes": 397,
+        "sha256": "0ff08dc1bc1de6a350b9d09cb41fe596e26f68dec652324990b361b123906af7"
+      },
+      {
+        "path": "journey-r1/old-propose/assets/workflow-definitions/index.json",
+        "bytes": 175,
+        "sha256": "d56d629209cd3aeae34889e8534849fc10f5027989786023a9bea2b3d7800815"
+      },
+      {
+        "path": "journey-r1/old-propose/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/instructions.md",
+        "bytes": 345,
+        "sha256": "8f67827c815fbdcf0b62bfb858ecd1f0745016ff85f9c6f459d581f9b7a80998"
+      },
+      {
+        "path": "journey-r1/old-propose/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/skills/ergora-memory-retrospective/SKILL.md",
+        "bytes": 1805,
+        "sha256": "78ac07b2b2142ffc20bdc9a75aaaec984e98f8efc2718f93bf1865d0030ed628"
+      },
+      {
+        "path": "journey-r1/old-propose/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/workflow.json",
+        "bytes": 2410,
+        "sha256": "254a869c796dd3418677838967135160c0c61c3f40246b7a40b4638c71e5741d"
+      },
+      {
+        "path": "journey-r1/old-propose/composition.json",
+        "bytes": 21076,
+        "sha256": "ef3eb4070ed253122f17bc0f2524e7c4d6742a350f13e00ab220498958202438"
+      },
+      {
+        "path": "journey-r1/old-propose/prompt.txt",
+        "bytes": 4147,
+        "sha256": "c4ab94ffe0aaa8f901d8e4e21b4bab042e0378cb6d80bdc16f5b35487289b590"
+      },
+      {
+        "path": "journey-r1/old-propose/request.json",
+        "bytes": 782,
+        "sha256": "b561198c1508c27f63303e321f6004e161fc8a7419ec09b188d5b10f0b4ecab7"
+      },
+      {
+        "path": "journey-r1/old-propose/task.txt",
+        "bytes": 157,
+        "sha256": "f9d264cfd91ce5026d62f8d5b4127d5fef003896440768be7155e92ed1fdd039"
+      },
+      {
+        "path": "journey-r1/old-propose-verified.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r1/old-propose-verified.stdout",
+        "bytes": 31322,
+        "sha256": "74a5c21238b5891c1c576e6d69b0ebf321f414ba7a7f2cb3121fc3850f30f899"
+      },
+      {
+        "path": "journey-r1/old-propose.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r1/old-propose.stdout",
+        "bytes": 1249,
+        "sha256": "0a9781f77e35d01eaba3692dabe7b599ab910ba4e196a7f9b8d11011d95c4d45"
+      },
+      {
+        "path": "journey-r1/old-recreated-propose/assets/agent-definitions/index.json",
+        "bytes": 317,
+        "sha256": "6e1a98f6d25edcde8cefdc9a1fbed0b0e4883d2c2a24b64a2102cecbfd381bfd"
+      },
+      {
+        "path": "journey-r1/old-recreated-propose/assets/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/agent.json",
+        "bytes": 559,
+        "sha256": "f7d4e1b02382ad5dc2dc1e7a943ffe96ce1c3bdae6504fc0b4d196c39d3ba8ed"
+      },
+      {
+        "path": "journey-r1/old-recreated-propose/assets/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/instructions.md",
+        "bytes": 447,
+        "sha256": "5fef0693958ea6495f52c8b7c824d3621f23b2966153446816ae38a6d9c39441"
+      },
+      {
+        "path": "journey-r1/old-recreated-propose/assets/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/agent.json",
+        "bytes": 550,
+        "sha256": "727e473843ff7990fa1af05f78e9e7fbda275c433bbad408de060fa76fe167b4"
+      },
+      {
+        "path": "journey-r1/old-recreated-propose/assets/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/instructions.md",
+        "bytes": 397,
+        "sha256": "0ff08dc1bc1de6a350b9d09cb41fe596e26f68dec652324990b361b123906af7"
+      },
+      {
+        "path": "journey-r1/old-recreated-propose/assets/workflow-definitions/index.json",
+        "bytes": 175,
+        "sha256": "d56d629209cd3aeae34889e8534849fc10f5027989786023a9bea2b3d7800815"
+      },
+      {
+        "path": "journey-r1/old-recreated-propose/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/instructions.md",
+        "bytes": 345,
+        "sha256": "8f67827c815fbdcf0b62bfb858ecd1f0745016ff85f9c6f459d581f9b7a80998"
+      },
+      {
+        "path": "journey-r1/old-recreated-propose/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/skills/ergora-memory-retrospective/SKILL.md",
+        "bytes": 1805,
+        "sha256": "78ac07b2b2142ffc20bdc9a75aaaec984e98f8efc2718f93bf1865d0030ed628"
+      },
+      {
+        "path": "journey-r1/old-recreated-propose/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/workflow.json",
+        "bytes": 2410,
+        "sha256": "254a869c796dd3418677838967135160c0c61c3f40246b7a40b4638c71e5741d"
+      },
+      {
+        "path": "journey-r1/old-recreated-propose/composition.json",
+        "bytes": 21076,
+        "sha256": "ef3eb4070ed253122f17bc0f2524e7c4d6742a350f13e00ab220498958202438"
+      },
+      {
+        "path": "journey-r1/old-recreated-propose/prompt.txt",
+        "bytes": 4147,
+        "sha256": "c4ab94ffe0aaa8f901d8e4e21b4bab042e0378cb6d80bdc16f5b35487289b590"
+      },
+      {
+        "path": "journey-r1/old-recreated-propose/request.json",
+        "bytes": 782,
+        "sha256": "b561198c1508c27f63303e321f6004e161fc8a7419ec09b188d5b10f0b4ecab7"
+      },
+      {
+        "path": "journey-r1/old-recreated-propose/task.txt",
+        "bytes": 157,
+        "sha256": "f9d264cfd91ce5026d62f8d5b4127d5fef003896440768be7155e92ed1fdd039"
+      },
+      {
+        "path": "journey-r1/old-recreated-review/assets/agent-definitions/index.json",
+        "bytes": 317,
+        "sha256": "6e1a98f6d25edcde8cefdc9a1fbed0b0e4883d2c2a24b64a2102cecbfd381bfd"
+      },
+      {
+        "path": "journey-r1/old-recreated-review/assets/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/agent.json",
+        "bytes": 559,
+        "sha256": "f7d4e1b02382ad5dc2dc1e7a943ffe96ce1c3bdae6504fc0b4d196c39d3ba8ed"
+      },
+      {
+        "path": "journey-r1/old-recreated-review/assets/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/instructions.md",
+        "bytes": 447,
+        "sha256": "5fef0693958ea6495f52c8b7c824d3621f23b2966153446816ae38a6d9c39441"
+      },
+      {
+        "path": "journey-r1/old-recreated-review/assets/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/agent.json",
+        "bytes": 550,
+        "sha256": "727e473843ff7990fa1af05f78e9e7fbda275c433bbad408de060fa76fe167b4"
+      },
+      {
+        "path": "journey-r1/old-recreated-review/assets/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/instructions.md",
+        "bytes": 397,
+        "sha256": "0ff08dc1bc1de6a350b9d09cb41fe596e26f68dec652324990b361b123906af7"
+      },
+      {
+        "path": "journey-r1/old-recreated-review/assets/workflow-definitions/index.json",
+        "bytes": 175,
+        "sha256": "d56d629209cd3aeae34889e8534849fc10f5027989786023a9bea2b3d7800815"
+      },
+      {
+        "path": "journey-r1/old-recreated-review/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/instructions.md",
+        "bytes": 345,
+        "sha256": "8f67827c815fbdcf0b62bfb858ecd1f0745016ff85f9c6f459d581f9b7a80998"
+      },
+      {
+        "path": "journey-r1/old-recreated-review/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/skills/ergora-memory-retrospective/SKILL.md",
+        "bytes": 1805,
+        "sha256": "78ac07b2b2142ffc20bdc9a75aaaec984e98f8efc2718f93bf1865d0030ed628"
+      },
+      {
+        "path": "journey-r1/old-recreated-review/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/workflow.json",
+        "bytes": 2410,
+        "sha256": "254a869c796dd3418677838967135160c0c61c3f40246b7a40b4638c71e5741d"
+      },
+      {
+        "path": "journey-r1/old-recreated-review/composition.json",
+        "bytes": 21076,
+        "sha256": "ef3eb4070ed253122f17bc0f2524e7c4d6742a350f13e00ab220498958202438"
+      },
+      {
+        "path": "journey-r1/old-recreated-review/prompt.txt",
+        "bytes": 4204,
+        "sha256": "73aa1fc849ecf8051842c0743cd82bf7cae8655faf92dad9b3191d6a66b99fa3"
+      },
+      {
+        "path": "journey-r1/old-recreated-review/request.json",
+        "bytes": 781,
+        "sha256": "78bff17fd2d40bbb9469e91dc2f965fff767e72fd76fd2f6ad51cd8bce8072d6"
+      },
+      {
+        "path": "journey-r1/old-recreated-review/task.txt",
+        "bytes": 157,
+        "sha256": "f9d264cfd91ce5026d62f8d5b4127d5fef003896440768be7155e92ed1fdd039"
+      },
+      {
+        "path": "journey-r1/old-review/assets/agent-definitions/index.json",
+        "bytes": 317,
+        "sha256": "6e1a98f6d25edcde8cefdc9a1fbed0b0e4883d2c2a24b64a2102cecbfd381bfd"
+      },
+      {
+        "path": "journey-r1/old-review/assets/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/agent.json",
+        "bytes": 559,
+        "sha256": "f7d4e1b02382ad5dc2dc1e7a943ffe96ce1c3bdae6504fc0b4d196c39d3ba8ed"
+      },
+      {
+        "path": "journey-r1/old-review/assets/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/instructions.md",
+        "bytes": 447,
+        "sha256": "5fef0693958ea6495f52c8b7c824d3621f23b2966153446816ae38a6d9c39441"
+      },
+      {
+        "path": "journey-r1/old-review/assets/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/agent.json",
+        "bytes": 550,
+        "sha256": "727e473843ff7990fa1af05f78e9e7fbda275c433bbad408de060fa76fe167b4"
+      },
+      {
+        "path": "journey-r1/old-review/assets/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/instructions.md",
+        "bytes": 397,
+        "sha256": "0ff08dc1bc1de6a350b9d09cb41fe596e26f68dec652324990b361b123906af7"
+      },
+      {
+        "path": "journey-r1/old-review/assets/workflow-definitions/index.json",
+        "bytes": 175,
+        "sha256": "d56d629209cd3aeae34889e8534849fc10f5027989786023a9bea2b3d7800815"
+      },
+      {
+        "path": "journey-r1/old-review/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/instructions.md",
+        "bytes": 345,
+        "sha256": "8f67827c815fbdcf0b62bfb858ecd1f0745016ff85f9c6f459d581f9b7a80998"
+      },
+      {
+        "path": "journey-r1/old-review/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/skills/ergora-memory-retrospective/SKILL.md",
+        "bytes": 1805,
+        "sha256": "78ac07b2b2142ffc20bdc9a75aaaec984e98f8efc2718f93bf1865d0030ed628"
+      },
+      {
+        "path": "journey-r1/old-review/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/workflow.json",
+        "bytes": 2410,
+        "sha256": "254a869c796dd3418677838967135160c0c61c3f40246b7a40b4638c71e5741d"
+      },
+      {
+        "path": "journey-r1/old-review/composition.json",
+        "bytes": 21076,
+        "sha256": "ef3eb4070ed253122f17bc0f2524e7c4d6742a350f13e00ab220498958202438"
+      },
+      {
+        "path": "journey-r1/old-review/prompt.txt",
+        "bytes": 4204,
+        "sha256": "73aa1fc849ecf8051842c0743cd82bf7cae8655faf92dad9b3191d6a66b99fa3"
+      },
+      {
+        "path": "journey-r1/old-review/request.json",
+        "bytes": 781,
+        "sha256": "78bff17fd2d40bbb9469e91dc2f965fff767e72fd76fd2f6ad51cd8bce8072d6"
+      },
+      {
+        "path": "journey-r1/old-review/task.txt",
+        "bytes": 157,
+        "sha256": "f9d264cfd91ce5026d62f8d5b4127d5fef003896440768be7155e92ed1fdd039"
+      },
+      {
+        "path": "journey-r1/old-review-verified.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r1/old-review-verified.stdout",
+        "bytes": 31377,
+        "sha256": "5638ebe9318385e8ceecdc15570f613a9ef651b1730f8691a6cf5a26b96a88a2"
+      },
+      {
+        "path": "journey-r1/old-review.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r1/old-review.stdout",
+        "bytes": 1247,
+        "sha256": "2f33f53a82ec8a6daaa813c96c3526d29dcaa7dbb5b86282d383a2e09e87c4c6"
+      },
+      {
+        "path": "journey-r1/old-root.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r1/old-root.stdout",
+        "bytes": 6415,
+        "sha256": "4a357bd65a2babc08268865effca2cc0418af0d0d8a7ab868444add6d2a40812"
+      },
+      {
+        "path": "journey-r1/reference-verify.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r1/reference-verify.stdout",
+        "bytes": 512,
+        "sha256": "a0e4fe99fabd7a5996ac065d4fa49af3e6394e12794dea17ff99a0cd4dffc19e"
+      },
+      {
+        "path": "journey-r1/state/.agent-definitions.lock",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r1/state/.workflow-definitions.lock",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r1/state/agent-definitions/index.json",
+        "bytes": 483,
+        "sha256": "602f58dcaf32f0ab4c9ac548264d884df33d1e0c1497724d64239099ffc803f6"
+      },
+      {
+        "path": "journey-r1/state/agent-definitions/objects/1a6c669477fa24fed91b000914adadcdafd2d8f74965e6ad2c3e37c94ca984ec/agent.json",
+        "bytes": 559,
+        "sha256": "fb0e4e70b31291a53dd4a0f145b6042b318a062f347ef61238e970528ed2aa96"
+      },
+      {
+        "path": "journey-r1/state/agent-definitions/objects/1a6c669477fa24fed91b000914adadcdafd2d8f74965e6ad2c3e37c94ca984ec/instructions.md",
+        "bytes": 446,
+        "sha256": "c5f81d8e39e8139a0cf096bf5a30a11982199e9303837cd0dc18d0687882dde5"
+      },
+      {
+        "path": "journey-r1/state/agent-definitions/objects/90e09768e797c95b746892f517676a325c478096f86994043d9c78f8bc6ad1e2/agent.json",
+        "bytes": 550,
+        "sha256": "b483b553a3c45800efafcc5f65d8c485361d9aee5b886c8ffe713817d381692a"
+      },
+      {
+        "path": "journey-r1/state/agent-definitions/objects/90e09768e797c95b746892f517676a325c478096f86994043d9c78f8bc6ad1e2/instructions.md",
+        "bytes": 396,
+        "sha256": "481a0826438a845738046630e7efd2e4c826c33f501af69595432eb488222c2d"
+      },
+      {
+        "path": "journey-r1/state/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/agent.json",
+        "bytes": 559,
+        "sha256": "f7d4e1b02382ad5dc2dc1e7a943ffe96ce1c3bdae6504fc0b4d196c39d3ba8ed"
+      },
+      {
+        "path": "journey-r1/state/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/instructions.md",
+        "bytes": 447,
+        "sha256": "5fef0693958ea6495f52c8b7c824d3621f23b2966153446816ae38a6d9c39441"
+      },
+      {
+        "path": "journey-r1/state/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/agent.json",
+        "bytes": 550,
+        "sha256": "727e473843ff7990fa1af05f78e9e7fbda275c433bbad408de060fa76fe167b4"
+      },
+      {
+        "path": "journey-r1/state/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/instructions.md",
+        "bytes": 397,
+        "sha256": "0ff08dc1bc1de6a350b9d09cb41fe596e26f68dec652324990b361b123906af7"
+      },
+      {
+        "path": "journey-r1/state/ergora.sqlite3",
+        "bytes": 225280,
+        "sha256": "1375e8310f04548642ed68aa813244f4e055365cb52b054720049178da717d6b"
+      },
+      {
+        "path": "journey-r1/state/workflow-definitions/index.json",
+        "bytes": 258,
+        "sha256": "e04d60955d67e8dcbe5af5dab1636829ae04985e4f4f211ded0d21389030dc0f"
+      },
+      {
+        "path": "journey-r1/state/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/instructions.md",
+        "bytes": 345,
+        "sha256": "8f67827c815fbdcf0b62bfb858ecd1f0745016ff85f9c6f459d581f9b7a80998"
+      },
+      {
+        "path": "journey-r1/state/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/skills/ergora-memory-retrospective/SKILL.md",
+        "bytes": 1805,
+        "sha256": "78ac07b2b2142ffc20bdc9a75aaaec984e98f8efc2718f93bf1865d0030ed628"
+      },
+      {
+        "path": "journey-r1/state/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/workflow.json",
+        "bytes": 2410,
+        "sha256": "254a869c796dd3418677838967135160c0c61c3f40246b7a40b4638c71e5741d"
+      },
+      {
+        "path": "journey-r1/state/workflow-definitions/objects/f80ea1f1512d5ac0d31ec90cd16a4c1360fd06aeee56a46eca76f04d419cd18b/instructions.md",
+        "bytes": 345,
+        "sha256": "8f67827c815fbdcf0b62bfb858ecd1f0745016ff85f9c6f459d581f9b7a80998"
+      },
+      {
+        "path": "journey-r1/state/workflow-definitions/objects/f80ea1f1512d5ac0d31ec90cd16a4c1360fd06aeee56a46eca76f04d419cd18b/skills/ergora-memory-retrospective/SKILL.md",
+        "bytes": 1805,
+        "sha256": "78ac07b2b2142ffc20bdc9a75aaaec984e98f8efc2718f93bf1865d0030ed628"
+      },
+      {
+        "path": "journey-r1/state/workflow-definitions/objects/f80ea1f1512d5ac0d31ec90cd16a4c1360fd06aeee56a46eca76f04d419cd18b/workflow.json",
+        "bytes": 2410,
+        "sha256": "5dc839643e41c3c4b60bfb8f813ab2309068449bdcb7e5e22956984938528bc6"
+      },
+      {
+        "path": "journey-r1/task.txt",
+        "bytes": 157,
+        "sha256": "f9d264cfd91ce5026d62f8d5b4127d5fef003896440768be7155e92ed1fdd039"
+      },
+      {
+        "path": "journey-r1.py",
+        "bytes": 8649,
+        "sha256": "0136101faa31e57dd76f21d90459f32f727ca8cdd03d08cf1f9796d00ea544e7"
+      },
+      {
+        "path": "journey-r1.stderr",
+        "bytes": 318,
+        "sha256": "f8eb32860a573a95283ea2a014f725c02da10979666dbb286c1a00a38a9f4236"
+      },
+      {
+        "path": "journey-r1.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r2/commands.json",
+        "bytes": 18497,
+        "sha256": "0edd55e48a65300aed82df518fd2af0df2ee316afdfc7aa9d4098e6319a3dd77"
+      },
+      {
+        "path": "journey-r2/grant.json",
+        "bytes": 273,
+        "sha256": "adb9d17e1e54869f854d9fdbb63fc568368e3dead0547cd3abd25ec32d7a8bc6"
+      },
+      {
+        "path": "journey-r2/new-client-old-propose.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r2/new-client-old-propose.stdout",
+        "bytes": 31322,
+        "sha256": "4c52909f073f5dab6ff12cfee89dd09e263501fe65dace8dd1c3f71839d4667f"
+      },
+      {
+        "path": "journey-r2/new-client-old-review.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r2/new-client-old-review.stdout",
+        "bytes": 31377,
+        "sha256": "a622f629044fcfe6ceca30826d98367014136f9358545d80c4a316869f9bd705"
+      },
+      {
+        "path": "journey-r2/new-client-old-root.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r2/new-client-old-root.stdout",
+        "bytes": 6415,
+        "sha256": "a4684d341b4f7ea7203e47a871006b55cd872af45129570333e7dad9021e298d"
+      },
+      {
+        "path": "journey-r2/new-client-reprepare-old-propose.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r2/new-client-reprepare-old-propose.stdout",
+        "bytes": 1259,
+        "sha256": "2de6cad3187bff21b1de135f47d3c58248314e56b08267b1ebda3e3a089f4cc3"
+      },
+      {
+        "path": "journey-r2/new-client-reprepare-old-review.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r2/new-client-reprepare-old-review.stdout",
+        "bytes": 1257,
+        "sha256": "979c942ef91713f9e217dccb87eac09f9497a6b08313d38c809a3b38cddf9dda"
+      },
+      {
+        "path": "journey-r2/new-install-repeat.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r2/new-install-repeat.stdout",
+        "bytes": 1492,
+        "sha256": "5602f8d531da2e7541df4120e0b01560ecaf79f1f46ca44e682fbb59e57d4a00"
+      },
+      {
+        "path": "journey-r2/new-install.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r2/new-install.stdout",
+        "bytes": 1492,
+        "sha256": "5602f8d531da2e7541df4120e0b01560ecaf79f1f46ca44e682fbb59e57d4a00"
+      },
+      {
+        "path": "journey-r2/new-manifest/assets/agent-definitions/index.json",
+        "bytes": 317,
+        "sha256": "fc127a3c7d00f8ce89f6f7b44bb5e6e4d9bef9bd67128abe966ec76dff674e40"
+      },
+      {
+        "path": "journey-r2/new-manifest/assets/agent-definitions/objects/1a6c669477fa24fed91b000914adadcdafd2d8f74965e6ad2c3e37c94ca984ec/agent.json",
+        "bytes": 559,
+        "sha256": "fb0e4e70b31291a53dd4a0f145b6042b318a062f347ef61238e970528ed2aa96"
+      },
+      {
+        "path": "journey-r2/new-manifest/assets/agent-definitions/objects/1a6c669477fa24fed91b000914adadcdafd2d8f74965e6ad2c3e37c94ca984ec/instructions.md",
+        "bytes": 446,
+        "sha256": "c5f81d8e39e8139a0cf096bf5a30a11982199e9303837cd0dc18d0687882dde5"
+      },
+      {
+        "path": "journey-r2/new-manifest/assets/agent-definitions/objects/90e09768e797c95b746892f517676a325c478096f86994043d9c78f8bc6ad1e2/agent.json",
+        "bytes": 550,
+        "sha256": "b483b553a3c45800efafcc5f65d8c485361d9aee5b886c8ffe713817d381692a"
+      },
+      {
+        "path": "journey-r2/new-manifest/assets/agent-definitions/objects/90e09768e797c95b746892f517676a325c478096f86994043d9c78f8bc6ad1e2/instructions.md",
+        "bytes": 396,
+        "sha256": "481a0826438a845738046630e7efd2e4c826c33f501af69595432eb488222c2d"
+      },
+      {
+        "path": "journey-r2/new-manifest/assets/workflow-definitions/index.json",
+        "bytes": 175,
+        "sha256": "2c92ad25a4b319d90d1a6fe40aeb6c72e8471fdaeaa7dca366bdbdf863f5b0ce"
+      },
+      {
+        "path": "journey-r2/new-manifest/assets/workflow-definitions/objects/f80ea1f1512d5ac0d31ec90cd16a4c1360fd06aeee56a46eca76f04d419cd18b/instructions.md",
+        "bytes": 345,
+        "sha256": "8f67827c815fbdcf0b62bfb858ecd1f0745016ff85f9c6f459d581f9b7a80998"
+      },
+      {
+        "path": "journey-r2/new-manifest/assets/workflow-definitions/objects/f80ea1f1512d5ac0d31ec90cd16a4c1360fd06aeee56a46eca76f04d419cd18b/skills/ergora-memory-retrospective/SKILL.md",
+        "bytes": 1805,
+        "sha256": "78ac07b2b2142ffc20bdc9a75aaaec984e98f8efc2718f93bf1865d0030ed628"
+      },
+      {
+        "path": "journey-r2/new-manifest/assets/workflow-definitions/objects/f80ea1f1512d5ac0d31ec90cd16a4c1360fd06aeee56a46eca76f04d419cd18b/workflow.json",
+        "bytes": 2410,
+        "sha256": "5dc839643e41c3c4b60bfb8f813ab2309068449bdcb7e5e22956984938528bc6"
+      },
+      {
+        "path": "journey-r2/new-manifest/composition.json",
+        "bytes": 21072,
+        "sha256": "a3faf7023c619d81784a3cb843330fd0a80d8fb52905f3ca70116e24815939be"
+      },
+      {
+        "path": "journey-r2/new-manifest/manifest.json",
+        "bytes": 514,
+        "sha256": "c3df18e2907c7b9eb4f86574e0d9c76c60206882052e8146ec3d0ba477c00047"
+      },
+      {
+        "path": "journey-r2/new-manifest-verified.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r2/new-manifest-verified.stdout",
+        "bytes": 26723,
+        "sha256": "c64a8f9ecd31efc511f6d623f0cbf3f98762278b9831c9c99f8dddde8129ae69"
+      },
+      {
+        "path": "journey-r2/new-manifest.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r2/new-manifest.stdout",
+        "bytes": 947,
+        "sha256": "128c919333b9e716d2acc6523cc6762c6cd2ac13fef5203732d89f0e7e3adc9a"
+      },
+      {
+        "path": "journey-r2/new-presets.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r2/new-presets.stdout",
+        "bytes": 12934,
+        "sha256": "a10cbff3e12129e72c074c11b243d2ca5146928a1df8b4d5a9a35426acbe06e8"
+      },
+      {
+        "path": "journey-r2/new-propose/assets/agent-definitions/index.json",
+        "bytes": 317,
+        "sha256": "fc127a3c7d00f8ce89f6f7b44bb5e6e4d9bef9bd67128abe966ec76dff674e40"
+      },
+      {
+        "path": "journey-r2/new-propose/assets/agent-definitions/objects/1a6c669477fa24fed91b000914adadcdafd2d8f74965e6ad2c3e37c94ca984ec/agent.json",
+        "bytes": 559,
+        "sha256": "fb0e4e70b31291a53dd4a0f145b6042b318a062f347ef61238e970528ed2aa96"
+      },
+      {
+        "path": "journey-r2/new-propose/assets/agent-definitions/objects/1a6c669477fa24fed91b000914adadcdafd2d8f74965e6ad2c3e37c94ca984ec/instructions.md",
+        "bytes": 446,
+        "sha256": "c5f81d8e39e8139a0cf096bf5a30a11982199e9303837cd0dc18d0687882dde5"
+      },
+      {
+        "path": "journey-r2/new-propose/assets/agent-definitions/objects/90e09768e797c95b746892f517676a325c478096f86994043d9c78f8bc6ad1e2/agent.json",
+        "bytes": 550,
+        "sha256": "b483b553a3c45800efafcc5f65d8c485361d9aee5b886c8ffe713817d381692a"
+      },
+      {
+        "path": "journey-r2/new-propose/assets/agent-definitions/objects/90e09768e797c95b746892f517676a325c478096f86994043d9c78f8bc6ad1e2/instructions.md",
+        "bytes": 396,
+        "sha256": "481a0826438a845738046630e7efd2e4c826c33f501af69595432eb488222c2d"
+      },
+      {
+        "path": "journey-r2/new-propose/assets/workflow-definitions/index.json",
+        "bytes": 175,
+        "sha256": "2c92ad25a4b319d90d1a6fe40aeb6c72e8471fdaeaa7dca366bdbdf863f5b0ce"
+      },
+      {
+        "path": "journey-r2/new-propose/assets/workflow-definitions/objects/f80ea1f1512d5ac0d31ec90cd16a4c1360fd06aeee56a46eca76f04d419cd18b/instructions.md",
+        "bytes": 345,
+        "sha256": "8f67827c815fbdcf0b62bfb858ecd1f0745016ff85f9c6f459d581f9b7a80998"
+      },
+      {
+        "path": "journey-r2/new-propose/assets/workflow-definitions/objects/f80ea1f1512d5ac0d31ec90cd16a4c1360fd06aeee56a46eca76f04d419cd18b/skills/ergora-memory-retrospective/SKILL.md",
+        "bytes": 1805,
+        "sha256": "78ac07b2b2142ffc20bdc9a75aaaec984e98f8efc2718f93bf1865d0030ed628"
+      },
+      {
+        "path": "journey-r2/new-propose/assets/workflow-definitions/objects/f80ea1f1512d5ac0d31ec90cd16a4c1360fd06aeee56a46eca76f04d419cd18b/workflow.json",
+        "bytes": 2410,
+        "sha256": "5dc839643e41c3c4b60bfb8f813ab2309068449bdcb7e5e22956984938528bc6"
+      },
+      {
+        "path": "journey-r2/new-propose/composition.json",
+        "bytes": 21072,
+        "sha256": "a3faf7023c619d81784a3cb843330fd0a80d8fb52905f3ca70116e24815939be"
+      },
+      {
+        "path": "journey-r2/new-propose/prompt.txt",
+        "bytes": 4146,
+        "sha256": "c67ee78e07a1bf541235b361b72a40ad56f7b1e75b9b5f1322cb4ee714cae878"
+      },
+      {
+        "path": "journey-r2/new-propose/request.json",
+        "bytes": 782,
+        "sha256": "2412d7fc6acd80ebad6ab8e0aa3bd7e0c95b01caabdabf0499e7d5e901ee438e"
+      },
+      {
+        "path": "journey-r2/new-propose/task.txt",
+        "bytes": 157,
+        "sha256": "f9d264cfd91ce5026d62f8d5b4127d5fef003896440768be7155e92ed1fdd039"
+      },
+      {
+        "path": "journey-r2/new-propose-verified.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r2/new-propose-verified.stdout",
+        "bytes": 31317,
+        "sha256": "15075f6e0645bf9b8c215cd7c540db56cfc8b167390321b5f9f8c6e551b1370d"
+      },
+      {
+        "path": "journey-r2/new-propose.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r2/new-propose.stdout",
+        "bytes": 1249,
+        "sha256": "26e9bcd4c52ae6b78c67354b84230df4e55cdb23db07071b1a7f8c550e42c78b"
+      },
+      {
+        "path": "journey-r2/new-review/assets/agent-definitions/index.json",
+        "bytes": 317,
+        "sha256": "fc127a3c7d00f8ce89f6f7b44bb5e6e4d9bef9bd67128abe966ec76dff674e40"
+      },
+      {
+        "path": "journey-r2/new-review/assets/agent-definitions/objects/1a6c669477fa24fed91b000914adadcdafd2d8f74965e6ad2c3e37c94ca984ec/agent.json",
+        "bytes": 559,
+        "sha256": "fb0e4e70b31291a53dd4a0f145b6042b318a062f347ef61238e970528ed2aa96"
+      },
+      {
+        "path": "journey-r2/new-review/assets/agent-definitions/objects/1a6c669477fa24fed91b000914adadcdafd2d8f74965e6ad2c3e37c94ca984ec/instructions.md",
+        "bytes": 446,
+        "sha256": "c5f81d8e39e8139a0cf096bf5a30a11982199e9303837cd0dc18d0687882dde5"
+      },
+      {
+        "path": "journey-r2/new-review/assets/agent-definitions/objects/90e09768e797c95b746892f517676a325c478096f86994043d9c78f8bc6ad1e2/agent.json",
+        "bytes": 550,
+        "sha256": "b483b553a3c45800efafcc5f65d8c485361d9aee5b886c8ffe713817d381692a"
+      },
+      {
+        "path": "journey-r2/new-review/assets/agent-definitions/objects/90e09768e797c95b746892f517676a325c478096f86994043d9c78f8bc6ad1e2/instructions.md",
+        "bytes": 396,
+        "sha256": "481a0826438a845738046630e7efd2e4c826c33f501af69595432eb488222c2d"
+      },
+      {
+        "path": "journey-r2/new-review/assets/workflow-definitions/index.json",
+        "bytes": 175,
+        "sha256": "2c92ad25a4b319d90d1a6fe40aeb6c72e8471fdaeaa7dca366bdbdf863f5b0ce"
+      },
+      {
+        "path": "journey-r2/new-review/assets/workflow-definitions/objects/f80ea1f1512d5ac0d31ec90cd16a4c1360fd06aeee56a46eca76f04d419cd18b/instructions.md",
+        "bytes": 345,
+        "sha256": "8f67827c815fbdcf0b62bfb858ecd1f0745016ff85f9c6f459d581f9b7a80998"
+      },
+      {
+        "path": "journey-r2/new-review/assets/workflow-definitions/objects/f80ea1f1512d5ac0d31ec90cd16a4c1360fd06aeee56a46eca76f04d419cd18b/skills/ergora-memory-retrospective/SKILL.md",
+        "bytes": 1805,
+        "sha256": "78ac07b2b2142ffc20bdc9a75aaaec984e98f8efc2718f93bf1865d0030ed628"
+      },
+      {
+        "path": "journey-r2/new-review/assets/workflow-definitions/objects/f80ea1f1512d5ac0d31ec90cd16a4c1360fd06aeee56a46eca76f04d419cd18b/workflow.json",
+        "bytes": 2410,
+        "sha256": "5dc839643e41c3c4b60bfb8f813ab2309068449bdcb7e5e22956984938528bc6"
+      },
+      {
+        "path": "journey-r2/new-review/composition.json",
+        "bytes": 21072,
+        "sha256": "a3faf7023c619d81784a3cb843330fd0a80d8fb52905f3ca70116e24815939be"
+      },
+      {
+        "path": "journey-r2/new-review/prompt.txt",
+        "bytes": 4203,
+        "sha256": "de739f8b5396d569324e25bdd2dfe5da89c7be9fbed84bca3533852d802339a3"
+      },
+      {
+        "path": "journey-r2/new-review/request.json",
+        "bytes": 781,
+        "sha256": "8f60374af3e61f335a3107bf7694b0adf9f9de3ebbd2871e592f059911bbc1de"
+      },
+      {
+        "path": "journey-r2/new-review/task.txt",
+        "bytes": 157,
+        "sha256": "f9d264cfd91ce5026d62f8d5b4127d5fef003896440768be7155e92ed1fdd039"
+      },
+      {
+        "path": "journey-r2/new-review-verified.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r2/new-review-verified.stdout",
+        "bytes": 31372,
+        "sha256": "c1b6ab94414b470a42db4cb44d9537863aee1ec2d2c9959a771cbc4bedfac394"
+      },
+      {
+        "path": "journey-r2/new-review.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r2/new-review.stdout",
+        "bytes": 1247,
+        "sha256": "ed85bf24e0540025884c06b67b0f932b9bdfac93c7a68131d767d3a50c9666f8"
+      },
+      {
+        "path": "journey-r2/new-root.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r2/new-root.stdout",
+        "bytes": 6415,
+        "sha256": "d1a111302fc381d4cbc1c2062dfa25f7111489c55e9a35316e80b78eada370ca"
+      },
+      {
+        "path": "journey-r2/old-frozen.json",
+        "bytes": 7391,
+        "sha256": "99f334b47f026fa2fcdfa3d5cf4948ce26e7152861b6d4e5cd67f12bbe976256"
+      },
+      {
+        "path": "journey-r2/old-install.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r2/old-install.stdout",
+        "bytes": 909,
+        "sha256": "a4bc7f35ca80182ef6f297c4ba06afadf5a31d6803e5fb6af43c2abbcd871ac8"
+      },
+      {
+        "path": "journey-r2/old-manifest/assets/agent-definitions/index.json",
+        "bytes": 317,
+        "sha256": "6e1a98f6d25edcde8cefdc9a1fbed0b0e4883d2c2a24b64a2102cecbfd381bfd"
+      },
+      {
+        "path": "journey-r2/old-manifest/assets/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/agent.json",
+        "bytes": 559,
+        "sha256": "f7d4e1b02382ad5dc2dc1e7a943ffe96ce1c3bdae6504fc0b4d196c39d3ba8ed"
+      },
+      {
+        "path": "journey-r2/old-manifest/assets/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/instructions.md",
+        "bytes": 447,
+        "sha256": "5fef0693958ea6495f52c8b7c824d3621f23b2966153446816ae38a6d9c39441"
+      },
+      {
+        "path": "journey-r2/old-manifest/assets/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/agent.json",
+        "bytes": 550,
+        "sha256": "727e473843ff7990fa1af05f78e9e7fbda275c433bbad408de060fa76fe167b4"
+      },
+      {
+        "path": "journey-r2/old-manifest/assets/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/instructions.md",
+        "bytes": 397,
+        "sha256": "0ff08dc1bc1de6a350b9d09cb41fe596e26f68dec652324990b361b123906af7"
+      },
+      {
+        "path": "journey-r2/old-manifest/assets/workflow-definitions/index.json",
+        "bytes": 175,
+        "sha256": "d56d629209cd3aeae34889e8534849fc10f5027989786023a9bea2b3d7800815"
+      },
+      {
+        "path": "journey-r2/old-manifest/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/instructions.md",
+        "bytes": 345,
+        "sha256": "8f67827c815fbdcf0b62bfb858ecd1f0745016ff85f9c6f459d581f9b7a80998"
+      },
+      {
+        "path": "journey-r2/old-manifest/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/skills/ergora-memory-retrospective/SKILL.md",
+        "bytes": 1805,
+        "sha256": "78ac07b2b2142ffc20bdc9a75aaaec984e98f8efc2718f93bf1865d0030ed628"
+      },
+      {
+        "path": "journey-r2/old-manifest/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/workflow.json",
+        "bytes": 2410,
+        "sha256": "254a869c796dd3418677838967135160c0c61c3f40246b7a40b4638c71e5741d"
+      },
+      {
+        "path": "journey-r2/old-manifest/composition.json",
+        "bytes": 21076,
+        "sha256": "ef3eb4070ed253122f17bc0f2524e7c4d6742a350f13e00ab220498958202438"
+      },
+      {
+        "path": "journey-r2/old-manifest/manifest.json",
+        "bytes": 514,
+        "sha256": "88234476e71facb226adae8d608644c692acb833192c60971dd958e551da6feb"
+      },
+      {
+        "path": "journey-r2/old-manifest.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r2/old-manifest.stdout",
+        "bytes": 947,
+        "sha256": "5dd8f6c8b7ff779679fb4661fd7308448c4f6bc44b16b563ed59501f24674ea0"
+      },
+      {
+        "path": "journey-r2/old-objects.json",
+        "bytes": 1598,
+        "sha256": "e97b5312a1e175739f2793713616ab1c21e110b7a7c9dad066c4bd95da914e5c"
+      },
+      {
+        "path": "journey-r2/old-project.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r2/old-project.stdout",
+        "bytes": 882,
+        "sha256": "f4b54b8d8457f90b5826059885d652f4c0512c2745e2e5726316e0f86d986959"
+      },
+      {
+        "path": "journey-r2/old-propose/assets/agent-definitions/index.json",
+        "bytes": 317,
+        "sha256": "6e1a98f6d25edcde8cefdc9a1fbed0b0e4883d2c2a24b64a2102cecbfd381bfd"
+      },
+      {
+        "path": "journey-r2/old-propose/assets/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/agent.json",
+        "bytes": 559,
+        "sha256": "f7d4e1b02382ad5dc2dc1e7a943ffe96ce1c3bdae6504fc0b4d196c39d3ba8ed"
+      },
+      {
+        "path": "journey-r2/old-propose/assets/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/instructions.md",
+        "bytes": 447,
+        "sha256": "5fef0693958ea6495f52c8b7c824d3621f23b2966153446816ae38a6d9c39441"
+      },
+      {
+        "path": "journey-r2/old-propose/assets/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/agent.json",
+        "bytes": 550,
+        "sha256": "727e473843ff7990fa1af05f78e9e7fbda275c433bbad408de060fa76fe167b4"
+      },
+      {
+        "path": "journey-r2/old-propose/assets/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/instructions.md",
+        "bytes": 397,
+        "sha256": "0ff08dc1bc1de6a350b9d09cb41fe596e26f68dec652324990b361b123906af7"
+      },
+      {
+        "path": "journey-r2/old-propose/assets/workflow-definitions/index.json",
+        "bytes": 175,
+        "sha256": "d56d629209cd3aeae34889e8534849fc10f5027989786023a9bea2b3d7800815"
+      },
+      {
+        "path": "journey-r2/old-propose/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/instructions.md",
+        "bytes": 345,
+        "sha256": "8f67827c815fbdcf0b62bfb858ecd1f0745016ff85f9c6f459d581f9b7a80998"
+      },
+      {
+        "path": "journey-r2/old-propose/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/skills/ergora-memory-retrospective/SKILL.md",
+        "bytes": 1805,
+        "sha256": "78ac07b2b2142ffc20bdc9a75aaaec984e98f8efc2718f93bf1865d0030ed628"
+      },
+      {
+        "path": "journey-r2/old-propose/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/workflow.json",
+        "bytes": 2410,
+        "sha256": "254a869c796dd3418677838967135160c0c61c3f40246b7a40b4638c71e5741d"
+      },
+      {
+        "path": "journey-r2/old-propose/composition.json",
+        "bytes": 21076,
+        "sha256": "ef3eb4070ed253122f17bc0f2524e7c4d6742a350f13e00ab220498958202438"
+      },
+      {
+        "path": "journey-r2/old-propose/prompt.txt",
+        "bytes": 4147,
+        "sha256": "c4ab94ffe0aaa8f901d8e4e21b4bab042e0378cb6d80bdc16f5b35487289b590"
+      },
+      {
+        "path": "journey-r2/old-propose/request.json",
+        "bytes": 782,
+        "sha256": "b561198c1508c27f63303e321f6004e161fc8a7419ec09b188d5b10f0b4ecab7"
+      },
+      {
+        "path": "journey-r2/old-propose/task.txt",
+        "bytes": 157,
+        "sha256": "f9d264cfd91ce5026d62f8d5b4127d5fef003896440768be7155e92ed1fdd039"
+      },
+      {
+        "path": "journey-r2/old-propose-verified.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r2/old-propose-verified.stdout",
+        "bytes": 31322,
+        "sha256": "4c52909f073f5dab6ff12cfee89dd09e263501fe65dace8dd1c3f71839d4667f"
+      },
+      {
+        "path": "journey-r2/old-propose.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r2/old-propose.stdout",
+        "bytes": 1249,
+        "sha256": "7721555ff58eab63e2517eb8cd5540750041076debeadef1cde5eecf4ed6f3cb"
+      },
+      {
+        "path": "journey-r2/old-recreated-propose/assets/agent-definitions/index.json",
+        "bytes": 317,
+        "sha256": "6e1a98f6d25edcde8cefdc9a1fbed0b0e4883d2c2a24b64a2102cecbfd381bfd"
+      },
+      {
+        "path": "journey-r2/old-recreated-propose/assets/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/agent.json",
+        "bytes": 559,
+        "sha256": "f7d4e1b02382ad5dc2dc1e7a943ffe96ce1c3bdae6504fc0b4d196c39d3ba8ed"
+      },
+      {
+        "path": "journey-r2/old-recreated-propose/assets/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/instructions.md",
+        "bytes": 447,
+        "sha256": "5fef0693958ea6495f52c8b7c824d3621f23b2966153446816ae38a6d9c39441"
+      },
+      {
+        "path": "journey-r2/old-recreated-propose/assets/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/agent.json",
+        "bytes": 550,
+        "sha256": "727e473843ff7990fa1af05f78e9e7fbda275c433bbad408de060fa76fe167b4"
+      },
+      {
+        "path": "journey-r2/old-recreated-propose/assets/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/instructions.md",
+        "bytes": 397,
+        "sha256": "0ff08dc1bc1de6a350b9d09cb41fe596e26f68dec652324990b361b123906af7"
+      },
+      {
+        "path": "journey-r2/old-recreated-propose/assets/workflow-definitions/index.json",
+        "bytes": 175,
+        "sha256": "d56d629209cd3aeae34889e8534849fc10f5027989786023a9bea2b3d7800815"
+      },
+      {
+        "path": "journey-r2/old-recreated-propose/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/instructions.md",
+        "bytes": 345,
+        "sha256": "8f67827c815fbdcf0b62bfb858ecd1f0745016ff85f9c6f459d581f9b7a80998"
+      },
+      {
+        "path": "journey-r2/old-recreated-propose/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/skills/ergora-memory-retrospective/SKILL.md",
+        "bytes": 1805,
+        "sha256": "78ac07b2b2142ffc20bdc9a75aaaec984e98f8efc2718f93bf1865d0030ed628"
+      },
+      {
+        "path": "journey-r2/old-recreated-propose/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/workflow.json",
+        "bytes": 2410,
+        "sha256": "254a869c796dd3418677838967135160c0c61c3f40246b7a40b4638c71e5741d"
+      },
+      {
+        "path": "journey-r2/old-recreated-propose/composition.json",
+        "bytes": 21076,
+        "sha256": "ef3eb4070ed253122f17bc0f2524e7c4d6742a350f13e00ab220498958202438"
+      },
+      {
+        "path": "journey-r2/old-recreated-propose/prompt.txt",
+        "bytes": 4147,
+        "sha256": "c4ab94ffe0aaa8f901d8e4e21b4bab042e0378cb6d80bdc16f5b35487289b590"
+      },
+      {
+        "path": "journey-r2/old-recreated-propose/request.json",
+        "bytes": 782,
+        "sha256": "b561198c1508c27f63303e321f6004e161fc8a7419ec09b188d5b10f0b4ecab7"
+      },
+      {
+        "path": "journey-r2/old-recreated-propose/task.txt",
+        "bytes": 157,
+        "sha256": "f9d264cfd91ce5026d62f8d5b4127d5fef003896440768be7155e92ed1fdd039"
+      },
+      {
+        "path": "journey-r2/old-recreated-review/assets/agent-definitions/index.json",
+        "bytes": 317,
+        "sha256": "6e1a98f6d25edcde8cefdc9a1fbed0b0e4883d2c2a24b64a2102cecbfd381bfd"
+      },
+      {
+        "path": "journey-r2/old-recreated-review/assets/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/agent.json",
+        "bytes": 559,
+        "sha256": "f7d4e1b02382ad5dc2dc1e7a943ffe96ce1c3bdae6504fc0b4d196c39d3ba8ed"
+      },
+      {
+        "path": "journey-r2/old-recreated-review/assets/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/instructions.md",
+        "bytes": 447,
+        "sha256": "5fef0693958ea6495f52c8b7c824d3621f23b2966153446816ae38a6d9c39441"
+      },
+      {
+        "path": "journey-r2/old-recreated-review/assets/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/agent.json",
+        "bytes": 550,
+        "sha256": "727e473843ff7990fa1af05f78e9e7fbda275c433bbad408de060fa76fe167b4"
+      },
+      {
+        "path": "journey-r2/old-recreated-review/assets/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/instructions.md",
+        "bytes": 397,
+        "sha256": "0ff08dc1bc1de6a350b9d09cb41fe596e26f68dec652324990b361b123906af7"
+      },
+      {
+        "path": "journey-r2/old-recreated-review/assets/workflow-definitions/index.json",
+        "bytes": 175,
+        "sha256": "d56d629209cd3aeae34889e8534849fc10f5027989786023a9bea2b3d7800815"
+      },
+      {
+        "path": "journey-r2/old-recreated-review/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/instructions.md",
+        "bytes": 345,
+        "sha256": "8f67827c815fbdcf0b62bfb858ecd1f0745016ff85f9c6f459d581f9b7a80998"
+      },
+      {
+        "path": "journey-r2/old-recreated-review/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/skills/ergora-memory-retrospective/SKILL.md",
+        "bytes": 1805,
+        "sha256": "78ac07b2b2142ffc20bdc9a75aaaec984e98f8efc2718f93bf1865d0030ed628"
+      },
+      {
+        "path": "journey-r2/old-recreated-review/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/workflow.json",
+        "bytes": 2410,
+        "sha256": "254a869c796dd3418677838967135160c0c61c3f40246b7a40b4638c71e5741d"
+      },
+      {
+        "path": "journey-r2/old-recreated-review/composition.json",
+        "bytes": 21076,
+        "sha256": "ef3eb4070ed253122f17bc0f2524e7c4d6742a350f13e00ab220498958202438"
+      },
+      {
+        "path": "journey-r2/old-recreated-review/prompt.txt",
+        "bytes": 4204,
+        "sha256": "73aa1fc849ecf8051842c0743cd82bf7cae8655faf92dad9b3191d6a66b99fa3"
+      },
+      {
+        "path": "journey-r2/old-recreated-review/request.json",
+        "bytes": 781,
+        "sha256": "78bff17fd2d40bbb9469e91dc2f965fff767e72fd76fd2f6ad51cd8bce8072d6"
+      },
+      {
+        "path": "journey-r2/old-recreated-review/task.txt",
+        "bytes": 157,
+        "sha256": "f9d264cfd91ce5026d62f8d5b4127d5fef003896440768be7155e92ed1fdd039"
+      },
+      {
+        "path": "journey-r2/old-review/assets/agent-definitions/index.json",
+        "bytes": 317,
+        "sha256": "6e1a98f6d25edcde8cefdc9a1fbed0b0e4883d2c2a24b64a2102cecbfd381bfd"
+      },
+      {
+        "path": "journey-r2/old-review/assets/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/agent.json",
+        "bytes": 559,
+        "sha256": "f7d4e1b02382ad5dc2dc1e7a943ffe96ce1c3bdae6504fc0b4d196c39d3ba8ed"
+      },
+      {
+        "path": "journey-r2/old-review/assets/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/instructions.md",
+        "bytes": 447,
+        "sha256": "5fef0693958ea6495f52c8b7c824d3621f23b2966153446816ae38a6d9c39441"
+      },
+      {
+        "path": "journey-r2/old-review/assets/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/agent.json",
+        "bytes": 550,
+        "sha256": "727e473843ff7990fa1af05f78e9e7fbda275c433bbad408de060fa76fe167b4"
+      },
+      {
+        "path": "journey-r2/old-review/assets/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/instructions.md",
+        "bytes": 397,
+        "sha256": "0ff08dc1bc1de6a350b9d09cb41fe596e26f68dec652324990b361b123906af7"
+      },
+      {
+        "path": "journey-r2/old-review/assets/workflow-definitions/index.json",
+        "bytes": 175,
+        "sha256": "d56d629209cd3aeae34889e8534849fc10f5027989786023a9bea2b3d7800815"
+      },
+      {
+        "path": "journey-r2/old-review/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/instructions.md",
+        "bytes": 345,
+        "sha256": "8f67827c815fbdcf0b62bfb858ecd1f0745016ff85f9c6f459d581f9b7a80998"
+      },
+      {
+        "path": "journey-r2/old-review/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/skills/ergora-memory-retrospective/SKILL.md",
+        "bytes": 1805,
+        "sha256": "78ac07b2b2142ffc20bdc9a75aaaec984e98f8efc2718f93bf1865d0030ed628"
+      },
+      {
+        "path": "journey-r2/old-review/assets/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/workflow.json",
+        "bytes": 2410,
+        "sha256": "254a869c796dd3418677838967135160c0c61c3f40246b7a40b4638c71e5741d"
+      },
+      {
+        "path": "journey-r2/old-review/composition.json",
+        "bytes": 21076,
+        "sha256": "ef3eb4070ed253122f17bc0f2524e7c4d6742a350f13e00ab220498958202438"
+      },
+      {
+        "path": "journey-r2/old-review/prompt.txt",
+        "bytes": 4204,
+        "sha256": "73aa1fc849ecf8051842c0743cd82bf7cae8655faf92dad9b3191d6a66b99fa3"
+      },
+      {
+        "path": "journey-r2/old-review/request.json",
+        "bytes": 781,
+        "sha256": "78bff17fd2d40bbb9469e91dc2f965fff767e72fd76fd2f6ad51cd8bce8072d6"
+      },
+      {
+        "path": "journey-r2/old-review/task.txt",
+        "bytes": 157,
+        "sha256": "f9d264cfd91ce5026d62f8d5b4127d5fef003896440768be7155e92ed1fdd039"
+      },
+      {
+        "path": "journey-r2/old-review-verified.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r2/old-review-verified.stdout",
+        "bytes": 31377,
+        "sha256": "a622f629044fcfe6ceca30826d98367014136f9358545d80c4a316869f9bd705"
+      },
+      {
+        "path": "journey-r2/old-review.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r2/old-review.stdout",
+        "bytes": 1247,
+        "sha256": "5ee81a01f000a232a2e6a59f5c9ada75968d591a67a50de72ea80d8da18e6783"
+      },
+      {
+        "path": "journey-r2/old-root.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r2/old-root.stdout",
+        "bytes": 6415,
+        "sha256": "a4684d341b4f7ea7203e47a871006b55cd872af45129570333e7dad9021e298d"
+      },
+      {
+        "path": "journey-r2/reference-verify.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r2/reference-verify.stdout",
+        "bytes": 512,
+        "sha256": "a0e4fe99fabd7a5996ac065d4fa49af3e6394e12794dea17ff99a0cd4dffc19e"
+      },
+      {
+        "path": "journey-r2/result.json",
+        "bytes": 1993,
+        "sha256": "3233260dd5042aacaa08c79103852ef0d0273b0fe898df09f23868b5749b36a6"
+      },
+      {
+        "path": "journey-r2/state/.agent-definitions.lock",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r2/state/.workflow-definitions.lock",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r2/state/agent-definitions/index.json",
+        "bytes": 483,
+        "sha256": "602f58dcaf32f0ab4c9ac548264d884df33d1e0c1497724d64239099ffc803f6"
+      },
+      {
+        "path": "journey-r2/state/agent-definitions/objects/1a6c669477fa24fed91b000914adadcdafd2d8f74965e6ad2c3e37c94ca984ec/agent.json",
+        "bytes": 559,
+        "sha256": "fb0e4e70b31291a53dd4a0f145b6042b318a062f347ef61238e970528ed2aa96"
+      },
+      {
+        "path": "journey-r2/state/agent-definitions/objects/1a6c669477fa24fed91b000914adadcdafd2d8f74965e6ad2c3e37c94ca984ec/instructions.md",
+        "bytes": 446,
+        "sha256": "c5f81d8e39e8139a0cf096bf5a30a11982199e9303837cd0dc18d0687882dde5"
+      },
+      {
+        "path": "journey-r2/state/agent-definitions/objects/90e09768e797c95b746892f517676a325c478096f86994043d9c78f8bc6ad1e2/agent.json",
+        "bytes": 550,
+        "sha256": "b483b553a3c45800efafcc5f65d8c485361d9aee5b886c8ffe713817d381692a"
+      },
+      {
+        "path": "journey-r2/state/agent-definitions/objects/90e09768e797c95b746892f517676a325c478096f86994043d9c78f8bc6ad1e2/instructions.md",
+        "bytes": 396,
+        "sha256": "481a0826438a845738046630e7efd2e4c826c33f501af69595432eb488222c2d"
+      },
+      {
+        "path": "journey-r2/state/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/agent.json",
+        "bytes": 559,
+        "sha256": "f7d4e1b02382ad5dc2dc1e7a943ffe96ce1c3bdae6504fc0b4d196c39d3ba8ed"
+      },
+      {
+        "path": "journey-r2/state/agent-definitions/objects/bae971984fb1f9ef2ec55055b1b82a1d5d0595d3c133e691402cba619db46170/instructions.md",
+        "bytes": 447,
+        "sha256": "5fef0693958ea6495f52c8b7c824d3621f23b2966153446816ae38a6d9c39441"
+      },
+      {
+        "path": "journey-r2/state/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/agent.json",
+        "bytes": 550,
+        "sha256": "727e473843ff7990fa1af05f78e9e7fbda275c433bbad408de060fa76fe167b4"
+      },
+      {
+        "path": "journey-r2/state/agent-definitions/objects/cb30b5b9f0afb4f88470f375d5b47e4927b14b408270d93d45ec3901c735a272/instructions.md",
+        "bytes": 397,
+        "sha256": "0ff08dc1bc1de6a350b9d09cb41fe596e26f68dec652324990b361b123906af7"
+      },
+      {
+        "path": "journey-r2/state/ergora.sqlite3",
+        "bytes": 225280,
+        "sha256": "dbc6ae937edf010b7065af520f6323aee3762617e5bc17feaa37572c4fc730b2"
+      },
+      {
+        "path": "journey-r2/state/workflow-definitions/index.json",
+        "bytes": 258,
+        "sha256": "e04d60955d67e8dcbe5af5dab1636829ae04985e4f4f211ded0d21389030dc0f"
+      },
+      {
+        "path": "journey-r2/state/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/instructions.md",
+        "bytes": 345,
+        "sha256": "8f67827c815fbdcf0b62bfb858ecd1f0745016ff85f9c6f459d581f9b7a80998"
+      },
+      {
+        "path": "journey-r2/state/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/skills/ergora-memory-retrospective/SKILL.md",
+        "bytes": 1805,
+        "sha256": "78ac07b2b2142ffc20bdc9a75aaaec984e98f8efc2718f93bf1865d0030ed628"
+      },
+      {
+        "path": "journey-r2/state/workflow-definitions/objects/0159aa511ade1499ea580f142cd0aa308ce78b6ee7bbf6dc70610b0093e6e6c5/workflow.json",
+        "bytes": 2410,
+        "sha256": "254a869c796dd3418677838967135160c0c61c3f40246b7a40b4638c71e5741d"
+      },
+      {
+        "path": "journey-r2/state/workflow-definitions/objects/f80ea1f1512d5ac0d31ec90cd16a4c1360fd06aeee56a46eca76f04d419cd18b/instructions.md",
+        "bytes": 345,
+        "sha256": "8f67827c815fbdcf0b62bfb858ecd1f0745016ff85f9c6f459d581f9b7a80998"
+      },
+      {
+        "path": "journey-r2/state/workflow-definitions/objects/f80ea1f1512d5ac0d31ec90cd16a4c1360fd06aeee56a46eca76f04d419cd18b/skills/ergora-memory-retrospective/SKILL.md",
+        "bytes": 1805,
+        "sha256": "78ac07b2b2142ffc20bdc9a75aaaec984e98f8efc2718f93bf1865d0030ed628"
+      },
+      {
+        "path": "journey-r2/state/workflow-definitions/objects/f80ea1f1512d5ac0d31ec90cd16a4c1360fd06aeee56a46eca76f04d419cd18b/workflow.json",
+        "bytes": 2410,
+        "sha256": "5dc839643e41c3c4b60bfb8f813ab2309068449bdcb7e5e22956984938528bc6"
+      },
+      {
+        "path": "journey-r2/task.txt",
+        "bytes": 157,
+        "sha256": "f9d264cfd91ce5026d62f8d5b4127d5fef003896440768be7155e92ed1fdd039"
+      },
+      {
+        "path": "journey-r2.py",
+        "bytes": 8659,
+        "sha256": "238e142ecac3f5bb17996464b51dab70e44e898d1e79d5094d2e8a0555ae7ceb"
+      },
+      {
+        "path": "journey-r2.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "journey-r2.stdout",
+        "bytes": 76,
+        "sha256": "bf9de98992dec6438a79cac661b7cd0de02b28b0221432050bd2833108da0bd1"
+      },
+      {
+        "path": "old-catalog.json",
+        "bytes": 17851,
+        "sha256": "dcfaa0444df4cf6b873af0fb24db1928e0f8fa297634ac5cafa07e721012db4a"
+      },
+      {
+        "path": "originals.json",
+        "bytes": 1364,
+        "sha256": "a5dc61c43404be27d0d631a9f73479574601aec9ab9adc0c6acccaa6c183e327"
+      },
+      {
+        "path": "prepare-r1.py",
+        "bytes": 3167,
+        "sha256": "ce38e1b2ee648b4d7c85db453d6bb408391339a01817fdbc0bfc5f3c63cacb37"
+      },
+      {
+        "path": "product-mapping.json",
+        "bytes": 111300,
+        "sha256": "4ec8471621b2058ef537f699615708aec67c7c1cb3fa8a4512546b015db62ff4"
+      },
+      {
+        "path": "run-installed-r1.py",
+        "bytes": 916,
+        "sha256": "8dacdd2814daa0c341e53ef289506e8836405723ae88c86928721525405727c9"
+      },
+      {
+        "path": "self-review-r1-codex/admission.json",
+        "bytes": 7875,
+        "sha256": "094dde0afc5dca42b47ddbf860302661382ccc3365c6199e5cc90cb33b13164d"
+      },
+      {
+        "path": "self-review-r1-codex/admission.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "self-review-r1-codex/input/assets/agent-definitions/index.json",
+        "bytes": 173,
+        "sha256": "852b1e2b14bc716dd54b6bc7893015349b7758e764e278077fcaf6591d239c77"
+      },
+      {
+        "path": "self-review-r1-codex/input/assets/agent-definitions/objects/97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c/agent.json",
+        "bytes": 788,
+        "sha256": "64be372b8c5e1d7bd694f492ef6539ddc664814d818a546c35fdfbf07e54c7bd"
+      },
+      {
+        "path": "self-review-r1-codex/input/assets/agent-definitions/objects/97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c/instructions.md",
+        "bytes": 354,
+        "sha256": "3cc9c450f0c03da5ea4a1434ac6182d50df6a4985cffdee2a59fe9fe477c6b43"
+      },
+      {
+        "path": "self-review-r1-codex/input/assets/agent-definitions/objects/97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c/skills/ergora-structure-reviewer/SKILL.md",
+        "bytes": 521,
+        "sha256": "d6b69570bcca408d3d06ca5adf1cb44a4a9e43c2901f05c38a68c096f23a4ac8"
+      },
+      {
+        "path": "self-review-r1-codex/input/assets/workflow-definitions/index.json",
+        "bytes": 171,
+        "sha256": "e2d5c1ad28b450c5ba3b1deb3d39580061e84223efa3be68f9cef86f9dbcbe8a"
+      },
+      {
+        "path": "self-review-r1-codex/input/assets/workflow-definitions/objects/996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9/instructions.md",
+        "bytes": 163,
+        "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823"
+      },
+      {
+        "path": "self-review-r1-codex/input/assets/workflow-definitions/objects/996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9/workflow.json",
+        "bytes": 1465,
+        "sha256": "062a56396ec6c57d2038f7ea6a0629d7514c0314d5657d5033d9920d8895f653"
+      },
+      {
+        "path": "self-review-r1-codex/input/composition.json",
+        "bytes": 7878,
+        "sha256": "0446ac008f690f5e2a16e493b9e82c1a818f7acf0ca9753ae560838e0bcf722e"
+      },
+      {
+        "path": "self-review-r1-codex/input/prompt.txt",
+        "bytes": 119658,
+        "sha256": "fa8052b89f3c373f88a07d410d02ae36248e368e72e9967792de2bec2efaf0c9"
+      },
+      {
+        "path": "self-review-r1-codex/input/request.json",
+        "bytes": 780,
+        "sha256": "e7c74e1137e9c0915690557f3fa04b96d124d9378ffaec66392ee845c9d3872a"
+      },
+      {
+        "path": "self-review-r1-codex/input/task.txt",
+        "bytes": 117259,
+        "sha256": "242d571aa4ce817bde91fd41c7d6aee6a53abb7331edfdbcb0445329ab92875b"
+      },
+      {
+        "path": "self-review-r1-codex/native.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "self-review-r1-codex/native.stdout",
+        "bytes": 8632,
+        "sha256": "cbec13d0a2c9f0aa31d2e38605ee19868e1004faffc1cb82ce372fe34ef52c3b"
+      },
+      {
+        "path": "self-review-r1-codex/original-result.json",
+        "bytes": 1269,
+        "sha256": "b1ac719487805472a6477304f06dfe08eeee2f88aa2760cc355bac93721e4ab3"
+      },
+      {
+        "path": "self-review-r1-codex/packet-index.json",
+        "bytes": 4660,
+        "sha256": "a7e0a883c3af017e849cde10168986f0d0ec17fa5f3dc91fc9aba72ffd72f83a"
+      },
+      {
+        "path": "self-review-r1-codex/review.md",
+        "bytes": 1132,
+        "sha256": "e1a2c4d74bef61ae747ff016439a05f570cad81d77331c3d0bfde2727af96672"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/4f7fd8e3a1284ef582dc092b29268141/result.json",
+        "bytes": 1269,
+        "sha256": "b1ac719487805472a6477304f06dfe08eeee2f88aa2760cc355bac93721e4ab3"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/4f7fd8e3a1284ef582dc092b29268141/stderr.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/4f7fd8e3a1284ef582dc092b29268141/stdin.txt",
+        "bytes": 119658,
+        "sha256": "fa8052b89f3c373f88a07d410d02ae36248e368e72e9967792de2bec2efaf0c9"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/4f7fd8e3a1284ef582dc092b29268141/stdout.txt",
+        "bytes": 1934,
+        "sha256": "019abef232201a038bdbf6fb27ea50714a636359e4d520d1b19225997733250e"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/4f7fd8e3a1284ef582dc092b29268141.input/assets/agent-definitions/index.json",
+        "bytes": 173,
+        "sha256": "852b1e2b14bc716dd54b6bc7893015349b7758e764e278077fcaf6591d239c77"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/4f7fd8e3a1284ef582dc092b29268141.input/assets/agent-definitions/objects/97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c/agent.json",
+        "bytes": 788,
+        "sha256": "64be372b8c5e1d7bd694f492ef6539ddc664814d818a546c35fdfbf07e54c7bd"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/4f7fd8e3a1284ef582dc092b29268141.input/assets/agent-definitions/objects/97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c/instructions.md",
+        "bytes": 354,
+        "sha256": "3cc9c450f0c03da5ea4a1434ac6182d50df6a4985cffdee2a59fe9fe477c6b43"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/4f7fd8e3a1284ef582dc092b29268141.input/assets/agent-definitions/objects/97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c/skills/ergora-structure-reviewer/SKILL.md",
+        "bytes": 521,
+        "sha256": "d6b69570bcca408d3d06ca5adf1cb44a4a9e43c2901f05c38a68c096f23a4ac8"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/4f7fd8e3a1284ef582dc092b29268141.input/assets/workflow-definitions/index.json",
+        "bytes": 171,
+        "sha256": "e2d5c1ad28b450c5ba3b1deb3d39580061e84223efa3be68f9cef86f9dbcbe8a"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/4f7fd8e3a1284ef582dc092b29268141.input/assets/workflow-definitions/objects/996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9/instructions.md",
+        "bytes": 163,
+        "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/4f7fd8e3a1284ef582dc092b29268141.input/assets/workflow-definitions/objects/996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9/workflow.json",
+        "bytes": 1465,
+        "sha256": "062a56396ec6c57d2038f7ea6a0629d7514c0314d5657d5033d9920d8895f653"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/4f7fd8e3a1284ef582dc092b29268141.input/composition.json",
+        "bytes": 7878,
+        "sha256": "0446ac008f690f5e2a16e493b9e82c1a818f7acf0ca9753ae560838e0bcf722e"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/4f7fd8e3a1284ef582dc092b29268141.input/prompt.txt",
+        "bytes": 119658,
+        "sha256": "fa8052b89f3c373f88a07d410d02ae36248e368e72e9967792de2bec2efaf0c9"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/4f7fd8e3a1284ef582dc092b29268141.input/request.json",
+        "bytes": 780,
+        "sha256": "e7c74e1137e9c0915690557f3fa04b96d124d9378ffaec66392ee845c9d3872a"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/4f7fd8e3a1284ef582dc092b29268141.input/task.txt",
+        "bytes": 117259,
+        "sha256": "242d571aa4ce817bde91fd41c7d6aee6a53abb7331edfdbcb0445329ab92875b"
+      },
+      {
+        "path": "self-review-r1-codex.json",
+        "bytes": 5838,
+        "sha256": "2dafe3005ee77422ca93801eb22805388137df671683a1e14ae9696dcc8eb7fb"
+      },
+      {
+        "path": "self-review-r1.py",
+        "bytes": 8329,
+        "sha256": "2c616b9ec2d593bfc3038bb4ecfd7e9d3969b9027ef5ec09088af984c694db3a"
+      },
+      {
+        "path": "self-review-r1.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "self-review-r1.stdout",
+        "bytes": 5132,
+        "sha256": "65298b72e3d3973cab6d5ea99d63a97151375123bda07e544a43f4abb4708565"
+      },
+      {
+        "path": "verify-installed-r1.py",
+        "bytes": 2445,
+        "sha256": "8597905c3ce7bb7e2dc3f9cf923f30115d1b8b92d9bc0fa18595cb92e2d2d6e7"
+      },
+      {
+        "path": "versions.json",
+        "bytes": 659,
+        "sha256": "5941a8bacbc4ed81bee46e6697b1f10120a70947bedf276a3700dc41e7ba37d3"
+      }
+    ]
+  },
+  "limitations": [
+    "Mechanical immutable-data patch and installed public preparation/upgrade compatibility only.",
+    "r1 original 24 CLI exit0 but private final field-name lookup failed; no passing result. r2 corrected lookup and fresh directory, same product.",
+    "Two new and original leaf inputs prepared; no memory proposal model execution, adoption, GPU or quality acceptance.",
+    "Own review is text-only using authorized Codex fallback; no cross-backend or filesystem-audit claim.",
+    "No native Windows/WSL2, business/default-home upgrade, state rollback or cross-machine recovery executed in this slice. G1b/G1c remain separate."
+  ]
+}
