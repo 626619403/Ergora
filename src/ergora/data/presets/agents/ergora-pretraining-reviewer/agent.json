@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "id": "ergora-pretraining-reviewer",
+  "version": "1.0.0",
+  "description": "Readonly pretraining numerical, data, state and recovery review.",
+  "roles": [
+    "reviewer"
+  ],
+  "specialties": [
+    "pretraining",
+    "loss-normalization",
+    "distributed-training-state"
+  ],
+  "backend": {
+    "tool": "claude-code"
+  },
+  "resources": [
+    {
+      "id": "ergora-pretraining-reviewer-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "7f11d6fc78a8c7d8505132bf18f22b03b43c46c233aff23052d8b02c12b867ea"
+    },
+    {
+      "id": "ergora-pretraining-reviewer-skill",
+      "kind": "skill",
+      "path": "skills/ergora-pretraining-review",
+      "digest": "0e146179e53af1bddb0aec6947566f0b9dbc9a3199282bbe5ee18c8262308e17"
+    }
+  ]
+}

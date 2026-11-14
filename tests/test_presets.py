@@ -10,7 +10,7 @@ import pytest
 
 from ergora import agent_definitions, reference, registrations, task_envelopes, tasks, workflow_definitions as workflows
 from ergora.reference_inputs import execution_input
-from ergora.review_dags import WorkDelivery
+from ergora.review_dags import ReviewDAG, WorkDelivery
 from ergora.state import State
 from test_registrations import installation, registration
 
@@ -101,13 +101,19 @@ def test_preset_listing_and_installation_are_real_offline_cli_operations(tmp_pat
     assert workflows.definitions(State(home))
 
 
-@pytest.mark.parametrize('identity', ['ergora-structure-review', 'ergora-correctness-review', 'ergora-test-value-review'])
-def test_bundled_review_can_be_selected_without_its_delivery_parent(registration, tmp_path, identity):
+@pytest.mark.parametrize('identity,preset', [
+    ('ergora-structure-review', 'repository-governance'),
+    ('ergora-correctness-review', 'repository-governance'),
+    ('ergora-test-value-review', 'repository-governance'),
+    ('ergora-pretraining-review', 'pretraining-review'),
+    ('ergora-posttraining-review', 'posttraining-review'),
+])
+def test_bundled_review_can_be_selected_without_its_delivery_parent(registration, tmp_path, identity, preset):
     state, project = registration
     original = reference.template_details('repository-governance')['input']
     project['allowed_paths'] = original['allowed_paths']
     registrations.register(state, project, 0)
-    workflows.install_preset(state, 'repository-governance')
+    workflows.install_preset(state, preset)
     root = workflows.get(state, identity, '1.0.0')['definition']
     manifest = workflows.prepare_manifest(state.root, identity, root['version'],
         {'schema_version': 1, 'permissions': root['permissions'], 'limits': root['limits']}, tmp_path / 'manifest')
@@ -118,6 +124,43 @@ def test_bundled_review_can_be_selected_without_its_delivery_parent(registration
         preview = tasks.preview(state, 'demo', definition, 1)
         selected = execution_input(preview['files']['task.spec.json'])
         selected.require_submission()
+
+
+@pytest.mark.parametrize('domain', ['pretraining', 'posttraining'])
+def test_domain_reviews_keep_general_identities_and_frozen_ancestor_material(tmp_path, domain):
+    state = State(tmp_path / 'state')
+    original = workflows.install_preset(state, 'repository-governance')
+    general = workflows.get(state, 'ergora-delivery-review', '1.0.0')
+    installed = workflows.install_preset(state, domain + '-review')
+    assert workflows.install_preset(state, domain + '-review') == installed
+    assert workflows.install_preset(state, 'repository-governance') == original
+    assert workflows.get(state, 'ergora-delivery-review', '1.0.0') == general
+    definition = workflows.get(state, installed['root']['id'], installed['root']['version'])['definition']
+    manifest = workflows.prepare_manifest(state.root, definition['id'], definition['version'],
+        {'schema_version': 1, 'permissions': definition['permissions'], 'limits': definition['limits']}, tmp_path / 'manifest')
+    graph = workflows.inspect_manifest(Path(manifest['path']), material=True)['composition']
+    dag = ReviewDAG(graph, 'root')
+    assert {item['ref']['id'] for item in dag.members.values()} == {
+        'ergora-structure-reviewer', 'ergora-correctness-reviewer', 'ergora-test-value-reviewer',
+        'ergora-' + domain + '-reviewer'}
+    assert all(leaf['review_requirement'] == 'required' for leaf in dag.members.values())
+    assert all(not leaf['permissions']['write'] and not leaf['permissions']['shell']
+               and not leaf['permissions']['network'] for leaf in dag.members.values())
+    shutil.rmtree(state.root / 'agent-definitions')
+    shutil.rmtree(state.root / 'workflow-definitions')
+    assert workflows.inspect_manifest(Path(manifest['path']), material=True)['composition'] == graph
+    nodes = {item['path']: item for item in graph['instances']}
+    for path, leaf in dag.members.items():
+        ancestors, current = set(), leaf
+        while current is not None:
+            ancestors.add(current['path'])
+            current = nodes[current['parent']] if current['parent'] is not None else None
+        assert {source['instance'] for resource in leaf['resources'] for source in resource['sources']} == ancestors
+        prepared = workflows.prepare_input_from_manifest(Path(manifest['path']), path,
+            b'Review the complete supplied packet; scope is source and CPU arithmetic only.',
+            tmp_path / path.replace('/', '-'), 100000)
+        actual = workflows.inspect_input(Path(prepared['path']), material=True)
+        assert all(resource['text'] in actual['prompt'] for resource in leaf['resources'])
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Formal workspace calls require Linux/WSL2')

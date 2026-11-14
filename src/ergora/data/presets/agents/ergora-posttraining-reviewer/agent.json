@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "id": "ergora-posttraining-reviewer",
+  "version": "1.0.0",
+  "description": "Readonly posttraining numerical, data, state and recovery review.",
+  "roles": [
+    "reviewer"
+  ],
+  "specialties": [
+    "posttraining",
+    "sample-feedback-semantics",
+    "policy-version-lifecycle"
+  ],
+  "backend": {
+    "tool": "claude-code"
+  },
+  "resources": [
+    {
+      "id": "ergora-posttraining-reviewer-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "c7afd84995f997936beecaa0e6b04ff7b33ab0be0ba489819e187badfdfaac3d"
+    },
+    {
+      "id": "ergora-posttraining-reviewer-skill",
+      "kind": "skill",
+      "path": "skills/ergora-posttraining-review",
+      "digest": "d2f29cc38fe54d63a9e95bcdc31e0a6a566e7f8839c7e8cb888113b5c1805f0f"
+    }
+  ]
+}

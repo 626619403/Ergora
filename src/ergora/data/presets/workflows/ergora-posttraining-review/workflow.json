@@ -1,0 +1,78 @@
+{
+  "schema_version": 2,
+  "id": "ergora-posttraining-review",
+  "version": "1.0.0",
+  "description": "General three-way engineering plus posttraining specialist review, explicit all-join.",
+  "resources": [
+    {
+      "id": "ergora-posttraining-review-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "21843f9e54994ca84e0152b61344c47fee5f0ae4862d1b95318759583c33871f"
+    }
+  ],
+  "permissions": {
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "write": [],
+    "shell": false,
+    "network": []
+  },
+  "limits": {
+    "depth": 8,
+    "instances": 128,
+    "concurrency": 4,
+    "material_bytes": 262144
+  },
+  "inputs": [
+    "task"
+  ],
+  "outputs": {
+    "result": {
+      "node": "gather",
+      "output": "result"
+    }
+  },
+  "nodes": [
+    {
+      "id": "general",
+      "ref": {
+        "kind": "workflow",
+        "id": "ergora-delivery-review",
+        "version": "1.0.0",
+        "digest": "a85e76dcd25bfddd24684b6e23ad3668097b44df0f9a7d745e387e5a841c471c"
+      },
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      }
+    },
+    {
+      "id": "domain",
+      "ref": {
+        "kind": "workflow",
+        "id": "ergora-posttraining-domain-review",
+        "version": "1.0.0",
+        "digest": "fa0d5b0a7f8b603562605b28eca7d8bf70276cd369f153f3e100109e2219e6fa"
+      },
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      }
+    },
+    {
+      "id": "gather",
+      "join": "all",
+      "depends_on": [
+        "general",
+        "domain"
+      ]
+    }
+  ]
+}

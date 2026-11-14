@@ -1,0 +1,73 @@
+{
+  "schema_version": 2,
+  "id": "ergora-pretraining-domain-review",
+  "version": "1.0.0",
+  "description": "Independent readonly pretraining specialist review.",
+  "resources": [
+    {
+      "id": "ergora-pretraining-domain-review-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "43ed433e54f054fd64566b433cc4084d780a781f5f9e68df7c794ccfd4116c36"
+    }
+  ],
+  "permissions": {
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "write": [],
+    "shell": false,
+    "network": []
+  },
+  "limits": {
+    "depth": 8,
+    "instances": 128,
+    "concurrency": 4,
+    "material_bytes": 262144
+  },
+  "inputs": [
+    "task"
+  ],
+  "outputs": {
+    "result": {
+      "node": "gather",
+      "output": "result"
+    }
+  },
+  "nodes": [
+    {
+      "id": "review",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-pretraining-reviewer",
+        "version": "1.0.0",
+        "digest": "2cfe9caead2d10ce603a587afd32ba4662f5eb3df78fc3abfd2b8ce75c0cef87"
+      },
+      "role": "reviewer",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      },
+      "review_requirement": "required"
+    },
+    {
+      "id": "gather",
+      "join": "all",
+      "depends_on": [
+        "review"
+      ]
+    }
+  ]
+}

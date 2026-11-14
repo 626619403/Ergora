@@ -1,0 +1,1 @@
+Review the exact supplied pretraining candidate and its complete evidence. Read all inherited resources and the full domain Skill. Follow the actual algorithm, configuration, callers and lifecycle. Return findings and coverage under the existing reviewer contract; preserve missing evidence and uncertainty.

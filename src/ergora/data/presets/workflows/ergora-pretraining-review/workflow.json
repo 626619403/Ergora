@@ -1,0 +1,78 @@
+{
+  "schema_version": 2,
+  "id": "ergora-pretraining-review",
+  "version": "1.0.0",
+  "description": "General three-way engineering plus pretraining specialist review, explicit all-join.",
+  "resources": [
+    {
+      "id": "ergora-pretraining-review-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "262ce2c6e69ef9794c4446e16bc8730eedd04c0b4160a8e1869dccf4d4c3a99c"
+    }
+  ],
+  "permissions": {
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "write": [],
+    "shell": false,
+    "network": []
+  },
+  "limits": {
+    "depth": 8,
+    "instances": 128,
+    "concurrency": 4,
+    "material_bytes": 262144
+  },
+  "inputs": [
+    "task"
+  ],
+  "outputs": {
+    "result": {
+      "node": "gather",
+      "output": "result"
+    }
+  },
+  "nodes": [
+    {
+      "id": "general",
+      "ref": {
+        "kind": "workflow",
+        "id": "ergora-delivery-review",
+        "version": "1.0.0",
+        "digest": "a85e76dcd25bfddd24684b6e23ad3668097b44df0f9a7d745e387e5a841c471c"
+      },
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      }
+    },
+    {
+      "id": "domain",
+      "ref": {
+        "kind": "workflow",
+        "id": "ergora-pretraining-domain-review",
+        "version": "1.0.0",
+        "digest": "eb5a02d895debe3bf79c30dd4e399687a5266fc82270b16ecd7532362c01aa95"
+      },
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      }
+    },
+    {
+      "id": "gather",
+      "join": "all",
+      "depends_on": [
+        "general",
+        "domain"
+      ]
+    }
+  ]
+}
