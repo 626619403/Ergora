@@ -110,6 +110,18 @@ def submission(state: State, project_id: str, experiment_id: str) -> dict:
     return reference.training_submission(project, state.root, 'status', {'experiment_id': experiment_id}, timeout=20)
 
 
+def check_start(state: State, project_id: str, experiment_id: str, manifest_sha256: str) -> dict:
+    """Observe native new-start readiness without reserving or sending anything."""
+    if not isinstance(manifest_sha256, str) or re.fullmatch('[a-f0-9]{64}', manifest_sha256) is None:
+        raise ValueError('Training check requires the exact manifest SHA-256')
+    project = _project(state, project_id)
+    observed = reference.training_submission(project, state.root, 'check',
+        {'experiment_id': experiment_id, 'manifest_sha256': manifest_sha256}, timeout=20)
+    if state.project(project_id)['revision'] != project['revision']:
+        raise ValueError('Project changed during training start check; read the selected experiment again')
+    return observed
+
+
 def start(state: State, project_id: str, experiment_id: str, expected_revision: int,
           manifest_sha256: str, *, timeout: int = 20) -> dict:
     """Confirm one prepared native manifest and checkpoint its original start."""

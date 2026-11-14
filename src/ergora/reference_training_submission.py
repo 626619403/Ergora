@@ -231,6 +231,18 @@ class _Submission(_TrainingProject):
         operation = self.payload['operation']
         if operation == 'status':
             return self.status(self.load())
+        if operation == 'check':
+            intent = self.load()
+            observed = self.preflight() if intent is None else None
+            original = observed if intent is None else intent['observation']
+            digest = original['experiment']['binding']['manifest_sha']
+            if self.payload['manifest_sha256'] != digest:
+                raise ValueError('Confirm the exact original manifest SHA before training start check')
+            return {'project': self.project['id'], 'project_revision': self.project['revision'],
+                    'experiment_id': self.ident, 'manifest_sha256': digest,
+                    'ready_for_new_start': intent is None, 'read_only': True, 'execution_authorized': False,
+                    'runtime_status': 'not_queried', 'observation': observed,
+                    'submission': self.status(intent) if intent is not None else None}
         if operation not in ('prepare', 'prepare-resume', 'dispatch', 'resume'):
             raise ValueError('Unsupported training submission operation')
         lock = self.path('.lock')

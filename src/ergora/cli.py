@@ -616,11 +616,13 @@ def parser() -> argparse.ArgumentParser:
     live.add_argument("experiment_id")
     live.add_argument("--run-id", help="Pin the query to an existing native run ID")
     live.add_argument("--timeout", type=int, default=20)
-    for name in ("submission", "start", "resume-start"):
+    for name in ("submission", "check-start", "start", "resume-start"):
         operation = operations.add_parser(name)
         operation.add_argument("project")
         operation.add_argument("experiment_id")
-        if name != "submission":
+        if name == "check-start":
+            operation.add_argument("--manifest-sha256", required=True)
+        elif name != "submission":
             operation.add_argument("--revision", type=int, required=True)
             operation.add_argument("--manifest-sha256" if name == "start" else "--intent-sha256", required=True)
             operation.add_argument("--timeout", type=int, default=20)
@@ -1191,6 +1193,8 @@ def main(argv: list[str] | None = None) -> int:
                                            evidence_sha256=args.evidence_sha256, offset=args.offset, limit=args.limit)
             elif args.operation == "submission":
                 output = training.submission(State(args.home), args.project, args.experiment_id)
+            elif args.operation == "check-start":
+                output = training.check_start(State(args.home), args.project, args.experiment_id, args.manifest_sha256)
             elif args.operation == "start":
                 output = training.start(State(args.home), args.project, args.experiment_id, args.revision,
                                         args.manifest_sha256, timeout=args.timeout)
@@ -1220,6 +1224,8 @@ def main(argv: list[str] | None = None) -> int:
                 output = training.inspect(State(args.home), args.project, getattr(args, "experiment_id", None),
                                           limit=getattr(args, "limit", 50), after=getattr(args, "after", None))
             print(json.dumps(output, ensure_ascii=False, indent=2))
+            if args.operation == "check-start":
+                return 0 if output["ready_for_new_start"] else 1
             if args.operation in ("start", "resume-start"):
                 return 0 if output["status"] == "submitted" else 1
             if args.operation in ("approve", "resume-approve"):

@@ -179,11 +179,14 @@ ergora training status my-project EXPERIMENT_ID --run-id ORIGINAL_RUN_ID
 
 ```bash
 ergora training submission my-project EXPERIMENT_ID
+ergora training check-start my-project EXPERIMENT_ID --manifest-sha256 EXACT_MANIFEST_SHA256
 ergora training start my-project EXPERIMENT_ID --revision REVISION --manifest-sha256 EXACT_MANIFEST_SHA256
 ergora training submission my-project EXPERIMENT_ID
 # 已有意图：使用上一步返回的完整 intent_sha256
 ergora training resume-start my-project EXPERIMENT_ID --revision REVISION --intent-sha256 ORIGINAL_INTENT_SHA256
 ```
+
+`check-start`只读复用原Linux／WSL2启动preflight，核当前baseline、runner／时限、Git根与完整提交、比较器、原job／fence等；无需Temporal SDK／服务或密钥，不写提交意图，也不启动训练。尚无原意图且本地检查通过时`ready_for_new_start=true`／exit0；已有prepared／unknown／submitted／rejected意图时false／exit1，`submission`保留其原状态、`observation`为null，不重新准入或重发。错SHA或原准入失败沿错误exit2。该结果不是预留或执行授权，也不证明服务上没有旧run；后续实际start仍按原身份查询服务并重做原检查。
 
 控制台在实验详情只读取本地提交记录。首次提交需粘贴完整manifest SHA，继续／对账需粘贴原intent SHA；项目revision变化时重新读取。HTTP沿相同应用入口：`GET .../training/{experiment}/submission`、`POST .../start`（`revision / manifest_sha256 / timeout`）及`POST .../resume-start`（`revision / intent_sha256 / timeout`），实时操作timeout为1–60秒。默认导航没有start、自动轮询或自动重试。
 

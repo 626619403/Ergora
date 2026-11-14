@@ -4,7 +4,9 @@
 
 ## 当前检查点
 
-**Q2.3b2／b3本地验收闭合：[完整来源与多分支报告](plans/2026-11-15-complete-review-reports.md)／[交付](delivery/2026-11-15-complete-review-reports.md)。** 本地基线96b4bb5；原安装／15CLI／四原叶及四P2原红保持。r5复用原结构容量、643三方／283、安装207通过／180.75秒、四原run只读CLI及自身46.161秒approve已验；原fresh-context最终两轴approve／开放0／0，R1–R4关闭。固定发布／自己的CI及原终核另门禁。无新调度，Kernel专家保留在v3路径。
+**活动片Q4.2a1：[只读训练启动检查](plans/2026-11-15-training-start-admission.md)／[交付](delivery/2026-11-15-training-start-admission.md)。** 固定基线5a3e3b2；已复用原preflight／load／status实现应用／CLI，未派发任务。源码首轮1通过／1测试注入SQL列误用失败保持，修正测试后两项通过／1.63秒；r2 core／SDK两安装643三方逐字／283保持，无SDK实际三CLI／42文件和DB保持、原四suite安装54通过／210.12秒、自身43.254秒approve已过。新独立本地两轴approve／开放0／0，原件／安装直接核同，另验八已有状态CLI；普通发布／自己的CI待。总体[有界循环计划](plans/2026-11-15-bounded-training-cycles.md)初版及修订均取得独立计划两轴approve，容量／存储、fence、executor全生命周期及统计意见已落实为验收义务；不转授实现。Kernel专家保留在v3路径。
+
+Q2.3b2／b3[完整报告](plans/2026-11-15-complete-review-reports.md)已精确交付`5a3e3b2a96c92632a65e60e87bcfc8713eff41e9`，19blob／完整远端Ref相同。r5的643三方／283、安装207项、四原run只读CLI及自身46.161秒approve、新独立本地两轴approve／开放0／0均已验，R1–R4及原失败保持。自己的CI43642459815／attempt1八job／30必要步骤全成功，原reviewer已核固定19blob／643／283、完整远端及自己的CI终态，两轴approve／开放0／0；精确交付闭合。[交付](delivery/2026-11-15-complete-review-reports.md)。
 
 Q2.3b1[精确原run读取](plans/2026-11-15-composition-run-inspection.md)／[交付](delivery/2026-11-15-composition-run-inspection.md)已普通发布`96b4bb5454714a73e1d5f60b880a479c195e5269`，13blob／完整远端Ref相同，原R1／R2和三条红测试保持；修后源码34／r2安装69、643三方／283及八实际CLI、自身45.809秒approve、同reviewer本地／固定提交两轴approve／开放0／0均已核。自己的CI43638408686八job／30必要步骤全成功，原reviewer已终核两轴approve／开放0／0，精确交付闭合；不转授后继产品。
 
@@ -43,7 +45,7 @@ W1仅验源码提案与交接：共享仓库HEAD／213条status字节保持，�
 
 ## 下一可执行项
 
-**新增优先工作Q**：[领域审查／循环优化／质量计划](plans/2026-11-15-domain-review-optimization-quality.md)的研究、Q1.1／Q1.2、Q2.1／Q2.2、Q2.3a／b1、Q3.1–Q3.3、Q4.1及Q5.1已闭合。当前收尾Q2.3b2／b3完整报告的审查修正；之后接Q4.2有界循环和Q5.2按证据重构及严格发布验收。Kernel评估保留在路径。下列旧节点保留原完成状态和外部条件，不因新计划重做已验交付。
+**新增优先工作Q**：[领域审查／循环优化／质量计划](plans/2026-11-15-domain-review-optimization-quality.md)的研究、Q1.1／Q1.2、Q2.1／Q2.2、Q2.3a／b1／b2／b3、Q3.1–Q3.3、Q4.1及Q5.1已闭合。当前推进Q4.2a1只读准入，之后有限选择／提交边界停止／Temporal循环和Q5.2按证据重构及严格发布验收。Kernel评估保留在路径。下列旧节点保留原完成状态和外部条件，不因新计划重做已验交付。
 
 1. **F8-H3b实际续接**：精确交付完成，自己的CI与原独立两轴终核通过，详见[计划](plans/2026-11-14-harness-session-continuation.md)／[交付](delivery/2026-11-14-harness-session-continuation.md)。r3包561／两RECORD／283、安装133通过／12跳过；实际SDK四场景与真实模型两调用成功、自身approve。原两个P2及失败保留并已修复。冻结原项目／资料／权限／后端／schema，原home／cwd／session不分叉；unknown不自动重发，正式恢复归原owner。
 2. **F9实验导航**：F9a／b1／b2／[b3取消与停止观察](delivery/2026-11-14-training-cancellation.md)已精确交付。F9b4a基线初始化已普通发布、自有CI及原结构轴终核通过；[F9b4b runner登记](plans/2026-11-14-training-runner.md)完成最终包、安装40项／实际CLI与页面／SDK-free基线／原件及收尾／自身模板、新独立两轴最终本地通过0／0，已普通发布并核完整Ref，自己的CI43523861953八job／30步骤及原结构轴终核通过。F9b4c C1最终包／15项／实际CLI HTTP、新独立两轴、普通发布和自己的CI及原结构轴终核均通过；C2页面已完成最终本地、新独立两轴、固定发布和自己的CI及原结构轴终核；F9c C1换行修正与C2已精确交付；[C3页面](plans/2026-11-14-training-evidence-console.md)已完成本地与独立终核／发布及自己的CI，F9d完整旅程另验；复用原训练owner，不把CPU合同当真实GPU验收。

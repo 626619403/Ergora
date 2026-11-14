@@ -136,3 +136,51 @@ r4自身原模板`facb6a826a6c4f37a1a3efb2776daa25`的24文件429,227B／3资源
 报告入口继续由原来源绑定owner核明确source kind／SHA、完整manifest／digest、全部声明叶及实例／run映射；原record／input／result身份和可信reviewer schema仍是完成前提。错误原件继续逐叶不完整，已核完整反对不能被覆盖率或其他叶批准抹去。CLI保持薄读取／渲染消费者，没有当前来源再认证、redispatch、调度、正式批准或项目产品编辑。局部容量复用和原fixture的producer／consumer边界回归与此次真实故障对应，未见需要另建框架、模块或CI job的维护性证据。
 
 本次仅追加本报告；未安装、实际调用模型／训练、重跑全量测试、commit／push或写外部平台。独立深结果复现仅在自动清理的隔离副本使用原进程接缝替身，原保存件未改。12份文档／168本地链接的原检查记录已核；本追加再检查旧前缀、链接和空白。原四叶是CPU算术来源的advisory Codex审查，不证明训练／GPU／质量／性能、异后端、正式串行图／all-join或完整B3。前片8job／30步骤CI只属于其原终核，本reviewer未独立认证该CI；本片自己的固定提交、发布／CI和原终核仍须后续分别完成。
+
+## 固定发布与本片自己的CI终核
+
+**固定提交`5a3e3b2a96c92632a65e60e87bcfc8713eff41e9`需求正确性approve；结构与维护approve，需求开放0／结构开放0。本片固定发布、自己的适用CI与原独立终核已闭合。** R1–R4全部保持关闭。本段仅追加原报告；追加前27,365B前缀SHA256仍为`264d43cc9586a4904bf90cd66998c110b5ad3b187d2341f341d774929a39ffa2`，各更早前缀也保持原值。
+
+### 固定Git内容、包与远端身份
+
+独立从Git对象读取提交、父对象、完整tree与19份blob，未用当前工作树替代：父提交恰为原基线`96b4bb5454714a73e1d5f60b880a479c195e5269`，tree为`bf32214c148ab72554bc5ebbd4a4f8b146e6fcdd`。相对该父对象恰19路径，与冻结r5及`publication-local-r5.json`路径集合相同；逐份实算blob对象ID、完整字节长度与SHA256，均与原发布清单一致。清单原件SHA为`263923a1750cd40b10967d54bd5078c840e02555659a469262583dc3fd45f9cf`。提交内本报告为27,365B、blob `fdbb5bcbb41fb0e308e516cf5932e7dc339a1a64`，本终核附记不倒算进该blob。
+
+四产品模块、三原测试和两本用户手册与冻结r5逐字相同；另读plan／delivery／PLAN及上层source-review-reports四状态文档差异，均为R1–R4关闭、两轴approve／开放0／0及发布／CI尚待的记账，没有扩大行为范围。Q4.2两计划／交付新文件不在该提交tree内。等待期间开展的Q4.2a1工作树改变也不属于此固定对象认证。
+
+从该固定提交直接取643份产品完整字节，与原r5wheel和真实非editable安装再次逐份比较，文件集合、长度与SHA均一致，无缺件或额外包文件；Git中的`src/ergora/AGENTS.md`是独立源码指令文件，不计为打包产品。283参考文件同时与原基线逐字一致。r5wheel SHA仍为`feef8ab41d0547a4c1eb7410b8bb1129829ba910b1282468410c494e6f2423cf`。没有为此重新安装或重跑模型／测试。对固定提交12份Markdown另核168本地链接及其中8个片段、尾空白，均无错误。
+
+已读普通push回执，并在CI前及终态后分别独立执行只读`git ls-remote --refs origin refs/heads/refactor/architecture-foundations`；两次exit0、stderr空，完整输出均为该40位SHA及完整分支Ref。终态观察时间为2026-11-14 21:41:35 UTC；stdout 86B，SHA为`e0e66b61f38732b677a510bd259da1d1128c9b3c7bb25aa7f11ea9547ccc6eb5`。没有借本地remote-tracking ref或推送进行中的状态预设成功。
+
+### 本SHA自己的Portability原件
+
+通过匿名只读GET按完整head SHA发现且核同本片自己的[Portability run 43642459815](https://github.com/626619403/Ergora/actions/runs/43642459815)，attempt 1，event为push，workflow为`.github/workflows/portability.yml`，head branch为`refactor/architecture-foundations`。发现、run API、attempt jobs API、逐轮完整job集合及最终官方run／job页始终对应`5a3e3b2a96c92632a65e60e87bcfc8713eff41e9`。这是本提交自己的运行，没有采用前片`96b4bb5`的CI结果。
+
+从在途观察到终态，job集合始终恰8项、无分页遗漏；最终API和8个官方job页面逐项相符：
+
+|Job|精确job ID|必要步骤|终态|
+|---|---|---|---|
+|plan|132592797515|1|success|
+|Ubuntu／Python 3.11／group 0|132592827199|4|success|
+|Ubuntu／Python 3.11／group 1|132592827205|4|success|
+|Ubuntu／Python 3.11／group 2|132592827222|4|success|
+|Ubuntu／Python 3.11／group 3|132592827194|4|success|
+|Ubuntu／Python 3.11／group 4|132592827179|4|success|
+|Ubuntu／Python 3.11／group 5|132592827195|4|success|
+|Windows／Python 3.12／group all|132592827192|5|success|
+
+必要步骤共30：plan的显式分组读取1项，7个native job各自Python设置／wheel构建安装／打包参考身份／原应用回归28项，加Windows PowerShell 5.1安装升级1项。每项API的status为completed、conclusion为success；官方job页对应名称／步骤编号／success一致、起止时间非空，log URL逐项指向同一完整commit及对应job ID。30项没有以skip或未开始冒充成功。Windows原应用回归与PowerShell安装升级均实际完成，整个Windows job于21:39:58 UTC成功；run API同刻更新为completed／success。没有从中间7／8通过提前推出终核。
+
+所有读取保存于私有`.ergora/checks/complete-review-reports/ci/`。共34次匿名GET，单次30秒／4,000,000B上限，完整原响应和HTTP receipt均保留；实算长度／SHA与receipt逐项一致，均HTTP 200。终核汇总中的95份原件／脚本／校验记录也逐份重算核同。关键原件身份为：
+
+|原件|完整字节数|SHA256|
+|---|---|---|
+|`reviewer-fixed-contract.json`|6,043|`52034e237207de3eead306751fd7d09a1a4723993256b6a5334da8c9d370f0ad`|
+|`reviewer-fixed-docs.json`|36,488|`84d6906813286f67c8b1fd4159f576ebfc8be7a19ec8eb0310028ca28e8cfafb`|
+|`reviewer-run-terminal-r1.body`|11,946|`1249fc10e8f7bc1712000c4fcf852e6ee52cbed5119be5b19229a3eb60fe961b`|
+|`reviewer-jobs-terminal-r1.body`|21,121|`fe47c5a59be0a327f8d6d8ce6e3d00792315421a638f82cd1998dbfeee1523a6`|
+|`reviewer-remote-terminal-r1.json`|564|`9cc36e2be0c64a854c76cfbff726ef0d3f2778f5c14b2923533ae758a991c32c`|
+|`reviewer-ci-terminal-r1.json`|26,691|`2384e6a690682f845656f50e3438676e87155e3fc7b704e436d649f4eb45e378`|
+
+最后一项包含8个job、全部30必要步骤的原名称／编号／起止时间／精确log URL及95文件完整摘要。这里的CI结论来自本SHA官方终态和必要步骤核验，没有另行宣称CI测试数量或读取未取得的日志正文。
+
+此次持久化仅原报告追加及本片私有CI原响应／校验记录；本reviewer未修改产品、commit／push、重新安装、运行模型／训练、重复全量测试或写平台。现有advisory来源审查合同和本次Linux／Windows打包、参考身份、回归／安装CI范围内两轴均approve、开放0／0；训练／GPU／质量／性能、异后端、正式串行图／all-join和完整B3／Forge仍不在本终核范围。后继Q4.2a1及其他产品改变须有自己的固定范围和证据，不继承本片认证。

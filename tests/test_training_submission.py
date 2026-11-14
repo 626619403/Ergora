@@ -62,6 +62,54 @@ def test_local_submission_inspection_does_not_require_the_optional_sdk(prepared,
     assert result['status'] == 'not_recorded' and result['runtime_status'] == 'not_queried'
 
 
+@pytest.mark.skipif(sys.platform != 'linux', reason='Native start preflight requires Linux/WSL2 Git paths')
+def test_start_check_is_sdk_free_and_cli_preserves_original_sources(prepared, monkeypatch, capsys):
+    from ergora.cli import main
+
+    state, definition, runtime, _, _, digest = prepared
+    original = reference.importlib.util.find_spec
+    monkeypatch.setattr(reference.importlib.util, 'find_spec', lambda name: None if name == 'temporalio' else original(name))
+    config = Path(definition['execution']['config_directory'])
+    before = {path: path.read_bytes() for root in (runtime, config) for path in root.rglob('*') if path.is_file()}
+    with state.connect() as db:
+        database = list(db.iterdump())
+    checked = training.check_start(state, 'demo', 'alpha', digest)
+    assert checked['ready_for_new_start'] and checked['read_only'] and not checked['execution_authorized']
+    assert checked['runtime_status'] == 'not_queried' and checked['submission'] is None
+    assert checked['observation']['experiment']['binding']['manifest_sha'] == digest
+    assert main(['--home', str(state.root), 'training', 'check-start', 'demo', 'alpha', '--manifest-sha256', digest]) == 0
+    assert json.loads(capsys.readouterr().out) == checked
+    with pytest.raises(ValueError, match='exact original manifest SHA'):
+        training.check_start(state, 'demo', 'alpha', '0' * 64)
+    assert {path: path.read_bytes() for root in (runtime, config) for path in root.rglob('*') if path.is_file()} == before
+    with state.connect() as db:
+        assert list(db.iterdump()) == database
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Native start preflight requires Linux/WSL2 Git paths')
+def test_start_check_uses_original_preflight_and_rejects_project_drift(prepared, monkeypatch):
+    state, definition, _, _, write, digest = prepared
+    original = reference.training_submission
+
+    def changed(*args, **kwargs):
+        result = original(*args, **kwargs)
+        with state.connect() as db:
+            project = json.loads(db.execute("SELECT document FROM projects WHERE id='demo'").fetchone()[0])
+            project['revision'] += 1
+            db.execute("UPDATE projects SET document=? WHERE id='demo'", (json.dumps(project),))
+        return result
+
+    monkeypatch.setattr(reference, 'training_submission', changed)
+    with pytest.raises(ValueError, match='Project changed during'):
+        training.check_start(state, 'demo', 'alpha', digest)
+    monkeypatch.setattr(reference, 'training_submission', original)
+    runner = Path(definition['execution']['config_directory']) / 'training-runners/trusted.json'
+    value = json.loads(runner.read_bytes());value['timeout_seconds'] = 0
+    write(runner, value)
+    with pytest.raises(ValueError, match='runner command or execution walltime'):
+        training.check_start(state, 'demo', 'alpha', digest)
+
+
 def test_submission_read_racing_with_conflict_publication_keeps_valid_checkpoints(tmp_path):
     from ergora.reference_training_submission import _Submission
 
@@ -115,6 +163,8 @@ def test_original_client_policies_and_repeated_requests_send_once(prepared, serv
     assert training.start(state, 'demo', 'alpha', revision, digest) == result
     assert training.resume_start(state, 'demo', 'alpha', revision, result['intent_sha256']) == result
     assert training.submission(state, 'demo', 'alpha') == result
+    checked = training.check_start(state, 'demo', 'alpha', digest)
+    assert not checked['ready_for_new_start'] and checked['submission'] == result and checked['observation'] is None
     saved = json.loads(record.read_text())
     assert saved['starts'] == 1 and [c[0] for c in saved['calls']] == ['describe', 'start']
     assert all(p.read_bytes() == value for p, value in before.items())
@@ -153,6 +203,8 @@ def test_lost_reply_keeps_unknown_then_recovers_only_the_original_run(prepared, 
         training.start(state, 'demo', 'alpha', revision, digest, timeout=1)
     unknown = training.submission(state, 'demo', 'alpha')
     assert unknown['status'] == 'unknown' and unknown['attempt_saved'] and unknown['run_id'] is None
+    checked = training.check_start(state, 'demo', 'alpha', digest)
+    assert not checked['ready_for_new_start'] and checked['submission'] == unknown
     assert training.start(state, 'demo', 'alpha', revision, digest) == unknown
     select('not-found')
     output = io.StringIO()
@@ -211,6 +263,8 @@ def test_other_actor_start_is_rejected_without_adoption(prepared, service, scena
         training.start(state, 'demo', 'alpha', revision, digest)
     result = training.submission(state, 'demo', 'alpha')
     assert result['status'] == 'rejected' and result['run_id'] is None
+    checked = training.check_start(state, 'demo', 'alpha', digest)
+    assert not checked['ready_for_new_start'] and checked['submission'] == result
     assert training.start(state, 'demo', 'alpha', revision, digest) == result
     assert training.resume_start(state, 'demo', 'alpha', revision, result['intent_sha256']) == result
     output = io.StringIO()
@@ -235,6 +289,8 @@ def test_stale_confirmation_and_changed_sources_cannot_dispatch(prepared, servic
         training.start(state, 'demo', 'alpha', revision, digest)
     saved = training.submission(state, 'demo', 'alpha')
     assert saved['status'] == 'prepared' and not saved['attempt_saved']
+    checked = training.check_start(state, 'demo', 'alpha', digest)
+    assert not checked['ready_for_new_start'] and checked['submission'] == saved
     runner = Path(definition['execution']['config_directory']) / 'training-runners/trusted.json'
     value = json.loads(runner.read_bytes());value['command'] += ['another-argument']
     write(runner, value)

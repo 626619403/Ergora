@@ -64,3 +64,9 @@ r5自身原结构模板run `a716f8f3095a43c09e607df8b521d8c5`，46.161秒、24�
 原fresh-context reviewer已核最终19路径／diff SHA `a3b4573187510015c33986a50879e40d0680ffc72955eb25360ccbbf37e62049`、11证据身份、全部643产品与r5wheel／安装及283参考、原测试XML／四CLI／152文件与四行记录，以及自身24份完整材料和原input／prompt／protocol／stdin／result。独立复现990层原producer及两种实际CLI均成功导出，原件和另三反对保持；同owner容量算法与原编辑计数／错误一致，其他JSON默认行为保持。
 
 最终[报告](2026-11-15-complete-review-reports-review.md)两轴approve，R1–R4关闭，开放0／0；原r1／r3／r4前缀保持。报告当时27,365B、SHA `264d43cc9586a4904bf90cd66998c110b5ad3b187d2341f341d774929a39ffa2`。本地验收闭合；后续只例行记账，固定提交／完整远端Ref、自己的适用CI与原独立补核另门禁，不借前片认证。Q4.2纯计划另行准备，不属于本片冻结19路径。
+
+## 固定发布与自己的CI
+
+已普通推送`5a3e3b2a96c92632a65e60e87bcfc8713eff41e9`，19个Git blob，完整远端Ref同一；未合main。原reviewer已独立核parent96b4、tree `bf32214c148ab72554bc5ebbd4a4f8b146e6fcdd`、固定19blob、643产品与r5wheel／安装及283参考。产品／测试／手册同最终冻结，状态文档仅结论记账，Q4.2两新文档明确未入本提交。自己的Portability CI `43642459815`／attempt1绑定本SHA，原reviewer跟踪终态／必要步骤；当前不称CI已通过，不认证后继Q4工作树。
+
+随后自己的CI终态与原独立终核均已闭合：八job／30必要步骤全部成功，包含Windows原回归及PowerShell5.1安装升级。原reviewer直接核官方API／八job页、34次只读GET和95原件，终态完整远端Ref仍同5a3e3b2；最终报告两轴approve／开放0／0，R1–R4保持关闭。报告追加后33,458B、SHA `47a9947686e19ea45d34e6445e613e4ab22bb2fd5c6e269807c08530e462f686`，原27,365B及更早前缀保持。`ci/reviewer-ci-terminal-r1.json`为26,691B、SHA `2384e6a690682f845656f50e3438676e87155e3fc7b704e436d649f4eb45e378`；实际范围见[原终核](2026-11-15-complete-review-reports-review.md#固定发布与本片自己的ci终核)。不将此终核转授Q4.2a1。
