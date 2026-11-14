@@ -15,6 +15,226 @@ from ergora.asset_trees import digest_tree
 from ergora.state import State
 
 
+@pytest.fixture
+def workflow_retrospective(tmp_path):
+    from ergora import handoff, projects
+    from test_handoff import evidence, text_evidence
+
+    repo = tmp_path / 'repo'
+    subprocess.run(['git', 'init', str(repo)], check=True, capture_output=True)
+    state = State(tmp_path / 'state')
+    projects.create(state, 'demo', repo)
+    agent = agent_definitions.import_bundle(state, EXAMPLES / 'agents/architecture-reviewer')
+    inner = workflows.import_bundle(state, write_bundle(tmp_path / 'inner',
+        definition('inner-review', [leaf('review', ref(agent, 'agent'))]), 'Complete child context.\r\n' * 100))
+    nodes = [child('first', ref(inner, 'workflow')), child('second', ref(inner, 'workflow')),
+             {'id': 'gather', 'join': 'all', 'depends_on': ['first', 'second']}]
+    source = write_bundle(tmp_path / 'target', definition('target-workflow', nodes), '完整保留限定。\r\n' * 300)
+    skill = source / 'skills/target-guide'
+    skill.mkdir(parents=True)
+    (skill / 'SKILL.md').write_bytes(b'---\nname: target-guide\ndescription: Preserve original qualifications\n---\nKeep unknowns visible.\n')
+    (skill / 'references/empty').mkdir(parents=True)
+    document = json.loads((source / 'workflow.json').read_bytes())
+    document['resources'].append({'id': 'target-guide', 'kind': 'skill', 'path': 'skills/target-guide', 'digest': digest_tree(skill)[0]})
+    (source / 'workflow.json').write_bytes(json.dumps(document).encode())
+    target = workflows.import_bundle(state, source)
+    target_manifest = workflows.prepare_manifest(state.root, document['id'], document['version'], grant(), tmp_path / 'target-manifest')
+    installed = workflows.install_preset(state, 'workflow-retrospective')
+    root = workflows.get(state, installed['root']['id'], installed['root']['version'])['definition']
+    author = workflows.prepare_manifest(state.root, root['id'], root['version'], grant(), tmp_path / 'author-manifest')
+    index, blobs = text_evidence(evidence.__wrapped__(), ['Original failure; cost unrecorded.\r\n'])
+    packet = tmp_path / 'evidence.zip'
+    collected = handoff.create(index, lambda artifact: blobs[artifact['sha256']], packet)
+    return state, packet, target, {
+        'packet_sha256': collected['sha256'], 'target_manifest': Path(target_manifest['path']),
+        'target_digest': target_manifest['digest'], 'next_version': '1.0.1',
+        'objective': 'Propose a source-supported root revision, preserving all existing gates.',
+        'manifest': Path(author['path']), 'instance': 'root/propose', 'destination': tmp_path / 'input',
+        'max_prompt_bytes': 500000}
+
+
+def workflow_proposal(input_path, result_path):
+    import base64
+
+    task = json.loads((input_path / 'task.txt').read_bytes())
+    artifact = task['evidence']['artifacts'][0]
+    document = deepcopy(task['baseline']['definition'])
+    document['version'] = task['baseline']['next_version']
+    document['description'] += '; retain uncertainty in source observations'
+    document['nodes'][1]['depends_on'].append(document['nodes'][0]['id'])
+    text = ('完整保留限定与失败；成本未知。\r\n' * 300).encode()
+    proposal = {'schema_version': 1, 'evidence_sha256': task['evidence']['sha256'], 'baseline_digest': task['baseline']['digest'],
+        'observations': [{'claim': 'The source records a failure.', 'uncertainty': 'No measured quality or performance benefit.',
+            'citations': [{'job_id': artifact['job_id'], 'name': artifact['artifact']['name'], 'sha256': artifact['artifact']['sha256']}]}],
+        'negative_results': ['Original failure retained.'], 'cost_and_uncertainty': 'Costs unrecorded; serialization may increase latency.',
+        'candidate': {'definition': document, 'resource_changes': {'schema_version': 1, 'operations': [
+            {'op': 'write', 'path': 'instructions.md', 'content_base64': base64.b64encode(text).decode(), 'executable_bits': 0}]},
+            'hypothesis': 'Explicit ordering and qualifications may improve interpretation.', 'applicability': 'This frozen workflow only.',
+            'evaluation_plan': 'Compare a fixed trusted workload and independent holdout; measure regressions and costs.'}}
+    result_path.write_bytes(json.dumps({'summary': 'Bounded workflow proposal.', 'artifacts': {'response': json.dumps(proposal)}}).encode())
+    return proposal, text
+
+
+def test_workflow_retrospective_complete_offline_revision_export_import_and_old_manifest(workflow_retrospective, tmp_path, capsys):
+    from ergora import cli, retrospectives
+
+    state, packet, target, options = workflow_retrospective
+    original = workflows.inspect_manifest(options['target_manifest'], material=True)
+    prepared = retrospectives.prepare_workflow(state, 'demo', packet, [{'job_id': 'job-1', 'name': 'record'}], **options)
+    task = json.loads((options['destination'] / 'task.txt').read_bytes())
+    for name, file in task['baseline']['files'].items():
+        assert file['text'].encode() == (options['target_manifest'] / name).read_bytes()
+    assert any(name.endswith('/skills/target-guide/references/empty') for name in task['baseline']['directories'])
+    result = tmp_path / 'result.json'
+    proposal, text = workflow_proposal(options['destination'], result)
+    sha = hashlib.sha256(result.read_bytes()).hexdigest()
+    shutil.rmtree(options['target_manifest'])
+    shutil.rmtree(tmp_path / 'target')
+    packet.unlink()
+    unused = tmp_path / 'unused-state'
+    assert cli.main(['--home', str(unused), 'retrospective', 'check-workflow', str(options['destination']), str(result),
+                     '--result-sha256', sha]) == 0
+    checked = json.loads(capsys.readouterr().out)
+    assert not unused.exists() and checked['input_digest'] == prepared['digest']
+    destination = tmp_path / 'candidate'
+    receipt = retrospectives.export_workflow(options['destination'], result, destination, result_sha256=sha,
+                                              candidate_digest=checked['candidate_digest'])
+    assert (destination / 'instructions.md').read_bytes() == text
+    assert (destination / 'skills/target-guide/references/empty').is_dir()
+    assert checked['revision_preview']['directory_changes']['removed'] == []
+    assert workflows.inspect_bundle(destination)['digest'] == receipt['candidate_digest']
+    assert workflows.get(state, target['definition']['id'], target['definition']['version'])['digest'] == target['digest']
+    imported = workflows.import_bundle(state, destination)
+    assert imported['digest'] == checked['candidate_digest']
+    new = workflows.prepare_manifest(state.root, target['definition']['id'], options['next_version'], grant(), tmp_path / 'new-manifest')
+    new_graph = workflows.inspect_manifest(Path(new['path']), material=True)['composition']
+    assert 'root/first' in next(item for item in new_graph['instances'] if item['path'] == 'root/second')['depends_on']
+    assert original['composition']['root']['digest'] == target['digest']
+    assert workflows.preview(state.root, target['definition']['id'], target['definition']['version'], grant()) == original['composition']
+    assert workflows.inspect_input(options['destination'])['digest'] == prepared['digest']
+    assert retrospectives.check_workflow(options['destination'], result) == checked
+    assert not checked['quality_evaluated'] and not receipt['adoption_authorized']
+    assert not list(tmp_path.glob('.retrospective-workflow-export-*'))
+
+
+@pytest.mark.parametrize('change,reason', [
+    ('authority', 'authority'), ('version', 'version'), ('child', 'every node'), ('dependency', 'dependency'),
+    ('resource', 'root resource declarations'), ('outside', 'declared root resources'),
+    ('cycle', 'cycle'), ('source', 'frozen source'), ('citation', 'absent'),
+])
+def test_workflow_retrospective_rejects_authority_or_gate_changes(workflow_retrospective, tmp_path, capsys, change, reason):
+    from ergora import cli, retrospectives
+
+    state, packet, target, options = workflow_retrospective
+    retrospectives.prepare_workflow(state, 'demo', packet, [{'job_id': 'job-1', 'name': 'record'}], **options)
+    result = tmp_path / 'result.json'
+    proposal, _ = workflow_proposal(options['destination'], result)
+    candidate = proposal['candidate']
+    document = candidate['definition']
+    if change == 'authority': document['permissions']['shell'] = True
+    elif change == 'version': document['version'] = '2.0.0'
+    elif change == 'child': document['nodes'][0]['ref']['digest'] = '0' * 64
+    elif change == 'dependency': document['nodes'][-1]['depends_on'].remove('first')
+    elif change == 'resource': document['resources'][0]['id'] = 'new-resource'
+    elif change == 'outside': candidate['resource_changes']['operations'][0]['path'] = 'undeclared.txt'
+    elif change == 'cycle': document['nodes'][0]['depends_on'].append('second')
+    elif change == 'source': proposal['baseline_digest'] = '0' * 64
+    elif change == 'citation': proposal['observations'][0]['citations'][0]['sha256'] = '0' * 64
+    result.write_bytes(json.dumps({'summary': 'Unsafe proposal.', 'artifacts': {'response': json.dumps(proposal)}}).encode())
+    unused = tmp_path / 'unused-state'
+    assert cli.main(['--home', str(unused), 'retrospective', 'check-workflow', str(options['destination']), str(result)]) == 2
+    captured = capsys.readouterr()
+    assert not captured.out and reason.casefold() in captured.err.casefold() and not unused.exists()
+    assert workflows.get(state, target['definition']['id'], target['definition']['version'])['digest'] == target['digest']
+
+
+def test_workflow_retrospective_null_explicit_selection_and_no_replace(workflow_retrospective, tmp_path):
+    from ergora import retrospectives
+
+    state, packet, target, options = workflow_retrospective
+    with pytest.raises(ValueError, match='manifest digest'):
+        retrospectives.prepare_workflow(state, 'demo', packet, [{'job_id': 'job-1', 'name': 'record'}],
+                                         **{**options, 'target_digest': '0' * 64})
+    assert not options['destination'].exists()
+    retrospectives.prepare_workflow(state, 'demo', packet, [{'job_id': 'job-1', 'name': 'record'}], **options)
+    result = tmp_path / 'result.json'
+    workflow_proposal(options['destination'], result)
+    checked = retrospectives.check_workflow(options['destination'], result)
+    for sha, digest, destination, reason in [
+        ('0' * 64, checked['candidate_digest'], tmp_path / 'absent', 'original bytes'),
+        (checked['result_sha256'], '0' * 64, tmp_path / 'absent', 'selected digest'),
+        (checked['result_sha256'], checked['candidate_digest'], options['destination'] / 'inside', 'frozen input'),
+        (checked['result_sha256'], checked['candidate_digest'], options['target_manifest'], 'new retrospective export'),
+    ]:
+        with pytest.raises(ValueError, match=reason):
+            retrospectives.export_workflow(options['destination'], result, destination, result_sha256=sha, candidate_digest=digest)
+    assert not (tmp_path / 'absent').exists()
+    outer = json.loads(result.read_bytes());proposal = json.loads(outer['artifacts']['response']);proposal['candidate'] = None
+    outer['artifacts']['response'] = json.dumps(proposal);result.write_bytes(json.dumps(outer).encode())
+    checked = retrospectives.check_workflow(options['destination'], result)
+    assert checked['candidate_digest'] is None
+    with pytest.raises(ValueError, match='no workflow candidate'):
+        retrospectives.export_workflow(options['destination'], result, tmp_path / 'absent',
+                                        result_sha256=checked['result_sha256'], candidate_digest='0' * 64)
+
+
+def test_workflow_retrospective_preserves_the_frozen_grant_and_complete_root_view(workflow_retrospective, tmp_path):
+    from ergora import retrospectives
+
+    state, packet, target, options = workflow_retrospective
+    original = workflows.inspect_manifest(options['target_manifest'], material=True)
+    strict = workflows.prepare_manifest(state.root, target['definition']['id'], target['definition']['version'],
+        grant(material_bytes=original['composition']['usage']['material_bytes']), tmp_path / 'strict-manifest')
+    options.update(target_manifest=Path(strict['path']), target_digest=strict['digest'])
+    retrospectives.prepare_workflow(state, 'demo', packet, [{'job_id': 'job-1', 'name': 'record'}], **options)
+    result = tmp_path / 'result.json'
+    workflow_proposal(options['destination'], result)
+    with pytest.raises(ValueError, match='material_bytes budget'):
+        retrospectives.check_workflow(options['destination'], result)
+    outer = json.loads(result.read_bytes());proposal = json.loads(outer['artifacts']['response']);proposal['candidate'] = None
+    outer['artifacts']['response'] = json.dumps(proposal);result.write_bytes(json.dumps(outer).encode())
+    assert retrospectives.check_workflow(options['destination'], result)['candidate_digest'] is None
+    task = json.loads((options['destination'] / 'task.txt').read_bytes())
+    task['baseline']['definition']['description'] = 'A view that differs from the complete frozen manifest.'
+    changed = workflows.prepare_input_from_manifest(options['manifest'], options['instance'], json.dumps(task).encode(),
+                                                     tmp_path / 'changed-input', options['max_prompt_bytes'])
+    with pytest.raises(ValueError, match='Frozen retrospective root'):
+        retrospectives.check_workflow(Path(changed['path']), result)
+
+
+@pytest.mark.parametrize('place', ['baseline', 'candidate'])
+@pytest.mark.parametrize('content', [b'ordinary\x00binary', b'\xff\x01binary'])
+def test_workflow_retrospective_rejects_binary_skill_support_files_at_its_own_boundary(workflow_retrospective, tmp_path, place, content):
+    import base64
+    from ergora import retrospectives
+
+    state, packet, target, options = workflow_retrospective
+    before = workflows.definitions(state)
+    changes = {'schema_version': 1, 'operations': [{'op': 'write', 'path': 'skills/target-guide/references/data.bin',
+        'content_base64': base64.b64encode(content).decode(), 'executable_bits': 0}]}
+    if place == 'baseline':
+        # The general-purpose library continues to support ordinary binary attachments.
+        document = deepcopy(target['definition']);document['version'] = '1.0.2'
+        preview = workflows.revise(state, document['id'], target['definition']['version'], target['digest'], document,
+            resource_changes=changes, preview_resources=True)
+        workflows.revise(state, document['id'], target['definition']['version'], target['digest'], preview['definition'],
+            resource_changes=changes, accepted_candidate=preview['candidate'], publish=True)
+        target_manifest = workflows.prepare_manifest(state.root, document['id'], document['version'], grant(), tmp_path / 'binary-manifest')
+        options.update(target_manifest=Path(target_manifest['path']), target_digest=target_manifest['digest'], next_version='1.0.3')
+        with pytest.raises(ValueError):
+            retrospectives.prepare_workflow(state, 'demo', packet, [{'job_id': 'job-1', 'name': 'record'}], **options)
+        assert not options['destination'].exists()
+    else:
+        retrospectives.prepare_workflow(state, 'demo', packet, [{'job_id': 'job-1', 'name': 'record'}], **options)
+        result = tmp_path / 'binary-result.json'
+        proposal, _ = workflow_proposal(options['destination'], result)
+        proposal['candidate']['resource_changes'] = changes
+        result.write_bytes(json.dumps({'summary': 'Binary proposal.', 'artifacts': {'response': json.dumps(proposal)}}).encode())
+        with pytest.raises(ValueError):
+            retrospectives.check_workflow(options['destination'], result)
+        assert workflows.definitions(state) == before
+
+
 EXAMPLES = Path(__file__).resolve().parents[1] / "examples"
 READ = {"read": ["workspace", "definitions"], "write": [], "shell": False, "network": []}
 LIMITS = {"depth": 8, "instances": 128, "concurrency": 4, "material_bytes": 262144}

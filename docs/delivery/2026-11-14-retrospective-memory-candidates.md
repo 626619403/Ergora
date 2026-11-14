@@ -17,3 +17,15 @@ r1实际CLI correct-save暴露正文身份丢失：原memory CLI通用换行读�
 新fresh-context最终本地补核已完成：需求／结构与成本均approve，开放0／0，R1闭合；594产品／两RECORD／283、188／6、259原引用和全部原件、CLI、真实模型及自身模板／收尾均直接核。原Codex作者141B非致命本地诊断stderr保持，run仍成功，不称stderr全空。PLAN多余尾空行已去除并获原reviewer静态终核。
 
 前片自己的CI终态因Windows20分钟总上限Cancelled，29／30必要步骤成功，installer未完成。按[具体CI预算计划](../plans/2026-11-14-windows-ci-budget.md)，保留原取消，新的独立CI差异审查与原前片终态核对后，将一行Windows30／Linux20配置与本片共同普通发布；新SHA自身全部必要CI仍须通过及原补核，不因前片29项通过而借验收。该调整不改本片产品／包，未重复模型或suite。
+
+已共同普通发布`0f01fdd9736fc456cf1cdcc8d77e64dac916e8a0`，30固定blob／完整远端Ref同一。记忆固定259／发布后263引用及CI预算固定23／发布后27分别保持；原固定发布补核和新SHA自己的全部必要CI待，不覆盖旧c4aa7ac取消历史。
+
+原记忆与CI预算reviewer已分别固定发布补核approve／开放0／0；新候选自己的CI43555532175在途，所有必要检查与原终核待，旧取消身份保持。
+
+## 固定差异样式检查的范围补正
+
+原reviewer固定发布补核发现两份新Agent instructions第1行各有一处行尾空格，完整`git diff --check c4aa7ac 0f01fdd`实际exit2。此前tracked-only检查未覆盖当时untracked的新文件，不能称完整30blob静态检查通过；原local-static-r1回执保留。它不影响行为，两轴仍approve／开放0／0。已发布Agent1.0.0及包／模型／引用身份保持；G1通过新的不可变patch版本清理两处空白，验升级后关闭。后续发布先暂存全部已审文件，再执行`git diff --cached --check`覆盖新增文件。补正原件单列full-fixed-diff-style-r1.json，不改固定259／发布后263列表。
+
+新SHA0f01fdd自己的CI43555532175已由官方最终run／八job原HTML记录为Success：30必要步骤全部成功，包含完整Windows应用、PowerShell5.1安装升级与上传；另列68条CI原引用，不改原固定／发布后引用。原reviewer终态补核待；旧c4aa7ac取消历史保持。
+
+原记忆reviewer已完成固定0f01fdd自己的CI终核：8job／30必要步骤全部成功，两轴approve／开放0／0，固定259／发布后263及另68CI引用全核。原594产品／两RECORD／283重绑固定Git，前片取消与两空白exit2仍保留；该片精确交付完成，G1新patch样式清理另验。

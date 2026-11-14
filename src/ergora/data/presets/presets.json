@@ -431,6 +431,18 @@
       "workflows": [
         "ergora-memory-retrospective"
       ]
+    },
+    "workflow-retrospective": {
+      "description": "Source-bound root workflow proposal and complementary readonly review; original import and manifest selection remain separate.",
+      "runtime": "proposal-leaves",
+      "root": "ergora-workflow-retrospective",
+      "agents": [
+        "ergora-workflow-retrospective-author",
+        "ergora-workflow-retrospective-reviewer"
+      ],
+      "workflows": [
+        "ergora-workflow-retrospective"
+      ]
     }
   }
 }

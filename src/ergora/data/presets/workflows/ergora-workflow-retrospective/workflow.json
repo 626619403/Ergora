@@ -1,0 +1,107 @@
+{
+  "schema_version": 2,
+  "id": "ergora-workflow-retrospective",
+  "version": "1.0.0",
+  "description": "Source-bound root workflow proposal and complementary readonly review; original import and manifest selection remain separate.",
+  "resources": [
+    {
+      "id": "ergora-workflow-retrospective-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "bc1b85ffe2d57fe9859f0d6920a4dc320a0b8d90023035752e78a4d282ea5935"
+    },
+    {
+      "id": "ergora-workflow-retrospective-evidence-skill",
+      "kind": "skill",
+      "path": "skills/ergora-workflow-retrospective",
+      "digest": "7403b8797b815d7fafb8f23ab0c2fcc70d39ad9d164c44dbf503ebca01f977e1"
+    }
+  ],
+  "permissions": {
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "write": [],
+    "shell": false,
+    "network": []
+  },
+  "limits": {
+    "depth": 8,
+    "instances": 128,
+    "concurrency": 4,
+    "material_bytes": 262144
+  },
+  "inputs": [
+    "task"
+  ],
+  "outputs": {
+    "result": {
+      "node": "gather",
+      "output": "result"
+    }
+  },
+  "nodes": [
+    {
+      "id": "propose",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-workflow-retrospective-author",
+        "version": "1.0.0",
+        "digest": "fd67007ca156dc4cda9d6c89a2b0fb803ac972100def8963568cdbc55a103d05"
+      },
+      "role": "implementer",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      }
+    },
+    {
+      "id": "review",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-workflow-retrospective-reviewer",
+        "version": "1.0.0",
+        "digest": "d73bbdfc08c218dcbd0779faa484acae7b33cc62b76b67f71e83f6a5d1750780"
+      },
+      "role": "reviewer",
+      "depends_on": [
+        "propose"
+      ],
+      "inputs": {
+        "task": {
+          "node": "propose",
+          "output": "result"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      },
+      "review_requirement": "required"
+    },
+    {
+      "id": "gather",
+      "join": "all",
+      "depends_on": [
+        "review"
+      ]
+    }
+  ]
+}

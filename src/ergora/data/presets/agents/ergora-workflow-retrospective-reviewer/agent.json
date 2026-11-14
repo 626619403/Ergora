@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "id": "ergora-workflow-retrospective-reviewer",
+  "version": "1.0.0",
+  "description": "Source-bound bounded workflow retrospective reviewer.",
+  "roles": [
+    "reviewer"
+  ],
+  "specialties": [
+    "workflow-design",
+    "retrospective-analysis"
+  ],
+  "backend": {
+    "tool": "claude-code"
+  },
+  "resources": [
+    {
+      "id": "ergora-workflow-retrospective-reviewer-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "8401247145c82f1a350aecdb675f8d72dadcef010ed6b32c9ae87df8f0a05703"
+    }
+  ]
+}

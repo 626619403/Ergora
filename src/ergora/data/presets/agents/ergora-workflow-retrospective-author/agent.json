@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "id": "ergora-workflow-retrospective-author",
+  "version": "1.0.0",
+  "description": "Source-bound bounded workflow retrospective author.",
+  "roles": [
+    "implementer"
+  ],
+  "specialties": [
+    "workflow-design",
+    "retrospective-analysis"
+  ],
+  "backend": {
+    "tool": "codex"
+  },
+  "resources": [
+    {
+      "id": "ergora-workflow-retrospective-author-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "d8c64ea2c882f76df17d0102d294171b7b2a5d34d525951a0ffe6e2f68b823f5"
+    }
+  ]
+}

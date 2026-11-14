@@ -1,0 +1,1 @@
+Use the complete frozen workflow request and complete checked predecessor result. Read every ancestor resource. Author and reviewer are explicit readonly leaf calls; installing this graph neither executes its ports nor authorizes import or workflow selection. Original definition, grant and revision owners retain all publication and execution gates.

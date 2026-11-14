@@ -25,11 +25,27 @@
   },
   "independent_review": {
     "requirements": "Final local approve; zero open findings. Fresh CI reviewer directly checked raw original run/eightjob HTML, exactSHA/timestamps/reason and unchanged full workflow except timeout.",
-    "structure": "Final local approve; zero open findings. Windows30/Linux20 expression in original owner; original eightjobs/30steps/full regression/installer retained, no new scheduler or group."
+    "structure": "Final local approve; zero open findings. Windows30/Linux20 expression in original owner; original eightjobs/30steps/full regression/installer retained, no new scheduler or group.",
+    "fixed_publication": "approve; original newCI reviewer checked fixed workflow hash/unchanged required scripts,23fixed/27post references and ordinarypush/fullRef at0f01fdd; open0/0."
   },
   "publication": {
-    "state": "pending shared publication with F10c2b1",
-    "new_candidate_full_own_ci_required": true
+    "state": "pushed with F10c2b1",
+    "candidate": "0f01fdd9736fc456cf1cdcc8d77e64dac916e8a0",
+    "ordinary_push": true,
+    "full_remote_ref_matches": true,
+    "fixed_raw_references": 23,
+    "worktree_raw_references": 27,
+    "new_candidate_full_own_ci_required": true,
+    "own_ci": {
+      "run_id": 43555532175,
+      "url": "https://github.com/626619403/Ergora/actions/runs/43555532175",
+      "status": "success",
+      "jobs": 8,
+      "required_steps": 30,
+      "required_steps_passed": true,
+      "observation": "ci-observation-r6.json",
+      "independent_supplement": "approve; original CI reviewer directly verified fixed workflow, eightjob/30required-step success and exact SHA/URLs/times,68separate CI raw references and original23fixed/27post references; oldc4 cancellation preserved. Open0/0."
+    }
   },
   "raw_evidence": {
     "private_base": ".ergora/checks/",
@@ -148,6 +164,368 @@
         "path": "retrospective-skill-adoption/ci-job-132319976802-html-r5/receipt.json",
         "bytes": 5998,
         "sha256": "074f63e5dfc094082d0a4e37c74fdcbc7ad8a41870717d8fce66d1624db177dd"
+      },
+      {
+        "path": "retrospective-memory-candidates/static-final-r1.json",
+        "bytes": 5654,
+        "sha256": "5d292bf7c022311d2f0537abcaf42e9eef5eb27785eeeac8c2635f93eb11de26"
+      },
+      {
+        "path": "retrospective-memory-candidates/commit-r1.json",
+        "bytes": 1776,
+        "sha256": "977e0b3a5d4fe2daf9151a5eebaa40361ad3c96e54ca79f17c06a761c535e48c"
+      },
+      {
+        "path": "retrospective-memory-candidates/push-r1.json",
+        "bytes": 393,
+        "sha256": "75e0974fbbeffb0ab7ebcb2c1e0e6a85b8d0218d918336207d5d580de1d3e553"
+      },
+      {
+        "path": "retrospective-memory-candidates/ref-r1.json",
+        "bytes": 382,
+        "sha256": "02ba5157df57444cf6159e91e9790460313436d89146d17a69217db6cad0c501"
+      }
+    ],
+    "ci_references": [
+      {
+        "path": "retrospective-memory-candidates/ci-discovery-r1.json",
+        "bytes": 369,
+        "sha256": "d5ff9847e33c131f5465d446e2bbdfcf10a038d4cac3eefca10cdb6e9c347d21"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327423814-html-r1/page.html",
+        "bytes": 158839,
+        "sha256": "e969885789d99cd2cda18080d19b90d3421b60c2d509694f28816a349849f07b"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327423814-html-r1/receipt.json",
+        "bytes": 5996,
+        "sha256": "250655cdcc1efea028be4e0958b18b81809f82218a5236f3828c40d1839652ed"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327423814-html-r2/page.html",
+        "bytes": 158842,
+        "sha256": "efffe00b96fb19fa38d398393be483206a8aa1ba63bc59c4b61f2995dbbcdf61"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327423814-html-r2/receipt.json",
+        "bytes": 6001,
+        "sha256": "6435585c557e12732ca2efbadf11ca3d9bfdc305190355d2cc92eba71d669f11"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455120-html-r1/page.html",
+        "bytes": 154873,
+        "sha256": "880835e9cd73bcdad24ae4c1279597a1cf3c883dcf79fcc27b2f65c0a269797f"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455120-html-r1/receipt.json",
+        "bytes": 6000,
+        "sha256": "e7f6a2a2b0a64f3d7c7b71a1e1bc62dda1e5bc9cd6d317b0ad3162f9b4dd336c"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455120-html-r2/page.html",
+        "bytes": 162537,
+        "sha256": "78e931397f82f477f43b8564b15bd9d2de3849e57c7b084b764c67b205fc68dc"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455120-html-r2/receipt.json",
+        "bytes": 6010,
+        "sha256": "82eaa88be27c6c5b829f29789e12b121773186d1f625839359e9d035de8a1ed4"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455130-html-r1/page.html",
+        "bytes": 154868,
+        "sha256": "76363aa2c3604a3efd372a2fda60bceedaeda0543619fc3ecf74afd1a30e4538"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455130-html-r1/receipt.json",
+        "bytes": 5995,
+        "sha256": "6bb9e93cca1591d3d7ac92584e22c12b005c48d11b0d350fb2d6339f77a337d8"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455130-html-r2/page.html",
+        "bytes": 162541,
+        "sha256": "f9d41cd0b513a119de63333f32b8e7b7c2d2e63e51a57a1b924c4afc2644a77f"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455130-html-r2/receipt.json",
+        "bytes": 5992,
+        "sha256": "f934ebb401e5530d24fcd96c87ea38f4cb5c1da182260aeb74b389495c6cf332"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455134-html-r1/page.html",
+        "bytes": 154869,
+        "sha256": "fa10e0e8e6f46f7e446393181baac625c9a5edf1093f50de02a74f9151a45295"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455134-html-r1/receipt.json",
+        "bytes": 6008,
+        "sha256": "e0ddd27875703c551ce463b30e03f24a30f5e5f2a9d9e4195be3a9f27467c2cd"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455134-html-r2/page.html",
+        "bytes": 162536,
+        "sha256": "3de63c41b3af96f6645c77add46910bbad7ab7bf0ebfc9339151f7aeefb31463"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455134-html-r2/receipt.json",
+        "bytes": 6006,
+        "sha256": "d199073e68ba1b0e9d044366bbbdb62e4d56fb9fecced7b174bdd9d00820e23e"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455179-html-r1/page.html",
+        "bytes": 162532,
+        "sha256": "b909d308d871aef192eea70c2b988de93f4bf6e7143d0a3dbd93f0de16ec1e6a"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455179-html-r1/receipt.json",
+        "bytes": 6009,
+        "sha256": "bf57bfeb74922cf356f328ae9ac3598febea6b31b76ec91ad77c532d0d2c400d"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455179-html-r2/page.html",
+        "bytes": 162537,
+        "sha256": "0657840cc3af21c9e0d78fcbd1c5c0cd542cb9cb01499b2f7db580933135656f"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455179-html-r2/receipt.json",
+        "bytes": 6002,
+        "sha256": "3c2e1f9f2ac4811a366add13b885eebda4fc9b80cc6b6d96f86b0434c92087dd"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455188-html-r1/page.html",
+        "bytes": 154878,
+        "sha256": "9d97e7df7ebb4b1d092534dbce1177f044d464f8dac5a9fdf33087db7818c6e1"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455188-html-r1/receipt.json",
+        "bytes": 6004,
+        "sha256": "4008c5408c53f0ddb6e3a7b684feeb779f9d46df11d6311c37adaf707cf9fc3f"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455188-html-r2/page.html",
+        "bytes": 154882,
+        "sha256": "421f94975e35d548ccab0b0a780221f2816515dbbf0b392a92f9dfbb8631e056"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455188-html-r2/receipt.json",
+        "bytes": 6002,
+        "sha256": "0afd3c83e3807ba17c191ad71e584aed6ed7cd7a66b1c86ee2419454bb28854e"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455188-html-r3/page.html",
+        "bytes": 154875,
+        "sha256": "fa91e13a67474b937364e2fe98ca3e25ce41cbb9bfc6aae01ea46296ac32524c"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455188-html-r3/receipt.json",
+        "bytes": 5997,
+        "sha256": "bf4aa9278693aba69877cf9c14d45756a739d31bbfad85c16988f8d47b92360c"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455188-html-r4/page.html",
+        "bytes": 154882,
+        "sha256": "1408a8b856e28015cabc4457cf981c771c580242d29f81dce753cd8e0eea977a"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455188-html-r4/receipt.json",
+        "bytes": 6004,
+        "sha256": "628de322431e643931506e1e872917da49864a108c52540278ba5b98ea564c4f"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455188-html-r5/page.html",
+        "bytes": 155017,
+        "sha256": "8c04243e3d685180bb0e8023baf0b6e18f0c62acb848794b1b04b39cd777ec76"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455188-html-r5/receipt.json",
+        "bytes": 6006,
+        "sha256": "eb3f1365e9002be00616021c91c0b9fb288f53ffc80f4500cc4197fbf8816af6"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455188-html-r6/page.html",
+        "bytes": 160112,
+        "sha256": "db8f636ebb63ac7120785fbefac28e0e4307340c15ea61c80c7f069e91f6f493"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455188-html-r6/receipt.json",
+        "bytes": 5992,
+        "sha256": "42885d974335a0e6f7af743da8d988f2cfbe0f70406c7d225deaeaa24ca8f130"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455189-html-r1/page.html",
+        "bytes": 154873,
+        "sha256": "17123979e9e03185c63a4ecce5003417e908d81759ecb908bff417f932a1dcc2"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455189-html-r1/receipt.json",
+        "bytes": 6004,
+        "sha256": "165ca58c69e89bb598c800d82c39ca7674ccdf7ff89b5c16b9a0e892bc8d70e1"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455189-html-r2/page.html",
+        "bytes": 162537,
+        "sha256": "25f28117437b3a1d0b59ba65806933ec538889f250d44eb29f23e5a2663264b2"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455189-html-r2/receipt.json",
+        "bytes": 6004,
+        "sha256": "8b035d4680fc173c8011db70b58aafc64613dd8ef794716fd65c74540b2a8f29"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455232-html-r1/page.html",
+        "bytes": 154873,
+        "sha256": "5977edda6d5a9a1ea1a684a52d61211e96a5f99c2ed4f157508cf147df1da3c4"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455232-html-r1/receipt.json",
+        "bytes": 5992,
+        "sha256": "4616d32515c09c38899ac961c5e2f1a1d3498dd7a4372def0505cc46434f3e98"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455232-html-r2/page.html",
+        "bytes": 162537,
+        "sha256": "690f785df9e4d8ab31016a2d61275d3cf41aa13776ca1d6a07824d1be13587e4"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-132327455232-html-r2/receipt.json",
+        "bytes": 6004,
+        "sha256": "7b05c183d73a24824c80794baa5a95eeec41d57fe609d02f4bb9aef61db6e0c2"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-batch-r1/body.json",
+        "bytes": 2715,
+        "sha256": "e48f596f233365fc192b92f951842ce8fbd9ec0474ec996631a35a64444a24ba"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-job-batch-r1/receipt.json",
+        "bytes": 766,
+        "sha256": "d374a91c5448caf8db8c141479a6c92c4f87a8ba3098831305c8d3291eff6290"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-list-html-r1/page.html",
+        "bytes": 319541,
+        "sha256": "b5ce24cd711918334ccc86ed1b46387782a19600f43e3ad5c4024be1de4bb137"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-list-html-r1/receipt.json",
+        "bytes": 5986,
+        "sha256": "c6327e73b27530b334a6948ec7c6c27abeed1beb5f9cdfea7f1b0ba08864a063"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-observation-r2.json",
+        "bytes": 12982,
+        "sha256": "d0ab5ea90a89663c57f027f63e27b7742a8994fb1d6371e00f6d553f3f8eb0c8"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-observation-r3.json",
+        "bytes": 12982,
+        "sha256": "995d370a97414ba25535f9d4c4f591813843e1ffc5d9782ecca2e0d6667983e3"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-observation-r4.json",
+        "bytes": 12982,
+        "sha256": "367cc8760b615142e1770e981d82c7a5c06bd08ac777b866f4eca850507e3e8b"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-observation-r5.json",
+        "bytes": 13117,
+        "sha256": "176ea32ff2e0a5254f942fb02b69e3858bb264f53749c42cc1b60aabb5b76e58"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-observation-r6.json",
+        "bytes": 13357,
+        "sha256": "8fbb4a739c9233af4c9a10a1c4c3d739e10e128524bccd024b8b8770de521bbe"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-run-html-r1/page.html",
+        "bytes": 158972,
+        "sha256": "4b38a1313958a4f6073fa27322fff3606d98f8ed0063c71820d15c5a4fb58676"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-run-html-r1/receipt.json",
+        "bytes": 5958,
+        "sha256": "9bb6283ecdcc68d0bf8455beafea80d7571159dab61fe9fec5dafad0dd431ed8"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-run-html-r2/page.html",
+        "bytes": 208106,
+        "sha256": "d6693d34087838ff040f6201bdd15f8aeccb236b787617dde9bdda83040e590a"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-run-html-r2/receipt.json",
+        "bytes": 5967,
+        "sha256": "eeaa3fd279fd45d038f00b4aa076e32c4f1ba2a2dd74fb0264f909f8ace134d2"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-run-html-r3/page.html",
+        "bytes": 208111,
+        "sha256": "512078e3c353ec898792484d41196a88a58248a5f46a094b4dc578217598d0d6"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-run-html-r3/receipt.json",
+        "bytes": 5964,
+        "sha256": "5a26061e000f9a4964ef63cc40f7a8941b6671890118dd881e5cb1d3ff7063a6"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-run-html-r4/page.html",
+        "bytes": 208105,
+        "sha256": "0209836c4db904c47997c5c5ab62ab0d4dfdf1f28e3c3b5ca0b86871ffbd6cfd"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-run-html-r4/receipt.json",
+        "bytes": 5964,
+        "sha256": "e8c4800278879a947b0aee152a55948001d1b69e6abaf5983d653d2c8f533608"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-run-html-r5/page.html",
+        "bytes": 208111,
+        "sha256": "e4649267ca6ebaca0514176f9c14af0523bc9abdd874cf297212fe3600583057"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-run-html-r5/receipt.json",
+        "bytes": 5970,
+        "sha256": "17c68018cd42c5911c3477d3f03826ee1fcf6be89b5ca459c64a5c157a86db86"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-run-html-r6/page.html",
+        "bytes": 213305,
+        "sha256": "3b1b7637361d9360b15aa46c3a37fc7f3b95d0337b1b80b6bed376ba4581f75f"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-run-html-r6/receipt.json",
+        "bytes": 5964,
+        "sha256": "a4728a3040ef3dec7ae2f675aee037e0d828edc4b95fe637f432b7569b3ba07f"
+      },
+      {
+        "path": "retrospective-memory-candidates/ci-ui-metadata-r1.json",
+        "bytes": 2119,
+        "sha256": "e8bbf2788685b8c9c6b804ee00f26c473bd326056e1b48a4d2c373060cc55d83"
+      },
+      {
+        "path": "retrospective-memory-candidates/discover-ci-r1.py",
+        "bytes": 1185,
+        "sha256": "0d5ae97144c2dc75e884bdc6a5bc6388a69eb4e9a9c53fd8341b178beb9cb8c1"
+      },
+      {
+        "path": "retrospective-memory-candidates/fetch-actions-page.py",
+        "bytes": 1213,
+        "sha256": "77cb744eb3f51e9e57c6301f5461846220ed7d4fab0f2ccb74fb839781a0d8d8"
+      },
+      {
+        "path": "retrospective-memory-candidates/fetch-ci-jobs.py",
+        "bytes": 3060,
+        "sha256": "7076d6bde168c5cc1398b28981bb0e518569ac8b8da79d44480415e3c8dd1600"
+      },
+      {
+        "path": "retrospective-memory-candidates/fetch-jobs-r1.py",
+        "bytes": 564,
+        "sha256": "27f267dcb3291696b0ad00f68ce03f3621b355ef5a799742109475e02ab74161"
+      },
+      {
+        "path": "retrospective-memory-candidates/parse-ci-html.py",
+        "bytes": 3980,
+        "sha256": "111ffdfc5c11a7ec807bba9a54472db33f1ed84d2a0c956420fce52d1345c597"
       }
     ]
   }

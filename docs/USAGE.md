@@ -1174,3 +1174,33 @@ ssh -L 8977:127.0.0.1:8977 user@server
 基础安装已带治理、大型开发和训练提案的专家/子工作流默认包。运行`ergora composition presets`查看实际使用范围，`ergora composition install-preset large-change`导入全部精确依赖。详情、节点关系、独立后端选择及分享见[内置领域组合](WORKFLOW_DEFINITIONS.md#使用内置领域组合)。静态导入不选择可信容器、不启动服务或批准任务；正式开发继续走上文原任务流程。训练提案与[可信实验执行](TRAINING.md)分别使用。
 
 修改父子权限时，按[联合修订步骤](WORKFLOW_DEFINITIONS.md#联合修订父子权限)从内层到根逐版本发布，最后给出明确grant并检查实际调用能力。并行增加同一专家的多个实例时，使用不同节点ID和完整all-join；不同审查职责须另发子模板版本，见[重复实例与后端选择](WORKFLOW_DEFINITIONS.md#重复实例职责和后端选择)。
+
+### 生成来源绑定的工作流复盘候选
+
+安装`workflow-retrospective`，再按[完整manifest步骤](WORKFLOW_DEFINITIONS.md#固定当前预览到持久控制目录)为根`ergora-workflow-retrospective 1.0.0`保存`workflow-retrospective-manifest`。另为待改进的根保存完整`target-manifest`，记录原检查返回的完整digest。前者是作者／审查图，后者是目标图。handoff、selection与objective沿[Skill候选](#生成来源绑定的skill复盘候选)步骤准备，均须来自同一项目。
+
+```bash
+ergora composition install-preset workflow-retrospective
+ergora retrospective prepare-workflow my-project ./task-handoff.zip --selection ./selection.json --packet-sha256 PACKET_SHA --target-manifest ./target-manifest --target-digest TARGET_MANIFEST_DIGEST --next-version 1.0.1 --objective ./objective.txt --manifest ./workflow-retrospective-manifest --instance root/propose --directory ./workflow-author-input --max-prompt-bytes 1000000
+ergora composition run-input my-project ./workflow-author-input --backend codex --mode text-only --timeout 240
+```
+
+`--next-version`须选择尚未占用的不可变根版本；既有版本不能覆盖。目标整包的全部递归定义、资源正文、执行位与目录（含空目录）完整冻结，文件合计至多1 MiB；二进制、NUL或超限拒绝，不截断。target-digest使用原manifest的文件／执行位身份，冻结baseline.digest还绑定完整目录；导出回执同时保留两种身份与目录。准备成功后目标源消失不影响离线检查。提示的总容量仍单独核对，可按实际后端上限调整`--max-prompt-bytes`。
+
+```bash
+ergora retrospective check-workflow ./workflow-author-input AUTHOR_RESULT --result-sha256 AUTHOR_RESULT_SHA > ./workflow-checked.json
+ergora composition prepare-from-manifest ./workflow-retrospective-manifest root/review --task ./workflow-checked.json --directory ./workflow-review-input --max-prompt-bytes 1000000
+ergora composition run-input my-project ./workflow-review-input --backend claude-code --mode text-only --timeout 600
+```
+
+作者、审查者读取完整祖先资料和完整前驱。后端选择／失败保存与上述Skill候选相同；静态依赖不会自动执行端口。检查允许`candidate:null`，否则核原preview、完整资源、图及原grant；只在自动清理的私有临时目录写入，不读写活动State。首版只允许根description、已有声明资源的无NUL UTF-8内容与额外依赖边，保留原节点／引用／端口／权限／审查要求及已有依赖；改变这些结构仍走原手工版本修订。
+
+核对完整`revision_preview`与来源后，显式选择check返回的`candidate_digest`。没有候选时不能导出。
+
+```bash
+ergora retrospective export-workflow ./workflow-author-input AUTHOR_RESULT ./candidates/workflow-root --result-sha256 AUTHOR_RESULT_SHA --candidate-digest CANDIDATE_DIGEST > ./workflow-export-receipt.json
+ergora composition check ./candidates/workflow-root
+ergora composition import ./candidates/workflow-root
+```
+
+导出目录须为新目录，完整根bundle及引用身份保持；stdout回执另存，目录内没有额外receipt污染包身份。其他机器须先具备相同子定义，原import会核依赖与ID／版本冲突。导入成功后用原步骤为新版本准备manifest并明确选择；回退时重新选原根／manifest，旧run始终保留旧快照。导出、模型approve及图准入都不等于质量／性能评价或采用授权；效果比较仍需相同可信workload和独立验证。

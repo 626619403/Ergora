@@ -99,3 +99,56 @@ Reviewer 另用纯内存实际 `cli.main` 捕获实参，mock State／save 而�
 两次安装 monitor 原记录均为终态；三次模型／自身模板原 run 均为 succeeded／finished，未见本片在途调用。`cleanup-r1.json` 记录可访问 proc cwd 中无本片进程，11 条不可读；reviewer 另直接重查 `/proc`，同样无本片 cwd，**11 条不可读**。实际 CLI／模型／自身模板脚本未启动服务／端口／浏览器；suite 内既有 HTTP fixture 的短生命周期监听与 finally 清理属于测试自身范围。此范围不证明不可读进程或系统全部后台活动，不作 OS 隔离保证。
 
 本次仍仅直接读取、原只读 verifier／checker、哈希／协议比对和追加本报告；没有联网、安装、重跑 suite／模型、改产品或提交。文档链接及 `git diff --check BASELINE` 通过。此前初审的 R1 是本片唯一确认代码问题，已修复；**最终本地两轴 approve，开放 0／0**。原记忆明确写入／expiry／revision 权威和来源认证／效果限制保持；发布与本片 CI、原生 Windows、完整 Forge、流程候选、F10d、F9d／G1、真实业务／GPU／质量／性能仍按各自范围后验。
+
+## 固定普通发布补核
+
+固定候选为 **`0f01fdd9736fc456cf1cdcc8d77e64dac916e8a0`**，唯一父提交精确为本片原基线 `c4aa7acb555a5d55fec7e7a483544834e8afe44f`。补核开始时工作树只有七份发布状态文档变化，没有再改产品／测试，也没有后片产品。此节仅核本片固定发布及所承载 CI 修正的身份／依赖范围；后片不在审查范围。
+
+从固定 Git object 直接读取全部 **30 个变更 blob**，路径集合与 `static-final-r1.json` 完整清单相同，每份 bytes／SHA256 全相符。固定本报告的原字节为 **19410B**／SHA256 `0e5e8271dd5473c11bf2708b04d3a08ef243515b08eceb2b496ad7e31e525998`，恰为本 reviewer 最终本地补核版本，未在验收后替换。又直接读取固定 Git tree 的全部 **594 个产品 blob**，逐份核为 **fixed Git＝current＝r2 source snapshot＝wheel＝installed**，wheel SHA 保持 `6832763f8f07ccb1c32d130e14e5da4c85dd8ce31bbc9aa607e6b00232e49b9a`。原九项核心源码／七 suite 文件也与固定 Git、当前文件、最终快照逐字相同。此前直接核过的两 RECORD602／607、283原内容／执行位、188／6、16CLI与模型／自身模板原件因此继续绑定此精确候选，没有将旧 r1 安装结果冒充最终发布产品。
+
+直接读原 `commit-r1.json`／`push-r1.json`／`ref-r1.json`：三份 exit 均为 0，candidate 均为上述完整 SHA。普通 push 原 argv 精确为 `git push origin HEAD:refs/heads/refactor/architecture-foundations`，无 force／main 目标。保存的完整 Ref stdout 精确为 `0f01fdd9736fc456cf1cdcc8d77e64dac916e8a0\trefs/heads/refactor/architecture-foundations\n`，stderr 空。本 reviewer 核的是已保存的原提交／push／Ref 回执，未重新联网。
+
+固定记忆 evidence 的 **259** 项与发布后工作树前 259 项逐项相同，仅追加 static-final／commit／push／Ref 四份回执成为 **263** 项；已全部重新直接读取 bytes／SHA，无缺失、重复路径或差异。独立 CI 预算 evidence 也保持固定 **23**／发布后 **27** 的原列表前缀及相同四回执追加关系，27 项原 bytes／SHA 均直接核过。两个 evidence 除 publication／implementation 状态与四引用追加外的所有字段相同，包括记忆原 `publication_dependency_adjustment`，没有追加运行成功或效果主张。七份发布后状态文档只记实际普通发布、完整 Ref、原引用数量及新候选 CI 待验状态。
+
+共同候选里的 `.github/workflows/portability.yml` SHA256 为 `4a23020b277de1fa3d07db42918314127a013e01cad8ebf0cd9e020109774b64`，与独立 CI reviewer 已审身份完全相同；固定该 reviewer 报告 SHA 为 `63faa9219c14897e34c48acac8476ed854cca1ac50ff44b2c60c703234a9f265`。直接比较原基线／固定候选的完整 workflow，恰为 native timeout 一行 `20` → `${{ matrix.os == 'windows-latest' && 30 || 20 }}`；原分组 JSON、CI runner 与 Windows installer 三份入口逐字保持。该独立小片的架构／预算结论归其[原 reviewer](2026-11-14-windows-ci-budget-review.md)，本节只确认已审修正准确进入固定候选，没有替它重作独立 CI 审查或预批真实 GitHub 表达式／30分钟充分性。
+
+已读前片原 reviewer 的终态补核及具体 CI 计划：原 `c4aa7ac` 自己的 CI43553150941 是 **Cancelled，29／30 success**，Windows installer 被原 20 分钟总 job 上限截断，未称该候选全部 CI 成功。记忆 publication dependency 的调整限定为：保留原取消及其原 reviewer 原因核查，将已独立本地验收的记忆产品与已独立审过的一行预算修正一并普通发布，由**新完整 SHA 自己的原八 job／30 必要步骤全部成功及原 reviewer 终核**关闭验收。它改变承载修正的发布候选和先后关系，不减少测试／安装／上传，也不借用前片29项抵扣新检查；该范围与所审合同保持一致。
+
+固定差异最后另跑 `git diff --check c4aa7ac...` 得到 exit 2：新 author／reviewer 两份 `instructions.md` 第1行各有一句末尾空格。这是此前文件尚未跟踪时该命令未覆盖的范围；此前记录的 diff-check 通过只适用于当时已跟踪差异，不能提升为完整30blob静态通过，本节纠正该范围。两处空白不改变所核资源身份或运行结论，不构成新增需求／结构 finding；工具项如实保留，没有改产品或把失败回执改为成功。
+
+作者明确采用非阻塞样式项处置：保留已发布固定源、资源摘要、Agent1.0.0、模型和包身份，不为纯行尾空白修改同一不可变 ID／version 或重跑模型／suite；后续两 Agent 有实质指令修订并发布新不可变版本时一并清理。该项归入作者发布工具的覆盖缺口，后续在暂存全部已审文件后使用 `git diff --cached --check`，新片编辑时也检查新增文件行尾；本节仅记录该处置，不称已经修复这两个固定 blob 的样式检查失败。
+
+**本固定普通发布需求轴 approve；结构／成本轴 approve；开放需求／结构 finding 0／0，另有上述两处非行为空白工具项。** 最后所读公开记录已发现新候选自己的 CI43555532175，状态为 `in_progress`；本 reviewer 尚未获得其终态／CI原件补核，本节不将状态记账当真实 CI 验收，也没有将固定发布等同完整交付完成。R1修复、r1模型原身份、合成正候选、来源／当前有效性／质量限制及全部未验范围保持。此轮仅仅读取 Git／原件、内存哈希比对和追加本报告，未联网、重跑 suite／模型、安装、改产品或提交。
+
+## 自己的 CI 终态补核
+
+本节核固定候选 **`0f01fdd9736fc456cf1cdcc8d77e64dac916e8a0`** 自己的 [run43555532175](https://github.com/626619403/Ergora/actions/runs/43555532175)，官方终态为 **Success，八 job／30 必要步骤全部成功**。补核时 HEAD 仍为该固定提交，但工作树已含后继流程候选编辑；本节的产品身份比较只读取固定 Git 与原记忆候选 `install-r2/`，未审查或接受后片产品，也未使用后片新包／模型。前节关于当时 current 身份的记录仍按其原核验时点理解。
+
+直接读取原官方 UI batch、run／job HTML 及回执，逐份核 HTTP200、精确请求／最终 URL、bytes 与 SHA256。终态 `ci-run-html-r6/page.html` 为 **213305B**，SHA256 `3b1b7637361d9360b15aa46c3a37fc7f3b95d0337b1b80b6bed376ba4581f75f`，回执时间 `2026-11-14T04:37:11.534111+00:00`；其完整 commit anchor 指向上述 SHA，原 Status 明确为 `Success`。`ci-job-batch-r1/body.json` 为 **2715B**／SHA256 `e48f596f233365fc192b92f951842ce8fbd9ec0474ec996631a35a64444a24ba`，官方列表 totalCount8／hasMore false；它与 `ci-ui-metadata-r1.json` 的八组 ID／name／href 逐项相同，原 metadata 的早期 in_progress 状态保持历史身份，没有倒写成终态。metadata 的 source／早期 run-summary SHA 也与对应原字节相同，早期 run 同样绑定完整提交。
+
+从固定 workflow 和原 `linux-groups.json` 独立推导 plan、六个 Linux group 与 Windows all 的必要步骤，再用独立只读 HTMLParser 逐项读取各原 `check-step`。八个 job 与终态取样如下；每份 body 的原 SHA 均已直接核验：
+
+|job|原 ID|HTML 取样|成功必要步骤|
+|---|---:|---|---:|
+|plan|132327423814|r2|1|
+|Ubuntu 3.11 group 0|132327455134|r2|4|
+|Ubuntu 3.11 group 1|132327455232|r2|4|
+|Ubuntu 3.11 group 2|132327455189|r2|4|
+|Ubuntu 3.11 group 3|132327455179|r2|4|
+|Ubuntu 3.11 group 4|132327455120|r2|4|
+|Ubuntu 3.11 group 5|132327455130|r2|4|
+|Windows 3.12 group all|132327455188|r6|5|
+
+plan 的 `Read explicit test groups`、每个 native job 的 build/install、packaged reference identity、application regression、upload，以及 Windows 额外的 PowerShell5.1 installer/upgrade，共 **1＋24＋5＝30** 项，全部 conclusion success、有开始／完成时间且 `data-job-completed` 存在。每项 log URL 都精确为 `/626619403/Ergora/commit/0f01fdd9736fc456cf1cdcc8d77e64dac916e8a0/checks/<该jobID>/logs/<该step编号>`，未用短 SHA 或别的 run 抵扣。独立重建的完整八 job／30 step 对象与原 `ci-observation-r6.json` **逐项相同**；未执行会写观察文件的作者 parser。
+
+Windows 终态 HTML 为 **160112B**／SHA256 `db8f636ebb63ac7120785fbefac28e0e4307340c15ea61c80c7f069e91f6f493`。原时间显示 application regression 为 `04:14:14Z–04:33:38Z`，installer/upgrade 为 `04:33:38Z–04:34:38Z`，upload 为 `04:34:38Z–04:34:39Z`，三项均 success；从 HTML 首个 setup step 的 `04:13:25Z` 至上传完成经过 **21分14秒**。这次固定 workflow 的 Windows30／Linux20 预算让原 installer 完整执行并上传，原 `runner.os == 'Windows' && !cancelled()` 条件与原入口保持；不将单次成功推广为所有负载的30分钟充分性。CI预算小片的结构／预算结论仍归其[独立 reviewer](2026-11-14-windows-ci-budget-review.md)。
+
+公开 memory evidence 的原 **263** 引用已全部重新直接读 bytes／SHA：固定提交原 **259** 项是逐项不变的前缀，其后仍仅为 static-final／commit／push／Ref 四回执；另外新增的 **68 个 CI 引用**也逐份直接核验。两集合各自路径唯一、互不相交，合计 **331** 份无缺失或哈希差异，早期在途观察与最终成功原件共同保留。再次读取固定30个变更 blob，全部与原 `static-final-r1.json` 清单相同；固定本报告原19410B／SHA256 `0e5e8271dd5473c11bf2708b04d3a08ef243515b08eceb2b496ad7e31e525998` 也保持。
+
+又直接从固定 Git tree 批量读取全部 **594** 产品 blob，逐份核 **fixed Git＝原 memory r2 source snapshot＝原 memory r2 wheel＝原 memory r2 installed**，四者产品路径集合也完全相同。原 wheel SHA256 仍为 `6832763f8f07ccb1c32d130e14e5da4c85dd8ce31bbc9aa607e6b00232e49b9a`；两 RECORD 的 **602／607 行**内容／大小／SHA256 重新逐行核过，原 **283** reference 的内容、原基线 blob 身份及 snapshot／wheel／installed 执行位相同；九份核心源码／七 suite 文件固定 Git 与原快照及公开 SHA 也相同。本节没有比较后片正在编辑的当前源码，没有把后片产物接到本片身份上，也没有重跑原188／6或原模型。
+
+另独立重核 `full-fixed-diff-style-r1.json` SHA256 `730943b80c2dde558f40770ea7e92a77d9c0fe493775f1f67a960f933522ce39`，并仅对原基线／固定提交重做原完整 `git diff --check`：exit **2**、stdout／stderr 与原回执逐字相同，仍是两 Agent `instructions.md` 第1行末尾空格。上节所记非阻塞样式处置及早期 tracked-only 覆盖缺口继续保留；CI成功未修复该静态失败，不称全部静态检查通过，也不修改既有不可变Agent1.0.0／包／模型身份。
+
+原前片 evidence 与原 `ci-observation-r5.json` 仍保留 `c4aa7acb555a5d55fec7e7a483544834e8afe44f`／run43553150941 的 **Cancelled、29 success／唯一 installer cancelled**；本次直接核该观察原件 **13362B**／SHA256 `608a8f7112affd667bff9a1f01b704a98006e02f59f64be358c6271c40062b64`，八 job／30 step 的原结论未改。新成功只属于 `0f01fdd` 自己的八 job／30步骤，未借用旧29项；依赖调整要求的新完整候选 CI 门禁及本片原 reviewer 终核现已满足。
+
+**本片固定发布及自己 CI 终核：需求轴 approve；结构／成本轴 approve；R1 已闭合，开放需求／结构 finding 0／0。** 两处非阻塞空白工具项仍按原处置保留。此处远端结论以已保存官方 HTML 的 job／step 状态和完整SHA链接为范围；没有下载 artifact archive 或完整远端测试日志，不据此声称远端 pytest 数量或远端 wheel 的逐字身份。原 r1 真实模型身份、r2只读复查、合成正候选及来源／当前有效性限制保持；原生 Windows 真实模型／完整 runtime、完整Forge、后续流程候选、F10d、F9d／G1、GPU／真实业务／质量／性能仍按各自范围另验。本轮仅直接读取 Git／原件、执行廉价内存哈希／HTML／RECORD 比对及固定diff-check，并追加本报告，未联网、安装、运行suite／模型、改产品或提交。

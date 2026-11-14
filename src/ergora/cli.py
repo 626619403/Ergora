@@ -60,9 +60,9 @@ def parser() -> argparse.ArgumentParser:
         operation.add_argument("--sha256", help="Independently obtained whole-packet SHA256")
         if name == "read":
             operation.add_argument("--selection", type=Path, help="JSON array of exact job_id/name pairs; omitted reads the complete index")
-    retrospective = commands.add_parser("retrospective", help="Prepare, check or export source-bound Skill and memory proposals; never adopt")
+    retrospective = commands.add_parser("retrospective", help="Prepare, check or export source-bound Skill, memory and workflow proposals; never adopt")
     operations = retrospective.add_subparsers(dest="operation", required=True)
-    for name in ("prepare", "prepare-memory"):
+    for name in ("prepare", "prepare-memory", "prepare-workflow"):
         preparing = operations.add_parser(name, help="Freeze complete evidence and the selected baseline for a proposal-producing leaf")
         preparing.add_argument("project")
         preparing.add_argument("packet", type=Path)
@@ -72,22 +72,26 @@ def parser() -> argparse.ArgumentParser:
             preparing.add_argument("--skill", required=True)
             preparing.add_argument("--digest", required=True)
             preparing.add_argument("--head-revision", type=int, required=True)
-        else:
+        elif name == "prepare-memory":
             target = preparing.add_mutually_exclusive_group(required=True)
             target.add_argument("--new-memory", action="store_true")
             target.add_argument("--memory-id")
             preparing.add_argument("--revision", type=int, default=0, help="Exact current memory revision; zero for explicit creation")
+        else:
+            preparing.add_argument("--target-manifest", type=Path, required=True)
+            preparing.add_argument("--target-digest", required=True, help="Exact complete target manifest digest")
+            preparing.add_argument("--next-version", required=True, help="Explicit new immutable root version")
         preparing.add_argument("--objective", type=Path, required=True)
         preparing.add_argument("--manifest", type=Path, required=True)
         preparing.add_argument("--instance", required=True)
         preparing.add_argument("--directory", type=Path, required=True)
         preparing.add_argument("--max-prompt-bytes", type=int, required=True)
-    for name in ("check", "check-memory"):
+    for name in ("check", "check-memory", "check-workflow"):
         checking = operations.add_parser(name, help="Check a structured result (up to 8 MiB) against its frozen input, offline")
         checking.add_argument("input", type=Path)
         checking.add_argument("result", type=Path)
         checking.add_argument("--result-sha256")
-    for name in ("export", "export-memory"):
+    for name in ("export", "export-memory", "export-workflow"):
         exporting = operations.add_parser(name, help="Explicitly save one checked complete candidate to a new directory; never adopt")
         exporting.add_argument("input", type=Path)
         exporting.add_argument("result", type=Path)
@@ -710,11 +714,16 @@ def main(argv: list[str] | None = None) -> int:
                 output = retrospectives.check(args.input, args.result, result_sha256=args.result_sha256)
             elif args.operation == "check-memory":
                 output = retrospectives.check_memory(args.input, args.result, result_sha256=args.result_sha256)
+            elif args.operation == "check-workflow":
+                output = retrospectives.check_workflow(args.input, args.result, result_sha256=args.result_sha256)
             elif args.operation == "export":
                 output = retrospectives.export(args.input, args.result, args.destination,
                     result_sha256=args.result_sha256, candidate_digest=args.candidate_digest)
             elif args.operation == "export-memory":
                 output = retrospectives.export_memory(args.input, args.result, args.destination,
+                    result_sha256=args.result_sha256, candidate_digest=args.candidate_digest)
+            elif args.operation == "export-workflow":
+                output = retrospectives.export_workflow(args.input, args.result, args.destination,
                     result_sha256=args.result_sha256, candidate_digest=args.candidate_digest)
             else:
                 with args.objective.open('rb') as stream:
@@ -728,6 +737,10 @@ def main(argv: list[str] | None = None) -> int:
                     output = retrospectives.prepare_memory(State(args.home), args.project, args.packet,
                         definition_bundles.read_json(args.selection), memory_id=args.memory_id,
                         revision=args.revision, **options)
+                elif args.operation == "prepare-workflow":
+                    output = retrospectives.prepare_workflow(State(args.home), args.project, args.packet,
+                        definition_bundles.read_json(args.selection), target_manifest=args.target_manifest,
+                        target_digest=args.target_digest, next_version=args.next_version, **options)
                 else:
                     output = retrospectives.prepare(State(args.home), args.project, args.packet,
                         definition_bundles.read_json(args.selection), name=args.skill, digest=args.digest,
