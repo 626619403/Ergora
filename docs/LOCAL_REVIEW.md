@@ -1,6 +1,6 @@
 # 本地 PR／MR 审查材料
 
-`ergora review` 将精确的本地 Git 变更保存成可以离线读取的完整材料包，也可读取明确的GitHub／GitLab PR／MR来源并绑定同一份源码包。它无需 Agent 登录、项目登记、数据库或 Temporal，适合先准备候选与需求，再交给审查者。领域组合运行和远端发表意见另见 [实施计划](plans/2026-11-15-domain-review-optimization-quality.md)。
+`ergora review` 将精确的本地 Git 变更保存成可以离线读取的完整材料包，也可读取明确的GitHub／GitLab PR／MR来源并绑定同一份源码包。材料采集和审查输入准备无需 Agent 登录、项目登记、数据库或 Temporal；实际模型调用沿既有组合入口。完整报告和远端发表意见的范围见 [实施计划](plans/2026-11-15-domain-review-optimization-quality.md)。
 
 ## 准备材料
 
@@ -65,12 +65,54 @@ GitHub使用本次响应中的base／head SHA计算唯一merge-base；首版拒�
 
 新head或需求应写新目录，旧观察不变。复制时共享整个来源目录和独立取得的`source_sha256`；读回无需Git、凭据、网络、State或SDK。来源元数据与PR／MR是顺序观察，不是跨请求原子快照；本地缺对象／源容量／不支持文件规则与上文相同，完整来源封套另限2,000,000B。来源GET的响应摘要是采集时的观察回执，包不保存全部原始HTTP响应，也不离线重认证它。离线自洽不证明平台来源、当前head、目标本地库的远端归属或原检查真实。它没有正式候选／批准效力。
 
+## 交给领域或专长审查叶
+
+先按[领域审查手册](TRAINING_REVIEW.md)安装`pretraining-review`或`posttraining-review`，准备所选完整manifest及明确的grant。自定义审查组合沿[定义手册](WORKFLOW_DEFINITIONS.md)导入，不必修改Python。每个叶的专长、祖先Skill、上下文、MCP声明和逐级收窄的权限都来自这个冻结组合；后端在实际调用时逐叶选择。
+
+以下示例使用本地包及预训练根`ergora-pretraining-review@1.0.0`。`review-grant.json`应包含所选根的`permissions`和`limits`，格式见[组合分享](WORKFLOW_DEFINITIONS.md#保存和分享完整组合)。`MANIFEST_DIGEST`取prepare-manifest回执的`digest`，`PACKET_SHA256`取原材料回执；两者须明确核对。
+
+```bash
+ergora composition install-preset pretraining-review
+ergora composition prepare-manifest ergora-pretraining-review 1.0.0 \
+  --grant ./review-grant.json --directory ./reviews/pretraining-manifest
+
+ergora review prepare-input ./reviews/candidate-01 \
+  --source-kind local --source-sha256 PACKET_SHA256 \
+  --manifest ./reviews/pretraining-manifest --manifest-digest MANIFEST_DIGEST \
+  --instance root/domain/review --max-prompt-bytes 1000000 \
+  --directory ./reviews/domain-input > ./input-receipt.json
+
+ergora review verify-input ./reviews/candidate-01 \
+  --source-kind local --source-sha256 PACKET_SHA256 \
+  --manifest-digest MANIFEST_DIGEST \
+  --input ./reviews/domain-input --input-digest INPUT_DIGEST
+```
+
+外部PR／MR将材料目录换为整个外部来源目录，使用`--source-kind external --source-sha256 SOURCE_SHA256`，保留完整观察及其内部源码包。后训练根用`ergora-posttraining-review@1.0.0`，领域路径同为`root/domain/review`；两个根的通用叶为`root/general/structure/review`、`root/general/correctness/review`、`root/general/test-value/review`。一次prepare只准备所选一个叶，不运行其他分支或all-join。
+
+新目录是原格式的完整composition input。`task.txt`包含原需求、全部源码／显式上下文／祖先规范／检查、外部观察及所选来源与manifest身份；`prompt.txt`再加入模板完整祖先资料。`input_digest`取新回执；完整prompt（含JSON编码和资料）最多1,000,000B，`--max-prompt-bytes`可设更小。超限明确失败，不截断材料。需要未运行前驱、具有write／shell／network权限或无权读取任一包内源码的叶也会拒绝。
+
+`verify-input`按独立来源摘要重新读取完整材料，再与固定输入的task和`input_digest`核对。`manifest_digest`在task中保留原选择声明；该命令不重新读取原manifest，不单独认证其来源。首次prepare会直接核原manifest及编译图，分享时同时提供可信的输入摘要。仅剩输入目录时可用`ergora composition verify-input`核其自身完整性，此时没有重新核原来源包。
+
+实际调用先按[单叶调用](WORKFLOW_DEFINITIONS.md#调用一个准备好的叶子)登记项目并配置可用后端，再执行原`composition check-input`／`run-input`。例如已登记项目`demo`可显式选Codex：
+
+```bash
+ergora composition check-input demo ./reviews/domain-input \
+  --mode text-only \
+  --backend codex --backend-reason "Operator selected an available review backend"
+ergora composition run-input demo ./reviews/domain-input \
+  --mode text-only \
+  --backend codex --backend-reason "Operator selected an available review backend" --timeout 240
+```
+
+后端认证、支持模式和实际能力仍由原准入检查。运行回执的`input_digest`应与所选输入回执一致。执行者与审查者优先使用不同后端；回退须记录实际原因，不把同后端调用称为异构审查。结果和完整冻结输入仍保存在原run中；失败或unknown先读取原run，不自动重复调用。此入口只负责单叶审查输入，不授予正式候选或平台批准。
+
 ## 覆盖、限制与后续审查
 
 - Git 读取禁用 replace objects、hook、textconv、外部 diff 与隐式 lazy fetch，剔除继承的 `GIT_*` 变量，不 checkout 或执行目标脚本。文件正文和其中的指令只是待审材料，不授予权限。
 - 首版只收普通 UTF-8 Git 文件和可移植相对路径。二进制／无效 UTF-8、符号链接、gitlink／子模块、LFS 指针及缺少对象都会拒绝整个包，不会自动读取它们指向的工作区或远端内容。
 - 默认完整 Git 材料上限为 1,000,000B，可用 `--max-source-bytes` 调整到最多 10,000,000B；它限制每次 Git 输出和去重 blob batch 的总字节（含 batch 头）。需求与全部 evidence 在读取时共用 10,000,000B 预算，最多 500 份 evidence；最终 JSON（含 diff、需求和 evidence）还受独立的 10,000,000B 上限，选择最多 500 个路径。超限不截断、不发布部分成功包；已获得清单时错误列出本次不承诺覆盖的全部选择。调整选择、容量或候选后重新生成新包。
 - evidence 是操作者提供的原件，当前命令不运行检查、不确认检查绑定的提交、执行环境、签名或真实性；省略时为空。检查可信性、必要资料是否齐备和哪些运行还缺失，由后续审查和既有可信验证流程判断。
-- 这里没有模型审查、正式候选批准或平台 approve。可将 `read` 的完整输出作为既有只读叶的任务材料，沿 [组合输入](WORKFLOW_DEFINITIONS.md)的容量、祖先资源、权限和后端准入处理；超限须明确拒绝，不摘取摘要冒充完整审查。领域专长和自动报告还在 Q2，不能用这一包宣称预训练／后训练语义已经验收。
+- 采集和输入准备本身没有模型审查、正式候选批准或平台 approve。领域专长可按上述入口显式调用，完整跨分支报告另接原run；源码材料和一份模型回复不能证明预训练／后训练语义已经验收。
 
 Linux 支持原子目录发布；Windows 的原生实现随同一 CLI 提供，实际平台验收记录见 [Q1.1 交付](delivery/2026-11-15-local-review-packets.md)。完整正式开发执行的 Linux／WSL2 约束不因这一独立入口改变。材料包含完整项目源码和检查信息，应只通过该项目已授权的存储和审查渠道分享。

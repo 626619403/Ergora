@@ -17,7 +17,7 @@
 
 ## 准备完整本地输入
 
-先按 [本地审查包手册](LOCAL_REVIEW.md)保存原需求、精确 base／head、全部变更及显式调用者／配置／检查原件，并 verify。把完整 `review read` 输出作为 task；不能只传回执、作者概述或 diff。
+先按 [本地审查包手册](LOCAL_REVIEW.md)保存原需求、精确 base／head、全部变更及显式调用者／配置／检查原件，并 verify。推荐使用其中的[来源绑定入口](LOCAL_REVIEW.md#交给领域或专长审查叶)，将完整本地／外部来源绑定所选manifest与审查叶；不自动运行其余分支。下面保留通用composition输入方式：把完整`review read`输出作为task，不能只传回执、作者概述或diff。
 
 ```bash
 ergora review read ./candidate-packet --sha256 PACKET_SHA256 > ./review-task.json

@@ -10,7 +10,9 @@ import sys
 
 import pytest
 
-from ergora import review_packets
+from ergora import cli, review_packets, review_requests, workflow_definitions as workflows
+from ergora.state import State
+from test_composition_invocations import prepared as restricted_input
 
 
 def git(repository, *arguments, input=None):
@@ -56,6 +58,132 @@ def source(tmp_path):
     options = {"repository_id": "example/training", "base": base, "head": head,
                "requirements": requirements, "context_paths": ["caller.py", "config.toml"], "evidence": [evidence]}
     return repository, anchor, options
+
+
+@pytest.fixture
+def review_manifest(tmp_path):
+    state = State(tmp_path / "review-definitions")
+
+    def build(domain, *, after_general=False):
+        installed = workflows.install_preset(state, domain + "-review")
+        document = workflows.get(state, installed["root"]["id"], installed["root"]["version"])
+        root = document["definition"]
+        if after_general:
+            root["version"] = "1.0.1"
+            next(node for node in root["nodes"] if node["id"] == "domain")["depends_on"] = ["general"]
+            bundle = tmp_path / "serial-domain"
+            shutil.copytree(document["path"], bundle)
+            (bundle / "workflow.json").write_text(json.dumps(root), encoding="utf-8")
+            workflows.import_bundle(state, bundle)
+        grant = {"schema_version": 1, "permissions": root["permissions"], "limits": root["limits"]}
+        manifest = workflows.prepare_manifest(state.root, root["id"], root["version"], grant, tmp_path / domain)
+        return manifest
+
+    return build
+
+
+@pytest.mark.parametrize("domain", ["pretraining", "posttraining"])
+def test_source_bound_domain_input_preserves_complete_material_and_frozen_ancestors(source, review_manifest, tmp_path,
+                                                                                  monkeypatch, capsys, domain):
+    repository, _, options = source
+    packet, destination = tmp_path / "packet", tmp_path / "source-input"
+    receipt = review_packets.prepare(repository, destination=packet, **options)
+    manifest = review_manifest(domain)
+    originals = {str(path): path.read_bytes() for directory in (packet, Path(manifest["path"]))
+                 for path in directory.rglob("*") if path.is_file()}
+    selected = review_requests.prepare(packet, source_kind="local", source_sha256=receipt["packet_sha256"],
+        manifest=Path(manifest["path"]), manifest_digest=manifest["digest"], instance="root/domain/review",
+        destination=destination, max_prompt_bytes=1_000_000)
+    frozen = workflows.inspect_input(destination, material=True)
+    task = json.loads((destination / "task.txt").read_bytes())
+    assert task["material"] == review_packets.read(packet, sha256=receipt["packet_sha256"])
+    leaf = next(item for item in frozen["composition"]["instances"] if item["path"] == selected["instance"])
+    assert leaf["ref"]["id"] == "ergora-" + domain + "-reviewer"
+    assert all(resource["text"] in frozen["prompt"] for resource in leaf["resources"])
+    assert any(source["instance"] == "root" for resource in leaf["resources"] for source in resource["sources"])
+    monkeypatch.setenv("PATH", "")
+    unused_home = tmp_path / "unused-home"
+    assert cli.main(["--home", str(unused_home), "review", "verify-input", str(packet), "--source-kind", "local",
+        "--source-sha256", receipt["packet_sha256"], "--input", str(destination),
+        "--input-digest", selected["input_digest"], "--manifest-digest", manifest["digest"]]) == 0
+    assert json.loads(capsys.readouterr().out)["input_digest"] == selected["input_digest"] and not unused_home.exists()
+    for original in (packet, Path(manifest["path"])):
+        with pytest.raises(ValueError, match="inside its immutable source or manifest"):
+            review_requests.prepare(packet, source_kind="local", source_sha256=receipt["packet_sha256"],
+                manifest=Path(manifest["path"]), manifest_digest=manifest["digest"], instance=selected["instance"],
+                destination=original / "unwanted" / "input", max_prompt_bytes=1_000_000)
+        assert not (original / "unwanted").exists()
+    assert {name: Path(name).read_bytes() for name in originals} == originals
+    # A different valid packet for the same commits is still a different original request.
+    monkeypatch.undo()
+    request = tmp_path / "different-request.md"
+    request.write_text("A different original requirement.", encoding="utf-8")
+    other = tmp_path / "other-packet"
+    other_receipt = review_packets.prepare(repository, destination=other, **{**options, "requirements": request})
+    with pytest.raises(ValueError, match="complete selected source or manifest identity"):
+        review_requests.verify(destination, input_digest=selected["input_digest"], source=other,
+            source_kind="local", source_sha256=other_receipt["packet_sha256"], manifest_digest=manifest["digest"])
+
+
+@pytest.mark.parametrize("permission", [("read", ["definitions"]), ("shell", True)])
+def test_source_bound_inputs_refuse_valid_templates_with_incompatible_permissions(source, restricted_input, tmp_path, permission):
+    repository, _, options = source
+    state, _, original_input = restricted_input(permission=permission)
+    grant = workflows.inspect_input(original_input)["request"]["grant"]
+    manifest = workflows.prepare_manifest(state.root, "structure-review", "1.0.0", grant, tmp_path / "restricted-manifest")
+    packet = tmp_path / "packet"
+    receipt = review_packets.prepare(repository, destination=packet, **options)
+    destination = tmp_path / "denied"
+    with pytest.raises(ValueError, match="read ceiling|read-only leaf"):
+        review_requests.prepare(packet, source_kind="local", source_sha256=receipt["packet_sha256"],
+            manifest=Path(manifest["path"]), manifest_digest=manifest["digest"], instance="root/review",
+            destination=destination, max_prompt_bytes=1_000_000)
+    assert not destination.exists()
+
+
+def test_source_bound_inputs_refuse_a_different_manifest_used_during_preparation(source, review_manifest, tmp_path, monkeypatch):
+    repository, _, options = source
+    before, switched = review_manifest("pretraining"), review_manifest("posttraining")
+    packet = tmp_path / "packet"
+    receipt = review_packets.prepare(repository, destination=packet, **options)
+    original = workflows.prepare_input_from_manifest
+
+    def replace_manifest(manifest, *args, **kwargs):
+        return original(Path(switched["path"]), *args, **kwargs)
+
+    monkeypatch.setattr(workflows, "prepare_input_from_manifest", replace_manifest)
+    destination = tmp_path / "changed-manifest"
+    with pytest.raises(ValueError, match="manifest changed while preparing"):
+        review_requests.prepare(packet, source_kind="local", source_sha256=receipt["packet_sha256"],
+            manifest=Path(before["path"]), manifest_digest=before["digest"], instance="root/domain/review",
+            destination=destination, max_prompt_bytes=1_000_000)
+    assert not destination.exists()
+
+
+def test_source_bound_input_does_not_skip_unexecuted_ancestor_dependencies(source, review_manifest, tmp_path):
+    repository, _, options = source
+    packet = tmp_path / "packet"
+    receipt = review_packets.prepare(repository, destination=packet, **options)
+    manifest = review_manifest("pretraining", after_general=True)
+    destination = tmp_path / "not-executed"
+    with pytest.raises(ValueError, match="direct root task"):
+        review_requests.prepare(packet, source_kind="local", source_sha256=receipt["packet_sha256"],
+            manifest=Path(manifest["path"]), manifest_digest=manifest["digest"], instance="root/domain/review",
+            destination=destination, max_prompt_bytes=1_000_000)
+    assert not destination.exists()
+
+
+def test_source_bound_input_exceeding_full_prompt_capacity_is_not_truncated_or_published(source, review_manifest, tmp_path):
+    repository, _, options = source
+    packet = tmp_path / "packet"
+    receipt = review_packets.prepare(repository, destination=packet, **options)
+    manifest = review_manifest("pretraining")
+    destination = tmp_path / "too-small"
+    with pytest.raises(ValueError, match="Complete composition prompt exceeds"):
+        review_requests.prepare(packet, source_kind="local", source_sha256=receipt["packet_sha256"],
+            manifest=Path(manifest["path"]), manifest_digest=manifest["digest"], instance="root/domain/review",
+            destination=destination, max_prompt_bytes=100)
+    assert not destination.exists() and not list(tmp_path.glob(".review-input-*"))
 
 
 def test_complete_diverged_sources_ignore_worktree_and_survive_repository_removal(source, tmp_path):

@@ -11,9 +11,10 @@ from threading import Barrier
 import pytest
 
 from test_candidate_observations import candidate, remote, source, writer
-from ergora import backups, cli, issue_backends, issue_writebacks, issues, projects, review_sources, tasks
+from ergora import backups, cli, issue_backends, issue_writebacks, issues, projects, review_requests, review_sources, tasks
+from ergora import workflow_definitions as workflows
 from ergora.state import State
-from test_review_packets import commit, git, source as git_source
+from test_review_packets import commit, git, review_manifest, source as git_source
 
 
 def configure_review(service):
@@ -380,6 +381,29 @@ def test_external_source_relationships_are_verified_beyond_file_checksums(extern
         source_path.write_text(json.dumps(changed), encoding='utf-8')
         with pytest.raises(ValueError, match='External review source differs'):
             review_sources.read(destination)
+
+
+def test_external_review_input_keeps_full_observation_and_source_without_new_platform_reads(external_review, review_manifest,
+                                                                                         tmp_path, capsys, monkeypatch):
+    service, repository, _, options = external_review
+    source, destination = tmp_path / 'external', tmp_path / 'review-input'
+    receipt = review_sources.collect(service.backend.binding, '11', repository, destination=source, **options)
+    manifest = review_manifest('posttraining')
+    original = {name: (source / name).read_bytes() for name in ('source.json', 'material/packet.json')}
+    monkeypatch.delenv('ERGORA_FIXTURE_ISSUE_TOKEN')
+    monkeypatch.setenv('PATH', '')
+    unused_home = tmp_path / 'unused-home'
+    assert cli.main(['--home', str(unused_home), 'review', 'prepare-input', str(source), '--source-kind', 'external',
+        '--source-sha256', receipt['source_sha256'], '--manifest', manifest['path'], '--manifest-digest', manifest['digest'],
+        '--instance', 'root/domain/review', '--max-prompt-bytes', '1000000', '--directory', str(destination)]) == 0
+    selected = json.loads(capsys.readouterr().out)
+    task = json.loads((destination / 'task.txt').read_bytes())
+    assert task['material'] == review_sources.read(source, sha256=receipt['source_sha256'])
+    verified = review_requests.verify(destination, input_digest=selected['input_digest'], source=source,
+        source_kind='external', source_sha256=receipt['source_sha256'], manifest_digest=manifest['digest'])
+    assert verified['input_digest'] == workflows.inspect_input(destination)['digest']
+    assert {name: (source / name).read_bytes() for name in original} == original
+    assert len(service.calls) == 2 and not unused_home.exists()
 
 
 def test_external_collection_rejects_unavailable_or_inconsistent_comparison(external_review, tmp_path):

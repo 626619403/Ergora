@@ -77,6 +77,20 @@ def parser() -> argparse.ArgumentParser:
     source_read = operations.add_parser("read-source", help="Read and verify a complete saved PR/MR source offline")
     source_read.add_argument("directory", type=Path)
     source_read.add_argument("--sha256", help="Independently obtained source.json SHA256")
+    for name in ("prepare-input", "verify-input"):
+        operation = operations.add_parser(name, help="Bind a complete review source to one original read-only leaf input")
+        operation.add_argument("source", type=Path)
+        operation.add_argument("--source-kind", choices=("local", "external"), required=True)
+        operation.add_argument("--source-sha256", required=True)
+        operation.add_argument("--manifest-digest", required=True)
+        if name == "prepare-input":
+            operation.add_argument("--manifest", type=Path, required=True)
+            operation.add_argument("--instance", required=True)
+            operation.add_argument("--max-prompt-bytes", type=int, required=True)
+            operation.add_argument("--directory", type=Path, required=True)
+        else:
+            operation.add_argument("--input", type=Path, required=True)
+            operation.add_argument("--input-digest", required=True)
     for name in ("verify", "read"):
         operation = operations.add_parser(name, help="Offline integrity check; does not authenticate Git origin or checks")
         operation.add_argument("directory", type=Path)
@@ -742,7 +756,17 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "review":
             from . import review_packets
 
-            if args.operation in ("collect", "read-source"):
+            if args.operation in ("prepare-input", "verify-input"):
+                from . import review_requests
+
+                if args.operation == "prepare-input":
+                    output = review_requests.prepare(args.source, source_kind=args.source_kind, source_sha256=args.source_sha256,
+                        manifest=args.manifest, manifest_digest=args.manifest_digest, instance=args.instance,
+                        destination=args.directory, max_prompt_bytes=args.max_prompt_bytes)
+                else:
+                    output = review_requests.verify(args.input, input_digest=args.input_digest, source=args.source,
+                        source_kind=args.source_kind, source_sha256=args.source_sha256, manifest_digest=args.manifest_digest)
+            elif args.operation in ("collect", "read-source"):
                 from . import review_sources
 
                 if args.operation == "collect":

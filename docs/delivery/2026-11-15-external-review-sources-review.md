@@ -116,3 +116,72 @@ r2 新包独立摘要：GitHub source `263e8094f1a74d96d72301e3750cc83d715e30860
 |`docs/plans/2026-11-15-external-review-sources.md`|5126|`d58bae2417dcdf1114c51cd86d7fe174cfa25ed4d5b777238b1099bd3b3f85e4`|
 
 独立重核 **13 份 Markdown／285 本地链接及 fragment 零错误**，tracked 及新增文件完整 whitespace 检查无误。本次只追加本报告；未安装、重跑测试／模型、启动服务、训练、提交、推送或平台写入。只凭包无法认证真实 commit-tree membership／merge-base、完整真实平台成功及原检查可信度的限制保持。Q5.1 自己的 CI 终态及原独立补核尚未闭合，后继 push 门禁保持；本片普通发布／完整远端 Ref／自己的适用 CI 及同片终核仍待验，未扩大为 Windows、领域组合运行、训练质量或性能验收。
+
+## 固定普通发布补核（2026-11-15）
+
+同一独立评审者已直接读取固定提交 `6f42cad6edcd2ef53f2f6326628d1df728a118bd` 的 Git 对象：唯一父为 `705cbe428dce73ff222dbdaec3c67329a310c06d`，tree 为 `d16773f84d78722df1686e805b3a3bd76e3ab102`。**固定发布需求符合性 approve／结构可维护性及测试价值 approve，开放实质 finding 0／0，R1 保持关闭。** 本节覆盖此前待普通发布／固定发布补核及前片门禁的状态；本片自己的适用 CI 尚待认证，不以本地通过或前片结果替代。
+
+基线→固定提交的变化集合恰为 **18 个文件／496,174B**，逐项 blob ID、字节数与 SHA256 全部匹配 `staged-r1.json`、`local-commit-r1.json` 和 `publication-r1.json`，没有额外或缺失文件。与已审 `review-scope-r2` 的文件集合相同，源码／测试及用户使用说明逐字保持；差异仅为本片自身／独立结果、Q4.1／Q5.1 状态的计划／交付记账，以及本报告已核的 r2 追加。固定提交内的本报告为 **19,691B／SHA256 `c4e1832cd6cbb573e9df4a41bfd2243102de23a583887eea899931da1229b5a2`**，与本节追加前的全文相同，该前缀保持。
+
+|发布原件|独立重算 SHA256|
+|---|---|
+|`staged-r1.json`|`73d7ef13385b885978d9a86cda5564ace5da5575a891dcb017de2e38c1e4c426`|
+|`local-commit-r1.json`|`2301489aea7dd8b0d6d3405678fcc3e1f2863d769176bbf1882feb0f7c72b958`|
+|`publication-r1.json`|`286235a5c474d97f709091326078427b47a6b9625b3ee85914220ae59b32c01c`|
+|`remote-r1.txt`|`0dbf237207d8c48a72017b2cb446f4b32eb759bc4434e4b40c1e823426cce2e5`|
+
+所读原 `remote-r1.txt` 的完整 Ref 为上述 6f42 提交及 `refs/heads/refactor/architecture-foundations`，其字节摘要与 publication 记录一致。本次依授权范围未重新联网查询远端，只核保存的完整 Ref 原件；没有把本地提交记录中当时的“push pending”改写成已经发布。后续 publication 记录保存普通推送完成及该原 Ref 的观察事实。
+
+只读固定 6f42 的全部产品对象，排除 repo-only `src/ergora/AGENTS.md` 后，**642 固定 Git 产品＝原 package-r2 清单＝r2 wheel＝原 r2 非 editable 安装**逐字同；wheel 仍为 SHA256 `338db58dafa7f953723d1651e8952c5fab350c1bd2a9d69b83eadd1d86121f5c`，283 reference 与固定父 705 的 blob 身份全部相同。没有使用可能变化的后继工作树来认证此提交，也未把 CI 尚未取得的结果补入身份核验。
+
+固定 Git 中的 **13 份 Markdown／287 个本地链接及 fragment 零错误**，基线→该提交的完整 `git diff --check` 通过，涵盖所有新增文件。上文 285 条保留原 r2 范围；本次两条增量来自最终交付入口。链接目标和 Markdown 锚点均从固定提交读取，未借工作树中新文件补齐目标。
+
+前片 Q5.1 的原 reviewer 已在固定提交包含的原报告中记录 CI `43631156705` 终态：完整 705 身份、八 job／30 必要步骤、需求与维护性两轴 approve／开放 0／0，片内剩余验收 0。该报告 **15,483B／SHA256 `4ae5e05daa4b3f65ff4e506c5180ae18f2cd7345826e5032c15c0c21154367e6`** 及其引用的独立结果 `ci-terminal-r1.json`（SHA256 `82e5db53f90a69a6b6a701f8c1877e91cd8b61b2756c56f0f9218d9373b3adde`）已直接核同，gate 关闭记录已先进入本提交。这里只核原终核及其身份，未递归重解析前片全部 88 份官方捕获；该 CI 仍只属于 705，不能认证新 6f42。
+
+本次仅固定 Git／原安装／发布原件的只读核验及报告追加，未运行模型、119 项测试、训练、安装、Git 或平台写入，也未新发平台请求。本片剩余验收为完整固定 6f42 自己的适用 CI 终态和同片补核；Windows 新来源入口的适用 CI、真实平台完整采集、领域组合运行以及原训练／性能／完整 Forge 等未验范围继续按各自实际证据处理。
+
+## 固定 6f42 自己的 CI 终态补核（2026-11-15）
+
+同一独立评审者已取得并直接重解析[官方 run `43633497498`](https://github.com/626619403/Ergora/actions/runs/43633497498) 的终态。完整提交仍为 `6f42cad6edcd2ef53f2f6326628d1df728a118bd`，唯一父 `705cbe428dce73ff222dbdaec3c67329a310c06d`、tree `d16773f84d78722df1686e805b3a3bd76e3ab102` 均由固定 Git 对象再次核同。**需求符合性 approve／结构可维护性及测试价值 approve，开放实质 finding 0／0，R1 保持关闭，Q1.2 片内剩余验收 0。** 本节关闭上文待自身适用 CI／同片终核的状态；结论只属于此固定提交，不认证后继工作树。
+
+本轮获授权后新增四轮匿名只读采集，每轮限定此 run 的页面、attempt 1 完整 job 分页和八个原 job 页面，共 **40 个 GET**；每请求 timeout 20 秒、响应上限 2 MiB，拒绝重定向，不带凭据，无重试或平台写入。终轮请求窗口为 **2026-11-14T20:00:01.960077Z–20:00:05.439795Z**，解析完成于 `20:00:05.441868Z`。十份响应均 HTTP 200，返回 URL 等于请求 URL，字节数和 SHA256 与保存回执逐项一致。run 原页含完整 6f42 提交链接及 `Success`；导航的 summary／分页路径和各页 selectedJobId 均匹配该 run。
+
+终轮完整分页 `totalCount=8`、`hasMore=false`，八个唯一 job 无缺漏、无重复；其分页与对应 job 原页均为 `completed`，conclusion 全为 `success`：
+
+|固定 job|ID|必要步骤成功数|
+|---|---|---:|
+|plan|`132565137859`|1/1|
+|Ubuntu／Python 3.11／group 0|`132565174233`|4/4|
+|Ubuntu／Python 3.11／group 1|`132565174370`|4/4|
+|Ubuntu／Python 3.11／group 2|`132565174312`|4/4|
+|Ubuntu／Python 3.11／group 3|`132565174380`|4/4|
+|Ubuntu／Python 3.11／group 4|`132565174266`|4/4|
+|Ubuntu／Python 3.11／group 5|`132565174269`|4/4|
+|Windows／Python 3.12／group all|`132565174274`|5/5|
+
+必要步骤从固定 6f42 的 workflow／六组配置读取：plan 的 `Read explicit test groups`，七个 native 各自的 `Run actions/setup-python@v5`、`Build and install wheel`、`Packaged reference identity`、`Native application regression`，再加 Windows 的 `Windows PowerShell 5.1 installer and upgrade`，合计 **30/30 success**。所有必要步骤均有终态 job 属性、非空起止时间及 log URL；逐项核 start≤finish≤观察时刻、步骤次序和 plan 完成先于 native。每个 log URL 都精确绑定 `/626619403/Ergora/commit/<完整6f42>/checks/<本job ID>/logs/<步骤号>`。Windows 原生回归于 `19:58:20Z` 完成，PS5.1 安装升级于 `19:59:06Z` 完成。
+
+固定配置中 `test_review_associations.py` 属于 Ubuntu group 0，`test_review_packets.py` 属于 group 3；固定 runner 的 Windows `all` 使用整个 `tests` 选择，未按 Linux group 分割。本节认证上述官方安装／reference／回归／PS5.1 步骤的成功结论，**未下载逐测试日志、JUnit 或 artifact，不编造 Windows 的 passed／skipped 数目或逐测试结果**。固定 workflow SHA256 为 `be814a956237b8a64258f396fa81a972ff764ceaa3ea16ffefa8e82be89a4353`，分组文件为 `b50d95a1954d6e2612183feccc7b5a764c9109c479997dec7fe628127b55981e`；两者及 runner 均从固定 Git 对象读取，没有使用后继源码。
+
+五轮主采集文件共 **50 份官方响应原字节＋5 份解析记录**，已全部离线逐项重核，早期记录原样保留：
+
+|观察轮次|解析完成时刻（2026-11-14 UTC）|run 状态|必要步骤成功数|
+|---|---|---|---:|
+|原作者 observation-r1|19:44:40.921830|In progress|22/30|
+|reviewer-r1|19:56:42.463222|In progress|28/30|
+|reviewer-r2|19:57:28.234640|In progress|28/30|
+|reviewer-r3|19:58:58.871269|In progress|29/30|
+|reviewer-r4|20:00:05.441868|Success|30/30|
+
+采集先读 run／分页、再读 job，各页有各自请求时间，未声称原子快照。五轮均未发现分页与 job 页状态差异；只有最后一轮同时满足 run Success、八 job completed/success 与 30 必要步骤 success。最初 22/30 及中间 28／29 的空 conclusion／完成时间／log URL 没有事后回填。原 discovery 页与原作者十一份捕获／解析文件也按本轮追加前的十二文件 manifest 核对未变。
+
+证据目录为 `.ergora/checks/external-review-sources/ci/`；独立结果 [reviewer-ci-audit-r3.json](../../.ergora/checks/external-review-sources/ci/reviewer-ci-audit-r3.json) 保存五轮完整 job／步骤、55 文件清单、全部原字节身份、四轮回执校验及固定 workflow／runner 身份。其 SHA256 为 `0a7de1b73b431e3a2289b43a95f75238a484250a7067c813857236145c400152`；离线审计脚本 `reviewer-ci-audit-r1.py` SHA256 为 `dee56c2ec32a70d378a5beeaa3efa82758e22bd03846e37f5c98bbc52c9d450c`。关键终轮原件如下，八个 job HTML 的逐项摘要见该结果的 artifacts：
+
+|原件|SHA256|
+|---|---|
+|`observation-reviewer-r4.json`|`de12c81e750f229e25db96dfd602400b93df09b71dbf26faa76407fc30d83aa0`|
+|`receipts-reviewer-r4.json`|`fbb3b3912ab86a9ae30baab87cbc4c086feecef1fe1f2cd413ec73194b55357f`|
+|`run-reviewer-r4.html`|`f509b063249d584070ba5b0fe537ffc331bc702d2095cc45a797ed5be93b5ae7`|
+|`job-groups-reviewer-r4.json`|`ae0bf0ca1828543a7b2b179c3d0c9cbad55eeefb51bfc0c664e6c7b046a872a2`|
+
+本节追加前的报告 **23,585B／SHA256 `d8d5339e2090209bfcbfb7ba2b144f4091ec7b2ac76f65a61fede3d823c249f9`** 已保存为同目录 `report-prefix-before-ci-r1.md`，完整前缀保持；固定提交内原 19,691B 前缀身份也保持。本次仅追加本报告及保存 ignored 审查原件，没有改源码／其他文档、重跑测试或模型、执行目标脚本、安装、训练、提交或推送。真实平台完整来源包、领域组合运行、训练质量／数值／梯度／分布式、性能、自动循环及完整 Forge 的原未验边界保持，不从本片 CI 扩大结论。
