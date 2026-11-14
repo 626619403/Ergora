@@ -458,6 +458,24 @@ ergora agent output my-project RUN_ID
 
 单叶调用的任务由操作者提供，图前驱和端口没有执行；原输入仍为`execution_authorized: false`，本次调用也不创建正式候选/批准。正式串行/并行调度及候选、批准使用上文的[正式审查](#正式只读审查的数据端口)和[工作单元](#专长执行者与原工作单元)入口。
 
+## 按精确 ID 读取原组合运行
+
+`agent runs`只列最近100条；`agent output`提供有界stdout／stderr。需要原组合run的完整输入和结构化结果时，使用其精确ID：
+
+```bash
+ergora composition inspect-run my-project RUN_ID > ./original-run.json
+ergora --home /path/to/control-directory composition inspect-run my-project RUN_ID \
+  --max-result-bytes 16777216 > ./original-run.json
+```
+
+这会按项目和ID读取原记录，以及当前控制目录中原`runs/`槽位的完整input、调用prompt和结果，不要求源仓库、后端程序、认证或网络。复制完整控制目录后，历史metadata的绝对路径保持原样，读取使用新控制目录下的原槽位；不能只复制数据库而丢弃run文件。旧的普通`agent run`仍用`agent output`，这个完整读取入口面向`composition run-input`等原组合运行。
+
+返回`run`保留原状态与实际后端／原因；`input.available`核完整输入及其原digest／request／prompt身份，`prompt.available`独立核原调用prompt与原记录的SHA和字节数。输入也可核时，再逐字比较冻结prompt，标记`prompt.input_compared: true`；输入不可核时该标记为false，不妨碍保留仍与原记录匹配的调用prompt身份。`result.available`核完整原result SHA并读取其JSON，正文在`result.document`中，不截成stdout预览。默认结果容量8,388,608B，超限明确返回不可核，可提高正整数容量后再读；原保存内容不变。
+
+每项缺失、身份不符或超限都会在对应`error`中说明，仍可核的其它资料和原run状态继续显示。命令成功读回观察时返回0；脚本必须检查各项`available`和`run.status`，不能只用exit0判断审查完成。这个读取不重新跑当前后端／schema准入，也不把历史结果升格为正式批准；后继报告按可信reviewer合同解释建议。
+
+原调用prompt来自各后端共同保存的`protocol/prompt.txt`。实际传输可能经stdin或后端request文件，不能由这份观察宣称所有后端的stdin交付已认证。原native历史仍按[后端手册](AGENT_BACKENDS.md)读取。失败或unknown先保留并对账，不自动重发模型调用。
+
 
 ## 在页面修订工作流资源
 

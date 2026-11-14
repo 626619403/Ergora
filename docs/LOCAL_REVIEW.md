@@ -107,6 +107,8 @@ ergora composition run-input demo ./reviews/domain-input \
 
 后端认证、支持模式和实际能力仍由原准入检查。运行回执的`input_digest`应与所选输入回执一致。执行者与审查者优先使用不同后端；回退须记录实际原因，不把同后端调用称为异构审查。结果和完整冻结输入仍保存在原run中；失败或unknown先读取原run，不自动重复调用。此入口只负责单叶审查输入，不授予正式候选或平台批准。
 
+完成调用后可用`ergora composition inspect-run demo RUN_ID > ./original-run.json`[按精确ID读取](WORKFLOW_DEFINITIONS.md#按精确-id-读取原组合运行)完整原输入和result，核`run.input_digest`与所选回执一致，以及各项`available`／原状态；不会自动补跑其他分支或重新调用模型。
+
 ## 覆盖、限制与后续审查
 
 - Git 读取禁用 replace objects、hook、textconv、外部 diff 与隐式 lazy fetch，剔除继承的 `GIT_*` 变量，不 checkout 或执行目标脚本。文件正文和其中的指令只是待审材料，不授予权限。

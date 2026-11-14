@@ -10,7 +10,7 @@ import sys
 
 import pytest
 
-from ergora import agent_definitions, agent_runs, agents, processes, projects, workflow_definitions as workflows
+from ergora import agent_backends, agent_definitions, agent_runs, agents, processes, projects, workflow_definitions as workflows
 from ergora.cli import main
 from ergora.state import State
 
@@ -49,6 +49,95 @@ def prepared(tmp_path):
                                 "Review the supplied candidate. 核对结构。\r\n".encode(), target, 30000)
         return state, repo, target
     return build
+
+
+@pytest.fixture
+def recorded_run(prepared, monkeypatch):
+    state, repo, source = prepared()
+    result = {"summary": "Complete original review", "artifacts": {"response": "原始完整回复。" * 12000}, "decision": "approve"}
+
+    def native(argv, cwd, output, timeout, stdin, env, **kwargs):
+        Path(argv[argv.index("--output-last-message") + 1]).write_text(json.dumps(result), encoding="utf-8")
+        output.mkdir()
+        return {"status": "succeeded", "returncode": 0, "output": str(output)}
+
+    monkeypatch.setattr(processes, "run", native)
+    run = agent_runs.run_input(state, "demo", source)
+    assert run["status"] == "succeeded"
+    monkeypatch.setattr(agents, "invoke", lambda *args, **kwargs: pytest.fail("Inspection must never redispatch"))
+    return state, repo, run, result
+
+
+def test_exact_run_inspection_survives_history_limit_and_relocation_without_current_backend(recorded_run, tmp_path,
+                                                                                           monkeypatch, capsys):
+    state, repo, run, result = recorded_run
+    projects.create(state, "other", repo)
+    with pytest.raises(ValueError, match="Unknown agent run in this project"):
+        agent_runs.inspect_run(state, "other", run["id"])
+    with state.connect() as db:
+        db.executemany("INSERT INTO agent_runs VALUES (?, ?, ?)",
+            [(f"later-{number}", "demo", json.dumps({**run, "id": f"later-{number}"})) for number in range(100)])
+    assert run["id"] not in [item["id"] for item in agent_runs.runs(state, "demo")]
+    moved = tmp_path / "relocated-state"
+    shutil.copytree(state.root, moved)
+    shutil.rmtree(state.root)
+    monkeypatch.setenv("PATH", "")
+    monkeypatch.setattr(agent_backends, "for_binding", lambda *args, **kwargs: pytest.fail("Historical read has no live admission"))
+    state = State(moved)
+    with state.connect() as db:
+        before = list(db.iterdump())
+    assert main(["--home", str(moved), "composition", "inspect-run", "demo", run["id"]]) == 0
+    observed = json.loads(capsys.readouterr().out)
+    assert observed["run"] == run and observed["input"]["digest"] == run["input_digest"]
+    assert observed["input"]["request"] == run["input_request"] and observed["prompt"]["available"]
+    assert observed["result"]["document"] == result and observed["result"]["bytes"] > 65536
+    assert observed["result"]["sha256"] == run["result_sha256"]
+    assert agent_runs.inspect_run(state, "demo", run["id"], max_result_bytes=10**30)["result"] == observed["result"]
+    with state.connect() as db:
+        assert list(db.iterdump()) == before
+
+
+@pytest.mark.parametrize("changed", ["input", "recursive-input", "prompt", "result", "recursive-result",
+                                     "missing-result", "unrecorded-result", "capacity"])
+def test_run_inspection_retains_original_state_and_other_material_when_one_artifact_is_unverifiable(recorded_run, changed):
+    state, _, run, result = recorded_run
+    storage, run_id = state.root / "runs", run["id"]
+    if changed == "input":
+        (storage / (run_id + ".input") / "task.txt").write_text("A different task", encoding="utf-8")
+    elif changed in ("recursive-input", "recursive-result"):
+        depth = 20 * sys.getrecursionlimit()
+        raw = ("[" * depth + "0" + "]" * depth).encode()
+        if changed == "recursive-input":
+            (storage / (run_id + ".input") / "request.json").write_bytes(raw)
+        else:
+            (storage / run_id / "result.json").write_bytes(raw)
+            run = {**run, "result_sha256": hashlib.sha256(raw).hexdigest()}
+            with state.connect() as db:
+                db.execute("UPDATE agent_runs SET document=? WHERE id=?", (json.dumps(run), run_id))
+    elif changed == "prompt":
+        (storage / (run_id + ".protocol") / "prompt.txt").write_text("A different prompt", encoding="utf-8")
+    elif changed == "result":
+        (storage / run_id / "result.json").write_text(json.dumps({**result, "decision": "request-changes"}), encoding="utf-8")
+    elif changed == "missing-result":
+        (storage / run_id / "result.json").unlink()
+    elif changed == "unrecorded-result":
+        run = {key: value for key, value in run.items() if key not in ("result", "result_sha256")}
+        run.update(status="failed", error="No final receipt was recorded")
+        with state.connect() as db:
+            db.execute("UPDATE agent_runs SET document=? WHERE id=?", (json.dumps(run), run_id))
+    observed = agent_runs.inspect_run(state, "demo", run_id, max_result_bytes=100 if changed == "capacity" else 8_388_608)
+    unavailable = "input" if changed in ("input", "recursive-input") else "prompt" if changed == "prompt" else "result"
+    assert observed["run"] == run and not observed[unavailable]["available"] and observed[unavailable]["error"]
+    if unavailable != "input":
+        assert observed["input"]["available"]
+    if unavailable != "result":
+        assert observed["result"]["document"] == result
+    if unavailable != "prompt":
+        assert observed["prompt"]["available"]
+        assert observed["prompt"]["input_compared"] == observed["input"]["available"]
+        assert observed["prompt"]["sha256"] == run["prompt_sha256"]
+    with state.connect() as db:
+        assert json.loads(db.execute("SELECT document FROM agent_runs WHERE id=?", (run_id,)).fetchone()[0]) == run
 
 
 @pytest.mark.parametrize("backend", ["codex", "claude-code"])

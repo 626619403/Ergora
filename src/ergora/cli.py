@@ -226,6 +226,10 @@ def parser() -> argparse.ArgumentParser:
             operation.add_argument("--timeout", type=int, default=300)
             operation.add_argument("--allow-one-continuation", action="store_true",
                                    help="Enable one explicit follow-up for a new standalone task-MCP source; unsupported backends fail")
+    inspection = operations.add_parser("inspect-run", help="Read an exact original composition run, complete input and result offline")
+    inspection.add_argument("project")
+    inspection.add_argument("id")
+    inspection.add_argument("--max-result-bytes", type=int, default=8_388_608, help="Complete result capacity; excess is reported without truncation")
     continuation = operations.add_parser("continue-input", help="Send one explicit new prepared input to an enabled native source")
     continuation.add_argument("project")
     continuation.add_argument("source_run")
@@ -1079,6 +1083,8 @@ def main(argv: list[str] | None = None) -> int:
                 output = agent_runs.run_input(State(args.home), args.project, args.directory, args.timeout,
                     backend=args.backend, model=args.model, reason=args.backend_reason, codex_config=args.codex_config, mode=args.mode,
                     allow_one_continuation=args.allow_one_continuation)
+            elif args.operation == "inspect-run":
+                output = agent_runs.inspect_run(State(args.home), args.project, args.id, max_result_bytes=args.max_result_bytes)
             elif args.operation == "continue-input":
                 output = agent_runs.continue_input(State(args.home), args.project, args.source_run, args.directory,
                     intent_id=args.intent, timeout=args.timeout)

@@ -28,3 +28,7 @@ Kernel专家按用户最新要求继续保留在training-optimization-v3的评�
 [fresh-context报告](2026-11-15-source-bound-review-inputs-review.md)两轴approve、开放0／0。直接核原源码／邻近实际owner、643源码／wheel／site-packages及283参考、两套216原JUnit、四份完整输入、五目录153文件原清单、17CLI回执和两条原模型run／sealed input／实际stdin／result／SQLite；没有以自身模型意见代替独立结论。原报告8,754B，SHA256 `f453e1364301776ee3d9528a777f4ab6bc884e5b0691e2391e45a2cb5c932ae7`。本片普通发布、完整远端Ref、自己的CI及原终核待完成。
 
 下一片按[原run读取与报告计划](../plans/2026-11-15-source-review-reports.md)先补完整原件读取，再汇总跨分支覆盖，不新增调度器或批准权威。
+
+## 固定普通发布
+
+已普通发布`f1fc4501b8f15060eee7502caf6531c8f44a1b5f`，14作者blob／tree`037b4d810155232894ed7838b8975057a027c700`及完整live Ref一致。原独立固定发布补核两轴approve／开放0／0，643固定Git／原wheel／安装和283参考直接核同；18MD／313本地引用中312可从固定Git核，一条前片CI链接明确属于ignored私有原件，原声明SHA已核。自己的Portability run`43636049607`另跟踪，未以在途观察称成功；原报告和本地原件保持。

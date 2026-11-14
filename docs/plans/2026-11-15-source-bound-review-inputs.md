@@ -27,6 +27,6 @@
 |Q2.3a-2 实现|prepare-input／verify-input CLI＋来源绑定用例，复用原完整输入格式，State前分派|已实现原reader→原编译器的来源绑定用例及两CLI，用户手册已补；未增加schema、数据库或调度|
 |Q2.3a-3 接缝|原Git／领域preset／manifest fixture；完整原材料与祖先资源、域/专长切换，错来源／模板漂移／越权／未执行依赖／容量及原件保持；适当原回归|原四suite源码216通过／67.16秒，含两平台完整来源／祖先依赖／容量新增接缝；未新增test文件或CI job|
 |Q2.3a-4 独立安装／实用|新wheel／非editable身份及283保持，实际CLI和至少一次完整领域叶调用，原run／结果保留|r1新wheel／643源码及安装逐字一致、283参考保持；安装216通过／77.35秒，17实际CLI／四完整输入及真实预训练叶24.379秒完成，保留request-changes及完整原件。私有driver收尾字段错误已沿同run读回，未重发。无训练／GPU／质量／性能主张|
-|Q2.3a-5 审查／交付|自身原结构模板、新fresh-context独立两轴；普通push及完整Ref／自己的CI／原终核|自身原结构模板Codex45.105秒approve，20完整文件／三resources／原task及stdin保持；新独立本地两轴approve／开放0／0，完整源码／原件直接核过。普通发布及自己的CI另闭合|
+|Q2.3a-5 审查／交付|自身原结构模板、新fresh-context独立两轴；普通push及完整Ref／自己的CI／原终核|自身原结构模板45.105秒、新独立本地／固定发布两轴approve／开放0／0，已普通发布f1fc450／14blob／完整Ref相同。自己的CI43636049607仍在途，终态与原终核后精确闭合|
 
 每步更新[交付记录](../delivery/2026-11-15-source-bound-review-inputs.md)和PLAN。Q2.3b再实现完整原run证据／多分支覆盖及本地报告；当前不增加自动调度或批准。

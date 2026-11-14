@@ -5,11 +5,14 @@ import hashlib
 import json
 from pathlib import Path
 import shutil
+import stat
 import time
 import uuid
 
 from . import agent_backends, agent_definitions, agents, contracts, projects, task_mcp, workflow_definitions
+from .asset_trees import is_link
 from .bindings import validate_binding
+from .definition_bundles import parse_json
 from .state import State, file_lock, now
 
 
@@ -356,14 +359,83 @@ def runs(state: State, project_id: str) -> list[dict]:
             "SELECT document FROM agent_runs WHERE project=? ORDER BY rowid DESC LIMIT 100", (project_id,))]
 
 
-def output(state: State, project_id: str, run_id: str, *, native_history: bool = False,
-           offset: int = 0, limit: int = 65_536, revision: str | None = None) -> dict:
+def _record(state: State, project_id: str, run_id: str) -> dict:
     state.project(project_id)
     with state.connect() as db:
         row = db.execute("SELECT document FROM agent_runs WHERE project=? AND id=?", (project_id, run_id)).fetchone()
     if row is None:
         raise ValueError("Unknown agent run in this project")
-    document = json.loads(row[0])
+    document = parse_json(row[0], "Agent run record")
+    if not isinstance(document, dict) or document.get("id") != run_id or document.get("project") != project_id:
+        raise ValueError("Saved agent run differs from its selected project or run ID")
+    return document
+
+
+def _artifact(directory: Path, name: str, byte_limit: int) -> bytes:
+    if is_link(directory) or not directory.is_dir():
+        raise ValueError("Run artifacts require an ordinary directory")
+    path = directory / name
+    details = path.stat()
+    if is_link(path) or not stat.S_ISREG(details.st_mode):
+        raise ValueError("Run artifact requires an ordinary file: " + name)
+    with path.open("rb") as stream:
+        raw = stream.read(min(byte_limit + 1, details.st_size + 1))
+    if len(raw) > byte_limit:
+        raise ValueError(f"Complete run artifact exceeds its byte limit: {name} > {byte_limit}")
+    return raw
+
+
+def inspect_run(state: State, project_id: str, run_id: str, *, max_result_bytes: int = 8_388_608) -> dict:
+    """Observe original composition material without current admission or redispatch."""
+    contracts.validate(run_id, {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$"}, "Run ID")
+    contracts.validate(max_result_bytes, {"type": "integer", "minimum": 1}, "Result byte limit")
+    document = _record(state, project_id, run_id)
+    if document.get("kind") != "composition-agent-run":
+        raise ValueError("Select an original composition agent run")
+    storage = state.root / "runs"
+    observed = {"schema_version": 1, "kind": "composition-run-observation", "run": document,
+                "input": {"available": False}, "prompt": {"available": False},
+                "result": {"available": False}, "formal_execution_authorized": False}
+    try:
+        prepared = workflow_definitions.inspect_input(storage / (run_id + ".input"), material=True)
+        if (prepared["digest"] != document.get("input_digest") or prepared["request"] != document.get("input_request")
+                or prepared["request"]["prompt_sha256"] != document.get("prompt_sha256")):
+            raise ValueError("Saved input differs from the original run input identity")
+        observed["input"] = {"available": True, **prepared}
+    except (OSError, ValueError, RecursionError) as error:
+        observed["input"]["error"] = str(error)
+    try:
+        request = document.get("input_request")
+        contracts.validate(request, contracts.COMPOSITION_INPUT, "Original input request")
+        raw = _artifact(storage / (run_id + ".protocol"), "prompt.txt", request["prompt_bytes"])
+        digest = hashlib.sha256(raw).hexdigest()
+        if (len(raw) != request["prompt_bytes"] or digest != request["prompt_sha256"]
+                or digest != document.get("prompt_sha256")):
+            raise ValueError("Original invocation prompt differs from its recorded identity")
+        if observed["input"]["available"] and raw != prepared["prompt"].encode("utf-8"):
+            raise ValueError("Original invocation prompt differs from the frozen input")
+        observed["prompt"] = {"available": True, "bytes": len(raw), "sha256": digest,
+                              "input_compared": observed["input"]["available"]}
+    except (OSError, ValueError, RecursionError) as error:
+        observed["prompt"]["error"] = str(error)
+    if document.get("result_sha256") is None:
+        observed["result"]["error"] = "No original structured result identity was recorded"
+    else:
+        try:
+            raw = _artifact(storage / run_id, "result.json", max_result_bytes)
+            digest = hashlib.sha256(raw).hexdigest()
+            if digest != document["result_sha256"]:
+                raise ValueError("Structured result differs from its original run SHA256")
+            observed["result"] = {"available": True, "bytes": len(raw), "sha256": digest,
+                                  "document": parse_json(raw.decode("utf-8"), "Agent result")}
+        except (OSError, ValueError, RecursionError) as error:
+            observed["result"]["error"] = str(error)
+    return observed
+
+
+def output(state: State, project_id: str, run_id: str, *, native_history: bool = False,
+           offset: int = 0, limit: int = 65_536, revision: str | None = None) -> dict:
+    document = _record(state, project_id, run_id)
     streams = {}
     for name in ("stdout", "stderr"):
         path = state.root / "runs" / run_id / f"{name}.txt"

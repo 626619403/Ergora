@@ -47,3 +47,15 @@
 ## 剩余验收
 
 本地没有阻塞修正。普通发布后仍须核本片自己的固定源码／完整远端 Ref、适用 CI 终态与同一 reviewer 补核；前片固定 6f42 的 CI 不能认证此片。Q2.3b 的精确原 run 读取、跨分支完整覆盖与本地报告明确未实现，后继计划仅是合同。四路 all-join、真实平台完整成功采集、训练／GPU／分布式／质量／性能及完整 Forge 均不在本次验收内；stdin 字节交付也不证明模型理解或任意 provider 上下文容量。
+
+## 固定普通发布补核（2026-11-15）
+
+同一 reviewer 直接读取固定提交 `f1fc4501b8f15060eee7502caf6531c8f44a1b5f`：唯一 parent 为 `6f42cad6edcd2ef53f2f6326628d1df728a118bd`，tree 为 `037b4d810155232894ed7838b8975057a027c700`。**固定发布需求符合性 approve；结构可维护性／测试价值 approve；开放实质 finding 0／0。** 本节不提前认证尚在运行的 CI。
+
+固定差异恰为 14 文件／305,445B，各项 blob ID、字节数及 SHA256 与 `publication-r1.json` 逐一相同；回执 SHA256 为 `124753eafeeb5ca1c5e6155f3b4299688835d8714d87f25f298b0b8c15894f73`。保存的完整 `remote-r1.txt` 为上述提交及 `refs/heads/refactor/architecture-foundations`，摘要 `aa5a9c6d8be8b1c734366b6f2596e200112958928ca724595b3399181256d002` 匹配发布回执；未把 push 前的 pending 字段误当终态。这里核保存的远端原件，未额外执行 Git 网络写入。
+
+固定产品／测试与 r1 已审原文逐字相同；其余差异限于本片审查记账、前片 CI 终态同步及明确未实现的 Q2.3b 计划。固定提交中的本报告即原 8,754B／SHA256 `f453e1364301776ee3d9528a777f4ab6bc884e5b0691e2391e45a2cb5c932ae7`，本次追加保持该前缀。只从固定 Git 读取的 643 份产品＝原 package 清单＝原 wheel＝原独立安装逐字同，283 reference 对固定 parent 保持；没有用后继工作树认证此候选。
+
+完整 baseline→固定提交 `git diff --check` 通过，覆盖新增文件。固定 Git 的 18 份 Markdown 共 313 个本地引用：312 个目标／fragment 在固定 Git 内解析通过；前片报告另有一条明确指向私有 CI 审计原件的链接，其本地 104,860B 和声明摘要已直接核同，不将该 ignored 原件声称为公开 Git 内容。
+
+已用匿名、有界、无重定向的官方 API GET 按完整 SHA 发现唯一 Portability run [43636049607](https://github.com/626619403/Ergora/actions/runs/43636049607)，attempt 1。随后直接保存该 run、完整 job 分页与八个原 job 页面十份响应；2026-11-14T20:14:24.596665Z 解析时仍为 In progress、24／30 必要步骤成功，不能据此关闭门禁。发现响应、各次请求回执及原页面分存本片 `.ergora/checks/source-bound-review-inputs/ci/`，没有借前片 CI。剩余验收为此固定提交自己的完整 CI 终态及同片补核；不重跑模型／测试或推送。

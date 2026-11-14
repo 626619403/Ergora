@@ -4,7 +4,9 @@
 
 ## 当前检查点
 
-**活动片Q2.3a：[精确来源审查输入](plans/2026-11-15-source-bound-review-inputs.md)／[交付](delivery/2026-11-15-source-bound-review-inputs.md)。** 基线6f42cad；两无State CLI及来源绑定用例已实现，完整材料进入原冻结input，保持祖先资料与权限。源码216／安装216、643源码／wheel／安装逐字／283参考、17CLI／四完整输入／实际预训练叶24.379秒及自身原结构模板45.105秒已验；新fresh-context独立两轴approve／开放0／0，发布及自己的CI待完成。前片Q1.2自己的CI43633497498八job／30必要步骤及原独立终核已通过。Kernel专家保留在v3路径，允许无需算子修改。Q2.3b再补原run精确读取和完整本地报告，未称总审查已执行。
+**Q2.3b1本地验收完成：[精确原run读取](plans/2026-11-15-composition-run-inspection.md)／[交付](delivery/2026-11-15-composition-run-inspection.md)。** 基线f1fc450；r1自身及新独立两轴request-changes保持，R1／R2按实证修正，原3条红测试保持；修后源码34／r2安装69、643三方／283及八实际CLI、自身45.809秒approve、同reviewer两轴approve／开放0／0均已核。固定发布及自己的CI／原终核待，前片CI终核前不推后继产品；本地接[Q2.3b2／b3完整报告](plans/2026-11-15-source-review-reports.md)，不新增调度器。Kernel专家保留在v3路径。
+
+前片[Q2.3a精确输入](plans/2026-11-15-source-bound-review-inputs.md)／[交付](delivery/2026-11-15-source-bound-review-inputs.md)已普通发布`f1fc4501b8f15060eee7502caf6531c8f44a1b5f`，14blob／远端Ref一致、原固定发布两轴approve／开放0／0；源码216／安装216、643逐字／283参考、17CLI／四完整输入、实际领域叶24.379秒／自身45.105秒及新独立本地两轴均已验。自己的CI43636049607仍在途，终态及原reviewer终核前不推后继产品。Q1.2已精确闭合，自己的CI43633497498八job／30步骤及原终核通过。
 
 **已闭合：Q1.1／Q2.1／Q2.2／Q3.1–Q3.3／Q4.1／Q5.1及Q1.2均已精确交付，各自CI与原独立终核通过。** Q1.2固定6f42cad：642安装产品／283参考、119项／14CLI、自身38.800秒、新独立两轴及自己的CI43633497498八job／30必要步骤全部成功，开放0／0；合法长配置R1实红后修正并关闭。原22／28／29项中间态保留，[交付](delivery/2026-11-15-external-review-sources.md)及[独立终核](delivery/2026-11-15-external-review-sources-review.md)为权威。Q1 本地包先发布`ad168810…`，Windows只读Git对象删除失败经五行测试修正单独发布`a38dd21891ac200c575e8520c49cc82f97c9d478`，自己的CI43620231340及原独立终核通过；[Q1交付](delivery/2026-11-15-local-review-packets.md)保留旧失败及精确身份。
 
