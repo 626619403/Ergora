@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "id": "ergora-retrospective-reviewer",
+  "version": "1.0.0",
+  "description": "Source-bound Skill retrospective evidence and applicability reviewer.",
+  "roles": [
+    "reviewer"
+  ],
+  "specialties": [
+    "skill-evolution",
+    "evidence-review"
+  ],
+  "backend": {
+    "tool": "claude-code"
+  },
+  "resources": [
+    {
+      "id": "ergora-retrospective-reviewer-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "6e237932ecf925aa61b029f1bafb73d3b4a7e4f4614b984d7bb9e7c0d9297e37"
+    }
+  ]
+}

@@ -1,0 +1,107 @@
+{
+  "schema_version": 2,
+  "id": "ergora-skill-retrospective",
+  "version": "1.0.0",
+  "description": "Source-bound Skill candidate author followed by complementary readonly evidence review; evaluation and adoption remain explicit.",
+  "resources": [
+    {
+      "id": "ergora-skill-retrospective-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "293bb845e008be3b721d706fd23b847ff640a5f9614052e150cb6b19c6a25c0d"
+    },
+    {
+      "id": "ergora-retrospective-evidence-skill",
+      "kind": "skill",
+      "path": "skills/ergora-retrospective-evidence",
+      "digest": "bf019a00cb7720871dfda1461986500076b8c3dd2b839c9cde758dbf616153f2"
+    }
+  ],
+  "permissions": {
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "write": [],
+    "shell": false,
+    "network": []
+  },
+  "limits": {
+    "depth": 8,
+    "instances": 128,
+    "concurrency": 4,
+    "material_bytes": 262144
+  },
+  "inputs": [
+    "task"
+  ],
+  "outputs": {
+    "result": {
+      "node": "gather",
+      "output": "result"
+    }
+  },
+  "nodes": [
+    {
+      "id": "propose",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-retrospective-author",
+        "version": "1.0.0",
+        "digest": "5b19bc21eb7b20357be9f4acc8ecbfa5a55415ead8d5e93b2237524f5d3af616"
+      },
+      "role": "implementer",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      }
+    },
+    {
+      "id": "review",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-retrospective-reviewer",
+        "version": "1.0.0",
+        "digest": "45d7172a407b9aee47b9f4958d38a9a42b02374d777854a39add91344de5561b"
+      },
+      "role": "reviewer",
+      "depends_on": [
+        "propose"
+      ],
+      "inputs": {
+        "task": {
+          "node": "propose",
+          "output": "result"
+        }
+      },
+      "permissions": {
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      },
+      "review_requirement": "required"
+    },
+    {
+      "id": "gather",
+      "join": "all",
+      "depends_on": [
+        "review"
+      ]
+    }
+  ]
+}

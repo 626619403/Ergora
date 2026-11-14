@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "id": "ergora-retrospective-author",
+  "version": "1.0.0",
+  "description": "Source-bound Skill retrospective author.",
+  "roles": [
+    "implementer"
+  ],
+  "specialties": [
+    "skill-evolution",
+    "retrospective-analysis"
+  ],
+  "backend": {
+    "tool": "codex"
+  },
+  "resources": [
+    {
+      "id": "ergora-retrospective-author-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "001143993b8615613f5056e317eeda49d740c7f5a8f97f33377498d5a2f02db6"
+    }
+  ]
+}

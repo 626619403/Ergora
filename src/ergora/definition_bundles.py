@@ -26,7 +26,8 @@ def relative_path(value: str, label: str = "Definition") -> Path:
     return Path(*path.parts)
 
 
-def _parse_json(text: str, label: str) -> dict:
+def parse_json(text: str, label: str) -> dict:
+    """Decode ordinary JSON while preserving the duplicate-key rejection contract."""
     def unique(pairs):
         value = {}
         for key, item in pairs:
@@ -42,7 +43,7 @@ def read_json(path: Path, expected: str | None = None) -> dict:
     encoded = path.read_bytes()
     if expected is not None and hashlib.sha256(encoded).hexdigest() != expected:
         raise ValueError(f"Definition content changed while reading: {path.name}")
-    return _parse_json(encoded.decode("utf-8-sig"), path.name)
+    return parse_json(encoded.decode("utf-8-sig"), path.name)
 
 
 class _DocumentLoader(yaml.SafeLoader):
@@ -85,7 +86,7 @@ def convert_document(text: str, format: str = "json") -> dict:
     """Convert editor text; library admission and publication remain separate."""
     try:
         if format == "json":
-            definition = _parse_json(text.removeprefix("\ufeff"), "definition document")
+            definition = parse_json(text.removeprefix("\ufeff"), "definition document")
         elif format == "yaml":
             definition = yaml.load(text, Loader=_DocumentLoader)
         else:

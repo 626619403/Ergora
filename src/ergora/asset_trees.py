@@ -6,6 +6,11 @@ from pathlib import Path
 import stat
 
 
+def manifest_digest(files: dict) -> str:
+    """Original Skill identity, shared by on-disk and proposed file manifests."""
+    return hashlib.sha256(json.dumps(files, sort_keys=True).encode()).hexdigest()
+
+
 def is_link(path: Path) -> bool:
     details = path.lstat()
     return stat.S_ISLNK(details.st_mode) or bool(
@@ -41,7 +46,7 @@ def inventory_tree(directory: Path, *, label: str = "Skill", max_directories: in
             else:
                 raise ValueError(f"{label} bundles cannot contain special files: {path.name}")
     files = dict(sorted(files.items()))
-    digest = hashlib.sha256(json.dumps(files, sort_keys=True).encode()).hexdigest()
+    digest = manifest_digest(files)
     return digest, files, sorted(directories)
 
 

@@ -407,6 +407,18 @@
         "ergora-measurement-review-v2",
         "ergora-opt-performance-diagnosis-proposal"
       ]
+    },
+    "retrospective": {
+      "description": "Source-bound complete Skill candidate and independent evidence-review leaves; explicit original evaluation and adoption remain separate.",
+      "runtime": "proposal-leaves",
+      "root": "ergora-skill-retrospective",
+      "agents": [
+        "ergora-retrospective-author",
+        "ergora-retrospective-reviewer"
+      ],
+      "workflows": [
+        "ergora-skill-retrospective"
+      ]
     }
   }
 }

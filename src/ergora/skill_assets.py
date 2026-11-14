@@ -12,9 +12,14 @@ from .asset_trees import digest_tree
 
 
 def metadata(directory: Path) -> dict:
+    return parse_metadata((directory / "SKILL.md").read_text(encoding="utf-8-sig"))
+
+
+def parse_metadata(text: str) -> dict:
+    """Read the same Agent Skills metadata before or after directory publication."""
     import yaml
 
-    text = (directory / "SKILL.md").read_text(encoding="utf-8-sig")
+    text = text.removeprefix("\ufeff").replace("\r\n", "\n").replace("\r", "\n")
     if not text.startswith("---\n") or "\n---\n" not in text[4:]:
         raise ValueError("SKILL.md requires YAML frontmatter")
     try:

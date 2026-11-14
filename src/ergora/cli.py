@@ -60,6 +60,25 @@ def parser() -> argparse.ArgumentParser:
         operation.add_argument("--sha256", help="Independently obtained whole-packet SHA256")
         if name == "read":
             operation.add_argument("--selection", type=Path, help="JSON array of exact job_id/name pairs; omitted reads the complete index")
+    retrospective = commands.add_parser("retrospective", help="Prepare source-bound Skill proposals and check their frozen links; never adopt")
+    operations = retrospective.add_subparsers(dest="operation", required=True)
+    preparing = operations.add_parser("prepare", help="Freeze evidence and the complete Skill (up to 1 MiB) for a proposal-producing leaf")
+    preparing.add_argument("project")
+    preparing.add_argument("packet", type=Path)
+    preparing.add_argument("--selection", type=Path, required=True)
+    preparing.add_argument("--packet-sha256", required=True)
+    preparing.add_argument("--skill", required=True)
+    preparing.add_argument("--digest", required=True)
+    preparing.add_argument("--head-revision", type=int, required=True)
+    preparing.add_argument("--objective", type=Path, required=True)
+    preparing.add_argument("--manifest", type=Path, required=True)
+    preparing.add_argument("--instance", required=True)
+    preparing.add_argument("--directory", type=Path, required=True)
+    preparing.add_argument("--max-prompt-bytes", type=int, required=True)
+    checking = operations.add_parser("check", help="Check a proposal-producing leaf's structured result (up to 8 MiB) against its frozen input, offline")
+    checking.add_argument("input", type=Path)
+    checking.add_argument("result", type=Path)
+    checking.add_argument("--result-sha256")
     maintenance = commands.add_parser("state", help="Inspect, back up, verify or restore offline local state")
     operations = maintenance.add_subparsers(dest="operation", required=True)
     operations.add_parser("info")
@@ -669,6 +688,21 @@ def main(argv: list[str] | None = None) -> int:
             output = (handoff.verify(args.path, sha256=args.sha256) if args.operation == "verify" else
                       handoff.evidence(args.path, definition_bundles.read_json(args.selection) if args.selection else None,
                                        sha256=args.sha256))
+        elif args.command == "retrospective":
+            from . import retrospectives
+
+            if args.operation == "check":
+                output = retrospectives.check(args.input, args.result, result_sha256=args.result_sha256)
+            else:
+                with args.objective.open('rb') as stream:
+                    raw = stream.read(262145)
+                if len(raw) > 262144:
+                    raise ValueError('Retrospective objective exceeds 256 KiB')
+                output = retrospectives.prepare(State(args.home), args.project, args.packet,
+                    definition_bundles.read_json(args.selection), packet_sha256=args.packet_sha256,
+                    name=args.skill, digest=args.digest, head_revision=args.head_revision, objective=raw.decode('utf-8-sig'),
+                    manifest=args.manifest, instance=args.instance, destination=args.directory,
+                    max_prompt_bytes=args.max_prompt_bytes)
         elif args.command == "state":
             from . import backups
 

@@ -379,3 +379,176 @@ print(json.dumps({"skill":request["candidate"]["skill"].replace("BASELINE","IMPR
     result = optimization.optimize(state, "demo", baseline["digest"], suite["digest"], "Preserve trusted scorer", 3, 1, 20)
     assert result["status"] == "failed" and "evaluator changed" in result["error"]
     assert skills.versions(state, "demo")["active"][0]["digest"] == baseline["digest"]
+
+
+@pytest.fixture
+def retrospective_case(tmp_path):
+    from ergora import handoff, skill_assets, workflow_definitions as workflows
+    from test_handoff import evidence, text_evidence
+
+    repo = tmp_path / 'repo'
+    subprocess.run(['git', 'init', str(repo)], check=True, capture_output=True)
+    state = State(tmp_path / 'control')
+    projects.create(state, 'demo', repo)
+    source = tmp_path / 'source/retrospective-skill'
+    source.mkdir(parents=True)
+    (source / 'SKILL.md').write_bytes(b'---\nname: retrospective-skill\ndescription: Verify complete evidence\n---\nRetain uncertainty.\n')
+    (source / 'references').mkdir()
+    (source / 'references/evidence.md').write_bytes(('完整保留观察与未知成本。\n' * 400).encode('utf-8'))
+    baseline = skill_assets.import_bundle(state, 'demo', source)
+    index, blobs = text_evidence(evidence.__wrapped__(), ['Original failed observation; cost unknown.\n'])
+    packet = tmp_path / 'source.zip'
+    collected = handoff.create(index, lambda artifact: blobs[artifact['sha256']], packet)
+    installed = workflows.install_preset(state, 'retrospective')
+    root = workflows.get(state, installed['root']['id'], installed['root']['version'])['definition']
+    manifest = workflows.prepare_manifest(state.root, root['id'], root['version'],
+        {'schema_version': 1, 'permissions': root['permissions'], 'limits': root['limits']}, tmp_path / 'manifest')
+    return state, packet, source, baseline, {
+        'packet_sha256': collected['sha256'], 'name': baseline['name'], 'digest': baseline['digest'],
+        'head_revision': 1, 'objective': 'Improve evidence applicability without inventing measurements.',
+        'manifest': Path(manifest['path']), 'instance': 'root/propose', 'destination': tmp_path / 'input',
+        'max_prompt_bytes': 200000}
+
+
+def retrospective_result(input_path, result_path):
+    from copy import deepcopy
+
+    task = json.loads((input_path / 'task.txt').read_bytes())
+    artifact = task['evidence']['artifacts'][0]
+    files = deepcopy(task['baseline']['files'])
+    files['SKILL.md']['text'] += 'State whether each source observation generalizes to the requested task.\n'
+    proposal = {'schema_version': 1, 'evidence_sha256': task['evidence']['sha256'],
+        'baseline_digest': task['baseline']['digest'], 'head_revision': task['baseline']['head_revision'],
+        'observations': [{'claim': 'The source records an unsuccessful observation.', 'uncertainty': 'General applicability needs evaluation.',
+            'citations': [{'job_id': artifact['job_id'], 'name': artifact['artifact']['name'], 'sha256': artifact['artifact']['sha256']}]}],
+        'negative_results': ['Original failed outcome retained.'], 'cost_and_uncertainty': 'Original cost is not recorded; benefit unknown.',
+        'candidate': {'name': task['baseline']['name'], 'hypothesis': 'Explicit applicability reduces overgeneralization.',
+            'applicability': 'Source-bound retrospectives.', 'evaluation_plan': 'Compare the same trusted suite and holdout.', 'files': files}}
+    result_path.write_text(json.dumps({'summary': 'Bounded proposed improvement.', 'artifacts': {'response': json.dumps(proposal)}}))
+    return proposal
+
+
+def test_retrospective_freezes_full_baseline_and_rechecks_without_live_sources(retrospective_case, tmp_path):
+    from ergora import retrospectives, skill_assets, workflow_definitions as workflows
+
+    state, packet, source, baseline, options = retrospective_case
+    before = skill_assets.versions(state, 'demo')
+    prepared = retrospectives.prepare(state, 'demo', packet, [{'job_id': 'job-1', 'name': 'record'}], **options)
+    task = json.loads((options['destination'] / 'task.txt').read_bytes())
+    frozen = workflows.inspect_input(options['destination'], material=True)
+    assert prepared['digest'] == frozen['digest']
+    assert task['baseline']['files']['references/evidence.md']['text'].encode('utf-8') == (source / 'references/evidence.md').read_bytes()
+    assert task['evidence']['index']['temporal_status'] == 'FAILED'
+    assert task['evidence']['index']['usage']['cost'] == {'state': 'not_recorded', 'value': None}
+    for leaf in (item for item in frozen['composition']['instances'] if item['kind'] == 'agent'):
+        assert all(resource['text'] in leaf['prompt'] for resource in leaf['resources'])
+        assert not leaf['permissions']['write'] and not leaf['permissions']['shell'] and not leaf['permissions']['network']
+    result_path = tmp_path / 'result.json'
+    proposal = retrospective_result(options['destination'], result_path)
+    packet.unlink()
+    shutil.rmtree(baseline['path'])
+    checked = retrospectives.check(options['destination'], result_path)
+    assert checked['request'] == task and checked['input_digest'] == prepared['digest']
+    assert checked['quality_evaluated'] is checked['adoption_authorized'] is False
+    assert skill_assets.versions(state, 'demo') == before
+    candidate_dir = tmp_path / 'candidate' / baseline['name']
+    for name, file in proposal['candidate']['files'].items():
+        path = candidate_dir / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(file['text'].encode('utf-8'))
+        path.chmod(0o600 | file['executable_bits'])
+    assert skills.digest_tree(candidate_dir)[0] == checked['candidate_digest']
+
+
+@pytest.mark.parametrize(('change', 'reason'), [
+    ('source', 'frozen source or baseline'),
+    ('baseline', 'frozen source or baseline'),
+    ('citation', 'citation is absent'),
+    ('path', 'portable relative path'),
+    ('file-parent', 'file/directory conflict'),
+    ('case-parent', 'file/directory conflict'),
+    ('directory-case', 'prefixes require consistent'),
+])
+def test_retrospective_rejects_misbound_or_unsafe_candidate_without_partial_cli_output(retrospective_case, tmp_path, capsys, change, reason):
+    from ergora import cli, retrospectives
+
+    state, packet, source, baseline, options = retrospective_case
+    retrospectives.prepare(state, 'demo', packet, [{'job_id': 'job-1', 'name': 'record'}], **options)
+    result_path = tmp_path / 'result.json'
+    proposal = retrospective_result(options['destination'], result_path)
+    if change == 'source':
+        proposal['evidence_sha256'] = '0' * 64
+    elif change == 'baseline':
+        proposal['baseline_digest'] = '0' * 64
+    elif change == 'citation':
+        proposal['observations'][0]['citations'][0]['job_id'] = 'another-job'
+    elif change == 'path':
+        proposal['candidate']['files']['../escape'] = {'text': 'untrusted', 'executable_bits': 0}
+    elif change == 'directory-case':
+        proposal['candidate']['files']['References/new.txt'] = {'text': 'Conflicts with the original directory spelling.', 'executable_bits': 0}
+    else:
+        path = ('SKILL.md' if change == 'file-parent' else 'skill.MD') + '/child.txt'
+        proposal['candidate']['files'][path] = {'text': 'Conflicts with the existing Skill file.', 'executable_bits': 0}
+    result_path.write_text(json.dumps({'summary': 'Proposed.', 'artifacts': {'response': json.dumps(proposal)}}))
+    unused = tmp_path / 'unused-state'
+    assert cli.main(['--home', str(unused), 'retrospective', 'check', str(options['destination']), str(result_path)]) == 2
+    captured = capsys.readouterr()
+    assert captured.out == '' and reason in captured.err and not unused.exists()
+
+
+def test_retrospective_current_head_conflict_and_no_change_proposal(retrospective_case, tmp_path):
+    from ergora import retrospectives, skill_assets
+
+    state, packet, source, baseline, options = retrospective_case
+    skill_assets.rollback(state, 'demo', baseline['name'], baseline['digest'], 1, 'Explicit retained baseline revision')
+    with pytest.raises(ValueError, match='Active Skill changed'):
+        retrospectives.prepare(state, 'demo', packet, [{'job_id': 'job-1', 'name': 'record'}], **options)
+    assert not options['destination'].exists()
+    options['head_revision'] = 2
+    retrospectives.prepare(state, 'demo', packet, [{'job_id': 'job-1', 'name': 'record'}], **options)
+    result_path = tmp_path / 'result.json'
+    proposal = retrospective_result(options['destination'], result_path)
+    proposal['candidate'] = None
+    result_path.write_text(json.dumps({'summary': 'No justified change.', 'artifacts': {'response': json.dumps(proposal)}}))
+    checked = retrospectives.check(options['destination'], result_path)
+    assert checked['candidate_digest'] is None and not checked['content_changed']
+
+
+def test_retrospective_accepts_crlf_metadata_without_changing_frozen_file_bytes(retrospective_case, tmp_path):
+    from ergora import retrospectives, skill_assets
+
+    old_state, packet, source, old_baseline, options = retrospective_case
+    for path in source.rglob('*'):
+        if path.is_file():
+            path.write_bytes(path.read_bytes().replace(b'\n', b'\r\n'))
+    state = State(tmp_path / 'crlf-control')
+    projects.create(state, 'demo', Path(old_state.project('demo')['repo']))
+    baseline = skill_assets.import_bundle(state, 'demo', source)
+    options['digest'] = baseline['digest']
+    retrospectives.prepare(state, 'demo', packet, [{'job_id': 'job-1', 'name': 'record'}], **options)
+    task = json.loads((options['destination'] / 'task.txt').read_bytes())
+    for name, file in task['baseline']['files'].items():
+        assert file['text'].encode('utf-8') == (source / name).read_bytes()
+    result = tmp_path / 'result.json'
+    retrospective_result(options['destination'], result)
+    assert retrospectives.check(options['destination'], result)['content_changed']
+
+
+def test_retrospective_checks_complete_candidate_with_nested_json_larger_than_input(retrospective_case, tmp_path):
+    from ergora import retrospectives, skill_assets
+
+    old_state, packet, source, old_baseline, options = retrospective_case
+    reference = '{"key":"value"}\n' * 35000
+    (source / 'references/evidence.md').write_bytes(reference.encode('utf-8'))
+    state = State(tmp_path / 'large-control')
+    projects.create(state, 'demo', Path(old_state.project('demo')['repo']))
+    baseline = skill_assets.import_bundle(state, 'demo', source)
+    options.update(digest=baseline['digest'], max_prompt_bytes=1000000)
+    retrospectives.prepare(state, 'demo', packet, [{'job_id': 'job-1', 'name': 'record'}], **options)
+    result = tmp_path / 'result.json'
+    proposal = retrospective_result(options['destination'], result)
+    assert result.stat().st_size > 1_048_576
+    checked = retrospectives.check(options['destination'], result)
+    assert checked['request']['baseline']['files']['references/evidence.md']['text'] == reference
+    assert checked['agent_result']['artifacts']['response'] == json.dumps(proposal)
+    assert checked['content_changed'] and not checked['quality_evaluated']

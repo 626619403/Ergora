@@ -25,7 +25,7 @@
 - [x] 在原handoff suite回归原核验，并检查不同job同名、完整非ASCII正文、失败／未知成本、选择大小及坏源不泄出部分正文；原离线CLI不创建State。
 - [x] 最终r2非editable包577／两RECORD585／590／283身份，安装六suite131通过／6平台跳过／13.93秒；实际八CLI原包读回／坏源拒绝／原完整叶输入及收尾，不把合成包当真实来源认证。
 - [x] 原自身结构模板r1确认alias成本finding，最小修复后r2 approve／36.836秒；新fresh-context独立最终本地两轴approve／开放0／0，88原引用已核。测试exact-count改上限仅定向另验1通过／1.20秒，保留原整suite／自身输入身份。
-- [ ] 上一片CI终态后普通发布，核完整Ref及自己的CI与原独立补核，不合main。
+- [x] 已普通发布396e9d1、15blob／完整Ref同一；原固定发布补核及自己的CI43547736558八job／30必要步骤和原独立CI终核approve／开放0／0，不合main。
 
 ## 后续F10c与F10d
 

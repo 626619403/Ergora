@@ -854,6 +854,37 @@ ergora handoff read ./task-handoff.zip --selection ./selection.json --sha256 EXP
 
 输出为版本1普通JSON`ergora-handoff-selection`；`sha256`是其余字段按UTF-8、键排序、无多余空格的规范JSON摘要。它可以作为原`composition prepare --task`的显式资料输入；原`execution_success: null`、`origin_authenticated: false`和核包范围保持。它不更新记忆或活动Skill，复盘候选、独立评价和明确采用仍为后续操作。
 
+### 生成来源绑定的Skill复盘候选
+
+先有一个已注册的项目、可核验的交接包，以及该项目已导入的基线Skill。`ergora skill list my-project`返回当前`active`中的name、digest和revision；首次导入只建立baseline，不代表测得改进。用上节的selection JSON选择完整来源，再写一个UTF-8的`objective.txt`说明本次要改进什么。
+
+```bash
+ergora composition install-preset retrospective
+```
+
+新组合的根为`ergora-skill-retrospective 1.0.0`，包含只读作者`root/propose`与后继审查者`root/review`，分别默认Codex和Claude Code。按[完整manifest步骤](WORKFLOW_DEFINITIONS.md#固定当前预览到持久控制目录)给这个根准备manifest目录；grant需显式允许读取`workspace`／`definitions`、空write／network且shell为false，并给出根需要的limits。导入、manifest和下列准备均不发模型请求。
+
+```bash
+ergora retrospective prepare my-project ./task-handoff.zip --selection ./selection.json --packet-sha256 PACKET_SHA --skill SKILL_NAME --digest BASELINE_DIGEST --head-revision HEAD_REVISION --objective ./objective.txt --manifest ./retrospective-manifest --instance root/propose --directory ./retrospective-author-input --max-prompt-bytes 500000
+ergora composition run-input my-project ./retrospective-author-input --backend codex --mode text-only --timeout 240
+```
+
+准备核同项目的完整原来源与当前活动Skill，冻结其全部UTF-8文件和执行位、精确digest／head revision、原失败／未知成本、目标和响应schema。Skill原文件总量最多1 MiB，完整prompt另按所给限制核验；超限明确拒绝，需要减少显式选择或更小的Skill，不截断参考资料。已准备的input继续原快照，新准备重新核当前head。prepare／check面向输出提案JSON的只读叶，也可选择自己定义的叶与受支持后端。
+
+调用回执给出原`result`文件路径和`result_sha256`。保存它们后检查该份原结果：
+
+```bash
+ergora retrospective check ./retrospective-author-input AUTHOR_RESULT --result-sha256 AUTHOR_RESULT_SHA > ./retrospective-checked.json
+ergora composition prepare-from-manifest ./retrospective-manifest root/review --task ./retrospective-checked.json --directory ./retrospective-review-input --max-prompt-bytes 500000
+ergora composition run-input my-project ./retrospective-review-input --backend claude-code --mode text-only --timeout 600
+```
+
+作者的普通`artifacts.response`必须是符合冻结proposal_schema的JSON，包含对应来源SHA、基线digest／revision、选中材料的精确引用、负结果、成本／不确定性，以及完整标准Skill文件建议。没有充分依据可返回`candidate:null`。检查输出完整原请求与原Agent结果，核候选的便携路径、元数据、目录内容身份和引用；它离线执行、不创建State，源包或原Skill以后丢失仍可核。`quality_evaluated:false`、`adoption_authorized:false`、`origin_authenticated:false`明确保留，结构关联通过不是质量证明。
+
+check有界读取最多8 MiB的原结果，给完整文件在response字符串中的嵌套JSON转义留出空间。后继审查沿上面的原composition准备命令显式接收完整checked JSON；该preset审查叶返回文字审查，不再调用retrospective check。后继完整prompt仍须单独通过原容量门禁，大结果可离线检查不代表它能放进任意后继prompt。静态depends_on本身不会自动执行端口。可在原`composition run-input`中选其他受支持后端，尽量让作者／审查者不同；Claude不可用时显式选Codex并记录`--backend-reason`，同后端回退不能当异后端成功。检查或模型调用失败先保留原input、run和reply，不自动重发；原Agent记录是调用事实的权威。
+
+本片不自动写候选目录、导入或移动活动head。审阅后的Skill仍通过原`skill import → evaluation run → skill adopt`和`skill rollback`进行明确操作，详见[Skill候选评价与采用](INTEGRATIONS.md#skill-候选评价与采用)；记忆／流程候选另接各自原版本接口。
+
 ### 网页证据、预算与交接
 
 正式任务中先“读取原运行”，在已闭合的原run点击“证据、预算与交接”。打开窗口不请求索引或材料；“读取证据索引”集中核原材料并展示原结果、完整性、外部协议确认与租约事实。预算和用量区保留原来源与单位，未记录的模型调用、token、费用显示未知，真实0保持；冻结等待限制不能当作进程或费用上限。上下文关联未记录时不使用当前配置补写。
