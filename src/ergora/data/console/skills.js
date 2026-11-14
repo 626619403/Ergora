@@ -1,11 +1,55 @@
 import { api } from "./api.js";
-import { bindingFor } from "./state.js";
+import { app, bindingFor } from "./state.js";
 import {
   $, node, button, pre, short, heading, panel, empty, row, select,
-  field, badge, status, notify, form, modal, table,
+  field, badge, status, form, modal, table,
 } from "./ui.js";
 
-export function skillsView(data, base, { refresh }) {
+// Only this window's unresolved HTTP submissions; original evaluation records remain authoritative.
+const pendingEvaluations = new Map();
+
+export function skillsView(data, base) {
+  const active = () => view.isConnected;
+  const evaluationKey = JSON.stringify([app.bootstrap.state_directory, base]);
+  const refreshNote = () => node("p", { className: "form-note" },
+    "请用页面右上角“刷新”读取原版本、评价记录和活动历史，再进行下一步；请求异常时先核对原记录，不自动重发。");
+  // Submission receipts stay with their originating form; no delayed global dialog or refresh.
+  function submissionForm(children, label, path, payload, current = active) {
+    const receipt = node("div", { "aria-live": "polite" });
+    const element = form(children, label, async (values) => {
+      const visible = () => current() && element.isConnected &&
+        (!$("#dialog").contains(element) || $("#dialog").open);
+      if (!visible()) {
+        if (element.isConnected && $("#dialog").contains(element) && $("#dialog").open)
+          element.replaceChildren(empty("来源页面已变化；请关闭此窗口，回到原项目并重新打开。此次未提交请求。"));
+        return;
+      }
+      let submitted;
+      try {
+        submitted = payload(values);
+      } catch (error) {
+        receipt.replaceChildren(node("p", { className: "error" }, error.message));
+        return;
+      }
+      element.replaceChildren(receipt);
+      receipt.replaceChildren(node("p", {}, `${label}请求已发出；等待原结果。`), pre(submitted));
+      try {
+        const result = await api(`${base}/${path}`, submitted);
+        if (visible()) {
+          receipt.firstChild.textContent = `${label}已取得原结果。`;
+          receipt.append(pre(result), refreshNote());
+        }
+      } catch (error) {
+        if (visible()) {
+          receipt.firstChild.textContent = `${label}未取得完整结果。`;
+          receipt.append(node("p", { className: "error" },
+            `${error.message}。该请求可能已经执行。`), refreshNote());
+        }
+      }
+    });
+    element.append(receipt);
+    return element;
+  }
   const versions = data.skills.versions;
   const versionOptions = versions.map((item) => [
     item.digest,
@@ -18,6 +62,9 @@ export function skillsView(data, base, { refresh }) {
   const baseline = select(versionOptions, activeDigest, "baseline");
   const candidate = select(versionOptions, candidateDigest, "candidate");
   const diffResult = node("div");
+  let diffSequence = 0;
+  let comparisonSequence = 0;
+  const evaluationResult = node("div", { "aria-live": "polite" });
   const suites = data.evaluations.suites;
   const suite = select(
     suites.map((item) => [
@@ -27,15 +74,52 @@ export function skillsView(data, base, { refresh }) {
     suites[0]?.digest,
     "suite",
   );
-  async function evaluate(digest) {
-    if (!suite.value || !digest) throw new Error("先导入 Skill 并注册评价集");
-    notify("正在执行可信 evaluator；请保留页面或稍后刷新查看证据");
-    const result = await api(`${base}/evaluations/run`, {
-      digest,
-      suite: suite.value,
+  let evaluating = pendingEvaluations.has(evaluationKey);
+  function allowEvaluation(request) {
+    return button("已核原记录，允许新的评价", () => {
+      if (!active() || pendingEvaluations.get(evaluationKey) !== request) return;
+      pendingEvaluations.delete(evaluationKey);
+      evaluating = false;
+      evaluationButtons.forEach((item) => { item.disabled = !suites.length; });
+      evaluationResult.replaceChildren(empty("已明确解除本窗口的未决请求锁；新的评价仍须单独提交。"));
     });
-    await refresh(data.project.id);
-    modal("评价记录", pre(result));
+  }
+  const previousEvaluation = pendingEvaluations.get(evaluationKey);
+  if (previousEvaluation) evaluationResult.append(
+    empty(previousEvaluation.unknown ? "上次评价回复不确定；先刷新并核对原记录。" : "本窗口已提交评价，等待完整回复；稍后明确刷新核对原记录。"),
+    pre(previousEvaluation.submitted), refreshNote(),
+    previousEvaluation.unknown ? allowEvaluation(previousEvaluation) : null,
+  );
+  async function evaluate(digest) {
+    if (!active() || evaluating || pendingEvaluations.has(evaluationKey)) return;
+    if (!suite.value || !digest) throw new Error("先导入 Skill 并注册评价集");
+    const submitted = { digest, suite: suite.value };
+    const request = { submitted, unknown: false };
+    pendingEvaluations.set(evaluationKey, request);
+    evaluating = true;
+    evaluationButtons.forEach((item) => { item.disabled = true; });
+    evaluationResult.replaceChildren(node("p", {}, "正在执行可信 evaluator；以下为本次提交的版本与 suite。"), pre(submitted));
+    let observed = false;
+    try {
+      const result = await api(`${base}/evaluations/run`, submitted);
+      observed = true;
+      pendingEvaluations.delete(evaluationKey);
+      if (active()) {
+        evaluationResult.firstChild.textContent = "以下为本次提交与评价原记录；进程完成不代表通过采用门禁。";
+        evaluationResult.append(pre(result), refreshNote());
+      }
+    } catch (error) {
+      request.unknown = true;
+      if (active()) {
+        evaluationResult.firstChild.textContent = "未取得完整评价结果；该请求可能已经执行。";
+        evaluationResult.append(node("p", { className: "error" }, error.message), refreshNote(), allowEvaluation(request));
+      }
+    } finally {
+      if (active() && observed) {
+        evaluating = false;
+        evaluationButtons.forEach((item) => { item.disabled = !suites.length; });
+      }
+    }
   }
   const runOptions = data.evaluations.runs.map((item) => [
     item.id,
@@ -52,50 +136,76 @@ export function skillsView(data, base, { refresh }) {
     "candidate_run",
   );
   const comparison = node("div");
+  function invalidateComparison() {
+    comparisonSequence++;
+    compareButton.disabled = !runOptions.length;
+    comparison.replaceChildren();
+  }
+  for (const input of [baseline, candidate]) input.addEventListener("change", () => {
+    diffSequence++;
+    diffButton.disabled = false;
+    diffResult.replaceChildren();
+    invalidateComparison();
+  });
+  for (const input of [suite, baseRun, candidateRun])
+    input.addEventListener("change", invalidateComparison);
   async function compare() {
+    if (!active() || compareButton.disabled) return;
     if (!baseRun.value || !candidateRun.value)
       throw new Error("先完成双方评价");
+    invalidateComparison();
+    const sequence = comparisonSequence;
+    const current = () => active() && sequence === comparisonSequence;
+    compareButton.disabled = true;
     const baselineId = baseRun.value,
       candidateId = candidateRun.value;
-    const result = await api(
-      `${base}/evaluations/compare?baseline=${encodeURIComponent(baselineId)}&candidate=${encodeURIComponent(candidateId)}`,
-    );
-    const candidateVersion = versions.find(
-      (item) => item.digest === result.candidate,
-    );
-    const head = data.skills.active.find(
-      (item) => item.name === candidateVersion?.name,
-    );
-    comparison.replaceChildren(
-      node(
-        "div",
-        { className: `result-box ${result.eligible ? "" : "rejected"}` },
+    try {
+      const result = await api(
+        `${base}/evaluations/compare?baseline=${encodeURIComponent(baselineId)}&candidate=${encodeURIComponent(candidateId)}`,
+      );
+      if (!current()) return;
+      const candidateVersion = versions.find(
+        (item) => item.digest === result.candidate,
+      );
+      const head = data.skills.active.find(
+        (item) => item.name === candidateVersion?.name,
+      );
+      comparison.replaceChildren(
         node(
-          "strong",
-          {},
+          "div",
+          { className: `result-box ${result.eligible ? "" : "rejected"}` },
+          node(
+            "strong",
+            {},
+            result.eligible
+              ? "评价门禁通过 · 等待审阅采用"
+              : "候选尚不满足采用条件",
+          ),
+          pre(result),
           result.eligible
-            ? "评价门禁通过 · 等待审阅采用"
-            : "候选尚不满足采用条件",
+            ? submissionForm(
+                [
+                  pre({ baseline_run: baselineId, candidate_run: candidateId, revision: head?.revision || 0 }),
+                  field("采用理由", "reason", "", "textarea", { required: true }),
+                ],
+                "采用候选",
+                "skills/adopt",
+                (values) => ({
+                    baseline_run: baselineId,
+                    candidate_run: candidateId,
+                    revision: head?.revision || 0,
+                    reason: values.get("reason"),
+                }),
+                current,
+              )
+            : null,
         ),
-        pre(result),
-        result.eligible
-          ? form(
-              [field("采用理由", "reason", "", "textarea", { required: true })],
-              "采用候选",
-              async (values) => {
-                await api(`${base}/skills/adopt`, {
-                  baseline_run: baselineId,
-                  candidate_run: candidateId,
-                  revision: head?.revision || 0,
-                  reason: values.get("reason"),
-                });
-                await refresh(data.project.id);
-                notify("候选已采用；下一次工具调用可选择该活动 Skill");
-              },
-            )
-          : null,
-      ),
-    );
+      );
+    } catch (error) {
+      if (current()) comparison.replaceChildren(node("p", { className: "error" }, error.message));
+    } finally {
+      if (current()) compareButton.disabled = !runOptions.length;
+    }
   }
   const items = versions.map((item) => {
     const head = data.skills.active.find((active) => active.name === item.name);
@@ -125,24 +235,21 @@ export function skillsView(data, base, { refresh }) {
             () =>
               modal(
                 "回退活动 Skill",
-                form(
+                submissionForm(
                   [
+                    pre({ name: item.name, digest: item.digest, revision: head.revision }),
                     field("回退理由", "reason", "", "textarea", {
                       required: true,
                     }),
                   ],
                   "确认回退",
-                  async (values) => {
-                    await api(`${base}/skills/rollback`, {
+                  "skills/rollback",
+                  (values) => ({
                       name: item.name,
                       digest: item.digest,
                       revision: head.revision,
                       reason: values.get("reason"),
-                    });
-                    $("#dialog").close();
-                    await refresh(data.project.id);
-                    notify("活动版本已回退");
-                  },
+                  }),
                 ),
               ),
             "text-button",
@@ -150,6 +257,32 @@ export function skillsView(data, base, { refresh }) {
         : null,
     );
   });
+  const diffButton = button("比较版本", async () => {
+    if (!active() || diffButton.disabled) return;
+    if (!baseline.value || !candidate.value) throw new Error("先导入两个版本");
+    const sequence = ++diffSequence;
+    const current = () => active() && sequence === diffSequence;
+    const selected = { baseline: baseline.value, candidate: candidate.value };
+    diffButton.disabled = true;
+    diffResult.replaceChildren();
+    try {
+      const result = await api(`${base}/skills/diff?baseline=${selected.baseline}&candidate=${selected.candidate}`);
+      if (!current()) return;
+      const diff = pre(result.diff || "SKILL.md 无文本变化；请核对其他文件。");
+      diff.className = "diff";
+      diffResult.replaceChildren(pre(selected), node("p", { className: "form-note" },
+        `变更文件：${result.changed_files.join(", ") || "无"}`), diff);
+    } catch (error) {
+      if (current()) diffResult.replaceChildren(node("p", { className: "error" }, error.message));
+    } finally {
+      if (current()) diffButton.disabled = false;
+    }
+  });
+  const evaluationButtons = [
+    button("评价基线", () => evaluate(baseline.value), "secondary", { disabled: evaluating || !suites.length }),
+    button("评价候选", () => evaluate(candidate.value), "secondary", { disabled: evaluating || !suites.length }),
+  ];
+  const compareButton = button("比较评价证据", compare, "primary", { disabled: !runOptions.length });
   const controls = panel(
     "比较与评价",
     "固定评价集，检查完整目录变更；双方证据使用相同 suite。",
@@ -159,38 +292,12 @@ export function skillsView(data, base, { refresh }) {
       node("label", {}, "基线版本", baseline),
       node("label", {}, "候选版本", candidate),
     ),
-    row(
-      button("比较版本", async () => {
-        if (!baseline.value || !candidate.value)
-          throw new Error("先导入两个版本");
-        const result = await api(
-          `${base}/skills/diff?baseline=${baseline.value}&candidate=${candidate.value}`,
-        );
-        const diff = pre(
-          result.diff || "SKILL.md 无文本变化；请核对其他文件。",
-        );
-        diff.className = "diff";
-        diffResult.replaceChildren(
-          node(
-            "p",
-            { className: "form-note" },
-            `变更文件：${result.changed_files.join(", ") || "无"}`,
-          ),
-          diff,
-        );
-      }),
-    ),
+    row(diffButton),
     diffResult,
     node("hr"),
     node("label", {}, "固定评价集", suite),
-    row(
-      button("评价基线", () => evaluate(baseline.value), "secondary", {
-        disabled: !suites.length,
-      }),
-      button("评价候选", () => evaluate(candidate.value), "secondary", {
-        disabled: !suites.length,
-      }),
-    ),
+    row(evaluationButtons),
+    evaluationResult,
     node("hr"),
     node(
       "div",
@@ -198,17 +305,13 @@ export function skillsView(data, base, { refresh }) {
       node("label", {}, "基线评价记录", baseRun),
       node("label", {}, "候选评价记录", candidateRun),
     ),
-    row(
-      button("比较评价证据", compare, "primary", {
-        disabled: !runOptions.length,
-      }),
-    ),
+    row(compareButton),
     comparison,
     node(
       "details",
       {},
       node("summary", {}, "注册评价集 JSON"),
-      form(
+      submissionForm(
         [
           field("评价集 JSON", "manifest", "", "textarea", {
             required: true,
@@ -217,18 +320,12 @@ export function skillsView(data, base, { refresh }) {
           }),
         ],
         "固定并注册评价集",
-        async (values) => {
-          await api(
-            `${base}/evaluations/suites`,
-            JSON.parse(values.get("manifest")),
-          );
-          await refresh(data.project.id);
-          notify("评价集已固定并登记");
-        },
+        "evaluations/suites",
+        (values) => JSON.parse(values.get("manifest")),
       ),
     ),
   );
-  return [
+  const view = node("div", { className: "skill-workbench" },
     heading(
       "用证据改进 Skill",
       "导入完整 Agent Skills 目录。新版本先成为候选，通过正确性、验证集和保留集门禁后再采用。",
@@ -237,7 +334,7 @@ export function skillsView(data, base, { refresh }) {
         () =>
           modal(
             "导入 Skill",
-            form(
+            submissionForm(
               [
                 field("本机 Skill 目录", "directory", "", "text", {
                   required: true,
@@ -257,12 +354,8 @@ export function skillsView(data, base, { refresh }) {
                 ),
               ],
               "导入 Skill",
-              async (values) => {
-                await api(`${base}/skills/import`, Object.fromEntries(values));
-                $("#dialog").close();
-                await refresh(data.project.id);
-                notify("Skill 版本已导入");
-              },
+              "skills/import",
+              (values) => Object.fromEntries(values),
             ),
           ),
         "primary",
@@ -282,7 +375,7 @@ export function skillsView(data, base, { refresh }) {
       "有限优化",
       `当前优化工具：${bindingFor(data, "optimizer").tool}。优化只产生候选，采用继续使用上方证据门禁。`,
       bindingFor(data, "optimizer").tool === "gepa"
-        ? form(
+        ? submissionForm(
             [
               field("优化目标", "objective", "", "textarea", {
                 required: true,
@@ -305,19 +398,18 @@ export function skillsView(data, base, { refresh }) {
               ),
             ],
             "运行 GEPA 优化",
-            async (values) => {
+            "optimizations",
+            (values) => {
               if (!baseline.value || !suite.value)
                 throw new Error("先选择基线和评价集");
-              const result = await api(`${base}/optimizations`, {
+              return {
                 baseline: baseline.value,
                 suite: suite.value,
                 objective: values.get("objective"),
                 max_evaluations: Number(values.get("max_evaluations")),
                 max_proposals: Number(values.get("max_proposals")),
                 timeout: Number(values.get("timeout")),
-              });
-              await refresh(data.project.id);
-              modal("优化记录", pre(result));
+              };
             },
           )
         : node(
@@ -346,5 +438,6 @@ export function skillsView(data, base, { refresh }) {
         ]),
       ),
     ),
-  ];
+  );
+  return [view];
 }

@@ -33,3 +33,7 @@ r2包603／两RECORD／283，原web9通过／12.72秒；只比r1修tab与诊断�
 最终总核已完成：70条原HTTP的请求／完整原响应／元数据大小SHA相同，8真held／2夹具503；6原run仅含2真实异后端和4确定性native夹具（其中1failed），派发前均已保存running，完整task与全部祖先资源均进入实际stdin，原result SHA相同。Claude审查input的完整task对象与原CLI checked对象相同。7组原文件／树、所有非agent_runs数据库表逐字／逻辑保持，另一项目无run；原服务／浏览器PID、线程与端口已关闭。原r1 Python产品与测试身份同r3，所有603当前产品同最终snapshot。前片自己的CI／原独立终核已闭合，本片最终本地独立补核待。
 
 最终本地独立终核通过，需求／维护性两轴approve／开放0／0；433原引用、6产品、r3全包／两RECORD／283、实际双后端／自身模板／全部运行与CLI／原件收尾已直接核。追加6独立证明与5发布调用器共444固定引用，前片发布门禁已闭合，准备普通发布，不预批自己的CI。
+
+本片已普通发布 `055b0c44d7bd2bb7c1375b82471ec7ca00c40605`，23固定blob／完整远端Ref相同；暂存后完整diff检查含全部新增文件通过，固定444／发布后448引用保持。原reviewer固定发布补核与自己的CI待，不合main。
+
+自己的CI43573335080已Success，八job／30必要步骤及8条Complete job原HTML均核；原fresh-context reviewer终态两轴approve／开放0／0，原448前缀不变，CI50／派生索引恢复3／官方batch源2／独立终核3引用单列。CI补账脚本复用路径变量曾误写本地派生metadata，失败件保留；按未改官方batch原件重建并核2119B／原SHA逐字恢复，原HTTP／HTML／receipt未改，恢复范围独立核通过。后继Skill WIP不在此前片结论中。

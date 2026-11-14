@@ -173,6 +173,8 @@ Input还拥有准入报告的版本差异：v1–v6调用原doctor，v7从冻结
 
 Skill采用沿 `skills.adopt → evaluation.compare → skill_assets.move_head`，同事务核旧revision与精确baseline。GEPA只提出候选；资料观察／研究调度只提出带来源材料；ReMe只是可重建的记忆投影。记忆有效期由原memory模块按服务端时刻判定；catalog可审阅所有状态，新检索只取有效当前修订，并在远端请求后重新核本地版本。schema v5沿原State迁移更新writer fence，升级停止旧进程，旧归档不重写。
 
+Skill控制台在原`skills.js`内保存当前view的选择代际与临时提交回执：选择变化撤回旧比较／采用表单，评价共享按控制目录与项目隔离的本窗口未决请求锁（非持久账本）；完整回复释放，未知回复需用户核原记录后明确解除；mutation结果只更新原form，脱离原view或dialog后失效。导入、注册、采用、回退与GEPA复用本页局部submissionForm，原ui.form继续持有单次提交锁；取得结果后由用户明确刷新读取原owner。没有增加HTTP入口、持久状态、评价器或采用权威，完整可信证据和最终并发核验仍归上述原调用链。
+
 训练领域组合提供实验设计／kernel／性能／测量审查的只读提案叶。实际实验仍走 `prepare → start（控制排队）→ 操作者run-local + manifest SHA → 可信统计门禁 → owner evidence SHA → 集成复验`。控制worker不自动启动训练，Forge内部judge不替代可信门禁；GPU结果和完整实验图须有独立实测，见[训练手册](../TRAINING.md)。
 
 新项目的baseline与runner由同一training应用入口从CLI／HTTP／页面预览，再确认当前项目revision及完整canonical内容SHA登记，原文件字节SHA单列。baseline仍交原perfctl锁／原子init，仅Linux／WSL2初始化，预览与初始化无需SDK或服务。runner沿原register_runner在隔离临时CONFIG预览，确认后用规范化文档向真实config不可变发布，仅Linux／WSL2且需可选SDK，无需服务。两者共用短本地DB预留与页面表单生命周期；失联先读原文件，同内容显式重试，不同内容不覆盖；共享config的外项目runner ID拒绝且不展示命令。实验准备的CLI／HTTP复用原多件publisher，确认精确计划后保存原意图，部分发布只能以原intent显式恢复；训练页的局部preparation面板只拥有编辑／请求序列与显式确认，发布算法仍在原owner。见[分片计划](../plans/2026-11-14-training-preparation.md)。

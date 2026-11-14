@@ -2,7 +2,7 @@
 
 日期：2026-11-14。审查者：fresh-context agent `/root/frozen_leaf_console_review`；未继承实现会话，按[本片原合同](../plans/2026-11-14-frozen-leaf-console.md)、`AGENTS.md` 与当前 `PLAN` 审查。使用 `maintainable-project-delivery`、`codebase-design`，参照双轴 code-review；按授权不再派生子审，不修改产品、安装、运行浏览器／模型或执行网络／Git写操作。
 
-当前结论：**最终本地需求／维护性两轴 approve，开放 0／0；R1／R2 源码与最终 r3 动态证据均已关闭。** 普通发布、完整 Ref 和本片自己的 CI 尚待，不在本地结论中预批。后续补核记录见本页末尾；初审原文另存独立原件，未覆盖。
+当前结论：**最终本地、固定普通发布及自身 CI 终态的需求／维护性两轴 approve，开放 0／0；R1／R2 源码与最终 r3 动态证据均已关闭。** 固定候选 `055b0c44d7bd2bb7c1375b82471ec7ca00c40605` 自己的 run **43573335080** 已独立核为 Success，8 job／30 必要步骤通过。各阶段原文另存独立原件；CI 终核与本地索引故障恢复见本页末尾。
 
 ## 身份与结论
 
@@ -10,8 +10,8 @@
 
 |审查轴|当前结论|开放 finding|
 |---|---|---|
-|需求／行为|最终本地 approve；R1／R2 已源码与动态关闭，最终包、真实运行／浏览器、自身模板和收尾原件已核；发布／自身 CI 待补核。|0|
-|职责／维护性|最终本地 approve；未发现其他有实证的职责、重复语义或配置约束问题。|0|
+|需求／行为|最终本地、固定普通发布及自身 CI 终态 approve；R1／R2 已源码与动态关闭，最终包、真实运行／浏览器、自身模板、收尾、完整 Ref 和自身 8 job／30 必要步骤已核。|0|
+|职责／维护性|最终本地、固定普通发布及自身 CI 终态 approve；未发现其他有实证的职责、重复语义或配置约束问题；派生索引故障已按原字节恢复并保留失败原件。|0|
 
 检查六个产品文件：`src/ergora/agent_runs.py`、`src/ergora/web.py`、`src/ergora/data/console/{agents,tools,retrospectives}.js`、`tests/test_composition_invocations.py`。另核本片新增的 `docs/USAGE.md`／`docs/architecture/current.md` 差异及本片计划／交付。前片 preparation/results 的发布和 CI 记账属于其他原候选，不纳入本片产品 verdict。
 
@@ -51,4 +51,26 @@
 - **真实页面／HTTP与 R1／R2。** 直接对照私有服务／浏览器脚本及原返回，核七阶段74项已执行条件检查／39样本；各定位／APIResponse错误停点保留，没有把部分阶段改记全通过。70条原HTTP的完整请求／原响应／元数据逐字核对；八条held均为原owner完成后的实际响应且已释放，两条503仅夹具交付。最终lifecycle反例实测旧DOM／notice不变：内层历史迟到成功、项目切换后的迟到失败、原记录代际替换以及A→B→A均关闭R1／R2。另核在途提交防重入、关闭／替换、输入变化、失败HTTP200、不可用后端、丢回复原记录恢复与摘要／权限／超时拒绝；最早未发业务HTTP的“held”探针已排除。390／960／1440px的原宽度数据无横溢，并目视核390／1440px最终原图。
 - **交接／导出与保持。** 三次实际安装CLI原回执成功；两份页面完整下载对象分别等于原CLI检查，页面／CLI合成正候选完整导出树同一，unused State不存在。只新增六条原run：两真实异后端、四确定性native夹具（其中一failed），派发前均有原running记录；真实模型未产生正候选，合成导出不代表质量改进。七组原文件／树当前重新核同一；只读SQLite核全部非`agent_runs`表保持，另一项目无run，当前六run等于收尾原件。原服务／浏览器PID已不存在，线程收尾为false；只读`/proc/net/tcp*`核原端口无监听，未发网络探针。
 
-最终本地两轴 approve，R1／R2关闭，开放0／0。本片普通发布／完整Ref与自己的必要CI等待后续固定候选补核；完整F10评价／采用／回退旅程、F9d／G1、真实GPU／B3与完整原生Forge C2不在本片结论中。此处是原片证据补核，不递归创建新审查。
+最终本地两轴 approve，R1／R2关闭，开放0／0。本地阶段未预批后继发布或CI；固定发布见下节，自己的必要CI另待终态补核。完整F10评价／采用／回退旅程、F9d／G1、真实GPU／B3与完整原生Forge C2不在本片结论中。此处是原片证据补核，不递归创建新审查。
+
+## 固定普通发布补核
+
+原 fresh-context reviewer 对固定候选 `055b0c44d7bd2bb7c1375b82471ec7ca00c40605` 分别按需求／维护性两轴补核：**approve，开放0／0**。父提交精确为 `f0b0d529cd9d85332e84dd4b4c34d49b381031df`，23个变更blob逐份与原 `static-final-r1.json` 的路径／大小／SHA相同，固定完整diff无空白错误、变更Markdown链接在固定Git内存在。六产品／测试与原源码审查身份相同，后继纯计划及前片CI状态记账不计本片产品实现；后继Skill页面WIP未纳入审查。
+
+直接读取固定Git的全部603产品blob，再与最终r3 snapshot／wheel／安装件逐字核对一致；两RECORD611／616行和283冻结文件重新核通过，wheel仍为 `6f06cbc1b478162eb26b744527456564c08df080f487b332892e58031ac719ce`。固定Git内444引用完整保持为发布后448引用的有序前缀，原433前缀未变；448件唯一原引用逐份大小／SHA相同，新增仅static／commit／push／ref四件。本轮未修改448前缀或固定原件。
+
+原push回执明确以完整候选向 `refs/heads/refactor/architecture-foundations` 普通推送，无force，exit0及 `f0b0d52..055b0c4` 相符；原 `07:55:19 UTC` 完整远端Ref同为该完整SHA，未另行联网查询。前片精确f0b0d52自己的CI **43570785965** 与原独立终核已先行闭合：36原CI引用、三份独立终态证明及原八job／30必要步骤身份已核，原两轴终核时间 **07:47:19.630993 UTC** 早于本次普通push开始 **07:55:12.051447 UTC**；前片成功未替代本片自己的CI。
+
+只读脚本 `independent/verify-publication-r1.py`、详细证明 `independent/publication-r1.json` 与双轴汇总 `independent/axes-publication-r1.json` 保留本轮身份；固定diff、固定／发布后manifest快照及本轮报告原件在 `independent/publication-r1/`。只用固定Git及原件；没有安装、产品／suite／模型／浏览器／网络重跑或Git写操作。普通发布补核当时，本片自己的CI仍待实际终态及独立补核，未称精确交付全部闭合；其后终核见下节，原范围限制保持。
+
+## 自身 CI 终态独立补核
+
+固定候选仍为 `055b0c44d7bd2bb7c1375b82471ec7ca00c40605`，父提交仍为 `f0b0d529cd9d85332e84dd4b4c34d49b381031df`。独立从原官方 Actions listing 的完整 commit／workflow／branch 和原 UI JSON batch 核定自身 run **43573335080** 与八个 job ID；从固定 Git 工作流及六组配置推导 plan 1 步、Linux 6×4 步、Windows 5 步，共 **30 必要步骤**。最后 run 原 HTML `ci-run-html-r5` 于 **08:18:45.978716 UTC** 返回 Success，SHA256 `de7679f8fdecd4d1b33b00faa47cc4811dad61fb491bb654d7b896cc9f99d363`。八个原 job 页的30步骤与八条 `Complete job` 均为 success，完成标记、时刻及完整候选 SHA／job／step 日志路径逐项相符。Windows PowerShell 5.1 安装升级原步骤为08:15:38–08:16:37 UTC，job于08:16:40 UTC完成；六个Linux页按固定条件跳过该Windows专用步骤。
+
+独立重建四份 `ci-status-r1/r2/r4/r5.json` 投影，逐字段等于对应原HTML，未运行原解析器去覆盖旧状态。r1–r4原run页面仍为 In progress；r4虽然全部必要步骤已成功，仍未据此预批run。最终仅r5自身Success闭合本片，前片43570785965的成功不作替代。22份原HTML和一份原UI JSON batch的HTTP200、原／最终URL、完整正文大小及SHA逐份相符；这是已保存官方UI状态审查，没有REST日志或artifact归档下载及测试数量推断。
+
+本地CI补账曾因目标路径变量重用，把拟写公共manifest误写到派生 `ci-ui-metadata-r1.json`；公共manifest当时尚未补入CI，reviewer读取时发现，作者明确报告了原因。失败输出原样保留为 `ci-bookkeeping-failed-r1.json`，恢复脚本及回执另存 `bookkeeping-recovery-r1.py/json`。独立根据未改的原 `ci-job-batch-r1/body.json`／receipt和run-r1原receipt重新生成索引，确认恢复后 **2119B／SHA256 `e12806f96ddcb0285e3023990e8770a197626780fcc709e67a792440318fecec`** 与误写前索引记录逐字相同，且保持初次采样时的in_progress状态。审查指出公共索引缺少两份恢复来源后，两原件已另列 `recovery_source_references`；恢复三件亦单列。原50条CI引用及原448条发布引用的内容、顺序均未改，全部原件重新核大小／SHA通过；原官方HTML／JSON／receipt与既存记录相符。该派生索引故障已关闭，不隐去或改写为原官方终态故障。
+
+独立只读脚本 `independent/verify-ci-terminal-r1.py`、详细证明 `independent/ci-terminal-r1.json`、双轴汇总 `independent/axes-ci-terminal-r1.json` 及 `independent/ci-terminal-r1/` 下的输入manifest、固定工作流／组配置、重建索引与阶段报告原件保留完整身份。另重新读取固定23变更blob并核原SHA，认证既有603产品／最终包发布证明及三份独立发布原件，没有重跑安装、suite、模型、浏览器或网络，没有产品／Git写操作。后继F10d5的 `skills.js` 及其他工作区WIP未纳入本次verdict。
+
+本片自身CI终态需求／维护性两轴 **approve，开放0／0**；结合本页既有本地及固定普通发布补核，F10d4原范围闭合。完整F10评价／采用／回退旅程、F9d／G1、真实GPU／B3与完整原生Forge C2仍不在本片结论中。
