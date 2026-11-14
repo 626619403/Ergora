@@ -14,8 +14,10 @@
 - [x] 非editable wheel核源／包／安装与两RECORD、283参考；运行原preset／memory suites，不为机械空白变化增加产品测试。
 - [x] 实际CLI创建旧库／旧manifest／旧叶输入，安装新preset；旧文件和原输入逐字保持、新根可编译、两个新叶完整继承原根Skill和上下文。
 - [x] Ergora原structure-review完整输入；新fresh-context需求／维护性两轴，处理实证finding并更新进度。
-- [ ] 前继自己的CI和原reviewer闭合后普通固定发布、完整Ref、本片自己的必要CI及原reviewer补核。
+- [x] 前继自己的CI和原reviewer闭合后普通固定发布、完整Ref、本片自己的必要CI及原reviewer补核。
 
 本地原件在`.ergora/checks/memory-preset-patch/`。该片不验模型生成、训练、记忆采用／恢复算法或Windows本机运行；原行为未变化的部分不无理由重复完整旅程。后继G1b沿现有安装器补首次安装、日常升级与旧项目状态回退。
 
-当前最终本地两轴approve／开放0／0，416固定引用直接全核；前继自己的CI43585798832及原reviewer终态两轴现已闭合，普通固定发布及本片自己的CI待。
+当前最终本地两轴approve／开放0／0，416固定引用直接全核；前继自己的CI43585798832及原reviewer终态两轴现已闭合，已普通固定发布506cc57／20blob／完整Ref同一；原固定发布补核两轴approve／开放0／0，自己的CI43587371986在途。
+
+自己的CI43587371986八job／30必要步骤终态Success，47CI原件／3,256,342B另列，原reviewer终态两轴approve／开放0／0；本地、固定发布与自己的CI三门禁闭合。原416验证及五发布件保持，不预批G1b／G1c。
