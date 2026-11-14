@@ -4,11 +4,19 @@
 
 Ergora 用任务合同明确目标、角色、修改范围和验收标准，把人工审批、并行工作、命令验证、独立审查与执行证据连接成可追溯的流程。开发者可以在自己的项目仓库和工单体系中使用它，逐步接入现有执行器、服务和实验环境。
 
-仓库提供独立的 **`ergora` CLI / 本地图形控制面**，以及保持内容一致的 **v2.2 `agentflow` 参考发行**。新入口支持分层工具绑定、持久记忆、skill 候选评价与采用回退、有界资料观察、可选 Temporal 调度，以及模板与工作单元 DAG 草稿；完整六阶段执行仍通过参考发行安装。实际验收进度记录在 [持续计划](docs/PLAN.md)。
+仓库提供独立的 **`ergora` CLI / 本地图形控制面**，以及保持内容一致的 **v2.2 `agentflow` 参考发行**。当前入口支持分层工具绑定、可嵌套的专家模板、正式六阶段操作、训练实验控制，以及来源绑定的记忆／Skill／工作流复盘与明确采用。正式执行复用参考运行时，状态、审批、取消与证据仍有各自的原记录。实际验收进度记录在 [持续计划](docs/PLAN.md)。
 
 [安装与日常使用](docs/USAGE.md) · [Windows 安装](docs/WINDOWS.md) · [训练优化手册](docs/TRAINING.md) · [Agent 选择与正式执行](docs/AGENT_BACKENDS.md) · [工作流组合](docs/WORKFLOW_DEFINITIONS.md) · [工具接入](docs/INTEGRATIONS.md) · [单文件参考发行](docs/distribution/multi-agent-development-platform.html) · [计划与进度](docs/PLAN.md)
 
 首次使用专家组合可从[模板入门旅程](docs/TEMPLATE_WALKTHROUGHS.md)开始：准备完整 manifest，选择逐实例后端，再创建开发任务或调用训练提案叶。
+
+|你要做的事|入口|
+|---|---|
+|先安装、设计关系和查看模板|[快速试用](#快速试用)与[安装手册](docs/USAGE.md)|
+|治理仓库、开发或行为保持重构|[三模板旅程](docs/TEMPLATE_WALKTHROUGHS.md)与[重构配方](docs/USAGE.md#使用重构配方)|
+|诊断训练性能、选择优化方向并准备实验|[训练手册](docs/TRAINING.md)|
+|把复盘结果用于下一次任务|[记忆／Skill／工作流完整改进旅程](docs/IMPROVEMENT_WORKFLOW.md)|
+|换电脑或恢复历史任务|[换机说明](docs/USAGE.md#换机与新项目重建)与[联合备份](docs/BACKUP_RECOVERY.md)|
 
 ## 当前试用范围
 
@@ -78,6 +86,17 @@ ergora serve
 
 开发侧有准备者、领域执行者、兼容验证者，以及结构／正确性／测试价值三位审查专家。训练侧有实验设计、性能分析、kernel 设计、测量审查四位 v2 专家；多个方向复用这些专家，并分别继承所选方向资料。提示词与资源定义独立于后端，逐实例绑定仍受后端支持的职能、模式和权限限制。
 
+重构、框架设计和可维护性已有专职角色：
+
+|角色|负责的工作|
+|---|---|
+|`ergora-refactoring-engineer`|在批准的工作单元内重构模块、迁移真实调用者并保持行为|
+|`ergora-structure-reviewer`|独立审查模块边界、依赖方向、职责和抽象成本|
+|`ergora-test-value-reviewer`|审查测试／断言的真实保护价值、配置硬编码和重复成本|
+|`ergora-compatibility-validator`|在独立兼容工作单元核旧新接口、迁移和回退；不代替最终审查|
+
+这些AgentDefinition、提示、Skill及组合是 **Ergora自有实现**，借鉴[工程Skill调研](docs/research/2026-11-14-local-engineering-skills.md)、[架构与协作研究](docs/research/2026-11-08-agent-composition.md)和已列明的上游资料。它们没有被包装成某个上游完整Agent的直接导入。Codex／Claude Code等是可替换的实际调用后端；`refactoring-quality`通过父模板再给全部后代补充目标仓库规范与测试接缝指导。具体版本、流程和后端覆盖见[重构配方](docs/USAGE.md#使用重构配方)。
+
 优化方向当前使用 `proposal-leaves`：每次显式调用一叶，操作者完整传递前驱结果。安装 preset 不会自动运行整张提案图、安装 GPU 工具或提交训练。真实实验继续沿 workload／baseline／experiment → 可信 runner → 独立评价 → 精确 evidence SHA 人工批准 → 项目集成复验，见 [训练优化手册](docs/TRAINING.md)。
 
 已有原实验可在控制台“训练实验”或 `ergora training list/show` 中[查看](docs/TRAINING.md#在控制台查看原实验)：同一项目的 baseline、精确 manifest／spec、runner／job、门禁、负结果和 MLflow ID 沿用原记录。新项目可先用[基线预览与初始化](docs/TRAINING.md#预览与初始化基线)，核对完整JSON、项目修订和内容SHA后登记；无需服务或SDK，原子初始化使用Linux／WSL2。[可信runner预览与登记](docs/TRAINING.md#预览与登记可信-runner)使用同样的确认流程，需Linux／WSL2和`temporal` extra，无需服务，登记不会运行命令。随后用[实验预览与准备](docs/TRAINING.md#精确准备实验与恢复部分发布)固定完整draft、runner和窗口，确认精确SHA后发布原manifest／spec；中断按原intent显式恢复，CLI／HTTP与训练页共用同一流程。`ergora training status`显式查询完整原输入与run；[确认提交](docs/TRAINING.md#提交已准备实验与原-id-对账)使用精确项目revision与manifest SHA，丢失回执后按原intent对账，不重发start。[归档证据读取](docs/TRAINING.md#阅读归档证据与原集成票据)支持原evidence／gate／元数据、按原SHA核对的文本窗口及已有本地集成票据，无需SDK或服务。页面默认只读，原生执行由原训练 owner 管理，实时操作需要`temporal` extra。[精确 owner 批准](docs/TRAINING.md#精确-owner-批准与投递恢复)可经CLI／HTTP或[训练控制台](docs/TRAINING.md#在控制台审阅证据与批准)显式确认原run与evidence；中断保留原receipt、不续期，发送结果不明时只查原历史，投递与集成复验分开。
@@ -92,7 +111,7 @@ ergora serve
 
 ForgeKernel 已有顶层 campaign 操作，作为完整嵌套流程仍需补齐全部内部会话的父资源／权限、总预算、取消和未知结果对账。Fuser、GEAK、AKG、ModelOpt 等研究候选按 [采用矩阵](docs/research/2026-11-12-specialist-adoption.md)条件接入，实际可用范围分别验收。
 
-后续还包括首次任务引导与固定发行入口、优化提案到真实实验的统一交接、更多后端／会话验证、低代码配置收口、部分工单写回，以及基于评价与明确采用的记忆／Skill 改进闭环。实施顺序与验收节点见 [专家计划](docs/plans/2026-11-13-specialist-presets.md#同事试用入口与剩余专家清单)和 [总计划](docs/plans/2026-11-01-all-in-one.md)。
+当前已有训练baseline／runner／实验准备、提交／取消／证据批准页面，及[三类复盘→明确采用→新任务冻结](docs/IMPROVEMENT_WORKFLOW.md)的操作旅程。仍需真实条件验收的重点是GPU训练正确性／质量／性能比较、完整原生Forge嵌套流程、更多受限后端、远端执行隔离和团队级身份；GitLab标签追加等未支持操作保留明确限制。首次任务引导与稳定发行、跨服务协议和其他扩展按 [持续计划](docs/PLAN.md)与[总计划](docs/plans/2026-11-01-all-in-one.md)逐片推进。
 
 分享当前功能时请带上本分支与 [使用手册](docs/USAGE.md)、[训练手册](docs/TRAINING.md)。单文件 HTML 内嵌 v2.2 参考发行及其两份手册；新增控制面与组合能力通过当前仓库安装。
 
@@ -163,6 +182,7 @@ src/ergora/
 ├── definition_bundles.py / asset_trees.py 完整资源包、不可变版本与树身份
 ├── agents.py / agent_backends.py   Agent兼容入口、原生后端合同与局部实现
 ├── task_mcp.py                     每调用固定资源投影、官方MCP SDK与连接回执
+├── task_context.py / retrospectives.py 正式资料冻结、来源绑定复盘候选与显式导出
 ├── reference_executor.py / stage_driver.py 可选六阶段桥接与专用进程入口
 ├── reference_inputs.py / reference_workflows.py 版本化正式入口、原六阶段及实例配额
 ├── task_envelopes.py / review_dags.py 正式身份、工作分配与审查DAG投影
@@ -463,7 +483,7 @@ agentflow verify
 
 可选训练 worker 默认关闭，`services status` 可能因 STOPPED 项返回退出码 3，应查看每项实际状态。停止服务与取消外部作业是不同操作；维护和备份前先确认在途作业的状态。备份平台、私有配置、state 和各业务仓库。更多步骤见 HTML 部署手册与安装后的 `docs/VALIDATION.md`。
 
-## 解耦与后续工作
+## 接入边界与扩展
 
 合同、业务状态、工具调用和入口已有独立归属；冻结参考执行器仍有待逐步迁移。以下边界指导后续扩展，当前没有通用插件发现或任意后端切换能力。
 
@@ -471,7 +491,7 @@ agentflow verify
 |---|---|---|
 |协议与工作流定义|任务、角色、DAG、审批、证据、版本与编译规则|纯数据和确定性校验，避免执行器或工单 SDK 依赖|
 |运行控制|生命周期、恢复、调度、超时和取消语义|复用现有 Temporal 参考运行时|
-|执行适配|提交、查询、回执、幂等和取消屏障|Codex、本地 runner；后续按需求接入其他 agent 或集群|
+|执行适配|后端调用、能力声明、原回执和取消；原生执行器保留提交／恢复屏障|Codex、Claude Code、command、mini及只读DeepSeek各按实际模式准入；训练沿可信runner|
 |工单与通信适配|项目工单映射、外部消息与协议转换|GitHub/GitLab、A2A、其他服务|
 |证据与观测|产物、指纹、比较与查询|MLflow、文件归档及项目评估工具|
 |用户入口|CLI、配置表单、运行视图、人工审批|调用同一合同编译与运行接口|
@@ -482,9 +502,9 @@ agentflow verify
 
 **图形页面提供分层绑定、工作单元草稿，以及独立Agent／嵌套Workflow的定义与资源修订。** 已发布组合图分开显示结构继承、控制依赖和具名数据，支持查找、折叠、版本比较与完整manifest保存；正式任务可选择逐实例后端和工作分配。编译、冻结、审批和执行沿原用例，布局不进入合同。新增可信阶段或正式运行器尚不支持的拓扑，需要先扩展并验证合同与运行时。
 
-进一步的 [工具调研与产品方案](docs/research/2026-10-28-multi-agent-landscape.md) 比较了 40 个代表性工具或产品家族，讨论 Agent Spec 等现有关系格式、组件复用和各层工具绑定。建议面向用户提供统一安装、配置与任务视图的 all-in-one 体验，内部逐步验证可替换组件；这些仍是后续方案。术语见 [领域词汇表](CONTEXT.md)。
+早期[工具调研与产品方案](docs/research/2026-10-28-multi-agent-landscape.md)比较了40个代表性工具或产品家族；当前已按上述边界实现统一安装组合、分层绑定、图形配置与任务视图。新增后端实现本族Interface并登记组件配置；更换专家则发布独立定义及引用它的新工作流，不需要在模板中写厂商分派。各模式的资源、权限与恢复能力仍须实际准入。术语见[领域词汇表](CONTEXT.md)。
 
-[长期记忆与持续演进调研](docs/research/2026-10-28-continuous-evolution.md) 进一步梳理 24 份项目官方 README。本轮已实现项目记忆、可选 ReMe 协议接入、真实 GEPA 有界候选搜索、资料快照和持久调度入口；候选改进仍须评价、审阅和明确采用，不声明真实模型或 GPU 效果收益。
+[长期记忆与持续演进调研](docs/research/2026-10-28-continuous-evolution.md)梳理了24份项目官方README。当前项目记忆、可选ReMe投影、GEPA有界候选搜索、资料快照及持久调度之外，来源绑定复盘可导出完整记忆／Skill／工作流候选。Skill沿可信评价后采用，记忆显式保存修订，工作流显式导入新版本；下一任务再冻结选择。这些操作不证明模型质量或GPU收益。
 
 三个模板的角色现可独立于工具选择；[选型调研](docs/research/2026-10-31-template-agents.md) 说明首批适配和未接入工具的优缺点。ForgeKernel 作为可选原生候选生成工具，其内部 judge 不替代可信训练门禁；模型质量和 GPU 性能比较需要真实项目证据。固定官方版本及实际检查范围记录在 [计划](docs/PLAN.md) 和各切片交付记录。
 

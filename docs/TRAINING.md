@@ -6,6 +6,16 @@
 
 训练领域组合仍提供只读proposal叶，由操作者提供workload和前驱资料；开发任务的`work-units-v2`不会自动调度训练实验或批准候选。全部祖先Skill/上下文仍须完整交付，真实设备运行和结果采用继续按本手册的runner/gate处理。
 
+|当前目标|操作入口|
+|---|---|
+|先分析已有代码、trace或显存报告|[通用性能诊断](#通用性能诊断)或[细方向子模板](#独立的优化方向子模板)|
+|把专家提案变成可执行实验|[提案到原实验合同](#从专家提案填写原实验合同)，然后预览／确认baseline、runner和实验|
+|启动和停止原控制流程|[原ID提交与对账](#提交已准备实验与原-id-对账)、[取消和停止事实](#取消原运行与分别观察停止事实)|
+|审阅实际结果和授权后续集成|[归档证据](#阅读归档证据与原集成票据)、[精确owner批准](#精确-owner-批准与投递恢复)|
+|把经验用于下一次任务|[完整改进旅程](IMPROVEMENT_WORKFLOW.md)，候选分别采用后再明确冻结|
+
+实验控制提交后，实际计算仍由操作者选择精确manifest调用可信`run-local`；当前没有自动训练队列消费者。控制操作成功、明确合成的验收夹具和真实GPU正确性／质量／性能收益各有不同证据，不能互相替代。
+
 Windows 原生可设计训练模板、普通调用提案角色并管理记忆 / Skill；带完整Skill附件的组合单叶使用Linux task-MCP，须在WSL2/Linux运行。ForgeKernel、mini 驱动及完整参考实验执行同样使用WSL2/Linux，可信参考执行器还要求Linux容器。原生安装不会配置CUDA、GPU或这些参考服务，详见[Windows手册](WINDOWS.md)。
 
 ## 准备工作
@@ -322,6 +332,8 @@ prepare返回的实验ID／manifest SHA → 原runner／job → evidence SHA／�
 跨域专家可复用于多个方向子模板，单份kernel设计也可覆盖精度、布局、融合和通信等关系。方向知识与原生执行能力分别接入；安装v2提案不等于已接入Forge／KDA内部全流程或任意外部MCP。实际实验继续使用本手册前述原manifest、可信runner、独立评价和精确evidence SHA批准。
 
 ## 通用性能诊断
+
+性能分析、实验设计、kernel设计和测量审查的定义与组合由Ergora维护，参考[专项采用调研](research/2026-11-12-specialist-adoption.md)和[工程／性能Skill盘点](research/2026-11-14-local-engineering-skills.md)。十八个纵向方向共享跨域专家，再由父模板补充对应资料；这使同一kernel或架构专家能覆盖多个方向。引用NVIDIA／其他项目的论文与Skill，不表示已导入其完整原生Agent流程；Forge等原生工具仍单独适配和准入。
 
 ```bash
 ergora composition install-preset optimization-performance-diagnosis

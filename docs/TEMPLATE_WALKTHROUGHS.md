@@ -24,10 +24,14 @@
 |optimization-low-precision|`ergora-opt-low-precision-proposal`|design／profile→kernel→measurement的只读低精度方案；原实验与质量／性能门禁保持|
 |optimization-kernel|`ergora-opt-kernel-proposal`|design／profile→kernel→measurement的算子／wrapper及独立验证方案；原生流程与真实测量另验|
 |refactoring|`ergora-refactoring-template`|准备→rewrite→compatibility→原可信集成／验证→三审查；普通父引用一个原生large-change六阶段实例|
+|refactoring-quality|`ergora-refactoring-template@1.1.0`|父Skill补充目标仓库规范、模块设计与真实测试接缝；原六阶段与子角色保持|
+|optimization-performance-diagnosis|`ergora-opt-performance-diagnosis-proposal`|同症状反馈命令与按实际报告选择工具；design／profile→measurement只读提案|
 
 每个Agent是独立版本包，可有自己的专长、初始指令、Skill和后端。结构父链完整累加资料并限制子权限；依赖边安排执行先后，具名端口传递结果。这三种关系可在“Agent 与组合库”展开查看。[定义格式与继承规则](WORKFLOW_DEFINITIONS.md)。
 
-重构配方是独立新入口，使用[definition6／input10操作说明](USAGE.md#使用重构配方)和[完整示例](../examples/composition/refactoring/README.md)。下面的旧两域页面向导仍生成原v6工作材料合同；原生v10定义通过CLI／HTTP提交。选择该配方前先固定实际caller、需要保持的行为、迁移顺序和回退检查；它沿原task／run／candidate及批准流程执行。
+重构配方使用[原生六阶段操作说明](USAGE.md#使用重构配方)和[完整示例](../examples/composition/refactoring/README.md)。下面的两域页面步骤仍选择原v6工作材料合同；重构可在同一表单选择“完整manifest · 原生六阶段”，配置准备叶／原生实例／工作与审查子图及预算，先明确授权准备，再预览与创建。选择该配方前先固定实际caller、需要保持的行为、迁移顺序和回退检查；它沿原task／run／candidate及批准流程执行。若追加项目记忆或活动Skill，再沿[资料选择](USAGE.md#为正式任务选择项目记忆与活动-skill)冻结当前精确来源。
+
+这些工程角色、初始提示与组合由Ergora维护，参考[工程Skill与开源实现研究](research/2026-11-14-local-engineering-skills.md)；它们与具体Codex／Claude Code后端分别版本化和选择。优化方向的完整表见[训练手册](TRAINING.md#独立的优化方向子模板)，不是每个模板都直接导入一个上游原生Agent。
 
 ## 1. 准备模板与完整组合
 

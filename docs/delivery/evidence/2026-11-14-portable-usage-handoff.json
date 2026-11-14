@@ -1,0 +1,2145 @@
+{
+  "slice": "G1c",
+  "product_candidate": "506cc576874e92bc922644a8dd9f244151b08e4b",
+  "branch": "refactor/architecture-foundations",
+  "implementation": {
+    "product_tests_installers_dependencies_changed": false,
+    "ci_change_owned_by_separate_slice": "G1d-CI"
+  },
+  "validation": {
+    "source": {
+      "candidate": "506cc576874e92bc922644a8dd9f244151b08e4b",
+      "archive_sha256": "808e578e4222badab3378508d4d55360379801d4a03ed94a661c09dfe4d00eca",
+      "source_is_independent_directory": true,
+      "product_files": 611
+    },
+    "isolated_default_installer": {
+      "status": "passed",
+      "package_files": 611,
+      "installed_record_rows": 806,
+      "installed_record_verified": true,
+      "source_and_fixed_wheel_products_equal": true,
+      "preset_count": 28,
+      "new_memory_preset_version": "1.0.1",
+      "listing_did_not_create_control_state": true,
+      "launcher_symlink_correct": true,
+      "dependency_check_exit": 0
+    },
+    "installer_seconds": 27.96669398015365,
+    "new_project_rebuild": {
+      "status": "passed",
+      "checks": [
+        "new control home and new business path are explicit",
+        "reviewer backend persists independently of implementer",
+        "saving role selection advances the original project revision",
+        "current catalog remains28 with memory1.0.1",
+        "repeat import preserves exact immutable refactoring identity",
+        "exact root readable: repository-governance",
+        "complete rebuilt manifest verified: repository-governance",
+        "exact root readable: large-change",
+        "complete rebuilt manifest verified: large-change",
+        "exact root readable: training-optimization",
+        "complete rebuilt manifest verified: training-optimization",
+        "exact root readable: refactoring-quality",
+        "complete rebuilt manifest verified: refactoring-quality",
+        "exact root readable: optimization-performance-diagnosis",
+        "complete rebuilt manifest verified: optimization-performance-diagnosis",
+        "full rebuilt input verified: refactoring-quality",
+        "task delivered intact: refactoring-quality",
+        "full rebuilt input verified: optimization-performance-diagnosis",
+        "task delivered intact: optimization-performance-diagnosis",
+        "no project registration or native execution data was manufactured",
+        "new project has no model runs"
+      ],
+      "commands": 35,
+      "seconds": 22.218326393980533,
+      "project_revision": 2,
+      "preset_roots": {
+        "repository-governance": {
+          "kind": "workflow",
+          "id": "ergora-governance-delivery",
+          "version": "1.0.0",
+          "digest": "e82c02d01d2c717a38f35f242107efce32dd873027a4a3a6fb0f18f7d1fae077"
+        },
+        "large-change": {
+          "kind": "workflow",
+          "id": "ergora-large-change-delivery",
+          "version": "1.0.0",
+          "digest": "25dbfff6830e4123bedbfe975c964de96b8a9ce0ed8c76e8f365fecf2f7e2cc8"
+        },
+        "training-optimization": {
+          "kind": "workflow",
+          "id": "ergora-training-proposal",
+          "version": "1.0.0",
+          "digest": "cf5df77249022c458f84d4e4d9964aa6448bacb1a74b9192a942da9ffcb7e438"
+        },
+        "refactoring-quality": {
+          "kind": "workflow",
+          "id": "ergora-refactoring-template",
+          "version": "1.1.0",
+          "digest": "79376039d7794e228c4f4e57e42383927460c26da0948781b9f7d4cc4a62b48e"
+        },
+        "optimization-performance-diagnosis": {
+          "kind": "workflow",
+          "id": "ergora-opt-performance-diagnosis-proposal",
+          "version": "1.0.0",
+          "digest": "57531d40ca8d55298df8d5f38d3a5aee0e86d0c224d7a325879d227aec905e38"
+        }
+      },
+      "prepared_inputs": [
+        {
+          "preset": "refactoring-quality",
+          "instance": "root/development/review/structure/review",
+          "digest": "20d539e9f94a76834dd5db5e886e70315a9bd6acacf0f316ace20a756ce93b56"
+        },
+        {
+          "preset": "optimization-performance-diagnosis",
+          "instance": "root/analysis/profile",
+          "digest": "225cec539c9f48c611007d04ae8c2bd1c3bb657c694d83d4b91304a04c3a30f9"
+        }
+      ],
+      "scope": "Actual CLI rebuild of a new lightweight project, original three templates plus quality/performance presets, exact manifests and full leaf inputs at independent source/app/home/repo paths. No authentication/model/backend availability, formal native task execution, historical task relocation or GPU claim."
+    },
+    "static_architecture": {
+      "candidate": "506cc576874e92bc922644a8dd9f244151b08e4b",
+      "top_level_python_modules": 73,
+      "local_import_edges": 300,
+      "first_party_console_modules": 28,
+      "static_graph_acyclic": true,
+      "scope": "AST-local first-party top-level module imports, including function-local imports; dynamic loading, subprocesses, bundled SDK drivers/reference/vendor and runtime behavior excluded."
+    },
+    "initial_local_links": {
+      "files": 9,
+      "local_links_and_fragments_checked": 323,
+      "scope": "Original check-docs-r1 identities; final changed-document scope separately checked after collection."
+    },
+    "own_structure_template": {
+      "status": "succeeded",
+      "run_id": "df7c40dff8fe4be7a0dc697af145a431",
+      "cli_exit": 0,
+      "seconds": 32.89382547698915,
+      "packet_files": 19,
+      "packet_bytes": 485552,
+      "input_digest": "9c2704dbde1ad4614cd65679e9607b3cbbf470fe3e052f190b36a0cae8e10834",
+      "prompt_sha256": "32ae426b0fd67fc58c3ffd66c437d6fe05a9251d355f21802e718af918e996f4",
+      "all_inline_files_and_inherited_resources_in_stdin": true,
+      "decision": "approve",
+      "result_sha256": "45a03cd8e924a87d1c4a7828daf98ab736af2ab0c70e6ff30944ba8f93566256",
+      "scope": "Fixed611 installed original structure-review for G1c complete Markdown and supplied source/evidence; text-only scope, independent disk audit and later publication/CI separate."
+    },
+    "final_local_checks": {
+      "at": "2026-11-14T11:33:44.279168+00:00",
+      "status": "passed",
+      "references": 391,
+      "bytes": 3736857,
+      "canonical_references_sha256": "2bd19647c342b37d6ff3e392ff3d8c49fd014f4b2e1a4d2acb2379e34a607c06",
+      "final_links": {
+        "files": 16,
+        "local_links_and_fragments_checked": 439,
+        "receipt_sha256": "894f649299ecb14f3d458ec3f1149420fdf9f22ee7277ec53c30033c8ef2f53e"
+      },
+      "product_tests_installers_dependencies_unchanged": true,
+      "separate_ci_slice": "G1d-CI",
+      "scope": "Direct full frozen-reference and final-document link identity audit, no installer/model/native reexecution."
+    }
+  },
+  "independent_review": {
+    "report": "docs/delivery/2026-11-14-portable-usage-handoff-review.md",
+    "initial_local_requirements": "approve",
+    "initial_local_maintainability": "approve",
+    "open_findings": {
+      "requirements": 0,
+      "maintainability": 0
+    },
+    "final_collection": "approved",
+    "fixed_publication": "pending",
+    "own_ci": "pending",
+    "final_local": "approved",
+    "requirements": "approve",
+    "maintainability": "approve",
+    "resolved_findings": [
+      "P3 clarify three declared self-review resources as one parent and two leaf resources"
+    ],
+    "final_local_report": {
+      "path": ".ergora/checks/portable-usage-handoff/independent-local-r1.md",
+      "bytes": 12065,
+      "sha256": "e59fbdac965c848f3316594ae8ced435650d974b0f897e3a96b168edbf12b799"
+    }
+  },
+  "publication": {
+    "status": "pending",
+    "predecessor_own_ci": "43589988699",
+    "own_ci": "pending"
+  },
+  "raw_evidence": {
+    "base": ".ergora/checks/portable-usage-handoff",
+    "references": [
+      {
+        "path": "check-docs-r1.json",
+        "bytes": 1813,
+        "sha256": "9e3e7c9f2ca781d4da4825828cb506ab19930b8ffa37de2f4757b4820403843e"
+      },
+      {
+        "path": "check-docs-r1.py",
+        "bytes": 2826,
+        "sha256": "1ad14c7afd954fc2df140f4456cfa471fa88ba28310c1863ec0013b2d9167f2e"
+      },
+      {
+        "path": "collect-r1.py",
+        "bytes": 6680,
+        "sha256": "6578aed2d5dec28138e95272d3966a06de29e4fa067a1562f4606578f67060c9"
+      },
+      {
+        "path": "project-r1/copy-large-change.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1/copy-large-change.stdout",
+        "bytes": 156,
+        "sha256": "6b29e9b7edfedd7470f04716615efef9f875e201e2fb1ea908784c45792295c8"
+      },
+      {
+        "path": "project-r1/copy-repository-governance.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1/copy-repository-governance.stdout",
+        "bytes": 174,
+        "sha256": "446644748b31076a89ac6f47f65b0f55bb9476a5ba504ae924635a19016f615d"
+      },
+      {
+        "path": "project-r1/copy-training-optimization.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1/copy-training-optimization.stdout",
+        "bytes": 174,
+        "sha256": "6311a9238bb5dcdd99b4e91de8af5d12b6599f4d3151fac5ad5fd01a56270da7"
+      },
+      {
+        "path": "project-r1/git-commit.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1/git-commit.stdout",
+        "bytes": 61,
+        "sha256": "a5b7b20e0aa2ffd1be2ece84fd0d870f1d28efd3550a06de74023d59f11ccb74"
+      },
+      {
+        "path": "project-r1/git-init.stderr",
+        "bytes": 485,
+        "sha256": "7cc74f74cc8a8f9938bd00571e2c171ce3c59d048f2242a836ccca722182d430"
+      },
+      {
+        "path": "project-r1/git-init.stdout",
+        "bytes": 135,
+        "sha256": "799af05f3546c450f2715ab0816bde06b335dfa56415c22c90b30a833806374e"
+      },
+      {
+        "path": "project-r1/grant-large-change.json",
+        "bytes": 295,
+        "sha256": "2dcd5ef0479b94feaa8d8ed6061c5ac56eb39c67a531409a9371e6d147616a09"
+      },
+      {
+        "path": "project-r1/grant-optimization-performance-diagnosis.json",
+        "bytes": 273,
+        "sha256": "adb9d17e1e54869f854d9fdbb63fc568368e3dead0547cd3abd25ec32d7a8bc6"
+      },
+      {
+        "path": "project-r1/grant-refactoring-quality.json",
+        "bytes": 295,
+        "sha256": "2dcd5ef0479b94feaa8d8ed6061c5ac56eb39c67a531409a9371e6d147616a09"
+      },
+      {
+        "path": "project-r1/grant-repository-governance.json",
+        "bytes": 295,
+        "sha256": "2dcd5ef0479b94feaa8d8ed6061c5ac56eb39c67a531409a9371e6d147616a09"
+      },
+      {
+        "path": "project-r1/grant-training-optimization.json",
+        "bytes": 273,
+        "sha256": "adb9d17e1e54869f854d9fdbb63fc568368e3dead0547cd3abd25ec32d7a8bc6"
+      },
+      {
+        "path": "project-r1/input-optimization-performance-diagnosis/assets/agent-definitions/index.json",
+        "bytes": 425,
+        "sha256": "a3a4a7c5cdd32a416e06c3da49a63c022633e3fe60a40fe704ccbb6da25641f6"
+      },
+      {
+        "path": "project-r1/input-optimization-performance-diagnosis/assets/agent-definitions/objects/4a64971f5414f22057b95b0d16f88bce4922bf8293dc5dab9bdda1be2f7b1983/agent.json",
+        "bytes": 910,
+        "sha256": "1e77878f7f5ef29958513cf454381922134ae372335aeb8faca4e08a7080a979"
+      },
+      {
+        "path": "project-r1/input-optimization-performance-diagnosis/assets/agent-definitions/objects/4a64971f5414f22057b95b0d16f88bce4922bf8293dc5dab9bdda1be2f7b1983/instructions.md",
+        "bytes": 958,
+        "sha256": "964fb91d3bff310b57077dcad65f7b64a772d04e0afc77e236e622791100ab2a"
+      },
+      {
+        "path": "project-r1/input-optimization-performance-diagnosis/assets/agent-definitions/objects/4a64971f5414f22057b95b0d16f88bce4922bf8293dc5dab9bdda1be2f7b1983/skills/ergora-performance-analyst/SKILL.md",
+        "bytes": 1403,
+        "sha256": "3296251930630438c7ba8a69ec86ac6aa714d869cc1cf68e88fe052b95161fe1"
+      },
+      {
+        "path": "project-r1/input-optimization-performance-diagnosis/assets/agent-definitions/objects/4a64971f5414f22057b95b0d16f88bce4922bf8293dc5dab9bdda1be2f7b1983/skills/ergora-performance-analyst/references/evidence-contract.md",
+        "bytes": 1825,
+        "sha256": "87548c2472c46ba9fb4f8c23a6545cf0322ce09ae2725a77f811899c63e388aa"
+      },
+      {
+        "path": "project-r1/input-optimization-performance-diagnosis/assets/agent-definitions/objects/6bca95faaec581831e132a5b372b7f6f2b39ad657c98d7c282b3102468eaab1c/agent.json",
+        "bytes": 895,
+        "sha256": "07ce2a6933a6e035396b5081f1f919f2fb4034fd3fd8a2f2b080b2eea721779b"
+      },
+      {
+        "path": "project-r1/input-optimization-performance-diagnosis/assets/agent-definitions/objects/6bca95faaec581831e132a5b372b7f6f2b39ad657c98d7c282b3102468eaab1c/instructions.md",
+        "bytes": 995,
+        "sha256": "23702632665e70cb52337b61e8c11857f270793d2f1d1e3aa8e0037ee0b4aa93"
+      },
+      {
+        "path": "project-r1/input-optimization-performance-diagnosis/assets/agent-definitions/objects/6bca95faaec581831e132a5b372b7f6f2b39ad657c98d7c282b3102468eaab1c/skills/ergora-measurement-reviewer/SKILL.md",
+        "bytes": 1316,
+        "sha256": "51de9594b149bd2c5f545ce67bb698f4621a6316389d6ea8114364e6d500c76e"
+      },
+      {
+        "path": "project-r1/input-optimization-performance-diagnosis/assets/agent-definitions/objects/6bca95faaec581831e132a5b372b7f6f2b39ad657c98d7c282b3102468eaab1c/skills/ergora-measurement-reviewer/references/evidence-contract.md",
+        "bytes": 1996,
+        "sha256": "42233df4dc0b08751e025f8aa4ea9acbc7aaa424543156e5f3339e10428ea0db"
+      },
+      {
+        "path": "project-r1/input-optimization-performance-diagnosis/assets/agent-definitions/objects/cd88d273d84b35d1a93c6a537897ba0d8d58a1e9a69ed9a26d2ab0b970de10c3/agent.json",
+        "bytes": 893,
+        "sha256": "6205c651cc2db75f2ebd19cac4cddf18867ee98321fa948a924383341416be16"
+      },
+      {
+        "path": "project-r1/input-optimization-performance-diagnosis/assets/agent-definitions/objects/cd88d273d84b35d1a93c6a537897ba0d8d58a1e9a69ed9a26d2ab0b970de10c3/instructions.md",
+        "bytes": 908,
+        "sha256": "c07caa580818743bbb5f7826f294d0c9846e9eb4f42923aa3203d8bb79808536"
+      },
+      {
+        "path": "project-r1/input-optimization-performance-diagnosis/assets/agent-definitions/objects/cd88d273d84b35d1a93c6a537897ba0d8d58a1e9a69ed9a26d2ab0b970de10c3/skills/ergora-experiment-designer/SKILL.md",
+        "bytes": 1500,
+        "sha256": "c74f036b03ac5dd02699bb2a34db4e6e37be4713b4cfbd433ff80b6c85b09245"
+      },
+      {
+        "path": "project-r1/input-optimization-performance-diagnosis/assets/agent-definitions/objects/cd88d273d84b35d1a93c6a537897ba0d8d58a1e9a69ed9a26d2ab0b970de10c3/skills/ergora-experiment-designer/references/evidence-contract.md",
+        "bytes": 1885,
+        "sha256": "93edb60fe6c16815943059bce7393749921c48779d94bcb3f70e38d3cda8d005"
+      },
+      {
+        "path": "project-r1/input-optimization-performance-diagnosis/assets/workflow-definitions/index.json",
+        "bytes": 436,
+        "sha256": "4557daa0300184b7ff0ac12f1990397777f6d8304f6cf964120f67fc0fbe25a8"
+      },
+      {
+        "path": "project-r1/input-optimization-performance-diagnosis/assets/workflow-definitions/objects/098f379a30627950103b485d1e1364bbd80f5f8f316f0ded804ca8847ecb8961/instructions.md",
+        "bytes": 354,
+        "sha256": "539f90bfb214dad27f61984cc04b7a65a9d14024a6eccf0b28b846dd568d6392"
+      },
+      {
+        "path": "project-r1/input-optimization-performance-diagnosis/assets/workflow-definitions/objects/098f379a30627950103b485d1e1364bbd80f5f8f316f0ded804ca8847ecb8961/workflow.json",
+        "bytes": 1418,
+        "sha256": "1b4e66f49ff3f4e6ab8b4c50450f82d775476ea0e6d9309044d591cd5f124319"
+      },
+      {
+        "path": "project-r1/input-optimization-performance-diagnosis/assets/workflow-definitions/objects/57531d40ca8d55298df8d5f38d3a5aee0e86d0c224d7a325879d227aec905e38/instructions.md",
+        "bytes": 842,
+        "sha256": "c296259ededfa37237a09664db64b706990054dd922f0a091f59ab47c4d5d966"
+      },
+      {
+        "path": "project-r1/input-optimization-performance-diagnosis/assets/workflow-definitions/objects/57531d40ca8d55298df8d5f38d3a5aee0e86d0c224d7a325879d227aec905e38/skills/ergora-performance-diagnosis/SKILL.md",
+        "bytes": 1308,
+        "sha256": "aafebc29fa08b51b827dbf0b1c72ba90c053a50cbc41c3116b32a24590022268"
+      },
+      {
+        "path": "project-r1/input-optimization-performance-diagnosis/assets/workflow-definitions/objects/57531d40ca8d55298df8d5f38d3a5aee0e86d0c224d7a325879d227aec905e38/skills/ergora-performance-diagnosis/references/tool-routes.md",
+        "bytes": 2416,
+        "sha256": "d70be5a6652e6cd383d35442fa8ae8e3551c125de9133d88317aac159a87f325"
+      },
+      {
+        "path": "project-r1/input-optimization-performance-diagnosis/assets/workflow-definitions/objects/57531d40ca8d55298df8d5f38d3a5aee0e86d0c224d7a325879d227aec905e38/workflow.json",
+        "bytes": 1977,
+        "sha256": "7c72d9e9f121b09d3b1362acd8ce7395796a93003f91c7986c01a77c05828771"
+      },
+      {
+        "path": "project-r1/input-optimization-performance-diagnosis/assets/workflow-definitions/objects/a9d715b010ba4c444cf8cacebf739388c2a434b3fc6adcc024ee8ba78776be2a/instructions.md",
+        "bytes": 454,
+        "sha256": "6f29e0901e109099ae9d2fec6ea1b28915fe6269b4a57490adff51428873fedd"
+      },
+      {
+        "path": "project-r1/input-optimization-performance-diagnosis/assets/workflow-definitions/objects/a9d715b010ba4c444cf8cacebf739388c2a434b3fc6adcc024ee8ba78776be2a/workflow.json",
+        "bytes": 2068,
+        "sha256": "fca0f256aa3c2fd62b9247b840729d2abeca02e01997e548b4717243c9ce6a49"
+      },
+      {
+        "path": "project-r1/input-optimization-performance-diagnosis/composition.json",
+        "bytes": 54731,
+        "sha256": "098284524d37bcec29cabc93b343a933c0d085950da942eda46f89f0f6e145f2"
+      },
+      {
+        "path": "project-r1/input-optimization-performance-diagnosis/prompt.txt",
+        "bytes": 7517,
+        "sha256": "11827ad16a196cc571a4a83cad9011f876ea996de5bb261880e850423097d6b7"
+      },
+      {
+        "path": "project-r1/input-optimization-performance-diagnosis/request.json",
+        "bytes": 805,
+        "sha256": "d435e44d58d7cde58b0c59538fc3b4efae8eb872b833fad7a74517744a5eb6b8"
+      },
+      {
+        "path": "project-r1/input-optimization-performance-diagnosis/task.txt",
+        "bytes": 167,
+        "sha256": "9b3cb996b2d328ebaeca155b86af431ef8afdc8b8bd5bffc47c123aa168f9949"
+      },
+      {
+        "path": "project-r1/input-optimization-performance-diagnosis.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1/input-optimization-performance-diagnosis.stdout",
+        "bytes": 1304,
+        "sha256": "d1c0cdf06a7f3b030386c73a433bd9ef84fd5077616be210f00d3e82076455f5"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/agent-definitions/index.json",
+        "bytes": 805,
+        "sha256": "ade0382cea951231fca02ccb06472c709843d15bc492fc15ca99b69119ea44c7"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/agent-definitions/objects/09bb5a05363eec1e96d7a99f077228a1a3d33acb1ca0a5a596bf5165212e8398/agent.json",
+        "bytes": 837,
+        "sha256": "e464460c1576079e5f23ee0db0fa844282dadcbd6579f10bd06e50f062d54973"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/agent-definitions/objects/09bb5a05363eec1e96d7a99f077228a1a3d33acb1ca0a5a596bf5165212e8398/instructions.md",
+        "bytes": 652,
+        "sha256": "a1bad4e01cf7c9f6767dbd9f974a56f67b2b357da4ab2219e1f94bad7d9622ab"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/agent-definitions/objects/09bb5a05363eec1e96d7a99f077228a1a3d33acb1ca0a5a596bf5165212e8398/skills/ergora-refactoring-engineer/SKILL.md",
+        "bytes": 775,
+        "sha256": "eae09924fae0f35015a880df593cf520df75fabe2af303efbf2d48786c9edda2"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/agent-definitions/objects/41a2a42c9276fa2eb2ab128fd7a294c3e7eb3d1f4dd3578862f7d9da5bf10f27/agent.json",
+        "bytes": 795,
+        "sha256": "f1d471c5da158eff9e86ee66546eb4d0663391d32e99f07362ae5ff6dafe9cd9"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/agent-definitions/objects/41a2a42c9276fa2eb2ab128fd7a294c3e7eb3d1f4dd3578862f7d9da5bf10f27/instructions.md",
+        "bytes": 340,
+        "sha256": "76c7d82049d325757f516c832a07383de11e84fc94313888df963b19f7361ab8"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/agent-definitions/objects/41a2a42c9276fa2eb2ab128fd7a294c3e7eb3d1f4dd3578862f7d9da5bf10f27/skills/ergora-test-value-reviewer/SKILL.md",
+        "bytes": 513,
+        "sha256": "b85dbd610e094340ae6edc7386f8233441f048bd41c2b00ad425388cfba0d6cb"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/agent-definitions/objects/97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c/agent.json",
+        "bytes": 788,
+        "sha256": "64be372b8c5e1d7bd694f492ef6539ddc664814d818a546c35fdfbf07e54c7bd"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/agent-definitions/objects/97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c/instructions.md",
+        "bytes": 354,
+        "sha256": "3cc9c450f0c03da5ea4a1434ac6182d50df6a4985cffdee2a59fe9fe477c6b43"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/agent-definitions/objects/97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c/skills/ergora-structure-reviewer/SKILL.md",
+        "bytes": 521,
+        "sha256": "d6b69570bcca408d3d06ca5adf1cb44a4a9e43c2901f05c38a68c096f23a4ac8"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/agent-definitions/objects/c8527fd7dfd8ec9549e285412f907406a880097663412066d664900778f295d3/agent.json",
+        "bytes": 863,
+        "sha256": "41de8c35d76bea1387a2d0d1dd6f04f808c284aee3d99b255010076b7471958d"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/agent-definitions/objects/c8527fd7dfd8ec9549e285412f907406a880097663412066d664900778f295d3/instructions.md",
+        "bytes": 651,
+        "sha256": "ea6d947859ad8ee28f6d010d4136180249cbe2707ba4bbd5efada2db85bf0b75"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/agent-definitions/objects/c8527fd7dfd8ec9549e285412f907406a880097663412066d664900778f295d3/skills/ergora-development-preparer/SKILL.md",
+        "bytes": 811,
+        "sha256": "65ac02086b15da1cb9e87e3cf07b3ff4d9eb0065a4adbea88044b6b6136f42e1"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/agent-definitions/objects/c90f74219843f5a0724e6c83ef531453493bd26d1d45d40ca495e0ca6bbd441b/agent.json",
+        "bytes": 799,
+        "sha256": "3ab3cabd81eafde6be45b2c4747af82d68735643b307d9d7288d28fc8a1a8335"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/agent-definitions/objects/c90f74219843f5a0724e6c83ef531453493bd26d1d45d40ca495e0ca6bbd441b/instructions.md",
+        "bytes": 333,
+        "sha256": "60e3789ed195fd8abcbb7895ee2da536e88021ca76f2d3077fc4116364bfbd79"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/agent-definitions/objects/c90f74219843f5a0724e6c83ef531453493bd26d1d45d40ca495e0ca6bbd441b/skills/ergora-correctness-reviewer/SKILL.md",
+        "bytes": 465,
+        "sha256": "1284f48f7238b5f3be6f422d3bb59373d66a6049e7e1215238acfb832dac8097"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/agent-definitions/objects/f4315988025976a16e81b9431086b0628b0e69f67d06c73ac82052ceb453ae07/agent.json",
+        "bytes": 859,
+        "sha256": "3e829ab09736f43e602f60f474ae97d0ad287f5da30bf6bb5569141466809646"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/agent-definitions/objects/f4315988025976a16e81b9431086b0628b0e69f67d06c73ac82052ceb453ae07/instructions.md",
+        "bytes": 667,
+        "sha256": "beebae56f200c6433f74a9113417a4ebcf38ec726c4849db3694c0d7b00c0f58"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/agent-definitions/objects/f4315988025976a16e81b9431086b0628b0e69f67d06c73ac82052ceb453ae07/skills/ergora-compatibility-validator/SKILL.md",
+        "bytes": 755,
+        "sha256": "aea37779abfe11c52611765dc6111b7b6a3d01b35c9a288de88a0fd33e94b49c"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/workflow-definitions/index.json",
+        "bytes": 1042,
+        "sha256": "dde5dfd727e3342b344bf497d41e18b7e1ada00a1e1f4c7cca2b87e838f6fd03"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/workflow-definitions/objects/3006fcc8b7b93a018952ebe7921514d5cd604434670c2d36caae90e598fc4acd/instructions.md",
+        "bytes": 451,
+        "sha256": "8caf20b3d71042124b02cdb557836c3053e12e721b7f3cf380ef66fe95a81aef"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/workflow-definitions/objects/3006fcc8b7b93a018952ebe7921514d5cd604434670c2d36caae90e598fc4acd/workflow.json",
+        "bytes": 1902,
+        "sha256": "15056c56dbe2e17191f44d3f54bd50cba8fc5654daffcab4e416d91d20cd297b"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/workflow-definitions/objects/79376039d7794e228c4f4e57e42383927460c26da0948781b9f7d4cc4a62b48e/instructions.md",
+        "bytes": 1180,
+        "sha256": "6ed4dcc6ad9c95996381293199676b3e9a6bf01497859128e9c6048a69381a53"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/workflow-definitions/objects/79376039d7794e228c4f4e57e42383927460c26da0948781b9f7d4cc4a62b48e/skills/ergora-codebase-quality/SKILL.md",
+        "bytes": 1133,
+        "sha256": "fc559ec241eb05ba827c0800118b64f829da6c20298baa0f4f8d0f43ce74abc0"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/workflow-definitions/objects/79376039d7794e228c4f4e57e42383927460c26da0948781b9f7d4cc4a62b48e/skills/ergora-codebase-quality/references/module-design.md",
+        "bytes": 1538,
+        "sha256": "2ef233d31894d043afb9b4d4dab507cdf3fdaf0d4c34ae83d304efe646b2b769"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/workflow-definitions/objects/79376039d7794e228c4f4e57e42383927460c26da0948781b9f7d4cc4a62b48e/skills/ergora-codebase-quality/references/repository-style.md",
+        "bytes": 1035,
+        "sha256": "066149a56d70a65f76edc1c220623f1b11f853149df6a9dd5016271a5a43c7c3"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/workflow-definitions/objects/79376039d7794e228c4f4e57e42383927460c26da0948781b9f7d4cc4a62b48e/skills/ergora-codebase-quality/references/test-seams.md",
+        "bytes": 1511,
+        "sha256": "c86175371de6ea7161dd43da0655e81cb3d84831e72cbdd9efb6ce1c35fde045"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/workflow-definitions/objects/79376039d7794e228c4f4e57e42383927460c26da0948781b9f7d4cc4a62b48e/workflow.json",
+        "bytes": 1446,
+        "sha256": "68d2a17c4b4e0f1cde19f185ef9c6e5ee2909bfc13d9245b62af127b16bf30d3"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/workflow-definitions/objects/83e1cfd354d05434c4e55f728ba7c01e1dfdaf12f8461ac05c89cbb4c0855254/instructions.md",
+        "bytes": 175,
+        "sha256": "d6ce532f24b70ce1bf2b26c37f07b4901e8a00ce6fc4dff7d269cabd57db1a73"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/workflow-definitions/objects/83e1cfd354d05434c4e55f728ba7c01e1dfdaf12f8461ac05c89cbb4c0855254/workflow.json",
+        "bytes": 1480,
+        "sha256": "b3ce86d4fb7c48bc75a82fca347b2a307e27877470f26174df93199f9e1ab1ae"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/workflow-definitions/objects/8bc02f70dc320aff86736235446b94a0f4065bb63d243a382906be69e947822d/instructions.md",
+        "bytes": 521,
+        "sha256": "02a1205ed24913af26c236c2a21ce707939cec4cd83bafde21af6ad5084db434"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/workflow-definitions/objects/8bc02f70dc320aff86736235446b94a0f4065bb63d243a382906be69e947822d/workflow.json",
+        "bytes": 1952,
+        "sha256": "f765bd17f02fafc6ce5ab3ada9eb13e581d3a1b0b9c5bdeb4a954da7c2e033b9"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/workflow-definitions/objects/996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9/instructions.md",
+        "bytes": 163,
+        "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/workflow-definitions/objects/996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9/workflow.json",
+        "bytes": 1465,
+        "sha256": "062a56396ec6c57d2038f7ea6a0629d7514c0314d5657d5033d9920d8895f653"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/workflow-definitions/objects/a85e76dcd25bfddd24684b6e23ad3668097b44df0f9a7d745e387e5a841c471c/instructions.md",
+        "bytes": 225,
+        "sha256": "83e867dadc6b374bd3791bcf79c87462375fff58a43b73a569d6f7b3c954e377"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/workflow-definitions/objects/a85e76dcd25bfddd24684b6e23ad3668097b44df0f9a7d745e387e5a841c471c/workflow.json",
+        "bytes": 1986,
+        "sha256": "963a25f61750c0b10bd2700d3d55e837f8943307f62ee8af2794015897d3ef3f"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/workflow-definitions/objects/bbc2d7bb8c0ecf420bedee847763aaaf488df7b90139904eb00057b78406aa5f/instructions.md",
+        "bytes": 162,
+        "sha256": "5f2ccfa00ae1bc8075d318be19c8c0a9dfc8d9e868b3c995ac34da30ba485894"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/workflow-definitions/objects/bbc2d7bb8c0ecf420bedee847763aaaf488df7b90139904eb00057b78406aa5f/workflow.json",
+        "bytes": 1470,
+        "sha256": "ff3d59c605e87ec3236bf89aac6d6a1e88c104ec4b4e8cbfec47b2e89f233562"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/workflow-definitions/objects/c4385feb2e92b2e2b1253d53eac7d578f6a3ff64343ae22a2e426db8f082da25/instructions.md",
+        "bytes": 523,
+        "sha256": "6f8d56a1dc833f6156375020d31056da269656fd86fd58022658ab6faa6b0da8"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/assets/workflow-definitions/objects/c4385feb2e92b2e2b1253d53eac7d578f6a3ff64343ae22a2e426db8f082da25/workflow.json",
+        "bytes": 2166,
+        "sha256": "19ba2c9d80c11ed03362e1acf35f7f9207ecfd64104784641772670fdd1c1829"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/composition.json",
+        "bytes": 132936,
+        "sha256": "0c866c5ab1228d98ecfce2a7eef3491ef3b3090d0c80e5af84b7555b220af290"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/prompt.txt",
+        "bytes": 7476,
+        "sha256": "86bd31a2ad44b1d9f51c33913c3289099eeb14ca40139647d3909f895d80e991"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/request.json",
+        "bytes": 820,
+        "sha256": "56322e90f6ac4a75373c8cd11f814b1ad0c0c793e87ec81369db878beef6c3af"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality/task.txt",
+        "bytes": 167,
+        "sha256": "9b3cb996b2d328ebaeca155b86af431ef8afdc8b8bd5bffc47c123aa168f9949"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1/input-refactoring-quality.stdout",
+        "bytes": 1324,
+        "sha256": "e7eea217b5daec3804d21d9a15f34759c32d5f5dee8f2dea3ae088515ab29867"
+      },
+      {
+        "path": "project-r1/input-verify-optimization-performance-diagnosis.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1/input-verify-optimization-performance-diagnosis.stdout",
+        "bytes": 74282,
+        "sha256": "09e35a8fa7ceb76249db2d2f8b9977dc64898f9c6eda2faa35190a3fc50b35ae"
+      },
+      {
+        "path": "project-r1/input-verify-refactoring-quality.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1/input-verify-refactoring-quality.stdout",
+        "bytes": 171305,
+        "sha256": "b6acec12f733c26c578b5bc85bedbee89aa84b8075ee0b003e1a170b904ac3f2"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/agent-definitions/index.json",
+        "bytes": 926,
+        "sha256": "5f185c6de87e579420b77eddc04c942890db0de2ef6286c95d37d6e063e719f2"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/agent-definitions/objects/41a2a42c9276fa2eb2ab128fd7a294c3e7eb3d1f4dd3578862f7d9da5bf10f27/agent.json",
+        "bytes": 795,
+        "sha256": "f1d471c5da158eff9e86ee66546eb4d0663391d32e99f07362ae5ff6dafe9cd9"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/agent-definitions/objects/41a2a42c9276fa2eb2ab128fd7a294c3e7eb3d1f4dd3578862f7d9da5bf10f27/instructions.md",
+        "bytes": 340,
+        "sha256": "76c7d82049d325757f516c832a07383de11e84fc94313888df963b19f7361ab8"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/agent-definitions/objects/41a2a42c9276fa2eb2ab128fd7a294c3e7eb3d1f4dd3578862f7d9da5bf10f27/skills/ergora-test-value-reviewer/SKILL.md",
+        "bytes": 513,
+        "sha256": "b85dbd610e094340ae6edc7386f8233441f048bd41c2b00ad425388cfba0d6cb"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/agent-definitions/objects/511b8a2d3c25e057a8ba97c9f0107e50a68f5acc847ccc1102cb5dd2a110bba4/agent.json",
+        "bytes": 791,
+        "sha256": "2a495250d881ef4a446e443e3ec51228252ca4a398274b6d1cc95364956d9352"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/agent-definitions/objects/511b8a2d3c25e057a8ba97c9f0107e50a68f5acc847ccc1102cb5dd2a110bba4/instructions.md",
+        "bytes": 288,
+        "sha256": "43892ec96e6457ec23628156a771615b5b68d8b2d1cbab64f1e070109eaf7485"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/agent-definitions/objects/511b8a2d3c25e057a8ba97c9f0107e50a68f5acc847ccc1102cb5dd2a110bba4/skills/ergora-client-implementer/SKILL.md",
+        "bytes": 444,
+        "sha256": "65f0bbced07c09f814cc6f3aa5ecf6a619f3332629db48cb789077e547014713"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/agent-definitions/objects/97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c/agent.json",
+        "bytes": 788,
+        "sha256": "64be372b8c5e1d7bd694f492ef6539ddc664814d818a546c35fdfbf07e54c7bd"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/agent-definitions/objects/97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c/instructions.md",
+        "bytes": 354,
+        "sha256": "3cc9c450f0c03da5ea4a1434ac6182d50df6a4985cffdee2a59fe9fe477c6b43"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/agent-definitions/objects/97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c/skills/ergora-structure-reviewer/SKILL.md",
+        "bytes": 521,
+        "sha256": "d6b69570bcca408d3d06ca5adf1cb44a4a9e43c2901f05c38a68c096f23a4ac8"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/agent-definitions/objects/996348fae81cd3fc1192d49e70b9928efb3b9993b4341ce5a5cb6d8733ce16b1/agent.json",
+        "bytes": 783,
+        "sha256": "8a42d71e8dfb1c5c124fa1b1e0dac8e033e736e530fde77362334279785f71b9"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/agent-definitions/objects/996348fae81cd3fc1192d49e70b9928efb3b9993b4341ce5a5cb6d8733ce16b1/instructions.md",
+        "bytes": 328,
+        "sha256": "1f8c616ccd6cdb5608c785fdf9ed782783a739d2db966a7ca9668dc8faaaca27"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/agent-definitions/objects/996348fae81cd3fc1192d49e70b9928efb3b9993b4341ce5a5cb6d8733ce16b1/skills/ergora-api-contract-author/SKILL.md",
+        "bytes": 427,
+        "sha256": "44cdc82dca2dcb4721d98b08f65e5593ea17285316af620325956494a75fc914"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/agent-definitions/objects/ad58fd050257dfcfb3a4d3c03a4cfd40f4bc712d837743f46b0c2a45c91b37dc/agent.json",
+        "bytes": 819,
+        "sha256": "a3c9448e18f0661c3f98db9c4b4a94b99d9fab637a09e7e9f1a503115d5acf2d"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/agent-definitions/objects/ad58fd050257dfcfb3a4d3c03a4cfd40f4bc712d837743f46b0c2a45c91b37dc/instructions.md",
+        "bytes": 319,
+        "sha256": "69ee580d80fdde496d8b17657050c9e856db8084a6ed04f2c009cc52a0996794"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/agent-definitions/objects/ad58fd050257dfcfb3a4d3c03a4cfd40f4bc712d837743f46b0c2a45c91b37dc/skills/ergora-compatibility-validator/SKILL.md",
+        "bytes": 482,
+        "sha256": "b72c2390a2bbd2c8bb9b1a4ccd5356d8ca8eec3aa8487b899d8b74314d1de3d9"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/agent-definitions/objects/b835e630d8579083b24aa03fcd41184635547768077f2f95af23f7b84d8cca99/agent.json",
+        "bytes": 755,
+        "sha256": "1b38a977edd45dd81afd2414d91c4bd236bc9415cc00859eeb664dd1d7742b60"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/agent-definitions/objects/b835e630d8579083b24aa03fcd41184635547768077f2f95af23f7b84d8cca99/instructions.md",
+        "bytes": 288,
+        "sha256": "8919237421f1da203375d2eea41b7408ad48c6bd89cc2f91c7abbb6ae35e0227"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/agent-definitions/objects/b835e630d8579083b24aa03fcd41184635547768077f2f95af23f7b84d8cca99/skills/ergora-server-implementer/SKILL.md",
+        "bytes": 449,
+        "sha256": "d009528a26f8016b227dfce72ed3d890f0ca7d2fa63331e3fd2539df7d82f3b8"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/agent-definitions/objects/c90f74219843f5a0724e6c83ef531453493bd26d1d45d40ca495e0ca6bbd441b/agent.json",
+        "bytes": 799,
+        "sha256": "3ab3cabd81eafde6be45b2c4747af82d68735643b307d9d7288d28fc8a1a8335"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/agent-definitions/objects/c90f74219843f5a0724e6c83ef531453493bd26d1d45d40ca495e0ca6bbd441b/instructions.md",
+        "bytes": 333,
+        "sha256": "60e3789ed195fd8abcbb7895ee2da536e88021ca76f2d3077fc4116364bfbd79"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/agent-definitions/objects/c90f74219843f5a0724e6c83ef531453493bd26d1d45d40ca495e0ca6bbd441b/skills/ergora-correctness-reviewer/SKILL.md",
+        "bytes": 465,
+        "sha256": "1284f48f7238b5f3be6f422d3bb59373d66a6049e7e1215238acfb832dac8097"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/workflow-definitions/index.json",
+        "bytes": 789,
+        "sha256": "fd3b8f7e3b7ff7cf6538e2c4444b6e686f5b3b1543104a62ced23d36dbf8b7f3"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/workflow-definitions/objects/25dbfff6830e4123bedbfe975c964de96b8a9ce0ed8c76e8f365fecf2f7e2cc8/instructions.md",
+        "bytes": 363,
+        "sha256": "a3131ea41fd90dd1d854a72e7373cd5fbdcec4df5a584f360cd38697915aebe6"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/workflow-definitions/objects/25dbfff6830e4123bedbfe975c964de96b8a9ce0ed8c76e8f365fecf2f7e2cc8/workflow.json",
+        "bytes": 1589,
+        "sha256": "c284f09102510b4b44a666070f6428a8d6db417824bf323c5b8aa35ccbf2a15a"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/workflow-definitions/objects/41e8eb658beb74a8a452b62f07439abf4b82f6378424dac76c36bbdcc2e4061e/instructions.md",
+        "bytes": 259,
+        "sha256": "fede80577421bef430eb6dd93b52b9abe3a30225ae71b47d3964c5d7081bbfad"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/workflow-definitions/objects/41e8eb658beb74a8a452b62f07439abf4b82f6378424dac76c36bbdcc2e4061e/workflow.json",
+        "bytes": 3586,
+        "sha256": "535903599638e8787e2a42d57d599bd03c4c761cfb725f48b67ea9140e3f9df1"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/workflow-definitions/objects/83e1cfd354d05434c4e55f728ba7c01e1dfdaf12f8461ac05c89cbb4c0855254/instructions.md",
+        "bytes": 175,
+        "sha256": "d6ce532f24b70ce1bf2b26c37f07b4901e8a00ce6fc4dff7d269cabd57db1a73"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/workflow-definitions/objects/83e1cfd354d05434c4e55f728ba7c01e1dfdaf12f8461ac05c89cbb4c0855254/workflow.json",
+        "bytes": 1480,
+        "sha256": "b3ce86d4fb7c48bc75a82fca347b2a307e27877470f26174df93199f9e1ab1ae"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/workflow-definitions/objects/996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9/instructions.md",
+        "bytes": 163,
+        "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/workflow-definitions/objects/996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9/workflow.json",
+        "bytes": 1465,
+        "sha256": "062a56396ec6c57d2038f7ea6a0629d7514c0314d5657d5033d9920d8895f653"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/workflow-definitions/objects/a85e76dcd25bfddd24684b6e23ad3668097b44df0f9a7d745e387e5a841c471c/instructions.md",
+        "bytes": 225,
+        "sha256": "83e867dadc6b374bd3791bcf79c87462375fff58a43b73a569d6f7b3c954e377"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/workflow-definitions/objects/a85e76dcd25bfddd24684b6e23ad3668097b44df0f9a7d745e387e5a841c471c/workflow.json",
+        "bytes": 1986,
+        "sha256": "963a25f61750c0b10bd2700d3d55e837f8943307f62ee8af2794015897d3ef3f"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/workflow-definitions/objects/bbc2d7bb8c0ecf420bedee847763aaaf488df7b90139904eb00057b78406aa5f/instructions.md",
+        "bytes": 162,
+        "sha256": "5f2ccfa00ae1bc8075d318be19c8c0a9dfc8d9e868b3c995ac34da30ba485894"
+      },
+      {
+        "path": "project-r1/manifest-large-change/assets/workflow-definitions/objects/bbc2d7bb8c0ecf420bedee847763aaaf488df7b90139904eb00057b78406aa5f/workflow.json",
+        "bytes": 1470,
+        "sha256": "ff3d59c605e87ec3236bf89aac6d6a1e88c104ec4b4e8cbfec47b2e89f233562"
+      },
+      {
+        "path": "project-r1/manifest-large-change/composition.json",
+        "bytes": 69674,
+        "sha256": "9acb65715ff244c8f6521650d8d6df75e74b56e65776a536c5cb4fcff7500297"
+      },
+      {
+        "path": "project-r1/manifest-large-change/manifest.json",
+        "bytes": 525,
+        "sha256": "9e7b64d6c2a09dbb51659962bb235d117eeab554bbf0125e8f2098a865d6531d"
+      },
+      {
+        "path": "project-r1/manifest-large-change.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1/manifest-large-change.stdout",
+        "bytes": 990,
+        "sha256": "d5595b8631f0e74782e173e6ed7a925366281206b00a90214cf9c6cb5de36a93"
+      },
+      {
+        "path": "project-r1/manifest-optimization-performance-diagnosis/assets/agent-definitions/index.json",
+        "bytes": 425,
+        "sha256": "a3a4a7c5cdd32a416e06c3da49a63c022633e3fe60a40fe704ccbb6da25641f6"
+      },
+      {
+        "path": "project-r1/manifest-optimization-performance-diagnosis/assets/agent-definitions/objects/4a64971f5414f22057b95b0d16f88bce4922bf8293dc5dab9bdda1be2f7b1983/agent.json",
+        "bytes": 910,
+        "sha256": "1e77878f7f5ef29958513cf454381922134ae372335aeb8faca4e08a7080a979"
+      },
+      {
+        "path": "project-r1/manifest-optimization-performance-diagnosis/assets/agent-definitions/objects/4a64971f5414f22057b95b0d16f88bce4922bf8293dc5dab9bdda1be2f7b1983/instructions.md",
+        "bytes": 958,
+        "sha256": "964fb91d3bff310b57077dcad65f7b64a772d04e0afc77e236e622791100ab2a"
+      },
+      {
+        "path": "project-r1/manifest-optimization-performance-diagnosis/assets/agent-definitions/objects/4a64971f5414f22057b95b0d16f88bce4922bf8293dc5dab9bdda1be2f7b1983/skills/ergora-performance-analyst/SKILL.md",
+        "bytes": 1403,
+        "sha256": "3296251930630438c7ba8a69ec86ac6aa714d869cc1cf68e88fe052b95161fe1"
+      },
+      {
+        "path": "project-r1/manifest-optimization-performance-diagnosis/assets/agent-definitions/objects/4a64971f5414f22057b95b0d16f88bce4922bf8293dc5dab9bdda1be2f7b1983/skills/ergora-performance-analyst/references/evidence-contract.md",
+        "bytes": 1825,
+        "sha256": "87548c2472c46ba9fb4f8c23a6545cf0322ce09ae2725a77f811899c63e388aa"
+      },
+      {
+        "path": "project-r1/manifest-optimization-performance-diagnosis/assets/agent-definitions/objects/6bca95faaec581831e132a5b372b7f6f2b39ad657c98d7c282b3102468eaab1c/agent.json",
+        "bytes": 895,
+        "sha256": "07ce2a6933a6e035396b5081f1f919f2fb4034fd3fd8a2f2b080b2eea721779b"
+      },
+      {
+        "path": "project-r1/manifest-optimization-performance-diagnosis/assets/agent-definitions/objects/6bca95faaec581831e132a5b372b7f6f2b39ad657c98d7c282b3102468eaab1c/instructions.md",
+        "bytes": 995,
+        "sha256": "23702632665e70cb52337b61e8c11857f270793d2f1d1e3aa8e0037ee0b4aa93"
+      },
+      {
+        "path": "project-r1/manifest-optimization-performance-diagnosis/assets/agent-definitions/objects/6bca95faaec581831e132a5b372b7f6f2b39ad657c98d7c282b3102468eaab1c/skills/ergora-measurement-reviewer/SKILL.md",
+        "bytes": 1316,
+        "sha256": "51de9594b149bd2c5f545ce67bb698f4621a6316389d6ea8114364e6d500c76e"
+      },
+      {
+        "path": "project-r1/manifest-optimization-performance-diagnosis/assets/agent-definitions/objects/6bca95faaec581831e132a5b372b7f6f2b39ad657c98d7c282b3102468eaab1c/skills/ergora-measurement-reviewer/references/evidence-contract.md",
+        "bytes": 1996,
+        "sha256": "42233df4dc0b08751e025f8aa4ea9acbc7aaa424543156e5f3339e10428ea0db"
+      },
+      {
+        "path": "project-r1/manifest-optimization-performance-diagnosis/assets/agent-definitions/objects/cd88d273d84b35d1a93c6a537897ba0d8d58a1e9a69ed9a26d2ab0b970de10c3/agent.json",
+        "bytes": 893,
+        "sha256": "6205c651cc2db75f2ebd19cac4cddf18867ee98321fa948a924383341416be16"
+      },
+      {
+        "path": "project-r1/manifest-optimization-performance-diagnosis/assets/agent-definitions/objects/cd88d273d84b35d1a93c6a537897ba0d8d58a1e9a69ed9a26d2ab0b970de10c3/instructions.md",
+        "bytes": 908,
+        "sha256": "c07caa580818743bbb5f7826f294d0c9846e9eb4f42923aa3203d8bb79808536"
+      },
+      {
+        "path": "project-r1/manifest-optimization-performance-diagnosis/assets/agent-definitions/objects/cd88d273d84b35d1a93c6a537897ba0d8d58a1e9a69ed9a26d2ab0b970de10c3/skills/ergora-experiment-designer/SKILL.md",
+        "bytes": 1500,
+        "sha256": "c74f036b03ac5dd02699bb2a34db4e6e37be4713b4cfbd433ff80b6c85b09245"
+      },
+      {
+        "path": "project-r1/manifest-optimization-performance-diagnosis/assets/agent-definitions/objects/cd88d273d84b35d1a93c6a537897ba0d8d58a1e9a69ed9a26d2ab0b970de10c3/skills/ergora-experiment-designer/references/evidence-contract.md",
+        "bytes": 1885,
+        "sha256": "93edb60fe6c16815943059bce7393749921c48779d94bcb3f70e38d3cda8d005"
+      },
+      {
+        "path": "project-r1/manifest-optimization-performance-diagnosis/assets/workflow-definitions/index.json",
+        "bytes": 436,
+        "sha256": "4557daa0300184b7ff0ac12f1990397777f6d8304f6cf964120f67fc0fbe25a8"
+      },
+      {
+        "path": "project-r1/manifest-optimization-performance-diagnosis/assets/workflow-definitions/objects/098f379a30627950103b485d1e1364bbd80f5f8f316f0ded804ca8847ecb8961/instructions.md",
+        "bytes": 354,
+        "sha256": "539f90bfb214dad27f61984cc04b7a65a9d14024a6eccf0b28b846dd568d6392"
+      },
+      {
+        "path": "project-r1/manifest-optimization-performance-diagnosis/assets/workflow-definitions/objects/098f379a30627950103b485d1e1364bbd80f5f8f316f0ded804ca8847ecb8961/workflow.json",
+        "bytes": 1418,
+        "sha256": "1b4e66f49ff3f4e6ab8b4c50450f82d775476ea0e6d9309044d591cd5f124319"
+      },
+      {
+        "path": "project-r1/manifest-optimization-performance-diagnosis/assets/workflow-definitions/objects/57531d40ca8d55298df8d5f38d3a5aee0e86d0c224d7a325879d227aec905e38/instructions.md",
+        "bytes": 842,
+        "sha256": "c296259ededfa37237a09664db64b706990054dd922f0a091f59ab47c4d5d966"
+      },
+      {
+        "path": "project-r1/manifest-optimization-performance-diagnosis/assets/workflow-definitions/objects/57531d40ca8d55298df8d5f38d3a5aee0e86d0c224d7a325879d227aec905e38/skills/ergora-performance-diagnosis/SKILL.md",
+        "bytes": 1308,
+        "sha256": "aafebc29fa08b51b827dbf0b1c72ba90c053a50cbc41c3116b32a24590022268"
+      },
+      {
+        "path": "project-r1/manifest-optimization-performance-diagnosis/assets/workflow-definitions/objects/57531d40ca8d55298df8d5f38d3a5aee0e86d0c224d7a325879d227aec905e38/skills/ergora-performance-diagnosis/references/tool-routes.md",
+        "bytes": 2416,
+        "sha256": "d70be5a6652e6cd383d35442fa8ae8e3551c125de9133d88317aac159a87f325"
+      },
+      {
+        "path": "project-r1/manifest-optimization-performance-diagnosis/assets/workflow-definitions/objects/57531d40ca8d55298df8d5f38d3a5aee0e86d0c224d7a325879d227aec905e38/workflow.json",
+        "bytes": 1977,
+        "sha256": "7c72d9e9f121b09d3b1362acd8ce7395796a93003f91c7986c01a77c05828771"
+      },
+      {
+        "path": "project-r1/manifest-optimization-performance-diagnosis/assets/workflow-definitions/objects/a9d715b010ba4c444cf8cacebf739388c2a434b3fc6adcc024ee8ba78776be2a/instructions.md",
+        "bytes": 454,
+        "sha256": "6f29e0901e109099ae9d2fec6ea1b28915fe6269b4a57490adff51428873fedd"
+      },
+      {
+        "path": "project-r1/manifest-optimization-performance-diagnosis/assets/workflow-definitions/objects/a9d715b010ba4c444cf8cacebf739388c2a434b3fc6adcc024ee8ba78776be2a/workflow.json",
+        "bytes": 2068,
+        "sha256": "fca0f256aa3c2fd62b9247b840729d2abeca02e01997e548b4717243c9ce6a49"
+      },
+      {
+        "path": "project-r1/manifest-optimization-performance-diagnosis/composition.json",
+        "bytes": 54731,
+        "sha256": "098284524d37bcec29cabc93b343a933c0d085950da942eda46f89f0f6e145f2"
+      },
+      {
+        "path": "project-r1/manifest-optimization-performance-diagnosis/manifest.json",
+        "bytes": 528,
+        "sha256": "6c4faa5445a52fa00aa30888a5dc6c110d0ffd1616d6610bdd14306d625ac1cb"
+      },
+      {
+        "path": "project-r1/manifest-optimization-performance-diagnosis.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1/manifest-optimization-performance-diagnosis.stdout",
+        "bytes": 995,
+        "sha256": "b28d8a61fd8b67ebfdbc2ada80bb5853fae758195405e55886e8fdcd87767628"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/agent-definitions/index.json",
+        "bytes": 805,
+        "sha256": "ade0382cea951231fca02ccb06472c709843d15bc492fc15ca99b69119ea44c7"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/agent-definitions/objects/09bb5a05363eec1e96d7a99f077228a1a3d33acb1ca0a5a596bf5165212e8398/agent.json",
+        "bytes": 837,
+        "sha256": "e464460c1576079e5f23ee0db0fa844282dadcbd6579f10bd06e50f062d54973"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/agent-definitions/objects/09bb5a05363eec1e96d7a99f077228a1a3d33acb1ca0a5a596bf5165212e8398/instructions.md",
+        "bytes": 652,
+        "sha256": "a1bad4e01cf7c9f6767dbd9f974a56f67b2b357da4ab2219e1f94bad7d9622ab"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/agent-definitions/objects/09bb5a05363eec1e96d7a99f077228a1a3d33acb1ca0a5a596bf5165212e8398/skills/ergora-refactoring-engineer/SKILL.md",
+        "bytes": 775,
+        "sha256": "eae09924fae0f35015a880df593cf520df75fabe2af303efbf2d48786c9edda2"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/agent-definitions/objects/41a2a42c9276fa2eb2ab128fd7a294c3e7eb3d1f4dd3578862f7d9da5bf10f27/agent.json",
+        "bytes": 795,
+        "sha256": "f1d471c5da158eff9e86ee66546eb4d0663391d32e99f07362ae5ff6dafe9cd9"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/agent-definitions/objects/41a2a42c9276fa2eb2ab128fd7a294c3e7eb3d1f4dd3578862f7d9da5bf10f27/instructions.md",
+        "bytes": 340,
+        "sha256": "76c7d82049d325757f516c832a07383de11e84fc94313888df963b19f7361ab8"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/agent-definitions/objects/41a2a42c9276fa2eb2ab128fd7a294c3e7eb3d1f4dd3578862f7d9da5bf10f27/skills/ergora-test-value-reviewer/SKILL.md",
+        "bytes": 513,
+        "sha256": "b85dbd610e094340ae6edc7386f8233441f048bd41c2b00ad425388cfba0d6cb"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/agent-definitions/objects/97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c/agent.json",
+        "bytes": 788,
+        "sha256": "64be372b8c5e1d7bd694f492ef6539ddc664814d818a546c35fdfbf07e54c7bd"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/agent-definitions/objects/97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c/instructions.md",
+        "bytes": 354,
+        "sha256": "3cc9c450f0c03da5ea4a1434ac6182d50df6a4985cffdee2a59fe9fe477c6b43"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/agent-definitions/objects/97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c/skills/ergora-structure-reviewer/SKILL.md",
+        "bytes": 521,
+        "sha256": "d6b69570bcca408d3d06ca5adf1cb44a4a9e43c2901f05c38a68c096f23a4ac8"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/agent-definitions/objects/c8527fd7dfd8ec9549e285412f907406a880097663412066d664900778f295d3/agent.json",
+        "bytes": 863,
+        "sha256": "41de8c35d76bea1387a2d0d1dd6f04f808c284aee3d99b255010076b7471958d"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/agent-definitions/objects/c8527fd7dfd8ec9549e285412f907406a880097663412066d664900778f295d3/instructions.md",
+        "bytes": 651,
+        "sha256": "ea6d947859ad8ee28f6d010d4136180249cbe2707ba4bbd5efada2db85bf0b75"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/agent-definitions/objects/c8527fd7dfd8ec9549e285412f907406a880097663412066d664900778f295d3/skills/ergora-development-preparer/SKILL.md",
+        "bytes": 811,
+        "sha256": "65ac02086b15da1cb9e87e3cf07b3ff4d9eb0065a4adbea88044b6b6136f42e1"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/agent-definitions/objects/c90f74219843f5a0724e6c83ef531453493bd26d1d45d40ca495e0ca6bbd441b/agent.json",
+        "bytes": 799,
+        "sha256": "3ab3cabd81eafde6be45b2c4747af82d68735643b307d9d7288d28fc8a1a8335"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/agent-definitions/objects/c90f74219843f5a0724e6c83ef531453493bd26d1d45d40ca495e0ca6bbd441b/instructions.md",
+        "bytes": 333,
+        "sha256": "60e3789ed195fd8abcbb7895ee2da536e88021ca76f2d3077fc4116364bfbd79"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/agent-definitions/objects/c90f74219843f5a0724e6c83ef531453493bd26d1d45d40ca495e0ca6bbd441b/skills/ergora-correctness-reviewer/SKILL.md",
+        "bytes": 465,
+        "sha256": "1284f48f7238b5f3be6f422d3bb59373d66a6049e7e1215238acfb832dac8097"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/agent-definitions/objects/f4315988025976a16e81b9431086b0628b0e69f67d06c73ac82052ceb453ae07/agent.json",
+        "bytes": 859,
+        "sha256": "3e829ab09736f43e602f60f474ae97d0ad287f5da30bf6bb5569141466809646"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/agent-definitions/objects/f4315988025976a16e81b9431086b0628b0e69f67d06c73ac82052ceb453ae07/instructions.md",
+        "bytes": 667,
+        "sha256": "beebae56f200c6433f74a9113417a4ebcf38ec726c4849db3694c0d7b00c0f58"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/agent-definitions/objects/f4315988025976a16e81b9431086b0628b0e69f67d06c73ac82052ceb453ae07/skills/ergora-compatibility-validator/SKILL.md",
+        "bytes": 755,
+        "sha256": "aea37779abfe11c52611765dc6111b7b6a3d01b35c9a288de88a0fd33e94b49c"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/workflow-definitions/index.json",
+        "bytes": 1042,
+        "sha256": "dde5dfd727e3342b344bf497d41e18b7e1ada00a1e1f4c7cca2b87e838f6fd03"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/workflow-definitions/objects/3006fcc8b7b93a018952ebe7921514d5cd604434670c2d36caae90e598fc4acd/instructions.md",
+        "bytes": 451,
+        "sha256": "8caf20b3d71042124b02cdb557836c3053e12e721b7f3cf380ef66fe95a81aef"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/workflow-definitions/objects/3006fcc8b7b93a018952ebe7921514d5cd604434670c2d36caae90e598fc4acd/workflow.json",
+        "bytes": 1902,
+        "sha256": "15056c56dbe2e17191f44d3f54bd50cba8fc5654daffcab4e416d91d20cd297b"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/workflow-definitions/objects/79376039d7794e228c4f4e57e42383927460c26da0948781b9f7d4cc4a62b48e/instructions.md",
+        "bytes": 1180,
+        "sha256": "6ed4dcc6ad9c95996381293199676b3e9a6bf01497859128e9c6048a69381a53"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/workflow-definitions/objects/79376039d7794e228c4f4e57e42383927460c26da0948781b9f7d4cc4a62b48e/skills/ergora-codebase-quality/SKILL.md",
+        "bytes": 1133,
+        "sha256": "fc559ec241eb05ba827c0800118b64f829da6c20298baa0f4f8d0f43ce74abc0"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/workflow-definitions/objects/79376039d7794e228c4f4e57e42383927460c26da0948781b9f7d4cc4a62b48e/skills/ergora-codebase-quality/references/module-design.md",
+        "bytes": 1538,
+        "sha256": "2ef233d31894d043afb9b4d4dab507cdf3fdaf0d4c34ae83d304efe646b2b769"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/workflow-definitions/objects/79376039d7794e228c4f4e57e42383927460c26da0948781b9f7d4cc4a62b48e/skills/ergora-codebase-quality/references/repository-style.md",
+        "bytes": 1035,
+        "sha256": "066149a56d70a65f76edc1c220623f1b11f853149df6a9dd5016271a5a43c7c3"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/workflow-definitions/objects/79376039d7794e228c4f4e57e42383927460c26da0948781b9f7d4cc4a62b48e/skills/ergora-codebase-quality/references/test-seams.md",
+        "bytes": 1511,
+        "sha256": "c86175371de6ea7161dd43da0655e81cb3d84831e72cbdd9efb6ce1c35fde045"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/workflow-definitions/objects/79376039d7794e228c4f4e57e42383927460c26da0948781b9f7d4cc4a62b48e/workflow.json",
+        "bytes": 1446,
+        "sha256": "68d2a17c4b4e0f1cde19f185ef9c6e5ee2909bfc13d9245b62af127b16bf30d3"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/workflow-definitions/objects/83e1cfd354d05434c4e55f728ba7c01e1dfdaf12f8461ac05c89cbb4c0855254/instructions.md",
+        "bytes": 175,
+        "sha256": "d6ce532f24b70ce1bf2b26c37f07b4901e8a00ce6fc4dff7d269cabd57db1a73"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/workflow-definitions/objects/83e1cfd354d05434c4e55f728ba7c01e1dfdaf12f8461ac05c89cbb4c0855254/workflow.json",
+        "bytes": 1480,
+        "sha256": "b3ce86d4fb7c48bc75a82fca347b2a307e27877470f26174df93199f9e1ab1ae"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/workflow-definitions/objects/8bc02f70dc320aff86736235446b94a0f4065bb63d243a382906be69e947822d/instructions.md",
+        "bytes": 521,
+        "sha256": "02a1205ed24913af26c236c2a21ce707939cec4cd83bafde21af6ad5084db434"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/workflow-definitions/objects/8bc02f70dc320aff86736235446b94a0f4065bb63d243a382906be69e947822d/workflow.json",
+        "bytes": 1952,
+        "sha256": "f765bd17f02fafc6ce5ab3ada9eb13e581d3a1b0b9c5bdeb4a954da7c2e033b9"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/workflow-definitions/objects/996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9/instructions.md",
+        "bytes": 163,
+        "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/workflow-definitions/objects/996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9/workflow.json",
+        "bytes": 1465,
+        "sha256": "062a56396ec6c57d2038f7ea6a0629d7514c0314d5657d5033d9920d8895f653"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/workflow-definitions/objects/a85e76dcd25bfddd24684b6e23ad3668097b44df0f9a7d745e387e5a841c471c/instructions.md",
+        "bytes": 225,
+        "sha256": "83e867dadc6b374bd3791bcf79c87462375fff58a43b73a569d6f7b3c954e377"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/workflow-definitions/objects/a85e76dcd25bfddd24684b6e23ad3668097b44df0f9a7d745e387e5a841c471c/workflow.json",
+        "bytes": 1986,
+        "sha256": "963a25f61750c0b10bd2700d3d55e837f8943307f62ee8af2794015897d3ef3f"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/workflow-definitions/objects/bbc2d7bb8c0ecf420bedee847763aaaf488df7b90139904eb00057b78406aa5f/instructions.md",
+        "bytes": 162,
+        "sha256": "5f2ccfa00ae1bc8075d318be19c8c0a9dfc8d9e868b3c995ac34da30ba485894"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/workflow-definitions/objects/bbc2d7bb8c0ecf420bedee847763aaaf488df7b90139904eb00057b78406aa5f/workflow.json",
+        "bytes": 1470,
+        "sha256": "ff3d59c605e87ec3236bf89aac6d6a1e88c104ec4b4e8cbfec47b2e89f233562"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/workflow-definitions/objects/c4385feb2e92b2e2b1253d53eac7d578f6a3ff64343ae22a2e426db8f082da25/instructions.md",
+        "bytes": 523,
+        "sha256": "6f8d56a1dc833f6156375020d31056da269656fd86fd58022658ab6faa6b0da8"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/assets/workflow-definitions/objects/c4385feb2e92b2e2b1253d53eac7d578f6a3ff64343ae22a2e426db8f082da25/workflow.json",
+        "bytes": 2166,
+        "sha256": "19ba2c9d80c11ed03362e1acf35f7f9207ecfd64104784641772670fdd1c1829"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/composition.json",
+        "bytes": 132936,
+        "sha256": "0c866c5ab1228d98ecfce2a7eef3491ef3b3090d0c80e5af84b7555b220af290"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality/manifest.json",
+        "bytes": 524,
+        "sha256": "33df08f72cae05be235b4125603ee630db3e90031c81c67665f3c1896b5ef716"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1/manifest-refactoring-quality.stdout",
+        "bytes": 996,
+        "sha256": "16f1c59e1ffafd319282e1e89057b564859e0534bd5c8a8b1b0a4b67cd331ea9"
+      },
+      {
+        "path": "project-r1/manifest-repository-governance/assets/agent-definitions/index.json",
+        "bytes": 677,
+        "sha256": "1d24c984ba196bbb9d3105997bff0aa8cc6e04b1ec414d17d2aabb4d1a9ad13e"
+      },
+      {
+        "path": "project-r1/manifest-repository-governance/assets/agent-definitions/objects/41a2a42c9276fa2eb2ab128fd7a294c3e7eb3d1f4dd3578862f7d9da5bf10f27/agent.json",
+        "bytes": 795,
+        "sha256": "f1d471c5da158eff9e86ee66546eb4d0663391d32e99f07362ae5ff6dafe9cd9"
+      },
+      {
+        "path": "project-r1/manifest-repository-governance/assets/agent-definitions/objects/41a2a42c9276fa2eb2ab128fd7a294c3e7eb3d1f4dd3578862f7d9da5bf10f27/instructions.md",
+        "bytes": 340,
+        "sha256": "76c7d82049d325757f516c832a07383de11e84fc94313888df963b19f7361ab8"
+      },
+      {
+        "path": "project-r1/manifest-repository-governance/assets/agent-definitions/objects/41a2a42c9276fa2eb2ab128fd7a294c3e7eb3d1f4dd3578862f7d9da5bf10f27/skills/ergora-test-value-reviewer/SKILL.md",
+        "bytes": 513,
+        "sha256": "b85dbd610e094340ae6edc7386f8233441f048bd41c2b00ad425388cfba0d6cb"
+      },
+      {
+        "path": "project-r1/manifest-repository-governance/assets/agent-definitions/objects/6b83c9f19ba646cb7624a224238aaa803e97ca88a7fad4925cb34b2c6039ea1c/agent.json",
+        "bytes": 798,
+        "sha256": "07bc2b1cf0d6767d92d9cd5669f1530635e1205bbb9e63a16f2e2bffb54ea607"
+      },
+      {
+        "path": "project-r1/manifest-repository-governance/assets/agent-definitions/objects/6b83c9f19ba646cb7624a224238aaa803e97ca88a7fad4925cb34b2c6039ea1c/instructions.md",
+        "bytes": 263,
+        "sha256": "e547a86d6b60640edb044f7556b6d2405f011acedb82d97b59f0d2867a5a5cf6"
+      },
+      {
+        "path": "project-r1/manifest-repository-governance/assets/agent-definitions/objects/6b83c9f19ba646cb7624a224238aaa803e97ca88a7fad4925cb34b2c6039ea1c/skills/ergora-architecture-test-author/SKILL.md",
+        "bytes": 468,
+        "sha256": "7d49dff73b7c6da8a05d34d32319e3697b9ff74d206798369651ff27cbe5127c"
+      },
+      {
+        "path": "project-r1/manifest-repository-governance/assets/agent-definitions/objects/84047c6d7a90c00288c5611df087fb2c649f1abaed2c56cb64a94ad7547efe7d/agent.json",
+        "bytes": 798,
+        "sha256": "69e203d9e481e8382394af1f570fe79073c2f7b965bca914fae11fc6a4e28450"
+      },
+      {
+        "path": "project-r1/manifest-repository-governance/assets/agent-definitions/objects/84047c6d7a90c00288c5611df087fb2c649f1abaed2c56cb64a94ad7547efe7d/instructions.md",
+        "bytes": 310,
+        "sha256": "ef4b95e41f5ee2217b1db290d2cb17c7bbd67d0656d835978cfe24e648326fab"
+      },
+      {
+        "path": "project-r1/manifest-repository-governance/assets/agent-definitions/objects/84047c6d7a90c00288c5611df087fb2c649f1abaed2c56cb64a94ad7547efe7d/skills/ergora-governance-mapper/SKILL.md",
+        "bytes": 430,
+        "sha256": "e302ba8abfb92b1e16361a142926bca32de75b5af0d963561f715142cfa9ddaa"
+      },
+      {
+        "path": "project-r1/manifest-repository-governance/assets/agent-definitions/objects/97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c/agent.json",
+        "bytes": 788,
+        "sha256": "64be372b8c5e1d7bd694f492ef6539ddc664814d818a546c35fdfbf07e54c7bd"
+      },
+      {
+        "path": "project-r1/manifest-repository-governance/assets/agent-definitions/objects/97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c/instructions.md",
+        "bytes": 354,
+        "sha256": "3cc9c450f0c03da5ea4a1434ac6182d50df6a4985cffdee2a59fe9fe477c6b43"
+      },
+      {
+        "path": "project-r1/manifest-repository-governance/assets/agent-definitions/objects/97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c/skills/ergora-structure-reviewer/SKILL.md",
+        "bytes": 521,
+        "sha256": "d6b69570bcca408d3d06ca5adf1cb44a4a9e43c2901f05c38a68c096f23a4ac8"
+      },
+      {
+        "path": "project-r1/manifest-repository-governance/assets/agent-definitions/objects/c90f74219843f5a0724e6c83ef531453493bd26d1d45d40ca495e0ca6bbd441b/agent.json",
+        "bytes": 799,
+        "sha256": "3ab3cabd81eafde6be45b2c4747af82d68735643b307d9d7288d28fc8a1a8335"
+      },
+      {
+        "path": "project-r1/manifest-repository-governance/assets/agent-definitions/objects/c90f74219843f5a0724e6c83ef531453493bd26d1d45d40ca495e0ca6bbd441b/instructions.md",
+        "bytes": 333,
+        "sha256": "60e3789ed195fd8abcbb7895ee2da536e88021ca76f2d3077fc4116364bfbd79"
+      },
+      {
+        "path": "project-r1/manifest-repository-governance/assets/agent-definitions/objects/c90f74219843f5a0724e6c83ef531453493bd26d1d45d40ca495e0ca6bbd441b/skills/ergora-correctness-reviewer/SKILL.md",
+        "bytes": 465,
+        "sha256": "1284f48f7238b5f3be6f422d3bb59373d66a6049e7e1215238acfb832dac8097"
+      },
+      {
+        "path": "project-r1/manifest-repository-governance/assets/workflow-definitions/index.json",
+        "bytes": 785,
+        "sha256": "7073345bc08cb53d15756f47e80dd3e1a318f01510907cc16d00507ab30b1228"
+      },
+      {
+        "path": "project-r1/manifest-repository-governance/assets/workflow-definitions/objects/83e1cfd354d05434c4e55f728ba7c01e1dfdaf12f8461ac05c89cbb4c0855254/instructions.md",
+        "bytes": 175,
+        "sha256": "d6ce532f24b70ce1bf2b26c37f07b4901e8a00ce6fc4dff7d269cabd57db1a73"
+      },
+      {
+        "path": "project-r1/manifest-repository-governance/assets/workflow-definitions/objects/83e1cfd354d05434c4e55f728ba7c01e1dfdaf12f8461ac05c89cbb4c0855254/workflow.json",
+        "bytes": 1480,
+        "sha256": "b3ce86d4fb7c48bc75a82fca347b2a307e27877470f26174df93199f9e1ab1ae"
+      },
+      {
+        "path": "project-r1/manifest-repository-governance/assets/workflow-definitions/objects/996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9/instructions.md",
+        "bytes": 163,
+        "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823"
+      },
+      {
+        "path": "project-r1/manifest-repository-governance/assets/workflow-definitions/objects/996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9/workflow.json",
+        "bytes": 1465,
+        "sha256": "062a56396ec6c57d2038f7ea6a0629d7514c0314d5657d5033d9920d8895f653"
+      },
+      {
+        "path": "project-r1/manifest-repository-governance/assets/workflow-definitions/objects/a85e76dcd25bfddd24684b6e23ad3668097b44df0f9a7d745e387e5a841c471c/instructions.md",
+        "bytes": 225,
+        "sha256": "83e867dadc6b374bd3791bcf79c87462375fff58a43b73a569d6f7b3c954e377"
+      },
+      {
+        "path": "project-r1/manifest-repository-governance/assets/workflow-definitions/objects/a85e76dcd25bfddd24684b6e23ad3668097b44df0f9a7d745e387e5a841c471c/workflow.json",
+        "bytes": 1986,
+        "sha256": "963a25f61750c0b10bd2700d3d55e837f8943307f62ee8af2794015897d3ef3f"
+      },
+      {
+        "path": "project-r1/manifest-repository-governance/assets/workflow-definitions/objects/bbc2d7bb8c0ecf420bedee847763aaaf488df7b90139904eb00057b78406aa5f/instructions.md",
+        "bytes": 162,
+        "sha256": "5f2ccfa00ae1bc8075d318be19c8c0a9dfc8d9e868b3c995ac34da30ba485894"
+      },
+      {
+        "path": "project-r1/manifest-repository-governance/assets/workflow-definitions/objects/bbc2d7bb8c0ecf420bedee847763aaaf488df7b90139904eb00057b78406aa5f/workflow.json",
+        "bytes": 1470,
+        "sha256": "ff3d59c605e87ec3236bf89aac6d6a1e88c104ec4b4e8cbfec47b2e89f233562"
+      },
+      {
+        "path": "project-r1/manifest-repository-governance/assets/workflow-definitions/objects/e82c02d01d2c717a38f35f242107efce32dd873027a4a3a6fb0f18f7d1fae077/instructions.md",
+        "bytes": 355,
+        "sha256": "66eb88ef7aebe40cc3b46a31539b7094ecb41746940efb992d4906fa8491a418"
+      },
+      {
+        "path": "project-r1/manifest-repository-governance/assets/workflow-definitions/objects/e82c02d01d2c717a38f35f242107efce32dd873027a4a3a6fb0f18f7d1fae077/workflow.json",
+        "bytes": 1575,
+        "sha256": "42e1daac5dae1464ea4224ab1937144bbe01423e24479b2312fbfc26edea8b46"
+      },
+      {
+        "path": "project-r1/manifest-repository-governance/assets/workflow-definitions/objects/e9ee2e387eac5b34b9bbce2aef5226bb2b482392f800507e233042b3749ba70e/instructions.md",
+        "bytes": 245,
+        "sha256": "2d6bd12d60054bfe71460b4dc0cab3c19f63390361ae459170bd3dec712c94fc"
+      },
+      {
+        "path": "project-r1/manifest-repository-governance/assets/workflow-definitions/objects/e9ee2e387eac5b34b9bbce2aef5226bb2b482392f800507e233042b3749ba70e/workflow.json",
+        "bytes": 2110,
+        "sha256": "747aeb3fc4543ef81096f4302bdcc59471cb6d01e2ea1388a5dffb88922e1065"
+      },
+      {
+        "path": "project-r1/manifest-repository-governance/composition.json",
+        "bytes": 52327,
+        "sha256": "1f3f6aabcff6478b5447d3accabf3ba2aa47e5fe152db0ca2292f99333dfd53b"
+      },
+      {
+        "path": "project-r1/manifest-repository-governance/manifest.json",
+        "bytes": 523,
+        "sha256": "faaee91891c0c77d3b82886f43748af5941c73ab2efcd9b44c1b4323bfae9406"
+      },
+      {
+        "path": "project-r1/manifest-repository-governance.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1/manifest-repository-governance.stdout",
+        "bytes": 997,
+        "sha256": "7ff65edda4e2596114652386b5a9b7e7f9ba8dc4ef77efd310e8afa075184442"
+      },
+      {
+        "path": "project-r1/manifest-training-optimization/assets/agent-definitions/index.json",
+        "bytes": 546,
+        "sha256": "008ee409eb8a9ec350ac21f62defd0f72f4dc80964e6153d1447b6e349e9d783"
+      },
+      {
+        "path": "project-r1/manifest-training-optimization/assets/agent-definitions/objects/44240db7e58bd19b9a07302665a538627e422ffd65d061c160a46435bc408426/agent.json",
+        "bytes": 811,
+        "sha256": "13d8a561ac0dd440e0b4d92fd73631a8f890efd507f52fe04f9613e776b4d532"
+      },
+      {
+        "path": "project-r1/manifest-training-optimization/assets/agent-definitions/objects/44240db7e58bd19b9a07302665a538627e422ffd65d061c160a46435bc408426/instructions.md",
+        "bytes": 310,
+        "sha256": "1c3642b7f24b062696f8bfe8fea89bb5def431f5c70296b884ef29e5649b2e68"
+      },
+      {
+        "path": "project-r1/manifest-training-optimization/assets/agent-definitions/objects/44240db7e58bd19b9a07302665a538627e422ffd65d061c160a46435bc408426/skills/ergora-experiment-designer/SKILL.md",
+        "bytes": 455,
+        "sha256": "bb42fff0ca3d7e801df2a5db8b152e8c3d1053e2af93a5c24a52e18591504bb1"
+      },
+      {
+        "path": "project-r1/manifest-training-optimization/assets/agent-definitions/objects/5c1df0b888521d64123814815d106e24bb337731dc0beb2bf42fa4dd348dea9f/agent.json",
+        "bytes": 782,
+        "sha256": "1fb502ce439bfd86feef4de7c357bbc05407a60b084d9222f80778d6442e15f3"
+      },
+      {
+        "path": "project-r1/manifest-training-optimization/assets/agent-definitions/objects/5c1df0b888521d64123814815d106e24bb337731dc0beb2bf42fa4dd348dea9f/instructions.md",
+        "bytes": 310,
+        "sha256": "9e3b3cf5bfa5de975ee88ae7603dca4a5966d2abf3326a84b768ef190a1ece6d"
+      },
+      {
+        "path": "project-r1/manifest-training-optimization/assets/agent-definitions/objects/5c1df0b888521d64123814815d106e24bb337731dc0beb2bf42fa4dd348dea9f/skills/ergora-kernel-designer/SKILL.md",
+        "bytes": 474,
+        "sha256": "da3592340e40df1acc24cda5dc69502454407b0dca7fb9fd6d1dd03d0030adb9"
+      },
+      {
+        "path": "project-r1/manifest-training-optimization/assets/agent-definitions/objects/989fe8ee796b1834ca1bde0672e8521954636821592e859f873889133142896c/agent.json",
+        "bytes": 792,
+        "sha256": "dd074dd1c511c8fce3ba805d8f55a3eb3f55c2f549267211080443b1c44237ab"
+      },
+      {
+        "path": "project-r1/manifest-training-optimization/assets/agent-definitions/objects/989fe8ee796b1834ca1bde0672e8521954636821592e859f873889133142896c/instructions.md",
+        "bytes": 290,
+        "sha256": "22003b55c9c6681d8293fbec3058418ea8f21e77138d2e0dd680feccef3dad06"
+      },
+      {
+        "path": "project-r1/manifest-training-optimization/assets/agent-definitions/objects/989fe8ee796b1834ca1bde0672e8521954636821592e859f873889133142896c/skills/ergora-performance-analyst/SKILL.md",
+        "bytes": 452,
+        "sha256": "50ae85091a45e244ee9b80e2b6fec5536edd2e62adf4b79cdf4c8ee818111855"
+      },
+      {
+        "path": "project-r1/manifest-training-optimization/assets/agent-definitions/objects/eb0fb716357a60203318baa5c62f904ac87d00fd40216d197593b33fa4657302/agent.json",
+        "bytes": 790,
+        "sha256": "593b97f864ed37d3581a4fa9063fff64d1671790eb616c68989be40d1913d95f"
+      },
+      {
+        "path": "project-r1/manifest-training-optimization/assets/agent-definitions/objects/eb0fb716357a60203318baa5c62f904ac87d00fd40216d197593b33fa4657302/instructions.md",
+        "bytes": 318,
+        "sha256": "144838b2f40579ee02a367734a2d6252ad40857da6d043cee9a970243c59da6f"
+      },
+      {
+        "path": "project-r1/manifest-training-optimization/assets/agent-definitions/objects/eb0fb716357a60203318baa5c62f904ac87d00fd40216d197593b33fa4657302/skills/ergora-measurement-reviewer/SKILL.md",
+        "bytes": 462,
+        "sha256": "cc6224d1e8d1ac071864af35ff575bfed22ccb3b1ffc2170086abbe5ed904b33"
+      },
+      {
+        "path": "project-r1/manifest-training-optimization/assets/workflow-definitions/index.json",
+        "bytes": 419,
+        "sha256": "57c485336f8c3608032501d8a7009dd3ae83f2795e823b04ae63c43e9544c0cf"
+      },
+      {
+        "path": "project-r1/manifest-training-optimization/assets/workflow-definitions/objects/8336061c7e67741cb55ee72857d1c890797411d35cf75da050a4133e844e65a8/instructions.md",
+        "bytes": 90,
+        "sha256": "10a74282241c0040284a0e61db8cdd20905313f2822db8213888c067a1b76bc1"
+      },
+      {
+        "path": "project-r1/manifest-training-optimization/assets/workflow-definitions/objects/8336061c7e67741cb55ee72857d1c890797411d35cf75da050a4133e844e65a8/workflow.json",
+        "bytes": 1401,
+        "sha256": "30bb3fb175d3af14e09d541f9ce6cf699495e86b31e40d994aa344e17103c489"
+      },
+      {
+        "path": "project-r1/manifest-training-optimization/assets/workflow-definitions/objects/a9edaf8f526bdc8c5dab19ed72f566b696e8d02aee1e52cbf620d5f6f918d917/instructions.md",
+        "bytes": 201,
+        "sha256": "23681af71dd5c815f742d9049ae9bce96aeeb4ec3b5ca8f92ed756b13c2f373e"
+      },
+      {
+        "path": "project-r1/manifest-training-optimization/assets/workflow-definitions/objects/a9edaf8f526bdc8c5dab19ed72f566b696e8d02aee1e52cbf620d5f6f918d917/workflow.json",
+        "bytes": 2039,
+        "sha256": "36a8b3d8e367fa5582007988dfae0ee4b350d1c071b9d504b16b23e34bbee8ee"
+      },
+      {
+        "path": "project-r1/manifest-training-optimization/assets/workflow-definitions/objects/cf5df77249022c458f84d4e4d9964aa6448bacb1a74b9192a942da9ffcb7e438/instructions.md",
+        "bytes": 481,
+        "sha256": "96348a1c01393d98d38850efdbdf2630d1dbb67708a148977e8b2cbbaf55bdfe"
+      },
+      {
+        "path": "project-r1/manifest-training-optimization/assets/workflow-definitions/objects/cf5df77249022c458f84d4e4d9964aa6448bacb1a74b9192a942da9ffcb7e438/workflow.json",
+        "bytes": 2267,
+        "sha256": "1afe5a27c8a5291268365c137b41f37bf9fdbd3a02a95a52862282e3c2cd2215"
+      },
+      {
+        "path": "project-r1/manifest-training-optimization/composition.json",
+        "bytes": 34940,
+        "sha256": "39992220e26bbca2a4f406128960a58a9e67b2ca5bc6df37c4d71c6d2550430c"
+      },
+      {
+        "path": "project-r1/manifest-training-optimization/manifest.json",
+        "bytes": 511,
+        "sha256": "47db1d373e77e7f080ba8f8bbad64fefc75441f59381e2bd35341b64e48d9190"
+      },
+      {
+        "path": "project-r1/manifest-training-optimization.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1/manifest-training-optimization.stdout",
+        "bytes": 965,
+        "sha256": "0e1b4302e4a66294f406ad9f58f02054a134f6be10cac0ab55debff2cb2907ef"
+      },
+      {
+        "path": "project-r1/operations.json",
+        "bytes": 24276,
+        "sha256": "cdd8b9e1295996e8d62b5ec1d145abb717b1bd33a576f145431306f094a9ed6b"
+      },
+      {
+        "path": "project-r1/preset-large-change.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1/preset-large-change.stdout",
+        "bytes": 2759,
+        "sha256": "cbf9dceccb8e8939c45a6f7ad019c2a1b18cc9874b00c11b45fb2aab3d0bf52e"
+      },
+      {
+        "path": "project-r1/preset-optimization-performance-diagnosis.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1/preset-optimization-performance-diagnosis.stdout",
+        "bytes": 1498,
+        "sha256": "2fe9280f3c289dddea75499d80040fb26a1d5bc7c8d04da3e1a66af2ce518ed2"
+      },
+      {
+        "path": "project-r1/preset-refactoring-quality.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1/preset-refactoring-quality.stdout",
+        "bytes": 2965,
+        "sha256": "ee639681512e2b387fa9415358a28ea4b957c30c53bc23b158ce518dd439b1c5"
+      },
+      {
+        "path": "project-r1/preset-repository-governance.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1/preset-repository-governance.stdout",
+        "bytes": 2389,
+        "sha256": "1b42524d2a86a86f271dd189882abdccf122e52c8b3b76d6b889ceaca8f469e8"
+      },
+      {
+        "path": "project-r1/preset-training-optimization.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1/preset-training-optimization.stdout",
+        "bytes": 1634,
+        "sha256": "3eeba34cf92d90bbd18e3f2722092c228322cdd9e6a80bb6c569f8f887c0c36d"
+      },
+      {
+        "path": "project-r1/presets.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1/presets.stdout",
+        "bytes": 12934,
+        "sha256": "a10cbff3e12129e72c074c11b243d2ca5146928a1df8b4d5a9a35426acbe06e8"
+      },
+      {
+        "path": "project-r1/project-add.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1/project-add.stdout",
+        "bytes": 883,
+        "sha256": "611767ba20ac460b6f01635ceaa30f6a279ec775c494605bf7682f0a42173494"
+      },
+      {
+        "path": "project-r1/project-bind.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1/project-bind.stdout",
+        "bytes": 889,
+        "sha256": "18573a966d285ff9a6154928eed6b00ca4bc2ba69ac56682cf50c1e6709818dc"
+      },
+      {
+        "path": "project-r1/project-show.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1/project-show.stdout",
+        "bytes": 889,
+        "sha256": "18573a966d285ff9a6154928eed6b00ca4bc2ba69ac56682cf50c1e6709818dc"
+      },
+      {
+        "path": "project-r1/repeat-refactoring.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1/repeat-refactoring.stdout",
+        "bytes": 2965,
+        "sha256": "ee639681512e2b387fa9415358a28ea4b957c30c53bc23b158ce518dd439b1c5"
+      },
+      {
+        "path": "project-r1/result.json",
+        "bytes": 3254,
+        "sha256": "8186e777494f94c3c58fb6fc4c84ea0c8d7ba813cf225782eb75b27549718298"
+      },
+      {
+        "path": "project-r1/reviewer.json",
+        "bytes": 28,
+        "sha256": "854fbc9d32ab5eddbc2e8abaf49d730e4301cfdf6fd9dffcda9ae9276dda6761"
+      },
+      {
+        "path": "project-r1/root-large-change.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1/root-large-change.stdout",
+        "bytes": 2954,
+        "sha256": "8ddc5e9d7b14aa614fd4b0f045f99824d9d37c58d38a706c390aff35652c4b66"
+      },
+      {
+        "path": "project-r1/root-optimization-performance-diagnosis.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1/root-optimization-performance-diagnosis.stdout",
+        "bytes": 6120,
+        "sha256": "79c98260318e13b9385ec601e0a495cfd9176d3effbfe17ad572e59192826434"
+      },
+      {
+        "path": "project-r1/root-refactoring-quality.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1/root-refactoring-quality.stdout",
+        "bytes": 6029,
+        "sha256": "a6a8eae3155c91cb9b2149975e225770644b1e3d9d1c0a41cabda164aa2343f9"
+      },
+      {
+        "path": "project-r1/root-repository-governance.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1/root-repository-governance.stdout",
+        "bytes": 2930,
+        "sha256": "32a530b3bac2f8e4cbd442d11e77e60ec08c7010f0bf51ce28a840f3af3f57ac"
+      },
+      {
+        "path": "project-r1/root-training-optimization.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1/root-training-optimization.stdout",
+        "bytes": 3812,
+        "sha256": "a3a9acfa7b2381efa4417fb1f48b8213fd0231c5fdfe2ab80dba704267077646"
+      },
+      {
+        "path": "project-r1/runs.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1/runs.stdout",
+        "bytes": 3,
+        "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+      },
+      {
+        "path": "project-r1/task.txt",
+        "bytes": 167,
+        "sha256": "9b3cb996b2d328ebaeca155b86af431ef8afdc8b8bd5bffc47c123aa168f9949"
+      },
+      {
+        "path": "project-r1/template-large-change/LOCAL-GUIDE.md",
+        "bytes": 566,
+        "sha256": "ca13d3ffb5bb1c641b6a3ddaec49c66d0304325c356f856d9dd8db5a5cce0545"
+      },
+      {
+        "path": "project-r1/template-large-change/agent-contract.json",
+        "bytes": 2505,
+        "sha256": "b9422bcc469033803c27cce595e26f25ac6e1099e8533fb70aeb05253a6a992b"
+      },
+      {
+        "path": "project-r1/template-large-change/evidence.json",
+        "bytes": 1056,
+        "sha256": "0ea2756bbcd086f525f1c75cd7b7772d3e9d29ce672c0d244a32cc0de2f269e3"
+      },
+      {
+        "path": "project-r1/template-large-change/input.json",
+        "bytes": 1897,
+        "sha256": "298b0958986af258d1d6f9a949ee8fb89c5f6fd930918f12b6c1194304c4bcd4"
+      },
+      {
+        "path": "project-r1/template-large-change/input.schema.json",
+        "bytes": 5254,
+        "sha256": "0221f76400bdc57102828ea90226d5dfa37124e17a1a6878121a25fa817b84cd"
+      },
+      {
+        "path": "project-r1/template-large-change/instructions.md",
+        "bytes": 2801,
+        "sha256": "7518e23e5353c57b9ee2f5a245a847169ba42d937124994766fadb70884582dd"
+      },
+      {
+        "path": "project-r1/template-large-change/output.schema.json",
+        "bytes": 11332,
+        "sha256": "d8d6877950d4ba034167f32b35d0b0c8925da86e7b9951e596e5956c246e3588"
+      },
+      {
+        "path": "project-r1/template-large-change/roles.json",
+        "bytes": 2052,
+        "sha256": "57eca46b17f82257582f0c1bdd5ca00500aa3cfb11729df8301404f6ca62a6ec"
+      },
+      {
+        "path": "project-r1/template-repository-governance/LOCAL-GUIDE.md",
+        "bytes": 575,
+        "sha256": "3898808ef223275c9e24e7d9437f69b57d9ad008fa720e840c85ceb2415518a9"
+      },
+      {
+        "path": "project-r1/template-repository-governance/agent-contract.json",
+        "bytes": 2442,
+        "sha256": "66d0422fbbcc8ca53d160ccbeda6c263fed1dadcc7a7b3997e351e9815b16769"
+      },
+      {
+        "path": "project-r1/template-repository-governance/evidence.json",
+        "bytes": 990,
+        "sha256": "99f921597b26c622263e959bf2e87a72ae4c37f99970f540f243985bc48ea3b6"
+      },
+      {
+        "path": "project-r1/template-repository-governance/input.json",
+        "bytes": 1316,
+        "sha256": "ef60d978789d9e139cfb7918c5130dc7a75284f42d8857e618e008045cc70779"
+      },
+      {
+        "path": "project-r1/template-repository-governance/input.schema.json",
+        "bytes": 5271,
+        "sha256": "a43bda27c256edafb4f68dd591796c27923d081176758a25b8e111323dd1891e"
+      },
+      {
+        "path": "project-r1/template-repository-governance/instructions.md",
+        "bytes": 2451,
+        "sha256": "bbe4033de08edeacaa9ab3fe65f85f382093ac68c59df565cc3a9e588a509178"
+      },
+      {
+        "path": "project-r1/template-repository-governance/output.schema.json",
+        "bytes": 11350,
+        "sha256": "c95ddfbc9994d1f0bff2b7dd7583574690b8b03ada956798cd8cbc780578d7c3"
+      },
+      {
+        "path": "project-r1/template-repository-governance/roles.json",
+        "bytes": 2052,
+        "sha256": "57eca46b17f82257582f0c1bdd5ca00500aa3cfb11729df8301404f6ca62a6ec"
+      },
+      {
+        "path": "project-r1/template-training-optimization/LOCAL-GUIDE.md",
+        "bytes": 824,
+        "sha256": "0283134a50fcb79ce0909c6db7ec2973543af3207fc7b71e840095a317829cb7"
+      },
+      {
+        "path": "project-r1/template-training-optimization/agent-contract.json",
+        "bytes": 1413,
+        "sha256": "61f29f318059ac0d0b6fb9ab9d10b2a4e84569b2f9d3f1446df92766781dbd7c"
+      },
+      {
+        "path": "project-r1/template-training-optimization/attestation.json",
+        "bytes": 318,
+        "sha256": "1302e6dbaab15e8bd8be51965e45214839a520c3a0294d427a5046a8c67b1482"
+      },
+      {
+        "path": "project-r1/template-training-optimization/baseline.json",
+        "bytes": 212,
+        "sha256": "98bb666cd8811b153a4f23c4f57fba412e80b9f030b51c07b7bdb823134bbfac"
+      },
+      {
+        "path": "project-r1/template-training-optimization/evidence.json",
+        "bytes": 1575,
+        "sha256": "77de8a62d376c217e43e5edd6e8236d73206b43c5b08f5fbfd94d022e69e3328"
+      },
+      {
+        "path": "project-r1/template-training-optimization/experiment.json",
+        "bytes": 1505,
+        "sha256": "42813ad09407bb7bc35d75d16648778ed47be7b2825891d3bbf8eda4193e55de"
+      },
+      {
+        "path": "project-r1/template-training-optimization/hypothesis.md",
+        "bytes": 502,
+        "sha256": "a244150ab484208ab2bd546ee93dc1e81747a18e68ead7b96497fb40faf35645"
+      },
+      {
+        "path": "project-r1/template-training-optimization/negative-results.jsonl",
+        "bytes": 258,
+        "sha256": "5c27e592359dfcaa4060a8268106c5d207054d6af783857081292f52901368ed"
+      },
+      {
+        "path": "project-r1/template-training-optimization/result.md",
+        "bytes": 688,
+        "sha256": "d1fc7f51a0aee037f68a6df6ba452f02fffcae4113de0f796d0d2968ca8fa6a2"
+      },
+      {
+        "path": "project-r1/template-training-optimization/runner-template.example.json",
+        "bytes": 278,
+        "sha256": "0b47eda62f2dd15db2aeb22d11e7a7811134dcbbb5cee6d96902cf7e845395dd"
+      },
+      {
+        "path": "project-r1/template-training-optimization/workload-contract.md",
+        "bytes": 1057,
+        "sha256": "7fce244d18f0fee9d61aebb96bb7309bacb1a0e89005a1e086fb328f67439c76"
+      },
+      {
+        "path": "project-r1/verify-large-change.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1/verify-large-change.stdout",
+        "bytes": 990,
+        "sha256": "d5595b8631f0e74782e173e6ed7a925366281206b00a90214cf9c6cb5de36a93"
+      },
+      {
+        "path": "project-r1/verify-optimization-performance-diagnosis.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1/verify-optimization-performance-diagnosis.stdout",
+        "bytes": 995,
+        "sha256": "b28d8a61fd8b67ebfdbc2ada80bb5853fae758195405e55886e8fdcd87767628"
+      },
+      {
+        "path": "project-r1/verify-refactoring-quality.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1/verify-refactoring-quality.stdout",
+        "bytes": 996,
+        "sha256": "16f1c59e1ffafd319282e1e89057b564859e0534bd5c8a8b1b0a4b67cd331ea9"
+      },
+      {
+        "path": "project-r1/verify-repository-governance.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1/verify-repository-governance.stdout",
+        "bytes": 997,
+        "sha256": "7ff65edda4e2596114652386b5a9b7e7f9ba8dc4ef77efd310e8afa075184442"
+      },
+      {
+        "path": "project-r1/verify-training-optimization.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1/verify-training-optimization.stdout",
+        "bytes": 965,
+        "sha256": "0e1b4302e4a66294f406ad9f58f02054a134f6be10cac0ab55debff2cb2907ef"
+      },
+      {
+        "path": "project-r1.py",
+        "bytes": 6835,
+        "sha256": "4a76453adb41a5ad9bf25ed003f11aa28d1a27794bac7efd4a92bfe53ab4603c"
+      },
+      {
+        "path": "project-r1.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "project-r1.stdout",
+        "bytes": 81,
+        "sha256": "3fecb0975b58e47a2689a5e60661c0674b356a638acfef480668515d6855e03e"
+      },
+      {
+        "path": "rebuild-r1/dependencies.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "rebuild-r1/dependencies.stdout",
+        "bytes": 30,
+        "sha256": "9261363b733079a641c2e4cc9bc46ffa1d8336945a87f807b6cf68847dbc9b09"
+      },
+      {
+        "path": "rebuild-r1/install.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "rebuild-r1/install.stdout",
+        "bytes": 5737,
+        "sha256": "dd6e3a40187e1e9fdc66ea02cbb0dc3adc551a6cf8d0d35bdb45aa3648a8c082"
+      },
+      {
+        "path": "rebuild-r1/operations.json",
+        "bytes": 341,
+        "sha256": "6a0506e58e2ecd3764eae650711e4d16c8d103de9c2496509c11c91b983ee174"
+      },
+      {
+        "path": "rebuild-r1/presets.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "rebuild-r1/presets.stdout",
+        "bytes": 12934,
+        "sha256": "a10cbff3e12129e72c074c11b243d2ca5146928a1df8b4d5a9a35426acbe06e8"
+      },
+      {
+        "path": "rebuild-r1/result.json",
+        "bytes": 1873,
+        "sha256": "12ecb212f5ddfbe5368090afbc172ada4b658ffc9d13643c90fea051241dab95"
+      },
+      {
+        "path": "rebuild-r1.py",
+        "bytes": 4370,
+        "sha256": "8f30b0c9d4833b0ee9d2f24c4417dc78fa393e4193e69676ce3dd7650fee84dc"
+      },
+      {
+        "path": "rebuild-r1.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "rebuild-r1.stdout",
+        "bytes": 205,
+        "sha256": "e1298ab001c39270dc8ae003572f40f0faa588ae8a690d7e8de9ed7798c3afaa"
+      },
+      {
+        "path": "self-review-launch-r2.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "self-review-launch-r2.stdout",
+        "bytes": 3603,
+        "sha256": "38581c1cdda539225fce4eb7fd29b0e319680f268fc25146326dc03eb3fe5ca4"
+      },
+      {
+        "path": "self-review-launches.json",
+        "bytes": 429,
+        "sha256": "909b8a18cb20bcb1a59399364a31035913d7dda188e2796fd9ba1395a31d7150"
+      },
+      {
+        "path": "self-review-r1-codex/admission.json",
+        "bytes": 7895,
+        "sha256": "ca63abb7fb4a2e8158a62b4ed000cdfcdc1e5903a79310a03dd06d8431634fb0"
+      },
+      {
+        "path": "self-review-r1-codex/admission.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "self-review-r1-codex/input/assets/agent-definitions/index.json",
+        "bytes": 173,
+        "sha256": "852b1e2b14bc716dd54b6bc7893015349b7758e764e278077fcaf6591d239c77"
+      },
+      {
+        "path": "self-review-r1-codex/input/assets/agent-definitions/objects/97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c/agent.json",
+        "bytes": 788,
+        "sha256": "64be372b8c5e1d7bd694f492ef6539ddc664814d818a546c35fdfbf07e54c7bd"
+      },
+      {
+        "path": "self-review-r1-codex/input/assets/agent-definitions/objects/97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c/instructions.md",
+        "bytes": 354,
+        "sha256": "3cc9c450f0c03da5ea4a1434ac6182d50df6a4985cffdee2a59fe9fe477c6b43"
+      },
+      {
+        "path": "self-review-r1-codex/input/assets/agent-definitions/objects/97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c/skills/ergora-structure-reviewer/SKILL.md",
+        "bytes": 521,
+        "sha256": "d6b69570bcca408d3d06ca5adf1cb44a4a9e43c2901f05c38a68c096f23a4ac8"
+      },
+      {
+        "path": "self-review-r1-codex/input/assets/workflow-definitions/index.json",
+        "bytes": 171,
+        "sha256": "e2d5c1ad28b450c5ba3b1deb3d39580061e84223efa3be68f9cef86f9dbcbe8a"
+      },
+      {
+        "path": "self-review-r1-codex/input/assets/workflow-definitions/objects/996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9/instructions.md",
+        "bytes": 163,
+        "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823"
+      },
+      {
+        "path": "self-review-r1-codex/input/assets/workflow-definitions/objects/996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9/workflow.json",
+        "bytes": 1465,
+        "sha256": "062a56396ec6c57d2038f7ea6a0629d7514c0314d5657d5033d9920d8895f653"
+      },
+      {
+        "path": "self-review-r1-codex/input/composition.json",
+        "bytes": 7878,
+        "sha256": "0446ac008f690f5e2a16e493b9e82c1a818f7acf0ca9753ae560838e0bcf722e"
+      },
+      {
+        "path": "self-review-r1-codex/input/prompt.txt",
+        "bytes": 491753,
+        "sha256": "32ae426b0fd67fc58c3ffd66c437d6fe05a9251d355f21802e718af918e996f4"
+      },
+      {
+        "path": "self-review-r1-codex/input/request.json",
+        "bytes": 780,
+        "sha256": "fecfe3863d7bd4538e3cd42890158c9a75a2177683bb7a5c6f3c7db698247968"
+      },
+      {
+        "path": "self-review-r1-codex/input/task.txt",
+        "bytes": 489354,
+        "sha256": "2c3b13a6dbd6af10502df55d359d43f89b0d6721d991aed04c0023da13382af6"
+      },
+      {
+        "path": "self-review-r1-codex/native.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "self-review-r1-codex/native.stdout",
+        "bytes": 8661,
+        "sha256": "3f6fc7ff8d888a3cdf68f392aa01413b2741b59943dfbb9b5e1cacc58a1e038d"
+      },
+      {
+        "path": "self-review-r1-codex/original-result.json",
+        "bytes": 648,
+        "sha256": "45a03cd8e924a87d1c4a7828daf98ab736af2ab0c70e6ff30944ba8f93566256"
+      },
+      {
+        "path": "self-review-r1-codex/packet-index.json",
+        "bytes": 3040,
+        "sha256": "be1bba99ed39e38af5b5fd9295bc3a88dcd251c8d0a28708e1ea385998dda8b2"
+      },
+      {
+        "path": "self-review-r1-codex/review.md",
+        "bytes": 513,
+        "sha256": "1d012bd8c55b26369a977b561b52e77041d3c336e95951950cb27e88822d8822"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/df7c40dff8fe4be7a0dc697af145a431/result.json",
+        "bytes": 648,
+        "sha256": "45a03cd8e924a87d1c4a7828daf98ab736af2ab0c70e6ff30944ba8f93566256"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/df7c40dff8fe4be7a0dc697af145a431/stderr.txt",
+        "bytes": 141,
+        "sha256": "02bfeb9de82c7e74c7eae75d00219307f681ddcdead4f897b6ca026d326c5564"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/df7c40dff8fe4be7a0dc697af145a431/stdin.txt",
+        "bytes": 491753,
+        "sha256": "32ae426b0fd67fc58c3ffd66c437d6fe05a9251d355f21802e718af918e996f4"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/df7c40dff8fe4be7a0dc697af145a431/stdout.txt",
+        "bytes": 1280,
+        "sha256": "dd4cb214db5b230fef33bd30fd2bf382d0469ef0fd5eb304358d1632bf5492d2"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/df7c40dff8fe4be7a0dc697af145a431.input/assets/agent-definitions/index.json",
+        "bytes": 173,
+        "sha256": "852b1e2b14bc716dd54b6bc7893015349b7758e764e278077fcaf6591d239c77"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/df7c40dff8fe4be7a0dc697af145a431.input/assets/agent-definitions/objects/97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c/agent.json",
+        "bytes": 788,
+        "sha256": "64be372b8c5e1d7bd694f492ef6539ddc664814d818a546c35fdfbf07e54c7bd"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/df7c40dff8fe4be7a0dc697af145a431.input/assets/agent-definitions/objects/97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c/instructions.md",
+        "bytes": 354,
+        "sha256": "3cc9c450f0c03da5ea4a1434ac6182d50df6a4985cffdee2a59fe9fe477c6b43"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/df7c40dff8fe4be7a0dc697af145a431.input/assets/agent-definitions/objects/97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c/skills/ergora-structure-reviewer/SKILL.md",
+        "bytes": 521,
+        "sha256": "d6b69570bcca408d3d06ca5adf1cb44a4a9e43c2901f05c38a68c096f23a4ac8"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/df7c40dff8fe4be7a0dc697af145a431.input/assets/workflow-definitions/index.json",
+        "bytes": 171,
+        "sha256": "e2d5c1ad28b450c5ba3b1deb3d39580061e84223efa3be68f9cef86f9dbcbe8a"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/df7c40dff8fe4be7a0dc697af145a431.input/assets/workflow-definitions/objects/996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9/instructions.md",
+        "bytes": 163,
+        "sha256": "5e39c46542a70f572b1d83ef8b619e2b8702635aae3a9c4611b1d9046b9b1823"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/df7c40dff8fe4be7a0dc697af145a431.input/assets/workflow-definitions/objects/996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9/workflow.json",
+        "bytes": 1465,
+        "sha256": "062a56396ec6c57d2038f7ea6a0629d7514c0314d5657d5033d9920d8895f653"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/df7c40dff8fe4be7a0dc697af145a431.input/composition.json",
+        "bytes": 7878,
+        "sha256": "0446ac008f690f5e2a16e493b9e82c1a818f7acf0ca9753ae560838e0bcf722e"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/df7c40dff8fe4be7a0dc697af145a431.input/prompt.txt",
+        "bytes": 491753,
+        "sha256": "32ae426b0fd67fc58c3ffd66c437d6fe05a9251d355f21802e718af918e996f4"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/df7c40dff8fe4be7a0dc697af145a431.input/request.json",
+        "bytes": 780,
+        "sha256": "fecfe3863d7bd4538e3cd42890158c9a75a2177683bb7a5c6f3c7db698247968"
+      },
+      {
+        "path": "self-review-r1-codex/state/runs/df7c40dff8fe4be7a0dc697af145a431.input/task.txt",
+        "bytes": 489354,
+        "sha256": "2c3b13a6dbd6af10502df55d359d43f89b0d6721d991aed04c0023da13382af6"
+      },
+      {
+        "path": "self-review-r1-codex.json",
+        "bytes": 4169,
+        "sha256": "ebde3449f1b09c85043b9d60d084213c2599d15422ed149da754e66e3d45df5e"
+      },
+      {
+        "path": "self-review-r1.py",
+        "bytes": 7759,
+        "sha256": "254ced99ab39cfec3e835126f9e2b325ea1dcc7c16fc19c9ed83872a5dc25d0b"
+      },
+      {
+        "path": "self-review-r1.stderr",
+        "bytes": 218,
+        "sha256": "3de51bd5a111bf7293fa662f8f986adf536999624f21c316e394bf11ff8902b3"
+      },
+      {
+        "path": "self-review-r1.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "source-inventory-r1.json",
+        "bytes": 33930,
+        "sha256": "d1751dc12eddeb666207f981202271958dd54eb55ec3546870d8ae2c2e58c1ea"
+      },
+      {
+        "path": "source-r1.json",
+        "bytes": 333,
+        "sha256": "1ad75fc6352bf7094848e8d9716522e393de2faf981886e19fa650959c0e059f"
+      }
+    ],
+    "scope": "Original drivers, retained failed launch and successful full own-review input/output, actual installer and new-project CLI transcripts, full manifests and inputs. Application/venv, dependency caches, duplicate source archive, mutable state databases and credential configuration excluded. Final docs/link receipt and updating independent reports/publication/CI are separate."
+  },
+  "limitations": [
+    "Python/Git preexisting and prepared offline dependency cache used; not an empty operating-system installation.",
+    "Installer-created temporary wheel was not retained; installed611 product bytes match the fixed original G1a wheel, not a claimed identical whole rebuilt-wheel hash.",
+    "Actual new-project identities at independent source/application/home/repository paths, not migration of historical active tasks.",
+    "Five complete preset manifests and two complete leaf inputs were rebuilt; no project registration, native execution, backend authentication or model run by this new project.",
+    "Own text-only structure review approves supplied full documents and original recorded facts; fresh-context disk/source audit and later publication/CI are separate.",
+    "First private wrapper resolved the venv interpreter to system Python and failed before model/state creation; same unchanged driver succeeded using the original venv entry.",
+    "No Windows/WSL2 local relocation, active workflow recovery, GPU/quality/performance, complete native Forge or remote isolation claim.",
+    "Separate G1d-CI changes a push filter; this slice does not preapprove that configuration or future cloud checks."
+  ]
+}

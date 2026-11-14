@@ -2,7 +2,9 @@
 
 Ergora 把项目合同、可组合的专长 Agent、正式执行和可核对证据接在一起。CLI 与网页共用应用用例；Agent 后端、工单来源和外部通信各有自己的接入位置。当前实现仍复用冻结参考发行的六阶段与 Temporal，不要求每个项目使用工单，也没有第二套正式调度器。
 
-主体对应 `c1f31fc` 的生产源码，F7a读取、F7b快照／来源任务v7与F7c显式候选评论／GitHub原生ID标签及只读远端候选核对在对应所有者处增补；当前进度以[PLAN](../PLAN.md)与各片交付记录为准。逐次实施说明已[逐字归档](current-history-2026-11-11.md)，当中的“当前”“待实现”和默认版本只代表原记录。[C6d源码清单](../delivery/evidence/2026-11-11-architecture-source-inventory.json)是该基线的53个第一方Python模块、203条静态本地导入边和18个第一方console JS，不包含后增的`issues / issue_backends / issue_sources / issue_snapshots / issue_writebacks`。原静态导入包含函数内导入、拓扑无环；动态装载、子进程和运行语义另按下文调用关系核对。
+本页按 `506cc576874e92bc922644a8dd9f244151b08e4b` 的611个产品文件更新，覆盖F7工单、F8只读会话、F9训练控制和F10复盘／资料冻结的现有所有者。静态AST盘点为73个顶层第一方Python模块（含`__init__`／`__main__`）、300条去重本地导入边和28个第一方console JS模块；Python导入包含函数内导入，静态图无环。随包驱动、冻结reference、vendor与动态装载／子进程调用不计入这73模块的静态导入图，运行关系需另核下文。
+
+逐次实施说明已[逐字归档](current-history-2026-11-11.md)，[C6d原源码清单](../delivery/evidence/2026-11-11-architecture-source-inventory.json)的53模块／203边／18JS保持原身份，不当作当前清单。当前验证与开放条件以[PLAN](../PLAN.md)及各片交付为准；静态图本身不证明全部动态路径或性能。
 
 ## 模块与依赖
 
@@ -25,6 +27,10 @@ flowchart TB
   Uses --> Library[agent_definitions / workflow_definitions]
   Uses --> Runs[agent_runs / 独立调用]
   Uses --> Evolution[memory / skills / evaluation / optimization / research]
+  Uses --> Retrospective[retrospectives / 来源绑定候选]
+  Retrospective --> Evidence[handoff / 原证据与完整文本]
+  Retrospective --> Library
+  Retrospective --> Evolution
   Uses --> Ops[tools / services / backups / scheduling]
   Library --> Bundles[definition_bundles / asset_trees]
   Tasks --> Library
@@ -43,6 +49,9 @@ flowchart TB
   Bundles --> Base
   Runs --> Base
   Tasks --> Envelope[task_envelopes / review_dags]
+  Tasks --> Context[task_context / 显式资料派生]
+  Context --> Library
+  Context --> Evolution
   Input --> Envelope
 ```
 
@@ -56,6 +65,8 @@ flowchart TB
 |`agent_definitions`、`workflow_definitions`|独立专家、精确嵌套引用、继承／DAG编译、preset与manifest|定义可静态检查；preview不授执行权，freeze不启动任务|
 |`definition_bundles`|两类定义共用的完整资源树、检查／修订／不可变版本发布|修订派生新包；逐定义发布，根最后发布，不是跨库事务|
 |`agent_runs`|独立叶子／角色的输入冻结、准入、调用和归档|原项目／定义／后端绑定保持；普通调用成功不生成正式任务通过|
+|`task_context`|按显式选择读取当前有效记忆／活动Skill，在原准备目录派生并冻结完整根|复用原定义／manifest和资产所有者，首次intent前核来源；恢复已存意图不随当前head重建，没有第二资源库|
+|`retrospectives`|从原交接包完整文本准备三类复盘输入，核来源／结果及明确导出|生成与导出不采用；Skill交原评价／采用，记忆交原保存／修订，流程交原不可变定义导入。原基线／权限／图边保持，不改可信评价或批准|
 |`agents`、`agent_backends`|角色输出合同与可替换后端Adapter|调用者走同一Interface；实现拥有原生命令、配置、结果提取及支持模式|
 |`task_mcp`|单次调用的完整声明资源投影与连接回执|只有固定 `list/read`，没有任意路径／shell工具；当前要求Linux和可选SDK|
 |`tasks`|正式任务本地查询、预览／创建，以及运行／批准／取消／导出／对账用例；共有exported_source_candidate绑定原来源与精确候选，inspect_export委托原Git owner读当前对象|项目revision、原task/run、精确意图与摘要；未知结果沿原ID恢复|
@@ -173,6 +184,8 @@ Input还拥有准入报告的版本差异：v1–v6调用原doctor，v7从冻结
 
 Skill采用沿 `skills.adopt → evaluation.compare → skill_assets.move_head`，同事务核旧revision与精确baseline。GEPA只提出候选；资料观察／研究调度只提出带来源材料；ReMe只是可重建的记忆投影。记忆有效期由原memory模块按服务端时刻判定；catalog可审阅所有状态，新检索只取有效当前修订，并在远端请求后重新核本地版本。schema v5沿原State迁移更新writer fence，升级停止旧进程，旧归档不重写。
 
+来源绑定改进沿`handoff`选择完整原证据，再由`retrospectives`准备／检查／导出候选；`retrospectives.js`只消费相同CLI／HTTP用例。三类候选分别明确采用，不共享一个新的“已优化”状态。正式任务v7／input11经`task_context`把所选当前记忆和活动Skill派生为新根资料，旧根、旧manifest及已开始任务保持。完整操作见[改进旅程](../IMPROVEMENT_WORKFLOW.md)。
+
 Skill控制台在原`skills.js`内保存当前view的选择代际：选择变化撤回旧比较／采用表单，评价共享按控制目录与项目隔离的本窗口未决请求锁（非持久账本）；完整回复释放，未知回复需用户核原记录后明确解除。Skill、记忆与工作流目录导入页共用`submissions.js`的局部提交回执：原`ui.form`持有单次提交锁，异步payload准备前后核原view／form／dialog，发送前仍核来源 view；已发出请求的回执只跟随仍连接的原表单，来源 view 被后台读取重绘不丢原回执，不自动关闭、刷新或重发。业务选择、比较代际、评价锁、文本和历史仍留在所属页面，完整可信证据和并发核验仍归原后端owner；共享表单不拥有持久状态、评价器或采用权威。
 
 `definitions.js`的目录导入表单绑定原 DOM view 与控制目录，沿薄 `POST /api/workflow-definitions/import → workflow_definitions.import_bundle → DefinitionLibrary.import_bundle` 发布原不可变版本。完整回执留在原窗口；明确刷新定义库、精确选择、原 grant 预览与 manifest 保存仍分别由原接口处理。导入只发布根包，原 import_inspector 先编译并核全依赖、资源与权限，再由原库校验不可变 ID／版本；原预览继续按显式 grant 核查。共享定义库不按项目隔离，导入不改变旧 manifest 或运行输入。
@@ -205,6 +218,10 @@ flowchart TB
   App --> Draft[workflow.js / 工作单元草稿]
   App --> Definitions[definitions.js / 定义库与修订会话]
   App --> Tasks[tasks.js / 正式任务详情与原ID恢复]
+  App --> Training[training.js / 原实验显式控制]
+  Training --> TrainingPanels[training-preparation / training-cancellation / training-evidence]
+  App --> Retrospectives[retrospectives.js / 完整证据与候选导出]
+  Retrospectives --> Shared
   App --> Issues[issues.js / 当前工单与离线快照]
   Views --> Agents[agents.js / 独立调用]
   Definitions --> Graph[composition-graph.js / 已发布preview图]
@@ -297,8 +314,10 @@ flowchart LR
 - [安装与日常手册](../USAGE.md)、[训练与持续改进手册](../TRAINING.md)：统一CLI／页面和原ID恢复。
 - [完整Linux部署／日常参考手册](../../src/ergora/data/reference/platform/README.zh-CN.md)、[完整训练参考手册](../../src/ergora/data/reference/platform/docs/TRAINING.md)：随包保留完整冻结发行，不改原命令身份。
 - [Windows手册](../WINDOWS.md)：原生控制面／静态定义与Linux task-MCP／完整执行的区分；WSL2是部署路径，不能由Windows CI推导其实际运行通过。
+- [完整改进旅程](../IMPROVEMENT_WORKFLOW.md)：三类复盘分别采用，再由新任务明确冻结资料。
+- [换机重建](../USAGE.md#换机与新项目重建)与[联合备份](../BACKUP_RECOVERY.md)：新项目重建和同平台原路径历史恢复分别处理。
 
-当前两域v6完整六阶段证据来自真实服务加确定性原生命令协议夹具，[C5c记录](../delivery/2026-11-11-composition-runtime.md)明确其范围；真实模型自身审查与训练单叶另记。C6b页面只验创建／原ID读回，C6a画布容量不代表同数量Agent已执行；不同输入、后端或环境不能继承这些结果。成功双后端、模型质量、真实GPU收益与生产隔离均须各自实测，不能由定义、认证、CI或文档静态检查推出。后续F7–F10及G1仍见[总计划](../plans/2026-11-01-all-in-one.md)。
+原两域v6完整六阶段首先使用真实服务加确定性原生命令协议夹具，[C5c记录](../delivery/2026-11-11-composition-runtime.md)保留其范围。后续[治理原生旅程](../delivery/2026-11-13-six-stage-native-journey.md)、[重构旅程](../delivery/2026-11-13-refactoring-journey.md)、[改进冻结](../delivery/2026-11-14-improvement-freeze-journey.md)及[训练控制组合](../delivery/2026-11-14-training-control-journey.md)各记录真实模型或控制事实，不互相覆盖。画布容量不代表同数量Agent已执行；模型质量、真实GPU收益、完整Forge和生产隔离仍须各自实测，不能由定义、认证、CI或文档推出。逐片状态见[PLAN](../PLAN.md)，拓展范围见[总计划](../plans/2026-11-01-all-in-one.md)。
 
 ## 完整材料输入 v8
 

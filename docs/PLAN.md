@@ -4,6 +4,10 @@
 
 ## 当前检查点
 
+**恢复先读：当前活动为G1公开交接收尾。** G1a的611产品已固定发布506cc57，G1b安装／匹配状态回退和日常升级已发布6c7c45f，自己的CI43589988699八job／30步骤及原reviewer终核现均通过。G1c手册／新路径重建和G1d-CI纯记录过滤均已完成最终本地两轴审查，开放0／0；等前片闭合后共同普通推送，并验共同候选自己的原矩阵。当前不改产品、不合main。详细活动记录在本页末尾及[G1总交接](plans/2026-11-14-integrated-handoff.md)。
+
+下列F9／F10长段保留各片推进历史；已完成片中的早期“在途／待”由同片后续精确交付记录覆盖，不能当作当前活动重做。真实GPU／B3、完整原生Forge和P2／P3仍见“开放验收与支持范围”。
+
 开发分支 `refactor/architecture-foundations`；F9b4b及F9b4c实验准备／页面均已精确交付。F9c C1原证据只读原候选`c3c7c3e218e9d2efc89498e8c208bf5981b9a0d9`自己的CI43532534314因Windows一项CRLF测试预期失败，历史保留；最小测试修正随C2固定候选`1eef90d7453c64579ddc25bd5a7775eecd20c2cc`普通发布，其自己的CI43536265177八job／30必要步骤全成功、原结构轴终核通过。C2最终r2包574／两RECORD／283、安装49项／248.18秒、实际原三run／CLI／HTTP／SDK-free／原件与收尾、自身模板及新独立两轴和固定发布均通过，开放0／0。
 
 [C3证据／批准页面](plans/2026-11-14-training-evidence-console.md)：最终r4包575／两RECORD／283、安装33项／25.02秒、自身原模板approve通过；原首三个run的页面批准／中断恢复保留r3身份，最终r4另验第四run缺源／HTTP丢回复、真实读响应交错与三宽视觉；四run各唯1signal，24／109原件保持，四组进程／两浏览器／三端口已收尾。新fresh-context两轴最终本地approve、开放0／0，143引用已直接核；已普通发布f47cd50，19blob／完整Ref相同；原两轴固定发布补核approve、开放0／0；自己的CI43539314720八job／30必要步骤成功、原结构轴CI终核通过。迟到mutation／旧finally与home切换仅静态核，旧start／cancel本片无动态回归，完整F9d另验，不称全矩阵或真实GPU／质量／性能成功。普通推送当前分支，不合入 `main`。 [F10a记忆有效期](plans/2026-11-14-memory-validity.md)，本地验收和新独立两轴最终approve／0 finding，已普通发布a2899e8／23blob／完整Ref相同，原两轴固定发布补核approve／开放0／0，自己的CI43542024437八job／30必要步骤全部成功、原结构轴CI终核通过；[F10b](plans/2026-11-14-task-context-selection.md)已实现v7／v11的显式来源与原资源派生，修后r2包577／两RECORD／283、安装229通过／6跳过、实际九job七叶完整附件与CLI／HTTP／准入反例、自身模板通过；slow-Skill跨期限窗口已修，新独立两轴最终本地approve、开放0／0；已普通发布f1cfcdd／29blob／完整Ref同一，原两轴固定发布补核approve／开放0／0，自己的CI43545573942八job／30必要步骤成功、原结构轴CI终核通过。
@@ -97,4 +101,10 @@ F10c3a：[Skill导出与原评价采用](plans/2026-11-14-retrospective-skill-ad
 
 **G1a已精确交付**：[不可变记忆模板补丁](plans/2026-11-14-memory-preset-patch.md)已固定基线593da96。保留两原Agent和root的1.0.0完整字节，只新增1.0.1并更新原preset依赖，验旧库／旧manifest保持和新两叶完整材料；已生成7份新材料及原catalog更新，原7文件／其他27条目保持；非editable611产品／两RECORD／283、实际旧库升级20项／24CLI已过；原两suite48通过／155.29秒；自身原模板19.567425秒approve及总审计已过，416固定引用；新fresh-context最终本地两轴approve／开放0／0；前继F9d1精确CI／原reviewer已闭合，本片已普通固定发布506cc57／20blob／完整Ref同一，原发布补核两轴approve／开放0／0，自己的CI43587371986八job／30必要步骤终态Success，原reviewer终态两轴approve／开放0／0，47CI原件单列，精确交付闭合。[交付](delivery/2026-11-14-memory-preset-patch.md)。
 
-**活动 G1b**：[安装／升级／回退合同](plans/2026-11-14-install-upgrade-rollback.md)已固定G1a最终611产品映射和wheel，先验隔离安装与schema4→5／匹配回退；G1a精确发布／自己的CI闭合前不替换日常应用。日常551／23前像及完整venv备份已核，实际隔离默认安装611／806 RECORD／28项及依赖检查通过；实际旧4→5→4→5匹配应用／状态21项／35命令、原两suite42通过／1跳过及实际HTTP11项／6CLI／11读取与收尾已过。G1a自己的CI与原reviewer两轴现已闭合，原gate后日常611实际替换和独立HTTP11项／6CLI／11读取通过；38依赖／4,550非应用文件或symlink／启动器和默认state保持、完整备份保留。自身原模板35.985283秒approve（只审当时事实），新fresh-context最终本地两轴approve／开放0／0，R1–R3私有记录finding关闭，1,669固定引用／9,880,492B原件已核；普通发布及自己的CI另门禁。[交付](delivery/2026-11-14-install-upgrade-rollback.md)。
+**G1b已精确交付**：[安装／升级／回退合同](plans/2026-11-14-install-upgrade-rollback.md)已固定G1a最终611产品映射和wheel，先验隔离安装与schema4→5／匹配回退；G1a精确发布／自己的CI闭合前不替换日常应用。日常551／23前像及完整venv备份已核，实际隔离默认安装611／806 RECORD／28项及依赖检查通过；实际旧4→5→4→5匹配应用／状态21项／35命令、原两suite42通过／1跳过及实际HTTP11项／6CLI／11读取与收尾已过。G1a自己的CI与原reviewer两轴现已闭合，原gate后日常611实际替换和独立HTTP11项／6CLI／11读取通过；38依赖／4,550非应用文件或symlink／启动器和默认state保持、完整备份保留。自身原模板35.985283秒approve（只审当时事实），新fresh-context最终本地两轴approve／开放0／0，R1–R3私有记录finding关闭，1,669固定引用／9,880,492B原件已核；普通发布及自己的CI另门禁。[交付](delivery/2026-11-14-install-upgrade-rollback.md)。
+
+**G1c已建立具体合同**：[当前手册与换机重建](plans/2026-11-14-portable-usage-handoff.md)，产品固定506cc57／611，不修改产品或业务仓库。G1b未闭合时先独立盘点／准备，随后更新当前格式／架构／专职工程角色来源，并从新源码位置和独立home重建新项目；历史活动任务仍沿原同平台原路径联合备份，不把新任务身份称迁移。每步见[交付](delivery/2026-11-14-portable-usage-handoff.md)。
+
+**G1d-CI已单独立片**：[纯交付JSON触发范围](plans/2026-11-14-records-ci-scope.md)。原G1b仅记录也触发完整矩阵，原own CI43589988699保留；已核生产／测试无该目录消费者。只补push的一条直接子级JSON忽略项，产品／schema／测试／依赖／安装器／CI本身仍触发；PR／手动不变。与G1c分别新独立审查后可共同普通发布，仍验同一固定候选自己的八job／30步骤，完成后纯记录同步不再递归触发整套回归。
+
+G1c新路径原安装器611／806 RECORD、35命令／21检查、五完整manifest及两叶完整祖先资源、自身原结构模板approve已过；七用户文档更新、原323链接／r2的439分列。原fresh-context最终本地两轴approve／开放0／0，391引用／3,736,857B及公开投影完整匹配，唯一P3资源来源措辞关闭，独立最终18MD／583链接通过。G1d-CI已只改一项push过滤，PyYAML完整解析和原文本其余内容保持、产品／测试／脚本／依赖diff空，静态验收及新独立两轴／四原件汇总补核均本地approve／开放0／0，R1措辞关闭。总计划F8／F9／F10／G1已按当前逐片记录同步概览，早期检查点保留。G1b自己的CI43589988699现八job／30步骤全部成功，原reviewer终态两轴approve／开放0／0，51原CI件已独立直接核，精确交付闭合；G1c／G1d后继现在可按合同共同普通发布。

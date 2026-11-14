@@ -36,3 +36,54 @@
 **边界与后续门禁。** 先有Python／Git和准备的离线缓存属于明确前提；本机结果不证明空OS已配齐依赖、Windows原生或WSL2。Windows结论仅引用固定产品候选自己的上述原PowerShell CI终态，未声称本机原生执行。原执行目录、业务Git、外部CONFIG／STATE、认证、Temporal活动workflow、GPU与质量／性能均不在本片已验范围；venv归档未实际恢复。G1c负责公开安装及跨机手册，不以控制库原路径恢复冒称跨路径活动任务迁移。
 
 日常替换、独立实际入口及最终原件聚合现已完成，R1–R3全部关闭，本片最终本地需求／维护性两轴approve，开放0／0。后续须单列G1b普通固定发布的精确Git对象／完整Ref、适用自身CI及原reviewer终核；本地结论不预批这些未来事实或并行G1c。首段和历史进度中的“在途／尚未”仅保留当时身份，实施者应同步当前计划入口的最新记账；这类状态同步不需要重跑产品。
+
+**2026-11-14 固定发布补核。** 同一reviewer只读补核 `6c7c45f79e499dde83d9880043342710a28d7809`，唯一父为产品候选 `506cc576874e92bc922644a8dd9f244151b08e4b`，分支仍为 `refactor/architecture-foundations`。本轮未联网、安装、运行产品／测试／服务或改其他文件；仅追加本报告。
+
+|审查轴|固定发布结论|范围|
+|---|---|---|
+|需求符合性|approve，开放finding 0|九个固定记录blob、完整暂存检查、普通push／完整Ref原回执和原1,669引用保持|
+|维护性|approve，开放finding 0|纯记录发布，产品／测试／安装器／依赖／CI没有变化；G1c并行资料未纳入，R1–R3继续关闭|
+
+- 直接从固定Git对象读取九文件，与 `static-final-r1.json` 每项长度／SHA256相同：共享PLAN、G1b的计划／交付／原本地报告／公共摘要，以及G1a原终态的计划／交付／报告／公共摘要。固定diff仅这九路径；`src`、`tests`、`scripts`、`.github`及`pyproject.toml`与唯一父逐字无差异。固定diff空白检查通过，107个相对Markdown链接另外在固定发布tree内直接核存在，没有借工作树的G1c新文档满足链接。
+- 固定本地报告恰为保留的11,296B快照，SHA256 `00b543db44be89beb90ff92c064b0f3680a5ee068596f333de488cd4f4cceef6`；当前报告只在该完整前缀后追加发布结论。已发布PLAN没有G1c新合同指针，工作树仍保留该指针；README、使用／训练／Windows／架构手册和G1c计划／交付均不在九个发布路径内。
+- 原 `commit-r1.json` 记录成功生成该唯一子提交；原 `push-r1.json` 的命令为完整SHA到当前分支的普通push，exit0，无force／main目标；随后 `ref-r1.json` 的完整stdout精确为本SHA及 `refs/heads/refactor/architecture-foundations`，exit0。本轮读取原回执，未重新联网观察远端。
+- 原五件发布记录及新增 `publish-preflight-failure-r1.json` 共六件／10,884B，路径与本地引用互不交叉，逐项长度／SHA256直接重算相符。预检失败回执记录首次移除G1c指针后留下EOF空行，暂存检查exit1、尚无提交；当前发布脚本先剔除尾空行并在commit前检查完整index，修后原static检查exit0。保留该普通预检失败，不冒称首轮直接通过，也不为文档空白补跑产品。
+- 固定公共摘要与当前公共摘要中的原1,669 references数组逐项相同；全部原件9,880,492B再读长度／SHA256通过，路径唯一，规范SHA256仍为 `f2c1666733091f081e6a4009d16170bcce9fb808f25a27eb91391d14aef8541e`。发布证据单列，未改写已验安装、回退、HTTP、失败或自身模板原件。
+
+此补核仅关闭G1b固定普通发布门禁。此完整SHA自己的适用CI及其独立终态核验仍待；不借产品父提交的CI预批本候选，也不批准并行G1c的手册／新目录重建。原最终本地与发布两轴均approve，开放0／0，实际外部能力和恢复边界保持。
+
+**2026-11-14 精确候选自身CI终核。** 同一reviewer只读核 `6c7c45f79e499dde83d9880043342710a28d7809` 自己的 [run `43589988699`](https://github.com/626619403/Ergora/actions/runs/43589988699)。本轮独立解析已保存的官方HTML／UI JSON、原receipt和固定Git对象，只追加本报告；未联网、安装、执行产品／测试／服务、下载日志正文或artifact归档。
+
+|审查轴|自身CI最终结论|范围|
+|---|---|---|
+|需求符合性|approve，开放finding 0|同一完整SHA、同一分支／workflow的八job和30必要步骤均成功、完成；原本地及固定发布身份保持|
+|维护性|approve，开放finding 0|51份CI原件及原receipt可对应重建，早期在途样本保留；无新增产品／测试或CI变更归入本候选|
+
+需求轴直接核验如下：
+
+- 从 `ci-list-html-r1/page.html` 的实际embedded JSON独立定位唯一记录：完整候选commit anchor、`.github/workflows/portability.yml`、`refs/heads/refactor/architecture-foundations`、run `43589988699`／number208完全对应。发现时状态为In progress，与原discovery／初始run相符；初始UI job batch的七个在途状态仅用于job归属，没有当作终态。
+- 最终 `ci-run-html-r5/page.html` 的实际Status为Success，保留同一完整commit anchor；原URL与final URL均为上述官方run，HTTP200。receipt时间为2026-11-14 11:40:28.443025 UTC，正文213,355B／SHA256 `9db63607c1a92223b99ff2384ab96e5fa2280f94d01ec9b9301f854c8280947b`，长度与hash直接重算相符。
+- 从固定候选自己的workflow和 `scripts/ci/linux-groups.json` 重建预期矩阵：plan、六Linux group和Windows all，共八job。原UI batch `totalCount=8`、`hasMore=false`，八个ID唯一，名称和实际run／job路径与metadata一致。每个job的最终原件均为completed，并有唯一成功且已完成的Complete job：
+
+|Job|固定job ID|最终原件目录|必要步骤成功数|Complete job UTC|
+|---|---:|---|---:|---|
+|plan|132432467442|`ci-job-132432467442-html-r1`|1|11:26:03|
+|Linux group0|132432495044|`ci-job-132432495044-html-r2`|4|11:31:33|
+|Linux group1|132432495007|`ci-job-132432495007-html-r2`|4|11:31:13|
+|Linux group2|132432495012|`ci-job-132432495012-html-r2`|4|11:31:08|
+|Linux group3|132432494996|`ci-job-132432494996-html-r1`|4|11:28:31|
+|Linux group4|132432494997|`ci-job-132432494997-html-r1`|4|11:29:11|
+|Linux group5|132432495025|`ci-job-132432495025-html-r2`|4|11:33:10|
+|Windows all|132432495103|`ci-job-132432495103-html-r3`|5|11:39:12|
+
+- 独立HTMLParser直接重建 `check-steps`／`check-step` 属性，30必要步骤逐项与 `ci-terminal-r1.json` 相同，均success、具有开始／完成时间、完整日志URL及 `data-job-completed`。包括plan的Read explicit test groups，七执行job的wheel构建安装／参考身份／原回归／观察上传，以及Windows的PowerShell 5.1 installer and upgrade。
+- 全部76个success步骤的日志URL逐项精确包含本完整SHA、各自job ID和实际step number；开始不晚于完成，完成不晚于对应receipt时间。另六个skipped恰为六Linux job的Windows安装步骤，符合固定workflow的Windows条件，无其他失败或跳过。此处核步骤状态，不从HTML推断测试case数。原终态投影13,357B／SHA256 `04cea53985e0e0d1933be1e740ceb60425fae4516cefbd700931c00acdab03dc`，直接重算相同。
+
+维护性及证据保持直接核验如下：
+
+- 阅读原发现／fetch／job batch／离线parser脚本，未执行它们。21组官方页面／UI batch的原URL、final URL、HTTP200、正文长度和SHA全部相符；run／job路径只属于本候选上述run和八job集合。证据是官方公开UI HTML及UI JSON，不扩大为认证REST、步骤日志正文或artifact归档读取。
+- CI单列51条／3,680,564B引用，路径唯一，逐件长度／SHA全部相同；规范references数组SHA256为 `b621418d366c2740eab7868e632c6a06c03697af7e01e527165e7533735ca966`，与 `ci-collection-r1.json` 一致。CI、本地1,669条及发布六条路径集合互不交叉。
+- 原1,669条／9,880,492B引用仍与固定提交逐项相同，规范SHA256保持 `f2c1666733091f081e6a4009d16170bcce9fb808f25a27eb91391d14aef8541e`；原本地和六发布件本轮再次逐件符合，固定九blob仍等于原static清单。本地11,296B快照与固定Git报告相同；固定发布14,284B快照SHA256为 `fd7b00f97d8f17bdadd255348dc2a3d72de0e209987b093bd29a1e3761504188`。两份快照长度／SHA均保持，且为本报告未改的完整前缀。
+- 当前工作树的G1c手册与G1d workflow过滤修改均不在本次固定tree内；本轮只按本候选自己的原workflow审查CI，不评价或预批这些后继。公共metadata当前正确分列“已观察Success／原reviewer终核pending”，实施者可依据本节同步终态。
+
+G1b此固定候选的最终本地、普通固定发布、自身必要CI三个门禁现均闭合；需求／维护性两轴approve，开放finding 0／0，R1–R3保持关闭。结论仅覆盖G1b原合同和上述实际证据；G1c、G1d及其他后继仍须遵守各自固定发布和自身CI门禁，原平台、外部能力及恢复边界不变。

@@ -1,0 +1,103 @@
+{
+  "slice": "G1d-CI",
+  "baseline": "6c7c45f79e499dde83d9880043342710a28d7809",
+  "implementation": {
+    "path": ".github/workflows/portability.yml",
+    "added_push_ignore": "docs/delivery/evidence/*.json",
+    "all_other_content_unchanged": true,
+    "new_product_tests_jobs_or_assertions": 0
+  },
+  "validation": {
+    "at": "2026-11-14T11:30:53.548671+00:00",
+    "status": "passed",
+    "baseline": "6c7c45f79e499dde83d9880043342710a28d7809",
+    "path": ".github/workflows/portability.yml",
+    "before_sha256": "4a23020b277de1fa3d07db42918314127a013e01cad8ebf0cd9e020109774b64",
+    "after_sha256": "be814a956237b8a64258f396fa81a972ff764ceaa3ea16ffefa8e82be89a4353",
+    "yaml_parser": {
+      "name": "PyYAML",
+      "version": "6.0.2",
+      "loader": "BaseLoader"
+    },
+    "added_push_ignore": "docs/delivery/evidence/*.json",
+    "all_other_parsed_and_text_content_unchanged": true,
+    "product_test_installer_dependency_diff_empty": true,
+    "consumer_search": {
+      "argv": [
+        "rg",
+        "-n",
+        "-F",
+        "-e",
+        "docs/delivery/evidence",
+        "-e",
+        "delivery/evidence",
+        "src",
+        "tests",
+        "scripts",
+        "pyproject.toml"
+      ],
+      "exit": 1,
+      "stdout_bytes": 0,
+      "stderr_bytes": 0
+    },
+    "workflow_diff_sha256": "d735ce469edb676c115b00ab2fc1f3c48fd59e3a79095fe1ba3d44f4ad5b2aff",
+    "limits": "Static YAML/scope/source check only. GitHub trigger behavior and candidate CI require the ordinary fixed publication; no new product tests or glob interpreter."
+  },
+  "independent_review": {
+    "report": "docs/delivery/2026-11-14-records-ci-scope-review.md",
+    "final_local": "approved",
+    "requirements": "approve",
+    "maintainability": "approve",
+    "open_findings": {
+      "requirements": 0,
+      "maintainability": 0
+    },
+    "resolved_findings": [
+      "R1/P3 stale pre-implementation wording in delivery record"
+    ],
+    "fixed_publication": "pending",
+    "own_ci": "pending",
+    "final_record_sync": "pending",
+    "final_collection": "approved",
+    "final_local_report": {
+      "bytes": 7560,
+      "sha256": "0b1027a368181bc24c8f65633da430d14e5939b48b008754a0535cd4869a79b5"
+    }
+  },
+  "publication": {
+    "status": "pending",
+    "predecessor_own_ci": "43589988699",
+    "own_ci": "pending"
+  },
+  "raw_evidence": {
+    "base": ".ergora/checks/records-ci-scope",
+    "references": [
+      {
+        "path": "static-r1.py",
+        "bytes": 2570,
+        "sha256": "f245bcc6f90d47f369e02e5d048220e884b6acef0638899a8e4f8931d02522ec"
+      },
+      {
+        "path": "static-r1.json",
+        "bytes": 1176,
+        "sha256": "4a23f60847f837f66813a6be6a452f12af33e088a980aa3cec3db1ca8de6306f"
+      },
+      {
+        "path": "workflow.diff",
+        "bytes": 534,
+        "sha256": "d735ce469edb676c115b00ab2fc1f3c48fd59e3a79095fe1ba3d44f4ad5b2aff"
+      },
+      {
+        "path": "independent-local-r1.md",
+        "bytes": 5871,
+        "sha256": "84dff15a1e601e3d05a9cb0ac1f667503957394f6b41ad7d223fb7e554a9393c"
+      }
+    ],
+    "scope": "One-time original static scope/parser check and immutable local independent review snapshot; publication and own CI separate."
+  },
+  "limitations": [
+    "GitHub official glob semantics reviewed; new trigger behavior and full CI await actual fixed candidate publication.",
+    "Only direct child delivery JSON and existing ignored Markdown; product/test/schema/example/script/installer/dependency/workflow changes and PR/manual remain covered.",
+    "No product runtime or performance measurement performed for this filter-only change."
+  ]
+}
