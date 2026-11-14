@@ -13,6 +13,7 @@ import pytest
 from ergora import reference, training
 from test_training import experiments, registration
 from test_training_runtime import installation
+from test_training_submission import prepared, service
 
 
 @pytest.fixture
@@ -135,3 +136,119 @@ def test_no_archive_and_cli_http_share_the_observation(experiments):
         response = client.get('/api/projects/demo/training/alpha/evidence')
         assert response.status_code == 200 and response.json() == json.loads(output.getvalue())
         assert client.get('/api/projects/demo/training/alpha/evidence', params={'artifact': 'notes.txt'}).status_code == 400
+
+
+def test_round_index_retains_negative_unknown_and_offline_cli_read(experiments, tmp_path, monkeypatch):
+    pytest.importorskip('temporalio')
+    from ergora import training_rounds
+    from ergora.cli import main
+
+    state, definition, runtime, _, _ = experiments
+    before = {p: p.read_bytes() for root in (runtime, Path(definition['execution']['config_directory']))
+              for p in root.rglob('*') if p.is_file()}
+    request = {'schema_version': 1, 'rounds': [{'experiment_id': 'alpha', 'change': 'Synthetic rejected candidate',
+                'next_bottleneck': 'Unknown; no measured optimization claim'}]}
+    source = tmp_path / 'round-request.json'
+    source.write_text(json.dumps(request), encoding='utf-8')
+    output = io.StringIO()
+    first = tmp_path / 'first'
+    with redirect_stdout(output):
+        assert main(['--home', str(state.root), 'training', 'rounds-create', 'demo', '--definition', str(source),
+                     '--directory', str(first)]) == 0
+    identity = json.loads(output.getvalue())
+    original = (first / 'rounds.json').read_bytes()
+    request['rounds'][0].update(experiment_id='beta', change='Independent pending original experiment')
+    second = training_rounds.create(state, 'demo', request, tmp_path / 'second',
+                                    previous=first, previous_sha256=identity['sha256'])
+    report = training_rounds.read(tmp_path / 'second', sha256=second['sha256'])['report']
+    negative, pending = report['rounds']
+    assert negative['native']['records']['experiment']['recorded_gate']['passed'] is False
+    assert negative['native']['records']['experiment']['negative_result']['detail'] == 'Synthetic negative result'
+    assert pending['native']['records']['experiment']['recorded_result_state'] is None
+    assert all(item['native']['approval'] is None for item in report['rounds'])
+    assert report['coverage']['promotion_approved'] is False and report['coverage']['execution_success'] is None
+    assert pending['parent_sha256'] == negative['sha256']
+    assert (first / 'rounds.json').read_bytes() == original
+    assert all(path.read_bytes() == raw for path, raw in before.items())
+    with pytest.raises(FileExistsError):
+        training_rounds.create(state, 'demo', request, first)
+    assert (first / 'rounds.json').read_bytes() == original
+
+    def no_native_observation(*args, **kwargs):
+        raise AssertionError('Offline index reading must not observe a project or service')
+
+    monkeypatch.setattr(training, 'inspect', no_native_observation)
+    monkeypatch.setattr(training, 'submission', no_native_observation)
+    original_find = reference.importlib.util.find_spec
+    monkeypatch.setattr(reference.importlib.util, 'find_spec', lambda name: None if name == 'temporalio' else original_find(name))
+    output = io.StringIO()
+    unused_home = tmp_path / 'unused-control-home'
+    with redirect_stdout(output):
+        assert main(['--home', str(unused_home), 'training', 'rounds-read', str(tmp_path / 'second'),
+                     '--sha256', second['sha256']]) == 0
+    assert json.loads(output.getvalue())['report'] == report and not unused_home.exists()
+
+
+def test_round_extension_preserves_accepted_prefix_and_failed_result_after_baseline_drift(archive, tmp_path):
+    pytest.importorskip('temporalio')
+    from ergora import training_rounds
+
+    state, _, runtime, prefix, write, _, _ = archive
+    request = {'schema_version': 1, 'rounds': [{'experiment_id': 'alpha', 'change': 'Synthetic accepted evidence',
+                'next_bottleneck': 'No actual training or performance assessment'}]}
+    first = training_rounds.create(state, 'demo', request, tmp_path / 'first')
+    original = training_rounds.read(tmp_path / 'first')['report']
+    beta = json.loads((runtime / 'training/specs/beta.json').read_bytes())
+    write(runtime / 'training/jobs/beta/result.json', {'binding': beta['binding'], 'job_id': 'local-perf-beta',
+          'state': 'FAILED', 'detail': 'Synthetic runner failed; do not discard this round'})
+    write(runtime / 'training/negative-results/beta.json', {'project': 'demo', 'experiment_id': 'beta',
+          'binding': beta['binding'], 'state': 'FAILED', 'detail': 'Synthetic runner failed'})
+    baseline = json.loads((prefix / 'baseline.json').read_bytes())
+    write(prefix / 'baseline.json', {**baseline, 'config_sha256': 'f' * 64})
+    request['rounds'][0].update(experiment_id='beta', change='Synthetic failed candidate')
+    second = training_rounds.create(state, 'demo', request, tmp_path / 'second',
+                                    previous=tmp_path / 'first', previous_sha256=first['sha256'])
+    report = training_rounds.read(tmp_path / 'second')['report']
+    assert report['rounds'][0] == original['rounds'][0]
+    accepted, failed = report['rounds']
+    assert accepted['native']['evidence']['archive']['artifact_content_status'] == 'not_read'
+    assert accepted['native']['records']['experiment']['baseline_matches'] is True
+    assert failed['native']['records']['experiment']['baseline_matches'] is False
+    assert failed['native']['records']['experiment']['recorded_result_state'] == 'FAILED'
+    assert report['initial_anchor']['base_config_sha256'] == baseline['config_sha256']
+    assert report['previous_report']['sha256'] == first['sha256']
+    with pytest.raises(ValueError, match='once'):
+        training_rounds.create(state, 'demo', request, tmp_path / 'duplicate',
+                               previous=tmp_path / 'second', previous_sha256=second['sha256'])
+    raw = tmp_path / 'second/rounds.json'
+    report['rounds'][1]['parent_sha256'] = '0' * 64
+    raw.write_text(json.dumps(report), encoding='utf-8')
+    with pytest.raises(ValueError, match='predecessor link'):
+        training_rounds.read(raw.parent)
+    with pytest.raises(ValueError, match='expected SHA256'):
+        training_rounds.read(raw.parent, sha256=second['sha256'])
+
+
+def test_round_index_keeps_lost_start_acknowledgement_without_query_or_approval(prepared, service, tmp_path, monkeypatch):
+    from ergora import training_rounds
+
+    state, _, runtime, _, _, digest = prepared
+    select, record = service
+    select('lost-ack')
+    with pytest.raises(ValueError, match='UNAVAILABLE'):
+        training.start(state, 'demo', 'alpha', state.project('demo')['revision'], digest)
+    unknown = training.submission(state, 'demo', 'alpha')
+    calls = record.read_bytes()
+    before = {path: path.read_bytes() for path in runtime.rglob('*') if path.is_file()}
+
+    def no_approval(*args, **kwargs):
+        raise AssertionError('An unknown start is not an approved or submitted run')
+
+    monkeypatch.setattr(training, 'approval', no_approval)
+    created = training_rounds.create(state, 'demo', {'schema_version': 1, 'rounds': [{
+        'experiment_id': 'alpha', 'change': 'Simulated lost service acknowledgement',
+        'next_bottleneck': 'Reconcile the original start; do not start another experiment'}]}, tmp_path / 'index')
+    saved = training_rounds.read(tmp_path / 'index', sha256=created['sha256'])['report']['rounds'][0]['native']
+    assert saved['submission'] == unknown and saved['submission']['status'] == 'unknown'
+    assert saved['submission']['run_id'] is None and saved['approval'] is None
+    assert record.read_bytes() == calls and all(path.read_bytes() == raw for path, raw in before.items())

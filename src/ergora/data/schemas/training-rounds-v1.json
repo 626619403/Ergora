@@ -1,0 +1,600 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ergora.dev/schemas/training-rounds-v1.json",
+  "title": "Immutable training round observations and advisory annotations",
+  "$ref": "#/$defs/request",
+  "$defs": {
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "rounds"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 1
+        },
+        "rounds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "experiment_id",
+              "change",
+              "next_bottleneck"
+            ],
+            "properties": {
+              "experiment_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 128
+              },
+              "change": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 8192
+              },
+              "next_bottleneck": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 8192
+              }
+            }
+          }
+        }
+      }
+    },
+    "report": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "kind",
+        "project",
+        "initial_anchor",
+        "previous_report",
+        "rounds",
+        "coverage"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 1
+        },
+        "kind": {
+          "const": "training-round-index"
+        },
+        "project": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "id",
+            "repo",
+            "registration_sha256"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "repo": {
+              "type": "string",
+              "minLength": 1
+            },
+            "registration_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          }
+        },
+        "initial_anchor": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "baseline_id",
+            "baseline_commit",
+            "base_config_sha256",
+            "workload_fingerprint"
+          ],
+          "properties": {
+            "baseline_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "baseline_commit": {
+              "type": "string",
+              "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+            },
+            "base_config_sha256": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            "workload_fingerprint": {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            }
+          }
+        },
+        "previous_report": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "sha256",
+                "rounds",
+                "last_round_sha256"
+              ],
+              "properties": {
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "rounds": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 31
+                },
+                "last_round_sha256": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "rounds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/round"
+          }
+        },
+        "coverage": {
+          "type": "object"
+        }
+      }
+    },
+    "round": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "sha256",
+        "experiment_id",
+        "parent_sha256",
+        "annotation",
+        "comparison",
+        "native"
+      ],
+      "properties": {
+        "sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "experiment_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "parent_sha256": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-f0-9]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "annotation": {
+          "$ref": "#/$defs/annotation"
+        },
+        "comparison": {
+          "$ref": "#/$defs/comparison"
+        },
+        "native": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "records",
+            "evidence",
+            "submission",
+            "approval"
+          ],
+          "properties": {
+            "records": {
+              "$ref": "#/$defs/records"
+            },
+            "evidence": {
+              "$ref": "#/$defs/evidence"
+            },
+            "submission": {
+              "$ref": "#/$defs/submission"
+            },
+            "approval": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/approval"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "annotation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "change",
+        "next_bottleneck"
+      ],
+      "properties": {
+        "change": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8192
+        },
+        "next_bottleneck": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8192
+        }
+      }
+    },
+    "comparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "baseline_id",
+        "baseline_commit",
+        "base_config_sha256",
+        "workload_fingerprint",
+        "candidate_commit",
+        "candidate_config_sha256",
+        "manifest_sha256"
+      ],
+      "properties": {
+        "baseline_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "baseline_commit": {
+          "type": "string",
+          "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+        },
+        "base_config_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "workload_fingerprint": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "candidate_commit": {
+          "type": "string",
+          "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+        },
+        "candidate_config_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "manifest_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "binding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "experiment_id",
+        "manifest_sha",
+        "candidate_sha",
+        "baseline_sha"
+      ],
+      "properties": {
+        "experiment_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "manifest_sha": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "candidate_sha": {
+          "type": "string",
+          "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+        },
+        "baseline_sha": {
+          "type": "string",
+          "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+        }
+      }
+    },
+    "manifest": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "baseline_id",
+        "baseline_commit",
+        "base_config_sha256",
+        "workload_fingerprint",
+        "candidate_commit",
+        "candidate_config_sha256"
+      ],
+      "properties": {
+        "baseline_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "baseline_commit": {
+          "type": "string",
+          "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+        },
+        "base_config_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "workload_fingerprint": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "candidate_commit": {
+          "type": "string",
+          "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"
+        },
+        "candidate_config_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      }
+    },
+    "experiment": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "experiment_id",
+        "binding",
+        "manifest",
+        "gate_report",
+        "files"
+      ],
+      "properties": {
+        "experiment_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "binding": {
+          "$ref": "#/$defs/binding"
+        },
+        "manifest": {
+          "$ref": "#/$defs/manifest"
+        },
+        "gate_report": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "files": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    },
+    "records": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "project",
+        "project_revision",
+        "baseline_files",
+        "experiment"
+      ],
+      "properties": {
+        "project": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "project_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "baseline_files": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "experiment": {
+          "$ref": "#/$defs/experiment"
+        }
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "project",
+        "project_revision",
+        "experiment_id",
+        "binding",
+        "recorded_gate_report",
+        "files"
+      ],
+      "properties": {
+        "project": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "project_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "experiment_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "binding": {
+          "$ref": "#/$defs/binding"
+        },
+        "recorded_gate_report": {
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "files": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        }
+      }
+    },
+    "submission": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "project",
+        "project_revision",
+        "experiment_id",
+        "run_id",
+        "status"
+      ],
+      "properties": {
+        "project": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "project_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "experiment_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "run_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "enum": [
+            "not_recorded",
+            "prepared",
+            "unknown",
+            "submitted",
+            "rejected"
+          ]
+        },
+        "manifest_sha256": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "confirmation": {
+          "type": "object",
+          "additionalProperties": true,
+          "required": [
+            "binding"
+          ],
+          "properties": {
+            "binding": {
+              "$ref": "#/$defs/binding"
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "prepared",
+                  "unknown",
+                  "submitted"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "manifest_sha256",
+              "confirmation"
+            ]
+          }
+        }
+      ]
+    },
+    "approval": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "project",
+        "project_revision",
+        "experiment_id",
+        "run_id",
+        "status"
+      ],
+      "properties": {
+        "project": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "project_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "experiment_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "status": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}

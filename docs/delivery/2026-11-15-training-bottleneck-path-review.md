@@ -64,3 +64,48 @@
 **最终本地已检范围无实证 finding，需求／可维护性分别 approve，开放 0／0。** r4 资料终核后复查实际产品仍为原独立重算的 638 文件、测试身份相同；没有用文档更新倒认证历史运行。含本报告的 19 份 Markdown 本地链接检查为 **373 条／零错误**，外网未验证；全范围 tracked diff 空白检查通过。
 
 未运行付费模型、训练、GPU、profiler、业务仓库命令、数值／梯度／分布式／恢复／长程质量或性能验证；没有提交、推送、发平台消息或改实现。固定资源送达证明字节覆盖，不证明模型理解。两原创任务不是实际训练工作负载，不能据其验收真实 kernel、收益、自动全图执行、跨轮预算、循环或采用。Q2.3、Q4、Q5、真实 B3 与完整 Forge 等沿原开放边界。
+
+## 固定发布补核（2026-11-15）
+
+同一独立评审者已补核普通发布 `eadabc0441991a02acc06e17efd8d6c16b7d9d27`，唯一父提交为本片基线 `29cdcfe2f45a66dcaad1835c0860c24a78290529`。本节覆盖上文待普通发布／远端身份状态；**固定发布的需求符合性与可维护性均 approve，新增实质 finding 0／0。该候选自己的 CI 仍 pending，不认证其成功。**
+
+直接读取固定 Git 对象，实际变化集合恰为 **23 文件**，包括本报告原 9,702B 版本；每个 blob ID、长度及 SHA256 均逐项匹配原 `staged-r1.json` 和 `publication-r1.json`，没有额外或缺失文件。与 r4 本地终核相比，产品、两个例子和测试全部同一；差异仅为五份计划／交付记录中的实际本地评审、文档链接和 Q3.1 原 reviewer CI 终核记账。Q3.1 原报告前缀逐字保留，本补核不以本片产品替代其 633 产品／旧运行身份。
+
+|发布原件|独立重算 SHA256|
+|---|---|
+|`staged-r1.json`|`1356ae2a7a93d87c8ecbd008a8807b0c33cbfb75aeb45dc38794035dc79d7aa7`|
+|`publication-r1.json`|`7072e12d6dfd24d18d65d37f435d8c47f343a5cafefa4afb5b24b01cd1300081`|
+|`remote-r1.txt`|`82d06381e721c3290d9e4e7829c53ec904f4ee9a2bb2981fd85b31bf718069b7`|
+
+另以只读 `git ls-remote --refs origin refs/heads/refactor/architecture-foundations` 实查，完整实时 Ref 与保存的原远端记录均为上述完整发布 SHA。固定提交的 **638 产品 Git blob** 逐字匹配原独立清单、r2 wheel 和原非 editable 安装，wheel SHA256 仍为 `6ea71afb6378980a7f74594d7124e34ddc2023c18d3d91631dbdc282dc95b11a`；**283 参考**与基线逐字相同。此处读取固定 Git 对象，不从后继工作树推导发布身份。
+
+固定提交的 19 份 Markdown 身份与原提交前清单一致；独立沿原检查器复核 **374 个本地链接／fragment、零错误**。上文 373 条是写入最终交付链接前的历史检查，未改写。baseline→固定提交全范围 `git diff --check` 通过。独立原件保存在本片 `reviewer-r1` 的 `publication-r1.json`、`publication-live-remote-r1.txt`、`publication-docs-r1.json`；原报告 9,702B／SHA256 `08a07aaa6f2053e0cf1c5aea7acfb75dd90eb27bd5dfdfcc392503770c7868ed` 作为本节前缀保持。
+
+本次没有重跑测试／模型或安装，没有提交、推送或平台写入。后续只需取得并核验本 SHA 自己的适用 CI 终态，再追加同一报告；此前十次调用和本地验收仍只覆盖原静态提案／资料交接范围，训练、GPU、质量、性能和采用条件保持开放。
+
+## 自有 CI 终态补核（2026-11-15）
+
+同一独立评审者直接重解析本片 [Portability 43626456436](https://github.com/626619403/Ergora/actions/runs/43626456436) 的官方原件，固定候选为 `eadabc0441991a02acc06e17efd8d6c16b7d9d27`。本节覆盖上文的待 CI 状态：**需求符合性 approve／可维护性 approve，开放实质 finding 0／0，Q3.3 精确交付的片内验收剩余 0。**
+
+真正终态为 `observation-observation-r3.json`、`job-groups-observation-r3.json`、`run-observation-r3.html` 和八份 `job-*-observation-r3.html`，共 11 件，观察时间 `2026-11-14T18:47:29.861279+00:00`。原 run 页面为 **Success**，绑定本片完整 SHA；导航绑定自己的 run 和 `job_groups_batch?attempt=1`。完整分页为 **totalCount=8／hasMore=false**；八个唯一 job 的名称和数量与固定提交的 workflow 及六组 Linux 配置完全一致。
+
+|Job|原 job ID|必要步骤成功数|
+|---|---|---|
+|plan|132543256204|1／1|
+|Ubuntu 3.11 group 0|132543292566|4／4|
+|Ubuntu 3.11 group 1|132543292562|4／4|
+|Ubuntu 3.11 group 2|132543292536|4／4|
+|Ubuntu 3.11 group 3|132543292579|4／4|
+|Ubuntu 3.11 group 4|132543292508|4／4|
+|Ubuntu 3.11 group 5|132543292544|4／4|
+|Windows 3.12 group all|132543292502|5／5|
+
+八 job 均为 completed／success。独立从八份 HTML 的原 `check-step` 提取、逐项核对 **30／30 必要步骤 success**，包括 plan 分组读取、七个 native job 的 Python 准备／wheel 构建安装／参考身份／应用回归，以及 Windows PowerShell 5.1 安装升级。每一步的完成标记、起止时间和原 log URL 均完整；URL 的完整 commit、job ID 和 step number 与所在页面相符，重解析字段与保存的观察逐项相同。这里认证官方步骤结论及日志身份，没有虚构未取得的逐测试日志、额外测试总数或业务训练结果。
+
+另直接重读 r1、r2 各自全部 11 份官方原件，均为 **In progress／28／30**。当时 Windows 应用回归和 installer 的 conclusion 为 null，前者仍在运行，后者未开始；不能将它们称为终态或以后来的成功改写原件。两个中间态和 r3 终态共 **33 份官方捕获**的长度／SHA256、八 job／每个必要步骤均写入独立证据。
+
+本次只从固定 Git 对象核对原 23 份发布 blob、原发布清单和原件身份，并重算固定 **638 产品＝原 r2 wheel＝原非 editable 安装**，283 参考保持；未使用当前 Q4 的 640 文件源码认证旧片，也未审 Q4 实现。原发布记录与前次独立补核身份完全相同。
+
+独立解析脚本 `reviewer-r1/ci-terminal-r1.py` SHA256 为 `326c1fd42ca62e26763ddf59fcbc8dc7d63053b84895787ea5f2400ef2211552`，结果 `ci-terminal-r1.json` SHA256 为 `be0bc8ebef969c30c2f6a8c653b8cbad3d4bd6549ddd96ee72a5bbbd6322c68e`，均保存在本片 ignored 证据。追加前本报告 **12,288B／SHA256 `483653cf934d301f42395259a5f73c3ec9882f1a35b635e7fea79e762f0fa4f4`** 的原前缀逐字保持。
+
+本次无测试／模型／训练／安装或平台写入，仅补核同一片的 CI 和身份。本片完成仍限静态提案、资料交接和已记录的本地／发布／CI 验收；真实训练、GPU、质量、性能、循环／跨轮预算及采用等原开放范围不变，后继工作另按自己的身份验收。

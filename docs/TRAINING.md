@@ -13,6 +13,7 @@
 |先分析已有代码、trace或显存报告|[通用性能诊断](#通用性能诊断)或[细方向子模板](#独立的优化方向子模板)|
 |把专家提案变成可执行实验|[提案到原实验合同](#从专家提案填写原实验合同)，然后预览／确认baseline、runner和实验|
 |先在 CPU 核对测量合同与原门禁|[离线成对测量演示](#离线成对测量演示)，无需模型、密钥或训练服务|
+|保留每轮原结果及失败／未知，离线回看|[多轮证据索引](#多轮证据索引)，显式选择原实验并在新目录追加|
 |启动和停止原控制流程|[原ID提交与对账](#提交已准备实验与原-id-对账)、[取消和停止事实](#取消原运行与分别观察停止事实)|
 |审阅实际结果和授权后续集成|[归档证据](#阅读归档证据与原集成票据)、[精确owner批准](#精确-owner-批准与投递恢复)|
 |把经验用于下一次任务|[完整改进旅程](IMPROVEMENT_WORKFLOW.md)，候选分别采用后再明确冻结|
@@ -248,6 +249,44 @@ ergora training evidence my-project EXPERIMENT_ID \
 `archive.evidence.artifacts`保留原路径和声明摘要，`artifact_content_status: not_read`明确尚未核所有文件内容。指定其中一个artifact和本次完整evidence SHA后，入口先读整个文件并校验原SHA，再返回UTF-8文本的Unicode字符窗口；下一段沿`next_offset`读取。JSON每份最多1MiB、所选artifact最多16MiB、返回窗口最多65,536字符、总响应最多8MiB；超限／二进制／NUL／摘要漂移／symlink或越界明确拒绝，不截断后宣称完整。大型或二进制profile继续使用原索引位置与对应工具，不经此文本入口解码。
 
 HTTP同样使用`GET /api/projects/{project}/training/{experiment}/evidence`，可选`artifact / evidence_sha256 / offset / limit`。此操作不发RPC、不重跑comparator／runner、不生成owner receipt、不批准或采用。它核保存材料的身份并供人审阅；真实质量、作者可信性、当前批准资格与实际集成效果仍须原独立流程。精确owner批准CLI／HTTP见下一节；图形入口见下方控制台步骤。
+
+## 多轮证据索引
+
+先用 `ergora training list my-project` 选择本项目已有的原实验。本入口只采集原记录，不运行实验或推进baseline。采集沿原training入口，需要已注册的训练项目和 `ergora[temporal]`；它不连接Temporal或调用模型。离线读取索引只需核心安装。
+
+将第一轮选择写入 `round-1.json`：
+
+```json
+{
+  "schema_version": 1,
+  "rounds": [{
+    "experiment_id": "exp-001",
+    "change": "本轮实际变化；只作操作者注释，不能代替原证据",
+    "next_bottleneck": "未知；等待原报告支持后再选择下一干预"
+  }]
+}
+```
+
+```bash
+ergora training rounds-create my-project --definition round-1.json --directory ./rounds-1
+ergora training rounds-read ./rounds-1
+```
+
+输出中的 `sha256` 固定整个 `rounds.json`。把第二轮选择写入另一个同格式文件 `round-2.json`，换成已有 `exp-002`；将下面的 `PREVIOUS_INDEX_SHA256` 替换成第一步实际输出，再显式追加到新目录：
+
+```bash
+ergora training rounds-create my-project --definition round-2.json --directory ./rounds-2 \
+  --previous ./rounds-1 --previous-sha256 PREVIOUS_INDEX_SHA256
+ergora training rounds-read ./rounds-2 --sha256 NEW_INDEX_SHA256
+```
+
+旧轮的原观察和前驱身份完整保留，不重新采集或覆盖；同一个原experiment不能重复算成两轮。初始 `initial_anchor` 与每轮 `comparison` 分开：后者的 `baseline_commit` 是实际比较参照，`candidate_commit` 是本轮候选，均来自原manifest。当前原registry不支持隐式推进baseline，索引首版也只接同一原始基线／工作负载及同一注册项目。基线当前是否匹配另按原观察保留；历史不匹配不能被索引改成可批准。
+
+每轮保存原 `inspect`／`evidence`／`submission` JSON值及原文件SHA和归档索引；已提交时才读取原批准投递记录。失败、门禁拒绝、未接受、pending和unknown都会保留。批准投递事实不能证明当前授权，采集多个观察也不是实时原子快照。遇到绑定、gate或已读原文件身份冲突会拒绝发布，不能将不同观察拼成一个成功结论。
+
+`change`／`next_bottleneck`始终是未验证注释，不参与门禁。离线读取核整个期望SHA、轮内内容和前驱链接，不连接服务或重新评价统计，也不认证来源。原始日志、大trace与artifact内容仍在原存储；索引不替代备份，不表示全部artifact已读。每份索引最多32轮／10MB，超限明确失败，不截断；扩展不会覆盖旧目录或已有目标目录。完整格式见[原JSON schema](../src/ergora/data/schemas/training-rounds-v1.json)。
+
+kernel专家继续在v3提案路径评估；索引不会跳过它，也不会自动启动下一轮、采用候选、重写门槛或计算累计收益。有界自动循环和跨baseline迁移需各自合同。
 
 ## 精确 owner 批准与投递恢复
 
