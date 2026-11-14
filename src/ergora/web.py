@@ -537,6 +537,12 @@ def create_app(home: Path | None = None) -> FastAPI:
     def training_status(project_id: str, experiment_id: str, run_id: str | None = None, timeout: int = 20):
         return training.status(state, project_id, experiment_id, run_id=run_id, timeout=timeout)
 
+    @application.get("/api/projects/{project_id}/training/{experiment_id}/evidence")
+    def training_evidence(project_id: str, experiment_id: str, artifact: str | None = None,
+                          evidence_sha256: str | None = None, offset: int = 0, limit: int = 12_000):
+        return training.evidence(state, project_id, experiment_id, artifact=artifact,
+                                  evidence_sha256=evidence_sha256, offset=offset, limit=limit)
+
     @application.get("/api/projects/{project_id}/training/{experiment_id}/submission")
     def training_submission(project_id: str, experiment_id: str):
         return training.submission(state, project_id, experiment_id)

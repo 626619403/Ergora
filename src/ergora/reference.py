@@ -387,6 +387,11 @@ def training_submission(project: dict, home: Path, operation: str, payload: dict
                               'operation': operation, **payload}, timeout, sdk=operation in ('dispatch', 'resume'))
 
 
+def training_evidence(project: dict, home: Path, payload: dict) -> dict:
+    """Read the original archive without the optional SDK, services or release side effects."""
+    return _training_process(project, 'evidence', {'project': project, 'control_home': str(home), **payload}, 20, sdk=False)
+
+
 def training_cancellation(project: dict, home: Path, operation: str, payload: dict, *, timeout: int) -> dict:
     """Keep training cancellation delivery and native stop observations with their owners."""
     if operation != 'status' and sys.platform != 'linux':

@@ -88,6 +88,7 @@
       "tests/test_training_runtime.py",
       "tests/test_training_submission.py",
       "tests/test_training_cancellation.py",
+      "tests/test_training_evidence.py",
       "tests/test_task_budget.py",
       "tests/test_task_evidence_index.py",
       "tests/test_task_external_status.py",

@@ -80,10 +80,19 @@
   "independent_review": {
     "requirements": "final local passed; first P2 fixed and closed; zero open findings",
     "structure": "final local passed; zero open findings",
-    "publication_and_own_ci": "pending exact ordinary publication and own CI"
+    "publication_and_own_ci": "both original axes verified fixed publication; own CI in progress"
   },
   "publication": {
-    "state": "not_committed"
+    "state": "pushed",
+    "candidate": "2181cc5c6ab92ac01664f8e769298cce350f65a5",
+    "verified_git_blobs": 16,
+    "ordinary_push": true,
+    "full_remote_ref_matches": true,
+    "own_ci": {
+      "run_id": 43530156938,
+      "url": "https://github.com/626619403/Ergora/actions/runs/43530156938",
+      "state": "in_progress"
+    }
   },
   "raw_evidence": {
     "private_base": ".ergora/checks/training-preparation-console/",
@@ -297,6 +306,26 @@
         "path": "final-observations.json",
         "bytes": 3598,
         "sha256": "f565eb3e7ec3ce35588ab592280fa53302d52ae2102c424753055a3d2b22e07b"
+      },
+      {
+        "path": "static-final-r1.json",
+        "bytes": 3984,
+        "sha256": "7d7aed2efec258da8f5e5f4242fcb74f3303ec252902480deab740e0910266aa"
+      },
+      {
+        "path": "commit-r1.json",
+        "bytes": 1034,
+        "sha256": "1201c7a81a3ee0f60478feffd33a03fbe1b9d575a1ddfd6e6b4b87776ced0ed9"
+      },
+      {
+        "path": "push-r1.json",
+        "bytes": 749,
+        "sha256": "4902bd001b4d08e190f70191819b8e305bfc71b13503685f968f6637825cc07e"
+      },
+      {
+        "path": "ref-r1.json",
+        "bytes": 737,
+        "sha256": "14048d1e95319d46bbfd5d3cee5a8b25ecc0454025f8fd3038f71be5120c1b66"
       }
     ]
   },

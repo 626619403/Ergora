@@ -189,6 +189,24 @@ ergora training stop-status my-project EXPERIMENT_ID --timeout 20
 
 HTTP 使用相同入口：`GET .../training/{experiment}/cancellations/{request_id}`；`POST .../cancel`（`revision / request_id / run_id / reason / timeout`）；`POST .../resume-cancel`（`revision / request_id / intent_sha256 / timeout`）；`GET .../stop-status?timeout=20`。实际操作的 timeout 为1–60秒。Windows 原生仅提供本地取消记录读取，实际取消和 executor 观察使用登记的 Linux／WSL2 环境。
 
+
+## 阅读归档证据与原集成票据
+
+`show`展示原job／gate；`evidence`进一步读取同项目、同manifest绑定的内容寻址归档，不需要Temporal SDK或运行中的服务：
+
+```bash
+ergora training evidence my-project EXPERIMENT_ID
+ergora training evidence my-project EXPERIMENT_ID \
+  --artifact checks/forward.json --evidence-sha256 EVIDENCE_SHA256 \
+  --offset 0 --limit 12000
+```
+
+先核完整gate、原`evidence.json`及其字节SHA、归档`gate-result.json`、manifest／baseline／comparator摘要和当前baseline适用性。无gate或gate未通过时返回`archive_status: no_accepted_archive`，不创建归档或批准；gate通过且记录不完整／冲突时明确失败。归档gate按原JSON内容与job中的archive_report核对，带SHA的evidence／manifest／baseline／comparator按原字节核对。已有原本地`integration-ticket`按完整project／binding／evidence读取；`automatic_merge: false`，不表示实际复验已完成、当前receipt仍有效或Temporal终态已确认。
+
+`archive.evidence.artifacts`保留原路径和声明摘要，`artifact_content_status: not_read`明确尚未核所有文件内容。指定其中一个artifact和本次完整evidence SHA后，入口先读整个文件并校验原SHA，再返回UTF-8文本的Unicode字符窗口；下一段沿`next_offset`读取。JSON每份最多1MiB、所选artifact最多16MiB、返回窗口最多65,536字符、总响应最多8MiB；超限／二进制／NUL／摘要漂移／symlink或越界明确拒绝，不截断后宣称完整。大型或二进制profile继续使用原索引位置与对应工具，不经此文本入口解码。
+
+HTTP同样使用`GET /api/projects/{project}/training/{experiment}/evidence`，可选`artifact / evidence_sha256 / offset / limit`。此操作不发RPC、不重跑comparator／runner、不生成owner receipt、不批准或采用。它核保存材料的身份并供人审阅；真实质量、作者可信性、当前批准资格与实际集成效果仍须原独立流程。精确owner批准的统一CLI／页面入口仍在后续片；目前继续按原参考手册操作，勿把“已归档”当“已采用”。
+
 ## 从专家提案填写原实验合同
 
 先完成下文的[专家提案及手动交接](#可选的实验专家提案)，保存完整manifest、所选叶input、原result及实际后端记录。原result的自由文本供人审阅，不能直接当作`experiment.json`。以下步骤适用于各优化方向；真实文件仍使用`ergora templates copy training-optimization`给出的原模板，执行命令沿[完整参考手册](../src/ergora/data/reference/platform/docs/TRAINING.md)。

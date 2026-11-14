@@ -1,0 +1,399 @@
+{
+  "slice": "F9c C1",
+  "baseline": "2181cc5c6ab92ac01664f8e769298cce350f65a5",
+  "implementation": "SDK/service-free original training archive, metadata, selected fully hashed Unicode text window and matching local integration ticket observation; no release or execution changes",
+  "product_test_ci_packet_sha256": "bca645238f08d12e639da8b8f3732cdda651bd31e5aae735b97ee025a345aca9",
+  "installed_final": {
+    "wheel_sha256": "d67ced0f3f65e21db69ee34a113552e9af64413f3384edcb5efe080dc785a98a",
+    "product_files": 573,
+    "two_records_verified": true,
+    "wheel_record_rows": 581,
+    "installed_record_rows": 586,
+    "frozen_reference_files": 283,
+    "current_source_snapshot_wheel_install_equal": true,
+    "suites": 4,
+    "passed": 46,
+    "test_seconds": 38.99,
+    "monitor_seconds": 40.628632648848
+  },
+  "retained_failures": [
+    {
+      "run": "source-r1",
+      "passed": 26,
+      "failed": 9,
+      "skipped": 2,
+      "cause": "Positive fixture inherited a negative record with the old binding; original reader rejected it. Fixture setup corrected."
+    },
+    {
+      "run": "source-r2",
+      "passed": 34,
+      "failed": 1,
+      "skipped": 2,
+      "cause": "Test appended only whitespace to a gate bound by JSON content, not raw byte SHA. Counterexample changed semantic status."
+    },
+    {
+      "run": "source-r3",
+      "passed": 35,
+      "skipped": 2,
+      "scope": "Optional web checks skipped in source environment; final installed four suites includes them."
+    },
+    {
+      "run": "install-r1/regression-r1",
+      "passed": 45,
+      "failed": 1,
+      "test_seconds": 40.23,
+      "cause": "New TestClient omitted the existing loopback Host/Origin contract; minimum test setup correction, product host guard kept."
+    },
+    {
+      "run": "native-r1",
+      "cause": "Wrong evidence SHA correctly rejected with generic CLI exit2; private script expected1 and stopped. Original archive retained; read-only continuation."
+    },
+    {
+      "run": "native-continuation-r1",
+      "cause": "Private SDK-free script exposed whole site-packages through PYTHONPATH, so its SDK-absence assertion failed. Final continuation isolates only installed Ergora under -P -S."
+    }
+  ],
+  "native_final": {
+    "cli_commands": 4,
+    "successful_reads": 2,
+    "expected_rejections_exit2": 2,
+    "actual_sdk_free_read": true,
+    "original_native_archive_with_posix_lock": true,
+    "synthetic_native_job_request_only": true,
+    "protected_preparation_files": 14,
+    "all_read_original_files": 37,
+    "runtime_file_set_and_original_bytes_unchanged": true,
+    "no_executor_start_workflow_submission_fence_approval_ticket_or_command": true,
+    "repo_status_empty": true,
+    "scope": "Native archive/gate over synthetic comparison and attestations; no real training or quality result."
+  },
+  "http_final": {
+    "actual_loopback_http": true,
+    "get_requests": 6,
+    "mutations": 0,
+    "metadata_and_unicode_window_equal_actual_installed_cli": true,
+    "wrong_sha_path_binary_and_limit_rejected": true,
+    "web_group_stopped_and_port_closed": true
+  },
+  "self_review": {
+    "packet_files": 12,
+    "packet_bytes": 240476,
+    "seconds": 44.448034637607634,
+    "decision": "approve",
+    "result_sha256": "4de644590c23cbd128bb855028afc861c69e08d888341ee5c0d6205355630517",
+    "prompt_sha256": "4096afe20c9ab6f9c533ffb429931e474dbc45d8ec704982dd59ffc0967f92ef",
+    "all_inline_files_and_inherited_resources_in_stdin": true
+  },
+  "independent_review": {
+    "requirements": "final local passed; Host test P2 fixed and independently closed; zero open findings",
+    "structure": "final local passed; zero open findings",
+    "publication_and_own_ci": "pending exact ordinary publication and own CI"
+  },
+  "publication": {
+    "state": "not_committed"
+  },
+  "raw_evidence": {
+    "private_base": ".ergora/checks/training-evidence/",
+    "references": [
+      {
+        "path": "source-r1/result.json",
+        "bytes": 478,
+        "sha256": "a178920fe2840832e64a03a8bc7520814db26a28ca29bc5fb28b33920ba3187f"
+      },
+      {
+        "path": "source-r1/process/stdout.txt",
+        "bytes": 12014,
+        "sha256": "249474bacee62e124fef25154d31d35f267d7799144864b1d8f360c49fc116b8"
+      },
+      {
+        "path": "source-r1/process/stderr.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "source-r2/result.json",
+        "bytes": 478,
+        "sha256": "d46cea8102b13c45d48bfba268b365a2ac399febcb0288e87b82f4b93acc1386"
+      },
+      {
+        "path": "source-r2/process/stdout.txt",
+        "bytes": 747,
+        "sha256": "5f58bbe2f852db9a6d2ec90ec8735de3420ac7331345eee2f11add73dd317c70"
+      },
+      {
+        "path": "source-r2/process/stderr.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "source-r3/result.json",
+        "bytes": 482,
+        "sha256": "e0377eeeeae6b2d9b235271a03f0a89828a3abdb4b9a2c2af07293ab072de349"
+      },
+      {
+        "path": "source-r3/process/stdout.txt",
+        "bytes": 142,
+        "sha256": "eb8a3cf88d988bde2cfc7eef2398d57124a02ac97862aafe75429b4ae54b76eb"
+      },
+      {
+        "path": "source-r3/process/stderr.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "install-r1/setup.json",
+        "bytes": 1325,
+        "sha256": "2e82fddcfa1f750b697ebf9b6b9803f2ac861ae2e3f792e005044918ac35240d"
+      },
+      {
+        "path": "install-r1/source-manifest.json",
+        "bytes": 2464,
+        "sha256": "3f01507e3bb4921242aa7bf56fbb654ac03afe6884abd727149dcc6b3d96d44d"
+      },
+      {
+        "path": "install-r1/package-identity.json",
+        "bytes": 488,
+        "sha256": "632a43f88e67d84e0a50df7f9b5282d29ccb2354d22696b5159b40ea48d27de8"
+      },
+      {
+        "path": "install-r1/regression-r1/result.json",
+        "bytes": 721,
+        "sha256": "0f1ac7296edb9202a52132490609c95a7fb4607333283872da581ef3962163a3"
+      },
+      {
+        "path": "install-r1/regression-r1/process/stdout.txt",
+        "bytes": 8440,
+        "sha256": "cb1d1a487f47b4bb0e82db9a9676c57646cffcdc660ffe5ecfd370b0eb1f1b09"
+      },
+      {
+        "path": "install-r1/regression-r1/process/stderr.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "install-r2/setup.json",
+        "bytes": 1326,
+        "sha256": "64507f593dcd8715eb218f5be5e260c8201123db42f4fa17566230e3d6124da0"
+      },
+      {
+        "path": "install-r2/source-manifest.json",
+        "bytes": 2464,
+        "sha256": "81e84d1e5a67fb0cf40616f05f5d79d3c4b2c6275c42d9cae761f843c2b48bc9"
+      },
+      {
+        "path": "install-r2/package-identity.json",
+        "bytes": 488,
+        "sha256": "0c639b520719e11d62223f8df64f209e12446270cc43fc2933d08e2d3d9b599b"
+      },
+      {
+        "path": "install-r2/regression-r1/result.json",
+        "bytes": 724,
+        "sha256": "3e69386d4c30f9318ed9b9374961fbeb5cf1761891a34f380f7f15a0d364d900"
+      },
+      {
+        "path": "install-r2/regression-r1/process/stdout.txt",
+        "bytes": 7838,
+        "sha256": "da6cc9f95ac997ef69af2fd86795a87239169fe2ab548681e5792ed62e8c6462"
+      },
+      {
+        "path": "install-r2/regression-r1/process/stderr.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r1.py",
+        "bytes": 8470,
+        "sha256": "451f60d2e5aa90afc7b02a338b81370bd4a53049448abb677881027873651947"
+      },
+      {
+        "path": "native-continuation-r1.py",
+        "bytes": 3823,
+        "sha256": "999768aaaf7f55465840b78b7dc80cbd8b678a2c0f186369a30d4295e3cac14b"
+      },
+      {
+        "path": "native-continuation-r2.py",
+        "bytes": 3903,
+        "sha256": "52a61981f0fb994edf62cd5afb0c8fa456d2c09c512e7c0cf6fcde1c9e1089a7"
+      },
+      {
+        "path": "native-r1/archive-fixture.py",
+        "bytes": 5163,
+        "sha256": "a1a5aa532a07134bddb0fc7aa0007f94f0ed1fcf16f0f6a3ae0d433b5ccfcffa"
+      },
+      {
+        "path": "native-r1/archive.stdout",
+        "bytes": 6345,
+        "sha256": "33fccf4b3ca590cdd1a9e8d19c47cafe1bb581195246ce41bb265ed9f7da1c75"
+      },
+      {
+        "path": "native-r1/archive.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r1/native-job.stdout",
+        "bytes": 275,
+        "sha256": "44d6fad51162bca2765b35e087643c4f8279df3be1c8c2efa41a6cb353b5a7e8"
+      },
+      {
+        "path": "native-r1/protected-before.json",
+        "bytes": 1613,
+        "sha256": "c9fef93b4da8f41d0004e53856ae49f6bd2d8aec454a9feaf0f81a5505f150b0"
+      },
+      {
+        "path": "native-r1/read-before.json",
+        "bytes": 6572,
+        "sha256": "1f1b95bbe6dcaf98ddbb26161bad0736bb7d2c1a73ea92a280190d63d434c91d"
+      },
+      {
+        "path": "native-r1/commands.json",
+        "bytes": 2182,
+        "sha256": "29ca8d20d0e86a4747fbd984a7d2e305d8f022aaeeabaa2a32849bfe794249ff"
+      },
+      {
+        "path": "native-r1/result.json",
+        "bytes": 670,
+        "sha256": "da63668a618bde289241736e0c66f38894638e64b0c1710dab735b80bf37274b"
+      },
+      {
+        "path": "native-r1/wrong-sha.stderr",
+        "bytes": 75,
+        "sha256": "14039c25435d31e0d1229dd214df7062643e74afa1a106996a0c2c846ab79165"
+      },
+      {
+        "path": "native-r1/sdk-free.stderr",
+        "bytes": 89,
+        "sha256": "09a596a85bd2c6b81ed1c4f1519e29c8f5cdb5b6a1f7e3b5bde6b48fad697970"
+      },
+      {
+        "path": "native-r1/sdk-free-r2.stdout",
+        "bytes": 25986,
+        "sha256": "6cd2098018dfd64bc7ebfa353e6749b256d01987e34f723bf7f938dd5dd98299"
+      },
+      {
+        "path": "native-r1/sdk-free-r2.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r1/final-r2-evidence.stdout",
+        "bytes": 25986,
+        "sha256": "6cd2098018dfd64bc7ebfa353e6749b256d01987e34f723bf7f938dd5dd98299"
+      },
+      {
+        "path": "native-r1/final-r2-evidence.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r1/final-r2-window.stdout",
+        "bytes": 26214,
+        "sha256": "cdd7dc930aaeb63503250d78186d071ef5a5a81721a24d6f2b96c9128c6944f4"
+      },
+      {
+        "path": "native-r1/final-r2-window.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r1/final-r2-wrong-sha.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r1/final-r2-wrong-sha.stderr",
+        "bytes": 75,
+        "sha256": "14039c25435d31e0d1229dd214df7062643e74afa1a106996a0c2c846ab79165"
+      },
+      {
+        "path": "native-r1/final-r2-foreign-path.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "native-r1/final-r2-foreign-path.stderr",
+        "bytes": 77,
+        "sha256": "0c376a0d944473b3d70dd1b77080d275c326a237377cee37a2b236410ea53bfc"
+      },
+      {
+        "path": "http-r1/service.py",
+        "bytes": 1138,
+        "sha256": "ac6d4f0f1af4df6648e7abffdb2b7651b005cc2112074618a5e491e0319e246b"
+      },
+      {
+        "path": "http-r1/client.py",
+        "bytes": 2062,
+        "sha256": "fc8db1797d7c7addc1002a6fd4c9d69958bba7b2208479c30fab40460273d613"
+      },
+      {
+        "path": "http-r1/steps.json",
+        "bytes": 2276,
+        "sha256": "ca3b34ca8c49722eca4be39c3ea6a01de6df8999de94f39dae4ac3a160f1b173"
+      },
+      {
+        "path": "http-r1/requests.jsonl",
+        "bytes": 1839,
+        "sha256": "1fbdfc167b561f34bfbe4e86764acbf358639428b77761e47185ae7d97c701ac"
+      },
+      {
+        "path": "http-r1/result.json",
+        "bytes": 199,
+        "sha256": "fcd14567403366b652a43daa6903fa3a5f9e8bdf9d24be5430c36fffa37a4daf"
+      },
+      {
+        "path": "http-r1/cleanup.json",
+        "bytes": 148,
+        "sha256": "9a7164e29fd28d62623483ead3a9d91275950f3e904327482b0b86e66e8daf67"
+      },
+      {
+        "path": "http-r1/web-process/stderr.txt",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "self-review-r1-codex.json",
+        "bytes": 2814,
+        "sha256": "7667a18547c6305725a52a7c2a5a5a856e56e486f37a64a23fe94ac6ea403fda"
+      },
+      {
+        "path": "self-review-r1-codex/original-result.json",
+        "bytes": 711,
+        "sha256": "4de644590c23cbd128bb855028afc861c69e08d888341ee5c0d6205355630517"
+      },
+      {
+        "path": "final-observations.json",
+        "bytes": 1498,
+        "sha256": "7e1affc80f989dada5e8a70872d0fe63ad596d4f64fdae654483f60dc3dd9c11"
+      },
+      {
+        "path": "ci-group-collect-r1/request.json",
+        "bytes": 1561,
+        "sha256": "33d4a4ef57cec4d731d5a9eb9b3c950df0a1c2ff8c03277c891bc168863ab1d9"
+      },
+      {
+        "path": "ci-group-collect-r1/result.json",
+        "bytes": 54,
+        "sha256": "d84966db58803d65f63e65ca44775d5e8d158df7bfdda484dfbcfceddef50d4b"
+      },
+      {
+        "path": "ci-group-collect-r1/stdout.txt",
+        "bytes": 39923,
+        "sha256": "cfb065c1648c9d000c77795174f09ee10b4552b5e0ca9374c29b1a79dc485674"
+      }
+    ]
+  },
+  "limits": [
+    "No statistical re-evaluation or artifact-wide content verification; original index declarations and selected verified content are separate",
+    "No live Temporal phase or current owner approval authorization evaluated; local integration ticket is a saved fact only",
+    "No real GPU/training/quality/performance or integration/adoption acceptance",
+    "Native Windows existing-record behavior still awaits this slice own CI; Windows synthetic fixture construction alone substitutes POSIX archive writer lock",
+    "Self review used authorized Codex fallback; not independent or heterogeneous review success; test Host correction afterwards is covered by installed final and new reviewers"
+  ],
+  "ci_group_collection": {
+    "selected": 389,
+    "total": 1842,
+    "deselected": 1453,
+    "collection_seconds": 6.75,
+    "execution_claim": false
+  }
+}

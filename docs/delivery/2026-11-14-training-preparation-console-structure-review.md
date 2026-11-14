@@ -4,7 +4,7 @@
 
 ## 结论
 
-最终本地结构复核通过；在本轴所查需求范围内实现与最终证据一致，开放阻塞 finding 为 0，非阻塞 finding 为 0。需求轴首轮窗口 `badInput` P2 已经最小修复并由 r2 实际浏览器补验关闭。最终 r2 包、basic／第三轮 lifecycle／visual、原文件和收尾、Ergora 自身原模板调用均已独立补核；普通发布、精确远端身份和本片自己的 CI 仍待，不在此宣称精确交付完成。
+最终本地结构复核通过；在本轴所查需求范围内实现与最终证据一致，开放阻塞 finding 为 0，非阻塞 finding 为 0。需求轴首轮窗口 `badInput` P2 已经最小修复并由 r2 实际浏览器补验关闭。最终 r2 包、basic／第三轮 lifecycle／visual、原文件和收尾、Ergora 自身原模板调用均已独立补核；固定候选 `2181cc5c6ab92ac01664f8e769298cce350f65a5` 的 16 blob／正式普通发布及原完整远端 Ref 已补核通过，本片自己的 CI 仍待，不在此宣称全部精确交付完成。
 
 最终两产品路径组合 SHA256 为 `893a738a2a33ac3767be11e983afc7ee952ddb00a6fb595daea2fa6cd8b20ff5`。本轴未新增产品 finding；前两轮 lifecycle 的真实脚本失败及已发布原件保持，未把失败改写为成功。最终裁定与证据详见本文末节；此前“待验”均为当轮历史状态。
 
@@ -12,7 +12,7 @@
 
 ## 检查身份与变更范围
 
-基线与当前 `HEAD` 均为 `92e7c24dbeb6847fe20c00e69c89c04b17702d5e`，分支 `refactor/architecture-foundations`；评审对象为其未提交工作树。独立执行 `git status --short`、相对基线的 diff／文件清单和 `git ls-files --others --exclude-standard`，初检范围如下：
+基线与初检时 `HEAD` 均为 `92e7c24dbeb6847fe20c00e69c89c04b17702d5e`，分支 `refactor/architecture-foundations`；初检对象为其未提交工作树，后续固定候选核验见末节。独立执行 `git status --short`、相对基线的 diff／文件清单和 `git ls-files --others --exclude-standard`，初检范围如下：
 
 |类型|文件|
 |---|---|
@@ -117,3 +117,24 @@ Ergora 自身原结构模板也已补核：实读 actual native run、packet ind
 最终维护性结论维持通过。新增 `checkValidity` 的实际可达失败与最小位置有充分证据；其余 ownership／interface／私有算法／guard 判断保持，无需再加产品 guard、测试镜像或插件抽象。README／TRAINING／architecture 与本地实现一致，PLAN／delivery 和公开证据已保留产品 P2、两次脚本失败、最终通过及发布在途的范围。
 
 开放项仅为正常发布流程的普通提交／推送、精确远端 Ref 和本片自己的 CI，以及另一独立需求轴的最终记录；本轴没有开放产品 finding。没有单独实跑每一个 home／tab／非 Linux 条件，相关结论限源码 guard 检查；真实项目切换覆盖了原 DOM 替换路径。没有服务端训练调度、真实 GPU／质量／性能验收、evidence 批准或采用主张；这些仍归后续原计划。
+
+## 固定正式发布身份补核
+
+本节将上一节“普通发布／精确 Ref 待”关闭，CI 继续独立在途。只读核验固定 Git 对象 `2181cc5c6ab92ac01664f8e769298cce350f65a5`，没有运行远端命令、安装或重测；后续活动工作树／F9c 不替代本候选。
+
+- `git rev-list --parents -n 1` 确认候选只有一个父提交，恰为 `92e7c24dbeb6847fe20c00e69c89c04b17702d5e`；提交题为 `feat: expose exact experiment preparation and recovery in console`。
+- `git diff-tree` 的固定 16 路径集合与原 `static-final-r1.json.files` 完全相等。对每一路径直接 `git show 候选:路径` 取得固定 blob 原字节，逐件重算大小与 SHA256，16／16 与原清单匹配；不是对当前工作树做等价替代。固定候选 `git diff --check` 无诊断。
+- 16 件中只有两件产品：新增 `training-preparation.js` 与原 `training.js` 集成，blob OID 分别为 `91f473a443561c8347ae572228f35791302eda44`、`6ff0826786d9a857a33613ce87aa53e188ef8750`。本轴直接以这两个固定 blob 重算路径组合 SHA256，仍为 `893a738a2a33ac3767be11e983afc7ee952ddb00a6fb595daea2fa6cd8b20ff5`，并逐字对照已验收 r2 wheel 对应条目，一致。因此本报告的本地产品验收确实对应已发布候选，没有把后续产品借入旧证据。
+- 较首轮清单补入的 `docs/plans/2026-11-14-training-experiment-preparation.md`，固定 diff 仅追加 C1 精确交付终态；其 C1 CI 是上一片独立记账，未新增 C2 业务行为，也不构成本片 CI 通过证据。两产品之外的 14 件均为已列本片文档／两轴报告／公开证据及旧 C1 记账，没有新增 Python、测试、CI 或冻结参考变更。
+- 实读原 `commit-r1.json`，退出 0、完整 staged diff check 0、候选相符；`push-r1.json` 原 argv 为普通 `HEAD:refs/heads/refactor/architecture-foundations`、没有 force 参数，退出 0，原 stderr 为 `92e7c24..2181cc5`；`ref-r1.json` 原 `ls-remote` 退出 0、完整原 Ref 值恰为候选 SHA。结论是该次正式发布与当时原远端 Ref 相符，不是声称以后远端不会继续前进。
+
+原私有身份原件大小／SHA256，本轴重新计算如下：
+
+|原件|字节|SHA256|
+|---|---:|---|
+|`static-final-r1.json`|3984|`7d7aed2efec258da8f5e5f4242fcb74f3303ec252902480deab740e0910266aa`|
+|`commit-r1.json`|1034|`1201c7a81a3ee0f60478feffd33a03fbe1b9d575a1ddfd6e6b4b87776ced0ed9`|
+|`push-r1.json`|749|`4902bd001b4d08e190f70191819b8e305bfc71b13503685f968f6637825cc07e`|
+|`ref-r1.json`|737|`14048d1e95319d46bbfd5d3cee5a8b25ecc0454025f8fd3038f71be5120c1b66`|
+
+固定发布身份补核通过，本轴开放产品 finding 仍为 0／0。本次仅更新原报告的发布记账；本片自己的 CI 尚在发现，未以 C1 的通过代替，也未对后续工作树作发布或验收主张。

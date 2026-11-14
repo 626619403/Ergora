@@ -2,7 +2,7 @@
 
 日期：2026-11-14。评审者：fresh-context 独立 agent `preparation_console_spec_review`。没有继承实现对话；先读仓库 `AGENTS.md`、maintainable-project-delivery 及 independent-review brief、[C2 原始验收](../plans/2026-11-14-training-preparation-console.md)，再读实际差异、原 owner 与相邻调用，最后核作者交付和私有原件。只读产品／测试／证据，仅写本文；未安装、运行 suite、操作浏览器／服务、访问远端、执行训练或修改业务仓库。
 
-**最终本地结论：需求／正确性通过，首轮一项 P2 已修复并由 r2 实际浏览器原件关闭，开放 finding 0；所查维护性无独立阻断 finding。** 最终源码／包身份、实际页面及原件收尾、自身原模板均已补核；普通精确发布、完整 Ref 与本片自己的 CI 尚待。首轮 `request changes`、r1 旧包运行范围及两次生命周期验收脚本失败均按原范围保留，不追认为修后通过。
+**最终本地及固定发布身份结论：需求／正确性通过，首轮一项 P2 已修复并由 r2 实际浏览器原件关闭，开放 finding 0；所查维护性无独立阻断 finding。** 最终源码／包身份、实际页面及原件收尾、自身原模板均已补核；普通发布 `2181cc5c6ab92ac01664f8e769298cce350f65a5` 的 16 个固定 Git blob／572 产品及原完整远端 Ref 已核，本片自己的 CI 尚待。首轮 `request changes`、r1 旧包运行范围及两次生命周期验收脚本失败均按原范围保留，不追认为修后通过。
 
 ## 固定范围与身份
 
@@ -100,3 +100,22 @@
 |`final-observations.json`|3,598|`f565eb3e7ec3ce35588ab592280fa53302d52ae2102c424753055a3d2b22e07b`|
 
 完整 tracked whitespace、六份 untracked 的 no-index whitespace 及末次 16 个改动路径文档的 217 个本地链接均检查，无诊断／缺失链接。最终需求／正确性本地通过，首轮 P2 已关闭，开放 0；所查维护性无新增 finding。普通提交／推送、完整 Ref 与 C2 自己的 CI 仍待，不能借 C1 成功关闭。Linux／WSL2 本地 CPU 文件与页面合同以外，原生 Windows、Temporal 服务、真实训练／GPU、质量／性能、evidence 批准与采用、F9d／B3 仍未验。
+
+## 固定 Git 普通发布身份补核
+
+本轮仅只读固定 Git 对象和保存的私有发布原件，没有读取随后产品工作树，没有发出远端请求，也未重测、安装或启动服务。候选为 **`2181cc5c6ab92ac01664f8e769298cce350f65a5`**；直接读 commit 对象，确认唯一父提交为原基线 **`92e7c24dbeb6847fe20c00e69c89c04b17702d5e`**。父→候选恰有 16 个改动路径，与 `static-final-r1.json` 完整路径集合相等；其中原 C1 计划、交付、评审与 CI 状态补记仍归上一片，不当作 C2 产品或 CI。
+
+以 `git cat-file --batch` 直接读取固定候选全部相关 blob，16 件长度／SHA 均匹配清单。两个产品路径组合 SHA 仍为 **`893a738a2a33ac3767be11e983afc7ee952ddb00a6fb595daea2fa6cd8b20ff5`**；C1 `training.py / reference_training_preparation.py / web.py` 的固定 blob 与父提交逐字相同。固定候选全部 **572 个产品文件**与前述最终 r2 wheel 的路径集合和内容逐字相等，wheel SHA 仍为 **`21e106dc2a3cd264fbd309ddf32afe2a66002930b64713e7315eb0c05f237c75`**；候选内 283 冻结文件逐件匹配 manifest。因此正式发布产品与前节修后 r2 本地验收产品相同，没有用后续工作树承接旧运行结果。
+
+候选内本文是前述最终本地版 **18,182B**、SHA **`e56f8b8d5e4b6246aafd3d563421da7da60e68a8287a010fdd2104146610e4f0`**；此次补记不改变那个固定版本。对两个固定提交运行完整 `git diff --check` 退出 0，并按候选 Git tree 核改动 Markdown 的 **219** 个本地链接均存在。候选内 C2 公开证据 **11,139B**、SHA **`bec9ed610b20db2838ce1aa92bd5cc9eacb9739ab99a96486ad15f2220afe0b0`**，所引 42 份私有原件长度／SHA 再次全部独立核对相符；其 `publication.state: not_committed` 是提交前历史状态，不追认为文档当时已知后续发布结果。
+
+亲读原 `commit.py / publish.py` 与三份回执：提交脚本核原父提交、开发分支、完整 staged 16 路径、staged whitespace 和提交后固定 blob，原 commit 退出 0。原 push 退出 0，目标为 `HEAD:refs/heads/refactor/architecture-foundations`，无 force／mirror／main 合并，原回复记录 `92e7c24..2181cc5` 前进。随后原 `ls-remote` 退出 0、stderr 空，stdout 精确为完整候选与完整 `refs/heads/refactor/architecture-foundations`。这是原回执当时的远端事实，没有额外读取当前远端或用本地 tracking ref 代替。
+
+|发布原件（相对私有根）|字节|SHA-256|
+|---|---:|---|
+|`static-final-r1.json`|3,984|`7d7aed2efec258da8f5e5f4242fcb74f3303ec252902480deab740e0910266aa`|
+|`commit-r1.json`|1,034|`1201c7a81a3ee0f60478feffd33a03fbe1b9d575a1ddfd6e6b4b87776ced0ed9`|
+|`push-r1.json`|749|`4902bd001b4d08e190f70191819b8e305bfc71b13503685f968f6637825cc07e`|
+|`ref-r1.json`|737|`14048d1e95319d46bbfd5d3cee5a8b25ecc0454025f8fd3038f71be5120c1b66`|
+
+**本地需求／正确性与固定产品、普通发布、原完整 Ref 身份通过，开放 0；所查维护性无新增 finding。C2 自己的 CI 尚待发现与必要 job／step 终态补核，不能借 C1 通过。** 本轮仅补本文，不提交／推送。前述平台、实际 home／tab 浏览器运行、服务／训练／GPU、质量／性能、evidence 批准与采用、F9d／B3 等未验边界保持。

@@ -176,6 +176,8 @@ Skill采用沿 `skills.adopt → evaluation.compare → skill_assets.move_head`�
 
 新项目的baseline与runner由同一training应用入口从CLI／HTTP／页面预览，再确认当前项目revision及完整canonical内容SHA登记，原文件字节SHA单列。baseline仍交原perfctl锁／原子init，仅Linux／WSL2初始化，预览与初始化无需SDK或服务。runner沿原register_runner在隔离临时CONFIG预览，确认后用规范化文档向真实config不可变发布，仅Linux／WSL2且需可选SDK，无需服务。两者共用短本地DB预留与页面表单生命周期；失联先读原文件，同内容显式重试，不同内容不覆盖；共享config的外项目runner ID拒绝且不展示命令。实验准备的CLI／HTTP复用原多件publisher，确认精确计划后保存原意图，部分发布只能以原intent显式恢复；训练页的局部preparation面板只拥有编辑／请求序列与显式确认，发布算法仍在原owner。见[分片计划](../plans/2026-11-14-training-preparation.md)。
 
+训练证据读取由`training.evidence → reference.training_evidence → reference_training_evidence`进入隔离有界子进程，复用原注册与训练记录reader。归档gate按原JSON内容、evidence／元数据按绑定字节SHA核对；artifact只在明确选择后完整核摘要并返回Unicode窗口，原索引不冒称全部内容已验。读取原本地integration ticket不生成Task或批准，Temporal、原archive／gate与owner receipt继续拥有原职责。见[证据计划](../plans/2026-11-14-training-evidence.md)。
+
 ## Agent后端接入
 
 `agent_backends.AgentBackend`是已有共享ABC，`_BACKENDS`只登记本族Codex、Claude Code、mini-swe-agent、DeepSeek Harness、command五种Adapter。`Invocation`传角色、正文、cwd、协议目录、时限和结果schema，不拥有模板成员或正式状态。`agents.invoke`沿共同Interface调用；Adapter拥有命令、原生配置、模式能力、结果提取、诊断及固定探测。通用结果校验归agents，进程生命周期归processes，doctor沿同一Adapter读取实际支持范围。

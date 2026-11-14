@@ -41,3 +41,5 @@ Ergora自身原结构模板已实际审10完整文件／107,163B，42.947秒appr
 新的fresh-context[需求](2026-11-14-training-preparation-console-spec-review.md)／[结构](2026-11-14-training-preparation-console-structure-review.md)已直接核最终两个产品文件及组合SHA、r2完整源码／快照／wheel／安装与两RECORD／283、实际basic／lifecycle第三轮／visual及原stdout／真实服务日志、十实验三文件／URI／binding、15／18原件保持和收尾、自身原模板完整输入与原回复、42份私有原件摘要。需求轴首轮P2修正与实际行为已关闭，最终本地通过、开放0／0。
 
 r1的38项Python仍限旧包；实际home／tab切换未另作四操作交错，相关判断限原active／DOM源码检查，实际project切换覆盖DOM替换。普通提交／推送、完整Ref、固定发布身份补核与本片自己的CI仍待；不借C1成功关闭本片。
+
+普通发布：已推送`2181cc5c6ab92ac01664f8e769298cce350f65a5`，16件Git blob逐字匹配最终清单、完整远端Ref一致。原两轴固定发布身份补核和自己的CI随后核，未借C1成功。
