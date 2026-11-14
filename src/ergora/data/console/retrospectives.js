@@ -1,4 +1,5 @@
 import { api } from "./api.js";
+import { compositionDialog } from "./agents.js";
 import { node, button, field, selectField, checkbox, heading, panel, empty, row, pre, table, download } from "./ui.js";
 
 export function retrospectivesView(data, base) {
@@ -27,8 +28,10 @@ export function retrospectivesView(data, base) {
     panel("完整复盘材料", "目录不会自动选择原件。明确选择后读取完整 UTF-8 正文；二进制、NUL 或超出原容量时整次拒绝，不截断。",
       choices, result),
     preparation.element,
-    results,
-    panel("后续执行与采用", "本页不调用 Agent、不评价或采用候选。原模型调用、可信评价、明确采用与回退继续按使用手册的原 CLI 分别执行。",
+    results.element,
+    panel("运行候选作者或审查者", "先核完整 input 与当前后端，再明确发起一次只读单叶调用。尽量作者与审查者使用不同后端；回退请填写原因。",
+      button("调用冻结的只读叶", (event) => compositionDialog(data, base, event.currentTarget, results.useRun))),
+    panel("后续评价与采用", "只读单叶调用和结果导出不表示候选已通过评价或采用。可信评价、明确采用与回退继续按使用手册的原 CLI 分别执行。",
       pre("ergora handoff read HANDOFF.zip --sha256 PACKET_SHA --selection selected-artifacts.json")),
   );
   const active = () => view.isConnected;
@@ -217,8 +220,19 @@ function resultPanel(base, active) {
 
   form.addEventListener("input", invalidate);
   form.addEventListener("change", invalidate);
-  return panel("检查结果与导出候选", "使用控制台所在机器的完整原 input 和 Agent 结果；明确填写其原摘要。无需重新选择上方证据，检查始终使用已冻结的原来源。",
-    form, checkedStatus, exportForm, attempted, exportStatus);
+  return {
+    element: panel("检查结果与导出候选", "使用控制台所在机器的完整原 input 和 Agent 结果；明确填写其原摘要。无需重新选择上方证据，检查始终使用已冻结的原来源。",
+      form, checkedStatus, exportForm, attempted, exportStatus),
+    useRun(run) {
+      if (!active()) return false;
+      for (const name of ["directory", "input_digest", "result", "result_sha256"])
+        form.elements.namedItem(name).value = run[name];
+      invalidate();
+      checkedStatus.replaceChildren(empty("已带入原调用的完整 snapshot 与结果身份；请核对候选方向，再明确检查。"));
+      form.scrollIntoView({ block: "start" });
+      return true;
+    },
+  };
 }
 
 function preparationPanel(base, active) {

@@ -31,3 +31,5 @@ r1 最终安装件已逐份核603产品、两RECORD611／616及283参考保持�
 原两轴固定发布补核approve／开放0／0，独立核21blob、固定全603与原snapshot／wheel／安装件、两RECORD／283及固定383／发布后387引用、普通完整Ref；3份独立证明另列。自己的CI43568843549已确认绑定完整f7a4d28，终态及原reviewer补核待。首次CI调用器将全workflow列表误用per-workflow字段的KeyError保留，改用实际原HTML的allWorkflowRunsRoute；没有更改固定原helper。
 
 自己的CI43568843549已终态Success：官方第三run及Windows第二job、其余七job第一份HTML绑定完整f7a4d28，八job／30必要步骤全部成功，另列38原CI引用；原383／发布后387前缀保持，原reviewer终态补核待。
+
+原主审及原两轴自己的CI终态补核均approve／开放0／0，38原CI件、原383／发布后387前缀及3独立发布证明全部核对；4份独立CI证明另列。F10d3b1精确交付闭合，不覆盖后继WIP。

@@ -93,6 +93,26 @@ class RetrospectiveExportPayload(RetrospectiveResultPayload):
         return values
 
 
+class CompositionInputPayload(Payload):
+    directory: str
+    input_digest: str
+    backend: str | None = None
+    model: str | None = None
+    reason: str | None = None
+    codex_config: str | None = None
+
+    def arguments(self) -> dict:
+        values = self.model_dump()
+        values['source'] = Path(values.pop('directory'))
+        if values['codex_config'] is not None:
+            values['codex_config'] = Path(values['codex_config'])
+        return values
+
+
+class CompositionRunPayload(CompositionInputPayload):
+    timeout: int = Field(strict=True, ge=1, le=3600)
+
+
 class BindingPayload(Payload):
     binding: dict
     revision: int
@@ -956,6 +976,18 @@ def create_app(home: Path | None = None) -> FastAPI:
     @application.post("/api/projects/{project_id}/agent-runs")
     def agent_run(project_id: str, body: AgentPayload):
         return agent_runs.run_agent(state, project_id, body.role, body.prompt, body.timeout, body.skills, body.recall, body.template)
+
+    @application.get("/api/projects/{project_id}/agent-runs")
+    def list_agent_runs(project_id: str):
+        return agent_runs.runs(state, project_id)
+
+    @application.post("/api/projects/{project_id}/composition-inputs/check")
+    def check_composition_input(project_id: str, body: CompositionInputPayload):
+        return agent_runs.check_input(state, project_id, mode="text-only", **body.arguments())
+
+    @application.post("/api/projects/{project_id}/composition-inputs/run")
+    def run_composition_input(project_id: str, body: CompositionRunPayload):
+        return agent_runs.run_input(state, project_id, mode="text-only", **body.arguments())
 
     @application.post("/api/projects/{project_id}/kernel-runs")
     def kernel_create(project_id: str, body: KernelPayload):

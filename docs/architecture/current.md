@@ -381,3 +381,5 @@ F10d3a的`retrospectives.js`是`app.js`既有view接口的实现，内聚当前�
 F10d3b1沿三个原retrospectives准备函数增加薄HTTP消费者，传输payload共享路径构造，工作流payload只特化额外target-manifest路径；原owner继续持有基线／证据／grant／完整材料／容量与原子不覆盖。完整已存input读取与原proposal reader共用同一私有request读取路径，沿原workflow inspector核原字节与三类原schema，项目匹配后才返回原请求和全部继承材料。现有view内的准备表单只消费当前完整证据选择，保留上次提交路径，失败不自动重发；独立复读走只读代际规则。没有新状态机、目标注册器或模型调度，结果检查／导出及原单叶调用页面另接。
 
 F10d3b2沿原retrospectives reader将可选project/input digest绑定到同次check/export读取，旧CLI默认离线合同保持；六条薄HTTP与原view只消费完整检查和明确导出，不接管原库、评价或采用。验收状态见[本片交付](../delivery/2026-11-14-retrospective-results-console.md)。
+
+F10d4沿原agent_runs准入读取增加可选显式input digest，薄HTTP固定text-only，原snapshot／adapter／process／运行记录保持唯一owner。agents.js内的冻结叶对话框由工具和复盘两页实际调用，依附原打开按钮的生命周期；原记录与诊断可显式观察，结果交接使用已存snapshot并由原结果表单重新检查。没有页面账本、自动图执行或模型自我批准；验收见[交付](../delivery/2026-11-14-frozen-leaf-console.md)。

@@ -38,4 +38,30 @@
 
 开放需求 finding **0**，开放维护性 finding **0**；无阻断本地验收的问题。补核发现的文档状态歧义已通过历史检查点标签和当前终态说明修正，早拒绝请求捕获限制也已修明，未改产品或原 480 原件。
 
-仅通过当前 Linux 合成原输入／候选的本地范围。Home 切换、全键盘、所有并发／故障排列及规模性能仍未验；不证明真实训练、质量、可信评价或采用。原冻结 input 单叶调用、完整 F10／F9d／G1／真实 B3／完整 Forge C2 仍按后续计划实施。固定发布、远端 Ref 与本片自己的必要 CI 尚待单独验收，不借前片成功。
+仅通过当前 Linux 合成原输入／候选的本地范围。Home 切换、全键盘、所有并发／故障排列及规模性能仍未验；不证明真实训练、质量、可信评价或采用。原冻结 input 单叶调用、完整 F10／F9d／G1／真实 B3／完整 Forge C2 仍按后续计划实施。本地阶段未预批发布或 CI；固定发布另见下节，本片自己的必要 CI 仍待单独验收。
+
+## 固定发布补核
+
+原主审及原 fresh-context Spec／Standards 两轴对固定普通发布 `f0b0d529cd9d85332e84dd4b4c34d49b381031df` 分别 **approve，开放 0／0**。本轮只用固定 Git 对象与原 r1 原件，当前 F10d4 后继产品 WIP 全部排除。父提交精确为原基线 `f7a4d28e82f2db99245885eaa24229299f7f73d7`；18 个变更 blob 的路径、大小和 SHA 全部与 `static-final-r1.json` 相同。原六源码／测试身份保持；前片状态记账与后继纯计划不计本片产品或验收。
+
+再次直接核固定 Git、r1 冻结源码快照、wheel 与安装件的 **603 产品逐字节一致**，两份 RECORD 的 611／616 行大小／摘要和 283 冻结参考均正确，wheel SHA 仍是原 r1 身份。固定 Git 内 **495 引用**完整保留为发布后 **499 引用**的有序前缀，499 件唯一引用的大小／SHA 全部正确；仅追加 static／commit／push／ref 四件。原 480 引用及其后 10 独立证明／5 私有调用器保持，后用 `push-fixed-r1.py` 另列并核摘要。
+
+原要求中的前片发布门禁已经闭合：精确 `f7a4d28` 自身 run **43568843549** 的原 38 件 CI 引用、四件独立终态证明及三件独立发布证明均核过，原终态为八 job／30 必要步骤成功，原主审与原两轴分别 approve／0 finding。前片原两轴在 **07:21:05.989 UTC** 完成，早于本次普通 push 开始 **07:22:10.451 UTC**。先固定可逆本地提交，再等待前片门禁闭合推送的顺序与原证据相符；前片成功没有替代本片自己的 CI。
+
+原 push 明确使用完整候选 SHA 到 `refs/heads/refactor/architecture-foundations`，无 force，exit0 与 `f7a4d28..f0b0d52` 回执相符；原 **07:22:18 UTC** 完整远端 Ref 同为该固定 SHA。没有重新联网查询。固定文档中的发布前状态保持冻结时身份，后继四件记录证明普通发布，不将其旧 pending 文本当作当前发布状态。
+
+本片私有 `independent/publication-fixed-r1.json`、`predecessor-gate-publication-r1.json` 及原两轴 publication 报告／审计保存了本轮核对。没有源码修改、安装或产品／suite／CLI／模型／浏览器／网络重跑。本片自己的 CI 发现尚在进行，未给 CI 成功或最终交付结论；原本地范围与未验限制保持。
+
+## 自身 CI 终态补核
+
+本轮按任务要求由原 fresh-context 独立主审分别按 Spec 与 Standards 两轴只读补核，未另派子审。固定 `f0b0d529cd9d85332e84dd4b4c34d49b381031df` 自身 run **43570785965**：**Spec approve／0 finding，Standards approve／0 finding**。
+
+原官方 `ci-run-html-r3` 的 run URL、完整提交链接、正文大小／SHA 与 **Success** 相符。Windows job `132374522066` 使用原 r3 HTML，其余七个 job 使用原 r1 HTML；八个最终页面均为 `completed`，并有独立的 `Complete job: success` 与完整 SHA 日志路径。
+
+根据固定 Git 的 `portability.yml` 与配置中的六个 Linux 分组，独立核得 plan、六个 Linux job 和一个 Windows job；**30 个必要步骤全部 success**。每一步的完成标记、起止时间、job ID／完整候选 SHA 日志路径与原 `ci-status-r3.json` 逐项相同，包含 Windows PowerShell 5.1 安装／升级步骤。初始 UI batch 只用于绑定八个 job 的身份，不将其在途状态充作终态；原 run／Windows r1、r2 在途样本完整保留，最终结论来自其后原终态页面。
+
+单列的 **36 件 CI 原引用**及 **15 份官方 receipt** 的 URL、响应大小／SHA 均直接核过。固定 **495／发布后 499** 引用完整前缀与七件独立发布证明保持；18 个固定 blob、固定 Git／r1 快照／wheel／安装件的 603 产品、两 RECORD／283 冻结参考及原前片发布门禁均再次只读核对，没有纳入 F10d4 后继 WIP。
+
+原文档的终态 CI 主张与这些原件一致；各阶段旧 pending 记录保持其历史范围。此轮不声称取得 REST 结果、下载 artifact 压缩包或重跑任何产品、suite、CLI、模型、浏览器；未联网、安装或改动产品。原未验平台／旅程、真实训练／质量／性能与采用限制保持。
+
+独立脚本与详细终态证明为本片私有 `independent/verify-ci-terminal-r1.py`、`ci-terminal-r1.json`；两轴结论单列为 `axes-ci-terminal-r1.json`。自身 CI 验收缺项关闭，需求与维护性开放 finding 均为 **0**。

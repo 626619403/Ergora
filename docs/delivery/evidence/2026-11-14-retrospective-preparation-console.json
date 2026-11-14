@@ -186,7 +186,7 @@
     "state": "pushed",
     "own_ci": {
       "status": "success",
-      "independent_supplement": "pending_terminal_supplement",
+      "independent_supplement": "approve; original reviewer/axes independently bound exactf7a4d28 run43568843549, eight jobs/30 required steps and all38 CI refs, fixed383/post387 prefix and three publication proofs; zero open findings.",
       "run_id": 43568843549,
       "url": "https://github.com/626619403/Ergora/actions/runs/43568843549",
       "jobs": 8,
@@ -2365,6 +2365,28 @@
         "sha256": "111ffdfc5c11a7ec807bba9a54472db33f1ed84d2a0c956420fce52d1345c597"
       }
     ],
-    "scope": "Own exactf7a4d28 run43568843549 official run/eight job HTML with full SHA log paths; fixed383/post387 and independent fixed-publication proofs retained."
+    "scope": "Own exactf7a4d28 run43568843549 official run/eight job HTML with full SHA log paths; fixed383/post387 and independent fixed-publication proofs retained.",
+    "independent_terminal_references": [
+      {
+        "path": "independent/verify-ci-terminal-r1.py",
+        "bytes": 8967,
+        "sha256": "5cf471889d7efe2c9b796626aef565a6749d70d5e3c37c7d3cf0bac7cc72ac20"
+      },
+      {
+        "path": "independent/ci-terminal-r1.json",
+        "bytes": 14417,
+        "sha256": "5404e5ac6aad91d6f04b8960f1d2a7a57c3248991ecdac29247e07d570b68638"
+      },
+      {
+        "path": "independent/axes-ci-terminal-r1.json",
+        "bytes": 1857,
+        "sha256": "e11778ec4ae720e9d6c420c39b8761592043bced2b4c14e6040e6df6d648e040"
+      },
+      {
+        "path": "independent/ci-terminal-initial-probe-r1.json",
+        "bytes": 15587,
+        "sha256": "290a080b0a8ec0d75409393db1d9b95c334f40963e9fe2869eb24d00288f39a5"
+      }
+    ]
   }
 }

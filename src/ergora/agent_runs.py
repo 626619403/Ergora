@@ -73,10 +73,12 @@ def run_agent(state: State, project_id: str, role: str, prompt: str, timeout: in
 
 def _admit_input(state: State, project_id: str, source: Path, *, backend: str | None,
                  model: str | None, reason: str | None, mode: str, codex_config: Path | None,
-                 binding_override: dict | None = None) -> tuple[dict, dict]:
+                 binding_override: dict | None = None, input_digest: str | None = None) -> tuple[dict, dict]:
     """One current admission produces both the preview and the persisted call contract."""
     contracts.validate(mode, {"enum": ["text-only", "task-mcp"]}, "Composition call mode")
     prepared = workflow_definitions.inspect_input(source, material=True)
+    if input_digest is not None and prepared['digest'] != input_digest:
+        raise ValueError('Composition input differs from the explicitly selected digest')
     leaf = next(item for item in prepared["composition"]["instances"] if item["path"] == prepared["request"]["instance"])
     permissions = leaf["permissions"]
     if permissions["write"] or permissions["shell"] or permissions["network"]:
@@ -132,10 +134,10 @@ def _admission(state, project_id, prepared, *, backend, model, reason, mode, cod
 
 def check_input(state: State, project_id: str, source: Path, *, backend: str | None = None,
                 model: str | None = None, reason: str | None = None, mode: str = "text-only",
-                codex_config: Path | None = None) -> dict:
+                codex_config: Path | None = None, input_digest: str | None = None) -> dict:
     """Current admission only: no model, server, run record or formal authorization."""
     _, document = _admit_input(state, project_id, source, backend=backend, model=model, reason=reason, mode=mode,
-                               codex_config=codex_config)
+                               codex_config=codex_config, input_digest=input_digest)
     return document
 
 
@@ -144,12 +146,12 @@ def run_input(state: State, project_id: str, source: Path, timeout: int = 300, *
               codex_config: Path | None = None, mode: str = "text-only", binding_override: dict | None = None,
               result_schema: dict | None = None, env: dict | None = None,
               codex_bin: str = "codex", supervised: bool = False,
-              allow_one_continuation: bool = False) -> dict:
+              allow_one_continuation: bool = False, input_digest: str | None = None) -> dict:
     """Explicit independent restricted call; no workflow ports or formal approval."""
     contracts.validate(timeout, {"type": "integer", "minimum": 1, "maximum": 3600}, "Agent timeout")
     deadline = time.monotonic() + timeout if allow_one_continuation else None
     prepared, document = _admit_input(state, project_id, source, backend=backend, model=model, reason=reason, mode=mode,
-                                      codex_config=codex_config, binding_override=binding_override)
+                                      codex_config=codex_config, binding_override=binding_override, input_digest=input_digest)
     if allow_one_continuation:
         if supervised or result_schema is not None:
             raise ValueError("Continuation sources require an explicitly enabled standalone call with the default schema")

@@ -2,7 +2,7 @@
 
 审查者：本片 fresh-context 独立主审，以及两个 `fork_turns=none` 的 Standards／Spec 子轴。原始输入为 `AGENTS.md`、`docs/PLAN.md`、[本片合同](../plans/2026-11-14-retrospective-preparation-console.md)，随后独立读取实际源码、邻接生产 caller／owner 与[本片交付](2026-11-14-retrospective-preparation-console.md)。依 `code-review` 两轴和 `independent-review` brief；未复用实现者预设结论。
 
-**最终本地结论：Standards approve／Spec approve，开放 0／0。** 原两轴已在同片恢复，补核实际安装、HTTP／CLI／浏览器、恢复／收尾与自身模板证据；固定发布亦已由原两轴补核通过，详见文末。本片自己的 CI 仍待单独补核。
+**最终结论：Standards approve／Spec approve，开放 0／0。** 原两轴已在同片恢复，补核实际安装、HTTP／CLI／浏览器、恢复／收尾与自身模板证据；固定发布及本片自己的 CI 终态均已由原两轴补核通过，详见文末。结论仅属于本片固定候选及已述验收范围。
 
 固定基线及审查时 HEAD 均为 `203973f9fbb2e6d97bf59961b49482cb875f2d0d`。`git diff <baseline>...HEAD` 和提交区间为空；本次候选是明确的未提交工作区差异：`src/ergora/retrospectives.py`、`src/ergora/web.py`、`src/ergora/data/console/retrospectives.js`、`tests/test_skills_evaluation.py`、`tests/test_memory.py`、`tests/test_workflow_definitions.py`，另读取本片新交付／公开证据全文、本片计划状态，以及 `docs/USAGE.md` 和 `docs/architecture/current.md` 的本片交接增量。前片 F10d2／F10d3a 的 CI、发布及记账差异不计为本片产品或验收；后继纯计划不计本片实现。精确六文件 SHA 与原差异命令保存在本片私有 `independent/source-review-r1.json`，最终补核再次确认六文件未变，仍为同一 r1。
 
@@ -26,7 +26,7 @@ HTTP payload 与四入口只拥有传输字段及项目边界；三个准备入�
 
 自身原结构模板的 **35.137 秒／exit 0／approve** 原结果已核；10 份完整文件共 261,359B、原 task 和祖先资源实际进入 stdin，输入与 stdin 摘要相同。其原回复明确仅批准所给源码审查，不替代本次独立验收。初始浏览器选择器与审计调用器错误保留；没有将它们重标为最终产品失败或成功。主审只读补核脚本及原结果保存于本片私有 `independent/verify-final-local-r1.py`、`final-local-r1.json`，两轴原结论单列保存。
 
-未动态验证 Home 切换、完整键盘／异常排列或规模性能，不作全矩阵、真实 GPU／训练／质量／性能收益主张。最终本地阶段仅关闭本地验收缺项，固定发布的后继补核见下节，本片自己的 CI 仍待实际终态及独立补核。前片 CI 属另一片审查，不作为本片成功；原源码阶段的 pending 结论保存在原独立证据中。
+未动态验证 Home 切换、完整键盘／异常排列或规模性能，不作全矩阵、真实 GPU／训练／质量／性能收益主张。最终本地阶段仅关闭本地验收缺项，未预批发布或 CI；后继各自补核见下文。前片 CI 属另一片审查，不作为本片成功；原源码阶段的 pending 结论保存在原独立证据中。
 
 本地阶段两轴分别为 Standards 0、Spec 0，最终本地 approve／开放 0／0；后继固定发布见下节。
 
@@ -38,4 +38,16 @@ HTTP payload 与四入口只拥有传输字段及项目边界；三个准备入�
 
 原 push 明确使用完整候选到当前分支，无 force；原回执为 `203973f..f7a4d28`，原完整远端 Ref 匹配。主审另一次实际只读 `git ls-remote --refs` 返回同一完整候选与 `refs/heads/refactor/architecture-foundations`。固定文档保留冻结时的发布前状态，四件后继记录证明实际发布；没有扩大本地验收或提前声明 CI 成功。原证明及只读脚本在本片私有 `independent/publication-r1.json`、`verify-publication-r1.py`，原两轴结论单列 `axes-publication-r1.json`。未重跑产品、suite、模型或浏览器。
 
-本片自身 CI 仍待其终态及独立补核；本次不予预批。固定发布两轴 Standards 0、Spec 0，approve／开放 0／0。
+固定发布阶段未预批本片自身 CI；其后继终态补核见下节。固定发布两轴 Standards 0、Spec 0，approve／开放 0／0。
+
+## 自身 CI 终态补核
+
+原主审及原 Standards／Spec 两轴只读核对固定 `f7a4d28e82f2db99245885eaa24229299f7f73d7` 自身 run **43568843549**，分别 **approve，开放 0／0**。官方 `ci-run-html-r3` 的完整提交链接、run URL、响应字节／SHA 与 **Success** 状态相符；Windows job `132368600773` 使用原第二份 HTML，其余七个 job 使用原第一份 HTML，八个最终页面均有 `Complete job: success`。
+
+按固定候选的 `portability.yml` 与六个 Linux 分组独立核对矩阵：plan、六个 Linux job、一个 Windows job。**30 个必要步骤全部 success**，每项完成时间、job 完成标记及日志 URL 中的完整候选 SHA／job ID 均正确，与 `ci-status-r3.json` 逐项一致；包含 Windows PowerShell 5.1 安装／升级步骤。初始官方 job batch 仅绑定八个 job 的 ID／名称，不将其在途状态当终态；最终结论来自终态 run 与 job 原 HTML，不声称下载过 REST 结果或 artifact 压缩包。
+
+本片另列的 **38 件 CI 原引用**大小／SHA 全部匹配，各官方 receipt 的 URL／状态／原正文身份正确；固定383／发布后387引用前缀及三份独立发布证明保持。首次发现调用器误用 `workflowRunsRoute` 的错误原件保留，修正放在独立 `discover-ci-r2.py`，固定 `discover-ci-r1.py` 摘要未变。审查者首轮省略 listing URL 查询参数的只读假设错误亦单独保存；按原精确 URL 纠正后终核为 exit 0／0 错，不计产品或 CI 故障。
+
+终态原证明为本片私有 `independent/ci-terminal-r1.json`，只读脚本为 `verify-ci-terminal-r1.py`，原两轴结论为 `axes-ci-terminal-r1.json`；审查调用器初始原件单列 `ci-terminal-initial-probe-r1.json`。未联网、安装、运行产品／suite／模型／浏览器或提交，后继 b2 的六文件 WIP 全部排除。本片自身 CI 门禁已闭合，不扩大原平台、训练、质量或性能范围。
+
+自身 CI 两轴 Standards 0、Spec 0，approve／开放 0／0。

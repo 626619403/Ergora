@@ -55,7 +55,8 @@ def prepared(tmp_path):
 def test_call_persists_complete_snapshot_and_explicit_backend_without_ambient_tools(prepared, tmp_path, monkeypatch, capsys, backend):
     state, repo, source = prepared()
     original = workflows.inspect_input(source, material=True)
-    admitted = agent_runs.check_input(state, "demo", source, backend=backend, model="fixture-model", reason="Explicit test selection")
+    admitted = agent_runs.check_input(state, "demo", source, backend=backend, model="fixture-model", reason="Explicit test selection",
+                                     input_digest=original["digest"])
     config = tmp_path / "native.toml"
     config.write_text('model_provider="fixture"\napproval_policy="never"\nsandbox_mode="danger-full-access"\n'
         '[features]\nshell_tool=true\n[model_providers.fixture]\nname="Fixture"\n'
@@ -101,6 +102,22 @@ def test_call_persists_complete_snapshot_and_explicit_backend_without_ambient_to
     assert hashlib.sha256((protocol / "prompt.txt").read_bytes()).hexdigest() == run["prompt_sha256"]
     assert agent_runs.runs(State(state.root), "demo")[0] == run
     assert agent_runs.output(State(state.root), "demo", run["id"])["streams"]["stdout"]["available"]
+
+
+def test_selected_digest_rejects_a_different_valid_input_before_run_or_model(prepared, tmp_path, monkeypatch):
+    state, _, source = prepared()
+    original = workflows.inspect_input(source)
+    replacement = tmp_path / "replacement"
+    workflows.prepare_input(state.root, "structure-review", "1.0.0", "root/review", original["request"]["grant"],
+                            b"Review a different candidate.", replacement, 30000)
+    selected = workflows.inspect_input(replacement)
+    assert selected["digest"] != original["digest"]
+    assert agent_runs.check_input(state, "demo", replacement, input_digest=selected["digest"])["input_digest"] == selected["digest"]
+    monkeypatch.setattr(processes, "run", lambda *a, **k: pytest.fail("A changed selection must not call the model"))
+    for operation in (agent_runs.check_input, agent_runs.run_input):
+        with pytest.raises(ValueError, match="explicitly selected digest"):
+            operation(state, "demo", replacement, input_digest=original["digest"])
+    assert agent_runs.runs(state, "demo") == [] and not (state.root / "runs").exists()
 
 
 @pytest.mark.parametrize("permission", [("write", ["workspace"]), ("shell", True), ("network", ["https://example.com"])])

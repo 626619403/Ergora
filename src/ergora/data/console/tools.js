@@ -5,8 +5,9 @@ import {
 } from "./ui.js";
 import { app, bindingFor } from "./state.js";
 import { bindingFields } from "./binding-fields.js";
+import { compositionDialog } from "./agents.js";
 
-export function toolsView(data, _base, { refresh, render }) {
+export function toolsView(data, base, { refresh, render }) {
   const diagnostics = node("div", {}, pre(data.tools));
   return [
     heading(
@@ -78,6 +79,8 @@ export function toolsView(data, _base, { refresh, render }) {
         notify("诊断完成；请查看分项状态与修复指引");
       }), diagnostics),
     panel(`有效绑定 · 修订 ${data.configuration.project.revision}`, "包含每层来源与校验结果；运行使用保存的快照。", pre(data.configuration)),
+    panel("冻结的只读叶", "使用已保存的完整 input 明确调用原 Agent；后端选择与模板实现分开。",
+      button("调用冻结的只读叶", (event) => compositionDialog(data, base, event.currentTarget))),
   ];
 }
 function bindingDialog(data, layer, refresh) {
