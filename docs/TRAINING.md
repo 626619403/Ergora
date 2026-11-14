@@ -206,6 +206,32 @@ CLI的`start`／`resume-start`仅在返回`submitted`时退出0；`prepared`／`
 
 提交只排队原控制工作流；实际runner仍须按原`agentflow training run-local EXPERIMENT_ID --confirm-manifest-sha ...`逐实验执行。原evidence SHA批准和集成票据继续使用原训练协议；`ergora task`只管理开发Task。
 
+### 冻结有限候选与预算策略
+
+Linux／WSL2可把1–32个已准备、尚未投递的原实验保存为一个完整输入。先分别用`training show`取得两个实验的完整manifest SHA，把下面两个占位符替换为对应的64位小写SHA，保存为`cycle-request.json`。实验ID也须与已准备的原件一致：
+
+```json
+{
+  "schema_version": 1,
+  "budget": {"wall_seconds": 900, "cleanup_seconds": 170, "control_timeout_seconds": 7},
+  "candidates": [
+    {"experiment_id": "trial-a", "manifest_sha256": "REPLACE_WITH_TRIAL_A_SHA256", "change": "解除已定位的重复计算", "next_bottleneck": "测量后重新确认"},
+    {"experiment_id": "trial-b", "manifest_sha256": "REPLACE_WITH_TRIAL_B_SHA256", "change": "优化同一合同下的另一个候选", "next_bottleneck": "保留本轮原始证据"}
+  ]
+}
+```
+
+```bash
+ergora training cycle-create my-project --definition cycle-request.json --directory "$HOME/ergora-inputs/cycle-01"
+ergora training cycle-read "$HOME/ergora-inputs/cycle-01" --sha256 EXACT_CYCLE_SHA256
+```
+
+`cycle-create`只读原注册和`check-start`，保存完整项目／注册快照、全部候选观察与策略，返回整份`cycle.json`的SHA；不会覆盖已有目录。候选顺序固定，试次上限取列表长度；同一实验不能重复或已有prepared／unknown／submitted／rejected意图。所有候选须共享初始baseline、workload、数据／初态／环境／验证合同、质量要求及比较政策；各自candidate、track与allowed_changes完整保留。合同不一致时修正真实选择，不能悄悄放宽门槛。
+
+三个预算值是严格整数，清理时间包含在总墙钟内，`1≤cleanup_seconds<wall_seconds`。`control_timeout_seconds`为1–60秒的原用例timeout上限，未来执行须按剩余阶段预算缩小或拒绝调用；它不是整个用例的硬时限。这里没有预算时钟、自动派发、费用或GPU小时计量。准备成功只表示策略和原观察已保存，实际训练仍使用上面的显式原入口；完整有界自动执行和停止机制另行交付。
+
+离线`cycle-read`不需要项目、SDK、服务或密钥，验证所选完整SHA、版本及内部绑定，保留原观察全文。`coverage`明确为已保存本地观察，运行未查询、来源未认证、执行未授权、预算未起算；其中旧ready字段不代表当前准入。文件最多10,000,000 UTF-8字节和64层／100000值，超限拒绝，不截断。该输入保留原home／注册／执行路径，跨机可离线阅读；执行须在原支持环境重新核身份，不能将它直接当作活动运行迁移或新的启动授权。
+
 ### 取消原运行与分别观察停止事实
 
 先确认 `training submission` 返回 `submitted` 和完整原 `run_id`；未知 start 必须先按上一节恢复。实际取消与原执行器观察要求 Linux／WSL2、`temporal` extra 和同一原服务／训练控制 worker。取消请求使用稳定 ID；保留这个 ID，失败后继续查询或恢复同一请求。

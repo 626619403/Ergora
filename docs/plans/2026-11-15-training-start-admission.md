@@ -19,6 +19,6 @@ CLI在可作为新实验候选时exit0，已有原投递时exit1并保留JSON；
 |A1 实现|原submission owner只读模式、应用入口和薄CLI，原start／恢复行为保持|已实现；产品仅原training／reference_training_submission／CLI三文件|
 |A2 接缝|无SDK可检查完整未提交实验；已有prepared／unknown／submitted／rejected明确不可新用且不重发；错SHA、原准入失败、项目漂移拒绝，读取原件保持|源码新两接缝修正测试注入后2通过／1.63秒；原四suite安装54通过／210.12秒，不新建测试文件或CI job|
 |A3 安装／实用|新非editable包／283参考核身份；实际CLI在无SDK环境完成原已准备实验检查，记录原文件和数据库保持|最终r2两独立安装643源／wheel／安装逐字一致，283保持；无SDK实际三CLI通过，42原文件／DB保持。只读CPU合同准入，不是训练验收|
-|A4 审查／交付|自身原结构模板、该实现片新的fresh-context两轴；更新交付与总计划，普通推送／精确Ref和自己的CI|自身原模板43.254秒approve、新独立本地两轴approve／开放0／0；普通发布／精确Ref及自己的CI待。纯Q4.2计划评审不认证实现|
+|A4 审查／交付|自身原结构模板、该实现片新的fresh-context两轴；更新交付与总计划，普通推送／精确Ref和自己的CI|自身原模板43.254秒approve、新独立本地两轴approve／开放0／0；已精确交付d3c90e7／15blob／完整Ref核同，自己的CI43644626885八job／30步骤全成功，原独立固定发布／终态两轴approve／开放0／0。纯Q4.2计划评审不认证实现|
 
 仅修改原training／reference_training_submission／CLI、原submission测试及手册／记录；reference.py沿原Linux／WSL2限制保持。不提供自动循环、前置fence、预算执行、候选生成、批准、HTTP／页面或训练任务派发；这些分别沿Q4.2后续子节点。本片给循环的有限选择提供真实复用入口，不提前声明其预算或取消已解决。实际过程见[交付](../delivery/2026-11-15-training-start-admission.md)。

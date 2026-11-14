@@ -63,3 +63,38 @@ Kernel 专家保留可直接核对 `data/presets/workflows/ergora-training-propo
 已读根／源码／测试 AGENTS、[组件协议](../architecture/component-change-protocols.md)，以及 maintainable-project-delivery 的 independent-review、ergora-codebase-quality 的 repository-style／module-design／test-seams 参考。按项目现有 pyproject 和显式 CI 分组选择检查，没有套用外部框架的格式或测试规则。
 
 本次实际环境为 Linux；未实际验证 WSL2 或 Windows，也未跑全套回归、模型、训练、GPU、profiler、真实服务、安装、提交或推送。未认证前片的发布／CI；未验收后继有限选择、提交前 fence、全生命周期停止、跨恢复预算或自动循环。上述边界不改变本片固定快照的本地两轴结论，后续发布和每个实现片分别提供自己的证据。
+
+## 固定发布与本片自己的 CI 终核
+
+日期：2026-11-15；由本片原 fresh-context reviewer 延续固定发布核对。原12,584B报告前缀及 SHA-256 `61daea268894558530ecc013a6b53937c742960ec5361c94d85d0531862039a2` 保持，原件另存本片 ignored 检查目录的 `ci/reviewer-fixed-r1/original-review.md`。以下只认证固定 Git 对象，不以正在推进 a2 的工作树替代本候选。
+
+已独立核固定提交 `d3c90e751ee9257df36b74e57e8956d38bbde848`，parent 为 `5a3e3b2a96c92632a65e60e87bcfc8713eff41e9`，tree 为 `66828b6a6e47e949ff025980fe04d71e10ac2f1b`。与 parent 的15路径恰为原13路径、本报告和前片原报告的终核追加；全部 Git blob、字节数和 SHA 与实际发布清单相符。产品／测试／训练手册与本片冻结快照逐字相同；四份后补计划／交付差异只记录已验证的本地审查和前片终态，未扩大本片行为。a2 设计不在该提交。
+
+又直接从此固定 Git 读取全部643产品 blob，与原 r2 wheel及两个实际非editable安装逐字比较，三者相同；283参考文件逐一匹配原 manifest。wheel SHA仍为 `cbe1c14efbb577810585db94d696a03f14f0c2f6e3c30ebcae135b85203ca495`。原发布／push日志与远端记录保持；独立匿名 GitHub commit API 和完整 branch-ref API 均HTTP200，parent／tree及 `refs/heads/refactor/architecture-foundations` 的完整SHA与本固定候选一致。未重跑安装、模型或全套测试。
+
+本候选自己的 [Portability run 43644626885](https://github.com/626619403/Ergora/actions/runs/43644626885) 为 push／attempt1，head SHA精确绑定上述 `d3c90e7`，workflow为固定提交的 `.github/workflows/portability.yml`。2026-11-14 21:49:37 UTC 首次独立观察仍为 `in_progress`／conclusion=null：plan已成功，六个Linux分组及Windows任务仍在运行，共8 job。该观察及HTTP200官方run页面完整保存在 `ci/reviewer-initial-r1/`；它没有借用前片的run或结论。
+
+固定发布复核保持需求／维护性两轴approve，新增finding 0。此时尚有一个交付开放项：本候选自己的CI终态及实际必要步骤，当前不称本片精确交付闭合。后续有界观察和终态另追加，保留本次在途原件。
+
+2026-11-14 21:55:34 UTC 的独立API观察中，plan及六个Linux分组全部成功，Windows仍在回归阶段；按固定workflow列出的30个必要步骤已有28个成功，剩余Windows回归及PowerShell5.1安装升级。22:03:19 UTC 的HTTP200官方Windows job页仍显示同一回归运行中，安装升级未开始，没有失败结论。后续先观察该官方job页，结束后再核整次run／全部job；本轮观察最晚至22:18 UTC，覆盖固定workflow中Windows job的30分钟时限，若届时仍无可核终态则保持开放项。API／官方页的各次完整响应和请求时间分别保留在本片 `ci/reviewer-observe-r2` 至 `r6`、`ci/reviewer-windows-*`，没有触发重跑或改变远端状态。
+
+**终态补核：需求符合性 approve／可维护性 approve，新增 finding 0，开放0／0。** 2026-11-14 22:14:02 UTC 的独立匿名API与官方run页均已核本候选自己的 `43644626885 / attempt1` 为 `completed / success`；head SHA、push事件、branch及workflow均与固定候选相同。最终完整远端 `refs/heads/refactor/architecture-foundations` 仍为 `d3c90e751ee9257df36b74e57e8956d38bbde848`。该结论关闭的是本片固定发布／自己的CI开放项，不转授后继 a2。
+
+|本候选实际 job|原 job ID|终态|适用必要步骤|
+|---|---|---|---|
+|plan|132599526918|success|1／1|
+|Linux 3.11 group 0|132599561826|success|4／4|
+|Linux 3.11 group 1|132599561813|success|4／4|
+|Linux 3.11 group 2|132599561814|success|4／4|
+|Linux 3.11 group 3|132599561819|success|4／4|
+|Linux 3.11 group 4|132599561837|success|4／4|
+|Linux 3.11 group 5|132599561822|success|4／4|
+|Windows 3.12 group all|132599561848|success|5／5|
+
+30个适用必要步骤为：1次 `Read explicit test groups`，七个native job各自的 `Run actions/setup-python@v5`、`Build and install wheel`、`Packaged reference identity`、`Native application regression` 共28次，以及Windows的 `Windows PowerShell 5.1 installer and upgrade` 1次。逐项核API中的名称、状态和结论，并对照八份HTTP200官方job页的实际 `check-step` 名称、序号、成功结论及完成时间，30项全部一致。八job身份与attempt全部对应本run，没有缺job或用此前run替代。Linux的Windows专用步骤按原条件跳过，未计入适用30项；适用必要步骤无失败、取消或跳过。
+
+Windows原生回归于22:11:36 UTC成功，PowerShell5.1安装升级于22:12:34 UTC成功。22:12:04 UTC曾保留29／30、run仍在途的观察；最后一项和整次run确认成功后才关闭门槛。该Windows回归结论保持原历史读取支持范围，未把新的check-start宣称为Windows原生准入。
+
+终核原件在本片ignored目录的 `ci/reviewer-terminal-r1/`，含run／jobs API、官方run页、八job页及最终远端ref；每次请求均保留完整响应、HTTP状态、请求时间、字节数和SHA。全部有界观察合计50次匿名只读GET，均HTTP200，原始响应身份逐项核过；未认证前片CI，未重新安装或运行模型／训练／本地全套。原检查清单收录150件／6,050,561B，含固定Git核验、观察原文及采集器。
+
+完整独立终核记录为 `ci/reviewer-ci-terminal-r1.json`，67,280B，SHA-256 `380cfa8a4aa9cae0515c2552a1226a5e04f587b6638f11df8846e0c59905787e`；其150件清单不包含该汇总自身。记录绑定固定commit／parent／tree、15blob与r2包身份、原报告前缀、30适用必要步骤、八官方job页及50次原始GET，无身份或状态冲突。原12,584B报告前缀及最初在途记录保持。Q4.2a1本固定候选的精确交付门槛已闭合；a2及后继预算／停止／自动循环继续按各自范围独立验收。

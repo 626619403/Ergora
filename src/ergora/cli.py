@@ -571,6 +571,13 @@ def parser() -> argparse.ArgumentParser:
     reading = operations.add_parser("rounds-read", help="Verify and read an index offline; never query, execute or approve")
     reading.add_argument("directory", type=Path)
     reading.add_argument("--sha256", help="Pin the expected complete index SHA256")
+    cycle = operations.add_parser("cycle-create", help="Freeze a finite selection and budget policy; never dispatch training")
+    cycle.add_argument("project")
+    cycle.add_argument("--definition", type=Path, required=True)
+    cycle.add_argument("--directory", type=Path, required=True)
+    cycle = operations.add_parser("cycle-read", help="Read a complete saved selection offline; never re-admit or start a budget")
+    cycle.add_argument("directory", type=Path)
+    cycle.add_argument("--sha256", help="Pin the complete saved cycle SHA256")
     for name in ("baseline-preview", "init-baseline", "runner-preview", "register-runner"):
         operation = operations.add_parser(name, help="Preview or explicitly publish native baseline/runner configuration; never execute training")
         operation.add_argument("project")
@@ -1155,15 +1162,25 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(output, ensure_ascii=False, indent=2))
             return 0 if args.operation != "run" or output["status"] == "succeeded" else 1
         elif args.command == "training":
-            if args.operation in ("baseline-preview", "init-baseline", "runner-preview", "register-runner", "experiment-preview", "prepare", "rounds-create"):
-                document_path = (args.definition if args.operation == "rounds-create" else
+            if args.operation in ("baseline-preview", "init-baseline", "runner-preview", "register-runner", "experiment-preview", "prepare", "rounds-create", "cycle-create"):
+                document_path = (args.definition if args.operation in ("rounds-create", "cycle-create") else
                                  args.experiment if args.operation in ("experiment-preview", "prepare") else args.document)
                 with document_path.open("rb") as stream:
                     raw = stream.read(1_048_577)
                 if len(raw) > 1_048_576:
                     raise ValueError("Training setup source file exceeds 1 MiB")
-                document = definition_bundles.parse_json(raw.decode('utf-8-sig'), 'training round request') if args.operation == "rounds-create" else json.loads(raw)
-                if args.operation == "rounds-create":
+                if args.operation in ("rounds-create", "cycle-create"):
+                    cycle_request = args.operation == "cycle-create"
+                    document = definition_bundles.parse_json(raw.decode('utf-8-sig'),
+                        'training cycle request' if cycle_request else 'training round request',
+                        finite=cycle_request, bounded=cycle_request)
+                else:
+                    document = json.loads(raw)
+                if args.operation == "cycle-create":
+                    from . import training_cycles
+
+                    output = training_cycles.create(State(args.home), args.project, document, args.directory)
+                elif args.operation == "rounds-create":
                     from . import training_rounds
 
                     output = training_rounds.create(State(args.home), args.project, document, args.directory,
@@ -1178,6 +1195,10 @@ def main(argv: list[str] | None = None) -> int:
                                  "runner-preview": training.preview_runner, "register-runner": training.register_runner}[args.operation]
                     confirmation = () if args.operation in ("baseline-preview", "runner-preview") else (args.revision, args.document_sha256)
                     output = operation(State(args.home), args.project, document, *confirmation)
+            elif args.operation == "cycle-read":
+                from . import training_cycles
+
+                output = training_cycles.read(args.directory, sha256=args.sha256)
             elif args.operation == "rounds-read":
                 from . import training_rounds
 

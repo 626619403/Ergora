@@ -1,6 +1,7 @@
 """An accepted native start is never repeated after a lost acknowledgement."""
 
 from contextlib import redirect_stdout
+from copy import deepcopy
 import io
 import hashlib
 import json
@@ -110,6 +111,175 @@ def test_start_check_uses_original_preflight_and_rejects_project_drift(prepared,
         training.check_start(state, 'demo', 'alpha', digest)
 
 
+@pytest.fixture
+def cycle_selection(prepared):
+    state, definition, runtime, prefix, write, digest = prepared
+    manifest = json.loads((runtime / 'training/manifests/beta.json').read_bytes())
+    manifest.update(comparison_tool_sha256=hashlib.sha256(
+        (reference.ROOT / 'platform/upstream/compare_runs.py').read_bytes()).hexdigest(),
+        track='N', allowed_changes=['Different declared intervention'], candidate_config_sha256='d' * 64)
+    second = write(runtime / 'training/manifests/beta.json', manifest)
+    write(prefix / 'experiments/beta/manifest.json', manifest)
+    spec = json.loads((runtime / 'training/specs/beta.json').read_bytes())
+    spec['binding']['manifest_sha'] = second
+    write(runtime / 'training/specs/beta.json', spec)
+    request = {'schema_version': 1, 'budget': {'wall_seconds': 900, 'cleanup_seconds': 170, 'control_timeout_seconds': 7},
+               'candidates': [{'experiment_id': name, 'manifest_sha256': sha,
+                               'change': 'Synthetic ' + name, 'next_bottleneck': 'Unmeasured; no speedup claim'}
+                              for name, sha in [('alpha', digest), ('beta', second)]]}
+    return state, definition, runtime, prefix, write, request
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Native start preflight requires Linux/WSL2 Git paths')
+def test_cycle_freezes_full_admissions_and_reads_offline_without_touching_sources(cycle_selection, tmp_path, monkeypatch, capsys):
+    from ergora import training_cycles
+    from ergora.cli import main
+
+    state, definition, runtime, _, _, request = cycle_selection
+    before = {p: p.read_bytes() for root in (runtime, Path(definition['execution']['config_directory']))
+              for p in root.rglob('*') if p.is_file()}
+    with state.connect() as db:
+        database = list(db.iterdump())
+    original = reference.importlib.util.find_spec
+    monkeypatch.setattr(reference.importlib.util, 'find_spec', lambda name: None if name == 'temporalio' else original(name))
+    source, destination = tmp_path / 'selection.json', tmp_path / 'cycle'
+    source.write_text(json.dumps(request), encoding='utf-8')
+    assert main(['--home', str(state.root), 'training', 'cycle-create', 'demo', '--definition', str(source),
+                 '--directory', str(destination)]) == 0
+    created = json.loads(capsys.readouterr().out)
+    observed = training_cycles.read(destination, sha256=created['sha256'])
+    plan = observed['plan']
+    assert plan['project'] == state.project('demo') and plan['definition'] == request
+    assert plan['admissions'] == [training.check_start(state, 'demo', item['experiment_id'], item['manifest_sha256'])
+                                  for item in request['candidates']]
+    assert not observed['coverage']['budget_started'] and not observed['coverage']['execution_authorized']
+    assert observed['coverage']['runtime_status'] == 'not_queried'
+    assert all(p.read_bytes() == raw for p, raw in before.items())
+    with state.connect() as db:
+        assert list(db.iterdump()) == database
+
+    def no_admission(*args, **kwargs):
+        raise AssertionError('Offline cycle reads must not access the current project or native owner')
+
+    monkeypatch.setattr(training, '_project', no_admission)
+    unused = tmp_path / 'unused-control'
+    assert main(['--home', str(unused), 'training', 'cycle-read', str(destination), '--sha256', created['sha256']]) == 0
+    assert json.loads(capsys.readouterr().out) == observed and not unused.exists()
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Native start preflight requires Linux/WSL2 Git paths')
+def test_cycle_read_binds_full_sha_and_preserves_existing_publication(cycle_selection, tmp_path):
+    from ergora import training_cycles
+
+    state, _, _, _, _, request = cycle_selection
+    destination = tmp_path / 'cycle'
+    created = training_cycles.create(state, 'demo', request, destination)
+    path = destination / 'cycle.json'
+    original = path.read_bytes()
+    with pytest.raises(FileExistsError):
+        training_cycles.create(state, 'demo', request, destination)
+    assert path.read_bytes() == original
+    with pytest.raises(ValueError, match='expected complete SHA256'):
+        training_cycles.read(destination, sha256='0' * 64)
+    saved = json.loads(original)
+    saved['definition']['candidates'] = saved['definition']['candidates'][:1]
+    saved['admissions'] = saved['admissions'][:1]
+    marker, scope, policy, _ = reference.registration_paths(saved['project']['id'])
+    variants = [
+        lambda plan: plan['admissions'][0].update(execution_authorized=True),
+        lambda plan: plan['project']['registration'].update(files={marker: plan['project']['registration']['files'][marker]}),
+        lambda plan: plan['project']['registration']['files'][scope].update(protected_paths=[]),
+        lambda plan: plan['admissions'][0]['observation'].update(baseline={}),
+        lambda plan: plan['admissions'][0]['observation']['experiment']['manifest'].update(baseline_id='different-baseline'),
+        lambda plan: plan['admissions'][0]['observation']['experiment']['spec'].update(max_run_seconds=60),
+        lambda plan: plan['admissions'][0]['observation']['experiment']['current_runner'].update(runner_template_id='other'),
+        lambda plan: plan['admissions'][0]['observation']['experiment'].update(files={'unrelated': 'z'}),
+        lambda plan: plan['admissions'][0]['observation']['experiment']['files'].update({'state/training/manifests/alpha.json': '0' * 64}),
+    ]
+    for mutation in variants:
+        plan = deepcopy(saved)
+        mutation(plan)
+        raw = json.dumps(plan).encode('utf-8')
+        path.write_bytes(raw)
+        with pytest.raises(ValueError):
+            training_cycles.read(destination, sha256=hashlib.sha256(raw).hexdigest())
+    # Legacy imports preserve an equivalent execution-policy list order.
+    saved['project']['registration']['files'][policy]['allowed_task_types'].reverse()
+    path.write_text(json.dumps(saved), encoding='utf-8')
+    assert training_cycles.read(destination)['plan'] == saved
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Native start preflight requires Linux/WSL2 Git paths')
+@pytest.mark.parametrize('field', ['dataset_manifest_sha256', 'performance_policy'])
+def test_cycle_refuses_different_semantics_or_measurement_policy(cycle_selection, tmp_path, field):
+    from ergora import training_cycles
+
+    state, _, runtime, prefix, write, request = cycle_selection
+    manifest = json.loads((runtime / 'training/manifests/beta.json').read_bytes())
+    if field == 'performance_policy':
+        manifest[field]['thresholds']['min_saved_seconds_at_normalization'] *= 2
+    else:
+        manifest[field] = 'e' * 64
+    digest = write(runtime / 'training/manifests/beta.json', manifest)
+    write(prefix / 'experiments/beta/manifest.json', manifest)
+    spec = json.loads((runtime / 'training/specs/beta.json').read_bytes())
+    spec['binding']['manifest_sha'] = digest
+    write(runtime / 'training/specs/beta.json', spec)
+    request['candidates'][1]['manifest_sha256'] = digest
+    assert training.check_start(state, 'demo', 'beta', digest)['ready_for_new_start']
+    destination = tmp_path / 'different-contract'
+    with pytest.raises(ValueError, match='initial baseline, workload, semantic and measurement contract'):
+        training_cycles.create(state, 'demo', request, destination)
+    assert not destination.exists()
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Native start preflight requires Linux/WSL2 Git paths')
+def test_cycle_rejects_cross_candidate_project_drift(cycle_selection, tmp_path, monkeypatch):
+    from ergora import training_cycles
+
+    state, _, _, _, _, request = cycle_selection
+    original = training.check_start
+
+    def drift(*args):
+        result = original(*args)
+        with state.connect() as db:
+            project = json.loads(db.execute("SELECT document FROM projects WHERE id='demo'").fetchone()[0])
+            project['revision'] += 1
+            db.execute("UPDATE projects SET document=? WHERE id='demo'", (json.dumps(project),))
+        return result
+
+    monkeypatch.setattr(training, 'check_start', drift)
+    destination = tmp_path / 'drift'
+    with pytest.raises(ValueError, match='Project changed while capturing'):
+        training_cycles.create(state, 'demo', request, destination)
+    assert not destination.exists()
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Native start preflight requires Linux/WSL2 Git paths')
+def test_cycle_rejects_complete_aggregate_capacity_before_publication(cycle_selection, tmp_path):
+    from ergora import training_cycles
+
+    state, _, runtime, prefix, write, request = cycle_selection
+    manifest = json.loads((runtime / 'training/manifests/alpha.json').read_bytes())
+    spec = json.loads((runtime / 'training/specs/alpha.json').read_bytes())
+    manifest['notes'] = 'x' * 900_000
+    request['candidates'] = []
+    for number in range(12):
+        ident = 'capacity-' + str(number)
+        manifest['experiment_id'] = ident
+        digest = write(runtime / ('training/manifests/' + ident + '.json'), manifest)
+        write(prefix / ('experiments/' + ident + '/manifest.json'), manifest)
+        spec['binding'].update(experiment_id=ident, manifest_sha=digest)
+        spec['manifest_uri'] = (runtime / ('training/manifests/' + ident + '.json')).as_uri()
+        write(runtime / ('training/specs/' + ident + '.json'), spec)
+        request['candidates'].append({'experiment_id': ident, 'manifest_sha256': digest,
+                                      'change': 'Complete large native candidate', 'next_bottleneck': 'Not measured'})
+    destination = tmp_path / 'oversized'
+    with pytest.raises(ValueError, match='exceeds 10 MB'):
+        training_cycles.create(state, 'demo', request, destination)
+    assert not destination.exists()
+
+
 def test_submission_read_racing_with_conflict_publication_keeps_valid_checkpoints(tmp_path):
     from ergora.reference_training_submission import _Submission
 
@@ -193,6 +363,7 @@ def test_valid_large_manifest_can_publish_and_reread_its_aggregate_intent(prepar
 
 @pytest.mark.parametrize('scenario', ['lost-ack', 'timeout-ack'])
 def test_lost_reply_keeps_unknown_then_recovers_only_the_original_run(prepared, service, scenario):
+    from ergora import training_cycles
     from ergora.cli import main
 
     state, definition, runtime, prefix, write, digest = prepared
@@ -205,6 +376,13 @@ def test_lost_reply_keeps_unknown_then_recovers_only_the_original_run(prepared, 
     assert unknown['status'] == 'unknown' and unknown['attempt_saved'] and unknown['run_id'] is None
     checked = training.check_start(state, 'demo', 'alpha', digest)
     assert not checked['ready_for_new_start'] and checked['submission'] == unknown
+    request = {'schema_version': 1, 'budget': {'wall_seconds': 300, 'cleanup_seconds': 90, 'control_timeout_seconds': 5},
+               'candidates': [{'experiment_id': 'alpha', 'manifest_sha256': digest,
+                               'change': 'Uncertain original start', 'next_bottleneck': 'Reconcile first'}]}
+    destination = state.root / 'unresolved-cycle'
+    with pytest.raises(ValueError, match='cannot adopt an existing submission'):
+        training_cycles.create(state, 'demo', request, destination)
+    assert not destination.exists() and training.submission(state, 'demo', 'alpha') == unknown
     assert training.start(state, 'demo', 'alpha', revision, digest) == unknown
     select('not-found')
     output = io.StringIO()

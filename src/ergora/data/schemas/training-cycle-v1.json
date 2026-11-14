@@ -1,0 +1,189 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ergora.dev/schemas/training-cycle-v1.json",
+  "title": "Finite original training candidates and immutable budget policy",
+  "$ref": "#/$defs/request",
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "commit": {"type": "string", "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"},
+    "files": {"type": "object", "minProperties": 1, "additionalProperties": {"$ref": "#/$defs/sha256"}},
+    "binding": {
+      "type": "object", "additionalProperties": false,
+      "required": ["experiment_id", "manifest_sha", "candidate_sha", "baseline_sha"],
+      "properties": {
+        "experiment_id": {"type": "string", "minLength": 1},
+        "manifest_sha": {"$ref": "#/$defs/sha256"},
+        "candidate_sha": {"$ref": "#/$defs/commit"},
+        "baseline_sha": {"$ref": "#/$defs/commit"}
+      }
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "candidates", "budget"],
+      "properties": {
+        "schema_version": {"type": "integer", "const": 1},
+        "candidates": {
+          "type": "array", "minItems": 1, "maxItems": 32,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["experiment_id", "manifest_sha256", "change", "next_bottleneck"],
+            "properties": {
+              "experiment_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"},
+              "manifest_sha256": {"$ref": "#/$defs/sha256"},
+              "change": {"type": "string", "minLength": 1, "maxLength": 8192},
+              "next_bottleneck": {"type": "string", "minLength": 1, "maxLength": 8192}
+            }
+          }
+        },
+        "budget": {
+          "type": "object", "additionalProperties": false,
+          "required": ["wall_seconds", "cleanup_seconds", "control_timeout_seconds"],
+          "properties": {
+            "wall_seconds": {"type": "integer", "minimum": 2},
+            "cleanup_seconds": {"type": "integer", "minimum": 1},
+            "control_timeout_seconds": {
+              "description": "Upper bound for one native use-case timeout; execution must shrink or refuse it within the remaining phase budget.",
+              "type": "integer", "minimum": 1, "maximum": 60
+            }
+          }
+        }
+      }
+    },
+    "plan": {
+      "type": "object", "additionalProperties": false,
+      "required": ["schema_version", "kind", "control_home", "project", "definition", "admissions"],
+      "properties": {
+        "schema_version": {"type": "integer", "const": 1},
+        "kind": {"const": "training-cycle-plan"},
+        "control_home": {"type": "string", "minLength": 1},
+        "project": {
+          "type": "object",
+          "required": ["schema_version", "id", "repo", "created", "revision", "bindings", "registration"],
+          "properties": {
+            "schema_version": {"type": "integer", "const": 1},
+            "id": {"type": "string", "minLength": 1},
+            "repo": {"type": "string", "minLength": 1},
+            "created": {"type": "string", "minLength": 1},
+            "revision": {"type": "integer", "minimum": 1},
+            "bindings": {"type": "object"},
+            "registration": {
+              "type": "object", "required": ["schema_version", "definition", "sha256", "status", "operation_id", "files"],
+              "properties": {
+                "schema_version": {"type": "integer", "const": 1},
+                "definition": {"type": "object"},
+                "sha256": {"$ref": "#/$defs/sha256"},
+                "status": {"const": "published"},
+                "operation_id": {"type": "string", "pattern": "^[a-f0-9]{32}$"},
+                "files": {"type": "object", "additionalProperties": {"type": "object"}}
+              }
+            }
+          }
+        },
+        "definition": {"$ref": "#/$defs/request"},
+        "admissions": {"type": "array", "minItems": 1, "maxItems": 32, "items": {"$ref": "#/$defs/admission"}}
+      }
+    },
+    "admission": {
+      "type": "object",
+      "required": ["project", "project_revision", "experiment_id", "manifest_sha256", "ready_for_new_start",
+                   "read_only", "execution_authorized", "runtime_status", "observation", "submission"],
+      "properties": {
+        "project": {"type": "string", "minLength": 1},
+        "project_revision": {"type": "integer", "minimum": 1},
+        "experiment_id": {"type": "string", "minLength": 1},
+        "manifest_sha256": {"$ref": "#/$defs/sha256"},
+        "ready_for_new_start": {"const": true},
+        "read_only": {"const": true},
+        "execution_authorized": {"const": false},
+        "runtime_status": {"const": "not_queried"},
+        "submission": {"type": "null"},
+        "observation": {
+          "type": "object", "required": ["baseline", "baseline_files", "experiment", "runtime_status"],
+          "properties": {
+            "runtime_status": {"const": "not_queried"},
+            "baseline": {
+              "type": "object", "required": ["baseline_id", "commit", "config_sha256", "workload_fingerprint"],
+              "properties": {
+                "baseline_id": {"type": "string", "minLength": 1},
+                "commit": {"$ref": "#/$defs/commit"},
+                "config_sha256": {"$ref": "#/$defs/sha256"},
+                "workload_fingerprint": {"$ref": "#/$defs/sha256"}
+              }
+            },
+            "baseline_files": {"$ref": "#/$defs/files"},
+            "experiment": {
+              "type": "object",
+              "required": ["experiment_id", "binding", "manifest", "spec", "current_runner", "files", "track", "baseline_id",
+                           "workload_fingerprint", "baseline_matches", "baseline_error", "max_run_seconds", "runtime_status",
+                           "job_id", "started_recorded", "recorded_result_state", "fence_recorded", "recorded_gate",
+                           "job_request", "started", "result", "gate_report", "fence", "negative_result"],
+              "properties": {
+                "experiment_id": {"type": "string", "minLength": 1},
+                "binding": {"$ref": "#/$defs/binding"},
+                "files": {"$ref": "#/$defs/files"},
+                "baseline_matches": {"const": true},
+                "baseline_error": {"type": "null"},
+                "max_run_seconds": {"type": "integer"},
+                "runtime_status": {"const": "not_queried"},
+                "job_id": {"type": "null"},
+                "started_recorded": {"const": false},
+                "recorded_result_state": {"type": "null"},
+                "fence_recorded": {"const": false},
+                "recorded_gate": {"type": "null"},
+                "job_request": {"type": "null"},
+                "started": {"type": "null"},
+                "result": {"type": "null"},
+                "gate_report": {"type": "null"},
+                "fence": {"type": "null"},
+                "negative_result": {"type": "null"},
+                "manifest": {
+                  "type": "object",
+                  "required": ["schema_version", "experiment_id", "baseline_id", "baseline_commit", "candidate_commit", "base_config_sha256",
+                               "candidate_config_sha256", "workload_fingerprint", "dataset_manifest_sha256", "initial_checkpoint_sha256",
+                               "environment_fingerprint", "validation_contract_sha256", "comparison_tool_sha256", "checks_required",
+                               "quality_required", "performance_policy", "track", "allowed_changes", "owner", "author", "contract_approved",
+                               "candidate_sha", "baseline_sha", "local_project", "runner_template_id", "max_run_seconds"],
+                  "properties": {
+                    "schema_version": {"type": "integer", "const": 1},
+                    "contract_approved": {"const": true},
+                    "max_run_seconds": {"type": "integer"},
+                    "runner_template_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"},
+                    "track": {"enum": ["E", "N", "A"]},
+                    "allowed_changes": {"type": "array", "minItems": 1},
+                    "checks_required": {"type": "array", "minItems": 1, "uniqueItems": true},
+                    "quality_required": {"type": "boolean"},
+                    "performance_policy": {"type": "object", "minProperties": 1}
+                  }
+                },
+                "spec": {
+                  "type": "object", "required": ["binding", "manifest_uri", "poll_seconds", "max_run_seconds", "release_wait_seconds", "cancel_wait_seconds"],
+                  "properties": {
+                    "binding": {"$ref": "#/$defs/binding"},
+                    "manifest_uri": {"type": "string", "minLength": 1},
+                    "poll_seconds": {"type": "integer", "minimum": 30, "maximum": 300},
+                    "max_run_seconds": {"type": "integer", "minimum": 60, "maximum": 86400},
+                    "release_wait_seconds": {"type": "integer", "minimum": 60, "maximum": 604800},
+                    "cancel_wait_seconds": {"type": "integer", "minimum": 30, "maximum": 3600}
+                  }
+                },
+                "current_runner": {
+                  "type": "object", "additionalProperties": false,
+                  "required": ["schema_version", "runner_template_id", "project", "repo", "command", "timeout_seconds"],
+                  "properties": {
+                    "schema_version": {"type": "integer", "const": 1},
+                    "runner_template_id": {"type": "string", "minLength": 1},
+                    "project": {"type": "string", "minLength": 1},
+                    "repo": {"type": "string", "minLength": 1},
+                    "command": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+                    "timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 82800}
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

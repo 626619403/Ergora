@@ -56,6 +56,18 @@ def _current(state: State, project_id: str) -> dict | None:
     return json.loads(row[0]) if row else None
 
 
+def publication_files(project: dict, definition: dict, control_home: str | Path, digest: str) -> dict:
+    """Project a registration's four native documents without reading or publishing."""
+    marker, scope, policy, config = reference.registration_paths(project["id"])
+    return {
+        marker: {"schema_version": 1, "id": project["id"], "control_home": str(control_home), "definition_sha256": digest},
+        scope: definition["scope_policy"],
+        policy: {"allowed_task_types": [t for t in definition["templates"] if t != "training-optimization"]},
+        config: {"schema_version": 1, "name": project["id"], "repo": project["repo"],
+                 **{key: definition[key] for key in ("tracker", "base_sha", "allowed_paths", "checks")}},
+    }
+
+
 def _prepare(state: State, definition: dict, before: dict | None) -> dict:
     fresh = projects.new_document(definition["id"], Path(definition["repo"]))
     if before is not None:
@@ -97,14 +109,8 @@ def _prepare(state: State, definition: dict, before: dict | None) -> dict:
     selected["base_sha"] = result.stdout.strip()
     reference.registration_io(execution, project["id"], paths=selected["allowed_paths"], scope=selected["scope_policy"])
     digest = _sha({"id": project["id"], "repo": project["repo"], "definition": selected})
-    marker, scope, policy, config = reference.registration_paths(project["id"])
-    files = {
-        marker: {"schema_version": 1, "id": project["id"], "control_home": str(state.root), "definition_sha256": digest},
-        scope: selected["scope_policy"],
-        policy: {"allowed_task_types": [t for t in selected["templates"] if t != "training-optimization"]},
-        config: {"schema_version": 1, "name": project["id"], "repo": project["repo"],
-                 **{key: selected[key] for key in ("tracker", "base_sha", "allowed_paths", "checks")}},
-    }
+    marker = reference.registration_paths(project["id"])[0]
+    files = publication_files(project, selected, state.root, digest)
     if before and "registration" in before:
         previous = before["registration"]
         if previous["sha256"] == digest and previous["files"][marker] == files[marker]:

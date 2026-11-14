@@ -28,3 +28,9 @@
 [原报告](2026-11-15-training-start-admission-review.md)为12,584B、SHA `61daea268894558530ecc013a6b53937c742960ec5361c94d85d0531862039a2`：需求／维护性均approve，实证finding及开放0／0。新reviewer直接核13完整快照／16证据、diff SHA `544c3c43b074716f6f5b7d43e61e1ed304cad6a2b861e7e3a3cdd927f22dd96d`、643两安装与完整wheel／源、283参考、原XML／三CLI／42文件和88行DB dump及自身17完整文件／全部3资源／实际stdin／原reply。
 
 独立另跑新两接缝2通过／1.29秒，并在可自动清理的原fixture副本经无SDK安装CLI验证四已有状态：正确SHA均exit1、错SHA均exit2，原状态／文件／DB保持。该八命令使用本地合成checkpoint，不是服务恢复或训练证明。没有产品finding，未为审查扩大测试矩阵。后补计划／交付只记实际状态，下一片a2设计和前片自己的CI仍各归原审查／终核，不改变本片产品范围。
+
+## 固定发布
+
+已普通推送`d3c90e751ee9257df36b74e57e8956d38bbde848`，15个Git blob，完整远端Ref相同，未合main。产品／原测试／用户手册同冻结r2；额外两报告为本片独立审查及前片自己的CI终核，其他文档仅状态记账。下一片有限选择设计未入提交。发布原件为`publication-local-r2.json`、`publication-r2.*`、`push-r2.*`和`remote-ref-r2.*`；最终11文档216本地链接与完整暂存diff检查通过。自己的适用CI及原reviewer固定发布／终态补核仍待，不借前片CI。
+
+本固定候选的自己的Portability `43644626885 / attempt1` 已终核成功，八job／30必要步骤全部通过，完整远端Ref仍同一。原独立reviewer已核固定15blob、643产品与r2 wheel／两安装、283参考、自己的CI终态及八官方job页，需求／维护性两轴approve、开放0／0，精确交付闭合。[原报告](2026-11-15-training-start-admission-review.md)保留原12,584B前缀、在途观察和最终补核；终核记录 `ci/reviewer-ci-terminal-r1.json` 为67,280B、SHA `380cfa8a4aa9cae0515c2552a1226a5e04f587b6638f11df8846e0c59905787e`。后继a2不继承本CI结论。
