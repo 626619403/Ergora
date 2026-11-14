@@ -1,6 +1,6 @@
 # F10d5 原 Skill 评价采用页面旅程交付
 
-固定实施基线 `055b0c44d7bd2bb7c1375b82471ec7ca00c40605`；[具体合同](../plans/2026-11-14-skill-improvement-console.md)／[完整证据索引](evidence/2026-11-14-skill-improvement-console.json)／[独立审查](2026-11-14-skill-improvement-console-review.md)。最终r2本地流程验收完成，新的独立最终本地两轴approve／开放0／0、R1/R2关闭；普通发布／自己的CI分别待；前片自己的终态CI另核，不借其成功。
+固定实施基线 `055b0c44d7bd2bb7c1375b82471ec7ca00c40605`；[具体合同](../plans/2026-11-14-skill-improvement-console.md)／[完整证据索引](evidence/2026-11-14-skill-improvement-console.json)／[独立审查](2026-11-14-skill-improvement-console-review.md)。最终r2本地流程验收完成，新的独立最终本地两轴approve／开放0／0、R1/R2关闭；已普通发布ed7fac5／14blob／完整Ref同一，固定662／发布后666引用，原固定发布补核与自己的CI分别待；前片自己的终态CI另核，不借其成功。
 
 ## 改动与原权威
 
@@ -35,3 +35,7 @@ r1服务finally在uvicorn已关闭socket后读取getsockname报错；原HTTP已�
 ## 待完成与限制
 
 新的fresh-context独立reviewer已核最终649原引用、全部97原HTTP、68项／46样本、11原CLI／完整目录／DB／原件与收尾和真实自身模板，最终本地需求／维护性均approve，开放0／0、R1/R2关闭。八份独立证明与五个发布调用器另追加，662引用保留原649前缀；本片普通发布和自己的必要CI另验。有限GEPA只跑原安装回归，未新增GEPA页面提案全流程主张；未知回复的前端锁不推断run归属。原form防重入，不构成跨窗口／跨浏览器的执行去重协议。记忆／流程的原保存／import旅程、完整F10／F9d／G1及真实B3／原生Forge C2仍分别接续，不借本片关闭。
+
+## 固定发布与自己的CI终核
+
+普通发布`ed7fac5ba6bbe5ec73da0fed7175c4705116ea5b`、14固定blob与完整Ref已同一；原reviewer固定发布补核需求／可维护性approve、开放0／0。自己的CI43576070452官方终态Success，八job／30必要步骤成功；原独立终核直接核固定workflow/matrix、22组官方正文／回执和完整SHA日志URL，需求／维护性approve、开放0／0。48原CI引用及3独立终核另列于证据索引，原662／666引用保持，r1/r2在途观察保留。精确交付闭合，当前F10d6a产品WIP未纳入。

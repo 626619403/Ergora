@@ -1,8 +1,9 @@
 import { api } from "./api.js";
 import { app, bindingFor } from "./state.js";
+import { submissionForm, recordRefreshNote as refreshNote } from "./submissions.js";
 import {
   $, node, button, pre, short, heading, panel, empty, row, select,
-  field, badge, status, form, modal, table,
+  field, badge, status, modal, table,
 } from "./ui.js";
 
 // Only this window's unresolved HTTP submissions; original evaluation records remain authoritative.
@@ -11,45 +12,6 @@ const pendingEvaluations = new Map();
 export function skillsView(data, base) {
   const active = () => view.isConnected;
   const evaluationKey = JSON.stringify([app.bootstrap.state_directory, base]);
-  const refreshNote = () => node("p", { className: "form-note" },
-    "请用页面右上角“刷新”读取原版本、评价记录和活动历史，再进行下一步；请求异常时先核对原记录，不自动重发。");
-  // Submission receipts stay with their originating form; no delayed global dialog or refresh.
-  function submissionForm(children, label, path, payload, current = active) {
-    const receipt = node("div", { "aria-live": "polite" });
-    const element = form(children, label, async (values) => {
-      const visible = () => current() && element.isConnected &&
-        (!$("#dialog").contains(element) || $("#dialog").open);
-      if (!visible()) {
-        if (element.isConnected && $("#dialog").contains(element) && $("#dialog").open)
-          element.replaceChildren(empty("来源页面已变化；请关闭此窗口，回到原项目并重新打开。此次未提交请求。"));
-        return;
-      }
-      let submitted;
-      try {
-        submitted = payload(values);
-      } catch (error) {
-        receipt.replaceChildren(node("p", { className: "error" }, error.message));
-        return;
-      }
-      element.replaceChildren(receipt);
-      receipt.replaceChildren(node("p", {}, `${label}请求已发出；等待原结果。`), pre(submitted));
-      try {
-        const result = await api(`${base}/${path}`, submitted);
-        if (visible()) {
-          receipt.firstChild.textContent = `${label}已取得原结果。`;
-          receipt.append(pre(result), refreshNote());
-        }
-      } catch (error) {
-        if (visible()) {
-          receipt.firstChild.textContent = `${label}未取得完整结果。`;
-          receipt.append(node("p", { className: "error" },
-            `${error.message}。该请求可能已经执行。`), refreshNote());
-        }
-      }
-    });
-    element.append(receipt);
-    return element;
-  }
   const versions = data.skills.versions;
   const versionOptions = versions.map((item) => [
     item.digest,
@@ -189,7 +151,7 @@ export function skillsView(data, base) {
                   field("采用理由", "reason", "", "textarea", { required: true }),
                 ],
                 "采用候选",
-                "skills/adopt",
+                `${base}/skills/adopt`,
                 (values) => ({
                     baseline_run: baselineId,
                     candidate_run: candidateId,
@@ -209,7 +171,7 @@ export function skillsView(data, base) {
   }
   const items = versions.map((item) => {
     const head = data.skills.active.find((active) => active.name === item.name);
-    const active = head?.digest === item.digest;
+    const isActive = head?.digest === item.digest;
     return node(
       "div",
       { className: "list-item" },
@@ -221,15 +183,15 @@ export function skillsView(data, base) {
           { className: "version-heading" },
           node("strong", {}, item.name),
           badge(
-            active ? `活动修订 ${head.revision}` : "候选 / 历史",
-            active ? "green" : "gray",
+            isActive ? `活动修订 ${head.revision}` : "候选 / 历史",
+            isActive ? "green" : "gray",
           ),
         ),
         button("版本详情", () => modal("Skill 版本", pre(item)), "text-button"),
       ),
       node("div", { className: "version-meta mono" }, item.digest),
       node("p", { className: "form-note" }, item.hypothesis),
-      !active && data.skills.history.some((event) => event.to === item.digest)
+      !isActive && data.skills.history.some((event) => event.to === item.digest)
         ? button(
             "回退到此版本",
             () =>
@@ -243,13 +205,14 @@ export function skillsView(data, base) {
                     }),
                   ],
                   "确认回退",
-                  "skills/rollback",
+                  `${base}/skills/rollback`,
                   (values) => ({
                       name: item.name,
                       digest: item.digest,
                       revision: head.revision,
                       reason: values.get("reason"),
                   }),
+                  active,
                 ),
               ),
             "text-button",
@@ -320,8 +283,9 @@ export function skillsView(data, base) {
           }),
         ],
         "固定并注册评价集",
-        "evaluations/suites",
+        `${base}/evaluations/suites`,
         (values) => JSON.parse(values.get("manifest")),
+        active,
       ),
     ),
   );
@@ -354,8 +318,9 @@ export function skillsView(data, base) {
                 ),
               ],
               "导入 Skill",
-              "skills/import",
+              `${base}/skills/import`,
               (values) => Object.fromEntries(values),
+              active,
             ),
           ),
         "primary",
@@ -398,7 +363,7 @@ export function skillsView(data, base) {
               ),
             ],
             "运行 GEPA 优化",
-            "optimizations",
+            `${base}/optimizations`,
             (values) => {
               if (!baseline.value || !suite.value)
                 throw new Error("先选择基线和评价集");
@@ -411,6 +376,7 @@ export function skillsView(data, base) {
                 timeout: Number(values.get("timeout")),
               };
             },
+            active,
           )
         : node(
             "p",

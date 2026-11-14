@@ -6,16 +6,16 @@
 
 |轴|当前结论|确切范围|
 |---|---|---|
-|需求符合性|最终 r2 本地 approve，开放 finding 0；R1／R2 已关闭|68 项／46 样本逐一匹配原 HTTP；完整导入／同 suite 评价／比较／明确采用／回退、负例／并发写、CLI／原件／收尾与 649 条引用均独立终核|
-|可维护性|最终 r2 approve，开放 finding 0|完整源码与邻接 caller 已核；原 owner 内的临时未决 UI 请求跨 render，回执仍绑定原 form／view；未增加评价器、采用账本、权限语义或跨页面框架|
+|需求符合性|最终 r2 本地、固定普通发布及自身 CI 终核均 approve，开放 finding 0；R1／R2 已关闭|本地 68 项／46 样本及 649 原引用；固定 `ed7fac5` 的 14 blob／603 产品／662→666 引用与原精确 Ref；自身 CI `43576070452` 八 job／30 必要步骤全部成功，原件分别核过|
+|可维护性|最终 r2 本地、固定普通发布及自身 CI 终核均 approve，开放 finding 0|固定源码、邻接 caller、发布身份与原 CI 配置均核；临时未决 UI 请求与回执仍归原 owner，未增加评价器、采用账本、权限语义或跨页面框架；后继 WIP 排除|
 
-这是下列确切源码、包与实际证据支持的最终本地两轴结论；普通发布与本片自己的必要终态 CI 仍分别待核。F10d4 自己的发布／CI 不用于本片验收。
+这是下列确切源码、包、固定发布和本片自身 CI 原件支持的两轴结论。F10d4 自己的发布／CI 仅核本片推送前的前继门禁；本片 CI 单独绑定固定 `ed7fac5`，当前 F10d6a 工作树不在通过范围。
 
 初轮仅源码审查曾记录无 finding；收到自身模板的实际 request-changes 后，独立重走相关 caller，确认两项。r2 实际修复和浏览器原件已分别补核关闭；保留 r1 发现／失败与成功的原身份。
 
 ## 固定身份与已读范围
 
-实施基线／当前 HEAD 为 `055b0c44d7bd2bb7c1375b82471ec7ca00c40605`，分支 `refactor/architecture-foundations`。固定基线至工作树的产品变更仅 `src/ergora/data/console/skills.js`。r2 完整 443 行，Git blob `b6fd101c72848998af825b8dbd6a8d6ef21a1263`，SHA-256 `abf84a33a7ad130e6e8f06c7fab8aee31e4957c7fb667b9ca42a94e66ef39685`；已重新阅读全文与固定 diff。历史 r1 为 416 行、blob `4188c7b682751738b1e69687bbd95c068a11f294`、SHA-256 `841f46f29f9f1e0e9a89bb124d67c91b0e63c3e1db73a0b11e147890852e5b20`。
+本地实施／审查时 HEAD 为 `055b0c44d7bd2bb7c1375b82471ec7ca00c40605`，分支 `refactor/architecture-foundations`。该基线至本地审查工作树、以及至后述固定发布 `ed7fac5` 的产品变更均仅 `src/ergora/data/console/skills.js`。r2 完整 443 行，Git blob `b6fd101c72848998af825b8dbd6a8d6ef21a1263`，SHA-256 `abf84a33a7ad130e6e8f06c7fab8aee31e4957c7fb667b9ca42a94e66ef39685`；已重新阅读全文与固定 diff。历史 r1 为 416 行、blob `4188c7b682751738b1e69687bbd95c068a11f294`、SHA-256 `841f46f29f9f1e0e9a89bb124d67c91b0e63c3e1db73a0b11e147890852e5b20`。
 
 直接阅读了 `AGENTS.md`、`docs/PLAN.md`、本片计划、未跟踪交付文档，完整固定 diff 和新局部函数；邻接 `ui.js`、`api.js`、`state.js`、`app.js`、相关 CSS；原 `skills.py`、`skill_assets.py`、`evaluation.py`，`web.py` 的 payload、dashboard 与全部 Skill／evaluation／optimization route，原 Skill 测试中的完整旅程和拒绝门禁。其他文档的在途修改属于相邻交付记账，没有据此扩展本片产品范围。
 
@@ -56,11 +56,36 @@ r2 独立证明 `r2-source-browser-audit.json` 已核：
 
 最终本地终核证明为 `independent/final-local-audit-r2.json`，可复核脚本为同目录 `final-local-audit-r2.py`。独立执行仅离线读取原件、只读 SQLite 与进程／端口状态，未执行实施者 audit 脚本、重跑 evaluator／模型或新增安装：
 
-- 完整证据索引的 649 个唯一原始引用全部重新读取，逐项字节数与 SHA-256 一致；索引本身的读取时摘要写入独立证明，独立目录不混入原始引用。当前产品仍为上列 r2 身份，固定基线至工作树的产品 diff 仍只有 `skills.js`；邻接原 owner／UI／state 与两份原测试均与基线及 r2 构建源码逐字相同。已读最终计划与交付，历史运行、夹具失败、最终本地结果和待发布／CI 分列。
+- 完整证据索引的 649 个唯一原始引用全部重新读取，逐项字节数与 SHA-256 一致；索引本身的读取时摘要写入独立证明，独立目录不混入原始引用。该次本地终核时产品仍为上列 r2 身份，固定基线至当时工作树的产品 diff 仍只有 `skills.js`；邻接原 owner／UI／state 与两份原测试均与基线及 r2 构建源码逐字相同。已读最终计划与交付，历史运行、夹具失败、最终本地结果和当时待发布／CI 分列。
 - 最终 97 组 request／response／metadata 与完整 trace 逐项一致，10 个真实 held 均为 released，唯一 fixture 503 与原成功回复明确分开。主旅程／生命周期／负例共 68 项、46 样本，按确切 HTTP 编号逐一匹配完整原 body 及实际提交或 query；不是只核作者汇总的 passed。原错误返回、迟到回复与 finally 的界面断言以已读完整 driver 和对应原件为界。
 - 最终负例／并发 driver 实际 21 项／21 样本／7.262 秒。另注册的可信 suite `e34f1ae3f8a842f6fc98a31cc1fea989c3232e401bec4b3661ed0ee6ba98dc6e` 有完整三 split 输入；原保存 stdin／stdout 确认 baseline 各 .5，REGRESS 为 .9／.9／.1 且正确性通过，原比较仅因 holdout 退化拒绝；INCORRECT 各 .9 但正确性失败，原比较仅因该项拒绝。错 suite／跨项目分别得到原 400。失败 scorer run `b0830ad99b55461fa95efe259aa042cd` 是原 HTTP 200 保存的 failed 记录，界面没有把它标为未知或给未知解锁动作，原 compare 不允许采用。首次负例缺 split 的 failed run `7a84ef19fd7c40cdb0e253394d8f68c9`、原 stderr 的 `KeyError: 'split'` 和失败 driver 保留；单独修正 scorer SHA-256 `8bdd530a3534e7a58ab194c0ec56b6c9cdd3ddaf6bb9553ed5a3b7fb91c1ac36`，没有改旧 scorer 或重写旧成功。
 - 实际第二客户端采用将 revision 3→4，旧 UI revision 3 被原 CAS 拒绝，原 dashboard 及历史无额外变化；明确恢复至 5。eligible 后改变可信 scorer，实际 UI 采用被原 owner 拒绝，前后完整版本／head／历史相同。迟到 UI 采用真实到 6、切项目后的页面与 notice 保持；恢复至 7。迟到 UI 回退真实到 8、替换 Help 保持；恢复至 baseline 9。负例评价、第二客户端并发写与恢复中有直接原 HTTP；比较、失败评价及迟到采用／回退的界面行为走实际 UI，不称全部为鼠标操作。
 - 原 CLI 共 11 次：prepare／check／export 三次、单独负例 suite 注册一次、最终 list／show／compare／完整 export 七次。逐个核 argv、退出与原 stdout／stderr 身份；完整 CLI 对象与原 HTTP、cleanup、只读原 SQLite 相同。七次读回包括精确 baseline／candidate／failed 原记录、完整 eligible compare；完整候选目录与原导出源逐文件／执行位相同。最终原 baseline head revision 9，5 个版本、9 条历史、3 个 suite、10 次评价；所有原 HTTP 评价对象与 DB 一一同一，所有 8 次成功 head mutation 与追加历史同一，另项目无版本／head／历史／suite／run。
 - 原 source.zip／result／source／baseline／完整 input／candidate 的当前摘要或完整树独立重算，均与 before 和 cleanup 原件相同；原 scorer、单独负例 scorer、全部存储版本和可信文件身份也逐项核。正常 browser close 退出 0，服务 PID 2551959 与作者记录的 browser PID 2553498 当前均不存在；原 cleanup 报线程关闭，实际 60445 端口关闭。没有把 r1 补核当作其原 finally 成功。
 
-本地需求与可维护性均 approve，开放 finding 各 0。home 更换未动态验证；整页 reload 不保留本窗口临时锁，多窗口也不共享，后续执行仍须核原记录；原 form 内防重复不等于跨窗口执行去重。GEPA 页面完整流程、全部故障排列、真实质量／性能收益、普通发布与本片自己的终态 CI 不在本次通过范围。
+本地需求与可维护性均 approve，开放 finding 各 0。home 更换未动态验证；整页 reload 不保留本窗口临时锁，多窗口也不共享，后续执行仍须核原记录；原 form 内防重复不等于跨窗口执行去重。GEPA 页面完整流程、全部故障排列、真实质量／性能收益、普通发布与本片自己的终态 CI 不在上述本地通过范围，发布补核见下。
+
+## 固定普通发布补核
+
+同一 reviewer 对固定提交 `ed7fac5ba6bbe5ec73da0fed7175c4705116ea5b` 补核，唯一父提交为实施基线 `055b0c44d7bd2bb7c1375b82471ec7ca00c40605`。证明 `independent/publication-r1.json`，离线复核脚本 `independent/verify-publication-r1.py`。仅读固定 Git 与保存原件，写本报告与独立证明；未联网、改产品、安装、重跑 suite／浏览器／evaluator／模型或执行发布调用器。
+
+- 固定 14 个变更 blob 与原 `static-final-r1.json` 的完整字节数／SHA-256 全部同一；其中唯一产品变更仍是原 `skills.js`，身份与本地终核相同。其余是原使用／架构／计划／交付、F10d4 发布与 CI 记账、下一片记忆旅程的设计；没有在固定发布中混入后继产品。当前工作树的发布补记及后继计划不替代固定 Git。
+- 全部 603 个产品文件从固定 Git 直接读取，逐一与原 r2 构建源码、wheel、非 editable 安装件逐字比较；wheel SHA-256 仍为 `889f8b59eba6b4c7305d135869e6e170a5c82b36b31b1db5efec1cf8ffe465e8`。611 个 wheel 文件、两份 RECORD 的 611／616 行全部有摘要项、283 个冻结参考身份重新验算。固定父→子完整 diff 空白检查退出 0；固定变更 JSON 可解析，变更 Markdown 中 205 个相对链接在固定 Git 树内存在。ES module 语法沿原相同产品字节的退出 0 回执核身份，未重新运行页面或测试。
+- 固定 manifest 662 条与工作树 666 条均逐项核字节数／摘要、唯一性；前 662 完全相同，新增四件仅为 static／commit／push／ref 回执。固定 662 的原 649 前缀，加回当时的两个待审状态后，完整序列化字节重建出先前独立审查的 119,040B／SHA-256 `9dd8ca5e0774451d107ddf568f945c3789fbb46e9be4aa8916ccc40dd9f579d3`；因此原前缀未被改写。另加的八份独立证明与五个发布调用器、原失败和修正身份全部保持。
+- 原 commit／push／ref 回执退出均为 0，固定提交只有一个父提交。保存的 push 命令仅推完整 SHA 到 `refs/heads/refactor/architecture-foundations`，无 force／main／merge；保存的 `ls-remote` 原 stdout 为完整 `ed7fac5ba6bbe5ec73da0fed7175c4705116ea5b` 加精确分支 Ref。该观察时间为 2026-11-14 08:29:36.680600 UTC；本轮没有重新联网查询远端。
+- 前继固定 `055b0c44` 的原 CI `43573335080` 单独核：50 个 CI 原引用、3 个恢复件、2 个恢复来源件、3 个原独立终核件及原发布证明摘要均一致。直接重读保存的官方 run／job HTML 与原 JSON，核 full-SHA 链接、8 个 job、30 个必要步骤全部成功且 job 完成；没有把早期 JSON 的 in_progress 当作最终结果。派生 metadata 的原本地覆盖事故仍保留，另从原 batch／run 回执独立重建，逐字等于恢复后的原 SHA。
+- 前继原终态独立证明时间 08:27:15.474066 UTC、两轴回执时间 08:28:27.520090 UTC，均早于本次原静态记录 08:29:28.927606 UTC 和由原 push 时长推得的开始时间 08:29:29.254224 UTC；本片原本地独立终核也早于 push。前继门禁先闭合再普通发布的时间顺序有原件支持。
+
+固定普通发布的需求与可维护性均 **approve**，开放 finding 各 **0**。该次发布补核时本片 `ed7fac5` 自己的 CI 仍为单独待核项，现见后述自身终态补核；后继记忆旅程及本报告原有动态验证限制保持。
+
+## 自身 CI 终态补核
+
+同一 reviewer 对固定 `ed7fac5ba6bbe5ec73da0fed7175c4705116ea5b` 自己的 CI `43576070452` 做离线终态两轴核验。独立脚本 `independent/verify-ci-terminal-r1.py`、完整证明 `independent/ci-terminal-r1.json`，两轴回执 `independent/axes-ci-terminal-r1.json`。只读固定 Git 与已保存的官方 HTML／JSON／回执，未联网、重跑测试／安装／模型、修改产品或实施者状态 JSON；当前 F10d6a 的 `memory.js`／`skills.js`／`submissions.js` 等 WIP 排除。
+
+- 直接读取固定 Git 中 `.github/workflows/portability.yml` 与 `scripts/ci/linux-groups.json`，按原 matrix 派生 plan、六个 Linux group、一个 Windows all，共八 job。原具名步骤及 Windows 条件派生出 30 个必要步骤，包括构建安装、参考身份、应用回归、Windows PowerShell 5.1 安装升级和观察上传；没有直接把作者汇总中的 30 当作配置覆盖结论。
+- 此轮 48 个 CI 证据引用全部逐项验算字节数／SHA-256，其中 22 组官方 HTML／JSON 正文及原回执核 HTTP 200、原 URL／final URL、完整正文摘要。原 Actions 列表的固定提交链接、workflow 路径与 run ID 对应同一 `ed7fac5`；原 batch 的八个 job ID／名称／链接与原 metadata 一一相同。metadata 从原 batch／首轮 run 回执独立重建逐字相同，早期 in_progress 原字段保持，未冒称终态。
+- 原 run r1、r2 页面均是 In progress，r2 派生 `required_steps_passed=false` 保留。终态只使用 `ci-run-html-r3` 原 Success 页面，采集时间 2026-11-14 08:46:59.940953 UTC，正文 SHA-256 `8686bf2f7e0a93a8ea448b7a007ca502a04a1585111411a339c3a98b413fce70`；完整提交链接为本片固定 SHA。未把前继 `055b0c44` 的成功或后来生成的早期解析时间当作本片终态。
+- 其余七 job 的 r2、Windows `132390521037` 的最终 r3 原 HTML 逐个核：30 个必要步骤均 `success`，开始／完成时间完整，每个日志 URL 都含精确 `ed7fac5ba6bbe5ec73da0fed7175c4705116ea5b` 和对应 job ID。八个 `check-steps` 均为 completed，各自唯一的 Complete job 步骤也 success；Linux 的 Windows 条件步骤按原配置 skipped。作者 `ci-terminal-r3.json` 的完整八 job／30 步投影与这些原字段逐项相同。本轮日志核到完整 SHA URL 身份，材料范围为已保存官方 HTML／JSON。
+- 原固定发布证明摘要及 14 个固定 blob 再认证，原 603 产品／wheel／安装身份沿已验固定证明保持。固定 662／原发布后 666 引用再次逐项核，前缀不变；CI 原件与此次独立输出分别单列，没有写入或重排原发布数组。前继 CI 的发布前门禁与本片自身 CI 分别保留身份。
+
+自身 CI 终态需求符合性 **approve**、可维护性 **approve**，开放 finding **0／0**。固定 F10d5 的本地、普通发布与自身必要 CI 均已在各自证据范围核过；后继工作树、完整 F10／F9d／G1、真实质量／性能及前述未验动态排列不随此结论关闭。
