@@ -57,7 +57,7 @@
     ],
     "fixed_publication": "approve both axes; open0/0",
     "own_ci": "approve both axes; open0/0; exact77d1736 own43591668528",
-    "final_record_sync": "pending",
+    "final_record_sync": "approve both axes; open0/0; exact5cc463b ordinary record-only sync",
     "final_collection": "approved",
     "final_local_report": {
       "bytes": 7560,
@@ -72,10 +72,15 @@
       "path": ".ergora/checks/records-ci-scope/independent-terminal-r1.md",
       "bytes": 16198,
       "sha256": "5eb20840ae91d926390889e9f0ebc40e26b5b781f412a2c0adfa2d9d1da57bbd"
+    },
+    "record_sync_snapshot": {
+      "path": ".ergora/checks/records-ci-scope/independent-record-sync-r1.md",
+      "bytes": 20912,
+      "sha256": "afb951ac4a0ad91e5b69e0f9439b0e8f468617e5ce7929bcd1408e5f84a97672"
     }
   },
   "publication": {
-    "status": "published-ci-passed-final-record-sync-pending",
+    "status": "complete",
     "predecessor_own_ci": "43589988699",
     "own_ci": "43591668528 Success; eight jobs/30 required steps; original CI terminal approved",
     "candidate": "77d173675f3eb65e6821ebe57ce9087a05e4caaa",
@@ -617,5 +622,82 @@
     ],
     "scope": "Actual exact77 candidate original public GitHub UI run/job receipts, full-SHA step log URLs and terminal projection. Earlier in-progress samples and private discovery launch error retained. Original G1c and G1d reviewers terminal both axes approve, open0/0. No authenticated REST or downloadable artifact archive claim.",
     "preserved_query_failure": "First private parser was launched while the listing fetch session was still active and exited1 with FileNotFoundError before discovery. The fetch completed200; parsing was then sequentially relaunched successfully. This is delivery-query orchestration, not a product/model/CI-run failure."
+  },
+  "record_sync_evidence": {
+    "candidate": "5cc463b31b9df22f6306dbe07a9c9e5f9defae80",
+    "accepted_product_ci_candidate": "77d173675f3eb65e6821ebe57ce9087a05e4caaa",
+    "base": ".ergora/checks/portable-usage-handoff",
+    "references": [
+      {
+        "path": "sync-records.py",
+        "bytes": 5162,
+        "sha256": "03adde5ee5bd78fbe71d346fb1645eae8073106859ddcffe0b0120d2971c9ca7"
+      },
+      {
+        "path": "record-sync-r1-static.json",
+        "bytes": 2362,
+        "sha256": "52d847c68b0f4723407648f97e3fee10865fc16c80620fae76506c0f042313c2"
+      },
+      {
+        "path": "record-sync-r1-commit.json",
+        "bytes": 337,
+        "sha256": "3d4b143840216409bb8cbd2257fb7cbcc3b6198295261a1055912cfa90a8ce70"
+      },
+      {
+        "path": "record-sync-r1-push.json",
+        "bytes": 466,
+        "sha256": "fd7740423a10731c06fea0f4d79fb589c988a50f32c5d83cd3dbe9ff427e4c61"
+      },
+      {
+        "path": "record-sync-r1-ref.json",
+        "bytes": 382,
+        "sha256": "0f16aed8143b2b92386be303893e020a2aac74287e633757104780327540010c"
+      },
+      {
+        "path": "check-docs-r4.py",
+        "bytes": 2864,
+        "sha256": "0d91c96abdfb186fb23bdc21716946d6111f0670103d458ac077068b1a180f59"
+      },
+      {
+        "path": "check-docs-r4.json",
+        "bytes": 2023,
+        "sha256": "68d6e56a2bf929730f255c45535d4b97840738eaf3266f48b1dd5a707a9e6e1a"
+      }
+    ],
+    "ordinary_push": true,
+    "record_paths": 11,
+    "full_remote_ref_matches": true,
+    "scope": "Actual record-only push after both original reviewers accepted77 own-CI approval; all11 paths match existing native ignores. Original G1d final sync reviewer approved, open0/0. Source/test/installer/dependency/workflow unchanged; no-run listing observation remains bounded and is not new product CI success.",
+    "actions_observation": {
+      "result": {
+        "at": "2026-11-14T12:18:06.246625+00:00",
+        "candidate": "5cc463b31b9df22f6306dbe07a9c9e5f9defae80",
+        "workflow": ".github/workflows/portability.yml",
+        "listed_rows": 25,
+        "matching_candidate_runs": 0,
+        "accepted_product_ci_run": "43591668528",
+        "listing_receipt_sha256": "b6abc683e9c1b958eb5e3b30bf6114441ff7b1b9f17ac9b73d6b7b45d52f4214",
+        "listing_body_sha256": "98d61b751abaab0ed643c5a79bd6198796dcd08bbee5e43c451aae801d80e747",
+        "scope": "One bounded official current Actions listing observation: no Portability run for this exact record-only SHA in captured rows; original accepted77 own run is present. Native ignored11-path applicability separately checked. Absence is not a product CI success or a claim over arbitrary future time/all history."
+      },
+      "references": [
+        {
+          "path": "record-sync-r1-actions/receipt.json",
+          "bytes": 5936,
+          "sha256": "b6abc683e9c1b958eb5e3b30bf6114441ff7b1b9f17ac9b73d6b7b45d52f4214"
+        },
+        {
+          "path": "record-sync-r1-actions/page.html",
+          "bytes": 317912,
+          "sha256": "98d61b751abaab0ed643c5a79bd6198796dcd08bbee5e43c451aae801d80e747"
+        },
+        {
+          "path": "record-sync-r1-observation.json",
+          "bytes": 766,
+          "sha256": "5fccbb55dc1d34b8d4381cd1a1214b0faad88331d9207600e27c25c5e26b6a13"
+        }
+      ]
+    },
+    "independent_review": "Original G1d reviewer final both axes approve, open0/0; record-only exact5cc463b paths, original push/Ref and bounded listing observation verified."
   }
 }

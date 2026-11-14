@@ -124,3 +124,28 @@
 **保留的查询错误。** `ci-discovery-launch-r1.json` 的 566B 原记录已包含在 89 项中：首次私有 parser 在 fetch session 尚未结束、页面文件未就绪时提前启动，以 FileNotFoundError／exit 1 结束；后续 fetch 保存 HTTP 200，顺序重启后生成了本 run 的 discovery、batch 与 metadata。该记录与早期在途页面均保留；这是交付查询编排错误，没有被包装为产品、模型或本 CI run 失败，也未用在途状态代替终态。
 
 本节关闭 **G1d-CI 精确候选自身 CI 门禁**；本地、固定普通发布与本候选必要 CI 的两轴均 approve，开放 0／0，R1 保持关闭。公共摘要可据本节同步原 reviewer 终态。**最终纯记录同步尚未发生**：实际受限路径、普通 push、精确提交／完整 Ref 及官方列表观察仍须另核，本报告不预批该同步，也不把随后无新 run 当作产品验收证据。
+
+## 实际纯记录同步与合同最终终核
+
+2026-11-14，同一 reviewer 只读核已普通发布的记录提交 `5cc463b31b9df22f6306dbe07a9c9e5f9defae80`、发布原件与一次官方列表捕获，仅追加本报告；未联网、安装、运行测试或执行同步脚本。
+
+|审查轴|最终结论|范围|
+|---|---|---|
+|需求符合性|approve，开放 finding 0|实际受限记录路径、原生忽略适用性、原两 reviewer 的 CI 门禁、普通 push／完整 Ref 和有界列表观察|
+|维护性|approve，开放 finding 0|沿现有过滤和记录入口，原证据保持，记录同步与产品 CI 身份分列；R1 保持关闭|
+
+固定提交唯一父为已验候选 `77d173675f3eb65e6821ebe57ce9087a05e4caaa`。直接从 Git 对象读取全部 11 个 blob，字节数／SHA-256 均等于 `record-sync-r1-static.json`；路径集合完全相同，且全部已存在于父提交。九份计划／交付／评审 Markdown 均位于 `docs/`，适用原 `docs/**.md`；另外两份为 `docs/delivery/evidence/2026-11-14-portable-usage-handoff.json` 和 `docs/delivery/evidence/2026-11-14-records-ci-scope.json`，均为该目录直接子级，适用原 `docs/delivery/evidence/*.json`。没有嵌套 JSON、其他资源或产品路径混入。
+
+相对父提交，`src`／`tests`／`scripts`／`.github`／`pyproject.toml` 无差异，workflow 仍为 `be814a956237b8a64258f396fa81a972ff764ceaa3ea16ffefa8e82be89a4353`。原完整暂存检查 exit 0；本次对两个固定提交再做完整 `git diff --check`，也返回 0。`check-docs-r4.json` 实际只覆盖这 11 路径中的 **9 份 Markdown／263 个本地链接或片段**，无错误，九文件身份全部对应固定 blob；该结果与先前 r3 的 18 份／585 项分列，不扩大为再次检查全部手册。
+
+同步脚本在 commit 前明确检查接受的产品候选为完整 `77d1736…`、其 run 为 `43591668528`、八 job／30 必要步骤通过，并检查两片原 reviewer 的固定发布及自身 CI 均 approve。直接核固定记录中的两个 `ci_terminal_snapshot`：均与已提交的原 reviewer 完整终态报告逐字相同，长度／SHA-256 匹配；两份公共摘要明确绑定 `exact77d1736 own43591668528` 两轴 approve／开放 0／0。由此确认 CI 与原 reviewer 门禁先于记录提交满足，不借另一个候选或本次无 run 代替。
+
+原 commit／push／Ref 回执依次成功。push 的完整 refspec 为 `5cc463b31b9df22f6306dbe07a9c9e5f9defae80:refs/heads/refactor/architecture-foundations`，exit 0，没有 force 或 main 目标；其后 12:16:26.637055 UTC 的 `ls-remote` 原回执完整 stdout 精确对应本 SHA 与该分支，exit 0。本次仅读原回执，未重新查询远端。
+
+两份公共 JSON 的 `record_sync_evidence` 相同。原七份同步材料逐件重算字节／SHA-256 均匹配，合计 **13,596B**，规范引用数组 SHA-256 为 `ccbddf52b129a8ece223ff279807afabbbb4474f88446d81cfba5f8d18fbbfeb`。原四项本地、八项共享发布、89 项 CI 证据均再次逐件匹配；三个原投影与本记录提交中的数组相同，没有用新同步回执改写原验收事实。
+
+**有界官方观察。** 直接读取 `record-sync-r1-actions` 的原 receipt／body 和 `record-sync-r1-observation.json`。原 URL 与 final URL 均为 `https://github.com/626619403/Ergora/actions`、HTTP 200；body 为 317,912B，SHA-256 `98d61b751abaab0ed643c5a79bd6198796dcd08bbee5e43c451aae801d80e747`，receipt SHA-256 为 `b6abc683e9c1b958eb5e3b30bf6114441ff7b1b9f17ac9b73d6b7b45d52f4214`。独立解析实际 embedded JSON 的 **25 条记录**，按完整 commit anchor 及 workflow 路径匹配，`5cc463b…` 的 Portability run 为 **0 条**；同一列表中完整 `77d1736…` 的 `43591668528` 为 completed／success、分支正确。重建结果与 12:18:06.246625 UTC 的本地观察记录一致；三份观察件共 **324,614B**，逐件身份与公共投影相同，原七引用保持。
+
+这只说明该次捕获时点及 25 条列表范围内未见本记录 SHA 的 Portability run；不承诺全历史或未来不存在 run，也不构成本记录提交或产品的新 CI 成功证据。接受的产品 CI 仍归完整 `77d173675f3eb65e6821ebe57ce9087a05e4caaa` 自己的 `43591668528`。
+
+**G1d-CI 原合同各独立门禁现已闭合，需求／维护性两轴最终 approve，开放 0／0。** 本报告原 16,198B 终态前缀在 `5cc463b…` 中保持，本节是该提交之后的新增评审记账。随后报告及完成状态的普通同步由实施者依原授权核实际范围与完整 Ref；本节不称该后续同步已经执行。依 `AGENTS.md`，报告和状态记账不触发递归评审，不因此增跑产品回归。
