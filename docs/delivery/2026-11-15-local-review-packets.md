@@ -8,7 +8,7 @@
 |用户补充|Q 总计划保留 kernel 专家评估节点，允许无需算子干预；历史研究、旧 v2 模板与原任务保持。|
 |实现|state-free prepare／verify／read、严格 Schema、完整三提交源／diff／显式上下文与祖先规范、原子不覆盖发布已实现；共享读取迁至正式 executor，原 full 材料安装回归通过。|
 |验证与安装|r1 原四 suite 70 项通过；修后 r2 安装 38 项通过，614 源／wheel／安装逐字相同，283 参考 PASS；自身原模板 Codex r2 approve。环境使用 system-site-packages，不称 clean 安装；Windows 待当前候选自有 CI。|
-|独立审查与发布|新 fresh-context 两轴 r2 最终本地及固定发布 approve；R1／R2 关闭；已普通发布 ad16881 并核完整 Ref。其 CI 已终态：Linux 六组及 Windows 安装成功，Windows 两项 fixture 删除只读 Git 对象失败；最小测试修正已写，本地 22 项通过，待原独立补核与新 SHA CI。|
+|独立审查与发布|新 fresh-context 两轴 r2 最终本地及固定发布 approve；R1／R2 关闭。原 ad16881 Windows 两项 fixture 删除只读 Git 对象失败保持；最小修正经原独立两轴通过并单独发布 a38dd21，其自有 CI 八 job／30 必要步骤全成功，原独立终态两轴 approve／开放0／0。|
 
 本片不会关闭真实 B3、完整 Forge、领域 PR／MR 检出能力或多轮训练优化。下一步构建安装件并回归原六阶段完整材料，之后进行自身模板和新独立审查。
 
@@ -57,3 +57,9 @@ r2 运行新包、导入边界和原完整材料 full 旅程 **38 项通过／36
 上述在途记录由本节终态覆盖，原失败保持：[43618045174](https://github.com/626619403/Ergora/actions/runs/43618045174) 的八 job 中 plan／六个 Linux 分组成功，Windows 回归失败，Windows PowerShell 安装／升级成功。30 个必要步骤中 29 成功、1 失败。官方 job annotations 保存完整结果：**2 failed、1108 passed、788 skipped、16 subtests passed／1080.19 秒**。两项失败均在本片测试主动删除 Git 只读 loose object 时产生 Windows `PermissionError`：移除源仓库和人为制造缺失 promisor blob。它们发生在测试 setup／cleanup，不是采集器报错。匿名完整 step 日志接口返回 404；原因与计数来自可读取的官方 annotation，不伪称下载了完整日志。
 
 最小修正只在这两处删除前给测试拥有的 Git 对象设置 `0o600`，不修改产品、权限合同、CI 矩阵或跳过测试。使用原 r2 非 editable 安装解释器重跑完整 packet suite：**22 passed／4.15 秒**。此本地 Linux 结果不证明 Windows 已修；待原独立评审补核、单独普通发布该测试修正并核新 SHA 自己的 CI。Q2 领域模板仍为本地独立在途范围，不纳入这次测试修正发布。
+
+## 修正提交自己的 CI 终态
+
+最小修正已单独普通发布 `a38dd21891ac200c575e8520c49cc82f97c9d478`，唯一父为原 `ad168810…`，仅三个文件：测试五行及原 Q1 交付／评审记录；产品保持 r2 身份。完整远端 Ref 当时相同，完整已提交差异的空白检查通过。
+
+该修正自己的 [Portability 43620231340](https://github.com/626619403/Ergora/actions/runs/43620231340) 已由官方完整 run／job 页面与分页终态核对：full SHA 一致、八 job 全成功、`hasMore=false`，**30 个必要步骤全部成功**，包括 Windows 应用回归与 PowerShell 安装／升级。原 `43618045174` 的两项失败不改写；新成功只属于固定修正提交。随后 Q2 才普通发布下一提交，未取消该终态验收。[原独立审查者](2026-11-15-local-review-packets-review.md)已重解析八份官方 job 原件并逐项核30步骤、日志URL完整 SHA／jobID、固定发布及其远端历史和后继祖先；最终两轴 approve，开放0／0。Q1.1 精确交付闭合，真实 B3／完整 Forge 等出口保持。

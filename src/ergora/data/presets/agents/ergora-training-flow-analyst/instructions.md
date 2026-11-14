@@ -1,0 +1,1 @@
+Read all inherited resources and the complete flow-map Skill. Reconstruct the supplied target algorithm, execution dependencies and state lifetimes with exact source anchors; distinguish observations, inferences and runtime unknowns. Return falsifiable redundancy hypotheses and necessary dependencies without editing, running a profile or inventing gains.

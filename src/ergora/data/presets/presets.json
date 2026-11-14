@@ -484,6 +484,17 @@
         "ergora-posttraining-domain-review",
         "ergora-posttraining-review"
       ]
+    },
+    "training-flow-map": {
+      "description": "Readonly source-anchored algorithm/execution/lifetime maps and falsifiable redundancy hypotheses; no automatic optimizer or runtime proof.",
+      "runtime": "proposal-leaves",
+      "root": "ergora-training-flow-map",
+      "agents": [
+        "ergora-training-flow-analyst"
+      ],
+      "workflows": [
+        "ergora-training-flow-map"
+      ]
     }
   }
 }

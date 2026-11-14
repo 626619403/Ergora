@@ -101,6 +101,31 @@ def test_preset_listing_and_installation_are_real_offline_cli_operations(tmp_pat
     assert workflows.definitions(State(home))
 
 
+def test_flow_map_freezes_complete_material_without_changing_training_versions(tmp_path):
+    state = State(tmp_path / 'state')
+    original = [workflows.install_preset(state, name)['root']
+                for name in ('training-optimization', 'training-optimization-v2')]
+    installed = workflows.install_preset(state, 'training-flow-map')
+    assert workflows.install_preset(state, 'training-flow-map') == installed
+    assert [workflows.get(state, item['id'], item['version'])['digest'] for item in original] == [
+        item['digest'] for item in original]
+    definition = workflows.get(state, installed['root']['id'], installed['root']['version'])['definition']
+    grant = {'schema_version': 1, 'permissions': definition['permissions'], 'limits': definition['limits']}
+    manifest = workflows.prepare_manifest(state.root, definition['id'], definition['version'], grant, tmp_path / 'manifest')
+    graph = workflows.inspect_manifest(Path(manifest['path']), material=True)['composition']
+    leaf, = (item for item in graph['instances'] if item['kind'] == 'agent')
+    assert leaf['path'] == 'root/map' and leaf['role'] == 'performance-analyst'
+    assert not leaf['permissions']['write'] and not leaf['permissions']['shell'] and not leaf['permissions']['network']
+    shutil.rmtree(state.root / 'agent-definitions')
+    shutil.rmtree(state.root / 'workflow-definitions')
+    prepared = workflows.prepare_input_from_manifest(Path(manifest['path']), leaf['path'],
+        b'Map only the supplied exact training source; retain unknown runtime dependencies.', tmp_path / 'input', 100000)
+    actual = workflows.inspect_input(Path(prepared['path']), material=True)
+    assert actual['composition'] == graph
+    assert all(resource['text'] in actual['prompt'] for resource in leaf['resources'])
+    assert {source['instance'] for resource in leaf['resources'] for source in resource['sources']} == {'root', 'root/map'}
+
+
 @pytest.mark.parametrize('identity,preset', [
     ('ergora-structure-review', 'repository-governance'),
     ('ergora-correctness-review', 'repository-governance'),

@@ -7,9 +7,9 @@
 |恢复与合同|已核 Q1.1 固定发布、原领域研究、Agent／Workflow／preset／ReviewDAG owners；具体片计划已写。开始时 Q1 CI 在途，随后其 Windows fixture 失败及修正单独发布；新 SHA CI 仍待终态。|
 |方法|延续工程／代码质量 Skill，新增领域 Skill 编写采用 writing-for-agents 与 skill-creator；引用 Q0 固定来源，不复制未知许可工具。|
 |实现|已新增两位领域 Agent／完整 Skill、两份独立叶与两份四路嵌套 all-join 根，在原 catalog 注册；旧定义未改。标准库 CPU 样例与四次真实领域叶调用均完成。|
-|验证／审查／发布|两份 Skill 原 quick_validate 通过；首轮 source-only 45 通过／1 环境失败保留。独立 venv 非 editable 安装后原 preset／ReviewDAG／导入边界 **61 passed／76.43 秒**，零跳过；补 Web 依赖后原页面 suite **21 passed／24.92 秒**。628 产品源／wheel／安装逐字相同，283 参考 PASS；四次真实领域叶均完成。自身模板和新独立两轴 **approve**，开放 0／0；尚待精确发布／自己的 CI。|
+|验证／审查／发布|两份 Skill 原 quick_validate 通过；首轮 source-only 45 通过／1 环境失败保留。独立 venv 非 editable 安装后原 preset／ReviewDAG／导入边界 **61 passed／76.43 秒**，零跳过；补 Web 依赖后原页面 suite **21 passed／24.92 秒**。628 产品源／wheel／安装逐字相同，283 参考 PASS；四次真实领域叶均完成。自身模板和新独立两轴 **approve**，开放 0／0；已普通发布 0b5b5f1／完整 Ref 一致，其自己的 CI 在途。|
 
-下一步完成独立终核、精确提交／推送及自己的 CI；Q2.3 自动报告和真实训练均另片。
+固定发布独立补核已完成，两轴 approve／开放0／0；下一步完成自己的 CI 终核。Q2.3 自动报告和真实训练均另片。
 
 ## 安装与 CPU 样例
 
@@ -40,4 +40,10 @@
 
 新的 [fresh-context 独立报告](2026-11-15-training-domain-reviews-review.md)已核原要求、固定 `a38dd21…` 基线、24 个 tracked／untracked 全文、实际安装／四调用／自身审查原件。独立重算 628 产品身份及四包／所有输入／结果；另跑四项正式准入／冻结检查 **4 passed／10.27 秒** 与 283 参考 PASS。两轴本地 **approve**，无实质代码／合同／测试 finding；C1 的四处旧状态描述已最小修正并关闭，开放实质／记录问题 0／0。
 
-当前只剩精确提交／普通推送和本片自己的适用 CI；Q1 修正自己的 CI 仍保持原身份，Q2 发布不取消它。Q3.1 的两份准备文档另片，不纳入本片提交与 628 产品验收。
+本地终核后完成下节精确提交／推送，本片自己的适用 CI 待终态。Q1 修正自己的 CI 保持原身份，Q2 发布没有取消它。Q3.1 另片，不纳入本片提交与 628 产品验收。
+
+## 固定发布
+
+已普通发布 `0b5b5f1ff7a3463fcb10cf5a05e5f7c7bcae7c62`，唯一父 `a38dd21891ac200c575e8520c49cc82f97c9d478`，25 个文件含独立报告。暂存全范围空白检查通过，16 份本片 Markdown／325 个本地链接或 fragment／零错误；25 个实际提交 blob 与暂存记录逐字相同，完整远端 Ref 相同。Q3 的新产品／资料保持未提交，未混入该 SHA。
+
+自己的 [Portability 43621692177](https://github.com/626619403/Ergora/actions/runs/43621692177) 仍待终态；第二次官方完整分页观察为 plan／Linux 六组成功，Windows 应用回归仍在运行，不能用前片成功认证 Q2。Q1 修正自己的全部 30 必要步骤已在 Q2 推送前成功。原独立审查者已补核固定提交 25 blob、完整远端 Ref 及 628 固定提交／wheel／安装产品，两轴 approve／开放0／0，未借更新中的 Q3 worktree 认证。真实 B3、完整 Forge、整根四路实际运行及 Q2.3 保持原范围。

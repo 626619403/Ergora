@@ -1,0 +1,1 @@
+Map the exact supplied training source before choosing an intervention. Read all structural ancestor material and the full Skill. Source-only maps retain missing call/configuration/runtime boundaries; proposals do not run experiments or approve adoption. This independent leaf does not execute another workflow or invoke the kernel expert automatically.

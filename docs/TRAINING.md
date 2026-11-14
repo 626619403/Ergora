@@ -8,6 +8,7 @@
 
 |当前目标|操作入口|
 |---|---|
+|先理解算法、执行依赖和状态驻留|[源码锚定的流程图谱](#源码锚定的流程图谱)|
 |先分析已有代码、trace或显存报告|[通用性能诊断](#通用性能诊断)或[细方向子模板](#独立的优化方向子模板)|
 |把专家提案变成可执行实验|[提案到原实验合同](#从专家提案填写原实验合同)，然后预览／确认baseline、runner和实验|
 |启动和停止原控制流程|[原ID提交与对账](#提交已准备实验与原-id-对账)、[取消和停止事实](#取消原运行与分别观察停止事实)|
@@ -330,6 +331,26 @@ prepare返回的实验ID／manifest SHA → 原runner／job → evidence SHA／�
 先为该精确根生成grant和完整manifest，再按[单叶调用](WORKFLOW_DEFINITIONS.md#调用一个准备好的叶子)准备一个叶输入。带Skill附件时选Linux／WSL2的`task-mcp`模式并确保实际读取完整固定资源。单次`run-input`不会执行其图前驱：操作者把design／profile的完整原产物和摘要明确交给kernel，再把全部相关输入与真实实验材料交给measurement；缺少的报告、硬件或实验数据须保持未验，不用占位数字充当实测。后端覆盖按实际叶路径保存原因，measurement优先异于执行后端；不可用时显式记录已授权的同后端回退。
 
 跨域专家可复用于多个方向子模板，单份kernel设计也可覆盖精度、布局、融合和通信等关系。方向知识与原生执行能力分别接入；安装v2提案不等于已接入Forge／KDA内部全流程或任意外部MCP。实际实验继续使用本手册前述原manifest、可信runner、独立评价和精确evidence SHA批准。
+
+## 源码锚定的流程图谱
+
+```bash
+ergora composition install-preset training-flow-map
+ergora composition show ergora-training-flow-map 1.0.0 --material
+```
+
+该根提供独立只读叶 `root/map`，Agent 为 `ergora-training-flow-analyst@1.0.0`。按[完整 manifest 与单叶输入](WORKFLOW_DEFINITIONS.md#准备完整的单叶输入)为根 `ergora-training-flow-map@1.0.0` 生成 grant／manifest，再提供完整训练入口、调用者、实际配置、需求及已有原报告；也可用[精确本地包](LOCAL_REVIEW.md)的完整 `review read` 结果作为 task。Skill 自包含，无外部附件，可用已认证后端的 `text-only` 模式。
+
+```bash
+ergora composition prepare-from-manifest ./flow-map-manifest root/map \
+  --task ./full-training-source.json --directory ./flow-map-input --max-prompt-bytes 1000000
+ergora composition run-input my-project ./flow-map-input --backend codex \
+  --mode text-only --timeout 600
+```
+
+结果沿原 run 的 response 保存三类材料：源码锚定的算法图、执行／通信／并行依赖图，以及关键状态生命周期表；同时给出必要依赖、可证伪的去冗余假设与最小补证据请求。它区分已读源码、推断、配置声明与实际 runtime；缺少外部模块或 trace 时明确图谱不完整。相同代码、数学零项或重复存储都须先核生产者／消费者、梯度／collective、版本和生命周期，不能据外观直接删除。
+
+先保留原始参照及工作负载／语义，再由原 runner 固定可比 baseline 和测量。图谱本身不证明瓶颈、已实现并行或收益。把该叶的完整原结果明确交给设计／诊断专家；它不自动调用后续节点。kernel 专家评估继续保留在总优化路径，结论可以是无需 kernel 修改；实际干预按去耦合／去冗余、内存、通信、主机调度或算子等证据选择。现有 v1／v2 定义保持，新的总路径与多轮执行按各自计划推进，不能用本叶代替训练或采用批准。
 
 ## 通用性能诊断
 

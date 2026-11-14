@@ -49,3 +49,11 @@ python -B -I -m ergora reference verify
 **C1，低，已关闭：** 交付记录原第 9／12／20／35 行仍把已完成的样例、四次调用和自身模板描述为当前待办，与同页成功原件相矛盾。最小修正是更新当前状态／下一步，或明确标为历史。实施者已更新这些语句并说明 Q1 CI 的历史时点；本审查重新读取确认一致，无产品变化。开放实质 finding **0**，开放记录 finding **0**。
 
 本报告通过本地 Q2 实现审查，不认证尚未发生的提交／远端 Ref／本片 CI。Q1 修正及其 CI 保持独立身份。未运行新的训练、GPU、多卡、长程质量／性能、Claude 或整根四路端到端旅程；这些不由四个 CPU 叶结果替代。Q2.3、后续 kernel 专家评估、真实 B3／完整 Forge 等原开放范围保持。
+
+## 固定发布补核（2026-11-15）
+
+已核普通发布提交 `0b5b5f1ff7a3463fcb10cf5a05e5f7c7bcae7c62`，直接父提交为上述 `a38dd21891ac200c575e8520c49cc82f97c9d478`。读取 `publication-r1.json`、`local-publication-r1.json`、`staged-r1.json` 和原远端回执，独立确认实际变更恰为原 24 文件加本报告，全部 **25 个 Git blob** 与暂存记录的字节数／SHA256 一致；固定提交完整差异的 `git diff --check` 通过。另实际只读 `git ls-remote origin refs/heads/refactor/architecture-foundations`，完整远端 Ref 与该提交相同。
+
+本次以固定提交的 Git blob 重新对照 r2 wheel 及保留的 Q2 非 editable 安装，**628 产品文件逐字相同**；没有用随后 Q3 的未提交工作树作为 Q2 源码。`check-docs-r3.json` 中 **16 份 Markdown** 的身份也与固定提交相同，记录的 **325 个本地链接／fragment、0 error** 保持其原静态范围。
+
+固定发布两轴继续 **approve**，新增实质 finding **0**。自己的 CI `43621692177` 的官方 `ci/run-r1.html` 明确绑定上述完整 Q2 SHA；r1 原件为 **In progress**，八 job 中 plan 成功，其余七项仍在途。故本次只关闭固定发布身份补核，**不认证 CI 成功**；后续须核该 run 自己的终态及必要步骤。Q1 修正的独立 CI 不代替 Q2 CI，后续 Q3 改动不继承本报告的产品验收。

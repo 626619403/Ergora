@@ -2,7 +2,7 @@
 
 日期：2026-11-15。评审者：fresh-context 独立代理 `local_review_packet_audit`。只读产品、测试和证据；唯一写入为本报告。依据仓库 `AGENTS.md`、[具体验收](../plans/2026-11-15-local-review-packets.md)、[原要求／Q 总计划](../plans/2026-11-15-domain-review-optimization-quality.md)，使用 `ergora-codebase-quality` 的 ownership／repository-style／test-seams references 和 `maintainable-project-delivery` 的 independent-review brief。
 
-**当前结论：r2 最终本地及 `ad16881` 固定发布源码的需求符合性／可维护性两轴 approve，R1／R2 已关闭。** 该提交自己的 CI 已观察到 Windows 测试夹具的两处只读对象删除失败，六个 Linux 分组和 Windows installer 成功；本次最小 fixture 修正的源码两轴 approve，新增实质问题 0／0，Windows 门禁须由修正提交自己的 CI 补齐。不能据此宣布全部验收完成。下文保留各候选的实证失败及其原身份。
+**最终结论：Q1.1 固定产品及 fixture 修正提交 `a38dd21891ac200c575e8520c49cc82f97c9d478` 的需求符合性／可维护性两轴 approve，开放实质问题 0／0。** 本地、安装、自身模板、精确发布及该提交自己的八 job／30 必要步骤 CI（含 Windows 应用和 installer）均已核；R1／R2 已关闭，旧 `ad16881` 的 Windows 失败保留。下文保留各候选的实证失败及其原身份，不扩大到 Q2／Q3、真实 B3 或完整 Forge。
 
 ## 身份与范围
 
@@ -138,3 +138,26 @@ r2 完整范围为 `.ergora/checks/local-review-packets/review-scope-r2/` 的 17
 |可维护性|approve；改动限测试拥有的文件与原删除位置，未改产品或 CI，没有新增不必要抽象、重复断言或弱化回归。新增实质 finding 0。|
 
 下一步核仅包含该 fixture 修正及同片记录的精确发布身份、产品保持不变，以及该固定提交自己的完整适用 CI 终态。旧 `ad16881…` 的失败永久保留；此时不称 Windows pass 或 Q1 全部验收闭合。
+
+## fixture 修正固定发布及最终适用 CI 终核
+
+已独立核修正提交 **`a38dd21891ac200c575e8520c49cc82f97c9d478`**，唯一父提交为 `ad168810b6caa9ed435d0b3fef833856c286edf9`，仅三个文件：本报告、原 Q1 交付记录、`tests/test_review_packets.py`。`publication-fixture-fix-r1.json` 的三个 blob 长度／SHA256 与实际提交一致，测试文件 SHA256 与前述独立源码审查的 `991cb087…` 完全相同；完整 parent→fix 差异空白检查退出 0。全部 `src/ergora` 产品字节、CI workflow／分组配置与父提交相同，原 r2 非 editable 环境的 614 产品文件仍逐字匹配原包；未用当前 Q3 工作区与历史 wheel 比较。
+
+`remote-fixture-fix-r1.txt` 保留发布时完整远端 Ref 为上述 `a38dd21…`。终核时独立只读 `git ls-remote` 已观察到后继 Q2 提交 `0b5b5f1ff7a3463fcb10cf5a05e5f7c7bcae7c62`；`git merge-base --is-ancestor a38dd21… 0b5b5f1…` 退出 0。原 Q1 发布身份保持可核，当前远端推进不改变此次精确 CI 的归属；Q2／Q3 的定义、代码和证据均未混入 Q1 判断。
+
+该修正提交自己的官方 CI **`43620231340`** 已完成。独立读取 `ci/fixture-fix-job-groups-terminal-r1.json`、`fixture-fix-run-terminal-r1.html`、全部八份 `fixture-fix-job-*-terminal-r1.html`，并直接从 HTML 的 step 属性重新解析与核对：
+
+- 官方 run 原页包含完整 `a38dd21…`；八 job 的分页完整清单为 `totalCount=8`、`hasMore=false`，全部 completed／success。
+- plan 的 Read explicit test groups 为 success。
+- 六个 Ubuntu 分组与 Windows 共七个 native job，各自 setup Python、build／install wheel、packaged reference identity、native application regression 四个必要步骤均 success，共 28 项。
+- Windows PowerShell 5.1 installer／upgrade 亦 success；合计 **30／30 必要步骤 success**。
+- 重新解析的各 job 全部步骤与 `fixture-fix-terminal-r1.json` 的原解析记录逐项一致；30 个必要步骤的原 log URL 均绑定本次完整 commit 与相应 job ID，没有取用旧 run 或 Q2 的结果。
+
+本次已具备修正候选自己的 Windows 应用和 installer 成功证据，关闭此前的平台验收缺口。旧 `ad16881…`／CI `43618045174` 的 failure 原件仍保持；不把旧失败追认为成功，不根据未取得的完整匿名 step 日志编造逐测试输出或新计数。
+
+|轴|Q1.1 最终终核结论|
+|---|---|
+|需求符合性|approve，开放实质问题 0；本地精确材料、原正式读取复用、安装／实际 CLI、修正固定发布和本候选自己的完整适用 CI 证据闭合。|
+|可维护性|approve，开放实质问题 0；R1／R2 在原 owner 修正，Windows 修正仅处理测试拥有对象的删除条件，既有权限、候选／批准／恢复语义及有效回归保持。|
+
+本报告终核仅关闭 Q1.1 的具体切片验收。来源／祖先／Git 树关联认证、自动依赖发现和检查可信性仍按本文既定限制；预训练／后训练专长属于另片 Q2，真实 B3／GPU、完整 Forge 等原开放条件不因本次通过而关闭。
