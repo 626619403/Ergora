@@ -2,7 +2,7 @@
 
 日期：2026-11-15。评审者：fresh-context 独立代理 `local_review_packet_audit`。只读产品、测试和证据；唯一写入为本报告。依据仓库 `AGENTS.md`、[具体验收](../plans/2026-11-15-local-review-packets.md)、[原要求／Q 总计划](../plans/2026-11-15-domain-review-optimization-quality.md)，使用 `ergora-codebase-quality` 的 ownership／repository-style／test-seams references 和 `maintainable-project-delivery` 的 independent-review brief。
 
-**当前结论：r2 最终本地需求符合性／可维护性两轴 approve，开放实质 finding 0／0，R1／R2 已关闭。** 精确提交／远端身份、当前候选自己的完整适用 CI 与 Windows 终态仍待核；不能据此宣布发布全部完成。下文保留 r1 的实证失败及其原身份。
+**当前结论：r2 最终本地及 `ad16881` 固定发布源码的需求符合性／可维护性两轴 approve，R1／R2 已关闭。** 该提交自己的 CI 已观察到 Windows 测试夹具的两处只读对象删除失败，六个 Linux 分组和 Windows installer 成功；本次最小 fixture 修正的源码两轴 approve，新增实质问题 0／0，Windows 门禁须由修正提交自己的 CI 补齐。不能据此宣布全部验收完成。下文保留各候选的实证失败及其原身份。
 
 ## 身份与范围
 
@@ -97,3 +97,44 @@ r2 完整范围为 `.ergora/checks/local-review-packets/review-scope-r2/` 的 17
 |可维护性|approve；开放实质 finding 0。修正在 packet owner 内关闭输入和持久资料不变量，沿原库／reader／发布／CI 入口，没有新增不必要抽象或重复验证系统。|
 
 待后续精确提交／普通推送完整身份核对、暂存全部新增文件检查，以及该候选自己的完整适用 CI／Windows 终态。此处是最终本地复核，不提前认证远端或 Windows；真实 B3／完整 Forge 等开放条件继续保持。
+
+## 固定发布及真实 CLI 材料旅程补核
+
+独立核已发布提交 `ad168810b6caa9ed435d0b3fef833856c286edf9`，唯一父提交为固定基线 `eecd90aa70c9268144af1161ade9076790dabf92`，完整范围 17 文件。`publication-r2.json` 的 17 个 blob 长度／SHA256 均与实际提交相同；本片五个产品文件与两个测试文件均与 r2 快照相同。发布时记录工作树干净；当前记录更新不改变原提交身份。
+
+`remote-r2.txt` 固定完整 Ref 与提交相同；评审者再次执行只读 `git ls-remote origin refs/heads/refactor/architecture-foundations`，退出 0，实际返回同一完整 SHA。第一次推送 proxy 407 的原件保留，未改写为成功；第二次普通推送成功由原工具观察和当前精确远端状态共同支撑。
+
+独立执行 `git diff --check eecd90aa70c9268144af1161ade9076790dabf92 ad168810b6caa9ed435d0b3fef833856c286edf9`，退出 0，检查已提交的完整范围，包括全部新增文件；没有用发布后为空的暂存差异冒称完整检查。`check-docs-r3.json` 记录九文件／394 个本地链接或 fragment／零错误，九个内容身份均已与实际发布提交核对；不扩大为外部页面可达性检查。
+
+已核安装 CLI 的真实仓库旅程 `.ergora/checks/local-review-packets/cli-journey-r2/`：完整 base→上述 head，显式四个上下文和一份检查原件，source 预算配置为 8,000,000B。生成包 **1,264,589B**，SHA256 `304aa55b91007627f0fee3db2ae8dd2f393133491698ca9db31abf6e791e43c3`，17 变更、31 去重 blob，base／diff_base／head 文件数 14／14／22。独立核以下事实：
+
+- 包内变更集合与实际 `git diff --no-renames --name-only` 的全部 17 路径完全相同。
+- 三个 source 表的每份完整正文均与对应实际提交的 Git blob 字节相同；需求及 evidence 亦与原件逐字相同。
+- 已保存 read 输出内的 packet 与发布 packet 完全相同；用当前安装 reader 加原整包摘要离线 verify 通过。
+- prepare／verify／read 原 stderr 为空，`unused-state` 不存在。
+
+候选自己的官方 CI 为 `43618045174`；`actions-post-push-r1.json`／HTML 明确绑定完整 `ad16881…` 并为 in-progress。这只证明当前候选已进入 CI；没有终态或 Windows 成功证据。本次固定发布两轴仍 approve／开放 0／0，最终适用 CI／Windows 补核继续等待。
+
+## 原候选 CI 失败与 Windows fixture 最小修正
+
+后续已直接核固定 `ad168810b6caa9ed435d0b3fef833856c286edf9` 的 CI `43618045174` 终态原件：`ci/job-groups-full-r2.json`、`ci/windows-job-r3.html`、`ci/terminal-r1.json`。完整分页结果为八 job、`hasMore=false`：plan 和六个 Ubuntu 分组 success；Windows job failure，其中 build、reference、PowerShell 5.1 installer／upgrade 均 success，native application regression failure。
+
+官方 job 注释实际给出 **2 failed／1108 passed／788 skipped／16 subtests passed，1080.19s**；两项均为 `tests/test_review_packets.py` 的测试操作对 `.git/objects` 文件触发 `PermissionError: [WinError 5] Access is denied`：
+
+1. `test_complete_diverged_sources_ignore_worktree_and_survive_repository_removal` 在 `shutil.rmtree(repository)` 删除源仓库时失败，尚未到后续离线 verify。
+2. `test_missing_promisor_blob_does_not_fetch_even_with_an_available_local_remote` 在 `object_file.unlink()` 人工制造缺 blob 前失败，尚未到产品的禁 lazy fetch 检查。
+
+完整匿名 step log 接口返回 404，未取得全部原日志；上述因果依据是官方 job 页的失败注释、明确的 Git object 路径和相应测试调用。没有把未知日志内容补成已观察事实，也没有将旧 Windows 失败改写为成功。
+
+修正的源码基线为 `ad16881…`，本次仅审 `tests/test_review_packets.py` 的五行增加，SHA256 为 `991cb087ba80584a947051dd7a0411087fb6307212f43d28e4ef8b4f25e8b0c1`：在 `:89` 至 `:91` 对该测试自建仓库的 `.git/objects` 普通文件设 `chmod(0o600)`，在 `:176` 对即将主动删除的目标 loose object 同样设可写，再执行原删除。Windows 的 chmod 写位用于清除文件只读属性，匹配这两个已观察失败；不改产品采集、对象正文、原离线验证或禁 fetch 断言，不新增 fallback／skip。首例权限改变后立即删整个测试仓库；第二例远端是 `--no-hardlinks` 克隆，目标仍是测试拥有的源对象。
+
+独立确认本片五个产品文件、portability workflow 和 Linux 分组配置相对 `ad16881…` 未变；原 r2 安装环境的 614 个产品文件仍与 `package-r2.json` 逐字匹配。并行 Q2 模板／文档不纳入此修正范围，不以当前工作树的新定义认证 Q1。
+
+已直接核受影响套件的 `windows-fixture-fix-r1.stdout`／XML：**22 passed／4.15s**，22 testcase，0 failed／error／skipped；本次测试文件范围的 `git diff --check` 退出 0。这是原 r2 安装产品上运行修后测试的 Linux 证据，不能证明 Windows 修正已经运行成功。既有两项真实 fixture 回归与下一固定提交的 Windows CI 足够，不需要再增加复制平台删除行为的测试或通用删除抽象。
+
+|轴|本次五行 fixture 修正源码结论|
+|---|---|
+|需求符合性|approve；修正准确对应官方失败，保持完整材料和缺对象不 fetch 的原测试目标。Q1 全部适用 CI 验收仍待新固定 SHA 的 Windows 结果。|
+|可维护性|approve；改动限测试拥有的文件与原删除位置，未改产品或 CI，没有新增不必要抽象、重复断言或弱化回归。新增实质 finding 0。|
+
+下一步核仅包含该 fixture 修正及同片记录的精确发布身份、产品保持不变，以及该固定提交自己的完整适用 CI 终态。旧 `ad16881…` 的失败永久保留；此时不称 Windows pass 或 Q1 全部验收闭合。

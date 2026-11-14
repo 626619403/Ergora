@@ -8,7 +8,7 @@
 |用户补充|Q 总计划保留 kernel 专家评估节点，允许无需算子干预；历史研究、旧 v2 模板与原任务保持。|
 |实现|state-free prepare／verify／read、严格 Schema、完整三提交源／diff／显式上下文与祖先规范、原子不覆盖发布已实现；共享读取迁至正式 executor，原 full 材料安装回归通过。|
 |验证与安装|r1 原四 suite 70 项通过；修后 r2 安装 38 项通过，614 源／wheel／安装逐字相同，283 参考 PASS；自身原模板 Codex r2 approve。环境使用 system-site-packages，不称 clean 安装；Windows 待当前候选自有 CI。|
-|独立审查与发布|新 fresh-context 两轴 r2 最终本地 approve；R1／R2 修复后关闭，开放实质 0／0；待普通发布、精确 Ref 与当前候选自有 CI。|
+|独立审查与发布|新 fresh-context 两轴 r2 最终本地及固定发布 approve；R1／R2 关闭；已普通发布 ad16881 并核完整 Ref。其 CI 已终态：Linux 六组及 Windows 安装成功，Windows 两项 fixture 删除只读 Git 对象失败；最小测试修正已写，本地 22 项通过，待原独立补核与新 SHA CI。|
 
 本片不会关闭真实 B3、完整 Forge、领域 PR／MR 检出能力或多轮训练优化。下一步构建安装件并回归原六阶段完整材料，之后进行自身模板和新独立审查。
 
@@ -42,3 +42,18 @@ r2 运行新包、导入边界和原完整材料 full 旅程 **38 项通过／36
 [新独立报告](2026-11-15-local-review-packets-review.md)已核最终 r2：17 个 tracked／untracked 冻结文件，614 源／wheel／安装逐字身份，38 项 XML 的实际分组为包 22＋架构 15＋原 full 1，零失败／错误／跳过。评审者另以安装解释器 `-I` 独立重跑聚合预算／同提交表／diff 篡改／diff 预算四项，4 passed／0.97 秒；501 份超数 evidence 的旧复现修后在 **0 次 document read** 时拒绝，不发布。
 
 评审者直接核原自身 r2 的任务、23 份全文与三份父叶资源、准备 prompt＝实际 stdin 和结果摘要；需求符合性与可维护性两轴最终本地 `approve`，R1／R2 均关闭，开放实质问题 0／0。该结论不提前证明发布、Windows 或适用 CI；下一步完成普通提交和精确推送，再核自己的 CI。
+
+
+## 精确发布与真实本地包旅程
+
+已普通推送 `ad168810b6caa9ed435d0b3fef833856c286edf9`，唯一父为固定基线，17 个文件，完整远端 Ref 相同，发布时工作树干净；不合 main。全部新增文件已纳入暂存后的 `git diff --cached --check`，通过；九份文档／394 本地链接或 fragment／零错误。首次网络推送遇代理 407，保留原失败；随后原 SSH 配置下普通推送成功，没有修改认证或绕过审批。
+
+安装后的 CLI 对原基线 → 该提交实际执行 prepare／verify／read：17 个变更全部纳入，31 个去重 blob，base／diff-base／head 文件表为 14／14／22，包 1,264,589B，未创建指定的控制 home。原包 SHA256 `304aa55b91007627f0fee3db2ae8dd2f393133491698ca9db31abf6e791e43c3`；显式上下文和实际 r2 检查输出均完整保存，但包内仍按合同声明 evidence 是操作员提供、不会自动升级为可信结果。
+
+自己的 [Portability 43618045174](https://github.com/626619403/Ergora/actions/runs/43618045174) 已由官方页面核到完整 SHA `ad168810b6caa9ed435d0b3fef833856c286edf9`，当前在途；尚未声明 Windows 或整矩阵成功。匿名 API 返回 rate limit 403，后续读取官方 Actions 页面，不由接口受限推断测试终态。固定发布独立补核和 CI 终态仍待。
+
+## 原发布 CI 失败与 Windows fixture 修正
+
+上述在途记录由本节终态覆盖，原失败保持：[43618045174](https://github.com/626619403/Ergora/actions/runs/43618045174) 的八 job 中 plan／六个 Linux 分组成功，Windows 回归失败，Windows PowerShell 安装／升级成功。30 个必要步骤中 29 成功、1 失败。官方 job annotations 保存完整结果：**2 failed、1108 passed、788 skipped、16 subtests passed／1080.19 秒**。两项失败均在本片测试主动删除 Git 只读 loose object 时产生 Windows `PermissionError`：移除源仓库和人为制造缺失 promisor blob。它们发生在测试 setup／cleanup，不是采集器报错。匿名完整 step 日志接口返回 404；原因与计数来自可读取的官方 annotation，不伪称下载了完整日志。
+
+最小修正只在这两处删除前给测试拥有的 Git 对象设置 `0o600`，不修改产品、权限合同、CI 矩阵或跳过测试。使用原 r2 非 editable 安装解释器重跑完整 packet suite：**22 passed／4.15 秒**。此本地 Linux 结果不证明 Windows 已修；待原独立评审补核、单独普通发布该测试修正并核新 SHA 自己的 CI。Q2 领域模板仍为本地独立在途范围，不纳入这次测试修正发布。

@@ -85,6 +85,10 @@ def test_complete_diverged_sources_ignore_worktree_and_survive_repository_remova
     assert "uncommitted" not in json.dumps(packet) and "untracked.txt" not in source_material["scope"]
     direct = review_packets.prepare(repository, destination=tmp_path / "direct", comparison="base", **options)
     assert direct["repository"]["diff_base"] == options["base"] and direct["changes"] == result["changes"] + 1
+    # Git creates read-only loose objects; Windows requires writable files for deletion.
+    for object_file in (repository / ".git/objects").rglob("*"):
+        if object_file.is_file():
+            object_file.chmod(0o600)
     shutil.rmtree(repository)
     assert review_packets.verify(destination, sha256=result["packet_sha256"]) == {key: value for key, value in result.items()
                                                                             if key != "directory"}
@@ -169,6 +173,7 @@ def test_missing_promisor_blob_does_not_fetch_even_with_an_available_local_remot
     git(repository, "config", "protocol.file.allow", "always")
     oid = git(repository, "rev-parse", options["head"] + ":src/train.py").decode().strip()
     object_file = repository / ".git/objects" / oid[:2] / oid[2:]
+    object_file.chmod(0o600)
     object_file.unlink()
     with pytest.raises(ValueError, match="local Git blob"):
         review_packets.prepare(repository, destination=tmp_path / "missing", **options)
