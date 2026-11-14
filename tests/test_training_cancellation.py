@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from ergora import reference, training
-from test_training_submission import prepared, service
+from ergora import projects, reference, training
+from test_training_submission import move_registration, prepared, service
 from test_training import experiments, registration
 from test_training_runtime import installation
 
@@ -17,6 +17,7 @@ from test_training_runtime import installation
 def submitted(prepared, service, monkeypatch):
     state, _, _, _, _, digest = prepared
     _, record = service
+    projects.bind(state, 'demo', 'memory', {'tool': 'sqlite'}, state.project('demo')['revision'])
     receipt = training.start(state, 'demo', 'alpha', state.project('demo')['revision'], digest)
     original = reference.processes.run
     fixture = Path(__file__).parent / 'fixtures/training_cancellation_client.py'
@@ -40,10 +41,97 @@ def request(prepared, receipt, reason='CPU acceptance complete', request_id='can
                            run_id=receipt['run_id'], reason=reason, **kwargs)
 
 
-def recover(prepared, intent):
+def recover(prepared, intent, **kwargs):
     state = prepared[0]
     return training.resume_cancel(state, 'demo', 'alpha', intent['request_id'], state.project('demo')['revision'],
-                                  intent['intent_sha256'])
+                                  intent['intent_sha256'], **kwargs)
+
+
+def test_original_registration_cancel_keeps_exact_run_history_and_current_revision(prepared, submitted, capsys):
+    from ergora.cli import main
+
+    state, definition, runtime, _, _, _ = prepared
+    receipt, select, record = submitted
+    selected, current = move_registration(prepared)
+    (runtime / 'training/specs/alpha.json').unlink()
+    (Path(definition['execution']['config_directory']) / 'training-runners/trusted.json').unlink()
+    selection = ['--original-registration', selected['operation_id'],
+                 '--registration-intent-sha256', selected['intent_sha256'], '--confirm']
+    prefix = ['--home', str(state.root), 'training']
+    select('lost-ack')
+    assert main([*prefix, 'cancel', 'demo', 'alpha', 'cancel-original', '--revision', str(current['revision']),
+                 '--run-id', receipt['run_id'], '--reason', 'stop original run', *selection]) == 2
+    capsys.readouterr()
+    assert main([*prefix, 'cancellation', 'demo', 'alpha', 'cancel-original', *selection]) == 0
+    unknown = json.loads(capsys.readouterr().out)
+    assert unknown['status'] == 'unknown' and unknown['run_id'] == receipt['run_id']
+    assert unknown['original_registration']['registration_project_revision'] < receipt['submitted_revision'] < current['revision']
+    assert unknown['submitted_revision'] == receipt['submitted_revision']
+    assert unknown['project_revision'] == current['revision']
+    saved = json.loads((runtime / 'ergora/training-cancellations/alpha/cancel-original.intent.json').read_bytes())
+    assert saved['project_revision'] == current['revision']
+    assert saved['execution'] == definition['execution']
+    recovery = [*prefix, 'resume-cancel', 'demo', 'alpha', 'cancel-original', '--revision', str(current['revision']),
+                '--intent-sha256', unknown['intent_sha256'], *selection]
+    select('signal-missing')
+    assert main(recovery) == 1
+    assert json.loads(capsys.readouterr().out)['reconciliation'] == 'signal_not_found'
+    select('wrong-run')
+    with pytest.raises(ValueError, match='another run ID'):
+        recover(prepared, unknown, original_registration=selected)
+    select('accepted')
+    assert main(recovery) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result['status'] == 'requested' and result['signal_delivery'] == 'history'
+    assert result['run_id'] == receipt['run_id'] and json.loads(record.read_bytes())['signals'] == 1
+    assert request(prepared, receipt, reason='stop original run', request_id='cancel-original',
+                   original_registration=selected) == result
+    assert training.cancellation(state, 'demo', 'alpha', 'cancel-original', original_registration=selected) == result
+    assert not Path(current['registration']['definition']['execution']['state_directory']).exists()
+    assert state.project('demo') == current
+
+
+def test_original_stop_status_checks_native_paths_and_binding_before_reporting(prepared, submitted):
+    state, _, runtime, _, write, _ = prepared
+    receipt, _, service_record = submitted
+    selected, current = move_registration(prepared)
+    start = json.loads((runtime / 'ergora/training-submissions/alpha.intent.json').read_bytes())
+    spec = start['observation']['experiment']['spec']
+    job = runtime / 'training/jobs/alpha'
+    files = {job / 'request.json': {'experiment': spec, 'job_id': 'local-perf-alpha'},
+             job / 'started.json': {'binding': spec['binding'], 'job_id': 'local-perf-alpha'},
+             job / 'result.json': {'binding': spec['binding'], 'job_id': 'local-perf-alpha', 'state': 'CANCELLED', 'detail': 'CPU contract'},
+             runtime / 'training/fences/alpha.json': {'binding': spec['binding']}}
+    for path, value in files.items():
+        write(path, value)
+    observed = training.stop_status(state, 'demo', 'alpha', original_registration=selected)
+    assert observed['original_registration']['registration_project_revision'] < receipt['submitted_revision'] < current['revision']
+    assert observed['submitted_revision'] == receipt['submitted_revision']
+    assert observed['project_revision'] == current['revision']
+    assert observed['executor_observation']['state'] == 'CANCELLED' and observed['fence_recorded']
+    assert observed['read_only'] and observed['execution_success'] is None
+    before = {p: p.read_bytes() for p in runtime.rglob('*') if p.is_file()}
+    for path, field in [(job / 'request.json', 'job_id'), (job / 'request.json', 'experiment'),
+                        (job / 'started.json', 'binding'), (job / 'started.json', 'job_id'),
+                        (job / 'result.json', 'binding'), (job / 'result.json', 'job_id'),
+                        (runtime / 'training/fences/alpha.json', 'binding')]:
+        value = dict(files[path]);value[field] = None
+        write(path, value)
+        with pytest.raises(ValueError):
+            training.stop_status(state, 'demo', 'alpha', original_registration=selected)
+        path.write_bytes(before[path])
+    for path in files:
+        saved = path.with_suffix('.saved')
+        path.rename(saved)
+        try:
+            path.symlink_to(saved)
+            with pytest.raises(ValueError):
+                training.stop_status(state, 'demo', 'alpha', original_registration=selected)
+        finally:
+            path.unlink(missing_ok=True)
+            saved.rename(path)
+    assert {p: p.read_bytes() for p in runtime.rglob('*') if p.is_file()} == before
+    assert json.loads(service_record.read_bytes()).get('signals', 0) == 0
 
 
 def test_native_cancel_is_single_run_bound_and_locally_readable_without_sdk(prepared, submitted, monkeypatch):
@@ -130,7 +218,7 @@ def test_stop_status_keeps_missing_queued_and_running_executor_facts(prepared, s
     spec = json.loads((runtime / 'training/specs/alpha.json').read_bytes())
     write(runtime / 'training/jobs/alpha/request.json', {'experiment': spec, 'job_id': 'local-perf-alpha'})
     assert training.stop_status(state, 'demo', 'alpha')['executor_observation']['state'] == 'QUEUED'
-    write(runtime / 'training/jobs/alpha/started.json', {'binding': spec['binding']})
+    write(runtime / 'training/jobs/alpha/started.json', {'binding': spec['binding'], 'job_id': 'local-perf-alpha'})
     assert training.stop_status(state, 'demo', 'alpha')['executor_observation']['state'] == 'RUNNING'
 
 

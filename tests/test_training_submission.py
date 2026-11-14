@@ -13,7 +13,8 @@ import time
 
 import pytest
 
-from ergora import reference, training
+from ergora import projects, reference, registrations, training
+from test_registrations import original_registration
 from test_training import experiments, registration
 from test_training_runtime import installation
 
@@ -55,6 +56,129 @@ def service(prepared, monkeypatch, tmp_path):
         monkeypatch.setattr(reference.processes, 'run', invoke)
     select('accepted')
     return select, record
+
+
+def move_registration(prepared):
+    state, definition, _, _, _, _ = prepared
+    previous = state.project('demo')
+    selected = original_registration(state, previous)
+    changed = deepcopy(definition)
+    for key in ('config_directory', 'state_directory'):
+        changed['execution'][key] += '-new'
+    current = registrations.register(state, changed, previous['revision'])
+    for name in previous['registration']['files']:
+        (Path(definition['execution']['config_directory']) / name).write_text('{"drift": true}')
+    return selected, current
+
+
+def test_original_registration_unknown_start_reconciles_without_resending_or_holding_db(prepared, service, monkeypatch):
+    state, definition, runtime, _, _, digest = prepared
+    select, record = service
+    # Registration, start and current revisions are intentionally all different.
+    projects.bind(state, 'demo', 'memory', {'tool': 'sqlite'}, state.project('demo')['revision'])
+    start_revision = state.project('demo')['revision']
+    select('lost-ack')
+    with pytest.raises(ValueError, match='UNAVAILABLE'):
+        training.start(state, 'demo', 'alpha', start_revision, digest)
+    selected, current = move_registration(prepared)
+    (runtime / 'training/specs/alpha.json').unlink()
+    (Path(definition['execution']['config_directory']) / 'training-runners/trusted.json').unlink()
+    original = reference.training_submission
+    rpc_reservations = []
+
+    def unlocked(project, *args, **kwargs):
+        if args[1] == 'resume':
+            with state.connect() as db:
+                db.execute('BEGIN IMMEDIATE')
+            rpc_reservations.append(True)
+        return original(project, *args, **kwargs)
+
+    monkeypatch.setattr(reference, 'training_submission', unlocked)
+    unknown = training.submission(state, 'demo', 'alpha', original_registration=selected)
+    assert unknown['status'] == 'unknown' and unknown['submitted_revision'] == start_revision
+    context = unknown['original_registration']
+    assert context['registration_project_revision'] < start_revision < context['current_project_revision']
+    assert unknown['project_revision'] == current['revision']
+    assert context['execution'] == definition['execution']
+    checkpoints = {p: p.read_bytes() for p in (runtime / 'ergora/training-submissions').glob('*')}
+    for scenario, error in [('not-found', None), ('unavailable', 'UNAVAILABLE'), ('foreign-memo', 'matching intent memo'),
+                            ('input-collision', 'complete original Experiment differs')]:
+        select(scenario)
+        if error:
+            with pytest.raises(ValueError, match=error):
+                training.resume_start(state, 'demo', 'alpha', current['revision'], unknown['intent_sha256'],
+                                      original_registration=selected)
+        else:
+            missing = training.resume_start(state, 'demo', 'alpha', current['revision'], unknown['intent_sha256'],
+                                            original_registration=selected)
+            assert missing['status'] == 'unknown' and missing['reconciliation'] == 'not_found'
+        assert all(p.read_bytes() == raw for p, raw in checkpoints.items())
+    select('accepted')
+    recovered = training.resume_start(state, 'demo', 'alpha', current['revision'], unknown['intent_sha256'],
+                                      original_registration=selected)
+    assert recovered['status'] == 'submitted' and recovered['intent_sha256'] == unknown['intent_sha256']
+    assert json.loads(record.read_bytes())['starts'] == 1 and len(rpc_reservations) == 5
+    assert not Path(current['registration']['definition']['execution']['state_directory']).exists()
+    assert state.project('demo') == current
+
+
+def test_original_prepared_start_is_readable_and_fenceable_but_cannot_dispatch(prepared, monkeypatch, capsys):
+    pytest.importorskip('temporalio')
+    if sys.platform != 'linux':
+        pytest.skip('Native training recovery requires Linux/WSL2')
+    from ergora.cli import main
+
+    state, _, runtime, _, _, digest = prepared
+    reference.training_submission(state.project('demo'), state.root, 'prepare',
+                                  {'experiment_id': 'alpha', 'manifest_sha256': digest}, timeout=20)
+    selected, current = move_registration(prepared)
+    args = ['--home', str(state.root), 'training', 'submission', 'demo', 'alpha',
+            '--original-registration', selected['operation_id'], '--registration-intent-sha256', selected['intent_sha256']]
+    assert main(args) == 2
+    capsys.readouterr()
+    assert main(args + ['--confirm']) == 0
+    observed = json.loads(capsys.readouterr().out)
+    assert observed['status'] == 'prepared'
+    for revision in (current['revision'] - 1, current['revision']):
+        with pytest.raises(ValueError, match='revision changed|without its original attempt'):
+            training.resume_start(state, 'demo', 'alpha', revision, observed['intent_sha256'], original_registration=selected)
+    project = training._project(state, 'demo', selected)
+    for operation in ('prepare', 'check', 'dispatch'):
+        with pytest.raises(ValueError, match='only original start reconciliation'):
+            reference.training_submission(project, state.root, operation,
+                {'experiment_id': 'alpha', 'manifest_sha256': digest, 'intent_sha256': observed['intent_sha256']}, timeout=20)
+    with pytest.raises(ValueError, match='limited to submission reconciliation'):
+        reference.training_release(project, state.root, 'status', {'experiment_id': 'alpha'}, timeout=20)
+    with pytest.raises(ValueError, match='existing matching start intent'):
+        training.fence_start(state, 'demo', 'beta', current['revision'], digest, confirm=True, original_registration=selected)
+    original = reference.importlib.util.find_spec
+    monkeypatch.setattr(reference.importlib.util, 'find_spec', lambda name: None if name == 'temporalio' else original(name))
+    assert training.submission(state, 'demo', 'alpha', original_registration=selected) == observed
+    monkeypatch.setattr(reference.importlib.util, 'find_spec', original)
+    fenced = training.fence_start(state, 'demo', 'alpha', current['revision'], digest, confirm=True, original_registration=selected)
+    assert fenced['status'] == 'fenced' and fenced['intent_sha256'] == observed['intent_sha256']
+    assert not (runtime / 'training/fences/beta.json').exists()
+    assert not (runtime / 'ergora/training-submissions/alpha.attempt.json').exists()
+
+
+def test_original_registration_is_rechecked_in_the_selected_training_process(prepared, monkeypatch):
+    state, _, runtime, _, _, digest = prepared
+    reference.training_submission(state.project('demo'), state.root, 'prepare',
+                                  {'experiment_id': 'alpha', 'manifest_sha256': digest}, timeout=20)
+    selected, _ = move_registration(prepared)
+    result = state.root / 'registrations/demo' / (selected['operation_id'] + '.result.json')
+    original = reference.processes.run
+
+    def replace(*args, **kwargs):
+        value = json.loads(result.read_bytes());value['status'] = 'not-published'
+        result.write_text(json.dumps(value))
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(reference.processes, 'run', replace)
+    before = {p: p.read_bytes() for p in runtime.rglob('*') if p.is_file()}
+    with pytest.raises(ValueError, match='matching complete published intent'):
+        training.submission(state, 'demo', 'alpha', original_registration=selected)
+    assert {p: p.read_bytes() for p in runtime.rglob('*') if p.is_file()} == before
 
 
 def test_local_submission_inspection_does_not_require_the_optional_sdk(prepared, monkeypatch):
@@ -482,6 +606,8 @@ def test_submission_read_racing_with_conflict_publication_keeps_valid_checkpoint
 
     operation = _Submission.__new__(_Submission)
     operation.project = {'id': 'demo', 'revision': 1}
+    operation.project_revision = operation.project['revision']
+    operation.recovery_context = {}
     operation.ident = 'alpha'
     operation.identity = {'workflow_id': 'perf-experiment/alpha'}
     operation.sha = lambda value: hashlib.sha256(json.dumps(value, sort_keys=True).encode()).hexdigest()
@@ -630,6 +756,7 @@ def test_other_actor_start_is_rejected_without_adoption(prepared, service, scena
     state, _, _, _, _, digest = prepared
     select, record = service
     select(scenario)
+    projects.bind(state, 'demo', 'memory', {'tool': 'sqlite'}, state.project('demo')['revision'])
     revision = state.project('demo')['revision']
     if scenario == 'preexisting':
         with pytest.raises(ValueError, match='already exists'):
@@ -648,6 +775,11 @@ def test_other_actor_start_is_rejected_without_adoption(prepared, service, scena
                      '--revision', str(revision), '--manifest-sha256', digest])
     assert code == 1 and json.loads(output.getvalue()) == result
     assert json.loads(record.read_text())['starts'] == attempts
+    selected, current = move_registration(prepared)
+    recovered = training.submission(state, 'demo', 'alpha', original_registration=selected)
+    assert recovered['original_registration']['registration_project_revision'] < revision < current['revision']
+    assert recovered['submitted_revision'] == revision and recovered['project_revision'] == current['revision']
+    assert recovered['status'] == result['status'] and recovered['intent_sha256'] == result['intent_sha256']
 
 
 def test_stale_confirmation_and_changed_sources_cannot_dispatch(prepared, service):

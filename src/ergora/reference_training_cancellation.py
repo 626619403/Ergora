@@ -91,7 +91,8 @@ class _Cancellation:
         return {**self.attempt(intent), 'delivery': 'not_sent', 'temporal_status': temporal_status}
 
     def status(self, intent: dict | None) -> dict:
-        result = {'project': self.submission.project['id'], 'project_revision': self.submission.project['revision'],
+        result = {**self.submission.recovery_context, 'project': self.submission.project['id'], 'project_revision': self.submission.project_revision,
+                  'submitted_revision': self.start['project_revision'],
                   'experiment_id': self.submission.ident, 'request_id': self.request_id,
                   'workflow_id': self.start['workflow_id'], 'run_id': self.run_id,
                   'runtime_status': 'not_queried', 'cancellation_confirmed': None, 'execution_success': None}
@@ -181,19 +182,29 @@ class _Cancellation:
         from perf_temporal.models import Binding, Experiment
         from .reference_training_runtime import observe
 
-        handle, description, _ = await self.lookup()
-        control = await observe(handle, description, Binding(**self.spec['binding']), timeout=self.payload['timeout'])
-        adapter = load_adapter()
-        experiment = Experiment(**{**self.spec, 'binding': Binding(**self.spec['binding'])})
-        job = await adapter.lookup_job(experiment)
-        executor = asdict(await adapter.poll_job(job)) if job is not None else None
+        request = self.submission.native_request()
+        for suffix in ('started.json', 'result.json'):
+            try:
+                record = self.submission.document(self.submission.root, 'training/jobs/' + self.submission.ident + '/' + suffix)
+            except FileNotFoundError:
+                continue
+            if (request is None or record.get('binding') != self.spec['binding']
+                    or record.get('job_id') != request['job_id']):
+                raise ValueError('Native training stop record differs from the original request and binding')
         try:
             fence = self.submission.document(self.submission.root, 'training/fences/' + self.submission.ident + '.json')
         except FileNotFoundError:
             fence = None
         if fence is not None and fence != {'binding': self.spec['binding']}:
             raise ValueError('Saved training fence differs from the original binding')
-        return {'project': self.submission.project['id'], 'project_revision': self.submission.project['revision'],
+        handle, description, _ = await self.lookup()
+        control = await observe(handle, description, Binding(**self.spec['binding']), timeout=self.payload['timeout'])
+        adapter = load_adapter()
+        experiment = Experiment(**{**self.spec, 'binding': Binding(**self.spec['binding'])})
+        job = await adapter.lookup_job(experiment)
+        executor = asdict(await adapter.poll_job(job)) if job is not None else None
+        return {**self.submission.recovery_context, 'project': self.submission.project['id'], 'project_revision': self.submission.project_revision,
+                'submitted_revision': self.start['project_revision'],
                 'experiment_id': self.submission.ident, 'workflow_id': self.start['workflow_id'], 'run_id': self.run_id,
                 'control': control, 'executor_observation': executor, 'fence_recorded': fence is not None,
                 'execution_success': None, 'read_only': True,
@@ -218,7 +229,7 @@ class _Cancellation:
                     if intent['reason'] != self.payload['reason']:
                         raise ValueError('Request ID already names a different training cancellation reason')
                     return {'created': False, 'cancellation': self.status(intent)}
-                intent = self.record(self.submission.project['revision'], self.payload['reason'], self.actor())
+                intent = self.record(self.submission.project_revision, self.payload['reason'], self.actor())
                 self.core.write(self.path('.intent.json'), intent)
                 return {'created': True, 'cancellation': self.status(intent)}
             if intent is None or self.sha(intent) != self.payload['intent_sha256']:

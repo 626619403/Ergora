@@ -6,12 +6,16 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import re
+import stat
 import subprocess
 import tempfile
 import uuid
 
 from . import agents, components, contracts, projects, reference
 from .bindings import validate_binding
+from .asset_trees import is_link
+from .definition_bundles import parse_json
 from .state import State, file_lock
 
 
@@ -25,6 +29,7 @@ _LEGACY_PROJECT_SCHEMA = {"type": "object", "additionalProperties": False,
                           "required": ["name", *_LEGACY_FIELDS],
                           "properties": {"name": _SCHEMA["properties"]["id"],
                                          **{key: _SCHEMA["properties"][key] for key in _LEGACY_FIELDS}}}
+MAX_RECOVERY_BYTES = 32 * 1_048_576
 
 
 def _execution_directories(execution: dict, repo: Path) -> dict:
@@ -66,6 +71,75 @@ def publication_files(project: dict, definition: dict, control_home: str | Path,
         config: {"schema_version": 1, "name": project["id"], "repo": project["repo"],
                  **{key: definition[key] for key in ("tracker", "base_sha", "allowed_paths", "checks")}},
     }
+
+
+def _recovery_document(root: Path, relative: Path, limit: int) -> dict:
+    path = root / relative
+    for selected in (path, *path.parents):
+        if selected == root:
+            break
+        if is_link(selected):
+            raise ValueError("Registration recovery records cannot use symlinks or reparse points")
+    descriptor = os.open(path, os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_NONBLOCK', 0))
+    with os.fdopen(descriptor, 'rb') as stream:
+        if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
+            raise ValueError("Registration recovery requires ordinary files")
+        raw = stream.read(limit + 1)
+    if len(raw) > limit:
+        raise ValueError(f"Registration recovery record exceeds {limit // 1_048_576} MiB; nothing was truncated")
+    value = parse_json(raw.decode('utf-8'), 'registration recovery record', finite=True)
+    if not isinstance(value, dict):
+        raise ValueError("Registration recovery record must be a JSON object")
+    return value
+
+
+def published_project(control_home: str | Path, project_id: str, operation_id: str, intent_sha256: str) -> dict:
+    """Read one original published journal from this home; never consult native current files."""
+    if (not isinstance(project_id, str) or re.fullmatch(r'[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}', project_id) is None
+            or not isinstance(operation_id, str) or re.fullmatch('[a-f0-9]{32}', operation_id) is None
+            or not isinstance(intent_sha256, str) or re.fullmatch('[a-f0-9]{64}', intent_sha256) is None):
+        raise ValueError("Original registration requires the project ID, operation ID and complete intent SHA-256")
+    root = Path(control_home)
+    if not root.is_absolute() or root.resolve() != root:
+        raise ValueError("Original registration must retain its canonical control directory")
+    relative = Path('registrations') / project_id / operation_id
+    record = _recovery_document(root, relative.with_suffix('.json'), MAX_RECOVERY_BYTES)
+    result = _recovery_document(root, relative.with_suffix('.result.json'), 1_048_576)
+    try:
+        project = record['after']
+        registration = project['registration']
+        definition = registration['definition']
+        digest = _sha({'id': project_id, 'repo': project['repo'], 'definition': definition})
+        if (set(record) != {'schema_version', 'source', 'before', 'after'}
+                or type(record['schema_version']) is not int or record['schema_version'] != 1
+                or record['source']['kind'] not in ('registration', 'reference-import')
+                or type(project['schema_version']) is not int or project['schema_version'] != 1
+                or project['id'] != project_id or type(project['revision']) is not int or project['revision'] < 1
+                or type(registration['schema_version']) is not int or registration['schema_version'] != 1
+                or registration['status'] != 'pending' or registration['operation_id'] != operation_id
+                or registration['sha256'] != digest or _sha(record) != intent_sha256
+                or _sha(result) != _sha({'schema_version': 1, 'status': 'published', 'operation_id': operation_id,
+                                        'intent_sha256': intent_sha256, 'registration_sha256': digest})):
+            raise ValueError("Original registration has no matching complete published intent and result")
+        contracts.validate({'schema_version': 1, 'id': project_id, 'repo': project['repo'], **definition},
+                           _SCHEMA, 'Original project registration')
+        if Path(project['repo']).resolve() != Path(project['repo']) or not Path(project['repo']).is_absolute():
+            raise ValueError("Original repository must retain its registered canonical path")
+        for value in definition['execution'].values():
+            path = Path(value)
+            if not path.is_absolute() or path.resolve() != path or path.is_relative_to(project['repo']):
+                raise ValueError("Original execution must retain its registered canonical paths outside the repository")
+        expected = publication_files(project, definition, root, digest)
+        policy_path = reference.registration_paths(project_id)[2]
+        policy = registration['files'][policy_path]
+        normalized = {**registration['files'], policy_path: {**policy, 'allowed_task_types': sorted(policy['allowed_task_types'])}}
+        if normalized != expected:
+            raise ValueError("Original registration documents differ from their published definition or control directory")
+    except (KeyError, TypeError) as error:
+        raise ValueError("Original registration lacks its complete published project") from error
+    project = deepcopy(project)
+    project['registration']['status'] = 'published'
+    return project
 
 
 def _prepare(state: State, definition: dict, before: dict | None) -> dict:

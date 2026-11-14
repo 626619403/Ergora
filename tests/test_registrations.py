@@ -39,6 +39,71 @@ def registration(tmp_path, installation):
     return State(tmp_path / "control"), definition
 
 
+def original_registration(state, project):
+    operation = project['registration']['operation_id']
+    result = json.loads((state.root / 'registrations' / project['id'] / (operation + '.result.json')).read_bytes())
+    return {'operation_id': operation, 'intent_sha256': result['intent_sha256'], 'confirm': True}
+
+
+def test_original_published_journal_retains_large_aggregate_and_all_revisions(registration):
+    state, definition = registration
+    definition['checks']['unused'] = ['echo', 'x' * 600_000]
+    first = registrations.register(state, definition, 0)
+    second = registrations.register(state, definition, first['revision'])
+    selected = original_registration(state, second)
+    path = state.root / 'registrations/demo' / (selected['operation_id'] + '.json')
+    raw = path.read_bytes()
+    assert 1_048_576 < len(raw) < registrations.MAX_RECOVERY_BYTES
+    projects.bind(state, 'demo', 'memory', {'tool': 'sqlite'}, second['revision'])
+    before = {p: p.read_bytes() for p in path.parent.iterdir()}
+    assert registrations.published_project(state.root, 'demo', selected['operation_id'], selected['intent_sha256']) == second
+    assert state.project('demo')['revision'] > second['revision']
+    assert {p: p.read_bytes() for p in path.parent.iterdir()} == before
+    # Trailing whitespace keeps the same JSON/canonical identity; the actual
+    # aggregate byte bound must still reject it before accepting that identity.
+    path.write_bytes(raw + b' ' * (registrations.MAX_RECOVERY_BYTES - len(raw) + 1))
+    with pytest.raises(ValueError, match='exceeds .* MiB'):
+        registrations.published_project(state.root, 'demo', selected['operation_id'], selected['intent_sha256'])
+
+
+@pytest.mark.parametrize('damage', ['intent', 'result', 'missing-result', 'projection', 'home', 'duplicate', 'symlink'])
+def test_original_registration_requires_its_own_complete_published_source(registration, tmp_path, damage):
+    state, definition = registration
+    project = registrations.register(state, definition, 0)
+    selected = original_registration(state, project)
+    journal = state.root / 'registrations/demo' / (selected['operation_id'] + '.json')
+    result = journal.with_suffix('.result.json')
+    if damage == 'intent':
+        selected['intent_sha256'] = '0' * 64
+    elif damage == 'result':
+        value = json.loads(result.read_bytes());value['registration_sha256'] = '0' * 64
+        result.write_text(json.dumps(value))
+    elif damage == 'missing-result':
+        result.unlink()
+    elif damage == 'projection':
+        value = json.loads(journal.read_bytes())
+        value['after']['registration']['files']['policies/demo/scope.json']['protected_paths'] = ['foreign']
+        journal.write_text(json.dumps(value))
+        selected['intent_sha256'] = registrations._sha(value)
+        value = json.loads(result.read_bytes());value['intent_sha256'] = selected['intent_sha256']
+        result.write_text(json.dumps(value))
+    elif damage == 'home':
+        other = State(tmp_path / 'other-control')
+        shutil.copytree(journal.parent, other.root / 'registrations/demo')
+        state = other
+    elif damage == 'duplicate':
+        journal.write_bytes(journal.read_bytes().replace(b'"schema_version": 1,', b'"schema_version": 1, "schema_version": 1,', 1))
+    else:
+        saved = journal.with_suffix('.saved')
+        journal.rename(saved)
+        try:
+            journal.symlink_to(saved)
+        except OSError:
+            pytest.skip('Symlink creation unavailable')
+    with pytest.raises((ValueError, FileNotFoundError)):
+        registrations.published_project(state.root, 'demo', selected['operation_id'], selected['intent_sha256'])
+
+
 def test_registration_publishes_three_templates_and_readonly_effective_view(registration):
     state, definition = registration
     project = registrations.register(state, definition, 0)
@@ -331,6 +396,8 @@ def test_import_preserves_legacy_bytes_tasks_and_compatible_policy_order(legacy_
     assert record["source"]["preview_sha256"] == preview["preview_sha256"]
     assert record["source"]["files"] == preview["files"] and record["before"] is None
     assert record["after"]["registration"]["status"] == "pending"
+    selected = original_registration(state, project)
+    assert registrations.published_project(state.root, 'demo', selected['operation_id'], selected['intent_sha256']) == project
     # Later unchanged registration uses the already-approved materialization.
     updated = registrations.register(state, preview["definition"], 1)
     assert updated["revision"] == 2
@@ -351,6 +418,8 @@ def test_import_adopts_bounded_raw_json_even_when_its_pretty_encoding_is_larger(
     assert project["registration"]["status"] == "published" and path.read_bytes() == raw
     assert registrations.resume(state, "demo", 1) == project
     assert registrations.status(state, "demo")["consistent"]
+    selected = original_registration(state, project)
+    assert registrations.published_project(state.root, 'demo', selected['operation_id'], selected['intent_sha256']) == project
 
 
 def test_import_upgrades_control_project_with_pointer_diff_and_before_record(legacy_registration):

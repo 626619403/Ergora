@@ -2,6 +2,10 @@
 
 日期：2026-11-15。以[具体计划](../plans/2026-11-15-training-start-fence.md)为准。修订合同已通过独立计划评审，当前处于实现和验证，未发布。
 
+当前状态更新：本地与独立终核完成后已普通发布`6531967e6b6dd8d20ff5ad70d7ae3074c81aca35`（parent `1b58e929aaf495c16f448454c78de23718786ae9`，tree `84bf6af8050ed19cc135819c90b58a735089108b`），19变更blob、原暂存diff及完整SSH Ref已由原reviewer核同一。自己的Portability `43650666729 / attempt1`已发现，终态待核；以下早期在途记录保留其当时含义。后继产品不在此门禁闭合前推送。
+
+最终更新：自己的Portability `43650666729 / attempt1`八job／30必要步骤全部成功，API与HTML一致，终态完整远端Ref同一；原reviewer[固定发布及CI终核](2026-11-15-training-start-fence-review.md)两轴approve、开放0／0。ignored `ci/reviewer-final-index-r1.json`保留75原件／3,078,684B，索引SHA`2356f330db0361942129e144d8e5615dd3953a2cbbc21aca89087f75575bc349`；原本地报告前缀保持。前置发布门禁闭合，b2仍由自己的后继证据认证。
+
 已核原取消入口要求start回执／run ID；最后preflight后仍可能有晚到start RPC；原本地adapter在同一registry锁下拥有完整binding的fence／lookup和拒绝future create。本片先接入这项原阻断能力，明确与Temporal取消／实际executor停止分开。原导入链需要Temporal SDK，但本地fence不连接服务；将来实际依赖以安装旅程确认。
 
 |步骤|状态|

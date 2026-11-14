@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 
 from .reference import _read_windows_contract, registration_paths
+from .registrations import published_project
 
 
 def _native_bytes(value: dict, name: str, limit: int = 1_048_576) -> bytes:
@@ -25,7 +26,21 @@ class _TrainingProject:
             adapter.read_raw = _read_windows_contract
         self.payload = payload
         self.project = payload['project']
+        self.recovery = self.project.get('_original_registration')
+        self.project_revision = self.project['revision']
+        if self.recovery is not None:
+            original = published_project(payload['control_home'], self.project['id'],
+                                         self.recovery['operation_id'], self.recovery['intent_sha256'])
+            self.project_revision = self.recovery['current_project_revision']
+            if ({key: value for key, value in self.project.items() if key != '_original_registration'} != original
+                    or type(self.project_revision) is not int or self.project_revision < 1):
+                raise ValueError('Training recovery project differs from its original published registration')
+            self.project = original
         self.execution = self.project['registration']['definition']['execution']
+        self.recovery_context = {} if self.recovery is None else {'original_registration': {
+            **self.recovery, 'registration_project_revision': self.project['revision'],
+            'registration_sha256': self.project['registration']['sha256'], 'repo': self.project['repo'],
+            'execution': self.execution}}
         self.root = Path(self.execution['state_directory'])
         self.config = Path(self.execution['config_directory'])
         for directory in (self.root, self.config):
@@ -39,6 +54,8 @@ class _TrainingProject:
         return value
 
     def registration(self) -> None:
+        if self.recovery is not None:
+            return
         for name, expected in self.project['registration']['files'].items():
             if self.sha(self.document(self.config, name)) != self.sha(expected):
                 raise ValueError('Registered reference configuration drift: ' + name)

@@ -118,12 +118,15 @@ class _Submission(_TrainingProject):
         raise ValueError('Invalid training submission rejection')
 
     def status(self, intent: dict | None) -> dict:
-        result = {'project': self.project['id'], 'project_revision': self.project['revision'],
+        result = {**self.recovery_context, 'project': self.project['id'], 'project_revision': self.project_revision,
                   'experiment_id': self.ident, 'workflow_id': self.identity['workflow_id'],
                   'run_id': None, 'runtime_status': 'not_queried', 'execution_success': None}
         if intent is None:
+            if self.recovery is not None:
+                raise ValueError('Original registration recovery requires an existing matching start intent')
             self.records()
             return {**result, 'status': 'not_recorded'}
+        result['submitted_revision'] = intent['project_revision']
         # Read completion before the checkpoint: a concurrent writer only adds
         # immutable records, and cannot make an observed result lose its attempt.
         receipt = self.optional('.result.json')
@@ -144,18 +147,30 @@ class _Submission(_TrainingProject):
                     'reason': reason, 'conflicting_run_id': rejection['run_id'],
                     'attempt_saved': attempt is not None, 'result_saved': False}
         return {**result, 'status': 'submitted' if receipt else 'unknown' if attempt else 'prepared',
-                'intent_sha256': self.sha(intent), 'submitted_revision': intent['project_revision'],
+                'intent_sha256': self.sha(intent),
                 'manifest_sha256': intent['observation']['experiment']['binding']['manifest_sha'],
                 'confirmation': {'binding': intent['observation']['experiment']['binding'],
                                  'max_run_seconds': intent['observation']['experiment']['max_run_seconds'],
                                  'runner': intent['observation']['experiment']['current_runner']},
                 'attempt_saved': attempt is not None, 'result_saved': receipt is not None}
 
+    def native_request(self) -> dict | None:
+        """Validate the original request path and the job ID trusted by native lookup."""
+        try:
+            request = self.document(self.root, 'training/jobs/' + self.ident + '/request.json')
+        except FileNotFoundError:
+            return None
+        if request.get('job_id') != 'local-perf-' + self.ident:
+            raise ValueError('Native job request differs from the original experiment job ID')
+        return request
+
     async def fence(self) -> dict:
         from agent_platform.training import create_adapter
         from perf_temporal.models import Binding, Experiment
 
         intent = self.load()
+        if self.recovery is not None and intent is None:
+            raise ValueError('Original registration fencing requires an existing matching start intent')
         submitted = self.status(intent) if intent is not None else None
         observed = intent['observation'] if intent is not None else self.records()
         spec = observed['experiment']['spec']
@@ -166,12 +181,7 @@ class _Submission(_TrainingProject):
             self.adapter.safe_file(self.root, relative)
         if intent is not None:
             # Native lookup validates Experiment, but trusts the saved job ID.
-            try:
-                request = self.document(self.root, 'training/jobs/' + self.ident + '/request.json')
-            except FileNotFoundError:
-                request = None
-            if request is not None and request.get('job_id') != 'local-perf-' + self.ident:
-                raise ValueError('Native job request differs from the original experiment job ID')
+            self.native_request()
         try:
             existing = self.document(self.root, fence_relative)
         except FileNotFoundError:
@@ -185,7 +195,7 @@ class _Submission(_TrainingProject):
         experiment = Experiment(**{**spec, 'binding': Binding(**spec['binding'])})
         job = await create_adapter().fence_and_lookup(experiment)
         fence_path = self.adapter.safe_file(self.root, fence_relative)
-        return {'project': self.project['id'], 'project_revision': self.project['revision'],
+        return {**self.recovery_context, 'project': self.project['id'], 'project_revision': self.project_revision,
                 'experiment_id': self.ident, 'binding': spec['binding'], 'status': 'fenced',
                 'submission_status_observed': submitted['status'] if submitted else 'not_recorded',
                 'intent_sha256': self.sha(intent) if intent else None,
@@ -273,6 +283,8 @@ class _Submission(_TrainingProject):
     async def run(self) -> dict:
         self.registration()
         operation = self.payload['operation']
+        if self.recovery is not None and operation not in ('status', 'fence', 'prepare-resume', 'resume'):
+            raise ValueError('Original registration recovery permits only original start reconciliation or fencing')
         if operation == 'status':
             return self.status(self.load())
         if operation == 'fence':
@@ -317,6 +329,8 @@ class _Submission(_TrainingProject):
             if intent is None or self.payload['intent_sha256'] != self.sha(intent):
                 raise ValueError('Training resume requires the exact original intent SHA')
             status = self.status(intent)
+            if self.recovery is not None and not status['attempt_saved']:
+                raise ValueError('Original registration recovery cannot resume a start without its original attempt')
             if operation == 'prepare-resume' or status['status'] in ('submitted', 'rejected'):
                 return status
             from temporalio.service import RPCError

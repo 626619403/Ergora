@@ -1,6 +1,6 @@
 # Q4.2b2：原登记上下文中的训练恢复
 
-日期：2026-11-15。承接[有界循环](2026-11-15-bounded-training-cycles.md)及[b1前置阻断](2026-11-15-training-start-fence.md)。这是后继实施前计划，当前没有产品实现；实施基线待b1固定发布后填写。允许先核原owner和评审合同，不把b1或a2的验收转授本片。Kernel专家保留在v3路径。
+日期：2026-11-15。承接[有界循环](2026-11-15-bounded-training-cycles.md)及[b1前置阻断](2026-11-15-training-start-fence.md)。实施基线固定b1已发布`6531967e6b6dd8d20ff5ad70d7ae3074c81aca35`；r3合同已独立评审，开始本地实施，不把b1或a2的验收转授本片。自己的前置CI门禁闭合前不推后继产品。Kernel专家保留在v3路径。
 
 ## 问题和现有依据
 
@@ -36,14 +36,16 @@
 
 新增函数应留在实际owner并列出真实消费者；纯单次调度逻辑不另造转发模块。普通当前模式不承担旧模式的分支细节。能沿原数据合同复用的，不复制manifest／intent／history读取器。
 
+实施时容量核定：使用b1原安装经两次公开`register`成功生成2,406,792B journal，四份native配置均低于1MiB；因此原journal读取独立设32MiB，result仍1MiB，严格JSON拒绝重复key／非有限数。初版另加64层／100000值限制，后由合法110001 argv的原import实红证明不兼容，已移除该额外树配额；沿原Python JSON可解析／可序列化范围，不改公共解析器或原writer。超过字节容量明确拒绝，不改journal／schema。原件见本片[交付](../delivery/2026-11-15-training-frozen-recovery.md)。
+
 ## 可验收节点
 
 |节点|证据|状态|
 |---|---|---|
 |R1 来源和权限合同|核原journal/result格式、四文件投影、control归属与真实连接policy，独立两轴计划评审|r3独立需求／维护两轴approve，开放0／0；r1成功import顺序P2已按原等价规则关闭，见[评审](../delivery/2026-11-15-training-frozen-recovery-plan-review.md)，不认证实现|
-|R2 最小实现|上述原owner、成组CLI确认与操作白名单；默认当前注册路径不变|待R1与b1固定实施基线|
-|R3 真实变化与恢复|原公开注册生成旧journal，含成功import保留的非默认等价policy顺序；登记后binding修订再start，得到不同的登记／start／当前revision。改变四文件和实际登记execution后，明确选旧记录可读／对账／精确取消／fence，新派发被拒绝。原新目录、原intent与未知attempt保持，不产生新ID|待实现；服务替身与真实服务证据分列|
-|R4 身份与故障|错home／摘要／operation／result、缺源、不同actor、同ID异Experiment／job／run／memo、symlink、丢回复重试均保留拒绝／unknown语义；未选中成功旧轮不被统一fence|待实现；优先扩原fixture／suite|
-|R5 安装与交付|新非editable安装／283参考；实际新旧登记CLI旅程、原提交／取消／注册回归，自身原模板、新fresh-context两轴、普通精确发布和自己的CI|待R2–R4，不借b1或前片成功|
+|R2 最小实现|上述原owner、成组CLI确认与操作白名单；默认当前注册路径不变|七CLI及原owner已接；R5四场景实红后源码r4最小补齐，修后定向4／完整受影响两原suite53通过；新r3两安装645逐字／283及依赖已验，原fresh-context最终本地两轴approve／开放0／0|
+|R3 真实变化与恢复|原公开注册生成旧journal，含成功import保留的非默认等价policy顺序；登记后binding修订再start，得到不同的登记／start／当前revision。改变四文件和实际登记execution后，明确选旧记录可读／对账／精确取消／fence，新派发被拒绝。原新目录、原intent与未知attempt保持，不产生新ID|r2安装12实际CLI／26.498秒及legacy子进程1CLI／19.942秒、最终r3安装重读3CLI／6.224秒均已验；丢回复／精确run沿原SDK服务替身，原八suite197与最终受影响两suite53分列通过|
+|R4 身份与故障|错home／摘要／operation／result、缺源、不同actor、同ID异Experiment／job／run／memo、symlink、丢回复重试均保留拒绝／unknown语义；未选中成功旧轮不被统一fence|容量同批7原件green、源码R5同四项green与最终安装受影响两suite53均通过；原实红保持，独立最终本地R1–R5全关闭／开放0／0|
+|R5 安装与交付|新非editable安装／283参考；实际新旧登记CLI旅程、原提交／取消／注册回归，自身原模板、新fresh-context两轴、普通精确发布和自己的CI|源码r3八suite197通过／1012.64秒只归r3；最终r4／安装r3两套645／283、受影响两suite53通过／469.82秒、三实际CLI及自身37.056秒approve已验，原fresh-context最终本地两轴approve／开放0／0；普通精确发布与自己的CI待|
 
 实施进度写入本片交付和[总计划](../PLAN.md)。仍开放的b3不可续期预算／全周期executor、c Temporal循环、d实际CPU循环及真实B3／完整Forge条件不因本片恢复成功而关闭。

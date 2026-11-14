@@ -4,7 +4,7 @@ from functools import partial
 from pathlib import Path
 import re
 
-from . import reference
+from . import reference, registrations
 from .state import State
 
 
@@ -105,9 +105,9 @@ def evidence(state: State, project_id: str, experiment_id: str, *, artifact: str
          'offset': offset, 'limit': limit})
 
 
-def submission(state: State, project_id: str, experiment_id: str) -> dict:
+def submission(state: State, project_id: str, experiment_id: str, *, original_registration: dict | None = None) -> dict:
     """Read local operation receipts; never query or submit a native workflow."""
-    project = _project(state, project_id)
+    project = _project(state, project_id, original_registration)
     return reference.training_submission(project, state.root, 'status', {'experiment_id': experiment_id}, timeout=20)
 
 
@@ -124,7 +124,8 @@ def check_start(state: State, project_id: str, experiment_id: str, manifest_sha2
 
 
 def fence_start(state: State, project_id: str, experiment_id: str, expected_revision: int,
-                manifest_sha256: str, *, confirm: bool, timeout: int = 20) -> dict:
+                manifest_sha256: str, *, confirm: bool, timeout: int = 20,
+                original_registration: dict | None = None) -> dict:
     """Explicitly fence one local experiment; do not certify run ownership or stop."""
     if confirm is not True:
         raise ValueError('Confirm the local experiment fence and its runner/archive/release effects')
@@ -134,7 +135,7 @@ def fence_start(state: State, project_id: str, experiment_id: str, expected_revi
         raise ValueError('Training fence timeout must be 1–60 seconds')
     return _setup(state, project_id, expected_revision, 'fence',
                   {'experiment_id': experiment_id, 'manifest_sha256': manifest_sha256},
-                  partial(reference.training_submission, timeout=timeout))
+                  partial(reference.training_submission, timeout=timeout), original_registration=original_registration)
 
 
 def start(state: State, project_id: str, experiment_id: str, expected_revision: int,
@@ -145,10 +146,10 @@ def start(state: State, project_id: str, experiment_id: str, expected_revision: 
 
 
 def resume_start(state: State, project_id: str, experiment_id: str, expected_revision: int,
-                 intent_sha256: str, *, timeout: int = 20) -> dict:
+                 intent_sha256: str, *, timeout: int = 20, original_registration: dict | None = None) -> dict:
     """Continue before dispatch, or reconcile the original run after an attempt."""
     return _submission(state, project_id, experiment_id, expected_revision, intent_sha256,
-                       'prepare-resume', 'intent_sha256', timeout)
+                       'prepare-resume', 'intent_sha256', timeout, original_registration=original_registration)
 
 
 def approval(state: State, project_id: str, experiment_id: str) -> dict:
@@ -177,60 +178,73 @@ def resume_approve(state: State, project_id: str, experiment_id: str, expected_r
                     {'intent_sha256': intent_sha256}, confirm, timeout)
 
 
-def cancellation(state: State, project_id: str, experiment_id: str, request_id: str) -> dict:
+def cancellation(state: State, project_id: str, experiment_id: str, request_id: str, *,
+                 original_registration: dict | None = None) -> dict:
     """Read a local cancellation record; no signal or runtime query."""
-    return reference.training_cancellation(_project(state, project_id), state.root, 'status',
+    return reference.training_cancellation(_project(state, project_id, original_registration), state.root, 'status',
                 {'experiment_id': experiment_id, 'request_id': request_id}, timeout=20)
 
 
 def cancel(state: State, project_id: str, experiment_id: str, request_id: str, expected_revision: int,
-           *, run_id: str, reason: str, timeout: int = 20) -> dict:
+           *, run_id: str, reason: str, timeout: int = 20, original_registration: dict | None = None) -> dict:
     """Confirm one fixed-run request, then deliver it once through the native client."""
     if not isinstance(run_id, str) or not 1 <= len(run_id) <= 128 or run_id.strip() != run_id:
         raise ValueError('Training cancellation requires the exact original run ID')
     return _cancellation(state, project_id, experiment_id, request_id, expected_revision,
-                         'prepare', {'run_id': run_id, 'reason': reason}, timeout)
+                         'prepare', {'run_id': run_id, 'reason': reason}, timeout, original_registration=original_registration)
 
 
 def resume_cancel(state: State, project_id: str, experiment_id: str, request_id: str, expected_revision: int,
-                  intent_sha256: str, *, timeout: int = 20) -> dict:
+                  intent_sha256: str, *, timeout: int = 20, original_registration: dict | None = None) -> dict:
     """Continue an unsent request, or recover attempted delivery only from original history."""
     if not isinstance(intent_sha256, str) or re.fullmatch('[a-f0-9]{64}', intent_sha256) is None:
         raise ValueError('Training cancellation recovery requires the exact original intent SHA-256')
     return _cancellation(state, project_id, experiment_id, request_id, expected_revision,
-                         'prepare-resume', {'intent_sha256': intent_sha256}, timeout)
+                         'prepare-resume', {'intent_sha256': intent_sha256}, timeout, original_registration=original_registration)
 
 
-def stop_status(state: State, project_id: str, experiment_id: str, *, timeout: int = 20) -> dict:
+def stop_status(state: State, project_id: str, experiment_id: str, *, timeout: int = 20,
+                original_registration: dict | None = None) -> dict:
     """Explicitly observe original control, native executor and fence facts; change none."""
     if type(timeout) is not int or not 1 <= timeout <= 60:
         raise ValueError('Training stop query timeout must be 1–60 seconds')
-    return reference.training_cancellation(_project(state, project_id), state.root, 'stop-status',
+    return reference.training_cancellation(_project(state, project_id, original_registration), state.root, 'stop-status',
                                           {'experiment_id': experiment_id}, timeout=timeout)
 
 
-def _project(state: State, project_id: str) -> dict:
+def _project(state: State, project_id: str, original_registration: dict | None = None) -> dict:
     project = state.project(project_id)
+    if original_registration is not None:
+        if (set(original_registration) != {'operation_id', 'intent_sha256', 'confirm'}
+                or original_registration['confirm'] is not True):
+            raise ValueError('Explicitly confirm the original registration operation and its complete intent SHA-256')
+        current_revision = project['revision']
+        project = registrations.published_project(state.root, project_id, original_registration['operation_id'],
+                                                  original_registration['intent_sha256'])
+        project['_original_registration'] = {key: original_registration[key] for key in ('operation_id', 'intent_sha256')}
+        project['_original_registration']['current_project_revision'] = current_revision
     registration = project.get('registration', {})
     if registration.get('status') != 'published' or 'training-optimization' not in registration['definition']['templates']:
         raise ValueError('Training operations require a published project with training-optimization selected')
     return project
 
 
-def _setup(state: State, project_id: str, expected_revision: int, operation: str, payload: dict, publish) -> dict:
+def _setup(state: State, project_id: str, expected_revision: int, operation: str, payload: dict, publish, *,
+           original_registration: dict | None = None) -> dict:
     if type(expected_revision) is not int or expected_revision < 1:
         raise ValueError('Expected project revision must be a positive integer')
     # Local setup/preparation owns immutable files; no remote I/O under this reservation.
     with state.connect() as db:
         db.execute('BEGIN IMMEDIATE')
-        project = _project(state, project_id)
-        if project['revision'] != expected_revision:
+        project = _project(state, project_id, original_registration)
+        if project.get('_original_registration', {}).get('current_project_revision', project['revision']) != expected_revision:
             raise ValueError('Project revision changed; preview the setup document again')
         return publish(project, state.root, operation, payload)
 
 
 def _submission(state: State, project_id: str, experiment_id: str, expected_revision: int,
-                digest: str, operation: str, digest_name: str, timeout: int) -> dict:
+                digest: str, operation: str, digest_name: str, timeout: int, *,
+                original_registration: dict | None = None) -> dict:
     if not isinstance(digest, str) or re.fullmatch('[a-f0-9]{64}', digest) is None:
         raise ValueError('Training operation requires the exact manifest or intent SHA-256')
     if type(expected_revision) is not int or expected_revision < 1:
@@ -240,8 +254,8 @@ def _submission(state: State, project_id: str, experiment_id: str, expected_revi
     # Retain the project only while freezing local intent, never across RPCs.
     with state.connect() as db:
         db.execute('BEGIN IMMEDIATE')
-        project = _project(state, project_id)
-        if project['revision'] != expected_revision:
+        project = _project(state, project_id, original_registration)
+        if project.get('_original_registration', {}).get('current_project_revision', project['revision']) != expected_revision:
             raise ValueError('Project revision changed; reload before the training operation')
         prepared = reference.training_submission(project, state.root, operation,
                      {'experiment_id': experiment_id, digest_name: digest}, timeout=timeout)
@@ -258,7 +272,7 @@ def _submission(state: State, project_id: str, experiment_id: str, expected_revi
 
 
 def _cancellation(state: State, project_id: str, experiment_id: str, request_id: str, expected_revision: int,
-                  operation: str, payload: dict, timeout: int) -> dict:
+                  operation: str, payload: dict, timeout: int, *, original_registration: dict | None = None) -> dict:
     if type(expected_revision) is not int or expected_revision < 1:
         raise ValueError('Expected project revision must be a positive integer')
     if type(timeout) is not int or not 1 <= timeout <= 60:
@@ -266,8 +280,8 @@ def _cancellation(state: State, project_id: str, experiment_id: str, request_id:
     identity = {'experiment_id': experiment_id, 'request_id': request_id}
     with state.connect() as db:
         db.execute('BEGIN IMMEDIATE')
-        project = _project(state, project_id)
-        if project['revision'] != expected_revision:
+        project = _project(state, project_id, original_registration)
+        if project.get('_original_registration', {}).get('current_project_revision', project['revision']) != expected_revision:
             raise ValueError('Project revision changed; reload before the training cancellation')
         prepared = reference.training_cancellation(project, state.root, operation, {**identity, **payload}, timeout=timeout)
     if operation == 'prepare':

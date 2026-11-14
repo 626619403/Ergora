@@ -15,6 +15,7 @@
 |先在 CPU 核对测量合同与原门禁|[离线成对测量演示](#离线成对测量演示)，无需模型、密钥或训练服务|
 |保留每轮原结果及失败／未知，离线回看|[多轮证据索引](#多轮证据索引)，显式选择原实验并在新目录追加|
 |启动和停止原控制流程|[原ID提交与对账](#提交已准备实验与原-id-对账)、[取消和停止事实](#取消原运行与分别观察停止事实)|
+|登记或配置变化后继续处理旧运行|[原登记恢复](#在原登记上下文中恢复)，选择原发布记录并明确确认|
 |审阅实际结果和授权后续集成|[归档证据](#阅读归档证据与原集成票据)、[精确owner批准](#精确-owner-批准与投递恢复)|
 |把经验用于下一次任务|[完整改进旅程](IMPROVEMENT_WORKFLOW.md)，候选分别采用后再明确冻结|
 
@@ -202,7 +203,7 @@ CLI的`start`／`resume-start`仅在返回`submitted`时退出0；`prepared`／`
 |`submitted`|原start返回run ID，或已核原历史／memo补回原run回执；不代表训练已执行、门禁通过或已经采用。|
 |`rejected`|存在无本意图的运行，或同ID竞争被原客户端拒绝；保留冲突记录，不认领、不重发。|
 
-丢失回复、超时或进程停止后，先读取`submission`，不要改实验ID、重新`prepare`或直接调用原start以绕过记录。attempt后对账沿意图中的原spec；后来的baseline／runner变化不把它重解释为新发送许可。输入或memo冲突、缺历史、RPC错误会保留unknown并明确报错。旧注册／执行目录变化须恢复原登记后处理原意图，不能把旧记录搬到新home认领。
+丢失回复、超时或进程停止后，先读取`submission`，不要改实验ID、重新`prepare`或直接调用原start以绕过记录。attempt后对账沿意图中的原spec；后来的baseline／runner变化不把它重解释为新发送许可。输入或memo冲突、缺历史、RPC错误会保留unknown并明确报错。旧注册／执行目录变化时，可按[原登记恢复](#在原登记上下文中恢复)显式选择原发布记录；不能把旧记录搬到新home认领。
 
 提交只排队原控制工作流；实际runner仍须按原`agentflow training run-local EXPERIMENT_ID --confirm-manifest-sha ...`逐实验执行。原evidence SHA批准和集成票据继续使用原训练协议；`ergora task`只管理开发Task。
 
@@ -274,6 +275,39 @@ ergora training stop-status my-project EXPERIMENT_ID --timeout 20
 `stop-status` 是一次只读观察，分别返回 `control`（原 Status／Outcome）、`executor_observation`（原 adapter 的作业观察）和 `fence_recorded`；读取成功退出0。原 `CANCEL_UNCONFIRMED` 与后来本地 `CANCELLED` 可以同时存在，页面会分别保留。`QUEUED`／`RUNNING`、缺作业、未读到 fence 或控制工作流结束都不能合成为“已经停止”。此查询不发信号、不写 fence、不执行 runner，也不重新评价或批准候选；仍需操作者核对真实设备／远端作业。
 
 HTTP 使用相同入口：`GET .../training/{experiment}/cancellations/{request_id}`；`POST .../cancel`（`revision / request_id / run_id / reason / timeout`）；`POST .../resume-cancel`（`revision / request_id / intent_sha256 / timeout`）；`GET .../stop-status?timeout=20`。实际操作的 timeout 为1–60秒。Windows 原生仅提供本地取消记录读取，实际取消和 executor 观察使用登记的 Linux／WSL2 环境。
+
+### 在原登记上下文中恢复
+
+项目登记或四份配置后来变化时，CLI可明确选择**同一control home中已成功发布的原登记**，在原执行目录读取、对账、取消或加fence。当前项目仍须存在；默认命令继续核当前登记。旧目录、参考安装、原start意图及其checkpoint必须保留，选择旧记录不会把运行迁到新目录，也不会改写当前项目或原journal。
+
+从原登记回执的`registration.operation_id`或原`project registration`结果的`recovery_record`找到`CONTROL_HOME/registrations/PROJECT/OPERATION_ID.json`。同目录的`OPERATION_ID.result.json`必须存在且`status`为`published`；选择其中完整`intent_sha256`。这是原完整journal的**canonical内容摘要**，不是`sha256sum`原文件得到的字节摘要，也不是cycle摘要。请先核对journal的`after`项目、仓库、execution目录和四份发布配置。丢失result或原安装时明确失败，不补造记录。
+
+先用`project show`读取当前revision。下例的operation和SHA来自上述原published result；它们要与每一条恢复命令一起明确确认：
+
+```bash
+ergora project show my-project
+ERGORA_ORIGINAL_OPERATION=REPLACE_WITH_ORIGINAL_32_HEX_OPERATION_ID
+ERGORA_REGISTRATION_INTENT=REPLACE_WITH_ORIGINAL_64_HEX_INTENT_SHA256
+ergora training submission my-project EXPERIMENT_ID \
+  --original-registration "$ERGORA_ORIGINAL_OPERATION" \
+  --registration-intent-sha256 "$ERGORA_REGISTRATION_INTENT" --confirm
+ergora training resume-start my-project EXPERIMENT_ID \
+  --revision CURRENT_REVISION --intent-sha256 ORIGINAL_START_INTENT_SHA256 \
+  --original-registration "$ERGORA_ORIGINAL_OPERATION" \
+  --registration-intent-sha256 "$ERGORA_REGISTRATION_INTENT" --confirm
+ergora training cancel my-project EXPERIMENT_ID stop-original \
+  --revision CURRENT_REVISION --run-id ORIGINAL_RUN_ID --reason '停止原运行' \
+  --original-registration "$ERGORA_ORIGINAL_OPERATION" \
+  --registration-intent-sha256 "$ERGORA_REGISTRATION_INTENT" --confirm
+```
+
+同组选项还适用于`cancellation`、`resume-cancel`、`stop-status`和`fence-start`，保留各命令原有的request ID、manifest／intent SHA和当前revision确认。结果的`project_revision`是此次选择时的当前修订；`original_registration.registration_project_revision`是原登记修订，`submitted_revision`或fence的`intent_project_revision`是原start冻结修订。登记后变更binding可让这三者不同；原登记摘要和目录也会单列。
+
+恢复模式要求已有匹配原start意图。`prepared`可以读回或显式fence，`resume-start`必须已有attempt，且只查原完整输入、memo和history；NOT_FOUND或服务不可达仍保留unknown，不重发。`cancel`仍按原精确run冻结一次取消请求，丢回复后用同ID的`resume-cancel`对账；不要新建request ID绕过unknown。旧模式不提供新的start／check／prepare、runner或批准／release；相应CLI没有这些旧登记选项，页面也不自动进入恢复模式。
+
+父进程在选择旧执行目录前核原来源，原训练进程再核一次。同一journal最多32MiB，published result最多1MiB，严格解析并拒绝链接／reparse、重复key、缺失或冲突来源；超限不截断。已有成功import保留的等价execution allowlist顺序仍可读取。这里沿用当前用户对可信control home的管理边界，不把一组摘要当作跨用户、跨机器或外部导入的来源认证。
+
+本地`submission / cancellation`不要求SDK或服务；实际对账、取消、fence和executor观察需要`temporal` extra，实际执行入口仍要求Linux／WSL2。连接沿原支持的本地runtime，固定`127.0.0.1:7233`和namespace `default`，不得以另一个服务替代原history。`stop-status`在native adapter读记录前核request／started／result／fence路径、job ID和binding，但返回的控制面、adapter和fence仍是分别观察，不证明OS或后代已停止。
 
 
 ## 阅读归档证据与原集成票据

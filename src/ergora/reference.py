@@ -410,6 +410,9 @@ def training_cancellation(project: dict, home: Path, operation: str, payload: di
 
 
 def _training_process(project: dict, module: str, payload: dict, timeout: int, *, sdk: bool) -> dict:
+    recovery = project.get('_original_registration')
+    if recovery is not None and module not in ('submission', 'cancellation'):
+        raise ValueError('Original registration recovery is limited to submission reconciliation, cancellation and local fencing')
     if sdk and importlib.util.find_spec('temporalio') is None:
         raise ValueError('Training runtime operations require the optional Temporal SDK; install ergora[temporal] in this environment')
     execution = project['registration']['definition']['execution']

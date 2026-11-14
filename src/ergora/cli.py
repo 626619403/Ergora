@@ -623,8 +623,11 @@ def parser() -> argparse.ArgumentParser:
     live.add_argument("experiment_id")
     live.add_argument("--run-id", help="Pin the query to an existing native run ID")
     live.add_argument("--timeout", type=int, default=20)
+    recovery_operations = []
     for name in ("submission", "check-start", "start", "resume-start"):
         operation = operations.add_parser(name)
+        if name in ("submission", "resume-start"):
+            recovery_operations.append(operation)
         operation.add_argument("project")
         operation.add_argument("experiment_id")
         if name == "check-start":
@@ -640,6 +643,7 @@ def parser() -> argparse.ArgumentParser:
     fence.add_argument("--manifest-sha256", required=True)
     fence.add_argument("--confirm", action="store_true", required=True)
     fence.add_argument("--timeout", type=int, default=20)
+    recovery_operations.append(fence)
     for name in ("approval", "approve", "resume-approve"):
         operation = operations.add_parser(name, help="Read or explicitly confirm the original owner decision; delivery is not authorization")
         operation.add_argument("project")
@@ -655,6 +659,7 @@ def parser() -> argparse.ArgumentParser:
                 operation.add_argument("--intent-sha256", required=True)
     for name in ("cancellation", "cancel", "resume-cancel", "stop-status"):
         operation = operations.add_parser(name)
+        recovery_operations.append(operation)
         operation.add_argument("project")
         operation.add_argument("experiment_id")
         if name != "stop-status":
@@ -668,6 +673,11 @@ def parser() -> argparse.ArgumentParser:
                 operation.add_argument("--intent-sha256", required=True)
         if name != "cancellation":
             operation.add_argument("--timeout", type=int, default=20)
+    for operation in recovery_operations:
+        operation.add_argument("--original-registration", help="Original operation ID from this control home's registration journal")
+        operation.add_argument("--registration-intent-sha256", help="Exact canonical intent SHA from that operation's published result")
+        if operation is not fence:
+            operation.add_argument("--confirm", action="store_true", help="Confirm recovery in the selected original registration")
     kernels = commands.add_parser("kernel", help="Native ForgeKernel campaigns; independent project validation still required")
     operations = kernels.add_subparsers(dest="operation", required=True)
     for name in ("plan", "prepare", "list", "run", "status"):
@@ -1169,6 +1179,12 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(output, ensure_ascii=False, indent=2))
             return 0 if args.operation != "run" or output["status"] == "succeeded" else 1
         elif args.command == "training":
+            original_operation = getattr(args, "original_registration", None)
+            registration_digest = getattr(args, "registration_intent_sha256", None)
+            recovery = None
+            if (original_operation is not None or registration_digest is not None
+                    or (args.operation != "fence-start" and hasattr(args, "original_registration") and args.confirm)):
+                recovery = {"operation_id": original_operation, "intent_sha256": registration_digest, "confirm": args.confirm}
             if args.operation in ("baseline-preview", "init-baseline", "runner-preview", "register-runner", "experiment-preview", "prepare", "rounds-create", "cycle-create"):
                 document_path = (args.definition if args.operation in ("rounds-create", "cycle-create") else
                                  args.experiment if args.operation in ("experiment-preview", "prepare") else args.document)
@@ -1220,18 +1236,19 @@ def main(argv: list[str] | None = None) -> int:
                 output = training.evidence(State(args.home), args.project, args.experiment_id, artifact=args.artifact,
                                            evidence_sha256=args.evidence_sha256, offset=args.offset, limit=args.limit)
             elif args.operation == "submission":
-                output = training.submission(State(args.home), args.project, args.experiment_id)
+                output = training.submission(State(args.home), args.project, args.experiment_id, original_registration=recovery)
             elif args.operation == "check-start":
                 output = training.check_start(State(args.home), args.project, args.experiment_id, args.manifest_sha256)
             elif args.operation == "fence-start":
                 output = training.fence_start(State(args.home), args.project, args.experiment_id, args.revision,
-                                              args.manifest_sha256, confirm=args.confirm, timeout=args.timeout)
+                                              args.manifest_sha256, confirm=args.confirm, timeout=args.timeout,
+                                              original_registration=recovery)
             elif args.operation == "start":
                 output = training.start(State(args.home), args.project, args.experiment_id, args.revision,
                                         args.manifest_sha256, timeout=args.timeout)
             elif args.operation == "resume-start":
                 output = training.resume_start(State(args.home), args.project, args.experiment_id, args.revision,
-                                               args.intent_sha256, timeout=args.timeout)
+                                               args.intent_sha256, timeout=args.timeout, original_registration=recovery)
             elif args.operation == "approval":
                 output = training.approval(State(args.home), args.project, args.experiment_id)
             elif args.operation == "approve":
@@ -1242,15 +1259,17 @@ def main(argv: list[str] | None = None) -> int:
                 output = training.resume_approve(State(args.home), args.project, args.experiment_id, args.revision,
                                                   args.intent_sha256, confirm=args.confirm, timeout=args.timeout)
             elif args.operation == "cancellation":
-                output = training.cancellation(State(args.home), args.project, args.experiment_id, args.request_id)
+                output = training.cancellation(State(args.home), args.project, args.experiment_id, args.request_id,
+                                                original_registration=recovery)
             elif args.operation == "cancel":
                 output = training.cancel(State(args.home), args.project, args.experiment_id, args.request_id, args.revision,
-                                         run_id=args.run_id, reason=args.reason, timeout=args.timeout)
+                                         run_id=args.run_id, reason=args.reason, timeout=args.timeout, original_registration=recovery)
             elif args.operation == "resume-cancel":
                 output = training.resume_cancel(State(args.home), args.project, args.experiment_id, args.request_id,
-                                                args.revision, args.intent_sha256, timeout=args.timeout)
+                                                args.revision, args.intent_sha256, timeout=args.timeout, original_registration=recovery)
             elif args.operation == "stop-status":
-                output = training.stop_status(State(args.home), args.project, args.experiment_id, timeout=args.timeout)
+                output = training.stop_status(State(args.home), args.project, args.experiment_id, timeout=args.timeout,
+                                               original_registration=recovery)
             else:
                 output = training.inspect(State(args.home), args.project, getattr(args, "experiment_id", None),
                                           limit=getattr(args, "limit", 50), after=getattr(args, "after", None))
