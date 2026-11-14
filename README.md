@@ -439,6 +439,8 @@ training init / runner-add → prepare → worker-start → start
 
 ## 日常交互与运维
 
+复盘如何形成下一次任务的资料，见[完整改进旅程](docs/IMPROVEMENT_WORKFLOW.md)：分别采用记忆、Skill 和工作流候选，再明确选择并冻结到新任务；包含评价、回退与原意图恢复步骤。
+
 ```bash
 source ~/multi-agent-platform/env.sh
 agentflow services start

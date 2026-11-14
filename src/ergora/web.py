@@ -962,7 +962,11 @@ def create_app(home: Path | None = None) -> FastAPI:
 
     @application.get("/api/projects/{project_id}/tasks/{task_id}")
     def formal_task(project_id: str, task_id: str):
-        return tasks.show(state, project_id, task_id)
+        snapshot = tasks.show(state, project_id, task_id)
+        document = snapshot.get("admission_envelope", {})
+        if "context" in document:
+            snapshot["selected_context"] = task_envelopes.selected_context(document)
+        return snapshot
 
     @application.get("/api/projects/{project_id}/services")
     def service_status(project_id: str):

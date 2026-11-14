@@ -1397,6 +1397,7 @@ export function tasksView(data, base, { sourceSnapshot = "" } = {}) {
         ]),
         disclosure("输入、验收与约束", input),
         disclosure("完整冻结合同", task.spec),
+        task.selected_context ? disclosure("冻结项目资料与派生根来源", task.selected_context) : null,
       ),
       panel("冻结角色与工作单元", "后续项目绑定调整不会更换此任务已冻结的选择。",
         bindings

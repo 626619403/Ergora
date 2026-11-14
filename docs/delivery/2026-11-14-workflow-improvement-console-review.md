@@ -4,7 +4,7 @@
 
 ## 身份与范围
 
-分支 `refactor/architecture-foundations`，检查时 HEAD 与实施基线均为 `0fd74b16c98185081e06c4ef356700b881c781e7`。直接比较 `git diff` 到该完整基线。产品改动仅以下三个原文件；无新产品文件、依赖、schema、测试或 CI。
+分支 `refactor/architecture-foundations`，首轮源码及最终本地核查时 HEAD 与实施基线均为 `0fd74b16c98185081e06c4ef356700b881c781e7`。直接比较 `git diff` 到该完整基线。产品改动仅以下三个原文件；无新产品文件、依赖、schema、测试或 CI。
 
 |文件|实际 SHA256|
 |---|---|
@@ -18,10 +18,10 @@
 
 ## 两轴结论
 
-- **需求轴：最终本地 approve。** 已检查的源码与最终本地原件满足本片合同，没有新增阻塞 finding。导入明确使用服务端完整目录和共享控制目录，回复保留原 ID／版本／digest 与文件／资源身份；用户随后显式刷新、选择精确版本、按原 grant 预览并保存新 manifest。旧定义、旧 manifest 与旧叶任务输入保持。自己的发布／CI 尚待，未批准完整发布交付。
-- **可维护性轴：最终本地 approve。** 沿原 owner 增加一个目录 DTO 和薄路由，未建立第二定义库、采用账本或编译路径。共享 `submissionForm` 在定义、记忆、Skill 三个不同生产文件真实复用，发送前／后的不同生命周期规则集中在原 helper。业务 payload、权限、评价锁与持久状态仍留在原 owner；无新增抽象或无实际 caller 的接口。两个共享 caller 的实际受影响场景已经核过。
+- **需求轴：最终本地、固定发布及自身 CI 终态均 approve。** 已检查的源码与最终本地原件满足本片合同，没有新增阻塞 finding。导入明确使用服务端完整目录和共享控制目录，回复保留原 ID／版本／digest 与文件／资源身份；用户随后显式刷新、选择精确版本、按原 grant 预览并保存新 manifest。旧定义、旧 manifest 与旧叶任务输入保持。固定候选 `3a56508791a33871016acff4a7cad268aaf0be50` 的三个交付门禁均已闭合。
+- **可维护性轴：最终本地、固定发布及自身 CI 终态均 approve。** 沿原 owner 增加一个目录 DTO 和薄路由，未建立第二定义库、采用账本或编译路径。共享 `submissionForm` 在定义、记忆、Skill 三个不同生产文件真实复用，发送前／后的不同生命周期规则集中在原 helper。业务 payload、权限、评价锁与持久状态仍留在原 owner；无新增抽象或无实际 caller 的接口。两个共享 caller 的实际受影响场景已经核过。
 
-最终本地开放 finding：**需求 0，可维护性 0**；R1 已关闭。本结论覆盖以下固定 r3 产品与本地证据，不继承前片发布／CI，也不预批本片发布／CI。
+最终开放 finding：**需求 0，可维护性 0**；R1 已关闭。本结论覆盖以下固定 r3 产品、本地证据、固定发布及自身 run `43580979082` 的必要 CI，不继承前片 CI，也不覆盖后继 F10d7 的未提交产品。
 
 ## 实证 finding 与修复复核
 
@@ -54,8 +54,40 @@
 - 最终主旅程31／15、两条 R1 绿例各4／1、共享 caller8／2 合计 **47 项／19 样本**；六张三宽截图已经直接查看。r2 两次主驱动失败和 R1 实红均保留各自身份，没有拼入最终通过数。
 - 已重读最终活动计划与交付记录：产品／原件和自己的发布／CI 分列，本地终核前的 `pending` 是该记录等待本报告的状态。实施者可据本结论更新状态并接续原普通发布流程，无需重新生成原件数组或新增验收层。
 
-## 剩余发布责任
+## 固定发布补核
 
-本片自己的普通发布、完整远端 ref 与必要 CI 尚无本次证据，继续 **pending**。发布后仍由本 reviewer 沿本报告核固定提交与原证据身份、自己的必要 CI，不能借前片通过。尚不宣称完整发布交付；不合入 main，不强推。
+2026-11-14，原 reviewer 沿本报告只读补核固定候选 `3a56508791a33871016acff4a7cad268aaf0be50`：**需求轴 approve，可维护性轴 approve，开放 finding 0／0，R1 保持关闭。** 未联网、重跑、修改产品或证据数组，也未提交／推送。
+
+- 直接读取 Git 对象：唯一父为完整原基线 `0fd74b16c98185081e06c4ef356700b881c781e7`，恰有 **15 个变更 blob**，逐件 bytes／SHA256 与 `static-final-r1.json` 全部同一。固定原最终本地报告为 11,409B／`0039729c457271278c176ba35463be721c4b81d03ea99a4743b8cecfd4cfb8a4`；本节是之后补核，不把它与固定报告当同一时刻记录。额外 `evaluated-improvement.md` 是后继 F10d7 组合验收计划，不是已实现产品或已通过验收。
+- 固定三个产品保持本报告顶部三项受审 SHA。另从固定 Git tree 读取全部 **604 产品文件**，与原 `package-current-r3.json` 逐件 bytes／SHA256 相同，因此固定提交与原构建快照、wheel、非 editable 安装和实际 r3 运行的是同一产品。原 `static-final-r1.json` 的完整 staged diff check、两个 JS 语法和 Python AST 检查均为 exit0；本次读取原检查结果，没有重跑。
+- 固定提交中 `raw_evidence.references` 与发布后原数组逐项相同，仍为 **143 条**，规范化数组指纹仍为 `c599f3f73ec073d9a197ae207f8e913534387776277231278e84ddbf78a818a5`；143 原件重新读取的 bytes／SHA256 全部相同。发布后单列 `publication_evidence` 的 **五份**原调用／回执也逐件重算相符，未用发布文件替换本地证据。
+- 直接阅读 `publish-r1.py` 与 commit／push／ref 原回执：commit exit0；普通 push argv 为 `git push origin 3a56508791a33871016acff4a7cad268aaf0be50:refs/heads/refactor/architecture-foundations`，无 force、`+` refspec、main 或 merge 操作，exit0。保存的 `git ls-remote` 在 `2026-11-14T09:31:48.710634+00:00` 返回完整 SHA 与分支，逐字同一；本机 remote-tracking ref 亦同一。远端结论绑定该保存回执时刻，本次没有重新联网读取远端。
+- 固定提交已包含前继 memory 原 reviewer 的自身 CI 终态两轴 approve／0 finding，以及固定候选 `0fd74b16c98185081e06c4ef356700b881c781e7` 自己的 run `43578921368`，八 job／30 必要步骤成功。直接核固定前继证据元数据、原 `ci-terminal-r1.json` 身份／完成时刻与 **40 条 CI 引用**的 bytes／SHA256，全部相同；原终态记录 `09:26:53.135403+00:00` 早于本次 commit `09:31:41`／push `09:31:47`。前继闭合没有作为本片自己的 CI 通过。
+
+固定提交保留当时 `ready_for_ordinary_push` 状态，发布后文档另记结果；固定发布补核时仅有文档 bookkeeping，没有产品变化或混用固定快照。该次只闭合固定发布身份门禁，当时自己的 CI 仍待，之后终态补核如下。
+
+## 自身 CI 终态补核
+
+2026-11-14，原 reviewer 对固定候选 `3a56508791a33871016acff4a7cad268aaf0be50` 自己的 run `43580979082` 只读终核：**需求轴 approve，可维护性轴 approve，开放 finding 0／0，R1 保持关闭。** 直接读取原官方 HTML／抓取回执、固定 Git 对象与原证据；未联网、安装、重跑模型／测试／浏览器，未修改产品或证据索引，未提交／推送。当前后继 `src/ergora/web.py` 与 `src/ergora/data/console/tasks.js` 的未提交变化不属于该固定候选，没有用 WIP 替换受审产品。
+
+- `ci-list-html-r1` 官方列表的 embedded JSON 唯一关联完整候选、该 run、`refactor/architecture-foundations` 与 `.github/workflows/portability.yml`。原 `ci-run-html-r5/page.html` 显示 **Success**，包含同一完整提交链接；抓取时间 `2026-11-14T09:50:30.436141+00:00`，213,293B／`9f39b96218f1c9d0448475f32ba67b4cc8652866a4d67d920baf55656752ea67`。r1–r4 的 In progress 保留为历史，未覆盖原件。
+- 从固定 Git 读取 workflow 与六组 `linux-groups.json`，预期恰为 plan、六个 Linux group、Windows all 共八 job。直接核原 job batch 的 `totalCount=8`、`hasMore=false`、八个唯一 ID／名称／run 路径及 metadata 摘要，早期 batch 的在途状态只用于身份发现。最终分别读取以下 job HTML，抓取 receipt 的 URL／final_url、HTTP200、bytes／SHA256 全部同一。
+
+|Job|固定 job ID|最终原件|必要步骤成功数|Complete job UTC|
+|---|---:|---|---:|---|
+|plan|132405437000|`ci-job-132405437000-html-r1`|1|09:31:56|
+|Linux group 0|132405476522|`ci-job-132405476522-html-r2`|4|09:37:28|
+|Linux group 1|132405476537|`ci-job-132405476537-html-r2`|4|09:37:19|
+|Linux group 2|132405476504|`ci-job-132405476504-html-r1`|4|09:35:15|
+|Linux group 3|132405476512|`ci-job-132405476512-html-r1`|4|09:34:50|
+|Linux group 4|132405476542|`ci-job-132405476542-html-r1`|4|09:35:38|
+|Linux group 5|132405476495|`ci-job-132405476495-html-r2`|4|09:37:57|
+|Windows all|132405476531|`ci-job-132405476531-html-r4`|5|09:48:11|
+
+- 独立解析全部原 `check-step` 元素：八个 `Complete job` 均成功完成。**30 个必要步骤全部 success**，包含 plan 的 `Read explicit test groups`、七个执行 job 各自四项 wheel／参考身份／原回归／观察上传，以及 Windows 的 `Windows PowerShell 5.1 installer and upgrade`。全部 76 个 success 步骤的日志 URL 均含固定完整 SHA、对应 job ID 与原 `data-number`，均有开始／完成时间和 `data-job-completed`；完成不晚于抓取。六个 skipped 恰是 Linux 上由固定 workflow 条件排除的 Windows 安装步骤。
+- Windows r1–r3 尚在运行，终态使用 r4：抓取 `2026-11-14T09:50:30.433831+00:00`，160,109B／`1631ba306c0df88a52a88961d67537d1ae8f8e24bd1a27011b77cc5f2e29c467`。从原 HTML 重建的八 job／30 必要步骤与实施方 `ci-terminal-r1.json` 逐项同一，后者 SHA256 为 `2b6e652742a0bb6d77a29b0f83240ba051ddf66cbe5017beebb6399280aca94f`。已阅读发现、抓取、metadata 与 parser 脚本，没有执行它们，也没有把 HTML 状态外推为已读取日志正文、REST 响应或产物归档。
+- 单列 **52 条 CI 引用**均为唯一不同路径，与原 143 及发布五件不交叉；全部 bytes／SHA256 重新读取核对一致。原143数组与固定提交逐项相同，发布五件保持；15 个固定 Git blob 仍与原静态身份全部相同。此前固定604产品／最终本地与发布补核结论保持，没有将后继工作树混入此次 CI。
+
+**该固定 F10d6b 候选的最终本地、固定发布及自身必要 CI 门禁均已闭合，两轴 approve、开放 finding 0／0。** 结论仅覆盖本报告原合同；后继 F10d7、F9d、G1 以及真实质量／GPU／训练性能、Forge／ReMe 支持范围仍另验，不合入 main，不强推。
 
 真实质量／GPU／训练性能、完整 Forge／ReMe、F9d 与 G1 继续按原合同独立验收。本地表单锁的范围仍只是原窗口，不是跨窗口或持久执行去重。

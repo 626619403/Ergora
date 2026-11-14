@@ -606,6 +606,8 @@ task-definition v6／正式input v10在上述预算合同中增加 `composition.
 
 ### 为正式任务选择项目记忆与活动 Skill
 
+从复盘候选、分别采用到新任务冻结的组合操作见[完整改进旅程](IMPROVEMENT_WORKFLOW.md)。
+
 Linux／WSL2 可在上述原生六阶段定义上使用 [task-definition v7](../src/ergora/data/schemas/task-definition-v7.json)／正式 input v11。先用 `ergora memory catalog PROJECT` 查看当前有效记忆的 `id`／`revision`，用 `ergora skill list PROJECT` 查看活动head的 `name`／`digest`／`revision`。将用户定义的 `schema_version` 改为 `7`，追加以下字段，替换示例身份：
 
 ```json
