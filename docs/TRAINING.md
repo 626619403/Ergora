@@ -11,6 +11,7 @@
 |先理解算法、执行依赖和状态驻留|[源码锚定的流程图谱](#源码锚定的流程图谱)|
 |先分析已有代码、trace或显存报告|[通用性能诊断](#通用性能诊断)或[细方向子模板](#独立的优化方向子模板)|
 |把专家提案变成可执行实验|[提案到原实验合同](#从专家提案填写原实验合同)，然后预览／确认baseline、runner和实验|
+|先在 CPU 核对测量合同与原门禁|[离线成对测量演示](#离线成对测量演示)，无需模型、密钥或训练服务|
 |启动和停止原控制流程|[原ID提交与对账](#提交已准备实验与原-id-对账)、[取消和停止事实](#取消原运行与分别观察停止事实)|
 |审阅实际结果和授权后续集成|[归档证据](#阅读归档证据与原集成票据)、[精确owner批准](#精确-owner-批准与投递恢复)|
 |把经验用于下一次任务|[完整改进旅程](IMPROVEMENT_WORKFLOW.md)，候选分别采用后再明确冻结|
@@ -29,6 +30,35 @@ ergora project add my-project --repo "$HOME/projects/my-project"
 也可在控制台“工作流设计”中选择“训练优化实验”，预览和下载文件。模板包括 `workload-contract.md`、`baseline.json`、`experiment.json`、runner 示例、hypothesis、result、evidence、attestation 和负结果记录。先将其中的占位内容替换为真实配置，再批准合同与精确实验。
 
 固定模型 / 代码版本、数据身份、随机种子、数值精度、并行布局、设备、计时区间、重复次数及正确性阈值。训练环境与数据由项目准备；安装控制台不会安装 CUDA、PyTorch 或申请 GPU。性能候选同时满足项目正确性和质量约束后才有比较意义。
+
+## 离线成对测量演示
+
+Linux／WSL2 安装 Ergora 后，可直接运行随包的原 CPU 合同演示；使用一个尚不存在的持久目录。下面的 Bash 命令只操作演示目录，不接入真实项目、服务或设备：
+
+```bash
+ERGORA_MEASUREMENT_TOOLS="$(python -c 'from ergora.reference import ROOT; print(ROOT / "platform/upstream")')"
+python -B "$ERGORA_MEASUREMENT_TOOLS/demo.py" \
+  --out "$HOME/ergora-examples/paired-measurement"
+```
+
+它生成合成 baseline／experiment、八对 AB／BA 运行、独立检查格式的示例文件、比较输入／输出和原内容寻址归档。所有 elapsed 与检查 PASS 都是人为构造，用来演示格式和绑定；没有实际训练或质量评价。新目录已存在时停止，保留原件。重新演示请选择另一个新目录，不覆盖已有记录。
+
+重算原比较并再次通过原门禁：
+
+```bash
+python -B "$ERGORA_MEASUREMENT_TOOLS/compare_runs.py" \
+  "$HOME/ergora-examples/paired-measurement/bundle/comparison-input.json" \
+  --output "$HOME/ergora-examples/paired-measurement/recomputed-comparison.json"
+cmp "$HOME/ergora-examples/paired-measurement/recomputed-comparison.json" \
+  "$HOME/ergora-examples/paired-measurement/bundle/comparison-report.json"
+python -B "$ERGORA_MEASUREMENT_TOOLS/perfctl.py" \
+  --root "$HOME/ergora-examples/paired-measurement/state" gate synthetic-demo \
+  --bundle "$HOME/ergora-examples/paired-measurement/bundle/evidence.json"
+```
+
+比较器 `PASS` 仅表示固定样本的成对性能筛选通过；`quality_assessment` 仍为 `NOT_EVALUATED`、`p99_assessment.certified` 为 false、`promotion_approved` 为 false。gate 最多返回 `ELIGIBLE_FOR_HUMAN_REVIEW`。文件摘要、不同 reviewer 字符串和自报采样窗口只能核内部一致性，不能认证执行者身份、独立性、真实输入／硬件、完成边界或训练质量。不能把演示中的 `contract_approved: true` 移植到实际项目。
+
+真实项目仍按[原合同字段表](#从专家提案填写原实验合同)固定语义、允许变化、质量与统计门槛。每对必须是独立重启的可比完整运行；多 rank 的全局工作量去重、完成窗口和实际使用的配置／初态由可信 runner 举证。profile 单独采集，不作为稳态计时；多窗口不能冒充多个独立 pair。样本或换序不足、以及置信区间尚不能区分预设门槛时保留 `INCONCLUSIVE`；按预设 all／any 规则，连区间上界都无法严格超过门槛时才记为 `FAIL`。点估计低于门槛本身不足以判为失败；这两种结果均不能通过原性能 gate。原始参照不可静默替换，多轮初始锚点与当前参照的关联另按后续循环合同处理。
 
 ## 参考实验执行
 
