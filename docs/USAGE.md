@@ -832,6 +832,28 @@ v1使用标准ZIP_STORED、UTF-8 JSON、SHA256及公开[版本化schema](../src/
 
 HTTP客户端可显式`POST /api/projects/PROJECT_ID/tasks/TASK_ID/handoff`，JSON正文为`{"run_id":"RUN_ID","timeout":20}`；沿用同源及`X-Ergora-Request: 1`，不接受服务器源/输出路径等额外字段。成功返回`application/zip`和固定attachment名称`ergora-handoff.zip`，`X-Ergora-Handoff-SHA256`为本次响应字节的整包摘要。服务端在私有临时目录调用同一收集用例，受限读回并核SHA后先清理临时目录，再发送响应；普通失败也清理，不启动服务或更改原任务。下载位置由客户端选择，客户端须避免覆盖需保留的本地文件。该入口缓冲最多72 MiB包字节，有额外内存成本，不是流式下载；强制进程终止的残留按运维方式处理。响应摘要便于比对本次下载，不是签名；需要独立期望SHA时须从另外的可信渠道取得。
 
+### 完整选择离线证据用于复盘
+
+基础安装还可读取原完整索引；无需控制库或在线服务：
+
+```bash
+ergora handoff read ./task-handoff.zip --sha256 EXPECTED_PACKET_SHA256
+```
+
+先在输出`index.jobs`中核对原`job_id`、回执和产物`name`，再将明确选择保存为JSON文件，例如：
+
+```json
+[{"job_id":"JOB_ID","name":"ARTIFACT_NAME"}]
+```
+
+```bash
+ergora handoff read ./task-handoff.zip --selection ./selection.json --sha256 EXPECTED_PACKET_SHA256 > ./retrospective-evidence.json
+```
+
+最多选择32项。每件输出完整UTF-8正文、原job／receipt／artifact身份及字节数，保留完整原index、包／manifest／index摘要和原失败、取消、未知成本；不同job的同名产物分别选择。省略selection只读索引，不预读正文。全包仍先核验，正文沿同一份已核字节读取，不重开源路径、不提取或执行ZIP。非文本、NUL、缺失／重复选择或最终规范JSON超过1MiB均明确拒绝，不返回截断或部分成功；常规CLI缩进输出可能更大，实际Agent完整输入仍受原容量准入。
+
+输出为版本1普通JSON`ergora-handoff-selection`；`sha256`是其余字段按UTF-8、键排序、无多余空格的规范JSON摘要。它可以作为原`composition prepare --task`的显式资料输入；原`execution_success: null`、`origin_authenticated: false`和核包范围保持。它不更新记忆或活动Skill，复盘候选、独立评价和明确采用仍为后续操作。
+
 ### 网页证据、预算与交接
 
 正式任务中先“读取原运行”，在已闭合的原run点击“证据、预算与交接”。打开窗口不请求索引或材料；“读取证据索引”集中核原材料并展示原结果、完整性、外部协议确认与租约事实。预算和用量区保留原来源与单位，未记录的模型调用、token、费用显示未知，真实0保持；冻结等待限制不能当作进程或费用上限。上下文关联未记录时不使用当前配置补写。

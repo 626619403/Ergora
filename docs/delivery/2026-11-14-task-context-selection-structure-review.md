@@ -71,3 +71,37 @@
 - **自身原模板。** 直接核 packet-index、归档 task／prompt／stdin／composition 和原结果：15 完整文件 288,364B 及全部祖先资源进入同一实际 stdin，prompt SHA256 为 `68230712f1748039708549eb7c915001655b1efbfab2fede33a1cbec897c2091`；38.840 秒原结果为 approve，结果 SHA256 为 `5b0fc07c370c1fbff6f011c54e14a048390bb28760a69ea867de1f222d0bd158`。其中文档保持当时在途身份，最终状态由本次独立核验补齐；该回复本身仅为源码建议，不充当 fresh-context 独立审查或异后端成功。
 
 本片计划／交付／PLAN 现记录相同最终本地候选与失败边界，未提前宣称发布或自己的 CI 成功。本审查范围无新增 finding，原 P2 与成本意见关闭。发布、精确远端与自己的 CI 仍由原交付流程后补；UI 选择 F10d、复盘候选 F10c、原生 Windows v7 准备及 GPU／模型质量／测得性能改善均未被本结论认证。
+
+## 固定发布身份补核
+
+2026-11-14：上文是发布前的本地结论，本节追加已发生的普通发布事实。固定候选为 `f1cfcddd4d0e58b657b810b1f7dc98d070d255d9`，唯一父提交为 `a2899e84bc174c9abd331a7c9d01f7c7a63297ae`。本次只读 Git 对象及已保存私有原件，没有联网、重跑测试或用后续工作树替换该候选。
+
+- 直接读取固定提交全部 29 个变化 blob，路径集合、字节数及 SHA256 与 `static-final-r1.json` 完全一致，包含原 F10a 状态补记与 F10b 本片产物；本报告在固定提交中的 Git blob 为 `71e3ccefd1eb0b4b89b076bd379f5dc55a7fa572`。
+- 固定提交全部 577 个产品文件的集合与内容，逐件等于 r2 构建快照、wheel 和 installed；wheel SHA256 仍为 `3f677bcf50ffcb514c1a029ae9ca78857f12aaf4a72d5d32ecf17f25f79e1a21`。14 件产品／测试集合身份仍为 `f02fd718391d9fe783b50e6f35571d9369dd9d5a5b9a21840c344b441beb4b86`；283 个参考 Git blob 及 mode 与唯一父提交一致。因此前述安装、材料与独立结论确实归属于这个固定候选。
+- 固定公开证据 JSON 保存 **164** 条原引用，逐件大小／SHA256 通过；发布后工作记录为 **168** 条，保留原 164 条不变，仅追加 `static-final-r1.json`、`commit-r1.json`、`push-r1.json`、`ref-r1.json` 四件发布原件，也全部核对通过。固定提交并不含发布后才产生的四件引用。
+- 原 commit／普通 push／ls-remote 记录均退出 0，candidate 均为该完整 SHA；原 ref 回复精确为该 SHA 与 `refs/heads/refactor/architecture-foundations`。该结论来自已保存发布时原件，没有声称本轮重新联网查询当前远端。
+
+固定发布身份补核 **approve**，需求／结构维护性结论保持，开放 finding **0**。本片自己的 CI 仍处发现阶段，本节不作终态成功主张；后续 F10c1 产品工作树不属于本固定候选。此次写入至此结束，CI 证据到齐后再另补。
+
+## 固定候选自己的 CI 终核
+
+2026-11-14：只读补核固定 `f1cfcddd4d0e58b657b810b1f7dc98d070d255d9` 自己的 [Portability run 43545573942](https://github.com/626619403/Ergora/actions/runs/43545573942)。原 `ci-run-html-r3/page.html` 的官方状态为 **Success**，完整 commit 链接及分支相符；原 HTTP 200 receipt 的大小／SHA256 与 HTML 逐字一致，观察时间为 `2026-11-14T02:38:02.525744+00:00`，body SHA256 为 `707c0c8c2c3dcc60fe0871684291b183cd907d68f556b41b2cc304c1ac58f6c5`。
+
+已读 `parse-ci-html.py` 并用独立只读解析复核，没有运行其写文件部分。`ci-ui-metadata-r1.json` 与其原 job-groups UI JSON、原 run HTML 的摘要及八组 job ID／name／href 逐项相符；此早期 metadata 只证明身份绑定，不用其在途状态证明终态。固定提交的 `portability.yml` 与 `linux-groups.json` 确定 plan、Linux Python 3.11 六组及 Windows Python 3.12 全组，原 job HTML 与此集合完全一致：
+
+|job|ID|必要步骤数|最后必要步骤完成时间（2026-11-14 UTC）|
+|---|---|---|---|
+|plan|132295977366|1|02:18:44|
+|Native（ubuntu-latest, 3.11, group 0）|132296020866|4|02:22:40|
+|Native（ubuntu-latest, 3.11, group 1）|132296020789|4|02:23:06|
+|Native（ubuntu-latest, 3.11, group 2）|132296020747|4|02:22:50|
+|Native（ubuntu-latest, 3.11, group 3）|132296020752|4|02:21:13|
+|Native（ubuntu-latest, 3.11, group 4）|132296020816|4|02:22:52|
+|Native（ubuntu-latest, 3.11, group 5）|132296020748|4|02:25:58|
+|Native（windows-latest, 3.12, group all）|132296020795|5|02:36:10|
+
+plan 的必要步骤为 `Read explicit test groups`；七个 Native job 均包括 wheel 构建安装、参考身份、应用回归与观察上传，Windows 另含 `Windows PowerShell 5.1 installer and upgrade`。全部 **30** 项 `data-conclusion=success`、`data-job-completed`、开始／完成时间齐全，开始不晚于完成，完成不晚于原样本观察时刻；每项 log URL 均精确包含本固定完整 SHA、对应 job ID 与 step number。Windows 应用回归于 `02:35:18Z` 完成，PowerShell 于 `02:36:09Z` 完成，观察上传于 `02:36:10Z` 完成。
+
+本次校验 11 份原 HTTP body 及对应 receipt，共 22 件：最终 run r3、身份来源 run r1、原 job-groups UI JSON、plan／六 Linux 的 r1 job 页及 Windows 的 r3 job 页。页面最终 URL、HTTP 200、字节数和 SHA256 均通过；`ci-observation-r3.json` 的全部投影与原 HTML 一致。CI 补充原件身份另列于本节：observation SHA256 `2d6f894167e640b773cfe39f07d0d2cadac22379f277b9c3928feab921a633c0`；metadata SHA256 `eeb9a08ef1e5868ac2fd7465a1e743c9aa115e6f0a791e00b68fdfb25ce9279b`；parser SHA256 `111ffdfc5c11a7ec807bba9a54472db33f1ed84d2a0c956420fce52d1345c597`。运行级 r1／r2 及 Windows 早期在途样本保持历史身份，不改标成功；固定公开原引用 **164** 条与发布后 **168** 条仍保持，CI 补充未重写这两个集合。
+
+CI 终核 **approve，开放 finding 0**；固定候选的需求／结构维护性及发布结论保持。本轮未联网、调用 REST、下载日志正文／artifact 或重跑测试，仅追加本报告；成功范围为该候选官方 CI 状态与必要步骤元数据，不扩大为原生 Windows v7 准备、GPU／模型质量／性能验收。当前 F10c1 工作树不属于此结论。

@@ -44,3 +44,7 @@
 修后最终安装环境使用Ergora原结构模板，15完整文件288,364B及全部祖先资源进入同一实际prompt／stdin，38.840秒原回复approve。prompt SHA `68230712f1748039708549eb7c915001655b1efbfab2fede33a1cbec897c2091`，input digest `d60ebb321cbb84b58b55e4589743b230bdffde7958b60e0297e408970c35c9d3`，result SHA `5b0fc07c370c1fbff6f011c54e14a048390bb28760a69ea867de1f222d0bd158`。授权Codex回退，仅源码建议，不替代fresh-context独立审查或异后端验收；输入文档保持当时尚在途的状态。
 
 [公开证据摘要](evidence/2026-11-14-task-context-selection.json)保存上述精确身份和私有原件的大小／SHA。新的[需求轴](2026-11-14-task-context-selection-spec-review.md)与[结构轴](2026-11-14-task-context-selection-structure-review.md)最终本地approve，初审finding已修并复核，开放0／0；两轴各直接核164原引用、最终包、实际旅程和收尾；普通发布、完整Ref和自己的CI后补。F10a自己的CI及原结构轴终核已独立完成，只解除发布依赖。UI选择留F10d，复盘候选留F10c；原六阶段、预算、candidate／approval／attempt-before-send／unknown与283冻结文件保持。
+
+已普通发布固定候选`f1cfcddd4d0e58b657b810b1f7dc98d070d255d9`，唯一父为原基线a2899e8；29份变化Git blob与最终清单逐字匹配，完整远端Ref相同，不合main。固定公开JSON为164原引用，后补四份发布原件为168；原两轴固定发布身份补核均approve／开放0／0；本候选自己的CI43545573942在途。
+
+自己的CI `43545573942` 第三官方run HTML为Success：plan、六Linux组、Windows共八job／30必要步骤全部success，含Windows PowerShell 5.1安装升级及原回归／上传，fullSHA日志路径与完成时间均匹配固定f1cfcdd。早两在途样本保留，CI引用与固定164／发布后168分别列出；未读REST、日志正文或artifact下载。原结构轴CI独立终核approve／开放0，精确交付完成。

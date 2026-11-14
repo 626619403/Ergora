@@ -54,9 +54,12 @@ def parser() -> argparse.ArgumentParser:
     commands = result.add_subparsers(dest="command", required=True)
     handoff = commands.add_parser("handoff", help="Verify portable evidence without services or local state")
     operations = handoff.add_subparsers(dest="operation", required=True)
-    verify = operations.add_parser("verify")
-    verify.add_argument("path", type=Path)
-    verify.add_argument("--sha256", help="Independently obtained whole-packet SHA256")
+    for name in ("verify", "read"):
+        operation = operations.add_parser(name)
+        operation.add_argument("path", type=Path)
+        operation.add_argument("--sha256", help="Independently obtained whole-packet SHA256")
+        if name == "read":
+            operation.add_argument("--selection", type=Path, help="JSON array of exact job_id/name pairs; omitted reads the complete index")
     maintenance = commands.add_parser("state", help="Inspect, back up, verify or restore offline local state")
     operations = maintenance.add_subparsers(dest="operation", required=True)
     operations.add_parser("info")
@@ -663,7 +666,9 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "handoff":
             from . import handoff
 
-            output = handoff.verify(args.path, sha256=args.sha256)
+            output = (handoff.verify(args.path, sha256=args.sha256) if args.operation == "verify" else
+                      handoff.evidence(args.path, definition_bundles.read_json(args.selection) if args.selection else None,
+                                       sha256=args.sha256))
         elif args.command == "state":
             from . import backups
 

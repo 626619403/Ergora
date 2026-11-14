@@ -74,7 +74,7 @@ flowchart TB
 |`reference_review_opinions`|SDK无关的可信审查意见读取|原workflow活动与Executor共用候选／job／调用绑定规则，不各解释一套建议意见|
 |`reference_inputs`、`reference_workflows`、`reference_worker`|按版本构造队列／请求根／活动与workflow、共同worker生命周期|保留旧版本路由与history；扩展原六阶段，不新建调度／账本|
 |`reference_executor`、`reference_job_lifecycle`、`stage_driver`|原checkout／检查／可信commit／receipt，以及Agent桥接；v9专用job owner和停止后唯一finalizer|原Executor拥有可信候选；pending不是终态；原jobs ledger保留未知资源占用|
-|`handoff`|受限ZIP格式、内部字节与引用校验；仅依赖纯envelope／来源合同，不依赖运行Input|离线核包不执行材料、不认证来源，也不重放完整history|
+|`handoff`|受限ZIP格式、内部字节与引用校验；从同次核验字节明确读取完整原index及所选文本；仅依赖纯envelope／来源合同，不依赖运行Input|离线核包／证据选择不执行材料、不认证来源，也不重放完整history|
 |`skill_assets`、`evaluation`、`skills`、`optimization`|Skill版本、固定评价、评价后采用／回退、可选GEPA搜索|生成器不改评分；采用核精确baseline和revision，没有绕过评价的另一入口|
 |`memory`、`research`|带来源的记忆、可选ReMe投影、有界资料快照／提案|SQLite是记忆权威；新资料须审阅，不自动写成有效记忆|
 |`kernel`、`data/drivers`|ForgeKernel原生campaign与独立SDK进程|原生ID／未知状态保留；候选生成不等于可信实验采用|

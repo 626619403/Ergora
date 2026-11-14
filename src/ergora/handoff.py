@@ -143,8 +143,8 @@ def create(index: dict, read_artifact: Callable[[dict], bytes], destination: Pat
         temporary.unlink(missing_ok=True)
 
 
-def verify(path: Path, *, sha256: str | None = None) -> dict:
-    """Check the selected packet without extraction, execution, state or services."""
+def _verified_packet(path: Path, sha256: str | None) -> tuple[bytes, dict, dict]:
+    """Keep verified bytes available to readers without reopening a mutable path."""
     from . import contracts
 
     if sha256 is not None and not re.fullmatch('[0-9a-f]{64}', sha256):
@@ -207,10 +207,64 @@ def verify(path: Path, *, sha256: str | None = None) -> dict:
     except (zipfile.BadZipFile, KeyError, UnicodeError, RecursionError) as error:
         raise ValueError('Invalid handoff packet: ' + str(error)) from error
     outcome = index['original_outcome']
-    return {'schema_version': 1, 'status': 'verified', 'sha256': digest,
+    return raw, manifest, {'schema_version': 1, 'status': 'verified', 'sha256': digest,
             'manifest_sha256': hashlib.sha256(encoded).hexdigest(), 'artifacts': len(artifacts),
             'artifact_bytes': total, 'project': index['project'], 'task_id': index['task_id'],
             'run_id': index['run_id'], 'candidate_sha': outcome.get('candidate_sha') if outcome else None,
             'original_outcome': outcome, 'execution_success': None, 'origin_authenticated': False,
             'external_sha256': 'matches' if sha256 is not None else 'not_recorded',
             'verification_scope': 'packet_bytes_and_declared_internal_identities'}
+
+
+def verify(path: Path, *, sha256: str | None = None) -> dict:
+    """Check the selected packet without extraction, execution, state or services."""
+    return _verified_packet(path, sha256)[2]
+
+
+def evidence(path: Path, selection: list[dict] | None = None, *, sha256: str | None = None) -> dict:
+    """Read explicit complete UTF-8 artifacts and their original frozen index."""
+    from . import contracts
+
+    selection = [] if selection is None else selection
+    contracts.validate(selection, {'type': 'array', 'maxItems': 32, 'uniqueItems': True, 'items': {
+        'type': 'object', 'additionalProperties': False, 'required': ['job_id', 'name'], 'properties': {
+            'job_id': _SCHEMA['$defs']['identifier'], 'name': _SCHEMA['$defs']['artifact']['properties']['name']}}},
+        'Handoff evidence selection')
+    raw, manifest, verified = _verified_packet(path, sha256)
+    jobs = {job['job_id']: job for job in manifest['index']['jobs']}
+    selected = []
+    text_bytes = 0
+    # This second ZIP reader sees the same verified in-memory bytes, never the
+    # source path. It neither repeats validation nor retains every blob body.
+    with zipfile.ZipFile(io.BytesIO(raw)) as archive:
+        for item in selection:
+            job = jobs.get(item['job_id'])
+            if job is None:
+                raise ValueError('Selected job is absent from the original handoff index')
+            artifact = next((artifact for artifact in job['receipt']['artifacts'] if artifact['name'] == item['name']), None)
+            if artifact is None:
+                raise ValueError('Selected artifact is absent from the original job receipt')
+            # Repeated aliases count separately in the output. Reject their
+            # verified byte total before decoding or accumulating text copies.
+            text_bytes += manifest['blobs'][artifact['sha256']]['bytes']
+            if text_bytes > MANIFEST_LIMIT:
+                raise ValueError('Complete handoff selection exceeds 1 MiB canonical JSON; select fewer or smaller artifacts')
+            content = archive.read('blobs/' + artifact['sha256'])
+            try:
+                text = content.decode('utf-8')
+            except UnicodeDecodeError as error:
+                raise ValueError('Selected handoff evidence requires complete UTF-8 text') from error
+            if '\0' in text:
+                raise ValueError('Selected handoff evidence contains NUL; only UTF-8 text is supported')
+            selected.append({'job_id': job['job_id'], 'job_sha256': job['job_sha256'],
+                             'receipt_sha256': job['receipt_sha256'], 'artifact': artifact,
+                             'bytes': len(content), 'text': text})
+    result = {'schema_version': 1, 'format': 'ergora-handoff-selection', 'read_only': True,
+              'packet_sha256': verified['sha256'], 'packet_manifest_sha256': verified['manifest_sha256'],
+              'external_sha256': verified['external_sha256'], 'origin_authenticated': False,
+              'verification_scope': verified['verification_scope'], 'execution_success': None,
+              'index': manifest['index'], 'index_sha256': manifest['index_sha256'], 'artifacts': selected}
+    result['sha256'] = _sha(result)
+    if len(_canonical(result)) > MANIFEST_LIMIT:
+        raise ValueError('Complete handoff selection exceeds 1 MiB canonical JSON; select fewer or smaller artifacts')
+    return result

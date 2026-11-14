@@ -102,3 +102,15 @@ native-r2 原 harness 完成七个 CLI 命令与四次 HTTP 后，最终错误�
 |`docs/delivery/evidence/2026-11-14-task-context-selection.json`|`3bd8714d242555800c818df1ba1864a022bfe25f1b045c4bfcfb4a78b5f5fd65`|
 
 **需求轴最终本地结论：approve；新增或开放 finding 0。** 未自行重跑安装或昂贵 suite，结论基于已检查的源码、邻近生产调用者、逐件原件与上述只读离线验证。固定发布与本片 CI 发生后才可作相应补核；本地终核不等于发布完成。
+
+## 固定发布身份补核
+
+已只读检查固定候选 `f1cfcddd4d0e58b657b810b1f7dc98d070d255d9` 的 Git 对象，唯一父为原基线 `a2899e84bc174c9abd331a7c9d01f7c7a63297ae`。提交的29个变更 blob 与 `static-final-r1.json` 清单完全对应，每件原 Git 内容的 size／SHA256 均匹配。F10a的发布／CI文档补记仍属前片，不用来替代本片验证。
+
+已读 commit-r1／push-r1／ref-r1 三份原记录：均 exit0、候选完整 SHA 相同，push 为普通 `HEAD:refs/heads/refactor/architecture-foundations`，保存的原 `ls-remote` 完整 Ref 精确指向上述候选。本补核未联网或再次推送；远端结论限于该原查询时刻。
+
+固定候选树的577产品文件与当前源码、r2构建快照及安装件逐字一致；参考树与唯一父完全相同，原283文件边界保持。原14件源码／schema／测试身份及 r2 wheel `3f677bcf50ffcb514c1a029ae9ca78857f12aaf4a72d5d32ecf17f25f79e1a21` 的本地审查结论继续适用，未重跑测试。
+
+固定提交内公开证据 JSON 为 **164个原引用**，blob SHA256 `392889c907a94c38a1850b03bdee6a1ce08f9f642b7508964480826d3cd407ac`；当时 publication=pending。发布后的工作树补充为 **168个原引用**，仅新增 static-final-r1／commit-r1／push-r1／ref-r1 四份发布原件，原164项元数据保持；已直接核全部168件 size／SHA256。工作树补充不冒称已包含于固定提交。
+
+**固定发布身份补核：approve；新增／开放 finding 0。** 本片自己的 CI 仍处发现阶段，未作任何终态主张；CI原件到齐后另补。按本次范围，本 reviewer 至此停止写入。

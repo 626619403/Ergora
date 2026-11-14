@@ -113,6 +113,116 @@ def test_roundtrip_preserves_bytes_original_result_and_limited_proof(evidence, t
         manifest = json.loads(archive.read('manifest.json'))
         assert manifest['index'] == index and manifest['index_sha256'] == sha(index)
         assert archive.read('blobs/' + hashlib.sha256(binary).hexdigest()) == binary
+    selected = handoff.evidence(path, sha256=result['sha256'])
+    assert selected['index'] == index and selected['artifacts'] == []
+    assert selected['execution_success'] is None and selected['origin_authenticated'] is False
+
+
+def text_evidence(evidence, texts):
+    index, _ = evidence
+    original = index['jobs'][0]
+    blobs = {}
+    for number, text in enumerate(texts, 1):
+        raw = text if isinstance(text, bytes) else text.encode('utf-8')
+        digest = hashlib.sha256(raw).hexdigest()
+        blobs[digest] = raw
+        job = deepcopy(original)
+        job.update(job_id=f'job-{number}', job_sha256=str(number) * 64,
+                   outcome_reference_state='not_recorded')
+        job['receipt'].update(job_id=job['job_id'], job_sha256=job['job_sha256'], state='FAILED', artifacts=[
+            {'name': 'record', 'path': f'task-one/{number}.txt', 'sha256': digest}])
+        job['receipt']['checks'] = [{'id': 'check-one', 'status': 'fail', 'artifact': 'record'}]
+        job.update(receipt_state='FAILED', receipt_sha256=sha(job['receipt']))
+        if number == 1:
+            index['jobs'] = []
+        index['jobs'].append(job)
+    index.update(temporal_status='FAILED', original_outcome=None, original_outcome_sha256=None)
+    index['history_jobs_sha256'] = sha([{'job_id': job['job_id'], 'job_sha256': job['job_sha256']}
+                                      for job in index['jobs']])
+    return index, blobs
+
+
+def test_selected_text_keeps_exact_job_receipt_full_body_and_negative_evidence(evidence, tmp_path, monkeypatch, capsys):
+    texts = ['完整负结果与原成本未知。\n' * 800, 'Distinct job, same artifact name.\n']
+    index, blobs = text_evidence(evidence, texts)
+    path = tmp_path / 'text.zip'
+    collected = handoff.create(index, lambda artifact: blobs[artifact['sha256']], path)
+    selection = [{'job_id': 'job-2', 'name': 'record'}, {'job_id': 'job-1', 'name': 'record'}]
+    response = handoff.evidence(path, selection, sha256=collected['sha256'])
+    assert response['index'] == index and response['index']['usage']['cost']['state'] == 'not_recorded'
+    assert response['execution_success'] is None and response['origin_authenticated'] is False
+    assert response['packet_sha256'] == collected['sha256'] and response['index_sha256'] == sha(index)
+    assert response['sha256'] == sha({key: value for key, value in response.items() if key != 'sha256'})
+    for selected, number in zip(response['artifacts'], (2, 1)):
+        job = index['jobs'][number - 1]
+        assert selected['job_id'] == job['job_id'] and selected['job_sha256'] == job['job_sha256']
+        assert selected['receipt_sha256'] == job['receipt_sha256']
+        assert selected['artifact'] == job['receipt']['artifacts'][0]
+        assert selected['text'] == texts[number - 1] and selected['bytes'] == len(texts[number - 1].encode())
+    selected_file = tmp_path / 'selection.json'
+    selected_file.write_text(json.dumps(selection))
+    def forbidden(*args, **kwargs):
+        raise AssertionError('Offline evidence reading cannot initialize State')
+    monkeypatch.setattr(cli, 'State', forbidden)
+    root = tmp_path / 'unused-state'
+    assert cli.main(['--home', str(root), 'handoff', 'read', str(path), '--selection', str(selected_file),
+                     '--sha256', collected['sha256']]) == 0
+    assert json.loads(capsys.readouterr().out) == response and not root.exists()
+
+
+def test_evidence_reader_uses_verified_bytes_when_original_path_changes(evidence, tmp_path, monkeypatch):
+    index, blobs = text_evidence(evidence, ['Original complete evidence.'])
+    path = tmp_path / 'text.zip'
+    collected = handoff.create(index, lambda artifact: blobs[artifact['sha256']], path)
+    original = handoff._verified_packet
+    def replace_after_verification(*args, **kwargs):
+        packet = original(*args, **kwargs)
+        path.write_bytes(b'Replaced after the verified read')
+        return packet
+    monkeypatch.setattr(handoff, '_verified_packet', replace_after_verification)
+    response = handoff.evidence(path, [{'job_id': 'job-1', 'name': 'record'}], sha256=collected['sha256'])
+    assert response['artifacts'][0]['text'] == 'Original complete evidence.'
+    assert response['packet_sha256'] == collected['sha256']
+    assert hashlib.sha256(path.read_bytes()).hexdigest() != response['packet_sha256']
+
+
+def test_aliases_cannot_amplify_text_before_the_selection_size_check(evidence, tmp_path, monkeypatch):
+    body = 'Complete source bytes. ' * 14000
+    index, blobs = text_evidence(evidence, [body])
+    job = index['jobs'][0]
+    artifact = job['receipt']['artifacts'][0]
+    job['receipt']['artifacts'] = [{**artifact, 'name': f'record-{number}'} for number in range(32)]
+    job['receipt']['checks'][0]['artifact'] = 'record-0'
+    job['receipt_sha256'] = sha(job['receipt'])
+    path = tmp_path / 'aliases.zip'
+    handoff.create(index, lambda item: blobs[item['sha256']], path)
+    original = handoff.zipfile.ZipFile.read
+    reads = []
+    allowance = handoff.MANIFEST_LIMIT // len(body.encode())
+    def bounded_read(archive, name, *args, **kwargs):
+        filename = name.filename if isinstance(name, zipfile.ZipInfo) else name
+        if filename.startswith('blobs/'):
+            reads.append(filename)
+            # One full verifier read, followed only by bodies within the budget.
+            if len(reads) > 1 + allowance:
+                raise AssertionError('Over-budget alias body was read before rejection')
+        return original(archive, name, *args, **kwargs)
+    monkeypatch.setattr(handoff.zipfile.ZipFile, 'read', bounded_read)
+    with pytest.raises(ValueError, match='Complete handoff selection exceeds'):
+        handoff.evidence(path, [{'job_id': job['job_id'], 'name': item['name']} for item in job['receipt']['artifacts']])
+    assert len(reads) <= 1 + allowance
+
+
+@pytest.mark.parametrize('body', [b'\xff\x80', b'embedded\0text', '完整资料' * 100_000])
+def test_unreadable_or_over_capacity_evidence_does_not_emit_partial_output(evidence, tmp_path, body, capsys):
+    index, blobs = text_evidence(evidence, ['First complete artifact.', body])
+    path = tmp_path / 'text.zip'
+    handoff.create(index, lambda artifact: blobs[artifact['sha256']], path)
+    selected_file = tmp_path / 'selection.json'
+    selected_file.write_text(json.dumps([{'job_id': f'job-{number}', 'name': 'record'} for number in (1, 2)]))
+    assert cli.main(['handoff', 'read', str(path), '--selection', str(selected_file)]) == 2
+    captured = capsys.readouterr()
+    assert captured.out == '' and 'handoff' in captured.err.lower()
 
 
 @pytest.mark.parametrize('change', ['incomplete', 'contract', 'request', 'outcome', 'receipt', 'history',
