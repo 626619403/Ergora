@@ -384,7 +384,7 @@ def training_submission(project: dict, home: Path, operation: str, payload: dict
     if operation != 'status' and sys.platform != 'linux':
         raise ValueError('Native training submission requires Linux; use the registered runtime in WSL2')
     return _training_process(project, 'submission', {'project': project, 'control_home': str(home),
-                              'operation': operation, **payload}, timeout, sdk=operation in ('dispatch', 'resume'))
+                              'operation': operation, **payload}, timeout, sdk=operation in ('dispatch', 'resume', 'fence'))
 
 
 def training_evidence(project: dict, home: Path, payload: dict) -> dict:
@@ -429,6 +429,8 @@ def _training_process(project: dict, module: str, payload: dict, timeout: int, *
                               Path.cwd(), output, timeout + 5,
                               stdin=json.dumps({**payload, 'timeout': timeout}, allow_nan=False), env=environment)
         if result['status'] in ('timed_out', 'cancelled'):
+            if module == 'submission' and payload['operation'] == 'fence':
+                raise ValueError('Local training fence process timed out or stopped and its fence may already exist; repeat the same binding confirmation, execution stop remains unknown')
             raise ValueError('Training runtime process timed out or stopped; inspect the original intent/run, execution state remains unknown')
         if result['returncode']:
             lines = (output / 'stderr.txt').read_text(encoding='utf-8').strip().splitlines()

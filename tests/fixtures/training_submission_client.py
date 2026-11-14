@@ -54,6 +54,29 @@ class Service:
         assert 'request' not in record, 'A second native start is a regression'
         record['request'] = base64.b64encode(request.SerializeToString()).decode()
         save()
+        if scenario in ('held-start', 'held-start-existing'):
+            from dataclasses import asdict
+            from agent_platform.training import create_adapter
+            from agent_platform.core import Blocked
+            from perf_temporal.models import Binding, Experiment
+
+            spec = (await converter.decode(request.input.payloads, [dict]))[0]
+            experiment = Experiment(**{**spec, 'binding': Binding(**spec['binding'])})
+            adapter = create_adapter()
+            manifest = await adapter.read_manifest(experiment.manifest_uri)
+            if scenario == 'held-start-existing':
+                record['native_job_before'] = asdict(await adapter.create_job_if_absent(experiment, manifest))
+                save()
+            storage.with_suffix('.held').touch()
+            while not storage.with_suffix('.continue').exists():
+                await asyncio.sleep(0.01)
+            try:
+                record['native_job_after'] = asdict(await adapter.create_job_if_absent(experiment, manifest))
+            except Blocked as error:
+                record['native_create_error'] = str(error)
+            job = await adapter.lookup_job(experiment)
+            record['native_lookup_after'] = asdict(job) if job is not None else None
+            save()
         if scenario == 'lost-ack':
             raise RPCError('Accepted, reply lost', RPCStatusCode.UNAVAILABLE, b'')
         if scenario == 'timeout-ack':
@@ -100,5 +123,23 @@ async def connect():
 
 
 connection.connect = native.connect = connect
+if scenario in ('fence-observed-receipt', 'fence-observed-rejection') and payload['operation'] == 'fence':
+    from ergora.reference_training_submission import _Submission
+
+    original_status = _Submission.status
+
+    def status_then_complete(operation, intent):
+        observed = original_status(operation, intent)
+        if observed['status'] == 'prepared':
+            if scenario == 'fence-observed-receipt':
+                operation.core.write(operation.path('.attempt.json'), operation.attempt(intent))
+                operation.core.write(operation.path('.result.json'), operation.receipt(intent, run_id))
+            else:
+                operation.core.write(operation.path('.rejection.json'), operation.rejection(intent, 'preexisting_run', run_id))
+            record['completion_published_after_status'] = True
+            save()
+        return observed
+
+    _Submission.status = status_then_complete
 if __name__ == '__main__':
     main()

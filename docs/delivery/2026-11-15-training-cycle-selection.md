@@ -43,4 +43,14 @@ r1安装原训练／提交／运行／取消四suite共60通过／276.61秒，�
 
 准备普通发布当前开发分支，不合main。前片自己的CI与原独立终核已闭合；本片固定源码／安装／本地验收身份完整，发布SHA及远端／自己的CI另记。
 
+## 普通发布
+
+已普通推送 `1b58e929aaf495c16f448454c78de23718786ae9`，parent `d3c90e751ee9257df36b74e57e8956d38bbde848`，tree `f2980c9741332e580814021e78252687794054ab`，15个Git blob和完整远端Ref同一；未合main。产品／测试／训练手册与r2安装及审查固定件一致，其他差异为本片记录和a1原CI终态记账。b1计划／报告没有混入本提交。
+
+原件为 `publication-local-r2.json`／`publication-r2.json`、`publication-staged-r2.diff`、`push-r2.*` 和 `remote-ref-r2.*`。原独立reviewer已接固定发布／自己的CI终核，尚未宣称闭合；b1可本地推进，前片门禁终核前不推后继产品。
+
 后继实证逐步更新本页和总计划；Kernel专家及283参考快照保持。实际训练／GPU／质量／收益和完整Forge仍沿原开放条件。
+
+## 自己的CI与独立终核闭合
+
+固定发布`1b58e929aaf495c16f448454c78de23718786ae9`的Portability `43647584681 / attempt1`已completed／success，八job／30适用必要步骤全部成功；终态完整远端Ref同一。原独立reviewer已逐件核117原件、官方run／八job页及最终Ref，并追加[原报告](2026-11-15-training-cycle-selection-review.md#本-sha-自己的-ci-终核追加已闭合)：需求／维护两轴approve，开放0／0。精确交付门禁闭合，不借前片CI，也不转授b1或自动循环；原在途观察和失败保持。

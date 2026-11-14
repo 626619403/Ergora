@@ -1,5 +1,6 @@
 """Project-scoped native training observations and explicit local/control operations."""
 
+from functools import partial
 from pathlib import Path
 import re
 
@@ -120,6 +121,20 @@ def check_start(state: State, project_id: str, experiment_id: str, manifest_sha2
     if state.project(project_id)['revision'] != project['revision']:
         raise ValueError('Project changed during training start check; read the selected experiment again')
     return observed
+
+
+def fence_start(state: State, project_id: str, experiment_id: str, expected_revision: int,
+                manifest_sha256: str, *, confirm: bool, timeout: int = 20) -> dict:
+    """Explicitly fence one local experiment; do not certify run ownership or stop."""
+    if confirm is not True:
+        raise ValueError('Confirm the local experiment fence and its runner/archive/release effects')
+    if not isinstance(manifest_sha256, str) or re.fullmatch('[a-f0-9]{64}', manifest_sha256) is None:
+        raise ValueError('Training fence requires the exact original manifest SHA-256')
+    if type(timeout) is not int or not 1 <= timeout <= 60:
+        raise ValueError('Training fence timeout must be 1–60 seconds')
+    return _setup(state, project_id, expected_revision, 'fence',
+                  {'experiment_id': experiment_id, 'manifest_sha256': manifest_sha256},
+                  partial(reference.training_submission, timeout=timeout))
 
 
 def start(state: State, project_id: str, experiment_id: str, expected_revision: int,

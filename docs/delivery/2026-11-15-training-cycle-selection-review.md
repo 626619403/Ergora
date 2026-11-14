@@ -135,3 +135,55 @@ R2 关闭。每份 admission 内核保存 baseline 的 ID／commit／config／wo
 原 `build-r2` 的工具环境错误和 `self-review-r2` 的脚本引号错误仍保留；成功依据是对应 retry 与上述实际产物／run。审查自身首个快照装载脚本也曾因快照未含未变的注册 schema 而中止，随后先核当前注册源码与固定件字节相同，再正常装载并完成轻量复核；该装载错误未计作产品结果。
 
 本片 r2 的最终本地两轴 approve、开放 0／0。普通发布、自己的适用 CI 和固定发布精确终核尚待；a1 的 CI／终核归其原报告，不转授此片。前述 Q4.2b／c、真实训练／GPU／质量／收益和完整 Forge 的独立开放验收条件保持。
+
+## 固定发布复核与首次 CI 观察（追加，在途）
+
+2026-11-14 22:22 UTC，由同一 reviewer 核固定提交 `1b58e929aaf495c16f448454c78de23718786ae9`，parent 为 `d3c90e751ee9257df36b74e57e8956d38bbde848`，tree 为 `f2980c9741332e580814021e78252687794054ab`。实际通过 `git show` 核 `.ergora/checks/training-cycle-selection/publication-r2.json` 的十五个 blob ID、完整长度及 SHA，集合与该提交相对 parent 的十五个变更路径完全相同；没有用工作区代替固定 Git 对象。
+
+固定 Git 的 645 个打包产品逐件与 r2 wheel、core／SDK 两套实际安装的字节和 package map 相同，零不符；`src/ergora` 的额外 Git 条目仅为不进入包的 `AGENTS.md`。r2 原测试文件、用户手册和四生产文件均保持已评审身份，283 参考内容随完整产品映射保持。普通发布只补计划／交付和 a1 已由其原 reviewer 认证的终态记录，不包含 b1 计划／评审或实现；本次不把 a1 结论转授 a2。
+
+匿名官方 commit API 独立返回相同完整 commit／parent／tree，官方 Ref API 返回 `refs/heads/refactor/architecture-foundations` 的完整值仍为 `1b58e929aaf495c16f448454c78de23718786ae9`；与已保存的普通 push／remote-ref 原记录相同，没有合入 main。
+
+本 SHA 唯一适用 [Portability run 43647584681](https://github.com/626619403/Ergora/actions/runs/43647584681) 为 push／attempt1，head SHA、branch 和 `.github/workflows/portability.yml` 均与固定发布相同。首次直接 GET 官方 run、jobs 和页面的观察时间为 **2026-11-14 22:22:43 UTC**，HTTP 均 200；run 为 `in_progress`、conclusion 为 null，plan 成功、六个 Linux 分组及一个 Windows job 仍在运行。完整八 job 的 run／SHA／attempt 身份无冲突，按固定 workflow 的三十个适用必要步骤计算，当时二十二项成功；未将尚未执行的步骤或在途 job 计为成功。
+
+|首次直接 GET|响应字节|正文 SHA256|
+|---|---:|---|
+|本固定 commit API|127,935|`d1a1ae71e3d385e6a179abde3870eecce481324cea76a7ba6e163a8859d79dd3`|
+|完整 branch Ref API|429|`621ffe9420aedf098788b858048d1fb12aeacd2406c31ba7b9310ff92e79035b`|
+|本 SHA 的 runs API|11,995|`41de2e8ade0b1a6b174f0bafdae72f18470e5742a99682ea8e597de1c33edae3`|
+|本 run API|11,959|`20193a7c2ad41b95f3c77a8dc62549ea599a9fa0c7ab7069f37ddb085d28623b`|
+|本 run 的完整 jobs API|18,545|`5f25c5fdc7f24bfa01c84c37c46c06180e446ef5bf936c048b0fe0bb29c903e2`|
+|官方 run 页面|159,012|`a9eb606bfa0c55be7c18887118193727d6bce3c9094ce41d4df29c0cb6183e8a`|
+
+GET 来源复用原 a1 collector 的匿名官方接口模式，本次直接读取内存中的响应并记录上述时间／状态／摘要，没有写其他本地文件。固定发布两轴继续 approve，实现 finding 仍为开放 0／0；精确交付尚待 **本 SHA 自己的 CI 终态**，在途观察不是终核通过。
+
+## 本 SHA 自己的 CI 终核（追加，已闭合）
+
+**最终结论：需求符合性 approve／可维护性 approve，新增 finding 0，开放 0／0。** 同一 reviewer 于 **2026-11-14 22:46:09 UTC** 完成匿名官方 API、run 页面及八个官方 job 页核对：[Portability 43647584681／attempt1](https://github.com/626619403/Ergora/actions/runs/43647584681) 为 `completed / success`。run 的完整 head SHA 为 `1b58e929aaf495c16f448454c78de23718786ae9`，push 事件、branch、workflow 路径和全部 job 的 run／attempt／head SHA 均无冲突，八 job 及三十个适用必要步骤全部成功。
+
+|官方 job|job ID|必要步骤成功数|终态|
+|---|---:|---:|---|
+|plan|132608699436|1／1|completed／success|
+|Linux group 0 · Python 3.11|132608733233|4／4|completed／success|
+|Linux group 1 · Python 3.11|132608733231|4／4|completed／success|
+|Linux group 2 · Python 3.11|132608733189|4／4|completed／success|
+|Linux group 3 · Python 3.11|132608733200|4／4|completed／success|
+|Linux group 4 · Python 3.11|132608733173|4／4|completed／success|
+|Linux group 5 · Python 3.11|132608733267|4／4|completed／success|
+|Windows all · Python 3.12|132608733169|5／5|completed／success|
+
+必要步骤直接依据固定提交的 workflow／六组配置核定：plan 的显式分组读取；七个 native job 的 Python 设置、wheel 构建安装、打包参考身份、应用回归；另加 Windows PowerShell 5.1 安装与升级。逐个解析已保存的八个官方页面，三十项均只有一个匹配步骤、conclusion 为 success 且完成时间非空，与官方 jobs API 相同；没有把上传观察、收尾或非适用步骤凑入三十项。官方终态 Ref API 仍返回完整 `refs/heads/refactor/architecture-foundations = 1b58e929aaf495c16f448454c78de23718786ae9`。
+
+此前在途事实继续保留：22:22:43 UTC 为二十二／三十；22:32:44 UTC 的另一次完整官方观察为六 Linux＋plan 成功、二十八／三十，Windows 两项尚未完成；22:44:46 UTC 的 Windows 页确认应用回归成功，22:45:32 UTC 确认 PowerShell 步骤也成功。最终 API／页面采集发生在这些观察之后，未倒填早期状态或借用 a1 的 CI。
+
+后获明确落盘授权，后续只读采集器、响应正文及对应 URL／UTC／HTTP／SHA 清单保存在 ignored 的 `.ergora/checks/training-cycle-selection/ci/`；原先内存读取的六份响应没有追造正文。精确证据索引为：
+
+- `reviewer-collector-provenance-r1.json`：三个采集／验证脚本来源于原 a1 实际脚本，只替换本 commit、run、Windows job ID；未复用其观测结果。
+- `reviewer-observe-r1/`：本片自己的二十八／三十在途 run／jobs／官方页与明确未通过终核的 validation。
+- `reviewer-windows-observe-r1/` 至 `reviewer-windows-observe-r26/`：仅监测原固定 Windows job 的完整官方页、元数据及步骤观察，不重新抓取每轮完整 API／全部 job。
+- `reviewer-terminal-r1/`：终态 run／完整 jobs／run 页、八个官方 job 页、最终完整 Ref、各自 HTTP200 元数据及三十／三十验证。
+- `reviewer-ci-terminal-r1.json`：完整独立终核汇总，**62,353 字节**，SHA256 **`a07eb41afcf26945cd0ce5709b27e7d0b43ddedd21b8aee9df69ad35a1ec39b0`**。其 117 件原件清单不含汇总自身，逐件核字节／SHA；索引的 41 次原始 GET 均为匿名 HTTP200，正文与元数据完整匹配。汇总同时绑定固定 commit／parent／tree、十五 blob、r2 wheel 身份、八 job、三十必要步骤和终态完整 Ref，violations 为空。
+
+发布时原评审的 18,361 字节前缀仍逐字保持，SHA 为 `12a27cf60adf6c429b1d3ca4f0b757c1703177cc66c624dd82036b63d29e655a`；更早 r1 全文和原失败均保持。提交前 staged diff 与实际 parent→本提交 diff 也逐字相同，SHA 为 `10be1711ea788b147cf9ffe69effd784142e293c074a46c2d9d6f4f0ce277c30`。终核不读取后继工作区充当本片源码，没有重跑产品 suite／模型，也没有修改源码、配置、安装、服务或推送。
+
+Q4.2a2 固定发布 `1b58e929aaf495c16f448454c78de23718786ae9` 的精确交付门槛已闭合。该结论只归本片；Q4.2b1 及后继提交／预算／停止／自动循环和真实训练验收继续使用各自合同、候选、适用 CI 与独立评审。

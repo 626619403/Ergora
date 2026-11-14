@@ -151,6 +151,50 @@ class _Submission(_TrainingProject):
                                  'runner': intent['observation']['experiment']['current_runner']},
                 'attempt_saved': attempt is not None, 'result_saved': receipt is not None}
 
+    async def fence(self) -> dict:
+        from agent_platform.training import create_adapter
+        from perf_temporal.models import Binding, Experiment
+
+        intent = self.load()
+        submitted = self.status(intent) if intent is not None else None
+        observed = intent['observation'] if intent is not None else self.records()
+        spec = observed['experiment']['spec']
+        if self.payload['manifest_sha256'] != spec['binding']['manifest_sha']:
+            raise ValueError('Confirm the exact original manifest SHA before applying a local fence')
+        fence_relative = 'training/fences/' + self.ident + '.json'
+        for relative in ('training/registry.lock', 'training/jobs/' + self.ident + '/request.json', fence_relative):
+            self.adapter.safe_file(self.root, relative)
+        if intent is not None:
+            # Native lookup validates Experiment, but trusts the saved job ID.
+            try:
+                request = self.document(self.root, 'training/jobs/' + self.ident + '/request.json')
+            except FileNotFoundError:
+                request = None
+            if request is not None and request.get('job_id') != 'local-perf-' + self.ident:
+                raise ValueError('Native job request differs from the original experiment job ID')
+        try:
+            existing = self.document(self.root, fence_relative)
+        except FileNotFoundError:
+            existing = None
+        if existing is not None and existing != {'binding': spec['binding']}:
+            raise ValueError('Existing training fence differs from the confirmed original binding')
+        if existing is None and submitted is not None and submitted['status'] not in ('prepared', 'unknown'):
+            raise ValueError('Original submission is already submitted or rejected; use exact-run cancellation or reconcile ownership')
+        # Do not wait on the submission lock held across an in-flight start RPC.
+        # Native fence/create share their own registry lock and immutable binding.
+        experiment = Experiment(**{**spec, 'binding': Binding(**spec['binding'])})
+        job = await create_adapter().fence_and_lookup(experiment)
+        fence_path = self.adapter.safe_file(self.root, fence_relative)
+        return {'project': self.project['id'], 'project_revision': self.project['revision'],
+                'experiment_id': self.ident, 'binding': spec['binding'], 'status': 'fenced',
+                'submission_status_observed': submitted['status'] if submitted else 'not_recorded',
+                'intent_sha256': self.sha(intent) if intent else None,
+                'intent_project_revision': intent['project_revision'] if intent else None,
+                'fence': {'path': str(fence_path), 'sha256': self.core.digest(fence_path)},
+                'existing_job': asdict(job) if job is not None else None,
+                'runtime_status': 'not_queried', 'executor_stop_confirmed': None, 'execution_success': None,
+                'scope': 'Exact local experiment fence; may suppress runner/archive and future release; no run ownership, stop or ticket rollback proof'}
+
     async def dispatch(self, intent: dict) -> dict:
         from perf_temporal import client as native
         from temporalio.exceptions import WorkflowAlreadyStartedError
@@ -231,6 +275,8 @@ class _Submission(_TrainingProject):
         operation = self.payload['operation']
         if operation == 'status':
             return self.status(self.load())
+        if operation == 'fence':
+            return await self.fence()
         if operation == 'check':
             intent = self.load()
             observed = self.preflight() if intent is None else None
@@ -294,6 +340,8 @@ def main() -> None:
         result = asyncio.run(asyncio.wait_for(_Submission(payload).run(), payload['timeout']))
         print(json.dumps(result, ensure_ascii=False, allow_nan=False))
     except TimeoutError as error:
+        if payload['operation'] == 'fence':
+            raise SystemExit('BLOCKED: Local training fence timed out and may already exist; repeat the same binding confirmation, do not infer that execution stopped') from error
         raise SystemExit('BLOCKED: Training submission timed out; inspect its original intent and reconcile, do not resubmit') from error
     except (OSError, ValueError, KeyError, TypeError, ImportError, Blocked) as error:
         raise SystemExit('BLOCKED: ' + str(error))

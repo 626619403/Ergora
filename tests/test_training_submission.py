@@ -1,6 +1,7 @@
 """An accepted native start is never repeated after a lost acknowledgement."""
 
 from contextlib import redirect_stdout
+from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 import io
 import hashlib
@@ -8,6 +9,7 @@ import json
 from pathlib import Path
 import shutil
 import sys
+import time
 
 import pytest
 
@@ -109,6 +111,201 @@ def test_start_check_uses_original_preflight_and_rejects_project_drift(prepared,
     write(runner, value)
     with pytest.raises(ValueError, match='runner command or execution walltime'):
         training.check_start(state, 'demo', 'alpha', digest)
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Native local training fences require Linux/WSL2')
+def test_local_fence_requires_confirmation_and_preserves_sources_without_loading_credentials(prepared, monkeypatch, capsys):
+    pytest.importorskip('temporalio')
+    from ergora.cli import main
+
+    state, definition, runtime, _, _, digest = prepared
+    revision = state.project('demo')['revision']
+    config = Path(definition['execution']['config_directory'])
+    credentials = config / 'credentials.json'
+    credentials.write_text('This local operation must not load credentials', encoding='utf-8')
+    before = {p: p.read_bytes() for root in (runtime, config) for p in root.rglob('*') if p.is_file()}
+    with state.connect() as db:
+        database = list(db.iterdump())
+    for expected, sha, confirm in ((revision, digest, False), (revision + 1, digest, True), (revision, '0' * 64, True)):
+        with pytest.raises(ValueError):
+            training.fence_start(state, 'demo', 'alpha', expected, sha, confirm=confirm)
+    original = reference.importlib.util.find_spec
+    with monkeypatch.context() as missing:
+        missing.setattr(reference.importlib.util, 'find_spec', lambda name: None if name == 'temporalio' else original(name))
+        with pytest.raises(ValueError, match='optional Temporal SDK'):
+            training.fence_start(state, 'demo', 'alpha', revision, digest, confirm=True)
+    fence = runtime / 'training/fences/alpha.json'
+    assert not fence.exists()
+    args = ['--home', str(state.root), 'training', 'fence-start', 'demo', 'alpha',
+            '--revision', str(revision), '--manifest-sha256', digest, '--confirm']
+    assert main(args) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result['status'] == 'fenced' and result['submission_status_observed'] == 'not_recorded'
+    assert result['existing_job'] is None and result['intent_sha256'] is None
+    assert result['executor_stop_confirmed'] is None and result['execution_success'] is None
+    assert result['runtime_status'] == 'not_queried'
+    assert result['fence'] == {'path': str(fence), 'sha256': hashlib.sha256(fence.read_bytes()).hexdigest()}
+    assert training.fence_start(state, 'demo', 'alpha', revision, digest, confirm=True) == result
+    assert all(p.read_bytes() == raw for p, raw in before.items())
+    assert not (runtime / 'ergora/training-submissions/alpha.intent.json').exists()
+    with state.connect() as db:
+        assert list(db.iterdump()) == database
+    with pytest.raises(ValueError, match='fence records already exist'):
+        training.check_start(state, 'demo', 'alpha', digest)
+
+
+@pytest.mark.parametrize('status', ['prepared', 'unknown'])
+def test_local_fence_uses_frozen_start_and_never_reconciles_or_resends(prepared, service, status):
+    state, definition, runtime, _, _, digest = prepared
+    select, record = service
+    if status == 'prepared':
+        reference.training_submission(state.project('demo'), state.root, 'prepare',
+            {'experiment_id': 'alpha', 'manifest_sha256': digest}, timeout=20)
+    else:
+        select('lost-ack')
+        with pytest.raises(ValueError, match='UNAVAILABLE'):
+            training.start(state, 'demo', 'alpha', state.project('demo')['revision'], digest)
+    before = training.submission(state, 'demo', 'alpha')
+    calls = record.read_bytes() if record.exists() else None
+    (runtime / 'training/specs/alpha.json').unlink()
+    (Path(definition['execution']['config_directory']) / 'training-runners/trusted.json').unlink()
+    checkpoints = {p: p.read_bytes() for p in (runtime / 'ergora/training-submissions').glob('*')}
+    result = training.fence_start(state, 'demo', 'alpha', state.project('demo')['revision'], digest, confirm=True)
+    assert result['submission_status_observed'] == status and result['intent_sha256'] == before['intent_sha256']
+    assert result['binding'] == before['confirmation']['binding']
+    assert result['existing_job'] is None and result['executor_stop_confirmed'] is None
+    assert training.submission(state, 'demo', 'alpha') == before
+    assert all(p.read_bytes() == raw for p, raw in checkpoints.items())
+    assert (record.read_bytes() if record.exists() else None) == calls
+
+
+@pytest.mark.parametrize('scenario', ['accepted', 'preexisting'])
+def test_local_fence_refuses_an_observed_completed_submission_without_an_existing_fence(prepared, service, scenario):
+    state, _, runtime, _, _, digest = prepared
+    select, record = service
+    select(scenario)
+    if scenario == 'preexisting':
+        with pytest.raises(ValueError, match='already exists'):
+            training.start(state, 'demo', 'alpha', state.project('demo')['revision'], digest)
+    else:
+        training.start(state, 'demo', 'alpha', state.project('demo')['revision'], digest)
+    calls = record.read_bytes()
+    before = {p: p.read_bytes() for p in runtime.rglob('*') if p.is_file()}
+    with pytest.raises(ValueError, match='already submitted or rejected'):
+        training.fence_start(state, 'demo', 'alpha', state.project('demo')['revision'], digest, confirm=True)
+    assert {p: p.read_bytes() for p in runtime.rglob('*') if p.is_file()} == before
+    assert record.read_bytes() == calls
+
+
+@pytest.mark.parametrize('scenario,terminal', [('fence-observed-receipt', 'submitted'), ('fence-observed-rejection', 'rejected')])
+def test_local_fence_reports_status_snapshot_when_a_writer_completes_after_the_read(prepared, service, scenario, terminal):
+    state, _, runtime, _, _, digest = prepared
+    select, record = service
+    select(scenario)
+    reference.training_submission(state.project('demo'), state.root, 'prepare',
+        {'experiment_id': 'alpha', 'manifest_sha256': digest}, timeout=20)
+    revision = state.project('demo')['revision']
+    first = training.fence_start(state, 'demo', 'alpha', revision, digest, confirm=True)
+    assert first['submission_status_observed'] == 'prepared'
+    assert training.submission(state, 'demo', 'alpha')['status'] == terminal
+    before = {p: p.read_bytes() for p in runtime.rglob('*') if p.is_file()}
+    repeated = training.fence_start(state, 'demo', 'alpha', revision, digest, confirm=True)
+    assert repeated == {**first, 'submission_status_observed': terminal}
+    assert {p: p.read_bytes() for p in runtime.rglob('*') if p.is_file()} == before
+    saved = json.loads(record.read_bytes())
+    assert saved['completion_published_after_status'] and saved['starts'] == 0 and saved['calls'] == []
+
+
+@pytest.mark.parametrize('existing', [False, True])
+def test_local_fence_does_not_wait_for_inflight_start_and_preserves_native_registry_order(prepared, service, monkeypatch, existing):
+    state, _, runtime, _, _, digest = prepared
+    select, record = service
+    select('held-start-existing' if existing else 'held-start')
+    original = reference.processes.run
+    lost_reply = []
+
+    def invoke(argv, *args, **kwargs):
+        result = original(argv, *args, **kwargs)
+        if existing and not lost_reply and json.loads(kwargs.get('stdin', '{}')).get('operation') == 'fence':
+            lost_reply.append(True)
+            raise ValueError('Simulated loss of the completed local fence reply')
+        return result
+
+    monkeypatch.setattr(reference.processes, 'run', invoke)
+    revision = state.project('demo')['revision']
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(training.start, state, 'demo', 'alpha', revision, digest)
+        try:
+            until = time.monotonic() + 10
+            while not record.with_suffix('.held').exists() and not future.done() and time.monotonic() < until:
+                time.sleep(0.01)
+            assert record.with_suffix('.held').exists(), 'Original SDK start never reached its held RPC'
+            checkpoints = {p: p.read_bytes() for p in (runtime / 'ergora/training-submissions').glob('*')}
+            if existing:
+                with pytest.raises(ValueError, match='loss of the completed local fence reply'):
+                    training.fence_start(state, 'demo', 'alpha', revision, digest, confirm=True)
+            else:
+                fenced = training.fence_start(state, 'demo', 'alpha', revision, digest, confirm=True)
+                assert fenced['submission_status_observed'] == 'unknown' and fenced['existing_job'] is None
+            assert not future.done() and all(p.read_bytes() == raw for p, raw in checkpoints.items())
+            fence = (runtime / 'training/fences/alpha.json').read_bytes()
+        finally:
+            record.with_suffix('.continue').touch()
+        completed = future.result(timeout=30)
+    assert completed['status'] == 'submitted'
+    confirmed = training.fence_start(state, 'demo', 'alpha', revision, digest, confirm=True)
+    assert confirmed['submission_status_observed'] == 'submitted'
+    assert confirmed['executor_stop_confirmed'] is confirmed['execution_success'] is None
+    assert confirmed['runtime_status'] == 'not_queried'
+    assert (runtime / 'training/fences/alpha.json').read_bytes() == fence
+    saved = json.loads(record.read_bytes())
+    assert saved['starts'] == 1 and [call[0] for call in saved['calls']] == ['describe', 'start']
+    if existing:
+        assert confirmed['existing_job'] == saved['native_job_before'] == saved['native_lookup_after']
+        assert lost_reply
+    else:
+        assert saved['native_lookup_after'] is None and not (runtime / 'training/jobs/alpha/request.json').exists()
+    assert 'fenced against further submission' in saved['native_create_error']
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Native local training fences require Linux/WSL2')
+@pytest.mark.parametrize('mutation', ['lock-symlink', 'job-symlink', 'fence-symlink', 'job-experiment', 'job-id', 'fence-binding', 'registration'])
+def test_frozen_fence_rejects_unsafe_paths_and_original_identity_conflicts(prepared, tmp_path, mutation):
+    pytest.importorskip('temporalio')
+    state, definition, runtime, _, write, digest = prepared
+    reference.training_submission(state.project('demo'), state.root, 'prepare',
+        {'experiment_id': 'alpha', 'manifest_sha256': digest}, timeout=20)
+    if mutation.endswith('symlink'):
+        relative = {'lock-symlink': 'training/registry.lock', 'job-symlink': 'training/jobs/alpha/request.json',
+                    'fence-symlink': 'training/fences/alpha.json'}[mutation]
+        outside = tmp_path / 'outside-record'
+        outside.write_text('External file must remain unchanged')
+        path = runtime / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.symlink_to(outside)
+    elif mutation in ('job-experiment', 'job-id'):
+        spec = json.loads((runtime / 'training/specs/alpha.json').read_bytes())
+        if mutation == 'job-experiment':
+            spec['poll_seconds'] += 1
+        write(runtime / 'training/jobs/alpha/request.json', {'schema_version': 1, 'experiment': spec,
+                                                           'job_id': None if mutation == 'job-id' else 'local-perf-alpha'})
+    elif mutation == 'fence-binding':
+        binding = json.loads((runtime / 'training/specs/alpha.json').read_bytes())['binding']
+        write(runtime / 'training/fences/alpha.json', {'binding': {**binding, 'manifest_sha': '0' * 64}})
+    else:
+        registered_path, registered = next(iter(state.project('demo')['registration']['files'].items()))
+        write(Path(definition['execution']['config_directory']) / registered_path, {**registered, 'drift': True})
+    before = {p: p.read_bytes() for p in runtime.rglob('*') if p.is_file()}
+    if mutation == 'job-experiment':
+        # The original native lock is created before lookup rejects a reused ID.
+        before[runtime / 'training/registry.lock'] = b''
+    with pytest.raises(ValueError):
+        training.fence_start(state, 'demo', 'alpha', state.project('demo')['revision'], digest, confirm=True)
+    assert {p: p.read_bytes() for p in runtime.rglob('*') if p.is_file()} == before
+    if mutation.endswith('symlink'):
+        assert outside.read_text() == 'External file must remain unchanged'
+    elif mutation != 'fence-binding':
+        assert not (runtime / 'training/fences/alpha.json').exists()
 
 
 @pytest.fixture

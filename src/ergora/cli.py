@@ -633,6 +633,13 @@ def parser() -> argparse.ArgumentParser:
             operation.add_argument("--revision", type=int, required=True)
             operation.add_argument("--manifest-sha256" if name == "start" else "--intent-sha256", required=True)
             operation.add_argument("--timeout", type=int, default=20)
+    fence = operations.add_parser("fence-start", help="Confirm a local experiment fence: suppress future jobs/release and possibly runner/archive; never certify run ownership or stop")
+    fence.add_argument("project")
+    fence.add_argument("experiment_id")
+    fence.add_argument("--revision", type=int, required=True)
+    fence.add_argument("--manifest-sha256", required=True)
+    fence.add_argument("--confirm", action="store_true", required=True)
+    fence.add_argument("--timeout", type=int, default=20)
     for name in ("approval", "approve", "resume-approve"):
         operation = operations.add_parser(name, help="Read or explicitly confirm the original owner decision; delivery is not authorization")
         operation.add_argument("project")
@@ -1216,6 +1223,9 @@ def main(argv: list[str] | None = None) -> int:
                 output = training.submission(State(args.home), args.project, args.experiment_id)
             elif args.operation == "check-start":
                 output = training.check_start(State(args.home), args.project, args.experiment_id, args.manifest_sha256)
+            elif args.operation == "fence-start":
+                output = training.fence_start(State(args.home), args.project, args.experiment_id, args.revision,
+                                              args.manifest_sha256, confirm=args.confirm, timeout=args.timeout)
             elif args.operation == "start":
                 output = training.start(State(args.home), args.project, args.experiment_id, args.revision,
                                         args.manifest_sha256, timeout=args.timeout)

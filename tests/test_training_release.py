@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import subprocess
 import sys
 
 import pytest
@@ -60,6 +61,49 @@ def recover(archive, intent):
     state = archive[0]
     return training.resume_approve(state, 'demo', 'alpha', state.project('demo')['revision'],
                                     intent['intent_sha256'], confirm=True)
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original local release and fence owners require Linux/WSL2')
+@pytest.mark.parametrize('ticket_first', [False, True])
+def test_local_fence_uses_original_release_lock_without_rolling_back_existing_tickets(archive, ticket_first):
+    pytest.importorskip('temporalio')
+    state, definition, runtime, _, write, _, _ = archive
+    spec = json.loads((runtime / 'training/specs/alpha.json').read_bytes())
+    # Preserve a second successful experiment while selecting only alpha.
+    beta = json.loads((runtime / 'training/specs/beta.json').read_bytes())['binding']
+    gate = json.loads((runtime / 'training/jobs/alpha/gate-report.json').read_bytes())
+    gate.update(binding=beta, manifest_sha256=beta['manifest_sha'])
+    gate_sha = write(runtime / 'training/jobs/beta/gate-report.json', gate)
+    result = json.loads((runtime / 'training/jobs/alpha/result.json').read_bytes())
+    result.update(binding=beta, job_id='local-perf-beta',
+                  gate={**result['gate'], 'report': str(runtime / 'training/jobs/beta/gate-report.json'), 'report_sha256': gate_sha})
+    write(runtime / 'training/jobs/beta/result.json', result)
+    before_beta = {p: p.read_bytes() for p in (runtime / 'training/jobs/beta').rglob('*') if p.is_file()}
+    installation = Path(definition['execution']['installation'])
+    environment = {**os.environ, 'AGENTFLOW_CONFIG_DIR': definition['execution']['config_directory'],
+                   'AGENTFLOW_STATE_DIR': str(runtime), 'PYTHONDONTWRITEBYTECODE': '1',
+                   'PYTHONPATH': os.pathsep.join(str(installation / name) for name in
+                                                ('local', 'upstream/platform', 'upstream/temporal', 'upstream'))}
+    command = [sys.executable, '-P', str(Path(__file__).parent / 'fixtures/training_fence_registry.py')]
+    if ticket_first:
+        created = subprocess.run(command, env=environment, capture_output=True, text=True, timeout=20)
+        assert created.returncode == 0, created.stderr
+    tickets = runtime / 'training/integration-tickets'
+    before = {p: p.read_bytes() for p in tickets.glob('*.json')}
+    fenced = training.fence_start(state, 'demo', 'alpha', state.project('demo')['revision'],
+                                  spec['binding']['manifest_sha'], confirm=True)
+    assert fenced['existing_job']['job_id'] == 'local-perf-alpha' and fenced['executor_stop_confirmed'] is None
+    refused = subprocess.run(command, env=environment, capture_output=True, text=True, timeout=20)
+    assert refused.returncode != 0 and 'Release suppressed by cancellation fence' in refused.stderr
+    assert {p: p.read_bytes() for p in tickets.glob('*.json')} == before
+    assert bool(before) == ticket_first
+    assert all(p.read_bytes() == raw for p, raw in before_beta.items())
+    assert training.inspect(state, 'demo', 'beta')['experiment']['recorded_gate']['passed'] is True
+    assert not (runtime / 'training/fences/beta.json').exists()
+    unselected = subprocess.run([*command, 'beta'], env=environment, capture_output=True, text=True, timeout=20)
+    assert unselected.returncode == 0, unselected.stderr
+    assert json.loads(unselected.stdout)['binding'] == beta
+    assert {p: p.read_bytes() for p in tickets.glob('alpha-*.json')} == before
 
 
 def test_original_owner_receipt_and_release_are_once_and_status_is_sdk_free(archive, submitted_archive, monkeypatch):

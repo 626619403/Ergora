@@ -232,6 +232,20 @@ ergora training cycle-read "$HOME/ergora-inputs/cycle-01" --sha256 EXACT_CYCLE_S
 
 离线`cycle-read`不需要项目、SDK、服务或密钥，验证所选完整SHA、版本及内部绑定，保留原观察全文。`coverage`明确为已保存本地观察，运行未查询、来源未认证、执行未授权、预算未起算；其中旧ready字段不代表当前准入。文件最多10,000,000 UTF-8字节和64层／100000值，超限拒绝，不截断。该输入保留原home／注册／执行路径，跨机可离线阅读；执行须在原支持环境重新核身份，不能将它直接当作活动运行迁移或新的启动授权。
 
+### 尚无 run ID 时显式阻断本地实验
+
+当原 start 仍为`prepared`／`unknown`、尚无可用于取消的完整 run ID，或实验已准备但尚未提交时，可以确认这个原实验的本地 fence。要求 Linux／WSL2、`temporal` extra 和未漂移的原登记；不需要运行中的 Temporal 服务，也不读取密钥或启动 runner：
+
+```bash
+ergora training fence-start my-project EXPERIMENT_ID --revision REVISION --manifest-sha256 EXACT_MANIFEST_SHA256 --confirm
+```
+
+确认前先核`training submission`及原manifest：已有start意图时使用意图中的完整manifest SHA，不因当前同名spec变化重新绑定；尚无意图时沿原准备记录核身份，不另造start意图。`--confirm`授权所选实验的原本地fence：阻止后续新增本地job，可能使runner／归档观察到取消，也阻止尚未创建的release票据。已创建的票据保持，其他已完成实验的人工release不受本命令处理。它不是可撤回的暂停；不要删除fence或换实验ID绕过原记录。
+
+退出0只确认同一binding的本地fence已保存／匹配读回。结果包含原binding、`fence.path / sha256`和锁内`existing_job`；`runtime_status=not_queried`，`executor_stop_confirmed`和`execution_success`均为null。没有job不表示没有workflow或后代；已有job不表示它已停止。`submission_status_observed`仅是观察快照，回执／拒绝记录可能在读取后才落盘。已经观察到`submitted`或`rejected`且尚无fence时拒绝新增，分别使用精确run取消或归属对账；已有同binding的fence仍可在这些终态后匹配读回，不发start或signal，也不认证run归属。
+
+超时、中断或丢回复时fence可能已经写入。保留原确认信息，使用相同命令幂等读回，不把错误当作“未阻断”或“已停止”。注册／执行目录漂移时该入口拒绝；旧上下文恢复、全周期停止和自动循环另行提供。当前只有此CLI入口。
+
 ### 取消原运行与分别观察停止事实
 
 先确认 `training submission` 返回 `submitted` 和完整原 `run_id`；未知 start 必须先按上一节恢复。实际取消与原执行器观察要求 Linux／WSL2、`temporal` extra 和同一原服务／训练控制 worker。取消请求使用稳定 ID；保留这个 ID，失败后继续查询或恢复同一请求。
