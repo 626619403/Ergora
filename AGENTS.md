@@ -11,3 +11,5 @@ Update `docs/PLAN.md` when a slice changes state, validation finishes, a decisio
 Use a fresh-context independent reviewer for each complete implementation slice. Give the reviewer the raw requirements, baseline, changed files, and actual validation. Resolve findings and record the result before marking a slice complete. Reviews and status bookkeeping do not require recursive reviews.
 
 Keep the existing six-stage development contract and candidate-bound evidence intact while migrating the reference implementation. Optional tool integrations must expose their actual availability and supported operations. Unsupported capabilities must fail visibly.
+
+When changing component implementations or their configuration, read the applicable directory's `AGENTS.md` and [component change protocol](docs/architecture/component-change-protocols.md). It identifies extension owners, stable contracts, data and recovery obligations, and relevant checks.

@@ -1,0 +1,567 @@
+{
+  "scope": "Fixed first-party top-level Python AST imports and console file inventory only; not dynamic, vendor, SDK, subprocess or runtime validation",
+  "top_level_python_modules": 76,
+  "unique_static_edges": 312,
+  "acyclic": true,
+  "console_js_modules": 28,
+  "dependencies": {
+    "__init__": [],
+    "__main__": [
+      "cli"
+    ],
+    "agent_backends": [
+      "components",
+      "contracts",
+      "processes"
+    ],
+    "agent_definitions": [
+      "agents",
+      "contracts",
+      "definition_bundles",
+      "state"
+    ],
+    "agent_runs": [
+      "agent_backends",
+      "agent_definitions",
+      "agents",
+      "bindings",
+      "contracts",
+      "memory",
+      "projects",
+      "reference",
+      "skill_assets",
+      "state",
+      "task_mcp",
+      "workflow_definitions"
+    ],
+    "agents": [
+      "agent_backends",
+      "components",
+      "contracts",
+      "processes"
+    ],
+    "asset_trees": [],
+    "backups": [
+      "agent_definitions",
+      "asset_trees",
+      "contracts",
+      "issue_writebacks",
+      "issues",
+      "skill_assets",
+      "state",
+      "workflow_definitions"
+    ],
+    "bindings": [
+      "agents",
+      "components",
+      "contracts",
+      "issue_backends",
+      "kernel"
+    ],
+    "cli": [
+      "agent_definitions",
+      "agent_runs",
+      "agents",
+      "backups",
+      "contracts",
+      "definition_bundles",
+      "evaluation",
+      "handoff",
+      "issue_writebacks",
+      "issues",
+      "kernel",
+      "memory",
+      "optimization",
+      "projects",
+      "reference",
+      "registrations",
+      "research",
+      "retrospectives",
+      "review_packets",
+      "scheduling",
+      "services",
+      "skill_assets",
+      "skills",
+      "state",
+      "tasks",
+      "tools",
+      "training",
+      "training_rounds",
+      "web",
+      "workflow_definitions"
+    ],
+    "components": [],
+    "contracts": [],
+    "definition_bundles": [
+      "asset_trees",
+      "contracts",
+      "skill_assets",
+      "state"
+    ],
+    "drafts": [
+      "reference",
+      "state"
+    ],
+    "evaluation": [
+      "contracts",
+      "processes",
+      "skill_assets",
+      "state"
+    ],
+    "git_materials": [],
+    "handoff": [
+      "contracts",
+      "issue_sources",
+      "task_envelopes"
+    ],
+    "issue_backends": [
+      "components",
+      "contracts",
+      "issue_sources",
+      "state"
+    ],
+    "issue_snapshots": [
+      "issue_sources"
+    ],
+    "issue_sources": [],
+    "issue_writebacks": [
+      "contracts",
+      "issue_backends",
+      "issue_snapshots",
+      "issue_sources",
+      "projects",
+      "state",
+      "task_envelopes",
+      "tasks"
+    ],
+    "issues": [
+      "contracts",
+      "issue_backends",
+      "issue_snapshots",
+      "projects",
+      "state",
+      "tasks"
+    ],
+    "kernel": [
+      "components",
+      "contracts",
+      "processes",
+      "state"
+    ],
+    "memory": [
+      "components",
+      "state"
+    ],
+    "native_six_stage": [],
+    "optimization": [
+      "components",
+      "evaluation",
+      "processes",
+      "skill_assets",
+      "state"
+    ],
+    "processes": [
+      "windows_job"
+    ],
+    "projects": [
+      "bindings",
+      "components",
+      "state"
+    ],
+    "reference": [
+      "processes",
+      "reference_creation_process",
+      "reference_executor",
+      "task_envelopes"
+    ],
+    "reference_budget": [],
+    "reference_creation_process": [],
+    "reference_executor": [
+      "agent_backends",
+      "agents",
+      "bindings",
+      "git_materials",
+      "projects",
+      "reference_creation_process",
+      "reference_inputs",
+      "reference_review_opinions",
+      "state",
+      "task_envelopes",
+      "task_mcp",
+      "workflow_definitions"
+    ],
+    "reference_history": [],
+    "reference_inputs": [
+      "agent_backends",
+      "agents",
+      "processes",
+      "reference_budget",
+      "reference_job_lifecycle",
+      "reference_workflows",
+      "task_envelopes",
+      "task_mcp"
+    ],
+    "reference_job_lifecycle": [
+      "processes",
+      "reference_budget"
+    ],
+    "reference_review_opinions": [],
+    "reference_task_approval": [
+      "reference_history",
+      "reference_task_submission",
+      "state"
+    ],
+    "reference_task_cancellation": [
+      "reference_history",
+      "reference_task_runtime",
+      "reference_task_submission",
+      "state"
+    ],
+    "reference_task_creation": [
+      "issue_sources",
+      "processes",
+      "reference",
+      "reference_budget",
+      "state",
+      "task_context",
+      "task_envelopes",
+      "tasks"
+    ],
+    "reference_task_events": [
+      "reference_task_submission"
+    ],
+    "reference_task_evidence": [
+      "reference_task_submission"
+    ],
+    "reference_task_export": [
+      "processes",
+      "reference_task_submission",
+      "state"
+    ],
+    "reference_task_reconciliation": [
+      "handoff",
+      "reference_task_submission",
+      "state",
+      "task_envelopes"
+    ],
+    "reference_task_runtime": [
+      "reference_inputs"
+    ],
+    "reference_task_submission": [
+      "reference_inputs",
+      "reference_task_creation",
+      "reference_task_runtime",
+      "state"
+    ],
+    "reference_training_cancellation": [
+      "reference_history",
+      "reference_training_runtime",
+      "reference_training_submission",
+      "state"
+    ],
+    "reference_training_context": [
+      "reference"
+    ],
+    "reference_training_evidence": [
+      "reference",
+      "reference_training_context"
+    ],
+    "reference_training_preparation": [
+      "reference",
+      "reference_training_context",
+      "state"
+    ],
+    "reference_training_release": [
+      "reference_history",
+      "reference_training_context",
+      "reference_training_evidence",
+      "reference_training_runtime",
+      "reference_training_submission",
+      "state"
+    ],
+    "reference_training_runtime": [],
+    "reference_training_setup": [
+      "reference",
+      "reference_training_context"
+    ],
+    "reference_training_submission": [
+      "reference",
+      "reference_training_context",
+      "reference_training_runtime",
+      "state"
+    ],
+    "reference_worker": [
+      "reference",
+      "reference_inputs"
+    ],
+    "reference_workflows": [
+      "reference_budget",
+      "reference_review_opinions",
+      "task_envelopes"
+    ],
+    "registrations": [
+      "agents",
+      "bindings",
+      "components",
+      "contracts",
+      "projects",
+      "reference",
+      "state"
+    ],
+    "research": [
+      "components",
+      "state",
+      "windows_job"
+    ],
+    "retrospectives": [
+      "agents",
+      "asset_trees",
+      "contracts",
+      "definition_bundles",
+      "handoff",
+      "memory",
+      "skill_assets",
+      "state",
+      "workflow_definitions"
+    ],
+    "review_dags": [],
+    "review_packets": [
+      "asset_trees",
+      "contracts",
+      "definition_bundles",
+      "git_materials"
+    ],
+    "scheduling": [
+      "components",
+      "research",
+      "state"
+    ],
+    "services": [
+      "reference",
+      "registrations",
+      "state"
+    ],
+    "skill_assets": [
+      "asset_trees",
+      "state"
+    ],
+    "skills": [
+      "evaluation",
+      "skill_assets",
+      "state"
+    ],
+    "stage_driver": [
+      "agent_runs",
+      "agents",
+      "processes",
+      "state"
+    ],
+    "state": [],
+    "task_context": [
+      "asset_trees",
+      "memory",
+      "skill_assets",
+      "state",
+      "task_envelopes",
+      "workflow_definitions"
+    ],
+    "task_envelopes": [
+      "issue_sources",
+      "native_six_stage",
+      "reference_budget",
+      "review_dags"
+    ],
+    "task_mcp": [
+      "asset_trees",
+      "contracts",
+      "definition_bundles"
+    ],
+    "tasks": [
+      "agent_backends",
+      "agents",
+      "asset_trees",
+      "bindings",
+      "contracts",
+      "issue_snapshots",
+      "issue_sources",
+      "native_six_stage",
+      "projects",
+      "reference",
+      "reference_budget",
+      "reference_creation_process",
+      "review_dags",
+      "state",
+      "task_context",
+      "task_envelopes",
+      "workflow_definitions"
+    ],
+    "tools": [
+      "agent_backends",
+      "agent_runs",
+      "agents",
+      "bindings",
+      "components",
+      "issue_backends",
+      "kernel",
+      "processes",
+      "projects",
+      "state"
+    ],
+    "training": [
+      "reference",
+      "state"
+    ],
+    "training_rounds": [
+      "asset_trees",
+      "contracts",
+      "definition_bundles",
+      "state",
+      "training"
+    ],
+    "web": [
+      "agent_definitions",
+      "agent_runs",
+      "components",
+      "definition_bundles",
+      "drafts",
+      "evaluation",
+      "handoff",
+      "issue_writebacks",
+      "issues",
+      "kernel",
+      "memory",
+      "optimization",
+      "projects",
+      "reference",
+      "registrations",
+      "research",
+      "retrospectives",
+      "services",
+      "skill_assets",
+      "skills",
+      "state",
+      "task_envelopes",
+      "tasks",
+      "tools",
+      "training",
+      "workflow_definitions"
+    ],
+    "windows_job": [],
+    "workflow_definitions": [
+      "agent_definitions",
+      "asset_trees",
+      "contracts",
+      "definition_bundles",
+      "state"
+    ]
+  },
+  "source": {
+    "src/ergora/__init__.py": "aff5d87075552b31ab865dfe98c31e1ce521a818f85e4b0562a9e471e4139017",
+    "src/ergora/__main__.py": "307299fda7b77d22c64cb51430ec75e5f59d78e9c948786afb3b2544fe45e4b7",
+    "src/ergora/agent_backends.py": "8affece87b2b8a4b20ded9088d5d8dcc74194aaabcf82f63a71db874565e7620",
+    "src/ergora/agent_definitions.py": "1963430ad740c04b65b104bb46174034f2a78f3b2a6542c64cac6b5df8ba0961",
+    "src/ergora/agent_runs.py": "7eb5969fb13620f7216af8663ca436efad174352c39a2c1ca1eb512fb0d75271",
+    "src/ergora/agents.py": "80d1e7f9e18ace53632c623a8f79d62e58fd463c9248db4fcbf4e57c497d65a6",
+    "src/ergora/asset_trees.py": "8191c4000d02bdeafd016d7d1e15d7c357ad61b83baef84889ac0da178f93fe3",
+    "src/ergora/backups.py": "f8b4cb315dc068d35bbb3eaa9d0d15c227458cca97a54aab97f1a5e34dbcd933",
+    "src/ergora/bindings.py": "8b289eb6666551e73a746627b01d192e635e3bb0e50bc34ee068dde363a3118d",
+    "src/ergora/cli.py": "f1a62bd84f4551e5808f3bed9ae974f1a7f8c811c33722e0cdb8b048fb6c640b",
+    "src/ergora/components.py": "5f80ca0b958722c65564159f51b8c26636e6eb953d3f603097c9b07e2d8aaba4",
+    "src/ergora/contracts.py": "62536e3476edf059fe39eae3872b51343a364050469ac3c320bedc7ed5c57b33",
+    "src/ergora/definition_bundles.py": "63355f8c3cb3635e7c66ad736f8b35165d657ff4881843dd140b12d12f294ef6",
+    "src/ergora/drafts.py": "5e103cfce6edb6f628cf6ad8e0f63e43c5f7d281f988bb3692abb763af743b88",
+    "src/ergora/evaluation.py": "5e75b8da5bb7dab227131ad0424730cd98d800c7c3452c493b8d7c348d9a84da",
+    "src/ergora/git_materials.py": "1d7b186a0e67f8c35f8fd64c1db8925a17db5e932dc0eedb357f38b777ccbaaa",
+    "src/ergora/handoff.py": "2cd20c1c4bd953f4a74948a82c4da5dab2df348ca9c392bb1c1a4dc8bc61cdcb",
+    "src/ergora/issue_backends.py": "b5dc5c27a0257454ddfda710f0570f84242e4ccf0f0946c1003dca601fd7b3f3",
+    "src/ergora/issue_snapshots.py": "412ccb67076d0f19675aca58381e32d2797e0a265436a2c9ee760b90082b7eee",
+    "src/ergora/issue_sources.py": "38b49cde22b7bc46314a9b42915e96054e29b975d0268dcde27b4c5ecf62b14f",
+    "src/ergora/issue_writebacks.py": "ad1ac71bdeefa92254b2585f40ad3875eda3593809a2cdcffd236516e04e7504",
+    "src/ergora/issues.py": "c91202d61caa11fae060c6184922078cf07ef6cb5bfa093a4ca4998ecb409109",
+    "src/ergora/kernel.py": "0e3dd600023972474650304aa4b2a305f49e275cdb85788f88074e49b3bd3f68",
+    "src/ergora/memory.py": "d1be8d9e4199ce1e87ea487a5a06badd1a84e5a7979f27a99cbee4d692fd7475",
+    "src/ergora/native_six_stage.py": "fd1de87829d5c4445be180600b5a1247c5b074777798a11c826cca7036b2bcbd",
+    "src/ergora/optimization.py": "01277565ed3f1e85dbb4d9b28c7ad93470cb9561bc056b35aa6c833a416a9623",
+    "src/ergora/processes.py": "b5cacaa449aca7923bc4d967be64ad65a9412bad00b18caa84c11709ba09d0c8",
+    "src/ergora/projects.py": "28c7d15ea79632d2f9a1f2550a97959e9f801aaa10f86deb4fc4f52e50ee1500",
+    "src/ergora/reference.py": "4679313cadef7fe54964e4a6c93315eb069e12f53bf237da05ba7806395d7537",
+    "src/ergora/reference_budget.py": "4591faf34d188d3e47d51027eee7a0e3bf35366b7aa8fc87b8cb76a37fdeee72",
+    "src/ergora/reference_creation_process.py": "d01e4af1e2ac41b0d18401fce9f9e0b4656347b11ea904f689c27a887c91f5ac",
+    "src/ergora/reference_executor.py": "571726cfd47ab7fa0c4f0d86f1753501b4a502f76f182c365b2a7dc99105f5a6",
+    "src/ergora/reference_history.py": "208d4ce9c4e1c3413ad1475eb695d413ef2e882f20a11e391615be8060feb527",
+    "src/ergora/reference_inputs.py": "c116d153b867aff6f013f1d980c9bf3c874d74013c2e32770d8b768c42aae09b",
+    "src/ergora/reference_job_lifecycle.py": "004a72c5b21977af409abcfa94f5f6a921f3b0b15a936e6620589407face6c77",
+    "src/ergora/reference_review_opinions.py": "86abdd4538703fcbbdd143e6a78143522805e8188883b8db5d7cc59161c699af",
+    "src/ergora/reference_task_approval.py": "c4928c1166a9a9165e2230464160536217a491c9c685610193b848c95af3aa68",
+    "src/ergora/reference_task_cancellation.py": "ede4db6d961d632c7224587ced85e69dd952dcf77cad0db689a3aa1e362115e0",
+    "src/ergora/reference_task_creation.py": "7bf31161ba500384b060410becea33586ea5fe1150be48ae1d0c5bf10923b173",
+    "src/ergora/reference_task_events.py": "b8ef882e19b9aa14d0299b7a088aae45ba21f3bbb98299c858ca9f6d6cc87ecd",
+    "src/ergora/reference_task_evidence.py": "eb968036312b647113640d8bd4ac50ac46d4c86a33129778dd7ebdd93730cbb5",
+    "src/ergora/reference_task_export.py": "ecf4c9da13199a7604ae61e3cbff257fc04bcc91f0a3cb02fa7db275ea67af48",
+    "src/ergora/reference_task_reconciliation.py": "03f30dfb8b946b304873c0f89feb900f93fd849ba721cfb0142e4d7bbfe09548",
+    "src/ergora/reference_task_runtime.py": "185a25464437ef38c290bb3343027e1ed5eee5965f59fcc395cbe501620cdc8f",
+    "src/ergora/reference_task_submission.py": "9d0cac677fba9259ec8b1bd74768befe2734ad73169c5bd9e13d68c8030a769b",
+    "src/ergora/reference_training_cancellation.py": "4635d0c68546d92b680084adb0303b0cee0222eec67277e79fdd1f3491e87c9e",
+    "src/ergora/reference_training_context.py": "852f5422067be11fabd22e754942b4986877f1dc3a63e400e9781966833b5b04",
+    "src/ergora/reference_training_evidence.py": "1ffce17c7a6e7747d33e9544f5eade399565f6bf9443eb94a00083feb681580a",
+    "src/ergora/reference_training_preparation.py": "89b9d129ab2d62d108281041d0a2c92a6a9cf638f622a933488a25d974ae878f",
+    "src/ergora/reference_training_release.py": "bba8cd011f7aec0a79f596e7898e3daa84afa7f375c8f0394a622c4255b5ab62",
+    "src/ergora/reference_training_runtime.py": "ef20e691b0a016f9c936ecab1057d4b4f1e362aaa72997af4c9107a87cd4f2e6",
+    "src/ergora/reference_training_setup.py": "0380aeaea8f5f1606a7ded772d0646aa9d89bf4d33fc73549a5527c6d8d52ff1",
+    "src/ergora/reference_training_submission.py": "c5e76f1ae30dc9ca2f2f81dc3f33270e4e9e34f5f93a2dde95e05f77ec6c2bf0",
+    "src/ergora/reference_worker.py": "998242a5d35d8ebd5b0d458c55ffea46a3bf8e1db294421d149445ea6de58e65",
+    "src/ergora/reference_workflows.py": "15cc616591bc9ab914092aa9f1245f4a95cf904311c05dff88ecd54a0c962be7",
+    "src/ergora/registrations.py": "1b9fc68d3763366697d86c56ea984f56f40d856580a7fd1b8796d808a1692566",
+    "src/ergora/research.py": "8449b65af42f04658383abd598da20b1332797ea7f23689564ecff7f8dbb1b54",
+    "src/ergora/retrospectives.py": "5d406e7bfa0d5f05cce0fd9207505cfaf33d1529b70e2af9046dbe8f834797de",
+    "src/ergora/review_dags.py": "d419f313bf62c64e85e0e4504bdd9de93ae6a4d618213480f3d70ff3c8b5c4ca",
+    "src/ergora/review_packets.py": "ba8354bb7545ebf296f83ca04474caa33befbcf47cf305e448555fbe17fba077",
+    "src/ergora/scheduling.py": "9dd86187507442b7503d82b8b4c8d7155535cf4d569c346eadc794222628017c",
+    "src/ergora/services.py": "9d7ffa3a06384acff2802f5934c03f1bb6469ff84bbe2ea609602e6f7522bdb9",
+    "src/ergora/skill_assets.py": "b1e94fe00e18ebe068043fa22edaada1887bae8100565abeb44e51cac409f223",
+    "src/ergora/skills.py": "37b3ce43ef95a2a825fc6afc5ba47fe2ca5b396a7b9f5564d5a2c3927e114302",
+    "src/ergora/stage_driver.py": "6658ae8fafe3aff82830446ff7772d0a46e5d68f7180170ae361c92d64b0a657",
+    "src/ergora/state.py": "4bb638c9435a0c39e306109b628c6c79b96f1d8381b84140d78be188ed68f0f9",
+    "src/ergora/task_context.py": "2b28dd8f538d14db37d295d4bccf0419bdcb5faa83b2702aaa5bb84c83e61c55",
+    "src/ergora/task_envelopes.py": "6f506429c9d91dd4696a8d0cd89ccefb1ca182849430bb4242d974b45f7cd2cf",
+    "src/ergora/task_mcp.py": "826ae117ebc939e8caec773f75a191553f4c49d38a5f28b0c4f78484d05772bb",
+    "src/ergora/tasks.py": "1ed05e57a9f4c673976b965fcaeaa648457a39ac55afb5272e9fe01cf1db4ab1",
+    "src/ergora/tools.py": "20ad28188fd2acf6017c420181c0a350f2bd7d1ca7fe44b423c5a30385f2c5df",
+    "src/ergora/training.py": "f0887f68704dc39f3ece01b69dd2c017ea186c1aae6d7a7d3d764c27e4e9372d",
+    "src/ergora/training_rounds.py": "d4ca342b902f9d8c869171bbefa78b7fa6c0f0b129f57ea162b505e1d5124e7a",
+    "src/ergora/web.py": "97ad76e51f82f2d6c27509279ba3e2b2b835d21dea8a372592b853dd7a30a6f3",
+    "src/ergora/windows_job.py": "f2c623752a7f628685f99f4d01a40c3a128021e52de6bc7c4598129e190f45ad",
+    "src/ergora/workflow_definitions.py": "a25c4ea90a72fc25ce5701b12a02492c4483baee7544f3c222418372d7c37eb2"
+  },
+  "source_commit": "750dd68ff2b1e41f6fe390d6a52e651bf41d5642",
+  "console": {
+    "src/ergora/data/console/agents.js": "6349609bb15b4be901650ed426e4ec3e92b171c5f31ed6239e0ea2380c946601",
+    "src/ergora/data/console/api.js": "cd44305050536573a3dd1a66afb2eb089f5cef6a2bdcc601506e9429d7ccae83",
+    "src/ergora/data/console/app.js": "3d91e58dc39bf132fc61e2f373d320750d155fc61237eeca097418c0f4dfd480",
+    "src/ergora/data/console/binding-fields.js": "b21d6d75d9317f8ab30328608bed54ba03c0d001b0139af292977aea8c8357a2",
+    "src/ergora/data/console/candidate-observation.js": "0f8eb175c51030c2d60d1d493df6febbd19836cc3ded5b16d14fde49d41f76c1",
+    "src/ergora/data/console/candidate-review.js": "33daf614ebc8ac5b8cdc677a4301a4828ac7ffc12ed82fa7f6986c12972bbb18",
+    "src/ergora/data/console/composition-comparison.js": "b56aca5f6c44ed715009a9e5a92701eb40c97cb8a8ea6f3bec62f3c7a547fea2",
+    "src/ergora/data/console/composition-graph.js": "22fad41ba596fadeba3cfcc02e9e84f2891326395339beca793846a1bddb4469",
+    "src/ergora/data/console/definitions.js": "761ee783145dd0de99017f8240788fbf3a8c142dc1245c2d44e0e7f96a6ddc4c",
+    "src/ergora/data/console/issue-writeback.js": "f79f44be07e003e3551bcce6d62a85e3b4bbea10d5667842c45870fffc1b04e2",
+    "src/ergora/data/console/issues.js": "93a5e23b1ad81b79bb23b96127565decf3a91e9f243f265db8f0ac6799514a63",
+    "src/ergora/data/console/memory.js": "5337e7a7181c3df6ca01de29f485e16bc92ef6f1eb8f34788181e0b7bdc82d8f",
+    "src/ergora/data/console/overview.js": "c1b0a4bbde4057594df444abc263dc6bb3ce8409c85e7109c086d3366efcff69",
+    "src/ergora/data/console/projects.js": "3aec53795ee9adcaf73e82b35ed0aaf5726295f10a05dc53abc5be257a230c42",
+    "src/ergora/data/console/research.js": "765aafce0b1bcdb5f4ee3fbf5aef3dc511ea4e1f1dd074d6145a32f4ced64572",
+    "src/ergora/data/console/retrospectives.js": "911ad374b140a93f9bc52929068df5628054ee519d2ea81e21c75bfd16063413",
+    "src/ergora/data/console/skills.js": "08e55e9697ec664ae4c6cb639ed612541551826262a56b7e64fe7111ce0be3c4",
+    "src/ergora/data/console/state.js": "d19a40f6e0782ee38901c84cedb800e77d5715458b2caaa2c0454977deae54f4",
+    "src/ergora/data/console/submissions.js": "5e235b8c5d23ac9a4c8e3ad822b43d14be470adbdac7e4dedc36fd967eba4d60",
+    "src/ergora/data/console/task-composition.js": "cb2dec85fdff53969e38a8e9ec7d61cd6041e055ce1604c904043edcd909836b",
+    "src/ergora/data/console/tasks.js": "a3cb1fbd25f557048bf81fda8d3132fa71acda2bd2eb879d451f1e875331c25a",
+    "src/ergora/data/console/tools.js": "b115749452bc2b2610136894b59ca629578ea29f174ecd0d0645181b1010afe8",
+    "src/ergora/data/console/training-cancellation.js": "5a478acb79661b4fccac5dc78909c053512fec596098941b9fd358aac9535ebb",
+    "src/ergora/data/console/training-evidence.js": "e6b756487009b2aa2e19dcf5fd318958aa081180949629c963ece110f4348a60",
+    "src/ergora/data/console/training-preparation.js": "6b8fae9d4008a7d9dca874efe3e116d09df98915fe761d2b4b5d8fe7b89097fc",
+    "src/ergora/data/console/training.js": "9893dc084b3223d9d0be4f02fc6f4599ea6a2e0e06a0008dd69632619ecf5338",
+    "src/ergora/data/console/ui.js": "2fc6c19d8d46a68d12562b2c696ec1f6bad4ea7d781afbc326ce3fbf6ac3df2c",
+    "src/ergora/data/console/workflow.js": "8427d68d5b59d2973e568d7e041182068c587fc888f4b96b512f0d6cc19bab75"
+  }
+}

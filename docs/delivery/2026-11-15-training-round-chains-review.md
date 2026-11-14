@@ -61,3 +61,21 @@ schema 对自身索引结构严格，对保留的原观察允许原扩展字段�
 本次没有运行真实训练、GPU、profiler、数值／梯度／分布式或长期质量／收益验证；CPU 刻意失败和旧合成 archive 只证明相应控制与持久合同。没有验证自动优化、跨 baseline 迁移、累计收益、自动采用、跨轮预算或完整 Forge；这些仍按原条件另片。kernel 专家在原 v3 提案路径保持，允许无需 kernel 修改。
 
 剩余验收是本片普通提交／推送后的精确发布核对，以及该完整候选自己的适用 CI 终态。前片 CI 成功不认证本片。当前本地两轴 approve／开放 0／0，不代表远端或未来运行已经完成。
+
+## 固定普通发布补核（2026-11-15）
+
+同一独立评审者已直接核对普通发布 `750dd68ff2b1e41f6fe390d6a52e651bf41d5642`，唯一父为原基线 `eadabc0441991a02acc06e17efd8d6c16b7d9d27`，tree 为 `ffd7e16a8c0861c1043c182e214a68c2e741b938`。本节覆盖上文待普通发布／远端身份状态：**固定发布需求符合性 approve／可维护性 approve，新增实质 finding 0／0；本片自己的 CI 仍 pending，不认证成功。**
+
+从固定 Git 对象得到的变化集合恰为 **12 个文件**，逐项 blob ID、字节数和 SHA256 全部匹配原 `staged-r1.json` 与 `publication-r1.json`，没有额外或缺失文件。相对已审 scope-r2，产品、schema、测试和用户手册逐字相同；仅四份计划／交付文档补记实际本地独立通过，并加入本报告原 **9,708B／SHA256 `8a0eb09b4e676bb1c92200a748cd32f3b81d82b3277b3e3e1b32994edd96bf62`** 的版本。追加前该报告及本节前缀一致，原本地审查结论和证据没有改写。
+
+|发布原件|独立重算 SHA256|
+|---|---|
+|`staged-r1.json`|`578738175adcb0cae5e22e826d330551e504ef1f0c28a09a2ff74cb547d377f7`|
+|`publication-r1.json`|`7397035646388d6cbb6e90aa6151b61832fdf9a7006920d930b5d008fbfb33fc`|
+|`remote-r1.txt`|`4820653449bf449253d3ae51c81dba9778fb7f061b5a538016a9b9e349d46425`|
+
+独立执行只读 `git ls-remote --refs origin refs/heads/refactor/architecture-foundations`，实时 Ref 与保存原件均为上述完整发布 SHA。固定提交的 **640 产品 Git blob＝原记录清单＝r1 wheel＝原非 editable 安装**；wheel SHA256 仍为 `368f534a0497a12d00c89ad5f2e835343ed4e773c88048ab457a2b6f381bb558`，**283 参考**与原基线逐字相同。这里从固定 Git 对象读取产品，没有使用后继工作树认证本片。
+
+同样只读固定 Git 对象，复核发布的 **8 份 Markdown／195 个本地链接及 fragment，零错误**；新增的一条是交付记录中的本报告入口，上文 194 条保留原检查身份。基线→固定发布的 `git diff --check` 通过。私有补核原件为本片 `reviewer-r1/publication-r1.json`、`publication-live-remote-r1.txt`、`publication-docs-r1.json` 与原报告前缀快照。
+
+本次没有重跑测试／模型／训练、安装或平台写入，没有提交或推送。原三接缝、两条原合同旅程及文本审查继续保留原身份；此补核没有扩大为训练质量、性能、自动循环或采用。剩余项为该完整候选自己的适用 CI 终态及同片补核，不以任何前片或后继结果替代。

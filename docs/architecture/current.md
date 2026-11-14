@@ -2,11 +2,11 @@
 
 Ergora 把项目合同、可组合的专长 Agent、正式执行和可核对证据接在一起。CLI 与网页共用应用用例；Agent 后端、工单来源和外部通信各有自己的接入位置。当前实现仍复用冻结参考发行的六阶段与 Temporal，不要求每个项目使用工单，也没有第二套正式调度器。
 
-本页按 `506cc576874e92bc922644a8dd9f244151b08e4b` 的611个产品文件更新，覆盖F7工单、F8只读会话、F9训练控制和F10复盘／资料冻结的现有所有者。静态AST盘点为73个顶层第一方Python模块（含`__init__`／`__main__`）、300条去重本地导入边和28个第一方console JS模块；Python导入包含函数内导入，静态图无环。随包驱动、冻结reference、vendor与动态装载／子进程调用不计入这73模块的静态导入图，运行关系需另核下文。
+本页按 `750dd68ff2b1e41f6fe390d6a52e651bf41d5642` 的640个产品文件更新，覆盖原F7／F8／F9／F10以及Q1精确本地包、Q2领域配方、Q3流程／提案与Q4.1索引。固定[源码清单](../delivery/evidence/2026-11-15-component-source-inventory.json)为76个顶层第一方Python模块（含`__init__`／`__main__`）、312条去重本地导入边和28个第一方console JS模块；Python导入包含函数内导入，静态图无环。随包驱动、冻结reference、vendor与动态装载／子进程调用不计入这76模块的静态导入图，运行关系需另核下文。原506cc57的611文件／73模块／300边保持历史范围，不当当前清单。
 
 逐次实施说明已[逐字归档](current-history-2026-11-11.md)，[C6d原源码清单](../delivery/evidence/2026-11-11-architecture-source-inventory.json)的53模块／203边／18JS保持原身份，不当作当前清单。当前验证与开放条件以[PLAN](../PLAN.md)及各片交付为准；静态图本身不证明全部动态路径或性能。
 
-Q1.1 增量增加 `review_packets` 与标准库 `git_materials` 两个 owner；上述固定基线清单保持原身份。离线包入口在创建 State 前分派，正式 executor 和离线采集共用有界 Git 读取／完整 blob；新入口不依赖任务、平台后端、模型或服务。具体合同与实际验证见[本地审查包](../LOCAL_REVIEW.md)和[逐步交付](../delivery/2026-11-15-local-review-packets.md)。
+当前清单已包含Q1.1的 `review_packets` 与标准库 `git_materials`，以及Q4.1的 `training_rounds`。本地Git包入口在创建State前分派，正式executor和离线采集共用有界Git读取／完整blob；多轮索引create沿原training采集，read不构造State或查询服务。Q2／Q3新增配方不构成新的图调度器；kernel专家保留评估，可判断无需kernel修改。具体合同见[本地审查包](../LOCAL_REVIEW.md)、[训练手册](../TRAINING.md)及各片交付。修改组件前按[目录级变更协议](component-change-protocols.md)选择实际owner。
 
 ## 模块与依赖
 
@@ -16,6 +16,9 @@ Q1.1 增量增加 `review_packets` 与标准库 `git_materials` 两个 owner；�
 flowchart TB
   CLI[cli / 命令行] --> Uses[应用用例]
   CLI --> ReviewPackets[review_packets / 离线本地审查包]
+  CLI --> Rounds[training_rounds / 不可变原观察索引]
+  Rounds --> Training
+  Rounds --> Bundles
   ReviewPackets --> GitMaterials[git_materials / 有界完整 Git 对象]
   ReviewPackets --> Bundles
   HTTP[web / HTTP] --> Uses
@@ -73,6 +76,7 @@ flowchart TB
 |`agent_runs`|独立叶子／角色的输入冻结、准入、调用和归档|原项目／定义／后端绑定保持；普通调用成功不生成正式任务通过|
 |`task_context`|按显式选择读取当前有效记忆／活动Skill，在原准备目录派生并冻结完整根|复用原定义／manifest和资产所有者，首次intent前核来源；恢复已存意图不随当前head重建，没有第二资源库|
 |`review_packets`、`git_materials`|state-free 精确 base／head／diff-base 本地包、显式上下文／祖先规范、离线摘要与引用校验；与原 executor 共用有界二进制 Git／批量完整 blob|Git 2.43+、本地普通文本对象；原叶权限由 executor 回调核对。新目录原子发布，不执行目标代码或获取缺对象；自洽不认证来源、祖先或检查，无正式任务／批准身份|
+|`training_rounds`|显式选择原实验后生成新的不可变索引；固定旧SHA扩展、保留原观察及前驱、离线核整份身份和内部链接|create复用原training观察／归档／投递／批准；read无需State。初始锚点与实际比较分开，首版同原baseline；失败／unknown不提升。无自动运行、来源认证或批准权威|
 |`retrospectives`|从原交接包完整文本准备三类复盘输入，核来源／结果及明确导出|生成与导出不采用；Skill交原评价／采用，记忆交原保存／修订，流程交原不可变定义导入。原基线／权限／图边保持，不改可信评价或批准|
 |`agents`、`agent_backends`|角色输出合同与可替换后端Adapter|调用者走同一Interface；实现拥有原生命令、配置、结果提取及支持模式|
 |`task_mcp`|单次调用的完整声明资源投影与连接回执|只有固定 `list/read`，没有任意路径／shell工具；当前要求Linux和可选SDK|
