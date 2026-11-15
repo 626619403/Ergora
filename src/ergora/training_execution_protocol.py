@@ -126,6 +126,47 @@ def decode(raw: bytes) -> dict:
     return value
 
 
+class PhaseFrames:
+    """Read the ordered stopped/result response for one identity-bound helper."""
+
+    def __init__(self, identity: dict, output: Path, result_limit: int):
+        self.identity, self.output, self.result_limit = identity, output, result_limit
+        self.frames, self.buffer, self.problem = [], bytearray(), None
+
+    def receive(self, raw: bytes) -> None:
+        if self.problem is not None:
+            return
+        self.buffer.extend(raw)
+        while b'\n' in self.buffer:
+            line, _, rest = self.buffer.partition(b'\n')
+            self.buffer = bytearray(rest)
+            event = 'stopped' if not self.frames else 'result'
+            limit = 65_536 if event == 'stopped' else self.result_limit
+            try:
+                if len(self.frames) == 2 or len(line) > limit:
+                    raise ValueError('Unexpected or oversized training phase frame')
+                frame = decode(line)
+                field = 'process' if event == 'stopped' else 'result'
+                if (set(frame) != {*self.identity, 'event', field}
+                        or any(frame.get(key) != value for key, value in self.identity.items())
+                        or frame['event'] != event or not isinstance(frame[field], dict)):
+                    raise ValueError('Training phase response differs from its complete original identity or order')
+                if event == 'stopped':
+                    process = frame[field]
+                    if (set(process) != {'status', 'returncode', 'output'}
+                            or process['status'] not in ('succeeded', 'failed', 'cancelled', 'timed_out')
+                            or process['returncode'] is not None and type(process['returncode']) is not int
+                            or process['output'] != str(self.output / 'helper')):
+                        raise ValueError('Training phase stopped frame has no complete process observation')
+                self.frames.append(frame)
+            except ValueError as error:
+                self.problem = str(error)
+                return
+        limit = 65_536 if not self.frames else self.result_limit
+        if len(self.buffer) > limit:
+            self.problem = 'Incomplete training phase frame exceeds its complete response capacity'
+
+
 def owner_record(value: dict) -> dict:
     common = ('schema_version', 'intent_sha256', 'authorization_sha256', 'pid', 'start_ticks', 'boot_id', 'context_sha256')
     version = value.get('schema_version')

@@ -18,7 +18,6 @@ import time
 import uuid
 
 from . import budget_clock, processes, registrations, training_cycles, training_execution_protocol
-from .definition_bundles import parse_json
 from .processes import identity as _process_identity
 from .state import State, file_lock, now
 
@@ -69,7 +68,7 @@ class _BudgetPhase:
                         'intent_sha256': budget.identity['intent_sha256'],
                         **({'execution': execution} if execution is not None else {}),
                         **({'final': final} if final is not None else {})}
-        self.frames, self.buffer, self.problem = [], bytearray(), None
+        self.response = training_execution_protocol.PhaseFrames(self.identity, self.output, _FINAL_LIMIT)
         self.supervisor_returncode = None
         self.stopping, self.signalled, self.done = False, False, False
         self.offset = 0
@@ -80,39 +79,6 @@ class _BudgetPhase:
             return self.budget.remaining(self.context, cleanup=total or self.mode not in _COMPUTE_MODES) <= 0
         except (OSError, ValueError):
             return True
-
-    def receive(self, raw: bytes) -> None:
-        if self.problem is not None:
-            return
-        self.buffer.extend(raw)
-        while b'\n' in self.buffer:
-            line, _, rest = self.buffer.partition(b'\n')
-            self.buffer = bytearray(rest)
-            event = 'stopped' if not self.frames else 'result'
-            limit = 65_536 if event == 'stopped' else 2 * training_cycles.MAX_RECORD_BYTES
-            try:
-                if len(self.frames) == 2 or len(line) > limit:
-                    raise ValueError('Unexpected or oversized training phase frame')
-                frame = parse_json(line.decode('utf-8'), 'training budget phase', finite=True)
-                field = 'process' if event == 'stopped' else 'result'
-                if (not isinstance(frame, dict) or set(frame) != {*self.identity, 'event', field}
-                        or any(frame.get(key) != value for key, value in self.identity.items())
-                        or frame['event'] != event or not isinstance(frame[field], dict)):
-                    raise ValueError('Training phase response differs from its complete original identity or order')
-                if event == 'stopped':
-                    process = frame[field]
-                    if (set(process) != {'status', 'returncode', 'output'}
-                            or process['status'] not in ('succeeded', 'failed', 'cancelled', 'timed_out')
-                            or process['returncode'] is not None and type(process['returncode']) is not int
-                            or process['output'] != str(self.output / 'helper')):
-                        raise ValueError('Training phase stopped frame has no complete process observation')
-                self.frames.append(frame)
-            except (UnicodeError, ValueError) as error:
-                self.problem = str(error)
-                return
-        limit = 65_536 if not self.frames else 2 * training_cycles.MAX_RECORD_BYTES
-        if len(self.buffer) > limit:
-            self.problem = 'Incomplete training phase frame exceeds its complete response capacity'
 
     def start(self) -> bool:
         """Launch without reading or writing the business filesystem in the parent."""
@@ -149,14 +115,14 @@ class _BudgetPhase:
     def poll(self, timeout: float = 0) -> bool:
         """Pump this phase's pipes; default polling never waits for a peer."""
         process, selected = self.process, self.selected
-        stop = (self.stopping or self.problem is not None or self.expired()
+        stop = (self.stopping or self.response.problem is not None or self.expired()
                 or self.mode in _COMPUTE_MODES and self.budget.cancelled)
         if stop and not self.signalled and process.poll() is None:
             process.terminate()
             self.signalled = True
         # This matching frame proves the only child subtree has been reaped.
         # S may only perform direct storage/observation after that frame.
-        if self.frames and self.expired(total=True) and process.poll() is None:
+        if self.response.frames and self.expired(total=True) and process.poll() is None:
             process.kill()
         events = selected.select(timeout)
         for key, event in events:
@@ -173,7 +139,7 @@ class _BudgetPhase:
                         selected.unregister(stream)
                         stream.close()
                     elif stream is process.stdout:
-                        self.receive(raw)
+                        self.response.receive(raw)
                     else:
                         self.startup_stderr.extend(raw[:max(0, 65_536 - len(self.startup_stderr))])
             except BlockingIOError:
@@ -197,11 +163,11 @@ class _BudgetPhase:
                 if not stream.closed:
                     stream.close()
         self.supervisor_returncode = self.process.returncode
-        if (self.process.returncode == 0 and self.offset == len(self.encoded) and len(self.frames) == 2
-                and not self.buffer and self.problem is None and not self.expired(total=self.mode == 'execute')):
-            return self.frames[1]['result']
+        if (self.process.returncode == 0 and self.offset == len(self.encoded) and len(self.response.frames) == 2
+                and not self.response.buffer and self.response.problem is None and not self.expired(total=self.mode == 'execute')):
+            return self.response.frames[1]['result']
         return {'status': 'unknown', 'phase_id': self.identity['phase_id'],
-                'reason': self.problem or self.startup_stderr.decode('utf-8', errors='replace').strip()
+                'reason': self.response.problem or self.startup_stderr.decode('utf-8', errors='replace').strip()
                           or 'Original phase has no complete in-budget result',
                 'supervisor_returncode': self.process.returncode}
 
@@ -467,7 +433,7 @@ class BudgetedStart:
         return result
 
     def record_phase(self, phase, result: dict) -> None:
-        helper = phase.frames[0]['process'] if phase.frames else None
+        helper = phase.response.frames[0]['process'] if phase.response.frames else None
         self.phase_observations.append({'phase_id': phase.identity['phase_id'], 'mode': phase.mode,
             'supervisor_returncode': phase.supervisor_returncode, 'stopped': helper is not None,
             'helper_process': {key: helper[key] for key in ('status', 'returncode')} if helper is not None else None,

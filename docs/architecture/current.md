@@ -451,6 +451,8 @@ legacy能力为null的owner仍串行处理monitor／fence／cleanup／publish；
 
 [B3.3c1](../plans/2026-11-15-training-managed-execution.md)将原`_BudgetPhase`拆为start／request_stop／非阻塞poll／finish，串行run使用同一生命周期；能力为null的owner保持上述四mode原合同。父侧只按已核预算目录拼接固定phase路径，safe_file／目录和stderr文件由对应S在实际使用时处理；新增stderr管道有界读取，初始化未发送请求时的失败会收尾等待进程。多个phase的调用者先全部请求停止，再轮询全部，已终止才finish；stopped之后S只直接读写／观察、不再spawn。受管执行由下节显式用例消费同一低层接缝，phase接口自身不产生执行许可。
 
+[b2a共享响应整理](../delivery/2026-11-15-training-phase-frames.md)把两帧分包、完整身份／顺序、process观察和容量校验移入已有stdlib `training_execution_protocol.PhaseFrames`。原budget装配2 MiB结果容量，其poll／finish与record_phase读取同一response；selector、原clock、TERM与唯一reaper仍由原owner持有。共享codec只解析事实，不产生动作或停止证明，后继cycle operation单独使用32 KiB结果容量；当前整理本身没有fan-out或总Workflow。
+
 ## 原生训练来源与锁内准入接缝
 
 `reference.prepare_training` 和既有 `validate_installation` 共用本地来源校验，CLI 只解析显式协议及新目录。两个固定 data 资源物化 `training-executor-admission-v1`，不新增模块族或全局工具注册器；原 283 字节不变。新协议完整核279来源，legacy保留按用途的Python范围；准备中断的空或缺损descriptor不能回退为legacy。

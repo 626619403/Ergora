@@ -4,7 +4,11 @@
 
 ## 当前检查点
 
-**b1本地闭合／发布待：** 六原owner完整binding／固定父run与四gate已接。新fresh reviewer最终本地需求／维护性两轴approve、开放0／0，R1含深层JSON完全关闭，原红／阶段关闭／重开历史保持。原r1完整安装127通过／1208.80秒，r2较广安装32通过／338.38秒；最终r3两安装各652逐字／283／依赖、相关原create／晚RPC／registry＋完整架构19通过／54.48秒，自身原模板49.515秒两轴approve；各候选身份分列，独立完整24文件终核与已知owner收尾已核。普通提交／推送及自己的CI待。[逐步交付](delivery/2026-11-15-training-cycle-gates.md)／[产品终核](delivery/2026-11-15-training-cycle-gates-review.md)。[b2具体监管r3设计](plans/2026-11-15-training-cycle-stop-supervision.md)已新独立两轴approve／开放0／0，R1仅设计关闭；b2产品待b1后前提复核。kernel专家保持原v3。
+**b1已普通发布／自己的CI在途：** 固定`43d215af0ed372d7d1502bbe244b5631ee6d9b24`，24 staged blob／tree及完整远端Ref一致；同reviewer已核固定发布两轴approve／开放0／0。六owner完整binding／固定父run与四gate本地闭合，R1含深层JSON关闭，历史保持。原r1完整127、r2较广32与最终r3相关19分别通过，最终两安装652／283／依赖、自身49.515秒两轴approve及收尾已核。自己的官方首次403保留，重置后200已定位run43698966489／attempt1／push／精确SHA／本分支，当前in_progress；终态待。[逐步交付](delivery/2026-11-15-training-cycle-gates.md)／[产品终核](delivery/2026-11-15-training-cycle-gates-review.md)。[b2具体监管r3设计](plans/2026-11-15-training-cycle-stop-supervision.md)已新独立设计两轴approve／开放0／0，R1仅设计关闭；b2a按下段在本地推进，后继推送仍待前片CI，不先接fan-out。kernel专家保持原v3。
+
+**b2a本地实施／安装验收在途（09:38 UTC接续）：** 已按[原设计具体节点](plans/2026-11-15-training-cycle-stop-supervision.md#b1固定发布后的接口前提与b2a节点)在原两owner迁移codec与实际读取者，未改原driver／reaper／clock或新增tracked测试。源码原parent pipe／TERM一通过／1.22秒；新core／SDK各652逐字／283／依赖通过，真实core`-I -S`容量／错身份保留stopped与无SDK解析通过。原phase／回收／大stdin／final／release＋架构仍在最终安装运行；自身原结构模板33.094秒两轴approve，仅认证完整供稿范围；新的fresh-context产品审查已在途。恢复已核原PID／diff，没有重复构建或回归。前片09:37 UTC官方CI仍in_progress，后继推送继续等其终态及本片本地／独立门禁。独立停止fan-out不混入本片，kernel专家保持v3。[逐步交付](delivery/2026-11-15-training-phase-frames.md)。
+
+**b2a本地门禁闭合：** 最终非editable安装的原phase＋完整架构27通过／290.65秒，JUnit／stdout／退出码一致；原source／wheel manifest／两安装各652及177测试／示例冻结副本重新核同一，原10个owner活匹配0、验收路径进程0。自身原模板33.094秒approve归原供稿，新的独立reviewer已核终态、八文件完整scope及额外标记共19个actor活匹配0，最终本地两轴approve／开放0／0。产品未新增测试／CI／transport，原clock／reaper／人工release保持；可先固定本地提交，远端推送仍等前片自己的CI及原reviewer闭合，本片固定发布／自己的CI另验。下一片b2b沿原设计做独立并发停止通知，kernel专家继续保留v3。[独立报告](delivery/2026-11-15-training-phase-frames-review.md)。
 
 **c0.2a已精确闭合／b1开始：** 07cbae自己的run`43693023635`／push／attempt1终态八job、30必要步骤全部success；原fresh reviewer已核固定18blob／652产品及原HTTP／完整矩阵，最终需求／维护性两轴approve／开放0／0，a6闭合。403及中间状态保持原身份。[b0设计](plans/2026-11-15-training-cycle-gates.md)已独立通过，现在以07cbae开始b1完整binding／四最后gate；已有工作树差异全为状态与设计文档，九原源码／测试已冻结。b2监管草案初审R1冷inspect截止／post-stopped结果读取缺口已修至r3，仍待原reviewer设计终核；b2产品未开始。kernel专家保留在v3路径。
 

@@ -50,3 +50,20 @@ inspect H核完整原authorization SHA、cycle raw SHA和policy，使用原`budg
 新的独立初审指出冷inspect还没有原clock，而r1笼统要求每个S使用原clock watchdog，属于可达的bootstrap截止缺口；需求request-changes，维护性approve。r2明确inspect-only固定观察截止、null input SHA范围、实际`stop_requested`、spawn取消回收及完整snapshot后的原clock算法；同reviewer续核又指出post-stopped冷结果读取仍不能等未知原total。r3将父侧最终kill／finish截止按mode明确为同一bootstrap截止或原total，并补该可达窗口验收；未改产品，待同reviewer复审，不把设计修订当作产品通过。
 
 原fresh reviewer现已对固定r3（10,699B，SHA256 `d8d049eb6b281c591e0f3716563adbffd2c87fa14f315a2b54851ef14f7d3692`）给最终设计需求／维护性两轴approve，开放0／0，R1仅设计层关闭。[审查报告](../delivery/2026-11-15-training-cycle-stop-supervision-plan-review.md)保留10,775B初审前缀，最终14,014B／SHA256 `62b448bd52b4bd82ab457d81eecf0cac37d2fb9935ee376ee4512c329b8a2ea7`。尚无b2产品；b1实施后仍核接口前提，产品验收不继承设计通过。
+
+## b1固定发布后的接口前提与b2a节点
+
+b1已普通发布`43d215af0ed372d7d1502bbe244b5631ee6d9b24`，自身CI仍在途。本次仅只读核该固定源码：相对07cbae，`_BudgetPhase`完整AST、`BudgetedStart.record_phase`、`budget_main`及`Execution.drive`均未改变；`processes.py`逐字相同。b1的完整binding／父许可接线没有迁走原selector、两帧、预算或reaper。私有`supervision-b1-fixed-prerequisites.json`保存实际对比，不将它称为b2产品测试。
+
+实际额外读取者为`BudgetedStart.record_phase`，它读取`phase.frames`的首stopped事实；移动codec时须一同迁移该读取，不能只替换poll入口。原budget保留65,536B首帧与2 MiB结果，cycle用例在同一codec选32 KiB结果；两者的operation身份、目录、停止来源和父driver分别保留。原`decode`已提供stdlib严格JSON，领域／State校验不下沉；具体语义和失败观察在产品审查中核对，不把parser通过当作停止／回收通过。
+
+|子节点|可验收动作|当前状态|
+|---|---|---|
+|b2a.1 固定前提|核本节实际caller及43d源码，承接原r3设计；若b1 CI导致新修正则先更新基线|只读前提已核；b1自己的CI终态待|
+|b2a.2 只移动codec|在现有stdlib protocol内放`PhaseFrames(identity, output, result_limit)`；budget原owner装配并迁移其真实读取者，原start／poll／finish／supervise不换driver|两原owner已实施；未接cycle运行或fan-out|
+|b2a.3 相关验证|新非editable安装、283／依赖／架构；沿原phase的真实TERM／peer／后代回收、大stdin、final／坏或缺帧与容量接缝，保留原两帧顺序和unknown边界；另核共享codec无SDK／State依赖|两新安装各652／283／依赖及实际stdlib容量接缝已过；最终原安装phase与完整架构27通过／290.65秒，原件身份和10个owner收尾已核|
+|b2a.4 独立交付|更新本计划／所属交付与根PLAN，自身原结构模板、新fresh-context产品两轴、普通发布及自己的CI|自身原模板33.094秒及新fresh-context最终本地两轴approve／开放0／0；独立核19个actor已停；远端发布仍等b1前置CI闭合|
+
+b2b仍按上文独立异步operation／writer／逐owner通知／drain与观察设计实施；冷inspect的同一BOOTTIME截止、spawn取消仍回收、匹配stopped后不再spawn和原total仍是明确责任。此处只是将已批准方向落到已核caller与可验收节点，没有开放公共live stop或改变r3原合同。
+
+b1固定产品已获同reviewer发布需求／维护性两轴approve，自己的CI在途。基于已闭合本地验收和上文固定caller前提，b2a可以在本地按原设计实施／验收，后继产品的普通推送继续等待b1自己的CI终态；这一区分避免等待外部矩阵时混入fan-out。b2a没有新运行语义或公共入口，若b1 CI有实际修正则先接续它并重核基线。原b1 Git对象、wheel和测试副本均保持，不把新工作树改动归给b1审查。
