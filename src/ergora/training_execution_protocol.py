@@ -167,6 +167,83 @@ class PhaseFrames:
             self.problem = 'Incomplete training phase frame exceeds its complete response capacity'
 
 
+def validate_cycle_operation(payload: dict) -> None:
+    """Bind a bounded operation request without loading application state or SDKs."""
+    _exact(payload, ('identity', 'snapshot', 'bootstrap', 'reason'), 'Cycle operation')
+    identity = payload['identity']
+    _exact(identity, ('protocol', 'operation_id', 'mode', 'control_home', 'project', 'cycle_id',
+        'input_sha256', 'authorization_sha256', 'ordinal', 'parent'), 'Cycle operation identity')
+    if (identity['protocol'] != 'ergora-training-cycle-operation-v1'
+            or not isinstance(identity['operation_id'], str)
+            or re.fullmatch('[a-f0-9]{32}', identity['operation_id']) is None
+            or identity['mode'] not in ('inspect', 'stop-writer', 'notify-owner', 'drain', 'observe-execution')):
+        raise ValueError('Unsupported cycle operation or observation identity')
+    for name, maximum in (('project', 63), ('cycle_id', 79)):
+        if not isinstance(identity[name], str) or re.fullmatch(
+                '[A-Za-z0-9][A-Za-z0-9_-]{0,' + str(maximum) + '}', identity[name]) is None:
+            raise ValueError('Cycle operation requires portable original project and cycle IDs')
+    home = identity['control_home']
+    if not isinstance(home, str) or not Path(home).is_absolute() or '..' in Path(home).parts:
+        raise ValueError('Cycle operation requires its complete absolute control directory')
+    _digest(identity['authorization_sha256'])
+    _process(identity['parent'])
+    ordinal = identity['ordinal']
+    if identity['mode'] in ('notify-owner', 'observe-execution'):
+        if type(ordinal) is not int or not 0 <= ordinal < 32:
+            raise ValueError('Cycle target requires its original selected ordinal')
+    elif ordinal is not None:
+        raise ValueError('This cycle operation has no selected ordinal')
+    if payload['reason'] is not None and (not isinstance(payload['reason'], str) or not payload['reason'].strip()):
+        raise ValueError('Cycle stop requires a nonempty reason')
+    if identity['mode'] == 'stop-writer' and payload['reason'] is None:
+        raise ValueError('Cycle stop writer requires its explicit reason')
+    if identity['mode'] == 'inspect':
+        if identity['input_sha256'] is not None or payload['snapshot'] is not None:
+            raise ValueError('Cold cycle inspection cannot assume an unverified input or snapshot')
+        bootstrap = payload['bootstrap']
+        _exact(bootstrap, ('boot_id', 'started_ns', 'deadline_ns'), 'Cycle observation deadline')
+        if (bootstrap['boot_id'] != identity['parent']['boot_id']
+                or type(bootstrap['started_ns']) is not int or bootstrap['started_ns'] < 0
+                or type(bootstrap['deadline_ns']) is not int
+                or not 1_000_000_000 <= bootstrap['deadline_ns'] - bootstrap['started_ns'] <= 60_000_000_000):
+            raise ValueError('Cold inspection requires one fixed 1 to 60 second observation deadline')
+        return
+    _digest(identity['input_sha256'])
+    if payload['bootstrap'] is not None:
+        raise ValueError('Verified cycle operations must use the original total allowance')
+    snapshot = payload['snapshot']
+    _exact(snapshot, ('authorization', 'policy', 'candidates'), 'Original cycle snapshot')
+    authorization, policy = snapshot['authorization'], snapshot['policy']
+    if (not isinstance(authorization, dict) or authorization.get('schema_version') != 2
+            or authorization.get('sha256') != identity['authorization_sha256']
+            or CycleAdmission._sha({k: v for k, v in authorization.items() if k != 'sha256'}) != authorization['sha256']
+            or any(authorization.get(key) != identity[key] for key in
+                ('control_home', 'project', 'cycle_id', 'input_sha256'))):
+        raise ValueError('Cycle operation differs from the complete original authorization')
+    _exact(policy, ('wall_seconds', 'cleanup_seconds', 'control_timeout_seconds'), 'Original cycle policy')
+    if (type(policy['wall_seconds']) is not int or type(policy['cleanup_seconds']) is not int
+            or not 1 <= policy['cleanup_seconds'] < policy['wall_seconds']
+            or type(policy['control_timeout_seconds']) is not int or not 1 <= policy['control_timeout_seconds'] <= 60):
+        raise ValueError('Cycle operation has an invalid original budget policy')
+    _exact(authorization.get('clock'), budget_clock.FIELDS, 'Original cycle clock')
+    budget_clock.validate(authorization['clock'], policy['wall_seconds'])
+    candidates = snapshot['candidates']
+    if not isinstance(candidates, list) or not 1 <= len(candidates) <= 32 or ordinal is not None and ordinal >= len(candidates):
+        raise ValueError('Cycle operation has no complete ordered candidate index')
+
+
+def cycle_operation_remaining(payload: dict) -> float:
+    """Use the fixed bootstrap observation or the same original total, never renew it."""
+    if payload['identity']['mode'] == 'inspect':
+        bootstrap = payload['bootstrap']
+        boot, ticks = budget_clock._clock()
+        if boot != bootstrap['boot_id'] or ticks < bootstrap['started_ns']:
+            raise ValueError('Cold cycle observation lost its original boot clock')
+        return (bootstrap['deadline_ns'] - ticks) / 1_000_000_000
+    snapshot = payload['snapshot']
+    return budget_clock.remaining(snapshot['authorization']['clock'], snapshot['policy']['wall_seconds'])
+
+
 def owner_record(value: dict) -> dict:
     common = ('schema_version', 'intent_sha256', 'authorization_sha256', 'pid', 'start_ticks', 'boot_id', 'context_sha256')
     version = value.get('schema_version')

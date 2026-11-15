@@ -429,6 +429,8 @@ F10d4沿原agent_runs准入读取增加可选显式input digest，薄HTTP固定t
 
 [最后门禁消费片](../plans/2026-11-15-training-cycle-gates.md)在原三字段binding上增加完整controller selector：protocol、固定workflow／run、完整intent SHA及原ordinal。`CycleAdmission.bind`由`BudgetedStart.source`和native context共同使用，核原父intent／attempt／receipt及同一admission；父attempt的`workflow_input_sha256`保存父workflow input canonical SHA，与cycle raw input SHA分列。submission、worker与Execution在原异步操作中核父run的RUNNING、describe／started memo、类型／queue和完整input；prepare的SQLite reservation及原registry／executor锁内不查询远端。父共享许可覆盖原RPC、原create、request／launch及native process，原锁与最终同步后的检查仍可否决迟到工作；已消耗attempt／launch不返还。自动actor固定为原授权，手工模式沿原明确操作者。schema2仍不能通过旧手工binding派发，schema1不得带controller。该片没有总Workflow producer；独立fan-out、独立cycle worker／queue和公共CLI／HTTP继续后继交付，当前验收进度见[逐步交付](../delivery/2026-11-15-training-cycle-gates.md)，不把服务替身的消费gate检查称为可运行的自动多轮训练。
 
+[独立停止操作](../plans/2026-11-15-training-cycle-stop-operations.md)的内部入口`reference_training_worker.stop_live_controller`先由异步S-H冷inspect核完整原authorization／policy及有序候选，再分别监督writer、父许可drain、逐owner精确pidfd通知与原执行链观察。所有业务文件／锁／fsync都在各自H；异步父loop只监管管道、内核身份与clock。冷inspect在spawn前固定一次1至60秒观察截止，效果分支沿原total；超限或未知保留unknown，不续权。每个S只调用原`processes.run(supervised=True)`回收一个H及后代，匹配stopped后不再spawn，最后结果读取仍受同一截止约束。通知、停止可见／持久、父许可排空和executor停止证明分别返回，原完成轮的人工release保持。共享`training_execution_protocol.PhaseFrames`只拥有两帧解析，原budget selector与新asyncio driver各留原运行边界；cycles保留Path记录读取，不反向依赖worker。具体安装／回归与发布范围见[交付](../delivery/2026-11-15-training-cycle-stop-operations.md)；总Workflow、独立cycle服务／stop queue和公共自动入口仍未交付。
+
 ```mermaid
 flowchart LR
   Cycle[cycle-start / 原授权选择] --> Start[training.start / 原提交 intent]

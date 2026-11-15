@@ -4,6 +4,10 @@
 
 ## 当前检查点
 
+**活动b2b最终本地终核：** 已在原worker／protocol实现异步S-H操作、完整原snapshot及独立writer／逐owner通知／drain／原执行链观察；cycles／budget／reaper／native保持。新core／SDK各652逐字／283／依赖通过；原安装r1为30通过／1新测试观察条件失败，修正通知事件后同一产品r2精准1通过／29.25秒，旧失败保持。最终自身原模板43.807秒approve，652两安装／178冻结测试及38已知actor活匹配0已核；新的fresh-context最终本地两轴approve／开放0／0，R1依赖环和R2通知观察测试关闭；准备固定本地提交，尚未发布。本片交付见[记录](delivery/2026-11-15-training-cycle-stop-operations.md)，远端仍等43d自己的准确CI（限额reset10:23:02 UTC）。kernel专家继续在v3。
+
+**b2b源码r1失败／修正中：** 原接缝与完整架构终态19通过／3失败／42.84秒；真实依赖环来自cycles反向导入worker／submission，将把异步编排与目标意图职责放回原worker边界。两新测试环境问题分别为双owner复用单Experiment服务替身、错误读取create结果。原失败完整保留，冷stopped截止及spawn／后代取消已局部通过，不代表fan-out整体通过。修正后r2终态22通过／57.23秒且运行前后源码同一，原架构／真实双owner并发／取消／耗尽通过；r3归档身份拒绝／缺失安装实际pidfd及原人工release两项通过；新两安装各652／283／依赖通过，安装r1为30通过／1新测试失败（把通知等同12秒内退出），原H已精确notified；改按实际pidfd事件与原独立收尾分别观察。自身原模板48.863秒approve、core实际inspect1.059秒通过；同一产品r2精准修正项1通过／29.25秒、原r1其余30项保持；最终模板／原件收尾／独立结论仍待，kernel专家保留v3。
+
 **活动b2b0只读依赖整理：** 前片b2a已固定本地`d1c728087423d85ed55f06010ec81e5e1d4b2fd1`／9 staged blob与tree同一，独立本地两轴闭合，远端仍等b1自己的CI。按[小片计划](plans/2026-11-15-training-cycle-offline-reader.md)已将原五个记录函数改为Path并迁移三个真实owner，完整AST只归一原参数／调用后相同；两新安装各652／283／依赖通过；禁止State构造并持真实schema锁的原schema1／2离线读取0.091秒通过，初选原故意坏夹具的拒绝保持。原安装授权／恢复／停止／实际registry与架构回归在途；自身模板／新独立审查及发布另验。之后才接异步operation／fan-out，没有当前自动循环成功主张。每步见[交付](delivery/2026-11-15-training-cycle-offline-reader.md)，kernel专家保持v3。
 
 **b2b0本地门禁闭合：** 最终原安装27通过／57.10秒，652双安装／177冻结测试副本／JUnit与1个owner收尾重新核过。自身原模板20.475秒及新的fresh-context最终本地需求／维护性两轴approve／开放0／0；独立额外禁止State._open／sqlite3.connect的原件读取通过。可先固定本地提交，后接b2b实际异步operation／fan-out。前片43d最后七job success／Windows在途，09:49 UTC匿名官方REST403／remaining0／reset10:23:02 UTC；原失败保存、限额前不重复查询，远端发布待准确终态，不替换成其他候选CI或未核成功。后继本地工作按原计划继续，kernel专家v3保持。[独立报告](delivery/2026-11-15-training-cycle-offline-reader-review.md)。

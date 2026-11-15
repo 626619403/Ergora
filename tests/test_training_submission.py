@@ -211,14 +211,15 @@ def service(prepared, monkeypatch, tmp_path):
     original = reference.processes.run
     fixture = Path(__file__).parent / 'fixtures/training_submission_client.py'
 
-    def select(scenario, *, budget_scenario=''):
+    def select(scenario, *, budget_scenario='', record_path=None):
+        storage = record if record_path is None else record_path
         def invoke(argv, *args, **kwargs):
             if ('from ergora.reference_training_submission import main;main()' in argv
                     or 'from ergora.reference_training_worker import execution_main;execution_main()' in argv):
                 argv = list(argv)
                 argv[-1] = f'import runpy;runpy.run_path({str(fixture)!r},run_name="__main__")'
                 kwargs['env'] = {**kwargs['env'], 'ERGORA_TEST_TRAINING_SUBMISSION': scenario,
-                                 'ERGORA_TEST_TRAINING_SERVICE': str(record),
+                                 'ERGORA_TEST_TRAINING_SERVICE': str(storage),
                                  'ERGORA_TEST_TRAINING_BUDGET': budget_scenario}
             return original(argv, *args, **kwargs)
         monkeypatch.setattr(reference.processes, 'run', invoke)
@@ -694,13 +695,14 @@ def authorize_budget(selection, tmp_path, *, wall=14, cleanup=4, timeout=4):
 
 
 @pytest.fixture
-def controller_admission(cycle_selection, tmp_path):
+def controller_admission(cycle_selection, tmp_path, request):
     from ergora import training_cycles
     from ergora.training_execution_protocol import CycleAdmission
 
-    state, _, _, _, _, request = cycle_selection
+    state, _, _, _, _, selection = cycle_selection
+    selection['budget'].update(getattr(request, 'param', {}))
     source = tmp_path / 'controller-input'
-    selected = training_cycles.create(state, 'demo', request, source)
+    selected = training_cycles.create(state, 'demo', selection, source)
     authorized = training_cycles.authorize_controller(state, 'demo', 'controller', source, selected['sha256'],
         state.project('demo')['revision'], confirm=True, execute_selected=True)
     directory = state.root / 'training-cycles/demo/controller'
@@ -2555,6 +2557,246 @@ def test_valid_large_manifest_can_publish_and_reread_its_aggregate_intent(prepar
     assert intent.stat().st_size > 1_048_576
     assert training.submission(state, 'demo', 'alpha') == result
     assert json.loads(record.read_text())['starts'] == 1
+
+
+@pytest.fixture
+def cycle_operation_fault(monkeypatch, tmp_path):
+    import asyncio
+
+    original = asyncio.create_subprocess_exec
+    fixture = Path(__file__).parent / 'fixtures/training_cycle_operations.py'
+    markers = tmp_path / 'operation-markers'
+    markers.mkdir()
+
+    async def invoke(*argv, **kwargs):
+        if argv[-1] == 'from ergora.reference_training_worker import cycle_operation_main;cycle_operation_main()':
+            argv = [argv[0], '-P', str(fixture), 'S']
+        return await original(*argv, **kwargs)
+
+    monkeypatch.setattr(asyncio, 'create_subprocess_exec', invoke)
+    monkeypatch.setenv('ERGORA_TEST_CYCLE_MARKERS', str(markers))
+
+    def select(fault):
+        monkeypatch.setenv('ERGORA_TEST_CYCLE_OPERATION', fault)
+        return markers
+
+    return select
+
+
+def recorded_process_is_active(value):
+    from ergora import processes
+
+    try:
+        return processes.identity(value['pid']) == {key: value[key] for key in ('pid', 'start_ticks', 'boot_id')}
+    except (OSError, ValueError):
+        return False
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Cycle operations use the original Linux supervised reaper')
+def test_cycle_cold_inspection_bounds_result_read_after_matching_stopped(controller_admission, cycle_operation_fault):
+    import asyncio
+    from ergora.reference_training_worker import _CycleOperation
+
+    state, _, _, authorized, _ = controller_admission
+    markers = cycle_operation_fault('post-stopped')
+    timeout = 3
+    operation = _CycleOperation(state.root, 'demo', 'controller', authorized['authorization_sha256'],
+                                'inspect', inspection_timeout=timeout)
+    result = asyncio.run(operation.run())
+    assert result['status'] == 'unknown' and result['operation_stopped'] is True
+    assert markers.joinpath('stopped-result-reader').exists()
+    assert not recorded_process_is_active(json.loads(markers.joinpath('stopped-result-reader').read_bytes()))
+    assert operation.process.returncode is not None
+    assert operation.payload['bootstrap']['deadline_ns'] - operation.payload['bootstrap']['started_ns'] == timeout * 1_000_000_000
+    assert not (state.root / 'training-cycles/demo/controller/controller/stop.json').exists()
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Cancellation must retain spawned Linux handles and reap descendants')
+@pytest.mark.parametrize('boundary', ['spawn', 'helper'])
+def test_cycle_operation_cancellation_retains_spawn_and_reaps_real_descendants(
+        controller_admission, cycle_operation_fault, monkeypatch, boundary):
+    import asyncio
+    from ergora.reference_training_worker import _CycleOperation
+
+    state, _, _, authorized, _ = controller_admission
+    markers = cycle_operation_fault('blocked-inspect')
+    operation = _CycleOperation(state.root, 'demo', 'controller', authorized['authorization_sha256'],
+                                'inspect', inspection_timeout=5)
+
+    async def run():
+        created, release = asyncio.Event(), asyncio.Event()
+        original = asyncio.create_subprocess_exec
+
+        async def held(*argv, **kwargs):
+            process = await original(*argv, **kwargs)
+            created.set()
+            await release.wait()
+            return process
+
+        if boundary == 'spawn':
+            monkeypatch.setattr(asyncio, 'create_subprocess_exec', held)
+        task = asyncio.create_task(operation.run())
+        try:
+            if boundary == 'spawn':
+                await asyncio.wait_for(created.wait(), 4)
+            else:
+                until = time.monotonic() + 4
+                while not (markers / 'inspect-helper').exists() and time.monotonic() < until:
+                    await asyncio.sleep(.02)
+                assert (markers / 'inspect-helper').exists()
+            task.cancel()
+        finally:
+            release.set()
+            if not task.done():
+                operation.request_stop()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+    asyncio.run(run())
+    assert operation.process is not None and operation.process.returncode is not None
+    if boundary == 'helper':
+        assert operation.response.frames
+        for name in ('inspect-helper', 'new-session-descendant'):
+            assert not recorded_process_is_active(json.loads((markers / name).read_bytes()))
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Independent stop branches require real Linux budget owners')
+@pytest.mark.parametrize('controller_admission', [
+    {'wall_seconds': 26, 'cleanup_seconds': 8, 'control_timeout_seconds': 3}], indirect=True)
+def test_cycle_stop_notifies_peer_while_writer_and_other_target_reads_block(
+        controller_admission, cycle_selection, service, cycle_operation_fault, monkeypatch):
+    import asyncio
+    import signal
+    from ergora import processes
+    from ergora.reference_training_worker import stop_live_controller
+
+    state, _, _, authorized, admission = controller_admission
+    runtime = cycle_selection[2]
+    binding = save_controller_binding(admission)
+    monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER', str(admission.folder))
+    owners = []
+    try:
+        for ordinal, selected in enumerate(cycle_selection[-1]['candidates']):
+            service[0]('accepted', record_path=service[1].with_name(selected['experiment_id'] + '-service.json'))
+            selector = {key: deepcopy(value) for key, value in binding.items() if key != 'task_queue'}
+            selector['controller']['ordinal'] = ordinal
+            submitted = training.start(state, 'demo', selected['experiment_id'], 1,
+                                       selected['manifest_sha256'], budget=selector)
+            assert submitted['status'] == 'submitted'
+            owners.append(json.loads((runtime / ('ergora/training-submissions/' + selected['experiment_id'] + '.budget/owner.json')).read_bytes()))
+        markers = cycle_operation_fault('blocked-stop')
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(asyncio.run, stop_live_controller(
+                state.root, 'demo', 'controller', authorized['authorization_sha256'], reason='Stop this original cycle'))
+            policy = cycle_selection[-1]['budget']
+            until = time.monotonic() + policy['wall_seconds']
+            while not (markers / 'beta-notified').exists() and time.monotonic() < until:
+                time.sleep(.02)
+            delivered = json.loads((markers / 'beta-notified').read_bytes())
+            assert delivered['target'] == {key: owners[1][key] for key in ('pid', 'start_ticks', 'boot_id')}
+            for name in ('stop-writer', 'alpha-owner-reader'):
+                assert recorded_process_is_active(json.loads((markers / name).read_bytes()))
+            result = future.result(timeout=policy['wall_seconds'] + 15)
+        branches = {(item['mode'], item['ordinal']): item for item in result['operations']}
+        assert branches['notify-owner', 1]['status'] == 'notified'
+        assert branches['notify-owner', 1]['executor_stop_confirmed'] is None
+        assert branches['stop-writer', None]['status'] == branches['notify-owner', 0]['status'] == 'unknown'
+        assert all(item['operation_stopped'] is True for item in result['operations'])
+        assert not any(recorded_process_is_active(owner) for owner in owners)
+        assert not any(recorded_process_is_active(json.loads((markers / name).read_bytes()))
+                       for name in ('stop-writer', 'alpha-owner-reader'))
+    finally:
+        for owner in owners:
+            try:
+                processes.notify_identity({key: owner[key] for key in ('pid', 'start_ticks', 'boot_id')}, signal.SIGTERM)
+            except (OSError, ValueError):
+                pass
+        if owners:
+            wait_budget_stopped(runtime, seconds=25)
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Archived target notification binds real Linux pidfds')
+def test_cycle_notification_rejects_foreign_identity_without_current_installation(
+        controller_admission, cycle_selection, cycle_operation_fault):
+    import asyncio
+    from ergora import processes, training_cycles
+    from ergora.reference_training_worker import _CycleOperation
+
+    state, _, _, authorized, admission = controller_admission
+    definition, runtime = cycle_selection[1:3]
+    binding = save_controller_binding(admission)
+    selector = {key: value for key, value in binding.items() if key != 'task_queue'}
+    reference.training_submission(state.project('demo'), state.root, 'prepare',
+        {'experiment_id': 'alpha', 'manifest_sha256': cycle_selection[-1]['candidates'][0]['manifest_sha256'],
+         'budget': selector}, timeout=20)
+    prefix = runtime / 'ergora/training-submissions'
+    intent_path = prefix / 'alpha.intent.json'
+    original_intent = intent_path.read_bytes()
+    intent = json.loads(original_intent)
+    target = subprocess.Popen([sys.executable, '-c', 'import time;time.sleep(60)'], start_new_session=True)
+    owner_path = prefix / 'alpha.budget/owner.json'
+    owner_path.parent.mkdir()
+    owner = {'schema_version': 1, 'intent_sha256': training_cycles._sha(intent),
+        'authorization_sha256': authorized['authorization_sha256'], 'context_sha256': 'a' * 64,
+        **processes.identity(target.pid)}
+    owner_path.write_text(json.dumps(owner))
+    original_owner = owner_path.read_bytes()
+    installation = Path(definition['execution']['installation'])
+    moved = installation.with_name(installation.name + '-unavailable')
+    try:
+        cycle_operation_fault('unavailable-sources')
+        inspection = asyncio.run(_CycleOperation(state.root, 'demo', 'controller',
+            authorized['authorization_sha256'], 'inspect').run())
+        assert inspection['status'] == 'inspected'
+        snapshot = inspection['snapshot']
+        installation.rename(moved)
+        for mismatch in ('controller', 'pid'):
+            if mismatch == 'controller':
+                altered = deepcopy(intent)
+                altered['budget']['controller']['run_id'] = 'foreign-controller-run'
+                intent_path.write_text(json.dumps(altered))
+            else:
+                owner_path.write_text(json.dumps({**owner, 'start_ticks': str(int(owner['start_ticks']) + 1)}))
+            rejected = asyncio.run(_CycleOperation(state.root, 'demo', 'controller',
+                authorized['authorization_sha256'], 'notify-owner', snapshot=snapshot, ordinal=0).run())
+            assert rejected['status'] == 'unknown' and rejected['operation_stopped'] is True
+            assert recorded_process_is_active(owner)
+            intent_path.write_bytes(original_intent)
+            owner_path.write_bytes(original_owner)
+        notified = asyncio.run(_CycleOperation(state.root, 'demo', 'controller',
+            authorized['authorization_sha256'], 'notify-owner', snapshot=snapshot, ordinal=0).run())
+        assert notified['status'] == 'notified' and notified['executor_stop_confirmed'] is None
+        target.wait(timeout=5)
+        assert not recorded_process_is_active(owner)
+        assert intent_path.read_bytes() == original_intent and owner_path.read_bytes() == original_owner
+    finally:
+        if moved.exists():
+            moved.rename(installation)
+        intent_path.write_bytes(original_intent)
+        owner_path.write_bytes(original_owner)
+        if target.poll() is None:
+            target.kill()
+        target.wait(timeout=5)
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='No stop operation may renew an exhausted original boot clock')
+@pytest.mark.parametrize('controller_admission', [
+    {'wall_seconds': 10, 'cleanup_seconds': 3, 'control_timeout_seconds': 3}], indirect=True)
+def test_cycle_stop_exhausted_original_clock_does_not_spawn_effect_branches(controller_admission, cycle_selection):
+    import asyncio
+    from ergora import budget_clock
+    from ergora.reference_training_worker import stop_live_controller
+
+    state, _, selected, authorized, admission = controller_admission
+    authorization = authorized['authorization']
+    while budget_clock.remaining(authorization['clock'], cycle_selection[-1]['budget']['wall_seconds']) > 0:
+        time.sleep(.05)
+    result = asyncio.run(stop_live_controller(
+        state.root, 'demo', 'controller', authorized['authorization_sha256'], reason='An exhausted original cycle'))
+    assert result['inspection']['status'] == 'inspected'
+    assert all(item['status'] == 'unknown' and item['operation_stopped'] is False for item in result['operations'])
+    assert not admission.stop.exists()
+    assert len(list((state.root / 'operations/training-cycles').iterdir())) == 1
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Native training start and recovery require Linux/WSL2')
