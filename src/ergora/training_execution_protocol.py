@@ -24,6 +24,7 @@ CYCLE_CANDIDATE_MODES = (*CYCLE_START_MODES, 'reconcile-candidate', *CYCLE_EXECU
 CYCLE_WORK_MODES = ('prepare-controller', 'submit-controller', *CYCLE_START_MODES, *CYCLE_EXECUTION_MODES)
 CYCLE_OBSERVATION_MODES = ('inspect', 'inspect-controller-activity', 'reconcile-controller', 'reconcile-candidate')
 LIMIT = 1_048_576
+ARTIFACT_LIMIT = 10_000_000
 GATE_SOURCES = (
     'training_execution_protocol.py', 'reference_training_execution.py',
     'reference_training_submission.py', 'reference_training_context.py',
@@ -34,6 +35,85 @@ GATE_SOURCES = (
     'asset_trees.py', 'state.py', 'budget_clock.py', 'processes.py', 'reference_creation_process.py',
     '__init__.py', 'data/reference-manifest.json', 'data/native-runtime/training-executor-admission-v1.json',
 )
+
+
+ROUND_COVERAGE = {'records': 'saved-observations', 'artifacts': 'index-only', 'runtime_status': 'not_queried',
+                  'authorization_status': 'not_evaluated', 'origin_authenticated': False,
+                  'execution_success': None, 'promotion_approved': False}
+
+
+def encode_round_content(value: dict) -> bytes:
+    return (json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2, allow_nan=False) + '\n').encode('utf-8')
+
+
+def round_content_sha(value: dict) -> str:
+    return hashlib.sha256(encode_round_content(value)).hexdigest()
+
+
+def round_comparison(records: dict) -> dict:
+    experiment = records['experiment']
+    manifest = experiment['manifest']
+    return {'baseline_id': manifest['baseline_id'], 'baseline_commit': manifest['baseline_commit'],
+            'base_config_sha256': manifest['base_config_sha256'],
+            'workload_fingerprint': manifest['workload_fingerprint'],
+            'candidate_commit': manifest['candidate_commit'],
+            'candidate_config_sha256': manifest['candidate_config_sha256'],
+            'manifest_sha256': experiment['binding']['manifest_sha']}
+
+
+def round_anchor(comparison: dict) -> dict:
+    return {key: comparison[key] for key in ('baseline_id', 'baseline_commit',
+                                            'base_config_sha256', 'workload_fingerprint')}
+
+
+def validate_round_content(report: dict) -> None:
+    """Check content of a schema-validated report, without authenticating its origin."""
+    if report['coverage'] != ROUND_COVERAGE:
+        raise ValueError('Training round index cannot grant execution, authorization or promotion')
+    parent, seen = None, set()
+    for item in report['rounds']:
+        content = {key: value for key, value in item.items() if key != 'sha256'}
+        if item['parent_sha256'] != parent or item['sha256'] != round_content_sha(content):
+            raise ValueError('Training round content or predecessor link differs from its SHA256')
+        parent = item['sha256']
+        if item['experiment_id'] in seen:
+            raise ValueError('Training round index contains the same original experiment twice')
+        seen.add(item['experiment_id'])
+        native = item['native']
+        records, evidence, submission, approval = (native[key] for key in ('records', 'evidence', 'submission', 'approval'))
+        experiment = records['experiment']
+        binding = experiment['binding']
+        revision = records['project_revision']
+        for view in (records, evidence, submission, *([approval] if approval is not None else [])):
+            if view['project'] != report['project']['id'] or view['project_revision'] != revision:
+                raise ValueError('Training round observations belong to different projects or revisions')
+        if (experiment['experiment_id'] != item['experiment_id'] or binding['experiment_id'] != item['experiment_id']
+                or any(view['experiment_id'] != item['experiment_id'] for view in (evidence, submission))
+                or evidence['binding'] != binding or evidence['recorded_gate_report'] != experiment['gate_report']):
+            raise ValueError('Training round observations have different original experiment bindings or gates')
+        files = {**records['baseline_files'], **experiment['files']}
+        if any(evidence['files'].get(name) != digest for name, digest in files.items()):
+            raise ValueError('Training sources changed between the original record and evidence observations')
+        if (item['comparison'] != round_comparison(records)
+                or item['comparison']['candidate_commit'] != binding['candidate_sha']
+                or item['comparison']['baseline_commit'] != binding['baseline_sha']):
+            raise ValueError('Training round comparison differs from its original manifest')
+        if round_anchor(item['comparison']) != report['initial_anchor']:
+            raise ValueError('Training round index requires one reviewed initial baseline; baseline migration is separate')
+        if submission['status'] in ('prepared', 'unknown', 'submitted') and (
+                submission['manifest_sha256'] != binding['manifest_sha']
+                or submission['confirmation']['binding'] != binding):
+            raise ValueError('Training round submission names a different original manifest')
+        if submission['status'] == 'submitted':
+            if (approval is None or approval['experiment_id'] != item['experiment_id']
+                    or approval['run_id'] != submission['run_id']):
+                raise ValueError('Training round approval must observe the original submitted run')
+        elif approval is not None:
+            raise ValueError('Training round approval is not evaluated for an unresolved or unsubmitted ingress')
+    previous = report['previous_report']
+    if previous is not None and (not 1 <= previous['rounds'] < len(report['rounds'])
+            or previous['last_round_sha256'] != report['rounds'][previous['rounds'] - 1]['sha256']):
+        raise ValueError('Training round extension does not retain its declared original prefix')
 
 
 def _exact(value, keys, label):
@@ -985,7 +1065,7 @@ def validate_context(context: dict, chain: ExecutionRecords, *, live=True) -> Cy
         raise ValueError('Execution authorization differs from its original complete SHA256')
     cycle = Path(intent['control_home']) / 'training-cycles' / intent['project'] / intent['budget']['cycle_id']
     _match(decode(read_raw(cycle / 'authorization.json')), authorization, 'Original cycle authorization')
-    raw = read_raw(cycle / 'cycle.json', 10_000_000)
+    raw = read_raw(cycle / 'cycle.json', ARTIFACT_LIMIT)
     if hashlib.sha256(raw).hexdigest() != authorization['input_sha256']:
         raise ValueError('Original complete cycle input changed')
     plan = decode(raw)
