@@ -81,3 +81,44 @@ def test_versioned_input_contract_imports_without_sdk_or_native_modules():
               'assert not any(n.split(".")[0] in ("temporalio","dev_platform","agent_platform") for n in sys.modules)')
     result = subprocess.run([sys.executable, '-I', '-S', '-c', script], capture_output=True, text=True, timeout=10)
     assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Budget worker uses the local Linux/WSL2 runtime')
+def test_budget_worker_bootstrap_registers_its_actual_queue_adapter_and_native_activities(tmp_path):
+    pytest.importorskip('temporalio')
+    import shutil
+
+    installation = tmp_path / 'installation with space'
+    shutil.copytree(reference.ROOT / 'platform', installation)
+    environment = dict(os.environ, AGENTFLOW_CONFIG_DIR=str(tmp_path / 'config'),
+        AGENTFLOW_STATE_DIR=str(tmp_path / 'runtime'), PYTHONPATH=os.pathsep.join(map(str, (
+            installation / 'local', installation / 'upstream/platform',
+            installation / 'upstream/temporal', installation / 'upstream'))))
+    probe = '''import asyncio,json,os,signal
+from perf_temporal import connection
+from temporalio import worker
+async def connect(): return object()
+class Probe:
+    def __init__(self,client,**options):
+        adapter=options['activities'][0].__self__.adapter
+        print(json.dumps({'queue':options['task_queue'], 'adapter':type(adapter).__name__,
+            'factory':os.environ['PERF_CLUSTER_ADAPTER'],
+            'activities':[fn.__name__ for fn in options['activities']],
+            'workflows':[wf.__name__ for wf in options['workflows']]}),flush=True)
+    async def __aenter__(self):
+        asyncio.get_running_loop().call_soon(os.kill,os.getpid(),signal.SIGTERM)
+        return self
+    async def __aexit__(self,*exc): pass
+connection.connect=connect
+worker.Worker=Probe
+'''
+    command = reference.training_budget_worker_command(installation)
+    result = subprocess.run([*command[:-1], probe + command[-1]], env=environment,
+                            capture_output=True, text=True, timeout=15)
+    assert result.returncode == 0, result.stderr
+    registered = json.loads(result.stdout)
+    assert registered['queue'] == 'ergora-training-budget-v1'
+    assert registered['adapter'] == 'BudgetAdapter'
+    assert registered['factory'] == 'ergora.reference_training_worker:create_adapter'
+    assert registered['workflows'] == ['ExperimentWorkflow']
+    assert 'submit_or_lookup' in registered['activities'] and 'cancel_exact_job' in registered['activities']

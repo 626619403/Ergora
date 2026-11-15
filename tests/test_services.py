@@ -108,6 +108,11 @@ def test_selected_start_is_idempotent_and_does_not_autostart_other_programs(stac
     states = {p["name"]: p for p in result["services"]}
     assert states["temporal"]["statename"] == "RUNNING"
     assert all(p["statename"] == "STOPPED" for name, p in states.items() if name != "temporal")
+    managed = configparser.ConfigParser(interpolation=None)
+    managed.read(runtime / "ergora-services/supervisord.ini")
+    assert "reference_training_worker" in managed["program:training-budget-worker"]["command"]
+    assert "agent_platform.service training-worker" in managed["program:training-worker"]["command"]
+    assert managed["program:training-budget-worker"]["stdout_logfile"] != managed["program:training-worker"]["stdout_logfile"]
     again = services.control(state, "demo", "start", ["temporal"], 1, timeout=5)
     assert next(p for p in again["services"] if p["name"] == "temporal")["pid"] == states["temporal"]["pid"]
     assert (config / "supervisord.ini").read_bytes() == original

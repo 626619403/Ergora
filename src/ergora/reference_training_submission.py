@@ -13,6 +13,7 @@ import uuid
 
 from .reference import _training_records
 from .reference_training_context import _TrainingProject
+from . import reference_training_budget as budgets, training_cycles
 from .state import file_lock
 
 
@@ -90,6 +91,9 @@ class _Submission(_TrainingProject):
                 return None
         expected = {**self.identity, 'project_revision': intent.get('project_revision'),
                     'operation_id': intent.get('operation_id'), 'observation': intent.get('observation')}
+        if 'budget' in intent:
+            budgets.validate_binding(intent['budget'])
+            expected['budget'] = intent['budget']
         if (self.sha(intent) != self.sha(expected) or type(intent['project_revision']) is not int
                 or intent['project_revision'] < 1 or not isinstance(intent['operation_id'], str)
                 or re.fullmatch('[a-f0-9]{32}', intent['operation_id']) is None):
@@ -146,6 +150,8 @@ class _Submission(_TrainingProject):
             return {**result, 'status': 'rejected', 'intent_sha256': self.sha(intent),
                     'reason': reason, 'conflicting_run_id': rejection['run_id'],
                     'attempt_saved': attempt is not None, 'result_saved': False}
+        if 'budget' in intent:
+            result['budget'] = budgets.BudgetedStart(self, intent).observe()
         return {**result, 'status': 'submitted' if receipt else 'unknown' if attempt else 'prepared',
                 'intent_sha256': self.sha(intent),
                 'manifest_sha256': intent['observation']['experiment']['binding']['manifest_sha'],
@@ -213,6 +219,9 @@ class _Submission(_TrainingProject):
         operation = self
         original_connect, original_load, original_argv = native.connect, native.load_experiment, sys.argv
         spec = intent['observation']['experiment']['spec']
+        budget = budgets.BudgetedStart(self, intent) if 'budget' in intent else None
+        if budget is not None:
+            budget.ensure_owner()
 
         class CheckpointedClient:
             def __init__(self, client):
@@ -234,8 +243,15 @@ class _Submission(_TrainingProject):
                                          operation.rejection(intent, 'preexisting_run', found[1].run_id))
                     raise ValueError('Training workflow already exists without this submission attempt; reconcile its owner')
                 operation.preflight(intent)
+                if budget is not None:
+                    budget.require_active(owner=True)
                 operation.core.write(operation.path('.attempt.json'), operation.attempt(intent))
+                if budget is not None:
+                    training_cycles._sync_directory(operation.path('.attempt.json').parent)
                 operation.preflight(intent)
+                if budget is not None:
+                    budget.require_active(owner=True)
+                    options['task_queue'] = budget.binding['task_queue']
                 return await self.client.start_workflow(run, experiment,
                     memo={_MEMO_KEY: operation.sha(intent)}, **options)
 
@@ -311,6 +327,10 @@ class _Submission(_TrainingProject):
             intent = self.load()
             if operation == 'prepare':
                 if intent is not None:
+                    selector = self.payload.get('budget')
+                    if selector is not None and selector != {key: intent.get('budget', {}).get(key)
+                                                           for key in ('cycle_id', 'authorization_sha256')}:
+                        raise ValueError('Original training start cannot switch or adopt another budget')
                     if self.payload['manifest_sha256'] != intent['observation']['experiment']['binding']['manifest_sha']:
                         raise ValueError('Confirm the exact original manifest SHA before training submission')
                     return {'created': False, 'submission': self.status(intent)}
@@ -319,6 +339,8 @@ class _Submission(_TrainingProject):
                     raise ValueError('Confirm the exact original manifest SHA before training submission')
                 intent = {**self.identity, 'project_revision': self.project['revision'],
                           'operation_id': uuid.uuid4().hex, 'observation': observed}
+                if self.payload.get('budget') is not None:
+                    intent['budget'] = budgets.prepare_binding(self, intent, self.payload['budget'])
                 # The aggregate freezes several individually bounded sources.
                 # Match core.write's actual serialization before publication.
                 raw = (json.dumps(intent, ensure_ascii=False, indent=2, allow_nan=False) + '\n').encode('utf-8')

@@ -4,6 +4,7 @@ import codecs
 import configparser
 import glob
 import http.client
+import importlib.util
 import io
 import json
 import os
@@ -22,7 +23,7 @@ from . import reference, registrations
 from .state import State, file_lock
 
 
-NAMES = ("temporal", "mlflow", "worker", "executor", "a2a", "training-worker")
+NAMES = ("temporal", "mlflow", "worker", "executor", "a2a", "training-worker", "training-budget-worker")
 _COMMUNICATION_ERRORS = (OSError, http.client.HTTPException, xmlrpc.client.ProtocolError, xmlrpc.client.ResponseError, ExpatError)
 _STOPPED = {"STOPPED", "EXITED", "FATAL"}
 
@@ -130,9 +131,10 @@ def _prepare(state: State, execution: dict, folder: Path, identity: dict) -> Pat
     output["supervisorctl"]["serverurl"] = "unix://" + str(path)
     for name in NAMES:
         section = "program:" + name
-        if section not in parser:
+        source = "program:training-worker" if name == "training-budget-worker" and section not in parser else section
+        if source not in parser:
             continue
-        output[section] = dict(parser[section])
+        output[section] = dict(parser[source])
         output[section]["autostart"] = "false"
         command = [str(Path(execution["installation"]) / ".venv/bin/python"), "-m", "agent_platform.service", name]
         if name == "executor":
@@ -140,6 +142,10 @@ def _prepare(state: State, execution: dict, folder: Path, identity: dict) -> Pat
                        "--installation", execution["installation"]]
         elif name == "worker":
             command = reference.worker_command(Path(execution["installation"]))
+        elif name == "training-budget-worker":
+            command = reference.training_budget_worker_command(Path(execution["installation"]))
+            output[section]["stdout_logfile"] = str(Path(execution["state_directory"]) / "logs/training-budget-worker.log")
+            output[section]["stderr_logfile"] = str(Path(execution["state_directory"]) / "logs/training-budget-worker.err.log")
         output[section]["command"] = shlex.join(command).replace("%", "%%")
         output[section]["directory"] = execution["installation"]
     content = io.StringIO()
@@ -153,6 +159,8 @@ def control(state: State, project_id: str, action: str, names: list[str], revisi
             *, confirm: bool = False, timeout: int = 30) -> dict:
     if action not in ("start", "stop", "shutdown"):
         raise ValueError("Service action must be start, stop or shutdown")
+    if action == "start" and "training-budget-worker" in names and importlib.util.find_spec("temporalio") is None:
+        raise ValueError("The budget training worker requires ergora[temporal] in this application environment")
     if isinstance(timeout, bool) or not isinstance(timeout, int) or not 1 <= timeout <= 60:
         raise ValueError("Service timeout must be 1–60 seconds")
     if action in ("stop", "shutdown") and confirm is not True:

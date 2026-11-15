@@ -419,3 +419,25 @@ F10d3b1沿三个原retrospectives准备函数增加薄HTTP消费者，传输payl
 F10d3b2沿原retrospectives reader将可选project/input digest绑定到同次check/export读取，旧CLI默认离线合同保持；六条薄HTTP与原view只消费完整检查和明确导出，不接管原库、评价或采用。验收状态见[本片交付](../delivery/2026-11-14-retrospective-results-console.md)。
 
 F10d4沿原agent_runs准入读取增加可选显式input digest，薄HTTP固定text-only，原snapshot／adapter／process／运行记录保持唯一owner。agents.js内的冻结叶对话框由工具和复盘两页实际调用，依附原打开按钮的生命周期；原记录与诊断可显式观察，结果交接使用已存snapshot并由原结果表单重新检查。没有页面账本、自动图执行或模型自我批准；验收见[交付](../delivery/2026-11-14-frozen-leaf-console.md)。
+
+
+## 原训练预算提交与截止 owner
+
+`training_cycles.start`只从原有限选择取 manifest 并调用同一`training.start`。原提交 intent 持有可选 budget 引用，原 attempt 是不可归还 slot；不增训练账本或第二 start 客户端。`reference_training_budget`持有原来源／时钟与独立 owner 生命周期；`reference_training_worker`持有应用进程入口、预算 adapter factory、原取消用例接线和 SDK worker 注册，owner 不反向 import 提交／取消模块。
+
+```mermaid
+flowchart LR
+  Cycle[cycle-start / 原授权选择] --> Start[training.start / 原提交 intent]
+  Start --> Owner[独立 budget owner]
+  Start --> Attempt[原 attempt / 同一 start RPC]
+  Attempt --> Queue[预算版本 queue]
+  Queue --> Worker[可选 training-budget-worker]
+  Worker --> Gate[registry 锁内最终预算 gate]
+  Gate --> Request[原 native request]
+  Owner --> Helpers[原 clock 监督 helper]
+  Helpers --> Fence[原 registry fence / 持久观察]
+  Helpers --> Cancel[原 run / 稳定取消意图]
+  Request --> Existing[原 executor / 原证据与人工 release]
+```
+
+预算 queue 与旧 worker 分离，缺 owner／原授权／期限时不能新 create；已有 request 的读取、fence 与 release 不受该新工作 gate 改写。owner 不获取跨 RPC 的 submission 锁，阻塞操作只在受监督 helper 内执行。缓存全文摘要绑定原 owner 身份，供原截止清理使用；持久 fence、控制面取消、native 结果及 executor 停止分别报告。实际 executor／后代停止和自动训练循环仍是后继义务，不能由图中的连接推导已完成。用户入口与恢复见[训练手册](../TRAINING.md#按原预算投递与持续截止监管)。

@@ -139,10 +139,10 @@ def fence_start(state: State, project_id: str, experiment_id: str, expected_revi
 
 
 def start(state: State, project_id: str, experiment_id: str, expected_revision: int,
-          manifest_sha256: str, *, timeout: int = 20) -> dict:
+          manifest_sha256: str, *, timeout: int = 20, budget: dict | None = None) -> dict:
     """Confirm one prepared native manifest and checkpoint its original start."""
     return _submission(state, project_id, experiment_id, expected_revision, manifest_sha256,
-                       'prepare', 'manifest_sha256', timeout)
+                       'prepare', 'manifest_sha256', timeout, budget=budget)
 
 
 def resume_start(state: State, project_id: str, experiment_id: str, expected_revision: int,
@@ -244,7 +244,7 @@ def _setup(state: State, project_id: str, expected_revision: int, operation: str
 
 def _submission(state: State, project_id: str, experiment_id: str, expected_revision: int,
                 digest: str, operation: str, digest_name: str, timeout: int, *,
-                original_registration: dict | None = None) -> dict:
+                original_registration: dict | None = None, budget: dict | None = None) -> dict:
     if not isinstance(digest, str) or re.fullmatch('[a-f0-9]{64}', digest) is None:
         raise ValueError('Training operation requires the exact manifest or intent SHA-256')
     if type(expected_revision) is not int or expected_revision < 1:
@@ -258,7 +258,8 @@ def _submission(state: State, project_id: str, experiment_id: str, expected_revi
         if project.get('_original_registration', {}).get('current_project_revision', project['revision']) != expected_revision:
             raise ValueError('Project revision changed; reload before the training operation')
         prepared = reference.training_submission(project, state.root, operation,
-                     {'experiment_id': experiment_id, digest_name: digest}, timeout=timeout)
+                     {'experiment_id': experiment_id, digest_name: digest,
+                      **({'budget': budget} if budget is not None else {})}, timeout=timeout)
     if operation == 'prepare':
         observed = prepared['submission']
         if not prepared['created']:

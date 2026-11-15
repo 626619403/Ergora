@@ -1,0 +1,348 @@
+"""One training intent's budget, native creation gate and independent deadline owner."""
+
+import asyncio
+from dataclasses import asdict
+import hashlib
+import json
+import os
+from pathlib import Path
+import re
+import signal
+import sqlite3
+import stat
+import subprocess
+import sys
+import time
+import uuid
+
+from . import budget_clock, processes, registrations, training_cycles
+from .state import State, file_lock, now
+
+
+TASK_QUEUE = 'ergora-training-budget-v1'
+
+
+def validate_binding(value: dict) -> None:
+    if (not isinstance(value, dict) or set(value) != {'cycle_id', 'authorization_sha256', 'task_queue'}
+            or not isinstance(value.get('cycle_id'), str)
+            or re.fullmatch('[A-Za-z0-9][A-Za-z0-9_-]{0,79}', value['cycle_id']) is None
+            or not isinstance(value.get('authorization_sha256'), str)
+            or re.fullmatch('[a-f0-9]{64}', value['authorization_sha256']) is None
+            or value['task_queue'] != TASK_QUEUE):
+        raise ValueError('Training intent requires its exact original budget and supported protocol queue')
+
+
+def prepare_binding(operation, intent: dict, selector: dict) -> dict:
+    if not isinstance(selector, dict) or set(selector) != {'cycle_id', 'authorization_sha256'}:
+        raise ValueError('Select one original training cycle and complete authorization SHA256')
+    binding = {**selector, 'task_queue': TASK_QUEUE}
+    validate_binding(binding)
+    state = State(Path(operation.payload['control_home']))
+    observed = training_cycles.status(state, operation.project['id'], binding['cycle_id'],
+                                     authorization_sha256=binding['authorization_sha256'])
+    if observed['status'] != 'ready':
+        raise ValueError('Original training budget is not ready: ' + observed['status'])
+    BudgetedStart(operation, {**intent, 'budget': binding}).require_active()
+    return binding
+
+
+def _process_identity(pid: int) -> dict:
+    if type(pid) is not int or pid < 1:
+        raise ValueError('Budget owner has no valid process identity')
+    fields = Path('/proc/' + str(pid) + '/stat').read_text().rsplit(')', 1)[1].split()
+    if fields[0] == 'Z':
+        raise ValueError('Original budget owner has exited')
+    return {'pid': pid, 'start_ticks': fields[19],
+            'boot_id': Path('/proc/sys/kernel/random/boot_id').read_text().strip()}
+
+
+class BudgetedStart:
+    """Keep caller-independent ownership behind the original immutable start intent."""
+
+    def __init__(self, operation, intent: dict):
+        validate_binding(intent['budget'])
+        self.operation, self.intent, self.binding = operation, intent, intent['budget']
+        self.folder = operation.path('.budget')
+        self.identity = {'schema_version': 1, 'intent_sha256': operation.sha(intent),
+                         'authorization_sha256': self.binding['authorization_sha256']}
+
+    def path(self, name: str) -> Path:
+        return self.operation.path('.budget/' + name)
+
+    def source(self) -> tuple[State, dict, dict, dict]:
+        state = State(Path(self.intent['control_home']))
+        directory = training_cycles._directory(state, self.intent['project'], self.binding['cycle_id'])
+        plan, authorization, ready = training_cycles._load(state, self.intent['project'], self.binding['cycle_id'], directory)
+        selected = next((item for item in plan['admissions']
+                         if item['experiment_id'] == self.operation.ident), None)
+        if (authorization['sha256'] != self.binding['authorization_sha256'] or ready is None
+                or authorization['execution'] != self.intent['execution']
+                or plan['project']['repo'] != self.intent['repo']
+                or plan['project']['registration']['sha256'] != self.intent['registration_sha256']
+                or authorization['project_revision'] != self.intent['project_revision']
+                or selected is None or self.operation.sha(selected['observation']) != self.operation.sha(self.intent['observation'])):
+            raise ValueError('Original training budget differs from its complete start intent, source or admission')
+        return state, plan, authorization, ready
+
+    def require_active(self, *, owner: bool = False) -> None:
+        state, plan, authorization, ready = self.source()
+        observed = training_cycles._status(state, plan, authorization, ready)
+        if observed['status'] != 'ready':
+            raise ValueError('Original training budget cannot start work: ' + observed['status'])
+        if owner and (self.path('final.json').exists() or not self.owner_alive()):
+            raise ValueError('Original training budget owner is unconfirmed; do not restart or resend')
+        # Full source and process checks consume the same computation window.
+        if budget_clock.remaining(authorization['clock'], plan['definition']['budget']['wall_seconds'],
+                                  plan['definition']['budget']['cleanup_seconds']) <= 0:
+            raise ValueError('Original training computation deadline has passed')
+
+    def owner_record(self) -> dict:
+        value = training_cycles._document(self.path('owner.json'))
+        process = {name: value.get(name) for name in ('pid', 'start_ticks', 'boot_id')}
+        digest = value.get('context_sha256')
+        if (not isinstance(digest, str) or re.fullmatch('[a-f0-9]{64}', digest) is None
+                or value != {**self.identity, **process, 'context_sha256': digest}
+                or process != _process_identity(value.get('pid'))):
+            raise ValueError('Original training budget owner identity is unavailable or changed')
+        return value
+
+    def owner_alive(self) -> bool:
+        import fcntl
+
+        try:
+            self.owner_record()
+            descriptor = os.open(self.path('lock'), os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+            with os.fdopen(descriptor, 'rb') as lock:
+                if not stat.S_ISREG(os.fstat(lock.fileno()).st_mode):
+                    raise ValueError('Original budget owner lock must be an ordinary file')
+                try:
+                    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except BlockingIOError:
+                    initializing = os.open(self.path('initializing.lock'), os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+                    with os.fdopen(initializing, 'rb') as ready:
+                        if not stat.S_ISREG(os.fstat(ready.fileno()).st_mode):
+                            raise ValueError('Original owner publication lock must be an ordinary file')
+                        try:
+                            fcntl.flock(ready, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                        except BlockingIOError:
+                            return False
+                    return True
+        except (OSError, ValueError):
+            return False
+        return False
+
+    def ensure_owner(self) -> None:
+        self.require_active()
+        if self.path('owner.json').exists():
+            self.require_active(owner=True)
+            return
+        self.folder.mkdir(parents=True, exist_ok=True, mode=0o700)
+        training_cycles._sync_directory(self.folder.parent)
+        # Only this short launcher lock is held by the caller; the owner never
+        # acquires the submission lock and inherits neither lifecycle lock.
+        with file_lock(self.path('launch.lock'), blocking=False):
+            if self.path('owner.json').exists():
+                self.require_active(owner=True)
+                return
+            observation = self.path('launches/' + uuid.uuid4().hex)
+            observation.mkdir(parents=True, mode=0o700)
+            payload = {**self.operation.payload, 'mode': 'owner', 'intent_sha256': self.identity['intent_sha256']}
+            environment = dict(os.environ)
+            installation = Path(self.intent['execution']['installation'])
+            environment['PYTHONPATH'] = os.pathsep.join(map(str, (
+                Path(__file__).parent.parent, installation / 'local', installation / 'upstream/platform',
+                installation / 'upstream/temporal', installation / 'upstream')))
+            with (observation / 'stdout.json').open('xb') as stdout, (observation / 'stderr.txt').open('xb') as stderr:
+                child = subprocess.Popen([sys.executable, '-P', '-c',
+                    'from ergora.reference_training_worker import budget_main;budget_main()'], stdin=subprocess.PIPE,
+                    stdout=stdout, stderr=stderr, env=environment, start_new_session=True)
+                child.stdin.write(json.dumps(payload, ensure_ascii=False, allow_nan=False).encode('utf-8'))
+                child.stdin.close()
+            limit = time.monotonic() + min(5, self.operation.payload['timeout'])
+            while time.monotonic() < limit and child.poll() is None:
+                if self.owner_alive():
+                    self.require_active(owner=True)
+                    return
+                time.sleep(.02)
+            raise ValueError('Independent training budget owner was not confirmed; inspect ' + str(observation))
+
+    def observe(self) -> dict:
+        result = {**self.binding, 'owner_status': 'not_started', 'executor_stop_confirmed': None}
+        try:
+            state, plan, authorization, ready = self.source()
+            observed = training_cycles._status(state, plan, authorization, ready)
+            result.update(authorization_status=observed['status'],
+                          work_remaining_seconds=observed['work_remaining_seconds'],
+                          total_remaining_seconds=observed['total_remaining_seconds'])
+            if self.path('final.json').exists() and not self.owner_alive():
+                training_cycles._sync_directory(self.folder)
+                state, plan, authorization, ready = self.source()
+                observed = training_cycles._status(state, plan, authorization, ready)
+                result.update(authorization_status=observed['status'],
+                              work_remaining_seconds=observed['work_remaining_seconds'],
+                              total_remaining_seconds=observed['total_remaining_seconds'])
+                final = training_cycles._document(self.path('final.json'))
+                if any(final.get(key) != value for key, value in self.identity.items()):
+                    raise ValueError('Budget final observation differs from the original start intent')
+                result.update(owner_status=final['status'], final=final)
+                # Recover only the same already-visible fence. Never restart its
+                # owner, publish a new fence or replace the historical outcome.
+                result['local_fence'] = self.durable_fence()
+            elif self.path('owner.json').exists():
+                result['owner_status'] = 'active' if self.owner_alive() else 'unknown'
+                if result['owner_status'] == 'unknown':
+                    result['local_fence'] = self.durable_fence()
+        except (OSError, ValueError, sqlite3.Error) as error:
+            result.update(authorization_status='unknown', owner_status='unknown', reason=str(error))
+        return result
+
+    def durable_fence(self) -> dict | None:
+        relative = 'training/fences/' + self.operation.ident + '.json'
+        path = self.operation.adapter.safe_file(self.operation.root, relative)
+        if not path.exists():
+            return None
+        expected = {'binding': self.intent['observation']['experiment']['spec']['binding']}
+        if self.operation.document(self.operation.root, relative) != expected:
+            raise ValueError('Budget fence conflicts with its original complete binding')
+        for directory in (path.parent, path.parent.parent, self.operation.root):
+            training_cycles._sync_directory(directory)
+        raw = self.operation.adapter.read_raw(path)
+        if json.loads(raw) != expected:
+            raise ValueError('Original budget fence changed during durable publication')
+        return {'sha256': hashlib.sha256(raw).hexdigest(), 'durable_at': now()}
+
+    def context(self) -> dict:
+        _, plan, authorization, _ = self.source()
+        published = registrations.published_project(self.intent['control_home'], self.intent['project'],
+            authorization['registration']['operation_id'], authorization['registration']['intent_sha256'])
+        return {'intent': self.intent, 'authorization': authorization, 'policy': plan['definition']['budget'],
+                'project': plan['project'], 'published_project': published}
+
+    @staticmethod
+    def remaining(context: dict, *, cleanup: bool = False) -> float:
+        policy = context['policy']
+        return budget_clock.remaining(context['authorization']['clock'], policy['wall_seconds'],
+                                      0 if cleanup else policy['cleanup_seconds'])
+
+    def supervise(self, mode: str, context: dict, *, cleanup: bool = False, final: dict | None = None) -> dict:
+        output = self.path('observations/' + mode + '-' + uuid.uuid4().hex)
+
+        def stopped():
+            try:
+                return (not cleanup and self.cancelled) or self.remaining(context, cleanup=cleanup) <= 0
+            except (OSError, ValueError):
+                return True
+
+        result = processes.run([sys.executable, '-P', '-c',
+            'from ergora.reference_training_worker import budget_main;budget_main()'], Path.cwd(), output,
+            context['policy']['wall_seconds'], json.dumps({**self.operation.payload, 'mode': mode,
+                'cached': context, 'intent_sha256': self.identity['intent_sha256'],
+                **({'final': final} if final is not None else {})}, ensure_ascii=False, allow_nan=False),
+            dict(os.environ), supervised=True, stop_requested=stopped)
+        if result['status'] == 'succeeded':
+            return training_cycles._document(output / 'stdout.txt')
+        return {'status': 'unknown', 'process': result}
+
+    def own(self) -> dict:
+        self.folder.mkdir(parents=True, exist_ok=True, mode=0o700)
+        with file_lock(self.path('lock'), blocking=False):
+            if self.path('owner.json').exists():
+                raise ValueError('Original training budget owner cannot be restarted')
+            self.require_active()
+            context = self.context()
+            self.cancelled = False
+
+            def cancel(signum, frame):
+                self.cancelled = True
+
+            signal.signal(signal.SIGTERM, cancel)
+            signal.signal(signal.SIGINT, cancel)
+            with file_lock(self.path('initializing.lock'), blocking=False):
+                training_cycles._sync_directory(self.folder.parent)
+                training_cycles._record(self.path('owner.json'), {**self.identity, **_process_identity(os.getpid()),
+                    'context_sha256': self.operation.sha(context)})
+            observed = self.supervise('monitor', context)
+            if observed.get('status') == 'completed':
+                outcome = observed
+            else:
+                outcome = self.supervise('fence', context, cleanup=True)
+                if outcome.get('status') == 'fenced':
+                    outcome = {**outcome, 'control': self.supervise('cleanup', context, cleanup=True)}
+            try:
+                remaining = self.remaining(context, cleanup=True)
+            except (OSError, ValueError):
+                remaining = None
+            final = {**self.identity, **outcome, 'recorded_at': now(),
+                     'total_remaining_seconds': remaining, 'executor_stop_confirmed': None}
+            publication = self.supervise('publish', context, cleanup=True, final=final)
+            return {**final, 'publication': publication}
+
+    def validate_cached(self, context: dict) -> None:
+        if (self.operation.sha(context['intent']) != self.identity['intent_sha256']
+                or self.operation.sha(context) != self.owner_record()['context_sha256']
+                or not self.owner_alive()):
+            raise ValueError('Supervised training cleanup has no matching original live owner')
+        budget_clock.validate(context['authorization']['clock'], context['policy']['wall_seconds'])
+
+    def experiment(self):
+        from perf_temporal.models import Binding, Experiment
+
+        spec = self.intent['observation']['experiment']['spec']
+        return Experiment(**{**spec, 'binding': Binding(**spec['binding'])})
+
+    async def completion(self) -> dict | None:
+        from agent_platform.training import create_adapter
+
+        experiment = self.experiment()
+        request = self.operation.native_request()
+        if request is None:
+            return None
+        if (self.operation.sha(request['experiment']) != self.operation.sha(asdict(experiment))
+                or self.operation.sha(request['runner']) != self.operation.sha(self.intent['observation']['experiment']['current_runner'])):
+            raise ValueError('Budget native request differs from its complete original experiment or runner')
+        adapter = create_adapter()
+        job = await adapter.lookup_job(experiment)
+        observation = await adapter.poll_job(job)
+        if observation.state not in ('SUCCEEDED', 'FAILED', 'CANCELLED'):
+            return None
+        gate = asdict(await adapter.collect_and_gate(job)) if observation.state == 'SUCCEEDED' else None
+        return {'status': 'completed', 'native': asdict(observation), 'gate': gate}
+
+    async def helper(self, mode: str, context: dict) -> dict:
+        from agent_platform.training import create_adapter
+
+        self.validate_cached(context)
+        if mode == 'publish':
+            final = self.operation.payload['final']
+            if any(final.get(key) != value for key, value in self.identity.items()):
+                raise ValueError('Final budget publication differs from its original start intent')
+            training_cycles._record(self.path('final.json'), final)
+            return {'status': 'published'}
+        if mode == 'monitor':
+            while True:
+                if not self.owner_alive():
+                    return {'status': 'unknown', 'reason': 'Original budget owner disappeared'}
+                completed = await self.completion()
+                if completed is not None:
+                    return completed
+                self.require_active()
+                if self.operation.adapter.safe_file(self.operation.root, 'training/fences/' + self.operation.ident + '.json').exists():
+                    return {'status': 'stop', 'reason': 'Original native fence observed'}
+                await asyncio.sleep(.1)
+        if mode == 'fence':
+            completed = await self.completion()
+            if completed is not None:
+                return completed
+            relative = 'training/fences/' + self.operation.ident + '.json'
+            path = self.operation.adapter.safe_file(self.operation.root, relative)
+            for name in ('training/registry.lock', 'training/jobs/' + self.operation.ident + '/request.json', relative):
+                self.operation.adapter.safe_file(self.operation.root, name)
+            if path.exists() and self.operation.document(self.operation.root, relative) != {'binding': asdict(self.experiment().binding)}:
+                raise ValueError('Budget fence conflicts with its original complete binding')
+            job = await create_adapter().fence_and_lookup(self.experiment())
+            durable = self.durable_fence()
+            if self.remaining(context, cleanup=True) <= 0:
+                return {'status': 'unknown', 'reason': 'Original cleanup deadline passed during fence publication'}
+            return {'status': 'fenced', 'fence': durable,
+                    'existing_job': asdict(job) if job is not None else None}
+        raise ValueError('Unsupported training budget helper phase')

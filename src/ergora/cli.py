@@ -589,6 +589,12 @@ def parser() -> argparse.ArgumentParser:
     cycle.add_argument("project")
     cycle.add_argument("cycle_id")
     cycle.add_argument("--authorization-sha256", help="Pin the original authorization canonical SHA256")
+    cycle = operations.add_parser("cycle-start", help="Bind one selected experiment to its original budget and native start")
+    cycle.add_argument("project")
+    cycle.add_argument("cycle_id")
+    cycle.add_argument("experiment_id")
+    cycle.add_argument("--authorization-sha256", required=True)
+    cycle.add_argument("--revision", type=int, required=True)
     for name in ("baseline-preview", "init-baseline", "runner-preview", "register-runner"):
         operation = operations.add_parser(name, help="Preview or explicitly publish native baseline/runner configuration; never execute training")
         operation.add_argument("project")
@@ -1243,6 +1249,11 @@ def main(argv: list[str] | None = None) -> int:
 
                 output = training_cycles.status(State(args.home), args.project, args.cycle_id,
                                                 authorization_sha256=args.authorization_sha256)
+            elif args.operation == "cycle-start":
+                from . import training_cycles
+
+                output = training_cycles.start(State(args.home), args.project, args.cycle_id, args.experiment_id,
+                                               args.authorization_sha256, args.revision)
             elif args.operation == "rounds-read":
                 from . import training_rounds
 

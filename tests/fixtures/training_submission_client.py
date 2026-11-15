@@ -141,5 +141,20 @@ if scenario in ('fence-observed-receipt', 'fence-observed-rejection') and payloa
         return observed
 
     _Submission.status = status_then_complete
+def install_budget_fixture():
+    import subprocess
+
+    original = subprocess.Popen
+    fixture = Path(__file__).with_name('training_budget_client.py')
+
+    def launch(argv, *args, **kwargs):
+        if 'from ergora.reference_training_worker import budget_main;budget_main()' in argv:
+            argv = [*argv[:-1], f'import runpy;runpy.run_path({str(fixture)!r},run_name="__main__")']
+        return original(argv, *args, **kwargs)
+
+    subprocess.Popen = launch
+
+
 if __name__ == '__main__':
+    install_budget_fixture()
     main()

@@ -9,6 +9,7 @@ import json
 import os
 from pathlib import Path
 import shutil
+import subprocess
 import sys
 import time
 
@@ -46,13 +47,14 @@ def service(prepared, monkeypatch, tmp_path):
     original = reference.processes.run
     fixture = Path(__file__).parent / 'fixtures/training_submission_client.py'
 
-    def select(scenario):
+    def select(scenario, *, budget_scenario=''):
         def invoke(argv, *args, **kwargs):
             if 'from ergora.reference_training_submission import main;main()' in argv:
                 argv = list(argv)
                 argv[-1] = f'import runpy;runpy.run_path({str(fixture)!r},run_name="__main__")'
                 kwargs['env'] = {**kwargs['env'], 'ERGORA_TEST_TRAINING_SUBMISSION': scenario,
-                                 'ERGORA_TEST_TRAINING_SERVICE': str(record)}
+                                 'ERGORA_TEST_TRAINING_SERVICE': str(record),
+                                 'ERGORA_TEST_TRAINING_BUDGET': budget_scenario}
             return original(argv, *args, **kwargs)
         monkeypatch.setattr(reference.processes, 'run', invoke)
     select('accepted')
@@ -451,6 +453,306 @@ def cycle_selection(prepared):
                                'change': 'Synthetic ' + name, 'next_bottleneck': 'Unmeasured; no speedup claim'}
                               for name, sha in [('alpha', digest), ('beta', second)]]}
     return state, definition, runtime, prefix, write, request
+
+
+def native_budget_create(definition, experiment_id, *, managed):
+    installation = Path(definition['execution']['installation'])
+    environment = dict(os.environ, AGENTFLOW_CONFIG_DIR=definition['execution']['config_directory'],
+                       AGENTFLOW_STATE_DIR=definition['execution']['state_directory'])
+    environment['PYTHONPATH'] = os.pathsep.join(map(str, (Path(reference.__file__).parent.parent,
+        installation / 'local', installation / 'upstream/platform', installation / 'upstream/temporal', installation / 'upstream')))
+    program = '''import asyncio,sys
+from perf_temporal.client import load_experiment
+from agent_platform.core import STATE
+from importlib import import_module
+async def run():
+    experiment=load_experiment(str(STATE/'training/specs'/ (sys.argv[1]+'.json')))
+    adapter=import_module(sys.argv[2]).create_adapter()
+    manifest=await adapter.read_manifest(experiment.manifest_uri)
+    await adapter.create_job_if_absent(experiment,manifest)
+asyncio.run(run())
+'''
+    return subprocess.run([sys.executable, '-P', '-c', program, experiment_id,
+        'ergora.reference_training_worker' if managed else 'agent_platform.training'], env=environment,
+        capture_output=True, text=True, timeout=10)
+
+
+def wait_budget_stopped(runtime, seconds=15):
+    from ergora.reference_training_budget import _process_identity
+    from ergora.state import file_lock
+
+    folder = runtime / 'ergora/training-submissions/alpha.budget'
+    owner = json.loads((folder / 'owner.json').read_bytes())
+    until = time.monotonic() + seconds
+    while time.monotonic() < until:
+        try:
+            stopped = _process_identity(owner['pid']) != {key: owner[key] for key in ('pid', 'start_ticks', 'boot_id')}
+        except (OSError, ValueError):
+            stopped = True
+        if stopped:
+            try:
+                with file_lock(folder / 'lock', blocking=False):
+                    return folder
+            except BlockingIOError:
+                pass
+        time.sleep(.05)
+    import signal
+    os.kill(owner['pid'], signal.SIGKILL)
+    raise AssertionError('Original budget owner did not finish its bounded supervision')
+
+
+def wait_budget_final(runtime, seconds=15):
+    return json.loads((wait_budget_stopped(runtime, seconds) / 'final.json').read_bytes())
+
+
+def authorize_budget(selection, tmp_path, *, wall=14, cleanup=4, timeout=4):
+    from ergora import training_cycles
+
+    state, definition, runtime, _, _, request = selection
+    request['budget'].update(wall_seconds=wall, cleanup_seconds=cleanup, control_timeout_seconds=timeout)
+    source = tmp_path / 'finite-input'
+    selected = training_cycles.create(state, 'demo', request, source)
+    authorized = training_cycles.authorize(state, 'demo', 'budget', source, selected['sha256'], 1, confirm=True)
+    assert authorized['status'] == 'ready'
+    return state, definition, runtime, authorized
+
+
+@pytest.mark.parametrize('fault', ['final-file-blocked', 'final-directory-blocked'])
+def test_cycle_final_publication_is_bounded_and_dead_owner_recovers_only_the_same_fence(cycle_selection, service, tmp_path, fault):
+    from ergora import training_cycles
+
+    service[0]('accepted', budget_scenario=fault)
+    # Retain the same compute window, with room to reach the injected final
+    # publication fault after fence and control cleanup.
+    state, _, runtime, authorized = authorize_budget(cycle_selection, tmp_path, wall=18, cleanup=8)
+    submitted = training_cycles.start(state, 'demo', 'budget', 'alpha', authorized['authorization_sha256'], 1)
+    prefix = runtime / 'ergora/training-submissions'
+    wait_budget_stopped(runtime, seconds=20)
+    assert service[1].with_suffix('.final-blocked').read_text() == fault
+    original = {p: p.read_bytes() for p in prefix.rglob('*') if p.is_file()}
+    fence = runtime / 'training/fences/alpha.json'
+    raw = fence.read_bytes()
+    observed = training.submission(state, 'demo', 'alpha')
+    assert observed['budget']['owner_status'] == ('unknown' if fault == 'final-file-blocked' else 'fenced')
+    assert observed['budget']['local_fence']['sha256'] == hashlib.sha256(raw).hexdigest()
+    assert observed['budget']['executor_stop_confirmed'] is None
+    assert all(p.read_bytes() == content for p, content in original.items()) and fence.read_bytes() == raw
+    assert training.resume_start(state, 'demo', 'alpha', 1, submitted['intent_sha256'])['status'] == 'submitted'
+    assert json.loads(service[1].read_bytes())['starts'] == 1
+
+
+def test_cycle_start_returns_before_automatic_fence_blocks_a_late_native_create(cycle_selection, service, tmp_path):
+    from ergora import training_cycles
+    from temporalio.api.workflowservice.v1 import StartWorkflowExecutionRequest
+    import base64
+
+    state, definition, runtime, _, _, request = cycle_selection
+    request['budget'].update(wall_seconds=12, cleanup_seconds=3, control_timeout_seconds=4)
+    source = tmp_path / 'finite-input'
+    selected = training_cycles.create(state, 'demo', request, source)
+    authorized = training_cycles.authorize(state, 'demo', 'budget', source, selected['sha256'], 1, confirm=True)
+    assert authorized['status'] == 'ready'
+    before = {p: p.read_bytes() for p in (state.root / 'training-cycles/demo/budget').iterdir()}
+    submitted = training_cycles.start(state, 'demo', 'budget', 'alpha', authorized['authorization_sha256'], 1)
+    assert submitted['status'] == 'submitted' and submitted['budget']['owner_status'] == 'active'
+    assert not (runtime / 'training/fences/alpha.json').exists()
+    record = json.loads(service[1].read_bytes())
+    encoded = StartWorkflowExecutionRequest.FromString(base64.b64decode(record['request']))
+    assert encoded.task_queue.name == 'ergora-training-budget-v1'
+    prefix = runtime / 'ergora/training-submissions'
+    intent = json.loads((prefix / 'alpha.intent.json').read_bytes())
+    assert intent['budget']['authorization_sha256'] == authorized['authorization_sha256']
+    attempt = (prefix / 'alpha.attempt.json').read_bytes()
+    wait_budget_stopped(runtime)
+    observed = training.submission(state, 'demo', 'alpha')['budget']
+    assert observed['local_fence'] and observed['executor_stop_confirmed'] is None
+    late = native_budget_create(definition, 'alpha', managed=False)
+    assert late.returncode != 0 and 'fenced against further submission' in late.stderr
+    assert not (runtime / 'training/jobs/alpha/request.json').exists()
+    assert (prefix / 'alpha.attempt.json').read_bytes() == attempt
+    assert all(p.read_bytes() == raw for p, raw in before.items())
+    assert json.loads(service[1].read_bytes())['starts'] == 1
+
+
+def test_cycle_held_start_does_not_hold_the_deadline_owner_or_its_native_fence(cycle_selection, service, tmp_path):
+    from ergora import training_cycles
+
+    state, _, runtime, authorized = authorize_budget(cycle_selection, tmp_path, wall=18, cleanup=6, timeout=20)
+    select, record = service
+    select('held-start')
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(training_cycles.start, state, 'demo', 'budget', 'alpha', authorized['authorization_sha256'], 1)
+        try:
+            until = time.monotonic() + 10
+            while not record.with_suffix('.held').exists() and time.monotonic() < until:
+                time.sleep(.02)
+            assert record.with_suffix('.held').exists()
+            wait_budget_stopped(runtime)
+            assert (runtime / 'training/fences/alpha.json').exists() and not future.done()
+        finally:
+            record.with_suffix('.continue').touch()
+        assert future.result(timeout=10)['status'] == 'submitted'
+    observed = json.loads(record.read_bytes())
+    assert 'fenced against further submission' in observed['native_create_error']
+    assert observed['native_lookup_after'] is None and observed['starts'] == 1
+    assert not (runtime / 'training/jobs/alpha/request.json').exists()
+
+
+def test_cycle_managed_create_requires_its_live_owner_and_preserves_single_start_slot(cycle_selection, service, tmp_path):
+    from ergora import training_cycles
+
+    state, definition, runtime, authorized = authorize_budget(cycle_selection, tmp_path, wall=24, cleanup=5)
+    submitted = training_cycles.start(state, 'demo', 'budget', 'alpha', authorized['authorization_sha256'], 1)
+    created = native_budget_create(definition, 'alpha', managed=True)
+    assert created.returncode == 0, created.stderr
+    prefix = runtime / 'ergora/training-submissions'
+    original = {name: (prefix / ('alpha.' + name + '.json')).read_bytes() for name in ('intent', 'attempt', 'result')}
+    try:
+        assert training.start(state, 'demo', 'alpha', 1, submitted['manifest_sha256'])['status'] == 'submitted'
+        assert training.resume_start(state, 'demo', 'alpha', 1, submitted['intent_sha256'])['status'] == 'submitted'
+        # A second cycle cannot take ownership of the original immutable intent.
+        with pytest.raises(ValueError, match='cannot switch or adopt'):
+            training.start(state, 'demo', 'alpha', 1, submitted['manifest_sha256'],
+                budget={'cycle_id': 'another', 'authorization_sha256': authorized['authorization_sha256']})
+    finally:
+        import signal
+        owner = json.loads((prefix / 'alpha.budget/owner.json').read_bytes())
+        os.kill(owner['pid'], signal.SIGTERM)
+        wait_budget_final(runtime)
+    assert all((prefix / ('alpha.' + name + '.json')).read_bytes() == raw for name, raw in original.items())
+    assert json.loads(service[1].read_bytes())['starts'] == 1
+
+
+def test_cycle_owner_death_blocks_managed_create_without_restarting_or_new_attempt(cycle_selection, service, tmp_path):
+    from ergora import training_cycles
+    import signal
+
+    state, definition, runtime, authorized = authorize_budget(cycle_selection, tmp_path, wall=30, cleanup=5)
+    submitted = training_cycles.start(state, 'demo', 'budget', 'alpha', authorized['authorization_sha256'], 1)
+    prefix = runtime / 'ergora/training-submissions'
+    original = {p: p.read_bytes() for p in prefix.glob('alpha.*.json')}
+    owner_path = prefix / 'alpha.budget/owner.json'
+    owner_bytes = owner_path.read_bytes()
+    owner = json.loads(owner_bytes)
+    os.kill(owner['pid'], signal.SIGKILL)
+    until = time.monotonic() + 5
+    from ergora.reference_training_budget import _process_identity
+    while time.monotonic() < until:
+        try:
+            _process_identity(owner['pid'])
+        except (OSError, ValueError):
+            break
+        time.sleep(.02)
+    assert not (runtime / 'training/fences/alpha.json').exists()
+    denied = native_budget_create(definition, 'alpha', managed=True)
+    assert denied.returncode != 0 and 'owner is unconfirmed' in denied.stderr
+    observed = training.resume_start(state, 'demo', 'alpha', 1, submitted['intent_sha256'])
+    assert observed['budget']['owner_status'] == 'unknown'
+    assert not (runtime / 'training/jobs/alpha/request.json').exists()
+    assert owner_path.read_bytes() == owner_bytes and all(p.read_bytes() == raw for p, raw in original.items())
+    assert json.loads(service[1].read_bytes())['starts'] == 1
+
+
+def test_cycle_completed_native_success_keeps_its_evidence_and_manual_release_unfenced(cycle_selection, service, tmp_path):
+    from ergora import training_cycles
+
+    state, definition, runtime, authorized = authorize_budget(cycle_selection, tmp_path, wall=24, cleanup=5)
+    submitted = training_cycles.start(state, 'demo', 'budget', 'alpha', authorized['authorization_sha256'], 1)
+    created = native_budget_create(definition, 'alpha', managed=True)
+    assert created.returncode == 0, created.stderr
+    write = cycle_selection[4]
+    job = runtime / 'training/jobs/alpha'
+    request = json.loads((job / 'request.json').read_bytes())
+    gate = {'binding': request['experiment']['binding'], 'manifest_sha256': submitted['manifest_sha256'],
+            'passed': True, 'evidence_sha256': 'd' * 64, 'summary': 'Synthetic completed CPU contract'}
+    digest = write(job / 'gate-report.json', gate)
+    write(job / 'result.json', {'binding': gate['binding'], 'job_id': request['job_id'],
+        'state': 'SUCCEEDED', 'detail': gate['summary'], 'gate': {'report': str(job / 'gate-report.json'),
+        'report_sha256': digest, 'mlflow_run_id': 'synthetic-no-training'}})
+    originals = {p: p.read_bytes() for p in job.iterdir()}
+    final = wait_budget_final(runtime)
+    assert final['status'] == 'completed' and final['gate']['passed'] is True
+    assert not (runtime / 'training/fences/alpha.json').exists()
+    assert not (runtime / 'ergora/training-cancellations').exists()
+    assert all(p.read_bytes() == raw for p, raw in originals.items())
+
+
+@pytest.mark.parametrize('fault', ['monitor-blocked', 'fence-flush-failed', 'fence-flush-blocked'])
+def test_cycle_supervises_blocking_observation_and_recovers_only_the_original_visible_fence(cycle_selection, service, tmp_path, fault):
+    from ergora import training_cycles
+
+    service[0]('accepted', budget_scenario=fault)
+    state, _, runtime, authorized = authorize_budget(cycle_selection, tmp_path)
+    submitted = training_cycles.start(state, 'demo', 'budget', 'alpha', authorized['authorization_sha256'], 1)
+    prefix = runtime / 'ergora/training-submissions'
+    attempt = (prefix / 'alpha.attempt.json').read_bytes()
+    folder = wait_budget_stopped(runtime, seconds=20)
+    final_path = folder / 'final.json'
+    if final_path.exists():
+        assert json.loads(final_path.read_bytes())['status'] == ('fenced' if fault == 'monitor-blocked' else 'unknown')
+    fence = runtime / 'training/fences/alpha.json'
+    fence_bytes = fence.read_bytes()
+    originals = {p: p.read_bytes() for p in folder.rglob('*') if p.is_file()}
+    observed = training.submission(state, 'demo', 'alpha')
+    assert observed['budget']['local_fence']['sha256'] == hashlib.sha256(fence_bytes).hexdigest()
+    assert observed['budget']['executor_stop_confirmed'] is None
+    assert training.resume_start(state, 'demo', 'alpha', 1, submitted['intent_sha256'])['status'] == 'submitted'
+    assert fence.read_bytes() == fence_bytes and all(p.read_bytes() == raw for p, raw in originals.items())
+    assert (prefix / 'alpha.attempt.json').read_bytes() == attempt
+    assert json.loads(service[1].read_bytes())['starts'] == 1
+
+
+def test_cycle_registry_lock_can_exhaust_cleanup_without_claiming_a_fence(cycle_selection, service, tmp_path):
+    from ergora import training_cycles
+    from ergora.state import file_lock
+
+    state, _, runtime, authorized = authorize_budget(cycle_selection, tmp_path)
+    submitted = training_cycles.start(state, 'demo', 'budget', 'alpha', authorized['authorization_sha256'], 1)
+    with file_lock(runtime / 'training/registry.lock'):
+        folder = wait_budget_stopped(runtime, seconds=20)
+        assert not (folder / 'final.json').exists()
+    assert not (runtime / 'training/fences/alpha.json').exists()
+    observed = training.submission(state, 'demo', 'alpha')['budget']
+    assert observed['owner_status'] == 'unknown' and observed['executor_stop_confirmed'] is None
+    assert training.resume_start(state, 'demo', 'alpha', 1, submitted['intent_sha256'])['status'] == 'submitted'
+    assert json.loads(service[1].read_bytes())['starts'] == 1
+
+
+def test_cycle_lost_ack_and_missing_authorization_only_reconcile_the_original_start(cycle_selection, service, tmp_path):
+    from ergora import training_cycles
+    import signal
+
+    state, definition, runtime, authorized = authorize_budget(cycle_selection, tmp_path, wall=30, cleanup=5)
+    select, record = service
+    select('lost-ack')
+    with pytest.raises(ValueError, match='UNAVAILABLE'):
+        training_cycles.start(state, 'demo', 'budget', 'alpha', authorized['authorization_sha256'], 1)
+    original = training.submission(state, 'demo', 'alpha')
+    prefix = runtime / 'ergora/training-submissions'
+    attempt = (prefix / 'alpha.attempt.json').read_bytes()
+    authorization = state.root / 'training-cycles/demo/budget/authorization.json'
+    raw = authorization.read_bytes()
+    authorization.unlink()
+    try:
+        assert training.submission(state, 'demo', 'alpha')['budget']['authorization_status'] == 'unknown'
+        select('not-found')
+        observed = training.resume_start(state, 'demo', 'alpha', 1, original['intent_sha256'])
+        # The independent cleanup may have reconciled the accepted original run
+        # already. Both observations retain the one original start slot.
+        assert observed['intent_sha256'] == original['intent_sha256']
+        assert observed['status'] == 'submitted' or observed['reconciliation'] == 'not_found'
+        assert native_budget_create(definition, 'alpha', managed=True).returncode != 0
+    finally:
+        authorization.write_bytes(raw)
+        select('accepted')
+        from contextlib import suppress
+        with suppress(ProcessLookupError):
+            os.kill(json.loads((prefix / 'alpha.budget/owner.json').read_bytes())['pid'], signal.SIGTERM)
+        wait_budget_final(runtime)
+    observed = training.resume_start(state, 'demo', 'alpha', 1, original['intent_sha256'])
+    assert observed['status'] == 'submitted' and observed['intent_sha256'] == original['intent_sha256']
+    assert (prefix / 'alpha.attempt.json').read_bytes() == attempt
+    assert json.loads(record.read_bytes())['starts'] == 1
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Native start preflight requires Linux/WSL2 Git paths')

@@ -120,6 +120,13 @@ def worker_command(installation: Path) -> list[str]:
     return [str(installation / '.venv/bin/python'), '-P', '-c', bootstrap]
 
 
+def training_budget_worker_command(installation: Path) -> list[str]:
+    """Budget readers use this application's dependencies and optional Temporal SDK."""
+    bootstrap = (f'import sys;sys.path.insert(0,{str(Path(__file__).parent.parent)!r});'
+                 f'from ergora.reference_training_worker import main;main({str(installation)!r})')
+    return [sys.executable, '-P', '-c', bootstrap]
+
+
 def registration_paths(project_id: str) -> tuple[str, ...]:
     # Project ID is validated by the project owner before crossing this boundary.
     return (f"ergora/registrations/{project_id}.json", f"policies/{project_id}/scope.json",

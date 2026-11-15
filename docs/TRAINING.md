@@ -229,7 +229,7 @@ ergora training cycle-read "$HOME/ergora-inputs/cycle-01" --sha256 EXACT_CYCLE_S
 
 `cycle-create`只读原注册和`check-start`，保存完整项目／注册快照、全部候选观察与策略，返回整份`cycle.json`的SHA；不会覆盖已有目录。候选顺序固定，试次上限取列表长度；同一实验不能重复或已有prepared／unknown／submitted／rejected意图。所有候选须共享初始baseline、workload、数据／初态／环境／验证合同、质量要求及比较政策；各自candidate、track与allowed_changes完整保留。合同不一致时修正真实选择，不能悄悄放宽门槛。
 
-三个预算值是严格整数，清理时间包含在总墙钟内，`1≤cleanup_seconds<wall_seconds`。`control_timeout_seconds`为1–60秒的原用例timeout上限，未来执行须按剩余阶段预算缩小或拒绝调用；它不是整个用例的硬时限。`cycle-create`本身不会起算预算；完整有界自动执行、停止机制、费用或GPU小时计量仍未提供。
+三个预算值是严格整数，清理时间包含在总墙钟内，`1≤cleanup_seconds<wall_seconds`。`control_timeout_seconds`为1–60秒的原用例timeout上限，预算提交在原剩余阶段内检查或终止调用；它不是整个用例的硬时限。`cycle-create`本身不会起算预算；完整有界自动执行、停止机制、费用或GPU小时计量仍未提供。
 
 离线`cycle-read`不需要项目、SDK、服务或密钥，验证所选完整SHA、版本及内部绑定，保留原观察全文。`coverage`明确为已保存本地观察，运行未查询、来源未认证、执行未授权、预算未起算；其中旧ready字段不代表当前准入。文件最多10,000,000 UTF-8字节和64层／100000值，超限拒绝，不截断。该输入保留原home／注册／执行路径，跨机可离线阅读；执行须在原支持环境重新核身份，不能将它直接当作活动运行迁移或新的启动授权。
 
@@ -244,11 +244,39 @@ ergora training cycle-status my-project cycle-01 --authorization-sha256 EXACT_AU
 
 `EXACT_CYCLE_SHA256`是`cycle-create`返回的完整文件SHA；`EXACT_AUTHORIZATION_SHA256`是授权结果中的`authorization_sha256`，用于钉住所选原授权的canonical内容，后者也可省略。授权先核本home的原登记journal和matching published result、完整项目及执行归属，再保存原输入和一次性UTC／boot／CLOCK_BOOTTIME时刻，之后才核全部候选的当前完整准入。保存位于`CONTROL_HOME/training-cycles/PROJECT/CYCLE_ID/`；文件及目录写盘、全部检查、中断等待和恢复均消耗同一期限。清理预留包含在总wall内，`work_remaining_seconds`到零即禁止继续准入。
 
-`status=ready`只表示全部本地准入与原输入一致且观察时仍有计算预算，`coverage.execution_authorized`保持`false`；这里不创建提交意图、workflow或job，不启动runner，也没有自动停止原手工`run-local`的保护。预算进入提交／执行器的入口仍在后续实现，不能把本地ready当成训练运行许可或性能结果。
+`status=ready`只表示全部本地准入与原输入一致且观察时仍有计算预算，`coverage.execution_authorized`保持`false`；这里不创建提交意图、workflow或job，不启动runner，也没有自动停止原手工`run-local`的保护。下面的`cycle-start`才会显式绑定原提交；实际executor／后代停止及自动循环仍在后续实现，不能把本地ready当成训练运行许可或性能结果。
 
 中断或丢回复后，可重复**同一条授权命令**；同ID先读取本地保存的完整输入、原授权和ready，不依赖外部输入目录仍存在，不重新计时。缺ready时只在原剩余时间内重新核完整候选；同ID绑定不同输入SHA会拒绝。不要删除授权或换ID绕过原额度。`cycle-status`核原来源、完整记录、当前项目和时钟，不运行live admission、查询Temporal或读取密钥。已有ready在原锁释放后还须flush原目录再核剩余期限，用于完成丢回复／目录fsync失败留下的同一个可见记录；不改原件字节，flush失败显示unknown。原锁忙时保持pending／exhausted，不能把尚在写盘的ready当完成；不需要`temporal` extra。
 
 `pending`表示原授权已保存而完整准入尚未完成；`exhausted`表示计算截止已过；`project-changed`表示当前完整项目已与原revision不同；`unknown`显示跨boot／host、时钟断续或缺少时钟来源的具体原因。后三者不能推进；原件保留。原登记、输入或ready缺失／损坏、链接／特殊文件、重复key／非finite JSON均明确失败，不补造记录或重授。原输入沿原10MB／树合同，授权及ready各最多1MiB。跨机可用`cycle-read`阅读离线输入，当前不支持迁移一个正在计时的授权。
+
+### 按原预算投递与持续截止监管
+
+在原 Linux／WSL2、原控制目录和同一次系统启动内，为已授权选择中的一个实验执行：
+
+```bash
+python -m pip install 'ergora[temporal]'
+ergora services start my-project temporal training-budget-worker --revision REVISION --timeout 30
+ergora training cycle-start my-project cycle-01 trial-a --authorization-sha256 EXACT_AUTHORIZATION_SHA256 --revision REVISION
+ergora training submission my-project trial-a
+```
+
+`training-budget-worker`是可选独立服务，使用安装 Ergora 及 Temporal extra 的应用 Python。它只消费`ergora-training-budget-v1`，在原 native registry 锁内、写入 request 前核完整原授权、当前项目、原 Experiment、活 owner 和计算期限。原`training-worker`与旧队列继续独立运行；预算 worker 缺失时请求留在新队列，截止 owner 仍会建立原 fence，没有旧队列回退。Supervisor 的`RUNNING`只说明服务进程存活，`submission.status=submitted`只说明取得原控制面 run ID。
+
+`cycle-start`沿原`training start`保存不可变 intent 和 budget 引用，随后在第一份 attempt 前确认独立监管进程。原 attempt 是该实验一次性占用的 start slot，失败、丢回复、NOT_FOUND、取消、换 cycle 或重启都不退还。同一 intent 的后续普通 start／resume 自动保留预算绑定；已有无预算 intent 不能被接管。未绑定的旧 start 和手工 run-local 不会自动获得这项保护。
+
+调用返回或提交 RPC 仍在途时，owner 均独立保留截止责任。计算期限耗尽、原项目漂移或收到可捕获取消后，owner 在原清理预留内用原完整绑定建立本地 fence，再沿原 run 与稳定取消 ID 对账。探测、registry 锁或目录同步阻塞由其受监督 helper 限制；来源丢失仍可用此前核验的缓存尝试同一 fence，不能据此延长授权。尚未创建的匹配 request 会被 fence 拒绝；已完成的原 native 结果保留其原证据与人工 release 流程。
+
+读取`submission.budget`时区分`authorization_status`、`owner_status`、`final`、`local_fence`和`executor_stop_confirmed`。`unknown`表示某项完成无法确认，不能当作可重发许可。已经可见但同步失败的同一 fence 可在 owner 结束后由原观察入口完成目录同步／绑定重核；原 final、clock、attempt 的 bytes 保留，不重启 owner 或发布新 start。owner 被 SIGKILL、身份失联、跨 boot 或缺原件时，不自动重启或接管。实际 executor／后代停止尚未交付，`executor_stop_confirmed`保持`null`；fence 和取消送达不构成训练已经停止的证明。
+
+恢复仍用原 intent 的完整 SHA，而不是更换 cycle 或实验 ID：
+
+```bash
+ergora training resume-start my-project trial-a --revision REVISION --intent-sha256 EXACT_START_INTENT_SHA256
+ergora services logs my-project training-budget-worker --bytes 4096
+```
+
+此处提供单个候选的预算提交与连续控制责任。实际受管 runner、自动多轮训练、GPU／质量／性能收益须分别验收，不能由这条排队流程推导。
 
 ### 尚无 run ID 时显式阻断本地实验
 

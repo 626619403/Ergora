@@ -4,7 +4,9 @@
 
 ## 当前检查点
 
-**活动片Q4.2b3／B3.1：[预算与executor计划](plans/2026-11-15-training-budget-executor.md)／[交付](delivery/2026-11-15-training-budget-executor.md)。** 固定基线为b2发布`9c9ffeee517deff2ec8cd2ffe572744e3c2cd682`。最终源码／安装r4，四产品（新增共同clock）及原测试，core／SDK各646三方逐字／283通过；最终安装cycle16项／56.85秒、原task预算两suite15项／138.20秒全通过，13实际CLI／四同原件重读及自身46.167秒approve已验。原r2完整三suite49通过／15夹具目录setup错误保持，修验证快照后仅重跑受影响两suite，不能转记最终全量通过；原R1／R2四轮实红保持。新独立已直接终核最终本地两轴approve／开放0／0，R1／R2关闭；前置b2单独修复Windows测试平台标记，不带本片产品。b2平台标记修复已单独发布82ea3f163e0c29759eb6ebef93fb2e58d87e983a，源码独立两轴通过／发布续核在途；自己的CI门禁闭合前不推后继产品。B3.1自己的普通发布／CI待。kernel专家保留在v3路径，派发／连续owner／实际executor停止／自动循环保留后继义务。
+**活动片Q4.2b3／B3.2：[原提交与连续截止计划](plans/2026-11-15-training-budget-submission.md)／[交付](delivery/2026-11-15-training-budget-submission.md)。** 实施产品基线为B3.1 `b53bba613a3c02b14c69a6df9b0d526755d7e216`。固定r3设计独立两轴approve，R1–R3仅设计层面关闭；原intent预算绑定、原attempt单一slot、独立owner、预算queue／可选worker已实施。r3两安装648／283、原五suite111通过／1跳过已验；自身模板request-changes及新独立确认最终fsync阻塞R1。原安装实红后，r4将final发布纳入同cleanup监督helper，允许无final的同既有fence恢复；r4两安装648／283、真实Temporal控制流程47.4759秒通过。受影响15项12通过／3测试预期失败保留；修正final预期并保证故障marker后四项精准重跑通过／93.12秒，自身原模板56.218秒approve；原fresh-context最终本地两轴approve／开放0／0，R1关闭，22固定文件／两安装／原件及实际收尾已独立核。普通发布与自己的CI待前片门禁。Kernel专家保留在v3路径；B3.3实际executor／后代停止、Q4.2c自动循环和真实B3训练仍开放。前置B3.1原CI失败另片修复，不带后继产品。
+
+B3.1本地r4两安装646／283、cycle16与原task15项、实际13＋4 CLI、自身46.167秒approve、新独立本地与固定b53两轴approve保持其原范围。其自身CI43660736309为6job成功／2失败、28必要步骤成功／2失败，Linux group1与Windows同一架构声明失败保持；边界修正本地固定 `b78f7b233316f3248c5a5865d90e6a23870693ac`，四文件、无产品变动，完整原安装边界16通过，原新独立两轴通过，固定提交与普通远端Ref已原新独立核同一，自己的CI43663286019在途。前置82ea的八job／30必要步骤及独立终核已闭合。
 
 **B3.1 CI接续**：自己的CI43660736309在Linux group1暴露公共时钟的架构检查声明遗漏，原组1 failed／253 passed／6 skipped。按[独立修复记录](delivery/2026-11-15-budget-clock-boundary-regression.md)同步reference_budget允许的budget_clock依赖、公共clock底层约束与AST本包分类；原B3.1安装的完整边界16项通过。本修正新独立两轴approve／开放0／0、文档断链finding关闭，普通发布与自己的CI待核；原失败保持，后继产品暂不推送。
 
@@ -55,7 +57,7 @@ W1仅验源码提案与交接：共享仓库HEAD／213条status字节保持，�
 
 ## 下一可执行项
 
-**新增优先工作Q**：[领域审查／循环优化／质量计划](plans/2026-11-15-domain-review-optimization-quality.md)的研究、Q1.1／Q1.2、Q2.1／Q2.2、Q2.3a／b1／b2／b3、Q3.1–Q3.3、Q4.1／Q4.2a1／a2／b1及Q5.1已闭合。b2原登记恢复本地与固定发布两轴已通过，已精确推送`9c9ffeee517deff2ec8cd2ffe572744e3c2cd682`；自己的CI43655794070终态Windows单测试失败，原生准备测试单marker小修正源码独立两轴通过，已单独普通发布82ea3f163e0c29759eb6ebef93fb2e58d87e983a／四blob／完整Ref同一，自己的CI终态续核待，门禁未闭合；[b3不可续期预算／全周期停止计划](plans/2026-11-15-training-budget-executor.md)r2已新fresh-context两轴approve／开放0／0，R1连续owner与R2先时钟后live检查已关闭，仅认证计划。B3.1最终r4两安装646／283、cycle16和原task15项、实际CLI与自身模板已验；新独立最终本地两轴通过／R1–R2关闭，原失败保持。先精确交付原授权／时钟，再提交slot／连续owner和实际executor，之后Temporal循环、Q5.2按证据重构及严格发布验收。Kernel评估保留在路径。下列旧节点保留原完成状态和外部条件，不因新计划重做已验交付。
+**新增优先工作Q**：[领域审查／循环优化／质量计划](plans/2026-11-15-domain-review-optimization-quality.md)的研究、Q1.1／Q1.2、Q2.1／Q2.2、Q2.3a／b1／b2／b3、Q3.1–Q3.3、Q4.1／Q4.2a1／a2／b1及Q5.1已闭合。b2的Windows单marker修正82ea已以自己的CI及原独立终核闭合，原失败保留。B3.1原授权／时钟本地和固定发布已审；其原CI架构声明失败由独立b78修正，等待b78自己的CI终核。活动B3.2在原slot／连续owner上完成r4本地回归、真实控制流程及自身模板，最终独立终核待；之后普通发布并跟踪自己的CI，不取消前片。下一片先固定B3.3实际executor／全后代停止的具体设计，核并发fence与进程回收、旧owner能力及显式执行权限，独立审后再实施；之后Temporal循环、Q5.2按证据重构及严格发布验收。Kernel评估保留在路径。下列旧节点保留原完成状态和外部条件，不因新计划重做已验交付。
 
 1. **F8-H3b实际续接**：精确交付完成，自己的CI与原独立两轴终核通过，详见[计划](plans/2026-11-14-harness-session-continuation.md)／[交付](delivery/2026-11-14-harness-session-continuation.md)。r3包561／两RECORD／283、安装133通过／12跳过；实际SDK四场景与真实模型两调用成功、自身approve。原两个P2及失败保留并已修复。冻结原项目／资料／权限／后端／schema，原home／cwd／session不分叉；unknown不自动重发，正式恢复归原owner。
 2. **F9实验导航**：F9a／b1／b2／[b3取消与停止观察](delivery/2026-11-14-training-cancellation.md)已精确交付。F9b4a基线初始化已普通发布、自有CI及原结构轴终核通过；[F9b4b runner登记](plans/2026-11-14-training-runner.md)完成最终包、安装40项／实际CLI与页面／SDK-free基线／原件及收尾／自身模板、新独立两轴最终本地通过0／0，已普通发布并核完整Ref，自己的CI43523861953八job／30步骤及原结构轴终核通过。F9b4c C1最终包／15项／实际CLI HTTP、新独立两轴、普通发布和自己的CI及原结构轴终核均通过；C2页面已完成最终本地、新独立两轴、固定发布和自己的CI及原结构轴终核；F9c C1换行修正与C2已精确交付；[C3页面](plans/2026-11-14-training-evidence-console.md)已完成本地与独立终核／发布及自己的CI，F9d完整旅程另验；复用原训练owner，不把CPU合同当真实GPU验收。

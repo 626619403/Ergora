@@ -87,4 +87,5 @@ async def connect():
 
 
 base.connection.connect = base.native.connect = connect
-main()
+if __name__ == '__main__':
+    main()

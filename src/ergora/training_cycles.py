@@ -350,6 +350,20 @@ def status(state: State, project_id: str, cycle_id: str, *, authorization_sha256
         return observed
 
 
+def start(state: State, project_id: str, cycle_id: str, experiment_id: str,
+          authorization_sha256: str, expected_revision: int) -> dict:
+    """Bind a selected candidate through the original native start and its single slot."""
+    plan, authorization, _ = _load(state, project_id, cycle_id, _directory(state, project_id, cycle_id))
+    if authorization['sha256'] != authorization_sha256:
+        raise ValueError('Training start requires the exact original authorization SHA256')
+    selected = next((item for item in plan['definition']['candidates'] if item['experiment_id'] == experiment_id), None)
+    if selected is None:
+        raise ValueError('Experiment is outside the original finite training selection')
+    return training.start(state, project_id, experiment_id, expected_revision, selected['manifest_sha256'],
+                          timeout=plan['definition']['budget']['control_timeout_seconds'],
+                          budget={'cycle_id': cycle_id, 'authorization_sha256': authorization_sha256})
+
+
 def authorize(state: State, project_id: str, cycle_id: str, directory: Path, sha256: str,
               expected_revision: int, *, confirm: bool) -> dict:
     """Persist one clock before all live checks; retries retain its full input and deadline."""
