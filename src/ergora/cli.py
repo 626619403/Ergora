@@ -597,6 +597,18 @@ def parser() -> argparse.ArgumentParser:
     cycle.add_argument("experiment_id")
     cycle.add_argument("--authorization-sha256", required=True)
     cycle.add_argument("--revision", type=int, required=True)
+    operation = operations.add_parser('execution', help='Read saved execution and stop records offline; never launch or restart')
+    operation.add_argument('project')
+    operation.add_argument('experiment_id')
+    operation = operations.add_parser('execute', help='Confirm one submitted job for its original capable budget owner')
+    operation.add_argument('project')
+    operation.add_argument('experiment_id')
+    operation.add_argument('--revision', type=int, required=True)
+    operation.add_argument('--intent-sha256', required=True)
+    operation.add_argument('--run-id', required=True)
+    operation.add_argument('--request-sha256', required=True, help='SHA256 of the complete original native request bytes')
+    operation.add_argument('--confirm', action='store_true', required=True)
+    operation.add_argument('--timeout', type=int, default=20)
     for name in ("baseline-preview", "init-baseline", "runner-preview", "register-runner"):
         operation = operations.add_parser(name, help="Preview or explicitly publish native baseline/runner configuration; never execute training")
         operation.add_argument("project")
@@ -1284,6 +1296,11 @@ def main(argv: list[str] | None = None) -> int:
             elif args.operation == "start":
                 output = training.start(State(args.home), args.project, args.experiment_id, args.revision,
                                         args.manifest_sha256, timeout=args.timeout)
+            elif args.operation == 'execution':
+                output = training.execution(State(args.home), args.project, args.experiment_id)
+            elif args.operation == 'execute':
+                output = training.execute(State(args.home), args.project, args.experiment_id, args.revision,
+                    args.intent_sha256, args.run_id, args.request_sha256, confirm=args.confirm, timeout=args.timeout)
             elif args.operation == "resume-start":
                 output = training.resume_start(State(args.home), args.project, args.experiment_id, args.revision,
                                                args.intent_sha256, timeout=args.timeout, original_registration=recovery)

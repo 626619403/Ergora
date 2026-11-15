@@ -15,7 +15,7 @@ from temporalio.api.common.v1 import Payloads, WorkflowExecution, WorkflowType
 from temporalio.api.history.v1 import History, HistoryEvent, WorkflowExecutionStartedEventAttributes
 from temporalio.api.workflow.v1 import WorkflowExecutionInfo
 from temporalio.api.workflowservice.v1 import (DescribeWorkflowExecutionResponse, GetWorkflowExecutionHistoryResponse,
-    StartWorkflowExecutionRequest, StartWorkflowExecutionResponse)
+    QueryWorkflowResponse, StartWorkflowExecutionRequest, StartWorkflowExecutionResponse)
 from temporalio.client import Client, WorkflowExecutionStatus
 from temporalio.common import WorkflowIDReusePolicy, WorkflowIDConflictPolicy
 from temporalio.converter import DataConverter
@@ -117,6 +117,18 @@ class Service:
         return GetWorkflowExecutionHistoryResponse(history=History(events=[HistoryEvent(event_id=1,
             workflow_execution_started_event_attributes=WorkflowExecutionStartedEventAttributes(input=original.input))]))
 
+    async def query_workflow(self, request, **kwargs):
+        from dataclasses import asdict
+        from perf_temporal.models import Binding, Status
+
+        assert request.execution.run_id == run_id
+        original = StartWorkflowExecutionRequest.FromString(base64.b64decode(record['request']))
+        spec = (await converter.decode(original.input.payloads, [dict]))[0]
+        phase = 'CANCELLING' if scenario == 'nonqueued' else 'QUEUED'
+        job = 'another-job' if scenario == 'another-job' else 'local-perf-' + spec['binding']['experiment_id']
+        return QueryWorkflowResponse(query_result=Payloads(payloads=await converter.encode([
+            asdict(Status(phase, Binding(**spec['binding']), job, None, None))])))
+
 
 async def connect():
     return Client(Service())
@@ -157,4 +169,21 @@ def install_budget_fixture():
 
 if __name__ == '__main__':
     install_budget_fixture()
-    main()
+    if payload['operation'] == 'request':
+        if os.environ.get('ERGORA_TEST_TRAINING_WRITER_LOCK'):
+            from ergora.reference_training_execution import Execution
+            import time
+
+            current = Execution.current
+            def held_current(active, context, chain):
+                current(active, context, chain)
+                if (chain.folder / 'request.json').exists():
+                    storage.with_suffix('.writer-held').touch()
+                    while not storage.with_suffix('.writer-release').exists():
+                        time.sleep(.02)
+            Execution.current = held_current
+        from ergora.reference_training_worker import execution_main
+
+        execution_main()
+    else:
+        main()

@@ -41,6 +41,9 @@ async def lookup(client, spec: dict, *, run_id: str | None, timeout: int):
     return handle, description
 
 
+MEMO_KEY = 'ergora.training_submission_sha256'
+
+
 async def observe(handle, description, binding, *, timeout: int) -> dict:
     """Read domain facts after the caller has verified the fixed original run."""
     from perf_temporal.workflow import ExperimentWorkflow

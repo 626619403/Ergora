@@ -13,11 +13,11 @@ import uuid
 
 from .reference import _training_records
 from .reference_training_context import _TrainingProject
+from .reference_training_runtime import MEMO_KEY as _MEMO_KEY
 from . import reference_training_budget as budgets, training_cycles
 from .state import file_lock
 
 
-_MEMO_KEY = 'ergora.training_submission_sha256'
 _INTENT_LIMIT = 16 * 1_048_576
 
 

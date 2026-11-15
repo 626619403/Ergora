@@ -8,12 +8,15 @@ import io
 import json
 import os
 from pathlib import Path
+import signal
 import sys
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
 
 from .reference_history import find_signal_event
 from .reference_training_submission import _MEMO_KEY, _Submission
+from .reference_training_budget import BudgetedStart
+from . import processes, training_execution_protocol
 from .state import file_lock
 
 
@@ -207,8 +210,28 @@ class _Cancellation:
                 'submitted_revision': self.start['project_revision'],
                 'experiment_id': self.submission.ident, 'workflow_id': self.start['workflow_id'], 'run_id': self.run_id,
                 'control': control, 'executor_observation': executor, 'fence_recorded': fence is not None,
+                'managed_execution': training_execution_protocol.ExecutionRecords(self.submission.project,
+                    self.submission.ident, str(self.payload['control_home'])).load().observe(durable=True),
                 'execution_success': None, 'read_only': True,
                 'scope': 'Original control outcome, native adapter observation and saved fence are separate facts; no OS stop or adoption claim'}
+
+    def notify_owner(self) -> dict | None:
+        """A local stop request supplements, but never acknowledges, the native signal."""
+        if 'budget' not in self.start:
+            return None
+        budget = BudgetedStart(self.submission, self.start)
+        try:
+            owner = training_execution_protocol.owner_record(training_execution_protocol.decode(
+                training_execution_protocol.read_raw(budget.path('owner.json'))))
+            if owner.get('execution_capability') is None:
+                return None
+            expected = {key: owner[key] for key in ('pid', 'start_ticks', 'boot_id')}
+            if not budget.owner_alive():
+                raise ValueError('Original managed owner is no longer confirmed')
+            processes.notify_identity(expected, signal.SIGTERM)
+            return {'status': 'requested', 'owner': expected, 'executor_stop_confirmed': None}
+        except (OSError, ValueError) as error:
+            return {'status': 'unknown', 'reason': str(error), 'executor_stop_confirmed': None}
 
     async def run(self) -> dict:
         operation = self.payload['operation']
@@ -231,15 +254,20 @@ class _Cancellation:
                     return {'created': False, 'cancellation': self.status(intent)}
                 intent = self.record(self.submission.project_revision, self.payload['reason'], self.actor())
                 self.core.write(self.path('.intent.json'), intent)
-                return {'created': True, 'cancellation': self.status(intent)}
+                notification = self.notify_owner()
+                return {'created': True, 'cancellation': self.status(intent),
+                        **({'local_stop_notification': notification} if notification is not None else {})}
             if intent is None or self.sha(intent) != self.payload['intent_sha256']:
                 raise ValueError('Training cancellation recovery requires the exact original request intent SHA')
             status = self.status(intent)
             if operation == 'prepare-resume' or status['status'] in ('requested', 'already_closed'):
                 return status
+            notification = self.notify_owner()
             if status['attempt_saved']:
-                return await self.reconcile(intent) if operation == 'resume' else status
-            return await self.dispatch(intent)
+                result = await self.reconcile(intent) if operation == 'resume' else status
+            else:
+                result = await self.dispatch(intent)
+            return {**result, **({'local_stop_notification': notification} if notification is not None else {})}
 
 
 def main() -> None:

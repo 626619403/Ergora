@@ -39,6 +39,167 @@ def prepared(experiments):
 
 
 @pytest.fixture
+def historical_execution(prepared):
+    """A synthetic stopped archive, deliberately carrying no live execution authority."""
+    from datetime import datetime, timezone
+    from ergora import training_cycles
+    from ergora.training_execution_protocol import GATE_SOURCES, PROTOCOL
+
+    state, definition, runtime, _, write, digest = prepared
+    reference.training_submission(state.project('demo'), state.root, 'prepare',
+                                  {'experiment_id': 'alpha', 'manifest_sha256': digest}, timeout=20)
+    prefix = runtime / 'ergora/training-submissions'
+    intent = json.loads((prefix / 'alpha.intent.json').read_bytes())
+    intent['budget'] = {'cycle_id': 'historical', 'authorization_sha256': 'a' * 64,
+                        'task_queue': 'ergora-training-budget-v1'}
+    write(prefix / 'alpha.intent.json', intent)
+    sha = training_cycles._sha
+    start = {'schema_version': 1, 'intent_sha256': sha(intent), 'workflow_id': intent['workflow_id'],
+             'spec_sha256': sha(intent['observation']['experiment']['spec'])}
+    receipt = {**start, 'run_id': 'historical-run'}
+    write(prefix / 'alpha.attempt.json', start)
+    write(prefix / 'alpha.result.json', receipt)
+    owner = {'schema_version': 2, 'intent_sha256': sha(intent), 'authorization_sha256': 'a' * 64,
+        'pid': 1, 'start_ticks': '0', 'boot_id': '0' * 36, 'context_sha256': 'b' * 64,
+        'execution_capability': {'protocol': PROTOCOL, 'admission_protocol': reference.TRAINING_PROTOCOL,
+            'descriptor_sha256': 'c' * 64, 'installation': definition['execution']['installation'],
+            'native_python': str(Path(definition['execution']['installation']) / '.venv/bin/python'),
+            'cycle_ready_sha256': 'd' * 64, 'gate_sources': {name: 'e' * 64 for name in GATE_SOURCES}}}
+    write(prefix / 'alpha.budget/owner.json', owner)
+    native = {'schema_version': 1, 'job_id': 'local-perf-alpha',
+        'experiment': intent['observation']['experiment']['spec'],
+        'runner': intent['observation']['experiment']['current_runner']}
+    native_sha = write(runtime / 'training/jobs/alpha/request.json', native)
+    request = {'schema_version': 1, 'kind': 'training-execution-request', 'protocol': PROTOCOL,
+        'control_home': str(state.root), 'project': 'demo', 'project_revision': intent['project_revision'],
+        'registration_sha256': intent['registration_sha256'], 'execution': intent['execution'],
+        'experiment_id': 'alpha', 'job_id': native['job_id'], 'workflow_id': intent['workflow_id'],
+        'run_id': receipt['run_id'], 'start_intent_sha256': sha(intent), 'start_attempt_sha256': sha(start),
+        'start_receipt_sha256': sha(receipt), 'authorization_sha256': 'a' * 64, 'owner_sha256': sha(owner),
+        'native_request_sha256': native_sha, 'native_request_semantic_sha256': sha(native),
+        'confirmation': True, 'actor_id': 'unix:999:historical-actor'}
+    launch = {'schema_version': 1, 'kind': 'training-execution-launch', 'protocol': PROTOCOL,
+        'request_sha256': sha(request), 'owner_sha256': sha(owner), 'authorization_sha256': 'a' * 64,
+        'clock_sha256': 'f' * 64, 'launch_id': '1' * 32, 'execution_phase_id': '2' * 32}
+    supervisor = {'pid': 2, 'start_ticks': '1', 'boot_id': '0' * 36}
+    executor = {'pid': 3, 'start_ticks': '2', 'boot_id': '0' * 36}
+    attempt = {'schema_version': 1, 'kind': 'training-execution-attempt', 'protocol': PROTOCOL,
+        'launch_sha256': sha(launch), 'request_sha256': sha(request), 'owner_sha256': sha(owner),
+        'run_id': receipt['run_id'], 'job_id': native['job_id'], 'native_request_sha256': native_sha,
+        'supervisor': supervisor, 'executor': executor}
+    ack = {'schema_version': 1, 'kind': 'training-execution-ack', 'protocol': PROTOCOL,
+        'attempt_sha256': sha(attempt), 'launch_sha256': sha(launch), 'request_sha256': sha(request),
+        'owner_sha256': sha(owner), 'executor': executor}
+    stopped = {'schema_version': 1, 'kind': 'training-execution-stopped', 'protocol': PROTOCOL,
+        'request_sha256': sha(request), 'launch_sha256': sha(launch), 'attempt_sha256': sha(attempt),
+        'ack_sha256': sha(ack), 'supervisor': supervisor,
+        'process': {'status': 'cancelled', 'returncode': -9,
+            'output': str(prefix / ('alpha.budget/observations/execute-' + launch['execution_phase_id']) / 'helper')},
+        'reaped_at': datetime.now(timezone.utc).isoformat()}
+    folder = runtime / 'training/jobs/alpha/managed-execution'
+    for name, value in [('request', request), ('launch', launch), ('attempt', attempt), ('ack', ack), ('stopped', stopped)]:
+        write(folder / (name + '.json'), value)
+    return state, definition, runtime, folder
+
+
+def test_execution_history_is_sdk_free_and_survives_missing_installation(historical_execution, capsys):
+    from ergora.cli import main
+
+    state, definition, runtime, _ = historical_execution
+    original = Path(definition['execution']['installation'])
+    moved = original.with_name(original.name + '-unavailable')
+    before = {p: p.read_bytes() for p in runtime.rglob('*') if p.is_file()}
+    with state.connect() as db:
+        database = list(db.iterdump())
+    original.rename(moved)
+    try:
+        assert main(['--home', str(state.root), 'training', 'execution', 'demo', 'alpha']) == 0
+        result = json.loads(capsys.readouterr().out)
+    finally:
+        moved.rename(original)
+    assert result['reap_record_observed'] is True
+    assert result['executor_stop_confirmed'] is (True if sys.platform == 'linux' else None)
+    assert result['runtime_status'] == 'not_queried' and result['execution_authorized'] is False
+    assert result['current_sources']['status'] == 'unavailable_or_changed'
+    assert result['execution_success'] is None
+    assert all(p.read_bytes() == raw for p, raw in before.items())
+    with state.connect() as db:
+        assert list(db.iterdump()) == database
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Read-only durable directory observation requires Linux')
+def test_visible_stop_needs_same_file_sync_and_reread(historical_execution):
+    state, _, runtime, _ = historical_execution
+    entrypoint = '''import json,sys,os
+from pathlib import Path
+from ergora.training_execution_protocol import ExecutionRecords
+p=json.load(sys.stdin)
+c=ExecutionRecords(p['project'],p['experiment_id'],p['control_home']).load()
+def fail(fd): raise OSError('Controlled existing-file sync failure')
+os.fsync=fail
+print(json.dumps(c.observe(durable=True)))
+'''
+    before = {p: p.read_bytes() for p in runtime.rglob('*') if p.is_file()}
+    uncertain = reference._training_reader(state.project('demo'), entrypoint,
+        {'project': state.project('demo'), 'experiment_id': 'alpha', 'control_home': str(state.root)})
+    assert uncertain['reap_record_observed'] is True and uncertain['executor_stop_confirmed'] is None
+    recovered = training.execution(state, 'demo', 'alpha')
+    assert recovered['executor_stop_confirmed'] is True
+    assert recovered['raw_sha256'] == uncertain['raw_sha256']
+    assert all(p.read_bytes() == raw for p, raw in before.items())
+
+
+@pytest.mark.parametrize('mutation', ['numeric-identity', 'native-runner', 'foreign-ack', 'duplicate', 'fifo'])
+def test_execution_reader_rejects_inconsistent_original_chain(historical_execution, mutation):
+    state, _, runtime, folder = historical_execution
+    if mutation == 'fifo' and sys.platform != 'linux':
+        pytest.skip('FIFO open protection is a Linux contract')
+    path = folder / 'request.json'
+    if mutation == 'numeric-identity':
+        value = json.loads(path.read_bytes());value['project_revision'] = True
+        path.write_text(json.dumps(value))
+    elif mutation == 'native-runner':
+        path = folder.parent / 'request.json'
+        value = json.loads(path.read_bytes());value['runner']['timeout_seconds'] += 1
+        path.write_text(json.dumps(value))
+    elif mutation == 'foreign-ack':
+        path = folder / 'ack.json'
+        value = json.loads(path.read_bytes());value['attempt_sha256'] = '0' * 64
+        path.write_text(json.dumps(value))
+    elif mutation == 'duplicate':
+        path.write_text(path.read_text().replace('{', '{"schema_version":1,', 1))
+    else:
+        path.unlink();os.mkfifo(path)
+    before = {p: p.read_bytes() for p in runtime.rglob('*') if p.is_file()}
+    with pytest.raises(ValueError):
+        training.execution(state, 'demo', 'alpha')
+    assert all(p.read_bytes() == raw for p, raw in before.items())
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original budget publication locks require Linux')
+def test_owner_observers_share_the_initialization_read_lock(historical_execution):
+    state, _, _, folder = historical_execution
+    entrypoint = '''import fcntl,json,os,sys
+from pathlib import Path
+from ergora import processes
+from ergora.training_execution_protocol import owner_active
+p=json.load(sys.stdin);d=Path(p['control_home'])/'observer-probe';d.mkdir()
+o={"schema_version":2,"intent_sha256":"a"*64,"authorization_sha256":"b"*64,
+   **processes.identity(os.getpid()),"context_sha256":"c"*64,"execution_capability":None}
+(d/'owner.json').write_text(json.dumps(o))
+with (d/'lock').open('w') as lock,(d/'initializing.lock').open('w') as ready:
+ fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
+ fcntl.flock(ready,fcntl.LOCK_EX|fcntl.LOCK_NB)
+ initializing=owner_active(d/'owner.json',o)
+ fcntl.flock(ready,fcntl.LOCK_SH)
+ shared=owner_active(d/'owner.json',o)
+print(json.dumps({'initializing':initializing,'shared_observer':shared}))
+'''
+    observed = reference._training_reader(state.project('demo'), entrypoint, {'control_home': str(state.root)})
+    assert observed == {'initializing': False, 'shared_observer': True}
+
+
+@pytest.fixture
 def service(prepared, monkeypatch, tmp_path):
     if sys.platform != 'linux':
         pytest.skip('Native training start uses the registered Linux/WSL2 owner')
@@ -49,7 +210,8 @@ def service(prepared, monkeypatch, tmp_path):
 
     def select(scenario, *, budget_scenario=''):
         def invoke(argv, *args, **kwargs):
-            if 'from ergora.reference_training_submission import main;main()' in argv:
+            if ('from ergora.reference_training_submission import main;main()' in argv
+                    or 'from ergora.reference_training_worker import execution_main;execution_main()' in argv):
                 argv = list(argv)
                 argv[-1] = f'import runpy;runpy.run_path({str(fixture)!r},run_name="__main__")'
                 kwargs['env'] = {**kwargs['env'], 'ERGORA_TEST_TRAINING_SUBMISSION': scenario,
@@ -512,9 +674,161 @@ def authorize_budget(selection, tmp_path, *, wall=14, cleanup=4, timeout=4):
     request['budget'].update(wall_seconds=wall, cleanup_seconds=cleanup, control_timeout_seconds=timeout)
     source = tmp_path / 'finite-input'
     selected = training_cycles.create(state, 'demo', request, source)
-    authorized = training_cycles.authorize(state, 'demo', 'budget', source, selected['sha256'], 1, confirm=True)
+    authorized = training_cycles.authorize(state, 'demo', 'budget', source, selected['sha256'],
+                                          state.project('demo')['revision'], confirm=True)
     assert authorized['status'] == 'ready'
     return state, definition, runtime, authorized
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.skipif(sys.platform != 'linux', reason='Native managed admission requires Linux/WSL2')
+def test_execution_admission_waits_for_the_original_request_writer(cycle_selection, service, tmp_path, monkeypatch):
+    from ergora import processes, training_cycles
+    import signal
+
+    service[0]('accepted', budget_scenario='managed-no-launch')
+    state, definition, runtime, authorized = authorize_budget(cycle_selection, tmp_path, wall=50, cleanup=10)
+    submitted = training_cycles.start(state, 'demo', 'budget', 'alpha', authorized['authorization_sha256'], 1)
+    owner = json.loads((runtime / 'ergora/training-submissions/alpha.budget/owner.json').read_bytes())
+    expected = {key: owner[key] for key in ('pid', 'start_ticks', 'boot_id')}
+    marker = service[1]
+    try:
+        created = native_budget_create(definition, 'alpha', managed=True)
+        assert created.returncode == 0, created.stderr
+        request = runtime / 'training/jobs/alpha/request.json'
+        monkeypatch.setenv('ERGORA_TEST_TRAINING_WRITER_LOCK', '1')
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(training.execute, state, 'demo', 'alpha', 1, submitted['intent_sha256'],
+                submitted['run_id'], hashlib.sha256(request.read_bytes()).hexdigest(), confirm=True)
+            try:
+                until = time.monotonic() + 10
+                while not marker.with_suffix('.admission-contended').exists() and time.monotonic() < until:
+                    time.sleep(.02)
+                assert marker.with_suffix('.writer-held').exists() and marker.with_suffix('.admission-contended').exists()
+                assert not marker.with_suffix('.execution-launch').exists()
+            finally:
+                marker.with_suffix('.writer-release').touch()
+            assert future.result(timeout=10)['status'] == 'requested'
+        until = time.monotonic() + 10
+        while not marker.with_suffix('.execution-launch').exists() and time.monotonic() < until:
+            time.sleep(.02)
+        assert marker.with_suffix('.execution-launch').exists()
+    finally:
+        try:
+            processes.notify_identity(expected, signal.SIGTERM)
+        except (OSError, ValueError):
+            pass
+        wait_budget_stopped(runtime, seconds=25)
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.skipif(sys.platform != 'linux', reason='Native managed admission requires Linux/WSL2')
+def test_explicit_execution_consumes_one_launch_even_if_no_process_starts(cycle_selection, service, tmp_path, monkeypatch):
+    from ergora import processes, training_cycles
+    import signal
+
+    service[0]('accepted', budget_scenario='managed-no-launch')
+    state, definition, runtime, authorized = authorize_budget(cycle_selection, tmp_path, wall=50, cleanup=10)
+    revision = state.project('demo')['revision']
+    submitted = training_cycles.start(state, 'demo', 'budget', 'alpha', authorized['authorization_sha256'], revision)
+    budget = runtime / 'ergora/training-submissions/alpha.budget'
+    owner = json.loads((budget / 'owner.json').read_bytes())
+    expected_owner = {key: owner[key] for key in ('pid', 'start_ticks', 'boot_id')}
+    try:
+        assert owner['schema_version'] == 2 and owner['execution_capability'] is not None
+        created = native_budget_create(definition, 'alpha', managed=True)
+        assert created.returncode == 0, created.stderr
+        job = runtime / 'training/jobs/alpha'
+        request_sha = hashlib.sha256((job / 'request.json').read_bytes()).hexdigest()
+        training.submission(state, 'demo', 'alpha')
+        assert training.resume_start(state, 'demo', 'alpha', revision, submitted['intent_sha256'])['status'] == 'submitted'
+        assert training.execution(state, 'demo', 'alpha')['status'] == 'not_requested'
+        assert not (job / 'managed-execution').exists()
+        run = submitted['run_id']
+        for scenario in ('foreign-memo', 'input-collision', 'nonqueued', 'another-job'):
+            service[0](scenario, budget_scenario='managed-no-launch')
+            with pytest.raises(ValueError):
+                training.execute(state, 'demo', 'alpha', revision, submitted['intent_sha256'], run, request_sha, confirm=True)
+            assert not (job / 'managed-execution').exists()
+        service[0]('accepted', budget_scenario='managed-no-launch')
+        for intent_sha, run_id, native_sha in (('0' * 64, run, request_sha),
+                (submitted['intent_sha256'], 'another-run', request_sha), (submitted['intent_sha256'], run, '0' * 64)):
+            with pytest.raises(ValueError):
+                training.execute(state, 'demo', 'alpha', revision, intent_sha, run_id, native_sha, confirm=True)
+            assert not (job / 'managed-execution').exists()
+
+        # The real request is published, but its CLI reply is deliberately lost.
+        invoke = reference.training_execution
+        def lost_reply(project, home, operation, payload, **kwargs):
+            result = invoke(project, home, operation, payload, **kwargs)
+            if operation == 'request':
+                raise ValueError('Controlled loss of explicit request reply')
+            return result
+        monkeypatch.setattr(reference, 'training_execution', lost_reply)
+        with pytest.raises(ValueError, match='Controlled loss'):
+            training.execute(state, 'demo', 'alpha', revision, submitted['intent_sha256'], run, request_sha, confirm=True)
+        marker = service[1].with_suffix('.execution-launch')
+        until = time.monotonic() + 10
+        while not marker.exists() and time.monotonic() < until:
+            time.sleep(.03)
+        launch = (job / 'managed-execution/launch.json').read_bytes()
+        observed = training.execution(state, 'demo', 'alpha')
+        assert observed['records']['launch']['execution_phase_id'] == json.loads(marker.read_bytes())['phase_id']
+        assert observed['records']['attempt'] is None and observed['executor_stop_confirmed'] is None
+        monkeypatch.setattr(reference, 'training_execution', invoke)
+        final = budget / 'final.json'
+        until = time.monotonic() + 10
+        while not final.exists() and time.monotonic() < until:
+            time.sleep(.03)
+        assert final.exists() and json.loads(final.read_bytes())['status'] == 'fenced'
+        with pytest.raises(ValueError):
+            training.execute(state, 'demo', 'alpha', revision, submitted['intent_sha256'], run, request_sha, confirm=True)
+        assert (job / 'managed-execution/launch.json').read_bytes() == launch
+        assert not (job / 'started.json').exists() and not (job / 'result.json').exists()
+        assert json.loads(service[1].read_bytes())['starts'] == 1
+    finally:
+        try:
+            processes.notify_identity(expected_owner, signal.SIGTERM)
+        except (OSError, ValueError):
+            pass
+        wait_budget_stopped(runtime, seconds=25)
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.skipif(sys.platform != 'linux', reason='Native managed admission requires Linux/WSL2')
+def test_execute_startup_failure_keeps_the_consumed_launch_and_cleans_the_original_run(cycle_selection, service, tmp_path):
+    from ergora import training_cycles
+
+    service[0]('accepted', budget_scenario='managed-launch-failed')
+    state, definition, runtime, authorized = authorize_budget(cycle_selection, tmp_path, wall=50, cleanup=10)
+    submitted = training_cycles.start(state, 'demo', 'budget', 'alpha', authorized['authorization_sha256'], 1)
+    try:
+        created = native_budget_create(definition, 'alpha', managed=True)
+        assert created.returncode == 0, created.stderr
+        job = runtime / 'training/jobs/alpha'
+        request_sha = hashlib.sha256((job / 'request.json').read_bytes()).hexdigest()
+        training.execute(state, 'demo', 'alpha', 1, submitted['intent_sha256'], submitted['run_id'], request_sha, confirm=True)
+        budget = runtime / 'ergora/training-submissions/alpha.budget'
+        final_path = budget / 'final.json'
+        until = time.monotonic() + 10
+        while not final_path.exists() and time.monotonic() < until:
+            time.sleep(.03)
+        assert final_path.exists(), 'Startup failure must enter original fence/cleanup without waiting for compute expiry'
+        final = json.loads(final_path.read_bytes())
+        assert final['status'] == 'fenced' and final['control']['status'] == 'requested'
+        assert final['control']['signal_delivery'] == 'acknowledged'
+        failed = next(item for item in final['phases'] if item['mode'] == 'execute')
+        assert failed['status'] == 'unknown' and failed['stopped'] is False
+        assert 'Controlled execute supervisor startup failure' in failed['reason']
+        launch = (job / 'managed-execution/launch.json').read_bytes()
+        assert json.loads(service[1].read_bytes())['starts'] == 1
+        assert not (job / 'started.json').exists() and not (job / 'result.json').exists()
+        wait_budget_stopped(runtime, seconds=15)
+        with pytest.raises(ValueError):
+            training.execute(state, 'demo', 'alpha', 1, submitted['intent_sha256'], submitted['run_id'], request_sha, confirm=True)
+        assert (job / 'managed-execution/launch.json').read_bytes() == launch
+    finally:
+        wait_budget_stopped(runtime, seconds=25)
 
 
 @pytest.mark.parametrize('fault', ['final-file-blocked', 'final-directory-blocked'])
@@ -600,9 +914,12 @@ def test_cycle_held_start_does_not_hold_the_deadline_owner_or_its_native_fence(c
     assert not (runtime / 'training/jobs/alpha/request.json').exists()
 
 
-def test_cycle_managed_create_requires_its_live_owner_and_preserves_single_start_slot(cycle_selection, service, tmp_path):
+@pytest.mark.parametrize('legacy_schema', [1, 2])
+def test_cycle_managed_create_requires_its_live_owner_and_preserves_single_start_slot(cycle_selection, service, tmp_path, legacy_schema):
     from ergora import training_cycles
 
+    if legacy_schema == 1:
+        service[0]('accepted', budget_scenario='legacy-owner-schema1')
     state, definition, runtime, authorized = authorize_budget(cycle_selection, tmp_path, wall=24, cleanup=5)
     submitted = training_cycles.start(state, 'demo', 'budget', 'alpha', authorized['authorization_sha256'], 1)
     created = native_budget_create(definition, 'alpha', managed=True)
@@ -610,6 +927,12 @@ def test_cycle_managed_create_requires_its_live_owner_and_preserves_single_start
     prefix = runtime / 'ergora/training-submissions'
     original = {name: (prefix / ('alpha.' + name + '.json')).read_bytes() for name in ('intent', 'attempt', 'result')}
     try:
+        owner = json.loads((prefix / 'alpha.budget/owner.json').read_bytes())
+        assert owner['schema_version'] == legacy_schema and owner.get('execution_capability') is None
+        with pytest.raises(ValueError, match='no execution capability'):
+            training.execute(state, 'demo', 'alpha', 1, submitted['intent_sha256'], submitted['run_id'],
+                hashlib.sha256((runtime / 'training/jobs/alpha/request.json').read_bytes()).hexdigest(), confirm=True)
+        assert not (runtime / 'training/jobs/alpha/managed-execution').exists()
         assert training.start(state, 'demo', 'alpha', 1, submitted['manifest_sha256'])['status'] == 'submitted'
         assert training.resume_start(state, 'demo', 'alpha', 1, submitted['intent_sha256'])['status'] == 'submitted'
         # A second cycle cannot take ownership of the original immutable intent.
@@ -805,6 +1128,86 @@ def assert_budget_process_stopped(identity):
     finally:
         os.close(descriptor)
     raise AssertionError('Original phase process has not stopped')
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Training phase supervision requires Linux/WSL2')
+def test_execute_phase_keeps_stop_proof_within_cleanup_without_granting_more_work(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    from ergora.reference_training_budget import _BudgetPhase
+
+    # Exercise the real parent pipe/TERM lifecycle. The reporter substitutes only
+    # the child's native work; this is not a native execution or durability test.
+    started = time.monotonic()
+    budget = SimpleNamespace(folder=tmp_path, cancelled=False,
+        identity={'schema_version': 1, 'intent_sha256': 'a' * 64, 'authorization_sha256': 'b' * 64},
+        operation=SimpleNamespace(payload={}, sha=lambda value: hashlib.sha256(json.dumps(value).encode()).hexdigest()),
+        remaining=lambda context, cleanup=False: (5 if cleanup else .4) - (time.monotonic() - started))
+    real_launch = subprocess.Popen
+    reporter = '''import json,signal,sys,time
+cancelled=False
+def stop(*_):
+ global cancelled
+ cancelled=True
+signal.signal(signal.SIGTERM,stop)
+payload=json.load(sys.stdin)
+phase=payload['phase']
+time.sleep(.65)
+process={'status':'cancelled','returncode':-15,'output':sys.argv[1]}
+print(json.dumps({**phase,'event':'stopped','process':process}),flush=True)
+print(json.dumps({**phase,'event':'result','result':{'status':'executed','execution':{'executor_stop_confirmed':cancelled}}}),flush=True)
+'''
+    phase = _BudgetPhase(budget, 'execute', {})
+    monkeypatch.setattr(subprocess, 'Popen', lambda argv, **kwargs: real_launch(
+        [sys.executable, '-c', reporter, str(phase.output / 'helper')], **kwargs))
+    result = phase.run()
+    assert budget.remaining({}) < 0 < budget.remaining({}, cleanup=True)
+    assert result['execution']['executor_stop_confirmed'] is True
+    assert _BudgetPhase(budget, 'execute', {}).start() is False
+    assert _BudgetPhase(budget, 'admission', {}).start() is False
+
+
+@pytest.mark.parametrize('trigger', ['cancel', 'monitor-failure'])
+def test_managed_stop_delivers_peer_stops_before_launching_fence(trigger):
+    from types import SimpleNamespace
+    from ergora.reference_training_execution import Execution
+
+    events = []
+    checks = 0
+    def remaining(context):
+        nonlocal checks
+        checks += 1
+        if checks > 8:
+            events.append(('deadline', 'exhausted'))
+            return -1
+        return 10
+    budget = SimpleNamespace(cancelled=False, remaining=remaining, record_phase=lambda *args: None)
+
+    class Phase:
+        def __init__(self, owner, mode, context, **kwargs):
+            self.mode, self.stopping = mode, False
+
+        def start(self):
+            events.append(('start', self.mode))
+            if self.mode == 'execute' and trigger == 'cancel':
+                budget.cancelled = True
+            return True
+
+        def request_stop(self):
+            self.stopping = True
+
+        def poll(self):
+            if self.stopping:
+                events.append(('stop-delivered', self.mode))
+            if self.mode == 'monitor' and trigger == 'monitor-failure' and ('start', 'execute') in events:
+                return False
+            return self.mode in ('monitor', 'execute') and not self.stopping
+
+        def finish(self):
+            return {'status': 'admitted', 'launch': {'execution_phase_id': 'c' * 32}} if self.mode == 'admission' else {'status': 'unknown'}
+
+    Execution(None, budget).drive({}, Phase)
+    assert events.index(('stop-delivered', 'execute')) < events.index(('start', 'fence'))
+    assert ('deadline', 'exhausted') not in events
 
 
 def test_budget_phase_supervisors_keep_their_peer_and_reap_a_new_session_descendant(cycle_selection, service, tmp_path):

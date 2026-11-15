@@ -15,11 +15,12 @@
 |先在 CPU 核对测量合同与原门禁|[离线成对测量演示](#离线成对测量演示)，无需模型、密钥或训练服务|
 |保留每轮原结果及失败／未知，离线回看|[多轮证据索引](#多轮证据索引)，显式选择原实验并在新目录追加|
 |启动和停止原控制流程|[原ID提交与对账](#提交已准备实验与原-id-对账)、[取消和停止事实](#取消原运行与分别观察停止事实)|
+|在原预算内执行一个已提交实验并确认子树停止|[显式受管执行与离线停止观察](#显式受管执行与离线停止观察)|
 |登记或配置变化后继续处理旧运行|[原登记恢复](#在原登记上下文中恢复)，选择原发布记录并明确确认|
 |审阅实际结果和授权后续集成|[归档证据](#阅读归档证据与原集成票据)、[精确owner批准](#精确-owner-批准与投递恢复)|
 |把经验用于下一次任务|[完整改进旅程](IMPROVEMENT_WORKFLOW.md)，候选分别采用后再明确冻结|
 
-实验控制提交后，实际计算仍由操作者选择精确manifest调用可信`run-local`；当前没有自动训练队列消费者。控制操作成功、明确合成的验收夹具和真实GPU正确性／质量／性能收益各有不同证据，不能互相替代。
+实际计算可按下文显式选择同一预算下的`training execute`，或沿旧流程逐实验确认manifest使用可信`run-local`。当前没有自动多轮训练队列消费者。控制操作成功、CPU生命周期验收与真实GPU正确性／质量／性能收益分别需要对应证据。
 
 Windows 原生可设计训练模板、普通调用提案角色并管理记忆 / Skill；带完整Skill附件的组合单叶使用Linux task-MCP，须在WSL2/Linux运行。ForgeKernel、mini 驱动及完整参考实验执行同样使用WSL2/Linux，可信参考执行器还要求Linux容器。原生安装不会配置CUDA、GPU或这些参考服务，详见[Windows手册](WINDOWS.md)。
 
@@ -69,7 +70,7 @@ python -B "$ERGORA_MEASUREMENT_TOOLS/perfctl.py" \
 
 ```text
 init / runner-add → prepare → worker-start → start
-→ 选定精确实验并以 manifest SHA 执行 run-local
+→ 显式选择同预算 execute，或旧逐实验 run-local
 → 可信证据与统计复验 → 人工批准 evidence SHA
 → 该项目的集成 / 复验任务
 ```
@@ -90,7 +91,7 @@ ergora reference prepare-training \
 
 新来源保留原 Git、两臂 runner、Sandbox、归档、MLflow 和结果处理，只在原 `executor.lock` 内增加窄准入接缝。无结果却已有 `started.json` 时拒绝重入；手工无 hook 调用不能接管 `managed-execution/` 下的受管任务。已有 result 仍只读返回，不能据此追认受管停止。新协议核完整 279 个 platform 来源文件和固定 descriptor；空、缺损、链接、篡改的声明不会回退为旧安装。原 v2.2／283 文件与旧安装保持原身份。
 
-依赖仍属于该 native 安装自己的 `.venv` 和固定 `requirements.lock`，基础 Ergora 或 `temporal` extra 不代替它。准备来源不初始化这套依赖；原安装／服务和当前可信 Linux 容器边界仍按完整参考手册处理。后续受管执行要求独立新状态目录、所有参与 executor 使用同一协议，不能接管旧 started 或活旧 owner。当前只有来源与准入接缝，显式受管执行、执行能力、持久停止证据及自动循环仍待接线；模板提案和 kernel 专家不因此获得执行权限。
+依赖仍属于该 native 安装自己的 `.venv` 和固定 `requirements.lock`，基础 Ergora 或 `temporal` extra 不代替它。准备来源不初始化这套依赖；原安装／服务和可信 Linux 容器边界仍按完整参考手册处理。下文受管执行要求独立新状态目录、所有参与 executor 使用同一协议，不能接管旧 started 或活旧 owner。模板提案与 kernel 专家只提供建议；执行仍需原预算及显式确认，自动多轮循环另行提供。
 
 ### 预览与初始化基线
 
@@ -221,7 +222,7 @@ CLI的`start`／`resume-start`仅在返回`submitted`时退出0；`prepared`／`
 
 丢失回复、超时或进程停止后，先读取`submission`，不要改实验ID、重新`prepare`或直接调用原start以绕过记录。attempt后对账沿意图中的原spec；后来的baseline／runner变化不把它重解释为新发送许可。输入或memo冲突、缺历史、RPC错误会保留unknown并明确报错。旧注册／执行目录变化时，可按[原登记恢复](#在原登记上下文中恢复)显式选择原发布记录；不能把旧记录搬到新home认领。
 
-提交只排队原控制工作流；实际runner仍须按原`agentflow training run-local EXPERIMENT_ID --confirm-manifest-sha ...`逐实验执行。原evidence SHA批准和集成票据继续使用原训练协议；`ergora task`只管理开发Task。
+提交只排队原控制工作流；实际runner由下面的受管execute或旧`agentflow training run-local EXPERIMENT_ID --confirm-manifest-sha ...`入口显式执行。原evidence SHA批准和集成票据继续使用原训练协议；`ergora task`只管理开发Task。
 
 ### 冻结有限候选与预算策略
 
@@ -260,7 +261,7 @@ ergora training cycle-status my-project cycle-01 --authorization-sha256 EXACT_AU
 
 `EXACT_CYCLE_SHA256`是`cycle-create`返回的完整文件SHA；`EXACT_AUTHORIZATION_SHA256`是授权结果中的`authorization_sha256`，用于钉住所选原授权的canonical内容，后者也可省略。授权先核本home的原登记journal和matching published result、完整项目及执行归属，再保存原输入和一次性UTC／boot／CLOCK_BOOTTIME时刻，之后才核全部候选的当前完整准入。保存位于`CONTROL_HOME/training-cycles/PROJECT/CYCLE_ID/`；文件及目录写盘、全部检查、中断等待和恢复均消耗同一期限。清理预留包含在总wall内，`work_remaining_seconds`到零即禁止继续准入。
 
-`status=ready`只表示全部本地准入与原输入一致且观察时仍有计算预算，`coverage.execution_authorized`保持`false`；这里不创建提交意图、workflow或job，不启动runner，也没有自动停止原手工`run-local`的保护。下面的`cycle-start`才会显式绑定原提交；实际executor／后代停止及自动循环仍在后续实现，不能把本地ready当成训练运行许可或性能结果。
+`status=ready`只表示全部本地准入与原输入一致且观察时仍有计算预算，`coverage.execution_authorized`保持`false`；这里不创建提交意图、workflow或job，不启动runner，也没有自动停止原手工`run-local`的保护。下面的`cycle-start`才会显式绑定原提交，随后由`execute`选择受管计算；本地ready本身不授运行许可，也不表示性能结果。
 
 中断或丢回复后，可重复**同一条授权命令**；同ID先读取本地保存的完整输入、原授权和ready，不依赖外部输入目录仍存在，不重新计时。缺ready时只在原剩余时间内重新核完整候选；同ID绑定不同输入SHA会拒绝。不要删除授权或换ID绕过原额度。`cycle-status`核原来源、完整记录、当前项目和时钟，不运行live admission、查询Temporal或读取密钥。已有ready在原锁释放后还须flush原目录再核剩余期限，用于完成丢回复／目录fsync失败留下的同一个可见记录；不改原件字节，flush失败显示unknown。原锁忙时保持pending／exhausted，不能把尚在写盘的ready当完成；不需要`temporal` extra。
 
@@ -283,7 +284,7 @@ ergora training submission my-project trial-a
 
 调用返回或提交 RPC 仍在途时，owner 均独立保留截止责任。计算期限耗尽、原项目漂移或收到可捕获取消后，owner 在原清理预留内用原完整绑定建立本地 fence，再沿原 run 与稳定取消 ID 对账。探测、registry 锁或目录同步阻塞由其受监督 helper 限制；来源丢失仍可用此前核验的缓存尝试同一 fence，不能据此延长授权。尚未创建的匹配 request 会被 fence 拒绝；已完成的原 native 结果保留其原证据与人工 release 流程。
 
-读取`submission.budget`时区分`authorization_status`、`owner_status`、`final`、`local_fence`和`executor_stop_confirmed`。`unknown`表示某项完成无法确认，不能当作可重发许可。已经可见但同步失败的同一 fence 可在 owner 结束后由原观察入口完成目录同步／绑定重核；原 final、clock、attempt 的 bytes 保留，不重启 owner 或发布新 start。owner 被 SIGKILL、身份失联、跨 boot 或缺原件时，不自动重启或接管。实际 executor／后代停止尚未交付，`executor_stop_confirmed`保持`null`；fence 和取消送达不构成训练已经停止的证明。
+读取`submission.budget`时区分`authorization_status`、`owner_status`、`final`和`local_fence`。`unknown`表示某项完成无法确认，不能当作可重发许可。已经可见但同步失败的同一 fence 可在 owner 结束后由原观察入口完成目录同步／绑定重核；原 final、clock、attempt 的 bytes 保留，不重启 owner 或发布新 start。owner 被 SIGKILL、身份失联、跨 boot 或缺原件时，不自动重启或接管。新受管执行的历史停止结果在`budget.final.execution`和`budget.final.executor_stop_confirmed`；当前原链的持久停止观察使用下文`training execution`。旧控制观察中的`executor_stop_confirmed=null`以及fence／取消送达均不能证明训练已经停止。
 
 新启动的owner为monitor、fence、cleanup、publish各使用专用supervisor，防止一个阶段回收另一个阶段的子进程。`final.phases`保留阶段ID、业务状态、supervisor返回码和`stopped`观察；其中`stopped=true`只表示该阶段helper子树已实际回收。即使后续fence成功，先前阶段的unknown也会保留。final使用2MiB有界读写，helper和普通记录仍最多1MiB；不会为增加阶段元数据截断原结果。
 
@@ -296,7 +297,35 @@ ergora training resume-start my-project trial-a --revision REVISION --intent-sha
 ergora services logs my-project training-budget-worker --bytes 4096
 ```
 
-此处提供单个候选的预算提交与连续控制责任。实际受管 runner、自动多轮训练、GPU／质量／性能收益须分别验收，不能由这条排队流程推导。
+此处提供单个候选的预算提交与连续控制责任。受管计算还需下一步显式选择；自动多轮训练、GPU／质量／性能收益仍分别验收。
+
+### 显式受管执行与离线停止观察
+
+使用上述新原生来源、其独立完整依赖及可信Linux容器。按原手册启用当前容器的可信执行配置；它允许同用户Agent访问当前用户文件，不提供Agent间OS隔离。启动原`temporal`、`training-budget-worker`及需要的`mlflow`服务，完成`cycle-authorize`与`cycle-start`后，等待原运行处于`QUEUED`且同job的`request.json`已生成。新owner必须在出生时声明`ergora-training-execution-v1`能力；旧schema1和能力为null的owner保持原控制用途，不能升级或重启接管。
+
+```bash
+ergora training execute my-project trial-a --revision REVISION \
+  --intent-sha256 EXACT_START_INTENT_SHA256 --run-id EXACT_ORIGINAL_RUN_ID \
+  --request-sha256 EXACT_NATIVE_REQUEST_BYTES_SHA256 --confirm
+ergora training execution my-project trial-a
+```
+
+`run-id`和start intent SHA来自原`submission`；request SHA是已登记native state目录中`training/jobs/trial-a/request.json`的完整文件字节SHA，可用`sha256sum`取得，不能用manifest SHA或canonical内容SHA代替。命令核同run的完整初始历史／memo、同job状态、当前原来源及尚余compute，保存一次明确请求；返回`requested`只表示请求已保存。普通start、status、resume-start、execution和worker重启均不产生这个请求。
+
+原活owner只消费一次launch，随后在同一个原`executor.lock`内写attempt／ack再进入原Git、runner、归档和track。已存在／部分launch、丢回复、Popen失败或hook中断均不返还这次机会。遇unknown先读取`execution`和原服务日志，保留request／launch／attempt／ack；不要删除记录、换cycle或手工run-local绕过它。重复确认相同request最多观察已有记录，不能授权重新launch。
+
+compute截止或显式原cancel会通知执行子树停止，同时独立处理原fence／控制取消；registry或fence同步等待不扣住执行回收。每个执行S使用原subreaper回收新session后代，之后先发匹配stopped帧，再由同S直接持久发布stopped；此后不再创建子进程。安全回收可能超过总期限，保留overrun。没有匹配stopped时不能仅凭result、PID消失或控制流程结束声称停止。
+
+|`execution`字段|含义|
+|---|---|
+|`status=not_requested`|尚无显式请求；读取不会创建它。|
+|`status=pending`|已有请求／部分链，尚无完整stop；保留unknown，不授权重跑。|
+|`reap_record_observed=true`|完整身份匹配的stopped记录可读；还需持久性确认。|
+|`executor_stop_confirmed=true`|同一完整链已同步现存文件／目录并重读保持，确认该执行子树的持久停止事实。|
+|`execution_success=null`|停止观察不判定训练、质量、收益或采用；另读原result、gate与批准记录。|
+|`current_sources`|当前原生安装／gate是否仍匹配；独立于历史读取，不追认新执行权。|
+
+`execution`使用随包的独立stdlib reader，无需Temporal SDK／服务、GPU或所选native安装仍存在。它只读取已有原链并确认同原件的持久性，不创建记录或改文件内容；同步失败保持unknown，未来可重新观察同一原件。当前source检查有独立上限，安装丢失或升级漂移会单独显示。自动多轮选择与执行尚未提供；真实训练质量和性能必须由原证据流程另验，kernel专家继续保留在提案路径中。
 
 ### 尚无 run ID 时显式阻断本地实验
 

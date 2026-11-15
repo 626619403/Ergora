@@ -53,7 +53,7 @@ SQLite只经[State](../../src/ergora/state.py)及领域事务；变更持久语�
 
 [tasks](../../src/ergora/tasks.py)和[training](../../src/ergora/training.py)提供应用入口；原生操作进程装载所选注册配置。按版本的[WorkflowInput](../../src/ergora/reference_inputs.py)与原Temporal、executor、job、process及budget owner负责执行／取消／恢复。先沿[当前架构](current.md)和[reference边界](reference-boundary.md)找到具体owner；UI、CLI和新提案模板不持有第二套运行状态。
 
-新增外部操作保留attempt-before-send和原ID／完整意图／receipt身份。丢回复表示unknown，应先沿原run/history对账；不能因为重启、当前配置变化或没有成功回执就重发。修改预算时核跨阶段、恢复、进程后代停止与取消，不能只约束单次模型调用。沿对应`test_task_*`、`test_budget_*`或`test_training_*`选择含这些状态转换的已有接缝。
+新增外部操作保留attempt-before-send和原ID／完整意图／receipt身份。丢回复表示unknown，应先沿原run/history对账；不能因为重启、当前配置变化或没有成功回执就重发。修改预算时核跨阶段、恢复、进程后代停止与取消，不能只约束单次模型调用。沿对应`test_task_*`、`test_budget_*`或`test_training_*`选择含这些状态转换的已有接缝。受管训练的显式请求／单次launch归`reference_training_execution`，跨解释器完整记录／来源和离线观察归`training_execution_protocol`；保持原锁内最后准入、原clock和唯一reaper。停止帧之后禁止再spawn；历史读取不因所选安装缺失而被阻断，持久确认须同步并重读同一现存链，不能补造停止证明或重新授执行权。
 
 训练的manifest／baseline／runner、比较门禁、质量约束、归档和精确批准仍归原owner；[多轮索引](../../src/ergora/training_rounds.py)只链接原观察，不执行优化、推进baseline或授予批准。流程图、kernel设计和测量建议不等于实际执行。kernel评估在总提案路径中保留，允许无需kernel修改。新性能主张必须绑定原baseline／candidate、固定工作负载与质量oracle、环境、成对原数据／测量窗口和收益不确定性；CPU合同不能验收真实GPU或训练质量。
 

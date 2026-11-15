@@ -81,7 +81,7 @@ flowchart LR
 
 ## 身份、恢复及迁出条件
 
-六阶段状态、精确计划批准、工作单元DAG、可信integrate/verify、候选SHA、review会话和回执继续由原合同验证。项目binding变更只影响新任务；在途任务仍使用冻结快照。原submission已开始而无terminal时保持未知并拒绝自动重执行；只重启worker不应创建新任务或换引擎。训练prepare/control worker仍不自动启动训练，run-local需操作者确认manifest SHA。
+六阶段状态、精确计划批准、工作单元DAG、可信integrate/verify、候选SHA、review会话和回执继续由原合同验证。项目binding变更只影响新任务；在途任务仍使用冻结快照。原submission已开始而无terminal时保持未知并拒绝自动重执行；只重启worker不应创建新任务或换引擎。训练prepare/control worker不会隐式生成执行请求；新受管execute需确认原run／request，旧run-local仍需确认manifest SHA。
 
 283冻结文件、21对local/bootstrap镜像及旧HTML继续作为生产参考分发，**尚未降为只供测试的归档**。以下是未来退出条件，不代表R6已经迁入：
 
@@ -110,6 +110,15 @@ flowchart LR
   Ready -. 包含接缝但不调用 .-> Hook[原 executor.lock 内 admit]
 ```
 
-派生 `process` 保留原主体，只在同一原锁内、业务副作用之前检查不确定 started／无 hook 的 managed 命名空间，并允许后继内置 callback 完成最终 admission。callback 拒绝不生成 native 业务失败 result；已有 result 先只读返回。实际执行请求、owner 出生能力、原 run/history/memo/request 绑定、不可重用 attempt／ack／stopped 与全后代停止归后继片；本片不提供自动 runner 消费者或第二实验账本。具体使用见[训练手册](../TRAINING.md#准备版本化原生来源)，验收见[交付](../delivery/2026-11-15-training-executor-protocol.md)。
+派生 `process` 保留原主体，只在同一原锁内、业务副作用之前检查不确定 started／无 hook 的 managed 命名空间，并允许后继内置 callback 完成最终 admission。callback 拒绝不生成 native 业务失败 result；已有 result 先只读返回。来源准备自身不授执行权。单job显式请求与停止由下述应用接线消费；没有第二实验账本或自动多轮消费者。具体使用见[训练手册](../TRAINING.md#准备版本化原生来源)，验收见[交付](../delivery/2026-11-15-training-executor-protocol.md)。
 
-原应用`_BudgetPhase`的[B3.3c1生命周期](../plans/2026-11-15-training-managed-execution.md)只改变控制监管接缝：旧run复用可独立start／poll／finish的同一实现，父不做phase业务文件系统I/O，S继续持唯一原processes.run回收算法。第一帧只在实际reap之后发出，此后S禁止再生子进程。当前四mode、旧owner能力、来源协议和原生执行主体保持；同时监管实际训练与控制分支、显式执行及持久stop仍待c2，进度与原件范围见[逐步交付](../delivery/2026-11-15-training-managed-execution.md)。
+原应用`_BudgetPhase`的[B3.3c1生命周期](../plans/2026-11-15-training-managed-execution.md)只改变控制监管接缝：旧run复用可独立start／poll／finish的同一实现，父不做phase业务文件系统I/O，S继续持唯一原processes.run回收算法。第一帧只在实际reap之后发出，此后S禁止再生子进程。旧owner与能力null分支继续原四mode；来源协议和原生执行主体保持。c2在同一接缝监管显式执行与控制，进度与原件范围见[逐步交付](../delivery/2026-11-15-training-managed-execution.md)。
+
+
+### 同预算显式执行与冻结离线读取
+
+`training.execute`经`reference.training_execution`调用受监督的应用worker；`reference_training_execution`接受原submission／budget对象，持有请求／launch／原run准入和并行phase用例，不反向import两owner。新`training_execution_protocol`以stdlib提供完整身份与记录绑定，由应用writer、执行S、独立离线reader和native锁内callback实际复用。原validator、clock、SHA、safe_file、publish与唯一reaper均沿原owner，native解释器独立使用其锁定依赖。
+
+出生能力固定完整来源及context；request→launch→attempt→ack→stopped保留在原job的`managed-execution`下，launch永不复用。父owner只交错poll／signal，磁盘／RPC／锁在各自S子树中；实际reap之后发stopped，S此后只直接存储。fence等待不扣住已有执行停止，compute与total分别约束工作和清理结果。
+
+`training.execution`读取分支沿原`_training_reader`，固定随包platform来源与`-S`，先读历史原链，后用另一个有界进程观察当前来源；所选native缺失不能挡住历史。确认durable时仅同步／重读现存原件，不创建记录、不改原bytes或恢复运行。原`training_files`共用该reader传输实现，CLI只解析参数；不把所有工具提升为新协议总线。旧schema1／null能力保持，无自动升级或活动任务迁移。完整用法见[训练手册](../TRAINING.md#显式受管执行与离线停止观察)。

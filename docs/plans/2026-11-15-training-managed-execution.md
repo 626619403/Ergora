@@ -1,6 +1,6 @@
 # B3.3c：同一原预算下的真实执行与停止
 
-日期：2026-11-15，固定设计r2，新的fresh-context同reviewer两轴approve／开放0／0；R1仅设计关闭。c1在`6c7e9d924f822e60a54ce8c0686a56758ae0359a`基线上已本地实施，r2两安装身份、24项控制回归、16项架构、真实Temporal控制旅程及自身原模板通过，新fresh-context[产品最终本地审查](../delivery/2026-11-15-training-phase-lifecycle-review.md)两轴approve／开放0／0；c2未实施。前置[B3.3b来源与原锁内接缝](2026-11-15-training-executor-protocol.md)自己的CI43674493548八job／30必要步骤及原产品独立终核已闭合，c1现可固定普通发布，再验其自己的CI。本计划不能使旧owner获得权限。kernel专家继续保留在v3优化路径，只提出建议，不持有执行或采用权。
+日期：2026-11-15。上位设计r2与c2具体记录合同r2均获新的fresh-context设计两轴approve／开放0／0。前置c1固定`75285e3271bb93271eaea050ca7812cb0cd98b5a`自己的CI43676697981及原产品独立终核已闭合。c2最终r6两安装各652逐字／283／依赖通过，原submission84及processes／architecture24通过／4跳过；真实Temporal／native五类旅程91条CLI及全部收尾通过。自身原模板65.888秒两轴approve，原fresh-context独立对最终完整scope及原件两轴approve／开放0／0，R1–R5关闭；普通发布、自己的CI与原reviewer固定发布终核仍待。详见[逐步交付](../delivery/2026-11-15-training-managed-execution.md)。kernel专家继续在v3路径。
 
 ## 交付目标与已有owner
 
@@ -26,8 +26,8 @@
 |节点|完整可验收行为|状态|
 |---|---|---|
 |c0 完整设计|固定出生能力、显式权限、无重复launch、锁内gate、并行停止、记录及恢复；新的fresh-context两轴计划审查|r1生命周期问题保留；r2同reviewer设计两轴approve／开放0／0，R1仅设计关闭|
-|c1 非阻塞phase生命周期|原run仍工作；存储在专用S内，父owner可同时监管两个独立phase；没有新runner权限或owner能力|r2两安装650逐字／283、24控制回归／16架构、真实控制旅程与自身原模板及新独立最终本地两轴approve／开放0／0；发布及自己的CI待|
-|c2 单job显式受管执行|出生能力、原request请求／不可重用launch／锁内attempt与ack，原native过程、独立执行S及持久stopped；取消、状态、原件恢复和手册一起可用|依赖c1自身CI与终核|
+|c1 非阻塞phase生命周期|原run仍工作；存储在专用S内，父owner可同时监管两个独立phase；没有新runner权限或owner能力|r2两安装650逐字／283、24控制回归／16架构、真实控制旅程／自身原模板与新独立产品两轴通过；75285e3自己的CI及原独立终核已闭合|
+|c2 单job显式受管执行|出生能力、原request请求／不可重用launch／锁内attempt与ack，原native过程、独立执行S及持久stopped；取消、状态、原件恢复和手册一起可用|已按[具体记录合同](2026-11-15-training-execution-records.md)r2接线；最终r6安装108通过／4平台跳过、91条真实CLI及收尾、自身两轴approve已验；整片独立终核及发布／自己的CI待|
 |c3 安装与真实控制旅程|各产品片自己的非editablecore／SDK身份、受影响原suite、实际CLI、原模板审查、新独立产品两轴、普通精确发布与自己的CI；c2另验真实Temporal＋短CPU生命周期|逐片验收，不等最后一次才检查|
 
 c1与c2分别交付，不能把c1的并发phase演示记为训练已执行。每步更新本计划、[逐步交付](../delivery/2026-11-15-training-managed-execution.md)和[总计划](../PLAN.md)。后继Q4.2c才自动调用这些已有应用用例；Q5.2有据重构、Q6严格发布和真实GPU／业务训练条件保持。

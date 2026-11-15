@@ -18,6 +18,53 @@ import signal
 import subprocess
 
 fault = os.environ.get('ERGORA_TEST_TRAINING_BUDGET')
+if fault == 'legacy-owner-schema1' and base.payload['mode'] == 'owner':
+    record_owner = budget.training_cycles._record
+    def legacy_owner(path, value, **kwargs):
+        if path.name == 'owner.json':
+            value = {key: item for key, item in value.items() if key != 'execution_capability'}
+            value['schema_version'] = 1
+        return record_owner(path, value, **kwargs)
+    budget.training_cycles._record = legacy_owner
+
+if fault in ('managed-no-launch', 'managed-launch-failed'):
+    training_cancellation_client.Service.query_workflow = base.Service.query_workflow
+    if base.payload['mode'] == 'admission':
+        from contextlib import contextmanager
+        from ergora import reference_training_execution
+
+        execution_lock = reference_training_execution.file_lock
+        @contextmanager
+        def observed_contention(path, **kwargs):
+            try:
+                with execution_lock(path, **kwargs):
+                    yield
+            except BlockingIOError:
+                base.storage.with_suffix('.admission-contended').touch()
+                raise
+        reference_training_execution.file_lock = observed_contention
+
+if fault in ('managed-no-launch', 'managed-launch-failed') and base.payload['mode'] == 'owner':
+    start = budget._BudgetPhase.start
+    def refuse_execution(phase):
+        if phase.mode == 'execute':
+            marker = base.storage.with_suffix('.execution-launch')
+            if marker.exists():
+                raise AssertionError('The consumed launch must never be offered again')
+            marker.write_text(json.dumps({'phase_id': phase.identity['phase_id']}))
+            if fault == 'managed-launch-failed':
+                launch = budget.subprocess.Popen
+                def failed_launch(*args, **kwargs):
+                    raise OSError('Controlled execute supervisor startup failure')
+                budget.subprocess.Popen = failed_launch
+                try:
+                    return start(phase)
+                finally:
+                    budget.subprocess.Popen = launch
+            return False
+        return start(phase)
+    budget._BudgetPhase.start = refuse_execution
+
 if fault == 'monitor-blocked' and base.payload['mode'] == 'monitor':
     async def blocked(_self):
         time.sleep(60)

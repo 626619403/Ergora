@@ -111,6 +111,31 @@ def submission(state: State, project_id: str, experiment_id: str, *, original_re
     return reference.training_submission(project, state.root, 'status', {'experiment_id': experiment_id}, timeout=20)
 
 
+def execution(state: State, project_id: str, experiment_id: str) -> dict:
+    """Read historical lifecycle records without the selected native installation."""
+    project = _project(state, project_id)
+    return {'project': project_id, 'project_revision': project['revision'], 'experiment_id': experiment_id,
+            **reference.training_execution(project, state.root, 'inspect', {'experiment_id': experiment_id})}
+
+
+def execute(state: State, project_id: str, experiment_id: str, expected_revision: int, intent_sha256: str,
+            run_id: str, request_sha256: str, *, confirm: bool, timeout: int = 20) -> dict:
+    """Confirm one original job; never hold a DB reservation across remote checks."""
+    if type(expected_revision) is not int or expected_revision < 1 or confirm is not True:
+        raise ValueError('Explicit execution requires its positive project revision and confirmation')
+    for digest in (intent_sha256, request_sha256):
+        if not isinstance(digest, str) or re.fullmatch('[a-f0-9]{64}', digest) is None:
+            raise ValueError('Explicit execution requires complete original SHA256 values')
+    if type(timeout) is not int or not 1 <= timeout <= 60:
+        raise ValueError('Execution request timeout must be 1–60 seconds')
+    project = _project(state, project_id)
+    if project['revision'] != expected_revision:
+        raise ValueError('Project revision changed; reload before explicit execution')
+    return reference.training_execution(project, state.root, 'request', {'experiment_id': experiment_id,
+        'expected_revision': expected_revision, 'intent_sha256': intent_sha256, 'run_id': run_id,
+        'request_sha256': request_sha256, 'confirm': confirm}, timeout=timeout)
+
+
 def check_start(state: State, project_id: str, experiment_id: str, manifest_sha256: str) -> dict:
     """Observe native new-start readiness without reserving or sending anything."""
     if not isinstance(manifest_sha256, str) or re.fullmatch('[a-f0-9]{64}', manifest_sha256) is None:

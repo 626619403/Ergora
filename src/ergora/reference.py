@@ -198,11 +198,11 @@ def executor(installation: Path, home: Path, request: Path | None = None):
     return reference_executor.main(home, request)
 
 
-def worker_command(installation: Path) -> list[str]:
+def worker_command(installation: Path, *, module: str = 'reference_worker', entrypoint: str = 'main') -> list[str]:
     """Run versioned workers with the selected native SDK and this package's code."""
     bootstrap = (f'import sys;sys.path.insert(0,{str(Path(__file__).parent.parent)!r});'
                  'import ergora;sys.path.pop(0);'
-                 f'from ergora.reference_worker import main;main({str(installation)!r})')
+                 f'from ergora.{module} import {entrypoint};{entrypoint}({str(installation)!r})')
     return [str(installation / '.venv/bin/python'), '-P', '-c', bootstrap]
 
 
@@ -429,6 +429,12 @@ def task_runtime_status(project: dict, spec: dict, *, run_id: str | None, timeou
 def training_files(project: dict, *, experiment_id: str | None = None, limit: int = 50,
                    after: str | None = None) -> dict:
     """Observe the frozen native registry in a separate, SDK-free process."""
+    return _training_reader(project, 'from ergora.reference import _training_files_main;_training_files_main()',
+                            {'project': project['id'], 'repo': project['repo'],
+                             'experiment_id': experiment_id, 'limit': limit, 'after': after})
+
+
+def _training_reader(project: dict, entrypoint: str, payload: dict, *, timeout: int = 30) -> dict:
     execution = project['registration']['definition']['execution']
     environment = dict(os.environ, PYTHONDONTWRITEBYTECODE='1', PYTHONUTF8='1',
                        AGENTFLOW_CONFIG_DIR=execution['config_directory'],
@@ -437,17 +443,32 @@ def training_files(project: dict, *, experiment_id: str | None = None, limit: in
         Path(__file__).parent.parent, ROOT / 'platform/local', ROOT / 'platform/upstream/platform',
         ROOT / 'platform/upstream/temporal', ROOT / 'platform/upstream')))
     try:
-        result = subprocess.run([sys.executable, '-P', '-S', '-c',
-                                 'from ergora.reference import _training_files_main;_training_files_main()'],
-                                input=json.dumps({'project': project['id'], 'repo': project['repo'],
-                                                  'experiment_id': experiment_id, 'limit': limit, 'after': after}),
-                                capture_output=True, text=True, encoding='utf-8', env=environment, timeout=30)
+        result = subprocess.run([sys.executable, '-P', '-S', '-c', entrypoint],
+                                input=json.dumps(payload, allow_nan=False),
+                                capture_output=True, text=True, encoding='utf-8', env=environment, timeout=timeout)
     except subprocess.TimeoutExpired as error:
         raise ValueError('Training record reader timed out; native execution state was not queried') from error
     if result.returncode:
         lines = result.stderr.strip().splitlines()
         raise ValueError(lines[-1] if lines else f'Training record reader exited with status {result.returncode}')
     return json.loads(result.stdout)
+
+
+def training_execution(project: dict, home: Path, operation: str, payload: dict, *, timeout: int = 20) -> dict:
+    if operation == 'request':
+        if sys.platform != 'linux':
+            raise ValueError('Managed training execution requires Linux; use WSL2 and a trusted Linux container')
+        return _training_process(project, 'worker', {'project': project, 'control_home': str(home),
+            'operation': operation, **payload}, timeout, sdk=True, entrypoint='execution_main')
+    entrypoint = 'from ergora.training_execution_protocol import inspect_main;inspect_main()'
+    selection = {'project': project, 'control_home': str(home), **payload}
+    observed = _training_reader(project, entrypoint, {**selection, 'operation': 'inspect'})
+    # A current installation check cannot withhold the already-read history.
+    try:
+        sources = _training_reader(project, entrypoint, {**selection, 'operation': 'sources'}, timeout=5)
+    except (OSError, ValueError) as error:
+        sources = {'status': 'unavailable_or_changed', 'reason': str(error)}
+    return {**observed, 'current_sources': sources}
 
 
 def training_runtime_status(project: dict, spec: dict, *, run_id: str | None, timeout: int) -> dict:
@@ -502,7 +523,8 @@ def training_cancellation(project: dict, home: Path, operation: str, payload: di
                              sdk=operation in ('dispatch', 'resume', 'stop-status'))
 
 
-def _training_process(project: dict, module: str, payload: dict, timeout: int, *, sdk: bool) -> dict:
+def _training_process(project: dict, module: str, payload: dict, timeout: int, *, sdk: bool,
+                      entrypoint: str = 'main') -> dict:
     recovery = project.get('_original_registration')
     if recovery is not None and module not in ('submission', 'cancellation'):
         raise ValueError('Original registration recovery is limited to submission reconciliation, cancellation and local fencing')
@@ -521,7 +543,7 @@ def _training_process(project: dict, module: str, payload: dict, timeout: int, *
     with TemporaryDirectory(prefix='ergora-training-operation-') as temporary:
         output = Path(temporary) / 'process'
         result = processes.run([sys.executable, '-P', '-c',
-                               f'from ergora.reference_training_{module} import main;main()'],
+                               f'from ergora.reference_training_{module} import {entrypoint};{entrypoint}()'],
                               Path.cwd(), output, timeout + 5,
                               stdin=json.dumps({**payload, 'timeout': timeout}, allow_nan=False), env=environment)
         if result['status'] in ('timed_out', 'cancelled'):

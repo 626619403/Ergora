@@ -87,3 +87,37 @@
 前置 b 以其原 reviewer 的固定报告与原件核闭：报告 15,572B，SHA256 `d4d114be71674972bf08e07d94169eef3b070c2dd1fb4802fc9c11b0e2e9671f`；`.ergora/checks/training-executor-protocol/product-audit/ci-publication-r1/final-ci-audit-r1.json` SHA256 `71e5941ac25803be20ed8312f00d1994de67389e5c53ff68aca4e034200c7c81`。已核其 commit 为完整 6c7、run `43674493548`／attempt 1、八个 job 与 30 个唯一必要步骤均 success、两轴 approve／开放 0／0，并核所引用 terminal summary、Actions HTML、原件 index 的字节／摘要。本次读取原 reviewer 的终核，没有重新联网认证前置 CI，也没有声称取得完整日志／产物。本报告前节的前置待办保留其当时状态；该前置现已闭合，c1 自己的发布／CI 仍待。
 
 原 staged checker 为 `.ergora/checks/training-phase-lifecycle/publication-staged-r1.json`，SHA256 `ef3744b1c869af3fe6d395db6ba9c8f82a975d475329f31f74d86e1aa222b37c`。本次独立原件为 `.ergora/checks/training-phase-lifecycle/product-audit/staged-r1/inspection.json`，SHA256 `38743b3ad6f4244b18d993a77dbb81d6afcb3ac513f2363a872e4d7231f82ce2`；同目录 `state-delta.diff` SHA256 `653fdabfad81eca20174b2aad93937345f9e1284799bccdb029031f1a387f94a`。本节新增字节须纳入作者最终 r2 stage；其余 11 个已审 blob 保持，再记录静态身份并按原授权普通发布。未重跑无变化产品、安装或业务执行，尚未认证 c1 提交／远端／自己的 CI。
+
+## 固定发布与自己的 CI 终态补核
+
+同一 reviewer 已完成固定 [c1 提交](https://github.com/626619403/Ergora/commit/75285e3271bb93271eaea050ca7812cb0cd98b5a) `75285e3271bb93271eaea050ca7812cb0cd98b5a` 的发布及它自己的 CI 终核。parent 为 `6c7e9d924f822e60a54ce8c0686a56758ae0359a`，tree 为 `1537f559fa36923ab0fdf5d328b10b3f3a753f38`，分支仍为 `refactor/architecture-foundations`。**需求符合轴 approve；结构维护轴 approve；开放 0／0。** 本节关闭前文当时保留的 c1 精确发布、自己的 CI 及独立续核待办；不改变早期记录的历史身份。
+
+作者最终 r2 stage SHA256 为 `5ec87e01bcc4a5666a3a0b4e661d47ed587da56fc4ee021933a0c9793a1a9cc7`。独立逐份核固定提交的 12 个 blob 与该清单相同；相对已审 staged r1，只有本报告纳入最后补核，其余 11 个 blob 保持。三份产品／测试继续等于已审 r2；原三份 AST、223 个固定 Git tree 本地链接及 diff-check 通过。固定提交内本报告为 13,977B／SHA256 `dde91d951a4957b3cd1914d3b8374792f117f7bf36b3309124bb1de5cbc39d17`；本节是 CI 终态后的追加，未冒称这些新增字节已在该提交中。
+
+原 commit exit0／0.0717 秒且当时工作树 clean，原普通 push exit0／5.7753 秒，独立 SSH `ls-remote` 完整 Ref 与该 SHA 相同。首方 REST commit／ref／runs／run／jobs 均返回 200，精确绑定提交、parent、tree、分支、push 事件及 run／attempt；官方 commit／branch／Actions／run HTML 身份相同。12 份固定 SHA raw 文件全部 HTTP200，字节、SHA256 与不可变 Git blob 及最终 stage 逐份相同；固定 workflow 与六组清单原文也逐字相同，CI／scripts／data／attributes 没有变化。
+
+不可变 Git 源码而非后来工作树再次对两种已审安装核验：源码／原 wheel／core／SDK 各 650 文件逐字相同，wheel SHA256 `e66e1e5a73fc5bea6a2c4fc08a5cf349d26a88c7c7d0221531e6af9ed7a7cbb0`；174 份冻结测试／example 输入、三份冻结产品／测试及原 283 参考文件保持。此补核未安装或重跑原回归、服务、训练。父 agent 在等待期间新增的 c2 设计／环境准备记录不属于本固定候选的产品认证范围。
+
+自己的 [Portability #232](https://github.com/626619403/Ergora/actions/runs/43676697981)，run `43676697981`／attempt 1，于 `2026-11-15T04:25:23Z` 创建；首方 REST 最终 `updated_at` 为 `2026-11-15T04:51:04Z`，状态 `completed/success`。reviewer 于 04:51 UTC 直接观察完整导航八个唯一 job 全部 success、`hasMore=false`，随后统一刷新全部八页及 REST／run／Actions HTML：
+
+|固定 workflow 范围|job 结果|唯一必要步骤结果|
+|---|---|---|
+|plan|1 success|读取显式组清单，1 success|
+|Linux／Python 3.11／group 0–5|6 success|每组构建安装、包内参考身份、原生应用回归与观察上传，共 24 success|
+|Windows／Python 3.12／group all|1 success|上述四步及 PowerShell 5.1 安装／升级，共 5 success|
+|合计|8 success|30 success，每个必要步骤只出现一次|
+
+最终 REST run／jobs 新捕获均 HTTP200，与八页的 job ID／名称／状态／结论及全部 30 步逐项一致；run HTML、Actions 精确 #232、完整导航及 job 成功 header 一致，所有步骤日志 URL 绑定同一固定 SHA 与对应 job。这里只核官方公开结论与身份，没有取得完整日志或下载 CI 产物，也不把步骤 success 推算成完整测试条目数。前置 6c7 的 CI 未被转授为本次成功。
+
+本轮 80 次只读匿名官方 HTTP 捕获全部 200，原始响应、header、时间与摘要均保留并逐字复核；索引包含 131 份捕获／摘要／核验脚本文件。以下证据位于 ignored 本地目录，以代码路径和 SHA256 标识，不作为远端可下载链接：
+
+|原件|字节|SHA256|
+|---|---:|---|
+|`.ergora/checks/training-phase-lifecycle/product-audit/publication-local-verification-r1.json`|2851|`c77d0acebde977442d034f98099ff9a57a75d4f78bd45979b05146d7c34537c5`|
+|`.ergora/checks/training-phase-lifecycle/product-audit/fixed-installed-verification-r1.json`|1109|`e3b300f44f59ed382bd3167967c33011ae0bca0f2975f8285ccb3348f9d88a9e`|
+|`.ergora/checks/training-phase-lifecycle/product-audit/ci-publication-r1/official-identity-r1.json`|62692|`f048203ebd621004f6f502936015050bbe08c6181b23d6f65b057d95d2b6ed44`|
+|`.ergora/checks/training-phase-lifecycle/product-audit/ci-publication-r1/20261115T045212469887Z-terminal-summary-r1.json`|78719|`73fee22aac24dde3890752313d6096691a45799bd13f0a415d89fa50390884ae`|
+|`.ergora/checks/training-phase-lifecycle/product-audit/ci-publication-r1/ci-originals-index-r1.json`|23208|`9d7c48272a9ada5b4540464a86bbf32d3ea33855880f9d74dc1614a7b2f02694`|
+|`.ergora/checks/training-phase-lifecycle/product-audit/ci-publication-r1/final-ci-audit-r1.json`|21875|`f2ca44020d08a2ac4f5cc3fa5fd0103f22b91033119641339d200b30f1a475bb`|
+
+c1 的精确交付门禁现已闭合。结论仍只覆盖原 phase 生命周期、控制与可移植性范围；c2 实际受管执行、自动循环及真实训练／GPU／模型质量／性能收益不在本报告验收范围。kernel 专家继续保留在 v3，原训练、控制、实验、批准 owner 与权限不变。reviewer 仅追加本报告及 ignored 审计原件，未改产品、提交或推送。

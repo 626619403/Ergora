@@ -15,6 +15,44 @@ from collections.abc import Callable
 _cancel_requested = False
 
 
+def identity(pid: int) -> dict:
+    """Observe one live Linux process without confusing a reused PID or zombie."""
+    if type(pid) is not int or pid < 1:
+        raise ValueError('Process has no valid identity')
+    fields = Path('/proc/' + str(pid) + '/stat').read_text().rsplit(')', 1)[1].split()
+    if fields[0] == 'Z':
+        raise ValueError('Original process has exited')
+    return {'pid': pid, 'start_ticks': fields[19],
+            'boot_id': Path('/proc/sys/kernel/random/boot_id').read_text().strip()}
+
+
+def notify_identity(expected: dict, signum: int) -> None:
+    """Signal a PID-bound Linux descriptor even on Python builds without wrappers."""
+    libc = ctypes.CDLL(None, use_errno=True)
+    if hasattr(os, 'pidfd_open'):
+        descriptor = os.pidfd_open(expected['pid'])
+    else:
+        open_pid = getattr(libc, 'pidfd_open', None)
+        if open_pid is None:
+            raise OSError('This runtime has no pidfd_open support; local notification is unconfirmed')
+        descriptor = open_pid(ctypes.c_int(expected['pid']), ctypes.c_uint(0))
+        if descriptor < 0:
+            raise OSError(ctypes.get_errno(), 'Cannot bind original process notification')
+    try:
+        if identity(expected['pid']) != expected:
+            raise ValueError('Original process identity changed before local notification')
+        if hasattr(signal, 'pidfd_send_signal'):
+            signal.pidfd_send_signal(descriptor, signum)
+        else:
+            send_pid = getattr(libc, 'pidfd_send_signal', None)
+            if send_pid is None:
+                raise OSError('This runtime has no pidfd_send_signal support; local notification is unconfirmed')
+            if send_pid(ctypes.c_int(descriptor), ctypes.c_int(signum), ctypes.c_void_p(), ctypes.c_uint(0)) < 0:
+                raise OSError(ctypes.get_errno(), 'Cannot notify original process')
+    finally:
+        os.close(descriptor)
+
+
 def resolve_program(program: str, cwd: Path) -> str:
     candidate = str(cwd / program) if os.path.dirname(program) and not Path(program).is_absolute() else program
     native = shutil.which(candidate + ".exe") if os.name == "nt" and not Path(candidate).suffix else None

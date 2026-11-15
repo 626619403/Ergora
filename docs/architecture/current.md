@@ -441,14 +441,47 @@ flowchart LR
   Request -. 原手工执行入口 .-> Existing[原 executor / 原证据与人工 release]
 ```
 
-预算 queue 与旧 worker 分离，缺 owner／原授权／期限时不能新 create；已有 request 的读取、fence 与 release 不受该新工作 gate 改写。owner 不获取跨 RPC 的 submission 锁，阻塞操作只在受监督 helper 内执行。缓存全文摘要绑定原 owner 身份，供原截止清理使用；持久 fence、控制面取消、native 结果及 executor 停止分别报告。实际 executor／后代停止和自动训练循环仍是后继义务，不能由图中的连接推导已完成。用户入口与恢复见[训练手册](../TRAINING.md#按原预算投递与持续截止监管)。
+预算 queue 与旧 worker 分离，缺 owner／原授权／期限时不能新 create；已有 request 的读取、fence 与 release 不受该新工作 gate 改写。owner 不获取跨 RPC 的 submission 锁，阻塞操作只在受监督 helper 内执行。缓存全文摘要绑定原 owner 身份，供原截止清理使用；持久 fence、控制面取消、native 结果及 executor 停止分别报告。单job受管执行沿下一节接入同一owner；自动训练循环仍是后继义务。用户入口与恢复见[训练手册](../TRAINING.md#按原预算投递与持续截止监管)。
 
-monitor／fence／cleanup／publish仍串行，每个阶段的supervisor独占原Linux subreaper，预算owner自身不启subreaper。owner用非阻塞PIPE传完整context；supervisor在原run实际reap返回后先flush完整身份的stopped帧，再读helper结果。总截止或可捕获取消不能打断已经开始的安全reap；只在收到有效stopped后，才可结束超期的结果reader。原final保存短phase观察，业务unknown与该子树stopped分列；独立2MiB的final读写封套容纳原结果及新增摘要，helper与普通记录仍保留1MiB。旧活owner不重启或补能力，具体过程与验收见[独立阶段监督](../delivery/2026-11-15-training-budget-phase-supervision.md)。
+legacy能力为null的owner仍串行处理monitor／fence／cleanup／publish；每个阶段的supervisor独占原Linux subreaper，预算owner自身不启subreaper。owner用非阻塞PIPE传完整context；supervisor在原run实际reap返回后先flush完整身份的stopped帧，再读helper结果。总截止或可捕获取消不能打断已经开始的安全reap；只在收到有效stopped后，才可结束超期的结果reader。原final保存短phase观察，业务unknown与该子树stopped分列；独立2MiB的final读写封套容纳原结果及新增摘要，helper与普通记录仍保留1MiB。旧活owner不重启或补能力，具体过程与验收见[独立阶段监督](../delivery/2026-11-15-training-budget-phase-supervision.md)。
 
-[B3.3c1](../plans/2026-11-15-training-managed-execution.md)将原`_BudgetPhase`拆为start／request_stop／非阻塞poll／finish，串行run使用同一生命周期；当前原owner仍按上述四mode串行运行。父侧只按已核预算目录拼接固定phase路径，safe_file／目录和stderr文件由对应S在实际使用时处理；新增stderr管道有界读取，初始化未发送请求时的失败会收尾等待进程。多个phase的调用者先全部请求停止，再轮询全部，已终止才finish；stopped之后S只直接读写／观察、不再spawn。真实训练的执行能力、持久生命周期和并行fence仍由c2交付，不能从这个低层接缝推导已提供runner。
+[B3.3c1](../plans/2026-11-15-training-managed-execution.md)将原`_BudgetPhase`拆为start／request_stop／非阻塞poll／finish，串行run使用同一生命周期；能力为null的owner保持上述四mode原合同。父侧只按已核预算目录拼接固定phase路径，safe_file／目录和stderr文件由对应S在实际使用时处理；新增stderr管道有界读取，初始化未发送请求时的失败会收尾等待进程。多个phase的调用者先全部请求停止，再轮询全部，已终止才finish；stopped之后S只直接读写／观察、不再spawn。受管执行由下节显式用例消费同一低层接缝，phase接口自身不产生执行许可。
 
 ## 原生训练来源与锁内准入接缝
 
 `reference.prepare_training` 和既有 `validate_installation` 共用本地来源校验，CLI 只解析显式协议及新目录。两个固定 data 资源物化 `training-executor-admission-v1`，不新增模块族或全局工具注册器；原 283 字节不变。新协议完整核279来源，legacy保留按用途的Python范围；准备中断的空或缺损descriptor不能回退为legacy。
 
-派生的原 `training_executor.process` 在原 `executor.lock` 内、started／Git／runner之前调用窄admit；无result的旧started及无hook接管managed命名空间均拒绝，已有result保持只读。原执行／归档／追踪／结果算法未复制。来源准备不安装native依赖、不创建实验或消费request，不授予原预算owner新能力；实际受管执行与持久停止、自动循环仍开放。生命周期及来源图见[reference边界](reference-boundary.md#版本化原生训练来源)；kernel专家继续在原v3提案路径参与评估。
+派生的原 `training_executor.process` 在原 `executor.lock` 内、started／Git／runner之前调用窄admit；无result的旧started及无hook接管managed命名空间均拒绝，已有result保持只读。原执行／归档／追踪／结果算法未复制。来源准备不安装native依赖、不创建实验或消费request，不授予原预算owner新能力；同预算的显式受管执行见下节，自动循环仍开放。生命周期及来源图见[reference边界](reference-boundary.md#版本化原生训练来源)；kernel专家继续在原v3提案路径参与评估。
+
+
+## 单job显式受管执行
+
+`training.execute → reference.training_execution → reference_training_worker.execution_main`装配原`_Submission`／`BudgetedStart`和`reference_training_execution.Execution`。执行用例拥有原run/history/memo／QUEUED准入、不可变请求、单次launch和原phase交错监管；不另建提交客户端、实验数据库或调度器。只有出生时完整核新来源的schema2 owner声明能力，旧schema1／null不获执行权。普通start、状态、恢复和升级不创建显式request。
+
+`training_execution_protocol`是实际跨解释器边界：应用、执行S和native callback共享严格记录、完整context／原来源绑定及离线读取；顶层导入闭包仅stdlib和原reference／clock／processes。它复用原来源校验、canonical SHA、安全路径与无覆盖publish，不import应用State／schema框架或SDK。native使用其独立`.venv`和原依赖；bootstrap仅短暂定位Ergora包，不把应用site-packages作为原生依赖路径。
+
+```mermaid
+flowchart TD
+  Explicit[显式 execute / 原 revision 与 SHA] --> Request[原 run核验 / 同job不可变 request]
+  Birth[原活 budget owner / 出生能力] --> Monitor[独立 monitor S]
+  Birth --> Admission[独立 admission S]
+  Request --> Admission
+  Admission --> Launch[持久消费 launch / 一次内存许可]
+  Launch --> Birth
+  Birth --> Execute[独立 execute S / 原 process reaper]
+  Execute --> Native[所选 native Python / 原 executor.lock 内 gate]
+  Native --> Body[原 Git / runner / archive / track]
+  Body --> Reap[实际回收含新session子树]
+  Reap --> Frame[匹配 stopped 帧]
+  Frame --> Stored[同S直接持久 stopped / 不再spawn]
+  Birth --> Fence[独立 fence / 原registry锁]
+  Fence --> Cancel[原取消用例 / 同run与attempt]
+  Stored --> Offline[随包stdlib reader / 同原件同步重读]
+  Birth --> Final[原final / 控制与执行分别呈现]
+```
+
+launch已存在、部分发布、grant丢失、Popen失败或hook中断都不能再授launch。native callback在原锁内完整核出生context／原authorization／cycle／policy／ready、登记与实验来源、原request与进程身份，依次同步attempt／ack，最后重核原compute／owner／fence才进入原主体。新记录各1MiB，原intent／cycle／final容量保持；没有第二批准权威。
+
+父owner不做业务磁盘I/O；它非阻塞poll全部phase。compute／catchable取消时先实际通知业务phase，再起独立fence，不等待registry或同步；execute的工作按compute停止，回收后的完整停止结果可在原total内收集。原`processes.run(supervised=True)`是唯一回收实现，真实reap后S先发帧再直接存储。native result先出现不能触发managed completion；缺完整durable stop继续unknown。
+
+原取消owner在保存精确run的取消意图后，用pidfd与boot／start_ticks通知同一个capable owner，Python封装缺失时使用libc同一pidfd接口，无宽泛PID信号回退。远端signal仍原attempt/history。离线`training execution`走随包`-S` reader，不依赖所选native仍存在；同链现存文件与目录同步后重读不变才确认durable，source漂移独立限时观察，不返执行权。用法见[训练手册](../TRAINING.md#显式受管执行与离线停止观察)，验证范围见[本片交付](../delivery/2026-11-15-training-managed-execution.md)。

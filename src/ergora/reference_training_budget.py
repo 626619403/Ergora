@@ -16,14 +16,16 @@ import sys
 import time
 import uuid
 
-from . import budget_clock, processes, registrations, training_cycles
+from . import budget_clock, processes, registrations, training_cycles, training_execution_protocol
 from .definition_bundles import parse_json
+from .processes import identity as _process_identity
 from .state import State, file_lock, now
 
 
 TASK_QUEUE = 'ergora-training-budget-v1'
 _PHASE_PROTOCOL = 'ergora-budget-phase-v1'
-_PHASE_MODES = ('monitor', 'fence', 'cleanup', 'publish')
+_PHASE_MODES = ('monitor', 'fence', 'cleanup', 'publish', 'admission', 'execute')
+_COMPUTE_MODES = ('monitor', 'admission', 'execute')
 _FINAL_LIMIT = 2 * training_cycles.MAX_RECORD_BYTES
 
 
@@ -51,21 +53,11 @@ def prepare_binding(operation, intent: dict, selector: dict) -> dict:
     return binding
 
 
-def _process_identity(pid: int) -> dict:
-    if type(pid) is not int or pid < 1:
-        raise ValueError('Budget owner has no valid process identity')
-    fields = Path('/proc/' + str(pid) + '/stat').read_text().rsplit(')', 1)[1].split()
-    if fields[0] == 'Z':
-        raise ValueError('Original budget owner has exited')
-    return {'pid': pid, 'start_ticks': fields[19],
-            'boot_id': Path('/proc/sys/kernel/random/boot_id').read_text().strip()}
-
-
 class _BudgetPhase:
     """Transfer one phase without making its caller a shared child subreaper."""
 
     def __init__(self, budget, mode: str, context: dict, *, phase_id: str | None = None,
-                 owner: dict | None = None, final: dict | None = None):
+                 owner: dict | None = None, final: dict | None = None, execution: dict | None = None):
         phase_id = uuid.uuid4().hex if phase_id is None else phase_id
         if mode not in _PHASE_MODES or not isinstance(phase_id, str) or re.fullmatch('[a-f0-9]{32}', phase_id) is None:
             raise ValueError('Unknown training budget phase or observation identity')
@@ -79,6 +71,7 @@ class _BudgetPhase:
         self.output = budget.folder / self.relative
         self.payload = {**budget.operation.payload, 'mode': mode, 'cached': context,
                         'intent_sha256': budget.identity['intent_sha256'],
+                        **({'execution': execution} if execution is not None else {}),
                         **({'final': final} if final is not None else {})}
         self.frames, self.buffer, self.problem = [], bytearray(), None
         self.supervisor_returncode = None
@@ -88,7 +81,7 @@ class _BudgetPhase:
 
     def expired(self, *, total: bool = False) -> bool:
         try:
-            return self.budget.remaining(self.context, cleanup=total or self.mode != 'monitor') <= 0
+            return self.budget.remaining(self.context, cleanup=total or self.mode not in _COMPUTE_MODES) <= 0
         except (OSError, ValueError):
             return True
 
@@ -127,7 +120,7 @@ class _BudgetPhase:
 
     def start(self) -> bool:
         """Launch without reading or writing the business filesystem in the parent."""
-        if self.expired() or self.mode == 'monitor' and self.budget.cancelled:
+        if self.expired() or self.mode in _COMPUTE_MODES and self.budget.cancelled:
             return False
         self.encoded = json.dumps({**self.payload, 'mode': 'phase-supervisor', 'phase': self.identity},
                                   ensure_ascii=False, allow_nan=False).encode('utf-8')
@@ -161,7 +154,7 @@ class _BudgetPhase:
         """Pump this phase's pipes; default polling never waits for a peer."""
         process, selected = self.process, self.selected
         stop = (self.stopping or self.problem is not None or self.expired()
-                or self.mode == 'monitor' and self.budget.cancelled)
+                or self.mode in _COMPUTE_MODES and self.budget.cancelled)
         if stop and not self.signalled and process.poll() is None:
             process.terminate()
             self.signalled = True
@@ -209,7 +202,7 @@ class _BudgetPhase:
                     stream.close()
         self.supervisor_returncode = self.process.returncode
         if (self.process.returncode == 0 and self.offset == len(self.encoded) and len(self.frames) == 2
-                and not self.buffer and self.problem is None and not self.expired()):
+                and not self.buffer and self.problem is None and not self.expired(total=self.mode == 'execute')):
             return self.frames[1]['result']
         return {'status': 'unknown', 'phase_id': self.identity['phase_id'],
                 'reason': self.problem or self.startup_stderr.decode('utf-8', errors='replace').strip()
@@ -254,11 +247,35 @@ class _BudgetPhase:
 
         signal.signal(signal.SIGTERM, cancel)
         signal.signal(signal.SIGINT, cancel)
-        result = processes.run([sys.executable, '-P', '-c',
-            'from ergora.reference_training_worker import budget_main;budget_main()'], Path.cwd(), self.output / 'helper',
-            self.context['policy']['wall_seconds'], json.dumps(self.payload, ensure_ascii=False, allow_nan=False),
-            dict(os.environ), supervised=True, stop_requested=stopped)
+        command = [sys.executable, '-P', '-c',
+                   'from ergora.reference_training_worker import budget_main;budget_main()']
+        environment = dict(os.environ)
+        payload = self.payload
+        if self.mode == 'execute':
+            from . import reference
+
+            owner = self.budget.owner_record()
+            capability = owner.get('execution_capability')
+            if capability is None:
+                raise ValueError('Original owner has no native execution capability')
+            grant = payload['execution']
+            if (grant['status'] != 'admitted' or grant['launch']['execution_phase_id'] != self.identity['phase_id']
+                    or grant['request']['owner_sha256'] != self.budget.operation.sha(owner)):
+                raise ValueError('Native execution phase has no original single-use launch grant')
+            installation = Path(capability['installation'])
+            command = reference.worker_command(installation, module='training_execution_protocol', entrypoint='native_main')
+            environment['PYTHONPATH'] = os.pathsep.join(str(installation / part) for part in
+                ('local', 'upstream/platform', 'upstream/temporal', 'upstream'))
+            payload = {**payload, 'phase': self.identity}
+        result = processes.run(command, Path.cwd(), self.output / 'helper',
+            self.context['policy']['wall_seconds'], json.dumps(payload, ensure_ascii=False, allow_nan=False),
+            environment, supervised=True, stop_requested=stopped)
         frame('stopped', 'process', result)
+        if self.mode == 'execute':
+            # No subprocess may be created after the matching reap frame.
+            observed = training_execution_protocol.record_stopped(self.context, self.identity, result)
+            frame('result', 'result', {'status': 'executed', 'execution': observed})
+            return
         observed = training_cycles._document(self.output / 'helper/stdout.txt') if result['status'] == 'succeeded' else {
             'status': 'unknown', 'process': result}
         frame('result', 'result', observed)
@@ -305,39 +322,19 @@ class BudgetedStart:
             raise ValueError('Original training computation deadline has passed')
 
     def owner_record(self) -> dict:
-        value = training_cycles._document(self.path('owner.json'))
+        value = training_execution_protocol.owner_record(training_execution_protocol.decode(
+            training_execution_protocol.read_raw(self.path('owner.json'))))
         process = {name: value.get(name) for name in ('pid', 'start_ticks', 'boot_id')}
-        digest = value.get('context_sha256')
-        if (not isinstance(digest, str) or re.fullmatch('[a-f0-9]{64}', digest) is None
-                or value != {**self.identity, **process, 'context_sha256': digest}
+        if (any(value[name] != self.identity[name] for name in ('intent_sha256', 'authorization_sha256'))
                 or process != _process_identity(value.get('pid'))):
             raise ValueError('Original training budget owner identity is unavailable or changed')
         return value
 
     def owner_alive(self) -> bool:
-        import fcntl
-
         try:
-            self.owner_record()
-            descriptor = os.open(self.path('lock'), os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
-            with os.fdopen(descriptor, 'rb') as lock:
-                if not stat.S_ISREG(os.fstat(lock.fileno()).st_mode):
-                    raise ValueError('Original budget owner lock must be an ordinary file')
-                try:
-                    fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                except BlockingIOError:
-                    initializing = os.open(self.path('initializing.lock'), os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
-                    with os.fdopen(initializing, 'rb') as ready:
-                        if not stat.S_ISREG(os.fstat(ready.fileno()).st_mode):
-                            raise ValueError('Original owner publication lock must be an ordinary file')
-                        try:
-                            fcntl.flock(ready, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                        except BlockingIOError:
-                            return False
-                    return True
+            return training_execution_protocol.owner_active(self.path('owner.json'), self.owner_record())
         except (OSError, ValueError):
             return False
-        return False
 
     def ensure_owner(self) -> None:
         self.require_active()
@@ -435,17 +432,21 @@ class BudgetedStart:
     def supervise(self, mode: str, context: dict, *, final: dict | None = None) -> dict:
         phase = _BudgetPhase(self, mode, context, final=final)
         result = phase.run()
+        self.record_phase(phase, result)
+        return result
+
+    def record_phase(self, phase, result: dict) -> None:
         helper = phase.frames[0]['process'] if phase.frames else None
-        self.phase_observations.append({'phase_id': phase.identity['phase_id'], 'mode': mode,
+        self.phase_observations.append({'phase_id': phase.identity['phase_id'], 'mode': phase.mode,
             'supervisor_returncode': phase.supervisor_returncode, 'stopped': helper is not None,
             'helper_process': {key: helper[key] for key in ('status', 'returncode')} if helper is not None else None,
             'status': result.get('status', 'unknown'), 'reason': result.get('reason')})
-        return result
 
     def supervise_phase(self, context: dict) -> None:
         identity = self.operation.payload['phase']
         phase = _BudgetPhase(self, identity['mode'], context, phase_id=identity['phase_id'],
-                             owner=identity['owner'], final=self.operation.payload.get('final'))
+                             owner=identity['owner'], final=self.operation.payload.get('final'),
+                             execution=self.operation.payload.get('execution'))
         if phase.identity != identity:
             raise ValueError('Training supervisor differs from its complete original phase')
         phase.supervise()
@@ -466,16 +467,24 @@ class BudgetedStart:
             signal.signal(signal.SIGINT, cancel)
             with file_lock(self.path('initializing.lock'), blocking=False):
                 training_cycles._sync_directory(self.folder.parent)
-                training_cycles._record(self.path('owner.json'), {**self.identity, **_process_identity(os.getpid()),
-                    'context_sha256': self.operation.sha(context)})
+                _, _, _, ready = self.source()
+                capability = training_execution_protocol.source_capability(Path(self.intent['execution']['installation']), ready)
+                training_cycles._record(self.path('owner.json'), {**self.identity, 'schema_version': 2,
+                    **_process_identity(os.getpid()), 'context_sha256': self.operation.sha(context),
+                    'execution_capability': capability})
             self.phase_observations = []
-            observed = self.supervise('monitor', context)
-            if observed.get('status') == 'completed':
-                outcome = observed
+            if capability is not None:
+                from .reference_training_execution import Execution
+
+                outcome = Execution(self.operation, self).drive(context, _BudgetPhase)
             else:
-                outcome = self.supervise('fence', context)
-                if outcome.get('status') == 'fenced':
-                    outcome = {**outcome, 'control': self.supervise('cleanup', context)}
+                observed = self.supervise('monitor', context)
+                if observed.get('status') == 'completed':
+                    outcome = observed
+                else:
+                    outcome = self.supervise('fence', context)
+                    if outcome.get('status') == 'fenced':
+                        outcome = {**outcome, 'control': self.supervise('cleanup', context)}
             try:
                 remaining = self.remaining(context, cleanup=True)
             except (OSError, ValueError):
@@ -484,7 +493,7 @@ class BudgetedStart:
                      'total_remaining_seconds': remaining,
                      'overrun_seconds': max(0, -remaining) if remaining is not None else None,
                      'phases': list(self.phase_observations),
-                     'executor_stop_confirmed': None}
+                     'executor_stop_confirmed': outcome.get('executor_stop_confirmed')}
             publication = self.supervise('publish', context, final=final)
             return {**final, 'publication': publication}
 
@@ -516,6 +525,11 @@ class BudgetedStart:
         observation = await adapter.poll_job(job)
         if observation.state not in ('SUCCEEDED', 'FAILED', 'CANCELLED'):
             return None
+        if (self.operation.root / ('training/jobs/' + self.operation.ident + '/managed-execution')).exists():
+            stopped = training_execution_protocol.ExecutionRecords(self.operation.project, self.operation.ident,
+                str(self.operation.payload['control_home'])).load().observe(durable=True)
+            if stopped['executor_stop_confirmed'] is not True:
+                return None
         gate = asdict(await adapter.collect_and_gate(job)) if observation.state == 'SUCCEEDED' else None
         return {'status': 'completed', 'native': asdict(observation), 'gate': gate}
 
@@ -556,4 +570,8 @@ class BudgetedStart:
                 return {'status': 'unknown', 'reason': 'Original cleanup deadline passed during fence publication'}
             return {'status': 'fenced', 'fence': durable,
                     'existing_job': asdict(job) if job is not None else None}
+        if mode == 'admission':
+            from .reference_training_execution import Execution
+
+            return await Execution(self.operation, self).admit(context)
         raise ValueError('Unsupported training budget helper phase')

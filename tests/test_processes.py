@@ -12,6 +12,28 @@ from ergora import processes
 from ergora.state import file_lock
 
 
+@pytest.mark.skipif(sys.platform != 'linux', reason='PID-bound Linux local notification')
+@pytest.mark.parametrize('wrappers', ['python', 'libc'])
+def test_notification_binds_the_original_identity_before_signalling(monkeypatch, wrappers):
+    import signal
+
+    if wrappers == 'libc':
+        monkeypatch.delattr(os, 'pidfd_open', raising=False)
+        monkeypatch.delattr(signal, 'pidfd_send_signal', raising=False)
+    child = subprocess.Popen([sys.executable, '-c', 'import time;time.sleep(30)'], start_new_session=True)
+    try:
+        expected = processes.identity(child.pid)
+        with pytest.raises(ValueError, match='identity changed'):
+            processes.notify_identity({**expected, 'start_ticks': str(int(expected['start_ticks']) + 1)}, signal.SIGTERM)
+        assert child.poll() is None
+        processes.notify_identity(expected, signal.SIGTERM)
+        assert child.wait(timeout=5) == -signal.SIGTERM
+    finally:
+        if child.poll() is None:
+            child.kill()
+        child.wait()
+
+
 @pytest.mark.skipif(sys.platform != 'linux', reason='Dedicated supervised Linux process owner')
 def test_slow_supervised_reader_receives_complete_large_utf8_input(tmp_path):
     reader = 'import sys,time,hashlib;time.sleep(.35);print(hashlib.sha256(sys.stdin.buffer.read()).hexdigest())'

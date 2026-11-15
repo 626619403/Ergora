@@ -12,6 +12,7 @@ import sys
 from . import reference, training_cycles
 from .reference_training_budget import BudgetedStart, TASK_QUEUE, validate_binding
 from .reference_training_submission import _Submission
+from .reference_training_execution import Execution
 from .state import State
 
 
@@ -141,3 +142,21 @@ def budget_main() -> None:
         result = asyncio.run(_cleanup(budget, context) if payload['mode'] == 'cleanup'
                              else budget.helper(payload['mode'], context))
     print(json.dumps(result, ensure_ascii=False, allow_nan=False))
+
+
+def execution_main() -> None:
+    """Prepare an explicit request; business execution belongs to the born owner."""
+    from agent_platform.core import Blocked, environment
+    from temporalio.service import RPCError
+
+    try:
+        payload = json.load(sys.stdin)
+        os.environ.update(environment())
+        operation = _Submission(payload)
+        intent = operation.load()
+        if intent is None or 'budget' not in intent:
+            raise ValueError('Managed execution requires the original budget-bound submission')
+        result = asyncio.run(asyncio.wait_for(Execution(operation, BudgetedStart(operation, intent)).request(), payload['timeout']))
+        print(json.dumps(result, ensure_ascii=False, allow_nan=False))
+    except (OSError, ValueError, KeyError, TypeError, ImportError, TimeoutError, RPCError, Blocked) as error:
+        raise SystemExit('BLOCKED: ' + str(error) + '; observe the original execution request without resending start') from error

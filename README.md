@@ -457,7 +457,9 @@ training init / runner-add → prepare → worker-start → start
 → 证据和统计门禁 → 人工批准 evidence SHA → 集成/复验任务 JSON
 ```
 
-完整参数和证据格式见 HTML 中的**训练优化手册**，或安装后的 `docs/TRAINING.md`。当前 `run-local` 逐实验手动调用，无常驻训练队列消费者。项目负责 CUDA/PyTorch、数据、GPU 资源、训练质量和恢复验证；平台不提供每实验 GPU/cgroup 配额。人工放行后，维护者继续在项目中完成集成、复验与采用。
+也可在应用层用 `ergora training cycle-create / cycle-authorize / cycle-start` 冻结候选并启动共同预算，再显式调用 `ergora training execute` 执行同一原实验。执行确认绑定原 revision、intent、run 和 native request SHA；只有出生时具备执行能力的原预算 owner 才能接受，取消及截止覆盖执行子树。用 `ergora training execution` 读取停止记录。完整命令、准入条件与 unknown 恢复见[训练手册](docs/TRAINING.md#显式受管执行与离线停止观察)。kernel 专家继续参与 v3 优化路径；当前仍需逐实验选择，不自动进行多轮优化。
+
+原 `run-local` 手工路径继续可用。项目负责 CUDA/PyTorch、数据、GPU 资源、训练质量和恢复验证；平台不提供每实验 GPU/cgroup 配额。人工放行后，维护者继续在项目中完成集成、复验与采用。
 
 ## 日常交互与运维
 
