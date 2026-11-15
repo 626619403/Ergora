@@ -35,3 +35,17 @@
 审查中指出初稿交付仍写“当前只有计划与原码调查”，与后文实现状态冲突；作者已改为立项调查及下文逐步记录，并以最终scope重新供审。该记录问题已关闭，没有开放最低修正项。
 
 本地片可以按原计划收束。普通发布仍受前置43d自己的准确CI终态及原独立门禁约束，本片发布后还需自己的适用CI；本报告未联网终核它们，也不转授前片批准。后继b2b1／b2b2仍须独立完成异步operation、冷inspect固定截止、spawn取消回收、具体owner并发通知和实际停止链验收。本片没有真实GPU、业务ML训练质量或性能收益验收结论。
+
+## 固定发布终核
+
+原reviewer恢复本上下文，对固定发布`877e1e4f7397731915c36b82f335efeaab3854dd`完成需求／可维护性两轴终核，均为**approve，开放0／0**。本次保留前述7,132B原报告为不变前缀，其SHA256为`176bc9a8d4fbb2a5ae043ff5ed6711abf34af0dbcee32957f4eb55df4ef41214`；以下只追加发布证据与当前CI边界。
+
+固定提交的唯一父提交为`d1c728087423d85ed55f06010ec81e5e1d4b2fd1`，tree为`5bc5305768035411b81b018a2894b76dca5dbd40`。实际Git对象与`publication-r1.json`的九文件清单逐项核对，路径、blob ID、字节数和SHA256均一致；`local-commit-r1.json`记录同一提交／tree及九份staged blob匹配。`push-before-r1.txt`、`push-after-r1.txt`及原push输出记录普通推送从d1c7280推进至877e1e4；审查者另执行只读`git ls-remote origin refs/heads/refactor/architecture-foundations`，完整远端Ref精确返回877e1e4。
+
+独立从固定Git提交读取的652个产品文件，与原wheel、两份保留的非editable安装及其原manifest逐字相同；wheel仍为SHA256 `e0b0364c3d88bc4ded4e38339a4d5bf24567b51aa48003dd5b00641f32505f6e`。177份已提交测试／示例与原冻结输入及清单身份相同，原`installed-r1`的退出0、27通过／57.10秒及JUnit零失败／错误／跳过再次一致。已提交独立报告正是上述7,132B原件。相对本地八文件审查快照，仅PLAN、本片交付和本片计划行补入实际本地approve／状态记录，另以原审查报告组成第九文件；没有新增产品或验收语义。因此无需重复安装或suite。
+
+前置b2a自己的官方run`43704101013`／attempt1／push／完整d1c7280及原reviewer终态两轴approve已分别读取。审查者核其`ci-b2a/20261115T112323777899Z`的HTTP200原run／jobs：准确仓库／分支／SHA，八个job及30必要步骤全部completed／success。这只关闭前置发布条件。
+
+本候选自己的官方[run `43708885957`](https://github.com/626619403/Ergora/actions/runs/43708885957)已按原HTTP200响应核到attempt1／push、准确仓库／分支及完整877e1e4，2026-11-15 11:26:33 UTC保存的观察为`in_progress`／conclusion null。原件位于证据根的`ci-b2b0/20261115T112633364905Z-{runs,runs-http,summary}.json`；原runs SHA256为`b816cf2d8ba308fbaf5412c9ac8f676a9b676824c1c3df7592d71a35d7b90a1d`。**自己的CI终态仍待，不能以普通发布或前置成功替代。**
+
+本轮只追加本报告，未修改产品／测试、安装、提交或推送。工作树后继HEAD`3947b1e28b2cbc27ddc53cab584cced0c8d971a6`及新的研究／文档不属于本次固定877e1e4结论；后继能力和真实训练／质量／性能边界保持各自原范围。

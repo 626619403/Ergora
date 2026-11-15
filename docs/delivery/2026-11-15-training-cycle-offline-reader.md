@@ -21,3 +21,9 @@
 前片43d自己的官方CI最后可读时七job success／Windows在途，09:49 UTC匿名REST返回403／remaining0，reset10:23:02 UTC。原件保存在training-cycle-gates/ci-b1，不在reset前重复查询；没有把观察不到终态视为CI失败或成功。本地后继实现可继续，远端按原精确门禁接续，不将未核发布写为完成。
 
 新的fresh-context[独立产品审查](2026-11-15-training-cycle-offline-reader-review.md)已最终本地需求／维护性两轴approve，开放0／0。原7,132B报告SHA256 `176bc9a8d4fbb2a5ae043ff5ed6711abf34af0dbcee32957f4eb55df4ef41214`保留；独立核完整八文件、三个原owner机械AST、652双安装／177测试副本、27终态与实际原件读取，并额外禁止State._open／sqlite3.connect，持真实schema锁检查完整目录／字节仍保持。唯一旧状态措辞已修，产品无需修正。本地可固定提交供后继b2b恢复；远端发布与自己的CI仍按前片准确门禁分别接续，不把本地approve写成已发布。
+
+## 固定发布与自己的CI
+
+前置b2a d1c7280自己的run43704101013／attempt1终态八job／30必要步骤success，原reviewer最终需求／维护性两轴approve／开放0／0。随后普通推送本片固定 `877e1e4f7397731915c36b82f335efeaab3854dd`，唯一parent d1c7280，九Git对象及完整远端Ref均核相同；未推当前后继HEAD。原产品reviewer正在补固定发布终核，自己的官方run43708885957／attempt1／push／完整SHA与分支匹配，当前in_progress。原件在私有`publication-r1.json`与`ci-b2b0/`；不以此前成功充本片终态，后继仍等本片自己的CI及独立终核。
+
+原fresh-context产品reviewer已完成固定发布需求／维护性两轴approve／开放0／0，直接核完整Ref、九blob、652固定产品／原wheel／双安装与177测试／示例保持。追加后报告9,852B／SHA256 `ba89f1b0ae01193bb8ebaaf38a65dabfa5e91a967bc5469393c5716de72a3bec`，原7,132B本地前缀保持。未重装或重复suite；自己的CI仍为在途，不以固定发布批准代替终态。
