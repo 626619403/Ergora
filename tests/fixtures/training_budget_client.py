@@ -18,6 +18,24 @@ import signal
 import subprocess
 
 fault = os.environ.get('ERGORA_TEST_TRAINING_BUDGET')
+if (os.environ.get('ERGORA_TEST_TRAINING_CONTROLLER_PAUSE') in ('attempt', 'ack', 'executor-lock')
+        and base.payload['mode'] == 'phase-supervisor' and base.payload['phase']['mode'] == 'execute'):
+    from ergora import reference
+
+    worker_command = reference.worker_command
+    def paused_native_command(installation, **kwargs):
+        command = worker_command(installation, **kwargs)
+        fixture = str(Path(__file__).with_name('training_controller_pause.py'))
+        sdk_site = str(Path(sys.modules['temporalio'].__file__).parent.parent)
+        command[-1] = command[-1].replace('import ergora;sys.path.pop(0);',
+            f'import ergora;sys.path.pop(0);sys.path.append({sdk_site!r});'
+            f'import runpy;runpy.run_path({fixture!r})["install"]();')
+        return command
+    reference.worker_command = paused_native_command
+
+if os.environ.get('ERGORA_TEST_TRAINING_CONTROLLER'):
+    training_cancellation_client.Service.query_workflow = base.Service.query_workflow
+
 if fault == 'legacy-owner-schema1' and base.payload['mode'] == 'owner':
     record_owner = budget.training_cycles._record
     def legacy_owner(path, value, **kwargs):

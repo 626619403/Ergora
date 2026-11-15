@@ -425,7 +425,9 @@ F10d4沿原agent_runs准入读取增加可选显式input digest，薄HTTP固定t
 
 `training_cycles.start`只从原有限选择取 manifest 并调用同一`training.start`。原提交 intent 持有可选 budget 引用，原 attempt 是不可归还 slot；不增训练账本或第二 start 客户端。`reference_training_budget`持有原来源／时钟与独立 owner 生命周期；`reference_training_worker`持有应用进程入口、预算 adapter factory、原取消用例接线和 SDK worker 注册，owner 不反向 import 提交／取消模块。
 
-`training_cycles.authorize_controller`是独立的应用用例，复用同一授权发布算法，在新ID出生时保存schema2完整自动执行同意；普通授权与历史读取保留schema1。ready前持久建立`controller/admission.lock`，以后只读／打开既有普通空文件。`training_execution_protocol.CycleAdmission`在stdlib边界持有父共享许可与停止记录；O_EXCL路径一旦出现就否决新准入，只有同步同一文件／目录并重读同inode与完整bytes才确认持久，排他锁只证明父准入排空，不能证明执行子树已停。`stop_controller`当前仅为独立操作进程可用的存储用例；公开live stop／fan-out、完整controller binding与最后gate是后继节点。`BudgetedStart.source`仍拒绝schema2通过旧手工binding派发，因此此记录能力尚不构成可运行的自动循环。具体边界见[实施计划](../plans/2026-11-15-training-cycle-admission.md)。
+`training_cycles.authorize_controller`是独立的应用用例，复用同一授权发布算法，在新ID出生时保存schema2完整自动执行同意；普通授权与历史读取保留schema1。ready前持久建立`controller/admission.lock`，以后只读／打开既有普通空文件。`training_execution_protocol.CycleAdmission`在stdlib边界持有父共享许可与停止记录；O_EXCL路径一旦出现就否决新准入，只有同步同一文件／目录并重读同inode与完整bytes才确认持久，排他锁只证明父准入排空，不能证明执行子树已停。`stop_controller`当前仅为独立操作进程可用的存储用例。具体出生与停止记录边界见[原实施计划](../plans/2026-11-15-training-cycle-admission.md)。
+
+[最后门禁消费片](../plans/2026-11-15-training-cycle-gates.md)在原三字段binding上增加完整controller selector：protocol、固定workflow／run、完整intent SHA及原ordinal。`CycleAdmission.bind`由`BudgetedStart.source`和native context共同使用，核原父intent／attempt／receipt及同一admission；父attempt的`workflow_input_sha256`保存父workflow input canonical SHA，与cycle raw input SHA分列。submission、worker与Execution在原异步操作中核父run的RUNNING、describe／started memo、类型／queue和完整input；prepare的SQLite reservation及原registry／executor锁内不查询远端。父共享许可覆盖原RPC、原create、request／launch及native process，原锁与最终同步后的检查仍可否决迟到工作；已消耗attempt／launch不返还。自动actor固定为原授权，手工模式沿原明确操作者。schema2仍不能通过旧手工binding派发，schema1不得带controller。该片没有总Workflow producer；独立fan-out、独立cycle worker／queue和公共CLI／HTTP继续后继交付，当前验收进度见[逐步交付](../delivery/2026-11-15-training-cycle-gates.md)，不把服务替身的消费gate检查称为可运行的自动多轮训练。
 
 ```mermaid
 flowchart LR

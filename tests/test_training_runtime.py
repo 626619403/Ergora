@@ -21,7 +21,7 @@ def installation(tmp_path_factory, request):
 
         root = root / 'managed native'
         reference.prepare_training(root, protocol=reference.TRAINING_PROTOCOL)
-        # Admission-only tests use a real empty native venv and never run it.
+        # The native admission boundary runs without application/SDK dependencies.
         venv.EnvBuilder(with_pip=False).create(root / '.venv')
     else:
         shutil.copytree(reference.ROOT / 'platform', root, dirs_exist_ok=True)

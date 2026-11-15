@@ -27,12 +27,16 @@ class Execution:
         if chain.owner is None or chain.owner.get('execution_capability') is None:
             raise ValueError('This original budget owner has no execution capability; it cannot be upgraded or restarted')
         protocol.validate_context(context, chain)
-        request = chain.request_record(f'unix:{os.getuid()}:{getpass.getuser()}')
+        actor = (context['authorization']['controller']['actor_id'] if context['authorization']['schema_version'] == 2
+                 else f'unix:{os.getuid()}:{getpass.getuser()}')
+        request = chain.request_record(actor)
         # These checks run in a supervised helper, never inside a DB reservation.
         timeout = min(op.payload['timeout'], budget.remaining(context), context['policy']['control_timeout_seconds'])
         if timeout <= 0:
             raise ValueError('Original computation budget is exhausted')
-        found = await lookup(await connect(), context['intent']['observation']['experiment']['spec'],
+        client = await connect()
+        await budget.check_controller_history(client)
+        found = await lookup(client, context['intent']['observation']['experiment']['spec'],
                              run_id=request['run_id'], timeout=timeout)
         if found is None or (await found[1].memo()).get(MEMO_KEY) != budget.identity['intent_sha256']:
             raise ValueError('Original submitted run has no matching complete history and intent memo')
@@ -66,10 +70,11 @@ class Execution:
                 or payload['request_sha256'] != request['native_request_sha256']):
             raise ValueError('Explicit execution must confirm the complete original revision, intent, run and native request SHA256')
         chain.folder.mkdir(parents=True, exist_ok=True, mode=0o700)
-        with file_lock(chain.folder / 'execution.lock', blocking=False):
-            self.current(context, chain)
-            protocol.publish(chain.folder / 'request.json', request, chain.root)
-            self.current(context, chain)
+        with budget.permission():
+            with file_lock(chain.folder / 'execution.lock', blocking=False):
+                self.current(context, chain)
+                protocol.publish(chain.folder / 'request.json', request, chain.root)
+                self.current(context, chain)
         saved = protocol.ExecutionRecords(context['project'], op.ident, str(op.payload['control_home'])).load()
         return {'project': op.project['id'], 'project_revision': request['project_revision'], 'experiment_id': op.ident,
                 'status': 'requested', 'request_sha256': saved.sha(request), 'run_id': request['run_id'],
@@ -86,7 +91,7 @@ class Execution:
             if chain.sha(chain.records['request']) != chain.sha(request):
                 raise ValueError('Explicit execution request differs from its original identity')
             try:
-                with file_lock(chain.folder / 'execution.lock', blocking=False):
+                with self.budget.permission(), file_lock(chain.folder / 'execution.lock', blocking=False):
                     self.current(context, chain)
                     # Even an empty or partial existing launch consumes this opportunity.
                     try:

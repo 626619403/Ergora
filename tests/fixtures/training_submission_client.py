@@ -24,6 +24,8 @@ from temporalio.service import RPCError, RPCStatusCode
 
 from ergora.reference_training_submission import main
 
+sys.path.insert(0, str(Path(__file__).parent))
+
 payload = json.load(sys.stdin)
 sys.stdin = io.StringIO(json.dumps(payload))
 scenario = os.environ['ERGORA_TEST_TRAINING_SUBMISSION']
@@ -31,6 +33,23 @@ storage = Path(os.environ['ERGORA_TEST_TRAINING_SERVICE'])
 record = json.loads(storage.read_text()) if storage.exists() else {'starts': 0, 'calls': []}
 run_id = '00000000-0000-4000-8000-000000000001'
 converter = DataConverter.default
+
+if os.environ.get('ERGORA_TEST_TRAINING_CONTROLLER_PAUSE') in ('request', 'launch'):
+    from training_controller_pause import install
+
+    install()
+
+if (os.environ.get('ERGORA_TEST_TRAINING_CONTROLLER_PAUSE') == 'submission-attempt-sync'
+        and 'mode' not in payload):
+    from ergora import training_cycles
+    from training_controller_pause import pause
+
+    synchronized = training_cycles._sync_directory
+    def pause_attempt(directory):
+        synchronized(directory)
+        if (directory / (payload['experiment_id'] + '.attempt.json')).exists():
+            pause()
+    training_cycles._sync_directory = pause_attempt
 
 
 def save():
@@ -61,6 +80,8 @@ class Service:
             from perf_temporal.models import Binding, Experiment
 
             spec = (await converter.decode(request.input.payloads, [dict]))[0]
+            if os.environ.get('ERGORA_TEST_TRAINING_CONTROLLER'):
+                from ergora.reference_training_worker import create_adapter
             experiment = Experiment(**{**spec, 'binding': Binding(**spec['binding'])})
             adapter = create_adapter()
             manifest = await adapter.read_manifest(experiment.manifest_uri)
@@ -72,7 +93,7 @@ class Service:
                 await asyncio.sleep(0.01)
             try:
                 record['native_job_after'] = asdict(await adapter.create_job_if_absent(experiment, manifest))
-            except Blocked as error:
+            except (Blocked, ValueError) as error:
                 record['native_create_error'] = str(error)
             job = await adapter.lookup_job(experiment)
             record['native_lookup_after'] = asdict(job) if job is not None else None
@@ -84,6 +105,10 @@ class Service:
         return StartWorkflowExecutionResponse(run_id=run_id)
 
     async def describe_workflow_execution(self, request, **kwargs):
+        if request.execution.workflow_id.startswith('ergora-training-cycle/'):
+            from training_controller_service import Service as ControllerService
+
+            return await ControllerService().describe_workflow_execution(request, **kwargs)
         record['calls'].append(['describe', request.execution.run_id])
         save()
         if scenario == 'unavailable':
@@ -104,6 +129,10 @@ class Service:
             type=WorkflowType(name='ExperimentWorkflow'), status=WorkflowExecutionStatus.RUNNING, memo=original.memo))
 
     async def get_workflow_execution_history(self, request, **kwargs):
+        if request.execution.workflow_id.startswith('ergora-training-cycle/'):
+            from training_controller_service import Service as ControllerService
+
+            return await ControllerService().get_workflow_execution_history(request, **kwargs)
         record['calls'].append(['history', request.execution.run_id])
         save()
         assert request.execution.run_id == run_id

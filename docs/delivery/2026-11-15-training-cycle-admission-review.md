@@ -66,3 +66,40 @@ r2 源码和独立安装 `-I -S` 小探针均验证原坏 intent 反例转为 `i
 - 最终原 `ergora-structure-review@1.0.0` 为实际 approve／exit 0，57.874 秒；`self-review-r3.json` 与 `self-review-r3-retry-codex/original-result.json`、原文本均已核。原 result SHA256 为 `217bb482cf45ec19c22634a9714df7ce9d2a27670303fa1d0804b1369e87e3b1`。独立比较实际 stdin 与冻结 prompt 完全相等；15 文件 405,026B 和三个祖先资源全文均在真实 stdin 中。该文本审查未认证安装／CI，其输入时的 validation pending 由本报告独立核对随后实际 54 项和六 CLI 终态补齐。r3 首驱动的配置路径错误发生在模型调用前，`self-review-r3-setup-error.json` 原件保留，不计作模型结论或产品失败。
 
 本地需求／维护性门禁通过，普通发布／自己的 CI 仍须各自核精确候选，当前不声称完整交付。未验真实 Temporal 自动循环、完整 controller gate／stop fan-out、独立 worker／queue、公开交互、GPU／业务训练、模型质量、吞吐或性能收益；这些是后继交付责任。
+
+## 普通发布独立复核（2026-11-15）
+
+**固定普通发布结论：需求符合性 approve；维护性 approve；开放 finding 0／0，R1／R2 保持关闭。** 本节补核上述本地终核之后的普通发布，不改写原本地结论；自己的 CI 及 a6 完整交付门禁仍待闭合。
+
+固定发布 commit 为 `07cbae2227d60c849df6ac96b4f96d3f71d80d43`，parent 为 `a10e69389e228d311df56bad182b9798f4ca236d`，tree 为 `c64a28e3b984950d4a4c9e07757a0c682de1ae8a`。独立核过实际 commit 的全部 18 个变化路径，每个 blob OID、长度及 SHA256 均与 `publication-staged-r1.json` 和追加前工作树一致。基线至 commit 的完整 binary diff 与 `staged-r1.diff` 逐字相等：123,298B，SHA256 `d81e054bc07a04fb017bf395cfd7dc89809ab0943592bc052a445df4379ee48f`。独立核证清单为 `.ergora/checks/training-cycle-admission/product-audit/publication-r1.json`。
+
+全部 652 个已提交产品文件与 r3 包清单逐字相等，三份产品源码及两份测试保持上表 r3 身份；`src/ergora/data`、`scripts`、`.github` 和 `pyproject.toml` 均未相对基线改变。相对于已审查范围增加的旧 c2／Q5／设计状态续记和本地批准记录仅为交付记账，没有新产品行为。已发布的原本地审查全文仍为 13,019B、SHA256 `701eb5d483d031af7c9d0fd8775c6b7572b9ffee351571eded6735b26605c8a9`；本节是其后的独立追加。已独立验证固定 commit 内 326 个本地链接目标，目录链接有已跟踪后代，五份变更 Python 文件可解析，完整发布差异的 `git diff --check` 通过。
+
+已读原始 commit／push／完整 Ref 的 stdout、stderr 和退出状态。普通 push 指向 `refs/heads/refactor/architecture-foundations`，保存的完整 Ref 在 `2026-11-15T08:07:24.942254+00:00` 为 `07cbae2227d60c849df6ac96b4f96d3f71d80d43`，与固定候选相同；相关命令均 exit 0，Ref stderr 为空。此证据只确认该观察时点的分支发布，没有合并或 main 发布主张。
+
+原 staging 私有链接检查器把合法的 `scripts/` 目录链接当作 index blob，随后缺失 manifest 使发布驱动在 commit／push 之前退出。已核 `stage-driver-recovery-r1.json`、修正检查器和发布入口的先后顺序；这两次 exit 1 是发布准备驱动失败，没有产生提交或推送。修正后目录检查已跟踪后代、文件检查精确 index blob，最终 manifest／静态检查通过；失败原件保留，不计为产品失败或成功发布证据。
+
+自己的 CI 仍为待核证据。`ci-r1/20261115T080736225629Z-runs-http.json` 记录对完整 head SHA 的官方匿名 REST 请求，于 `2026-11-15T08:07:36.800716+00:00` 返回 HTTP 403、`X-RateLimit-Remaining: 0`；reset 为 `2026-11-15 08:23:00 UTC`。已重核响应原件长度／SHA256，body 只有限流错误，没有 run／job 终态。不能据此判断 CI 成功、失败或当前状态；仍须核同一发布 commit 的终态原件，不能提前宣告 a6 完整交付。后继分片目前仅可做设计准备。
+
+本轮只读本地发布／CI 原件并写本报告及 ignored 的 `product-audit/` 审计记录；没有网络请求、测试重跑、安装、服务启动、提交或推送。
+
+## 自己的 CI 终态与 a6 独立终核（2026-11-15）
+
+**最终交付结论：需求符合性 approve；维护性 approve；开放 finding 0／0，R1／R2 保持关闭；固定 a 片的 a6 完整交付门禁闭合。** 本节补齐前节尚待的自己的 CI 及独立终核，原本地／发布全文 16,240B、SHA256 `c5e736f54455ab05ee6c1fda09aa3df23c974ad8904ad3176670695e94b8dde5` 保持逐字不变。
+
+终态原件位于 `.ergora/checks/training-cycle-admission/ci-r1/`，前缀为 `20261115T083326060046Z-`。已独立重算两份官方 REST 响应 body 的长度／SHA256，并与各自 `-http.json` 的请求 URL、HTTP 200、Content-Length 和观察时点核准：
+
+|原始响应|观察时点 UTC|长度|SHA256|
+|---|---|---:|---|
+|`runs.json`|08:33:26.989742|11,998B|`09a05ecc05602dfc6e8b32aa706ab0b44ed43a522eb2033965b934f973a4389d`|
+|`jobs.json`|08:33:28.287186|21,121B|`c7da38541e2d83b948170bb9f6a7c674efe0fffb2d6e9a45172800f1ad45bc06`|
+
+原 runs 响应完整列出一个 run：`43693023635`，工作流 `Portability`／`.github/workflows/portability.yml`，原 commit `07cbae2227d60c849df6ac96b4f96d3f71d80d43`、分支 `refactor/architecture-foundations`、`event=push`、`run_attempt=1`、`status=completed`、`conclusion=success`，更新时间 `2026-11-15T08:32:13Z`。原 head commit tree 与前节固定 tree 相同。attempt 1 的 jobs 响应完整列出八项，所有 job 的 run／attempt／完整 head SHA／分支均相同，且各为 completed／success；total_count 与实际列表相等，无缺页。
+
+预期矩阵从该固定 commit 的 workflow 和 `scripts/ci/linux-groups.json` 独立推导：`plan`，Ubuntu／Python 3.11 的 group 0–5，以及 Windows／Python 3.12 的 group all，实际名称与八项集合精确相等。必要步骤是 plan 的 `Read explicit test groups`，七个 native job 各自的 `Build and install wheel`、`Packaged reference identity`、`Native application regression`、`Upload regression observations`，以及 Windows 的 `Windows PowerShell 5.1 installer and upgrade`，合计 30 项；每个必要名称在对应 job 恰有一次，全部 completed／success。六个 Ubuntu job 的 Windows-only 步骤为 skipped，符合原条件。已从原 jobs 逐项重建并核准作者 `summary.json` 的身份、job 列表及 30 项结论，未单凭其汇总布尔值批准。
+
+再次重核固定 commit 的 parent／tree、全部 18 个发布 blob 和原审计清单一致；当前 652 个产品文件均与其 blob 逐字相等，源码、测试、CI、scripts、pyproject 没有后续变化。后来的 b 片设计准备文档不改变本次产品身份。此前 HTTP 403、08:23／08:30 的 in_progress 以及 08:26 jobs-progress 原观察全部保留并重核长度／SHA256；它们仍分别代表当时的限流和进行中事实，由本次终态补齐后续结论。独立审计记录为 `.ergora/checks/training-cycle-admission/product-audit/ci-terminal-r1.json`。
+
+结合本报告已核的固定 r3 源码／两非 editable 安装、652／283 身份、54 项原安装回归、六 CLI、自身原模板、原 fresh 产品审查和普通发布，本 a 片 a1–a6 的要求及维护性门禁均已闭合。CI 证据范围为官方 run／job／必要步骤结论；未审查完整日志、Windows 单项测试计数或下载产物内容。完整 controller gate／stop fan-out、独立 worker／queue、总 Workflow、公共交互及真实训练仍属于后继独立交付。
+
+本轮只读保存的官方原件和精确发布身份，只追加本报告及 ignored 审计记录；没有网络请求、测试重跑、安装、服务启动、产品编辑、提交或推送。

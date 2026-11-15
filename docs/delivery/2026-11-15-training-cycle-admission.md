@@ -1,5 +1,7 @@
 # Q4.2c0.2a：出生同意与父停止记录交付
 
+最新状态（2026-11-15 08:12 UTC）：已普通发布 `07cbae2227d60c849df6ac96b4f96d3f71d80d43`。原独立reviewer固定发布两轴approve／开放0／0；自己的CI查询遇匿名REST限额，a6待终态及续核。以下实施记录按原时点保留。
+
 日期：2026-11-15。遵循[具体实施计划](../plans/2026-11-15-training-cycle-admission.md)与[原控制器合同](../plans/2026-11-15-training-cycle-controller-contracts.md)。准备计划及纯文档发布已独立两轴 approve；前置Q5.2a的精确CI及其原reviewer、c2原reviewer的接续终核现均闭合。开始a1–a5实施，a6安装／审查／发布和自己的CI待。尚无本片产品验收结论。
 
 Git 准备基线为 `a10e69389e228d311df56bad182b9798f4ca236d`，其产品和测试等于 e09fd60；652 个产品文件仍等于 ac86043。当前其他文档差异属于既有 CI／设计的状态接续，不冒称工作树为空。
@@ -72,3 +74,19 @@ r3实际六条CLI全部0退出：core／SDK各观察完整stop为stopped、FIFO�
 a1–a5本地实现与验收闭合；a6普通发布／自己的CI仍待。准备只普通推送当前开发分支，不合main，不新建重复CI，不把原r1／r2失败或前片CI改记成功。下一产品片仍是完整controller binding／父许可最后gate及独立停止fan-out，再接真正总Workflow与公开交互；当前没有可运行的自动多轮控制器。
 
 暂存前私有链接检查把有效目录链接当作Git index blob，因而未生成暂存清单；后续发布驱动也在读取缺失清单时停止，没有commit或push。已区分目录的tracked子路径与文件的精确暂存blob校验；不改产品、测试、CI或审查结论，不重复产品回归。
+
+## 固定发布与CI待核
+
+2026-11-15T08:07:24 UTC普通发布 `07cbae2227d60c849df6ac96b4f96d3f71d80d43`，parent为a10e693，tree为`c64a28e3b984950d4a4c9e07757a0c682de1ae8a`。18份staged blob及完整差异与提交一致，SSH读取的当前开发分支完整Ref相同；没有合main。原件为本片ignored检查目录中的`publication-staged-r1.json`、`publication-r1.json`及相应commit／push／remote-ref原输出。
+
+原reviewer已在[原报告](2026-11-15-training-cycle-admission-review.md)追加固定发布需求／维护性两轴approve，开放0／0，R1／R2关闭。原13,019B本地快照前缀保持；追加后的16,240B报告SHA256为`c5e736f54455ab05ee6c1fda09aa3df23c974ad8904ad3176670695e94b8dde5`。该状态追加不触发产品重跑。
+
+08:07:36 UTC首次只读查自己的CI返回GitHub匿名REST 403 rate-limit，limit=60、remaining=0、reset=`1794730980`（08:23 UTC）；HTTP body及headers完整保存在`ci-r1/`。目前没有已核run ID；限额不代表产品CI失败或成功。恢复后只查该完整SHA、分支、push及attempt，待八job／30必要步骤终态和同一reviewer续核后才闭合a6。等待期间仅准备c0.2b，不开放后继产品通路。
+
+08:23:18 UTC官方读取恢复，同完整SHA／push／当前开发分支的自己的run为`43693023635`／attempt1，仍in_progress、conclusion=null。原HTTP及summary已无覆盖保存；尚无job／必要步骤终态结论，a6继续待核。后继b0只做设计／独立审查，未改产品。
+
+## a6自己的CI与独立终核闭合
+
+08:33:26 UTC官方终态为run`43693023635`／push／attempt1 completed success，匹配07cbae完整SHA／当前开发分支；八job及30必要步骤全部success，原HTTP及精确summary在`ci-r1/20261115T083326060046Z-*`。没有下载完整日志／artifacts，不主张Windows逐例数量或提速。
+
+原fresh reviewer已独立核各response hash／长度、原run／job／步骤身份与完整矩阵、18发布blob和仍等于固定候选的652产品，[原报告](2026-11-15-training-cycle-admission-review.md)最终需求／维护性两轴approve／开放0／0，a6闭合。原16,240B本地／发布前缀保持，最终19,896B／SHA256 `8db11e6100ed0287c3fb9a959c0aa73ac277d234e75fca38b683afd21095fab9`；私有终核为`product-audit/ci-terminal-r1.json`。本片a1–a6只对固定07cbae精确交付，不转授后继产品。随后才开始b1；b2／c1、自动循环和真实训练仍未实现。

@@ -643,6 +643,10 @@ async def run():
     await adapter.create_job_if_absent(experiment,manifest)
 asyncio.run(run())
 '''
+    if os.environ.get('ERGORA_TEST_TRAINING_CONTROLLER'):
+        program = (f'import sys;sys.path.insert(0,{str(Path(__file__).parent / "fixtures")!r})\n'
+                   'from perf_temporal import connection\n'
+                   'from training_controller_service import connect\nconnection.connect=connect\n' + program)
     return subprocess.run([sys.executable, '-P', '-c', program, experiment_id,
         'ergora.reference_training_worker' if managed else 'agent_platform.training'], env=environment,
         capture_output=True, text=True, timeout=10)
@@ -978,6 +982,295 @@ def saved_controller_intent(admission):
     return {**workflow_input, 'schema_version': 1, 'kind': 'training-cycle-controller-intent',
         'project_revision': authorization['project_revision'], 'workflow_id': controller['workflow_id'],
         'task_queue': controller['task_queue'], 'workflow_input': workflow_input}
+
+
+def save_controller_binding(admission):
+    from ergora.training_execution_protocol import BUDGET_TASK_QUEUE
+
+    intent = saved_controller_intent(admission)
+    attempt = {'schema_version': 1, 'intent_sha256': admission._sha(intent),
+        'workflow_id': intent['workflow_id'], 'workflow_input_sha256': admission._sha(intent['workflow_input'])}
+    receipt = {**attempt, 'run_id': '00000000-0000-4000-8000-000000000002'}
+    for name, value in (('intent', intent), ('attempt', attempt), ('receipt', receipt)):
+        (admission.folder / (name + '.json')).write_text(json.dumps(value))
+    return {'cycle_id': admission.authorization['cycle_id'],
+        'authorization_sha256': admission.authorization['sha256'], 'task_queue': BUDGET_TASK_QUEUE,
+        'controller': {'protocol': intent['protocol'], 'workflow_id': intent['workflow_id'],
+            'run_id': receipt['run_id'], 'intent_sha256': attempt['intent_sha256'], 'ordinal': 0}}
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller binding consumes original Linux authorization')
+def test_controller_prepare_binds_complete_parent_records_and_original_position(controller_admission, cycle_selection):
+    state, _, selected, _, admission = controller_admission
+    runtime = cycle_selection[2]
+    binding = save_controller_binding(admission)
+    selector = {key: value for key, value in binding.items() if key != 'task_queue'}
+    source = json.loads((admission.directory / 'cycle.json').read_bytes())
+    manifest = source['definition']['candidates'][0]['manifest_sha256']
+    prefix = runtime / 'ergora/training-submissions'
+
+    def prepare(value):
+        return reference.training_submission(state.project('demo'), state.root, 'prepare',
+            {'experiment_id': 'alpha', 'manifest_sha256': manifest, 'budget': value}, timeout=20)
+
+    for key, value in (('ordinal', True), ('ordinal', -1), ('ordinal', 1), ('ordinal', 31),
+                       ('run_id', 'another-run'), ('intent_sha256', '0' * 64)):
+        altered = deepcopy(selector)
+        altered['controller'][key] = value
+        with pytest.raises(ValueError):
+            prepare(altered)
+        assert not (prefix / 'alpha.intent.json').exists()
+    for name in ('intent', 'attempt', 'receipt'):
+        path = admission.folder / (name + '.json')
+        original = path.read_bytes()
+        try:
+            value = json.loads(original)
+            value['unbound'] = True
+            path.write_text(json.dumps(value))
+            with pytest.raises(ValueError):
+                prepare(selector)
+            assert not (prefix / 'alpha.intent.json').exists()
+        finally:
+            path.write_bytes(original)
+    prepared = prepare(selector)
+    saved = (prefix / 'alpha.intent.json').read_bytes()
+    assert prepared['created'] is True and json.loads(saved)['budget'] == binding
+    assert prepare(selector)['created'] is False
+    altered = deepcopy(selector)
+    altered['controller']['run_id'] = 'another-run'
+    with pytest.raises(ValueError):
+        prepare(altered)
+    assert (prefix / 'alpha.intent.json').read_bytes() == saved
+    assert not (prefix / 'alpha.attempt.json').exists() and not (prefix / 'alpha.budget').exists()
+    isolated = subprocess.run([sys.executable, '-I', '-S', '-c', '''import json,sys
+from pathlib import Path
+sys.path.insert(0,sys.argv[1])
+from ergora.training_execution_protocol import CycleAdmission,decode,read_raw
+directory=Path(sys.argv[2])
+parent=CycleAdmission(directory,decode(read_raw(directory/'authorization.json')))
+parent.bind(decode(read_raw(Path(sys.argv[3]))),decode(read_raw(directory/'cycle.json',10_000_000)))
+assert not any(name in sys.modules for name in ('yaml','jsonschema','temporalio','dev_platform','ergora.state'))
+print('complete original binding verified without site packages')
+''', str(Path(reference.__file__).parent.parent), str(admission.directory), str(prefix / 'alpha.intent.json')],
+        capture_output=True, text=True, timeout=10)
+    assert isolated.returncode == 0, isolated.stderr
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller dispatch uses the original Linux budget owner')
+def test_controller_fixed_history_gates_the_one_original_start(controller_admission, cycle_selection, service, monkeypatch):
+    from ergora import processes, training_cycles
+    import signal
+
+    state, _, _, _, admission = controller_admission
+    runtime = cycle_selection[2]
+    binding = save_controller_binding(admission)
+    selector = {key: value for key, value in binding.items() if key != 'task_queue'}
+    monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER', str(admission.folder))
+    owner_path = runtime / 'ergora/training-submissions/alpha.budget/owner.json'
+    intent_path = runtime / 'ergora/training-submissions/alpha.intent.json'
+    attempt_path = runtime / 'ergora/training-submissions/alpha.attempt.json'
+    manifest = cycle_selection[-1]['candidates'][0]['manifest_sha256']
+    try:
+        for case in ('not-found', 'closed', 'run', 'memo', 'type', 'queue', 'input'):
+            monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER_CASE', case)
+            reason = ('Original controller run is not found' if case == 'not-found' else
+                      'Original controller run, running state or complete intent memo differs' if case in ('closed', 'run', 'memo') else
+                      'Original controller type, queue or started input' if case in ('type', 'queue') else
+                      'Original controller complete started input or intent memo differs')
+            with pytest.raises(ValueError, match=reason):
+                if not intent_path.exists():
+                    training.start(state, 'demo', 'alpha', 1, manifest, budget=selector)
+                else:
+                    training.resume_start(state, 'demo', 'alpha', 1, training_cycles._sha(json.loads(intent_path.read_bytes())))
+            assert not attempt_path.exists() and not (runtime / 'training/jobs/alpha').exists()
+        original = intent_path.read_bytes()
+        monkeypatch.delenv('ERGORA_TEST_TRAINING_CONTROLLER_CASE')
+        submitted = training.resume_start(state, 'demo', 'alpha', 1, training_cycles._sha(json.loads(original)))
+        assert submitted['status'] == 'submitted' and submitted['budget']['controller'] == binding['controller']
+        assert intent_path.read_bytes() == original and attempt_path.exists()
+        assert json.loads(service[1].read_bytes())['starts'] == 1
+        repeated = training.resume_start(state, 'demo', 'alpha', 1, submitted['intent_sha256'])
+        assert repeated['run_id'] == submitted['run_id'] and json.loads(service[1].read_bytes())['starts'] == 1
+    finally:
+        if owner_path.exists():
+            owner = json.loads(owner_path.read_bytes())
+            try:
+                processes.notify_identity({key: owner[key] for key in ('pid', 'start_ticks', 'boot_id')}, signal.SIGTERM)
+            except (OSError, ValueError):
+                pass
+            wait_budget_stopped(runtime, seconds=25)
+
+
+def stop_controller_test_owner(runtime):
+    from ergora import processes
+    import signal
+
+    path = runtime / 'ergora/training-submissions/alpha.budget/owner.json'
+    if path.exists():
+        owner = json.loads(path.read_bytes())
+        try:
+            processes.notify_identity({key: owner[key] for key in ('pid', 'start_ticks', 'boot_id')}, signal.SIGTERM)
+        except (OSError, ValueError):
+            pass
+        wait_budget_stopped(runtime, seconds=25)
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Parent permits cover a real late start RPC')
+def test_controller_stop_drains_original_rpc_and_denies_its_late_create(controller_admission, cycle_selection, service, monkeypatch):
+    state, _, _, _, admission = controller_admission
+    runtime = cycle_selection[2]
+    binding = save_controller_binding(admission)
+    selector = {key: value for key, value in binding.items() if key != 'task_queue'}
+    monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER', str(admission.folder))
+    service[0]('held-start')
+    marker = service[1].with_suffix('.held')
+    try:
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(training.start, state, 'demo', 'alpha', 1,
+                cycle_selection[-1]['candidates'][0]['manifest_sha256'], budget=selector)
+            try:
+                until = time.monotonic() + 12
+                while not marker.exists() and time.monotonic() < until:
+                    time.sleep(.02)
+                assert marker.exists(), 'The real SDK start must be in flight with its parent permit'
+                stopped = admission.request_stop('Stop the original in-flight RPC')
+                assert stopped['stop_durable'] is True and stopped['admission_drained'] is None
+            finally:
+                service[1].with_suffix('.continue').touch()
+            result = future.result(timeout=15)
+        assert result['status'] == 'submitted'
+        record = json.loads(service[1].read_bytes())
+        assert record['starts'] == 1 and 'Controller stop is visible' in record['native_create_error']
+        assert not (runtime / 'training/jobs/alpha').exists()
+        assert admission.observe(drain=True)['admission_drained'] is True
+    finally:
+        stop_controller_test_owner(runtime)
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='The original registry lock must retain the parent permit')
+def test_controller_worker_rechecks_stop_inside_original_registry_lock(controller_admission, cycle_selection, service, monkeypatch):
+    from ergora.state import file_lock
+
+    state, _, _, _, admission = controller_admission
+    _, definition, runtime, _, _, request = cycle_selection
+    binding = save_controller_binding(admission)
+    monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER', str(admission.folder))
+    selector = {key: value for key, value in binding.items() if key != 'task_queue'}
+    marker = admission.folder / 'parent-history-observed'
+    try:
+        training.start(state, 'demo', 'alpha', 1, request['candidates'][0]['manifest_sha256'], budget=selector)
+        marker.unlink()
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            with file_lock(runtime / 'training/registry.lock'):
+                future = pool.submit(native_budget_create, definition, 'alpha', managed=True)
+                until = time.monotonic() + 6
+                while not marker.exists() and time.monotonic() < until:
+                    time.sleep(.02)
+                assert marker.exists()
+                stopped = admission.request_stop('Stop while native create waits for the original registry')
+                assert stopped['admission_drained'] is None and not (runtime / 'training/jobs/alpha').exists()
+            created = future.result(timeout=8)
+        assert created.returncode != 0 and 'Original training budget cannot start work: stopped' in created.stderr
+        assert not (runtime / 'training/jobs/alpha').exists()
+        assert admission.observe(drain=True)['admission_drained'] is True
+    finally:
+        stop_controller_test_owner(runtime)
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Parent permits cover the original attempt directory sync')
+def test_controller_stop_after_attempt_sync_never_resends_the_consumed_rpc(
+        controller_admission, cycle_selection, service, tmp_path, monkeypatch):
+    from ergora import training_cycles
+
+    state, _, _, _, admission = controller_admission
+    runtime = cycle_selection[2]
+    binding = save_controller_binding(admission)
+    marker = tmp_path / 'attempt-sync'
+    monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER', str(admission.folder))
+    monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER_PAUSE', 'submission-attempt-sync')
+    monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER_MARKER', str(marker))
+    selector = {key: value for key, value in binding.items() if key != 'task_queue'}
+    prefix = runtime / 'ergora/training-submissions'
+    try:
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(training.start, state, 'demo', 'alpha', 1,
+                cycle_selection[-1]['candidates'][0]['manifest_sha256'], budget=selector)
+            try:
+                until = time.monotonic() + 12
+                while not marker.exists() and not future.done() and time.monotonic() < until:
+                    time.sleep(.02)
+                assert marker.exists(), 'The original attempt directory sync must finish before the pause'
+                original = (prefix / 'alpha.attempt.json').read_bytes()
+                stopped = admission.request_stop('Stop after the original attempt sync')
+                assert stopped['stop_durable'] is True and stopped['admission_drained'] is None
+            finally:
+                marker.with_suffix('.release').touch()
+            with pytest.raises(ValueError, match='Original training budget cannot start work: stopped'):
+                future.result(timeout=12)
+        intent = json.loads((prefix / 'alpha.intent.json').read_bytes())
+        resumed = training.resume_start(state, 'demo', 'alpha', 1, training_cycles._sha(intent))
+        assert resumed['status'] == 'unknown' and resumed['attempt_saved'] is True
+        assert (prefix / 'alpha.attempt.json').read_bytes() == original
+        assert json.loads(service[1].read_bytes())['starts'] == 0
+        assert not (runtime / 'training/jobs/alpha').exists()
+        assert admission.observe(drain=True)['admission_drained'] is True
+    finally:
+        marker.with_suffix('.release').touch()
+        stop_controller_test_owner(runtime)
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.skipif(sys.platform != 'linux', reason='Real request/launch and native locked admission require Linux')
+@pytest.mark.parametrize('boundary', ['request', 'launch', 'executor-lock', 'attempt', 'ack'])
+def test_controller_stop_at_original_execution_boundaries_preserves_consumed_records(
+        controller_admission, cycle_selection, service, tmp_path, monkeypatch, boundary):
+    state, _, _, _, admission = controller_admission
+    _, definition, runtime, _, _, request = cycle_selection
+    binding = save_controller_binding(admission)
+    selector = {key: value for key, value in binding.items() if key != 'task_queue'}
+    marker = tmp_path / 'execution-boundary'
+    monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER', str(admission.folder))
+    monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER_PAUSE', boundary)
+    monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER_MARKER', str(marker))
+    try:
+        submitted = training.start(state, 'demo', 'alpha', 1, request['candidates'][0]['manifest_sha256'], budget=selector)
+        created = native_budget_create(definition, 'alpha', managed=True)
+        assert created.returncode == 0, created.stderr
+        job = runtime / 'training/jobs/alpha'
+        raw_sha = hashlib.sha256((job / 'request.json').read_bytes()).hexdigest()
+        # Different ambient username must not replace the original controller actor.
+        monkeypatch.setenv('LOGNAME', 'changed-ambient-name')
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(training.execute, state, 'demo', 'alpha', 1, submitted['intent_sha256'],
+                submitted['run_id'], raw_sha, confirm=True)
+            try:
+                until = time.monotonic() + 15
+                while not marker.exists() and time.monotonic() < until:
+                    time.sleep(.02)
+                assert marker.exists(), f'The actual {boundary} boundary must be reached'
+                request_record = json.loads((job / 'managed-execution/request.json').read_bytes())
+                assert request_record['actor_id'] == admission.authorization['controller']['actor_id']
+                stopped = admission.request_stop('Stop at ' + boundary)
+                assert stopped['stop_durable'] is True and stopped['admission_drained'] is None
+            finally:
+                marker.with_suffix('.release').touch()
+            if boundary == 'request':
+                with pytest.raises(ValueError, match='Controller stop'):
+                    future.result(timeout=12)
+            else:
+                assert future.result(timeout=12)['status'] == 'requested'
+        stop_controller_test_owner(runtime)
+        records = training.execution(state, 'demo', 'alpha')['records']
+        assert records['request'] is not None
+        assert (records['launch'] is not None) == (boundary != 'request')
+        assert (records['attempt'] is not None) == (boundary in ('attempt', 'ack'))
+        assert (records['ack'] is not None) == (boundary == 'ack')
+        assert not (job / 'started.json').exists() and not (job / 'result.json').exists()
+        assert json.loads(service[1].read_bytes())['starts'] == 1
+        assert admission.observe(drain=True)['admission_drained'] is True
+    finally:
+        marker.with_suffix('.release').touch()
+        stop_controller_test_owner(runtime)
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller stop requires Linux/WSL2 filesystem and flock')
@@ -1362,6 +1655,30 @@ def test_cycle_managed_create_requires_its_live_owner_and_preserves_single_start
         wait_budget_stopped(runtime)
     assert all((prefix / ('alpha.' + name + '.json')).read_bytes() == raw for name, raw in original.items())
     assert json.loads(service[1].read_bytes())['starts'] == 1
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Existing native jobs use the original Linux registry')
+def test_managed_create_keeps_existing_jobs_when_the_start_intent_is_unreadable(prepared, tmp_path):
+    pytest.importorskip('temporalio')
+    _, definition, runtime, _, _, _ = prepared
+    created = native_budget_create(definition, 'alpha', managed=False)
+    assert created.returncode == 0, created.stderr
+    job = runtime / 'training/jobs/alpha'
+    original = (job / 'request.json').read_bytes()
+    intent = runtime / 'ergora/training-submissions/alpha.intent.json'
+    intent.parent.mkdir(parents=True, exist_ok=True)
+    for raw in (b'{"incomplete":', b'null', b'{"budget":null}', b'[' * 10_000 + b'0' + b']' * 10_000):
+        intent.write_bytes(raw)
+        existing = native_budget_create(definition, 'alpha', managed=True)
+        assert existing.returncode == 0, existing.stderr
+        assert (job / 'request.json').read_bytes() == original and intent.read_bytes() == raw
+        saved = tmp_path / 'original-job'
+        job.rename(saved)
+        try:
+            refused = native_budget_create(definition, 'alpha', managed=True)
+            assert refused.returncode != 0 and not job.exists()
+        finally:
+            saved.rename(job)
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Native training start and recovery require Linux/WSL2')

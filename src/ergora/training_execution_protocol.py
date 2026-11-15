@@ -1,6 +1,6 @@
 """Identity-bound execution records shared with the dependency-isolated native hook."""
 
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from datetime import datetime, timedelta, timezone
 import getpass
 import hashlib
@@ -16,6 +16,8 @@ from . import budget_clock, processes, reference
 
 
 PROTOCOL = 'ergora-training-execution-v1'
+BUDGET_TASK_QUEUE = 'ergora-training-budget-v1'
+CYCLE_MEMO_KEY = 'ergora.training_cycle_sha256'
 LIMIT = 1_048_576
 GATE_SOURCES = (
     'training_execution_protocol.py', 'reference_training_execution.py',
@@ -44,6 +46,26 @@ def _match(actual, expected, label):
 def _digest(value):
     if not isinstance(value, str) or re.fullmatch('[a-f0-9]{64}', value) is None:
         raise ValueError('Execution record requires a complete SHA256')
+
+
+def validate_budget_binding(value):
+    common = {'cycle_id', 'authorization_sha256', 'task_queue'}
+    if (not isinstance(value, dict) or set(value) not in (common, common | {'controller'})
+            or not isinstance(value.get('cycle_id'), str)
+            or re.fullmatch('[A-Za-z0-9][A-Za-z0-9_-]{0,79}', value['cycle_id']) is None
+            or value.get('task_queue') != BUDGET_TASK_QUEUE):
+        raise ValueError('Training intent requires its exact original budget and supported protocol queue')
+    _digest(value.get('authorization_sha256'))
+    if 'controller' in value:
+        controller = value['controller']
+        _exact(controller, ('protocol', 'workflow_id', 'run_id', 'intent_sha256', 'ordinal'), 'Controller binding')
+        if (controller['protocol'] != 'ergora-training-cycle-v1'
+                or not isinstance(controller['workflow_id'], str) or not controller['workflow_id']
+                or not isinstance(controller['run_id'], str) or not 1 <= len(controller['run_id']) <= 128
+                or controller['run_id'].strip() != controller['run_id']
+                or type(controller['ordinal']) is not int or not 0 <= controller['ordinal'] < 32):
+            raise ValueError('Controller binding requires its original fixed run and selected ordinal')
+        _digest(controller['intent_sha256'])
 
 
 def _process(value):
@@ -266,7 +288,7 @@ class CycleAdmission:
             self.check()
             yield self
 
-    def _intent_sha(self):
+    def controller_intent(self):
         try:
             intent = decode(read_raw(self.folder / 'intent.json'))
         except FileNotFoundError:
@@ -280,7 +302,51 @@ class CycleAdmission:
             'task_queue': controller['task_queue'], 'workflow_input': workflow_input}
         if self._sha(intent) != self._sha(expected):
             raise ValueError('Controller intent differs from its complete original authorization')
-        return self._sha(intent)
+        return intent
+
+    def _intent_sha(self):
+        intent = self.controller_intent()
+        return self._sha(intent) if intent is not None else None
+
+    def bind(self, intent, plan):
+        """Bind one original selected start to the complete local parent receipt.
+
+        Remote history belongs to the application's asynchronous consumers.
+        This same local contract is also used by the isolated native gate.
+        """
+        binding = intent['budget']
+        validate_budget_binding(binding)
+        if 'controller' not in binding:
+            raise ValueError('Controller authorization requires complete controller binding and final admission gates')
+        controller = binding['controller']
+        parent = self.controller_intent()
+        if parent is None:
+            raise ValueError('Controller binding has no original complete intent')
+        expected = {'schema_version': 1, 'intent_sha256': self._sha(parent),
+            'workflow_id': parent['workflow_id'], 'workflow_input_sha256': self._sha(parent['workflow_input'])}
+        if self._sha(decode(read_raw(self.folder / 'attempt.json'))) != self._sha(expected):
+            raise ValueError('Controller binding differs from its original complete attempt')
+        if self._sha(decode(read_raw(self.folder / 'receipt.json'))) != self._sha({**expected, 'run_id': controller['run_id']}):
+            raise ValueError('Controller binding differs from its original fixed-run receipt')
+        try:
+            (self.folder / 'rejection.json').lstat()
+        except FileNotFoundError:
+            pass
+        else:
+            raise ValueError('Controller submission was rejected; no new training action is admitted')
+        authorization = self.authorization
+        if (binding['cycle_id'] != authorization['cycle_id']
+                or binding['authorization_sha256'] != authorization['sha256']
+                or controller['protocol'] != parent['protocol']
+                or controller['workflow_id'] != parent['workflow_id']
+                or controller['intent_sha256'] != expected['intent_sha256']
+                or controller['ordinal'] >= len(plan['admissions'])):
+            raise ValueError('Controller binding differs from its original authorization or selected position')
+        selected = plan['admissions'][controller['ordinal']]
+        if (selected['experiment_id'] != intent['experiment_id']
+                or self._sha(selected['observation']) != self._sha(intent['observation'])):
+            raise ValueError('Controller binding differs from its complete original selected admission')
+        return parent
 
     def _stop_record(self, value):
         _exact(value, (*self.identity, 'controller_intent_sha256', 'reason', 'requested_at'), 'Controller stop')
@@ -539,7 +605,7 @@ class ExecutionRecords:
         return result
 
 
-def validate_context(context: dict, chain: ExecutionRecords, *, live=True) -> None:
+def validate_context(context: dict, chain: ExecutionRecords, *, live=True) -> CycleAdmission | None:
     """Rebind the complete birth context and its original sources, without State."""
     _exact(context, ('intent', 'authorization', 'policy', 'project', 'published_project'), 'Cached execution context')
     owner = chain.owner
@@ -556,6 +622,13 @@ def validate_context(context: dict, chain: ExecutionRecords, *, live=True) -> No
     if hashlib.sha256(raw).hexdigest() != authorization['input_sha256']:
         raise ValueError('Original complete cycle input changed')
     plan = decode(raw)
+    validate_budget_binding(intent['budget'])
+    parent = None
+    if authorization['schema_version'] == 2:
+        parent = CycleAdmission(cycle, authorization)
+        parent.bind(intent, plan)
+    elif 'controller' in intent['budget']:
+        raise ValueError('Manual authorization cannot acquire a controller binding')
     _match(plan['definition']['budget'], policy, 'Original complete computation policy')
     _match(plan['project'], context['project'], 'Original cycle project')
     ready = decode(read_raw(cycle / 'ready.json'))
@@ -576,6 +649,9 @@ def validate_context(context: dict, chain: ExecutionRecords, *, live=True) -> No
     if live and (not owner_active(chain.budget / 'owner.json', owner)
             or budget_clock.remaining(authorization['clock'], policy['wall_seconds'], policy['cleanup_seconds']) <= 0):
         raise ValueError('Original execution owner or computation budget is no longer active')
+    if live and parent is not None:
+        parent.check()
+    return parent
 
 
 def native_main(installation: str) -> None:
@@ -604,9 +680,11 @@ def native_main(installation: str) -> None:
             'phase_id': launch['execution_phase_id'], 'mode': 'execute', 'context_sha256': chain.sha(context),
             'owner': {key: chain.owner[key] for key in ('pid', 'start_ticks', 'boot_id')}}
         _match(phase, protocol_phase, 'Complete execution supervisor phase')
+        actor = (context['authorization']['controller']['actor_id'] if context['authorization']['schema_version'] == 2
+                 else f'unix:{os.getuid()}:{getpass.getuser()}')
         if (folder != chain.folder.parent
                 or launch['clock_sha256'] != chain.sha(context['authorization']['clock'])
-                or request['actor_id'] != f'unix:{os.getuid()}:{getpass.getuser()}'):
+                or request['actor_id'] != actor):
             raise ValueError('Native callback differs from its original supervisor, actor or clock')
         _match(record, chain.native, 'Native locked request')
         supervisor, executor = processes.identity(os.getppid()), processes.identity(os.getpid())
@@ -621,18 +699,24 @@ def native_main(installation: str) -> None:
                     or budget_clock.remaining(context['authorization']['clock'], context['policy']['wall_seconds'],
                                               context['policy']['cleanup_seconds']) <= 0):
                 raise ValueError('Original execution fence, owner or computation deadline forbids work')
+            if parent is not None:
+                parent.check()
         active()
         attempt = {'schema_version': 1, 'kind': 'training-execution-attempt', 'protocol': PROTOCOL,
             'launch_sha256': chain.sha(launch), 'request_sha256': chain.sha(request), 'owner_sha256': chain.sha(chain.owner),
             'run_id': request['run_id'], 'job_id': request['job_id'], 'native_request_sha256': request['native_request_sha256'],
             'supervisor': supervisor, 'executor': executor}
         publish(chain.folder / 'attempt.json', attempt, chain.root)
+        if parent is not None:
+            parent.check()
         publish(chain.folder / 'ack.json', {'schema_version': 1, 'kind': 'training-execution-ack', 'protocol': PROTOCOL,
             'attempt_sha256': chain.sha(attempt), 'launch_sha256': chain.sha(launch), 'request_sha256': chain.sha(request),
             'owner_sha256': chain.sha(chain.owner), 'executor': executor}, chain.root)
         active()
     chain = ExecutionRecords(project, intent['experiment_id'], intent['control_home'])
-    print(json.dumps(process(chain.folder.parent, admit=admit), ensure_ascii=False, allow_nan=False))
+    parent = validate_context(context, chain.load()) if context['authorization']['schema_version'] == 2 else None
+    with parent.permission() if parent is not None else nullcontext():
+        print(json.dumps(process(chain.folder.parent, admit=admit), ensure_ascii=False, allow_nan=False))
 
 
 def record_stopped(context: dict, phase: dict, process: dict) -> dict:

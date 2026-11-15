@@ -44,6 +44,40 @@ async def lookup(client, spec: dict, *, run_id: str | None, timeout: int):
 MEMO_KEY = 'ergora.training_submission_sha256'
 
 
+async def lookup_controller(client, intent: dict, binding: dict, *, timeout: float):
+    """Verify a parent's fixed run without interpreting it as an Experiment."""
+    from temporalio.client import WorkflowExecutionStatus
+    from temporalio.service import RPCError, RPCStatusCode
+    from .training_execution_protocol import CYCLE_MEMO_KEY, CycleAdmission
+
+    handle = client.get_workflow_handle(binding['workflow_id'], run_id=binding['run_id'])
+    rpc_timeout = timedelta(seconds=timeout)
+    try:
+        description = await handle.describe(rpc_timeout=rpc_timeout)
+    except RPCError as error:
+        if error.status == RPCStatusCode.NOT_FOUND:
+            raise ValueError('Original controller run is not found; no new work is admitted') from error
+        raise
+    if (description.id != binding['workflow_id'] or description.run_id != binding['run_id']
+            or description.status != WorkflowExecutionStatus.RUNNING
+            or (await description.memo()).get(CYCLE_MEMO_KEY) != binding['intent_sha256']):
+        raise ValueError('Original controller run, running state or complete intent memo differs')
+    started = None
+    async for event in handle.fetch_history_events(page_size=1, rpc_timeout=rpc_timeout):
+        if event.HasField('workflow_execution_started_event_attributes'):
+            started = event.workflow_execution_started_event_attributes
+        break
+    if (started is None or started.workflow_type.name != 'TrainingCycleWorkflow'
+            or started.task_queue.name != intent['task_queue']):
+        raise ValueError('Original controller type, queue or started input is unavailable or changed')
+    values = await client.data_converter.decode(started.input.payloads, [dict])
+    memo = started.memo.fields.get(CYCLE_MEMO_KEY)
+    if (CycleAdmission._sha(values) != CycleAdmission._sha([intent['workflow_input']]) or memo is None
+            or await client.data_converter.decode([memo], [str]) != [binding['intent_sha256']]):
+        raise ValueError('Original controller complete started input or intent memo differs')
+    return handle, description
+
+
 async def observe(handle, description, binding, *, timeout: int) -> dict:
     """Read domain facts after the caller has verified the fixed original run."""
     from perf_temporal.workflow import ExperimentWorkflow

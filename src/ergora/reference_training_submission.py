@@ -1,7 +1,7 @@
 """Checkpoint original training starts; uncertain delivery only looks up the same run."""
 
 import asyncio
-from contextlib import redirect_stdout
+from contextlib import nullcontext, redirect_stdout
 from dataclasses import asdict
 import io
 import json
@@ -231,29 +231,34 @@ class _Submission(_TrainingProject):
                 return getattr(self.client, name)
 
             async def start_workflow(self, run, experiment, **options):
-                if operation.sha(asdict(experiment)) != operation.sha(spec) or options['id'] != intent['workflow_id']:
-                    raise ValueError('Native start input differs from the frozen training experiment')
-                try:
-                    found = await lookup(self.client, spec, run_id=None, timeout=operation.payload['timeout'])
-                except ValueError:
-                    operation.core.write(operation.path('.rejection.json'), operation.rejection(intent, 'lookup_rejected', None))
-                    raise
-                if found is not None:
-                    operation.core.write(operation.path('.rejection.json'),
-                                         operation.rejection(intent, 'preexisting_run', found[1].run_id))
-                    raise ValueError('Training workflow already exists without this submission attempt; reconcile its owner')
-                operation.preflight(intent)
-                if budget is not None:
-                    budget.require_active(owner=True)
-                operation.core.write(operation.path('.attempt.json'), operation.attempt(intent))
-                if budget is not None:
-                    training_cycles._sync_directory(operation.path('.attempt.json').parent)
-                operation.preflight(intent)
-                if budget is not None:
-                    budget.require_active(owner=True)
-                    options['task_queue'] = budget.binding['task_queue']
-                return await self.client.start_workflow(run, experiment,
-                    memo={_MEMO_KEY: operation.sha(intent)}, **options)
+                with budget.permission() if budget is not None else nullcontext() as parent:
+                    if operation.sha(asdict(experiment)) != operation.sha(spec) or options['id'] != intent['workflow_id']:
+                        raise ValueError('Native start input differs from the frozen training experiment')
+                    if budget is not None:
+                        await budget.check_controller_history(self.client)
+                    try:
+                        found = await lookup(self.client, spec, run_id=None, timeout=operation.payload['timeout'])
+                    except ValueError:
+                        operation.core.write(operation.path('.rejection.json'), operation.rejection(intent, 'lookup_rejected', None))
+                        raise
+                    if found is not None:
+                        operation.core.write(operation.path('.rejection.json'),
+                                             operation.rejection(intent, 'preexisting_run', found[1].run_id))
+                        raise ValueError('Training workflow already exists without this submission attempt; reconcile its owner')
+                    operation.preflight(intent)
+                    if budget is not None:
+                        budget.require_active(owner=True)
+                    operation.core.write(operation.path('.attempt.json'), operation.attempt(intent))
+                    if budget is not None:
+                        training_cycles._sync_directory(operation.path('.attempt.json').parent)
+                    operation.preflight(intent)
+                    if budget is not None:
+                        budget.require_active(owner=True)
+                        options['task_queue'] = budget.binding['task_queue']
+                    if parent is not None:
+                        parent.check()
+                    return await self.client.start_workflow(run, experiment,
+                        memo={_MEMO_KEY: operation.sha(intent)}, **options)
 
         async def connect():
             return CheckpointedClient(await original_connect())
@@ -328,8 +333,8 @@ class _Submission(_TrainingProject):
             if operation == 'prepare':
                 if intent is not None:
                     selector = self.payload.get('budget')
-                    if selector is not None and selector != {key: intent.get('budget', {}).get(key)
-                                                           for key in ('cycle_id', 'authorization_sha256')}:
+                    if selector is not None and selector != {key: value for key, value in intent.get('budget', {}).items()
+                                                           if key != 'task_queue'}:
                         raise ValueError('Original training start cannot switch or adopt another budget')
                     if self.payload['manifest_sha256'] != intent['observation']['experiment']['binding']['manifest_sha']:
                         raise ValueError('Confirm the exact original manifest SHA before training submission')

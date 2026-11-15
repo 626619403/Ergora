@@ -16,7 +16,7 @@ from .reference_training_execution import Execution
 from .state import State
 
 
-_CREATING = ContextVar('ergora_training_budget_create', default=False)
+_CREATING = ContextVar('ergora_training_budget_create', default=None)
 
 
 def create_adapter():
@@ -24,31 +24,59 @@ def create_adapter():
     from agent_platform.training import LocalTrainingAdapter, STATE
 
     class BudgetAdapter(LocalTrainingAdapter):
+        def budget_for(self, experiment, intent=None):
+            ident = experiment.binding.experiment_id
+            if intent is None:
+                path = STATE / 'ergora/training-submissions' / (ident + '.intent.json')
+                intent = json.loads(training_cycles._read_bytes(path, 16 * 1_048_576))
+            validate_binding(intent.get('budget'))
+            state = State(Path(intent['control_home']))
+            directory = training_cycles._directory(state, intent['project'], intent['budget']['cycle_id'])
+            plan, _, _ = training_cycles._load(state, intent['project'], intent['budget']['cycle_id'], directory)
+            operation = _Submission({'project': plan['project'], 'control_home': str(state.root),
+                                     'experiment_id': ident, 'operation': 'status',
+                                     'timeout': plan['definition']['budget']['control_timeout_seconds']})
+            original = operation.load()
+            if (operation.root != STATE or operation.sha(original) != operation.sha(intent)
+                    or operation.sha(original['observation']['experiment']['spec']) != operation.sha(asdict(experiment))):
+                raise ValueError('Budget worker input differs from its original native state or complete Experiment')
+            return BudgetedStart(operation, original)
+
         async def create_job_if_absent(self, experiment, manifest):
-            token = _CREATING.set(True)
+            path = STATE / 'ergora/training-submissions' / (experiment.binding.experiment_id + '.intent.json')
             try:
-                return await super().create_job_if_absent(experiment, manifest)
-            finally:
-                _CREATING.reset(token)
+                intent = json.loads(training_cycles._read_bytes(path, 16 * 1_048_576))
+            except (OSError, ValueError, RecursionError):
+                intent = None
+            binding = intent.get('budget') if isinstance(intent, dict) else None
+            if not isinstance(binding, dict) or 'controller' not in binding:
+                # Preserve the original manual gate: existing jobs are returned
+                # without rereading start authority. An absent job still reaches
+                # budget_for under the original lock and fails on unreadable intent.
+                token = _CREATING.set((None, None))
+                try:
+                    return await super().create_job_if_absent(experiment, manifest)
+                finally:
+                    _CREATING.reset(token)
+            budget = self.budget_for(experiment, intent)
+            with budget.permission() as parent:
+                await budget.check_controller_history()
+                token = _CREATING.set((budget, parent))
+                try:
+                    return await super().create_job_if_absent(experiment, manifest)
+                finally:
+                    _CREATING.reset(token)
 
         async def lookup_job(self, experiment):
             job = await super().lookup_job(experiment)
-            if _CREATING.get() and job is None:
-                ident = experiment.binding.experiment_id
-                path = STATE / 'ergora/training-submissions' / (ident + '.intent.json')
-                raw = training_cycles._read_bytes(path, 16 * 1_048_576)
-                intent = json.loads(raw)
-                validate_binding(intent.get('budget'))
-                state = State(Path(intent['control_home']))
-                directory = training_cycles._directory(state, intent['project'], intent['budget']['cycle_id'])
-                plan, _, _ = training_cycles._load(state, intent['project'], intent['budget']['cycle_id'], directory)
-                operation = _Submission({'project': plan['project'], 'control_home': str(state.root),
-                                         'experiment_id': ident, 'operation': 'status', 'timeout': 1})
-                original = operation.load()
-                if (operation.root != STATE or operation.sha(original) != operation.sha(intent)
-                        or operation.sha(original['observation']['experiment']['spec']) != operation.sha(asdict(experiment))):
-                    raise ValueError('Budget worker input differs from its original native state or complete Experiment')
-                BudgetedStart(operation, original).require_active(owner=True)
+            creating = _CREATING.get()
+            if creating is not None and job is None:
+                budget, parent = creating
+                if budget is None:
+                    budget = self.budget_for(experiment)
+                budget.require_active(owner=True)
+                if parent is not None:
+                    parent.check()
             return job
 
     return BudgetAdapter()

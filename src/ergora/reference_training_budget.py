@@ -1,6 +1,7 @@
 """One training intent's budget, native creation gate and independent deadline owner."""
 
 import asyncio
+from contextlib import contextmanager
 from dataclasses import asdict
 import hashlib
 import json
@@ -22,7 +23,7 @@ from .processes import identity as _process_identity
 from .state import State, file_lock, now
 
 
-TASK_QUEUE = 'ergora-training-budget-v1'
+TASK_QUEUE = training_execution_protocol.BUDGET_TASK_QUEUE
 _PHASE_PROTOCOL = 'ergora-budget-phase-v1'
 _PHASE_MODES = ('monitor', 'fence', 'cleanup', 'publish', 'admission', 'execute')
 _COMPUTE_MODES = ('monitor', 'admission', 'execute')
@@ -30,17 +31,12 @@ _FINAL_LIMIT = 2 * training_cycles.MAX_RECORD_BYTES
 
 
 def validate_binding(value: dict) -> None:
-    if (not isinstance(value, dict) or set(value) != {'cycle_id', 'authorization_sha256', 'task_queue'}
-            or not isinstance(value.get('cycle_id'), str)
-            or re.fullmatch('[A-Za-z0-9][A-Za-z0-9_-]{0,79}', value['cycle_id']) is None
-            or not isinstance(value.get('authorization_sha256'), str)
-            or re.fullmatch('[a-f0-9]{64}', value['authorization_sha256']) is None
-            or value['task_queue'] != TASK_QUEUE):
-        raise ValueError('Training intent requires its exact original budget and supported protocol queue')
+    training_execution_protocol.validate_budget_binding(value)
 
 
 def prepare_binding(operation, intent: dict, selector: dict) -> dict:
-    if not isinstance(selector, dict) or set(selector) != {'cycle_id', 'authorization_sha256'}:
+    if (not isinstance(selector, dict)
+            or set(selector) not in ({'cycle_id', 'authorization_sha256'}, {'cycle_id', 'authorization_sha256', 'controller'})):
         raise ValueError('Select one original training cycle and complete authorization SHA256')
     binding = {**selector, 'task_queue': TASK_QUEUE}
     validate_binding(binding)
@@ -298,8 +294,10 @@ class BudgetedStart:
         state = State(Path(self.intent['control_home']))
         directory = training_cycles._directory(state, self.intent['project'], self.binding['cycle_id'])
         plan, authorization, ready = training_cycles._load(state, self.intent['project'], self.binding['cycle_id'], directory)
-        if authorization['schema_version'] != 1:
-            raise ValueError('Controller authorization requires complete controller binding and final admission gates')
+        if authorization['schema_version'] == 2:
+            training_execution_protocol.CycleAdmission(directory, authorization).bind(self.intent, plan)
+        elif 'controller' in self.binding:
+            raise ValueError('Manual authorization cannot acquire a controller binding')
         selected = next((item for item in plan['admissions']
                          if item['experiment_id'] == self.operation.ident), None)
         if (authorization['sha256'] != self.binding['authorization_sha256'] or ready is None
@@ -310,6 +308,37 @@ class BudgetedStart:
                 or selected is None or self.operation.sha(selected['observation']) != self.operation.sha(self.intent['observation'])):
             raise ValueError('Original training budget differs from its complete start intent, source or admission')
         return state, plan, authorization, ready
+
+    @contextmanager
+    def permission(self):
+        """Keep the parent's permit for the original action, including its awaits."""
+        if 'controller' not in self.binding:
+            yield None
+            return
+        state, _, authorization, _ = self.source()
+        directory = training_cycles._directory(state, self.intent['project'], self.binding['cycle_id'])
+        with training_execution_protocol.CycleAdmission(directory, authorization).permission() as parent:
+            yield parent
+
+    async def check_controller_history(self, client=None):
+        if 'controller' not in self.binding:
+            return
+        from .reference_training_runtime import lookup_controller
+
+        state, plan, authorization, _ = self.source()
+        directory = training_cycles._directory(state, self.intent['project'], self.binding['cycle_id'])
+        parent = training_execution_protocol.CycleAdmission(directory, authorization).controller_intent()
+        timeout = min(self.operation.payload['timeout'], plan['definition']['budget']['control_timeout_seconds'],
+            budget_clock.remaining(authorization['clock'], plan['definition']['budget']['wall_seconds'],
+                plan['definition']['budget']['cleanup_seconds']))
+        if timeout <= 0:
+            raise ValueError('Original computation budget is exhausted before controller history check')
+        async with asyncio.timeout(timeout):
+            if client is None:
+                from perf_temporal.connection import connect
+
+                client = await connect()
+            await lookup_controller(client, parent, self.binding['controller'], timeout=timeout)
 
     def require_active(self, *, owner: bool = False) -> None:
         state, plan, authorization, ready = self.source()

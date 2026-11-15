@@ -57,7 +57,7 @@ SQLite只经[State](../../src/ergora/state.py)及领域事务；变更持久语�
 
 训练的manifest／baseline／runner、比较门禁、质量约束、归档和精确批准仍归原owner；[多轮索引](../../src/ergora/training_rounds.py)只链接原观察，不执行优化、推进baseline或授予批准。流程图、kernel设计和测量建议不等于实际执行。kernel评估在总提案路径中保留，允许无需kernel修改。新性能主张必须绑定原baseline／candidate、固定工作负载与质量oracle、环境、成对原数据／测量窗口和收益不确定性；CPU合同不能验收真实GPU或训练质量。
 
-自动循环的出生同意由`training_cycles.authorize_controller`使用同一授权算法记录为schema2；普通授权保持schema1，已有ID不能换模式或重开clock。`training_execution_protocol.CycleAdmission`仅增加完整原授权绑定、既有普通空父锁、不可逆可见stop及非阻塞共享／排空许可，不能自行授权执行。停止文件先可见再同步；完整身份、同inode／同raw持久确认、父准入排空和原执行子树停止必须分别观察，部分或损坏文件不修复。存储用例不能直接进入live owner或SDK loop。完整controller binding、最后gate及独立停止fan-out交付前，原`BudgetedStart.source`拒绝schema2走手工派发；不以“已保存同意”宣称自动循环可运行。
+自动循环的出生同意由`training_cycles.authorize_controller`使用同一授权算法记录为schema2；普通授权保持schema1，已有ID不能换模式或重开clock。`training_execution_protocol.CycleAdmission`持有完整本地controller binding、既有普通空父锁、不可逆可见stop及非阻塞共享／排空许可，不能自行授权执行。停止文件先可见再同步；完整身份、同inode／同raw持久确认、父准入排空和原执行子树停止必须分别观察，部分或损坏文件不修复。存储用例不能直接进入live owner或SDK loop。`BudgetedStart.source`与native context共同核完整intent／attempt／receipt、原授权及ordinal；schema2不能走旧手工binding，schema1不能带controller。三个异步消费者在原事务／registry／executor锁之外另核固定父run；原四动作持父共享许可到实际动作返回，并在原锁和最终同步后复核stop。native只核完整本地来源，不导入SDK／State。后继独立fan-out、总Workflow producer与公开交互仍各自交付，不以消费gate或保存同意宣称自动循环可运行。
 
 本仓库不拥有目标训练框架的optimizer、model、dataset、loss或forward实现。对目标项目开发／重构时，先识别其原生组件构造与训练／checkpoint调用，再在**实际组件目录**补局部协议：允许扩展的接口与配置、张量／样本／mask／归一／状态义务、禁止隐式改变的算法或数据语义、调用／资源／恢复、最小数值／梯度／并行检查及已有示例／基类位置。协议写进目标项目自身文档和目录；Ergora模板不会自动生成它，更不会直接修改未授权的业务仓库。
 
