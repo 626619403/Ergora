@@ -1460,6 +1460,7 @@ def test_cycle_controller_reconcile_after_original_total_never_renews_execution(
 
 
 
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller consent requires Linux/WSL2 clocks and flock')
 @pytest.mark.parametrize('controller_admission', [{'program_version': 2}], indirect=True)
 def test_schema3_birth_retains_sources_bytes_and_one_clock(controller_admission, monkeypatch):
     from ergora import training_cycles
@@ -1519,6 +1520,7 @@ def test_schema3_birth_retains_sources_bytes_and_one_clock(controller_admission,
         training_cycles.status(state, 'demo', 'controller')
 
 
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller consent requires Linux/WSL2 clocks and flock')
 @pytest.mark.parametrize('controller_admission', [{'program_version': 2}], indirect=True)
 def test_schema3_intent_is_local_and_all_execution_entries_remain_closed(
         controller_admission, cycle_selection, service, monkeypatch):
@@ -1588,6 +1590,7 @@ def test_schema3_intent_is_local_and_all_execution_entries_remain_closed(
     assert not (admission.folder / 'attempt.json').exists()
 
 
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller consent requires Linux/WSL2 clocks and flock')
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)
 @pytest.mark.parametrize('controller_admission', [{'program_version': 2}], indirect=True)
 def test_schema3_native_callback_refuses_before_executor_effects_and_keeps_completed_read(
@@ -1658,6 +1661,7 @@ def test_schema3_native_callback_refuses_before_executor_effects_and_keeps_compl
     assert not (folder.parent / 'started.json').exists() and not (folder / 'attempt.json').exists()
 
 
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller consent requires Linux/WSL2 clocks and flock')
 @pytest.mark.parametrize('controller_admission', [{}, {'program_version': 2}], indirect=True)
 def test_controller_original_type_is_authenticated_read_only(controller_admission, tmp_path, monkeypatch):
     import asyncio
