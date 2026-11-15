@@ -4068,6 +4068,7 @@ def test_cycle_sdk_branch_construction_failure_preserves_peers_and_complete_reas
     assert any(value['identity']['mode'] == 'notify-owner' and value['identity']['ordinal'] == 1 for value in requests)
 
 
+@pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 30}], indirect=True)
 @pytest.mark.skipif(sys.platform != 'linux', reason='SDK candidate owns a real independent Linux budget root')
 def test_cycle_sdk_start_hands_off_once_then_duplicate_only_reconciles(
         cycle_sdk_activity, cycle_operation_fault, service, cycle_selection, monkeypatch):
