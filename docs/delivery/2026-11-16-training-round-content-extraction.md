@@ -37,3 +37,7 @@
 使用新 SDK 安装的 Ergora 原 `ergora-structure-review@1.0.0` 模板，用户授权的 Codex 后端实际 **approve／36.762秒**。11份完整文件140045B、原完整 baseline 两文件和准确 diff，加3项祖先资源，完整 stdin241065B；未截取正文或把后继 gate 写成当前能力。stdin SHA256 `ddaf3c40272a5135ef60950ea271f618154048dc4c4c7953fd16595c18a19cca`，原 result SHA256 `84c40fc16b49990cfc54c4d7b5882880b364b579107ede911b196ce7c14fc8f4`；原实际输入／输出／run 保存在 ignored `self-review-r1-codex/`。沿既有授权直接使用已可用 Codex；本次没有再次调用已知超时的 Claude，也不宣称异后端验证。
 
 fresh [源码审查](2026-11-16-training-round-content-extraction-review.md)已核原算法／真实调用／全部23份源码检查原件，两轴 approve、开放0。产品固定提交 `5cb4cb903486d37356a5511c75e094a195558912`，以普通 merge 导入开发分支 `bd479050ddd2d9c6b6964f89fe44cfc895273d6b`，恰原三文件120增加／83删除、无冲突。新安装／自身模板及准确 Git blob 的同片独立补充复核已完成，两轴保持 approve／开放0；两提交相对基线的完整 diff 均为原 `c86e13f5…`，三 blob 同实测／wheel。远端推送及自己的 CI 尚未办理，不借 c1c 的在途 run 或历史成功代替。
+
+随后8份公开交付／计划的链接、fence、本机路径及完整差异检查通过，固定文档提交 `59b74ceb4e3b90c2c875bb5eca56bbf8a102c384` 并普通推送；精确 `git ls-remote` 同一。自己的官方 push／attempt1 [43769505506](https://github.com/626619403/Ergora/actions/runs/43769505506) 已由 HTTP200 核准确 head_sha，当前 in_progress，尚无最终结论。此前 c1c 的43766716392已单独八job全success，但不转记本次。推送／远端及官方请求／响应保存在 ignored `publication-r1/`，原源码／安装身份不变。
+
+最后官方快照`20261115T225324Z`已经闭合：准确候选`59b74ceb4e3b90c2c875bb5eca56bbf8a102c384`、原push／attempt1、run43769505506为**completed／success，八job全success**。Linux group5实际19分26秒，Windows23分14秒，原20／30分钟job时限未变；逐step核Windows wheel／283参考／native regression／PowerShell5.1 installer及upgrade均success。原HTTP200请求／响应／完整headers、step和summary保留，不覆盖此前in-progress快照。**M1a实现、验收、普通发布及自己的CI已全部闭合**；M1b及后继候选仍各自验收，不继承此run。
