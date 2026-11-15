@@ -132,3 +132,7 @@ r4 自身原结构模板实际 Codex 41.27秒 approve；完整16文件／593079�
 ## 固定提交与开发主线导入
 
 产品已固定提交`ec6dcbcf23d35818aa23e87b6dbb129ed8ff75a1`，从fa78747的最终两文件变化为150行增加／9删除；相对c52的整体首轮实现仍为原两文件833行增加／6删除。以普通merge导入当前开发分支`5b04b2b4cb4eb1c5d6899fc517cf86ecdec5536f`，无冲突、无额外产品文件变化；没有自动合main。raw worker7996f73d…／tests4b5d7ed4…不变，原包与现场按同一字节绑定。最终fixed-commit身份复核、普通push和准确新候选自己的CI接续，不借df43660成功代替。
+
+随后 fresh reviewer 已在原终审末节核准 ec6dcbc／5b04b2b 的准确 Git blobs 和产品 diff，两轴保持 approve／0。公开交付／计划静态检查共15份Markdown，相关链接、fence、差异空白与本机路径检查通过；固定文档提交 `fa2fd17620192ac1341a72f1050dc37faaee623f` 并普通推送，`git ls-remote` 精确同一。该候选自己的官方 push／attempt1 [43766716392](https://github.com/626619403/Ergora/actions/runs/43766716392) 已由 HTTP200 核准确 head_sha，当前 in_progress：plan success，六 Linux／Windows 仍运行；这不是最终 CI 成功。原响应保存在本片 ignored `publication-r1/`，待终态接续；本次未合 main 或强推。
+
+最终官方 HTTP200 原响应已核该准确候选整体 **completed／success**，plan、六 Linux 与 Windows 共八 job 全部 success。Linux group5为16分37秒；Windows25分39秒，wheel／283参考／应用回归／PowerShell5.1安装升级步骤均 success。沿原 Linux20分钟／Windows30分钟时限，没有改分组、增额或取消旧 run。此结果只认证 fa2fd17；后继 M1a／M1b 不继承本次 CI。终件保存在同一 `publication-r1/` 的时间戳原响应，原在途快照保持。
