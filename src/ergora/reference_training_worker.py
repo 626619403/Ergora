@@ -2,26 +2,40 @@
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import nullcontext
 from contextvars import ContextVar
 from dataclasses import asdict
 from datetime import timedelta
 import hashlib
 import json
 import logging
+import math
 import os
 from pathlib import Path
+import re
 import signal
 import subprocess
 import sys
 import time
 import uuid
 
-from . import budget_clock, processes, reference, training_cycles, training_execution_protocol as protocol
-from .reference_training_budget import BudgetedStart, TASK_QUEUE, validate_binding
-from .reference_training_submission import _Submission
-from .reference_training_execution import Execution
-from .state import State, file_lock, now
-from .training_cycles import _CycleCapacityError
+try:
+    from temporalio import workflow
+except ModuleNotFoundError as error:
+    if error.name != 'temporalio':
+        raise
+    workflow = None
+
+with workflow.unsafe.imports_passed_through() if workflow is not None else nullcontext():
+    from . import budget_clock, processes, reference, training_cycles, training_execution_protocol as protocol
+    from .reference_training_budget import BudgetedStart, TASK_QUEUE, validate_binding
+    from .reference_training_submission import _Submission
+    from .reference_training_execution import Execution
+    from .state import State, file_lock, now
+    from .training_cycles import _CycleCapacityError
+    if workflow is not None:
+        from temporalio.common import RetryPolicy
+        from temporalio.exceptions import ActivityError, ApplicationError
 
 
 _CREATING = ContextVar('ergora_training_budget_create', default=None)
@@ -1171,6 +1185,386 @@ async def _cycle_capacity(value, converter):
                                type='cycle_activity_capacity_exceeded', non_retryable=True)
 
 
+if workflow is not None:
+    @workflow.defn(name='TrainingCycleWorkflow')
+    class TrainingCycleWorkflow:
+        """Observe one original candidate; history owns its two effect opportunities."""
+
+        @workflow.init
+        def __init__(self, original: dict):
+            # init receives the original input before any early signal handler runs.
+            self._input = original
+            self._controller = self._candidate = self._binding = self._job = None
+            self._submission, self._records = {}, {}
+            self._boot = self._control = self._work = self._total = None
+            self._normal = self._stop_handle = None
+            self._stop_reason = None
+            self._cancelled = self._existing_execution = self._reconciled = False
+            self._state = {'phase': 'COLD_OBSERVING', 'outcome': None, 'observation_count': 0,
+                'start_scheduled': False, 'request_scheduled': False, 'last_normal_activity_id': None,
+                'stop_activity_id': None, 'stop_activity_status': 'not_scheduled',
+                'last_facts_operation_id': None, 'last_signal_rejection': None,
+                'candidate_executor_stop_confirmed': None}
+
+        def _capacity(self, value):
+            if workflow.payload_converter().to_payloads_wrapper([value]).ByteSize() > _CYCLE_LIMIT:
+                raise ApplicationError('Complete cycle Workflow payload exceeds 32 KiB; nothing was truncated',
+                                       type='cycle_workflow_capacity_exceeded', non_retryable=True)
+
+        @workflow.query
+        def status(self) -> dict:
+            info = workflow.info()
+            value = {'schema_version': 1, 'protocol': 'ergora-training-cycle-workflow-v1',
+                'workflow_id': info.workflow_id, 'run_id': info.run_id,
+                'input_sha256': self._input.get('input_sha256'),
+                'authorization_sha256': self._input.get('authorization_sha256'), 'ordinal': 0,
+                **self._state, 'continuation': 'disabled_until_c1d', 'measurement_accepted': None,
+                'stop_durable': None, 'admission_drained': None, 'executor_stop_confirmed': None}
+            self._capacity(value)
+            return value
+
+        @workflow.signal
+        def request_stop(self, request):
+            try:
+                self._capacity(request)
+                protocol.validate_cycle_activity_request(request, 'stop')
+                if request['workflow_input'] != self._input:
+                    raise ValueError('Stop signal differs from the complete original Workflow input')
+            except ApplicationError:
+                self._state['last_signal_rejection'] = 'signal_capacity_exceeded'
+                return
+            except (ValueError, KeyError, TypeError):
+                self._state['last_signal_rejection'] = 'signal_identity_or_shape_rejected'
+                return
+            if self._stop_reason is None:
+                self._stop_reason = request['reason']
+
+        def _guard(self):
+            info = workflow.info()
+            if self._state['observation_count'] >= 256:
+                self._stop_reason = self._stop_reason or 'ordinary_activity_limit'
+            elif info.get_current_history_length() >= 8000 or info.get_current_history_size() >= 8 * 1024 * 1024:
+                self._stop_reason = self._stop_reason or 'history_capacity_limit'
+            elif self._work is not None and workflow.now() >= self._work:
+                self._stop_reason = self._stop_reason or 'work_budget_exhausted'
+            return self._stop_reason is None
+
+        async def _ordinary(self, action, *, cold=False):
+            if not self._guard():
+                return None, None
+            scheduled = workflow.now()
+            seconds = 10 if cold else min((self._work - scheduled).total_seconds(), self._control, 10)
+            if seconds <= 0:
+                self._stop_reason = 'work_budget_exhausted'
+                return None, None
+            request = {'workflow_input': self._input, 'ordinal': 0}
+            self._capacity(request)
+            self._state['observation_count'] += 1
+            ident = 'candidate-0-' + str(self._state['observation_count'])
+            self._state['last_normal_activity_id'] = ident
+            if action == 'start':
+                self._state.update(start_scheduled=True, phase='STARTING')
+            elif action == 'reconcile':
+                self._reconciled = True
+                self._state['phase'] = 'RECONCILING'
+            elif action == 'request-execution-or-observe':
+                self._state.update(request_scheduled=True, phase='REQUESTING')
+            self._normal = workflow.start_activity(protocol.CYCLE_ACTIVITY_NAMES[action], request,
+                activity_id=ident, task_queue=protocol.CYCLE_TASK_QUEUE,
+                schedule_to_close_timeout=timedelta(seconds=seconds),
+                start_to_close_timeout=timedelta(seconds=seconds), retry_policy=RetryPolicy(maximum_attempts=1),
+                cancellation_type=workflow.ActivityCancellationType.TRY_CANCEL)
+            # Retrieving an eventual failure retains ownership even when independent stop finishes first.
+            self._normal.add_done_callback(lambda done: None if done.cancelled() else done.exception())
+            # Never await the activity directly: cancellation must reach run before H cleanup finishes.
+            await workflow.wait_condition(lambda: self._normal.done() or (not cold and self._stop_reason is not None))
+            if not self._normal.done():
+                return None, scheduled
+            try:
+                return self._normal.result(), scheduled
+            except ActivityError as error:
+                if isinstance(error.cause, ApplicationError) and error.cause.type in (
+                        'cycle_activity_request_rejected', 'cycle_activity_capacity_exceeded'):
+                    self._stop_reason = self._stop_reason or 'activity_rejected'
+                return None, scheduled
+
+        @staticmethod
+        def _number(value):
+            if type(value) not in (int, float) or not math.isfinite(value):
+                raise ValueError('Cycle budget requires a finite number')
+            return value
+
+        def _narrow_total(self, sample, scheduled):
+            total = self._number(sample['total_remaining_seconds'])
+            boot = sample['boot_id']
+            if not isinstance(boot, str) or not boot or self._boot is not None and boot != self._boot:
+                raise ValueError('Cycle budget lost its original BOOT identity')
+            deadline = scheduled + timedelta(seconds=total)
+            self._total = min(self._total, deadline) if self._total is not None else deadline
+            self._boot = boot
+
+        def _consume(self, value, action, scheduled):
+            version2 = action in ('observe-candidate', 'request-execution-or-observe')
+            protocol._exact(value, ('schema_version', 'protocol', 'action', 'status', 'workflow_input',
+                'controller', 'observation', 'inspection', 'operations', 'runtime_status',
+                *(('facts',) if version2 else ())), 'Cycle activity envelope')
+            if (type(value['schema_version']) is not int or value['schema_version'] != (2 if version2 else 1)
+                    or value['protocol'] != ('ergora-training-cycle-activity-v2' if version2 else 'ergora-training-cycle-activity-v1')
+                    or value['action'] != action or value['status'] not in ('observed', 'unknown')
+                    or value['workflow_input'] != self._input):
+                raise ValueError('Cycle activity lost its original wire or Workflow input')
+            controller = value['controller']
+            protocol._exact(controller, ('workflow_id', 'run_id', 'intent_sha256'), 'Cycle controller projection')
+            info = workflow.info()
+            protocol._digest(controller['intent_sha256'])
+            if (controller['workflow_id'] != info.workflow_id or controller['run_id'] != info.run_id
+                    or self._controller is not None and controller != self._controller):
+                raise ValueError('Cycle activity lost its original controller run')
+            self._controller = controller
+            if not version2:
+                self._narrow_total(value['observation'], scheduled)
+                return None
+            facts = value['facts']
+            if (facts is None and value['status'] == 'unknown' and action == 'request-execution-or-observe'
+                    and self._state['request_scheduled'] and self._work is not None):
+                # H can publish, then lose its completion frame. The authenticated
+                # cold envelope may only narrow total; the consumed request stays consumed.
+                self._narrow_total(value['observation'], scheduled)
+                return None
+            protocol._exact(facts, ('source_operation_id', 'budget', 'candidate', 'submission',
+                'execution', 'runtime', 'native', 'request_outcome'), 'Cycle candidate facts')
+            records = [value['inspection'], *value['operations']]
+            if (not isinstance(facts['source_operation_id'], str)
+                    or re.fullmatch('[a-f0-9]{32}', facts['source_operation_id']) is None
+                    or not any(isinstance(item, dict) and item.get('operation_id') == facts['source_operation_id'] for item in records)):
+                raise ValueError('Candidate facts have no original operation in this envelope')
+            candidate = facts['candidate']
+            protocol._exact(candidate, ('ordinal', 'experiment_id', 'manifest_sha256', 'project_revision',
+                'current_project_matches', 'parent_stop_visible'), 'Cycle candidate projection')
+            protocol._digest(candidate['manifest_sha256'])
+            identity = {key: candidate[key] for key in ('ordinal', 'experiment_id', 'manifest_sha256', 'project_revision')}
+            if (type(candidate['ordinal']) is not int or candidate['ordinal'] != 0
+                    or not isinstance(candidate['experiment_id'], str) or not candidate['experiment_id']
+                    or type(candidate['project_revision']) is not int or candidate['project_revision'] < 1
+                    or candidate['current_project_matches'] is not True or candidate['parent_stop_visible'] is not False
+                    or self._candidate is not None and identity != self._candidate):
+                raise ValueError('Candidate identity, project or parent stop is not confirmed')
+            submitted, execution, runtime, native = (facts[key] for key in ('submission', 'execution', 'runtime', 'native'))
+            protocol._exact(submitted, ('state', 'intent_sha256', 'workflow_id', 'run_id',
+                'attempt_saved', 'result_saved'), 'Candidate submission projection')
+            if (submitted['state'] not in ('not_recorded', 'prepared', 'unknown', 'submitted', 'rejected')
+                    or type(submitted['attempt_saved']) is not bool or type(submitted['result_saved']) is not bool
+                    or not isinstance(submitted['workflow_id'], str) or not submitted['workflow_id']):
+                raise ValueError('Candidate submission has no complete original identity')
+            for key in ('intent_sha256', 'workflow_id', 'run_id'):
+                previous = self._submission.get(key)
+                current = submitted[key]
+                if previous is not None and previous != current:
+                    raise ValueError('Candidate submission original identity changed')
+                if current is not None:
+                    if not isinstance(current, str) or not current:
+                        raise ValueError('Candidate submission identity is incomplete')
+                    if key == 'intent_sha256':
+                        protocol._digest(current)
+            for key in ('attempt_saved', 'result_saved'):
+                if self._submission.get(key) is True and submitted[key] is not True:
+                    raise ValueError('Candidate submission lost an immutable checkpoint')
+            if (submitted['state'] == 'not_recorded' and (submitted['intent_sha256'] is not None
+                    or submitted['run_id'] is not None or submitted['attempt_saved'] or submitted['result_saved'])
+                    or submitted['state'] != 'not_recorded' and submitted['intent_sha256'] is None
+                    or submitted['state'] == 'submitted' and (not submitted['attempt_saved']
+                        or not submitted['result_saved'] or submitted['run_id'] is None)):
+                raise ValueError('Candidate submission state conflicts with its checkpoints')
+            protocol._exact(execution, ('state', 'request_sha256', 'record_sha256', 'reap_record_observed',
+                'durable_stop_confirmed', 'executor_stop_confirmed'), 'Candidate execution projection')
+            if not isinstance(execution['record_sha256'], dict) or execution['state'] not in (
+                    'unknown', 'not_requested', 'requested', 'launch_consumed', 'attempted', 'acknowledged', 'stop_observed', 'stopped'):
+                raise ValueError('Candidate execution projection is incomplete')
+            for key, digest in execution['record_sha256'].items():
+                if key not in ('request', 'launch', 'attempt', 'ack', 'stopped'):
+                    raise ValueError('Unknown candidate execution record')
+                protocol._digest(digest)
+            if any(execution['record_sha256'].get(key) != digest for key, digest in self._records.items()):
+                raise ValueError('Candidate execution lost an original immutable record')
+            if (execution['request_sha256'] != execution['record_sha256'].get('request')
+                    or execution['state'] == 'not_requested' and execution['record_sha256']):
+                raise ValueError('Candidate request differs from its original execution chain')
+            for key in ('reap_record_observed', 'durable_stop_confirmed', 'executor_stop_confirmed'):
+                if execution[key] is not None and type(execution[key]) is not bool:
+                    raise ValueError('Candidate execution stop fact is not typed')
+            protocol._exact(runtime, ('state', 'workflow_id', 'run_id', 'temporal_status', 'terminal',
+                'phase', 'binding', 'job_id'), 'Candidate runtime projection')
+            protocol._exact(native, ('state', 'job_id'), 'Candidate native projection')
+            if (runtime['state'] not in ('not_queried', 'queried', 'unconfirmed', 'not_found')
+                    or native['state'] not in ('not_queried', 'unconfirmed', 'QUEUED', 'RUNNING', 'SUCCEEDED', 'FAILED', 'CANCELLED')):
+                raise ValueError('Unsupported candidate runtime or native state')
+            if runtime['state'] == 'queried':
+                if (runtime['workflow_id'] != submitted['workflow_id'] or runtime['run_id'] != submitted['run_id']
+                        or submitted['state'] != 'submitted' or type(runtime['terminal']) is not bool):
+                    raise ValueError('Candidate runtime differs from the fixed submitted run')
+                binding = runtime['binding']
+                if binding is not None:
+                    protocol._exact(binding, ('experiment_id', 'manifest_sha', 'candidate_sha', 'baseline_sha'), 'Candidate Binding')
+                    if (binding['experiment_id'] != candidate['experiment_id'] or binding['manifest_sha'] != candidate['manifest_sha256']
+                            or self._binding is not None and binding != self._binding):
+                        raise ValueError('Candidate runtime Binding changed')
+                    for key in ('candidate_sha', 'baseline_sha'):
+                        if not isinstance(binding[key], str) or re.fullmatch('[a-f0-9]{40}|[a-f0-9]{64}', binding[key]) is None:
+                            raise ValueError('Candidate Binding requires full Git object IDs')
+                    self._binding = binding
+            if runtime['job_id'] is not None and native['job_id'] is not None and runtime['job_id'] != native['job_id']:
+                raise ValueError('Candidate runtime and native job differ')
+            for job in (runtime['job_id'] if runtime['state'] == 'queried' else None,
+                        native['job_id'] if native['state'] not in ('not_queried', 'unconfirmed') else None):
+                if job is not None:
+                    if not isinstance(job, str) or not job or self._job is not None and job != self._job:
+                        raise ValueError('Candidate lost its original job identity')
+                    self._job = job
+            budget = facts['budget']
+            protocol._exact(budget, ('state', 'work_remaining_seconds', 'total_remaining_seconds',
+                'control_timeout_seconds', 'boot_id', 'boottime_ns', 'observed_at'), 'Candidate budget projection')
+            work = self._number(budget['work_remaining_seconds'])
+            control = self._number(budget['control_timeout_seconds'])
+            if (budget['state'] not in ('valid', 'exhausted') or control <= 0
+                    or self._control is not None and control != self._control):
+                raise ValueError('Candidate budget is not its original valid policy')
+            self._narrow_total(budget, scheduled)
+            deadline = scheduled + timedelta(seconds=work)
+            self._work = min(self._work, deadline) if self._work is not None else deadline
+            self._control, self._candidate, self._submission = control, identity, submitted
+            self._records = execution['record_sha256']
+            self._existing_execution |= bool(self._records) or execution['state'] not in ('unknown', 'not_requested')
+            self._state.update(last_facts_operation_id=facts['source_operation_id'],
+                candidate_executor_stop_confirmed=execution['executor_stop_confirmed'])
+            return facts
+
+        def _next(self, facts, observed):
+            if not self._guard():
+                return None
+            candidate, submitted, execution, runtime, native = (facts[key] for key in
+                ('candidate', 'submission', 'execution', 'runtime', 'native'))
+            if (submitted['state'] == 'rejected' or execution['state'] == 'unknown'
+                    or runtime['state'] == 'not_found' or native['state'] in ('FAILED', 'CANCELLED')
+                    or runtime['state'] == 'queried' and (runtime['phase'] in (
+                        'GATE_FAILED', 'NEEDS_RECONCILIATION', 'CANCELLED', 'CANCEL_UNCONFIRMED', 'FAILED')
+                        or runtime['terminal'] and runtime['phase'] not in ('RELEASE_EXPIRED', 'INTEGRATION_TASK_CREATED'))):
+                self._stop_reason = 'candidate_needs_reconciliation'
+                return None
+            same_job = (isinstance(runtime['job_id'], str) and bool(runtime['job_id'])
+                        and native['job_id'] == runtime['job_id'])
+            if (observed and submitted['state'] == 'submitted' and runtime['state'] == 'queried'
+                    and runtime['binding'] is not None and same_job and native['state'] == 'SUCCEEDED'
+                    and execution['durable_stop_confirmed'] is True and execution['executor_stop_confirmed'] is True
+                    and (runtime['phase'] == 'AWAITING_RELEASE' and runtime['terminal'] is False
+                        or runtime['phase'] in ('RELEASE_EXPIRED', 'INTEGRATION_TASK_CREATED') and runtime['terminal'] is True)):
+                self._state.update(phase='FIRST_ROUND_OBSERVED', outcome='first_round_observed_c1d_required')
+                return None
+            positive = (observed and facts['budget']['state'] == 'valid'
+                        and candidate['current_project_matches'] is True and candidate['parent_stop_visible'] is False)
+            if submitted['state'] == 'not_recorded':
+                if positive and not self._state['start_scheduled'] and not self._existing_execution:
+                    return 'start'
+                self._stop_reason = self._stop_reason or 'submission_not_confirmed'
+                return None
+            if submitted['state'] in ('prepared', 'unknown'):
+                if submitted['attempt_saved'] and not self._reconciled:
+                    return 'reconcile'
+                self._stop_reason = 'submission_not_confirmed'
+                return None
+            self._state['phase'] = 'OBSERVING_EXECUTION' if self._existing_execution or self._state['request_scheduled'] else 'WAITING_FOR_QUEUED'
+            if (positive and not self._existing_execution and not self._state['request_scheduled']
+                    and execution['state'] == 'not_requested' and runtime['state'] == 'queried'
+                    and runtime['terminal'] is False and runtime['phase'] == 'QUEUED'
+                    and runtime['binding'] is not None and native['state'] == 'QUEUED' and same_job):
+                return 'request-execution-or-observe'
+            return 'observe-candidate'
+
+        async def _stop(self):
+            self._state.update(phase='STOPPING', outcome='needs_reconciliation')
+            if self._normal is not None and not self._normal.done():
+                self._normal.cancel()
+            scheduled = workflow.now()
+            seconds = (self._total - scheduled).total_seconds() if self._total is not None else 0
+            if seconds <= 0:
+                self._state.update(phase='NEEDS_RECONCILIATION', stop_activity_status='budget_unconfirmed_or_exhausted')
+                return
+            request = {'workflow_input': self._input, 'reason': self._stop_reason}
+            self._capacity(request)
+            self._state.update(stop_activity_id='cycle-stop', stop_activity_status='scheduled')
+            self._stop_handle = workflow.start_activity(protocol.CYCLE_ACTIVITY_NAMES['stop'], request,
+                activity_id='cycle-stop', task_queue=protocol.CYCLE_STOP_TASK_QUEUE,
+                schedule_to_close_timeout=timedelta(seconds=seconds), start_to_close_timeout=timedelta(seconds=seconds),
+                retry_policy=RetryPolicy(maximum_attempts=1),
+                cancellation_type=workflow.ActivityCancellationType.WAIT_CANCELLATION_COMPLETED)
+            while True:
+                try:
+                    result = await asyncio.shield(self._stop_handle)
+                    # Old stop.v1 transports observations; it has no cycle-level durable stop proof.
+                    self._state['stop_activity_status'] = 'returned'
+                    self._consume(result, 'stop', scheduled)
+                    break
+                except asyncio.CancelledError:
+                    self._cancelled = True
+                except ActivityError:
+                    self._state['stop_activity_status'] = 'failed'
+                    break
+                except (ValueError, KeyError, TypeError, OverflowError):
+                    self._state['stop_activity_status'] = 'observation_rejected'
+                    break
+            self._state['phase'] = 'NEEDS_RECONCILIATION'
+
+        @workflow.run
+        async def run(self, original: dict) -> dict:
+            try:
+                protocol.validate_cycle_activity_request({'workflow_input': original}, 'inspect')
+                self._capacity(original)
+            except (ValueError, KeyError, TypeError) as error:
+                raise ApplicationError(str(error), type='cycle_workflow_input_rejected', non_retryable=True) from error
+            action, cold = 'observe-candidate', True
+            try:
+                while self._guard():
+                    value, scheduled = await self._ordinary(action, cold=cold)
+                    if value is not None:
+                        facts = self._consume(value, action, scheduled)
+                        if self._stop_reason is None and facts is not None:
+                            action = self._next(facts, value['status'] == 'observed')
+                        else:
+                            action = 'observe-candidate'
+                    else:
+                        action = 'observe-candidate'
+                    if self._state['outcome'] == 'first_round_observed_c1d_required':
+                        return self.status()
+                    if cold and self._work is None:
+                        self._stop_reason = self._stop_reason or 'cold_budget_unconfirmed'
+                    cold = False
+                    if not self._guard():
+                        break
+                    if action == 'observe-candidate':
+                        try:
+                            await workflow.wait_condition(lambda: self._stop_reason is not None,
+                                timeout=timedelta(seconds=min(1, (self._work - workflow.now()).total_seconds())))
+                        except TimeoutError:
+                            pass
+            except asyncio.CancelledError:
+                self._cancelled = True
+                self._stop_reason = self._stop_reason or 'workflow_cancelled'
+            except ApplicationError:
+                self._stop_reason = self._stop_reason or 'workflow_payload_rejected'
+            except (ValueError, KeyError, TypeError, OverflowError):
+                self._stop_reason = self._stop_reason or 'activity_observation_rejected'
+            await self._stop()
+            if self._cancelled:
+                raise asyncio.CancelledError()
+            return self.status()
+
+
+def create_cycle_workflow():
+    """Resolve the optional SDK class without constructing an unimportable local class."""
+    if workflow is None:
+        raise RuntimeError('Training cycle Workflow requires ergora[temporal]')
+    return TrainingCycleWorkflow
+
+
 def create_cycle_activities(client):
     """Load optional SDK decorators only for the enabled cycle service."""
     from temporalio import activity
@@ -1318,6 +1712,7 @@ async def _serve_cycle() -> None:
         client = connecting.result()
         activities = create_cycle_activities(client)
         workers = [Worker(client, task_queue=protocol.CYCLE_TASK_QUEUE,
+            workflows=[create_cycle_workflow()],
             activities=[activities[action] for action in protocol.CYCLE_ACTIVITY_NAMES if action != 'stop'],
             max_concurrent_activities=1, graceful_shutdown_timeout=timedelta(0), on_fatal_error=fatal),
             Worker(client, task_queue=protocol.CYCLE_STOP_TASK_QUEUE, activities=[activities['stop']],
