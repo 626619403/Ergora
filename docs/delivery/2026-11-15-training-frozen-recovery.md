@@ -71,3 +71,11 @@
 原fresh-context reviewer已完成[最终本地需求／维护两轴approve](2026-11-15-training-frozen-recovery-review.md)，开放0／0，R1–R5均关闭；直接核两轮XML分别197／53、无失败错误跳过，原时长／stderr／范围对应，r4十文件与固定副本及实际基线diff一致，最终两安装／三CLI／自身模板及原容量资料均核。旧八suite不是与新两suite相加后的250个独立测试，也不是r4重跑全部八suite。真实服务、训练／GPU、质量／收益或OS／后代停止均未验；budget／全周期／自动循环保留后继义务。
 
 准备普通提交／推送当前开发分支；需核staged bytes、实际commit parent／tree／blob、完整远端Ref及该新SHA自己的适用CI，再由同reviewer按发布／CI范围续核。不合main，不强推。下一片[b3计划](../plans/2026-11-15-training-budget-executor.md)仍只有文档和独立计划审查，没有b3产品变化。
+
+## 普通发布与自己的CI
+
+已普通提交并推送当前开发分支`9c9ffeee517deff2ec8cd2ffe572744e3c2cd682`，parent`6531967e6b6dd8d20ff5ad70d7ae3074c81aca35`、tree`42c267272c6b427e8e8aa2d82f493bd3cb5cf298`；20个实际commit blob逐份等于staged，219本地文档链接无缺失，完整SSH远端Ref同一。原reviewer已核本地和匿名官方commit／ref身份、20blob及最终r3包，固定发布两轴approve／开放0／0。自己的Portability`43655794070`／attempt1为正确push／branch／head SHA，当前在途；终态尚未认证，不转授前片CI。后继b3本地源码不作为此固定提交验收。原件位于本片ignored检查目录的`publication-r1.json`及`ci/`。
+
+## 自己的CI终态失败与最小平台修正
+
+固定9c9ffee的Portability43655794070／attempt1终态failure：plan＋六Linux成功，Windows应用回归失败、PowerShell5.1安装升级成功，29／30必要步骤。官方annotation唯一失败为新回归调用Linux原生prepare时缺平台标记；Windows1 failed／1176 passed／819 skipped／16 subtests passed，1253.82秒。原本地与固定发布身份通过仍属其实际范围，CI门禁不通过，后继不推。具体[单行平台修正](2026-11-15-training-recovery-windows-regression.md)沿原测试补Linux／WSL2 skip，不放宽产品，不把失败覆盖为成功；须由同reviewer核后单独普通发布，再验自己新SHA CI。

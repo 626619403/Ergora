@@ -161,6 +161,7 @@ def test_original_prepared_start_is_readable_and_fenceable_but_cannot_dispatch(p
     assert not (runtime / 'ergora/training-submissions/alpha.attempt.json').exists()
 
 
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original training preparation requires Linux/WSL2')
 def test_original_registration_is_rechecked_in_the_selected_training_process(prepared, monkeypatch):
     state, _, runtime, _, _, digest = prepared
     reference.training_submission(state.project('demo'), state.root, 'prepare',

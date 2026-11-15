@@ -4,9 +4,11 @@
 
 ## 当前结论与范围
 
-实施基线与实际 HEAD 均为 `6531967e6b6dd8d20ff5ad70d7ae3074c81aca35`，分支为 `refactor/architecture-foundations`。r1 至 r4 均为未提交固定产品范围。本报告的最终本地结论绑定固定源码 r4、对应非 editable 安装 r3 和下述实际原件；后续发布与自身 CI 另行验收。
+实施基线及本地评审时的 HEAD 均为 `6531967e6b6dd8d20ff5ad70d7ae3074c81aca35`，分支为 `refactor/architecture-foundations`。r1 至 r4 在本地评审时均为未提交固定产品范围。本报告的最终本地结论绑定固定源码 r4、对应非 editable 安装 r3 和下述实际原件；后续固定发布与自身 CI 的续核见末节。
 
 **最终本地需求符合性：approve；可维护性：approve。需求／维护开放 finding 为 0／0，R1–R5 均已关闭。** 八条限定合同在源码、原 owner 与实际接缝范围内符合；现有测试及 guard 已核必要性，除 R2 已删除的两个不可达 guard 外，无应追加的抽象、测试矩阵或 CI job。完整八 suite 的 197 项绑定源码 r3；最后 r4 仅改变两个状态 owner 的字段投影，重新安装后复验其完整受影响两 suite 的 53 项，不能把两轮视为 250 个独立测试或 r4 重跑全部八 suite。
+
+**发布续核：固定提交身份两轴 approve；该提交自己的 Portability CI 为 request-changes。** Windows 原回归有一个实际失败，尚未完成本片发布验收。下方本地通过结果与 R1–R5 的关闭保持其原范围，CI 失败原件及精确测试见末节。
 
 |范围|需求符合性|可维护性|开放项|
 |---|---|---|---|
@@ -15,7 +17,7 @@
 |固定源码 r3|request-changes：R5 的部分结果遗漏原 start 修订；原完整安装八 suite 已核 197 passed，R3 关闭|结构 approve；R2 已最小删除，未加新抽象／测试矩阵|R5 的 r3 实红保留，不转记后继修正|
 |固定源码 r4|approve：R1–R5 已关闭，最终受影响两 suite 53 passed，当前安装／实际 CLI 已独立核实|approve：仅沿原 owner 修正，未改发送／对账或增抽象；当前源码自身模板亦 approve|本地需求／维护开放 0／0；发布与自己的适用 CI 尚待后续门禁|
 
-固定材料位于 ignored `.ergora/checks/training-frozen-recovery/`：四轮 `source-scope-r1/` 至 `source-scope-r4/` 及其同名 `.json/.diff`。每轮均为七份产品 `cli.py`、`reference.py`、`reference_training_cancellation.py`、`reference_training_context.py`、`reference_training_submission.py`、`registrations.py`、`training.py`，以及原三份测试 `test_registrations.py`、`test_training_cancellation.py`、`test_training_submission.py`。逐文件核过大小及 SHA-256；当前 r4 源码／测试与固定副本逐字一致，完整 r4 diff 等于基线至当前十文件的实际 Git diff；r3 核对在固定时成立，后继差异另核。
+固定材料位于 ignored `.ergora/checks/training-frozen-recovery/`：四轮 `source-scope-r1/` 至 `source-scope-r4/` 及其同名 `.json/.diff`。每轮均为七份产品 `cli.py`、`reference.py`、`reference_training_cancellation.py`、`reference_training_context.py`、`reference_training_submission.py`、`registrations.py`、`training.py`，以及原三份测试 `test_registrations.py`、`test_training_cancellation.py`、`test_training_submission.py`。逐文件核过大小及 SHA-256；本地终核时 r4 源码／测试与固定副本逐字一致，完整 r4 diff 等于基线至当时十文件的实际 Git diff；r3 核对在固定时成立，后继差异另核。发布后改以精确 commit blob 绑定本片。
 
 |材料|SHA-256|
 |---|---|
@@ -131,4 +133,71 @@
 
 最终本地需求与维护两轴验收已完成。原 r3 完整安装八 suite、r4 受影响两 suite、各实际红绿、当前源码自身原模板、两新安装、当前安装三条重读与前轮普通／成功 legacy import 的实际 CLI、同一容量红例修后读取均已独立核过；结果范围分别记录，没有沿用旧候选的通过结果认证新改动。错源／错 home／operation／摘要／缺 result、actor／同 ID 异 Experiment／job／run／memo、symlink 和超时丢回复分别沿原接缝覆盖，无需复制新 CI 矩阵。
 
-真实服务调用与 SDK 服务替身须继续分列，当前未见真实服务证据。本片不要求以 B3／GPU 或完整训练循环代替上述合同验收；不可续期预算、全周期资源停止、Temporal 父循环、真实 CPU 循环及真实 B3／完整 Forge 保持原后继义务。普通精确发布、完整远端 Ref 和自己的适用 CI 属后续门禁，本报告尚未认证。
+真实服务调用与 SDK 服务替身须继续分列，当前未见真实服务证据。本片不要求以 B3／GPU 或完整训练循环代替上述合同验收；不可续期预算、全周期资源停止、Temporal 父循环、真实 CPU 循环及真实 B3／完整 Forge 保持原后继义务。
+
+## 固定发布与自身 CI 续核
+
+普通发布提交为 `9c9ffeee517deff2ec8cd2ffe572744e3c2cd682`，parent 为 `6531967e6b6dd8d20ff5ad70d7ae3074c81aca35`，tree 为 `42c267272c6b427e8e8aa2d82f493bd3cb5cf298`。**固定发布需求与维护两轴 approve，身份开放 0／0；自己的 CI 已实际失败，验收为 request-changes，开放失败门禁 1 项。** 本节仅认证该精确提交及其自身 run，不跟随后继 b3 工作树变化。
+
+独立核了全部 20 个实际 commit blob，逐份等于 `staged-r1.json`、`publication-r1-local.json`；完整 `staged-r1.diff` 等于基线至提交的实际 diff。七产品／三测试逐字等于本报告已审固定源码 r4；提交内全部 645 产品与最终 wheel `159b990a…efe803` 及两个安装相等。其余十文档为本片说明／记录、b1 终态同步和独立已审 b3 计划文档；b3 发布计划相对其固定 r2 原件仅同步审查状态，没有 b3 产品变更或运行认证。本报告在提交内的 blob 为 `41977923f5ad6d96e4188ab6b55e7681643ea1e9`，27953B／SHA `3d7f5af0b78847bca126da0b58fac07ac0083d66cdbf455a05e5ef0d85e9bedc`；此续核是后追加记录。
+
+匿名官方 GitHub HTTPS GET 的 commit、完整 branch ref、runs、run、jobs 和 run HTML 六响应均 200，保留实际响应、元数据和 SHA；官方 parent／tree／20 文件 blob 与本地匹配，`refs/heads/refactor/architecture-foundations` 的完整 SHA 为上述新提交，另与普通远端 Ref 读取原件一致。只读采集、验证和响应原件在 ignored `.ergora/checks/training-frozen-recovery/ci/`；没有取消 CI、平台写入或重跑测试／模型／服务。
+
+|固定证据|结果／SHA256|
+|---|---|
+|`ci/reviewer-publication-local-r1.json`|20 blob、r4 十文件、645 产品及最终两安装一致；`18123ca3a19ae36de0d3194ce45af4e963249c097a16cea395c7d05f3126639f`|
+|`ci/reviewer-official-publication-r1.json`|官方提交／完整 Ref 与固定本地身份一致；`a20121f3f065a3517b4fa2525ce9ab996e31f323df20335d8bac2b71de940072`|
+|`publication-r1.json`|普通发布及远端精确 Ref 原件；`9d92d00ef4160de938fd8bbb00bfb85a674aeec1c53daff42d00ecf61a4e1902`|
+|`ci/reviewer-observe-r1/`|本提交唯一 Portability run [43655794070](https://github.com/626619403/Ergora/actions/runs/43655794070)，attempt 1、push、原分支及 `.github/workflows/portability.yml`；初次观察 `in_progress`，八 job／30 必要步骤已核身份，22 步已成功，未认证终态。|
+|`ci/reviewer-observe-r2/validation.json`|第二次实际响应的同一 run／attempt 身份无冲突，plan 与 Linux group 2／3／4 已成功，25／30 必要步骤成功；run 仍 `in_progress`。|
+|`ci/reviewer-observe-r3/validation.json`|第三次实际响应已核 plan 与六个 Linux job 全部成功、28／30 必要步骤成功；仅 Windows all 仍运行，无失败或身份冲突，run 仍 `in_progress`。|
+
+适用范围由该提交中的原 portability workflow 与六组 `scripts/ci/linux-groups.json` 固定：plan、六个 Ubuntu／Python 3.11 group、Windows／Python 3.12 all，共八 job。必要步骤共 30 个：plan 的显式分组读取；七 native job 各自 Python 设置、wheel 构建安装、打包参考身份和原回归；另加 Windows PowerShell 5.1 安装／升级。以下终态已逐个核 API 与官方 job HTML 的同一 SHA／attempt／状态／步骤及精确开始结束时间；历史在途观察保持。
+
+### 本提交实际 CI 终态：失败，不能转记成功
+
+run `43655794070`／attempt 1 在 `2026-11-15T00:20:38Z` 为 `completed/failure`。独立终态采集 `ci/reviewer-terminal-r1/` 中，run／jobs API、run HTML、八份 job HTML 及 terminal ref 共 12 个响应均为官方 HTTPS GET／200；加前序观察共 33 个独立响应，全部原始字节／大小／SHA 与元数据相符。八 job 身份无冲突，30 个必要步骤在 API／HTML 的名字、序号、conclusion 与时间逐份匹配；29 步成功、1 步失败。
+
+|job|ID|终态|
+|---|---:|---|
+|plan|132633893085|success|
+|Ubuntu 3.11 group 0|132633921420|success|
+|Ubuntu 3.11 group 1|132633921453|success|
+|Ubuntu 3.11 group 2|132633921410|success|
+|Ubuntu 3.11 group 3|132633921400|success|
+|Ubuntu 3.11 group 4|132633921403|success|
+|Ubuntu 3.11 group 5|132633921394|success|
+|Windows 3.12 all|132633921393|failure|
+
+Windows 的 `Native application regression` 为 `failure`，`2026-11-14T23:58:45Z` 至 `2026-11-15T00:19:41Z`；随后 `Windows PowerShell 5.1 installer and upgrade` 在 `00:19:41Z` 至 `00:20:33Z` 实际成功，job 在 `00:20:37Z` 结束失败。wheel 构建／安装及参考身份步骤均成功，不能用这些事实代替失败的回归。
+
+公开 Windows HTML 的 annotation 原文为：
+
+```text
+FAILED tests/test_training_submission.py::test_original_registration_is_rechecked_in_the_selected_training_process - ValueError: Native training submission requires Linux; use the registered runtime in WSL2
+= 1 failed, 1176 passed, 819 skipped, 16 subtests passed in 1253.82s (0:20:53) =
+```
+
+同页还有 `Process completed with exit code 1.`。原件 `ci/reviewer-terminal-r1/job-132633921393-page.body` 的 SHA 为 `7c1446b6c081bed17f1ee7895c9750426afa064181a7f3ab881140ccf1184820`；完整公开 DOM 文字保留为 `ci/reviewer-windows-terminal-text-r1.txt`。页面提示完整日志需登录，本评审未切换身份或取用凭据；上述具体失败确在匿名公开 annotation 中，已交实施者定位。terminal ref 仍为原完整 `9c9ffeee…c682`，未将后继 WIP 或其他 SHA 的结果混入。
+
+终态验证原件 `ci/reviewer-ci-terminal-r1.json`，SHA `4562a8511d5b9a46b234ba9d761ce5ceef6f7c079ad924a98c97dad9ea99d4df`，身份／字节／HTML 对账 `violations=[]`、`evidence_integrity=approve`，实际 `ci_verdict=request-changes`。验证器 exit 1 对应该真实失败门禁。首次辅助验证曾因把并行根代理的另一格式诊断元数据纳入通配范围而 `KeyError: started_at`，未产出结论；已限定只认证本 reviewer 前缀原件，错误记录与原脚本保留在 `ci/reviewer-verifier-error-r1.json`，不与产品或 CI 的失败混淆。
+
+独立终态索引 `ci/reviewer-verification-index-r1.json`：120 文件／5,541,877B，索引 27,027B／SHA `4ae3d930ea781513acdb341acd34e2e77904265c78bba13b82e8abfbc9369707`。已独立逐项重算全部 120 条大小／SHA，零差异；它覆盖本 reviewer 的原始响应／元数据／验证脚本及固定发布、本地验收锚点，保留 `own_ci_verdict=request-changes` 和一个失败步骤。活动报告不入索引以避免循环身份，后继产品不获认证。实施者须以固定发布基线最小修正、保留此失败并重新完成修复提交自己的适用 CI；本次没有取消或重跑 CI、修改测试／产品、合并、提交或推送。
+
+### Windows 单行范围修正：源码两轴 approve，修复 CI 尚未认证
+
+同 reviewer 按追加授权，只读审查固定 `9c9ffeee517deff2ec8cd2ffe572744e3c2cd682` 测试的单行修正及其 Linux 原件。**该限定源码需求符合性 approve、可维护性 approve，源码开放 0／0。** 上述发布提交自己的 CI failure 保持；本节不认证尚未提交的修复之发布、Windows 实测或自身 CI。
+
+原失败测试首先调用 `reference.training_submission(..., 'prepare', ...)`，固定提交 `src/ergora/reference.py:384` 明确对非 `status` 的原生提交操作要求 `sys.platform == 'linux'`。测试在 Windows 尚未到达它要验证的“所选子进程重新核来源”就因该正常平台边界失败。修正在该测试前增加一行 `@pytest.mark.skipif(sys.platform != 'linux', reason='Original training preparation requires Linux/WSL2')`，与相邻原生 prepare／preflight 测试的范围一致；无需放宽产品平台或来源 guard。
+
+独立核 `ci/windows-fix-r1/baseline.py` 逐字等于该提交的原测试 blob；`fixed.py` 恰好只插入这一个 marker。去掉新增 decorator 后，完整文件 AST 与基线相等；原测试体、fixture、全部断言及其他测试均未变，未新增 xfail、测试矩阵或 CI job。固定 35 份原测试／helper／fixture 的文件集合等于原最终 r3 安装测试 scope；每份摘要、长度均匹配，除目标文件这个 marker 外，逐字等于固定 `9c9ffeee…c682`，未混入后继 B3 测试或当前 WIP。
+
+|修正证据|身份|
+|---|---|
+|原完整测试文件|48166B／SHA `26a2144830fb91dc3bcaac9ef1a3ea0ca3e82b7cf46f76f2040d44dfd69bc20e`|
+|修后完整测试文件|48271B／SHA `ef09df7881066b3ccb1652d4583f8731a36cbcae1fd120d37b59e9e69e07f460`|
+|`ci/windows-fix-r1/changes.diff`|SHA `b4fcd9268dc29352d088fe7c986d4f623ee32cc8245ff4b8ff525ec57f8ce009`|
+|`ci/windows-fix-r1/identity.json`|SHA `785086415a27e05f527c1689d4ce8c9235c4299352a4b44f8e5ef648a715bb3b`|
+|`ci/windows-fix-r1/scope.json`|35 份固定原文件／SHA `6e8a2a1d34e8af46748f5206c463cd2c41aabf427492aae4f12e9f0f6ca9f378`|
+
+实际 `ci-windows-fix-source-r1` 使用原 b2 最终 r3 非 editable SDK 安装，以 `-I -B` 执行固定副本中的这个原场景。独立解析 `ci/windows-fix-r1/linux.xml`：1 passed／39 deselected，无失败、错误或跳过，XML suite 3.620 秒／外层 4.423 秒、exit 0；目标 testcase 实际执行，未被 marker 隐去。静态条件求值为 Linux=false、win32=true、darwin=true，仅认证条件与原平台边界一致，不冒称 Windows 实测。评审没有运行应用／测试／安装／模型，没有修改产品、测试、其他交付文档或 B3 WIP；后续须以这个固定 baseline 测试 blob 单独发布并核新 SHA 自己的适用 CI。
