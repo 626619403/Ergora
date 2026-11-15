@@ -36,6 +36,14 @@ class _CycleOperation:
             boot, ticks = budget_clock._clock()
             bootstrap = {'boot_id': boot, 'started_ns': ticks,
                          'deadline_ns': ticks + inspection_timeout * 1_000_000_000}
+        elif mode == 'prepare-controller':
+            policy, clock = snapshot['policy'], snapshot['authorization']['clock']
+            boot, ticks = budget_clock._clock()
+            seconds = min(policy['control_timeout_seconds'], budget_clock.remaining(
+                clock, policy['wall_seconds'], policy['cleanup_seconds']))
+            bootstrap = {'boot_id': boot, 'started_ns': ticks,
+                'deadline_ns': min(ticks + int(seconds * 1_000_000_000), clock['boottime_ns']
+                    + (policy['wall_seconds'] - policy['cleanup_seconds']) * 1_000_000_000)}
         self.identity = {'protocol': 'ergora-training-cycle-operation-v1', 'operation_id': uuid.uuid4().hex,
             'mode': mode, 'control_home': str(home), 'project': project, 'cycle_id': cycle_id,
             'input_sha256': snapshot['authorization']['input_sha256'] if snapshot is not None else None,
@@ -194,9 +202,18 @@ def _cycle_operation(payload: dict) -> dict:
     def active():
         if (protocol.cycle_operation_remaining(payload) <= 0
                 or processes.identity(identity['parent']['pid']) != identity['parent']):
-            raise ValueError('Original cycle operation parent or total allowance ended')
+            raise ValueError('Original cycle operation parent or allowance ended')
 
     active()
+    if mode == 'prepare-controller':
+        prepared = training_cycles.prepare_controller(State(home), project, cycle,
+            authorization['sha256'], authorization['project_revision'])
+        active()
+        return {'status': 'prepared', 'created': prepared['created'],
+            'intent_sha256': prepared['intent_sha256'], 'intent_path': str(admission.folder / 'intent.json'),
+            'cycle_status': prepared['cycle']['status'],
+            'work_remaining_seconds': prepared['cycle']['work_remaining_seconds'],
+            'total_remaining_seconds': prepared['cycle']['total_remaining_seconds']}
     if mode == 'stop-writer':
         return {'status': 'observed', **admission.request_stop(payload['reason'])}
     if mode == 'drain':

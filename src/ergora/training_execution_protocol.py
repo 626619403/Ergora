@@ -176,7 +176,7 @@ def validate_cycle_operation(payload: dict) -> None:
     if (identity['protocol'] != 'ergora-training-cycle-operation-v1'
             or not isinstance(identity['operation_id'], str)
             or re.fullmatch('[a-f0-9]{32}', identity['operation_id']) is None
-            or identity['mode'] not in ('inspect', 'stop-writer', 'notify-owner', 'drain', 'observe-execution')):
+            or identity['mode'] not in ('inspect', 'prepare-controller', 'stop-writer', 'notify-owner', 'drain', 'observe-execution')):
         raise ValueError('Unsupported cycle operation or observation identity')
     for name, maximum in (('project', 63), ('cycle_id', 79)):
         if not isinstance(identity[name], str) or re.fullmatch(
@@ -209,7 +209,7 @@ def validate_cycle_operation(payload: dict) -> None:
             raise ValueError('Cold inspection requires one fixed 1 to 60 second observation deadline')
         return
     _digest(identity['input_sha256'])
-    if payload['bootstrap'] is not None:
+    if identity['mode'] != 'prepare-controller' and payload['bootstrap'] is not None:
         raise ValueError('Verified cycle operations must use the original total allowance')
     snapshot = payload['snapshot']
     _exact(snapshot, ('authorization', 'policy', 'candidates'), 'Original cycle snapshot')
@@ -227,20 +227,36 @@ def validate_cycle_operation(payload: dict) -> None:
         raise ValueError('Cycle operation has an invalid original budget policy')
     _exact(authorization.get('clock'), budget_clock.FIELDS, 'Original cycle clock')
     budget_clock.validate(authorization['clock'], policy['wall_seconds'])
+    if identity['mode'] == 'prepare-controller':
+        window = payload['bootstrap']
+        _exact(window, ('boot_id', 'started_ns', 'deadline_ns'), 'Original cycle operation window')
+        if (window['boot_id'] != identity['parent']['boot_id'] or window['boot_id'] != authorization['clock']['boot_id']
+                or type(window['started_ns']) is not int or window['started_ns'] < authorization['clock']['boottime_ns']
+                or type(window['deadline_ns']) is not int
+                or window['deadline_ns'] - window['started_ns'] > policy['control_timeout_seconds'] * 1_000_000_000
+                or window['deadline_ns'] > authorization['clock']['boottime_ns']
+                    + (policy['wall_seconds'] - policy['cleanup_seconds']) * 1_000_000_000):
+            raise ValueError('Ordinary cycle window exceeds its original compute or control allowance')
     candidates = snapshot['candidates']
     if not isinstance(candidates, list) or not 1 <= len(candidates) <= 32 or ordinal is not None and ordinal >= len(candidates):
         raise ValueError('Cycle operation has no complete ordered candidate index')
 
 
 def cycle_operation_remaining(payload: dict) -> float:
-    """Use the fixed bootstrap observation or the same original total, never renew it."""
-    if payload['identity']['mode'] == 'inspect':
+    """Consume one fixed window, original compute or original stop total, never renew."""
+    mode = payload['identity']['mode']
+    if mode in ('inspect', 'prepare-controller'):
         bootstrap = payload['bootstrap']
         boot, ticks = budget_clock._clock()
         if boot != bootstrap['boot_id'] or ticks < bootstrap['started_ns']:
-            raise ValueError('Cold cycle observation lost its original boot clock')
-        return (bootstrap['deadline_ns'] - ticks) / 1_000_000_000
+            raise ValueError('Cycle operation lost its original boot clock')
+        window = (bootstrap['deadline_ns'] - ticks) / 1_000_000_000
+        if mode == 'inspect':
+            return window
     snapshot = payload['snapshot']
+    if mode == 'prepare-controller':
+        return min(window, budget_clock.remaining(snapshot['authorization']['clock'],
+            snapshot['policy']['wall_seconds'], snapshot['policy']['cleanup_seconds']))
     return budget_clock.remaining(snapshot['authorization']['clock'], snapshot['policy']['wall_seconds'])
 
 

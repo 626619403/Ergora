@@ -433,6 +433,8 @@ F10d4沿原agent_runs准入读取增加可选显式input digest，薄HTTP固定t
 
 [总意图准备](../plans/2026-11-15-training-controller-intent.md)由`training_cycles.prepare_controller`在本地项目reservation与原父共享许可下组合原status和无覆盖publisher；`CycleAdmission.intent_record`为producer与原完整reader生成同一身份。原ready的publisher仍持锁时不能准备；重试只同步并重读原意图，不创建attempt／receipt或更换clock。结果包含最后cycle观察，计算窗口耗尽不能报告ready；link前出现null-intent stop时保留原veto，不修复停止文件。准备不是投递／执行许可，后继SDK投递、总Workflow与公开入口继续单独交付。
 
+[普通准备操作](../plans/2026-11-15-training-cycle-prepare-operation.md)在原S-H driver增加`prepare-controller`mode，复用原应用准备。普通请求在spawn前固定一次BOOT窗口，受原compute remaining与control timeout共同约束；完整请求还核原boot、compute绝对上界与control跨度，父pipe／wait、S停止检查和H前后active消费同一窗口。所有State／SQLite／fsync留在H；超时只能返回unknown，意图元数据可能已保存，但没有attempt／训练权限。原cold inspect与stop total保持；调用者取消仍真实回收后重抛。该内部单次操作不代表SDK投递、跨进程恢复或独立cycle服务已完成。
+
 ```mermaid
 flowchart LR
   Cycle[cycle-start / 原授权选择] --> Start[training.start / 原提交 intent]

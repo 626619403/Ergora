@@ -20,7 +20,9 @@ mode = payload['identity']['mode']
 
 
 def mark(name):
-    (markers / name).write_text(json.dumps(processes.identity(os.getpid())))
+    pending = markers / ('.' + name + '.pending')
+    pending.write_text(json.dumps(processes.identity(os.getpid())))
+    pending.replace(markers / name)
 
 
 if stage == 'S':
@@ -32,7 +34,7 @@ if stage == 'S':
         return original_run(argv, *args, **kwargs)
 
     processes.run = invoke
-    if fault == 'post-stopped' and mode == 'inspect':
+    if fault == 'post-stopped' and mode in ('inspect', 'prepare-controller'):
         read = training_cycles._read_bytes
 
         def blocked_result(path, limit):
@@ -43,6 +45,13 @@ if stage == 'S':
 
         training_cycles._read_bytes = blocked_result
 else:
+    if fault == 'blocked-prepare' and mode == 'prepare-controller':
+        def blocked_database(self):
+            mark('prepare-database-reader')
+            time.sleep(60)
+            raise AssertionError('The original operation window must reap this blocked database reader')
+
+        worker.State._open = blocked_database
     if fault == 'blocked-stop' and mode == 'stop-writer':
         fsync = os.fsync
 

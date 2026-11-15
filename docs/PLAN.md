@@ -4,6 +4,8 @@
 
 ## 当前检查点
 
+**c1b0本地门禁闭合：** 基线为本地固定`d1fcfa5b78e912004114f00275c32e6dfac6dcb0`。SDK总投递前已补原compute∩control的一次性S-H窗口与实际prepare-controller caller，复用原driver／reaper；[具体计划](plans/2026-11-15-training-cycle-prepare-operation.md)设计两轴approve／开放0／0，取消措辞R1关闭。源码24通过／60.55秒，新core／SDK各652逐字／283／依赖，最终安装33通过／156.96秒、core真实异步1.157秒／父业务I/O禁止及自身模板26.433秒approve；[新的独立产品报告](delivery/2026-11-15-training-cycle-prepare-operation-review.md)最终需求／维护性两轴approve／开放0／0，9文件、652产品／178输入与22已知actor活匹配0已核。接续固定本地提交，再实施SDK投递原件／对账；远端门禁保持。[交付](delivery/2026-11-15-training-cycle-prepare-operation.md)逐步记录，跨重启恢复、独立服务／Workflow仍开放。kernel专家保持v3。
+
 **c1a1本地门禁闭合：** 固定基线`fbafd8d7fc442acb8c52e0646ada327cdfb49fa3`，按[小片计划](plans/2026-11-15-training-controller-intent.md)在原protocol／cycles共用完整intent生成与校验、接入本地准备。独立P2 R1的最终clock顺序已在原owner最小修正；旧r1两个新增真实clock接缝实红，原错误／旧验收身份保留。修后source-r3共25通过／54.94秒，新core／SDK各652逐字／283／依赖，安装r2共35通过／145.43秒、core0.070秒与自身模板31.493秒approve；[独立报告](delivery/2026-11-15-training-controller-intent-review.md)最终本地需求／维护性两轴approve／开放0／0，R1关闭，7原文件／178输入／7已知actor活匹配0均核。接续固定本地提交，再接SDK／attempt／receipt；普通发布仍等前片准确CI，真正cycle服务／Workflow与CPU两轮继续开放。每步见[交付](delivery/2026-11-15-training-controller-intent.md)，kernel专家继续保留v3。
 
 **接续c1只读准备：** b2b已固定本地`1b8c2ed1e61258e97f0c39f38ea97a35fe66cd9b`／九staged blob与tree同一，本地／新的独立两轴闭合。已将独立cycle服务／总Workflow细分为[总投递、异步普通操作与真实服务边界、确定性Workflow、测量接受／索引](plans/2026-11-15-training-cycle-workflow.md)，先核receipt先后竞态与可选SDK的标准sandbox装载；当前只写计划，没有c1产品变更。新的fresh-context最终r2设计两轴approve／阻断0／0，进入c1a先固定总投递原件／准备用例，SDK投递另片，每步见[交付](delivery/2026-11-15-training-cycle-workflow.md)。kernel专家继续保留v3。

@@ -2704,6 +2704,118 @@ def recorded_process_is_active(value):
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Cycle operations use the original Linux supervised reaper')
+def test_cycle_preparation_uses_the_original_intent_and_one_fixed_window(controller_admission):
+    import asyncio
+    from ergora import reference_training_worker as worker, training_cycles
+    from ergora.training_execution_protocol import validate_cycle_operation
+
+    state, _, selected, authorized, admission = controller_admission
+    plan = training_cycles._load(state.root, 'demo', 'controller', admission.directory)[0]
+    snapshot = worker._cycle_snapshot(plan, authorized['authorization'])
+    before = {p: p.read_bytes() for p in admission.directory.rglob('*') if p.is_file()}
+    operation = worker._CycleOperation(state.root, 'demo', 'controller', authorized['authorization_sha256'],
+                                       'prepare-controller', snapshot=snapshot)
+    payload = deepcopy(operation.payload)
+    result = asyncio.run(operation.run())
+    assert result['status'] == 'prepared' and result['created'] is True and result['cycle_status'] == 'ready'
+    path = admission.folder / 'intent.json'
+    raw, inode = path.read_bytes(), path.stat().st_ino
+    assert result['intent_path'] == str(path) and result['intent_sha256'] == training_cycles._sha(json.loads(raw))
+    assert operation.payload == payload and operation.process.returncode is not None
+    again = asyncio.run(worker._CycleOperation(state.root, 'demo', 'controller', authorized['authorization_sha256'],
+        'prepare-controller', snapshot=snapshot).run())
+    assert again['status'] == 'prepared' and again['created'] is False
+    assert path.read_bytes() == raw and path.stat().st_ino == inode
+    assert {p: p.read_bytes() for p in admission.directory.rglob('*') if p.is_file()} == {**before, path: raw}
+    policy, clock = selected['budget'], authorized['authorization']['clock']
+    for boundary in ('control', 'compute'):
+        changed = deepcopy(payload)
+        window = changed['bootstrap']
+        if boundary == 'control':
+            window['deadline_ns'] = window['started_ns'] + policy['control_timeout_seconds'] * 1_000_000_000 + 1
+        else:
+            window['started_ns'] = clock['boottime_ns'] + (policy['wall_seconds'] - policy['cleanup_seconds']) * 1_000_000_000
+            window['deadline_ns'] = window['started_ns'] + 1
+        with pytest.raises(ValueError, match='compute or control allowance'):
+            validate_cycle_operation(changed)
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Cycle operations use the original Linux supervised reaper')
+@pytest.mark.parametrize('controller_admission,fault', [
+    ({'control_timeout_seconds': 4}, 'blocked-prepare'),
+    ({'wall_seconds': 18, 'cleanup_seconds': 8, 'control_timeout_seconds': 60}, 'post-stopped'),
+], indirect=['controller_admission'])
+def test_cycle_preparation_bounds_blocking_io_while_parent_loop_remains_live(
+        controller_admission, cycle_operation_fault, fault):
+    import asyncio
+    from ergora import reference_training_worker as worker, training_cycles
+
+    state, _, _, authorized, admission = controller_admission
+    plan = training_cycles._load(state.root, 'demo', 'controller', admission.directory)[0]
+    snapshot = worker._cycle_snapshot(plan, authorized['authorization'])
+    markers = cycle_operation_fault(fault)
+    marker = markers / ('prepare-database-reader' if fault == 'blocked-prepare' else 'stopped-result-reader')
+    operation = worker._CycleOperation(state.root, 'demo', 'controller', authorized['authorization_sha256'],
+                                       'prepare-controller', snapshot=snapshot)
+    payload, live_beats = deepcopy(operation.payload), []
+
+    async def run():
+        finished = asyncio.Event()
+
+        async def heartbeat():
+            while not finished.is_set():
+                if marker.exists() and not operation.expired() and recorded_process_is_active(json.loads(marker.read_bytes())):
+                    live_beats.append(time.monotonic())
+                await asyncio.sleep(.02)
+
+        ticking = asyncio.create_task(heartbeat())
+        try:
+            return await operation.run()
+        finally:
+            finished.set()
+            await ticking
+
+    result = asyncio.run(run())
+    assert result['status'] == 'unknown' and result['operation_stopped'] is True
+    assert live_beats and not recorded_process_is_active(json.loads(marker.read_bytes()))
+    assert operation.process.returncode is not None and operation.payload == payload and operation.expired()
+    # The ordinary operation must finish while the original cleanup reserve remains.
+    assert training_cycles.budget_clock.remaining(authorized['authorization']['clock'],
+        snapshot['policy']['wall_seconds']) > 0
+    assert not (admission.folder / 'attempt.json').exists() and not (admission.folder / 'receipt.json').exists()
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Cycle operations use the original Linux supervised reaper')
+@pytest.mark.parametrize('controller_admission', [{'wall_seconds': 16, 'cleanup_seconds': 6}], indirect=True)
+def test_cycle_exhausted_compute_never_spawns_preparation_but_retains_stop_reserve(controller_admission, monkeypatch):
+    import asyncio
+    from ergora import reference_training_worker as worker, training_cycles
+
+    state, _, _, authorized, admission = controller_admission
+    plan = training_cycles._load(state.root, 'demo', 'controller', admission.directory)[0]
+    snapshot = worker._cycle_snapshot(plan, authorized['authorization'])
+    time.sleep(max(0, authorized['work_remaining_seconds']) + .05)
+    operation = worker._CycleOperation(state.root, 'demo', 'controller', authorized['authorization_sha256'],
+                                       'prepare-controller', snapshot=snapshot)
+    spawn = asyncio.create_subprocess_exec
+
+    async def forbidden(*args, **kwargs):
+        pytest.fail('Exhausted original compute must not spawn an ordinary operation')
+
+    monkeypatch.setattr(asyncio, 'create_subprocess_exec', forbidden)
+    result = asyncio.run(operation.run())
+    assert result['status'] == 'unknown' and operation.process is None
+    assert not (admission.folder / 'intent.json').exists()
+    monkeypatch.setattr(asyncio, 'create_subprocess_exec', spawn)
+    stopping = worker._CycleOperation(state.root, 'demo', 'controller', authorized['authorization_sha256'],
+        'stop-writer', snapshot=snapshot, reason='Stop after computation, inside its original cleanup reserve')
+    assert stopping.payload['bootstrap'] is None
+    stopped = asyncio.run(stopping.run())
+    assert stopped['status'] == 'observed' and stopped['stop_durable'] is True
+    assert not (admission.folder / 'attempt.json').exists()
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Cycle operations use the original Linux supervised reaper')
 def test_cycle_cold_inspection_bounds_result_read_after_matching_stopped(controller_admission, cycle_operation_fault):
     import asyncio
     from ergora.reference_training_worker import _CycleOperation
