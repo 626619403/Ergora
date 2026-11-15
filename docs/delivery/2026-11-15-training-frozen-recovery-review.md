@@ -8,7 +8,7 @@
 
 **最终本地需求符合性：approve；可维护性：approve。需求／维护开放 finding 为 0／0，R1–R5 均已关闭。** 八条限定合同在源码、原 owner 与实际接缝范围内符合；现有测试及 guard 已核必要性，除 R2 已删除的两个不可达 guard 外，无应追加的抽象、测试矩阵或 CI job。完整八 suite 的 197 项绑定源码 r3；最后 r4 仅改变两个状态 owner 的字段投影，重新安装后复验其完整受影响两 suite 的 53 项，不能把两轮视为 250 个独立测试或 r4 重跑全部八 suite。
 
-**发布续核：固定提交身份两轴 approve；该提交自己的 Portability CI 为 request-changes。** Windows 原回归有一个实际失败，尚未完成本片发布验收。下方本地通过结果与 R1–R5 的关闭保持其原范围，CI 失败原件及精确测试见末节。
+**发布终核：单行平台范围修复提交 `82ea3f163e0c29759eb6ebef93fb2e58d87e983a` 的固定发布需求／维护两轴 approve、开放 0／0；自己的 Portability run `43658729462`／attempt 1 已实际 completed/success，八 job、30／30 必要步骤全部成功，本片发布门禁关闭。** 原提交 `9c9ffeee…c682` 的真实 CI failure 与旧索引原样保留。下方本地通过结果与 R1–R5 的关闭保持其原范围，两次发布及各自 CI 的证据见末节；不认证后继 B3、真实服务或训练。
 
 |范围|需求符合性|可维护性|开放项|
 |---|---|---|---|
@@ -16,6 +16,7 @@
 |固定源码 r2|request-changes：R1 已关闭，R3 原竞态 fixture 与 R4 原 import 读取范围未修|request-changes：R2 的两处不可达重复 guard 未删|上述历史问题已在 r3 修正，原失败保留|
 |固定源码 r3|request-changes：R5 的部分结果遗漏原 start 修订；原完整安装八 suite 已核 197 passed，R3 关闭|结构 approve；R2 已最小删除，未加新抽象／测试矩阵|R5 的 r3 实红保留，不转记后继修正|
 |固定源码 r4|approve：R1–R5 已关闭，最终受影响两 suite 53 passed，当前安装／实际 CLI 已独立核实|approve：仅沿原 owner 修正，未改发送／对账或增抽象；当前源码自身模板亦 approve|本地需求／维护开放 0／0；发布与自己的适用 CI 尚待后续门禁|
+|修复发布 `82ea3f16…983a`|approve：只为原 Linux prepare 场景补平台 marker，实际 Linux 场景仍通过|approve：原测试体／断言不变，完整产品树等于已审发布|固定发布开放 0／0；自己的 run `43658729462`／attempt 1 实际 success，八 job／30 必要步骤全成功，发布门禁已关闭|
 
 固定材料位于 ignored `.ergora/checks/training-frozen-recovery/`：四轮 `source-scope-r1/` 至 `source-scope-r4/` 及其同名 `.json/.diff`。每轮均为七份产品 `cli.py`、`reference.py`、`reference_training_cancellation.py`、`reference_training_context.py`、`reference_training_submission.py`、`registrations.py`、`training.py`，以及原三份测试 `test_registrations.py`、`test_training_cancellation.py`、`test_training_submission.py`。逐文件核过大小及 SHA-256；本地终核时 r4 源码／测试与固定副本逐字一致，完整 r4 diff 等于基线至当时十文件的实际 Git diff；r3 核对在固定时成立，后继差异另核。发布后改以精确 commit blob 绑定本片。
 
@@ -201,3 +202,50 @@ FAILED tests/test_training_submission.py::test_original_registration_is_rechecke
 |`ci/windows-fix-r1/scope.json`|35 份固定原文件／SHA `6e8a2a1d34e8af46748f5206c463cd2c41aabf427492aae4f12e9f0f6ca9f378`|
 
 实际 `ci-windows-fix-source-r1` 使用原 b2 最终 r3 非 editable SDK 安装，以 `-I -B` 执行固定副本中的这个原场景。独立解析 `ci/windows-fix-r1/linux.xml`：1 passed／39 deselected，无失败、错误或跳过，XML suite 3.620 秒／外层 4.423 秒、exit 0；目标 testcase 实际执行，未被 marker 隐去。静态条件求值为 Linux=false、win32=true、darwin=true，仅认证条件与原平台边界一致，不冒称 Windows 实测。评审没有运行应用／测试／安装／模型，没有修改产品、测试、其他交付文档或 B3 WIP；后续须以这个固定 baseline 测试 blob 单独发布并核新 SHA 自己的适用 CI。
+
+### 单行修复固定发布与自身 CI 续核
+
+后续普通发布为 `82ea3f163e0c29759eb6ebef93fb2e58d87e983a`，parent 为上述实际失败提交 `9c9ffeee517deff2ec8cd2ffe572744e3c2cd682`，tree 为 `0b8b5312d557642bd5257105561e76fbd01ee976`。**该精确修复发布的需求符合性 approve、可维护性 approve，身份开放 0／0。** 初核时新提交自己的 CI 为 pending，以下在途原件保持，实际成功终态另列；首次 failure 原件与索引不改写。此节续核前一节尚未提交时的状态。
+
+独立逐份核全部四个实际 commit blob，等于 `ci/windows-fix-r1/publication-staged.json`、`publication-local.json`，完整 staged diff 等于 parent 至该提交的实际 diff。四份仅为已审 marker 测试及三份交付／评审记录；目标测试 blob `c0df7165f0a019d6ad0c27144cd02e1a00f4ed41` 的 SHA 为 `ef09df7881066b3ccb1652d4583f8731a36cbcae1fd120d37b59e9e69e07f460`，逐字等于已审 `fixed.py`。新旧提交的完整 `src/ergora` tree 均为 `1b307e382143ed97ecb79463b475701be91a5abc`，没有 B3 产品、当前 WIP 或其他产品变更。本报告在新提交内的 blob 为 `d12ed4b439444b65723fba33ed62909ad0ecce53`，SHA `4fa07d6159580f29977083dcd8cc53c3c805586238e7af615eba092c00e232d6`；本节为后追加记录，不改称该已发表 blob 已含此节。
+
+匿名官方 GitHub commit、完整 branch ref、runs、run、jobs、run HTML 六份发现响应均 200；官方 parent／tree／四份 blob 与固定本地身份相等，官方完整 Ref 与独立普通远端 Ref 原件均指向 `82ea3f163e0c29759eb6ebef93fb2e58d87e983a`。只读身份核实不借用另一 SHA 或后继工作树的运行结果。
+
+|修复发布证据|结果／SHA256|
+|---|---|
+|`ci/windows-fix-r1/reviewer-publication-local-r1.json`|四 blob／完整 diff／固定 marker 与产品 tree 一致，`issues=[]`；`181514f7b98ed92b0f0acf714ab5cc279fa42aa509684dd3fb60287e4f5e5a03`|
+|`ci/windows-fix-r1/reviewer-official-publication-r1.json`|官方身份、完整 Ref 与唯一自身 run 对上，`issues=[]`；`702c444f8e574689fe38a8c178efbf6915a565fb078a0c7c1de2af5700efc531`|
+|`ci/windows-fix-r1/publication-staged.diff`|完整修复发布 diff SHA `3083510ecaeded92ac70a3964d9469273986c51cf62a92794ca8a5ac1bead993`|
+|`ci/windows-fix-r1/remote-ref.txt`|完整精确 Ref 原件 SHA `e25c47ad99fc43db0aeb26036fd89aeac0e4b62a96bd26e4ca05e1999ccaccd6`|
+|`ci/windows-fix-r1/reviewer-observe-r1/`|新自身 [Portability run 43658729462](https://github.com/626619403/Ergora/actions/runs/43658729462)，attempt 1／push／原分支／原 workflow；采集结束 `2026-11-15T00:34:21.611898Z`，run 为 `in_progress`，八 job 身份一致，22／30 必要步骤成功，无终态认证。|
+|`ci/windows-fix-r1/reviewer-observe-r2/validation.json`|隔数分钟后第二次实际采集结束 `2026-11-15T00:38:30.614377Z`；plan 与 Linux group 0／1／2／3／4 均 success，group 5 和 Windows all 在途，27／30 必要步骤成功，`violations=[]`，run 仍 `in_progress`。|
+|`ci/windows-fix-r1/reviewer-observe-r3/validation.json`|第三次实际采集结束 `2026-11-15T00:42:01.612383Z`，与前次隔约 3.5 分钟；同六个 job success、两 job 在途、27／30 必要步骤成功，`violations=[]`，无终态认证。|
+|`ci/windows-fix-r1/reviewer-observe-r4/validation.json`|第四次采集结束 `2026-11-15T00:45:18.216253Z`；plan 与六个 Linux job 全部 success，28／30 必要步骤成功，仅 Windows all 仍运行，`violations=[]`。|
+|`ci/windows-fix-r1/reviewer-observe-r5/validation.json`|第五次采集结束 `2026-11-15T00:48:32.627909Z`；仍为同七 job success、Windows all 在途、28／30 必要步骤成功，`violations=[]`，没有新增失败或终态声明。|
+|`ci/windows-fix-r1/reviewer-observe-r6/validation.json`|第六次采集结束 `2026-11-15T00:51:39.735368Z`；同七 job success、Windows all 在途、28／30 必要步骤成功，`violations=[]`，run 仍 `in_progress`。|
+|`ci/windows-fix-r1/reviewer-observe-r7/validation.json`|第七次采集结束 `2026-11-15T00:54:59.539687Z`；同一提交／attempt 已 `completed/success`，八 job／30 必要步骤全部 success，`violations=[]`；随后独立采集八 job HTML 与 terminal Ref，见下。|
+
+本次沿同一 workflow 的八 job／30 必要步骤核新提交自己的实际终态；前一失败 run `43655794070` 的 120 文件索引 `4ae3d930…69707` 保持原字节和 `request-changes`。本评审仅作只读观察与证据解析，不运行测试、安装、模型、服务，不触及 B3 产品或其验收。
+
+### 修复提交实际 CI 终态：成功，发布门禁关闭
+
+run [43658729462](https://github.com/626619403/Ergora/actions/runs/43658729462)／attempt 1 在 `2026-11-15T00:54:43Z` 实际为 `completed/success`，绑定完整 `82ea3f163e0c29759eb6ebef93fb2e58d87e983a`、push、`refactor/architecture-foundations` 及 `.github/workflows/portability.yml`。终态采集 `ci/windows-fix-r1/reviewer-terminal-r1/` 于 `2026-11-15T00:55:12.742668Z` 完成：run／jobs API、run HTML、八份 job HTML、terminal Ref 共 12 响应均官方 HTTPS GET／200。连同六份发现响应和其后六轮三响应观察，共 36 个独立响应，全部原始字节、大小、SHA 与元数据一致。各次进度采集相隔至少数分钟；终态采集用于对账已观察到的完成状态。
+
+|job|ID|实际终态|
+|---|---:|---|
+|plan|132643032877|success|
+|Ubuntu 3.11 group 0|132643079512|success|
+|Ubuntu 3.11 group 1|132643079528|success|
+|Ubuntu 3.11 group 2|132643079505|success|
+|Ubuntu 3.11 group 3|132643079584|success|
+|Ubuntu 3.11 group 4|132643079519|success|
+|Ubuntu 3.11 group 5|132643079514|success|
+|Windows 3.12 all|132643079529|success|
+
+30 个必要步骤逐个匹配 API 与官方 HTML 的同一 SHA／attempt、步骤名称、序号、conclusion 和精确开始结束时间，全部 success，`failed_steps=[]`。Windows wheel 构建安装、打包参考身份均 success；原失败的 `Native application regression` 在 `00:34:04Z` 至 `00:53:50Z` 实际 success，随后 `Windows PowerShell 5.1 installer and upgrade` 在 `00:53:50Z` 至 `00:54:38Z` 实际 success，job 在 `00:54:43Z` 成功完成。只据真实步骤状态认证其 CI 合同，不借前次公开失败的 pytest 数量填作本次测试计数。terminal 官方完整 Ref 仍指向精确 `82ea3f16…983a`，没有后继推送或其他 SHA 的结果混入。
+
+终态独立验证 `ci/windows-fix-r1/reviewer-ci-terminal-r1.json` 为 55,690B／SHA `01582c4841538f1a4c69e2e3a9be14a1995a950f6c91cf9773193d821a6f3f95`，`violations=[]`、`evidence_integrity=approve`、`ci_verdict=approve`，验证器 exit 0。四份采集／验证／索引脚本均逐份匹配预先固定的 provenance 摘要，并静态解析通过；本次没有运行 suite、安装、应用、模型、服务，没有重跑或取消 CI、平台写入、commit 或 push。
+
+最终修复证据索引 `ci/windows-fix-r1/reviewer-verification-index-r1.json`：107 文件／3,669,064B，索引本身 25,848B／SHA **`59f5d07b69cbbeb21c98e1308a11412b8b4570dbde3e4ee0bfe003ef4cc8cc1d`**。独立在索引生成后重新读取全部 107 条原件、计算长度与 SHA，零差异；结果 `reviewer-index-rehash-r1.json` 为 706B／SHA `83f07f8fa3a33dee3e97ac449de696697acfcd8c693d1a53bb58018105709378`，`issues=[]`／approve。该后验记录单列于索引之外；活动报告也排除，避免循环身份。索引连接原失败索引，重新核其 SHA 仍为 `4ae3d930ea781513acdb341acd34e2e77904265c78bba13b82e8abfbc9369707`，首次 failure 没有删除或转记为绿。
+
+**该固定修复提交的需求符合性 approve、可维护性 approve，开放 0／0；自身适用 CI 实际 success，发布失败门禁已关闭。** 本地源码／安装与实际 Linux 场景的证据仍各绑定原固定范围，后继 B3 提交和工作树不获转授。本次不新增真实 Temporal 服务、runner、训练、GPU、性能、OS／后代停止或完整循环认证。

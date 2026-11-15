@@ -57,3 +57,11 @@ r4固定四产品／原测试在source-scope-r4；十新场景，仍只有原tes
 前置b2自己的CI出现一个Windows测试平台标记遗漏，单独修复且不带本片产品。当前共享原test_training_submission因此另加该原测试的Linux skip，四产品及十新场景相对固定r4不变；该标记在b2原最终安装单独核Linux1通过，Windows以修复提交自己的CI为准。最终B3.1发布前会核此唯一机械差异，不为该标记重建未改产品／重跑模型或已验cycle。
 
 平台修正已单独普通发布`82ea3f163e0c29759eb6ebef93fb2e58d87e983a`，parent为上述产品实施基线9c9ffee；独立已核四blob／完整远端Ref和645产品tree不变，自己的CI43658729462在途。B3.1保持固定r4产品与验收，仅准备本地提交以便后继工作使用明确基线；前置修复自己的CI闭合前不推送B3.1。后继产品的本地实施不改变这些固定源码／wheel／证据身份。
+
+## B3.1普通发布
+
+前置修复82ea自己的CI43658729462八job／30必要步骤及原独立终核已全部通过后，B3.1已普通发布`b53bba613a3c02b14c69a6df9b0d526755d7e216`，parent`82ea3f163e0c29759eb6ebef93fb2e58d87e983a`，tree`133df8a95afdb763a00a2300a47fa7b34dbc760f`。11blob／完整diff逐字同staged、178本地链接零缺失；原reviewer已核固定本地提交与646产品／最终r4包／两安装同一，两轴approve／开放0／0。完整SSH远端Ref已核同一，发布原件在ignored `publication-remote-r1.json`；原reviewer继续核官方身份与本SHA自己的适用CI，终态未认证，后继产品暂不推。不合main、不强推，B3.2设计／产品不在此提交。
+
+b53自己的CI43660736309现终态failure：八job中六成功／两失败，30必要步骤28成功／两失败；Linux group1与Windows均为公共budget_clock提取后架构声明未同步，原失败与[独立终核](2026-11-15-training-cycle-authorization-review.md)保持。另片[边界修正](2026-11-15-budget-clock-boundary-regression.md)以b78单独普通发布，产品仍为原646件，完整安装边界16项及新独立两轴通过；仅由b78自己的CI与原reviewer终态补核关闭该前置门禁，不能将b53改记为CI成功。
+
+b78自己的CI43663286019现八job／30必要步骤全部success，原新独立最终两轴approve／开放0／0，精确交付门禁闭合；84件官方原证据与旧b53失败分别保持。B3.2随后才普通发布75d并跟踪其自己的CI，不将此终核转授后继。

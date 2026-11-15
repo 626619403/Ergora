@@ -1,6 +1,6 @@
 # B3.2：原训练提交的预算绑定与连续截止责任
 
-日期：2026-11-15。承接[预算／executor合同](2026-11-15-training-budget-executor.md)。具体设计r3已独立通过，B3.2b–d已实施并完成受影响安装验收，B3.2e最终本地两轴approve／开放0／0，发布与自己的CI待结算；详见[逐步交付](../delivery/2026-11-15-training-budget-submission.md)。前置B3.1原CI失败由b78边界修正单独闭合，不借本片结果。Kernel专家保留在v3优化路径，本片不改模板。
+日期：2026-11-15。承接[预算／executor合同](2026-11-15-training-budget-executor.md)。具体设计r3已独立通过，B3.2b–d已实施并完成受影响安装验收，B3.2e最终本地与固定提交两轴approve／开放0／0；已普通推送`75d1ee325288527f67fb1ea814332d1522ff4860`、完整SSH Ref同一，自己的CI待结算；详见[逐步交付](../delivery/2026-11-15-training-budget-submission.md)。前置b78边界修正自己的CI和独立终核均已闭合，不借本片结果。Kernel专家保留在v3优化路径，本片不改模板。
 
 ## 范围与实际接缝
 
@@ -58,7 +58,7 @@ fence之后，仅在原cleanup reserve内按原start receipt或原attempt的原r
 |B3.2b 原绑定与slot|原suite验证同cycle重读、换cycle／缺源拒绝新工作、原无预算保持；原attempt后unknown不得重发|已实施；r3五suite111通过／1跳过；r4同预算／换预算与lost-ack／缺源接缝通过，原失败分别保留|
 |B3.2c 连续owner|真实独立进程在首attempt前确认；accepted start先返回后，延迟实际native create越过截止，由owner自动原fence拒绝；held-start跨截止同样拒绝且不等submission锁|已实施；r4受影响安装accepted／held通过，真实Temporal控制流程47.4759秒通过，无executor主张|
 |B3.2d 失败与清理|owner真实失联且尚无fence时managed adapter仍拒绝create；受控普通探测阻塞越compute、registry锁阻塞耗尽reserve、fence目录fsync失败／延迟皆保留unknown；原bytes／slot／clock不变，同原fence恢复只flush／核原件且不重启owner；cleanup原run／取消协议及已完成轮保留|已实施；r4原15项12通过／3测试预期失败保持，修正预期与故障marker后四项精准重跑通过；覆盖final文件／目录fsync阻塞，不要求耗尽时存在final|
-|B3.2e 安装交付|新非editable core／SDK、原参考283保持、原suite受影响接缝与实际CLI、自身代码审查模板＋新fresh-context产品两轴、普通发布和自己的CI|r4两安装648逐字／283／依赖通过，自身原模板56.218秒approve；原fresh-context最终本地两轴approve／开放0／0，R1关闭；普通发布及自己的CI待前片门禁|
+|B3.2e 安装交付|新非editable core／SDK、原参考283保持、原suite受影响接缝与实际CLI、自身代码审查模板＋新fresh-context产品两轴、普通发布和自己的CI|r4两安装648逐字／283／依赖通过，自身原模板56.218秒approve；原fresh-context最终本地和固定提交两轴approve／开放0／0，R1关闭；已普通发布75d1ee3，原reviewer继续核远端与自己的CI|
 
 测试沿原`test_training_submission`及其SDK fixture；worker bootstrap和managed配置复用原`test_reference`／`test_services`接缝，不开新suite／矩阵。真实owner、进程身份与文件锁必须实际执行；SDK服务替身可模拟accepted／held／lost-ack与不可用控制面，但不能替测试手动fence。记录未改原实验文件和时钟／slot身份、实际耗时、进程收尾及模拟／真实服务的区别。若发现现有接缝无法满足合同，应在本片明确记录并最小调整设计，再实现，不以未来B3.3或c补证明。
 

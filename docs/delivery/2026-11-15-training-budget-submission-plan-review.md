@@ -17,7 +17,7 @@
 |---|---:|---|
 |[具体设计 r1](../plans/2026-11-15-training-budget-submission.md)|7841|`f758ec8f36de4e051299acfbdac770af97ccfa623e4f285982fbd0ff3afbfd30`|
 
-不可变副本与核查索引在本片 ignored [plan-audit/plan-r1.md](../../.ergora/checks/training-budget-submission/plan-audit/plan-r1.md) 和 [r1-index.json](../../.ergora/checks/training-budget-submission/plan-audit/r1-index.json)。索引固定实际长度、SHA、基线匹配与分支；公开设计后续修订不覆盖这个 r1 输入。
+不可变副本与核查索引位于本地ignored目录`.ergora/checks/training-budget-submission/plan-audit/`下的`plan-r1.md`和`r1-index.json`，不随GitHub仓库分发。索引固定实际长度、SHA、基线匹配与分支；公开设计后续修订不覆盖这个r1输入。
 
 已读根／源码／测试目录指引、`docs/PLAN.md` 当前检查点、[B3.0 r2 计划](../plans/2026-11-15-training-budget-executor.md)、[原计划独立审查](2026-11-15-training-budget-executor-plan-review.md)及当前 B3.1／B3.2 交付说明。主要实际路径：
 
@@ -107,7 +107,7 @@ B3.2b–e 尚无本片运行证据：原入口的绑定／省略 selector／换 
 |r2|12245|`13913de715bb2db97048ec083a62d4add430f117cecb01269751715abbe5ffdc`|已读完整修订；保持固定副本，未先行给该中间版通过结论|
 |r3|12979|`1b14d600b7d58a41a4d3d5277fd9a435dd3b3eed6e843de1c8d835916b5b2b3a`|本轮最终具体设计，公开文件与固定原件逐字相同|
 
-副本在本片 ignored [plan-audit/plan-r2.md](../../.ergora/checks/training-budget-submission/plan-audit/plan-r2.md)、[plan-r3.md](../../.ergora/checks/training-budget-submission/plan-audit/plan-r3.md)，续核索引为 [r2-r3-index.json](../../.ergora/checks/training-budget-submission/plan-audit/r2-r3-index.json)。HEAD 仍为 `b53bba613a3c02b14c69a6df9b0d526755d7e216`；r1 索引内已读产品／测试逐份核字节和 SHA 保持，未见 B3.2 产品变化。
+副本位于上述本地ignored目录中的`plan-r2.md`、`plan-r3.md`，续核索引为`r2-r3-index.json`，不提供GitHub下载链接。HEAD仍为`b53bba613a3c02b14c69a6df9b0d526755d7e216`；r1索引内已读产品／测试逐份核字节和SHA保持，未见B3.2产品变化。
 
 本轮对照完整 r2、r3 与二者差异，重新核原 create 的 registry／虚调用、worker factory／queue 与 managed service 构造接缝，以及已读监督和写入行为。另按实施方提供的依赖事实直接读取 `contracts` 导入、native lock 的包声明、`pyproject.toml` 和原训练 service 命令；这四份新增身份亦固定于索引，没有运行环境探测、安装或试启动。
 

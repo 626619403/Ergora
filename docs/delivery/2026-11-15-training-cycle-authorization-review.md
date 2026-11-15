@@ -169,3 +169,75 @@ r4 `training_cycles.py:316` 的私有 `_durable_status` 由只读状态和同 ID
 本结论只关闭 **B3.1 最终本地授权／准入片** 的审查与上述证据，不认证普通发布、远端身份、自己的 CI 或前置 b2 CI。前置报告中的 CI 状态不由本 reviewer 转授；尚未发布的 B3.1 仍需自己的发布与适用 CI 门禁。B3.2／B3.3／Q4.2c／d、连续 owner、attempt／slot、实际 executor／后代停止、真实 Temporal、GPU／训练质量／收益全部保留后继义务。Kernel 专家仍在原 v3 路径，不能成为执行授权。
 
 reviewer 全程未运行 suite、模型、服务、安装或平台操作；只做必要源码／原件读取、SHA／字节／执行位／XML／只读数据库核对及静态 diff 检查。本报告外没有写入。上述限制不是产品未完成项的替代证明。
+
+## 固定本地提交续核：尚未发布
+
+已只读核实际 Git 对象及 `publication-staged-r1.json`／`.diff`、`publication-local-r1.json`，本地普通提交为 `b53bba613a3c02b14c69a6df9b0d526755d7e216`，直接 parent 为 `82ea3f163e0c29759eb6ebef93fb2e58d87e983a`，tree 为 `133df8a95afdb763a00a2300a47fa7b34dbc760f`。该 parent 包含前置 b2 单独处理的原测试 Linux 标记；B3.1 产品实施基线仍是 `9c9ffeee517deff2ec8cd2ffe572744e3c2cd682`。
+
+实际 commit diff 的完整 107650 字节与固定 staged diff 相同，SHA256 为 `46d75cbe45beb2c13c2004f99ca13820fb06ef49146e8096a51ac4917f16cbe0`；11 个变化路径的实际 Git blob OID、字节和 SHA256 逐一同两份 publication 索引，未扩大文件范围。四产品 blob 与最终已审 r4 完全相同；另直接读 commit 全部 646 产品文件，与原 r4 wheel `c986db854e90bb77c5f4c94ff5ecbc9b72aa526fad9852ae632c61ad2f88bd1d` 和 core／SDK 两套实际安装逐份比对相同，包含 283 参考、原 schema／preset 和数据库 owner。
+
+commit 中原 `test_training_submission.py` 为 63882 字节／SHA256 `a9525bac126d3e69608c0c2cba83188d7770da501bfd46306593176a08698ff7`。与固定 r4 的唯一文本差异是 `test_original_registration_is_rechecked_in_the_selected_training_process` 前的一行 Linux `skipif`，去该行后全文逐字相等；该行已在 parent 82ea 存在，本次 B3.1 不再次修改此标记，十个新增场景不变。不借该机械差异重跑未改产品或把前置 CI 转授本片。
+
+已按固定 commit 的文件树独立核六份变化 Markdown 的 178 个本地链接，缺失 0；实际差异静态检查通过。额外 Windows 回归文档变化仅同步前置修复的既有固定身份／在途 CI，没有产品变化或提前终态主张。未跟踪的 B3.2 设计文档不在该 commit，亦没有混入后继代码。
+
+**固定本地提交需求轴 approve／开放 0；可维护性轴 approve／开放 0。** 这绑定上述本地对象与既有最终本地证据，不表示已推送或发布成功。远端完整 Ref、B3.1 自己的适用 CI 均待后续原件；前置 82ea 的 CI `43658729462` 也不在本轮认证范围。此次仅追加本报告，没有测试、模型、安装、提交、推送或平台写入。
+
+## 普通远端发布与自身 CI 续核：已确认失败，尚待整次终态
+
+2026-11-15 UTC 00:58:39 起独立匿名读取官方 GitHub。`publication-remote-r1.txt`／`.json` 中 SSH 完整 Ref 为 `b53bba613a3c02b14c69a6df9b0d526755d7e216 refs/heads/refactor/architecture-foundations`，原 txt SHA256 为 `01f12787e87952f0df5ff1d1733dd89faf05fc509265d1238b81416be0754617`；官方 Ref REST 200、commit HTML 200 和 branch HTML 200 另与同一完整 SHA／原 parent 相符。普通远端身份已确认；该事实不等于自身 CI 通过。
+
+本片自己的 Portability 为 [run 43660736309](https://github.com/626619403/Ergora/actions/runs/43660736309)，run number 226、attempt 1、push，开始于 `2026-11-15T00:57:18Z`。官方 Actions 列表嵌入数据把该 run 明确绑定本片完整 SHA；官方 run HTML、job HTML 与首方 `job_groups_batch?attempt=1&batch=0&size=200` 导航 JSON 相互核对。导航明确 `totalCount=8`／`hasMore=false`，六个 Linux group 和一个 Windows native job 加 plan，没有以单个 matrix 预览替代完整枚举。
+
+### R3：共享时钟的原边界测试未同步，自身 CI 已实红
+
+Linux group 1 job [132649282883](https://github.com/626619403/Ergora/actions/runs/43660736309/job/132649282883) 于 `2026-11-15T01:01:59Z` completed／failure；步骤 6 `Native application regression` failure。官方原 HTML 的注释保留完整失败和统计：
+
+```text
+tests/test_architecture_boundaries.py::test_foundations_do_not_depend_on_application_modules[reference_budget-allowed6]
+tests/test_architecture_boundaries.py:51: assert local_dependencies[module] <= allowed
+AssertionError: assert {'budget_clock'} <= set()
+1 failed, 253 passed, 6 skipped, 1801 deselected in 250.96s
+```
+
+固定 commit 的 `reference_budget.py` 已按本片设计导入共享 `budget_clock`，而原 `test_architecture_boundaries.py` 的 parametrization 仍把 `reference_budget` 的允许本地依赖设为空，也未单列共享时钟的纯标准库基础边界。已直接读固定两个产品 blob 和原测试确认；这不是下载、安装或 runner 的暂态错误。该 job 的 wheel 构建／安装、packaged reference identity 和 observation 上传均 success。
+
+实现方复现入口为固定 commit、其非 editable wheel 的 `python scripts/ci/run.py --group 1 --output ci-results`；最小选择为 `python -I -B -m pytest -q 'tests/test_architecture_boundaries.py::test_foundations_do_not_depend_on_application_modules[reference_budget-allowed6]'`。reviewer 未执行这些命令。最小修正应同步真实共享时钟依赖并保留其无应用层依赖／仅标准库约束，不能通过删边界断言、跳过或改 CI 选择掩盖失败。已即时向实现方发送精确步骤、原件路径和复现命令。
+
+原件在 `.ergora/checks/training-budget-executor/ci/reviewer-publication-r1/20261115T010451303908Z-job-132649282883-html.html`，结构化摘录为同目录 `failure-observation-r1.json`。匿名步骤 log URL 返回 404，原响应和 headers 已保留；没有认证后取得完整 log／JUnit artifact 的主张。官方 job HTML 本身已明确给出上述断言、位置和 suite 统计。
+
+截至官方 `20261115T010632162645Z-jobs-navigation-api.json`，plan 和 Linux group 0、2、3、4、5 success，group 1 failure，Windows group all 仍 in_progress。因此 **本片自身 CI 门禁当前 request-changes，R3 开放 1；不可写成整片发布验收通过**。此前本地 r4 的限定证据与 R1／R2 处置保持原记录，但不覆盖这条新增失败。继续观察所有 job 与 run 的终态，最终 8 job／30 个必要业务步骤对账和证据索引另追加；本段没有提前宣称终态。
+
+匿名 REST 后续因共享出口 IP 的每小时 60 次额度耗尽而返回 403／remaining 0，原响应／headers 同样保留。此后用无需认证的官方 HTML 和首方导航 JSON 继续观察，不把 REST 错误写成成功。前置 `82ea3f163e0c29759eb6ebef93fb2e58d87e983a` 的 run `43658729462`／attempt 1 成功，仅是实施方及其原 reviewer 的独立前置证据，绝不转授本片。此次只追加本报告和授权的忽略审计证据，没有运行产品、测试、模型、安装或平台写入。
+
+## 自身 CI 最终终核：failure，R3 保持开放
+
+已从 UTC `2026-11-15T00:58:39.179314Z` 持续低频观察至 `2026-11-15T01:27:26.139338Z`，覆盖整次终态。限流重置后的官方匿名 REST 恢复 200，明确本片完整 SHA `b53bba613a3c02b14c69a6df9b0d526755d7e216`、Portability run `43660736309`、number 226、attempt 1、push；最终 `status=completed`、`conclusion=failure`、`updated_at=2026-11-15T01:25:45Z`。官方总 HTML 显示 Failure，与最终首方导航、attempt jobs REST 和八份最新 job HTML 全部一致。此轮没有取消原 run 或用后继运行代替它。
+
+|实际 job|Job ID|最终结论|
+|---|---:|---|
+|plan|132649252951|success|
+|Native Ubuntu 3.11 group 0|132649282871|success|
+|Native Ubuntu 3.11 group 1|132649282883|failure|
+|Native Ubuntu 3.11 group 2|132649282852|success|
+|Native Ubuntu 3.11 group 3|132649282901|success|
+|Native Ubuntu 3.11 group 4|132649282881|success|
+|Native Ubuntu 3.11 group 5|132649282870|success|
+|Native Windows 3.12 group all|132649282859|failure|
+
+最终 **8 job 全部终态，6 success／2 failure；30 个必要业务步骤完整出现一次，28 success／2 failure**。30 项取自固定 commit 的实际 workflow：plan 读分组 1 项，七个 native 各构建安装、参考身份、原生回归、上传 4 项，以及 Windows PowerShell 1 项。固定 workflow SHA256 为 `be814a956237b8a64258f396fa81a972ff764ceaa3ea16ffefa8e82be89a4353`；原分组配置为 `b50d95a1954d6e2612183feccc7b5a764c9109c479997dec7fe628127b55981e`。逐项对比 REST 和 HTML，名称、job 身份、状态及每个必要步骤的结论一致；所有非空 HTML log URL 钉住本片完整 SHA 和各自 job ID。
+
+两项失败都是 `Native application regression`，且都只列同一条 R3：`test_foundations_do_not_depend_on_application_modules[reference_budget-allowed6]` 的 `{'budget_clock'} <= set()`。Linux group 1 为 **1 failed／253 passed／6 skipped／1801 deselected，250.96 秒**。Windows 为 **1 failed／1175 passed／830 skipped／16 subtests passed，1562.36 秒**；官方 annotations REST 200 与最终 job HTML 均保留该原输出。不能把其中跳过项、subtest 或 deselected 项合并成普通测试通过数。
+
+Windows 原生回归于 `01:24:39Z` failure 后，PowerShell 5.1 安装升级实际继续执行并于 `01:25:40Z` success，结果上传于 `01:25:41Z` success，job 收尾于 `01:25:43Z`。七个 native 的构建安装、参考身份、上传均成功。六个 Linux PowerShell 步骤依原 workflow 条件 skipped；另外两个失败 job 的 setup-python post 步骤 skipped，均不在上述 30 项之内。其余基础步骤没有失败。没有第二条失败测试或把 Windows 的最终安装升级结果误报为在途。
+
+终态后 `01:27:24Z` 另抓官方 branch／commit HTML，两个 branch `refInfo.currentOid` 仍为完整本片 SHA，commit OID 和唯一 parent `82ea3f163e0c29759eb6ebef93fb2e58d87e983a` 亦相符；其后才通知实现方原 run 已终态，可以继续既有授权内的独立修复发布。该时点远端身份原件保留，不依赖后续 branch 是否前进。
+
+### 最终证据索引与判定
+
+授权忽略目录 `.ergora/checks/training-budget-executor/ci/reviewer-publication-r1/` 已保留原始 HTTP bodies、headers／时间／状态／SHA 元数据、固定 workflow／分组、逐字复制的实施方发布输入，以及只读审计 helper 和结构化核对。`capture-integrity-r1.json` 核全 **80 份原始响应** 字节与 SHA 相同：71 个 HTTP 200、7 个 HTTP 403、2 个 HTTP 404；错误响应也保留，没有删除限流或不可取得原件的记录。`terminal-summary-r1.json` 记录完整 8 job／30 步骤交叉对比，`final-remote-identity-r1.json` 记录终态后远端身份。
+
+`evidence-index-r1.json` 索引自身以外的 **142 文件／10117940 字节**；索引为 **25421 字节**，SHA256 **`a7d98b4eb257c0ce1bd3583eefab8de05ab4ae685e93050aafe12f1ccece6c84`**。原完整 log／可下载 workflow artifact 没有取得，不把官方页面／annotations 的原输出扩称完整 JUnit 或全部日志审计。
+
+**普通远端身份已确认；本片自身 CI 终态 failure；本片发布验收需求轴 request-changes，R3 开放 1。** 原本地 r4 的 R1／R2 已关闭和产品可维护性 approve 保持原候选、原证据及原范围，不能覆盖新发现的边界测试合同遗漏。实现方已准备独立小修复，交由另一 reviewer 核对；本 reviewer 未核其修后候选或运行，R3 不在此旧固定 SHA 上关闭。修复应有自己的固定身份、审查和适用 CI，前置成功及未来成功均不转授本次失败。
+
+最终仅追加本报告及授权的忽略审计证据，没有修改产品、测试、其他文档或 B3.2 在途内容；没有执行 suite、模型、安装、服务、提交、推送或平台写入。B3.2／B3.3 和实际执行／停止／训练的后继义务仍保持上述界限。

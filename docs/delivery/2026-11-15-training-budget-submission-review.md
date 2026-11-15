@@ -38,3 +38,17 @@ r3 首轮实际核验与历史证据边界：
 本轮实际只读核查的命令源文与输出保存为 ignored reviewer 的 `identity-check-r4.py/json`、`native-evidence-r4.py/json` 和 `supplemental-evidence-r4.py/json`；没有重新运行昂贵服务、安装或行为 suite。冻结 r4 后仅 `docs/PLAN.md`、本片计划、交付的当前状态／历史标识更新，经逐项核对与实际终态一致，没有改变设计合同或产品。报告源码链接改为仓库可用的 `#L` 锚点并按最终源码复核；状态同步不触发新产品审查。
 
 最终本地开放 finding：需求 0、结构维护 0，R1 已关闭。普通发布与自己的 CI 仍须分别结算；前置 B3.1 的原 CI 失败与 b78 修正继续保留其原片身份。Kernel 专家保留在 v3 优化路径；B3.3、自动循环及真实业务优化继续按原计划通过工具验收。
+
+**固定本地提交补核。** 同一审查者沿 Git 原件核对 `75d1ee325288527f67fb1ea814332d1522ff4860`：唯一 parent 为 `b78f7b233316f3248c5a5865d90e6a23870693ac`，tree 为 `bf234c59476e777f1307bcb60faffc56b79b2b92`。23 个变更 blob 的 bytes／SHA／Git OID 与原 staged、local 两份清单完全匹配；相对冻结 r4 的 22 件，只有 `docs/PLAN.md`、本片计划和交付三份当前状态／历史记录不同，逐项阅读未改变设计合同，另加入本报告原文 SHA `05daf601eb461d985ee8786de960f6726f8bfae846039e32d09c9fd98ef20b53`。没有 B3.3 设计／产品或旧片五份记录夹带。Git archive 的 648 个产品文件与 r4 wheel、core／SDK 两安装原件全部逐字相同；没有重跑安装、行为 suite、服务或训练。需求 approve、结构维护 approve，阻塞 finding 仍为 0／0，R1 保持关闭。
+
+本次完整固定提交的静态检查有明确诊断：`git diff --check b78f7b233316f3248c5a5865d90e6a23870693ac 75d1ee325288527f67fb1ea814332d1522ff4860` 返回 exit 2，`src/ergora/reference_training_worker.py:141: new blank line at EOF.`。该空行已存在于受审 r4 原件，属于非阻塞格式项；先前 worktree diff 通过未覆盖当时的 untracked 新文件，不能据此前检查宣称固定 commit 的差异检查全通过。
+
+按固定 Git tree 核对 8 份 Markdown 的 313 条相对链接，设计审查报告中的五个 `plan-audit/` 证据目标仅存在于本地 ignored 目录，不能作为 GitHub 下载链接；其余相对目标存在。本报告 15 处链接及源码 `#L` 锚点另核有效。固定 PLAN 另有一处“最终独立终核待”的旧状态短语。作者后续未提交的纯文档记录已把五项标为明确本地路径文本并同步该状态；这些记录修正不属于上述固定提交，也不改变产品批准范围。本补核命令原文与输出保存在 ignored reviewer 的 `commit-check-local-r1.py/json`，三份状态差异保存在 `commit-status-docs-local-r1.patch`。
+
+本补核只认证固定本地提交及其与已验 r4 原件的身份；远端精确发布、自己的 CI 和后续记录提交仍待分别核结。
+
+**普通远端发布与自身 CI 首轮观察。** 已核作者普通精确 push 的 exit 0／11.7834 秒原件和完整 SSH Ref：`75d1ee325288527f67fb1ea814332d1522ff4860 refs/heads/refactor/architecture-foundations`。UTC `2026-11-15T01:58:43Z` 起独立匿名 GET 官方 GitHub，Ref REST、commit HTML 和 branch HTML 均为 200 且绑定完整 75d SHA；commit 页面中的唯一 parent 与全部 23 个变更路径同已审本地对象。完整 SHA 绑定上文已验 tree／blob 身份。commit REST 与 runs REST 两项实际返回共享 IP 配额用尽的 403，原错误／headers 保留，没有记成成功，也未据此声称直接取得远端 tree／blob REST 原件。
+
+随后由官方 Actions 页面发现本 SHA 自己的 [Portability run 43665465985](https://github.com/626619403/Ergora/actions/runs/43665465985)：run number 228，push 于 `2026-11-15T01:57:18Z`，完整 commit 链接为 75d；run 页面和首方 `job_groups_batch?attempt=1&batch=0&size=200` 均为 200，明确 attempt 1。UTC `01:59:54Z` 导航显示 `totalCount=8`／`hasMore=false`，plan 为 success，六个 Linux group 和 Windows all 共七 job 为 in_progress，CI 门禁仍在途。必要步骤由固定 75d workflow／六组显式分组导出，仍为八 job／三十项，不借用 b78 的 CI。
+
+独立发布原件与命令保存在 ignored reviewer 的 `ci-publication-r1/`，首轮索引为 `publication-identity-r1.json`、`workflow-contract-r1.json`；每次 GET 的实际 URL／时间／status／完整响应 bytes／SHA 与 headers 均保存。此后低频观察同 run 终态，再核各自适用步骤；原 r3／r4 失败和固定提交静态诊断保持，尚未认证自身 CI 通过。

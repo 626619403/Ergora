@@ -1,6 +1,6 @@
 # B3.2 原训练提交与连续截止责任：交付记录
 
-日期：2026-11-15。[具体设计](../plans/2026-11-15-training-budget-submission.md)r3已独立通过；当前r4已完成安装／受影响回归、真实控制流程、自身模板及最终独立产品两轴核验，发布／自己的CI待结算。下列初始与中间记录保留当时状态，最新结果见末节。原B3.0合同和B3.1本地授权验收见[前置记录](2026-11-15-training-budget-executor.md)，不能替代本片证据。
+日期：2026-11-15。[具体设计](../plans/2026-11-15-training-budget-submission.md)r3已独立通过；当前r4已完成安装／受影响回归、真实控制流程、自身模板及最终独立产品两轴核验，固定75d1ee3已普通发布，自己的CI待结算。下列初始与中间记录保留当时状态，最新结果见末节。原B3.0合同和B3.1本地授权验收见[前置记录](2026-11-15-training-budget-executor.md)，不能替代本片证据。
 
 ## 初始设计记录
 
@@ -61,3 +61,15 @@ r4原15项受影响安装回归为12 passed／3 failed，241.56秒，外层242.6
 原fresh-context评审者已完成[最终报告](2026-11-15-training-budget-submission-review.md)：需求approve／结构维护approve，开放0／0，R1/P2关闭。固定22件scope SHA`ba4dc4dd5c50876d00d8b70f00d062593887f4ef0f9c7166e9efb2c648caba58`，原完整diff SHA`82c1975a13084f18d3063b14e1d531b5d82ea67b1f1de9076cb4141490bc26a9`；后续仅计划／交付当前状态更新，未改产品。独立逐字核两包648件、三版173测试快照、r3实红／原失败／r4b精准检查与自身结果；实际核真实流程23项原bytes／CLI／收尾、五个已知owner／helper身份与原session均无活进程，服务socket及两端口已释放。15处报告链接／锚点及差异检查通过，原结论和四项核验输入／JSON在`reviewer/`。没有重跑昂贵服务来替代原件核查。
 
 本地实施、运行和独立审查门禁已通过；普通精确发布及本SHA自己的适用CI仍待前片b78门禁后结算。B3.3实际executor／后代停止、Q4.2c自动循环与真实训练继续开放，原失败各归原候选。
+
+## 固定本地提交
+
+已固定`75d1ee325288527f67fb1ea814332d1522ff4860`，parent为b78，tree为`bf234c59476e777f1307bcb60faffc56b79b2b92`。23个blob与staged逐字相同，原22件仅三份计划／交付状态同步并加入原产品报告；没有B3.3产品或旧片记录夹带。原评审者独立核完整commit、两包648逐字和原283保持，本地需求与结构维护仍approve／开放0／0，远端和自己的CI未认证。
+
+固定提交补核纠正静态检查口径：此前worktree `git diff --check`没有覆盖当时untracked新文件；完整commit diff报告worker末尾一个额外空行，为非阻塞格式诊断，不能说固定提交差异检查全部通过。313条相对链接的本地exists核查可见五个ignored证据路径；固定Git tree不可下载，后续纯文档记录将其改为明确的本地ignored路径文本，并同步PLAN的一处旧终核状态。原检查／诊断保存在`reviewer/commit-check-local-r1.json`，不重跑未改的产品、安装或服务。
+
+## 普通精确发布
+
+前置b78自己的CI43663286019八job／30必要步骤及原新独立终核两轴均通过后，已普通推送`75d1ee325288527f67fb1ea814332d1522ff4860`。push成功11.783秒，SSH完整远端Ref与固定本地提交同一，原stdout／stderr及`publication-remote-r1.json`保持；没有强推或合main。原产品评审者继续核固定远端和该完整SHA自己的适用CI，不将b78或r3套件通过转授本片。
+
+原评审者已核SSH完整Ref、官方Ref REST与commit／branch HTML绑定完整75d，parent和23路径同一。官方commit／runs REST因共享IP quota返回403，原件保留，未冒称取得远端tree／blob REST；沿首方Actions页面发现本SHA自己的[Portability43665465985](https://github.com/626619403/Ergora/actions/runs/43665465985)／number228／attempt1，push于01:57:18Z，首轮完整八job无遗漏，plan成功、七native在途。30必要步骤从本SHA原workflow导出，终态尚未认证，后续低频沿同一run核验。
