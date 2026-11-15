@@ -48,3 +48,11 @@
 仍须**发布后准确联合候选自己的全部官方CI**验证新六组组合、其资源收尾和原时限；六个Linux job须在原整个job20分钟内，Windows保持原要求。旧478的成功组、b653本机通过、7ed77c9源码收集及源结构模板均不能代替该结果。未取得之前预算目标／正式发布验收保持pending；不认证本机后继组合、原生Windows或总workflow性能，不自动合main。其他树后继消费者的测试不纳入本片证据。
 
 原件均位于项目 ignored `.ergora/checks/ci-training-shards/` 下的 `final-r1/`、`final-r2/`、`installed-py311-r1/`（含`cleanup-r3/records/`）、`self-review-r1-codex/`、`public-run-r1/`；计划入口为[本片计划](../plans/2026-11-16-training-ci-shards.md)，实施状态见[本片交付](2026-11-16-training-ci-shards.md)。
+
+## 固定导入与最终自身模板短终核
+
+主树已真实 merge 到 `5e48b9e80f301d4b16793f43008a3ffd1bd05f4c`，独立读取 Git 父提交为 `23316ea20f9361f054426ba881502ff75a620dce` 与已审 `7ed77c9c1eebc0e16c2f9024c62b0d4fd25b7220`。直接比较固定 merge 与7ed的 `src/ergora`、`tests`、`scripts`、`.github`、`pyproject.toml`，差异为空；两固定提交及当前工作区JSON摘要均为 `186e719860ad0cde5ce01d88bfbe1013320395d860acb5434954b1f9b3360c92`，与私有 `final-r2/import.json`一致。当前工作区仅另一片execution-consumers交付修改及未跟踪execution-product-review，不纳入本片待推内容。本次仅核固定身份与现有原件，没有重新扫描、安装或测试。
+
+最终自身原模板r2已真实调用Codex，run `50b8dd70479041518c1dcaeab7ceced3`，32.761107秒、exit0、approve；独立读取 `self-review-r2-codex/summary.json`、`review.md`及该run原`result.json`，result摘要 `141f2e313967ca74109074462aa712c8b0275f020a1208fd753ceb5c342aeab1`与summary同一。其记录19完整文件／400,825字节、3继承资源、570,067字节stdin，input digest `d6bd654accbe916111ef5f8390352e3469785e9c6ab38dfed71549037a09462b`。原回复覆盖af176→7ed supplied-source，明确未独立认证私有原件、未执行测试，未认证新组组合／Windows／预算；本报告不扩大其认证范围。
+
+**固定导入短终核：需求／维护性两轴approve，开放0；5e48b9e具备普通发布准入。** 源码与测试／CI身份承接本报告已审7ed，发布后仍须准确5e48b9e或明确后继联合候选自己的全部官方CI。远端身份与各job原时限尚待发布后观察，本地导入和最终自身模板不能替代它，不自动合main。

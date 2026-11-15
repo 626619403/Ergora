@@ -116,3 +116,5 @@ JSON后继已固定`7ed77c9c1eebc0e16c2f9024c62b0d4fd25b7220`，工作树clean�
 私有验证器最初误用`Counter(mapping)`，把snapshot字典值当计数而失败；修成`Counter(mapping.keys())`后仅重算同一原snapshot／phase，没有重跑或改写两次收集。`initial-verifier-error.json`、原request/result、`collect-balanced.py`及`verify-balanced.py`保留方法和修正。最终独立审查继续直接读取这些原件，不以作者验证器通过代替独立判断。
 
 最终自身原结构模板对af176→7ed完整diff／19完整文件400,825字节真实调用Codex32.76秒approve，三资源与完整任务实际进入570,067字节stdin；run=`50b8dd70479041518c1dcaeab7ceced3`、input digest=`d6bd654accbe916111ef5f8390352e3469785e9c6ab38dfed71549037a09462b`，原结果SHA256=`141f2e313967ca74109074462aa712c8b0275f020a1208fd753ceb5c342aeab1`。`self-review-r2-codex/`保留原prompt／回复／命令，只认证supplied source。[fresh最终终核](2026-11-16-training-ci-shards-final-review.md)独立重算原件后需求／维护性两轴approve／开放0，允许固定7ed导入当前开发分支并普通发布；新组合与准确候选自己的全部官方CI／原时限仍未认证，不自动合main。
+
+真实导入merge=`5e48b9e80f301d4b16793f43008a3ffd1bd05f4c`，parents为主控文档checkpoint23316ea及已审7ed77c9。与7ed的`src/ergora`、`tests`、`scripts`、`.github`和`pyproject.toml`差异为零，groups SHA186e7198保持；`final-r2/import.json`保存原Git观察。主树另有执行消费者agent尚未提交的报告，不纳入本次导入／发布；其代码仍只在专属树，不能混作本轮CI结果。最终身份终核后普通推送当前开发分支，准确官方run另记。
