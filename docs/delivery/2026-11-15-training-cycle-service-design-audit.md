@@ -206,3 +206,44 @@ SDK 1.34.0 的 `Worker.shutdown()` 发起 shutdown 并等待完成；其 run 文
 这些反例优先扩展既有 `test_training_submission.py` 的 controller dispatch／cycle operations／pending-root 接缝、`test_training_runtime.py` 的真实原入口、`test_services.py` 的 Supervisor 夹具与现架构检查；只有 SDK 路由／服务隔离部分需要真实 Temporal。测试 service 替身能验证编码与原 H 错身份，不能证明真实 poller 配额／关闭／标准 sandbox。
 
 下一步是把 A1/A2、B1 和 C2 的具体选择合入主控服务设计并独立终核，固定前置 c1b1 产品基线后实施 b2a。execution／collect／正式总 Workflow／标准 sandbox／accepted-round／第二候选仍开放；本报告没有授权或证明这些后继能力已经存在。
+
+## r2 独立设计复核：2026-11-16
+
+本节延续原设计 slice，由同一独立审计者 `cycle_service_design_interfaces` 复核主控 r2 处置；没有另作产品源码验收，也不重写上文初审历史。根合作规则／当前计划和 Git 状态已重新核对。仅追加本节，未改服务方案、PLAN、产品或测试，未运行模型／安装／服务。
+
+**需求轴：设计 approve，开放阻断 0。维护性轴：设计 approve，开放阻断 0。r2 已足以开始其限定的 b2a 服务实施。** 此结论仅覆盖冻结 r2 的四项活动、原 owner 接线、独立配额与关闭合同，不批准正式总 Workflow、后继候选、执行／接受或自动循环上线。产品实施后仍须按原门禁获取实际验收与新的独立产品审查；设计通过不使未运行能力变为可用。
+
+### 本次实际身份核对
+
+- 产品基线为 `d5b58912e4f20c96a52f7c0138b8c7c3d1a97b50`。针对 worker／protocol／submission／runtime／services／reference／training_cycles 七个必要 owner 的 `git diff <baseline> -- <paths>` 为空；本次未把 BR 资源／README 或 CI fixture 的并行差异纳入服务批准。
+- 主控冻结的 `design-r2.md` 为 **16,568B**，SHA256 `5f2903923b087348e87247355ff9da4e11633c30dc4049c24be039d756b8276b`；与其 JSON manifest 及当前[服务方案](../plans/2026-11-15-training-cycle-service-boundary.md)逐字相同。
+- 冻结 `design-r2.patch` 为 **14,245B**，SHA256 `6b9914170921598d8fb2e0b8ccbbb79dcc90e30974d11a8a275dbd5995eedd7c`；与基线到当前服务方案的准确 Git diff 逐字相同。冻结原件保存在主控 ignored 持久证据目录，不以其他工作区方案替代它。
+- 追加前原报告 **27,212B**／SHA256 `1b3eccb785d7c0ab50ee67d7e5425e3b910da72ed20fe9decbe673154e1d32b7` 与基线中本报告完全一致。本次保留该完整历史前缀。
+- 复读了现 `validate_cycle_operation`、`_dispatch_controller`／stop fanout、`lookup_controller_submission`、`_record_controller`、旧 `_serve` 等具体接缝；没有重新运行 c1b1 或 SDK／服务探针。r2 方案四个本地文档链接的文件目标均存在。
+
+### 原阻断的逐项处置
+
+|原项|冻结 r2 中已明确的处置与源码可行性|复核结论|
+|---|---|---|
+|A1 实际 SDK 来源／首 receipt|方案第45–53行固定 adapter 来源字段、H context、新冷 mode、实际 namespace 比较与一个 observation window。缺 receipt 时向原 `lookup_controller_submission` 显式传 actual run，并在 `_record_controller` 前核完整身份；该现有 lookup 已接受显式 run 并核 first／original／started input／memo，原 writer 继续重核授权和无覆盖记录。没有另造投递算法或凭活动身份授予 owner|设计关闭|
+|A1 已绑定 stop 的离线语义|第51行把已有完整 receipt 的 stop 与普通远端认证区分；各 notify 不增加 SDK 查询，原显式本地 stop 也不新增 SDK 前置。缺 receipt 的 SDK stop 则只按同 attempt 认证，失败保持 unknown；没有把坏／缺 receipt 解释为本地执行权|设计关闭|
+|A2 顺序与重投|第41、45行固定新 start 仅 ordinal0、attempt>1 仅观察／对账，ordinal>0 在 intent／Popen 前拒绝；已有同 binding reconcile 不 prepare。这样没有利用现 `bind` 只校验所选 ordinal 的能力，绕过尚未交付的 c1d 前驱接受／索引门槛|设计关闭|
+|B1 完整结果／文件引用|第57–63行固定公共 envelope、每项父侧 stopped／returncode、S 从真实原 stdout 取得 raw SHA／长度、完整 frame 验证和无文件 unknown 全内联；保留 `2+2N` 全部分支，单分支构造失败不阻断 peer，超限明确非重试失败而不截断。现 S 已拥有原 request 与 stdout 的生命周期及 stopped-before-read 顺序，扩展可留在原 owner，不需新增持久聚合账本|设计关闭|
+|C1 独立服务／配额|第67–69行固定 cycle 入口和真实命令消费者、独立 PID、两个明确 queue／Worker各1槽、SDK 可选装载、旧 Supervisor 缺 program 的可见拒绝；budget Worker 原 queue／8槽和参考资源保持。没有把同 queue 的注册集或较大普通配额当作独立 stop 配额|设计关闭|
+|C2 关闭与强杀|第73–75行固定新服务 `stopwaitsecs=70`，normal grace0 先 shutdown、stop 保留到 normal 实际收尾，再等待 stop 及两个 run／shutdown tasks；SIGTERM／SIGINT／fatal统一收尾。区分未交接根的精确 wait、已交接根沿原授权自持及超时强杀后的业务 unknown，未把70秒称为不可中断 OS 情况的回收保证|设计关闭|
+|D 一次窗口／恢复|第30、47、53行固定冷认证全程共享 observation bootstrap，新 start 再持原一次 compute∩control window，后阶段 context 与原 prepare request一致；已有 intent／attempt不给新 offer，恢复不能续授权。明确指出 observation 构造器需要接纳传入 window，故不是照搬当前会新开 observation 的调用方式|设计关闭|
+
+接口名称、字段分支和调用者已足够具体，剩余 strict 转换器的逐字段实现、内部结果枚举及 adapter 注册方法属于本片的实施工作，应从已固定语义与原事实字段导出，不再引入独立调度状态。尤其不能在实现中把“完整观察”换成“执行成功”，或以另一个 H／SDK RPC 重置已固定的窗口。
+
+### 尚缺的实证：产品验收必须逐项完成
+
+以下均为**未运行的产品验收条件**，不是仍未选择的设计 blocker：
+
+1. 首次真实 activity 先于客户端 receipt：同 actual run 才补同一 receipt；wrong run／namespace／input／memo／type／queue／reset／retry／NOT_FOUND 在任何候选新动作前阻断。补回执需要实际经过原 H 与 SDK 编码接缝，纯 converter 通过不足以验收。
+2. ordinal1 与 start attempt>1 均无 new_offer／intent／Popen／SDK start；同 ordinal0 并发／丢 completion 仅保留原一次动作与只对账恢复。新 source context 在 prepare→confirm→dispatch 及 root 原来源检查中不可替换。
+3. 真实32候选 stop 的全部66分支、S证明存在的原 stdout refs及 raw SHA、未spawn与post-stopped丢结果的完整 inline、分支构造失败继续 peer、实际编码超限的非重试结果。初审18,613B／16,103B仍只属于合成表示，不认证这些实际分支。
+4. 实际 Temporal＋Supervisor 下 budget与cycle不同 PID／loop，两 queue注册且各1槽；normal槽被占满、原H持真实锁／阻塞fsync时 stop仍领取，独立 writer／peer通知继续。服务 RUNNING和 fixture服务替身不能单独证明此项。
+5. SIGTERM／SIGINT、重复取消、单Worker fatal、stop活动取消的真实 handle／wait和S/H后代回收；已交接根按原c1b1合同存活后由显式stop收尾。Supervisor70秒强杀时只报告已确认服务状态与业务待对账，不能伪造clean stopped／durable stop。
+6. 新非editable core／SDK安装、无SDK可见拒绝且旧离线观察保持、旧schema／原clock／budget Worker／283参考兼容、旧运行Supervisor不暗reload；源码、安装、真实服务、自身模板、独立产品审查和精确CI分别记账。
+
+本次未发现需要 r2 再作架构／权限范围选择的实证矛盾。开始实施时应冻结联合候选的准确输入身份；并行 BR／CI fixture 更动及以后实现形成的任何新设计偏离，各自按其范围验收，不能继承本节的设计 approve。

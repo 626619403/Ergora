@@ -63,3 +63,7 @@
 4. BR隔离组合及README独立通过但仍未提交；整入时只接纳其准确diff，不覆盖主线五产品和新PLAN。联合候选安装／接缝另验，不重用隔离663包验收。
 5. WA1–WA3已完成；先读三审计与WA4草案，讨论D1–D4后再做新产品关卡。先前用户授权的c1与BR收尾继续，不因新设计等待而重复询权。
 6. 每个节点完成更新本页及所属交付。当前事实与历史分开，具体数值／原件留所属交付，本页只保留可恢复的活动状态。
+
+## c1b2a隔离工作树接续：2026-11-16
+
+本分支`feat/training-cycle-service`以固定c1b1 `d5b58912e4f20c96a52f7c0138b8c7c3d1a97b50`为产品基线，仅实施[独立cycle服务r2合同](plans/2026-11-15-training-cycle-service-boundary.md)。[设计审计](delivery/2026-11-15-training-cycle-service-design-audit.md)已需求／维护性两轴通过，原产品尚未修改。主工作树BR／CI联合收尾在独立候选验证，不将本分支旧catalog当最新发布。实施遵守原owner／一次窗口／停止与关闭义务；正式Workflow／sandbox／后继门槛仍后接。
