@@ -4,7 +4,7 @@
 
 ## 当前检查点
 
-开发树已真实导入服务及CI分组，固定merge=`5e48b9e80f301d4b16793f43008a3ffd1bd05f4c`；产品／测试／脚本／CI与已审7ed77c9逐字同一，服务产品仍同wheel081aab45。远端当前仍478c988，普通发布接续。b653完整安装2／5通过并收尾、后继JSON静态保持、最终独立两轴及自身模板r2均approve；新组组合／原时限由本次发布候选自己的官方CI验收。c1b2b在专属af176树修审查finding／验证，未导入当前开发树。
+开发树已真实导入服务及CI分组，固定merge=`5e48b9e80f301d4b16793f43008a3ffd1bd05f4c`；产品／测试／脚本／CI与已审7ed77c9逐字同一，服务产品仍同wheel081aab45。已普通推送`86356927cd88750717bb910502e3f7bd66aa41ba`，精确远端同一；自己的官方push／attempt1 [43747795571](https://github.com/626619403/Ergora/actions/runs/43747795571)最新官方观察为plan及全部六Linux组success、Windows仍in_progress，整体结论未定。b653完整安装2／5及后继静态／独立／自身模板结果保持。消费者已在专属树固定`bcc304894622040a7d844f8c6f9ddfded65aa895`，新wheel55029／2236收集／15安装检查／core真实只读及记录身份收尾通过，真实Temporal现场准备中、完整片终审待闭合；尚未导入开发树。c1c已独立通过设计，先静态核固定消费者接缝，不提前改产品。
 
 **c1b1已固定提交并通过身份终核。** 主分支 `refactor/architecture-foundations`，提交`d5b58912e4f20c96a52f7c0138b8c7c3d1a97b50`，实施基线 `a4371c8e19ddf32d5dbe1d57cf88f9e638baf373`。原预算根跨短S-H及正常loop退出／重启、唯一offer、existing-only、原一次窗口和只对账恢复已接通。原reviewer与自身模板发现的真实取消／receipt／最终deadline缺口已修；最终及固定提交独立需求／维护性均approve，开放0／0。新非editable core／SDK各652文件同一，283参考／25来源／依赖保持；安装r2 **76 passed／985.95秒**，同产品精准r3 **7 passed／153.70秒**，两轮各178输入冻结。SDK-free真实H观察、自身原模板真实Codex及已知原件收尾均通过。历史r1的62／8和r11输入身份限制保持；实际预算根父SIGKILL未实测。发布／准确CI仍另验，不认证总Workflow、自动多轮或训练质量。[计划](plans/2026-11-15-training-cycle-owner-lifecycle.md)／[交付](delivery/2026-11-15-training-cycle-owner-lifecycle.md)／[最终独立审查](delivery/2026-11-15-training-cycle-owner-lifecycle-review.md)。
 
@@ -26,8 +26,8 @@ WA4已于11月16日发起三项异步讨论：D1强制设计适用范围、D2／
 |P0 前片 CI 修正|7025已独立通过／双ref推送；最小修正已整入6725，候选自身未观察到run，旧失败保持|[前片交付](delivery/2026-11-15-training-cycle-stop-operations.md)|
 |P0 BR1／BR2及CI成本|6725自身CI group3失败／整体cancelled；修正478已推同一。官方API已确认43737570677终态completed／cancelled：plan与另六native成功，group5超时取消；新分组b653自身CI尚未发起|[fixture交付](delivery/2026-11-16-review-packet-ci-fixture-fix.md)／[成本调查](delivery/2026-11-16-ci-training-shard-duration-analysis.md)|
 |P1 c1b2|af176cf产品同97a0bbf；新包／自身模板／终审闭合；安装8+新冻1分别记账，SDK-free保持；真实N32完整／unknown／容量及收尾通过；已导入6918095，发布待CI分组收尾|[服务交付](delivery/2026-11-16-training-cycle-service.md)|
-|P0 CI测试分组|b653原组2／5共997通过／3原跳过、收尾；7ed77c9后继Linux2227／Windows选集2172及fixture／skip保持，fresh两轴／自身模板r2均approve，已真实合入5e48b9e；普通发布及准确候选全部官方CI／原时限另验|[CI分组计划](plans/2026-11-16-training-ci-shards.md)|
-|P1 c1b2b→c1c|消费者r2设计已过；当前产品审查发现外来job事实确认缺口，真实反例复现后最小修正，测试fixture接续和新冻结复验中。后继首轮Workflow详细设计已独立两轴approve／0，仅设计层；先闭合消费者的新包／现场与独立产品验收|[消费者交付](delivery/2026-11-16-training-cycle-execution-consumers.md)／[首轮详细设计](plans/2026-11-16-training-cycle-workflow-first-round.md)|
+|P0 CI测试分组|b653原组2／5共997通过／3原跳过、收尾；7ed后继静态保持、fresh／自身模板r2通过，已合入5e48。8635692已推；自己的43747795571中plan／六Linux均success，Windows仍在途，整体及全部原时限待定|[CI分组计划](plans/2026-11-16-training-ci-shards.md)|
+|P1 c1b2b→c1c|消费者r5源码两轴approve／0，bcc已合CI7ed；新55029包core／SDK663同一、2236收集／15安装／core真实inspect／自身Codex及收尾通过。真实Temporal现场及完整片终审接续；后继正式Workflow设计通过，先核固定facts，前置闭合后实施W0–W10|[消费者交付](delivery/2026-11-16-training-cycle-execution-consumers.md)／[首轮详细设计](plans/2026-11-16-training-cycle-workflow-first-round.md)|
 |P1 c1d|候选2之前必须有真实 phase、accepted archive、durable stopped、原多轮索引与质量门槛；CPU两轮不能代替真实训练|[c1总计划](plans/2026-11-15-training-cycle-workflow.md)|
 |P1 WA4→WA5a／b|与用户讨论详细设计和 D1–D4，保存答复／决定；具体设计／必答资料／修订硬关卡分片，先客观反例再实施|[设计演进方案](plans/2026-11-15-workflow-design-and-execution-evolution.md)|
 |P1 R1–R3／WA5c|逐 finding独立验证、成对eval和可信非Agent检查。不能以Claude产品能力或提示词冒充当前runtime|[审查演进计划](plans/2026-11-15-review-validation-evolution.md)／[设计演进方案](plans/2026-11-15-workflow-design-and-execution-evolution.md)|
@@ -65,6 +65,6 @@ WA4已于11月16日发起三项异步讨论：D1强制设计适用范围、D2／
 1. 先核本页、Git HEAD／分支／diff与在跑进程，不重复启动现有回归或训练。旧摘要不能覆盖原JUnit／receipt与准确候选。
 2. c1b1先读交付末尾及独立报告，核当前r2输入、包、回归、SDK-free、自身模板与清理终态；私有缓存位于项目ignored持久目录，公开文档不带本机路径或密钥。
 3. 前片CI准确失败须保留，不把限额／403／未知改成success；独立候选修复与自己的CI分别记录。
-4. BR／README／原CI fixture6725的group3失败与478修正分别记账。服务与CI7ed已真实合入5e48b9e，源码／测试／脚本同已审候选，服务产品同wheel081aab45；远端仍478，普通推送接续。原组2／5完整997通过／3原跳过及收尾，新配置静态保持、fresh／自身模板r2均通过；不能把本机25／40分钟写成远端成功。消费者在专属af176树修job身份finding并跑真实S-H，未新安装／导入；先读独占交付的最新freeze与各次真实失败，勿把服务／旧短检查转给全部新差异。c1c首轮详细设计已独立通过，待前置消费者闭合后才实施。
+4. BR／README／原CI fixture6725的group3失败与478修正分别记账。服务与CI7ed已合入5e48，8635692已推送，自己的43747795571中plan／六Linux success、Windows在途。原组2／5完整997通过／3原跳过及收尾，新配置静态／独立／自身模板保持；本机时长不充远端结果。消费者已固定bcc、wheel55029及新安装／core／自身模板／收尾通过，真实现场准备中、完整片终审未闭合，未导入主树；实际冻结输入在installed-ci-r1，不把旧181输入改为post-CI通过。c1c仅做固定facts与seams静态准备，前置闭合再改产品。
 5. WA1–WA3已完成；先读三审计与WA4草案，讨论D1–D4后再做新产品关卡。先前用户授权的c1与BR收尾继续，不因新设计等待而重复询权。
 6. 每个节点完成更新本页及所属交付。当前事实与历史分开，具体数值／原件留所属交付，本页只保留可恢复的活动状态。

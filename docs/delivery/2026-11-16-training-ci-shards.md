@@ -118,3 +118,9 @@ JSON后继已固定`7ed77c9c1eebc0e16c2f9024c62b0d4fd25b7220`，工作树clean�
 最终自身原结构模板对af176→7ed完整diff／19完整文件400,825字节真实调用Codex32.76秒approve，三资源与完整任务实际进入570,067字节stdin；run=`50b8dd70479041518c1dcaeab7ceced3`、input digest=`d6bd654accbe916111ef5f8390352e3469785e9c6ab38dfed71549037a09462b`，原结果SHA256=`141f2e313967ca74109074462aa712c8b0275f020a1208fd753ceb5c342aeab1`。`self-review-r2-codex/`保留原prompt／回复／命令，只认证supplied source。[fresh最终终核](2026-11-16-training-ci-shards-final-review.md)独立重算原件后需求／维护性两轴approve／开放0，允许固定7ed导入当前开发分支并普通发布；新组合与准确候选自己的全部官方CI／原时限仍未认证，不自动合main。
 
 真实导入merge=`5e48b9e80f301d4b16793f43008a3ffd1bd05f4c`，parents为主控文档checkpoint23316ea及已审7ed77c9。与7ed的`src/ergora`、`tests`、`scripts`、`.github`和`pyproject.toml`差异为零，groups SHA186e7198保持；`final-r2/import.json`保存原Git观察。主树另有执行消费者agent尚未提交的报告，不纳入本次导入／发布；其代码仍只在专属树，不能混作本轮CI结果。最终身份终核后普通推送当前开发分支，准确官方run另记。
+
+## 普通发布与准确CI
+
+已普通推送当前开发分支`refactor/architecture-foundations`的`86356927cd88750717bb910502e3f7bd66aa41ba`，随后`git ls-remote`核精确远端同一；未强推、未合main。该提交仅在已终核merge5e48后增加状态文档，产品／测试／CI同7ed保持。新官方run [43747795571](https://github.com/626619403/Ergora/actions/runs/43747795571)精确SHA8635692、push／attempt1，最新观察in_progress、结论null。不能借旧478、b653本机或仅收集认证新配置成功；最终六Linux／Windows及原时限仍待该run自己的结果。推送／精确远端与API响应原件保存在ignored `ci-training-shards/publication-r1/`。
+
+后续官方API `run-r3`／`jobs-r3` 实际HTTP200（UTC 2026-11-15 18:58）：同一准确SHA、push／attempt1，plan及全部六Linux组已success；group5从18:37:37至18:55:04，为17分27秒，group2为9分40秒，均在原20分钟内。Windows仍in_progress，整体conclusion=null；本轮不提前关闭全部官方CI门槛。原完整response和摘要保留在上述私有publication目录。
