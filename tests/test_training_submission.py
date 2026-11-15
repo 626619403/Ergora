@@ -2803,6 +2803,7 @@ def test_cycle_sdk_launch_capacity_keeps_occupied_intent_without_another_offer(
     assert failure is not None and failure.type == 'cycle_activity_capacity_exceeded' and failure.non_retryable
 
 
+@pytest.mark.skipif(sys.platform != 'linux', reason='SDK activities consume the original supervised Linux H')
 @pytest.mark.parametrize('failure', ['popen', 'cleanup', 'oversized-parent'])
 def test_cycle_sdk_start_retains_parent_failures(
         cycle_sdk_activity, cycle_operation_fault, service, cycle_selection, monkeypatch, failure):
@@ -2862,6 +2863,7 @@ def test_cycle_sdk_start_retains_parent_failures(
     assert not (cycle_selection[2] / 'ergora/training-submissions/alpha.attempt.json').exists()
 
 
+@pytest.mark.skipif(sys.platform != 'linux', reason='SDK activities consume the original supervised Linux H')
 @pytest.mark.parametrize('fault', ['operation-request', 'oversized-stdout', 'oversized-frame'])
 def test_cycle_sdk_capacity_failure_finishes_peers_and_keeps_original_bytes(
         cycle_sdk_activity, cycle_operation_fault, monkeypatch, fault):
