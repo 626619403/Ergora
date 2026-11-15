@@ -444,6 +444,8 @@ def test_cycle_service_closes_peers_with_real_sdk_lifecycle(monkeypatch, fault):
         try:
             while len(workers) < 2:
                 await asyncio.sleep(0)
+            assert workers[0]._config['workflows'] == [service.create_cycle_workflow()]
+            assert 'workflows' not in workers[1]._config
             await asyncio.gather(*(worker._bridge_worker.validating.wait() for worker in workers))
             if fault == 'validate-during-shutdown':
                 handlers[signal.SIGTERM]()
@@ -475,3 +477,300 @@ def test_cycle_service_closes_peers_with_real_sdk_lifecycle(monkeypatch, fault):
             await asyncio.gather(serving, return_exceptions=True)
 
     asyncio.run(scenario())
+
+
+@pytest.fixture
+def cycle_workflow():
+    """Real default sandbox and SDK activation loop, with explicit remote activity results."""
+    pytest.importorskip('temporalio')
+    import asyncio
+    from copy import deepcopy
+    from dataclasses import replace
+    from datetime import datetime, timezone
+    from temporalio import workflow
+    from temporalio.api.common.v1 import Payloads
+    from temporalio.api.failure.v1 import Failure
+    from temporalio.bridge.proto import activity_result as ar, workflow_activation as wa
+    from temporalio.converter import DataConverter
+    from temporalio.worker._workflow_instance import WorkflowInstanceDetails
+    from temporalio.worker.workflow_sandbox import SandboxedWorkflowRunner
+    from temporalio.worker.workflow_sandbox._runner import _fake_info
+    from ergora.reference_training_worker import create_cycle_workflow
+
+    class Harness:
+        original = {'protocol': 'ergora-training-cycle-v1', 'control_home': str(Path.cwd().anchor),
+            'project': 'demo', 'cycle_id': 'first', 'input_sha256': 'a' * 64, 'authorization_sha256': 'b' * 64}
+
+        def __init__(self):
+            self.converter = DataConverter.default.payload_converter
+            self.time = 0
+            self.commands = []
+            async def create():
+                cls = create_cycle_workflow()
+                assert (cls.__module__, cls.__name__, cls.__qualname__) == (
+                    'ergora.reference_training_worker', 'TrainingCycleWorkflow', 'TrainingCycleWorkflow')
+                runner = SandboxedWorkflowRunner()
+                defn = workflow._Definition.must_from_class(cls)
+                runner.prepare_workflow(defn)
+                return runner.create_instance(WorkflowInstanceDetails(
+                    payload_converter_factory=DataConverter.default._new_internal_payload_converter,
+                    failure_converter_class=DataConverter.default.failure_converter_class,
+                    interceptor_classes=[], defn=defn,
+                    info=replace(_fake_info, workflow_id='parent', run_id='parent-run',
+                        workflow_type='TrainingCycleWorkflow', namespace='default',
+                        task_queue='ergora-training-cycle-v1'), randomness_seed=1, extern_functions={},
+                    disable_eager_activity_execution=False, worker_level_failure_exception_types=[],
+                    patch_activation_callback=None, last_completion_result=Payloads(), last_failure=Failure()))
+            self.instance = asyncio.run(create())
+
+        def activate(self, **job):
+            history_length = job.pop('history_length', 10)
+            history_size = job.pop('history_size', 1000)
+            self.time = job.pop('at', self.time)
+            activation = wa.WorkflowActivation(run_id='parent-run', history_length=history_length,
+                history_size_bytes=history_size, jobs=[wa.WorkflowActivationJob(**job)])
+            activation.timestamp.FromDatetime(datetime.fromtimestamp(self.time, timezone.utc))
+            completion = self.instance.activate(activation)
+            assert completion.HasField('successful'), completion
+            commands = list(completion.successful.commands)
+            self.commands.extend(commands)
+            return commands
+
+        def start(self):
+            return self.activate(initialize_workflow=wa.InitializeWorkflow(workflow_type='TrainingCycleWorkflow',
+                workflow_id='parent', arguments=self.converter.to_payloads([self.original]),
+                randomness_seed=1, first_execution_run_id='parent-run', original_execution_run_id='parent-run', attempt=1))
+
+        def result(self, command, value, **changes):
+            return self.activate(resolve_activity=wa.ResolveActivity(seq=command.schedule_activity.seq,
+                result=ar.ActivityResolution(completed=ar.Success(result=self.converter.to_payload(value)))), **changes)
+
+        def timer(self, commands, **changes):
+            timer = next(command.start_timer for command in commands if command.HasField('start_timer'))
+            return self.activate(fire_timer=wa.FireTimer(seq=timer.seq), **changes)
+
+        def signal(self, request, **changes):
+            return self.activate(signal_workflow=wa.SignalWorkflow(signal_name='request_stop',
+                input=self.converter.to_payloads([request])), **changes)
+
+        def cancel(self):
+            return self.activate(cancel_workflow=wa.CancelWorkflow(reason='fixture cancellation'))
+
+        def query(self):
+            commands = self.activate(query_workflow=wa.QueryWorkflow(query_id='status-query', query_type='status'))
+            response = next(c.respond_to_query for c in commands if c.HasField('respond_to_query'))
+            return self.converter.from_payloads([response.succeeded.response])[0]
+
+        def envelope(self, action='observe-candidate', *, submitted=False, queued=False, work=1000, total=1100):
+            source = '1' * 32
+            value = {'schema_version': 2, 'protocol': 'ergora-training-cycle-activity-v2', 'action': action,
+                'status': 'observed', 'workflow_input': deepcopy(self.original),
+                'controller': {'workflow_id': 'parent', 'run_id': 'parent-run', 'intent_sha256': 'c' * 64},
+                'observation': {'total_remaining_seconds': total, 'boot_id': 'original-boot'},
+                'inspection': {'operation_id': source}, 'operations': [], 'runtime_status': 'queried'}
+            if action in ('start', 'reconcile', 'stop'):
+                value.update(schema_version=1, protocol='ergora-training-cycle-activity-v1')
+                return value
+            binding = {'experiment_id': 'alpha', 'manifest_sha': 'd' * 64, 'candidate_sha': '1' * 40, 'baseline_sha': '2' * 40}
+            value['facts'] = {'source_operation_id': source,
+                'budget': {'state': 'valid' if work > 0 else 'exhausted', 'work_remaining_seconds': work,
+                    'total_remaining_seconds': total, 'control_timeout_seconds': 30,
+                    'boot_id': 'original-boot', 'boottime_ns': 123, 'observed_at': 'unused'},
+                'candidate': {'ordinal': 0, 'experiment_id': 'alpha', 'manifest_sha256': 'd' * 64,
+                    'project_revision': 1, 'current_project_matches': True, 'parent_stop_visible': False},
+                'submission': {'state': 'submitted' if submitted else 'not_recorded',
+                    'intent_sha256': 'e' * 64 if submitted else None, 'workflow_id': 'child',
+                    'run_id': 'child-run' if submitted else None, 'attempt_saved': submitted, 'result_saved': submitted},
+                'execution': {'state': 'not_requested', 'request_sha256': None, 'record_sha256': {},
+                    'reap_record_observed': False, 'durable_stop_confirmed': None, 'executor_stop_confirmed': None},
+                'runtime': {'state': 'queried' if queued else 'not_queried',
+                    'workflow_id': 'child' if queued else None, 'run_id': 'child-run' if queued else None,
+                    'temporal_status': 'RUNNING' if queued else None, 'terminal': False if queued else None,
+                    'phase': 'QUEUED' if queued else None, 'binding': binding if queued else None,
+                    'job_id': 'job' if queued else None},
+                'native': {'state': 'QUEUED' if queued else 'not_queried', 'job_id': 'job' if queued else None},
+                'request_outcome': 'not_attempted'}
+            return value
+
+        def activity(self, commands):
+            return next(command for command in commands if command.HasField('schedule_activity'))
+
+        def scheduled(self, action):
+            suffix = '.' + action + ('.v2' if action in ('observe-candidate', 'request-execution-or-observe') else '.v1')
+            return [c.schedule_activity for c in self.commands if c.HasField('schedule_activity')
+                    and c.schedule_activity.activity_type.endswith(suffix)]
+
+    return Harness
+
+
+def test_cycle_workflow_delays_request_and_keeps_the_first_round_gate(cycle_workflow):
+    h = cycle_workflow()
+    cold = h.activity(h.start())
+    start = h.activity(h.result(cold, h.envelope(), at=1))
+    assert start.schedule_activity.activity_type.endswith('.start.v1')
+    commands = h.result(start, h.envelope('start'), at=2)
+    observe = h.activity(h.timer(commands, at=3))
+    early = h.envelope(submitted=True, queued=True)
+    early.update(status='unknown')
+    early['facts']['runtime'].update(phase='SUBMITTING', job_id=None)
+    early['facts']['native'] = {'state': 'unconfirmed', 'job_id': None}
+    commands = h.result(observe, early, at=4)
+    assert not h.scheduled('request-execution-or-observe')
+    observe = h.activity(h.timer(commands, at=5))
+    request = h.activity(h.result(observe, h.envelope(submitted=True, queued=True), at=6))
+    assert request.schedule_activity.retry_policy.maximum_attempts == 1
+    requested = h.envelope('request-execution-or-observe', submitted=True, queued=True)
+    requested['facts']['request_outcome'] = 'requested'
+    requested['facts']['execution'].update(state='requested', request_sha256='f' * 64, record_sha256={'request': 'f' * 64})
+    commands = h.result(request, requested, at=7)
+    observe = h.activity(h.timer(commands, at=8))
+    native_first = h.envelope(submitted=True, queued=True)
+    native_first['facts']['execution'] = requested['facts']['execution'].copy()
+    native_first['facts']['native']['state'] = 'SUCCEEDED'
+    commands = h.result(observe, native_first, at=9)
+    assert h.query()['measurement_accepted'] is None
+    observe = h.activity(h.timer(commands, at=10))
+    native_first['facts']['execution'].update(state='stopped', durable_stop_confirmed=True, executor_stop_confirmed=True)
+    commands = h.result(observe, native_first, at=11)
+    assert not any(c.HasField('complete_workflow_execution') for c in commands)
+    observe = h.activity(h.timer(commands, at=12))
+    native_first['facts']['runtime']['phase'] = 'AWAITING_RELEASE'
+    commands = h.result(observe, native_first, at=13)
+    outcome = h.converter.from_payloads([next(c.complete_workflow_execution.result for c in commands
+                                            if c.HasField('complete_workflow_execution'))])[0]
+    assert outcome['outcome'] == 'first_round_observed_c1d_required' and outcome['ordinal'] == 0
+    assert outcome['continuation'] == 'disabled_until_c1d' and outcome['measurement_accepted'] is None
+    assert len(h.scheduled('start')) == len(h.scheduled('request-execution-or-observe')) == 1
+    assert not h.scheduled('stop')
+
+
+@pytest.mark.parametrize('effect', ['start', 'request-execution-or-observe'])
+def test_cycle_workflow_lost_effect_completion_never_regrants_its_command(cycle_workflow, effect):
+    h = cycle_workflow()
+    cold = h.activity(h.start())
+    if effect == 'start':
+        command = h.activity(h.result(cold, h.envelope(), at=1))
+    else:
+        commands = h.result(cold, h.envelope(submitted=True), at=1)
+        observe = h.activity(h.timer(commands, at=2))
+        command = h.activity(h.result(observe, h.envelope(submitted=True, queued=True), at=3))
+    from temporalio.api.failure.v1 import ActivityFailureInfo, Failure, TimeoutFailureInfo
+    from temporalio.bridge.proto import activity_result as ar, workflow_activation as wa
+    failure = Failure(message='Completion unavailable', activity_failure_info=ActivityFailureInfo(),
+                      cause=Failure(message='RPC deadline', timeout_failure_info=TimeoutFailureInfo()))
+    commands = h.activate(resolve_activity=wa.ResolveActivity(seq=command.schedule_activity.seq,
+        result=ar.ActivityResolution(failed=ar.Failure(failure=failure))))
+    observe = h.activity(h.timer(commands, at=4))
+    # Even an absent request after a scheduled command cannot grant that effect again.
+    value = h.envelope(submitted=effect != 'start', queued=effect != 'start')
+    commands = h.result(observe, value, at=5)
+    assert len(h.scheduled(effect)) == 1
+    if effect != 'start':
+        assert h.query()['request_scheduled'] is True
+        observe = h.activity(h.timer(commands, at=6))
+        h.result(observe, value, at=7)
+        assert len(h.scheduled(effect)) == 1
+
+
+def test_cycle_workflow_budget_uses_schedule_time_and_v1_only_narrows_total(cycle_workflow):
+    h = cycle_workflow()
+    cold = h.activity(h.start())
+    start = h.activity(h.result(cold, h.envelope(work=9, total=12), at=4))
+    assert start.schedule_activity.schedule_to_close_timeout.ToTimedelta().total_seconds() == 5
+    commands = h.result(start, h.envelope('start', total=1000), at=5)
+    observe = h.activity(h.timer(commands, at=6))
+    assert observe.schedule_activity.schedule_to_close_timeout.ToTimedelta().total_seconds() == 3
+    commands = h.result(observe, h.envelope(submitted=True, work=6, total=1000), at=7)
+    observe = h.activity(h.timer(commands, at=8))
+    assert observe.schedule_activity.schedule_to_close_timeout.ToTimedelta().total_seconds() == 1
+    stop = h.activity(h.result(observe, h.envelope(submitted=True, queued=True, work=1000, total=1000), at=10))
+    assert stop.schedule_activity.task_queue == 'ergora-training-cycle-stop-v1'
+    assert stop.schedule_activity.schedule_to_close_timeout.ToTimedelta().total_seconds() == 2
+    assert not h.scheduled('request-execution-or-observe')
+
+
+@pytest.mark.parametrize('cancel', [False, True])
+def test_cycle_workflow_stop_bypasses_pending_normal_and_survives_repeated_cancel(cycle_workflow, cancel):
+    h = cycle_workflow()
+    cold = h.activity(h.start())
+    commands = h.result(cold, h.envelope(submitted=True), at=1)
+    normal = h.activity(h.timer(commands, at=2))
+    commands = h.cancel() if cancel else h.signal({'workflow_input': h.original, 'reason': 'Stop original candidate'})
+    assert any(c.HasField('request_cancel_activity') and c.request_cancel_activity.seq == normal.schedule_activity.seq for c in commands)
+    stop = h.activity(commands)
+    assert stop.schedule_activity.task_queue == 'ergora-training-cycle-stop-v1'
+    assert not h.cancel()
+    assert not h.cancel()
+    commands = h.result(stop, h.envelope('stop'), at=3)
+    assert len(h.scheduled('stop')) == 1
+    assert any(c.HasField('cancel_workflow_execution') for c in commands)
+    assert h.query()['stop_durable'] is h.query()['admission_drained'] is None
+
+
+@pytest.mark.parametrize('bound', [{'history_length': 8000}, {'history_size': 8 * 1024 * 1024}])
+def test_cycle_workflow_history_bound_reserves_only_stop(cycle_workflow, bound):
+    h = cycle_workflow()
+    cold = h.activity(h.start())
+    stop = h.activity(h.result(cold, h.envelope(), at=1, **bound))
+    assert stop.schedule_activity.activity_type.endswith('.stop.v1')
+    assert not h.scheduled('start') and not h.scheduled('request-execution-or-observe')
+
+
+def test_cycle_workflow_counts_failed_observations_and_stops_before_257(cycle_workflow):
+    h = cycle_workflow()
+    cold = h.activity(h.start())
+    commands = h.result(cold, h.envelope(submitted=True), at=1)
+    from temporalio.api.failure.v1 import ActivityFailureInfo, Failure
+    from temporalio.bridge.proto import activity_result as ar, workflow_activation as wa
+    for count in range(2, 257):
+        observe = h.activity(h.timer(commands, at=count))
+        commands = h.activate(resolve_activity=wa.ResolveActivity(seq=observe.schedule_activity.seq,
+            result=ar.ActivityResolution(failed=ar.Failure(failure=Failure(
+                message='Read unavailable', activity_failure_info=ActivityFailureInfo())))))
+    assert len(h.scheduled('observe-candidate')) == 256
+    assert len(h.scheduled('stop')) == 1 and h.query()['observation_count'] == 256
+
+
+def test_cycle_workflow_signal_rejections_do_not_poison_the_next_valid_stop(cycle_workflow):
+    h = cycle_workflow()
+    cold = h.activity(h.start())
+    oversized = {'workflow_input': h.original, 'reason': ''}
+    oversized['reason'] = 'x' * (32768 - len(json.dumps(oversized, separators=(',', ':')).encode()))
+    assert len(json.dumps(oversized, separators=(',', ':')).encode()) == 32768
+    assert h.converter.to_payloads_wrapper([oversized]).ByteSize() > 32768
+    h.signal(oversized)
+    assert h.query()['last_signal_rejection'] == 'signal_capacity_exceeded'
+    h.signal({'workflow_input': h.original | {'cycle_id': 'foreign'}, 'reason': 'Wrong identity'})
+    assert h.query()['last_signal_rejection'] == 'signal_identity_or_shape_rejected'
+    h.signal({'workflow_input': h.original, 'reason': 'First complete reason'})
+    h.signal({'workflow_input': h.original, 'reason': 'Later reason'})
+    stop = h.activity(h.result(cold, h.envelope(), at=1))
+    request = h.converter.from_payloads(stop.schedule_activity.arguments)[0]
+    assert request['reason'] == 'First complete reason' and not h.scheduled('start')
+    commands = h.result(stop, h.envelope('stop'), at=2)
+    outcome = h.converter.from_payloads([next(c.complete_workflow_execution.result for c in commands
+                                            if c.HasField('complete_workflow_execution'))])[0]
+    assert outcome['outcome'] == 'needs_reconciliation' and outcome['stop_activity_status'] == 'returned'
+    assert outcome['stop_durable'] is outcome['admission_drained'] is outcome['executor_stop_confirmed'] is None
+
+
+@pytest.mark.parametrize('fault', ['controller', 'source', 'project', 'budget', 'runtime-job', 'GATE_FAILED'])
+def test_cycle_workflow_unconfirmed_identity_never_requests_execution(cycle_workflow, fault):
+    h = cycle_workflow()
+    cold = h.activity(h.start())
+    value = h.envelope(submitted=True, queued=True)
+    if fault == 'controller':
+        value['controller']['run_id'] = 'foreign'
+    elif fault == 'source':
+        value['facts']['source_operation_id'] = '2' * 32
+    elif fault == 'project':
+        value['facts']['candidate']['current_project_matches'] = None
+    elif fault == 'budget':
+        value['facts']['budget']['work_remaining_seconds'] = True
+    elif fault == 'runtime-job':
+        value['facts']['runtime']['job_id'] = 'foreign'
+    else:
+        value['facts']['runtime'].update(phase=fault, terminal=True, temporal_status='COMPLETED')
+    h.result(cold, value, at=1)
+    assert not h.scheduled('start') and not h.scheduled('request-execution-or-observe')
+    assert h.query()['measurement_accepted'] is None
