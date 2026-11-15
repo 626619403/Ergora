@@ -12,7 +12,8 @@
       "tests/test_state_migrations.py",
       "tests/test_task_creation.py",
       "tests/test_task_events.py",
-      "tests/test_task_export.py"
+      "tests/test_task_export.py",
+      "tests/test_task_external_status.py"
     ],
     [
       "src/ergora/data/reference/platform/upstream/platform/tests/test_workflow.py",
@@ -22,6 +23,7 @@
       "tests/test_installation.py",
       "tests/test_issue_mapping.py",
       "tests/test_issue_tasks.py",
+      "tests/test_reference_executor.py",
       "tests/test_registrations.py",
       "tests/test_review_dags.py",
       "tests/test_task_reconciliation.py",
@@ -39,8 +41,6 @@
       "tests/test_handoff_download.py",
       "tests/test_issue_label_writebacks.py",
       "tests/test_issue_writebacks.py",
-      "tests/test_reference_executor.py",
-      "tests/test_task_cancellation.py",
       "tests/test_task_runtime.py",
       "tests/test_training_cycle_controller.py",
       "tests/test_workflow_definitions.py"
@@ -57,6 +57,7 @@
       "tests/test_project_configuration.py",
       "tests/test_review_dag_runtime.py",
       "tests/test_review_packets.py",
+      "tests/test_task_cancellation.py",
       "tests/test_task_inputs.py",
       "tests/test_task_mcp.py",
       "tests/test_task_plan.py",
@@ -74,7 +75,8 @@
       "tests/test_schema_contracts.py",
       "tests/test_skills_evaluation.py",
       "tests/test_task_approval.py",
-      "tests/test_task_job_evidence.py"
+      "tests/test_task_job_evidence.py",
+      "tests/test_training_release.py"
     ],
     [
       "tests/test_candidate_observations.py",
@@ -91,10 +93,8 @@
       "tests/test_training_submission.py",
       "tests/test_training_cancellation.py",
       "tests/test_training_evidence.py",
-      "tests/test_training_release.py",
       "tests/test_task_budget.py",
       "tests/test_task_evidence_index.py",
-      "tests/test_task_external_status.py",
       "tests/test_task_submission_locks.py",
       "tests/test_work_agents.py"
     ]
