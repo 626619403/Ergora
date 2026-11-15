@@ -87,3 +87,15 @@
 本轮重新检查全部七文档的 218 个本地链接，缺失 0；`git diff` 对产品路径仍为空，283 个 tracked reference 文件及 `GATE_SOURCES` 原 key 集合保持。PLAN 新增 BR1／BR2 并行排期只作独立任务记账，不纳入 c1b 产品结论。未重跑原 SDK／stdlib／reaper probe，未运行产品 suite或安装。
 
 后继产品验收仍须观察真实行为：新 validator 对旧／新封套的边界；唯一 offer 的并发／丢回复；晚到 Popen 句柄在窗口已尽后的拒绝与真实收尾；多 H 累计消费同一窗口；确认后普通取消与总 stop 的区别；无 attempt／有 attempt 恢复的实际 Popen／SDK 次数；schema2 最后点 existing-only；真实原 owner 同一 PID／start_ticks／boot／clock 跨 S-H 及父正常退出／崩溃存活，最后仍沿原阶段与唯一 reaper 收尾。创建本身卡住时 default executor 退出不保证有界，是明确保留的支持限制。core／SDK 非 editable 安装、源码身份、283／依赖、SDK-free 读取及新的独立产品审查仍待 b1.4；真实双服务／stop 配额仍待 c1b2，自动派发和后继轮门槛不提前开放。
+
+## 固定本地提交身份核验：2026-11-15
+
+本追加保留此前 r1／r2 审查全文为不变的 19,038B 前缀，SHA256 `e5e986722e5039a2811f48be603f96f1c7b8461a484da66edb6160e8bc39ecc0`；它与本次固定提交中的报告字节完全相同。原 r1 准备稿及 r2 快照继续保留各自身份。
+
+同一 reviewer 直接读取 Git 对象、`design-local-commit-r1.json`、`design-final-r3.json`／`design-final-r3/` 和 `design-commit-r1.stdout/.stderr`。当前分支为 `refactor/architecture-foundations`，固定提交为 **`4d060ae8609424cc2f6f5f0b44393da7e2ba03f7`**，唯一父提交为 `f00bfdfd15173ceb0e961681679d6d3d62254bed`，tree 为 `1fcb49ffd706d7be6be0862adc56a186cd26c10f`。实际完整变更范围恰为 manifest 的 13 份 docs 文件；其记录 blob ID 与提交 tree、核验时 index 逐一相同，提交原始字节／SHA256／字节数与最终快照、核验时工作树均一致。
+
+本片主计划相对已审 r2 仅将 b1.0 状态改为已获独立设计 approve；交付追加对应闭合记录，PLAN 同步该状态。主计划的 mode／交接／窗口／恢复合同没有改变，b1.1–b1.4 仍明确未实施。研究与父 workflow 文档保持已核正文。提交中的原 c1a2／b2b0／b2b 审查报告只追加各自固定提交／发布／准确 CI 的状态记录；本轮核其差异范围与完整字节，没有重复认证这些片的远端原件或继承其产品结论。新增 BR1／BR2 计划／交付及 WA1–WA5 计划属于独立任务排期，明确未合入、待审计／讨论或待验，未把未来能力写成本片已支持。
+
+从父提交到固定提交，全部非 docs 路径零差异；283 个 tracked reference 文件和原 `GATE_SOURCES` key 集合保持。直接检查提交十三份文档的 229 个本地链接，缺失 0；提交 diff 空白检查通过。本轮没有重跑探针、产品 suite、安装、服务或训练，没有提交或推送；本次唯一变更是报告末尾的身份追加。
+
+**固定本地提交的需求符合性／可维护性两轴均 approve，开放 0／0。** 该结论确认已审 r2 设计与固定提交的同一性，允许以准确 `4d060ae` 作为 b1.1 实施基线；R1／R2 仍只在设计层关闭。普通发布仍在原队列，本候选自己的远端发布／准确 CI 未获本轮结论；实际预算 owner、取消／重启／恢复、新安装、独立服务与配额等产品验收继续待后继，不由本次文档提交替代。

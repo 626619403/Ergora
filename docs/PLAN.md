@@ -4,11 +4,11 @@
 
 ## 当前检查点
 
-**压缩恢复必读：新增WA1–WA5。** 用户要求核查历史调研是否真正进入模板，并由几名独立子agent审计实际控制流／循环／硬Hook／设计前人类讨论与缺失知识提问。[完整原始要求、审计分工及关键问题已持久登记](plans/2026-11-15-workflow-evidence-and-human-gates.md)。先闭合手头c1b1，按空闲槽位并行审计；主控汇总详细设计／修改方案、客观验收与顺序并与用户讨论后再实施该新方向。当前并非LangGraph；任意循环／通用非agent Hook／设计人类硬关卡须核源码，不可凭提示词称已支持。BR1／BR2继续独立分支，不被此追加任务替代。
+**压缩恢复必读：新增WA1–WA5。** 用户要求核查历史调研是否真正进入模板，并由几名独立子agent审计实际控制流／循环／硬Hook／设计前人类讨论与缺失知识提问。[完整原始要求、审计分工、关键问题与恢复清单已持久登记](plans/2026-11-15-workflow-evidence-and-human-gates.md)。用户再次要求先写计划，防止压缩遗失；三路WA审计均尚未启动，不能把登记算作审计完成。先闭合手头c1b1，按空闲槽位并行审计；主控汇总详细设计／修改方案、客观验收与顺序并与用户讨论后再实施该新方向。当前并非LangGraph；任意循环／通用非agent Hook／设计人类硬关卡须核源码，不可凭提示词称已支持。BR1／BR2继续独立分支，不被此追加任务替代。
 
-**新增并行BR1／BR2：** 用户指定Claude Code两份官方审查资料与HTML报告文章。[任务计划](plans/2026-11-15-backend-review-and-reporting.md)已记录；两个子agent在独立分支盘点／实现PR Skill后端差异说明和报告生成辅助，保留已发布包及原证据。主控继续c1b1，子任务尚未合入／验收，状态见[逐步记录](delivery/2026-11-15-backend-review-and-reporting.md)。
+**新增并行BR1／BR2：** 用户指定Claude Code两份官方审查资料与HTML报告文章。[任务计划](plans/2026-11-15-backend-review-and-reporting.md)已记录；两个独立分支已形成PR Skill后端差异与报告叶候选。BR1新的独立文档／配置源码两轴approve／开放0／0，安装／真实后端／自身模板／发布未验；BR2已有真实Codex小报告，新的独立reviewer仍在复核。均未合入；两支preset索引整合须保留双方更新，状态见[逐步记录](delivery/2026-11-15-backend-review-and-reporting.md)。
 
-**活动c1b1生命周期设计：** c1a2已固定本地`f00bfdfd15173ceb0e961681679d6d3d62254bed`，十二blob／tree同一，原reviewer固定提交需求／维护性两轴approve／开放0／0。接续[具体计划](plans/2026-11-15-training-cycle-owner-lifecycle.md)先闭合长期预算owner在短S-H之外的真实归属与正常worker重启；实际安装reaper惰性probe0.582秒通过，但不能替代预算owner验收。stdlib六case已终态：本机async正常teardown实际仍活，但close语义依赖watcher；Popen窄OS创建候选也通过惰性对照，真实预算owner未验。复用原唯一prepare作为启动offer而不新增账本；新独立r1提出R1取消交接及R2封套／恢复缺口，已在r2补模式／结果／共享window和失联只观察表，原reviewer r2设计需求／维护性两轴approve／开放0／0，R1／R2仅设计关闭；接续固定设计文档与b1.1产品实施，未开放自动派发。[研究](research/2026-11-15-training-cycle-sdk-boundary.md)与[逐步交付](delivery/2026-11-15-training-cycle-owner-lifecycle.md)记录限制，kernel专家保持v3。
+**活动c1b1产品接线中，未验收：** c1a2已固定本地`f00bfdfd15173ceb0e961681679d6d3d62254bed`并获独立两轴通过；[生命周期设计](plans/2026-11-15-training-cycle-owner-lifecycle.md)随后固定纯文档`4d060ae8609424cc2f6f5f0b44393da7e2ba03f7`，原reviewer r2及固定设计两轴approve／开放0／0。当前五个原源码文件有未提交的prepare提取、候选mode／同一窗口及schema2 existing-only初步接线，仅ast.parse通过；新H caller、根bootstrap、一次Popen／确认／取消和恢复主体未完成，旧schema2 fixture须沿真实caller迁移。没有产品测试／新安装／产品独立审查或真实预算owner跨调用验收；不能把设计或惰性probe当已可运行。下一步与准确五文件状态见[逐步交付末尾](delivery/2026-11-15-training-cycle-owner-lifecycle.md)，后接c1b2服务、c1c总Workflow、c1d接受／下一轮门槛。kernel专家保持v3。
 
 **远端12:27 UTC接续：** 877e1e4自己的run43708885957／attempt1／push／精确SHA已终态八job／30必要步骤success，原reviewer最终两轴approve／开放0／0；原403保持。后继1b8c2ed已普通发布、九blob／完整Ref同一，原reviewer固定发布两轴approve／开放0／0，自己的run43713822317／attempt1／push／精确SHA仍in_progress。fbafd8d→d1fcfa5→3947b1e→836179e→f00bfdf继续逐片等前片准确CI／相应原reviewer终核，不直接推当前HEAD。12:52UTC再次查询返回403／remaining0、reset13:23:15UTC，原件已存；此前in_progress保持原时点，不能判CI成功或失败，限额前不重复读。
 

@@ -1,6 +1,6 @@
 # c1b1：子训练预算进程的跨调用生命周期
 
-日期：2026-11-15。准备基线为本地固定 `f00bfdfd15173ceb0e961681679d6d3d62254bed`，分支 `refactor/architecture-foundations`。c1a2总投递／对账的本地与固定提交两轴已通过；普通发布仍按前片准确CI队列。本文细化[父计划c1b](2026-11-15-training-cycle-workflow.md)的实际进程前提，当前为设计准备，尚未修改产品或开放自动派发。kernel专家继续保留v3。
+日期：2026-11-15。准备基线为本地固定 `f00bfdfd15173ceb0e961681679d6d3d62254bed`，分支 `refactor/architecture-foundations`。c1a2总投递／对账的本地与固定提交两轴已通过；普通发布仍按前片准确CI队列。本文细化[父计划c1b](2026-11-15-training-cycle-workflow.md)的实际进程前提；设计已固定`4d060ae8609424cc2f6f5f0b44393da7e2ba03f7`并获原独立两轴通过，产品接线已开始但尚未完成／运行验收，未开放自动派发。kernel专家继续保留v3。
 
 ## 问题与最小范围
 
@@ -76,7 +76,7 @@ dispatch-H把这一次完整operation传给原submission调用；schema2 `ensure
 |节点|可验收结果|当前状态|
 |---|---|---|
 |b1.0 所有权设计|实际reaper／stdlib teardown证据、原唯一prepare offer与真实caller、取消／重启责任；新的fresh-context设计两轴|原reaper惰性probe及stdlib六case通过／原失败收尾保持；独立r1提出R1交接／取消与R2封套／恢复缺口，已在r2补完整确认交接、mode／结果／共享窗口及恢复表；原reviewer r2设计需求／维护性两轴approve／开放0／0，R1／R2仅设计关闭，产品待实施|
-|b1.1 原prepare复用与existing-only|原schema1行为保持，schema2短H无预算Popen；完整controller／ordinal／原源漂移仍拒绝|未实施|
+|b1.1 原prepare复用与existing-only|原schema1行为保持，schema2短H无预算Popen；完整controller／ordinal／原源漂移仍拒绝|实施中：五个原文件已做prepare提取、mode／共享窗口验证及schema2 existing-only初步接线；真实新caller未完成，只有ast.parse通过，无行为验收。准确缺口见逐步交付|
 |b1.2 原预算根跨调用|实际原预算owner同一PID／start_ticks／boot／clock，在S-H结束后及cycle正常重启后存活；真实原owner与后代最后收尾|未实施；惰性兄弟probe不替代它|
 |b1.3 重复／丢回复／取消|慢claim／慢初始化、spawn pending／stdin／确认前后取消、缺失／损坏／变身份、原预算尽；恢复只观察且SDK start／native launch不重发|未实施；各按真实状态转换选择原接缝|
 |b1.4 包与审查|新core／SDK非editable安装同一、283／依赖、适用原接缝、SDK-free观察、自身原模板及新的独立产品两轴、固定提交|未实施；分别记录旧失败／新候选，不继承probe或前片通过|
