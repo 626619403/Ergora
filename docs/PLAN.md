@@ -8,9 +8,9 @@
 
 **前片CI修复已独立通过并推送，候选自己的CI尚未观察到。** 原 `1b8c2ed1e61258e97f0c39f38ea97a35fe66cd9b` 的官方run `43713822317`／push／attempt1保留七job成功、group5失败：测试在beta通知后过早读取writer marker。仅修原fixture到真实阻塞位置后通知及原子发布marker，旧受控反例失败／同fault修后通过，独立两轴approve／0。候选 `7025e15f40e1934097a5c1c962bb7bf5e82a979d` 已普通推送 `fix/cycle-stop-overlap-ci` 和符合原push规则的 `refactor/cycle-stop-overlap-ci`，两个精确远端ref同一；未改CI。最新一次官方精确SHA查询403／配额0，不证明无run或成功。主线尚未导入此fixture修复，保留c1b1的新分支再整合。[调查](delivery/2026-11-15-cycle-stop-ci-failure-investigation.md)／[前片交付](delivery/2026-11-15-training-cycle-stop-operations.md)。
 
-**BR／CI fixture联合本地门禁闭合，正在固定／发布。** 已接纳隔离组合的28项精确差异，保留主线五产品及所有旧资源，catalog33。新联合core／SDK非editable各663文件同一，283参考／依赖通过；216旧资源／旧对象／manifest／八输入保持。完整BR **50 passed／208.52秒**；同一178冻结输入下另跑CI／取消／并发候选 **8 passed／106.07秒**，未重跑c1b1总suite。三个preset真实CLI及报告完整资源通过；自身原结构模板真实Codex29.200秒approve。known markers／JSON原件的15完整进程身份当前活匹配0、unknown0。原报告390px下70px溢出保持，没有新浏览器质量认证。联合fresh两轴已approve／开放0／0；固定提交／普通发布及自己的准确CI仍待。[联合计划](plans/2026-11-16-review-reporting-mainline-integration.md)／[交付](delivery/2026-11-16-review-reporting-mainline-integration.md)。
+**BR／CI fixture联合已固定并普通推送，自己的CI在途。** 已接纳隔离组合的28项精确差异，保留主线五产品及所有旧资源，catalog33。新联合core／SDK非editable各663文件同一，283参考／依赖通过；216旧资源／旧对象／manifest／八输入保持。完整BR **50 passed／208.52秒**；同一178冻结输入下另跑CI／取消／并发候选 **8 passed／106.07秒**，未重跑c1b1总suite。三个preset真实CLI及报告完整资源通过；自身原结构模板真实Codex29.200秒approve。known markers／JSON原件的15完整进程身份当前活匹配0、unknown0。原报告390px下70px溢出保持，没有新浏览器质量认证。联合fresh及固定提交两轴approve／开放0／0；提交`6725e62511aa4a5b68baf684ec3cbc1f0470d3e6`已推送本开发分支，精确远端同一。自己的官方run[43735663360](https://github.com/626619403/Ergora/actions/runs/43735663360)为push／attempt1，最新官方快照仍in_progress：5 success、group3 failure、Windows／group5在途。group3准确失败为review packet fixture硬编码1.0.1与新preset冲突；原完整日志403保持。最小fixture修正本地原反例失败、修后49通过，新fresh两轴approve／0，已接入主树待固定发布；新候选自己的CI另验。[联合计划](plans/2026-11-16-review-reporting-mainline-integration.md)／[交付](delivery/2026-11-16-review-reporting-mainline-integration.md)。
 
-**c1b2a服务r2设计两轴通过，隔离实施中。** [r2具体合同](plans/2026-11-15-training-cycle-service-boundary.md)及[原独立审计复核](delivery/2026-11-15-training-cycle-service-design-audit.md)已固定真实SDK来源／补receipt前核run、仅ordinal0新start、完整S-owned refs／父unknown内联、两queue各一槽、Supervisor70秒／强杀业务unknown及normal先关闭再stop实际收尾。独立分支`feat/training-cycle-service`以c1b1为产品基线，设计提交`b7193530f12363aeb0f68daddfa1a6f5774bc86d`。低强度子任务的服务命令／Supervisor接线已完成，源码services19通过／1平台skip、旧budget bootstrap1通过；高强度子任务仍实现原worker／protocol实际活动。两者尚未整体安装／真实queue／关闭验收，不认证总Workflow／sandbox／接受后继；主工作树的联合包身份不被隔离实现改变。
+**c1b2a服务进入新安装与真实链路验收。** [r2具体合同](plans/2026-11-15-training-cycle-service-boundary.md)及[独立设计审计](delivery/2026-11-15-training-cycle-service-design-audit.md)已通过；四原owner实施固定797da56，再合入6725得隔离候选`fef7d98e30d5625e5ce37dc45e14904f76447775`。新非editable core／SDK各663文件source＝wheel＝site，283参考／依赖保持，SDK1.34.0；包SHA为`b7e282af7a9e154a6b61525ca36cbc9d834ef0d2c92fb701dae5bea69685fcfd`，178测试／示例在build前冻结。安装接缝67通过／1平台skip（531.82秒）；真实无SDK core离线status与启动拒绝已验。真实Temporal及独立budget／cycle PID和四活动非法请求路由已验；原记录序列化错误后仅只读恢复history。fresh审查需求4项开放（启动失败shutdown、fatal及时通知、父侧事实、容量分类），高强度子任务正在修正；新包业务／阻塞／信号／fatal和自身模板仍待，不认证正式Workflow／sandbox／接受后继。[逐步交付](delivery/2026-11-16-training-cycle-service.md)。
 
 **WA1–WA3 三份审计已收，WA4 详细方案仍为草案。** 用户新增的历史研究复用、任意循环、硬脚本／人工 Hook、调研设计前人类反复讨论与缺失公司知识提问均已[完整登记](plans/2026-11-15-workflow-evidence-and-human-gates.md)。[研究复用](delivery/2026-11-15-workflow-research-reuse-audit.md)、[实际 runtime](delivery/2026-11-15-workflow-runtime-capabilities-audit.md)、[设计／知识关卡](delivery/2026-11-15-workflow-design-knowledge-audit.md)审计明确现状：自有定义／StageDAG＋Temporal；受限嵌套串并行和既有批准／检查存在，通用 Repeat、任意非 Agent Hook和 typed 问题／答复／设计修订硬关卡尚未实现。已[汇总详细方案、客观验收和 D1–D4 产品取舍](plans/2026-11-15-workflow-design-and-execution-evolution.md)；先完成手头授权工作，再与用户讨论，不把设计写成已实施。
 
@@ -22,7 +22,7 @@ WA4已于11月16日发起三项异步讨论：D1强制设计适用范围、D2／
 |---|---|---|
 |P0 c1b1|已固定d5b5891且提交身份终核通过；随联合候选普通发布及准确CI另验。源、安装、模型、独立、发布各自记账|[生命周期计划](plans/2026-11-15-training-cycle-owner-lifecycle.md)／[交付](delivery/2026-11-15-training-cycle-owner-lifecycle.md)|
 |P0 前片 CI 修正|7025已独立通过／双ref推送；自己的CI待实际观察。将最小fixture修正整入后继，旧失败保留|[前片交付](delivery/2026-11-15-training-cycle-stop-operations.md)|
-|P0 BR1／BR2|联合663包、BR50＋精准8、自身模板／收尾及fresh独立两轴通过；固定／普通发布与自身CI|[BR计划](plans/2026-11-15-backend-review-and-reporting.md)|
+|P0 BR1／BR2|已固定／推送6725且固定提交核同一；自己的43735663360 CI在途，终态另验|[BR计划](plans/2026-11-15-backend-review-and-reporting.md)|
 |P1 c1b2|r2设计通过，隔离实现原活动／双queue／关闭；实证独立服务与配额。正式Workflow／标准sandbox留c1c，复用原process／budget|[c1总计划](plans/2026-11-15-training-cycle-workflow.md)|
 |P1 c1c|接确定性总 Workflow的真实消费者，串接原候选／停止／恢复与取消；unknown不重发，旧人工运行保持|[c1总计划](plans/2026-11-15-training-cycle-workflow.md)|
 |P1 c1d|候选2之前必须有真实 phase、accepted archive、durable stopped、原多轮索引与质量门槛；CPU两轮不能代替真实训练|[c1总计划](plans/2026-11-15-training-cycle-workflow.md)|
@@ -62,7 +62,7 @@ WA4已于11月16日发起三项异步讨论：D1强制设计适用范围、D2／
 1. 先核本页、Git HEAD／分支／diff与在跑进程，不重复启动现有回归或训练。旧摘要不能覆盖原JUnit／receipt与准确候选。
 2. c1b1先读交付末尾及独立报告，核当前r2输入、包、回归、SDK-free、自身模板与清理终态；私有缓存位于项目ignored持久目录，公开文档不带本机路径或密钥。
 3. 前片CI准确失败须保留，不把限额／403／未知改成success；独立候选修复与自己的CI分别记录。
-4. BR隔离组合及README独立通过但仍未提交；整入时只接纳其准确diff，不覆盖主线五产品和新PLAN。联合候选安装／接缝另验，不重用隔离663包验收。
+4. BR／README／原CI fixture已固定并推送6725；其自己的group3新fixture失败和局部修正分别记账。服务隔离树fef7d98尚未产品终核；先读c1b2a交付及独立4项finding，修后新包复验，不将旧包67通过冒称修后结果。
 5. WA1–WA3已完成；先读三审计与WA4草案，讨论D1–D4后再做新产品关卡。先前用户授权的c1与BR收尾继续，不因新设计等待而重复询权。
 6. 每个节点完成更新本页及所属交付。当前事实与历史分开，具体数值／原件留所属交付，本页只保留可恢复的活动状态。
 
