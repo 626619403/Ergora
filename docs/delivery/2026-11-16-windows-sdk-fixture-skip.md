@@ -39,3 +39,5 @@ r2 复用原轻量边界脚本，仅将所选模块／函数改为上述 runtime
 r2 脚本、修前／修后日志、Linux 收集日志、汇总 JSON 与准确 patch 独立保存在原专属检查目录的 `r2/`，没有覆盖 r1 六节点历史。patch SHA256 为 `25b2968d03bd0cc8308c75d6ac9de9bf179b273eafc0f75eb1e013fec79be2b3`，基线如上。
 
 r2 已取得[新的独立审查](2026-11-16-windows-sdk-clock-skip-review.md)，需求／维护性均 approve、开放 0；协调者已核准确两行并固定导入开发树 `c52fc0a338118a19491ad7cd458b82cf2f146a9b`。其完整差异只有上述 runtime 测试的标准库导入与装饰器；原 Linux 时钟测试保持。c1c 实施树已普通合入此提交，产品不因该测试修正变化。尚未推送本次 r2，故在途 879 候选自己的 CI 不含该修正；最终发布及新候选自己的必要 CI 分别记账。
+
+之后官方 879 候选自身 run `43752183692` 已终态 failure。其 Windows 完整 annotations 核实恰为本函数四参数的 `ValueError: Budgeted native operations require Linux; use WSL2`，与此前静态 call 路径预测一致；这是官方实际四失败，不能与此前局部 setup sentinel 混记。六 Linux job 全部 success，group5 15分04秒内完成，未调高原20分钟时限；Windows 安装升级的具体结果沿该 run 原 jobs 另记。官方原响应保存在消费者 `publication-r2/`。原六 setup 错误已不再出现，但这不把 879 总 CI 改写为成功。c52 的修正已经独立验证／导入，接续普通发布及自己的全平台 CI。
