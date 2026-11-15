@@ -48,3 +48,18 @@
 必要行为验证是同一个新非editable安装候选下运行受影响的完整Linux组2和5，消费现有JUnit、phase、退出码与观察件，确认所有节点终态、无setup／teardown错误，原生命周期故障仍真实触发并回收。拆分可能改变module级fixture次数，应特别检查managed installation、原一次start／attempt、unknown只对账、原fence、SIGKILL和setsid后代回收场景；Windows路径只需其受影响可移植节点及原skip集合／提前skip关系，不无依据全量重跑。最后由新候选自己的官方CI确认两个job在原20分钟限制内完成；本地成功不代替它。若仍超时，先读已有phase／JUnit确定单项问题，再决定下一片。
 
 旧审计的Windows提前skip与报错整句断言清理属于独立小动作：前者不减少Linux成本，后者不会实质缩短真实进程等待，均不能作为本次超时修复。没有删必要生命周期／恢复保护的依据。
+
+## 官方终态补证
+
+2026-11-15 18:08 UTC后API额度恢复，主控通过一次jobs及一次run请求取得HTTP200原件（不是重试循环）。完整SHA仍为`478c98891522930817fa7005a8ac96e408f37230`，push／attempt1；run=`43737570677`已`completed/cancelled`，plan与另外六个native任务成功，group5为`completed/cancelled`。因此此前公开页面的in_progress只保留为历史快照，不再代表当前状态；没有取得完整远程逐项日志或artifact。
+
+|Linux组|整个job秒数|回归步骤秒数|结论|
+|---|---:|---:|---|
+|0|253|233|success|
+|1|295|273|success|
+|2|255|232|success|
+|3|195|178|success|
+|4|225|205|success|
+|5|1215|1195|cancelled，原页面已明确20分钟超时|
+
+Windows同候选整个job1541秒、success。这是478自身的官方step结果，不是b653本地阶段时长，不能直接套比例或相加保证新预算。原始响应与请求身份保存在ignored `ci-training-shards/public-run-r1/{response.json,request-result.json,run-response.json,run-request-result.json}`。后续只按新候选自己的官方结果认证发布。

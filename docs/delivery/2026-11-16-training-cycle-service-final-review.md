@@ -5,8 +5,8 @@
 ## 身份、范围与结论
 
 - 主项目为 Ergora，产品隔离树为 `.ergora/worktrees/training-cycle-service`。
-- 比较基线：`478c98891522930817fa7005a8ac96e408f37230`；初审候选：`97a0bbfae9687c15927f1437a374cd070baf0a94`；最终候选：`af176cf6e79adb9c6ef6f32946672bc77cdb89de`，产品相同，仅一行测试配置修订。审查及最终接续核验时隔离产品树均无未提交差异。
-- **需求轴：approve，开放 finding 0；本片服务边界验收闭合，可导入主树。** 源码、受影响安装回归与真实N32剩余证据已经分层复核，具体身份及限制见末节；固定导入身份、准确CI／发布仍分别后接。
+- 比较基线：`478c98891522930817fa7005a8ac96e408f37230`；初审候选：`97a0bbfae9687c15927f1437a374cd070baf0a94`；最终候选：`af176cf6e79adb9c6ef6f32946672bc77cdb89de`，产品相同，仅一行测试配置修订。主树已本地真实merge为`691809563c410cc1f9d93bc6f821b313f7a2772b`，固定身份已终核。审查及最终接续核验时产品树均无未提交差异。
+- **需求轴：approve，开放 finding 0；本片服务边界验收及固定导入身份终核闭合。** 源码、受影响安装回归与真实N32剩余证据已经分层复核，具体身份及限制见末节；准确CI／普通发布仍分别后接。
 - **可维护性轴：approve，开放 finding 0。** 未发现有证据支持的冗余抽象、重复业务 owner、无实际用途的新增 guard／测试，或本片引入的结构性能 blocker。
 
 完整检查 `git diff 478c988..97a0bbf` 的全部13文件：六个产品 owner `reference.py`、`reference_training_budget.py`、`reference_training_worker.py`、`services.py`、`training_cycles.py`、`training_execution_protocol.py`；两个 fixture `training_controller_service.py`、`training_cycle_operations.py`；三个测试文件 `test_services.py`、`test_training_runtime.py`、`test_training_submission.py`；隔离树 PLAN 与 review-fixes 新文档。没有省略新增测试或将其视为已运行。另读相邻 submission／runtime／budget 的最后 gate、原 service 管理及真实 caller。
@@ -89,3 +89,15 @@ r3真实服务独立复核结果：
 **最终需求轴approve／开放0；最终可维护性轴approve／开放0。c1b2a服务边界的本地验收闭合，建议允许把固定af176cf6导入主树。** 完整refs、混合unknown及最终SDK容量拒绝的真实N32证据现已分别成立；原源码／安装／SDK生命周期及r2现场故障证据保持其原身份，结合两行精确产品修正的受影响新安装复验和r3正常／N32现场判断本片，不宣称同一新包已重跑全部历史场景。正常测试初败8通过／1失败及新冻结1通过也继续分列。
 
 本结论只覆盖四活动、真实SDK来源及一次机会／对账、独立服务及normal／stop配额、原S/H／预算根生命周期与完整结果容量。未认证正式总Workflow、execution／collect、接受后继、训练／GPU／质量收益；未实测Supervisor70秒到期SIGKILL，也未把constructor注入称真实OS故障。主树导入的固定merge身份及产品／资源字节仍待导入后只读复核；准确CI和普通发布尚未发生，不在本结论内。无关CI分组候选不属于本片。
+
+## 固定主树merge身份终核
+
+主树已本地真实merge固定为 **`691809563c410cc1f9d93bc6f821b313f7a2772b`**，准确parents为主树文档候选`569076581e8916bf1aada86825dd2e1b31e2d0e2`及已审产品`af176cf6e79adb9c6ef6f32946672bc77cdb89de`。核验开始时HEAD同一、主树干净；尚未push。
+
+本reviewer只读检查固定commit，`git diff --exit-code af176cf6 6918095 -- src/ergora tests`退出0，文件内容／模式及全部测试同一；全树相对af176cf6的差异仅21个docs文件，没有CI分组、后继执行消费者或其他未审产品混入。`git diff --check 5690765..6918095`通过。
+
+独立用`git archive`直接读取固定6918095树，并逐项与wheel081aab45及core／SDK实际site文件比较：**每套663个产品文件SHA／完整bytes／执行位均同一，差异0**，覆盖所有preset／schema／reference及其他打包资源。源码另有协作协议`src/ergora/AGENTS.md`，不属于wheel的663产品清单；它也在上述候选与merge源码零差异范围内。无需重新构建无变化产品或运行新suite／服务。
+
+PLAN冲突处置保留主树权威检查点，没有重新接入隔离树末尾8行旧“尚未实施／修正中”状态；原历史仍在af176cf6父commit及具体交付记录，处置合理。固定merge携带的是merge前检查点，因此当中的“主树478／尚未导入／待导入”应由随后状态记录同步为本节6918095本地导入事实；已告知主控。这是文档状态接续，不改变固定产品身份或引入新的产品finding。
+
+**固定提交需求／可维护性两轴approve，开放0／0；本片本地服务验收及导入身份闭合。** 本次仅追加本报告，不改产品、测试、安装或原件，不启动模型／服务／新测试。普通push、准确CI与另片CI分组的验收仍独立进行，不能将本次身份核验写成CI或发布通过。

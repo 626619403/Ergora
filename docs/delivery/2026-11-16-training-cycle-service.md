@@ -1,6 +1,6 @@
 # c1b2a：独立训练cycle服务逐步交付
 
-日期：2026-11-16。按[已审r2具体合同](../plans/2026-11-15-training-cycle-service-boundary.md)与[独立设计审计](2026-11-15-training-cycle-service-design-audit.md)推进。产品代码仍在隔离分支`feat/training-cycle-service`，主开发分支当前已发布478c988；服务固定候选af176cf本地验收及最终两轴已闭合，导入与发布仍待；下文保留各阶段原记录。
+日期：2026-11-16。按[已审r2具体合同](../plans/2026-11-15-training-cycle-service-boundary.md)与[独立设计审计](2026-11-15-training-cycle-service-design-audit.md)推进。产品代码仍在隔离分支`feat/training-cycle-service`，主开发分支已真实导入6918095、远端仍478c988；服务固定候选af176cf本地验收及最终两轴已闭合，发布仍待；下文保留各阶段原记录。
 
 设计以c1b1 d5b5891为产品前置，独立通过后固定b719353；实施候选797da567f8b282b4884fceafe16c3efba506f493已在本地固定，再真实合入6725得到`fef7d98e30d5625e5ce37dc45e14904f76447775`。自动merge保留了新BR资源与CI fixture修正；尚未向主开发分支导入本片产品。
 
@@ -56,3 +56,6 @@ r3安装原9项初跑8通过／1失败，失败是正常场景7秒窗口实际�
 [最终独立审查](2026-11-16-training-cycle-service-final-review.md)已复核r3b实际history、完整未发送日志封套、134真实refs及274记录身份：两轴approve／开放0，允许固定af176cf6导入。N32短原因场景为65refs＋1完整inline unknown（19,510字节）；长原因场景实际input493字节、完整聚合39,518字节，真实SDK非重试容量拒绝，20,066字节原因完整保留，全部已创建peer仍收尾。两场只在私有harness注入constructor故障，不冒称OS syscall故障；原授权／输入不变，controller原COMPLETED，daemon／端口停止。
 
 本地c1b2a服务边界验收闭合；原r2信号／fatal／强杀、r3正常／全refs及r3b注入各自保持源码与方法范围。Supervisor等待70秒后强杀、正式总Workflow／执行消费者／接受后继／真实训练仍非本片结论。下一步固定真实导入身份与普通发布，CI测试重分组及后继c1b2b分别记录。
+
+
+固定导入：主开发分支真实merge=`691809563c410cc1f9d93bc6f821b313f7a2772b`；与af176cf6的全部src/ergora及tests差异为零，主树原BR资源／fixture修正保持。PLAN取主树最新checkpoint，隔离分支8行旧在途摘要不覆盖当前状态；原父提交／逐片交付仍完整保留。等待原reviewer固定身份终核；未推送，待独立CI分组完整安装收尾后一并普通发布，不先宣称新CI成功。

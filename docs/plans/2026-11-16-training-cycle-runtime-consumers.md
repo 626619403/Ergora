@@ -1,10 +1,10 @@
 # c1b2b／c1c：训练循环的后续真实消费者
 
-日期：2026-11-16。状态：源码调查与实施细化；[具体r2设计](2026-11-16-training-cycle-execution-consumer.md)已独立两轴通过，**尚未实现**。承接[已批准控制器合同](2026-11-15-training-cycle-controller-contracts.md)与[c1实施顺序](2026-11-15-training-cycle-workflow.md)。c1b2a服务正在处置独立审查并做真实验收；本页不越过其终核门槛，也不实施等待用户讨论的WA通用设计关卡／Repeat。
+日期：2026-11-16。状态：[具体r2设计](2026-11-16-training-cycle-execution-consumer.md)已独立两轴通过，c1b2b在af176专属树实施；源码短检查已通过，真实S-H／新包／独立产品审查仍待验，尚未导入。承接[已批准控制器合同](2026-11-15-training-cycle-controller-contracts.md)与[c1实施顺序](2026-11-15-training-cycle-workflow.md)。c1b2a服务已通过终审并合入6918095；本页不把它的验收转给新消费者，也不实施等待用户讨论的WA通用设计关卡／Repeat。
 
 ## 当前消费者缺口
 
-现有四活动为inspect／start／reconcile／stop；服务本身不注册正式TrainingCycleWorkflow。它们保留完整H原件引用，但引用中的snapshot不能由确定性Workflow读取。当前SDK封套的observation只有原total剩余与时钟观察，不能据此派生compute∩control截止；candidate父侧结果也不能用一个observed状态冒充已提交／已执行／已接受。
+已导入服务的四活动为inspect／start／reconcile／stop；服务本身不注册正式TrainingCycleWorkflow。它们保留完整H原件引用，但引用中的snapshot不能由确定性Workflow读取。原v1 SDK封套的observation只有原total剩余与时钟观察，不能据此派生compute∩control截止；candidate父侧结果也不能用一个observed状态冒充已提交／已执行／已接受。c1b2b正在新增两个v2活动及小型facts，保留旧四合同；后继设计须先用observe-candidate.v2取得首轮budget／submission事实，不能假设旧inspect新增字段。
 
 原`Execution.request`已经拥有完整revision／start intent／固定run／native request SHA确认、原QUEUED phase核对、父共享许可及不可覆盖request。原预算根的`Execution.admit`消费一次launch并驱动原executor。后继应接这两个原owner，不能另建launch路径或让Workflow持训练进程。原`training.status`／`ExecutionRecords.observe`分别拥有真实Workflow phase与durable stopped；两者不互相替代。原evidence／rounds继续是接受与索引权威。
 
