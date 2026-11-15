@@ -450,7 +450,7 @@
     "pretraining-review": {
       "description": "Exact-source pretraining specialist plus existing engineering reviews; readonly leaves, no automatic standalone root runner or platform approval.",
       "runtime": "proposal-leaves",
-      "root": "ergora-pretraining-review",
+      "root": "ergora-pretraining-review-v1.0.1",
       "agents": [
         "ergora-structure-reviewer",
         "ergora-correctness-reviewer",
@@ -463,13 +463,14 @@
         "ergora-test-value-review",
         "ergora-delivery-review",
         "ergora-pretraining-domain-review",
-        "ergora-pretraining-review"
+        "ergora-pretraining-review",
+        "ergora-pretraining-review-v1.0.1"
       ]
     },
     "posttraining-review": {
       "description": "Exact-source posttraining specialist plus existing engineering reviews; readonly leaves, no automatic standalone root runner or platform approval.",
       "runtime": "proposal-leaves",
-      "root": "ergora-posttraining-review",
+      "root": "ergora-posttraining-review-v1.0.1",
       "agents": [
         "ergora-structure-reviewer",
         "ergora-correctness-reviewer",
@@ -482,7 +483,8 @@
         "ergora-test-value-review",
         "ergora-delivery-review",
         "ergora-posttraining-domain-review",
-        "ergora-posttraining-review"
+        "ergora-posttraining-review",
+        "ergora-posttraining-review-v1.0.1"
       ]
     },
     "training-flow-map": {
@@ -513,6 +515,17 @@
         "ergora-kernel-assessment",
         "ergora-measurement-review-v2",
         "ergora-training-proposal-v3"
+      ]
+    },
+    "evidence-report": {
+      "description": "Readonly source-linked evidence reports with Markdown and self-contained HTML; no collection, execution or release authority.",
+      "runtime": "proposal-leaves",
+      "root": "ergora-evidence-report",
+      "agents": [
+        "ergora-evidence-report-author"
+      ],
+      "workflows": [
+        "ergora-evidence-report"
       ]
     }
   }

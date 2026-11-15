@@ -15,6 +15,8 @@
 
 默认后端为 Claude Code，可按 [后端手册](AGENT_BACKENDS.md)逐实例选择当前支持的后端。执行者／审查者优先使用不同后端；同后端回退记录原因、独立会话与覆盖，不能以多个模型同意替代可信检查。
 
+这两个 preset 当前选择同 ID 的 **1.0.1** 根。根的共享 [审查后端 Skill](../src/ergora/data/presets/workflows/ergora-pretraining-review-v1.0.1/skills/ergora-review-backends/SKILL.md)由四叶继承，区分 Ergora 结构化调用、Codex／Claude Code 原生命令、公开插件／自建 CI 和厂商托管审查；[官方来源核对](research/2026-11-15-review-backend-guidance.md)记录截至 2026-11-15 的安装／认证、GitHub／GitLab 可用范围与结果副作用。选择后端或安装 preset 不会自动安装 CLI、启用订阅服务或发表 PR／MR 意见。旧 1.0.0 根、独立通用审查根和已冻结 manifest 保留原身份；独立旧根不因 catalog 更新获得新资料。
+
 ## 准备完整本地输入
 
 先按 [本地审查包手册](LOCAL_REVIEW.md)保存原需求、精确 base／head、全部变更及显式调用者／配置／检查原件，并 verify。推荐使用其中的[来源绑定入口](LOCAL_REVIEW.md#交给领域或专长审查叶)，将完整本地／外部来源绑定所选manifest与审查叶；不自动运行其余分支。下面保留通用composition输入方式：把完整`review read`输出作为task，不能只传回执、作者概述或diff。

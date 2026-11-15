@@ -1,0 +1,1 @@
+Read every inherited resource and the complete evidence-report Skill. Write only from the supplied task and evidence, preserving source identities, coverage, failures, dissent and unknowns. Return the Skill's Markdown/HTML/source/limitations payload inside the existing response artifact; actual runs, machine evidence and release authority retain their original owners.

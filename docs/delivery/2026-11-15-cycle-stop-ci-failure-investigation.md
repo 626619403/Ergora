@@ -56,3 +56,8 @@
 先核`ci-r3/`原件：15:51:40 UTC的分支push查询为HTTP 200、`total_count: 0`，当时剩余额度5；workflow查询为active。这仅证明该时点未看到自身run。随后在15:59:40 UTC只查询一次官方Actions runs，参数为完整候选`head_sha`，返回HTTP 403、remaining 0，reset为2026-11-15 16:23:16 UTC。本轮没有实际观察到该候选的自身run，也不能据403认定没有run、失败或成功；未继续轮询。
 
 新请求元数据、完整响应headers和原响应分别保存于项目忽略目录`.ergora/checks/cycle-stop-ci-investigation/ci-r4/runs-request.json`、`runs-headers.json`、`runs-response.json`；响应SHA256为`cab107d310af6137d3ca21f7de123c972a91cb1cbd91e2f58f61fe192ba31735`。旧`1b8c2ed`的官方run`43713822317`仍为failure，不能由新候选状态覆盖。
+
+
+## 单次精确SHA续查（2026-11-15 16:24:46 UTC）
+
+越过ci-r4记录的reset后，仅再查询一次官方Actions完整`head_sha=7025e15f40e1934097a5c1c962bb7bf5e82a979d`：HTTP 200，total_count为0；本次未观察到自身run；不据此断言后续不会出现run。未切换出口或认证，未重复轮询。原请求、headers和响应保存在`.ergora/checks/cycle-stop-ci-investigation/ci-r5/`的`runs-request.json`、`runs-headers.json`及`runs-response.json`；响应SHA256为`a2790a384d7d281e7395679000c35d27768d89dbd7052f725b8f4688beb59915`。旧run`43713822317`的failure保持，其他候选结果不覆盖其终态。

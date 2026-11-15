@@ -19,9 +19,9 @@ markers = Path(os.environ['ERGORA_TEST_CYCLE_MARKERS'])
 mode = payload['identity']['mode']
 
 
-def mark(name):
-    pending = markers / ('.' + name + '.pending')
-    pending.write_text(json.dumps(processes.identity(os.getpid())))
+def mark(name, value=None):
+    pending = markers / (name + '-' + str(os.getpid()) + '.pending')
+    pending.write_text(json.dumps(processes.identity(os.getpid()) if value is None else value))
     pending.replace(markers / name)
 
 
@@ -197,9 +197,17 @@ else:
         notify = processes.notify_identity
 
         def record_notification(expected, signum):
+            # Independent H processes may reach these storage seams in any order.
+            # Establish overlap before the real notification, within the original clock.
+            while True:
+                remaining = protocol.cycle_operation_remaining(payload)
+                if remaining <= 0:
+                    raise ValueError('Original cycle allowance ended before both stop branches blocked')
+                if all((markers / name).is_file() for name in ('stop-writer', 'alpha-owner-reader')):
+                    break
+                time.sleep(min(.01, remaining))
             notify(expected, signum)
-            (markers / 'beta-notified').write_text(json.dumps({
-                'target': expected, 'sender': processes.identity(os.getpid())}))
+            mark('beta-notified', {'target': expected, 'sender': processes.identity(os.getpid())})
 
         processes.notify_identity = record_notification
     if fault == 'blocked-inspect' and mode == 'inspect':
