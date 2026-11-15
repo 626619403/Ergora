@@ -21,15 +21,12 @@ from .reference_training_budget import BudgetedStart, TASK_QUEUE, validate_bindi
 from .reference_training_submission import _Submission
 from .reference_training_execution import Execution
 from .state import State, file_lock, now
+from .training_cycles import _CycleCapacityError
 
 
 _CREATING = ContextVar('ergora_training_budget_create', default=None)
 _CYCLE_LIMIT = 32_768
 _ROOT_OBSERVERS = set()
-
-
-class _CycleCapacityError(ValueError):
-    pass
 
 
 class _CycleOperation:
@@ -791,7 +788,8 @@ async def stop_live_controller(home: Path, project_id: str, cycle_id: str, autho
         try:
             value = await operation.run()
         except (OSError, ValueError, TypeError, KeyError) as error:
-            value = operation.observation({'status': 'unknown', 'reason': str(error)})
+            value = operation.observation({'status': 'capacity_exceeded' if isinstance(error, _CycleCapacityError)
+                                           else 'unknown', 'reason': str(error)})
         results[index] = value
         if operation_records is not None:
             operation_records.append(_activity_operation_result(operation, value))
@@ -805,7 +803,8 @@ async def stop_live_controller(home: Path, project_id: str, cycle_id: str, autho
             except (OSError, ValueError, TypeError, KeyError) as error:
                 value = {'operation_id': uuid.uuid4().hex, 'mode': mode, 'ordinal': ordinal,
                     'operation_stopped': False, 'supervisor_returncode': None,
-                    'status': 'unknown', 'reason': str(error)}
+                    'status': 'capacity_exceeded' if isinstance(error, _CycleCapacityError) else 'unknown',
+                    'reason': str(error)}
                 results[index] = value
                 if operation_records is not None:
                     operation_records.append({key: value[key] for key in ('operation_id', 'mode', 'ordinal',
@@ -899,10 +898,15 @@ def cycle_operation_main(supervisor: bool = True) -> None:
         'status': 'unknown', 'reason': 'Original cycle helper did not complete within its allowance',
         'helper_status': result['status']}
     if result['status'] == 'succeeded':
-        stdout = training_cycles._read_bytes(output / 'helper/stdout.txt', _CYCLE_LIMIT)
-        observed = protocol.decode(stdout)
-        observed['_stdout_ref'] = {'file': 'helper/stdout.txt', 'bytes': len(stdout),
-                                   'sha256': hashlib.sha256(stdout).hexdigest()}
+        try:
+            stdout = training_cycles._read_bytes(output / 'helper/stdout.txt', _CYCLE_LIMIT)
+        except _CycleCapacityError as error:
+            logging.exception('Complete cycle helper stdout retained at %s', output / 'helper/stdout.txt')
+            observed = {'status': 'capacity_exceeded', 'reason': str(error)}
+        else:
+            observed = protocol.decode(stdout)
+            observed['_stdout_ref'] = {'file': 'helper/stdout.txt', 'bytes': len(stdout),
+                                       'sha256': hashlib.sha256(stdout).hexdigest()}
     frame('result', 'result', observed)
 
 
@@ -1019,6 +1023,13 @@ def create_cycle_activities(client):
                     outcome = await candidate.run()
                     records.extend(_activity_operation_result(operation, value)
                                    for operation, value in zip(candidate.operations, candidate.results))
+                    # H references do not archive observations made later by its parent.
+                    # Keep a separate inline observation of that same actual operation.
+                    parent_result = {key: value for key, value in outcome.items()
+                                     if key not in ('preparation', 'confirmation')}
+                    if parent_result != candidate.results[-1]:
+                        records.append(_activity_operation_result(candidate.operation, candidate.results[-1])
+                                       | {'result': {'inline': parent_result}})
                 else:
                     operation = _CycleOperation(*arguments, 'reconcile-candidate', snapshot=snapshot,
                         ordinal=request['ordinal'], start_context={'controller': binding},
@@ -1030,6 +1041,7 @@ def create_cycle_activities(client):
                     activity_context=context, operation_records=records)
         if outcome.get('status') == 'capacity_exceeded' or any(
                 item.get('status') == 'capacity_exceeded' for item in outcome.get('operations', [])):
+            logging.error('Complete cycle operation capacity failure; outcome: %s; operations: %s', outcome, records)
             raise ApplicationError('Complete original operation result exceeded its frame capacity',
                                    type='cycle_activity_capacity_exceeded', non_retryable=True)
         envelope = {'schema_version': 1, 'protocol': 'ergora-training-cycle-activity-v1', 'action': action,
@@ -1076,6 +1088,14 @@ async def _serve_cycle() -> None:
 
     connecting = asyncio.create_task(connect_bounded())
     failure = None
+
+    async def fatal(error):
+        nonlocal failure
+        if failure is None:
+            failure = error
+        # SDK calls this before waiting for active activities to finish cleanup.
+        stopped.set()
+
     try:
         await asyncio.wait((connecting, waiting), return_when=asyncio.FIRST_COMPLETED)
         if stopped.is_set():
@@ -1084,20 +1104,32 @@ async def _serve_cycle() -> None:
         activities = create_cycle_activities(client)
         workers = [Worker(client, task_queue=protocol.CYCLE_TASK_QUEUE,
             activities=[activities[action] for action in ('inspect', 'start', 'reconcile')],
-            max_concurrent_activities=1, graceful_shutdown_timeout=timedelta(0)),
+            max_concurrent_activities=1, graceful_shutdown_timeout=timedelta(0), on_fatal_error=fatal),
             Worker(client, task_queue=protocol.CYCLE_STOP_TASK_QUEUE, activities=[activities['stop']],
-            max_concurrent_activities=1, graceful_shutdown_timeout=timedelta(0))]
+            max_concurrent_activities=1, graceful_shutdown_timeout=timedelta(0), on_fatal_error=fatal)]
         running = [asyncio.create_task(worker.run()) for worker in workers]
         done, _ = await asyncio.wait((*running, waiting), return_when=asyncio.FIRST_COMPLETED)
         for task in done:
-            if task in running and not task.cancelled():
+            if task in running and not task.cancelled() and failure is None:
                 failure = task.exception()
     finally:
         # Explicit ordered shutdown retains stop capacity while normal owns live S/H or a pending root.
         async def finish():
+            nonlocal failure
             for worker, task in zip(workers, running):
-                await worker.shutdown()
-                await asyncio.gather(task, return_exceptions=True)
+                shutdown = None
+                if not task.done():
+                    shutdown = asyncio.create_task(worker.shutdown())
+                    # Validation can fail after the check above. A terminal run
+                    # owns no remaining cleanup, but SDK shutdown may still wait.
+                    await asyncio.wait((task, shutdown), return_when=asyncio.FIRST_COMPLETED)
+                outcome = (await asyncio.gather(task, return_exceptions=True))[0]
+                if shutdown is not None:
+                    if not shutdown.done():
+                        shutdown.cancel()
+                    await asyncio.gather(shutdown, return_exceptions=True)
+                if isinstance(outcome, Exception) and failure is None:
+                    failure = outcome
         cleanup = asyncio.create_task(finish())
         while not cleanup.done():
             try:

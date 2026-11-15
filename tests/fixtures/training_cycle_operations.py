@@ -46,6 +46,12 @@ if stage == 'S':
 
         training_cycles._read_bytes = blocked_result
 else:
+    if fault in ('oversized-stdout', 'oversized-frame') and mode == 'stop-writer':
+        def large_result(payload):
+            # Real H bytes cross either the stdout bound or the identity-bearing frame bound.
+            return {'status': 'unknown', 'reason': 'x' * (32768 if fault == 'oversized-stdout' else 32500)}
+
+        worker._cycle_operation = large_result
     if mode in protocol.CYCLE_CANDIDATE_MODES and os.environ.get('ERGORA_TEST_TRAINING_SERVICE'):
         mark('candidate-helper-entered')
         sys.path[:0] = [str(Path(payload['snapshot']['authorization']['execution']['installation']) / part)

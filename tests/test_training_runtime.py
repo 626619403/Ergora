@@ -260,3 +260,124 @@ def test_cycle_sdk_capacity_counts_metadata_and_rejects_without_truncation():
     with pytest.raises(ApplicationError) as failed:
         asyncio.run(_cycle_capacity(value, DataConverter.default))
     assert failed.value.type == 'cycle_activity_capacity_exceeded' and failed.value.non_retryable
+
+
+@pytest.mark.parametrize('fault', ['normal-validate', 'stop-validate', 'validate-during-shutdown', 'stop-fatal'])
+def test_cycle_service_closes_peers_with_real_sdk_lifecycle(monkeypatch, fault):
+    """Keep SDK run/shutdown ordering; only its bridge and activity poller are local."""
+    pytest.importorskip('temporalio')
+    import asyncio
+    import signal
+    import sys
+    from types import ModuleType, SimpleNamespace
+    import temporalio.worker
+    from ergora import reference_training_worker as service
+
+    sdk_worker = temporalio.worker.Worker
+
+    async def scenario():
+        loop = asyncio.get_running_loop()
+        handlers, workers = {}, []
+        validate_release, cleanup_release = asyncio.Event(), asyncio.Event()
+        fatal = RuntimeError(fault)
+        failing_index = 1 if fault.startswith('stop-') else 0
+
+        class Bridge:
+            def __init__(self, index):
+                self.index = index
+                self.stopping = asyncio.Event()
+                self.validating = asyncio.Event()
+                self.finalized = False
+
+            async def validate(self):
+                self.validating.set()
+                if self.index == failing_index and fault != 'stop-fatal':
+                    await validate_release.wait()
+                    raise fatal
+
+            def initiate_shutdown(self):
+                self.stopping.set()
+
+            async def finalize_shutdown(self):
+                self.finalized = True
+
+        class Poller:
+            def __init__(self, bridge):
+                self.bridge = bridge
+                self.running = asyncio.Event()
+                self.completing = asyncio.Event()
+
+            async def run(self):
+                self.running.set()
+                if self.bridge.index == failing_index and fault == 'stop-fatal':
+                    await validate_release.wait()
+                    raise fatal
+                await self.bridge.stopping.wait()
+
+            def notify_shutdown(self):
+                pass
+
+            async def drain_poll_queue(self):
+                pass
+
+            async def wait_all_completed(self):
+                self.completing.set()
+                await cleanup_release.wait()
+
+        def construct(client, **config):
+            worker = sdk_worker.__new__(sdk_worker)
+            worker._plugins = []
+            worker._started = False
+            worker._shutdown_event = asyncio.Event()
+            worker._shutdown_complete_event = asyncio.Event()
+            worker._bridge_worker = Bridge(len(workers))
+            worker._activity_worker = Poller(worker._bridge_worker)
+            worker._workflow_worker = worker._nexus_worker = None
+            worker._config = {'on_fatal_error': None, **config}
+            workers.append(worker)
+            return worker
+
+        connection = ModuleType('perf_temporal.connection')
+        async def connect():
+            return SimpleNamespace()
+        connection.connect = connect
+        monkeypatch.setitem(sys.modules, 'perf_temporal.connection', connection)
+        monkeypatch.setattr(temporalio.worker, 'Worker', construct)
+        monkeypatch.setattr(service, 'create_cycle_activities', lambda _: dict.fromkeys(('inspect', 'start', 'reconcile', 'stop')))
+        monkeypatch.setattr(loop, 'add_signal_handler', lambda sig, callback: handlers.setdefault(sig, callback))
+        monkeypatch.setattr(loop, 'remove_signal_handler', lambda sig: handlers.pop(sig, None))
+        serving = asyncio.create_task(service._serve_cycle())
+        try:
+            while len(workers) < 2:
+                await asyncio.sleep(0)
+            await asyncio.gather(*(worker._bridge_worker.validating.wait() for worker in workers))
+            if fault == 'validate-during-shutdown':
+                handlers[signal.SIGTERM]()
+                await asyncio.wait_for(workers[0]._shutdown_event.wait(), 2)
+            validate_release.set()
+            if fault == 'stop-fatal':
+                await asyncio.wait_for(workers[1]._activity_worker.completing.wait(), 2)
+                # Fatal is known while the failing worker still owns an active cleanup.
+                await asyncio.wait_for(workers[0]._bridge_worker.stopping.wait(), 2)
+                assert not serving.done() and not workers[1]._bridge_worker.finalized
+                serving.cancel()
+                await asyncio.sleep(0)
+                serving.cancel()
+            cleanup_release.set()
+            done, _ = await asyncio.wait((serving,), timeout=2)
+            assert done, 'Service hung after SDK run validation failed'
+            with pytest.raises(RuntimeError, match=fault):
+                serving.result()
+            assert all(worker._bridge_worker.finalized for index, worker in enumerate(workers)
+                       if index != failing_index or fault == 'stop-fatal')
+            assert not [task for task in asyncio.all_tasks() if task is not asyncio.current_task()]
+        finally:
+            validate_release.set()
+            cleanup_release.set()
+            # Only rescue the known-broken baseline's orphan shutdown waiter so
+            # pytest itself can exit. Product code never accesses SDK events.
+            for worker in workers:
+                worker._shutdown_complete_event.set()
+            await asyncio.gather(serving, return_exceptions=True)
+
+    asyncio.run(scenario())

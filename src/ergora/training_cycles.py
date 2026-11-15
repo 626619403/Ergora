@@ -27,6 +27,10 @@ _COVERAGE = {'records': 'saved-local-admission', 'runtime_status': 'not_queried'
              'origin_authenticated': False, 'execution_authorized': False, 'budget_started': False}
 
 
+class _CycleCapacityError(ValueError):
+    pass
+
+
 def _read_bytes(path: Path, limit: int) -> bytes:
     for selected in (path, *path.parents):
         if is_link(selected):
@@ -37,7 +41,7 @@ def _read_bytes(path: Path, limit: int) -> bytes:
             raise ValueError('Training cycle records require ordinary files')
         raw = stream.read(limit + 1)
     if len(raw) > limit:
-        raise ValueError(f'Complete training cycle record exceeds {limit} bytes; nothing was truncated')
+        raise _CycleCapacityError(f'Complete training cycle record exceeds {limit} bytes; nothing was truncated')
     return raw
 
 

@@ -69,3 +69,7 @@ WA4已于11月16日发起三项异步讨论：D1强制设计适用范围、D2／
 ## c1b2a隔离工作树接续：2026-11-16
 
 本分支`feat/training-cycle-service`以固定c1b1 `d5b58912e4f20c96a52f7c0138b8c7c3d1a97b50`为产品基线，仅实施[独立cycle服务r2合同](plans/2026-11-15-training-cycle-service-boundary.md)。[设计审计](delivery/2026-11-15-training-cycle-service-design-audit.md)已需求／维护性两轴通过，原产品尚未修改。主工作树BR／CI联合收尾在独立候选验证，不将本分支旧catalog当最新发布。实施遵守原owner／一次窗口／停止与关闭义务；正式Workflow／sandbox／后继门槛仍后接。
+
+## c1b2a 产品审查修正交接：2026-11-16
+
+固定 HEAD `fef7d98e30d5625e5ce37dc45e14904f76447775` 上未提交 R1–R4 修正：公开SDK生命周期协调、父观察inline保全、原reader typed容量及S分类。原反例已保留，新接缝11通过；最终受影响原组14通过，产品与测试冻结待主控固定/新包/真实服务验收及原fresh reviewer复核。[逐finding修正与源码身份](delivery/2026-11-16-training-cycle-service-review-fixes.md)。不借旧安装结果认证新源码，不提前称finding已独立关闭。

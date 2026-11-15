@@ -4123,3 +4123,110 @@ def test_cycle_sdk_dispatch_rechecks_prepare_activity_source_after_attempt_sync(
         asyncio.run(environment('stop').run(activities['stop'], {
             'workflow_input': workflow_input, 'reason': 'Finish mutated source fixture owner'}))
         wait_budget_stopped(runtime)
+
+
+@pytest.mark.parametrize('failure', ['popen', 'cleanup', 'oversized-parent'])
+def test_cycle_sdk_start_retains_parent_failures(
+        cycle_sdk_activity, cycle_operation_fault, service, cycle_selection, monkeypatch, failure):
+    import asyncio
+    from temporalio.exceptions import ApplicationError
+    from ergora import reference_training_worker as worker
+
+    state, admission, _, _, activities, environment = cycle_sdk_activity
+    monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER', str(admission.folder))
+    service[0]('accepted')
+    cycle_operation_fault('candidate')
+    original_popen, roots = subprocess.Popen, []
+    reason = 'Popen: Too many open files' if failure != 'oversized-parent' else 'Full parent failure: ' + '界' * 12000
+    cleanup_reason = 'Original root notification is unconfirmed: notification failed'
+
+    def spawn(argv, *args, **kwargs):
+        if argv[-1] == 'from ergora.reference_training_worker import budget_main;budget_main()':
+            if failure != 'cleanup':
+                raise OSError(reason)
+            child = original_popen(argv, *args, **kwargs)
+            roots.append(child)
+            return child
+        return original_popen(argv, *args, **kwargs)
+
+    async def failed_transfer(self, raw):
+        raise OSError('Input transfer failed')
+
+    original_discard = worker._CycleCandidate.discard_root
+    async def observed_cleanup(self):
+        await original_discard(self)
+        self.cleanup_problem = cleanup_reason
+
+    monkeypatch.setattr(subprocess, 'Popen', spawn)
+    if failure == 'cleanup':
+        monkeypatch.setattr(worker._CycleCandidate, 'transfer', failed_transfer)
+        # Projection injection after actual original root wait; notification-fault
+        # mechanics are separately exercised by the candidate lifecycle seam.
+        monkeypatch.setattr(worker._CycleCandidate, 'discard_root', observed_cleanup)
+    request = {'workflow_input': admission.controller_intent()['workflow_input'], 'ordinal': 0}
+    if failure == 'oversized-parent':
+        with pytest.raises(ApplicationError) as failed:
+            asyncio.run(environment('start').run(activities['start'], request))
+        assert failed.value.type == 'cycle_activity_capacity_exceeded' and failed.value.non_retryable
+    else:
+        result = asyncio.run(environment('start').run(activities['start'], request))
+        assert result['status'] == 'unknown'
+        inlines = [item['result']['inline'] for item in result['operations'] if 'inline' in item['result']]
+        assert any(value.get('reason') == ('Input transfer failed' if failure == 'cleanup' else reason) for value in inlines)
+        if failure == 'cleanup':
+            assert any(value.get('cleanup_problem') == cleanup_reason for value in inlines)
+            assert roots and all(root.poll() is not None for root in roots)
+        preparation = next(item for item in result['operations'] if 'ref' in item['result'])
+        ref = preparation['result']['ref']
+        raw = (state.root / 'operations/training-cycles' / preparation['operation_id'] / ref['file']).read_bytes()
+        assert hashlib.sha256(raw).hexdigest() == ref['sha256'] and json.loads(raw)['status'] == 'new_offer'
+    assert (cycle_selection[2] / 'ergora/training-submissions/alpha.intent.json').exists()
+    assert not (cycle_selection[2] / 'ergora/training-submissions/alpha.attempt.json').exists()
+
+
+@pytest.mark.parametrize('fault', ['operation-request', 'oversized-stdout', 'oversized-frame'])
+def test_cycle_sdk_capacity_failure_finishes_peers_and_keeps_original_bytes(
+        cycle_sdk_activity, cycle_operation_fault, monkeypatch, fault):
+    import asyncio
+    from temporalio.exceptions import ApplicationError
+    from ergora import reference_training_worker as worker
+
+    state, admission, _, _, activities, environment = cycle_sdk_activity
+    cycle_operation_fault('accepted')
+    workflow_input = admission.controller_intent()['workflow_input']
+    asyncio.run(environment('inspect').run(activities['inspect'], {'workflow_input': workflow_input}))
+    admission.request_stop('Original stop visible before capacity fault injection')
+    cycle_operation_fault(fault)
+    captured = []
+    original_stop = worker.stop_live_controller
+    async def capture(*args, **kwargs):
+        result = await original_stop(*args, **kwargs)
+        captured.extend(kwargs['operation_records'])
+        return result
+    monkeypatch.setattr(worker, 'stop_live_controller', capture)
+    reason = 'x' * 30000 if fault == 'operation-request' else 'Explicit cycle stop'
+    request = {'workflow_input': workflow_input, 'reason': reason}
+    assert len(json.dumps(request).encode()) < 32768
+    with pytest.raises(ApplicationError) as failed:
+        asyncio.run(environment('stop').run(activities['stop'], request))
+    assert failed.value.type == 'cycle_activity_capacity_exceeded' and failed.value.non_retryable
+    branches = [item for item in captured if item['mode'] != 'inspect-controller-activity']
+    assert len(branches) == 6
+    writer = next(item for item in branches if item['mode'] == 'stop-writer')
+    peers = [item for item in branches if item['mode'] != 'stop-writer']
+    assert all(item['operation_stopped'] and item['supervisor_returncode'] == 0 for item in peers)
+    assert all('ref' in item['result'] for item in peers)
+    if fault == 'operation-request':
+        assert writer['result']['inline']['status'] == 'capacity_exceeded'
+        assert not writer['operation_stopped'] and writer['supervisor_returncode'] is None
+    else:
+        output = state.root / 'operations/training-cycles' / writer['operation_id']
+        raw = (output / 'helper/stdout.txt').read_bytes()
+        assert (len(raw) > 32768) == (fault == 'oversized-stdout')
+        assert writer['operation_stopped'] and writer['supervisor_returncode'] == 0
+        assert (output / 'supervisor.stderr').read_text()
+        if fault == 'oversized-stdout':
+            assert writer['result']['inline']['status'] == 'capacity_exceeded'
+            assert 'ref' not in writer['result']
+        else:
+            assert hashlib.sha256(raw).hexdigest() == writer['result']['ref']['sha256']
