@@ -716,11 +716,13 @@ def controller_admission(cycle_selection, tmp_path, request):
     from ergora.training_execution_protocol import CycleAdmission
 
     state, _, _, _, _, selection = cycle_selection
-    selection['budget'].update(getattr(request, 'param', {}))
+    options = dict(getattr(request, 'param', {}))
+    program_version = options.pop('program_version', 1)
+    selection['budget'].update(options)
     source = tmp_path / 'controller-input'
     selected = training_cycles.create(state, 'demo', selection, source)
     authorized = training_cycles.authorize_controller(state, 'demo', 'controller', source, selected['sha256'],
-        state.project('demo')['revision'], confirm=True, execute_selected=True)
+        state.project('demo')['revision'], confirm=True, execute_selected=True, program_version=program_version)
     directory = state.root / 'training-cycles/demo/controller'
     return state, source, selected, authorized, CycleAdmission(directory, authorized['authorization'])
 
@@ -1241,6 +1243,15 @@ def test_cycle_lost_ack_and_missing_authorization_only_reconcile_the_original_st
     assert observed['status'] == 'submitted' and observed['intent_sha256'] == original['intent_sha256']
     assert (prefix / 'alpha.attempt.json').read_bytes() == attempt
     assert json.loads(record.read_bytes())['starts'] == 1
+    cycle = authorization.parent
+    originals = {path: path.read_bytes() for path in cycle.rglob('*') if path.is_file()}
+    originals.update({prefix / ('alpha.' + name + '.json'): (prefix / ('alpha.' + name + '.json')).read_bytes()
+                      for name in ('intent', 'attempt', 'result')})
+    again = training_cycles.authorize(state, 'demo', 'budget', tmp_path / 'finite-input',
+        authorized['input_sha256'], 1, confirm=True)
+    assert again['authorization'] == authorized['authorization']
+    assert training.submission(state, 'demo', 'alpha')['intent_sha256'] == original['intent_sha256']
+    assert all(path.read_bytes() == raw for path, raw in originals.items())
 
 
 def assert_budget_process_stopped(identity):

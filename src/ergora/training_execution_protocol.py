@@ -25,6 +25,18 @@ CYCLE_WORK_MODES = ('prepare-controller', 'submit-controller', *CYCLE_START_MODE
 CYCLE_OBSERVATION_MODES = ('inspect', 'inspect-controller-activity', 'reconcile-controller', 'reconcile-candidate')
 LIMIT = 1_048_576
 ARTIFACT_LIMIT = 10_000_000
+MEASUREMENT_SOURCES = ('training_rounds.py', 'reference_training_evidence.py',
+                       'data/schemas/training-rounds-v1.json', 'reference_training_release.py')
+
+
+def cycle_workflow_type(protocol: str) -> str:
+    try:
+        return {'ergora-training-cycle-v1': 'TrainingCycleWorkflow',
+                'ergora-training-cycle-v2': 'TrainingCycleWorkflowV2'}[protocol]
+    except KeyError as error:
+        raise ValueError('Unsupported training cycle protocol') from error
+
+
 GATE_SOURCES = (
     'training_execution_protocol.py', 'reference_training_execution.py',
     'reference_training_submission.py', 'reference_training_context.py',
@@ -629,7 +641,7 @@ class CycleAdmission:
     """
 
     def __init__(self, directory: Path, authorization: dict):
-        if authorization['schema_version'] != 2:
+        if type(authorization['schema_version']) is not int or authorization['schema_version'] not in (2, 3):
             raise ValueError('Controller admission requires explicit birth-time consent')
         self.directory, self.authorization = directory, authorization
         self.folder = directory / 'controller'
@@ -1070,6 +1082,8 @@ def validate_context(context: dict, chain: ExecutionRecords, *, live=True) -> Cy
         raise ValueError('Original complete cycle input changed')
     plan = decode(raw)
     validate_budget_binding(intent['budget'])
+    if authorization['schema_version'] == 3:
+        raise ValueError('Schema3 controller execution is not enabled')
     parent = None
     if authorization['schema_version'] == 2:
         parent = CycleAdmission(cycle, authorization)

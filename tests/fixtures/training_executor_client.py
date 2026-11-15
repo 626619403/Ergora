@@ -37,6 +37,14 @@ if mode == 'run-clean':
     executor.Sandbox = LocalRunner
     executor.track = lambda *args: 'synthetic-protocol-only-no-tracking'
 try:
+    if mode == 'native-context':
+        from ergora.training_execution_protocol import native_main
+        from agent_platform import core
+        try:
+            native_main(str(core.ROOT))
+        except ValueError as error:
+            print(json.dumps({'error_type': type(error).__name__, 'error': str(error)}), flush=True)
+        sys.exit(0)
     if mode in ('prechecked', 'hold-admission', 'completed'):
         value = executor.process(folder, admit=admit)
     else:

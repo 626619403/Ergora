@@ -223,7 +223,7 @@ def _origin(home: Path, project: dict, source: dict | None = None) -> dict:
 def _authorization(home: Path, project_id: str, cycle_id: str, plan: dict, digest: str, value: dict) -> dict:
     try:
         version = value['schema_version']
-        if type(version) is not int or version not in (1, 2):
+        if type(version) is not int or version not in (1, 2, 3):
             raise ValueError('Unsupported original training authorization schema')
         clock = value['clock']
         if not isinstance(clock, dict) or set(clock) != set(budget_clock.FIELDS):
@@ -233,8 +233,15 @@ def _authorization(home: Path, project_id: str, cycle_id: str, plan: dict, diges
                     'control_home': str(home), 'project': project_id, 'project_revision': plan['project']['revision'],
                     'input_sha256': digest, 'registration': _origin(home, plan['project'], value['registration']),
                     'execution': plan['project']['registration']['definition']['execution'], 'clock': clock}
-        if version == 2:
-            expected['controller'] = _controller(home, project_id, cycle_id, digest, value['controller']['actor_id'])
+        if version in (2, 3):
+            expected['controller'] = _controller(home, project_id, cycle_id, digest, value['controller']['actor_id'], version)
+        if version == 3:
+            sources = value['measurement_sources']
+            if (not isinstance(sources, dict) or set(sources) != set(training_execution_protocol.MEASUREMENT_SOURCES)
+                    or any(not isinstance(item, str) or re.fullmatch('[0-9a-f]{64}', item) is None
+                           for item in sources.values())):
+                raise ValueError('Training authorization requires its complete original measurement source map')
+            expected['measurement_sources'] = sources
         if (plan['control_home'] != str(home) or plan['project']['id'] != project_id
                 or _sha(value) != _sha({**expected, 'sha256': _sha(expected)})):
             raise ValueError('Training authorization differs from its original input, source or complete canonical SHA256')
@@ -243,12 +250,20 @@ def _authorization(home: Path, project_id: str, cycle_id: str, plan: dict, diges
     return value
 
 
-def _controller(home: Path, project_id: str, cycle_id: str, digest: str, actor: str) -> dict:
+def _measurement_sources() -> dict:
+    root = Path(__file__).parent
+    return {name: hashlib.sha256(_read_bytes(root / name, MAX_PLAN_BYTES)).hexdigest()
+            for name in training_execution_protocol.MEASUREMENT_SOURCES}
+
+
+def _controller(home: Path, project_id: str, cycle_id: str, digest: str, actor: str, version: int) -> dict:
     if not isinstance(actor, str) or re.fullmatch('unix:[0-9]+:[^\r\n]+', actor) is None:
         raise ValueError('Controller authorization requires its original Unix actor')
     identity = {'control_home': str(home), 'project': project_id, 'cycle_id': cycle_id, 'input_sha256': digest}
-    return {'protocol': 'ergora-training-cycle-v1', 'workflow_id': 'ergora-training-cycle/' + _sha(identity),
-        'task_queue': 'ergora-training-cycle-v1', 'execution_scope': 'ordered-selected-native-once',
+    protocol = 'ergora-training-cycle-v2' if version == 3 else 'ergora-training-cycle-v1'
+    prefix = 'ergora-training-cycle-v2/' if version == 3 else 'ergora-training-cycle/'
+    return {'protocol': protocol, 'workflow_id': prefix + _sha(identity),
+        'task_queue': protocol, 'execution_scope': 'ordered-selected-native-once',
         'continuation': 'accepted-archive-pass', 'actor_id': actor, 'confirmation': True}
 
 
@@ -261,7 +276,7 @@ def _load(home: Path, project_id: str, cycle_id: str, directory: Path) -> tuple[
     ready = _document(ready_path) if ready_path.exists() or ready_path.is_symlink() else None
     if ready is not None:
         _validate_ready(plan, authorization, ready)
-        if authorization['schema_version'] == 2:
+        if authorization['schema_version'] in (2, 3):
             training_execution_protocol.CycleAdmission(directory, authorization).validate_lock()
     return plan, authorization, ready
 
@@ -316,7 +331,7 @@ def _status(state: State, plan: dict, authorization: dict, ready: dict | None) -
     current = state.project(authorization['project'])
     matches = _sha(current) == _sha(plan['project'])
     stopped = None
-    if authorization['schema_version'] == 2:
+    if authorization['schema_version'] in (2, 3):
         admission = training_execution_protocol.CycleAdmission(
             _directory(state.root, authorization['project'], authorization['cycle_id']), authorization)
         stopped = admission.observe()
@@ -419,6 +434,9 @@ def prepare_controller(state: State, project_id: str, cycle_id: str,
         if observed['status'] != 'ready':
             raise ValueError(observed['reason'] or 'Controller preparation requires the original durable ready record')
         with admission.permission():
+            if (observed['authorization']['schema_version'] == 3
+                    and _measurement_sources() != observed['authorization']['measurement_sources']):
+                raise ValueError('Original measurement sources changed; controller intent cannot be prepared or recovered')
             intent = admission.controller_intent()
             created = intent is None
             if created:
@@ -435,6 +453,8 @@ def prepare_controller(state: State, project_id: str, cycle_id: str,
 
 def _controller_ready(state: State, admission) -> None:
     original = admission.authorization
+    if original['schema_version'] == 3:
+        raise ValueError('Schema3 controller execution is not enabled')
     observed = status(state, original['project'], original['cycle_id'], authorization_sha256=original['sha256'])
     if observed['status'] != 'ready':
         raise ValueError(observed['reason'] or 'Controller dispatch requires its original durable ready record')
@@ -487,19 +507,23 @@ def _record_controller(state: State, admission, *, run_id: str | None, reason: s
 def authorize(state: State, project_id: str, cycle_id: str, directory: Path, sha256: str,
               expected_revision: int, *, confirm: bool) -> dict:
     """Persist one clock before all live checks; retries retain its full input and deadline."""
-    return _authorize(state, project_id, cycle_id, directory, sha256, expected_revision, confirm=confirm, controller=False)
+    return _authorize(state, project_id, cycle_id, directory, sha256, expected_revision, confirm=confirm, version=1)
 
 
 def authorize_controller(state: State, project_id: str, cycle_id: str, directory: Path, sha256: str,
-                         expected_revision: int, *, confirm: bool, execute_selected: bool) -> dict:
+                         expected_revision: int, *, confirm: bool, execute_selected: bool,
+                         program_version: int = 1) -> dict:
     """Record birth-time consent for the original ordered selection, never upgrade it."""
     if execute_selected is not True:
         raise ValueError('Explicitly confirm execution of the complete ordered training selection')
-    return _authorize(state, project_id, cycle_id, directory, sha256, expected_revision, confirm=confirm, controller=True)
+    if type(program_version) is not int or program_version not in (1, 2):
+        raise ValueError('Controller program version must be integer 1 or 2')
+    return _authorize(state, project_id, cycle_id, directory, sha256, expected_revision,
+                      confirm=confirm, version=program_version + 1)
 
 
 def _authorize(state: State, project_id: str, cycle_id: str, directory: Path, sha256: str,
-               expected_revision: int, *, confirm: bool, controller: bool) -> dict:
+               expected_revision: int, *, confirm: bool, version: int) -> dict:
     if confirm is not True or type(expected_revision) is not int or expected_revision < 1:
         raise ValueError('Explicitly confirm the current project revision and one nonrenewable training budget')
     if not isinstance(sha256, str) or re.fullmatch('[0-9a-f]{64}', sha256) is None:
@@ -524,14 +548,17 @@ def _authorize(state: State, project_id: str, cycle_id: str, directory: Path, sh
             plan = _decode(raw)
             if plan['control_home'] != str(state.root) or _sha(plan['project']) != _sha(project):
                 raise ValueError('Training authorization requires the original control home and complete current project')
-            value = {'schema_version': 2 if controller else 1, 'kind': 'training-cycle-authorization', 'cycle_id': cycle_id,
+            sources = _measurement_sources() if version == 3 else None
+            value = {'schema_version': version, 'kind': 'training-cycle-authorization', 'cycle_id': cycle_id,
                      'control_home': str(state.root), 'project': project_id, 'project_revision': expected_revision,
                      'input_sha256': sha256, 'registration': _origin(state.root, project),
                      'execution': project['registration']['definition']['execution'],
                      'clock': budget_clock.authorize(plan['definition']['budget']['wall_seconds'])}
-            if controller:
+            if version in (2, 3):
                 value['controller'] = _controller(state.root, project_id, cycle_id, sha256,
-                    f'unix:{os.getuid()}:{getpass.getuser()}')
+                    f'unix:{os.getuid()}:{getpass.getuser()}', version)
+            if version == 3:
+                value['measurement_sources'] = sources
             authorization = {**value, 'sha256': _sha(value)}
             _authorization(state.root, project_id, cycle_id, plan, sha256, authorization)
             # Reserve the ID permanently before persistence can fail. Incomplete
@@ -544,7 +571,7 @@ def _authorize(state: State, project_id: str, cycle_id: str, directory: Path, sh
             _record_bytes(destination / 'cycle.json', raw, MAX_PLAN_BYTES)
         # An interrupted publication or observer always loads the original bytes first.
         plan, authorization, ready = _load(state.root, project_id, cycle_id, destination)
-        if (authorization['schema_version'] == 2) != controller:
+        if authorization['schema_version'] != version:
             raise ValueError('Cycle ID retains its original consent mode; it cannot be upgraded or downgraded')
         if sha256 != authorization['input_sha256']:
             raise ValueError('Cycle ID is already bound to a different complete input; original authorization is retained')
@@ -554,7 +581,7 @@ def _authorize(state: State, project_id: str, cycle_id: str, directory: Path, sh
                     _durable_status(state, plan, authorization, ready, destination))
         if ready is not None or observed['status'] != 'pending':
             return observed
-        if controller:
+        if version in (2, 3):
             admission = training_execution_protocol.CycleAdmission(destination, authorization)
             if admission.folder.exists() or admission.folder.is_symlink():
                 if is_link(admission.folder) or not admission.folder.is_dir():
