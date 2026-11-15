@@ -1,8 +1,8 @@
 # c1d：超限父请求的原字节留存设计
 
-2026-11-16。**设计修订，待原 fresh reviewer 复核 R1／M1；未实现、未验收。** 本页只处理父端已生成、因超过32,768B而不能发送给业务 S/H 的完整 request。[权威 wire](2026-11-16-training-cycle-measurement-wire.md)及[容量分期](2026-11-16-training-cycle-measurement-capacity.md)的完整留存义务保持；不关闭完整 M1c，不开放 successor，不扩大 M1b storage-only。
+2026-11-16。**限定设计已接纳；未实现、未验收。** [fresh同片复核](../delivery/2026-11-16-training-cycle-parent-request-retention-design-review.md)对修订正文SHA256 `214debc739f1a4812911973ef86cc00d75f363d36ca5926baffec11deaa2603a`的R1／M1均关闭，两轴approve、开放0。根任务据此接纳限定范围，排在M2／M3实际入口之后实施；状态更新不改变已审合同。本页只处理父端已生成、因超过32,768B而不能发送给业务 S/H 的完整 request。[权威 wire](2026-11-16-training-cycle-measurement-wire.md)及[容量分期](2026-11-16-training-cycle-measurement-capacity.md)的完整留存义务保持；不关闭完整 M1c，不开放 successor，不扩大 M1b storage-only。
 
-最小建议：仅随**实际新 operation-v2 内部入口**接线。原 `_CycleOperation` 保持同次UUID／immutable raw，容量拒绝后沿原async生命周期启动无业务后代的诊断S。父端分块发送，S只写原 `request.json`，按原完整时钟语义监督、同步并重读后发一次小确认；父端核同次原raw SHA及真实wait才给诊断ref。正常S/H／SDK成功wire仍≤32,768B。**大raw失败流、诊断S direct-kill及进程内watchdog是待接纳的明确scope amendment，不能称为现有wire功能。**
+最小建议：仅随**实际新 operation-v2 内部入口**接线。原 `_CycleOperation` 保持同次UUID／immutable raw，容量拒绝后沿原async生命周期启动无业务后代的诊断S。父端分块发送，S只写原 `request.json`，按原完整时钟语义监督、同步并重读后发一次小确认；父端核同次原raw SHA及真实wait才给诊断ref。正常S/H／SDK成功wire仍≤32,768B。**大raw失败流、诊断S direct-kill及进程内watchdog是本次已接纳的明确scope amendment，尚未成为现有wire功能。**
 
 ## 权威、调查身份和邻片状态
 

@@ -104,3 +104,29 @@ R1／M1 修订后的最小可实施目标是：一个真实新 operation 及其�
 关闭 R1／M1 并完成范围 disposition 后，仍需同一份修订设计复审；只有实际新 caller 接线和完整 raw／原监督／失败收尾／兼容证据到齐，才能关闭父请求留存 required gate。当前 M1b storage-only 和已限定接受的 M1c-T不因此回退，完整 M1c 与 successor 执行仍未接受。
 
 报告静态检查：全部本地链接目标存在；`git diff --no-index --check /dev/null <本报告>` 无空白诊断（新文件差异状态为1），被审计划 SHA 保持不变。共享树出现另一份相邻设计审查报告；本审未读它形成结论，也未修改它。
+
+## R1／M1 同片有限复核
+
+2026-11-16。同一独立 reviewer 复核修订计划，未参与修订起草。对象为 `docs/plans/2026-11-16-training-cycle-parent-request-retention.md`，21,820B、SHA256 `214debc739f1a4812911973ef86cc00d75f363d36ca5926baffec11deaa2603a`，已随 docs 提交 `833966d` 固定。进入时共享主树无未提交修改；原首审对象 SHA、R1／M1、两轴 request-changes 及原检查范围全部保留为历史。当前结论仅针对这份修订设计。
+
+**需求符合性：approve；可维护性：approve。R1／M1 均关闭，开放 finding／设计阻断0／0。** 可由根接纳下述限定范围修订，再安排实际 caller 上的最小实施片；这不是产品实现、完整留存或完整 M1c 的通过，也不开放 schema3 执行、successor、ordinal1。
+
+|原 finding|修订证据与结论|
+|---|---|
+|R1：S／watchdog 缺原完整时钟输入与算法|修订计划第65–83行固定小封套 `{protocol,identity,bytes,bootstrap,budget,deadline_ns}`；非 observation mode 的 budget 仅带原 clock 四字段及 wall／cleanup 两字段，保留原 bootstrap 和只缩整数 D。主线程与 watchdog 共用一个本地算法，持续实际调用 `budget_clock.remaining`，work 扣原 cleanup reserve，total 模式 reserve=0；BOOT／负 elapsed／UTC 倒退／UTC-boottime drift 异常均停止，不只看 D。原 `CYCLE_OBSERVATION_MODES` 仍按既有 BOOT window，不擅自给旧冷观察加入另一类预算。父端继续核完整原 payload 的 `cycle_operation_remaining`。第83／144行明确父 loop 不能代查、主线程阻塞但旧 D 未到时的独立 clock 拒绝与待验场景。原输入／算法矛盾已消除，R1 关闭。|
+|M1：第二 receipt、ready、trailer 无独立必要性|第42–49／85–109行删除第二持久状态文件、中间响应、binary trailer 及无 producer 的中间父状态；只保留原 `request.json`、N／EOF、一次 `{protocol,identity,ref}` 完整确认。父端同次 immutable 编码逐块算 SHA，核完整 identity／N／SHA、恰一帧及 EOF、发送完成、全部 pipe 结束、S 实际 wait 成功及最终原 clock／stop 后才给 durable ref；S 独立核接收与同 inode 重读 SHA。丢 reply 仍 unknown，不补造当时成功。第93行显式公平让出 loop；第95行明确首行／raw 用同一 buffered reader，避免预取错连。第119行把小发现入口放回原 worker logger 的实际 operation 收尾点，不加索引。新增设施已缩至本地生命周期与外部边界所需，M1 关闭。|
+
+本次再次核当前源码的 `CYCLE_WORK_MODES/CYCLE_OBSERVATION_MODES`、`cycle_operation_remaining` 与 `budget_clock.validate/remaining/_clock`。worker、protocol、process、budget-clock SHA 分别仍为首审／修订表所列的 `645c68ec…`、`fff35a4f…`、`56c19617…`、`6815a8c5…`；主树 `833966d` 为 docs 提交，产品基线仍是已导入的 `23ad171`／M1b。未以作者原稿的 `59b74ce` 调查身份认证当前实施。相邻 M2／M3 的接受与隔离实施按其原记录，本审未进入实现树；第24／132行明确将本留存排除至其自身接纳、真实 producer 落定后，前置关系清楚。
+
+根可以接纳的 scope amendment 具体为：新 operation-v2 拒绝路径专用的大 raw 失败流，控制／最终确认各≤32,768B；同原 UUID／operation 目录 exclusive 保存完整原 `request.json`；绝不 spawn 后代的诊断 S 可在 stop／原 clock 拒绝时直接 kill 并实际 wait；该 S 内随进程收束的只读 watchdog 独立检查完整 parent identity 与原 clock／window；磁盘／取消／deadline／reply-loss 等故障如实 unknown、保留已有原件。这些改动有现有 async parent 无法同步承担 blocked storage、普通 H-stopped 合同不可借用的具体依据。接纳不包含普通成功 wire 放宽、旧 v1 接入、第二文件／ledger、后台 reader、重发、机会返还、新 window 或新执行授权。
+
+有限 window／磁盘故障下的 unknown 必须作为真实失败保留；**正常可完成路径的完整 raw 成功留存仍是必须验收的条件**。接纳 truthful unknown 不等于保证每一种故障都保存成功，也不 waiver required gate。修订第103行准确限于既有可信用户路径检查，不冒称原 `_fd`／目录同步能抵御全部并发祖先替换；未引入更广威胁模型或全局 reader 重构。
+
+关闭父请求留存与完整 M1c 前，仍需准确产品候选上的以下实际证据：
+
+- 首个真实 operation-v2 producer／mode／来源认证已成立后，在其真实容量分支接线；同一次 encoder raw 逐字、SHA、无 LF、原 UUID／parent／activity 来源保持，无业务 H／root／launch／prefix 副作用且不退机会。不能先落无人调用 helper，或以 fixture 构造的 operation 冒充生产 caller。
+- 原32,768／32,769B分流、控制／最终确认完整界；chunk backpressure／显式公平、partial／short-write／ENOSPC／断管、fsync／重读阻塞、同 inode／raw 冲突、取消及 reply loss 的 truthful 状态。父不能代查／主线程阻塞时，原 budget clock 已无效而 BOOT D 未到，必须真实停止同一诊断 S；parent 真 SIGKILL 的 watchdog／实际 absent 证据不能被 async cancel 替代。
+- 全部独立 stop peer 通知／排空、全部 task 与诊断 process 实际 wait／清理；诊断 wait 不伪装 H stopped。固定非 editable 安装上的相同边界与受影响旧 v1／history／25来源兼容按实际差异选择，源、安装、替身、真实现场分别报告。无需重复无变化全 suite 或为每条错误文案／chunk helper增加矩阵。
+- 本项之外的 M1c-O／R／V、真实 observation／index／消费者、最终 SDK Payloads／Memo／query／signal／outcome、新 N32 聚合及后续执行 gates 仍各自待验；本设计不能代替它们。实施按独立审查及自身模板规则另行验收。
+
+本次仅静态读完整修订、原 finding 与必要源码，核 SHA／Git；只在本报告追加。未运行 tests、probes、replay、安装、服务、网络、模型或训练，未改原计划／PLAN／源码、未进入邻片实现树，未 commit／push。没有新增 finding；运行可行性和资源／停止的实际证据仍全部待实施。

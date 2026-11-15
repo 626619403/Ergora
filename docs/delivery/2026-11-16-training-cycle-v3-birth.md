@@ -88,3 +88,7 @@ Ergora自身原`refactoring-quality → ergora-structure-review@1.0.0`模板经�
 准确产品提交`67ab9b4e446527fd27a61eff1aa6acb8d24feb01`，父为`bd479050ddd2d9c6b6964f89fe44cfc895273d6b`；clean、仅九个既有文件352+/34-，Git提交diff与原冻结patch逐字同一。已普通合并开发分支，合并提交`23ad171bf8228bf80b070d6ad866f79d63986d56`；主控再逐项核合并树848＋663原SHA／执行位同一。没有强推或自动合main。
 
 **本M1b实现／源码／安装／自身模板／fresh终核闭合，公开发布及自己的CI另验。** 后继[M1c-T](2026-11-16-training-cycle-capacity-transport.md)只验证原transport，不改变上述产品。schema3 live／native／V2／collect／measurement acceptance／ordinal1与训练质量仍未开放，不由本片storage-only验收代替。
+
+公开文档候选`833966d4ba21fa7bcb6670e9908d05f058cf8fdd`现已普通推送`refactor/architecture-foundations`；精确`git ls-remote`同一，原push／remote请求、退出码与完整输出留在本片ignored `publication-r1`。自己的官方push／attempt1 [43773202173](https://github.com/626619403/Ergora/actions/runs/43773202173)由HTTP200核准确head，目前in_progress，**不预记最终成功**。该候选同时发布M1c-T已审验证及M2／M3已审设计、留存方案待复核快照，未包含在途M2／M3源码；不因前候选43769505506成功替本候选认证。
+
+公开候选833966d自己的43773202173随后已终态completed／failure：plan及六Linux全success，Windows恰为新controller测试的五个fixture setup错误。原annotations与安装各步骤范围见[独立最小修正交付](2026-11-16-windows-schema3-fixture-skip.md)；修正已四行固定导入，准确后继自己的Windows CI仍须另验，原failure不改写。
