@@ -67,3 +67,7 @@ b1已普通发布`43d215af0ed372d7d1502bbe244b5631ee6d9b24`，自身CI仍在途�
 b2b仍按上文独立异步operation／writer／逐owner通知／drain与观察设计实施；冷inspect的同一BOOTTIME截止、spawn取消仍回收、匹配stopped后不再spawn和原total仍是明确责任。此处只是将已批准方向落到已核caller与可验收节点，没有开放公共live stop或改变r3原合同。
 
 b1固定产品已获同reviewer发布需求／维护性两轴approve，自己的CI在途。基于已闭合本地验收和上文固定caller前提，b2a可以在本地按原设计实施／验收，后继产品的普通推送继续等待b1自己的CI终态；这一区分避免等待外部矩阵时混入fan-out。b2a没有新运行语义或公共入口，若b1 CI有实际修正则先接续它并重核基线。原b1 Git对象、wheel和测试副本均保持，不把新工作树改动归给b1审查。
+
+## b2b实施前的只读依赖整理
+
+b2a已固定本地提交`d1c728087423d85ed55f06010ec81e5e1d4b2fd1`，本地安装／新的独立产品两轴闭合，远端仍按前置CI门禁。在落实inspect-only H时核到原五个记录函数只需home，而State构造会初始化数据库，因此先作[b2b0原读取参数整理](2026-11-15-training-cycle-offline-reader.md)，三owner共同迁移，校验算法／记录／原clock不变。不伪造State或复制reader。该片独立验收／审查后，再做b2b1异步operation和b2b2具体fan-out；原r3停止监管合同、两截止与唯一reaper保持。

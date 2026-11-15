@@ -453,6 +453,8 @@ legacy能力为null的owner仍串行处理monitor／fence／cleanup／publish；
 
 [b2a共享响应整理](../delivery/2026-11-15-training-phase-frames.md)把两帧分包、完整身份／顺序、process观察和容量校验移入已有stdlib `training_execution_protocol.PhaseFrames`。原budget装配2 MiB结果容量，其poll／finish与record_phase读取同一response；selector、原clock、TERM与唯一reaper仍由原owner持有。共享codec只解析事实，不产生动作或停止证明，后继cycle operation单独使用32 KiB结果容量；当前整理本身没有fan-out或总Workflow。
 
+[b2b0原记录读取整理](../plans/2026-11-15-training-cycle-offline-reader.md)使training_cycles五个原私有记录函数直接接收home Path；公共应用入口继续持有State并传入state.root，budget／worker全部真实调用共同迁移。后继只读inspect可以复用原完整验证而不初始化数据库；没有第二个reader、校验器或持久格式。本次整理不开放异步operation或停止入口。
+
 ## 原生训练来源与锁内准入接缝
 
 `reference.prepare_training` 和既有 `validate_installation` 共用本地来源校验，CLI 只解析显式协议及新目录。两个固定 data 资源物化 `training-executor-admission-v1`，不新增模块族或全局工具注册器；原 283 字节不变。新协议完整核279来源，legacy保留按用途的Python范围；准备中断的空或缺损descriptor不能回退为legacy。

@@ -31,8 +31,8 @@ def create_adapter():
                 intent = json.loads(training_cycles._read_bytes(path, 16 * 1_048_576))
             validate_binding(intent.get('budget'))
             state = State(Path(intent['control_home']))
-            directory = training_cycles._directory(state, intent['project'], intent['budget']['cycle_id'])
-            plan, _, _ = training_cycles._load(state, intent['project'], intent['budget']['cycle_id'], directory)
+            directory = training_cycles._directory(state.root, intent['project'], intent['budget']['cycle_id'])
+            plan, _, _ = training_cycles._load(state.root, intent['project'], intent['budget']['cycle_id'], directory)
             operation = _Submission({'project': plan['project'], 'control_home': str(state.root),
                                      'experiment_id': ident, 'operation': 'status',
                                      'timeout': plan['definition']['budget']['control_timeout_seconds']})

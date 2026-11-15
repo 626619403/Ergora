@@ -4,6 +4,10 @@
 
 ## 当前检查点
 
+**活动b2b0只读依赖整理：** 前片b2a已固定本地`d1c728087423d85ed55f06010ec81e5e1d4b2fd1`／9 staged blob与tree同一，独立本地两轴闭合，远端仍等b1自己的CI。按[小片计划](plans/2026-11-15-training-cycle-offline-reader.md)已将原五个记录函数改为Path并迁移三个真实owner，完整AST只归一原参数／调用后相同；两新安装各652／283／依赖通过；禁止State构造并持真实schema锁的原schema1／2离线读取0.091秒通过，初选原故意坏夹具的拒绝保持。原安装授权／恢复／停止／实际registry与架构回归在途；自身模板／新独立审查及发布另验。之后才接异步operation／fan-out，没有当前自动循环成功主张。每步见[交付](delivery/2026-11-15-training-cycle-offline-reader.md)，kernel专家保持v3。
+
+**b2b0本地门禁闭合：** 最终原安装27通过／57.10秒，652双安装／177冻结测试副本／JUnit与1个owner收尾重新核过。自身原模板20.475秒及新的fresh-context最终本地需求／维护性两轴approve／开放0／0；独立额外禁止State._open／sqlite3.connect的原件读取通过。可先固定本地提交，后接b2b实际异步operation／fan-out。前片43d最后七job success／Windows在途，09:49 UTC匿名官方REST403／remaining0／reset10:23:02 UTC；原失败保存、限额前不重复查询，远端发布待准确终态，不替换成其他候选CI或未核成功。后继本地工作按原计划继续，kernel专家v3保持。[独立报告](delivery/2026-11-15-training-cycle-offline-reader-review.md)。
+
 **b1已普通发布／自己的CI在途：** 固定`43d215af0ed372d7d1502bbe244b5631ee6d9b24`，24 staged blob／tree及完整远端Ref一致；同reviewer已核固定发布两轴approve／开放0／0。六owner完整binding／固定父run与四gate本地闭合，R1含深层JSON关闭，历史保持。原r1完整127、r2较广32与最终r3相关19分别通过，最终两安装652／283／依赖、自身49.515秒两轴approve及收尾已核。自己的官方首次403保留，重置后200已定位run43698966489／attempt1／push／精确SHA／本分支，当前in_progress；终态待。[逐步交付](delivery/2026-11-15-training-cycle-gates.md)／[产品终核](delivery/2026-11-15-training-cycle-gates-review.md)。[b2具体监管r3设计](plans/2026-11-15-training-cycle-stop-supervision.md)已新独立设计两轴approve／开放0／0，R1仅设计关闭；b2a按下段在本地推进，后继推送仍待前片CI，不先接fan-out。kernel专家保持原v3。
 
 **b2a本地实施／安装验收在途（09:38 UTC接续）：** 已按[原设计具体节点](plans/2026-11-15-training-cycle-stop-supervision.md#b1固定发布后的接口前提与b2a节点)在原两owner迁移codec与实际读取者，未改原driver／reaper／clock或新增tracked测试。源码原parent pipe／TERM一通过／1.22秒；新core／SDK各652逐字／283／依赖通过，真实core`-I -S`容量／错身份保留stopped与无SDK解析通过。原phase／回收／大stdin／final／release＋架构仍在最终安装运行；自身原结构模板33.094秒两轴approve，仅认证完整供稿范围；新的fresh-context产品审查已在途。恢复已核原PID／diff，没有重复构建或回归。前片09:37 UTC官方CI仍in_progress，后继推送继续等其终态及本片本地／独立门禁。独立停止fan-out不混入本片，kernel专家保持v3。[逐步交付](delivery/2026-11-15-training-phase-frames.md)。

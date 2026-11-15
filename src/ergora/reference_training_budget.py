@@ -258,8 +258,8 @@ class BudgetedStart:
 
     def source(self) -> tuple[State, dict, dict, dict]:
         state = State(Path(self.intent['control_home']))
-        directory = training_cycles._directory(state, self.intent['project'], self.binding['cycle_id'])
-        plan, authorization, ready = training_cycles._load(state, self.intent['project'], self.binding['cycle_id'], directory)
+        directory = training_cycles._directory(state.root, self.intent['project'], self.binding['cycle_id'])
+        plan, authorization, ready = training_cycles._load(state.root, self.intent['project'], self.binding['cycle_id'], directory)
         if authorization['schema_version'] == 2:
             training_execution_protocol.CycleAdmission(directory, authorization).bind(self.intent, plan)
         elif 'controller' in self.binding:
@@ -282,7 +282,7 @@ class BudgetedStart:
             yield None
             return
         state, _, authorization, _ = self.source()
-        directory = training_cycles._directory(state, self.intent['project'], self.binding['cycle_id'])
+        directory = training_cycles._directory(state.root, self.intent['project'], self.binding['cycle_id'])
         with training_execution_protocol.CycleAdmission(directory, authorization).permission() as parent:
             yield parent
 
@@ -292,7 +292,7 @@ class BudgetedStart:
         from .reference_training_runtime import lookup_controller
 
         state, plan, authorization, _ = self.source()
-        directory = training_cycles._directory(state, self.intent['project'], self.binding['cycle_id'])
+        directory = training_cycles._directory(state.root, self.intent['project'], self.binding['cycle_id'])
         parent = training_execution_protocol.CycleAdmission(directory, authorization).controller_intent()
         timeout = min(self.operation.payload['timeout'], plan['definition']['budget']['control_timeout_seconds'],
             budget_clock.remaining(authorization['clock'], plan['definition']['budget']['wall_seconds'],
