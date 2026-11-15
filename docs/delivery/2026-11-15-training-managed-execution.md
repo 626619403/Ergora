@@ -214,3 +214,16 @@ r6自身原`ergora-structure-review@1.0.0`真实Codex调用65.888秒，31份完�
 原fresh-context reviewer对r7固定30全文／tracked与untracked完整差异、两安装、全部原件及原84项终态给最终本地需求／结构两轴approve，开放0／0，R1–R5关闭。17 Python AST、13文档／442链接按实际发布范围独立核过；后继两纯计划文件明确排除，本报告和计划的终态接续属于原片状态记账。原本地审查报告快照45,743B，SHA为`7b3cc906075ed0c77bd4b021b221204fa82976bab3faf3d11e410a1cc765e804`，最终本地审计索引SHA为`d23ae233891cfdfbdc394b807316c0230d1bcab29a8b797efa5767b7ab119ba4`；后续固定发布及CI续核会独立追加，不改变这一快照身份。
 
 当前只进入普通提交／推送与自己的CI门禁；本地approve不等于远端已完成，不合main、不强推。kernel专家和真实训练的原开放范围保持。
+
+## c2普通发布与精确远端
+
+已普通提交／推送`ac86043d9e11983750bf63b90c0dfcbeea05ea41`，父提交为`75285e3271bb93271eaea050ca7812cb0cd98b5a`。本片30个staged blob全部与实际commit tree相同，完整SSH Ref也精确同一；后继两控制器计划文档未混入。真实push输出与Ref原件、逐blob清单保存，原reviewer正在接续固定发布核验。自己的CI尚待官方REST额度恢复后读取，不借前置c1或旧候选通过；该项未闭合前不推后继产品。
+
+原独立reviewer已核该固定发布的30 blob／完整SSH Ref／两安装／283，固定发布需求／维护性两轴approve／开放0／0。官方reset后于06:23:00UTC读到自己的Portability run43684533043／attempt1，完整SHA／分支／push事件匹配，status=in_progress、conclusion=null；真实响应及metadata已保存并由原reviewer复核。CI终态仍待，不将初次可读记为通过。
+
+
+## c2 自己的 Windows CI 失败与最小测试接续
+
+2026-11-15 06:43 UTC 官方原件确认：ac86043d9e11983750bf63b90c0dfcbeea05ea41 的 Portability 43684533043／attempt1 终态为 failure，七job成功、Windows job失败；Native application regression 为1179 passed／876 skipped／6 errors／16 subtests，1557.34秒。六项错误全发生在historical_execution夹具调用Linux-only prepare时，未进入可移植历史读取或损坏链断言。FIFO case的body skip也晚于该setup。原失败和全部本地／发布结论保持原身份，不把本地通过转记为CI成功。
+
+[测试维护接续](../plans/2026-11-15-training-test-maintenance.md)改为明确构造无活授权的合成旧intent并调用原SDK-free历史读取器；保留Windows可移植检查，不删除产品Linux约束，不加整项平台skip来遮住读取测试。原reviewer续核此终态，修复片自己的CI及独立终核成功前，本门禁继续开放；不推后继产品。官方匿名REST的runs／jobs及Windows annotations HTTP200原件保存在本片私有ci-r1；未声称取得完整受鉴权日志或artifact。

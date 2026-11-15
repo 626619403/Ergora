@@ -2,7 +2,7 @@
 
 日期：2026-11-15。审查者为 fresh-context 独立 reviewer `training_managed_execution_product_audit`。先读原始范围、项目规则与固定合同，再沿实际入口检查；未继承作者、自身模板或前置片的通过结论。使用 maintainable-project-delivery 的独立审查规则和 ergora-codebase-quality 的 module-design／test-seams／repository-style。
 
-本报告按候选追加历史；下文 r1／r3／r5／r6 的“当前／待”只指各节当时。最新结论见文末最终本地复核：需求／维护性两轴 approve，开放 0／0，R1–R5 关闭。固定 r7 源码对应 r6 两安装及其实际检查；普通发布、固定 Ref 和自己的 CI 另行核验。
+本报告按候选追加历史；下文 r1／r3／r5／r6 的“当前／待”只指各节当时。最终本地及固定 `ac86043` 普通发布在原核实范围内保持需求／维护性两轴 approve、开放 0／0，R1–R5 关闭；该候选自己的 Portability run `43684533043`／attempt 1 已核到终态失败：七 job 成功、Windows 因六个测试 setup error 失败，30 必要步骤中 29 成功／1 失败。原失败保持，CI 接续门禁未闭合。
 
 ## 固定 r1 与当前结论
 
@@ -216,3 +216,35 @@ R1 的结果传播和 R2 的停止通知顺序在已固定修复及 r6 保持；
 本地审查已完成；余下必要交付门禁是普通提交／推送的精确本片 scope、完整远端 Ref、该固定候选自己的必要 CI run／attempt／job／步骤终态及原 reviewer 的固定发布续核。本报告当前没有认证它们，也不借前置 c1 的成功。GitHub 预检首个 403 仅在工具原输出中，没有独立保存 HTTP body；另有官方 `/rate_limit` 的 200 原响应记录 core remaining 0／reset，二者均不是本片 CI 结果。额度恢复后由发布流程另存该候选真实响应与核验，不改变鉴权或绕限制。
 
 本结论只认证所列工具行为与合成 CPU 生命周期、受控故障和身份拒绝。真实业务训练／GPU／模型与数据质量／性能收益、Q4.2c 自动循环及完整其他外部能力继续各自后继验收；kernel 专家留在 v3 提案路径，原实验／比较／批准／采用权不变。parent 继续开发工具，业务优化仍通过 Ergora 任务。本 reviewer 的写入仅为本报告及授权 ignored 审计目录，没有产品／测试编辑、安装、服务／训练、长 pytest、commit／push 或外部写入。
+
+## 固定普通发布 ac86043：两轴 approve，自己的 CI 待
+
+已独立核固定 commit `ac86043d9e11983750bf63b90c0dfcbeea05ea41`，唯一父提交为原基线 `75285e3271bb93271eaea050ca7812cb0cd98b5a`。commit 相对父恰好修改本片 30 件，逐份长度／SHA256／Git blob OID 都与 `publication-staged-r1.json` 相同，文件集合与最终 r7 完全一致；后继 controller 的两份纯计划文档均不在 commit tree 中。
+
+相对 r7 快照，只有 `docs/PLAN.md`、本片两份 plan、delivery 和本报告五份文档收尾，逐项读到的都是本地两轴 approve／开放 0／0 与后续发布门禁记账，没有改变产品或验收合同。commit 中的原审查报告仍精确等于最终本地快照：45,743B／SHA256 `7b3cc906075ed0c77bd4b021b221204fa82976bab3faf3d11e410a1cc765e804`；本节是在其后追加的固定发布续核。
+
+直接按 Git commit tree 中的完整 blob OID 核 wheel 及 core／SDK 各 652 份安装 bytes，均相同；283 参考文件的路径／mode／OID 与基线完全相同，发布测试与 r6 冻结测试逐字相同。验证器首轮把仓库专用、不打包的 `src/ergora/AGENTS.md` 也算入 wheel 集合而断言失败；已保存 `publication-verifier-setup-failure-r1.json`，显式核其基线不变并分清 653 个仓库文件与 652 个包文件后完整通过，未把这次收集假设错误记为产品或发布失败。
+
+原普通 push stderr 显示 `75285e3..ac86043 HEAD → refactor/architecture-foundations`，已核其原 bytes SHA 与发布记录一致。独立实时 SSH `git ls-remote --exit-code origin refs/heads/refactor/architecture-foundations` 在 2026-11-15 06:17:38 UTC 开始、exit 0／1.325 秒，完整 Ref 精确为该 commit，stderr 空；原保存 Ref 与之同一。固定来源及原输出身份为 `verify-publication-r1.py`／`fixed-publication-verified-r1.json`。
+
+**固定发布需求／维护性两轴均 approve，开放 0／0，R1–R5 关闭保持。** 这一步核实普通发布与精确候选，没有重跑 suite、安装或实际旅程，也没有访问已知限额中的 GitHub API。该 commit 自己的 CI run／attempt／jobs／必要步骤尚未取得并认证，继续开放；后续按官方额度恢复后取得的真实原件续核，不能借前置 c1 或本地检查完成此门禁。真实训练／GPU／质量／收益及后继自动循环的范围保持前节限制。
+
+## 自己的 CI 首次官方来源核验：在途，未给终态结论
+
+已直接核额度恢复后保存的首次官方响应：`ci-r1/20261115T062259895303Z-runs.json` 为 11,989B，SHA256 `a786ec0c0a2bda9dbe8678a14c250d19af627eeeff8fa420a45211bf75aa33e9`，与同次 HTTP metadata 的长度／SHA 相同。metadata 记录匿名 GET 官方 `api.github.com/repos/626619403/Ergora/actions/runs?head_sha=ac86043d9e11983750bf63b90c0dfcbeea05ea41&per_page=100`、HTTP 200，观察时间 2026-11-15 06:23:00.708065 UTC，晚于原官方 reset；没有将此前 403 异常输出冒充本次原件。
+
+该精确 SHA 的响应只有一个 run：[Portability 43684533043](https://github.com/626619403/Ergora/actions/runs/43684533043)，attempt 1／run number 233，push 到原开发分支，创建时间 06:14:29 UTC。原响应的仓库／head repository、完整 head commit 与 tree、workflow ID／路径均与固定发布相同，保存 summary 逐字段匹配原响应。**在这次观察时 status 为 in_progress、conclusion 为 null**，没有据此给 CI 成功或失败结论。
+
+另从固定 commit 直接读 workflow、六个 Linux 分组及原 CI runner 来源并登记长度／SHA。它们定义 plan＋六 Linux native＋一 Windows native，共八 job，30 个必要步骤；这是待核终态的固定预期，不是已经观察到八 job／30 步成功。固定发布需求／维护性 approve／开放 0／0 保持，自己的 CI 仍待实际 run／attempt／jobs／步骤终态原件及续核。此轮没有新网络请求，结果为 `verify-ci-initial-r1.py`／`ci-initial-origin-r1.json`。
+
+## 自己的 CI 原终态失败：Windows 历史夹具 setup，接续未闭合
+
+已直接核官方保存的 `ci-r1/20261115T064300157007Z-runs.json`／`-jobs.json` 及各自 HTTP metadata：均 HTTP 200，原 bytes 分别为 11,992／21,121，与 metadata 的长度／SHA256 相同。run 精确是 `ac86043d9e11983750bf63b90c0dfcbeea05ea41` 的 Portability `43684533043`／attempt 1／#233，原仓库、分支、push 事件、完整 head commit／tree 与固定发布同一；status completed、conclusion failure，updated_at 为 2026-11-15 06:42:52 UTC。八个 job 的 run／attempt／完整 head SHA 均一致，逐一核固定 workflow 的预期集合，没有用 summary 替代原 jobs。
+
+实际结果为 plan 和六个 Linux native job 成功，Windows job `132722147582` 失败。30 个必要步骤逐项恰好出现一次、均已终止，**29 success／1 failure**；唯一失败是 Windows 的 `Native application regression`。同 Windows job 的 build／packaged reference、PowerShell 5.1 installer and upgrade、upload observations 均成功。它不是八 job／30 步通过，原 c2 CI 交付门禁继续开放。
+
+另核 `20261115T064400163955Z-windows-annotations.json`／`-http.json`：官方 check-run URL 精确对应该 Windows job，HTTP 200，4,664B，SHA256 `12c87975096bec1ff24cbbac422719256aa812d9ea4cb70cffdc0fc167f2f662` 与 metadata 相同，各 annotation 的 blob URL 均指向原 ac86043。`Native regression` 注释尾部报告 **1179 passed／876 skipped／6 errors／16 subtests passed／1557.34 秒**。六条 ERROR 为 SDK-free history 一项及 inconsistent original chain 的 numeric-identity／native-runner／foreign-ack／duplicate／fifo 五参数，原因均为 `Native training submission requires Linux; use the registered runtime in WSL2`。这是官方注释中的截取日志和汇总，不冒称取得完整 job log、XML 或下载产物。
+
+诊断另从固定 ac86043 的 Git blobs 核实，未使用当前维护中的测试替代原输入：`tests/test_training_submission.py:42` 的 `historical_execution` 夹具在第 49 行无条件调用 `reference.training_submission(..., 'prepare', ...)`，六例都依赖它；原 `src/ergora/reference.py:496` 的入口对非 status 操作在非 Linux 平台直接拒绝。该拒绝发生在历史 reader 测试体之前，与六个原 setup errors 一致；fifo 的测试体内 skip 也尚未到达。相关测试源码 SHA256 仍为 r6 冻结值 `1b9257535ceea369696ce49240287acedc69f0d0c499ce994b614f8810f2fdaf`。这项可移植夹具问题应由独立测试维护片修正并保留离线 reader 的平台验收，不构成放宽产品 Linux 原生提交边界的授权。
+
+本地／固定发布两轴结论及 R1–R5 关闭按原核实范围保持；它们不覆盖这次 Windows 验收缺口。原 run 的失败原件和结论完整保留，当前不认证在途维护修正或其后续发布／CI；维护片须按自己的固定输入、独立审查及精确 CI 接续闭合。身份、30 步重算与固定源码诊断为 `verify-ci-terminal-failure-r1.py`／`ci-terminal-failure-r1.json`。本轮没有新网络请求、产品／测试／其他文档修改，也没有重跑 suite、安装、服务或训练。

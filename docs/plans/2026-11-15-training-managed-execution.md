@@ -1,6 +1,6 @@
 # B3.3c：同一原预算下的真实执行与停止
 
-日期：2026-11-15。上位设计r2与c2具体记录合同r2均获新的fresh-context设计两轴approve／开放0／0。前置c1固定`75285e3271bb93271eaea050ca7812cb0cd98b5a`自己的CI43676697981及原产品独立终核已闭合。c2最终r6两安装各652逐字／283／依赖通过，原submission84及processes／architecture24通过／4跳过；真实Temporal／native五类旅程91条CLI及全部收尾通过。自身原模板65.888秒两轴approve，原fresh-context独立对最终完整scope及原件两轴approve／开放0／0，R1–R5关闭；普通发布、自己的CI与原reviewer固定发布终核仍待。详见[逐步交付](../delivery/2026-11-15-training-managed-execution.md)。kernel专家继续在v3路径。
+日期：2026-11-15。上位设计r2与c2具体记录合同r2均获新的fresh-context设计两轴approve／开放0／0。前置c1固定`75285e3271bb93271eaea050ca7812cb0cd98b5a`自己的CI43676697981及原产品独立终核已闭合。c2最终r6两安装各652逐字／283／依赖通过，原submission84及processes／architecture24通过／4跳过；真实Temporal／native五类旅程91条CLI及全部收尾通过。自身原模板65.888秒两轴approve，原fresh-context独立对最终完整scope及原件两轴approve／开放0／0，R1–R5关闭；已普通发布`ac86043d9e11983750bf63b90c0dfcbeea05ea41`，原reviewer固定发布两轴approve／开放0／0，自己的CI43684533043／attempt1仍在途。详见[逐步交付](../delivery/2026-11-15-training-managed-execution.md)。kernel专家继续在v3路径。
 
 ## 交付目标与已有owner
 
@@ -133,3 +133,10 @@ helper在launch写前后核同完整授权和原来源、精确run/memo／native
 r1同时要求先发stopped再起publisher helper，并允许父在stopped后于total终止S。这会使后来新生的publisher失去reaper；独立计划评审用原processes.run构造顺序探针，实际观察S被SIGKILL后同PID／start_ticks的publisher仍存活，随后已精确收尾。接受这一生命周期问题，r2改为业务run全部reap后先发匹配帧，此后S只直接读取／写入／同步及观察，不再spawn。stopped前safe-reap与stopped后可终止的边界因而保持一致。原r1和探针保留；当前只改设计，不以构造探针替代未来产品验收。
 
 现有worker_command的包自身bootstrap另经Python -S便宜探针确认可导入reference／budget_clock，不导入State／yaml／jsonschema／Temporal，原native依赖仍沿选定路径解析；r2明确复用这一已有接缝。这不是未来native gate／实际venv验收。同fresh reviewer固定r2设计复核已两轴approve／开放0／0，详见[独立计划报告](../delivery/2026-11-15-training-managed-execution-plan-review.md)。
+
+
+## c2 自己的 Windows CI 失败与最小测试接续
+
+2026-11-15 06:43 UTC 官方原件确认：ac86043d9e11983750bf63b90c0dfcbeea05ea41 的 Portability 43684533043／attempt1 终态为 failure，七job成功、Windows job失败；Native application regression 为1179 passed／876 skipped／6 errors／16 subtests，1557.34秒。六项错误全发生在historical_execution夹具调用Linux-only prepare时，未进入可移植历史读取或损坏链断言。FIFO case的body skip也晚于该setup。原失败和全部本地／发布结论保持原身份，不把本地通过转记为CI成功。
+
+[测试维护接续](../plans/2026-11-15-training-test-maintenance.md)改为明确构造无活授权的合成旧intent并调用原SDK-free历史读取器；保留Windows可移植检查，不删除产品Linux约束，不加整项平台skip来遮住读取测试。原reviewer续核此终态，修复片自己的CI及独立终核成功前，本门禁继续开放；不推后继产品。官方匿名REST的runs／jobs及Windows annotations HTTP200原件保存在本片私有ci-r1；未声称取得完整受鉴权日志或artifact。
