@@ -578,6 +578,17 @@ def parser() -> argparse.ArgumentParser:
     cycle = operations.add_parser("cycle-read", help="Read a complete saved selection offline; never re-admit or start a budget")
     cycle.add_argument("directory", type=Path)
     cycle.add_argument("--sha256", help="Pin the complete saved cycle SHA256")
+    cycle = operations.add_parser("cycle-authorize", help="Start one immutable local training budget, then check admissions; never dispatch")
+    cycle.add_argument("project")
+    cycle.add_argument("cycle_id")
+    cycle.add_argument("--directory", type=Path, required=True, help="Original input directory; retries use the saved complete input")
+    cycle.add_argument("--sha256", required=True, help="Exact complete input SHA256")
+    cycle.add_argument("--revision", type=int, required=True)
+    cycle.add_argument("--confirm", action="store_true", help="Confirm starting the nonrenewable budget before live checks")
+    cycle = operations.add_parser("cycle-status", help="Read the original local authorization and deadline; never re-admit or dispatch")
+    cycle.add_argument("project")
+    cycle.add_argument("cycle_id")
+    cycle.add_argument("--authorization-sha256", help="Pin the original authorization canonical SHA256")
     for name in ("baseline-preview", "init-baseline", "runner-preview", "register-runner"):
         operation = operations.add_parser(name, help="Preview or explicitly publish native baseline/runner configuration; never execute training")
         operation.add_argument("project")
@@ -1222,6 +1233,16 @@ def main(argv: list[str] | None = None) -> int:
                 from . import training_cycles
 
                 output = training_cycles.read(args.directory, sha256=args.sha256)
+            elif args.operation == "cycle-authorize":
+                from . import training_cycles
+
+                output = training_cycles.authorize(State(args.home), args.project, args.cycle_id, args.directory,
+                                                   args.sha256, args.revision, confirm=args.confirm)
+            elif args.operation == "cycle-status":
+                from . import training_cycles
+
+                output = training_cycles.status(State(args.home), args.project, args.cycle_id,
+                                                authorization_sha256=args.authorization_sha256)
             elif args.operation == "rounds-read":
                 from . import training_rounds
 

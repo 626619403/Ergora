@@ -229,9 +229,26 @@ ergora training cycle-read "$HOME/ergora-inputs/cycle-01" --sha256 EXACT_CYCLE_S
 
 `cycle-create`只读原注册和`check-start`，保存完整项目／注册快照、全部候选观察与策略，返回整份`cycle.json`的SHA；不会覆盖已有目录。候选顺序固定，试次上限取列表长度；同一实验不能重复或已有prepared／unknown／submitted／rejected意图。所有候选须共享初始baseline、workload、数据／初态／环境／验证合同、质量要求及比较政策；各自candidate、track与allowed_changes完整保留。合同不一致时修正真实选择，不能悄悄放宽门槛。
 
-三个预算值是严格整数，清理时间包含在总墙钟内，`1≤cleanup_seconds<wall_seconds`。`control_timeout_seconds`为1–60秒的原用例timeout上限，未来执行须按剩余阶段预算缩小或拒绝调用；它不是整个用例的硬时限。这里没有预算时钟、自动派发、费用或GPU小时计量。准备成功只表示策略和原观察已保存，实际训练仍使用上面的显式原入口；完整有界自动执行和停止机制另行交付。
+三个预算值是严格整数，清理时间包含在总墙钟内，`1≤cleanup_seconds<wall_seconds`。`control_timeout_seconds`为1–60秒的原用例timeout上限，未来执行须按剩余阶段预算缩小或拒绝调用；它不是整个用例的硬时限。`cycle-create`本身不会起算预算；完整有界自动执行、停止机制、费用或GPU小时计量仍未提供。
 
 离线`cycle-read`不需要项目、SDK、服务或密钥，验证所选完整SHA、版本及内部绑定，保留原观察全文。`coverage`明确为已保存本地观察，运行未查询、来源未认证、执行未授权、预算未起算；其中旧ready字段不代表当前准入。文件最多10,000,000 UTF-8字节和64层／100000值，超限拒绝，不截断。该输入保留原home／注册／执行路径，跨机可离线阅读；执行须在原支持环境重新核身份，不能将它直接当作活动运行迁移或新的启动授权。
+
+### 起算本地训练预算与恢复原授权
+
+在原Linux／WSL2环境、原控制目录中，可以为这个有限输入起算一个不可续期的本地预算。先用`project show my-project`确认当前revision，再选择项目内唯一的cycle ID并显式确认：
+
+```bash
+ergora training cycle-authorize my-project cycle-01 --directory "$HOME/ergora-inputs/cycle-01" --sha256 EXACT_CYCLE_SHA256 --revision REVISION --confirm
+ergora training cycle-status my-project cycle-01 --authorization-sha256 EXACT_AUTHORIZATION_SHA256
+```
+
+`EXACT_CYCLE_SHA256`是`cycle-create`返回的完整文件SHA；`EXACT_AUTHORIZATION_SHA256`是授权结果中的`authorization_sha256`，用于钉住所选原授权的canonical内容，后者也可省略。授权先核本home的原登记journal和matching published result、完整项目及执行归属，再保存原输入和一次性UTC／boot／CLOCK_BOOTTIME时刻，之后才核全部候选的当前完整准入。保存位于`CONTROL_HOME/training-cycles/PROJECT/CYCLE_ID/`；文件及目录写盘、全部检查、中断等待和恢复均消耗同一期限。清理预留包含在总wall内，`work_remaining_seconds`到零即禁止继续准入。
+
+`status=ready`只表示全部本地准入与原输入一致且观察时仍有计算预算，`coverage.execution_authorized`保持`false`；这里不创建提交意图、workflow或job，不启动runner，也没有自动停止原手工`run-local`的保护。预算进入提交／执行器的入口仍在后续实现，不能把本地ready当成训练运行许可或性能结果。
+
+中断或丢回复后，可重复**同一条授权命令**；同ID先读取本地保存的完整输入、原授权和ready，不依赖外部输入目录仍存在，不重新计时。缺ready时只在原剩余时间内重新核完整候选；同ID绑定不同输入SHA会拒绝。不要删除授权或换ID绕过原额度。`cycle-status`核原来源、完整记录、当前项目和时钟，不运行live admission、查询Temporal或读取密钥。已有ready在原锁释放后还须flush原目录再核剩余期限，用于完成丢回复／目录fsync失败留下的同一个可见记录；不改原件字节，flush失败显示unknown。原锁忙时保持pending／exhausted，不能把尚在写盘的ready当完成；不需要`temporal` extra。
+
+`pending`表示原授权已保存而完整准入尚未完成；`exhausted`表示计算截止已过；`project-changed`表示当前完整项目已与原revision不同；`unknown`显示跨boot／host、时钟断续或缺少时钟来源的具体原因。后三者不能推进；原件保留。原登记、输入或ready缺失／损坏、链接／特殊文件、重复key／非finite JSON均明确失败，不补造记录或重授。原输入沿原10MB／树合同，授权及ready各最多1MiB。跨机可用`cycle-read`阅读离线输入，当前不支持迁移一个正在计时的授权。
 
 ### 尚无 run ID 时显式阻断本地实验
 

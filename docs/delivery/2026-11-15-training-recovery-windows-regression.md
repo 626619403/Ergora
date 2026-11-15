@@ -7,3 +7,5 @@
 该测试第一个调用是原`reference.training_submission(...,'prepare',...)`，原公开实现明确仅Linux／WSL2；测试覆盖之后在所选子进程重新核原发布来源，漏了与邻接原生准备／preflight测试相同的平台条件。最小修正只为这个原测试加`skipif(sys.platform != 'linux')`，保留完整测试体、原断言／fixture、产品权限边界和CI选择。没有新增测试、矩阵、job或产品fallback；283参考及b2最终645产品／原wheel保持。
 
 固定baseline/fixed测试、唯一一行diff与35原测试／fixture快照在本片ignored `ci/windows-fix-r1/`；新本地检查直接使用原b2非editable最终r3 SDK安装。Linux原场景1通过，pytest3.62秒／外层4.423秒，原stdout／XML保持；静态求值平台条件Linux=false、win32=true、darwin=true，仅说明标记，不冒称真实Windows已验。原b2 reviewer已按同片限定范围独立核原完整测试、单行修正、35文件scope和实际Linux原件，需求与维护两轴approve／开放0／0；去新增decorator后完整AST与原测试相等。最终仍须普通单独推送、核完整Ref和该新SHA自己的CI；后继B3.1源码不纳入此小修复。
+
+已单独普通发布`82ea3f163e0c29759eb6ebef93fb2e58d87e983a`，parent为原`9c9ffeee517deff2ec8cd2ffe572744e3c2cd682`，tree`0b8b5312d557642bd5257105561e76fbd01ee976`。四个commit blob与staged逐字相同，完整SSH远端Ref同一；测试blob为`c0df7165f0a019d6ad0c27144cd02e1a00f4ed41`，产品没有变更。发布原件保存于同片ignored `ci/windows-fix-r1/publication-local.json`；原reviewer继续核固定发布和该SHA自己的CI，终态未认证，不提前关闭前置门禁。

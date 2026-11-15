@@ -4,14 +4,13 @@ Persistence belongs to the original task creation owner. Reading this contract
 needs only the standard library; observing a deadline never grants more time.
 """
 
-from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 from pathlib import Path
 import re
-import sys
-import time
 import uuid
+
+from . import budget_clock
 
 
 def _sha(value: dict) -> str:
@@ -37,21 +36,10 @@ def scope(project: dict, home: Path, definition: dict) -> dict:
             'task_id': definition['task_id'], 'definition_sha256': _sha(definition)}
 
 
-def _clock() -> tuple[str, int]:
-    if sys.platform != 'linux':
-        raise ValueError('Budgeted native preparation requires Linux; use WSL2')
-    return (Path('/proc/sys/kernel/random/boot_id').read_text(encoding='ascii').strip(),
-            time.clock_gettime_ns(time.CLOCK_BOOTTIME))
-
-
 def authorize(policy: dict, owner: dict) -> dict:
     validate_policy(policy)
-    started = datetime.now(timezone.utc)
-    boot_id, ticks = _clock()
     value = {'schema_version': 1, 'id': uuid.uuid4().hex, 'policy': policy, 'scope': owner,
-             'authorized_at': started.isoformat(),
-             'deadline_at': (started + timedelta(seconds=policy['wall_seconds'])).isoformat(),
-             'boot_id': boot_id, 'boottime_ns': ticks}
+             **budget_clock.authorize(policy['wall_seconds'])}
     return {**value, 'sha256': _sha(value)}
 
 
@@ -61,9 +49,6 @@ def validate(instance: dict) -> None:
     if (not isinstance(instance, dict) or set(instance) != fields
             or type(instance['schema_version']) is not int or instance['schema_version'] != 1
             or not isinstance(instance['id'], str) or re.fullmatch('[0-9a-f]{32}', instance['id']) is None
-            or not isinstance(instance['boot_id'], str)
-            or re.fullmatch('[0-9a-f-]{36}', instance['boot_id']) is None
-            or type(instance['boottime_ns']) is not int or instance['boottime_ns'] < 0
             or instance['sha256'] != _sha({key: value for key, value in instance.items() if key != 'sha256'})):
         raise ValueError('Invalid immutable budget authorization')
     validate_policy(instance['policy'])
@@ -77,29 +62,14 @@ def validate(instance: dict) -> None:
                    for key in ('registration_sha256', 'definition_sha256'))
             or not isinstance(owner['execution'], dict)):
         raise ValueError('Invalid budget creation identity')
-    try:
-        started = datetime.fromisoformat(instance['authorized_at'])
-        deadline = datetime.fromisoformat(instance['deadline_at'])
-        if (started.utcoffset() != timedelta(0) or deadline.utcoffset() != timedelta(0)
-                or started.isoformat() != instance['authorized_at'] or deadline.isoformat() != instance['deadline_at']
-                or deadline != started + timedelta(seconds=instance['policy']['wall_seconds'])):
-            raise ValueError('Budget timestamps differ from the original policy')
-    except (TypeError, OverflowError) as error:
-        raise ValueError('Invalid budget timestamps') from error
+    budget_clock.validate(instance, instance['policy']['wall_seconds'])
 
 
 def remaining(instance: dict, *, cleanup: bool = False) -> float:
     """Conservatively observe UTC and same-boot elapsed time, without mutation."""
     validate(instance)
-    boot_id, ticks = _clock()
-    if boot_id != instance['boot_id']:
-        raise ValueError('Budget recovery across boot or host is unsupported; original authorization is retained')
-    monotonic_elapsed = (ticks - instance['boottime_ns']) / 1_000_000_000
-    utc_elapsed = (datetime.now(timezone.utc) - datetime.fromisoformat(instance['authorized_at'])).total_seconds()
-    if monotonic_elapsed < 0 or utc_elapsed < 0 or abs(monotonic_elapsed - utc_elapsed) > 5:
-        raise ValueError('Budget clock discontinuity; original authorization cannot be renewed')
     reserve = 0 if cleanup else instance['policy']['cleanup_seconds']
-    return instance['policy']['wall_seconds'] - max(monotonic_elapsed, utc_elapsed) - reserve
+    return budget_clock.remaining(instance, instance['policy']['wall_seconds'], reserve)
 
 
 def require_remaining(instance: dict, *, cleanup: bool = False) -> float:

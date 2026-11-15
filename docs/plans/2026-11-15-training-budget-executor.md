@@ -1,6 +1,6 @@
 # Q4.2b3：不可续期训练预算与实际执行停止
 
-日期：2026-11-15，计划r2。承接[有界循环](2026-11-15-bounded-training-cycles.md)、[原提交阻断](2026-11-15-training-start-fence.md)与[原登记恢复](2026-11-15-training-frozen-recovery.md)。当前是实施前计划，不表示预算或自动循环已可运行。前置b2正在最终独立验收，源码候选固定在其r4十文件manifest；实施前须用b2实际发布的完整Git身份替换此临时基线，并等待其自己的CI门禁闭合后再推后继产品。Kernel专家保留在v3提案路径，预算不会把专家意见提升为执行或批准。
+日期：2026-11-15，计划r2。承接[有界循环](2026-11-15-bounded-training-cycles.md)、[原提交阻断](2026-11-15-training-start-fence.md)与[原登记恢复](2026-11-15-training-frozen-recovery.md)。计划r2已通过独立两轴审查，不表示预算或自动循环已可运行。B3.1实施基线固定为b2已普通发布的`9c9ffeee517deff2ec8cd2ffe572744e3c2cd682`，parent`6531967e6b6dd8d20ff5ad70d7ae3074c81aca35`；本地与固定发布审查通过，待其自己的CI门禁闭合后再推后继产品。Kernel专家保留在v3提案路径，预算不会把专家意见提升为执行或批准。
 
 ## 要解决的问题与已核调用链
 
@@ -25,7 +25,7 @@
 |子片|明确交付|本地验收与通过标准|状态|
 |---|---|---|---|
 |B3.0 合同复核|本计划、实际调用链和失败边界；新的fresh-context两轴计划审查|核期限、来源、试次、晚到提交、真实后代及恢复；不以未来c的实现补本片证明|r1历史request-changes／R1–R2保持；同reviewer已核固定r2两轴approve／开放0／0，仅认证计划|
-|B3.1 原生训练授权／不可续期时钟|当前control home内显式授权一个精确有限选择；原登记发布来源和当前revision确认；先保存原授权／时钟，再做全部live admissions，pending与完整ready分开。本地只读预算观察／恢复，不自动派发|首个及后续admission慢至跨截止、部分检查中断／lost-ack恢复，同ID原时钟／完整输入不变且未ready不授执行权；授权fsync及完成发布耗时也计入；原task预算兼容|待前置与计划审查，未实现|
+|B3.1 原生训练授权／不可续期时钟|当前control home内显式授权一个精确有限选择；原登记发布来源和当前revision确认；先保存原授权／时钟，再做全部live admissions，pending与完整ready分开。本地只读预算观察／恢复，不自动派发|首个及后续admission慢至跨截止、部分检查中断／lost-ack恢复，同ID原时钟／完整输入不变且未ready不授执行权；授权fsync及完成发布耗时也计入；原task预算兼容|r4两安装646／283、cycle16／task15及实际CLI／自身模板已验；新独立最终本地两轴通过／R1–R2关闭，精确发布待|
 |B3.2 预算进入原提交接缝|首attempt／RPC前启动并确认独立于调用CLI／activity的同授权owner，连续负责RPC→等待request→queued→executor交接至完成／清理；原prepare／dispatch／resume发现绑定的原预算，slot先消耗再发送，unknown不归还|accepted start后CLI返回、native create延迟到deadline后，owner自动精确fence使无新request；held RPC跨截止同样阻断晚到创建。交接无无人监管窗口，本地fence不等待in-flight提交锁，不依赖c|待B3.1|
 |B3.3 专用executor driver与全周期停止|只执行已提交、同job／完整Experiment的原queued request；在专用driver里调用原executor，统一覆盖Git／两臂runner／archive／tracking的期限、fence、进程后代和收尾|短真实CPU进程在runner、Git准备及归档／跟踪接缝的取消／超时；真实setsid后代被回收。driver失联／强杀／身份不符显示unknown，不伪造终态；原结果、门禁及归档不改写|待B3.2；先核扩展接缝|
 |B3.4 安装与独立终核|新非editable包、原件保持、CLI授权→提交／执行／取消／恢复旅程、自己的代码审查模板、新fresh-context独立产品两轴、普通精确发布及自己的适用CI|源码／安装／服务替身／真实Temporal分别记录；仅关闭已证实范围。手册与PLAN逐步更新|各产品子片各自验收，不等最后一次才查|
@@ -101,3 +101,17 @@ flowchart TD
 [独立r1计划评审](../delivery/2026-11-15-training-budget-executor-plan-review.md)两轴request-changes，需求开放2／维护开放1：R1指出RPC至queued／driver前没有连续截止owner，R2指出首次live checks与持久时钟、部分失败恢复顺序未固定。均接受；本r2把连续owner放入B3.2首attempt前并独立验accepted／held晚到创建，把时钟／pending放在全部昂贵live检查前、完整ready后再核期限，补最小记录与同ID恢复合同。原报告和初版身份保留，当前等待同reviewer复核，不提前记approve。
 
 同reviewer已复核最终r2合同及明确的submitted fence接缝，两轴approve／开放0／0，R1–R2关闭；固定原件17942B／SHA`831127e9aa6a5aad5d0f6fdc65f7cd3e4abf9f16c74203a4eb4d0233b81fe227`保存在ignored `.ergora/checks/training-budget-executor/plan-r2.md`，本段与表格仅同步状态。没有b3产品变化；下一步按B3.1实施前固定b2实际发布基线。
+
+## B3.1实施接缝与检查范围
+
+原`training_cycles`同时持有离线选择与本地授权，新增`cycle-authorize PROJECT CYCLE_ID --directory INPUT --sha256 INPUT_SHA --revision N --confirm`及只读`cycle-status PROJECT CYCLE_ID`。同ID重试先读本home的原输入／授权，不依赖外部输入仍存在；完整输入SHA或来源不同拒绝。原source的登记operation从完整输入取得，并沿本home matching published result取得intent SHA，再复用`registrations.published_project`核完整journal，不以外部文件自证来源。当前revision及完整项目必须与冻结输入匹配才可完成准入；只读状态在项目变动后仍展示原期限与不可继续的原因。
+
+持久目录为`CONTROL_HOME/training-cycles/PROJECT/CYCLE_ID/`：原`cycle.json`、带canonical SHA的`authorization.json`、可选`ready.json`。在本项目／cycle锁下先保留正式ID目录并持久化父层，再无覆盖保存原授权和完整输入；文件和目录fsync计入原期限，任何部分失败保留目录／原件，缺必要原件明确失败而不重新起算。同一ready不重写；其并发状态观察还须核原锁已释放，不能把link先于目录fsync的可见性当完成。超时、失败或revision变化不删除原授权。读写均保留原输入10MB／原树合同，元数据各1MiB／strict finite duplicate-key JSON／普通文件及无链接读取。pending/ready只表示本地核验，B3.1不授任何派发、executor或新start意图。
+
+新增纯stdlib`budget_clock`只提取实际两个生产消费者`reference_budget`和`training_cycles`共有的UTC／boot／CLOCK_BOOTTIME字段、验证与保守剩余算法；原task授权形状、canonical摘要、scope、slots和公开接口保持。授权／登记／试次不会搬入共享时钟。产品片不改283参考、旧cycle schema或数据库。
+
+沿原`test_training_submission`的双候选fixture检查完整授权／lost-ack同ID原件、首个与后续检查耗尽、部分失败续核与不可续期、两次发布fsync跨期限、项目漂移／来源或ready损坏、离线与本地覆盖的区别；共享时钟沿原task budget／submission接缝验证。最后新非editable core／SDK包、实际CLI旅程、自身原模板及新fresh-context独立产品审查，分别记录实际证据和成本。
+
+B3.1产品r1独立审查发现R1首次临时目录清理可丢时钟、R2 ready目录fsync期间可误报完成，均接受并在r1安装实红。r2按上述持久ID与非阻塞状态观察修正，没有扩大预算／执行范围；原无覆盖目录发布仍用于离线输入，授权因不可续期义务改用正式ID预留。待自身新包／完整受影响测试／实际CLI／两类审查，不提前关闭findings。
+
+R2续核还要求处理目录fsync失败而原link可见：已有ready恢复在原cycle锁内flush同一目录，失败unknown；成功后重核原来源、完整记录／原授权SHA与当前项目／剩余预算，慢flush全部计入原期限。此操作不改变原件bytes、不重新准入或派发；原锁busy立即保守pending／exhausted，不进入flush等待。r4为本项候选，旧r2／r3实红与各自安装身份保持，最终证据和独立关闭另记交付。

@@ -6,6 +6,7 @@ from copy import deepcopy
 import io
 import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
 import sys
@@ -600,6 +601,281 @@ def test_cycle_rejects_complete_aggregate_capacity_before_publication(cycle_sele
     with pytest.raises(ValueError, match='exceeds 10 MB'):
         training_cycles.create(state, 'demo', request, destination)
     assert not destination.exists()
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Training authorization requires Linux/WSL2 clocks')
+def test_cycle_authorization_cli_retains_complete_input_and_lost_reply(cycle_selection, tmp_path, monkeypatch, capsys):
+    from ergora import training_cycles
+    from ergora.cli import main
+
+    state, definition, runtime, _, _, request = cycle_selection
+    source = tmp_path / 'original-input'
+    selected = training_cycles.create(state, 'demo', request, source)
+    raw = (source / 'cycle.json').read_bytes()
+    revision = state.project('demo')['revision']
+    before = {p: p.read_bytes() for root in (runtime, Path(definition['execution']['config_directory']))
+              for p in root.rglob('*') if p.is_file()}
+    with state.connect() as db:
+        database = list(db.iterdump())
+    args = ['--home', str(state.root), 'training', 'cycle-authorize', 'demo', 'first', '--directory', str(source),
+            '--sha256', selected['sha256'], '--revision', str(revision), '--confirm']
+    assert main(args) == 0
+    authorized = json.loads(capsys.readouterr().out)
+    assert authorized['status'] == 'ready' and authorized['ready']['authorization_sha256'] == authorized['authorization_sha256']
+    assert authorized['coverage'] == {'records': 'original-local-authorization', 'origin_authenticated': True,
+        'runtime_status': 'not_queried', 'budget_started': True, 'execution_authorized': False}
+    saved = state.root / 'training-cycles/demo/first'
+    assert (saved / 'cycle.json').read_bytes() == raw
+    originals = {p: p.read_bytes() for p in saved.iterdir()}
+    shutil.rmtree(source)
+
+    def no_check(*args, **kwargs):
+        raise AssertionError('An acknowledged or lost-reply ready authorization must retain its original checks')
+
+    monkeypatch.setattr(training, 'check_start', no_check)
+    assert main(args) == 0
+    again = json.loads(capsys.readouterr().out)
+    assert again['authorization'] == authorized['authorization'] and again['ready'] == authorized['ready']
+    assert again['work_remaining_seconds'] < authorized['work_remaining_seconds']
+    assert main(['--home', str(state.root), 'training', 'cycle-status', 'demo', 'first',
+                 '--authorization-sha256', authorized['authorization_sha256']]) == 0
+    assert json.loads(capsys.readouterr().out)['authorization'] == authorized['authorization']
+    assert {p: p.read_bytes() for p in saved.iterdir()} == originals
+    assert all(p.read_bytes() == value for p, value in before.items())
+    with state.connect() as db:
+        assert list(db.iterdump()) == database
+    projects.bind(state, 'demo', 'memory', {'tool': 'sqlite'}, revision)
+    changed = training_cycles.status(state, 'demo', 'first')
+    assert changed['status'] == 'project-changed' and not changed['current_project_matches']
+    assert changed['authorization'] == authorized['authorization']
+    with pytest.raises(ValueError, match='cannot be renewed'):
+        training_cycles.authorize(state, 'demo', 'first', source, selected['sha256'], revision + 1, confirm=True)
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Training authorization requires Linux/WSL2 clocks')
+@pytest.mark.parametrize('boundary', ['first-check', 'second-check', 'input-fsync', 'ready-fsync', 'ready-directory-fsync'])
+def test_cycle_admission_and_publication_consume_the_original_deadline(cycle_selection, tmp_path, monkeypatch, boundary):
+    from ergora import training_cycles
+
+    state, _, _, _, _, request = cycle_selection
+    request['budget'].update(wall_seconds=4, cleanup_seconds=1)
+    source = tmp_path / 'input'
+    selected = training_cycles.create(state, 'demo', request, source)
+    saved = state.root / 'training-cycles/demo/short'
+    original_check, original_fsync = training.check_start, os.fsync
+    calls, delayed = [], []
+
+    def check(*args):
+        # The complete source and clock must already exist before even the first live admission.
+        assert (saved / 'authorization.json').is_file() and (saved / 'cycle.json').is_file()
+        calls.append(args[2])
+        result = original_check(*args)
+        if boundary == ('first-check' if len(calls) == 1 else 'second-check'):
+            time.sleep(max(0, training_cycles.status(state, 'demo', 'short')['work_remaining_seconds']) + .05)
+        return result
+
+    def fsync(descriptor):
+        path = Path('/proc/self/fd/' + str(descriptor)).resolve()
+        input_present = (saved / 'cycle.json').exists()
+        targeted = ((boundary == 'input-fsync' and path.parent == saved and path.name.startswith('.pending-')
+                     and (saved / 'authorization.json').exists() and not input_present)
+                    or (boundary == 'ready-fsync' and path.parent == saved and path.name.startswith('.pending-') and input_present)
+                    or (boundary == 'ready-directory-fsync' and path == saved and (saved / 'ready.json').exists()))
+        if targeted and not delayed:
+            delayed.append(str(path))
+            if boundary == 'ready-directory-fsync':
+                concurrent = training_cycles.status(state, 'demo', 'short')
+                assert concurrent['status'] == 'pending' and concurrent['ready'] is None
+            time.sleep(request['budget']['wall_seconds'] - request['budget']['cleanup_seconds'] + .05)
+        return original_fsync(descriptor)
+
+    monkeypatch.setattr(training, 'check_start', check)
+    monkeypatch.setattr(os, 'fsync', fsync)
+    result = training_cycles.authorize(state, 'demo', 'short', source, selected['sha256'], 1, confirm=True)
+    assert result['status'] == 'exhausted' and result['work_remaining_seconds'] <= 0
+    assert not result['coverage']['execution_authorized']
+    assert calls == ([] if boundary == 'input-fsync' else ['alpha'] if boundary == 'first-check' else ['alpha', 'beta'])
+    assert len(delayed) == int(boundary.endswith('fsync'))
+    original = {p: p.read_bytes() for p in saved.iterdir()}
+    again = training_cycles.authorize(state, 'demo', 'short', source, selected['sha256'], 1, confirm=True)
+    assert again['authorization'] == result['authorization'] and again['status'] == 'exhausted'
+    assert {p: p.read_bytes() for p in saved.iterdir()} == original
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Training authorization requires Linux/WSL2 clocks')
+def test_cycle_interrupted_initial_publication_retains_the_original_id_and_clock(cycle_selection, tmp_path, monkeypatch):
+    from ergora import budget_clock, training_cycles
+
+    state, _, _, _, _, request = cycle_selection
+    source = tmp_path / 'input'
+    selected = training_cycles.create(state, 'demo', request, source)
+    saved = state.root / 'training-cycles/demo/interrupted'
+    record, start = training_cycles._record, budget_clock.authorize
+    clocks, originals = [], []
+
+    def clock(*args):
+        value = start(*args)
+        clocks.append(value)
+        return value
+
+    def interrupt(path, value):
+        record(path, value)
+        if path.name == 'authorization.json':
+            originals.append(path.read_bytes())
+            raise OSError('Lost durable authorization acknowledgement')
+
+    monkeypatch.setattr(budget_clock, 'authorize', clock)
+    monkeypatch.setattr(training_cycles, '_record', interrupt)
+    with pytest.raises(OSError, match='Lost durable authorization acknowledgement'):
+        training_cycles.authorize(state, 'demo', 'interrupted', source, selected['sha256'], 1, confirm=True)
+    assert saved.is_dir() and (saved / 'authorization.json').read_bytes() == originals[0]
+    monkeypatch.setattr(training_cycles, '_record', record)
+    # An incomplete original cannot be silently replaced, even when its external source is still available.
+    with pytest.raises(FileNotFoundError):
+        training_cycles.authorize(state, 'demo', 'interrupted', source, selected['sha256'], 1, confirm=True)
+    assert len(clocks) == 1 and (saved / 'authorization.json').read_bytes() == originals[0]
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Training authorization requires Linux/WSL2 clocks')
+def test_cycle_ready_directory_failure_is_unknown_until_original_publication_is_durable(cycle_selection, tmp_path, monkeypatch):
+    from ergora import training_cycles
+
+    state, _, _, _, _, request = cycle_selection
+    source = tmp_path / 'input'
+    selected = training_cycles.create(state, 'demo', request, source)
+    saved = state.root / 'training-cycles/demo/ready-interrupted'
+    fsync = os.fsync
+
+    def failing(descriptor):
+        if Path('/proc/self/fd/' + str(descriptor)).resolve() == saved and (saved / 'ready.json').exists():
+            raise OSError('Original directory flush failed')
+        return fsync(descriptor)
+
+    monkeypatch.setattr(os, 'fsync', failing)
+    with pytest.raises(OSError, match='Original directory flush failed'):
+        training_cycles.authorize(state, 'demo', 'ready-interrupted', source, selected['sha256'], 1, confirm=True)
+    originals = {p: p.read_bytes() for p in saved.iterdir()}
+    unknown = training_cycles.status(state, 'demo', 'ready-interrupted')
+    assert unknown['status'] == 'unknown' and 'durability' in unknown['reason']
+    assert unknown['ready'] is None and not unknown['coverage']['execution_authorized']
+    again = training_cycles.authorize(state, 'demo', 'ready-interrupted', source, selected['sha256'], 1, confirm=True)
+    assert again['status'] == 'unknown' and again['authorization'] == unknown['authorization']
+    monkeypatch.setattr(os, 'fsync', fsync)
+    recovered = training_cycles.status(state, 'demo', 'ready-interrupted')
+    assert recovered['status'] == 'ready' and recovered['authorization'] == unknown['authorization']
+    assert {p: p.read_bytes() for p in saved.iterdir()} == originals
+    operation = recovered['authorization']['registration']['operation_id']
+    journal = state.root / 'registrations/demo' / (operation + '.json')
+    journal_raw = journal.read_bytes()
+
+    def lost_source(descriptor):
+        result = fsync(descriptor)
+        if Path('/proc/self/fd/' + str(descriptor)).resolve() == saved:
+            journal.unlink()
+        return result
+
+    monkeypatch.setattr(os, 'fsync', lost_source)
+    with pytest.raises(FileNotFoundError):
+        training_cycles.status(state, 'demo', 'ready-interrupted')
+    journal.write_bytes(journal_raw)
+    assert {p: p.read_bytes() for p in saved.iterdir()} == originals
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Training authorization requires Linux/WSL2 clocks')
+def test_cycle_partial_checks_recover_concurrently_without_reauthorizing(cycle_selection, tmp_path, monkeypatch):
+    from ergora import training_cycles
+    from ergora.state import State
+
+    state, _, _, _, _, request = cycle_selection
+    source = tmp_path / 'input'
+    selected = training_cycles.create(state, 'demo', request, source)
+    original_check = training.check_start
+    calls = []
+
+    def interrupted(*args):
+        calls.append(args[2])
+        if len(calls) == 2:
+            raise OSError('Interrupted admission')
+        return original_check(*args)
+
+    monkeypatch.setattr(training, 'check_start', interrupted)
+    with pytest.raises(OSError, match='Interrupted admission'):
+        training_cycles.authorize(state, 'demo', 'pending', source, selected['sha256'], 1, confirm=True)
+    pending = training_cycles.status(state, 'demo', 'pending')
+    assert pending['status'] == 'pending' and pending['ready'] is None
+    saved = state.root / 'training-cycles/demo/pending'
+    original = {p: p.read_bytes() for p in saved.iterdir()}
+    shutil.rmtree(source)
+    calls.clear()
+
+    def recovered(*args):
+        calls.append(args[2])
+        return original_check(*args)
+
+    monkeypatch.setattr(training, 'check_start', recovered)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(training_cycles.authorize, State(state.root), 'demo', 'pending', source, selected['sha256'], 1, confirm=True)
+        second = pool.submit(training_cycles.authorize, State(state.root), 'demo', 'pending', source, selected['sha256'], 1, confirm=True)
+        results = [first.result(timeout=30), second.result(timeout=30)]
+    assert calls == ['alpha', 'beta']
+    assert all(result['status'] == 'ready' and result['authorization'] == pending['authorization'] for result in results)
+    assert all(p.read_bytes() == raw for p, raw in original.items())
+    with pytest.raises(ValueError, match='different complete input'):
+        training_cycles.authorize(state, 'demo', 'pending', source, '0' * 64, 1, confirm=True)
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Training authorization requires Linux/WSL2 clocks')
+def test_cycle_authorization_reads_its_source_and_rejects_conflicting_records(cycle_selection, tmp_path, monkeypatch):
+    from ergora import budget_clock, training_cycles
+
+    state, _, _, _, _, request = cycle_selection
+    source = tmp_path / 'input'
+    selected = training_cycles.create(state, 'demo', request, source)
+    result = training_cycles.authorize(state, 'demo', 'bound', source, selected['sha256'], 1, confirm=True)
+    saved = state.root / 'training-cycles/demo/bound'
+    registration = result['authorization']['registration']
+    published = state.root / 'registrations/demo' / (registration['operation_id'] + '.result.json')
+    files = {p: p.read_bytes() for p in (saved / 'authorization.json', saved / 'ready.json', saved / 'cycle.json', published)}
+    mutations = [
+        (saved / 'authorization.json', lambda value: value['clock'].update(boottime_ns=value['clock']['boottime_ns'] + 1)),
+        (saved / 'ready.json', lambda value: value.update(admissions_sha256='0' * 64)),
+        (saved / 'cycle.json', lambda value: value['definition']['budget'].update(wall_seconds=request['budget']['wall_seconds'] + 1)),
+        (published, lambda value: value.update(intent_sha256='0' * 64)),
+    ]
+    for path, mutate in mutations:
+        value = json.loads(files[path])
+        mutate(value)
+        path.write_text(json.dumps(value), encoding='utf-8')
+        with pytest.raises(ValueError):
+            training_cycles.status(state, 'demo', 'bound')
+        path.write_bytes(files[path])
+    path = saved / 'ready.json'
+    for raw in (b'{"checked_at":NaN}', b'{"schema_version":1,"schema_version":1}', b' ' * (training_cycles.MAX_RECORD_BYTES + 1)):
+        path.write_bytes(raw)
+        with pytest.raises(ValueError):
+            training_cycles.status(state, 'demo', 'bound')
+    path.unlink()
+    linked = tmp_path / 'linked-ready.json'
+    linked.write_bytes(files[path])
+    path.symlink_to(linked)
+    with pytest.raises(ValueError, match='symlinks'):
+        training_cycles.status(state, 'demo', 'bound')
+    path.unlink()
+    os.mkfifo(path)
+    with pytest.raises(ValueError, match='ordinary files'):
+        training_cycles.status(state, 'demo', 'bound')
+    path.unlink()
+    path.write_bytes(files[path])
+    assert training_cycles.status(state, 'demo', 'bound')['authorization'] == result['authorization']
+    clock = budget_clock._clock
+    _, ticks = clock()
+    monkeypatch.setattr(budget_clock, '_clock', lambda: ('00000000-0000-0000-0000-000000000000', ticks))
+    unknown = training_cycles.status(state, 'demo', 'bound')
+    assert unknown['status'] == 'unknown' and 'across boot or host' in unknown['reason']
+    assert unknown['authorization'] == result['authorization']
+    monkeypatch.setattr(budget_clock, '_clock', lambda: (result['authorization']['clock']['boot_id'], 0))
+    assert training_cycles.status(state, 'demo', 'bound')['status'] == 'unknown'
+    assert all(p.read_bytes() == raw for p, raw in files.items())
 
 
 def test_submission_read_racing_with_conflict_publication_keeps_valid_checkpoints(tmp_path):
