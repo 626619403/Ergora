@@ -42,6 +42,7 @@
       "tests/test_reference_executor.py",
       "tests/test_task_cancellation.py",
       "tests/test_task_runtime.py",
+      "tests/test_training_cycle_controller.py",
       "tests/test_workflow_definitions.py"
     ],
     [
