@@ -4125,6 +4125,59 @@ def test_cycle_sdk_dispatch_rechecks_prepare_activity_source_after_attempt_sync(
         wait_budget_stopped(runtime)
 
 
+@pytest.mark.skipif(sys.platform != 'linux', reason='Launch material is prepared by the original supervised Linux H')
+def test_cycle_sdk_launch_capacity_keeps_occupied_intent_without_another_offer(
+        registration, cycle_operation_fault, monkeypatch, request):
+    import asyncio
+    from temporalio.exceptions import ApplicationError
+
+    state, definition = registration
+    # This valid check is frozen by the real registration and cycle owners.
+    # The compact operation snapshot omits it, while complete launch material
+    # must carry the entire registered project, including this check.
+    definition['checks']['unused-large-check'] = ['echo', 'x' * 20000]
+    _, _, runtime, _, _, _ = request.getfixturevalue('cycle_selection')
+    service = request.getfixturevalue('service')
+    assert len(json.dumps(state.project('demo'), ensure_ascii=False).encode()) > 32768
+    state, admission, _, _, activities, environment = request.getfixturevalue('cycle_sdk_activity')
+    monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER', str(admission.folder))
+    service[0]('accepted')
+    cycle_operation_fault('candidate')
+    activity_request = {'workflow_input': admission.controller_intent()['workflow_input'], 'ordinal': 0}
+    original_authorization = (admission.directory / 'authorization.json').read_bytes()
+    original_ready = (admission.directory / 'ready.json').read_bytes()
+    failure = None
+    try:
+        asyncio.run(environment('start').run(activities['start'], activity_request))
+    except ApplicationError as error:
+        failure = error
+
+    original = runtime / 'ergora/training-submissions/alpha.intent.json'
+    saved = original.read_bytes(), original.stat().st_ino
+    outputs = state.root / 'operations/training-cycles'
+    preparations = [path.parent for path in outputs.glob('*/request.json')
+                    if json.loads(path.read_bytes())['identity']['mode'] == 'prepare-candidate']
+    assert len(preparations) == 1
+    preparation = preparations[0]
+    assert (preparation / 'request.json').stat().st_size < 32768
+    raw = (preparation / 'helper/stdout.txt').read_bytes()
+    observed = json.loads(raw)
+    assert observed['reason'] == 'Complete controller root material exceeds 32 KiB; its start intent is already occupied'
+    for action, changes in [('start', {}), ('start', {'attempt': 2}), ('reconcile', {})]:
+        repeated = asyncio.run(environment(action, **changes).run(activities[action], activity_request))
+        assert [item['mode'] for item in repeated['operations']] == ['reconcile-candidate']
+        assert (original.read_bytes(), original.stat().st_ino) == saved
+    assert (admission.directory / 'authorization.json').read_bytes() == original_authorization
+    assert (admission.directory / 'ready.json').read_bytes() == original_ready
+    assert not original.with_name('alpha.attempt.json').exists()
+    assert not original.with_name('alpha.budget').exists()
+    assert not service[1].exists() or json.loads(service[1].read_bytes())['starts'] == 0
+    assert len([path for path in outputs.glob('*/request.json')
+                if json.loads(path.read_bytes())['identity']['mode'] == 'prepare-candidate']) == 1
+    assert observed['status'] == 'capacity_exceeded'
+    assert failure is not None and failure.type == 'cycle_activity_capacity_exceeded' and failure.non_retryable
+
+
 @pytest.mark.parametrize('failure', ['popen', 'cleanup', 'oversized-parent'])
 def test_cycle_sdk_start_retains_parent_failures(
         cycle_sdk_activity, cycle_operation_fault, service, cycle_selection, monkeypatch, failure):

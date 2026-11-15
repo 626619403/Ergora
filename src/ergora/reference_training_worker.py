@@ -854,7 +854,8 @@ def cycle_operation_main(supervisor: bool = True) -> None:
         try:
             result = _cycle_operation(payload)
         except (OSError, ValueError, KeyError, TypeError) as error:
-            result = {'status': 'unknown', 'reason': str(error)}
+            result = {'status': 'capacity_exceeded' if isinstance(error, _CycleCapacityError) else 'unknown',
+                      'reason': str(error)}
         print(json.dumps(result, ensure_ascii=False, allow_nan=False), flush=True)
         return
     for parent in (output, *output.parents):

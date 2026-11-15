@@ -423,7 +423,8 @@ class BudgetedStart:
             'AGENTFLOW_CONFIG_DIR': self.intent['execution']['config_directory'],
             'AGENTFLOW_STATE_DIR': self.intent['execution']['state_directory']}}
         if len(json.dumps(result, ensure_ascii=False, allow_nan=False).encode('utf-8')) > 32_768:
-            raise ValueError('Complete controller root material exceeds 32 KiB; its start intent is already occupied')
+            raise training_cycles._CycleCapacityError(
+                'Complete controller root material exceeds 32 KiB; its start intent is already occupied')
         observation = self.path('launches/' + self.intent['operation_id'])
         observation.mkdir(parents=True, mode=0o700)
         training_execution_protocol.sync_directories(observation, self.operation.root)
