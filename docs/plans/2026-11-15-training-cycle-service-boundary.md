@@ -2,6 +2,8 @@
 
 日期：2026-11-15，r2修订2026-11-16。状态：已按[接口审计](../delivery/2026-11-15-training-cycle-service-design-audit.md)固定具体选择，待原独立reviewer终核；产品未实施。承接[原控制器合同第4节](2026-11-15-training-cycle-controller-contracts.md#4-workflow活动和阻塞通路)与[c1总计划](2026-11-15-training-cycle-workflow.md)。前置c1b1已固定`d5b58912e4f20c96a52f7c0138b8c7c3d1a97b50`，本地76＋7安装接缝和最终／固定提交独立两轴通过；原包SHA256为`565aefd026e01f83470af5e49a74d1743c3919779a4b4a217fc2dc56755eb29b`。后续BR资源／CI fixture联合候选仍另验，实施前再固定准确基线。kernel专家继续保留v3。
 
+当前收尾：固定候选af176cf6（产品同97a0bbf）的本地服务验收和最终独立两轴已闭合，见[交付](../delivery/2026-11-16-training-cycle-service.md)／[终审](../delivery/2026-11-16-training-cycle-service-final-review.md)。r2本文是原先固定的设计与验收合同，头段“未实施”仅属原设计时点；当前产品、安装、现场、发布以交付末节分别记账。
+
 ## 交付目标与范围
 
 提供可由原Supervisor启动的独立`training-cycle-worker`进程，与原`training-budget-worker`使用不同PID／event loop。在cycle进程的非阻塞loop中分别注册普通和停止Worker，各自保留活动并发配额。普通活动只消费已冻结授权及真实SDK controller身份，经原H读取／核对资料，再复用c1b1的start或只对账消费者；停止活动复用原独立writer／逐owner通知／drain／实际执行链观察。

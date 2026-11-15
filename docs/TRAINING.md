@@ -299,6 +299,33 @@ ergora services logs my-project training-budget-worker --bytes 4096
 
 此处提供单个候选的预算提交与连续控制责任。受管计算还需下一步显式选择；自动多轮训练、GPU／质量／性能收益仍分别验收。
 
+### 独立循环服务的集成入口
+
+`training-cycle-worker`为控制器集成提供四个真实Temporal活动消费者，使用应用环境的`ergora[temporal]`及项目登记的原生安装。它与`training-budget-worker`各用独立进程和event loop；普通queue `ergora-training-cycle-v1`与停止queue `ergora-training-cycle-stop-v1`各有一个活动槽。先检查当前项目revision，再显式启动所需服务：
+
+```bash
+ergora services start my-project temporal training-budget-worker training-cycle-worker --revision REVISION --timeout 60
+ergora services status my-project
+ergora services logs my-project training-cycle-worker --bytes 4096
+```
+
+|活动|用途|
+|---|---|
+|`ergora.training_cycle.inspect.v1`|认证同一原controller run，观察原授权与事实。|
+|`ergora.training_cycle.start.v1`|消费原schema2出生同意中ordinal 0的一次机会；已有intent或重试只对账。|
+|`ergora.training_cycle.reconcile.v1`|读取已有原候选，不重新授予start。|
+|`ergora.training_cycle.stop.v1`|独立发布stop、排空父许可、通知各原owner并观察执行链，完整保留全部分支。|
+
+业务输入`workflow_input`仅含`protocol`、`control_home`、`project`、`cycle_id`、`input_sha256`、`authorization_sha256`；候选动作另带ordinal，stop另带reason。真实Workflow／run／namespace／attempt由SDK提供，并经原受监督helper认证，业务输入无法自述这些权限。集成者须沿原schema2授权及intent→attempt→固定run receipt协议；普通`cycle-authorize`仍是手动预算入口。当前服务提供活动适配，正式总Workflow、自动执行／测量接受与后继候选另行交付，启动服务本身不创建实验或运行runner。
+
+活动结果保留原操作身份及已验证stdout的字节数／SHA引用，无法取得完整原件时保存完整inline unknown；32KiB包含SDK metadata，超限明确失败。停止通知、stop持久、父许可排空、执行子树停止分别报告。服务关闭先停止普通领取并等待真实资源清理，再关闭stop；已完整交接的预算根继续承担原期限责任。要停止整个cycle应使用原完整停止协议。
+
+```bash
+ergora services stop my-project training-cycle-worker --revision REVISION --confirm --timeout 60
+```
+
+Supervisor给cycle服务70秒停止观察期；CLI控制等待上限为60秒，可能先返回`unconfirmed`。继续查`services status`及日志，保留原操作资料。强杀或PID消失仅是OS事实，实际业务停止仍核原停止链。升级应用或旧daemon缺少新program时，先按[服务管理](USAGE.md)显式停止／shutdown托管栈，再用新应用环境启动；新命令不会偷偷reload运行中的旧daemon。本地Supervisor需要Linux／WSL2。
+
 ### 显式受管执行与离线停止观察
 
 使用上述新原生来源、其独立完整依赖及可信Linux容器。按原手册启用当前容器的可信执行配置；它允许同用户Agent访问当前用户文件，不提供Agent间OS隔离。启动原`temporal`、`training-budget-worker`及需要的`mlflow`服务，完成`cycle-authorize`与`cycle-start`后，等待原运行处于`QUEUED`且同job的`request.json`已生成。新owner必须在出生时声明`ergora-training-execution-v1`能力；旧schema1和能力为null的owner保持原控制用途，不能升级或重启接管。

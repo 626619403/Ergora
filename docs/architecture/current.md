@@ -427,11 +427,11 @@ F10d4沿原agent_runs准入读取增加可选显式input digest，薄HTTP固定t
 
 `training_cycles.authorize_controller`是独立的应用用例，复用同一授权发布算法，在新ID出生时保存schema2完整自动执行同意；普通授权与历史读取保留schema1。ready前持久建立`controller/admission.lock`，以后只读／打开既有普通空文件。`training_execution_protocol.CycleAdmission`在stdlib边界持有父共享许可与停止记录；O_EXCL路径一旦出现就否决新准入，只有同步同一文件／目录并重读同inode与完整bytes才确认持久，排他锁只证明父准入排空，不能证明执行子树已停。`stop_controller`当前仅为独立操作进程可用的存储用例。具体出生与停止记录边界见[原实施计划](../plans/2026-11-15-training-cycle-admission.md)。
 
-[最后门禁消费片](../plans/2026-11-15-training-cycle-gates.md)在原三字段binding上增加完整controller selector：protocol、固定workflow／run、完整intent SHA及原ordinal。`CycleAdmission.bind`由`BudgetedStart.source`和native context共同使用，核原父intent／attempt／receipt及同一admission；父attempt的`workflow_input_sha256`保存父workflow input canonical SHA，与cycle raw input SHA分列。submission、worker与Execution在原异步操作中核父run的RUNNING、describe／started memo、类型／queue和完整input；prepare的SQLite reservation及原registry／executor锁内不查询远端。父共享许可覆盖原RPC、原create、request／launch及native process，原锁与最终同步后的检查仍可否决迟到工作；已消耗attempt／launch不返还。自动actor固定为原授权，手工模式沿原明确操作者。schema2仍不能通过旧手工binding派发，schema1不得带controller。该片没有总Workflow producer；独立fan-out、独立cycle worker／queue和公共CLI／HTTP继续后继交付，当前验收进度见[逐步交付](../delivery/2026-11-15-training-cycle-gates.md)，不把服务替身的消费gate检查称为可运行的自动多轮训练。
+[最后门禁消费片](../plans/2026-11-15-training-cycle-gates.md)在原三字段binding上增加完整controller selector：protocol、固定workflow／run、完整intent SHA及原ordinal。`CycleAdmission.bind`由`BudgetedStart.source`和native context共同使用，核原父intent／attempt／receipt及同一admission；父attempt的`workflow_input_sha256`保存父workflow input canonical SHA，与cycle raw input SHA分列。submission、worker与Execution在原异步操作中核父run的RUNNING、describe／started memo、类型／queue和完整input；prepare的SQLite reservation及原registry／executor锁内不查询远端。父共享许可覆盖原RPC、原create、request／launch及native process，原锁与最终同步后的检查仍可否决迟到工作；已消耗attempt／launch不返还。自动actor固定为原授权，手工模式沿原明确操作者。schema2仍不能通过旧手工binding派发，schema1不得带controller。该片的消费gate检查不包含总Workflow producer；独立fan-out和cycle worker／queue已由后续片接入，见下文[独立cycle活动服务](#独立cycle活动服务)，公共自动CLI／HTTP仍后接。原片验收进度见[逐步交付](../delivery/2026-11-15-training-cycle-gates.md)，不把服务替身的消费gate检查称为可运行的自动多轮训练。
 
-[独立停止操作](../plans/2026-11-15-training-cycle-stop-operations.md)的内部入口`reference_training_worker.stop_live_controller`先由异步S-H冷inspect核完整原authorization／policy及有序候选，再分别监督writer、父许可drain、逐owner精确pidfd通知与原执行链观察。所有业务文件／锁／fsync都在各自H；异步父loop只监管管道、内核身份与clock。冷inspect在spawn前固定一次1至60秒观察截止，效果分支沿原total；超限或未知保留unknown，不续权。每个S只调用原`processes.run(supervised=True)`回收一个H及后代，匹配stopped后不再spawn，最后结果读取仍受同一截止约束。通知、停止可见／持久、父许可排空和executor停止证明分别返回，原完成轮的人工release保持。共享`training_execution_protocol.PhaseFrames`只拥有两帧解析，原budget selector与新asyncio driver各留原运行边界；cycles保留Path记录读取，不反向依赖worker。具体安装／回归与发布范围见[交付](../delivery/2026-11-15-training-cycle-stop-operations.md)；总Workflow、独立cycle服务／stop queue和公共自动入口仍未交付。
+[独立停止操作](../plans/2026-11-15-training-cycle-stop-operations.md)的内部入口`reference_training_worker.stop_live_controller`先由异步S-H冷inspect核完整原authorization／policy及有序候选，再分别监督writer、父许可drain、逐owner精确pidfd通知与原执行链观察。所有业务文件／锁／fsync都在各自H；异步父loop只监管管道、内核身份与clock。冷inspect在spawn前固定一次1至60秒观察截止，效果分支沿原total；超限或未知保留unknown，不续权。每个S只调用原`processes.run(supervised=True)`回收一个H及后代，匹配stopped后不再spawn，最后结果读取仍受同一截止约束。通知、停止可见／持久、父许可排空和executor停止证明分别返回，原完成轮的人工release保持。共享`training_execution_protocol.PhaseFrames`只拥有两帧解析，原budget selector与新asyncio driver各留原运行边界；cycles保留Path记录读取，不反向依赖worker。具体安装／回归与发布范围见[交付](../delivery/2026-11-15-training-cycle-stop-operations.md)。该片只交付独立停止用例；cycle服务／stop queue见下文[服务边界](#独立cycle活动服务)，正式总Workflow与公共自动入口仍后接。
 
-[总意图准备](../plans/2026-11-15-training-controller-intent.md)由`training_cycles.prepare_controller`在本地项目reservation与原父共享许可下组合原status和无覆盖publisher；`CycleAdmission.intent_record`为producer与原完整reader生成同一身份。原ready的publisher仍持锁时不能准备；重试只同步并重读原意图，不创建attempt／receipt或更换clock。结果包含最后cycle观察，计算窗口耗尽不能报告ready；link前出现null-intent stop时保留原veto，不修复停止文件。准备不是投递／执行许可，后继SDK投递、总Workflow与公开入口继续单独交付。
+[总意图准备](../plans/2026-11-15-training-controller-intent.md)由`training_cycles.prepare_controller`在本地项目reservation与原父共享许可下组合原status和无覆盖publisher；`CycleAdmission.intent_record`为producer与原完整reader生成同一身份。原ready的publisher仍持锁时不能准备；重试只同步并重读原意图，不创建attempt／receipt或更换clock。结果包含最后cycle观察，计算窗口耗尽不能报告ready；link前出现null-intent stop时保留原veto，不修复停止文件。准备不是投递／执行许可；[SDK投递与同run对账](../plans/2026-11-15-training-cycle-dispatch.md)由后续片独立提供，总Workflow与公开入口继续后接。
 
 [普通准备操作](../plans/2026-11-15-training-cycle-prepare-operation.md)在原S-H driver增加`prepare-controller`mode，复用原应用准备。普通请求在spawn前固定一次BOOT窗口，受原compute remaining与control timeout共同约束；完整请求还核原boot、compute绝对上界与control跨度，父pipe／wait、S停止检查和H前后active消费同一窗口。所有State／SQLite／fsync留在H；超时只能返回unknown，意图元数据可能已保存，但没有attempt／训练权限。原cold inspect与stop total保持；调用者取消仍真实回收后重抛。该内部单次操作不代表SDK投递、跨进程恢复或独立cycle服务已完成。
 
@@ -460,6 +460,26 @@ legacy能力为null的owner仍串行处理monitor／fence／cleanup／publish；
 [b2a共享响应整理](../delivery/2026-11-15-training-phase-frames.md)把两帧分包、完整身份／顺序、process观察和容量校验移入已有stdlib `training_execution_protocol.PhaseFrames`。原budget装配2 MiB结果容量，其poll／finish与record_phase读取同一response；selector、原clock、TERM与唯一reaper仍由原owner持有。共享codec只解析事实，不产生动作或停止证明，后继cycle operation单独使用32 KiB结果容量；当前整理本身没有fan-out或总Workflow。
 
 [b2b0原记录读取整理](../plans/2026-11-15-training-cycle-offline-reader.md)使training_cycles五个原私有记录函数直接接收home Path；公共应用入口继续持有State并传入state.root，budget／worker全部真实调用共同迁移。后继只读inspect可以复用原完整验证而不初始化数据库；没有第二个reader、校验器或持久格式。本次整理不开放异步operation或停止入口。
+
+## 独立cycle活动服务
+
+`reference.training_cycle_worker_command`由当前应用解释器启动原worker owner内的`cycle_main`，`services`将其作为独立Supervisor program管理。原budget入口及八活动槽保持；cycle入口在独立PID／event loop中建立两个真实SDK Worker，普通与stop各一槽。活动SDK来源在adapter取得，完整授权、controller intent／attempt／receipt和最后动作许可在H／原protocol重新核对。
+
+```mermaid
+flowchart LR
+  Caller[Controller集成调用者] --> Normal[cycle PID / normal queue / 1槽]
+  Caller --> Stop[同cycle PID / stop queue / 1槽]
+  Normal --> SH[原S-H监督 / 实际原件认证]
+  SH --> Root[交接后的独立预算根]
+  SH --> Budget[独立budget PID / 原ExperimentWorkflow / 8槽]
+  Stop --> Branches[独立writer / drain / 逐owner通知与执行观察]
+  Branches --> Reaper[原S / 唯一reaper / 真实退出]
+  Root --> Reaper
+```
+
+SDK父loop只做异步进程／管道监督；所有State、锁、fsync、原生加载与业务SDK操作留在H或原预算根。原S在匹配stopped帧后读取真实stdout并计算ref，父侧后续Popen／transfer／cleanup事实以同一操作的inline保留；无完整原件不能制造ref。SDK Payloads包含metadata的32KiB容量、全`2+2N` stop分支及一次冷观察／compute∩control窗口分别在其原边界核对。typed容量异常由原training_cycles reader拥有，worker直接复用，不复制安全reader。
+
+服务以公开SDK`on_fatal_error`及时进入normal-first关闭，并协调真实run／shutdown终态；启动验证失败后不会盲等无法完成的shutdown waiter。普通活动实际资源结束后才关闭stop；已交接根继续按原预算自持。Supervisor70秒后强杀仅能证明服务PID退出，业务停止保持独立观察。四活动及使用边界见[训练手册](../TRAINING.md#独立循环服务的集成入口)；[本片交付](../delivery/2026-11-16-training-cycle-service.md)记录实际验收与开放范围，正式总Workflow／execution／collect／后继接受仍接续。
 
 ## 原生训练来源与锁内准入接缝
 

@@ -23,4 +23,12 @@
 
 新的fresh-context reviewer已按实际两行fixture差异、原回归与对应owner／preset身份给出[需求／维护性两轴approve，开放0／0](2026-11-16-review-packet-ci-fixture-review.md)。修正与原交付已逐字接入主开发树，保留主线产品和其他在途文档。
 
-未重跑完整 group3／其他 suite；准确提交／普通推送及新候选自己的远端CI仍待，不据本地结果宣称远端通过。
+已固定`478c98891522930817fa7005a8ac96e408f37230`；原reviewer核固定测试字节与所审一致，无额外产品／CI改动。已普通推送当前开发分支，精确远端同一。官方一次观察：自己的push／attempt1 run [43737570677](https://github.com/626619403/Ergora/actions/runs/43737570677)为in_progress，plan成功／另七job运行；最终结果待实际观察。原6725 run终态completed／cancelled：5成功、group3失败、Windows与group5取消，未改写为成功。
+
+发布与官方请求原件在ignored `review-packet-ci-fixture-fix/publication-r1/`。未重跑完整 group3／其他 suite，不据本地结果宣称远端通过。
+
+### 公开页面后续观察
+
+同一run／完整SHA／push／attempt1的一次普通HTTPS公开页读取返回200；页面仍是`In progress`、矩阵`6/7 jobs completed`，尚不能确认全8 job最终状态。页面新增group5的明确annotation：`The job has exceeded the maximum execution time of 20m0s`与`The operation was canceled.`。这是远端超时记录，不能写成全CI成功，也不能据此推断某个训练用例断言失败。
+
+完整headers／HTML／摘要在同一publication目录`public-page-r2/`。既有API403／配额0和完整日志不可用的边界保持；未重试、未使用Cookie／认证或其他页面片段。已单独安排对现有分组与本地JUnit成本的只读归因，先查证据再决定最小分组调整，不删生命周期保护或直接加超时。

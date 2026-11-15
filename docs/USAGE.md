@@ -1086,9 +1086,11 @@ ergora services stop my-project worker temporal --revision 1 --confirm --timeout
 ergora services shutdown my-project --revision 1 --confirm --timeout 30
 ```
 
-可选服务为 `temporal`、`mlflow`、`worker`、`executor`、`a2a`、`training-worker`、`training-budget-worker`，只启动列出的服务，不自动补依赖或启动研究。v7来源任务可用`ergora services start my-project temporal worker executor --revision 1 --timeout 30`显式启动其原六阶段所需服务；旧v1–v6的安装级doctor另要求本地A2A监听，可显式加上`a2a`，MLflow按观测需要另启。托管 executor 使用同一 Ergora 控制目录的选择式执行器。Supervisor 的 `RUNNING` 仅代表进程状态，服务协议、worker/队列、模型与任务仍分别验收。停止和 shutdown 必须确认；1–60 秒的控制等待时限从注册预检后计算。`outcome: unconfirmed` 表示操作可能继续进行，应查状态对账；未确认 STOPPED 前不重启，CLI 对失败/未确认返回非零。
+可选服务为 `temporal`、`mlflow`、`worker`、`executor`、`a2a`、`training-worker`、`training-budget-worker`、`training-cycle-worker`，只启动列出的服务，不自动补依赖或启动研究。v7来源任务可用`ergora services start my-project temporal worker executor --revision 1 --timeout 30`显式启动其原六阶段所需服务；旧v1–v6的安装级doctor另要求本地A2A监听，可显式加上`a2a`，MLflow按观测需要另启。托管 executor 使用同一 Ergora 控制目录的选择式执行器。Supervisor 的 `RUNNING` 仅代表进程状态，服务协议、worker/队列、模型与任务仍分别验收。停止和 shutdown 必须确认；1–60 秒的控制等待时限从注册预检后计算。`outcome: unconfirmed` 表示操作可能继续进行，应查状态对账；未确认 STOPPED 前不重启，CLI 对失败/未确认返回非零。
 
 首次 start 在执行状态目录下创建 `ergora-services/`，记录控制目录归属、独立 socket 及配置，复制原 Supervisor 程序定义并关闭全部 autostart，原 ini 保持不变。原 Supervisor socket 仍存在时拒绝接管：先通过原 `agentflow services stop` 停止并核对原栈，再使用新入口；陈旧 socket/PID 也需先对账。注册投影漂移、控制目录归属冲突或过长 Unix socket 路径会明确报错，后者应选择较短的持久 execution state 目录。软件升级前先 shutdown 托管栈，升级后按原参数显式启动。
+
+`training-cycle-worker`的普通／stop queue各有独立活动槽；它与budget服务使用不同PID，提供四个活动消费者。集成范围、显式启动和70秒停止观察见[训练手册](TRAINING.md#独立循环服务的集成入口)；正式总Workflow与自动多轮另行交付。
 
 日志默认原生字节窗口为 8192，可设 4–65536（至少容纳一个 UTF-8 字符）；使用返回的 `next_offset` 作为下次 `--offset`。`overflow` 表示中间内容超过窗口，`rotated` 表示当前文件长度小于游标、窗口已重置，需结合原生日志核对。通过 Supervisor 查询实际日志路径后，只对普通文件进行有界读取，不完整加载大文件。`limit` 限制原始读取字节数，文本/JSON响应大小可能因替换字符或转义而增加。合法 UTF-8 边界会保留；不完整后缀的 `pending_bytes` 尚不计入 `next_offset`，后续追加后用原游标继续；非法字节显示替换字符。
 

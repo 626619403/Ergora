@@ -109,3 +109,30 @@ capacity_branch.result.inline.reason: Complete cycle operation request exceeds 3
 作者记录中的源码 tests 保持其原范围。完整安装回归、真实 Temporal／Supervisor 的双 PID／双 queue、normal 存储阻塞时独立 stop、SIGTERM／SIGINT／重复取消／fatal／强杀 unknown、实际退出原件均由主控在途验收，**本轮 pending acceptance**。修复后的源码与新包不能继承旧包结果；应以新身份针对受影响行为复验，再由同一 reviewer 复核 R1–R4。
 
 正式 TrainingCycleWorkflow、sandbox、execution／collect／接受与后继候选均不在本片，不据本审查声称自动训练循环或训练质量已验收。
+
+## R1–R4 修正复核：2026-11-16
+
+本节保留前述初审历史，给出修后源码的当前结论。原 reviewer 在同一授权下仅追加本报告，未改产品。审查修正 diff 为 `fef7d98e30d5625e5ce37dc45e14904f76447775 → 72939f3`；合入已发布基线 `478c98891522930817fa7005a8ac96e408f37230` 后最终审查 HEAD 为 `eedba08c8c112683a7946726aab3f4fd590f26d6`。相对该发布基线，产品仅五个原文件：reference、services、reference_training_worker、training_execution_protocol、training_cycles；`72939f3 → eedba08` 在这五文件没有追加变化。
+
+当前**需求轴源码审查 approve／finding 开放 0；可维护性轴 approve／finding 开放 0**。R1–R4 在以下具体修正范围关闭。新非 editable 包与真实服务验收仍 **pending acceptance**，不因此声明本片交付完成，也不把 package-r1 的安装结果套用到修后源码。
+
+|Finding|修后证据与复核|状态|
+|---|---|---|
+|R1|`reference_training_worker.py:1119–1132` 对运行中的 Worker 同时观察公开 run／shutdown task，再等 run 实际终态；run 已结束则不新开 shutdown。验证失败落在检查后的竞态也由 FIRST_COMPLETED 捕获。仅在 run 终态后取消无实际清理责任的 shutdown waiter，随后继续 peer；不读取 SDK 私有状态，不用硬超时丢弃资源。原异常保持|关闭|
+|R2|`:1092–1109` 用真实 SDK `on_fatal_error` 保存首错并置统一 closing event，回调没有等待自身关闭。原 normal-first 的实际等待顺序保留；失败 Worker 的 cleanup 尚未释放时 normal 已 initiate_shutdown|关闭|
+|R3|`:1024–1032` 保留所有 H refs，并将与最后 H 不同的父 outcome 作为同一 operation 的附加 inline 观察；只去掉已由原逐操作记录承载的 preparation／confirmation 嵌套，保留 reason／cleanup_problem。此记录没有冒充新的 H 原件，也没有替换原 ref。完整长父原因继续参与 DataConverter 容量检查|关闭|
+|R4|`:788–812` 保留构造／运行 `_CycleCapacityError` 分类，peer 仍先完成；`:898–910` 在 S 实际安全读取 stdout 时精确识别超限，保留 stdout／stderr 并输出无伪造 ref 的容量结果；`:1042–1046` 记录完整 outcome／records 后非重试拒绝。原 frame 增加身份后超限及 SDK metadata 上限路径仍保留|关闭|
+
+第五个原产品文件的变化必要且局部：`training_cycles.py:30–44` 将原安全 reader 的超长错误细化为同一个 `_CycleCapacityError(ValueError)`，worker import 复用。旧 ValueError 捕获及文案保持，普通文件／symlink 检查未动。它避免复制安全 reader、解析错误文字或增加可注入异常类参数；`training_cycles.py` 已在原 GATE_SOURCES 中，未新增 pin 盲区。没有新增可维护性 finding。
+
+### 实际核验与范围
+
+独立读取修正源码／调用路径及新增测试后，核对 private `review-fixes-r1/source-identity.json` 的五个修正／测试文件 SHA256，与当前 HEAD 文件逐一相同。两个产品摘要为 worker `fbb6b9bb5f7513abceb25039bf606f2185e4eddc0808717705481c326778e14e`、training_cycles `07215a1b1b1876c462333154ef834ef73f2a3b6020703270bfb3395c084f5972`。`git diff --check 478c988 eedba08` 通过。
+
+只读原始日志确认：生命周期 baseline **4 failed**；父侧结果 baseline **3 failed**（位于 adapter-before）；修正容量 fixture 后 baseline **2 failed／1 passed**，其中 frame 路径是通过的对照；修后新接缝 **11 passed／36.38秒**，最后受影响组 **14 passed／103.44秒**。两组有重叠，且修后 11 项之后有 shutdown gather 整理及测试零残留断言，最后 14 项包含最终生命周期复验，不相加为独立全量数。源码输入身份与日志相符；这些均是显式 PYTHONPATH 的源码验证。
+
+本 reviewer 另在已有 SDK 1.34.0 解释器直接调用新增生命周期测试函数，保留真实 SDK run／shutdown，仅使用原测试的 bridge／poller 替身；`-B`、不启动服务、不创建业务文件。normal-validate、stop-validate、validate-during-shutdown、stop-fatal **四情景全部通过**，包括后者 cleanup 未释放时 normal 关闭、两次取消与最终零 pending task。第一次直接装载测试时漏了 tests import path，以 ModuleNotFoundError 结束；补上 `PYTHONPATH=src:tests` 后上述四项通过，这是探针入口修正，没有产品修改。
+
+父侧结果与容量没有再运行真实 OS fixture：本轮核其实际源码以及原 baseline／修后日志。R3 测试在真实认证／prepare S-H 后注入 Popen 错误，cleanup 例真实创建并等待根后注入投影事实；不冒称实测通知 syscall 故障。R4 的 stop 预先通过原 owner 发布，是为了让 writer 构造失败时 drain 能真实结束；测试继续核所有 peer、完整原字节与 ref／inline，未以取消代替收尾。此安排适合验证容量分类，不代替首次 stop 写入失败的业务最终停止证明。
+
+待主控补充 package-r2 精确身份、适用安装结果与真实 Temporal／Supervisor 原件后，再复核整体 acceptance。当前仅关闭四项源码 finding；真实 queue／PID／阻塞／信号／强杀以及原件清理边界尚不由本节认证。
