@@ -69,7 +69,8 @@ def review_manifest(tmp_path):
         document = workflows.get(state, installed["root"]["id"], installed["root"]["version"])
         root = document["definition"]
         if after_general:
-            root["version"] = "1.0.1"
+            major, minor, patch = map(int, root["version"].split("."))
+            root["version"] = f"{major}.{minor}.{patch + 1}"
             next(node for node in root["nodes"] if node["id"] == "domain")["depends_on"] = ["general"]
             bundle = tmp_path / "serial-domain"
             shutil.copytree(document["path"], bundle)

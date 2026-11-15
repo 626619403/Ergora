@@ -39,3 +39,7 @@
 ## 联合独立门禁闭合
 
 新的fresh-context reviewer已对准确33文件scope／168,673B完整patch、663双安装、原216资源／旧图和输入、178＋228输入、50及8两轮终态、自身完整stdin与结果完成核查，需求／可维护性均approve，开放0／0。[原审查报告](2026-11-16-review-reporting-mainline-integration-review.md)9,773B，SHA256 `46911b17f6696e0b9bc8da3e4f5223da49f1199a6b7cd669db180e483c0e5712`。未重跑原suite／模型／浏览器，历史限制保持。本地联合片闭合，进入固定提交；普通推送用于取得该候选自身CI，不自动合main，也不改写前片失败。
+
+## 固定提交与普通发布
+
+联合候选已固定`6725e62511aa4a5b68baf684ec3cbc1f0470d3e6`，父d5b5891。原reviewer核14个src／tests提交blob及28导入文件与已审原件同一、原报告逐字保持，两轴approve／0。已普通推送`refactor/architecture-foundations`，远端精确ref同一；官方实际观察到本候选自己的[Portability run43735663360](https://github.com/626619403/Ergora/actions/runs/43735663360)，事件push，当前in_progress、plan成功／另七job在途，未有最终CI结论。原件`publication-r1/summary.json`及原API响应。没有强推／合main，也没有把该新run结果改标旧1b8或7025。
