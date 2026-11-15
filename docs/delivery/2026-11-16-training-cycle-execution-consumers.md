@@ -8,6 +8,8 @@
 
 已普通merge固定`bcc304894622040a7d844f8c6f9ddfded65aa895`，开发树提交为`01ef69b71137df860e8fc433362d039ae241e744`。导入后相对bcc的src／scripts／.github／pyproject逐字差异0，产品仍同wheel55029；tests仅多两行另行fresh审查通过的[Windows提前skip](2026-11-16-windows-sdk-fixture-skip.md)，原fixture、测试体及参数保持。原安装的183输入身份不改写为这两mark已在原运行中出现。普通发布／准确候选自己的CI另记，未自动合main；后继c1c可从该完整本地门槛开始。
 
+联合候选`879654c5c0989e1880af85293296897a0d2b7089`已普通推送开发分支，`git ls-remote`核精确远端同一；自己的官方push／attempt1 [43752183692](https://github.com/626619403/Ergora/actions/runs/43752183692)已in_progress、conclusion=null。导入、push、remote与API原响应保存在本片ignored `publication-r1/`；该run自己的全部job和原时限待实际终态，不把旧863的Linux成功写为本候选已通过。
+
 ## 准备基线与授权
 
 专属源码工作树为 `training-cycle-execution`，只读检查 HEAD `af176cf6e79adb9c6ef6f32946672bc77cdb89de`，初查 clean；最近三提交为 af176cf、97a0bbf、eedba08。af176cf 只调整一项正常测试的显式控制窗口，产品同前置 97a0bbf。主 docs 的 PLAN 仍把服务 N32 混合 unknown／容量现场补验列为在途，本片不自行关闭该门槛。

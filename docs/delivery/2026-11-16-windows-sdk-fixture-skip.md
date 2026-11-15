@@ -25,3 +25,17 @@
 ## 独立审查与固定导入
 
 [fresh独立审查](2026-11-16-windows-sdk-fixture-skip-review.md)实际核官方六错误、完整两行diff、fixture闭包与三份轻量原件，需求／维护性均approve，开放0。隔离候选固定为`958a6fe`；主分支普通cherry-pick为`39ec257`，对src／tests／scripts／.github／pyproject逐字比较差异0。未强推、未改main；暂与即将验收的消费者合并后普通发布，避免为同一联合候选重复发CI。原863失败保持，新候选自身CI仍待实际运行。
+
+后续消费者bcc已真实导入01ef，逐字比较其tests只多本片两行mark；联合候选`879654c5c0989e1880af85293296897a0d2b7089`已普通推送开发分支并核精确远端同一。自己的官方push／attempt1 [43752183692](https://github.com/626619403/Ergora/actions/runs/43752183692)当前in_progress；旧863六setup错误不改写，新候选全平台结果待定。未新增重复CI矩阵或改变原时限。
+
+## r2：新增消费者窗口测试的平台标记
+
+根协调者在消费者合入后静态发现另一可达 Windows 失败：`tests/test_training_runtime.py::test_cycle_execution_sdk_keeps_one_work_window_without_parent_file_reads` 的四个参数节点没有平台标记。它调用 `budget_clock.authorize(wall) → budget_clock._clock()`，后者在非 Linux 明确抛出 `ValueError('Budgeted native operations require Linux; use WSL2')`；后续 `_CycleOperation` 也使用原 Linux boot clock。因此本例固有 Linux 执行边界，保留真实 BOOT 时钟检查，不能通过模拟 clock 将其描述为跨平台测试。这是新消费者测试的 call 阶段静态风险，**不属于原 8635692 官方六错**，也没有声称新 Windows 官方运行已经复现。
+
+原两处 submission 标记已提交为 `958a6fe7792ef2d5ac2c1030c0bdb72b1d68269a`。本次在同一专属树普通合入固定消费者 `01ef69b`，形成准确实施基线 `bc602a38c9658bab8f8f431ac48f4969c76ebf95`。核实该 HEAD 的产品、测试、脚本、CI 和配置与 01ef 逐字相同，已包含此前两处 submission 平台标记。新未提交差异仅在 runtime 模块增加标准库 `import sys` 与该既有函数前一个 `skipif(sys.platform != 'linux', reason='SDK work windows use the original Linux boot clock')`，共两行。不改原四参数、fixture、产品、时钟、预算、断言及其他测试。
+
+r2 复用原轻量边界脚本，仅将所选模块／函数改为上述 runtime 函数。依赖先正常导入，只在所选模块 reload 时局部设置 win32，随后立即恢复 Linux；实际 pytest setup 阶段仍在宿主 Linux。修前四节点触发首个 fixture setup sentinel，**4 errors／0.30 秒**，不执行 fixture 函数体或测试 call；它只证明缺少提前 skip，并非原生 Windows call 失败复现。修后 **4 skipped／0.02 秒**，fixture setup 钩子调用为零。Linux 纯收集 **4 tests collected／0.02 秒**，四个新增 skipif 条件均 false；前后及 Linux 三组节点身份完全一致。逐字移除这两新增行可恢复基线文件，`git diff --check` 通过。未执行 Linux 四个活动场景、全量 suite、安装、服务或训练。
+
+r2 脚本、修前／修后日志、Linux 收集日志、汇总 JSON 与准确 patch 独立保存在原专属检查目录的 `r2/`，没有覆盖 r1 六节点历史。patch SHA256 为 `25b2968d03bd0cc8308c75d6ac9de9bf179b273eafc0f75eb1e013fec79be2b3`，基线如上。
+
+r2 已取得[新的独立审查](2026-11-16-windows-sdk-clock-skip-review.md)，需求／维护性均 approve、开放 0；协调者已核准确两行并固定导入开发树 `c52fc0a338118a19491ad7cd458b82cf2f146a9b`。其完整差异只有上述 runtime 测试的标准库导入与装饰器；原 Linux 时钟测试保持。c1c 实施树已普通合入此提交，产品不因该测试修正变化。尚未推送本次 r2，故在途 879 候选自己的 CI 不含该修正；最终发布及新候选自己的必要 CI 分别记账。
