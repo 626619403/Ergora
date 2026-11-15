@@ -46,3 +46,17 @@
 CPU／容量边界明确：实现为`2 + 2N`个效果operation，每个一个S／H；有效上限N=32时最多66个operation、132个子进程，并各自重读完整原件。父loop以50 ms让出执行，不忙等业务锁。实际并发验收只有两个原owner，没有32候选容量或延迟基准；本报告不据此提出新配额／调度器，也不作扩展性收益主张。OS确实无法及时回收时仍保留unknown及实际等待，未把截止视为停止成功。
 
 本片可按原计划收束本地交付。普通发布仍受前置43d准确CI及原独立门禁约束，本片发布后须有自己的适用CI；本审查未联网终核它们。c1总Workflow／独立cycle服务／stop queue、c2公开交互、真实CPU两轮，以及实际GPU／业务训练质量和性能收益仍是后继责任。
+
+## 固定发布终核
+
+原reviewer恢复同片上下文，对固定发布`1b8c2ed1e61258e97f0c39f38ea97a35fe66cd9b`完成需求／可维护性两轴终核，均为**approve，开放0／0**。上述10,133B本地报告完整保留为不变前缀，SHA256为`3c316391622eafd78c82b9c1855b3fb1f06a6c0ef5baba15ef160b3367eea8b8`；本节仅追加固定发布与当前CI边界。
+
+固定提交的唯一父提交为`877e1e4f7397731915c36b82f335efeaab3854dd`，tree为`68878094d9e8d0aab99c6aa2f6fb2fa1067dd7e4`。独立从实际Git对象核`local-commit-r1.json`的九份完整路径、blob ID及SHA256，全部一致；原记录保存九份staged blob与tree相同。相对原r3八文件审查快照，仅PLAN、本片计划和交付补入实际本地approve／状态，另加入上述原审查报告；产品、测试及架构正文未变。
+
+从固定Git提交重新读取的652个产品文件，与原wheel及core／SDK两份保留非editable安装、manifest逐字一致；178份已提交测试／示例与最终r2冻结副本及清单相同。原安装r1的30通过／1失败及同一产品r2精准修正项通过保持各自证据身份，本轮没有重复安装或suite，也没有把后继HEAD的产品混入本片。
+
+`push-before-r1.txt`、`push-after-r1.txt`、`push-r1.stdout/.stderr`及`fixed-publish-r1.json`记录普通推送从877e1e4快进至1b8c2ed，没有force。审查者另执行只读`git ls-remote origin refs/heads/refactor/architecture-foundations`，完整远端Ref精确返回`1b8c2ed1e61258e97f0c39f38ea97a35fe66cd9b`；发布的是原固定候选。
+
+已读取前置[b2b0原reviewer的准确CI终核](2026-11-15-training-cycle-offline-reader-review.md#自己的准确ci终态核验)及其官方HTTP200原件。其证据位于`.ergora/checks/training-cycle-offline-reader/ci-b2b0/20261115T122331991398Z-{runs,jobs,summary}.json`，绑定run`43708885957`／attempt1／push、准确仓库／分支及完整877e1e4；独立核八个job和30必要步骤均completed／success，并与已提交workflow的step名称和原summary对应。原run／jobs SHA256分别为`e4b7d91c430b7990a8b8654aa80a8a67c2f0f0bdffb8248a14c652394eb759e0`、`be9687431ce3b4614f328b6e6dc0503352312ae7647f6783a7096b6fe898e590`。此前403和中间观察保留；这只关闭前置条件，不认证1b8c2ed自己的CI。
+
+**本候选自己的准确CI终态仍待。** 本轮未查询其run／job／step，不以普通发布或前置CI成功替代自己的适用CI。当前后继HEAD`f00bfdfd15173ceb0e961681679d6d3d62254bed`及其他后继源码／未提交文件不属于本次固定发布结论。仅追加本报告，未改产品／测试、安装、重跑suite、提交或推送；v3 kernel及原训练／质量／性能边界保持。

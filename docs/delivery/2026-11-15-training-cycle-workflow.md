@@ -23,3 +23,7 @@ c1a1原意图准备已固定本地 `d1fcfa5b78e912004114f00275c32e6dfac6dcb0`，
 真实安装Temporal SDK 1.34.0的只读编码探针已结束：用内存服务替身接受一次完整controller input／原memo、REJECT_DUPLICATE与FAIL；返回handle的`run_id`实际为null，`result_run_id`／`first_execution_run_id`才是启动回复固定run。原件保留在私有`training-cycle-dispatch/sdk-start-probe-r1.py/json`。该探针无网络、真实server或Workflow，只固定SDK请求／返回对象事实；不能拿null的handle.run_id生成receipt，也不据此宣称投递已实现。
 
 随后只读重核原`CycleAdmission.bind`的attempt／receipt字段、`training_cycles.prepare_controller`的短SQLite本地reservation、`lookup_controller`固定RUNNING最后gate、原H与所选native installation／environment装载。下一片仍须先明确：attempt唯一发布与SDK网络期间不持SQLite、闭合历史观察与最后RUNNING gate分离、SDK不引入core硬依赖、所有业务I/O留H，以及丢回复只查同ID／固定run不重发。没有后继产品改动，独立cycle服务、normal／stop配额、总Workflow和真实CPU两轮仍开放。
+
+## c1a2固定提交与c1b1所有权前提
+
+c1a2已固定本地`f00bfdfd15173ceb0e961681679d6d3d62254bed`，原reviewer本地及固定提交需求／维护性两轴approve／开放0／0；原安装r1的67通过与两行不可达guard删除后r2精准7通过分别归原身份。远端仍按原队列，不能继承本地通过为发布／CI成功。后继[owner生命周期具体计划](../plans/2026-11-15-training-cycle-owner-lifecycle.md)先解决长期budget根跨短H／S与正常cycle重启存活，研究确认async transport析构的主动kill也需处理；实际reaper惰性对照0.582秒已验，但实际预算根与产品接缝仍未实施。之后再接真正独立cycle服务／normal-stop配额、标准sandbox总Workflow与后继轮接受，不以研究探针冒充它们。

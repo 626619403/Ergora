@@ -49,3 +49,15 @@
 本候选自己的官方[run `43708885957`](https://github.com/626619403/Ergora/actions/runs/43708885957)已按原HTTP200响应核到attempt1／push、准确仓库／分支及完整877e1e4，2026-11-15 11:26:33 UTC保存的观察为`in_progress`／conclusion null。原件位于证据根的`ci-b2b0/20261115T112633364905Z-{runs,runs-http,summary}.json`；原runs SHA256为`b816cf2d8ba308fbaf5412c9ac8f676a9b676824c1c3df7592d71a35d7b90a1d`。**自己的CI终态仍待，不能以普通发布或前置成功替代。**
 
 本轮只追加本报告，未修改产品／测试、安装、提交或推送。工作树后继HEAD`3947b1e28b2cbc27ddc53cab584cced0c8d971a6`及新的研究／文档不属于本次固定877e1e4结论；后继能力和真实训练／质量／性能边界保持各自原范围。
+
+## 自己的准确CI终态核验
+
+原reviewer核对官方HTTP200原件后，确认[Portability run `43708885957`](https://github.com/626619403/Ergora/actions/runs/43708885957)为**attempt1／push／`refactor/architecture-foundations`／完整提交`877e1e4f7397731915c36b82f335efeaab3854dd`**，仓库与head repository均为`626619403/Ergora`，workflow路径为`.github/workflows/portability.yml`。原run终态为`completed/success`，更新于`2026-11-15T11:51:54Z`；固定提交tree仍为`5bc5305768035411b81b018a2894b76dca5dbd40`。
+
+独立按该固定提交的workflow和六个显式Linux组重建job／必要step清单：plan、Ubuntu／Python3.11的group0–5以及Windows／Python3.12的group all，共**8个job和30个必要步骤全部completed／success**。原jobs响应总数覆盖完整八job，每个job携带相同run ID、attempt和完整head SHA；每项必要step恰好出现一次，重建结果与summary逐项相同。必要步骤包括显式分组、七个native job各自的wheel构建／安装、reference身份、应用回归及观察上传，以及Windows PowerShell5.1安装／升级。六个Linux job对Windows专用步骤的skip符合已提交条件。
+
+终态证据保存在原证据根的`ci-b2b0/20261115T122331991398Z-{runs,jobs,summary}.json`及两份HTTP元数据。原runs SHA256为`e4b7d91c430b7990a8b8654aa80a8a67c2f0f0bdffb8248a14c652394eb759e0`；原jobs SHA256为`be9687431ce3b4614f328b6e6dc0503352312ae7647f6783a7096b6fe898e590`。此前四份`in_progress`观察及`20261115T115835551966Z`的官方限额403均仍在原身份下，未改记成功。这里核的是官方准确run／job／step结论，未宣称读取全部日志或下载CI产物，原本地运行证据保持原范围。
+
+**最终需求符合性：approve。最终可维护性：approve。开放finding：0／0。** 固定877e1e4的本地、普通发布及自己的准确CI门禁已闭合；后继`1b8c2ed`及之后仍分别承担其产品／发布／自己的CI验收，不转授本片结论。当前后继源码和未提交工作不在本次审查内；kernel专家保留v3，真实训练／质量／性能限制保持。
+
+本轮仅追加状态核验，未修改产品／测试、安装、重跑suite、提交或推送，也不触发对账记的递归审查。此前9,852B报告完整保留为不变前缀，SHA256为`ba89f1b0ae01193bb8ebaaf38a65dabfa5e91a967bc5469393c5716de72a3bec`。

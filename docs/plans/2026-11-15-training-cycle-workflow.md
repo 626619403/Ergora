@@ -22,8 +22,8 @@ b2b的`stop_live_controller`已经把独立writer／逐owner通知／drain／执
 
 |节点|完整交付物|必要验收|状态|
 |---|---|---|---|
-|c1a 总投递原件与SDK对账|完整intent→持久attempt→唯一start→固定run receipt；只读status／reconcile。先核schema2原ready、原revision／clock／stop；共享原controller intent生成／验证|原同意不升级、slot只消耗一次、RPC外无SQLite事务；真SDK编码服务替身上的accepted／lost reply／NOT_FOUND／冲突输入与memo／队列类型；恢复只查同ID，不重发／跟随新run|准备；实施前固定具体入口和原件读写职责|
-|c1b 异步普通操作与真实服务边界|在原operation owner中接inspect／start-or-reconcile／request-execution-or-observe／collect-round所需身份；非阻塞cycle入口，独立normal／stop Worker与配额|完整原controller run由SDK activity身份取得并经H核原记录，不接受外部候选列表；真双服务不同PID，普通H锁／fsync阻塞时stop queue仍可运行，取消仍回收实际spawn／后代；无SDK的core观察保持|待c1a本地门禁；自动派发仍关闭|
+|c1a 总投递原件与SDK对账|完整intent→持久attempt→唯一start→固定run receipt；只读status／reconcile。先核schema2原ready、原revision／clock／stop；共享原controller intent生成／验证|原同意不升级、slot只消耗一次、RPC外无SQLite事务；真SDK编码服务替身上的accepted／lost reply／NOT_FOUND／冲突输入与memo／队列类型；恢复只查同ID，不重发／跟随新run|c1a1／c1a2已本地及固定提交两轴通过；原件准备d1fcfa5、SDK投递／对账f00bfdf，各自普通发布／准确CI排队，见[投递计划](2026-11-15-training-cycle-dispatch.md)|
+|c1b 异步普通操作与真实服务边界|在原operation owner中接inspect／start-or-reconcile／request-execution-or-observe／collect-round所需身份；非阻塞cycle入口，独立normal／stop Worker与配额|完整原controller run由SDK activity身份取得并经H核原记录，不接受外部候选列表；真双服务不同PID，普通H锁／fsync阻塞时stop queue仍可运行，取消仍回收实际spawn／后代；无SDK的core观察保持|c1b0一次普通窗口已本地固定3947b1e；接续[跨调用owner生命周期c1b1](2026-11-15-training-cycle-owner-lifecycle.md)设计／实证，再独立cycle服务及配额。自动派发仍关闭|
 |c1c 总Workflow与每轮执行|可被标准SDK sandbox重新导入的TrainingCycleWorkflow，确定性顺序／timer／query／stop；所有业务经c1b活动|真实Temporal的原input／memo／固定run；副作用activity maximum_attempts=1；原compute／control timeout导出SDK截止，非正不派发；重启／丢activity回复不重占start／launch|待真实c1b入口及stop配额，不推迟这些边界到公共交互|
 |c1d 测量接受／索引／容量|原accepted archive＋durable stopped＋实际Workflow phase＋不可变rounds追加，只有全部原绑定通过才继续|至少两候选的顺序／原baseline保持；前轮release窗口保留；phase／gate／reap交错、索引超限／项目漂移、32KiB封套与history界；只报告真实所验容量|待c1c；不引入第二账本或新的质量／收益评分|
 |c2 公共入口与交接|CLI／HTTP／services薄入口，明确authorize／start／status／stop／reconcile；手册／页面使用已验用例|安装后完整操作；Temporal不可用先返回实际本地停止分支，未知不自动重试；旧schema1不启用自动循环|后继片|

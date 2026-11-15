@@ -4,6 +4,16 @@
 
 ## 当前检查点
 
+**压缩恢复必读：新增WA1–WA5。** 用户要求核查历史调研是否真正进入模板，并由几名独立子agent审计实际控制流／循环／硬Hook／设计前人类讨论与缺失知识提问。[完整原始要求、审计分工及关键问题已持久登记](plans/2026-11-15-workflow-evidence-and-human-gates.md)。先闭合手头c1b1，按空闲槽位并行审计；主控汇总详细设计／修改方案、客观验收与顺序并与用户讨论后再实施该新方向。当前并非LangGraph；任意循环／通用非agent Hook／设计人类硬关卡须核源码，不可凭提示词称已支持。BR1／BR2继续独立分支，不被此追加任务替代。
+
+**新增并行BR1／BR2：** 用户指定Claude Code两份官方审查资料与HTML报告文章。[任务计划](plans/2026-11-15-backend-review-and-reporting.md)已记录；两个子agent在独立分支盘点／实现PR Skill后端差异说明和报告生成辅助，保留已发布包及原证据。主控继续c1b1，子任务尚未合入／验收，状态见[逐步记录](delivery/2026-11-15-backend-review-and-reporting.md)。
+
+**活动c1b1生命周期设计：** c1a2已固定本地`f00bfdfd15173ceb0e961681679d6d3d62254bed`，十二blob／tree同一，原reviewer固定提交需求／维护性两轴approve／开放0／0。接续[具体计划](plans/2026-11-15-training-cycle-owner-lifecycle.md)先闭合长期预算owner在短S-H之外的真实归属与正常worker重启；实际安装reaper惰性probe0.582秒通过，但不能替代预算owner验收。stdlib六case已终态：本机async正常teardown实际仍活，但close语义依赖watcher；Popen窄OS创建候选也通过惰性对照，真实预算owner未验。复用原唯一prepare作为启动offer而不新增账本；新独立r1提出R1取消交接及R2封套／恢复缺口，已在r2补模式／结果／共享window和失联只观察表，原reviewer r2设计需求／维护性两轴approve／开放0／0，R1／R2仅设计关闭；接续固定设计文档与b1.1产品实施，未开放自动派发。[研究](research/2026-11-15-training-cycle-sdk-boundary.md)与[逐步交付](delivery/2026-11-15-training-cycle-owner-lifecycle.md)记录限制，kernel专家保持v3。
+
+**远端12:27 UTC接续：** 877e1e4自己的run43708885957／attempt1／push／精确SHA已终态八job／30必要步骤success，原reviewer最终两轴approve／开放0／0；原403保持。后继1b8c2ed已普通发布、九blob／完整Ref同一，原reviewer固定发布两轴approve／开放0／0，自己的run43713822317／attempt1／push／精确SHA仍in_progress。fbafd8d→d1fcfa5→3947b1e→836179e→f00bfdf继续逐片等前片准确CI／相应原reviewer终核，不直接推当前HEAD。12:52UTC再次查询返回403／remaining0、reset13:23:15UTC，原件已存；此前in_progress保持原时点，不能判CI成功或失败，限额前不重复读。
+
+下列原检查点保留其当时身份，c1a2本地结果及发布队列以以上最新记录为准。
+
 **c1a2总投递／对账本地门禁闭合：** 基线836179e9；[具体计划](plans/2026-11-15-training-cycle-dispatch.md)设计两轴approve。原四owner接单次SDK start／固定run对账；产品独立R1 reset身份和R2缓存授权均先实红后最小修正并由原reviewer源码复核关闭。最终安装r1共67通过／347.05秒；再删两行不可达guard，r2两安装各652三方同一／283／依赖通过，原bind／gate／冲突／并发精准7通过／83.56秒，旧67项仍归r1。r2 core异步只读1.210秒、7文件bytes／DB保持；自身完整供稿真实Codex40.251秒approve；178输入保持、74已知actor活匹配0。最终12文件scope、652双安装／178输入与74身份收尾均由原独立reviewer直接重核，需求／维护性两轴approve／开放0／0，后接固定提交及逐片发布；[逐步交付](delivery/2026-11-15-training-cycle-dispatch.md)。后继独立cycle服务需先实证跨调用预算owner生命周期，标准sandbox／normal-stop配额、总Workflow／后继轮与公开入口仍开放；kernel专家保持v3。
 
 **PR审查补充研究Q2.4本地闭合：** 用户指定[Anthropic文章](https://claude.dev/blog/solving-code-review-at-anthropic/)；此前已研究公共Claude插件／产品，未直接引用该文。已按原文与源码写成[对照研究](research/2026-11-15-anthropic-code-review-comparison.md)及[分片计划](plans/2026-11-15-review-validation-evolution.md)：当前三路all-join／领域专家已实现，逐finding独立复核、效果eval与有界增量复审仍待后继。261本地链接／正文身份及产品零diff、新的独立文档需求／维护性两轴approve／finding0已核；R0固定发布按原顺序，R1–R4尚未实施。kernel专家继续保留v3。[交付](delivery/2026-11-15-review-validation-evolution.md)。
