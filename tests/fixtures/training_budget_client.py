@@ -238,7 +238,8 @@ if fault == 'phase-stopped-incomplete' and base.payload['mode'] == 'phase-superv
     budget.processes.run = incomplete_process
 
 base.payload['request_id'] = 'budget-' + base.payload['intent_sha256'][:32]
-sys.stdin = base.io.StringIO(json.dumps(base.payload))
+sys.stdin = base.io.StringIO(json.dumps(base.envelope if base.envelope.get('protocol') == 'ergora-training-cycle-root-v1'
+                                       else base.payload))
 base.install_budget_fixture()
 if fault in ('phase-slow-reader', 'phase-held-reader') and base.payload['mode'] == 'owner':
     supervise = budget.BudgetedStart.supervise

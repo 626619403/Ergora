@@ -23,11 +23,13 @@ from temporalio.exceptions import WorkflowAlreadyStartedError
 from temporalio.service import RPCError, RPCStatusCode
 
 from ergora.reference_training_submission import main
+from ergora.state import file_lock
 
 sys.path.insert(0, str(Path(__file__).parent))
 
-payload = json.load(sys.stdin)
-sys.stdin = io.StringIO(json.dumps(payload))
+envelope = json.load(sys.stdin)
+payload = deepcopy(envelope['submission']) if envelope.get('protocol') == 'ergora-training-cycle-root-v1' else envelope
+sys.stdin = io.StringIO(json.dumps(envelope))
 scenario = os.environ['ERGORA_TEST_TRAINING_SUBMISSION']
 storage = Path(os.environ['ERGORA_TEST_TRAINING_SERVICE'])
 record = json.loads(storage.read_text()) if storage.exists() else {'starts': 0, 'calls': []}
@@ -52,8 +54,21 @@ if (os.environ.get('ERGORA_TEST_TRAINING_CONTROLLER_PAUSE') == 'submission-attem
     training_cycles._sync_directory = pause_attempt
 
 
-def save():
-    storage.write_text(json.dumps(record) + '\n')
+def save(*, call=None, counter=None, **changes):
+    # Owners and S-H helpers are independent service clients. Each RPC updates
+    # the shared double atomically instead of writing its stale import snapshot.
+    with file_lock(storage.with_name(storage.name + '.lock')):
+        current = json.loads(storage.read_bytes()) if storage.exists() else {'starts': 0, 'calls': []}
+        if call is not None:
+            current['calls'].append(call)
+        if counter is not None:
+            current[counter] = current.get(counter, 0) + 1
+        current.update(changes)
+        pending = storage.with_name(storage.name + '.pending')
+        pending.write_text(json.dumps(current) + '\n')
+        pending.replace(storage)
+        record.clear()
+        record.update(current)
 
 
 class Service:
@@ -62,17 +77,14 @@ class Service:
         self.config = SimpleNamespace(identity='ergora-offline-sdk-contract')
 
     async def start_workflow_execution(self, request, **kwargs):
-        record['calls'].append(['start', request.workflow_id])
-        record['starts'] += 1
-        save()
+        save(call=['start', request.workflow_id], counter='starts')
         assert request.workflow_id_reuse_policy == WorkflowIDReusePolicy.REJECT_DUPLICATE
         assert request.workflow_id_conflict_policy == WorkflowIDConflictPolicy.FAIL
         assert request.retry_policy.maximum_attempts == 1
         if scenario == 'race':
             raise WorkflowAlreadyStartedError(request.workflow_id, request.workflow_type.name, run_id=run_id)
         assert 'request' not in record, 'A second native start is a regression'
-        record['request'] = base64.b64encode(request.SerializeToString()).decode()
-        save()
+        save(request=base64.b64encode(request.SerializeToString()).decode())
         if scenario in ('held-start', 'held-start-existing'):
             from dataclasses import asdict
             from agent_platform.training import create_adapter
@@ -86,18 +98,16 @@ class Service:
             adapter = create_adapter()
             manifest = await adapter.read_manifest(experiment.manifest_uri)
             if scenario == 'held-start-existing':
-                record['native_job_before'] = asdict(await adapter.create_job_if_absent(experiment, manifest))
-                save()
+                save(native_job_before=asdict(await adapter.create_job_if_absent(experiment, manifest)))
             storage.with_suffix('.held').touch()
             while not storage.with_suffix('.continue').exists():
                 await asyncio.sleep(0.01)
             try:
-                record['native_job_after'] = asdict(await adapter.create_job_if_absent(experiment, manifest))
+                save(native_job_after=asdict(await adapter.create_job_if_absent(experiment, manifest)))
             except (Blocked, ValueError) as error:
-                record['native_create_error'] = str(error)
+                save(native_create_error=str(error))
             job = await adapter.lookup_job(experiment)
-            record['native_lookup_after'] = asdict(job) if job is not None else None
-            save()
+            save(native_lookup_after=asdict(job) if job is not None else None)
         if scenario == 'lost-ack':
             raise RPCError('Accepted, reply lost', RPCStatusCode.UNAVAILABLE, b'')
         if scenario == 'timeout-ack':
@@ -109,16 +119,14 @@ class Service:
             from training_controller_service import Service as ControllerService
 
             return await ControllerService().describe_workflow_execution(request, **kwargs)
-        record['calls'].append(['describe', request.execution.run_id])
-        save()
+        save(call=['describe', request.execution.run_id])
         if scenario == 'unavailable':
             raise RPCError('Unavailable', RPCStatusCode.UNAVAILABLE, b'')
         if scenario == 'preexisting' and 'request' not in record:
             spec = json.loads((Path(payload['project']['registration']['definition']['execution']['state_directory'])
                                / 'training/specs' / (payload['experiment_id'] + '.json')).read_text())
             original = StartWorkflowExecutionRequest(input=Payloads(payloads=await converter.encode([spec])))
-            record['request'] = base64.b64encode(original.SerializeToString()).decode()
-            save()
+            save(request=base64.b64encode(original.SerializeToString()).decode())
         if 'request' not in record or scenario == 'not-found':
             raise RPCError('Not found', RPCStatusCode.NOT_FOUND, b'')
         original = StartWorkflowExecutionRequest.FromString(base64.b64decode(record['request']))
@@ -133,8 +141,7 @@ class Service:
             from training_controller_service import Service as ControllerService
 
             return await ControllerService().get_workflow_execution_history(request, **kwargs)
-        record['calls'].append(['history', request.execution.run_id])
-        save()
+        save(call=['history', request.execution.run_id])
         assert request.execution.run_id == run_id
         original = StartWorkflowExecutionRequest.FromString(base64.b64decode(record['request']))
         if scenario == 'missing-history':
@@ -177,8 +184,7 @@ if scenario in ('fence-observed-receipt', 'fence-observed-rejection') and payloa
                 operation.core.write(operation.path('.result.json'), operation.receipt(intent, run_id))
             else:
                 operation.core.write(operation.path('.rejection.json'), operation.rejection(intent, 'preexisting_run', run_id))
-            record['completion_published_after_status'] = True
-            save()
+            save(completion_published_after_status=True)
         return observed
 
     _Submission.status = status_then_complete

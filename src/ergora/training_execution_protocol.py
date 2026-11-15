@@ -18,6 +18,10 @@ from . import budget_clock, processes, reference
 PROTOCOL = 'ergora-training-execution-v1'
 BUDGET_TASK_QUEUE = 'ergora-training-budget-v1'
 CYCLE_MEMO_KEY = 'ergora.training_cycle_sha256'
+CYCLE_START_MODES = ('prepare-candidate', 'confirm-candidate', 'dispatch-candidate')
+CYCLE_CANDIDATE_MODES = (*CYCLE_START_MODES, 'reconcile-candidate')
+CYCLE_WORK_MODES = ('prepare-controller', 'submit-controller', *CYCLE_START_MODES)
+CYCLE_OBSERVATION_MODES = ('inspect', 'reconcile-controller', 'reconcile-candidate')
 LIMIT = 1_048_576
 GATE_SOURCES = (
     'training_execution_protocol.py', 'reference_training_execution.py',
@@ -169,7 +173,11 @@ class PhaseFrames:
 
 def validate_cycle_operation(payload: dict) -> None:
     """Bind a bounded operation request without loading application state or SDKs."""
-    _exact(payload, ('identity', 'snapshot', 'bootstrap', 'reason'), 'Cycle operation')
+    if not isinstance(payload, dict) or not isinstance(payload.get('identity'), dict):
+        raise ValueError('Cycle operation requires its complete identity')
+    candidate = payload['identity'].get('mode') in CYCLE_CANDIDATE_MODES
+    _exact(payload, ('identity', 'snapshot', 'bootstrap', 'reason', *(('start_context',) if candidate else ())),
+           'Cycle operation')
     identity = payload['identity']
     _exact(identity, ('protocol', 'operation_id', 'mode', 'control_home', 'project', 'cycle_id',
         'input_sha256', 'authorization_sha256', 'ordinal', 'parent'), 'Cycle operation identity')
@@ -177,7 +185,7 @@ def validate_cycle_operation(payload: dict) -> None:
             or not isinstance(identity['operation_id'], str)
             or re.fullmatch('[a-f0-9]{32}', identity['operation_id']) is None
             or identity['mode'] not in ('inspect', 'prepare-controller', 'submit-controller', 'reconcile-controller',
-                'stop-writer', 'notify-owner', 'drain', 'observe-execution')):
+                'stop-writer', 'notify-owner', 'drain', 'observe-execution', *CYCLE_CANDIDATE_MODES)):
         raise ValueError('Unsupported cycle operation or observation identity')
     for name, maximum in (('project', 63), ('cycle_id', 79)):
         if not isinstance(identity[name], str) or re.fullmatch(
@@ -189,7 +197,7 @@ def validate_cycle_operation(payload: dict) -> None:
     _digest(identity['authorization_sha256'])
     _process(identity['parent'])
     ordinal = identity['ordinal']
-    if identity['mode'] in ('notify-owner', 'observe-execution'):
+    if identity['mode'] in ('notify-owner', 'observe-execution', *CYCLE_CANDIDATE_MODES):
         if type(ordinal) is not int or not 0 <= ordinal < 32:
             raise ValueError('Cycle target requires its original selected ordinal')
     elif ordinal is not None:
@@ -210,7 +218,7 @@ def validate_cycle_operation(payload: dict) -> None:
             raise ValueError('Cold inspection requires one fixed 1 to 60 second observation deadline')
         return
     _digest(identity['input_sha256'])
-    if identity['mode'] not in ('prepare-controller', 'submit-controller', 'reconcile-controller') and payload['bootstrap'] is not None:
+    if identity['mode'] not in (*CYCLE_WORK_MODES, *CYCLE_OBSERVATION_MODES) and payload['bootstrap'] is not None:
         raise ValueError('Verified cycle operations must use the original total allowance')
     snapshot = payload['snapshot']
     _exact(snapshot, ('authorization', 'policy', 'candidates'), 'Original cycle snapshot')
@@ -228,7 +236,7 @@ def validate_cycle_operation(payload: dict) -> None:
         raise ValueError('Cycle operation has an invalid original budget policy')
     _exact(authorization.get('clock'), budget_clock.FIELDS, 'Original cycle clock')
     budget_clock.validate(authorization['clock'], policy['wall_seconds'])
-    if identity['mode'] in ('prepare-controller', 'submit-controller'):
+    if identity['mode'] in CYCLE_WORK_MODES:
         window = payload['bootstrap']
         _exact(window, ('boot_id', 'started_ns', 'deadline_ns'), 'Original cycle operation window')
         if (window['boot_id'] != identity['parent']['boot_id'] or window['boot_id'] != authorization['clock']['boot_id']
@@ -238,7 +246,7 @@ def validate_cycle_operation(payload: dict) -> None:
                 or window['deadline_ns'] > authorization['clock']['boottime_ns']
                     + (policy['wall_seconds'] - policy['cleanup_seconds']) * 1_000_000_000):
             raise ValueError('Ordinary cycle window exceeds its original compute or control allowance')
-    if identity['mode'] == 'reconcile-controller':
+    if identity['mode'] in ('reconcile-controller', 'reconcile-candidate'):
         window = payload['bootstrap']
         _exact(window, ('boot_id', 'started_ns', 'deadline_ns'), 'Cycle reconciliation deadline')
         if (window['boot_id'] != identity['parent']['boot_id']
@@ -249,24 +257,83 @@ def validate_cycle_operation(payload: dict) -> None:
     candidates = snapshot['candidates']
     if not isinstance(candidates, list) or not 1 <= len(candidates) <= 32 or ordinal is not None and ordinal >= len(candidates):
         raise ValueError('Cycle operation has no complete ordered candidate index')
+    if candidate:
+        context = payload['start_context']
+        fields = {'prepare-candidate': ('controller',), 'reconcile-candidate': ('controller',),
+            'confirm-candidate': ('controller', 'origin_operation_id', 'intent_sha256', 'root_process'),
+            'dispatch-candidate': ('controller', 'origin_operation_id', 'intent_sha256', 'owner')}
+        _exact(context, fields[identity['mode']], 'Original candidate start context')
+        validate_budget_binding({'cycle_id': identity['cycle_id'],
+            'authorization_sha256': identity['authorization_sha256'], 'task_queue': BUDGET_TASK_QUEUE,
+            'controller': context['controller']})
+        if context['controller']['ordinal'] != ordinal:
+            raise ValueError('Candidate start differs from its original controller ordinal')
+        if identity['mode'] in ('confirm-candidate', 'dispatch-candidate'):
+            if (not isinstance(context['origin_operation_id'], str)
+                    or re.fullmatch('[a-f0-9]{32}', context['origin_operation_id']) is None):
+                raise ValueError('Candidate start requires its original prepare operation')
+            _digest(context['intent_sha256'])
+            if identity['mode'] == 'confirm-candidate':
+                _process(context['root_process'])
+            else:
+                owner_record(context['owner'])
 
 
 def cycle_operation_remaining(payload: dict) -> float:
     """Consume one fixed window, original compute or original stop total, never renew."""
     mode = payload['identity']['mode']
-    if mode in ('inspect', 'prepare-controller', 'submit-controller', 'reconcile-controller'):
+    if mode in (*CYCLE_OBSERVATION_MODES, *CYCLE_WORK_MODES):
         bootstrap = payload['bootstrap']
         boot, ticks = budget_clock._clock()
         if boot != bootstrap['boot_id'] or ticks < bootstrap['started_ns']:
             raise ValueError('Cycle operation lost its original boot clock')
         window = (bootstrap['deadline_ns'] - ticks) / 1_000_000_000
-        if mode in ('inspect', 'reconcile-controller'):
+        if mode in CYCLE_OBSERVATION_MODES:
             return window
     snapshot = payload['snapshot']
-    if mode in ('prepare-controller', 'submit-controller'):
+    if mode in CYCLE_WORK_MODES:
         return min(window, budget_clock.remaining(snapshot['authorization']['clock'],
             snapshot['policy']['wall_seconds'], snapshot['policy']['cleanup_seconds']))
     return budget_clock.remaining(snapshot['authorization']['clock'], snapshot['policy']['wall_seconds'])
+
+
+def cycle_start_source(payload: dict) -> dict:
+    """Read the original prepare request; later phases cannot replace its window."""
+    validate_cycle_operation(payload)
+    identity = payload['identity']
+    if identity['mode'] not in CYCLE_START_MODES:
+        raise ValueError('Candidate observation does not grant a start window')
+    context = payload['start_context']
+    origin = identity['operation_id'] if identity['mode'] == 'prepare-candidate' else context['origin_operation_id']
+    source = decode(read_raw(Path(identity['control_home']) / 'operations/training-cycles' / origin / 'request.json', 32_768))
+    validate_cycle_operation(source)
+    if source['identity']['mode'] != 'prepare-candidate' or source['identity']['operation_id'] != origin:
+        raise ValueError('Candidate start has no matching original prepare request')
+    _match({key: value for key, value in identity.items() if key not in ('mode', 'operation_id')},
+           {key: value for key, value in source['identity'].items() if key not in ('mode', 'operation_id')},
+           'Original candidate operation identity')
+    for name in ('snapshot', 'bootstrap'):
+        _match(payload[name], source[name], 'Original candidate ' + name)
+    _match(context['controller'], source['start_context']['controller'], 'Original candidate controller')
+    return source
+
+
+def validate_cycle_root_request(value: dict) -> None:
+    """Check the bounded root envelope without reading business files in its caller."""
+    _exact(value, ('protocol', 'origin_operation_id', 'parent', 'window', 'submission'), 'Controller root request')
+    if (value['protocol'] != 'ergora-training-cycle-root-v1'
+            or not isinstance(value['origin_operation_id'], str)
+            or re.fullmatch('[a-f0-9]{32}', value['origin_operation_id']) is None):
+        raise ValueError('Controller root requires its one original prepare identity')
+    _process(value['parent'])
+    _exact(value['window'], ('boot_id', 'started_ns', 'deadline_ns'), 'Original root window')
+    submission = value['submission']
+    _exact(submission, ('project', 'control_home', 'experiment_id', 'timeout', 'intent_sha256', 'mode'),
+           'Controller root submission')
+    if (submission['mode'] != 'controller-owner' or not isinstance(submission['project'], dict)
+            or type(submission['timeout']) is not int or not 1 <= submission['timeout'] <= 60):
+        raise ValueError('Controller root requires its complete original submission')
+    _digest(submission['intent_sha256'])
 
 
 def owner_record(value: dict) -> dict:

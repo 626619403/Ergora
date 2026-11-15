@@ -1,6 +1,6 @@
 # c1b1：子训练预算进程的跨调用生命周期
 
-日期：2026-11-15。准备基线为本地固定 `f00bfdfd15173ceb0e961681679d6d3d62254bed`，分支 `refactor/architecture-foundations`。c1a2总投递／对账的本地与固定提交两轴已通过；普通发布仍按前片准确CI队列。本文细化[父计划c1b](2026-11-15-training-cycle-workflow.md)的实际进程前提；设计已固定`4d060ae8609424cc2f6f5f0b44393da7e2ba03f7`并获原独立两轴通过，产品接线已开始但尚未完成／运行验收，未开放自动派发。kernel专家继续保留v3。
+日期：2026-11-15。准备基线为本地固定 `f00bfdfd15173ceb0e961681679d6d3d62254bed`，分支 `refactor/architecture-foundations`。c1a2总投递／对账的本地与固定提交两轴已通过；普通发布仍按前片准确CI队列。本文细化[父计划c1b](2026-11-15-training-cycle-workflow.md)的实际进程前提；设计已固定`4d060ae8609424cc2f6f5f0b44393da7e2ba03f7`。**c1b1本地产品／安装／独立两轴门禁已闭合，固定提交及远端CI另验**；未开放自动派发。kernel专家继续保留v3。
 
 ## 问题与最小范围
 
@@ -75,10 +75,19 @@ dispatch-H把这一次完整operation传给原submission调用；schema2 `ensure
 
 |节点|可验收结果|当前状态|
 |---|---|---|
-|b1.0 所有权设计|实际reaper／stdlib teardown证据、原唯一prepare offer与真实caller、取消／重启责任；新的fresh-context设计两轴|原reaper惰性probe及stdlib六case通过／原失败收尾保持；独立r1提出R1交接／取消与R2封套／恢复缺口，已在r2补完整确认交接、mode／结果／共享窗口及恢复表；原reviewer r2设计需求／维护性两轴approve／开放0／0，R1／R2仅设计关闭，产品待实施|
-|b1.1 原prepare复用与existing-only|原schema1行为保持，schema2短H无预算Popen；完整controller／ordinal／原源漂移仍拒绝|实施中：五个原文件已做prepare提取、mode／共享窗口验证及schema2 existing-only初步接线；真实新caller未完成，只有ast.parse通过，无行为验收。准确缺口见逐步交付|
-|b1.2 原预算根跨调用|实际原预算owner同一PID／start_ticks／boot／clock，在S-H结束后及cycle正常重启后存活；真实原owner与后代最后收尾|未实施；惰性兄弟probe不替代它|
-|b1.3 重复／丢回复／取消|慢claim／慢初始化、spawn pending／stdin／确认前后取消、缺失／损坏／变身份、原预算尽；恢复只观察且SDK start／native launch不重发|未实施；各按真实状态转换选择原接缝|
-|b1.4 包与审查|新core／SDK非editable安装同一、283／依赖、适用原接缝、SDK-free观察、自身原模板及新的独立产品两轴、固定提交|未实施；分别记录旧失败／新候选，不继承probe或前片通过|
+|b1.0 所有权设计|实际reaper／stdlib teardown证据、原唯一prepare offer与真实caller、取消／重启责任；新的fresh-context设计两轴|原设计两轴通过并固定；取消封套和完整交接规则已由产品实现／原caller验收，不以惰性probe代产品|
+|b1.1 原prepare复用与existing-only|原schema1行为保持，schema2短H无预算Popen；完整controller／ordinal／原源漂移仍拒绝|新安装r2的76项通过，涵盖原schema1／schema2、原四gate与离线读取；原283参考／25来源保持|
+|b1.2 原预算根跨调用|实际原预算owner同一PID／start_ticks／boot／clock，在S-H结束后及cycle正常重启后存活；真实原owner与后代最后收尾|安装r2／精准r3通过：并发仅一offer，实际同根跨短S-H及正常loop退出／重启，原clock继续；已知进程原件收尾终态核过。实际预算根父SIGKILL未实测|
+|b1.3 重复／丢回复／取消|慢claim／慢初始化、spawn pending／stdin／确认前后取消、缺失／损坏／变身份、原预算尽；恢复只观察且SDK start／native launch不重发|安装r2 76项／985.95秒；同产品精准r3 7项／153.70秒，覆盖完整输入后取消、确认丢回复、真实30秒窗口耗尽、坏owner下NOT_FOUND再accepted及初始化锁。独立R1／R2／S1／R4／R5全关闭；历史失败保留|
+|b1.4 包与审查|新core／SDK非editable安装同一、283／依赖、适用原接缝、SDK-free观察、自身原模板及新的独立产品两轴、固定提交|同一wheel两安装各652文件、283参考及依赖通过；两轮各178冻结输入。core真实SDK-free观察1.220秒，自身模板真实Codex56.323秒approve，最终独立两轴approve／开放0／0。本地闭合；固定提交／发布另门禁|
 
 每步更新[本片交付](../delivery/2026-11-15-training-cycle-owner-lifecycle.md)。完成本片本地与固定提交门禁后，再做c1b2真实cycle服务／normal-stop配额，然后c1c总Workflow；只有c1d完整接受门槛闭合才能派发候选2。
+
+
+## 产品审查后的公开创建／取消接缝修正
+
+r2设计选择的to_thread包装已在真实正常loop收尾中证明不能保住OS创建结果：asyncio.run会直接取消全部Task，shield不能阻止被包装Task自己遭取消。当前最小修正保持OS-only线程：一次性ThreadPoolExecutor.submit保留公开concurrent Future，shutdown(wait=False)后父loop只done/result轮询；预算业务仍只在独立根，等待创建／退出期间的直接取消必须被吸收并继续实际收尾。OS创建可能无限阻塞、解释器最终仍等线程的支持限制保持，不能因换Future声称已可中断。
+
+同一根因还影响已有_CycleOperation的活动S-H：直接取消监督、管道与wait任务不等于原reaper已结束。沿同一原Process／stream继续读和wait，被取消stdin只close且不重发，取消只请求原S TERM；仍仅在原matching stopped帧后才允许kill S。只有原S-H实际结束后才通知尚未交接的预算根。若创建结果已成功即使self.process尚未赋值，也先取得真实句柄；仅创建本身已由stdlib取消清理且尚未发送任何请求时，可返回unknown，不称H已执行。
+
+原dispatch_remaining先核完整确认owner，再由原_start_remaining核完整来源／budget／parent并最后计算原window，不能把owner读取前的相对timeout返给SDK。原r7错误fault、r8有效实红与r9／r10修后结果按[交付](../delivery/2026-11-15-training-cycle-owner-lifecycle.md)分别保存。此处记录已实证的同片生命周期修正，新的独立最终源码／安装／自身模板门禁尚未闭合；不扩张到独立服务、任意Hook或总Workflow。

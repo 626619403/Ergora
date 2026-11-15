@@ -52,9 +52,7 @@ class Service(base.Service):
         attempt = base.json.loads(Path(str(prefix) + '.attempt.json').read_text())
         assert value['ergora_operation_sha256'] == attempt['intent_sha256'] == canonical_sha(intent)
         assert attempt['run_id'] == base.run_id and attempt['signal_sha256'] == canonical_sha(value)
-        base.record['signals'] = base.record.get('signals', 0) + 1
-        base.record['signal'] = base.base64.b64encode(request.input.SerializeToString()).decode()
-        base.save()
+        base.save(counter='signals', signal=base.base64.b64encode(request.input.SerializeToString()).decode())
         if base.scenario == 'lost-ack':
             raise base.RPCError('Accepted signal, reply lost', base.RPCStatusCode.UNAVAILABLE, b'')
         if base.scenario == 'timeout-ack':

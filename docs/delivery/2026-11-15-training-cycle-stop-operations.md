@@ -51,3 +51,10 @@
 ## 独立本地门禁闭合
 
 新的fresh-context reviewer已对最终八文件、安装r1原30项／原失败与r2精准修正项、同一产品双安装、实际core操作、自身供稿范围及38个actor收尾给最终本地需求／维护性两轴approve，开放0／0；R1依赖环与R2把通知等同退出的测试问题关闭。[报告](2026-11-15-training-cycle-stop-operations-review.md)10,133B／SHA256 `3c316391622eafd78c82b9c1855b3fb1f06a6c0ef5baba15ef160b3367eea8b8`，原设计或自身模板均不代替该独立结果。现在可固定本地提交；普通发布和自己的CI另验。32候选最大容量、独立cycle服务／总Workflow、真实CPU两轮与GPU／业务训练没有借本片通过而完成。kernel专家保持v3路径。
+# 远端终态接续（2026-11-15）
+
+准确发布`1b8c2ed1e61258e97f0c39f38ea97a35fe66cd9b`的官方run`43713822317`／attempt1／push／`refactor/architecture-foundations`已终态failure：七job success，Linux 3.11 group5的job`132810977047`失败。此前in_progress及403保留其原时点，不覆盖成success。
+
+公共job HTML HTTP200暴露原失败：`test_cycle_stop_notifies_peer_while_writer_and_other_target_reads_block[controller_admission0]`读取`operation-markers/stop-writer`得到FileNotFoundError；该job汇总1 failed、524 passed、13 skipped、1612 deselected／998.57秒。匿名日志下载HTTP403，未获得完整job日志；gh本地缺失，不据此猜测其他步骤成功。原HTTP／run／jobs与HTML分别保存在ignored验收目录。
+
+独立调查确认原fixture在beta真实通知后立即写marker，而六个并发operation并无writer／alpha先到约束；原测试立即读取另两个marker，存在不受产品合同保证的顺序假设。这解释一个可达测试竞态，尚不单凭HTML认证实际失败的全部原因。已委托在精确1b8的隔离候选先复现该合法交错，再让fixture于beta真实通知前确认两个阻塞边界，保留原并发证明；产品、原reaper和原发布均不改写。修复、适用安装回归、新独立审查及自己的CI另验，后继发布继续受原门禁约束。

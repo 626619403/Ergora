@@ -1,6 +1,7 @@
 """Optional application SDK worker for the versioned, budget-aware training queue."""
 
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from contextvars import ContextVar
 from dataclasses import asdict
 from datetime import timedelta
@@ -9,6 +10,7 @@ import json
 import os
 from pathlib import Path
 import signal
+import subprocess
 import sys
 import time
 import uuid
@@ -17,11 +19,12 @@ from . import budget_clock, processes, reference, training_cycles, training_exec
 from .reference_training_budget import BudgetedStart, TASK_QUEUE, validate_binding
 from .reference_training_submission import _Submission
 from .reference_training_execution import Execution
-from .state import State, now
+from .state import State, file_lock, now
 
 
 _CREATING = ContextVar('ergora_training_budget_create', default=None)
 _CYCLE_LIMIT = 32_768
+_ROOT_OBSERVERS = set()
 
 
 class _CycleOperation:
@@ -29,15 +32,16 @@ class _CycleOperation:
 
     def __init__(self, home: Path, project: str, cycle_id: str, authorization_sha256: str, mode: str,
                  *, snapshot: dict | None = None, ordinal: int | None = None,
-                 reason: str | None = None, inspection_timeout: int = 10):
-        bootstrap = None
-        if mode in ('inspect', 'reconcile-controller'):
+                 reason: str | None = None, inspection_timeout: int = 10,
+                 start_context: dict | None = None, window: dict | None = None):
+        bootstrap = window
+        if mode in protocol.CYCLE_OBSERVATION_MODES:
             if type(inspection_timeout) is not int or not 1 <= inspection_timeout <= 60:
                 raise ValueError('Cold inspection timeout must be 1 to 60 seconds')
             boot, ticks = budget_clock._clock()
             bootstrap = {'boot_id': boot, 'started_ns': ticks,
                          'deadline_ns': ticks + inspection_timeout * 1_000_000_000}
-        elif mode in ('prepare-controller', 'submit-controller'):
+        elif mode in ('prepare-controller', 'submit-controller', 'prepare-candidate') and window is None:
             policy, clock = snapshot['policy'], snapshot['authorization']['clock']
             boot, ticks = budget_clock._clock()
             seconds = min(policy['control_timeout_seconds'], budget_clock.remaining(
@@ -50,6 +54,8 @@ class _CycleOperation:
             'input_sha256': snapshot['authorization']['input_sha256'] if snapshot is not None else None,
             'authorization_sha256': authorization_sha256, 'ordinal': ordinal, 'parent': processes.identity(os.getpid())}
         self.payload = {'identity': self.identity, 'snapshot': snapshot, 'bootstrap': bootstrap, 'reason': reason}
+        if start_context is not None:
+            self.payload['start_context'] = start_context
         protocol.validate_cycle_operation(self.payload)
         self.encoded = json.dumps(self.payload, ensure_ascii=False, allow_nan=False, separators=(',', ':')).encode('utf-8')
         if len(self.encoded) > _CYCLE_LIMIT:
@@ -99,14 +105,35 @@ class _CycleOperation:
             'from ergora.reference_training_worker import cycle_operation_main;cycle_operation_main()',
             stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
             env=dict(os.environ), start_new_session=True))
-        try:
-            self.process = await asyncio.shield(self.spawning)
-        except OSError as error:
-            return self.observation({'status': 'unknown', 'reason': str(error)})
+        while self.process is None:
+            try:
+                self.process = await asyncio.shield(self.spawning)
+            except asyncio.CancelledError:
+                self.request_stop()
+                if self.spawning.cancelled():
+                    # The stdlib closes and waits for a cancelled creation.
+                    # No request was sent, so S could not have started H.
+                    return self.observation({'status': 'unknown',
+                        'reason': 'Supervisor creation was cancelled before its request was sent'})
+            except OSError as error:
+                return self.observation({'status': 'unknown', 'reason': str(error)})
         tasks = [asyncio.create_task(self._send()), asyncio.create_task(self._read(self.process.stdout)),
                  asyncio.create_task(self._read(self.process.stderr, diagnostic=True)),
                  asyncio.create_task(self.process.wait())]
-        while not all(task.done() for task in tasks):
+        while True:
+            # Loop shutdown cancels inner tasks as well as their caller. Keep
+            # draining the original pipes and waiting for the original S;
+            # cancelling an observer is not proof that its H subtree stopped.
+            if tasks[0].cancelled():
+                self.request_stop()
+                self.process.stdin.close()
+            for index, stream in ((1, self.process.stdout), (2, self.process.stderr)):
+                if tasks[index].cancelled():
+                    self.request_stop()
+                    tasks[index] = asyncio.create_task(self._read(stream, diagnostic=index == 2))
+            if tasks[3].cancelled():
+                self.request_stop()
+                tasks[3] = asyncio.create_task(self.process.wait())
             for task in tasks:
                 if task.done() and not task.cancelled() and task.exception() is not None and self.problem is None:
                     self.problem = str(task.exception())
@@ -124,9 +151,14 @@ class _CycleOperation:
                     self.process.kill()
                 except ProcessLookupError:
                     pass
-            await asyncio.sleep(.05)
+            if all(task.done() for task in tasks):
+                break
+            try:
+                await asyncio.sleep(.05)
+            except asyncio.CancelledError:
+                self.request_stop()
         outcomes = await asyncio.gather(*tasks, return_exceptions=True)
-        if (self.process.returncode == 0 and self.sent and len(self.response.frames) == 2
+        if (not self.stopping and self.process.returncode == 0 and self.sent and len(self.response.frames) == 2
                 and not self.response.buffer and self.response.problem is None
                 and not any(isinstance(item, BaseException) for item in outcomes) and not self.expired()):
             return self.observation(self.response.frames[1]['result'])
@@ -140,13 +172,207 @@ class _CycleOperation:
             return await asyncio.shield(running)
         except asyncio.CancelledError:
             self.request_stop()
-            while not running.done():
+            finished = asyncio.gather(running, return_exceptions=True)
+            while not finished.done():
                 try:
-                    await asyncio.shield(running)
+                    await asyncio.shield(finished)
                 except asyncio.CancelledError:
                     continue
-            running.result()
+            outcome = finished.result()[0]
+            if isinstance(outcome, BaseException):
+                self.problem = str(outcome)
             raise
+
+
+class _CycleCandidate:
+    """Own one in-memory offer until the complete original owner is confirmed."""
+
+    def __init__(self, home: Path, project: str, cycle_id: str, authorization_sha256: str,
+                 *, snapshot: dict, controller: dict):
+        self.preparation = _CycleOperation(home, project, cycle_id, authorization_sha256, 'prepare-candidate',
+            snapshot=snapshot, ordinal=controller['ordinal'], start_context={'controller': controller})
+        self.operation = self.preparation
+        self.stopping, self.handed_off = False, False
+        self.spawning, self.root, self.root_identity = None, None, None
+        self.cleanup_problem = None
+
+    def stopping_now(self) -> bool:
+        return self.stopping or self.preparation.expired()
+
+    def next_operation(self, mode: str, **facts):
+        identity, payload = self.preparation.identity, self.preparation.payload
+        self.operation = _CycleOperation(Path(identity['control_home']), identity['project'], identity['cycle_id'],
+            identity['authorization_sha256'], mode, snapshot=payload['snapshot'], ordinal=identity['ordinal'],
+            window=payload['bootstrap'], start_context={**payload['start_context'],
+                'origin_operation_id': identity['operation_id'], **facts})
+        return self.operation
+
+    async def transfer(self, raw: bytes) -> None:
+        class InputClosed(asyncio.Protocol):
+            def __init__(self):
+                self.closed = asyncio.get_running_loop().create_future()
+
+            def connection_lost(self, error):
+                if not self.closed.done():
+                    if error is None:
+                        self.closed.set_result(None)
+                    else:
+                        self.closed.set_exception(error)
+
+        transport, closing = await asyncio.get_running_loop().connect_write_pipe(InputClosed, self.root.stdin)
+        try:
+            # The complete request is bounded; close flushes its asynchronous
+            # pipe buffer before notifying connection_lost.
+            transport.write(raw)
+            transport.close()
+            await asyncio.shield(closing.closed)
+        finally:
+            if not closing.closed.done():
+                transport.abort()
+
+    async def observe_root(self) -> None:
+        # Cancellation on normal loop shutdown only drops this observation.
+        # poll() reaps an exited child and never terminates a live budget root.
+        while self.root.poll() is None:
+            await asyncio.sleep(.05)
+
+    async def discard_root(self) -> None:
+        if self.spawning is None:
+            return
+        # The concurrent Future survives asyncio.run's cancellation of every
+        # Task. Retain its actual OS handle even if loop teardown interrupts us.
+        while not self.spawning.done():
+            try:
+                await asyncio.sleep(.02)
+            except asyncio.CancelledError:
+                self.stopping = True
+        try:
+            self.root = self.spawning.result()
+        except OSError:
+            return
+        if not self.root.stdin.closed:
+            self.root.stdin.close()
+        if self.root.poll() is None:
+            try:
+                expected = self.root_identity or processes.identity(self.root.pid)
+                processes.notify_identity(expected, signal.SIGTERM)
+            except (OSError, ValueError) as error:
+                # EOF can win the poll/notify race. A failed notification of a
+                # still-live root must retain the actual handle and exit wait.
+                if self.root.poll() is None:
+                    self.cleanup_problem = 'Original root notification is unconfirmed: ' + str(error)
+        while self.root.poll() is None:
+            try:
+                await asyncio.sleep(.05)
+            except asyncio.CancelledError:
+                self.stopping = True
+        self.root.wait()
+
+    async def _run(self) -> dict:
+        prepared = await self.preparation.run()
+        if prepared['status'] != 'new_offer':
+            return prepared
+        result = {'status': 'unknown', 'preparation': prepared, 'intent_sha256': prepared['intent_sha256']}
+        if self.stopping_now():
+            return {**result, 'reason': 'Original start ended after prepare; its intent remains occupied'}
+        try:
+            launch = prepared['launch']
+            if set(launch) != {'request', 'environment'} or set(launch['environment']) != {
+                    'PYTHONPATH', 'AGENTFLOW_CONFIG_DIR', 'AGENTFLOW_STATE_DIR'}:
+                raise ValueError('Controller root offer has unexpected launch fields')
+            request = launch['request']
+            protocol.validate_cycle_root_request(request)
+            if (request['origin_operation_id'] != self.preparation.identity['operation_id']
+                    or request['parent'] != self.preparation.identity['parent']
+                    or request['window'] != self.preparation.payload['bootstrap']
+                    or request['submission']['intent_sha256'] != prepared['intent_sha256']):
+                raise ValueError('Controller root offer differs from its complete prepare response')
+            encoded = json.dumps(request, ensure_ascii=False, allow_nan=False, separators=(',', ':')).encode('utf-8')
+            if len(encoded) > _CYCLE_LIMIT:
+                raise ValueError('Complete controller root request exceeds 32 KiB; intent remains occupied')
+            # Only OS creation runs in the thread. Its public concurrent Future
+            # cannot be cancelled by the loop's global Task shutdown.
+            executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='ergora-budget-spawn')
+            try:
+                self.spawning = executor.submit(subprocess.Popen,
+                    [sys.executable, '-P', '-c', 'from ergora.reference_training_worker import budget_main;budget_main()'],
+                    stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                    env={**os.environ, **launch['environment']}, start_new_session=True)
+            finally:
+                executor.shutdown(wait=False)
+            while not self.spawning.done():
+                if self.stopping_now():
+                    return {**result, 'reason': 'Original start ended while OS process creation was pending'}
+                await asyncio.sleep(.02)
+            self.root = self.spawning.result()
+            self.root_identity = processes.identity(self.root.pid)
+            if self.stopping_now():
+                return {**result, 'reason': 'Original start ended before root input was sent'}
+            sending = asyncio.create_task(self.transfer(encoded))
+            try:
+                while not sending.done():
+                    if self.stopping_now():
+                        return {**result, 'reason': 'Original start ended during root input transfer'}
+                    await asyncio.sleep(.02)
+                sending.result()
+            finally:
+                if not sending.done():
+                    sending.cancel()
+                await asyncio.gather(sending, return_exceptions=True)
+            while not self.stopping_now() and self.root.poll() is None:
+                confirmed = await self.next_operation('confirm-candidate', intent_sha256=prepared['intent_sha256'],
+                    root_process=self.root_identity).run()
+                result['confirmation'] = confirmed
+                if confirmed['status'] == 'owner_confirmed' and not self.stopping_now():
+                    owner = protocol.owner_record(confirmed['owner'])
+                    if (confirmed['intent_sha256'] != prepared['intent_sha256']
+                            or owner['intent_sha256'] != prepared['intent_sha256']
+                            or {key: owner[key] for key in ('pid', 'start_ticks', 'boot_id')} != self.root_identity):
+                        raise ValueError('Root confirmation differs from its complete original offer or process')
+                    self.handed_off = True
+                    observer = asyncio.create_task(self.observe_root())
+                    _ROOT_OBSERVERS.add(observer)
+                    observer.add_done_callback(_ROOT_OBSERVERS.discard)
+                    dispatched = await self.next_operation('dispatch-candidate', intent_sha256=prepared['intent_sha256'],
+                        owner=owner).run()
+                    return {**dispatched, 'preparation': prepared, 'confirmation': confirmed}
+                await asyncio.sleep(.05)
+            return {**result, 'reason': 'Original root was not completely confirmed in its one start window'}
+        except (OSError, ValueError, TimeoutError) as error:
+            return {**result, 'reason': str(error)}
+        finally:
+            if not self.handed_off:
+                await self.discard_root()
+
+    async def run(self) -> dict:
+        running = asyncio.create_task(self._run())
+        try:
+            result = await asyncio.shield(running)
+            if self.cleanup_problem is not None:
+                return {**result, 'status': 'unknown', 'cleanup_problem': self.cleanup_problem}
+            return result
+        except asyncio.CancelledError:
+            self.stopping = True
+            self.operation.request_stop()
+            # Retain pending Popen and the exact root until its real handle and
+            # pre-handoff cleanup are complete, even under repeated cancellation.
+            finished = asyncio.gather(running, return_exceptions=True)
+            while not finished.done():
+                try:
+                    await asyncio.shield(finished)
+                except asyncio.CancelledError:
+                    continue
+            outcome = finished.result()[0]
+            if isinstance(outcome, BaseException):
+                self.cleanup_problem = str(outcome)
+            raise
+
+
+async def start_cycle_candidate(home: Path, project: str, cycle_id: str, authorization_sha256: str,
+                                *, snapshot: dict, controller: dict) -> dict:
+    """Start only this call's sole new offer; existing intents are observations."""
+    return await _CycleCandidate(home, project, cycle_id, authorization_sha256,
+                                 snapshot=snapshot, controller=controller).run()
 
 
 def _cycle_snapshot(plan: dict, authorization: dict) -> dict:
@@ -156,25 +382,34 @@ def _cycle_snapshot(plan: dict, authorization: dict) -> dict:
                        for index, item in enumerate(plan['definition']['candidates'])]}
 
 
-def _cycle_target(plan: dict, admission, ordinal: int):
-    """Reuse the original start reader; source drift must not prevent exact old-owner cleanup."""
+def _cycle_submission(plan: dict, admission, ordinal: int):
+    """Locate the original bound intent independently of its live owner."""
     authorization = admission.authorization
     ident = plan['definition']['candidates'][ordinal]['experiment_id']
     operation = _Submission({'project': plan['project'], 'control_home': authorization['control_home'],
                              'experiment_id': ident})
     intent = operation.load()
     if intent is None:
-        return operation, None, None
+        return operation, None
     admission.bind(intent, plan)
     if (intent['project_revision'] != authorization['project_revision']
             or intent['budget']['controller']['ordinal'] != ordinal):
         raise ValueError('Cycle notification differs from the original selected revision or ordinal')
+    return operation, intent
+
+
+def _cycle_target(plan: dict, admission, ordinal: int):
+    """Resolve the exact original owner for notification or execution observation."""
+    operation, intent = _cycle_submission(plan, admission, ordinal)
+    if intent is None:
+        return operation, None, None
     try:
         owner = protocol.owner_record(protocol.decode(
             protocol.read_raw(operation.path('.budget/owner.json'))))
     except FileNotFoundError:
         return operation, intent, None
-    if owner['intent_sha256'] != training_cycles._sha(intent) or owner['authorization_sha256'] != authorization['sha256']:
+    if (owner['intent_sha256'] != training_cycles._sha(intent)
+            or owner['authorization_sha256'] != admission.authorization['sha256']):
         raise ValueError('Cycle target owner differs from its complete original intent or authorization')
     return operation, intent, owner
 
@@ -220,6 +455,8 @@ def _cycle_operation(payload: dict) -> dict:
             'cycle_status': prepared['cycle']['status'],
             'work_remaining_seconds': prepared['cycle']['work_remaining_seconds'],
             'total_remaining_seconds': prepared['cycle']['total_remaining_seconds']}
+    if mode in protocol.CYCLE_CANDIDATE_MODES:
+        return _candidate_operation(payload, plan, admission, active)
     if mode == 'stop-writer':
         return {'status': 'observed', **admission.request_stop(payload['reason'])}
     if mode == 'drain':
@@ -253,12 +490,103 @@ def _cycle_operation(payload: dict) -> dict:
         'experiment_id': operation.ident, 'observation': str(output), 'observation_sha256': hashlib.sha256(raw).hexdigest()}
 
 
+def _select_cycle_project(authorization: dict, project: dict):
+    """Load one selected native project inside H or its independent budget root."""
+    from .reference_training_context import _TrainingProject
+
+    execution = authorization['execution']
+    installation = reference.validate_installation(Path(execution['installation']), training=True)
+    paths = [str(installation / part) for part in ('local', 'upstream/platform', 'upstream/temporal', 'upstream')]
+    sys.path[:0] = paths
+    os.environ.update(AGENTFLOW_CONFIG_DIR=execution['config_directory'], AGENTFLOW_STATE_DIR=execution['state_directory'])
+    context = _TrainingProject({'project': project, 'control_home': authorization['control_home']})
+    context.registration()
+    from agent_platform.core import environment
+
+    os.environ.update(environment())
+    # Native environment() replaces PYTHONPATH. Every later phase must still
+    # import this exact application together with the selected native sources.
+    os.environ['PYTHONPATH'] = os.pathsep.join([str(Path(__file__).parent.parent), *paths])
+    return context
+
+
+def _candidate_operation(payload: dict, plan: dict, admission, active) -> dict:
+    """Keep all candidate files, locks and SDK calls within the original H."""
+    from . import training
+
+    identity, context = payload['identity'], payload['start_context']
+    _select_cycle_project(admission.authorization, plan['project'])
+    mode = identity['mode']
+    if mode in protocol.CYCLE_START_MODES:
+        protocol.cycle_start_source(payload)
+    operation, intent = _cycle_submission(plan, admission, identity['ordinal'])
+    if intent is not None and intent['budget']['controller'] != context['controller']:
+        raise ValueError('Candidate operation differs from its complete original controller binding')
+    if mode == 'prepare-candidate':
+        selected = plan['definition']['candidates'][identity['ordinal']]
+        selector = {'cycle_id': identity['cycle_id'], 'authorization_sha256': identity['authorization_sha256'],
+                    'controller': context['controller']}
+        active()
+        project, prepared = training._prepare_submission(State(Path(identity['control_home'])), identity['project'],
+            selected['experiment_id'], admission.authorization['project_revision'], selected['manifest_sha256'],
+            'prepare', 'manifest_sha256', plan['definition']['budget']['control_timeout_seconds'], budget=selector)
+        active()
+        operation = _Submission({'project': project, 'control_home': identity['control_home'],
+            'experiment_id': selected['experiment_id'], 'timeout': plan['definition']['budget']['control_timeout_seconds']})
+        intent = operation.load()
+        budget = BudgetedStart(operation, intent)
+        if not prepared['created']:
+            return {'status': 'observed', 'submission': operation.status(intent)}
+        # The immutable intent is the only offer. Losing any later reply never
+        # grants another launch, even if this synchronization fails.
+        protocol.sync_directories(operation.path('.intent.json').parent, operation.root)
+        launch = budget.launch_context(payload)
+        active()
+        return {'status': 'new_offer', 'intent_sha256': operation.sha(intent),
+                'submission': prepared['submission'], 'launch': launch}
+    if intent is None:
+        return {'status': 'observed', 'submission': operation.status(None), 'owner': None}
+    if mode == 'reconcile-candidate':
+        with file_lock(operation.path('.lock'), blocking=False):
+            submitted = operation.status(intent)
+            if submitted['status'] not in ('submitted', 'rejected') and submitted['attempt_saved']:
+                operation.payload['timeout'] = protocol.cycle_operation_remaining(payload)
+
+                async def reconcile():
+                    async with asyncio.timeout(operation.payload['timeout']):
+                        return await operation.reconcile(intent)
+
+                submitted = asyncio.run(reconcile())
+            active()
+            return {'status': 'observed', 'submission': submitted}
+    if operation.sha(intent) != context['intent_sha256']:
+        raise ValueError('Candidate operation lost its exact original training intent')
+    budget = BudgetedStart(operation, intent)
+    if mode == 'confirm-candidate':
+        budget.require_active(owner=True)
+        owner = budget.owner_record()
+        if ({key: owner[key] for key in ('pid', 'start_ticks', 'boot_id')} != context['root_process']
+                or owner['context_sha256'] != operation.sha(budget.context())):
+            raise ValueError('Candidate root differs from its complete original owner or context')
+        active()
+        return {'status': 'owner_confirmed', 'intent_sha256': operation.sha(intent), 'owner': owner}
+    operation.payload.update(operation='dispatch', intent_sha256=context['intent_sha256'],
+        timeout=plan['definition']['budget']['control_timeout_seconds'], cycle_operation=payload)
+
+    async def dispatch():
+        async with asyncio.timeout(protocol.cycle_operation_remaining(payload)):
+            return await operation.run()
+
+    submitted = asyncio.run(dispatch())
+    active()
+    return {'status': 'observed', 'submission': submitted}
+
+
 async def _dispatch_controller(payload: dict, plan: dict, admission, active) -> dict:
     """SDK orchestration belongs to H; immutable claims belong to training_cycles."""
     from temporalio.common import RetryPolicy, WorkflowIDReusePolicy, WorkflowIDConflictPolicy
     from temporalio.exceptions import WorkflowAlreadyStartedError
     from temporalio.service import RPCError
-    from .reference_training_context import _TrainingProject
     from .reference_training_runtime import lookup_controller_submission
 
     state = State(Path(payload['identity']['control_home']))
@@ -273,16 +601,9 @@ async def _dispatch_controller(payload: dict, plan: dict, admission, active) -> 
 
     if saved['status'] == 'rejected':
         return observation(saved, runtime_status='not_queried')
-    execution = admission.authorization['execution']
-    installation = reference.validate_installation(Path(execution['installation']), training=True)
-    sys.path[:0] = [str(installation / part) for part in ('local', 'upstream/platform', 'upstream/temporal', 'upstream')]
-    os.environ.update(AGENTFLOW_CONFIG_DIR=execution['config_directory'], AGENTFLOW_STATE_DIR=execution['state_directory'])
-    context = _TrainingProject({'project': plan['project'], 'control_home': str(state.root)})
-    context.registration()
-    from agent_platform.core import environment
+    context = _select_cycle_project(admission.authorization, plan['project'])
+    installation = Path(admission.authorization['execution']['installation'])
     from perf_temporal.connection import connect
-
-    os.environ.update(environment())
 
     def remaining():
         active()
@@ -575,9 +896,47 @@ async def _cleanup(budget, context: dict) -> dict:
     payload.update(operation='resume', intent_sha256=result['intent_sha256'])
     return await _Cancellation(payload).run()
 
+def _controller_owner(request: dict) -> dict:
+    """Bootstrap the actual original root outside every short S-H subtree."""
+    protocol.validate_cycle_root_request(request)
+    payload = request['submission']
+    source = protocol.decode(protocol.read_raw(Path(payload['control_home']) / 'operations/training-cycles'
+        / request['origin_operation_id'] / 'request.json', _CYCLE_LIMIT))
+    protocol.cycle_start_source(source)
+    identity = source['identity']
+    if (identity['mode'] != 'prepare-candidate' or identity['parent'] != request['parent']
+            or source['bootstrap'] != request['window'] or identity['control_home'] != payload['control_home']
+            or identity['project'] != payload['project']['id']
+            or payload['project']['registration']['definition']['execution'] != source['snapshot']['authorization']['execution']
+            or payload['timeout'] != source['snapshot']['policy']['control_timeout_seconds']
+            or source['snapshot']['candidates'][identity['ordinal']]['experiment_id'] != payload['experiment_id']
+            or os.getppid() != request['parent']['pid']
+            or processes.identity(request['parent']['pid']) != request['parent']
+            or protocol.cycle_operation_remaining(source) <= 0):
+        raise ValueError('Controller root lost its complete original prepare request, parent or window')
+    _select_cycle_project(source['snapshot']['authorization'], payload['project'])
+    operation = _Submission(payload)
+    intent = operation.load()
+    if (intent is None or operation.sha(intent) != payload['intent_sha256']
+            or intent.get('budget', {}).get('controller') != source['start_context']['controller']):
+        raise ValueError('Controller root lost its complete original selected training intent')
+    budget = BudgetedStart(operation, intent)
+    observation = budget.path('launches/' + intent['operation_id'])
+    with (observation / 'stdout.json').open('xb') as stdout, (observation / 'stderr.txt').open('xb') as stderr:
+        os.dup2(stdout.fileno(), sys.stdout.fileno())
+        os.dup2(stderr.fileno(), sys.stderr.fileno())
+    return budget.own(root_operation=source)
+
+
 def budget_main() -> None:
     """Dedicated budget process; preserve the original submission context and records."""
     payload = json.load(sys.stdin)
+    if payload.get('protocol') == 'ergora-training-cycle-root-v1':
+        if len(json.dumps(payload, ensure_ascii=False, allow_nan=False).encode('utf-8')) > _CYCLE_LIMIT:
+            raise ValueError('Complete controller root request exceeds 32 KiB')
+        result = _controller_owner(payload)
+        print(json.dumps(result, ensure_ascii=False, allow_nan=False))
+        return
     operation = _Submission(payload)
     if payload['mode'] == 'owner':
         intent = operation.load()

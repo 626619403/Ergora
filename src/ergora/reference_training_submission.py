@@ -257,8 +257,9 @@ class _Submission(_TrainingProject):
                         options['task_queue'] = budget.binding['task_queue']
                     if parent is not None:
                         parent.check()
-                    return await self.client.start_workflow(run, experiment,
-                        memo={_MEMO_KEY: operation.sha(intent)}, **options)
+                    async with asyncio.timeout(budget.dispatch_remaining() if budget is not None else None):
+                        return await self.client.start_workflow(run, experiment,
+                            memo={_MEMO_KEY: operation.sha(intent)}, **options)
 
         async def connect():
             return CheckpointedClient(await original_connect())

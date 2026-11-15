@@ -270,6 +270,24 @@ def _setup(state: State, project_id: str, expected_revision: int, operation: str
 def _submission(state: State, project_id: str, experiment_id: str, expected_revision: int,
                 digest: str, operation: str, digest_name: str, timeout: int, *,
                 original_registration: dict | None = None, budget: dict | None = None) -> dict:
+    project, prepared = _prepare_submission(state, project_id, experiment_id, expected_revision,
+        digest, operation, digest_name, timeout, original_registration=original_registration, budget=budget)
+    if operation == 'prepare':
+        observed = prepared['submission']
+        if not prepared['created']:
+            return observed
+    else:
+        observed = prepared
+        if observed['status'] in ('submitted', 'rejected'):
+            return observed
+    return reference.training_submission(project, state.root, 'dispatch' if operation == 'prepare' else 'resume',
+                {'experiment_id': experiment_id, 'intent_sha256': observed['intent_sha256']}, timeout=timeout)
+
+
+def _prepare_submission(state: State, project_id: str, experiment_id: str, expected_revision: int,
+                        digest: str, operation: str, digest_name: str, timeout: int, *,
+                        original_registration: dict | None = None, budget: dict | None = None) -> tuple[dict, dict]:
+    """Freeze the original local start, without entering its remote dispatch."""
     if not isinstance(digest, str) or re.fullmatch('[a-f0-9]{64}', digest) is None:
         raise ValueError('Training operation requires the exact manifest or intent SHA-256')
     if type(expected_revision) is not int or expected_revision < 1:
@@ -285,16 +303,7 @@ def _submission(state: State, project_id: str, experiment_id: str, expected_revi
         prepared = reference.training_submission(project, state.root, operation,
                      {'experiment_id': experiment_id, digest_name: digest,
                       **({'budget': budget} if budget is not None else {})}, timeout=timeout)
-    if operation == 'prepare':
-        observed = prepared['submission']
-        if not prepared['created']:
-            return observed
-    else:
-        observed = prepared
-        if observed['status'] in ('submitted', 'rejected'):
-            return observed
-    return reference.training_submission(project, state.root, 'dispatch' if operation == 'prepare' else 'resume',
-                {'experiment_id': experiment_id, 'intent_sha256': observed['intent_sha256']}, timeout=timeout)
+    return project, prepared
 
 
 def _cancellation(state: State, project_id: str, experiment_id: str, request_id: str, expected_revision: int,

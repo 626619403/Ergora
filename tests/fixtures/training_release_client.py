@@ -40,8 +40,7 @@ class Service(base.Service):
 
     async def query_workflow(self, request, **kwargs):
         assert request.execution.run_id == base.run_id
-        base.record['queries'] = base.record.get('queries', 0) + 1
-        base.save()
+        base.save(counter='queries')
         binding = Binding(**(await spec())['binding'])
         if base.scenario == 'status-binding':
             binding = replace(binding, manifest_sha='e' * 64)
@@ -61,9 +60,7 @@ class Service(base.Service):
         assert ready['receipt_sha256'] == hashlib.sha256(receipt.read_bytes()).hexdigest()
         assert canonical_sha(intent) == attempt['intent_sha256'] == ready['intent_sha256']
         assert attempt['run_id'] == base.run_id and attempt['signal_sha256'] == canonical_sha(asdict(native))
-        base.record['signals'] = base.record.get('signals', 0) + 1
-        base.record['signal'] = base.base64.b64encode(request.input.SerializeToString()).decode()
-        base.save()
+        base.save(counter='signals', signal=base.base64.b64encode(request.input.SerializeToString()).decode())
         if base.scenario == 'lost-ack':
             raise base.RPCError('Accepted release, reply lost', base.RPCStatusCode.UNAVAILABLE, b'')
         if base.scenario == 'timeout-ack':

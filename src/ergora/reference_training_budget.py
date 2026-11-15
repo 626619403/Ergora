@@ -334,6 +334,11 @@ class BudgetedStart:
             return False
 
     def ensure_owner(self) -> None:
+        if 'controller' in self.binding:
+            # A controller's root is born outside the short S-H tree. This
+            # last call site must never create a replacement inside that tree.
+            self.dispatch_remaining()
+            return
         self.require_active()
         if self.path('owner.json').exists():
             self.require_active(owner=True)
@@ -367,6 +372,62 @@ class BudgetedStart:
                     return
                 time.sleep(.02)
             raise ValueError('Independent training budget owner was not confirmed; inspect ' + str(observation))
+
+    def dispatch_remaining(self) -> float | None:
+        """Consume the controller's one original start call, never its recovery."""
+        if 'controller' not in self.binding:
+            return None
+        payload = self.operation.payload.get('cycle_operation')
+        if not isinstance(payload, dict) or payload.get('identity', {}).get('mode') != 'dispatch-candidate':
+            raise ValueError('Controller dispatch requires its complete original start call')
+        if (payload['start_context']['intent_sha256'] != self.identity['intent_sha256']
+                or self.owner_record() != payload['start_context']['owner']):
+            raise ValueError('Controller dispatch lost its original confirmed budget owner')
+        return self._start_remaining(payload)
+
+    def _start_remaining(self, payload: dict) -> float:
+        """The root and final SDK gate consume the same original prepare request."""
+        source = training_execution_protocol.cycle_start_source(payload)
+        identity, context = payload['identity'], payload['start_context']
+        if (context['controller'] != self.binding.get('controller')
+                or identity['control_home'] != self.intent['control_home']
+                or identity['project'] != self.intent['project'] or identity['cycle_id'] != self.binding['cycle_id']
+                or identity['authorization_sha256'] != self.identity['authorization_sha256']
+                or source['snapshot']['candidates'][identity['ordinal']]['experiment_id'] != self.operation.ident):
+            raise ValueError('Controller start differs from its complete original prepare call')
+        self.require_active(owner=identity['mode'] == 'dispatch-candidate')
+        if _process_identity(identity['parent']['pid']) != identity['parent']:
+            raise ValueError('Original controller start parent or operation window ended')
+        remaining = training_execution_protocol.cycle_operation_remaining(payload)
+        if remaining <= 0:
+            raise ValueError('Original controller start parent or operation window ended')
+        return remaining
+
+    def launch_context(self, payload: dict) -> dict:
+        """Material for the sole prepare winner; this does not launch a process."""
+        source = training_execution_protocol.cycle_start_source(payload)
+        if (payload['identity']['mode'] != 'prepare-candidate'
+                or source['start_context']['controller'] != self.binding.get('controller')):
+            raise ValueError('A controller root requires its one original prepare offer')
+        self._start_remaining(payload)
+        installation = Path(self.intent['execution']['installation'])
+        request = {'protocol': 'ergora-training-cycle-root-v1',
+            'origin_operation_id': source['identity']['operation_id'], 'parent': source['identity']['parent'],
+            'window': source['bootstrap'], 'submission': {'project': self.operation.project,
+                'control_home': self.intent['control_home'], 'experiment_id': self.operation.ident,
+                'timeout': self.operation.payload['timeout'], 'intent_sha256': self.identity['intent_sha256'],
+                'mode': 'controller-owner'}}
+        result = {'request': request, 'environment': {
+            'PYTHONPATH': os.pathsep.join(map(str, (Path(__file__).parent.parent, installation / 'local',
+                installation / 'upstream/platform', installation / 'upstream/temporal', installation / 'upstream'))),
+            'AGENTFLOW_CONFIG_DIR': self.intent['execution']['config_directory'],
+            'AGENTFLOW_STATE_DIR': self.intent['execution']['state_directory']}}
+        if len(json.dumps(result, ensure_ascii=False, allow_nan=False).encode('utf-8')) > 32_768:
+            raise ValueError('Complete controller root material exceeds 32 KiB; its start intent is already occupied')
+        observation = self.path('launches/' + self.intent['operation_id'])
+        observation.mkdir(parents=True, mode=0o700)
+        training_execution_protocol.sync_directories(observation, self.operation.root)
+        return result
 
     def observe(self) -> dict:
         result = {**self.binding, 'owner_status': 'not_started', 'executor_stop_confirmed': None}
@@ -448,7 +509,11 @@ class BudgetedStart:
             raise ValueError('Training supervisor differs from its complete original phase')
         phase.supervise()
 
-    def own(self) -> dict:
+    def own(self, *, root_operation: dict | None = None) -> dict:
+        if 'controller' in self.binding:
+            if root_operation is None or root_operation['identity']['mode'] != 'prepare-candidate':
+                raise ValueError('Controller owner requires its one original root bootstrap')
+            self._start_remaining(root_operation)
         self.folder.mkdir(parents=True, exist_ok=True, mode=0o700)
         with file_lock(self.path('lock'), blocking=False):
             if self.path('owner.json').exists():
@@ -466,6 +531,8 @@ class BudgetedStart:
                 training_cycles._sync_directory(self.folder.parent)
                 _, _, _, ready = self.source()
                 capability = training_execution_protocol.source_capability(Path(self.intent['execution']['installation']), ready)
+                if root_operation is not None:
+                    self._start_remaining(root_operation)
                 training_cycles._record(self.path('owner.json'), {**self.identity, 'schema_version': 2,
                     **_process_identity(os.getpid()), 'context_sha256': self.operation.sha(context),
                     'execution_capability': capability})

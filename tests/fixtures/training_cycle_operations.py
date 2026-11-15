@@ -34,7 +34,8 @@ if stage == 'S':
         return original_run(argv, *args, **kwargs)
 
     processes.run = invoke
-    if fault == 'post-stopped' and mode in ('inspect', 'prepare-controller'):
+    if ((fault == 'post-stopped' and mode in ('inspect', 'prepare-controller', 'prepare-candidate'))
+            or (fault == 'post-stopped-confirm' and mode == 'confirm-candidate')):
         read = training_cycles._read_bytes
 
         def blocked_result(path, limit):
@@ -45,6 +46,67 @@ if stage == 'S':
 
         training_cycles._read_bytes = blocked_result
 else:
+    if mode in protocol.CYCLE_CANDIDATE_MODES and os.environ.get('ERGORA_TEST_TRAINING_SERVICE'):
+        mark('candidate-helper-entered')
+        sys.path[:0] = [str(Path(payload['snapshot']['authorization']['execution']['installation']) / part)
+                       for part in ('local', 'upstream/platform', 'upstream/temporal', 'upstream')]
+        sys.path.insert(0, str(Path(__file__).parent))
+        selected = payload['snapshot']['candidates'][payload['identity']['ordinal']]
+        sys.stdin = io.StringIO(json.dumps({'project': worker.State(Path(payload['identity']['control_home'])).project(
+            payload['identity']['project']), 'control_home': payload['identity']['control_home'],
+            'experiment_id': selected['experiment_id'], 'operation': 'dispatch',
+            'timeout': payload['snapshot']['policy']['control_timeout_seconds']}))
+        import training_submission_client
+        sys.stdin = io.TextIOWrapper(io.BytesIO(raw), encoding='utf-8')
+        mark('candidate-service-installed')
+        if fault == 'candidate-confirm' and mode == 'confirm-candidate':
+            mark('candidate-confirm')
+            time.sleep(60)
+        if fault == 'candidate-lookup' and mode == 'dispatch-candidate':
+            describe = training_submission_client.Service.describe_workflow_execution
+
+            async def held_lookup(self, request, **kwargs):
+                if request.execution.workflow_id.startswith('perf-experiment/'):
+                    mark('candidate-lookup')
+                    await worker.asyncio.sleep(60)
+                return await describe(self, request, **kwargs)
+
+            training_submission_client.Service.describe_workflow_execution = held_lookup
+        if fault == 'candidate-owner-deadline-drift' and mode == 'dispatch-candidate':
+            from ergora import budget_clock
+
+            owner_record = worker.BudgetedStart.owner_record
+
+            def owner_after_deadline(budget):
+                owner = owner_record(budget)
+                if (sys._getframe(1).f_code.co_name == 'dispatch_remaining'
+                        and budget.operation.path('.attempt.json').exists()):
+                    clock = budget_clock._clock
+                    deadline = payload['bootstrap']['deadline_ns']
+                    budget_clock._clock = lambda: (clock()[0], max(clock()[1], deadline + 1))
+                    mark(fault)
+                return owner
+
+            worker.BudgetedStart.owner_record = owner_after_deadline
+        if fault in ('candidate-window-drift', 'candidate-owner-drift') and mode == 'dispatch-candidate':
+            synchronize = training_cycles._sync_directory
+
+            def drift_after_attempt(directory):
+                synchronize(directory)
+                if (directory / (selected['experiment_id'] + '.attempt.json')).exists():
+                    if fault == 'candidate-window-drift':
+                        target = (Path(payload['identity']['control_home']) / 'operations/training-cycles'
+                                  / payload['start_context']['origin_operation_id'] / 'request.json')
+                        value = json.loads(target.read_bytes())
+                        value['bootstrap']['deadline_ns'] -= 1
+                    else:
+                        target = directory / (selected['experiment_id'] + '.budget/owner.json')
+                        value = json.loads(target.read_bytes())
+                        value['context_sha256'] = '0' * 64
+                    target.write_text(json.dumps(value))
+                    mark(fault)
+
+            training_cycles._sync_directory = drift_after_attempt
     if os.environ.get('ERGORA_TEST_CYCLE_DISPATCH') and mode in ('submit-controller', 'reconcile-controller'):
         sys.path[:0] = [str(Path(payload['snapshot']['authorization']['execution']['installation']) / part)
                        for part in ('local', 'upstream/platform', 'upstream/temporal', 'upstream')]

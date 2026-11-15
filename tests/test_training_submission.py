@@ -213,6 +213,9 @@ def service(prepared, monkeypatch, tmp_path):
 
     def select(scenario, *, budget_scenario='', record_path=None):
         storage = record if record_path is None else record_path
+        monkeypatch.setenv('ERGORA_TEST_TRAINING_SUBMISSION', scenario)
+        monkeypatch.setenv('ERGORA_TEST_TRAINING_SERVICE', str(storage))
+        monkeypatch.setenv('ERGORA_TEST_TRAINING_BUDGET', budget_scenario)
         def invoke(argv, *args, **kwargs):
             if ('from ergora.reference_training_submission import main;main()' in argv
                     or 'from ergora.reference_training_worker import execution_main;execution_main()' in argv):
@@ -1112,6 +1115,413 @@ def save_controller_binding(admission):
             'run_id': receipt['run_id'], 'intent_sha256': attempt['intent_sha256'], 'ordinal': 0}}
 
 
+@pytest.fixture
+def cycle_candidate(controller_admission, cycle_operation_fault, service, monkeypatch):
+    from ergora import reference_training_worker as worker, training_cycles
+
+    state, _, _, authorized, admission = controller_admission
+    binding = save_controller_binding(admission)
+    plan = training_cycles._load(state.root, 'demo', 'controller', admission.directory)[0]
+    snapshot = worker._cycle_snapshot(plan, authorized['authorization'])
+    cycle_operation_fault('candidate')
+    monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER', str(admission.folder))
+    launch = subprocess.Popen
+    fixture = str(Path(__file__).parent / 'fixtures/training_budget_client.py')
+
+    def root(argv, *args, **kwargs):
+        if argv[-1] == 'from ergora.reference_training_worker import budget_main;budget_main()':
+            argv = [*argv[:-1], f'import runpy;runpy.run_path({fixture!r},run_name="__main__")']
+        return launch(argv, *args, **kwargs)
+
+    monkeypatch.setattr(subprocess, 'Popen', root)
+
+    def operation(ordinal=0):
+        return worker._CycleCandidate(state.root, 'demo', 'controller', authorized['authorization_sha256'],
+            snapshot=snapshot, controller={**binding['controller'], 'ordinal': ordinal})
+
+    return operation
+
+
+def run_cycle_candidate(factory, ordinal=0):
+    import asyncio
+
+    return asyncio.run(factory(ordinal).run())
+
+
+@pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 30}], indirect=True)
+@pytest.mark.skipif(sys.platform != 'linux', reason='Independent original roots require Linux/WSL2')
+def test_cycle_candidate_root_survives_short_calls_and_normal_loop_shutdown(
+        controller_admission, cycle_selection, cycle_candidate, service, monkeypatch):
+    import asyncio
+    from ergora import reference_training_worker as worker, training_execution_protocol as protocol
+
+    state, _, _, authorized, admission = controller_admission
+    runtime = cycle_selection[2]
+    original = (admission.directory / 'authorization.json').read_bytes()
+    contenders = [cycle_candidate(), cycle_candidate()]
+    operation = contenders[0]
+    try:
+        def forbidden(*args, **kwargs):
+            raise AssertionError('The async parent must not enter business storage')
+
+        async def compete():
+            return await asyncio.gather(*(item.run() for item in contenders))
+
+        with monkeypatch.context() as boundary:
+            boundary.setattr(worker.State, 'connect', forbidden)
+            boundary.setattr(protocol, 'read_raw', forbidden)
+            outcomes = asyncio.run(compete())
+        assert sum(item.spawning is not None for item in contenders) == 1
+        position = next(index for index, item in enumerate(contenders) if item.spawning is not None)
+        operation, result = contenders[position], outcomes[position]
+        assert outcomes[1 - position]['status'] == 'observed' and 'launch' not in outcomes[1 - position]
+        assert result['status'] == 'observed', result
+        assert result['submission']['status'] == 'submitted'
+        assert operation.handed_off is True and operation.root.poll() is None
+        owner = result['confirmation']['owner']
+        assert recorded_process_is_active(owner)
+        requests = [json.loads((Path(result[name]['output']) / 'request.json').read_bytes())
+                    for name in ('preparation', 'confirmation')]
+        requests.append(json.loads((Path(result['output']) / 'request.json').read_bytes()))
+        assert all(p['bootstrap'] == requests[0]['bootstrap'] for p in requests)
+        assert result['operation_stopped'] is True
+        assert not worker._ROOT_OBSERVERS
+        assert (admission.directory / 'authorization.json').read_bytes() == original
+        before = json.loads(service[1].read_bytes())['starts']
+        again = run_cycle_candidate(cycle_candidate)
+        assert again['status'] == 'observed' and 'launch' not in again
+        assert again['submission']['run_id'] == result['submission']['run_id']
+        assert json.loads(service[1].read_bytes())['starts'] == before == 1
+        assert operation.root.poll() is None and recorded_process_is_active(owner)
+        assert owner['authorization_sha256'] == authorized['authorization_sha256']
+    finally:
+        stop_controller_test_owner(runtime)
+        for contender in contenders:
+            if contender.root is not None:
+                contender.root.wait(timeout=5)
+
+
+@pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 30}], indirect=True)
+@pytest.mark.skipif(sys.platform != 'linux', reason='Root handoff and real S-H cancellation require Linux/WSL2')
+@pytest.mark.parametrize('boundary', ['transfer', 'confirm', 'lost-confirm', 'lookup', 'attempt-sync', 'sdk-start'])
+def test_cycle_candidate_cancellation_distinguishes_root_handoff(
+        controller_admission, cycle_selection, cycle_candidate, cycle_operation_fault, service, monkeypatch, tmp_path, boundary):
+    import asyncio
+
+    runtime = cycle_selection[2]
+    operation = cycle_candidate()
+    markers = cycle_operation_fault('post-stopped-confirm' if boundary == 'lost-confirm' else 'candidate-' + boundary)
+    marker = markers / ('stopped-result-reader' if boundary == 'lost-confirm' else 'candidate-' + boundary)
+    if boundary == 'transfer':
+        transfer = operation.transfer
+
+        async def hold_transferred(raw):
+            await transfer(raw)
+            marker.write_text('The complete original root input was transferred')
+            await asyncio.sleep(60)
+
+        monkeypatch.setattr(operation, 'transfer', hold_transferred)
+    if boundary == 'attempt-sync':
+        monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER_PAUSE', 'submission-attempt-sync')
+        monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER_MARKER', str(marker))
+    if boundary == 'sdk-start':
+        service[0]('held-start')
+        marker = service[1].with_suffix('.held')
+
+    async def cancelled():
+        task = asyncio.create_task(operation.run())
+        ticks = 0
+        try:
+            while not marker.exists() and not task.done() and not operation.preparation.expired():
+                ticks += 1
+                await asyncio.sleep(.02)
+            assert marker.exists(), task.result() if task.done() else 'The original boundary was not reached'
+            assert ticks > 1 and recorded_process_is_active(operation.root_identity)
+            assert operation.handed_off is (boundary not in ('transfer', 'confirm', 'lost-confirm'))
+        finally:
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+
+    try:
+        asyncio.run(cancelled())
+        assert operation.operation.process.returncode is not None
+        assert (operation.root.poll() is None) is (boundary not in ('transfer', 'confirm', 'lost-confirm'))
+        assert recorded_process_is_active(operation.root_identity) is (boundary not in ('transfer', 'confirm', 'lost-confirm'))
+        if boundary == 'lost-confirm':
+            helper = operation.operation.output / 'helper/stdout.txt'
+            assert json.loads(helper.read_bytes())['status'] == 'owner_confirmed'
+        prefix = runtime / 'ergora/training-submissions'
+        assert (prefix / 'alpha.attempt.json').exists() is (boundary in ('attempt-sync', 'sdk-start'))
+        assert not (prefix / 'alpha.result.json').exists()
+        record = json.loads(service[1].read_bytes()) if service[1].exists() else {'starts': 0}
+        assert record['starts'] == (1 if boundary == 'sdk-start' else 0)
+        cycle_operation_fault('candidate')
+        observed = run_cycle_candidate(cycle_candidate)
+        assert observed['status'] == 'observed' and 'launch' not in observed
+        assert (json.loads(service[1].read_bytes()) if service[1].exists() else {'starts': 0})['starts'] == record['starts']
+        if boundary == 'sdk-start':
+            from ergora import reference_training_worker as worker
+
+            owner_path = prefix / 'alpha.budget/owner.json'
+            owner_raw = owner_path.read_bytes()
+            attempt_raw = (prefix / 'alpha.attempt.json').read_bytes()
+            owner_path.write_bytes(b'{')
+            try:
+                preparation = operation.preparation
+                reconciliation = worker._CycleOperation(Path(preparation.identity['control_home']),
+                    preparation.identity['project'], preparation.identity['cycle_id'],
+                    preparation.identity['authorization_sha256'], 'reconcile-candidate',
+                    snapshot=preparation.payload['snapshot'], ordinal=preparation.identity['ordinal'],
+                    start_context=preparation.payload['start_context'], inspection_timeout=30)
+                service[0]('not-found')
+                missing = asyncio.run(reconciliation.run())
+                assert missing['submission']['status'] == 'unknown'
+                assert missing['submission']['reconciliation'] == 'not_found'
+                assert not (prefix / 'alpha.result.json').exists()
+                assert (prefix / 'alpha.attempt.json').read_bytes() == attempt_raw
+                assert json.loads(service[1].read_bytes())['starts'] == record['starts']
+                service[0]('accepted')
+                reconciliation = worker._CycleOperation(Path(preparation.identity['control_home']),
+                    preparation.identity['project'], preparation.identity['cycle_id'],
+                    preparation.identity['authorization_sha256'], 'reconcile-candidate',
+                    snapshot=preparation.payload['snapshot'], ordinal=preparation.identity['ordinal'],
+                    start_context=preparation.payload['start_context'], inspection_timeout=30)
+                recovered = asyncio.run(reconciliation.run())
+                assert recovered['status'] == 'observed', recovered
+                assert recovered['submission']['status'] == 'submitted'
+                assert recovered['submission']['budget']['owner_status'] == 'unknown'
+                assert recovered['submission']['run_id'] == '00000000-0000-4000-8000-000000000001'
+                assert owner_path.read_bytes() == b'{' and (prefix / 'alpha.attempt.json').read_bytes() == attempt_raw
+                assert json.loads(service[1].read_bytes())['starts'] == record['starts']
+            finally:
+                owner_path.write_bytes(owner_raw)
+    finally:
+        stop_controller_test_owner(runtime)
+        if operation.root is not None:
+            operation.root.wait(timeout=5)
+
+
+@pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 30}], indirect=True)
+@pytest.mark.skipif(sys.platform != 'linux', reason='Unique original offers use real Linux supervisors')
+def test_cycle_candidate_lost_prepare_reply_never_recreates_its_root_offer(
+        cycle_selection, cycle_candidate, cycle_operation_fault, service):
+    import asyncio
+
+    runtime = cycle_selection[2]
+    operation = cycle_candidate()
+    markers = cycle_operation_fault('post-stopped')
+
+    async def lose_reply():
+        task = asyncio.create_task(operation.run())
+        try:
+            while (not (markers / 'stopped-result-reader').exists() and not task.done()
+                   and not operation.preparation.expired()):
+                await asyncio.sleep(.02)
+            assert (markers / 'stopped-result-reader').exists()
+        finally:
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+
+    asyncio.run(lose_reply())
+    prefix = runtime / 'ergora/training-submissions'
+    original = (prefix / 'alpha.intent.json').read_bytes()
+    assert operation.spawning is None and not (prefix / 'alpha.budget/owner.json').exists()
+    cycle_operation_fault('candidate')
+    observed = run_cycle_candidate(cycle_candidate)
+    assert observed['status'] == 'observed' and observed['submission']['status'] == 'prepared' and 'launch' not in observed
+    assert (prefix / 'alpha.intent.json').read_bytes() == original
+    assert not (prefix / 'alpha.attempt.json').exists() and not service[1].exists()
+
+
+@pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 30}], indirect=True)
+@pytest.mark.skipif(sys.platform != 'linux', reason='Pending OS creation must retain its actual Linux child')
+@pytest.mark.parametrize('ending', ['cancel', 'deadline'])
+def test_cycle_candidate_cancel_retains_a_late_popen_handle_without_sending_input(cycle_candidate, monkeypatch, ending):
+    import asyncio
+    import threading
+
+    entered, release = threading.Event(), threading.Event()
+    original = subprocess.Popen
+    operation = cycle_candidate()
+
+    def pending(argv, *args, **kwargs):
+        if argv[-1] == 'from ergora.reference_training_worker import budget_main;budget_main()':
+            entered.set()
+            release.wait()
+        return original(argv, *args, **kwargs)
+
+    monkeypatch.setattr(subprocess, 'Popen', pending)
+
+    async def cancel_pending():
+        task = asyncio.create_task(operation.run())
+        try:
+            while not entered.is_set() and not task.done() and not operation.preparation.expired():
+                await asyncio.sleep(.02)
+            assert entered.is_set()
+            if ending == 'cancel':
+                task.cancel()
+            else:
+                while not operation.preparation.expired():
+                    await asyncio.sleep(.02)
+            await asyncio.sleep(.05)
+            assert not task.done() and not operation.spawning.done()
+        finally:
+            release.set()
+            if ending == 'cancel':
+                task.cancel()
+                with pytest.raises(asyncio.CancelledError):
+                    await task
+            else:
+                result = await task
+                assert result['status'] == 'unknown' and 'OS process creation was pending' in result['reason']
+
+    asyncio.run(cancel_pending())
+    assert operation.root is not None and operation.root.returncode is not None and not operation.handed_off
+    assert operation.root.poll() is not None and operation.root.stdin.closed
+
+
+@pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 30}], indirect=True)
+@pytest.mark.skipif(sys.platform != 'linux', reason='Loop shutdown must retain the actual independent Linux root')
+@pytest.mark.parametrize('boundary', ['spawn', 'confirm'])
+def test_cycle_candidate_loop_shutdown_reaps_a_pending_root(
+        cycle_candidate, cycle_selection, cycle_operation_fault, monkeypatch, boundary):
+    import asyncio
+    import threading
+    from ergora import processes
+
+    entered, release = threading.Event(), threading.Event()
+    original, roots, tasks, waits = subprocess.Popen, [], [], []
+    operation = cycle_candidate()
+    markers = cycle_operation_fault('candidate-confirm' if boundary == 'confirm' else 'candidate')
+    notify, notifications = processes.notify_identity, []
+
+    def notify_after_helper(expected, signum):
+        if expected == operation.root_identity:
+            notifications.append((operation.operation.process.returncode is not None,
+                                  bool(operation.operation.response.frames)))
+        return notify(expected, signum)
+
+    def pending(argv, *args, **kwargs):
+        root = argv[-1] == 'from ergora.reference_training_worker import budget_main;budget_main()'
+        if root and boundary == 'spawn':
+            entered.set()
+            release.wait(20)
+        child = original(argv, *args, **kwargs)
+        if root:
+            roots.append(child)
+            wait = child.wait
+
+            def real_wait(*args, **kwargs):
+                waits.append(True)
+                return wait(*args, **kwargs)
+
+            child.wait = real_wait
+        return child
+
+    monkeypatch.setattr(subprocess, 'Popen', pending)
+    monkeypatch.setattr(processes, 'notify_identity', notify_after_helper)
+
+    async def exit_before_handoff():
+        tasks.append(asyncio.create_task(operation.run()))
+        while (not (entered.is_set() if boundary == 'spawn' else (markers / 'candidate-confirm').exists())
+               and not tasks[0].done() and not operation.preparation.expired()):
+            await asyncio.sleep(.02)
+        assert entered.is_set() if boundary == 'spawn' else (markers / 'candidate-confirm').exists()
+        # Returning makes asyncio.run cancel every pending task simultaneously.
+        threading.Timer(.2, release.set).start()
+
+    try:
+        asyncio.run(exit_before_handoff())
+        assert tasks[0].cancelled() and len(roots) == 1
+        assert operation.root is roots[0] and roots[0].returncode is not None
+        assert waits and not Path('/proc/' + str(roots[0].pid)).exists()
+        assert not operation.handed_off
+        if boundary == 'confirm':
+            assert operation.operation.process.returncode is not None and operation.operation.response.frames
+            assert notifications and all(item == (True, True) for item in notifications)
+        assert not (cycle_selection[2] / 'ergora/training-submissions/alpha.attempt.json').exists()
+    finally:
+        release.set()
+        for child in roots:
+            if not child.stdin.closed:
+                child.stdin.close()
+            if child.poll() is None:
+                child.terminate()
+            child.wait(timeout=5)
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Exact root cleanup uses Linux process identities')
+@pytest.mark.parametrize('fault', ['natural-exit', 'notification-error'])
+def test_cycle_candidate_root_cleanup_waits_after_notification_races(monkeypatch, fault):
+    import asyncio
+    from ergora import processes, reference_training_worker as worker
+
+    child = subprocess.Popen([sys.executable, '-I', '-S', '-c',
+        'import sys,time;sys.stdin.buffer.read();time.sleep(.2)'], stdin=subprocess.PIPE,
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    operation = worker._CycleCandidate.__new__(worker._CycleCandidate)
+    operation.root, operation.root_identity = child, processes.identity(child.pid)
+    operation.cleanup_problem = None
+    notify, wait = processes.notify_identity, child.wait
+    waits = []
+
+    def record_wait(*args, **kwargs):
+        waits.append(True)
+        return wait(*args, **kwargs)
+
+    def failed_notification(expected, signum):
+        if fault == 'notification-error':
+            raise OSError('Controlled pidfd notification unavailable')
+        # Observe exit without reaping it, forcing the poll/notification race.
+        until = time.monotonic() + 5
+        while os.waitid(os.P_PID, child.pid, os.WEXITED | os.WNOWAIT | os.WNOHANG) is None:
+            if time.monotonic() >= until:
+                raise AssertionError('The inert root did not exit after stdin EOF')
+            time.sleep(.001)
+        notify(expected, signum)
+
+    async def discard():
+        operation.spawning = asyncio.create_task(asyncio.sleep(0, result=child))
+        await operation.discard_root()
+
+    monkeypatch.setattr(processes, 'notify_identity', failed_notification)
+    monkeypatch.setattr(child, 'wait', record_wait)
+    try:
+        asyncio.run(discard())
+        assert child.returncode == 0 and waits == [True]
+        assert not Path('/proc/' + str(child.pid)).exists()
+        assert (operation.cleanup_problem is not None) is (fault == 'notification-error')
+    finally:
+        if child.poll() is None:
+            child.terminate()
+        wait(timeout=5)
+
+
+@pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 30}], indirect=True)
+@pytest.mark.skipif(sys.platform != 'linux', reason='Final dispatch validates original files under Linux locks')
+@pytest.mark.parametrize('drift', ['window', 'owner', 'owner-deadline'])
+def test_cycle_candidate_final_gate_preserves_attempt_on_original_source_drift(
+        cycle_selection, cycle_candidate, cycle_operation_fault, service, drift):
+    runtime = cycle_selection[2]
+    markers = cycle_operation_fault('candidate-' + drift + '-drift')
+    try:
+        result = run_cycle_candidate(cycle_candidate)
+        assert result['status'] == 'unknown' and (markers / ('candidate-' + drift + '-drift')).exists(), result
+        prefix = runtime / 'ergora/training-submissions'
+        original = (prefix / 'alpha.attempt.json').read_bytes()
+        assert not (prefix / 'alpha.result.json').exists()
+        assert json.loads(service[1].read_bytes())['starts'] == 0
+        cycle_operation_fault('candidate')
+        observed = run_cycle_candidate(cycle_candidate)
+        assert observed['status'] in ('observed', 'unknown') and 'launch' not in observed
+        assert (prefix / 'alpha.attempt.json').read_bytes() == original
+        assert json.loads(service[1].read_bytes())['starts'] == 0
+    finally:
+        stop_controller_test_owner(runtime)
+
+
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller binding consumes original Linux authorization')
 def test_controller_prepare_binds_complete_parent_records_and_original_position(controller_admission, cycle_selection):
     state, _, selected, _, admission = controller_admission
@@ -1170,40 +1580,45 @@ print('complete original binding verified without site packages')
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller dispatch uses the original Linux budget owner')
-def test_controller_fixed_history_gates_the_one_original_start(controller_admission, cycle_selection, service, monkeypatch):
+@pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 30}], indirect=True)
+@pytest.mark.parametrize('case', ['not-found', 'closed', 'run', 'memo', 'type', 'queue', 'input', 'accepted'])
+def test_controller_fixed_history_gates_the_one_original_start(
+        controller_admission, cycle_selection, cycle_candidate, service, monkeypatch, case):
     from ergora import processes, training_cycles
     import signal
 
     state, _, _, _, admission = controller_admission
     runtime = cycle_selection[2]
     binding = save_controller_binding(admission)
-    selector = {key: value for key, value in binding.items() if key != 'task_queue'}
     monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER', str(admission.folder))
     owner_path = runtime / 'ergora/training-submissions/alpha.budget/owner.json'
     intent_path = runtime / 'ergora/training-submissions/alpha.intent.json'
     attempt_path = runtime / 'ergora/training-submissions/alpha.attempt.json'
-    manifest = cycle_selection[-1]['candidates'][0]['manifest_sha256']
     try:
-        for case in ('not-found', 'closed', 'run', 'memo', 'type', 'queue', 'input'):
+        if case != 'accepted':
             monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER_CASE', case)
+        result = run_cycle_candidate(cycle_candidate)
+        original = intent_path.read_bytes()
+        if case != 'accepted':
             reason = ('Original controller run is not found' if case == 'not-found' else
                       'Original controller run, running state or complete intent memo differs' if case in ('closed', 'run', 'memo') else
                       'Original controller type, queue or started input' if case in ('type', 'queue') else
                       'Original controller complete started input or intent memo differs')
-            with pytest.raises(ValueError, match=reason):
-                if not intent_path.exists():
-                    training.start(state, 'demo', 'alpha', 1, manifest, budget=selector)
-                else:
-                    training.resume_start(state, 'demo', 'alpha', 1, training_cycles._sha(json.loads(intent_path.read_bytes())))
+            assert result['status'] == 'unknown' and reason in result['reason'], result
             assert not attempt_path.exists() and not (runtime / 'training/jobs/alpha').exists()
-        original = intent_path.read_bytes()
-        monkeypatch.delenv('ERGORA_TEST_TRAINING_CONTROLLER_CASE')
-        submitted = training.resume_start(state, 'demo', 'alpha', 1, training_cycles._sha(json.loads(original)))
-        assert submitted['status'] == 'submitted' and submitted['budget']['controller'] == binding['controller']
-        assert intent_path.read_bytes() == original and attempt_path.exists()
-        assert json.loads(service[1].read_bytes())['starts'] == 1
-        repeated = training.resume_start(state, 'demo', 'alpha', 1, submitted['intent_sha256'])
-        assert repeated['run_id'] == submitted['run_id'] and json.loads(service[1].read_bytes())['starts'] == 1
+            with pytest.raises(ValueError, match='complete original start call'):
+                training.resume_start(state, 'demo', 'alpha', 1, training_cycles._sha(json.loads(original)))
+        else:
+            submitted = result['submission']
+            assert submitted['status'] == 'submitted' and submitted['budget']['controller'] == binding['controller']
+            assert attempt_path.exists() and json.loads(service[1].read_bytes())['starts'] == 1
+        # A later call observes even a live owner without an attempt. It never
+        # reuses the lost offer to try a corrected history or another SDK send.
+        repeated = run_cycle_candidate(cycle_candidate)
+        assert repeated['status'] == 'observed' and 'launch' not in repeated
+        assert intent_path.read_bytes() == original
+        recorded = json.loads(service[1].read_bytes()) if service[1].exists() else {'starts': 0}
+        assert recorded['starts'] == (1 if case == 'accepted' else 0)
     finally:
         if owner_path.exists():
             owner = json.loads(owner_path.read_bytes())
@@ -1229,7 +1644,9 @@ def stop_controller_test_owner(runtime):
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Parent permits cover a real late start RPC')
-def test_controller_stop_drains_original_rpc_and_denies_its_late_create(controller_admission, cycle_selection, service, monkeypatch):
+@pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 30}], indirect=True)
+def test_controller_stop_drains_original_rpc_and_denies_its_late_create(
+        controller_admission, cycle_selection, cycle_candidate, service, monkeypatch):
     state, _, _, _, admission = controller_admission
     runtime = cycle_selection[2]
     binding = save_controller_binding(admission)
@@ -1237,13 +1654,12 @@ def test_controller_stop_drains_original_rpc_and_denies_its_late_create(controll
     monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER', str(admission.folder))
     service[0]('held-start')
     marker = service[1].with_suffix('.held')
+    operation = cycle_candidate()
     try:
         with ThreadPoolExecutor(max_workers=1) as pool:
-            future = pool.submit(training.start, state, 'demo', 'alpha', 1,
-                cycle_selection[-1]['candidates'][0]['manifest_sha256'], budget=selector)
+            future = pool.submit(run_cycle_candidate, lambda ordinal: operation)
             try:
-                until = time.monotonic() + 12
-                while not marker.exists() and time.monotonic() < until:
+                while not marker.exists() and not future.done() and not operation.preparation.expired():
                     time.sleep(.02)
                 assert marker.exists(), 'The real SDK start must be in flight with its parent permit'
                 stopped = admission.request_stop('Stop the original in-flight RPC')
@@ -1251,7 +1667,7 @@ def test_controller_stop_drains_original_rpc_and_denies_its_late_create(controll
             finally:
                 service[1].with_suffix('.continue').touch()
             result = future.result(timeout=15)
-        assert result['status'] == 'submitted'
+        assert result['submission']['status'] == 'submitted'
         record = json.loads(service[1].read_bytes())
         assert record['starts'] == 1 and 'Controller stop is visible' in record['native_create_error']
         assert not (runtime / 'training/jobs/alpha').exists()
@@ -1261,7 +1677,9 @@ def test_controller_stop_drains_original_rpc_and_denies_its_late_create(controll
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='The original registry lock must retain the parent permit')
-def test_controller_worker_rechecks_stop_inside_original_registry_lock(controller_admission, cycle_selection, service, monkeypatch):
+@pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 30}], indirect=True)
+def test_controller_worker_rechecks_stop_inside_original_registry_lock(
+        controller_admission, cycle_selection, cycle_candidate, service, monkeypatch):
     from ergora.state import file_lock
 
     state, _, _, _, admission = controller_admission
@@ -1271,7 +1689,7 @@ def test_controller_worker_rechecks_stop_inside_original_registry_lock(controlle
     selector = {key: value for key, value in binding.items() if key != 'task_queue'}
     marker = admission.folder / 'parent-history-observed'
     try:
-        training.start(state, 'demo', 'alpha', 1, request['candidates'][0]['manifest_sha256'], budget=selector)
+        assert run_cycle_candidate(cycle_candidate)['submission']['status'] == 'submitted'
         marker.unlink()
         with ThreadPoolExecutor(max_workers=1) as pool:
             with file_lock(runtime / 'training/registry.lock'):
@@ -1291,8 +1709,9 @@ def test_controller_worker_rechecks_stop_inside_original_registry_lock(controlle
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Parent permits cover the original attempt directory sync')
+@pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 30}], indirect=True)
 def test_controller_stop_after_attempt_sync_never_resends_the_consumed_rpc(
-        controller_admission, cycle_selection, service, tmp_path, monkeypatch):
+        controller_admission, cycle_selection, cycle_candidate, service, tmp_path, monkeypatch):
     from ergora import training_cycles
 
     state, _, _, _, admission = controller_admission
@@ -1304,13 +1723,12 @@ def test_controller_stop_after_attempt_sync_never_resends_the_consumed_rpc(
     monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER_MARKER', str(marker))
     selector = {key: value for key, value in binding.items() if key != 'task_queue'}
     prefix = runtime / 'ergora/training-submissions'
+    operation = cycle_candidate()
     try:
         with ThreadPoolExecutor(max_workers=1) as pool:
-            future = pool.submit(training.start, state, 'demo', 'alpha', 1,
-                cycle_selection[-1]['candidates'][0]['manifest_sha256'], budget=selector)
+            future = pool.submit(run_cycle_candidate, lambda ordinal: operation)
             try:
-                until = time.monotonic() + 12
-                while not marker.exists() and not future.done() and time.monotonic() < until:
+                while not marker.exists() and not future.done() and not operation.preparation.expired():
                     time.sleep(.02)
                 assert marker.exists(), 'The original attempt directory sync must finish before the pause'
                 original = (prefix / 'alpha.attempt.json').read_bytes()
@@ -1318,8 +1736,8 @@ def test_controller_stop_after_attempt_sync_never_resends_the_consumed_rpc(
                 assert stopped['stop_durable'] is True and stopped['admission_drained'] is None
             finally:
                 marker.with_suffix('.release').touch()
-            with pytest.raises(ValueError, match='Original training budget cannot start work: stopped'):
-                future.result(timeout=12)
+            result = future.result(timeout=12)
+            assert result['status'] == 'unknown' and 'Original training budget cannot start work: stopped' in result['reason']
         intent = json.loads((prefix / 'alpha.intent.json').read_bytes())
         resumed = training.resume_start(state, 'demo', 'alpha', 1, training_cycles._sha(intent))
         assert resumed['status'] == 'unknown' and resumed['attempt_saved'] is True
@@ -1333,10 +1751,11 @@ def test_controller_stop_after_attempt_sync_never_resends_the_consumed_rpc(
 
 
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 30}], indirect=True)
 @pytest.mark.skipif(sys.platform != 'linux', reason='Real request/launch and native locked admission require Linux')
 @pytest.mark.parametrize('boundary', ['request', 'launch', 'executor-lock', 'attempt', 'ack'])
 def test_controller_stop_at_original_execution_boundaries_preserves_consumed_records(
-        controller_admission, cycle_selection, service, tmp_path, monkeypatch, boundary):
+        controller_admission, cycle_selection, cycle_candidate, service, tmp_path, monkeypatch, boundary):
     state, _, _, _, admission = controller_admission
     _, definition, runtime, _, _, request = cycle_selection
     binding = save_controller_binding(admission)
@@ -1346,7 +1765,7 @@ def test_controller_stop_at_original_execution_boundaries_preserves_consumed_rec
     monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER_PAUSE', boundary)
     monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER_MARKER', str(marker))
     try:
-        submitted = training.start(state, 'demo', 'alpha', 1, request['candidates'][0]['manifest_sha256'], budget=selector)
+        submitted = run_cycle_candidate(cycle_candidate)['submission']
         created = native_budget_create(definition, 'alpha', managed=True)
         assert created.returncode == 0, created.stderr
         job = runtime / 'training/jobs/alpha'
@@ -3098,7 +3517,7 @@ def test_cycle_cold_inspection_bounds_result_read_after_matching_stopped(control
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Cancellation must retain spawned Linux handles and reap descendants')
-@pytest.mark.parametrize('boundary', ['spawn', 'helper'])
+@pytest.mark.parametrize('boundary', ['spawn', 'helper', 'loop'])
 def test_cycle_operation_cancellation_retains_spawn_and_reaps_real_descendants(
         controller_admission, cycle_operation_fault, monkeypatch, boundary):
     import asyncio
@@ -3108,6 +3527,7 @@ def test_cycle_operation_cancellation_retains_spawn_and_reaps_real_descendants(
     markers = cycle_operation_fault('blocked-inspect')
     operation = _CycleOperation(state.root, 'demo', 'controller', authorized['authorization_sha256'],
                                 'inspect', inspection_timeout=5)
+    tasks = []
 
     async def run():
         created, release = asyncio.Event(), asyncio.Event()
@@ -3122,25 +3542,30 @@ def test_cycle_operation_cancellation_retains_spawn_and_reaps_real_descendants(
         if boundary == 'spawn':
             monkeypatch.setattr(asyncio, 'create_subprocess_exec', held)
         task = asyncio.create_task(operation.run())
+        tasks.append(task)
         try:
             if boundary == 'spawn':
-                await asyncio.wait_for(created.wait(), 4)
+                while not created.is_set() and not task.done() and not operation.expired():
+                    await asyncio.sleep(.02)
+                assert created.is_set()
             else:
-                until = time.monotonic() + 4
-                while not (markers / 'inspect-helper').exists() and time.monotonic() < until:
+                while not (markers / 'inspect-helper').exists() and not task.done() and not operation.expired():
                     await asyncio.sleep(.02)
                 assert (markers / 'inspect-helper').exists()
+            if boundary == 'loop':
+                return
             task.cancel()
         finally:
             release.set()
-            if not task.done():
+            if boundary != 'loop' and not task.done():
                 operation.request_stop()
         with pytest.raises(asyncio.CancelledError):
             await task
 
     asyncio.run(run())
+    assert tasks[0].cancelled()
     assert operation.process is not None and operation.process.returncode is not None
-    if boundary == 'helper':
+    if boundary != 'spawn':
         assert operation.response.frames
         for name in ('inspect-helper', 'new-session-descendant'):
             assert not recorded_process_is_active(json.loads((markers / name).read_bytes()))
@@ -3148,9 +3573,9 @@ def test_cycle_operation_cancellation_retains_spawn_and_reaps_real_descendants(
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Independent stop branches require real Linux budget owners')
 @pytest.mark.parametrize('controller_admission', [
-    {'wall_seconds': 26, 'cleanup_seconds': 8, 'control_timeout_seconds': 3}], indirect=True)
+    {'wall_seconds': 50, 'cleanup_seconds': 12, 'control_timeout_seconds': 15}], indirect=True)
 def test_cycle_stop_notifies_peer_while_writer_and_other_target_reads_block(
-        controller_admission, cycle_selection, service, cycle_operation_fault, monkeypatch):
+        controller_admission, cycle_selection, cycle_candidate, service, cycle_operation_fault, monkeypatch):
     import asyncio
     import signal
     from ergora import processes
@@ -3166,8 +3591,8 @@ def test_cycle_stop_notifies_peer_while_writer_and_other_target_reads_block(
             service[0]('accepted', record_path=service[1].with_name(selected['experiment_id'] + '-service.json'))
             selector = {key: deepcopy(value) for key, value in binding.items() if key != 'task_queue'}
             selector['controller']['ordinal'] = ordinal
-            submitted = training.start(state, 'demo', selected['experiment_id'], 1,
-                                       selected['manifest_sha256'], budget=selector)
+            cycle_operation_fault('candidate')
+            submitted = run_cycle_candidate(cycle_candidate, ordinal)['submission']
             assert submitted['status'] == 'submitted'
             owners.append(json.loads((runtime / ('ergora/training-submissions/' + selected['experiment_id'] + '.budget/owner.json')).read_bytes()))
         markers = cycle_operation_fault('blocked-stop')

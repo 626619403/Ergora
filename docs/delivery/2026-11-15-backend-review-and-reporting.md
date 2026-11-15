@@ -13,3 +13,5 @@ BR1在独立分支已形成12文件候选，新的fresh-context reviewer已完�
 BR2已完成只读报告叶候选及一次真实Codex小报告，新的fresh-context reviewer仍在独立核原DB／stdin／原输出／结果／HTML和资源边界，尚未给最终审查结论。不得将旧段落的“真实Codex仍待”作为最新状态，也不得把当前真实小报告扩大为已安装、浏览器或系统准确率验收。具体原件及未验范围继续以该分支`docs/delivery/2026-11-15-evidence-report-generation.md`为准。
 
 两个分支都改preset目录索引，后续整合必须保留两者并验组合。用户再次要求防压缩遗失的[WA1–WA5](../plans/2026-11-15-workflow-evidence-and-human-gates.md)已登记，三路审计尚未启动；不会用BR1／BR2的窄结论替代全局工作流审计。
+
+BR2接续：新的独立reviewer已完成需求／维护性两轴approve／开放0／0；报告摘要为`bd78711c4d64155dea7a4bcce0d9d109eddc25f931cfdaba5b17c9f2c7add2a8`，未重跑模型或安装。WA1–WA3已利用释放槽位在固定a4371c8的三个独立工作树启动只读审计，主控继续c1b1；以上旧段落保留其当时时点。
