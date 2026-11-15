@@ -213,6 +213,13 @@ def training_budget_worker_command(installation: Path) -> list[str]:
     return [sys.executable, '-P', '-c', bootstrap]
 
 
+def training_cycle_worker_command(installation: Path) -> list[str]:
+    """Cycle readers use the application's SDK in their own service process."""
+    bootstrap = (f'import sys;sys.path.insert(0,{str(Path(__file__).parent.parent)!r});'
+                 f'from ergora.reference_training_worker import cycle_main;cycle_main({str(installation)!r})')
+    return [sys.executable, '-P', '-c', bootstrap]
+
+
 def registration_paths(project_id: str) -> tuple[str, ...]:
     # Project ID is validated by the project owner before crossing this boundary.
     return (f"ergora/registrations/{project_id}.json", f"policies/{project_id}/scope.json",

@@ -243,3 +243,20 @@ def test_native_clean_manual_execution_preserves_git_runner_negative_gate_and_co
     assert observed.returncode == 0, observed.stderr
     assert json.loads(observed.stdout)['result'] == result
     assert all(p.read_bytes() == raw for p, raw in before.items())
+
+
+def test_cycle_sdk_capacity_counts_metadata_and_rejects_without_truncation():
+    pytest.importorskip('temporalio')
+    import asyncio
+    from temporalio.api.common.v1 import Payloads
+    from temporalio.converter import DataConverter
+    from temporalio.exceptions import ApplicationError
+    from ergora.reference_training_worker import _cycle_capacity
+
+    value = {'reason': 'x' * 32750}
+    assert len(json.dumps(value, separators=(',', ':')).encode()) <= 32768
+    encoded = asyncio.run(DataConverter.default.encode([value]))
+    assert Payloads(payloads=encoded).ByteSize() > 32768
+    with pytest.raises(ApplicationError) as failed:
+        asyncio.run(_cycle_capacity(value, DataConverter.default))
+    assert failed.value.type == 'cycle_activity_capacity_exceeded' and failed.value.non_retryable

@@ -122,6 +122,51 @@ def test_selected_start_is_idempotent_and_does_not_autostart_other_programs(stac
     assert services.control(state, "demo", "shutdown", [], 1, confirm=True, timeout=5)["outcome"] == "confirmed"
 
 
+def test_cycle_configuration_reuses_training_owner_without_autostart(stack):
+    state, runtime, config = stack
+    source = configparser.ConfigParser(interpolation=None)
+    source.read(config / "supervisor.d/training-worker.ini")
+    source["program:training-worker"]["environment"] = 'CYCLE_OWNER_MARKER="inherited"'
+    with (config / "supervisor.d/training-worker.ini").open("w") as stream:
+        source.write(stream)
+    result = services.control(state, "demo", "start", ["temporal"], 1, timeout=5)
+    cycle = next(item for item in result["services"] if item["name"] == "training-cycle-worker")
+    assert cycle["statename"] == "STOPPED" and result["task_readiness"] == "not_checked"
+    managed = configparser.ConfigParser(interpolation=None)
+    managed.read(runtime / "ergora-services/supervisord.ini")
+    program = managed["program:training-cycle-worker"]
+    assert program["environment"] == source["program:training-worker"]["environment"]
+    assert program["stdout_logfile"] != managed["program:training-budget-worker"]["stdout_logfile"]
+    assert program["stderr_logfile"] != managed["program:training-worker"]["stderr_logfile"]
+
+
+def test_old_running_supervisor_requires_explicit_restart_for_cycle_service(stack, monkeypatch):
+    state, runtime, _ = stack
+    # Start a real daemon with the pre-cycle program set, then restore the new client.
+    with monkeypatch.context() as old:
+        old.setattr(services, "NAMES", tuple(name for name in services.NAMES if name != "training-cycle-worker"))
+        services.control(state, "demo", "start", ["temporal"], 1, timeout=5)
+    original = (runtime / "ergora-services/supervisord.ini").read_bytes()
+    monkeypatch.setattr(services.importlib.util, "find_spec", lambda _: object())
+    with pytest.raises(ValueError, match="explicitly stop services, shutdown"):
+        services.control(state, "demo", "start", ["training-cycle-worker"], 1, timeout=5)
+    assert (runtime / "ergora-services/supervisord.ini").read_bytes() == original
+    assert services.status(state, "demo")["daemon"] == "running"
+    services.control(state, "demo", "shutdown", [], 1, confirm=True, timeout=5)
+    restarted = services.control(state, "demo", "start", ["temporal"], 1, timeout=5)
+    assert any(item["name"] == "training-cycle-worker" for item in restarted["services"])
+
+
+def test_missing_sdk_rejects_cycle_start_but_keeps_offline_services_readable(stack, monkeypatch):
+    state, runtime, _ = stack
+    monkeypatch.setattr(services.importlib.util, "find_spec", lambda _: None)
+    with pytest.raises(ValueError, match=r"ergora\[temporal\]"):
+        services.control(state, "demo", "start", ["training-cycle-worker"], 1)
+    assert services.status(state, "demo")["daemon"] == "not_running"
+    assert not (runtime / "ergora-services/supervisord.ini").exists()
+    assert services.control(state, "demo", "start", ["temporal"], 1, timeout=5)["outcome"] == "confirmed"
+
+
 def test_logs_are_bounded_and_return_native_cursor_for_large_files(stack):
     state, runtime, _ = stack
     services.control(state, "demo", "start", ["temporal"], 1, timeout=5)
