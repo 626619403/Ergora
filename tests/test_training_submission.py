@@ -2703,6 +2703,269 @@ def recorded_process_is_active(value):
         return False
 
 
+@pytest.fixture
+def controller_dispatch(controller_admission, cycle_operation_fault, monkeypatch, tmp_path):
+    from ergora import reference_training_worker as worker, training_cycles
+
+    pytest.importorskip('temporalio')
+    state, _, _, authorized, admission = controller_admission
+    training_cycles.prepare_controller(state, 'demo', 'controller', authorized['authorization_sha256'], authorized['project_revision'])
+    plan = training_cycles._load(state.root, 'demo', 'controller', admission.directory)[0]
+    snapshot = worker._cycle_snapshot(plan, authorized['authorization'])
+    storage = tmp_path / 'cycle-sdk-service'
+    storage.mkdir()
+    monkeypatch.setenv('ERGORA_TEST_CYCLE_DISPATCH', str(storage))
+
+    def operation(case='accepted', mode='submit-controller', *, inspection_timeout=10):
+        cycle_operation_fault(case)
+        return worker._CycleOperation(state.root, 'demo', 'controller', authorized['authorization_sha256'],
+            mode, snapshot=snapshot, inspection_timeout=inspection_timeout)
+
+    return state, admission, storage, operation
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller dispatch uses the original Linux supervised operation')
+@pytest.mark.parametrize('case', ['accepted', 'lost-reply', 'not-found', 'closed', 'continued', 'retry', 'reset'])
+def test_cycle_controller_recovers_only_its_single_original_attempt(controller_dispatch, case):
+    import asyncio
+
+    state, admission, storage, operation = controller_dispatch
+    before = {path: (path.read_bytes(), path.stat().st_ino) for path in admission.directory.rglob('*') if path.is_file()}
+    first = asyncio.run(operation(case).run())
+    assert first['status'] == ('submitted' if case == 'accepted' else 'unknown'), first
+    attempt = admission.folder / 'attempt.json'
+    saved = attempt.read_bytes(), attempt.stat().st_ino
+    second = asyncio.run(operation(case, 'reconcile-controller').run())
+    unresolved = case in ('not-found', 'continued', 'retry', 'reset')
+    assert second['status'] == ('unknown' if unresolved else 'submitted'), second
+    assert second['runtime_status'] == ('not_found' if case == 'not-found' else 'unconfirmed' if unresolved else 'queried')
+    assert second['attempt_saved'] is True and (attempt.read_bytes(), attempt.stat().st_ino) == saved
+    if not unresolved:
+        assert second['run_id'] == '00000000-0000-4000-8000-000000000003'
+        receipt = admission.folder / 'receipt.json'
+        original = receipt.read_bytes(), receipt.stat().st_ino
+        again = asyncio.run(operation(case).run())
+        assert again['run_id'] == second['run_id'] and (receipt.read_bytes(), receipt.stat().st_ino) == original
+        if case == 'closed':
+            from ergora.reference_training_runtime import lookup_controller
+            from temporalio.client import Client
+            from fixtures.training_controller_service import DispatchService
+
+            parent = operation(case).payload
+            with pytest.raises(ValueError, match='running state'):
+                asyncio.run(lookup_controller(Client(DispatchService(parent, case)), admission.controller_intent(),
+                    {'workflow_id': second['workflow_id'], 'run_id': second['run_id'], 'intent_sha256': second['intent_sha256']}, timeout=2))
+    calls = [json.loads(p.read_bytes()) for p in storage.glob('call-*.json')]
+    assert sum(call['action'] == 'start' for call in calls) == 1
+    assert all(p.read_bytes() == raw and p.stat().st_ino == inode for p, (raw, inode) in before.items())
+    assert not (admission.folder / 'rejection.json').exists()
+    assert not (Path(admission.authorization['execution']['state_directory']) / 'training/jobs/alpha').exists()
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller dispatch uses the original Linux supervised operation')
+def test_cycle_controller_reconcile_preserves_unknown_on_changed_remote_identity(controller_dispatch):
+    import asyncio
+
+    _, admission, storage, operation = controller_dispatch
+    assert asyncio.run(operation('lost-reply').run())['status'] == 'unknown'
+    attempt = admission.folder / 'attempt.json'
+    original = attempt.read_bytes(), attempt.stat().st_ino
+    for case in ('input', 'memo', 'started-memo', 'type', 'queue', 'run', 'first-run'):
+        observed = asyncio.run(operation(case, 'reconcile-controller').run())
+        assert observed['status'] == 'unknown' and observed['runtime_status'] == 'unconfirmed', (case, observed)
+        assert not (admission.folder / 'receipt.json').exists() and not (admission.folder / 'rejection.json').exists()
+    recovered = asyncio.run(operation('accepted', 'reconcile-controller').run())
+    assert recovered['status'] == 'submitted' and (attempt.read_bytes(), attempt.stat().st_ino) == original
+    calls = [json.loads(p.read_bytes()) for p in storage.glob('call-*.json')]
+    assert sum(call['action'] == 'start' for call in calls) == 1
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller dispatch uses the original Linux supervised operation')
+def test_cycle_controller_receipt_revalidates_original_authorization_after_sdk_wait(controller_dispatch):
+    import asyncio
+
+    _, admission, storage, operation = controller_dispatch
+    result = asyncio.run(operation('authorization-after-start').run())
+    assert result['status'] == 'unknown', result
+    assert (admission.folder / 'attempt.json').exists() and (storage / 'request.pb').exists()
+    assert not (admission.folder / 'receipt.json').exists() and not (admission.folder / 'rejection.json').exists()
+    assert (admission.directory / 'authorization.json').read_text() == '{"incomplete":'
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller dispatch uses the original Linux supervised operation')
+@pytest.mark.parametrize('case,reason,attempted', [
+    ('preexisting', 'preexisting_run', False), ('collision', 'lookup_rejected', False),
+    ('unavailable', None, False), ('start-conflict', 'start_conflict', True),
+])
+def test_cycle_controller_conflicts_and_network_failure_keep_distinct_originals(controller_dispatch, case, reason, attempted):
+    import asyncio
+
+    _, admission, storage, operation = controller_dispatch
+    result = asyncio.run(operation(case).run())
+    assert result['status'] == ('rejected' if reason else 'unknown'), result
+    assert result['runtime_status'] == ('queried' if reason else 'unconfirmed'), result
+    assert (admission.folder / 'attempt.json').exists() is attempted
+    rejected = admission.folder / 'rejection.json'
+    assert rejected.exists() is (reason is not None)
+    if reason is not None:
+        record = json.loads(rejected.read_bytes())
+        assert record['reason'] == reason
+        before = {p: (p.read_bytes(), p.stat().st_ino) for p in admission.folder.iterdir() if p.is_file()}
+        assert asyncio.run(operation('accepted').run())['status'] == 'rejected'
+        assert {p: (p.read_bytes(), p.stat().st_ino) for p in admission.folder.iterdir() if p.is_file()} == before
+    assert not (admission.folder / 'receipt.json').exists()
+    calls = [json.loads(p.read_bytes()) for p in storage.glob('call-*.json')]
+    assert sum(call['action'] == 'start' for call in calls) == int(attempted)
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller dispatch uses the original Linux supervised operation')
+def test_cycle_controller_late_lookup_cannot_reject_a_concurrent_claim_or_hold_sqlite(controller_dispatch, monkeypatch):
+    import asyncio
+
+    state, admission, storage, operation = controller_dispatch
+    late, start = operation(), operation()
+    monkeypatch.setenv('ERGORA_TEST_CYCLE_DISPATCH_CASES', json.dumps({
+        late.identity['operation_id']: 'late-lookup', start.identity['operation_id']: 'held-start'}))
+
+    async def wait_for(path):
+        async with asyncio.timeout(5):
+            while not path.exists():
+                await asyncio.sleep(.02)
+
+    async def race():
+        late_task = asyncio.create_task(late.run())
+        starting = None
+        try:
+            await wait_for(storage / 'lookup-held')
+            starting = asyncio.create_task(start.run())
+            await wait_for(storage / 'start-held')
+            # An independent writer completes while the actual SDK start is waiting.
+            with state.connect() as db:
+                db.execute('PRAGMA busy_timeout=100')
+                db.execute('BEGIN IMMEDIATE')
+                db.execute('UPDATE projects SET document=document WHERE id=?', ('demo',))
+            (storage / 'release-lookup').touch()
+            recovered = await late_task
+            assert recovered['status'] == 'submitted' and not starting.done(), recovered
+            assert not (admission.folder / 'rejection.json').exists()
+            receipt = admission.folder / 'receipt.json'
+            original = receipt.read_bytes(), receipt.stat().st_ino
+            (storage / 'release-start').touch()
+            acknowledged = await starting
+            assert acknowledged['run_id'] == recovered['run_id'] and acknowledged['status'] == 'submitted'
+            assert (receipt.read_bytes(), receipt.stat().st_ino) == original
+        finally:
+            for task in (late_task, starting):
+                if task is not None and not task.done():
+                    task.cancel()
+            await asyncio.gather(*[task for task in (late_task, starting) if task is not None], return_exceptions=True)
+
+    asyncio.run(race())
+    calls = [json.loads(p.read_bytes()) for p in storage.glob('call-*.json')]
+    assert sum(call['action'] == 'start' for call in calls) == 1
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller dispatch uses the original Linux supervised operation')
+@pytest.mark.parametrize('case', ['stop-after-claim', 'project-after-claim'])
+def test_cycle_controller_final_admission_preserves_consumed_slot_without_start(controller_dispatch, case):
+    import asyncio
+
+    _, admission, storage, operation = controller_dispatch
+    result = asyncio.run(operation(case).run())
+    assert result['status'] == 'unknown' and result['attempt_saved'] is True, result
+    assert (admission.folder / 'attempt.json').exists() and not (admission.folder / 'receipt.json').exists()
+    assert not (admission.folder / 'rejection.json').exists()
+    calls = [json.loads(p.read_bytes()) for p in storage.glob('call-*.json')]
+    assert not any(call['action'] == 'start' for call in calls)
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller dispatch uses the original Linux supervised operation')
+@pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 4}], indirect=True)
+def test_cycle_controller_attempt_sync_is_bounded_without_blocking_parent_loop(controller_dispatch):
+    import asyncio
+
+    _, admission, storage, operation = controller_dispatch
+    current = operation('blocked-attempt-sync')
+    markers = Path(os.environ['ERGORA_TEST_CYCLE_MARKERS'])
+    live = []
+
+    async def exercise():
+        running = asyncio.create_task(current.run())
+        while not running.done():
+            if (markers / 'attempt-sync').exists():
+                live.append(time.monotonic())
+            await asyncio.sleep(.02)
+        return await running
+
+    result = asyncio.run(exercise())
+    assert result['status'] == 'unknown' and len(live) >= 2, result
+    assert (admission.folder / 'attempt.json').exists() and not (storage / 'request.pb').exists()
+    assert current.process.returncode is not None
+    assert not recorded_process_is_active(json.loads((markers / 'attempt-sync').read_bytes()))
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller dispatch uses the original Linux supervised operation')
+def test_cycle_controller_cancelled_sdk_start_reaps_before_metadata_recovery(controller_dispatch):
+    import asyncio
+
+    _, admission, storage, operation = controller_dispatch
+    current = operation('held-start')
+    markers = Path(os.environ['ERGORA_TEST_CYCLE_MARKERS'])
+
+    async def cancel_waiting_sdk():
+        running = asyncio.create_task(current.run())
+        try:
+            async with asyncio.timeout(5):
+                while not (storage / 'start-held').exists():
+                    await asyncio.sleep(.02)
+            owner = json.loads((markers / 'dispatch-helper').read_bytes())
+        finally:
+            running.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await running
+        assert current.process.returncode is not None and not recorded_process_is_active(owner)
+
+    asyncio.run(cancel_waiting_sdk())
+    assert not (admission.folder / 'receipt.json').exists()
+    attempt = admission.folder / 'attempt.json'
+    original = attempt.read_bytes(), attempt.stat().st_ino
+    recovered = asyncio.run(operation('accepted', 'reconcile-controller').run())
+    assert recovered['status'] == 'submitted' and (attempt.read_bytes(), attempt.stat().st_ino) == original
+    calls = [json.loads(p.read_bytes()) for p in storage.glob('call-*.json')]
+    assert sum(call['action'] == 'start' for call in calls) == 1
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller dispatch uses the original Linux supervised operation')
+@pytest.mark.parametrize('controller_admission', [{'wall_seconds': 10, 'cleanup_seconds': 2, 'control_timeout_seconds': 5}], indirect=True)
+def test_cycle_controller_reconcile_after_original_total_never_renews_execution(controller_dispatch, monkeypatch):
+    import asyncio
+    from ergora import budget_clock
+
+    _, admission, storage, operation = controller_dispatch
+    starting = operation('lost-reply')
+    first = asyncio.run(starting.run())
+    assert first['status'] == 'unknown', first
+    assert (admission.folder / 'attempt.json').exists() and (storage / 'request.pb').exists()
+    raw = (admission.directory / 'authorization.json').read_bytes()
+    clock = admission.authorization['clock']
+    wall_seconds = starting.payload['snapshot']['policy']['wall_seconds']
+    while budget_clock.remaining(clock, wall_seconds) > 0:
+        time.sleep(.02)
+    expired = operation()
+    create = asyncio.create_subprocess_exec
+
+    async def forbidden_spawn(*args, **kwargs):
+        raise AssertionError('Original computation expiry must prevent another submission spawn')
+
+    monkeypatch.setattr(asyncio, 'create_subprocess_exec', forbidden_spawn)
+    assert asyncio.run(expired.run())['status'] == 'unknown' and expired.process is None
+    monkeypatch.setattr(asyncio, 'create_subprocess_exec', create)
+    recovered = asyncio.run(operation('accepted', 'reconcile-controller', inspection_timeout=5).run())
+    assert recovered['status'] == 'submitted' and recovered['runtime_status'] == 'queried', recovered
+    assert (admission.directory / 'authorization.json').read_bytes() == raw
+    assert budget_clock.remaining(clock, wall_seconds) < 0
+
+
 @pytest.mark.skipif(sys.platform != 'linux', reason='Cycle operations use the original Linux supervised reaper')
 def test_cycle_preparation_uses_the_original_intent_and_one_fixed_window(controller_admission):
     import asyncio

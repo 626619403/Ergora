@@ -48,7 +48,7 @@ async def lookup_controller(client, intent: dict, binding: dict, *, timeout: flo
     """Verify a parent's fixed run without interpreting it as an Experiment."""
     from temporalio.client import WorkflowExecutionStatus
     from temporalio.service import RPCError, RPCStatusCode
-    from .training_execution_protocol import CYCLE_MEMO_KEY, CycleAdmission
+    from .training_execution_protocol import CYCLE_MEMO_KEY
 
     handle = client.get_workflow_handle(binding['workflow_id'], run_id=binding['run_id'])
     rpc_timeout = timedelta(seconds=timeout)
@@ -62,6 +62,14 @@ async def lookup_controller(client, intent: dict, binding: dict, *, timeout: flo
             or description.status != WorkflowExecutionStatus.RUNNING
             or (await description.memo()).get(CYCLE_MEMO_KEY) != binding['intent_sha256']):
         raise ValueError('Original controller run, running state or complete intent memo differs')
+    await _controller_history(client, handle, intent, binding['intent_sha256'], rpc_timeout)
+    return handle, description
+
+
+async def _controller_history(client, handle, intent, digest, rpc_timeout):
+    """Share complete input validation without sharing the callers' status policy."""
+    from .training_execution_protocol import CYCLE_MEMO_KEY, CycleAdmission
+
     started = None
     async for event in handle.fetch_history_events(page_size=1, rpc_timeout=rpc_timeout):
         if event.HasField('workflow_execution_started_event_attributes'):
@@ -73,8 +81,45 @@ async def lookup_controller(client, intent: dict, binding: dict, *, timeout: flo
     values = await client.data_converter.decode(started.input.payloads, [dict])
     memo = started.memo.fields.get(CYCLE_MEMO_KEY)
     if (CycleAdmission._sha(values) != CycleAdmission._sha([intent['workflow_input']]) or memo is None
-            or await client.data_converter.decode([memo], [str]) != [binding['intent_sha256']]):
+            or await client.data_converter.decode([memo], [str]) != [digest]):
         raise ValueError('Original controller complete started input or intent memo differs')
+    return started
+
+
+async def lookup_controller_submission(client, intent: dict, *, run_id: str | None, timeout: float):
+    """Authenticate the original start even after close; never follow a successor run.
+
+    Lost-reply recovery assumes the protocol exclusively owns its workflow ID.
+    Identical manual ID reuse cannot be excluded by latest metadata alone.
+    """
+    from temporalio.service import RPCError, RPCStatusCode
+    from .training_execution_protocol import CYCLE_MEMO_KEY, CycleAdmission
+
+    rpc_timeout = timedelta(seconds=timeout)
+    handle = client.get_workflow_handle(intent['workflow_id'], run_id=run_id)
+    try:
+        description = await handle.describe(rpc_timeout=rpc_timeout)
+        if run_id is None:
+            run_id = description.raw_description.workflow_execution_info.first_run_id
+            if not run_id:
+                raise ValueError('Controller service has no authenticated original first run')
+            if description.run_id != run_id:
+                raise ValueError('Controller has a successor or reset; recover only an already known original run')
+            handle = client.get_workflow_handle(intent['workflow_id'], run_id=run_id)
+            description = await handle.describe(rpc_timeout=rpc_timeout)
+    except RPCError as error:
+        if error.status == RPCStatusCode.NOT_FOUND:
+            return None
+        raise
+    digest = CycleAdmission._sha(intent)
+    if (description.id != intent['workflow_id'] or description.run_id != run_id
+            or description.raw_description.workflow_execution_info.first_run_id != run_id
+            or (await description.memo()).get(CYCLE_MEMO_KEY) != digest):
+        raise ValueError('Controller original run or complete intent memo differs')
+    started = await _controller_history(client, handle, intent, digest, rpc_timeout)
+    if (started.first_execution_run_id != run_id or started.original_execution_run_id != run_id
+            or started.continued_execution_run_id or started.initiator != 0 or started.attempt != 1):
+        raise ValueError('Controller history is a successor or reset; original ownership remains unknown')
     return handle, description
 
 

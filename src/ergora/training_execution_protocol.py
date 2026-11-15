@@ -176,7 +176,8 @@ def validate_cycle_operation(payload: dict) -> None:
     if (identity['protocol'] != 'ergora-training-cycle-operation-v1'
             or not isinstance(identity['operation_id'], str)
             or re.fullmatch('[a-f0-9]{32}', identity['operation_id']) is None
-            or identity['mode'] not in ('inspect', 'prepare-controller', 'stop-writer', 'notify-owner', 'drain', 'observe-execution')):
+            or identity['mode'] not in ('inspect', 'prepare-controller', 'submit-controller', 'reconcile-controller',
+                'stop-writer', 'notify-owner', 'drain', 'observe-execution')):
         raise ValueError('Unsupported cycle operation or observation identity')
     for name, maximum in (('project', 63), ('cycle_id', 79)):
         if not isinstance(identity[name], str) or re.fullmatch(
@@ -209,7 +210,7 @@ def validate_cycle_operation(payload: dict) -> None:
             raise ValueError('Cold inspection requires one fixed 1 to 60 second observation deadline')
         return
     _digest(identity['input_sha256'])
-    if identity['mode'] != 'prepare-controller' and payload['bootstrap'] is not None:
+    if identity['mode'] not in ('prepare-controller', 'submit-controller', 'reconcile-controller') and payload['bootstrap'] is not None:
         raise ValueError('Verified cycle operations must use the original total allowance')
     snapshot = payload['snapshot']
     _exact(snapshot, ('authorization', 'policy', 'candidates'), 'Original cycle snapshot')
@@ -227,7 +228,7 @@ def validate_cycle_operation(payload: dict) -> None:
         raise ValueError('Cycle operation has an invalid original budget policy')
     _exact(authorization.get('clock'), budget_clock.FIELDS, 'Original cycle clock')
     budget_clock.validate(authorization['clock'], policy['wall_seconds'])
-    if identity['mode'] == 'prepare-controller':
+    if identity['mode'] in ('prepare-controller', 'submit-controller'):
         window = payload['bootstrap']
         _exact(window, ('boot_id', 'started_ns', 'deadline_ns'), 'Original cycle operation window')
         if (window['boot_id'] != identity['parent']['boot_id'] or window['boot_id'] != authorization['clock']['boot_id']
@@ -237,6 +238,14 @@ def validate_cycle_operation(payload: dict) -> None:
                 or window['deadline_ns'] > authorization['clock']['boottime_ns']
                     + (policy['wall_seconds'] - policy['cleanup_seconds']) * 1_000_000_000):
             raise ValueError('Ordinary cycle window exceeds its original compute or control allowance')
+    if identity['mode'] == 'reconcile-controller':
+        window = payload['bootstrap']
+        _exact(window, ('boot_id', 'started_ns', 'deadline_ns'), 'Cycle reconciliation deadline')
+        if (window['boot_id'] != identity['parent']['boot_id']
+                or type(window['started_ns']) is not int or window['started_ns'] < 0
+                or type(window['deadline_ns']) is not int
+                or not 1_000_000_000 <= window['deadline_ns'] - window['started_ns'] <= 60_000_000_000):
+            raise ValueError('Reconciliation requires one fixed 1 to 60 second observation deadline')
     candidates = snapshot['candidates']
     if not isinstance(candidates, list) or not 1 <= len(candidates) <= 32 or ordinal is not None and ordinal >= len(candidates):
         raise ValueError('Cycle operation has no complete ordered candidate index')
@@ -245,16 +254,16 @@ def validate_cycle_operation(payload: dict) -> None:
 def cycle_operation_remaining(payload: dict) -> float:
     """Consume one fixed window, original compute or original stop total, never renew."""
     mode = payload['identity']['mode']
-    if mode in ('inspect', 'prepare-controller'):
+    if mode in ('inspect', 'prepare-controller', 'submit-controller', 'reconcile-controller'):
         bootstrap = payload['bootstrap']
         boot, ticks = budget_clock._clock()
         if boot != bootstrap['boot_id'] or ticks < bootstrap['started_ns']:
             raise ValueError('Cycle operation lost its original boot clock')
         window = (bootstrap['deadline_ns'] - ticks) / 1_000_000_000
-        if mode == 'inspect':
+        if mode in ('inspect', 'reconcile-controller'):
             return window
     snapshot = payload['snapshot']
-    if mode == 'prepare-controller':
+    if mode in ('prepare-controller', 'submit-controller'):
         return min(window, budget_clock.remaining(snapshot['authorization']['clock'],
             snapshot['policy']['wall_seconds'], snapshot['policy']['cleanup_seconds']))
     return budget_clock.remaining(snapshot['authorization']['clock'], snapshot['policy']['wall_seconds'])
@@ -445,6 +454,58 @@ class CycleAdmission:
         intent = self.controller_intent()
         return self._sha(intent) if intent is not None else None
 
+    def attempt_record(self, intent):
+        return {'schema_version': 1, 'intent_sha256': self._sha(intent),
+            'workflow_id': intent['workflow_id'], 'workflow_input_sha256': self._sha(intent['workflow_input'])}
+
+    def receipt_record(self, intent, run_id):
+        if not isinstance(run_id, str) or not 1 <= len(run_id) <= 128 or run_id.strip() != run_id:
+            raise ValueError('Controller receipt requires the exact nonempty original run ID')
+        return {**self.attempt_record(intent), 'run_id': run_id}
+
+    def rejection_record(self, intent, reason, run_id):
+        if reason not in ('preexisting_run', 'lookup_rejected', 'start_conflict'):
+            raise ValueError('Unsupported controller ownership rejection')
+        if reason == 'preexisting_run' or run_id is not None:
+            value = self.receipt_record(intent, run_id)
+        else:
+            value = {**self.attempt_record(intent), 'run_id': None}
+        if reason == 'lookup_rejected' and run_id is not None:
+            raise ValueError('Rejected controller lookup has no authenticated run ID')
+        return {**value, 'reason': reason}
+
+    def submission(self):
+        """Read immutable delivery facts; neither a runtime query nor execution authority."""
+        records = {}
+        # A concurrent publisher adds completion only after its attempt and intent.
+        for name in ('receipt', 'rejection', 'attempt'):
+            try:
+                records[name] = decode(read_raw(self.folder / (name + '.json')))
+            except FileNotFoundError:
+                records[name] = None
+        intent = self.controller_intent()
+        attempt, receipt, rejection = (records[name] for name in ('attempt', 'receipt', 'rejection'))
+        if intent is None and any(value is not None for value in records.values()):
+            raise ValueError('Controller delivery facts have no original complete intent')
+        if attempt is not None and self._sha(attempt) != self._sha(self.attempt_record(intent)):
+            raise ValueError('Controller binding differs from its original complete attempt')
+        if receipt is not None and (attempt is None
+                or self._sha(receipt) != self._sha(self.receipt_record(intent, receipt.get('run_id')))):
+            raise ValueError('Controller binding differs from its original fixed-run receipt')
+        if rejection is not None:
+            reason = rejection.get('reason')
+            if (receipt is not None or (attempt is not None) != (reason == 'start_conflict')
+                    or self._sha(rejection) != self._sha(self.rejection_record(intent, reason, rejection.get('run_id')))):
+                raise ValueError('Controller ownership rejection conflicts with its original checkpoint')
+        return {'status': 'not_prepared' if intent is None else 'rejected' if rejection is not None else
+                'submitted' if receipt is not None else 'unknown' if attempt is not None else 'prepared',
+            'workflow_id': self.authorization['controller']['workflow_id'], 'intent': intent,
+            'intent_sha256': self._sha(intent) if intent is not None else None,
+            'run_id': receipt['run_id'] if receipt is not None else None,
+            'attempt_saved': attempt is not None, 'result_saved': receipt is not None,
+            'reason': rejection['reason'] if rejection is not None else None,
+            'conflicting_run_id': rejection['run_id'] if rejection is not None else None}
+
     def bind(self, intent, plan):
         """Bind one original selected start to the complete local parent receipt.
 
@@ -456,21 +517,15 @@ class CycleAdmission:
         if 'controller' not in binding:
             raise ValueError('Controller authorization requires complete controller binding and final admission gates')
         controller = binding['controller']
-        parent = self.controller_intent()
+        saved = self.submission()
+        parent = saved['intent']
         if parent is None:
             raise ValueError('Controller binding has no original complete intent')
-        expected = {'schema_version': 1, 'intent_sha256': self._sha(parent),
-            'workflow_id': parent['workflow_id'], 'workflow_input_sha256': self._sha(parent['workflow_input'])}
-        if self._sha(decode(read_raw(self.folder / 'attempt.json'))) != self._sha(expected):
+        expected = self.attempt_record(parent)
+        if not saved['attempt_saved']:
             raise ValueError('Controller binding differs from its original complete attempt')
-        if self._sha(decode(read_raw(self.folder / 'receipt.json'))) != self._sha({**expected, 'run_id': controller['run_id']}):
+        if not saved['result_saved'] or saved['run_id'] != controller['run_id']:
             raise ValueError('Controller binding differs from its original fixed-run receipt')
-        try:
-            (self.folder / 'rejection.json').lstat()
-        except FileNotFoundError:
-            pass
-        else:
-            raise ValueError('Controller submission was rejected; no new training action is admitted')
         authorization = self.authorization
         if (binding['cycle_id'] != authorization['cycle_id']
                 or binding['authorization_sha256'] != authorization['sha256']

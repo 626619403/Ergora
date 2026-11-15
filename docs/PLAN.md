@@ -4,6 +4,8 @@
 
 ## 当前检查点
 
+**c1a2总投递／对账本地门禁闭合：** 基线836179e9；[具体计划](plans/2026-11-15-training-cycle-dispatch.md)设计两轴approve。原四owner接单次SDK start／固定run对账；产品独立R1 reset身份和R2缓存授权均先实红后最小修正并由原reviewer源码复核关闭。最终安装r1共67通过／347.05秒；再删两行不可达guard，r2两安装各652三方同一／283／依赖通过，原bind／gate／冲突／并发精准7通过／83.56秒，旧67项仍归r1。r2 core异步只读1.210秒、7文件bytes／DB保持；自身完整供稿真实Codex40.251秒approve；178输入保持、74已知actor活匹配0。最终12文件scope、652双安装／178输入与74身份收尾均由原独立reviewer直接重核，需求／维护性两轴approve／开放0／0，后接固定提交及逐片发布；[逐步交付](delivery/2026-11-15-training-cycle-dispatch.md)。后继独立cycle服务需先实证跨调用预算owner生命周期，标准sandbox／normal-stop配额、总Workflow／后继轮与公开入口仍开放；kernel专家保持v3。
+
 **PR审查补充研究Q2.4本地闭合：** 用户指定[Anthropic文章](https://claude.dev/blog/solving-code-review-at-anthropic/)；此前已研究公共Claude插件／产品，未直接引用该文。已按原文与源码写成[对照研究](research/2026-11-15-anthropic-code-review-comparison.md)及[分片计划](plans/2026-11-15-review-validation-evolution.md)：当前三路all-join／领域专家已实现，逐finding独立复核、效果eval与有界增量复审仍待后继。261本地链接／正文身份及产品零diff、新的独立文档需求／维护性两轴approve／finding0已核；R0固定发布按原顺序，R1–R4尚未实施。kernel专家继续保留v3。[交付](delivery/2026-11-15-review-validation-evolution.md)。
 
 **c1b0本地门禁闭合：** 基线为本地固定`d1fcfa5b78e912004114f00275c32e6dfac6dcb0`。SDK总投递前已补原compute∩control的一次性S-H窗口与实际prepare-controller caller，复用原driver／reaper；[具体计划](plans/2026-11-15-training-cycle-prepare-operation.md)设计两轴approve／开放0／0，取消措辞R1关闭。源码24通过／60.55秒，新core／SDK各652逐字／283／依赖，最终安装33通过／156.96秒、core真实异步1.157秒／父业务I/O禁止及自身模板26.433秒approve；[新的独立产品报告](delivery/2026-11-15-training-cycle-prepare-operation-review.md)最终需求／维护性两轴approve／开放0／0，9文件、652产品／178输入与22已知actor活匹配0已核。已固定本地3947b1e／十blob与tree同一，再实施SDK投递原件／对账；远端门禁保持。[交付](delivery/2026-11-15-training-cycle-prepare-operation.md)逐步记录，跨重启恢复、独立服务／Workflow仍开放。kernel专家保持v3。

@@ -3,6 +3,7 @@
 import asyncio
 from contextvars import ContextVar
 from dataclasses import asdict
+from datetime import timedelta
 import hashlib
 import json
 import os
@@ -30,13 +31,13 @@ class _CycleOperation:
                  *, snapshot: dict | None = None, ordinal: int | None = None,
                  reason: str | None = None, inspection_timeout: int = 10):
         bootstrap = None
-        if mode == 'inspect':
+        if mode in ('inspect', 'reconcile-controller'):
             if type(inspection_timeout) is not int or not 1 <= inspection_timeout <= 60:
                 raise ValueError('Cold inspection timeout must be 1 to 60 seconds')
             boot, ticks = budget_clock._clock()
             bootstrap = {'boot_id': boot, 'started_ns': ticks,
                          'deadline_ns': ticks + inspection_timeout * 1_000_000_000}
-        elif mode == 'prepare-controller':
+        elif mode in ('prepare-controller', 'submit-controller'):
             policy, clock = snapshot['policy'], snapshot['authorization']['clock']
             boot, ticks = budget_clock._clock()
             seconds = min(policy['control_timeout_seconds'], budget_clock.remaining(
@@ -183,7 +184,7 @@ def _cycle_operation(payload: dict) -> dict:
     identity = payload['identity']
     home, project, cycle = Path(identity['control_home']), identity['project'], identity['cycle_id']
     directory = training_cycles._directory(home, project, cycle)
-    plan, authorization, _ = training_cycles._load(home, project, cycle, directory)
+    plan, authorization, ready = training_cycles._load(home, project, cycle, directory)
     admission = protocol.CycleAdmission(directory, authorization)
     if authorization['sha256'] != identity['authorization_sha256']:
         raise ValueError('Cycle operation requires the complete original authorization SHA256')
@@ -194,6 +195,7 @@ def _cycle_operation(payload: dict) -> dict:
         total = budget_clock.remaining(authorization['clock'], snapshot['policy']['wall_seconds'])
         boot, ticks = budget_clock._clock()
         return {'status': 'inspected', 'snapshot': snapshot,
+            'submission': {key: value for key, value in admission.submission().items() if key != 'intent'},
             'observation': {'total_remaining_seconds': total, 'boot_id': boot,
                             'boottime_ns': ticks, 'observed_at': now()}}
     if identity['input_sha256'] != authorization['input_sha256'] or training_cycles._sha(payload['snapshot']) != training_cycles._sha(snapshot):
@@ -205,6 +207,10 @@ def _cycle_operation(payload: dict) -> dict:
             raise ValueError('Original cycle operation parent or allowance ended')
 
     active()
+    if mode in ('submit-controller', 'reconcile-controller'):
+        if ready is None:
+            raise ValueError('Controller delivery requires its original durable ready record')
+        return asyncio.run(_dispatch_controller(payload, plan, admission, active))
     if mode == 'prepare-controller':
         prepared = training_cycles.prepare_controller(State(home), project, cycle,
             authorization['sha256'], authorization['project_revision'])
@@ -245,6 +251,100 @@ def _cycle_operation(payload: dict) -> dict:
     return {key: observed.get(key) for key in
         ('status', 'reap_record_observed', 'durable_stop_confirmed', 'executor_stop_confirmed', 'record_sha256', 'durability_reason')} | {
         'experiment_id': operation.ident, 'observation': str(output), 'observation_sha256': hashlib.sha256(raw).hexdigest()}
+
+
+async def _dispatch_controller(payload: dict, plan: dict, admission, active) -> dict:
+    """SDK orchestration belongs to H; immutable claims belong to training_cycles."""
+    from temporalio.common import RetryPolicy, WorkflowIDReusePolicy, WorkflowIDConflictPolicy
+    from temporalio.exceptions import WorkflowAlreadyStartedError
+    from temporalio.service import RPCError
+    from .reference_training_context import _TrainingProject
+    from .reference_training_runtime import lookup_controller_submission
+
+    state = State(Path(payload['identity']['control_home']))
+    saved = admission.submission()
+    intent = saved['intent']
+    if intent is None:
+        raise ValueError('Prepare the complete original controller intent before dispatch or reconciliation')
+
+    def observation(value, *, status=None, **facts):
+        return {**{key: item for key, item in value.items() if key != 'intent'},
+            'submission_status': value['status'], 'status': status or value['status'], **facts}
+
+    if saved['status'] == 'rejected':
+        return observation(saved, runtime_status='not_queried')
+    execution = admission.authorization['execution']
+    installation = reference.validate_installation(Path(execution['installation']), training=True)
+    sys.path[:0] = [str(installation / part) for part in ('local', 'upstream/platform', 'upstream/temporal', 'upstream')]
+    os.environ.update(AGENTFLOW_CONFIG_DIR=execution['config_directory'], AGENTFLOW_STATE_DIR=execution['state_directory'])
+    context = _TrainingProject({'project': plan['project'], 'control_home': str(state.root)})
+    context.registration()
+    from agent_platform.core import environment
+    from perf_temporal.connection import connect
+
+    os.environ.update(environment())
+
+    def remaining():
+        active()
+        return protocol.cycle_operation_remaining(payload)
+
+    try:
+        async with asyncio.timeout(remaining()):
+            client = await connect()
+
+            async def reconcile():
+                current = admission.submission()
+                if current['status'] == 'rejected' or not current['attempt_saved']:
+                    return observation(current, runtime_status='not_queried')
+                found = await lookup_controller_submission(client, intent, run_id=current['run_id'], timeout=remaining())
+                if found is None:
+                    return observation(current, status='unknown', runtime_status='not_found')
+                _, description = found
+                current = training_cycles._record_controller(state, admission, run_id=description.run_id)
+                active()
+                return observation(current, runtime_status='queried', temporal_status=description.status.name)
+
+            if payload['identity']['mode'] == 'reconcile-controller' or saved['attempt_saved']:
+                return await reconcile()
+            with admission.permission():
+                training_cycles._controller_ready(state, admission)
+                try:
+                    found = await lookup_controller_submission(client, intent, run_id=None, timeout=remaining())
+                except ValueError:
+                    current = training_cycles._record_controller(state, admission, run_id=None, reason='lookup_rejected')
+                else:
+                    current = (training_cycles._record_controller(state, admission,
+                        run_id=found[1].run_id, reason='preexisting_run') if found is not None else None)
+                if current is not None:
+                    return await reconcile() if current['attempt_saved'] and current['status'] == 'unknown' else observation(
+                        current, runtime_status='queried')
+                if not training_cycles._claim_controller(state, admission):
+                    return await reconcile()
+                # Claim/fsync, source reads and the original ready observation all consume this same window.
+                reference.validate_installation(installation, training=True)
+                context.registration()
+                current = admission.submission()
+                if current['status'] in ('submitted', 'rejected'):
+                    return await reconcile()
+                if not current['attempt_saved']:
+                    raise ValueError('Original controller start attempt disappeared; do not dispatch again')
+                training_cycles._controller_ready(state, admission)
+                timeout = remaining()
+                try:
+                    handle = await client.start_workflow('TrainingCycleWorkflow', intent['workflow_input'],
+                        id=intent['workflow_id'], task_queue=intent['task_queue'],
+                        id_reuse_policy=WorkflowIDReusePolicy.REJECT_DUPLICATE,
+                        id_conflict_policy=WorkflowIDConflictPolicy.FAIL, retry_policy=RetryPolicy(maximum_attempts=1),
+                        memo={protocol.CYCLE_MEMO_KEY: protocol.CycleAdmission._sha(intent)},
+                        rpc_timeout=timedelta(seconds=timeout))
+                except WorkflowAlreadyStartedError as error:
+                    current = training_cycles._record_controller(state, admission, run_id=error.run_id or None, reason='start_conflict')
+                    return observation(current, runtime_status='queried')
+                current = training_cycles._record_controller(state, admission, run_id=handle.result_run_id)
+                active()
+                return observation(current, runtime_status='start_acknowledged')
+    except (RPCError, TimeoutError, ValueError) as error:
+        return observation(admission.submission(), status='unknown', runtime_status='unconfirmed', reason=str(error))
 
 
 async def stop_live_controller(home: Path, project_id: str, cycle_id: str, authorization_sha256: str,

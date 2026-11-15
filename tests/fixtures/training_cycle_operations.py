@@ -45,6 +45,58 @@ if stage == 'S':
 
         training_cycles._read_bytes = blocked_result
 else:
+    if os.environ.get('ERGORA_TEST_CYCLE_DISPATCH') and mode in ('submit-controller', 'reconcile-controller'):
+        sys.path[:0] = [str(Path(payload['snapshot']['authorization']['execution']['installation']) / part)
+                       for part in ('local', 'upstream/platform', 'upstream/temporal', 'upstream')]
+        sys.path.insert(0, str(Path(__file__).parent))
+        from perf_temporal import connection
+        from temporalio.client import Client
+        from training_controller_service import DispatchService
+
+        selected = json.loads(os.environ.get('ERGORA_TEST_CYCLE_DISPATCH_CASES', '{}'))
+
+        async def connect():
+            return Client(DispatchService(payload, selected.get(payload['identity']['operation_id'], fault)))
+
+        connection.connect = connect
+        mark('dispatch-helper')
+        if fault == 'project-after-claim':
+            validate = reference.validate_installation
+
+            def drift_project(*args, **kwargs):
+                root = validate(*args, **kwargs)
+                authorization = payload['snapshot']['authorization']
+                directory = Path(authorization['control_home']) / 'training-cycles' / authorization['project'] / authorization['cycle_id']
+                if (directory / 'controller/attempt.json').exists():
+                    state = worker.State(Path(authorization['control_home']))
+                    with state.connect() as db:
+                        row = db.execute('SELECT document FROM projects WHERE id=?', (authorization['project'],)).fetchone()
+                        project = json.loads(row[0])
+                        project['revision'] += 1
+                        db.execute('UPDATE projects SET document=? WHERE id=?', (json.dumps(project), authorization['project']))
+                return root
+
+            reference.validate_installation = drift_project
+        if fault == 'blocked-attempt-sync':
+            synchronize = training_cycles._sync_directory
+
+            def blocked_attempt(directory):
+                if (directory / 'attempt.json').exists():
+                    mark('attempt-sync')
+                    time.sleep(60)
+                return synchronize(directory)
+
+            training_cycles._sync_directory = blocked_attempt
+        if fault == 'stop-after-claim':
+            synchronize = training_cycles._sync_directory
+
+            def stop_claimed(directory):
+                synchronize(directory)
+                if (directory / 'attempt.json').exists():
+                    authorization = payload['snapshot']['authorization']
+                    protocol.CycleAdmission(directory.parent, authorization).request_stop('Stop after single slot publication')
+
+            training_cycles._sync_directory = stop_claimed
     if fault == 'blocked-prepare' and mode == 'prepare-controller':
         def blocked_database(self):
             mark('prepare-database-reader')

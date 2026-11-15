@@ -429,6 +429,57 @@ def prepare_controller(state: State, project_id: str, cycle_id: str,
             return {'created': created, 'intent': intent, 'intent_sha256': _sha(intent), 'cycle': observed}
 
 
+def _controller_ready(state: State, admission) -> None:
+    original = admission.authorization
+    observed = status(state, original['project'], original['cycle_id'], authorization_sha256=original['sha256'])
+    if observed['status'] != 'ready':
+        raise ValueError(observed['reason'] or 'Controller dispatch requires its original durable ready record')
+    admission.check()
+
+
+def _claim_controller(state: State, admission) -> bool:
+    """Reserve the single start slot locally; no transaction may cover its RPC."""
+    with state.connect() as db:
+        db.execute('BEGIN IMMEDIATE')
+        saved = admission.submission()
+        if saved['attempt_saved'] or saved['status'] == 'rejected':
+            return False
+        if saved['intent'] is None:
+            raise ValueError('Prepare the complete original controller intent before dispatch')
+        _controller_ready(state, admission)
+        _record(admission.folder / 'attempt.json', admission.attempt_record(saved['intent']))
+        return True
+
+
+def _record_controller(state: State, admission, *, run_id: str | None, reason: str | None = None) -> dict:
+    """Publish one same-identity terminal fact, never act on a stale pre-claim lookup."""
+    with state.connect() as db:
+        db.execute('BEGIN IMMEDIATE')
+        original = admission.authorization
+        _, authorization, ready = _load(state.root, original['project'], original['cycle_id'], admission.directory)
+        if authorization['sha256'] != original['sha256'] or ready is None:
+            raise ValueError('Controller terminal fact requires its complete original authorization and ready record')
+        saved = admission.submission()
+        intent = saved['intent']
+        if intent is None:
+            raise ValueError('Controller delivery facts require the prepared original intent')
+        name = 'receipt' if reason is None else 'rejection'
+        value = admission.receipt_record(intent, run_id) if reason is None else admission.rejection_record(intent, reason, run_id)
+        if saved['status'] in ('submitted', 'rejected'):
+            current = _document(admission.folder / (('receipt' if saved['result_saved'] else 'rejection') + '.json'))
+            if (name == 'receipt') == saved['result_saved'] and _sha(current) != _sha(value):
+                raise ValueError('Controller terminal fact differs from its original immutable record')
+            _sync_directory(admission.folder)
+            return admission.submission()
+        # A late no-attempt lookup can have observed another claimant's legal run.
+        if reason in ('preexisting_run', 'lookup_rejected') and saved['attempt_saved']:
+            return saved
+        if not saved['attempt_saved'] and (reason is None or reason == 'start_conflict'):
+            raise ValueError('Controller result has no original consumed start attempt')
+        _record(admission.folder / (name + '.json'), value)
+        return admission.submission()
+
+
 def authorize(state: State, project_id: str, cycle_id: str, directory: Path, sha256: str,
               expected_revision: int, *, confirm: bool) -> dict:
     """Persist one clock before all live checks; retries retain its full input and deadline."""
