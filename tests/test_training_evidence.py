@@ -252,3 +252,34 @@ def test_round_index_keeps_lost_start_acknowledgement_without_query_or_approval(
     assert saved['submission'] == unknown and saved['submission']['status'] == 'unknown'
     assert saved['submission']['run_id'] is None and saved['approval'] is None
     assert record.read_bytes() == calls and all(path.read_bytes() == raw for path, raw in before.items())
+
+
+def test_round_content_validates_original_bindings_without_site_packages(experiments, tmp_path):
+    from ergora import training_rounds
+
+    created = training_rounds.create(experiments[0], 'demo', {'schema_version': 1, 'rounds': [{
+        'experiment_id': 'alpha', 'change': '保留原始观察 🌱',
+        'next_bottleneck': 'No measured optimization claim'}]}, tmp_path / 'index')
+    isolated = subprocess.run([sys.executable, '-I', '-S', '-B', '-c', '''import hashlib,json,sys
+from pathlib import Path
+sys.path.insert(0,sys.argv[1])
+from ergora.training_execution_protocol import encode_round_content,round_content_sha,validate_round_content
+raw=Path(sys.argv[2]).read_bytes()
+report=json.loads(raw)
+validate_round_content(report)
+assert encode_round_content(report)==raw
+assert hashlib.sha256(raw).hexdigest()==sys.argv[3]
+assert report['rounds'][0]['annotation']['change']=='保留原始观察 🌱'
+item=report['rounds'][0]
+item['native']['evidence']['project_revision']+=1
+item['sha256']=round_content_sha({key:value for key,value in item.items() if key!='sha256'})
+try:
+    validate_round_content(report)
+except ValueError as error:
+    assert 'different projects or revisions' in str(error)
+else:
+    raise AssertionError('A self-consistent content hash cannot replace original observation bindings')
+assert not any(name in sys.modules for name in ('yaml','jsonschema','temporalio','dev_platform','ergora.state','ergora.training'))
+''', str(Path(reference.__file__).parent.parent), str(tmp_path / 'index/rounds.json'), created['sha256']],
+        capture_output=True, text=True, encoding='utf-8', timeout=10)
+    assert isolated.returncode == 0, isolated.stderr
