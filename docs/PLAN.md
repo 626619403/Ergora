@@ -4,6 +4,8 @@
 
 ## 当前检查点
 
+**独立停止并发CI修复本地检查通过／独立审查待：** 固定1b8c2ed的官方run43713822317／attempt1／push保持七job成功、Ubuntu3.11第5组原并发测试读取缺失writer标记失败。独立`fix/cycle-stop-overlap-ci`按[小片计划](plans/2026-11-15-cycle-stop-overlap-ci.md)只补测试重叠前提；原fixture受控实红1项，修后同调度1项、正常安装六接缝／65.73秒及源码1项／29.63秒通过。源码／非editable安装各652产品保持1b8字节、178输入同一、28已知actor活匹配0。自身原模板12完整文件／三原资源19.938秒approve；产品／原clock／reaper及主树后继保持。[交付](delivery/2026-11-15-cycle-stop-overlap-ci.md)记录四文件candidate与原件，接主控安排新的fresh-context独立审查，提交／发布与新候选CI另验。
+
 **活动b2b最终本地终核：** 已在原worker／protocol实现异步S-H操作、完整原snapshot及独立writer／逐owner通知／drain／原执行链观察；cycles／budget／reaper／native保持。新core／SDK各652逐字／283／依赖通过；原安装r1为30通过／1新测试观察条件失败，修正通知事件后同一产品r2精准1通过／29.25秒，旧失败保持。最终自身原模板43.807秒approve，652两安装／178冻结测试及38已知actor活匹配0已核；新的fresh-context最终本地两轴approve／开放0／0，R1依赖环和R2通知观察测试关闭；准备固定本地提交，尚未发布。本片交付见[记录](delivery/2026-11-15-training-cycle-stop-operations.md)，远端仍等43d自己的准确CI（限额reset10:23:02 UTC）。kernel专家继续在v3。
 
 **b2b源码r1失败／修正中：** 原接缝与完整架构终态19通过／3失败／42.84秒；真实依赖环来自cycles反向导入worker／submission，将把异步编排与目标意图职责放回原worker边界。两新测试环境问题分别为双owner复用单Experiment服务替身、错误读取create结果。原失败完整保留，冷stopped截止及spawn／后代取消已局部通过，不代表fan-out整体通过。修正后r2终态22通过／57.23秒且运行前后源码同一，原架构／真实双owner并发／取消／耗尽通过；r3归档身份拒绝／缺失安装实际pidfd及原人工release两项通过；新两安装各652／283／依赖通过，安装r1为30通过／1新测试失败（把通知等同12秒内退出），原H已精确notified；改按实际pidfd事件与原独立收尾分别观察。自身原模板48.863秒approve、core实际inspect1.059秒通过；同一产品r2精准修正项1通过／29.25秒、原r1其余30项保持；最终模板／原件收尾／独立结论仍待，kernel专家保留v3。
