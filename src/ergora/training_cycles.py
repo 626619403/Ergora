@@ -311,6 +311,12 @@ def _status(state: State, plan: dict, authorization: dict, ready: dict | None) -
     policy = plan['definition']['budget']
     current = state.project(authorization['project'])
     matches = _sha(current) == _sha(plan['project'])
+    stopped = None
+    if authorization['schema_version'] == 2:
+        admission = training_execution_protocol.CycleAdmission(
+            _directory(state.root, authorization['project'], authorization['cycle_id']), authorization)
+        stopped = admission.observe()
+    # All business-file observations consume the same original computation window.
     status, reason, work, total = 'pending' if ready is None else 'ready', None, None, None
     try:
         total = budget_clock.remaining(authorization['clock'], policy['wall_seconds'])
@@ -328,10 +334,7 @@ def _status(state: State, plan: dict, authorization: dict, ready: dict | None) -
             'current_project_matches': matches, 'work_remaining_seconds': work, 'total_remaining_seconds': total,
             'coverage': {'records': 'original-local-authorization', 'origin_authenticated': True,
                          'runtime_status': 'not_queried', 'budget_started': True, 'execution_authorized': False}}
-    if authorization['schema_version'] == 2:
-        admission = training_execution_protocol.CycleAdmission(
-            _directory(state.root, authorization['project'], authorization['cycle_id']), authorization)
-        stopped = admission.observe()
+    if stopped is not None:
         observed['controller'] = {'consent_recorded': True, 'stop': stopped}
         if stopped['stop_visible'] is not False:
             observed.update(status='stopped' if stopped['identity_matches'] is True else 'unknown',
@@ -388,6 +391,42 @@ def start(state: State, project_id: str, cycle_id: str, experiment_id: str,
     return training.start(state, project_id, experiment_id, expected_revision, selected['manifest_sha256'],
                           timeout=plan['definition']['budget']['control_timeout_seconds'],
                           budget={'cycle_id': cycle_id, 'authorization_sha256': authorization_sha256})
+
+
+def prepare_controller(state: State, project_id: str, cycle_id: str,
+                       authorization_sha256: str, expected_revision: int) -> dict:
+    """Freeze the original controller intent, without consuming its start attempt.
+
+    A prepared intent is not a dispatch permit. The final cycle observation may
+    already be exhausted; dispatch must use its own original last-action gates.
+    """
+    if type(expected_revision) is not int or expected_revision < 1:
+        raise ValueError('Expected project revision must be a positive integer')
+    # Only local immutable preparation holds this reservation, never an RPC.
+    with state.connect() as db:
+        db.execute('BEGIN IMMEDIATE')
+        observed = status(state, project_id, cycle_id)
+        if authorization_sha256 != observed['authorization_sha256']:
+            raise ValueError('Controller preparation requires the exact original authorization SHA256')
+        if observed['current_project_revision'] != expected_revision:
+            raise ValueError('Project revision changed; reload before preparing the controller')
+        directory = _directory(state.root, project_id, cycle_id)
+        admission = training_execution_protocol.CycleAdmission(directory, observed['authorization'])
+        if observed['status'] != 'ready':
+            raise ValueError(observed['reason'] or 'Controller preparation requires the original durable ready record')
+        with admission.permission():
+            intent = admission.controller_intent()
+            created = intent is None
+            if created:
+                _record(admission.folder / 'intent.json', admission.intent_record())
+            else:
+                # Recover a lost reply or failed directory fsync without replacing
+                # the original bytes, inode, authorization or computation clock.
+                _sync_directory(admission.folder)
+            intent = admission.controller_intent()
+            admission.check()
+            observed = status(state, project_id, cycle_id, authorization_sha256=authorization_sha256)
+            return {'created': created, 'intent': intent, 'intent_sha256': _sha(intent), 'cycle': observed}
 
 
 def authorize(state: State, project_id: str, cycle_id: str, directory: Path, sha256: str,

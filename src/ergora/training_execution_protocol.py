@@ -406,19 +406,22 @@ class CycleAdmission:
             self.check()
             yield self
 
+    def intent_record(self):
+        """Generate the same complete parent identity for producer and consumers."""
+        authorization, controller = self.authorization, self.authorization['controller']
+        workflow_input = {name: authorization[name] for name in
+            ('control_home', 'project', 'cycle_id', 'input_sha256')}
+        workflow_input.update(protocol=controller['protocol'], authorization_sha256=authorization['sha256'])
+        return {**workflow_input, 'schema_version': 1, 'kind': 'training-cycle-controller-intent',
+            'project_revision': authorization['project_revision'], 'workflow_id': controller['workflow_id'],
+            'task_queue': controller['task_queue'], 'workflow_input': workflow_input}
+
     def controller_intent(self):
         try:
             intent = decode(read_raw(self.folder / 'intent.json'))
         except FileNotFoundError:
             return None
-        authorization, controller = self.authorization, self.authorization['controller']
-        workflow_input = {name: authorization[name] for name in
-            ('control_home', 'project', 'cycle_id', 'input_sha256')}
-        workflow_input.update(protocol=controller['protocol'], authorization_sha256=authorization['sha256'])
-        expected = {**workflow_input, 'schema_version': 1, 'kind': 'training-cycle-controller-intent',
-            'project_revision': authorization['project_revision'], 'workflow_id': controller['workflow_id'],
-            'task_queue': controller['task_queue'], 'workflow_input': workflow_input}
-        if self._sha(intent) != self._sha(expected):
+        if self._sha(intent) != self._sha(self.intent_record()):
             raise ValueError('Controller intent differs from its complete original authorization')
         return intent
 

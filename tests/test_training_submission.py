@@ -986,6 +986,117 @@ def saved_controller_intent(admission):
         'task_queue': controller['task_queue'], 'workflow_input': workflow_input}
 
 
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller preparation requires original Linux clocks and flock')
+def test_controller_intent_preparation_retains_original_publication_and_clock(controller_admission, monkeypatch):
+    from ergora import training_cycles
+    from ergora.state import file_lock
+
+    state, _, _, authorized, admission = controller_admission
+    original = {p: p.read_bytes() for p in admission.directory.rglob('*') if p.is_file()}
+    arguments = (state, 'demo', 'controller', authorized['authorization_sha256'], authorized['project_revision'])
+    with pytest.raises(ValueError, match='exact original authorization'):
+        training_cycles.prepare_controller(state, 'demo', 'controller', None, authorized['project_revision'])
+    # A visible ready link is still pending while its publisher owns the lock.
+    with file_lock(admission.directory.parent / '.controller.lock'):
+        with pytest.raises(ValueError, match='in progress'):
+            training_cycles.prepare_controller(*arguments)
+    assert not (admission.folder / 'intent.json').exists()
+    prepared = training_cycles.prepare_controller(*arguments)
+    assert prepared['created'] is True and prepared['cycle']['status'] == 'ready'
+    assert prepared['intent'] == saved_controller_intent(admission)
+    assert prepared['intent_sha256'] == training_cycles._sha(prepared['intent'])
+    path = admission.folder / 'intent.json'
+    raw, inode, sync = path.read_bytes(), path.stat().st_ino, training_cycles._sync_directory
+
+    def fail(directory):
+        if directory == admission.folder:
+            raise OSError('Controlled controller directory synchronization failure')
+        return sync(directory)
+
+    monkeypatch.setattr(training_cycles, '_sync_directory', fail)
+    with pytest.raises(OSError, match='synchronization failure'):
+        training_cycles.prepare_controller(*arguments)
+    monkeypatch.setattr(training_cycles, '_sync_directory', sync)
+    again = training_cycles.prepare_controller(*arguments)
+    assert again['created'] is False and again['intent'] == prepared['intent']
+    assert again['cycle']['authorization'] == authorized['authorization']
+    assert again['cycle']['work_remaining_seconds'] < prepared['cycle']['work_remaining_seconds']
+    assert path.read_bytes() == raw and path.stat().st_ino == inode
+    assert {p: p.read_bytes() for p in admission.directory.rglob('*') if p.is_file()} == {**original, path: raw}
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller preparation requires original Linux clocks and flock')
+def test_controller_intent_stop_before_link_preserves_the_original_veto(controller_admission, monkeypatch):
+    from ergora import training_cycles
+
+    state, _, _, authorized, admission = controller_admission
+    link, stopped = os.link, []
+
+    def stop(source, destination, *args, **kwargs):
+        if destination == admission.folder / 'intent.json':
+            stopped.append(admission.request_stop('Stop while the original intent is being published'))
+        return link(source, destination, *args, **kwargs)
+
+    monkeypatch.setattr(os, 'link', stop)
+    arguments = (state, 'demo', 'controller', authorized['authorization_sha256'], authorized['project_revision'])
+    with pytest.raises(ValueError, match='stop is visible'):
+        training_cycles.prepare_controller(*arguments)
+    assert len(stopped) == 1 and stopped[0]['record']['controller_intent_sha256'] is None
+    original = {p: p.read_bytes() for p in admission.folder.iterdir()}
+    changed = admission.observe(drain=True)
+    assert changed['stop_visible'] is True and changed['identity_matches'] is False
+    with pytest.raises(ValueError):
+        training_cycles.prepare_controller(*arguments)
+    assert {p: p.read_bytes() for p in admission.folder.iterdir()} == original
+    assert not (admission.folder / 'attempt.json').exists()
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller preparation requires original Linux clocks and flock')
+@pytest.mark.parametrize('controller_admission', [{'wall_seconds': 12, 'cleanup_seconds': 3}], indirect=True)
+@pytest.mark.parametrize('boundary', ['directory', 'final-check', 'stop-observation'])
+def test_controller_intent_io_consumes_the_original_computation_window(controller_admission, monkeypatch, boundary):
+    from ergora import training_cycles
+    from ergora.training_execution_protocol import CycleAdmission
+
+    state, _, selected, authorized, admission = controller_admission
+    sync, delayed = training_cycles._sync_directory, []
+    original_check, original_observe = CycleAdmission._authorization, CycleAdmission.observe
+    policy = selected['budget']
+
+    def exhaust(selected_boundary):
+        if selected_boundary == boundary and (admission.folder / 'intent.json').exists() and not delayed:
+            delayed.append(True)
+            remaining = training_cycles.budget_clock.remaining(authorized['authorization']['clock'], policy['wall_seconds'])
+            time.sleep(max(0, remaining - policy['cleanup_seconds']) + .05)
+
+    def synchronize(directory):
+        if directory == admission.folder:
+            exhaust('directory')
+        return sync(directory)
+
+    def check(candidate):
+        original_check(candidate)
+        exhaust('final-check')
+
+    def observe(candidate, **options):
+        result = original_observe(candidate, **options)
+        exhaust('stop-observation')
+        return result
+
+    monkeypatch.setattr(training_cycles, '_sync_directory', synchronize)
+    monkeypatch.setattr(CycleAdmission, '_authorization', check)
+    monkeypatch.setattr(CycleAdmission, 'observe', observe)
+    arguments = (state, 'demo', 'controller', authorized['authorization_sha256'], authorized['project_revision'])
+    prepared = training_cycles.prepare_controller(*arguments)
+    assert delayed == [True] and prepared['cycle']['status'] == 'exhausted'
+    assert prepared['cycle']['work_remaining_seconds'] <= 0
+    assert prepared['cycle']['authorization'] == authorized['authorization']
+    original = {p: p.read_bytes() for p in admission.directory.rglob('*') if p.is_file()}
+    with pytest.raises(ValueError, match='deadline has passed'):
+        training_cycles.prepare_controller(*arguments)
+    assert {p: p.read_bytes() for p in admission.directory.rglob('*') if p.is_file()} == original
+
+
 def save_controller_binding(admission):
     from ergora.training_execution_protocol import BUDGET_TASK_QUEUE
 
