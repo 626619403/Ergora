@@ -118,3 +118,29 @@ run 为 [Portability 43684533043](https://github.com/626619403/Ergora/actions/ru
 另直接读留存的 `pre-publication-ref-r1.json`、stdout／stderr：原 `git ls-remote --exit-code` 退出 0，stdout 是完整 ac86043 加原分支 Ref，stderr 空。stdout SHA256 为 `2f3829f22ea48505368ecef3b886394f0bf556354c2477f0d2e6223ed77e40a6`。它只证明留存的发布前观察仍指向旧 HEAD，本 reviewer 没有发起新网络请求，也不把它称为修复提交的远端认证。
 
 **固定待发布范围需求／维护性两轴均 approve，开放 0／0，R1 关闭保持。** 这是实际暂存范围和状态记账续核；新 commit tree、普通 push 后的完整远端 Ref、该精确候选自己的 CI 终态及真实 Windows 读取仍待同片核实。原 ac86043 的 Windows 失败、所有本地／安装证明范围和后继控制器实施门禁保持，不提前记作精确交付闭合。
+
+## 固定普通发布 e09fd60：两轴 approve，自己的 CI 未知
+
+同片续核已直接读取 Git commit/tree：`e09fd60a635f16e9265b18d1529c4934e687f303` 只有一个父节点 `ac86043d9e11983750bf63b90c0dfcbeea05ea41`，tree 为 `966ca4edcb2a1594e3009b1e3095f0499815617e`。相对父节点恰好改变本片 13 件，逐份 blob OID／mode／长度／SHA256 与 `publication-staged-r2.json` 完全相同，仍全部为普通 `100644`。未修改产品、脚本、CI、依赖、业务项目或冻结参考。
+
+最终 staged-r2 清单为 35,232B／SHA256 `9ea740128a692523607611639d36797acffabe9e013fb54a9d6821e1bf3c32ba`；`staged-r2.diff` 为 140,391B／SHA256 `533a92e2b03d2913cca33e427c7e511c437adcdef997cb3d3a14a125eb268663`，与实际父节点到 commit 的完整 binary diff 逐字相同。r1→r2 清单逐项比较只有本报告改变：纳入前节续核后的 17,733B／SHA256 `c2a1d237d9f2a1feac2b7443a877d2e72a5a8e334153d173f5f2dcde17c1983b`，committed blob 为 `9acf967ddcad48b2c46306485dfb84ea4c664c85`；其余 12 个条目完整保持。固定 commit 的 242 个相对引用目标经 Git tree 再核均存在，完整 commit diff-check 通过。
+
+直接读 `publication-r1.json` 和 commit／push／remote-ref 的原 stdout、stderr。三个原命令 exit 0；普通 push 输出为 `ac86043..e09fd60 HEAD -> refactor/architecture-foundations`，没有强推或合并 main。完整 SSH Ref 原 stdout 恰好为 e09fd60 加原分支，stderr 空。发布驱动在 commit 后、push 前检查工作树 clean，最终记录在这些检查及 Ref 比较通过后才落盘；本轮观察到的未提交差异也只有下述两件后加状态文档。相关原件身份为：publication JSON SHA256 `2f8ce801f336a610d6f324a6a75ebf3d0a2aaa2a1af3545e49a1f8dec59753e0`，push stderr `ce0529d105695105a329a2a8945f329c346bbba058d80e2cc71a799dbc36fdc2`，remote-ref stdout `5751fdf509524281fcac196bf718706b9f85bd46e67aa044c13c1d76587f2c08`。本 reviewer 仅核留存原件及本地 Git 对象，没有新发网络、commit 或 push。
+
+发布后的当前 PLAN／delivery 差异已直接读取，仅记录已普通发布、完整 Ref 相同及自己的 CI 查询受额度限制，未进入 e09fd60，也未改变测试／合同。本次补核时 PLAN SHA256 为 `7e3dd221ba1d5c4622da2d3dc426bb9c7edf198692e46ed8d7b95a4d29bc562c`，delivery 为 `0b401ded35ad1195714233b579960666ab26c5cc1b1c2a7227e902021c66295e`。本节追加前，本报告工作树仍精确等于上述 committed blob，原文前缀保持。
+
+本片首次 CI 查询原件是 `training-test-maintenance/ci-r1/20261115T070232554104Z-runs.json` 及 `-runs-http.json`。已核请求为匿名 GET 官方 actions/runs、head_sha 精确为 e09fd60，HTTP 403，原 body 280B／SHA256 `cab107d310af6137d3ca21f7de123c972a91cb1cbd91e2f58f61fe192ba31735` 与 metadata 相符；metadata SHA256 `7a55c13968ba7ae8fa905f4d583c82dc1244585884c610f15975b6c517e30de7`。官方 headers 的 remaining 为 0、reset `1794727379`，换算为 `2026-11-15T07:22:59Z`。这是读取额度失败，未提供可认证的新 run／attempt／job／步骤或终态；本报告不把未知 CI 称为成功、失败或已观察到 in_progress，也不绕鉴权或提前查询。
+
+**固定发布需求／维护性两轴 approve，开放 0／0，R1 关闭保持。** 本结论认证精确的已审候选、普通发布和留存的完整远端 Ref，不重新转授运行验收。e09fd60 自己的适用 CI、特别是真实 Windows 历史读取，仍须取得官方实际原件后同片续核；此前 ac86043 的失败与后继控制器产品门禁保持，尚未宣布精确 CI 接续闭合。
+
+## 自己的 CI 首次公开页归属：精确 e09，观察时仍在途
+
+已直接读本片 `ci-r1/20261115T070715546980Z-actions-page.html` 与 `-actions-page-http.json`，不以局部提取 JSON 代替原 HTML。metadata 记录匿名 GET 官方仓库 Actions 列表的原开发分支查询、HTTP 200，观察时间 `2026-11-15T07:07:17.630776Z`；原 HTML 为 320,113B／SHA256 `ac5cebf9ffc08f83412c466bc12320dde11be62e04a22d1e811b22d2e04c4961`，与 metadata 的长度／SHA 相符。metadata 本身为 5,973B／SHA256 `a60a7a7317aa5903101ef1a85759d1e365a0af04388f3dc0ff5eaa42dc078d76`。
+
+独立解析 `application/json` 的 `react-app.embeddedData`，得到当时列表内 25 条 workflow run，其中只有一条的完整 commit link 指向 e09fd60。该条为 [Portability 43688128824](https://github.com/626619403/Ergora/actions/runs/43688128824)、run number 234，workflow path `.github/workflows/portability.yml` 在固定 e09 tree 中存在；分支为 `refs/heads/refactor/architecture-foundations`，description 的完整 commit URL 精确包含 `e09fd60a635f16e9265b18d1529c4934e687f303`，action 为 `pushed`，createdAt 为 `2026-11-15T07:02:26Z`。其原 state 精确为 `WORKFLOW_RUN_STATUS_IN_PROGRESS`。
+
+上述字段与 `initial-public-page-r1.json` 逐项相同；该提取记录 SHA256 为 `1f85eeea370c32b69d43319ab0fc99997b3f7d0e4f259ec8530cbe15bd089dbf`。因此现在可认证该公开页观察中本片已有精确归属的在途 run；不能由此补出 API attempt、job／30 必要步骤或成功／失败终态。前节 403 原件及官方 reset 身份继续保留，本 reviewer 没有新网络请求或重发 API。自己的 CI 门禁仍开放，固定发布两轴 approve／开放 0／0 保持。
+
+追加前本报告仍为前节的 21,374B／SHA256 `60b79b6f76ac91a13dc3096d74700c70c2cc4e4a3b73a71f24c1377c2a727092`，原文保持。当前 HEAD 仍是固定 e09；`src`／`tests`／`scripts`／`.github`／`pyproject.toml` 相对 e09 无差异，暂存区为空。后加的 `docs/plans/2026-11-15-training-cycle-admission.md` 是未提交的后继纯计划，不在固定 e09 的 13 件或本次 CI 认证范围中；本轮不重审其具体设计。当前 PLAN 的后继准备段仍要求前置自己的 CI 与终核闭合后才实施，未将计划写成产品通过。
+
+本轮也已读 PLAN／本片 delivery 的公开页与固定发布状态追加：它们没有宣称 Windows 或整项 CI 成功。此时两件当前文档的 SHA256 分别为 `58020034b26fea9c1e4531ec5dc6dcf8f802a4d0d6fe6dad574d789e82509d1c` 与 `816e5f094c56562ea2f943d4965296ebfb2d4f201ddd230366212ca3d715bee5`；这些发布后状态及后继计划不反向混入已认证的 commit。
