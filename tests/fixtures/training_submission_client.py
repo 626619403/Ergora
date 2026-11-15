@@ -160,7 +160,7 @@ class Service:
         assert request.execution.run_id == run_id
         original = StartWorkflowExecutionRequest.FromString(base64.b64decode(record['request']))
         spec = (await converter.decode(original.input.payloads, [dict]))[0]
-        phase = 'CANCELLING' if scenario == 'nonqueued' else 'QUEUED'
+        phase = 'SUBMITTING' if scenario == 'submitting' else 'CANCELLING' if scenario == 'nonqueued' else 'QUEUED'
         job = 'another-job' if scenario == 'another-job' else 'local-perf-' + spec['binding']['experiment_id']
         return QueryWorkflowResponse(query_result=Payloads(payloads=await converter.encode([
             asdict(Status(phase, Binding(**spec['binding']), job, None, None))])))

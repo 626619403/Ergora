@@ -35,6 +35,9 @@ class Execution:
         if timeout <= 0:
             raise ValueError('Original computation budget is exhausted')
         client = await connect()
+        source = op.payload.get('cycle_operation')
+        if source is not None and client.namespace != source['activity_context']['service_namespace']:
+            raise ValueError('Execution runtime namespace differs from its authenticated SDK activity service')
         await budget.check_controller_history(client)
         found = await lookup(client, context['intent']['observation']['experiment']['spec'],
                              run_id=request['run_id'], timeout=timeout)
@@ -51,13 +54,22 @@ class Execution:
         op = self.operation
         if State(Path(op.payload['control_home'])).project(op.project['id'])['revision'] != context['intent']['project_revision']:
             raise ValueError('Project revision changed before explicit execution')
-        protocol.validate_context(context, chain)
+        parent = protocol.validate_context(context, chain)
         for path in (chain.folder.parent / 'started.json', chain.folder.parent / 'result.json',
                      chain.root / ('training/fences/' + op.ident + '.json')):
             if path.exists() or path.is_symlink():
                 raise ValueError('Native execution, result or fence already exists; do not execute again')
         if not Path(chain.owner['execution_capability']['native_python']).is_file():
             raise ValueError('Original native interpreter is unavailable')
+        source = op.payload.get('cycle_operation')
+        if source is not None:
+            protocol.cycle_execution_source(source, context['intent'])
+            if parent is not None:
+                parent.check()
+            # All synchronous source/identity reads above consume this same window.
+            # Coroutine cancellation cannot protect the following synchronous publish.
+            if protocol.cycle_operation_remaining(source) <= 0:
+                raise ValueError('Original execution request operation window is exhausted')
 
     async def request(self) -> dict:
         op, budget = self.operation, self.budget
