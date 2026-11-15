@@ -1224,7 +1224,7 @@ if workflow is not None:
             return value
 
         @workflow.signal
-        def request_stop(self, request: dict):
+        def request_stop(self, request):
             try:
                 self._capacity(request)
                 protocol.validate_cycle_activity_request(request, 'stop')
@@ -1273,7 +1273,7 @@ if workflow is not None:
                 activity_id=ident, task_queue=protocol.CYCLE_TASK_QUEUE,
                 schedule_to_close_timeout=timedelta(seconds=seconds),
                 start_to_close_timeout=timedelta(seconds=seconds), retry_policy=RetryPolicy(maximum_attempts=1),
-                cancellation_type=workflow.ActivityCancellationType.WAIT_CANCELLATION_COMPLETED)
+                cancellation_type=workflow.ActivityCancellationType.TRY_CANCEL)
             # Retrieving an eventual failure retains ownership even when independent stop finishes first.
             self._normal.add_done_callback(lambda done: None if done.cancelled() else done.exception())
             # Never await the activity directly: cancellation must reach run before H cleanup finishes.
@@ -1325,6 +1325,12 @@ if workflow is not None:
                 self._narrow_total(value['observation'], scheduled)
                 return None
             facts = value['facts']
+            if (facts is None and value['status'] == 'unknown' and action == 'request-execution-or-observe'
+                    and self._state['request_scheduled'] and self._work is not None):
+                # H can publish, then lose its completion frame. The authenticated
+                # cold envelope may only narrow total; the consumed request stays consumed.
+                self._narrow_total(value['observation'], scheduled)
+                return None
             protocol._exact(facts, ('source_operation_id', 'budget', 'candidate', 'submission',
                 'execution', 'runtime', 'native', 'request_outcome'), 'Cycle candidate facts')
             records = [value['inspection'], *value['operations']]
@@ -1433,6 +1439,8 @@ if workflow is not None:
             return facts
 
         def _next(self, facts, observed):
+            if not self._guard():
+                return None
             candidate, submitted, execution, runtime, native = (facts[key] for key in
                 ('candidate', 'submission', 'execution', 'runtime', 'native'))
             if (submitted['state'] == 'rejected' or execution['state'] == 'unknown'
@@ -1451,7 +1459,7 @@ if workflow is not None:
                         or runtime['phase'] in ('RELEASE_EXPIRED', 'INTEGRATION_TASK_CREATED') and runtime['terminal'] is True)):
                 self._state.update(phase='FIRST_ROUND_OBSERVED', outcome='first_round_observed_c1d_required')
                 return None
-            positive = (observed and facts['budget']['state'] == 'valid' and self._guard()
+            positive = (observed and facts['budget']['state'] == 'valid'
                         and candidate['current_project_matches'] is True and candidate['parent_stop_visible'] is False)
             if submitted['state'] == 'not_recorded':
                 if positive and not self._state['start_scheduled'] and not self._existing_execution:

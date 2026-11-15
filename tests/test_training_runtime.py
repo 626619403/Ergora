@@ -646,8 +646,9 @@ def test_cycle_workflow_delays_request_and_keeps_the_first_round_gate(cycle_work
     assert not h.scheduled('stop')
 
 
-@pytest.mark.parametrize('effect', ['start', 'request-execution-or-observe'])
-def test_cycle_workflow_lost_effect_completion_never_regrants_its_command(cycle_workflow, effect):
+@pytest.mark.parametrize('effect,completion', [('start', 'failure'),
+    ('request-execution-or-observe', 'failure'), ('request-execution-or-observe', 'partial-envelope')])
+def test_cycle_workflow_lost_effect_completion_never_regrants_its_command(cycle_workflow, effect, completion):
     h = cycle_workflow()
     cold = h.activity(h.start())
     if effect == 'start':
@@ -658,10 +659,15 @@ def test_cycle_workflow_lost_effect_completion_never_regrants_its_command(cycle_
         command = h.activity(h.result(observe, h.envelope(submitted=True, queued=True), at=3))
     from temporalio.api.failure.v1 import ActivityFailureInfo, Failure, TimeoutFailureInfo
     from temporalio.bridge.proto import activity_result as ar, workflow_activation as wa
-    failure = Failure(message='Completion unavailable', activity_failure_info=ActivityFailureInfo(),
-                      cause=Failure(message='RPC deadline', timeout_failure_info=TimeoutFailureInfo()))
-    commands = h.activate(resolve_activity=wa.ResolveActivity(seq=command.schedule_activity.seq,
-        result=ar.ActivityResolution(failed=ar.Failure(failure=failure))))
+    if completion == 'failure':
+        failure = Failure(message='Completion unavailable', activity_failure_info=ActivityFailureInfo(),
+                          cause=Failure(message='RPC deadline', timeout_failure_info=TimeoutFailureInfo()))
+        commands = h.activate(resolve_activity=wa.ResolveActivity(seq=command.schedule_activity.seq,
+            result=ar.ActivityResolution(failed=ar.Failure(failure=failure))))
+    else:
+        partial = h.envelope(effect, submitted=True, queued=True)
+        partial.update(status='unknown', facts=None)
+        commands = h.result(command, partial)
     observe = h.activity(h.timer(commands, at=4))
     # Even an absent request after a scheduled command cannot grant that effect again.
     value = h.envelope(submitted=effect != 'start', queued=effect != 'start')
@@ -691,6 +697,45 @@ def test_cycle_workflow_budget_uses_schedule_time_and_v1_only_narrows_total(cycl
     assert not h.scheduled('request-execution-or-observe')
 
 
+@pytest.mark.parametrize('boundary', ['work', 'history-events', 'history-bytes', 'ordinary-count'])
+def test_cycle_workflow_final_facts_cannot_bypass_the_stop_guard(cycle_workflow, boundary):
+    h = cycle_workflow()
+    cold = h.activity(h.start())
+    commands = h.result(cold, h.envelope(submitted=True), at=1)
+    final_ordinal = 256 if boundary == 'ordinary-count' else 2
+    for ordinal in range(2, final_ordinal):
+        observe = h.activity(h.timer(commands, at=ordinal))
+        commands = h.result(observe, h.envelope(submitted=True), at=ordinal)
+    observe = h.activity(h.timer(commands, at=final_ordinal))
+    timeout = observe.schedule_activity.schedule_to_close_timeout.ToTimedelta().total_seconds()
+    remaining = timeout / 4
+    received = final_ordinal + remaining * 2
+    assert received - final_ordinal < timeout
+    final = h.envelope(submitted=True, queued=True)
+    final['facts']['native']['state'] = 'SUCCEEDED'
+    final['facts']['runtime']['phase'] = 'AWAITING_RELEASE'
+    final['facts']['execution'].update(state='stopped', request_sha256='f' * 64,
+        record_sha256={'request': 'f' * 64, 'stopped': 'e' * 64},
+        reap_record_observed=True, durable_stop_confirmed=True, executor_stop_confirmed=True)
+    changes = {}
+    if boundary == 'work':
+        final['facts']['budget']['work_remaining_seconds'] = remaining
+        assert received > final_ordinal + remaining
+    elif boundary == 'history-events':
+        changes['history_length'] = 8000
+    elif boundary == 'history-bytes':
+        changes['history_size'] = 8 * 1024 * 1024
+    commands = h.result(observe, final, at=received, **changes)
+    assert not any(c.HasField('complete_workflow_execution') for c in commands), (h.query(), len(h.scheduled('stop')))
+    stop = h.activity(commands)
+    assert stop.schedule_activity.task_queue == 'ergora-training-cycle-stop-v1'
+    assert stop.schedule_activity.schedule_to_close_timeout.ToTimedelta().total_seconds() > 0
+    commands = h.result(stop, h.envelope('stop'), at=received + remaining)
+    outcome = h.converter.from_payloads([next(c.complete_workflow_execution.result for c in commands
+                                            if c.HasField('complete_workflow_execution'))])[0]
+    assert outcome['outcome'] == 'needs_reconciliation' and len(h.scheduled('stop')) == 1
+
+
 @pytest.mark.parametrize('cancel', [False, True])
 def test_cycle_workflow_stop_bypasses_pending_normal_and_survives_repeated_cancel(cycle_workflow, cancel):
     h = cycle_workflow()
@@ -707,6 +752,92 @@ def test_cycle_workflow_stop_bypasses_pending_normal_and_survives_repeated_cance
     assert len(h.scheduled('stop')) == 1
     assert any(c.HasField('cancel_workflow_execution') for c in commands)
     assert h.query()['stop_durable'] is h.query()['admission_drained'] is None
+
+
+def test_cycle_workflow_evicts_after_stop_before_normal_cancellation_ack(cycle_workflow, tmp_path):
+    import subprocess
+    from google.protobuf.json_format import MessageToDict
+    from temporalio.api.common.v1 import Payloads
+
+    h = cycle_workflow()
+    events = []
+
+    def payloads(value):
+        return MessageToDict(Payloads(payloads=h.converter.to_payloads([value])))
+
+    def event(kind, attributes, at=0):
+        ident = len(events) + 1
+        events.append({'eventId': str(ident), 'eventTime': f'2026-01-01T00:00:{at:02d}Z',
+            'eventType': 'EVENT_TYPE_' + kind, **attributes})
+        return ident
+
+    def workflow_task(at):
+        scheduled = event('WORKFLOW_TASK_SCHEDULED', {'workflowTaskScheduledEventAttributes': {
+            'taskQueue': {'name': 'ergora-training-cycle-v1'}, 'startToCloseTimeout': '10s', 'attempt': 1}}, at)
+        started = event('WORKFLOW_TASK_STARTED', {'workflowTaskStartedEventAttributes': {
+            'scheduledEventId': str(scheduled), 'identity': 'test-worker'}}, at)
+        return event('WORKFLOW_TASK_COMPLETED', {'workflowTaskCompletedEventAttributes': {
+            'scheduledEventId': str(scheduled), 'startedEventId': str(started),
+            'sdkMetadata': {'coreUsedFlags': [2, 3, 1]}}}, at)
+
+    def activity(action, ident, request, completed_task, timeout, at):
+        return event('ACTIVITY_TASK_SCHEDULED', {'activityTaskScheduledEventAttributes': {
+            'activityId': ident, 'activityType': {'name': 'ergora.training_cycle.' + action},
+            'taskQueue': {'name': 'ergora-training-cycle-stop-v1' if action == 'stop.v1'
+                          else 'ergora-training-cycle-v1'}, 'input': payloads(request),
+            'scheduleToCloseTimeout': f'{timeout}s', 'startToCloseTimeout': f'{timeout}s',
+            'workflowTaskCompletedEventId': str(completed_task), 'retryPolicy': {'maximumAttempts': 1}}}, at)
+
+    def complete_activity(scheduled, value, at):
+        started = event('ACTIVITY_TASK_STARTED', {'activityTaskStartedEventAttributes': {
+            'scheduledEventId': str(scheduled), 'attempt': 1}}, at)
+        event('ACTIVITY_TASK_COMPLETED', {'activityTaskCompletedEventAttributes': {
+            'scheduledEventId': str(scheduled), 'startedEventId': str(started), 'result': payloads(value)}}, at)
+
+    # SDK Core, rather than a hand-authored resolve activation, owns the local
+    # cancellation result. The server has not acknowledged normal cancellation.
+    event('WORKFLOW_EXECUTION_STARTED', {'workflowExecutionStartedEventAttributes': {
+        'workflowType': {'name': 'TrainingCycleWorkflow'}, 'workflowId': 'parent',
+        'taskQueue': {'name': 'ergora-training-cycle-v1'}, 'input': payloads(h.original),
+        'workflowTaskTimeout': '10s', 'originalExecutionRunId': 'parent-run',
+        'firstExecutionRunId': 'parent-run', 'attempt': 1}})
+    request = {'workflow_input': h.original, 'ordinal': 0}
+    cold = activity('observe-candidate.v2', 'candidate-0-1', request, workflow_task(0), 10, 0)
+    complete_activity(cold, h.envelope(), 1)
+    normal = activity('start.v1', 'candidate-0-2', request, workflow_task(1), 10, 1)
+    event('WORKFLOW_EXECUTION_CANCEL_REQUESTED', {'workflowExecutionCancelRequestedEventAttributes': {}}, 2)
+    stopping = workflow_task(2)
+    stop = activity('stop.v1', 'cycle-stop', {'workflow_input': h.original, 'reason': 'workflow_cancelled'},
+                    stopping, 1098, 2)
+    event('ACTIVITY_TASK_CANCEL_REQUESTED', {'activityTaskCancelRequestedEventAttributes': {
+        'scheduledEventId': str(normal), 'workflowTaskCompletedEventId': str(stopping)}}, 2)
+    complete_activity(stop, h.envelope('stop'), 3)
+    event('WORKFLOW_EXECUTION_CANCELED', {'workflowExecutionCanceledEventAttributes': {
+        'workflowTaskCompletedEventId': str(workflow_task(3))}}, 3)
+    history = tmp_path / 'cancel-before-normal-ack.json'
+    history.write_text(json.dumps({'events': events}), encoding='utf-8')
+    # A broken eviction can leave Replayer waiting indefinitely, so isolate only
+    # the real SDK replay in a bounded child and retain its exact error on failure.
+    script = '''import asyncio, sys
+from pathlib import Path
+sys.path.insert(0, sys.argv[1])
+from temporalio.client import WorkflowHistory
+from temporalio.worker import Replayer
+from ergora.reference_training_worker import create_cycle_workflow
+async def replay():
+    history = WorkflowHistory.from_json('parent', Path(sys.argv[2]).read_text())
+    await Replayer(workflows=[create_cycle_workflow()]).replay_workflow(history)
+    print('REPLAY_AND_EVICTION_COMPLETED', flush=True)
+asyncio.run(replay())
+'''
+    command = [sys.executable, '-I', '-B', '-c', script, str(Path(training.__file__).resolve().parent.parent), str(history)]
+    try:
+        replay = subprocess.run(command, capture_output=True, text=True, timeout=10)
+    except subprocess.TimeoutExpired as error:
+        pytest.fail(f'SDK replay/eviction did not finish: {error.stdout!r}\n{error.stderr!r}')
+    assert replay.returncode == 0, replay.stdout + replay.stderr
+    assert 'REPLAY_AND_EVICTION_COMPLETED' in replay.stdout
+    assert 'Eviction processed, but' not in replay.stderr
 
 
 @pytest.mark.parametrize('bound', [{'history_length': 8000}, {'history_size': 8 * 1024 * 1024}])
@@ -736,6 +867,8 @@ def test_cycle_workflow_counts_failed_observations_and_stops_before_257(cycle_wo
 def test_cycle_workflow_signal_rejections_do_not_poison_the_next_valid_stop(cycle_workflow):
     h = cycle_workflow()
     cold = h.activity(h.start())
+    h.signal([])
+    assert h.query()['last_signal_rejection'] == 'signal_identity_or_shape_rejected'
     oversized = {'workflow_input': h.original, 'reason': ''}
     oversized['reason'] = 'x' * (32768 - len(json.dumps(oversized, separators=(',', ':')).encode()))
     assert len(json.dumps(oversized, separators=(',', ':')).encode()) == 32768
