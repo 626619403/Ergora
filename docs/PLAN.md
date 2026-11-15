@@ -4,7 +4,11 @@
 
 ## 当前检查点
 
-**活动b2b最终本地终核：** 已在原worker／protocol实现异步S-H操作、完整原snapshot及独立writer／逐owner通知／drain／原执行链观察；cycles／budget／reaper／native保持。新core／SDK各652逐字／283／依赖通过；原安装r1为30通过／1新测试观察条件失败，修正通知事件后同一产品r2精准1通过／29.25秒，旧失败保持。最终自身原模板43.807秒approve，652两安装／178冻结测试及38已知actor活匹配0已核；新的fresh-context最终本地两轴approve／开放0／0，R1依赖环和R2通知观察测试关闭；准备固定本地提交，尚未发布。本片交付见[记录](delivery/2026-11-15-training-cycle-stop-operations.md)，远端仍等43d自己的准确CI（限额reset10:23:02 UTC）。kernel专家继续在v3。
+**接续c1只读准备：** b2b已固定本地`1b8c2ed1e61258e97f0c39f38ea97a35fe66cd9b`／九staged blob与tree同一，本地／新的独立两轴闭合。已将独立cycle服务／总Workflow细分为[总投递、异步普通操作与真实服务边界、确定性Workflow、测量接受／索引](plans/2026-11-15-training-cycle-workflow.md)，先核receipt先后竞态与可选SDK的标准sandbox装载；当前只写计划，没有c1产品变更。新的fresh-context最终r2设计两轴approve／阻断0／0，进入c1a先固定总投递原件／准备用例，SDK投递另片，每步见[交付](delivery/2026-11-15-training-cycle-workflow.md)。kernel专家继续保留v3。
+
+**远端接续：** 43d自己的官方run43698966489／attempt1／push／准确SHA终态八job／30必要步骤success，原fresh reviewer已最终两轴approve／开放0／0；原403及中间态保持。b2a固定d1c7280已普通发布，原reviewer固定发布两轴approve／开放0／0，自己的run43704101013／attempt1／push／准确SHA在途；后继877e1e4与1b8c2ed仍逐片等前片准确CI／原reviewer门禁，不推当前HEAD冒充前片。
+
+**活动b2b最终本地终核：** 已在原worker／protocol实现异步S-H操作、完整原snapshot及独立writer／逐owner通知／drain／原执行链观察；cycles／budget／reaper／native保持。新core／SDK各652逐字／283／依赖通过；原安装r1为30通过／1新测试观察条件失败，修正通知事件后同一产品r2精准1通过／29.25秒，旧失败保持。最终自身原模板43.807秒approve，652两安装／178冻结测试及38已知actor活匹配0已核；新的fresh-context最终本地两轴approve／开放0／0，R1依赖环和R2通知观察测试关闭；已固定本地1b8c2ed／九blob与tree同一，尚未发布。本片交付见[记录](delivery/2026-11-15-training-cycle-stop-operations.md)，远端仍等43d自己的准确CI（限额reset10:23:02 UTC）。kernel专家继续在v3。
 
 **b2b源码r1失败／修正中：** 原接缝与完整架构终态19通过／3失败／42.84秒；真实依赖环来自cycles反向导入worker／submission，将把异步编排与目标意图职责放回原worker边界。两新测试环境问题分别为双owner复用单Experiment服务替身、错误读取create结果。原失败完整保留，冷stopped截止及spawn／后代取消已局部通过，不代表fan-out整体通过。修正后r2终态22通过／57.23秒且运行前后源码同一，原架构／真实双owner并发／取消／耗尽通过；r3归档身份拒绝／缺失安装实际pidfd及原人工release两项通过；新两安装各652／283／依赖通过，安装r1为30通过／1新测试失败（把通知等同12秒内退出），原H已精确notified；改按实际pidfd事件与原独立收尾分别观察。自身原模板48.863秒approve、core实际inspect1.059秒通过；同一产品r2精准修正项1通过／29.25秒、原r1其余30项保持；最终模板／原件收尾／独立结论仍待，kernel专家保留v3。
 

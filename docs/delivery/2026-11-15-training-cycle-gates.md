@@ -85,3 +85,7 @@ b1本地实施／验收／审查闭合，接下来普通提交／推送当前开
 已普通提交／推送`43d215af0ed372d7d1502bbe244b5631ee6d9b24`，parent为07cbae，tree为`a7e17fcd1dd29e80c9fa1607fae93a8c34869e2a`；24份已审staged blob与Git对象逐字一致，原报告前缀保留，实际post-push完整SSH Ref相同。没有合入main或推送后继产品。私有`staged-publication-b1.json`、`publication-b1-local.json`与`publication-b1-remote.json`保留身份。
 
 自己的官方CI第一次查询为09:22:55 UTC匿名REST403／remaining0／reset09:23:01，原件保留；重置后09:23:47 UTC查询200，精确run **43698966489／attempt1／push**匹配本提交完整SHA及本分支，当前in_progress。未给终态CI成功结论，也不借前片自己的成功。原HTTP与完整响应分别在私有`ci-b1/20261115T092253998868Z-*`与`ci-b1/20261115T092347821198Z-*`。同reviewer固定发布核验已请求；完整CI终态待。
+
+## b1自己的终态CI闭合
+
+限额reset后官方200原runs／jobs已确认唯一run43698966489／attempt1／push／43d215af0ed372d7d1502bbe244b5631ee6d9b24／本分支终态success，八job与30必要step全部success。原fresh reviewer直接按固定43d的workflow／六Linux组核自己的job head SHA、attempt和必要步骤，并再次核652固定Git产品／原r3 wheel与两安装、177冻结输入；最终需求／维护性两轴approve／开放0／0。原403与中间态保持，当前后继HEAD未纳入。报告追加后30,539B／SHA256 `8d26f9182346519f09fb3dc96f78a6df4a8b146586c5e84c1fa4eda425e83597`，26,693B原前缀保持。b1精确交付门禁闭合；b2a随后才普通发布并验自己的CI。

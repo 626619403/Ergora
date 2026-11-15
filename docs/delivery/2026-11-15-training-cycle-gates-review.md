@@ -107,3 +107,26 @@ The original post-push SSH record reports the complete same branch Ref. A fresh 
 **Fixed-publication requirement verdict: approve. Fixed-publication maintainability verdict: approve. Open findings: 0 / 0; R1 remains closed.** No new tests, installs, commits or network writes were performed in this verification.
 
 CI is still a separate open gate. The initial official REST 403/rate-limit response remains retained at its original identity and is not a failed or passed run. The later official 200 response identifies [this commit's own run `43698966489`](https://github.com/626619403/Ergora/actions/runs/43698966489), attempt 1, event `push`, branch `refactor/architecture-foundations`, exact full head SHA above, Workflow `Portability`. Its observed status is `in_progress`, conclusion null, so there is no terminal CI decision here. The later response and summary are `ci-b1/20261115T092347821198Z-runs{,-http}.json` and `-summary.json`. Final CI closure awaits that exact attempt's terminal job/required-step results; no earlier slice's CI is inherited. All b2/c1/public-interaction and real-training limitations above remain unchanged.
+
+## Own CI terminal verification and final b1 closure
+
+**Requirement compliance: approve. Maintainability: approve. Open findings: 0 / 0. R1 remains closed.** The same reviewer has now verified b1's own terminal CI, completing this slice's local, fixed-publication and CI gates for **`43d215af0ed372d7d1502bbe244b5631ee6d9b24`** only. The earlier pending-CI statements above remain their original checkpoint observations.
+
+The original official responses `ci-b1/20261115T102313403170Z-runs.json` / `-jobs.json`, their HTTP records and summary were inspected directly. Both requests returned HTTP 200 on the official GitHub API, at 10:23:14/15 UTC. The run response contains exactly one matching Workflow: repository and head repository `626619403/Ergora`, Workflow `Portability` / `.github/workflows/portability.yml`, run [43698966489](https://github.com/626619403/Ergora/actions/runs/43698966489), attempt 1, event `push`, branch `refactor/architecture-foundations`, exact full head SHA above. Its terminal status is `completed`, conclusion `success`, updated at 09:49:18 UTC. The jobs response contains exactly eight jobs; every job independently names this same run, attempt and complete head SHA and is `completed` / `success`.
+
+The reviewer derived the expected matrix and named required steps from the Workflow and six Linux groups in the fixed 43d Git objects, rather than relying on the helper's summary alone:
+
+|Actual job scope|Successful jobs|Successful required steps|
+|---|---:|---:|
+|Plan / explicit groups|1|1|
+|Ubuntu Python 3.11, groups 0–5|6|24|
+|Windows Python 3.12, full group|1|5|
+|Total|8|30|
+
+Every required step occurs exactly once and is `completed` / `success`: explicit group planning; each native job's wheel build/install, packaged reference identity, application regression and observation upload; plus the Windows PowerShell 5.1 installer/upgrade. The six Linux skips of that Windows-only installer step match its original platform condition and are not counted as successful required steps. All remaining reported steps are also successful; no step anomaly was found. The raw jobs SHA256 is `70175758dac28e08417b603e72e15a6e08c5959deb3faba56bacde8762de931d`; run-response SHA256 is `2c80ae47240dd486f9c9c2aed598f65a63f781c717d1afe70262519fd7cc0b62`.
+
+The fixed commit/tree were used for source identity throughout this follow-up. All 652 committed product files still equal b1's retained r3 wheel, both retained installed package trees and package manifests; all 177 retained test/example inputs still equal their recorded hashes and the fixed commit's originals. The wheel remains `48ab4fd07464abbae67703ec512411e3d651cd30361ac3d33f4014c6373928e7`. Current local HEAD `1b8c2ed1e61258e97f0c39f38ea97a35fe66cd9b` contains successor work and was explicitly excluded from b1 source and CI acceptance. No product edit, installation, suite rerun or new network request was performed for this terminal review. The independent comparisons, per-job/step identities and hashes of the original responses are retained in `product-audit/terminal-ci-verification-b1.json`.
+
+The original rate-limit 403 responses and intermediate `in_progress` observations remain retained with their original response identities. They were neither CI failures nor terminal approvals and have not been overwritten or reassigned. This final decision covers the inspected official run/job/step conclusions; it does not claim download or inspection of full CI logs or artifact contents. The complete 26,693-byte preceding review prefix is preserved.
+
+**b1 delivery gates are closed for fixed 43d.** This conclusion grants no CI acceptance to successor local commits or later b2/c1/public-interface slices, and makes no GPU, real-training, numerical, quality or performance claim. The previously recorded b1 scope and limitations remain in force.
