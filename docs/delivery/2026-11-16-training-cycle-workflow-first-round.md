@@ -1,6 +1,6 @@
-# c1c 首轮 TrainingCycleWorkflow 实施准备
+# c1c 首轮 TrainingCycleWorkflow 实施与验证
 
-日期：2026-11-16。状态：**只读准备完成，等待主控闭合 c1b2b 真实现场／完整产品终审并明确发出实施信号。** 本轮唯一写入为本记录；未改产品、tests、主 PLAN、他人报告或 283 reference，未构建、安装、执行测试、启动服务、访问业务训练仓库或 commit/push。
+日期：2026-11-16。当前状态：**r4 正式类及核心分支已实现，fresh 源码两轴 approve／0，新 core／SDK 安装身份、52 项安装检查及自身原模板 Codex 审查通过；真实独立服务已启动，正式首轮及恢复现场尚待完成。** 以下至“W0–W10 执行次序”为此前只读准备的原始记录；当时唯一写入为本页，未改产品或运行验收。实施接续及准确候选另见末节。
 
 权威要求为[首轮详细设计](../plans/2026-11-16-training-cycle-workflow-first-round.md)和[独立设计审查](2026-11-16-training-cycle-workflow-first-round-design-review.md)。已读根、src、tests AGENTS、主 PLAN、组件协议及 `maintainable-project-delivery`、`ergora-codebase-quality` 的 owner／caller／测试接缝规则。本记录接续设计，不重做设计审查。当前设计文件 SHA256 为 `d01d5774d592e21178cdabc2a918a61c7ba7f32a673daf6ac321849b28a8dbcb`；独立报告内的 `104624…` 是其原审查样本，不改写历史身份。
 
@@ -55,3 +55,66 @@
 |8|W10：新candidate的新wheel、core／SDK site与输入冻结、283／依赖；正式默认sandbox真实首轮及代表性恢复／丢reply／取消；全自建进程、端口、Workflow收尾。新安装不能继承55029对新字节的认证。|
 
 随后更新本片状态与主 PLAN（由主控协调），提交完整实际差异／验证给新的 fresh reviewer 做需求／维护性两轴，并跑自身原结构模板。CPU受控runner只证明控制／执行链，GPU、训练质量、真实接受／两轮、公共入口和 WA 未决人工设计另属后继。当前下一步为等待主控提供实际 c1b2b 现场／终审结果和实施信号。
+
+## 首个核心实施候选与源码检查
+
+主控已确认前置完整终审／真实现场闭合，授权在独占 `training-cycle-workflow` 树实施，基线 `01ef69b71137df860e8fc433362d039ae241e744`、分支 `feat/training-cycle-workflow`。本次只改 `src/ergora/reference_training_worker.py` 与原 `tests/test_training_runtime.py`，不改 protocol／runtime／submission／execution、CI、依赖、283 reference 或业务仓库。主 PLAN 及后续新包／真实服务／自身模板／fresh 审查由主控协调。
+
+原 worker 现定义模块级 `TrainingCycleWorkflow` 和显式可选 SDK 工厂，normal Worker 注册本类，stop queue／两槽1:1／原budget8保持。类只消费原 v1/v2活动、纯 validator／converter 和 deterministic SDK API；固定六字段、父run／候选／Binding/job与原记录摘要，一次 start／request 的标记在command前消耗，v1仅缩total，A+remaining只缩不延，全部ordinary最多256，history8000／8MiB守界，独立stop只用已认证total。ordinary pending通过确定性wait持有；signal／取消先请求ordinary cancel并在同activation排独立stop，shield唯一stop后保留CANCELLED。旧stop无cycle汇总，返回封套亦不填durable／drain成功。无accepted、rounds或ordinal1行为。
+
+已执行的检查均为**源码＋SDK离线activation，未接真实server/history**：
+
+- 使用前片55029 SDK解释器 `-I -B`，显式将本树src/tests置于导入路径并核实际 worker 来源。真实默认 `SandboxedWorkflowRunner.prepare_workflow`及每例重新创建的默认sandbox实例均通过；类module/name/qualname准确。20项（16个新activation参数节点＋4个原SDK lifecycle节点）**20 passed／2.99秒**，完整runner4.40秒，stdout／stderr／JUnit在主仓库ignored `cw1` 的r1原件。
+- activation检查覆盖首轮等待／双QUEUED、三事实交错和c1d门、两种effect丢completion不重授、A起算／v1不放work、normal未完成先排stop／重复cancel、全部失败计256、两个history阈值、signal拒绝及原身份／budget／GATE_FAILED。activity结果在此接缝显式注入，不能冒称真实producer／native验收；history length／size也是SDK activation输入，真实server阈值及Replayer另验。
+- 后只增强原signal节点：compact JSON恰32KiB但完整Payloads含metadata越界，随后合法signal保持完整首reason；完成stop后typed outcome仍needs_reconciliation且三业务stop字段null。该节点新冻结 **1 passed／0.46秒**、完整runner1.86秒（r2）。未无依据重跑其余未变节点。
+- 现有core解释器实际无temporalio，显式导入本树worker成功，工厂明确拒绝缺SDK；另SDK解释器注入坏SDK内部依赖，原ModuleNotFoundError名称原样传播，未误当core可用。两次独立subprocess均exit0，命令／输出在 `w0-source-r1.json`。这仍是源码检查，不是新安装认证。
+- 两个修改文件的内存compile与 `git diff --check`通过；未写pyc。r2前后852项tracked src/tests/examples/scripts/pyproject输入的字节／SHA／模式相同，无产品或输入在运行中漂移。
+
+准确r1／r2冻结、完整binary diff、命令／环境／stdout／stderr／JUnit均存主仓库ignored `.ergora/checks/cw1/`。r2完整diff SHA256=`e21dcd9d8a88c1c437dd9d91510845e42dd92024635ff32d260bd4868a5b16b5`；worker raw=`f16d78e056cf866f1d2017e43f94e3e062a35ad4bc2b437d841969ee1c450fea`，runtime测试raw=`733f5a3e7b097178273e0e7dc054175b51ae0fc661012ab3d1392f5484dc3a8e`。这些是未终审的核心候选身份，不是发布或全片完成证明。
+
+尚未完成W0的新安装／真实Worker注册、W1／W2／W5的正式类真实服务／原件链、W3真实history replay／重启、W4 server暂停和最后BOOT gate、W7真实server阈值、W8真实服务容量与W9旧pin现场、W10全新wheel/core／SDK及统一资源收尾。前置CPU runner故意缺evidence而GATE_FAILED，只能用于负路径，不能充本片正常首轮；正常CPU终点须沿原完整证据合同另验，GPU／训练质量及c1d仍另片。
+
+主控已另授权仅为基线固定做本地WIP提交，再普通合入已独立通过的clock平台skip提交 `c52fc0a338118a19491ad7cd458b82cf2f146a9b`；该提交／合并及后继冻结状态待下节补记。下一步提供固定完整diff给主控启动新fresh源码两轴审查／自身模板和新包；不push，不将WIP称终审通过。
+
+## 固定WIP、合入平台skip与r3交接
+
+已按上述单独授权，将r2两文件固定为本地WIP `05f966597d1ddc932d3cc1c25b63362bc371a19e`；随后普通merge `c52fc0a338118a19491ad7cd458b82cf2f146a9b`，无冲突，得到HEAD `fa78747d6c6ca62935fe6a44aa6db143c362baad`。merge后最初clean。三方静态核实：WIP→merge的src/tests/scripts/.github/pyproject只多原runtime测试的 `import sys` 和已另审的Linux BOOT skip两行；worker逐字同一。c52→本片完整产品差异只有worker和原runtime测试；随merge进入隔离树的主控docs没有回写他人主文档。未push。
+
+最终freeze前发现一个具体W2回包边界：原H在request publication后丢completion frame，可返回完整unknown封套但facts=null，而非ActivityError。最小修补限于**本片已经发过唯一request、原work已认证、同一controller仍完整匹配**的这一回包：沿封套收窄total，转已有work内的只读observe，不能从null创建work／重授request。缺facts的cold仍不重新探测；其余认证失败保持保守停止。现有丢completion参数例只新增这一真实wire分支；没有扩大其它矩阵。
+
+该修补及参数例当前为fa78747上的两文件未提交差异，未作第二次未经单独授权的提交。主控用于源码fresh review的权威候选为 **fa78747＋r3完整冻结字节**，不能只读其HEAD当最终源码。ignored `.ergora/checks/cw1/` 中：
+
+- `freeze-r3.json`：固定HEAD／双亲／working status、权威主设计SHA及853项tracked src/tests/examples/scripts/.github/pyproject的字节／SHA／模式；新增一项相对r2来自明确补冻的 `.github`，没有把历史852改记为853。
+- `candidate-r3.diff`：相对c52的**完整**产品差异，包含WIP与后继修补，SHA256=`b88c3cd52cc5d910fa74bf960d73e8bd8e07284b43c6c442244ac9dc7a02fa03`；`working-r3.diff`另存只相对fa78747的后继差异。
+- r3 worker raw=`bbe0f58860847be48b7ffea3df01d9e7cc4430d65c8686e01bbd5e2949e594ce`；runtime测试raw=`469d8b754784d5caa3ce4dab565c0d5a9a66d73b5e4475072ad5af6bd06c1838`。`result-r3.json`／stdout／stderr／JUnit记录新实际源码导入、**21 passed／3.32秒**（17新activation节点＋4原lifecycle节点，完整runner7.28秒）、853项前后相同及完整diff未变。由于新增可达W2分支，重跑了本片核心接缝；没有跑全suite／native或服务。
+
+r3内存compile与相对c52的diff-check均通过，产品／测试只有预期两文件。当前实现／activation／新安装／真实服务／独立审查状态分别记账：本实施者接续仅负责源码、activation、静态核验及本交付；新的fresh源码两轴审查、新包、正式类真实W0–W10代表性验收、原结构模板及主PLAN由主控协调。没有自行启动Temporal、MLflow或训练，没有把55029的安装结果继承到新字节。
+
+正常CPU现场的原接缝为参考 `local/agent_platform/training_executor.py` 的trusted runner占位符 `{manifest}/{output}/{baseline_repo}/{candidate_repo}`，产出 `{output}/evidence.json` 后由原 `perfctl archive` 做完整gate。证据格式可查参考 `upstream/docs/evidence-format.md` 和 `templates/training-optimization/{evidence.json,runner-template.example.json}`。现有 `tests/fixtures/training_evidence_archive.py` 和参考 `upstream/demo.py` 均明确synthetic，前者还会重写fixture manifest／request，不可作为已授权运行中的真实runner。新CPU现场需先冻结适用检查／配对计量合同，由runner产真实CPU范围的原始记录／结构化检查／比较器输出与哈希；合成示例PASS不能填成训练质量或实测收益。当前仓库没有已核可直接复用的实测CPU正gate runner，该实际样例仍由主控现场片补齐或保留未验。
+
+## r4：fresh审查R1／R2的修前反例与最小修补
+
+fresh reviewer在r3指出两个可达问题；本实施者已复现并修补，**仍待原reviewer复核及全文审查结论，不自行关闭finding**。HEAD仍fa78747，当前两文件未提交；r3源码／wheel／自身模板证据保留原身份，不转记r4新字节。
+
+- **R1，完成路径绕过守界。** 原 `_next` 在terminal判定后才核guard，run又在后置guard前返回成功。新增一个真实默认sandbox activation回归，分别把同一完整终点放在work新截止已过、history8000 events、8MiB、ordinary256边界。work反例按实际SDK command timeout取remaining=timeout/4，R=A+2×remaining仍在原activity timeout内，却已过消费新样本得到的A+remaining；total保持正数。原r3产品raw未变，四参数均在“已经complete且stop0”的断言处失败，**4 failed／1.31秒**（runner2.79秒）。修补只将 `_guard()` 提到 `_next` 开头，在已认证facts消费之后、任何terminal完成／效果选择之前执行；去掉positive条件中的后置重复guard。修后四边界都立即排唯一独立stop并返回needs_reconciliation，不再以已停止executor代替控制器的守界。
+- **R2，非dict信号在handler前被SDK丢弃。** 在原signal拒绝节点增加一次 `h.signal([])`，原r3产品上 **1 failed／0.58秒**（runner1.95秒），query的last_signal_rejection为None；真实SDK日志明确因dict类型反序列化失败而drop signal。最小修补为移除handler参数dict注解，让原有完整容量／shape校验记录typed拒绝；该节点后续过容量、异身份和合法首reason的原检查保持，合法signal仍生效，不增加其它矩阵。
+
+修前命令／freeze／stdout／stderr／JUnit分别保存在ignored `cw1/*r4-before*`（R1）与 `cw1/*r4-r2-before*`（R2）；两次前后853输入完全相同，产品仍为r3 raw `bbe0f588…`。没有以假想反例替代真实失败，也没有修改旧证据。
+
+修后r4在同一既有SDK解释器 `-I -B`、明确本树src/tests导入下重新执行受影响核心接缝：**25 passed／3.85秒**（21新activation参数节点＋4原lifecycle节点，runner5.21秒）。包括新增四终点边界和增强signal节点；默认sandbox实际运行，activity结果／history计量仍是离线注入，不认证真实server/history或新包。两文件内存compile、相对c52的diff-check通过；853项冻结输入及完整diff运行前后不变。
+
+当前源码重审权威身份为 **fa78747＋r4冻结字节**：`candidate-r4.diff`（相对c52完整差异）SHA256=`edc532693b2eadfeb73f49dfe3b9520591fb7d65974bba00da3efa5e302700e6`；`freeze-r4.json` SHA256=`1a28aa876840e0373665b3e492a589ca7752c0839fe655d255235cde1dcf2899`。worker raw=`187bda497043f70512f2fa28e8c54403b2da1c493eafa2e804ae9304643bb09b`；runtime测试raw=`56f67f74aadbe8a0db53fd3ea7df22f9b2865327c104d8533871753e29c1e6a1`。命令与实际结果在 `result-r4.json`／stdout／stderr／JUnit，`working-r4.diff`另存相对HEAD差异。产品／测试仍只有这两文件；未commit、push、安装、启服务或改主PLAN／主审报告。交主控做fresh复核、r4新包及现场接续。
+
+## r4 源码复核、安装与真实现场准备
+
+[原 fresh reviewer 复核](2026-11-16-training-cycle-workflow-source-review.md)已确认 R1／R2 修正及原反例，源码需求／维护性均 approve、开放0；另独立驱动核到耗尽时只排一次 stop、原 total 不续，以及坏 signal 的 typed 拒绝／随后合法停止。结论不认证尚未执行的现场。
+
+r3 先构建非 editable wheel `a84e944cc16f6f0537e14e1836914f1eb83950ac0ddb7f03e738b1686ff4a859`；core／SDK 各663文件的 bytes／执行位与 source／wheel 一致，283参考及依赖通过。r3 自身结构审查模板实际 Codex 75.36秒 approve，完整16文件／587403字节和3份祖先资源实际进入642024字节stdin。该源码范围结论没有发现后由 fresh reviewer 复现的 R1／R2；保留原回复，不将其 approve 当作无缺陷证明。
+
+修后重新构建 wheel `7ee6cb43eefc682f0ace5f3732369156ade5cb78978c004062eb0c3e4a2bda67`，存于 ignored `cw1/package-r2/`。新 core／SDK 各663文件的 source＝wheel＝site-packages bytes／执行位全部一致；只有原 worker 相对 c52 改动，283参考和依赖检查通过；core实际无SDK，SDK1.34.0。新 core 导入成功，调用工厂以明确 `requires ergora[temporal]` 拒绝。冻结副本中的整个 `test_training_runtime.py` 在新 SDK 安装的实际 site-packages 导入下 **52 passed／54.96秒**（完整driver57.49秒），stdout／stderr／JUnit／命令及测试原 SHA 均保留于该目录，没有导入源码树。
+
+r4 自身原结构模板实际 Codex 41.27秒 approve；完整16文件／593079字节、原3份祖先资源实际进入651156字节stdin，stdin与冻结输入逐字一致。候选 input digest、原回复／运行ID均存 ignored `cw1/self-review-r2-codex/`。沿用户已授权回退，复用既有 Claude Code 420.60秒 timeout 事实，不宣称本次异后端成功；这些是完整提供文本的审查，不代替源码 fresh审查或真实服务。
+
+已通过原接口配置全新独立CPU测试项目、固定真实Git源码、实际输入／两份配置／独立整数oracle／原比较器及新manifest，没有使用synthetic archive helper补PASS。初次本地配置把 `allowed_paths` 写为 `.`，原native校验明确拒绝；改为四个实际文件路径后重新注册成功，未改产品校验。CPU样例的 fresh审查另发现外层 integration 缺candidate_commit，已在样例副本最小修正，正在用全新项目／baseline／manifest身份复核；未改旧immutable准备原件，也未投递该旧候选。
+
+真实现场当前仅启动原Supervisor管理的Temporal／MLflow及独立 `training-budget-worker`／`training-cycle-worker`，四服务均RUNNING，两个worker PID独立；其它执行服务未启。正常cycle Worker使用正式类及默认sandbox，stop仍独立queue／slot1，原预算slot8保持。尚未投递正式Workflow；真实首轮、history replay／重启／取消／容量／最后gate及最终全进程收尾仍开放。外部 `/proc` sampler只观察本次自建daemon及后代，最终按原件和完整进程身份核收尾，不扩大为OS隔离或GPU／训练验收。

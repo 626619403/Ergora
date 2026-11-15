@@ -4,7 +4,7 @@
 
 ## 当前检查点
 
-消费者已完整独立验收并真实导入`01ef69b71137df860e8fc433362d039ae241e744`，产品／脚本／CI／配置与固定bcc3048逐字同一；测试仅多已另审的Windows两行提前skip。wheel55029、2236收集／15安装／core真实只读、自身Codex及真实Temporal六活动／预算根／native CPU链通过，最终两轴approve／0；两CPU故意缺证据的原gate拒绝保持。171身份live0／unknown0、5固定Workflow自然结束及服务停止。联合候选`879654c5c0989e1880af85293296897a0d2b7089`已普通推送／精确远端同一，自己的push／attempt1 [43752183692](https://github.com/626619403/Ergora/actions/runs/43752183692)在途。旧863自己的43747795571失败保持，不借其Linux成功。c1c已在专属01ef树按W0–W10开始正式首轮Workflow实现；c1d仅并行细化详细设计，未开放ordinal1或测量接受。
+当前主树 `refactor/architecture-foundations` 已含消费者01ef及独立审过的BOOT平台skip c52。联合879自己的官方43752183692已failure：六Linux成功，Windows恰为已修四参数BOOT call错误；原失败保留，修正候选普通发布／自己的CI接续。c1c在专属树fa78747上形成r4：正式类、一次效果和恢复停止已实现，修前反例4+1失败、修后源码25通过，fresh源码两轴approve／0；新wheel7ee6的两安装663文件／283参考／依赖同一，安装runtime52通过、自身原模板Codex approve。四真实服务已启动，正在准备有独立审查和实际CPU测量的正gate首轮；正式Workflow、恢复／Replayer和统一收尾尚待，不开放ordinal1。c1d详细设计已独立两轴approve／0，仅设计，M0严格版本wire仍待。
 
 **c1b1已固定提交并通过身份终核。** 主分支 `refactor/architecture-foundations`，提交`d5b58912e4f20c96a52f7c0138b8c7c3d1a97b50`，实施基线 `a4371c8e19ddf32d5dbe1d57cf88f9e638baf373`。原预算根跨短S-H及正常loop退出／重启、唯一offer、existing-only、原一次窗口和只对账恢复已接通。原reviewer与自身模板发现的真实取消／receipt／最终deadline缺口已修；最终及固定提交独立需求／维护性均approve，开放0／0。新非editable core／SDK各652文件同一，283参考／25来源／依赖保持；安装r2 **76 passed／985.95秒**，同产品精准r3 **7 passed／153.70秒**，两轮各178输入冻结。SDK-free真实H观察、自身原模板真实Codex及已知原件收尾均通过。历史r1的62／8和r11输入身份限制保持；实际预算根父SIGKILL未实测。发布／准确CI仍另验，不认证总Workflow、自动多轮或训练质量。[计划](plans/2026-11-15-training-cycle-owner-lifecycle.md)／[交付](delivery/2026-11-15-training-cycle-owner-lifecycle.md)／[最终独立审查](delivery/2026-11-15-training-cycle-owner-lifecycle-review.md)。
 
