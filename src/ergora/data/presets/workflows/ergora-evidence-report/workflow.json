@@ -1,0 +1,63 @@
+{
+  "schema_version": 2,
+  "id": "ergora-evidence-report",
+  "version": "1.0.0",
+  "description": "A readonly evidence-report author; original machine records and explicit review/release remain separate.",
+  "resources": [
+    {
+      "id": "ergora-evidence-report-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "8930a4f971ec433ba9e2f6611f6642403f3b812ba0caf1f576b5c47234f35ed3"
+    }
+  ],
+  "permissions": {
+    "read": [
+      "definitions"
+    ],
+    "write": [],
+    "shell": false,
+    "network": []
+  },
+  "limits": {
+    "depth": 4,
+    "instances": 8,
+    "concurrency": 1,
+    "material_bytes": 131072
+  },
+  "inputs": [
+    "task"
+  ],
+  "outputs": {
+    "result": {
+      "node": "author",
+      "output": "result"
+    }
+  },
+  "nodes": [
+    {
+      "id": "author",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-evidence-report-author",
+        "version": "1.0.0",
+        "digest": "f82e5acec681e9f23506fad1289c179bca83d2253450d8ee7de85c92fbc37008"
+      },
+      "role": "implementer",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      }
+    }
+  ]
+}

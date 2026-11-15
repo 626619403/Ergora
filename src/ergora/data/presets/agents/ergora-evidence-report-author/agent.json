@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "id": "ergora-evidence-report-author",
+  "version": "1.0.0",
+  "description": "Readonly source-linked evidence reports with Markdown and self-contained HTML views.",
+  "roles": [
+    "implementer"
+  ],
+  "specialties": [
+    "evidence-reporting",
+    "source-provenance",
+    "static-html-reports"
+  ],
+  "backend": {
+    "tool": "codex"
+  },
+  "resources": [
+    {
+      "id": "ergora-evidence-report-author-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "cb14cdc4c93e40d9da2c2ff20f630b5bb59d6a19ee2c5a948df66f4e87373dca"
+    },
+    {
+      "id": "ergora-evidence-report-skill",
+      "kind": "skill",
+      "path": "skills/ergora-evidence-report",
+      "digest": "42968e4a057ce46801f45105b1b122bb3e2640540c846360da915ef3955d292f"
+    }
+  ]
+}

@@ -15,3 +15,7 @@ BR2已完成只读报告叶候选及一次真实Codex小报告，新的fresh-con
 两个分支都改preset目录索引，后续整合必须保留两者并验组合。用户再次要求防压缩遗失的[WA1–WA5](../plans/2026-11-15-workflow-evidence-and-human-gates.md)已登记，三路审计尚未启动；不会用BR1／BR2的窄结论替代全局工作流审计。
 
 BR2接续：新的独立reviewer已完成需求／维护性两轴approve／开放0／0；报告摘要为`bd78711c4d64155dea7a4bcce0d9d109eddc25f931cfdaba5b17c9f2c7add2a8`，未重跑模型或安装。WA1–WA3已利用释放槽位在固定a4371c8的三个独立工作树启动只读审计，主控继续c1b1；以上旧段落保留其当时时点。
+
+## 主线联合接续：2026-11-16
+
+BR1／BR2及README隔离两轴已通过，28项准确差异现已接入c1b1固定主线；新联合663包、BR50项／精准8项、CLI／完整资源及自身结构模板均通过，最终fresh联合审查／提交／发布仍待。[联合交付](2026-11-16-review-reporting-mainline-integration.md)保留准确原件与历史边界，不将隔离49＋1或原浏览器结果改记为本轮验收。

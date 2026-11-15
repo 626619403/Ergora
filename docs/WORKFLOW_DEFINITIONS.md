@@ -21,6 +21,7 @@ ergora composition install-preset refactoring-quality
 ergora composition install-preset optimization-performance-diagnosis
 ergora composition install-preset training-flow-map
 ergora composition install-preset training-optimization-v3
+ergora composition install-preset evidence-report
 ergora composition install-preset pretraining-review
 ergora composition install-preset posttraining-review
 ergora composition show ergora-large-change-delivery 1.0.0 --material
@@ -28,6 +29,8 @@ ergora agent definition show ergora-server-implementer 1.0.0 --material
 ```
 
 [预训练／后训练审查](TRAINING_REVIEW.md)复用通用三路审查并增加领域专家，独立叶调用和正式 all-join 分开说明。
+
+[证据报告作者](EVIDENCE_REPORTS.md)提供独立只读 `root/author`，从完整提供的材料生成 Markdown 与静态自包含 HTML 阅读视图。它复用下文的 manifest／单叶输入／原 run 读取，不采集证据、执行前驱或授予批准。
 
 `presets`只读发行内容，不创建State。`install-preset`沿依赖顺序导入精确版本；重复执行保持同一身份，已有同ID/version的不同内容会拒绝。各定义分别原子发布，整套安装不是跨库事务；中断后可重试。安装不改变项目绑定或权限，不安装/认证Agent CLI，也不授予执行或批准权限。新默认库的权威资源在 [data/presets](../src/ergora/data/presets/presets.json)，可以沿原export/new-version/import流程替换专家及子模板；已有examples的身份保持。
 
@@ -41,9 +44,10 @@ ergora agent definition show ergora-server-implementer 1.0.0 --material
 |refactoring-quality|`ergora-refactoring-template` 1.1.0|原重构流程及实例不变，父 Skill 补充目标仓库规范、实际依赖与测试接缝；显式选择新版本|
 |optimization-performance-diagnosis|`ergora-opt-performance-diagnosis-proposal`|同症状复现与兼容报告 reader；只读 design／profile→measurement 提案叶，原 runner 保留实验执行|
 |training-flow-map|`ergora-training-flow-map`|只读 `root/map` 分别产出算法／执行依赖图、状态生命周期和可证伪冗余假设；不自动运行后续专家或训练|
+|evidence-report|`ergora-evidence-report`|只读 `root/author` 生成来源绑定的 Markdown／静态 HTML 报告；原证据、运行记录与独立审查／release 保持|
 |training-optimization-v3|`ergora-training-proposal@3.0.0`|流程图谱 → 并行设计／诊断 → 保留 kernel 评估（可无需改算子）→ 测量审查；五叶均接原 task，完整前驱须显式提供，不自动调度|
-|pretraining-review|`ergora-pretraining-review`|原通用三路与预训练专家并列 required／all-join；领域叶可独立调用|
-|posttraining-review|`ergora-posttraining-review`|原通用三路与后训练专家并列 required／all-join；领域叶可独立调用|
+|pretraining-review|`ergora-pretraining-review` 1.0.1|原通用三路与预训练专家并列 required／all-join；共享后端说明由四叶继承；领域叶可独立调用|
+|posttraining-review|`ergora-posttraining-review` 1.0.1|原通用三路与后训练专家并列 required／all-join；共享后端说明由四叶继承；领域叶可独立调用|
 
 开发组合共用 `ergora-delivery-review`，它引用结构、正确性、测试价值三份可单独使用的子模板。每份专家有独立初始指令、专长和Skill，沿自己的结构父链完整装载资料。开发writer默认Codex，reviewer默认Claude Code；支持的后端可以逐实例明确覆盖。实际可用性和认证仍由调用准入核验；同后端回退需遵守所选多样性政策并记录原因。
 

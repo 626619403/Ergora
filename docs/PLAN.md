@@ -4,24 +4,26 @@
 
 ## 当前检查点
 
-**c1b1本地门禁已闭合，正在固定提交。** 主分支 `refactor/architecture-foundations`，实施基线 `a4371c8e19ddf32d5dbe1d57cf88f9e638baf373`。原预算根跨短S-H及正常loop退出／重启、唯一offer、existing-only、原一次窗口和只对账恢复已接通。原reviewer与自身模板发现的真实取消／receipt／最终deadline缺口已修；最终独立需求／维护性均approve，开放0／0。新非editable core／SDK各652文件同一，283参考／25来源／依赖保持；安装r2 **76 passed／985.95秒**，同产品精准r3 **7 passed／153.70秒**，两轮各178输入冻结。SDK-free真实H观察、自身原模板真实Codex及已知原件收尾均通过。历史r1的62／8和r11输入身份限制保持；实际预算根父SIGKILL未实测。固定提交／发布／准确CI仍另验，不认证总Workflow、自动多轮或训练质量。[计划](plans/2026-11-15-training-cycle-owner-lifecycle.md)／[交付](delivery/2026-11-15-training-cycle-owner-lifecycle.md)／[最终独立审查](delivery/2026-11-15-training-cycle-owner-lifecycle-review.md)。
+**c1b1已固定提交并通过身份终核。** 主分支 `refactor/architecture-foundations`，提交`d5b58912e4f20c96a52f7c0138b8c7c3d1a97b50`，实施基线 `a4371c8e19ddf32d5dbe1d57cf88f9e638baf373`。原预算根跨短S-H及正常loop退出／重启、唯一offer、existing-only、原一次窗口和只对账恢复已接通。原reviewer与自身模板发现的真实取消／receipt／最终deadline缺口已修；最终及固定提交独立需求／维护性均approve，开放0／0。新非editable core／SDK各652文件同一，283参考／25来源／依赖保持；安装r2 **76 passed／985.95秒**，同产品精准r3 **7 passed／153.70秒**，两轮各178输入冻结。SDK-free真实H观察、自身原模板真实Codex及已知原件收尾均通过。历史r1的62／8和r11输入身份限制保持；实际预算根父SIGKILL未实测。发布／准确CI仍另验，不认证总Workflow、自动多轮或训练质量。[计划](plans/2026-11-15-training-cycle-owner-lifecycle.md)／[交付](delivery/2026-11-15-training-cycle-owner-lifecycle.md)／[最终独立审查](delivery/2026-11-15-training-cycle-owner-lifecycle-review.md)。
 
 **前片CI修复已独立通过并推送，候选自己的CI尚未观察到。** 原 `1b8c2ed1e61258e97f0c39f38ea97a35fe66cd9b` 的官方run `43713822317`／push／attempt1保留七job成功、group5失败：测试在beta通知后过早读取writer marker。仅修原fixture到真实阻塞位置后通知及原子发布marker，旧受控反例失败／同fault修后通过，独立两轴approve／0。候选 `7025e15f40e1934097a5c1c962bb7bf5e82a979d` 已普通推送 `fix/cycle-stop-overlap-ci` 和符合原push规则的 `refactor/cycle-stop-overlap-ci`，两个精确远端ref同一；未改CI。最新一次官方精确SHA查询403／配额0，不证明无run或成功。主线尚未导入此fixture修复，保留c1b1的新分支再整合。[调查](delivery/2026-11-15-cycle-stop-ci-failure-investigation.md)／[前片交付](delivery/2026-11-15-training-cycle-stop-operations.md)。
 
-**BR1／BR2隔离组合已独立通过，待主线整合。** `.ergora/worktrees/review-reporting-integration` 已合并后端差异Skill、新预训练／后训练根和只读 `evidence-report`，catalog33，保留旧216资源及旧身份；663文件非editable包同一。安装49通过／1缺fixture，补原数据后精准1通过，分别保留。报告真实Codex原输出及headless Chromium桌面已看，390px窄屏70px溢出未通过。组合新独立两轴approve／0，README入口补充也通过；尚未提交、推送或联合c1b1安装，不能把隔离验收移给主线。[计划](plans/2026-11-15-backend-review-and-reporting.md)／[交付](delivery/2026-11-15-backend-review-and-reporting.md)。
+**BR／CI fixture联合本地门禁闭合，正在固定／发布。** 已接纳隔离组合的28项精确差异，保留主线五产品及所有旧资源，catalog33。新联合core／SDK非editable各663文件同一，283参考／依赖通过；216旧资源／旧对象／manifest／八输入保持。完整BR **50 passed／208.52秒**；同一178冻结输入下另跑CI／取消／并发候选 **8 passed／106.07秒**，未重跑c1b1总suite。三个preset真实CLI及报告完整资源通过；自身原结构模板真实Codex29.200秒approve。known markers／JSON原件的15完整进程身份当前活匹配0、unknown0。原报告390px下70px溢出保持，没有新浏览器质量认证。联合fresh两轴已approve／开放0／0；固定提交／普通发布及自己的准确CI仍待。[联合计划](plans/2026-11-16-review-reporting-mainline-integration.md)／[交付](delivery/2026-11-16-review-reporting-mainline-integration.md)。
 
-**c1b2a具体服务设计已获接口审计，待修订／独立终核。** [草案](plans/2026-11-15-training-cycle-service-boundary.md)与[接口审计](delivery/2026-11-15-training-cycle-service-design-audit.md)明确：补receipt前核真实SDK run；首版仅ordinal0新start；完整stop分支只引用存在原件、unknown内联；独立normal／stop queue各一槽，关闭先normal后stop且等待原资源。精确Supervisor期限／强杀unknown语义及typed封套还需固定，不能先实施；正式Workflow／sandbox和接受后继留c1c／c1d。
+**c1b2a服务r2设计两轴通过，隔离实施中。** [r2具体合同](plans/2026-11-15-training-cycle-service-boundary.md)及[原独立审计复核](delivery/2026-11-15-training-cycle-service-design-audit.md)已固定真实SDK来源／补receipt前核run、仅ordinal0新start、完整S-owned refs／父unknown内联、两queue各一槽、Supervisor70秒／强杀业务unknown及normal先关闭再stop实际收尾。独立分支`feat/training-cycle-service`以c1b1为产品基线，设计提交`b7193530f12363aeb0f68daddfa1a6f5774bc86d`。低强度子任务的服务命令／Supervisor接线已完成，源码services19通过／1平台skip、旧budget bootstrap1通过；高强度子任务仍实现原worker／protocol实际活动。两者尚未整体安装／真实queue／关闭验收，不认证总Workflow／sandbox／接受后继；主工作树的联合包身份不被隔离实现改变。
 
 **WA1–WA3 三份审计已收，WA4 详细方案仍为草案。** 用户新增的历史研究复用、任意循环、硬脚本／人工 Hook、调研设计前人类反复讨论与缺失公司知识提问均已[完整登记](plans/2026-11-15-workflow-evidence-and-human-gates.md)。[研究复用](delivery/2026-11-15-workflow-research-reuse-audit.md)、[实际 runtime](delivery/2026-11-15-workflow-runtime-capabilities-audit.md)、[设计／知识关卡](delivery/2026-11-15-workflow-design-knowledge-audit.md)审计明确现状：自有定义／StageDAG＋Temporal；受限嵌套串并行和既有批准／检查存在，通用 Repeat、任意非 Agent Hook和 typed 问题／答复／设计修订硬关卡尚未实现。已[汇总详细方案、客观验收和 D1–D4 产品取舍](plans/2026-11-15-workflow-design-and-execution-evolution.md)；先完成手头授权工作，再与用户讨论，不把设计写成已实施。
+
+WA4已于11月16日发起三项异步讨论：D1强制设计适用范围、D2／D3必答与决策修订规则、D4实施次序；等待真实答复，未默认确认。c1／BR及不依赖这些产品取舍的已授权工作继续。
 
 ## 接续顺序与可验收节点
 
 |优先／节点|下一步与完成标准|权威记录|
 |---|---|---|
-|P0 c1b1|本地安装r2／精准r3、SDK-free、自身模板和独立终核已通过；固定提交。源、安装、模型、独立、发布各自记账|[生命周期计划](plans/2026-11-15-training-cycle-owner-lifecycle.md)／[交付](delivery/2026-11-15-training-cycle-owner-lifecycle.md)|
+|P0 c1b1|已固定d5b5891且提交身份终核通过；随联合候选普通发布及准确CI另验。源、安装、模型、独立、发布各自记账|[生命周期计划](plans/2026-11-15-training-cycle-owner-lifecycle.md)／[交付](delivery/2026-11-15-training-cycle-owner-lifecycle.md)|
 |P0 前片 CI 修正|7025已独立通过／双ref推送；自己的CI待实际观察。将最小fixture修正整入后继，旧失败保留|[前片交付](delivery/2026-11-15-training-cycle-stop-operations.md)|
-|P0 BR1／BR2|隔离安装／原件／README和独立两轴通过；保留主线产品及新PLAN整合，联合安装与适用接缝另验，再发布|[BR计划](plans/2026-11-15-backend-review-and-reporting.md)|
-|P1 c1b2|实证独立 cycle service、normal-stop 配额、原 compute／control 窗口及 SDK标准sandbox；复用原 process／budget，不造新host或账本|[c1总计划](plans/2026-11-15-training-cycle-workflow.md)|
+|P0 BR1／BR2|联合663包、BR50＋精准8、自身模板／收尾及fresh独立两轴通过；固定／普通发布与自身CI|[BR计划](plans/2026-11-15-backend-review-and-reporting.md)|
+|P1 c1b2|r2设计通过，隔离实现原活动／双queue／关闭；实证独立服务与配额。正式Workflow／标准sandbox留c1c，复用原process／budget|[c1总计划](plans/2026-11-15-training-cycle-workflow.md)|
 |P1 c1c|接确定性总 Workflow的真实消费者，串接原候选／停止／恢复与取消；unknown不重发，旧人工运行保持|[c1总计划](plans/2026-11-15-training-cycle-workflow.md)|
 |P1 c1d|候选2之前必须有真实 phase、accepted archive、durable stopped、原多轮索引与质量门槛；CPU两轮不能代替真实训练|[c1总计划](plans/2026-11-15-training-cycle-workflow.md)|
 |P1 WA4→WA5a／b|与用户讨论详细设计和 D1–D4，保存答复／决定；具体设计／必答资料／修订硬关卡分片，先客观反例再实施|[设计演进方案](plans/2026-11-15-workflow-design-and-execution-evolution.md)|
