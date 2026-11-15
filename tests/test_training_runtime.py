@@ -5,6 +5,7 @@ import io
 import json
 from pathlib import Path
 import shutil
+import sys
 
 import pytest
 
@@ -298,6 +299,7 @@ def test_cycle_execution_sdk_rejects_untrusted_input_before_any_operation(monkey
             assert failed.value.type == 'cycle_activity_request_rejected' and failed.value.non_retryable
 
 
+@pytest.mark.skipif(sys.platform != 'linux', reason='SDK work windows use the original Linux boot clock')
 @pytest.mark.parametrize('control,wall,cleanup,attempt', [(30, 900, 170, 1), (2, 900, 170, 1),
                                                          (30, 4, 2, 1), (30, 900, 170, 2)])
 def test_cycle_execution_sdk_keeps_one_work_window_without_parent_file_reads(

@@ -1,6 +1,6 @@
 # c1c：正式 TrainingCycleWorkflow 首轮与恢复停止
 
-日期：2026-11-16。状态：**详细设计已取得fresh-context需求／可维护性两轴approve／开放0；仅设计层通过，未实施或运行验收。** 承接[原具体合同](2026-11-15-training-cycle-controller-contracts.md)、[c1实施顺序](2026-11-15-training-cycle-workflow.md)、[runtime消费者](2026-11-16-training-cycle-runtime-consumers.md)、[执行消费者r2](2026-11-16-training-cycle-execution-consumer.md)及其[独立设计复核](../delivery/2026-11-16-training-cycle-execution-consumer-design-review.md)。本片仅让原六字段总输入在真实 SDK 默认 sandbox 中驱动 ordinal=0；c1d 闭合前绝不派发 ordinal=1，不输出 measurement_accepted／selection_complete。
+日期：2026-11-16。状态：**详细设计fresh-context需求／可维护性两轴approve／0；固定消费者前置现已完整闭合并导入01ef，准备按W0–W10实施；正式Workflow尚无运行验收。** 承接[原具体合同](2026-11-15-training-cycle-controller-contracts.md)、[c1实施顺序](2026-11-15-training-cycle-workflow.md)、[runtime消费者](2026-11-16-training-cycle-runtime-consumers.md)、[执行消费者r2](2026-11-16-training-cycle-execution-consumer.md)及其[独立设计复核](../delivery/2026-11-16-training-cycle-execution-consumer-design-review.md)。本片仅让原六字段总输入在真实 SDK 默认 sandbox 中驱动 ordinal=0；c1d 闭合前绝不派发 ordinal=1，不输出 measurement_accepted／selection_complete。
 
 ## 身份、前置与不变合同
 
@@ -170,3 +170,5 @@ W1/W2/W5的真实server场景使用同一项目既有live harness和全新授权
 ## 独立设计审查接续
 
 本草案已取得[fresh独立设计审查](../delivery/2026-11-16-training-cycle-workflow-first-round-design-review.md)需求／维护性两轴approve、开放0，仅设计层通过。c1b2b的job身份修正、准确源码固定与新包／真实服务／独立产品验收仍是实施前置；本页不认证正式类、默认sandbox、首轮运行或停止。前置闭合后按W0–W10逐节点实施和记账，不能借本设计结论越过实际验收。
+
+2026-11-16接续：固定消费者bcc3048及wheel55029的新安装／SDK-free／自身模板／真实六活动和原预算根/native CPU现场均已[最终独立两轴approve／0](../delivery/2026-11-16-training-cycle-execution-product-review.md)，并真实导入开发树01ef。src／脚本／CI／配置与bcc逐字同一；tests仅多已另审的两行Windows提前skip。本片[静态实施准备](../delivery/2026-11-16-training-cycle-workflow-first-round.md)已核固定facts足够保守消费，stop汇总缺口及unconfirmed含义维持原设计，不改producer猜原因。实施前置现已闭合；之后新字节的新包、默认sandbox／正式类／history／真实首轮仍由本片逐项验收，不能继承前片的测试Workflow通过。
