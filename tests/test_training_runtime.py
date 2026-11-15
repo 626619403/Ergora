@@ -262,6 +262,100 @@ def test_cycle_sdk_capacity_counts_metadata_and_rejects_without_truncation():
     assert failed.value.type == 'cycle_activity_capacity_exceeded' and failed.value.non_retryable
 
 
+def test_cycle_execution_sdk_rejects_untrusted_input_before_any_operation(monkeypatch, tmp_path):
+    pytest.importorskip('temporalio')
+    import asyncio
+    from dataclasses import replace
+    from types import SimpleNamespace
+    from temporalio.converter import DataConverter
+    from temporalio.exceptions import ApplicationError
+    from temporalio.testing import ActivityEnvironment
+    from ergora import reference_training_worker as worker
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError('Rejected SDK input cannot create a supervised operation')
+
+    monkeypatch.setattr(worker, '_CycleOperation', forbidden)
+    activities = worker.create_cycle_activities(SimpleNamespace(namespace='default', data_converter=DataConverter.default))
+    original = {'protocol': 'ergora-training-cycle-v1', 'control_home': str(tmp_path),
+        'project': 'demo', 'cycle_id': 'first', 'input_sha256': 'a' * 64, 'authorization_sha256': 'b' * 64}
+    for action in ('request-execution-or-observe', 'observe-candidate'):
+        for request, changes in (({'workflow_input': original, 'ordinal': 1}, {}),
+                ({'workflow_input': original, 'ordinal': 0, 'confirm': True}, {}),
+                ({'workflow_input': original | {'source': 'caller'}, 'ordinal': 0}, {}),
+                ({'workflow_input': original, 'ordinal': 0}, {'is_local': True}),
+                ({'workflow_input': original, 'ordinal': 0}, {'namespace': 'foreign'}),
+                ({'workflow_input': original, 'ordinal': 0}, {'workflow_namespace': 'foreign'}),
+                ({'workflow_input': original, 'ordinal': 0}, {'workflow_type': 'OtherWorkflow'}),
+                ({'workflow_input': original, 'ordinal': 0}, {'activity_type': worker.protocol.CYCLE_ACTIVITY_NAMES['start']})):
+            environment = ActivityEnvironment()
+            environment.info = replace(environment.info, workflow_id='original', workflow_run_id='run',
+                workflow_type='TrainingCycleWorkflow', workflow_namespace='default', namespace='default',
+                activity_type=worker.protocol.CYCLE_ACTIVITY_NAMES[action], task_queue=worker.protocol.CYCLE_TASK_QUEUE)
+            environment.info = replace(environment.info, **changes)
+            with pytest.raises(ApplicationError) as failed:
+                asyncio.run(environment.run(activities[action], request))
+            assert failed.value.type == 'cycle_activity_request_rejected' and failed.value.non_retryable
+
+
+@pytest.mark.parametrize('control,wall,cleanup,attempt', [(30, 900, 170, 1), (2, 900, 170, 1),
+                                                         (30, 4, 2, 1), (30, 900, 170, 2)])
+def test_cycle_execution_sdk_keeps_one_work_window_without_parent_file_reads(
+        monkeypatch, tmp_path, control, wall, cleanup, attempt):
+    pytest.importorskip('temporalio')
+    import asyncio
+    from dataclasses import replace
+    from types import SimpleNamespace
+    from temporalio.converter import DataConverter
+    from temporalio.testing import ActivityEnvironment
+    from ergora import budget_clock, reference_training_worker as worker, training_cycles
+
+    clock = budget_clock.authorize(wall)
+    authorization = {'schema_version': 2, 'control_home': str(tmp_path), 'project': 'demo', 'cycle_id': 'first',
+                     'input_sha256': 'a' * 64, 'clock': clock}
+    authorization['sha256'] = training_cycles._sha(authorization)
+    snapshot = {'authorization': authorization,
+        'policy': {'wall_seconds': wall, 'cleanup_seconds': cleanup, 'control_timeout_seconds': control},
+        'candidates': [{'ordinal': 0, 'experiment_id': 'alpha', 'manifest_sha256': 'b' * 64}]}
+    workflow_input = {key: authorization[key] for key in ('control_home', 'project', 'cycle_id', 'input_sha256')}
+    workflow_input.update(protocol='ergora-training-cycle-v1', authorization_sha256=authorization['sha256'])
+    seen = []
+
+    async def observed(operation):
+        seen.append(operation)
+        result = {'status': 'observed', 'facts': {'source_operation_id': operation.identity['operation_id'],
+            'budget': {'state': 'valid', 'work_remaining_seconds': wall - cleanup,
+                'total_remaining_seconds': wall, 'control_timeout_seconds': control,
+                'boot_id': clock['boot_id'], 'boottime_ns': clock['boottime_ns'], 'observed_at': clock['authorized_at']}}}
+        if operation.identity['mode'] == 'inspect-controller-activity':
+            result.update(status='inspected', snapshot=snapshot,
+                          controller={'workflow_id': 'original', 'run_id': 'run', 'intent_sha256': 'c' * 64})
+        return operation.observation(result)
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError('SDK parent must not read business records or result refs')
+
+    monkeypatch.setattr(worker._CycleOperation, 'run', observed)
+    monkeypatch.setattr(worker.protocol, 'read_raw', forbidden)
+    monkeypatch.setattr(worker.State, 'project', forbidden)
+    activities = worker.create_cycle_activities(SimpleNamespace(namespace='default', data_converter=DataConverter.default))
+    env = ActivityEnvironment()
+    env.info = replace(env.info, workflow_id='original', workflow_run_id='run', workflow_type='TrainingCycleWorkflow',
+        workflow_namespace='default', namespace='default', task_queue=worker.protocol.CYCLE_TASK_QUEUE, attempt=attempt,
+        activity_type=worker.protocol.CYCLE_ACTIVITY_NAMES['request-execution-or-observe'])
+    envelope = asyncio.run(env.run(activities['request-execution-or-observe'], {'workflow_input': workflow_input, 'ordinal': 0}))
+    cold, ordinary = seen
+    assert ordinary.identity['mode'] == ('request-execution-candidate' if attempt == 1 else 'observe-candidate')
+    original = cold.payload['bootstrap']
+    window = ordinary.payload['bootstrap']
+    assert window['started_ns'] == original['started_ns']
+    assert original['deadline_ns'] - original['started_ns'] == 10_000_000_000
+    assert window['deadline_ns'] == min(original['deadline_ns'], window['started_ns'] + control * 1_000_000_000,
+                                       clock['boottime_ns'] + (wall - cleanup) * 1_000_000_000)
+    assert worker.protocol.cycle_operation_remaining(ordinary.payload) <= min(10, control, wall - cleanup)
+    assert envelope['schema_version'] == 2 and envelope['facts']['source_operation_id'] == ordinary.identity['operation_id']
+
+
 @pytest.mark.parametrize('fault', ['normal-validate', 'stop-validate', 'validate-during-shutdown', 'stop-fatal'])
 def test_cycle_service_closes_peers_with_real_sdk_lifecycle(monkeypatch, fault):
     """Keep SDK run/shutdown ordering; only its bridge and activity poller are local."""
@@ -343,7 +437,7 @@ def test_cycle_service_closes_peers_with_real_sdk_lifecycle(monkeypatch, fault):
         connection.connect = connect
         monkeypatch.setitem(sys.modules, 'perf_temporal.connection', connection)
         monkeypatch.setattr(temporalio.worker, 'Worker', construct)
-        monkeypatch.setattr(service, 'create_cycle_activities', lambda _: dict.fromkeys(('inspect', 'start', 'reconcile', 'stop')))
+        monkeypatch.setattr(service, 'create_cycle_activities', lambda _: dict.fromkeys(service.protocol.CYCLE_ACTIVITY_NAMES))
         monkeypatch.setattr(loop, 'add_signal_handler', lambda sig, callback: handlers.setdefault(sig, callback))
         monkeypatch.setattr(loop, 'remove_signal_handler', lambda sig: handlers.pop(sig, None))
         serving = asyncio.create_task(service._serve_cycle())

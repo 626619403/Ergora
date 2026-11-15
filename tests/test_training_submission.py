@@ -750,7 +750,7 @@ def save_controller_binding(admission):
 
 
 @pytest.fixture
-def cycle_candidate(controller_admission, cycle_operation_fault, service, monkeypatch):
+def cycle_candidate(controller_admission, cycle_operation_fault, service, monkeypatch, cycle_budget_root):
     from ergora import reference_training_worker as worker, training_cycles
 
     state, _, _, authorized, admission = controller_admission
@@ -759,16 +759,6 @@ def cycle_candidate(controller_admission, cycle_operation_fault, service, monkey
     snapshot = worker._cycle_snapshot(plan, authorized['authorization'])
     cycle_operation_fault('candidate')
     monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER', str(admission.folder))
-    launch = subprocess.Popen
-    fixture = str(Path(__file__).parent / 'fixtures/training_budget_client.py')
-
-    def root(argv, *args, **kwargs):
-        if argv[-1] == 'from ergora.reference_training_worker import budget_main;budget_main()':
-            argv = [*argv[:-1], f'import runpy;runpy.run_path({fixture!r},run_name="__main__")']
-        return launch(argv, *args, **kwargs)
-
-    monkeypatch.setattr(subprocess, 'Popen', root)
-
     def operation(ordinal=0):
         return worker._CycleCandidate(state.root, 'demo', 'controller', authorized['authorization_sha256'],
             snapshot=snapshot, controller={**binding['controller'], 'ordinal': ordinal})
@@ -2719,6 +2709,160 @@ def test_cycle_sdk_start_hands_off_once_then_duplicate_only_reconciles(
         cycle_operation_fault('candidate')
         asyncio.run(environment('stop').run(activities['stop'], {
             'workflow_input': request['workflow_input'], 'reason': 'Finish the original SDK fixture owner'}))
+        wait_budget_stopped(runtime)
+
+
+@pytest.fixture
+def cycle_budget_root(monkeypatch):
+    """Keep the same budget service double for direct and SDK-started roots."""
+    launch = subprocess.Popen
+    fixture = str(Path(__file__).parent / 'fixtures/training_budget_client.py')
+
+    def root(argv, *args, **kwargs):
+        if argv[-1] == 'from ergora.reference_training_worker import budget_main;budget_main()':
+            argv = [*argv[:-1], f'import runpy;runpy.run_path({fixture!r},run_name="__main__")']
+        return launch(argv, *args, **kwargs)
+
+    monkeypatch.setattr(subprocess, 'Popen', root)
+
+
+@pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 30}], indirect=True)
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('reply', ['complete', 'lost'])
+@pytest.mark.skipif(sys.platform != 'linux', reason='Execution consumer uses the real original S/H and root')
+def test_cycle_sdk_execution_waits_for_both_queued_then_only_observes_consumed_launch(
+        cycle_sdk_activity, cycle_operation_fault, service, cycle_selection, cycle_budget_root, monkeypatch, reply):
+    import asyncio
+
+    state, admission, _, _, activities, environment = cycle_sdk_activity
+    runtime = cycle_selection[2]
+    request = {'workflow_input': admission.controller_intent()['workflow_input'], 'ordinal': 0}
+    monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER', str(admission.folder))
+    service[0]('accepted', budget_scenario='managed-no-launch')
+    cycle_operation_fault('candidate')
+    job = runtime / 'training/jobs/alpha'
+
+    def invoke(action, **info):
+        return asyncio.run(environment(action, **info).run(activities[action], request))
+
+    try:
+        cold = invoke('observe-candidate')
+        assert cold['schema_version'] == 2 and cold['facts']['submission']['state'] == 'not_recorded'
+        assert cold['facts']['execution']['state'] == 'not_requested'
+        assert cold['facts']['budget']['state'] == 'valid' and cold['facts']['budget']['work_remaining_seconds'] > 0
+        assert cold['facts']['candidate']['ordinal'] == 0
+        assert cold['facts']['candidate']['current_project_matches'] is True
+        assert invoke('start')['status'] == 'observed'
+        service[0]('submitting', budget_scenario='managed-no-launch')
+        early = invoke('observe-candidate')
+        assert early['facts']['submission']['state'] == 'submitted'
+        assert early['facts']['runtime']['phase'] == 'SUBMITTING'
+        assert early['facts']['native']['state'] == 'unconfirmed'
+        assert not (job / 'managed-execution/request.json').exists()
+        service[0]('accepted', budget_scenario='managed-no-launch')
+        assert native_budget_create(cycle_selection[1], 'alpha', managed=True).returncode == 0
+        queued = invoke('observe-candidate')
+        assert queued['facts']['runtime']['phase'] == queued['facts']['native']['state'] == 'QUEUED'
+        assert queued['facts']['runtime']['job_id'] == queued['facts']['native']['job_id']
+        assert queued['facts']['execution']['state'] == 'not_requested'
+        service[0]('another-job', budget_scenario='managed-no-launch')
+        foreign = invoke('observe-candidate')
+        assert foreign['status'] == 'unknown' and foreign['facts']['runtime']['state'] == 'unconfirmed'
+        assert foreign['facts']['native']['state'] == 'QUEUED'
+        assert foreign['facts']['execution']['state'] == 'not_requested'
+        assert not (job / 'managed-execution/request.json').exists()
+        service[0]('accepted', budget_scenario='managed-no-launch')
+        retried = invoke('request-execution-or-observe', attempt=2)
+        assert retried['operations'][0]['mode'] == 'observe-candidate'
+        assert retried['facts']['execution']['state'] == 'not_requested'
+        assert not (job / 'managed-execution/request.json').exists()
+        if reply == 'lost':
+            cycle_operation_fault('post-stopped-request')
+        requested = invoke('request-execution-or-observe')
+        if reply == 'complete':
+            assert requested['facts']['request_outcome'] == 'requested', requested
+        else:
+            assert requested['status'] == 'unknown' and requested['facts'] is None
+            operation = requested['operations'][0]
+            stdout = state.root / 'operations/training-cycles' / operation['operation_id'] / 'helper/stdout.txt'
+            assert json.loads(stdout.read_bytes())['facts']['request_outcome'] == 'requested'
+        cycle_operation_fault('candidate')
+        saved = job / 'managed-execution/request.json'
+        original = saved.read_bytes(), saved.stat().st_ino
+        until = time.monotonic() + 10
+        while not service[1].with_suffix('.execution-launch').exists() and time.monotonic() < until:
+            time.sleep(.02)
+        assert service[1].with_suffix('.execution-launch').exists()
+        launch = job / 'managed-execution/launch.json'
+        consumed = launch.read_bytes(), launch.stat().st_ino
+        repeated = invoke('request-execution-or-observe', attempt=2)
+        assert repeated['operations'][0]['mode'] == 'observe-candidate'
+        assert repeated['facts']['request_outcome'] == 'existing_only'
+        assert repeated['facts']['execution']['state'] == 'launch_consumed'
+        assert (saved.read_bytes(), saved.stat().st_ino) == original
+        assert (launch.read_bytes(), launch.stat().st_ino) == consumed
+        assert 'accepted' not in repeated['facts'] and 'next_allowed' not in repeated['facts']
+        wait_budget_final(runtime)
+        spec = json.loads((job / 'request.json').read_bytes())
+        (job / 'result.json').write_text(json.dumps({'binding': spec['experiment']['binding'],
+            'job_id': spec['job_id'], 'state': 'SUCCEEDED', 'detail': 'Synthetic result before any execution reap'}))
+        interleaved = invoke('observe-candidate')['facts']
+        assert interleaved['native']['state'] == 'SUCCEEDED' and interleaved['runtime']['phase'] == 'QUEUED'
+        assert interleaved['execution']['state'] == 'launch_consumed'
+        assert interleaved['execution']['executor_stop_confirmed'] is None
+        # A partial existing slot is uncertainty, never another offer or repair.
+        launch.write_bytes(b'{')
+        partial = invoke('request-execution-or-observe')
+        assert partial['facts']['execution']['state'] == 'unknown'
+        assert partial['facts']['request_outcome'] != 'requested'
+        assert launch.read_bytes() == b'{' and (saved.read_bytes(), saved.stat().st_ino) == original
+        assert json.loads(service[1].read_bytes())['starts'] == 1
+    finally:
+        cycle_operation_fault('candidate')
+        asyncio.run(environment('stop').run(activities['stop'], {
+            'workflow_input': request['workflow_input'], 'reason': 'Finish execution facts fixture'}))
+        wait_budget_stopped(runtime)
+
+
+@pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 30}], indirect=True)
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('fault', ['execution-sync-window', 'execution-source-drift'])
+@pytest.mark.skipif(sys.platform != 'linux', reason='Last synchronous gate uses the real supervised H')
+def test_cycle_sdk_execution_last_sync_gate_keeps_its_window_and_source(
+        cycle_sdk_activity, cycle_operation_fault, service, cycle_selection, cycle_budget_root, monkeypatch, fault):
+    import asyncio
+
+    state, admission, _, _, activities, environment = cycle_sdk_activity
+    runtime = cycle_selection[2]
+    request = {'workflow_input': admission.controller_intent()['workflow_input'], 'ordinal': 0}
+    monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER', str(admission.folder))
+    service[0]('accepted', budget_scenario='managed-no-launch')
+    cycle_operation_fault('candidate')
+    try:
+        assert asyncio.run(environment('start').run(activities['start'], request))['status'] == 'observed'
+        assert native_budget_create(cycle_selection[1], 'alpha', managed=True).returncode == 0
+        markers = cycle_operation_fault(fault)
+        result = asyncio.run(environment('request-execution-or-observe').run(
+            activities['request-execution-or-observe'], request))
+        assert result['status'] == 'unknown'
+        if fault == 'execution-sync-window':
+            assert result['facts'] is None
+            assert markers.joinpath('execution-sync-blocked').exists()
+            assert markers.joinpath('execution-sync-returned').exists()
+        else:
+            assert markers.joinpath(fault).exists()
+        operation = result['operations'][0]
+        stdout = state.root / 'operations/training-cycles' / operation['operation_id'] / 'helper/stdout.txt'
+        observed = json.loads(stdout.read_bytes())
+        assert observed['facts']['request_outcome'] == 'unconfirmed'
+        assert observed['facts']['budget']['work_remaining_seconds'] > 0
+        assert ('window is exhausted' if fault == 'execution-sync-window' else 'operation source') in observed['problems']['request']
+        assert not (runtime / 'training/jobs/alpha/managed-execution/request.json').exists()
+        assert not service[1].with_suffix('.execution-launch').exists()
+    finally:
+        cycle_operation_fault('candidate')
+        asyncio.run(environment('stop').run(activities['stop'], {
+            'workflow_input': request['workflow_input'], 'reason': 'Finish synchronous window fixture'}))
         wait_budget_stopped(runtime)
 
 

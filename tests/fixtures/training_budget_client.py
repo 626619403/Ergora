@@ -62,7 +62,7 @@ if fault in ('managed-no-launch', 'managed-launch-failed'):
                 raise
         reference_training_execution.file_lock = observed_contention
 
-if fault in ('managed-no-launch', 'managed-launch-failed') and base.payload['mode'] == 'owner':
+if fault in ('managed-no-launch', 'managed-launch-failed') and base.payload['mode'] in ('owner', 'controller-owner'):
     start = budget._BudgetPhase.start
     def refuse_execution(phase):
         if phase.mode == 'execute':

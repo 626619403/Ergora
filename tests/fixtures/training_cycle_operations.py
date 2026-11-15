@@ -31,10 +31,15 @@ if stage == 'S':
     def invoke(argv, *args, **kwargs):
         if argv[-1] == 'from ergora.reference_training_worker import cycle_operation_main;cycle_operation_main(False)':
             argv = [sys.executable, '-P', __file__, 'H']
+            if fault == 'execution-sync-window' and mode == 'request-execution-candidate':
+                # Let the blocked H return once after its window. Its last gate,
+                # rather than S cancellation, must deny the synchronous publish.
+                kwargs['stop_requested'] = lambda: False
         return original_run(argv, *args, **kwargs)
 
     processes.run = invoke
     if ((fault == 'post-stopped' and mode in ('inspect', 'prepare-controller', 'prepare-candidate'))
+            or (fault == 'post-stopped-request' and mode == 'request-execution-candidate')
             or (fault == 'post-stopped-confirm' and mode == 'confirm-candidate')):
         read = training_cycles._read_bytes
 
@@ -65,6 +70,30 @@ else:
         import training_submission_client
         sys.stdin = io.TextIOWrapper(io.BytesIO(raw), encoding='utf-8')
         mark('candidate-service-installed')
+        if fault in ('execution-sync-window', 'execution-source-drift') and mode == 'request-execution-candidate':
+            project = worker.State.project
+
+            def delayed_project(state, *args, **kwargs):
+                value = project(state, *args, **kwargs)
+                if (sys._getframe(1).f_code.co_name == 'current'
+                        and sys._getframe(2).f_code.co_name == 'request'):
+                    if fault == 'execution-source-drift':
+                        source = (Path(payload['identity']['control_home']) / 'operations/training-cycles'
+                                  / payload['identity']['operation_id'] / 'request.json')
+                        original = json.loads(source.read_bytes())
+                        original['activity_context']['activity_source']['activity_id'] = 'foreign-source'
+                        source.write_text(json.dumps(original))
+                        mark(fault)
+                    else:
+                        from ergora import budget_clock
+
+                        mark('execution-sync-blocked')
+                        while budget_clock._clock()[1] <= payload['bootstrap']['deadline_ns']:
+                            time.sleep(.01)
+                        mark('execution-sync-returned')
+                return value
+
+            worker.State.project = delayed_project
         if fault == 'candidate-confirm' and mode == 'confirm-candidate':
             mark('candidate-confirm')
             time.sleep(60)

@@ -14,7 +14,7 @@ import pytest
 
 from ergora import reference, training
 from test_training_submission import (
-    controller_admission, controller_dispatch, cycle_candidate, cycle_operation_fault,
+    controller_admission, controller_dispatch, cycle_budget_root, cycle_candidate, cycle_operation_fault,
     cycle_selection, experiments, installation, native_budget_create, prepared,
     recorded_process_is_active, registration, run_cycle_candidate, save_controller_binding,
     saved_controller_intent, service, stop_controller_test_owner, wait_budget_stopped,

@@ -19,8 +19,9 @@ PROTOCOL = 'ergora-training-execution-v1'
 BUDGET_TASK_QUEUE = 'ergora-training-budget-v1'
 CYCLE_MEMO_KEY = 'ergora.training_cycle_sha256'
 CYCLE_START_MODES = ('prepare-candidate', 'confirm-candidate', 'dispatch-candidate')
-CYCLE_CANDIDATE_MODES = (*CYCLE_START_MODES, 'reconcile-candidate')
-CYCLE_WORK_MODES = ('prepare-controller', 'submit-controller', *CYCLE_START_MODES)
+CYCLE_EXECUTION_MODES = ('request-execution-candidate', 'observe-candidate')
+CYCLE_CANDIDATE_MODES = (*CYCLE_START_MODES, 'reconcile-candidate', *CYCLE_EXECUTION_MODES)
+CYCLE_WORK_MODES = ('prepare-controller', 'submit-controller', *CYCLE_START_MODES, *CYCLE_EXECUTION_MODES)
 CYCLE_OBSERVATION_MODES = ('inspect', 'inspect-controller-activity', 'reconcile-controller', 'reconcile-candidate')
 LIMIT = 1_048_576
 GATE_SOURCES = (
@@ -173,12 +174,15 @@ class PhaseFrames:
 
 CYCLE_ACTIVITY_NAMES = {action: 'ergora.training_cycle.' + action + '.v1'
                         for action in ('inspect', 'start', 'reconcile', 'stop')}
+CYCLE_ACTIVITY_NAMES.update({action: 'ergora.training_cycle.' + action + '.v2'
+                            for action in ('request-execution-or-observe', 'observe-candidate')})
 CYCLE_TASK_QUEUE = 'ergora-training-cycle-v1'
 CYCLE_STOP_TASK_QUEUE = 'ergora-training-cycle-stop-v1'
 
 
 def validate_cycle_activity_request(value: dict, action: str) -> None:
     fields = ('workflow_input', *({'start': ('ordinal',), 'reconcile': ('ordinal',),
+                                  'request-execution-or-observe': ('ordinal',), 'observe-candidate': ('ordinal',),
                                   'stop': ('reason',)}.get(action, ())))
     _exact(value, fields, 'Cycle activity request')
     workflow_input = value['workflow_input']
@@ -195,8 +199,11 @@ def validate_cycle_activity_request(value: dict, action: str) -> None:
             raise ValueError('Cycle activity requires its original portable identity')
     for name in ('input_sha256', 'authorization_sha256'):
         _digest(workflow_input[name])
-    if action in ('start', 'reconcile') and (type(value['ordinal']) is not int or not 0 <= value['ordinal'] < 32):
+    if action in ('start', 'reconcile', 'request-execution-or-observe', 'observe-candidate') and (
+            type(value['ordinal']) is not int or not 0 <= value['ordinal'] < 32):
         raise ValueError('Cycle activity requires its original ordinal')
+    if action in ('request-execution-or-observe', 'observe-candidate') and value['ordinal'] != 0:
+        raise ValueError('successor_not_enabled')
     if action == 'stop' and (not isinstance(value['reason'], str) or not value['reason'].strip()):
         raise ValueError('Cycle stop requires a nonempty reason')
 
@@ -242,10 +249,16 @@ def validate_cycle_operation(payload: dict) -> None:
                 or mode in CYCLE_START_MODES and source['activity_type'] != CYCLE_ACTIVITY_NAMES['start']
                 or mode == 'reconcile-candidate' and source['activity_type'] not in
                     (CYCLE_ACTIVITY_NAMES['start'], CYCLE_ACTIVITY_NAMES['reconcile'])
+                or mode == 'request-execution-candidate' and source['activity_type'] !=
+                    CYCLE_ACTIVITY_NAMES['request-execution-or-observe']
+                or mode == 'observe-candidate' and source['activity_type'] not in
+                    (CYCLE_ACTIVITY_NAMES['request-execution-or-observe'], CYCLE_ACTIVITY_NAMES['observe-candidate'])
                 or mode in ('inspect', 'prepare-controller', 'submit-controller', 'reconcile-controller')):
             raise ValueError('Cycle operation mode differs from its SDK activity action')
     if identity.get('mode') == 'inspect-controller-activity' and 'activity_context' not in payload:
         raise ValueError('SDK cold inspection requires its actual activity context')
+    if identity.get('mode') in CYCLE_EXECUTION_MODES and 'activity_context' not in payload:
+        raise ValueError('Candidate execution observation requires its actual SDK activity context')
     _exact(identity, ('protocol', 'operation_id', 'mode', 'control_home', 'project', 'cycle_id',
         'input_sha256', 'authorization_sha256', 'ordinal', 'parent'), 'Cycle operation identity')
     if (identity['protocol'] != 'ergora-training-cycle-operation-v1'
@@ -267,6 +280,8 @@ def validate_cycle_operation(payload: dict) -> None:
     if identity['mode'] in ('notify-owner', 'observe-execution', *CYCLE_CANDIDATE_MODES):
         if type(ordinal) is not int or not 0 <= ordinal < 32:
             raise ValueError('Cycle target requires its original selected ordinal')
+        if identity['mode'] in CYCLE_EXECUTION_MODES and ordinal != 0:
+            raise ValueError('successor_not_enabled')
     elif ordinal is not None:
         raise ValueError('This cycle operation has no selected ordinal')
     if payload['reason'] is not None and (not isinstance(payload['reason'], str) or not payload['reason'].strip()):
@@ -327,6 +342,7 @@ def validate_cycle_operation(payload: dict) -> None:
     if candidate:
         context = payload['start_context']
         fields = {'prepare-candidate': ('controller',), 'reconcile-candidate': ('controller',),
+            'request-execution-candidate': ('controller',), 'observe-candidate': ('controller',),
             'confirm-candidate': ('controller', 'origin_operation_id', 'intent_sha256', 'root_process'),
             'dispatch-candidate': ('controller', 'origin_operation_id', 'intent_sha256', 'owner')}
         _exact(context, fields[identity['mode']], 'Original candidate start context')
@@ -385,6 +401,29 @@ def cycle_start_source(payload: dict) -> dict:
         _match(payload[name], source[name], 'Original candidate ' + name)
     _match(context['controller'], source['start_context']['controller'], 'Original candidate controller')
     return source
+
+
+def cycle_execution_source(payload: dict, intent: dict) -> None:
+    """Bind Execution's last request gate to this H's immutable SDK operation."""
+    validate_cycle_operation(payload)
+    identity = payload['identity']
+    if (identity['mode'] != 'request-execution-candidate'
+            or payload['activity_context']['activity_source']['attempt'] != 1):
+        raise ValueError('Only the first authenticated execution request activity may publish a request')
+    source = decode(read_raw(Path(identity['control_home']) / 'operations/training-cycles'
+                             / identity['operation_id'] / 'request.json', 32_768))
+    _match(payload, source, 'Complete execution operation source')
+    binding = intent['budget']
+    if (any(identity[key] != value for key, value in {
+            'control_home': intent['control_home'], 'project': intent['project'],
+            'cycle_id': binding['cycle_id'], 'authorization_sha256': binding['authorization_sha256']}.items())
+            or payload['start_context']['controller'] != binding.get('controller')
+            or any(payload['activity_context']['activity_source'][key] != binding['controller'][target]
+                   for key, target in (('workflow_id', 'workflow_id'), ('workflow_run_id', 'run_id')))
+            or payload['snapshot']['candidates'][identity['ordinal']]['experiment_id'] != intent['experiment_id']
+            or payload['activity_context']['workflow_input']['input_sha256'] != identity['input_sha256']
+            or processes.identity(identity['parent']['pid']) != identity['parent']):
+        raise ValueError('Execution request lost its original controller, candidate or live parent source')
 
 
 def validate_cycle_root_request(value: dict) -> None:
