@@ -2,3 +2,5 @@
 # These files are a byte-identified distribution; never rewrite their line endings.
 src/ergora/data/reference/** -text
 docs/distribution/*.html -text
+# Unified patch context lines contain a required leading space, including blank lines.
+src/ergora/data/native-runtime/*.patch whitespace=-blank-at-eol

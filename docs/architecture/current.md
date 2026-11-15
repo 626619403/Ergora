@@ -444,3 +444,9 @@ flowchart LR
 预算 queue 与旧 worker 分离，缺 owner／原授权／期限时不能新 create；已有 request 的读取、fence 与 release 不受该新工作 gate 改写。owner 不获取跨 RPC 的 submission 锁，阻塞操作只在受监督 helper 内执行。缓存全文摘要绑定原 owner 身份，供原截止清理使用；持久 fence、控制面取消、native 结果及 executor 停止分别报告。实际 executor／后代停止和自动训练循环仍是后继义务，不能由图中的连接推导已完成。用户入口与恢复见[训练手册](../TRAINING.md#按原预算投递与持续截止监管)。
 
 monitor／fence／cleanup／publish仍串行，每个阶段的supervisor独占原Linux subreaper，预算owner自身不启subreaper。owner用非阻塞PIPE传完整context；supervisor在原run实际reap返回后先flush完整身份的stopped帧，再读helper结果。总截止或可捕获取消不能打断已经开始的安全reap；只在收到有效stopped后，才可结束超期的结果reader。原final保存短phase观察，业务unknown与该子树stopped分列；独立2MiB的final读写封套容纳原结果及新增摘要，helper与普通记录仍保留1MiB。旧活owner不重启或补能力，具体过程与验收见[独立阶段监督](../delivery/2026-11-15-training-budget-phase-supervision.md)。
+
+## 原生训练来源与锁内准入接缝
+
+`reference.prepare_training` 和既有 `validate_installation` 共用本地来源校验，CLI 只解析显式协议及新目录。两个固定 data 资源物化 `training-executor-admission-v1`，不新增模块族或全局工具注册器；原 283 字节不变。新协议完整核279来源，legacy保留按用途的Python范围；准备中断的空或缺损descriptor不能回退为legacy。
+
+派生的原 `training_executor.process` 在原 `executor.lock` 内、started／Git／runner之前调用窄admit；无result的旧started及无hook接管managed命名空间均拒绝，已有result保持只读。原执行／归档／追踪／结果算法未复制。来源准备不安装native依赖、不创建实验或消费request，不授予原预算owner新能力；实际受管执行与持久停止、自动循环仍开放。生命周期及来源图见[reference边界](reference-boundary.md#版本化原生训练来源)；kernel专家继续在原v3提案路径参与评估。

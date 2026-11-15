@@ -25,3 +25,13 @@
 新的fresh-context reviewer已核固定七份作者来源、唯一AST等待改动、原官方CI annotation、原648源码／wheel／两安装及RECORD／283、173份tracked输入、精准2项、两marker和owner身份停止；需求approve／结构维护approve、开放0／0。[审查报告](2026-11-15-phase-publication-wait-regression-review.md)和私有`reviewer/static-audit-r1.json`记录范围。四份后续状态文字已另核，不替换原candidate-r1身份。
 
 开始最终staged静态核与普通发布；自己的CI、固定发布独立补核仍待，不把原518失败改记成功。kernel路径与全部产品保持原字节。
+
+## 固定发布与自己的CI待核
+
+已普通发布`75bc99d788a9cef292b7c41eb7e01ac03d13de47`，parent518，tree`a66b45a205de85e0d9a9b9ae3f3164aa4d9d28d3`。九blob／完整staged diff-check／一测试AST和173个最终Git tree链接通过；产品／scripts／CI差异为空。普通push exit0／5.9066秒，完整SSH Ref同一，提交时工作树干净。同片新reviewer已接续核固定发布和它自己的CI，原518失败保持。
+
+初次本地链接检查器把支持的`:行号`当作文件名，十个目标检查失败；原结果单列保留。修正检查器解析后173链接通过，公开文档及产品未因该检查器错误改变。此后在本地开始b1／b2产品，不在本接续自己的CI与终核闭合前推送后继产品。
+
+## 自己的CI终态
+
+固定75bc自己的[Portability43672292421](https://github.com/626619403/Ergora/actions/runs/43672292421)／attempt1已终态成功：八job／30必要步骤全部success，包含Linux group5和Windows／PowerShell5.1安装升级。官方完整navigation、每job必要步骤、固定commit链接及Actions列表相符；同片新独立最终需求approve／结构维护approve、开放0／0，精确接续门禁闭合，不借原518的成功项，原518七成功／一失败保持。

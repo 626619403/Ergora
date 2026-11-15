@@ -1,6 +1,6 @@
 # B3.3b：版本化原生 executor 锁内准入接缝
 
-日期：2026-11-15，计划r2，新的fresh-context独立设计审查两轴approve／开放0／0；R1在设计层关闭，尚未产品实施。固定基线为已普通发布的B3.3a `5182bfa03f536d4090b91014f97eedda1c5d2d3a`；该片自身CI43670140205／attempt1已终态七job成功／一失败，最小[测试观察等待修正](../delivery/2026-11-15-phase-publication-wait-regression.md)优先交付。可先独立设计审查、本地实施，后继产品只在前片CI接续修正的自身CI与终核闭合后推送，不借用前片验收。沿[生命周期调研](../research/2026-11-15-training-executor-lifecycle.md)，不把B3.3a的phase停止帧冒称训练执行证据。kernel专家留在v3路径，本片不改模板。
+日期：2026-11-15，计划r2，新的fresh-context独立设计审查两轴approve／开放0／0；R1在设计层关闭。b1／b2与本地b3验收已完成：源码39通过，安装五suite含完整架构边界129通过，两安装650逐字／283及四CLI通过，自身原模板与新的[独立产品审查](../delivery/2026-11-15-training-executor-protocol-review.md)本地两轴approve／开放0／0；精确发布与自己的CI仍待。固定设计基线为B3.3a `5182bfa03f536d4090b91014f97eedda1c5d2d3a`，实际实施基线为接续`75bc99d788a9cef292b7c41eb7e01ac03d13de47`。原518自身CI七job成功／一失败保持；[测试观察等待修正](../delivery/2026-11-15-phase-publication-wait-regression.md)75bc自己的CI及独立终核闭合后才能推送本片产品。沿[生命周期调研](../research/2026-11-15-training-executor-lifecycle.md)，不把B3.3a的phase停止帧冒称训练执行证据。kernel专家留在v3路径，本片不改模板。
 
 ## 为什么必须先升级接缝
 
@@ -35,7 +35,7 @@ flowchart TD
 
 ## 固定来源描述与准备接口
 
-计划新增显式`ergora reference prepare-training --protocol training-executor-admission-v1 --directory NEW_DIRECTORY`，其API沿原reference来源owner，只写新目录；当前版本尚无此命令，不能据本文当作已可运行。无额外来源协议类族或插件总线。结果区分source prepared、dependencies未安装和runtime未启动。
+本片已在源码新增显式`ergora reference prepare-training --protocol training-executor-admission-v1 --directory NEW_DIRECTORY`，其API沿原reference来源owner，只写新目录；本地安装及独立产品验收已完成，普通精确发布与自己的CI仍待，不能把本地实现当成远端已提供。无额外来源协议类族或插件总线。结果区分source prepared、dependencies未安装和runtime未启动。
 
 新根目录的`ergora-native-runtime.json`只描述固定来源，字段为：
 
@@ -79,9 +79,9 @@ managed namespace固定为原job下`managed-execution/`，后继process attempt�
 |节点|交付／验收|状态|
 |---|---|---|
 |b0 固定协议|核原process真实锁范围、hook精确位置、attempt相对路径、全参与writer版本边界和派生来源身份；新的fresh-context两轴计划审查|r1独立R1中断准备实红保持；r2同reviewer两轴approve／开放0／0，R1设计关闭|
-|b1 新来源准备／身份|原283仍verify；新的空目录来源物化＋内置协议metadata／预期字节；原／新validator、篡改／半成品拒绝，原目录保持|待b0|
-|b2 原锁内接缝|不复制原算法；真实子进程争用原executor.lock；started无result及已有受管attempt的手工调用均不能进入业务；拒绝callback不会落started/Git/result；正常无hook干净路径沿原native接缝回归|待b1|
-|b3 安装与交付|新非editablecore／SDK逐字／283、受影响安装回归、真实CLI来源准备、原件保持、自身原模板、新fresh-context产品两轴、普通精确发布及自己的CI|待b2|
+|b1 新来源准备／身份|原283仍verify；新的空目录来源物化＋内置协议metadata／预期字节；原／新validator、篡改／半成品拒绝，原目录保持|已实施；源码39通过，新两安装650逐字／283及core四CLI通过，完整安装129通过，新独立产品本地两轴approve／开放0／0|
+|b2 原锁内接缝|不复制原算法；真实子进程争用原executor.lock；started无result及已有受管attempt的手工调用均不能进入业务；拒绝callback不会落started/Git/result；正常无hook干净路径沿原native接缝回归|固定delta、原两suite及独立进程fixture已实施；源码与安装通过；新独立真实flock／crash及完整AST核验通过，本地两轴approve／开放0／0|
+|b3 安装与交付|新非editablecore／SDK逐字／283、受影响安装回归、真实CLI来源准备、原件保持、自身原模板、新fresh-context产品两轴、普通精确发布及自己的CI|本地验收及新独立两轴approve／开放0／0；最终文档、普通精确发布与自己的CI待，不借前片成功|
 
 测试选原training runtime／submission和现有native fixture，不为每个mode复制矩阵。不用mock process返回或只测字符串含hook来证明原子性；保留真正锁内／锁外交错及原生started语义。补一项手工执行器在新入口外层预检后抢锁并留下started的真实竞态，验证新hook永不运行；新接口必须同时防已受管attempt后无hook重入。
 
@@ -100,3 +100,7 @@ managed namespace固定为原job下`managed-execution/`，后继process attempt�
 ## b0 r1独立R1与r2合同修正
 
 新fresh-context reviewer在固定518的真实validator上复现：原platform复制完整、descriptor未写时被legacy接纳，违反半成品拒绝。保留r1探针与结论，r2明确上述先持久空descriptor的顺序；已声明但无效一律失败，正常完成才发布完整固定descriptor。新协议完整279校验与legacy原选择范围分开。delta源码／hook／精确SHA均保持r1，修正不增加执行权限、第二账本或可选协议类。[同reviewer复核](../delivery/2026-11-15-training-executor-protocol-plan-review.md)已两轴approve／开放0／0，R1仅设计关闭；10组便宜来源／真实flock／crash探针限其实际范围。产品实施仍待前片CI回归修正的独立交付，不把设计通过当作安装或执行通过。
+
+## 前置门禁闭合、准备固定发布
+
+前置75bc自己的CI43672292421／attempt1八job／30必要步骤全部success，原新独立最终两轴approve／开放0／0，精确接续闭合；原518失败保持。本片产品／测试继续等于已审r1，源码39、安装129、两安装650／283及四CLI和原自身模板证据保持。最终文档补核已通过，现做完整staged静态检查与普通精确发布；本片自己的CI及固定发布独立续核仍待，不把前置成功转授本片。

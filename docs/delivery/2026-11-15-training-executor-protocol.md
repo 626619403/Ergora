@@ -1,6 +1,6 @@
 # B3.3b 原生executor准入协议：逐步交付
 
-日期：2026-11-15。固定基线为`5182bfa03f536d4090b91014f97eedda1c5d2d3a`，前片自己的CI43670140205已终态七job成功／一失败，其最小观察等待修正优先；本片只有计划和来源准备探针，没有产品实施或运行验收。
+日期：2026-11-15。固定设计基线为`5182bfa03f536d4090b91014f97eedda1c5d2d3a`，实际实施基线为`75bc99d788a9cef292b7c41eb7e01ac03d13de47`。设计与本地产品／安装验收已获新独立两轴approve／开放0／0；普通精确发布与自己的CI仍待。原518的七job成功／一失败保持；须先闭合75bc自己的CI与原独立终核，再推送本片产品。下列分段保留各节点当时的状态。
 
 [计划r1](../plans/2026-11-15-training-executor-protocol.md)选择保留原v2.2／283不变的显式派生协议：新的空目录、固定delta及完整来源身份，在原executor锁内给出窄admission接缝，并拒绝不确定started或手工接管受管命名空间。原Git、runner、archive、track和result算法不复制；预算owner能力、执行请求／attempt／ack／stopped和自动循环均不在本片交付。kernel专家留在v3优化路径。
 
@@ -21,3 +21,37 @@ r1离线来源探针只在ignored新目录复制原单个源码文件并用现�
 ## b0设计通过、前置CI修正优先
 
 原r2计划已获同一新fresh-context reviewer需求approve／结构维护approve、开放0／0，R1在设计层关闭。10组便宜探针保留其真实来源／flock／异常started范围，详见独立报告。B3.3a自身CI的Linux group5出现两项原final故障测试超时，最小[观察等待修正](2026-11-15-phase-publication-wait-regression.md)先独立交付；本片仍只有设计，无产品实施，不借设计审查或前片本地通过关闭CI。
+
+## b1／b2开始实施
+
+实际实施基线为CI接续`75bc99d788a9cef292b7c41eb7e01ac03d13de47`，原协议基线518和v2.2／283字节保持。来源准备及识别留在既有`reference.py`，CLI只有薄入口；新增固定descriptor＋delta两个data文件。准备在新目录复制前同步空descriptor，Git严格check／apply后先核完整279来源，再同步完整descriptor并复核；失败声明不fallback。legacy仍按原用途核Python，新协议始终核279全部文件（唯一override）。
+
+原native executor仅在固定派生delta中增加同锁admit／started／managed命名空间接缝；原283不改，Git／runner／Sandbox／archive／track／result算法不复制。两个原suite补源码身份、半成品／非py篡改、真实CLI及真实flock／外层预检后crash竞态；一个独立进程fixture仅在正常业务回归替换Sandbox和MLflow叶，实际Git／runner和原process主体保留。源码两suite回归正在运行，未预记通过；应用仍不消费queued request或启动实际训练。kernel路径不变。
+
+## b1／b2源码与b3新安装
+
+源码两个完整原suite已39 passed／75.63秒，外层77.210秒，包含真实锁争用、callback拒绝、外层预检后原native写started并crash、partial／dangling命名空间与started、正常无hook的真实Git／runner负gate及已有result只读。正常业务场景只替换Sandbox和MLflow叶，不把它当作原sandbox／MLflow或训练验收。原request、result／started语义与负结果路径保留。
+
+新r1 wheel SHA256为`cf9c1caed3bb5b0bff70f198872484cdaf63b29a5193f136cbc8805fe635a676`；core／SDK各650源码／wheel／实际site-packages逐字相同、283参考PASS与依赖检查通过，只有cli／reference变化及两个新固定data，core无Temporal，SDK为1.34.0。新安装五个原suite（含完整架构边界）合并验收正运行，174份tracked＋新fixture输入已冻结；完整结果待返回。
+
+新core安装实际四CLI来源旅程通过／2.960秒：原verify283、新含空格目录prepare、无SDK完整来源核验、重试拒绝且280个来源／descriptor字节保持；未建控制State／venv、未装依赖或启动服务／runner。原始命令和source字节清单另存；这只认证来源准备。手册、reference边界与当前架构已补新来源／锁内接缝及实际受管执行待办。自身原结构模板与新的fresh-context产品审查随后进行，前置75bc自己的CI43672292421仍由原reviewer跟踪。
+
+## b3完整安装与自身模板通过
+
+同一r1产品／wheel／两安装保持，冻结174份输入的五个原suite（reference、training runtime、registrations、training、完整架构边界）实际129 passed／137.80秒，外层138.984秒；没有失败或跳过。新协议来源、真实锁和crash、legacy注册／读取／SDK边界、CLI／HTTP及原图边界均在该命令实际选择范围。没有重复未改budget phase的24项或真实Temporal流程。
+
+Ergora自身原`ergora-structure-review@1.0.0`采用已授权Codex回退，75.791秒完成、需求approve／结构维护approve。20份全文393946B及三份祖先资源实际完整进入同一stdin，结果SHA256为`dc78a345f7abbba712dfe20ff0d66c587b000911a466b487b7ad40844328ef10`；仅供给源码文本审阅，不认证私有安装／运行或CI。
+
+新的fresh-context产品reviewer已开始对固定14份作者文件及原要求／r2合同、旧调用者和实际原件做独立两轴评审；没有委托其修改产品或运行昂贵测试。当前未新增执行能力、自动runner或循环，也没有GPU／真实训练／质量／收益证据。待其结论与前置75bc自己的CI终核；不提前推送后继产品。
+
+## b3新独立本地产品审查通过
+
+新的fresh-context reviewer已完成固定r1的需求与结构维护审查，两轴approve／开放0／0，详见[独立产品报告](2026-11-15-training-executor-protocol-review.md)。其独立便宜探针4.447秒通过：实际核复制前空descriptor文件／目录fsync顺序，首copy前、完整base后Git前和最终descriptor半写三类中断均拒绝fallback；legacy用途范围／Path返回保持，新协议普通来源读取仍核非Python文件。还核完整派生AST仅增加既定接缝、真实flock内callback拒绝无业务副作用和六种started／managed形态。没有重跑昂贵验收或授执行权限。
+
+同reviewer逐项核30份证据索引、14份作者候选、174份实际输入、650源码／wheel／两安装、283参考、129五suite分布及20全文＋三祖先资源实际stdin和原结果SHA。产品／测试从固定r1后保持；三份状态文档另行冻结补核，不替换原候选或原失败。前置75bc自己的CI及终核、最终静态检查、普通精确发布及本片自己的CI仍分别待办。下一片B3.3c先固定真实执行／停止的完整设计，再交新的独立计划审查；kernel专家保留在原v3路径。
+
+## 前置门禁闭合、准备固定发布
+
+前置75bc自己的CI43672292421／attempt1八job／30必要步骤全部success，原新独立最终两轴approve／开放0／0，精确接续闭合；原518失败保持。本片产品／测试继续等于已审r1，源码39、安装129、两安装650／283及四CLI和原自身模板证据保持。最终文档补核已通过，现做完整staged静态检查与普通精确发布；本片自己的CI及固定发布独立续核仍待，不把前置成功转授本片。
+
+首次完整staged diff-check将新data patch的三个空白context行报告为trailing whitespace；这些行的前导空格是unified patch语法，不能删改已固定的协议delta字节。原检查失败单列保留；在`.gitattributes`仅为`data/native-runtime/*.patch`设置`whitespace=-blank-at-eol`，其余文件及其它空白检查保持。该仓库元数据规则不改变650份产品／wheel／安装身份，不为此重建或重跑未改产品；最终完整检查及同片独立补核另记。

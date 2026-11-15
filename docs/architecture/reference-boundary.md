@@ -51,6 +51,7 @@ flowchart LR
 |模板复制 / 角色合同 / 页面输入|`reference.copy_template / agent_contract / template_details`；CLI、Web、agent_runs|Web只取得结构化数据，不再拼接ROOT；复制保留源字节并附加角色合同；开发模板返回input，训练返回files，不将训练伪装为开发DAG|
 |草稿结构校验|`reference.validate_input`；drafts、Web|专用子进程调用原make_spec；只报告结构PASS及原输入摘要，不创建正式任务或批准|
 |portable编译/转换/导出|`reference.workflow`；CLI|专用Python进程使用明确的随包路径和`-P -S`，不让业务仓库/可选site package替换原编译器；Windows有界no-follow reader patch只作用于相应专用子进程|
+|版本化训练来源准备／识别|`reference.prepare_training / validate_installation`；CLI与原训练入口|显式新协议只物化新目录，复制前同步不完整descriptor，固定Git delta后核279来源／完整descriptor；不装依赖或调用executor。legacy仍原用途Python校验，283不改；识别来源不授执行权限|
 |原执行安装定位|`reference.executor`；CLI及隔离验收fixture|仅Linux，先核对所选安装的local/upstream Python文件身份，再加载适配；不从任意配置字符串导入执行插件|
 |项目投影读取、校验与发布|`reference.registration_io / validate_installation / registration_paths`；registrations与执行入口|固定随包代码的专用子进程，按项目只读取登记文件与其他项目tracker，不读密钥或平台配置；复用原路径/scope校验、有界no-follow读取和不可变write；Windows复用reader patch|
 |新任务角色绑定快照|`bindings.development_snapshot`；tasks创建与reference_executor首次选择|复用同一快照格式冻结4角色、项目修订；执行器首次选择仍核对同一个Git根；后续阶段读同一`agent-bindings.json`；旧任务已有receipt时拒绝换为可选择执行器|
@@ -93,3 +94,20 @@ flowchart LR
 |Windows reader兼容patch|上游/迁入编译器有真实Windows下等价的限长、no-follow/reparse拒绝与不可变发布证据；不能仅凭Linux测试移除|
 
 R6迁出资源读取，R8已增加整体依赖图及静态边界检查；F1统一项目、显式采用与单向投影复用同一边界。后续F3接正式任务用例、F9接训练闭环。新增工具仍经agents/kernel等实际适配，不修改冻结模板来绑定厂商。
+
+## 版本化原生训练来源
+
+`training-executor-admission-v1` 以两个内置 data 文件定义唯一 delta 和完整 descriptor，来源准备及校验都留在原 `reference` owner。原文件校验算法由同一局部 helper 复用：legacy 按用途选 Python 文件，新协议核全部 279 个 platform 文件及唯一 override。准备过程的空 descriptor 是不完整声明，不是运行记录；完整来源通过后才同步固定最终字节。旧 v2.2、原 manifest、旧安装和原 283 文件均保持。
+
+```mermaid
+flowchart LR
+  CLI[reference prepare-training] --> Prepare[reference 来源准备]
+  Frozen[原283 / 固定descriptor与delta] --> Prepare
+  Prepare --> Pending[新目录 / 先同步空descriptor]
+  Pending --> Git[仅复制279来源 / Git check和apply]
+  Git --> Verify[同一来源校验 / 最终descriptor同步]
+  Verify --> Ready[来源已准备 / 依赖与服务未安装启动]
+  Ready -. 包含接缝但不调用 .-> Hook[原 executor.lock 内 admit]
+```
+
+派生 `process` 保留原主体，只在同一原锁内、业务副作用之前检查不确定 started／无 hook 的 managed 命名空间，并允许后继内置 callback 完成最终 admission。callback 拒绝不生成 native 业务失败 result；已有 result 先只读返回。实际执行请求、owner 出生能力、原 run/history/memo/request 绑定、不可重用 attempt／ack／stopped 与全后代停止归后继片；本片不提供自动 runner 消费者或第二实验账本。具体使用见[训练手册](../TRAINING.md#准备版本化原生来源)，验收见[交付](../delivery/2026-11-15-training-executor-protocol.md)。

@@ -162,11 +162,13 @@ def parser() -> argparse.ArgumentParser:
                                    help="Confirm state writers and external work have stopped")
     web = commands.add_parser("serve", help="Start the local graphical console (requires ergora[web])")
     web.add_argument("--port", type=int, default=8977)
-    legacy = commands.add_parser("reference", help="Inspect the bundled v2.2 reference implementation")
-    legacy.add_argument("operation", choices=["info", "verify", "executor"])
+    legacy = commands.add_parser("reference", help="Inspect the reference or prepare versioned native training source")
+    legacy.add_argument("operation", choices=["info", "verify", "executor", "prepare-training"])
     legacy.add_argument("--installation", type=Path, help="Existing v2.2 reference installation (executor only)")
     legacy.add_argument("--request", type=Path, help="Execute one envelope instead of watching the reference queue")
     legacy.add_argument("--project", help="Use a unified project's saved execution directories")
+    legacy.add_argument("--protocol", choices=[reference.TRAINING_PROTOCOL], help="Exact native source protocol (prepare-training only)")
+    legacy.add_argument("--directory", type=Path, help="New native source directory (prepare-training only)")
     templates = commands.add_parser("templates", help="List or copy a reference workflow template")
     operations = templates.add_subparsers(dest="operation", required=True)
     operations.add_parser("list")
@@ -905,7 +907,11 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 output = backups.restore(root, args.directory, offline=args.offline)
         elif args.command == "reference":
-            if args.operation == "executor":
+            if args.operation == "prepare-training":
+                if not args.protocol or args.directory is None:
+                    raise ValueError("Source preparation requires --protocol and a new --directory")
+                output = reference.prepare_training(args.directory, protocol=args.protocol)
+            elif args.operation == "executor":
                 if args.project:
                     if args.installation:
                         raise ValueError("Choose --project or --installation")

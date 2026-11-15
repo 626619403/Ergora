@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "protocol_id": "training-executor-admission-v1",
+  "base_reference_version": "2.2",
+  "base_manifest_sha256": "1f39b63b9c4966a0cd3d870047818924238615d10dcf7b85945814f7c8074943",
+  "patch_sha256": "45af28237aff0ffd066fe4a91064831facfaf5f6d8d50945081a5214907c93b9",
+  "overrides": {
+    "platform/local/agent_platform/training_executor.py": "feed0fa7574ad67e9d866adf41659d3288d1e4cc90178be2db830ea124388bca"
+  }
+}

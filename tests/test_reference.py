@@ -122,3 +122,97 @@ worker.Worker=Probe
     assert registered['factory'] == 'ergora.reference_training_worker:create_adapter'
     assert registered['workflows'] == ['ExperimentWorkflow']
     assert 'submit_or_lookup' in registered['activities'] and 'cancel_exact_job' in registered['activities']
+
+
+@pytest.fixture(scope='module')
+def prepared_training_installation(tmp_path_factory):
+    if sys.platform != 'linux':
+        pytest.skip('Native source preparation uses Linux/WSL2 directory synchronization')
+    root = tmp_path_factory.mktemp('native-source-parent') / 'training runtime with spaces'
+    receipt = reference.prepare_training(root, protocol=reference.TRAINING_PROTOCOL)
+    return root, receipt
+
+
+def test_native_source_protocol_is_explicit_and_preserves_the_legacy_installation(prepared_training_installation, tmp_path):
+    import shutil
+
+    root, receipt = prepared_training_installation
+    legacy = tmp_path / 'legacy'
+    shutil.copytree(reference.ROOT / 'platform', legacy)
+    original = (legacy / 'local/agent_platform/training_executor.py').read_bytes()
+    assert reference.validate_installation(legacy, training=True) == legacy.resolve()
+    assert reference.validate_installation(root, training=True) == root.resolve()
+    assert reference.validate_installation(root) == root.resolve()
+    assert receipt == {'status': 'source_prepared', 'protocol': reference.TRAINING_PROTOCOL,
+        'installation': str(root.resolve()), 'dependencies_installed': False,
+        'runtime_started': False, 'execution_authorized': False}
+    assert not (root / '.venv').exists()
+    assert (legacy / 'local/agent_platform/training_executor.py').read_bytes() == original
+    assert (root / 'local/agent_platform/training_executor.py').read_bytes() != original
+
+
+@pytest.mark.parametrize('changed', ['missing-descriptor', 'formatted-descriptor', 'truncated-descriptor', 'oversized-descriptor',
+                                    'linked-descriptor', 'fifo-descriptor', 'executor', 'requirements'])
+def test_native_source_identity_cannot_fall_back_or_accept_an_unverified_file(prepared_training_installation, tmp_path, changed):
+    import shutil
+
+    source, _ = prepared_training_installation
+    root = tmp_path / 'changed-source'
+    shutil.copytree(source, root)
+    descriptor = root / 'ergora-native-runtime.json'
+    if changed == 'missing-descriptor':
+        descriptor.unlink()
+    elif changed == 'formatted-descriptor':
+        descriptor.write_text(json.dumps(json.loads(descriptor.read_bytes())))
+    elif changed == 'truncated-descriptor':
+        descriptor.write_bytes(descriptor.read_bytes()[:100])
+    elif changed == 'oversized-descriptor':
+        with descriptor.open('ab') as stream:
+            stream.write(b' ' * 65_537)
+    elif changed == 'linked-descriptor':
+        descriptor.unlink()
+        descriptor.symlink_to(source / 'ergora-native-runtime.json')
+    elif changed == 'fifo-descriptor':
+        descriptor.unlink()
+        os.mkfifo(descriptor)
+    elif changed == 'executor':
+        path = 'local/agent_platform/training_executor.py'
+        (root / path).write_bytes((reference.ROOT / 'platform' / path).read_bytes())
+    else:
+        with (root / 'requirements.lock').open('ab') as stream:
+            stream.write(b'\n')
+    with pytest.raises(ValueError, match='runtime (identity|descriptor)'):
+        reference.validate_installation(root, training=True)
+
+
+def test_interrupted_source_preparation_declares_its_incomplete_identity(prepared_training_installation, tmp_path, monkeypatch):
+    root = tmp_path / 'interrupted-source'
+
+    def unavailable(*args, **kwargs):
+        raise OSError('Git launch interrupted after source copy')
+
+    monkeypatch.setattr(reference.subprocess, 'run', unavailable)
+    with pytest.raises(OSError, match='Git launch interrupted'):
+        reference.prepare_training(root, protocol=reference.TRAINING_PROTOCOL)
+    assert (root / 'ergora-native-runtime.json').read_bytes() == b''
+    original = reference.ROOT / 'platform/local/agent_platform/training_executor.py'
+    assert (root / 'local/agent_platform/training_executor.py').read_bytes() == original.read_bytes()
+    with pytest.raises(ValueError, match='incomplete native runtime descriptor'):
+        reference.validate_installation(root, training=True)
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Native source preparation requires Linux/WSL2')
+def test_cli_prepares_only_new_native_source_without_creating_control_state(tmp_path):
+    root = tmp_path / 'cli source'
+    control = tmp_path / 'unused-control'
+    command = [sys.executable, '-B', '-m', 'ergora', '--home', str(control), 'reference', 'prepare-training',
+               '--protocol', reference.TRAINING_PROTOCOL, '--directory', str(root)]
+    result = subprocess.run(command, capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stderr
+    receipt = json.loads(result.stdout)
+    assert receipt['status'] == 'source_prepared' and receipt['installation'] == str(root.resolve())
+    assert not receipt['runtime_started'] and not receipt['dependencies_installed'] and not receipt['execution_authorized']
+    assert not control.exists() and not (root / '.venv').exists()
+    before = {p: p.read_bytes() for p in root.rglob('*') if p.is_file()}
+    repeated = subprocess.run(command, capture_output=True, text=True, timeout=30)
+    assert repeated.returncode != 0 and all(p.read_bytes() == raw for p, raw in before.items())

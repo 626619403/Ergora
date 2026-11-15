@@ -76,6 +76,22 @@ init / runner-add → prepare → worker-start → start
 
 `run-local` 逐实验显式执行；没有常驻训练队列消费者。审批、结果、取消和恢复沿用原实验身份。未知结果需要对账，不直接用新 ID 重跑。候选模型或 Agent 的报告不能替代可信 runner 的验证；实验失败和负结果也要保存。
 
+### 准备版本化原生来源
+
+Linux／WSL2 上可用已安装的 Ergora 和 Git，在一个尚不存在的持久目录准备 `training-executor-admission-v1` 来源：
+
+```bash
+ergora reference prepare-training \
+  --protocol training-executor-admission-v1 \
+  --directory "$HOME/.local/share/ergora/native/training-admission-v1"
+```
+
+成功返回 `status=source_prepared` 和规范化的 `installation`。这里只复制经过校验的来源并应用固定 delta；`dependencies_installed`、`runtime_started`、`execution_authorized` 都为 false。它不创建控制项目、实验或服务，也不运行 runner。目录已存在时拒绝覆盖；准备中断会保留目录供检查，重试请选择另一个新目录。
+
+新来源保留原 Git、两臂 runner、Sandbox、归档、MLflow 和结果处理，只在原 `executor.lock` 内增加窄准入接缝。无结果却已有 `started.json` 时拒绝重入；手工无 hook 调用不能接管 `managed-execution/` 下的受管任务。已有 result 仍只读返回，不能据此追认受管停止。新协议核完整 279 个 platform 来源文件和固定 descriptor；空、缺损、链接、篡改的声明不会回退为旧安装。原 v2.2／283 文件与旧安装保持原身份。
+
+依赖仍属于该 native 安装自己的 `.venv` 和固定 `requirements.lock`，基础 Ergora 或 `temporal` extra 不代替它。准备来源不初始化这套依赖；原安装／服务和当前可信 Linux 容器边界仍按完整参考手册处理。后续受管执行要求独立新状态目录、所有参与 executor 使用同一协议，不能接管旧 started 或活旧 owner。当前只有来源与准入接缝，显式受管执行、执行能力、持久停止证据及自动循环仍待接线；模板提案和 kernel 专家不因此获得执行权限。
+
 ### 预览与初始化基线
 
 先登记选择 `training-optimization` 的真实Git项目和参考安装，填写模板的 `baseline.json`。`commit` 必须是该仓库内已存在的完整提交，配置与workload摘要须真实；登记不证明这些测量或质量已通过。

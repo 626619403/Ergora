@@ -10,6 +10,7 @@ import pytest
 
 from ergora import reference, training
 from test_training import experiments, registration
+from test_reference import prepared_training_installation
 
 
 @pytest.fixture(scope='module')
@@ -118,3 +119,119 @@ def test_cli_and_http_explicitly_query_the_same_native_run(experiments, runtime_
     runtime_client('unavailable')
     failed = client.get('/api/projects/demo/training/alpha/status')
     assert failed.status_code == 400 and 'UNAVAILABLE' in failed.json()['error']
+
+
+@pytest.fixture
+def native_executor(experiments, prepared_training_installation):
+    import os
+    import subprocess
+    import sys
+
+    if sys.platform != 'linux':
+        pytest.skip('Native executor uses Linux/WSL2 flock')
+    pytest.importorskip('temporalio')
+    _, definition, runtime, _, _ = experiments
+    installation, _ = prepared_training_installation
+    folder = runtime / 'training/jobs/beta'
+    (folder / 'started.json').unlink()
+    environment = dict(os.environ, PYTHONDONTWRITEBYTECODE='1',
+        AGENTFLOW_CONFIG_DIR=definition['execution']['config_directory'],
+        AGENTFLOW_STATE_DIR=definition['execution']['state_directory'],
+        PYTHONPATH=os.pathsep.join(map(str, (installation / 'local', installation / 'upstream/platform',
+                                           installation / 'upstream/temporal', installation / 'upstream'))))
+    script = Path(__file__).parent / 'fixtures/training_executor_client.py'
+
+    def command(mode):
+        return [sys.executable, '-B', '-P', str(script), mode, str(folder)]
+
+    def run(mode):
+        return subprocess.run(command(mode), env=environment, text=True, capture_output=True, timeout=15)
+
+    return folder, environment, command, run
+
+
+def test_native_admission_holds_the_original_lock_and_rejection_has_no_business_result(native_executor):
+    import select
+    import subprocess
+
+    folder, environment, command, run = native_executor
+    request = (folder / 'request.json').read_bytes()
+    with subprocess.Popen(command('hold-admission'), env=environment, stdin=subprocess.PIPE,
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as holder:
+        try:
+            assert select.select([holder.stdout], [], [], 15)[0], 'Admission did not become ready'
+            admitted = json.loads(holder.stdout.readline())
+            assert admitted == {'admitted': json.loads(request), 'folder': str(folder)}
+            competitor = run('no-hook')
+            assert competitor.returncode == 0, competitor.stderr
+            assert json.loads(competitor.stdout)['error_type'] == 'BlockingIOError'
+            stdout, stderr = holder.communicate('\n', timeout=15)
+            assert holder.returncode == 0, stderr
+            assert json.loads(stdout)['error'] == 'Admission declined before business execution'
+        finally:
+            if holder.poll() is None:
+                holder.kill()
+                holder.communicate()
+    assert (folder / 'request.json').read_bytes() == request
+    assert {p.name for p in folder.iterdir()} == {'request.json', 'executor.lock'}
+
+
+def test_native_started_written_after_outer_precheck_prevents_a_second_admission(native_executor):
+    import select
+    import subprocess
+
+    folder, environment, command, run = native_executor
+    request = (folder / 'request.json').read_bytes()
+    with subprocess.Popen(command('prechecked'), env=environment, stdin=subprocess.PIPE,
+                          stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True) as pending:
+        try:
+            assert select.select([pending.stdout], [], [], 15)[0], 'Outer precheck did not finish'
+            assert pending.stdout.readline().strip() == 'prechecked'
+            crashed = run('manual-crash')
+            assert crashed.returncode == 73, crashed.stderr
+            started = (folder / 'started.json').read_bytes()
+            stdout, stderr = pending.communicate('\n', timeout=15)
+            assert pending.returncode == 0, stderr
+            assert 'earlier executor started without a result' in json.loads(stdout)['error']
+        finally:
+            if pending.poll() is None:
+                pending.kill()
+                pending.communicate()
+    assert (folder / 'request.json').read_bytes() == request and (folder / 'started.json').read_bytes() == started
+    assert {p.name for p in folder.iterdir()} == {'request.json', 'executor.lock', 'started.json'}
+
+
+@pytest.mark.parametrize('checkpoint', ['managed-directory', 'managed-link', 'started-link'])
+def test_native_manual_entry_cannot_take_over_partial_or_uncertain_execution(native_executor, checkpoint):
+    folder, _, _, run = native_executor
+    if checkpoint == 'managed-directory':
+        (folder / 'managed-execution').mkdir()
+    else:
+        name = 'started.json' if checkpoint == 'started-link' else 'managed-execution'
+        (folder / name).symlink_to(folder / 'missing-publication')
+    original = (folder / 'request.json').read_bytes()
+    result = run('no-hook')
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)['error_type'] == 'Blocked'
+    assert not (folder / 'result.json').exists() and not (folder / 'repo.git').exists()
+    assert (folder / 'request.json').read_bytes() == original
+
+
+def test_native_clean_manual_execution_preserves_git_runner_negative_gate_and_completed_read(native_executor):
+    folder, _, _, run = native_executor
+    request = (folder / 'request.json').read_bytes()
+    completed = run('run-clean')
+    assert completed.returncode == 0, completed.stderr
+    result = json.loads(completed.stdout)['result']
+    assert result['state'] == 'SUCCEEDED'
+    gate = json.loads((folder / 'gate-report.json').read_bytes())
+    assert gate['passed'] is False and 'did not produce evidence.json' in gate['summary']
+    assert (folder / 'baseline/.git').is_file() and (folder / 'candidate/.git').is_file()
+    assert (folder / 'run-output/execution.log').is_file()
+    assert (folder / 'request.json').read_bytes() == request
+    (folder / 'managed-execution').mkdir()
+    before = {p: p.read_bytes() for p in folder.rglob('*') if p.is_file()}
+    observed = run('completed')
+    assert observed.returncode == 0, observed.stderr
+    assert json.loads(observed.stdout)['result'] == result
+    assert all(p.read_bytes() == raw for p, raw in before.items())

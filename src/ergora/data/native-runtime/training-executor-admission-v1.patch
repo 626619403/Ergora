@@ -1,0 +1,30 @@
+--- a/local/agent_platform/training_executor.py
++++ b/local/agent_platform/training_executor.py
+@@ -2,6 +2,7 @@
+ from __future__ import annotations
+ 
+ from dataclasses import asdict
++from collections.abc import Callable
+ import fcntl
+ import hashlib
+ import json
+@@ -48,11 +49,18 @@
+     return run_id
+ 
+ 
+-def process(folder: Path) -> dict:
++def process(folder: Path, *, admit: Callable[[Path, dict], None] | None = None) -> dict:
+     with (folder / 'executor.lock').open('a') as lock:
+         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+         if (folder / 'result.json').exists(): return read(folder / 'result.json')
+         record = read(folder / 'request.json')
++        require(not ((folder / 'started.json').exists() or (folder / 'started.json').is_symlink()),
++                'An earlier executor started without a result; reconcile it before further execution')
++        if admit is None:
++            require(not ((folder / 'managed-execution').exists() or (folder / 'managed-execution').is_symlink()),
++                    'This job is reserved for managed execution; use its original execution request')
++        else:
++            admit(folder, record)
+         binding = binding_from(record['experiment']['binding'])
+         ident = binding.experiment_id
+         fence = fence_path(ident)

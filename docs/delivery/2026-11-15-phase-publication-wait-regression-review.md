@@ -51,3 +51,38 @@
 本次未重新运行 pytest、完整矩阵、真实服务、模型、训练或 GPU；未修改产品、安装、提交或推送。原 CI 的 Linux Python 3.11 与 Windows 成功项不转授给本次候选，原失败保持。B3.3b 仍只有独立审过的设计文档，实际执行能力、全后代停止和自动循环仍归后继。
 
 下一步固定本片最终 staged 文件与普通提交，核测试／产品字节、完整 diff、远端完整 SHA，再跟踪该固定提交自己的必要 CI；由本评审者在本报告续记结论。只有这项接续 CI 和独立终核闭合后，才能按计划推进后继产品发布。
+
+## 固定发布续核
+
+同一评审者续核普通发布 `75bc99d788a9cef292b7c41eb7e01ac03d13de47`，parent 为原 `5182bfa03f536d4090b91014f97eedda1c5d2d3a`，tree 为 `a66b45a205de85e0d9a9b9ae3f3164aa4d9d28d3`。九份固定文件的 Git blob／字节／SHA 与最终 staged 清单全部一致；测试等于已审 r1，173 份有效输入保持，产品／scripts／配置／CI 的固定提交差异为空。完整 diff-check 通过，173 个文档链接在该 Git tree 中全部存在，含支持的 `:line` 定位；作者初次 checker 的十项误报及修正记录保留，未借此改源文件。
+
+已读实际 commit／push／ref stdout／stderr 及记录：提交时工作树干净，普通 push exit 0／5.906607 秒，SSH 完整分支 Ref 指向上述 SHA。评审者另向首方 commit／ref REST、commit／branch HTML 及九份固定 SHA 的 raw 文件发起只读请求，均为 HTTP 200；完整 SHA、parent、tree、分支 Ref 和全部九份远端原字节与本地固定提交相同。两轴固定发布补核均 approve，开放 0／0；后续 b 工作树不纳入此固定对象。
+
+首方 `head_sha` 查询发现本提交自己的 [Portability run 43672292421](https://github.com/626619403/Ergora/actions/runs/43672292421)，attempt 1；2026-11-15 03:28 UTC 观察仍在运行。完整官方 navigation 返回八个 job、`hasMore=false`，尚待八 job／30 必要步骤终态。原 `5182bfa` 的失败不转记成功，本次也不借用旧 CI。首方原件与逐字核验在本片 ignored `reviewer/ci-publication-r1/`；`official-identity-r1.json` 为 22,045B／`df286cdfbc938a53050830e957c7ab910824d5f09e053ba184fc40afeb2ab530`。
+
+## 自己的 CI 终态与最终结论
+
+2026-11-15 03:50 UTC，同一评审者完成固定 `75bc99d788a9cef292b7c41eb7e01ac03d13de47` 的 Portability #230／run `43672292421`／attempt 1 终核。完整官方 navigation 为八个唯一 job、`hasMore=false`，全部 completed／success；官方 run 页面为 Success，Actions 页的完成状态、完整 commit 链接与该固定 SHA 一致。
+
+|job|官方 ID|必要步骤|
+|---|---|---|
+|plan|132684778815|1／1 success|
+|Linux 3.11 group 0|132684809741|4／4 success|
+|Linux 3.11 group 1|132684809759|4／4 success|
+|Linux 3.11 group 2|132684809750|4／4 success|
+|Linux 3.11 group 3|132684809763|4／4 success|
+|Linux 3.11 group 4|132684809734|4／4 success|
+|Linux 3.11 group 5|132684809848|4／4 success|
+|Windows 3.12 all|132684809793|5／5 success，含 PowerShell 5.1 安装升级|
+
+30 个必要步骤在各 job 原页中均恰好出现一次且全部 success；八个 job 页头与 navigation 结论一致，步骤日志 URL 全部绑定该完整 SHA 和各自 job。group 5 的安装、参考身份、应用回归和观察上传均成功；Windows 应用回归、PowerShell 安装升级与观察上传也成功。本结论依据固定 workflow／分组入口和首方终态，未取得完整 step 日志或下载回归 artifact，不据此补写测试逐项运行时间线或新通过数量。
+
+本次共保存 84 条首方请求记录：81 次 HTTP 200、三次匿名 REST 限流 403；所有已保存响应的原字节／SHA 已重新核对。早期成功的 commit／ref／run REST 核定精确来源和 attempt；终态 run／jobs REST 的 403 原响应保持，终态依据首方 Actions／run HTML、完整 navigation 和八份 job HTML，没有将早期 in-progress REST 冒称终态。
+
+本片 ignored `reviewer/ci-publication-r1/` 的最终证据为：
+
+- `20261115T035002255818Z-terminal-summary-r1.json`：78,708B／`535144d51c88e9ec501b9dbcab5045a8989860e0df19483a64da21a9a3d80aad`。
+- `ci-originals-index-r1.json`：139 份原件及检查来源，24,612B／`72666849679ee5006a5d16dc362ab567d68715186cf7c7b959999e9fc8c2e186`。
+- `final-ci-audit-r1.json`：16,854B／`ccb58debdd09a62e93bd9d3d74bbb418993222456b59dfd12671ecea4a7c2d2b`。独立终核脚本 exit 0，实际检查范围及每项 job／步骤结论完整保留。
+
+**最终需求 approve／结构维护 approve，开放 0／0。** 本片已审等待修正、九文件普通固定发布、完整远端身份和自己的八 job／30 必要步骤 CI 门禁均闭合。原 `5182bfa` 的失败与原 reviewer 的 R4 历史结论保持，等待缺口由本次独立接续解决；后续工作树及其产品、安装、执行和 CI 仍须各自验收，不继承本结论。
