@@ -7,6 +7,7 @@ from dataclasses import asdict
 from datetime import timedelta
 import hashlib
 import json
+import logging
 import os
 from pathlib import Path
 import signal
@@ -20,6 +21,7 @@ from .reference_training_budget import BudgetedStart, TASK_QUEUE, validate_bindi
 from .reference_training_submission import _Submission
 from .reference_training_execution import Execution
 from .state import State, file_lock, now
+from .training_cycles import _CycleCapacityError
 
 
 _CREATING = ContextVar('ergora_training_budget_create', default=None)
@@ -33,9 +35,10 @@ class _CycleOperation:
     def __init__(self, home: Path, project: str, cycle_id: str, authorization_sha256: str, mode: str,
                  *, snapshot: dict | None = None, ordinal: int | None = None,
                  reason: str | None = None, inspection_timeout: int = 10,
-                 start_context: dict | None = None, window: dict | None = None):
+                 start_context: dict | None = None, window: dict | None = None,
+                 activity_context: dict | None = None):
         bootstrap = window
-        if mode in protocol.CYCLE_OBSERVATION_MODES:
+        if mode in protocol.CYCLE_OBSERVATION_MODES and window is None:
             if type(inspection_timeout) is not int or not 1 <= inspection_timeout <= 60:
                 raise ValueError('Cold inspection timeout must be 1 to 60 seconds')
             boot, ticks = budget_clock._clock()
@@ -56,15 +59,18 @@ class _CycleOperation:
         self.payload = {'identity': self.identity, 'snapshot': snapshot, 'bootstrap': bootstrap, 'reason': reason}
         if start_context is not None:
             self.payload['start_context'] = start_context
+        if activity_context is not None:
+            self.payload['activity_context'] = activity_context
         protocol.validate_cycle_operation(self.payload)
         self.encoded = json.dumps(self.payload, ensure_ascii=False, allow_nan=False, separators=(',', ':')).encode('utf-8')
         if len(self.encoded) > _CYCLE_LIMIT:
-            raise ValueError('Complete cycle operation request exceeds 32 KiB; nothing was truncated')
+            raise _CycleCapacityError('Complete cycle operation request exceeds 32 KiB; nothing was truncated')
         self.output = home / 'operations/training-cycles' / self.identity['operation_id']
         self.response = protocol.PhaseFrames(self.identity, self.output, _CYCLE_LIMIT)
         self.stopping, self.signalled, self.sent = False, False, False
         self.process, self.spawning, self.problem = None, None, None
         self.diagnostics = bytearray()
+        self.result_ref = None
 
     def expired(self) -> bool:
         try:
@@ -161,7 +167,15 @@ class _CycleOperation:
         if (not self.stopping and self.process.returncode == 0 and self.sent and len(self.response.frames) == 2
                 and not self.response.buffer and self.response.problem is None
                 and not any(isinstance(item, BaseException) for item in outcomes) and not self.expired()):
-            return self.observation(self.response.frames[1]['result'])
+            value = dict(self.response.frames[1]['result'])
+            self.result_ref = value.pop('_stdout_ref', None)
+            if self.result_ref is not None:
+                protocol._exact(self.result_ref, ('file', 'bytes', 'sha256'), 'Cycle stdout reference')
+                if (self.result_ref['file'] != 'helper/stdout.txt' or type(self.result_ref['bytes']) is not int
+                        or not 0 <= self.result_ref['bytes'] <= _CYCLE_LIMIT):
+                    raise ValueError('Cycle stdout reference has invalid source or size')
+                protocol._digest(self.result_ref['sha256'])
+            return self.observation(value)
         return self.observation({'status': 'unknown', 'response_rejected': self.response.problem is not None,
             'reason': self.problem or 'Original cycle operation has no complete in-budget result; inspect its operation logs'})
 
@@ -188,10 +202,12 @@ class _CycleCandidate:
     """Own one in-memory offer until the complete original owner is confirmed."""
 
     def __init__(self, home: Path, project: str, cycle_id: str, authorization_sha256: str,
-                 *, snapshot: dict, controller: dict):
+                 *, snapshot: dict, controller: dict, activity_context: dict | None = None):
         self.preparation = _CycleOperation(home, project, cycle_id, authorization_sha256, 'prepare-candidate',
-            snapshot=snapshot, ordinal=controller['ordinal'], start_context={'controller': controller})
+            snapshot=snapshot, ordinal=controller['ordinal'], start_context={'controller': controller},
+            activity_context=activity_context)
         self.operation = self.preparation
+        self.operations, self.results = [self.preparation], []
         self.stopping, self.handed_off = False, False
         self.spawning, self.root, self.root_identity = None, None, None
         self.cleanup_problem = None
@@ -204,7 +220,9 @@ class _CycleCandidate:
         self.operation = _CycleOperation(Path(identity['control_home']), identity['project'], identity['cycle_id'],
             identity['authorization_sha256'], mode, snapshot=payload['snapshot'], ordinal=identity['ordinal'],
             window=payload['bootstrap'], start_context={**payload['start_context'],
-                'origin_operation_id': identity['operation_id'], **facts})
+                'origin_operation_id': identity['operation_id'], **facts},
+            activity_context=payload.get('activity_context'))
+        self.operations.append(self.operation)
         return self.operation
 
     async def transfer(self, raw: bytes) -> None:
@@ -268,8 +286,17 @@ class _CycleCandidate:
                 self.stopping = True
         self.root.wait()
 
+    async def run_operation(self, operation):
+        try:
+            result = await operation.run()
+        except (OSError, ValueError, TypeError, KeyError) as error:
+            result = operation.observation({'status': 'capacity_exceeded' if isinstance(error, _CycleCapacityError)
+                                           else 'unknown', 'reason': str(error)})
+        self.results.append(result)
+        return result
+
     async def _run(self) -> dict:
-        prepared = await self.preparation.run()
+        prepared = await self.run_operation(self.preparation)
         if prepared['status'] != 'new_offer':
             return prepared
         result = {'status': 'unknown', 'preparation': prepared, 'intent_sha256': prepared['intent_sha256']}
@@ -289,7 +316,7 @@ class _CycleCandidate:
                 raise ValueError('Controller root offer differs from its complete prepare response')
             encoded = json.dumps(request, ensure_ascii=False, allow_nan=False, separators=(',', ':')).encode('utf-8')
             if len(encoded) > _CYCLE_LIMIT:
-                raise ValueError('Complete controller root request exceeds 32 KiB; intent remains occupied')
+                raise _CycleCapacityError('Complete controller root request exceeds 32 KiB; intent remains occupied')
             # Only OS creation runs in the thread. Its public concurrent Future
             # cannot be cancelled by the loop's global Task shutdown.
             executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='ergora-budget-spawn')
@@ -320,8 +347,8 @@ class _CycleCandidate:
                     sending.cancel()
                 await asyncio.gather(sending, return_exceptions=True)
             while not self.stopping_now() and self.root.poll() is None:
-                confirmed = await self.next_operation('confirm-candidate', intent_sha256=prepared['intent_sha256'],
-                    root_process=self.root_identity).run()
+                confirmed = await self.run_operation(self.next_operation('confirm-candidate',
+                    intent_sha256=prepared['intent_sha256'], root_process=self.root_identity))
                 result['confirmation'] = confirmed
                 if confirmed['status'] == 'owner_confirmed' and not self.stopping_now():
                     owner = protocol.owner_record(confirmed['owner'])
@@ -333,13 +360,14 @@ class _CycleCandidate:
                     observer = asyncio.create_task(self.observe_root())
                     _ROOT_OBSERVERS.add(observer)
                     observer.add_done_callback(_ROOT_OBSERVERS.discard)
-                    dispatched = await self.next_operation('dispatch-candidate', intent_sha256=prepared['intent_sha256'],
-                        owner=owner).run()
+                    dispatched = await self.run_operation(self.next_operation('dispatch-candidate',
+                        intent_sha256=prepared['intent_sha256'], owner=owner))
                     return {**dispatched, 'preparation': prepared, 'confirmation': confirmed}
                 await asyncio.sleep(.05)
             return {**result, 'reason': 'Original root was not completely confirmed in its one start window'}
         except (OSError, ValueError, TimeoutError) as error:
-            return {**result, 'reason': str(error)}
+            return {**result, 'status': 'capacity_exceeded' if isinstance(error, _CycleCapacityError) else 'unknown',
+                    'reason': str(error)}
         finally:
             if not self.handed_off:
                 await self.discard_root()
@@ -414,6 +442,33 @@ def _cycle_target(plan: dict, admission, ordinal: int):
     return operation, intent, owner
 
 
+def _activity_active(payload):
+    identity = payload['identity']
+    if (protocol.cycle_operation_remaining(payload) <= 0
+            or processes.identity(identity['parent']['pid']) != identity['parent']):
+        raise ValueError('Original activity observation window or parent ended')
+
+
+def _activity_binding(payload, admission):
+    context = payload['activity_context']
+    protocol.validate_cycle_activity_context(context)
+    saved = admission.submission()
+    intent = saved['intent']
+    if (intent is None or not saved['attempt_saved'] or saved['status'] == 'rejected'
+            or intent['workflow_input'] != context['workflow_input']
+            or intent['workflow_id'] != context['activity_source']['workflow_id']
+            or saved['run_id'] is not None and saved['run_id'] != context['activity_source']['workflow_run_id']):
+        raise ValueError('SDK activity differs from its complete original controller attempt or run')
+    if payload['identity']['mode'] != 'inspect-controller-activity' and saved['run_id'] is None:
+        raise ValueError('SDK activity requires its authenticated original receipt')
+    controller = payload.get('start_context', {}).get('controller')
+    if controller is not None and any(controller[key] != value for key, value in {
+            'workflow_id': intent['workflow_id'], 'run_id': context['activity_source']['workflow_run_id'],
+            'intent_sha256': protocol.CycleAdmission._sha(intent)}.items()):
+        raise ValueError('Candidate source differs from its authenticated activity controller')
+    return saved
+
+
 def _cycle_operation(payload: dict) -> dict:
     """Run inside a separately supervised H, never inside the async parent loop."""
     identity = payload['identity']
@@ -425,12 +480,27 @@ def _cycle_operation(payload: dict) -> dict:
         raise ValueError('Cycle operation requires the complete original authorization SHA256')
     snapshot = _cycle_snapshot(plan, authorization)
     mode = identity['mode']
-    if mode == 'inspect':
+    if payload.get('activity_context') is not None:
+        _activity_binding(payload, admission)
+    if mode in ('inspect', 'inspect-controller-activity'):
+        authentication = None
+        if mode == 'inspect-controller-activity':
+            if ready is None:
+                raise ValueError('SDK activity requires the original durable ready record')
+            authentication = asyncio.run(_dispatch_controller(payload, plan, admission, lambda: _activity_active(payload)))
+            if authentication.get('runtime_status') not in ('queried', 'local_binding'):
+                return authentication
         # This is only a read of original facts, including an already exhausted clock.
         total = budget_clock.remaining(authorization['clock'], snapshot['policy']['wall_seconds'])
         boot, ticks = budget_clock._clock()
         return {'status': 'inspected', 'snapshot': snapshot,
             'submission': {key: value for key, value in admission.submission().items() if key != 'intent'},
+            'candidate_exists': (_cycle_submission(plan, admission, 0)[1] is not None
+                if payload.get('activity_context', {}).get('activity_source', {}).get('activity_type')
+                    == protocol.CYCLE_ACTIVITY_NAMES['start'] else None),
+            'controller': ({key: authentication[key] for key in ('workflow_id', 'run_id', 'intent_sha256')}
+                           if authentication is not None else None),
+            'runtime_status': authentication.get('runtime_status', 'not_queried') if authentication else 'not_queried',
             'observation': {'total_remaining_seconds': total, 'boot_id': boot,
                             'boottime_ns': ticks, 'observed_at': now()}}
     if identity['input_sha256'] != authorization['input_sha256'] or training_cycles._sha(payload['snapshot']) != training_cycles._sha(snapshot):
@@ -515,6 +585,16 @@ def _candidate_operation(payload: dict, plan: dict, admission, active) -> dict:
     from . import training
 
     identity, context = payload['identity'], payload['start_context']
+    activity = payload.get('activity_context')
+    mode = identity['mode']
+    if mode == 'prepare-candidate' and activity is not None:
+        if identity['ordinal'] != 0:
+            raise ValueError('successor_not_enabled')
+        if activity['activity_source']['attempt'] > 1:
+            raise ValueError('Retried SDK start may only reconcile existing records')
+        authentication = asyncio.run(_dispatch_controller(payload, plan, admission, active))
+        if authentication.get('temporal_status') != 'RUNNING':
+            raise ValueError('Original controller is not authenticated RUNNING; no new offer is admitted')
     _select_cycle_project(admission.authorization, plan['project'])
     mode = identity['mode']
     if mode in protocol.CYCLE_START_MODES:
@@ -599,6 +679,12 @@ async def _dispatch_controller(payload: dict, plan: dict, admission, active) -> 
         return {**{key: item for key, item in value.items() if key != 'intent'},
             'submission_status': value['status'], 'status': status or value['status'], **facts}
 
+    activity_context = payload.get('activity_context')
+    if activity_context is not None:
+        _activity_binding(payload, admission)
+        if (activity_context['activity_source']['activity_type'] == protocol.CYCLE_ACTIVITY_NAMES['stop']
+                and saved['run_id'] is not None):
+            return observation(saved, runtime_status='local_binding')
     if saved['status'] == 'rejected':
         return observation(saved, runtime_status='not_queried')
     context = _select_cycle_project(admission.authorization, plan['project'])
@@ -612,20 +698,27 @@ async def _dispatch_controller(payload: dict, plan: dict, admission, active) -> 
     try:
         async with asyncio.timeout(remaining()):
             client = await connect()
+            if activity_context is not None and client.namespace != activity_context['service_namespace']:
+                raise ValueError('Actual controller query namespace differs from its SDK activity service')
 
             async def reconcile():
                 current = admission.submission()
                 if current['status'] == 'rejected' or not current['attempt_saved']:
                     return observation(current, runtime_status='not_queried')
-                found = await lookup_controller_submission(client, intent, run_id=current['run_id'], timeout=remaining())
+                actual_run = activity_context['activity_source']['workflow_run_id'] if activity_context else current['run_id']
+                found = await lookup_controller_submission(client, intent, run_id=actual_run, timeout=remaining())
                 if found is None:
                     return observation(current, status='unknown', runtime_status='not_found')
                 _, description = found
+                if activity_context is not None and (description.run_id != actual_run
+                        or description.raw_description.workflow_execution_info.type.name != 'TrainingCycleWorkflow'
+                        or description.status.name == 'CONTINUED_AS_NEW'):
+                    raise ValueError('Actual activity run or description type differs')
                 current = training_cycles._record_controller(state, admission, run_id=description.run_id)
                 active()
                 return observation(current, runtime_status='queried', temporal_status=description.status.name)
 
-            if payload['identity']['mode'] == 'reconcile-controller' or saved['attempt_saved']:
+            if payload['identity']['mode'] in ('reconcile-controller', 'inspect-controller-activity') or saved['attempt_saved']:
                 return await reconcile()
             with admission.permission():
                 training_cycles._controller_ready(state, admission)
@@ -668,24 +761,58 @@ async def _dispatch_controller(payload: dict, plan: dict, admission, active) -> 
         return observation(admission.submission(), status='unknown', runtime_status='unconfirmed', reason=str(error))
 
 
+def _activity_operation_result(operation, result):
+    identity = operation.identity
+    return {'operation_id': identity['operation_id'], 'mode': identity['mode'], 'ordinal': identity['ordinal'],
+        'operation_stopped': result['operation_stopped'], 'supervisor_returncode': result['supervisor_returncode'],
+        'result': {'ref': operation.result_ref} if operation.result_ref is not None else {'inline': result}}
+
+
 async def stop_live_controller(home: Path, project_id: str, cycle_id: str, authorization_sha256: str,
-                               *, reason: str, inspection_timeout: int = 10) -> dict:
-    """Observe independent stop branches; no one branch implies the others succeeded."""
-    inspection = await _CycleOperation(home, project_id, cycle_id, authorization_sha256, 'inspect',
-                                      inspection_timeout=inspection_timeout).run()
+                               *, reason: str, inspection_timeout: int = 10,
+                               activity_context: dict | None = None, inspection: dict | None = None,
+                               operation_records: list | None = None) -> dict:
+    """Observe every independent branch, retaining each real task through cleanup."""
+    if inspection is None:
+        inspection = await _CycleOperation(home, project_id, cycle_id, authorization_sha256, 'inspect',
+                                          inspection_timeout=inspection_timeout).run()
     if inspection['status'] != 'inspected':
         return {'status': 'unknown', 'inspection': inspection, 'operations': [], 'runtime_status': 'not_queried'}
     snapshot = inspection['snapshot']
-    operations = [_CycleOperation(home, project_id, cycle_id, authorization_sha256, 'stop-writer',
-                                   snapshot=snapshot, reason=reason),
-                  _CycleOperation(home, project_id, cycle_id, authorization_sha256, 'drain', snapshot=snapshot)]
-    for ordinal in range(len(snapshot['candidates'])):
-        operations.extend(_CycleOperation(home, project_id, cycle_id, authorization_sha256, mode,
-                                          snapshot=snapshot, ordinal=ordinal)
-                          for mode in ('notify-owner', 'observe-execution'))
-    tasks = [asyncio.create_task(operation.run()) for operation in operations]
+    branches = [('stop-writer', None), ('drain', None)]
+    branches.extend((mode, ordinal) for ordinal in range(len(snapshot['candidates']))
+                    for mode in ('notify-owner', 'observe-execution'))
+    operations, tasks, results = [], [], [None] * len(branches)
+
+    async def run_branch(index, operation):
+        try:
+            value = await operation.run()
+        except (OSError, ValueError, TypeError, KeyError) as error:
+            value = operation.observation({'status': 'capacity_exceeded' if isinstance(error, _CycleCapacityError)
+                                           else 'unknown', 'reason': str(error)})
+        results[index] = value
+        if operation_records is not None:
+            operation_records.append(_activity_operation_result(operation, value))
+
     try:
-        results = await asyncio.gather(*tasks)
+        for index, (mode, ordinal) in enumerate(branches):
+            try:
+                operation = _CycleOperation(home, project_id, cycle_id, authorization_sha256, mode,
+                    snapshot=snapshot, reason=reason if mode == 'stop-writer' else None,
+                    ordinal=ordinal, activity_context=activity_context)
+            except (OSError, ValueError, TypeError, KeyError) as error:
+                value = {'operation_id': uuid.uuid4().hex, 'mode': mode, 'ordinal': ordinal,
+                    'operation_stopped': False, 'supervisor_returncode': None,
+                    'status': 'capacity_exceeded' if isinstance(error, _CycleCapacityError) else 'unknown',
+                    'reason': str(error)}
+                results[index] = value
+                if operation_records is not None:
+                    operation_records.append({key: value[key] for key in ('operation_id', 'mode', 'ordinal',
+                        'operation_stopped', 'supervisor_returncode')} | {'result': {'inline': value}})
+                continue
+            operations.append(operation)
+            tasks.append(asyncio.create_task(run_branch(index, operation)))
+        await asyncio.gather(*tasks)
     finally:
         for operation in operations:
             operation.request_stop()
@@ -727,7 +854,8 @@ def cycle_operation_main(supervisor: bool = True) -> None:
         try:
             result = _cycle_operation(payload)
         except (OSError, ValueError, KeyError, TypeError) as error:
-            result = {'status': 'unknown', 'reason': str(error)}
+            result = {'status': 'capacity_exceeded' if isinstance(error, _CycleCapacityError) else 'unknown',
+                      'reason': str(error)}
         print(json.dumps(result, ensure_ascii=False, allow_nan=False), flush=True)
         return
     for parent in (output, *output.parents):
@@ -750,7 +878,15 @@ def cycle_operation_main(supervisor: bool = True) -> None:
         encoded = json.dumps({**identity, 'event': event, field: value},
                              ensure_ascii=False, allow_nan=False, separators=(',', ':')).encode('utf-8')
         if len(encoded) > (65_536 if event == 'stopped' else _CYCLE_LIMIT):
-            raise ValueError('Complete cycle operation response exceeds its frame capacity')
+            if event == 'stopped':
+                raise ValueError('Complete cycle operation stopped frame exceeds its capacity')
+            logging.error('Complete cycle operation response exceeds frame capacity: %s', value)
+            failure = {'status': 'capacity_exceeded',
+                       'reason': 'Complete original result exceeds the cycle frame capacity'}
+            if '_stdout_ref' in value:
+                failure['_stdout_ref'] = value['_stdout_ref']
+            encoded = json.dumps({**identity, 'event': event, field: failure},
+                ensure_ascii=False, allow_nan=False, separators=(',', ':')).encode('utf-8')
         sys.stdout.buffer.write(encoded + b'\n')
         sys.stdout.buffer.flush()
 
@@ -759,9 +895,19 @@ def cycle_operation_main(supervisor: bool = True) -> None:
         Path.cwd(), output / 'helper', 60, raw.decode('utf-8'), dict(os.environ),
         supervised=True, stop_requested=stopped)
     frame('stopped', 'process', result)
-    observed = protocol.decode(training_cycles._read_bytes(output / 'helper/stdout.txt', _CYCLE_LIMIT)) if result['status'] == 'succeeded' else {
+    observed = {
         'status': 'unknown', 'reason': 'Original cycle helper did not complete within its allowance',
         'helper_status': result['status']}
+    if result['status'] == 'succeeded':
+        try:
+            stdout = training_cycles._read_bytes(output / 'helper/stdout.txt', _CYCLE_LIMIT)
+        except _CycleCapacityError as error:
+            logging.exception('Complete cycle helper stdout retained at %s', output / 'helper/stdout.txt')
+            observed = {'status': 'capacity_exceeded', 'reason': str(error)}
+        else:
+            observed = protocol.decode(stdout)
+            observed['_stdout_ref'] = {'file': 'helper/stdout.txt', 'bytes': len(stdout),
+                                       'sha256': hashlib.sha256(stdout).hexdigest()}
     frame('result', 'result', observed)
 
 
@@ -826,6 +972,196 @@ def create_adapter():
             return job
 
     return BudgetAdapter()
+
+async def _cycle_capacity(value, converter):
+    from temporalio.api.common.v1 import Payloads
+    from temporalio.exceptions import ApplicationError
+
+    encoded = await converter.encode([value])
+    if Payloads(payloads=encoded).ByteSize() > _CYCLE_LIMIT:
+        logging.error('Complete cycle activity capacity failure; full unsent value: %s', value)
+        raise ApplicationError('Complete cycle activity payload exceeds 32 KiB; no facts were truncated',
+                               type='cycle_activity_capacity_exceeded', non_retryable=True)
+
+
+def create_cycle_activities(client):
+    """Load optional SDK decorators only for the enabled cycle service."""
+    from temporalio import activity
+    from temporalio.exceptions import ApplicationError
+
+    async def invoke(action, request):
+        await _cycle_capacity(request, client.data_converter)
+        try:
+            protocol.validate_cycle_activity_request(request, action)
+            info = activity.info()
+            if getattr(info, 'is_local', False):
+                raise ValueError('Local activities cannot control a training cycle')
+            source = {name: getattr(info, name, None) for name in ('workflow_id', 'workflow_run_id',
+                'workflow_type', 'workflow_namespace', 'namespace', 'activity_id', 'activity_type', 'task_queue', 'attempt')}
+            context = {'workflow_input': request['workflow_input'], 'activity_source': source,
+                       'service_namespace': client.namespace}
+            protocol.validate_cycle_activity_context(context)
+            if source['activity_type'] != protocol.CYCLE_ACTIVITY_NAMES[action]:
+                raise ValueError('SDK source differs from the registered activity action')
+            if action == 'start' and request['ordinal'] != 0:
+                raise ValueError('successor_not_enabled')
+        except (ValueError, TypeError, KeyError) as error:
+            raise ApplicationError(str(error), type='cycle_activity_request_rejected', non_retryable=True) from error
+        original = request['workflow_input']
+        arguments = (Path(original['control_home']), original['project'], original['cycle_id'], original['authorization_sha256'])
+        cold = _CycleOperation(*arguments, 'inspect-controller-activity', activity_context=context)
+        inspection = await cold.run()
+        if inspection['status'] == 'capacity_exceeded':
+            raise ApplicationError(inspection['reason'], type='cycle_activity_capacity_exceeded', non_retryable=True)
+        records = [_activity_operation_result(cold, inspection)]
+        outcome = inspection
+        if inspection['status'] == 'inspected':
+            snapshot = inspection['snapshot']
+            if action in ('start', 'reconcile'):
+                binding = {'protocol': original['protocol'], **inspection['controller'], 'ordinal': request['ordinal']}
+                if action == 'start' and source['attempt'] == 1 and not inspection['candidate_exists']:
+                    candidate = _CycleCandidate(*arguments, snapshot=snapshot, controller=binding, activity_context=context)
+                    outcome = await candidate.run()
+                    records.extend(_activity_operation_result(operation, value)
+                                   for operation, value in zip(candidate.operations, candidate.results))
+                    # H references do not archive observations made later by its parent.
+                    # Keep a separate inline observation of that same actual operation.
+                    parent_result = {key: value for key, value in outcome.items()
+                                     if key not in ('preparation', 'confirmation')}
+                    if parent_result != candidate.results[-1]:
+                        records.append(_activity_operation_result(candidate.operation, candidate.results[-1])
+                                       | {'result': {'inline': parent_result}})
+                else:
+                    operation = _CycleOperation(*arguments, 'reconcile-candidate', snapshot=snapshot,
+                        ordinal=request['ordinal'], start_context={'controller': binding},
+                        activity_context=context, window=cold.payload['bootstrap'])
+                    outcome = await operation.run()
+                    records.append(_activity_operation_result(operation, outcome))
+            elif action == 'stop':
+                outcome = await stop_live_controller(*arguments, reason=request['reason'], inspection=inspection,
+                    activity_context=context, operation_records=records)
+        if outcome.get('status') == 'capacity_exceeded' or any(
+                item.get('status') == 'capacity_exceeded' for item in outcome.get('operations', [])):
+            logging.error('Complete cycle operation capacity failure; outcome: %s; operations: %s', outcome, records)
+            raise ApplicationError('Complete original operation result exceeded its frame capacity',
+                                   type='cycle_activity_capacity_exceeded', non_retryable=True)
+        envelope = {'schema_version': 1, 'protocol': 'ergora-training-cycle-activity-v1', 'action': action,
+            'status': 'observed' if inspection['status'] == 'inspected' and outcome.get('status') != 'unknown' else 'unknown',
+            'workflow_input': original, 'controller': inspection.get('controller'),
+            'observation': inspection.get('observation'), 'inspection': records[0], 'operations': records[1:],
+            'runtime_status': outcome.get('runtime_status', inspection.get('runtime_status', 'not_queried'))}
+        await _cycle_capacity(envelope, client.data_converter)
+        return envelope
+
+    registered = {}
+    for action, name in protocol.CYCLE_ACTIVITY_NAMES.items():
+        # Each closure is a real async SDK activity with one strict business request.
+        def build(selected):
+            async def execute(request: dict) -> dict:
+                try:
+                    return await invoke(selected, request)
+                except _CycleCapacityError as error:
+                    logging.error('Cycle activity request capacity failure: %s', error)
+                    raise ApplicationError(str(error), type='cycle_activity_capacity_exceeded', non_retryable=True) from error
+            return execute
+        registered[action] = activity.defn(name=name)(build(action))
+    return registered
+
+
+async def _serve_cycle() -> None:
+    from perf_temporal.connection import connect
+    from temporalio.worker import Worker
+
+    stopped = asyncio.Event()
+    loop = asyncio.get_running_loop()
+    for signum in (signal.SIGTERM, signal.SIGINT):
+        loop.add_signal_handler(signum, stopped.set)
+    workers, running = [], []
+    waiting = asyncio.create_task(stopped.wait())
+
+    async def connect_bounded():
+        async with asyncio.timeout(60):
+            while True:
+                try:
+                    return await connect()
+                except (OSError, RuntimeError):
+                    await asyncio.sleep(1)
+
+    connecting = asyncio.create_task(connect_bounded())
+    failure = None
+
+    async def fatal(error):
+        nonlocal failure
+        if failure is None:
+            failure = error
+        # SDK calls this before waiting for active activities to finish cleanup.
+        stopped.set()
+
+    try:
+        await asyncio.wait((connecting, waiting), return_when=asyncio.FIRST_COMPLETED)
+        if stopped.is_set():
+            return
+        client = connecting.result()
+        activities = create_cycle_activities(client)
+        workers = [Worker(client, task_queue=protocol.CYCLE_TASK_QUEUE,
+            activities=[activities[action] for action in ('inspect', 'start', 'reconcile')],
+            max_concurrent_activities=1, graceful_shutdown_timeout=timedelta(0), on_fatal_error=fatal),
+            Worker(client, task_queue=protocol.CYCLE_STOP_TASK_QUEUE, activities=[activities['stop']],
+            max_concurrent_activities=1, graceful_shutdown_timeout=timedelta(0), on_fatal_error=fatal)]
+        running = [asyncio.create_task(worker.run()) for worker in workers]
+        done, _ = await asyncio.wait((*running, waiting), return_when=asyncio.FIRST_COMPLETED)
+        for task in done:
+            if task in running and not task.cancelled() and failure is None:
+                failure = task.exception()
+    finally:
+        # Explicit ordered shutdown retains stop capacity while normal owns live S/H or a pending root.
+        async def finish():
+            nonlocal failure
+            for worker, task in zip(workers, running):
+                shutdown = None
+                if not task.done():
+                    shutdown = asyncio.create_task(worker.shutdown())
+                    # Validation can fail after the check above. A terminal run
+                    # owns no remaining cleanup, but SDK shutdown may still wait.
+                    await asyncio.wait((task, shutdown), return_when=asyncio.FIRST_COMPLETED)
+                outcome = (await asyncio.gather(task, return_exceptions=True))[0]
+                if shutdown is not None:
+                    if not shutdown.done():
+                        shutdown.cancel()
+                    await asyncio.gather(shutdown, return_exceptions=True)
+                if isinstance(outcome, Exception) and failure is None:
+                    failure = outcome
+        cleanup = asyncio.create_task(finish())
+        while not cleanup.done():
+            try:
+                await asyncio.shield(cleanup)
+            except asyncio.CancelledError:
+                continue
+        cleanup.result()
+        connecting.cancel()
+        waiting.cancel()
+        await asyncio.gather(connecting, waiting, return_exceptions=True)
+        for signum in (signal.SIGTERM, signal.SIGINT):
+            loop.remove_signal_handler(signum)
+    if failure is not None:
+        raise failure
+
+
+def cycle_main(installation: str) -> None:
+    try:
+        import temporalio.worker  # noqa: F401 -- validate the optional dependency before native loading
+    except ImportError as error:
+        raise SystemExit('Training cycle service requires ergora[temporal]') from error
+    root = reference.validate_installation(Path(installation), training=True)
+    sys.path[:0] = [str(root / part) for part in ('local', 'upstream/platform', 'upstream/temporal', 'upstream')]
+    from agent_platform.core import environment
+
+    os.environ.update(environment())
+    # H and the independent budget root must import this exact application installation.
+    os.environ['PYTHONPATH'] = os.pathsep.join([str(Path(__file__).parent.parent),
+        *[str(root / part) for part in ('local', 'upstream/platform', 'upstream/temporal', 'upstream')]])
+    asyncio.run(_serve_cycle())
+
 
 async def _serve() -> None:
     from perf_temporal.activities import Activities

@@ -46,6 +46,12 @@ if stage == 'S':
 
         training_cycles._read_bytes = blocked_result
 else:
+    if fault in ('oversized-stdout', 'oversized-frame') and mode == 'stop-writer':
+        def large_result(payload):
+            # Real H bytes cross either the stdout bound or the identity-bearing frame bound.
+            return {'status': 'unknown', 'reason': 'x' * (32768 if fault == 'oversized-stdout' else 32500)}
+
+        worker._cycle_operation = large_result
     if mode in protocol.CYCLE_CANDIDATE_MODES and os.environ.get('ERGORA_TEST_TRAINING_SERVICE'):
         mark('candidate-helper-entered')
         sys.path[:0] = [str(Path(payload['snapshot']['authorization']['execution']['installation']) / part)
@@ -88,17 +94,20 @@ else:
                 return owner
 
             worker.BudgetedStart.owner_record = owner_after_deadline
-        if fault in ('candidate-window-drift', 'candidate-owner-drift') and mode == 'dispatch-candidate':
+        if fault in ('candidate-window-drift', 'candidate-owner-drift', 'candidate-activity-context-drift') and mode == 'dispatch-candidate':
             synchronize = training_cycles._sync_directory
 
             def drift_after_attempt(directory):
                 synchronize(directory)
                 if (directory / (selected['experiment_id'] + '.attempt.json')).exists():
-                    if fault == 'candidate-window-drift':
+                    if fault in ('candidate-window-drift', 'candidate-activity-context-drift'):
                         target = (Path(payload['identity']['control_home']) / 'operations/training-cycles'
                                   / payload['start_context']['origin_operation_id'] / 'request.json')
                         value = json.loads(target.read_bytes())
-                        value['bootstrap']['deadline_ns'] -= 1
+                        if fault == 'candidate-window-drift':
+                            value['bootstrap']['deadline_ns'] -= 1
+                        else:
+                            value['activity_context']['activity_source']['activity_id'] = 'foreign-source'
                     else:
                         target = directory / (selected['experiment_id'] + '.budget/owner.json')
                         value = json.loads(target.read_bytes())
@@ -107,8 +116,11 @@ else:
                     mark(fault)
 
             training_cycles._sync_directory = drift_after_attempt
-    if os.environ.get('ERGORA_TEST_CYCLE_DISPATCH') and mode in ('submit-controller', 'reconcile-controller'):
-        sys.path[:0] = [str(Path(payload['snapshot']['authorization']['execution']['installation']) / part)
+    if os.environ.get('ERGORA_TEST_CYCLE_DISPATCH') and mode in ('submit-controller', 'reconcile-controller', 'inspect-controller-activity'):
+        authorization = payload['snapshot']['authorization'] if payload['snapshot'] else json.loads((
+            Path(payload['identity']['control_home']) / 'training-cycles' / payload['identity']['project']
+            / payload['identity']['cycle_id'] / 'authorization.json').read_bytes())
+        sys.path[:0] = [str(Path(authorization['execution']['installation']) / part)
                        for part in ('local', 'upstream/platform', 'upstream/temporal', 'upstream')]
         sys.path.insert(0, str(Path(__file__).parent))
         from perf_temporal import connection
@@ -118,7 +130,8 @@ else:
         selected = json.loads(os.environ.get('ERGORA_TEST_CYCLE_DISPATCH_CASES', '{}'))
 
         async def connect():
-            return Client(DispatchService(payload, selected.get(payload['identity']['operation_id'], fault)))
+            return Client(DispatchService(payload, selected.get(payload['identity']['operation_id'], fault)),
+                          namespace='foreign' if fault == 'namespace' else 'default')
 
         connection.connect = connect
         mark('dispatch-helper')

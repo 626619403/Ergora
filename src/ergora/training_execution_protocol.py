@@ -21,7 +21,7 @@ CYCLE_MEMO_KEY = 'ergora.training_cycle_sha256'
 CYCLE_START_MODES = ('prepare-candidate', 'confirm-candidate', 'dispatch-candidate')
 CYCLE_CANDIDATE_MODES = (*CYCLE_START_MODES, 'reconcile-candidate')
 CYCLE_WORK_MODES = ('prepare-controller', 'submit-controller', *CYCLE_START_MODES)
-CYCLE_OBSERVATION_MODES = ('inspect', 'reconcile-controller', 'reconcile-candidate')
+CYCLE_OBSERVATION_MODES = ('inspect', 'inspect-controller-activity', 'reconcile-controller', 'reconcile-candidate')
 LIMIT = 1_048_576
 GATE_SOURCES = (
     'training_execution_protocol.py', 'reference_training_execution.py',
@@ -171,20 +171,87 @@ class PhaseFrames:
             self.problem = 'Incomplete training phase frame exceeds its complete response capacity'
 
 
+CYCLE_ACTIVITY_NAMES = {action: 'ergora.training_cycle.' + action + '.v1'
+                        for action in ('inspect', 'start', 'reconcile', 'stop')}
+CYCLE_TASK_QUEUE = 'ergora-training-cycle-v1'
+CYCLE_STOP_TASK_QUEUE = 'ergora-training-cycle-stop-v1'
+
+
+def validate_cycle_activity_request(value: dict, action: str) -> None:
+    fields = ('workflow_input', *({'start': ('ordinal',), 'reconcile': ('ordinal',),
+                                  'stop': ('reason',)}.get(action, ())))
+    _exact(value, fields, 'Cycle activity request')
+    workflow_input = value['workflow_input']
+    _exact(workflow_input, ('protocol', 'control_home', 'project', 'cycle_id',
+                           'input_sha256', 'authorization_sha256'), 'Cycle workflow input')
+    if workflow_input['protocol'] != 'ergora-training-cycle-v1':
+        raise ValueError('Unsupported cycle workflow protocol')
+    home = workflow_input['control_home']
+    if not isinstance(home, str) or not Path(home).is_absolute() or '..' in Path(home).parts:
+        raise ValueError('Cycle activity requires the original absolute control directory')
+    for name, maximum in (('project', 63), ('cycle_id', 79)):
+        if not isinstance(workflow_input[name], str) or re.fullmatch(
+                '[A-Za-z0-9][A-Za-z0-9_-]{0,' + str(maximum) + '}', workflow_input[name]) is None:
+            raise ValueError('Cycle activity requires its original portable identity')
+    for name in ('input_sha256', 'authorization_sha256'):
+        _digest(workflow_input[name])
+    if action in ('start', 'reconcile') and (type(value['ordinal']) is not int or not 0 <= value['ordinal'] < 32):
+        raise ValueError('Cycle activity requires its original ordinal')
+    if action == 'stop' and (not isinstance(value['reason'], str) or not value['reason'].strip()):
+        raise ValueError('Cycle stop requires a nonempty reason')
+
+
+def validate_cycle_activity_context(value: dict) -> None:
+    _exact(value, ('workflow_input', 'activity_source', 'service_namespace'), 'Cycle activity context')
+    validate_cycle_activity_request({'workflow_input': value['workflow_input']}, 'inspect')
+    source = value['activity_source']
+    _exact(source, ('workflow_id', 'workflow_run_id', 'workflow_type', 'workflow_namespace',
+                    'namespace', 'activity_id', 'activity_type', 'task_queue', 'attempt'), 'SDK activity source')
+    if any(not isinstance(source[name], str) or not source[name].strip() for name in source if name != 'attempt'):
+        raise ValueError('SDK activity requires complete Workflow source information')
+    action = next((key for key, name in CYCLE_ACTIVITY_NAMES.items() if name == source['activity_type']), None)
+    if (action is None or source['workflow_type'] != 'TrainingCycleWorkflow'
+            or source['task_queue'] != (CYCLE_STOP_TASK_QUEUE if action == 'stop' else CYCLE_TASK_QUEUE)
+            or not isinstance(value['service_namespace'], str) or not value['service_namespace']
+            or source['namespace'] != value['service_namespace']
+            or source['workflow_namespace'] != value['service_namespace']
+            or type(source['attempt']) is not int or source['attempt'] < 1):
+        raise ValueError('SDK activity type, queue, namespace or attempt differs')
+
+
 def validate_cycle_operation(payload: dict) -> None:
     """Bind a bounded operation request without loading application state or SDKs."""
     if not isinstance(payload, dict) or not isinstance(payload.get('identity'), dict):
         raise ValueError('Cycle operation requires its complete identity')
     candidate = payload['identity'].get('mode') in CYCLE_CANDIDATE_MODES
-    _exact(payload, ('identity', 'snapshot', 'bootstrap', 'reason', *(('start_context',) if candidate else ())),
+    _exact(payload, ('identity', 'snapshot', 'bootstrap', 'reason', *(('start_context',) if candidate else ()),
+                     *(('activity_context',) if 'activity_context' in payload else ())),
            'Cycle operation')
     identity = payload['identity']
+    if 'activity_context' in payload:
+        validate_cycle_activity_context(payload['activity_context'])
+        original = payload['activity_context']['workflow_input']
+        if any(identity.get(key) != original[key] for key in
+               ('control_home', 'project', 'cycle_id', 'authorization_sha256')):
+            raise ValueError('Cycle operation differs from its SDK activity identity')
+    if 'activity_context' in payload:
+        source = payload['activity_context']['activity_source']
+        mode = identity.get('mode')
+        stop_modes = ('stop-writer', 'notify-owner', 'drain', 'observe-execution')
+        if (mode in stop_modes and source['activity_type'] != CYCLE_ACTIVITY_NAMES['stop']
+                or mode in CYCLE_START_MODES and source['activity_type'] != CYCLE_ACTIVITY_NAMES['start']
+                or mode == 'reconcile-candidate' and source['activity_type'] not in
+                    (CYCLE_ACTIVITY_NAMES['start'], CYCLE_ACTIVITY_NAMES['reconcile'])
+                or mode in ('inspect', 'prepare-controller', 'submit-controller', 'reconcile-controller')):
+            raise ValueError('Cycle operation mode differs from its SDK activity action')
+    if identity.get('mode') == 'inspect-controller-activity' and 'activity_context' not in payload:
+        raise ValueError('SDK cold inspection requires its actual activity context')
     _exact(identity, ('protocol', 'operation_id', 'mode', 'control_home', 'project', 'cycle_id',
         'input_sha256', 'authorization_sha256', 'ordinal', 'parent'), 'Cycle operation identity')
     if (identity['protocol'] != 'ergora-training-cycle-operation-v1'
             or not isinstance(identity['operation_id'], str)
             or re.fullmatch('[a-f0-9]{32}', identity['operation_id']) is None
-            or identity['mode'] not in ('inspect', 'prepare-controller', 'submit-controller', 'reconcile-controller',
+            or identity['mode'] not in ('inspect', 'inspect-controller-activity', 'prepare-controller', 'submit-controller', 'reconcile-controller',
                 'stop-writer', 'notify-owner', 'drain', 'observe-execution', *CYCLE_CANDIDATE_MODES)):
         raise ValueError('Unsupported cycle operation or observation identity')
     for name, maximum in (('project', 63), ('cycle_id', 79)):
@@ -206,7 +273,7 @@ def validate_cycle_operation(payload: dict) -> None:
         raise ValueError('Cycle stop requires a nonempty reason')
     if identity['mode'] == 'stop-writer' and payload['reason'] is None:
         raise ValueError('Cycle stop writer requires its explicit reason')
-    if identity['mode'] == 'inspect':
+    if identity['mode'] in ('inspect', 'inspect-controller-activity'):
         if identity['input_sha256'] is not None or payload['snapshot'] is not None:
             raise ValueError('Cold cycle inspection cannot assume an unverified input or snapshot')
         bootstrap = payload['bootstrap']
@@ -312,6 +379,8 @@ def cycle_start_source(payload: dict) -> dict:
     _match({key: value for key, value in identity.items() if key not in ('mode', 'operation_id')},
            {key: value for key, value in source['identity'].items() if key not in ('mode', 'operation_id')},
            'Original candidate operation identity')
+    if payload.get('activity_context') != source.get('activity_context'):
+        raise ValueError('Original candidate activity context differs from its prepare source')
     for name in ('snapshot', 'bootstrap'):
         _match(payload[name], source[name], 'Original candidate ' + name)
     _match(context['controller'], source['start_context']['controller'], 'Original candidate controller')

@@ -48,17 +48,18 @@ class Service:
             execution=WorkflowExecution(workflow_id=intent['workflow_id'],
                 run_id='another-run' if case == 'run' else receipt['run_id']),
             type=WorkflowType(name='TrainingCycleWorkflow'), memo=await self.memo(intent, case),
-            status=WorkflowExecutionStatus.COMPLETED if case == 'closed' else WorkflowExecutionStatus.RUNNING))
+            first_run_id=receipt['run_id'], status=WorkflowExecutionStatus.COMPLETED if case == 'closed' else WorkflowExecutionStatus.RUNNING))
 
     async def get_workflow_execution_history(self, request, **kwargs):
-        folder, intent, _, case = self.original(request)
+        folder, intent, receipt, case = self.original(request)
         value = deepcopy(intent['workflow_input'])
         if case == 'input':
             value['input_sha256'] = '0' * 64
         started = WorkflowExecutionStartedEventAttributes(
             workflow_type=WorkflowType(name='ForeignWorkflow' if case == 'type' else 'TrainingCycleWorkflow'),
             task_queue=TaskQueue(name='another-queue' if case == 'queue' else intent['task_queue']),
-            input=Payloads(payloads=await DataConverter.default.encode([value])), memo=await self.memo(intent, case))
+            input=Payloads(payloads=await DataConverter.default.encode([value])), memo=await self.memo(intent, case),
+            first_execution_run_id=receipt['run_id'], original_execution_run_id=receipt['run_id'], attempt=1)
         (folder / 'parent-history-observed').touch()
         return GetWorkflowExecutionHistoryResponse(history=History(events=[HistoryEvent(event_id=1,
             workflow_execution_started_event_attributes=started)]))

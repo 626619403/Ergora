@@ -612,7 +612,8 @@ def test_frozen_fence_rejects_unsafe_paths_and_original_identity_conflicts(prepa
 
 
 @pytest.fixture
-def cycle_selection(prepared):
+def cycle_selection(prepared, request):
+    candidate_count = getattr(request, 'param', 2)
     state, definition, runtime, prefix, write, digest = prepared
     manifest = json.loads((runtime / 'training/manifests/beta.json').read_bytes())
     manifest.update(comparison_tool_sha256=hashlib.sha256(
@@ -627,6 +628,18 @@ def cycle_selection(prepared):
                'candidates': [{'experiment_id': name, 'manifest_sha256': sha,
                                'change': 'Synthetic ' + name, 'next_bottleneck': 'Unmeasured; no speedup claim'}
                               for name, sha in [('alpha', digest), ('beta', second)]]}
+    for index in range(2, candidate_count):
+        ident = 'candidate' + str(index)
+        manifest = json.loads((runtime / 'training/manifests/beta.json').read_bytes())
+        manifest['experiment_id'] = ident
+        digest = write(runtime / ('training/manifests/' + ident + '.json'), manifest)
+        write(prefix / ('experiments/' + ident + '/manifest.json'), manifest)
+        spec = json.loads((runtime / 'training/specs/beta.json').read_bytes())
+        spec['binding'].update(experiment_id=ident, manifest_sha=digest)
+        spec['manifest_uri'] = (runtime / ('training/manifests/' + ident + '.json')).as_uri()
+        write(runtime / ('training/specs/' + ident + '.json'), spec)
+        request['candidates'].append({'experiment_id': ident, 'manifest_sha256': digest,
+            'change': 'Synthetic ' + ident, 'next_bottleneck': 'Unmeasured; no speedup claim'})
     return state, definition, runtime, prefix, write, request
 
 
@@ -3500,7 +3513,7 @@ def test_cycle_exhausted_compute_never_spawns_preparation_but_retains_stop_reser
 @pytest.mark.skipif(sys.platform != 'linux', reason='Cycle operations use the original Linux supervised reaper')
 def test_cycle_cold_inspection_bounds_result_read_after_matching_stopped(controller_admission, cycle_operation_fault):
     import asyncio
-    from ergora.reference_training_worker import _CycleOperation
+    from ergora.reference_training_worker import _CycleOperation, _activity_operation_result
 
     state, _, _, authorized, _ = controller_admission
     markers = cycle_operation_fault('post-stopped')
@@ -3509,6 +3522,9 @@ def test_cycle_cold_inspection_bounds_result_read_after_matching_stopped(control
                                 'inspect', inspection_timeout=timeout)
     result = asyncio.run(operation.run())
     assert result['status'] == 'unknown' and result['operation_stopped'] is True
+    compact = _activity_operation_result(operation, result)
+    assert compact['result'] == {'inline': result} and compact['operation_stopped'] is True
+    assert compact['supervisor_returncode'] is not None
     assert markers.joinpath('stopped-result-reader').exists()
     assert not recorded_process_is_active(json.loads(markers.joinpath('stopped-result-reader').read_bytes()))
     assert operation.process.returncode is not None
@@ -3702,8 +3718,13 @@ def test_cycle_stop_exhausted_original_clock_does_not_spawn_effect_branches(cont
     authorization = authorized['authorization']
     while budget_clock.remaining(authorization['clock'], cycle_selection[-1]['budget']['wall_seconds']) > 0:
         time.sleep(.05)
+    records = []
     result = asyncio.run(stop_live_controller(
-        state.root, 'demo', 'controller', authorized['authorization_sha256'], reason='An exhausted original cycle'))
+        state.root, 'demo', 'controller', authorized['authorization_sha256'], reason='An exhausted original cycle',
+        operation_records=records))
+    assert len(records) == 2 + 2 * len(cycle_selection[-1]['candidates'])
+    assert all(item['result']['inline']['status'] == 'unknown' and item['operation_stopped'] is False
+               and item['supervisor_returncode'] is None and 'ref' not in item['result'] for item in records)
     assert result['inspection']['status'] == 'inspected'
     assert all(item['status'] == 'unknown' and item['operation_stopped'] is False for item in result['operations'])
     assert not admission.stop.exists()
@@ -3864,3 +3885,402 @@ def test_cli_and_http_share_exact_start_and_recovery_contract(prepared, service)
     assert client.get('/api/projects/demo/training/alpha/submission').json() == result
     assert client.post('/api/projects/demo/training/alpha/start', json={'revision': revision, 'manifest_sha256': digest}).json() == result
     assert json.loads(record.read_text())['starts'] == 1
+
+
+@pytest.fixture
+def cycle_sdk_activity(controller_dispatch):
+    """Actual SDK activity context and converter across the original S/H boundary."""
+    import asyncio
+    from dataclasses import replace
+    from types import SimpleNamespace
+    from temporalio.converter import DataConverter
+    from temporalio.testing import ActivityEnvironment
+    from ergora import reference_training_worker as worker
+    from fixtures.training_controller_service import DispatchService
+
+    state, admission, storage, operation = controller_dispatch
+    submitted = asyncio.run(operation('lost-reply').run())
+    assert submitted['status'] == 'unknown' and admission.submission()['attempt_saved']
+    client = SimpleNamespace(namespace='default', data_converter=DataConverter.default)
+    activities = worker.create_cycle_activities(client)
+
+    def environment(action, **changes):
+        env = ActivityEnvironment()
+        env.info = replace(env.info, workflow_id=admission.submission()['workflow_id'],
+            workflow_run_id=DispatchService.run_id, workflow_type='TrainingCycleWorkflow',
+            workflow_namespace='default', namespace='default', activity_type=worker.protocol.CYCLE_ACTIVITY_NAMES[action],
+            task_queue=worker.protocol.CYCLE_STOP_TASK_QUEUE if action == 'stop' else worker.protocol.CYCLE_TASK_QUEUE)
+        env.info = replace(env.info, **changes)
+        return env
+
+    return state, admission, storage, operation, activities, environment
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='SDK activities consume the original supervised Linux H')
+def test_cycle_sdk_first_activity_authenticates_actual_run_before_receipt(cycle_sdk_activity, cycle_operation_fault):
+    import asyncio
+    from temporalio.converter import DataConverter
+    from ergora import reference_training_worker as worker
+    from fixtures.training_controller_service import DispatchService
+
+    state, admission, storage, _, activities, environment = cycle_sdk_activity
+    intent = admission.controller_intent()
+    attempt = admission.folder / 'attempt.json'
+    original = attempt.read_bytes(), attempt.stat().st_ino
+    request = {'workflow_input': intent['workflow_input']}
+    # A different actual run must never cause lookup of the latest run followed by a receipt write.
+    cycle_operation_fault('accepted')
+    wrong = asyncio.run(environment('inspect', workflow_run_id=DispatchService.successor).run(activities['inspect'], request))
+    assert wrong['status'] == 'unknown' and not (admission.folder / 'receipt.json').exists()
+    assert (attempt.read_bytes(), attempt.stat().st_ino) == original
+    for case in ('not-found', 'input', 'memo', 'started-memo', 'type', 'queue', 'first-run', 'run', 'namespace', 'continued'):
+        cycle_operation_fault(case)
+        observed = asyncio.run(environment('inspect').run(activities['inspect'], request))
+        assert observed['status'] == 'unknown', case
+        assert not (admission.folder / 'receipt.json').exists(), case
+        assert (attempt.read_bytes(), attempt.stat().st_ino) == original
+    cycle_operation_fault('accepted')
+    result = asyncio.run(environment('inspect').run(activities['inspect'], request))
+    assert result['status'] == 'observed' and result['controller']['run_id'] == DispatchService.run_id
+    assert admission.submission()['run_id'] == DispatchService.run_id
+    ref = result['inspection']['result']['ref']
+    raw = (state.root / 'operations/training-cycles' / result['inspection']['operation_id'] / ref['file']).read_bytes()
+    assert (len(raw), hashlib.sha256(raw).hexdigest()) == (ref['bytes'], ref['sha256'])
+    assert 'snapshot' not in result and 'snapshot' not in result['inspection']
+    decoded = asyncio.run(DataConverter.default.decode(asyncio.run(DataConverter.default.encode([result])), [dict]))
+    assert decoded == [result]
+    calls = [json.loads(path.read_bytes()) for path in storage.glob('call-*.json')]
+    assert sum(call['action'] == 'start' for call in calls) == 1
+    assert not list(state.root.glob('**/alpha.intent.json'))
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='SDK activities consume the original supervised Linux H')
+def test_cycle_sdk_retry_only_observes_and_successor_never_prepares(cycle_sdk_activity, cycle_operation_fault):
+    import asyncio
+    from temporalio.exceptions import ApplicationError
+
+    state, admission, _, _, activities, environment = cycle_sdk_activity
+    request = {'workflow_input': admission.controller_intent()['workflow_input'], 'ordinal': 1}
+    before = set((state.root / 'operations/training-cycles').iterdir())
+    with pytest.raises(ApplicationError, match='successor_not_enabled'):
+        asyncio.run(environment('start').run(activities['start'], request))
+    assert set((state.root / 'operations/training-cycles').iterdir()) == before
+    for changes in ({'namespace': 'foreign'}, {'workflow_namespace': 'foreign'},
+                    {'workflow_type': 'ForeignWorkflow'}, {'task_queue': 'foreign'}, {'is_local': True}):
+        with pytest.raises(ApplicationError):
+            asyncio.run(environment('start', **changes).run(activities['start'], request | {'ordinal': 0}))
+        assert set((state.root / 'operations/training-cycles').iterdir()) == before
+    cycle_operation_fault('accepted')
+    request['ordinal'] = 0
+    result = asyncio.run(environment('start', attempt=2).run(activities['start'], request))
+    assert result['status'] == 'observed'
+    assert [item['mode'] for item in result['operations']] == ['reconcile-candidate']
+    assert not list(state.root.glob('**/alpha.intent.json'))
+    assert not list(state.root.glob('**/owner.json'))
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='SDK stop consumes the original supervised Linux H')
+def test_cycle_sdk_bound_stop_is_offline_and_returns_every_real_branch(cycle_sdk_activity, cycle_operation_fault):
+    import asyncio
+
+    state, admission, storage, _, activities, environment = cycle_sdk_activity
+    cycle_operation_fault('accepted')
+    asyncio.run(environment('inspect').run(activities['inspect'], {'workflow_input': admission.controller_intent()['workflow_input']}))
+    remote_before = {path: path.read_bytes() for path in storage.glob('call-*.json')}
+    cycle_operation_fault('unavailable-sources')
+    result = asyncio.run(environment('stop').run(activities['stop'], {
+        'workflow_input': admission.controller_intent()['workflow_input'], 'reason': 'Explicit original cycle stop'}))
+    assert result['status'] == 'observed'
+    assert {(item['mode'], item['ordinal']) for item in result['operations']} == {
+        ('stop-writer', None), ('drain', None), ('notify-owner', 0), ('notify-owner', 1),
+        ('observe-execution', 0), ('observe-execution', 1)}
+    assert {path: path.read_bytes() for path in storage.glob('call-*.json')} == remote_before
+    for item in [result['inspection'], *result['operations']]:
+        assert item['operation_stopped'] is True
+        ref = item['result']['ref']
+        raw = (state.root / 'operations/training-cycles' / item['operation_id'] / ref['file']).read_bytes()
+        assert len(raw) == ref['bytes'] and hashlib.sha256(raw).hexdigest() == ref['sha256']
+    assert admission.observe(synchronize=True)['stop_durable'] is True
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Full fanout consumes real supervised Linux operations')
+@pytest.mark.parametrize('cycle_selection', [32], indirect=True)
+def test_cycle_sdk_stop_keeps_all_66_real_branch_refs(cycle_sdk_activity, cycle_operation_fault):
+    import asyncio
+    from temporalio.api.common.v1 import Payloads
+    from temporalio.converter import DataConverter
+
+    state, admission, _, _, activities, environment = cycle_sdk_activity
+    cycle_operation_fault('accepted')
+    workflow_input = admission.controller_intent()['workflow_input']
+    asyncio.run(environment('inspect').run(activities['inspect'], {'workflow_input': workflow_input}))
+    result = asyncio.run(environment('stop').run(activities['stop'], {
+        'workflow_input': workflow_input, 'reason': 'Stop all original selected candidates'}))
+    assert len(result['operations']) == 66
+    assert {(item['mode'], item['ordinal']) for item in result['operations']} == {
+        ('stop-writer', None), ('drain', None)} | {
+        (mode, ordinal) for ordinal in range(32) for mode in ('notify-owner', 'observe-execution')}
+    for item in [result['inspection'], *result['operations']]:
+        assert item['operation_stopped'] is True
+        ref = item['result']['ref']
+        raw = (state.root / 'operations/training-cycles' / item['operation_id'] / ref['file']).read_bytes()
+        assert len(raw) == ref['bytes'] and hashlib.sha256(raw).hexdigest() == ref['sha256']
+    assert Payloads(payloads=asyncio.run(DataConverter.default.encode([result]))).ByteSize() <= 32768
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='SDK stop consumes the original supervised Linux H')
+@pytest.mark.parametrize('oversized', [False, True])
+def test_cycle_sdk_branch_construction_failure_preserves_peers_and_complete_reason(
+        cycle_sdk_activity, cycle_operation_fault, monkeypatch, oversized):
+    import asyncio
+    from temporalio.exceptions import ApplicationError
+    from ergora import reference_training_worker as worker
+
+    state, admission, _, _, activities, environment = cycle_sdk_activity
+    cycle_operation_fault('accepted')
+    workflow_input = admission.controller_intent()['workflow_input']
+    asyncio.run(environment('inspect').run(activities['inspect'], {'workflow_input': workflow_input}))
+    original = worker._CycleOperation
+    reason = 'Full original constructor failure: ' + ('界' * 12000 if oversized else 'unavailable original owner')
+
+    def failed_owner(*args, **kwargs):
+        if args[4] == 'notify-owner' and kwargs.get('ordinal') == 0:
+            raise ValueError(reason)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(worker, '_CycleOperation', failed_owner)
+    task = environment('stop').run(activities['stop'], {'workflow_input': workflow_input, 'reason': 'Stop explicit cycle'})
+    if oversized:
+        with pytest.raises(ApplicationError) as failed:
+            asyncio.run(task)
+        assert failed.value.type == 'cycle_activity_capacity_exceeded' and failed.value.non_retryable
+    else:
+        result = asyncio.run(task)
+        assert len(result['operations']) == 6
+        unknown = next(item for item in result['operations'] if (item['mode'], item['ordinal']) == ('notify-owner', 0))
+        assert unknown['operation_stopped'] is False and unknown['supervisor_returncode'] is None
+        assert unknown['result']['inline']['reason'] == reason and 'ref' not in unknown['result']
+        peer = next(item for item in result['operations'] if (item['mode'], item['ordinal']) == ('notify-owner', 1))
+        assert peer['operation_stopped'] is True and 'ref' in peer['result']
+    # Completion capacity or one constructor failure cannot suppress the already-owned writer and peer fanout.
+    assert admission.observe(synchronize=True)['stop_durable'] is True
+    requests = [json.loads(path.read_bytes()) for path in (state.root / 'operations/training-cycles').glob('*/request.json')]
+    assert any(value['identity']['mode'] == 'notify-owner' and value['identity']['ordinal'] == 1 for value in requests)
+
+
+@pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 30}], indirect=True)
+@pytest.mark.skipif(sys.platform != 'linux', reason='SDK candidate owns a real independent Linux budget root')
+def test_cycle_sdk_start_hands_off_once_then_duplicate_only_reconciles(
+        cycle_sdk_activity, cycle_operation_fault, service, cycle_selection, monkeypatch):
+    import asyncio
+
+    state, admission, _, _, activities, environment = cycle_sdk_activity
+    runtime = cycle_selection[2]
+    request = {'workflow_input': admission.controller_intent()['workflow_input'], 'ordinal': 0}
+    monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER', str(admission.folder))
+    service[0]('accepted')
+    cycle_operation_fault('candidate')
+    try:
+        result = asyncio.run(environment('start').run(activities['start'], request))
+        assert result['status'] == 'observed'
+        assert [item['mode'] for item in result['operations']] == [
+            'prepare-candidate', 'confirm-candidate', 'dispatch-candidate']
+        original = runtime / 'ergora/training-submissions/alpha.intent.json'
+        attempt = original.with_name('alpha.attempt.json')
+        saved = original.read_bytes(), original.stat().st_ino, attempt.read_bytes(), attempt.stat().st_ino
+        repeated = asyncio.run(environment('start').run(activities['start'], request))
+        assert [item['mode'] for item in repeated['operations']] == ['reconcile-candidate']
+        assert (original.read_bytes(), original.stat().st_ino, attempt.read_bytes(), attempt.stat().st_ino) == saved
+    finally:
+        cycle_operation_fault('candidate')
+        asyncio.run(environment('stop').run(activities['stop'], {
+            'workflow_input': request['workflow_input'], 'reason': 'Finish the original SDK fixture owner'}))
+        wait_budget_stopped(runtime)
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Final source gate consumes the real supervised SDK start')
+def test_cycle_sdk_dispatch_rechecks_prepare_activity_source_after_attempt_sync(
+        cycle_sdk_activity, cycle_operation_fault, service, cycle_selection, monkeypatch):
+    import asyncio
+
+    _, admission, _, _, activities, environment = cycle_sdk_activity
+    runtime = cycle_selection[2]
+    workflow_input = admission.controller_intent()['workflow_input']
+    monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER', str(admission.folder))
+    service[0]('accepted')
+    markers = cycle_operation_fault('candidate-activity-context-drift')
+    try:
+        result = asyncio.run(environment('start').run(activities['start'], {'workflow_input': workflow_input, 'ordinal': 0}))
+        assert markers.joinpath('candidate-activity-context-drift').exists()
+        dispatch = next(item for item in result['operations'] if item['mode'] == 'dispatch-candidate')
+        raw = (admission.directory.parents[2] / 'operations/training-cycles' / dispatch['operation_id']
+               / dispatch['result']['ref']['file']).read_bytes()
+        observed = json.loads(raw)
+        assert observed['status'] == 'unknown' and 'activity context differs' in observed['reason']
+        assert (runtime / 'ergora/training-submissions/alpha.attempt.json').exists()
+        assert json.loads(service[1].read_bytes())['starts'] == 0
+    finally:
+        cycle_operation_fault('candidate')
+        asyncio.run(environment('stop').run(activities['stop'], {
+            'workflow_input': workflow_input, 'reason': 'Finish mutated source fixture owner'}))
+        wait_budget_stopped(runtime)
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Launch material is prepared by the original supervised Linux H')
+def test_cycle_sdk_launch_capacity_keeps_occupied_intent_without_another_offer(
+        registration, cycle_operation_fault, monkeypatch, request):
+    import asyncio
+    from temporalio.exceptions import ApplicationError
+
+    state, definition = registration
+    # This valid check is frozen by the real registration and cycle owners.
+    # The compact operation snapshot omits it, while complete launch material
+    # must carry the entire registered project, including this check.
+    definition['checks']['unused-large-check'] = ['echo', 'x' * 20000]
+    _, _, runtime, _, _, _ = request.getfixturevalue('cycle_selection')
+    service = request.getfixturevalue('service')
+    assert len(json.dumps(state.project('demo'), ensure_ascii=False).encode()) > 32768
+    state, admission, _, _, activities, environment = request.getfixturevalue('cycle_sdk_activity')
+    monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER', str(admission.folder))
+    service[0]('accepted')
+    cycle_operation_fault('candidate')
+    activity_request = {'workflow_input': admission.controller_intent()['workflow_input'], 'ordinal': 0}
+    original_authorization = (admission.directory / 'authorization.json').read_bytes()
+    original_ready = (admission.directory / 'ready.json').read_bytes()
+    failure = None
+    try:
+        asyncio.run(environment('start').run(activities['start'], activity_request))
+    except ApplicationError as error:
+        failure = error
+
+    original = runtime / 'ergora/training-submissions/alpha.intent.json'
+    saved = original.read_bytes(), original.stat().st_ino
+    outputs = state.root / 'operations/training-cycles'
+    preparations = [path.parent for path in outputs.glob('*/request.json')
+                    if json.loads(path.read_bytes())['identity']['mode'] == 'prepare-candidate']
+    assert len(preparations) == 1
+    preparation = preparations[0]
+    assert (preparation / 'request.json').stat().st_size < 32768
+    raw = (preparation / 'helper/stdout.txt').read_bytes()
+    observed = json.loads(raw)
+    assert observed['reason'] == 'Complete controller root material exceeds 32 KiB; its start intent is already occupied'
+    for action, changes in [('start', {}), ('start', {'attempt': 2}), ('reconcile', {})]:
+        repeated = asyncio.run(environment(action, **changes).run(activities[action], activity_request))
+        assert [item['mode'] for item in repeated['operations']] == ['reconcile-candidate']
+        assert (original.read_bytes(), original.stat().st_ino) == saved
+    assert (admission.directory / 'authorization.json').read_bytes() == original_authorization
+    assert (admission.directory / 'ready.json').read_bytes() == original_ready
+    assert not original.with_name('alpha.attempt.json').exists()
+    assert not original.with_name('alpha.budget').exists()
+    assert not service[1].exists() or json.loads(service[1].read_bytes())['starts'] == 0
+    assert len([path for path in outputs.glob('*/request.json')
+                if json.loads(path.read_bytes())['identity']['mode'] == 'prepare-candidate']) == 1
+    assert observed['status'] == 'capacity_exceeded'
+    assert failure is not None and failure.type == 'cycle_activity_capacity_exceeded' and failure.non_retryable
+
+
+@pytest.mark.parametrize('failure', ['popen', 'cleanup', 'oversized-parent'])
+def test_cycle_sdk_start_retains_parent_failures(
+        cycle_sdk_activity, cycle_operation_fault, service, cycle_selection, monkeypatch, failure):
+    import asyncio
+    from temporalio.exceptions import ApplicationError
+    from ergora import reference_training_worker as worker
+
+    state, admission, _, _, activities, environment = cycle_sdk_activity
+    monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER', str(admission.folder))
+    service[0]('accepted')
+    cycle_operation_fault('candidate')
+    original_popen, roots = subprocess.Popen, []
+    reason = 'Popen: Too many open files' if failure != 'oversized-parent' else 'Full parent failure: ' + '界' * 12000
+    cleanup_reason = 'Original root notification is unconfirmed: notification failed'
+
+    def spawn(argv, *args, **kwargs):
+        if argv[-1] == 'from ergora.reference_training_worker import budget_main;budget_main()':
+            if failure != 'cleanup':
+                raise OSError(reason)
+            child = original_popen(argv, *args, **kwargs)
+            roots.append(child)
+            return child
+        return original_popen(argv, *args, **kwargs)
+
+    async def failed_transfer(self, raw):
+        raise OSError('Input transfer failed')
+
+    original_discard = worker._CycleCandidate.discard_root
+    async def observed_cleanup(self):
+        await original_discard(self)
+        self.cleanup_problem = cleanup_reason
+
+    monkeypatch.setattr(subprocess, 'Popen', spawn)
+    if failure == 'cleanup':
+        monkeypatch.setattr(worker._CycleCandidate, 'transfer', failed_transfer)
+        # Projection injection after actual original root wait; notification-fault
+        # mechanics are separately exercised by the candidate lifecycle seam.
+        monkeypatch.setattr(worker._CycleCandidate, 'discard_root', observed_cleanup)
+    request = {'workflow_input': admission.controller_intent()['workflow_input'], 'ordinal': 0}
+    if failure == 'oversized-parent':
+        with pytest.raises(ApplicationError) as failed:
+            asyncio.run(environment('start').run(activities['start'], request))
+        assert failed.value.type == 'cycle_activity_capacity_exceeded' and failed.value.non_retryable
+    else:
+        result = asyncio.run(environment('start').run(activities['start'], request))
+        assert result['status'] == 'unknown'
+        inlines = [item['result']['inline'] for item in result['operations'] if 'inline' in item['result']]
+        assert any(value.get('reason') == ('Input transfer failed' if failure == 'cleanup' else reason) for value in inlines)
+        if failure == 'cleanup':
+            assert any(value.get('cleanup_problem') == cleanup_reason for value in inlines)
+            assert roots and all(root.poll() is not None for root in roots)
+        preparation = next(item for item in result['operations'] if 'ref' in item['result'])
+        ref = preparation['result']['ref']
+        raw = (state.root / 'operations/training-cycles' / preparation['operation_id'] / ref['file']).read_bytes()
+        assert hashlib.sha256(raw).hexdigest() == ref['sha256'] and json.loads(raw)['status'] == 'new_offer'
+    assert (cycle_selection[2] / 'ergora/training-submissions/alpha.intent.json').exists()
+    assert not (cycle_selection[2] / 'ergora/training-submissions/alpha.attempt.json').exists()
+
+
+@pytest.mark.parametrize('fault', ['operation-request', 'oversized-stdout', 'oversized-frame'])
+def test_cycle_sdk_capacity_failure_finishes_peers_and_keeps_original_bytes(
+        cycle_sdk_activity, cycle_operation_fault, monkeypatch, fault):
+    import asyncio
+    from temporalio.exceptions import ApplicationError
+    from ergora import reference_training_worker as worker
+
+    state, admission, _, _, activities, environment = cycle_sdk_activity
+    cycle_operation_fault('accepted')
+    workflow_input = admission.controller_intent()['workflow_input']
+    asyncio.run(environment('inspect').run(activities['inspect'], {'workflow_input': workflow_input}))
+    admission.request_stop('Original stop visible before capacity fault injection')
+    cycle_operation_fault(fault)
+    captured = []
+    original_stop = worker.stop_live_controller
+    async def capture(*args, **kwargs):
+        result = await original_stop(*args, **kwargs)
+        captured.extend(kwargs['operation_records'])
+        return result
+    monkeypatch.setattr(worker, 'stop_live_controller', capture)
+    reason = 'x' * 30000 if fault == 'operation-request' else 'Explicit cycle stop'
+    request = {'workflow_input': workflow_input, 'reason': reason}
+    assert len(json.dumps(request).encode()) < 32768
+    with pytest.raises(ApplicationError) as failed:
+        asyncio.run(environment('stop').run(activities['stop'], request))
+    assert failed.value.type == 'cycle_activity_capacity_exceeded' and failed.value.non_retryable
+    branches = [item for item in captured if item['mode'] != 'inspect-controller-activity']
+    assert len(branches) == 6
+    writer = next(item for item in branches if item['mode'] == 'stop-writer')
+    peers = [item for item in branches if item['mode'] != 'stop-writer']
+    assert all(item['operation_stopped'] and item['supervisor_returncode'] == 0 for item in peers)
+    assert all('ref' in item['result'] for item in peers)
+    if fault == 'operation-request':
+        assert writer['result']['inline']['status'] == 'capacity_exceeded'
+        assert not writer['operation_stopped'] and writer['supervisor_returncode'] is None
+    else:
+        output = state.root / 'operations/training-cycles' / writer['operation_id']
+        raw = (output / 'helper/stdout.txt').read_bytes()
+        assert (len(raw) > 32768) == (fault == 'oversized-stdout')
+        assert writer['operation_stopped'] and writer['supervisor_returncode'] == 0
+        assert (output / 'supervisor.stderr').read_text()
+        if fault == 'oversized-stdout':
+            assert writer['result']['inline']['status'] == 'capacity_exceeded'
+            assert 'ref' not in writer['result']
+        else:
+            assert hashlib.sha256(raw).hexdigest() == writer['result']['ref']['sha256']

@@ -23,7 +23,7 @@ from . import reference, registrations
 from .state import State, file_lock
 
 
-NAMES = ("temporal", "mlflow", "worker", "executor", "a2a", "training-worker", "training-budget-worker")
+NAMES = ("temporal", "mlflow", "worker", "executor", "a2a", "training-worker", "training-budget-worker", "training-cycle-worker")
 _COMMUNICATION_ERRORS = (OSError, http.client.HTTPException, xmlrpc.client.ProtocolError, xmlrpc.client.ResponseError, ExpatError)
 _STOPPED = {"STOPPED", "EXITED", "FATAL"}
 
@@ -131,7 +131,7 @@ def _prepare(state: State, execution: dict, folder: Path, identity: dict) -> Pat
     output["supervisorctl"]["serverurl"] = "unix://" + str(path)
     for name in NAMES:
         section = "program:" + name
-        source = "program:training-worker" if name == "training-budget-worker" and section not in parser else section
+        source = "program:training-worker" if name == "training-cycle-worker" or (name == "training-budget-worker" and section not in parser) else section
         if source not in parser:
             continue
         output[section] = dict(parser[source])
@@ -146,6 +146,11 @@ def _prepare(state: State, execution: dict, folder: Path, identity: dict) -> Pat
             command = reference.training_budget_worker_command(Path(execution["installation"]))
             output[section]["stdout_logfile"] = str(Path(execution["state_directory"]) / "logs/training-budget-worker.log")
             output[section]["stderr_logfile"] = str(Path(execution["state_directory"]) / "logs/training-budget-worker.err.log")
+        elif name == "training-cycle-worker":
+            command = reference.training_cycle_worker_command(Path(execution["installation"]))
+            output[section]["stdout_logfile"] = str(Path(execution["state_directory"]) / "logs/training-cycle-worker.log")
+            output[section]["stderr_logfile"] = str(Path(execution["state_directory"]) / "logs/training-cycle-worker.err.log")
+            output[section]["stopwaitsecs"] = "70"
         output[section]["command"] = shlex.join(command).replace("%", "%%")
         output[section]["directory"] = execution["installation"]
     content = io.StringIO()
@@ -159,8 +164,8 @@ def control(state: State, project_id: str, action: str, names: list[str], revisi
             *, confirm: bool = False, timeout: int = 30) -> dict:
     if action not in ("start", "stop", "shutdown"):
         raise ValueError("Service action must be start, stop or shutdown")
-    if action == "start" and "training-budget-worker" in names and importlib.util.find_spec("temporalio") is None:
-        raise ValueError("The budget training worker requires ergora[temporal] in this application environment")
+    if action == "start" and any(name in names for name in ("training-budget-worker", "training-cycle-worker")) and importlib.util.find_spec("temporalio") is None:
+        raise ValueError("The selected training worker requires ergora[temporal] in this application environment")
     if isinstance(timeout, bool) or not isinstance(timeout, int) or not 1 <= timeout <= 60:
         raise ValueError("Service timeout must be 1–60 seconds")
     if action in ("stop", "shutdown") and confirm is not True:
@@ -215,6 +220,8 @@ def control(state: State, project_id: str, action: str, names: list[str], revisi
                 current = {item["name"]: item["statename"] for item in _snapshot(folder)["services"]}
                 for name in names:
                     if name not in current:
+                        if name == "training-cycle-worker" and before["daemon"] == "running":
+                            raise ValueError("Running Supervisor lacks training-cycle-worker; explicitly stop services, shutdown the managed daemon, then restart the selected services. No reload or takeover was performed")
                         raise ValueError(f"Selected service is absent from the reference Supervisor config: {name}")
                     if action == "start" and current[name] == "STOPPING":
                         raise ValueError("Stop is not confirmed; wait for STOPPED before starting again")
