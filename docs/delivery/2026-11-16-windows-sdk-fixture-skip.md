@@ -1,6 +1,6 @@
 # Windows SDK fixture 提前跳过修正
 
-日期：2026-11-16。状态：实现／局部验证／新的fresh独立两轴审查完成，已固定并逐字导入开发分支；发布及候选自身官方 CI 待完成。基线 `3a176c75f4afdc73f9fbe96ffd37a7fb26854f4a`；隔离工作树 `windows-sdk-skip`。本片只修改 `tests/test_training_submission.py` 两处既有测试的平台装饰器，不修改产品、fixture、预算、断言、参数或 CI，不增加测试文件。
+日期：2026-11-16。状态：实现／局部验证／fresh独立两轴审查完成，r1／r2均已固定导入并随df43660普通推送，精确远端同一；候选自身官方CI已核终态success，plan／六Linux／Windows全部成功。以下原始r1／r2调查按当时身份保留。基线 `3a176c75f4afdc73f9fbe96ffd37a7fb26854f4a`；隔离工作树 `windows-sdk-skip`。r1只改submission两个平台装饰器，r2另改runtime的BOOT平台标记；不修改产品、fixture、预算、断言、参数或CI，不增加测试文件。
 
 ## 观察与原因
 
@@ -41,3 +41,7 @@ r2 脚本、修前／修后日志、Linux 收集日志、汇总 JSON 与准确 p
 r2 已取得[新的独立审查](2026-11-16-windows-sdk-clock-skip-review.md)，需求／维护性均 approve、开放 0；协调者已核准确两行并固定导入开发树 `c52fc0a338118a19491ad7cd458b82cf2f146a9b`。其完整差异只有上述 runtime 测试的标准库导入与装饰器；原 Linux 时钟测试保持。c1c 实施树已普通合入此提交，产品不因该测试修正变化。尚未推送本次 r2，故在途 879 候选自己的 CI 不含该修正；最终发布及新候选自己的必要 CI 分别记账。
 
 之后官方 879 候选自身 run `43752183692` 已终态 failure。其 Windows 完整 annotations 核实恰为本函数四参数的 `ValueError: Budgeted native operations require Linux; use WSL2`，与此前静态 call 路径预测一致；这是官方实际四失败，不能与此前局部 setup sentinel 混记。六 Linux job 全部 success，group5 15分04秒内完成，未调高原20分钟时限；Windows 安装升级的具体结果沿该 run 原 jobs 另记。官方原响应保存在消费者 `publication-r2/`。原六 setup 错误已不再出现，但这不把 879 总 CI 改写为成功。c52 的修正已经独立验证／导入，接续普通发布及自己的全平台 CI。
+
+## r2发布与自己的官方CI
+
+含r2修正的主树提交 `df436606a7f080da494a781f86235b0e55064e65` 已普通推送当前开发分支，精确远端SHA同一；没有合main或强推。自己的push／attempt1 [43755708928](https://github.com/626619403/Ergora/actions/runs/43755708928)已由官方HTTP200核head_sha同一。后续官方HTTP200原响应已核整体completed／success，八job（plan／六Linux／Windows）全部success；group5为17分29秒，仍在原20分钟时限。原响应逐份保留在本片专属ignored `publication-r2/`，不覆盖879的原四失败。本次发布不包含仍在隔离树验收的正式Workflow产品代码。

@@ -1,6 +1,6 @@
 # c1c 首轮 TrainingCycleWorkflow 实施与验证
 
-日期：2026-11-16。当前状态：**r4 正式类及核心分支已实现，fresh 源码两轴 approve／0，新 core／SDK 安装身份、52 项安装检查及自身原模板 Codex 审查通过；真实独立服务已启动，正式首轮及恢复现场尚待完成。** 以下至“W0–W10 执行次序”为此前只读准备的原始记录；当时唯一写入为本页，未改产品或运行验收。实施接续及准确候选另见末节。
+日期：2026-11-16。当前状态：**r5源码26／新安装runtime53、原完整history安装版回放及新正式类CPU与代表性W0–W10真实恢复／停止／容量检查已完成各自范围。38Workflow终态、服务／监听／自建进程实际收尾，最终853输入和源码保持；完整fresh独立终审两轴approve／0，已固定ec6dcbc并普通导入5b04b2b；推送／新候选自己的CI待。旧r4与新脚本失败原件保持，ordinal1未开放。** 以下至“W0–W10 执行次序”为此前只读准备的原始记录；当时唯一写入为本页，未改产品或运行验收。实施接续及准确候选另见末节。
 
 权威要求为[首轮详细设计](../plans/2026-11-16-training-cycle-workflow-first-round.md)和[独立设计审查](2026-11-16-training-cycle-workflow-first-round-design-review.md)。已读根、src、tests AGENTS、主 PLAN、组件协议及 `maintainable-project-delivery`、`ergora-codebase-quality` 的 owner／caller／测试接缝规则。本记录接续设计，不重做设计审查。当前设计文件 SHA256 为 `d01d5774d592e21178cdabc2a918a61c7ba7f32a673daf6ac321849b28a8dbcb`；独立报告内的 `104624…` 是其原审查样本，不改写历史身份。
 
@@ -118,3 +118,17 @@ r4 自身原结构模板实际 Codex 41.27秒 approve；完整16文件／593079�
 已通过原接口配置全新独立CPU测试项目、固定真实Git源码、实际输入／两份配置／独立整数oracle／原比较器及新manifest，没有使用synthetic archive helper补PASS。初次本地配置把 `allowed_paths` 写为 `.`，原native校验明确拒绝；改为四个实际文件路径后重新注册成功，未改产品校验。CPU样例的 fresh审查另发现外层 integration 缺candidate_commit，已在样例副本最小修正，正在用全新项目／baseline／manifest身份复核；未改旧immutable准备原件，也未投递该旧候选。
 
 真实现场当前仅启动原Supervisor管理的Temporal／MLflow及独立 `training-budget-worker`／`training-cycle-worker`，四服务均RUNNING，两个worker PID独立；其它执行服务未启。正常cycle Worker使用正式类及默认sandbox，stop仍独立queue／slot1，原预算slot8保持。尚未投递正式Workflow；真实首轮、history replay／重启／取消／容量／最后gate及最终全进程收尾仍开放。外部 `/proc` sampler只观察本次自建daemon及后代，最终按原件和完整进程身份核收尾，不扩大为OS隔离或GPU／训练验收。
+
+随后[真实现场报告](2026-11-16-training-cycle-workflow-live-acceptance.md)已取得正常与负gate两条正式类路径及实际history回放：负例原归档正确拒绝平台日志漂移，stop1并needs_reconciliation；修正样例后新身份实际8对CPU／512输出检查、原archive gate通过，start1／request1且无stop，原durable／executor stopped均true、固定子run仍AWAITING_RELEASE，父run正常first_round_observed_c1d_required。两实际history均由正式类默认sandbox Replayer通过。没有ordinal1、measurement_accepted、release或baseline迁移；重启／丢reply／取消／history边界与统一收尾继续接续。
+
+## r5取消缺陷修补接续
+
+真实W7取消暴露的SDK缓存eviction问题已按[独立诊断](2026-11-16-training-cycle-eviction-diagnosis.md)最小修补；准确源码、先红后绿、wheel、安装53项及原完整history安装版回放见[修补交付](2026-11-16-training-cycle-eviction-fix.md)。ordinary TRY_CANCEL与stop WAIT／shield的设计已在原计划明确修订，真实资源停止仍归原S/H／reaper，不能由本地handle完成推断。fresh源码两轴及自身原模板Codex approve仅认证各自范围。原r4现场已全部收尾；新r5正式类现场使用全新任务身份接续，W0–W10未因此整体闭合。
+
+## r5正式类新现场与统一收尾
+
+新身份CPU、丢完成前后／同run重启／真实服务断联／阻塞重复停止／实际8MiB及完整编码分项、失败原件、原链、source与统一资源收尾见[新现场逐场结果](2026-11-16-training-cycle-workflow-live-acceptance.md#r5现场逐场结果)及该页末节。新包／源码／自身模板／fresh终审各自范围分列；完整[终审报告](2026-11-16-training-cycle-workflow-final-review.md)已独立核实最终原件，两轴approve、开放0。新产品仍严格ordinal0，最终发布和c1d／c2另验。
+
+## 固定提交与开发主线导入
+
+产品已固定提交`ec6dcbcf23d35818aa23e87b6dbb129ed8ff75a1`，从fa78747的最终两文件变化为150行增加／9删除；相对c52的整体首轮实现仍为原两文件833行增加／6删除。以普通merge导入当前开发分支`5b04b2b4cb4eb1c5d6899fc517cf86ecdec5536f`，无冲突、无额外产品文件变化；没有自动合main。raw worker7996f73d…／tests4b5d7ed4…不变，原包与现场按同一字节绑定。最终fixed-commit身份复核、普通push和准确新候选自己的CI接续，不借df43660成功代替。

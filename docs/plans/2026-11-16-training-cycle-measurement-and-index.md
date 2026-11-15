@@ -152,3 +152,7 @@ M7分两级：c1d产品接缝与真实链所用CPU oracle须是合法证据，�
 本次仅阅读AGENTS／PLAN／组件协议、适用skill、原方案与实际源码／既有测试fixture，核Git状态和上述文件SHA，写本页并作文档静态检查。没有运行服务／训练／测试／安装／模型／网络，没有commit/push，没有修改主PLAN／交付或产品。采用 `maintainable-project-delivery` 与 `ergora-codebase-quality`；本片独立设计审查由根任务安排，本页不自称审查通过。
 
 独立设计 review 已完成：[报告](../delivery/2026-11-16-training-cycle-measurement-design-review.md)需求／维护性两轴 approve、开放0，仅限本设计与所核原源码。M0 的严格版本 wire 表及必要纯校验提取尚未审定，c1c 正式验收也仍在进行；当前不开放 ordinal1。待这些前置闭合，再按 M0–M8 开最小实现片；c2 公共入口、d 公开 CPU 示例和真实 GPU 训练保持后继责任。
+
+## M0严格wire设计接续
+
+新增[严格wire合同](2026-11-16-training-cycle-measurement-wire.md)明确schema3、正式V2类、七个v3活动、前驱／恢复与完整容量owner；[独立审查](../delivery/2026-11-16-training-cycle-measurement-wire-review.md)原R1容量缺口修后两轴approve、开放0，旧draft与原request-changes保持。源清单根据真实release.status依赖增为四项，并要求原reference.verify核包内283参考；这是明确审过的增量，旧三项方案不再作为实施冻结。当前仍须先闭合c1c终验，再按wire的M1子片实施，尤其完整编码／历史恢复与纯内容校验提取要用实际接缝验证。没有产品变化、ordinal1或测量接受结论。

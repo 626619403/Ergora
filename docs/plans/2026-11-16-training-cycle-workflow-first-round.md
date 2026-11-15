@@ -110,7 +110,7 @@ D_total = A + t
 
 signal、SDK Workflow cancellation、正常预算尽、观察/history容量界、明确失败都进入同一个确定性停止出口。`stop_scheduled`在command前占用一次；stop.v1用原六字段与完整reason，走独立queue，所有已选候选的2+2N fanout仍由原stop owner生成，Workflow不按“仅首轮”裁剪分支。原stop本来就只做writer／drain／精确owner通知和execution观察，不自动给旧实验发Temporal cancel。
 
-1. 活动pending时，run持有SDK activity handle，通过SDK deterministic `workflow.wait`／`wait_condition`等待“活动完成或停止意图”；不得直接让run的可取消await把ordinary的WAIT_CANCELLATION_COMPLETED变成进入stop前的阻塞。主run的取消等待必须shield保留ordinary handle，取消catch可先运行。signal唤醒wait后，或run捕获取消后，显式对ordinary handle请求取消，同时在有正D_total时立即调stop，**不等待ordinary取消完成才让stop排队**。SDK ordinary使用`ActivityCancellationType.WAIT_CANCELLATION_COMPLETED`保留相应生命周期观察；所有handle都有明确持有者，不新增未受控的后台派发任务。stop自身由独立保留的task/handle等待，重复signal／cancel不创建另一个stop，也不取消这个cleanup等待。
+1. 活动pending时，run持有SDK activity handle，通过SDK deterministic `workflow.wait`／`wait_condition`等待“活动完成或停止意图”；不得直接让run的可取消await把ordinary的实际清理变成进入stop前的阻塞。主run的取消等待必须shield保留ordinary handle，取消catch可先运行。signal唤醒wait后，或run捕获取消后，显式对ordinary handle请求取消，同时在有正D_total时立即调stop，**不等待ordinary取消完成才让stop排队**。SDK ordinary现使用`ActivityCancellationType.TRY_CANCEL`：发送取消请求、释放Workflow等待，不将handle状态称为实际资源停止；实际S/H／root／reaper的清理和等待仍由原活动及normal-first Worker关闭持有。最初r4选择WAIT_CANCELLATION_COMPLETED的历史决定由下述r5纠正取代。所有handle都有明确持有者，不新增未受控的后台派发任务。stop自身由独立保留的task/handle等待，重复signal／cancel不创建另一个stop，也不取消这个cleanup等待。
 2. run捕获SDK可见的取消异常，保留原取消事实，进入同一stop出口；stop等待用SDK支持的shield模式防止再次task cancel丢弃唯一handle。停止完成／失败或原D_total到点后，记录结果并传播原取消，使总Workflow保持CANCELLED语义；signal停止则返回本片typed outcome。SDK抛CancelledError、ActivityTaskCanceled或父CANCELLED均不意味着S/H已停、许可排空或executor停止。
 3. 若已发start/request正在RPC或同步fsync，原attempt/window/最后gate保护晚到动作；Workflow未知仍不再发。stop与ordinary cleanup并行，原S保留实际spawn／后代直到原reaper收尾。SDK deadline到期、服务shutdown与OS实际wait是分开的事实；本片不能把SDKtimeout变成operation_stopped=true，也不能为了等回收延长授权。原不可中断OS调用／进程cleanup的资源义务仍由service/S/reaper继续承担。
 4. 停止过程中worker正常重启时，原stop command及ID由history恢复；SDK不增attempt，未完成command是否被server超时保持真实失败。后续不自动发另一个stop来重开total；操作者可用原独立本地stop/status/reconcile显式对账，仍消费原total和精确原件，不重start。服务正常关闭本身不等于业务stop，已交接root沿原合同保留自主预算收尾。
@@ -172,3 +172,7 @@ W1/W2/W5的真实server场景使用同一项目既有live harness和全新授权
 本草案已取得[fresh独立设计审查](../delivery/2026-11-16-training-cycle-workflow-first-round-design-review.md)需求／维护性两轴approve、开放0，仅设计层通过。c1b2b的job身份修正、准确源码固定与新包／真实服务／独立产品验收仍是实施前置；本页不认证正式类、默认sandbox、首轮运行或停止。前置闭合后按W0–W10逐节点实施和记账，不能借本设计结论越过实际验收。
 
 2026-11-16接续：固定消费者bcc3048及wheel55029的新安装／SDK-free／自身模板／真实六活动和原预算根/native CPU现场均已[最终独立两轴approve／0](../delivery/2026-11-16-training-cycle-execution-product-review.md)，并真实导入开发树01ef。src／脚本／CI／配置与bcc逐字同一；tests仅多已另审的两行Windows提前skip。本片[静态实施准备](../delivery/2026-11-16-training-cycle-workflow-first-round.md)已核固定facts足够保守消费，stop汇总缺口及unconfirmed含义维持原设计，不改producer猜原因。实施前置现已闭合；之后新字节的新包、默认sandbox／正式类／history／真实首轮仍由本片逐项验收，不能继承前片的测试Workflow通过。
+
+## r5 SDK取消策略的实施纠正
+
+初始已审设计字节（SHA256 `d01d5774d592e21178cdabc2a918a61c7ba7f32a673daf6ac321849b28a8dbcb`）为ordinary选择WAIT_CANCELLATION_COMPLETED。真实W7取消现场及[独立最小诊断](../delivery/2026-11-16-training-cycle-eviction-diagnosis.md)证实SDK1.34已请求取消但尚未确认的handle会在eviction重复cancel时早返，导致Worker和Replayer挂起；此低层SDK选择现由[最小修补](../delivery/2026-11-16-training-cycle-eviction-fix.md)改为ordinary TRY_CANCEL，stop保持WAIT／shield。它不改变一次机会、原截止、原stop许可、S/H实际清理或业务停止证明合同。旧history／失败／设计审查仍按原字节身份保存，新源码／新包／新现场需分别验收，不能由此次设计纠正追认通过。
