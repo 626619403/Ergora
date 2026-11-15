@@ -1,6 +1,6 @@
 # 训练回归CI分组恢复
 
-日期：2026-11-16。状态：b653完整新安装组2／5通过并收尾，四文件仅JSON再平衡及全节点核对已固定7ed77c9，最终独立复核中。原官方478候选已completed／cancelled，group5达到整个job的20分钟上限，其余native成功；完整远程逐项日志仍未取得。[只读调查](../delivery/2026-11-16-ci-training-shard-duration-analysis.md)将准确远端、各自本地候选与推测分开，新候选预算仍待自己的官方CI。
+日期：2026-11-16。状态：b653完整新安装组2／5通过并收尾，四文件仅JSON再平衡及全节点核对已固定7ed77c9，最终独立两轴／自身模板通过并导入。新官方8635692／43747795571的六Linux组全部success且在原20分钟内；Windows回归6setup错误、安装升级success，整体failure。两个Linux-only SDK函数的提前skip已独立通过并导入39ec257，新联合候选发布及自己的CI另验。原官方478 group5超时失败保持；完整远程逐项日志仍未取得。[只读调查](../delivery/2026-11-16-ci-training-shard-duration-analysis.md)保留准确远端、各本地候选与推测边界。
 
 ## 范围与基线
 
@@ -17,7 +17,7 @@
 |C2 静态覆盖|沿原runner/plugin收集；仅归一迁移路径后，前后完整node multiset相等；六组唯一、存在、无漏项，原skip标记保持；不得只比较AST数量|af176→b653及JSON后继7ed77c9均保持真实Linux2227／Linux上Windows选集2172；fixture／skip／scope保持，六组节点349／285／399／415／315／464，真实Windows未运行|
 |C3 安装行为与成本|同一新非editable产品安装下完整跑受影响Linux2／5组，保存JUnit、phase、退出与收尾；先读成本，不无依据重跑其它组。Windows受影响可移植／skip关系单独说明|b653两组完成：460＋537通过／1＋2原跳过，1520.84／2444.95秒、输入结束未变；245记录身份live0／unknown0。后继JSON没有本机新组合成绩，全部官方CI另验|
 |C4 独立审查|新的fresh-context reviewer按实际diff、节点身份、fixture行为及真实运行需求／维护性两轴，关闭实证finding|最终7ed77c9需求／维护性两轴approve／开放0，允许导入普通发布；自身原结构模板最终Codex32.76秒approve，只认证supplied source；真实合入身份另核|
-|C5 发布|固定、普通推送当前开发分支、核精确远端与候选自己的CI；全部job满足原时限才认证新组合和远端预算|已合入5e48b9e并普通推8635692，精确远端同一；自己官方push／attempt1 43747795571在途，终态未定|
+|C5 发布|固定、普通推送当前开发分支、核精确远端与候选自己的CI；全部job满足原时限才认证新组合和远端预算|已导入5e48并推8635692；自己的43747795571六Linux／Windows安装升级success，Windows回归6setup错误，整体failure。两行skip修正39ec已独立通过、未推；联合候选自己的CI另验|
 
 迁移只改变调度归属，不能保证总计算成本下降或Windows关键路径改善；远端没有phase／日志时不假定某个单测挂住。新代码／测试差异、输入身份及未验范围写所属交付；每步更新本页与主PLAN，状态记账不递归审查。
 
