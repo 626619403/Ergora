@@ -83,3 +83,17 @@ R3精准边界在最终安装中：helper1047967B、旧final投影1048463B、新
 新的fresh-context产品reviewer已终核固定11作者文件（另加其自己的公开审查报告，共12文件候选）、173回归输入、两安装648／283、实际24＋16、R3完整公开read、真实服务394原件／九CLI／九捕获PID、自身原模板完整18＋3 stdin及178件证据索引。需求approve／结构维护approve，开放0／0，R1–R3关闭；历史实红保持。[终审报告](2026-11-15-training-budget-phase-supervision-review.md)已写当前结论。公开文档仅移去一处机器绝对路径，实际位置仍在私有原件；产品和结论不变。
 
 开始普通精确提交／推送当前开发分支；最终12文件Git tree链接／完整差异需以最新报告重核，不能沿旧3b4a候选tree冒称最终发布。自己的CI与固定发布独立补核仍待，在此之前不记门禁闭合。后继原生锁内准入协议另片设计，原283与kernel路径继续保持。
+
+## 固定提交与自己的CI在途
+
+本片已普通发布`5182bfa03f536d4090b91014f97eedda1c5d2d3a`，parent5fa，tree `b8696bb8b0a293fdd45bfb3a77b2088a58b2efb4`。12个blob／SHA／bytes与完整staged diff-check、五AST及最终候选Git tree的242链接零缺失已记录；普通push exit0／5.829秒，完整SSH远端Ref相同。原产品reviewer已独立核固定本地发布与实际push／Ref原件，官方commit／branch页也指同一完整SHA。
+
+自己的Portability #229／run43670140205／attempt1在途；匿名REST限流403保持，原reviewer跟踪官方完整navigation及必要steps终态，不声称完整日志或artifact。三产品与两tests均保持本片最终r2字节。只读整理后继B3.3b协议计划可继续，不在前片门禁闭合前推送后继产品。
+
+## 自身CI原失败与独立接续
+
+自己的CI43670140205 Linux group5终态failure：官方annotation显示两个原final fsync故障测试均因`Original budget owner did not finish its bounded supervision`失败，468 passed／13 skipped／1599 deselected／776.01秒。原job构建、reference身份与观察上传成功；未取得完整step日志，REST403／直接日志404保持。具体接缝为测试使用wall24／cleanup14，却从submitted返回后只等待20秒；快速返回时会在合法总期限前SIGKILL原owner，本地慢启动可掩盖该预期错误。Windows仍在途，原独立reviewer继续同run终核；本片不宣称CI成功。
+
+最小[接续修正](2026-11-15-phase-publication-wait-regression.md)仅让原两个故障测试的观察等待沿实际授权剩余时间＋回收余量，不改产品、预算、计算窗、故障marker及公开同fence恢复断言。原失败身份保留，修正用原最终非editable安装精准重跑，再由新的独立reviewer审查并单独发布。后继b仅设计已审，不混入执行产品。
+
+原独立终核已完成：原518自己的run43670140205最终八job七成功／一失败，30必要步骤29成功／一失败，Windows与PowerShell安装升级成功；R4仅测试观察等待保持开放，需求request-changes／结构approve，R1–R3保持关闭。126项CI原件和12份官方raw来源已独立核。接续修正原安装精准2通过／65.44秒、外层66.446秒，两marker及真实owner停止已核；新的fresh-context接续reviewer正在核固定候选与原件，尚未发布或宣称接续CI成功。

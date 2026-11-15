@@ -2,7 +2,7 @@
 
 日期：2026-11-15。评审者为新的 fresh-context Codex 子 Agent `training_phase_supervision_product_audit`。本轮先审固定初轮实现，未继承作者实施对话；先读精选用户原话、固定 r3 设计，再核实际变更及邻接调用者。按根／源码／测试 `AGENTS.md`、[组件协议](../architecture/component-change-protocols.md)、maintainable-project-delivery 的独立评审 brief，以及 ergora-codebase-quality 的 module-design／test-seams／repository-style 检查。
 
-当前本地结论为需求符合性 approve、结构维护 approve，开放 finding 为 0／0，R1—R3 均已关闭，见文末“同片最终本地审查”。下文保留各轮固定范围、request-changes 与原失败记录；固定提交身份、推送及自身 CI 仍待发布后续核。
+当前需求轴为 request-changes、结构维护 approve，开放 finding 为 1／0：固定发布续核发现测试观察窗口 R4。R1—R3 均已关闭，先前最终本地两轴 approve 的固定范围与原证据仍保留。`5182bfa03f536d4090b91014f97eedda1c5d2d3a` 的发布来源与文件身份已独立核过，其自身 Portability `43670140205`／attempt 1 已全部终态：八 job 为七 success／一 failure，30 必要步骤为 29 success／一 failure，唯一失败为 Linux group 5 的原应用回归；交付门禁未闭合。各轮原失败与发布／CI 续核见下文。
 
 |审查轴|初轮结论|开放 finding|
 |---|---|---|
@@ -179,3 +179,51 @@ ignored `reviewer/final-candidate-audit.json` 保存包／模板实际 stdin／�
 作者本地 `static-r1.json` 对当时 12 文件候选树 `3b4a2b0620ca1a96fa8baabd26feb343f72b7a3f` 记录 diff-check 通过、五份 AST、283 原资源无 tracked diff、241 处链接零缺失；本评审另在该 Git tree 逐一核过 241 个目标。此次追加本报告会改变候选树，旧树不能冒称最终发布身份。普通提交／推送后的固定 SHA、最终文档静态收尾和该提交自身 CI 仍待作者提供后续核；本地 approve 不代表已经完成这些发布步骤。
 
 真实本地流程只认证合成 CPU 控制合同和实际 Temporal／worker 路径，没有启动 executor、模型或 GPU，不认证训练、质量、性能或自动 cycle。R1—R3 的关闭和上述双轴 approve 均以本节固定候选与已核证据为界。
+
+## 固定发布与自身 CI：来源及终态已核，原失败保持
+
+同一独立评审者继续核普通发布提交 `5182bfa03f536d4090b91014f97eedda1c5d2d3a`，parent 为 `5fa4319c79de7db238cde9d11f5b8acd5b263b91`，tree 为 `b8696bb8b0a293fdd45bfb3a77b2088a58b2efb4`，共 12 个变更文件。直接读取 Git 对象与 `publication-staged-r1.json`，逐份匹配 12 个 blob OID／字节长度／SHA256，完整基线 diff-check 通过，五份 Python AST 通过；清单中的 242 个链接目标逐一在该固定 Git tree 存在。实际 commit／push／ref 的 stdout／stderr 均已读取：普通 push exit 0／5.8285870011895895 秒，完整 SSH Ref 当时为同一 SHA，提交后工作树干净。独立核对记录在 ignored `reviewer/ci-publication-r1/fixed-publication-audit.json`。
+
+相对已通过的 `product-scope-r3/`，三产品和两测试完全逐字相同；只有 PLAN／具体 plan／delivery 同步本地终审与发布待办。公开评审报告只把一处机器绝对目录换成私有 `native-location-r2.json` 指针；逆向还原该一处后，整份报告 SHA256 精确匹配本评审原 `d0620d1eaa3d920d80a89ff7145ddf14be2bb160699955b1c5bfb13436c4719a`。这些状态／位置文字没有改变产品、已核结论或未验边界。本次续记报告本身位于被测提交之后，不冒称它属于该固定 tree。
+
+匿名 REST 的 commit／ref／runs 及该 run／jobs 五个请求均因限流返回 403，原响应体、header、URL、时点和 SHA 已保留，没有改记为成功。改核官方 [commit 页面](https://github.com/626619403/Ergora/commit/5182bfa03f536d4090b91014f97eedda1c5d2d3a) 的完整 OID／parent、当时 branch 页的 `currentOid` 以及固定 SHA 的十二份官方 raw 文件；十二份返回 200，字节／SHA 与本地发布清单全等。实际官方来源和摘要保存在本片独立 `reviewer/ci-publication-r1/`，`official-remote-identity-audit.json` 记录来源身份，没有借用上一片的远端或 CI 结论。
+
+官方 Actions 列表把完整 `5182bfa` 绑定到本片 [Portability #229／43670140205](https://github.com/626619403/Ergora/actions/runs/43670140205)。固定 workflow 与 `linux-groups.json` 对应 plan、Linux 0—5、Windows all 共八个 job，必要业务步骤共 30 个：plan 的分组读取、七个 native job 的构建安装／包 reference 身份／原应用回归／上传观察，再加 Windows PowerShell 5.1 安装与升级。完整官方 navigation 为 `totalCount=8`／`hasMore=false`；八个实际 job 页面均已读取，其步骤日志链接均钉到完整本片 SHA 与各自 job ID。它们只作为页面 step 结论来源，不表示本评审取得了完整日志或可下载 artifact。
+
+2026-11-15 11:00:47 +08 初始快照：plan success、七个 native in progress，必要步骤 15 success／15 尚未终态，run 显示 In progress。原快照在 `20261115T030047542603Z-pending-summary-r1.json`；本片自身 CI 尚不能记通过。继续跟踪同一 run／attempt 1 的完整 job 和必要 step 终态，后继纯 docs 提交不转授、替代或取消对这个固定产品提交的核对。
+
+### R4：中，测试只等 20 秒，却给原 owner 24 秒合法总预算
+
+11:11:12 +08 起的完整官方 navigation 显示 Linux group 5 job `132678181529` 为 completed／failure；其余已完成六个 job success，Windows all 仍在运行。直接读取该 job 的终态 HTML，header 为 failed／13m16s：Build and install wheel、Packaged reference identity、Upload regression observations 均 success，Native application regression 为 failure。该页官方 annotation 明确记录 `2 failed, 468 passed, 13 skipped, 1599 deselected in 776.01s`，失败均在原 final fsync 故障测试：
+
+- `test_cycle_final_publication_is_bounded_and_dead_owner_recovers_only_the_same_fence[final-file-blocked]`
+- `test_cycle_final_publication_is_bounded_and_dead_owner_recovers_only_the_same_fence[final-directory-blocked]`
+
+两项都报 `AssertionError: Original budget owner did not finish its bounded supervision`。原 job 页面为 `20261115T031231327842Z-job-132678181529-html.html`，174294B／SHA256 `8823052e5d4daf01df3f3154a530fd7b653a656ac6575b3f61c48544fab51ef3`。页面注释是这组具体失败和计数的实际来源，没有把 duration 列表中的其它测试误记为失败。
+
+只读重核固定提交的 [该测试](../../tests/test_training_submission.py:527) 与 [等待 helper](../../tests/test_training_submission.py:480)：测试把合法 wall 扩为 24 秒、cleanup 为 14 秒，但随后仍调用 `wait_budget_stopped(runtime, seconds=20)`。helper 从调用时新计 20 秒，超时就对捕获的原 owner 发 SIGKILL 并抛出上面的同一断言。若 submitted 返回时原连续总预算尚余超过 20 秒，测试就会在合法总期限前杀死 owner；慢启动可能消耗这段差额，因此本地安装通过不能排除该可达路径。这个静态窗口矛盾与两项实际 CI 失败一致；没有原 CI 时钟／完整日志，不能冒称已认证当次精确剩余秒数。
+
+最小修正应只让这两个故障场景的外部观察等待覆盖其实际 24 秒预算和回收余量，保留原 compute 窗口、产品预算默认、真实 fsync marker、进程 stopped 和公开同 fence 恢复／bytes 不变断言；不能靠提前强杀原 owner 来满足停止观察。R4 开放，需求轴 request-changes；没有新增产品或结构 finding。原 R1—R3 与本地 24＋16 的已核通过仍保留，不能把它们转授这次失败的 CI 门禁。
+
+当前机器无 `gh`；直接读取 step-log URL 返回原 404，job logs REST 返回原限流 403，annotation REST 亦为原 403，均已保留实际响应。本轮取得的是官方 HTML 注释和步骤结论，未取得完整日志或 artifact。接缝、固定测试 SHA 与原 annotation 保存在 ignored `reviewer/ci-publication-r1/ci-r4-failure-audit.json`。Windows 同 run／attempt 1 继续跟踪，尚不能写成八 job 全部终态。
+
+### 自身 CI 最终终态：七 job 成功、一 job 失败，R4 待修
+
+11:15:02 +08 的官方完整 navigation 已为八 job 全部 completed，`totalCount=8`／`hasMore=false`；随后重新读取八份 job 终态页面、run 页面和 Actions 列表。官方列表将同一完整 `5182bfa`、run `43670140205`、Portability #229 记为 completed／failure，run 页面显示 Failure，attempt 仍为 1。
+
+|job|ID|终态|必要步骤|
+|---|---:|---|---|
+|plan|132678152695|success|1 success|
+|Linux 0|132678181493|success|4 success|
+|Linux 1|132678181506|success|4 success|
+|Linux 2|132678181507|success|4 success|
+|Linux 3|132678181518|success|4 success|
+|Linux 4|132678181545|success|4 success|
+|Linux 5|132678181529|failure|3 success／1 failure|
+|Windows all|132678181486|success|5 success|
+
+30 个必要步骤均在实际页面恰好出现一次，合计 29 success／1 failure；唯一失败为 Linux 5 的 Native application regression，具体两测试及可达 R4 见上节。Windows 的原应用回归与 PowerShell 5.1 安装升级均 success，不能遗漏这两个终态；该 job header 为 succeeded／16m54s。八个 job header 与 navigation 结论全部一致，所有非空 step 日志链接均指完整本片 SHA 与各自 job ID。上传步骤成功只认证该步骤页面结论，没有冒称本评审下载或读取了 artifact。
+
+最终原摘要为 ignored `reviewer/ci-publication-r1/20261115T031530388921Z-terminal-summary-r1.json`，74845B／SHA256 `45f8fb8ba15ddfd7ac02af7939347c6d8aac60a2953ae0508aea6225c02a9ed6`；`final-ci-audit.json` 保存固定来源、完整 navigation、八 header、30 必要步骤和最终 Actions 绑定的核对。重读的 63 份官方响应体字节／SHA 全部匹配各自 capture metadata：55 份 200、七份原 403、一份原 404；十二份固定 SHA 的官方 raw 文件也全部保持与发布 blob 字节／SHA 相同。`ci-originals-index-r1.json` 含本轮 126 项原件／来源／摘要，索引 SHA256 为 `1f1955bc02a0813b8fe7cdc0ecce796542aeb3d453995d6068a76c112d7ca4e0`。这些是本片独立采集的实际来源，没有继承前片 CI、重跑失败 job 或混入后继 b 产品。
+
+本轮固定发布身份通过，自身 CI 门禁失败；需求 request-changes、结构维护 approve、开放 finding 1／0，R4 保持开放。修正应单独固定最小测试等待片并验证其原故障接缝和自己的适用 CI，再由同一评审者续核；不能把旧失败改成成功，也不能用后继设计或旧本地通过替代该门禁。本评审到此只写报告与授权 ignored `reviewer/`，未改产品／测试、安装、运行昂贵测试、提交、推送或启动服务。

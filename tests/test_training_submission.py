@@ -527,7 +527,9 @@ def test_cycle_final_publication_is_bounded_and_dead_owner_recovers_only_the_sam
     state, _, runtime, authorized = authorize_budget(cycle_selection, tmp_path, wall=24, cleanup=14)
     submitted = training_cycles.start(state, 'demo', 'budget', 'alpha', authorized['authorization_sha256'], 1)
     prefix = runtime / 'ergora/training-submissions'
-    wait_budget_stopped(runtime, seconds=20)
+    # A fast submission can return before the full cleanup allowance elapses.
+    # Wait through the selected authorization, then allow process reaping.
+    wait_budget_stopped(runtime, seconds=authorized['total_remaining_seconds'] + 5)
     assert service[1].with_suffix('.final-blocked').read_text() == fault
     original = {p: p.read_bytes() for p in prefix.rglob('*') if p.is_file()}
     fence = runtime / 'training/fences/alpha.json'
