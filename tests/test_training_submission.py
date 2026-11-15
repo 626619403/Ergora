@@ -816,6 +816,7 @@ def test_budget_phase_supervisors_keep_their_peer_and_reap_a_new_session_descend
     wait_budget_stopped(runtime, seconds=35)
     observed = json.loads(service[1].with_suffix('.isolation').read_bytes())
     assert observed == {'owner_subreaper': 0, 'peer_survived_monitor': True}
+    assert service[1].with_suffix('.peer-blocked-sync').is_file()
     assert_budget_process_stopped(json.loads(service[1].with_suffix('.descendant').read_bytes()))
     for identity in json.loads(service[1].with_suffix('.peer').read_bytes()).values():
         assert_budget_process_stopped(identity)

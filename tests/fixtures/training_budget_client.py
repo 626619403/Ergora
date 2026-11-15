@@ -16,7 +16,6 @@ import ctypes
 import hashlib
 import signal
 import subprocess
-from concurrent.futures import ThreadPoolExecutor
 
 fault = os.environ.get('ERGORA_TEST_TRAINING_BUDGET')
 if fault == 'monitor-blocked' and base.payload['mode'] == 'monitor':
@@ -53,7 +52,14 @@ if fault in ('phase-isolation', 'phase-reap-overrun'):
             active.validate_cached(context)
             peer_marker.write_text(json.dumps({'supervisor': budget._process_identity(os.getppid()),
                                               'helper': budget._process_identity(os.getpid())}))
-            time.sleep(60)
+            def blocked_sync(descriptor):
+                base.storage.with_suffix('.peer-blocked-sync').write_text(str(descriptor))
+                time.sleep(60)
+            budget.os.fsync = blocked_sync
+            with base.storage.with_suffix('.peer-output').open('xb') as output:
+                output.write(b'peer phase storage')
+                output.flush()
+                budget.os.fsync(output.fileno())
         worker._cleanup = peer_cleanup
     if base.payload['mode'] == 'monitor':
         completion = budget.BudgetedStart.completion
@@ -66,36 +72,54 @@ if fault in ('phase-isolation', 'phase-reap-overrun'):
         budget.BudgetedStart.completion = with_descendant
     if fault == 'phase-isolation' and base.payload['mode'] == 'owner':
         supervise = budget.BudgetedStart.supervise
-        own = budget.BudgetedStart.own
         def with_peer(active, mode, context, **kwargs):
             if mode != 'monitor':
                 return supervise(active, mode, context, **kwargs)
-            active.test_pool = ThreadPoolExecutor(max_workers=1)
-            active.test_peer = active.test_pool.submit(budget._BudgetPhase(active, 'cleanup', context, phase_id=peer_id).run)
-            until = time.monotonic() + 6
-            while not peer_marker.exists() and time.monotonic() < until:
-                time.sleep(.02)
-            result = supervise(active, mode, context, **kwargs)
-            subreaper = ctypes.c_int()
-            if ctypes.CDLL(None).prctl(37, ctypes.byref(subreaper), 0, 0, 0) != 0:
-                raise OSError('Cannot inspect test owner subreaper state')
-            base.storage.with_suffix('.isolation').write_text(json.dumps({
-                'owner_subreaper': subreaper.value, 'peer_survived_monitor': not active.test_peer.done()}))
-            return result
-        def finish_peer(active):
+            original_path = active.path
+            def parent_path(name):
+                if name.startswith('observations/'):
+                    raise AssertionError('A live parent must not validate phase storage paths')
+                return original_path(name)
+            active.path = parent_path
+            phases = []
             try:
-                return own(active)
+                peer = budget._BudgetPhase(active, 'cleanup', context, phase_id=peer_id)
+                assert peer.start()
+                phases.append(peer)
+                until = time.monotonic() + 6
+                marker = base.storage.with_suffix('.peer-blocked-sync')
+                while not marker.exists() and time.monotonic() < until:
+                    peer.poll()
+                    time.sleep(.02)
+                assert marker.exists(), 'Peer did not reach its controlled fsync'
+                monitor = budget._BudgetPhase(active, mode, context)
+                assert monitor.start()
+                phases.append(monitor)
+                while not monitor.done:
+                    for phase in phases:
+                        if not phase.done:
+                            phase.poll()
+                    time.sleep(.02)
+                result = monitor.finish()
+                phases.remove(monitor)
+                subreaper = ctypes.c_int()
+                if ctypes.CDLL(None).prctl(37, ctypes.byref(subreaper), 0, 0, 0) != 0:
+                    raise OSError('Cannot inspect test owner subreaper state')
+                base.storage.with_suffix('.isolation').write_text(json.dumps({
+                    'owner_subreaper': subreaper.value, 'peer_survived_monitor': not peer.done}))
+                return result
             finally:
-                if hasattr(active, 'test_peer'):
-                    from contextlib import suppress
-                    with suppress(OSError, ValueError):
-                        identity = json.loads(peer_marker.read_bytes())['supervisor']
-                        if budget._process_identity(identity['pid']) == identity:
-                            os.kill(identity['pid'], signal.SIGTERM)
-                    active.test_peer.result(timeout=10)
-                    active.test_pool.shutdown()
+                for phase in phases:
+                    phase.request_stop()
+                while any(not phase.done for phase in phases):
+                    for phase in phases:
+                        if not phase.done:
+                            phase.poll()
+                    time.sleep(.02)
+                for phase in phases:
+                    phase.finish()
+                active.path = original_path
         budget.BudgetedStart.supervise = with_peer
-        budget.BudgetedStart.own = finish_peer
 
 if fault == 'phase-reap-overrun' and base.payload['mode'] == 'phase-supervisor' and base.payload['phase']['mode'] == 'monitor':
     reap = budget.processes._reap_children

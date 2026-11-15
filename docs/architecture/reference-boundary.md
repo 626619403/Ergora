@@ -111,3 +111,5 @@ flowchart LR
 ```
 
 派生 `process` 保留原主体，只在同一原锁内、业务副作用之前检查不确定 started／无 hook 的 managed 命名空间，并允许后继内置 callback 完成最终 admission。callback 拒绝不生成 native 业务失败 result；已有 result 先只读返回。实际执行请求、owner 出生能力、原 run/history/memo/request 绑定、不可重用 attempt／ack／stopped 与全后代停止归后继片；本片不提供自动 runner 消费者或第二实验账本。具体使用见[训练手册](../TRAINING.md#准备版本化原生来源)，验收见[交付](../delivery/2026-11-15-training-executor-protocol.md)。
+
+原应用`_BudgetPhase`的[B3.3c1生命周期](../plans/2026-11-15-training-managed-execution.md)只改变控制监管接缝：旧run复用可独立start／poll／finish的同一实现，父不做phase业务文件系统I/O，S继续持唯一原processes.run回收算法。第一帧只在实际reap之后发出，此后S禁止再生子进程。当前四mode、旧owner能力、来源协议和原生执行主体保持；同时监管实际训练与控制分支、显式执行及持久stop仍待c2，进度与原件范围见[逐步交付](../delivery/2026-11-15-training-managed-execution.md)。

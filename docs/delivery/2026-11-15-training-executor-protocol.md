@@ -1,6 +1,6 @@
 # B3.3b 原生executor准入协议：逐步交付
 
-日期：2026-11-15。固定设计基线为`5182bfa03f536d4090b91014f97eedda1c5d2d3a`，实际实施基线为`75bc99d788a9cef292b7c41eb7e01ac03d13de47`。设计与本地产品／安装验收已获新独立两轴approve／开放0／0；普通精确发布与自己的CI仍待。原518的七job成功／一失败保持；须先闭合75bc自己的CI与原独立终核，再推送本片产品。下列分段保留各节点当时的状态。
+日期：2026-11-15。固定设计基线为`5182bfa03f536d4090b91014f97eedda1c5d2d3a`，实际实施基线为`75bc99d788a9cef292b7c41eb7e01ac03d13de47`。设计、本地产品／安装验收、普通固定发布`6c7e9d924f822e60a54ce8c0686a56758ae0359a`与其自己的CI及原独立终核均已闭合，两轴approve／开放0／0。原518的七job成功／一失败保持，75bc独立接续已先闭合。下列分段保留各节点当时的状态。
 
 [计划r1](../plans/2026-11-15-training-executor-protocol.md)选择保留原v2.2／283不变的显式派生协议：新的空目录、固定delta及完整来源身份，在原executor锁内给出窄admission接缝，并拒绝不确定started或手工接管受管命名空间。原Git、runner、archive、track和result算法不复制；预算owner能力、执行请求／attempt／ack／stopped和自动循环均不在本片交付。kernel专家留在v3优化路径。
 
@@ -55,3 +55,13 @@ Ergora自身原`ergora-structure-review@1.0.0`采用已授权Codex回退，75.79
 前置75bc自己的CI43672292421／attempt1八job／30必要步骤全部success，原新独立最终两轴approve／开放0／0，精确接续闭合；原518失败保持。本片产品／测试继续等于已审r1，源码39、安装129、两安装650／283及四CLI和原自身模板证据保持。最终文档补核已通过，现做完整staged静态检查与普通精确发布；本片自己的CI及固定发布独立续核仍待，不把前置成功转授本片。
 
 首次完整staged diff-check将新data patch的三个空白context行报告为trailing whitespace；这些行的前导空格是unified patch语法，不能删改已固定的协议delta字节。原检查失败单列保留；在`.gitattributes`仅为`data/native-runtime/*.patch`设置`whitespace=-blank-at-eol`，其余文件及其它空白检查保持。该仓库元数据规则不改变650份产品／wheel／安装身份，不为此重建或重跑未改产品；最终完整检查及同片独立补核另记。
+
+## 普通固定发布与自己的CI待核
+
+已普通发布`6c7e9d924f822e60a54ce8c0686a56758ae0359a`，parent75bc、tree`47da648db4a690cb844382eaf577592237979b75`。最终17blob／5Python AST／242个Git tree链接及完整staged diff-check通过，原七产品／测试与已审r1逐字相同；独立已审16份其它blob保持，报告仅追加评审者终核字节。普通push exit0／5.574秒，完整SSH Ref同一；提交后仅c两份文档草案未跟踪，没有后继产品混入。原产品reviewer已接续核本固定提交、首方远端及自己的CI；当前未记该门禁闭合。
+
+## 固定发布与自己的CI终核闭合
+
+同一原产品reviewer已独立核固定6c7／parent／完整远端Ref、17个首方raw与Git blob、固定650源码／wheel／两安装及174测试输入。自己的Portability [43674493548／attempt1／#231](https://github.com/626619403/Ergora/actions/runs/43674493548)八job／30必要步骤全部success，含Windows原生回归与PowerShell5.1安装／升级；原[独立报告](2026-11-15-training-executor-protocol-review.md)发布／CI终核两轴approve／开放0／0。67捕获、104原件另存；五个匿名REST限流403保持，首方HTML／navigation／固定raw提供本次证据，未声称下载完整日志或产物。
+
+私有`product-audit/ci-publication-r1/final-ci-audit-r1.json` SHA256为`71e5941ac25803be20ed8312f00d1994de67389e5c53ff68aca4e034200c7c81`；原review最终15,572B／SHA256为`d4d114be71674972bf08e07d94169eef3b070c2dd1fb4802fc9c11b0e2e9671f`。本片精确门禁闭合，后继c1现在可按其自身本地／发布／CI合同推进；本片未授实际训练执行权，kernel路径保持。

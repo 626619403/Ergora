@@ -7,9 +7,9 @@
 |固定 r1 产品与本地验收|approve；开放 0|approve；开放 0|
 |最终作者三份状态文档 r2|approve；开放 0|approve；开放 0|
 |最终暂存与 patch 仓库元数据|approve；开放 0|approve；开放 0|
-|精确发布与自己的 CI|待固定提交、必要 CI 与同片终核|待同片核对|
+|精确发布与自己的 CI|approve；开放 0|approve；开放 0|
 
-本次范围内没有发现需要修正的可达产品或维护性问题。此结论允许继续本片交付，不将后继受管执行、全后代停止或自动循环记为完成；前置 CI 接续与本片自己的发布门禁仍各自有效。
+本次范围内没有发现需要修正的可达产品或维护性问题。本片的固定发布、自己的必要 CI 与同片终核已闭合；后继受管执行、全后代停止或自动循环继续按 c 片合同办理。
 
 ## 固定审查身份
 
@@ -62,6 +62,18 @@
 
 新增 [.gitattributes](../../.gitattributes) 仅在原规则后追加一条注释和 `src/ergora/data/native-runtime/*.patch whitespace=-blank-at-eol`。固定 delta 的三个空 context 行必须保留前导空格，原完整 diff-check 对此报尾空白，原失败保留。1.452 秒的隔离 Git 探针用同一 patch 字节复现原三处报告，再确认新规则只在该范围放行尾空白；patch 的 space-before-tab、blank-at-EOF，普通源码及范围外 patch 的尾空白仍会报错。规则不改变产品／wheel／安装或执行行为，无须重复已验安装。独立原件为 `product-audit/staged-verification-r1.json` 及脚本。
 
-另核总计划、本片计划／交付和前置交付的终态追加，符合原 reviewer 维护的[前置独立终核](2026-11-15-phase-publication-wait-regression-review.md)：固定 75bc 自己的 run 43672292421／attempt 1 八 job／30 必要步骤成功、两轴 approve／开放 0／0，原 518 失败保持。此处读取原评审者的终核与来源范围，没有替其重新联网认证 CI，也没有将前置成功授予本片。本次两轴结论保持 approve／开放 0／0；本报告追加还须纳入最终固定提交。
+另核总计划、本片计划／交付和前置交付的终态追加，符合原 reviewer 维护的[前置独立终核](2026-11-15-phase-publication-wait-regression-review.md)：固定 75bc 自己的 run 43672292421／attempt 1 八 job／30 必要步骤成功、两轴 approve／开放 0／0，原 518 失败保持。此处读取原评审者的终核与来源范围，没有替其重新联网认证 CI，也没有将前置成功授予本片。本次两轴结论保持 approve／开放 0／0；上述暂存补核的报告原文已纳入下述固定提交。
 
-待办为固定本片提交／远端身份及它自己的适用 CI。同片产品若修正，须按新固定候选续核；上述 r1 通过只归其准确字节。
+## 固定发布与自己的 CI 终核
+
+本片固定提交为 `6c7e9d924f822e60a54ce8c0686a56758ae0359a`，父提交为原实施基线 `75bc99d788a9cef292b7c41eb7e01ac03d13de47`，tree 为 `47da648db4a690cb844382eaf577592237979b75`。最终 `publication-staged-r2.json` SHA256 为 `c84518216f43ebdb171b12e71deb764f932b75b8e7377d6e45da4c98735002f4`：17 份 Git blob、五份 AST、242 个固定 tree 链接和完整固定 diff-check 均通过；16 份非报告 blob 与已审暂存 r1 相同，提交内的本报告原文 SHA256 为 `9a3a930371e2029c5652ca5253011c4f8c35078ecb2df8e5d987a04745611457`。普通 push exit 0／5.574 秒，SSH 完整分支 Ref 返回同一完整 SHA。原 reference／manifest、scripts 与 CI 无该片新增差异。
+
+按追加授权实际只读访问 GitHub 一方来源：commit HTML 的完整 oid／parent、branch HTML 的分支名／currentOid 和 Actions／run 的完整提交、run／attempt 身份均相符；17 份固定 SHA 的 raw 响应全部 HTTP 200，逐字等于最终 scope 及固定 Git blob。匿名 REST 的 commit／ref／runs／run／jobs 五次请求均为限流 403，原响应与头部保留，身份结论使用上述一方 HTML、navigation 和 raw 证据。tree 由本地完整 commit 对象绑定，没有把 REST 失败记为远端 tree 认证。
+
+另以 `git ls-tree`／`git cat-file --batch` 读取固定 6c7 的完整 blob，在 1.567 秒内确认 650 份源码与原 wheel、core／SDK 各 650 份安装逐字相同，174 份冻结测试／示例输入、七份产品／测试和 283 份原 reference 也与固定发布相符。私有 `fixed-installed-verification-r1.json` 保存准确边界；此补核没有用后续工作树的来源或测试字节代表本片，也没有重跑 pytest、安装或业务执行。
+
+本片自己的 [Portability #231](https://github.com/626619403/Ergora/actions/runs/43674493548)，run `43674493548`／attempt 1，精确绑定上述 6c7 push，GitHub 显示总时长 23 分 37 秒并以 success 结束。2026-11-15 04:19:51 UTC 的完整 navigation 为 `totalCount=8`、`hasMore=false`，唯一 job 名称恰为 plan、Linux Python 3.11 的 0–5 六组和 Windows Python 3.12 全量组，八项均为 completed／success。
+
+2026-11-15 04:20 UTC 实际重新取得 run／Actions 及八份 job HTML，逐项核实 30 个必要步骤唯一出现且全部 success：plan 的显式分组读取一项，六个 Linux job 各四项，以及 Windows 的 wheel／reference／原生回归／PowerShell 5.1 安装升级／上传五项。八个 job 的显示头部与导航结论一致，步骤 log URL 均绑定精确 6c7 和对应 job；固定 workflow 与六组清单的一方 raw 也等于同一 Git blob。这里核实平台发布的步骤结论，没有下载完整日志或产物，也没有据此认证真实 GPU、训练质量／性能、原 Sandbox／MLflow 成功路径或后继受管生命周期。
+
+独立原件位于 ignored `product-audit/ci-publication-r1/`：67 个只读捕获记录含 62 个 HTTP 200 与上述五个 403，所有响应字节／摘要已重新核对；`ci-originals-index-r1.json` 索引 104 份文件，SHA256 为 `9aa65860ac845881316ccbe4bdab4272a5d7d8137bd8fef2a712b4c591e4fb2a`。`final-ci-audit-r1.json` 保存 run／attempt、8／30 完整结果、固定 raw／workflow、身份依据和未获取全文日志／产物的范围。固定发布及自己的必要 CI 两轴 approve，开放问题 0／0，本片同片终核闭合；结论只归本节固定字节及其自己的 CI，后继产品继续独立验收。

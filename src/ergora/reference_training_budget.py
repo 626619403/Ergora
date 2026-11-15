@@ -73,12 +73,18 @@ class _BudgetPhase:
         self.identity = {**budget.identity, 'protocol': _PHASE_PROTOCOL, 'phase_id': phase_id, 'mode': mode,
                          'context_sha256': budget.operation.sha(context),
                          'owner': _process_identity(os.getpid()) if owner is None else owner}
-        self.output = budget.path('observations/' + mode + '-' + phase_id)
+        # The budget folder was validated before its owner started. Actual path
+        # checks and storage belong to this phase's S, never its live peers.
+        self.relative = 'observations/' + mode + '-' + phase_id
+        self.output = budget.folder / self.relative
         self.payload = {**budget.operation.payload, 'mode': mode, 'cached': context,
                         'intent_sha256': budget.identity['intent_sha256'],
                         **({'final': final} if final is not None else {})}
         self.frames, self.buffer, self.problem = [], bytearray(), None
         self.supervisor_returncode = None
+        self.stopping, self.signalled, self.done = False, False, False
+        self.offset = 0
+        self.startup_stderr = bytearray()
 
     def expired(self, *, total: bool = False) -> bool:
         try:
@@ -119,76 +125,115 @@ class _BudgetPhase:
         if len(self.buffer) > limit:
             self.problem = 'Incomplete training phase frame exceeds its complete response capacity'
 
-    def run(self) -> dict:
+    def start(self) -> bool:
+        """Launch without reading or writing the business filesystem in the parent."""
         if self.expired() or self.mode == 'monitor' and self.budget.cancelled:
-            return {'status': 'unknown', 'reason': 'Original training phase allowance is exhausted'}
-        self.output.mkdir(parents=True, mode=0o700)
-        payload = json.dumps({**self.payload, 'mode': 'phase-supervisor', 'phase': self.identity},
-                             ensure_ascii=False, allow_nan=False).encode('utf-8')
-        offset, signalled = 0, False
-        with (self.output / 'supervisor.stderr').open('xb') as stderr:
-            process = subprocess.Popen([sys.executable, '-P', '-c',
+            return False
+        self.encoded = json.dumps({**self.payload, 'mode': 'phase-supervisor', 'phase': self.identity},
+                                  ensure_ascii=False, allow_nan=False).encode('utf-8')
+        self.selected = selectors.DefaultSelector()
+        self.process = None
+        try:
+            self.process = subprocess.Popen([sys.executable, '-P', '-c',
                 'from ergora.reference_training_worker import budget_main;budget_main()'],
-                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=stderr,
+                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                 env=dict(os.environ), start_new_session=True)
+            for stream, event in ((self.process.stdin, selectors.EVENT_WRITE),
+                                  (self.process.stdout, selectors.EVENT_READ), (self.process.stderr, selectors.EVENT_READ)):
+                os.set_blocking(stream.fileno(), False)
+                self.selected.register(stream, event)
+        except BaseException:
+            self.selected.close()
+            # No request bytes have been sent, so this child cannot start work.
+            if self.process is not None:
+                self.process.terminate()
+                self.process.wait()
+                for stream in (self.process.stdin, self.process.stdout, self.process.stderr):
+                    stream.close()
+            raise
+        return True
+
+    def request_stop(self) -> None:
+        """Request this phase's safe reap without waiting for it or a peer."""
+        self.stopping = True
+
+    def poll(self, timeout: float = 0) -> bool:
+        """Pump this phase's pipes; default polling never waits for a peer."""
+        process, selected = self.process, self.selected
+        stop = (self.stopping or self.problem is not None or self.expired()
+                or self.mode == 'monitor' and self.budget.cancelled)
+        if stop and not self.signalled and process.poll() is None:
+            process.terminate()
+            self.signalled = True
+        # This matching frame proves the only child subtree has been reaped.
+        # S may only perform direct storage/observation after that frame.
+        if self.frames and self.expired(total=True) and process.poll() is None:
+            process.kill()
+        events = selected.select(timeout)
+        for key, event in events:
+            stream = key.fileobj
             try:
-                with selectors.DefaultSelector() as selected:
-                    for stream, event in ((process.stdin, selectors.EVENT_WRITE), (process.stdout, selectors.EVENT_READ)):
-                        os.set_blocking(stream.fileno(), False)
-                        selected.register(stream, event)
-                    while selected.get_map() or process.poll() is None:
-                        stop = self.problem is not None or self.expired() or self.mode == 'monitor' and self.budget.cancelled
-                        if stop and not signalled and process.poll() is None:
-                            process.terminate()
-                            signalled = True
-                        # The first matching frame proves run() has reaped this
-                        # phase. Only its result reader remains after this point.
-                        if self.frames and self.expired(total=True) and process.poll() is None:
-                            process.kill()
-                        events = selected.select(.2)
-                        for key, event in events:
-                            stream = key.fileobj
-                            try:
-                                if event == selectors.EVENT_WRITE:
-                                    offset += os.write(stream.fileno(), payload[offset:offset + 65_536])
-                                    if offset == len(payload):
-                                        selected.unregister(stream)
-                                        stream.close()
-                                else:
-                                    raw = os.read(stream.fileno(), 65_536)
-                                    if raw:
-                                        self.receive(raw)
-                                    else:
-                                        selected.unregister(stream)
-                                        stream.close()
-                            except BlockingIOError:
-                                continue
-                            except BrokenPipeError:
-                                selected.unregister(stream)
-                                stream.close()
-                        if process.poll() is not None and not events:
-                            break
-            finally:
-                # TERM requests the dedicated supervisor's existing safe reap;
-                # killing it here could orphan its new-session descendants.
-                if process.poll() is None:
-                    process.terminate()
-                process.wait()
-                for stream in (process.stdin, process.stdout):
-                    if not stream.closed:
+                if event == selectors.EVENT_WRITE:
+                    self.offset += os.write(stream.fileno(), self.encoded[self.offset:self.offset + 65_536])
+                    if self.offset == len(self.encoded):
+                        selected.unregister(stream)
                         stream.close()
-        self.supervisor_returncode = process.returncode
-        if (process.returncode == 0 and offset == len(payload) and len(self.frames) == 2
+                else:
+                    raw = os.read(stream.fileno(), 65_536)
+                    if not raw:
+                        selected.unregister(stream)
+                        stream.close()
+                    elif stream is process.stdout:
+                        self.receive(raw)
+                    else:
+                        self.startup_stderr.extend(raw[:max(0, 65_536 - len(self.startup_stderr))])
+            except BlockingIOError:
+                continue
+            except BrokenPipeError:
+                selected.unregister(stream)
+                stream.close()
+        self.done = (process.poll() is not None and (not selected.get_map() or not events))
+        return not self.done
+
+    def finish(self) -> dict:
+        """Collect an exited phase, or safely stop it for a synchronous caller."""
+        self.request_stop()
+        try:
+            while not self.done:
+                self.poll(.2)
+        finally:
+            self.process.wait()
+            self.selected.close()
+            for stream in (self.process.stdin, self.process.stdout, self.process.stderr):
+                if not stream.closed:
+                    stream.close()
+        self.supervisor_returncode = self.process.returncode
+        if (self.process.returncode == 0 and self.offset == len(self.encoded) and len(self.frames) == 2
                 and not self.buffer and self.problem is None and not self.expired()):
             return self.frames[1]['result']
         return {'status': 'unknown', 'phase_id': self.identity['phase_id'],
-                'reason': self.problem or 'Original phase has no complete in-budget result',
-                'supervisor_returncode': process.returncode}
+                'reason': self.problem or self.startup_stderr.decode('utf-8', errors='replace').strip()
+                          or 'Original phase has no complete in-budget result',
+                'supervisor_returncode': self.process.returncode}
+
+    def run(self) -> dict:
+        if not self.start():
+            return {'status': 'unknown', 'reason': 'Original training phase allowance is exhausted'}
+        try:
+            while self.poll(.2):
+                pass
+        finally:
+            result = self.finish()
+        return result
 
     def supervise(self) -> None:
         """Run inside this phase's exclusive Linux subreaper process."""
         if self.identity['owner'] != _process_identity(os.getppid()):
             raise ValueError('Training phase has lost its original parent owner')
+        self.output = self.budget.path(self.relative)
+        self.output.mkdir(parents=True, mode=0o700)
+        with (self.output / 'supervisor.stderr').open('xb') as stderr:
+            os.dup2(stderr.fileno(), sys.stderr.fileno())
         cancelled = False
 
         def cancel(signum, frame):

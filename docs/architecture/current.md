@@ -445,6 +445,8 @@ flowchart LR
 
 monitor／fence／cleanup／publish仍串行，每个阶段的supervisor独占原Linux subreaper，预算owner自身不启subreaper。owner用非阻塞PIPE传完整context；supervisor在原run实际reap返回后先flush完整身份的stopped帧，再读helper结果。总截止或可捕获取消不能打断已经开始的安全reap；只在收到有效stopped后，才可结束超期的结果reader。原final保存短phase观察，业务unknown与该子树stopped分列；独立2MiB的final读写封套容纳原结果及新增摘要，helper与普通记录仍保留1MiB。旧活owner不重启或补能力，具体过程与验收见[独立阶段监督](../delivery/2026-11-15-training-budget-phase-supervision.md)。
 
+[B3.3c1](../plans/2026-11-15-training-managed-execution.md)将原`_BudgetPhase`拆为start／request_stop／非阻塞poll／finish，串行run使用同一生命周期；当前原owner仍按上述四mode串行运行。父侧只按已核预算目录拼接固定phase路径，safe_file／目录和stderr文件由对应S在实际使用时处理；新增stderr管道有界读取，初始化未发送请求时的失败会收尾等待进程。多个phase的调用者先全部请求停止，再轮询全部，已终止才finish；stopped之后S只直接读写／观察、不再spawn。真实训练的执行能力、持久生命周期和并行fence仍由c2交付，不能从这个低层接缝推导已提供runner。
+
 ## 原生训练来源与锁内准入接缝
 
 `reference.prepare_training` 和既有 `validate_installation` 共用本地来源校验，CLI 只解析显式协议及新目录。两个固定 data 资源物化 `training-executor-admission-v1`，不新增模块族或全局工具注册器；原 283 字节不变。新协议完整核279来源，legacy保留按用途的Python范围；准备中断的空或缺损descriptor不能回退为legacy。
