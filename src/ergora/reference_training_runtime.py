@@ -68,14 +68,14 @@ async def lookup_controller(client, intent: dict, binding: dict, *, timeout: flo
 
 async def _controller_history(client, handle, intent, digest, rpc_timeout):
     """Share complete input validation without sharing the callers' status policy."""
-    from .training_execution_protocol import CYCLE_MEMO_KEY, CycleAdmission
+    from .training_execution_protocol import CYCLE_MEMO_KEY, CycleAdmission, cycle_workflow_type
 
     started = None
     async for event in handle.fetch_history_events(page_size=1, rpc_timeout=rpc_timeout):
         if event.HasField('workflow_execution_started_event_attributes'):
             started = event.workflow_execution_started_event_attributes
         break
-    if (started is None or started.workflow_type.name != 'TrainingCycleWorkflow'
+    if (started is None or started.workflow_type.name != cycle_workflow_type(intent['protocol'])
             or started.task_queue.name != intent['task_queue']):
         raise ValueError('Original controller type, queue or started input is unavailable or changed')
     values = await client.data_converter.decode(started.input.payloads, [dict])

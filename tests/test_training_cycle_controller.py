@@ -15,7 +15,7 @@ import pytest
 from ergora import reference, training
 from test_training_submission import (
     controller_admission, controller_dispatch, cycle_budget_root, cycle_candidate, cycle_operation_fault,
-    cycle_selection, experiments, installation, native_budget_create, prepared,
+    cycle_selection, experiments, historical_execution, installation, native_budget_create, prepared,
     recorded_process_is_active, registration, run_cycle_candidate, save_controller_binding,
     saved_controller_intent, service, stop_controller_test_owner, wait_budget_stopped,
 )
@@ -57,6 +57,7 @@ def test_controller_birth_consent_retains_original_actor_clock_and_mode(controll
         'task_queue': 'ergora-training-cycle-v1', 'execution_scope': 'ordered-selected-native-once',
         'continuation': 'accepted-archive-pass', 'actor_id': controller['actor_id'], 'confirmation': True}
     assert authorization['sha256'] == training_cycles._sha({k: v for k, v in authorization.items() if k != 'sha256'})
+    save_controller_binding(admission)
     original = {p: p.read_bytes() for p in admission.directory.rglob('*') if p.is_file()}
     monkeypatch.setattr(training_cycles.getpass, 'getuser', lambda: 'different-observer')
     again = training_cycles.authorize_controller(state, 'demo', 'controller', source, selected['sha256'], 1,
@@ -67,6 +68,12 @@ def test_controller_birth_consent_retains_original_actor_clock_and_mode(controll
     manual = training_cycles.authorize(state, 'demo', 'manual', source, selected['sha256'], 1, confirm=True)
     assert manual['authorization']['schema_version'] == 1 and 'controller' not in manual
     assert not (admission.directory.parent / 'manual/controller').exists()
+    manual_original = {p: p.read_bytes() for p in (admission.directory.parent / 'manual').rglob('*') if p.is_file()}
+    for cycle in ('controller', 'manual'):
+        with pytest.raises(ValueError, match='consent mode'):
+            training_cycles.authorize_controller(state, 'demo', cycle, source, selected['sha256'], 1,
+                confirm=True, execute_selected=True, program_version=2)
+    assert all(p.read_bytes() == raw for p, raw in manual_original.items())
     with pytest.raises(ValueError, match='consent mode'):
         training_cycles.authorize_controller(state, 'demo', 'manual', source, selected['sha256'], 1,
             confirm=True, execute_selected=True)
@@ -87,8 +94,10 @@ def test_controller_birth_consent_retains_original_actor_clock_and_mode(controll
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller consent requires Linux/WSL2 clocks and flock')
-@pytest.mark.parametrize('boundary', ['lock-file', 'lock-directory', 'ready-directory'])
-def test_controller_lock_publication_recovers_only_the_original_consent(cycle_selection, tmp_path, monkeypatch, boundary):
+@pytest.mark.parametrize('program_version', [1, 2])
+@pytest.mark.parametrize('boundary', ['authorization-file', 'lock-file', 'lock-directory', 'ready-directory'])
+def test_controller_lock_publication_recovers_only_the_original_consent(
+        cycle_selection, tmp_path, monkeypatch, boundary, program_version):
     from ergora import training_cycles
 
     state, _, _, _, _, request = cycle_selection
@@ -99,12 +108,14 @@ def test_controller_lock_publication_recovers_only_the_original_consent(cycle_se
 
     def interrupt(descriptor):
         path = Path('/proc/self/fd/' + str(descriptor)).resolve()
-        targeted = ((boundary == 'lock-file' and path.parent == saved / 'controller' and path.name.startswith('.pending-'))
+        targeted = ((boundary == 'authorization-file' and path.parent == saved and path.name.startswith('.pending-'))
+            or (boundary == 'lock-file' and path.parent == saved / 'controller' and path.name.startswith('.pending-'))
             or (boundary == 'lock-directory' and path == saved / 'controller')
             or (boundary == 'ready-directory' and path == saved and (saved / 'ready.json').exists()))
         if targeted:
             failed.append(str(path))
-            assert (saved / 'authorization.json').is_file() and (saved / 'cycle.json').is_file()
+            if boundary != 'authorization-file':
+                assert (saved / 'authorization.json').is_file() and (saved / 'cycle.json').is_file()
             if boundary != 'ready-directory':
                 assert not (saved / 'ready.json').exists()
             raise OSError('Interrupted original controller publication')
@@ -113,14 +124,28 @@ def test_controller_lock_publication_recovers_only_the_original_consent(cycle_se
     monkeypatch.setattr(os, 'fsync', interrupt)
     with pytest.raises(OSError, match='Interrupted original controller publication'):
         training_cycles.authorize_controller(state, 'demo', 'interrupted-controller', source, selected['sha256'], 1,
-            confirm=True, execute_selected=True)
+            confirm=True, execute_selected=True, program_version=program_version)
     assert failed
     original = {p: p.read_bytes() for p in saved.rglob('*') if p.is_file()}
+    if boundary == 'authorization-file':
+        assert saved.is_dir() and not (saved / 'authorization.json').exists()
+        monkeypatch.setattr(os, 'fsync', fsync)
+        monkeypatch.setattr(training_cycles.budget_clock, 'authorize',
+            lambda *args: pytest.fail('A reserved ID cannot receive another clock'))
+        with pytest.raises(FileNotFoundError):
+            training_cycles.authorize_controller(state, 'demo', 'interrupted-controller', source, selected['sha256'], 1,
+                confirm=True, execute_selected=True, program_version=program_version)
+        assert all(p.read_bytes() == raw for p, raw in original.items())
+        return
+    monkeypatch.setattr(training_cycles, '_measurement_sources',
+        lambda: pytest.fail('Recovery must not recapture the measurement source map'))
+    monkeypatch.setattr(training_cycles.budget_clock, 'authorize',
+        lambda *args: pytest.fail('Recovery must not issue another clock'))
     observed = training_cycles.status(state, 'demo', 'interrupted-controller')
     assert observed['status'] == ('unknown' if boundary == 'ready-directory' else 'pending')
     monkeypatch.setattr(os, 'fsync', fsync)
     recovered = training_cycles.authorize_controller(state, 'demo', 'interrupted-controller', source, selected['sha256'], 1,
-        confirm=True, execute_selected=True)
+        confirm=True, execute_selected=True, program_version=program_version)
     assert recovered['status'] == 'ready' and recovered['authorization'] == observed['authorization']
     assert (saved / 'controller/admission.lock').read_bytes() == b''
     assert all(p.read_bytes() == raw for p, raw in original.items())
@@ -1433,3 +1458,228 @@ def test_cycle_controller_reconcile_after_original_total_never_renews_execution(
     assert (admission.directory / 'authorization.json').read_bytes() == raw
     assert budget_clock.remaining(clock, wall_seconds) < 0
 
+
+
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2}], indirect=True)
+def test_schema3_birth_retains_sources_bytes_and_one_clock(controller_admission, monkeypatch):
+    from ergora import training_cycles
+    from ergora.training_execution_protocol import MEASUREMENT_SOURCES
+
+    state, source, selected, authorized, admission = controller_admission
+    authorization = authorized['authorization']
+    assert authorization['schema_version'] == 3 and authorized['coverage']['execution_authorized'] is False
+    assert set(authorization['measurement_sources']) == set(MEASUREMENT_SOURCES)
+    package = Path(training_cycles.__file__).parent
+    assert authorization['measurement_sources'] == {
+        name: hashlib.sha256((package / name).read_bytes()).hexdigest() for name in MEASUREMENT_SOURCES}
+    controller = authorization['controller']
+    identity = {key: authorization[key] for key in ('control_home', 'project', 'cycle_id', 'input_sha256')}
+    assert controller['protocol'] == controller['task_queue'] == 'ergora-training-cycle-v2'
+    assert controller['workflow_id'] == 'ergora-training-cycle-v2/' + training_cycles._sha(identity)
+    original = {p: p.read_bytes() for p in admission.directory.rglob('*') if p.is_file()}
+    (source / 'cycle.json').unlink()
+    source.rmdir()
+    monkeypatch.setattr(training_cycles, '_measurement_sources', lambda: pytest.fail('Ready retries cannot capture sources'))
+    monkeypatch.setattr(training_cycles.budget_clock, 'authorize', lambda *args: pytest.fail('Ready retries cannot renew clocks'))
+    monkeypatch.setattr(training, 'check_start', lambda *args: pytest.fail('Ready retries cannot repeat admissions'))
+    again = training_cycles.authorize_controller(state, 'demo', 'controller', source, selected['sha256'], 1,
+        confirm=True, execute_selected=True, program_version=2)
+    assert again['authorization'] == authorization and again['ready'] == authorized['ready']
+    for mode in (None, 1):
+        with pytest.raises(ValueError, match='consent mode'):
+            if mode is None:
+                training_cycles.authorize(state, 'demo', 'controller', source, selected['sha256'], 1, confirm=True)
+            else:
+                training_cycles.authorize_controller(state, 'demo', 'controller', source, selected['sha256'], 1,
+                    confirm=True, execute_selected=True)
+    with pytest.raises(ValueError, match='different complete input'):
+        training_cycles.authorize_controller(state, 'demo', 'controller', source, '0' * 64, 1,
+            confirm=True, execute_selected=True, program_version=2)
+    with pytest.raises(ValueError, match='revision changed'):
+        training_cycles.authorize_controller(state, 'demo', 'controller', source, selected['sha256'], 2,
+            confirm=True, execute_selected=True, program_version=2)
+    for invalid in (True, False, 1.0, '2'):
+        with pytest.raises(ValueError, match='program version'):
+            training_cycles.authorize_controller(state, 'demo', 'invalid', source, selected['sha256'], 1,
+                confirm=True, execute_selected=True, program_version=invalid)
+    assert not (admission.directory.parent / 'invalid').exists()
+    assert all(p.read_bytes() == raw for p, raw in original.items())
+    # Shape is checked independently of the canonical digest, even offline.
+    altered = deepcopy(authorization)
+    altered['measurement_sources']['arbitrary.py'] = altered['measurement_sources'].pop(MEASUREMENT_SOURCES[0])
+    altered['sha256'] = training_cycles._sha({key: value for key, value in altered.items() if key != 'sha256'})
+    (admission.directory / 'authorization.json').write_text(json.dumps(altered))
+    with pytest.raises(ValueError, match='measurement source map'):
+        training_cycles.status(state, 'demo', 'controller')
+    # A well-shaped changed digest also fails the original complete authorization SHA.
+    altered = deepcopy(authorization)
+    altered['measurement_sources'][MEASUREMENT_SOURCES[0]] = '0' * 64
+    (admission.directory / 'authorization.json').write_text(json.dumps(altered))
+    with pytest.raises(ValueError, match='canonical SHA256'):
+        training_cycles.status(state, 'demo', 'controller')
+
+
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2}], indirect=True)
+def test_schema3_intent_is_local_and_all_execution_entries_remain_closed(
+        controller_admission, cycle_selection, service, monkeypatch):
+    from ergora import reference_training_worker as worker, training_cycles
+
+    state, source, selected, authorized, admission = controller_admission
+    _, _, runtime, _, _, request = cycle_selection
+    original_sources = training_cycles._measurement_sources()
+    source_reader = training_cycles._read_bytes
+    target = Path(training_cycles.__file__).parent / next(iter(original_sources))
+    monkeypatch.setattr(training_cycles, '_read_bytes',
+        lambda path, limit: source_reader(path, limit) + b'\n# simulated drift\n' if path == target else source_reader(path, limit))
+    assert training_cycles.status(state, 'demo', 'controller')['authorization'] == authorized['authorization']
+    with pytest.raises(ValueError, match='measurement sources changed'):
+        training_cycles.prepare_controller(state, 'demo', 'controller', authorized['authorization_sha256'], 1)
+    assert not (admission.folder / 'intent.json').exists()
+    monkeypatch.setattr(training_cycles, '_read_bytes', source_reader)
+    first = training_cycles.prepare_controller(state, 'demo', 'controller', authorized['authorization_sha256'], 1)
+    raw = (admission.folder / 'intent.json').read_bytes()
+    second = training_cycles.prepare_controller(state, 'demo', 'controller', authorized['authorization_sha256'], 1)
+    assert first['created'] is True and second['created'] is False
+    assert first['intent'] == second['intent'] == admission.intent_record()
+    assert (admission.folder / 'intent.json').read_bytes() == raw
+    assert set(first['intent']['workflow_input']) == {
+        'protocol', 'control_home', 'project', 'cycle_id', 'input_sha256', 'authorization_sha256'}
+    with pytest.raises(ValueError, match='execution is not enabled'):
+        training_cycles._claim_controller(state, admission)
+    # Cold H bypasses the schema2 snapshot validator; exercise the actual S/H
+    # child path and its retained stopped/result records, without a service double.
+    import asyncio
+    operation = worker._CycleOperation(state.root, 'demo', 'controller', authorized['authorization_sha256'], 'inspect')
+    cold = asyncio.run(operation.run())
+    assert cold['status'] == 'unknown' and cold['operation_stopped'] is True
+    assert 'Schema3 controller execution is not enabled' in cold['reason']
+    assert operation.process.returncode is not None
+    service[0]('accepted')
+    digest = request['candidates'][0]['manifest_sha256']
+    for cycle_entry in (True, False):
+        with pytest.raises(ValueError, match='execution is not enabled'):
+            if cycle_entry:
+                training_cycles.start(state, 'demo', 'controller', 'alpha', authorized['authorization_sha256'], 1)
+            else:
+                training.start(state, 'demo', 'alpha', 1, digest,
+                    budget={'cycle_id': 'controller', 'authorization_sha256': authorized['authorization_sha256']})
+    assert not (admission.folder / 'attempt.json').exists() and not service[1].exists()
+    prefix = runtime / 'ergora/training-submissions'
+    assert not (prefix / 'alpha.intent.json').exists() and not (prefix / 'alpha.attempt.json').exists()
+    assert not (prefix / 'alpha.budget').exists() and not (runtime / 'training/jobs/alpha').exists()
+    monkeypatch.setattr(training_cycles, '_read_bytes',
+        lambda path, limit: source_reader(path, limit) + b'\n# simulated drift\n' if path == target else source_reader(path, limit))
+    with pytest.raises(ValueError, match='measurement sources changed'):
+        training_cycles.prepare_controller(state, 'demo', 'controller', authorized['authorization_sha256'], 1)
+    assert (admission.folder / 'intent.json').read_bytes() == raw
+    # The saved authorization never adopts the drift, including an explicit retry.
+    assert training_cycles.authorize_controller(state, 'demo', 'controller', source, selected['sha256'], 1,
+        confirm=True, execute_selected=True, program_version=2)['authorization']['measurement_sources'] == original_sources
+    with monkeypatch.context() as expired:
+        expired.setattr(training_cycles.budget_clock, 'remaining', lambda *args, **kwargs: 0)
+        with pytest.raises(ValueError, match='deadline has passed'):
+            training_cycles.prepare_controller(state, 'demo', 'controller', authorized['authorization_sha256'], 1)
+    assert (admission.folder / 'intent.json').read_bytes() == raw
+    stopped = training_cycles.stop_controller(state, 'demo', 'controller', authorized['authorization_sha256'], reason='Storage-only stop')
+    assert stopped['stop_visible'] is True and stopped['stop_durable'] is True
+    assert training_cycles.status(state, 'demo', 'controller')['status'] == 'stopped'
+    with pytest.raises(ValueError):
+        training_cycles.prepare_controller(state, 'demo', 'controller', authorized['authorization_sha256'], 1)
+    assert not (admission.folder / 'attempt.json').exists()
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2}], indirect=True)
+def test_schema3_native_callback_refuses_before_executor_effects_and_keeps_completed_read(
+        controller_admission, request):
+    from ergora import training_cycles
+
+    state, _, _, authorized, admission = controller_admission
+    _, definition, runtime, folder = request.getfixturevalue('historical_execution')
+    sha = training_cycles._sha
+    prefix = runtime / 'ergora/training-submissions'
+    intent = json.loads((prefix / 'alpha.intent.json').read_bytes())
+    intent['budget'].update(cycle_id='controller', authorization_sha256=authorized['authorization_sha256'])
+    plan = training_cycles._load(state.root, 'demo', 'controller', admission.directory)[0]
+    context = {'intent': intent, 'authorization': authorized['authorization'], 'policy': plan['definition']['budget'],
+               'project': plan['project'], 'published_project': plan['project']}
+    owner_path = prefix / 'alpha.budget/owner.json'
+    owner = json.loads(owner_path.read_bytes())
+    owner.update(intent_sha256=sha(intent), authorization_sha256=authorized['authorization_sha256'], context_sha256=sha(context))
+    def save(path, value):
+        path.write_text(json.dumps(value))
+    save(prefix / 'alpha.intent.json', intent)
+    save(owner_path, owner)
+    for name in ('attempt', 'result'):
+        path = prefix / ('alpha.' + name + '.json')
+        value = json.loads(path.read_bytes())
+        value['intent_sha256'] = sha(intent)
+        save(path, value)
+    for name in ('attempt', 'ack', 'stopped'):
+        (folder / (name + '.json')).unlink()
+    # Rebind the retained historical fixture's consumed request and launch, with
+    # no live owner or grants. The actual native reader still validates the chain.
+    execution_request = json.loads((folder / 'request.json').read_bytes())
+    execution_request.update(start_intent_sha256=sha(intent), owner_sha256=sha(owner),
+        authorization_sha256=authorized['authorization_sha256'],
+        start_attempt_sha256=sha(json.loads((prefix / 'alpha.attempt.json').read_bytes())),
+        start_receipt_sha256=sha(json.loads((prefix / 'alpha.result.json').read_bytes())))
+    save(folder / 'request.json', execution_request)
+    launch = json.loads((folder / 'launch.json').read_bytes())
+    launch.update(request_sha256=sha(execution_request), owner_sha256=sha(owner),
+        authorization_sha256=authorized['authorization_sha256'], clock_sha256=sha(authorized['authorization']['clock']))
+    save(folder / 'launch.json', launch)
+    installation = Path(definition['execution']['installation'])
+    environment = dict(os.environ, PYTHONDONTWRITEBYTECODE='1',
+        AGENTFLOW_CONFIG_DIR=definition['execution']['config_directory'],
+        AGENTFLOW_STATE_DIR=definition['execution']['state_directory'],
+        PYTHONPATH=os.pathsep.join(map(str, (Path(training_cycles.__file__).parent.parent,
+            installation / 'local', installation / 'upstream/platform', installation / 'upstream/temporal', installation / 'upstream',
+            *(Path(item) for item in sys.path if 'site-packages' in item)))))
+    command = [str(installation / '.venv/bin/python'), '-B', '-P',
+        str(Path(__file__).parent / 'fixtures/training_executor_client.py'), 'native-context', str(folder.parent)]
+    before = {path: path.read_bytes() for path in folder.parent.rglob('*') if path.is_file()}
+    result = subprocess.run(command, input=json.dumps({'cached': context, 'phase': {}}), env=environment,
+        capture_output=True, text=True, timeout=15)
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout) == {'error_type': 'ValueError', 'error': 'Schema3 controller execution is not enabled'}
+    assert {path: path.read_bytes() for path in folder.parent.rglob('*') if path.is_file() and path.name != 'executor.lock'} == before
+    assert not any((folder.parent / name).exists() for name in ('started.json', 'repo.git', 'run-output'))
+    assert not any((folder / (name + '.json')).exists() for name in ('attempt', 'ack', 'stopped'))
+    # Existing native results remain readable without rerunning admission.
+    native = json.loads((folder.parent / 'request.json').read_bytes())
+    completed = {'job_id': native['job_id'], 'binding': native['experiment']['binding'],
+                 'state': 'SUCCEEDED', 'detail': 'Retained synthetic completed result'}
+    save(folder.parent / 'result.json', completed)
+    again = subprocess.run(command, input=json.dumps({'cached': context, 'phase': {}}), env=environment,
+        capture_output=True, text=True, timeout=15)
+    assert again.returncode == 0, again.stderr
+    assert json.loads(again.stdout) == completed
+    assert not (folder.parent / 'started.json').exists() and not (folder / 'attempt.json').exists()
+
+
+@pytest.mark.parametrize('controller_admission', [{}, {'program_version': 2}], indirect=True)
+def test_controller_original_type_is_authenticated_read_only(controller_admission, tmp_path, monkeypatch):
+    import asyncio
+    from temporalio.client import Client
+    from ergora import training_cycles
+    from ergora.reference_training_runtime import lookup_controller_submission
+    from fixtures.training_controller_service import DispatchService
+
+    state, _, _, authorized, admission = controller_admission
+    prepared = training_cycles.prepare_controller(state, 'demo', 'controller', authorized['authorization_sha256'], 1)
+    storage = tmp_path / 'read-only-sdk'
+    storage.mkdir()
+    monkeypatch.setenv('ERGORA_TEST_CYCLE_DISPATCH', str(storage))
+    payload = {'identity': prepared['intent']['workflow_input']}
+    sdk = DispatchService(payload, 'preexisting')
+    before = {path: path.read_bytes() for path in admission.directory.rglob('*') if path.is_file()}
+    found = asyncio.run(lookup_controller_submission(Client(sdk), prepared['intent'], run_id=None, timeout=2))
+    assert found[1].run_id == sdk.run_id
+    if authorized['authorization']['schema_version'] == 3:
+        sdk.case = 'v1-type'
+        with pytest.raises(ValueError, match='controller type'):
+            asyncio.run(lookup_controller_submission(Client(sdk), prepared['intent'], run_id=sdk.run_id, timeout=2))
+    assert all(json.loads(path.read_bytes())['action'] != 'start' for path in storage.glob('call-*.json'))
+    assert {path: path.read_bytes() for path in admission.directory.rglob('*') if path.is_file()} == before
+    assert not (admission.folder / 'attempt.json').exists()

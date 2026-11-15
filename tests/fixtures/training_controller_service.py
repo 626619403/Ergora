@@ -114,7 +114,7 @@ class DispatchService:
     async def original_request(self):
         if (self.storage / 'request.pb').exists():
             return StartWorkflowExecutionRequest.FromString((self.storage / 'request.pb').read_bytes())
-        if self.case in ('preexisting', 'collision'):
+        if self.case in ('preexisting', 'collision', 'v1-type'):
             return StartWorkflowExecutionRequest(input=Payloads(payloads=await DataConverter.default.encode([self.intent['workflow_input']])),
                 memo=Memo(fields={CYCLE_MEMO_KEY: (await DataConverter.default.encode([CycleAdmission._sha(self.intent)]))[0]}))
         raise RPCError('No original run', RPCStatusCode.NOT_FOUND, b'')
@@ -139,7 +139,9 @@ class DispatchService:
             if self.case == 'retry' else WorkflowExecutionStatus.COMPLETED if self.case == 'closed' else WorkflowExecutionStatus.RUNNING)
         return DescribeWorkflowExecutionResponse(workflow_execution_info=WorkflowExecutionInfo(
             execution=WorkflowExecution(workflow_id=self.intent['workflow_id'], run_id='foreign-run' if self.case == 'run' else selected),
-            type=WorkflowType(name='TrainingCycleWorkflow'), memo=memo, status=status,
+            type=WorkflowType(name=('TrainingCycleWorkflowV2'
+                if self.intent['protocol'] == 'ergora-training-cycle-v2' and self.case != 'v1-type'
+                else 'TrainingCycleWorkflow')), memo=memo, status=status,
             first_run_id=self.successor if self.case == 'first-run' else self.run_id))
 
     async def get_workflow_execution_history(self, request, **kwargs):
@@ -152,7 +154,9 @@ class DispatchService:
         if self.case == 'started-memo':
             memo = Memo(fields={CYCLE_MEMO_KEY: (await DataConverter.default.encode(['0' * 64]))[0]})
         started = WorkflowExecutionStartedEventAttributes(
-            workflow_type=WorkflowType(name='ForeignWorkflow' if self.case == 'type' else 'TrainingCycleWorkflow'),
+            workflow_type=WorkflowType(name='ForeignWorkflow' if self.case == 'type' else
+                'TrainingCycleWorkflowV2' if self.intent['protocol'] == 'ergora-training-cycle-v2'
+                and self.case != 'v1-type' else 'TrainingCycleWorkflow'),
             task_queue=TaskQueue(name='foreign-queue' if self.case == 'queue' else self.intent['task_queue']),
             input=Payloads(payloads=await DataConverter.default.encode([value])), memo=memo,
             first_execution_run_id=self.run_id, original_execution_run_id=self.run_id if self.case == 'reset' else request.execution.run_id,

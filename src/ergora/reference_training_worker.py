@@ -492,6 +492,8 @@ def _cycle_operation(payload: dict) -> dict:
     admission = protocol.CycleAdmission(directory, authorization)
     if authorization['sha256'] != identity['authorization_sha256']:
         raise ValueError('Cycle operation requires the complete original authorization SHA256')
+    if authorization['schema_version'] == 3:
+        raise ValueError('Schema3 controller execution is not enabled')
     snapshot = _cycle_snapshot(plan, authorization)
     mode = identity['mode']
     if payload.get('activity_context') is not None:
@@ -912,7 +914,7 @@ async def _dispatch_controller(payload: dict, plan: dict, admission, active) -> 
                     return observation(current, status='unknown', runtime_status='not_found')
                 _, description = found
                 if activity_context is not None and (description.run_id != actual_run
-                        or description.raw_description.workflow_execution_info.type.name != 'TrainingCycleWorkflow'
+                        or description.raw_description.workflow_execution_info.type.name != protocol.cycle_workflow_type(intent['protocol'])
                         or description.status.name == 'CONTINUED_AS_NEW'):
                     raise ValueError('Actual activity run or description type differs')
                 current = training_cycles._record_controller(state, admission, run_id=description.run_id)
@@ -946,7 +948,7 @@ async def _dispatch_controller(payload: dict, plan: dict, admission, active) -> 
                 training_cycles._controller_ready(state, admission)
                 timeout = remaining()
                 try:
-                    handle = await client.start_workflow('TrainingCycleWorkflow', intent['workflow_input'],
+                    handle = await client.start_workflow(protocol.cycle_workflow_type(intent['protocol']), intent['workflow_input'],
                         id=intent['workflow_id'], task_queue=intent['task_queue'],
                         id_reuse_policy=WorkflowIDReusePolicy.REJECT_DUPLICATE,
                         id_conflict_policy=WorkflowIDConflictPolicy.FAIL, retry_policy=RetryPolicy(maximum_attempts=1),
