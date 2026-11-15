@@ -192,8 +192,8 @@ def _directory(state: State, project_id: str, cycle_id: str) -> Path:
     return directory
 
 
-def _document(path: Path) -> dict:
-    value = parse_json(_read_bytes(path, MAX_RECORD_BYTES).decode('utf-8'), 'training cycle record', finite=True)
+def _document(path: Path, *, limit: int = MAX_RECORD_BYTES) -> dict:
+    value = parse_json(_read_bytes(path, limit).decode('utf-8'), 'training cycle record', finite=True)
     if not isinstance(value, dict):
         raise ValueError('Training cycle record must be a JSON object')
     return value
@@ -285,9 +285,9 @@ def _record_bytes(path: Path, raw: bytes, limit: int) -> None:
         Path(temporary).unlink(missing_ok=True)
 
 
-def _record(path: Path, value: dict) -> None:
+def _record(path: Path, value: dict, *, limit: int = MAX_RECORD_BYTES) -> None:
     raw = (json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2, allow_nan=False) + '\n').encode('utf-8')
-    _record_bytes(path, raw, MAX_RECORD_BYTES)
+    _record_bytes(path, raw, limit)
 
 
 def _status(state: State, plan: dict, authorization: dict, ready: dict | None) -> dict:

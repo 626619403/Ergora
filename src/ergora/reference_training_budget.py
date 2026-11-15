@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import re
+import selectors
 import signal
 import sqlite3
 import stat
@@ -16,10 +17,14 @@ import time
 import uuid
 
 from . import budget_clock, processes, registrations, training_cycles
+from .definition_bundles import parse_json
 from .state import State, file_lock, now
 
 
 TASK_QUEUE = 'ergora-training-budget-v1'
+_PHASE_PROTOCOL = 'ergora-budget-phase-v1'
+_PHASE_MODES = ('monitor', 'fence', 'cleanup', 'publish')
+_FINAL_LIMIT = 2 * training_cycles.MAX_RECORD_BYTES
 
 
 def validate_binding(value: dict) -> None:
@@ -54,6 +59,164 @@ def _process_identity(pid: int) -> dict:
         raise ValueError('Original budget owner has exited')
     return {'pid': pid, 'start_ticks': fields[19],
             'boot_id': Path('/proc/sys/kernel/random/boot_id').read_text().strip()}
+
+
+class _BudgetPhase:
+    """Transfer one phase without making its caller a shared child subreaper."""
+
+    def __init__(self, budget, mode: str, context: dict, *, phase_id: str | None = None,
+                 owner: dict | None = None, final: dict | None = None):
+        phase_id = uuid.uuid4().hex if phase_id is None else phase_id
+        if mode not in _PHASE_MODES or not isinstance(phase_id, str) or re.fullmatch('[a-f0-9]{32}', phase_id) is None:
+            raise ValueError('Unknown training budget phase or observation identity')
+        self.budget, self.mode, self.context = budget, mode, context
+        self.identity = {**budget.identity, 'protocol': _PHASE_PROTOCOL, 'phase_id': phase_id, 'mode': mode,
+                         'context_sha256': budget.operation.sha(context),
+                         'owner': _process_identity(os.getpid()) if owner is None else owner}
+        self.output = budget.path('observations/' + mode + '-' + phase_id)
+        self.payload = {**budget.operation.payload, 'mode': mode, 'cached': context,
+                        'intent_sha256': budget.identity['intent_sha256'],
+                        **({'final': final} if final is not None else {})}
+        self.frames, self.buffer, self.problem = [], bytearray(), None
+        self.supervisor_returncode = None
+
+    def expired(self, *, total: bool = False) -> bool:
+        try:
+            return self.budget.remaining(self.context, cleanup=total or self.mode != 'monitor') <= 0
+        except (OSError, ValueError):
+            return True
+
+    def receive(self, raw: bytes) -> None:
+        if self.problem is not None:
+            return
+        self.buffer.extend(raw)
+        while b'\n' in self.buffer:
+            line, _, rest = self.buffer.partition(b'\n')
+            self.buffer = bytearray(rest)
+            event = 'stopped' if not self.frames else 'result'
+            limit = 65_536 if event == 'stopped' else 2 * training_cycles.MAX_RECORD_BYTES
+            try:
+                if len(self.frames) == 2 or len(line) > limit:
+                    raise ValueError('Unexpected or oversized training phase frame')
+                frame = parse_json(line.decode('utf-8'), 'training budget phase', finite=True)
+                field = 'process' if event == 'stopped' else 'result'
+                if (not isinstance(frame, dict) or set(frame) != {*self.identity, 'event', field}
+                        or any(frame.get(key) != value for key, value in self.identity.items())
+                        or frame['event'] != event or not isinstance(frame[field], dict)):
+                    raise ValueError('Training phase response differs from its complete original identity or order')
+                if event == 'stopped':
+                    process = frame[field]
+                    if (set(process) != {'status', 'returncode', 'output'}
+                            or process['status'] not in ('succeeded', 'failed', 'cancelled', 'timed_out')
+                            or process['returncode'] is not None and type(process['returncode']) is not int
+                            or process['output'] != str(self.output / 'helper')):
+                        raise ValueError('Training phase stopped frame has no complete process observation')
+                self.frames.append(frame)
+            except (UnicodeError, ValueError) as error:
+                self.problem = str(error)
+                return
+        limit = 65_536 if not self.frames else 2 * training_cycles.MAX_RECORD_BYTES
+        if len(self.buffer) > limit:
+            self.problem = 'Incomplete training phase frame exceeds its complete response capacity'
+
+    def run(self) -> dict:
+        if self.expired() or self.mode == 'monitor' and self.budget.cancelled:
+            return {'status': 'unknown', 'reason': 'Original training phase allowance is exhausted'}
+        self.output.mkdir(parents=True, mode=0o700)
+        payload = json.dumps({**self.payload, 'mode': 'phase-supervisor', 'phase': self.identity},
+                             ensure_ascii=False, allow_nan=False).encode('utf-8')
+        offset, signalled = 0, False
+        with (self.output / 'supervisor.stderr').open('xb') as stderr:
+            process = subprocess.Popen([sys.executable, '-P', '-c',
+                'from ergora.reference_training_worker import budget_main;budget_main()'],
+                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=stderr,
+                env=dict(os.environ), start_new_session=True)
+            try:
+                with selectors.DefaultSelector() as selected:
+                    for stream, event in ((process.stdin, selectors.EVENT_WRITE), (process.stdout, selectors.EVENT_READ)):
+                        os.set_blocking(stream.fileno(), False)
+                        selected.register(stream, event)
+                    while selected.get_map() or process.poll() is None:
+                        stop = self.problem is not None or self.expired() or self.mode == 'monitor' and self.budget.cancelled
+                        if stop and not signalled and process.poll() is None:
+                            process.terminate()
+                            signalled = True
+                        # The first matching frame proves run() has reaped this
+                        # phase. Only its result reader remains after this point.
+                        if self.frames and self.expired(total=True) and process.poll() is None:
+                            process.kill()
+                        events = selected.select(.2)
+                        for key, event in events:
+                            stream = key.fileobj
+                            try:
+                                if event == selectors.EVENT_WRITE:
+                                    offset += os.write(stream.fileno(), payload[offset:offset + 65_536])
+                                    if offset == len(payload):
+                                        selected.unregister(stream)
+                                        stream.close()
+                                else:
+                                    raw = os.read(stream.fileno(), 65_536)
+                                    if raw:
+                                        self.receive(raw)
+                                    else:
+                                        selected.unregister(stream)
+                                        stream.close()
+                            except BlockingIOError:
+                                continue
+                            except BrokenPipeError:
+                                selected.unregister(stream)
+                                stream.close()
+                        if process.poll() is not None and not events:
+                            break
+            finally:
+                # TERM requests the dedicated supervisor's existing safe reap;
+                # killing it here could orphan its new-session descendants.
+                if process.poll() is None:
+                    process.terminate()
+                process.wait()
+                for stream in (process.stdin, process.stdout):
+                    if not stream.closed:
+                        stream.close()
+        self.supervisor_returncode = process.returncode
+        if (process.returncode == 0 and offset == len(payload) and len(self.frames) == 2
+                and not self.buffer and self.problem is None and not self.expired()):
+            return self.frames[1]['result']
+        return {'status': 'unknown', 'phase_id': self.identity['phase_id'],
+                'reason': self.problem or 'Original phase has no complete in-budget result',
+                'supervisor_returncode': process.returncode}
+
+    def supervise(self) -> None:
+        """Run inside this phase's exclusive Linux subreaper process."""
+        if self.identity['owner'] != _process_identity(os.getppid()):
+            raise ValueError('Training phase has lost its original parent owner')
+        cancelled = False
+
+        def cancel(signum, frame):
+            nonlocal cancelled
+            cancelled = True
+
+        def stopped():
+            if cancelled or self.expired():
+                return True
+            try:
+                return self.identity['owner'] != _process_identity(self.identity['owner']['pid'])
+            except (OSError, ValueError):
+                return True
+
+        def frame(event, field, value):
+            print(json.dumps({**self.identity, 'event': event, field: value},
+                             ensure_ascii=False, allow_nan=False, separators=(',', ':')), flush=True)
+
+        signal.signal(signal.SIGTERM, cancel)
+        signal.signal(signal.SIGINT, cancel)
+        result = processes.run([sys.executable, '-P', '-c',
+            'from ergora.reference_training_worker import budget_main;budget_main()'], Path.cwd(), self.output / 'helper',
+            self.context['policy']['wall_seconds'], json.dumps(self.payload, ensure_ascii=False, allow_nan=False),
+            dict(os.environ), supervised=True, stop_requested=stopped)
+        frame('stopped', 'process', result)
+        observed = training_cycles._document(self.output / 'helper/stdout.txt') if result['status'] == 'succeeded' else {
+            'status': 'unknown', 'process': result}
+        frame('result', 'result', observed)
 
 
 class BudgetedStart:
@@ -181,7 +344,7 @@ class BudgetedStart:
                 result.update(authorization_status=observed['status'],
                               work_remaining_seconds=observed['work_remaining_seconds'],
                               total_remaining_seconds=observed['total_remaining_seconds'])
-                final = training_cycles._document(self.path('final.json'))
+                final = training_cycles._document(self.path('final.json'), limit=_FINAL_LIMIT)
                 if any(final.get(key) != value for key, value in self.identity.items()):
                     raise ValueError('Budget final observation differs from the original start intent')
                 result.update(owner_status=final['status'], final=final)
@@ -224,24 +387,23 @@ class BudgetedStart:
         return budget_clock.remaining(context['authorization']['clock'], policy['wall_seconds'],
                                       0 if cleanup else policy['cleanup_seconds'])
 
-    def supervise(self, mode: str, context: dict, *, cleanup: bool = False, final: dict | None = None) -> dict:
-        output = self.path('observations/' + mode + '-' + uuid.uuid4().hex)
+    def supervise(self, mode: str, context: dict, *, final: dict | None = None) -> dict:
+        phase = _BudgetPhase(self, mode, context, final=final)
+        result = phase.run()
+        helper = phase.frames[0]['process'] if phase.frames else None
+        self.phase_observations.append({'phase_id': phase.identity['phase_id'], 'mode': mode,
+            'supervisor_returncode': phase.supervisor_returncode, 'stopped': helper is not None,
+            'helper_process': {key: helper[key] for key in ('status', 'returncode')} if helper is not None else None,
+            'status': result.get('status', 'unknown'), 'reason': result.get('reason')})
+        return result
 
-        def stopped():
-            try:
-                return (not cleanup and self.cancelled) or self.remaining(context, cleanup=cleanup) <= 0
-            except (OSError, ValueError):
-                return True
-
-        result = processes.run([sys.executable, '-P', '-c',
-            'from ergora.reference_training_worker import budget_main;budget_main()'], Path.cwd(), output,
-            context['policy']['wall_seconds'], json.dumps({**self.operation.payload, 'mode': mode,
-                'cached': context, 'intent_sha256': self.identity['intent_sha256'],
-                **({'final': final} if final is not None else {})}, ensure_ascii=False, allow_nan=False),
-            dict(os.environ), supervised=True, stop_requested=stopped)
-        if result['status'] == 'succeeded':
-            return training_cycles._document(output / 'stdout.txt')
-        return {'status': 'unknown', 'process': result}
+    def supervise_phase(self, context: dict) -> None:
+        identity = self.operation.payload['phase']
+        phase = _BudgetPhase(self, identity['mode'], context, phase_id=identity['phase_id'],
+                             owner=identity['owner'], final=self.operation.payload.get('final'))
+        if phase.identity != identity:
+            raise ValueError('Training supervisor differs from its complete original phase')
+        phase.supervise()
 
     def own(self) -> dict:
         self.folder.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -261,20 +423,24 @@ class BudgetedStart:
                 training_cycles._sync_directory(self.folder.parent)
                 training_cycles._record(self.path('owner.json'), {**self.identity, **_process_identity(os.getpid()),
                     'context_sha256': self.operation.sha(context)})
+            self.phase_observations = []
             observed = self.supervise('monitor', context)
             if observed.get('status') == 'completed':
                 outcome = observed
             else:
-                outcome = self.supervise('fence', context, cleanup=True)
+                outcome = self.supervise('fence', context)
                 if outcome.get('status') == 'fenced':
-                    outcome = {**outcome, 'control': self.supervise('cleanup', context, cleanup=True)}
+                    outcome = {**outcome, 'control': self.supervise('cleanup', context)}
             try:
                 remaining = self.remaining(context, cleanup=True)
             except (OSError, ValueError):
                 remaining = None
             final = {**self.identity, **outcome, 'recorded_at': now(),
-                     'total_remaining_seconds': remaining, 'executor_stop_confirmed': None}
-            publication = self.supervise('publish', context, cleanup=True, final=final)
+                     'total_remaining_seconds': remaining,
+                     'overrun_seconds': max(0, -remaining) if remaining is not None else None,
+                     'phases': list(self.phase_observations),
+                     'executor_stop_confirmed': None}
+            publication = self.supervise('publish', context, final=final)
             return {**final, 'publication': publication}
 
     def validate_cached(self, context: dict) -> None:
@@ -316,7 +482,7 @@ class BudgetedStart:
             final = self.operation.payload['final']
             if any(final.get(key) != value for key, value in self.identity.items()):
                 raise ValueError('Final budget publication differs from its original start intent')
-            training_cycles._record(self.path('final.json'), final)
+            training_cycles._record(self.path('final.json'), final, limit=_FINAL_LIMIT)
             return {'status': 'published'}
         if mode == 'monitor':
             while True:

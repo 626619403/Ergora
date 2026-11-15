@@ -269,6 +269,10 @@ ergora training submission my-project trial-a
 
 读取`submission.budget`时区分`authorization_status`、`owner_status`、`final`、`local_fence`和`executor_stop_confirmed`。`unknown`表示某项完成无法确认，不能当作可重发许可。已经可见但同步失败的同一 fence 可在 owner 结束后由原观察入口完成目录同步／绑定重核；原 final、clock、attempt 的 bytes 保留，不重启 owner 或发布新 start。owner 被 SIGKILL、身份失联、跨 boot 或缺原件时，不自动重启或接管。实际 executor／后代停止尚未交付，`executor_stop_confirmed`保持`null`；fence 和取消送达不构成训练已经停止的证明。
 
+新启动的owner为monitor、fence、cleanup、publish各使用专用supervisor，防止一个阶段回收另一个阶段的子进程。`final.phases`保留阶段ID、业务状态、supervisor返回码和`stopped`观察；其中`stopped=true`只表示该阶段helper子树已实际回收。即使后续fence成功，先前阶段的unknown也会保留。final使用2MiB有界读写，helper和普通记录仍最多1MiB；不会为增加阶段元数据截断原结果。
+
+清理预留也包含这些进程的启动、同步和控制面调用时间；预留不足时可能只有同一fence而没有final。已经开始的安全回收会等待完成，操作系统回收延迟可能越过总截止，不能将期限视为硬实时保证；`overrun_seconds`记录该final观察形成时已经超出的时间。期限耗尽后不启动新阶段，超期的阶段返回unknown。升级保留正在运行的旧owner身份与能力，新owner出生时使用新实现。
+
 恢复仍用原 intent 的完整 SHA，而不是更换 cycle 或实验 ID：
 
 ```bash

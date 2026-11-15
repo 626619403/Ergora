@@ -135,7 +135,9 @@ def budget_main() -> None:
         if operation.sha(context['intent']) != payload['intent_sha256']:
             raise ValueError('Supervised budget phase differs from its original training intent')
         budget = BudgetedStart(operation, context['intent'])
+        if payload['mode'] == 'phase-supervisor':
+            budget.supervise_phase(context)
+            return
         result = asyncio.run(_cleanup(budget, context) if payload['mode'] == 'cleanup'
                              else budget.helper(payload['mode'], context))
     print(json.dumps(result, ensure_ascii=False, allow_nan=False))
-

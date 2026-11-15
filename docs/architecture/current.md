@@ -434,10 +434,13 @@ flowchart LR
   Queue --> Worker[可选 training-budget-worker]
   Worker --> Gate[registry 锁内最终预算 gate]
   Gate --> Request[原 native request]
-  Owner --> Helpers[原 clock 监督 helper]
+  Owner --> Phase[每阶段独立 supervisor]
+  Phase --> Helpers[原 processes.run / 本阶段 helper 子树]
   Helpers --> Fence[原 registry fence / 持久观察]
   Helpers --> Cancel[原 run / 稳定取消意图]
-  Request --> Existing[原 executor / 原证据与人工 release]
+  Request -. 原手工执行入口 .-> Existing[原 executor / 原证据与人工 release]
 ```
 
 预算 queue 与旧 worker 分离，缺 owner／原授权／期限时不能新 create；已有 request 的读取、fence 与 release 不受该新工作 gate 改写。owner 不获取跨 RPC 的 submission 锁，阻塞操作只在受监督 helper 内执行。缓存全文摘要绑定原 owner 身份，供原截止清理使用；持久 fence、控制面取消、native 结果及 executor 停止分别报告。实际 executor／后代停止和自动训练循环仍是后继义务，不能由图中的连接推导已完成。用户入口与恢复见[训练手册](../TRAINING.md#按原预算投递与持续截止监管)。
+
+monitor／fence／cleanup／publish仍串行，每个阶段的supervisor独占原Linux subreaper，预算owner自身不启subreaper。owner用非阻塞PIPE传完整context；supervisor在原run实际reap返回后先flush完整身份的stopped帧，再读helper结果。总截止或可捕获取消不能打断已经开始的安全reap；只在收到有效stopped后，才可结束超期的结果reader。原final保存短phase观察，业务unknown与该子树stopped分列；独立2MiB的final读写封套容纳原结果及新增摘要，helper与普通记录仍保留1MiB。旧活owner不重启或补能力，具体过程与验收见[独立阶段监督](../delivery/2026-11-15-training-budget-phase-supervision.md)。

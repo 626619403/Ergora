@@ -524,7 +524,7 @@ def test_cycle_final_publication_is_bounded_and_dead_owner_recovers_only_the_sam
     service[0]('accepted', budget_scenario=fault)
     # Retain the same compute window, with room to reach the injected final
     # publication fault after fence and control cleanup.
-    state, _, runtime, authorized = authorize_budget(cycle_selection, tmp_path, wall=18, cleanup=8)
+    state, _, runtime, authorized = authorize_budget(cycle_selection, tmp_path, wall=24, cleanup=14)
     submitted = training_cycles.start(state, 'demo', 'budget', 'alpha', authorized['authorization_sha256'], 1)
     prefix = runtime / 'ergora/training-submissions'
     wait_budget_stopped(runtime, seconds=20)
@@ -618,7 +618,7 @@ def test_cycle_managed_create_requires_its_live_owner_and_preserves_single_start
         import signal
         owner = json.loads((prefix / 'alpha.budget/owner.json').read_bytes())
         os.kill(owner['pid'], signal.SIGTERM)
-        wait_budget_final(runtime)
+        wait_budget_stopped(runtime)
     assert all((prefix / ('alpha.' + name + '.json')).read_bytes() == raw for name, raw in original.items())
     assert json.loads(service[1].read_bytes())['starts'] == 1
 
@@ -663,15 +663,39 @@ def test_cycle_completed_native_success_keeps_its_evidence_and_manual_release_un
     write = cycle_selection[4]
     job = runtime / 'training/jobs/alpha'
     request = json.loads((job / 'request.json').read_bytes())
+    detail = 'Synthetic completed CPU contract'
+    native_job = {'binding': request['experiment']['binding'], 'job_id': request['job_id']}
+    prior = {'schema_version': 1, 'intent_sha256': submitted['intent_sha256'],
+        'authorization_sha256': authorized['authorization_sha256'], 'status': 'completed',
+        'native': {'job': native_job, 'state': 'SUCCEEDED', 'detail': detail},
+        'gate': {'job': native_job, 'passed': True, 'evidence_sha': 'd' * 64,
+                 'report_uri': (job / 'gate-report.json').as_uri(), 'summary': ''},
+        'recorded_at': '2000-01-01T00:00:00.000000+00:00', 'total_remaining_seconds': 0.0,
+        'executor_stop_confirmed': None}
+    # Fill the original final envelope, leaving room for its variable timestamp
+    # and remaining time, but less than the new phase observation overhead.
+    prior_bytes = len((json.dumps(prior, ensure_ascii=False, sort_keys=True, indent=2) + '\n').encode('utf-8'))
+    summary = 'A' * (training_cycles.MAX_RECORD_BYTES - prior_bytes - 128) + '训练✓'
     gate = {'binding': request['experiment']['binding'], 'manifest_sha256': submitted['manifest_sha256'],
-            'passed': True, 'evidence_sha256': 'd' * 64, 'summary': 'Synthetic completed CPU contract'}
+            'passed': True, 'evidence_sha256': 'd' * 64, 'summary': summary}
     digest = write(job / 'gate-report.json', gate)
     write(job / 'result.json', {'binding': gate['binding'], 'job_id': request['job_id'],
-        'state': 'SUCCEEDED', 'detail': gate['summary'], 'gate': {'report': str(job / 'gate-report.json'),
+        'state': 'SUCCEEDED', 'detail': detail, 'gate': {'report': str(job / 'gate-report.json'),
         'report_sha256': digest, 'mlflow_run_id': 'synthetic-no-training'}})
     originals = {p: p.read_bytes() for p in job.iterdir()}
-    final = wait_budget_final(runtime)
+    folder = wait_budget_stopped(runtime)
+    diagnostic = json.loads(next((folder / 'launches').glob('*/stdout.json')).read_bytes())
+    prior = {key: value for key, value in diagnostic.items() if key not in ('phases', 'overrun_seconds', 'publication')}
+    current = {key: value for key, value in diagnostic.items() if key != 'publication'}
+    size = lambda value: len((json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2) + '\n').encode('utf-8'))
+    assert size(prior) <= training_cycles.MAX_RECORD_BYTES < size(current)
+    assert next((folder / 'observations').glob('monitor-*/helper/stdout.txt')).stat().st_size <= training_cycles.MAX_RECORD_BYTES
+    assert (folder / 'final.json').stat().st_size <= 2 * training_cycles.MAX_RECORD_BYTES
+    final = json.loads((folder / 'final.json').read_bytes())
     assert final['status'] == 'completed' and final['gate']['passed'] is True
+    assert final['gate']['summary'] == summary
+    public = training.submission(state, 'demo', 'alpha')['budget']
+    assert public['owner_status'] == 'completed' and public['final'] == final
     assert not (runtime / 'training/fences/alpha.json').exists()
     assert not (runtime / 'ergora/training-cancellations').exists()
     assert all(p.read_bytes() == raw for p, raw in originals.items())
@@ -753,6 +777,127 @@ def test_cycle_lost_ack_and_missing_authorization_only_reconcile_the_original_st
     assert observed['status'] == 'submitted' and observed['intent_sha256'] == original['intent_sha256']
     assert (prefix / 'alpha.attempt.json').read_bytes() == attempt
     assert json.loads(record.read_bytes())['starts'] == 1
+
+
+def assert_budget_process_stopped(identity):
+    from ergora.reference_training_budget import _process_identity
+
+    until = time.monotonic() + 5
+    while time.monotonic() < until:
+        try:
+            if _process_identity(identity['pid']) != identity:
+                return
+        except (OSError, ValueError):
+            return
+        time.sleep(.05)
+    # Cleanup is restricted to this test's exact captured process identity.
+    import signal
+    try:
+        descriptor = os.pidfd_open(identity['pid'])
+    except ProcessLookupError:
+        return
+    try:
+        if _process_identity(identity['pid']) != identity:
+            return
+        signal.pidfd_send_signal(descriptor, signal.SIGKILL)
+    finally:
+        os.close(descriptor)
+    raise AssertionError('Original phase process has not stopped')
+
+
+def test_budget_phase_supervisors_keep_their_peer_and_reap_a_new_session_descendant(cycle_selection, service, tmp_path):
+    from ergora import training_cycles
+
+    service[0]('accepted', budget_scenario='phase-isolation')
+    state, _, runtime, authorized = authorize_budget(cycle_selection, tmp_path, wall=24, cleanup=8)
+    training_cycles.start(state, 'demo', 'budget', 'alpha', authorized['authorization_sha256'], 1)
+    wait_budget_stopped(runtime, seconds=35)
+    observed = json.loads(service[1].with_suffix('.isolation').read_bytes())
+    assert observed == {'owner_subreaper': 0, 'peer_survived_monitor': True}
+    assert_budget_process_stopped(json.loads(service[1].with_suffix('.descendant').read_bytes()))
+    for identity in json.loads(service[1].with_suffix('.peer').read_bytes()).values():
+        assert_budget_process_stopped(identity)
+
+
+def test_budget_phase_reap_survives_total_deadline_and_catchable_owner_cancel(cycle_selection, service, tmp_path):
+    from ergora import training_cycles
+    import signal
+
+    service[0]('accepted', budget_scenario='phase-reap-overrun')
+    state, _, runtime, authorized = authorize_budget(cycle_selection, tmp_path, wall=24, cleanup=8)
+    training_cycles.start(state, 'demo', 'budget', 'alpha', authorized['authorization_sha256'], 1)
+    marker = service[1].with_suffix('.reap-started')
+    until = time.monotonic() + 25
+    while not marker.exists() and time.monotonic() < until:
+        time.sleep(.05)
+    supervisor = json.loads(marker.read_bytes())
+    folder = runtime / 'ergora/training-submissions/alpha.budget'
+    owner = json.loads((folder / 'owner.json').read_bytes())
+    os.kill(owner['pid'], signal.SIGTERM)
+    wait_budget_stopped(runtime, seconds=15)
+    assert json.loads(service[1].with_suffix('.reap-finished').read_bytes())['remaining_seconds'] <= -.5
+    assert_budget_process_stopped(supervisor)
+    assert_budget_process_stopped(json.loads(service[1].with_suffix('.descendant').read_bytes()))
+    observed = json.loads(next((folder / 'launches').glob('*/stdout.json')).read_bytes())
+    monitor = next(item for item in observed['phases'] if item['mode'] == 'monitor')
+    assert monitor['stopped'] is True and monitor['supervisor_returncode'] in (0, -signal.SIGKILL)
+    assert monitor['status'] == 'unknown' and observed['overrun_seconds'] >= .5
+    assert observed['publication']['status'] == 'unknown' and observed['executor_stop_confirmed'] is None
+    assert not (folder / 'final.json').exists() and not (runtime / 'training/fences/alpha.json').exists()
+    assert [path.name.split('-')[0] for path in (folder / 'observations').iterdir()] == ['monitor']
+
+
+@pytest.mark.parametrize('fault', ['phase-slow-reader', 'phase-held-reader'])
+def test_budget_phase_large_input_is_complete_and_a_held_reader_does_not_block_the_deadline(cycle_selection, service, tmp_path, fault):
+    from ergora import training_cycles
+
+    service[0]('accepted', budget_scenario=fault)
+    state, _, runtime, authorized = authorize_budget(cycle_selection, tmp_path, wall=24, cleanup=8)
+    training_cycles.start(state, 'demo', 'budget', 'alpha', authorized['authorization_sha256'], 1)
+    wait_budget_stopped(runtime, seconds=30)
+    marker = service[1].with_suffix('.complete-input')
+    if fault == 'phase-slow-reader':
+        probe = ('训练场景' * 65_536).encode('utf-8')
+        assert json.loads(marker.read_bytes()) == {'bytes': len(probe), 'sha256': hashlib.sha256(probe).hexdigest()}
+    else:
+        assert not marker.exists()
+    observed = training.submission(state, 'demo', 'alpha')['budget']
+    assert observed['local_fence'] and observed['executor_stop_confirmed'] is None
+
+
+@pytest.mark.parametrize('fault', ['phase-result-blocked', 'phase-supervisor-killed', 'phase-stopped-incomplete'])
+def test_budget_phase_interruption_preserves_the_original_fence_without_claiming_executor_stop(cycle_selection, service, tmp_path, fault):
+    from ergora import training_cycles
+
+    service[0]('accepted', budget_scenario=fault)
+    state, _, runtime, authorized = authorize_budget(cycle_selection, tmp_path, wall=24, cleanup=8)
+    submitted = training_cycles.start(state, 'demo', 'budget', 'alpha', authorized['authorization_sha256'], 1)
+    wait_budget_stopped(runtime, seconds=30)
+    marker = {'phase-result-blocked': '.result-blocked', 'phase-supervisor-killed': '.killed-supervisor',
+              'phase-stopped-incomplete': '.incomplete-stopped'}[fault]
+    identities = json.loads(service[1].with_suffix(marker).read_bytes())
+    if fault != 'phase-supervisor-killed':
+        identities = {'supervisor': identities}
+    for identity in identities.values():
+        assert_budget_process_stopped(identity)
+    prefix = runtime / 'ergora/training-submissions'
+    original = {p: p.read_bytes() for p in prefix.rglob('*') if p.is_file()}
+    fence = (runtime / 'training/fences/alpha.json').read_bytes()
+    observed = training.resume_start(state, 'demo', 'alpha', 1, submitted['intent_sha256'])
+    assert observed['budget']['local_fence']['sha256'] == hashlib.sha256(fence).hexdigest()
+    assert observed['budget']['executor_stop_confirmed'] is None
+    assert all(p.read_bytes() == raw for p, raw in original.items())
+    if fault == 'phase-supervisor-killed':
+        import signal
+        monitor = next(item for item in observed['budget']['final']['phases'] if item['mode'] == 'monitor')
+        assert monitor['status'] == 'unknown' and monitor['stopped'] is False
+        assert monitor['supervisor_returncode'] == -signal.SIGKILL
+    if fault == 'phase-stopped-incomplete':
+        # Cleanup can exhaust the allowance before final is durably published.
+        diagnostic = json.loads(next((prefix / 'alpha.budget/launches').glob('*/stdout.json')).read_bytes())
+        monitor = next(item for item in diagnostic['phases'] if item['mode'] == 'monitor')
+        assert monitor['status'] == 'unknown' and monitor['stopped'] is False
+        assert monitor['reason'] == 'Training phase stopped frame has no complete process observation'
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Native start preflight requires Linux/WSL2 Git paths')

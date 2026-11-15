@@ -52,3 +52,22 @@ r3 首轮实际核验与历史证据边界：
 随后由官方 Actions 页面发现本 SHA 自己的 [Portability run 43665465985](https://github.com/626619403/Ergora/actions/runs/43665465985)：run number 228，push 于 `2026-11-15T01:57:18Z`，完整 commit 链接为 75d；run 页面和首方 `job_groups_batch?attempt=1&batch=0&size=200` 均为 200，明确 attempt 1。UTC `01:59:54Z` 导航显示 `totalCount=8`／`hasMore=false`，plan 为 success，六个 Linux group 和 Windows all 共七 job 为 in_progress，CI 门禁仍在途。必要步骤由固定 75d workflow／六组显式分组导出，仍为八 job／三十项，不借用 b78 的 CI。
 
 独立发布原件与命令保存在 ignored reviewer 的 `ci-publication-r1/`，首轮索引为 `publication-identity-r1.json`、`workflow-contract-r1.json`；每次 GET 的实际 URL／时间／status／完整响应 bytes／SHA 与 headers 均保存。此后低频观察同 run 终态，再核各自适用步骤；原 r3／r4 失败和固定提交静态诊断保持，尚未认证自身 CI 通过。
+
+**自身 CI 终态与精确交付结算。** UTC `2026-11-15T02:20:05Z` 的官方完整导航已为八 job 全部 completed／success，`totalCount=8`／`hasMore=false`；随后 UTC `02:20:18Z` 取得的官方 run 页面显示 Success，Windows 最终 job 页面同样成功。终核始终固定本片完整 `75d1ee325288527f67fb1ea814332d1522ff4860` 的 Portability run `43665465985`／number 228／attempt 1／push，没有使用前片或后继 SHA 的 CI。
+
+|Job|官方 ID|必要业务步骤|终态|
+|---|---:|---:|---|
+|plan|132663725526|1|success|
+|Linux 3.11 group 0|132663762678|4|success|
+|Linux 3.11 group 1|132663762707|4|success|
+|Linux 3.11 group 2|132663762633|4|success|
+|Linux 3.11 group 3|132663762648|4|success|
+|Linux 3.11 group 4|132663762655|4|success|
+|Linux 3.11 group 5|132663762632|4|success|
+|Windows 3.12 all|132663762660|5|success|
+
+三十项必要步骤按固定 75d 的 workflow／显式六组推导：plan 的分组读取，七个 native job 各自的 wheel 构建安装、packaged reference identity、原生回归和观察上传，以及 Windows 的 PowerShell 5.1 安装升级。逐个最终 job HTML 核到每项恰好一次且 success；八个 job 的标题、`Complete job` 以及所有已有日志 URL 的完整 SHA／各自 job ID 均一致。结论来自官方 HTML／导航，首轮两个 REST 配额 403 原件保持；没有宣称取得 REST 终态、完整 step log、JUnit 或可下载 artifact，也不从页面 success 推算 pytest 项数。
+
+原件位于上述 `ci-publication-r1/`，最终汇总 `20261115T022025369338Z-terminal-summary-r1.json` 为 70746B／SHA `6072ec5ff6170bb594026d40392e96915ad66e7e93b02ea3e4746fdc23ba7bf5`，`terminal-verification-r1.json` 的全部终核条件成立。34 次官方匿名 GET 中 32 次为 200、两次为原配额 403，所有保存响应的 bytes／SHA 与 capture metadata 相符；`evidence-index-r1.json` 索引 72 件／4958772B（不含索引自身），索引 12919B／SHA `4bbaba5e0b0a93221cfdc6ac4f4a39849ebf6a8e5886d757bbaba6b20ec6d9dc`。后继纯文档本地提交 `5fa4319c79de7db238cde9d11f5b8acd5b263b91` 的 parent 为 75d；另核 `src/ergora` tree 同为 `0a9aad0d370e9bd0e39b889f4bfcf2410ec69a0e`、源码／测试差异为空，没有把后继头当作本 CI 输入，也未递归重审其设计／记录。
+
+**固定发布及自身 CI 终核：需求 approve／开放 0，结构维护 approve／开放 0；R1 保持关闭，B3.2 本片精确交付门禁闭合。** 原 r3 实红、r4 首轮失败、各次中间状态和固定提交非阻塞静态诊断全部保留。前片 b78 的门禁由其原审查者结算；本结论仍不认证 B3.3 executor／全后代停止、自动循环、真实训练质量或性能。发布续核只读官方平台和固定原件，仅追加本报告与授权 ignored reviewer 证据；未修改产品／CI、运行安装／suite／模型／服务／训练，或作提交、推送、平台写入。
