@@ -2,7 +2,7 @@
 
 日期：2026-11-15。审查者为 fresh-context 独立 reviewer `training_managed_execution_product_audit`。先读原始范围、项目规则与固定合同，再沿实际入口检查；未继承作者、自身模板或前置片的通过结论。使用 maintainable-project-delivery 的独立审查规则和 ergora-codebase-quality 的 module-design／test-seams／repository-style。
 
-本报告按候选追加历史；下文 r1／r3／r5／r6 的“当前／待”只指各节当时。最终本地及固定 `ac86043` 普通发布在原核实范围内保持需求／维护性两轴 approve、开放 0／0，R1–R5 关闭；该候选自己的 Portability run `43684533043`／attempt 1 已核到终态失败：七 job 成功、Windows 因六个测试 setup error 失败，30 必要步骤中 29 成功／1 失败。原失败保持，CI 接续门禁未闭合。
+本报告按候选追加历史；下文各节的“当前／待”只指各节当时。最终本地及固定 `ac86043` 普通发布两轴 approve、开放 0／0，R1–R5 关闭；其原 run `43684533043` 的 Windows 失败保持。直系最小测试修复 `e09fd60` 自己的 run `43688128824`／attempt 1 八 job／30 必要步骤全部 success，修复片原独立终核及本报告的产品归属接续终核均完成，**c2 精确交付门禁已闭合**。
 
 ## 固定 r1 与当前结论
 
@@ -248,3 +248,30 @@ R1 的结果传播和 R2 的停止通知顺序在已固定修复及 r6 保持；
 诊断另从固定 ac86043 的 Git blobs 核实，未使用当前维护中的测试替代原输入：`tests/test_training_submission.py:42` 的 `historical_execution` 夹具在第 49 行无条件调用 `reference.training_submission(..., 'prepare', ...)`，六例都依赖它；原 `src/ergora/reference.py:496` 的入口对非 status 操作在非 Linux 平台直接拒绝。该拒绝发生在历史 reader 测试体之前，与六个原 setup errors 一致；fifo 的测试体内 skip 也尚未到达。相关测试源码 SHA256 仍为 r6 冻结值 `1b9257535ceea369696ce49240287acedc69f0d0c499ce994b614f8810f2fdaf`。这项可移植夹具问题应由独立测试维护片修正并保留离线 reader 的平台验收，不构成放宽产品 Linux 原生提交边界的授权。
 
 本地／固定发布两轴结论及 R1–R5 关闭按原核实范围保持；它们不覆盖这次 Windows 验收缺口。原 run 的失败原件和结论完整保留，当前不认证在途维护修正或其后续发布／CI；维护片须按自己的固定输入、独立审查及精确 CI 接续闭合。身份、30 步重算与固定源码诊断为 `verify-ci-terminal-failure-r1.py`／`ci-terminal-failure-r1.json`。本轮没有新网络请求、产品／测试／其他文档修改，也没有重跑 suite、安装、服务或训练。
+
+## 最小测试修复 e09fd60 接续终核：c2 交付门禁闭合
+
+原产品 reviewer 已独立接续核对 `e09fd60a635f16e9265b18d1529c4934e687f303`：唯一父节点为原产品 `ac86043d9e11983750bf63b90c0dfcbeea05ea41`。修复 commit 恰好修改一份测试和 12 份 Markdown；13 份 blob OID／长度／SHA256 均与修复片 `publication-staged-r2.json` 相同。原普通 commit／push／完整 SSH Ref 三步记录 exit 0，保存 Ref 精确为修复完整 SHA，push 为原开发分支的普通前进；本轮只核原件，没有发新网络请求。
+
+直接对比两提交的 `src/ergora` 整树、`scripts`、`.github` 和 `pyproject.toml`，路径／mode／OID 完全相同：原 652 产品安装身份、283 参考文件、原 native Linux guard、原 SDK-free reader、所有执行／回收／授权及 CI 定义均未改变。因此新 CI 是同一 c2 产品经过明确测试修复后的验收；不是借另一套产品或放宽 Linux 约束通过。
+
+唯一测试差异已全文读取并独立正规化 AST：恰好 26 个提前 Linux skip、删除一条内部完整 reason 文字断言，以及历史合成夹具的初始 intent 构造；除此之外全文件 AST 相同。26 个标记没有新增到两类可移植 history／bad-chain reader 函数；原全部 84 个 collection nodeid 与修复后逐项同一，五种坏链参数、恢复、同 fence、回收及 unknown／停止确认的行为断言保持。历史夹具直接构造无活授权的完整合成 intent，并调用原 SDK-free `reference.training_files` 取得 observation，不再先调 native prepare；后续 request→launch→attempt→ack→stopped 及原完整摘要校验仍由原 reader 执行。
+
+另直接读修复前后的冻结测试和原 JUnit：新历史八项为 8 passed／10.077 秒；相同六节点在原 prepare 拒绝替身下由旧六个 setup errors 变为六项通过／7.177 秒，prepare 调用 6→0。该局部替身只在 Linux 注入原入口拒绝，不冒称 Windows 文件语义。最初 plugin 导入失败的两条 exit 4 记录仍由修复片保留，未计作这次有效红绿。两份冻结测试 SHA 与各自原 ac／新 e09 Git blob 完全相同，未把旧范围测试或未来工作树转授给新候选。
+
+自己的成功 CI 已独立核原 HTTP 响应：`training-test-maintenance/ci-r1/20261115T072911183050Z-runs.json` 为 11,974B／SHA256 `db81a5c6593a4f57b14cb75ee67305339183c76ff458075cc3efbf966013f168`，jobs 为 21,121B／SHA256 `72fb119f026617bfda87e4f1c0564a59a41464baa4cde9a30f0b524cf08967f9`；各自 HTTP 200 metadata 的官方 URL、长度／SHA 均匹配。唯一 run 为 [Portability 43688128824](https://github.com/626619403/Ergora/actions/runs/43688128824)／attempt 1／#234，push 到原开发分支，完整 head commit／tree 精确等于 e09，最终 completed／success，updated_at 为 2026-11-15 07:29:00 UTC。
+
+按未变的固定 workflow 重新逐项核八个唯一 job 的 run／attempt／完整 SHA／名称及 30 个必要步骤：**八 job／30 必要步骤全部 completed／success，无必要项缺失、重复或 skip**。Windows job `132732841371` 的 build/install、reference、native application regression、PowerShell installer／upgrade 和 upload 五项均 success，summary 再逐项与原 jobs 相同。这里认证真实 Windows 应用回归步骤的结果，不从 REST 步骤 metadata 推导单个 Windows testcase 数、完整下载日志／JUnit 或耗时收益。
+
+|归属|最终核实结果|
+|---|---|
+|原产品 ac86043、本地及固定发布|两轴 approve，R1–R5 关闭，原安装／CPU 生命周期范围保持|
+|原自己的 CI 43684533043／attempt 1|终态 failure、七 job 成功／Windows 失败、29／30 必要步骤成功；原件和失败结论保持|
+|直系修复 e09fd60|仅上述测试／文档变化，产品、原平台边界及 CI 不变，普通发布和保存的完整 Ref 相同|
+|修复自己的 CI 43688128824／attempt 1|八 job／30 必要步骤全部 success；实际 Windows regression／installer 成功|
+|修复片原 fresh-context reviewer|已直接重读其最终 CI 续核：需求／维护性两轴 approve、开放 0／0，修复片精确接续闭合|
+|本报告原产品接续|独立核同一产品、原失败原因与最小修复、新候选自己的终态；c2 交付门禁闭合|
+
+修复片原[独立报告](2026-11-15-training-test-maintenance-review.md)的最终结论已实际落盘；本 reviewer 没有继承其判断，而是另行完成上述 Git／AST／原件核验，再核其完整发布／CI 终态交接。当前 HEAD `a10e69389e228d311df56bad182b9798f4ca236d` 的唯一父节点为 e09，五件变化全部为 Markdown；产品／测试至该 HEAD 及核验时工作树仍等于 e09。该纯文档同步没有另被本报告称为拥有自己的成功 run，后继计划也没有被计作产品实现。
+
+**c2 最终需求／维护性两轴 approve，开放 0／0；普通发布、固定来源、原失败保留、最小测试修复的自己的成功 CI 与双方原 reviewer 终核已精确接续，交付门禁闭合。** 核验器及原件索引为 `verify-ci-repair-continuation-r1.py`／`ci-repair-continuation-r1.json`。这不把旧 ac86043 CI 改记 success，也不扩大到真实业务训练／GPU／质量／收益、完整其他外部能力或后继自动控制器；kernel 专家及原实验／比较／人工批准权保持。本轮仅写本报告及授权 ignored 审计文件，没有其他文档、产品或测试修改、新网络、安装、长 suite、服务或训练运行。

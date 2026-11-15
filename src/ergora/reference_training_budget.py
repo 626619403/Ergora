@@ -298,6 +298,8 @@ class BudgetedStart:
         state = State(Path(self.intent['control_home']))
         directory = training_cycles._directory(state, self.intent['project'], self.binding['cycle_id'])
         plan, authorization, ready = training_cycles._load(state, self.intent['project'], self.binding['cycle_id'], directory)
+        if authorization['schema_version'] != 1:
+            raise ValueError('Controller authorization requires complete controller binding and final admission gates')
         selected = next((item for item in plan['admissions']
                          if item['experiment_id'] == self.operation.ident), None)
         if (authorization['sha256'] != self.binding['authorization_sha256'] or ready is None

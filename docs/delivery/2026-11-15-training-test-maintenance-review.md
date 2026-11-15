@@ -144,3 +144,37 @@ run 为 [Portability 43684533043](https://github.com/626619403/Ergora/actions/ru
 追加前本报告仍为前节的 21,374B／SHA256 `60b79b6f76ac91a13dc3096d74700c70c2cc4e4a3b73a71f24c1377c2a727092`，原文保持。当前 HEAD 仍是固定 e09；`src`／`tests`／`scripts`／`.github`／`pyproject.toml` 相对 e09 无差异，暂存区为空。后加的 `docs/plans/2026-11-15-training-cycle-admission.md` 是未提交的后继纯计划，不在固定 e09 的 13 件或本次 CI 认证范围中；本轮不重审其具体设计。当前 PLAN 的后继准备段仍要求前置自己的 CI 与终核闭合后才实施，未将计划写成产品通过。
 
 本轮也已读 PLAN／本片 delivery 的公开页与固定发布状态追加：它们没有宣称 Windows 或整项 CI 成功。此时两件当前文档的 SHA256 分别为 `58020034b26fea9c1e4531ec5dc6dcf8f802a4d0d6fe6dad574d789e82509d1c` 与 `816e5f094c56562ea2f943d4965296ebfb2d4f201ddd230366212ca3d715bee5`；这些发布后状态及后继计划不反向混入已认证的 commit。
+
+## 最终 CI 与独立终核：本片精确接续闭合
+
+已直接核官方 reset 后保存的 `ci-r1/20261115T072911183050Z-runs.json`／`-runs-http.json`／`-jobs.json`／`-jobs-http.json`，没有用 summary 或公开页代替原 API 响应。本节是最终观察，前各节的“未知／在途／待”保留各自当时身份。
+
+|最终官方原件|bytes／SHA256|
+|---|---|
+|runs JSON|11,974／`db81a5c6593a4f57b14cb75ee67305339183c76ff458075cc3efbf966013f168`|
+|runs HTTP metadata|1,911／`16f062a3adcf6f1b956810547edcd08f2540e2c39779a39559272d3cf775fade`|
+|jobs JSON|21,121／`72fb119f026617bfda87e4f1c0564a59a41464baa4cde9a30f0b524cf08967f9`|
+|jobs HTTP metadata|1,894／`1565be7fb5245343ac5657d101cdd6afdd49455eb42a43570d2d6cd045d9c683`|
+
+两组 metadata 均为匿名 GET 官方 `api.github.com`、HTTP 200，分别在 `2026-11-15T07:29:12.188407Z`／`07:29:13.364489Z` 观察，晚于原 `07:22:59Z` reset。各自所列原响应长度／SHA 均逐字匹配；runs 请求固定完整 e09 head_sha，jobs 请求固定 run `43688128824`／attempt `1`。本 reviewer 只读本地保存原件，没有新网络请求。
+
+runs 响应恰好一项：[Portability 43688128824](https://github.com/626619403/Ergora/actions/runs/43688128824)，run number 234／attempt 1，push 到原开发分支，完整 head SHA 为 `e09fd60a635f16e9265b18d1529c4934e687f303`。repository／head_repository 均为原 `626619403/Ergora` 且 repo ID 同一；head_commit 的完整 ID 和 tree 精确等于已核本地 commit／`966ca4edcb2a1594e3009b1e3095f0499815617e`，workflow path 同一。原创建时间为 `07:02:26Z`，最终 status `completed`／conclusion `success`，updated_at `2026-11-15T07:29:00Z`。
+
+已从固定 e09 Git tree 重新读取／解析真实 workflow 和 `linux-groups.json`，沿 plan 中的实际矩阵构造重算 job 集合，并按具名步骤及 Windows 条件重算必要检查。固定 workflow SHA256 为 `be814a956237b8a64258f396fa81a972ff764ceaa3ea16ffefa8e82be89a4353`，分组 JSON 为 `b50d95a1954d6e2612183feccc7b5a764c9109c479997dec7fe628127b55981e`。实际八个 job 名称／唯一 ID 与预期集合一致，全部绑定同一 run／attempt／完整 e09 SHA／分支，均 completed／success。
+
+|按固定 workflow 重算的对象|job 数|必要步骤数|实际终态|
+|---|---:|---:|---|
+|plan 的显式分组读取|1|1|success|
+|Linux Python 3.11，group 0–5|6|24|全部 success|
+|Windows Python 3.12，group all|1|5|全部 success|
+|合计|8|30|全部 success；无必要步骤缺失、重复或 skip|
+
+每个 native job 的 build/install、packaged reference、native regression 和 upload 均属必要步骤；Windows 另含 PowerShell 5.1 installer／upgrade。Windows job `132732841371` 的这五项均直接在原 jobs JSON 中核到 completed／success。Linux 上条件不适用的 PowerShell skip 未算成失败，也未把可选 post 步骤混入 30 项。`-summary.json` 为 8,887B／SHA256 `ceecb2d706d49ead24033170c5c6acf6a759c995dd63348fa17dbeb9bc167645`，其八个 job 与 30 条必要步骤记录又逐项与实际原件核实相同。
+
+当前 HEAD 为后继纯文档提交 `a10e69389e228d311df56bad182b9798f4ca236d`，唯一父节点为 e09；其五件变更均在 docs。已独立核 e09→a10 及 a10→当前工作树的 `src`／`tests`／`scripts`／`.github`／`pyproject.toml` diff 均为空；当前测试全文仍为 `7e268543d7e863d4abb9a6df535069144e592eee5d87cee18f085f4ce31317cc`，与 e09 Git blob 逐字相同。此 CI 终态只认证 e09 run，不冒称 a10 另有自己的成功 run；纯文档同步没有改变本片适用的产品或测试身份。
+
+本轮已读当前 PLAN／本片 delivery 的最终 CI 状态追加，尚未实施控制器产品，也未把等待中的 reviewer 结论先记通过。读到的当前两件文档 SHA256 分别为 `0198a443c584bf0f34464088ab030073efd4034f3214ec92438b675727e46c56`／`92ce2d053f3d96f7cc19abc9df24212f772d4e378a422ba65462da6499966841`。追加本节前，本报告仍为 24,075B／SHA256 `797e20e132c5cd3ccbdffb904ebc63daa63368b5332617820043be64958e1300`，原各阶段前缀完整保持。
+
+**最终需求／维护性两轴均 approve，开放 0／0，R1 关闭；本报告负责的 Q5.2a／B3.3c2 最小测试接续已完成固定源码、本地证据、普通发布和自己的适用 CI 及同片独立终核，门禁闭合。** 原 `ac86043`／run `43684533043` 的失败原件与结论已再核仍为 failure，保持旧候选归属；新候选成功不重写旧失败。B3.3c2 原产品 reviewer 对旧产品与最小接续关系的最终记账仍由其原报告负责，不由本报告替写；后继产品按两份原记录的交接条件推进。
+
+仍未验范围：本 reviewer 没有下载完整受鉴权 job log／JUnit／artifact，也不从成功步骤推导具体 Windows testcase 数或实际节省秒数；没有另跑本地完整 suite、重建或重装相同产品。真实 GPU／业务训练、模型与数据质量／收益、完整其他外部能力及 c0.2a／自动控制器产品均未由本片验收。后继纯计划及其设计批准不转授为实现或运行通过；kernel 专家与原训练／比较／人工批准权保持。

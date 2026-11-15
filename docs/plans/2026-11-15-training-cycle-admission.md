@@ -1,6 +1,6 @@
 # Q4.2c0.2a：自动循环的出生同意与父停止记录
 
-日期：2026-11-15。细化已独立通过的[具体合同](2026-11-15-training-cycle-controller-contracts.md)第一、三节。准备基线为 `e09fd60a635f16e9265b18d1529c4934e687f303`；其 652 个产品文件仍等于 ac86043，只修测试与同步文档。本片当前为**实施前准备**，尚无产品变更。前置自己的 CI 和独立终核闭合后才实施；本页不将未知 CI 或已批准设计记为产品完成。
+日期：2026-11-15。细化已独立通过的[具体合同](2026-11-15-training-cycle-controller-contracts.md)第一、三节。准备基线为 `e09fd60a635f16e9265b18d1529c4934e687f303`；其 652 个产品文件仍等于 ac86043，只修测试与同步文档。前置e09自己的CI八job／30必要步骤及双方原reviewer已终核闭合，实际实施基线为a10e693。a1–a5开始实施，a6仍待；本页不将已批准设计记为产品完成。
 
 目标：在已有 owner 内提供 birth-only schema2 同意，以及供后继最后 gate 使用的普通文件、共享许可、停止观察与排空算法。保留 schema1 的完整字段、结果形状、时钟、旧 start slot 和恢复语义。kernel 专家继续保留在 v3。Linux／WSL2 同一可信主机和用户边界不变。
 
@@ -44,11 +44,11 @@ schema2 的字段、稳定 workflow ID、queue、执行范围、continuation、a
 
 |节点|必要检查|当前状态|
 |---|---|---|
-|a1 出生同意|新旧授权、完整摘要／原 actor、重复操作与模式冲突、原 ID／clock 不变；原 ready 和 input 保持|准备中|
-|a2 普通父锁|ready 前锁持久化，部分 fsync／丢回复、ready 后缺锁不补建、普通文件边界；原 schema1 无新增锁|准备中|
-|a3 停止记录|真实可见文件与阻塞 file／directory fsync分列、重复／并发请求原 bytes 保持、部分／坏身份／FIFO均拒绝，持久恢复只同步同一完整记录|准备中|
-|a4 许可与排空|真实跨进程共享锁仍活时排空 unknown；stop 可见后新共享者拒绝；原共享者退出后才可 drain；排空不声称 subtree stopped|准备中|
-|a5 关闭不完整执行路径|schema2无法经旧三字段binding／普通cycle-start派发；原schema1旧流程和历史SDK-free档案保持|准备中|
+|a1 出生同意|新旧授权、完整摘要／原 actor、重复操作与模式冲突、原 ID／clock 不变；原 ready 和 input 保持|已实施；最终r3安装／对应原件通过，本地独立两轴通过；发布／CI待|
+|a2 普通父锁|ready 前锁持久化，部分 fsync／丢回复、ready 后缺锁不补建、普通文件边界；原 schema1 无新增锁|已实施；最终r3安装／对应原件通过，本地独立两轴通过；发布／CI待|
+|a3 停止记录|真实可见文件与阻塞 file／directory fsync分列、重复／并发请求原 bytes 保持、部分／坏身份／FIFO均拒绝，持久恢复只同步同一完整记录|已实施；最终r3安装／对应原件通过，本地独立两轴通过；发布／CI待|
+|a4 许可与排空|真实跨进程共享锁仍活时排空 unknown；stop 可见后新共享者拒绝；原共享者退出后才可 drain；排空不声称 subtree stopped|已实施；最终r3安装／对应原件通过，本地独立两轴通过；发布／CI待|
+|a5 关闭不完整执行路径|schema2无法经旧三字段binding／普通cycle-start派发；原schema1旧流程和历史SDK-free档案保持|已实施；最终r3安装／对应原件通过，本地独立两轴通过；发布／CI待|
 |a6 完整交付|固定最终源码／非editable安装、283保持、原接缝必要回归、自身原模板及新的fresh产品reviewer，再普通发布和自己的CI|待前置与a1–a5|
 
 先对本页作 fresh-context 设计审查，不把它当产品审查。实施时另建交付记录，列明实际 caller、原件、失败、最终身份及未验范围；若共享许可的具体结构影响 c0.2b 调用或恢复，先回写具体合同再实现。后续 c0.2b、c1 进程／queue 隔离及总 Workflow、c2 公共交互、可信 CPU 示例和真实训练验收保持独立依赖，不因本片记录能力完成而提前关闭。
@@ -57,3 +57,11 @@ schema2 的字段、稳定 workflow ID、queue、执行范围、continuation、a
 ## 独立准备审查结果
 
 新的fresh-context[设计审查](../delivery/2026-11-15-training-cycle-admission-plan-review.md)已给需求／维护性两轴approve，开放设计finding 0；固定三计划、652产品和283参考身份已核。原报告10047B，SHA256为0088b20d92bedccbb3202d3a367328037259a267298fa45510e696daddc31720。此结论只允许继续准备，a1–a6没有产品实现或竞态验收；前置Q5.2a自己的CI及独立终核闭合后才实施。
+
+## 产品实施接续
+
+a1–a5已沿三个原owner实施；r1安装选择51项及追加意图绑定1项通过，但自身模板／独立反例确认null stop的完整身份R1。已在原protocol最小修正，源码两项通过；r2新安装／必要回归／自身复审及原fresh reviewer终核后才关闭a1–a6。普通派发仍关闭，后继完整gate／fan-out／真实worker保持未实现。详见逐步交付。
+
+最终r3两新非editable安装各652三方逐字／283／依赖、54项选择及六CLI原件／SQL保持已验；原结构模板57.874秒approve。R1／R2实红及同owner最小修正已分列，原fresh reviewer正在最终本地终核。普通发布及自己的CI仍待，a6未闭合；自动派发保持后继完整gate交付前关闭。
+
+原fresh reviewer最终本地需求／维护性两轴approve，开放0／0，R1／R2关闭，已核54项／六CLI／652与283及原模型证据。a1–a5本地完成；a6普通发布与自己的CI待，未放行后继产品。

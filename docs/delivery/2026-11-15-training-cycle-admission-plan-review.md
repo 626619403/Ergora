@@ -46,3 +46,13 @@ HEAD／baseline 为 `e09fd60a635f16e9265b18d1529c4934e687f303`，分支 `refacto
 本次实际只做文档／源码阅读、三份固定输入和产品／参考 bytes 核对、diff 与本地链接目标检查；三份计划的 24 个本地链接目标存在，未认证锚点或外部 URL，`git diff --check` 通过。唯一写入为本报告。未运行产品测试、安装包、启动服务、执行 SDK／文件故障竞态、提交／推送或发起网络请求；前置 CI 额度耗尽及其后续状态未由本 reviewer 重新查询或认证。
 
 a6 的最终非 editable 安装、实际回归、自身原审查模板、新的 fresh-context **产品**两轴审查、普通发布与该候选自己的 CI 仍须交付。c0.2b 的最后 gate／fan-out、c1 的实际进程／loop 隔离和总 Workflow、c2 公共交互、新可信 CPU 示例及真实 GPU／业务训练／质量／收益均保持开放。原六阶段、实验／授权／start-slot／attempt／恢复、人工 release、模板／执行／工单／通信的所有权，以及 v3 kernel 专家路径不因这份设计审查改变。
+
+## 固定设计发布 a10e693 补核
+
+同一 reviewer 只读核实普通发布 `a10e69389e228d311df56bad182b9798f4ca236d`，唯一 parent 为上述 e09fd60，tree 为 `2748425c7b6b9331414f6068616133dddcd816fe`。实际差异恰为五份 Markdown：根 PLAN、本片 admission 计划／原报告，以及 Q5.2a 的 delivery／review 状态。五份已发布文件的 blob、长度、SHA256 均与私有 `admission-plan-staged-r1.json` 相同。完整 `admission-plan-staged-r1.diff` 为 36,970B／SHA256 `59c8c8fa6e23d07197dae54b4780130a813585912fb8939b32671f58452c0dca`，与实际 parent→commit 的 binary diff 逐字相同；commit diff-check 通过，清单的 194 个本地引用与实际全文提取一致、目标均存在，未认证锚点或外部 URL。
+
+原 admission 计划 8,509B／`cf256f3443ab2d8bef2016a9eb9e94a2fe83b514284332468ac660dab57c25bf` 仍为完整前缀；仅追加 475B 已发生的设计 approve 状态与原报告身份，发布文件为 8,984B／`91dd6e554627d3696ae6f753f367bd3b78fc9af1b3942fa6dbc38f7e5b17be80`。原报告仍以完整 10,047B／`0088b20d92bedccbb3202d3a367328037259a267298fa45510e696daddc31720` 发布，本节在其后追加。具体合同未改；`src/ergora` tree 与 e09fd60 完全相同，产品／测试／脚本／依赖／CI 无差异，前述 652 产品和 283 参考文件身份不变。
+
+已直接读取 `admission-plan-publication-r1.json` 及 commit／push／ref 的原 stdout、stderr。记录三个命令 exit 0；原普通 push 输出为 `e09fd60..a10e693 HEAD -> refactor/architecture-foundations`，完整 SSH Ref stdout 精确为 a10e693 加该分支，stderr 空。该留存观察时间为 `2026-11-15T07:13:16.856929+00:00`，不是本 reviewer 新查远端。暂存清单为 25,053B／SHA256 `88ae6dfdc1a007016643805709b50ab01e8a39f005251fa3ba4ae0b2ef50d60e`，publication JSON 为 1,015B／`5d5945bb90d32707d3c1edfc2f8e72ce4848d758e0bd48e4ee017f1372a4debc`；ref stdout SHA256 为 `638ddb4064937639462de305feffafd074540a927e452da2332bc6daa3ab07d3`。
+
+**固定设计发布的需求／维护性两轴均 approve，开放 0／0。** 这只确认已审设计、状态同步及留存的普通发布身份。现有 [push 路径过滤](../../.github/workflows/portability.yml#L6)覆盖这五份 Markdown；本轮未查询新 CI，也不称 a10e693 获得新的产品 CI 成功。Q5.2a 的 e09fd60／run43688128824 在途观察仍只归其原 reviewer，本轮不复核其产品或 CI；自己的 CI／独立终核关闭前不放行控制器实施。未新增产品运行、安装、昂贵测试、网络、提交或推送，唯一写入仍为本报告。

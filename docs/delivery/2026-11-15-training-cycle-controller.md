@@ -28,3 +28,10 @@ r2已明确原training-budget-worker与新training-cycle-worker是不同PID／ev
 
 
 2026-11-15 接续状态：前置ac86043自己的CI43684533043／attempt1现已终态七job成功／Windows六个历史夹具setup错误，原reviewer已核失败归属。Q5.2a仅测试接续，自己的CI和独立终核闭合前不进入本控制器产品实施；本片仍只有已独立批准的具体合同。Kernel专家保留在v3路径。
+
+
+## c0.2a 准备计划与纯文档同步
+
+已将下一片细化为[出生同意／父停止计划](../plans/2026-11-15-training-cycle-admission.md)的a1–a6；新的fresh-context设计审查两轴approve，开放0。五份纯Markdown记录已普通发布a10e69389e228d311df56bad182b9798f4ca236d，parent e09fd60，五blob／194个暂存引用／完整SSHRef同一；原设计reviewer固定发布两轴approve／开放0／0。其报告原10047B前缀完整保持，追加后12671B，SHA256为18ae0795b9ff18d91b3aaa2b23d4a29c5c1f680898b906999235b663ca1e5d61。产品／测试／脚本／CI／依赖未改，a10沿既有Markdown过滤，不称新产品CI成功。
+
+Q5.2a自己的e09/run43688128824仍待终态与其原独立终核；本控制器产品继续未实施。准备调查明确了普通temp-fsync/link与stop先可见O_EXCL的不同语义，并把阻止schema2经旧三字段binding派发列为a5共同关闭条件；不以设计批准代替真实竞态或原子树停止验收。Kernel专家保留在v3路径。

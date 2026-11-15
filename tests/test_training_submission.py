@@ -689,6 +689,409 @@ def authorize_budget(selection, tmp_path, *, wall=14, cleanup=4, timeout=4):
     return state, definition, runtime, authorized
 
 
+@pytest.fixture
+def controller_admission(cycle_selection, tmp_path):
+    from ergora import training_cycles
+    from ergora.training_execution_protocol import CycleAdmission
+
+    state, _, _, _, _, request = cycle_selection
+    source = tmp_path / 'controller-input'
+    selected = training_cycles.create(state, 'demo', request, source)
+    authorized = training_cycles.authorize_controller(state, 'demo', 'controller', source, selected['sha256'],
+        state.project('demo')['revision'], confirm=True, execute_selected=True)
+    directory = state.root / 'training-cycles/demo/controller'
+    return state, source, selected, authorized, CycleAdmission(directory, authorized['authorization'])
+
+
+def admission_process(admission, tmp_path, mode, *, reason='First controller stop'):
+    import ergora
+
+    marker = tmp_path / (mode + '-ready')
+    child = subprocess.Popen([sys.executable, '-I', '-S', '-B',
+        str(Path(__file__).parent / 'fixtures/training_cycle_admission.py'),
+        str(Path(ergora.__file__).parent.parent), str(admission.directory), str(marker), mode, reason],
+        stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+    until = time.monotonic() + 10
+    while time.monotonic() < until and not marker.exists() and child.poll() is None:
+        time.sleep(.01)
+    if not marker.exists():
+        child.kill()
+        stdout, stderr = child.communicate(timeout=5)
+        raise AssertionError('Parent admission child did not reach its real boundary: ' + stdout + stderr)
+    return child
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller consent requires Linux/WSL2 clocks and flock')
+def test_controller_birth_consent_retains_original_actor_clock_and_mode(controller_admission, monkeypatch):
+    from ergora import training_cycles
+
+    state, source, selected, authorized, admission = controller_admission
+    authorization = authorized['authorization']
+    assert authorized['status'] == 'ready' and authorization['schema_version'] == 2
+    assert authorized['controller']['consent_recorded'] is True
+    assert authorized['coverage']['execution_authorized'] is False
+    controller = authorization['controller']
+    assert controller['actor_id'] == f'unix:{os.getuid()}:{training_cycles.getpass.getuser()}'
+    identity = {key: authorization[key] for key in ('control_home', 'project', 'cycle_id', 'input_sha256')}
+    assert controller == {'protocol': 'ergora-training-cycle-v1',
+        'workflow_id': 'ergora-training-cycle/' + training_cycles._sha(identity),
+        'task_queue': 'ergora-training-cycle-v1', 'execution_scope': 'ordered-selected-native-once',
+        'continuation': 'accepted-archive-pass', 'actor_id': controller['actor_id'], 'confirmation': True}
+    assert authorization['sha256'] == training_cycles._sha({k: v for k, v in authorization.items() if k != 'sha256'})
+    original = {p: p.read_bytes() for p in admission.directory.rglob('*') if p.is_file()}
+    monkeypatch.setattr(training_cycles.getpass, 'getuser', lambda: 'different-observer')
+    again = training_cycles.authorize_controller(state, 'demo', 'controller', source, selected['sha256'], 1,
+        confirm=True, execute_selected=True)
+    assert again['authorization'] == authorization and again['work_remaining_seconds'] < authorized['work_remaining_seconds']
+    with pytest.raises(ValueError, match='consent mode'):
+        training_cycles.authorize(state, 'demo', 'controller', source, selected['sha256'], 1, confirm=True)
+    manual = training_cycles.authorize(state, 'demo', 'manual', source, selected['sha256'], 1, confirm=True)
+    assert manual['authorization']['schema_version'] == 1 and 'controller' not in manual
+    assert not (admission.directory.parent / 'manual/controller').exists()
+    with pytest.raises(ValueError, match='consent mode'):
+        training_cycles.authorize_controller(state, 'demo', 'manual', source, selected['sha256'], 1,
+            confirm=True, execute_selected=True)
+    for flag in (False, 1):
+        with pytest.raises(ValueError, match='Explicitly confirm execution'):
+            training_cycles.authorize_controller(state, 'demo', 'unconfirmed', source, selected['sha256'], 1,
+                confirm=True, execute_selected=flag)
+    assert not (admission.directory.parent / 'unconfirmed').exists()
+    assert all(p.read_bytes() == raw for p, raw in original.items())
+    # A recomputed digest cannot legitimize a nonboolean confirmation.
+    altered = deepcopy(authorization)
+    altered['controller']['confirmation'] = 1
+    altered['sha256'] = training_cycles._sha({k: v for k, v in altered.items() if k != 'sha256'})
+    (admission.directory / 'authorization.json').write_text(json.dumps(altered))
+    with pytest.raises(ValueError, match='canonical SHA256'):
+        training_cycles.status(state, 'demo', 'controller')
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller consent requires Linux/WSL2 clocks and flock')
+@pytest.mark.parametrize('boundary', ['lock-file', 'lock-directory', 'ready-directory'])
+def test_controller_lock_publication_recovers_only_the_original_consent(cycle_selection, tmp_path, monkeypatch, boundary):
+    from ergora import training_cycles
+
+    state, _, _, _, _, request = cycle_selection
+    source = tmp_path / 'input'
+    selected = training_cycles.create(state, 'demo', request, source)
+    saved = state.root / 'training-cycles/demo/interrupted-controller'
+    fsync, failed = os.fsync, []
+
+    def interrupt(descriptor):
+        path = Path('/proc/self/fd/' + str(descriptor)).resolve()
+        targeted = ((boundary == 'lock-file' and path.parent == saved / 'controller' and path.name.startswith('.pending-'))
+            or (boundary == 'lock-directory' and path == saved / 'controller')
+            or (boundary == 'ready-directory' and path == saved and (saved / 'ready.json').exists()))
+        if targeted:
+            failed.append(str(path))
+            assert (saved / 'authorization.json').is_file() and (saved / 'cycle.json').is_file()
+            if boundary != 'ready-directory':
+                assert not (saved / 'ready.json').exists()
+            raise OSError('Interrupted original controller publication')
+        return fsync(descriptor)
+
+    monkeypatch.setattr(os, 'fsync', interrupt)
+    with pytest.raises(OSError, match='Interrupted original controller publication'):
+        training_cycles.authorize_controller(state, 'demo', 'interrupted-controller', source, selected['sha256'], 1,
+            confirm=True, execute_selected=True)
+    assert failed
+    original = {p: p.read_bytes() for p in saved.rglob('*') if p.is_file()}
+    observed = training_cycles.status(state, 'demo', 'interrupted-controller')
+    assert observed['status'] == ('unknown' if boundary == 'ready-directory' else 'pending')
+    monkeypatch.setattr(os, 'fsync', fsync)
+    recovered = training_cycles.authorize_controller(state, 'demo', 'interrupted-controller', source, selected['sha256'], 1,
+        confirm=True, execute_selected=True)
+    assert recovered['status'] == 'ready' and recovered['authorization'] == observed['authorization']
+    assert (saved / 'controller/admission.lock').read_bytes() == b''
+    assert all(p.read_bytes() == raw for p, raw in original.items())
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller consent requires Linux/WSL2 clocks and flock')
+def test_controller_ready_never_recreates_or_accepts_a_changed_parent_lock(controller_admission, tmp_path):
+    from ergora import training_cycles
+
+    state, source, selected, _, admission = controller_admission
+    outside = tmp_path / 'outside-lock'
+    outside.write_bytes(b'External lock must remain unchanged')
+    for shape in ('missing', 'nonempty', 'fifo', 'symlink'):
+        admission.lock.unlink(missing_ok=True)
+        if shape == 'nonempty':
+            admission.lock.write_bytes(b'x')
+        elif shape == 'fifo':
+            os.mkfifo(admission.lock)
+        elif shape == 'symlink':
+            admission.lock.symlink_to(outside)
+        with pytest.raises((OSError, ValueError)):
+            training_cycles.status(state, 'demo', 'controller')
+        with pytest.raises((OSError, ValueError)):
+            training_cycles.authorize_controller(state, 'demo', 'controller', source, selected['sha256'], 1,
+                confirm=True, execute_selected=True)
+        if shape == 'missing':
+            assert not admission.lock.exists()
+    assert outside.read_bytes() == b'External lock must remain unchanged'
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller consent requires Linux/WSL2 clocks and flock')
+def test_controller_lock_sync_consumes_the_original_computation_window(cycle_selection, tmp_path, monkeypatch):
+    from ergora import budget_clock, training_cycles
+
+    state, _, _, _, _, request = cycle_selection
+    request['budget'].update(wall_seconds=4, cleanup_seconds=1)
+    source = tmp_path / 'input'
+    selected = training_cycles.create(state, 'demo', request, source)
+    saved = state.root / 'training-cycles/demo/slow-controller'
+    fsync, delayed = os.fsync, []
+
+    def slow(descriptor):
+        if Path('/proc/self/fd/' + str(descriptor)).resolve() == saved / 'controller' and not delayed:
+            delayed.append(True)
+            authorization = json.loads((saved / 'authorization.json').read_bytes())
+            remaining = budget_clock.remaining(authorization['clock'], request['budget']['wall_seconds'],
+                request['budget']['cleanup_seconds'])
+            time.sleep(max(0, remaining) + .05)
+        return fsync(descriptor)
+
+    monkeypatch.setattr(os, 'fsync', slow)
+    result = training_cycles.authorize_controller(state, 'demo', 'slow-controller', source, selected['sha256'], 1,
+        confirm=True, execute_selected=True)
+    assert delayed and result['status'] == 'exhausted' and result['work_remaining_seconds'] <= 0
+    assert not (saved / 'ready.json').exists()
+    original = (saved / 'authorization.json').read_bytes()
+    again = training_cycles.authorize_controller(state, 'demo', 'slow-controller', source, selected['sha256'], 1,
+        confirm=True, execute_selected=True)
+    assert again['authorization'] == result['authorization'] and (saved / 'authorization.json').read_bytes() == original
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller stop requires Linux/WSL2 filesystem and flock')
+@pytest.mark.parametrize('boundary', ['create', 'file-fsync', 'directory-fsync'])
+def test_controller_visible_stop_denies_new_work_before_durable_confirmation(controller_admission, tmp_path, boundary):
+    from ergora import training_cycles
+
+    state, _, _, authorized, admission = controller_admission
+    child = admission_process(admission, tmp_path, boundary)
+    try:
+        observed = admission.observe()
+        assert observed['stop_visible'] is True and observed['stop_durable'] is None
+        assert observed['identity_matches'] is (boundary != 'create')
+        assert observed['executor_stop_confirmed'] is None
+        with pytest.raises(ValueError, match='stop is visible'):
+            with admission.permission():
+                pytest.fail('Visible parent stop must veto new work')
+        stdout, stderr = child.communicate('\n', timeout=10)
+        assert child.returncode == 0, stderr
+        first = json.loads(stdout)
+        assert first['stop_durable'] is True and first['admission_drained'] is True
+        raw = admission.stop.read_bytes()
+        again = training_cycles.stop_controller(state, 'demo', 'controller', authorized['authorization_sha256'], reason='Later reason')
+        assert again['record'] == first['record'] and admission.stop.read_bytes() == raw
+        assert again['executor_stop_confirmed'] is None
+    finally:
+        if child.poll() is None:
+            child.kill()
+        child.communicate(timeout=5)
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller stop requires Linux/WSL2 filesystem and flock')
+def test_controller_parent_drain_waits_for_all_original_shared_permits(controller_admission, tmp_path):
+    from ergora import training_cycles
+
+    state, _, _, authorized, admission = controller_admission
+    children = []
+    try:
+        for number in range(2):
+            folder = tmp_path / str(number)
+            folder.mkdir()
+            children.append(admission_process(admission, folder, 'hold'))
+        stopped = training_cycles.stop_controller(state, 'demo', 'controller', authorized['authorization_sha256'], reason='Stop active permits')
+        raw = admission.stop.read_bytes()
+        assert stopped['stop_durable'] is True and stopped['admission_drained'] is None
+        assert stopped['executor_stop_confirmed'] is None
+        for number, child in enumerate(children):
+            stdout, stderr = child.communicate('\n', timeout=5)
+            assert child.returncode == 0 and json.loads(stdout)['released'], stderr
+            drained = admission.observe(drain=True)
+            assert drained['admission_drained'] is (True if number == len(children) - 1 else None)
+            assert drained['executor_stop_confirmed'] is None
+        assert admission.stop.read_bytes() == raw
+        assert training_cycles.status(state, 'demo', 'controller')['status'] == 'stopped'
+    finally:
+        for child in children:
+            if child.poll() is None:
+                child.kill()
+            child.communicate(timeout=5)
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller stop requires Linux/WSL2 filesystem and flock')
+@pytest.mark.parametrize('boundary', ['file', 'directory'])
+def test_controller_stop_durability_recovers_by_synchronizing_the_same_original(controller_admission, monkeypatch, boundary):
+    _, _, _, _, admission = controller_admission
+    fsync = os.fsync
+
+    def failing(descriptor):
+        target = admission.stop if boundary == 'file' else admission.folder
+        if Path('/proc/self/fd/' + str(descriptor)).resolve() == target:
+            raise OSError('Controller stop storage synchronization failed')
+        return fsync(descriptor)
+
+    monkeypatch.setattr(os, 'fsync', failing)
+    result = admission.request_stop('Original stop during storage failure')
+    original, details = admission.stop.read_bytes(), admission.stop.stat()
+    assert result['stop_visible'] is True and result['identity_matches'] is True
+    assert result['stop_durable'] is None and result['admission_drained'] is None
+    again = admission.request_stop('Later request must not replace it')
+    assert again['stop_durable'] is None and again['record'] == result['record']
+    monkeypatch.setattr(os, 'fsync', fsync)
+    recovered = admission.observe(drain=True)
+    assert recovered['stop_durable'] is True and recovered['admission_drained'] is True
+    assert recovered['record'] == result['record'] and admission.stop.read_bytes() == original
+    assert admission.stop.stat().st_ino == details.st_ino
+    assert recovered['executor_stop_confirmed'] is None
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller stop requires Linux/WSL2 filesystem and flock')
+def test_controller_stop_binds_the_complete_saved_controller_intent(controller_admission):
+    from ergora import training_cycles
+
+    _, _, _, _, admission = controller_admission
+    intent = saved_controller_intent(admission)
+    saved = admission.folder / 'intent.json'
+    saved.write_text(json.dumps({**intent, 'workflow_input': {**intent['workflow_input'], 'input_sha256': '0' * 64}}))
+    with pytest.raises(ValueError, match='complete original authorization'):
+        admission.request_stop('Cannot bind a different complete input')
+    assert not admission.stop.exists()
+    saved.write_text(json.dumps(intent))
+    result = admission.request_stop('Original bound intent')
+    assert result['record']['controller_intent_sha256'] == training_cycles._sha(intent)
+    assert result['stop_durable'] is True
+    original = admission.stop.read_bytes()
+    saved.write_text(json.dumps({**intent, 'workflow_id': 'different-controller'}))
+    changed = admission.observe(drain=True)
+    assert changed['stop_visible'] is True and changed['identity_matches'] is False
+    assert changed['stop_durable'] is None and changed['admission_drained'] is None
+    assert admission.stop.read_bytes() == original
+
+
+def saved_controller_intent(admission):
+    authorization, controller = admission.authorization, admission.authorization['controller']
+    workflow_input = {name: authorization[name] for name in ('control_home', 'project', 'cycle_id', 'input_sha256')}
+    workflow_input.update(protocol=controller['protocol'], authorization_sha256=authorization['sha256'])
+    return {**workflow_input, 'schema_version': 1, 'kind': 'training-cycle-controller-intent',
+        'project_revision': authorization['project_revision'], 'workflow_id': controller['workflow_id'],
+        'task_queue': controller['task_queue'], 'workflow_input': workflow_input}
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller stop requires Linux/WSL2 filesystem and flock')
+def test_controller_null_stop_keeps_its_veto_when_a_later_intent_cannot_be_bound(controller_admission):
+    _, _, _, _, admission = controller_admission
+    result = admission.request_stop('Stop before any controller intent')
+    assert result['record']['controller_intent_sha256'] is None and result['stop_durable'] is True
+    original = admission.stop.read_bytes()
+    for raw in (json.dumps(saved_controller_intent(admission)), '{"incomplete":'):
+        (admission.folder / 'intent.json').write_text(raw)
+        changed = admission.observe(drain=True)
+        assert changed['stop_visible'] is True and changed['identity_matches'] is False
+        assert changed['stop_durable'] is None and changed['admission_drained'] is None
+        again = admission.request_stop('No replacement or new intent binding')
+        assert again['identity_matches'] is False and again['stop_durable'] is None
+        assert admission.stop.read_bytes() == original
+        with pytest.raises(ValueError, match='stop is visible'):
+            with admission.permission():
+                pytest.fail('A later intent must never undo the original stop veto')
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller stop requires Linux/WSL2 filesystem and flock')
+def test_controller_stop_revalidates_intent_after_the_final_drain_sync(controller_admission, monkeypatch):
+    _, _, _, _, admission = controller_admission
+    admission.request_stop('Stop before controller intent')
+    original, fsync, synchronized = admission.stop.read_bytes(), os.fsync, []
+
+    def late_intent(descriptor):
+        if Path('/proc/self/fd/' + str(descriptor)).resolve() == admission.stop:
+            synchronized.append(True)
+            if len(synchronized) == 2:  # The recursive observation holds the parent exclusive lock.
+                (admission.folder / 'intent.json').write_text(json.dumps(saved_controller_intent(admission)))
+        return fsync(descriptor)
+
+    monkeypatch.setattr(os, 'fsync', late_intent)
+    observed = admission.observe(drain=True)
+    assert len(synchronized) == 2
+    assert observed['stop_visible'] is True and observed['identity_matches'] is False
+    assert observed['stop_durable'] is None and observed['admission_drained'] is None
+    assert admission.stop.read_bytes() == original
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller stop requires Linux/WSL2 filesystem and flock')
+def test_controller_concurrent_stops_preserve_one_original_and_never_repair_corruption(controller_admission, tmp_path):
+    state, _, _, _, admission = controller_admission
+    children = []
+    try:
+        for number in range(2):
+            folder = tmp_path / str(number)
+            folder.mkdir()
+            children.append(admission_process(admission, folder, 'concurrent', reason='Reason ' + str(number)))
+        for child in children:
+            child.stdin.write('\n')
+            child.stdin.flush()
+        results = []
+        for child in children:
+            stdout, stderr = child.communicate(timeout=5)
+            assert child.returncode == 0, stderr
+            results.append(json.loads(stdout))
+        original = admission.stop.read_bytes()
+        # A loser may observe the winner's partial publication, never a replacement.
+        confirmed = admission.observe(drain=True)
+        assert confirmed['stop_durable'] is True and confirmed['admission_drained'] is True
+        assert confirmed['record']['reason'] in ('Reason 0', 'Reason 1')
+        assert all(result['record_sha256'] in (None, confirmed['record_sha256']) for result in results)
+        assert admission.stop.read_bytes() == original
+    finally:
+        for child in children:
+            if child.poll() is None:
+                child.kill()
+            child.communicate(timeout=5)
+    for shape in ('partial', 'identity', 'fifo'):
+        admission.stop.unlink()
+        if shape == 'partial':
+            admission.stop.write_bytes(b'{"schema_version":')
+        elif shape == 'identity':
+            value = json.loads(original)
+            value['authorization_sha256'] = '0' * 64
+            admission.stop.write_text(json.dumps(value))
+        else:
+            os.mkfifo(admission.stop)
+        before = admission.stop.read_bytes() if shape != 'fifo' else None
+        result = admission.request_stop('Do not repair the original')
+        assert result['stop_visible'] is True and result['identity_matches'] is False
+        assert result['stop_durable'] is None and result['admission_drained'] is None
+        with pytest.raises(ValueError, match='stop is visible'):
+            with admission.permission():
+                pytest.fail('An invalid visible stop still vetoes admission')
+        if before is not None:
+            assert admission.stop.read_bytes() == before
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller submission requires Linux/WSL2')
+def test_controller_consent_cannot_dispatch_through_either_manual_binding_path(controller_admission, cycle_selection, service):
+    from ergora import training_cycles
+
+    state, _, selected, authorized, admission = controller_admission
+    _, _, runtime, _, _, request = cycle_selection
+    service[0]('accepted')
+    digest = request['candidates'][0]['manifest_sha256']
+    for cycle_entry in (True, False):
+        with pytest.raises(ValueError, match='Controller authorization requires complete controller binding'):
+            if cycle_entry:
+                training_cycles.start(state, 'demo', 'controller', 'alpha', authorized['authorization_sha256'], 1)
+            else:
+                training.start(state, 'demo', 'alpha', 1, digest,
+                    budget={'cycle_id': 'controller', 'authorization_sha256': authorized['authorization_sha256']})
+        prefix = runtime / 'ergora/training-submissions'
+        assert not (prefix / 'alpha.intent.json').exists() and not (prefix / 'alpha.attempt.json').exists()
+        assert not (prefix / 'alpha.budget').exists() and not (runtime / 'training/jobs/alpha').exists()
+        assert not service[1].exists()
+    assert admission.authorization == authorized['authorization']
+
+
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)
 @pytest.mark.skipif(sys.platform != 'linux', reason='Native managed admission requires Linux/WSL2')
 def test_execution_admission_waits_for_the_original_request_writer(cycle_selection, service, tmp_path, monkeypatch):

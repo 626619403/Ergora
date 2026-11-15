@@ -62,3 +62,13 @@ ac86043自己的Portability 43684533043／attempt1已终态七job成功／Window
 
 
 官方公开Actions页HTTP200的嵌入JSON已核：Portability #234／run43688128824精确链接完整e09 SHA、当前开发分支、push来源与07:02:26Z创建时间，状态IN_PROGRESS。原HTML320113B、HTTP metadata与局部提取另存；这是普通公开网页读取，不使用受鉴权API、日志或artifact，也不替代后续attempt／job／30必要步骤终态。API仍尊重同一官方reset窗口，当前不能称本片CI已通过。
+
+
+官方reset后于07:23 UTC取得真实API原件：run43688128824／attempt1精确e09／分支／push，status=in_progress、conclusion=null。八job全同原run／attempt／SHA；plan及六Linux分组七job成功，Windows job132732841371正在Native application regression。原响应与HTTP metadata另存ci-r1，完整终态与30必要步骤仍待，不以七成功代替全部成功。
+
+
+## 自己的 CI 成功，原独立终核进行中
+
+07:29 UTC官方API原件确认e09fd60a635f16e9265b18d1529c4934e687f303的run43688128824／attempt1已completed／success，updated_at为07:29:00Z。八job／按固定workflow重算的30必要步骤全success，包含Windows Native application regression、PowerShell installer／upgrade及upload。完整raw responses／HTTP metadata／必要步骤清单保存在ci-r1的20261115T072911183050Z前缀；没有声称下载受鉴权完整日志或artifact，也不从成功步骤推断具体Windows测试数量。
+
+本片原fresh reviewer正核精确终态，c2原产品reviewer同时核e09最小接续与原ac86043完整源码的关系。两者最终结论未记通过前，控制器产品仍未实施；原ac86043失败及各自本地／安装／CLI范围保持。

@@ -1,5 +1,6 @@
 """Identity-bound execution records shared with the dependency-isolated native hook."""
 
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 import getpass
 import hashlib
@@ -198,6 +199,187 @@ def sync_directories(directory: Path, root: Path) -> None:
         if selected == root:
             return
     raise ValueError('Execution publication escaped its registered root')
+
+
+class CycleAdmission:
+    """A parent's irreversible veto, not a grant to start or execute training.
+
+    Callers validate their complete source and clock before using this permit.
+    All storage operations may block; live owners must supervise their caller.
+    """
+
+    def __init__(self, directory: Path, authorization: dict):
+        if authorization['schema_version'] != 2:
+            raise ValueError('Controller admission requires explicit birth-time consent')
+        self.directory, self.authorization = directory, authorization
+        self.folder = directory / 'controller'
+        self.lock = self.folder / 'admission.lock'
+        self.stop = self.folder / 'stop.json'
+        self.identity = {'schema_version': 1, 'kind': 'training-cycle-stop',
+            'protocol': authorization['controller']['protocol'], 'control_home': authorization['control_home'],
+            'project': authorization['project'], 'cycle_id': authorization['cycle_id'],
+            'input_sha256': authorization['input_sha256'], 'authorization_sha256': authorization['sha256'],
+            'actor_id': authorization['controller']['actor_id']}
+
+    @staticmethod
+    def _sha(value):
+        # This boundary also runs in the dependency-isolated native interpreter.
+        return hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True,
+            separators=(',', ':'), allow_nan=False).encode('utf-8')).hexdigest()
+
+    def _authorization(self):
+        saved = decode(read_raw(self.directory / 'authorization.json'))
+        if self._sha(saved) != self._sha(self.authorization):
+            raise ValueError('Original controller authorization changed')
+
+    @contextmanager
+    def _locked(self, *, shared):
+        import fcntl
+
+        with os.fdopen(_fd(self.lock), 'rb') as lock:
+            if lock.read(1):
+                raise ValueError('Controller admission requires its ordinary empty original lock')
+            fcntl.flock(lock, (fcntl.LOCK_SH if shared else fcntl.LOCK_EX) | fcntl.LOCK_NB)
+            yield
+
+    def validate_lock(self, *, synchronize=False):
+        with os.fdopen(_fd(self.lock), 'rb') as lock:
+            if lock.read(1):
+                raise ValueError('Controller admission requires its ordinary empty original lock')
+            if synchronize:
+                os.fsync(lock.fileno())
+                sync_directories(self.folder, self.directory)
+
+    def check(self):
+        """Recheck under an existing permit immediately before the original action."""
+        self._authorization()
+        try:
+            self.stop.lstat()
+        except FileNotFoundError:
+            return
+        raise ValueError('Controller stop is visible; no new training action is admitted')
+
+    @contextmanager
+    def permission(self):
+        """Try one shared permit without waiting, creating files or extending time."""
+        with self._locked(shared=True):
+            self.check()
+            yield self
+
+    def _intent_sha(self):
+        try:
+            intent = decode(read_raw(self.folder / 'intent.json'))
+        except FileNotFoundError:
+            return None
+        authorization, controller = self.authorization, self.authorization['controller']
+        workflow_input = {name: authorization[name] for name in
+            ('control_home', 'project', 'cycle_id', 'input_sha256')}
+        workflow_input.update(protocol=controller['protocol'], authorization_sha256=authorization['sha256'])
+        expected = {**workflow_input, 'schema_version': 1, 'kind': 'training-cycle-controller-intent',
+            'project_revision': authorization['project_revision'], 'workflow_id': controller['workflow_id'],
+            'task_queue': controller['task_queue'], 'workflow_input': workflow_input}
+        if self._sha(intent) != self._sha(expected):
+            raise ValueError('Controller intent differs from its complete original authorization')
+        return self._sha(intent)
+
+    def _stop_record(self, value):
+        _exact(value, (*self.identity, 'controller_intent_sha256', 'reason', 'requested_at'), 'Controller stop')
+        if value['controller_intent_sha256'] is not None:
+            _digest(value['controller_intent_sha256'])
+        if value['controller_intent_sha256'] != self._intent_sha():
+            raise ValueError('Controller stop differs from its original controller intent')
+        if not isinstance(value['reason'], str) or not value['reason'].strip():
+            raise ValueError('Controller stop requires a nonempty reason')
+        try:
+            requested = datetime.fromisoformat(value['requested_at'])
+            if requested.utcoffset() != timedelta(0) or requested.isoformat() != value['requested_at']:
+                raise ValueError('Controller stop requires its complete UTC time')
+        except TypeError as error:
+            raise ValueError('Controller stop requires its complete UTC time') from error
+        expected = {**value, **self.identity}
+        if self._sha(expected) != self._sha(value):
+            raise ValueError('Controller stop differs from its original authorization')
+        return value
+
+    def observe(self, *, synchronize=False, drain=False):
+        """Keep visibility, durable bytes, parent permits and subtree stop separate."""
+        observed = {'stop_visible': None, 'identity_matches': None, 'record': None, 'record_sha256': None,
+            'stop_durable': None, 'admission_drained': None, 'executor_stop_confirmed': None, 'reason': None}
+        try:
+            self.stop.lstat()
+        except FileNotFoundError:
+            return {**observed, 'stop_visible': False}
+        except OSError as error:
+            return {**observed, 'reason': str(error)}
+        observed['stop_visible'] = True
+        try:
+            self._authorization()
+            with os.fdopen(_fd(self.stop), 'rb') as stream:
+                raw = stream.read(LIMIT + 1)
+                if len(raw) > LIMIT:
+                    raise ValueError('Complete controller stop exceeds its read capacity')
+                value = self._stop_record(decode(raw))
+                observed.update(identity_matches=True, record=value, record_sha256=hashlib.sha256(raw).hexdigest())
+                if synchronize or drain:
+                    os.fsync(stream.fileno())
+                    sync_directories(self.folder, self.directory)
+                    observed['identity_matches'] = False
+                    self._authorization()
+                    with os.fdopen(_fd(self.stop), 'rb') as again:
+                        original, current = os.fstat(stream.fileno()), os.fstat(again.fileno())
+                        if ((original.st_dev, original.st_ino) != (current.st_dev, current.st_ino)
+                                or again.read(LIMIT + 1) != raw):
+                            raise ValueError('Controller stop changed during durable observation')
+                    self._stop_record(value)
+                    observed['identity_matches'] = True
+                    observed['stop_durable'] = True
+        except (OSError, ValueError) as error:
+            if observed['identity_matches'] is None:
+                observed['identity_matches'] = False
+            return {**observed, 'reason': str(error)}
+        if drain:
+            try:
+                with self._locked(shared=False):
+                    after = self.observe(synchronize=True)
+                    if after['stop_durable'] is True and after['record_sha256'] == observed['record_sha256']:
+                        after['admission_drained'] = True
+                    else:
+                        after['reason'] = after['reason'] or 'Controller stop changed before parent admission drained'
+                    return after
+            except (OSError, ValueError) as error:
+                observed['reason'] = str(error) or 'Original parent admission permits remain active'
+        return observed
+
+    def request_stop(self, reason):
+        """Publish the veto before fsync; never repair or replace an existing path."""
+        self._authorization()
+        self.validate_lock()
+        try:
+            self.stop.lstat()
+        except FileNotFoundError:
+            pass
+        else:
+            return self.observe(synchronize=True, drain=True)
+        value = {**self.identity, 'controller_intent_sha256': self._intent_sha(),
+            'reason': reason, 'requested_at': datetime.now(timezone.utc).isoformat()}
+        self._stop_record(value)
+        raw = (json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2, allow_nan=False) + '\n').encode('utf-8')
+        if len(raw) > LIMIT:
+            raise ValueError('Complete controller stop exceeds its publication capacity')
+        flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_NONBLOCK', 0)
+        try:
+            descriptor = os.open(self.stop, flags, 0o600)
+        except FileExistsError:
+            return self.observe(synchronize=True, drain=True)
+        try:
+            with os.fdopen(descriptor, 'wb') as stream:
+                stream.write(raw)
+                stream.flush()
+                os.fsync(stream.fileno())
+            sync_directories(self.folder, self.directory)
+        except OSError as error:
+            return {**self.observe(), 'reason': 'Controller stop durability is unconfirmed: ' + str(error)}
+        return self.observe(synchronize=True, drain=True)
 
 
 class ExecutionRecords:

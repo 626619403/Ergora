@@ -227,3 +227,8 @@ r6自身原`ergora-structure-review@1.0.0`真实Codex调用65.888秒，31份完�
 2026-11-15 06:43 UTC 官方原件确认：ac86043d9e11983750bf63b90c0dfcbeea05ea41 的 Portability 43684533043／attempt1 终态为 failure，七job成功、Windows job失败；Native application regression 为1179 passed／876 skipped／6 errors／16 subtests，1557.34秒。六项错误全发生在historical_execution夹具调用Linux-only prepare时，未进入可移植历史读取或损坏链断言。FIFO case的body skip也晚于该setup。原失败和全部本地／发布结论保持原身份，不把本地通过转记为CI成功。
 
 [测试维护接续](../plans/2026-11-15-training-test-maintenance.md)改为明确构造无活授权的合成旧intent并调用原SDK-free历史读取器；保留Windows可移植检查，不删除产品Linux约束，不加整项平台skip来遮住读取测试。原reviewer续核此终态，修复片自己的CI及独立终核成功前，本门禁继续开放；不推后继产品。官方匿名REST的runs／jobs及Windows annotations HTTP200原件保存在本片私有ci-r1；未声称取得完整受鉴权日志或artifact。
+
+
+最小测试接续e09fd60a635f16e9265b18d1529c4934e687f303自己的CI43688128824／attempt1现已八job／30必要步骤全部success，包含真实Windows回归及安装升级。原ac86043产品源码／脚本／CI／依赖保持；Q5原fresh reviewer及本片原reviewer正分别核终态与准确接续关系，不改记ac86043旧失败。最终门禁结论待其报告追加。
+
+双方原reviewer已分别终核e09固定发布和CI：需求／维护性均approve，开放0／0，c2精确交付门禁闭合。原ac86043失败保持。原产品终核报告58,687B／SHA256 `3707477a077794e2be4fbedd6aabb2b0d3eddd0fc1ebcaf48bdf68e902b951d1`；Q5原报告29,264B／SHA256 `7caa9f253534f526b6c6202340ca7e5f4b506c0b7f63333421f5561f2c17abba`。此状态接续不扩大既有CPU／Windows范围，也不认证自动循环或真实训练。
