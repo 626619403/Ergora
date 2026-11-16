@@ -749,6 +749,8 @@ def task_submission(project: dict, home: Path, operation: str, payload: dict, *,
 
 def task_approval(project: dict, home: Path, operation: str, payload: dict, *, timeout: int) -> dict:
     """Use the same native lifecycle for exact owner decisions and signal recovery."""
+    if operation == 'inspect-plan':
+        return task_plan(project, home, payload, timeout=timeout)
     return _task_operation(project, home, 'approval', operation, payload, timeout)
 
 

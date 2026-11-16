@@ -525,10 +525,13 @@ assert not any(name == 'jsonschema' or name.startswith('jsonschema.') for name i
     interpreter.write_text('#!/bin/sh\nexec ' + shlex.quote(sys.executable) + ' -B -S ' + shlex.quote(str(bootstrap)) + ' "$@"\n')
     interpreter.chmod(0o700)
     before = snapshot(root)
-    result = reference.task_plan(project, state.root,
-                                 {'task_id': task['task_id'], 'run_id': server['run_id'], 'plan_sha256': sha(receipt)}, timeout=20)
-    assert result['design']['content_integrity']['valid'] is True
-    assert result['design']['readiness']['ready'] is False and 'design_read' not in result
+    payload = {'task_id': task['task_id'], 'run_id': server['run_id'], 'plan_sha256': sha(receipt)}
+    readers = ((reference.task_plan, (project, state.root, payload)),
+               (reference.task_approval, (project, state.root, 'inspect-plan', payload)))
+    for reader, arguments in readers:
+        result = reader(*arguments, timeout=20)
+        assert result['design']['content_integrity']['valid'] is True
+        assert result['design']['readiness']['ready'] is False and 'design_read' not in result
     assert json.loads(marker.read_text()) == {'no_site': True,
         'command': 'from ergora.reference_task_approval import main;main()'}
     assert snapshot(root) == before
@@ -539,9 +542,10 @@ assert not any(name == 'jsonschema' or name.startswith('jsonschema.') for name i
     write(receipt_path, receipt)
     server['plan_sha256'] = sha(receipt)
     write(server_path, server)
-    with pytest.raises(ValueError, match='Design packet'):
-        reference.task_plan(project, state.root,
-                            {'task_id': task['task_id'], 'run_id': server['run_id'], 'plan_sha256': sha(receipt)}, timeout=20)
+    payload['plan_sha256'] = sha(receipt)
+    for reader, arguments in readers:
+        with pytest.raises(ValueError, match='Design packet'):
+            reader(*arguments, timeout=20)
 
 
 def test_minimum_question_cannot_be_replaced_with_a_claim_of_consent(pending_design):
