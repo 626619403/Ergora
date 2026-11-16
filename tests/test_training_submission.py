@@ -40,6 +40,10 @@ def prepared(experiments):
 
 @pytest.fixture
 def historical_execution(prepared):
+    return synthetic_execution(prepared)
+
+
+def synthetic_execution(prepared, *, controller=None, ident='alpha'):
     """A synthetic stopped archive, deliberately carrying no live execution authority."""
     from datetime import datetime, timezone
     from ergora import training_cycles
@@ -50,39 +54,50 @@ def historical_execution(prepared):
     prefix = runtime / 'ergora/training-submissions'
     intent = {'schema_version': 1, 'operation': 'start', 'control_home': str(state.root),
         'project': project['id'], 'repo': project['repo'], 'execution': definition['execution'],
-        'registration_sha256': project['registration']['sha256'], 'experiment_id': 'alpha',
-        'workflow_id': 'perf-experiment/alpha', 'project_revision': project['revision'],
-        'operation_id': '0' * 32, 'observation': reference.training_files(project, experiment_id='alpha')}
+        'registration_sha256': project['registration']['sha256'], 'experiment_id': ident,
+        'workflow_id': 'perf-experiment/' + ident, 'project_revision': project['revision'],
+        'operation_id': '0' * 32, 'observation': reference.training_files(project, experiment_id=ident)}
     intent['budget'] = {'cycle_id': 'historical', 'authorization_sha256': 'a' * 64,
                         'task_queue': 'ergora-training-budget-v1'}
-    write(prefix / 'alpha.intent.json', intent)
+    if controller is not None:
+        plan, admission, ready, binding = controller
+        intent['budget'] = binding
+        intent['observation'] = plan['admissions'][binding['controller']['ordinal']]['observation']
+    write(prefix / (ident + '.intent.json'), intent)
     sha = training_cycles._sha
     start = {'schema_version': 1, 'intent_sha256': sha(intent), 'workflow_id': intent['workflow_id'],
              'spec_sha256': sha(intent['observation']['experiment']['spec'])}
     receipt = {**start, 'run_id': 'historical-run'}
-    write(prefix / 'alpha.attempt.json', start)
-    write(prefix / 'alpha.result.json', receipt)
+    write(prefix / (ident + '.attempt.json'), start)
+    write(prefix / (ident + '.result.json'), receipt)
     owner = {'schema_version': 2, 'intent_sha256': sha(intent), 'authorization_sha256': 'a' * 64,
         'pid': 1, 'start_ticks': '0', 'boot_id': '0' * 36, 'context_sha256': 'b' * 64,
         'execution_capability': {'protocol': PROTOCOL, 'admission_protocol': reference.TRAINING_PROTOCOL,
             'descriptor_sha256': 'c' * 64, 'installation': definition['execution']['installation'],
             'native_python': str(Path(definition['execution']['installation']) / '.venv/bin/python'),
             'cycle_ready_sha256': 'd' * 64, 'gate_sources': {name: 'e' * 64 for name in GATE_SOURCES}}}
-    write(prefix / 'alpha.budget/owner.json', owner)
-    native = {'schema_version': 1, 'job_id': 'local-perf-alpha',
+    if controller is not None:
+        from ergora.training_execution_protocol import source_capability
+        owner['authorization_sha256'] = admission.authorization['sha256']
+        owner['execution_capability'] = source_capability(Path(definition['execution']['installation']), ready)
+    write(prefix / (ident + '.budget/owner.json'), owner)
+    native = {'schema_version': 1, 'job_id': 'local-perf-' + ident,
         'experiment': intent['observation']['experiment']['spec'],
         'runner': intent['observation']['experiment']['current_runner']}
-    native_sha = write(runtime / 'training/jobs/alpha/request.json', native)
+    native_sha = write(runtime / 'training/jobs' / ident / 'request.json', native)
     request = {'schema_version': 1, 'kind': 'training-execution-request', 'protocol': PROTOCOL,
         'control_home': str(state.root), 'project': 'demo', 'project_revision': intent['project_revision'],
         'registration_sha256': intent['registration_sha256'], 'execution': intent['execution'],
-        'experiment_id': 'alpha', 'job_id': native['job_id'], 'workflow_id': intent['workflow_id'],
+        'experiment_id': ident, 'job_id': native['job_id'], 'workflow_id': intent['workflow_id'],
         'run_id': receipt['run_id'], 'start_intent_sha256': sha(intent), 'start_attempt_sha256': sha(start),
         'start_receipt_sha256': sha(receipt), 'authorization_sha256': 'a' * 64, 'owner_sha256': sha(owner),
         'native_request_sha256': native_sha, 'native_request_semantic_sha256': sha(native),
         'confirmation': True, 'actor_id': 'unix:999:historical-actor'}
+    if controller is not None:
+        request.update(authorization_sha256=admission.authorization['sha256'],
+                       actor_id=admission.authorization['controller']['actor_id'])
     launch = {'schema_version': 1, 'kind': 'training-execution-launch', 'protocol': PROTOCOL,
-        'request_sha256': sha(request), 'owner_sha256': sha(owner), 'authorization_sha256': 'a' * 64,
+        'request_sha256': sha(request), 'owner_sha256': sha(owner), 'authorization_sha256': request['authorization_sha256'],
         'clock_sha256': 'f' * 64, 'launch_id': '1' * 32, 'execution_phase_id': '2' * 32}
     supervisor = {'pid': 2, 'start_ticks': '1', 'boot_id': '0' * 36}
     executor = {'pid': 3, 'start_ticks': '2', 'boot_id': '0' * 36}
@@ -97,9 +112,9 @@ def historical_execution(prepared):
         'request_sha256': sha(request), 'launch_sha256': sha(launch), 'attempt_sha256': sha(attempt),
         'ack_sha256': sha(ack), 'supervisor': supervisor,
         'process': {'status': 'cancelled', 'returncode': -9,
-            'output': str(prefix / ('alpha.budget/observations/execute-' + launch['execution_phase_id']) / 'helper')},
+            'output': str(prefix / (ident + '.budget/observations/execute-' + launch['execution_phase_id']) / 'helper')},
         'reaped_at': datetime.now(timezone.utc).isoformat()}
-    folder = runtime / 'training/jobs/alpha/managed-execution'
+    folder = runtime / 'training/jobs' / ident / 'managed-execution'
     for name, value in [('request', request), ('launch', launch), ('attempt', attempt), ('ack', ack), ('stopped', stopped)]:
         write(folder / (name + '.json'), value)
     return state, definition, runtime, folder
@@ -748,7 +763,8 @@ def save_controller_binding(admission):
     return {'cycle_id': admission.authorization['cycle_id'],
         'authorization_sha256': admission.authorization['sha256'], 'task_queue': BUDGET_TASK_QUEUE,
         'controller': {'protocol': intent['protocol'], 'workflow_id': intent['workflow_id'],
-            'run_id': receipt['run_id'], 'intent_sha256': attempt['intent_sha256'], 'ordinal': 0}}
+            'run_id': receipt['run_id'], 'intent_sha256': attempt['intent_sha256'], 'ordinal': 0,
+            **({'predecessor': None} if intent['protocol'] == 'ergora-training-cycle-v2' else {})}}
 
 
 @pytest.fixture
@@ -3065,3 +3081,478 @@ def test_cycle_sdk_capacity_failure_finishes_peers_and_keeps_original_bytes(
             assert 'ref' not in writer['result']
         else:
             assert hashlib.sha256(raw).hexdigest() == writer['result']['ref']['sha256']
+
+
+@pytest.fixture
+def round_candidate(controller_admission, prepared, cycle_operation_fault, monkeypatch, tmp_path):
+    """Synthetic v2 source records, never a schema3 live start or trained result."""
+    from ergora import reference_training_worker as worker, training_cycles
+
+    state, _, _, authorized, admission = controller_admission
+    assert authorized['authorization']['schema_version'] == 3
+    plan, authorization, ready = training_cycles._load(state.root, 'demo', 'controller', admission.directory)
+    binding = save_controller_binding(admission)
+    binding['controller']['predecessor'] = None
+    installation = Path(authorization['execution']['installation'])
+    for part in ('upstream', 'upstream/temporal', 'upstream/platform', 'local'):
+        monkeypatch.syspath_prepend(str(installation / part))
+    monkeypatch.setenv('AGENTFLOW_CONFIG_DIR', authorization['execution']['config_directory'])
+    monkeypatch.setenv('AGENTFLOW_STATE_DIR', authorization['execution']['state_directory'])
+    _, _, runtime, prefix, _, _ = prepared
+
+    def prepare_round(ordinal, predecessor):
+        source_binding = {**binding, 'controller': {**binding['controller'], 'ordinal': ordinal, 'predecessor': predecessor}}
+        ident = plan['definition']['candidates'][ordinal]['experiment_id']
+        synthetic_execution(prepared, controller=(plan, admission, ready, source_binding), ident=ident)
+        archive = subprocess.run([sys.executable, '-P', str(Path(__file__).parent / 'fixtures/training_evidence_archive.py')],
+            input=json.dumps({'runtime': str(runtime), 'prefix': str(prefix), 'preserve_manifest': True, 'experiment_id': ident}),
+            env={**os.environ, 'PYTHONPATH': str(installation / 'upstream')}, capture_output=True, text=True, timeout=30)
+        assert archive.returncode == 0, archive.stderr
+    prepare_round(0, None)
+    cycle_operation_fault('round-accepted')
+    snapshot = worker._cycle_snapshot(plan, authorization)
+
+    def operation(mode='collect-round', *, attempt=1, window=None, ordinal=0):
+        context = {'workflow_input': admission.controller_intent()['workflow_input'], 'service_namespace': 'default',
+            'activity_source': {'workflow_id': binding['controller']['workflow_id'],
+                'workflow_run_id': binding['controller']['run_id'], 'workflow_type': 'TrainingCycleWorkflowV2',
+                'workflow_namespace': 'default', 'namespace': 'default', 'activity_id': 'candidate-' + str(ordinal) + '-' + (
+                    'collect' if mode == 'collect-round' else 'reconcile'),
+                'activity_type': 'ergora.training_cycle.' + mode + '.v3',
+                'task_queue': 'ergora-training-cycle-v2', 'attempt': attempt}}
+        return worker._CycleOperation(state.root, 'demo', 'controller', authorization['sha256'], mode,
+            snapshot=snapshot, ordinal=ordinal, start_context={'controller': json.loads((runtime / (
+                'ergora/training-submissions/' + plan['definition']['candidates'][ordinal]['experiment_id'] + '.intent.json'
+                )).read_bytes())['budget']['controller']}, activity_context=context, window=window)
+    return state, admission, plan, operation, prepare_round
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original S/H and fd durability require Linux')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
+def test_round_internal_collect_and_reconcile_keep_archive_and_execution_closed(round_candidate, cycle_operation_fault):
+    import asyncio
+    from ergora import training_execution_protocol as protocol, reference_training_worker as worker
+
+    state, admission, plan, operation, _ = round_candidate
+    first = operation()
+    result = asyncio.run(first.run())
+    assert result['status'] == 'observed', result
+    measurement = result['facts']['measurement']
+    assert measurement['measurement_state'] == 'accepted' and measurement['index_state'] == 'durable'
+    assert measurement['continuation_ready'] is True
+    acceptance = measurement['acceptance']
+    saved = protocol.read_round_observation(acceptance['observation'], home=state.root, operation_id=first.identity['operation_id'])
+    assert saved['evidence']['archive']['artifact_content_status'] == 'not_read'
+    assert saved['execution']['durable_stop_confirmed'] is True
+    original_path = Path(acceptance['observation']['path'])
+    original_raw = original_path.read_bytes()
+    forged = deepcopy(saved)
+    forged['facts']['candidate']['manifest_sha256'] = 'f' * 64
+    forged_raw = (json.dumps(forged, ensure_ascii=False, sort_keys=True,
+                            separators=(',', ':'), allow_nan=False) + '\n').encode('utf-8')
+    forged_ref = {'path': str(original_path), 'bytes': len(forged_raw),
+                  'sha256': hashlib.sha256(forged_raw).hexdigest()}
+    (state.root.parent / 'tampered-observation.json').write_bytes(forged_raw)
+    (state.root.parent / 'tampered-reference.json').write_text(json.dumps(forged_ref, indent=2) + '\n')
+    try:
+        original_path.write_bytes(forged_raw)
+        with pytest.raises(ValueError, match='candidate.*binding'):
+            protocol.read_round_observation(forged_ref, home=state.root, operation_id=first.identity['operation_id'])
+    finally:
+        original_path.write_bytes(original_raw)
+    index = admission.folder / 'rounds/0/rounds.json'
+    original = index.read_bytes()
+    capture = {item['reader']: item['value'] for item in (
+        json.loads(line) for line in (first.output / 'helper/stderr.txt').read_bytes().splitlines())
+        if item['reader'].startswith('index.')}
+    native = json.loads(original)['rounds'][0]['native']
+    assert capture == {'index.' + reader: native[key] for reader, key in (
+        ('inspect', 'records'), ('evidence', 'evidence'), ('submission', 'submission'), ('approval', 'approval'))}
+    again = asyncio.run(operation('reconcile-round', attempt=2).run())
+    assert again['facts']['measurement']['continuation_ready'] is True, again
+    assert index.read_bytes() == original
+    assert again['facts']['measurement']['acceptance']['source_operation_id'] != acceptance['source_operation_id']
+    operation_record, intent, _ = worker._cycle_target(plan, admission, 0)
+    with pytest.raises(ValueError, match='Schema3 controller execution is not enabled'):
+        worker.BudgetedStart(operation_record, intent).source()
+    assert set(protocol.CYCLE_ACTIVITY_NAMES).isdisjoint(protocol.CYCLE_MEASUREMENT_MODES)
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original supervised round observation requires Linux')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
+def test_round_four_original_facts_must_agree(round_candidate, cycle_operation_fault):
+    import asyncio
+
+    _, _, _, operation, _ = round_candidate
+    first = asyncio.run(operation().run())
+    assert first['facts']['measurement']['continuation_ready'] is True, first
+    for fault, expected in [('round-pending', 'pending'), ('round-evidence', 'unknown'),
+                            ('round-job', None), ('round-binding', None),
+                            ('round-memo', None), ('round-run', None), ('round-namespace', None),
+                            ('round-undurable-stop', 'pending'), ('round-outcome-uri', 'unknown'),
+                            ('round-outcome', 'accepted')]:
+        cycle_operation_fault(fault)
+        result = asyncio.run(operation('reconcile-round').run())
+        measurement = result.get('facts', {}).get('measurement')
+        if expected is None:
+            assert result['status'] == 'unknown' and (measurement is None or not measurement['continuation_ready']), (fault, result)
+        else:
+            assert measurement is not None, (fault, result)
+            assert measurement['measurement_state'] == expected, (fault, result)
+            assert measurement['continuation_ready'] is (expected == 'accepted'), (fault, result)
+            assert (measurement['acceptance'] is not None) is (expected == 'accepted')
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original supervised round observation requires Linux')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
+@pytest.mark.parametrize('fault,expected', [('round-no-archive', 'unknown'), ('round-rejected', 'rejected'),
+                                           ('round-failed', 'rejected'), ('round-baseline-drift', 'unknown')])
+def test_round_final_native_index_cannot_inherit_preflight_acceptance(round_candidate, cycle_operation_fault, fault, expected):
+    import asyncio
+    from ergora import training_rounds
+
+    _, admission, _, operation, _ = round_candidate
+    cycle_operation_fault(fault)
+    result = asyncio.run(operation().run())
+    measurement = result['facts']['measurement']
+    assert measurement['measurement_state'] == expected and measurement['continuation_ready'] is False, result
+    assert measurement['acceptance'] is None
+    assert training_rounds.read(admission.folder / 'rounds/0')['report']['coverage']['execution_success'] is None
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original supervised H diagnostics require Linux')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
+@pytest.mark.parametrize('fault', ['round-reader-error', 'round-create-error', 'round-read-error',
+                                  'round-index-fsync', 'round-index-replace', 'round-observation-fsync'])
+def test_round_retains_each_full_reader_before_later_failure(round_candidate, cycle_operation_fault, monkeypatch, fault):
+    import asyncio
+
+    _, admission, _, operation, _ = round_candidate
+    detail_size = 1_100_000
+    monkeypatch.setenv('ERGORA_TEST_ROUND_DETAIL', str(detail_size))
+    cycle_operation_fault(fault)
+    current = operation()
+    result = asyncio.run(current.run())
+    assert result['status'] == 'unknown', result
+    assert not result.get('facts', {}).get('measurement', {}).get('continuation_ready')
+    stderr = current.output / 'helper/stderr.txt'
+    retained = [json.loads(line) for line in stderr.read_bytes().splitlines()]
+    runtime = next(item['value'] for item in retained if item['reader'] == 'runtime')
+    assert runtime['status']['last_signal_rejection'] == '独特 RPC 原值 🧪' + 'x' * detail_size
+    readers = {item['reader'] for item in retained}
+    assert {'execution', 'runtime', 'native'} <= readers
+    if fault != 'round-reader-error':
+        assert 'evidence' in readers
+    assert result['operation_stopped'] is True and result['supervisor_returncode'] == 0
+    if fault in ('round-index-fsync', 'round-index-replace'):
+        assert result['facts']['measurement']['index_state'] == 'published_unconfirmed'
+        assert (admission.folder / 'rounds/0/rounds.json').is_file()
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original supervised index capture requires Linux')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
+@pytest.mark.parametrize('reader', ['submission', 'approval'])
+def test_round_capture_retains_fresh_internal_reads_before_later_reader_failure(
+        round_candidate, cycle_operation_fault, reader):
+    import asyncio
+
+    _, admission, _, operation, _ = round_candidate
+    markers = cycle_operation_fault('round-capture-' + reader + '-error')
+    current = operation()
+    result = asyncio.run(current.run())
+    assert result['status'] == 'unknown', result
+    measurement = result.get('facts', {}).get('measurement', {})
+    assert not measurement.get('continuation_ready')
+    assert measurement.get('acceptance') is None and measurement.get('prefix') is None
+    assert not (admission.folder / 'rounds/0').exists()
+    assert json.loads((markers / 'round-capture-failed').read_bytes()) == {'reader': reader}
+    retained = [json.loads(line) for line in (current.output / 'helper/stderr.txt').read_bytes().splitlines()]
+    capture = {item['reader']: item['value'] for item in retained if item['reader'].startswith('index.')}
+    for completed in ('inspect', 'evidence', *(['submission'] if reader == 'approval' else [])):
+        expected = json.loads((markers / ('round-capture-' + completed)).read_bytes())
+        assert capture['index.' + completed] == expected
+    assert capture['index.evidence']['archive']['gate_result']['limitation'] == '刚返回 index evidence 🧪' + 'y' * 1_100_000
+    preflight = next(item['value'] for item in retained if item['reader'] == 'evidence')
+    assert preflight != capture['index.evidence']
+    assert 'index.' + reader not in capture
+    assert result['operation_stopped'] is True and result['supervisor_returncode'] == 0
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original SDK history and S/H require Linux')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
+def test_round_only_original_collect_opportunity_may_publish(round_candidate, cycle_operation_fault):
+    import asyncio
+
+    _, admission, _, operation, _ = round_candidate
+    destination = admission.folder / 'rounds/0'
+    for fault in ('round-no-collect', 'round-history-input', 'round-duplicate-collect',
+                  'round-history-count', 'round-history-bytes', 'round-history-decode'):
+        cycle_operation_fault(fault)
+        result = asyncio.run(operation().run())
+        assert result['status'] == 'unknown' and not destination.exists(), (fault, result)
+    cycle_operation_fault('round-accepted')
+    retried = asyncio.run(operation(attempt=2).run())
+    assert retried['status'] == 'unknown' and not destination.exists(), retried
+    missing = asyncio.run(operation('reconcile-round', attempt=2).run())
+    assert missing['status'] == 'unknown' and not destination.exists(), missing
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original S/H deadline and reaper require Linux')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
+def test_round_original_deadline_keeps_available_full_diagnostics(round_candidate, cycle_operation_fault, monkeypatch):
+    import asyncio
+    from ergora import budget_clock
+
+    _, admission, _, operation, _ = round_candidate
+    markers = cycle_operation_fault('round-blocked-reader')
+    monkeypatch.setenv('ERGORA_TEST_ROUND_DETAIL', '1100000')
+    boot, ticks = budget_clock._clock()
+    current = operation(window={'boot_id': boot, 'started_ns': ticks, 'deadline_ns': ticks + 3_000_000_000})
+    result = asyncio.run(current.run())
+    assert result['status'] == 'unknown' and result['operation_stopped'] is True, result
+    assert (markers / 'round-evidence-reader').is_file()
+    assert not recorded_process_is_active(json.loads((markers / 'round-helper-entered').read_bytes()))
+    values = [json.loads(line) for line in (current.output / 'helper/stderr.txt').read_bytes().splitlines()]
+    assert any(item['reader'] == 'runtime' and len(item['value']['status']['last_signal_rejection']) > 1_100_000 for item in values)
+    assert not (admission.folder / 'rounds/0').exists()
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original H writer and explicit 10 MB reader require Linux')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
+def test_round_complete_observation_capacity_uses_utf8_and_lf(round_candidate, cycle_operation_fault, monkeypatch):
+    import asyncio
+    from ergora import training_execution_protocol as protocol
+
+    state, _, _, operation, _ = round_candidate
+    assert asyncio.run(operation().run())['facts']['measurement']['continuation_ready'] is True
+    base = asyncio.run(operation('reconcile-round').run())
+    base_bytes = base['facts']['measurement']['acceptance']['observation']['bytes']
+    attempts = []
+    for target in (protocol.ARTIFACT_LIMIT - 1, protocol.ARTIFACT_LIMIT, protocol.ARTIFACT_LIMIT + 1):
+        detail_size = target - base_bytes
+        for probe in range(16):
+            # Only the external RPC string changes. The complete real budget
+            # projection can vary a byte with sampled float formatting; feed
+            # that observed difference back into a new existing-only operation.
+            monkeypatch.setenv('ERGORA_TEST_ROUND_DETAIL', str(detail_size))
+            current = operation('reconcile-round', attempt=2)
+            result = asyncio.run(current.run())
+            raw = (current.output / 'helper/observation.json').read_bytes()
+            value = protocol.decode(raw)
+            attempts.append({'target': target, 'probe': probe, 'detail_bytes': detail_size,
+                'actual_bytes': len(raw), 'operation_id': current.identity['operation_id'],
+                'budget': value['facts']['budget'], 'window': current.payload['bootstrap']})
+            (state.root.parent / 'boundary-attempts.json').write_text(json.dumps(attempts, indent=2) + '\n')
+            if len(raw) == target:
+                break
+            detail_size += target - len(raw)
+        else:
+            pytest.fail('Real sampled observation lengths did not reach the requested boundary: ' + repr(attempts))
+        assert raw.endswith(b'\n') and not raw.endswith(b'\n\n')
+        value = protocol.decode(raw)
+        assert value['runtime']['status']['last_signal_rejection'].startswith('独特 RPC 原值 🧪')
+        if target <= protocol.ARTIFACT_LIMIT:
+            acceptance = result['facts']['measurement']['acceptance']
+            assert result['facts']['measurement']['continuation_ready'] is True, result
+            assert protocol.read_round_observation(acceptance['observation'], home=state.root,
+                operation_id=current.identity['operation_id']) == value
+        else:
+            assert result['status'] == 'capacity_exceeded' and 'facts' not in result, result
+            ref = {'path': str(current.output / 'helper/observation.json'), 'bytes': len(raw),
+                   'sha256': hashlib.sha256(raw).hexdigest()}
+            with pytest.raises(ValueError, match='capacity'):
+                protocol.read_round_observation(ref, home=state.root, operation_id=current.identity['operation_id'])
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Complete original prefix reauthentication runs in H')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('cycle_selection', [3], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 40}], indirect=True)
+def test_round_every_early_prefix_and_original_predecessor_remain_required(round_candidate, cycle_operation_fault):
+    import asyncio
+    from ergora import training_execution_protocol as protocol, training_rounds
+
+    _, admission, _, operation, prepare = round_candidate
+    first = asyncio.run(operation().run())
+    assert first['facts']['measurement']['continuation_ready'] is True, first
+    predecessor = {key: first['facts']['measurement'][key] for key in ('prefix', 'acceptance')}
+    prepare(1, predecessor)
+    second = asyncio.run(operation(ordinal=1).run())
+    assert second['facts']['measurement']['continuation_ready'] is True, second
+    prepare(2, {key: second['facts']['measurement'][key] for key in ('prefix', 'acceptance')})
+    earliest = admission.folder / 'rounds/0/rounds.json'
+    original = earliest.read_bytes()
+    report = training_rounds.read(earliest.parent)['report']
+    report['rounds'][0]['annotation']['change'] = 'Changed early original annotation'
+    content = {key: value for key, value in report['rounds'][0].items() if key != 'sha256'}
+    report['rounds'][0]['sha256'] = protocol.round_content_sha(content)
+    earliest.write_bytes(protocol.encode_round_content(report))
+    assert training_rounds.read(earliest.parent)['report']['rounds'][0]['annotation']['change'] != 'Synthetic alpha'
+    try:
+        result = asyncio.run(operation(ordinal=2).run())
+        assert result['status'] == 'unknown' and not (admission.folder / 'rounds/2').exists(), result
+    finally:
+        earliest.write_bytes(original)
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original S/H result loss and existing-only recovery require Linux')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
+def test_round_reply_loss_reconciles_and_partial_target_never_creates(round_candidate, cycle_operation_fault):
+    import asyncio
+
+    _, admission, _, operation, _ = round_candidate
+    destination = admission.folder / 'rounds/0'
+    destination.mkdir(parents=True)
+    cycle_operation_fault('round-create-error')
+    partial = asyncio.run(operation('reconcile-round').run())
+    assert partial['status'] == 'unknown' and list(destination.iterdir()) == [], partial
+    destination.rmdir()
+    markers = cycle_operation_fault('round-reply-loss')
+    lost = asyncio.run(operation().run())
+    assert lost['status'] == 'unknown' and lost['operation_stopped'] is True, lost
+    assert (markers / 'round-reply-lost').is_file()
+    raw = (destination / 'rounds.json').read_bytes()
+    cycle_operation_fault('round-create-error')
+    reconciled = asyncio.run(operation('reconcile-round', attempt=2).run())
+    assert reconciled['facts']['measurement']['continuation_ready'] is True, reconciled
+    assert (destination / 'rounds.json').read_bytes() == raw
+    assert not (markers / 'round-create').exists()
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original H source and irreversible stop checks require Linux')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
+@pytest.mark.parametrize('fault', ['round-source-drift', 'round-stop-after-observation'])
+def test_round_final_source_and_stop_gate_cannot_release_acceptance(round_candidate, cycle_operation_fault, fault):
+    import asyncio
+
+    _, admission, _, operation, _ = round_candidate
+    descriptor = Path(admission.authorization['execution']['installation']) / 'ergora-native-runtime.json'
+    original = descriptor.read_bytes()
+    cycle_operation_fault(fault)
+    try:
+        result = asyncio.run(operation().run())
+        assert result['status'] == 'unknown', result
+        assert not result.get('facts', {}).get('measurement', {}).get('continuation_ready')
+        if fault == 'round-source-drift':
+            assert descriptor.read_bytes() != original
+        else:
+            assert admission.stop.is_file()
+    finally:
+        descriptor.write_bytes(original)
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original final index and parent RPC interleaving requires Linux')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
+@pytest.mark.parametrize('fault', ['round-final-index-stop', 'round-final-parent-source', 'round-final-parent-project'])
+def test_round_final_blocking_read_cannot_release_stale_acceptance(round_candidate, cycle_operation_fault, fault):
+    import asyncio
+
+    state, admission, _, operation, _ = round_candidate
+    markers = cycle_operation_fault(fault)
+    current = operation()
+    descriptor = Path(admission.authorization['execution']['installation']) / 'ergora-native-runtime.json'
+    original_descriptor = descriptor.read_bytes()
+    with state.connect() as db:
+        original_project = db.execute("SELECT document FROM projects WHERE id='demo'").fetchone()[0]
+
+    async def interleave():
+        task = asyncio.create_task(current.run())
+        try:
+            while not (markers / 'round-final-boundary').exists() and not task.done() and not current.expired():
+                await asyncio.sleep(.01)
+            assert (markers / 'round-final-boundary').exists(), await task if task.done() else None
+            index = admission.folder / 'rounds/0/rounds.json'
+            observation = current.output / 'helper/observation.json'
+            original_index, original_observation = index.read_bytes(), observation.read_bytes()
+            if fault == 'round-final-index-stop':
+                stopped = admission.request_stop('Stop while original final index read is returning')
+                assert stopped['stop_visible'] is True and stopped['stop_durable'] is True
+                (markers / 'round-final-stop').write_text(json.dumps(stopped) + '\n')
+            elif fault == 'round-final-parent-source':
+                descriptor.write_bytes(original_descriptor + b'\n')
+            else:
+                project = json.loads(original_project)
+                project['revision'] += 1
+                with state.connect() as db:
+                    db.execute("UPDATE projects SET document=? WHERE id='demo'", (json.dumps(project),))
+            (markers / 'round-final-release').touch()
+            result = await task
+            (markers / 'round-final-result').write_text(json.dumps(result, ensure_ascii=False) + '\n')
+            assert index.read_bytes() == original_index and observation.read_bytes() == original_observation
+            assert result['status'] == 'unknown', result
+            measurement = result.get('facts', {}).get('measurement', {})
+            assert not measurement.get('continuation_ready')
+            assert measurement.get('acceptance') is None and measurement.get('prefix') is None
+            assert result['operation_stopped'] is True and result['supervisor_returncode'] == 0
+        finally:
+            (markers / 'round-final-release').touch()
+            if not task.done():
+                await task
+
+    try:
+        asyncio.run(interleave())
+    finally:
+        descriptor.write_bytes(original_descriptor)
+        with state.connect() as db:
+            db.execute("UPDATE projects SET document=? WHERE id='demo'", (original_project,))
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original deterministic publication path must reject symlink ancestors')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
+def test_round_publication_cannot_escape_through_rounds_directory(round_candidate, tmp_path):
+    import asyncio
+
+    _, admission, _, operation, _ = round_candidate
+    outside = tmp_path / 'outside-index'
+    outside.mkdir()
+    (admission.folder / 'rounds').symlink_to(outside, target_is_directory=True)
+    result = asyncio.run(operation().run())
+    assert result['status'] == 'unknown' and list(outside.iterdir()) == [], result
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Complete original new-wire stdout/frame bytes require S/H')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
+def test_round_new_wire_bounds_complete_stdout_and_identity_frame(round_candidate, monkeypatch):
+    import asyncio
+    from ergora import reference_training_worker as worker
+
+    _, _, _, operation, _ = round_candidate
+    marker = '原 RPC 容量 🧪'
+    for boundary in ('stdout', 'frame'):
+        for target in (worker._CYCLE_LIMIT - 1, worker._CYCLE_LIMIT, worker._CYCLE_LIMIT + 1):
+            current = operation()
+            padding = target
+            for _ in range(3):
+                reason = marker + 'x' * padding
+                response = {'status': 'unknown', 'reason': reason}
+                stdout = (json.dumps(response, ensure_ascii=False, allow_nan=False) + '\n').encode('utf-8')
+                response['_stdout_ref'] = {'file': 'helper/stdout.txt', 'bytes': len(stdout), 'sha256': '0' * 64}
+                frame = json.dumps({**current.identity, 'event': 'result', 'result': response},
+                    ensure_ascii=False, allow_nan=False, separators=(',', ':')).encode('utf-8')
+                padding += target - len(stdout if boundary == 'stdout' else frame)
+            monkeypatch.setenv('ERGORA_TEST_ROUND_ERROR_BYTES', str(len((marker + 'x' * padding).encode('utf-8'))))
+            result = asyncio.run(current.run())
+            actual_stdout = (current.output / 'helper/stdout.txt').read_bytes()
+            if boundary == 'stdout':
+                assert len(actual_stdout) == target
+                assert result['status'] == 'capacity_exceeded' and result['operation_stopped'] is True
+            else:
+                assert len(actual_stdout) < worker._CYCLE_LIMIT
+                assert result['status'] == ('unknown' if target <= worker._CYCLE_LIMIT else 'capacity_exceeded')
+                if target <= worker._CYCLE_LIMIT:
+                    assert result['reason'] == marker + 'x' * padding
+                else:
+                    assert current.result_ref['sha256'] == hashlib.sha256(actual_stdout).hexdigest()
