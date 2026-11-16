@@ -1511,6 +1511,10 @@ def authenticate_cycle_candidate(intent: dict, plan: dict, admission: CycleAdmis
     _round_candidate_intent(intent, plan, admission, ordinal)
     current = ExecutionRecords(project, intent['experiment_id'], authorization['control_home'])
     current_owner = current.document(current.budget / 'owner.json', optional=True)
+    intent_path = current.budget.parent / (current.ident + '.intent.json')
+    actual_intent = current.document(intent_path, optional=current_owner is None, limit=16 * LIMIT)
+    if actual_intent is not None:
+        _match(actual_intent, intent, 'Complete original current candidate intent')
     if current_owner is not None:
         owner_record(current_owner)
         if (current_owner['intent_sha256'] != sha(intent)
@@ -1611,6 +1615,8 @@ def authenticate_cycle_candidate(intent: dict, plan: dict, admission: CycleAdmis
     if read_raw(admission.directory / 'cycle.json', ARTIFACT_LIMIT) != raw_plan:
         raise ValueError('Original complete cycle input changed during authentication')
     _round_sources(authorization, ready, current_owner)
+    _match(current.document(intent_path, optional=actual_intent is None, limit=16 * LIMIT), actual_intent,
+           'Complete original current candidate intent')
     active()
     return result
 

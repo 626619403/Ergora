@@ -195,10 +195,24 @@ else:
         mark('round-helper-entered')
         native_root = Path(payload['snapshot']['authorization']['execution']['state_directory'])
         if fault in ('round-final-index-stop', 'round-final-parent-source', 'round-final-parent-project',
-                     'round-final-parent-predecessor'):
+                     'round-final-parent-predecessor', 'round-final-current-intent'):
             observation = (Path(payload['identity']['control_home']) / 'operations/training-cycles'
                            / payload['identity']['operation_id'] / 'helper/observation.json')
-            if fault == 'round-final-index-stop':
+            if fault == 'round-final-current-intent':
+                original_read = protocol.read_raw
+                def final_current_owner_read(path, *args, **kwargs):
+                    value = original_read(path, *args, **kwargs)
+                    caller = sys._getframe(2)
+                    if (Path(path) == native_root / ('ergora/training-submissions/' + selected + '.budget/owner.json')
+                            and caller.f_code is protocol.authenticate_cycle_candidate.__code__
+                            and 'result' in caller.f_locals and observation.exists()
+                            and sys._getframe(3).f_code is worker._round_operation.__code__):
+                        mark('round-final-boundary')
+                        while not (markers / 'round-final-release').exists():
+                            time.sleep(.01)
+                    return value
+                protocol.read_raw = final_current_owner_read
+            elif fault == 'round-final-index-stop':
                 original_read = training_rounds.read
                 def final_index_read(*args, **kwargs):
                     value = original_read(*args, **kwargs)

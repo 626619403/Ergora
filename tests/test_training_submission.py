@@ -3272,6 +3272,26 @@ def test_round_internal_collect_and_reconcile_keep_archive_and_execution_closed(
     operation_record, intent, _ = worker._cycle_target(plan, admission, 0)
     with pytest.raises(ValueError, match='Schema3 controller execution is not enabled'):
         worker.BudgetedStart(operation_record, intent).source()
+    ready = protocol.decode(protocol.read_raw(admission.directory / 'ready.json'))
+    intent_path = operation_record.path('.intent.json')
+    intent_raw = intent_path.read_bytes()
+    try:
+        intent_path.write_bytes(intent_raw + b'\n')
+        assert protocol.authenticate_cycle_candidate(intent, plan, admission, ready) == []
+        intent_path.unlink()
+        with pytest.raises(FileNotFoundError):
+            protocol.authenticate_cycle_candidate(intent, plan, admission, ready)
+    finally:
+        intent_path.write_bytes(intent_raw)
+    unborn_operation, existing = worker._cycle_submission(plan, admission, 1)
+    assert existing is None
+    unborn = {**unborn_operation.identity, 'project_revision': intent['project_revision'], 'operation_id': 'f' * 32,
+        'observation': plan['admissions'][1]['observation'], 'budget': {**intent['budget'],
+            'controller': {**intent['budget']['controller'], 'ordinal': 1,
+                'predecessor': {key: measurement[key] for key in ('prefix', 'acceptance')}}}}
+    originals = protocol.authenticate_cycle_candidate(unborn, plan, admission, ready)
+    assert len(originals) == 1 and originals[0][2]['experiment_id'] == intent['experiment_id']
+    assert not unborn_operation.path('.intent.json').exists() and not unborn_operation.path('.budget/owner.json').exists()
     assert set(protocol.CYCLE_ACTIVITY_NAMES).isdisjoint(protocol.CYCLE_MEASUREMENT_MODES)
 
 
@@ -3684,13 +3704,13 @@ def test_round_final_source_and_stop_gate_cannot_release_acceptance(round_candid
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)
 @pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
 @pytest.mark.parametrize('fault', ['round-final-index-stop', 'round-final-parent-source', 'round-final-parent-project',
-                                 'round-final-parent-predecessor'])
+                                 'round-final-parent-predecessor', 'round-final-current-intent'])
 def test_round_final_blocking_read_cannot_release_stale_acceptance(round_candidate, cycle_operation_fault, fault):
     import asyncio
 
-    state, admission, _, operation, prepare = round_candidate
+    state, admission, plan, operation, prepare = round_candidate
     ordinal = 0
-    if fault == 'round-final-parent-predecessor':
+    if fault in ('round-final-parent-predecessor', 'round-final-current-intent'):
         first = asyncio.run(operation().run())
         assert first['facts']['measurement']['continuation_ready'] is True, first
         prepare(1, {key: first['facts']['measurement'][key] for key in ('prefix', 'acceptance')})
@@ -3699,6 +3719,9 @@ def test_round_final_blocking_read_cannot_release_stale_acceptance(round_candida
     current = operation(ordinal=ordinal)
     earliest = admission.folder / 'rounds/0/rounds.json'
     original_earliest = earliest.read_bytes() if ordinal else None
+    current_intent = Path(admission.authorization['execution']['state_directory']) / (
+        'ergora/training-submissions/' + plan['definition']['candidates'][ordinal]['experiment_id'] + '.intent.json')
+    original_intent = current_intent.read_bytes()
     descriptor = Path(admission.authorization['execution']['installation']) / 'ergora-native-runtime.json'
     original_descriptor = descriptor.read_bytes()
     with state.connect() as db:
@@ -3721,6 +3744,13 @@ def test_round_final_blocking_read_cannot_release_stale_acceptance(round_candida
                 descriptor.write_bytes(original_descriptor + b'\n')
             elif fault == 'round-final-parent-predecessor':
                 earliest.write_bytes(original_earliest + b'\n')
+            elif fault == 'round-final-current-intent':
+                changed = json.loads(original_intent)
+                changed['operation_id'] = '0' * 32 if changed['operation_id'] != '0' * 32 else '1' * 32
+                current_intent.write_text(json.dumps(changed))
+                (markers / 'round-final-intent-drift').write_text(json.dumps({
+                    'before_sha256': hashlib.sha256(original_intent).hexdigest(),
+                    'after_sha256': hashlib.sha256(current_intent.read_bytes()).hexdigest()}))
             else:
                 project = json.loads(original_project)
                 project['revision'] += 1
@@ -3745,6 +3775,7 @@ def test_round_final_blocking_read_cannot_release_stale_acceptance(round_candida
     finally:
         if original_earliest is not None:
             earliest.write_bytes(original_earliest)
+        current_intent.write_bytes(original_intent)
         descriptor.write_bytes(original_descriptor)
         with state.connect() as db:
             db.execute("UPDATE projects SET document=? WHERE id='demo'", (original_project,))
