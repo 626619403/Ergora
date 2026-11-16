@@ -8,7 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 import uuid
 
-from temporalio.api.common.v1 import Memo, Payloads, WorkflowExecution, WorkflowType
+from temporalio.api.common.v1 import ActivityType, Memo, Payloads, WorkflowExecution, WorkflowType
 from temporalio.api.history.v1 import History, HistoryEvent, WorkflowExecutionStartedEventAttributes
 from temporalio.api.taskqueue.v1 import TaskQueue
 from temporalio.api.workflow.v1 import WorkflowExecutionInfo
@@ -163,3 +163,122 @@ class DispatchService:
             continued_execution_run_id='', initiator=0, attempt=1)
         return GetWorkflowExecutionHistoryResponse(history=History(events=[HistoryEvent(event_id=1,
             workflow_execution_started_event_attributes=started)]))
+
+
+class RoundService(DispatchService):
+    """Only external Temporal responses vary; real SDK protobufs and converters remain."""
+
+    def __init__(self, payload, case):
+        self.payload = payload
+        self.case = case
+        self.workflow_service = self
+        self.config = SimpleNamespace(identity='ergora-round-sdk-contract')
+        identity = payload['identity']
+        self.folder = Path(identity['control_home']) / 'training-cycles' / identity['project'] / identity['cycle_id'] / 'controller'
+        self.intent = json.loads((self.folder / 'intent.json').read_bytes())
+        self.receipt = json.loads((self.folder / 'receipt.json').read_bytes())
+        self.runtime = Path(payload['snapshot']['authorization']['execution']['state_directory'])
+        self.ident = payload['snapshot']['candidates'][identity['ordinal']]['experiment_id']
+        self.start = json.loads((self.runtime / ('ergora/training-submissions/' + self.ident + '.intent.json')).read_bytes())
+        self.native_receipt = json.loads((self.runtime / ('ergora/training-submissions/' + self.ident + '.result.json')).read_bytes())
+
+    def candidate(self, request):
+        if request.execution.workflow_id != self.intent['workflow_id']:
+            self.ident = request.execution.workflow_id.removeprefix('perf-experiment/')
+            self.start = json.loads((self.runtime / ('ergora/training-submissions/' + self.ident + '.intent.json')).read_bytes())
+            self.native_receipt = json.loads((self.runtime / ('ergora/training-submissions/' + self.ident + '.result.json')).read_bytes())
+
+    async def describe_workflow_execution(self, request, **kwargs):
+        from ergora.reference_training_runtime import MEMO_KEY
+        error_bytes = int(os.environ.get('ERGORA_TEST_ROUND_ERROR_BYTES', '0'))
+        if error_bytes:
+            marker = '原 RPC 容量 🧪'
+            raise ValueError(marker + 'x' * (error_bytes - len(marker.encode('utf-8'))))
+        self.candidate(request)
+        parent = request.execution.workflow_id == self.intent['workflow_id']
+        digest = CycleAdmission._sha(self.intent if parent else self.start)
+        if not parent and self.case == 'round-memo':
+            digest = '0' * 64
+        run = self.receipt['run_id'] if parent else self.native_receipt['run_id']
+        if not parent and self.case == 'round-run':
+            run = 'foreign-run'
+        return DescribeWorkflowExecutionResponse(workflow_execution_info=WorkflowExecutionInfo(
+            execution=WorkflowExecution(workflow_id=request.execution.workflow_id, run_id=run),
+            type=WorkflowType(name='TrainingCycleWorkflowV2' if parent else 'ExperimentWorkflow'),
+            memo=Memo(fields={(CYCLE_MEMO_KEY if parent else MEMO_KEY): (await DataConverter.default.encode([digest]))[0]}),
+            first_run_id=run, status=WorkflowExecutionStatus.COMPLETED if not parent and self.case.startswith('round-outcome')
+                else WorkflowExecutionStatus.RUNNING))
+
+    async def get_workflow_execution_history(self, request, **kwargs):
+        from temporalio.api.history.v1 import ActivityTaskScheduledEventAttributes
+        self.candidate(request)
+        parent = request.execution.workflow_id == self.intent['workflow_id']
+        if not parent and request.history_event_filter_type == 2:
+            from dataclasses import asdict
+            from perf_temporal.models import Binding, Outcome
+            from temporalio.api.history.v1 import WorkflowExecutionCompletedEventAttributes
+            result = json.loads((self.runtime / ('training/jobs/' + self.ident + '/result.json')).read_bytes())
+            report = Path(result['gate']['report']).as_uri()
+            if self.case == 'round-outcome-uri':
+                report += '.foreign'
+            outcome = Outcome('RELEASE_EXPIRED', Binding(**self.start['observation']['experiment']['binding']),
+                              'local-perf-' + self.ident, report_uri=report, detail='Original synthetic outcome')
+            return GetWorkflowExecutionHistoryResponse(history=History(events=[HistoryEvent(event_id=5,
+                workflow_execution_completed_event_attributes=WorkflowExecutionCompletedEventAttributes(
+                    result=Payloads(payloads=await DataConverter.default.encode([asdict(outcome)]))))]))
+        if not parent:
+            return GetWorkflowExecutionHistoryResponse(history=History(events=[HistoryEvent(event_id=1,
+                workflow_execution_started_event_attributes=WorkflowExecutionStartedEventAttributes(
+                    input=Payloads(payloads=await DataConverter.default.encode([self.start['observation']['experiment']['spec']]))))]))
+        started = WorkflowExecutionStartedEventAttributes(workflow_type=WorkflowType(name='TrainingCycleWorkflowV2'),
+            task_queue=TaskQueue(name=self.intent['task_queue']),
+            input=Payloads(payloads=await DataConverter.default.encode([self.intent['workflow_input']])),
+            memo=Memo(fields={CYCLE_MEMO_KEY: (await DataConverter.default.encode([CycleAdmission._sha(self.intent)]))[0]}),
+            first_execution_run_id=self.receipt['run_id'], original_execution_run_id=self.receipt['run_id'], attempt=1)
+        events = [HistoryEvent(event_id=1, workflow_execution_started_event_attributes=started)]
+        original = {'workflow_input': self.intent['workflow_input'], 'ordinal': self.payload['identity']['ordinal'],
+                    'predecessor': self.payload['start_context']['controller']['predecessor']}
+        scheduled = ActivityTaskScheduledEventAttributes(activity_id='candidate-' + str(original['ordinal']) + '-collect',
+            activity_type=ActivityType(name='ergora.training_cycle.collect-round.v3'),
+            task_queue=TaskQueue(name=self.intent['task_queue']), input=Payloads(payloads=await DataConverter.default.encode([original])))
+        if self.case == 'round-history-input':
+            original['predecessor'] = {'foreign': True}
+            scheduled.input.CopyFrom(Payloads(payloads=await DataConverter.default.encode([original])))
+        if self.case != 'round-no-collect':
+            events.append(HistoryEvent(event_id=2, activity_task_scheduled_event_attributes=scheduled))
+        if self.case == 'round-duplicate-collect':
+            events.append(HistoryEvent(event_id=3, activity_task_scheduled_event_attributes=scheduled))
+        if self.payload['identity']['mode'] == 'reconcile-round':
+            current = ActivityTaskScheduledEventAttributes(activity_id=self.payload['activity_context']['activity_source']['activity_id'],
+                activity_type=ActivityType(name='ergora.training_cycle.reconcile-round.v3'),
+                task_queue=TaskQueue(name=self.intent['task_queue']), input=Payloads(payloads=await DataConverter.default.encode([original])))
+            events.append(HistoryEvent(event_id=4, activity_task_scheduled_event_attributes=current))
+        if self.case == 'round-history-count':
+            events.extend(HistoryEvent(event_id=index) for index in range(10, 8010))
+        if self.case == 'round-history-bytes':
+            from temporalio.api.common.v1 import Payload
+            from temporalio.api.history.v1 import WorkflowExecutionSignaledEventAttributes
+            events.append(HistoryEvent(event_id=10, workflow_execution_signaled_event_attributes=
+                WorkflowExecutionSignaledEventAttributes(signal_name='request_stop',
+                    input=Payloads(payloads=[Payload(data=b'x' * (8 * 1_048_576))]))))
+        if self.case == 'round-history-decode':
+            events[-1].activity_task_scheduled_event_attributes.input.payloads[0].data = b'{incomplete'
+        return GetWorkflowExecutionHistoryResponse(history=History(events=events))
+
+    async def query_workflow(self, request, **kwargs):
+        from dataclasses import asdict
+        from perf_temporal.models import Binding, Status
+        from temporalio.api.workflowservice.v1 import QueryWorkflowResponse
+        self.candidate(request)
+        binding = self.start['observation']['experiment']['binding']
+        gate_path = self.runtime / ('training/jobs/' + self.ident + '/gate-report.json')
+        gate = json.loads(gate_path.read_bytes()) if gate_path.exists() else None
+        evidence = gate['evidence_sha256'] if gate else None
+        if self.case == 'round-evidence':
+            evidence = 'f' * 64
+        if self.case == 'round-binding':
+            binding = {**binding, 'manifest_sha': 'f' * 64}
+        detail_size = int(os.environ.get('ERGORA_TEST_ROUND_DETAIL', '0'))
+        status = Status('RUNNING' if self.case == 'round-pending' else 'AWAITING_RELEASE', Binding(**binding),
+            'foreign-job' if self.case == 'round-job' else 'local-perf-' + self.ident, evidence, '独特 RPC 原值 🧪' + 'x' * detail_size)
+        return QueryWorkflowResponse(query_result=Payloads(payloads=await DataConverter.default.encode([asdict(status)])))

@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+from collections.abc import Callable
 from pathlib import Path
 import stat
 import tempfile
@@ -40,8 +41,9 @@ def read(directory: Path, *, sha256: str | None = None) -> dict:
 
 
 def create(state: State, project_id: str, definition: dict, destination: Path, *,
-           previous: Path | None = None, previous_sha256: str | None = None) -> dict:
-    """Capture selected original records, preserving an explicitly pinned prefix."""
+           previous: Path | None = None, previous_sha256: str | None = None,
+           on_reader_return: Callable[[str, dict], None] | None = None) -> dict:
+    """Capture original records; an optional observer runs before the next read."""
     contracts.validate(definition, _SCHEMA, 'Training round request')
     if (previous is None) != (previous_sha256 is None):
         raise ValueError('Training round extension requires both the previous directory and its exact SHA256')
@@ -59,9 +61,19 @@ def create(state: State, project_id: str, definition: dict, destination: Path, *
     for requested in definition['rounds']:
         ident = requested['experiment_id']
         records = training.inspect(state, project_id, ident)
+        if on_reader_return is not None:
+            on_reader_return('inspect', records)
         evidence = training.evidence(state, project_id, ident)
+        if on_reader_return is not None:
+            on_reader_return('evidence', evidence)
         submission = training.submission(state, project_id, ident)
-        approval = training.approval(state, project_id, ident) if submission['status'] == 'submitted' else None
+        if on_reader_return is not None:
+            on_reader_return('submission', submission)
+        approval = None
+        if submission['status'] == 'submitted':
+            approval = training.approval(state, project_id, ident)
+            if on_reader_return is not None:
+                on_reader_return('approval', approval)
         content = {'experiment_id': ident, 'parent_sha256': rounds[-1]['sha256'] if rounds else None,
                    'annotation': {key: requested[key] for key in ('change', 'next_bottleneck')},
                    'comparison': execution.round_comparison(records),

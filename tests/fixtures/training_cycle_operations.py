@@ -38,6 +38,14 @@ if stage == 'S':
         return original_run(argv, *args, **kwargs)
 
     processes.run = invoke
+    if fault == 'round-reply-loss' and mode in protocol.CYCLE_MEASUREMENT_MODES:
+        read = training_cycles._read_bytes
+        def lost_round_reply(path, limit):
+            if path.name == 'stdout.txt':
+                mark('round-reply-lost')
+                raise OSError('Original H completed; S reply read was lost')
+            return read(path, limit)
+        training_cycles._read_bytes = lost_round_reply
     if ((fault == 'post-stopped' and mode in ('inspect', 'prepare-controller', 'prepare-candidate'))
             or (fault == 'post-stopped-request' and mode == 'request-execution-candidate')
             or (fault == 'post-stopped-confirm' and mode == 'confirm-candidate')):
@@ -57,6 +65,144 @@ else:
             return {'status': 'unknown', 'reason': 'x' * (32768 if fault == 'oversized-stdout' else 32500)}
 
         worker._cycle_operation = large_result
+    if mode in protocol.CYCLE_MEASUREMENT_MODES:
+        sys.path[:0] = [str(Path(payload['snapshot']['authorization']['execution']['installation']) / part)
+                       for part in ('local', 'upstream/platform', 'upstream/temporal', 'upstream')]
+        sys.path.insert(0, str(Path(__file__).parent))
+        from perf_temporal import connection
+        from temporalio.client import Client
+        from training_controller_service import RoundService
+        from ergora import budget_clock, training, training_rounds
+
+        async def round_connect():
+            return Client(RoundService(payload, fault), namespace='foreign' if fault == 'round-namespace' else 'default')
+
+        connection.connect = round_connect
+        mark('round-helper-entered')
+        native_root = Path(payload['snapshot']['authorization']['execution']['state_directory'])
+        if fault in ('round-final-index-stop', 'round-final-parent-source', 'round-final-parent-project'):
+            observation = (Path(payload['identity']['control_home']) / 'operations/training-cycles'
+                           / payload['identity']['operation_id'] / 'helper/observation.json')
+            if fault == 'round-final-index-stop':
+                original_read = training_rounds.read
+                def final_index_read(*args, **kwargs):
+                    value = original_read(*args, **kwargs)
+                    if sys._getframe(1).f_code is worker._round_operation.__code__ and observation.exists():
+                        mark('round-final-boundary')
+                        while not (markers / 'round-final-release').exists():
+                            time.sleep(.01)
+                    return value
+                training_rounds.read = final_index_read
+            else:
+                original_describe = RoundService.describe_workflow_execution
+                async def final_parent_describe(self, request, **kwargs):
+                    value = await original_describe(self, request, **kwargs)
+                    if request.execution.workflow_id == self.intent['workflow_id'] and observation.exists():
+                        mark('round-final-boundary')
+                        while not (markers / 'round-final-release').exists():
+                            await worker.asyncio.sleep(.01)
+                    return value
+                RoundService.describe_workflow_execution = final_parent_describe
+        selected = payload['snapshot']['candidates'][payload['identity']['ordinal']]['experiment_id']
+        job = native_root / 'training/jobs' / selected
+        if fault in ('round-no-archive', 'round-rejected', 'round-failed'):
+            result = json.loads((job / 'result.json').read_bytes())
+            if fault == 'round-rejected':
+                gate = json.loads((job / 'gate-report.json').read_bytes())
+                gate['passed'] = False
+                raw_gate = (json.dumps(gate, ensure_ascii=False, indent=2) + '\n').encode()
+                (job / 'gate-report.json').write_bytes(raw_gate)
+                import hashlib
+                result['gate']['report_sha256'] = hashlib.sha256(raw_gate).hexdigest()
+            else:
+                result.pop('gate')
+                if fault == 'round-failed':
+                    result['state'] = 'FAILED'
+            (job / 'result.json').write_text(json.dumps(result))
+        if fault in ('round-baseline-drift', 'round-source-drift'):
+            create = training_rounds.create
+            def changed_index(*args, **kwargs):
+                if fault == 'round-baseline-drift':
+                    path = native_root / ('training/projects/' + payload['identity']['project'] + '/perf/baseline.json')
+                    baseline = json.loads(path.read_bytes())
+                    baseline['baseline_id'] += '-drift'
+                    path.write_text(json.dumps(baseline))
+                value = create(*args, **kwargs)
+                if fault == 'round-source-drift':
+                    path = Path(payload['snapshot']['authorization']['execution']['installation']) / 'ergora-native-runtime.json'
+                    path.write_bytes(path.read_bytes() + b'\n')
+                return value
+            training_rounds.create = changed_index
+        if fault == 'round-stop-after-observation':
+            validate = protocol.validate_sources
+            calls = 0
+            def stopped_sources(capability):
+                global calls
+                validate(capability)
+                calls += 1
+                if calls == 4:
+                    directory = native_root.parents[0] / 'control/training-cycles/demo/controller'
+                    protocol.CycleAdmission(directory, payload['snapshot']['authorization']).request_stop('Stop at final observation gate')
+            protocol.validate_sources = stopped_sources
+        if fault == 'round-undurable-stop':
+            synchronize = os.fsync
+            def stopped_fsync(descriptor):
+                path = Path('/proc/self/fd/' + str(descriptor)).resolve()
+                if path.name == 'stopped.json' and path.parent.name == 'managed-execution':
+                    raise OSError('Original stopped file synchronization failed')
+                return synchronize(descriptor)
+            os.fsync = stopped_fsync
+        if fault in ('round-reader-error', 'round-blocked-reader'):
+            evidence = training.evidence
+            def unavailable_evidence(*args, **kwargs):
+                mark('round-evidence-reader')
+                if fault == 'round-blocked-reader':
+                    time.sleep(60)
+                raise ValueError('Injected later evidence reader failure after complete RPC detail')
+            training.evidence = unavailable_evidence
+        if fault == 'round-create-error':
+            def unavailable_create(*args, **kwargs):
+                mark('round-create')
+                raise ValueError('Injected original index create failure')
+            training_rounds.create = unavailable_create
+        if fault in ('round-capture-submission-error', 'round-capture-approval-error'):
+            # Keep the original index owner and its real readers. Fail only the
+            # later capture read, after earlier complete values have returned.
+            capture_code = training_rounds.create.__code__
+            def capture_reader(name, original):
+                def read(*args, **kwargs):
+                    capturing = sys._getframe(1).f_code is capture_code
+                    if capturing and fault == 'round-capture-' + name + '-error':
+                        mark('round-capture-failed', {'reader': name})
+                        raise ValueError('Injected later original capture ' + name + ' failure')
+                    value = original(*args, **kwargs)
+                    if capturing:
+                        if name == 'evidence':
+                            value['archive']['gate_result']['limitation'] = '刚返回 index evidence 🧪' + 'y' * 1_100_000
+                        mark('round-capture-' + name, value)
+                    return value
+                return read
+            for name in ('inspect', 'evidence', 'submission', 'approval'):
+                setattr(training, name, capture_reader(name, getattr(training, name)))
+        if fault == 'round-read-error':
+            def unavailable_read(*args, **kwargs):
+                mark('round-read')
+                raise ValueError('Injected original index read failure')
+            training_rounds.read = unavailable_read
+        if fault in ('round-index-fsync', 'round-index-replace', 'round-observation-fsync'):
+            synchronize = os.fsync
+            def round_fsync(descriptor):
+                path = Path('/proc/self/fd/' + str(descriptor)).resolve()
+                if path.name == ('observation.json' if fault == 'round-observation-fsync' else 'rounds.json'):
+                    mark(fault)
+                    if fault == 'round-index-replace':
+                        substitute = path.with_name('replacement')
+                        substitute.write_bytes(path.read_bytes())
+                        substitute.replace(path)
+                    else:
+                        raise OSError('Injected original artifact fsync failure')
+                return synchronize(descriptor)
+            os.fsync = round_fsync
     if mode in protocol.CYCLE_CANDIDATE_MODES and os.environ.get('ERGORA_TEST_TRAINING_SERVICE'):
         mark('candidate-helper-entered')
         sys.path[:0] = [str(Path(payload['snapshot']['authorization']['execution']['installation']) / part)

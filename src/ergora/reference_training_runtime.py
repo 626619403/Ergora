@@ -123,6 +123,62 @@ async def lookup_controller_submission(client, intent: dict, *, run_id: str | No
     return handle, description
 
 
+async def authenticate_round_collection(client, intent: dict, binding: dict, request: dict,
+                                        context: dict, *, timeout: float):
+    """Authenticate the single original collect command, consuming the full fixed history."""
+    from temporalio.api.history.v1 import History
+    from temporalio.client import WorkflowExecutionStatus
+    from . import training_execution_protocol as protocol
+
+    action = ('collect-round' if context['activity_source']['activity_type'] ==
+              'ergora.training_cycle.collect-round.v3' else 'reconcile-round')
+    protocol.validate_cycle_activity_request(request, action)
+    protocol.validate_cycle_activity_context(context, measurement_action=action)
+    source = context['activity_source']
+    if (client.namespace != context['service_namespace'] or request['workflow_input'] != intent['workflow_input']
+            or source['workflow_id'] != binding['workflow_id'] or source['workflow_run_id'] != binding['run_id']
+            or action == 'collect-round' and source['attempt'] != 1):
+        raise ValueError('Round collection differs from its original controller or first attempt')
+    async with asyncio.timeout(timeout):
+        found = await lookup_controller_submission(client, intent, run_id=binding['run_id'], timeout=timeout)
+        if found is None or found[1].status != WorkflowExecutionStatus.RUNNING:
+            raise ValueError('Round collection requires its authenticated original RUNNING controller')
+        count, size, collects, current = 0, 0, 0, 0
+        collect_id = 'candidate-' + str(request['ordinal']) + '-collect'
+        async for event in found[0].fetch_history_events(rpc_timeout=timedelta(seconds=timeout)):
+            count += 1
+            size += History(events=[event]).ByteSize()
+            if count > 8000 or size > 8 * 1_048_576:
+                raise ValueError('Complete original controller history exceeds round collection capacity')
+            if not event.HasField('activity_task_scheduled_event_attributes'):
+                continue
+            scheduled = event.activity_task_scheduled_event_attributes
+            is_collect = scheduled.activity_id == collect_id
+            is_current = scheduled.activity_id == source['activity_id']
+            # Decode collect commands as well as matching IDs so another command
+            # cannot spend the same round's opportunity under a different ID.
+            collect_type = scheduled.activity_type.name == 'ergora.training_cycle.collect-round.v3'
+            if not (is_collect or is_current or collect_type):
+                continue
+            values = await client.data_converter.decode(scheduled.input.payloads, [dict])
+            same_round = (len(values) == 1 and isinstance(values[0], dict)
+                          and values[0].get('ordinal') == request['ordinal'])
+            if is_collect or collect_type and same_round:
+                collects += 1
+                if (not is_collect or not collect_type or scheduled.task_queue.name != intent['task_queue']
+                        or protocol.CycleAdmission._sha(values) != protocol.CycleAdmission._sha([request])):
+                    raise ValueError('Original collect command differs from its complete frozen request')
+            if is_current:
+                current += 1
+                if (scheduled.activity_type.name != source['activity_type']
+                        or scheduled.task_queue.name != source['task_queue']
+                        or protocol.CycleAdmission._sha(values) != protocol.CycleAdmission._sha([request])):
+                    raise ValueError('Current round activity differs from its original scheduled command')
+        if collects != 1 or current != 1 or action == 'collect-round' and source['activity_id'] != collect_id:
+            raise ValueError('Round collection has no unique original scheduled opportunity')
+        return found
+
+
 async def observe(handle, description, binding, *, timeout: int) -> dict:
     """Read domain facts after the caller has verified the fixed original run."""
     from perf_temporal.workflow import ExperimentWorkflow

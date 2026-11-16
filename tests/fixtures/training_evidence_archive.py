@@ -21,34 +21,41 @@ def write(path, value):
 
 payload = json.load(sys.stdin)
 runtime, prefix = Path(payload['runtime']), Path(payload['prefix'])
+ident = payload.get('experiment_id', 'alpha')
 # Replace the parent fixture's negative scenario before constructing this positive one.
-(runtime / 'training/negative-results/alpha.json').unlink()
-manifest_path = runtime / 'training/manifests/alpha.json'
+(runtime / ('training/negative-results/' + ident + '.json')).unlink(missing_ok=True)
+manifest_path = runtime / ('training/manifests/' + ident + '.json')
 manifest = json.loads(manifest_path.read_bytes())
 comparison = compare_runs.example()
-manifest.update(comparison_tool_sha256=perfctl.digest(Path(perfctl.__file__).with_name('compare_runs.py')),
-                performance_policy={key: comparison[key] for key in ('normalization_source_samples', 'statistics', 'thresholds')})
+if payload.get('preserve_manifest'):
+    comparison.update(manifest['performance_policy'])
+else:
+    manifest.update(comparison_tool_sha256=perfctl.digest(Path(perfctl.__file__).with_name('compare_runs.py')),
+                    performance_policy={key: comparison[key] for key in ('normalization_source_samples', 'statistics', 'thresholds')})
 manifest_sha = write(manifest_path, manifest)
-write(prefix / 'experiments/alpha/manifest.json', manifest)
-spec_path = runtime / 'training/specs/alpha.json'
+write(prefix / ('experiments/' + ident + '/manifest.json'), manifest)
+spec_path = runtime / ('training/specs/' + ident + '.json')
 spec = json.loads(spec_path.read_bytes())
 spec['binding']['manifest_sha'] = manifest_sha
 write(spec_path, spec)
-job = runtime / 'training/jobs/alpha'
+job = runtime / 'training/jobs' / ident
 request = json.loads((job / 'request.json').read_bytes())
-request['experiment'] = spec
-write(job / 'request.json', request)
+if payload.get('preserve_manifest'):
+    assert request['experiment'] == spec
+else:
+    request['experiment'] = spec
+    write(job / 'request.json', request)
 write(job / 'started.json', {'binding': spec['binding'], 'job_id': request['job_id']})
-comparison.update(experiment_id='alpha', manifest_sha256=manifest_sha, workload_fingerprint=manifest['workload_fingerprint'])
+comparison.update(experiment_id=ident, manifest_sha256=manifest_sha, workload_fingerprint=manifest['workload_fingerprint'])
 for pair in comparison['pairs']:
     for arm in ('baseline', 'candidate'):
         pair[arm].update(code_sha=manifest[arm + '_commit'], environment_fingerprint=manifest['environment_fingerprint'],
                          initial_checkpoint_sha256=manifest['initial_checkpoint_sha256'], dataset_manifest_sha256=manifest['dataset_manifest_sha256'],
                          config_sha256=manifest['base_config_sha256' if arm == 'baseline' else 'candidate_config_sha256'])
-bundle = runtime.parent / 'synthetic-evidence-source'
+bundle = runtime.parent / ('synthetic-evidence-source-' + ident)
 write(bundle / 'comparison-input.json', comparison)
 write(bundle / 'comparison-report.json', compare_runs.compare(comparison, perfctl.digest(bundle / 'comparison-input.json')))
-evidence = {'schema_version': 1, 'experiment_id': 'alpha', 'baseline_id': manifest['baseline_id'],
+evidence = {'schema_version': 1, 'experiment_id': ident, 'baseline_id': manifest['baseline_id'],
             'candidate_commit': manifest['candidate_commit'], 'manifest_sha256': manifest_sha, 'synthetic': True,
             'checks': {}, 'comparison': {'input': 'comparison-input.json', 'report': 'comparison-report.json'}}
 
@@ -76,7 +83,7 @@ if os.name == 'nt':
     perfctl.lock = lambda _root: nullcontext()
 captured = io.StringIO()
 with redirect_stdout(captured):
-    perfctl.main(['--root', str(prefix), 'archive', 'alpha', '--bundle', str(bundle / 'evidence.json')])
+    perfctl.main(['--root', str(prefix), 'archive', ident, '--bundle', str(bundle / 'evidence.json')])
 archive_report = json.loads(captured.getvalue())
 gate = {'binding': spec['binding'], 'manifest_sha256': manifest_sha, 'passed': True,
         'evidence_sha256': archive_report['evidence_sha256'], 'summary': 'Synthetic archive; no real training',
