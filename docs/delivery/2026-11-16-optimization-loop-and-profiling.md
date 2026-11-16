@@ -37,3 +37,5 @@
 Profile扩展后已冻结不可变capability快照SHA256 `ac6834155e7591ce7a55d3d8c07546abca048313cfbe3668fd4ba3b31ad4439e`；根通过共享视图核17,632B及19件引用原件bytes／SHA。早先02ad…便利JSON在追加工具项时被作者覆盖，未留独立raw；该缺口如实保留，未重造旧字节。原始工具命令、trace和reader产物保持；后续每版独立以内容身份保存。
 
 优化报告新资源作者片已fresh两轴approve／0，原@1／旧catalog与资源保持。新非editable wheel SHA256 `9743064d74a72d1836570efc58dc66f8d53d00447da7cf0b060160181fdff82e`，core实际site-packages的678runtime bytes／mode、283参考及新入口冻结消费通过，core无SDK。真实原CLI合成报告149.034645秒成功、四字段／静态HTML和两视图5表68单元格一致；原structure模板39.446412秒成功、两轴approve。初次私有runtime verifier把源码AGENTS算入产品导致的错误保留，只修verifier未改wheel。完整新安装／两次原生调用原件正在由同一fresh reviewer最终补核；普通整合／发布和自己的CI仍待，不认证真实模型性能。
+
+上述原件fresh最终补核已完成，两轴approve／0，report新SHA5723d25a…，原前缀保留。根接纳准确源码71510045…并普通合入d1e19a8a…，完整src／preset测试与已验候选相同，scripts／CI／pyproject未改；普通发布／自己的CI接续，不转授旧绿。
