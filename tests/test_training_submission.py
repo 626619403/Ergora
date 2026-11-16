@@ -3189,13 +3189,20 @@ def cycle_budget_root(monkeypatch):
     """Keep the same budget service double for direct and SDK-started roots."""
     launch = subprocess.Popen
     fixture = str(Path(__file__).parent / 'fixtures/training_budget_client.py')
+    entries = []
 
     def root(argv, *args, **kwargs):
-        if argv[-1] == 'from ergora.reference_training_worker import budget_main;budget_main()':
-            argv = [*argv[:-1], f'import runpy;runpy.run_path({fixture!r},run_name="__main__")']
+        if argv[-1] in ('from ergora.reference_training_worker import budget_main;budget_main()',
+                       'from ergora.reference_training_budget import cycle_root_main;cycle_root_main()'):
+            entries.append(argv[-1])
+            light_root = argv[-1] == 'from ergora.reference_training_budget import cycle_root_main;cycle_root_main()'
+            argv = [*argv[:-1], f'import runpy;runpy.run_path({fixture!r},run_name="__main__",'
+                    f'init_globals={{"light_root":{light_root!r}}})']
         return launch(argv, *args, **kwargs)
 
     monkeypatch.setattr(subprocess, 'Popen', root)
+
+    return entries
 
 
 @pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 30}], indirect=True)
@@ -3439,7 +3446,8 @@ def test_cycle_sdk_start_retains_parent_failures(
     cleanup_reason = 'Original root notification is unconfirmed: notification failed'
 
     def spawn(argv, *args, **kwargs):
-        if argv[-1] == 'from ergora.reference_training_worker import budget_main;budget_main()':
+        if argv[-1] in ('from ergora.reference_training_worker import budget_main;budget_main()',
+                       'from ergora.reference_training_budget import cycle_root_main;cycle_root_main()'):
             if failure != 'cleanup':
                 raise OSError(reason)
             child = original_popen(argv, *args, **kwargs)

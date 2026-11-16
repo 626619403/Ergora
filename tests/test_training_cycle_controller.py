@@ -103,7 +103,7 @@ def test_confirm_waits_only_for_its_bound_original_owner(
     assert prepared['status'] == 'new_offer', prepared
     launch = prepared['launch']
     root = subprocess.Popen([sys.executable, '-P', '-c',
-        'from ergora.reference_training_worker import budget_main;budget_main()'], stdin=subprocess.PIPE,
+        'from ergora.reference_training_budget import cycle_root_main;cycle_root_main()'], stdin=subprocess.PIPE,
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         env={**os.environ, **launch['environment']}, start_new_session=True)
     root_identity = processes.identity(root.pid)
@@ -117,7 +117,9 @@ def test_confirm_waits_only_for_its_bound_original_owner(
         while not (markers / 'owner-held').exists() and root.poll() is None and time.monotonic() < until:
             time.sleep(.01)
         assert (markers / 'owner-held').exists(), 'The real root must hold its original initialization lock'
-        assert json.loads((markers / 'owner-held').read_bytes())['root'] == root_identity
+        held = json.loads((markers / 'owner-held').read_bytes())
+        assert held['root'] == root_identity and held['entry'] == 'cycle_root_main'
+        assert held['imports'] == []
         if owner_path.exists():
             owner_raw = owner_path.read_bytes()
         if fault == 'foreign':
@@ -203,6 +205,29 @@ def test_confirm_waits_only_for_its_bound_original_owner(
         finally:
             if root.stdin is not None and not root.stdin.closed:
                 root.stdin.close()
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original controller root checks its exact Linux parent')
+@pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 30}], indirect=True)
+def test_dedicated_cycle_root_refuses_original_schema2_before_birth(
+        cycle_candidate, cycle_selection):
+    import asyncio
+
+    candidate = cycle_candidate()
+    prepared = asyncio.run(candidate.preparation.run())
+    assert prepared['status'] == 'new_offer', prepared
+    launch = prepared['launch']
+    assert launch['request']['protocol'] == 'ergora-training-cycle-root-v1'
+    folder = cycle_selection[2] / 'ergora/training-submissions/alpha.budget'
+    before = {path.relative_to(folder): path.read_bytes() for path in folder.rglob('*') if path.is_file()}
+    child = subprocess.run([sys.executable, '-P', '-c',
+        'from ergora.reference_training_budget import cycle_root_main;cycle_root_main()'],
+        input=json.dumps(launch['request']).encode(), capture_output=True,
+        env={**os.environ, **launch['environment']}, timeout=8)
+    assert child.returncode != 0 and b'original schema3 authorization' in child.stderr
+    assert not child.stdout
+    assert {path.relative_to(folder): path.read_bytes() for path in folder.rglob('*') if path.is_file()} == before
+    assert not (folder / 'owner.json').exists() and not (folder / 'lock').exists()
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller consent requires Linux/WSL2 clocks and flock')
@@ -660,10 +685,12 @@ def test_controller_intent_io_consumes_the_original_computation_window(controlle
 
 
 
-@pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 30}], indirect=True)
+@pytest.mark.parametrize('controller_admission,installation', [
+    ({'control_timeout_seconds': 30}, None),
+    ({'program_version': 2, 'control_timeout_seconds': 30}, 'managed')], indirect=True)
 @pytest.mark.skipif(sys.platform != 'linux', reason='Independent original roots require Linux/WSL2')
 def test_cycle_candidate_root_survives_short_calls_and_normal_loop_shutdown(
-        controller_admission, cycle_selection, cycle_candidate, service, monkeypatch):
+        controller_admission, cycle_selection, cycle_candidate, cycle_budget_root, service, monkeypatch):
     import asyncio
     from ergora import reference_training_worker as worker, training_execution_protocol as protocol
 
@@ -690,6 +717,10 @@ def test_cycle_candidate_root_survives_short_calls_and_normal_loop_shutdown(
         assert result['status'] == 'observed', result
         assert result['submission']['status'] == 'submitted'
         assert operation.handed_off is True and operation.root.poll() is None
+        assert cycle_budget_root == [
+            'from ergora.reference_training_budget import cycle_root_main;cycle_root_main()'
+            if admission.authorization['schema_version'] == 3
+            else 'from ergora.reference_training_worker import budget_main;budget_main()']
         owner = result['confirmation']['owner']
         assert recorded_process_is_active(owner)
         requests = [json.loads((Path(result[name]['output']) / 'request.json').read_bytes())
@@ -714,7 +745,8 @@ def test_cycle_candidate_root_survives_short_calls_and_normal_loop_shutdown(
 
 
 
-@pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 30}], indirect=True)
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 30}], indirect=True)
 @pytest.mark.skipif(sys.platform != 'linux', reason='Root handoff and real S-H cancellation require Linux/WSL2')
 @pytest.mark.parametrize('boundary', ['transfer', 'confirm', 'lost-confirm', 'lookup', 'attempt-sync', 'sdk-start'])
 def test_cycle_candidate_cancellation_distinguishes_root_handoff(
@@ -850,7 +882,8 @@ def test_cycle_candidate_lost_prepare_reply_never_recreates_its_root_offer(
 
 
 
-@pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 30}], indirect=True)
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 30}], indirect=True)
 @pytest.mark.skipif(sys.platform != 'linux', reason='Pending OS creation must retain its actual Linux child')
 @pytest.mark.parametrize('ending', ['cancel', 'deadline'])
 def test_cycle_candidate_cancel_retains_a_late_popen_handle_without_sending_input(cycle_candidate, monkeypatch, ending):
@@ -862,7 +895,7 @@ def test_cycle_candidate_cancel_retains_a_late_popen_handle_without_sending_inpu
     operation = cycle_candidate()
 
     def pending(argv, *args, **kwargs):
-        if argv[-1] == 'from ergora.reference_training_worker import budget_main;budget_main()':
+        if argv[-1] == 'from ergora.reference_training_budget import cycle_root_main;cycle_root_main()':
             entered.set()
             release.wait()
         return original(argv, *args, **kwargs)
@@ -898,7 +931,8 @@ def test_cycle_candidate_cancel_retains_a_late_popen_handle_without_sending_inpu
 
 
 
-@pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 30}], indirect=True)
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 30}], indirect=True)
 @pytest.mark.skipif(sys.platform != 'linux', reason='Loop shutdown must retain the actual independent Linux root')
 @pytest.mark.parametrize('boundary', ['spawn', 'confirm'])
 def test_cycle_candidate_loop_shutdown_reaps_a_pending_root(
@@ -920,7 +954,7 @@ def test_cycle_candidate_loop_shutdown_reaps_a_pending_root(
         return notify(expected, signum)
 
     def pending(argv, *args, **kwargs):
-        root = argv[-1] == 'from ergora.reference_training_worker import budget_main;budget_main()'
+        root = argv[-1] == 'from ergora.reference_training_budget import cycle_root_main;cycle_root_main()'
         if root and boundary == 'spawn':
             entered.set()
             release.wait(20)

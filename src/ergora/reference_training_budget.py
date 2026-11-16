@@ -19,6 +19,7 @@ import uuid
 
 from . import budget_clock, processes, registrations, training_cycles, training_execution_protocol
 from .processes import identity as _process_identity
+from .reference_training_context import _select_cycle_project
 from .state import State, file_lock, now
 
 
@@ -728,3 +729,48 @@ class BudgetedStart:
 
             return await Execution(self.operation, self).admit(context)
         raise ValueError('Unsupported training budget helper phase')
+
+
+def _controller_owner(request: dict, *, required_schema_version: int | None = None) -> dict:
+    """Bootstrap the actual original root outside every short S-H subtree."""
+    protocol = training_execution_protocol
+    protocol.validate_cycle_root_request(request)
+    payload = request['submission']
+    source = protocol.decode(protocol.read_raw(Path(payload['control_home']) / 'operations/training-cycles'
+        / request['origin_operation_id'] / 'request.json', 32_768))
+    protocol.cycle_start_source(source)
+    identity = source['identity']
+    if (identity['mode'] != 'prepare-candidate' or identity['parent'] != request['parent']
+            or source['bootstrap'] != request['window'] or identity['control_home'] != payload['control_home']
+            or identity['project'] != payload['project']['id']
+            or payload['project']['registration']['definition']['execution'] != source['snapshot']['authorization']['execution']
+            or payload['timeout'] != source['snapshot']['policy']['control_timeout_seconds']
+            or source['snapshot']['candidates'][identity['ordinal']]['experiment_id'] != payload['experiment_id']
+            or os.getppid() != request['parent']['pid']
+            or processes.identity(request['parent']['pid']) != request['parent']
+            or protocol.cycle_operation_remaining(source) <= 0):
+        raise ValueError('Controller root lost its complete original prepare request, parent or window')
+    if required_schema_version is not None and source['snapshot']['authorization']['schema_version'] != required_schema_version:
+        raise ValueError('Dedicated controller root requires its original schema3 authorization')
+    _select_cycle_project(source['snapshot']['authorization'], payload['project'])
+    from .reference_training_submission import _Submission
+    operation = _Submission(payload)
+    intent = operation.load()
+    if (intent is None or operation.sha(intent) != payload['intent_sha256']
+            or intent.get('budget', {}).get('controller') != source['start_context']['controller']):
+        raise ValueError('Controller root lost its complete original selected training intent')
+    budget = BudgetedStart(operation, intent)
+    observation = budget.path('launches/' + intent['operation_id'])
+    with (observation / 'stdout.json').open('xb') as stdout, (observation / 'stderr.txt').open('xb') as stderr:
+        os.dup2(stdout.fileno(), sys.stdout.fileno())
+        os.dup2(stderr.fileno(), sys.stderr.fileno())
+    return budget.own(root_operation=source)
+
+
+def cycle_root_main() -> None:
+    """Enter the original schema3 controller owner without loading the SDK worker."""
+    request = json.load(sys.stdin)
+    if len(json.dumps(request, ensure_ascii=False, allow_nan=False).encode('utf-8')) > 32_768:
+        raise ValueError('Complete controller root request exceeds 32 KiB')
+    result = _controller_owner(request, required_schema_version=3)
+    print(json.dumps(result, ensure_ascii=False, allow_nan=False))

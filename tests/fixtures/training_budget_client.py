@@ -1,8 +1,106 @@
 """Keep real detached budget owners/helpers; reuse the existing SDK service double."""
 
+import ctypes
+import hashlib
+import io
 import json
+import os
 from pathlib import Path
+import signal
+import subprocess
 import sys
+import time
+
+fault = os.environ.get('ERGORA_TEST_TRAINING_BUDGET')
+light_root = globals().get('light_root', False)
+
+
+def install_root_faults(budget, envelope):
+    if fault in ('owner-before-publish', 'owner-initialization-held'):
+        from ergora import training_execution_protocol as protocol
+
+        markers = Path(os.environ['ERGORA_TEST_CYCLE_MARKERS'])
+        source = protocol.decode(protocol.read_raw(Path(envelope['submission']['control_home']) / 'operations/training-cycles'
+            / envelope['origin_operation_id'] / 'request.json', 32768))
+        record_owner = budget.training_cycles._record
+
+        def hold_publication():
+            pending = markers / ('owner-held-' + str(os.getpid()) + '.pending')
+            pending.write_text(json.dumps({'root': budget._process_identity(os.getpid()), 'fault': fault,
+                'entry': 'cycle_root_main' if light_root else 'budget_main', 'imports': [name for name in sys.modules
+                    if name == 'ergora.reference_training_worker' or name.startswith('temporalio')]}))
+            pending.replace(markers / 'owner-held')
+            while not (markers / 'owner-release').exists():
+                if protocol.cycle_operation_remaining(source) <= 0:
+                    raise ValueError('Injected owner initialization exhausted its original window')
+                time.sleep(.02)
+
+        def delayed_owner(path, value, **kwargs):
+            if path.name == 'owner.json' and fault == 'owner-before-publish':
+                hold_publication()
+            result = record_owner(path, value, **kwargs)
+            if path.name == 'owner.json' and fault == 'owner-initialization-held':
+                hold_publication()
+            return result
+
+        budget.training_cycles._record = delayed_owner
+        if os.environ.get('ERGORA_TEST_OWNER_CONFIRM_LATE_CONTEXT'):
+            start_phase = budget._BudgetPhase.start
+            def held_first_phase(phase):
+                while not (markers / 'owner-phase-release').exists():
+                    if protocol.cycle_operation_remaining(source) <= 0:
+                        raise ValueError('Injected owner phase exhausted its original window')
+                    time.sleep(.02)
+                return start_phase(phase)
+            budget._BudgetPhase.start = held_first_phase
+
+
+def install_launch_fault(budget, payload):
+    if fault in ('managed-no-launch', 'managed-launch-failed') and payload['mode'] in ('owner', 'controller-owner'):
+        start = budget._BudgetPhase.start
+        def refuse_execution(phase):
+            if phase.mode == 'execute':
+                marker = Path(os.environ['ERGORA_TEST_TRAINING_SERVICE']).with_suffix('.execution-launch')
+                if marker.exists():
+                    raise AssertionError('The consumed launch must never be offered again')
+                marker.write_text(json.dumps({'phase_id': phase.identity['phase_id']}))
+                if fault == 'managed-launch-failed':
+                    launch = budget.subprocess.Popen
+                    def failed_launch(*args, **kwargs):
+                        raise OSError('Controlled execute supervisor startup failure')
+                    budget.subprocess.Popen = failed_launch
+                    try:
+                        return start(phase)
+                    finally:
+                        budget.subprocess.Popen = launch
+                return False
+            return start(phase)
+        budget._BudgetPhase.start = refuse_execution
+
+
+if light_root:
+    # Select the actual root entry before importing any SDK service doubles.
+    from ergora import reference_training_budget as budget
+
+    envelope = json.load(sys.stdin)
+    sys.stdin = io.StringIO(json.dumps(envelope))
+    install_root_faults(budget, envelope)
+    install_launch_fault(budget, envelope['submission'])
+    launch, start_phase = subprocess.Popen, budget._BudgetPhase.start
+
+    def launch_phase(argv, *args, **kwargs):
+        if argv[-1] == 'from ergora.reference_training_worker import budget_main;budget_main()':
+            argv = [*argv[:-1], f'import runpy;runpy.run_path({__file__!r},run_name="__main__")']
+        return launch(argv, *args, **kwargs)
+
+    def checked_phase(phase):
+        assert not any(name == 'ergora.reference_training_worker' or name.startswith('temporalio') for name in sys.modules)
+        return start_phase(phase)
+
+    subprocess.Popen = launch_phase
+    budget._BudgetPhase.start = checked_phase
+    budget.cycle_root_main()
+    raise SystemExit(0)
 
 sys.path.insert(0, str(Path(__file__).parent))
 import training_submission_client as base
@@ -10,14 +108,7 @@ import training_cancellation_client
 
 from ergora.reference_training_worker import budget_main
 from ergora import reference_training_budget as budget
-import os
-import time
-import ctypes
-import hashlib
-import signal
-import subprocess
 
-fault = os.environ.get('ERGORA_TEST_TRAINING_BUDGET')
 if (os.environ.get('ERGORA_TEST_TRAINING_CONTROLLER_PAUSE') in ('attempt', 'ack', 'executor-lock')
         and base.payload['mode'] == 'phase-supervisor' and base.payload['phase']['mode'] == 'execute'):
     from ergora import reference
@@ -39,41 +130,8 @@ if (os.environ.get('ERGORA_TEST_TRAINING_CONTROLLER_PAUSE') in ('attempt', 'ack'
 if os.environ.get('ERGORA_TEST_TRAINING_CONTROLLER'):
     training_cancellation_client.Service.query_workflow = base.Service.query_workflow
 
-if fault in ('owner-before-publish', 'owner-initialization-held') and base.envelope.get('protocol') == 'ergora-training-cycle-root-v1':
-    from ergora import training_execution_protocol as protocol
-
-    markers = Path(os.environ['ERGORA_TEST_CYCLE_MARKERS'])
-    source = protocol.decode(protocol.read_raw(Path(base.payload['control_home']) / 'operations/training-cycles'
-        / base.envelope['origin_operation_id'] / 'request.json', 32768))
-    record_owner = budget.training_cycles._record
-
-    def hold_publication():
-        pending = markers / ('owner-held-' + str(os.getpid()) + '.pending')
-        pending.write_text(json.dumps({'root': budget._process_identity(os.getpid()), 'fault': fault}))
-        pending.replace(markers / 'owner-held')
-        while not (markers / 'owner-release').exists():
-            if protocol.cycle_operation_remaining(source) <= 0:
-                raise ValueError('Injected owner initialization exhausted its original window')
-            time.sleep(.02)
-
-    def delayed_owner(path, value, **kwargs):
-        if path.name == 'owner.json' and fault == 'owner-before-publish':
-            hold_publication()
-        result = record_owner(path, value, **kwargs)
-        if path.name == 'owner.json' and fault == 'owner-initialization-held':
-            hold_publication()
-        return result
-
-    budget.training_cycles._record = delayed_owner
-    if os.environ.get('ERGORA_TEST_OWNER_CONFIRM_LATE_CONTEXT'):
-        start_phase = budget._BudgetPhase.start
-        def held_first_phase(phase):
-            while not (markers / 'owner-phase-release').exists():
-                if protocol.cycle_operation_remaining(source) <= 0:
-                    raise ValueError('Injected owner phase exhausted its original window')
-                time.sleep(.02)
-            return start_phase(phase)
-        budget._BudgetPhase.start = held_first_phase
+if base.envelope.get('protocol') == 'ergora-training-cycle-root-v1':
+    install_root_faults(budget, base.envelope)
 
 if fault == 'legacy-owner-schema1' and base.payload['mode'] == 'owner':
     record_owner = budget.training_cycles._record
@@ -101,26 +159,7 @@ if fault in ('managed-no-launch', 'managed-launch-failed'):
                 raise
         reference_training_execution.file_lock = observed_contention
 
-if fault in ('managed-no-launch', 'managed-launch-failed') and base.payload['mode'] in ('owner', 'controller-owner'):
-    start = budget._BudgetPhase.start
-    def refuse_execution(phase):
-        if phase.mode == 'execute':
-            marker = base.storage.with_suffix('.execution-launch')
-            if marker.exists():
-                raise AssertionError('The consumed launch must never be offered again')
-            marker.write_text(json.dumps({'phase_id': phase.identity['phase_id']}))
-            if fault == 'managed-launch-failed':
-                launch = budget.subprocess.Popen
-                def failed_launch(*args, **kwargs):
-                    raise OSError('Controlled execute supervisor startup failure')
-                budget.subprocess.Popen = failed_launch
-                try:
-                    return start(phase)
-                finally:
-                    budget.subprocess.Popen = launch
-            return False
-        return start(phase)
-    budget._BudgetPhase.start = refuse_execution
+install_launch_fault(budget, base.payload)
 
 if fault == 'monitor-blocked' and base.payload['mode'] == 'monitor':
     async def blocked(_self):

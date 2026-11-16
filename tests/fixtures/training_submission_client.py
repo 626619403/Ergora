@@ -195,8 +195,11 @@ def install_budget_fixture():
     fixture = Path(__file__).with_name('training_budget_client.py')
 
     def launch(argv, *args, **kwargs):
-        if 'from ergora.reference_training_worker import budget_main;budget_main()' in argv:
-            argv = [*argv[:-1], f'import runpy;runpy.run_path({str(fixture)!r},run_name="__main__")']
+        if argv[-1] in ('from ergora.reference_training_worker import budget_main;budget_main()',
+                       'from ergora.reference_training_budget import cycle_root_main;cycle_root_main()'):
+            light_root = argv[-1] == 'from ergora.reference_training_budget import cycle_root_main;cycle_root_main()'
+            argv = [*argv[:-1], f'import runpy;runpy.run_path({str(fixture)!r},run_name="__main__",'
+                    f'init_globals={{"light_root":{light_root!r}}})']
         return original(argv, *args, **kwargs)
 
     subprocess.Popen = launch

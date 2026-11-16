@@ -30,7 +30,8 @@ except ModuleNotFoundError as error:
 
 with workflow.unsafe.imports_passed_through() if workflow is not None else nullcontext():
     from . import budget_clock, processes, reference, training_cycles, training_execution_protocol as protocol
-    from .reference_training_budget import BudgetedStart, TASK_QUEUE, check_cycle_predecessors, validate_binding
+    from .reference_training_budget import BudgetedStart, TASK_QUEUE, _controller_owner, check_cycle_predecessors, validate_binding
+    from .reference_training_context import _select_cycle_project
     from .reference_training_submission import _Submission
     from .reference_training_execution import Execution
     from .state import State, file_lock, now
@@ -617,12 +618,17 @@ class _CycleCandidate:
             encoded = json.dumps(request, ensure_ascii=False, allow_nan=False, separators=(',', ':')).encode('utf-8')
             if len(encoded) > _CYCLE_LIMIT:
                 raise _CycleCapacityError('Complete controller root request exceeds 32 KiB; intent remains occupied')
+            authorization = self.preparation.payload['snapshot']['authorization']
+            entry = ('from ergora.reference_training_budget import cycle_root_main;cycle_root_main()'
+                if authorization['schema_version'] == 3
+                    and authorization['controller']['protocol'] == 'ergora-training-cycle-v2'
+                else 'from ergora.reference_training_worker import budget_main;budget_main()')
             # Only OS creation runs in the thread. Its public concurrent Future
             # cannot be cancelled by the loop's global Task shutdown.
             executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='ergora-budget-spawn')
             try:
                 self.spawning = executor.submit(subprocess.Popen,
-                    [sys.executable, '-P', '-c', 'from ergora.reference_training_worker import budget_main;budget_main()'],
+                    [sys.executable, '-P', '-c', entry],
                     stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                     env={**os.environ, **launch['environment']}, start_new_session=True)
             finally:
@@ -880,26 +886,6 @@ def _cycle_operation(payload: dict) -> dict:
     return {key: observed.get(key) for key in
         ('status', 'reap_record_observed', 'durable_stop_confirmed', 'executor_stop_confirmed', 'record_sha256', 'durability_reason')} | {
         'experiment_id': operation.ident, 'observation': str(output), 'observation_sha256': hashlib.sha256(raw).hexdigest()}
-
-
-def _select_cycle_project(authorization: dict, project: dict):
-    """Load one selected native project inside H or its independent budget root."""
-    from .reference_training_context import _TrainingProject
-
-    execution = authorization['execution']
-    installation = reference.validate_installation(Path(execution['installation']), training=True)
-    paths = [str(installation / part) for part in ('local', 'upstream/platform', 'upstream/temporal', 'upstream')]
-    sys.path[:0] = paths
-    os.environ.update(AGENTFLOW_CONFIG_DIR=execution['config_directory'], AGENTFLOW_STATE_DIR=execution['state_directory'])
-    context = _TrainingProject({'project': project, 'control_home': authorization['control_home']})
-    context.registration()
-    from agent_platform.core import environment
-
-    os.environ.update(environment())
-    # Native environment() replaces PYTHONPATH. Every later phase must still
-    # import this exact application together with the selected native sources.
-    os.environ['PYTHONPATH'] = os.pathsep.join([str(Path(__file__).parent.parent), *paths])
-    return context
 
 
 def _execution_candidate_operation(payload: dict, plan: dict, admission, active) -> dict:
@@ -2865,38 +2851,6 @@ async def _cleanup(budget, context: dict) -> dict:
     result = prepared['cancellation']
     payload.update(operation='resume', intent_sha256=result['intent_sha256'])
     return await _Cancellation(payload).run()
-
-def _controller_owner(request: dict) -> dict:
-    """Bootstrap the actual original root outside every short S-H subtree."""
-    protocol.validate_cycle_root_request(request)
-    payload = request['submission']
-    source = protocol.decode(protocol.read_raw(Path(payload['control_home']) / 'operations/training-cycles'
-        / request['origin_operation_id'] / 'request.json', _CYCLE_LIMIT))
-    protocol.cycle_start_source(source)
-    identity = source['identity']
-    if (identity['mode'] != 'prepare-candidate' or identity['parent'] != request['parent']
-            or source['bootstrap'] != request['window'] or identity['control_home'] != payload['control_home']
-            or identity['project'] != payload['project']['id']
-            or payload['project']['registration']['definition']['execution'] != source['snapshot']['authorization']['execution']
-            or payload['timeout'] != source['snapshot']['policy']['control_timeout_seconds']
-            or source['snapshot']['candidates'][identity['ordinal']]['experiment_id'] != payload['experiment_id']
-            or os.getppid() != request['parent']['pid']
-            or processes.identity(request['parent']['pid']) != request['parent']
-            or protocol.cycle_operation_remaining(source) <= 0):
-        raise ValueError('Controller root lost its complete original prepare request, parent or window')
-    _select_cycle_project(source['snapshot']['authorization'], payload['project'])
-    operation = _Submission(payload)
-    intent = operation.load()
-    if (intent is None or operation.sha(intent) != payload['intent_sha256']
-            or intent.get('budget', {}).get('controller') != source['start_context']['controller']):
-        raise ValueError('Controller root lost its complete original selected training intent')
-    budget = BudgetedStart(operation, intent)
-    observation = budget.path('launches/' + intent['operation_id'])
-    with (observation / 'stdout.json').open('xb') as stdout, (observation / 'stderr.txt').open('xb') as stderr:
-        os.dup2(stdout.fileno(), sys.stdout.fileno())
-        os.dup2(stderr.fileno(), sys.stderr.fileno())
-    return budget.own(root_operation=source)
-
 
 def budget_main() -> None:
     """Dedicated budget process; preserve the original submission context and records."""

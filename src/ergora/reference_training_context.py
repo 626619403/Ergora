@@ -3,7 +3,9 @@
 import json
 import os
 from pathlib import Path
+import sys
 
+from . import reference
 from .reference import _read_windows_contract, registration_paths
 from .registrations import published_project
 
@@ -62,3 +64,21 @@ class _TrainingProject:
         marker = self.project['registration']['files'][registration_paths(self.project['id'])[0]]
         if marker['control_home'] != self.payload['control_home']:
             raise ValueError('Registered training project belongs to another control directory')
+
+
+def _select_cycle_project(authorization: dict, project: dict):
+    """Load one selected native project inside H or its independent budget root."""
+    execution = authorization['execution']
+    installation = reference.validate_installation(Path(execution['installation']), training=True)
+    paths = [str(installation / part) for part in ('local', 'upstream/platform', 'upstream/temporal', 'upstream')]
+    sys.path[:0] = paths
+    os.environ.update(AGENTFLOW_CONFIG_DIR=execution['config_directory'], AGENTFLOW_STATE_DIR=execution['state_directory'])
+    context = _TrainingProject({'project': project, 'control_home': authorization['control_home']})
+    context.registration()
+    from agent_platform.core import environment
+
+    os.environ.update(environment())
+    # Native environment() replaces PYTHONPATH. Every later phase must still
+    # import this exact application together with the selected native sources.
+    os.environ['PYTHONPATH'] = os.pathsep.join([str(Path(__file__).parent.parent), *paths])
+    return context
