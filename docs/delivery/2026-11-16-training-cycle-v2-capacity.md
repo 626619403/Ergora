@@ -60,3 +60,7 @@ N32新安装的首次runner使用了相对Python路径，而runner将cwd设为co
 本片准确源码fresh两轴独审已闭合；现在新安装41＋2与原模板分别完成，可接纳为closed容量子片。普通合入／集成安装／发布及自己的CI仍待完成；完整M1c-V/R、真实server追加Failure、10MB晚期reader和CPU两候选继续开放，schema3效果保持关闭。
 
 根已按普通非fast-forward合入开发分支，merge `329237958c0c93dbf121388a0e04d9b05ccf7283`，仅5个原候选文件，无冲突；工作区既有文档保留。后继首批文档提交不改变本片产品字节。联合新安装与普通发布／自己的CI仍待完成。
+
+联合新安装已完成：准确产品6cec589，新wheel20068f1a…、core／SDK各669runtime与执行位及283参考／依赖通过，联合32项135.20秒全过，709采样自有进程终核absent。普通推送7fc4217及远端完整OID同一已核；自己的官方CI已终态failure（7 jobs成功／Windows失败，6回归失败），根已完成另片3行测试修正，本地依赖replay／Linux定向已过，fresh独审两轴approve／0，已普通合入99c8503；新候选e5已普通发布、自己的run43840394544初始1成功／7在跑，终态待验；准确证据以[最新联合交付](2026-11-16-design-capacity-integration.md)为准，不继承旧候选绿。
+
+已审3行测试平台修正随准确e5a35558f29f11eed62c6dd28450da6d39f232df普通发布，自己的官方Portability run43840394544已终态8/8 success，含Windows；原7fc/run43833234533失败保留。本片在当前联合src6cec身份的发布／适用CI门已闭合，原本地安装与测试仍保留自己的准确候选，真实服务／完整M1c／CPU及S2首稿另验，schema3效果继续关闭。

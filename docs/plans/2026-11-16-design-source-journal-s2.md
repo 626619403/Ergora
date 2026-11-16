@@ -1,6 +1,6 @@
 # WA5-S2：原 approval journal 的设计来源存取 proposal
 
-2026-11-16。**待 fresh 独立设计审的局部 proposal；没有本片源码、安装、运行或人类身份验收。** 本文只把[已审拆片的 S2 行及第 5 节](2026-11-16-design-gates-registration-and-journal.md)收敛成下一片的实施与验收合同，继续服从[WA5 详细设计](2026-11-16-design-knowledge-gates.md)及[用户 D1–D4](../delivery/2026-11-16-workflow-design-decisions.md)。它不开放任何设计批准或执行关卡。下文标作“拟”的函数、文件和字段都尚未实施，名称可在原 owner 内收敛，行为与验收边界不能省略。
+2026-11-16。**局部proposal的fresh独立设计审两轴approve／0仅认证静态设计；隔离7路径实现首稿已完成r4局部happy-path 2过，后继schema／validation调整未由r4覆盖，仍无完整实现、新安装、发布或人类身份验收。** 本文只把[已审拆片的S2行及第5节](2026-11-16-design-gates-registration-and-journal.md)收敛为实施与验收合同，继续服从[WA5详细设计](2026-11-16-design-knowledge-gates.md)及[用户D1–D4](../delivery/2026-11-16-workflow-design-decisions.md)。它不开放任何设计批准或执行关卡。下文“拟”的函数、文件和字段保留受审proposal当时的设计表述；当前草稿与实证进度以[S2交付](../delivery/2026-11-16-design-source-journal-s2.md)为准，行为和验收边界不能省略。
 
 ## 1. 准确基线、依赖与交付边界
 
@@ -182,7 +182,7 @@ SDK fixture、受保护通道替身、真实服务和自然人验收分别记账
 
 ## 11. 实施、安装与审查检查清单
 
-- [ ] Fresh设计审先核本稿的实际owner、完整intent恢复、pending唯一链、只读锁和容量关系；两轴结论独立记录。本稿不能自标“已审”。
+- [x] Fresh设计审已核实际owner、完整intent恢复、pending唯一链、只读锁和容量关系；[独立设计审](../delivery/2026-11-16-design-source-journal-s2-design-review.md)两轴approve／0。仅设计门闭合，不认证实现。
 - [ ] 在准确隔离源码基线实现最小source schema/resource＋原owner＋真实tasks/CLI/read consumer；列tracked/untracked完整差异，不碰原参考、锁、环境或其他产品片。
 - [ ] 固定新候选，执行第9节最小受影响原接缝，保存原红例／修后结果和未跑范围；核源码／配置前后身份，停止扩大已通过且未变的测试。
 - [ ] 构建新的非editable wheel；分别安装core／SDK到任务自有持久检查目录，核site-packages真实导入、完整包资源与依赖同一、283参考及原127项锁不变。core无SDK的公开拒绝／schema校验与SDK选定native边界分别记录；不让 `-I` 子进程偷偷导入主树editable。
@@ -195,3 +195,10 @@ SDK fixture、受保护通道替身、真实服务和自然人验收分别记账
 本轮只读根／src／tests AGENTS、PLAN、组件协议、`maintainable-project-delivery`及 independent-review、上述D1–D4／详设／拆片／a1与S1交付，以及实际 `tasks/reference/approval/creation/submission/task_design`、原safe IO／lock、schema／CLI和测试fixture。仅运行读取、轻量Git、SHA和本文件静态检查；**没有跑产品tests、安装、服务、模型、网络、训练或GPU，没有读凭据／环境快照，没有改源码／环境／PLAN，没有commit/push。** 唯一写入为本文件；它没有自身验收证据路径，后继实施再建项目内交付／持久原件账本。
 
 交主控发fresh设计审时附：原始任务范围、D1–D4、已审拆片及WA5详设、准确 `c540939d` src/tests身份、本稿完整原文和最终SHA、必要实际调用／fixture路径、仅静态阅读的事实，以及明确授权的独立设计审报告路径。重点反证“恢复必须重读body-file”“GET用a+b开锁”“同parent pending被新ID绕过”“公开source callable绕应用schema”“source链被误当权威materials”“schema1旧批准被悄悄seal”六类错误。后继开始实现前重核实际HEAD与S1状态，不把本稿或全局新安装通过当本片通过。
+
+
+## 根接续：独立设计门闭合
+
+新的fresh-context reviewer已对完整197行原proposal（SHA256 `fdf2c8a8bebac116a0b1a56556a4fcc1f3493e3fd93c2b2c1f3f87d65c185c0e`）及原始要求／实际caller完成[独立设计审](../delivery/2026-11-16-design-source-journal-s2-design-review.md)：需求approve、维护性approve、开放findings0。此前中断的审查没有报告或结论，本轮不继承它。受审原件与报告另存 `.ergora/checks/design-source-journal-s2/design-review-r1/`，本节和首行／检查框仅为后继状态记账，不改受审合同。
+
+reviewer实际核最终联合产品6cec589的src／tests与后继7fc4217同一，以及最终S1对v1原source／creation／submission路径的兼容性；原c540939只是proposal作者读取基线，不能转授为rebase验收。后继隔离分支已在7路径首稿实现native来源journal持久化、source APIs与CLI声明，r4原reader＋完整两轮／离线答复局部源码2过（pytest41.26秒／JUnit41.240秒，runner43.530秒）；r4后的schema／validation草稿调整尚未验证，不能继承该结果。当前准确源码WIP、早期setup／缺API反例、后续未验接缝统一记在[S2交付](../delivery/2026-11-16-design-source-journal-s2.md)。中断恢复／并发／坏链／只读容量／准入／新source依赖／真实CLI／新安装／fresh实现独审／自己的CI仍待；尚未合入或发布，不是ready或公开可用性结论。静态proposal与原197行受审原件只认证设计，不能替代实现验收；F/J/G与设计执行继续关闭。

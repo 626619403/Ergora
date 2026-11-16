@@ -1,6 +1,6 @@
 # WA5-S1／M6-V2b：联合安装与开发分支发布
 
-2026-11-16。联合新安装及32项定向验证完成，尚未普通推送或取得新候选自己的CI结果。旧公开 `04af234` 的CI不转授本片。所有设计执行、schema3训练效果和可信人类批准继续关闭。
+2026-11-16。联合新安装32项定向验证完成；原7fc自己的CI失败已保留，最小3行测试平台修正后准确e5已普通发布并核远端完整OID，自己的Portability run43840394544已终态 **8/8 success，含Windows**。产品src仍与6cec589同一；USAGE后继已审七文件提交73b7d61尚未推送。S2隔离7路径首稿的r4局部源码2过不继承本CI，完整验收仍待。所有设计执行、schema3训练效果和可信新自然人批准继续关闭。
 
 ## 接纳的准确输入
 
@@ -22,4 +22,23 @@
 
 ## 发布与下一步
 
-联合定向完成后显式提交本片交付／PLAN与交接状态，普通推送开发分支，核远端完整OID及该提交自己的适用CI；不自动合main，不强推，不删远端。真实Temporal／server追加Failure包装、完整M1c-V/R、10MB晚期reader、CPU两候选、S2实现与F/J/G另按原计划验收，不能从本片安装或supplied-text审查推出完成。
+联合定向、显式交付／PLAN与交接提交、普通推送及远端完整OID核验均已完成；原7fc自己的CI终态failure，最小测试平台修正后的准确e5自己的CI已8/8 success；不自动合main，不强推，不删远端。真实Temporal／server追加Failure包装、完整M1c-V/R、10MB晚期reader、CPU两候选、S2实现与F/J/G另按原计划验收，不能从本片安装或supplied-text审查推出完成。
+
+
+## 普通发布与官方CI观察
+
+开发分支已普通推送准确提交 `7fc42177db11fbfe4c9adb33342ecb5da4ed0434`，随后 `git ls-remote` 核远端完整OID完全相同；默认main、远端其他分支和旧工作树均未改变。`publication-r1/` 保存push／remote命令、原stdout／stderr、返回码和完整身份。
+
+本机没有gh可执行文件，读取官方公开API得到HTTP403／共享IP配额0，原响应和reset时间保存；这仅限制观察，不是测试失败或成功。官方提交checks网页可正常读取，绑定完整7fc4217及自己的 [Portability run43833234533](https://github.com/626619403/Ergora/actions/runs/43833234533)。首次页面观察为plan成功、其余7 jobs在运行，尚未宣称终态。原HTML／SHA、各job原生aria-label、精确job链接和后继有界观察均在 `publication-r1/checks-web-*`；不以旧04af234绿认证新提交。
+
+后继官方页面观察：plan及Linux六组共7个job成功，Windows job `133183447980` 尚在运行，但其第6步 `Native application regression` 已为 **failure**，开始 `2026-11-16T08:42:08Z`、完成 `2026-11-16T09:04:57Z`；第7步PowerShell安装与升级仍在运行。因此总览7 success／1 in progress不代表没有失败。原生step属性来自同一完整7fc提交的 `publication-r1/windows-progress.html`，SHA256 `b2487970c709db56e0563f4304d887e856460d78959321fbed76419daa29a1a7`。尚无失败测试明细、终态或原因结论，根owner正只读收集；未修源码，不从旧绿转授通过。API403配额限制与这项实际步骤失败分别记录。
+
+官方终态后继：`checks-web-29.json` 与 `checks-web-latest.json` 均绑定完整7fc提交、同一run43833234533与8个job IDs，确认 **7 success／1 failure，全部终态**；唯一失败为Windows job133183447980。`run-page-terminal.html`／`run-annotations-terminal.txt` 原文列出6 failed、1283 passed、1145 skipped、16 subtests passed，1367.19秒。三个容量complete参数32767／32768／32769报原Linux-only预算操作拒绝，三个wrapper参数cancel／operation／inspection断言失败。原“job仍在跑”段落保留当时快照，不作为最新结论。根已在准确7fc建立独立修正片，本地确定性依赖replay已复现6个原症状，3行测试平台标记修正后9过6skip、Linux15过，fresh独审两轴approve／0，已普通合入99c8503，新候选e5已普通发布、自己的run43840394544初始1成功／7在跑，终态待验，详见[CI失败与修正记录](2026-11-16-cycle-capacity-windows-ci.md)。原403观察限制与实际终态失败分别保留。
+
+官方REST额度恢复后已200：`jobs-terminal-api-response.json`再核准确7fc／run43833234533／attempt1的8jobs，Windows应用回归失败、PowerShell安装器和artifact上传成功；`windows-annotations-response.json`保留6失败及原绝对control目录的3条错误。原403响应继续作为先前观察限制保留。最小修正与本地replay各有独立范围，真实修后Windows CI尚待。
+
+最小测试修正已取得新的fresh两轴approve／0，原3行patch／f98c测试SHA未变，普通提交 `0478a6dc21e0c65cae9027835ae122f35b3bb94d`，普通无冲突合入 `99c85030e35834a751ea6069e2310506a73ccf43`。src与6cec589逐字同一。原7fc失败永久保留；修后候选尚未发布或取得自己的CI，不把本地replay／Linux15过转授Windows。
+
+包含已审测试修正、fresh源码独审及PROJECTS／WINDOWS指南的准确e5a35558f29f11eed62c6dd28450da6d39f232df已普通推送，远端完整OID核同一；`publication-r2/`保存push／remote及绑定完整e5的官方run43840394544原件。首次观察1 success／7 in progress，根正有界观察；尚无本修正候选的CI终态或真实Windows通过。原7fc失败与本次新运行分列，不重写原结果。
+
+官方终态接续：`publication-r2/checks-web-32.html`／`.json`及latest绑定准确完整e5、run43840394544和8个唯一job IDs，全部原生success标签，**8/8 success，含Windows job133207355066**，观察器0结束。HTML SHA256 `b1f639d3b37d87e8b8ff136854ea495f06131bab319250a229b2c4a766794e01`已核原件同一。e5的普通发布与自己的适用CI门闭合；原7fc失败不覆盖。USAGE准确后继文档提交 `73b7d61c9b1f775ea14535483a773901e5ec6124` 尚未推送；S2首稿仍在隔离树，r4原reader＋两轮离线答复2过仅是局部源码证据，故障／容量／准入／真实CLI／新安装／fresh实现独审／自己的CI仍待，不继承e5通过。

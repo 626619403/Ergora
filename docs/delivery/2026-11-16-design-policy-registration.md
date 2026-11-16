@@ -183,3 +183,7 @@ r4 冻结为 `.ergora/checks/design-policy-registration/native-resolution-fix-r4
 新的fresh-context [完整两轴独审](2026-11-16-design-policy-registration-r4-review.md)已完成：**需求approve／维护性approve，开放findings0，原F1/P2在准确b28cd31关闭**。reviewer独立逐项核2,072输入、wheel及core／SDK各669 runtime文件bytes／执行位，差异0，核原-I probe和17安装raw／JUnit。其授权的A→B同tracker身份反例真实运行3.357秒，被原constructor不可变project发布拒绝，原FAILED／poll保留、业务starts0；这是否定疑点，不另造finding或resolver。12采样自有进程终核absent，原件保留于 `reviewer-r4-identity-edge-r1/`。
 
 根已普通无冲突合入开发分支 `6cec589f404b17f4828a70807d5e33d89fad3fa0`。与已接纳容量片的19个source／test文件分别逐字节核对两原候选全同，无merge-resolution改动；联合新安装开始，证据根 `.ergora/checks/design-capacity-integration/`。S1源码／安装／独审／原模板已闭合，联合包／发布／自己的CI另记；所有设计执行与schema3效果继续关闭。
+
+联合新安装已完成：准确产品6cec589，新wheel20068f1a…、core／SDK各669runtime与执行位及283参考／依赖通过，联合32项135.20秒全过，709采样自有进程终核absent。普通推送7fc4217及远端完整OID同一已核；自己的官方CI已终态failure（7 jobs成功／Windows失败，6回归失败），根已完成另片3行测试修正，本地依赖replay／Linux定向已过，fresh独审两轴approve／0，已普通合入99c8503；新候选e5已普通发布、自己的run43840394544初始1成功／7在跑，终态待验；准确证据以[最新联合交付](2026-11-16-design-capacity-integration.md)为准，不继承旧候选绿。
+
+已审3行测试平台修正随准确e5a35558f29f11eed62c6dd28450da6d39f232df普通发布，自己的官方Portability run43840394544已终态8/8 success，含Windows；原7fc/run43833234533失败保留。本片在当前联合src6cec身份的发布／适用CI门已闭合，原本地安装与测试仍保留自己的准确候选，真实服务／完整M1c／CPU及S2首稿另验，schema3效果继续关闭。

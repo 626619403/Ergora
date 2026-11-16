@@ -6,13 +6,15 @@
 
 ## 接续检查点 — 2026-11-16
 
-已按本交接接续。最新已接纳产品为 `6cec589f404b17f4828a70807d5e33d89fad3fa0`，包含已审S1 `b28cd316` 和closed容量片 `919a380`，均普通合入开发分支；后继文档提交不改变产品身份。下一步为普通发布和该候选自己的CI；最后核远端仍为旧04af234，后续结果以[最新联合交付](delivery/2026-11-16-design-capacity-integration.md)为准。
+最新已核公开提交 `e5a35558f29f11eed62c6dd28450da6d39f232df` 已普通推送并核远端完整OID同一。它自己的Portability run **43840394544已终态8/8 success，含Windows**；官方 `publication-r2/checks-web-32.*` 与latest快照绑定完整head、8个唯一job IDs和原生success标签，有界观察器0结束。产品src仍与 `6cec589f404b17f4828a70807d5e33d89fad3fa0` 逐字同一，仅有另片已审3行测试修正0478a6d、普通合入99c8503。原7fc/run43833234533的Windows失败与此前API403观察记录均保留，准确证据见[联合交付](delivery/2026-11-16-design-capacity-integration.md)。
 
-S1原17受影响节点新安装全部通过，新fresh独立审查两轴approve／0并关闭F1/P2。V2b新安装41节点和两场完整N32通过，每场保留66分支。两个自身原结构模板均以已授权Codex回退完成，记录实际后端。联合新wheel `20068f1a…` 的core／SDK各669runtime文件同一，283参考及依赖通过，**联合32项通过／135.20秒**；709采样自有进程终核absent，2,095份tracked输入与两安装终核未变。这些仅是安装／本地SDK证据；真实Temporal、完整M1c、晚期reader、CPU／GPU质量仍分别验收，schema3效果继续关闭。
+S1原17受影响节点新安装通过，新fresh独审关闭F1/P2。V2b新安装41节点及两场N32均过，每场66分支；两个原结构模板都以已授权Codex回退完成。联合wheel `20068f1a…` 的core／SDK各669runtime文件同一，283参考、依赖及**联合32项／135.20秒**通过。709采样自有进程终核absent，2095份tracked输入与两安装未变。真实Temporal、完整M1c、晚期reader、CPU／GPU质量仍分别验收；设计执行、可信新自然人决定和schema3效果继续关闭。
 
-首批双语指南已提交eb14df1。后端研究经独审补明Claude text-only safe-mode关闭ultracode workflows，双语同片复核两轴approve／0，已提交fc632ad。固定／预设／规划／自动的配置冻结仍待后继实施。当前新的S2 proposal设计审正在进行；S2源码与F/J/G均未实施。
+PROJECTS／WINDOWS各自已审七文件已提交82c1c84／13ea479并随e5发布。USAGE完整1272行双语片全文检查与新fresh独审两轴approve／0，两条漏译恢复注释已同片复核关闭；准确七文件已提交 **73b7d61c9b1f775ea14535483a773901e5ec6124**、尚未推送，后续batches3–7仍开放。后端研究保持独审通过，包含Claude text-only safe-mode／ultracode限制；虽已有逐Agent显式思考强度字段，统一fixed／preset／planner／automatic选择仍待实施。
 
-当前状态以[PLAN](PLAN.md)和各交付最后进度为准。**以下各节保留原04af234交接快照**，其中“待做”等只指原交接当时；不要据此重复已完成的17／N32／模板。接续普通发布／自己的CI、当前S2设计审结果及原晚期reader／真实服务／CPU和文档后继。
+S2 proposal设计门两轴approve／0并核最终S1兼容。基于7fc的隔离分支 `feat/design-source-journal-s2-r1` 现为**7路径实现首稿**：native来源journal持久化、reference／tasks source APIs、CLI声明、测试及2份JSON资源已有初稿。r4原真实native／no-jsonschema reader和完整两轮／离线答复happy path **2 passed／pytest41.26秒**，JUnit41.240秒／runner43.530秒。r4后schema／validation调整未由r4覆盖；中断恢复、并发、坏链、只读／容量／准入、新source native依赖、真实CLI、新安装、fresh实现独审和S2自己的CI仍待。未合入／发布／ready，e5的CI不能认证本隔离首稿；此前setup错误及缺API早期失败保持各自范围，见[S2交付](delivery/2026-11-16-design-source-journal-s2.md)。F/J/G及可执行设计关卡仍未交付。
+
+接续以[PLAN](PLAN.md)和各交付当前段为准：先发布已审USAGE／状态文档，完成S2故障与准入接缝，再继续原晚期reader／真实服务／CPU和文档后继。**以下各节保留原04af234交接快照**，其“待做”等只指当时；不要据此重复已完成的17／N32／模板。
 
 ## 原恢复快照 — 04af234
 
