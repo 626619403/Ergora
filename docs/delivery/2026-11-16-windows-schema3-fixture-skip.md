@@ -1,6 +1,6 @@
 # M1b：Windows schema3 fixture 前置跳过修正
 
-2026-11-16。状态：最小四行修正、局部边界检查及fresh独立两轴审查闭合，已固定并普通导入；推送和新候选自己的CI另验。原候选`833966d4ba21fa7bcb6670e9908d05f058cf8fdd`自己的[43773202173](https://github.com/626619403/Ergora/actions/runs/43773202173)准确push／attempt1已completed／failure：plan与六Linux全success（group2 9分40秒、group5 15分45秒，原20分钟限制），Windows 15分55秒，应用回归失败；wheel、283参考、PowerShell5.1 installer及upgrade与观察件上传均success。
+2026-11-16。状态：最小四行修正、局部边界检查及fresh独立两轴审查闭合，已固定并普通导入；已普通推送，自己的准确CI八job全success。原候选`833966d4ba21fa7bcb6670e9908d05f058cf8fdd`自己的[43773202173](https://github.com/626619403/Ergora/actions/runs/43773202173)准确push／attempt1已completed／failure：plan与六Linux全success（group2 9分40秒、group5 15分45秒，原20分钟限制），Windows 15分55秒，应用回归失败；wheel、283参考、PowerShell5.1 installer及upgrade与观察件上传均success。
 
 原Windows官方check annotations为HTTP200，原件在本片前置M1b ignored `publication-r1/windows-failure`。摘要是**1214 passed／995 skipped／5 errors／16 subtests passed，877.59秒**；没有取得完整日志，不以annotations冒称读取过所有trace。五错来自`tests/test_training_cycle_controller.py`四个新增测试：`test_schema3_native_callback_refuses_before_executor_effects_and_keeps_completed_read`、`test_schema3_birth_retains_sources_bytes_and_one_clock`、`test_schema3_intent_is_local_and_all_execution_entries_remain_closed`、`test_controller_original_type_is_authenticated_read_only`（后者两参数）。均在setup先进入原Linux-only native source preparation／submission，来不及到body的SDK跳过或条件判断；不是Windows超时或安装失败。
 
@@ -26,3 +26,9 @@
 [fresh独立审查](2026-11-16-windows-schema3-fixture-skip-review.md)核完整四行diff、原官方annotations、真实fixture闭包与原五节点检查，需求和维护性均approve、开放0。sentinel只证明setup先于测试body，具体Linux-only故障来自原官方annotations和源码；未运行的原生Windows／Linux body仍保留。
 
 隔离提交`1351e78dc1c6775fa3958411e24262ef0a6cfc5e`已按同一四行固定，普通cherry-pick导入开发分支`6493f300041e2f9d116fdfcab718551a436f74bf`；没有强推或自动合main。原产品和CI不变，在途M2／M3源码未包含。下一步随公开进度记录普通推送并核精确远端与自己的官方CI，833966d原failure保持。
+
+公开文档候选`610f111f0755edcfd8b4c582a7644ff79621c8ce`已普通推送本开发分支，精确远端同一；本片ignored `publication-r1`留完整push／remote argv、退出码与输出。初次官方HTTP200未观察到run，后续自己的准确push／attempt1 [43777200480](https://github.com/626619403/Ergora/actions/runs/43777200480)已确认in_progress；不预记最终成功。该候选包含本四行修正和进度／已审设计快照，没有在途M2产品，也没有后继CI再平衡。
+
+## 自己的官方CI终态
+
+官方HTTP200已核610f111自己的准确push／attempt1 run43777200480为completed／success，plan／六Linux／Windows八job全部success；group5为15分46秒、Windows24分42秒，原20／30分钟不变。原run／jobs完整响应留在publication-r1，原833五setup errors仍为failure。仅此候选包含本四行修正；后继M2／M3与CI再平衡不继承它的成功。
