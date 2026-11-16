@@ -151,10 +151,10 @@ def selected_context(document: dict) -> dict:
 
 def _binding(value: dict) -> None:
     """Check persisted structure without asking a mutable backend catalog."""
-    if (not isinstance(value, dict) or set(value) - {'tool', 'model', 'sandbox'}
+    if (not isinstance(value, dict) or set(value) - {'tool', 'model', 'sandbox', 'reasoning_effort', 'effort'}
             or not isinstance(value.get('tool'), str) or not value['tool'].strip() or '\x00' in value['tool']):
         raise ValueError('Invalid formal composition binding')
-    for key in ('model', 'sandbox'):
+    for key in ('model', 'sandbox', 'reasoning_effort', 'effort'):
         if key in value and (not isinstance(value[key], str) or not value[key].strip() or '\x00' in value[key]):
             raise ValueError('Invalid formal composition binding field: ' + key)
     if 'sandbox' in value and value['sandbox'] not in ('read-only', 'workspace-write', 'current-container'):

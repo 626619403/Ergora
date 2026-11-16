@@ -219,6 +219,19 @@
                 "linux"
               ]
             }
+          },
+          "reasoning_effort": {
+            "type": "string",
+            "title": "推理强度（按所选模型支持）",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "xhigh",
+              "max",
+              "ultra"
+            ],
+            "x-ergora-empty-label": "使用 Codex 原有推理设置"
           }
         },
         "required": [
@@ -268,6 +281,19 @@
             "not": {
               "pattern": "\u0000"
             }
+          },
+          "effort": {
+            "type": "string",
+            "title": "推理强度（按所选模型及账户限制）",
+            "enum": [
+              "low",
+              "medium",
+              "high",
+              "xhigh",
+              "max",
+              "ultracode"
+            ],
+            "x-ergora-empty-label": "使用 Claude 原有推理设置"
           }
         },
         "required": [
@@ -957,7 +983,10 @@
           "api": {
             "type": "string",
             "title": "推理 API 协议",
-            "enum": ["openai-completions", "openai-responses"],
+            "enum": [
+              "openai-completions",
+              "openai-responses"
+            ],
             "default": "openai-completions"
           },
           "context_window": {

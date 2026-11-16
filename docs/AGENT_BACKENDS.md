@@ -40,6 +40,24 @@ ergora agent output my-project RUN_ID
 
 `--template` 要求该角色的真实结构化产物；不指定时保持普通文本调用。两者都不等于正式验收。Codex 默认使用角色对应的 CLI sandbox。若系统不支持该 sandbox，可在已经明确接受当前容器/用户边界后，显式设置 `"sandbox":"current-container"`；不会自动降级。Claude Code 使用自己的认证，其审查/提案角色限制到 Read/Grep/Glob，关闭会话持久化与额外 MCP 配置。默认审查仍为 Codex。
 
+### 为每个 Agent 设置思考强度
+
+Codex 的 binding 可增加 `reasoning_effort`，Claude Code 可增加 `effort`，例如：
+
+```json
+{"tool":"codex","model":"YOUR_MODEL_ID","reasoning_effort":"high"}
+```
+
+```json
+{"tool":"claude-code","model":"YOUR_MODEL_ID","effort":"medium"}
+```
+
+项目角色在“工具绑定”表单或 `project bind` 中设置；专长实例在自己的 `agent.json.backend` 或正式任务的 `composition.backend_overrides[实例路径].binding` 中设置。正式任务会冻结这份完整配置；修改项目绑定或发布新的 Agent 版本不会改写已有任务。并行审查分支可分别选择后端、模型和强度，沿原 DAG 与祖先并发配额调度。
+
+Codex 的可选值为 `low/medium/high/xhigh/max/ultra`，显式 binding 覆盖 `--codex-config` 文件中的 `model_reasoning_effort`。Claude 的可选值为 `low/medium/high/xhigh/max/ultracode`，投影为原生 `--effort`。省略字段时保留各 CLI 的原有设置；其他后端没有这两个字段。等级是否可用取决于所选模型、CLI、账户和服务；Ergora 保存明确请求，不估算或承诺各后端使用相同计算量。Claude 的组织策略可能限制实际等级，JSON 模式的相关警告可能只进入原生 debug log，不能仅凭请求值认定实际强度。
+
+参数说明见 [Codex 官方配置](https://developers.openai.com/codex/config-reference/)、[Claude CLI](https://code.claude.com/docs/en/cli-reference#cli-flags) 和 [Claude 模型配置](https://code.claude.com/docs/en/model-config)。不支持的字段在绑定校验时拒绝；已接受字段在模型端能否运行，仍须真实调用验证。
+
 ### 用 Ergora 审查自己的仓库
 
 可以为本仓库或其他代码库登记一个审查项目，并给 reviewer 选择与实际作者不同的可用后端。例如把 `reviewer.json` 写为 `{"tool":"claude-code"}`，然后运行：

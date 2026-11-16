@@ -322,6 +322,23 @@ v8 中，只要选中结构链有未内联 Skill 附件，text-only 就在创建
 
 这些是有限静态格式的硬上限，不是性能、模型容量或任意并发可运行的承诺。使用更小的项目或子树限额可在编译时拒绝超限组合。
 
+独立分支可以选择不同的后端、模型及[思考强度](AGENT_BACKENDS.md#为每个-agent-设置思考强度)。例如在正式任务的 `composition.backend_overrides` 中分别设置：
+
+```json
+{
+  "root/structure/review": {
+    "binding": {"tool":"codex","reasoning_effort":"high"},
+    "reason": "结构设计审查采用较高推理强度"
+  },
+  "root/correctness/review": {
+    "binding": {"tool":"claude-code","effort":"medium"},
+    "reason": "正确性审查使用独立后端"
+  }
+}
+```
+
+路径须对应本次 manifest 的实际叶子，所有后端均须通过该模式的能力检查；使用任务页面的组合配置可生成相同 binding。正式审查和 work-unit 运行器会按依赖就绪顺序及共享配额启动分支；执行者与审查者的异后端策略继续按原 `diversity` 配置检查。`composition run-input` 仍只调用一个叶子；任意混合节点和一般 Repeat 的执行范围另见实施计划。
+
 ## 修订、分享与恢复
 
 只修改工作流标准正文时，先用 `show` 取得精确原版本的 `digest` 和 `definition`，将 `definition` 单独保存为 `new-workflow.json`，调整版本、节点或依赖引用。将 `BASE_DIGEST` 替换为原包摘要：

@@ -63,12 +63,15 @@ def test_missing_capability_and_malformed_stage_result_are_visible(tmp_path):
 
 
 @pytest.mark.parametrize("tool", ["codex", "claude-code"])
+@pytest.mark.parametrize("effort", [None, "low", "high"])
+@pytest.mark.parametrize("mode", ["native", "text-only"])
 @pytest.mark.skipif(os.name == "nt", reason="POSIX CLI shebang fixtures; Windows uses structured command fixtures")
-def test_native_structured_output_normalization_uses_actual_process(tmp_path, monkeypatch, tool):
+def test_native_structured_output_normalization_uses_actual_process(tmp_path, monkeypatch, tool, effort, mode):
     programs = tmp_path / "bin"
     programs.mkdir()
     script = programs / ("codex" if tool == "codex" else "claude")
     script.write_text(f"#!{sys.executable}\nimport json,sys,pathlib\nargs=sys.argv\n" +
+        "pathlib.Path('native-argv.json').write_text(json.dumps(args))\n" +
         ("schema=json.loads(pathlib.Path(args[args.index('--output-schema')+1]).read_text())\n" if tool == "codex" else
          "schema=json.loads(args[args.index('--json-schema')+1])\n") +
         "result={'summary':'native fixture','artifacts':{k:'evidence' for k in schema['properties']['artifacts']['required']},'decision':'approve'}\n" +
@@ -76,16 +79,28 @@ def test_native_structured_output_normalization_uses_actual_process(tmp_path, mo
          "print(json.dumps({'structured_output':result,'is_error':False}))\n"))
     script.chmod(0o700)
     monkeypatch.setenv("PATH", str(programs) + os.pathsep + os.environ["PATH"])
-    result = agents.invoke({"tool": tool}, "reviewer", "Review", tmp_path, tmp_path / "output", 5,
-                           agents.result_schema(["review-report"], True))
+    selected = {"tool": tool}
+    if effort is not None:
+        selected["reasoning_effort" if tool == "codex" else "effort"] = effort
+    result = agents.invoke(selected, "reviewer", "Review", tmp_path, tmp_path / "output", 5,
+                           agents.result_schema(["review-report"], True), mode=mode)
     assert result["status"] == "succeeded"
     assert json.loads(Path(result["result"]).read_text())["decision"] == "approve"
+    argv = json.loads((tmp_path / "native-argv.json").read_text())
+    if tool == "codex":
+        settings = dict(argv[i + 1].split("=", 1) for i, item in enumerate(argv) if item == "-c")
+        assert settings.get("model_reasoning_effort") == (json.dumps(effort) if effort is not None else None)
+    else:
+        assert ("--effort" in argv) == (effort is not None)
+        if effort is not None:
+            assert argv[argv.index("--effort") + 1] == effort
 
 
-def test_formal_codex_config_cannot_override_role_sandbox(tmp_path, monkeypatch):
+@pytest.mark.parametrize("effort", [None, "high"])
+def test_formal_codex_config_cannot_override_role_sandbox(tmp_path, monkeypatch, effort):
     config = tmp_path / "codex.toml"
     config.write_text('approval_policy = "never"\nsandbox_mode = "danger-full-access"\n'
-                      'model = "config-model"\n[sandbox_workspace_write]\nnetwork_access = true\n'
+                      'model = "config-model"\nmodel_reasoning_effort = "low"\n[sandbox_workspace_write]\nnetwork_access = true\n'
                       '[model_providers.fixture]\nbase_url = "https://example.invalid/v1"\n', encoding="utf-8")
     options = ["--skip-git-repo-check"]
     schema = agents.result_schema(["review-report"], True)
@@ -96,7 +111,8 @@ def test_formal_codex_config_cannot_override_role_sandbox(tmp_path, monkeypatch)
         assert "--ignore-user-config" in argv and "--ignore-rules" in argv
         assert [argv[i + 1] for i, value in enumerate(argv) if value == "--disable"] == ["plugins", "apps"]
         settings = [argv[i + 1] for i, value in enumerate(argv) if value == "-c"]
-        assert settings == ['model="config-model"', 'model_providers.fixture.base_url="https://example.invalid/v1"']
+        assert settings == ['model="config-model"', 'model_reasoning_effort=' + json.dumps(effort or "low"),
+                            'model_providers.fixture.base_url="https://example.invalid/v1"']
         assert argv[argv.index("--model") + 1] == "binding-model"
         output.mkdir()
         Path(argv[argv.index("--output-last-message") + 1]).write_text(json.dumps(
@@ -104,7 +120,10 @@ def test_formal_codex_config_cannot_override_role_sandbox(tmp_path, monkeypatch)
         return {"status": "succeeded", "returncode": 0}
 
     monkeypatch.setattr(processes, "run", run)
-    result = agents.invoke({"tool": "codex", "model": "binding-model"}, "reviewer", "Review exact candidate",
+    selected = {"tool": "codex", "model": "binding-model"}
+    if effort is not None:
+        selected["reasoning_effort"] = effort
+    result = agents.invoke(selected, "reviewer", "Review exact candidate",
                            tmp_path, tmp_path / "output", 5, schema, codex_bin="configured-codex",
                            codex_options=options, codex_config=config)
     assert result["status"] == "succeeded" and options == ["--skip-git-repo-check"]

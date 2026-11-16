@@ -46,8 +46,9 @@ def test_catalog_preserves_legacy_fields_and_returns_isolated_descriptions():
 def test_binding_matrix_preserves_acceptance_and_rejection():
     fixture_root = Path(__file__).resolve().parent
     valid = {
-        "codex": [{"tool": "codex"}, {"tool": "codex", "model": "provider/model", "sandbox": "current-container"}],
-        "claude-code": [{"tool": "claude-code", "model": "provider/model"}],
+        "codex": [{"tool": "codex"}, {"tool": "codex", "model": "provider/model", "sandbox": "current-container",
+                                 "reasoning_effort": "high"}],
+        "claude-code": [{"tool": "claude-code", "model": "provider/model", "effort": "low"}],
         "mini-swe-agent": [{"tool": "mini-swe-agent", "model": "provider/model", "python": sys.executable, "step_limit": 1, "cost_limit": 0.1}],
         "deepseek-harness": [{"tool": "deepseek-harness", "model": "model", "python": sys.executable,
                               "base_url": "https://example.invalid/v1", "api_key_env": "MODEL_KEY"}],
@@ -73,6 +74,9 @@ def test_binding_matrix_preserves_acceptance_and_rejection():
     invalid = [
         ("implementer", {"tool": "codex", "sandbox": "danger-full-access"}),
         ("reviewer", {"tool": "claude-code", "model": " "}),
+        ("reviewer", {"tool": "codex", "effort": "high"}),
+        ("reviewer", {"tool": "claude-code", "reasoning_effort": "high"}),
+        ("implementer", {"tool": "mini-swe-agent", "model": "p/m", "reasoning_effort": "high"}),
         ("implementer", {"tool": "mini-swe-agent"}),
         ("implementer", {"tool": "mini-swe-agent", "model": "p/m", "step_limit": True}),
         ("implementer", {"tool": "mini-swe-agent", "model": "p/m", "cost_limit": 0}),

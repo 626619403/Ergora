@@ -88,7 +88,7 @@ def test_revision_preserves_complete_package_and_only_publishes_explicitly(bundl
     original = definitions.import_bundle(state, bundle)
     identity, version = original["definition"]["id"], original["definition"]["version"]
     updated = {**original["definition"], "version": "1.0.1", "description": "Revised specialist request",
-               "backend": {"tool": "codex", "model": "test-specialist"}}
+               "backend": {"tool": "codex", "model": "test-specialist", "reasoning_effort": "high"}}
     index = state.root / "agent-definitions/index.json"
     before = index.read_bytes()
     checked = definitions.revise(state, identity, version, original["digest"], updated)
@@ -102,6 +102,7 @@ def test_revision_preserves_complete_package_and_only_publishes_explicitly(bundl
     assert definitions.revise(state, identity, version, original["digest"], updated, publish=True) == published
     assert definitions.get(state, identity, version) == original
     saved = definitions.get(state, identity, updated["version"])
+    assert saved["definition"]["backend"] == updated["backend"]
     assert saved["files"]["agent.json"]["executable_bits"] == original["files"]["agent.json"]["executable_bits"]
     assert {key: value for key, value in saved["files"].items() if key != "agent.json"} == {
         key: value for key, value in original["files"].items() if key != "agent.json"}
