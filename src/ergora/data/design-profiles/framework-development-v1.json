@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "kind": "task-design-inspection-profile",
+  "id": "framework-development-v1",
+  "protocol": "design-knowledge-v1",
+  "inspection_only": true,
+  "runtime_enforced": false,
+  "change_kinds": [
+    "framework-development",
+    "structural-refactoring",
+    "important-algorithm",
+    "important-data",
+    "important-permissions",
+    "important-acceptance"
+  ],
+  "required_sections": [
+    "direction",
+    "current-structure",
+    "design-and-tradeoffs",
+    "standards",
+    "data-and-recovery",
+    "implementation-order",
+    "acceptance"
+  ],
+  "minimum_questions": [
+    {
+      "id": "framework:design-tradeoffs",
+      "body": "Which detailed design, interfaces and tradeoffs does the owner choose?",
+      "why_required": "Implementation needs an explicit design and comparison of meaningful alternatives."
+    },
+    {
+      "id": "framework:standards",
+      "body": "Which project style, module and component rules govern this change?",
+      "why_required": "Local standards and real component contracts must be established before implementation."
+    },
+    {
+      "id": "framework:acceptance",
+      "body": "Which objective checks, inputs, oracle and failure or unknown conditions establish acceptance?",
+      "why_required": "A claimed result must be testable within the valid configuration and resource limits."
+    },
+    {
+      "id": "framework:direction",
+      "body": "Which goals, non-goals and scope does the owner accept?",
+      "why_required": "Product direction cannot be inferred from silence or an agent summary."
+    },
+    {
+      "id": "framework:sequence",
+      "body": "Which slices, dependencies and shared-file owners determine the implementation order?",
+      "why_required": "Each slice needs independently observable behavior and explicit prerequisites."
+    },
+    {
+      "id": "framework:company-context",
+      "body": "Which company documents, meeting decisions or implicit constraints are necessary, and what information is missing?",
+      "why_required": "General knowledge cannot replace necessary project-specific evidence or an explicit owner exception."
+    }
+  ],
+  "required_actor_assurance": "protected-owner-channel",
+  "limits": {
+    "artifact_bytes": 262144,
+    "inspection_bytes": 1048576,
+    "source_records": 32,
+    "questions": 64,
+    "knowledge_requirements": 64,
+    "revisions": 32
+  }
+}

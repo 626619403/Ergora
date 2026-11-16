@@ -6,6 +6,7 @@ import getpass
 import hashlib
 import json
 import os
+from pathlib import Path
 import re
 import sys
 import time
@@ -14,6 +15,57 @@ import uuid
 from .reference_task_submission import _Submission
 from .reference_history import find_signal_event
 from .state import file_lock
+
+
+def _read_design(creation, selected, context: dict, material: dict) -> tuple[dict, list]:
+    """Read bounded facts for application validation, using the original adapter."""
+    data = Path(__file__).parent / 'data'
+    profile = json.loads((data / 'design-profiles/framework-development-v1.json').read_text(encoding='utf-8'))
+    limits = profile['limits']
+    if material['bytes'] > limits['artifact_bytes']:
+        raise ValueError('Design packet exceeds its inspection profile artifact limit')
+    packet = json.loads(material['text'])
+    # These checks own only safe, bounded source I/O. The application validates
+    # the full schema before it publishes any inspection result.
+    records = packet.get('source_records') if isinstance(packet, dict) else None
+    if not isinstance(records, list) or len(records) > limits['source_records']:
+        raise ValueError('Design source_records must be a list within its inspection profile limit')
+    seen = set()
+    for source in records:
+        if not isinstance(source, dict) or not isinstance(source.get('id'), str):
+            raise ValueError('Design source record requires a text ID')
+        if source['id'] in seen:
+            raise ValueError('Duplicate design source ID: ' + source['id'])
+        seen.add(source['id'])
+    sources, materials = {}, []
+    for source in records:
+        source_id = source['id']
+        if source.get('access') == 'reference_only':
+            sources[source_id] = {'status': 'reference_only'}
+            continue
+        if source.get('access') != 'full' or not isinstance(source.get('body'), dict):
+            raise ValueError('Design source requires full body or reference_only access: ' + source_id)
+        path = creation.safe_path(creation.path('artifacts'), source['body'].get('path'))
+        try:
+            raw = creation.adapter.read_raw(path, limits['artifact_bytes'])
+        except FileNotFoundError:
+            sources[source_id] = {'status': 'missing'}
+            continue
+        except PermissionError:
+            sources[source_id] = {'status': 'denied'}
+            continue
+        digest = hashlib.sha256(raw).hexdigest()
+        sources[source_id] = {'status': 'read', 'sha256': digest, 'bytes': len(raw)}
+        materials.append({'id': source_id, 'path': source['body']['path'], 'sha256': digest,
+                          'bytes': len(raw), 'text': raw.decode('utf-8')})
+    expected = {'task_id': creation.task_id, 'request_sha256': selected.spec['request_sha256'],
+                'profile_sha256': selected.spec['profile_sha256'], 'admission_sha256': creation.sha(selected.document),
+                'seed_plan_job_sha256': creation.sha(context), 'design_profile_sha256': creation.sha(profile)}
+    if 'composition' in selected.document:
+        expected['manifest_digest'] = selected.document['composition']['manifest']['digest']
+    units = selected.spec['request'].get('input', {}).get('work_units')
+    return {'packet': packet, 'profile': profile, 'expected': expected, 'sources': sources,
+            'work_unit_ids': [unit['id'] for unit in units] if units is not None else None}, materials
 
 
 async def _plan(payload: dict) -> dict:
@@ -72,8 +124,13 @@ async def _plan(payload: dict) -> dict:
             or receipt['job_sha256'] != job_sha or receipt['state'] != 'SUCCEEDED'):
         raise ValueError('Plan receipt differs from the exact pending plan or its original job')
     artifacts = {artifact['name']: artifact for artifact in receipt['artifacts']}
+    if 'design-packet' in artifacts and len(artifacts) != len(receipt['artifacts']):
+        raise ValueError('Plan receipt contains duplicate review artifact names')
     materials = []
-    for name in spec['profile']['artifacts_by_stage']['plan']:
+    names = list(spec['profile']['artifacts_by_stage']['plan'])
+    if 'design-packet' in artifacts and 'design-packet' not in names:
+        names.append('design-packet')
+    for name in names:
         if name not in artifacts:
             raise ValueError('Plan receipt is missing a required review artifact: ' + name)
         artifact = artifacts[name]
@@ -87,6 +144,11 @@ async def _plan(payload: dict) -> dict:
               'runtime_status': 'queried', 'phase': status['phase'], 'plan_sha256': payload['plan_sha256'],
               'history_plan_event_id': event.event_id, 'job_sha256': job_sha, 'receipt': receipt,
               'materials': materials, 'artifact_limit_bytes': 262_144, 'read_only': True}
+    if 'design-packet' in artifacts:
+        material = next(item for item in materials if item['name'] == 'design-packet')
+        result['design_read'], sources = _read_design(creation, submission.input, context, material)
+        materials.extend({'name': 'design-source:' + source['id'], **source} for source in sources)
+        creation.check_size(result, result['design_read']['profile']['limits']['inspection_bytes'], 'Design inspection')
     creation.check_size(result, 1_048_576, 'Plan inspection')
     return result
 
