@@ -30,6 +30,8 @@
 
 新原生许可反例 `native-permit-red-r4` 先遇旧测试服务只识别v1父workflow前缀，未到目标边界；修正版本化fixture后 `native-permit-red-r5` 在真实native attempt边界失败：实际executor没有持原父锁的共享许可。新修正由native owner用局部ExitStack覆盖实际callback至process返回，同时保留已有结果早读；`native-permit-r6` 正在跑原5个执行边界的双版本及无效旧绑定／已有结果读回。原反例与所有中间结果保留；尚未认证整片运行、安装、真实服务或两个CPU候选。
 
+`native-permit-r6` 实际11过／1失败（240.66秒）：许可在callback进入时才取得，executor-lock边界仍能提前drain。随后把有执行意图的新版本许可提前到原executor锁之前，并保留已有result的原惰性读及记录消失后的callback再准入；`native-permit-r7` 最终单次 **12 passed／237.31秒**。原r6失败保留，没有删停止断言或扩大原预算。后继`late-reader-r8`在两种实际native安装验证M−1/M/M+1、完整UTF-8／LF及应用／纯native晚处读回，尚在途；不得提前转授r7通过。
+
 原件位于ignored `.ergora/checks/optimization-loop-orchestration/m6-r1/`，包含每轮argv／raw／JUnit与所记录的输入身份。完整前驱／大原件晚处可达、其余最后准入、统一候选、fresh源码审、新安装和真实服务／CPU两轮均是后继门槛；不能仅移除关闭guard就宣称开放。
 
 ## 工具与报告资源的追加检查点
@@ -39,3 +41,7 @@ Profile扩展后已冻结不可变capability快照SHA256 `ac6834155e7591ce7a55d3
 优化报告新资源作者片已fresh两轴approve／0，原@1／旧catalog与资源保持。新非editable wheel SHA256 `9743064d74a72d1836570efc58dc66f8d53d00447da7cf0b060160181fdff82e`，core实际site-packages的678runtime bytes／mode、283参考及新入口冻结消费通过，core无SDK。真实原CLI合成报告149.034645秒成功、四字段／静态HTML和两视图5表68单元格一致；原structure模板39.446412秒成功、两轴approve。初次私有runtime verifier把源码AGENTS算入产品导致的错误保留，只修verifier未改wheel。完整新安装／两次原生调用原件正在由同一fresh reviewer最终补核；普通整合／发布和自己的CI仍待，不认证真实模型性能。
 
 上述原件fresh最终补核已完成，两轴approve／0，report新SHA5723d25a…，原前缀保留。根接纳准确源码71510045…并普通合入d1e19a8a…，完整src／preset测试与已验候选相同，scripts／CI／pyproject未改；普通发布／自己的CI接续，不转授旧绿。
+
+普通发布已核：准确公开head `eaa2b8c6066e507b5a6f15a36903de7fe523144e`，远端完整OID同一，src tree仍5dcc41b…；自己的Portability run **43896484360** 首次观察1 success／7 in progress，终态待核。原件在 `.ergora/checks/optimization-report-skill/publication-r1/`，含本候选push／remote／官方8个job的HTML观察；旧S2的9f3与绿CI不转授。后继纯状态变更不需要重复未变产品测试。
+
+该run后继已终态 **8/8 success**：官方snapshot29、完整head／同run／8唯一job IDs／原生success标签及HTML SHA b823a8a3…已独立核，watcher正常exit0。本报告资源片完成；真实任务与M6／搜索／Profile组件接线不继承该结论。

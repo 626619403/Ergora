@@ -1,6 +1,6 @@
 # 优化报告 Skill 与版本化结构模板
 
-2026-11-16。基线 `f8df8af90ae5ad2d9e64047b0b87197ce2bfb432`。资源与必要接缝、fresh两轴独审、新非editable安装、实际原CLI合成报告、原结构模板及同一fresh最终原件读回均已通过。准确源码71510045…已普通合入d1e19a8a…，产品与preset测试保持已核候选字节；普通发布及该候选自己的CI后继分别核。主线PLAN／循环实现另由根维护，本报告资源不开放训练效果。
+2026-11-16。本只读报告资源片已完成。基线 `f8df8af90ae5ad2d9e64047b0b87197ce2bfb432`，准确源码71510045…已普通合入d1e19a8a…并发布eaa2b8c；资源接缝、新非editable安装、实际原CLI合成报告、原结构模板、fresh两轴及最终原件读回均通过，自己的CI43896484360已终态8/8 success。主线PLAN／循环实现另由根维护，本报告资源不开放训练效果或认证真实收益。
 
 ## 要求与实现边界
 
@@ -63,3 +63,9 @@
 根已核最终15文件scope，除原review报告的append-only最终接纳节外，逐项bytes／SHA／执行位均与final-r1原件一致；review新SHA256 `5723d25abbf83bdb4f43f79558d25a19a760286b7a0c6d32424086bb53371450`，其原7,416B前缀仍为b2faf6…，未覆盖原冻结报告。
 
 准确源码提交 `71510045bccc94989002272a2fa5770d84406f0f` 已普通无冲突合入开发分支 `d1e19a8a86863c82123e73fc2e6f834a2a933b60`。合入src tree `5dcc41b5e15f55ddc27bb01db916fa50a1acb9d6` 与候选同一，preset测试同一，scripts／CI／pyproject未变，没有merge-resolution产品改动。本地源码／新安装／原CLI／原结构模板及同一fresh最终原件接纳门已闭合；普通发布和该准确公开候选自己的CI仍待分别核验，不借旧9f3绿CI。M6执行效果仍仅在隔离实现中，未由本报告模板开放。
+
+普通发布后继：准确head `eaa2b8c6066e507b5a6f15a36903de7fe523144e` 已普通推送并核远端完整OID，完整src保持同一。它自己的Portability run `43896484360` 已启动，首次官方观察1 success／7 in progress；终态待核，不继承旧产品CI。发布证据位于ignored `publication-r1/`，后继状态不改产品或原模型输入。
+
+## 自身官方CI终态
+
+2026-11-16T15:51:46.111616+00:00，官方 `publication-r1/checks-web-29.html`／JSON与latest绑定完整eaa2b8c、同run43896484360、8个唯一job IDs和原生 `This job succeeded` 标签，**8/8 success，含Windows**；watcher正常exit0。原HTML SHA256 `b823a8a380e030bca67bf3ede8adb9ed5a4cb5705851f77ec44b5e0fa585f5a0` 已由根重算相符，`terminal-verification.json` 保留准确身份。本片源码／安装／原模型／独审／普通整合发布及自身适用CI门闭合；原模型合成夹具与真实业务质量、浏览器、SDK矩阵和M6循环仍各自分账。后继纯状态提交的产品树需保持同本CI候选，不重跑不变产品矩阵。
