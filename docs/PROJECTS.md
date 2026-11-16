@@ -1,12 +1,16 @@
-# 项目定义与参考执行配置
+<a id="项目定义与参考执行配置"></a>
+# Project definitions and reference execution configuration
 
-`project add`创建轻量控制项目，适用于独立Agent、记忆、Skill和研究。`project register`一次登记业务Git根、工具绑定、模板、tracker、执行位置和可信检查，并生成正式执行所需的reference项目/策略文件。CLI和本地API使用同一用例，不需要GitHub或GitLab账号。
+English · [简体中文](zh-CN/PROJECTS.md)
 
-## 统一注册
+`project add` creates a lightweight control project for standalone Agents, memory, Skills and research. `project register` registers a business Git root, tool bindings, templates, tracker, execution locations and trusted checks together, then publishes the reference project/policy files required for formal execution. The CLI and local API use the same application use case; a GitHub or GitLab account is not required.
 
-先安装[参考运行环境](USAGE.md)，完成模型认证、平台设置和可信执行边界配置。注册只检查定义和安装身份，不安装服务、不调用模型、不运行检查。仓库必须已有提交；三个执行目录必须使用绝对路径，位于业务仓库之外。路径可以指向用户持久目录；Windows登记与检查配置受支持，正式六阶段执行仍需要Linux/WSL2。
+<a id="统一注册"></a>
+## Unified registration
 
-将以下内容保存为`project.json`，把路径换成实际绝对路径。检查使用argv数组，在受信任的检查进程中执行；`{repo}`会替换为任务的checkout。示例检查只适用于小型Python项目，实际使用应配置项目自己的测试、架构与知识检查。
+Install the [reference runtime](USAGE.md) first, then complete model authentication, platform settings and trusted execution boundaries. Registration checks the definition and installation identity; it does not install services, invoke models or run checks. The repository must already contain a commit. All three execution directories must be absolute paths outside the business repository. They may use persistent user directories. Windows supports registration and check configuration; formal six-stage execution still requires Linux/WSL2.
+
+Save the following as `project.json`, replacing the paths with actual absolute paths. Checks use argv arrays and run in trusted check processes; `{repo}` expands to the task checkout. These example checks suit only a small Python project. Configure the project's own behavior, architecture and knowledge checks for actual use.
 
 ```json
 {
@@ -41,21 +45,28 @@ ergora project config my-project
 ergora project registration my-project
 ```
 
-新项目使用revision 0；升级已有轻量项目时使用`project show`显示的当前revision。已有项目必须使用相同Git根，未指定的工具绑定继续保留。可选`bindings`与`project bind`使用相同格式；缺少正式角色能力或`stage-json-v1`协议会拒绝。定义中的`base_sha`可固定已有commit，省略时取HEAD。未知字段/版本拒绝，项目定义不保存API key。
+Use revision0 for a new project. When registering an existing lightweight project, use its current revision from `project show`. An existing project must retain the same Git root; omitted tool bindings remain unchanged. Optional `bindings` use the same format as `project bind`; missing formal role capabilities or the `stage-json-v1` protocol are rejected. Optional `base_sha` pins an existing commit; omission selects HEAD. Unknown fields/versions are rejected, and project definitions do not store API keys.
 
-`large-change`还需`integration`、`compatibility`、`migration-rollback`检查；`scope`和`baseline-regression`由执行器提供。可同时登记多个模板，检查集合必须满足全部开发模板。`training-optimization`登记三种训练角色和执行关联；runner、workload、基线与实验仍按[参考训练流程](AGENT_BACKENDS.md)配置，登记不表示训练已初始化或验收。
+`large-change` also requires `integration`, `compatibility` and `migration-rollback` checks; the executor provides `scope` and `baseline-regression`. Multiple templates may be registered together, and checks must satisfy every development template. `training-optimization` registers three training roles and execution locations; configure the runner, workload, baseline and experiments through the [reference training flow](AGENT_BACKENDS.md). Registration does not initialize or accept training.
 
-配置目录下生成：
+The configuration directory receives:
 
-- `projects/ID.json`：业务仓库、tracker、基线、允许路径和检查。
-- `policies/ID/scope.json`与`execution.json`：scope策略和启用的开发模板。
-- `ergora/registrations/ID.json`：控制目录与定义摘要的归属记录。
+- `projects/ID.json`: business repository, tracker, baseline, allowed paths and checks.
+- `policies/ID/scope.json` and `execution.json`: scope policy and enabled development templates.
+- `ergora/registrations/ID.json`: ownership record for the control directory and definition digest.
 
-控制项目文档是定义与绑定的权威来源。这些文件是单向、不可变投影；不要手动双向编辑。`project bind`可继续修订工具。变更基线、模板或可信策略时需使用新的配置目录，保留已有任务的旧配置；原位置内容冲突不会覆盖。一个配置目录中的同一tracker只允许一个业务项目。
+The control project document is authoritative for the definition and bindings. These files are one-way, immutable projections; do not edit them in both directions. `project bind` may still revise tool selections. Changes to the baseline, templates or trusted policy require a new configuration directory, retaining the old configuration for existing tasks; conflicting content at the original path is not overwritten. A configuration directory allows only one business project per tracker.
 
-## 发布中断与恢复
+## Current limits of design policy registration
 
-跨SQLite和多文件的发布会依次记录意图、保存pending项目、发布文件、确认published。注册状态和文件一致性分别展示；published且`consistent: false`仍需处理漂移。
+The example above uses registration schema1. Schema2 can save a complete `design_policy` and its profile/policy digests for a genuinely first unified registration. `project registration` returns the effective minimum questions/knowledge requirements and `execution_supported: false`; a configured owner does not authenticate a human. An existing unified registration, including an empty schema1 registration, cannot upgrade to schema2. A schema2 registration cannot be re-registered, replaced or downgraded, and existing native projections are not a first registration. The complete input format is defined by [registration schema2](../src/ergora/data/schemas/project-registration-v2.json).
+
+Current schema2 projects cannot create or execute legacy task inputs: ordinary/budgeted task birth and managed native execution admission reject them with `design_policy_execution_unsupported` / `human_channel_unavailable`. This is not an executable design approval flow. The source journal, trusted owner decisions and later gates have separate delivery work in the [implementation plan](PLAN.md). Do not delete a registration, change it to schema1 or switch control directories to bypass refusal. The schema1 example retains its original task and recovery contracts.
+
+<a id="发布中断与恢复"></a>
+## Interrupted publication and recovery
+
+Publication across SQLite and multiple files records the intent, saves a pending project, publishes files, then confirms published status. Registration status and file consistency are reported separately; a published registration with `consistent: false` still needs drift investigation.
 
 ```bash
 ergora project show my-project
@@ -63,34 +74,36 @@ ergora project registration my-project
 ergora project resume-registration my-project --revision CURRENT_REVISION
 ```
 
-恢复只使用保存的原意图，内容相同的文件可以幂等重试，冲突文件会保留并报错。pending时不能改绑定或启动新正式任务。恢复记录位于Ergora控制目录的`registrations/ID/OPERATION.json`，含修改前/后的项目及来源；`.result.json`是发布回执。完成回执写入失败也可用同一命令补齐。不要删除pending记录后重新提交不同定义。
+Recovery uses only the saved original intent. Identical files may be retried idempotently; conflicting files are retained and reported as errors. A pending project cannot change bindings or start new formal tasks. The recovery record is `registrations/ID/OPERATION.json` under the Ergora control directory and contains the before/after project and source; `.result.json` is its publication receipt. The same resume command can finish a missing completion receipt. Do not delete a pending record and resubmit another definition.
 
-## 正式任务与API
+<a id="正式任务与api"></a>
+## Formal tasks and API
 
-新任务通过`ergora task`统一入口创建、提交、批准、取消和导出；旧入口任务继续通过原`agentflow task`管理。执行器可直接选择统一项目保存的目录：
+New tasks use the unified `ergora task` entry point for creation, submission, approval, cancellation and export. Tasks created through the old entry point continue through `agentflow task`. The executor can select the directories saved by a unified project directly:
 
 ```bash
 ergora reference executor --project my-project
 ```
 
-只对新任务启用选择式执行器，不要与原执行器同时运行。新任务核对发布状态、目录和投影后冻结有效配置；已有任务继续使用原绑定快照。完整批准、六阶段与证据要求见[Agent手册](AGENT_BACKENDS.md)。统一入口可先[读取已有正式任务](USAGE.md#读取正式任务合同)的合同和冻结绑定；任务预览、创建和中断恢复使用[统一创建入口](USAGE.md#预览与创建正式任务)，`task status`可[查询原生运行状态](USAGE.md#查询正式任务运行状态)，提交使用[统一提交与恢复入口](USAGE.md#提交正式任务与恢复未知结果)，批准使用[精确计划批准入口](USAGE.md#批准精确计划与恢复投递)，取消使用[原运行取消入口](USAGE.md#请求取消与恢复未知投递)，导出使用[精确候选出口](USAGE.md#导出精确候选与恢复回执)，闭合后可[逐项核对外部作业证据](USAGE.md#核对闭合运行的外部作业证据)，并以当前revision明确[对账与恢复精确claim](USAGE.md#显式终态对账与工单租约释放)；下述参考命令仍可管理旧入口创建的任务。[正式任务页面](USAGE.md#正式任务页面)已提供同一生命周期及原ID恢复；闭合后可按需读取证据、预算与下载交接包，详见[网页交接](USAGE.md#网页证据预算与交接)。
+Enable the selectable executor only for new tasks, and do not run it alongside the original executor. New tasks verify published status, directories and projections, then freeze their effective configuration; existing tasks retain their original binding snapshots. See the [Agent guide](AGENT_BACKENDS.md) for complete approval, six-stage and evidence requirements. The unified entry point can [read an existing formal task's contract](USAGE.md#读取正式任务合同) and frozen bindings. Preview, creation and interrupted recovery use [unified creation](USAGE.md#预览与创建正式任务); `task status` [queries the native run](USAGE.md#查询正式任务运行状态). Use [unified submission and recovery](USAGE.md#提交正式任务与恢复未知结果), [exact-plan approval](USAGE.md#批准精确计划与恢复投递), [original-run cancellation](USAGE.md#请求取消与恢复未知投递) and [exact-candidate export](USAGE.md#导出精确候选与恢复回执). After closure, [check each external-job evidence item](USAGE.md#核对闭合运行的外部作业证据) and explicitly [reconcile/recover the exact claim](USAGE.md#显式终态对账与工单租约释放) using the current revision. The reference commands can still manage tasks created through the old entry point. The [formal-task page](USAGE.md#正式任务页面) exposes the same lifecycle and original-ID recovery; after closure, read evidence/budgets and download a handoff bundle through the [web handoff](USAGE.md#网页证据预算与交接) as needed.
 
-切换执行配置目录后，旧任务仍需原配置/状态和安装；重启旧执行器时显式设置原`AGENTFLOW_CONFIG_DIR`、`AGENTFLOW_STATE_DIR`并用`--installation`。`--project`选择当前登记的目录，不自动迁移旧任务或服务。
+After changing execution configuration directories, old tasks still require their original configuration/state and installation. When restarting the old executor, set its original `AGENTFLOW_CONFIG_DIR` and `AGENTFLOW_STATE_DIR` explicitly and use `--installation`. `--project` selects the currently registered directories; it does not migrate old tasks or services.
 
-本地HTTP入口（沿用同源及`X-Ergora-Request: 1`保护）：
+Local HTTP entry points retain same-origin and `X-Ergora-Request: 1` protection:
 
-|方法与路径|输入/输出|
+|Method and path|Input/output|
 |---|---|
-|`POST /api/project-registrations`|`{"definition": {...}, "revision": 0}`，返回项目|
-|`GET /api/projects/ID/configuration`|有效绑定、注册定义、修订与摘要|
-|`GET /api/projects/ID/registration`|发布状态、逐文件一致性、恢复记录位置|
+|`POST /api/project-registrations`|`{"definition": {...}, "revision": 0}`, returns the project|
+|`GET /api/projects/ID/configuration`|Effective bindings, registration definition, revision and digests|
+|`GET /api/projects/ID/registration`|Publication status, per-file consistency and recovery-record location|
 |`POST /api/projects/ID/registration/resume`|`{"revision": CURRENT_REVISION}`|
 
-## 显式导入旧注册
+<a id="显式导入旧注册"></a>
+## Explicit import of an existing registration
 
-已有reference注册需要显式导入，不能通过`register`自动接管。先停止该配置目录的注册写入者，保留旧任务及原运行目录。导入仅读取同名`projects/ID.json`、`policies/ID/scope.json`和可选`execution.json`，不导入模型密钥或服务设置。
+Existing reference registrations require explicit import; `register` cannot adopt them automatically. First stop registration writers for that configuration directory and retain old tasks and their original runtime directories. Import reads only same-ID `projects/ID.json`, `policies/ID/scope.json` and optional `execution.json`; it does not import model keys or service settings.
 
-保存`import.json`，填写已有注册的ID、预期Git根、要启用的模板和三个绝对执行目录：
+Save `import.json` with the existing registration ID, expected Git root, enabled templates and all three absolute execution directories:
 
 ```json
 {
@@ -106,20 +119,20 @@ ergora reference executor --project my-project
 }
 ```
 
-可选`bindings`指定角色/支持工具，未指定时保留已有控制项目的选择，新项目使用默认。基线、tracker、检查、允许路径及scope从旧文件取得；不同Git根、未知字段/版本、不足的角色能力或检查均拒绝。旧execution策略若存在，开发模板的成员集合必须相同，成员顺序和JSON格式保留；不存在时显式生成所选开发模板的allowlist，可能收窄原来未限定的任务类型。
+Optional `bindings` select roles/support tools. Omission retains existing control-project choices; new projects use defaults. The baseline, tracker, checks, allowed paths and scope come from the old files. A different Git root, unknown fields/versions, insufficient role capabilities or checks are rejected. If an old execution policy exists, its development-template member set must match, and its original member order and JSON formatting are preserved. If absent, the selected development-template allowlist is explicitly generated; this can narrow previously unrestricted task types.
 
 ```bash
-# 默认只读预览；新控制项目revision为0，已有轻量项目用当前revision。
+# Read-only preview by default; revision0 for a new control project, current revision for a lightweight one.
 ergora project import-reference import.json --revision 0
-# 审阅上一步的definition、changes、files及目标control_home，再填入其preview_sha256。
+# Review definition, changes, files and target control_home, then supply that preview_sha256.
 ergora project import-reference import.json --revision 0 --apply --preview-sha256 REVIEWED_SHA256
 ```
 
-预览的`changes`使用JSON Pointer；`files`逐项列出`adopt/create`、源原始字节SHA和预期投影语义SHA。`preview_sha256`绑定目标控制目录、修订、定义和文件意图。执行时重新读取并核验：源文件即使只改变空白也须重新预览。兼容的旧文件原字节保持，只补建缺失策略与归属记录，不扫描或迁移在途任务。
+Preview `changes` use JSON Pointer. `files` lists each `adopt/create` action, raw source-byte SHA and expected projection-semantic SHA. `preview_sha256` binds the target control directory, revision, definition and file intent. Apply rereads and verifies the source: even whitespace changes require a new preview. Compatible old files retain their original bytes; only missing policies and ownership records are created. Import does not scan or migrate in-flight tasks.
 
-导入同样使用pending意图与`resume-registration`。恢复记录还包含预览SHA、每份源身份和修改前/后的控制项目；它是恢复操作的证据，不是原目录的完整文件备份。若采用文件在预留后被其他进程改动，恢复会拒绝；应先核对并恢复原文件，或保留pending供维护者处理。不要绕过冲突覆盖原配置。已归属其他控制目录的注册不能被再次接管。
+Import uses the same pending intent and `resume-registration` path. Its recovery record also stores the preview SHA, each source identity and the before/after control project; it is recovery evidence, not a complete backup of the original directory. If another process changes an adopted file after reservation, recovery refuses. Verify and restore the original file first, or retain the pending record for maintenance. Do not overwrite the original configuration to bypass conflicts. A registration already owned by another control directory cannot be adopted again.
 
-|方法与路径|输入/输出|
+|Method and path|Input/output|
 |---|---|
-|`POST /api/project-registration-imports/preview`|`{"definition": IMPORT_SPEC, "revision": 0}`，返回只读预览|
-|`POST /api/project-registration-imports`|上述输入加`"preview_sha256": "REVIEWED_SHA256"`，显式采用|
+|`POST /api/project-registration-imports/preview`|`{"definition": IMPORT_SPEC, "revision": 0}`, returns a read-only preview|
+|`POST /api/project-registration-imports`|The same input plus `"preview_sha256": "REVIEWED_SHA256"`, explicitly adopts it|

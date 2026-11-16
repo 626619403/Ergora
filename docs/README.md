@@ -12,7 +12,7 @@ English is the default for completed language pairs. The table explicitly marks 
 |---|---|---|
 |[Installation and daily use](USAGE.md)|Installation profiles/offline wheels, Agent authentication, formal task operations, issue sources, services and recovery|Chinese; full pair queued in batch 2|
 |[Windows](WINDOWS.md)|Native control plane, PowerShell installation, handoff verification and WSL2 execution boundaries|Chinese; full pair queued in batch 2|
-|[Projects](PROJECTS.md)|Unified registration, revisions, effective bindings and explicit adoption of a reference registration|Chinese; full pair queued in batch 2|
+|[Projects](PROJECTS.md)|Unified registration, revisions, effective bindings and explicit adoption of a reference registration|[English](PROJECTS.md) / [中文](zh-CN/PROJECTS.md)|
 |[Backup and recovery](BACKUP_RECOVERY.md) · [中文](zh-CN/BACKUP_RECOVERY.md)|Coordinated offline control/execution/Temporal/Git snapshots and same-path restoration|English and Chinese|
 |[Testing](TESTING.md) · [中文](zh-CN/TESTING.md)|Installed-wheel checks, CI selection, collection coverage and original failure logs|English and Chinese|
 
