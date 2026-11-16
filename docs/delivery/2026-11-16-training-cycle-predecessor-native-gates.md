@@ -130,4 +130,53 @@ r4完整10文件 `m5-g-source-r4.patch` SHA256为 `141448e6cb9eb169e06f5722bda64
 
 为保持原在途安装输入，根没有更改原测试树HEAD，另将相同853输入的r2树固定为a1ff338候选；在独立固定树上普通提交r3／r4小差异，当前准确r4源候选为 `68f3241695f5de1fdc188609db612c1d30434edf`，唯一父a1ff338，完整相对实施基线1f57ca4的10文件patch仍 `141448e6cb9eb169e06f5722bda64e462690680d654b2e62c76029b59cd404a3`。这些是固定源码候选，尚未导入／推送，也不表示完整M5已通过。
 
-同片[fresh源码复核](2026-11-16-training-cycle-predecessor-native-gates-source-review.md)已核原红／绿、r4单项与连续window，当前限定源码需求／维护性两轴approve，R2／R3关闭；R1完整native hook无SDK保持开放。报告SHA `62758b9b229b91e7b5f53a16c8068c771ee32f1e35780c206d114a44032ac714`。根正在以r4重新构建新的非editable core／SDK包，单独验安装受影响行为／自身模板／最终证据；不把r2／r3结果无条件转授r4。私有原件沿 `cycle-predecessor-native-gates/package-r2/`、`self-review-r2-codex/`及新 `package-r4/`保存。
+同片[fresh源码复核](2026-11-16-training-cycle-predecessor-native-gates-source-review.md)当时已核原红／绿、r4单项与连续window，限定源码需求／维护性两轴approve，R2／R3关闭；R1完整native hook无SDK保持开放。当时报告SHA `62758b9b229b91e7b5f53a16c8068c771ee32f1e35780c206d114a44032ac714`仅代表该版；后述自身模板新finding已使当前源码结论重新成为request-changes。私有原件沿 `cycle-predecessor-native-gates/package-r2/`、`self-review-r2-codex/`及新 `package-r4/`保存。
+
+### 根r4安装通过与自身模板新增时序缺口
+
+准确r4新wheel SHA256 `f567e8f379c1e971357f0469e6797ee6938160463bb12012144ceb356def9006`，新非editable core／SDK各663产品文件的raw／执行位与源码及wheel同一；283参考／依赖检查通过，core无Temporal、SDK1.34.0，853完整构建／测试输入与179测试／示例副本固定。仅用这些冻结副本跑11个既有函数的18参数化节点，实际 **18 passed／424.83秒**（driver426.051秒、exit0）；原件在 `package-r4/installed-affected-r4-*`。这属于r4已安装行为证据，不能转授正在修正的后继源码。
+
+同一已安装r4 SDK实际运行原 `refactoring-quality → ergora-structure-review@1.0.0`，Codex86.323秒 **request-changes**。18完整文件880,313B、完整diff与三份全部祖先资源构成967,968B stdin，SHA256 `7e7811f75dd8e2c566d812afc7efb9ba4daf0b5a826fa323d414bf7ff17d19b7`；原result SHA256 `5b13d19484086564a509c7c99c8d2e8c94aa997763432332db944b8aa0e8aea3`，保存在 `self-review-r4b-codex/`。前次脚本路径替换错误只造成模型启动前失败，原 `self-review-r4-codex/`与setup-error保持，没有模型调用或审查成绩。
+
+原模板提出两个P1，已由同片独立reviewer静态核实并由原r4产品真实复现：最后native clock条件之后的parent授权读取可阻塞至work耗尽仍写started；最后SDK等待期间最早round0原index只加LF，当前round1材料保持，仍错误返回continuation_ready。真实红例 **2 failed／41.63秒**、同BOOT原work约−1.006秒而cleanup总预算仍正、真实started后因fixture缺config失败；未运行真实训练。准确命令／结果／完整原测试输入和诊断为 `frozen-source-r4-order-red-*`，不覆盖已有r4安装成功。
+
+实施owner正在修正最终顺序。首个r5方向探索删除原末_H的archive／phase复核，经根与独立审查核到真实AWAITING_RELEASE→CANCELLING／CANCELLED路径，因此不能作最终候选；保留该探索及其同次受影响验证，后继恢复原末_H并在全部阻塞操作之后重新核完整本地链。不能为了减少遍历次数删除真实phase保护。R4／R5仍开放，最终冻源、受影响源码／新安装／自身模板及终核另验；R1无SDK完整hook继续由独立source-v2片承担，schema3效果未开放。
+
+
+### r4自身模板两项最后读取 finding：原字节红例、探索与最终r6
+
+父owner记录的r4首次模型启动是本地config路径setup错误、模型未调，原失败保留；第二次 `self-review-r4b-codex` 才是真正完整967,968B输入的Codex审查，summary实际86.322764秒、exit0／succeeded、decision=request-changes。其两项finding分别指出native最后父authorization读取可能阻塞到work已过，以及worker在最后认证前驱后仍做SDK／index等阻塞读取，可能释放旧链acceptance。实施owner先核实际调用和原合同，没有将模型结论直接当作已重现事实。
+
+仅在原publication／read／SDK fixture接缝增加两条必要反例，运行前六个产品文件raw逐一匹配固定r4。native新 `ack/parent-work` 在真实ack出版后的最终 `active→parent.check→authorization.json` 读取返回前pause；release时在该native进程同时前移原BOOT采样与UTC，保留原boot／authorization并用原完整 `remaining` 实测work=-1.006317秒、total=168.993650秒，cleanup仍正。没有替换remaining返回值、传入accepted或改授权clock。等待原executor完整身份退出后，原r4仍实际写started与FAILED result（fixture缺platform.json、未运行真实runner）。链新 `round-final-parent-predecessor` 在当前round1 observation已落盘、真正最终parent SDK describe返回前pause，仅给已知最早round0原index加一个LF；当前round1 index／observation字节保持，原r4却返回observed／continuation_ready=True。原件在finally恢复，变化前后真实材料和失败结果保留。
+
+原 `frozen-source-r4-order-red` 准确 **2 failed／7 deselected／41.63秒**（wrapper42.5066秒）。命令／日志／结果、原完整测试与两个fixture、原started／result、完整合法clock采样及错误接受原结果，分别保留于 `frozen-source-r4-order-red-*` 和 `r4-order-red-test-inputs`。native失败在无started断言，链失败在应为unknown而实际observed；这是两项不同的真实遗漏，不把早拒绝或无关SDK失败当作最终门禁证明。
+
+第一方向r5将最后_H wrapper换成末端纯链认证，固定patch `8edffae7…` 的4函数12节点实际 **12 passed／212.38秒**（wrapper212.9585秒），运行后原11文件／patch保持。但父owner及独立合同核对确认原 `AWAITING_RELEASE→CANCELLING/CANCELLED` 可达，即使SUCCEEDED job原件稳定也会变化，原最后_H phase查询必须保留。r5因此只作为探索原件，不是最终合同验收；其源freeze／665输入／差异和成功检查没有删除、改写或转授最终候选。
+
+最终r6恢复原末_H的原位置，首／中间same-fd阶段／末端_H完整archive语义与紧邻phase读均保持；另外在最终SDK／当前index／本地gate读之后调用同一个 `protocol.authenticate_cycle_candidate` 再绑定本轮index。保留原_H语义后，较r4多一次末端纯链遍历，是上面真实晚阻塞漂移所需的重认证；不通过删除phase门、缓存“已验”或扩预算规避。native只把现有parent.check移动到原fence／owner／完整clock条件之前，未复制validator或新增clock合同。相对准确r4提交 `68f3241695f5de1fdc188609db612c1d30434edf`，产品仅worker末端3行新增与protocol原parent／clock顺序移动及说明，原_H调用无删除。
+
+新增末端纯链I/O仍消费原预算：shared authenticator自身末尾在owner／ready／cycle／所有source读取之后，执行原active，顺序为admission.check（authorization读和stop）→原完整remaining(clock,wall,cleanup)→return。其后worker只做纯report／acceptance投影。上层实际 `_CycleOperation._run` 在两完整帧／pipe EOF／原S回收之后，仍要求 `not self.expired()` 才接纳ref；expired调用原 `cycle_operation_remaining`，collect／reconcile属于CYCLE_WORK_MODES，计算同一bootstrap窗口与原BOOT／UTC work的最小值。这样H迟到私有诊断不转为父accepted ref，不需要再造clock／stop validator。
+
+最终11文件 `m5-g-source-r6.patch` SHA为 `3a56cf9952e4acd1616787bcaed616b3c5b593b2e7dfd683e700e3261e5aca1c`；`source-freeze-r6.json` SHA为 `88a423b0f7dc2bc00e7773a67f1f73a38ccdc62f341666a3ddd4bc20bf2de459`；`frozen-inputs-r6.json` SHA为 `e88af9b3a21298945bad2180b7346f8d22dfb32402bfccc2dd839538ef8b857c`。665 source／pyproject、25 gate／四measurement重冻，283实际PASS、纯protocol禁止模块空。相对68f3241给父owner接独立source-v2用的 `m5-g-r4-to-r6.patch` SHA为 `0c0c5a789bed01e6adf572e53857cec5f897215a2a3a8be8c2f4bf8ba513a9ee`，实施owner未触碰该独立树。
+
+r6运行仅验证实际受影响worker：原final-blocking四参数（含新漂移）、collect／reconcile、k1／k3完整链与大reader，共四函数8节点；多出的纯链遍历产生新大raw读取成本，因此这次大reader有明确重验理由，不增加control时限。native protocol raw与r5五native参数成功时完全一致，未为freeze格式重复测试；这些native证据只陈述同raw callback行为，不冒称整r6验收。准确命令为 `frozen-source-r6-affected-command.json`，终态与源／资源复核另记。原r4安装独占运行及其副本、source-v2、主树source／PLAN未改；全hook无SDK mandatory仍另片开放。
+
+
+### 最终r6源码受影响检查与交接
+
+固定r6四个worker函数实际 **8 passed／138.86秒**（wrapper139.39624秒，returncode0）。原final-blocking四例分别明确拒绝stop、安装source、registered project与最早前驱raw index；新增最晚SDK漂移例的原结果为unknown、reason为 `Previous round pin differs from its complete raw original index`，当前round1 index／observation保持。collect／reconcile、k1／k3完整链与原最早start inventory／archive／helper投影漂移通过。大reader实际命中9,999,999／10,000,000／10,000,001B原raw，包含同一末端额外纯认证成本；前两边界按原消费者认证后仍关闭schema3效果，M+1保留完整原件且原ref容量拒绝，未扩大任何budget或窗口。
+
+同raw protocol的r5五native参数均已通过；其中新ack父读work边界原stderr明确 `Original execution fence, owner or computation deadline forbids work`，原完整clock实测work<0、total>0且boot保持，started／result均不存在。r6没有再次修改该protocol，也没有为冻结记账重复五native；其准确raw SHA与原phase定位、r6晚链拒绝原件索引固定在 `source-r6-boundary-summary.json`，完整r5探索仍不转授_H phase合同验收。原r4两条真实红例、r5被拒绝方向及全部成功／失败原件保留。
+
+运行后full diff／11文件raw SHA／665输入raw及执行位全部匹配r6，首冻、r2／r3／r4与r5探索patch保持，`git diff --check`通过。自有探索／所有冻结source／解释器及两项顺序红例test根去重184个完整原Linux身份当前live match=0、unknown=0（合成pid1排除），未信号任意PID；14,969目录700／38,396普通文件600或保留owner执行位700，跳过90个symlink，读回权限偏差0。父owner的安装／模型现场和原source-v2树未改。
+
+最终source已稳定供父owner据完整r6及相对68f3241的精确delta继续新noneditable安装、原结构模板与fresh终核。实施owner未commit／merge／push或安装依赖，无模型调用／真实训练／外部服务操作；schema3效果保持关闭，全hook无SDK mandatory仍属独立片，源码受影响通过不关闭全M5。
+
+
+### 根：r6新安装、原模板及新增current intent问题
+
+最终r6全patch `3a56cf9952e4acd1616787bcaed616b3c5b593b2e7dfd683e700e3261e5aca1c`已固定为源码候选 `f6722141cfa9ed885993360161c004e47e8df3a5`（父68f3241），完整相对1f57 diff逐字同一。新r6非editable core／SDK各663产品文件与新wheel的字节／执行位同一、283参考／依赖通过，853源输入与179测试／示例副本固定。新安装仅跑实际顺序修正涉及的五个既有函数，**13 passed／346.70秒**（driver347.800秒），不重跑无变化38／18总批；原件在 `package-r6/installed-affected-r6-*`。六份生成egg-info已归档后按准确原件移除。
+
+同片reviewer已核r4真红／r6绿及末_H保留，R4／R5关闭，r6限定源码两轴approve；当时报告SHA `3d028dc01c237e4aa83cbc4d1345a52aee38507ae5640e42074f38ecfdce1b84`。随后根以r6安装SDK调用原结构模板，Codex79.601秒 **request-changes**，发现shared长链认证末端可能遗漏当前磁盘intent漂移。18完整文件858,633B、完整diff及三祖先资源进入955,359B stdin，SHA `262d40104a2c0370bb8f8622f69f0b40ee2df6951eb0235d4455008b4436a5ec`；原result SHA `60c5b39ef69c815689dd18ac012aba92a7415bb59ba28c7513effab5134d94cd`，保存在 `self-review-r6b-codex/`。所有改动文件完整提供；仅未提供无变化的reference.py全文，未截断任何已提供文件。r6首次私有review脚本误设2,000,000字节，被现有1,000,000上限在prepare阶段明确拒绝，未调用模型；失败目录／setup-error原件保持，修正仍沿原上限，未改产品容量。
+
+新增R6／P2由同片reviewer静态核实：shared构造current但只读owner，当前intent仍是caller缓存；较早H／Execution读取不足以覆盖最后完整链的阻塞窗口。实施owner正在准确r6作原fixture真实反例，随后按原canonical意图身份最小重读，不新增raw pin或caller可放宽开关，保留owner／intent均未出生的prepare合同。r6安装通过只归本r6；R6、R1仍开放，完整M5未通过，后继产品／新安装／自身模板及最终终核另验。

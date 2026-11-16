@@ -18,7 +18,7 @@ M5隔离树 `.ergora/worktrees/training-cycle-predecessor-gates` 的实现基线
 |`cycle-predecessor-native-gates/exploratory-07.log`：完整原件容量reader|1 passed／55.87秒|M−1／M／M+1完整UTF-8＋LF边界，H／Budget／context／真正native关闭分支及纯-S认证；该既有函数扩展为更多串行工作，节点数不增加|
 |`cycle-predecessor-native-gates/frozen-source-01.log`：23函数参数化38节点|37 passed／1 failed，639.04秒|原整批失败保留；dispatch同步后的source反例读取缺ref由实施owner修复，本调查不修改、不认证其修后结果|
 
-源码新增完整链函数参数化ordinal1／3共2节点；新增native同步fault函数参数化attempt/source、ack/ROOT、attempt/clock共3节点。容量reader扩展既有函数。因此冻结差异静态看是新增5节点及既有节点增重，不是“新增三组＝三个节点”，也不是38个新增保护；最终完整collector须核实。这三类成本包含真实fixture安装、H／S子进程、原锁／fd／reaper、完整大raw读取与重复来源认证；其成本不能用断言条数推算。原批没有逐节点JUnit成本可据此分离，尤其不能把639.04秒当新增开销。没有最终源码或非editable安装整组合时长，没有M5官方CI，native实际hook无SDK依赖门仍另片开放；纯-S结果不能替代真实hook认证。
+初始静态调查曾把完整链函数的ordinal1／3两节点均算作新增，再加当时native同步fault三节点推断新增5；**这个分解不准确**，基线已有一个完整链节点。后述r4真实collector纠正了节点来源，不能沿用初始分解证明保护集合。容量reader扩展既有函数；实际新增数与完整归属应由冻结候选collector核实。这三类成本包含真实fixture安装、H／S子进程、原锁／fd／reaper、完整大raw读取与重复来源认证；其成本不能用断言条数推算。原批没有逐节点JUnit成本可据此分离，尤其不能把639.04秒当新增开销。没有最终源码或非editable安装整组合时长，没有M5官方CI，native实际hook无SDK依赖门仍另片开放；纯-S结果不能替代真实hook认证。
 
 55.20＋55.87不能线性加到1051秒，也不能将旧文件76.380秒从官方job直接相减。候选输入、runner、fixture摊销和读取路径不同；连“149秒足够覆盖新增”也尚无证据。
 
@@ -47,6 +47,14 @@ training_preparation直接导入training的experiments／registration与training
 父留存完整collector为2317节点，group1=355／group5=436，其余349／409／453／315。最终若仅冻结M5的五新增node，应为2322；这只是待核预期，修后变动／最终实际collector才决定准确数量。旧15节点同样不能硬编码替代当前文件完整收集；必须核无删除、新增集合逐node归属于真实新增保护，扩展容量reader仍在原node内。若最终仍15节点且仅加5个group5节点，映射预期group1=370／group5=426，条件不成立即重新对账。
 
 不因本报告重跑原选集或无差别重跑六组。沿既定最终源码／非editable安装验证及必要受影响组合保存实际JUnit、phase、退出码与收尾。任何配置实施另沿原流程fresh独立审查；本调查文档不触发递归独审。新公开准确head自己的六Linux／Windows原时限终态，才认证最终分配可用。
+
+## 根后续实际收集：仅r4，尚非最终配置验收
+
+根将准确r4的853输入复制为独立collector根，仅把分组JSON换为建议配置，使用r4新非editable SDK的原 `scripts/ci/run.py --collect-only`。实际退出0／7.126秒，完整收集2322节点；selector真实重放组1=370／组5=426，其他组349／409／453／315。六组86个唯一完整文件保持，仅training_preparation的全部15节点5→1。候选JSON SHA256为 `326326a1249f009d149e8286e246b02c323ed6aa2d8b5e16e7e91aac397e2e47`，当前仍未提交，待最终候选收集及新fresh配置审查。
+
+相对父留存2317节点，有两项**已有节点改名**：原完整链ordinal3由 `[controller_admission0-3-managed]` 变为 `[3-controller_admission0-4-managed]`（参数顺序／候选数变化），原source-sync无后缀变为 `[controller_admission0]`（显式出生配置）。逐项映射后无保护删除；原始node ID集合确有这两项移出／移入，不能写成字面ID全不变。净新增5项为四个native source／ROOT／clock／interpreter故障和一个ordinal1完整链案例，纠正初始“完整链2＋native3”的错误分解。
+
+实际collector／节点差异／归属见ignored `.ergora/checks/predecessor-gates-ci-balance/comparison-r4.json`及同目录原件。此次只收集，没有执行测试正文、Windows或远端时长验收。之后自身模板又发现两个时序缺口，修后源码与测试将重新冻结；r4收集不转授后继，最终M5与native-v2组合须重新核自己的节点集合。
 
 ## 定位摘要
 

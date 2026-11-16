@@ -2,7 +2,7 @@
 
 2026-11-16。审查者：fresh-context reviewer `m5_predecessor_source_review`。按 `maintainable-project-delivery` 的 independent-review 和 `ergora-codebase-quality` 的 module-design／test-seams／repository-style 审查。未参与实现；本次仅只读源码、冻结输入和既有证据，唯一写入为本报告。未启动 tests、probes、模型、服务、安装，未改 source／test／PLAN，未 commit／push。
 
-> 当前结论：r3已以真实红／绿关闭R3，r4仅普通测试出生预算显式配置，经单项原窗口／来源门复核。准确r4源码限定需求／维护性两轴approve，R2／R3关闭；R1 whole-hook无SDK mandatory仍开放，完整M5未通过。文末保留所有版本身份与原失败，最新结论只适用于准确r4，不转授其他源码／安装。
+> 当前结论：新增独立静态核实R6／P2（共享认证未读取当前实际intent），准确r6需求源码结论更新为request-changes；R2／R3／R4／R5保持关闭，R1 whole-hook mandatory仍开放，完整M5未通过。新红例／修复未验；此前approve按当时范围保留，不作当前最终批准。
 
 ## 首冻r1：两轴结论与适用范围
 
@@ -203,3 +203,141 @@ r3没有增加新的限制种类：原先 `Execution.current` 的“原所选nat
 本次实际 `frozen-source-r4-dispatch.log` **1 passed／27.36s**。直接读三份已知原request：prepare `0e28c06bc47941249fa2ce2f7583ddab`、confirm `b4a530ce0c91409080fcd71bf5657431`、dispatch `32a8431ed0f94605bfe533ea42dda880` 的bootstrap完全相同：started_ns=`2814112552064284`、deadline_ns=`2814142552064284`，恰为同一个连续30秒窗口。原alpha attempt与fault marker均存在；dispatch固定H stdout仍为原103B source拒绝JSON，raw SHA `ff5e3f7cc73c289b92b076431bbe23b75cbb86eb0fdb595244a933ca16b0e75d`；service为starts=0、仅describe。这是晚source门被实际触发的证据，未靠加新deadline、改clock或跳过故障达成。**该r4单项配置与验证适当，所审范围无finding。**
 
 不要求无变化的38／10／7组重复全跑；各原候选结果按准确身份保留。r4只改变测试出生参数，r3产品需自己的新非editable安装与后续模板／最终终核证据；r2安装37项通过不转授r3产品，r4源码单项也不冒称安装已通过。完整R1、schema3正向effects、M6／完整M1c／真实两新候选结果依然未由本报告认证。
+
+
+## r4后续独立核实：最后parent读取与前驱认证的两个晚阻塞窗口
+
+实际自身模板结果为 `self-review-r4b-codex/review.md`／`summary.json`：Codex86.323s、request-changes，18文件880,313B，3份ancestor，stdin967,968B，stdin SHA `7e7811f75dd8e2c566d812afc7efb9ba4daf0b5a826fa323d414bf7ff17d19b7`，result SHA `5b13d19484086564a509c7c99c8d2e8c94aa997763432332db944b8aa0e8aea3`。这是实际模型文本审查记录；此前r4配置路径替换错误的setup-error／failed目录保留，模型未启动，不能当作另一模型结论。
+
+本reviewer独立沿源码、真实caller和预算合同静态核实以下两项，不运行tests／probe，不把模型结论代替证据。检查时六产品文件仍与准确r4相同；原publication fixture和submission测试已有实施owner准备红例的开发差异，尚无新r5 freeze，本节不认证这些开发测试或其运行结果。
+
+|范围／轴|更新结论|开放项|
+|---|---|---|
+|准确r4需求源码／最后准入|**request-changes**|R4、R5两项P1静态成立，真实红例／修后证据待提供|
+|已审共享owner与模块结构|**approve，限定结构**|R2／R3保持关闭；新修复须仍由原owner最小处理|
+|完整M5|**pending／未通过**|R1 whole-hook mandatory与R4／R5开放；另一tree依赖隔离源码审查不转授本片|
+
+### R4 · P1 · native最后parent读可能在clock采样后阻塞
+
+**位置与实际caller：** r4 `training_execution_protocol.py:1713` 的native callback `active` 先重载记录／validate_context，第1719–1723行的完整条件按fence、live owner、`budget_clock.remaining(original clock, wall, cleanup)` 顺序检查；第1724–1725行才 `parent.check()`。ack第1736行publish后，最后active返回就会把控制交回原executor。`CycleAdmission.check:1047` 调用 `_authorization`（第1024行 `read_raw(authorization.json)`）后仅查stop路径；它**没有**work或operation时间检查。更早 `validate_context` 内的clock采样也不能替代这次最后阻塞读取返回后的采样。
+
+**可达序列与后果：** schema2真实native仍持原executor锁和父共享permit，在ack同步后的最后active采样work>0，随后parent.check的原authorization读取阻塞，直到work耗尽才返回；授权原字节和stop均未改变，所以parent.check仍可通过。当前代码没有第二个晚clock采样，callback可返回并让executor写started／后续动作。锁和共享permit约束并发／排空，不冻结clock，也不隐含延长原work。此前clock故障节点在publish同步后、进入active前使clock异常，不能保护这个在active末尾parent读中才耗尽的窗口。
+
+**最小修正与必要验证：** 在同一native.active内把原完整fence／owner／remaining条件移到最后parent.check之后，使剩余work采样成为这些原本地读取之后的最后准入；不再添加第二套clock或放宽window，不依赖异步取消。仍沿同一原BOOT／UTC／cleanup语义。现有ack同步pause加只匹配此active→parent.check的真实authorization读取暂停；读返回时同时前移native局部BOOT／UTC到work已过而total／cleanup仍在，使用原 `remaining` 算法。应保留修前实际started等越界证据，修后要求原ack保留、没有started／runner。当前只静态确认可达，作者真红例尚未提供，故不伪称已复现或已修复。
+
+### R5 · P1 · 最后SDK／索引／local gate之后没有完整前驱重读
+
+**位置与实际caller：** r4 `reference_training_worker.py:1281` 在当前round的完整observation已同步／读回后调用 `_round_previous` 并核report binding；随后第1282行 `_round_gate` 还会在第1120行进行SDK父describe/history观察。返回后第1284行只读取**当前round**的index，第1286行 `_round_local_gate` 只核当前plan／ready／项目revision、intent／owner、sources／ROOT、registration／clock／stop，完全没有调用 `authenticate_cycle_candidate` 或重读此前各round index／observation／execution／evidence库存。没有其他暗含的caller在这段里补全链核验。
+
+**可达序列与后果：** k=1当前round1 observation已同步，round0原件刚认证完；最终parent SDK describe阻塞时给固定round0 `rounds.json` 追加LF，JSON语义不变，但原predecessor pin的raw SHA／bytes已不符。SDK正常返回、当前round1 index和所有source保持，后两个当前gate不会读取round0，于是旧accepted投影可能仍给 `continuation_ready=True`。原前驱当时accepted不能豁免晚gate对当前原字节的要求；后继即使稍后再拒绝，也不能把此当前acceptance当作已完成认证。本次静态可达判断成立，真实case待作者原件确认，不声称当前已有运行中的true结果。
+
+**最小owner与修复边界：** 继续由现有protocol共享认证算法负责完整本地原件，H保留原archive语义和紧邻前轮SDK phase职责；调整最后认证顺序，使真正的**共享纯本地全链认证**位于后续外部阻塞观察之后，移除被替代的旧位置，不复制parser／ledger或增加跨动作“已认证”缓存。
+
+不能只机械把整个 `_round_previous` 调用搬到函数末尾就假设所有晚阻塞已闭合：该函数自身第1180行先调用 `authenticate_cycle_candidate`，之后第1189行还读archive，第1195行还查询紧邻前轮SDK。单纯挪wrapper仍会在其内部的SDK等待之后留下未经重读的早轮原件。修复应明确纯认证与H额外观察的实际先后；保留有独立作用的真实边界，避免为满足顺序无理由重复完整链遍历。局部逐文件读取仍不是抗敌对同用户并发改写的原子快照，但不能因此忽略此明确在认证之后的外部等待缝隙。
+
+在现有k1真实H fixture的“当前observation已落盘→final parent describe”缝隙改原round0 raw，仅追加LF且不改当前round1 index／observation，保留修前完整stdout／continuation投影及修后拒绝、原件和原机会不回收的证据。还需静态追踪最后共享认证之后是否仍有SDK／archive外部阻塞；仅证明一个fault被新顺序捕捉不足以掩盖同类被搬到内部的等待。无需扩展为每个helper重复矩阵。
+
+截至本节：R2／R3此前修复的准确证据继续有效，R4／R5新发现使r4先前限定需求approve失效；新r5尚未送本reviewer核对。R1依赖隔离另一tree的11文件源码和另一fresh审查状态，与本M5晚gate修复、其新非editable包及whole-hook实际验收分别记账。
+
+
+### R5重排方案追加复核：保留末次H的当前phase语义
+
+本次继续只读真实workflow／runtime／four-fact predicate，结论是：**不能仅以较早一次H观察替代原末次H并宣称行为不变。** 当前所提“保留初始／中间 `_round_previous`，删除原final H，只在末端做纯认证”会删去一个有独立可达意义的晚phase观察；在正式r5冻结前应调整。
+
+真实原workflow支持在accepted观察之后取消：`perf_temporal/workflow.py:57–62` 的request_cancel设置cancel_reason；第144行处于AWAITING_RELEASE时，第158行可进入cancel_and_confirm；第80行置CANCELLING，第91–95行即使原job仍SUCCEEDED也将Workflow转为CANCELLED并返回取消Outcome。native已停止、原evidence／archive文件保持稳定不能阻止这个合法控制面变化。`reference_training_runtime.observe:182–199` 会返回新的Status／Outcome；protocol.round_state只将RUNNING/AWAITING_RELEASE或COMPLETED/RELEASE_EXPIRED、INTEGRATION_TASK_CREATED的原合法绑定判为accepted，CANCELLING／CANCELLED不满足并返回unknown。因此，在中间H后、原末次H前发生该变化，r4原末次H可拒绝，而拟议删除版本只验证冻结历史value可能放过。原设计第63行明确H对紧邻前轮核当前可接受phase，native纯认证不承担SDK状态观察，这个职责不能顺手删除。
+
+较小且保守的可审重排是：保留初始H（before create）与原末次H的archive／紧邻phase观察，末次H之后的final parent SDK／当前index／local gate返回后，再执行共享纯本地全链认证；中间same-fd同步后的round_report_binding使用此前已认证的previous，不重复整段H。这样仍保留same-fd／同raw／当前prefix校验和首末phase观察，完整纯遍历可保持三次；没有复制算法。中间没有向外释放acceptance，末次H或最后纯认证失败仍拒绝continuation并保留已出版原件，所以移除中间重复H有具体边界理由。
+
+这只是依真实调用给出的最小结构处置，不是r5实现批准。若实际新diff发现中间H还有上述检查未覆盖的独立义务，应保留该义务，允许有理由的额外末端纯认证，不为维持计数删掉末次H。新顺序也只能声明观察到的合法采样和最终本地身份复核，不能声称SDK状态与本地文件形成跨系统原子快照。R5仍开放，待准确新patch、旧末次phase回归保护和原晚raw漂移红绿证据后复核。
+
+
+## 准确r6：R4／R5修复实证终核（源码范围）
+
+仍为同一slice独立reviewer，仅只读冻结源码、原红绿结果及固定Git身份，唯一写入本报告；未运行tests、probe、安装、模型或服务，未改代码／测试／PLAN，未commit／push。r5是探索候选，其worker曾删除末次H，不能作为最终产品通过；r6恢复全部原H调用后重新冻结并验证。
+
+### 当前两轴与完整验收状态
+
+|范围|结论|开放finding／缺证|
+|---|---|---|
+|准确r6源码需求／前驱与最后准入接线|**approve，限定源码和下述证据**|R2／R3／R4／R5关闭；本范围未发现其他阻断finding|
+|准确r6结构／维护性|**approve**|末端额外纯认证有真实独立晚边界作用，未以计数删末次H，无新wrapper／ledger|
+|完整M5／whole native hook|**pending／未通过**|R1 whole-hook无SDK mandatory仍开放；新准确包的安装／自身模板／最终验收分别待核|
+
+本结论不开放schema3 effects，不把另一source-v2依赖隔离tree的源码审查视作本片whole-hook验收。M6／全部M1c／真实两新候选CPU／质量或GPU仍不在本次通过范围。
+
+### 冻结、固定提交与复核范围
+
+r6完整patch `.ergora/checks/cycle-predecessor-native-gates/m5-g-source-r6.patch` 为89,837B，SHA256 **`3a56cf9952e4acd1616787bcaed616b3c5b593b2e7dfd683e700e3261e5aca1c`**；source-freeze-r6 SHA **`88a423b0f7dc2bc00e7773a67f1f73a38ccdc62f341666a3ddd4bc20bf2de459`**；frozen-inputs-r6 SHA **`e88af9b3a21298945bad2180b7346f8d22dfb32402bfccc2dd839538ef8b857c`**。实际实施tree相对原baseline `1f57ca46e3e10115e8dd8cd9537f0011f6f505e3` 的完整diff逐字SHA相同；11项source-freeze raw hash／bytes和665项输入全部重算相同。新增的第11个变更是既有 `tests/fixtures/training_cycle_operations.py`，没有新文件／模块或CI分组。
+
+完整审阅r4→r6 delta `m5-g-r4-to-r6.patch`，SHA **`0c0c5a789bed01e6adf572e53857cec5f897215a2a3a8be8c2f4bf8ba513a9ee`**。相对r4两产品变化仅protocol的原clock条件顺序与worker最后三行共享认证；其余增量是两个已有fixture和既有submission测试的真实边界故障值／断言。当前重要raw值：
+
+|文件|r6 SHA256|bytes|
+|---|---|---:|
+|`src/ergora/reference_training_worker.py`|`885c14055851fd1ea34cd37d5afad04b0aa0f44edd12be7edc0c4592516aecd9`|145975|
+|`src/ergora/training_execution_protocol.py`|`32736ca4720cc5c39cebb04ab3f29384778fd67e879a2eae6b3794888ef04138`|115879|
+|`tests/fixtures/training_controller_pause.py`|`dd9fe1632464c90c2636b299d663d791d0c78ce7bbf976a9aabf7c4b2c0a4760`|3742|
+|`tests/fixtures/training_cycle_operations.py`|`99bb3e2682b2ba08dd3be99e3293ac414e85200c3cebc515421022b78b1b3948`|27837|
+|`tests/test_training_submission.py`|`e262c2d25917a292661c94bbf6edfca66f981d2fdc91b1682fbd965e5d70ed2e`|245122|
+
+另直接核根固定tree `.ergora/worktrees/training-cycle-predecessor-gates-fixed-r2` 当前分支 `feat/training-cycle-predecessor-gates-fixed-r6`：HEAD **`f6722141cfa9ed885993360161c004e47e8df3a5`**，父 `68f3241695f5de1fdc188609db612c1d30434edf`，working tree干净；`git diff <原baseline> <该HEAD>` 的完整字节SHA仍等r6 patch。只是固定源码身份，不表示合并／发布／CI／安装通过。
+
+### 两条r4真红例
+
+原 `frozen-source-r4-order-red.log`：**2 failed，7 deselected／41.63s**，失败分别为ack-parent-work和round-final-parent-predecessor。原diagnosis／marker／request／stdout／native记录保留；还直接重算native case的复制package六产品hash，全等r4，未用修后代码冒充修前红例。
+
+**R4红例：** fault仅在真实 `read_raw(authorization.json)` 已读原字节、即将返回时，经调用栈严格限定为native.active→parent.check且ack已存在，暂停并同步平移该native子进程的BOOT／UTC。没有替换 `remaining()` 返回值或原授权。原`.clock`采样显示同一boot，work_remaining=`-1.0063169999999673`、total_remaining=`168.99365`；原attempt／ack／stopped存在，却实际写started和FAILED result。FAILED detail准确为原fixture缺 `config/platform.json`，不是宣称真实训练或缺解释器spawn失败。该红例证明work耗尽之后callback仍越过started边界。
+
+**R5红例：** k1当前observation落盘后，原final parent SDK describe在返回前暂停；只给round0 index追加LF，当前round1 index／observation字节不变。固定collect operation `2aaf7da25a6e4319a007a91cc39d0e7a` 的原完整H stdout仍为observed、measurement accepted／durable、`continuation_ready=True`且有完整acceptance，operation已stop／supervisor0。这是早轮raw pin已失效仍释放acceptance的真实证据；不是只看到一个私有helper未raise。
+
+### R4修复与对应绿色：关闭
+
+r6 `training_execution_protocol.py:1719` 先执行原parent.check，再于第1722–1726行执行同一个完整fence／owner／BOOT-UTC work condition。没有新clock、没有重复采样条件、没有调整wall／cleanup／window；原最后clock采样现在晚于parent授权读取和owner观察。
+
+`frozen-source-r5-affected.log` 是探索批 **12 passed／212.38s**，其中native5节点认证的protocol／所有测试与fixture字节和r6完全相同；r5与r6唯一raw差异是worker，故这里只取native5的对应scope，不把其探索worker的通过转授r6。直接读其ack-parent-work case：work_remaining=`-1.0001569999999447`、total_remaining=`168.99981000000002`、同boot；ack／真实stopped保留，started／result均不存在；沿原launch phase `bbd270a398b24ebcbece18d75634a5e5` 的真实stderr含 `Original execution fence, owner or computation deadline forbids work`。这在与修前同一parent读返回边界观察到原完整时钟拒绝，**R4关闭**。其他source／ROOT／clock／interpreter节点仍各有原保护，不被此新节点替代。
+
+### R5最终结构、对应绿色与额外遍历理由：关闭
+
+r6保留原 `_round_previous` 的全部三次调用（首、same-fd同步后、当前observation后），因此原archive重新inspect与紧邻前轮当前phase检查均不减少；此前“删final H”的探索方案不进入最终产品。末次H内部的archive／SDK读取也已返回，随后final parent SDK、第1284行当前index读、第1286行local gate都返回后，才新增第1288行 `protocol.authenticate_cycle_candidate` 和第1289行report binding。末端使用原同一算法，重新从当前intent的完整predecessor回溯到0，核原raw pins／库存／来源；它不执行H额外SDK查询，所以不存在把旧外部等待藏进最后wrapper的问题。
+
+该额外纯遍历与较早三次有不同责任：较早H保持真实采集／archive／phase与持久同步义务；末端纯认证关闭这些外部观察之后的本地早轮漂移窗口。原三个H均留时，新增这一遍是有证实故障边界的必要复核，不是R2那种相邻同输入无独立作用的重复ROOT调用。不新增模块或复制ledger／parser；实际I/O消费同一个不可续预算，未加时或缓存。
+
+最后共享认证自身第1522–1525行active先 `admission.check` 读parent／stop，再调原完整work remaining；末尾第1613–1614行核完sources后再active。其后仅纯report binding／acceptance投影／shape校验，无SDK／archive外部等待。原父 `_CycleOperation._run:257–259` 在收到两完整frames、所有I/O任务成功且 `not self.expired()` 时才接纳结果；expired仍通过 `cycle_operation_remaining` 消费原 `min(operation window, original work)`，没有因最后纯读取／编码而跳过父最后时间门。这里依然不声称逐文件认证是抗同用户敌对替换的原子filesystem快照。
+
+实际 `frozen-source-r6-affected.log`：**8 passed／138.86s**，准确4函数为最终blocking-read四节点、原internal collect/reconcile、k1／k3全链两节点、大reader一节点。直接读新故障case的固定operation `be50d5133f8c4d22945a27f901904a58`：原round1 index与observation仍保留，H返回unknown，reason为 `Previous round pin differs from its complete raw original index`，没有continuation／acceptance。这和修前仅追加最早轮LF后仍true的原例对应，**R5关闭**。原same-fd/source／stop／project负例、k1/k3与10MB reader维持此次准确worker范围的绿色。没有重复跑无变化的38／10／7组，也不把任何旧批次写成新r6全量通过。
+
+### 未认证项
+
+`source-r6-integrity-and-identities.json` 原收尾记录captured184、live_matches空／unknown空；本次只读该记录，不将它扩称所有之后安装／模型进程均已收尾。根新r6 core／SDK663文件包构建及身份核验在另一路，安装和自身模板仍准备／执行中；本源码报告不继承、不认证尚未提供的结果。准确r6需要自己的新安装及自身模板／最终终核，R1 whole-hook无SDK必须由独立依赖版本及真实hook证据闭合。当前结论仅为准确r6源码范围两轴approve，完整M5仍未通过。
+
+
+## r6后续独立核实：R6 · P2 · 共享认证只核缓存，漏读当前实际intent
+
+实际自身模板 `self-review-r6b-codex/review.md`／`summary.json` 记录Codex79.601s、request-changes，18文件858,633B、3份ancestor、stdin955,359B，stdin SHA `262d40104a2c0370bb8f8622f69f0b40ee2df6951eb0235d4455008b4436a5ec`，result SHA `60c5b39ef69c815689dd18ac012aba92a7415bb59ba28c7513effab5134d94cd`。本reviewer没有把模型意见直接当作finding证据；已独立逐点核以下共享代码及全部真实消费者。此次检查时11文件仍与source-freeze-r6相同，尚无新冻结候选；不运行test、probe或安装，唯一改本报告。
+
+|范围／轴|当前结论|开放项|
+|---|---|---|
+|准确r6需求源码／完整持久身份认证|**request-changes**|R6/P2静态成立，属于可静默接受过期持久身份的正确性缺口；待真实反例与修复|
+|已有owner／模块结构|**approve，限定结构**|R2／R3／R4／R5保持关闭；修正应留原共享算法|
+|完整M5|**pending／未通过**|R1 whole-hook mandatory及R6开放，新安装通过不自动涵盖新风险|
+
+### 独立源码证据与三个消费者
+
+`training_execution_protocol.authenticate_cycle_candidate:1512` 构造 `current = ExecutionRecords(...)` 后，第1513行只读owner；`_round_candidate_intent:1431` 校验的是调用者传入的完整intent缓存。尾部第1609行重读owner、随后重读ready／cycle并核sources／clock，始终不读取当前 `<id>.intent.json`。`ExecutionRecords` 的构造本身不读取该文件，只有 `load:1304` 才以 `16 * LIMIT` 读取它；`document:1290` 只是对调用者指定路径执行safe raw read／decode，不会连带读取intent。因此不能把construct current或读owner误认为已经读过完整当前intent。
+
+三个真实消费者也没有在此之后补齐：
+
+- `BudgetedStart.source:259–266` 消费缓存 `self.intent`，schema3先调用共享认证，之前只重载plan／authorization／ready，没有重读当前实际intent。schema3effect随后关闭仍在，但不能称缓存正例认证了当前持久物。
+- H的 `_round_previous:1175` 入口 `_cycle_target`／`operation.load` 较早读取intent；末端 `_round_operation:1288` 使用更早取得的 `intent` 缓存执行最后纯认证，之后只有纯binding／acceptance投影和父clock接纳，不再 `_cycle_target` 或load当前intent。当前actual intent在该长认证期间改变／缺失，owner及早轮完整链仍可保持，故可能发出acceptance。
+- `validate_context:1618` 确实核 `context.intent == chain.intent`，其caller的 `ExecutionRecords.load` 较早读过actual file；但schema3第1639行长共享认证期间发生的变化，在认证返回前没有再次读取current intent。native未来消费也是同一问题；不能用schema2其他路径或schema3关闭效果否认H已经可达的只读接受风险。
+
+例如k1当前轮observation落盘后，最后共享认证进入原大文件／source读取；这时移走当前candidate的actual `.intent.json` 或将其完整语义换成另一个operation身份，同时保留owner及传入缓存。当前代码只比owner.intent_sha与缓存sha，早轮库存与plan都可继续通过，当前实际文件未被访问。缺失与完整语义漂移是此finding；并非要求当前intent新增未约定的raw字节pin。本次为源码可达判断，实施owner正在准确r6构造真实红例，尚未提供运行结果，本报告不虚构已复现。
+
+### unborn prepare与最小修正
+
+unborn prepare是实际合同，不应因新增检查被误拒绝。`reference_training_budget.prepare_binding:47` 在 `_Submission.run:349` 构造binding时先调用 `BudgetedStart(...new intent...).require_active`，随后第355行才write当前 `.intent.json`；owner更晚才出生。这一前置本地认证必须允许owner和intent均不存在。另一个prepare同步后的第358行复核已面对现存intent；H末轮则必有既存capable owner。不能一律要求文件存在，也不能用一律optional吞掉已经出生文件的丢失。
+
+最小修正在现有共享 `authenticate_cycle_candidate` 内，沿 `ExecutionRecords.document` 读取准确固定当前intent路径，显式使用原 `16 * LIMIT`（16 MiB）上限，以canonical `_match` 核完整实际值与调用者缓存。原owner已经存在时actual缺失须拒绝；无owner且文件也未出生时保留unborn路径。记录入口的存在性／完整语义，长前驱／来源读取结束后再次读回并比较，才能捕捉认证期间existing→missing／改义；只入口读一次不能关闭本次晚变化。存在性或既存owner提供必要本地状态，无需调用者可信的allow_missing／already_authenticated开关，也无需新文件／ledger／schema或独立wrapper。
+
+当前intent原完整身份沿canonical SHA，读取合法JSON后比较完整语义即可；不要顺手引入当前文件raw pin或拒绝语义不变的空白重编码。前驱已接受observation的raw inventory／ref字节规则仍按各自原合同执行，不能因此被放宽。safe ordinary-file／symlink／duplicate-key边界和16MiB aggregate容量继续复用原reader；不扩为默认10MB，也不把合法大intent缩回1MiB。
+
+最小真实验证应沿当前final纯认证的一处真实阻塞读改变当前actual intent，保持缓存／owner／早轮原件不变，修前保留错误acceptance，修后unknown无acceptance且不重建／修复文件；覆盖缺失与改义的有意义关系，并保留unborn prepare和合法现存16MiB语义边界。作者新installed13 passed／346.70s只认证该批原行为，未加入新风险保护时不能据其关闭R6。R1完整hook另树最终安装同样独立，当前准确r6不具备最终无开放风险批准。

@@ -33,3 +33,52 @@ v1在同样禁SDK入口真实returncode1，trace保持 `training_executor → tr
 本轮源码／fixture的初次完整tracked+untracked探索冻结为 `complete-source-r1.patch`：47,166B／SHA `fd1b8c8b8a88bbd407e85d67c38899d9d7bc8fc97c0b02a3b0e58d1b48af9701`，12文件，其中一份Execution及原test变更属于继承r3，native-only差异最终由根相对最终M5候选分离。`source-freeze-r1.json`逐文件记bytes/SHA/执行位，`inputs-r1.json`保留786项src/tests/pyproject/合作规则/用户说明输入，SHA `144d4077e9edccb44a26d2752adafa56f56cef8332ce3d9d2b87a8d1c35ae32d`。此为当次探索集合，不借用根853项输入或663产品身份；最终冻结将另记完整范围，r4不得偷换当次输入。
 
 上述均仅源码结果，真实native执行关闭仍在；新非editable core／SDK、实际site-packages／完整资源identity、自身原模板与fresh实施审查由根后续绑定准确候选。没有新授权、旧ID升级、M6效果、正式Workflow/producer或两轮验收。新增collector成本与本片自己的公开CI另核，不借M5 CI通过。
+
+## 完成源码片与相对M5 r4的移植冻结
+
+补明示版本的最后一项真实反例：若v2资源文件名下误放完整v1 descriptor＋patch，原仅manifest/patch自洽校验会返回误标v2的receipt。prepare_training现有identity条件一并核 `declared.protocol_id == protocol`；沿真实prepare入口验证拒绝且未建目标目录，**1 passed／0.12s**。未增加另一套parser或业务授权。
+
+在此产品版本下冻结r2全输入后，最终必要源码组 `source-final-r2` **25 passed／119.99s**，其余309未选。该组包括17项reference/严格选择、6项CLI/history/completed、2项两版本完整容量入口；完整patch48,660B、SHA `e96571f855fd8b0213cff76f6a2f2a7ac83b86c8562ee7dadbf98010d75a0655`，全tracked+untracked **2019项**输入SHA `cb3e986e194165541add1a9fda13f1d32fb2d96fee761c4d02785459e21ca0ec`。运行过程中未修改输入；之前的16项轻量r2复核为16 passed／16.68s，只属当次产品和范围。
+
+该批结束后仅作三处测试配置接续：新直接prepare别名反例标Linux；history的managed-v2参数标Linux而保留原None跨平台节点；精确接根M5 r4原source-sync test的出生control30一行。原三个相关Linux节点 **3 passed／4.77s**；没有重跑25项或借此声称Windows验证。当前四文件实际collector为 **334／0.71s**，相对M5 r4的323新增11，未删除节点／未新文件/job。两个Linux mark只限定新增native来源准备范围，不扩大legacy或业务平台支持。
+
+正式移植基线改为根已固定M5 r4 `68f3241695f5de1fdc188609db612c1d30434edf`（父a1ff338）。当前开发树HEAD仍a1ff，未reset、commit或push。已在内存AST/文件核对：原Execution文件逐字同68；native_main正文、validate_sources最终is_file门、M5原native故障test与source-sync test均同68。因此r3/r4不算本片新实现。r2→最终r3仅 `tests/test_reference.py`、`tests/test_training_submission.py` 两文件的上述测试配置差异，**全部665产品文件的bytes/SHA/执行位逐项同一**，没有转授一次变更后的新产品。
+
+最终私有冻结：
+
+|原件|范围／精确身份|
+|---|---|
+|`native-only-r3.patch`|相对68f3241，含两份untracked资源，11文件／43,950B，SHA `912a967995d5e764272e35346bd27f9474934675d2054b9d92fe7bddec66394e`|
+|`complete-source-r3.patch`|相对开发树HEAD a1ff，含继承M5 r3/r4与本片，49,413B，SHA `cff1c643861f7c500d87a6e292a59abfa5064809dc985135aa0d56357c0136d5`|
+|`source-freeze-r3.json`|基线、每个改动文件bytes/SHA/执行位、实际Python/依赖版本、原M5函数一致性与原283核验结果；仅保存所用环境变量名|
+|`all-tracked-untracked-inputs-r3.json`|2019项全工作树tracked+untracked输入，SHA `18cd48672d4a1b6404f9b3c10259b7821978570bb0d166efa2d9e3b2948932e3`|
+|`product-inputs-r3.json`|665项完整产品bytes/SHA/执行位，SHA `873807d898255bca6b7890b64935ece645913e98b2293b63c587c5b55df7b467`|
+
+五个产品差异的最终raw SHA：
+
+|文件|SHA256|
+|---|---|
+|`src/ergora/reference.py`|`6c63e631cf6486dfd191527e07a2790d99cab1077e7cf12d996dcccb97f16d96`|
+|`src/ergora/training_execution_protocol.py`|`e9ab21e1acb84b45b5153cb43c1217aae82236f6baabd271e822717c32480c3b`|
+|`src/ergora/cli.py`|`836851724d3e4c2ffcfa041f6fd4640e8afa0fb22799da7a053564a9177bb410`|
+|`src/ergora/data/native-runtime/training-executor-admission-v2.patch`|`16743abddf26d6ca67ef55053530a4c80950eb994a4e4cbfef6965c11b401068`|
+|`src/ergora/data/native-runtime/training-executor-admission-v2.json`|`0435fa4f62ac7a2fbce559a9d64a2cef70f298e4c1e11280643211050769cab7`|
+
+原283逐项匹配、manifest及v1两资源未改，v2executor仍feed0fa7。最终native-only patch反向git apply --check通过、相对68的tracked diff --check通过；新增资源另有完整raw记录。正常subprocess.run均已等待退出、原S/H用例已返回并完成原收尾；本片未启动服务／模型／训练，未扫描或停止其他片资源。
+
+源码实施和必要检查已就绪，交根在68父的独立固定树接入native-only patch，再作fresh独立实施审查、准确新core/SDK非editable安装／完整identity及自身模板。**本页不提前宣布D3完整安装验收、M5整体或M6无SDKmandatory已闭合。** 原v1真正禁SDK失败与所有探索原件保留；正式V2/producer、schema3效果和实际两轮仍关闭。
+
+## 根：新独立源码审查及平台最小修正
+
+[新的fresh源码审查](2026-11-16-native-admission-dependency-source-review.md)逐项核11 changed／2019 all／665 product、283／v1原件与真实reader原件。首轮两轴request-changes只因新增controller `managed-v2`节点漏Linux范围标记：Windows all会在installation fixture进入Linux-only prepare。原managed同类基线缺口与新增责任分开记录。
+
+根仅在该既有native callback测试前增加一行Linux skip，五产品和所有其他输入不动；`linux-native-callback-mark-r1.json`核去除这94B精确一行后raw SHA回到r3冻结，既有两Linux参数实跑 **2 passed／9.49秒**（driver9.878秒）。同前缀command／stdout／JUnit／result保留，未运行Windows，不把平台限定称Windows实测。
+
+同片reviewer已核最小差异／原件并关闭R1，当前**本片有限源码需求／维护性两轴approve、开放0**，报告SHA256 `686cab1cb31c910219acbd8a4fbd18a71c5bf813159f34fc44b7442b3553c2c4`。这不关闭M5新时序问题、不替代全hook已安装验收。M5最终r6正在固定受影响验证；待同步其精确delta后重冻本片完整源与native-only差异，再做新非editable core／SDK、真实无SDK正常prefix入口、自身模板和最终终核。
+
+
+### 根：同步M5 r6后的r4固定候选与包身份
+
+原开发树HEAD仍a1ff、未reset；精确接入M5 r4→r6 delta后，另在新固定树以 `f6722141cfa9ed885993360161c004e47e8df3a5` 为父生成native候选 `b3e734bad3d5a0ba01f69a61fd9328e0ab637f33`。native-only r4仍11文件，44,045B／SHA256 `a0abc3ba3a44055f125284bf693b8f7449b56d38137456ca90de5abda46db4a6`；相对本片r3仅新增已审Linux mark及M5父上下文变化，native原产品逻辑未另扩。`source-freeze-r4.json`、2019全输入和665产品逐raw／执行位匹配两树，三处_H、末端纯链及parent→clock顺序保持；同片有限源审两轴approve／0，报告SHA `f699fed34d78c2dd3e19f14235daaf0c0c659023f4a90d043ff6172a3c8a9ea4`。
+
+新非editable wheel `3351ce085bf6721b046ab7991cdd8612a7a64837bf849ae5b47cab4448c506a0`的core／SDK各665完整产品字节／执行位同源及wheel、283参考／依赖通过，855构建测试输入、179测试／示例副本保持；六个生成egg-info已按准确原件归档移除。仅核包身份，**未在本r4执行新的wholehook行为批**。其后M5自身模板新增current intent R6／P2，正在原r6复现／r7修正；根暂缓本片最终行为验收，先接确切后继delta，避免把即将变化的父产品包装成最终结果。旧r3源码25／r4包身份各保原范围，不能转授新候选。
