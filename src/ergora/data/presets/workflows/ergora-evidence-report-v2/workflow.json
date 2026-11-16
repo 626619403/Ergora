@@ -1,0 +1,63 @@
+{
+  "schema_version": 2,
+  "id": "ergora-evidence-report",
+  "version": "2.0.0",
+  "description": "Readonly optimization-report author with a bundled progressive template; source evidence, execution and adoption remain separately owned.",
+  "resources": [
+    {
+      "id": "ergora-evidence-report-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "f6a7a6a87a17acd22cc621cf64ca9ba6b5b3f3be52bb035c887999a245bb2a8e"
+    }
+  ],
+  "permissions": {
+    "read": [
+      "definitions"
+    ],
+    "write": [],
+    "shell": false,
+    "network": []
+  },
+  "limits": {
+    "depth": 4,
+    "instances": 8,
+    "concurrency": 1,
+    "material_bytes": 131072
+  },
+  "inputs": [
+    "task"
+  ],
+  "outputs": {
+    "result": {
+      "node": "author",
+      "output": "result"
+    }
+  },
+  "nodes": [
+    {
+      "id": "author",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-evidence-report-author",
+        "version": "2.0.0",
+        "digest": "1e67f2a71986cf37601fcc5671e6f4bf5768da0749caf15019883b06186aa70c"
+      },
+      "role": "implementer",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      }
+    }
+  ]
+}
