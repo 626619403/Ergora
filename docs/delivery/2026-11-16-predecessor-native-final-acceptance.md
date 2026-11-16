@@ -40,3 +40,17 @@
 
 
 同一独立reviewer已追加固定集成身份复核：1308e32双亲正确、665完整产品与包同一、855输入只上述两差异、callback完整AST与候选相同、managed-v2及原Windows范围保持；两轴继续approve／新增阻塞0。追加后的报告SHA256 `30b4077d1dae0562721031b33345d26df24f9af77834f035fed91bcfaf05325f`；此前771e33ba为追加前原审身份，保留其历史范围。接续普通推送，不自动合入main。
+
+## 发布与官方 CI 待观察
+
+联合公开候选 `0a5a0ffb32cd2a247eaef49a008cb5692ffad47a` 已普通推送 `refactor/architecture-foundations`；原 `git ls-remote` 核远端完整OID精确相同。没有强推或自动合main。发布请求及结果沿私有 `cycle-predecessor-native-gates/publication-r1/` 保存。
+
+04:01:44Z 的官方 Actions API发现请求返回HTTP403／未认证额度耗尽，remaining=0，服务端reset为04:25:14Z。这不是测试失败，也不是已观察到run；当前不填run ID或宣称运行／成功。保留完整响应与headers原件，按原quota等待后再观察准确head的push／attempt及八job，不改变CI时限或走其他候选结果。其间a1修正与M6-V1隔离开发继续。
+
+
+后续04:04:53Z官方公开Actions列表HTTP200，其原embedded metadata以完整commit link精确绑定0a5a0ff，显示本分支push的[43801502094](https://github.com/626619403/Ergora/actions/runs/43801502094)为in_progress，created04:01:01Z。完整HTML与精简抽取`html-discovery-summary.json`保持，原HTML SHA256 `f3456d542cf5807710217da6e472d06cae835887045f2666063156cf1a9d45c3`。该官方UI证据补齐run发现，不冒称REST attempt／七测试job终态；公开header/matrix fragments随后404亦保留，不推断任务失败。REST额度恢复后再核最终八job。
+
+
+## 联合公开候选自己的最终 CI
+
+公开 `0a5a0ffb32cd2a247eaef49a008cb5692ffad47a` 的准确官方 push／attempt1 [43801502094](https://github.com/626619403/Ergora/actions/runs/43801502094)，04:29:27Z REST run/jobs均HTTP200，完整head_sha同一，终态completed／success，8/8 jobs全success。group5为15分41秒、Windows26分17秒，保持原20／30分钟；没有加时、删用例或以其他候选通过替代。之前quota403、HTML在途及04:26中间快照原件仍保存，最终原件在本片私有publication-r1。该结果闭合M5/native集成候选及对应CI分组，不转授后继a1／M6或真实训练质量。
