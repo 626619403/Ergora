@@ -6,17 +6,15 @@
 
 ## 接续检查点 — 2026-11-16
 
-最新已核公开提交 `e5a35558f29f11eed62c6dd28450da6d39f232df` 已普通推送并核远端完整OID同一。它自己的Portability run **43840394544已终态8/8 success，含Windows**；官方 `publication-r2/checks-web-32.*` 与latest快照绑定完整head、8个唯一job IDs和原生success标签，有界观察器0结束。产品src仍与 `6cec589f404b17f4828a70807d5e33d89fad3fa0` 逐字同一，仅有另片已审3行测试修正0478a6d、普通合入99c8503。原7fc/run43833234533的Windows失败与此前API403观察记录均保留，准确证据见[联合交付](delivery/2026-11-16-design-capacity-integration.md)。
+最新已核公开候选 `9f3e693498834f071cf20d0f25c18555554765f1` 自己的Portability run **43867345323已终态8/8 success，含Windows**。官方snapshot34／terminal-verification绑定完整head、8个唯一job IDs和原生success标签，观察时刻2026-11-16T12:58:26.317622+00:00，原HTML SHA256 `d203cefa1a77a76aba2b5f9507e0e3dce7aaae440cab1e2a01f8c13aa3bd25f6`，watcher正常exit0。后继文档checkpoint9c2efc9的src/tests/scripts/.github/pyproject仍与9f3同一，status更新不重跑产品CI；原7fc失败和e5成功保持各自身份。
 
-S1原17受影响节点新安装通过，新fresh独审关闭F1/P2。V2b新安装41节点及两场N32均过，每场66分支；两个原结构模板都以已授权Codex回退完成。联合wheel `20068f1a…` 的core／SDK各669runtime文件同一，283参考、依赖及**联合32项／135.20秒**通过。709采样自有进程终核absent，2095份tracked输入与两安装未变。真实Temporal、完整M1c、晚期reader、CPU／GPU质量仍分别验收；设计执行、可信新自然人决定和schema3效果继续关闭。
+S2 inspection-only存取／恢复片验收门已闭合：准确源码2ae107b、单次123源码过、41新安装过、core／SDK各671runtime同一、283参考／依赖、原结构Codex模板APPROVE及同一fresh reviewer F1–F3关闭。普通merge2ff的src／task_plan同2ae，Windows测试修正同e5，无merge-edits；已随9f3普通发布，包含已审窄双语操作增量。原R1 request-changes／红例／112节点通过并集／安装30过保持原件，见[S2交付](delivery/2026-11-16-design-source-journal-s2.md)。source仅支持Linux／WSL2、原选定native环境及真实已存在的design-packet seed，本片未添加默认producer；Windows CI只认证既有跨平台功能，不新增Windows原生source支持。
 
-PROJECTS82c1c84、WINDOWS13ea479、USAGE完整1272行73b7d61与后端指南2273a50均随核远端一致的文档227发布。B3四完整pair已各自全文／source／parser检查及新fresh两轴approve／0；Agent定义46017e1和工作流31ce9a3已提交未推送，最后137行模板入门七文件无finding、已提交d73de13。早先证据归因、history预算、actor归因P3均同片复核关闭。B3内容／验证／独审门已闭合，全部已随核远端一致的9f3发布；停止新B4作者工作直到根后继，B4–7仍开放。后端研究保持已审，统一fixed／preset／planner／automatic调参仍待后继。
+B1–B3全部完整指南pair已各自检查／fresh独审并随9f3发布，后端／Agent定义／工作流定义／入门指南修正均保留所属记录。新B4作者工作仍hold，等待根后继；B4–7整体开放。统一fixed／preset／planner／automatic调参及一般Repeat／混合执行仍待后继。
 
-S2 R2准确候选 `2ae107b84a3c928fc8c6e2b97820951af34c0cdb` 已单次源码123过、新安装41过、core／SDK各671完整identity／283参考／依赖过及原结构Codex模板APPROVE。同一fresh源码reviewer关闭F1–F3并独立读最终运行／身份／进程原件，两轴approve／0；R1 request-changes／112并集／安装30过与原反例分别保留。根普通合入 `2ff004d4c2c62c42c76928de96915b90837b54f7`，SRC treef6b71a4…同2ae、task_plan测试同一、e5 Windows修正保留，无merge-edits。窄双语source操作USAGE增量也已同一reviewer核approve，旧整guide字节不动。准确9f3e693498834f071cf20d0f25c18555554765f1已普通推送并核远端完整OID，自己的run43867345323首次1成功／7 in progress，终态待核，不继承e5绿；未添加默认seed producer，可信新自然人／F-J-G／真实Temporal/server／Windows／GPU／schema3效果等边界保持。准确候选和全部负结果见[S2交付](delivery/2026-11-16-design-source-journal-s2.md)。
+下一片按已审WA5拆片先完整化F/J的冻结policy／owner、合法默认seed producer与跨登记恢复／迁移合同，再新fresh设计审；权威materials、seal／withdraw及G1/G2另验。真实Temporal/server、受保护自然人保证、Windows原生S2、CPU／GPU／业务质量及全部schema3效果仍未验或关闭，存取与CI成功不开放这些能力。原晚期reader／完整M1c／真实服务／CPU各依原计划推进。
 
-文档2273a50ddd0a1f3474e502b151cf12da0d0d3b22已普通发布并核远端完整OID；自测试e5起均为Markdown变化，原workflow paths-ignore使本次无新适用产品CI，e5自己的8/8保持原身份。Agent定义已审七文件已提交46017e18095559a57a7d1fad5d0f64ffc06a0b6e、随9f3已发布；工作流／入门指南分别保持独立审查／发布状态。
-
-接续以[PLAN](PLAN.md)和各交付当前段为准：先发布已审USAGE／状态文档，修正并重验S2发现，再继续原晚期reader／真实服务／CPU和文档后继。**以下各节保留原04af234交接快照**，其“待做”等只指当时；不要据此重复已完成的17／N32／模板。
+当前以[PLAN](PLAN.md)和各交付为准。**以下各节保留原04af234交接快照**；不要按历史“待做”重复已完成的17／N32／模板，也不要转授旧候选结果。
 
 ## 原恢复快照 — 04af234
 

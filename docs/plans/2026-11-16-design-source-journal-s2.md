@@ -1,6 +1,6 @@
 # WA5-S2：原 approval journal 的设计来源存取 proposal
 
-2026-11-16。**局部proposal的fresh独立设计审两轴approve／0仅认证静态设计；隔离R2已冻结2ae107b，123源码单次通过、原模板APPROVE及同片源码审F1–F3关闭；新包身份通过，安装41节点已过，最终fresh本地接纳已闭合并普通合入2ff；已普通发布9f3，自身CI43867345323终态待核，整片公开CI终态及真实人类／服务验收仍待。** 本文只把[已审拆片的S2行及第5节](2026-11-16-design-gates-registration-and-journal.md)收敛为实施与验收合同，继续服从[WA5详细设计](2026-11-16-design-knowledge-gates.md)及[用户D1–D4](../delivery/2026-11-16-workflow-design-decisions.md)。它不开放任何设计批准或执行关卡。下文“拟”的函数、文件和字段保留受审proposal当时的设计表述；当前草稿与实证进度以[S2交付](../delivery/2026-11-16-design-source-journal-s2.md)为准，行为和验收边界不能省略。
+2026-11-16。**局部proposal的fresh独立设计审两轴approve／0仅认证静态设计；隔离R2已冻结2ae107b，123源码单次通过、原模板APPROVE及同片源码审F1–F3关闭；新包身份通过，安装41节点已过，最终fresh本地接纳已闭合并普通合入2ff；已普通发布9f3，自身CI43867345323终态8/8 success，S2 inspection-only存取片门闭合；真实人类／服务及F/J/G仍另验。** 本文只把[已审拆片的S2行及第5节](2026-11-16-design-gates-registration-and-journal.md)收敛为实施与验收合同，继续服从[WA5详细设计](2026-11-16-design-knowledge-gates.md)及[用户D1–D4](../delivery/2026-11-16-workflow-design-decisions.md)。它不开放任何设计批准或执行关卡。下文“拟”的函数、文件和字段保留受审proposal当时的设计表述；当前草稿与实证进度以[S2交付](../delivery/2026-11-16-design-source-journal-s2.md)为准，行为和验收边界不能省略。
 
 ## 1. 准确基线、依赖与交付边界
 
@@ -201,4 +201,4 @@ SDK fixture、受保护通道替身、真实服务和自然人验收分别记账
 
 新的fresh-context reviewer已对完整197行原proposal（SHA256 `fdf2c8a8bebac116a0b1a56556a4fcc1f3493e3fd93c2b2c1f3f87d65c185c0e`）及原始要求／实际caller完成[独立设计审](../delivery/2026-11-16-design-source-journal-s2-design-review.md)：需求approve、维护性approve、开放findings0。此前中断的审查没有报告或结论，本轮不继承它。受审原件与报告另存 `.ergora/checks/design-source-journal-s2/design-review-r1/`，本节和首行／检查框仅为后继状态记账，不改受审合同。
 
-reviewer实际核最终联合产品6cec589的src／tests与后继7fc4217同一，以及最终S1对v1原source／creation／submission路径的兼容性；原c540939只是proposal作者读取基线，不能转授为rebase验收。后继R1候选7592的request-changes、112节点通过并集／安装30过与全部反例保留；R2准确候选2ae107b84a3c928fc8c6e2b97820951af34c0cdb已修正边界与实际adapter路径，123源码单次过、原结构Codex模板APPROVE，同一fresh源码审两轴approve／F1–F3关闭。R2新671runtime包／283参考／依赖身份通过，但41节点安装验证已过，最终fresh本地接纳已闭合、普通合入2ff，已普通发布9f3，自己的CI43867345323在跑；未验真实服务／自然人／GPU／F-J-G保持。所有准确候选、原件、失败与当前门槛统一见[S2交付](../delivery/2026-11-16-design-source-journal-s2.md)，不把静态、源码或旧R1通过转授未完成门。静态proposal与原197行受审原件只认证设计，不能替代实现验收；F/J/G与设计执行继续关闭。
+reviewer实际核最终联合产品6cec589的src／tests与后继7fc4217同一，以及最终S1对v1原source／creation／submission路径的兼容性；原c540939只是proposal作者读取基线，不能转授为rebase验收。后继R1候选7592的request-changes、112节点通过并集／安装30过与全部反例保留；R2准确候选2ae107b84a3c928fc8c6e2b97820951af34c0cdb已修正边界与实际adapter路径，123源码单次过、原结构Codex模板APPROVE，同一fresh源码审两轴approve／F1–F3关闭。R2新671runtime包／283参考／依赖身份通过，但41节点安装验证已过，最终fresh本地接纳已闭合、普通合入2ff，已普通发布9f3，自己的CI43867345323已8/8 success；S2仍Linux／WSL2，未验真实服务／自然人／GPU／F-J-G保持。所有准确候选、原件、失败与当前门槛统一见[S2交付](../delivery/2026-11-16-design-source-journal-s2.md)，不把静态、源码或旧R1通过转授未完成门。静态proposal与原197行受审原件只认证设计，不能替代实现验收；F/J/G与设计执行继续关闭。

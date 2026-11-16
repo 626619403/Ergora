@@ -1,6 +1,6 @@
 # WA5-S1／M6-V2b：联合安装与开发分支发布
 
-2026-11-16。联合新安装32项定向验证完成；原7fc自己的CI失败已保留，最小3行测试平台修正后准确e5已普通发布并核远端完整OID，自己的Portability run43840394544已终态 **8/8 success，含Windows**。产品src仍与6cec589同一；USAGE后继已审七文件提交73b7d61尚未推送。S2隔离R1冻结7592，虽有112节点通过并集与同包安装30过，但原结构审request-changes，正独立R2修复，不继承本CI或宣称ready。所有设计执行、schema3训练效果和可信新自然人批准继续关闭。
+2026-11-16。此前联合产品6cec589／已审测试平台修正e5的安装与自身CI结果保留。后继S2 R2源码2ae经本地源码123／新安装41／671runtime／原模板／fresh复核与窄操作文档闭合，普通整合2ff并发布准确9f3；9f3自己的Portability run43867345323已终态8/8 success，含Windows。它不继承e5绿，也不扩大为Windows原生S2、真实服务／自然人／GPU或F/J/G／schema3效果验收。原7fc失败和R1 request-changes原件保留。
 
 ## 接纳的准确输入
 
@@ -46,3 +46,5 @@
 S2最新源码进度另记：r5完整task-plan模块66过，pytest182.50秒／JUnit182.476秒／runner184.210秒，包含指定真实CLI、三native退出和同ID恢复；仅认证该次source_inputs字节。剩余并发／pending／坏链／容量bounds／direct public handoff-schema／旧approval、新包／模板／fresh实现审及自身CI仍待；S2源码未在公开主分支，联合e5的8/8继续不转授。
 
 S2接纳门后继：R1候选7592在多label账本有112个当前node IDs通过并集（非112单次跑，r6/r7过强测试断言失败保留），新同包671runtime／283参考／依赖及安装选择30过；自身原结构Codex模板request-changes，指出caller preflight及native header覆盖问题，fresh源码审另核input2–11目录疑点。根已另建R2修复树，原R1源码／包／原件不变，新修不得继承R1或公开e5的绿；全部S2仍未合入／发布。
+
+公开9f3自身CI收尾：2026-11-16T12:58:26.317622+00:00，官方checks-web-34／latest／terminal-verification绑定完整9f3e693498834f071cf20d0f25c18555554765f1、同run43867345323和8个唯一job IDs，原生标签全部success；HTML SHA256 `d203cefa1a77a76aba2b5f9507e0e3dce7aaae440cab1e2a01f8c13aa3bd25f6`已核，watcher exit0。全局Success／26m48s，Windows wheel／reference／regression／PowerShell5.1安装升级均过。后继文档9c2的src/tests/scripts/.github/pyproject同9f3，不重跑产品CI。S2 source仍Linux／WSL2，默认seed producer／F、权威materials／J、可信owner／G1-G2、真实服务／人类／GPU与schema3效果均不由该CI认证。

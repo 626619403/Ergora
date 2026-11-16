@@ -778,7 +778,7 @@ API：GET `.../tasks/TASK_ID/plan?run_id=RUN_ID&plan_sha256=PLAN_SHA&timeout=20`
 
 ### 保存完整设计来源与原答复
 
-**已发布开发候选：** 本节对应源码 `2ae107b`，已包含于核远端一致的公开提交 `9f3e693498834f071cf20d0f25c18555554765f1`。它自己的Portability run `43867345323`正在进行，发布验收等待本次结果，不继承旧e5的绿CI。旧安装可能没有这些命令。本节仅为inspection-only存取，不是新增的默认设计／批准流程。
+**已发布开发候选：** 本节对应源码 `2ae107b`，已包含于核远端一致的公开提交 `9f3e693498834f071cf20d0f25c18555554765f1`。它自己的Portability run `43867345323`已终态8/8 success，含既有Windows检查；本source存取片发布／CI门闭合，未继承e5结果。下述source命令仍须Linux／WSL2，不新增Windows原生source支持。旧安装可能没有这些命令。本节仅为inspection-only存取，不是新增的默认设计／批准流程。
 
 使用Linux／WSL2、原项目登记的native解释器／运行时、匹配SDK和原creation／submission／state文件。任务须由统一入口创建并已可核验提交，真实pending plan的已接受原回执中已有有效 `design-packet` artifact。**本片没有添加默认seed producer**，普通模板创建本身不生成该原件；缺packet时停止，不得伪造artifact、编辑旧receipt或降级登记绕准入。首次inspection／anchor建立实际查询原在线run、history与receipt，不能由caller提供可信preflight。
 

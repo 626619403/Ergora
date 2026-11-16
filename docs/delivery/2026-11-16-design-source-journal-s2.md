@@ -1,6 +1,6 @@
 # WA5-S2：设计来源 journal 存取实施
 
-2026-11-16。当前R2准确候选 `2ae107b84a3c928fc8c6e2b97820951af34c0cdb` 已冻结：**123项源码单次运行通过**（pytest676.68秒／JUnit676.652秒／runner677.752720秒），同一fresh源码reviewer复核两轴approve／F1–F3关闭，原结构Codex模板80.514251秒APPROVE。新R2非editable core／SDK各671runtime bytes／modes／imports／283参考／依赖通过，wheel0d4a1831…；**R2新安装41 passed**（pytest530.28秒／JUnit530.268秒／runner531.400806秒），1656采样自有进程终核absent；同一fresh reviewer已读最终终态并关闭本地源码／安装／原模板／独立复核门。已普通无冲突合入2ff并普通发布9f3，自身CI43867345323正在进行，真实服务／自然人／GPU与F/J/G仍未验；公开9f3源／测试与已核2ae同一，整片发布验收仍待它自己的CI终态。原R1结构审request-changes、112多label并集／安装30过与全部反例继续保留，不转授新候选。公开e5的8/8仍不认证S2，设计执行及schema3效果关闭。
+2026-11-16。**S2 inspection-only存取片的本地／普通发布／候选自身CI门已闭合。** 准确R2 `2ae107b84a3c928fc8c6e2b97820951af34c0cdb`：源码单次123过、新安装41过、core／SDK各671runtime身份／283参考／依赖、原结构Codex模板及同片fresh两轴approve／F1–F3关闭；普通merge2ff无改动、公开head `9f3e693498834f071cf20d0f25c18555554765f1`核远端同一，它自己的Portability run **43867345323终态8/8 success，含Windows**。仍仅支持Linux／WSL2和原选定native环境；Windows CI认证既有跨平台功能，不新增Windows原生source支持。真实Temporal／server／受保护自然人／GPU和F/J/G、默认seed producer及schema3效果不属于本片完成范围，继续未验／未开放。原R1 request-changes／红例／112多label并集／安装30过完整保留。
 
 ## 合同与准确基线
 
@@ -10,14 +10,14 @@
 
 |身份|本片实际状态|
 |---|---|
-|隔离实施分支|`feat/design-source-journal-s2-r1`，从 `7fc42177db11fbfe4c9adb33342ecb5da4ed0434` 建立。|
+|已接纳实施候选|R2分支 `fix/design-source-journal-s2-r2`，clean源码2ae107b；原R1从7fc建立、7592被修正而未单独发布。|
 |已接纳产品基线|`6cec589f404b17f4828a70807d5e33d89fad3fa0`；起点 src/tests 与该联合产品相同，包含最终 S1 `b28cd316` 与容量片 `919a380`。文档提交不改变其产品身份。|
-|隔离树与原始证据|实施树 `.ergora/worktrees/design-source-journal-s2-r1`。此为忽略的本地工作树，不能当作已发布文件或跨机器证据；新源码和验证证据的最终冻结身份待实际产生后记录。|
+|实施与原件|R2树 `.ergora/worktrees/design-source-journal-s2-r2` clean于2ae，`package-r2/`绑定2ae；已发布9f3的src tree与2ae同一；旧R1树／包及全部反例保留。这些ignored原件换机仍须另行保存，不是GitHub附件。|
 |初始源码交接|源码 owner 已读实际 approval／submission／creation／reference／tasks owner 和已审 proposal；交接时未改 S2 源码、未运行本片测试。|
 
 本记录只维护 docs，不代替源码 owner 修改实现、配置、测试或运行 home。后继每项结果必须固定实际 candidate／diff、配置、调用入口与原件，不从联合产品已通过的安装或 CI 转授给 S2。
 
-## 待实现与验收
+## S2验收与后继边界
 
 实现沿已审原 owner：应用层负责结构校验与短 revision reservation，`reference` 负责实际所选 native 进程及公共结果校验，approval owner 负责原件身份、唯一 source 链、安全正文发布、pending 尾部与同 ID 恢复。容量资源只约束存取，首条操作冻结可收紧的有效限额，不导入 design policy 或增加第二状态库／调度器。
 
@@ -25,11 +25,11 @@
 |---|---|---|
 |源码实施|完整 packet／response／正文及准确身份，唯一source链、权限与旧schema1合同。|R2固定2ae107b，base7592；原owner边界／header／实际adapter修正已纳入，F1–F3源码项由同一fresh reviewer关闭。|
 |源码验证|准确最终候选的完整原模块、故障、容量、公共入口与旧approval合同。|R2单次123 passed：pytest676.68秒／JUnit676.652秒／runner677.752720秒。R1/r2各中间红／绿继续各自固定，不转授。|
-|新安装|准确新非editable包完整文件／执行位／真实导入／参考／依赖及同候选实际CLI／native。|新R2 wheel0d4a1831…，core／SDK各671runtime／283参考／依赖过；R2新安装41过，pytest530.28秒／JUnit530.268秒／runner531.400806秒；最终fresh本地接纳已闭合，已普通合入2ff并发布9f3，自己的CI43867345323仍在跑。|
+|新安装|准确新非editable包完整文件／执行位／真实导入／参考／依赖及同候选实际CLI／native。|新R2 wheel0d4a1831…，core／SDK各671runtime／283参考／依赖过；R2新安装41过，pytest530.28秒／JUnit530.268秒／runner531.400806秒；最终fresh本地接纳已闭合，已普通合入2ff并发布9f3，自己的CI43867345323已终态8/8 success。|
 |原模板与实现独审|完整原模板与实际后端原回复，fresh两轴源码审及finding复核。|R2原结构Codex80.514251秒APPROVE；同一fresh源码两轴approve、F1–F3已关。源码report先保留静态追加当时的未验状态，后继终态接纳读回已完成／本地门闭合。|
-|集成与发布|本地门闭合后普通整合、准确公开head及其自身适用CI。|普通merge2ff源／测试同2ae，无merge-edits；9f3普通发布及远端完整OID同一已核，自身CI43867345323进行中，不能转授e5绿。|
+|集成与发布|本地门闭合后普通整合、准确公开head及其自身适用CI。|普通merge2ff的src及task_plan同2ae，Windows三行测试修正同e5，无merge-edits；9f3普通发布及远端完整OID同一已核，自身CI43867345323终态8/8 success，未转授e5绿。|
 
-真实 Temporal、自然人认证、F/J 的权威 materials／seal／withdraw、G1/G2、可执行 v12、业务质量与训练效果仍是各自后继验收。当前只有局部源码happy-path通过，尚无公开S2可用性或完整验收结论；下一步由源码owner补齐剩余并发／容量／公共入口schema与兼容接缝，冻结准确源码后新安装、原模板与fresh实现独审。
+本片仅交付有真实原seed前置的设计来源存取、完整读回和同ID恢复，当前源码／安装／独审与自身公开CI已闭合。下一片按已审WA5拆片细化F/J的冻结policy／owner、合法默认seed producer及跨登记迁移合同，先完成fresh设计审；权威materials／seal-withdraw／G1-G2及可执行v12后继分别验收。真实Temporal／server、自然人认证、业务／GPU质量和schema3实际效果仍未验／未开放。
 
 源码owner早期交接为clean于7fc4217、已核实际owner／预检／schema／native IO；后继仅改测试草稿，不能沿用该早期clean描述为当前状态。实际runner与fixture结果分别如下，原件根 `.ergora/checks/design-source-journal-s2/impl-r1/`：
 
@@ -137,4 +137,13 @@ R2安装终态按根交接已取得：源码123／新安装41／自身Codex模�
 
 根已普通推送开发分支 `9f3e693498834f071cf20d0f25c18555554765f1`，`publication-r2/push.json`／`remote.json`核 `git ls-remote` 完整OID同一。公开head包含已核2ae源码／2ff合入、小USAGE双语增量及其原source-review追加、全部B3文档commits46017／31ce／d73。原坏R1候选7592未单独发布，全部红例／request-changes及原通过档案保留。
 
-该公开候选自己的Portability run `43867345323` 已启动；`checks-web-00.html`／`.json`与latest绑定完整9f3，首次观察plan1 success／其余7 in progress，根有界监测仍在跑。尚无本候选CI终态，不转授旧e5的8/8。小USAGE原42／41行语义delta经同一source reviewer核approve/open0，后继状态首段只按本次发布事实更新，不扩大source可用条件／producer／自然人／F-J-G／执行或schema3效果。
+该公开候选自己的Portability run `43867345323` 已启动；`checks-web-00.html`／`.json`与latest绑定完整9f3，首次观察plan1 success／其余7 in progress，该首次观察当时无终态；后继8/8成功见下节，不转授旧e5的8/8。小USAGE原42／41行语义delta经同一source reviewer核approve/open0，后继状态首段只按本次发布事实更新，不扩大source可用条件／producer／自然人／F-J-G／执行或schema3效果。
+
+
+## 自身官方CI终态与本片收尾
+
+2026-11-16T12:58:26.317622+00:00，官方 `publication-r2/checks-web-34.html`／`.json`、`checks-web-latest.json`及`terminal-verification.json`绑定完整9f3、同一run43867345323和8个唯一job IDs，每项均为原生 `This job succeeded`，**8/8 success，含Windows job133299264098**；watcher正常exit0。原HTML SHA256 `d203cefa1a77a76aba2b5f9507e0e3dce7aaae440cab1e2a01f8c13aa3bd25f6`已独立重算相符。该结果是9f3自身CI，不继承e5；后继纯文档checkpoint9c2的src/tests/scripts/.github/pyproject仍与该CI候选同一，本次状态更新未重跑产品测试。
+
+补充官方run summary为Success／26m48s；Windows job的wheel构建安装、reference identity、application regression和PowerShell5.1 installer／upgrade四步均success，回归12:32:25Z–12:57:11Z、installer12:57:11Z–12:58:11Z。这认证既有跨平台功能的CI选择，**S2 source操作仍为Linux／WSL2，未新增Windows原生支持**。
+
+S2存取片已完成源码123、新安装41、完整包身份、原模板、fresh两轴及finding复核、窄操作文档、普通整合／公开发布／自身CI门；原R1不合格路径、五红例、r3 fixture失败及r6/r7测试假设失败各保留原件和准确范围。后继先细化已审F/J合同与fresh设计审，默认producer／权威materials／可信owner／seal-withdraw／G1-G2、真实服务／自然人／GPU及任何schema3实际效果继续未验／未开放。B4作者仍hold，B4–7整体开放，不因本片CI成功启动新作者工作。

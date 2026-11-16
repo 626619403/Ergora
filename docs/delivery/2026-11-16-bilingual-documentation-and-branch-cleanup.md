@@ -1,6 +1,6 @@
 # Bilingual documentation and branch maintenance: batch 1
 
-Status: all four complete batch3 guide pairs passed their own checks and fresh reviews with all findings closed, and their commits46017e1/31ce9a3/d73de13 plus earlier backend227 are now included in exact verified public9f3e693498834f071cf20d0f25c18555554765f1. SourceS2 has its own in-progress public CI and separate gates; documentation reviews do not certify it. New batch4 authoring remains stopped until root follows up; batches4–7 remain open. Date: 2026-11-16.
+Status: all four complete batch3 guide pairs passed their own checks and fresh reviews with all findings closed, and their commits46017e1/31ce9a3/d73de13 plus earlier backend227 are now included in exact verified public9f3e693498834f071cf20d0f25c18555554765f1. SourceS2's own9f3/run43867345323 is terminal8/8 success; it has separate scope and documentation reviews do not confer runtime support. New batch4 authoring remains stopped until root follows up; batches4–7 remain open. Date: 2026-11-16.
 
 [Plan and full remaining scope](../plans/2026-11-16-bilingual-documentation-and-branch-cleanup.md) · [English documentation](../README.md) · [中文文档](../README.zh-CN.md)
 
@@ -77,4 +77,4 @@ Installation batch 2 now has three complete, independently reviewed language pai
 
 Batch3 review handoff is closed for all four complete guides: backend, Agent definitions, workflow definitions and template walkthroughs. Each has a separate fresh reviewer/report; the three P3 findings (official-source attribution, soft history budget and delegated-actor attribution) were minimally corrected and rechecked. The walkthrough had no finding. Remaining staged publication uses each exact seven-file scope; no runtime/model/CI result is transferred. No batch4 authoring is started without root follow-up.
 
-Publication continuation: root ordinary-pushed9f3e693498834f071cf20d0f25c18555554765f1 and verified its full remote OID. All four batch3 guide scopes and their own review records are now published, alongside the separately reviewed S2 source/howto. Its ownCI43867345323 is in progress, not an inherited e5pass; no documentation result authorizes real-service/human/GPU or design/schema3 effects. No new batch4 authoring is started.
+Publication continuation: root ordinary-pushed9f3e693498834f071cf20d0f25c18555554765f1 and verified its full remote OID. All four batch3 guide scopes and their own review records are now published, alongside the separately reviewed S2 source/howto. Its ownCI43867345323 is terminal8/8 success, not an inherited e5pass; no documentation result authorizes real-service/human/GPU or design/schema3 effects. No new batch4 authoring is started.
