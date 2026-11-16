@@ -1055,13 +1055,6 @@ def _execution_candidate_operation(payload: dict, plan: dict, admission, active)
     return result
 
 
-def _round_selection(plan: dict, authorization: dict) -> dict:
-    manifest = plan['admissions'][0]['observation']['experiment']['manifest']
-    return {'count': len(plan['admissions']),
-        'common_sha256': protocol.CycleAdmission._sha({key: manifest[key] for key in training_cycles._COMMON}),
-        'measurement_sources_sha256': protocol.CycleAdmission._sha(authorization['measurement_sources'])}
-
-
 def _round_local_gate(payload, plan, admission, ready, active):
     """Recheck complete original local authority after any blocking observation."""
     from .reference_training_context import _TrainingProject
@@ -1089,8 +1082,6 @@ def _round_local_gate(payload, plan, admission, ready, active):
     protocol.validate_sources(capability)
     if training_cycles._measurement_sources() != authorization['measurement_sources']:
         raise ValueError('Original round measurement source bytes changed')
-    # validate_sources pins the manifest itself before verify consumes its full inventory.
-    reference.verify()
     _TrainingProject({'project': plan['project'], 'control_home': authorization['control_home']}).registration()
     # Source and registration checks perform local I/O. Stop and both original
     # allowances must still hold after those reads have actually returned.
@@ -1133,40 +1124,6 @@ def _round_gate(payload, plan, admission, ready, active, *, history=False):
     active()
     admission.check()
     return operation, intent, owner
-
-
-def _round_report_binding(saved, plan, ordinal, previous):
-    report = saved['report']
-    if (report['project'] != {'id': plan['project']['id'], 'repo': plan['project']['repo'],
-                             'registration_sha256': plan['project']['registration']['sha256']}
-            or len(report['rounds']) != ordinal + 1):
-        raise ValueError('Round index differs from its original registered selection or complete count')
-    for index, item in enumerate(report['rounds']):
-        selected = plan['definition']['candidates'][index]
-        admitted = plan['admissions'][index]['observation']['experiment']
-        if (item['experiment_id'] != selected['experiment_id']
-                or item['annotation'] != {key: selected[key] for key in ('change', 'next_bottleneck')}
-                or item['native']['records']['experiment']['manifest'] != admitted['manifest']
-                or item['native']['records']['experiment']['spec'] != admitted['spec']
-                or item['comparison']['manifest_sha256'] != selected['manifest_sha256']):
-            raise ValueError('Round index changed a frozen candidate, manifest or annotation')
-    if previous is None:
-        if report['previous_report'] is not None:
-            raise ValueError('First round index cannot replace a prior prefix')
-    elif (report['rounds'][:-1] != previous['report']['rounds']
-            or report['initial_anchor'] != previous['report']['initial_anchor']
-            or report['previous_report'] != {'sha256': previous['sha256'],
-                'rounds': len(previous['report']['rounds']),
-                'last_round_sha256': previous['report']['rounds'][-1]['sha256']}):
-        raise ValueError('Round index differs from its complete original previous prefix')
-
-
-def _round_pin(saved, raw):
-    if hashlib.sha256(raw).hexdigest() != saved['sha256']:
-        raise ValueError('Round prefix changed its complete original raw bytes after read')
-    return {'directory': saved['directory'], 'sha256': saved['sha256'], 'bytes': len(raw),
-        'rounds': len(saved['report']['rounds']), 'last_round_sha256': saved['report']['rounds'][-1]['sha256'],
-        'initial_anchor_sha256': protocol.CycleAdmission._sha(saved['report']['initial_anchor'])}
 
 
 def _round_sync_file(path: Path, root: Path, active, *, raw: bytes | None = None, validate=None) -> bytes:
@@ -1215,154 +1172,31 @@ def _round_read_evidence(payload, state, project, experiment, active):
     return observed
 
 
-def _round_state(observed, evidence, item, intent):
-    """Combine the four original owners; local approval is never a positive predicate."""
-    if observed['status'] != 'observed':
-        return 'unknown'
-    facts, native, runtime, execution = (observed[key] for key in ('facts', 'native', 'runtime', 'execution'))
-    if not all(isinstance(value, dict) for value in (native, runtime, execution)):
-        return 'unknown'
-    binding = intent['observation']['experiment']['binding']
-    records, indexed_evidence, submitted = (item['native'][key] for key in ('records', 'evidence', 'submission'))
-    experiment = records['experiment']
-    detail = runtime.get('status', runtime.get('outcome', {}))
-    request = execution['records'].get('request')
-    if (evidence != indexed_evidence or evidence['binding'] != binding
-            or experiment['binding'] != binding or experiment['manifest'] != intent['observation']['experiment']['manifest']
-            or experiment['spec'] != intent['observation']['experiment']['spec']
-            or evidence['recorded_gate_report'] != experiment['gate_report']
-            or records['project_revision'] != intent['project_revision']
-            or submitted['status'] != 'submitted' or facts['submission']['state'] != 'submitted'
-            or any(submitted[key] != observed['submission'][key] for key in ('workflow_id', 'run_id', 'intent_sha256'))
-            or runtime['workflow_id'] != submitted['workflow_id'] or runtime['run_id'] != submitted['run_id']
-            or detail.get('binding') != binding or native.get('job', {}).get('binding') != binding
-            or request is None or request['job_id'] != native.get('job', {}).get('job_id')
-            or detail.get('job_id') != request['job_id'] or experiment['job_id'] != request['job_id']
-            or request['start_intent_sha256'] != protocol.CycleAdmission._sha(intent)
-            or facts['candidate']['current_project_matches'] is not True
-            or facts['candidate']['parent_stop_visible'] is not False
-            or evidence['baseline_matches'] is not True or evidence['fence_recorded'] is not False):
-        return 'unknown'
-    result = experiment['result']
-    if (result is not None and (native['state'] != result['state'] or native.get('detail') != result['detail'])
-            or any(evidence['files'].get(name) != digest for name, digest in
-                   {**records['baseline_files'], **experiment['files']}.items())):
-        return 'unknown'
-    gate = evidence['recorded_gate_report']
-    if native['state'] in ('FAILED', 'CANCELLED') or gate is not None and gate['passed'] is False:
-        return 'rejected'
-    if native['state'] in ('QUEUED', 'RUNNING') or execution['durable_stop_confirmed'] is not True:
-        return 'pending'
-    if (native['state'] != 'SUCCEEDED' or experiment['recorded_result_state'] != 'SUCCEEDED'
-            or execution['executor_stop_confirmed'] is not True or execution['reap_record_observed'] is not True
-            or set(execution['record_sha256']) != {'request', 'launch', 'attempt', 'ack', 'stopped'}
-            or gate is None or gate['passed'] is not True or evidence['archive_status'] != 'recorded'
-            or evidence['archive'] is None or evidence['archive']['artifact_content_status'] != 'not_read'):
-        return 'unknown'
-    evidence_sha = evidence['archive']['evidence_sha256']
-    if gate['evidence_sha256'] != evidence_sha:
-        return 'unknown'
-    if (runtime['temporal_status'] == 'RUNNING' and runtime['terminal'] is False
-            and runtime['phase'] == 'AWAITING_RELEASE' and 'status' in runtime
-            and detail.get('evidence_sha') == evidence_sha):
-        return 'accepted'
-    if (runtime['temporal_status'] == 'COMPLETED' and runtime['terminal'] is True
-            and runtime['phase'] in ('RELEASE_EXPIRED', 'INTEGRATION_TASK_CREATED') and 'outcome' in runtime
-            and detail.get('report_uri') == Path(result['gate']['report']).as_uri()):
-        return 'accepted'
-    if runtime['temporal_status'] == 'RUNNING' and runtime['terminal'] is False and runtime['phase'] in (
-            'QUEUED', 'RUNNING', 'COLLECTING', 'GATING'):
-        return 'pending'
-    return 'unknown'
-
-
-def _round_acceptance(value, ref, intent):
-    sha = protocol.CycleAdmission._sha
-    facts, runtime, evidence, execution = (value[key] for key in ('facts', 'runtime', 'evidence', 'execution'))
-    kind = 'status' if 'status' in runtime else 'outcome'
-    detail = runtime[kind]
-    return {'observation': ref, 'source_operation_id': value['identity']['operation_id'],
-        'candidate': {key: facts['candidate'][key] for key in ('ordinal', 'experiment_id', 'manifest_sha256', 'project_revision')}
-            | {'registration_sha256': intent['registration_sha256']},
-        'submission': {key: facts['submission'][key] for key in ('intent_sha256', 'workflow_id', 'run_id')}
-            | {'spec_sha256': sha(intent['observation']['experiment']['spec'])},
-        'execution': {'owner_sha256': sha(execution['owner']), 'record_sha256': execution['record_sha256'],
-                      'raw_inventory_sha256': sha(execution['raw_sha256'])},
-        'runtime': {'namespace': value['activity_context']['service_namespace'], 'kind': kind, 'phase': runtime['phase'],
-            'job_id': detail['job_id'], 'binding_sha256': sha(detail['binding']), 'memo_sha256': sha(intent),
-            'evidence_sha': detail['evidence_sha'] if kind == 'status' else None,
-            'report_uri': detail['report_uri'] if kind == 'outcome' else None},
-        'evidence': {'evidence_sha256': evidence['archive']['evidence_sha256'],
-            'gate_report_sha256': sha(evidence['recorded_gate_report']), 'files_sha256': sha(evidence['files'])},
-        'common_sha256': value['selection']['common_sha256'],
-        'measurement_sources_sha256': value['selection']['measurement_sources_sha256']}
-
-
 def _round_previous(payload, plan, admission, selection, active):
-    """Read every confirmed original prefix and observation; never scan for alternatives."""
-    from . import training_rounds
-
-    predecessor = payload['start_context']['controller']['predecessor']
-    ordinal = payload['identity']['ordinal']
-    previous, extension = None, None
+    """H adds current archive semantics and SDK phase to shared local originals."""
+    active()
+    _, intent, _ = _cycle_target(plan, admission, payload['identity']['ordinal'])
+    ready = protocol.decode(protocol.read_raw(admission.directory / 'ready.json'))
+    originals = protocol.authenticate_cycle_candidate(intent, plan, admission, ready)
     state = State(Path(payload['identity']['control_home']))
-    for index in range(ordinal - 1, -1, -1):
+    for position, (saved, value, original, observed) in enumerate(originals):
         active()
-        protocol.validate_round_predecessor(predecessor, index + 1)
-        pin, acceptance = predecessor['prefix'], predecessor['acceptance']
-        expected = admission.folder / 'rounds' / str(index)
-        if pin['directory'] != str(expected):
-            raise ValueError('Previous round prefix belongs to another original cycle')
-        saved = training_rounds.read(expected, sha256=pin['sha256'])
-        raw = protocol.read_raw(expected / 'rounds.json', protocol.ARTIFACT_LIMIT)
-        if _round_pin(saved, raw) != pin:
-            raise ValueError('Previous round pin differs from its complete raw original index')
-        if extension is not None:
-            _round_report_binding(extension, plan, index + 1, saved)
-        if previous is None:
-            previous = saved
-        value = protocol.read_round_observation(acceptance['observation'], home=state.root,
-                                                operation_id=acceptance['source_operation_id'])
-        operation, intent, owner = _cycle_target(plan, admission, index)
-        source_path = state.root / 'operations/training-cycles' / acceptance['source_operation_id']
-        source = protocol.decode(protocol.read_raw(source_path / 'request.json', _CYCLE_LIMIT))
-        protocol.validate_cycle_operation(source)
-        reply = protocol.decode(protocol.read_raw(source_path / 'helper/stdout.txt', _CYCLE_LIMIT))
-        if (value['identity'] != source['identity'] or value['activity_context'] != source['activity_context']
-                or source['snapshot'] != payload['snapshot'] or value['prefix'] != pin or value['selection'] != selection
-                or value['predecessor'] != intent['budget']['controller']['predecessor']
-                or source['start_context']['controller'] != intent['budget']['controller']
-                or value['activity_context']['workflow_input'] != payload['activity_context']['workflow_input']
+        if (value['activity_context']['workflow_input'] != payload['activity_context']['workflow_input']
                 or value['activity_context']['service_namespace'] != payload['activity_context']['service_namespace']
-                or reply.get('status') != 'observed' or reply['facts']['measurement'] != {
-                    'measurement_state': 'accepted', 'index_state': 'durable', 'continuation_ready': True,
-                    'prefix': pin, 'acceptance': acceptance}
-                or _round_acceptance(value, acceptance['observation'], intent) != acceptance):
-            raise ValueError('Previous acceptance differs from its complete original source operation or candidate')
-        evidence = _round_read_evidence(payload, state, plan['project']['id'], operation.ident, active)
-        chain = protocol.ExecutionRecords(plan['project'], operation.ident, str(state.root)).load()
-        observed = chain.observe(durable=True)
+                or value['selection'] != selection):
+            raise ValueError('Previous observation differs from the current original activity selection or namespace')
+        ident = original['experiment_id']
+        evidence = _round_read_evidence(payload, state, plan['project']['id'], ident, active)
         _retain_round_reader(payload, 'execution', observed)
-        if (observed['owner'] != value['execution']['owner'] or owner != observed['owner']
-                or observed['records'] != value['execution']['records']
-                or observed['record_sha256'] != value['execution']['record_sha256']
-                or observed['raw_sha256'] != value['execution']['raw_sha256']
-                or observed['durable_stop_confirmed'] is not True or observed['executor_stop_confirmed'] is not True
-                or evidence != value['evidence']):
-            raise ValueError('Previous accepted execution or complete archive inventory changed')
-        recorded = {'status': 'observed', 'submission': operation.status(intent), **value}
-        if _round_state(recorded, evidence, saved['report']['rounds'][-1], intent) != 'accepted':
-            raise ValueError('Previous original observation does not authenticate all four accepted facts')
-        if index == ordinal - 1:
-            target = {**payload, 'identity': {**payload['identity'], 'ordinal': index}}
+        if evidence != value['evidence']:
+            raise ValueError('Previous accepted complete archive inventory changed')
+        if position == 0:
+            target = {**payload, 'identity': {**payload['identity'], 'ordinal': value['identity']['ordinal']}}
             current = _execution_candidate_operation(target, plan, admission, active)
-            if _round_state(current, evidence, saved['report']['rounds'][-1], intent) != 'accepted':
+            if protocol.round_state(current, evidence, saved['report']['rounds'][-1], original) != 'accepted':
                 raise ValueError('Immediately previous round is no longer authenticated accepted')
-        extension = saved
-        predecessor = value['predecessor']
-    if extension is not None:
-        _round_report_binding(extension, plan, 0, None)
-    return previous
+    active()
+    return originals[0][0] if originals else None
 
 
 def _round_operation(payload, plan, admission, ready, active):
@@ -1372,7 +1206,7 @@ def _round_operation(payload, plan, admission, ready, active):
     ordinal = identity['ordinal']
     state = State(Path(identity['control_home']))
     operation, intent, _ = _round_gate(payload, plan, admission, ready, active, history=True)
-    selection = _round_selection(plan, admission.authorization)
+    selection = protocol.round_selection(plan, admission.authorization)
     previous = _round_previous(payload, plan, admission, selection, active)
     preflight = _execution_candidate_operation(payload, plan, admission, active)
     evidence = _round_read_evidence(payload, state, identity['project'], operation.ident, active)
@@ -1401,12 +1235,12 @@ def _round_operation(payload, plan, admission, ready, active):
             pass
     active()
     saved = training_rounds.read(destination)
-    _round_report_binding(saved, plan, ordinal, previous)
+    protocol.round_report_binding(saved, plan, ordinal, previous)
     raw = protocol.read_raw(destination / 'rounds.json', protocol.ARTIFACT_LIMIT)
     if hashlib.sha256(raw).hexdigest() != saved['sha256']:
         raise ValueError('Round index changed between its original read and synchronization')
     # A complete preflight cannot bless the index's independently captured native values.
-    measurement_state = _round_state(preflight, evidence, saved['report']['rounds'][-1], intent)
+    measurement_state = protocol.round_state(preflight, evidence, saved['report']['rounds'][-1], intent)
     index_state = 'published_unconfirmed'
     try:
         def validate_index(current_raw):
@@ -1418,7 +1252,7 @@ def _round_operation(payload, plan, admission, ready, active):
         reread = training_rounds.read(destination, sha256=saved['sha256'])
         if reread != saved:
             raise ValueError('Round index complete prefix changed after synchronization')
-        _round_report_binding(reread, plan, ordinal, _round_previous(payload, plan, admission, selection, active))
+        protocol.round_report_binding(reread, plan, ordinal, _round_previous(payload, plan, admission, selection, active))
         _round_gate(payload, plan, admission, ready, active)
         index_state = 'durable'
     except (OSError, ValueError) as error:
@@ -1427,8 +1261,8 @@ def _round_operation(payload, plan, admission, ready, active):
                 'continuation_ready': False, 'prefix': None, 'acceptance': None}}}
     final = _execution_candidate_operation(payload, plan, admission, active)
     evidence = _round_read_evidence(payload, state, identity['project'], operation.ident, active)
-    measurement_state = _round_state(final, evidence, saved['report']['rounds'][-1], intent)
-    prefix = _round_pin(saved, raw)
+    measurement_state = protocol.round_state(final, evidence, saved['report']['rounds'][-1], intent)
+    prefix = protocol.round_pin(saved, raw)
     value = {'schema_version': 1, 'kind': 'training-cycle-round-observation', 'identity': identity,
         'activity_context': payload['activity_context'], 'predecessor': payload['start_context']['controller']['predecessor'],
         'selection': selection, 'facts': final['facts'], **{key: final[key] for key in ('runtime', 'native', 'execution')},
@@ -1444,13 +1278,16 @@ def _round_operation(payload, plan, admission, ready, active):
     ref = {'path': str(path), 'sha256': hashlib.sha256(raw).hexdigest(), 'bytes': len(raw)}
     if protocol.read_round_observation(ref, home=state.root, operation_id=identity['operation_id']) != value:
         raise ValueError('Complete round observation changed after same-inode synchronization')
-    _round_report_binding(saved, plan, ordinal, _round_previous(payload, plan, admission, selection, active))
+    protocol.round_report_binding(saved, plan, ordinal, _round_previous(payload, plan, admission, selection, active))
     _round_gate(payload, plan, admission, ready, active)
     # Recheck the exact durable index after the final observation and gate.
     if training_rounds.read(destination, sha256=saved['sha256']) != saved:
         raise ValueError('Round prefix changed before its final acceptance')
     _round_local_gate(payload, plan, admission, ready, active)
-    acceptance = _round_acceptance(value, ref, intent) if measurement_state == 'accepted' else None
+    # All blocking H readers have returned; bind the complete local chain last.
+    originals = protocol.authenticate_cycle_candidate(intent, plan, admission, ready)
+    protocol.round_report_binding(saved, plan, ordinal, originals[0][0] if originals else None)
+    acceptance = protocol.round_acceptance(value, ref, intent) if measurement_state == 'accepted' else None
     if acceptance is not None:
         protocol.validate_round_acceptance(acceptance)
     return {'status': 'observed' if final['status'] == 'observed' else 'unknown',

@@ -27,7 +27,7 @@ class Execution:
         if chain.owner is None or chain.owner.get('execution_capability') is None:
             raise ValueError('This original budget owner has no execution capability; it cannot be upgraded or restarted')
         protocol.validate_context(context, chain)
-        actor = (context['authorization']['controller']['actor_id'] if context['authorization']['schema_version'] == 2
+        actor = (context['authorization']['controller']['actor_id'] if context['authorization']['schema_version'] in (2, 3)
                  else f'unix:{os.getuid()}:{getpass.getuser()}')
         request = chain.request_record(actor)
         # These checks run in a supervised helper, never inside a DB reservation.
@@ -54,13 +54,13 @@ class Execution:
         op = self.operation
         if State(Path(op.payload['control_home'])).project(op.project['id'])['revision'] != context['intent']['project_revision']:
             raise ValueError('Project revision changed before explicit execution')
-        parent = protocol.validate_context(context, chain)
+        current = protocol.ExecutionRecords(context['project'], op.ident, str(op.payload['control_home'])).load()
+        protocol._match(current.owner, chain.owner, 'Original execution publication owner')
+        parent = protocol.validate_context(context, current)
         for path in (chain.folder.parent / 'started.json', chain.folder.parent / 'result.json',
                      chain.root / ('training/fences/' + op.ident + '.json')):
             if path.exists() or path.is_symlink():
                 raise ValueError('Native execution, result or fence already exists; do not execute again')
-        if not Path(chain.owner['execution_capability']['native_python']).is_file():
-            raise ValueError('Original native interpreter is unavailable')
         source = op.payload.get('cycle_operation')
         if source is not None:
             protocol.cycle_execution_source(source, context['intent'])

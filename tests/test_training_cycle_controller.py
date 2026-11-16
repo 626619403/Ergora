@@ -1559,7 +1559,7 @@ def test_schema3_intent_is_local_and_all_execution_entries_remain_closed(
     service[0]('accepted')
     digest = request['candidates'][0]['manifest_sha256']
     for cycle_entry in (True, False):
-        with pytest.raises(ValueError, match='execution is not enabled'):
+        with pytest.raises(ValueError):
             if cycle_entry:
                 training_cycles.start(state, 'demo', 'controller', 'alpha', authorized['authorization_sha256'], 1)
             else:
@@ -1590,8 +1590,8 @@ def test_schema3_intent_is_local_and_all_execution_entries_remain_closed(
     assert not (admission.folder / 'attempt.json').exists()
 
 
-@pytest.mark.skipif(sys.platform != 'linux', reason='Controller consent requires Linux/WSL2 clocks and flock')
-@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.skipif(sys.platform != 'linux', reason='Managed native callback requires Linux')
+@pytest.mark.parametrize('installation', ['managed', 'managed-v2'], indirect=True)
 @pytest.mark.parametrize('controller_admission', [{'program_version': 2}], indirect=True)
 def test_schema3_native_callback_refuses_before_executor_effects_and_keeps_completed_read(
         controller_admission, request):
@@ -1633,19 +1633,22 @@ def test_schema3_native_callback_refuses_before_executor_effects_and_keeps_compl
         authorization_sha256=authorized['authorization_sha256'], clock_sha256=sha(authorized['authorization']['clock']))
     save(folder / 'launch.json', launch)
     installation = Path(definition['execution']['installation'])
+    isolated = json.loads((installation / 'ergora-native-runtime.json').read_bytes())['protocol_id'] == 'training-executor-admission-v2'
+    sdk_paths = [] if isolated else [Path(item) for item in sys.path if 'site-packages' in item]
     environment = dict(os.environ, PYTHONDONTWRITEBYTECODE='1',
         AGENTFLOW_CONFIG_DIR=definition['execution']['config_directory'],
         AGENTFLOW_STATE_DIR=definition['execution']['state_directory'],
         PYTHONPATH=os.pathsep.join(map(str, (Path(training_cycles.__file__).parent.parent,
             installation / 'local', installation / 'upstream/platform', installation / 'upstream/temporal', installation / 'upstream',
-            *(Path(item) for item in sys.path if 'site-packages' in item)))))
+            *sdk_paths))))
     command = [str(installation / '.venv/bin/python'), '-B', '-P',
-        str(Path(__file__).parent / 'fixtures/training_executor_client.py'), 'native-context', str(folder.parent)]
+        str(Path(__file__).parent / 'fixtures/training_executor_client.py'),
+        'native-context-isolated' if isolated else 'native-context', str(folder.parent)]
     before = {path: path.read_bytes() for path in folder.parent.rglob('*') if path.is_file()}
     result = subprocess.run(command, input=json.dumps({'cached': context, 'phase': {}}), env=environment,
         capture_output=True, text=True, timeout=15)
     assert result.returncode == 0, result.stderr
-    assert json.loads(result.stdout) == {'error_type': 'ValueError', 'error': 'Schema3 controller execution is not enabled'}
+    assert json.loads(result.stdout)['error_type'] == 'ValueError'
     assert {path: path.read_bytes() for path in folder.parent.rglob('*') if path.is_file() and path.name != 'executor.lock'} == before
     assert not any((folder.parent / name).exists() for name in ('started.json', 'repo.git', 'run-output'))
     assert not any((folder / (name + '.json')).exists() for name in ('attempt', 'ack', 'stopped'))

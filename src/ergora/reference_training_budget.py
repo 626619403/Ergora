@@ -261,6 +261,8 @@ class BudgetedStart:
         directory = training_cycles._directory(state.root, self.intent['project'], self.binding['cycle_id'])
         plan, authorization, ready = training_cycles._load(state.root, self.intent['project'], self.binding['cycle_id'], directory)
         if authorization['schema_version'] == 3:
+            training_execution_protocol.authenticate_cycle_candidate(
+                self.intent, plan, training_execution_protocol.CycleAdmission(directory, authorization), ready)
             raise ValueError('Schema3 controller execution is not enabled')
         if authorization['schema_version'] == 2:
             training_execution_protocol.CycleAdmission(directory, authorization).bind(self.intent, plan)

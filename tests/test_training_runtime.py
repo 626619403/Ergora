@@ -11,22 +11,102 @@ import pytest
 
 from ergora import reference, training
 from test_training import experiments, registration
-from test_reference import prepared_training_installation
+from test_reference import prepared_training_installation, prepared_training_v2_installation
 
 
 @pytest.fixture(scope='module')
 def installation(tmp_path_factory, request):
     root = tmp_path_factory.mktemp('training-reference-installation')
-    if getattr(request, 'param', None) == 'managed':
+    if getattr(request, 'param', None) in ('managed', 'managed-v2'):
         import venv
 
         root = root / 'managed native'
-        reference.prepare_training(root, protocol=reference.TRAINING_PROTOCOL)
+        selected = ('training-executor-admission-v2' if request.param == 'managed-v2' else reference.TRAINING_PROTOCOL)
+        reference.prepare_training(root, protocol=selected)
         # The native admission boundary runs without application/SDK dependencies.
         venv.EnvBuilder(with_pip=False).create(root / '.venv')
     else:
         shutil.copytree(reference.ROOT / 'platform', root, dirs_exist_ok=True)
     return root
+
+
+@pytest.mark.parametrize('action', ['run-local', 'approve'])
+def test_native_v2_cli_keeps_the_original_loader_at_each_sdk_use(
+        prepared_training_v2_installation, tmp_path, action):
+    import os
+    import subprocess
+    import venv
+
+    pytest.importorskip('temporalio')
+    root, _ = prepared_training_v2_installation
+    state = tmp_path / 'native-state'
+    spec = state / 'training/specs/alpha.json'
+    spec.parent.mkdir(parents=True)
+    binding = {'experiment_id': 'alpha', 'manifest_sha': 'a' * 64,
+               'candidate_sha': 'b' * 40, 'baseline_sha': 'c' * 40}
+    value = {'binding': binding, 'manifest_uri': (tmp_path / 'manifest.json').as_uri()}
+    environment = {**os.environ, 'AGENTFLOW_STATE_DIR': str(state), 'AGENTFLOW_CONFIG_DIR': str(tmp_path / 'config'),
+        'PYTHONPATH': os.pathsep.join(str(root / part) for part in
+            ('local', 'upstream/platform', 'upstream/temporal', 'upstream'))}
+    program = '''import json,sys
+from pathlib import Path
+from types import SimpleNamespace
+from agent_platform import training
+action=sys.argv[1]
+calls=[]
+if action=='approve' and sys.argv[2]=='sdk':
+    from perf_temporal import connection
+    from perf_temporal.models import Binding
+    binding=Binding(**json.loads((training.TRAINING/'specs/alpha.json').read_bytes())['binding'])
+    class Handle:
+        async def query(self, *args):
+            return SimpleNamespace(phase='AWAITING_RELEASE', binding=binding, evidence_sha='d'*64)
+    async def connect():
+        return SimpleNamespace(get_workflow_handle=lambda wid:Handle())
+    connection.connect=connect
+    def send(argv, **kwargs):
+        calls.append(argv)
+        return SimpleNamespace(returncode=0)
+    training.subprocess.run=send
+arguments=([action,'alpha','--confirm-manifest-sha','0'*64] if action=='run-local'
+           else [action,'alpha','--evidence-sha','d'*64])
+try:
+    result=training.cli(arguments)
+    print(json.dumps({'result':result,'calls':calls}))
+except (ValueError, TypeError, RuntimeError, ModuleNotFoundError) as error:
+    print(json.dumps({'error_type':type(error).__name__,'error':str(error),'calls':calls}))
+'''
+
+    def run(python, mode):
+        result = subprocess.run([str(python), '-B', '-P', '-c', program, action, mode], env=environment,
+                                capture_output=True, text=True, timeout=15)
+        assert result.returncode == 0, result.stderr
+        return json.loads(result.stdout)
+
+    # Both branches execute the original client's Experiment/Binding validation.
+    spec.write_text(json.dumps({**value, 'binding': {**binding, 'candidate_sha': 'invalid'}}))
+    rejected = run(sys.executable, 'sdk')
+    assert rejected['error_type'] == 'ValueError' and 'candidate_sha' in rejected['error']
+    assert not rejected['calls'] and not (state / 'training/approvals').exists()
+    spec.write_text(json.dumps(value))
+    loaded = run(sys.executable, 'sdk')
+    if action == 'run-local':
+        assert loaded['error_type'] == 'Blocked' and 'Confirm the exact immutable manifest SHA' in loaded['error']
+        assert not loaded['calls'] and not (state / 'training/jobs').exists()
+    else:
+        assert loaded['result'] is None and len(loaded['calls']) == 1
+        assert loaded['calls'][0][1:4] == ['-m', 'perf_temporal.client', 'release']
+        approval, = (state / 'training/approvals').glob('*.json')
+        saved = json.loads(approval.read_bytes())
+        assert saved['binding'] == binding and saved['evidence_sha256'] == 'd' * 64
+        before = approval.read_bytes()
+    isolated = tmp_path / 'no-sdk'
+    venv.EnvBuilder(with_pip=False).create(isolated)
+    missing = run(isolated / 'bin/python', 'no-sdk')
+    assert missing['error_type'] == 'ModuleNotFoundError' and 'temporalio' in missing['error']
+    assert not missing['calls']
+    if action == 'approve':
+        assert approval.read_bytes() == before
 
 
 @pytest.fixture

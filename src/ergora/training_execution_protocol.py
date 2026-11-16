@@ -48,6 +48,10 @@ GATE_SOURCES = (
     'asset_trees.py', 'state.py', 'budget_clock.py', 'processes.py', 'reference_creation_process.py',
     '__init__.py', 'data/reference-manifest.json', 'data/native-runtime/training-executor-admission-v1.json',
 )
+GATE_SOURCE_PROTOCOLS = {
+    reference.TRAINING_PROTOCOL: GATE_SOURCES,
+    'training-executor-admission-v2': (*GATE_SOURCES[:-1], 'data/native-runtime/training-executor-admission-v2.json'),
+}
 
 
 ROUND_COVERAGE = {'records': 'saved-observations', 'artifacts': 'index-only', 'runtime_status': 'not_queried',
@@ -127,6 +131,140 @@ def validate_round_content(report: dict) -> None:
     if previous is not None and (not 1 <= previous['rounds'] < len(report['rounds'])
             or previous['last_round_sha256'] != report['rounds'][previous['rounds'] - 1]['sha256']):
         raise ValueError('Training round extension does not retain its declared original prefix')
+
+
+ROUND_COMMON = ('baseline_id', 'baseline_commit', 'base_config_sha256', 'workload_fingerprint',
+           'dataset_manifest_sha256', 'initial_checkpoint_sha256', 'environment_fingerprint',
+           'validation_contract_sha256', 'comparison_tool_sha256', 'checks_required',
+           'quality_required', 'performance_policy')
+
+
+def round_selection(plan: dict, authorization: dict) -> dict:
+    manifest = plan['admissions'][0]['observation']['experiment']['manifest']
+    return {'count': len(plan['admissions']),
+        'common_sha256': CycleAdmission._sha({key: manifest[key] for key in ROUND_COMMON}),
+        'measurement_sources_sha256': CycleAdmission._sha(authorization['measurement_sources'])}
+
+
+def round_report_binding(saved, plan, ordinal, previous):
+    report = saved['report']
+    if (report['project'] != {'id': plan['project']['id'], 'repo': plan['project']['repo'],
+                             'registration_sha256': plan['project']['registration']['sha256']}
+            or len(report['rounds']) != ordinal + 1):
+        raise ValueError('Round index differs from its original registered selection or complete count')
+    for index, item in enumerate(report['rounds']):
+        selected = plan['definition']['candidates'][index]
+        admitted = plan['admissions'][index]['observation']['experiment']
+        if (item['experiment_id'] != selected['experiment_id']
+                or item['annotation'] != {key: selected[key] for key in ('change', 'next_bottleneck')}
+                or item['native']['records']['experiment']['manifest'] != admitted['manifest']
+                or item['native']['records']['experiment']['spec'] != admitted['spec']
+                or item['native']['records']['experiment']['binding'] != admitted['binding']
+                or item['native']['records']['project_revision'] != plan['project']['revision']
+                or {key: admitted['manifest'][key] for key in ROUND_COMMON} != {
+                    key: plan['admissions'][0]['observation']['experiment']['manifest'][key] for key in ROUND_COMMON}
+                or item['comparison']['manifest_sha256'] != selected['manifest_sha256']):
+            raise ValueError('Round index changed a frozen candidate, manifest or annotation')
+    if previous is None:
+        if report['previous_report'] is not None:
+            raise ValueError('First round index cannot replace a prior prefix')
+    elif (report['rounds'][:-1] != previous['report']['rounds']
+            or report['initial_anchor'] != previous['report']['initial_anchor']
+            or report['previous_report'] != {'sha256': previous['sha256'],
+                'rounds': len(previous['report']['rounds']),
+                'last_round_sha256': previous['report']['rounds'][-1]['sha256']}):
+        raise ValueError('Round index differs from its complete original previous prefix')
+
+
+def round_pin(saved, raw):
+    if hashlib.sha256(raw).hexdigest() != saved['sha256']:
+        raise ValueError('Round prefix changed its complete original raw bytes after read')
+    return {'directory': saved['directory'], 'sha256': saved['sha256'], 'bytes': len(raw),
+        'rounds': len(saved['report']['rounds']), 'last_round_sha256': saved['report']['rounds'][-1]['sha256'],
+        'initial_anchor_sha256': CycleAdmission._sha(saved['report']['initial_anchor'])}
+
+
+def round_state(observed, evidence, item, intent):
+    """Combine the four original owners; local approval is never a positive predicate."""
+    if observed['status'] != 'observed':
+        return 'unknown'
+    facts, native, runtime, execution = (observed[key] for key in ('facts', 'native', 'runtime', 'execution'))
+    if not all(isinstance(value, dict) for value in (native, runtime, execution)):
+        return 'unknown'
+    binding = intent['observation']['experiment']['binding']
+    records, indexed_evidence, submitted = (item['native'][key] for key in ('records', 'evidence', 'submission'))
+    experiment = records['experiment']
+    detail = runtime.get('status', runtime.get('outcome', {}))
+    request = execution['records'].get('request')
+    if (evidence != indexed_evidence or evidence['binding'] != binding
+            or experiment['binding'] != binding or experiment['manifest'] != intent['observation']['experiment']['manifest']
+            or experiment['spec'] != intent['observation']['experiment']['spec']
+            or evidence['recorded_gate_report'] != experiment['gate_report']
+            or records['project_revision'] != intent['project_revision']
+            or submitted['status'] != 'submitted' or facts['submission']['state'] != 'submitted'
+            or any(submitted[key] != observed['submission'][key] for key in ('workflow_id', 'run_id', 'intent_sha256'))
+            or runtime['workflow_id'] != submitted['workflow_id'] or runtime['run_id'] != submitted['run_id']
+            or detail.get('binding') != binding or native.get('job', {}).get('binding') != binding
+            or request is None or request['job_id'] != native.get('job', {}).get('job_id')
+            or detail.get('job_id') != request['job_id'] or experiment['job_id'] != request['job_id']
+            or request['start_intent_sha256'] != CycleAdmission._sha(intent)
+            or facts['candidate']['current_project_matches'] is not True
+            or facts['candidate']['parent_stop_visible'] is not False
+            or evidence['baseline_matches'] is not True or evidence['fence_recorded'] is not False):
+        return 'unknown'
+    result = experiment['result']
+    if (result is not None and (native['state'] != result['state'] or native.get('detail') != result['detail'])
+            or any(evidence['files'].get(name) != digest for name, digest in
+                   {**records['baseline_files'], **experiment['files']}.items())):
+        return 'unknown'
+    gate = evidence['recorded_gate_report']
+    if native['state'] in ('FAILED', 'CANCELLED') or gate is not None and gate['passed'] is False:
+        return 'rejected'
+    if native['state'] in ('QUEUED', 'RUNNING') or execution['durable_stop_confirmed'] is not True:
+        return 'pending'
+    if (native['state'] != 'SUCCEEDED' or experiment['recorded_result_state'] != 'SUCCEEDED'
+            or execution['executor_stop_confirmed'] is not True or execution['reap_record_observed'] is not True
+            or set(execution['record_sha256']) != {'request', 'launch', 'attempt', 'ack', 'stopped'}
+            or gate is None or gate['passed'] is not True or evidence['archive_status'] != 'recorded'
+            or evidence['archive'] is None or evidence['archive']['artifact_content_status'] != 'not_read'):
+        return 'unknown'
+    evidence_sha = evidence['archive']['evidence_sha256']
+    if gate['evidence_sha256'] != evidence_sha:
+        return 'unknown'
+    if (runtime['temporal_status'] == 'RUNNING' and runtime['terminal'] is False
+            and runtime['phase'] == 'AWAITING_RELEASE' and 'status' in runtime
+            and detail.get('evidence_sha') == evidence_sha):
+        return 'accepted'
+    if (runtime['temporal_status'] == 'COMPLETED' and runtime['terminal'] is True
+            and runtime['phase'] in ('RELEASE_EXPIRED', 'INTEGRATION_TASK_CREATED') and 'outcome' in runtime
+            and detail.get('report_uri') == Path(result['gate']['report']).as_uri()):
+        return 'accepted'
+    if runtime['temporal_status'] == 'RUNNING' and runtime['terminal'] is False and runtime['phase'] in (
+            'QUEUED', 'RUNNING', 'COLLECTING', 'GATING'):
+        return 'pending'
+    return 'unknown'
+
+
+def round_acceptance(value, ref, intent):
+    sha = CycleAdmission._sha
+    facts, runtime, evidence, execution = (value[key] for key in ('facts', 'runtime', 'evidence', 'execution'))
+    kind = 'status' if 'status' in runtime else 'outcome'
+    detail = runtime[kind]
+    return {'observation': ref, 'source_operation_id': value['identity']['operation_id'],
+        'candidate': {key: facts['candidate'][key] for key in ('ordinal', 'experiment_id', 'manifest_sha256', 'project_revision')}
+            | {'registration_sha256': intent['registration_sha256']},
+        'submission': {key: facts['submission'][key] for key in ('intent_sha256', 'workflow_id', 'run_id')}
+            | {'spec_sha256': sha(intent['observation']['experiment']['spec'])},
+        'execution': {'owner_sha256': sha(execution['owner']), 'record_sha256': execution['record_sha256'],
+                      'raw_inventory_sha256': sha(execution['raw_sha256'])},
+        'runtime': {'namespace': value['activity_context']['service_namespace'], 'kind': kind, 'phase': runtime['phase'],
+            'job_id': detail['job_id'], 'binding_sha256': sha(detail['binding']), 'memo_sha256': sha(intent),
+            'evidence_sha': detail['evidence_sha'] if kind == 'status' else None,
+            'report_uri': detail['report_uri'] if kind == 'outcome' else None},
+        'evidence': {'evidence_sha256': evidence['archive']['evidence_sha256'],
+            'gate_report_sha256': sha(evidence['recorded_gate_report']), 'files_sha256': sha(evidence['files'])},
+        'common_sha256': value['selection']['common_sha256'],
+        'measurement_sources_sha256': value['selection']['measurement_sources_sha256']}
 
 
 def _exact(value, keys, label):
@@ -755,6 +893,24 @@ def validate_cycle_root_request(value: dict) -> None:
     _digest(submission['intent_sha256'])
 
 
+def _capability(capability: dict) -> None:
+    """Check saved identity only; history never requires the current installation."""
+    _exact(capability, ('protocol', 'admission_protocol', 'descriptor_sha256', 'installation',
+        'native_python', 'cycle_ready_sha256', 'gate_sources'), 'Execution capability')
+    try:
+        sources = GATE_SOURCE_PROTOCOLS[capability['admission_protocol']]
+    except (KeyError, TypeError) as error:
+        raise ValueError('Unsupported complete execution capability') from error
+    if (capability['protocol'] != PROTOCOL or not isinstance(capability['gate_sources'], dict)
+            or set(capability['gate_sources']) != set(sources)):
+        raise ValueError('Unsupported complete execution capability')
+    for digest in (*capability['gate_sources'].values(), capability['descriptor_sha256'], capability['cycle_ready_sha256']):
+        _digest(digest)
+    installation = Path(capability['installation'])
+    if not installation.is_absolute() or capability['native_python'] != str(installation / '.venv/bin/python'):
+        raise ValueError('Execution capability has no exact native interpreter')
+
+
 def owner_record(value: dict) -> dict:
     common = ('schema_version', 'intent_sha256', 'authorization_sha256', 'pid', 'start_ticks', 'boot_id', 'context_sha256')
     version = value.get('schema_version')
@@ -765,18 +921,7 @@ def owner_record(value: dict) -> dict:
         _digest(value[name])
     _process({key: value[key] for key in ('pid', 'start_ticks', 'boot_id')})
     if version == 2 and value['execution_capability'] is not None:
-        capability = value['execution_capability']
-        _exact(capability, ('protocol', 'admission_protocol', 'descriptor_sha256', 'installation',
-            'native_python', 'cycle_ready_sha256', 'gate_sources'), 'Execution capability')
-        if (capability['protocol'] != PROTOCOL or capability['admission_protocol'] != reference.TRAINING_PROTOCOL
-                or not isinstance(capability['gate_sources'], dict)
-                or set(capability['gate_sources']) != set(GATE_SOURCES)):
-            raise ValueError('Unsupported complete execution capability')
-        for digest in (*capability['gate_sources'].values(), capability['descriptor_sha256'], capability['cycle_ready_sha256']):
-            _digest(digest)
-        installation = Path(capability['installation'])
-        if not installation.is_absolute() or capability['native_python'] != str(installation / '.venv/bin/python'):
-            raise ValueError('Execution capability has no exact native interpreter')
+        _capability(value['execution_capability'])
     return value
 
 
@@ -809,21 +954,40 @@ def source_capability(installation: Path, ready: dict) -> dict | None:
     reference.validate_installation(installation, training=True)
     descriptor = installation / 'ergora-native-runtime.json'
     if not descriptor.exists():
+        reference.validate_installation(installation, training=True)
         return None
-    return {'protocol': PROTOCOL, 'admission_protocol': reference.TRAINING_PROTOCOL,
-        'descriptor_sha256': hashlib.sha256(read_raw(descriptor)).hexdigest(),
+    raw = read_raw(descriptor, 65_536)
+    declared = reference._training_descriptor(raw)
+    # Bind this exact declaration around a complete installation check. A switch
+    # between two supported declarations cannot silently change the birth pin.
+    reference.validate_installation(installation, training=True)
+    if read_raw(descriptor, 65_536) != raw:
+        raise ValueError('Native execution descriptor changed during capability birth')
+    return {'protocol': PROTOCOL, 'admission_protocol': declared['protocol_id'],
+        'descriptor_sha256': hashlib.sha256(raw).hexdigest(),
         'installation': str(installation), 'native_python': str(installation / '.venv/bin/python'),
         'cycle_ready_sha256': canonical_sha(ready), 'gate_sources': {
-            name: hashlib.sha256(read_raw(Path(__file__).parent / name)).hexdigest() for name in GATE_SOURCES}}
+            name: hashlib.sha256(read_raw(Path(__file__).parent / name)).hexdigest()
+            for name in GATE_SOURCE_PROTOCOLS[declared['protocol_id']]}}
 
 
 def validate_sources(capability: dict) -> None:
+    _capability(capability)
+    for name, expected in capability['gate_sources'].items():
+        if hashlib.sha256(read_raw(Path(__file__).parent / name)).hexdigest() != expected:
+            raise ValueError('Original execution gate source changed: ' + name)
+    reference.verify()
     installation = reference.validate_installation(Path(capability['installation']), training=True)
-    if hashlib.sha256(read_raw(installation / 'ergora-native-runtime.json')).hexdigest() != capability['descriptor_sha256']:
+    raw = read_raw(installation / 'ergora-native-runtime.json', 65_536)
+    declared = reference._training_descriptor(raw)
+    if (declared['protocol_id'] != capability['admission_protocol']
+            or hashlib.sha256(raw).hexdigest() != capability['descriptor_sha256']):
         raise ValueError('Original native execution descriptor changed')
     for name, expected in capability['gate_sources'].items():
         if hashlib.sha256(read_raw(Path(__file__).parent / name)).hexdigest() != expected:
             raise ValueError('Original execution gate source changed: ' + name)
+    if not Path(capability['native_python']).is_file():
+        raise ValueError('Original native interpreter is unavailable')
 
 
 def publish(path: Path, value: dict, root: Path) -> None:
@@ -1285,6 +1449,199 @@ class ExecutionRecords:
         return result
 
 
+def _round_candidate_intent(intent, plan, admission, ordinal):
+    """Bind the complete local intent, including an unborn prepare candidate."""
+    authorization, project = admission.authorization, plan['project']
+    validate_budget_binding(intent['budget'])
+    admission.bind(intent, plan)
+    expected = {'schema_version': 1, 'operation': 'start', 'control_home': authorization['control_home'],
+        'project': project['id'], 'repo': project['repo'], 'execution': authorization['execution'],
+        'registration_sha256': project['registration']['sha256'],
+        'experiment_id': plan['definition']['candidates'][ordinal]['experiment_id'],
+        'workflow_id': 'perf-experiment/' + plan['definition']['candidates'][ordinal]['experiment_id'],
+        'project_revision': authorization['project_revision'], 'operation_id': intent['operation_id'],
+        'observation': plan['admissions'][ordinal]['observation'], 'budget': intent['budget']}
+    if (type(intent['schema_version']) is not int or type(intent['project_revision']) is not int
+            or not isinstance(intent['operation_id'], str) or re.fullmatch('[a-f0-9]{32}', intent['operation_id']) is None
+            or intent['budget']['controller']['ordinal'] != ordinal):
+        raise ValueError('Round candidate has no original complete intent identity')
+    _match(intent, expected, 'Complete original round candidate intent')
+
+
+def _round_sources(authorization, ready, owner):
+    """Use birth sources; prepare has no owner capability until its one birth."""
+    sources = authorization['measurement_sources']
+    _exact(sources, MEASUREMENT_SOURCES, 'Original measurement sources')
+    for name, expected in sources.items():
+        _digest(expected)
+        if hashlib.sha256(read_raw(Path(__file__).parent / name, ARTIFACT_LIMIT)).hexdigest() != expected:
+            raise ValueError('Original round measurement source bytes changed: ' + name)
+    if owner is not None:
+        capability = owner.get('execution_capability')
+        if (capability is None or capability['cycle_ready_sha256'] != CycleAdmission._sha(ready)
+                or capability['installation'] != authorization['execution']['installation']):
+            raise ValueError('Round candidate has no original ready-bound selected capability')
+        validate_sources(capability)
+    else:
+        # Authorization pins only the four measurement sources. The original
+        # 25-source/manifest capability is born later, in the immutable owner.
+        installation = reference.validate_installation(Path(authorization['execution']['installation']), training=True)
+        read_raw(installation / 'ergora-native-runtime.json')
+        reference.verify()
+    for name, expected in sources.items():
+        if hashlib.sha256(read_raw(Path(__file__).parent / name, ARTIFACT_LIMIT)).hexdigest() != expected:
+            raise ValueError('Original round measurement source changed during verification: ' + name)
+
+
+def authenticate_cycle_candidate(intent: dict, plan: dict, admission: CycleAdmission, ready: dict) -> list:
+    """Authenticate all frozen local predecessors; never grant schema3 effects.
+
+    Return newest-to-oldest originals for H's additional archive and SDK checks.
+    No State, schema, SDK, replacement files, alternate prefix or live-old-owner
+    lookup belongs to this boundary.
+    """
+    authorization, sha = admission.authorization, admission._sha
+    if type(authorization['schema_version']) is not int or authorization['schema_version'] != 3:
+        raise ValueError('Complete round authentication requires the original schema3 authorization')
+    if sha({key: value for key, value in authorization.items() if key != 'sha256'}) != authorization['sha256']:
+        raise ValueError('Complete round authorization changed its original canonical SHA256')
+    admission._authorization()
+    raw_plan = read_raw(admission.directory / 'cycle.json', ARTIFACT_LIMIT)
+    if hashlib.sha256(raw_plan).hexdigest() != authorization['input_sha256'] or decode(raw_plan) != plan:
+        raise ValueError('Complete original cycle input changed')
+    project, policy = plan['project'], plan['definition']['budget']
+    if (plan['control_home'] != authorization['control_home'] or project['id'] != authorization['project']
+            or project['revision'] != authorization['project_revision']
+            or project['registration']['definition']['execution'] != authorization['execution']
+            or project['registration']['operation_id'] != authorization['registration']['operation_id']):
+        raise ValueError('Original round authorization differs from its registered project')
+    _match(decode(read_raw(admission.directory / 'ready.json')), ready, 'Original cycle ready')
+    _match(ready, {'schema_version': 1, 'kind': 'training-cycle-ready',
+        'authorization_sha256': authorization['sha256'], 'admissions_sha256': sha(plan['admissions']),
+        'project_revision': authorization['project_revision'], 'checked_at': ready['checked_at']}, 'Complete cycle ready')
+    checked = datetime.fromisoformat(ready['checked_at'])
+    if (checked.utcoffset() != timedelta(0) or checked.isoformat() != ready['checked_at']
+            or not datetime.fromisoformat(authorization['clock']['authorized_at']) <= checked
+                < datetime.fromisoformat(authorization['clock']['deadline_at']) - timedelta(seconds=policy['cleanup_seconds'])):
+        raise ValueError('Original cycle ready is outside its computation window')
+    admission.validate_lock()
+    validate_budget_binding(intent['budget'])
+    admission.bind(intent, plan)
+    controller = intent['budget']['controller']
+    ordinal = controller['ordinal']
+    _round_candidate_intent(intent, plan, admission, ordinal)
+    current = ExecutionRecords(project, intent['experiment_id'], authorization['control_home'])
+    current_owner = current.document(current.budget / 'owner.json', optional=True)
+    intent_path = current.budget.parent / (current.ident + '.intent.json')
+    actual_intent = current.document(intent_path, optional=current_owner is None, limit=16 * LIMIT)
+    if actual_intent is not None:
+        _match(actual_intent, intent, 'Complete original current candidate intent')
+    if current_owner is not None:
+        owner_record(current_owner)
+        if (current_owner['intent_sha256'] != sha(intent)
+                or current_owner['authorization_sha256'] != authorization['sha256']):
+            raise ValueError('Round candidate owner differs from its original intent or authorization')
+    for name, expected in project['registration']['files'].items():
+        _match(current.document(current.adapter.safe_file(current.config, name)), expected, 'Original registered document')
+
+    def active():
+        admission.check()
+        if budget_clock.remaining(authorization['clock'], policy['wall_seconds'], policy['cleanup_seconds']) <= 0:
+            raise ValueError('Original round authentication computation allowance is exhausted')
+
+    active()
+    _round_sources(authorization, ready, current_owner)
+    predecessor, extension, result, namespace = controller['predecessor'], None, [], None
+    for index in range(ordinal - 1, -1, -1):
+        active()
+        validate_round_predecessor(predecessor, index + 1)
+        pin, acceptance = predecessor['prefix'], predecessor['acceptance']
+        directory = admission.folder / 'rounds' / str(index)
+        if pin['directory'] != str(directory) or {path.name for path in directory.iterdir()} != {'rounds.json'}:
+            raise ValueError('Previous round prefix differs from its fixed original directory')
+        raw = read_raw(directory / 'rounds.json', ARTIFACT_LIMIT)
+        saved = {'directory': str(directory), 'sha256': hashlib.sha256(raw).hexdigest(), 'report': decode(raw)}
+        if round_pin(saved, raw) != pin:
+            raise ValueError('Previous round pin differs from its complete raw original index')
+        validate_round_content(saved['report'])
+        if extension is not None:
+            round_report_binding(extension, plan, index + 1, saved)
+        value = read_round_observation(acceptance['observation'], home=Path(authorization['control_home']),
+                                       operation_id=acceptance['source_operation_id'])
+        ident = plan['definition']['candidates'][index]['experiment_id']
+        chain = ExecutionRecords(project, ident, authorization['control_home']).load()
+        original = chain.intent
+        _round_candidate_intent(original, plan, admission, index)
+        _round_sources(authorization, ready, chain.owner)
+        if (chain.owner['intent_sha256'] != sha(original)
+                or chain.owner['authorization_sha256'] != authorization['sha256']):
+            raise ValueError('Previous round owner differs from its original intent or authorization')
+        source_path = Path(authorization['control_home']) / 'operations/training-cycles' / acceptance['source_operation_id']
+        source = decode(read_raw(source_path / 'request.json', 32_768))
+        validate_cycle_operation(source)
+        reply = decode(read_raw(source_path / 'helper/stdout.txt', 32_768))
+        selection = round_selection(plan, authorization)
+        expected_snapshot = {'authorization': authorization, 'policy': policy, 'candidates': [
+            {'ordinal': number, 'experiment_id': item['experiment_id'], 'manifest_sha256': item['manifest_sha256']}
+            for number, item in enumerate(plan['definition']['candidates'])]}
+        measurement = {'measurement_state': 'accepted', 'index_state': 'durable', 'continuation_ready': True,
+                       'prefix': pin, 'acceptance': acceptance}
+        expected_reply = {'status': 'observed', 'facts': {
+            **value['facts'], 'selection': selection, 'measurement': measurement}}
+        _match(reply, expected_reply, 'Complete original accepted helper projection')
+        if (value['identity'] != source['identity'] or value['identity']['ordinal'] != index
+                or value['activity_context'] != source['activity_context'] or source['snapshot'] != expected_snapshot
+                or value['prefix'] != pin or value['selection'] != selection
+                or value['predecessor'] != original['budget']['controller']['predecessor']
+                or source['start_context']['controller'] != original['budget']['controller']
+                or any(source['activity_context']['activity_source'][key] != original['budget']['controller'][target]
+                       for key, target in (('workflow_id', 'workflow_id'), ('workflow_run_id', 'run_id')))
+                or value['activity_context']['workflow_input'] != admission.controller_intent()['workflow_input']
+                or round_acceptance(value, acceptance['observation'], original) != acceptance):
+            raise ValueError('Previous acceptance differs from its complete original source operation or candidate')
+        current_namespace = value['activity_context']['service_namespace']
+        if namespace is not None and current_namespace != namespace:
+            raise ValueError('Previous round observations changed the original service namespace')
+        namespace = current_namespace
+        observed = chain.observe(durable=True)
+        if (any(observed[key] != value['execution'][key] for key in ('owner', 'records', 'record_sha256', 'raw_sha256'))
+                or observed['durable_stop_confirmed'] is not True or observed['executor_stop_confirmed'] is not True):
+            raise ValueError('Previous accepted execution complete original inventory changed')
+        evidence = value['evidence']
+        if not isinstance(evidence['files'], dict):
+            raise ValueError('Previous evidence requires its complete original file mapping')
+        for name, expected in evidence['files'].items():
+            prefix, relative = name.split('/', 1)
+            root = chain.root if prefix == 'state' else chain.config if prefix == 'config' else None
+            if root is None or Path(relative).is_absolute() or '..' in Path(relative).parts:
+                raise ValueError('Previous evidence file is outside its frozen native roots')
+            _digest(expected)
+            if hashlib.sha256(read_raw(chain.adapter.safe_file(root, relative))).hexdigest() != expected:
+                raise ValueError('Previous evidence original raw file changed: ' + name)
+        submitted = saved['report']['rounds'][-1]['native']['submission']
+        if (submitted['intent_sha256'] != sha(original)
+                or submitted['workflow_id'] != chain.records['request']['workflow_id']
+                or submitted['run_id'] != chain.records['request']['run_id']
+                or round_state({'status': 'observed', 'submission': submitted, **value}, evidence,
+                               saved['report']['rounds'][-1], original) != 'accepted'):
+            raise ValueError('Previous original observation does not authenticate all four accepted facts')
+        result.append((saved, value, original, observed))
+        extension, predecessor = saved, original['budget']['controller']['predecessor']
+        active()
+    if extension is not None:
+        round_report_binding(extension, plan, 0, None)
+    validate_round_predecessor(predecessor, 0)
+    _match(current.document(current.budget / 'owner.json', optional=True), current_owner, 'Original round candidate owner')
+    _match(decode(read_raw(admission.directory / 'ready.json')), ready, 'Original cycle ready')
+    if read_raw(admission.directory / 'cycle.json', ARTIFACT_LIMIT) != raw_plan:
+        raise ValueError('Original complete cycle input changed during authentication')
+    _round_sources(authorization, ready, current_owner)
+    _match(current.document(intent_path, optional=actual_intent is None, limit=16 * LIMIT), actual_intent,
+           'Complete original current candidate intent')
+    active()
+    return result
+
+
 def validate_context(context: dict, chain: ExecutionRecords, *, live=True) -> CycleAdmission | None:
     """Rebind the complete birth context and its original sources, without State."""
     _exact(context, ('intent', 'authorization', 'policy', 'project', 'published_project'), 'Cached execution context')
@@ -1303,7 +1660,10 @@ def validate_context(context: dict, chain: ExecutionRecords, *, live=True) -> Cy
         raise ValueError('Original complete cycle input changed')
     plan = decode(raw)
     validate_budget_binding(intent['budget'])
+    if type(authorization['schema_version']) is not int or authorization['schema_version'] not in (1, 2, 3):
+        raise ValueError('Unsupported original execution authorization schema')
     if authorization['schema_version'] == 3:
+        authenticate_cycle_candidate(intent, plan, CycleAdmission(cycle, authorization), decode(read_raw(cycle / 'ready.json')))
         raise ValueError('Schema3 controller execution is not enabled')
     parent = None
     if authorization['schema_version'] == 2:
@@ -1362,7 +1722,7 @@ def native_main(installation: str) -> None:
             'phase_id': launch['execution_phase_id'], 'mode': 'execute', 'context_sha256': chain.sha(context),
             'owner': {key: chain.owner[key] for key in ('pid', 'start_ticks', 'boot_id')}}
         _match(phase, protocol_phase, 'Complete execution supervisor phase')
-        actor = (context['authorization']['controller']['actor_id'] if context['authorization']['schema_version'] == 2
+        actor = (context['authorization']['controller']['actor_id'] if context['authorization']['schema_version'] in (2, 3)
                  else f'unix:{os.getuid()}:{getpass.getuser()}')
         if (folder != chain.folder.parent
                 or launch['clock_sha256'] != chain.sha(context['authorization']['clock'])
@@ -1375,25 +1735,33 @@ def native_main(installation: str) -> None:
         if int(parent_fields[1]) != chain.owner['pid']:
             raise ValueError('Native supervisor is not a child of its original budget owner')
         _match(processes.identity(chain.owner['pid']), phase['owner'], 'Original owner process')
+        attempt, ack = None, None
+
         def active():
+            refreshed = ExecutionRecords(project, intent['experiment_id'], intent['control_home']).load()
+            validate_context(context, refreshed)
+            _match(refreshed.owner, chain.owner, 'Native callback original owner')
+            _match(refreshed.records, {**chain.records, 'attempt': attempt, 'ack': ack},
+                   'Native callback current publication stage')
+            if parent is not None:
+                parent.check()
+            # Parent authorization reads consume the same original work allowance.
             if ((chain.root / ('training/fences/' + chain.ident + '.json')).exists()
                     or not owner_active(chain.budget / 'owner.json', chain.owner)
                     or budget_clock.remaining(context['authorization']['clock'], context['policy']['wall_seconds'],
                                               context['policy']['cleanup_seconds']) <= 0):
                 raise ValueError('Original execution fence, owner or computation deadline forbids work')
-            if parent is not None:
-                parent.check()
         active()
         attempt = {'schema_version': 1, 'kind': 'training-execution-attempt', 'protocol': PROTOCOL,
             'launch_sha256': chain.sha(launch), 'request_sha256': chain.sha(request), 'owner_sha256': chain.sha(chain.owner),
             'run_id': request['run_id'], 'job_id': request['job_id'], 'native_request_sha256': request['native_request_sha256'],
             'supervisor': supervisor, 'executor': executor}
         publish(chain.folder / 'attempt.json', attempt, chain.root)
-        if parent is not None:
-            parent.check()
-        publish(chain.folder / 'ack.json', {'schema_version': 1, 'kind': 'training-execution-ack', 'protocol': PROTOCOL,
+        active()
+        ack = {'schema_version': 1, 'kind': 'training-execution-ack', 'protocol': PROTOCOL,
             'attempt_sha256': chain.sha(attempt), 'launch_sha256': chain.sha(launch), 'request_sha256': chain.sha(request),
-            'owner_sha256': chain.sha(chain.owner), 'executor': executor}, chain.root)
+            'owner_sha256': chain.sha(chain.owner), 'executor': executor}
+        publish(chain.folder / 'ack.json', ack, chain.root)
         active()
     chain = ExecutionRecords(project, intent['experiment_id'], intent['control_home'])
     parent = validate_context(context, chain.load()) if context['authorization']['schema_version'] == 2 else None

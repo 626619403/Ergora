@@ -6,10 +6,27 @@ from pathlib import Path
 import subprocess
 import sys
 
+mode, folder = sys.argv[1], Path(sys.argv[2])
+
+
+if mode in ('native-context', 'native-context-isolated'):
+    if mode == 'native-context-isolated':
+        class WithoutApplication:
+            def find_spec(self, fullname, path=None, target=None):
+                if fullname.split('.')[0] in ('yaml', 'jsonschema', 'temporalio') or fullname in (
+                        'ergora.state', 'ergora.training_rounds', 'ergora.registrations'):
+                    raise AssertionError('Native callback imported application or SDK: ' + fullname)
+        sys.meta_path.insert(0, WithoutApplication())
+    from ergora.training_execution_protocol import native_main
+    from agent_platform import core
+    try:
+        native_main(str(core.ROOT))
+    except ValueError as error:
+        print(json.dumps({'error_type': type(error).__name__, 'error': str(error)}), flush=True)
+    sys.exit(0)
+
 from agent_platform import training_executor as executor
 from agent_platform.core import Blocked
-
-mode, folder = sys.argv[1], Path(sys.argv[2])
 
 
 def admit(job, record):
@@ -37,14 +54,6 @@ if mode == 'run-clean':
     executor.Sandbox = LocalRunner
     executor.track = lambda *args: 'synthetic-protocol-only-no-tracking'
 try:
-    if mode == 'native-context':
-        from ergora.training_execution_protocol import native_main
-        from agent_platform import core
-        try:
-            native_main(str(core.ROOT))
-        except ValueError as error:
-            print(json.dumps({'error_type': type(error).__name__, 'error': str(error)}), flush=True)
-        sys.exit(0)
     if mode in ('prechecked', 'hold-admission', 'completed'):
         value = executor.process(folder, admit=admit)
     else:
