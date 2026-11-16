@@ -611,19 +611,31 @@ CYCLE_TASK_QUEUE = 'ergora-training-cycle-v1'
 CYCLE_STOP_TASK_QUEUE = 'ergora-training-cycle-stop-v1'
 
 
+CYCLE_ACTIVITY_NAMES_V3 = {action: 'ergora.training_cycle.' + action + '.v3' for action in (
+    'start', 'reconcile', 'request-execution-or-observe', 'observe-candidate',
+    'collect-round', 'reconcile-round', 'stop')}
+CYCLE_TASK_QUEUE_V2 = 'ergora-training-cycle-v2'
+CYCLE_STOP_TASK_QUEUE_V2 = 'ergora-training-cycle-stop-v2'
+
+
+def cycle_activity_names(program_version: int = 1) -> dict:
+    if type(program_version) is not int or program_version not in (1, 2):
+        raise ValueError('Unsupported training cycle program version')
+    return CYCLE_ACTIVITY_NAMES if program_version == 1 else CYCLE_ACTIVITY_NAMES_V3
+
+
 def validate_cycle_activity_request(value: dict, action: str) -> None:
-    measurement = action in CYCLE_MEASUREMENT_MODES
-    fields = ('workflow_input', *({'start': ('ordinal',), 'reconcile': ('ordinal',),
-                                  'request-execution-or-observe': ('ordinal',), 'observe-candidate': ('ordinal',),
-                                  'stop': ('reason',),
-                                  'collect-round': ('ordinal', 'predecessor'),
-                                  'reconcile-round': ('ordinal', 'predecessor')}.get(action, ())))
-    _exact(value, fields, 'Cycle activity request')
-    workflow_input = value['workflow_input']
+    workflow_input = value.get('workflow_input') if isinstance(value, dict) else None
     _exact(workflow_input, ('protocol', 'control_home', 'project', 'cycle_id',
                            'input_sha256', 'authorization_sha256'), 'Cycle workflow input')
-    if workflow_input['protocol'] != ('ergora-training-cycle-v2' if measurement else 'ergora-training-cycle-v1'):
-        raise ValueError('Unsupported cycle workflow protocol')
+    version2 = workflow_input['protocol'] == 'ergora-training-cycle-v2'
+    names = cycle_activity_names(2 if version2 else 1)
+    if workflow_input['protocol'] not in ('ergora-training-cycle-v1', 'ergora-training-cycle-v2') or action not in names:
+        raise ValueError('Unsupported cycle workflow protocol or action')
+    ordinary = action != 'stop' and action != 'inspect'
+    fields = ('workflow_input', *(('ordinal', 'predecessor') if version2 and ordinary else
+        ('ordinal',) if ordinary else ('reason',) if action == 'stop' else ()))
+    _exact(value, fields, 'Cycle activity request')
     home = workflow_input['control_home']
     if not isinstance(home, str) or not Path(home).is_absolute() or '..' in Path(home).parts:
         raise ValueError('Cycle activity requires the original absolute control directory')
@@ -633,12 +645,11 @@ def validate_cycle_activity_request(value: dict, action: str) -> None:
             raise ValueError('Cycle activity requires its original portable identity')
     for name in ('input_sha256', 'authorization_sha256'):
         _digest(workflow_input[name])
-    if action in ('start', 'reconcile', 'request-execution-or-observe', 'observe-candidate', *CYCLE_MEASUREMENT_MODES) and (
-            type(value['ordinal']) is not int or not 0 <= value['ordinal'] < 32):
+    if ordinary and (type(value['ordinal']) is not int or not 0 <= value['ordinal'] < 32):
         raise ValueError('Cycle activity requires its original ordinal')
-    if action in ('request-execution-or-observe', 'observe-candidate') and value['ordinal'] != 0:
+    if not version2 and action in ('request-execution-or-observe', 'observe-candidate') and value['ordinal'] != 0:
         raise ValueError('successor_not_enabled')
-    if measurement:
+    if version2 and ordinary:
         validate_round_predecessor(value['predecessor'], value['ordinal'])
     if action == 'stop' and (not isinstance(value['reason'], str) or not value['reason'].strip()):
         raise ValueError('Cycle stop requires a nonempty reason')
@@ -646,23 +657,32 @@ def validate_cycle_activity_request(value: dict, action: str) -> None:
 
 def validate_cycle_activity_context(value: dict, *, measurement_action: str | None = None) -> None:
     _exact(value, ('workflow_input', 'activity_source', 'service_namespace'), 'Cycle activity context')
-    if measurement_action is None:
-        validate_cycle_activity_request({'workflow_input': value['workflow_input']}, 'inspect')
-    else:
-        validate_cycle_activity_request({'workflow_input': value['workflow_input'], 'ordinal': 0,
-                                         'predecessor': None}, measurement_action)
+    original = value['workflow_input']
+    _exact(original, ('protocol', 'control_home', 'project', 'cycle_id',
+                      'input_sha256', 'authorization_sha256'), 'Cycle workflow input')
+    version2 = original['protocol'] == 'ergora-training-cycle-v2'
     source = value['activity_source']
     _exact(source, ('workflow_id', 'workflow_run_id', 'workflow_type', 'workflow_namespace',
                     'namespace', 'activity_id', 'activity_type', 'task_queue', 'attempt'), 'SDK activity source')
     if any(not isinstance(source[name], str) or not source[name].strip() for name in source if name != 'attempt'):
         raise ValueError('SDK activity requires complete Workflow source information')
-    names = ({key: 'ergora.training_cycle.' + key + '.v3' for key in CYCLE_MEASUREMENT_MODES}
-             if measurement_action is not None else CYCLE_ACTIVITY_NAMES)
+    names = cycle_activity_names(2 if version2 else 1)
     action = next((key for key, name in names.items() if name == source['activity_type']), None)
-    if (action is None or measurement_action is not None and action != measurement_action
-            or source['workflow_type'] != ('TrainingCycleWorkflowV2' if measurement_action else 'TrainingCycleWorkflow')
-            or source['task_queue'] != ('ergora-training-cycle-v2' if measurement_action else
-                CYCLE_STOP_TASK_QUEUE if action == 'stop' else CYCLE_TASK_QUEUE)
+    retried_collect = (measurement_action == 'reconcile-round' and action == 'collect-round'
+                       and type(source['attempt']) is int and source['attempt'] > 1)
+    if action is None or measurement_action is not None and action != measurement_action and not retried_collect:
+        raise ValueError('SDK activity differs from its registered action')
+    request = {'workflow_input': original}
+    if action == 'stop':
+        request['reason'] = 'validate-source'
+    elif action != 'inspect':
+        request['ordinal'] = 0
+        if version2:
+            request['predecessor'] = None
+    validate_cycle_activity_request(request, action)
+    queue = ((CYCLE_STOP_TASK_QUEUE_V2 if action == 'stop' else CYCLE_TASK_QUEUE_V2) if version2 else
+             (CYCLE_STOP_TASK_QUEUE if action == 'stop' else CYCLE_TASK_QUEUE))
+    if (source['workflow_type'] != cycle_workflow_type(original['protocol']) or source['task_queue'] != queue
             or not isinstance(value['service_namespace'], str) or not value['service_namespace']
             or source['namespace'] != value['service_namespace']
             or source['workflow_namespace'] != value['service_namespace']
@@ -675,6 +695,7 @@ def validate_cycle_operation(payload: dict) -> None:
     if not isinstance(payload, dict) or not isinstance(payload.get('identity'), dict):
         raise ValueError('Cycle operation requires its complete identity')
     measurement = payload['identity'].get('mode') in CYCLE_MEASUREMENT_MODES
+    version2 = payload['identity'].get('protocol') == 'ergora-training-cycle-operation-v2'
     candidate = payload['identity'].get('mode') in (*CYCLE_CANDIDATE_MODES, *CYCLE_MEASUREMENT_MODES)
     _exact(payload, ('identity', 'snapshot', 'bootstrap', 'reason', *(('start_context',) if candidate else ()),
                      *(('activity_context',) if 'activity_context' in payload else ())),
@@ -684,21 +705,30 @@ def validate_cycle_operation(payload: dict) -> None:
         validate_cycle_activity_context(payload['activity_context'],
             measurement_action=payload['identity']['mode'] if measurement else None)
         original = payload['activity_context']['workflow_input']
+        if original['protocol'] != ('ergora-training-cycle-v2' if version2 else 'ergora-training-cycle-v1'):
+            raise ValueError('Cycle operation protocol differs from its SDK activity source')
         if any(identity.get(key) != original[key] for key in
-               ('control_home', 'project', 'cycle_id', 'authorization_sha256', *(('input_sha256',) if measurement else ()))):
+               ('control_home', 'project', 'cycle_id', 'authorization_sha256', *(('input_sha256',) if version2 and payload['snapshot'] is not None else ()))):
             raise ValueError('Cycle operation differs from its SDK activity identity')
     if 'activity_context' in payload:
         source = payload['activity_context']['activity_source']
         mode = identity.get('mode')
+        names = cycle_activity_names(2 if version2 else 1)
         stop_modes = ('stop-writer', 'notify-owner', 'drain', 'observe-execution')
-        if (mode in stop_modes and source['activity_type'] != CYCLE_ACTIVITY_NAMES['stop']
-                or mode in CYCLE_START_MODES and source['activity_type'] != CYCLE_ACTIVITY_NAMES['start']
+        if (mode in stop_modes and source['activity_type'] != names['stop']
+                or mode in CYCLE_START_MODES and source['activity_type'] != names['start']
                 or mode == 'reconcile-candidate' and source['activity_type'] not in
-                    (CYCLE_ACTIVITY_NAMES['start'], CYCLE_ACTIVITY_NAMES['reconcile'])
+                    (names['start'], names['reconcile'])
                 or mode == 'request-execution-candidate' and source['activity_type'] !=
-                    CYCLE_ACTIVITY_NAMES['request-execution-or-observe']
+                    names['request-execution-or-observe']
                 or mode == 'observe-candidate' and source['activity_type'] not in
-                    (CYCLE_ACTIVITY_NAMES['request-execution-or-observe'], CYCLE_ACTIVITY_NAMES['observe-candidate'])
+                    (names['request-execution-or-observe'], names['observe-candidate'],
+                     *((names['start'], names['reconcile']) if version2 else ()))
+                or mode == 'collect-round' and source['activity_type'] != CYCLE_ACTIVITY_NAMES_V3['collect-round']
+                or mode == 'reconcile-round' and source['activity_type'] not in (
+                    CYCLE_ACTIVITY_NAMES_V3['collect-round'], CYCLE_ACTIVITY_NAMES_V3['reconcile-round'])
+                or mode == 'reconcile-round' and source['activity_type'] == CYCLE_ACTIVITY_NAMES_V3['collect-round']
+                    and source['attempt'] == 1
                 or mode in ('inspect', 'prepare-controller', 'submit-controller', 'reconcile-controller')):
             raise ValueError('Cycle operation mode differs from its SDK activity action')
     if identity.get('mode') == 'inspect-controller-activity' and 'activity_context' not in payload:
@@ -707,7 +737,8 @@ def validate_cycle_operation(payload: dict) -> None:
         raise ValueError('Candidate execution observation requires its actual SDK activity context')
     _exact(identity, ('protocol', 'operation_id', 'mode', 'control_home', 'project', 'cycle_id',
         'input_sha256', 'authorization_sha256', 'ordinal', 'parent'), 'Cycle operation identity')
-    if (identity['protocol'] != ('ergora-training-cycle-operation-v2' if measurement else 'ergora-training-cycle-operation-v1')
+    if (identity['protocol'] not in ('ergora-training-cycle-operation-v1', 'ergora-training-cycle-operation-v2')
+            or measurement and not version2
             or not isinstance(identity['operation_id'], str)
             or re.fullmatch('[a-f0-9]{32}', identity['operation_id']) is None
             or identity['mode'] not in ('inspect', 'inspect-controller-activity', 'prepare-controller', 'submit-controller', 'reconcile-controller',
@@ -726,7 +757,7 @@ def validate_cycle_operation(payload: dict) -> None:
     if identity['mode'] in ('notify-owner', 'observe-execution', *CYCLE_CANDIDATE_MODES, *CYCLE_MEASUREMENT_MODES):
         if type(ordinal) is not int or not 0 <= ordinal < 32:
             raise ValueError('Cycle target requires its original selected ordinal')
-        if identity['mode'] in CYCLE_EXECUTION_MODES and ordinal != 0:
+        if not version2 and identity['mode'] in CYCLE_EXECUTION_MODES and ordinal != 0:
             raise ValueError('successor_not_enabled')
     elif ordinal is not None:
         raise ValueError('This cycle operation has no selected ordinal')
@@ -752,7 +783,7 @@ def validate_cycle_operation(payload: dict) -> None:
     _exact(snapshot, ('authorization', 'policy', 'candidates'), 'Original cycle snapshot')
     authorization, policy = snapshot['authorization'], snapshot['policy']
     if (not isinstance(authorization, dict) or type(authorization.get('schema_version')) is not int
-            or authorization['schema_version'] != (3 if measurement else 2)
+            or authorization['schema_version'] != (3 if version2 else 2)
             or authorization.get('sha256') != identity['authorization_sha256']
             or CycleAdmission._sha({k: v for k, v in authorization.items() if k != 'sha256'}) != authorization['sha256']
             or any(authorization.get(key) != identity[key] for key in
@@ -798,7 +829,7 @@ def validate_cycle_operation(payload: dict) -> None:
             'authorization_sha256': identity['authorization_sha256'], 'task_queue': BUDGET_TASK_QUEUE,
             'controller': context['controller']})
         if (context['controller']['ordinal'] != ordinal
-                or context['controller']['protocol'] != ('ergora-training-cycle-v2' if measurement else 'ergora-training-cycle-v1')):
+                or context['controller']['protocol'] != ('ergora-training-cycle-v2' if version2 else 'ergora-training-cycle-v1')):
             raise ValueError('Candidate start differs from its original controller ordinal')
         if identity['mode'] in ('confirm-candidate', 'dispatch-candidate'):
             if (not isinstance(context['origin_operation_id'], str)

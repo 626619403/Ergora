@@ -131,7 +131,8 @@ async def authenticate_round_collection(client, intent: dict, binding: dict, req
     from . import training_execution_protocol as protocol
 
     action = ('collect-round' if context['activity_source']['activity_type'] ==
-              'ergora.training_cycle.collect-round.v3' else 'reconcile-round')
+              'ergora.training_cycle.collect-round.v3' and context['activity_source']['attempt'] == 1
+              else 'reconcile-round')
     protocol.validate_cycle_activity_request(request, action)
     protocol.validate_cycle_activity_context(context, measurement_action=action)
     source = context['activity_source']
