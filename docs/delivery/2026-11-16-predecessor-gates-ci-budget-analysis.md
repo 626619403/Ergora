@@ -2,7 +2,7 @@
 
 2026-11-16。仅新增本报告；未改产品、测试、CI或共享PLAN，未运行测试／collector、网络、安装、服务、模型、提交或推送。已读根AGENTS、PLAN、当前M5交付、父留存预算与再平衡记录。调查主树HEAD为 `debf6f96ed02620d22adc0ac6385c72641b3d53b`；其他owner的未提交记录保持原样。本报告是文档调查，不是实施或新组合通过认证。
 
-建议：为新增保护分散现有串行工作，采用一个完整文件的最小合理候选——`tests/test_training_preparation.py` 从group5移至group1。现有证据不足以证明“不搬必超时”或“搬后必通过”；这是保守成本分配建议，最终由准确候选自己的官方CI认证。此处不改JSON、不执行collector。不拆文件、不删除或跳过保护、不增job、不加时，保留六组86文件、Windows all及原Linux20／Windows30分钟。
+初始建议为一个完整文件 `tests/test_training_preparation.py` 从group5移至group1。**该建议已由最终 r7／native-r5 的[四完整文件再平衡候选](2026-11-16-predecessor-native-ci-balance.md)替代**：最终实际净新增18项，真实collector2335和原selector重放已核，待fresh配置审查及自己的官方CI。以下保留原调查与单文件历史，不把当时5项新增预期转授最终组合。仍不拆文件、不删除或跳过保护、不增job、不加时，六组86文件、Windows all及原Linux20／Windows30分钟保持。
 
 ## 基线、已测结果与未知
 
