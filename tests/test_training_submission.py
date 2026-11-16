@@ -2624,21 +2624,27 @@ def test_cli_and_http_share_exact_start_and_recovery_contract(prepared, service)
 
 
 @pytest.fixture
-def cycle_sdk_activity(controller_dispatch):
+def cycle_sdk_activity(controller_dispatch, request):
     """Actual SDK activity context and converter across the original S/H boundary."""
     import asyncio
     from dataclasses import replace
     from types import SimpleNamespace
     from temporalio.converter import DataConverter
     from temporalio.testing import ActivityEnvironment
-    from ergora import reference_training_worker as worker
+    from ergora import budget_clock, reference_training_worker as worker, training_cycles
     from fixtures.training_controller_service import DispatchService
 
     state, admission, storage, operation = controller_dispatch
     submitted = asyncio.run(operation('lost-reply').run())
     assert submitted['status'] == 'unknown' and admission.submission()['attempt_saved']
     client = SimpleNamespace(namespace='default', data_converter=DataConverter.default)
-    activities = worker.create_cycle_activities(client)
+    shared = getattr(request, 'param', False)
+    if shared:
+        activities = worker.create_cycle_activities(client,
+            normal_permit=asyncio.Semaphore(1), stop_permit=asyncio.Semaphore(1))
+        policy = training_cycles._load(state.root, 'demo', 'controller', admission.directory)[0]['definition']['budget']
+    else:
+        activities = worker.create_cycle_activities(client)
 
     def environment(action, **changes):
         env = ActivityEnvironment()
@@ -2647,9 +2653,251 @@ def cycle_sdk_activity(controller_dispatch):
             workflow_namespace='default', namespace='default', activity_type=worker.protocol.CYCLE_ACTIVITY_NAMES[action],
             task_queue=worker.protocol.CYCLE_STOP_TASK_QUEUE if action == 'stop' else worker.protocol.CYCLE_TASK_QUEUE)
         env.info = replace(env.info, **changes)
+        if shared:
+            from datetime import datetime, timedelta, timezone
+
+            observed = datetime.now(timezone.utc)
+            seconds = budget_clock.remaining(admission.authorization['clock'], policy['wall_seconds'],
+                                            0 if action == 'stop' else policy['cleanup_seconds'])
+            if action != 'stop':
+                seconds = min(10, policy['control_timeout_seconds'], seconds)
+            env.info = replace(env.info, scheduled_time=observed, current_attempt_scheduled_time=observed,
+                started_time=observed, schedule_to_close_timeout=timedelta(seconds=seconds),
+                start_to_close_timeout=timedelta(seconds=seconds))
         return env
 
     return state, admission, storage, operation, activities, environment
+
+
+@pytest.fixture
+def shared_cycle_activities(cycle_operation_fault, tmp_path):
+    """Real SDK context and S/H cleanup; missing controllers can only return unknown."""
+    import asyncio
+    from dataclasses import replace
+    from datetime import datetime, timedelta, timezone
+    from types import SimpleNamespace
+    from temporalio.converter import DataConverter
+    from temporalio.testing import ActivityEnvironment
+    from ergora import reference_training_worker as worker
+
+    markers = cycle_operation_fault('sdk-permit-blocked')
+    normal, stop = asyncio.Semaphore(1), asyncio.Semaphore(1)
+    client = SimpleNamespace(namespace='default', data_converter=DataConverter.default)
+    activities = {version: worker.create_cycle_activities(client, version,
+        normal_permit=normal, stop_permit=stop) for version in (1, 2)}
+    calls = {}
+
+    def start(version, action, label, *, scheduled_ago=0, started_ago=0,
+              schedule_seconds=30, start_seconds=20):
+        original = {'protocol': 'ergora-training-cycle-v' + str(version), 'control_home': str(tmp_path / label),
+            'project': 'demo', 'cycle_id': 'first', 'input_sha256': 'a' * 64, 'authorization_sha256': 'b' * 64}
+        request = {'workflow_input': original, **({'reason': 'Original explicit stop'} if action == 'stop' else
+            {'ordinal': 0, **({'predecessor': None} if version == 2 else {})})}
+        env = ActivityEnvironment()
+        observed = datetime.now(timezone.utc)
+        env.info = replace(env.info, workflow_id='original-' + str(version), workflow_run_id='fixed-run',
+            workflow_type=worker.protocol.cycle_workflow_type(original['protocol']), namespace='default',
+            workflow_namespace='default', activity_id=label,
+            activity_type=worker.protocol.cycle_activity_names(version)[action],
+            task_queue=((worker.protocol.CYCLE_STOP_TASK_QUEUE_V2 if action == 'stop' else worker.protocol.CYCLE_TASK_QUEUE_V2)
+                if version == 2 else (worker.protocol.CYCLE_STOP_TASK_QUEUE if action == 'stop' else worker.protocol.CYCLE_TASK_QUEUE)),
+            scheduled_time=observed - timedelta(seconds=scheduled_ago),
+            current_attempt_scheduled_time=observed,
+            started_time=observed - timedelta(seconds=started_ago),
+            schedule_to_close_timeout=timedelta(seconds=schedule_seconds),
+            start_to_close_timeout=timedelta(seconds=start_seconds))
+        calls[label] = {'task': asyncio.create_task(env.run(activities[version][action], request)),
+                        'info': env.info, 'request': request}
+        return calls[label]['task']
+
+    async def marked(name):
+        async def wait():
+            while not (markers / name).exists():
+                await asyncio.sleep(.01)
+            return json.loads((markers / name).read_bytes())
+        return await asyncio.wait_for(wait(), 8)
+
+    async def finish():
+        for label in calls:
+            (markers / ('permit-release-' + label)).touch()
+            (markers / ('permit-finish-' + label)).touch()
+        for value in calls.values():
+            if not value['task'].done():
+                value['task'].cancel()
+        await asyncio.gather(*(value['task'] for value in calls.values()), return_exceptions=True)
+
+    return start, marked, finish, calls, markers, normal, stop
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Shared activities retain the original supervised Linux S/H')
+def test_cycle_service_shared_permits_keep_mixed_versions_until_real_cleanup(shared_cycle_activities):
+    import asyncio
+    from ergora import budget_clock
+
+    start, marked, finish, calls, markers, normal, stop = shared_cycle_activities
+
+    async def scenario():
+        try:
+            first = start(1, 'observe-candidate', 'normal-first')
+            first_helper = await marked('permit-helper-normal-first')
+            first_stop = start(1, 'stop', 'stop-first')
+            await marked('permit-helper-stop-first')
+            queued_at = budget_clock._clock()[1]
+            second = start(2, 'observe-candidate', 'normal-second')
+            second_stop = start(2, 'stop', 'stop-second')
+            # A cancelled waiter never takes a permit or creates an operation.
+            abandoned = start(2, 'observe-candidate', 'normal-abandoned')
+            await asyncio.sleep(.05)
+            abandoned.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await abandoned
+            assert not (Path(calls['normal-abandoned']['request']['workflow_input']['control_home']) / 'operations').exists()
+            assert normal.locked() and stop.locked()
+            assert not (markers / 'permit-helper-normal-second').exists()
+            assert not (markers / 'permit-helper-stop-second').exists()
+
+            first.cancel()
+            supervisor = await marked('permit-cleanup-normal-first')
+            # The matching stopped frame is already visible, but S is still
+            # completing its original result read. Repeated cancel cannot
+            # release the shared normal slot during that remaining cleanup.
+            first.cancel()
+            await asyncio.sleep(.05)
+            assert recorded_process_is_active(supervisor) and not first.done()
+            assert normal.locked() and not (markers / 'permit-helper-normal-second').exists()
+            assert not recorded_process_is_active(first_helper['process'])
+            assert not recorded_process_is_active(json.loads((markers / 'permit-descendant-normal-first').read_bytes()))
+            released_at = budget_clock._clock()[1]
+            (markers / 'permit-finish-normal-first').touch()
+            with pytest.raises(asyncio.CancelledError):
+                await first
+            second_helper = await marked('permit-helper-normal-second')
+            assert not recorded_process_is_active(supervisor)
+            assert queued_at <= second_helper['bootstrap']['started_ns'] < released_at
+            assert (second_helper['bootstrap']['deadline_ns'] - second_helper['bootstrap']['started_ns']
+                    == first_helper['bootstrap']['deadline_ns'] - first_helper['bootstrap']['started_ns'])
+            assert not second.done() and not first_stop.done()
+            assert not (markers / 'permit-helper-stop-second').exists()
+
+            (markers / 'permit-release-stop-first').touch()
+            await marked('permit-cleanup-stop-first')
+            assert not (markers / 'permit-helper-stop-second').exists()
+            (markers / 'permit-finish-stop-first').touch()
+            assert (await first_stop)['status'] == 'unknown'
+            await marked('permit-helper-stop-second')
+            assert not second.done()  # Stop progressed while normal still owns H.
+            for label in ('normal-second', 'stop-second'):
+                (markers / ('permit-release-' + label)).touch()
+                (markers / ('permit-finish-' + label)).touch()
+            assert (await second)['status'] == (await second_stop)['status'] == 'unknown'
+            assert not normal.locked() and not stop.locked()
+        finally:
+            await finish()
+
+    asyncio.run(scenario())
+    for name in ('normal-first', 'normal-second', 'stop-first', 'stop-second'):
+        assert not recorded_process_is_active(json.loads((markers / ('permit-descendant-' + name)).read_bytes()))
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Shared SDK deadlines consume the original Linux boot window')
+@pytest.mark.parametrize('deadline', ['scheduled', 'started'])
+def test_cycle_service_waiting_consumes_sdk_deadline_before_any_operation(shared_cycle_activities, deadline):
+    import asyncio
+    from temporalio.exceptions import ApplicationError
+
+    start, marked, finish, calls, markers, normal, _ = shared_cycle_activities
+
+    async def scenario():
+        try:
+            owner = start(1, 'observe-candidate', 'normal-owner')
+            await marked('permit-helper-normal-owner')
+            changes = ({'scheduled_ago': 2, 'schedule_seconds': 3.2} if deadline == 'scheduled'
+                       else {'scheduled_ago': 2, 'started_ago': 2, 'start_seconds': 3.2})
+            waiting = start(2, 'observe-candidate', 'normal-expired', **changes)
+            with pytest.raises(ApplicationError) as rejected:
+                await waiting
+            assert rejected.value.type == 'cycle_activity_request_rejected' and rejected.value.non_retryable
+            assert normal.locked() and not owner.done()
+            home = Path(calls['normal-expired']['request']['workflow_input']['control_home'])
+            assert not (home / 'operations').exists()
+            # The queue timeout cannot consume or enlarge the independent stop permit.
+            stop = start(2, 'stop', 'stop-after-timeout')
+            await marked('permit-helper-stop-after-timeout')
+            for label in ('normal-owner', 'stop-after-timeout'):
+                (markers / ('permit-release-' + label)).touch()
+                (markers / ('permit-finish-' + label)).touch()
+            assert (await owner)['status'] == (await stop)['status'] == 'unknown'
+        finally:
+            await finish()
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='SDK timeout cleanup retains the original supervised Linux S/H')
+@pytest.mark.parametrize('deadline', ['scheduled', 'started'])
+def test_cycle_service_sdk_deadline_cancels_invoke_and_waits_for_original_subtree(shared_cycle_activities, deadline):
+    import asyncio
+    from temporalio.exceptions import ApplicationError
+    from ergora import budget_clock
+
+    start, marked, finish, calls, markers, normal, _ = shared_cycle_activities
+
+    async def scenario():
+        try:
+            changes = ({'scheduled_ago': 2, 'schedule_seconds': 5} if deadline == 'scheduled'
+                       else {'scheduled_ago': 2, 'started_ago': 2, 'start_seconds': 5})
+            expired = start(1, 'observe-candidate', 'normal-body-expired', **changes)
+            helper = await marked('permit-helper-normal-body-expired')
+            info = calls['normal-body-expired']['info']
+            limit = min(info.scheduled_time + info.schedule_to_close_timeout,
+                        info.started_time + info.start_to_close_timeout)
+            # The actual H request carries the SDK-bound BOOT deadline, not
+            # a fresh cold window constructed after the permit was acquired.
+            assert helper['bootstrap']['deadline_ns'] - helper['bootstrap']['started_ns'] <= int(
+                (limit - info.current_attempt_scheduled_time).total_seconds() * 1_000_000_000)
+            queued_at = budget_clock._clock()[1]
+            successor = start(2, 'observe-candidate', 'normal-after-body-timeout')
+            with pytest.raises(ApplicationError) as rejected:
+                await expired
+            assert rejected.value.type == 'cycle_activity_request_rejected' and rejected.value.non_retryable
+            for name in ('permit-supervisor-', 'permit-descendant-'):
+                assert not recorded_process_is_active(json.loads((markers / (name + 'normal-body-expired')).read_bytes()))
+            assert not recorded_process_is_active(helper['process'])
+            next_helper = await marked('permit-helper-normal-after-body-timeout')
+            assert queued_at <= next_helper['bootstrap']['started_ns'] < helper['bootstrap']['deadline_ns']
+            assert normal.locked()
+            (markers / 'permit-release-normal-after-body-timeout').touch()
+            assert (await successor)['status'] == 'unknown'
+        finally:
+            await finish()
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Loop teardown retains the original supervised Linux S/H')
+def test_cycle_service_loop_teardown_waits_before_releasing_shared_permit(shared_cycle_activities):
+    import asyncio
+
+    start, marked, _, calls, markers, normal, stop = shared_cycle_activities
+
+    async def scenario():
+        start(1, 'observe-candidate', 'normal-teardown')
+        await marked('permit-helper-normal-teardown')
+        start(2, 'observe-candidate', 'queued-teardown')
+        start(2, 'stop', 'stop-teardown')
+        await marked('permit-helper-stop-teardown')
+        # asyncio.run now cancels wrappers, the operation owner and its pipe /
+        # wait tasks together. No separate task may release the permit early.
+
+    asyncio.run(scenario())
+    assert all(value['task'].cancelled() for value in calls.values())
+    assert not normal.locked() and not stop.locked()
+    assert not (Path(calls['queued-teardown']['request']['workflow_input']['control_home']) / 'operations').exists()
+    for label in ('normal-teardown', 'stop-teardown'):
+        helper = json.loads((markers / ('permit-helper-' + label)).read_bytes())
+        assert not recorded_process_is_active(helper['process'])
+        for name in ('permit-supervisor-', 'permit-descendant-'):
+            assert not recorded_process_is_active(json.loads((markers / (name + label)).read_bytes()))
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='SDK activities consume the original supervised Linux H')
@@ -2716,6 +2964,7 @@ def test_cycle_sdk_retry_only_observes_and_successor_never_prepares(cycle_sdk_ac
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='SDK stop consumes the original supervised Linux H')
+@pytest.mark.parametrize('cycle_sdk_activity', [False, True], indirect=True)
 def test_cycle_sdk_bound_stop_is_offline_and_returns_every_real_branch(cycle_sdk_activity, cycle_operation_fault):
     import asyncio
 
@@ -3852,7 +4101,7 @@ def test_round_parent_request_retention_keeps_same_original_encoding(round_candi
 
     state, admission, plan, operation, _ = round_candidate
     # The existing internal producer owns UUID, validation and the one encoding.
-    # Its source records/services are synthetic; production service registration remains v1.
+    # Its source records/services are synthetic; this fixture proves no production history.
     original = json.dumps
     encodings = []
     def encode(value, *args, **kwargs):

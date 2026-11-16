@@ -438,7 +438,9 @@ def test_cycle_execution_sdk_keeps_one_work_window_without_parent_file_reads(
     assert envelope['schema_version'] == 2 and envelope['facts']['source_operation_id'] == ordinary.identity['operation_id']
 
 
-@pytest.mark.parametrize('fault', ['normal-validate', 'stop-validate', 'validate-during-shutdown', 'stop-fatal'])
+@pytest.mark.parametrize('fault', ['normal-validate', 'stop-validate', 'validate-during-shutdown', 'stop-fatal',
+                                  'v2-normal-validate', 'v2-stop-validate', 'v2-validate-during-shutdown', 'v2-stop-fatal',
+                                  'shutdown', 'cancel'])
 def test_cycle_service_closes_peers_with_real_sdk_lifecycle(monkeypatch, fault):
     """Keep SDK run/shutdown ordering; only its bridge and activity poller are local."""
     pytest.importorskip('temporalio')
@@ -446,6 +448,8 @@ def test_cycle_service_closes_peers_with_real_sdk_lifecycle(monkeypatch, fault):
     import signal
     import sys
     from types import ModuleType, SimpleNamespace
+    from temporalio import activity
+    from temporalio.converter import DataConverter
     import temporalio.worker
     from ergora import reference_training_worker as service
 
@@ -456,7 +460,8 @@ def test_cycle_service_closes_peers_with_real_sdk_lifecycle(monkeypatch, fault):
         handlers, workers = {}, []
         validate_release, cleanup_release = asyncio.Event(), asyncio.Event()
         fatal = RuntimeError(fault)
-        failing_index = 1 if fault.startswith('stop-') else 0
+        failing_index = (None if fault in ('shutdown', 'cancel') else 3 if fault.startswith('v2-stop-')
+                         else 1 if fault.startswith('v2-') else 2 if fault.startswith('stop-') else 0)
 
         class Bridge:
             def __init__(self, index):
@@ -467,7 +472,7 @@ def test_cycle_service_closes_peers_with_real_sdk_lifecycle(monkeypatch, fault):
 
             async def validate(self):
                 self.validating.set()
-                if self.index == failing_index and fault != 'stop-fatal':
+                if self.index == failing_index and not fault.endswith('stop-fatal'):
                     await validate_release.wait()
                     raise fatal
 
@@ -485,7 +490,7 @@ def test_cycle_service_closes_peers_with_real_sdk_lifecycle(monkeypatch, fault):
 
             async def run(self):
                 self.running.set()
-                if self.bridge.index == failing_index and fault == 'stop-fatal':
+                if self.bridge.index == failing_index and fault.endswith('stop-fatal'):
                     await validate_release.wait()
                     raise fatal
                 await self.bridge.stopping.wait()
@@ -515,39 +520,70 @@ def test_cycle_service_closes_peers_with_real_sdk_lifecycle(monkeypatch, fault):
 
         connection = ModuleType('perf_temporal.connection')
         async def connect():
-            return SimpleNamespace()
+            return SimpleNamespace(namespace='default', data_converter=DataConverter.default)
         connection.connect = connect
         monkeypatch.setitem(sys.modules, 'perf_temporal.connection', connection)
         monkeypatch.setattr(temporalio.worker, 'Worker', construct)
-        monkeypatch.setattr(service, 'create_cycle_activities', lambda _: dict.fromkeys(service.protocol.CYCLE_ACTIVITY_NAMES))
         monkeypatch.setattr(loop, 'add_signal_handler', lambda sig, callback: handlers.setdefault(sig, callback))
         monkeypatch.setattr(loop, 'remove_signal_handler', lambda sig: handlers.pop(sig, None))
         serving = asyncio.create_task(service._serve_cycle())
         try:
-            while len(workers) < 2:
-                await asyncio.sleep(0)
-            assert workers[0]._config['workflows'] == [service.create_cycle_workflow()]
-            assert 'workflows' not in workers[1]._config
+            async def registered():
+                while len(workers) < 4:
+                    await asyncio.sleep(0)
+            await asyncio.wait_for(registered(), 2)
+            assert [item._config['task_queue'] for item in workers] == [service.protocol.CYCLE_TASK_QUEUE,
+                service.protocol.CYCLE_TASK_QUEUE_V2, service.protocol.CYCLE_STOP_TASK_QUEUE,
+                service.protocol.CYCLE_STOP_TASK_QUEUE_V2]
+            for index, version in enumerate((1, 2)):
+                assert workers[index]._config['workflows'] == [service.create_cycle_workflow(version)]
+                assert 'workflows' not in workers[index + 2]._config
+                names = service.protocol.cycle_activity_names(version)
+                assert {activity._Definition.must_from_callable(fn).name
+                        for fn in workers[index]._config['activities']} == {name for action, name in names.items()
+                                                                           if action != 'stop'}
+                assert [activity._Definition.must_from_callable(fn).name
+                        for fn in workers[index + 2]._config['activities']] == [names['stop']]
+            assert all(item._config['max_concurrent_activities'] == 1 for item in workers)
             await asyncio.gather(*(worker._bridge_worker.validating.wait() for worker in workers))
-            if fault == 'validate-during-shutdown':
-                handlers[signal.SIGTERM]()
+            if fault.endswith('validate-during-shutdown') or fault in ('shutdown', 'cancel'):
+                if fault == 'cancel':
+                    serving.cancel()
+                else:
+                    handlers[signal.SIGTERM]()
                 await asyncio.wait_for(workers[0]._shutdown_event.wait(), 2)
+            if fault in ('shutdown', 'cancel'):
+                await asyncio.gather(*(worker._activity_worker.completing.wait() for worker in workers[:2]))
+                assert all(not worker._bridge_worker.stopping.is_set() for worker in workers[2:])
+                assert all(worker._activity_worker.running.is_set() for worker in workers[2:])
+                assert not serving.done()
+                if fault == 'cancel':
+                    serving.cancel()
             validate_release.set()
-            if fault == 'stop-fatal':
-                await asyncio.wait_for(workers[1]._activity_worker.completing.wait(), 2)
+            if fault.endswith('stop-fatal'):
+                await asyncio.wait_for(workers[failing_index]._activity_worker.completing.wait(), 2)
                 # Fatal is known while the failing worker still owns an active cleanup.
                 await asyncio.wait_for(workers[0]._bridge_worker.stopping.wait(), 2)
-                assert not serving.done() and not workers[1]._bridge_worker.finalized
+                await asyncio.wait_for(workers[1]._bridge_worker.stopping.wait(), 2)
+                peer_stop = workers[2 if failing_index == 3 else 3]
+                assert not peer_stop._bridge_worker.stopping.is_set()
+                assert not serving.done() and not workers[failing_index]._bridge_worker.finalized
                 serving.cancel()
                 await asyncio.sleep(0)
                 serving.cancel()
             cleanup_release.set()
             done, _ = await asyncio.wait((serving,), timeout=2)
             assert done, 'Service hung after SDK run validation failed'
-            with pytest.raises(RuntimeError, match=fault):
-                serving.result()
+            if fault == 'shutdown':
+                assert serving.result() is None
+            elif fault == 'cancel':
+                with pytest.raises(asyncio.CancelledError):
+                    serving.result()
+            else:
+                with pytest.raises(RuntimeError, match=fault):
+                    serving.result()
             assert all(worker._bridge_worker.finalized for index, worker in enumerate(workers)
-                       if index != failing_index or fault == 'stop-fatal')
+                       if index != failing_index or fault.endswith('stop-fatal'))
             assert not [task for task in asyncio.all_tasks() if task is not asyncio.current_task()]
         finally:
             validate_release.set()
