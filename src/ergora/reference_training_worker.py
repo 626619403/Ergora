@@ -14,9 +14,11 @@ import os
 from pathlib import Path
 import re
 import signal
+import stat
 import subprocess
 import sys
 import time
+import threading
 import uuid
 
 try:
@@ -40,6 +42,7 @@ with workflow.unsafe.imports_passed_through() if workflow is not None else nullc
 
 _CREATING = ContextVar('ergora_training_budget_create', default=None)
 _CYCLE_LIMIT = 32_768
+_REQUEST_RETENTION_PROTOCOL = 'ergora-training-cycle-request-retention-v1'
 _ROOT_OBSERVERS = set()
 
 
@@ -95,7 +98,8 @@ class _CycleOperation:
             self.payload['activity_context'] = activity_context
         protocol.validate_cycle_operation(self.payload)
         self.encoded = json.dumps(self.payload, ensure_ascii=False, allow_nan=False, separators=(',', ':')).encode('utf-8')
-        if len(self.encoded) > _CYCLE_LIMIT:
+        self.capacity_rejected = len(self.encoded) > _CYCLE_LIMIT
+        if self.capacity_rejected and mode not in protocol.CYCLE_MEASUREMENT_MODES:
             raise _CycleCapacityError('Complete cycle operation request exceeds 32 KiB; nothing was truncated')
         self.output = home / 'operations/training-cycles' / self.identity['operation_id']
         self.response = protocol.PhaseFrames(self.identity, self.output, _CYCLE_LIMIT)
@@ -103,6 +107,9 @@ class _CycleOperation:
         self.process, self.spawning, self.problem = None, None, None
         self.diagnostics = bytearray()
         self.result_ref = None
+        self.request_retention = {'status': 'unknown', 'waited': False, 'returncode': None}
+        self.retention_response = bytearray()
+        self.request_sha256 = None
 
     def expired(self) -> bool:
         try:
@@ -116,8 +123,27 @@ class _CycleOperation:
     async def _send(self) -> None:
         stream = self.process.stdin
         try:
-            stream.write(self.encoded)
-            await stream.drain()
+            if self.capacity_rejected:
+                envelope = _request_retention_envelope(self.payload, len(self.encoded))
+                control = json.dumps(envelope, ensure_ascii=False, allow_nan=False, separators=(',', ':')).encode('utf-8')
+                if len(control) > _CYCLE_LIMIT:
+                    raise ValueError('Complete request retention envelope exceeds 32 KiB')
+                stream.write(control + b'\n')
+                await stream.drain()
+                digest = hashlib.sha256()
+                raw = memoryview(self.encoded)
+                for offset in range(0, len(raw), 65_536):
+                    if self.stopping or self.expired():
+                        raise ValueError('Original request retention allowance ended during send')
+                    chunk = raw[offset:offset + 65_536]
+                    digest.update(chunk)
+                    stream.write(chunk)
+                    await stream.drain()
+                    await asyncio.sleep(0)
+                self.request_sha256 = digest.hexdigest()
+            else:
+                stream.write(self.encoded)
+                await stream.drain()
             self.sent = True
         finally:
             stream.close()
@@ -127,20 +153,29 @@ class _CycleOperation:
         while raw := await stream.read(65_536):
             if diagnostic:
                 self.diagnostics.extend(raw[:max(0, 65_536 - len(self.diagnostics))])
+            elif self.capacity_rejected:
+                # Keep draining after rejection without retaining unbounded output.
+                self.retention_response.extend(raw[:max(0, _CYCLE_LIMIT + 2 - len(self.retention_response))])
             else:
                 self.response.receive(raw)
 
     def observation(self, result: dict) -> dict:
+        if self.capacity_rejected:
+            result = {'status': 'capacity_exceeded',
+                'reason': 'Complete cycle operation request exceeds 32 KiB; nothing was truncated',
+                'request_retention': dict(self.request_retention)}
         return {**result, 'operation_id': self.identity['operation_id'], 'mode': self.identity['mode'],
             'ordinal': self.identity['ordinal'], 'output': str(self.output),
             'operation_stopped': bool(self.response.frames),
-            'supervisor_returncode': self.process.returncode if self.process is not None else None}
+            'supervisor_returncode': self.process.returncode if self.process is not None and not self.capacity_rejected else None}
 
     async def _run(self) -> dict:
         if self.stopping or self.expired():
             return self.observation({'status': 'unknown', 'reason': 'Original cycle operation allowance is exhausted'})
         self.spawning = asyncio.create_task(asyncio.create_subprocess_exec(sys.executable, '-P', '-c',
-            'from ergora.reference_training_worker import cycle_operation_main;cycle_operation_main()',
+            ('from ergora.reference_training_worker import cycle_request_retention_main;cycle_request_retention_main()'
+             if self.capacity_rejected else
+             'from ergora.reference_training_worker import cycle_operation_main;cycle_operation_main()'),
             stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
             env=dict(os.environ), start_new_session=True))
         while self.process is None:
@@ -179,7 +214,7 @@ class _CycleOperation:
             if ((self.stopping or self.problem is not None or self.response.problem is not None or expired)
                     and not self.signalled and self.process.returncode is None):
                 try:
-                    self.process.terminate()
+                    self.process.kill() if self.capacity_rejected else self.process.terminate()
                 except ProcessLookupError:
                     pass
                 self.signalled = True
@@ -196,6 +231,29 @@ class _CycleOperation:
             except asyncio.CancelledError:
                 self.request_stop()
         outcomes = await asyncio.gather(*tasks, return_exceptions=True)
+        if self.capacity_rejected:
+            self.request_retention.update(waited=not isinstance(outcomes[3], BaseException),
+                                          returncode=self.process.returncode)
+            if (not self.stopping and self.process.returncode == 0 and self.sent
+                    and not any(isinstance(item, BaseException) for item in outcomes) and not self.expired()):
+                try:
+                    raw = self.retention_response
+                    if not raw.endswith(b'\n') or len(raw) - 1 > _CYCLE_LIMIT or raw.count(b'\n') != 1:
+                        raise ValueError('Request retention requires exactly one bounded confirmation and EOF')
+                    confirmation = protocol.decode(bytes(raw[:-1]))
+                    protocol._exact(confirmation, ('protocol', 'identity', 'ref'), 'Request retention confirmation')
+                    protocol._process(confirmation['identity']['parent'])
+                    ref = confirmation['ref']
+                    protocol._exact(ref, ('file', 'bytes', 'sha256'), 'Original request reference')
+                    if (confirmation['protocol'] != _REQUEST_RETENTION_PROTOCOL or confirmation['identity'] != self.identity
+                            or type(confirmation['identity']['ordinal']) is not int
+                            or ref['file'] != 'request.json' or type(ref['bytes']) is not int
+                            or ref['bytes'] != len(self.encoded) or ref['sha256'] != self.request_sha256):
+                        raise ValueError('Request retention confirmation differs from the complete original request')
+                    self.request_retention.update(status='durable_confirmed', ref=ref)
+                except (ValueError, TypeError, KeyError) as error:
+                    self.problem = str(error)
+            return self.observation({})
         if (not self.stopping and self.process.returncode == 0 and self.sent and len(self.response.frames) == 2
                 and not self.response.buffer and self.response.problem is None
                 and not any(isinstance(item, BaseException) for item in outcomes) and not self.expired()):
@@ -214,6 +272,11 @@ class _CycleOperation:
     async def run(self) -> dict:
         # The owned task retains the real spawn and handle even when its caller is cancelled.
         running = asyncio.create_task(self._run())
+        if self.capacity_rejected:
+            running.add_done_callback(lambda _: logging.error(
+                'Cycle request capacity failure: operation_id=%s mode=%s ordinal=%s output=%s request_retention=%s',
+                self.identity['operation_id'], self.identity['mode'], self.identity['ordinal'], self.output,
+                self.request_retention))
         try:
             return await asyncio.shield(running)
         except asyncio.CancelledError:
@@ -228,6 +291,180 @@ class _CycleOperation:
             if isinstance(outcome, BaseException):
                 self.problem = str(outcome)
             raise
+
+
+def _request_retention_envelope(payload: dict, size: int) -> dict:
+    # These are original supervision inputs, never a replacement authorization.
+    policy = payload['snapshot']['policy']
+    clock = payload['snapshot']['authorization']['clock']
+    window = payload['bootstrap']
+    return {'protocol': _REQUEST_RETENTION_PROTOCOL, 'identity': payload['identity'], 'bytes': size,
+        'bootstrap': window, 'budget': {'clock': {key: clock[key] for key in budget_clock.FIELDS},
+            'policy': {key: policy[key] for key in ('wall_seconds', 'cleanup_seconds')}},
+        'deadline_ns': min(window['deadline_ns'], clock['boottime_ns']
+            + (policy['wall_seconds'] - policy['cleanup_seconds']) * 1_000_000_000)}
+
+
+def _request_retention_remaining(envelope: dict) -> float:
+    window, budget = envelope['bootstrap'], envelope['budget']
+    boot, ticks = budget_clock._clock()
+    if boot != window['boot_id'] or ticks < window['started_ns']:
+        raise ValueError('Request retention lost its original boot clock')
+    return min((min(window['deadline_ns'], envelope['deadline_ns']) - ticks) / 1_000_000_000,
+        budget_clock.remaining(budget['clock'], budget['policy']['wall_seconds'], budget['policy']['cleanup_seconds']))
+
+
+def cycle_request_retention_main() -> None:
+    """Save only one rejected original request; no H, business dispatch or descendants."""
+    source = sys.stdin.buffer
+    raw = source.readline(_CYCLE_LIMIT + 2)
+    if not raw.endswith(b'\n') or len(raw) - 1 > _CYCLE_LIMIT:
+        raise ValueError('Request retention requires one bounded control envelope')
+    envelope = protocol.decode(raw[:-1])
+    protocol._exact(envelope, ('protocol', 'identity', 'bytes', 'bootstrap', 'budget', 'deadline_ns'),
+                    'Request retention envelope')
+    identity, window, budget = envelope['identity'], envelope['bootstrap'], envelope['budget']
+    protocol._exact(identity, ('protocol', 'operation_id', 'mode', 'control_home', 'project', 'cycle_id',
+        'input_sha256', 'authorization_sha256', 'ordinal', 'parent'), 'Request retention identity')
+    if (envelope['protocol'] != _REQUEST_RETENTION_PROTOCOL
+            or identity['protocol'] != 'ergora-training-cycle-operation-v2'
+            or identity['mode'] not in protocol.CYCLE_MEASUREMENT_MODES
+            or not isinstance(identity['operation_id'], str) or re.fullmatch('[a-f0-9]{32}', identity['operation_id']) is None
+            or type(identity['ordinal']) is not int or not 0 <= identity['ordinal'] < 32
+            or type(envelope['bytes']) is not int or envelope['bytes'] <= _CYCLE_LIMIT):
+        raise ValueError('Request retention requires an oversized original operation-v2 measurement')
+    for name, maximum in (('project', 63), ('cycle_id', 79)):
+        if not isinstance(identity[name], str) or re.fullmatch(
+                '[A-Za-z0-9][A-Za-z0-9_-]{0,' + str(maximum) + '}', identity[name]) is None:
+            raise ValueError('Request retention requires portable original IDs')
+    home = identity['control_home']
+    if not isinstance(home, str) or not Path(home).is_absolute() or '..' in Path(home).parts:
+        raise ValueError('Request retention requires its original absolute control directory')
+    for name in ('input_sha256', 'authorization_sha256'):
+        protocol._digest(identity[name])
+    protocol._process(identity['parent'])
+    protocol._exact(window, ('boot_id', 'started_ns', 'deadline_ns'), 'Original request retention window')
+    protocol._exact(budget, ('clock', 'policy'), 'Original request retention budget')
+    clock, policy = budget['clock'], budget['policy']
+    protocol._exact(clock, budget_clock.FIELDS, 'Original request retention clock')
+    protocol._exact(policy, ('wall_seconds', 'cleanup_seconds'), 'Original request retention policy')
+    if (type(policy['wall_seconds']) is not int or type(policy['cleanup_seconds']) is not int
+            or not 1 <= policy['cleanup_seconds'] < policy['wall_seconds']):
+        raise ValueError('Invalid original request retention policy')
+    budget_clock.validate(clock, policy['wall_seconds'])
+    if (window['boot_id'] != identity['parent']['boot_id'] or window['boot_id'] != clock['boot_id']
+            or type(window['started_ns']) is not int or window['started_ns'] < clock['boottime_ns']
+            or type(window['deadline_ns']) is not int or window['deadline_ns'] <= window['started_ns']
+            or type(envelope['deadline_ns']) is not int
+            or envelope['deadline_ns'] > min(window['deadline_ns'], clock['boottime_ns']
+                + (policy['wall_seconds'] - policy['cleanup_seconds']) * 1_000_000_000)):
+        raise ValueError('Request retention cannot enlarge the original work allowance')
+    cancelled = threading.Event()
+    finished = threading.Event()
+    signal.signal(signal.SIGTERM, lambda *_: cancelled.set())
+    signal.signal(signal.SIGINT, lambda *_: cancelled.set())
+
+    def active():
+        expected = identity['parent']
+        if (cancelled.is_set() or _request_retention_remaining(envelope) <= 0
+                or os.getppid() != expected['pid'] or processes.identity(expected['pid']) != expected):
+            raise ValueError('Original request retention supervision ended')
+
+    def watch():
+        while not finished.wait(.05):
+            try:
+                active()
+            except (OSError, ValueError):
+                os.kill(os.getpid(), signal.SIGKILL)
+
+    active()
+    watchdog = threading.Thread(target=watch, name='ergora-request-retention-watchdog', daemon=True)
+    watchdog.start()
+    home = Path(home)
+    output = home / 'operations/training-cycles' / identity['operation_id']
+    try:
+        active()
+        for parent in (output, *output.parents):
+            try:
+                details = parent.lstat()
+            except FileNotFoundError:
+                continue
+            if (not stat.S_ISDIR(details.st_mode) or getattr(details, 'st_file_attributes', 0) & 0x400):
+                raise ValueError('Request retention requires original ordinary directories')
+        output.parent.mkdir(parents=True, mode=0o700, exist_ok=True)
+        active()
+        output.mkdir(mode=0o700)
+        active()
+        path = output / 'request.json'
+        descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, 'O_NOFOLLOW', 0), 0o600)
+        try:
+            original = os.fstat(descriptor)
+            if not stat.S_ISREG(original.st_mode):
+                raise ValueError('Request retention requires an ordinary exclusive file')
+            digest = hashlib.sha256()
+            remaining = envelope['bytes']
+            while remaining:
+                active()
+                chunk = source.read(min(65_536, remaining))
+                active()
+                if not chunk:
+                    raise ValueError('Original request ended before its complete byte count')
+                pending = memoryview(chunk)
+                while pending:
+                    active()
+                    written = os.write(descriptor, pending)
+                    if written <= 0:
+                        raise OSError('Original request write made no progress')
+                    pending = pending[written:]
+                digest.update(chunk)
+                remaining -= len(chunk)
+            active()
+            if source.read(1):
+                raise ValueError('Original request contains data after its complete byte count')
+            active()
+            os.fsync(descriptor)
+            active()
+            protocol.sync_directories(output, home)
+            active()
+            with os.fdopen(protocol._fd(path), 'rb') as saved:
+                details = os.fstat(saved.fileno())
+                if ((details.st_dev, details.st_ino) != (original.st_dev, original.st_ino)
+                        or details.st_size != envelope['bytes']):
+                    raise ValueError('Original request file identity or byte count changed')
+                reread = hashlib.sha256()
+                count = 0
+                while True:
+                    active()
+                    chunk = saved.read(65_536)
+                    active()
+                    if not chunk:
+                        break
+                    count += len(chunk)
+                    reread.update(chunk)
+                current = path.lstat()
+                if ((current.st_dev, current.st_ino) != (original.st_dev, original.st_ino)
+                        or count != envelope['bytes'] or reread.digest() != digest.digest()):
+                    raise ValueError('Original request changed during synchronized raw verification')
+            active()
+            confirmation = json.dumps({'protocol': _REQUEST_RETENTION_PROTOCOL, 'identity': identity,
+                'ref': {'file': 'request.json', 'bytes': count, 'sha256': digest.hexdigest()}},
+                ensure_ascii=False, allow_nan=False, separators=(',', ':')).encode('utf-8')
+            if len(confirmation) > _CYCLE_LIMIT:
+                raise ValueError('Complete request retention confirmation exceeds 32 KiB')
+            active()
+            if sys.stdout.buffer.write(confirmation + b'\n') != len(confirmation) + 1:
+                raise OSError('Request retention confirmation was only partially written')
+            sys.stdout.buffer.flush()
+            active()
+        finally:
+            os.close(descriptor)
+    except (OSError, ValueError):
+        # Neither raw nor paths/errors are printed: only the original small identity.
+        logging.error('Request retention unknown: operation_id=%s mode=%s', identity['operation_id'], identity['mode'])
+        raise SystemExit(1)
+    finally:
+        finished.set()
+        watchdog.join()
 
 
 class _CycleCandidate:
