@@ -2639,8 +2639,8 @@ def cycle_sdk_activity(controller_dispatch, request):
     options = getattr(request, 'param', False)
     program_version = options.get('program_version', 1) if isinstance(options, dict) else 1
     if program_version == 2:
-        # Fixture binding only: schema3 dispatch/effects stay closed. This stop
-        # harness does not certify a real V2 server start or bypass its ready gate.
+        # Bind fixed originals for this service-double activity harness.
+        # This does not certify an actual registered V2 service or server start.
         save_controller_binding(admission)
         from ergora.reference_training_worker import _CycleFailureConverter
         converter = replace(DataConverter.default, failure_converter_class=_CycleFailureConverter)

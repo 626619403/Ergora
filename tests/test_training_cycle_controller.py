@@ -76,6 +76,135 @@ assert all(name not in sys.modules for name in
     assert (operation.output / 'request.json').read_bytes() == raw
 
 
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original independent root and initialization locks require Linux')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 30}], indirect=True)
+@pytest.mark.parametrize('pending,fault', [
+    pytest.param('before', 'ready', id='missing'), pytest.param('after', 'ready', id='initializing'),
+    pytest.param('after', 'foreign', id='foreign'), pytest.param('after', 'malformed', id='malformed'),
+    pytest.param('after', 'removed', id='removed'),
+    pytest.param('after', 'stop', id='stop'), pytest.param('after', 'source', id='source'),
+    pytest.param('after', 'dead', id='dead'), pytest.param('after', 'late-dead', id='late-dead')])
+def test_confirm_waits_only_for_its_bound_original_owner(
+        cycle_candidate, controller_admission, cycle_selection, cycle_operation_fault, service, monkeypatch, pending, fault):
+    import asyncio
+    import signal
+    from ergora import processes
+
+    _, _, _, _, admission = controller_admission
+    runtime = cycle_selection[2]
+    markers = cycle_operation_fault('candidate')
+    service[0]('accepted', budget_scenario='owner-before-publish' if pending == 'before' else 'owner-initialization-held')
+    monkeypatch.setenv('ERGORA_TEST_OWNER_CONFIRM', '1')
+    if fault == 'late-dead':
+        monkeypatch.setenv('ERGORA_TEST_OWNER_CONFIRM_LATE_CONTEXT', '1')
+    candidate = cycle_candidate()
+    prepared = asyncio.run(candidate.preparation.run())
+    assert prepared['status'] == 'new_offer', prepared
+    launch = prepared['launch']
+    root = subprocess.Popen([sys.executable, '-P', '-c',
+        'from ergora.reference_training_worker import budget_main;budget_main()'], stdin=subprocess.PIPE,
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        env={**os.environ, **launch['environment']}, start_new_session=True)
+    root_identity = processes.identity(root.pid)
+    owner_path = runtime / 'ergora/training-submissions/alpha.budget/owner.json'
+    descriptor = Path(cycle_selection[1]['execution']['installation']) / 'ergora-native-runtime.json'
+    owner_raw, descriptor_raw = None, None
+    try:
+        root.stdin.write(json.dumps(launch['request'], ensure_ascii=False, separators=(',', ':')).encode())
+        root.stdin.close()
+        until = time.monotonic() + 10
+        while not (markers / 'owner-held').exists() and root.poll() is None and time.monotonic() < until:
+            time.sleep(.01)
+        assert (markers / 'owner-held').exists(), 'The real root must hold its original initialization lock'
+        assert json.loads((markers / 'owner-held').read_bytes())['root'] == root_identity
+        if owner_path.exists():
+            owner_raw = owner_path.read_bytes()
+        if fault == 'foreign':
+            value = json.loads(owner_raw)
+            value.update(processes.identity(os.getpid()))
+            owner_path.write_text(json.dumps(value))
+        elif fault == 'malformed':
+            owner_path.write_bytes(b'{')
+        confirm = candidate.next_operation('confirm-candidate',
+            intent_sha256=prepared['intent_sha256'], root_process=root_identity)
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(asyncio.run, confirm.run())
+            try:
+                if fault in ('foreign', 'malformed'):
+                    result = future.result(timeout=8)
+                    assert result['status'] == 'unknown', result
+                    assert not (markers / 'owner-release').exists()
+                else:
+                    marker = markers / ('confirm-missing-reads' if pending == 'before' else 'confirm-owner-reads')
+                    needed = 4 if pending == 'before' else 2
+                    until = time.monotonic() + 10
+                    while not future.done() and time.monotonic() < until:
+                        if marker.exists() and json.loads(marker.read_bytes())['count'] >= needed:
+                            break
+                        time.sleep(.01)
+                    assert marker.exists() and json.loads(marker.read_bytes())['count'] >= needed, (
+                        future.result() if future.done() else 'The same H must observe the real pending owner again')
+                    waiting = json.loads(marker.read_bytes())
+                    assert waiting['operation_id'] == confirm.identity['operation_id']
+                    assert not future.done()
+                    if fault == 'stop':
+                        admission.request_stop('Stop while original owner initializes')
+                    elif fault == 'source':
+                        descriptor_raw = descriptor.read_bytes()
+                        descriptor.write_bytes(descriptor_raw + b'\n')
+                    elif fault == 'removed':
+                        owner_path.unlink()
+                    elif fault == 'dead':
+                        processes.notify_identity(root_identity, signal.SIGKILL)
+                        root.wait(timeout=5)
+                    else:
+                        (markers / 'owner-release').touch()
+                        if fault == 'late-dead':
+                            until = time.monotonic() + 8
+                            while not (markers / 'confirm-last-context').exists() and not future.done() and time.monotonic() < until:
+                                time.sleep(.01)
+                            assert (markers / 'confirm-last-context').exists()
+                            processes.notify_identity(root_identity, signal.SIGKILL)
+                            root.wait(timeout=5)
+                            (markers / 'confirm-context-release').touch()
+                    result = future.result(timeout=8)
+                    assert result['status'] == ('owner_confirmed' if fault == 'ready' else 'unknown'), result
+                    if fault == 'ready':
+                        assert {key: result['owner'][key] for key in root_identity} == root_identity
+                assert result['operation_id'] == confirm.identity['operation_id']
+                assert result['operation_stopped'] is True
+                assert sum(json.loads(path.read_bytes())['identity']['mode'] == 'confirm-candidate'
+                           for path in (admission.directory.parents[2] / 'operations/training-cycles').glob('*/request.json')) == 1
+            finally:
+                if owner_raw is not None:
+                    owner_path.write_bytes(owner_raw)
+                if descriptor_raw is not None:
+                    descriptor.write_bytes(descriptor_raw)
+                (markers / 'owner-release').touch()
+                (markers / 'confirm-context-release').touch()
+                (markers / 'owner-phase-release').touch()
+        assert not (runtime / 'ergora/training-submissions/alpha.attempt.json').exists()
+    finally:
+        if owner_raw is not None:
+            owner_path.write_bytes(owner_raw)
+        if descriptor_raw is not None:
+            descriptor.write_bytes(descriptor_raw)
+        (markers / 'owner-release').touch()
+        (markers / 'confirm-context-release').touch()
+        (markers / 'owner-phase-release').touch()
+        try:
+            if root.poll() is None:
+                processes.notify_identity(root_identity, signal.SIGTERM)
+        except (OSError, ValueError):
+            pass
+        try:
+            root.wait(timeout=25)
+        finally:
+            if root.stdin is not None and not root.stdin.closed:
+                root.stdin.close()
+
+
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller consent requires Linux/WSL2 clocks and flock')
 def test_controller_birth_consent_retains_original_actor_clock_and_mode(controller_admission, monkeypatch):
     from ergora import training_cycles

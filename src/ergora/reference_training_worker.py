@@ -1395,11 +1395,75 @@ def _candidate_operation(payload: dict, plan: dict, admission, active) -> dict:
         raise ValueError('Candidate operation lost its exact original training intent')
     budget = BudgetedStart(operation, intent)
     if mode == 'confirm-candidate':
+        if admission.authorization['schema_version'] == 3:
+            import fcntl
+
+            owner_path = budget.path('owner.json')
+            ready = protocol.decode(protocol.read_raw(admission.directory / 'ready.json'))
+            owner_seen = False
+            while True:
+                active()
+                if processes.identity(context['root_process']['pid']) != context['root_process']:
+                    raise ValueError('Candidate root differs from its complete original process')
+                if budget.path('final.json').exists():
+                    raise ValueError('Original training budget owner is unconfirmed; do not restart or resend')
+                try:
+                    owner = budget.owner_record()
+                except FileNotFoundError as error:
+                    if owner_seen or error.filename != str(owner_path):
+                        raise
+                    # Publication may happen during these reads. The real
+                    # binding/prepare checks intentionally do not pin None as
+                    # this current candidate's future owner or grant readiness.
+                    protocol._match(protocol.decode(protocol.read_raw(operation.path('.intent.json'), 16 * protocol.LIMIT)),
+                        intent, 'Complete original current candidate intent')
+                    admission.bind(intent, plan)
+                    protocol._round_candidate_intent(intent, plan, admission, identity['ordinal'])
+                    protocol.authenticate_cycle_binding(budget.binding, plan, admission, ready)
+                    protocol.cycle_start_source(payload)
+                    observed = training_cycles._status(State(Path(identity['control_home'])), plan,
+                        admission.authorization, ready)
+                    if observed['status'] != 'ready':
+                        raise ValueError('Original training budget cannot start work: ' + observed['status'])
+                else:
+                    owner_seen = True
+                    budget.require_active()
+                    if ({key: owner[key] for key in ('pid', 'start_ticks', 'boot_id')} != context['root_process']
+                            or owner['context_sha256'] != operation.sha(budget.context())):
+                        raise ValueError('Candidate root differs from its complete original owner or context')
+                    # The record must already exist before probing the main
+                    # lock; taking it earlier could defeat root's LOCK_NB birth.
+                    with os.fdopen(protocol._fd(budget.path('lock')), 'rb') as lock:
+                        try:
+                            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                        except BlockingIOError:
+                            pass
+                        else:
+                            raise ValueError('Original training budget owner is unconfirmed; do not restart or resend')
+                    initializing = False
+                    with os.fdopen(protocol._fd(budget.path('initializing.lock')), 'rb') as lock:
+                        try:
+                            fcntl.flock(lock, fcntl.LOCK_SH | fcntl.LOCK_NB)
+                        except BlockingIOError:
+                            initializing = True
+                    if not initializing:
+                        break
+                active()
+                if processes.identity(context['root_process']['pid']) != context['root_process']:
+                    raise ValueError('Candidate root differs from its complete original process')
+                time.sleep(max(0, min(.02, protocol.cycle_operation_remaining(payload))))
+            # Both transient probes are closed before SDK/archive checks. The
+            # original complete owner/source/context and window gates follow.
+            _round_previous(payload, plan, admission, active)
         budget.require_active(owner=True)
         owner = budget.owner_record()
         if ({key: owner[key] for key in ('pid', 'start_ticks', 'boot_id')} != context['root_process']
                 or owner['context_sha256'] != operation.sha(budget.context())):
             raise ValueError('Candidate root differs from its complete original owner or context')
+        if admission.authorization['schema_version'] == 3:
+            # Context/source reads may block after the preceding liveness check.
+            budget.require_active(owner=True)
+            protocol._match(budget.owner_record(), owner, 'Original confirmed candidate owner')
         active()
         return {'status': 'owner_confirmed', 'intent_sha256': operation.sha(intent), 'owner': owner}
     operation.payload.update(operation='dispatch', intent_sha256=context['intent_sha256'],

@@ -39,6 +39,42 @@ if (os.environ.get('ERGORA_TEST_TRAINING_CONTROLLER_PAUSE') in ('attempt', 'ack'
 if os.environ.get('ERGORA_TEST_TRAINING_CONTROLLER'):
     training_cancellation_client.Service.query_workflow = base.Service.query_workflow
 
+if fault in ('owner-before-publish', 'owner-initialization-held') and base.envelope.get('protocol') == 'ergora-training-cycle-root-v1':
+    from ergora import training_execution_protocol as protocol
+
+    markers = Path(os.environ['ERGORA_TEST_CYCLE_MARKERS'])
+    source = protocol.decode(protocol.read_raw(Path(base.payload['control_home']) / 'operations/training-cycles'
+        / base.envelope['origin_operation_id'] / 'request.json', 32768))
+    record_owner = budget.training_cycles._record
+
+    def hold_publication():
+        pending = markers / ('owner-held-' + str(os.getpid()) + '.pending')
+        pending.write_text(json.dumps({'root': budget._process_identity(os.getpid()), 'fault': fault}))
+        pending.replace(markers / 'owner-held')
+        while not (markers / 'owner-release').exists():
+            if protocol.cycle_operation_remaining(source) <= 0:
+                raise ValueError('Injected owner initialization exhausted its original window')
+            time.sleep(.02)
+
+    def delayed_owner(path, value, **kwargs):
+        if path.name == 'owner.json' and fault == 'owner-before-publish':
+            hold_publication()
+        result = record_owner(path, value, **kwargs)
+        if path.name == 'owner.json' and fault == 'owner-initialization-held':
+            hold_publication()
+        return result
+
+    budget.training_cycles._record = delayed_owner
+    if os.environ.get('ERGORA_TEST_OWNER_CONFIRM_LATE_CONTEXT'):
+        start_phase = budget._BudgetPhase.start
+        def held_first_phase(phase):
+            while not (markers / 'owner-phase-release').exists():
+                if protocol.cycle_operation_remaining(source) <= 0:
+                    raise ValueError('Injected owner phase exhausted its original window')
+                time.sleep(.02)
+            return start_phase(phase)
+        budget._BudgetPhase.start = held_first_phase
+
 if fault == 'legacy-owner-schema1' and base.payload['mode'] == 'owner':
     record_owner = budget.training_cycles._record
     def legacy_owner(path, value, **kwargs):

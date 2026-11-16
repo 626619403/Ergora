@@ -197,6 +197,52 @@ if stage == 'S':
 
         protocol._read_cycle_bytes = blocked_result
 else:
+    if os.environ.get('ERGORA_TEST_OWNER_CONFIRM') and mode == 'confirm-candidate':
+        from ergora.reference_training_budget import BudgetedStart
+
+        record_owner, binding = BudgetedStart.owner_record, protocol.authenticate_cycle_binding
+        observed_reads = {'owner': 0, 'missing': 0}
+
+        def observe_owner(active):
+            value = record_owner(active)
+            observed_reads['owner'] += 1
+            mark('confirm-owner-reads', {'count': observed_reads['owner'], 'pid': os.getpid(),
+                                       'operation_id': payload['identity']['operation_id']})
+            return value
+
+        def observe_missing(*args, **kwargs):
+            value = binding(*args, **kwargs)
+            execution = payload['snapshot']['authorization']['execution']
+            target = Path(execution['state_directory']) / ('ergora/training-submissions/' +
+                payload['snapshot']['candidates'][payload['identity']['ordinal']]['experiment_id'] + '.budget/owner.json')
+            if not target.exists():
+                observed_reads['missing'] += 1
+                mark('confirm-missing-reads', {'count': observed_reads['missing'], 'pid': os.getpid(),
+                                             'operation_id': payload['identity']['operation_id']})
+            return value
+
+        BudgetedStart.owner_record = observe_owner
+        protocol.authenticate_cycle_binding = observe_missing
+        if os.environ.get('ERGORA_TEST_OWNER_CONFIRM_LATE_CONTEXT'):
+            require_active, read_context = BudgetedStart.require_active, BudgetedStart.context
+            final_read = {'ready': False, 'held': False}
+            def observed_active(active, **kwargs):
+                value = require_active(active, **kwargs)
+                if kwargs.get('owner'):
+                    final_read['ready'] = True
+                return value
+            def held_context(active):
+                value = read_context(active)
+                if final_read['ready'] and not final_read['held']:
+                    final_read['held'] = True
+                    mark('confirm-last-context', {'operation_id': payload['identity']['operation_id']})
+                    while not (markers / 'confirm-context-release').exists():
+                        if protocol.cycle_operation_remaining(payload) <= 0:
+                            raise ValueError('Injected context read exhausted its original window')
+                        time.sleep(.02)
+                return value
+            BudgetedStart.require_active = observed_active
+            BudgetedStart.context = held_context
     if fault == 'sdk-permit-blocked' and mode == 'inspect-controller-activity':
         label = payload['activity_context']['activity_source']['activity_id']
         child = subprocess.Popen([sys.executable, '-c', 'import time;time.sleep(60)'])
