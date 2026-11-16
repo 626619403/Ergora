@@ -112,7 +112,7 @@ async def main():
                       "checks": checks, "scope_policy": {"schema_version": 1, "protected_paths": [".git"],
                                                           "max_changed_files": 200, "max_changed_lines": 20000},
                       "execution": {"installation": str(installation), "config_directory": str(config), "state_directory": str(runtime)}}
-        if mode == 'design-policy-legacy-v2':
+        if mode.startswith('design-policy-legacy-v2'):
             definition.update(schema_version=2, design_policy=read(root / 'design-policy.json'))
         if mode == "imported-registration":
             register("demo", repo, "github", "fixtures/demo", ["src"], root / "checks.json")
@@ -358,6 +358,17 @@ async def main():
             for name in ('prepare', 'model', 'commands'):
                 observe(driver.Executor, name, name)
             envelope = read(request)
+            identity = {'executor_module': driver.__file__,
+                'executor_sha256': hashlib.sha256(Path(driver.__file__).read_bytes()).hexdigest()}
+            native_missing = mode.endswith('-missing-native')
+            if native_missing:
+                task_root = runtime / 'tasks/task-1'
+                saved = {name: (task_root / name).read_bytes() for name in ('project.json', 'binding.json', 'compiled.json')}
+                assert read(task_root / 'project.json') == read(config / 'projects/demo.json')
+                assert read(task_root / 'binding.json')['project_id'] == 'demo'
+                assert read(task_root / 'compiled.json')['spec'] == app.spec
+                assert not (task_root / 'agent-bindings.json').exists()
+                (config / 'projects/demo.json').unlink()
             if mode.startswith('legacy-control-'):
                 frozen = '-frozen-' in mode
                 snapshot = runtime / 'tasks/task-1/agent-bindings.json'
@@ -400,7 +411,7 @@ async def main():
                 else:
                     raise AssertionError('A different control home bypassed the native ownership marker')
             assert starts == dict.fromkeys(starts, 0), starts
-            if mode.endswith('-v2'):
+            if mode.startswith('design-policy-legacy-v2'):
                 for enter in (lambda: driver.Executor(envelope, state.root),
                               lambda: driver.process(request, state.root)):
                     try:
@@ -411,7 +422,18 @@ async def main():
                 assert starts == dict.fromkeys(starts, 0), starts
                 assert not (runtime / 'executor.sqlite3').exists() and not (runtime / 'workspaces').exists()
                 print(json.dumps({'rejected': mode, 'starts': starts, 'errors': errors,
-                    'legacy_request_root': requests == runtime / 'requests', 'registration': registrations.status(state, 'demo')}))
+                    'legacy_request_root': requests == runtime / 'requests', 'registration': registrations.status(state, 'demo'),
+                    'saved_task_identity_unchanged': not native_missing or all((task_root / name).read_bytes() == raw for name, raw in saved.items()),
+                    **identity}))
+            elif native_missing:
+                receipt = driver.process(request, state.root)
+                assert receipt['state'] == 'FAILED' and 'Register exactly one trusted project' in receipt['detail'], receipt
+                assert {artifact['name'] for artifact in receipt['artifacts']} == {'agent-admission-error'}
+                assert await activities.poll(job) == receipt
+                assert not (task_root / 'agent-bindings.json').exists()
+                assert all((task_root / name).read_bytes() == raw for name, raw in saved.items())
+                print(json.dumps({'state': receipt['state'], 'starts': starts, 'poll_received_terminal': True,
+                    'legacy_request_root': requests == runtime / 'requests', 'saved_task_identity_unchanged': True, **identity}))
             else:
                 # The direct constructor creates the original frozen selection;
                 # process then consumes that exact selection through DirectJob.
@@ -422,7 +444,7 @@ async def main():
                 assert driver.Executor(envelope, state.root).selection == frozen
                 assert starts['claim'] > 0 and starts['body'] == 1 and starts['model'] == 1
                 print(json.dumps({'allowed': mode, 'starts': starts, 'frozen_selection': True,
-                    'legacy_request_root': requests == runtime / 'requests'}))
+                    'legacy_request_root': requests == runtime / 'requests', **identity}))
             return
         if stage == 'inventory' and mode in ('composition-missing-admission', 'composition-other-admission',
                 'composition-missing-publication', 'composition-binding-drift', 'composition-config-drift', 'composition-policy-drift', 'composition-multiple'):

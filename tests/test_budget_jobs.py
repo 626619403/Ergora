@@ -1,6 +1,7 @@
 """Real job owners and process trees; controlled bodies never call a model."""
 
 import asyncio
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -106,7 +107,8 @@ reference_executor._execute = pending
 '''
 
 
-def test_v2_rejects_original_budgeted_input_before_job_constructor_or_claim(budget_creation, monkeypatch, tmp_path):
+@pytest.mark.parametrize('native_missing', [False, True])
+def test_v2_rejects_original_budgeted_input_before_job_constructor_or_claim(budget_creation, monkeypatch, tmp_path, native_missing):
     old, document, adapter, job, path, environment, folder = _prepare(budget_creation, monkeypatch)
     original_files = _files(Path(environment['AGENTFLOW_STATE_DIR']))
     registered = json.loads(json.dumps(budget_creation[1]))
@@ -125,9 +127,11 @@ def test_v2_rejects_original_budgeted_input_before_job_constructor_or_claim(budg
     target.write_bytes(path.read_bytes())
     roots = {key: str(runtime / key) for key in ('requests', 'receipts', 'artifacts', 'approvals', 'fences')}
     (config / 'adapter.json').write_text(json.dumps({**roots, 'trusted_receipts': True}))
+    if native_missing:
+        (config / 'projects/demo.json').unlink()
     environment.update(AGENTFLOW_CONFIG_DIR=str(config), AGENTFLOW_STATE_DIR=str(runtime))
     source = '''
-import json,sys
+import hashlib,json,sys
 from pathlib import Path
 from ergora import reference_executor as driver
 from ergora.reference_job_lifecycle import BudgetedJob
@@ -148,12 +152,18 @@ except ValueError as error:
  assert 'design_policy_execution_unsupported' in str(error),str(error)
 else: raise AssertionError('Budgeted input was admitted')
 assert starts==dict.fromkeys(starts,0),starts
-print(json.dumps(starts))
+print(json.dumps({'starts':starts,'executor_module':driver.__file__,
+ 'executor_sha256':hashlib.sha256(Path(driver.__file__).read_bytes()).hexdigest()}))
 '''
     result = subprocess.run([sys.executable, '-P', '-c', source, str(target), str(state.root)],
         capture_output=True, text=True, env=environment, timeout=20)
+    (tmp_path / 'guard.stdout.txt').write_text(result.stdout)
+    (tmp_path / 'guard.stderr.txt').write_text(result.stderr)
     assert result.returncode == 0, result.stdout + result.stderr
-    assert set(json.loads(result.stdout).values()) == {0}
+    observation = json.loads(result.stdout)
+    assert set(observation['starts'].values()) == {0}
+    assert observation['executor_sha256'] == hashlib.sha256(
+        Path(reference.__file__).with_name('reference_executor.py').read_bytes()).hexdigest()
     assert not (runtime / 'executor.sqlite3').exists() and not (runtime / 'workspaces').exists()
     assert _files(Path(budget_creation[1]['execution']['state_directory'])) == original_files
 

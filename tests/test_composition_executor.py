@@ -1,5 +1,6 @@
 """Versioned formal review uses the original six-stage evidence owners."""
 
+import hashlib
 import json
 from pathlib import Path
 import subprocess
@@ -7,28 +8,39 @@ import sys
 
 import pytest
 
+from ergora import registrations
 from test_registrations import design_policy
 
 
 pytestmark = pytest.mark.skipif(sys.platform != 'linux', reason='Formal execution requires Linux / WSL2')
 
 
-@pytest.mark.parametrize('version', [1, 2])
-def test_native_legacy_job_obeys_registered_design_policy_before_claim(tmp_path, version):
+@pytest.mark.parametrize('version,native_missing', [(1, False), (2, False), (1, True), (2, True)])
+def test_native_legacy_job_obeys_registered_design_policy_before_claim(tmp_path, version, native_missing):
     pytest.importorskip('temporalio')
     (tmp_path / 'design-policy.json').write_text(json.dumps(design_policy()), encoding='utf-8')
     fixture = Path(__file__).parent / 'fixtures/reference_acceptance.py'
-    mode = 'design-policy-legacy-v' + str(version)
+    mode = 'design-policy-legacy-v' + str(version) + ('-missing-native' if native_missing else '')
     result = subprocess.run([sys.executable, str(fixture), str(tmp_path), 'repository-governance', 'command', mode],
                             capture_output=True, text=True, timeout=60)
+    (tmp_path / 'fixture.stdout.txt').write_text(result.stdout)
+    (tmp_path / 'fixture.stderr.txt').write_text(result.stderr)
     assert result.returncode == 0, result.stdout + result.stderr
     summary = json.loads(result.stdout)
     if summary.get('skip'):
         pytest.skip(summary['skip'])
+    assert summary['executor_sha256'] == hashlib.sha256(
+        (Path(registrations.__file__).parent / 'reference_executor.py').read_bytes()).hexdigest()
     assert summary['legacy_request_root']
+    if native_missing:
+        assert summary['saved_task_identity_unchanged']
     if version == 2:
         assert summary['rejected'] == mode and set(summary['starts'].values()) == {0}
         assert summary['registration']['design']['execution_supported'] is False
+    elif native_missing:
+        assert summary['state'] == 'FAILED' and summary['poll_received_terminal']
+        assert summary['starts']['body'] == 1 and summary['starts']['prepare'] == 0
+        assert summary['starts']['model'] == summary['starts']['commands'] == 0
     else:
         assert summary['allowed'] == mode and summary['frozen_selection']
 

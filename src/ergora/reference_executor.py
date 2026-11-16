@@ -33,7 +33,12 @@ from .state import State
 
 def _admit_project(spec: dict, home: Path) -> None:
     """Refuse unsupported policy and foreign ownership before native claims."""
-    native = original.project_for(spec['request'])
+    directory = STATE / 'tasks' / slug(spec['request']['task_id'])
+    native, binding = read(directory / 'project.json'), read(directory / 'binding.json')
+    tracker = spec['request']['tracker']
+    require(native['name'] == binding['project_id'] and binding['tracker'] == tracker
+            and native['tracker'] == {key: tracker[key] for key in ('kind', 'project')},
+            'Published task project identity mismatch')
     marker_path = CONFIG / 'ergora/registrations' / (slug(native['name']) + '.json')
     marker = read(marker_path) if marker_path.exists() else None
     if marker is not None:
