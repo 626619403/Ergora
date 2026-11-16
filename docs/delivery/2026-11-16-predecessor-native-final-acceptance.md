@@ -1,6 +1,6 @@
 # M5 r7 与 native source-v2 r5 联合终核
 
-2026-11-16。最终实现与各自安装证据已齐，**新 fresh 联合终审待完成**。未导入、推送或认证自己的 CI。这里集中接续依赖，不覆盖两片原始失败和模型判定。
+2026-11-16。最终实现与各自安装证据已齐，**[新 fresh 联合终审](2026-11-16-predecessor-native-final-review.md)需求／维护性两轴 approve、开放阻塞0**，R1由显式v2的真实已安装native证据关闭。当前待普通导入、推送及自己的 CI。这里集中接续依赖，不覆盖两片原始失败和模型判定。
 
 |范围|准确候选／证据|
 |---|---|
@@ -25,3 +25,7 @@
 新 reviewer 应从原要求、准确源与真实入口检查 M5 R1 是否由最终 native whole-hook 证据关闭，而非把 pure `-S`、package identity 或模型 approve 当成替代。M5 原模型 request-changes 的已知依赖保留原判定，不通过重调用改写历史。其他时序 finding 必须沿各自红例／最小修正／受影响绿例核对。
 
 本片只允许完整前驱认证与最后gate接线／依赖隔离。原 permits、attempt-before-send、锁、完成结果早读、全部原 H archive／phase 门、source／ROOT／measurement／interpreter／完整 clock 及当前 intent 语义必须保留。无旧owner升级、改pin、预算扩窗或新调度器。所有 schema3／ordinal1 执行效果仍关闭；M6正式producer／完整M1c／实际两轮、真实GPU／训练与质量不在本次验收。
+
+## 独立终审结论
+
+新 reviewer 已直接重算准确两候选完整diff、853／855输入、各179副本和663／665两安装／wheel字节与执行位，核完整正常`-P` native入口及v1真实失败，读原红绿与完整模板输入，允许普通集成`bc58be6781d35e7e4fbd54ad997df8a4743428a8`及M5 r7父。终审报告SHA256 `771e33ba08f36aa54e8f5a5356913c538d152302f71300541d39509429876f21`。身份口径和descriptor验证入口已按原证据纠正；无需重跑原无变化批。正式集成后重新核产品／测试差异，自己的官方CI另记，不借旧成功。

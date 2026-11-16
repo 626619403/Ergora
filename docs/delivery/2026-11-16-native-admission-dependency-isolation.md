@@ -94,7 +94,7 @@ v1在同样禁SDK入口真实returncode1，trace保持 `training_executor → tr
 完整 native 路径原件在两份 `test_round_complete_observatio{0,1}/native-reader-results.json`：
 
 - v2 在选定无 SDK venv 的正常 `-P` 入口、首次 executor 导入前阻止 SDK／State／YAML／schema 导入，真实 `native_main → native callback` 读取 9,999,999B 和 10,000,000B 原前驱，均到达原 `Schema3 controller execution is not enabled`，`executor_sdk_loaded:false`。另外的 `-S` 纯认证单列，不冒充 whole-hook。
-- 同一实际入口对 source、四 measurement、descriptor／manifest／ROOT 漂移均明确拒绝。fixture 复制完整 byte-identical 已安装包以供 native child 使用；没有伪造 sys.prefix、SDK、来源 pin 或关闭原 verifier。
+- 同一实际 native 入口对应用 source、四 measurement、manifest／ROOT 漂移均明确拒绝；descriptor 互换／格式／缺失与出生后漂移由同批25项中的 reference／capability 原入口验证，并非另一次 native descriptor 故障调用。fixture 复制完整 byte-identical 已安装包以供 native child 使用；没有伪造 sys.prefix、SDK、来源 pin 或关闭原 verifier。
 - v1 禁 SDK 的原真实 rc1／executor→training→client→Temporal traceback 保留；允许 SDK 后到同一 schema3 闭门且 loaded=true。M+1 原容量拒绝仍由原测试验证，没有对超限输入调用 native reader；不能声称旧 v1 具备无 SDK 能力。
 
 同一安装 SDK 运行原 `refactoring-quality → ergora-structure-review@1.0.0`，Codex **28.602 秒、approve**。16 个完整文件 830,415B、完整 native 差异和三祖先资源全部进入 880,790B stdin，SHA256 `3c9d56cabfea2bf7a5ff5aaba01db8be996c40b75e98c602350378cbff7b0ab0`；原 result SHA256 `a102abc50fc17f2a6325bf703b6d9c0c930d057e244d946b5bdfc5eae9c87549`，见 `self-review-r5-codex/`。
