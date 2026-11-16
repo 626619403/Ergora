@@ -18,7 +18,7 @@ import pytest
 from ergora import projects, reference, registrations, training
 from test_registrations import original_registration
 from test_training import experiments, registration
-from test_training_runtime import installation
+from test_training_runtime import cycle_sdk_completion, installation
 
 
 @pytest.fixture
@@ -2635,23 +2635,36 @@ def cycle_sdk_activity(controller_dispatch, request):
     from fixtures.training_controller_service import DispatchService
 
     state, admission, storage, operation = controller_dispatch
-    submitted = asyncio.run(operation('lost-reply').run())
-    assert submitted['status'] == 'unknown' and admission.submission()['attempt_saved']
-    client = SimpleNamespace(namespace='default', data_converter=DataConverter.default)
-    shared = getattr(request, 'param', False)
+    options = getattr(request, 'param', False)
+    program_version = options.get('program_version', 1) if isinstance(options, dict) else 1
+    if program_version == 2:
+        # Fixture binding only: schema3 dispatch/effects stay closed. This stop
+        # harness does not certify a real V2 server start or bypass its ready gate.
+        save_controller_binding(admission)
+        from ergora.reference_training_worker import _CycleFailureConverter
+        converter = replace(DataConverter.default, failure_converter_class=_CycleFailureConverter)
+    else:
+        submitted = asyncio.run(operation('lost-reply').run())
+        assert submitted['status'] == 'unknown' and admission.submission()['attempt_saved']
+        converter = DataConverter.default
+    client = SimpleNamespace(namespace='default', data_converter=converter)
+    shared = options.get('shared', False) if isinstance(options, dict) else options
     if shared:
-        activities = worker.create_cycle_activities(client,
+        activities = worker.create_cycle_activities(client, program_version,
             normal_permit=asyncio.Semaphore(1), stop_permit=asyncio.Semaphore(1))
         policy = training_cycles._load(state.root, 'demo', 'controller', admission.directory)[0]['definition']['budget']
     else:
-        activities = worker.create_cycle_activities(client)
+        activities = worker.create_cycle_activities(client, program_version)
 
     def environment(action, **changes):
         env = ActivityEnvironment()
         env.info = replace(env.info, workflow_id=admission.submission()['workflow_id'],
-            workflow_run_id=DispatchService.run_id, workflow_type='TrainingCycleWorkflow',
-            workflow_namespace='default', namespace='default', activity_type=worker.protocol.CYCLE_ACTIVITY_NAMES[action],
-            task_queue=worker.protocol.CYCLE_STOP_TASK_QUEUE if action == 'stop' else worker.protocol.CYCLE_TASK_QUEUE)
+            workflow_run_id=admission.submission()['run_id'] if program_version == 2 else DispatchService.run_id,
+            workflow_type=worker.protocol.cycle_workflow_type(admission.controller_intent()['protocol']),
+            workflow_namespace='default', namespace='default',
+            activity_type=worker.protocol.cycle_activity_names(program_version)[action],
+            task_queue=((worker.protocol.CYCLE_STOP_TASK_QUEUE_V2 if program_version == 2 else worker.protocol.CYCLE_STOP_TASK_QUEUE)
+                if action == 'stop' else (worker.protocol.CYCLE_TASK_QUEUE_V2 if program_version == 2 else worker.protocol.CYCLE_TASK_QUEUE)))
         env.info = replace(env.info, **changes)
         if shared:
             from datetime import datetime, timedelta, timezone
@@ -3012,6 +3025,89 @@ def test_cycle_sdk_stop_keeps_all_66_real_branch_refs(cycle_sdk_activity, cycle_
         raw = (state.root / 'operations/training-cycles' / item['operation_id'] / ref['file']).read_bytes()
         assert len(raw) == ref['bytes'] and hashlib.sha256(raw).hexdigest() == ref['sha256']
     assert Payloads(payloads=asyncio.run(DataConverter.default.encode([result]))).ByteSize() <= 32768
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Full v3 stop fanout retains the original supervised Linux operations')
+@pytest.mark.parametrize('cycle_selection', [32], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2}], indirect=True)
+@pytest.mark.parametrize('cycle_sdk_activity', [{'program_version': 2}], indirect=True)
+@pytest.mark.parametrize('aggregate_overflow', [False, True])
+def test_cycle_v3_stop_completion_keeps_all_66_branches_and_originals(
+        cycle_sdk_activity, cycle_sdk_completion, cycle_operation_fault, monkeypatch, tmp_path, caplog, aggregate_overflow):
+    """A fixture binding reaches closed v3 stop; no schema3 dispatch is certified."""
+    import asyncio
+    from dataclasses import replace
+    from temporalio.api.common.v1 import Payloads, WorkflowExecution
+    from temporalio.converter import DataConverter
+    from ergora import reference_training_worker as worker
+
+    state, admission, _, _, activities, _ = cycle_sdk_activity
+    cycle_operation_fault('accepted')
+    # The independent local safety stop is already visible. Closed schema3
+    # stop-writer cannot create it; drain must retain its real original allowance.
+    admission.request_stop('Independent original safety stop before closed v3 fanout')
+    original_operation = worker._CycleOperation
+    original_capacity = worker._cycle_capacity
+    captured, operations = [], []
+    reason = 'Complete original unavailable owner: ' + '界' * 3000
+
+    def construct(*args, **kwargs):
+        if aggregate_overflow and args[4] == 'notify-owner' and kwargs.get('ordinal') == 0:
+            raise ValueError(reason)
+        operation = original_operation(*args, **kwargs)
+        operations.append(operation)
+        return operation
+
+    async def capacity(value, converter):
+        if isinstance(value, dict) and value.get('protocol') == 'ergora-training-cycle-activity-v3':
+            captured.append(value)
+        await original_capacity(value, converter)
+
+    monkeypatch.setattr(worker, '_CycleOperation', construct)
+    monkeypatch.setattr(worker, '_cycle_capacity', capacity)
+    converter = replace(DataConverter.default, failure_converter_class=worker._CycleFailureConverter)
+    completion = asyncio.run(cycle_sdk_completion(activities['stop'], {
+        'workflow_input': admission.controller_intent()['workflow_input'], 'reason': 'Stop all original selected candidates'},
+        converter=converter, task_queue=worker.protocol.CYCLE_STOP_TASK_QUEUE_V2,
+        workflow_execution=WorkflowExecution(workflow_id=admission.submission()['workflow_id'],
+                                             run_id=admission.submission()['run_id'])))
+    (tmp_path / 'completion.pb').write_bytes(completion.SerializeToString())
+    envelope, = captured
+    (tmp_path / 'assembled.json').write_text(json.dumps(envelope, ensure_ascii=False))
+    full = Payloads(payloads=asyncio.run(converter.encode([envelope])))
+    assert len(envelope['operations']) == 66
+    assert {(item['mode'], item['ordinal']) for item in envelope['operations']} == {
+        ('stop-writer', None), ('drain', None)} | {
+        (mode, ordinal) for ordinal in range(32) for mode in ('notify-owner', 'observe-execution')}
+    for item in [envelope['inspection'], *envelope['operations']]:
+        assert Payloads(payloads=asyncio.run(converter.encode([item]))).ByteSize() < 32768
+        if 'inline' in item['result']:
+            assert aggregate_overflow and (item['mode'], item['ordinal']) == ('notify-owner', 0)
+            assert item['result']['inline']['reason'] == reason and reason in caplog.text
+            continue
+        assert item['operation_stopped'] is True and item['supervisor_returncode'] == 0
+        ref = item['result']['ref']
+        raw = (state.root / 'operations/training-cycles' / item['operation_id'] / ref['file']).read_bytes()
+        assert len(raw) == ref['bytes'] and hashlib.sha256(raw).hexdigest() == ref['sha256']
+    assert all(operation.process is not None and operation.process.returncode is not None for operation in operations)
+    if aggregate_overflow:
+        assert full.ByteSize() > 32768
+        failure = completion.result.failed.failure
+        assert failure.application_failure_info.type == 'cycle_activity_capacity_exceeded'
+        assert failure.application_failure_info.non_retryable and failure.ByteSize() <= 32768
+        assert not failure.HasField('cause') and not failure.application_failure_info.details.payloads
+        assert failure.message == 'Complete cycle activity capacity exceeded'
+    else:
+        assert full.ByteSize() <= 32768
+        result = completion.result.completed.result
+        assert asyncio.run(converter.decode([result])) == [envelope]
+        assert Payloads(payloads=[result]).ByteSize() == full.ByteSize()
+    # These effects remain denied at the real H gate, with their full diagnostics.
+    writer = next(item for item in envelope['operations'] if item['mode'] == 'stop-writer')
+    ref = writer['result']['ref']
+    raw = (state.root / 'operations/training-cycles' / writer['operation_id'] / ref['file']).read_bytes()
+    assert 'Schema3 controller execution is not enabled' in raw.decode()
+    assert admission.observe(synchronize=True)['stop_visible'] is True
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='SDK stop consumes the original supervised Linux H')

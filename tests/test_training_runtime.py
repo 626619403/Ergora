@@ -343,6 +343,222 @@ def test_cycle_sdk_capacity_counts_metadata_and_rejects_without_truncation():
     assert failed.value.type == 'cycle_activity_capacity_exceeded' and failed.value.non_retryable
 
 
+@pytest.fixture
+def cycle_sdk_completion():
+    """Run the SDK activity worker through its final result/failure encoder."""
+    pytest.importorskip('temporalio')
+    import asyncio
+    from types import SimpleNamespace
+    from temporalio import activity
+    from temporalio.api.common.v1 import WorkflowExecution
+    from temporalio.bridge.proto.activity_task import Start
+    from temporalio.common import MetricMeter
+    from temporalio.converter import DataConverter
+    from temporalio.worker._activity import _ActivityWorker, _RunningActivity
+
+    async def complete(fn, value, *, converter=DataConverter.default, **source):
+        completions = []
+        cancelled = source.pop('cancelled_by_request', False)
+        class Bridge:
+            async def complete_activity_task(self, completion):
+                completions.append(completion)
+
+        worker = _ActivityWorker(bridge_worker=Bridge, task_queue=source.pop('task_queue', 'ergora-training-cycle-v2'),
+            activities=[fn], activity_executor=None, shared_state_manager=None, data_converter=converter,
+            interceptors=[], metric_meter=MetricMeter.noop, client=SimpleNamespace(namespace='default'),
+            encode_headers=False)
+        definition = activity._Definition.must_from_callable(fn)
+        start = Start(activity_id='candidate-0-1', activity_type=definition.name, attempt=1,
+            workflow_namespace='default', workflow_type='TrainingCycleWorkflowV2',
+            workflow_execution=WorkflowExecution(workflow_id='parent', run_id='parent-run'),
+            input=await converter.encode([value]))
+        for key, item in source.items():
+            if key == 'workflow_execution':
+                start.workflow_execution.CopyFrom(item)
+            else:
+                setattr(start, key, item)
+        running = _RunningActivity(pending_heartbeats=asyncio.Queue(), cancelled_by_request=cancelled)
+        token = b'local-completion'
+        worker._running_activities[token] = running
+        await worker._handle_start_activity_task(token, start, running)
+        return completions[0]
+
+    return complete
+
+
+@pytest.fixture
+def cycle_capacity_converter():
+    """Expand legal SDK metadata without changing the supplied business shape."""
+    pytest.importorskip('temporalio')
+    from dataclasses import replace
+    from temporalio.api.common.v1 import Payloads
+    from temporalio.converter import DataConverter, DefaultPayloadConverter
+    from temporalio.exceptions import ApplicationError
+    from ergora.reference_training_worker import _CycleFailureConverter
+
+    def create(wire, size):
+        class MetadataConverter(DefaultPayloadConverter):
+            def to_payloads(self, values):
+                payloads = super().to_payloads(values)
+                for value, payload in zip(values, payloads):
+                    if not isinstance(value, dict) or value.get('protocol') != wire:
+                        continue
+                    if size == 'raised-failure':
+                        raise ApplicationError('完整编码失败' + '界' * 12000, type='original-serialization-error')
+                    payload.metadata['sdk-capacity-padding'] = b''
+                    for _ in range(3):
+                        count = size - Payloads(payloads=[payload]).ByteSize()
+                        payload.metadata['sdk-capacity-padding'] += b'x' * max(0, count)
+                        excess = Payloads(payloads=[payload]).ByteSize() - size
+                        if excess > 0:
+                            payload.metadata['sdk-capacity-padding'] = payload.metadata['sdk-capacity-padding'][:-excess]
+                return payloads
+        return replace(DataConverter.default, payload_converter_class=MetadataConverter,
+                       failure_converter_class=_CycleFailureConverter)
+
+    return create
+
+
+@pytest.mark.parametrize('source', ['request', 'inspection', 'operation', 'cancel'])
+def test_cycle_v3_wrapper_failure_does_not_export_original_error(cycle_sdk_completion, monkeypatch, source):
+    import asyncio
+    from types import SimpleNamespace
+    from temporalio.converter import DataConverter
+    from temporalio.exceptions import CancelledError
+    from ergora import reference_training_worker as worker
+
+    activities = worker.create_cycle_activities(SimpleNamespace(namespace='default', data_converter=DataConverter.default), 2)
+    original = {'protocol': 'ergora-training-cycle-v2', 'control_home': '/', 'project': 'demo',
+        'cycle_id': 'first', 'input_sha256': 'a' * 64, 'authorization_sha256': 'b' * 64}
+    raw = 'Complete original small error marker'
+    if source == 'request':
+        original['protocol'] = 'original-raw-error-marker'
+    else:
+        async def failed(operation):
+            if source == 'inspection':
+                return operation.observation({'status': 'capacity_exceeded', 'reason': raw})
+            if source == 'cancel':
+                raise CancelledError('Original SDK cancellation')
+            raise ValueError(raw)
+        monkeypatch.setattr(worker._CycleOperation, 'run', failed)
+    completion = asyncio.run(cycle_sdk_completion(activities['observe-candidate'],
+        {'workflow_input': original, 'ordinal': 0, 'predecessor': None}, cancelled_by_request=source == 'cancel'))
+    if source == 'cancel':
+        assert completion.result.HasField('cancelled')
+        assert completion.result.cancelled.failure.HasField('canceled_failure_info')
+        return
+    failure = completion.result.failed.failure
+    expected = {'request': ('cycle_activity_request_rejected', 'Cycle activity request rejected'),
+        'inspection': ('cycle_activity_capacity_exceeded', 'Complete cycle activity capacity exceeded'),
+        'operation': ('cycle_activity_failed', 'Cycle activity failed')}[source]
+    assert failure.application_failure_info.type == expected[0]
+    assert failure.application_failure_info.non_retryable
+    assert failure.message == expected[1] and raw.encode() not in failure.SerializeToString()
+    assert not failure.HasField('cause') and not failure.application_failure_info.details.payloads
+
+
+@pytest.mark.parametrize('size', [32767, 32768, 32769])
+def test_cycle_sdk_completion_measures_the_final_saved_failure(cycle_sdk_completion, tmp_path, size):
+    import asyncio
+    from dataclasses import replace
+    from temporalio import activity
+    from temporalio.api.common.v1 import Payload, Payloads
+    from temporalio.api.failure.v1 import ApplicationFailureInfo, Failure
+    from temporalio.converter import DataConverter, DefaultFailureConverter
+    from ergora.reference_training_worker import _CycleFailureConverter
+
+    original = Failure(message='原始完整错误', stack_trace='original traceback',
+        cause=Failure(message='original cause', application_failure_info=ApplicationFailureInfo(type='cause')),
+        application_failure_info=ApplicationFailureInfo(type='original-type', non_retryable=True,
+            details=Payloads(payloads=[Payload(metadata={'encoding': b'json/plain', 'original': b'metadata'}, data=b'{}')])))
+    for _ in range(3):
+        original.message += 'x' * max(0, size - original.ByteSize())
+        if original.ByteSize() > size:
+            original.message = original.message[:-(original.ByteSize() - size)]
+    assert original.ByteSize() == size
+    error = DefaultFailureConverter().from_failure(original, DataConverter.default.payload_converter)
+
+    @activity.defn
+    async def fail(value: dict) -> dict:
+        raise error
+
+    bounded = replace(DataConverter.default, failure_converter_class=_CycleFailureConverter)
+    completion = asyncio.run(cycle_sdk_completion(fail, {}, converter=bounded))
+    failure = completion.result.failed.failure
+    (tmp_path / 'original.pb').write_bytes(original.SerializeToString())
+    (tmp_path / 'completion.pb').write_bytes(completion.SerializeToString())
+    if size <= 32768:
+        assert failure == original
+        decoded = asyncio.run(bounded.decode_failure(failure))
+        assert decoded.type == 'original-type' and decoded.details == ({},)
+    else:
+        assert failure.ByteSize() <= 32768
+        assert failure.application_failure_info.type == 'cycle_failure_capacity_exceeded'
+        assert failure.application_failure_info.non_retryable
+        assert not failure.HasField('cause') and not failure.stack_trace
+        assert not failure.application_failure_info.details.payloads
+
+
+@pytest.mark.parametrize('part', ['traceback', 'cause', 'context', 'details-metadata', 'aggregate'])
+def test_cycle_sdk_completion_bounds_the_whole_default_error_tree(cycle_sdk_completion, tmp_path, part):
+    import asyncio
+    from dataclasses import replace
+    from temporalio import activity
+    from temporalio.api.failure.v1 import Failure
+    from temporalio.converter import DataConverter, DefaultPayloadConverter
+    from temporalio.exceptions import ApplicationError
+    from ergora.reference_training_worker import _CycleFailureConverter
+
+    converter = DataConverter.default
+    error = ApplicationError('original error', type='original-type')
+    if part == 'traceback':
+        try:
+            exec(compile('raise error', '完整 traceback ' + '界' * 12000, 'exec'), {'error': error})
+        except ApplicationError as captured:
+            error = captured
+    elif part in ('cause', 'context'):
+        cause = ApplicationError('完整原因' + '界' * 12000, type='original-cause')
+        if part == 'cause':
+            error.__cause__ = cause
+        else:
+            error.__context__ = cause
+    elif part == 'details-metadata':
+        class MetadataConverter(DefaultPayloadConverter):
+            def to_payloads(self, values):
+                payloads = super().to_payloads(values)
+                for payload in payloads:
+                    payload.metadata['original-detail-metadata'] = b'x' * 32768
+                return payloads
+        converter = replace(converter, payload_converter_class=MetadataConverter)
+        error = ApplicationError('original error', {'detail': '完整正文'}, type='original-type')
+    else:
+        # Each detail/cause is legal alone; only the SDK's complete tree exceeds B.
+        error = ApplicationError('original error', 'x' * 17000, type='original-type')
+        error.__cause__ = ApplicationError('original cause', '界' * 2700, type='original-cause')
+
+    @activity.defn
+    async def fail(value: dict) -> dict:
+        raise error
+
+    original = asyncio.run(cycle_sdk_completion(fail, {}, converter=converter)).result.failed.failure
+    bounded = replace(converter, failure_converter_class=_CycleFailureConverter)
+    completion = asyncio.run(cycle_sdk_completion(fail, {}, converter=bounded))
+    failure = completion.result.failed.failure
+    (tmp_path / 'original.pb').write_bytes(original.SerializeToString())
+    (tmp_path / 'completion.pb').write_bytes(completion.SerializeToString())
+    assert original.ByteSize() > 32768
+    if part == 'aggregate':
+        assert original.cause.ByteSize() < 32768
+        without_cause = Failure()
+        without_cause.CopyFrom(original)
+        without_cause.ClearField('cause')
+        assert without_cause.ByteSize() < 32768
+    assert failure.application_failure_info.type == 'cycle_failure_capacity_exceeded'
+    assert failure.application_failure_info.non_retryable and failure.ByteSize() <= 32768
+    assert not failure.HasField('cause') and not failure.stack_trace
+    assert not failure.application_failure_info.details.payloads
+
+
 def test_cycle_execution_sdk_rejects_untrusted_input_before_any_operation(monkeypatch, tmp_path):
     pytest.importorskip('temporalio')
     import asyncio
@@ -449,6 +665,7 @@ def test_cycle_service_closes_peers_with_real_sdk_lifecycle(monkeypatch, tmp_pat
     import sys
     from types import ModuleType, SimpleNamespace
     from temporalio import activity
+    from temporalio.client import Client
     from temporalio.converter import DataConverter
     import temporalio.worker
     from ergora import reference_training_worker as service
@@ -517,12 +734,14 @@ def test_cycle_service_closes_peers_with_real_sdk_lifecycle(monkeypatch, tmp_pat
             worker._activity_worker = Poller(worker._bridge_worker)
             worker._workflow_worker = worker._nexus_worker = None
             worker._config = {'on_fatal_error': None, **config}
+            worker._client = client
             workers.append(worker)
             return worker
 
         connection = ModuleType('perf_temporal.connection')
+        client = Client(SimpleNamespace(config=SimpleNamespace(identity='local-cycle-service')))
         async def connect():
-            return SimpleNamespace(namespace='default', data_converter=DataConverter.default)
+            return client
         connection.connect = connect
         monkeypatch.setitem(sys.modules, 'perf_temporal.connection', connection)
         monkeypatch.setattr(temporalio.worker, 'Worker', construct)
@@ -537,6 +756,11 @@ def test_cycle_service_closes_peers_with_real_sdk_lifecycle(monkeypatch, tmp_pat
             assert [item._config['task_queue'] for item in workers] == [service.protocol.CYCLE_TASK_QUEUE,
                 service.protocol.CYCLE_TASK_QUEUE_V2, service.protocol.CYCLE_STOP_TASK_QUEUE,
                 service.protocol.CYCLE_STOP_TASK_QUEUE_V2]
+            assert workers[0]._client is workers[2]._client is client
+            assert workers[1]._client is workers[3]._client
+            assert workers[1]._client is not client and workers[1]._client.service_client is client.service_client
+            assert client.data_converter is DataConverter.default
+            assert workers[1]._client.data_converter.failure_converter_class is service._CycleFailureConverter
             for index, version in enumerate((1, 2)):
                 assert workers[index]._config['workflows'] == [service.create_cycle_workflow(version)]
                 assert 'workflows' not in workers[index + 2]._config
@@ -658,11 +882,17 @@ def cycle_workflow():
         original = {'protocol': 'ergora-training-cycle-v1', 'control_home': str(Path.cwd().anchor),
             'project': 'demo', 'cycle_id': 'first', 'input_sha256': 'a' * 64, 'authorization_sha256': 'b' * 64}
 
-        def __init__(self, program_version=1):
+        def __init__(self, program_version=1, *, data_converter=None):
             self.program_version = program_version
             self.original = {**self.original, 'protocol': 'ergora-training-cycle-v' + str(program_version)}
             self.workflow_type = 'TrainingCycleWorkflow' + ('V2' if program_version == 2 else '')
-            self.converter = DataConverter.default.payload_converter
+            if data_converter is None:
+                from ergora.reference_training_worker import _CycleFailureConverter
+
+                data_converter = (replace(DataConverter.default, failure_converter_class=_CycleFailureConverter)
+                                  if program_version == 2 else DataConverter.default)
+            self.data_converter = data_converter
+            self.converter = data_converter.payload_converter
             self.time = 0
             self.commands = []
             async def create():
@@ -673,8 +903,8 @@ def cycle_workflow():
                 defn = workflow._Definition.must_from_class(cls)
                 runner.prepare_workflow(defn)
                 return runner.create_instance(WorkflowInstanceDetails(
-                    payload_converter_factory=DataConverter.default._new_internal_payload_converter,
-                    failure_converter_class=DataConverter.default.failure_converter_class,
+                    payload_converter_factory=data_converter._new_internal_payload_converter,
+                    failure_converter_class=data_converter.failure_converter_class,
                     interceptor_classes=[], defn=defn,
                     info=replace(_fake_info, workflow_id='parent', run_id='parent-run',
                         workflow_type=self.workflow_type, namespace='default',
@@ -1076,8 +1306,8 @@ def cycle_v2_workflow(cycle_workflow):
     from ergora import training_execution_protocol as protocol
 
     class Harness(cycle_workflow):
-        def __init__(self):
-            super().__init__(2)
+        def __init__(self, **config):
+            super().__init__(2, **config)
 
         def envelope(self, action='observe-candidate', *, ordinal=0, count=2, submitted=False,
                      queued=False, completed=False, accepted=False, work=1000, total=1100):
@@ -1183,7 +1413,7 @@ def test_cycle_v2_lost_collect_completion_only_reconciles_existing_index(cycle_v
     assert not h.scheduled('start') and not h.scheduled('request-execution-or-observe')
 
 
-@pytest.mark.parametrize('fault', ['selection-drift', 'late-ordinal', 'capacity', 'acceptance-job'])
+@pytest.mark.parametrize('fault', ['selection-drift', 'late-ordinal', 'acceptance-job'])
 def test_cycle_v2_rejects_unbound_or_oversized_received_envelope(cycle_v2_workflow, fault):
     h = cycle_v2_workflow()
     observe = h.activity(h.start())
@@ -1193,13 +1423,217 @@ def test_cycle_v2_rejects_unbound_or_oversized_received_envelope(cycle_v2_workfl
         value['facts']['selection']['count'] = 3
     elif fault == 'late-ordinal':
         value['facts']['candidate']['ordinal'] = 1
-    elif fault == 'capacity':
-        value['operations'] = [{'complete_original': 'x' * 32768}]
     else:
         value['facts']['measurement']['acceptance']['runtime']['job_id'] = 'other-job'
     stop = h.activity(h.result(collect, value, at=2))
     assert stop.schedule_activity.activity_type.endswith('.stop.v3')
     assert h.query()['confirmed_rounds'] == 0 and h.query()['ordinal'] == 0
+
+
+@pytest.mark.parametrize('size', [32767, 32768, 32769])
+def test_cycle_v2_received_aggregate_capacity_preserves_opportunities(cycle_v2_workflow, tmp_path, size):
+    from copy import deepcopy
+    from temporalio.api.common.v1 import Payloads
+
+    h = cycle_v2_workflow()
+    observe = h.activity(h.start())
+    start = h.activity(h.result(observe, h.envelope(), at=1))
+    request = h.activity(h.result(start, h.envelope('start', submitted=True, queued=True), at=2))
+    collect = h.activity(h.result(request, h.envelope('request-execution-or-observe', completed=True), at=3))
+    value = h.envelope('collect-round', completed=True, accepted=True)
+    unknown = deepcopy(value['inspection'])
+    unknown.update(operation_id='2' * 32, mode='observe-candidate', ordinal=0,
+                   result={'inline': {'status': 'unknown', 'reason': '完整诊断'}})
+    value['operations'].append(unknown)
+    reason = unknown['result']['inline']
+    for _ in range(3):
+        reason['reason'] += 'x' * max(0, size - h.converter.to_payloads_wrapper([value]).ByteSize())
+        actual = h.converter.to_payloads_wrapper([value]).ByteSize()
+        if actual > size:
+            reason['reason'] = reason['reason'][:-(actual - size)]
+    received = h.converter.to_payloads_wrapper([value])
+    assert received.ByteSize() == size
+    assert all(h.converter.to_payloads_wrapper([part]).ByteSize() < 32768
+               for part in [value['facts'], value['inspection'], *value['operations']])
+    (tmp_path / 'received.pb').write_bytes(received.SerializeToString())
+    commands = h.result(collect, value, at=4)
+    status = h.query()
+    assert all(len(h.scheduled(action)) == 1 for action in ('start', 'request-execution-or-observe', 'collect-round'))
+    if size <= 32768:
+        assert status['confirmed_rounds'] == status['ordinal'] == 1
+        assert status['prefix'] == value['facts']['measurement']['prefix']
+        observe = h.activity(h.timer(commands, at=5))
+        outgoing = Payloads(payloads=observe.schedule_activity.arguments)
+        (tmp_path / 'next-command.pb').write_bytes(observe.SerializeToString())
+        request = h.converter.from_payloads(outgoing.payloads)[0]
+        assert request['predecessor'] == {key: value['facts']['measurement'][key] for key in ('prefix', 'acceptance')}
+        assert outgoing.ByteSize() <= 32768
+    else:
+        assert status['confirmed_rounds'] == status['ordinal'] == 0 and status['prefix'] is None
+        assert all(status[key] for key in ('start_scheduled', 'request_scheduled', 'collect_scheduled'))
+        assert h.activity(commands).schedule_activity.activity_type.endswith('.stop.v3')
+
+
+@pytest.mark.parametrize('size', [32767, 32768, 32769])
+def test_cycle_v2_signal_and_stop_command_use_complete_multibyte_payload(cycle_v2_workflow, tmp_path, size):
+    from temporalio.api.common.v1 import Payloads
+
+    h = cycle_v2_workflow()
+    cold = h.activity(h.start())
+    request = {'workflow_input': h.original, 'reason': '完整停止原因' + '界' * 1000}
+    for _ in range(3):
+        request['reason'] += 'x' * max(0, size - h.converter.to_payloads_wrapper([request]).ByteSize())
+        excess = h.converter.to_payloads_wrapper([request]).ByteSize() - size
+        if excess > 0:
+            request['reason'] = request['reason'][:-excess]
+    assert h.converter.to_payloads_wrapper([request]).ByteSize() == size
+    h.signal(request)
+    if size > 32768:
+        assert h.query()['last_signal_rejection'] == 'signal_capacity_exceeded'
+        request = {'workflow_input': h.original, 'reason': 'A later complete valid stop'}
+        h.signal(request)
+    stop = h.activity(h.result(cold, h.envelope(), at=1))
+    actual = Payloads(payloads=stop.schedule_activity.arguments)
+    assert h.converter.from_payloads(actual.payloads) == [request]
+    assert actual.ByteSize() == (size if size <= 32768 else h.converter.to_payloads_wrapper([request]).ByteSize())
+    (tmp_path / 'stop-command.pb').write_bytes(stop.SerializeToString())
+    commands = h.result(stop, h.envelope('stop'), at=2)
+    result = next(command.complete_workflow_execution.result for command in commands
+                  if command.HasField('complete_workflow_execution'))
+    outcome = h.converter.from_payloads([result])[0]
+    assert outcome['stop_activity_status'] == 'returned'
+    assert outcome['stop_durable'] is outcome['admission_drained'] is outcome['executor_stop_confirmed'] is None
+
+
+@pytest.mark.parametrize('size', [32767, 32768, 32769, 'raised-failure'])
+def test_cycle_v2_query_and_run_encode_full_status_or_failure(
+        cycle_v2_workflow, cycle_capacity_converter, tmp_path, size):
+    from temporalio.api.common.v1 import Payloads
+    from temporalio.bridge.proto import workflow_activation as wa
+
+    converter = cycle_capacity_converter('ergora-training-cycle-workflow-v2', size)
+    h = cycle_v2_workflow(data_converter=converter)
+    observe = h.activity(h.start())
+    collect = h.activity(h.result(observe, h.envelope(completed=True), at=1))
+    accepted = h.envelope('collect-round', completed=True, accepted=True)
+    h.result(collect, accepted, at=2)
+    commands = h.activate(query_workflow=wa.QueryWorkflow(query_id='status-query', query_type='status'))
+    response = next(command.respond_to_query for command in commands if command.HasField('respond_to_query'))
+    (tmp_path / 'query.pb').write_bytes(response.SerializeToString())
+    oversized = size == 'raised-failure' or size > 32768
+    if oversized:
+        failure = response.failed
+        assert failure.application_failure_info.type == (
+            'cycle_failure_capacity_exceeded' if size == 'raised-failure' else 'cycle_workflow_capacity_exceeded')
+        assert failure.ByteSize() <= 32768 and failure.application_failure_info.non_retryable
+    else:
+        assert Payloads(payloads=[response.succeeded.response]).ByteSize() == size
+        status = h.converter.from_payloads([response.succeeded.response])[0]
+        assert status['prefix'] == accepted['facts']['measurement']['prefix'] and status['confirmed_rounds'] == 1
+        assert status['stop_durable'] is status['admission_drained'] is status['executor_stop_confirmed'] is None
+    stop = h.activity(h.signal({'workflow_input': h.original, 'reason': 'Finish complete status fixture'}, at=3))
+    commands = h.result(stop, h.envelope('stop', ordinal=1), at=4)
+    terminal = next(command for command in commands if command.HasField(
+        'fail_workflow_execution' if oversized else 'complete_workflow_execution'))
+    (tmp_path / 'terminal.pb').write_bytes(terminal.SerializeToString())
+    if oversized:
+        failure = terminal.fail_workflow_execution.failure
+        assert failure.application_failure_info.type == response.failed.application_failure_info.type
+        assert failure.ByteSize() <= 32768
+    else:
+        result = terminal.complete_workflow_execution.result
+        assert Payloads(payloads=[result]).ByteSize() == size
+        outcome = h.converter.from_payloads([result])[0]
+        assert outcome['prefix'] == accepted['facts']['measurement']['prefix']
+        assert outcome['stop_activity_status'] == 'returned' and outcome['outcome'] == 'needs_reconciliation'
+
+
+@pytest.mark.parametrize('size', [32767, 32768, 32769])
+def test_cycle_v2_initial_input_counts_actual_converter_metadata(
+        cycle_v2_workflow, cycle_capacity_converter, tmp_path, size):
+    from temporalio.api.common.v1 import Payloads
+
+    converter = cycle_capacity_converter('ergora-training-cycle-v2', size)
+    h = cycle_v2_workflow(data_converter=converter)
+    incoming = converter.payload_converter.to_payloads_wrapper([h.original])
+    assert incoming.ByteSize() == size
+    (tmp_path / 'input.pb').write_bytes(incoming.SerializeToString())
+    commands = h.start()
+    if size <= 32768:
+        command = h.activity(commands)
+        actual = Payloads(payloads=command.schedule_activity.arguments)
+        request = h.converter.from_payloads(actual.payloads)[0]
+        assert request == {'workflow_input': h.original, 'ordinal': 0, 'predecessor': None}
+        assert actual.ByteSize() <= 32768
+    else:
+        failure = next(command.fail_workflow_execution.failure for command in commands
+                       if command.HasField('fail_workflow_execution'))
+        assert failure.application_failure_info.type == 'cycle_workflow_capacity_exceeded'
+        assert failure.ByteSize() <= 32768 and not h.scheduled('observe-candidate')
+
+
+@pytest.mark.parametrize('size', [32767, 32768, 32769])
+def test_cycle_v3_completion_counts_assembled_measurement_and_all_operations(
+        cycle_v2_workflow, cycle_capacity_converter, cycle_sdk_completion, monkeypatch, tmp_path, size):
+    """Synthetic H facts enter the real v3 wrapper and final SDK completion."""
+    import asyncio
+    from copy import deepcopy
+    from types import SimpleNamespace
+    from temporalio.api.common.v1 import Payloads
+    from ergora import budget_clock, reference_training_worker as worker, training_cycles
+
+    h = cycle_v2_workflow()
+    clock = budget_clock.authorize(120)
+    authorization = {'schema_version': 3, 'control_home': str(tmp_path), 'project': 'demo', 'cycle_id': 'first',
+                     'input_sha256': 'a' * 64, 'clock': clock}
+    authorization['sha256'] = training_cycles._sha(authorization)
+    h.original.update(control_home=str(tmp_path), authorization_sha256=authorization['sha256'])
+    snapshot = {'authorization': authorization, 'candidates': [{}, {}],
+        'policy': {'wall_seconds': 120, 'cleanup_seconds': 10, 'control_timeout_seconds': 2}}
+    expected = h.envelope('collect-round', completed=True, accepted=True)['facts']
+    seen, assembled = [], []
+
+    async def observed(operation):
+        seen.append(operation)
+        if operation.identity['mode'] == 'inspect-controller-activity':
+            return operation.observation({'status': 'inspected', 'snapshot': snapshot,
+                'controller': {'workflow_id': 'parent', 'run_id': 'parent-run', 'intent_sha256': 'c' * 64},
+                'observation': {'total_remaining_seconds': 120, 'boot_id': clock['boot_id'],
+                                'boottime_ns': clock['boottime_ns'], 'observed_at': clock['authorized_at']}})
+        facts = deepcopy(expected)
+        facts['source_operation_id'] = facts['measurement']['acceptance']['source_operation_id'] = operation.identity['operation_id']
+        facts['measurement']['acceptance']['observation']['path'] = str(operation.output / 'helper/observation.json')
+        return operation.observation({'status': 'observed', 'facts': facts})
+
+    original_capacity = worker._cycle_capacity
+    async def capacity(value, converter):
+        if isinstance(value, dict) and value.get('protocol') == 'ergora-training-cycle-activity-v3':
+            assembled.append(value)
+        await original_capacity(value, converter)
+
+    monkeypatch.setattr(worker._CycleOperation, 'run', observed)
+    monkeypatch.setattr(worker, '_cycle_capacity', capacity)
+    converter = cycle_capacity_converter('ergora-training-cycle-activity-v3', size)
+    client = SimpleNamespace(namespace='default', data_converter=converter)
+    activities = worker.create_cycle_activities(client, 2)
+    completion = asyncio.run(cycle_sdk_completion(activities['collect-round'],
+        {'workflow_input': h.original, 'ordinal': 0, 'predecessor': None}, converter=converter))
+    (tmp_path / 'completion.pb').write_bytes(completion.SerializeToString())
+    envelope, = assembled
+    assert [operation.identity['mode'] for operation in seen] == ['inspect-controller-activity', 'collect-round']
+    assert envelope['facts']['selection'] == expected['selection']
+    assert envelope['facts']['measurement']['acceptance']['evidence'] == expected['measurement']['acceptance']['evidence']
+    assert len(envelope['operations']) == 1 and envelope['inspection']['mode'] == 'inspect-controller-activity'
+    full = Payloads(payloads=asyncio.run(converter.encode([envelope])))
+    assert full.ByteSize() == size
+    if size <= 32768:
+        result = completion.result.completed.result
+        assert Payloads(payloads=[result]).ByteSize() == size
+        assert asyncio.run(converter.decode([result])) == [envelope]
+    else:
+        failure = completion.result.failed.failure
+        assert failure.application_failure_info.type == 'cycle_activity_capacity_exceeded'
+        assert failure.application_failure_info.non_retryable and not failure.HasField('cause')
 
 
 def test_cycle_v2_round_change_never_renews_work_deadline(cycle_v2_workflow):
