@@ -47,7 +47,7 @@ def synthetic_execution(prepared, *, controller=None, ident='alpha'):
     """A synthetic stopped archive, deliberately carrying no live execution authority."""
     from datetime import datetime, timezone
     from ergora import training_cycles
-    from ergora.training_execution_protocol import GATE_SOURCES, PROTOCOL
+    from ergora.training_execution_protocol import GATE_SOURCE_PROTOCOLS, PROTOCOL
 
     state, definition, runtime, _, write, _ = prepared
     project = state.project('demo')
@@ -70,12 +70,14 @@ def synthetic_execution(prepared, *, controller=None, ident='alpha'):
     receipt = {**start, 'run_id': 'historical-run'}
     write(prefix / (ident + '.attempt.json'), start)
     write(prefix / (ident + '.result.json'), receipt)
+    descriptor = Path(definition['execution']['installation']) / 'ergora-native-runtime.json'
+    admission_protocol = json.loads(descriptor.read_bytes())['protocol_id'] if descriptor.exists() else reference.TRAINING_PROTOCOL
     owner = {'schema_version': 2, 'intent_sha256': sha(intent), 'authorization_sha256': 'a' * 64,
         'pid': 1, 'start_ticks': '0', 'boot_id': '0' * 36, 'context_sha256': 'b' * 64,
-        'execution_capability': {'protocol': PROTOCOL, 'admission_protocol': reference.TRAINING_PROTOCOL,
+        'execution_capability': {'protocol': PROTOCOL, 'admission_protocol': admission_protocol,
             'descriptor_sha256': 'c' * 64, 'installation': definition['execution']['installation'],
             'native_python': str(Path(definition['execution']['installation']) / '.venv/bin/python'),
-            'cycle_ready_sha256': 'd' * 64, 'gate_sources': {name: 'e' * 64 for name in GATE_SOURCES}}}
+            'cycle_ready_sha256': 'd' * 64, 'gate_sources': {name: 'e' * 64 for name in GATE_SOURCE_PROTOCOLS[admission_protocol]}}}
     if controller is not None:
         from ergora.training_execution_protocol import source_capability
         owner['authorization_sha256'] = admission.authorization['sha256']
@@ -125,6 +127,8 @@ def synthetic_execution(prepared, *, controller=None, ident='alpha'):
     return state, definition, runtime, folder
 
 
+@pytest.mark.parametrize('installation', [None, pytest.param('managed-v2', marks=pytest.mark.skipif(
+    sys.platform != 'linux', reason='Native source preparation requires Linux/WSL2'))], indirect=True)
 def test_execution_history_is_sdk_free_and_survives_missing_installation(historical_execution, capsys):
     from ergora.cli import main
 
@@ -3441,7 +3445,7 @@ def test_round_original_deadline_keeps_available_full_diagnostics(round_candidat
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Original H writer and explicit 10 MB reader require Linux')
-@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('installation', ['managed', 'managed-v2'], indirect=True)
 @pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
 def test_round_complete_observation_capacity_uses_utf8_and_lf(round_candidate, cycle_operation_fault, monkeypatch):
     import asyncio
@@ -3449,24 +3453,25 @@ def test_round_complete_observation_capacity_uses_utf8_and_lf(round_candidate, c
 
     state, admission, plan, operation, prepare = round_candidate
     installation = Path(admission.authorization['execution']['installation'])
+    sdk_required = json.loads((installation / 'ergora-native-runtime.json').read_bytes())['protocol_id'] == reference.TRAINING_PROTOCOL
     import temporalio
     sdk_site = str(Path(temporalio.__file__).parent.parent)
     isolated = state.root.parent / 'native-reader-package'
     shutil.copytree(Path(protocol.__file__).parent, isolated / 'ergora', ignore=shutil.ignore_patterns('__pycache__'))
     program = '''import sys,json
 sys.path.insert(0,sys.argv[1])
-if sys.argv[3]=='native':
+if sys.argv[3]=='native-sdk':
     sys.path.append(sys.argv[4])
 class WithoutApplication:
     def find_spec(self, fullname, path=None, target=None):
         if fullname.split('.')[0] in ('yaml','jsonschema') or (
-                sys.argv[3]!='native' and fullname.split('.')[0]=='temporalio') or fullname in (
+                sys.argv[3]!='native-sdk' and fullname.split('.')[0]=='temporalio') or fullname in (
                 'ergora.state','ergora.training_rounds','ergora.registrations'):
             raise AssertionError('Native reader imported application or SDK: '+fullname)
 sys.meta_path.insert(0,WithoutApplication())
 from ergora import training_execution_protocol as protocol
 try:
-    if sys.argv[3]=='native':
+    if sys.argv[3].startswith('native'):
         protocol.native_main(sys.argv[2])
     else:
         from pathlib import Path
@@ -3487,16 +3492,20 @@ except ValueError as error:
 
     reader_results = []
 
-    def native_read(context, *, without_site=False):
-        mode = 'isolated-local' if without_site else 'native'
+    def native_read(context, *, without_site=False, reject_sdk=False):
+        mode = 'isolated-local' if without_site else ('native-sdk' if sdk_required and not reject_sdk else 'native')
         result = subprocess.run([str(installation / '.venv/bin/python'), '-P', '-B',
             *(['-S'] if without_site else []), '-c', program, str(isolated), str(installation), mode, sdk_site],
             input=json.dumps({'cached': context, 'phase': {}}),
             env=environment, capture_output=True, text=True, timeout=15)
+        reader_results.append({'target': target, 'mode': mode, 'returncode': result.returncode,
+                               'stdout': result.stdout, 'stderr': result.stderr})
+        (state.root.parent / 'native-reader-results.json').write_text(json.dumps(reader_results, indent=2) + '\n')
+        if reject_sdk:
+            assert result.returncode != 0 and 'Native reader imported application or SDK: temporalio' in result.stderr
+            return {'import_refused': 'temporalio'}
         assert result.returncode == 0, result.stderr
         observed = json.loads(result.stdout)
-        reader_results.append({'target': target, 'mode': mode, 'result': observed})
-        (state.root.parent / 'native-reader-results.json').write_text(json.dumps(reader_results, indent=2) + '\n')
         return observed
 
     assert asyncio.run(operation().run())['facts']['measurement']['continuation_ready'] is True
@@ -3556,7 +3565,9 @@ except ValueError as error:
                 (chain.folder.parent / name).unlink(missing_ok=True)
             before = {path: path.read_bytes() for path in chain.folder.rglob('*') if path.is_file()}
             assert native_read(context, without_site=True) == {'authenticated': True, 'executor_sdk_loaded': False}
-            closed = {'rejected': 'Schema3 controller execution is not enabled', 'executor_sdk_loaded': True}
+            if sdk_required and target == protocol.ARTIFACT_LIMIT - 1:
+                assert native_read(context, reject_sdk=True) == {'import_refused': 'temporalio'}
+            closed = {'rejected': 'Schema3 controller execution is not enabled', 'executor_sdk_loaded': sdk_required}
             assert native_read(context) == closed
             if target == protocol.ARTIFACT_LIMIT - 1:
                 # Drift a real copied package after its successful original

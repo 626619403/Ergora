@@ -19,6 +19,7 @@ from .reference_creation_process import task_creation
 DATA = Path(__file__).parent / "data"
 ROOT = DATA / "reference"
 TRAINING_PROTOCOL = "training-executor-admission-v1"
+TRAINING_PROTOCOLS = (TRAINING_PROTOCOL, "training-executor-admission-v2")
 TEMPLATES = ("repository-governance", "large-change", "training-optimization")
 
 
@@ -89,6 +90,23 @@ def template_details(kind: str) -> dict:
             "input": json.loads((directory / "input.json").read_text(encoding="utf-8"))}
 
 
+def _training_descriptor(raw: bytes) -> dict:
+    """Select only an exact bundled declaration, including its original bytes."""
+    message = "Unsupported or incomplete native runtime descriptor"
+    if len(raw) > 65_536:
+        raise ValueError(message)
+    try:
+        declared = json.loads(raw)
+        protocol = declared['protocol_id']
+    except (ValueError, KeyError, TypeError) as error:
+        raise ValueError(message) from error
+    if protocol not in TRAINING_PROTOCOLS:
+        raise ValueError(message)
+    if raw != (DATA / "native-runtime" / (protocol + ".json")).read_bytes():
+        raise ValueError(message)
+    return declared
+
+
 def _training_overrides(installation: Path, manifest_sha256: str) -> dict:
     """An explicit source declaration never falls back to the legacy identity."""
     import stat
@@ -105,10 +123,7 @@ def _training_overrides(installation: Path, manifest_sha256: str) -> dict:
         if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
             raise ValueError("Native runtime descriptor must be an ordinary file")
         raw = stream.read(65_537)
-    expected = (DATA / "native-runtime" / (TRAINING_PROTOCOL + ".json")).read_bytes()
-    if len(raw) > 65_536 or raw != expected:
-        raise ValueError("Unsupported or incomplete native runtime descriptor")
-    protocol = json.loads(expected)
+    protocol = _training_descriptor(raw)
     if protocol['base_manifest_sha256'] != manifest_sha256:
         raise ValueError("Native runtime protocol belongs to another reference manifest")
     return protocol['overrides']
@@ -141,14 +156,15 @@ def prepare_training(directory: Path, *, protocol: str) -> dict:
     """Prepare exact versioned native source, without dependencies or execution."""
     if sys.platform != "linux":
         raise ValueError("Native training source preparation requires Linux; use WSL2")
-    if protocol != TRAINING_PROTOCOL:
+    if protocol not in TRAINING_PROTOCOLS:
         raise ValueError("Unsupported native training source protocol")
     verify()
     manifest_raw = (DATA / "reference-manifest.json").read_bytes()
     metadata = (DATA / "native-runtime" / (protocol + ".json")).read_bytes()
     declared = json.loads(metadata)
     patch = DATA / "native-runtime" / (protocol + ".patch")
-    if (hashlib.sha256(manifest_raw).hexdigest() != declared['base_manifest_sha256']
+    if (declared['protocol_id'] != protocol
+            or hashlib.sha256(manifest_raw).hexdigest() != declared['base_manifest_sha256']
             or hashlib.sha256(patch.read_bytes()).hexdigest() != declared['patch_sha256']):
         raise ValueError("Bundled native training protocol source identity changed")
     directory = directory.expanduser().absolute()

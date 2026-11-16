@@ -133,6 +133,15 @@ def prepared_training_installation(tmp_path_factory):
     return root, receipt
 
 
+@pytest.fixture(scope='module')
+def prepared_training_v2_installation(tmp_path_factory):
+    if sys.platform != 'linux':
+        pytest.skip('Native source preparation uses Linux/WSL2 directory synchronization')
+    root = tmp_path_factory.mktemp('native-v2-parent') / 'training runtime with spaces'
+    receipt = reference.prepare_training(root, protocol='training-executor-admission-v2')
+    return root, receipt
+
+
 def test_native_source_protocol_is_explicit_and_preserves_the_legacy_installation(prepared_training_installation, tmp_path):
     import shutil
 
@@ -149,6 +158,130 @@ def test_native_source_protocol_is_explicit_and_preserves_the_legacy_installatio
     assert not (root / '.venv').exists()
     assert (legacy / 'local/agent_platform/training_executor.py').read_bytes() == original
     assert (root / 'local/agent_platform/training_executor.py').read_bytes() != original
+    # Legacy keeps its existing Python-only identity; descriptor installations
+    # retain the stronger complete-platform check below.
+    with (legacy / 'requirements.lock').open('ab') as stream:
+        stream.write(b'\n')
+    assert reference.validate_installation(legacy, training=True) == legacy.resolve()
+
+
+def test_source_v2_identity_keeps_its_training_override_and_descriptor_together(
+        prepared_training_installation, prepared_training_v2_installation, tmp_path):
+    import shutil
+
+    v1, _ = prepared_training_installation
+    source, receipt = prepared_training_v2_installation
+    root = tmp_path / 'v2-identity'
+    shutil.copytree(source, root)
+    assert receipt['protocol'] == 'training-executor-admission-v2'
+    assert reference.validate_installation(root, training=True) == root.resolve()
+    executor = 'local/agent_platform/training_executor.py'
+    assert (root / executor).read_bytes() == (v1 / executor).read_bytes()
+    training = root / 'local/agent_platform/training.py'
+    raw = training.read_bytes()
+    training.write_bytes((v1 / 'local/agent_platform/training.py').read_bytes())
+    with pytest.raises(ValueError, match='runtime identity'):
+        reference.validate_installation(root, training=True)
+    training.write_bytes(raw)
+    descriptor = root / 'ergora-native-runtime.json'
+    declared = descriptor.read_bytes()
+    for changed in ((v1 / descriptor.name).read_bytes(), json.dumps(json.loads(declared)).encode(), b''):
+        descriptor.write_bytes(changed)
+        with pytest.raises(ValueError, match='runtime (identity|descriptor)'):
+            reference.validate_installation(root, training=True)
+    descriptor.write_bytes(declared)
+    descriptor.unlink()
+    with pytest.raises(ValueError, match='runtime identity'):
+        reference.validate_installation(root, training=True)
+
+
+def test_source_capabilities_pin_one_version_and_history_only_checks_saved_shape(
+        prepared_training_installation, prepared_training_v2_installation, tmp_path, monkeypatch):
+    from copy import deepcopy
+    import shutil
+    import venv
+    from ergora import training_execution_protocol as protocol
+
+    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
+    capabilities = {}
+    for source, _ in (prepared_training_installation, prepared_training_v2_installation):
+        root = tmp_path / source.parent.name
+        shutil.copytree(source, root)
+        venv.EnvBuilder(with_pip=False).create(root / '.venv')
+        cap = protocol.source_capability(root, {'original': 'ready'})
+        capabilities[cap['admission_protocol']] = cap
+        assert len(cap['gate_sources']) == 25
+        protocol.validate_sources(cap)
+        owner = {'schema_version': 2, 'intent_sha256': 'a' * 64, 'authorization_sha256': 'b' * 64,
+            'pid': 1, 'start_ticks': '0', 'boot_id': '0' * 36, 'context_sha256': 'c' * 64,
+            'execution_capability': cap}
+        root.rename(root.with_name(root.name + '-unavailable'))
+        assert protocol.owner_record(owner) == owner
+        with pytest.raises(OSError):
+            protocol.validate_sources(cap)
+        root.with_name(root.name + '-unavailable').rename(root)
+        for changed in ('missing', 'extra', 'other-version', 'unknown-version'):
+            invalid = deepcopy(owner)
+            item = invalid['execution_capability']
+            if changed == 'missing':
+                item['gate_sources'].pop('reference.py')
+            elif changed == 'extra':
+                item['gate_sources']['unexpected.py'] = '0' * 64
+            elif changed == 'other-version':
+                item['admission_protocol'] = next(name for name in reference.TRAINING_PROTOCOLS if name != cap['admission_protocol'])
+            else:
+                item['admission_protocol'] = 'training-executor-admission-v3'
+            with pytest.raises(ValueError, match='execution capability'):
+                protocol.owner_record(invalid)
+        stale = deepcopy(cap)
+        stale['gate_sources']['reference.py'] = '0' * 64
+        assert protocol.owner_record({**owner, 'execution_capability': stale})['execution_capability'] == stale
+        with pytest.raises(ValueError, match='gate source changed'):
+            protocol.validate_sources(stale)
+    v2 = deepcopy(capabilities['training-executor-admission-v2'])
+    v2.update(admission_protocol=reference.TRAINING_PROTOCOL,
+              gate_sources=capabilities[reference.TRAINING_PROTOCOL]['gate_sources'])
+    with pytest.raises(ValueError, match='descriptor changed'):
+        protocol.validate_sources(v2)
+
+
+def test_capability_birth_does_not_accept_a_descriptor_changed_after_validation(
+        prepared_training_v2_installation, tmp_path, monkeypatch):
+    import shutil
+    from ergora import training_execution_protocol as protocol
+
+    source, _ = prepared_training_v2_installation
+    root = tmp_path / 'racing-descriptor'
+    shutil.copytree(source, root)
+    monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
+    original = reference.validate_installation
+
+    def validate(installation, **kwargs):
+        result = original(installation, **kwargs)
+        with (root / 'ergora-native-runtime.json').open('ab') as stream:
+            stream.write(b'\n')
+        return result
+
+    monkeypatch.setattr(reference, 'validate_installation', validate)
+    with pytest.raises(ValueError, match='native runtime descriptor'):
+        protocol.source_capability(root, {'original': 'ready'})
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Native source preparation requires Linux/WSL2')
+def test_preparing_v2_cannot_alias_a_complete_bundled_v1_pair(tmp_path, monkeypatch):
+    import shutil
+
+    data = tmp_path / 'bundled-data'
+    shutil.copytree(reference.DATA / 'native-runtime', data / 'native-runtime')
+    shutil.copy2(reference.DATA / 'reference-manifest.json', data / 'reference-manifest.json')
+    for suffix in ('.json', '.patch'):
+        shutil.copy2(data / 'native-runtime' / (reference.TRAINING_PROTOCOL + suffix),
+                     data / 'native-runtime' / ('training-executor-admission-v2' + suffix))
+    monkeypatch.setattr(reference, 'DATA', data)
+    root = tmp_path / 'must-not-be-prepared'
+    with pytest.raises(ValueError, match='Bundled native training protocol source identity changed'):
+        reference.prepare_training(root, protocol='training-executor-admission-v2')
+    assert not root.exists()
 
 
 @pytest.mark.parametrize('changed', ['missing-descriptor', 'formatted-descriptor', 'truncated-descriptor', 'oversized-descriptor',
@@ -202,11 +335,12 @@ def test_interrupted_source_preparation_declares_its_incomplete_identity(prepare
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Native source preparation requires Linux/WSL2')
-def test_cli_prepares_only_new_native_source_without_creating_control_state(tmp_path):
+@pytest.mark.parametrize('protocol', reference.TRAINING_PROTOCOLS)
+def test_cli_prepares_only_new_native_source_without_creating_control_state(tmp_path, protocol):
     root = tmp_path / 'cli source'
     control = tmp_path / 'unused-control'
     command = [sys.executable, '-B', '-m', 'ergora', '--home', str(control), 'reference', 'prepare-training',
-               '--protocol', reference.TRAINING_PROTOCOL, '--directory', str(root)]
+               '--protocol', protocol, '--directory', str(root)]
     result = subprocess.run(command, capture_output=True, text=True, timeout=30)
     assert result.returncode == 0, result.stderr
     receipt = json.loads(result.stdout)

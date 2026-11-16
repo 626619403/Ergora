@@ -167,7 +167,7 @@ def parser() -> argparse.ArgumentParser:
     legacy.add_argument("--installation", type=Path, help="Existing v2.2 reference installation (executor only)")
     legacy.add_argument("--request", type=Path, help="Execute one envelope instead of watching the reference queue")
     legacy.add_argument("--project", help="Use a unified project's saved execution directories")
-    legacy.add_argument("--protocol", choices=[reference.TRAINING_PROTOCOL], help="Exact native source protocol (prepare-training only)")
+    legacy.add_argument("--protocol", choices=reference.TRAINING_PROTOCOLS, help="Exact native source protocol (prepare-training only)")
     legacy.add_argument("--directory", type=Path, help="New native source directory (prepare-training only)")
     templates = commands.add_parser("templates", help="List or copy a reference workflow template")
     operations = templates.add_subparsers(dest="operation", required=True)

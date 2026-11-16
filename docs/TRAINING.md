@@ -79,17 +79,19 @@ init / runner-add → prepare → worker-start → start
 
 ### 准备版本化原生来源
 
-Linux／WSL2 上可用已安装的 Ergora 和 Git，在一个尚不存在的持久目录准备 `training-executor-admission-v1` 来源：
+Linux／WSL2 上可用已安装的 Ergora 和 Git，在一个尚不存在的持久目录显式选择版本化来源。以下准备保留原准入行为、将 SDK 导入留在原 CLI 使用边界的 `training-executor-admission-v2`：
 
 ```bash
 ergora reference prepare-training \
-  --protocol training-executor-admission-v1 \
-  --directory "$HOME/.local/share/ergora/native/training-admission-v1"
+  --protocol training-executor-admission-v2 \
+  --directory "$HOME/.local/share/ergora/native/training-admission-v2"
 ```
 
 成功返回 `status=source_prepared` 和规范化的 `installation`。这里只复制经过校验的来源并应用固定 delta；`dependencies_installed`、`runtime_started`、`execution_authorized` 都为 false。它不创建控制项目、实验或服务，也不运行 runner。目录已存在时拒绝覆盖；准备中断会保留目录供检查，重试请选择另一个新目录。
 
 新来源保留原 Git、两臂 runner、Sandbox、归档、MLflow 和结果处理，只在原 `executor.lock` 内增加窄准入接缝。无结果却已有 `started.json` 时拒绝重入；手工无 hook 调用不能接管 `managed-execution/` 下的受管任务。已有 result 仍只读返回，不能据此追认受管停止。新协议核完整 279 个 platform 来源文件和固定 descriptor；空、缺损、链接、篡改的声明不会回退为旧安装。原 v2.2／283 文件与旧安装保持原身份。
+
+仍可显式选择 `training-executor-admission-v1`，其原 patch／descriptor 保持不变，但加载原 executor 会传递导入 Temporal SDK。v2 在真实准入 callback 前不需要 SDK；原 `run-local`／`approve` 继续使用同一个 client loader，训练、跟踪与控制面操作仍各需原依赖。版本准备不授予新执行权，也不开放自动多轮。旧 owner、安装、记录和 clock 不自动升级；选择 v2 请新建来源目录，不能改写旧 descriptor 或给旧 owner 重采来源。
 
 依赖仍属于该 native 安装自己的 `.venv` 和固定 `requirements.lock`，基础 Ergora 或 `temporal` extra 不代替它。准备来源不初始化这套依赖；原安装／服务和可信 Linux 容器边界仍按完整参考手册处理。下文受管执行要求独立新状态目录、所有参与 executor 使用同一协议，不能接管旧 started 或活旧 owner。模板提案与 kernel 专家只提供建议；执行仍需原预算及显式确认，自动多轮循环另行提供。
 

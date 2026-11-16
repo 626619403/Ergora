@@ -48,6 +48,10 @@ GATE_SOURCES = (
     'asset_trees.py', 'state.py', 'budget_clock.py', 'processes.py', 'reference_creation_process.py',
     '__init__.py', 'data/reference-manifest.json', 'data/native-runtime/training-executor-admission-v1.json',
 )
+GATE_SOURCE_PROTOCOLS = {
+    reference.TRAINING_PROTOCOL: GATE_SOURCES,
+    'training-executor-admission-v2': (*GATE_SOURCES[:-1], 'data/native-runtime/training-executor-admission-v2.json'),
+}
 
 
 ROUND_COVERAGE = {'records': 'saved-observations', 'artifacts': 'index-only', 'runtime_status': 'not_queried',
@@ -889,6 +893,24 @@ def validate_cycle_root_request(value: dict) -> None:
     _digest(submission['intent_sha256'])
 
 
+def _capability(capability: dict) -> None:
+    """Check saved identity only; history never requires the current installation."""
+    _exact(capability, ('protocol', 'admission_protocol', 'descriptor_sha256', 'installation',
+        'native_python', 'cycle_ready_sha256', 'gate_sources'), 'Execution capability')
+    try:
+        sources = GATE_SOURCE_PROTOCOLS[capability['admission_protocol']]
+    except (KeyError, TypeError) as error:
+        raise ValueError('Unsupported complete execution capability') from error
+    if (capability['protocol'] != PROTOCOL or not isinstance(capability['gate_sources'], dict)
+            or set(capability['gate_sources']) != set(sources)):
+        raise ValueError('Unsupported complete execution capability')
+    for digest in (*capability['gate_sources'].values(), capability['descriptor_sha256'], capability['cycle_ready_sha256']):
+        _digest(digest)
+    installation = Path(capability['installation'])
+    if not installation.is_absolute() or capability['native_python'] != str(installation / '.venv/bin/python'):
+        raise ValueError('Execution capability has no exact native interpreter')
+
+
 def owner_record(value: dict) -> dict:
     common = ('schema_version', 'intent_sha256', 'authorization_sha256', 'pid', 'start_ticks', 'boot_id', 'context_sha256')
     version = value.get('schema_version')
@@ -899,18 +921,7 @@ def owner_record(value: dict) -> dict:
         _digest(value[name])
     _process({key: value[key] for key in ('pid', 'start_ticks', 'boot_id')})
     if version == 2 and value['execution_capability'] is not None:
-        capability = value['execution_capability']
-        _exact(capability, ('protocol', 'admission_protocol', 'descriptor_sha256', 'installation',
-            'native_python', 'cycle_ready_sha256', 'gate_sources'), 'Execution capability')
-        if (capability['protocol'] != PROTOCOL or capability['admission_protocol'] != reference.TRAINING_PROTOCOL
-                or not isinstance(capability['gate_sources'], dict)
-                or set(capability['gate_sources']) != set(GATE_SOURCES)):
-            raise ValueError('Unsupported complete execution capability')
-        for digest in (*capability['gate_sources'].values(), capability['descriptor_sha256'], capability['cycle_ready_sha256']):
-            _digest(digest)
-        installation = Path(capability['installation'])
-        if not installation.is_absolute() or capability['native_python'] != str(installation / '.venv/bin/python'):
-            raise ValueError('Execution capability has no exact native interpreter')
+        _capability(value['execution_capability'])
     return value
 
 
@@ -943,24 +954,34 @@ def source_capability(installation: Path, ready: dict) -> dict | None:
     reference.validate_installation(installation, training=True)
     descriptor = installation / 'ergora-native-runtime.json'
     if not descriptor.exists():
+        reference.validate_installation(installation, training=True)
         return None
-    return {'protocol': PROTOCOL, 'admission_protocol': reference.TRAINING_PROTOCOL,
-        'descriptor_sha256': hashlib.sha256(read_raw(descriptor)).hexdigest(),
+    raw = read_raw(descriptor, 65_536)
+    declared = reference._training_descriptor(raw)
+    # Bind this exact declaration around a complete installation check. A switch
+    # between two supported declarations cannot silently change the birth pin.
+    reference.validate_installation(installation, training=True)
+    if read_raw(descriptor, 65_536) != raw:
+        raise ValueError('Native execution descriptor changed during capability birth')
+    return {'protocol': PROTOCOL, 'admission_protocol': declared['protocol_id'],
+        'descriptor_sha256': hashlib.sha256(raw).hexdigest(),
         'installation': str(installation), 'native_python': str(installation / '.venv/bin/python'),
         'cycle_ready_sha256': canonical_sha(ready), 'gate_sources': {
-            name: hashlib.sha256(read_raw(Path(__file__).parent / name)).hexdigest() for name in GATE_SOURCES}}
+            name: hashlib.sha256(read_raw(Path(__file__).parent / name)).hexdigest()
+            for name in GATE_SOURCE_PROTOCOLS[declared['protocol_id']]}}
 
 
 def validate_sources(capability: dict) -> None:
-    _exact(capability['gate_sources'], GATE_SOURCES, 'Original execution gate sources')
-    for expected in capability['gate_sources'].values():
-        _digest(expected)
+    _capability(capability)
     for name, expected in capability['gate_sources'].items():
         if hashlib.sha256(read_raw(Path(__file__).parent / name)).hexdigest() != expected:
             raise ValueError('Original execution gate source changed: ' + name)
     reference.verify()
     installation = reference.validate_installation(Path(capability['installation']), training=True)
-    if hashlib.sha256(read_raw(installation / 'ergora-native-runtime.json')).hexdigest() != capability['descriptor_sha256']:
+    raw = read_raw(installation / 'ergora-native-runtime.json', 65_536)
+    declared = reference._training_descriptor(raw)
+    if (declared['protocol_id'] != capability['admission_protocol']
+            or hashlib.sha256(raw).hexdigest() != capability['descriptor_sha256']):
         raise ValueError('Original native execution descriptor changed')
     for name, expected in capability['gate_sources'].items():
         if hashlib.sha256(read_raw(Path(__file__).parent / name)).hexdigest() != expected:
