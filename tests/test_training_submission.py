@@ -4632,4 +4632,3 @@ def test_round_parent_request_chunks_keep_original_bytes_and_loop_fair(round_can
     assert sum(size for size, _ in writes) == len(current.encoded)
     assert len(writes) > 2 and all(b > a for (_, a), (_, b) in zip(writes, writes[1:]))
     assert (current.output / 'request.json').read_bytes() == current.encoded
-
