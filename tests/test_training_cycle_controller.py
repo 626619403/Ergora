@@ -40,6 +40,42 @@ def admission_process(admission, tmp_path, mode, *, reason='First controller sto
 
 
 
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original supervisor identity and stopped frames require Linux')
+def test_expired_cycle_supervisor_is_dependency_isolated_and_never_spawns_h(
+        controller_admission, tmp_path):
+    import shutil
+    from ergora import reference_training_worker as worker
+    from ergora import training_execution_protocol as protocol
+
+    state, _, _, authorized, _ = controller_admission
+    operation = worker._CycleOperation(state.root, 'demo', 'controller', authorized['authorization_sha256'], 'inspect')
+    payload = deepcopy(operation.payload)
+    now = time.clock_gettime_ns(time.CLOCK_BOOTTIME)
+    payload['bootstrap'].update(started_ns=now - 2_000_000_000, deadline_ns=now - 1_000_000_000)
+    raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(',', ':'), allow_nan=False).encode()
+    isolated = tmp_path / 'pure-package'
+    shutil.copytree(Path(protocol.__file__).parent, isolated / 'ergora',
+                    ignore=shutil.ignore_patterns('__pycache__', '*.pyc', '*.pyo'))
+    environment = dict(os.environ, PYTHONPATH=str(isolated), PYTHONDONTWRITEBYTECODE='1')
+    program = """import subprocess,sys
+from ergora.training_execution_protocol import cycle_supervisor_main
+def forbidden_spawn(*args,**kwargs):
+    raise AssertionError('An expired original supervisor cannot spawn H')
+subprocess.Popen=forbidden_spawn
+cycle_supervisor_main()
+assert all(name not in sys.modules for name in
+           ('temporalio','jsonschema','ergora.state','ergora.training_cycles','ergora.reference_training_worker'))
+"""
+    result = subprocess.run([sys.executable, '-S', '-P', '-B', '-c', program], input=raw,
+                            env=environment, capture_output=True, timeout=8)
+    assert result.returncode == 0, result.stderr
+    frames = [json.loads(line) for line in result.stdout.splitlines()]
+    assert [frame['event'] for frame in frames] == ['stopped', 'result']
+    assert frames[0]['process']['status'] == 'cancelled'
+    assert frames[1]['result']['status'] == 'unknown'
+    assert (operation.output / 'request.json').read_bytes() == raw
+
+
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller consent requires Linux/WSL2 clocks and flock')
 def test_controller_birth_consent_retains_original_actor_clock_and_mode(controller_admission, monkeypatch):
     from ergora import training_cycles

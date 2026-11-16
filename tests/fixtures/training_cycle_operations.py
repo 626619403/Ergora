@@ -8,10 +8,11 @@ import subprocess
 import sys
 import time
 
-from ergora import processes, reference, training_cycles, training_execution_protocol as protocol
-from ergora import reference_training_worker as worker
+from ergora import processes, reference, training_execution_protocol as protocol
 
 stage, fault = sys.argv[1], os.environ['ERGORA_TEST_CYCLE_OPERATION']
+if stage != 'S':
+    from ergora import training_cycles, reference_training_worker as worker
 markers = Path(os.environ['ERGORA_TEST_CYCLE_MARKERS'])
 
 
@@ -176,17 +177,17 @@ if stage == 'S':
 
         sys.stdout = Output()
     if fault == 'round-reply-loss' and mode in protocol.CYCLE_MEASUREMENT_MODES:
-        read = training_cycles._read_bytes
+        read = protocol._read_cycle_bytes
         def lost_round_reply(path, limit):
             if path.name == 'stdout.txt':
                 mark('round-reply-lost')
                 raise OSError('Original H completed; S reply read was lost')
             return read(path, limit)
-        training_cycles._read_bytes = lost_round_reply
+        protocol._read_cycle_bytes = lost_round_reply
     if ((fault == 'post-stopped' and mode in ('inspect', 'prepare-controller', 'prepare-candidate'))
             or (fault == 'post-stopped-request' and mode == 'request-execution-candidate')
             or (fault == 'post-stopped-confirm' and mode == 'confirm-candidate')):
-        read = training_cycles._read_bytes
+        read = protocol._read_cycle_bytes
 
         def blocked_result(path, limit):
             if path.name == 'stdout.txt':
@@ -194,7 +195,7 @@ if stage == 'S':
                 time.sleep(60)
             return read(path, limit)
 
-        training_cycles._read_bytes = blocked_result
+        protocol._read_cycle_bytes = blocked_result
 else:
     if fault == 'sdk-permit-blocked' and mode == 'inspect-controller-activity':
         label = payload['activity_context']['activity_source']['activity_id']
@@ -600,4 +601,7 @@ else:
             raise AssertionError('Old-owner cleanup cannot require the current installation or gate sources')
         protocol.validate_sources = reference.validate_installation = unavailable
 
-worker.cycle_operation_main(stage == 'S')
+if stage == 'S':
+    protocol.cycle_supervisor_main()
+else:
+    worker.cycle_operation_main(False)

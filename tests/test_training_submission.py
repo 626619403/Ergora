@@ -2089,7 +2089,7 @@ def cycle_operation_fault(monkeypatch, tmp_path):
     markers.mkdir()
 
     async def invoke(*argv, **kwargs):
-        if argv[-1] == 'from ergora.reference_training_worker import cycle_operation_main;cycle_operation_main()':
+        if argv[-1] == 'from ergora.training_execution_protocol import cycle_supervisor_main;cycle_supervisor_main()':
             argv = [argv[0], '-P', str(fixture), 'S']
         elif argv[-1] == 'from ergora.reference_training_worker import cycle_request_retention_main;cycle_request_retention_main()':
             argv = [argv[0], '-P', str(fixture), 'D']

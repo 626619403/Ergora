@@ -30,6 +30,106 @@ MEASUREMENT_SOURCES = ('training_rounds.py', 'reference_training_evidence.py',
                        'data/schemas/training-rounds-v1.json', 'reference_training_release.py')
 
 
+class _CycleCapacityError(ValueError):
+    pass
+
+
+def _read_cycle_bytes(path: Path, limit: int) -> bytes:
+    from .asset_trees import is_link
+
+    for selected in (path, *path.parents):
+        if is_link(selected):
+            raise ValueError('Training cycle records cannot use symlinks or reparse points')
+    descriptor = os.open(path, os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_NONBLOCK', 0))
+    with os.fdopen(descriptor, 'rb') as stream:
+        if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
+            raise ValueError('Training cycle records require ordinary files')
+        raw = stream.read(limit + 1)
+    if len(raw) > limit:
+        raise _CycleCapacityError(f'Complete training cycle record exceeds {limit} bytes; nothing was truncated')
+    return raw
+
+
+def cycle_supervisor_main() -> None:
+    """Supervise one original H without loading the SDK or application owners."""
+    import logging
+    import signal
+
+    limit = 32_768
+    cancelled = False
+
+    def cancel(signum, frame):
+        nonlocal cancelled
+        cancelled = True
+
+    signal.signal(signal.SIGTERM, cancel)
+    signal.signal(signal.SIGINT, cancel)
+    raw = sys.stdin.buffer.read(limit + 1)
+    if len(raw) > limit:
+        raise ValueError('Complete cycle operation request exceeds 32 KiB')
+    payload = decode(raw)
+    validate_cycle_operation(payload)
+    identity = payload['identity']
+    expected = identity['parent']
+    if processes.identity(expected['pid']) != expected or os.getppid() != expected['pid']:
+        raise ValueError('Cycle operation lost its original complete parent identity')
+    output = Path(identity['control_home']) / 'operations/training-cycles' / identity['operation_id']
+    for parent in (output, *output.parents):
+        if parent.is_symlink() or parent.exists() and not parent.is_dir():
+            raise ValueError('Cycle operation output requires original ordinary directories')
+    output.mkdir(parents=True, mode=0o700)
+    with (output / 'supervisor.stderr').open('xb') as stderr:
+        os.dup2(stderr.fileno(), sys.stderr.fileno())
+    with (output / 'request.json').open('xb') as request:
+        request.write(raw)
+
+    def stopped():
+        try:
+            return (cancelled or cycle_operation_remaining(payload) <= 0
+                    or processes.identity(expected['pid']) != expected)
+        except (OSError, ValueError):
+            return True
+
+    def frame(event, field, value):
+        encoded = json.dumps({**identity, 'event': event, field: value},
+                             ensure_ascii=False, allow_nan=False, separators=(',', ':')).encode('utf-8')
+        if len(encoded) > (65_536 if event == 'stopped' else limit):
+            if event == 'stopped':
+                raise ValueError('Complete cycle operation stopped frame exceeds its capacity')
+            logging.error('Complete cycle operation response exceeds frame capacity: %s', value)
+            failure = {'status': 'capacity_exceeded',
+                       'reason': 'Complete original result exceeds the cycle frame capacity'}
+            if '_stdout_ref' in value:
+                failure['_stdout_ref'] = value['_stdout_ref']
+            encoded = json.dumps({**identity, 'event': event, field: failure},
+                ensure_ascii=False, allow_nan=False, separators=(',', ':')).encode('utf-8')
+        if identity['protocol'] == 'ergora-training-cycle-operation-v2' and len(encoded) > (
+                65_536 if event == 'stopped' else limit):
+            raise ValueError('Complete replacement cycle operation frame still exceeds its capacity')
+        sys.stdout.buffer.write(encoded + b'\n')
+        sys.stdout.buffer.flush()
+
+    result = processes.run([sys.executable, '-P', '-c',
+        'from ergora.reference_training_worker import cycle_operation_main;cycle_operation_main(False)'],
+        Path.cwd(), output / 'helper', 60, raw.decode('utf-8'), dict(os.environ),
+        supervised=True, stop_requested=stopped)
+    frame('stopped', 'process', result)
+    observed = {
+        'status': 'unknown', 'reason': 'Original cycle helper did not complete within its allowance',
+        'helper_status': result['status']}
+    if result['status'] == 'succeeded':
+        try:
+            stdout = _read_cycle_bytes(output / 'helper/stdout.txt', limit)
+        except _CycleCapacityError as error:
+            logging.exception('Complete cycle helper stdout retained at %s', output / 'helper/stdout.txt')
+            observed = {'status': 'capacity_exceeded', 'reason': str(error)}
+        else:
+            observed = decode(stdout)
+            observed['_stdout_ref'] = {'file': 'helper/stdout.txt', 'bytes': len(stdout),
+                                       'sha256': hashlib.sha256(stdout).hexdigest()}
+    frame('result', 'result', observed)
+
+
 def cycle_workflow_type(protocol: str) -> str:
     try:
         return {'ergora-training-cycle-v1': 'TrainingCycleWorkflow',

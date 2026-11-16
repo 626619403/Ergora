@@ -14,6 +14,7 @@ import tempfile
 from . import budget_clock, contracts, reference, registrations, training, training_execution_protocol
 from .asset_trees import is_link, publish_directory
 from .definition_bundles import parse_json
+from .training_execution_protocol import _CycleCapacityError, _read_cycle_bytes as _read_bytes
 from .state import State, file_lock, now
 
 
@@ -23,24 +24,6 @@ _SCHEMA = json.loads((Path(__file__).parent / 'data/schemas/training-cycle-v1.js
 _COMMON = training_execution_protocol.ROUND_COMMON
 _COVERAGE = {'records': 'saved-local-admission', 'runtime_status': 'not_queried',
              'origin_authenticated': False, 'execution_authorized': False, 'budget_started': False}
-
-
-class _CycleCapacityError(ValueError):
-    pass
-
-
-def _read_bytes(path: Path, limit: int) -> bytes:
-    for selected in (path, *path.parents):
-        if is_link(selected):
-            raise ValueError('Training cycle records cannot use symlinks or reparse points')
-    descriptor = os.open(path, os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_NONBLOCK', 0))
-    with os.fdopen(descriptor, 'rb') as stream:
-        if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
-            raise ValueError('Training cycle records require ordinary files')
-        raw = stream.read(limit + 1)
-    if len(raw) > limit:
-        raise _CycleCapacityError(f'Complete training cycle record exceeds {limit} bytes; nothing was truncated')
-    return raw
 
 
 def _sha(value) -> str:

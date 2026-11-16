@@ -202,7 +202,7 @@ class _CycleOperation:
         self.spawning = asyncio.create_task(asyncio.create_subprocess_exec(sys.executable, '-P', '-c',
             ('from ergora.reference_training_worker import cycle_request_retention_main;cycle_request_retention_main()'
              if self.capacity_rejected else
-             'from ergora.reference_training_worker import cycle_operation_main;cycle_operation_main()'),
+             'from ergora.training_execution_protocol import cycle_supervisor_main;cycle_supervisor_main()'),
             stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
             env=dict(os.environ), start_new_session=True))
         while self.process is None:
@@ -1600,16 +1600,9 @@ async def stop_live_controller(home: Path, project_id: str, cycle_id: str, autho
 
 
 def cycle_operation_main(supervisor: bool = True) -> None:
-    """Run as one S or its single H; never spawn after the stopped frame."""
-    cancelled = False
-
-    def cancel(signum, frame):
-        nonlocal cancelled
-        cancelled = True
-
+    """Keep the original entry while the production S uses its pure owner."""
     if supervisor:
-        signal.signal(signal.SIGTERM, cancel)
-        signal.signal(signal.SIGINT, cancel)
+        return protocol.cycle_supervisor_main()
     raw = sys.stdin.buffer.read(_CYCLE_LIMIT + 1)
     if len(raw) > _CYCLE_LIMIT:
         raise ValueError('Complete cycle operation request exceeds 32 KiB')
@@ -1617,73 +1610,17 @@ def cycle_operation_main(supervisor: bool = True) -> None:
     protocol.validate_cycle_operation(payload)
     identity = payload['identity']
     expected = identity['parent']
-    if processes.identity(expected['pid']) != expected or supervisor and os.getppid() != expected['pid']:
+    if processes.identity(expected['pid']) != expected:
         raise ValueError('Cycle operation lost its original complete parent identity')
-    output = Path(identity['control_home']) / 'operations/training-cycles' / identity['operation_id']
-    if not supervisor:
-        sys.path[:0] = [str(reference.ROOT / part) for part in
-                       ('platform/local', 'platform/upstream/platform', 'platform/upstream/temporal', 'platform/upstream')]
-        try:
-            result = _cycle_operation(payload)
-        except (OSError, ValueError, KeyError, TypeError, _RoundRetentionError) as error:
-            result = {'status': 'capacity_exceeded' if isinstance(error, _CycleCapacityError) else 'unknown',
-                      'reason': str(error)}
-        print(json.dumps(result, ensure_ascii=False, allow_nan=False), flush=True)
-        return
-    for parent in (output, *output.parents):
-        if parent.is_symlink() or parent.exists() and not parent.is_dir():
-            raise ValueError('Cycle operation output requires original ordinary directories')
-    output.mkdir(parents=True, mode=0o700)
-    with (output / 'supervisor.stderr').open('xb') as stderr:
-        os.dup2(stderr.fileno(), sys.stderr.fileno())
-    with (output / 'request.json').open('xb') as request:
-        request.write(raw)
-
-    def stopped():
-        try:
-            return (cancelled or protocol.cycle_operation_remaining(payload) <= 0
-                    or processes.identity(expected['pid']) != expected)
-        except (OSError, ValueError):
-            return True
-
-    def frame(event, field, value):
-        encoded = json.dumps({**identity, 'event': event, field: value},
-                             ensure_ascii=False, allow_nan=False, separators=(',', ':')).encode('utf-8')
-        if len(encoded) > (65_536 if event == 'stopped' else _CYCLE_LIMIT):
-            if event == 'stopped':
-                raise ValueError('Complete cycle operation stopped frame exceeds its capacity')
-            logging.error('Complete cycle operation response exceeds frame capacity: %s', value)
-            failure = {'status': 'capacity_exceeded',
-                       'reason': 'Complete original result exceeds the cycle frame capacity'}
-            if '_stdout_ref' in value:
-                failure['_stdout_ref'] = value['_stdout_ref']
-            encoded = json.dumps({**identity, 'event': event, field: failure},
-                ensure_ascii=False, allow_nan=False, separators=(',', ':')).encode('utf-8')
-        if identity['protocol'] == 'ergora-training-cycle-operation-v2' and len(encoded) > (
-                65_536 if event == 'stopped' else _CYCLE_LIMIT):
-            raise ValueError('Complete replacement cycle operation frame still exceeds its capacity')
-        sys.stdout.buffer.write(encoded + b'\n')
-        sys.stdout.buffer.flush()
-
-    result = processes.run([sys.executable, '-P', '-c',
-        'from ergora.reference_training_worker import cycle_operation_main;cycle_operation_main(False)'],
-        Path.cwd(), output / 'helper', 60, raw.decode('utf-8'), dict(os.environ),
-        supervised=True, stop_requested=stopped)
-    frame('stopped', 'process', result)
-    observed = {
-        'status': 'unknown', 'reason': 'Original cycle helper did not complete within its allowance',
-        'helper_status': result['status']}
-    if result['status'] == 'succeeded':
-        try:
-            stdout = training_cycles._read_bytes(output / 'helper/stdout.txt', _CYCLE_LIMIT)
-        except _CycleCapacityError as error:
-            logging.exception('Complete cycle helper stdout retained at %s', output / 'helper/stdout.txt')
-            observed = {'status': 'capacity_exceeded', 'reason': str(error)}
-        else:
-            observed = protocol.decode(stdout)
-            observed['_stdout_ref'] = {'file': 'helper/stdout.txt', 'bytes': len(stdout),
-                                       'sha256': hashlib.sha256(stdout).hexdigest()}
-    frame('result', 'result', observed)
+    sys.path[:0] = [str(reference.ROOT / part) for part in
+                   ('platform/local', 'platform/upstream/platform', 'platform/upstream/temporal', 'platform/upstream')]
+    try:
+        result = _cycle_operation(payload)
+    except (OSError, ValueError, KeyError, TypeError, _RoundRetentionError) as error:
+        result = {'status': 'capacity_exceeded' if isinstance(error, _CycleCapacityError) else 'unknown',
+                  'reason': str(error)}
+    print(json.dumps(result, ensure_ascii=False, allow_nan=False), flush=True)
+    return
 
 
 def create_adapter():
