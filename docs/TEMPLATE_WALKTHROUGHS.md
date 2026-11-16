@@ -40,7 +40,7 @@ Ergora maintains these engineering roles, initial instructions and compositions;
 
 Presets and static graphs do not implement generalized Repeat, a mixed-graph scheduler or unified fixed/preset/planner/automatic reasoning selection. Current explicit backend fields request supported model options, without proving actual applied effort. Complete ancestor materials and narrowing permissions remain frozen into supported task/leaf inputs. [Current backend limits](AGENT_BACKENDS.md#current-configuration-evidence-and-pending-capabilities) describe these boundaries.
 
-Schema2 design-policy registration is storage-only with execution unsupported; the isolated source-journal draft is unreleased and schema3 training effects remain disabled. Imported definitions, a saved manifest or successful contract creation do not open those gates. Existing schema1 and supported six-stage contracts retain their original scope.
+Schema2 design-policy registration remains storage-only with execution unsupported. S2 inspection-only [source-journal storage](USAGE.md#保存完整设计来源与原答复) is published in `9f3e693498834f071cf20d0f25c18555554765f1` with its own Portability run `43867345323` at8/8 success; it remains Linux/WSL2-only and requires a legitimate original design-packet, with no new default seed producer. New trusted human assurance and F/J/G remain unavailable, and schema3 training effects stay disabled. Imported definitions, a saved manifest or successful contract creation do not open those gates. Existing schema1 and supported six-stage contracts retain their original scope.
 
 <a id="1-准备模板与完整组合"></a>
 ## 1. Prepare templates and complete compositions
