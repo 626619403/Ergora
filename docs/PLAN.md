@@ -6,6 +6,8 @@
 
 ## 当前检查点
 
+用户最新将根主线切到**多轮实验、有限自动搜索、真实收益验收及每轮 Profile 诊断**，真实工作负载各方向 baseline 交子 Agent 并行推进；功能未齐时已允许手工协调，仍记录原版本／预算／原始结果和失败。第一轮固定模型算法／结构／尺寸／精度；运行资料保存在目标项目自身。当前框架源码未改、schema3效果仍关闭，新搜索／Profile合同待设计独审；按[新接续计划](plans/2026-11-16-optimization-loop-and-profiling.md)及[交付](delivery/2026-11-16-optimization-loop-and-profiling.md)恢复。F/J/G与原未完成项保留，B4翻译草稿已安全冻结、暂不新开作者／评审。
+
 主开发分支 `refactor/architecture-foundations`，最新已核公开head `9f3e693498834f071cf20d0f25c18555554765f1` 已普通推送并核远端完整OID同一，含S2准确源码2ae／普通merge2ff、已审小USAGE操作增量／source-review及全部B3 commits46017／31ce／d73。SRC tree `f6b71a4be022d03452b52400f88d8f85259ec73e`与已核2ae同一，task_plan同2ae、原Windows三行修正同e5，无merge-edits。它自己的Portability run **43867345323已终态8/8 success，含Windows**；2026-11-16T12:58:26.317622+00:00核完整head／8个唯一job IDs／原生success标签，watcher正常exit0，非继承旧e5的绿。新B4作者工作停止，默认main保持，不自动合main／强推。[S2交付](delivery/2026-11-16-design-source-journal-s2.md)。
 
 S2当前准确R2候选 `2ae107b84a3c928fc8c6e2b97820951af34c0cdb` 已单次源码123过（pytest676.68／JUnit676.652／runner677.752720秒）、新安装41过（pytest530.28／JUnit530.268／runner531.400806秒）及原结构Codex模板80.514251秒APPROVE；671runtime／283参考／依赖和运行后2107输入／两安装字节执行位均同一，1656采样进程absent。同片fresh两轴approve、F1–F3及最终本地接纳均关闭；最终安装终态已由同一fresh reviewer独立读回，两轴approve／0，本地门已闭合并普通合入2ff，已普通发布9f3，自己的CI43867345323已8/8 success，S2 inspection-only存取片的源码／安装／模板／独审／文档／普通整合发布及自身CI门闭合；仍仅Linux／WSL2，Windows CI不新增source原生支持，真实服务／自然人／GPU／F-J-G及schema3效果未验。R1 request-changes／112并集／安装30过与原反例保留，不转授。[S2交付](delivery/2026-11-16-design-source-journal-s2.md)。
@@ -37,6 +39,7 @@ B1／B2全部完整pair与B3四完整pair均已各自检查／fresh独审、纠�
 
 |优先／节点|下一步与完成标准|权威记录|
 |---|---|---|
+|P0 最新优化主线|根补 M6 真实有限多轮、有限候选搜索、收益验收与每轮Profile；子 Agent 先做真实工作负载 baseline。当前为调查／拆片，原schema3 guard不删，新合同设计／fresh独审后实施；手工协调不冒称原生全自动。|[接续计划](plans/2026-11-16-optimization-loop-and-profiling.md)／[交付](delivery/2026-11-16-optimization-loop-and-profiling.md)|
 |P0 CI／集成发布|S2准确R2源码2ae／普通merge2ff／公开9f3身份同一，本地123源码、41安装、671runtime／283参考／依赖／模板／fresh复核与Ops增量已闭合；9f3自己的run43867345323终态8/8 success，含Windows。后继文档checkpoint9c2的src/tests/scripts/.github/pyproject与9f3同一，无需为status重跑产品CI。原7fc失败／e5成功与R1源码红例均保留。|[S2交付](delivery/2026-11-16-design-source-journal-s2.md)／[联合交付](delivery/2026-11-16-design-capacity-integration.md)|
 |P1 逐Agent思考强度|显式配置源码／fresh独审／原模板／联合新安装／普通发布及自己的CI已闭合。最新A6a–d明确四模式；完整双语后端参数研究、静态检查与新fresh语义独审均完成，两轴approve／0；唯一P2补明Claude text-only safe-mode／ultracode限制并同片复核关闭，再写配置／冻结设计并fresh设计审后分片实施。当前只有显式值，preset／planner／automatic未实现；不把请求值当native实际强度，不暗中降档／换模型／加预算。|[本片计划](plans/2026-11-16-agent-reasoning-and-parallelism.md)／[后端研究](research/2026-11-16-backend-runtime-options.md)|
 |P1 WA5-S1|最新b28cd31新包同一、原-I反例及原17节点新安装全部通过（92.33秒；607自有进程终核absent）；Codex原模板与新fresh两轴approve／0，原F1/P2关闭，普通合入6cec589，联合新安装32过，已普通发布7fc4217，原7fc自己的CI终态Windows失败；3行测试修正后联合e5自己的CI已8/8成功。此前80cb13过／r2的119过不转授；所有v2拒执行及原v1冻结对照必须保持。|[交付](delivery/2026-11-16-design-policy-registration.md)／[已审拆片](plans/2026-11-16-design-gates-registration-and-journal.md)|
