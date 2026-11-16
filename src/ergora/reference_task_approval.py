@@ -292,7 +292,8 @@ def _source_seed(submission, preflight):
     from dev_platform.adapter import identifier
 
     job_id = identifier(preflight['receipt']['job_id'])
-    envelope = creation.document(creation.path('requests/' + creation.task_id + '/' + job_id + '.json'))
+    adapter = creation.file_adapter(submission.input)
+    envelope = creation.document(adapter.path('requests', creation.task_id + '/' + job_id + '.json'))
     context = envelope['context']
     if not submission.input.matches_context(context) or context['stage'] != 'plan':
         raise ValueError('Design source seed differs from its original plan job')

@@ -466,7 +466,7 @@ def _publish_design_source(state, project_id, task_id, operation_id, expected_re
     payload = {'task_id': task_id, 'operation_id': operation_id, 'source_operation': operation, 'source': body,
                'parent_record_sha256': parent_record_sha256, 'run_id': run_id, 'plan_sha256': plan_sha256,
                'preflight': preflight}
-    project, prepared = _native_prepare(state, project_id, expected_revision, reference.task_design_source,
+    project, prepared = _native_prepare(state, project_id, expected_revision, reference._prepare_design_source,
                                         'source-prepare', payload, timeout)
     return reference.task_design_source(project, state.root, 'source-commit',
         {'task_id': task_id, 'operation_id': operation_id,
@@ -498,7 +498,7 @@ def resume_design_operation(state: State, project_id: str, task_id: str, operati
     """Confirm/recover only the complete original source intent and managed bytes."""
     _digest(intent_sha256, 'Source intent')
     payload = {'task_id': task_id, 'operation_id': operation_id, 'intent_sha256': intent_sha256}
-    project, _ = _native_prepare(state, project_id, expected_revision, reference.task_design_source,
+    project, _ = _native_prepare(state, project_id, expected_revision, reference._prepare_design_source,
                                  'source-prepare-resume', payload, timeout)
     return reference.task_design_source(project, state.root, 'source-resume', payload, timeout=timeout)
 

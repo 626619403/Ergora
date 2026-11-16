@@ -20,6 +20,7 @@ from ergora.reference_task_creation import _Creation
 from test_registrations import installation, registration
 from test_task_creation import creation_project
 from test_task_submission import submitted_creation, native_client, _start
+from test_composition_tasks import composed_creation
 
 
 pytestmark = pytest.mark.skipif(sys.platform != 'linux', reason='Formal task operations use Linux/WSL2')
@@ -423,19 +424,40 @@ def test_json_source_cannot_satisfy_markdown_and_html_report_roles(pending_desig
 
 
 @pytest.fixture
-def native_design(
-        submitted_creation, native_client, pending_design, tmp_path):
+def native_design(submitted_creation, native_client, pending_design, tmp_path):
+    yield from native_design_world(submitted_creation, native_client, pending_design, tmp_path)
+
+
+@pytest.fixture
+def native_composed_design(composed_creation, native_client, pending_design, tmp_path):
+    state, registration, task = composed_creation
+    runtime = Path(registration['execution']['installation']) / '.venv'
+    if not runtime.exists():
+        runtime.symlink_to(sys.prefix, target_is_directory=True)
+    preview = tasks.preview(state, 'demo', task, 1)
+    created = tasks.create(state, 'demo', task, 1, preview['preview_sha256'])
+    yield from native_design_world((state, registration, task, created), native_client, pending_design, tmp_path)
+
+
+def native_design_world(submitted_creation, native_client, pending_design, tmp_path):
     # Keep the application dispatch, selected executable, native main, original
     # submission records and _plan real. Only the remote SDK connection is a port.
     _start(submitted_creation)
     state, definition, task, _ = submitted_creation
     project = state.project('demo')
     root = Path(definition['execution']['state_directory'])
-    spec = json.loads((root / 'tasks/new-task/task.spec.json').read_text())
+    document = json.loads((root / 'tasks/new-task/task.spec.json').read_text())
+    from ergora.reference_inputs import execution_input
+
+    selected = execution_input(document)
+    spec = selected.spec
+    flow = selected.workflow_type()()
+    flow.spec = spec
+    if hasattr(flow, 'admission'):
+        flow.admission = document
+    context = flow.context('plan')
     sha = pending_design.creation.sha
-    job_id = task['task_id'] + '-' + sha({'stage': 'plan'})[:24]
-    context = {'task_id': task['task_id'], 'job_id': job_id, 'stage': 'plan', 'spec': spec,
-               'request_sha256': spec['request_sha256'], 'profile_sha256': spec['profile_sha256']}
+    job_id = context['job_id']
     receipt = {'schema_version': 1, 'job_id': job_id, 'job_sha256': sha(context), 'state': 'SUCCEEDED', 'artifacts': []}
     write = pending_design.write
     for name in spec['profile']['artifacts_by_stage']['plan']:
@@ -446,7 +468,9 @@ def native_design(
         receipt['artifacts'].append({'name': name, 'path': path, 'sha256': hashlib.sha256(raw).hexdigest()})
     packet = deepcopy(pending_design.packet)
     packet.update(task_id=task['task_id'], request_sha256=spec['request_sha256'], profile_sha256=spec['profile_sha256'],
-                  admission_sha256=sha(spec), seed_plan_job_sha256=sha(context))
+                  admission_sha256=sha(document), seed_plan_job_sha256=sha(context))
+    if 'composition' in document:
+        packet['manifest_digest'] = document['composition']['manifest']['digest']
     packet['implementation_steps'][0]['work_unit_ids'] = [unit['id'] for unit in spec['request']['input']['work_units']]
     for source in packet['source_records']:
         old_path = source['body']['path']
@@ -458,17 +482,16 @@ def native_design(
     write(packet_path, packet)
     receipt['artifacts'].append({'name': 'design-packet', 'path': 'new-task/design/packet.json',
                                  'sha256': hashlib.sha256(packet_path.read_bytes()).hexdigest()})
-    write(root / ('requests/new-task/' + job_id + '.json'),
-          {'schema_version': 1, 'job_id': job_id, 'job_sha256': sha(context), 'context': context})
+    adapter_config = {**{name: str(root / name) for name in ('requests', 'receipts', 'artifacts', 'approvals', 'fences')},
+                      'trusted_receipts': True}
+    write(Path(definition['execution']['config_directory']) / 'adapter.json', adapter_config)
+    request_path = selected.adapter(adapter_config).path('requests', task['task_id'] + '/' + job_id + '.json')
+    write(request_path, {'schema_version': 1, 'job_id': job_id, 'job_sha256': sha(context), 'context': context})
     receipt_path = root / ('receipts/new-task/' + job_id + '.json')
     write(receipt_path, receipt)
-    write(Path(definition['execution']['config_directory']) / 'adapter.json', {
-        **{name: str(root / name) for name in ('requests', 'receipts', 'artifacts', 'approvals', 'fences')},
-        'trusted_receipts': True,
-    })
     server_path = root / 'sdk-fixture/server.json'
     server = json.loads(server_path.read_text())
-    server.update(plan_context=context, plan_sha256=sha(receipt))
+    server.update(plan_context=context, plan_sha256=sha(receipt), legacy_spec=spec, submit_activity=selected.submit_activity)
     write(server_path, server)
     runtime = Path(definition['execution']['installation']) / '.venv'
     assert runtime.is_symlink()
@@ -498,18 +521,21 @@ converter = DataConverter.default
 class Handle:
     async def describe(self, **kwargs):
         async def memo(): return server['memo']
-        return SimpleNamespace(run_id=server['run_id'], status=WorkflowExecutionStatus.RUNNING, memo=memo)
+        return SimpleNamespace(run_id=server['run_id'], status=(WorkflowExecutionStatus.COMPLETED if server.get('closed') else WorkflowExecutionStatus.RUNNING), memo=memo)
     async def query(self, method, **kwargs):
         assert method is DevelopmentWorkflow.status
-        return {'phase': 'AWAITING_PLAN_APPROVAL', 'request_sha256': server['spec']['request_sha256'],
+        return {'phase': 'AWAITING_PLAN_APPROVAL', 'request_sha256': server.get('legacy_spec', server['spec'])['request_sha256'],
                 'plan_sha256': server['plan_sha256']}
+    async def signal(self, method, value, **kwargs):
+        assert method is DevelopmentWorkflow.approve_plan
+        Path(SERVER).with_name('source-signals.json').write_text(json.dumps(value))
     async def fetch_history_events(self, **kwargs):
         event = HistoryEvent(event_id=1)
         event.workflow_execution_started_event_attributes.input.payloads.extend(await converter.encode([server['spec']]))
         yield event
         if kwargs['page_size'] == 100:
             event = HistoryEvent(event_id=2)
-            event.activity_task_scheduled_event_attributes.activity_type.name = 'dev_submit'
+            event.activity_task_scheduled_event_attributes.activity_type.name = server['submit_activity']
             event.activity_task_scheduled_event_attributes.input.payloads.extend(await converter.encode([server['plan_context']]))
             yield event
 class Client:
@@ -532,7 +558,8 @@ assert not any(name == 'jsonschema' or name.startswith('jsonschema.') for name i
     try:
         yield {'state': state, 'definition': definition, 'task': task, 'project': project, 'root': root,
             'packet': packet, 'receipt': receipt, 'receipt_path': receipt_path, 'packet_path': packet_path,
-            'server_path': server_path, 'server': server, 'marker': marker, 'write': write, 'sha': sha}
+            'server_path': server_path, 'server': server, 'marker': marker, 'write': write, 'sha': sha,
+            'input_version': selected.version, 'request_path': request_path}
     finally:
         interpreter.unlink()
         interpreter.parent.rmdir()
@@ -1191,7 +1218,9 @@ def test_every_public_source_mutation_validates_packet_before_native_dispatch(pe
     monkeypatch.setattr(reference, '_task_operation', forbidden)
     call = reference.task_design_source if reader == 'direct' else reference.task_approval
     with pytest.raises(ValueError, match='Design packet'):
-        call({}, Path('/'), 'source-prepare', {'source': body, 'source_operation': 'publish-design'}, timeout=20)
+        call({}, Path('/'), 'source-prepare', {'task_id': 'task-one', 'operation_id': 'invalid-packet',
+            'run_id': 'original-run', 'plan_sha256': 'a' * 64, 'parent_record_sha256': 'b' * 64,
+            'source': body, 'source_operation': 'publish-design'}, timeout=20)
 
 
 @pytest.mark.parametrize('delta', [-1, 0, 1])
@@ -1254,3 +1283,100 @@ def test_public_source_reader_cannot_expose_an_unvalidated_native_handoff(native
     with pytest.raises(ValueError, match='Design packet'):
         call(data['project'], data['state'].root, 'source-inspect', payload, timeout=20)
     assert source_state_snapshot(data) == before
+
+
+@pytest.mark.parametrize('reader', ['direct', 'approval'])
+def test_source_read_cannot_override_reserved_envelope_to_dispatch_old_approval(native_design, reader):
+    data = native_design
+    run = {'run_id': data['server']['run_id'], 'plan_sha256': data['sha'](data['receipt'])}
+    legacy = reference.task_approval(data['project'], data['state'].root, 'prepare',
+        {'task_id': data['task']['task_id'], 'decision_id': 'legacy-decision', **run}, timeout=20)
+    payload = {'task_id': data['task']['task_id'], 'operation_id': 'source-read', 'operation': 'dispatch',
+               'decision_id': 'legacy-decision', 'intent_sha256': legacy['approval']['intent_sha256']}
+    before = source_state_snapshot(data)
+    call = reference.task_design_source if reader == 'direct' else reference.task_approval
+    with pytest.raises(ValueError):
+        call(data['project'], data['state'].root, 'source-status', payload, timeout=20)
+    assert source_state_snapshot(data) == before
+    assert not data['server_path'].with_name('source-signals.json').exists()
+
+
+@pytest.mark.parametrize('reader', ['direct', 'approval'])
+def test_public_source_prepare_does_not_accept_a_caller_pending_claim(native_design, reader):
+    data = native_design
+    run, parent = source_context(data)
+    preflight = tasks.design(data['state'], 'demo', data['task']['task_id'], **run)
+    data['server']['closed'] = True
+    data['write'](data['server_path'], data['server'])
+    payload = {'task_id': data['task']['task_id'], 'operation_id': 'stale-observation',
+        'source_operation': 'publish-design', 'source': source_submission(data),
+        'parent_record_sha256': parent, **run, 'preflight': preflight}
+    before = source_state_snapshot(data)
+    call = reference.task_design_source if reader == 'direct' else reference.task_approval
+    with pytest.raises(ValueError):
+        call(data['project'], data['state'].root, 'source-prepare', payload, timeout=20)
+    assert source_state_snapshot(data) == before
+
+
+def test_public_first_source_prepare_itself_reads_the_original_live_seed(native_design, monkeypatch):
+    data = native_design
+    run, parent = source_context(data)
+    data['server']['closed'] = True
+    data['write'](data['server_path'], data['server'])
+    original = reference._task_operation
+    calls = []
+    def invoke(project, home, component, operation, payload, timeout):
+        calls.append(operation)
+        return original(project, home, component, operation, payload, timeout)
+    monkeypatch.setattr(reference, '_task_operation', invoke)
+    before = source_state_snapshot(data)
+    with pytest.raises(ValueError):
+        reference.task_design_source(data['project'], data['state'].root, 'source-prepare',
+            {'task_id': data['task']['task_id'], 'operation_id': 'closed-seed', 'source_operation': 'publish-design',
+             'source': source_submission(data), 'parent_record_sha256': parent, **run}, timeout=20)
+    assert calls == ['source-inspect']
+    assert source_state_snapshot(data) == before
+
+
+def test_source_anchor_and_offline_read_keep_the_actual_composition_request_root(native_composed_design):
+    data = native_composed_design
+    assert data['input_version'] == 2
+    assert data['request_path'].parent.parent.name == 'requests-composition-v2'
+    legacy = data['root'] / 'requests' / data['task']['task_id'] / data['request_path'].name
+    assert not legacy.exists()
+    result = publish_source(data)
+    assert result['status'] == 'committed'
+    data['server']['offline'] = True
+    data['write'](data['server_path'], data['server'])
+    before = source_state_snapshot(data)
+    restored = tasks.design_operation(data['state'], 'demo', data['task']['task_id'], 'source-one')
+    assert restored['status'] == 'committed' and restored['runtime_status'] == 'not_queried'
+    assert restored['design']['source_journal']['current_packet'] == result['design']['source_journal']['current_packet']
+    assert not legacy.exists() and source_state_snapshot(data) == before
+
+
+@pytest.mark.parametrize('reader', ['direct', 'approval'])
+def test_public_source_prepare_owns_valid_initial_inspection_and_commit(native_design, reader):
+    data = native_design
+    run, parent = source_context(data)
+    payload = {'task_id': data['task']['task_id'], 'operation_id': 'public-source', 'source_operation': 'publish-design',
+               'source': source_submission(data), 'parent_record_sha256': parent, **run}
+    call = reference.task_design_source if reader == 'direct' else reference.task_approval
+    prepared = call(data['project'], data['state'].root, 'source-prepare', payload, timeout=20)
+    assert prepared['created'] is True and prepared['source']['status'] == 'prepared'
+    result = call(data['project'], data['state'].root, 'source-commit',
+        {'task_id': data['task']['task_id'], 'operation_id': 'public-source',
+         'intent_sha256': prepared['source']['intent_sha256']}, timeout=20)
+    assert result['status'] == 'committed' and result['durable'] is True
+    assert result['design']['source_journal']['current_packet'] == payload['source']['packet']
+
+
+@pytest.mark.parametrize('reserved,value', [('project', {}), ('control_home', '/different-home'), ('timeout', 600)])
+def test_source_operation_cannot_replace_other_reserved_headers(native_design, monkeypatch, reserved, value):
+    data = native_design
+    def forbidden(*args, **kwargs):
+        raise AssertionError('A source request must reject reserved fields before native dispatch')
+    monkeypatch.setattr(reference, '_task_operation', forbidden)
+    with pytest.raises(ValueError, match='Design source operation payload'):
+        reference.task_design_source(data['project'], data['state'].root, 'source-status',
+            {'task_id': data['task']['task_id'], 'operation_id': 'read-only', reserved: value}, timeout=20)

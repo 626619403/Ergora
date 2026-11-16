@@ -880,20 +880,64 @@ def _validate_source_read(result, schema, profile):
             raise ValueError('Saved source text differs from its raw-byte identity')
 
 
-def task_design_source(project: dict, home: Path, operation: str, payload: dict, *, timeout: int) -> dict:
-    """Keep every public source reader/mutation at the application schema boundary."""
+def _source_request_payload(operation: str, payload: dict, *, local_prepare: bool = False) -> None:
+    from .contracts import validate
+
+    common = {'task_id': {'type': 'string', 'pattern': '^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$'},
+        'operation_id': {'type': 'string', 'pattern': '^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$'},
+        'run_id': {'type': 'string', 'minLength': 1, 'maxLength': 128},
+        **{name: {'type': 'string', 'pattern': '^[0-9a-f]{64}$'}
+           for name in ('plan_sha256', 'parent_record_sha256', 'intent_sha256')},
+        'source_operation': {'enum': ['publish-design', 'record-response']},
+        'source': {'type': 'object'}, 'preflight': {'type': 'object'}}
+    fields = {'source-inspect': ('task_id', 'run_id', 'plan_sha256'),
+        'source-status': ('task_id', 'operation_id'),
+        'source-prepare': ('task_id', 'operation_id', 'source_operation', 'source',
+                           'parent_record_sha256', 'run_id', 'plan_sha256'),
+        'source-prepare-resume': ('task_id', 'operation_id', 'intent_sha256'),
+        'source-commit': ('task_id', 'operation_id', 'intent_sha256'),
+        'source-resume': ('task_id', 'operation_id', 'intent_sha256')}.get(operation)
+    if fields is None:
+        raise ValueError('Unsupported design source operation')
+    if local_prepare and operation == 'source-prepare':
+        fields = (*fields, 'preflight')
+    validate(payload, {'type': 'object', 'additionalProperties': False, 'required': list(fields),
+                       'properties': {key: common[key] for key in fields}}, 'Design source operation payload')
+    if 'run_id' in payload and payload['run_id'].strip() != payload['run_id']:
+        raise ValueError('Design source run ID must retain its original bytes')
+
+
+def _prepare_design_source(project: dict, home: Path, operation: str, payload: dict, *, timeout: int) -> dict:
+    """Local revision-reservation phase; only checked tasks orchestration supplies preflight."""
     if type(timeout) is not int or not 1 <= timeout <= 60:
         raise ValueError('Design source timeout must be 1–60 seconds')
+    if operation not in ('source-prepare', 'source-prepare-resume'):
+        raise ValueError('Unsupported local source preparation')
+    _source_request_payload(operation, payload, local_prepare=True)
     if operation == 'source-prepare':
         validate_design_source_submission(payload['source'], payload['source_operation'])
+    result = _task_operation(project, home, 'approval', operation, payload, timeout)
+    if operation == 'source-prepare':
+        return {**result, 'source': _checked_design_result(result['source'])}
+    return _checked_design_result(result)
+
+
+def task_design_source(project: dict, home: Path, operation: str, payload: dict, *, timeout: int) -> dict:
+    """Public source operations own their observation and cannot replace transport headers."""
+    if type(timeout) is not int or not 1 <= timeout <= 60:
+        raise ValueError('Design source timeout must be 1–60 seconds')
+    _source_request_payload(operation, payload)
+    if operation == 'source-prepare':
+        validate_design_source_submission(payload['source'], payload['source_operation'])
+        preflight = task_design_source(project, home, 'source-inspect',
+            {key: payload[key] for key in ('task_id', 'run_id', 'plan_sha256')}, timeout=timeout)
+        return _prepare_design_source(project, home, operation, {**payload, 'preflight': preflight}, timeout=timeout)
     if operation in ('source-commit', 'source-resume'):
         prepared = _task_operation(project, home, 'approval', 'source-prepare-resume', payload, timeout)
         inventory = prepared['design_source_validation']['inventory_sha256']
         _checked_design_result(prepared)
         payload = {**payload, 'source_inventory_sha256': inventory}
     result = _task_operation(project, home, 'approval', operation, payload, timeout)
-    if operation == 'source-prepare':
-        return {**result, 'source': _checked_design_result(result['source'])}
     return _checked_design_result(result)
 
 
@@ -1002,8 +1046,8 @@ def _task_operation(project: dict, home: Path, component: str, operation: str, p
     try:
         result = subprocess.run([str(interpreter), '-P', '-c',
                                  f'from ergora.reference_task_{component} import main;main()'],
-                                input=json.dumps({'project': project, 'control_home': str(home), 'operation': operation,
-                                                  'timeout': timeout, **payload}, allow_nan=False),
+                                input=json.dumps({**payload, 'project': project, 'control_home': str(home),
+                                                  'operation': operation, 'timeout': timeout}, allow_nan=False),
                                 capture_output=True, text=True, encoding='utf-8', env=environment, timeout=timeout + 5)
     except subprocess.TimeoutExpired as error:
         if operation.startswith('source-'):
