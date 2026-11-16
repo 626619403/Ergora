@@ -80,6 +80,11 @@ def synthetic_execution(prepared, *, controller=None, ident='alpha'):
         from ergora.training_execution_protocol import source_capability
         owner['authorization_sha256'] = admission.authorization['sha256']
         owner['execution_capability'] = source_capability(Path(definition['execution']['installation']), ready)
+        original = admission.authorization['registration']
+        context = {'intent': intent, 'authorization': admission.authorization, 'policy': plan['definition']['budget'],
+            'project': plan['project'], 'published_project': registrations.published_project(state.root, project['id'],
+                original['operation_id'], original['intent_sha256'])}
+        owner['context_sha256'] = sha(context)
     write(prefix / (ident + '.budget/owner.json'), owner)
     native = {'schema_version': 1, 'job_id': 'local-perf-' + ident,
         'experiment': intent['observation']['experiment']['spec'],
@@ -953,6 +958,64 @@ def test_execute_startup_failure_keeps_the_consumed_launch_and_cleans_the_origin
         assert (job / 'managed-execution/launch.json').read_bytes() == launch
     finally:
         wait_budget_stopped(runtime, seconds=25)
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 30}], indirect=True)
+@pytest.mark.skipif(sys.platform != 'linux', reason='Real native publications and callback require Linux')
+@pytest.mark.parametrize('boundary,fault', [('attempt', 'source'), ('ack', 'root'), ('attempt', 'clock')])
+def test_native_final_publications_recheck_sources_root_and_original_clock(
+        controller_admission, cycle_selection, cycle_candidate, service, tmp_path, monkeypatch, boundary, fault):
+    from ergora import training_execution_protocol as protocol
+
+    state, _, _, _, admission = controller_admission
+    _, definition, runtime, _, _, _ = cycle_selection
+    marker = tmp_path / 'native-boundary'
+    copied = tmp_path / 'native-source-package'
+    shutil.copytree(Path(protocol.__file__).parent, copied / 'ergora', ignore=shutil.ignore_patterns('__pycache__'))
+    monkeypatch.setenv('ERGORA_TEST_NATIVE_PACKAGE', str(copied))
+    monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER', str(admission.folder))
+    monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER_PAUSE', boundary)
+    monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER_MARKER', str(marker))
+    monkeypatch.setenv('ERGORA_TEST_NATIVE_BOUNDARY_FAULT', fault)
+    try:
+        submitted = run_cycle_candidate(cycle_candidate)['submission']
+        created = native_budget_create(definition, 'alpha', managed=True)
+        assert created.returncode == 0, created.stderr
+        job = runtime / 'training/jobs/alpha'
+        native_request = (job / 'request.json').read_bytes()
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(training.execute, state, 'demo', 'alpha', 1, submitted['intent_sha256'],
+                submitted['run_id'], hashlib.sha256(native_request).hexdigest(), confirm=True)
+            try:
+                until = time.monotonic() + 15
+                while not marker.exists() and time.monotonic() < until:
+                    time.sleep(.02)
+                assert marker.exists(), 'The actual native publication must be reached'
+                if fault == 'source':
+                    path = copied / 'ergora/reference_creation_process.py'
+                    path.write_bytes(path.read_bytes() + b'\n')
+                elif fault == 'root':
+                    manifest = json.loads((copied / 'ergora/data/reference-manifest.json').read_bytes())
+                    path = copied / 'ergora/data/reference' / next(iter(manifest['files']))
+                    path.write_bytes(path.read_bytes() + b'\n')
+                assert not (job / 'started.json').exists()
+            finally:
+                marker.with_suffix('.release').touch()
+            assert future.result(timeout=12)['status'] == 'requested'
+        stop_controller_test_owner(runtime)
+        records = training.execution(state, 'demo', 'alpha')['records']
+        assert all(records[name] is not None for name in ('request', 'launch', 'attempt'))
+        assert (records['ack'] is not None) is (boundary == 'ack')
+        # A real S may record its actual reap after an ack. That stop is an
+        # execution observation, even though the callback never ran the runner.
+        assert (records['stopped'] is not None) is (boundary == 'ack')
+        assert (job / 'request.json').read_bytes() == native_request
+        assert not (job / 'started.json').exists() and not (job / 'result.json').exists()
+        assert json.loads(service[1].read_bytes())['starts'] == 1
+    finally:
+        marker.with_suffix('.release').touch()
+        stop_controller_test_owner(runtime)
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Native training start and recovery require Linux/WSL2')
@@ -2910,8 +2973,10 @@ def test_cycle_sdk_dispatch_rechecks_prepare_activity_source_after_attempt_sync(
         result = asyncio.run(environment('start').run(activities['start'], {'workflow_input': workflow_input, 'ordinal': 0}))
         assert markers.joinpath('candidate-activity-context-drift').exists()
         dispatch = next(item for item in result['operations'] if item['mode'] == 'dispatch-candidate')
+        # The final rejection can outlive the shared operation window, so its
+        # retained H output need not have an accepted parent stdout reference.
         raw = (admission.directory.parents[2] / 'operations/training-cycles' / dispatch['operation_id']
-               / dispatch['result']['ref']['file']).read_bytes()
+               / 'helper/stdout.txt').read_bytes()
         observed = json.loads(raw)
         assert observed['status'] == 'unknown' and 'activity context differs' in observed['reason']
         assert (runtime / 'ergora/training-submissions/alpha.attempt.json').exists()
@@ -3102,10 +3167,12 @@ def round_candidate(controller_admission, prepared, cycle_operation_fault, monke
     monkeypatch.setenv('AGENTFLOW_STATE_DIR', authorization['execution']['state_directory'])
     _, _, runtime, prefix, _, _ = prepared
 
-    def prepare_round(ordinal, predecessor):
+    def prepare_round(ordinal, predecessor, *, archive=True):
         source_binding = {**binding, 'controller': {**binding['controller'], 'ordinal': ordinal, 'predecessor': predecessor}}
         ident = plan['definition']['candidates'][ordinal]['experiment_id']
         synthetic_execution(prepared, controller=(plan, admission, ready, source_binding), ident=ident)
+        if not archive:
+            return
         archive = subprocess.run([sys.executable, '-P', str(Path(__file__).parent / 'fixtures/training_evidence_archive.py')],
             input=json.dumps({'runtime': str(runtime), 'prefix': str(prefix), 'preserve_manifest': True, 'experiment_id': ident}),
             env={**os.environ, 'PYTHONPATH': str(installation / 'upstream')}, capture_output=True, text=True, timeout=30)
@@ -3331,9 +3398,60 @@ def test_round_original_deadline_keeps_available_full_diagnostics(round_candidat
 @pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
 def test_round_complete_observation_capacity_uses_utf8_and_lf(round_candidate, cycle_operation_fault, monkeypatch):
     import asyncio
-    from ergora import training_execution_protocol as protocol
+    from ergora import training_execution_protocol as protocol, reference_training_worker as worker
 
-    state, _, _, operation, _ = round_candidate
+    state, admission, plan, operation, prepare = round_candidate
+    installation = Path(admission.authorization['execution']['installation'])
+    import temporalio
+    sdk_site = str(Path(temporalio.__file__).parent.parent)
+    isolated = state.root.parent / 'native-reader-package'
+    shutil.copytree(Path(protocol.__file__).parent, isolated / 'ergora', ignore=shutil.ignore_patterns('__pycache__'))
+    program = '''import sys,json
+sys.path.insert(0,sys.argv[1])
+if sys.argv[3]=='native':
+    sys.path.append(sys.argv[4])
+class WithoutApplication:
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname.split('.')[0] in ('yaml','jsonschema') or (
+                sys.argv[3]!='native' and fullname.split('.')[0]=='temporalio') or fullname in (
+                'ergora.state','ergora.training_rounds','ergora.registrations'):
+            raise AssertionError('Native reader imported application or SDK: '+fullname)
+sys.meta_path.insert(0,WithoutApplication())
+from ergora import training_execution_protocol as protocol
+try:
+    if sys.argv[3]=='native':
+        protocol.native_main(sys.argv[2])
+    else:
+        from pathlib import Path
+        context=json.load(sys.stdin)['cached']
+        authorization=context['authorization']
+        cycle=Path(authorization['control_home'])/'training-cycles'/authorization['project']/authorization['cycle_id']
+        protocol.authenticate_cycle_candidate(context['intent'],
+            protocol.decode(protocol.read_raw(cycle/'cycle.json',protocol.ARTIFACT_LIMIT)),
+            protocol.CycleAdmission(cycle,authorization),protocol.decode(protocol.read_raw(cycle/'ready.json')))
+        print(json.dumps({'authenticated':True,'executor_sdk_loaded':'temporalio' in sys.modules}))
+except ValueError as error:
+    print(json.dumps({'rejected':str(error),'executor_sdk_loaded':'temporalio' in sys.modules}))
+'''
+    environment = {**os.environ, 'AGENTFLOW_CONFIG_DIR': admission.authorization['execution']['config_directory'],
+        'AGENTFLOW_STATE_DIR': admission.authorization['execution']['state_directory'],
+        'PYTHONPATH': os.pathsep.join(str(installation / part) for part in
+            ('local', 'upstream/platform', 'upstream/temporal', 'upstream'))}
+
+    reader_results = []
+
+    def native_read(context, *, without_site=False):
+        mode = 'isolated-local' if without_site else 'native'
+        result = subprocess.run([str(installation / '.venv/bin/python'), '-P', '-B',
+            *(['-S'] if without_site else []), '-c', program, str(isolated), str(installation), mode, sdk_site],
+            input=json.dumps({'cached': context, 'phase': {}}),
+            env=environment, capture_output=True, text=True, timeout=15)
+        assert result.returncode == 0, result.stderr
+        observed = json.loads(result.stdout)
+        reader_results.append({'target': target, 'mode': mode, 'result': observed})
+        (state.root.parent / 'native-reader-results.json').write_text(json.dumps(reader_results, indent=2) + '\n')
+        return observed
+
     assert asyncio.run(operation().run())['facts']['measurement']['continuation_ready'] is True
     base = asyncio.run(operation('reconcile-round').run())
     base_bytes = base['facts']['measurement']['acceptance']['observation']['bytes']
@@ -3366,6 +3484,55 @@ def test_round_complete_observation_capacity_uses_utf8_and_lf(round_candidate, c
             assert result['facts']['measurement']['continuation_ready'] is True, result
             assert protocol.read_round_observation(acceptance['observation'], home=state.root,
                 operation_id=current.identity['operation_id']) == value
+            # These real consumers must read the entire large original before
+            # the retained effect closure. No source or verifier is fabricated.
+            prepare(1, {key: result['facts']['measurement'][key] for key in ('prefix', 'acceptance')},
+                    archive=target == protocol.ARTIFACT_LIMIT - 1)
+            op, intent, _ = worker._cycle_target(plan, admission, 1)
+            with pytest.raises(ValueError, match='Schema3 controller execution is not enabled'):
+                worker.BudgetedStart(op, intent).source()
+            original = admission.authorization['registration']
+            context = {'intent': intent, 'authorization': admission.authorization, 'policy': plan['definition']['budget'],
+                'project': plan['project'], 'published_project': registrations.published_project(state.root, 'demo',
+                    original['operation_id'], original['intent_sha256'])}
+            chain = protocol.ExecutionRecords(plan['project'], intent['experiment_id'], str(state.root)).load()
+            with pytest.raises(ValueError, match='Schema3 controller execution is not enabled'):
+                protocol.validate_context(context, chain, live=False)
+            if target == protocol.ARTIFACT_LIMIT - 1:
+                monkeypatch.setenv('ERGORA_TEST_ROUND_DETAIL', '0')
+                continued = asyncio.run(operation(ordinal=1).run())
+                assert continued['facts']['measurement']['continuation_ready'] is True, continued
+            # Synthetic stopped originals are only read. Removing this current
+            # candidate's synthetic result/started reaches the actual callback;
+            # it still cannot receive a schema3 execution grant.
+            for name in ('result.json', 'started.json'):
+                (chain.folder.parent / name).unlink(missing_ok=True)
+            before = {path: path.read_bytes() for path in chain.folder.rglob('*') if path.is_file()}
+            assert native_read(context, without_site=True) == {'authenticated': True, 'executor_sdk_loaded': False}
+            closed = {'rejected': 'Schema3 controller execution is not enabled', 'executor_sdk_loaded': True}
+            assert native_read(context) == closed
+            if target == protocol.ARTIFACT_LIMIT - 1:
+                # Drift a real copied package after its successful original
+                # authentication; the selected native installation stays valid.
+                root_file = next(iter(json.loads(
+                    (isolated / 'ergora/data/reference-manifest.json').read_bytes())['files']))
+                for relative in ('reference_creation_process.py', *protocol.MEASUREMENT_SOURCES,
+                                 'data/reference-manifest.json', 'data/reference/' + root_file):
+                    path = isolated / 'ergora' / relative
+                    raw_source = path.read_bytes()
+                    try:
+                        path.write_bytes(raw_source + b'\n')
+                        assert native_read(context) != closed
+                        if relative == 'data/reference-manifest.json':
+                            # The pure boundary checks the original owner's pin
+                            # before consuming a changed manifest. Native's
+                            # earlier selected-installation check also vetoes it.
+                            refused = native_read(context, without_site=True)
+                            assert 'gate source changed' in refused['rejected']
+                    finally:
+                        path.write_bytes(raw_source)
+            assert {path: path.read_bytes() for path in chain.folder.rglob('*') if path.is_file()} == before
+            assert not any((chain.folder.parent / name).exists() for name in ('result.json', 'started.json', 'repo.git', 'run-output'))
         else:
             assert result['status'] == 'capacity_exceeded' and 'facts' not in result, result
             ref = {'path': str(current.output / 'helper/observation.json'), 'bytes': len(raw),
@@ -3376,20 +3543,26 @@ def test_round_complete_observation_capacity_uses_utf8_and_lf(round_candidate, c
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Complete original prefix reauthentication runs in H')
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)
-@pytest.mark.parametrize('cycle_selection', [3], indirect=True)
+@pytest.mark.parametrize('cycle_selection', [4], indirect=True)
 @pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 40}], indirect=True)
-def test_round_every_early_prefix_and_original_predecessor_remain_required(round_candidate, cycle_operation_fault):
+@pytest.mark.parametrize('ordinal', [1, 3])
+def test_round_every_early_prefix_and_original_predecessor_remain_required(round_candidate, cycle_operation_fault, ordinal):
     import asyncio
     from ergora import training_execution_protocol as protocol, training_rounds
 
-    _, admission, _, operation, prepare = round_candidate
-    first = asyncio.run(operation().run())
-    assert first['facts']['measurement']['continuation_ready'] is True, first
-    predecessor = {key: first['facts']['measurement'][key] for key in ('prefix', 'acceptance')}
-    prepare(1, predecessor)
-    second = asyncio.run(operation(ordinal=1).run())
-    assert second['facts']['measurement']['continuation_ready'] is True, second
-    prepare(2, {key: second['facts']['measurement'][key] for key in ('prefix', 'acceptance')})
+    from ergora import reference_training_worker as worker, training_cycles
+
+    state, admission, plan, operation, prepare = round_candidate
+    for index in range(ordinal):
+        observed = asyncio.run(operation(ordinal=index).run())
+        assert observed['facts']['measurement']['continuation_ready'] is True, observed
+        prepare(index + 1, {key: observed['facts']['measurement'][key] for key in ('prefix', 'acceptance')})
+    op, intent, _ = worker._cycle_target(plan, admission, ordinal)
+    ready = training_cycles._load(state.root, 'demo', 'controller', admission.directory)[2]
+    originals = protocol.authenticate_cycle_candidate(intent, plan, admission, ready)
+    assert [value['identity']['ordinal'] for _, value, _, _ in originals] == list(range(ordinal - 1, -1, -1))
+    with pytest.raises(ValueError, match='Schema3 controller execution is not enabled'):
+        worker.BudgetedStart(op, intent).source()
     earliest = admission.folder / 'rounds/0/rounds.json'
     original = earliest.read_bytes()
     report = training_rounds.read(earliest.parent)['report']
@@ -3399,10 +3572,37 @@ def test_round_every_early_prefix_and_original_predecessor_remain_required(round
     earliest.write_bytes(protocol.encode_round_content(report))
     assert training_rounds.read(earliest.parent)['report']['rounds'][0]['annotation']['change'] != 'Synthetic alpha'
     try:
-        result = asyncio.run(operation(ordinal=2).run())
-        assert result['status'] == 'unknown' and not (admission.folder / 'rounds/2').exists(), result
+        with pytest.raises(ValueError, match='complete raw original index'):
+            protocol.authenticate_cycle_candidate(intent, plan, admission, ready)
+        result = asyncio.run(operation(ordinal=ordinal).run())
+        assert result['status'] == 'unknown' and not (admission.folder / ('rounds/' + str(ordinal))).exists(), result
     finally:
         earliest.write_bytes(original)
+    if ordinal == 3:
+        _, oldest, original_intent, _ = originals[-1]
+        execution_root = Path(original_intent['execution']['state_directory'])
+        paths = [execution_root / 'ergora/training-submissions' / (original_intent['experiment_id'] + '.attempt.json')]
+        archived = next(name for name in oldest['evidence']['files'] if name.endswith('_archive_meta/compare_runs.py'))
+        paths.append(execution_root / archived.removeprefix('state/'))
+        source_reply = state.root / 'operations/training-cycles' / oldest['identity']['operation_id'] / 'helper/stdout.txt'
+        paths.append(source_reply)
+        for path in paths:
+            raw = path.read_bytes()
+            try:
+                if path == source_reply:
+                    reply = json.loads(raw)
+                    reply['facts']['measurement']['continuation_ready'] = 1
+                    path.write_text(json.dumps(reply))
+                else:
+                    # Preserve JSON semantics for the start record. The native
+                    # inventory and archive mapping must still catch raw drift.
+                    path.write_bytes(raw + b'\n')
+                with pytest.raises(ValueError) as refused:
+                    worker.BudgetedStart(op, intent).source()
+                assert 'Schema3 controller execution is not enabled' not in str(refused.value)
+                assert not (admission.folder / 'rounds/3').exists()
+            finally:
+                path.write_bytes(raw)
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Original S/H result loss and existing-only recovery require Linux')

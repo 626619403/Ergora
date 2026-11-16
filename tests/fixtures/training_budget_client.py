@@ -25,6 +25,9 @@ if (os.environ.get('ERGORA_TEST_TRAINING_CONTROLLER_PAUSE') in ('attempt', 'ack'
     worker_command = reference.worker_command
     def paused_native_command(installation, **kwargs):
         command = worker_command(installation, **kwargs)
+        if os.environ.get('ERGORA_TEST_NATIVE_PACKAGE'):
+            command[-1] = command[-1].replace(repr(str(Path(reference.__file__).parent.parent)),
+                                            repr(os.environ['ERGORA_TEST_NATIVE_PACKAGE']))
         fixture = str(Path(__file__).with_name('training_controller_pause.py'))
         sdk_site = str(Path(sys.modules['temporalio'].__file__).parent.parent)
         command[-1] = command[-1].replace('import ergora;sys.path.pop(0);',

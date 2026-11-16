@@ -19,10 +19,7 @@ from .state import State, file_lock, now
 MAX_PLAN_BYTES = 10_000_000
 MAX_RECORD_BYTES = 1_048_576
 _SCHEMA = json.loads((Path(__file__).parent / 'data/schemas/training-cycle-v1.json').read_text(encoding='utf-8'))
-_COMMON = ('baseline_id', 'baseline_commit', 'base_config_sha256', 'workload_fingerprint',
-           'dataset_manifest_sha256', 'initial_checkpoint_sha256', 'environment_fingerprint',
-           'validation_contract_sha256', 'comparison_tool_sha256', 'checks_required',
-           'quality_required', 'performance_policy')
+_COMMON = training_execution_protocol.ROUND_COMMON
 _COVERAGE = {'records': 'saved-local-admission', 'runtime_status': 'not_queried',
              'origin_authenticated': False, 'execution_authorized': False, 'budget_started': False}
 

@@ -353,6 +353,9 @@ class _Submission(_TrainingProject):
                 if len(raw) > _INTENT_LIMIT:
                     raise ValueError('Training submission intent exceeds its 16 MiB aggregate read capacity; nothing was dispatched')
                 self.core.write(self.path('.intent.json'), intent)
+                if 'budget' in intent:
+                    training_cycles._sync_directory(self.path('.intent.json').parent)
+                    budgets.BudgetedStart(self, intent).require_active()
                 return {'created': True, 'submission': self.status(intent)}
             if intent is None or self.payload['intent_sha256'] != self.sha(intent):
                 raise ValueError('Training resume requires the exact original intent SHA')

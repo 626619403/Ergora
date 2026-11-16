@@ -32,4 +32,12 @@ def install():
             publish(path, value, root)
             if path.name == boundary + '.json':
                 pause()
+                if os.environ.get('ERGORA_TEST_NATIVE_BOUNDARY_FAULT') == 'clock':
+                    from datetime import timedelta
+                    original = protocol.budget_clock.datetime
+                    class DriftedDateTime(original):
+                        @classmethod
+                        def now(cls, tz=None):
+                            return original.now(tz) + timedelta(seconds=10)
+                    protocol.budget_clock.datetime = DriftedDateTime
         protocol.publish = paused_publish
