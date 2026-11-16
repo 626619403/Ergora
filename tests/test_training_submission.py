@@ -1997,6 +1997,8 @@ def cycle_operation_fault(monkeypatch, tmp_path):
     async def invoke(*argv, **kwargs):
         if argv[-1] == 'from ergora.reference_training_worker import cycle_operation_main;cycle_operation_main()':
             argv = [argv[0], '-P', str(fixture), 'S']
+        elif argv[-1] == 'from ergora.reference_training_worker import cycle_request_retention_main;cycle_request_retention_main()':
+            argv = [argv[0], '-P', str(fixture), 'D']
         return await original(*argv, **kwargs)
 
     monkeypatch.setattr(asyncio, 'create_subprocess_exec', invoke)
@@ -3112,7 +3114,7 @@ def round_candidate(controller_admission, prepared, cycle_operation_fault, monke
     cycle_operation_fault('round-accepted')
     snapshot = worker._cycle_snapshot(plan, authorization)
 
-    def operation(mode='collect-round', *, attempt=1, window=None, ordinal=0):
+    def operation(mode='collect-round', *, attempt=1, window=None, ordinal=0, reason=None):
         context = {'workflow_input': admission.controller_intent()['workflow_input'], 'service_namespace': 'default',
             'activity_source': {'workflow_id': binding['controller']['workflow_id'],
                 'workflow_run_id': binding['controller']['run_id'], 'workflow_type': 'TrainingCycleWorkflowV2',
@@ -3123,7 +3125,7 @@ def round_candidate(controller_admission, prepared, cycle_operation_fault, monke
         return worker._CycleOperation(state.root, 'demo', 'controller', authorization['sha256'], mode,
             snapshot=snapshot, ordinal=ordinal, start_context={'controller': json.loads((runtime / (
                 'ergora/training-submissions/' + plan['definition']['candidates'][ordinal]['experiment_id'] + '.intent.json'
-                )).read_bytes())['budget']['controller']}, activity_context=context, window=window)
+                )).read_bytes())['budget']['controller']}, activity_context=context, window=window, reason=reason)
     return state, admission, plan, operation, prepare_round
 
 
@@ -3556,3 +3558,348 @@ def test_round_new_wire_bounds_complete_stdout_and_identity_frame(round_candidat
                     assert result['reason'] == marker + 'x' * padding
                 else:
                     assert current.result_ref['sha256'] == hashlib.sha256(actual_stdout).hexdigest()
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original diagnostic S and fd durability require Linux')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
+def test_round_parent_request_retention_keeps_same_original_encoding(round_candidate, monkeypatch, caplog):
+    import asyncio
+    from ergora import reference_training_worker as worker
+
+    state, admission, plan, operation, _ = round_candidate
+    # The existing internal producer owns UUID, validation and the one encoding.
+    # Its source records/services are synthetic; no SDK v3 creator is registered.
+    original = json.dumps
+    encodings = []
+    def encode(value, *args, **kwargs):
+        raw = original(value, *args, **kwargs)
+        if isinstance(value, dict) and 'snapshot' in value and value.get('identity', {}).get('protocol') == 'ergora-training-cycle-operation-v2':
+            encodings.append(raw.encode('utf-8'))
+        return raw
+    monkeypatch.setattr(worker.json, 'dumps', encode)
+    current = operation(reason='原始秘密🧪' * 12000)
+    assert len(encodings) == 1 and current.encoded == encodings[0] and not current.encoded.endswith(b'\n')
+    identity = dict(current.identity)
+    before = {path: path.read_bytes() for path in admission.directory.rglob('*') if path.is_file()}
+    result = asyncio.run(current.run())
+    assert result['status'] == 'capacity_exceeded', result
+    retained = result['request_retention']
+    assert retained['status'] == 'durable_confirmed' and retained['waited'] and retained['returncode'] == 0, result
+    assert current.identity == identity and current.result_ref is None and current.sent
+    raw = (current.output / 'request.json').read_bytes()
+    assert raw == encodings[0] and len(encodings) == 1
+    assert retained['ref'] == {'file': 'request.json', 'bytes': len(raw), 'sha256': hashlib.sha256(raw).hexdigest()}
+    assert not result['operation_stopped'] and result['supervisor_returncode'] is None
+    assert {path.name for path in current.output.iterdir()} == {'request.json'}
+    assert all(path.read_bytes() == value for path, value in before.items())
+    assert '原始秘密' not in caplog.text and current.identity['operation_id'] in caplog.text
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original diagnostic S and fd durability require Linux')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
+def test_round_parent_request_capacity_boundary_keeps_normal_wire(round_candidate, cycle_operation_fault):
+    import asyncio
+
+    _, _, _, operation, _ = round_candidate
+    cycle_operation_fault('round-accepted')
+    base = operation(reason='a')
+    for size in (32768, 32769):
+        current = operation(reason='a' * (size - len(base.encoded) + 1))
+        assert len(current.encoded) == size
+        result = asyncio.run(current.run())
+        assert (current.output / 'request.json').read_bytes() == current.encoded
+        if size == 32768:
+            assert result['status'] == 'observed' and result['operation_stopped'], result
+            assert (current.output / 'helper').is_dir() and 'request_retention' not in result
+        else:
+            assert result['status'] == 'capacity_exceeded', result
+            assert result['request_retention']['status'] == 'durable_confirmed', result
+            assert not (current.output / 'helper').exists()
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original diagnostic S and fd durability require Linux')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
+@pytest.mark.parametrize('fault', ['retention-partial', 'retention-fsync', 'retention-replace', 'retention-corrupt',
+    'retention-reply-loss', 'retention-confirm-sha', 'retention-confirm-identity', 'retention-confirm-ordinal',
+    'retention-confirm-parent-pid', 'retention-confirm-extra', 'occupied'])
+def test_round_parent_request_faults_preserve_unknown_and_originals(round_candidate, cycle_operation_fault, fault):
+    import asyncio
+    from ergora import processes
+
+    _, _, _, operation, _ = round_candidate
+    markers = cycle_operation_fault(fault)
+    current = operation(mode='reconcile-round', reason='原raw🧪' * 12000)
+    path = current.output / 'request.json'
+    if fault == 'occupied':
+        current.output.mkdir(parents=True)
+        path.write_bytes(b'original partial')
+    result = asyncio.run(current.run())
+    assert result['status'] == 'capacity_exceeded' and current.result_ref is None, result
+    retained = result['request_retention']
+    assert retained['status'] == 'unknown' and 'ref' not in retained and retained['waited'], result
+    assert retained['returncode'] is not None and not result['operation_stopped']
+    assert result['supervisor_returncode'] is None and not (current.output / 'helper').exists()
+    assert current.process.returncode is not None
+    if fault == 'occupied':
+        assert path.read_bytes() == b'original partial'
+    elif fault == 'retention-partial':
+        assert path.read_bytes() == current.encoded[:17]
+    elif fault == 'retention-corrupt':
+        assert path.read_bytes() == b'!' + current.encoded[1:]
+    else:
+        assert path.read_bytes() == current.encoded
+    if (markers / 'retention-confirmation').exists():
+        assert json.loads((markers / 'retention-confirmation').read_bytes())['bytes'] <= 32768
+    with pytest.raises((OSError, ValueError)):
+        processes.identity(current.process.pid)
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original diagnostic S and fd durability require Linux')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
+@pytest.mark.parametrize('size_delta', [-1, 1])
+def test_round_parent_request_stream_requires_actual_n_and_eof(round_candidate, cycle_operation_fault, size_delta):
+    import asyncio
+    from ergora import reference_training_worker as worker
+
+    _, _, _, operation, _ = round_candidate
+    cycle_operation_fault('retention-stream')
+    current = operation(reason='x' * 100000)
+    envelope = worker._request_retention_envelope(current.payload, len(current.encoded) + size_delta)
+    control = json.dumps(envelope, separators=(',', ':')).encode()
+    assert len(control) <= 32768
+    # Retain the same real S/stream/storage; corrupt only the declared N.
+    async def invoke():
+        process = await asyncio.create_subprocess_exec(sys.executable, '-P', '-c',
+            'from ergora.reference_training_worker import cycle_request_retention_main;cycle_request_retention_main()',
+            stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+        stdout, stderr = await process.communicate(control + b'\n' + current.encoded)
+        assert process.returncode != 0 and not stdout
+    asyncio.run(invoke())
+    saved = (current.output / 'request.json').read_bytes()
+    assert saved == current.encoded[:min(len(current.encoded), len(current.encoded) + size_delta)]
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original diagnostic S watchdog requires Linux')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
+def test_round_parent_request_watchdog_rejects_full_clock_while_parent_cannot_check(
+        round_candidate, cycle_operation_fault, monkeypatch):
+    import asyncio
+    import signal
+    from ergora import budget_clock, processes
+
+    _, _, _, operation, _ = round_candidate
+    markers = cycle_operation_fault('retention-clock-drift')
+    current = operation(reason='x' * 100000)
+    # The test parent cannot perform the clock rejection: only the S-local
+    # datetime seam shifts UTC, and its main thread blocks inside real fsync.
+    monkeypatch.setattr(current, 'expired', lambda: False)
+    async def invoke():
+        running = asyncio.create_task(current.run())
+        deadline = time.monotonic() + 5
+        while not (markers / 'retention-sync').exists():
+            assert time.monotonic() < deadline
+            await asyncio.sleep(.01)
+        identity = json.loads((markers / 'retention-sync').read_bytes())
+        time.sleep(.4)  # Deliberately prevent the parent loop from monitoring S.
+        with pytest.raises((OSError, ValueError)):
+            processes.identity(identity['pid'])
+        return await running
+    result = asyncio.run(invoke())
+    assert budget_clock._clock()[1] < current.payload['bootstrap']['deadline_ns']
+    assert result['request_retention'] == {'status': 'unknown', 'waited': True, 'returncode': -signal.SIGKILL}, result
+    assert not current.signalled and not (markers / 'retention-confirmation').exists()
+    assert (current.output / 'request.json').read_bytes() == current.encoded
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original diagnostic S and async cancellation require Linux')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
+def test_round_parent_request_cancel_waits_blocked_writer_and_finishes_peers(round_candidate, cycle_operation_fault):
+    import asyncio
+    from ergora import processes
+
+    _, _, _, operation, _ = round_candidate
+    markers = cycle_operation_fault('retention-blocked')
+    blocked = operation(reason='x' * 200000)
+    peer = operation(mode='reconcile-round', reason='y' * 200000)
+    async def invoke():
+        running = asyncio.create_task(blocked.run())
+        deadline = time.monotonic() + 5
+        while not (markers / 'retention-sync').exists():
+            assert time.monotonic() < deadline
+            await asyncio.sleep(.01)
+        # A distinct real peer is runnable before cancellation/cleanup begins.
+        # Its child inherits the new fault choice at its own spawn.
+        os.environ['ERGORA_TEST_CYCLE_OPERATION'] = 'retention-stream'
+        other = asyncio.create_task(peer.run())
+        running.cancel()
+        results = await asyncio.gather(running, other, return_exceptions=True)
+        assert isinstance(results[0], asyncio.CancelledError)
+        assert results[1]['request_retention']['status'] == 'durable_confirmed', results
+    asyncio.run(invoke())
+    assert blocked.request_retention['status'] == 'unknown' and blocked.request_retention['waited']
+    assert blocked.process.returncode is not None and peer.process.returncode == 0
+    assert (blocked.output / 'request.json').read_bytes() == blocked.encoded
+    assert (peer.output / 'request.json').read_bytes() == peer.encoded
+    for current in (blocked, peer):
+        with pytest.raises((OSError, ValueError)):
+            processes.identity(current.process.pid)
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Real parent SIGKILL and S watchdog require Linux')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
+def test_round_parent_request_watchdog_survives_actual_parent_sigkill(round_candidate, cycle_operation_fault):
+    import ctypes
+    import signal
+    from ergora import budget_clock, processes
+
+    _, _, _, operation, _ = round_candidate
+    markers = cycle_operation_fault('retention-blocked')
+    original = operation(reason='父原raw🧪' * 12000)
+    libc = ctypes.CDLL(None, use_errno=True)
+    previous = ctypes.c_int()
+    assert libc.prctl(37, ctypes.byref(previous), 0, 0, 0) == 0
+    assert libc.prctl(36, 1, 0, 0, 0) == 0
+    fixture = Path(__file__).parent / 'fixtures/training_cycle_operations.py'
+    parent = subprocess.Popen([sys.executable, '-P', str(fixture), 'P'], stdin=subprocess.PIPE,
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    writer = None
+    reaped = False
+    try:
+        parent.stdin.write(original.encoded)
+        parent.stdin.close()
+        deadline = time.monotonic() + 5
+        while not (markers / 'retention-sync').exists():
+            assert parent.poll() is None and time.monotonic() < deadline
+            time.sleep(.01)
+        writer = json.loads((markers / 'retention-sync').read_bytes())
+        saved = json.loads((markers / 'retention-parent').read_bytes())
+        assert processes.identity(parent.pid) == saved['identity']
+        assert saved['operation']['parent'] == saved['identity']
+        assert (Path(saved['output']) / 'request.json').stat().st_size == saved['bytes']
+        parent.kill()
+        assert parent.wait(timeout=5) == -signal.SIGKILL
+        deadline = time.monotonic() + 5
+        while Path('/proc/' + str(writer['pid'])).exists():
+            waited, status = os.waitpid(writer['pid'], os.WNOHANG)
+            if waited:
+                assert os.waitstatus_to_exitcode(status) == -signal.SIGKILL
+                reaped = True
+                break
+            assert time.monotonic() < deadline
+            time.sleep(.01)
+        assert reaped and not Path('/proc/' + str(writer['pid'])).exists()
+        assert not (markers / 'retention-confirmation').exists()
+        assert budget_clock._clock()[1] < original.payload['bootstrap']['deadline_ns']
+        assert parent.stdout.read() == b''
+    finally:
+        if parent.poll() is None:
+            parent.kill()
+        parent.wait()
+        for stream in (parent.stdout, parent.stderr):
+            stream.close()
+        if writer is not None and not reaped:
+            try:
+                processes.notify_identity(writer, signal.SIGKILL)
+            except (OSError, ValueError):
+                pass
+            os.waitpid(writer['pid'], 0)
+        assert libc.prctl(36, previous.value, 0, 0, 0) == 0
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Diagnostic S cancellation retains real Linux handles')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
+@pytest.mark.parametrize('boundary', ['spawn', 'send', 'loop'])
+def test_round_parent_request_cancellation_retains_spawn_pipe_and_wait(
+        round_candidate, cycle_operation_fault, monkeypatch, boundary):
+    import asyncio
+    from ergora import processes
+
+    _, _, _, operation, _ = round_candidate
+    markers = cycle_operation_fault('retention-blocked-write')
+    current = operation(reason='x' * 2_000_000)
+    async def invoke():
+        created, release = asyncio.Event(), asyncio.Event()
+        original_create = asyncio.create_subprocess_exec
+        async def hold(*argv, **kwargs):
+            process = await original_create(*argv, **kwargs)
+            created.set()
+            await release.wait()
+            return process
+        if boundary == 'spawn':
+            monkeypatch.setattr(asyncio, 'create_subprocess_exec', hold)
+        running = asyncio.create_task(current.run())
+        deadline = time.monotonic() + 5
+        try:
+            if boundary == 'spawn':
+                while not created.is_set():
+                    assert time.monotonic() < deadline
+                    await asyncio.sleep(.01)
+            else:
+                while not (markers / 'retention-write').exists():
+                    assert time.monotonic() < deadline
+                    await asyncio.sleep(.01)
+                assert not current.sent  # Actual pipe backpressure leaves raw pending.
+            if boundary == 'loop':
+                return
+            running.cancel()
+        finally:
+            release.set()
+        with pytest.raises(asyncio.CancelledError):
+            await running
+    asyncio.run(invoke())
+    assert current.process is not None and current.process.returncode is not None
+    assert current.request_retention['status'] == 'unknown' and current.request_retention['waited']
+    assert not current.sent and current.result_ref is None
+    with pytest.raises((OSError, ValueError)):
+        processes.identity(current.process.pid)
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original streaming diagnostic S requires Linux')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
+def test_round_parent_request_chunks_keep_original_bytes_and_loop_fair(round_candidate, cycle_operation_fault, monkeypatch):
+    import asyncio
+
+    _, _, _, operation, _ = round_candidate
+    cycle_operation_fault('retention-stream')
+    current = operation(reason='原raw🧪' * 150000)
+    writes, beats = [], []
+    async def invoke():
+        original_create = asyncio.create_subprocess_exec
+        async def capture(*argv, **kwargs):
+            process = await original_create(*argv, **kwargs)
+            stream = process.stdin
+            class Stream:
+                def __getattr__(self, name):
+                    return getattr(stream, name)
+                def write(self, raw):
+                    if isinstance(raw, memoryview):
+                        assert raw.obj is current.encoded and len(raw) <= 65536
+                        writes.append((len(raw), len(beats)))
+                    return stream.write(raw)
+            process.stdin = Stream()
+            return process
+        monkeypatch.setattr(asyncio, 'create_subprocess_exec', capture)
+        async def heartbeat():
+            while True:
+                beats.append(time.monotonic())
+                await asyncio.sleep(0)
+        ticking = asyncio.create_task(heartbeat())
+        try:
+            result = await current.run()
+        finally:
+            ticking.cancel()
+            await asyncio.gather(ticking, return_exceptions=True)
+        assert result['request_retention']['status'] == 'durable_confirmed', result
+    asyncio.run(invoke())
+    assert sum(size for size, _ in writes) == len(current.encoded)
+    assert len(writes) > 2 and all(b > a for (_, a), (_, b) in zip(writes, writes[1:]))
+    assert (current.output / 'request.json').read_bytes() == current.encoded

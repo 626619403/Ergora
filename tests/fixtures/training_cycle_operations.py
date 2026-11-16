@@ -11,18 +11,132 @@ import time
 from ergora import processes, reference, training_cycles, training_execution_protocol as protocol
 from ergora import reference_training_worker as worker
 
-raw = sys.stdin.buffer.read()
-payload = json.loads(raw)
-sys.stdin = io.TextIOWrapper(io.BytesIO(raw), encoding='utf-8')
 stage, fault = sys.argv[1], os.environ['ERGORA_TEST_CYCLE_OPERATION']
 markers = Path(os.environ['ERGORA_TEST_CYCLE_MARKERS'])
-mode = payload['identity']['mode']
 
 
 def mark(name, value=None):
     pending = markers / (name + '-' + str(os.getpid()) + '.pending')
     pending.write_text(json.dumps(processes.identity(os.getpid()) if value is None else value))
     pending.replace(markers / name)
+
+
+if stage == 'D':
+    # Branch before the ordinary fixture's read-all/JSON wrapper: this is the
+    # real streaming entry, watchdog, fd operations and one actual S process.
+    from ergora import budget_clock
+    synchronize, write = os.fsync, os.write
+    partial = False
+
+    def request_fd(descriptor):
+        return Path('/proc/self/fd/' + str(descriptor)).resolve().name == 'request.json'
+
+    def retention_sync(descriptor):
+        if request_fd(descriptor):
+            mark('retention-sync')
+            if fault in ('retention-blocked', 'retention-clock-drift'):
+                if fault == 'retention-clock-drift':
+                    from datetime import timedelta
+                    original_datetime = budget_clock.datetime
+                    class DriftedDateTime(original_datetime):
+                        @classmethod
+                        def now(cls, tz=None):
+                            return original_datetime.now(tz) + timedelta(seconds=10)
+                    budget_clock.datetime = DriftedDateTime
+                time.sleep(60)
+            if fault == 'retention-fsync':
+                raise OSError('Injected request synchronization failure')
+            if fault in ('retention-replace', 'retention-corrupt'):
+                path = Path('/proc/self/fd/' + str(descriptor)).resolve()
+                if fault == 'retention-replace':
+                    replacement = path.with_name('replacement')
+                    replacement.write_bytes(path.read_bytes())
+                    replacement.replace(path)
+                else:
+                    with path.open('r+b') as stream:
+                        stream.write(b'!')
+        return synchronize(descriptor)
+
+    def retention_write(descriptor, raw):
+        global partial
+        if fault == 'retention-blocked-write' and request_fd(descriptor):
+            mark('retention-write')
+            time.sleep(60)
+        if fault == 'retention-partial' and request_fd(descriptor):
+            if partial:
+                raise OSError('Injected disk write failure after a short write')
+            partial = True
+            return write(descriptor, raw[:17])
+        return write(descriptor, raw)
+
+    class Confirmation:
+        def write(self, raw):
+            mark('retention-confirmation', {'bytes': len(raw) - 1})
+            if fault == 'retention-reply-loss':
+                return len(raw)
+            if fault in ('retention-confirm-sha', 'retention-confirm-identity', 'retention-confirm-ordinal', 'retention-confirm-parent-pid', 'retention-confirm-extra'):
+                value = json.loads(raw)
+                if fault == 'retention-confirm-sha':
+                    value['ref']['sha256'] = '0' * 64
+                elif fault == 'retention-confirm-identity':
+                    value['identity']['parent']['start_ticks'] += '0'
+                elif fault == 'retention-confirm-ordinal':
+                    value['identity']['ordinal'] = False
+                elif fault == 'retention-confirm-parent-pid':
+                    value['identity']['parent']['pid'] = float(value['identity']['parent']['pid'])
+                raw = json.dumps(value, separators=(',', ':')).encode() + b'\n'
+                if fault == 'retention-confirm-extra':
+                    raw += b'{}\n'
+                sys.__stdout__.buffer.write(raw)
+                # The entry checks the return count against its original frame.
+                return len(original_confirmation)
+            return sys.__stdout__.buffer.write(raw)
+        def flush(self):
+            sys.__stdout__.buffer.flush()
+
+    class Output:
+        buffer = Confirmation()
+        def flush(self):
+            self.buffer.flush()
+
+    # Mutated confirmations still present a successful local write to the S;
+    # only the parent's final identity/raw/whole-frame check may reject them.
+    original_output = sys.stdout
+    original_confirmation = b''
+    output_write = Output.buffer.write
+    def confirmation_write(raw):
+        global original_confirmation
+        original_confirmation = raw
+        return output_write(raw)
+    Output.buffer.write = confirmation_write
+    sys.stdout = Output()
+    os.fsync, os.write = retention_sync, retention_write
+    mark('retention-started')
+    worker.cycle_request_retention_main()
+    raise SystemExit(0)
+
+
+raw = sys.stdin.buffer.read()
+payload = json.loads(raw)
+sys.stdin = io.TextIOWrapper(io.BytesIO(raw), encoding='utf-8')
+mode = payload['identity']['mode']
+
+
+if stage == 'P':
+    original_create = worker.asyncio.create_subprocess_exec
+    async def diagnostic(*argv, **kwargs):
+        if argv[-1] == 'from ergora.reference_training_worker import cycle_request_retention_main;cycle_request_retention_main()':
+            argv = [argv[0], '-P', __file__, 'D']
+        return await original_create(*argv, **kwargs)
+    worker.asyncio.create_subprocess_exec = diagnostic
+    current = worker._CycleOperation(Path(payload['identity']['control_home']), payload['identity']['project'],
+        payload['identity']['cycle_id'], payload['identity']['authorization_sha256'], payload['identity']['mode'],
+        snapshot=payload['snapshot'], ordinal=payload['identity']['ordinal'], reason=payload['reason'],
+        window=payload['bootstrap'], start_context=payload['start_context'], activity_context=payload['activity_context'])
+    mark('retention-parent', {'identity': processes.identity(os.getpid()), 'operation': current.identity,
+        'bytes': len(current.encoded), 'output': str(current.output)})
+    worker.asyncio.run(current.run())
+    raise SystemExit(0)
 
 
 if stage == 'S':
