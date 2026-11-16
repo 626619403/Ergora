@@ -422,7 +422,8 @@ def test_json_source_cannot_satisfy_markdown_and_html_report_roles(pending_desig
         ('/html_ref', 'report_media_type_mismatch', 'text/html')}
 
 
-def test_application_task_plan_uses_selected_native_python_without_jsonschema(
+@pytest.fixture
+def native_design(
         submitted_creation, native_client, pending_design, tmp_path):
     # Keep the application dispatch, selected executable, native main, original
     # submission records and _plan real. Only the remote SDK connection is a port.
@@ -471,6 +472,7 @@ def test_application_task_plan_uses_selected_native_python_without_jsonschema(
     write(server_path, server)
     runtime = Path(definition['execution']['installation']) / '.venv'
     assert runtime.is_symlink()
+    original_runtime = runtime.readlink()
     runtime.unlink()
     (runtime / 'bin').mkdir(parents=True)
     marker = tmp_path / 'native-boundary.json'
@@ -515,7 +517,10 @@ class Client:
     def get_workflow_handle(self, workflow_id, *, run_id, result_type):
         assert workflow_id == 'dev-task/new-task' and run_id == server['run_id'] and result_type is dict
         return Handle()
-async def connect(): return Client()
+async def connect():
+    if server.get('offline'):
+        raise RuntimeError('Original service is unavailable')
+    return Client()
 connection.connect = connect
 exec(sys.argv[3])
 assert not any(name == 'jsonschema' or name.startswith('jsonschema.') for name in sys.modules)
@@ -524,6 +529,23 @@ assert not any(name == 'jsonschema' or name.startswith('jsonschema.') for name i
     interpreter = runtime / 'bin/python'
     interpreter.write_text('#!/bin/sh\nexec ' + shlex.quote(sys.executable) + ' -B -S ' + shlex.quote(str(bootstrap)) + ' "$@"\n')
     interpreter.chmod(0o700)
+    try:
+        yield {'state': state, 'definition': definition, 'task': task, 'project': project, 'root': root,
+            'packet': packet, 'receipt': receipt, 'receipt_path': receipt_path, 'packet_path': packet_path,
+            'server_path': server_path, 'server': server, 'marker': marker, 'write': write, 'sha': sha}
+    finally:
+        interpreter.unlink()
+        interpreter.parent.rmdir()
+        runtime.rmdir()
+        runtime.symlink_to(original_runtime, target_is_directory=True)
+
+
+def test_application_task_plan_uses_selected_native_python_without_jsonschema(native_design):
+    data = native_design
+    state, root, project = data['state'], data['root'], data['project']
+    task, server, sha, marker = data['task'], data['server'], data['sha'], data['marker']
+    packet, receipt, write = data['packet'], data['receipt'], data['write']
+    packet_path, receipt_path, server_path = data['packet_path'], data['receipt_path'], data['server_path']
     before = snapshot(root)
     payload = {'task_id': task['task_id'], 'run_id': server['run_id'], 'plan_sha256': sha(receipt)}
     readers = ((reference.task_plan, (project, state.root, payload)),
@@ -762,3 +784,473 @@ def test_cli_and_api_forward_the_exact_read_request_without_confirmation(tmp_pat
     assert client.get('/api/projects/demo/tasks/task-one/plan',
                       params={'run_id': 'original-run', 'plan_sha256': 'bad'}).status_code == 400
     assert len(seen) == 2
+
+
+
+def test_source_journal_preserves_two_complete_rounds_and_offline_answers(native_design):
+    """Actual application/native readers retain originals without owner authority."""
+    data = native_design
+    state, root, task_id = data['state'], data['root'], data['task']['task_id']
+    sha, server, write = data['sha'], data['server'], data['write']
+    run = {'run_id': server['run_id'], 'plan_sha256': sha(data['receipt'])}
+    revision = state.project('demo')['revision']
+    immutable = {str(p.relative_to(root)): p.read_bytes() for name in ('tasks', 'ergora/task-creations',
+        'ergora/task-submissions', 'approvals', 'fences') for p in (root / name).rglob('*') if p.is_file()}
+    inspected = tasks.design(state, 'demo', task_id, **run)
+    journal = inspected['design']['source_journal']
+    parent = journal['source_chain_sha256']
+    packet = data['packet']
+    full_text = []
+    for number, origin in [(1, 'reported-human'), (2, 'agent')]:
+        previous = packet
+        packet = deepcopy(previous)
+        packet.update(revision=previous['revision'] + 1, previous_packet_sha256=sha(previous))
+        bodies = []
+        for record in packet['source_records']:
+            if record['access'] != 'full':
+                continue
+            body = record['body']
+            text = ('# Round ' + str(number) + '\r\n\r\n完整原文与验收取舍。\r\n'
+                    if record['id'] == packet['report_ref'] else
+                    (root / 'artifacts' / body['path']).read_bytes().decode('utf-8'))
+            raw = text.encode('utf-8')
+            suffix = {'text/plain': 'txt', 'text/markdown': 'md', 'text/html': 'html', 'application/json': 'json'}[body['media_type']]
+            record['body'] = {'path': f'{task_id}/design/{hashlib.sha256(raw).hexdigest()}/body.{suffix}',
+                'sha256': hashlib.sha256(raw).hexdigest(), 'bytes': len(raw), 'media_type': body['media_type']}
+            bodies.append({**record['body'], 'text': text})
+        submission = {'schema_version': 1, 'packet': packet, 'bodies': bodies}
+        published = tasks.publish_design(state, 'demo', task_id, 'round-' + str(number), revision,
+            submission, parent_record_sha256=parent, **run)
+        assert published['status'] == 'committed' and published['durable'] is True
+        journal = published['design']['source_journal']
+        parent = journal['source_chain_sha256']
+        answer_text = '原答复 ' + str(number) + ': approve everything? 仍需有权处理。\r\n'
+        answer = {'schema_version': 1, 'response': {'id': 'answer-' + str(number),
+            'question_ids': [packet['questions'][0]['id']], 'packet_content_sha256': sha(packet),
+            'choice_ids': [], 'source_refs': [packet['report_ref']], 'authored_by': 'reported-author',
+            'origin': origin, 'supersedes_response_id': None},
+            'body': {'media_type': 'text/plain', 'text': answer_text}}
+        recorded = tasks.record_design_response(state, 'demo', task_id, 'answer-' + str(number), revision,
+            answer, parent_record_sha256=parent, **run)
+        assert recorded['status'] == 'committed'
+        parent = recorded['design']['source_journal']['source_chain_sha256']
+        full_text.extend([next(item['text'] for item in bodies if item['path'] ==
+                               next(source['body']['path'] for source in packet['source_records'] if source['id'] == packet['report_ref'])), answer_text])
+        # New rounds use only original artifacts published by the source owner.
+        assert all((root / 'artifacts' / item['path']).read_bytes() == item['text'].encode('utf-8') for item in bodies)
+    server['offline'] = True
+    write(data['server_path'], server)
+    before = snapshot(root)
+    restored = tasks.design(type(state)(state.root), 'demo', task_id, **run)
+    journal = restored['design']['source_journal']
+    assert restored['runtime_status'] == 'not_queried'
+    assert journal['material_revision'] == 5 and len(journal['records']) == 4
+    assert journal['current_packet'] == packet and journal['source_chain_sha256'] == parent
+    assert len(journal['responses']) == 2
+    assert all(text in [item['text'] for item in journal['bodies']] for text in full_text)
+    assert restored['design']['readiness']['ready'] is False
+    assert restored['design']['capabilities'] == {'approve_design': False, 'resolve_questions': False, 'execute': False}
+    assert restored['design']['actor_assurance']['status'] == 'unavailable'
+    assert tasks.design_operation(state, 'demo', task_id, 'missing')['status'] == 'not_recorded'
+    assert snapshot(root) == before
+    assert {name: (root / name).read_bytes() for name in immutable} == immutable
+    assert not list((root / 'ergora/task-approvals' / task_id).glob('*.attempt.json'))
+    server['offline'] = False
+    write(data['server_path'], server)
+    online = tasks.plan(state, 'demo', task_id, **run)
+    assert online['design']['packet'] == data['packet']
+    assert online['design']['source_journal']['current_packet'] == packet
+    assert 'design_read' not in online and 'design_source_read' not in online
+
+
+def source_submission(data, previous=None, texts=None):
+    previous = data['packet'] if previous is None else previous
+    packet = deepcopy(previous)
+    packet.update(revision=previous['revision'] + 1, previous_packet_sha256=data['sha'](previous))
+    bodies = []
+    for record in packet['source_records']:
+        if record['access'] != 'full':
+            continue
+        ref = record['body']
+        text = ((texts or {}).get(record['id']) if record['id'] in (texts or {}) else
+                (data['root'] / 'artifacts' / ref['path']).read_bytes().decode('utf-8'))
+        raw = text.encode('utf-8')
+        suffix = {'text/plain': 'txt', 'text/markdown': 'md', 'text/html': 'html', 'application/json': 'json'}[ref['media_type']]
+        ref.update(path=f"{data['task']['task_id']}/design/{hashlib.sha256(raw).hexdigest()}/body.{suffix}",
+                   sha256=hashlib.sha256(raw).hexdigest(), bytes=len(raw))
+        bodies.append({**ref, 'text': text})
+    return {'schema_version': 1, 'packet': packet, 'bodies': bodies}
+
+
+def source_context(data):
+    run = {'run_id': data['server']['run_id'], 'plan_sha256': data['sha'](data['receipt'])}
+    view = tasks.design(data['state'], 'demo', data['task']['task_id'], **run)['design']['source_journal']
+    return run, view['source_chain_sha256']
+
+
+def publish_source(data, operation_id='source-one', body=None, parent=None):
+    run, current = source_context(data)
+    return tasks.publish_design(data['state'], 'demo', data['task']['task_id'], operation_id,
+        data['state'].project('demo')['revision'], source_submission(data) if body is None else body,
+        parent_record_sha256=current if parent is None else parent, **run)
+
+
+def source_state_snapshot(data):
+    with data['state'].connect() as db:
+        logical = tuple(db.iterdump())
+    return (snapshot(data['root']), snapshot(Path(data['definition']['execution']['config_directory'])), logical)
+
+
+def inject_source(monkeypatch, code):
+    original = reference.subprocess.run
+    def invoke(argv, **kwargs):
+        if 'from ergora.reference_task_approval import main;main()' in argv:
+            argv = list(argv)
+            argv[-1] = 'from ergora.reference_task_approval import main\n' + code + '\nmain()'
+        return original(argv, **kwargs)
+    monkeypatch.setattr(reference.subprocess, 'run', invoke)
+
+
+@pytest.mark.parametrize('point', ['intent', 'body', 'result'])
+def test_source_same_id_resume_uses_full_intent_after_real_native_exit(native_design, monkeypatch, tmp_path, point):
+    data = native_design
+    run, parent = source_context(data)
+    body = source_submission(data, texts={data['packet']['report_ref']: '# Original interrupted report\r\n完整原文。\r\n'})
+    body_file = tmp_path / 'source.json'
+    body_file.write_text(json.dumps(body, ensure_ascii=False), encoding='utf-8-sig')
+    if point == 'intent':
+        code = '''import os
+from ergora import reference_task_approval as owner
+original = owner._source_confirm
+def interrupted(creation, path, expected):
+    original(creation, path, expected)
+    if path.name == 'source-exit.intent.json': os._exit(73)
+owner._source_confirm = interrupted'''
+    elif point == 'body':
+        code = '''import os
+from ergora import reference_task_approval as owner
+original = owner._source_publish_body
+def interrupted(creation, item):
+    original(creation, item)
+    os._exit(73)
+owner._source_publish_body = interrupted'''
+    else:
+        code = '''import os
+from dev_platform import adapter
+original = adapter.publish
+def interrupted(path, value):
+    if value.get('kind') == 'task-design-source-commit': os._exit(73)
+    return original(path, value)
+adapter.publish = interrupted'''
+    from ergora import cli
+    with monkeypatch.context() as fault:
+        inject_source(fault, code)
+        output = io.StringIO()
+        with patch('sys.stdout', output):
+            assert cli.main(['--home', str(data['state'].root), 'task', 'design', 'publish', 'demo',
+                data['task']['task_id'], '--operation-id', 'source-exit', '--revision', str(data['project']['revision']),
+                '--run-id', run['run_id'], '--plan-sha256', run['plan_sha256'],
+                '--parent-record-sha256', parent, '--body-file', str(body_file)]) != 0
+    directory = data['root'] / 'ergora/task-approvals' / data['task']['task_id']
+    intent_path = directory / 'source-exit.intent.json'
+    saved = intent_path.read_bytes()
+    intent = json.loads(saved)
+    assert intent['submission'] == body
+    assert not (directory / 'source-exit.result.json').exists()
+    body_file.unlink()
+    data['server']['offline'] = True
+    data['write'](data['server_path'], data['server'])
+    before = source_state_snapshot(data)
+    observed = tasks.design_operation(data['state'], 'demo', data['task']['task_id'], 'source-exit')
+    assert observed['status'] == 'prepared' and observed['durable'] is None
+    assert observed['design']['source_journal']['current_packet'] == data['packet']
+    assert source_state_snapshot(data) == before
+    with pytest.raises(ValueError, match='pending design source operation'):
+        publish_source(data, operation_id='different-id', body=body, parent=parent)
+    assert source_state_snapshot(data) == before
+    restored = tasks.resume_design_operation(data['state'], 'demo', data['task']['task_id'], 'source-exit',
+        data['project']['revision'], data['sha'](intent))
+    assert restored['status'] == 'committed' and restored['durable'] is True
+    assert restored['design']['source_journal']['current_packet'] == body['packet']
+    assert intent_path.read_bytes() == saved
+    assert all((data['root'] / 'artifacts' / item['path']).read_bytes() == item['text'].encode('utf-8')
+               for item in body['bodies'])
+    assert not list(directory.glob('*.attempt.json'))
+
+
+def test_source_idempotence_parent_and_schema1_namespaces_preserve_originals(native_design):
+    data = native_design
+    run, parent = source_context(data)
+    body = source_submission(data)
+    first = publish_source(data, body=body, parent=parent)
+    before = source_state_snapshot(data)
+    repeated = publish_source(data, body=body, parent=parent)
+    assert repeated['intent_sha256'] == first['intent_sha256']
+    assert source_state_snapshot(data) == before
+    changed = deepcopy(body)
+    changed['packet']['problem'] += ' Different original content.'
+    with pytest.raises(ValueError, match='conflicts'):
+        publish_source(data, body=changed, parent=parent)
+    with pytest.raises(ValueError, match='parent changed'):
+        publish_source(data, operation_id='stale-parent', body=body, parent=parent)
+    assert source_state_snapshot(data) == before
+    # The original approval owner refuses a source ID before its own receipt/signal.
+    with pytest.raises(ValueError, match='approval intent'):
+        tasks.approve(data['state'], 'demo', data['task']['task_id'], 'source-one', data['project']['revision'],
+                      **run, confirm=True)
+    assert source_state_snapshot(data) == before
+    approved = reference.task_approval(data['project'], data['state'].root, 'prepare',
+        {'task_id': data['task']['task_id'], 'decision_id': 'old-approval', **run}, timeout=20)
+    assert approved['created'] is True and approved['approval']['status'] == 'prepared'
+    before = source_state_snapshot(data)
+    with pytest.raises(ValueError, match='another task approval|schema1 approval'):
+        publish_source(data, operation_id='old-approval', body=body)
+    assert source_state_snapshot(data) == before
+
+
+def test_source_reads_do_not_repair_bad_committed_body_and_explicit_resume_does(native_design):
+    data = native_design
+    result = publish_source(data)
+    journal = result['design']['source_journal']
+    body = next(item for item in journal['bodies'] if item['media_type'] == 'text/markdown')
+    path = data['root'] / 'artifacts' / body['path']
+    original = path.read_bytes()
+    path.unlink()
+    before = source_state_snapshot(data)
+    run = {'run_id': data['server']['run_id'], 'plan_sha256': data['sha'](data['receipt'])}
+    with pytest.raises(ValueError, match='regular file|No such file'):
+        tasks.design(data['state'], 'demo', data['task']['task_id'], **run)
+    assert source_state_snapshot(data) == before
+    restored = tasks.resume_design_operation(data['state'], 'demo', data['task']['task_id'], 'source-one',
+        data['project']['revision'], result['intent_sha256'])
+    assert restored['durable'] is True and path.read_bytes() == original
+    path.write_bytes(b'Different bytes')
+    before = source_state_snapshot(data)
+    with pytest.raises(ValueError, match='differs'):
+        tasks.resume_design_operation(data['state'], 'demo', data['task']['task_id'], 'source-one',
+            data['project']['revision'], result['intent_sha256'])
+    assert source_state_snapshot(data) == before
+
+
+@pytest.mark.parametrize('fault', ['unknown-question', 'owner-channel', 'client-recorder'])
+def test_source_response_rejects_unknown_or_trusted_claims_before_intent(native_design, fault):
+    data = native_design
+    initial = publish_source(data)
+    packet = initial['design']['source_journal']['current_packet']
+    body = {'schema_version': 1, 'response': {'id': 'response-one', 'question_ids': [packet['questions'][0]['id']],
+        'packet_content_sha256': data['sha'](packet), 'choice_ids': [], 'source_refs': [],
+        'authored_by': 'reported-author', 'origin': 'reported-human', 'supersedes_response_id': None},
+        'body': {'media_type': 'text/plain', 'text': 'Original exact answer'}}
+    if fault == 'unknown-question':
+        body['response']['question_ids'] = ['unknown-question']
+    elif fault == 'owner-channel':
+        body['response']['origin'] = 'owner-channel'
+    else:
+        body['response']['recorded_by'] = 'pretend-owner'
+    before = source_state_snapshot(data)
+    with pytest.raises(ValueError, match='unknown packet questions|human_channel_unavailable'):
+        tasks.record_design_response(data['state'], 'demo', data['task']['task_id'], 'bad-response',
+            data['project']['revision'], body, parent_record_sha256=initial['design']['source_journal']['source_chain_sha256'],
+            run_id=data['server']['run_id'], plan_sha256=data['sha'](data['receipt']))
+    assert source_state_snapshot(data) == before
+
+
+def test_source_read_uses_existing_creation_lock_without_creating_or_replacing_it(native_design):
+    import fcntl
+
+    data = native_design
+    publish_source(data)
+    lock = data['root'] / 'ergora/task-creations' / (data['task']['task_id'] + '.lock')
+    run = {'run_id': data['server']['run_id'], 'plan_sha256': data['sha'](data['receipt'])}
+    with lock.open('r+b') as held:
+        fcntl.flock(held.fileno(), fcntl.LOCK_EX)
+        before = source_state_snapshot(data)
+        with pytest.raises(ValueError, match='read_unavailable'):
+            tasks.design(data['state'], 'demo', data['task']['task_id'], **run)
+        assert source_state_snapshot(data) == before
+    lock.unlink()
+    before = source_state_snapshot(data)
+    with pytest.raises(ValueError, match='No such file'):
+        tasks.design(data['state'], 'demo', data['task']['task_id'], **run)
+    assert source_state_snapshot(data) == before and not lock.exists()
+
+
+def test_plan_without_packet_does_not_inspect_a_source_journal(pending_plan):
+    data = pending_plan
+    original = data.creation.path
+    def path(relative):
+        if relative.startswith('ergora/task-approvals/'):
+            raise AssertionError('A packetless old plan must not inspect source storage')
+        return original(relative)
+    data.creation.path = path
+    result = inspect(data)
+    assert 'design' not in result
+
+
+def test_source_parallel_preparations_cannot_fork_one_parent(native_design, tmp_path):
+    from concurrent.futures import ThreadPoolExecutor
+
+    data = native_design
+    run, parent = source_context(data)
+    body = source_submission(data)
+    errors = []
+    def publish(operation_id):
+        try:
+            return tasks.publish_design(type(data['state'])(data['state'].root), 'demo', data['task']['task_id'],
+                operation_id, data['project']['revision'], deepcopy(body), parent_record_sha256=parent, **run)
+        except ValueError as error:
+            errors.append(str(error))
+            assert any(word in str(error) for word in ('pending', 'parent changed', 'unavailable', 'locked'))
+            return None
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        results = list(pool.map(publish, ['parallel-one', 'parallel-two']))
+    successful = [item for item in results if item is not None]
+    assert len(successful) <= 1
+    journal = tasks.design(data['state'], 'demo', data['task']['task_id'], **run)['design']['source_journal']
+    directory = data['root'] / 'ergora/task-approvals' / data['task']['task_id']
+    assert len(list(directory.glob('*.intent.json'))) == 1
+    (tmp_path / 'parallel-outcomes.json').write_text(json.dumps({'errors': errors,
+        'successful_calls': len(successful), 'pending': journal['pending']}, indent=2))
+    if not successful:
+        # Local prepare is deliberately nonblocking. Competing calls may leave
+        # the sole accepted intent pending; only that exact ID may recover it.
+        pending, = journal['pending']
+        restored = tasks.resume_design_operation(data['state'], 'demo', data['task']['task_id'],
+            pending['operation_id'], data['project']['revision'], pending['intent_sha256'])
+        journal = restored['design']['source_journal']
+    assert len(journal['records']) == 1 and not journal['pending']
+    assert journal['current_packet'] == body['packet']
+    assert len(list(directory.glob('*.result.json'))) == 1
+
+
+@pytest.mark.parametrize('fault', ['commit-parent', 'unsupported-version', 'orphan-result'])
+def test_source_bad_chain_never_falls_back_or_repairs_on_get(native_design, fault):
+    data = native_design
+    publish_source(data)
+    directory = data['root'] / 'ergora/task-approvals' / data['task']['task_id']
+    if fault == 'commit-parent':
+        path = directory / 'source-one.result.json'
+        value = json.loads(path.read_bytes())
+        value['parent_record_sha256'] = '0' * 64
+        data['write'](path, value)
+    elif fault == 'unsupported-version':
+        path = directory / 'source-one.intent.json'
+        value = json.loads(path.read_bytes())
+        value['schema_version'] = 3
+        data['write'](path, value)
+    else:
+        (directory / 'source-one.intent.json').unlink()
+    before = source_state_snapshot(data)
+    with pytest.raises(ValueError, match='differs|Unsupported|no original intent'):
+        tasks.design(data['state'], 'demo', data['task']['task_id'], run_id=data['server']['run_id'],
+                     plan_sha256=data['sha'](data['receipt']))
+    assert source_state_snapshot(data) == before
+
+
+@pytest.mark.parametrize('boundary', ['intent', 'inspection', 'journal'])
+def test_source_full_aggregate_capacity_rejects_before_publication(native_design, boundary):
+    data = native_design
+    contract = json.loads((Path(reference.__file__).parent / 'data/design-profiles/design-source-storage-v1.json').read_text())
+    if boundary == 'inspection':
+        length = contract['limits']['artifact_bytes']
+        texts = {record['id']: 'x' * length for record in data['packet']['source_records'] if record['access'] == 'full'}
+        body = source_submission(data, texts=texts)
+        body['storage_limits'] = {'inspection_bytes': contract['limits']['inspection_bytes'] // 2}
+    else:
+        body = source_submission(data)
+        key = 'intent_bytes' if boundary == 'intent' else 'journal_bytes'
+        body['storage_limits'] = {key: len(json.dumps(body, ensure_ascii=False).encode('utf-8'))}
+    before = source_state_snapshot(data)
+    with pytest.raises(ValueError, match='limit|exceed'):
+        publish_source(data, body=body)
+    assert source_state_snapshot(data) == before
+
+
+def test_source_actual_native_intent_above_old_default_read_limit_round_trips(native_design):
+    data = native_design
+    contract = json.loads((Path(reference.__file__).parent / 'data/design-profiles/design-source-storage-v1.json').read_text())
+    length = contract['limits']['artifact_bytes']
+    texts = {record['id']: 'x' * length for record in data['packet']['source_records'] if record['access'] == 'full'}
+    body = source_submission(data, texts=texts)
+    result = publish_source(data, body=body)
+    intent_path = data['root'] / 'ergora/task-approvals' / data['task']['task_id'] / 'source-one.intent.json'
+    assert intent_path.stat().st_size > 1_048_576
+    assert result['status'] == 'committed'
+    returned = tasks.design_operation(data['state'], 'demo', data['task']['task_id'], 'source-one')
+    for text in texts.values():
+        assert text in [item['text'] for item in returned['design']['source_journal']['bodies']]
+    assert returned['intent_sha256'] == result['intent_sha256']
+
+
+@pytest.mark.parametrize('reader', ['direct', 'approval'])
+def test_every_public_source_mutation_validates_packet_before_native_dispatch(pending_design, monkeypatch, reader):
+    body = {'schema_version': 1, 'packet': deepcopy(pending_design.packet), 'bodies': []}
+    del body['packet']['problem']
+    def forbidden(*args, **kwargs):
+        raise AssertionError('Unvalidated source must never enter the native writer')
+    monkeypatch.setattr(reference, '_task_operation', forbidden)
+    call = reference.task_design_source if reader == 'direct' else reference.task_approval
+    with pytest.raises(ValueError, match='Design packet'):
+        call({}, Path('/'), 'source-prepare', {'source': body, 'source_operation': 'publish-design'}, timeout=20)
+
+
+@pytest.mark.parametrize('delta', [-1, 0, 1])
+def test_source_artifact_boundary_uses_valid_nondefault_storage_limits(native_design, delta):
+    data = native_design
+    run, parent = source_context(data)
+    seed = tasks.design(data['state'], 'demo', data['task']['task_id'], **run)
+    maximum = max(item['bytes'] for item in seed['materials'])
+    report = 'x' * (maximum + delta)
+    body = source_submission(data, texts={data['packet']['report_ref']: report})
+    body['storage_limits'] = {'artifact_bytes': maximum}
+    before = source_state_snapshot(data)
+    if delta > 0:
+        with pytest.raises(ValueError, match='byte size|artifact limit'):
+            publish_source(data, body=body, parent=parent)
+        assert source_state_snapshot(data) == before
+    else:
+        result = publish_source(data, body=body, parent=parent)
+        view = result['design']['source_journal']
+        assert view['storage_profile']['limits']['artifact_bytes'] == maximum
+        assert report in [item['text'] for item in view['bodies']]
+
+
+def test_source_visible_result_does_not_substitute_for_durability_confirmation(native_design, monkeypatch):
+    data = native_design
+    code = '''from ergora import reference_task_approval as owner
+original = owner._source_confirm
+def confirmation(creation, path, expected):
+    if path.name.endswith('.result.json'):
+        raise OSError('Injected result directory confirmation failure')
+    return original(creation, path, expected)
+owner._source_confirm = confirmation'''
+    with monkeypatch.context() as fault:
+        inject_source(fault, code)
+        with pytest.raises(ValueError, match='confirmation failure'):
+            publish_source(data)
+    before = source_state_snapshot(data)
+    observed = tasks.design_operation(data['state'], 'demo', data['task']['task_id'], 'source-one')
+    assert observed['status'] == 'committed' and observed['durable'] is None
+    assert source_state_snapshot(data) == before
+    intent_path = data['root'] / 'ergora/task-approvals' / data['task']['task_id'] / 'source-one.intent.json'
+    original = intent_path.read_bytes()
+    restored = tasks.resume_design_operation(data['state'], 'demo', data['task']['task_id'], 'source-one',
+        data['project']['revision'], observed['intent_sha256'])
+    assert restored['status'] == 'committed' and restored['durable'] is True
+    assert intent_path.read_bytes() == original
+
+
+@pytest.mark.parametrize('reader', ['direct', 'approval'])
+def test_public_source_reader_cannot_expose_an_unvalidated_native_handoff(native_design, monkeypatch, reader):
+    data = native_design
+    publish_source(data)
+    payload = {'task_id': data['task']['task_id'], 'run_id': data['server']['run_id'],
+               'plan_sha256': data['sha'](data['receipt'])}
+    raw = reference._task_operation(data['project'], data['state'].root, 'approval', 'source-inspect', payload, 20)
+    del raw['design_source_read']['current_packet']['problem']
+    before = source_state_snapshot(data)
+    monkeypatch.setattr(reference, '_task_operation', lambda *args: deepcopy(raw))
+    call = reference.task_design_source if reader == 'direct' else reference.task_approval
+    with pytest.raises(ValueError, match='Design packet'):
+        call(data['project'], data['state'].root, 'source-inspect', payload, timeout=20)
+    assert source_state_snapshot(data) == before
