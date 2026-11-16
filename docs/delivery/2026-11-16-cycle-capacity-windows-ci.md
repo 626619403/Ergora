@@ -45,7 +45,7 @@
 
 原stdout／stderr、JUnit、完整argv、测试前后hash、PID／start ticks及wait后absent均保存在 `r1/`。上述本地replay不认证真实Windows通过。新的[fresh两轴独审](2026-11-16-cycle-capacity-windows-ci-review.md)已完成：需求approve／维护性approve，开放source findings0；文档的三类wrapper失败与已完成probe描述已同片复核关闭。源码普通提交 `0478a6dc21e0c65cae9027835ae122f35b3bb94d`，普通无冲突合入 `99c85030e35834a751ea6069e2310506a73ccf43`；完整测试文件仍为上述f98c SHA，`git diff --exit-code 6cec589 -- src`为零。修正没有产品源码变化。普通推送及远端完整OID已核；准确e5候选自己的CI已终态8/8 success，见下节；本地9过6skip和Linux15过仍只保留本地范围。
 
-S2隔离树现有7路径首稿，native持久化／source APIs／CLI声明已有初稿；r4局部源码原reader＋完整两轮离线答复2过（pytest41.26秒／JUnit41.240秒，runner43.530秒），完整故障／准入／新安装／fresh实现独审／自身CI仍待，未合入发布；此次 CI 失败与修正证据不转授 S2。原联合安装32过保留自己的本地范围；设计执行、schema3 训练效果和可信人类批准继续关闭。总体状态见[联合交付](2026-11-16-design-capacity-integration.md)与[当前计划](../PLAN.md)。
+S2隔离R1已冻结7592，有112节点多label通过并集与新安装30过，但原结构Codex模板request-changes，正独立R2修复，全部未合入／发布或ready；此次 CI 失败与修正证据不转授 S2。原联合安装32过保留自己的本地范围；设计执行、schema3 训练效果和可信人类批准继续关闭。总体状态见[联合交付](2026-11-16-design-capacity-integration.md)与[当前计划](../PLAN.md)。
 
 准确新发布：根已普通推送 `e5a35558f29f11eed62c6dd28450da6d39f232df` 并以git ls-remote核完整OID同一，`publication-r2/push.json`／`remote.json`保存原件。该提交包括0478修正／99c合入、fresh源码独审报告及已审PROJECTS82c／WINDOWS13ea。自己的官方run `43840394544` 绑定完整e5，`publication-r2/checks-web-00.html`／`.json`首次观察为plan1 success、7 in progress；当时尚无终态，后继8/8成功见下节，原7fc失败永久保留。
 

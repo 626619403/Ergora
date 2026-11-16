@@ -10,11 +10,13 @@
 
 S1原17受影响节点新安装通过，新fresh独审关闭F1/P2。V2b新安装41节点及两场N32均过，每场66分支；两个原结构模板都以已授权Codex回退完成。联合wheel `20068f1a…` 的core／SDK各669runtime文件同一，283参考、依赖及**联合32项／135.20秒**通过。709采样自有进程终核absent，2095份tracked输入与两安装未变。真实Temporal、完整M1c、晚期reader、CPU／GPU质量仍分别验收；设计执行、可信新自然人决定和schema3效果继续关闭。
 
-PROJECTS／WINDOWS各自已审七文件已提交82c1c84／13ea479并随e5发布。USAGE完整1272行双语片全文检查与新fresh独审两轴approve／0，两条漏译恢复注释已同片复核关闭；准确七文件已提交 **73b7d61c9b1f775ea14535483a773901e5ec6124**、尚未推送，后续batches3–7仍开放。后端研究保持独审通过，包含Claude text-only safe-mode／ultracode限制；虽已有逐Agent显式思考强度字段，统一fixed／preset／planner／automatic选择仍待实施。
+PROJECTS82c1c84、WINDOWS13ea479、USAGE完整1272行73b7d61与后端指南2273a50均随核远端一致的文档227发布。B3四完整pair已各自全文／source／parser检查及新fresh两轴approve／0；Agent定义46017e1和工作流31ce9a3已提交未推送，最后137行模板入门七文件无finding、已提交d73de13。早先证据归因、history预算、actor归因P3均同片复核关闭。B3内容／验证／独审门已闭合，全部已随核远端一致的9f3发布；停止新B4作者工作直到根后继，B4–7仍开放。后端研究保持已审，统一fixed／preset／planner／automatic调参仍待后继。
 
-S2 proposal设计门两轴approve／0并核最终S1兼容。基于7fc的隔离分支 `feat/design-source-journal-s2-r1` 现为**7路径实现首稿**：native来源journal持久化、reference／tasks source APIs、CLI声明、测试及2份JSON资源已有初稿。r4原真实native／no-jsonschema reader和完整两轮／离线答复happy path **2 passed／pytest41.26秒**，JUnit41.240秒／runner43.530秒。r4后schema／validation调整未由r4覆盖；中断恢复、并发、坏链、只读／容量／准入、新source native依赖、真实CLI、新安装、fresh实现独审和S2自己的CI仍待。未合入／发布／ready，e5的CI不能认证本隔离首稿；此前setup错误及缺API早期失败保持各自范围，见[S2交付](delivery/2026-11-16-design-source-journal-s2.md)。F/J/G及可执行设计关卡仍未交付。
+S2 R2准确候选 `2ae107b84a3c928fc8c6e2b97820951af34c0cdb` 已单次源码123过、新安装41过、core／SDK各671完整identity／283参考／依赖过及原结构Codex模板APPROVE。同一fresh源码reviewer关闭F1–F3并独立读最终运行／身份／进程原件，两轴approve／0；R1 request-changes／112并集／安装30过与原反例分别保留。根普通合入 `2ff004d4c2c62c42c76928de96915b90837b54f7`，SRC treef6b71a4…同2ae、task_plan测试同一、e5 Windows修正保留，无merge-edits。窄双语source操作USAGE增量也已同一reviewer核approve，旧整guide字节不动。准确9f3e693498834f071cf20d0f25c18555554765f1已普通推送并核远端完整OID，自己的run43867345323首次1成功／7 in progress，终态待核，不继承e5绿；未添加默认seed producer，可信新自然人／F-J-G／真实Temporal/server／Windows／GPU／schema3效果等边界保持。准确候选和全部负结果见[S2交付](delivery/2026-11-16-design-source-journal-s2.md)。
 
-接续以[PLAN](PLAN.md)和各交付当前段为准：先发布已审USAGE／状态文档，完成S2故障与准入接缝，再继续原晚期reader／真实服务／CPU和文档后继。**以下各节保留原04af234交接快照**，其“待做”等只指当时；不要据此重复已完成的17／N32／模板。
+文档2273a50ddd0a1f3474e502b151cf12da0d0d3b22已普通发布并核远端完整OID；自测试e5起均为Markdown变化，原workflow paths-ignore使本次无新适用产品CI，e5自己的8/8保持原身份。Agent定义已审七文件已提交46017e18095559a57a7d1fad5d0f64ffc06a0b6e、随9f3已发布；工作流／入门指南分别保持独立审查／发布状态。
+
+接续以[PLAN](PLAN.md)和各交付当前段为准：先发布已审USAGE／状态文档，修正并重验S2发现，再继续原晚期reader／真实服务／CPU和文档后继。**以下各节保留原04af234交接快照**，其“待做”等只指当时；不要据此重复已完成的17／N32／模板。
 
 ## 原恢复快照 — 04af234
 

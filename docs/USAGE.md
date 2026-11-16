@@ -814,7 +814,7 @@ API: GET `.../tasks/TASK_ID/plan?run_id=RUN_ID&plan_sha256=PLAN_SHA&timeout=20`.
 <a id="保存完整设计来源与原答复"></a>
 ### Store complete design sources and reported answers
 
-**Development candidate:** this section describes source candidate `2ae107b`, normally merged locally as `2ff004d4c2c62c42c76928de96915b90837b54f7`; publication and that candidate's own CI are pending. An older installation may not provide these commands. This is inspection-only storage, not a new default design/approval workflow.
+**Published development candidate:** this section describes source `2ae107b` included in verified public commit `9f3e693498834f071cf20d0f25c18555554765f1`. Its own Portability run `43867345323` is in progress; release acceptance awaits that result and does not inherit e5's earlier green CI. An older installation may not provide these commands. This is inspection-only storage, not a new default design/approval workflow.
 
 Use Linux/WSL2 and the project's original registered native interpreter/runtime, matching SDK and original creation/submission/state files. The unified-entry task must already be verifiably submitted, with a real pending plan whose accepted original receipt contains a valid `design-packet` artifact. **No default seed producer was added here**; ordinary template creation alone does not supply one. If the original packet is absent, stop: do not forge an artifact, edit an old receipt or downgrade registration to bypass admission. First inspection/anchor creation checks the actual original online run, history and receipt; callers cannot supply a trusted preflight.
 
