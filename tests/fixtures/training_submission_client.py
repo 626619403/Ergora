@@ -115,7 +115,7 @@ class Service:
         return StartWorkflowExecutionResponse(run_id=run_id)
 
     async def describe_workflow_execution(self, request, **kwargs):
-        if request.execution.workflow_id.startswith('ergora-training-cycle/'):
+        if request.execution.workflow_id.startswith(('ergora-training-cycle/', 'ergora-training-cycle-v2/')):
             from training_controller_service import Service as ControllerService
 
             return await ControllerService().describe_workflow_execution(request, **kwargs)
@@ -137,7 +137,7 @@ class Service:
             type=WorkflowType(name='ExperimentWorkflow'), status=WorkflowExecutionStatus.RUNNING, memo=original.memo))
 
     async def get_workflow_execution_history(self, request, **kwargs):
-        if request.execution.workflow_id.startswith('ergora-training-cycle/'):
+        if request.execution.workflow_id.startswith(('ergora-training-cycle/', 'ergora-training-cycle-v2/')):
             from training_controller_service import Service as ControllerService
 
             return await ControllerService().get_workflow_execution_history(request, **kwargs)

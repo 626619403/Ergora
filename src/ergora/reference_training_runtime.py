@@ -44,6 +44,20 @@ async def lookup(client, spec: dict, *, run_id: str | None, timeout: int):
 MEMO_KEY = 'ergora.training_submission_sha256'
 
 
+async def observe_submission(client, intent: dict, *, run_id: str, timeout: float):
+    """Read one fixed submission's full input, memo and runtime result."""
+    from dev_platform.contracts import canonical_sha
+    from perf_temporal.models import Binding
+
+    spec = intent['observation']['experiment']['spec']
+    found = await lookup(client, spec, run_id=run_id, timeout=timeout)
+    if found is None:
+        return None
+    if (await found[1].memo()).get(MEMO_KEY) != canonical_sha(intent):
+        raise ValueError('Original candidate runtime memo differs from its complete start intent')
+    return await observe(*found, Binding(**spec['binding']), timeout=timeout)
+
+
 async def lookup_controller(client, intent: dict, binding: dict, *, timeout: float):
     """Verify a parent's fixed run without interpreting it as an Experiment."""
     from temporalio.client import WorkflowExecutionStatus

@@ -92,6 +92,64 @@ def test_controller_birth_consent_retains_original_actor_clock_and_mode(controll
         training_cycles.status(state, 'demo', 'controller')
 
 
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller CLI uses original Linux consent, locks and clock')
+@pytest.mark.parametrize('program_version', [1, 2])
+def test_controller_cli_records_consent_then_reads_prepares_and_stops_without_sdk(
+        cycle_selection, tmp_path, monkeypatch, program_version):
+    from contextlib import redirect_stderr, redirect_stdout
+    import io
+    from ergora import training_cycles
+    from ergora.cli import main
+
+    state, definition, runtime, _, _, request = cycle_selection
+    source = tmp_path / 'cli-input'
+    selected = training_cycles.create(state, 'demo', request, source)
+
+    def invoke(arguments):
+        out, err = io.StringIO(), io.StringIO()
+        with redirect_stdout(out), redirect_stderr(err):
+            code = main(['--home', str(state.root), 'training', *arguments])
+        return code, json.loads(out.getvalue()) if out.getvalue() else None, err.getvalue()
+
+    args = ['cycle-authorize-controller', 'demo', 'cli-controller', '--directory', str(source),
+            '--sha256', selected['sha256'], '--revision', '1', '--confirm']
+    if program_version == 1:
+        args.extend(['--program-version', '1'])
+    assert invoke(args)[0] != 0
+    directory = state.root / 'training-cycles/demo/cli-controller'
+    assert not directory.exists(), 'Missing execution consent cannot reserve an ID or start its clock'
+    code, authorized, _ = invoke([*args, '--execute-selected'])
+    assert code == 0 and authorized['authorization']['schema_version'] == program_version + 1
+    original = (directory / 'authorization.json').read_bytes()
+    digest = authorized['authorization_sha256']
+    common = ['demo', 'cli-controller', '--authorization-sha256', digest]
+    code, prepared, _ = invoke(['cycle-controller-prepare', *common, '--revision', '1'])
+    assert code == 0 and prepared['created'] is True
+    intent = directory / 'controller/intent.json'
+    preserved = intent.read_bytes(), intent.stat().st_ino
+    assert invoke(['cycle-controller-prepare', *common, '--revision', '1'])[1]['created'] is False
+    assert (intent.read_bytes(), intent.stat().st_ino) == preserved
+    installation = Path(definition['execution']['installation'])
+    moved = installation.with_name(installation.name + '-unavailable')
+    installation.rename(moved)
+    try:
+        with monkeypatch.context() as missing:
+            missing.setitem(sys.modules, 'temporalio', None)
+            code, stored, _ = invoke(['cycle-controller-status', *common])
+            assert code == 0 and stored['status'] == 'prepared'
+            assert stored['read_only'] is True and stored['runtime_status'] == 'not_queried'
+            assert stored['execution_authorized'] is False
+            code, stopped, _ = invoke(['cycle-controller-stop', *common, '--reason', 'Explicit local stop'])
+            assert code == 0 and stopped['stop_visible'] is True and stopped['stop_durable'] is True
+            assert stopped['executor_stop_confirmed'] is None
+    finally:
+        moved.rename(installation)
+    assert (directory / 'authorization.json').read_bytes() == original
+    assert (intent.read_bytes(), intent.stat().st_ino) == preserved
+    assert not (directory / 'controller/attempt.json').exists()
+    assert not (runtime / 'training/jobs/alpha').exists()
+
+
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller consent requires Linux/WSL2 clocks and flock')
 @pytest.mark.parametrize('program_version', [1, 2])
@@ -1038,7 +1096,49 @@ def test_controller_stop_after_attempt_sync_never_resends_the_consumed_rpc(
 
 
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)
-@pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 30}], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 30}], indirect=True)
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original start-attempt synchronization and H/SDK gate require Linux')
+def test_controller_remote_close_after_attempt_sync_never_sends_the_consumed_start(
+        controller_admission, cycle_selection, cycle_candidate, service, tmp_path, monkeypatch):
+    from ergora import training_cycles
+
+    state, _, _, _, admission = controller_admission
+    runtime = cycle_selection[2]
+    marker = tmp_path / 'remote-close-attempt'
+    monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER_CASE', 'closed-after-attempt')
+    monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER_PAUSE', 'submission-attempt-sync')
+    monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER_MARKER', str(marker))
+    operation = cycle_candidate()
+    prefix = runtime / 'ergora/training-submissions'
+    try:
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            future = pool.submit(run_cycle_candidate, lambda ordinal: operation)
+            try:
+                until = time.monotonic() + 15
+                while not marker.exists() and not future.done() and time.monotonic() < until:
+                    time.sleep(.01)
+                assert marker.exists(), 'The original attempt must be durable before the remote close'
+                path = prefix / 'alpha.attempt.json'
+                attempt = path.read_bytes(), path.stat().st_ino
+                marker.with_suffix('.closed').touch()
+            finally:
+                marker.with_suffix('.release').touch()
+            result = future.result(timeout=12)
+        assert result['status'] == 'unknown' and 'Original controller run' in result['reason'], result
+        intent = json.loads((prefix / 'alpha.intent.json').read_bytes())
+        resumed = training.resume_start(state, 'demo', 'alpha', 1, training_cycles._sha(intent))
+        assert resumed['status'] == 'unknown' and resumed['attempt_saved'] is True
+        assert (path.read_bytes(), path.stat().st_ino) == attempt
+        assert json.loads(service[1].read_bytes())['starts'] == 0
+        assert not (runtime / 'training/jobs/alpha').exists()
+    finally:
+        marker.with_suffix('.release').touch()
+        stop_controller_test_owner(runtime)
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 30},
+    {'program_version': 2, 'control_timeout_seconds': 30}], indirect=True)
 @pytest.mark.skipif(sys.platform != 'linux', reason='Real request/launch and native locked admission require Linux')
 @pytest.mark.parametrize('boundary', ['request', 'launch', 'executor-lock', 'attempt', 'ack'])
 def test_controller_stop_at_original_execution_boundaries_preserves_consumed_records(
@@ -1069,6 +1169,19 @@ def test_controller_stop_at_original_execution_boundaries_preserves_consumed_rec
                 assert marker.exists(), f'The actual {boundary} boundary must be reached'
                 request_record = json.loads((job / 'managed-execution/request.json').read_bytes())
                 assert request_record['actor_id'] == admission.authorization['controller']['actor_id']
+                if admission.authorization['schema_version'] == 3 and boundary in ('attempt', 'ack'):
+                    native = json.loads((job / 'managed-execution/attempt.json').read_bytes())['executor']
+                    locked = admission.lock.stat()
+                    held = []
+                    for descriptor in Path('/proc/' + str(native['pid']) + '/fd').iterdir():
+                        try:
+                            opened = descriptor.stat()
+                            if (opened.st_dev, opened.st_ino) == (locked.st_dev, locked.st_ino):
+                                held.extend(line for line in (descriptor.parent.parent / 'fdinfo' / descriptor.name).read_text().splitlines()
+                                    if 'FLOCK' in line and 'READ' in line)
+                        except FileNotFoundError:
+                            continue
+                    assert held, 'The actual native executor must retain its own shared parent permit'
                 stopped = admission.request_stop('Stop at ' + boundary)
                 assert stopped['stop_durable'] is True and stopped['admission_drained'] is None
             finally:
@@ -1210,6 +1323,37 @@ def test_controller_consent_cannot_dispatch_through_either_manual_binding_path(c
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller dispatch uses the original Linux supervised operation')
+@pytest.mark.parametrize('controller_admission', [{}, {'program_version': 2}], indirect=True)
+def test_controller_cli_reconciles_only_its_original_lost_reply(controller_dispatch, cycle_operation_fault):
+    from contextlib import redirect_stdout
+    import io
+    from ergora.cli import main
+
+    state, admission, storage, _ = controller_dispatch
+    common = ['--home', str(state.root), 'training']
+    target = ['demo', 'controller', '--authorization-sha256', admission.authorization['sha256']]
+
+    def invoke(action):
+        output = io.StringIO()
+        with redirect_stdout(output):
+            code = main([*common, 'cycle-controller-' + action, *target])
+        assert code == 0
+        return json.loads(output.getvalue())
+
+    cycle_operation_fault('lost-reply')
+    first = invoke('submit')
+    assert first['status'] == 'unknown' and first['attempt_saved'] is True
+    attempt = admission.folder / 'attempt.json'
+    original = attempt.read_bytes(), attempt.stat().st_ino
+    cycle_operation_fault('accepted')
+    second = invoke('reconcile')
+    assert second['status'] == 'submitted' and second['run_id'] == '00000000-0000-4000-8000-000000000003'
+    assert (attempt.read_bytes(), attempt.stat().st_ino) == original
+    assert sum(json.loads(p.read_bytes())['action'] == 'start' for p in storage.glob('call-*.json')) == 1
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller dispatch uses the original Linux supervised operation')
+@pytest.mark.parametrize('controller_admission', [{}, {'program_version': 2}], indirect=True)
 @pytest.mark.parametrize('case', ['accepted', 'lost-reply', 'not-found', 'closed', 'continued', 'retry', 'reset'])
 def test_cycle_controller_recovers_only_its_single_original_attempt(controller_dispatch, case):
     import asyncio
@@ -1370,13 +1514,14 @@ def test_cycle_controller_final_admission_preserves_consumed_slot_without_start(
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller dispatch uses the original Linux supervised operation')
+@pytest.mark.parametrize('controller_admission', [{}, {'program_version': 2}], indirect=True)
 @pytest.mark.parametrize('field,size,after_claim', [
     ('input', 32767, False), ('input', 32768, False), ('input', 32769, False),
     ('memo', 2047, False), ('memo', 2048, False), ('memo', 2049, False),
     ('input', 32769, True), ('memo', 2049, True)])
 def test_cycle_controller_measures_actual_sdk_input_and_memo_at_both_send_gates(
         controller_dispatch, monkeypatch, field, size, after_claim):
-    """Schema2 reaches the common H owner; schema3 execution remains closed.
+    """Both versions use the original H owner and complete SDK encoding.
 
     Legal converter metadata expands the original fixed business shape. No extra
     input or Memo fields, rewritten ready gate, or synthetic start request is used.
@@ -1584,7 +1729,7 @@ def test_schema3_birth_retains_sources_bytes_and_one_clock(controller_admission,
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller consent requires Linux/WSL2 clocks and flock')
 @pytest.mark.parametrize('controller_admission', [{'program_version': 2}], indirect=True)
-def test_schema3_intent_is_local_and_all_execution_entries_remain_closed(
+def test_schema3_intent_and_claim_keep_original_sources_and_refuse_manual_binding(
         controller_admission, cycle_selection, service, monkeypatch):
     from ergora import reference_training_worker as worker, training_cycles
 
@@ -1608,21 +1753,26 @@ def test_schema3_intent_is_local_and_all_execution_entries_remain_closed(
     assert (admission.folder / 'intent.json').read_bytes() == raw
     assert set(first['intent']['workflow_input']) == {
         'protocol', 'control_home', 'project', 'cycle_id', 'input_sha256', 'authorization_sha256'}
-    with pytest.raises(ValueError, match='execution is not enabled'):
-        training_cycles._claim_controller(state, admission)
-    # Keep the cold v1 identity guard, then reach the schema3 execution gate
-    # with an explicitly versioned snapshot through the real S/H child path.
+    assert training_cycles._claim_controller(state, admission) is True
+    attempt_path = admission.folder / 'attempt.json'
+    attempt = attempt_path.read_bytes(), attempt_path.stat().st_ino
+    assert training_cycles._claim_controller(state, admission) is False
+    # Cold v1 remains a foreign protocol. An explicitly versioned local
+    # preparation reads the same intent without reclaiming its start slot.
     import asyncio
     plan = training_cycles._load(state.root, 'demo', 'controller', admission.directory)[0]
     snapshot = worker._cycle_snapshot(plan, authorized['authorization'])
     original = {path: path.read_bytes() for path in admission.directory.rglob('*') if path.is_file()}
-    for mode, source_snapshot, reason in (
-            ('inspect', None, 'Cycle operation protocol differs from its complete original authorization'),
-            ('prepare-controller', snapshot, 'Schema3 controller execution is not enabled')):
+    for mode, source_snapshot in (('inspect', None), ('prepare-controller', snapshot)):
         operation = worker._CycleOperation(state.root, 'demo', 'controller', authorized['authorization_sha256'],
             mode, snapshot=source_snapshot)
         cold = asyncio.run(operation.run())
-        assert cold['status'] == 'unknown' and cold['reason'] == reason
+        if mode == 'inspect':
+            assert cold['status'] == 'unknown'
+            assert cold['reason'] == 'Cycle operation protocol differs from its complete original authorization'
+        else:
+            assert cold['status'] == 'prepared' and cold['created'] is False
+            assert cold['intent_sha256'] == training_cycles._sha(first['intent'])
         assert cold['operation_stopped'] is True and operation.process.returncode == 0
         assert operation.response.frames[0]['process']['status'] == 'succeeded'
         assert {path: path.read_bytes() for path in admission.directory.rglob('*') if path.is_file()} == original
@@ -1635,7 +1785,7 @@ def test_schema3_intent_is_local_and_all_execution_entries_remain_closed(
             else:
                 training.start(state, 'demo', 'alpha', 1, digest,
                     budget={'cycle_id': 'controller', 'authorization_sha256': authorized['authorization_sha256']})
-    assert not (admission.folder / 'attempt.json').exists() and not service[1].exists()
+    assert (attempt_path.read_bytes(), attempt_path.stat().st_ino) == attempt and not service[1].exists()
     prefix = runtime / 'ergora/training-submissions'
     assert not (prefix / 'alpha.intent.json').exists() and not (prefix / 'alpha.attempt.json').exists()
     assert not (prefix / 'alpha.budget').exists() and not (runtime / 'training/jobs/alpha').exists()
@@ -1657,13 +1807,13 @@ def test_schema3_intent_is_local_and_all_execution_entries_remain_closed(
     assert training_cycles.status(state, 'demo', 'controller')['status'] == 'stopped'
     with pytest.raises(ValueError):
         training_cycles.prepare_controller(state, 'demo', 'controller', authorized['authorization_sha256'], 1)
-    assert not (admission.folder / 'attempt.json').exists()
+    assert (attempt_path.read_bytes(), attempt_path.stat().st_ino) == attempt
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Managed native callback requires Linux')
 @pytest.mark.parametrize('installation', ['managed', 'managed-v2'], indirect=True)
 @pytest.mark.parametrize('controller_admission', [{'program_version': 2}], indirect=True)
-def test_schema3_native_callback_refuses_before_executor_effects_and_keeps_completed_read(
+def test_schema3_native_callback_refuses_legacy_budget_binding_and_keeps_completed_read(
         controller_admission, request):
     from ergora import training_cycles
 

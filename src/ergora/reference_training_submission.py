@@ -253,6 +253,9 @@ class _Submission(_TrainingProject):
                         training_cycles._sync_directory(operation.path('.attempt.json').parent)
                     operation.preflight(intent)
                     if budget is not None:
+                        if ('controller' in budget.binding
+                                and budget.binding['controller']['protocol'] == 'ergora-training-cycle-v2'):
+                            await budget.check_controller_history(self.client)
                         budget.require_active(owner=True)
                         options['task_queue'] = budget.binding['task_queue']
                     if parent is not None:

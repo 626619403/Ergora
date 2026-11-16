@@ -1,6 +1,6 @@
 """Identity-bound execution records shared with the dependency-isolated native hook."""
 
-from contextlib import contextmanager, nullcontext
+from contextlib import ExitStack, contextmanager
 from datetime import datetime, timedelta, timezone
 import getpass
 import hashlib
@@ -1187,13 +1187,8 @@ class CycleAdmission:
             'reason': rejection['reason'] if rejection is not None else None,
             'conflicting_run_id': rejection['run_id'] if rejection is not None else None}
 
-    def bind(self, intent, plan):
-        """Bind one original selected start to the complete local parent receipt.
-
-        Remote history belongs to the application's asynchronous consumers.
-        This same local contract is also used by the isolated native gate.
-        """
-        binding = intent['budget']
+    def _bound_selection(self, binding, plan):
+        """Bind a real controller selection before or after its child is born."""
         validate_budget_binding(binding)
         if 'controller' not in binding:
             raise ValueError('Controller authorization requires complete controller binding and final admission gates')
@@ -1218,6 +1213,11 @@ class CycleAdmission:
                 or controller['ordinal'] >= len(plan['admissions'])):
             raise ValueError('Controller binding differs from its original authorization or selected position')
         selected = plan['admissions'][controller['ordinal']]
+        return parent, selected
+
+    def bind(self, intent, plan):
+        """Bind one original selected start to its complete parent receipt."""
+        parent, selected = self._bound_selection(intent['budget'], plan)
         if (selected['experiment_id'] != intent['experiment_id']
                 or self._sha(selected['observation']) != self._sha(intent['observation'])):
             raise ValueError('Controller binding differs from its complete original selected admission')
@@ -1524,13 +1524,8 @@ def _round_sources(authorization, ready, owner):
             raise ValueError('Original round measurement source changed during verification: ' + name)
 
 
-def authenticate_cycle_candidate(intent: dict, plan: dict, admission: CycleAdmission, ready: dict) -> list:
-    """Authenticate all frozen local predecessors; never grant schema3 effects.
-
-    Return newest-to-oldest originals for H's additional archive and SDK checks.
-    No State, schema, SDK, replacement files, alternate prefix or live-old-owner
-    lookup belongs to this boundary.
-    """
+def _round_authority(plan, admission, ready):
+    """Read the exact original authorization, plan, ready and compute window."""
     authorization, sha = admission.authorization, admission._sha
     if type(authorization['schema_version']) is not int or authorization['schema_version'] != 3:
         raise ValueError('Complete round authentication requires the original schema3 authorization')
@@ -1556,24 +1551,6 @@ def authenticate_cycle_candidate(intent: dict, plan: dict, admission: CycleAdmis
                 < datetime.fromisoformat(authorization['clock']['deadline_at']) - timedelta(seconds=policy['cleanup_seconds'])):
         raise ValueError('Original cycle ready is outside its computation window')
     admission.validate_lock()
-    validate_budget_binding(intent['budget'])
-    admission.bind(intent, plan)
-    controller = intent['budget']['controller']
-    ordinal = controller['ordinal']
-    _round_candidate_intent(intent, plan, admission, ordinal)
-    current = ExecutionRecords(project, intent['experiment_id'], authorization['control_home'])
-    current_owner = current.document(current.budget / 'owner.json', optional=True)
-    intent_path = current.budget.parent / (current.ident + '.intent.json')
-    actual_intent = current.document(intent_path, optional=current_owner is None, limit=16 * LIMIT)
-    if actual_intent is not None:
-        _match(actual_intent, intent, 'Complete original current candidate intent')
-    if current_owner is not None:
-        owner_record(current_owner)
-        if (current_owner['intent_sha256'] != sha(intent)
-                or current_owner['authorization_sha256'] != authorization['sha256']):
-            raise ValueError('Round candidate owner differs from its original intent or authorization')
-    for name, expected in project['registration']['files'].items():
-        _match(current.document(current.adapter.safe_file(current.config, name)), expected, 'Original registered document')
 
     def active():
         admission.check()
@@ -1581,7 +1558,14 @@ def authenticate_cycle_candidate(intent: dict, plan: dict, admission: CycleAdmis
             raise ValueError('Original round authentication computation allowance is exhausted')
 
     active()
-    _round_sources(authorization, ready, current_owner)
+    return raw_plan, active
+
+
+def _round_predecessors(plan, admission, ready, controller, active):
+    """Read every pinned original in a selected predecessor chain."""
+    authorization, project, sha = admission.authorization, plan['project'], admission._sha
+    policy = plan['definition']['budget']
+    ordinal = controller['ordinal']
     predecessor, extension, result, namespace = controller['predecessor'], None, [], None
     for index in range(ordinal - 1, -1, -1):
         active()
@@ -1662,6 +1646,58 @@ def authenticate_cycle_candidate(intent: dict, plan: dict, admission: CycleAdmis
     if extension is not None:
         round_report_binding(extension, plan, 0, None)
     validate_round_predecessor(predecessor, 0)
+    return result
+
+
+def authenticate_cycle_binding(binding: dict, plan: dict, admission: CycleAdmission, ready: dict) -> list:
+    """Authenticate a real selected binding without inventing a future intent."""
+    authorization, project = admission.authorization, plan['project']
+    raw_plan, active = _round_authority(plan, admission, ready)
+    _, selected = admission._bound_selection(binding, plan)
+    current = ExecutionRecords(project, selected['experiment_id'], authorization['control_home'])
+    for name, expected in project['registration']['files'].items():
+        _match(current.document(current.adapter.safe_file(current.config, name)), expected, 'Original registered document')
+    _round_sources(authorization, ready, None)
+    result = _round_predecessors(plan, admission, ready, binding['controller'], active)
+    admission._bound_selection(binding, plan)
+    _match(decode(read_raw(admission.directory / 'ready.json')), ready, 'Original cycle ready')
+    if read_raw(admission.directory / 'cycle.json', ARTIFACT_LIMIT) != raw_plan:
+        raise ValueError('Original complete cycle input changed during authentication')
+    _round_sources(authorization, ready, None)
+    active()
+    return result
+
+
+def authenticate_cycle_candidate(intent: dict, plan: dict, admission: CycleAdmission, ready: dict) -> list:
+    """Authenticate the complete current intent, owner and all predecessors.
+
+    The H additionally checks live archive and runtime eligibility. This pure
+    boundary remains independent of State, schemas and the SDK.
+    """
+    authorization, sha, project = admission.authorization, admission._sha, plan['project']
+    raw_plan, active = _round_authority(plan, admission, ready)
+    validate_budget_binding(intent['budget'])
+    admission.bind(intent, plan)
+    controller = intent['budget']['controller']
+    ordinal = controller['ordinal']
+    _round_candidate_intent(intent, plan, admission, ordinal)
+    current = ExecutionRecords(project, intent['experiment_id'], authorization['control_home'])
+    current_owner = current.document(current.budget / 'owner.json', optional=True)
+    intent_path = current.budget.parent / (current.ident + '.intent.json')
+    actual_intent = current.document(intent_path, optional=current_owner is None, limit=16 * LIMIT)
+    if actual_intent is not None:
+        _match(actual_intent, intent, 'Complete original current candidate intent')
+    if current_owner is not None:
+        owner_record(current_owner)
+        if (current_owner['intent_sha256'] != sha(intent)
+                or current_owner['authorization_sha256'] != authorization['sha256']):
+            raise ValueError('Round candidate owner differs from its original intent or authorization')
+    for name, expected in project['registration']['files'].items():
+        _match(current.document(current.adapter.safe_file(current.config, name)), expected, 'Original registered document')
+
+    active()
+    _round_sources(authorization, ready, current_owner)
+    result = _round_predecessors(plan, admission, ready, controller, active)
     _match(current.document(current.budget / 'owner.json', optional=True), current_owner, 'Original round candidate owner')
     _match(decode(read_raw(admission.directory / 'ready.json')), ready, 'Original cycle ready')
     if read_raw(admission.directory / 'cycle.json', ARTIFACT_LIMIT) != raw_plan:
@@ -1693,11 +1729,11 @@ def validate_context(context: dict, chain: ExecutionRecords, *, live=True) -> Cy
     validate_budget_binding(intent['budget'])
     if type(authorization['schema_version']) is not int or authorization['schema_version'] not in (1, 2, 3):
         raise ValueError('Unsupported original execution authorization schema')
-    if authorization['schema_version'] == 3:
-        authenticate_cycle_candidate(intent, plan, CycleAdmission(cycle, authorization), decode(read_raw(cycle / 'ready.json')))
-        raise ValueError('Schema3 controller execution is not enabled')
     parent = None
-    if authorization['schema_version'] == 2:
+    if authorization['schema_version'] == 3:
+        parent = CycleAdmission(cycle, authorization)
+        authenticate_cycle_candidate(intent, plan, parent, decode(read_raw(cycle / 'ready.json')))
+    elif authorization['schema_version'] == 2:
         parent = CycleAdmission(cycle, authorization)
         parent.bind(intent, plan)
     elif 'controller' in intent['budget']:
@@ -1743,8 +1779,12 @@ def native_main(installation: str) -> None:
     from agent_platform.training_executor import process
 
     def admit(folder, record):
+        nonlocal parent
         chain = ExecutionRecords(project, intent['experiment_id'], intent['control_home']).load()
-        validate_context(context, chain)
+        checked_parent = validate_context(context, chain)
+        if parent is None and checked_parent is not None:
+            parent = checked_parent
+            admissions.enter_context(parent.permission())
         request, launch = chain.records['request'], chain.records['launch']
         if request is None or launch is None or any(chain.records[name] is not None for name in ('attempt', 'ack', 'stopped')):
             raise ValueError('Managed execution requires its one unused consumed launch')
@@ -1795,8 +1835,16 @@ def native_main(installation: str) -> None:
         publish(chain.folder / 'ack.json', ack, chain.root)
         active()
     chain = ExecutionRecords(project, intent['experiment_id'], intent['control_home'])
-    parent = validate_context(context, chain.load()) if context['authorization']['schema_version'] == 2 else None
-    with parent.permission() if parent is not None else nullcontext():
+    parent = None
+    with ExitStack() as admissions:
+        # Hold the permit before the executor lock. New-version completed
+        # results retain their original inert read even after the owner ends;
+        # if that record vanishes, the callback still requires fresh admission.
+        if (context['authorization']['schema_version'] == 2
+                or context['authorization']['schema_version'] == 3
+                    and not (chain.folder.parent / 'result.json').exists()):
+            parent = validate_context(context, chain.load())
+            admissions.enter_context(parent.permission())
         print(json.dumps(process(chain.folder.parent, admit=admit), ensure_ascii=False, allow_nan=False))
 
 

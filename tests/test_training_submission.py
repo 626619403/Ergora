@@ -965,7 +965,8 @@ def test_execute_startup_failure_keeps_the_consumed_launch_and_cleans_the_origin
 
 
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)
-@pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 30}], indirect=True)
+@pytest.mark.parametrize('controller_admission', [
+    {'control_timeout_seconds': 30}, {'program_version': 2, 'control_timeout_seconds': 30}], indirect=True)
 @pytest.mark.skipif(sys.platform != 'linux', reason='Real native publications and callback require Linux')
 @pytest.mark.parametrize('boundary,fault', [
     ('attempt', 'source'), ('ack', 'root'), ('attempt', 'clock'), ('ack', 'interpreter'), ('ack', 'parent-work')])
@@ -3034,7 +3035,7 @@ def test_cycle_sdk_stop_keeps_all_66_real_branch_refs(cycle_sdk_activity, cycle_
 @pytest.mark.parametrize('aggregate_overflow', [False, True])
 def test_cycle_v3_stop_completion_keeps_all_66_branches_and_originals(
         cycle_sdk_activity, cycle_sdk_completion, cycle_operation_fault, monkeypatch, tmp_path, caplog, aggregate_overflow):
-    """A fixture binding reaches closed v3 stop; no schema3 dispatch is certified."""
+    """Real v3 stop keeps every branch and bounds the complete SDK completion."""
     import asyncio
     from dataclasses import replace
     from temporalio.api.common.v1 import Payloads, WorkflowExecution
@@ -3043,9 +3044,10 @@ def test_cycle_v3_stop_completion_keeps_all_66_branches_and_originals(
 
     state, admission, _, _, activities, _ = cycle_sdk_activity
     cycle_operation_fault('accepted')
-    # The independent local safety stop is already visible. Closed schema3
-    # stop-writer cannot create it; drain must retain its real original allowance.
-    admission.request_stop('Independent original safety stop before closed v3 fanout')
+    # Preserve the independently published stop while all real branches run;
+    # the stop-writer confirms this original record without replacing it.
+    admission.request_stop('Independent original safety stop before v3 fanout')
+    original_stop = admission.stop.read_bytes()
     original_operation = worker._CycleOperation
     original_capacity = worker._cycle_capacity
     captured, operations = [], []
@@ -3102,12 +3104,14 @@ def test_cycle_v3_stop_completion_keeps_all_66_branches_and_originals(
         result = completion.result.completed.result
         assert asyncio.run(converter.decode([result])) == [envelope]
         assert Payloads(payloads=[result]).ByteSize() == full.ByteSize()
-    # These effects remain denied at the real H gate, with their full diagnostics.
     writer = next(item for item in envelope['operations'] if item['mode'] == 'stop-writer')
     ref = writer['result']['ref']
     raw = (state.root / 'operations/training-cycles' / writer['operation_id'] / ref['file']).read_bytes()
-    assert 'Schema3 controller execution is not enabled' in raw.decode()
-    assert admission.observe(synchronize=True)['stop_visible'] is True
+    observed = json.loads(raw)
+    assert observed['status'] == 'observed'
+    assert observed['stop_visible'] is observed['stop_durable'] is True
+    assert admission.stop.read_bytes() == original_stop
+    assert admission.observe(synchronize=True)['stop_durable'] is True
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='SDK stop consumes the original supervised Linux H')
@@ -3576,7 +3580,89 @@ def round_candidate(controller_admission, prepared, cycle_operation_fault, monke
 @pytest.mark.skipif(sys.platform != 'linux', reason='Original S/H and fd durability require Linux')
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)
 @pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
-def test_round_internal_collect_and_reconcile_keep_archive_and_execution_closed(round_candidate, cycle_operation_fault):
+@pytest.mark.parametrize('phase', ['accepted', 'cancelling', 'after-intent'])
+def test_successor_birth_rechecks_previous_live_phase_before_saving_intent(
+        round_candidate, cycle_operation_fault, phase):
+    import asyncio
+    from copy import deepcopy
+    from ergora import reference_training_worker as worker
+
+    state, admission, plan, operation, _ = round_candidate
+    accepted = asyncio.run(operation().run())
+    previous = accepted['facts']['measurement']
+    assert previous['continuation_ready'] is True
+    template = operation('reconcile-round').payload
+    context = deepcopy(template['activity_context'])
+    context['activity_source'].update(activity_id='candidate-1-start', activity_type='ergora.training_cycle.start.v3')
+    controller = {**template['start_context']['controller'], 'ordinal': 1,
+                  'predecessor': {key: previous[key] for key in ('prefix', 'acceptance')}}
+    runtime = Path(admission.authorization['execution']['state_directory'])
+    original = {p: p.read_bytes() for p in (runtime / 'training/jobs/alpha').rglob('*') if p.is_file()}
+    cycle_operation_fault('round-previous-' + phase if phase != 'accepted' else 'round-accepted')
+    current = worker._CycleOperation(state.root, 'demo', 'controller', admission.authorization['sha256'],
+        'prepare-candidate', snapshot=template['snapshot'], ordinal=1, start_context={'controller': controller},
+        activity_context=context)
+    result = asyncio.run(current.run())
+    intent = runtime / 'ergora/training-submissions/beta.intent.json'
+    reads = [json.loads(line) for line in (current.output / 'helper/stderr.txt').read_text().splitlines()]
+    observed_phases = [item['value']['phase'] for item in reads if item['reader'] == 'predecessor.0.runtime']
+    assert observed_phases[-1] == ('AWAITING_RELEASE' if phase == 'accepted' else 'CANCELLING')
+    if phase == 'cancelling':
+        assert not intent.exists(), 'A stale accepted phase must not allow the successor intent to be born'
+        assert result['status'] == 'unknown' and 'previous round' in result['reason'].lower(), result
+    elif phase == 'after-intent':
+        assert observed_phases[0] == 'AWAITING_RELEASE'
+        assert intent.exists() and json.loads(intent.read_bytes())['budget']['controller'] == controller
+        assert result['status'] == 'unknown' and 'previous round' in result['reason'].lower(), result
+        assert not (runtime / 'ergora/training-submissions/beta.budget/owner.json').exists()
+    else:
+        assert result['status'] == 'new_offer' and intent.exists(), result
+        assert json.loads(intent.read_bytes())['budget']['controller'] == controller
+    assert not (runtime / 'ergora/training-submissions/beta.attempt.json').exists()
+    assert not (runtime / 'training/jobs/beta').exists()
+    assert {p: p.read_bytes() for p in (runtime / 'training/jobs/alpha').rglob('*') if p.is_file()} == original
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Real H/SDK wait and SQLite writer reservation require Linux')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
+def test_successor_live_predecessor_query_does_not_hold_database_reservation(round_candidate, cycle_operation_fault):
+    import asyncio
+    from copy import deepcopy
+    from ergora import reference_training_worker as worker
+
+    state, admission, _, operation, _ = round_candidate
+    accepted = asyncio.run(operation().run())['facts']['measurement']
+    template = operation('reconcile-round').payload
+    context = deepcopy(template['activity_context'])
+    context['activity_source'].update(activity_id='candidate-1-start', activity_type='ergora.training_cycle.start.v3')
+    controller = {**template['start_context']['controller'], 'ordinal': 1,
+                  'predecessor': {key: accepted[key] for key in ('prefix', 'acceptance')}}
+    markers = cycle_operation_fault('round-previous-held')
+    current = worker._CycleOperation(state.root, 'demo', 'controller', admission.authorization['sha256'],
+        'prepare-candidate', snapshot=template['snapshot'], ordinal=1, start_context={'controller': controller},
+        activity_context=context)
+    marker = markers / 'previous-query-held'
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(asyncio.run, current.run())
+        try:
+            until = time.monotonic() + 8
+            while not marker.exists() and not future.done() and time.monotonic() < until:
+                time.sleep(.01)
+            assert marker.exists(), 'The actual predecessor SDK query must be waiting'
+            with state.connect() as db:
+                db.execute('PRAGMA busy_timeout=0')
+                db.execute('BEGIN IMMEDIATE')
+                db.rollback()
+        finally:
+            marker.with_suffix('.release').touch()
+        assert future.result(timeout=12)['status'] == 'new_offer'
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Original S/H and fd durability require Linux')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
+def test_round_internal_collect_and_reconcile_preserve_authenticated_originals(round_candidate, cycle_operation_fault):
     import asyncio
     from ergora import training_execution_protocol as protocol, reference_training_worker as worker
 
@@ -3620,9 +3706,10 @@ def test_round_internal_collect_and_reconcile_keep_archive_and_execution_closed(
     assert index.read_bytes() == original
     assert again['facts']['measurement']['acceptance']['source_operation_id'] != acceptance['source_operation_id']
     operation_record, intent, _ = worker._cycle_target(plan, admission, 0)
-    with pytest.raises(ValueError, match='Schema3 controller execution is not enabled'):
-        worker.BudgetedStart(operation_record, intent).source()
+    source_state, source_plan, authorization, source_ready = worker.BudgetedStart(operation_record, intent).source()
+    assert source_state.root == state.root and source_plan == plan and authorization == admission.authorization
     ready = protocol.decode(protocol.read_raw(admission.directory / 'ready.json'))
+    assert source_ready == ready
     intent_path = operation_record.path('.intent.json')
     intent_raw = intent_path.read_bytes()
     try:
@@ -3886,35 +3973,37 @@ except ValueError as error:
             assert result['facts']['measurement']['continuation_ready'] is True, result
             assert protocol.read_round_observation(acceptance['observation'], home=state.root,
                 operation_id=current.identity['operation_id']) == value
-            # These real consumers must read the entire large original before
-            # the retained effect closure. No source or verifier is fabricated.
+            # Late application and native consumers authenticate the complete
+            # predecessor before any live-owner or launch decision.
             prepare(1, {key: result['facts']['measurement'][key] for key in ('prefix', 'acceptance')},
                     archive=target == protocol.ARTIFACT_LIMIT - 1)
             op, intent, _ = worker._cycle_target(plan, admission, 1)
-            with pytest.raises(ValueError, match='Schema3 controller execution is not enabled'):
-                worker.BudgetedStart(op, intent).source()
+            _, late_plan, late_authorization, late_ready = worker.BudgetedStart(op, intent).source()
+            assert late_plan == plan and late_authorization == admission.authorization
+            assert late_ready['authorization_sha256'] == admission.authorization['sha256']
             original = admission.authorization['registration']
             context = {'intent': intent, 'authorization': admission.authorization, 'policy': plan['definition']['budget'],
                 'project': plan['project'], 'published_project': registrations.published_project(state.root, 'demo',
                     original['operation_id'], original['intent_sha256'])}
             chain = protocol.ExecutionRecords(plan['project'], intent['experiment_id'], str(state.root)).load()
-            with pytest.raises(ValueError, match='Schema3 controller execution is not enabled'):
-                protocol.validate_context(context, chain, live=False)
+            parent = protocol.validate_context(context, chain, live=False)
+            assert parent.authorization == admission.authorization
             if target == protocol.ARTIFACT_LIMIT - 1:
                 monkeypatch.setenv('ERGORA_TEST_ROUND_DETAIL', '0')
                 continued = asyncio.run(operation(ordinal=1).run())
                 assert continued['facts']['measurement']['continuation_ready'] is True, continued
             # Synthetic stopped originals are only read. Removing this current
-            # candidate's synthetic result/started reaches the actual callback;
-            # it still cannot receive a schema3 execution grant.
+            # candidate's synthetic result/started reaches live admission. Its
+            # dead synthetic owner cannot receive a new execution grant.
             for name in ('result.json', 'started.json'):
                 (chain.folder.parent / name).unlink(missing_ok=True)
             before = {path: path.read_bytes() for path in chain.folder.rglob('*') if path.is_file()}
             assert native_read(context, without_site=True) == {'authenticated': True, 'executor_sdk_loaded': False}
             if sdk_required and target == protocol.ARTIFACT_LIMIT - 1:
                 assert native_read(context, reject_sdk=True) == {'import_refused': 'temporalio'}
-            closed = {'rejected': 'Schema3 controller execution is not enabled', 'executor_sdk_loaded': sdk_required}
-            assert native_read(context) == closed
+            inactive = {'rejected': 'Original execution owner or computation budget is no longer active',
+                        'executor_sdk_loaded': sdk_required}
+            assert native_read(context) == inactive
             if target == protocol.ARTIFACT_LIMIT - 1:
                 # Drift a real copied package after its successful original
                 # authentication; the selected native installation stays valid.
@@ -3926,7 +4015,7 @@ except ValueError as error:
                     raw_source = path.read_bytes()
                     try:
                         path.write_bytes(raw_source + b'\n')
-                        assert native_read(context) != closed
+                        assert native_read(context) != inactive
                         if relative == 'data/reference-manifest.json':
                             # The pure boundary checks the original owner's pin
                             # before consuming a changed manifest. Native's
@@ -3965,8 +4054,8 @@ def test_round_every_early_prefix_and_original_predecessor_remain_required(round
     ready = training_cycles._load(state.root, 'demo', 'controller', admission.directory)[2]
     originals = protocol.authenticate_cycle_candidate(intent, plan, admission, ready)
     assert [value['identity']['ordinal'] for _, value, _, _ in originals] == list(range(ordinal - 1, -1, -1))
-    with pytest.raises(ValueError, match='Schema3 controller execution is not enabled'):
-        worker.BudgetedStart(op, intent).source()
+    source_state, *source = worker.BudgetedStart(op, intent).source()
+    assert source_state.root == state.root and source == [plan, admission.authorization, ready]
     earliest = admission.folder / 'rounds/0/rounds.json'
     original = earliest.read_bytes()
     report = training_rounds.read(earliest.parent)['report']
@@ -4001,9 +4090,8 @@ def test_round_every_early_prefix_and_original_predecessor_remain_required(round
                     # Preserve JSON semantics for the start record. The native
                     # inventory and archive mapping must still catch raw drift.
                     path.write_bytes(raw + b'\n')
-                with pytest.raises(ValueError) as refused:
+                with pytest.raises(ValueError):
                     worker.BudgetedStart(op, intent).source()
-                assert 'Schema3 controller execution is not enabled' not in str(refused.value)
                 assert not (admission.folder / 'rounds/3').exists()
             finally:
                 path.write_bytes(raw)
@@ -4545,39 +4633,3 @@ def test_round_parent_request_chunks_keep_original_bytes_and_loop_fair(round_can
     assert len(writes) > 2 and all(b > a for (_, a), (_, b) in zip(writes, writes[1:]))
     assert (current.output / 'request.json').read_bytes() == current.encoded
 
-
-@pytest.mark.skipif(sys.platform != 'linux', reason='Schema3 effect closure uses the original supervised Linux H')
-@pytest.mark.parametrize('installation', ['managed'], indirect=True)
-@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
-def test_cycle_v3_expression_keeps_effect_modes_closed_in_actual_helper(round_candidate):
-    """Synthetic existing chain; no new controller, native effect, root or stop notification."""
-    import asyncio
-    from copy import deepcopy
-    from ergora import reference_training_worker as worker, training_execution_protocol as protocol
-
-    state, admission, _, original, _ = round_candidate
-    template = original().payload
-    snapshot = template['snapshot']
-    arguments = (state.root, 'demo', 'controller', admission.authorization['sha256'])
-    controller = template['start_context']['controller']
-    captured = []
-    for mode, action, ordinal in [('prepare-controller', None, None), ('submit-controller', None, None),
-            ('prepare-candidate', 'start', 0), ('request-execution-candidate', 'request-execution-or-observe', 0),
-            ('stop-writer', 'stop', None), ('notify-owner', 'stop', 0)]:
-        context = deepcopy(template['activity_context']) if action else None
-        if context:
-            context['activity_source'].update(activity_type=protocol.CYCLE_ACTIVITY_NAMES_V3[action],
-                task_queue=protocol.CYCLE_STOP_TASK_QUEUE_V2 if action == 'stop' else protocol.CYCLE_TASK_QUEUE_V2)
-        operation = worker._CycleOperation(*arguments, mode, snapshot=snapshot, ordinal=ordinal,
-            activity_context=context, reason='closed-fixture' if mode == 'stop-writer' else None,
-            start_context={'controller': controller} if mode in protocol.CYCLE_CANDIDATE_MODES else None,
-            window=template['bootstrap'] if mode == 'request-execution-candidate' else None)
-        result = asyncio.run(operation.run())
-        assert result['status'] == 'unknown' and result['reason'] == 'Schema3 controller execution is not enabled', (mode, result)
-        assert result['operation_stopped'] is True and result['supervisor_returncode'] == 0
-        captured.append(operation.output)
-    assert not admission.stop.exists()
-    for output in captured:
-        stdout = json.loads((output / 'helper/stdout.txt').read_bytes())
-        assert stdout == {'status': 'unknown', 'reason': 'Schema3 controller execution is not enabled'}
-        assert (output / 'request.json').exists()

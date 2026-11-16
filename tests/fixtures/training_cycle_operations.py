@@ -210,7 +210,8 @@ else:
             return {'status': 'unknown', 'reason': 'x' * (32768 if fault == 'oversized-stdout' else 32500)}
 
         worker._cycle_operation = large_result
-    if mode in protocol.CYCLE_MEASUREMENT_MODES:
+    if (mode in protocol.CYCLE_MEASUREMENT_MODES
+            or mode in protocol.CYCLE_START_MODES and fault.startswith('round-')):
         sys.path[:0] = [str(Path(payload['snapshot']['authorization']['execution']['installation']) / part)
                        for part in ('local', 'upstream/platform', 'upstream/temporal', 'upstream')]
         sys.path.insert(0, str(Path(__file__).parent))

@@ -34,7 +34,11 @@ class Service:
         receipt = json.loads((folder / 'receipt.json').read_bytes())
         assert request.execution.workflow_id == intent['workflow_id']
         assert request.execution.run_id == receipt['run_id']
-        return folder, intent, receipt, os.environ.get('ERGORA_TEST_TRAINING_CONTROLLER_CASE', '')
+        case = os.environ.get('ERGORA_TEST_TRAINING_CONTROLLER_CASE', '')
+        if case == 'closed-after-attempt':
+            marker = Path(os.environ['ERGORA_TEST_TRAINING_CONTROLLER_MARKER']).with_suffix('.closed')
+            case = 'closed' if marker.exists() else ''
+        return folder, intent, receipt, case
 
     async def memo(self, intent, case):
         digest = CycleAdmission._sha(intent) if case != 'memo' else '0' * 64
@@ -47,7 +51,8 @@ class Service:
         return DescribeWorkflowExecutionResponse(workflow_execution_info=WorkflowExecutionInfo(
             execution=WorkflowExecution(workflow_id=intent['workflow_id'],
                 run_id='another-run' if case == 'run' else receipt['run_id']),
-            type=WorkflowType(name='TrainingCycleWorkflow'), memo=await self.memo(intent, case),
+            type=WorkflowType(name='TrainingCycleWorkflowV2' if intent['protocol'] == 'ergora-training-cycle-v2'
+                              else 'TrainingCycleWorkflow'), memo=await self.memo(intent, case),
             first_run_id=receipt['run_id'], status=WorkflowExecutionStatus.COMPLETED if case == 'closed' else WorkflowExecutionStatus.RUNNING))
 
     async def get_workflow_execution_history(self, request, **kwargs):
@@ -56,7 +61,8 @@ class Service:
         if case == 'input':
             value['input_sha256'] = '0' * 64
         started = WorkflowExecutionStartedEventAttributes(
-            workflow_type=WorkflowType(name='ForeignWorkflow' if case == 'type' else 'TrainingCycleWorkflow'),
+            workflow_type=WorkflowType(name='ForeignWorkflow' if case == 'type' else
+                'TrainingCycleWorkflowV2' if intent['protocol'] == 'ergora-training-cycle-v2' else 'TrainingCycleWorkflow'),
             task_queue=TaskQueue(name='another-queue' if case == 'queue' else intent['task_queue']),
             input=Payloads(payloads=await DataConverter.default.encode([value])), memo=await self.memo(intent, case),
             first_execution_run_id=receipt['run_id'], original_execution_run_id=receipt['run_id'], attempt=1)
@@ -91,7 +97,9 @@ class DispatchService:
     async def start_workflow_execution(self, request, **kwargs):
         self.record('start', request)
         assert request.workflow_id == self.intent['workflow_id']
-        assert request.workflow_type.name == 'TrainingCycleWorkflow' and request.task_queue.name == self.intent['task_queue']
+        expected_type = ('TrainingCycleWorkflowV2' if self.intent['protocol'] == 'ergora-training-cycle-v2'
+                         else 'TrainingCycleWorkflow')
+        assert request.workflow_type.name == expected_type and request.task_queue.name == self.intent['task_queue']
         assert request.workflow_id_reuse_policy == WorkflowIDReusePolicy.REJECT_DUPLICATE
         assert request.workflow_id_conflict_policy == WorkflowIDConflictPolicy.FAIL and request.retry_policy.maximum_attempts == 1
         assert await DataConverter.default.decode(request.input.payloads, [dict]) == [self.intent['workflow_input']]
@@ -179,8 +187,6 @@ class RoundService(DispatchService):
         self.receipt = json.loads((self.folder / 'receipt.json').read_bytes())
         self.runtime = Path(payload['snapshot']['authorization']['execution']['state_directory'])
         self.ident = payload['snapshot']['candidates'][identity['ordinal']]['experiment_id']
-        self.start = json.loads((self.runtime / ('ergora/training-submissions/' + self.ident + '.intent.json')).read_bytes())
-        self.native_receipt = json.loads((self.runtime / ('ergora/training-submissions/' + self.ident + '.result.json')).read_bytes())
 
     def candidate(self, request):
         if request.execution.workflow_id != self.intent['workflow_id']:
@@ -279,6 +285,15 @@ class RoundService(DispatchService):
         if self.case == 'round-binding':
             binding = {**binding, 'manifest_sha': 'f' * 64}
         detail_size = int(os.environ.get('ERGORA_TEST_ROUND_DETAIL', '0'))
-        status = Status('RUNNING' if self.case == 'round-pending' else 'AWAITING_RELEASE', Binding(**binding),
+        if self.case == 'round-previous-held':
+            marker = Path(os.environ['ERGORA_TEST_CYCLE_MARKERS']) / 'previous-query-held'
+            marker.touch()
+            while not marker.with_suffix('.release').exists():
+                await asyncio.sleep(.01)
+        after_intent = (self.case == 'round-previous-after-intent'
+            and (self.runtime / 'ergora/training-submissions/beta.intent.json').exists())
+        phase = ('CANCELLING' if self.case == 'round-previous-cancelling' or after_intent else
+                 'RUNNING' if self.case == 'round-pending' else 'AWAITING_RELEASE')
+        status = Status(phase, Binding(**binding),
             'foreign-job' if self.case == 'round-job' else 'local-perf-' + self.ident, evidence, '独特 RPC 原值 🧪' + 'x' * detail_size)
         return QueryWorkflowResponse(query_result=Payloads(payloads=await DataConverter.default.encode([asdict(status)])))

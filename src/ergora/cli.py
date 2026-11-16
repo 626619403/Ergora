@@ -607,6 +607,30 @@ def parser() -> argparse.ArgumentParser:
     cycle.add_argument("--sha256", required=True, help="Exact complete input SHA256")
     cycle.add_argument("--revision", type=int, required=True)
     cycle.add_argument("--confirm", action="store_true", help="Confirm starting the nonrenewable budget before live checks")
+    cycle = operations.add_parser("cycle-authorize-controller", help="Confirm one finite ordered controller and its nonrenewable budget")
+    cycle.add_argument("project")
+    cycle.add_argument("cycle_id")
+    cycle.add_argument("--directory", type=Path, required=True)
+    cycle.add_argument("--sha256", required=True)
+    cycle.add_argument("--revision", type=int, required=True)
+    cycle.add_argument("--confirm", action="store_true")
+    cycle.add_argument("--execute-selected", action="store_true", help="Explicitly consent to executing the exact selected candidates")
+    cycle.add_argument("--program-version", type=int, choices=(1, 2), default=2,
+                       help="Freeze this controller version; an existing cycle ID retains its original version")
+    for action, description in (
+            ('status', 'Read saved parent intent/attempt/receipt without querying or dispatching'),
+            ('prepare', 'Freeze the original parent intent without dispatch'),
+            ('submit', 'Submit the prepared parent once, preserving an uncertain original attempt'),
+            ('reconcile', 'Observe only the original parent after a lost reply; never resend'),
+            ('stop', 'Publish the local stop veto; this does not certify executor subtree termination')):
+        cycle = operations.add_parser('cycle-controller-' + action, help=description)
+        cycle.add_argument('project')
+        cycle.add_argument('cycle_id')
+        cycle.add_argument('--authorization-sha256', required=True)
+        if action == 'prepare':
+            cycle.add_argument('--revision', type=int, required=True)
+        elif action == 'stop':
+            cycle.add_argument('--reason', required=True)
     cycle = operations.add_parser("cycle-status", help="Read the original local authorization and deadline; never re-admit or dispatch")
     cycle.add_argument("project")
     cycle.add_argument("cycle_id")
@@ -1301,6 +1325,20 @@ def main(argv: list[str] | None = None) -> int:
 
                 output = training_cycles.authorize(State(args.home), args.project, args.cycle_id, args.directory,
                                                    args.sha256, args.revision, confirm=args.confirm)
+            elif args.operation == 'cycle-authorize-controller':
+                from . import training_cycles
+
+                output = training_cycles.authorize_controller(State(args.home), args.project, args.cycle_id, args.directory,
+                    args.sha256, args.revision, confirm=args.confirm, execute_selected=args.execute_selected,
+                    program_version=args.program_version)
+            elif args.operation.startswith('cycle-controller-'):
+                from . import training_cycles
+
+                action = args.operation.removeprefix('cycle-controller-')
+                selected = ({'expected_revision': args.revision} if action == 'prepare' else
+                            {'reason': args.reason} if action == 'stop' else {})
+                output = training_cycles.controller(State(args.home), args.project, args.cycle_id,
+                    args.authorization_sha256, action, **selected)
             elif args.operation == "cycle-status":
                 from . import training_cycles
 

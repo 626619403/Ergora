@@ -48,6 +48,75 @@ def prepare_binding(operation, intent: dict, selector: dict) -> dict:
     return binding
 
 
+async def check_cycle_predecessors(plan, admission, ready, binding, client, remaining):
+    """Revalidate predecessor archive and live phase outside writer reservations."""
+    from agent_platform.training import LocalTrainingAdapter
+    from perf_temporal.models import Binding, Job
+    from . import training
+    from .reference_training_runtime import lookup_controller, observe_submission
+
+    protocol = training_execution_protocol
+    authorization, project = admission.authorization, plan['project']
+    state = State(Path(authorization['control_home']))
+
+    def retain(ordinal, reader, value):
+        print(json.dumps({'reader': f'predecessor.{ordinal}.{reader}', 'value': value},
+                         ensure_ascii=False, allow_nan=False), file=sys.stderr, flush=True)
+
+    def active():
+        if remaining() <= 0:
+            raise ValueError('Original predecessor admission allowance is exhausted')
+        admission.check()
+        if state.project(project['id']) != project:
+            raise ValueError('Previous round admission lost its original registered project')
+
+    async with asyncio.timeout(remaining()):
+        active()
+        originals = protocol.authenticate_cycle_binding(binding, plan, admission, ready)
+        selection = protocol.round_selection(plan, authorization)
+        for position, (saved, value, original, _) in enumerate(originals):
+            active()
+            ordinal = value['identity']['ordinal']
+            if (value['activity_context']['workflow_input'] != admission.controller_intent()['workflow_input']
+                    or value['activity_context']['service_namespace'] != client.namespace
+                    or value['selection'] != selection):
+                raise ValueError('Previous observation differs from the current original selection or namespace')
+            evidence = training.evidence(state, project['id'], original['experiment_id'])
+            retain(ordinal, 'evidence', evidence)
+            active()
+            if evidence != value['evidence']:
+                raise ValueError('Previous accepted complete archive inventory changed')
+            if position != 0:
+                continue
+            chain = protocol.ExecutionRecords(project, original['experiment_id'], authorization['control_home']).load()
+            request = chain.request_record(authorization['controller']['actor_id'])
+            if chain.records['request'] != request:
+                raise ValueError('Previous execution request differs from its complete controller source')
+            receipt = chain.document(chain.budget.parent / (chain.ident + '.result.json'))
+            runtime = await observe_submission(client, original, run_id=receipt['run_id'], timeout=remaining())
+            retain(ordinal, 'runtime', runtime)
+            active()
+            native = await LocalTrainingAdapter().poll_job(Job(
+                Binding(**original['observation']['experiment']['spec']['binding']), request['job_id']))
+            retain(ordinal, 'native', asdict(native))
+            active()
+            execution = chain.observe(durable=True)
+            retain(ordinal, 'execution', execution)
+            observed = {'status': 'observed' if runtime is not None else 'unknown',
+                'submission': {name: receipt[name] for name in ('workflow_id', 'run_id', 'intent_sha256')},
+                'runtime': runtime, 'native': asdict(native), 'execution': execution,
+                'facts': {'submission': {'state': 'submitted'}, 'candidate': {
+                    'current_project_matches': state.project(project['id']) == project,
+                    'parent_stop_visible': admission.observe()['stop_visible']}}}
+            if protocol.round_state(observed, evidence, saved['report']['rounds'][-1], original) != 'accepted':
+                raise ValueError('Immediately previous round is no longer authenticated accepted')
+        await lookup_controller(client, admission.controller_intent(), binding['controller'], timeout=remaining())
+        # Blocking archive reads and RPCs cannot leave a stale local admission.
+        protocol.authenticate_cycle_binding(binding, plan, admission, ready)
+        active()
+        return originals[0][0] if originals else None
+
+
 class _BudgetPhase:
     """Transfer one phase without making its caller a shared child subreaper."""
 
@@ -263,8 +332,7 @@ class BudgetedStart:
         if authorization['schema_version'] == 3:
             training_execution_protocol.authenticate_cycle_candidate(
                 self.intent, plan, training_execution_protocol.CycleAdmission(directory, authorization), ready)
-            raise ValueError('Schema3 controller execution is not enabled')
-        if authorization['schema_version'] == 2:
+        elif authorization['schema_version'] == 2:
             training_execution_protocol.CycleAdmission(directory, authorization).bind(self.intent, plan)
         elif 'controller' in self.binding:
             raise ValueError('Manual authorization cannot acquire a controller binding')
@@ -295,12 +363,20 @@ class BudgetedStart:
             return
         from .reference_training_runtime import lookup_controller
 
-        state, plan, authorization, _ = self.source()
+        state, plan, authorization, ready = self.source()
         directory = training_cycles._directory(state.root, self.intent['project'], self.binding['cycle_id'])
         parent = training_execution_protocol.CycleAdmission(directory, authorization).controller_intent()
-        timeout = min(self.operation.payload['timeout'], plan['definition']['budget']['control_timeout_seconds'],
-            budget_clock.remaining(authorization['clock'], plan['definition']['budget']['wall_seconds'],
-                plan['definition']['budget']['cleanup_seconds']))
+
+        def remaining():
+            timeout = min(self.operation.payload['timeout'], plan['definition']['budget']['control_timeout_seconds'],
+                budget_clock.remaining(authorization['clock'], plan['definition']['budget']['wall_seconds'],
+                    plan['definition']['budget']['cleanup_seconds']))
+            origin = self.operation.payload.get('cycle_operation')
+            if authorization['schema_version'] == 3 and origin is not None:
+                return min(timeout, training_execution_protocol.cycle_operation_remaining(origin))
+            return timeout
+
+        timeout = remaining()
         if timeout <= 0:
             raise ValueError('Original computation budget is exhausted before controller history check')
         async with asyncio.timeout(timeout):
@@ -308,7 +384,15 @@ class BudgetedStart:
                 from perf_temporal.connection import connect
 
                 client = await connect()
-            await lookup_controller(client, parent, self.binding['controller'], timeout=timeout)
+            if authorization['schema_version'] == 3:
+                origin = self.operation.payload.get('cycle_operation')
+                context = origin.get('activity_context') if origin is not None else None
+                if context is not None and client.namespace != context['service_namespace']:
+                    raise ValueError('Candidate runtime namespace differs from its authenticated SDK activity service')
+                await check_cycle_predecessors(plan, admission=training_execution_protocol.CycleAdmission(directory, authorization),
+                    ready=ready, binding=self.binding, client=client, remaining=remaining)
+            else:
+                await lookup_controller(client, parent, self.binding['controller'], timeout=timeout)
 
     def require_active(self, *, owner: bool = False) -> None:
         state, plan, authorization, ready = self.source()

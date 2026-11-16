@@ -1,6 +1,7 @@
 """Immutable finite training inputs; scheduling and original evidence stay elsewhere."""
 
 from datetime import datetime, timedelta
+import asyncio
 import getpass
 import hashlib
 import json
@@ -450,8 +451,6 @@ def prepare_controller(state: State, project_id: str, cycle_id: str,
 
 def _controller_ready(state: State, admission) -> None:
     original = admission.authorization
-    if original['schema_version'] == 3:
-        raise ValueError('Schema3 controller execution is not enabled')
     observed = status(state, original['project'], original['cycle_id'], authorization_sha256=original['sha256'])
     if observed['status'] != 'ready':
         raise ValueError(observed['reason'] or 'Controller dispatch requires its original durable ready record')
@@ -619,3 +618,29 @@ def stop_controller(state: State, project_id: str, cycle_id: str, authorization_
     if authorization['sha256'] != authorization_sha256:
         raise ValueError('Controller stop requires the exact original authorization SHA256')
     return training_execution_protocol.CycleAdmission(directory, authorization).request_stop(reason)
+
+
+def controller(state: State, project_id: str, cycle_id: str, authorization_sha256: str, action: str, *,
+               expected_revision: int | None = None, reason: str | None = None) -> dict:
+    """Control the original parent through its existing local and S/H owners."""
+    if action not in ('status', 'prepare', 'submit', 'reconcile', 'stop'):
+        raise ValueError('Unsupported training controller action')
+    directory = _directory(state.root, project_id, cycle_id)
+    plan, authorization, _ = _load(state.root, project_id, cycle_id, directory)
+    if authorization['sha256'] != authorization_sha256:
+        raise ValueError('Controller operation requires its exact original authorization SHA256')
+    admission = training_execution_protocol.CycleAdmission(directory, authorization)
+    if action == 'status':
+        return {**admission.submission(), 'authorization_sha256': authorization_sha256,
+                'read_only': True, 'runtime_status': 'not_queried', 'execution_authorized': False}
+    if action == 'prepare':
+        return prepare_controller(state, project_id, cycle_id, authorization_sha256, expected_revision)
+    if action == 'stop':
+        return stop_controller(state, project_id, cycle_id, authorization_sha256, reason=reason)
+    from .reference_training_worker import _CycleOperation, _cycle_snapshot
+
+    mode = 'submit-controller' if action == 'submit' else 'reconcile-controller'
+    operation = _CycleOperation(state.root, project_id, cycle_id, authorization_sha256, mode,
+        snapshot=_cycle_snapshot(plan, authorization),
+        inspection_timeout=plan['definition']['budget']['control_timeout_seconds'])
+    return asyncio.run(operation.run())

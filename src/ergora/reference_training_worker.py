@@ -30,7 +30,7 @@ except ModuleNotFoundError as error:
 
 with workflow.unsafe.imports_passed_through() if workflow is not None else nullcontext():
     from . import budget_clock, processes, reference, training_cycles, training_execution_protocol as protocol
-    from .reference_training_budget import BudgetedStart, TASK_QUEUE, validate_binding
+    from .reference_training_budget import BudgetedStart, TASK_QUEUE, check_cycle_predecessors, validate_binding
     from .reference_training_submission import _Submission
     from .reference_training_execution import Execution
     from .state import State, file_lock, now
@@ -782,10 +782,6 @@ def _cycle_operation(payload: dict) -> dict:
     if identity['protocol'] != ('ergora-training-cycle-operation-v2' if authorization['schema_version'] == 3
                                 else 'ergora-training-cycle-operation-v1'):
         raise ValueError('Cycle operation protocol differs from its complete original authorization')
-    if authorization['schema_version'] == 3 and identity['mode'] in (
-            'prepare-controller', 'submit-controller', *protocol.CYCLE_START_MODES,
-            'request-execution-candidate', 'stop-writer', 'notify-owner'):
-        raise ValueError('Schema3 controller execution is not enabled')
     snapshot = _cycle_snapshot(plan, authorization)
     mode = identity['mode']
     if payload.get('activity_context') is not None:
@@ -974,7 +970,7 @@ def _execution_candidate_operation(payload: dict, plan: dict, admission, active)
         from perf_temporal.connection import connect
         from perf_temporal.models import Binding, Job
         from temporalio.service import RPCError
-        from .reference_training_runtime import MEMO_KEY, lookup, observe
+        from .reference_training_runtime import observe_submission
 
         binding = Binding(**intent['observation']['experiment']['spec']['binding'])
 
@@ -987,15 +983,11 @@ def _execution_candidate_operation(payload: dict, plan: dict, admission, active)
                 client = await connect()
                 if client.namespace != payload['activity_context']['service_namespace']:
                     raise ValueError('Candidate runtime namespace differs from its authenticated SDK activity service')
-                found = await lookup(client, intent['observation']['experiment']['spec'],
-                                     run_id=submitted['run_id'], timeout=remaining())
-                if found is None:
+                observed = await observe_submission(client, intent, run_id=submitted['run_id'], timeout=remaining())
+                if observed is None:
                     facts['runtime'].update(state='not_found', workflow_id=submitted['workflow_id'],
                                             run_id=submitted['run_id'])
                     return
-                if (await found[1].memo()).get(MEMO_KEY) != operation.sha(intent):
-                    raise ValueError('Original candidate runtime memo differs from its complete start intent')
-                observed = await observe(*found, binding, timeout=remaining())
                 result['runtime'] = observed
                 _retain_round_reader(payload, 'runtime', observed)
                 detail = observed.get('status', observed.get('outcome', {}))
@@ -1212,31 +1204,30 @@ def _round_read_evidence(payload, state, project, experiment, active):
     return observed
 
 
-def _round_previous(payload, plan, admission, selection, active):
-    """H adds current archive semantics and SDK phase to shared local originals."""
-    active()
-    _, intent, _ = _cycle_target(plan, admission, payload['identity']['ordinal'])
+def _round_previous(payload, plan, admission, active):
+    """H checks a real selected binding before or after child-intent birth."""
+    from perf_temporal.connection import connect
+
+    authorization = admission.authorization
     ready = protocol.decode(protocol.read_raw(admission.directory / 'ready.json'))
-    originals = protocol.authenticate_cycle_candidate(intent, plan, admission, ready)
-    state = State(Path(payload['identity']['control_home']))
-    for position, (saved, value, original, observed) in enumerate(originals):
+    binding = {'cycle_id': authorization['cycle_id'], 'authorization_sha256': authorization['sha256'],
+               'task_queue': TASK_QUEUE, 'controller': payload['start_context']['controller']}
+
+    def remaining():
         active()
-        if (value['activity_context']['workflow_input'] != payload['activity_context']['workflow_input']
-                or value['activity_context']['service_namespace'] != payload['activity_context']['service_namespace']
-                or value['selection'] != selection):
-            raise ValueError('Previous observation differs from the current original activity selection or namespace')
-        ident = original['experiment_id']
-        evidence = _round_read_evidence(payload, state, plan['project']['id'], ident, active)
-        _retain_round_reader(payload, 'execution', observed)
-        if evidence != value['evidence']:
-            raise ValueError('Previous accepted complete archive inventory changed')
-        if position == 0:
-            target = {**payload, 'identity': {**payload['identity'], 'ordinal': value['identity']['ordinal']}}
-            current = _execution_candidate_operation(target, plan, admission, active)
-            if protocol.round_state(current, evidence, saved['report']['rounds'][-1], original) != 'accepted':
-                raise ValueError('Immediately previous round is no longer authenticated accepted')
+        return protocol.cycle_operation_remaining(payload)
+
+    async def check():
+        async with asyncio.timeout(remaining()):
+            client = await connect()
+            context = payload.get('activity_context')
+            if context is not None and client.namespace != context['service_namespace']:
+                raise ValueError('Candidate runtime namespace differs from its authenticated SDK activity service')
+            return await check_cycle_predecessors(plan, admission, ready, binding, client, remaining)
+
+    previous = asyncio.run(check())
     active()
-    return originals[0][0] if originals else None
+    return previous
 
 
 def _round_operation(payload, plan, admission, ready, active):
@@ -1247,7 +1238,7 @@ def _round_operation(payload, plan, admission, ready, active):
     state = State(Path(identity['control_home']))
     operation, intent, _ = _round_gate(payload, plan, admission, ready, active, history=True)
     selection = protocol.round_selection(plan, admission.authorization)
-    previous = _round_previous(payload, plan, admission, selection, active)
+    previous = _round_previous(payload, plan, admission, active)
     preflight = _execution_candidate_operation(payload, plan, admission, active)
     evidence = _round_read_evidence(payload, state, identity['project'], operation.ident, active)
     if preflight['status'] != 'observed' or not all(isinstance(preflight[key], dict) for key in ('runtime', 'native', 'execution')):
@@ -1292,7 +1283,7 @@ def _round_operation(payload, plan, admission, ready, active):
         reread = training_rounds.read(destination, sha256=saved['sha256'])
         if reread != saved:
             raise ValueError('Round index complete prefix changed after synchronization')
-        protocol.round_report_binding(reread, plan, ordinal, _round_previous(payload, plan, admission, selection, active))
+        protocol.round_report_binding(reread, plan, ordinal, _round_previous(payload, plan, admission, active))
         _round_gate(payload, plan, admission, ready, active)
         index_state = 'durable'
     except (OSError, ValueError) as error:
@@ -1318,7 +1309,7 @@ def _round_operation(payload, plan, admission, ready, active):
     ref = {'path': str(path), 'sha256': hashlib.sha256(raw).hexdigest(), 'bytes': len(raw)}
     if protocol.read_round_observation(ref, home=state.root, operation_id=identity['operation_id']) != value:
         raise ValueError('Complete round observation changed after same-inode synchronization')
-    protocol.round_report_binding(saved, plan, ordinal, _round_previous(payload, plan, admission, selection, active))
+    protocol.round_report_binding(saved, plan, ordinal, _round_previous(payload, plan, admission, active))
     _round_gate(payload, plan, admission, ready, active)
     # Recheck the exact durable index after the final observation and gate.
     if training_rounds.read(destination, sha256=saved['sha256']) != saved:
@@ -1344,7 +1335,7 @@ def _candidate_operation(payload: dict, plan: dict, admission, active) -> dict:
     activity = payload.get('activity_context')
     mode = identity['mode']
     if mode == 'prepare-candidate' and activity is not None:
-        if identity['ordinal'] != 0:
+        if identity['ordinal'] != 0 and admission.authorization['schema_version'] != 3:
             raise ValueError('successor_not_enabled')
         if activity['activity_source']['attempt'] > 1:
             raise ValueError('Retried SDK start may only reconcile existing records')
@@ -1358,6 +1349,9 @@ def _candidate_operation(payload: dict, plan: dict, admission, active) -> dict:
     operation, intent = _cycle_submission(plan, admission, identity['ordinal'])
     if intent is not None and intent['budget']['controller'] != context['controller']:
         raise ValueError('Candidate operation differs from its complete original controller binding')
+    if (admission.authorization['schema_version'] == 3 and mode in protocol.CYCLE_START_MODES
+            and (mode != 'prepare-candidate' or intent is None)):
+        _round_previous(payload, plan, admission, active)
     if mode == 'prepare-candidate':
         selected = plan['definition']['candidates'][identity['ordinal']]
         selector = {'cycle_id': identity['cycle_id'], 'authorization_sha256': identity['authorization_sha256'],
@@ -1376,6 +1370,8 @@ def _candidate_operation(payload: dict, plan: dict, admission, active) -> dict:
         # The immutable intent is the only offer. Losing any later reply never
         # grants another launch, even if this synchronization fails.
         protocol.sync_directories(operation.path('.intent.json').parent, operation.root)
+        if admission.authorization['schema_version'] == 3:
+            _round_previous(payload, plan, admission, active)
         launch = budget.launch_context(payload)
         active()
         return {'status': 'new_offer', 'intent_sha256': operation.sha(intent),
