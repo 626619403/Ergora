@@ -251,10 +251,11 @@ else:
             'identity': payload['identity'], 'bootstrap': payload['bootstrap']})
         while not (markers / ('permit-release-' + label)).exists():
             time.sleep(.01)
-    if fault in ('oversized-stdout', 'oversized-frame') and mode == 'stop-writer':
+    if (fault in ('oversized-stdout', 'oversized-frame') and mode == 'stop-writer'
+            or fault in ('candidate-oversized-stdout', 'candidate-oversized-frame') and mode == 'observe-candidate'):
         def large_result(payload):
             # Real H bytes cross either the stdout bound or the identity-bearing frame bound.
-            return {'status': 'unknown', 'reason': 'x' * (32768 if fault == 'oversized-stdout' else 32500)}
+            return {'status': 'unknown', 'reason': 'x' * (32768 if fault.endswith('oversized-stdout') else 32500)}
 
         worker._cycle_operation = large_result
     if (mode in protocol.CYCLE_MEASUREMENT_MODES

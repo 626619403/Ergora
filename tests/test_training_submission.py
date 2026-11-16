@@ -2638,16 +2638,18 @@ def cycle_sdk_activity(controller_dispatch, request):
     state, admission, storage, operation = controller_dispatch
     options = getattr(request, 'param', False)
     program_version = options.get('program_version', 1) if isinstance(options, dict) else 1
-    if program_version == 2:
-        # Bind fixed originals for this service-double activity harness.
-        # This does not certify an actual registered V2 service or server start.
+    dispatch_parent = isinstance(options, dict) and options.get('dispatch_parent', False)
+    if program_version == 2 and not dispatch_parent:
+        # Keep the offline stop harness's fixed originals and default behavior.
         save_controller_binding(admission)
-        from ergora.reference_training_worker import _CycleFailureConverter
-        converter = replace(DataConverter.default, failure_converter_class=_CycleFailureConverter)
     else:
         submitted = asyncio.run(operation('lost-reply').run())
         assert submitted['status'] == 'unknown' and admission.submission()['attempt_saved']
-        converter = DataConverter.default
+        if dispatch_parent:
+            submitted = asyncio.run(operation('accepted', 'reconcile-controller').run())
+            assert submitted['status'] == 'submitted' and admission.submission()['run_id'] == DispatchService.run_id
+    converter = (replace(DataConverter.default, failure_converter_class=worker._CycleFailureConverter)
+                 if program_version == 2 else DataConverter.default)
     client = SimpleNamespace(namespace='default', data_converter=converter)
     shared = options.get('shared', False) if isinstance(options, dict) else options
     if shared:
@@ -3430,24 +3432,33 @@ def test_cycle_sdk_launch_capacity_keeps_occupied_intent_without_another_offer(
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='SDK activities consume the original supervised Linux H')
+@pytest.mark.parametrize('controller_admission,installation,cycle_sdk_activity', [
+    ({}, None, False),
+    ({'program_version': 2, 'control_timeout_seconds': 30}, 'managed',
+     {'program_version': 2, 'dispatch_parent': True})], indirect=True)
 @pytest.mark.parametrize('failure', ['popen', 'cleanup', 'oversized-parent'])
 def test_cycle_sdk_start_retains_parent_failures(
-        cycle_sdk_activity, cycle_operation_fault, service, cycle_selection, monkeypatch, failure):
+        cycle_sdk_activity, cycle_sdk_completion, cycle_operation_fault, service, cycle_selection, monkeypatch, tmp_path, failure):
     import asyncio
+    from dataclasses import replace
+    from temporalio.api.common.v1 import Payloads, WorkflowExecution
+    from temporalio.converter import DataConverter
     from temporalio.exceptions import ApplicationError
     from ergora import reference_training_worker as worker
 
-    state, admission, _, _, activities, environment = cycle_sdk_activity
+    state, admission, storage, _, activities, environment = cycle_sdk_activity
+    version3 = admission.authorization['schema_version'] == 3
     monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER', str(admission.folder))
     service[0]('accepted')
     cycle_operation_fault('candidate')
-    original_popen, roots = subprocess.Popen, []
+    original_popen, roots, spawns, candidates, captured = subprocess.Popen, [], [], [], []
     reason = 'Popen: Too many open files' if failure != 'oversized-parent' else 'Full parent failure: ' + '界' * 12000
     cleanup_reason = 'Original root notification is unconfirmed: notification failed'
 
     def spawn(argv, *args, **kwargs):
         if argv[-1] in ('from ergora.reference_training_worker import budget_main;budget_main()',
                        'from ergora.reference_training_budget import cycle_root_main;cycle_root_main()'):
+            spawns.append(argv[-1])
             if failure != 'cleanup':
                 raise OSError(reason)
             child = original_popen(argv, *args, **kwargs)
@@ -3463,6 +3474,20 @@ def test_cycle_sdk_start_retains_parent_failures(
         await original_discard(self)
         self.cleanup_problem = cleanup_reason
 
+    original_run, original_capacity = worker._CycleCandidate.run, worker._cycle_capacity
+    async def run_candidate(candidate):
+        result = await original_run(candidate)
+        intent_path = cycle_selection[2] / 'ergora/training-submissions/alpha.intent.json'
+        candidates.append((candidate, result, intent_path.read_bytes(), intent_path.stat().st_ino))
+        return result
+
+    async def capacity(value, converter):
+        if isinstance(value, dict) and value.get('protocol') == 'ergora-training-cycle-activity-v3':
+            captured.append(value)
+        await original_capacity(value, converter)
+
+    monkeypatch.setattr(worker._CycleCandidate, 'run', run_candidate)
+    monkeypatch.setattr(worker, '_cycle_capacity', capacity)
     monkeypatch.setattr(subprocess, 'Popen', spawn)
     if failure == 'cleanup':
         monkeypatch.setattr(worker._CycleCandidate, 'transfer', failed_transfer)
@@ -3470,7 +3495,45 @@ def test_cycle_sdk_start_retains_parent_failures(
         # mechanics are separately exercised by the candidate lifecycle seam.
         monkeypatch.setattr(worker._CycleCandidate, 'discard_root', observed_cleanup)
     request = {'workflow_input': admission.controller_intent()['workflow_input'], 'ordinal': 0}
-    if failure == 'oversized-parent':
+    if version3:
+        request['predecessor'] = None
+        converter = replace(DataConverter.default, failure_converter_class=worker._CycleFailureConverter)
+        completion = asyncio.run(cycle_sdk_completion(activities['start'], request, converter=converter,
+            workflow_execution=WorkflowExecution(workflow_id=admission.submission()['workflow_id'],
+                                                  run_id=admission.submission()['run_id'])))
+        (tmp_path / 'completion.pb').write_bytes(completion.SerializeToString())
+        envelope, = captured
+        (tmp_path / 'assembled.json').write_text(json.dumps(envelope, ensure_ascii=False))
+        candidate, parent, _, _ = candidates[0]
+        (tmp_path / 'parent-result.json').write_text(json.dumps(parent, ensure_ascii=False))
+        assert spawns == ['from ergora.reference_training_budget import cycle_root_main;cycle_root_main()']
+        assert parent['status'] == 'unknown'
+        assert parent['reason'] == ('Input transfer failed' if failure == 'cleanup' else reason)
+        assert (storage / 'request.pb').exists()
+        assert admission.submission()['run_id'] == '00000000-0000-4000-8000-000000000003'
+        assert sum(json.loads(path.read_bytes())['action'] == 'start' for path in storage.glob('call-*.json')) == 1
+        assert envelope['facts']['submission']['state'] == 'prepared'
+        assert [item['mode'] for item in envelope['operations']][-1] == 'observe-candidate'
+        inlines = [item for item in envelope['operations'] if 'inline' in item['result']]
+        assert len(inlines) == 1
+        retained, = inlines
+        assert retained['operation_id'] == candidate.operation.identity['operation_id']
+        assert retained['result']['inline']['reason'] == parent['reason']
+        if failure == 'cleanup':
+            assert retained['result']['inline']['cleanup_problem'] == cleanup_reason
+        assert roots == [] or all(root.poll() is not None for root in roots)
+        full = Payloads(payloads=asyncio.run(converter.encode([envelope])))
+        if failure == 'oversized-parent':
+            assert full.ByteSize() > 32768
+            saved_failure = completion.result.failed.failure
+            assert saved_failure.application_failure_info.type == 'cycle_activity_capacity_exceeded'
+            assert saved_failure.application_failure_info.non_retryable and saved_failure.ByteSize() <= 32768
+            assert saved_failure.message == 'Complete cycle activity capacity exceeded'
+            assert not saved_failure.HasField('cause') and not saved_failure.application_failure_info.details.payloads
+        else:
+            assert envelope['status'] == 'unknown' and full.ByteSize() <= 32768
+            assert asyncio.run(converter.decode([completion.result.completed.result])) == [envelope]
+    elif failure == 'oversized-parent':
         with pytest.raises(ApplicationError) as failed:
             asyncio.run(environment('start').run(activities['start'], request))
         assert failed.value.type == 'cycle_activity_capacity_exceeded' and failed.value.non_retryable
@@ -3482,12 +3545,115 @@ def test_cycle_sdk_start_retains_parent_failures(
         if failure == 'cleanup':
             assert any(value.get('cleanup_problem') == cleanup_reason for value in inlines)
             assert roots and all(root.poll() is not None for root in roots)
+    if failure != 'oversized-parent':
+        result = envelope if version3 else result
         preparation = next(item for item in result['operations'] if 'ref' in item['result'])
         ref = preparation['result']['ref']
         raw = (state.root / 'operations/training-cycles' / preparation['operation_id'] / ref['file']).read_bytes()
         assert hashlib.sha256(raw).hexdigest() == ref['sha256'] and json.loads(raw)['status'] == 'new_offer'
-    assert (cycle_selection[2] / 'ergora/training-submissions/alpha.intent.json').exists()
+    intent_path = cycle_selection[2] / 'ergora/training-submissions/alpha.intent.json'
+    assert (intent_path.read_bytes(), intent_path.stat().st_ino) == candidates[0][2:]
+    assert not service[1].exists() or json.loads(service[1].read_bytes())['starts'] == 0
+    assert not (cycle_selection[2] / 'training/jobs/alpha').exists()
     assert not (cycle_selection[2] / 'ergora/training-submissions/alpha.attempt.json').exists()
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='The actual S/H capacity boundary and root cleanup require Linux')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 30}], indirect=True)
+@pytest.mark.parametrize('cycle_sdk_activity', [{'program_version': 2, 'dispatch_parent': True}], indirect=True)
+@pytest.mark.parametrize('fault', ['oversized-stdout', 'oversized-frame'])
+def test_cycle_v3_parent_unknown_cannot_hide_final_observation_capacity(
+        cycle_sdk_activity, cycle_sdk_completion, cycle_budget_root, cycle_operation_fault, service,
+        cycle_selection, monkeypatch, tmp_path, caplog, fault):
+    import asyncio
+    from dataclasses import replace
+    from temporalio.api.common.v1 import WorkflowExecution
+    from temporalio.converter import DataConverter
+    from ergora import reference_training_worker as worker
+
+    _, admission, storage, _, activities, _ = cycle_sdk_activity
+    service[0]('accepted')
+    monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER', str(admission.folder))
+    cycle_operation_fault('candidate-' + fault)
+    reason, cleanup_reason = 'Input transfer failed', 'Original root cleanup remains unconfirmed'
+    parents, observations, assembled = [], [], []
+    run_candidate, discard_root = worker._CycleCandidate.run, worker._CycleCandidate.discard_root
+    run_operation, capacity = worker._CycleOperation.run, worker._cycle_capacity
+    intent_path = cycle_selection[2] / 'ergora/training-submissions/alpha.intent.json'
+
+    async def failed_transfer(candidate, raw):
+        raise OSError(reason)
+
+    async def incomplete_cleanup(candidate):
+        await discard_root(candidate)
+        candidate.cleanup_problem = cleanup_reason
+
+    async def retained_parent(candidate):
+        value = await run_candidate(candidate)
+        parents.append((candidate, value, intent_path.read_bytes(), intent_path.stat().st_ino))
+        return value
+
+    async def observed_operation(operation):
+        value = await run_operation(operation)
+        if operation.identity['mode'] == 'observe-candidate':
+            observations.append((operation, value))
+        return value
+
+    async def assembled_capacity(value, converter):
+        if isinstance(value, dict) and value.get('protocol') == 'ergora-training-cycle-activity-v3':
+            assembled.append(value)
+        await capacity(value, converter)
+
+    monkeypatch.setattr(worker._CycleCandidate, 'transfer', failed_transfer)
+    monkeypatch.setattr(worker._CycleCandidate, 'discard_root', incomplete_cleanup)
+    monkeypatch.setattr(worker._CycleCandidate, 'run', retained_parent)
+    monkeypatch.setattr(worker._CycleOperation, 'run', observed_operation)
+    monkeypatch.setattr(worker, '_cycle_capacity', assembled_capacity)
+    converter = replace(DataConverter.default, failure_converter_class=worker._CycleFailureConverter)
+    completion = asyncio.run(cycle_sdk_completion(activities['start'], {
+        'workflow_input': admission.controller_intent()['workflow_input'], 'ordinal': 0, 'predecessor': None},
+        converter=converter, workflow_execution=WorkflowExecution(
+            workflow_id=admission.submission()['workflow_id'], run_id=admission.submission()['run_id'])))
+    (tmp_path / 'completion.pb').write_bytes(completion.SerializeToString())
+    candidate, parent, original_intent, original_inode = parents[0]
+    observation, observed = observations[0]
+    (tmp_path / 'parent-result.json').write_text(json.dumps(parent, ensure_ascii=False))
+    (tmp_path / 'observation-result.json').write_text(json.dumps(observed, ensure_ascii=False))
+    if assembled:
+        records = assembled[0]['operations']
+        (tmp_path / 'assembled.json').write_text(json.dumps(assembled[0], ensure_ascii=False))
+    else:
+        outcome, records = next(record.args for record in caplog.records
+            if record.msg == 'Complete cycle operation capacity failure; outcome: %s; operations: %s')
+        assert outcome['status'] == 'capacity_exceeded'
+        (tmp_path / 'capacity-records.json').write_text(json.dumps({'outcome': outcome, 'operations': records}))
+    assert parent['status'] == 'unknown' and parent['reason'] == reason
+    assert parent['cleanup_problem'] == cleanup_reason
+    retained = next(item for item in records if item['result'].get('inline', {}).get('reason') == reason)
+    assert retained['operation_id'] == candidate.operation.identity['operation_id']
+    assert retained['result']['inline']['cleanup_problem'] == cleanup_reason
+    assert cycle_budget_root == ['from ergora.reference_training_budget import cycle_root_main;cycle_root_main()']
+    assert candidate.root.returncode is not None and not candidate.handed_off
+    assert observed['status'] == 'capacity_exceeded' and observed['operation_stopped'] is True
+    assert observed['supervisor_returncode'] == 0
+    raw = (observation.output / 'helper/stdout.txt').read_bytes()
+    assert json.loads(raw)['reason'] == 'x' * (32768 if fault == 'oversized-stdout' else 32500)
+    assert (len(raw) > 32768) == (fault == 'oversized-stdout')
+    assert (observation.output / 'supervisor.stderr').read_text()
+    assert observation.payload['bootstrap'] == candidate.preparation.payload['bootstrap']
+    assert (intent_path.read_bytes(), intent_path.stat().st_ino) == (original_intent, original_inode)
+    assert not intent_path.with_name('alpha.attempt.json').exists()
+    assert not (cycle_selection[2] / 'training/jobs/alpha').exists()
+    assert not service[1].exists() or json.loads(service[1].read_bytes())['starts'] == 0
+    assert (storage / 'request.pb').exists()
+    assert sum(json.loads(path.read_bytes())['action'] == 'start' for path in storage.glob('call-*.json')) == 1
+    assert completion.result.HasField('failed')
+    failure = completion.result.failed.failure
+    assert failure.application_failure_info.type == 'cycle_activity_capacity_exceeded'
+    assert failure.application_failure_info.non_retryable and failure.ByteSize() <= 32768
+    assert failure.message == 'Complete cycle activity capacity exceeded'
+    assert not failure.HasField('cause') and not failure.application_failure_info.details.payloads
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='SDK activities consume the original supervised Linux H')

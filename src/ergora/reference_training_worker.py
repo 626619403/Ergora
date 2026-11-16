@@ -2490,14 +2490,22 @@ def create_cycle_activities(client, program_version: int = 1, *,
                     outcome = await stop_live_controller(*arguments, reason=request['reason'], inspection=inspection,
                         activity_context=context, operation_records=records)
                 else:
+                    start_status = None
                     binding = {'protocol': original['protocol'], **inspection['controller'],
                                'ordinal': request['ordinal'], 'predecessor': request['predecessor']}
                     if action == 'start' and source['attempt'] == 1 and not inspection['candidate_exists']:
                         candidate = _CycleCandidate(*arguments, snapshot=snapshot, controller=binding,
                             activity_context=context, window=work_window)
                         outcome = await candidate.run()
+                        start_status = outcome.get('status')
                         records.extend(_activity_operation_result(operation, value)
                             for operation, value in zip(candidate.operations, candidate.results))
+                        # H references do not archive observations made later by its parent.
+                        parent_result = {key: value for key, value in outcome.items()
+                                         if key not in ('preparation', 'confirmation')}
+                        if parent_result != candidate.results[-1]:
+                            records.append(_activity_operation_result(candidate.operation, candidate.results[-1])
+                                           | {'result': {'inline': parent_result}})
                     elif action in ('start', 'reconcile'):
                         operation = _CycleOperation(*arguments, 'reconcile-candidate', snapshot=snapshot,
                             ordinal=request['ordinal'], start_context={'controller': binding},
@@ -2514,6 +2522,9 @@ def create_cycle_activities(client, program_version: int = 1, *,
                         activity_context=context, window=work_window)
                     outcome = await operation.run()
                     records.append(_activity_operation_result(operation, outcome))
+                    if (start_status in ('unknown', 'capacity_exceeded')
+                            and outcome.get('status') != 'capacity_exceeded'):
+                        outcome = {**outcome, 'status': start_status}
             elif version2:
                 budget = inspection['facts']['budget']
                 if budget['state'] == 'valid' and budget['work_remaining_seconds'] > 0:
