@@ -10,7 +10,7 @@ English is the default for completed language pairs. The table explicitly marks 
 
 |Guide|Use it for|Language status|
 |---|---|---|
-|[Installation and daily use](USAGE.md)|Installation profiles/offline wheels, Agent authentication, formal task operations, issue sources, services and recovery|Chinese; full pair queued in batch 2|
+|[Installation and daily use](USAGE.md)|Installation profiles/offline wheels, Agent authentication, formal task operations, issue sources, services and recovery|[English](USAGE.md) / [中文](zh-CN/USAGE.md)|
 |[Windows](WINDOWS.md)|Native control plane, PowerShell installation, handoff verification and WSL2 execution boundaries|[English](WINDOWS.md) / [中文](zh-CN/WINDOWS.md)|
 |[Projects](PROJECTS.md)|Unified registration, revisions, effective bindings and explicit adoption of a reference registration|[English](PROJECTS.md) / [中文](zh-CN/PROJECTS.md)|
 |[Backup and recovery](BACKUP_RECOVERY.md) · [中文](zh-CN/BACKUP_RECOVERY.md)|Coordinated offline control/execution/Temporal/Git snapshots and same-path restoration|English and Chinese|
