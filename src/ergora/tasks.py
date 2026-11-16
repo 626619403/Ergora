@@ -445,6 +445,65 @@ def plan(state: State, project_id: str, task_id: str, *, run_id: str, plan_sha25
                                                     'plan_sha256': plan_sha256}, timeout=timeout)
 
 
+
+def design(state: State, project_id: str, task_id: str, *, run_id: str, plan_sha256: str, timeout: int = 20) -> dict:
+    """Read the original inspection seed or complete saved source chain."""
+    _run_id(run_id)
+    _digest(plan_sha256, 'Plan')
+    project = _project(state, project_id)
+    return reference.task_design_source(project, state.root, 'source-inspect',
+        {'task_id': task_id, 'run_id': run_id, 'plan_sha256': plan_sha256}, timeout=timeout)
+
+
+def _publish_design_source(state, project_id, task_id, operation_id, expected_revision, body,
+                           operation, parent_record_sha256, run_id, plan_sha256, timeout):
+    _run_id(run_id)
+    _digest(plan_sha256, 'Plan')
+    _digest(parent_record_sha256, 'Source parent')
+    reference.validate_design_source_submission(body, operation)
+    # First network observation never retains the control DB reservation.
+    preflight = design(state, project_id, task_id, run_id=run_id, plan_sha256=plan_sha256, timeout=timeout)
+    payload = {'task_id': task_id, 'operation_id': operation_id, 'source_operation': operation, 'source': body,
+               'parent_record_sha256': parent_record_sha256, 'run_id': run_id, 'plan_sha256': plan_sha256,
+               'preflight': preflight}
+    project, prepared = _native_prepare(state, project_id, expected_revision, reference._prepare_design_source,
+                                        'source-prepare', payload, timeout)
+    return reference.task_design_source(project, state.root, 'source-commit',
+        {'task_id': task_id, 'operation_id': operation_id,
+         'intent_sha256': prepared['source']['intent_sha256']}, timeout=timeout)
+
+
+def publish_design(state: State, project_id: str, task_id: str, operation_id: str, expected_revision: int,
+                   body: dict, *, parent_record_sha256: str, run_id: str, plan_sha256: str, timeout: int = 20) -> dict:
+    """Store one complete inspection-only packet; does not alter task execution."""
+    return _publish_design_source(state, project_id, task_id, operation_id, expected_revision, body,
+        'publish-design', parent_record_sha256, run_id, plan_sha256, timeout)
+
+
+def record_design_response(state: State, project_id: str, task_id: str, operation_id: str, expected_revision: int,
+                           body: dict, *, parent_record_sha256: str, run_id: str, plan_sha256: str, timeout: int = 20) -> dict:
+    """Preserve exact reported/agent text without authenticating an owner decision."""
+    return _publish_design_source(state, project_id, task_id, operation_id, expected_revision, body,
+        'record-response', parent_record_sha256, run_id, plan_sha256, timeout)
+
+
+def design_operation(state: State, project_id: str, task_id: str, operation_id: str, *, timeout: int = 20) -> dict:
+    project = _project(state, project_id)
+    return reference.task_design_source(project, state.root, 'source-status',
+        {'task_id': task_id, 'operation_id': operation_id}, timeout=timeout)
+
+
+def resume_design_operation(state: State, project_id: str, task_id: str, operation_id: str, expected_revision: int,
+                            intent_sha256: str, *, timeout: int = 20) -> dict:
+    """Confirm/recover only the complete original source intent and managed bytes."""
+    _digest(intent_sha256, 'Source intent')
+    payload = {'task_id': task_id, 'operation_id': operation_id, 'intent_sha256': intent_sha256}
+    project, _ = _native_prepare(state, project_id, expected_revision, reference._prepare_design_source,
+                                 'source-prepare-resume', payload, timeout)
+    return reference.task_design_source(project, state.root, 'source-resume', payload, timeout=timeout)
+
+
+
 def approve(state: State, project_id: str, task_id: str, decision_id: str, expected_revision: int,
             *, run_id: str, plan_sha256: str, confirm: bool = False, timeout: int = 20) -> dict:
     """Freeze an explicit owner decision, then signal its exact run and plan once."""

@@ -1,0 +1,606 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Inspection-only task design source submission",
+  "$comment": "The application composes the immutable task-design-v1 $defs and validates packet/complete response with their original schemas.",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/publish"
+    },
+    {
+      "$ref": "#/$defs/respond"
+    }
+  ],
+  "$defs": {
+    "source_body": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256",
+        "bytes",
+        "media_type",
+        "text"
+      ],
+      "properties": {
+        "path": {
+          "type": "string"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "media_type": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      }
+    },
+    "response_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "question_ids",
+        "packet_content_sha256",
+        "choice_ids",
+        "source_refs",
+        "authored_by",
+        "origin",
+        "supersedes_response_id"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "question_ids": {
+          "$ref": "#/$defs/ids",
+          "minItems": 1
+        },
+        "packet_content_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "choice_ids": {
+          "$ref": "#/$defs/ids"
+        },
+        "source_refs": {
+          "$ref": "#/$defs/ids"
+        },
+        "authored_by": {
+          "$ref": "#/$defs/id"
+        },
+        "origin": {
+          "enum": [
+            "agent",
+            "reported-human"
+          ]
+        },
+        "supersedes_response_id": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/id"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "publish": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "packet",
+        "bodies"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "storage_limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "artifact_bytes": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "inspection_bytes": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "operations": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "packet_revisions": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "intent_bytes": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "journal_bytes": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "packet": {
+          "type": "object"
+        },
+        "bodies": {
+          "type": "array",
+          "maxItems": 32,
+          "items": {
+            "$ref": "#/$defs/source_body"
+          }
+        }
+      }
+    },
+    "respond": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "response",
+        "body"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "storage_limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "artifact_bytes": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "inspection_bytes": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "operations": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "packet_revisions": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "intent_bytes": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "journal_bytes": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "response": {
+          "$ref": "#/$defs/response_input"
+        },
+        "body": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "media_type",
+            "text"
+          ],
+          "properties": {
+            "media_type": {
+              "enum": [
+                "text/plain",
+                "text/markdown"
+              ]
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "storage_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "kind",
+        "id",
+        "limits"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "kind": {
+          "const": "task-design-source-storage-profile"
+        },
+        "id": {
+          "const": "design-source-storage-v1"
+        },
+        "limits": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "artifact_bytes",
+            "inspection_bytes",
+            "operations",
+            "packet_revisions",
+            "intent_bytes",
+            "journal_bytes"
+          ],
+          "properties": {
+            "artifact_bytes": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "inspection_bytes": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "operations": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "packet_revisions": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "intent_bytes": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "journal_bytes": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        }
+      }
+    },
+    "recorded_actor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "assurance"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^unix:[0-9]+:"
+        },
+        "assurance": {
+          "const": "local-process-only"
+        }
+      }
+    },
+    "anchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "kind",
+        "task_id",
+        "creation_sha256",
+        "submission_sha256",
+        "workflow_id",
+        "run_id",
+        "seed_receipt_sha256",
+        "seed_job_sha256",
+        "seed_packet_sha256",
+        "source_storage_contract_sha256"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "kind": {
+          "const": "task-design-source-anchor"
+        },
+        "task_id": {
+          "$ref": "#/$defs/id"
+        },
+        "creation_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "submission_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "workflow_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "run_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "seed_receipt_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "seed_job_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "seed_packet_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "source_storage_contract_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "record_view": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation_id",
+        "operation",
+        "intent_sha256",
+        "record_sha256",
+        "parent_record_sha256",
+        "material_revision",
+        "recorded_actor",
+        "recorded_at",
+        "packet",
+        "response"
+      ],
+      "properties": {
+        "operation_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"
+        },
+        "operation": {
+          "enum": [
+            "publish-design",
+            "record-response"
+          ]
+        },
+        "intent_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "record_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "parent_record_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "material_revision": {
+          "type": "integer",
+          "minimum": 2
+        },
+        "recorded_actor": {
+          "$ref": "#/$defs/recorded_actor"
+        },
+        "recorded_at": {
+          "$ref": "#/$defs/text"
+        },
+        "packet": {
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "response": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/source_response"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "pending_view": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "operation_id",
+        "intent_sha256",
+        "material_revision",
+        "parent_record_sha256"
+      ],
+      "properties": {
+        "operation_id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"
+        },
+        "intent_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "material_revision": {
+          "type": "integer",
+          "minimum": 2
+        },
+        "parent_record_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "journal_view": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "anchor",
+        "storage_profile",
+        "status",
+        "material_revision",
+        "source_chain_sha256",
+        "records",
+        "pending",
+        "current_packet",
+        "responses",
+        "bodies",
+        "local_chain_checked",
+        "seed_previous_revision_chain_checked",
+        "source_storage_profile_sha256"
+      ],
+      "properties": {
+        "anchor": {
+          "$ref": "#/$defs/anchor"
+        },
+        "storage_profile": {
+          "$ref": "#/$defs/storage_profile"
+        },
+        "status": {
+          "enum": [
+            "not_recorded",
+            "recorded"
+          ]
+        },
+        "material_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "source_chain_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "records": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "$ref": "#/$defs/record_view"
+          }
+        },
+        "pending": {
+          "type": "array",
+          "maxItems": 1,
+          "items": {
+            "$ref": "#/$defs/pending_view"
+          }
+        },
+        "current_packet": {
+          "type": "object"
+        },
+        "responses": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "$ref": "#/$defs/source_response"
+          }
+        },
+        "bodies": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/source_body"
+          }
+        },
+        "local_chain_checked": {
+          "type": "boolean"
+        },
+        "seed_previous_revision_chain_checked": {
+          "const": false
+        },
+        "source_storage_profile_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "validation_handoff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "inventory_sha256",
+        "repair_required",
+        "inputs"
+      ],
+      "properties": {
+        "inventory_sha256": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/sha256"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "repair_required": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "inputs": {
+          "type": "array",
+          "maxItems": 128,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "operation_id",
+              "intent_sha256",
+              "operation",
+              "submission",
+              "response"
+            ],
+            "properties": {
+              "operation_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"
+              },
+              "intent_sha256": {
+                "$ref": "#/$defs/sha256"
+              },
+              "operation": {
+                "enum": [
+                  "publish-design",
+                  "record-response"
+                ]
+              },
+              "submission": {
+                "type": "object"
+              },
+              "response": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/source_response"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "source_response": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/response"
+        },
+        {
+          "properties": {
+            "origin": {
+              "enum": [
+                "agent",
+                "reported-human"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}

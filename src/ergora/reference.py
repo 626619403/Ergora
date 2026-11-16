@@ -749,6 +749,8 @@ def task_submission(project: dict, home: Path, operation: str, payload: dict, *,
 
 def task_approval(project: dict, home: Path, operation: str, payload: dict, *, timeout: int) -> dict:
     """Use the same native lifecycle for exact owner decisions and signal recovery."""
+    if operation.startswith('source-'):
+        return task_design_source(project, home, operation, payload, timeout=timeout)
     if operation == 'inspect-plan':
         return task_plan(project, home, payload, timeout=timeout)
     return _task_operation(project, home, 'approval', operation, payload, timeout)
@@ -757,27 +759,198 @@ def task_approval(project: dict, home: Path, operation: str, payload: dict, *, t
 def task_plan(project: dict, home: Path, payload: dict, *, timeout: int) -> dict:
     """Inspect the pending plan through the existing native approval boundary."""
     result = _task_operation(project, home, 'approval', 'inspect-plan', payload, timeout)
+    return _checked_design_result(result)
+
+
+def _checked_design_result(result: dict) -> dict:
     if 'design_read' not in result:
+        if 'design_source_read' in result or 'design_source_validation' in result:
+            raise ValueError('Design source handoff has no complete original design binding')
         return result
     # The registered native interpreter owns SDK/file reads, while the
     # application owns jsonschema. Never expose an unvalidated native handoff.
     from .contracts import validate
-    from .task_design import inspect_packet
-    from .task_envelopes import identity
 
     read = result.pop('design_read')
     schema = json.loads((DATA / 'schemas/task-design-v1.json').read_text(encoding='utf-8'))
     profile, packet = read['profile'], read['packet']
     validate(profile, {'$defs': schema['$defs'], '$ref': '#/$defs/profile'}, 'Design inspection profile')
     limits = profile['limits']
+    _validate_design_packet(packet, profile, schema)
+    maximum = limits['inspection_bytes']
+    if 'design_source_read' in result:
+        _validate_source_read(result, schema, profile)
+        maximum = result['design_source_read']['storage_profile']['limits']['inspection_bytes']
+    result = _design_public_result({**result, 'design_read': read})
+    raw = (json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False) + '\n').encode('utf-8')
+    if len(raw) > maximum:
+        raise ValueError('Design inspection exceeds its creation read limit')
+    return result
+
+
+def _validate_design_packet(packet, profile, schema):
+    from .contracts import validate
+
+    limits = profile['limits']
     properties = {**schema['properties'], **{name: {**schema['properties'][name], 'maxItems': limits[name]}
                   for name in ('source_records', 'questions', 'knowledge_requirements')},
                   'revision': {**schema['properties']['revision'], 'maximum': limits['revisions']}}
     validate(packet, {**schema, 'properties': properties}, 'Design packet')
+
+
+def validate_design_source_submission(value, operation, design_schema=None, profile=None):
+    from .contracts import validate
+
+    design_schema = design_schema or json.loads((DATA / 'schemas/task-design-v1.json').read_text())
+    profile = profile or json.loads((DATA / 'design-profiles/framework-development-v1.json').read_text())
+    source_schema = json.loads((DATA / 'schemas/task-design-source-v1.json').read_text())
+    definitions = {**design_schema['$defs'], **source_schema['$defs']}
+    if isinstance(value, dict) and set(value) & {'recorded_by', 'recorded_at', 'actor', 'recorded_actor', 'principal_type', 'role', 'attestation'}:
+        raise ValueError('human_channel_unavailable: source submissions cannot provide recorder/owner evidence')
+    if isinstance(value, dict) and isinstance(value.get('response'), dict):
+        response = value['response']
+        if response.get('origin') == 'owner-channel' or set(response) & {'recorded_by', 'recorded_at', 'actor', 'principal_type', 'role', 'attestation'}:
+            raise ValueError('human_channel_unavailable: source responses cannot supply trusted/recorded actor evidence')
+    branch = {'publish-design': 'publish', 'record-response': 'respond'}.get(operation)
+    if branch is None:
+        raise ValueError('Unsupported design source submission operation')
+    validate(value, {'$defs': definitions, '$ref': '#/$defs/' + branch}, 'Design source submission')
+    storage = json.loads((DATA / 'design-profiles/design-source-storage-v1.json').read_text())
+    for name, limit in value.get('storage_limits', {}).items():
+        if limit > storage['limits'][name]:
+            raise ValueError('Design source storage limits may only tighten the built-in profile')
+    raw = json.dumps(value, ensure_ascii=False, allow_nan=False).encode('utf-8')
+    if len(raw) > storage['limits']['intent_bytes']:
+        raise ValueError('Complete source submission exceeds its source intent limit')
+    if branch == 'publish':
+        _validate_design_packet(value['packet'], profile, design_schema)
+        for body in value['bodies']:
+            validate({key: body[key] for key in ('path', 'sha256', 'bytes', 'media_type')},
+                     {'$defs': design_schema['$defs'], '$ref': '#/$defs/body_ref'}, 'Design source body')
+            encoded = body['text'].encode('utf-8')
+            if len(encoded) != body['bytes'] or hashlib.sha256(encoded).hexdigest() != body['sha256']:
+                raise ValueError('Design source body bytes/SHA differ from its original text')
+
+
+def _validate_source_read(result, schema, profile):
+    from .contracts import validate
+
+    view, validation = result['design_source_read'], result['design_source_validation']
+    source_schema = json.loads((DATA / 'schemas/task-design-source-v1.json').read_text())
+    definitions = {**schema['$defs'], **source_schema['$defs']}
+    validate(view, {'$defs': definitions, '$ref': '#/$defs/journal_view'}, 'Complete design source view')
+    validate(validation, {'$defs': definitions, '$ref': '#/$defs/validation_handoff'}, 'Design source validation handoff')
+    storage = json.loads((DATA / 'design-profiles/design-source-storage-v1.json').read_text())
+    saved = view['storage_profile']
+    from .task_envelopes import identity
+
+    if view['source_storage_profile_sha256'] != identity(saved):
+        raise ValueError('Saved design source storage profile digest differs from its complete object')
+    if set(saved) != set(storage) or any(saved[key] != storage[key] for key in ('schema_version', 'kind', 'id')):
+        raise ValueError('Unsupported saved design source storage profile')
+    if set(saved['limits']) != set(storage['limits']):
+        raise ValueError('Unsupported saved design source storage limit fields')
+    for name, value in saved['limits'].items():
+        if type(value) is not int or not 0 < value <= storage['limits'][name]:
+            raise ValueError('Invalid saved design source storage limit: ' + name)
+    if (type(view['material_revision']) is not int or view['material_revision'] < 1
+            or not isinstance(view['records'], list) or not isinstance(view['pending'], list)
+            or len(view['records']) + len(view['pending']) > saved['limits']['operations']):
+        raise ValueError('Invalid complete source journal sequence/count')
+    identifiers = [item['operation_id'] for item in validation['inputs']]
+    if len(set(identifiers)) != len(identifiers) or len(identifiers) != len(view['records']) + len(view['pending']):
+        raise ValueError('Incomplete or duplicate source validation records')
+    for record in validation['inputs']:
+        validate_design_source_submission(record['submission'], record['operation'], schema, profile)
+        if record['response'] is not None:
+            if record['response']['origin'] not in ('agent', 'reported-human'):
+                raise ValueError('human_channel_unavailable: saved source response cannot authenticate an owner')
+            validate(record['response'], {'$defs': schema['$defs'], '$ref': '#/$defs/response'}, 'Saved design response')
+    _validate_design_packet(view['current_packet'], profile, schema)
+    for record in view['records']:
+        if record['packet'] is not None:
+            _validate_design_packet(record['packet'], profile, schema)
+        if record['response'] is not None:
+            validate(record['response'], {'$defs': schema['$defs'], '$ref': '#/$defs/response'}, 'Saved design response')
+    for body in view['bodies']:
+        validate({key: body[key] for key in ('path', 'sha256', 'bytes', 'media_type')},
+                 {'$defs': schema['$defs'], '$ref': '#/$defs/body_ref'}, 'Saved source body')
+        encoded = body['text'].encode('utf-8')
+        if len(encoded) != body['bytes'] or hashlib.sha256(encoded).hexdigest() != body['sha256']:
+            raise ValueError('Saved source text differs from its raw-byte identity')
+
+
+def _source_request_payload(operation: str, payload: dict, *, local_prepare: bool = False) -> None:
+    from .contracts import validate
+
+    common = {'task_id': {'type': 'string', 'pattern': '^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$'},
+        'operation_id': {'type': 'string', 'pattern': '^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$'},
+        'run_id': {'type': 'string', 'minLength': 1, 'maxLength': 128},
+        **{name: {'type': 'string', 'pattern': '^[0-9a-f]{64}$'}
+           for name in ('plan_sha256', 'parent_record_sha256', 'intent_sha256')},
+        'source_operation': {'enum': ['publish-design', 'record-response']},
+        'source': {'type': 'object'}, 'preflight': {'type': 'object'}}
+    fields = {'source-inspect': ('task_id', 'run_id', 'plan_sha256'),
+        'source-status': ('task_id', 'operation_id'),
+        'source-prepare': ('task_id', 'operation_id', 'source_operation', 'source',
+                           'parent_record_sha256', 'run_id', 'plan_sha256'),
+        'source-prepare-resume': ('task_id', 'operation_id', 'intent_sha256'),
+        'source-commit': ('task_id', 'operation_id', 'intent_sha256'),
+        'source-resume': ('task_id', 'operation_id', 'intent_sha256')}.get(operation)
+    if fields is None:
+        raise ValueError('Unsupported design source operation')
+    if local_prepare and operation == 'source-prepare':
+        fields = (*fields, 'preflight')
+    validate(payload, {'type': 'object', 'additionalProperties': False, 'required': list(fields),
+                       'properties': {key: common[key] for key in fields}}, 'Design source operation payload')
+    if 'run_id' in payload and payload['run_id'].strip() != payload['run_id']:
+        raise ValueError('Design source run ID must retain its original bytes')
+
+
+def _prepare_design_source(project: dict, home: Path, operation: str, payload: dict, *, timeout: int) -> dict:
+    """Local revision-reservation phase; only checked tasks orchestration supplies preflight."""
+    if type(timeout) is not int or not 1 <= timeout <= 60:
+        raise ValueError('Design source timeout must be 1–60 seconds')
+    if operation not in ('source-prepare', 'source-prepare-resume'):
+        raise ValueError('Unsupported local source preparation')
+    _source_request_payload(operation, payload, local_prepare=True)
+    if operation == 'source-prepare':
+        validate_design_source_submission(payload['source'], payload['source_operation'])
+    result = _task_operation(project, home, 'approval', operation, payload, timeout)
+    if operation == 'source-prepare':
+        return {**result, 'source': _checked_design_result(result['source'])}
+    return _checked_design_result(result)
+
+
+def task_design_source(project: dict, home: Path, operation: str, payload: dict, *, timeout: int) -> dict:
+    """Public source operations own their observation and cannot replace transport headers."""
+    if type(timeout) is not int or not 1 <= timeout <= 60:
+        raise ValueError('Design source timeout must be 1–60 seconds')
+    _source_request_payload(operation, payload)
+    if operation == 'source-prepare':
+        validate_design_source_submission(payload['source'], payload['source_operation'])
+        preflight = task_design_source(project, home, 'source-inspect',
+            {key: payload[key] for key in ('task_id', 'run_id', 'plan_sha256')}, timeout=timeout)
+        return _prepare_design_source(project, home, operation, {**payload, 'preflight': preflight}, timeout=timeout)
+    if operation in ('source-commit', 'source-resume'):
+        prepared = _task_operation(project, home, 'approval', 'source-prepare-resume', payload, timeout)
+        inventory = prepared['design_source_validation']['inventory_sha256']
+        _checked_design_result(prepared)
+        payload = {**payload, 'source_inventory_sha256': inventory}
+    result = _task_operation(project, home, 'approval', operation, payload, timeout)
+    return _checked_design_result(result)
+
+
+
+def _design_view(read: dict, plan_sha256: str, source=None) -> dict:
+    from .task_design import inspect_packet
+    from .task_envelopes import identity
+
+    profile, packet = read['profile'], read['packet']
     inspection = inspect_packet(packet, profile, read['expected'], read['sources'], read['work_unit_ids'])
-    snapshot = {'seed_plan_sha256': result['plan_sha256'], 'packet_content_sha256': identity(packet),
+    snapshot = {'seed_plan_sha256': plan_sha256, 'packet_content_sha256': identity(packet),
                 'design_profile_sha256': identity(profile), 'sources': inspection['sources']}
-    result['design'] = {**snapshot, 'inspection_sha256': identity(snapshot), 'packet': packet,
+    design = {**snapshot, 'inspection_sha256': identity(snapshot), 'packet': packet,
         **inspection, 'inspection_only': True, 'runtime_enforced': False,
         'profile': {'source': 'built-in-companion-profile', 'frozen_for_task': False, 'document': profile},
         'binding_assurance': {'checked_original_fields': list(read['expected']),
@@ -787,10 +960,32 @@ def task_plan(project: dict, home: Path, payload: dict, *, timeout: int) -> dict
                               'freshness_basis': 'packet-declared-observation'},
         'actor_assurance': {'status': 'unavailable', 'owner_binding': 'not_frozen_in_original_admission'},
         'capabilities': {'approve_design': False, 'resolve_questions': False, 'execute': False}}
-    raw = (json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False) + '\n').encode('utf-8')
-    if len(raw) > limits['inspection_bytes']:
-        raise ValueError('Design inspection exceeds its creation read limit')
-    return result
+    if source is not None:
+        facts = dict(read['sources'])
+        bodies = {item['path']: item for item in source['bodies']}
+        for record in source['current_packet']['source_records']:
+            if record['access'] == 'reference_only':
+                facts[record['id']] = {'status': 'reference_only'}
+            elif record['body']['path'] in bodies:
+                body = bodies[record['body']['path']]
+                facts[record['id']] = {'status': 'read', 'sha256': body['sha256'], 'bytes': body['bytes']}
+        design['source_journal'] = {**source, 'current_inspection': inspect_packet(source['current_packet'],
+            profile, read['expected'], facts, read['work_unit_ids'])}
+    return design
+
+
+def _design_public_result(result: dict) -> dict:
+    repair = result.get('design_source_validation', {}).get('repair_required', [])
+    if repair:
+        return {key: value for key, value in {**result, 'source_repair_required': repair,
+            'inspection_only': True, 'runtime_enforced': False}.items()
+            if key not in ('design_read', 'design_source_read', 'design_source_validation', 'materials', 'receipt')}
+    public = {key: value for key, value in result.items()
+              if key not in ('design_read', 'design_source_read', 'design_source_validation')}
+    if 'design_read' in result:
+        public['design'] = _design_view(result['design_read'], result['plan_sha256'], result.get('design_source_read'))
+    return public
+
 
 
 def task_events(project: dict, home: Path, payload: dict, *, timeout: int) -> dict:
@@ -851,10 +1046,12 @@ def _task_operation(project: dict, home: Path, component: str, operation: str, p
     try:
         result = subprocess.run([str(interpreter), '-P', '-c',
                                  f'from ergora.reference_task_{component} import main;main()'],
-                                input=json.dumps({'project': project, 'control_home': str(home), 'operation': operation,
-                                                  'timeout': timeout, **payload}, allow_nan=False),
+                                input=json.dumps({**payload, 'project': project, 'control_home': str(home),
+                                                  'operation': operation, 'timeout': timeout}, allow_nan=False),
                                 capture_output=True, text=True, encoding='utf-8', env=environment, timeout=timeout + 5)
     except subprocess.TimeoutExpired as error:
+        if operation.startswith('source-'):
+            raise ValueError('Design source process timed out; inspect saved source state before recovering this operation') from error
         if operation == 'export-handoff':
             raise ValueError('Task handoff process timed out; inspect the output file before collecting again') from error
         if inspection:
@@ -863,6 +1060,8 @@ def _task_operation(project: dict, home: Path, component: str, operation: str, p
     if result.returncode:
         lines = result.stderr.strip().splitlines()
         detail = lines[-1] if lines else f'Native {component} process exited with status {result.returncode}'
+        if operation.startswith('source-'):
+            raise ValueError(detail + '; inspect task design operation before recovering its original intent')
         if inspection:
             raise ValueError(detail)
         raise ValueError(detail + f'; inspect task {component} before any recovery')

@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "kind": "task-design-source-storage-profile",
+  "id": "design-source-storage-v1",
+  "limits": {
+    "artifact_bytes": 262144,
+    "inspection_bytes": 1048576,
+    "operations": 64,
+    "packet_revisions": 32,
+    "intent_bytes": 4194304,
+    "journal_bytes": 16777216
+  }
+}

@@ -417,6 +417,26 @@ def parser() -> argparse.ArgumentParser:
     plan.add_argument("--run-id", required=True)
     plan.add_argument("--plan-sha256", required=True)
     plan.add_argument("--timeout", type=int, default=20)
+    design_source = operations.add_parser("design", help="Store/read complete inspection-only design sources; grants no approval")
+    source_operations = design_source.add_subparsers(dest="source_operation", required=True)
+    for name in ("inspect", "publish", "respond", "operation", "resume"):
+        command = source_operations.add_parser(name)
+        command.add_argument("project")
+        command.add_argument("task_id")
+        command.add_argument("--timeout", type=int, default=20)
+        if name in ("inspect", "publish", "respond"):
+            command.add_argument("--run-id", required=True)
+            command.add_argument("--plan-sha256", required=True)
+        if name in ("publish", "respond"):
+            command.add_argument("--operation-id", required=True)
+            command.add_argument("--parent-record-sha256", required=True)
+            command.add_argument("--body-file", type=Path, required=True)
+        if name in ("publish", "respond", "resume"):
+            command.add_argument("--revision", type=int, required=True)
+        if name in ("operation", "resume"):
+            command.add_argument("operation_id")
+        if name == "resume":
+            command.add_argument("--intent-sha256", required=True)
     approving = operations.add_parser("approve", help="Record an explicit owner decision for the exact native run and plan")
     approving.add_argument("project")
     approving.add_argument("task_id")
@@ -1044,6 +1064,25 @@ def main(argv: list[str] | None = None) -> int:
             elif args.operation == "plan":
                 output = tasks.plan(state, args.project, args.task_id, run_id=args.run_id,
                                     plan_sha256=args.plan_sha256, timeout=args.timeout)
+            elif args.operation == "design":
+                if args.source_operation == "inspect":
+                    output = tasks.design(state, args.project, args.task_id, run_id=args.run_id,
+                                          plan_sha256=args.plan_sha256, timeout=args.timeout)
+                elif args.source_operation in ("publish", "respond"):
+                    with args.body_file.open('rb') as stream:
+                        raw = stream.read(16 * 1024 * 1024 + 1)
+                    if len(raw) > 16 * 1024 * 1024:
+                        raise ValueError('Design source body-file exceeds its complete intent boundary')
+                    body = json.loads(raw.decode('utf-8-sig'))
+                    writer = tasks.publish_design if args.source_operation == "publish" else tasks.record_design_response
+                    output = writer(state, args.project, args.task_id, args.operation_id, args.revision, body,
+                        parent_record_sha256=args.parent_record_sha256, run_id=args.run_id,
+                        plan_sha256=args.plan_sha256, timeout=args.timeout)
+                elif args.source_operation == "operation":
+                    output = tasks.design_operation(state, args.project, args.task_id, args.operation_id, timeout=args.timeout)
+                else:
+                    output = tasks.resume_design_operation(state, args.project, args.task_id, args.operation_id,
+                        args.revision, args.intent_sha256, timeout=args.timeout)
             elif args.operation == "creation":
                 output = tasks.creation(state, args.project, args.task_id)
             elif args.operation == "preparation":
