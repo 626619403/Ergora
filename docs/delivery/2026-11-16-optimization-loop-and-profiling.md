@@ -21,3 +21,19 @@
 ## 接续要求
 
 每次实质变更或运行终态更新本页及 PLAN，记录准确源码／配置／命令、通过与失败、原件位置和剩余工作。独立新片完成前不宣称全自动闭环就绪；手工协调结果保留实际方式。恢复先核在跑进程和原 run，不能换 ID、预算、候选或当前 head 重做。
+
+## M6 隔离实现与原始边界回归
+
+已从准确文档head `b71680bc2f2fabf5b10d5499104389391fa23a4f` 建立 `feat/training-cycle-v2-enable-r1` 隔离树，未合入／发布产品。实现留原 controller、worker、budget 和 pure native protocol owner；旧V1及新V2的完整 Workflow class AST均与baseline相同，未复制六阶段或调度循环。主开发分支仍保留已发布的schema3关闭行为。
+
+`m6-r1/red-controller-dispatch-r1` 两个新版本初始提交／丢回复节点在原生产字节上真实失败，原因分别为关闭gate及没有dispatch attempt，原件保留。隔离修正后 `controller-dispatch-r2` 单次14过／104.72秒（runner105.318秒），覆盖两版本及7种原ID恢复事实，179采样自有进程终核absent。`dispatch-boundaries-r3` 单次19过／97.00秒，覆盖完整SDK input／Memo边界、原intent／claim与旧绑定拒绝；这两轮各自绑定当时源码，不转授后续修改。
+
+新原生许可反例 `native-permit-red-r4` 先遇旧测试服务只识别v1父workflow前缀，未到目标边界；修正版本化fixture后 `native-permit-red-r5` 在真实native attempt边界失败：实际executor没有持原父锁的共享许可。新修正由native owner用局部ExitStack覆盖实际callback至process返回，同时保留已有结果早读；`native-permit-r6` 正在跑原5个执行边界的双版本及无效旧绑定／已有结果读回。原反例与所有中间结果保留；尚未认证整片运行、安装、真实服务或两个CPU候选。
+
+原件位于ignored `.ergora/checks/optimization-loop-orchestration/m6-r1/`，包含每轮argv／raw／JUnit与所记录的输入身份。完整前驱／大原件晚处可达、其余最后准入、统一候选、fresh源码审、新安装和真实服务／CPU两轮均是后继门槛；不能仅移除关闭guard就宣称开放。
+
+## 工具与报告资源的追加检查点
+
+Profile扩展后已冻结不可变capability快照SHA256 `ac6834155e7591ce7a55d3d8c07546abca048313cfbe3668fd4ba3b31ad4439e`；根通过共享视图核17,632B及19件引用原件bytes／SHA。早先02ad…便利JSON在追加工具项时被作者覆盖，未留独立raw；该缺口如实保留，未重造旧字节。原始工具命令、trace和reader产物保持；后续每版独立以内容身份保存。
+
+优化报告新资源作者片已fresh两轴approve／0，原@1／旧catalog与资源保持。新非editable wheel SHA256 `9743064d74a72d1836570efc58dc66f8d53d00447da7cf0b060160181fdff82e`，core实际site-packages的678runtime bytes／mode、283参考及新入口冻结消费通过，core无SDK。真实原CLI合成报告149.034645秒成功、四字段／静态HTML和两视图5表68单元格一致；原structure模板39.446412秒成功、两轴approve。初次私有runtime verifier把源码AGENTS算入产品导致的错误保留，只修verifier未改wheel。完整新安装／两次原生调用原件正在由同一fresh reviewer最终补核；普通整合／发布和自己的CI仍待，不认证真实模型性能。

@@ -6,7 +6,7 @@
 
 ## 当前检查点
 
-用户最新将根主线切到**多轮实验、有限自动搜索、真实收益验收及每轮 Profile 诊断**，真实工作负载各方向 baseline 交子 Agent 并行推进；功能未齐时已允许手工协调，仍记录原版本／预算／原始结果和失败。第一轮固定模型算法／结构／尺寸／精度；运行资料保存在目标项目自身。当前框架源码未改、schema3效果仍关闭，新搜索／Profile合同待设计独审；按[新接续计划](plans/2026-11-16-optimization-loop-and-profiling.md)及[交付](delivery/2026-11-16-optimization-loop-and-profiling.md)恢复。F/J/G与原未完成项保留，B4翻译草稿已安全冻结、暂不新开作者／评审。
+用户最新将根主线切到**多轮实验、有限自动搜索、真实收益验收及每轮 Profile 诊断**；真实任务的baseline、各方向profile、去冗余候选、对照实验和业务报告由优化协调子Agent统筹，根继续框架开发。功能未齐时已允许手工协调，仍记录原版本／预算／原始结果和失败。第一轮固定模型算法／结构／尺寸／精度；运行资料保存在目标项目自身。主树schema3效果仍关闭，根的隔离实现正在验证，新搜索／Profile合同待设计独审；按[新接续计划](plans/2026-11-16-optimization-loop-and-profiling.md)及[交付](delivery/2026-11-16-optimization-loop-and-profiling.md)恢复。F/J/G与原未完成项保留，B4翻译草稿已安全冻结、暂不新开作者／评审。
 
 主开发分支 `refactor/architecture-foundations`，最新已核公开head `9f3e693498834f071cf20d0f25c18555554765f1` 已普通推送并核远端完整OID同一，含S2准确源码2ae／普通merge2ff、已审小USAGE操作增量／source-review及全部B3 commits46017／31ce／d73。SRC tree `f6b71a4be022d03452b52400f88d8f85259ec73e`与已核2ae同一，task_plan同2ae、原Windows三行修正同e5，无merge-edits。它自己的Portability run **43867345323已终态8/8 success，含Windows**；2026-11-16T12:58:26.317622+00:00核完整head／8个唯一job IDs／原生success标签，watcher正常exit0，非继承旧e5的绿。新B4作者工作停止，默认main保持，不自动合main／强推。[S2交付](delivery/2026-11-16-design-source-journal-s2.md)。
 
