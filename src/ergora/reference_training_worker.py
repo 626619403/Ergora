@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from contextlib import nullcontext
 from contextvars import ContextVar
 from dataclasses import asdict
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 import logging
@@ -2411,7 +2411,9 @@ def create_cycle_workflow(program_version: int = 1):
     return TrainingCycleWorkflow if program_version == 1 else TrainingCycleWorkflowV2
 
 
-def create_cycle_activities(client, program_version: int = 1):
+def create_cycle_activities(client, program_version: int = 1, *,
+                            normal_permit: asyncio.Semaphore | None = None,
+                            stop_permit: asyncio.Semaphore | None = None):
     """Load optional SDK decorators only for the enabled cycle service."""
     from temporalio import activity
     from temporalio.exceptions import ApplicationError
@@ -2419,7 +2421,7 @@ def create_cycle_activities(client, program_version: int = 1):
     names = protocol.cycle_activity_names(program_version)
     version3 = program_version == 2
 
-    async def invoke(action, request):
+    async def invoke(action, request, window=None):
         await _cycle_capacity(request, client.data_converter)
         try:
             protocol.validate_cycle_activity_request(request, action)
@@ -2442,7 +2444,7 @@ def create_cycle_activities(client, program_version: int = 1):
         original = request['workflow_input']
         version2 = action in ('request-execution-or-observe', 'observe-candidate')
         arguments = (Path(original['control_home']), original['project'], original['cycle_id'], original['authorization_sha256'])
-        cold = _CycleOperation(*arguments, 'inspect-controller-activity', activity_context=context)
+        cold = _CycleOperation(*arguments, 'inspect-controller-activity', activity_context=context, window=window)
         inspection = await cold.run()
         if inspection['status'] == 'capacity_exceeded':
             raise ApplicationError(inspection['reason'], type='cycle_activity_capacity_exceeded', non_retryable=True)
@@ -2450,6 +2452,11 @@ def create_cycle_activities(client, program_version: int = 1):
         outcome = inspection
         if inspection['status'] == 'inspected':
             snapshot = inspection['snapshot']
+            policy, clock = snapshot['policy'], snapshot['authorization']['clock']
+            work_window = dict(cold.payload['bootstrap'])
+            work_window['deadline_ns'] = min(work_window['deadline_ns'],
+                work_window['started_ns'] + policy['control_timeout_seconds'] * 1_000_000_000,
+                clock['boottime_ns'] + (policy['wall_seconds'] - policy['cleanup_seconds']) * 1_000_000_000)
             if version3:
                 if snapshot['authorization']['schema_version'] != 3:
                     raise ValueError('V3 activity requires its complete original schema3 authorization')
@@ -2459,21 +2466,16 @@ def create_cycle_activities(client, program_version: int = 1):
                 else:
                     binding = {'protocol': original['protocol'], **inspection['controller'],
                                'ordinal': request['ordinal'], 'predecessor': request['predecessor']}
-                    policy, clock = snapshot['policy'], snapshot['authorization']['clock']
-                    window = dict(cold.payload['bootstrap'])
-                    window['deadline_ns'] = min(window['deadline_ns'],
-                        window['started_ns'] + policy['control_timeout_seconds'] * 1_000_000_000,
-                        clock['boottime_ns'] + (policy['wall_seconds'] - policy['cleanup_seconds']) * 1_000_000_000)
                     if action == 'start' and source['attempt'] == 1 and not inspection['candidate_exists']:
                         candidate = _CycleCandidate(*arguments, snapshot=snapshot, controller=binding,
-                            activity_context=context, window=window)
+                            activity_context=context, window=work_window)
                         outcome = await candidate.run()
                         records.extend(_activity_operation_result(operation, value)
                             for operation, value in zip(candidate.operations, candidate.results))
                     elif action in ('start', 'reconcile'):
                         operation = _CycleOperation(*arguments, 'reconcile-candidate', snapshot=snapshot,
                             ordinal=request['ordinal'], start_context={'controller': binding},
-                            activity_context=context, window=window)
+                            activity_context=context, window=work_window)
                         outcome = await operation.run()
                         records.append(_activity_operation_result(operation, outcome))
                     if action in ('collect-round', 'reconcile-round'):
@@ -2483,15 +2485,10 @@ def create_cycle_activities(client, program_version: int = 1):
                                 and source['attempt'] == 1 else 'observe-candidate')
                     operation = _CycleOperation(*arguments, mode, snapshot=snapshot,
                         ordinal=request['ordinal'], start_context={'controller': binding},
-                        activity_context=context, window=window)
+                        activity_context=context, window=work_window)
                     outcome = await operation.run()
                     records.append(_activity_operation_result(operation, outcome))
             elif version2:
-                policy, clock = snapshot['policy'], snapshot['authorization']['clock']
-                window = dict(cold.payload['bootstrap'])
-                window['deadline_ns'] = min(window['deadline_ns'],
-                    window['started_ns'] + policy['control_timeout_seconds'] * 1_000_000_000,
-                    clock['boottime_ns'] + (policy['wall_seconds'] - policy['cleanup_seconds']) * 1_000_000_000)
                 budget = inspection['facts']['budget']
                 if budget['state'] == 'valid' and budget['work_remaining_seconds'] > 0:
                     binding = {'protocol': original['protocol'], **inspection['controller'], 'ordinal': request['ordinal']}
@@ -2499,13 +2496,14 @@ def create_cycle_activities(client, program_version: int = 1):
                             and source['attempt'] == 1 else 'observe-candidate')
                     operation = _CycleOperation(*arguments, mode, snapshot=snapshot,
                         ordinal=request['ordinal'], start_context={'controller': binding},
-                        activity_context=context, window=window)
+                        activity_context=context, window=work_window)
                     outcome = await operation.run()
                     records.append(_activity_operation_result(operation, outcome))
             elif action in ('start', 'reconcile'):
                 binding = {'protocol': original['protocol'], **inspection['controller'], 'ordinal': request['ordinal']}
                 if action == 'start' and source['attempt'] == 1 and not inspection['candidate_exists']:
-                    candidate = _CycleCandidate(*arguments, snapshot=snapshot, controller=binding, activity_context=context)
+                    candidate = _CycleCandidate(*arguments, snapshot=snapshot, controller=binding,
+                        activity_context=context, window=work_window if window is not None else None)
                     outcome = await candidate.run()
                     records.extend(_activity_operation_result(operation, value)
                                    for operation, value in zip(candidate.operations, candidate.results))
@@ -2552,9 +2550,50 @@ def create_cycle_activities(client, program_version: int = 1):
     for action, name in names.items():
         # Each closure is a real async SDK activity with one strict business request.
         def build(selected):
+            permit = stop_permit if selected == 'stop' else normal_permit
+
             async def execute(request: dict) -> dict:
                 try:
-                    return await invoke(selected, request)
+                    if permit is None:
+                        return await invoke(selected, request)
+                    # Freeze before queuing. Both versions consume their original
+                    # cold window and the SDK's full scheduled/started allowance.
+                    loop_started = asyncio.get_running_loop().time()
+                    boot, ticks = budget_clock._clock()
+                    observed = datetime.now(timezone.utc)
+                    info = activity.info()
+                    remaining = min(((start + timeout - observed).total_seconds()
+                        for start, timeout in ((info.scheduled_time, info.schedule_to_close_timeout),
+                                               (info.started_time, info.start_to_close_timeout))
+                        if timeout is not None), default=None)
+                    if remaining is not None and remaining < 1:
+                        raise ApplicationError('Original SDK activity allowance cannot admit a cold observation',
+                            type='cycle_activity_request_rejected', non_retryable=True)
+                    cold_seconds = 10 if remaining is None else min(10, remaining)
+                    window = {'boot_id': boot, 'started_ns': ticks,
+                              'deadline_ns': ticks + int(cold_seconds * 1_000_000_000)}
+                    sdk_timeout = asyncio.timeout_at(None if remaining is None else loop_started + remaining)
+                    waiting_timeout = asyncio.timeout_at(loop_started + cold_seconds)
+                    try:
+                        async with sdk_timeout:
+                            async with waiting_timeout:
+                                await permit.acquire()
+                            try:
+                                current_boot, current_ticks = budget_clock._clock()
+                                if (current_boot != boot or current_ticks < ticks
+                                        or current_ticks >= window['deadline_ns']):
+                                    raise ApplicationError('Original cycle observation window ended while queuing',
+                                        type='cycle_activity_request_rejected', non_retryable=True)
+                                return await invoke(selected, request, window)
+                            finally:
+                                # The original run methods wait for S/H, pending
+                                # roots and all stop peers before propagating cancel.
+                                permit.release()
+                    except TimeoutError:
+                        if not sdk_timeout.expired() and not waiting_timeout.expired():
+                            raise
+                        raise ApplicationError('Original cycle activity allowance ended',
+                            type='cycle_activity_request_rejected', non_retryable=True) from None
                 except _CycleCapacityError as error:
                     logging.error('Cycle activity request capacity failure: %s', error)
                     raise ApplicationError(str(error), type='cycle_activity_capacity_exceeded', non_retryable=True) from error
@@ -2597,48 +2636,89 @@ async def _serve_cycle() -> None:
         if stopped.is_set():
             return
         client = connecting.result()
-        activities = create_cycle_activities(client)
-        workers = [Worker(client, task_queue=protocol.CYCLE_TASK_QUEUE,
-            workflows=[create_cycle_workflow()],
-            activities=[activities[action] for action in protocol.CYCLE_ACTIVITY_NAMES if action != 'stop'],
-            max_concurrent_activities=1, graceful_shutdown_timeout=timedelta(0), on_fatal_error=fatal),
-            Worker(client, task_queue=protocol.CYCLE_STOP_TASK_QUEUE, activities=[activities['stop']],
-            max_concurrent_activities=1, graceful_shutdown_timeout=timedelta(0), on_fatal_error=fatal)]
+        normal_permit, stop_permit = asyncio.Semaphore(1), asyncio.Semaphore(1)
+        activities = {version: create_cycle_activities(client, version,
+            normal_permit=normal_permit, stop_permit=stop_permit) for version in (1, 2)}
+        for version, queue in ((1, protocol.CYCLE_TASK_QUEUE), (2, protocol.CYCLE_TASK_QUEUE_V2)):
+            workers.append(Worker(client, task_queue=queue, workflows=[create_cycle_workflow(version)],
+                activities=[activities[version][action] for action in protocol.cycle_activity_names(version)
+                            if action != 'stop'], max_concurrent_activities=1,
+                graceful_shutdown_timeout=timedelta(0), on_fatal_error=fatal))
+        for version, queue in ((1, protocol.CYCLE_STOP_TASK_QUEUE), (2, protocol.CYCLE_STOP_TASK_QUEUE_V2)):
+            workers.append(Worker(client, task_queue=queue, activities=[activities[version]['stop']],
+                max_concurrent_activities=1, graceful_shutdown_timeout=timedelta(0), on_fatal_error=fatal))
         running = [asyncio.create_task(worker.run()) for worker in workers]
         done, _ = await asyncio.wait((*running, waiting), return_when=asyncio.FIRST_COMPLETED)
         for task in done:
             if task in running and not task.cancelled() and failure is None:
                 failure = task.exception()
     finally:
-        # Explicit ordered shutdown retains stop capacity while normal owns live S/H or a pending root.
-        async def finish():
+        async def finish_worker(worker, task):
             nonlocal failure
-            for worker, task in zip(workers, running):
-                shutdown = None
-                if not task.done():
+            shutdown = None
+            while not task.done():
+                if shutdown is None or shutdown.cancelled():
                     shutdown = asyncio.create_task(worker.shutdown())
-                    # Validation can fail after the check above. A terminal run
-                    # owns no remaining cleanup, but SDK shutdown may still wait.
+                try:
                     await asyncio.wait((task, shutdown), return_when=asyncio.FIRST_COMPLETED)
-                outcome = (await asyncio.gather(task, return_exceptions=True))[0]
-                if shutdown is not None:
-                    if not shutdown.done():
-                        shutdown.cancel()
-                    await asyncio.gather(shutdown, return_exceptions=True)
-                if isinstance(outcome, Exception) and failure is None:
-                    failure = outcome
+                except asyncio.CancelledError:
+                    continue
+            if not task.cancelled() and task.exception() is not None and failure is None:
+                failure = task.exception()
+            if shutdown is not None:
+                if not shutdown.done():
+                    shutdown.cancel()
+                while not shutdown.done():
+                    try:
+                        await asyncio.shield(shutdown)
+                    except asyncio.CancelledError:
+                        continue
+                if not shutdown.cancelled():
+                    shutdown.result()
+            if worker.is_running and not worker.is_shutdown:
+                # SDK run cancellation can interrupt shutdown itself. Public
+                # shutdown cannot resume it, so task completion proves no drain.
+                raise RuntimeError('Cycle worker cleanup is incomplete; running state is unknown')
+
+        # Stop both normal pollers together; keep both stop pollers available
+        # until normal S/H and pending-root cleanup have actually returned.
+        async def finish():
+            for start in (0, 2):
+                finishing = asyncio.gather(*(finish_worker(worker, task)
+                    for worker, task in zip(workers[start:start + 2], running[start:start + 2])),
+                    return_exceptions=True)
+                while not finishing.done():
+                    try:
+                        await asyncio.shield(finishing)
+                    except asyncio.CancelledError:
+                        continue
+                # An aborted SDK run must not interrupt its peer's actual drain
+                # or advance shutdown to the stop group.
+                for result in finishing.result():
+                    if isinstance(result, BaseException):
+                        raise result
         cleanup = asyncio.create_task(finish())
-        while not cleanup.done():
+        try:
+            while not cleanup.done():
+                try:
+                    await asyncio.shield(cleanup)
+                except asyncio.CancelledError:
+                    continue
+            cleanup.result()
+        finally:
+            connecting.cancel()
+            waiting.cancel()
+            settled = asyncio.gather(connecting, waiting, return_exceptions=True)
             try:
-                await asyncio.shield(cleanup)
-            except asyncio.CancelledError:
-                continue
-        cleanup.result()
-        connecting.cancel()
-        waiting.cancel()
-        await asyncio.gather(connecting, waiting, return_exceptions=True)
-        for signum in (signal.SIGTERM, signal.SIGINT):
-            loop.remove_signal_handler(signum)
+                while not settled.done():
+                    try:
+                        await asyncio.shield(settled)
+                    except asyncio.CancelledError:
+                        continue
+                settled.result()
+            finally:
+                for signum in (signal.SIGTERM, signal.SIGINT):
+                    loop.remove_signal_handler(signum)
     if failure is not None:
         raise failure
 

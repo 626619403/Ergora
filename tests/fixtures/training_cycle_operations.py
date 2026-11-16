@@ -152,6 +152,29 @@ if stage == 'S':
         return original_run(argv, *args, **kwargs)
 
     processes.run = invoke
+    if fault == 'sdk-permit-blocked' and mode == 'inspect-controller-activity':
+        label = payload['activity_context']['activity_source']['activity_id']
+        mark('permit-supervisor-' + label)
+
+        class Frames:
+            def write(self, raw):
+                count = sys.__stdout__.buffer.write(raw)
+                sys.__stdout__.buffer.flush()
+                if label in ('normal-first', 'stop-first') and json.loads(raw)['event'] == 'stopped':
+                    mark('permit-cleanup-' + label)
+                    while not (markers / ('permit-finish-' + label)).exists():
+                        time.sleep(.01)
+                return count
+
+            def flush(self):
+                sys.__stdout__.buffer.flush()
+
+        class Output:
+            buffer = Frames()
+            def flush(self):
+                self.buffer.flush()
+
+        sys.stdout = Output()
     if fault == 'round-reply-loss' and mode in protocol.CYCLE_MEASUREMENT_MODES:
         read = training_cycles._read_bytes
         def lost_round_reply(path, limit):
@@ -173,6 +196,14 @@ if stage == 'S':
 
         training_cycles._read_bytes = blocked_result
 else:
+    if fault == 'sdk-permit-blocked' and mode == 'inspect-controller-activity':
+        label = payload['activity_context']['activity_source']['activity_id']
+        child = subprocess.Popen([sys.executable, '-c', 'import time;time.sleep(60)'])
+        mark('permit-descendant-' + label, processes.identity(child.pid))
+        mark('permit-helper-' + label, {'process': processes.identity(os.getpid()),
+            'identity': payload['identity'], 'bootstrap': payload['bootstrap']})
+        while not (markers / ('permit-release-' + label)).exists():
+            time.sleep(.01)
     if fault in ('oversized-stdout', 'oversized-frame') and mode == 'stop-writer':
         def large_result(payload):
             # Real H bytes cross either the stdout bound or the identity-bearing frame bound.
