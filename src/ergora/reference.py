@@ -749,12 +749,48 @@ def task_submission(project: dict, home: Path, operation: str, payload: dict, *,
 
 def task_approval(project: dict, home: Path, operation: str, payload: dict, *, timeout: int) -> dict:
     """Use the same native lifecycle for exact owner decisions and signal recovery."""
+    if operation == 'inspect-plan':
+        return task_plan(project, home, payload, timeout=timeout)
     return _task_operation(project, home, 'approval', operation, payload, timeout)
 
 
 def task_plan(project: dict, home: Path, payload: dict, *, timeout: int) -> dict:
     """Inspect the pending plan through the existing native approval boundary."""
-    return _task_operation(project, home, 'approval', 'inspect-plan', payload, timeout)
+    result = _task_operation(project, home, 'approval', 'inspect-plan', payload, timeout)
+    if 'design_read' not in result:
+        return result
+    # The registered native interpreter owns SDK/file reads, while the
+    # application owns jsonschema. Never expose an unvalidated native handoff.
+    from .contracts import validate
+    from .task_design import inspect_packet
+    from .task_envelopes import identity
+
+    read = result.pop('design_read')
+    schema = json.loads((DATA / 'schemas/task-design-v1.json').read_text(encoding='utf-8'))
+    profile, packet = read['profile'], read['packet']
+    validate(profile, {'$defs': schema['$defs'], '$ref': '#/$defs/profile'}, 'Design inspection profile')
+    limits = profile['limits']
+    properties = {**schema['properties'], **{name: {**schema['properties'][name], 'maxItems': limits[name]}
+                  for name in ('source_records', 'questions', 'knowledge_requirements')},
+                  'revision': {**schema['properties']['revision'], 'maximum': limits['revisions']}}
+    validate(packet, {**schema, 'properties': properties}, 'Design packet')
+    inspection = inspect_packet(packet, profile, read['expected'], read['sources'], read['work_unit_ids'])
+    snapshot = {'seed_plan_sha256': result['plan_sha256'], 'packet_content_sha256': identity(packet),
+                'design_profile_sha256': identity(profile), 'sources': inspection['sources']}
+    result['design'] = {**snapshot, 'inspection_sha256': identity(snapshot), 'packet': packet,
+        **inspection, 'inspection_only': True, 'runtime_enforced': False,
+        'profile': {'source': 'built-in-companion-profile', 'frozen_for_task': False, 'document': profile},
+        'binding_assurance': {'checked_original_fields': list(read['expected']),
+                              'manifest_bound': 'manifest_digest' in read['expected'],
+                              'work_unit_mapping_checked': read['work_unit_ids'] is not None,
+                              'previous_revision_chain_checked': False,
+                              'freshness_basis': 'packet-declared-observation'},
+        'actor_assurance': {'status': 'unavailable', 'owner_binding': 'not_frozen_in_original_admission'},
+        'capabilities': {'approve_design': False, 'resolve_questions': False, 'execute': False}}
+    raw = (json.dumps(result, ensure_ascii=False, indent=2, allow_nan=False) + '\n').encode('utf-8')
+    if len(raw) > limits['inspection_bytes']:
+        raise ValueError('Design inspection exceeds its creation read limit')
+    return result
 
 
 def task_events(project: dict, home: Path, payload: dict, *, timeout: int) -> dict:
