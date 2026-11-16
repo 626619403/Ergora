@@ -26,6 +26,14 @@ def parallel_creation(composed_creation, tmp_path, request):
     for name in ('structure-review', 'correctness-review', 'test-value-review', 'parallel-review'):
         workflows.import_bundle(state, EXAMPLES / 'composition' / name)
     concurrency, root = getattr(request, 'param', 4), 'parallel-review'
+    overrides = {}
+    if concurrency == 'heterogeneous':
+        concurrency = 2
+        overrides = {
+            'root/structure/review': {'binding': {'tool': 'codex', 'reasoning_effort': 'high'},
+                                      'reason': 'Explicit structure review settings'},
+            'root/correctness/review': {'binding': {'tool': 'claude-code', 'effort': 'medium'},
+                                        'reason': 'Explicit independent correctness backend'}}
     if concurrency == 'nested-scopes':
         narrow = tmp_path / 'narrow'
         shutil.copytree(EXAMPLES / 'composition/parallel-review', narrow)
@@ -50,7 +58,7 @@ def parallel_creation(composed_creation, tmp_path, request):
     manifest = workflows.prepare_manifest(state.root, root, '1.0.0',
         grant(concurrency=concurrency), tmp_path / 'parallel-manifest')
     definition['composition'].update(manifest=manifest['path'], manifest_digest=manifest['digest'],
-                                     backend_overrides={}, diversity={'policy': 'allow-same'})
+                                     backend_overrides=overrides, diversity={'policy': 'allow-same'})
     return state, registration, definition
 
 
@@ -158,7 +166,7 @@ def test_shared_join_dependencies_require_bounded_traversal(parallel_creation, t
     assert calls <= 10 * (len(joins) + 5)
 
 
-@pytest.mark.parametrize('parallel_creation', [1, 2, 'nested-scopes'], indirect=True)
+@pytest.mark.parametrize('parallel_creation', [1, 2, 'nested-scopes', 'heterogeneous'], indirect=True)
 def test_parallel_stage_obeys_shared_ancestor_limits_and_keeps_reviewers_out_of_authors(parallel_input, monkeypatch):
     pytest.importorskip('temporalio')
     from temporalio import workflow
@@ -172,6 +180,13 @@ def test_parallel_stage_obeys_shared_ancestor_limits_and_keeps_reviewers_out_of_
     members = task_envelopes.review_members(parallel_input['composition'])
     limit = next(iter(members.values()))['concurrency_scopes'][0]['limit']
     contexts, receipts = {}, {}
+    admitted = parallel_input['composition']['members']
+    selected_efforts = {path: member['binding'] for path, member in admitted.items()
+                       if 'reasoning_effort' in member['binding'] or 'effort' in member['binding']}
+    if selected_efforts:
+        assert selected_efforts == {
+            'root/structure/review': {'tool': 'codex', 'reasoning_effort': 'high'},
+            'root/correctness/review': {'tool': 'claude-code', 'effort': 'medium'}}
 
     async def exercise():
         entered, release = asyncio.Queue(), asyncio.Event()

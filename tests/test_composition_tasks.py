@@ -36,8 +36,10 @@ def composed_creation(creation_project, tmp_path):
     return state, registration, task
 
 
-def test_preview_and_creation_freeze_a_new_envelope_with_the_unchanged_legacy_projection(composed_creation):
+@pytest.mark.parametrize('review_binding', [{'tool': 'claude-code'}, {'tool': 'claude-code', 'effort': 'high'}])
+def test_preview_and_creation_freeze_a_new_envelope_with_the_unchanged_legacy_projection(composed_creation, review_binding):
     state, registration, task = composed_creation
+    task['composition']['backend_overrides']['root/review']['binding'] = review_binding
     contracts.StrictValidator.check_schema(tasks._DEFINITIONS[2])
     before = state.project('demo')
     preview = tasks.preview(state, 'demo', task, 1)
@@ -48,7 +50,7 @@ def test_preview_and_creation_freeze_a_new_envelope_with_the_unchanged_legacy_pr
     spec, composition = task_envelopes.unwrap(envelope)
     assert preview['schema_version'] == 2 and spec == preview['files']['compiled.json']['spec']
     assert composition['manifest']['digest'] == task['composition']['manifest_digest']
-    assert composition['members']['root/review']['binding'] == {'tool': 'claude-code'}
+    assert composition['members']['root/review']['binding'] == review_binding
     assert composition['diversity']['same_backend_members'] == []
     graph = json.loads(base64.b64decode(composition['manifest']['files']['composition.json']['content_base64']))
     assert 'Required parent instructions.' in graph['instances'][-1]['prompt']

@@ -194,6 +194,9 @@ class CodexBackend(AgentBackend):
                     "enabled_tools": ["list", "read"], "required": True,
                     "startup_timeout_sec": 15, "tool_timeout_sec": 15}}
 
+        if "reasoning_effort" in self.binding:
+            config["model_reasoning_effort"] = self.binding["reasoning_effort"]
+
         def add(table, prefix=""):
             for key, value in table.items():
                 name = prefix + key
@@ -268,6 +271,8 @@ class ClaudeCodeBackend(AgentBackend):
             argv += ["--tools", "Read,Grep,Glob", "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}']
         if "model" in self.binding:
             argv += ["--model", self.binding["model"]]
+        if "effort" in self.binding:
+            argv += ["--effort", self.binding["effort"]]
         if request.schema:
             argv += ["--json-schema", json.dumps(request.schema)]
         return argv, request.prompt
