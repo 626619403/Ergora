@@ -12,7 +12,7 @@ import pytest
 
 from ergora import projects, reference, registrations, tasks
 from ergora.state import State
-from test_registrations import installation, registration
+from test_registrations import design_policy, installation, registration
 
 
 @pytest.fixture
@@ -38,6 +38,23 @@ def _inject(monkeypatch, code):
             argv[-1] = 'from ergora.reference_task_creation import main, _Creation\n' + code + '\nmain()'
         return original(argv, **kwargs)
     monkeypatch.setattr(reference.subprocess, 'run', invoke)
+
+
+def test_v2_old_definition_is_rejected_before_creation_intent(registration):
+    state, registered = registration
+    registered.update(schema_version=2, design_policy=design_policy())
+    project = registrations.register(state, registered, 0)
+    definition = {'schema_version': 1, 'task_id': 'blocked-task', 'task_type': 'repository-governance', 'issue_id': '1',
+        'input': {'goal': 'Requires a supported design gate', 'allowed_paths': ['src'], 'acceptance': ['Keep gates'],
+            'constraints': [], 'risk': 'standard',
+            'work_units': [{'id': 'one', 'depends_on': [], 'paths': ['src'], 'instructions': 'Inspect source'}]}}
+    before = _files(state.root / 'registrations')
+    for operation in (lambda: tasks.preview(state, 'demo', definition, 1),
+                      lambda: tasks.create(state, 'demo', definition, 1, '0' * 64)):
+        with pytest.raises(ValueError, match='design_policy_execution_unsupported'):
+            operation()
+    assert state.project('demo') == project and _files(state.root / 'registrations') == before
+    assert not _files(Path(registered['execution']['state_directory']))
 
 
 @pytest.mark.parametrize('template', ['repository-governance', 'large-change'])

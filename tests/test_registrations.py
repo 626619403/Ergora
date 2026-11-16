@@ -9,7 +9,7 @@ import sys
 
 import pytest
 
-from ergora import projects, reference, registrations
+from ergora import projects, reference, registrations, tasks
 from ergora.state import State
 
 
@@ -43,6 +43,263 @@ def original_registration(state, project):
     operation = project['registration']['operation_id']
     result = json.loads((state.root / 'registrations' / project['id'] / (operation + '.result.json')).read_bytes())
     return {'operation_id': operation, 'intent_sha256': result['intent_sha256'], 'confirm': True}
+
+
+def design_policy():
+    """Nondefault requirements, not a human identity or executable profile."""
+    profile = {'schema_version': 1, 'kind': 'task-design-policy-profile', 'id': 'fixture-policy-v1',
+        'protocol': 'design-knowledge-v1', 'change_kinds': ['structural-refactoring', 'ordinary-repair'],
+        'required_sections': ['design-and-tradeoffs', 'acceptance'],
+        'minimum_questions': [{'id': 'fixture:design', 'body': 'Which interface preserves 完整原文?\r\nCompare its cost.',
+                               'why_required': 'The actual owner must choose the interface.'}],
+        'minimum_knowledge_requirements': [{'id': 'fixture:contract', 'missing_information': 'Original contract revision',
+            'why_needed': 'Compatibility depends on its exact scope.', 'allowed_source_types': ['company_document'],
+            'access_scope_ref': 'authorized:fixture',
+            'freshness_rule': {'max_age_seconds': 8640, 'required_version': 'contract-r7'}}],
+        'required_actor_assurance': 'protected-owner-channel',
+        'limits': {'artifact_bytes': 64000, 'inspection_bytes': 256000, 'source_records': 11,
+                   'questions': 17, 'knowledge_requirements': 13, 'revisions': 9,
+                   'journal_records': 41, 'journal_bytes': 512000}}
+    policy = {'schema_version': 1, 'protocol': 'design-knowledge-v1', 'profile': profile,
+        'profile_sha256': registrations._sha(profile),
+        'owner_source': {'owner_id': 'fixture:owner', 'source_requirement': 'protected-owner-channel'},
+        'applicable_task_types': ['repository-governance'], 'change_kinds': ['important-data'],
+        'required_sections': ['data-and-recovery'],
+        'minimum_questions': [deepcopy(profile['minimum_questions'][0]),
+            {'id': 'project:acceptance', 'body': 'Which oracle decides acceptance?', 'why_required': 'A visible outcome is required.'}],
+        'minimum_knowledge_requirements': []}
+    policy['sha256'] = registrations._sha(policy)
+    return policy
+
+
+def _saved_files(root):
+    return {path.relative_to(root).as_posix(): path.read_bytes() for path in root.rglob('*') if path.is_file()}
+
+
+@pytest.mark.parametrize('published_files', range(5))
+def test_first_v2_real_native_publication_resumes_complete_policy(registration, monkeypatch, published_files):
+    state, definition = registration
+    definition.update(schema_version=2, design_policy=design_policy())
+    policy = deepcopy(definition['design_policy'])
+    original_run, original_record = reference.subprocess.run, registrations._record
+
+    def interrupt(argv, **kwargs):
+        if 'from ergora.reference import _registration_main;_registration_main()' in argv and json.loads(kwargs['input'])['publish']:
+            argv = list(argv)
+            argv[-1] = '''from ergora.reference import _registration_main
+from agent_platform import core
+original=core.write
+count=0
+def write(*args, **kwargs):
+ global count
+ if count == %d: raise OSError('real native publication loss')
+ count += 1
+ return original(*args, **kwargs)
+core.write=write
+_registration_main()
+''' % published_files
+        return original_run(argv, **kwargs)
+
+    def record(path, value):
+        if published_files == 4 and path.name.endswith('.result.json'):
+            raise OSError('real native publication loss after final file')
+        return original_record(path, value)
+
+    monkeypatch.setattr(reference.subprocess, 'run', interrupt)
+    monkeypatch.setattr(registrations, '_record', record)
+    with pytest.raises((ValueError, OSError), match='real native publication loss'):
+        registrations.register(state, definition, 0)
+    project = state.project('demo')
+    assert project['registration']['schema_version'] == 2
+    config = Path(definition['execution']['config_directory'])
+    assert sum((config / relative).exists() for relative in reference.registration_paths('demo')) == published_files
+    journal = state.root / 'registrations/demo' / (project['registration']['operation_id'] + '.json')
+    original_intent = journal.read_bytes()
+    definition['design_policy']['profile']['minimum_questions'][0]['body'] = 'Cannot replace original intent'
+    monkeypatch.undo()
+    resumed = subprocess.run([sys.executable, '-m', 'ergora', '--home', str(state.root), 'project',
+        'resume-registration', 'demo', '--revision', '1'], capture_output=True, text=True, timeout=30)
+    assert resumed.returncode == 0, resumed.stdout + resumed.stderr
+    project = json.loads(resumed.stdout)
+    status = registrations.status(State(state.root), 'demo')
+    assert status['consistent'] and status['registration_schema_version'] == 2
+    assert status['design']['policy'] == policy == project['registration']['definition']['design_policy']
+    assert status['design']['effective_requirements']['minimum_questions'] == [
+        policy['profile']['minimum_questions'][0], policy['minimum_questions'][1]]
+    assert status['design']['effective_requirements']['minimum_knowledge_requirements'] == policy['profile']['minimum_knowledge_requirements']
+    assert status['design']['execution_supported'] is False
+    assert status['design']['actor_assurance'] == {'required': 'protected-owner-channel', 'available': False,
+                                                 'code': 'human_channel_unavailable'}
+    assert journal.read_bytes() == original_intent
+    selected = original_registration(state, project)
+    assert registrations.published_project(state.root, 'demo', selected['operation_id'], selected['intent_sha256']) == project
+    assert set(project['registration']['files']) == set(reference.registration_paths('demo'))
+    assert not Path(definition['execution']['state_directory']).exists()
+
+
+@pytest.mark.parametrize('has_creation', [False, True])
+def test_v1_to_v2_is_refused_before_any_intent_reservation_or_native_write(registration, has_creation):
+    state, definition = registration
+    before = registrations.register(state, definition, 0)
+    if has_creation:
+        task = {'schema_version': 1, 'task_id': 'original-task', 'task_type': 'repository-governance', 'issue_id': '1',
+            'input': {'goal': 'Keep the original task', 'allowed_paths': ['src'], 'acceptance': ['Keep recovery'],
+                'constraints': [], 'risk': 'standard',
+                'work_units': [{'id': 'one', 'depends_on': [], 'paths': ['src'], 'instructions': 'Inspect source'}]}}
+        preview = tasks.preview(state, 'demo', task, 1)
+        created = tasks.create(state, 'demo', task, 1, preview['preview_sha256'])
+    journals = _saved_files(state.root / 'registrations')
+    config = _saved_files(Path(definition['execution']['config_directory']))
+    runtime = _saved_files(Path(definition['execution']['state_directory']))
+    definition.update(schema_version=2, design_policy=design_policy())
+    with pytest.raises(ValueError, match='first unified registration'):
+        registrations.register(state, definition, 1)
+    assert state.project('demo') == before
+    assert _saved_files(state.root / 'registrations') == journals
+    assert _saved_files(Path(definition['execution']['config_directory'])) == config
+    assert _saved_files(Path(definition['execution']['state_directory'])) == runtime
+    if has_creation:
+        assert tasks.resume_create(State(state.root), 'demo', task['task_id'], 1, created['intent_sha256']) == created
+
+
+def test_v2_first_registration_of_control_project_is_immutable_and_not_native_adoption(registration):
+    state, definition = registration
+    control = projects.create(state, 'demo', Path(definition['repo']))
+    definition.update(schema_version=2, design_policy=design_policy())
+    project = registrations.register(state, definition, 1)
+    assert project['created'] == control['created'] and project['revision'] == 2
+    files = _saved_files(state.root / 'registrations')
+    for replacement in (definition, {key: value for key, value in definition.items() if key != 'design_policy'}):
+        replacement = deepcopy(replacement)
+        replacement['schema_version'] = 2 if 'design_policy' in replacement else 1
+        with pytest.raises(ValueError, match='first unified registration'):
+            registrations.register(state, replacement, 2)
+    assert state.project('demo') == project and _saved_files(state.root / 'registrations') == files
+    # An existing native ownership marker is not a new registration merely
+    # because another control home has no project row.
+    other = State(state.root.parent / 'other-control')
+    with pytest.raises(ValueError, match='first unified registration'):
+        registrations.register(other, definition, 0)
+    assert projects.list_projects(other) == [] and not (other.root / 'registrations').exists()
+
+
+@pytest.mark.parametrize('winner_version,late_version', [(1, 2), (2, 1), (2, 2)])
+def test_interleaved_first_registration_at_different_roots_rejects_before_intent(
+        registration, monkeypatch, winner_version, late_version):
+    state, winner = registration
+    late = deepcopy(winner)
+    late['execution']['config_directory'] += '-late'
+    late['execution']['state_directory'] += '-late'
+    for definition, version in ((winner, winner_version), (late, late_version)):
+        if version == 2:
+            definition.update(schema_version=2, design_policy=design_policy())
+    original_prepare = registrations._prepare
+    saved = {}
+
+    def prepare(control, definition, before):
+        prepared = original_prepare(control, definition, before)
+        if definition is late:
+            # Both calls saw no project. Finish the competing publication after
+            # this real preparation, before the late call takes its own lock.
+            saved['project'] = registrations.register(State(state.root), winner, 0)
+            saved['journals'] = _saved_files(state.root / 'registrations')
+            saved['native'] = _saved_files(Path(winner['execution']['config_directory']))
+            with state.connect() as db:
+                saved['database'] = tuple(db.iterdump())
+        return prepared
+
+    monkeypatch.setattr(registrations, '_prepare', prepare)
+    with pytest.raises(ValueError, match='revision changed'):
+        registrations.register(state, late, 0)
+    assert state.project('demo') == saved['project']
+    journals = _saved_files(state.root / 'registrations')
+    assert set(journals) == set(saved['journals'])
+    assert journals == saved['journals']
+    assert _saved_files(Path(winner['execution']['config_directory'])) == saved['native']
+    late_config = Path(late['execution']['config_directory'])
+    assert not any((late_config / path).exists() for path in reference.registration_paths('demo'))
+    assert not Path(late['execution']['state_directory']).exists()
+    with state.connect() as db:
+        assert tuple(db.iterdump()) == saved['database']
+
+
+@pytest.mark.parametrize('boundary', ['status', 'resume'])
+def test_v1_history_keeps_status_and_resume_after_input_schema_tightening(registration, monkeypatch, boundary):
+    state, definition = registration
+    definition['tracker']['project'] += '\n'
+    # 4ffcfdde added this exact input restriction. Replay its predecessor's
+    # accepted schema while writing a real journal, then reopen with today's.
+    historical_schema = deepcopy(registrations._SCHEMAS[1])
+    historical_schema['properties']['tracker']['properties']['project'].pop('not')
+    original_io = reference.registration_io
+
+    def interrupt(execution, project_id, **kwargs):
+        if kwargs.get('publish'):
+            raise OSError('historical publication interrupted')
+        return original_io(execution, project_id, **kwargs)
+
+    with monkeypatch.context() as historical:
+        historical.setitem(registrations._SCHEMAS, 1, historical_schema)
+        if boundary == 'resume':
+            historical.setattr(reference, 'registration_io', interrupt)
+            with pytest.raises(OSError, match='historical publication interrupted'):
+                registrations.register(state, definition, 0)
+            project = state.project('demo')
+        else:
+            project = registrations.register(state, definition, 0)
+    journal = registrations._journal(state, project)
+    original_intent = journal.read_bytes()
+    if boundary == 'resume':
+        project = registrations.resume(State(state.root), 'demo', project['revision'])
+    assert registrations.status(State(state.root), 'demo')['consistent']
+    assert journal.read_bytes() == original_intent
+    assert project['registration']['definition']['tracker'] == definition['tracker']
+    selected = original_registration(state, project)
+    # The original published-source reader already used today's schema; this
+    # compatibility fix does not relax its separate complete-source contract.
+    with pytest.raises(ValueError, match='tracker'):
+        registrations.published_project(state.root, 'demo', selected['operation_id'], selected['intent_sha256'])
+
+
+@pytest.mark.parametrize('damage', ['profile-sha', 'policy-sha', 'conflict', 'capacity', 'inspection-profile'])
+def test_policy_identity_and_effective_minimum_conflicts_fail_before_registration(registration, damage):
+    state, definition = registration
+    policy = design_policy()
+    if damage == 'profile-sha':
+        policy['profile']['minimum_questions'][0]['body'] += ' changed'
+    elif damage == 'policy-sha':
+        policy['owner_source']['owner_id'] = 'other:owner'
+    elif damage == 'conflict':
+        policy['minimum_questions'][0]['body'] += ' conflicting'
+    elif damage == 'capacity':
+        policy['profile']['limits']['questions'] = 1
+        policy['profile_sha256'] = registrations._sha(policy['profile'])
+    else:
+        policy['profile'] = json.loads((Path(reference.__file__).parent / 'data/design-profiles/framework-development-v1.json').read_bytes())
+        policy['profile_sha256'] = registrations._sha(policy['profile'])
+    if damage not in ('profile-sha', 'policy-sha'):
+        policy['sha256'] = registrations._sha({key: value for key, value in policy.items() if key != 'sha256'})
+    definition.update(schema_version=2, design_policy=policy)
+    with pytest.raises(ValueError):
+        registrations.register(state, definition, 0)
+    assert projects.list_projects(state) == [] and not (state.root / 'registrations').exists()
+
+
+def test_complete_policy_intent_must_fit_its_recovery_read_bound_before_any_write(registration, monkeypatch):
+    state, definition = registration
+    definition.update(schema_version=2, design_policy=design_policy())
+    prepared = registrations._prepare(state, definition, None)
+    record = {'schema_version': 1, 'source': {'kind': 'registration'}, 'before': None, 'after': prepared}
+    # Exercise the existing recovery cap with small complete material; changing
+    # configured policy limits does not change the writer/reader byte contract.
+    encoded = json.dumps(record, ensure_ascii=False, indent=2, allow_nan=False).encode('utf-8')
+    monkeypatch.setattr(registrations, 'MAX_RECOVERY_BYTES', len(encoded) // 2)
+    with pytest.raises(ValueError, match='Registration recovery record exceeds'):
+        registrations.register(state, definition, 0)
+    assert projects.list_projects(state) == []
+    assert not (state.root / 'registrations').exists() and not (state.root / '.registrations.lock').exists()
+    assert not Path(definition['execution']['config_directory']).exists()
+    assert not Path(definition['execution']['state_directory']).exists()
 
 
 def test_original_published_journal_retains_large_aggregate_and_all_revisions(registration):

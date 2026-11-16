@@ -23,12 +23,35 @@ from dev_platform.adapter import FileAdapter, publish, read_raw
 from dev_platform.contracts import canonical_sha, path_contains, validate_spec
 from dev_platform.portable import validate_compiled
 
-from . import agent_backends, agents, bindings, projects, task_envelopes, task_mcp, workflow_definitions
+from . import agent_backends, agents, bindings, projects, task_design, task_envelopes, task_mcp, workflow_definitions
 from .git_materials import GitMaterials
 from .reference_creation_process import task_creation
 from .reference_inputs import execution_input, request_roots
 from .reference_review_opinions import review_observation
 from .state import State
+
+
+def _admit_project(spec: dict, home: Path) -> None:
+    """Refuse unsupported policy and foreign ownership before native claims."""
+    directory = STATE / 'tasks' / slug(spec['request']['task_id'])
+    native, binding = read(directory / 'project.json'), read(directory / 'binding.json')
+    tracker = spec['request']['tracker']
+    require(native['name'] == binding['project_id'] and binding['tracker'] == tracker
+            and native['tracker'] == {key: tracker[key] for key in ('kind', 'project')},
+            'Published task project identity mismatch')
+    marker_path = CONFIG / 'ergora/registrations' / (slug(native['name']) + '.json')
+    marker = read(marker_path) if marker_path.exists() else None
+    if marker is not None:
+        require(marker['schema_version'] == 1 and marker['id'] == native['name']
+                and Path(marker['control_home']) == home.resolve(), 'Registered project belongs to another control directory')
+    state = State(home)
+    try:
+        project = state.project(native['name'])
+    except ValueError:
+        # Legacy unknown projects retain their original failure receipt or
+        # frozen selection; neither path gains a new State-project prerequisite.
+        return
+    task_design.require_execution_support(project)
 
 
 class Executor(original.Executor):
@@ -38,6 +61,7 @@ class Executor(original.Executor):
         self.selected = None
         context = envelope['context']
         spec = validate_spec(context['spec'])
+        _admit_project(spec, home)
         task_id = slug(spec['request']['task_id'])
         published = STATE / 'tasks' / task_id / 'task.spec.json'
         document = read(published) if published.exists() else spec
@@ -719,6 +743,9 @@ def _execute(envelope: dict, home: Path) -> dict:
 def process(path: Path, home: Path) -> dict:
     envelope = read(path)
     spec = validate_spec(envelope['context']['spec'])
+    # BudgetedJob.run claims before constructing Executor in another process;
+    # direct Executor callers independently retain their own pre-claim guard.
+    _admit_project(spec, home)
     task_id = slug(spec['request']['task_id'])
     published = STATE / 'tasks' / task_id / 'task.spec.json'
     selected = execution_input(read(published) if published.exists() else spec)

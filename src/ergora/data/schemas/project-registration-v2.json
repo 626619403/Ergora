@@ -1,0 +1,515 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "id",
+    "repo",
+    "templates",
+    "execution",
+    "tracker",
+    "allowed_paths",
+    "checks",
+    "scope_policy",
+    "design_policy"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 2
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}$"
+    },
+    "repo": {
+      "type": "string",
+      "minLength": 1
+    },
+    "templates": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "repository-governance",
+          "large-change",
+          "training-optimization"
+        ]
+      }
+    },
+    "bindings": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object"
+      }
+    },
+    "base_sha": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{40}$"
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "installation",
+        "config_directory",
+        "state_directory"
+      ],
+      "properties": {
+        "installation": {
+          "type": "string",
+          "minLength": 1
+        },
+        "config_directory": {
+          "type": "string",
+          "minLength": 1
+        },
+        "state_directory": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "tracker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "project"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "local",
+            "github",
+            "gitlab"
+          ]
+        },
+        "project": {
+          "type": "string",
+          "maxLength": 300,
+          "pattern": "^[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)+$",
+          "not": {
+            "pattern": "\\s"
+          }
+        }
+      }
+    },
+    "allowed_paths": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "checks": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "^[^\\u0000]+$"
+        }
+      }
+    },
+    "scope_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "protected_paths"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 1
+        },
+        "protected_paths": {
+          "type": "array",
+          "maxItems": 256,
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "max_changed_files": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000000
+        },
+        "max_changed_lines": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10000000
+        }
+      }
+    },
+    "design_policy": {
+      "$ref": "#/$defs/design_policy"
+    }
+  },
+  "title": "First unified project registration with frozen design requirements",
+  "$defs": {
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "\\S"
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+    },
+    "requirement_id": {
+      "type": "string",
+      "maxLength": 160,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]*:[A-Za-z0-9][A-Za-z0-9:._/-]*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "freshness_rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_age_seconds",
+        "required_version"
+      ],
+      "properties": {
+        "max_age_seconds": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "required_version": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/text"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "anyOf": [
+        {
+          "properties": {
+            "max_age_seconds": {
+              "type": "integer"
+            }
+          }
+        },
+        {
+          "properties": {
+            "required_version": {
+              "$ref": "#/$defs/text"
+            }
+          }
+        }
+      ]
+    },
+    "question": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "body",
+        "why_required"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/requirement_id"
+        },
+        "body": {
+          "$ref": "#/$defs/text"
+        },
+        "why_required": {
+          "$ref": "#/$defs/text"
+        }
+      }
+    },
+    "knowledge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "missing_information",
+        "why_needed",
+        "allowed_source_types",
+        "access_scope_ref",
+        "freshness_rule"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/requirement_id"
+        },
+        "missing_information": {
+          "$ref": "#/$defs/text"
+        },
+        "why_needed": {
+          "$ref": "#/$defs/text"
+        },
+        "allowed_source_types": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "repository",
+              "company_document",
+              "meeting_decision",
+              "owner_statement",
+              "research",
+              "authorized_summary",
+              "report"
+            ]
+          }
+        },
+        "access_scope_ref": {
+          "$ref": "#/$defs/text"
+        },
+        "freshness_rule": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/freshness_rule"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "artifact_bytes",
+        "inspection_bytes",
+        "source_records",
+        "questions",
+        "knowledge_requirements",
+        "revisions",
+        "journal_records",
+        "journal_bytes"
+      ],
+      "properties": {
+        "artifact_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 262144
+        },
+        "inspection_bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1048576
+        },
+        "source_records": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 128
+        },
+        "questions": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 128
+        },
+        "knowledge_requirements": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 128
+        },
+        "revisions": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 128
+        },
+        "journal_records": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "journal_bytes": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "kind",
+        "id",
+        "protocol",
+        "change_kinds",
+        "required_sections",
+        "minimum_questions",
+        "minimum_knowledge_requirements",
+        "required_actor_assurance",
+        "limits"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 1
+        },
+        "kind": {
+          "const": "task-design-policy-profile"
+        },
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "protocol": {
+          "const": "design-knowledge-v1"
+        },
+        "change_kinds": {
+          "type": "array",
+          "maxItems": 128,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "minItems": 1
+        },
+        "required_sections": {
+          "type": "array",
+          "maxItems": 128,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "minItems": 1
+        },
+        "minimum_questions": {
+          "type": "array",
+          "maxItems": 128,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/question"
+          },
+          "minItems": 1
+        },
+        "minimum_knowledge_requirements": {
+          "type": "array",
+          "maxItems": 128,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/knowledge"
+          }
+        },
+        "required_actor_assurance": {
+          "const": "protected-owner-channel"
+        },
+        "limits": {
+          "$ref": "#/$defs/limits"
+        }
+      }
+    },
+    "design_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "protocol",
+        "profile",
+        "profile_sha256",
+        "owner_source",
+        "applicable_task_types",
+        "change_kinds",
+        "required_sections",
+        "minimum_questions",
+        "minimum_knowledge_requirements",
+        "sha256"
+      ],
+      "properties": {
+        "schema_version": {
+          "type": "integer",
+          "const": 1
+        },
+        "protocol": {
+          "const": "design-knowledge-v1"
+        },
+        "profile": {
+          "$ref": "#/$defs/profile"
+        },
+        "profile_sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "owner_source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "owner_id",
+            "source_requirement"
+          ],
+          "properties": {
+            "owner_id": {
+              "$ref": "#/$defs/id"
+            },
+            "source_requirement": {
+              "const": "protected-owner-channel"
+            }
+          }
+        },
+        "applicable_task_types": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "repository-governance",
+              "large-change"
+            ]
+          }
+        },
+        "change_kinds": {
+          "type": "array",
+          "maxItems": 128,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "required_sections": {
+          "type": "array",
+          "maxItems": 128,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "minimum_questions": {
+          "type": "array",
+          "maxItems": 128,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/question"
+          }
+        },
+        "minimum_knowledge_requirements": {
+          "type": "array",
+          "maxItems": 128,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/knowledge"
+          }
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    }
+  }
+}

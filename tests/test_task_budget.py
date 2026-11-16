@@ -12,12 +12,12 @@ import time
 
 import pytest
 
-from ergora import projects, reference, task_envelopes, tasks
+from ergora import projects, reference, registrations, task_envelopes, tasks
 from ergora.reference_inputs import execution_input, request_roots
 from ergora.state import State
 from test_full_stage_materials import full_creation, full_graph
 from test_work_agents import work_creation, work_graph
-from test_registrations import installation, registration
+from test_registrations import design_policy, installation, registration
 from test_task_creation import creation_project, _files
 
 
@@ -29,6 +29,35 @@ def budget_creation(full_creation):
     state, registered, definition = full_creation
     definition.update(schema_version=5, budget={'wall_seconds': 120, 'cleanup_seconds': 5, 'model_invocations': 258})
     return state, registered, definition
+
+
+def test_v2_old_budgeted_definition_is_rejected_without_authorization_or_intent(budget_creation, monkeypatch):
+    state, registered, definition = budget_creation
+    # Reuse the existing real composition fixture's definition in a genuinely
+    # first registration, without changing the v1 project or its originals.
+    state = State(state.root.parent / 'design-control')
+    registered = deepcopy(registered)
+    registered['execution'] = {**registered['execution'],
+        'config_directory': str(state.root.parent / 'design-config'),
+        'state_directory': str(state.root.parent / 'design-runtime')}
+    registered.update(schema_version=2, design_policy=design_policy())
+    project = registrations.register(state, registered, 0)
+    before = _files(state.root)
+    starts = []
+    original = tasks.task_preparation
+
+    def preparation(*args, **kwargs):
+        starts.append(args[2])
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(tasks, 'task_preparation', preparation)
+    for operation in (lambda: tasks.prepare(state, 'demo', definition, 1),
+                      lambda: tasks.preview(state, 'demo', definition, 1),
+                      lambda: tasks.create(state, 'demo', definition, 1, '0' * 64, prepare_sha256='1' * 64)):
+        with pytest.raises(ValueError, match='design_policy_execution_unsupported'):
+            operation()
+    assert starts == [] and state.project('demo') == project and _files(state.root) == before
+    assert not _files(_root(registered))
 
 
 def _root(registered):

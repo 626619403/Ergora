@@ -11,8 +11,9 @@ import sys
 
 import pytest
 
-from ergora import backups, contracts, memory, projects, skills
+from ergora import backups, contracts, memory, projects, reference, registrations, skills
 from ergora.state import SCHEMA_VERSION, State
+from test_registrations import design_policy, installation, registration
 
 
 @pytest.fixture
@@ -63,6 +64,35 @@ def test_full_roundtrip_preserves_canonical_rows_skills_sources_unknown_files_an
     with reopened.connect() as db:
         assert [tuple(row) for row in db.execute("SELECT * FROM memories")] == before
         assert db.execute("SELECT document FROM skill_versions").fetchone()[0] == original_skill
+
+
+def test_v2_control_home_backup_does_not_restore_external_native_roots(registration, tmp_path):
+    state, definition = registration
+    definition.update(schema_version=2, design_policy=design_policy())
+    project = registrations.register(state, definition, 0)
+    config = Path(definition['execution']['config_directory'])
+    external = Path(definition['execution']['state_directory']) / 'ergora/task-approvals/original.json'
+    external.parent.mkdir(parents=True)
+    external.write_bytes(b'original external journal\n')
+    target = tmp_path / 'control-snapshot'
+    backed_up = backups.create(state.root, target, offline=True)
+    manifest = json.loads((target / 'manifest.json').read_bytes())
+    operation = project['registration']['operation_id']
+    assert {'ergora.sqlite3', f'registrations/demo/{operation}.json',
+            f'registrations/demo/{operation}.result.json'} <= set(manifest['files'])
+    assert not set(reference.registration_paths('demo')) & set(manifest['files'])
+    assert 'ergora/task-approvals/original.json' not in manifest['files']
+    assert backed_up['database_schema_version'] == SCHEMA_VERSION
+    # External state survives as it currently is; restoring the control home
+    # makes no cross-root rollback promise for approvals or native projections.
+    external.write_bytes(b'external journal after snapshot\n')
+    marker = config / reference.registration_paths('demo')[0]
+    marker_raw = marker.read_bytes()
+    state.root.rename(tmp_path / 'kept-control')
+    backups.restore(state.root, target, offline=True)
+    reopened = State(state.root)
+    assert reopened.project('demo') == project and registrations.status(reopened, 'demo')['consistent']
+    assert external.read_bytes() == b'external journal after snapshot\n' and marker.read_bytes() == marker_raw
 
 
 def test_legacy_wal_snapshot_is_created_before_upgrade_and_restores_the_original_schema(tmp_path):

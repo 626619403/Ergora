@@ -7,6 +7,20 @@ No packet field authenticates a policy, owner, response or resolution.
 from datetime import datetime
 
 
+def require_execution_support(project: dict) -> None:
+    """Keep newly registered design requirements closed at every birth/claim.
+
+    The project comes from the existing State owner, never from a task or an
+    actor payload. S1 has no trusted scope decision, old-task migration or
+    executable design input. Configuring an owner requirement grants neither.
+    """
+    registration = project.get('registration')
+    if registration and (registration.get('schema_version') != 1
+                         or 'design_policy' in registration['definition']):
+        raise ValueError('design_policy_execution_unsupported: registered design requirements cannot execute '
+                         'with legacy task inputs; human_channel_unavailable')
+
+
 def inspect_packet(packet: dict, profile: dict, expected: dict, sources: dict,
                    work_unit_ids: list | None = None) -> dict:
     """Check references and report exact Q/K gaps under an inspection profile.
