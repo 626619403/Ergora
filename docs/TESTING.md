@@ -1,8 +1,12 @@
-# 测试维护
+# Maintain tests and interpret CI evidence
 
-在仓库根目录使用 Python 3.11 或更新版本。日常检查可安装 `.[dev,web,gepa,temporal,task-mcp]` 后执行 `python -m pytest tests`。真实 Temporal 检查需用 `ERGORA_TEMPORAL_TEST_ADDRESS` 指定隔离服务；未提供服务或可选能力时，原测试的 skip 保留。
+English · [简体中文](zh-CN/TESTING.md) · [Documentation](README.md)
 
-CI 验证安装后的 wheel。要在独立虚拟环境重现此接缝，先安装 `build`，执行 `python -m build --wheel`，再安装 `dist/` 中生成的 wheel 及 `dev,web,gepa,temporal,task-mcp` extras；不要使用 editable 安装，也不要将 `src/` 添加到 `PYTHONPATH`。随后执行：
+<a id="测试维护"></a>
+
+Use Python 3.11+ from the repository root. For routine checks, install `.[dev,web,gepa,temporal,task-mcp]` and run `python -m pytest tests`. Real Temporal checks require an isolated service set through `ERGORA_TEMPORAL_TEST_ADDRESS`. Existing tests retain skips when that service or an optional capability is unavailable.
+
+CI checks the installed wheel. To reproduce this boundary in an independent virtual environment, install `build`, run `python -m build --wheel`, then install the generated wheel from `dist/` with the `dev,web,gepa,temporal,task-mcp` extras. Use a non-editable installation and keep `src/` out of `PYTHONPATH`. Then run:
 
 ```bash
 python -m ergora reference verify
@@ -11,12 +15,12 @@ python scripts/ci/run.py --group 0 --collect-only --output .ergora/checks/collec
 python scripts/ci/run.py --group 0 --output .ergora/checks/run-group-0
 ```
 
-每次使用新的结果目录；命令拒绝复用目录，防止把旧日志当作本次结果。省略 `--group` 或指定 `all` 会选择本平台的完整范围。Windows 使用 `all`；原生 Windows 的 PowerShell 5.1 安装／升级检查仍由 CI 单独运行。Linux 的范围为 `tests`、冻结参考的 contracts、portable、workflow 的 `AdapterTests` 和 runtime；Windows 为 `tests` 与 contracts。CI 脚本只将观测 plugin 和 Linux 参考导入路径加入 `PYTHONPATH`，应用仍从当前解释器安装的 wheel 导入。
+Use a new result directory for every command. The runner rejects an existing directory so old logs cannot be mistaken for a new result. Omitting `--group`, or using `all`, selects the platform's full scope. On Windows, use `all`; native PowerShell 5.1 installation/upgrade checks run separately in CI. Linux covers `tests`, frozen-reference contracts, portable, workflow `AdapterTests` and runtime; Windows covers `tests` and contracts. The runner adds only its observation plugin and Linux reference import path to `PYTHONPATH`; the application still imports from the current interpreter's installed wheel.
 
-Linux 按[文件清单](../scripts/ci/linux-groups.json)分组，每个测试文件只登记一次。新增文件时将其加入一组；移动文件时同步改该处。plugin 先收集完整范围，再选择当前组，拒绝漏登记、重复分配、缺失文件、无效组及空选择。整文件执行保持文件内 fixture 和用例顺序，组间使用独立 runner。对各组执行 `--collect-only` 后，核对其 `collected.nodeids` 并集等于全量 collection、交集为空；仅检查分组数量不足以证明完整覆盖。
+Linux groups use the explicit [file list](../scripts/ci/linux-groups.json), with every test file registered once. Add new files to a group and update moved paths there. The plugin collects the full scope before selecting the requested group, rejecting unregistered files, duplicate assignments, missing paths, invalid groups and empty selections. Whole-file execution preserves intra-file fixture/case order; groups use independent runners. After `--collect-only` for all groups, verify that their `collected.nodeids` union equals the full collection and that intersections are empty. The number of groups alone does not establish complete coverage.
 
-组数从同一 JSON 生成 GitHub Actions matrix；每组仍构建／安装 wheel 并核参考身份，job 上限为 20 分钟。调整分组前，使用实际阶段耗时评估最慢整文件和安装／上传余量；不要用删除故障／恢复检查掩盖超时。最初的分组依据见[分段成本记录](delivery/evidence/2026-11-13-linux-ci-costs.json)，它是历史测量，不能代替新候选实际运行。
+GitHub Actions derives its matrix from the same JSON. Each group builds/installs a wheel and checks reference identity; Linux jobs have a 20-minute limit, while the Windows `all` job has a 30-minute limit. Before rebalancing groups, use actual phase durations to assess the slowest complete file and installation/upload headroom. Do not hide timeouts by deleting failure/recovery checks. The original [segmented cost record](delivery/evidence/2026-11-13-linux-ci-costs.json) is historical measurement, not a substitute for a new candidate's run.
 
-结果目录保存 `request.json`、完整 `stdout.txt`、`phases.jsonl`、JUnit 和正常收尾时的 `result.json`。JSONL 即时记录全量／实际选中 nodeid、阶段起点、setup／call／teardown 的结果、耗时与失败正文、collection 跳过／失败和 session 终态。子测试的 `report_type` 与父用例不同；子报告耗时已包含在父阶段内，不应再次累加。正常的 pytest exit 0 才表示该次选择通过；`--collect-only` 只证明收集／选择，不能作为测试通过。
+Result directories retain `request.json`, complete `stdout.txt`, `phases.jsonl`, JUnit and, after normal runner completion, `result.json`. JSONL immediately records full/selected nodeids, phase starts, setup/call/teardown outcomes, durations/failure bodies, collection skips/failures and session termination. Subtests have a different `report_type` from their parent case; their durations are already included in parent phases and must not be summed again. Normal pytest exit 0 establishes that selection's pass. `--collect-only` establishes collection/selection only.
 
-中断可能缺少 session 的 `finish`、JUnit 或 runner 结果；最后阶段起点只能定位在途范围，不能证明死锁。CI 尝试用 `always()` 上传已落盘文件，但 job 硬截止或 runner 丢失后不保证上传成功。缺失原件、取消和未完成结果均保留其实际范围。观测入口保持 `python -m pytest`，不要在自定义脚本顶层调用 `pytest.main()`，以免 spawn 重新执行驱动。
+An interruption can leave no session `finish`, JUnit or runner result. The last phase start identifies in-flight scope; it does not prove deadlock. CI attempts to upload written files with `always()`, but a hard job deadline or lost runner can prevent upload. Preserve missing originals, cancellation and incomplete outcomes at their actual scope. Invoke observations through `python -m pytest`; do not call `pytest.main()` at the top level of a custom driver, where spawn could rerun it.

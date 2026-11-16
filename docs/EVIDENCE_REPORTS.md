@@ -1,34 +1,42 @@
-# 从原证据生成报告
+# Generate reports from original evidence
 
-`evidence-report` 提供只读报告作者 `ergora-evidence-report-author@1.0.0`，根为 `ergora-evidence-report@1.0.0`，独立叶为 `root/author`。它把操作者完整提供的工程、研究或实验材料整理为 Markdown 和静态自包含 HTML，给出来源、实际覆盖与未验证范围。它与 [`review report`](LOCAL_REVIEW.md) 的程序汇总不同：后者读取原 reviewer runs，不调用 LLM；本叶是一次明确的报告作者调用，不产生正式批准。
+English · [简体中文](zh-CN/EVIDENCE_REPORTS.md) · [Documentation](README.md)
 
-## 准备原材料
+<a id="从原证据生成报告"></a>
 
-先按原 owner 读取机器可核证据。例如使用 [`composition inspect-run`](WORKFLOW_DEFINITIONS.md#按精确-id-读取原组合运行) 的完整原 input／prompt／result、`review report --format json` 的完整覆盖观察、任务交接包的完整选中材料，或[训练原实验与归档](TRAINING.md)。保留原 JSON／Markdown／日志，不用报告替换它们。列表、摘要或有界窗口只证明其实际读取范围。
+The `evidence-report` preset provides the read-only author `ergora-evidence-report-author@1.0.0`, workflow root `ergora-evidence-report@1.0.0`, and standalone leaf `root/author`. It organizes complete engineering, research or experiment material supplied by the operator into Markdown and static self-contained HTML, with sources, actual coverage and unverified scope. Unlike the programmatic [`review report`](LOCAL_REVIEW.md), which reads original reviewer runs without an LLM call, this leaf is an explicit report-author invocation. It does not issue formal approval.
 
-在 UTF-8 `report-task.md` 中写明读者、问题、报告范围、材料身份／时间及全文或明确选段。为每个来源给出路径／URL／原 run ID、已核 SHA256／Git OID，以及谁核过原字节。只提供身份字符串时，作者会标为操作者提供，不能自证匹配。缺失附件、失败尝试、少数反对、未完成成员与尚未运行的检查一并交给作者。性能／质量主张还需真实 baseline／candidate、固定 workload／配置／环境、原数据、单位、样本／窗口与独立正确性／质量覆盖。
+<a id="准备原材料"></a>
+## Prepare original material
 
-可在任务末尾写：
+Read machine-checkable evidence through its original owner first. Examples include complete input/prompt/result from [`composition inspect-run`](WORKFLOW_DEFINITIONS.md#按精确-id-读取原组合运行), the complete coverage observations from `review report --format json`, fully selected handoff-packet materials, or [original training experiments and archives](TRAINING.md). Preserve original JSON/Markdown/logs; the report does not replace them. Lists, summaries and bounded windows establish only the coverage actually read.
+
+In a UTF-8 `report-task.md`, state the audience, question, report scope, source identities/times, and full text or explicitly selected excerpts. For each source, provide its path/URL/original run ID, verified SHA256/Git OID and who checked the original bytes. When only an identity string is supplied, the author must mark it as operator-provided; the string cannot prove its own match. Include missing attachments, failed attempts, minority objections, incomplete members and unrun checks. Performance/quality claims also require the real baseline/candidate, fixed workload/configuration/environment, original data, units, samples/windows and independent correctness/quality coverage.
+
+You can end the task with:
 
 ```text
-请给维护者生成本次材料的证据报告。先回答问题，逐项引用来源 ID，
-区分原记录、推论、建议和未验证范围。保留失败、反对和缺覆盖。
-同时返回 Markdown 和完整静态 HTML；若没有测量数据，使用说明图或表格。
-只使用下面实际提供的材料，不补造未读资料或实测数字。
+Write an evidence report for maintainers from this material. Answer the question first,
+reference source IDs for each claim, and distinguish original records, inferences,
+recommendations and unverified scope. Preserve failures, objections and missing coverage.
+Return both Markdown and complete static HTML. Without measurement data, use an
+explanatory diagram or table. Use only the material actually supplied below;
+do not invent unread sources or measured numbers.
 ```
 
-若产物将公开，先准备可以公开的来源内容和逻辑标识；私人原件保持原有访问边界。这个只读叶不会自动读取仓库、抓网页、执行 parser／profile 或运行工作流前驱。
+For public output, prepare shareable source content and logical identifiers first; private originals retain their access boundaries. This read-only leaf does not automatically read a repository, fetch websites, execute a parser/profiler or run workflow predecessors.
 
-## 固定定义并显式调用
+<a id="固定定义并显式调用"></a>
+## Pin the definition and invoke explicitly
 
-以下操作复用[完整 manifest 与单叶输入](WORKFLOW_DEFINITIONS.md#准备完整的单叶输入)。先[注册项目](PROJECTS.md)并认证实际后端；定义导入只发布到本地版本库，不安装 CLI、不改项目绑定、不授予执行权限。
+Reuse the [complete manifest and single-leaf input](WORKFLOW_DEFINITIONS.md#准备完整的单叶输入). [Register the project](PROJECTS.md) and authenticate the actual backend first. Importing definitions publishes only to the local definition library; it does not install a CLI, change project bindings or grant execution permission.
 
 ```bash
 ergora composition install-preset evidence-report
 ergora composition show ergora-evidence-report 1.0.0 --material
 ```
 
-保存 `report-grant.json`；此处与新根的精确只读上限一致：
+Save `report-grant.json` with the new root's exact read-only ceiling:
 
 ```json
 {
@@ -50,20 +58,21 @@ ergora composition run-input my-project ./report-input --mode text-only --backen
 ergora composition inspect-run my-project RUN_ID > ./report-observation.json
 ```
 
-Skill 全文自包含，text-only 内联读取即可，无需 MCP 附件或新工具授权。`max-prompt-bytes` 约束完整提示 UTF-8 字节，不承诺模型容量。默认 Codex 是可替换 binding；也可沿同一 `check-input/run-input` 显式选择支持本 role／模式的后端并记录原因，模型名不能跨后端照搬。检查不会调用模型，也不证明安装／认证。没有自动失败回退或隐式重发；失败、unknown 或超时先保留原 run 并按原 owner 对账。
+The full Skill is self-contained and can be inlined in text-only mode, without MCP attachments or new tool grants. `max-prompt-bytes` limits the complete UTF-8 prompt; it does not promise model capacity. Codex is a replaceable binding. Use the same `check-input/run-input` flow to select another backend supporting this role/mode and record the reason; model names are backend-specific. Checking admission does not call the model or establish installation/authentication. There is no automatic failure fallback or implicit resend. Retain failed/unknown/timed-out original runs and reconcile through their original owner.
 
-## 查看原结果并导出阅读视图
+<a id="查看原结果并导出阅读视图"></a>
+## Inspect the original result and export reading views
 
-检查观察中的 `run.status` 及 `input.available`、`prompt.available`、`result.available`，不能仅凭 CLI exit 0 称报告成功。原完整结果仍在 `result.document`；外层沿用 `summary` 与 `artifacts.response`。response 是一个约定的 JSON 字符串：
+Inspect `run.status` plus `input.available`, `prompt.available` and `result.available` in the observation. CLI exit 0 alone does not establish report success. The complete original result stays in `result.document`, with the existing `summary` and `artifacts.response` envelope. The response is a JSON string specified by the authoring prompt:
 
-|字段|作者返回的内容|
+|Field|Author output|
 |---|---|
-|`markdown`|完整 Markdown 报告，含来源及限制|
-|`html`|同一结论／数值／来源／限制的完整静态 HTML；仅明确请求 Markdown alone 时可为空|
-|`sources`|`id/reference/identity/coverage` 字符串对象数组，标明真实读取与身份核验范围|
-|`limitations`|缺失、未读、未验或不适用范围字符串数组|
+|`markdown`|Complete Markdown report with sources and limits|
+|`html`|Complete static HTML with the same conclusions/numbers/sources/limits; may be empty only when Markdown alone was explicitly requested|
+|`sources`|Array of objects with string fields `id/reference/identity/coverage`, recording actual reading and identity-verification coverage|
+|`limitations`|String array of missing, unread, unverified or inapplicable scope|
 
-这是提示约定，不是运行时另加的可信 schema。原 result envelope 合格不证明 JSON 字符串正确、事实真实、两视图一致、CSP 有效或浏览器布局已验。先审阅原结果，保留 observation 与所有原机器材料，再明确导出到一个新目录；例如：
+This is a prompt convention, not an additional trusted runtime schema. A valid outer result envelope does not establish valid inner JSON, factual accuracy, agreement between views, effective CSP or checked browser layout. Inspect the original result, preserve the observation and all original machine-readable material, then explicitly export into a new directory. For example:
 
 ```bash
 python - ./report-observation.json ./report-views <<'PY'
@@ -86,8 +95,8 @@ if report["html"]:
 PY
 ```
 
-导出只解码原模型字符串，不手工改写 HTML 冒充 Agent 输出，也不覆盖原件。打开 HTML 前检查来源／片段以转义文本呈现，无脚本、事件处理、远程样式／图片／字体、iframe 或表单；完整自包含页面应带限制性 meta CSP。Markdown、来源表与 HTML 的结论、失败和限制须一致，量化图绑定真实原数据。若输出不合格，保留首次结果，明确新调用后另存新版本；这不是自动批准或重试器。
+Export decodes the original model string without overwriting originals or manually rewriting HTML as purported Agent output. Before opening HTML, check that source text/excerpts are escaped, with no scripts, event handlers, remote styles/images/fonts, iframes or forms. A complete self-contained page should include a restrictive meta CSP. Markdown, source tables and HTML must agree on conclusions, failures and limits; quantitative charts must cite real original data. If output is unsuitable, retain the first result and explicitly make another call into a new version. Export is not an automatic approval/retry mechanism.
 
-HTML 的导航、表格、内联 SVG 与原生折叠用于阅读，页面没有执行、批准、采用或 release 状态。检查通过、模型建议与真实证据验收分别记录。需要外部发布、训练、候选采用或人工 release 时，继续使用其原授权及 owner。
+HTML navigation, tables, inline SVG and native disclosure elements are reading aids. The page has no execution, approval, adoption or release status. Record static checks, model recommendations and actual evidence acceptance separately. External publication, training, candidate adoption and human release use their existing authorization and owners.
 
-方法来源见[研究](research/2026-11-15-evidence-report-generation.md)及随包 [Skill](../src/ergora/data/presets/agents/ergora-evidence-report-author/skills/ergora-evidence-report/SKILL.md)。实际验证范围与限制见[交付](delivery/2026-11-15-evidence-report-generation.md)。
+Method sources: [research](research/2026-11-15-evidence-report-generation.md) and the bundled [Skill](../src/ergora/data/presets/agents/ergora-evidence-report-author/skills/ergora-evidence-report/SKILL.md). Original validation and limits: [delivery record](delivery/2026-11-15-evidence-report-generation.md).

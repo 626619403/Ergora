@@ -1,0 +1,47 @@
+# Bilingual documentation and branch maintenance
+
+Status: batch 1 implemented, statically checked and independently approved; publication pending. Batches 2–7 remain queued. Updated: 2026-11-16.
+
+This plan implements the user's request to clean up obsolete branches and documentation, provide English and Chinese documents with reciprocal links, and use English by default. Markdown reports may have HTML reading views. The [delivery record](../delivery/2026-11-16-bilingual-documentation-and-branch-cleanup.md) owns observed changes and validation; the root coordinator owns `docs/PLAN.md`, review, commits and publication.
+
+## Baseline and boundaries
+
+- Product baseline: `c540939d3b3f38f3851b0de965c9cd0f969eea77`, branch `refactor/architecture-foundations`. Initial remote-tracking development snapshot: `eba86805e5d50824eefb5e69edd0faab099cbf42`; `main` is the default branch and has a different feature baseline. No fetch is performed by this slice.
+- Initial inventory: a 524-line Chinese root README; 15 top-level user/maintainer guides, plus the root domain glossary; 17 architecture Markdown files (including dated audits, decisions and history); 39 research Markdown files; 164 plans; 656 delivery Markdown records and their supporting evidence. Counts describe the initial local inventory, including active untracked records, rather than a published release.
+- Current user guidance is maintained separately from dated evidence. Research and plans describe their original design/status; they do not prove implemented support. Preserve historical conclusions, failures, candidate identities and links.
+- Edit only documentation owned by this slice. Do not modify other active plans/deliveries, frozen resources, source, locks, presets, reference files, the single-file distribution, tests or CI. Do not install, invoke models, start services, stage, commit, push, fetch, delete remote branches or remove worktrees.
+- Private raw ref/worktree/status evidence stays under ignored `.ergora/checks/bilingual-docs-branch-cleanup/`. Public documents use portable examples and shareable summaries, without local machine paths or credentials.
+
+## Language and navigation contract
+
+1. `README.md` and `docs/README.md` are English default entry points; their complete Chinese counterparts are `README.zh-CN.md` and `docs/README.zh-CN.md`.
+2. A migrated guide keeps its existing `docs/<NAME>.md` path as English; its full Chinese counterpart is `docs/zh-CN/<NAME>.md`. Both link to each other. Architecture counterparts will use `docs/zh-CN/architecture/<name>.md`; the glossary will use `CONTEXT.zh-CN.md`.
+3. A pair has the same scope, commands, supported behavior, limitations and evidence. No placeholder or summary-only translation counts as complete. Until migrated, a guide remains in its original language and its language is marked in the documentation entry point.
+4. Preserve existing externally referenced headings with explicit anchor aliases when translating a default path. Resolve local relative links and heading fragments, language links, fenced blocks and UTF-8 before handoff.
+5. Dated records retain their original language and identity. English/Chinese navigation explains their historical scope. Optional HTML is an additional self-contained reading view with source links, not a replacement for original evidence.
+
+## Ordered, independently reviewable batches
+
+|Batch|Complete deliverable|Acceptance|State|
+|---|---|---|---|
+|1: entry points and operational guides|Full paired root READMEs and documentation indexes; complete pairs for backup/recovery, evidence reports and testing; safe local branch cleanup and exact remote suggestions|Current branch/main distinction, real installation/runtime prerequisites, explicit disabled/pending capabilities; matching bilingual scope; all applicable static checks; ref/OID backups and deletion receipts; fresh independent review|Implemented; static checks and fresh independent review passed; one P3 corrected/rechecked; publication pending|
+|2: installation and projects|`USAGE.md`, `WINDOWS.md`, `PROJECTS.md` and all three Chinese counterparts|Check every supported command/flag against the current owner/CLI; preserve original recovery, platform and approval boundaries; verify all translated anchors and examples|Queued|
+|3: agents and composition|`AGENT_BACKENDS.md`, `AGENT_DEFINITIONS.md`, `WORKFLOW_DEFINITIONS.md`, `TEMPLATE_WALKTHROUGHS.md` and all four Chinese counterparts|Check actual mode admission, per-agent reasoning fields, full asset inheritance/freeze, runtime topology and original-session recovery; distinguish static definitions from execution|Queued|
+|4: training, review and improvement|`TRAINING.md`, `TRAINING_REVIEW.md`, `LOCAL_REVIEW.md`, `IMPROVEMENT_WORKFLOW.md`, `INTEGRATIONS.md` and all five Chinese counterparts|Verify source/current receipts; keep manual versus controller execution, disabled schema3 effects, evidence approval, optional availability and external writes precise; preserve full commands and historical failures|Queued|
+|5: architecture and extension guidance|`architecture/current.md`, `architecture/contracts-and-identities.md`, `architecture/reference-boundary.md`, `architecture/state-migrations.md`, `architecture/component-change-protocols.md`, root `CONTEXT.md`, and full counterparts|Refresh current inventory from exact source; trace actual construction/caller/recovery owners; keep old inventory evidence with its original OID; translated extension contracts remain complete. If agent cooperation rules themselves change, apply `writing-for-agents` first|Queued|
+|6: remaining living entry points|Inventory and update maintained example READMEs and contribution/setup entry points, with counterparts where they are user/extension guidance|List each owner and actual consumer first; exclude vendor/frozen product content; reconcile navigation and remove obsolete instructions only when their replacement and evidence are preserved|Queued|
+|7: historical navigation and optional report views|Curate dated architecture audits/ADRs, research, plans and delivery records by topic/date/candidate; add bilingual indexes and only useful self-contained HTML reading views|No bulk rename, deletion or changed conclusions; all original evidence remains reachable; historical “current” language is contextualized by date; HTML sources/limits match originals|Queued|
+
+The 15 top-level guides are all assigned above: batch 1 has three, batch 2 three, batch 3 four, batch 4 five. The broader request remains open until the queued guide/architecture batches and independent review are complete. An index alone does not complete this work.
+
+## Branch rules and progress
+
+Back up the complete ref/OID list before deleting anything. Protect `main`, current development, every branch checked out in a worktree, active design/S1/S2/M6/reasoning/review work, and every branch with commits outside the public development snapshot. Delete only a local branch proven an ancestor of the saved public development OID, with zero unique commits and no worktree, using `git branch -d` after rechecking its OID/worktree. Preserve all worktrees and private evidence. Remote refs are suggestions only and require the coordinator's fresh serial verification.
+
+Initial inventory found 40 local refs, 8 remote-tracking refs and 38 worktrees. Three old local branches meet the deletion rules: `feat/evolution-console`, `feat/windows-support`, `research/multi-agent-evolution-20261028`. Their full original OIDs and deletion receipts are recorded in the delivery record/private evidence; all other local branches remain protected or have unique commits. No remote deletion is performed.
+
+Batch 1 deleted those three branches with ordinary `git branch -d`, leaving the other 37 initial local branches and all 38 worktrees intact. Five complete language pairs now exist: root README, documentation index, backup/recovery, evidence reports and testing. UTF-8, relative links/fragments, fences, reciprocal links, executable-block parity, original heading anchors, portable paths and scoped `git diff --check` passed. The source CLI catalog/profile/help reads also succeeded; they do not establish installation or runtime acceptance. The root coordinator advanced the same product baseline to documentation-only `04af2344239306cb00458e89f81258093235f049` during this work. Full checks and exact review artifacts are recorded in the delivery record.
+
+## Completion gate
+
+For every completed batch, update this plan and the delivery record with exact files, source baseline, full checks/outcomes, untranslated remainder, deleted/retained branch reasons, remote suggestions and unverified scope. Freeze the reviewable files, hand the complete tracked/untracked diff to a fresh independent reviewer through the root coordinator, resolve substantiated findings, and only then mark that batch complete. Do not inherit model/service/CI/GPU acceptance from earlier candidates or claim a publication this slice did not perform.

@@ -1,42 +1,33 @@
 # Ergora
 
-**面向代码仓库开发与训练实验的多 agent 协作协议与参考执行框架。**
+English · [简体中文](README.zh-CN.md)
 
-Ergora 用任务合同明确目标、角色、修改范围和验收标准，把人工审批、并行工作、命令验证、独立审查与执行证据连接成可追溯的流程。开发者可以在自己的项目仓库和工单体系中使用它，逐步接入现有执行器、服务和实验环境。
+**Multi-agent collaboration contracts and a reference runtime for repository development and training experiments.**
 
-仓库提供独立的 **`ergora` CLI / 本地图形控制面**，以及保持内容一致的 **v2.2 `agentflow` 参考发行**。当前入口支持分层工具绑定、可嵌套的专家模板、正式六阶段操作、训练实验控制，以及来源绑定的记忆／Skill／工作流复盘与明确采用。正式执行复用参考运行时，状态、审批、取消与证据仍有各自的原记录。实际验收进度记录在 [持续计划](docs/PLAN.md)。
+Ergora connects task goals, roles, permitted changes, human decisions, parallel work, trusted checks, independent review and original execution evidence. Each business project keeps its own Git repository and issue namespace; tasks export their own candidate branches.
 
-[安装与日常使用](docs/USAGE.md) · [Windows 安装](docs/WINDOWS.md) · [训练优化手册](docs/TRAINING.md) · [Agent 选择与正式执行](docs/AGENT_BACKENDS.md) · [工作流组合](docs/WORKFLOW_DEFINITIONS.md) · [工具接入](docs/INTEGRATIONS.md) · [单文件参考发行](docs/distribution/multi-agent-development-platform.html) · [计划与进度](docs/PLAN.md)
+The repository provides the `ergora` CLI and local graphical control plane, plus a frozen v2.2 `agentflow` reference distribution. Formal execution reuses the reference runtime and its original approval, cancellation, recovery and evidence records. The [documentation index](docs/README.md) identifies each guide's language; [the live plan](docs/PLAN.md) records delivery and remaining acceptance work.
 
-首次使用专家组合可从[模板入门旅程](docs/TEMPLATE_WALKTHROUGHS.md)开始：准备完整 manifest，选择逐实例后端，再创建开发任务或调用训练提案叶。
+[Quick start](#quick-start) · [Documentation](docs/README.md) · [Template walkthroughs](docs/TEMPLATE_WALKTHROUGHS.md) · [Training](docs/TRAINING.md) · [Architecture](docs/architecture/current.md) · [Reference HTML](docs/distribution/multi-agent-development-platform.html)
 
-|你要做的事|入口|
-|---|---|
-|先安装、设计关系和查看模板|[快速试用](#快速试用)与[安装手册](docs/USAGE.md)|
-|治理仓库、开发或行为保持重构|[三模板旅程](docs/TEMPLATE_WALKTHROUGHS.md)与[重构配方](docs/USAGE.md#使用重构配方)|
-|准备可离线核对的本地 PR／MR 材料|[精确本地审查包](docs/LOCAL_REVIEW.md)：完整 Git 源、需求与显式上下文；采集本身不调用审查模型|
-|把已有工程／研究／实验材料整理成可读报告|[证据报告](docs/EVIDENCE_REPORTS.md)：只读单叶作者基于完整提供的材料生成 Markdown 与自包含 HTML，不新增采集、执行或批准权限|
-|审阅预训练／后训练代码|[领域审查配方](docs/TRAINING_REVIEW.md)：专长 reviewer 与通用三路审查组合，附 CPU 合同样例|
-|梳理训练流程、诊断性能、选择优化方向并准备实验|[训练手册](docs/TRAINING.md)，从[流程图谱](docs/TRAINING.md#源码锚定的流程图谱)开始|
-|把复盘结果用于下一次任务|[记忆／Skill／工作流完整改进旅程](docs/IMPROVEMENT_WORKFLOW.md)|
-|换电脑或恢复历史任务|[换机说明](docs/USAGE.md#换机与新项目重建)与[联合备份](docs/BACKUP_RECOVERY.md)|
+<a id="当前试用范围"></a>
+## Current scope
 
-## 当前试用范围
+Use the current development version for small trials on one machine with trusted projects. Start with governance or behavior-preserving refactoring in a small Git repository, and inspect plan approval, command checks, independent reviews and candidate export.
 
-当前版本适合单机、可信项目的小范围试用。建议先在一个小型 Git 仓库运行治理或重构任务，核对计划批准、命令验证、独立审查和候选导出。
+- **Control plane:** Linux and native Windows CLI/web interfaces for projects, layered tool bindings, Agent/Workflow definitions, formal tasks and evidence handoff. Web assets are packaged; no Node build or runtime CDN is required.
+- **Composition:** versioned specialists, nested workflows, inherited Skills/context, per-instance supported backends and permissions narrowed along the structural parent chain. Formal development retains the six-stage runtime and its supported work/review DAGs.
+- **Recorded real runs:** the [governance](docs/delivery/2026-11-13-six-stage-native-journey.md) and [refactoring](docs/delivery/2026-11-13-refactoring-journey.md) journeys used real Codex calls, candidate verification and original-ID recovery. Their reports define exactly what was checked.
+- **Execution platform:** complete development execution uses the Linux/WSL2 reference stack in a trusted container. Native Windows supports the control plane; see [platform boundaries](docs/WINDOWS.md).
 
-- **交互入口：** CLI 与本地图形控制台，提供项目、分层工具绑定、Agent／工作流定义、正式任务和证据交接。
-- **专家组合：** 独立版本的 Agent 可以声明职能、专长、指令、Skill 和上下文；工作流为实例声明权限，并沿结构父链收窄至项目授权上限。子模板累加结构祖先资料，每实例选择支持的后端。开发组合支持受约束的串并行工作单元及多路审查。
-- **已记录的实际运行：** [治理](docs/delivery/2026-11-13-six-stage-native-journey.md)与[重构](docs/delivery/2026-11-13-refactoring-journey.md)已使用真实 Codex 走通六阶段、候选复验和原 ID 恢复；模型及硬件结论按各记录的范围理解。
-- **平台：** Linux 和 Windows 原生均可安装控制面；完整开发执行使用 Linux／WSL2 下的可信容器参考执行环境，详见 [Windows 手册](docs/WINDOWS.md)。
+Source checks, a new wheel installation, a real service run, model behavior, training quality and a candidate's [GitHub Actions](https://github.com/626619403/Ergora/actions) are separate evidence. A plan, template, installed SDK or successful standalone Agent call does not establish all of them.
 
-代码与文档的最新交付范围见 [持续计划](docs/PLAN.md)，精确提交的云端检查见 [GitHub Actions](https://github.com/626619403/Ergora/actions)。下面的安装只准备控制面与模板；正式执行还需完成模型和服务配置。
+<a id="快速试用"></a>
+## Quick start
 
-## 快速试用
+The features described here are delivered on `refactor/architecture-foundations`. The repository's default branch is `main`, which has a different feature baseline. Select the development branch explicitly; to reproduce an acceptance record, pin its complete Git commit before installation. The `0.2.0` package version alone does not identify equivalent source.
 
-本文的组合与执行能力目前随 `refactor/architecture-foundations` 开发分支交付，以下安装选择同一分支；`main` 是另一条主线，不能仅按包版本号假定它已包含本文全部命令。需要复现某次验收时，在安装前固定该记录的完整提交。
-
-Linux 需要 Git、Python 3.11+、venv 和 pip，并能访问依赖源。以下使用一个尚不存在的源码目录：
+On Linux, provide Git, Python 3.11+, venv/pip and access to dependency sources. Use a source destination that does not already exist:
 
 ```bash
 git clone --branch refactor/architecture-foundations \
@@ -52,188 +43,67 @@ ergora composition install-preset refactoring-quality
 ergora serve
 ```
 
-打开 `http://127.0.0.1:8977`，可查看和配置已导入的专家与模板。网页资源随包安装，无需 Node 构建。Windows 使用 [PowerShell 安装器](docs/WINDOWS.md)，安装时选择同一开发分支或固定提交。
+Open `http://127.0.0.1:8977` on the serving machine to inspect and configure imported specialists and templates. For native Windows, run the [PowerShell installer](docs/WINDOWS.md) from the same branch or fixed commit.
 
-首次正式运行还需要：按 [Agent 安装与认证](docs/USAGE.md#安装与认证-agent-cli)配置自己的后端，将凭据提供给启动 CLI／服务的环境；按 [项目手册](docs/PROJECTS.md)登记已有提交的业务仓库与实际可信检查；再按 [模板入门旅程](docs/TEMPLATE_WALKTHROUGHS.md)准备完整 manifest、参考执行栈和所需 `task-mcp` 依赖，预览并明确提交任务。可以先选择本地手动工单，不必先接 GitHub／GitLab。
-
-安装组合可选`--profile control`（默认Web控制面）、`development`（加Temporal SDK）或`research`（再加GEPA SDK）；Windows使用`-Profile`。运行`ergora tools profiles`查看配方及外部要求。组合只选择SDK，Agent和后台服务按需另配，详见[组合与离线安装](docs/USAGE.md#选择安装组合)。
-
-## 用来做什么
-
-|场景|模板|提供的工作方式|
+|Installation profile|Installed extras|Still configured separately|
 |---|---|---|
-|整理已有仓库、约束模块依赖、沉淀项目知识|`repository-governance`|盘点基线、建立导航与架构检查，在限定范围内修改并验证|
-|跨模块功能、接口调整、可回滚迁移|`large-change`|按依赖和路径所有权拆工作单元，增加集成、兼容、迁移回滚检查|
-|保持行为的模块重构、调用者迁移|`refactoring`|准备→重构→兼容验证→可信集成／验证→三路审查，引用一个原生六阶段任务|
-|训练性能与配方方案|`training-optimization-v3`|源码流程图谱、按瓶颈分析、保留 kernel 评估与测量审查；只读叶显式交接，实际实验交可信 runner|
+|`control` (default)|Web control plane|Agent CLI/authentication and project tools|
+|`development`|Web and Temporal SDK|Reference runtime, services and Agents|
+|`research`|Web, Temporal and GEPA SDKs|Trusted evaluators, proposers, experiment services and workload tools|
 
-适合需要管理多个 agent 的交接、恢复长任务、保留验收依据的项目维护者。每个业务项目拥有自己的 Git 仓库和工单；每个开发任务导出自己的分支。平台共享工具和运行记录。
+Use `bash scripts/install.sh --profile development` or `--profile research`; Windows uses `-Profile`. `ergora tools profiles` describes the recipes. A profile does not install every Agent, start services or run training. Task-MCP and GPU tools have their own prerequisites in the relevant guide.
 
-安装后运行`ergora composition presets`查看内置专家组合；`ergora composition install-preset large-change`一次导入该领域的Agent与子模板。治理和开发可将互补专家映射到原工作单元，再接结构、正确性、测试价值三份审查子模板；训练组合提供只读提案，真实实验保留可信runner/gate。[使用与后端选择](docs/WORKFLOW_DEFINITIONS.md#使用内置领域组合)。
+Before a formal run, [authenticate the selected backend](docs/USAGE.md#安装与认证-agent-cli), [register a committed business repository and real trusted checks](docs/PROJECTS.md), then follow the [complete manifest/template journey](docs/TEMPLATE_WALKTHROUGHS.md). A local manual issue tracker is sufficient to start.
 
-当前内置 **33 个 preset**：上表四个入口、保留的 `training-optimization` v1 和 `training-optimization-v2`、以下 **18 个优化方向子模板**，以及 `refactoring-quality`／`optimization-performance-diagnosis`、`retrospective` 、`memory-retrospective` 和 `workflow-retrospective`，以及 `pretraining-review`／`posttraining-review` 和 `training-flow-map`，以及只读报告作者 `evidence-report`。方向完整 ID、根版本和调用方式见 [训练手册](docs/TRAINING.md#独立的优化方向子模板)。 `retrospective`提供绑定原证据和完整Skill基线的候选作者与审查者；[准备、检查、审查与显式导出](docs/USAGE.md#生成来源绑定的skill复盘候选)沿现有只读后端和Skill库运行，评价和明确采用分别进行。`memory-retrospective`支持[新建／更正记忆建议及完整导出](docs/USAGE.md#生成来源绑定的记忆复盘候选)，明确保存／修订冲突／有效期和恢复仍由原记忆接口处理。`workflow-retrospective`支持[完整流程基线、受限根修订与显式导出](docs/USAGE.md#生成来源绑定的工作流复盘候选)，正式导入和运行选择由原版本库与manifest处理。
+<a id="用来做什么"></a>
+## Choose a workflow
 
-`refactoring-quality` 为原重构根的 1.1.0 版本，通过父 Skill 补充目标仓库编码规范、真实调用者和测试接缝，沿用原角色及六阶段。`optimization-performance-diagnosis` 提供同症状复现、按输入选择报告 reader 的只读提案与独立测量审查。两者显式选择，旧定义与在途任务保持；[重构使用方式](docs/USAGE.md#使用重构配方)与[诊断入口](docs/TRAINING.md#通用性能诊断)说明如何准备完整资料。
+|Goal|Entry point|Behavior|
+|---|---|---|
+|Govern an existing repository|`repository-governance`|Inventory, architecture/knowledge checks and scoped changes|
+|Develop a cross-module change|`large-change`|Owned work units, integration, compatibility and migration/rollback checks|
+|Preserve behavior while refactoring|`refactoring` or `refactoring-quality`|Preparation, refactoring, compatibility validation and three independent review specialties within the original six stages|
+|Prepare training optimization|`training-optimization-v3`|Source-anchored flow map, bottleneck analysis, kernel assessment and measurement review; explicitly invoked proposal leaves|
+|Collect exact PR/MR review material|[Local review](docs/LOCAL_REVIEW.md)|Complete Git source, requirements and explicit context; collection itself does not call a review model|
+|Write a readable report from existing evidence|[Evidence reports](docs/EVIDENCE_REPORTS.md)|One explicit read-only author call; Markdown and self-contained HTML with source/coverage limits|
+|Review pretraining/posttraining code|[Training review](docs/TRAINING_REVIEW.md)|Domain reviewers composed with general review, plus CPU contract examples|
+|Use a retrospective in a later task|[Improvement workflow](docs/IMPROVEMENT_WORKFLOW.md)|Separate memory, Skill and Workflow candidates, explicit adoption and a new task freeze|
+|Move or recover historical tasks|[Backup and recovery](docs/BACKUP_RECOVERY.md)|An offline, coordinated snapshot of control data, execution state, Temporal and business Git|
 
-|方向组|已发布的细分方向|
-|---|---|
-|显存|memory tuning、activation recompute、CPU offloading|
-|执行图与数据|CUDA Graphs、sequence packing|
-|并行与分片|parallelism、Megatron FSDP、hierarchical CP|
-|通信|TP／DP overlap、MoE dispatcher、MoE overlap|
-|诊断|profiling、memory snapshot|
-|模型|recipe／model、model verification|
-|集群与恢复|cluster resiliency：唯一 rank／job／恢复所有者、checkpoint、日志与恢复证据方案|
-|低精度与量化|PTQ／搜索／导出、QAT／QAD、TE训练低精度的兼容、质量和成本方案|
-|Kernel|真实算子与wrapper、独立正确性、当前编译基线和整体测量；区分各原生工具的接入条件|
+`ergora composition presets` lists the current 33 bundled presets and exact versions. They include the four main workflows, retained training v1/v2, eighteen optimization directions, performance diagnosis, three retrospective types, pretraining/posttraining review, a training flow map and evidence reporting. See [composition](docs/WORKFLOW_DEFINITIONS.md) and [training directions](docs/TRAINING.md#独立的优化方向子模板) for full IDs and inputs.
 
-开发侧有准备者、领域执行者、兼容验证者，以及结构／正确性／测试价值三位审查专家。训练侧有实验设计、性能分析、kernel 设计、测量审查四位 v2 专家；多个方向复用这些专家，并分别继承所选方向资料。提示词与资源定义独立于后端，逐实例绑定仍受后端支持的职能、模式和权限限制。
+The optimization directions cover memory/recompute/offload, CUDA Graphs/packing, parallelism/FSDP/hierarchical CP, communication/MoE, profiling/memory snapshots, recipes/model verification, cluster recovery, low precision and kernels. Proposal leaves run one explicitly selected leaf at a time; the operator supplies complete predecessor results. Installing a preset does not execute its graph or submit a training job.
 
-重构、框架设计和可维护性已有专职角色：
+Specialist definitions, prompts and bundled Skills are Ergora implementations informed by the cited [engineering](docs/research/2026-11-14-local-engineering-skills.md) and [composition](docs/research/2026-11-08-agent-composition.md) research. Codex and Claude Code are selectable execution backends. `refactoring-quality` adds repository conventions, real-caller and test-value guidance through inherited resources while retaining existing roles and runtime contracts.
 
-|角色|负责的工作|
-|---|---|
-|`ergora-refactoring-engineer`|在批准的工作单元内重构模块、迁移真实调用者并保持行为|
-|`ergora-structure-reviewer`|独立审查模块边界、依赖方向、职责和抽象成本|
-|`ergora-test-value-reviewer`|审查测试／断言的真实保护价值、配置硬编码和重复成本|
-|`ergora-compatibility-validator`|在独立兼容工作单元核旧新接口、迁移和回退；不代替最终审查|
-
-这些AgentDefinition、提示、Skill及组合是 **Ergora自有实现**，借鉴[工程Skill调研](docs/research/2026-11-14-local-engineering-skills.md)、[架构与协作研究](docs/research/2026-11-08-agent-composition.md)和已列明的上游资料。它们没有被包装成某个上游完整Agent的直接导入。Codex／Claude Code等是可替换的实际调用后端；`refactoring-quality`通过父模板再给全部后代补充目标仓库规范与测试接缝指导。具体版本、流程和后端覆盖见[重构配方](docs/USAGE.md#使用重构配方)。
-
-优化方向当前使用 `proposal-leaves`：每次显式调用一叶，操作者完整传递前驱结果。安装 preset 不会自动运行整张提案图、安装 GPU 工具或提交训练。真实实验继续沿 workload／baseline／experiment → 可信 runner → 独立评价 → 精确 evidence SHA 人工批准 → 项目集成复验，见 [训练优化手册](docs/TRAINING.md)。
-
-已有原实验可在控制台“训练实验”或 `ergora training list/show` 中[查看](docs/TRAINING.md#在控制台查看原实验)：同一项目的 baseline、精确 manifest／spec、runner／job、门禁、负结果和 MLflow ID 沿用原记录。新项目可先用[基线预览与初始化](docs/TRAINING.md#预览与初始化基线)，核对完整JSON、项目修订和内容SHA后登记；无需服务或SDK，原子初始化使用Linux／WSL2。[可信runner预览与登记](docs/TRAINING.md#预览与登记可信-runner)使用同样的确认流程，需Linux／WSL2和`temporal` extra，无需服务，登记不会运行命令。随后用[实验预览与准备](docs/TRAINING.md#精确准备实验与恢复部分发布)固定完整draft、runner和窗口，确认精确SHA后发布原manifest／spec；中断按原intent显式恢复，CLI／HTTP与训练页共用同一流程。`ergora training status`显式查询完整原输入与run；[确认提交](docs/TRAINING.md#提交已准备实验与原-id-对账)使用精确项目revision与manifest SHA，丢失回执后按原intent对账，不重发start。[归档证据读取](docs/TRAINING.md#阅读归档证据与原集成票据)支持原evidence／gate／元数据、按原SHA核对的文本窗口及已有本地集成票据，无需SDK或服务。页面默认只读，原生执行由原训练 owner 管理，实时操作需要`temporal` extra。[精确 owner 批准](docs/TRAINING.md#精确-owner-批准与投递恢复)可经CLI／HTTP或[训练控制台](docs/TRAINING.md#在控制台审阅证据与批准)显式确认原run与evidence；中断保留原receipt、不续期，发送结果不明时只查原历史，投递与集成复验分开。
-
-## 仍在补齐的模板与功能
-
-十八个细分优化方向现已提供只读资料模板，其中 `optimization-kernel` 复用 design／profile→kernel→measurement 四叶，覆盖算子、wrapper、独立正确性与测量方案。真实实验和完整原生流程仍按下列边界接入、验收。
-
-低精度／量化方向已提供只读提案包，复用实验设计、性能分析、kernel设计和测量审查四位专家。实际量化、训练、导出和目标硬件测量由所选工具及原可信runner执行、验收。
-
-集群／恢复方向已提供只读提案包。实际作业提交、原生归因器、取消与重启继续由所选执行器和框架接入、验收；模板本身只分析提供的资料。
-
-ForgeKernel 已有顶层 campaign 操作，作为完整嵌套流程仍需补齐全部内部会话的父资源／权限、总预算、取消和未知结果对账。Fuser、GEAK、AKG、ModelOpt 等研究候选按 [采用矩阵](docs/research/2026-11-12-specialist-adoption.md)条件接入，实际可用范围分别验收。
-
-当前已有训练baseline／runner／实验准备、提交／取消／证据批准页面，及[三类复盘→明确采用→新任务冻结](docs/IMPROVEMENT_WORKFLOW.md)的操作旅程。仍需真实条件验收的重点是GPU训练正确性／质量／性能比较、完整原生Forge嵌套流程、更多受限后端、远端执行隔离和团队级身份；GitLab标签追加等未支持操作保留明确限制。首次任务引导与稳定发行、跨服务协议和其他扩展按 [持续计划](docs/PLAN.md)与[总计划](docs/plans/2026-11-01-all-in-one.md)逐片推进。
-
-分享当前功能时请带上本分支与 [使用手册](docs/USAGE.md)、[训练手册](docs/TRAINING.md)。单文件 HTML 内嵌 v2.2 参考发行及其两份手册；新增控制面与组合能力通过当前仓库安装。
-
-## 当前工作流
-
-开发流程采用固定的 `development-v1` 六阶段：
+<a id="当前工作流"></a>
+## Formal development workflow
 
 ```mermaid
 flowchart LR
-    I["inventory / 盘点与基线"] --> P["plan / 计划"]
-    P --> H{"人工批准计划摘要"}
-    H --> W["work / 工作单元 DAG"]
-    W --> G["integrate / 集成"]
-    G --> V["verify / 命令验证"]
-    V --> R["review / 逐实例独立审查"]
+    I["inventory"] --> P["plan"]
+    P --> H{"Approve exact plan SHA"}
+    H --> W["work: owned DAG"]
+    W --> G["integrate"]
+    G --> V["verify: trusted commands"]
+    V --> R["review: independent instances"]
     R --> O["REVIEW_READY"]
-    O --> M["导出分支，维护者复验与 MR"]
+    O --> M["Export candidate; maintainer verifies and adopts"]
 ```
 
-六阶段分别对应 inspector、planner、implementer、integrator、verifier、reviewer。可配置的是 `work_units` 的依赖 DAG、允许路径和任务输入；当前编译器只接受这套阶段拓扑。工作单元依赖必须无环，并行单元写入范围重叠时必须建立依赖。治理模板最多 4 个工作单元、并行 2 个；大型变更最多 24 个、并行 4 个。
+The `development-v1` stages map to inspector, planner, implementer, integrator, verifier and reviewer. Work-unit dependencies must be acyclic; overlapping parallel write scopes require a dependency. Governance allows up to four work units/two concurrent units; large-change allows 24/four. Supported specialist work/review graphs compile into the original execution owner.
 
-- **先冻结任务，再执行。** 任务输入、工作流包、项目策略和服务绑定共同编译为执行合同；同一任务 ID 不能换一份输入继续运行。
-- **审批绑定具体材料。** 计划批准引用精确计划 SHA；验证和审查绑定具体候选提交，训练放行绑定具体证据摘要。
-- **实现与审查分开上下文。** 执行与审查使用独立会话并可分别选择后端；内置组合优先不同后端，同后端回退需明确原因。执行器检测审查前后的工作区和 HEAD 变化，发现改动就拒绝通过。
-- **恢复沿用原任务身份。** 长任务历史由 Temporal 保存；超时、去重和取消 fence 管理外部作业。结果不明时用原 ID 对账，取消请求仍需确认实际终态。
+- Freeze task input, complete workflow assets, project policy and bindings before execution. Reusing an ID does not allow replacing its frozen input.
+- Bind plan approval to the exact plan SHA; bind verification/review to the candidate commit and training approval to the exact evidence SHA.
+- Give implementation and review independent sessions. Prefer different backends; record the actual fallback when one backend is unavailable. Workspace/HEAD changes during review prevent acceptance.
+- Recover through original task/run/intent identities. A missing response means unknown: reconcile the original record before any further side effect. Cancellation requires observation of the actual terminal state.
 
-独立会话与 SHA 绑定用于上下文分离和证据一致性。自带执行器使用当前容器、当前 Unix 用户，agent 可以访问该用户文件；工作区变化检测不提供每 agent 的 OS 隔离。该执行配置面向可信项目。
+The bundled executor uses the current trusted container and Unix user. Independent sessions and candidate checks provide evidence boundaries; processes can access files available to that user. Per-Agent operating-system isolation and team identity are separate engineering work.
 
-## 现有工具栈
+<a id="安装"></a>
+## Installation and reference runtime
 
-独立控制面使用 Python、SQLite、FastAPI / Uvicorn 和随包 Cytoscape.js。各项目可按盘点、规划、实现、审查及训练角色选择 Codex / Claude Code / 自定义命令，实现角色也可选择 mini-swe-agent；kernel 层可接原生 ForgeKernel。记忆、优化和调度分别选择 SQLite / ReMe、手动 / GEPA、手动 / Temporal。前端和 CLI 共用应用函数，不复制评价、采用或合同校验逻辑。
-
-审查后端的选择与边界见[领域审查手册](docs/TRAINING_REVIEW.md#选择专家和后端)：区分 Ergora 结构化调用、Codex／Claude Code 原生命令、插件／自建 CI 与厂商托管审查。Claude 托管审查或原生产品入口不自动成为 Ergora CLI 模式；安装、认证、平台可用范围与结果副作用按[官方来源核对](docs/research/2026-11-15-review-backend-guidance.md)确认。
-
-组合的只读审查／提案叶还可选择[DeepSeek Harness固定版本适配](docs/AGENT_BACKENDS.md#deepseek-harness-只读叶后端)，使用独立SDK环境和OpenAI-compatible服务；新 standalone task-MCP 调用可[显式授权一次原会话续接](docs/AGENT_BACKENDS.md#显式续接一次只读会话)。workspace写入和正式任务恢复尚不支持。OpenHands仍处于准入评估，未注册为可用后端。
-
-项目的tracker层可选择本地手动、GitHub或GitLab。`ergora issue show PROJECT 7`读取完整上下文，`issue capture`保存不可变快照，`issue link-task`把快照显式关联到已有任务的精确创建版本；列表和完整快照支持离线读回，见[使用手册](docs/USAGE.md#保存工单与关联任务上下文)。要为新工作冻结完整来源，可用[来源任务定义v3](docs/USAGE.md#从工单快照创建来源任务)选择快照和work-units-v2专家组合，按实际所选依赖准入；来源文本不授执行权。候选导出后，可准备并明确确认一条[中性工单评论](docs/USAGE.md#为已导出的候选发布工单评论)，unknown不补发；GitHub还可[按原生ID追加一个既存候选标签](docs/USAGE.md#为已导出的候选追加-github-标签)，复用同一确认与恢复流程。[页面操作](docs/USAGE.md#在页面准备发送与观察工单回写)从原导出记录明确准备、核对后单独确认发送，或按原意图SHA离线重读及手动观察一页；unknown不提供补发。还可用[候选远端核对](docs/USAGE.md#核对候选与当前远端分支)比较原导出、本地ref和GitHub／GitLab当前head／base；正式任务页的原导出记录也提供显式观察入口；填写base后才查询，404保留未知。观察不会发布分支或授予批准。已有PR／MR可[与原候选显式关联并离线读回](docs/USAGE.md#关联已有-prmr-与候选)；正式任务页提供明确保存／原请求恢复，以及独立的按SHA离线读取入口。它只保存本地上下文，不创建资源或确认原发送。GitLab标签和远端创建按[F7计划](docs/plans/2026-11-11-project-trackers.md)继续实现。
-
-下表为完整六阶段**参考发行**的工具栈：
-
-|职责|当前使用|边界|
-|---|---|---|
-|代码实现与独立审查|Codex CLI|共用模型 API 配置，分别启动会话|
-|开发与实验生命周期|Temporal + Python SDK|保存状态、审批等待与恢复历史；本地部署使用开发服务|
-|远程工单入口|Symphony|按项目绑定 GitHub / GitLab；本地 CLI 接入可先运行|
-|跨服务协议|A2A SDK|提供 Agent Card 与 HTTP/JSON-RPC 接口|
-|服务管理|Supervisor|管理本地服务，无需 systemd|
-|实验观测|MLflow|记录参数、指标、指纹与产物|
-|候选提案|LangGraph + SQLite checkpoint|每次 1–5 个提案，不自动实施或运行实验|
-|训练证据比较|perfctl + 可信 runner|重新计算统计与门禁；项目负责实际训练环境|
-|安装与依赖|Bash、uv、Python、Node.js|安装器固定工具版本与 Python 依赖|
-
-已有统一注册项目可运行 `ergora task list PROJECT` / `ergora task show PROJECT TASK_ID` 读取正式开发任务的冻结合同与绑定，详见[只读任务入口](docs/USAGE.md#读取正式任务合同)。该入口不查询Temporal运行状态；可用 `task preview/create/creation/resume-create` [显式创建和恢复任务](docs/USAGE.md#预览与创建正式任务)，`task status` [只读查询原生运行事实](docs/USAGE.md#查询正式任务运行状态)，`task start/submission/resume-start` [显式提交与恢复](docs/USAGE.md#提交正式任务与恢复未知结果)，`task approve/approval/resume-approve` [批准精确计划并恢复投递](docs/USAGE.md#批准精确计划与恢复投递)，`task cancel/cancellation/resume-cancel` [请求取消和核对投递](docs/USAGE.md#请求取消与恢复未知投递)；`task external-status/reconcile/reconciliation/resume-reconcile`[核对并恢复外部清理](docs/USAGE.md#显式终态对账与工单租约释放)，`task export/export-status/resume-export`[导出精确候选](docs/USAGE.md#导出精确候选与恢复回执)。
-
-Ergora 控制台提供项目总览、工具绑定、记忆修订、候选比较 / 评价 / 采用、资料提案和受约束的工作单元关系编辑。[正式任务页](docs/USAGE.md#正式任务页面)可从已保存草稿或登记模板预览并明确创建合同，按原ID读取/恢复发布；检查原提交记录后明确提交或恢复原意图，查询固定原run的阶段、候选和结果，手动分批读取事件及原job日志材料。待批时可审阅完整计划并显式批准，按原decision ID查询或恢复；运行中可明确请求取消，按原request ID查询/恢复。闭合后可只读核外部证据、明确对账并恢复原租约释放回执。REVIEW_READY后可固定原候选、填写目标本地分支并明确导出；已有导出按原记录恢复。历史导出回执不证明当前ref，也不代表合并或推送。闭合run的“证据、预算与交接”可按需读原索引、查看未知用量并下载材料；接收者可在Windows/Linux基础安装中离线核包。[服务停止后的读取与恢复](docs/USAGE.md#服务停止后的读取与恢复)说明哪些事实可离线读取、哪些需要Temporal。完整历史和训练观测可使用 Temporal UI 和 MLflow。训练实验页还可显式提交已准备实验、恢复原 start，并按稳定请求 ID 取消固定原运行；停止观察分别保留原控制结果、执行器和围栏事实，见[训练操作手册](docs/TRAINING.md#取消原运行与分别观察停止事实)。
-
-## 源码组织
-
-新入口位于 `src/ergora/`，测试在 `tests/`。`src/ergora/data/reference/` 保存从已发布 HTML 提取的 283 个原始文件，身份清单为 `reference-manifest.json`。复现提取使用 `python scripts/import-reference.py`，参考文件保持原内容以便对照。工程计划与每切片证据在 `docs/PLAN.md` 和 `docs/delivery/`。
-
-```text
-src/ergora/
-├── projects.py / registrations.py / bindings.py 项目修订、统一注册与绑定校验
-├── tasks.py / services.py          正式任务生命周期/原ID恢复/精确导出、显式服务运维
-├── issues.py / issue_backends.py / issue_sources.py 工单观察、原生协议与纯来源合同
-├── issue_snapshots.py / issue_writebacks.py         来源快照与显式候选评论／标签
-├── components.py / tools.py        组件描述、工具目录与就绪检查
-├── agent_runs.py                   独立 Agent 上下文、调用与运行记录
-├── agent_definitions.py / workflow_definitions.py 专家库、嵌套图编译、资源修订与完整manifest
-├── definition_bundles.py / asset_trees.py 完整资源包、不可变版本与树身份
-├── agents.py / agent_backends.py   Agent兼容入口、原生后端合同与局部实现
-├── task_mcp.py                     每调用固定资源投影、官方MCP SDK与连接回执
-├── task_context.py / retrospectives.py 正式资料冻结、来源绑定复盘候选与显式导出
-├── reference_executor.py / stage_driver.py 可选六阶段桥接与专用进程入口
-├── reference_inputs.py / reference_workflows.py 版本化正式入口、原六阶段及实例配额
-├── task_envelopes.py / review_dags.py 正式身份、工作分配与审查DAG投影
-├── kernel.py / data/drivers/        原生 Forge campaign 与独立 SDK 驱动
-├── memory.py / state.py            项目记忆、来源与持久状态
-├── skill_assets.py / skills.py     版本资产/头事务/回退与评价后采用
-├── evaluation.py                  固定评价集、可信评分与比较
-├── optimization.py                可选 GEPA 候选搜索
-├── research.py / scheduling.py     有界资料观察与 Temporal 适配
-├── reference.py / drafts.py        冻结参考合同与可编辑输入草稿
-├── cli.py / web.py                 共用业务逻辑的两个入口
-└── data/console/                   随包页面、样式、图组件与许可证
-```
-
-CLI 与 API 直接共用用例；评价和搜索只依赖 Skill 资产，采用用例协调比较与原子版本头更新。旧 `tools.run_agent/runs/output/validate_binding` 及 `skills` 资产 Python 入口仍可使用，指向同一实现。[当前架构](docs/architecture/current.md) 包含模块/调用/数据图、保留与删除清单、兼容退出条件及各类功能的接入位置。
-
-以下是**安装后参考实现**的目录，亦对应完整部署包的 `platform/`：
-
-```text
-multi-agent-platform/
-├── local/agent_platform/        CLI、项目注册、执行器、服务与本地集成
-├── upstream/
-│   ├── platform/
-│   │   ├── dev_platform/
-│   │   │   ├── contracts.py     确定性的合同校验，不做文件/网络 IO
-│   │   │   ├── portable.py      任务包、输入、策略、绑定的编译
-│   │   │   ├── workflow.py      Temporal 开发工作流
-│   │   │   ├── adapter.py       执行协议与可信文件交换适配器
-│   │   │   └── a2a_gateway/     A2A 接入
-│   │   ├── portable/           Schema、工作流包、示例
-│   │   ├── task-types/         显式启用的任务类型
-│   │   └── harness/            范围与架构检查
-│   ├── temporal/               训练实验控制流
-│   ├── symphony/               工单、workspace 与桥接
-│   └── perfctl.py              训练证据和统计门禁
-├── templates/                  三个工作流模板
-├── bootstrap/                  安装、版本锁、模型配置与修复
-├── README.zh-CN.md              部署与日常使用手册
-└── docs/TRAINING.md             训练优化手册
-```
-
-已有的 `DevelopmentAdapter` 接口包含 `submit`、`poll`、`authorize`、`fence`。`FileAdapter` 负责可信目录中的请求、回执、审批与取消屏障交换，实际执行由外部执行器完成。`local/agent_platform/` 把这些组件接成可用的本地工作流，仍包含安装路径、服务地址和环境配置方面的耦合。
-
-## 安装
-
-独立控制面支持 Linux 和原生 Windows，要求 Python 3.11+、Git；无需先启动外部服务。Linux 从源码安装：
+For a source installation into your own Linux environment:
 
 ```bash
 python3 -m venv .venv
@@ -241,86 +111,43 @@ python3 -m venv .venv
 .venv/bin/ergora reference verify
 .venv/bin/ergora templates list
 .venv/bin/ergora templates copy repository-governance ./workflow-governance
-.venv/bin/ergora workflow --help
 .venv/bin/ergora serve
 ```
 
-Windows PowerShell 在源码根目录运行：
+From the selected source checkout on Windows PowerShell:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1 -AddToPath
 & "$env:LOCALAPPDATA\Ergora\bin\ergora.exe" serve
 ```
 
-空环境可加 `-InstallPrerequisites` 通过 winget 安装缺失的 Python / Git。安装、认证、目录、升级及功能范围见 [Windows 手册](docs/WINDOWS.md)。原生支持项目、模板设计、角色调用、记忆与持续改进；完整六阶段参考执行器、mini-swe-agent 驱动和 ForgeKernel 使用 WSL2/Linux，正式执行器还要求可信 Linux 容器。旧 HTML 保持 Linux v2.2 内容。
+`-InstallPrerequisites` can install missing Python/Git via winget. Native Windows and WSL2 have separate installation/state boundaries; do not share a live SQLite database or move a venv between them. [Installation](docs/USAGE.md), [Windows](docs/WINDOWS.md) and [testing](docs/TESTING.md) cover offline wheels, upgrades, development checks and wheel-based CI. The optional [editor comparison](examples/editor-comparison/README.md) uses Node for its own build; the packaged application does not.
 
-开发检查：安装 `.[dev,web,gepa,temporal,task-mcp]` 后运行 `python -m pytest tests`；与 CI 一致的 wheel 安装、Linux 分组、完整覆盖核对及失败日志见[测试维护说明](docs/TESTING.md)。真实 Temporal 回归需通过 `ERGORA_TEMPORAL_TEST_ADDRESS` 明确指定隔离服务，否则跳过。`ergora workflow` 直接调用随包的原合同编译器，支持 `compile`、`validate`、`convert-v2`、`export-v2`，不自动安装或启动执行服务。
+The [single-file HTML distribution](docs/distribution/multi-agent-development-platform.html) embeds the frozen Linux v2.2 reference source, installer, three templates and reference deployment/training manuals. Download the raw file and open it locally. Reading and exporting its embedded files can be offline; full installation needs network access and Ubuntu 24.04/Linux x86_64 system-package privileges. It does not include later control-plane features merely because this README links to it.
 
-开发者可用独立的[图与表单比较例子](examples/editor-comparison/README.md)复现技术选型。Node仅用于该例子构建，默认安装保持原要求；例子只编辑试验草稿，正式功能状态见[实施计划](docs/PLAN.md)。
-
-基础安装可在“Agent 与组合库”编辑字段或JSON/YAML，明确检查并发布保留原附件的新版本；也可检查和预览[可嵌套工作流定义](docs/WORKFLOW_DEFINITIONS.md)：精确引用专家或子模板，表达串并行/all-join，完整累加祖先材料并校验整链权限与总预算。`prepare-manifest`可携带完整图和全部资产，接收者独立核验后用`prepare-from-manifest`生成叶子输入。可显式准备并调用单个叶子；默认text-only，Linux的task-mcp可按授权URI读取固定Skill附件。调用前用`ergora composition check-input PROJECT DIRECTORY`查看完整祖先权限链与实际能力合同，不会启动模型或服务；真实调用会重新准入并保存同结构报告。需要从材料准备开始共用总时长时，使用[一次授权预算](docs/USAGE.md#一次授权的预算准备)的v5任务定义／input9，保留原六阶段批准与恢复。需要把六阶段作为子模板时，使用[单实例原生调用](docs/USAGE.md#将六阶段作为一个子模板调用)的definition6／input10，冻结完整父链并沿原task执行。通用外层串行调度沿计划接入；正式开发沿原六阶段和owner批准，可运行单叶或显式all-join的多个嵌套只读审查者，分别配置必需/建议职责，入口见[正式任务手册](docs/USAGE.md#为正式任务冻结审查组合)。
-
-统一注册项目可用 `ergora services status/start/stop/logs/shutdown` 显式管理 Linux/WSL2 中的所选 Supervisor 服务。版本/凭据/TCP 诊断和服务进程状态分别报告；停止需确认，未确认的结果先对账。命令、共享服务栈与日志游标见[使用手册](docs/USAGE.md#显式服务管理)。
-
-新入口也支持注册自己的 Git 项目并按角色调用工具：
+After exporting its installer, use the reference guide for your chosen installation path. Its default commands are:
 
 ```bash
-ergora project add my-project --repo "$HOME/projects/my-project"
-ergora project show my-project
-ergora project config my-project
-ergora tools list
-ergora tools doctor my-project
-ergora tools doctor my-project --probe --timeout 5
-# binding.json 示例：{"tool":"codex","model":"YOUR_MODEL_ID"}
-ergora project bind my-project reviewer --binding binding.json --revision 1
-ergora agent run my-project reviewer --prompt review-request.md --timeout 300
-ergora agent runs my-project
-```
-
-各 Agent 角色选择 `codex`、`claude-code` 或 `command`；实现角色额外支持 `mini-swe-agent`。普通自定义命令 `{"tool":"command","argv":["/path/to/tool"]}` 接收 stdin 文本；模板产物和正式阶段使用明确的 stage-json 协议。工具沿用自己的登录和环境变量，配置内不存密钥。保存绑定时传入 `project show` 的当前修订号以避免覆盖别人的修改。状态与输出在 Linux 默认保存在 `~/.local/share/ergora/`（遵循 XDG），Windows 默认为 `%LOCALAPPDATA%\Ergora\data`，可通过 `ERGORA_HOME` 或 `--home` 改为其他持久目录。升级前停止相关工作并备份整个目录；自动迁移保存的 DB 快照不包含文件资产，见 [升级与恢复说明](docs/architecture/state-migrations.md)。
-
-`project config` 显示有效绑定、逐层来源、校验结果、项目修订和内容摘要；页面“工具配置”显示同一份结果。旧项目缺角色时继承实现者，缺支持层时保留原兼容默认，不修改保存的项目。详见[有效绑定说明](docs/USAGE.md#有效绑定与运行快照)。需要正式执行配置时，用`ergora project register project.json --revision 0`统一登记模板、执行位置、tracker与可信检查；已有reference注册用`project import-reference`先预览，再带预览SHA显式采用，旧文件保持原字节。两种入口都支持中断恢复，见[项目定义手册](docs/PROJECTS.md)。
-
-`agent run` 是独立工具调用，成功不产生正式合同的验证/审查结论。`--template TEMPLATE` 可要求该角色的结构化产物。需要绑定作用于正式六阶段时，显式启用 `ergora reference executor --installation INSTALLATION`：复用参考执行器及门禁，在新任务首次接入时冻结角色工具。完整配置、安装可选 Agent、原生 Forge campaign 与恢复操作见 [Agent 手册](docs/AGENT_BACKENDS.md)。可执行文件存在不代表已认证，实际调用失败和超时会保留在运行记录。
-
-项目记忆通过 `ergora memory save/search/history/restore/delete/sync` 管理，默认使用同一持久目录里的 SQLite 文件，也可将记忆层绑定到 ReMe HTTP 检索投影。来源与修订是必填信息，跨项目结果会过滤，远程服务故障不会自动换后端。配置和完整命令见 [工具接入手册](docs/INTEGRATIONS.md)；ReMe 引擎的目标环境验收与质量比较仍需单独完成。
-
-skill 使用标准 `SKILL.md` 目录，完整内容按 SHA 保存。`skill import`、`evaluation register/run/compare`、`skill adopt/rollback` 组成可审查闭环，可选 `.[gepa]` 接真实 GEPA 搜索；搜索不自动采用。后续 `agent run --skill NAME --recall QUERY` 消费当前采用版本与项目记忆。评价合同、提案协议和边界见 [接入手册](docs/INTEGRATIONS.md#skill-候选评价与采用)。
-
-`research run` 观察明确 URL，保留内容 SHA、快照、去重和资料提案；总正文、时间、取消和失败可见。`.[temporal]` 提供持久 Schedule / worker，创建默认暂停。来源正文不执行，也不自动写入有效记忆。配置与恢复边界见 [有界资料检查](docs/INTEGRATIONS.md#有界资料检查与定时触发)。
-
-下述**完整参考发行**支持 **Ubuntu 24.04 / Linux x86_64**。Linux 包安装需要目标系统或容器内的 root/sudo 权限；安装器会补齐 Python 3.12、Node.js、uv 及所需工具。安装过程需要访问软件源、GitHub、npm 和 Python 包索引。
-
-1. 下载 [单文件 HTML](docs/distribution/multi-agent-development-platform.html)。在 GitHub 文件页使用 **Download raw file** 保存后，用本地浏览器打开。
-2. 点击“下载全新环境一键安装器”。HTML 同时内嵌完整源码部署包、三个模板、**部署与日常使用手册**和**训练优化手册**，可直接阅读和单独下载。
-3. 在目标环境执行以下命令；下载目录不同则替换路径。
-
-```bash
-bash ~/Downloads/install-agentflow.sh
-source ~/multi-agent-platform/env.sh
+bash "$HOME/Downloads/install-agentflow.sh"
+source "$HOME/multi-agent-platform/env.sh"
 agentflow doctor
 ```
 
-HTML 的阅读与内嵌文件导出可以离线完成，完整安装仍需要联网。也可以下载完整 ZIP，解压后在含有 `install-from-report.sh` 和 `platform/` 的目录执行 `bash install-from-report.sh`；追加 `--check` 可只检查包与缓存条件。
+<a id="配置模型与执行环境"></a>
+### Configure models and execution
 
-工具安装到 `~/multi-agent-platform/`，配置在 `~/.config/multi-agent-platform/`，数据库、日志、worktree 和证据在 `~/.local/state/multi-agent-platform/`。容器中使用时，应持久化并备份 home 和业务项目。
-
-### 配置模型与执行环境
-
-当前 Codex adapter 使用 Responses API。选择服务支持的模型 ID，配置元数据，并通过自己的 shell 或 Secret 管理器提供 `OPENAI_API_KEY`：
+Standalone backend calls use each backend's login/configuration and inherited credential environment. The original reference Codex adapter uses the Responses API and a separately configured model/API credential:
 
 ```bash
-python3 ~/multi-agent-platform/bootstrap/configure-model.py \
+python3 "$HOME/multi-agent-platform/bootstrap/configure-model.py" \
   --model YOUR_SUPPORTED_MODEL_ID \
   --base-url https://api.openai.com/v1 \
   --env-key OPENAI_API_KEY
 ```
 
-使用兼容网关时替换地址、模型 ID 与凭据变量名。实现与审查共用此配置；仅登录 Codex 订阅账号不会自动提供该 adapter 所需的 API 凭据。
+Supply the variable through your shell or secret manager. A compatible gateway needs its actual URL, model and environment-variable name. A subscription login alone does not configure this reference adapter. Do not store secrets in project JSON, prompts or reports.
 
-控制面可安装在裸 Linux；**自带执行器需要检测到当前处于 Docker/Podman 容器中，并由操作者明确启用**。执行直接使用当前容器，不要求在其中启动嵌套容器。全新主机的容器准备示例在 HTML 部署手册中。
-
-接受前述可信项目执行边界后，在该容器中运行：
+The reference executor requires a detected Docker/Podman container and the operator's explicit trusted-container choice:
 
 ```bash
 agentflow sandbox probe
@@ -329,35 +156,32 @@ agentflow services start
 agentflow doctor
 ```
 
-安装默认不启用执行，不登录模型，也不运行项目或训练任务。`doctor` 用于检查组件、凭据和项目条件，首次接入项目后再检查其任务就绪状态。更换执行容器后需重新探测和启用。
+This uses the current container without nested containers. Installing the control plane does not enable execution or run tasks. See [backend modes and admission](docs/AGENT_BACKENDS.md).
 
-## 首个开发任务
+<a id="首个开发任务"></a>
+## First formal development task
 
-以下使用统一入口，适用于已经安装完整参考环境并配置模型的Linux/WSL2可信执行容器。Windows原生可处理本地合同；执行范围见[Windows手册](docs/WINDOWS.md)。项目必须是已有提交的Git仓库，配置、state和控制数据放持久目录，位于业务仓库之外。
+Use this sequence after preparing the Linux/WSL2 reference stack, model access and trusted execution container. Keep control data, execution config/state and the committed business repository in persistent locations; config/state belong outside that repository. Replace uppercase placeholders with values from the current command receipts.
 
-### 1. 登记项目和角色
+<a id="1-登记项目和角色"></a>
+### 1. Register the project and roles
 
-按[项目定义手册](docs/PROJECTS.md#统一注册)准备`project.json`，包含业务Git根、模板、执行目录、tracker、允许路径和项目自己的可信检查。治理需要behavior/architecture/knowledge；大型改动另需integration/compatibility/migration-rollback。检查使用argv和实际解释器绝对路径，`{repo}`代表待验checkout；空命令或示例PASS不能代替项目验收。
+Prepare `project.json` using [project registration](docs/PROJECTS.md#统一注册): real repository/template/execution paths, tracker, allowed paths and trusted checks. Governance requires behavior/architecture/knowledge checks; large-change also requires integration/compatibility/migration-rollback checks. Use argv and the real interpreter; `{repo}` denotes the candidate checkout.
 
 ```bash
 ergora project register project.json --revision 0
 ergora project config my-project
 ergora tools doctor my-project --probe
+ergora services start my-project temporal worker executor a2a \
+  --revision CURRENT_REVISION --timeout 30
 ```
 
-角色可分别绑定Codex、Claude Code、受支持的mini或结构化命令，见[Agent手册](docs/AGENT_BACKENDS.md)。每次保存会增加项目revision，后续命令使用`project show`的当前值。一个业务项目对应自己的tracker命名空间，候选分支用于代码隔离。
+Use the revision from `project show`; saving configuration increments it. One execution state directory shares one service stack. Confirm the previous Supervisor/socket/processes have stopped before starting another stack. Current submission admission also requires local A2A. Credential, version and process checks each report their actual scope.
 
-统一入口从登记执行环境读取Temporal配置；直接调用旧参考CLI时需在当前shell显式配置Temporal连接，见[使用手册](docs/USAGE.md#旧参考-cli-与统一入口)。先确认旧Supervisor栈已停止且socket/PID已退出，再显式管理当前注册的运行栈：
+<a id="2-预览创建和提交"></a>
+### 2. Preview, create and submit
 
-```bash
-ergora services start my-project temporal worker executor a2a --revision CURRENT_REVISION --timeout 30
-```
-
-一个执行state目录共享一套服务。当前参考提交准入还要求本地A2A在线，即使任务从本地CLI提交也需显式启动；MLflow仅作观测时可后配。不要同时运行新旧两个executor；版本、进程运行、认证和真实任务通过分别核对。
-
-### 2. 预览、创建和提交
-
-从`ergora templates copy repository-governance ./workflow-governance`取得模板，将真实输入装入[task-definition.json](docs/USAGE.md#预览与创建正式任务)的`input`字段，并填写新task ID、模板和正整数工单编号。审阅预览的路径、工作单元、绑定和基线后使用其摘要：
+Copy a template, prepare a complete [task definition](docs/USAGE.md#预览与创建正式任务), and inspect paths, work units, bindings and baseline before confirming the returned preview SHA:
 
 ```bash
 ergora task preview my-project --definition task-definition.json --revision CURRENT_REVISION
@@ -366,159 +190,117 @@ ergora task start my-project TASK_ID --revision CURRENT_REVISION --creation-sha2
 ergora task status my-project TASK_ID --run-id RUN_ID
 ```
 
-`CREATION_SHA`取创建回执的intent_sha256，`RUN_ID`取提交回执。创建只冻结合同，submitted只证明保存了原run；六阶段成功以原结果为准。重复start返回同一原记录；超时先查submission，再按原intent摘要恢复，unknown不能重发或换ID绕过。
+`CREATION_SHA` is the creation receipt's `intent_sha256`; `RUN_ID` comes from the submission receipt. Creation freezes the contract; submission records the original run. Neither proves workflow success. A repeated start follows the original submission; unknown delivery must use its original intent/recovery path.
 
-需要查看过程时，在网页读取原运行后点击“读取原运行事件”，手动继续下一批或新增事件；页面保留最近200条，重开从头读取。也可用`ergora task events my-project TASK_ID --run-id RUN_ID --limit 20`[分段读取原运行事件](docs/USAGE.md#分段读取原运行事件)，再按返回的next_after显式继续。事件只含元数据，不附原始payload，也不代替原结果。
+<a id="3-审阅并批准精确计划"></a>
+### 3. Review and approve the exact plan
 
-需要查看日志或材料时，在原事件的`dev_submit`调度行点击“原job证据”，核对回执后选择材料，明确读取第一段/下一段。页面固定本次回执摘要，每次最多8192个Unicode字符，只保留当前窗口；错误后可重试原位置，关闭重开会重新核回执。也可用`ergora task job my-project TASK_ID --run-id RUN_ID --event-id 42`读取原job回执；将42换成实际事件ID，再按[原job文本证据说明](docs/USAGE.md#读取原job回执与文本证据)分窗读取。回执发布不代表工作流已采用或任务成功。
-
-### 3. 审阅并批准精确计划
-
-原phase到达AWAITING_PLAN_APPROVAL后，使用原状态的plan SHA读取完整计划材料；审阅execution-plan、ownership-map和rollback-plan中的工作单元、范围与风险，再明确批准同一计划：
+At `AWAITING_PLAN_APPROVAL`, inspect the complete execution/ownership/rollback material and approve the exact original plan:
 
 ```bash
 ergora task plan my-project TASK_ID --run-id RUN_ID --plan-sha256 PLAN_SHA
-ergora task approve my-project TASK_ID --revision CURRENT_REVISION --decision-id owner-one --run-id RUN_ID --plan-sha256 PLAN_SHA --confirm
-ergora task status my-project TASK_ID --run-id RUN_ID
+ergora task approve my-project TASK_ID --revision CURRENT_REVISION \
+  --decision-id owner-one --run-id RUN_ID --plan-sha256 PLAN_SHA --confirm
 ```
 
-`plan`只读原run的已接受计划回执及冻结profile要求的文本；plan SHA绑定整个回执，不是单个文本摘要。每份文本最多256 KiB、总响应最多1 MiB，缺失、损坏或超限会明确报错。requested仅表示投递事实。工作流按原owner/过期/撤销和精确计划规则决定是否继续work → integrate → verify → review。
+The plan SHA binds the complete accepted receipt. Delivery of a decision does not itself prove owner validity or workflow continuation. [The task guide](docs/USAGE.md#批准精确计划与恢复投递) covers limits, original owner/expiry/revocation and interrupted delivery.
 
-### 4. 审阅结果、导出和异常恢复
+<a id="4-审阅结果导出和异常恢复"></a>
+### 4. Inspect, export and recover
 
-原run闭合且outcome为REVIEW_READY后，核对候选、可信检查和独立审查都指向同一个candidate，再明确导出本地分支：
-
-```bash
-ergora task export my-project TASK_ID --revision CURRENT_REVISION --run-id RUN_ID --candidate-sha CANDIDATE_SHA --branch agent/TASK_ID --confirm
-ergora task export-status my-project TASK_ID
-```
-
-导出不checkout、merge或推送，并沿原规则释放适用工单租约，回执中的`lease_released`记录本次事实。维护者在独立worktree复验后，按当前目标分支和项目策略处理PR/MR或采用；普通agent调用和原生生成器报告不能替代这一步。
-
-`REVIEW_READY`本身不会自动释放租约。暂不导出时，先以`task external-status`核原run的全部作业/回执和未决项，再明确`task reconcile`；正常任务也适用这条[关闭流程](docs/USAGE.md#正常任务完成后的关闭)。缺少fence可能使只读检查尚未external_confirmed，对账会发布fence后重新核验，缺失或冲突证据仍保留未知和租约。不要通过删除数据库、直接改claim或关闭HTTP代替对账。
-
-需要中止时，用稳定request ID请求协作取消，再查询原run：
-
-```bash
-ergora task cancel my-project TASK_ID --revision CURRENT_REVISION --request-id stop-one --run-id RUN_ID --reason '停止本任务' --confirm
-ergora task status my-project TASK_ID --run-id RUN_ID
-ergora task external-status my-project TASK_ID --run-id RUN_ID
-# 仅原run已闭合、外部事实可核时明确执行：
-ergora task reconcile my-project TASK_ID --revision CURRENT_REVISION --run-id RUN_ID --confirm
-ergora task reconciliation my-project TASK_ID
-```
-
-取消信号不等于进程已停。原CANCEL_UNCONFIRMED与后续已确认清理是两份事实；对账不改写原结果，缺证据保持未知和租约。中断恢复、返回状态和备份范围见[完整操作说明](docs/USAGE.md#正式任务的操作顺序与恢复)。旧入口创建的任务继续由原agentflow管理，不隐式迁移在途history。
-
-原run闭合后，可集中核对冻结合同、Agent绑定、原job回执及产物引用：
+For a closed `REVIEW_READY` run, confirm that candidate, trusted checks and reviews identify the same commit:
 
 ```bash
 ergora task evidence my-project TASK_ID --run-id RUN_ID --timeout 20
+ergora task export my-project TASK_ID --revision CURRENT_REVISION \
+  --run-id RUN_ID --candidate-sha CANDIDATE_SHA --branch agent/TASK_ID --confirm
+ergora task export-status my-project TASK_ID
 ```
 
-该[只读证据索引](docs/USAGE.md#读取闭合运行的证据索引)区分材料字节核验、原结果引用和外部清理；缺失材料保持未确认，未记录的Skill/记忆等快照明确显示`not_recorded`。索引不携带材料正文，全文仍从原job入口按需读取。
+Export creates a local branch and records applicable lease release; it does not check out, merge or push. The maintainer verifies the exact candidate in an independent worktree before project adoption. `REVIEW_READY` alone does not release the issue lease. To close without exporting, use [external status and explicit reconciliation](docs/USAGE.md#正常任务完成后的关闭).
 
-索引同时列出冻结工作流预算、原history调度计数和服务跨度；这些事实不等于模型计费。没有结构化来源的模型调用、token和费用保持未知，不显示为零。
+To cancel, preserve a stable request ID and then inspect the original run and external work:
 
-需要交给其他人复查时，显式收集到新文件，再在任一基础安装中离线验证：
+```bash
+ergora task cancel my-project TASK_ID --revision CURRENT_REVISION \
+  --request-id stop-one --run-id RUN_ID --reason 'Stop this task' --confirm
+ergora task status my-project TASK_ID --run-id RUN_ID
+ergora task external-status my-project TASK_ID --run-id RUN_ID
+# Reconcile only after the original run is closed and external facts are available:
+ergora task reconcile my-project TASK_ID --revision CURRENT_REVISION --run-id RUN_ID --confirm
+```
+
+Cancellation signals do not prove stopped processes. Preserve `CANCEL_UNCONFIRMED`/unknown and the lease when evidence is missing; do not replace reconciliation with database edits or a service shutdown. [Events and original job evidence](docs/USAGE.md#分段读取原运行事件) provide bounded, explicit reads of the original run. Closed-run evidence indexes and [handoff ZIPs](docs/USAGE.md#收集与离线核对交接包) can be inspected offline:
 
 ```bash
 ergora task handoff my-project TASK_ID --run-id RUN_ID --output ./task-handoff.zip --timeout 20
 ergora handoff verify ./task-handoff.zip --sha256 EXPECTED_PACKET_SHA256
 ```
 
-[交接包说明](docs/USAGE.md#收集与离线核对交接包)列出收集范围和限额。它包含冻结索引及回执指定材料，失败或取消原结果保持；离线验证支持Windows、无需SDK或服务，不创建控制库，也不执行材料。`EXPECTED_PACKET_SHA256`应从独立渠道取得，也可省略该参数进行内部校验。摘要匹配只证明字节和声明的内部身份关系，`origin_authenticated: false`、`execution_success: null`；来源认证、候选代码复验和合入仍须另行完成。
+Obtain the expected digest through an independent channel. Internal byte/identity checks do not authenticate origin or certify execution success. Missing billing/usage sources remain unknown.
 
-HTTP下载使用同一收集用例：显式POST任务的`/handoff`入口，仅提交原run及超时，不接收服务器路径；响应字节与整包SHA经核对，临时材料在发送前清理。网页先“读取原运行”，在闭合run点击“证据、预算与交接”；再明确读取索引或收集下载，两者不互为前置。索引列出原结果、冻结预算、未知计费量和分页job材料入口；下载后按显示的摘要离线核包。详细步骤及限额见[使用手册](docs/USAGE.md#网页证据预算与交接)。
+<a id="现有工具栈"></a>
+<a id="工单搜索与训练"></a>
+## Agents, issues, training and improvement
 
-## 工单、搜索与训练
+The Python/SQLite control plane uses FastAPI/Uvicorn and packaged Cytoscape.js. [Backend guidance](docs/AGENT_BACKENDS.md) distinguishes role/mode support: Codex, Claude Code, structured `command`, an implementation-role mini-swe-agent driver, and a fixed DeepSeek Harness adapter for supported read-only leaves. Harness workspace writes/formal-task recovery and OpenHands admission are not available. Reasoning settings are selected per binding (`reasoning_effort` for Codex, `effort` for Claude); the selected model/backend decides which requested level is accepted. Selection is explicit; automatic task-based level selection remains planned.
 
-**工单按业务项目接入。** 注册时选择 `--tracker github` 或 `--tracker gitlab`，并指定该项目自己的远程标识。以 GitLab 为例，完成对应注册后：
-
-```bash
-agentflow symphony configure my-project \
-  --repo-url https://gitlab.example.com/group/repo.git
-# 核对生成的该项目配置，按需设置 api_url、token_env 和凭据环境变量
-agentflow symphony enable my-project
-```
-
-轮询入口与请求执行准入分开处理，具体见安装后 `upstream/symphony/README.md`。已有本地注册的基线、检查和 tracker 绑定应按修订管理；迁移前先结束并对账在途任务，建立新注册时避免重复工单归属。
-
-**候选搜索只生成提案。** 选中提案后，再创建开发任务或训练实验：
+For a standalone call, add an existing Git project, inspect effective bindings and select a backend using the current project revision:
 
 ```bash
-agentflow search --project my-project --id my-project-search-r1 \
-  --goal '一个可检验的优化目标' --limit 3
-# 同一输入恢复检查点时追加 --resume
+ergora project add my-project --repo "$HOME/projects/my-project"
+ergora project show my-project
+ergora tools doctor my-project
+# binding.json: {"tool":"codex","model":"YOUR_MODEL_ID"}
+ergora project bind my-project reviewer --binding binding.json --revision CURRENT_REVISION
+ergora agent run my-project reviewer --prompt review-request.md --timeout 300
+ergora agent runs my-project
 ```
 
-**训练采用独立实验流程。** 复制 `training-optimization` 模板，准备真实 workload 合同、baseline、experiment manifest 与可信 runner。通常顺序为：
+Standalone success does not produce formal verification/review acceptance. [Agent definitions](docs/AGENT_DEFINITIONS.md) separate specialists/resources from backend choice; [workflow definitions](docs/WORKFLOW_DEFINITIONS.md) describe full manifests, immutable revisions, nested permissions and explicit leaf calls. `check-input` reports admission without starting a model; actual calls recheck and retain original records.
 
-```text
-training init / runner-add → prepare → worker-start → start
-→ 明确选择实验并以 manifest SHA 执行 run-local
-→ 证据和统计门禁 → 人工批准 evidence SHA → 集成/复验任务 JSON
-```
+[Issue workflows](docs/USAGE.md#保存工单与关联任务上下文) support manual/GitHub/GitLab sources, immutable snapshots, exact task-creation links and source-based task preparation. Candidate comments and supported GitHub label appends require their own prepare/confirm/send flow; unknown results are observed without resending. Candidate remote checks and explicit existing PR/MR associations do not collect/review arbitrary external PRs or automatically approve/merge. GitLab label append remains unsupported.
 
-也可在应用层用 `ergora training cycle-create / cycle-authorize / cycle-start` 冻结候选并启动共同预算，再显式调用 `ergora training execute` 执行同一原实验。执行确认绑定原 revision、intent、run 和 native request SHA；只有出生时具备执行能力的原预算 owner 才能接受，取消及截止覆盖执行子树。用 `ergora training execution` 读取停止记录。完整命令、准入条件与 unknown 恢复见[训练手册](docs/TRAINING.md#显式受管执行与离线停止观察)。kernel 专家继续参与 v3 优化路径；当前仍需逐实验选择，不自动进行多轮优化。
+[Training](docs/TRAINING.md) keeps workload/baseline/runner/experiment preparation, submission/cancellation, archived evidence, statistical/quality gates and exact owner evidence approval distinct. Existing experiments are visible in the CLI/console. Explicit managed execution uses an original capable budget owner and the same native job; a collection/index is advisory. Kernel experts remain in the v3 proposal path, including the option to recommend no kernel change. The project supplies CUDA/PyTorch, data, devices, trusted runners and independent quality checks; no per-experiment GPU/cgroup quota is supplied.
 
-原 `run-local` 手工路径继续可用。项目负责 CUDA/PyTorch、数据、GPU 资源、训练质量和恢复验证；平台不提供每实验 GPU/cgroup 配额。人工放行后，维护者继续在项目中完成集成、复验与采用。
+[Improvement](docs/IMPROVEMENT_WORKFLOW.md) uses source-bound memory/Skill/Workflow proposals, trusted evaluation where required, explicit adoption/rollback and a new task's frozen selection. [Integrations](docs/INTEGRATIONS.md) document SQLite/ReMe projection, GEPA candidate search and bounded URL research/paused Temporal schedules. Generation/search does not adopt candidates, execute source text or prove quality/performance.
 
-## 日常交互与运维
+<a id="仍在补齐的模板与功能"></a>
+## Work still requiring implementation or acceptance
 
-复盘如何形成下一次任务的资料，见[完整改进旅程](docs/IMPROVEMENT_WORKFLOW.md)：分别采用记忆、Skill 和工作流候选，再明确选择并冻结到新任务；包含评价、回退与原意图恢复步骤。
+The new versioned training-cycle schema3 path has closed runtime topology/lifecycle work, but its real controller effects remain disabled. It does not offer an automatic multi-candidate optimization loop. Full SDK capacity, real-service recovery/stop behavior, two-candidate CPU runs and actual GPU quality/performance need their own current-candidate acceptance. Existing explicitly selected experiments retain their documented path.
 
-```bash
-source ~/multi-agent-platform/env.sh
-agentflow services start
-agentflow services status
-agentflow services logs executor
-agentflow services logs worker --stderr
-agentflow doctor
-agentflow verify
-```
+Mandatory design/knowledge gates, trusted non-Agent validation nodes, general bounded Repeat and mixed workflow canvases remain staged work. A design decision or statically valid definition does not make those topologies executable. Full nested ForgeKernel sessions still need complete parent resource/permission, total-budget, cancellation and unknown-result accounting; its native judge does not replace trusted training gates. Other research tools follow the [adoption matrix](docs/research/2026-11-12-specialist-adoption.md) and their actual availability.
 
-|入口|默认地址 / 用途|
+Team authentication, per-Agent execution isolation, remote execution, production Temporal deployment and additional backends have separate implementation/admission requirements. Consult the [live plan](docs/PLAN.md) for the active candidates and limitations. The frozen HTML keeps its own original scope.
+
+<a id="源码组织"></a>
+<a id="接入边界与扩展"></a>
+## Source ownership and extension
+
+|Owner|Responsibility|
 |---|---|
-|CLI|`agentflow`：项目、任务、审批、取消、导出与训练|
-|Temporal UI|`http://127.0.0.1:8233`：流程历史和故障排查|
-|MLflow|`http://127.0.0.1:5000`：实验参数、指标与产物|
-|A2A Agent Card|`http://127.0.0.1:8765/.well-known/agent-card.json`|
-|A2A JSON-RPC|`http://127.0.0.1:8765/a2a`，使用 token 与 `A2A-Version: 1.0`|
+|`contracts`, `components`, `bindings`, `projects`, `registrations`|Versioned contracts, tool metadata, effective bindings and project registration|
+|`agent_definitions`, `workflow_definitions`, `definition_bundles`, `asset_trees`|Specialists, nested graph compilation and complete immutable resources|
+|`tasks`, `reference_inputs`, `reference_workflows`, `reference_executor`|Formal lifecycle, versioned input, original Temporal stages and native execution|
+|`agents`, `agent_backends`, `agent_runs`, `task_mcp`|Backend contracts, per-invocation records and fixed authorized resources|
+|`issue_backends`, `issue_sources`, `issue_snapshots`, `issue_writebacks`|Native issue protocols, full source identity and explicit external actions|
+|`training`, `training_cycles`, `reference_training_*`|Experiment/cycle contracts, budget admission, native operations and recovery|
+|`memory`, `skill_assets`, `evaluation`, `optimization`, `research`, `retrospectives`|Versioned knowledge, trusted evaluation and source-bound proposals|
+|`state`, `backups`, `services`, `cli`, `web`, `data/console`|Persistence, offline backup, explicit service management and shared application entry points|
 
-地址均指服务所在环境的 localhost；远程或容器访问按部署手册配置端口转发。修改模型等环境变量后先 `agentflow services stop`，再从持有新变量的 shell 中 `agentflow services start`。仅 `services restart` 会沿用 Supervisor 的旧环境。 `services stop` 返回后，先确认原服务进程和 Supervisor socket 已退出，再启动；否则可能遇到旧 socket 仍占用的错误。
+Start with [current architecture](docs/architecture/current.md), [component change protocols](docs/architecture/component-change-protocols.md), [contract identities](docs/architecture/contracts-and-identities.md), [reference boundaries](docs/architecture/reference-boundary.md) and the [domain glossary](CONTEXT.md). Dated inventories describe their recorded commits. The frozen reference's `DevelopmentAdapter`/`FileAdapter` owns original request/receipt/approval/fence exchange; this repository does not introduce another formal scheduler or general plugin-discovery bus.
 
-可选训练 worker 默认关闭，`services status` 可能因 STOPPED 项返回退出码 3，应查看每项实际状态。停止服务与取消外部作业是不同操作；维护和备份前先确认在途作业的状态。备份平台、私有配置、state 和各业务仓库。更多步骤见 HTML 部署手册与安装后的 `docs/VALIDATION.md`。
+<a id="日常交互与运维"></a>
+## Operations and recovery
 
-## 接入边界与扩展
+Linux control data defaults to `~/.local/share/ergora/` (XDG-aware); Windows uses `%LOCALAPPDATA%\Ergora\data`. Choose another persistent location with `ERGORA_HOME` or global `--home`. The reference installation/config/state and business repositories are separate and must be backed up together for historical task recovery. See [database upgrades](docs/architecture/state-migrations.md) and [full-stack backup](docs/BACKUP_RECOVERY.md).
 
-合同、业务状态、工具调用和入口已有独立归属；冻结参考执行器仍有待逐步迁移。以下边界指导后续扩展，当前没有通用插件发现或任意后端切换能力。
+Use the registered project's explicit `ergora services status/start/stop/logs/shutdown` operations. After credential/environment changes, stop the original stack, confirm its processes/socket have exited, and start from the shell containing the new environment. A Supervisor restart can retain the previous environment. Optional training workers may legitimately be stopped; inspect individual statuses. Stopping a service does not cancel or reconcile external jobs.
 
-|层|应拥有的内容|接入边界|
-|---|---|---|
-|协议与工作流定义|任务、角色、DAG、审批、证据、版本与编译规则|纯数据和确定性校验，避免执行器或工单 SDK 依赖|
-|运行控制|生命周期、恢复、调度、超时和取消语义|复用现有 Temporal 参考运行时|
-|执行适配|后端调用、能力声明、原回执和取消；原生执行器保留提交／恢复屏障|Codex、Claude Code、command、mini及只读DeepSeek各按实际模式准入；训练沿可信runner|
-|工单与通信适配|项目工单映射、外部消息与协议转换|GitHub/GitLab、A2A、其他服务|
-|证据与观测|产物、指纹、比较与查询|MLflow、文件归档及项目评估工具|
-|用户入口|CLI、配置表单、运行视图、人工审批|调用同一合同编译与运行接口|
+Default reference endpoints are Temporal UI `127.0.0.1:8233`, MLflow `127.0.0.1:5000` and A2A `127.0.0.1:8765` (Agent Card at `/.well-known/agent-card.json`, token-protected JSON-RPC at `/a2a` with `A2A-Version: 1.0`). They refer to the service environment's localhost; remote/container access needs explicit forwarding. Consult the reference deployment manual for a changed installation.
 
-这样可以保留当前工作流，并让工单来源、通信渠道和执行后端分别演进。提取时应以同一个本地任务能够完整运行和恢复为验收，再扩展新的后端。
+<a id="项目状态与许可"></a>
+## License
 
-[工单来源页面](docs/USAGE.md#在页面读取与保存工单)支持逐项目的显式读取、重新读取后保存、历史分页和完整离线快照；manual或更换绑定后的历史仍保留原来源。已保存快照可转到原正式任务表单，显式读取来源、配置完整专家组合，再预览和确认发布合同；来源页本身不创建任务或向平台回写。
-
-**图形页面提供分层绑定、工作单元草稿，以及独立Agent／嵌套Workflow的定义与资源修订。** 已发布组合图分开显示结构继承、控制依赖和具名数据，支持查找、折叠、版本比较与完整manifest保存；正式任务可选择逐实例后端和工作分配。编译、冻结、审批和执行沿原用例，布局不进入合同。新增可信阶段或正式运行器尚不支持的拓扑，需要先扩展并验证合同与运行时。
-
-早期[工具调研与产品方案](docs/research/2026-10-28-multi-agent-landscape.md)比较了40个代表性工具或产品家族；当前已按上述边界实现统一安装组合、分层绑定、图形配置与任务视图。新增后端实现本族Interface并登记组件配置；更换专家则发布独立定义及引用它的新工作流，不需要在模板中写厂商分派。各模式的资源、权限与恢复能力仍须实际准入。术语见[领域词汇表](CONTEXT.md)。
-
-[长期记忆与持续演进调研](docs/research/2026-10-28-continuous-evolution.md)梳理了24份项目官方README。当前项目记忆、可选ReMe投影、GEPA有界候选搜索、资料快照及持久调度之外，来源绑定复盘可导出完整记忆／Skill／工作流候选。Skill沿可信评价后采用，记忆显式保存修订，工作流显式导入新版本；下一任务再冻结选择。这些操作不证明模型质量或GPU收益。
-
-三个模板的角色现可独立于工具选择；[选型调研](docs/research/2026-10-31-template-agents.md) 说明首批适配和未接入工具的优缺点。ForgeKernel 作为可选原生候选生成工具，其内部 judge 不替代可信训练门禁；模型质量和 GPU 性能比较需要真实项目证据。固定官方版本及实际检查范围记录在 [计划](docs/PLAN.md) 和各切片交付记录。
-
-原v1任务每个角色绑定一个工具。[专长Agent定义库](docs/AGENT_DEFINITIONS.md)让提示词、Skill／上下文与具体后端分开；同一专家可重复实例化，各有独立路径、后端和会话。用户task-definition-v2可[冻结完整组合](docs/USAGE.md#为正式任务冻结审查组合)，每叶累加全部结构祖先资料，子权限不越父级；[work-units-v2](docs/WORKFLOW_DEFINITIONS.md#专长执行者与原工作单元)默认发布正式信封v6，将原工作单元分配给冻结专家，原integrate/verify后承接串并行审查及具名端口，显式v1／v5兼容入口保持。结构、正确性和测试价值子模板可组合；至少一名必需审查者，建议请求修改保留原FAILED回执与可信意见，运行失败仍阻塞。当前接口／版本与扩展位置见[架构导航](docs/architecture/current.md)，设计依据及论文对照见[研究报告](docs/research/2026-11-08-agent-composition.md)。
-
-## 项目状态与许可
-
-当前参考分发面向单机和可信容器。团队级身份、独立执行隔离、生产 Temporal 部署及其他执行后端需要后续工程接入和验收。任务中的角色字段和摘要不构成团队身份认证。
-
-Ergora 自有代码与文档使用 [Apache-2.0](LICENSE)，附 [NOTICE](NOTICE)。第三方组件保留各自许可证；冻结参考资料中尚未明确原许可的内容不获得新的授权，来源与边界见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+Ergora code and documentation use [Apache-2.0](LICENSE), with [NOTICE](NOTICE). Third-party material keeps its own license; material whose original license is unresolved receives no new grant. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

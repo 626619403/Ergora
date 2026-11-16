@@ -1,14 +1,19 @@
-# 本地任务栈的备份与恢复
+# Back up and recover the local task stack
 
-完整任务恢复需要同一离线时间窗口中的控制home、执行配置与状态、Temporal数据库和业务Git仓库。`ergora state backup`只管理控制home；它不会备份登记在其他目录的执行数据，也不会停止服务。下面使用原控制备份命令和Linux的GNU tar组合保存本地栈。
+English · [简体中文](zh-CN/BACKUP_RECOVERY.md) · [Documentation](README.md)
 
-## 先确定范围并停止写入
+<a id="本地任务栈的备份与恢复"></a>
 
-先把下文`CONTROL`设为原数据home的实际绝对路径，再运行`ergora --home "$CONTROL" project show PROJECT`，记录项目revision、repo及`registration.definition.execution`中的`installation`、`config_directory`、`state_directory`。共享相同执行栈的项目必须一起纳入；另存Ergora版本、Python/依赖版本、工具版本和可用认证方式。凭据仍由你管理，不进入Git或公开报告。
+Complete task recovery requires the control home, execution configuration/state, Temporal database and business Git repositories from the same offline window. `ergora state backup` covers only the control home. It does not back up execution data registered elsewhere or stop services. This recipe combines the existing control backup commands with GNU tar on Linux.
 
-先用`ergora --home "$CONTROL" task status PROJECT TASK --run-id ORIGINAL_RUN`逐一核原task/run；`ergora --home "$CONTROL" task external-status PROJECT TASK --run-id ORIGINAL_RUN`仅接受已闭合的原run，再据其处理未决外部作业。仍运行或unknown的任务先保留原意图，按取消与恢复流程处理，不以外部查询失败推断已停止。服务停止不会释放租约，也不能证明外部作业已经结束；`CANCEL_UNCONFIRMED`和unknown必须保留，必要时按[取消与对账说明](USAGE.md#请求取消与恢复未知投递)处理。停止控制台、研究worker、训练任务及其他写者后，用[公开services入口](USAGE.md#显式服务管理)关闭这次备份覆盖的栈。不要停止不属于该栈的进程。
+<a id="先确定范围并停止写入"></a>
+## Identify the scope and stop writers
 
-以下目录变量必须替换为登记的实际绝对路径。示例假定目录互不重叠；多项目或多个栈须列出所有目录并去除重叠项。备份目录放在它们之外，且不得放入会清理的临时目录。
+Set `CONTROL` below to the original data home's actual absolute path. Run `ergora --home "$CONTROL" project show PROJECT` and record the project revision, repository, and `registration.definition.execution` fields `installation`, `config_directory` and `state_directory`. Include every project sharing that stack. Separately record the Ergora source/version, Python/dependency versions, tool versions and available authentication methods. Manage credentials privately; keep them out of Git and public reports.
+
+Inspect each original task/run with `ergora --home "$CONTROL" task status PROJECT TASK --run-id ORIGINAL_RUN`. `ergora --home "$CONTROL" task external-status PROJECT TASK --run-id ORIGINAL_RUN` accepts only a closed original run; use it to inspect unresolved external jobs. For running or unknown tasks, retain the original intent and follow cancellation/recovery. A failed external query does not prove a stopped job. Stopping services does not release leases or establish that external jobs ended. Preserve `CANCEL_UNCONFIRMED` and unknown; use the [cancellation/reconciliation instructions](USAGE.md#请求取消与恢复未知投递) when needed. Stop the console, research workers, training and all other writers, then use the [public services interface](USAGE.md#显式服务管理) to stop only the stack covered by this backup.
+
+Replace these variables with the actual registered absolute paths. This example assumes disjoint directories; enumerate every directory for multiple projects/stacks and remove overlaps. Keep the backup outside those directories and outside temporary storage subject to cleanup.
 
 ```bash
 CONTROL="$HOME/.local/share/ergora"
@@ -19,21 +24,20 @@ REPO="$HOME/project/my-project"
 BACKUP="$HOME/ergora-backups/snapshot-001"
 ```
 
-具体要保存的内容：
-
-|位置|恢复所需内容|
+|Location|Required recovery content|
 |---|---|
-|控制home|控制SQLite、项目注册、历史修订、Skill/Agent/Workflow资产、来源及调用快照；由原`state backup`核清单和领域身份|
-|CONFIG|完整项目、adapter、权限、后端、服务配置；私密配置与认证引用也须保留|
-|STATE|`tasks/`、`ergora/task-*`意图/attempt/回执/对账、原请求根/receipts/artifacts/approvals/fences、全部ledger、Temporal数据库及sidecar、workspaces、mirror、进程记录和日志|
-|业务Git库|完整`.git`及工作区，包括未提交文件；只有远端或`git bundle --all`无法保留全部运行态工作区|
-|执行安装与外部依赖|兼容的reference与Ergora、原解释器/venv、工具二进制；符号链接只保存链接本身，链接目标必须另存或可按原路径恢复|
+|Control home|Control SQLite, project registration/history, Skill/Agent/Workflow assets, source and invocation snapshots; `state backup` checks its manifest and domain identities|
+|`CONFIG`|Complete project, adapter, permission, backend and service configuration; preserve private configuration and authentication references|
+|`STATE`|`tasks/`, `ergora/task-*` intents/attempts/receipts/reconciliation, original request roots/receipts/artifacts/approvals/fences, all ledgers, Temporal database/sidecars, workspaces, mirrors, process records and logs|
+|Business Git repository|Complete `.git` and working tree, including uncommitted files; a remote or `git bundle --all` alone cannot preserve all runtime workspaces|
+|Execution installation and dependencies|Compatible reference/Ergora, original interpreter/venv and tool binaries; symbolic links preserve the link, so save their targets separately or ensure restoration at the original paths|
 
-Git worktree可能在原STATE中通过绝对路径关联mirror；其他仓库、外置Git目录、LFS对象或工具运行数据也须按实际依赖纳入。不要在备份时解引用链接来替换原工作区结构。
+Git worktrees may refer to a mirror in the original `STATE` through absolute paths. Include other repositories, external Git directories, LFS objects and tool runtime data according to the actual dependencies. Do not dereference links and replace the original workspace structure while backing up.
 
-## 生成并核对离线副本
+<a id="生成并核对离线副本"></a>
+## Create and verify the offline copy
 
-服务和外部作业确认停止后，在同一终端执行。GNU tar保留文件、文件/目录模式、目录和符号链接目标（Linux不以符号链接模式位授权访问）；本配方不承诺ACL、扩展属性、跨平台恢复或在线多库一致快照。
+After confirming services and external jobs have stopped, run these commands in one terminal. GNU tar preserves files, file/directory modes, directories and symbolic-link targets; Linux does not use symbolic-link mode bits to authorize access. This recipe does not promise ACL/extended-attribute preservation, cross-platform recovery or a consistent online multi-database snapshot.
 
 ```bash
 umask 077
@@ -49,18 +53,19 @@ tar --compare --file "$BACKUP/execution.tar" --directory /
 (cd "$BACKUP" && sha256sum execution.tar > execution.tar.sha256)
 ```
 
-任一命令失败即停止，不继续移动原目录或宣称备份可用。`tar --compare`比较当前原目录与归档；不要在它之前启动写者。保留控制命令返回的manifest SHA，并在可信位置另存归档SHA和目录/版本记录。摘要可核传输完整性，不能自行认证备份来源。包含凭据的本地备份按私密文件保存。
+Stop on any failure. Do not move original directories or claim a usable backup afterward. `tar --compare` compares the archive with the current original directories; do not restart writers before it. Keep the control command's manifest SHA, and retain the archive SHA plus directory/version inventory in a trusted location. Digests verify transfer integrity; they do not authenticate the backup's origin. Treat backups containing credentials as private files.
 
-## 在同平台、原路径恢复
+<a id="在同平台原路径恢复"></a>
+## Restore on the same platform at the original paths
 
-先验证原件与归档，再逐一把现有CONTROL、CONFIG、STATE、INSTALLATION、REPO移动到新建保留目录；所有原目录都须保留，目标路径必须不存在。恢复在新机器上也要求原绝对路径和匹配运行依赖，JSON中的路径不会自动改写。符号链接的解释器或工具目标须先核实存在且版本匹配。不要运行`project register`重新生成原任务，也不要新建ledger替代丢失的所有权记录。
+Verify the originals and archive, then move each existing `CONTROL`, `CONFIG`, `STATE`, `INSTALLATION` and `REPO` to a newly created retention location. Preserve all original directories; restoration targets must not exist. A new machine still requires the original absolute paths and matching runtime dependencies: JSON paths are not rewritten. Check symbolic-link interpreter/tool targets and versions first. Do not use `project register` to recreate original tasks or replace missing ownership records with a new ledger.
 
 ```bash
 ergora --home "$CONTROL" state verify-backup "$BACKUP/control"
 (cd "$BACKUP" && sha256sum --check execution.tar.sha256)
 ```
 
-确认原目录已经保留、目标均不存在，再执行：
+After preserving the original directories and confirming that every target is absent:
 
 ```bash
 ergora --home "$CONTROL" state restore "$BACKUP/control" --offline
@@ -69,10 +74,10 @@ tar --extract --preserve-permissions --keep-old-files \
 tar --compare --file "$BACKUP/execution.tar" --directory /
 ```
 
-仅对自己刚验证过的可信归档执行提取，原路径须有当前用户的写权限。`--keep-old-files`遇到已有文件会失败，提取失败可能留下部分文件；保持服务停止，保留这些现场并核清缺失项后再处理。控制home的原接口先暂存重验再发布，且拒绝覆盖；它不让整个外部tar提取变成事务。
+Extract only a trusted archive you just verified, into paths writable by your current user. `--keep-old-files` fails on an existing file; a failed extraction may leave partial files. Keep services stopped, preserve that state and identify missing items before proceeding. The control-home interface stages, rechecks and publishes without overwriting; it does not make the external tar extraction transactional.
 
-启动前先核项目注册和完整任务信封、原创建/提交/取消/对账记录、请求/回执/产物摘要、原owner批准及lease。检查每个业务库、mirror和worktree的原候选SHA、refs和未提交状态；按原数据库工具检查SQLite完整性。数据库的逻辑数据与原任务身份应保持；控制库快照的物理页或启动后的日志字节可能改变。
+Before startup, inspect project registrations and complete task envelopes, original creation/submission/cancellation/reconciliation records, request/receipt/artifact digests, original owner approvals and leases. Check original candidate SHAs, refs and uncommitted state in every business repository, mirror and worktree; use the original database tools to check SQLite integrity. Logical data and task identities should remain intact; physical database pages or logs after startup may differ.
 
-由`ergora --home "$CONTROL" services start PROJECT temporal --revision N`先启动Temporal，再用同home的services start显式启动需要的worker等服务，然后查询每个原task/run。重复原`ergora --home "$CONTROL" task start ...`（同项目、task、revision及creation SHA）应沿原提交记录返回同一run，不应自动派生新任务；未确认的外部状态先对账，不重发副作用。原outcome、候选、批准及claim不因恢复改写。完成核对后再开放新写入；不要同时启动保留的旧栈和恢复栈。
+Start Temporal first with `ergora --home "$CONTROL" services start PROJECT temporal --revision N`, then explicitly start the required workers/other services using the same home. Query every original task/run. Repeating the original `ergora --home "$CONTROL" task start ...` with the same project, task, revision and creation SHA should return the same original run through its submission record rather than create another task. Reconcile unconfirmed external state before further effects. Recovery does not rewrite original outcomes, candidates, approvals or claims. Reopen writers only after checks; never run the retained old stack and restored stack together.
 
-Windows原生控制home仍可用[Windows备份命令](WINDOWS.md#升级备份与卸载)。本页GNU tar和Supervisor整栈配方用于Linux/WSL2；迁移远端Temporal、MLflow、ReMe、工单系统及跨路径迁移需要各系统自己的恢复流程与另外验收。ReMe检索投影可从控制库按[使用手册](USAGE.md#升级与持久数据)显式重建。
+Native Windows control homes can use the [Windows backup commands](WINDOWS.md#升级备份与卸载). The GNU tar/Supervisor full-stack recipe here is for Linux/WSL2. Remote Temporal, MLflow, ReMe, issue systems and path-changing migration require their own recovery procedures and separate acceptance. Explicitly rebuild ReMe's retrieval projection from the control database using the [daily-use guide](USAGE.md#升级与持久数据).
