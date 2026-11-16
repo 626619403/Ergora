@@ -963,7 +963,8 @@ def test_execute_startup_failure_keeps_the_consumed_launch_and_cleans_the_origin
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)
 @pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 30}], indirect=True)
 @pytest.mark.skipif(sys.platform != 'linux', reason='Real native publications and callback require Linux')
-@pytest.mark.parametrize('boundary,fault', [('attempt', 'source'), ('ack', 'root'), ('attempt', 'clock')])
+@pytest.mark.parametrize('boundary,fault', [
+    ('attempt', 'source'), ('ack', 'root'), ('attempt', 'clock'), ('ack', 'interpreter')])
 def test_native_final_publications_recheck_sources_root_and_original_clock(
         controller_admission, cycle_selection, cycle_candidate, service, tmp_path, monkeypatch, boundary, fault):
     from ergora import training_execution_protocol as protocol
@@ -978,6 +979,8 @@ def test_native_final_publications_recheck_sources_root_and_original_clock(
     monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER_PAUSE', boundary)
     monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER_MARKER', str(marker))
     monkeypatch.setenv('ERGORA_TEST_NATIVE_BOUNDARY_FAULT', fault)
+    interpreter = Path(definition['execution']['installation']) / '.venv/bin/python'
+    retained_interpreter = interpreter.with_name('python.native-gate-retained')
     try:
         submitted = run_cycle_candidate(cycle_candidate)['submission']
         created = native_budget_create(definition, 'alpha', managed=True)
@@ -999,10 +1002,20 @@ def test_native_final_publications_recheck_sources_root_and_original_clock(
                     manifest = json.loads((copied / 'ergora/data/reference-manifest.json').read_bytes())
                     path = copied / 'ergora/data/reference' / next(iter(manifest['files']))
                     path.write_bytes(path.read_bytes() + b'\n')
+                elif fault == 'interpreter':
+                    interpreter.rename(retained_interpreter)
+                    assert not interpreter.is_file()
                 assert not (job / 'started.json').exists()
             finally:
                 marker.with_suffix('.release').touch()
             assert future.result(timeout=12)['status'] == 'requested'
+        if fault == 'interpreter':
+            attempt = json.loads((job / 'managed-execution/attempt.json').read_bytes())
+            until = time.monotonic() + 10
+            while recorded_process_is_active(attempt['executor']) and time.monotonic() < until:
+                time.sleep(.02)
+            assert not recorded_process_is_active(attempt['executor'])
+            retained_interpreter.rename(interpreter)
         stop_controller_test_owner(runtime)
         records = training.execution(state, 'demo', 'alpha')['records']
         assert all(records[name] is not None for name in ('request', 'launch', 'attempt'))
@@ -1012,9 +1025,15 @@ def test_native_final_publications_recheck_sources_root_and_original_clock(
         assert (records['stopped'] is not None) is (boundary == 'ack')
         assert (job / 'request.json').read_bytes() == native_request
         assert not (job / 'started.json').exists() and not (job / 'result.json').exists()
+        if fault == 'interpreter':
+            output = runtime / 'ergora/training-submissions/alpha.budget/observations' / (
+                'execute-' + records['launch']['execution_phase_id']) / 'helper/stderr.txt'
+            assert b'Original native interpreter is unavailable' in output.read_bytes()
         assert json.loads(service[1].read_bytes())['starts'] == 1
     finally:
         marker.with_suffix('.release').touch()
+        if retained_interpreter.exists() or retained_interpreter.is_symlink():
+            retained_interpreter.rename(interpreter)
         stop_controller_test_owner(runtime)
 
 
@@ -2958,6 +2977,7 @@ def test_cycle_sdk_execution_last_sync_gate_keeps_its_window_and_source(
         wait_budget_stopped(runtime)
 
 
+@pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 30}], indirect=True)
 @pytest.mark.skipif(sys.platform != 'linux', reason='Final source gate consumes the real supervised SDK start')
 def test_cycle_sdk_dispatch_rechecks_prepare_activity_source_after_attempt_sync(
         cycle_sdk_activity, cycle_operation_fault, service, cycle_selection, monkeypatch):

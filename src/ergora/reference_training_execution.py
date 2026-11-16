@@ -61,8 +61,6 @@ class Execution:
                      chain.root / ('training/fences/' + op.ident + '.json')):
             if path.exists() or path.is_symlink():
                 raise ValueError('Native execution, result or fence already exists; do not execute again')
-        if not Path(chain.owner['execution_capability']['native_python']).is_file():
-            raise ValueError('Original native interpreter is unavailable')
         source = op.payload.get('cycle_operation')
         if source is not None:
             protocol.cycle_execution_source(source, context['intent'])

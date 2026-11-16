@@ -965,6 +965,8 @@ def validate_sources(capability: dict) -> None:
     for name, expected in capability['gate_sources'].items():
         if hashlib.sha256(read_raw(Path(__file__).parent / name)).hexdigest() != expected:
             raise ValueError('Original execution gate source changed: ' + name)
+    if not Path(capability['native_python']).is_file():
+        raise ValueError('Original native interpreter is unavailable')
 
 
 def publish(path: Path, value: dict, root: Path) -> None:
