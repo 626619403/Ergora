@@ -61,7 +61,9 @@
       "tests/test_task_inputs.py",
       "tests/test_task_mcp.py",
       "tests/test_task_plan.py",
-      "tests/test_task_submission.py"
+      "tests/test_task_submission.py",
+      "tests/test_training_cancellation.py",
+      "tests/test_work_agents.py"
     ],
     [
       "src/ergora/data/reference/platform/upstream/platform/tests/test_portable.py",
@@ -91,12 +93,10 @@
       "tests/test_training_preparation.py",
       "tests/test_training_runtime.py",
       "tests/test_training_submission.py",
-      "tests/test_training_cancellation.py",
       "tests/test_training_evidence.py",
       "tests/test_task_budget.py",
       "tests/test_task_evidence_index.py",
-      "tests/test_task_submission_locks.py",
-      "tests/test_work_agents.py"
+      "tests/test_task_submission_locks.py"
     ]
   ]
 }
