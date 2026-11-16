@@ -11,7 +11,7 @@
 |指南|适用内容|语言状态|
 |---|---|---|
 |[安装与日常使用](USAGE.md)|安装组合／离线 wheel、Agent 认证、正式任务操作、工单来源、服务与恢复|中文；第二批完成完整双语|
-|[Windows](WINDOWS.md)|原生控制面、PowerShell 安装、交接核验和 WSL2 执行边界|中文；第二批完成完整双语|
+|[Windows](zh-CN/WINDOWS.md)|原生控制面、PowerShell 安装、交接核验和 WSL2 执行边界|[English](WINDOWS.md) / [中文](zh-CN/WINDOWS.md)|
 |[项目](zh-CN/PROJECTS.md)|统一登记、修订、有效绑定及显式采用旧参考登记|[English](PROJECTS.md) / [中文](zh-CN/PROJECTS.md)|
 |[备份与恢复](zh-CN/BACKUP_RECOVERY.md) · [English](BACKUP_RECOVERY.md)|控制／执行／Temporal／Git 联合离线快照与原路径恢复|中英文完整对照|
 |[测试维护](zh-CN/TESTING.md) · [English](TESTING.md)|安装后 wheel 检查、CI 选择、collection 覆盖与原失败日志|中英文完整对照|

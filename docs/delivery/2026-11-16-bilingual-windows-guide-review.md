@@ -1,0 +1,26 @@
+# Independent review: complete bilingual Windows guide
+
+2026-11-16. Reviewer: fresh-context independent agent `bilingual_windows_review`, separate from the implementer. Raw requirements, the original guide and complete tracked/untracked patch were inspected before relying on the author's delivery narrative. Project: Ergora; slice: documentation sub-batch 2b only.
+
+**Requirements: approve. Maintainability: approve. No findings within the inspected six-file scope; no blocking corrections.** This verdict completes the independent review gate for the Windows translation, not the wider documentation batches or product acceptance.
+
+The exact documentation baseline and observed HEAD were `82c1c84e7d0c7be6b7798613a9e7c66fdfb0054c`; product baseline was `6cec589f404b17f4828a70807d5e33d89fad3fa0`. The six author files below matched their frozen byte counts and SHA256 values. The complete patch SHA256 was `d9873c45d97635d1772d52ce703e2312cba42443585e142786a0ede0919ea41c`. Independently applying every patch hunk in memory to that baseline reconstructed all six current files, including both new files. Source, scripts, tests, CI and package configuration had no delta from the product baseline. Concurrent status, handoff, S2 and other delivery changes were excluded and preserved.
+
+|Inspected author file|SHA256|
+|---|---|
+|`docs/WINDOWS.md`|`ea3d2734f26b52e78301f503813c661eb61a5abe032e7cf106eaab2b6a7eb741`|
+|`docs/zh-CN/WINDOWS.md`|`b7e3cb1934e9d6d3b6239400c1166b5a4227c7016a544e37cafcfaacaf1173d8`|
+|`docs/README.md`|`40fb406253e8043faa9d8ff2612f568a3b0ceb13158461d27a29976ff0a58c53`|
+|`docs/README.zh-CN.md`|`2bb6944ccbb46cea6483cb57364b62c74f513be5a5402115375ca2537cd65fa7`|
+|`docs/plans/2026-11-16-bilingual-documentation-and-branch-cleanup.md`|`ac37652cceb510b5bc1db21fbf7f7aff2d533089d8a860c72d3b50e881ba11bd`|
+|`docs/delivery/2026-11-16-bilingual-windows-guide.md`|`52f884f8b0bbdc494b9f1f13e7eaf9862953fee3b7b06fc95a223d9fe4c79df9`|
+
+The preserved original is exactly the baseline's 160-line guide, SHA256 `f1c95d7cc239ec166fd27def1ce62739ffcc786206968fe6e1352c27302f6456`. The English default is a complete translation, including the capability table, prerequisites, clone/ZIP and PowerShell examples, profiles and ownership, authentication, native `.exe` and batch restrictions, UTF-8/BOM handling, Job Object limits, training command boundaries, offline handoff, WSL2/container admission, separate state, backup/restore and uninstall. The Chinese counterpart preserves the original body after adjusting navigation/relative links and the two disclosed corrections. Schema 6 agrees with `state.py`'s six ordered migrations; identifying `agent run` as the model call agrees with the CLI handlers. Reciprocal language links, both indexes and all eight original heading targets remain present. USAGE and later batches are explicitly queued.
+
+The maintained guide paths and established `zh-CN` layout own this change appropriately. The plan and delivery distinguish implementation, static checks, review and publication. They retain the six-stage and candidate-bound evidence contract, actual optional-dependency/platform availability, external cancellation ownership and same-platform/original-home recovery limits. No unnecessary source abstractions, tests, CI changes or parallel runtime behavior were introduced.
+
+Independent read-only checks reproduced six-file UTF-8/format checks, 156 local links/fragments, eight original heading targets, eight matching original executable blocks, reciprocal navigation, Chinese-body preservation, portable paths, eight declared installer flags, six migrations and scoped `git diff --check`. Source inspection covered `scripts/install.ps1`, the Windows acceptance script, Portability workflow and installed-product runner; actual process/Job Object, backend, task-MCP, training/reference, service, handoff, backup, state and CLI owners; and shared component/profile data. Installer ownership checks, SDK-only profiles, native batch refusal, Linux-only training/service gates, offline verification and restore restrictions agree with the retained instructions.
+
+The author's `static-checks.json`, `check-guide.py`, fourteen parser argument vectors and stdout/stderr under `.ergora/checks/bilingual-windows-guide/r1/` were inspected. Their parser check uses the existing non-editable SDK installation with `-I -B` and no handler dispatch. Its package identity records confirm source/wheel/installed equality and equality to product `6cec589`; this is argument-declaration evidence only. The reviewer did not rerun product handlers, installation, tests, services or models.
+
+The saved `publication-r1/windows-progress.html` for published candidate `7fc42177db11fbfe4c9adb33342ecb5da4ed0434`, run `43833234533`, records application-regression step 6 as failure (`08:42:08Z`–`09:04:57Z`) and installer step 7 in progress. This snapshot neither supplies a terminal job result nor a cause. The Windows delivery states that boundary accurately; earlier CI success is not transferred. No network, remote URL, browser, PowerShell parser, Windows/WSL2 execution, model/GPU, active-workflow recovery or CI acceptance was performed or granted by this review. Publication remains the coordinator's separate action; USAGE and subsequent guide batches remain open.

@@ -1,31 +1,36 @@
-# Windows 安装与使用
+<a id="windows-安装与使用"></a>
+# Install and use Ergora on Windows
 
-Ergora 0.2 提供原生 Windows CLI 和本地图形控制台，与 Linux 使用同一套项目、角色、模板和评价代码。建议使用更新后的 Windows 11 x64、Python 3.11+ 和 Git for Windows；Windows 10 也可按以下步骤安装，实际兼容性需结合所选 Agent 与系统策略确认。持续集成在 Windows runner 上验证应用与 PowerShell 安装器，不代表已完成每种模型或 GPU 的效果验收。
+English · [简体中文](zh-CN/WINDOWS.md)
 
-## 选择运行方式
+Ergora 0.2 provides a native Windows CLI and local graphical console using the same project, role, template and evaluation code as Linux. An updated Windows 11 x64 system, Python 3.11+ and Git for Windows are recommended. Windows 10 can also follow these installation steps; compatibility depends on the selected Agent and device policies. CI runs application and PowerShell installer checks on a Windows runner; it does not establish model or GPU quality for every configuration.
 
-|能力|Windows 原生|WSL2 / Linux|
+<a id="选择运行方式"></a>
+## Choose an execution environment
+
+|Capability|Native Windows|WSL2 / Linux|
 |---|---|---|
-|CLI、网页、项目注册与分层工具选择|支持|支持|
-|三个模板的复制、角色合同、工作单元 DAG 与输入编译|支持|支持|
-|独立Agent／嵌套Workflow定义、完整资源修订、preview／manifest／组合图|支持静态编辑、校验与分享；完整包可导出|支持；运行时仍须另做准入|
-|固定任务MCP、带Skill附件的组合单叶与正式v6执行|使用WSL2/Linux；原生环境创建scope会明确拒绝|task-MCP需同一解释器安装可选SDK；完整执行另需参考运行时和可信容器|
-|交接包离线核对|基础CLI支持，无需在线服务或SDK|支持|
-|闭合原run证据索引、预算与交接收集|在WSL2/Linux中的Ergora入口操作|需登记完整参考运行时、Temporal和原材料|
-|Codex / Claude Code 独立角色调用|原生 `.exe`，认证由各工具完成|Linux CLI|
-|自定义 Agent、evaluator、GEPA proposer|原生程序或显式解释器；使用 argv 和 UTF-8 stdin|Linux 程序|
-|SQLite 记忆、Skill 版本、评价、采用和回退|支持|支持|
-|ReMe HTTP、GEPA、有界资料观察、Temporal SDK / worker|可选接入；远端服务另外配置|可选接入|
-|mini-swe-agent Bash 驱动、ForgeKernel 原生 campaign|使用 WSL2|支持 Linux 驱动，设备与模型另行准备|
-|六阶段正式执行桥接、Supervisor、MLflow / Symphony / A2A 参考部署|使用 WSL2 内的 Linux 环境|完整参考执行器还需要显式启用可信 Linux 容器|
+|CLI, web console, project registration and layered tool selection|Supported|Supported|
+|Copying the three templates, role contracts, work-unit DAGs and input compilation|Supported|Supported|
+|Standalone Agent / nested Workflow definitions, complete resource revisions, preview / manifest / composition graph|Static editing, validation and sharing supported; complete packages can be exported|Supported; runtime admission remains separate|
+|Fixed-task MCP, a composition leaf with Skill attachments, and formal v6 execution|Use WSL2/Linux; native scope creation explicitly refuses the operation|Task MCP needs its optional SDK in the same interpreter; complete execution also needs the reference runtime and a trusted container|
+|Offline handoff-package verification|Supported by the basic CLI; no online service or SDK required|Supported|
+|Collecting a closed original run's evidence index, budget and handoff|Use the Ergora entry point inside WSL2/Linux|Requires a registered complete reference runtime, Temporal and original materials|
+|Standalone Codex / Claude Code role calls|Native `.exe`; each tool owns authentication|Linux CLI|
+|Custom Agents, evaluators and GEPA proposers|Native programs or explicit interpreters; argv and UTF-8 stdin|Linux programs|
+|SQLite memory, Skill versions, evaluation, adoption and rollback|Supported|Supported|
+|ReMe HTTP, GEPA, bounded source observation, Temporal SDK / worker|Optional integrations; configure remote services separately|Optional integrations|
+|mini-swe-agent Bash driver, native ForgeKernel campaigns|Use WSL2|Linux driver supported; prepare devices and models separately|
+|Formal six-stage execution bridge, Supervisor, MLflow / Symphony / A2A reference deployment|Use the Linux environment inside WSL2|The complete reference executor additionally requires an explicitly enabled trusted Linux container|
 
-原生安装不会部署完整参考服务。查看、设计模板与运行一个角色，并不产生正式任务验收。旧 [单文件 HTML](distribution/multi-agent-development-platform.html) 仍是冻结的 Linux v2.2 发行；Windows 版本从本仓库安装。
+A native installation does not deploy the complete reference services. Viewing or designing templates and running one role do not produce formal-task acceptance. The old [single-file HTML distribution](distribution/multi-agent-development-platform.html) remains the frozen Linux v2.2 release; install the Windows version from this repository.
 
-“Agent与组合库”的结构继承、串并行依赖、具名端口与逐叶默认后端属于跨平台静态数据；导入或freeze不会启动Agent。普通 `agent run` 的原生后端能力与组合单叶的 `task-mcp` 模式不同：后者使用Linux no-follow文件描述符读取固定scope，不能由安装MCP SDK或Windows模型认证消除平台限制。开发／训练完整祖先Skill读取及页面v6创建的顺序见[三模板入门旅程](TEMPLATE_WALKTHROUGHS.md)，其中Linux运行步骤在WSL2内完成。Windows CI验证其明确选择的安装／应用检查，不推导WSL2、双后端或GPU实测通过。
+Structural inheritance, serial/parallel dependencies, named ports and per-leaf default backends in the Agent and composition library are cross-platform static data. Importing or freezing does not start an Agent. Native backend calls through ordinary `agent run` differ from a composition leaf's `task-mcp` mode: the latter reads its fixed scope through Linux no-follow file descriptors. Installing the MCP SDK or authenticating a model on Windows does not remove that platform restriction. See the [three-template walkthrough](TEMPLATE_WALKTHROUGHS.md) for complete ancestor Skill reading and the page's v6 creation sequence; run its Linux steps inside WSL2. Windows CI covers its explicitly selected installation/application checks; it does not establish WSL2, both-backend or GPU execution results.
 
-## 安装控制面
+<a id="安装控制面"></a>
+## Install the control plane
 
-已有 Python 3.11+、Git 时，在普通 PowerShell 中执行。本文的组合／执行能力目前随 `refactor/architecture-foundations` 开发分支交付，以下clone和空环境ZIP选择同一分支；已有clone也先选择该分支，或固定所需验收记录的完整提交，再运行安装器。包版本号相同不代表源码相同。
+With Python 3.11+ and Git already installed, run the following in an ordinary PowerShell session. The composition/execution capabilities described here currently ship on `refactor/architecture-foundations`. The clone and empty-environment ZIP instructions select that same branch. In an existing clone, select it first or pin the full commit required by the acceptance record, then run the installer. Identical package versions do not imply identical source.
 
 ```powershell
 New-Item -ItemType Directory -Force "$HOME\source" | Out-Null
@@ -36,63 +41,65 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1 -A
 & "$env:LOCALAPPDATA\Ergora\bin\ergora.exe" serve
 ```
 
-打开 `http://127.0.0.1:8977`。控制台资源随包提供，无需 Node 或前端构建。`-AddToPath` 将命令目录加入当前用户 PATH，新终端可直接使用 `ergora`；已有终端用上述绝对路径。命令中的 ExecutionPolicy 仅作用于这次 PowerShell 进程；组织策略仍可能要求使用签名脚本或由管理员部署。
+Open `http://127.0.0.1:8977`. The console assets ship in the package; Node and a frontend build are unnecessary. `-AddToPath` adds the command directory to the current user's PATH. New terminals can use `ergora` directly; existing terminals can use the absolute path above. ExecutionPolicy in this command applies only to that PowerShell process. Organization policies may still require signed scripts or administrator deployment.
 
-空环境先从 GitHub 下载[同分支源码ZIP](https://github.com/626619403/Ergora/archive/refs/heads/refactor/architecture-foundations.zip)，解压到用户的持久目录，在包含 `pyproject.toml` 的目录打开 PowerShell：
+In an empty environment, download the [source ZIP for the same branch](https://github.com/626619403/Ergora/archive/refs/heads/refactor/architecture-foundations.zip), extract it to a persistent user directory, and open PowerShell in the directory containing `pyproject.toml`:
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\install.ps1 -InstallPrerequisites -AddToPath
 ```
 
-该选项使用已有的 `winget` 为当前用户安装缺失的 Python 3.12 和 Git，并接受相应软件包协议；不需要修改系统 PATH。没有 winget 时，按 [App Installer / winget 官方说明](https://learn.microsoft.com/en-us/windows/package-manager/winget/) 安装它，或手动安装 [Python](https://www.python.org/downloads/windows/) 和 [Git](https://git-scm.com/downloads/win)，重新打开终端后运行安装器。只有在软件源和设备策略允许用户范围安装时，这条路径才无需管理员权限。
+This option uses an existing `winget` to install missing Python 3.12 and Git for the current user and accepts the corresponding package agreements. It does not require changing the system PATH. If winget is unavailable, follow the [official App Installer / winget instructions](https://learn.microsoft.com/en-us/windows/package-manager/winget/), or install [Python](https://www.python.org/downloads/windows/) and [Git](https://git-scm.com/downloads/win) manually, open a new terminal and run the installer. This path avoids administrator privileges only when the software sources and device policies allow user-scope installation.
 
-可选参数：
+Optional arguments:
 
 ```powershell
 .\scripts\install.ps1 -Profile research -AddToPath
-# 旧参数仍可叠加到所选组合
+# Legacy switches still add SDKs to the selected profile.
 .\scripts\install.ps1 -WithGepa -WithTemporal -AddToPath
-# 指定已有的解释器及独立安装目录
+# Select an existing interpreter and separate installation directories.
 .\scripts\install.ps1 -Python 'C:\Path\To\python.exe' -InstallRoot "$HOME\Apps\Ergora" -BinDir "$HOME\bin"
 ```
 
-`-Profile`是`-InstallationProfile`的别名，可选`control`（默认）、`development`、`research`。两平台消费同一[安装组合](USAGE.md#选择安装组合)：只安装SDK，完整六阶段仍在Linux/WSL2运行。重跑安装器保留独立data目录；改回较小组合不会卸载已装SDK。安装后用`ergora tools profiles`查看配方，认证、连接及任务条件需另行检查。
+`-Profile` aliases `-InstallationProfile`; the choices are `control` (default), `development` and `research`. Both platforms consume the same [installation profiles](USAGE.md#选择安装组合). They install SDKs; complete six-stage execution remains on Linux/WSL2. Rerunning the installer preserves the separate data directory. Returning to a smaller profile does not uninstall existing SDKs. After installation, use `ergora tools profiles` to inspect the recipes; check authentication, connections and task prerequisites separately.
 
-默认目录：
+Default directories:
 
-|内容|路径|
+|Content|Path|
 |---|---|
-|应用虚拟环境|`%LOCALAPPDATA%\Ergora\app\venv`|
-|原生命令与安装归属记录|`%LOCALAPPDATA%\Ergora\bin\ergora.exe`、`ergora-install.json`|
-|项目配置、SQLite、记忆、候选、运行归档|`%LOCALAPPDATA%\Ergora\data`|
+|Application virtual environment|`%LOCALAPPDATA%\Ergora\app\venv`|
+|Native command and installation ownership record|`%LOCALAPPDATA%\Ergora\bin\ergora.exe`, `ergora-install.json`|
+|Project configuration, SQLite, memory, candidates and run archives|`%LOCALAPPDATA%\Ergora\data`|
 
-`ERGORA_INSTALL_ROOT`、`ERGORA_BIN_DIR`、`ERGORA_PYTHON` 可代替同名安装参数。运行数据位置独立于安装位置，可在启动前设置 `$env:ERGORA_HOME = "$HOME\ErgoraData"`，或使用 `ergora --home PATH ...`。安装器不启动后台服务、不登录 Agent、不调用模型、不运行训练。
+`ERGORA_INSTALL_ROOT`, `ERGORA_BIN_DIR` and `ERGORA_PYTHON` can replace the corresponding installer arguments. Runtime data has a location independent of the installation. Set `$env:ERGORA_HOME = "$HOME\ErgoraData"` before starting, or use `ergora --home PATH ...`. The installer does not start background services, log in to Agents, invoke models or run training.
 
-开发者也可以自行 `py -3 -m venv .venv`，再用 `.\.venv\Scripts\python.exe -m pip install '.[dev,web,gepa,temporal]'` 和 `.\.venv\Scripts\ergora.exe serve`；无需激活脚本。
+Developers can instead create an environment with `py -3 -m venv .venv`, then use `.\.venv\Scripts\python.exe -m pip install '.[dev,web,gepa,temporal]'` and `.\.venv\Scripts\ergora.exe serve`. Activating a script is unnecessary.
 
-## Agent 安装与认证
+<a id="agent-安装与认证"></a>
+## Install and authenticate Agents
 
-默认实现与审查均为 Codex。按 [OpenAI 官方 CLI 安装说明](https://learn.chatgpt.com/docs/codex/cli) 安装 Windows 原生 CLI，在首次 `codex` 交互中完成账号或 API 认证。Windows 沙箱的版本、权限及设备要求见 [官方 Windows sandbox 文档](https://learn.chatgpt.com/docs/windows/windows-sandbox)。保持 Codex 原生 sandbox；Linux 的 `current-container` 选项不能用于 Windows。
+Codex is the default implementation and review backend. Install its native Windows CLI following the [official OpenAI CLI instructions](https://learn.chatgpt.com/docs/codex/cli), then complete account or API authentication during the first interactive `codex` session. See the [official Windows sandbox documentation](https://learn.chatgpt.com/docs/windows/windows-sandbox) for version, permission and device requirements. Keep the native Codex sandbox; the Linux `current-container` option cannot be used on Windows.
 
-Claude Code 是可选角色实现，按 [官方 Windows 安装与 Git Bash 要求](https://code.claude.com/docs/en/setup) 安装并完成其自身认证。Ergora 不代理账号登录，也不把密钥写入项目 JSON 或仓库。
+Claude Code is an optional role implementation. Follow its [official Windows installation and Git Bash requirements](https://code.claude.com/docs/en/setup), and complete its own authentication. Ergora does not proxy account login or write keys to project JSON or the repository.
 
-在启动 Ergora 的同一终端检查：
+Check in the same terminal that will start Ergora:
 
 ```powershell
 Get-Command codex.exe
 codex.exe --version
-# 选择 Claude Code 时
+# When selecting Claude Code:
 Get-Command claude.exe
 claude.exe --version
 ```
 
-Ergora 优先查找同名 `.exe`；Agent / evaluator / proposer 的 `.cmd`、`.bat` 入口会明确拒绝，避免 Windows 隐式 shell 改写参数。npm 生成的命令若只有 batch shim，请使用工具的原生安装；自定义脚本通过明确的解释器启动，例如 `{"tool":"command","argv":["C:\\Python312\\python.exe","C:\\Agents\\review.py"]}`。相对脚本参数以业务项目为工作目录。完整结构化协议见 [Agent 手册](AGENT_BACKENDS.md) 与 [工具接入手册](INTEGRATIONS.md)。
+Ergora prefers the matching `.exe`. It explicitly refuses `.cmd` and `.bat` entry points for Agents, evaluators and proposers to prevent Windows' implicit shell from rewriting arguments. If an npm command only supplies a batch shim, use the tool's native installer. Start custom scripts through an explicit interpreter, for example `{"tool":"command","argv":["C:\\Python312\\python.exe","C:\\Agents\\review.py"]}`. Relative script arguments resolve from the business project's working directory. See the [Agent guide](AGENT_BACKENDS.md) and [integration guide](INTEGRATIONS.md) for the complete structured protocol.
 
-命令输入、归档及自有文本文件使用 UTF-8；CLI 的绑定 JSON、评价 manifest、提示、记忆正文和 Skill frontmatter 接受 UTF-8 BOM。PowerShell 5.1 的 `Set-Content -Encoding UTF8` 可用于这些输入。原合同编译器的外部 JSON 建议使用无 BOM 的 UTF-8，以保持冻结参考实现的兼容性。
+Command input, archives and application-owned text files use UTF-8. The CLI accepts a UTF-8 BOM for binding JSON, evaluation manifests, prompts, memory bodies and Skill frontmatter. PowerShell 5.1's `Set-Content -Encoding UTF8` can write these inputs. Use UTF-8 without a BOM for external JSON consumed by the original contract compiler to retain compatibility with the frozen reference implementation.
 
-## 首个项目
+<a id="首个项目"></a>
+## Create a first project
 
-先建立自己的 Git 仓库；工单仍属于该项目，无需统一管理仓库：
+Create your own Git repository first. Issues remain in that project; a central management repository is unnecessary:
 
 ```powershell
 git init "$HOME\source\my-project"
@@ -102,7 +109,7 @@ ergora tools doctor my-project
 ergora serve
 ```
 
-网页中按角色选择工具，保存带来源的记忆，导入 Skill，或编辑模板工作单元。页面与 CLI 共用状态。绑定配置中的修订号以 `ergora project show my-project` 的实际输出为准：
+In the web console, select tools by role, save memory with provenance, import Skills or edit template work units. The pages and CLI share state. Use the actual revision from `ergora project show my-project` in binding changes:
 
 ```powershell
 '{"tool":"codex"}' | Set-Content -Encoding UTF8 reviewer.json
@@ -113,41 +120,44 @@ ergora agent run my-project reviewer --prompt review-request.md --timeout 300
 ergora agent runs my-project
 ```
 
-最后一条调用会使用已认证的模型，可能产生费用；首次操作也可只使用页面配置与 `doctor`。成功调用仅表示进程与所需输出结构通过，不等于正式流程的候选验收。详细页面操作见 [日常使用手册](USAGE.md#页面操作)，训练边界见 [训练手册](TRAINING.md)。
+`agent run` uses the authenticated model and may incur charges. For a first inspection, the configuration pages and `doctor` are sufficient. A successful call establishes that the process and required output structure passed; it is not candidate acceptance for the formal workflow. See [daily page operations](USAGE.md#页面操作) and the [training guide](TRAINING.md) for the respective steps and boundaries.
 
-Windows 命令与资料抓取使用 Job Object 管理生命周期：超时、取消或控制器关闭时停止其本地后代。它不限制该用户的文件、网络访问，不提供每 Agent 的安全沙箱；远程 API 请求和外部计算服务的取消仍由对应服务负责。应用以普通用户、可信项目方式运行。CLI 前台任务可用 Ctrl+C；资料观察也可从页面请求取消并核对终态。
+On Windows, commands and source fetching use a Job Object to manage their lifecycle. Timeout, cancellation or controller shutdown stops their local descendants. It does not restrict that user's file or network access or provide a security sandbox for each Agent. Corresponding services remain responsible for cancelling remote API requests and external compute. Run the application as an ordinary user with trusted projects. Use Ctrl+C for foreground CLI tasks. Source observation can also be cancelled from the page; check its terminal state.
 
-训练实验的本地 `training submission`／`training cancellation` 可在原生 Windows 读取已保存操作记录，无需 Temporal SDK。`training baseline-preview`可预览完整基线，实际`init-baseline`使用原fcntl锁，须在Linux／WSL2执行；两者都无需SDK或服务，见[基线初始化](TRAINING.md#预览与初始化基线)。`training runner-preview / register-runner`沿原登记器，须在Linux／WSL2安装`ergora[temporal]`，无需服务，见[可信runner登记](TRAINING.md#预览与登记可信-runner)。`training experiment-preview / prepare / resume-prepare`同样使用Linux／WSL2与`ergora[temporal]`；`training preparation`虽无需SDK，当前入口也限定Linux／WSL2，见[实验准备与恢复](TRAINING.md#精确准备实验与恢复部分发布)。实际 `training start`／`resume-start`／`cancel`／`resume-cancel` 与 `stop-status` 的原执行器观察使用 Linux／WSL2，不由 Windows Job Object 代管远端或训练作业。步骤与结果语义见[训练取消与停止观察](TRAINING.md#取消原运行与分别观察停止事实)。
+Local `training submission` / `training cancellation` commands can read saved operation records on native Windows without the Temporal SDK. `training baseline-preview` previews the complete baseline; actual `init-baseline` uses the original fcntl lock and requires Linux/WSL2. Neither requires an SDK or service; see [baseline initialization](TRAINING.md#预览与初始化基线). `training runner-preview / register-runner` uses the original registrar and requires Linux/WSL2 with `ergora[temporal]`, without a service; see [trusted runner registration](TRAINING.md#预览与登记可信-runner). `training experiment-preview / prepare / resume-prepare` also requires Linux/WSL2 and `ergora[temporal]`. Although `training preparation` does not require the SDK, its current entry point remains Linux/WSL2-only; see [experiment preparation and recovery](TRAINING.md#精确准备实验与恢复部分发布). Actual `training start` / `resume-start` / `cancel` / `resume-cancel` and the original-executor observation in `stop-status` use Linux/WSL2. Windows Job Objects do not manage those remote or training jobs. See [training cancellation and stop observations](TRAINING.md#取消原运行与分别观察停止事实) for the steps and result semantics.
 
-## 接收交接包并离线核对
+<a id="接收交接包并离线核对"></a>
+## Receive and verify a handoff package offline
 
-将发送者导出的ZIP和独立取得的预期SHA保存到本机，在PowerShell执行：
+Save the sender's exported ZIP and an independently obtained expected SHA on this machine, then run in PowerShell:
 
 ```powershell
 ergora handoff verify .\task-handoff.zip --sha256 EXPECTED_PACKET_SHA256
 ```
 
-基础安装即可核包，无需启动控制台、Temporal或模型，也不提取或执行材料。`verified`表示包内字节与声明的合同/回执/材料关系相符；来源未认证、执行成功未推断，原取消结果保持。整包自带摘要不证明来源，候选代码与原history另核。格式、限额及Linux侧收集见[交接手册](USAGE.md#收集与离线核对交接包)。
+The basic installation can verify the package without starting the console, Temporal or a model, and without extracting or executing the materials. `verified` means the packaged bytes match the declared relationships among contracts, receipts and materials. It does not authenticate the source or infer successful execution; the original cancellation result remains unchanged. A digest carried by the package itself does not prove provenance. Verify candidate code and original history separately. See the [handoff guide](USAGE.md#收集与离线核对交接包) for the format, limits and Linux-side collection.
 
-## WSL2 完整流程
+<a id="wsl2-完整流程"></a>
+## Run the complete workflow in WSL2
 
-`ergora services status/start/stop/logs/shutdown` 的本地 Supervisor 管理在 Linux/WSL2 执行；Windows 原生明确返回 WSL2 指引。安装控制面/Temporal SDK不会启动这些服务，详见[显式服务管理](USAGE.md#显式服务管理)。
+Local Supervisor management through `ergora services status/start/stop/logs/shutdown` runs on Linux/WSL2. Native Windows explicitly returns WSL2 guidance. Installing the control plane or Temporal SDK does not start these services; see [explicit service management](USAGE.md#显式服务管理).
 
-需要完整参考执行器或 Linux 工具时，按 [Microsoft WSL 安装说明](https://learn.microsoft.com/en-us/windows/wsl/install) 在宿主 Windows 启用 WSL2。这通常需要管理员启用系统组件和重启；无宿主权限时请让管理员预先提供 WSL2，或使用已有 Linux 主机。
+When the complete reference executor or Linux tools are needed, enable WSL2 on the Windows host using [Microsoft's WSL installation instructions](https://learn.microsoft.com/en-us/windows/wsl/install). This usually requires an administrator to enable system components and restart the host. Without host privileges, ask an administrator to provide WSL2 or use an existing Linux machine.
 
-在 WSL2 的 Linux home 内重新 clone 并按 [Linux 安装手册](USAGE.md#从空环境安装) 安装。完整参考发行仍要求其支持的可信 Linux 容器；仅进入 WSL2 不会通过容器准入，也不会自动启用执行。参考发行部署、Docker 与执行准入步骤见两本随包参考手册。
+Clone the repository again inside the WSL2 Linux home and follow the [Linux installation guide](USAGE.md#从空环境安装). The complete reference distribution still requires its supported trusted Linux container. Entering WSL2 alone does not satisfy container admission or automatically enable execution. See the two packaged reference manuals for deployment, Docker and execution admission steps.
 
-Windows 与 WSL2 分别安装解释器、Agent 和依赖，分别注册业务仓库路径。不要复制虚拟环境或共享同一份正在写入的 SQLite 状态目录；跨系统迁移需停止写入、保留备份、重新核对绝对路径与工具绑定。Skill 文件的执行位和换行可能影响摘要，跨系统重新导入与评价，不能直接沿用旧机器证据。GPU 训练仍取决于主机驱动、WSL GPU 支持及所选工具要求。
+Install interpreters, Agents and dependencies separately on Windows and WSL2, and register each platform's business-repository paths separately. Do not copy virtual environments or share one SQLite state directory between active writers. Stop writers and retain backups before migrating across systems, then recheck absolute paths and tool bindings. Skill executable bits and line endings may affect their digests. Reimport and evaluate Skills on the new system; do not reuse old-machine evidence directly. GPU training still depends on host drivers, WSL GPU support and the selected tools' requirements.
 
-## 升级、备份与卸载
+<a id="升级备份与卸载"></a>
+## Upgrade, back up and uninstall
 
-停止控制台和在途任务，在源码目录切换到所需已发布提交，再运行相同安装命令与相同目录参数。安装器会核对已有入口的归属、解释器路径和 SHA，拒绝覆盖其他软件或被修改的入口；出现冲突时保留原文件，选择新的 `-BinDir`。同一源码可重复安装，项目状态保留在独立 data 目录。
+Stop the console and in-flight tasks, select the desired published source commit, then rerun the same installation command with the same directory arguments. The installer checks the existing entry point's ownership, interpreter path and SHA. It refuses to overwrite another application's or a modified entry point. Preserve conflicting files and choose a new `-BinDir`. The same source can be installed repeatedly; project state remains in the separate data directory.
 
-停止写入后备份完整 `ERGORA_HOME`（默认 data）、业务 Git 仓库及外部工具配置。换机后重新安装应用并核对每个项目路径和登录状态。恢复与删除的语义见 [日常使用手册](USAGE.md#远程访问恢复与维护)。
+After stopping writers, back up the complete `ERGORA_HOME` (the default data directory), business Git repositories and external tool configuration. Reinstall the application on the new machine, then check every project path and login. See [recovery and maintenance](USAGE.md#远程访问恢复与维护) for restore and deletion semantics.
 
-新项目在新路径重新登记、导入精确模板并选择角色后端，属于[新环境重建](USAGE.md#换机与新项目重建)。继续历史任务则需同平台原绝对home和匹配状态；控制备份不包含外部执行CONFIG／STATE、Temporal、业务Git或认证。当前数据库schema5由正式打开执行有序迁移，应用版本号0.2.0不能区分不同源码或数据版本。回退前另存升级后的新状态，再恢复匹配旧应用与旧备份；不要降低user_version或仅切换Git代码。Linux／WSL2完整栈按[联合恢复手册](BACKUP_RECOVERY.md)处理，不能据Windows应用CI推导活动workflow恢复通过。
+Registering a new project at a new path, importing exact templates and choosing role backends is [rebuilding a new environment](USAGE.md#换机与新项目重建). Continuing historical tasks requires the same platform, original absolute home and matching state. A control-plane backup does not include external execution CONFIG/STATE, Temporal, business Git or authentication. The current database schema is 6, migrated in order when the application formally opens it; package version 0.2.0 does not distinguish source or data versions. Before rolling back, preserve the upgraded state, then restore the matching old application and old backup. Do not lower user_version or only switch Git code. Use the [coordinated recovery guide](BACKUP_RECOVERY.md) for a complete Linux/WSL2 stack. Windows application CI does not establish recovery of active workflows.
 
-控制面提供离线完整备份入口，不要求管理员权限。在停止控制台、worker 与其他工作并对账外部作业后：
+The control plane offers complete offline backups without administrator privileges. Stop the console, workers and other work, and reconcile external jobs first:
 
 ```powershell
 ergora state info
@@ -155,6 +165,6 @@ ergora state backup "$HOME\Ergora-backups\snapshot-001" --offline
 ergora state verify-backup "$HOME\Ergora-backups\snapshot-001"
 ```
 
-需要恢复时，先按 `state info` 返回的 home 路径将当前目录移到另一个持久位置保留，再运行 `ergora state restore "$HOME\Ergora-backups\snapshot-001" --offline`。如果使用自定义 home，写为 `ergora --home ORIGINAL_HOME state restore ...`。目标必须不存在，且与清单记录的 Windows 原 home 一致；工具不会改写绝对路径或跨 Windows / WSL2 转换 Skill 身份。详细文件清单、数据库版本及恢复边界见 [升级与恢复说明](architecture/state-migrations.md#离线完整备份与恢复)。
+To restore, first use the home path from `state info` to move the current directory to another persistent location and preserve it. Then run `ergora state restore "$HOME\Ergora-backups\snapshot-001" --offline`. With a custom home, use `ergora --home ORIGINAL_HOME state restore ...`. The destination must not exist and must match the original Windows home recorded in the manifest. The tool does not rewrite absolute paths or convert Skill identities between Windows and WSL2. See [offline backup and recovery](architecture/state-migrations.md#离线完整备份与恢复) for the full file list, database versions and restore boundaries.
 
-卸载时停止前台进程，删除应用目录与属于此次安装的 `ergora.exe` / `ergora-install.json`；从用户 PATH 移除对应 bin 项。data 目录是独立资产，按是否保留历史自行处理。不要把整个 `%LOCALAPPDATA%\Ergora` 当作只有可重建程序的目录直接删除。
+To uninstall, stop foreground processes and delete the application directory and this installation's `ergora.exe` / `ergora-install.json`. Remove the corresponding bin entry from the user PATH. The data directory is a separate asset; decide explicitly whether to retain its history. Do not delete the entire `%LOCALAPPDATA%\Ergora` as though it contained only reproducible program files.
