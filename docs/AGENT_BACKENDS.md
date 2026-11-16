@@ -1,8 +1,11 @@
-# 模板角色与可替换 Agent
+<a id="模板角色与可替换-agent"></a>
+# Template roles and interchangeable Agents
 
-可分享的专家配方见[专长Agent定义库](AGENT_DEFINITIONS.md)，完整祖先材料的受限单叶调用见[工作流调用手册](WORKFLOW_DEFINITIONS.md#调用一个准备好的叶子)。项目角色绑定和正式六阶段继续使用本手册的入口。
+English · [简体中文](zh-CN/AGENT_BACKENDS.md)
 
-模板保存目标、角色、能力、产物和验收；项目保存具体工具。`ergora templates copy` 会在原文件之外附带 `agent-contract.json`，不改变冻结参考合同。查看角色：
+See the [specialist Agent definition library](AGENT_DEFINITIONS.md) for shareable specialist recipes and the [workflow invocation guide](WORKFLOW_DEFINITIONS.md#调用一个准备好的叶子) for restricted single-leaf calls with complete ancestor materials. Project-role bindings and formal six-stage execution retain this guide's entry points.
+
+Templates save objectives, roles, capabilities, artifacts and acceptance requirements; projects save concrete tools. `ergora templates copy` adds `agent-contract.json` alongside the original files without changing frozen reference contracts. Inspect roles:
 
 ```bash
 ergora templates agents repository-governance
@@ -10,21 +13,22 @@ ergora templates agents large-change
 ergora templates agents training-optimization
 ```
 
-治理和大型开发提供 inspector / planner / implementer / reviewer。integrate、verify 和 work 的可信 test-results 仍由执行器负责。训练提供 experiment-planner / performance-analyst / kernel-tuner，分别输出提案、分析及候选说明；原生 kernel 生成工具在独立的 `kernel` 层选择。
+Governance and large development provide inspector / planner / implementer / reviewer roles. The executor still owns integrate, verify and trusted work test-results. Training provides experiment-planner / performance-analyst / kernel-tuner, producing proposals, analysis and candidate descriptions respectively. Select native kernel-generation tools in the separate `kernel` layer.
 
-Codex / Claude Code 的首次安装、认证和官方入口见 [安装手册](USAGE.md#安装与认证-agent-cli)。以下步骤假定所选命令已在启动 Ergora 的 shell PATH 中可用。
+See [Agent CLI installation](USAGE.md#安装与认证-agent-cli) for initial Codex / Claude Code installation, authentication and official entry points. These steps assume the selected command is available on the PATH of the shell starting Ergora.
 
-绑定后可运行 `ergora tools doctor PROJECT`；主动版本/凭据/TCP 检查使用 `--probe --timeout 5`。分项含义、预算和修复入口见[诊断说明](USAGE.md#诊断与修复)。Codex 凭据存在与真实模型任务通过分别记录，不据此宣称 Agent 已验收。
+After binding, run `ergora tools doctor PROJECT`. Explicit version/credential/TCP probes use `--probe --timeout 5`; see [diagnostics](USAGE.md#诊断与修复) for each result, budgets and repair entry points. Existing Codex credentials and a successful actual model task are separate facts, neither automatically granting Agent acceptance.
 
-Linux 统一注册项目可通过[显式服务入口](USAGE.md#显式服务管理)启动所选 `temporal/worker/executor/a2a`。服务只在明确选择后启动；停止需确认且等待真实状态，原运行栈不会自动接管。托管 executor 使用此控制目录中的冻结角色快照。 已有正式开发任务可以通过 `ergora task list PROJECT` / `task show PROJECT TASK_ID` [读取冻结合同](USAGE.md#读取正式任务合同)；此查询不推断Temporal实时状态，主入口也支持[预览、创建和恢复](USAGE.md#预览与创建正式任务)，在创建时冻结角色配置；`task status`提供[原生运行状态查询](USAGE.md#查询正式任务运行状态)，提交使用[统一提交与恢复入口](USAGE.md#提交正式任务与恢复未知结果)，批准使用[精确计划批准入口](USAGE.md#批准精确计划与恢复投递)，取消使用[原运行取消入口](USAGE.md#请求取消与恢复未知投递)，导出使用[精确候选出口](USAGE.md#导出精确候选与恢复回执)；旧入口创建的任务继续使用本手册的参考命令。
+A Linux unified project can explicitly start selected `temporal/worker/executor/a2a` services through [service management](USAGE.md#显式服务管理). Services start only when selected. Stopping requires confirmation and actual status observation; the original running stack is not taken over automatically. The managed executor uses frozen role snapshots in this control directory. Use `ergora task list PROJECT` / `task show PROJECT TASK_ID` to [read existing formal tasks' frozen contracts](USAGE.md#读取正式任务合同), without inferring live Temporal state. The primary entry also [previews, creates and recovers tasks](USAGE.md#预览与创建正式任务), freezing role configuration at creation. `task status` provides [native runtime observations](USAGE.md#查询正式任务运行状态). Use the [unified submission/recovery entry](USAGE.md#提交正式任务与恢复未知结果), [exact-plan approval](USAGE.md#批准精确计划与恢复投递), [original-run cancellation](USAGE.md#请求取消与恢复未知投递) and [exact-candidate export](USAGE.md#导出精确候选与恢复回执). Tasks born through the legacy entry retain this guide's reference commands.
 
-`control`、`development`、`research`是控制面SDK的[安装组合](USAGE.md#选择安装组合)，不安装或选择某个Agent。Codex/Claude仍按本手册配置；mini-swe-agent和ForgeKernel继续用下文固定源码安装器。更换组合不修改已有项目绑定。
+`control`, `development` and `research` are control-plane SDK [installation profiles](USAGE.md#选择安装组合), without installing or selecting a particular Agent. Configure Codex/Claude as below; mini-swe-agent and ForgeKernel retain the pinned-source installers below. Changing profile does not modify existing project bindings.
 
-Windows 原生的安装与认证见 [Windows 手册](WINDOWS.md#agent-安装与认证)。原生角色调用支持 Codex、Claude Code 及明确的程序 / 解释器 `.exe`；`.cmd` / `.bat` launcher 显式拒绝。mini 的 Bash 驱动、ForgeKernel 及正式六阶段桥接要求 WSL2/Linux，正式参考执行器另需可信 Linux 容器。Windows 保持 Codex 原生 sandbox，不能使用 Linux 的 `current-container` 选择。
+See the [Windows guide](WINDOWS.md#agent-安装与认证) for native installation/authentication. Native role calls support Codex, Claude Code and explicit program/interpreter `.exe` files; `.cmd` / `.bat` launchers are explicitly refused. The mini Bash driver, ForgeKernel and formal six-stage bridge require WSL2/Linux; the formal reference executor additionally needs a trusted Linux container. Keep Codex's native sandbox on Windows; the Linux `current-container` selection is unavailable there.
 
-## 项目选择与独立调用
+<a id="项目选择与独立调用"></a>
+## Project selection and standalone calls
 
-通过控制台“工具绑定”选择每个角色，也可以使用 JSON：
+Select a tool for each role in the console's “Tool bindings”, or use JSON:
 
 ```json
 {"tool":"codex","model":"YOUR_MODEL_ID"}
@@ -38,11 +42,12 @@ ergora agent runs my-project
 ergora agent output my-project RUN_ID
 ```
 
-`--template` 要求该角色的真实结构化产物；不指定时保持普通文本调用。两者都不等于正式验收。Codex 默认使用角色对应的 CLI sandbox。若系统不支持该 sandbox，可在已经明确接受当前容器/用户边界后，显式设置 `"sandbox":"current-container"`；不会自动降级。Claude Code 使用自己的认证，其审查/提案角色限制到 Read/Grep/Glob，关闭会话持久化与额外 MCP 配置。默认审查仍为 Codex。
+`--template` requires the role's actual structured artifacts; omitting it retains ordinary text invocation. Neither grants formal acceptance. Codex uses the role's default CLI sandbox. If the system cannot provide that sandbox, explicitly set `"sandbox":"current-container"` only after accepting the current container/user boundary. There is no automatic downgrade. Claude Code owns its authentication; its review/proposal roles use Read/Grep/Glob with session persistence and extra MCP configuration disabled. Codex remains the default reviewer.
 
-### 为每个 Agent 设置思考强度
+<a id="为每个-agent-设置思考强度"></a>
+### Set reasoning effort for each Agent
 
-Codex 的 binding 可增加 `reasoning_effort`，Claude Code 可增加 `effort`，例如：
+Add `reasoning_effort` to a Codex binding or `effort` to a Claude Code binding, for example:
 
 ```json
 {"tool":"codex","model":"YOUR_MODEL_ID","reasoning_effort":"high"}
@@ -52,15 +57,26 @@ Codex 的 binding 可增加 `reasoning_effort`，Claude Code 可增加 `effort`�
 {"tool":"claude-code","model":"YOUR_MODEL_ID","effort":"medium"}
 ```
 
-项目角色在“工具绑定”表单或 `project bind` 中设置；专长实例在自己的 `agent.json.backend` 或正式任务的 `composition.backend_overrides[实例路径].binding` 中设置。正式任务会冻结这份完整配置；修改项目绑定或发布新的 Agent 版本不会改写已有任务。并行审查分支可分别选择后端、模型和强度，沿原 DAG 与祖先并发配额调度。
+Set project roles in “Tool bindings” or `project bind`; set specialist instances in their `agent.json.backend` or the formal task's `composition.backend_overrides[实例路径].binding`. Formal tasks freeze the complete configuration. Changing project bindings or publishing an Agent version does not rewrite existing tasks. Parallel review branches can select separate backends, models and effort, following the original DAG and ancestor concurrency quotas.
 
-Codex 的可选值为 `low/medium/high/xhigh/max/ultra`，显式 binding 覆盖 `--codex-config` 文件中的 `model_reasoning_effort`。Claude 的可选值为 `low/medium/high/xhigh/max/ultracode`，投影为原生 `--effort`。省略字段时保留各 CLI 的原有设置；其他后端没有这两个字段。等级是否可用取决于所选模型、CLI、账户和服务；Ergora 保存明确请求，不估算或承诺各后端使用相同计算量。Claude 的组织策略可能限制实际等级，JSON 模式的相关警告可能只进入原生 debug log，不能仅凭请求值认定实际强度。
+Codex choices are `low/medium/high/xhigh/max/ultra`; an explicit binding overrides `model_reasoning_effort` from `--codex-config`. Claude choices are `low/medium/high/xhigh/max/ultracode`, projected as native `--effort`. Omitting a field retains the CLI's existing settings; other backends do not expose these fields. Availability depends on the selected model, CLI, account and service. Ergora records explicit requests without estimating or promising equal computation across backends. Claude organization policies may cap effective effort; in JSON mode, relevant warnings may appear only in native debug logs. Requested effort alone does not establish applied effort.
 
-参数说明见 [Codex 官方配置](https://developers.openai.com/codex/config-reference/)、[Claude CLI](https://code.claude.com/docs/en/cli-reference#cli-flags) 和 [Claude 模型配置](https://code.claude.com/docs/en/model-config)。不支持的字段在绑定校验时拒绝；已接受字段在模型端能否运行，仍须真实调用验证。
+See [official Codex configuration](https://developers.openai.com/codex/config-reference/), [Claude CLI flags](https://code.claude.com/docs/en/cli-reference#cli-flags) and [Claude model configuration](https://code.claude.com/docs/en/model-config). Binding validation refuses unsupported fields. Whether an accepted field works at the model still needs an actual invocation.
 
-### 用 Ergora 审查自己的仓库
+### Current configuration evidence and pending capabilities
 
-可以为本仓库或其他代码库登记一个审查项目，并给 reviewer 选择与实际作者不同的可用后端。例如把 `reviewer.json` 写为 `{"tool":"claude-code"}`，然后运行：
+Keep three facts separate: the requested level in a binding/frozen configuration; the arguments/configuration projected to the native CLI; and native/model behavior actually observed. Codex projects `reasoning_effort` to `-c model_reasoning_effort=...`; Claude projects `effort` to `--effort`. Those arguments establish a CLI request, not an applied model level or a verified provider request. Without native evidence, applied effort remains unknown. Do not infer it from process success, structured output or an accepted binding.
+
+Only explicit binding values and existing defaults are implemented. Unified fixed/preset/planner/automatic selection and its configuration/freeze contract remain future work. Existing workflow presets and native CLI profiles do not implement tuning presets or automatic selection. Model/effort fallback and larger budgets require their own explicit policy; do not silently change them. Claude text-only adds `--safe-mode`; the documented native behavior disables workflows, so an `ultracode` request does not establish an active ultracode workflow. Native precedence/caps and actual application remain separate. See the [reviewed backend-options research](research/2026-11-16-backend-runtime-options.md).
+
+DeepSeek's current `context_window`/`max_tokens` populate SDK model-registry capacity descriptions; this is not a verified per-request hard token cap. Retain the original per-call wall-time, reported-cost and continuation semantics rather than treating different native controls as a common budget guarantee.
+
+Backend selection does not enable new design gates or training effects. Current schema2 design-policy registration remains [storage-only with execution unsupported](PROJECTS.md#current-limits-of-design-policy-registration). The isolated source-journal draft is not released, trusted owner/material/gate handling remains pending, and schema3 training effects stay disabled. Existing schema1 task contracts retain their original scope.
+
+<a id="用-ergora-审查自己的仓库"></a>
+### Review a repository using Ergora
+
+Register this or another repository as a review project and select an available reviewer backend different from the actual author's. For example, write `reviewer.json` as `{"tool":"claude-code"}`, then run:
 
 ```bash
 ergora project add self-review --repo /PATH/TO/REPOSITORY
@@ -71,15 +87,16 @@ ergora agent runs self-review
 ergora agent output self-review RUN_ID
 ```
 
-`review-request.md`写明原始需求、精确候选SHA；未提交内容另列完整差异、新文件及摘要。提供真实验证命令、结果和未验范围，并指定只读检查范围。需要专长提示时，可从[定义库](AGENT_DEFINITIONS.md)的`show --material`取得正文，显式加入请求；当前不会自动装载定义或继承资源。后端继续使用自己的登录与环境变量，不在请求中放密钥。
+In `review-request.md`, give original requirements and the exact candidate SHA. For uncommitted work, separately list complete changes, new files and digests. Supply actual validation commands/results and unverified scope, and specify read-only inspection boundaries. If specialist instructions are needed, obtain them with `show --material` in the [definition library](AGENT_DEFINITIONS.md) and explicitly include them. Definitions/inherited resources are not loaded automatically here. Backends retain their own login/environment; do not include keys in the request.
 
-只读范围应允许该后端实际具备的读取方式：Codex通常通过只读shell命令检查源码，Claude可用Read/Grep/Glob。不要同时禁止所有命令又只列出另一后端的专有工具；也可随请求附入新文件全文，并核对输入摘要。切换后端后重新确认材料确实可读，不能把“无法完成检查”的request-changes当成已确认的源码缺陷。
+Allow read methods the selected backend actually has. Codex typically inspects source with read-only shell commands; Claude can use Read/Grep/Glob. Do not forbid all commands while listing only another backend's proprietary tools. Alternatively attach complete new-file contents and check input digests. Recheck material readability after changing backend. A request-changes result caused by inability to inspect is not a confirmed source defect.
 
-此模板要求`review-report`、`handoff`和明确的`approve/request-changes`。查看运行记录中的原始结构化result及摘要，逐项处理finding；进程成功、结构合格和审查通过分别核对。失败/超时不视为通过，同后端回退保留原因；单次独立调用不产生正式workflow批准或可信验收。
+This template requires `review-report`, `handoff` and explicit `approve/request-changes`. Inspect original structured results/digests in run records and resolve each finding. Process success, structural validity and review approval need separate checks. Failure/timeout is not a pass. Retain reasons for same-backend fallback. A standalone independent call produces no formal workflow approval or trusted acceptance.
 
-### 自定义命令
+<a id="自定义命令"></a>
+### Custom commands
 
-普通 `{"tool":"command","argv":["/path/to/program"]}` 继续接收 stdin 文本。正式阶段或 `--template` 调用要求：
+An ordinary `{"tool":"command","argv":["/path/to/program"]}` continues receiving plain stdin text. Formal stages or `--template` calls require:
 
 ```json
 {
@@ -90,7 +107,7 @@ ergora agent output self-review RUN_ID
 }
 ```
 
-stdin 为 `{schema_version, role, prompt, result_schema}`；stdout 必须仅含一个符合 result_schema 的 JSON 对象，诊断写 stderr。schema 要求 summary、所需 artifacts；审查还要求明确的 approve / request-changes。能力列表须覆盖角色要求；它是兼容性声明，不是工具质量或隔离的证明。命令按 argv 执行，模板中不嵌入命令。
+stdin is `{schema_version, role, prompt, result_schema}`. stdout must contain only one JSON object matching result_schema; write diagnostics to stderr. The schema requires summary and required artifacts, plus explicit approve / request-changes for review. Declared capabilities must cover the role's requirements. They declare compatibility, without proving tool quality or isolation. Execute commands through argv; templates embed no commands.
 
 ### mini-swe-agent
 
@@ -98,7 +115,7 @@ stdin 为 `{schema_version, role, prompt, result_schema}`；stdout 必须仅含�
 bash scripts/install-agent.sh mini-swe-agent
 ```
 
-固定源码和独立 venv 默认保存在 `~/.local/share/ergora-tools/mini-swe-agent/`。将其 Python 绝对路径填入实现角色：
+Pinned source and its independent venv default to `~/.local/share/ergora-tools/mini-swe-agent/`. Put that Python's absolute path in the implementation-role binding:
 
 ```json
 {
@@ -110,13 +127,14 @@ bash scripts/install-agent.sh mini-swe-agent
 }
 ```
 
-认证由相应 provider 的环境变量提供。mini 支持实现角色，不承担只读独立审查。驱动使用原生 LiteLLM tool-call 模型与一致的 bash 工具提示，保存 trajectory；完成时将最终文本写到运行归档中的提交文件，再用提示中给出的命令提交正文，交给同一结构验证。空 submission 判为失败。shell action 保留在外层监控的进程组，使用整体任务时限；一个 action 可消耗剩余时限。成本沿用上游报告值，单次 API 请求可能超过剩余预算，不是预付费金额上限。安装和 CPU SDK 检查不代表模型效果验收。
+The provider's environment variables supply authentication. mini supports implementation, without serving as a read-only independent reviewer. Its driver uses native LiteLLM tool-call models and consistent Bash tool instructions, retaining the trajectory. On completion it writes final text to the submission file in the run archive, then uses the prompted command to submit the body to the same structural validation. Empty submission fails. Shell actions remain in the outer monitor's process group under the overall task timeout; one action can consume all remaining time. Costs use upstream reports. One API request may exceed the remaining budget; this is not a prepaid-spend ceiling. Installation and CPU SDK checks do not establish model quality.
 
-### DeepSeek Harness 只读叶后端
+<a id="deepseek-harness-只读叶后端"></a>
+### DeepSeek Harness read-only leaf backend
 
-可选适配固定为 SDK／runtime-bin `0.2.2rc2`，使用独立环境；基础 Ergora 不依赖它。目前支持 Linux/WSL2 的 `composition check-input/run-input`，模式为 `text-only` 或 `task-mcp`，角色为 reviewer、experiment-planner、performance-analyst、kernel-tuner。后两类产物仍是文本提案，不是实际测量或 kernel 执行。显式开启的新 standalone task-MCP 源支持下文的一次续接。`agent run` 的原生调用、workspace 写入、任意多轮交互和正式任务恢复尚不支持；OpenHands SDK 暂未注册。
+The optional adapter pins SDK/runtime-bin `0.2.2rc2` in a separate environment; basic Ergora does not depend on it. Supported Linux/WSL2 entry points are `composition check-input/run-input` in `text-only` or `task-mcp` mode for reviewer, experiment-planner, performance-analyst and kernel-tuner roles. The last two produce textual proposals, not measurements or kernel execution. An explicitly enabled new standalone task-MCP source supports the one continuation below. Native `agent run`, workspace writes, arbitrary multiple turns and formal-task recovery remain unsupported. OpenHands SDK is not registered.
 
-安装器已提供 uv 后，可在持久目录单独安装：
+After the installer provides uv, install separately in persistent storage:
 
 ```bash
 ERGORA_DSH_ENV="$HOME/.local/share/ergora-tools/deepseek-harness/0.2.2rc2/.venv"
@@ -125,7 +143,7 @@ uv pip install --python "$ERGORA_DSH_ENV/bin/python" \
   'deepseek-harness-sdk==0.2.2rc2' 'deepseek-harness-runtime-bin==0.2.2rc2'
 ```
 
-在所选[Agent定义的新版本](AGENT_DEFINITIONS.md#从固定原包派生新版本)中设置完整 `backend`；解释器替换为上一步实际绝对路径，模型与URL替换为自己服务的值：
+Set the complete `backend` in a [new version of the selected Agent definition](AGENT_DEFINITIONS.md#从固定原包派生新版本). Replace the interpreter with the actual absolute path above and the model/URL with values for your service:
 
 ```json
 {
@@ -140,9 +158,9 @@ uv pip install --python "$ERGORA_DSH_ENV/bin/python" \
 }
 ```
 
-`api` 显式选择 `openai-responses` 或 `openai-completions`；省略时保持 Chat Completions。选择服务实际提供的入口，平台不会因失败自动切换协议；task-MCP 还须兼容所选协议的工具调用及 SSE。环境变量由启动 Ergora 的 shell 提供，不把密钥填入JSON。`context_window`和`max_tokens`按实际模型配置，默认值不证明服务支持相同容量。包版本诊断不调用模型，也不证明认证、网关或模型质量通过。
+`api` explicitly selects `openai-responses` or `openai-completions`; omission retains Chat Completions. Choose an interface the service actually provides. The platform does not switch protocols automatically after failure. Task MCP additionally requires compatible tool calls and SSE on that protocol. The shell starting Ergora supplies environment variables; do not put keys in JSON. Configure `context_window` and `max_tokens` for the actual model; defaults do not prove service capacity. Package-version diagnostics call no model and establish neither authentication, gateway nor model quality.
 
-发布新的 Agent 版本并沿父引用准备新输入，保留完整祖先资料及权限上限，然后调用：
+Publish the new Agent version and prepare new input through parent references, retaining complete ancestor materials and permission ceilings, then invoke:
 
 ```bash
 ergora composition check-input my-project ./prepared-review --mode task-mcp
@@ -151,37 +169,39 @@ ergora agent runs my-project
 ergora agent output my-project RUN_ID
 ```
 
-这里采用叶定义的完整后端配置。单独 `--backend deepseek-harness` 不会填充必需的解释器、服务和认证变量名。只含内联资料时可显式选择text-only；有Skill附件时用task-mcp，按[全文读取说明](WORKFLOW_DEFINITIONS.md#核验完整附件读取)检查原回执。
+This uses the leaf definition's complete backend configuration. `--backend deepseek-harness` alone does not supply the required interpreter, service or credential-variable name. Explicit text-only mode suits inline-only materials. Use task-mcp for Skill attachments and inspect original receipts through [complete-read verification](WORKFLOW_DEFINITIONS.md#核验完整附件读取).
 
-默认调用使用新原生home／session、固定最小profile与生成的patch；无原生shell、文件、工作目录及额外MCP工具。task-mcp只提供原scope的list/read。适配保存原生身份、完整prompt、事件和终值到本次`.protocol`目录，整体时限／停止仍由原进程owner负责。这不提供OS隔离。
+Default calls use a fresh native home/session, fixed minimal profile and generated patch, without native shell, file, working-directory or extra MCP tools. Task MCP exposes only the original scope's list/read. The adapter saves native identities, complete prompt, events and terminal value in this call's `.protocol` directory. The original process owner retains overall timeout/stop responsibilities. This provides no OS isolation.
 
-必须同时核对完成状态、严格JSON／原结果schema和原MCP连接回执；任一原生工具错误使本次调用失败，不隐式重试或续接会话。上游可能在插件失败或断连后仍返回completed，因此最终文本本身不能代表成功。失败或结果不明先按原run ID查看证据，不创建另一次调用冒充恢复。固定发行包与loopback／停止探针见[H1交付](delivery/2026-11-12-harness-probes.md)；显式Responses的真实禁工具调用及同模板专家叶task-MCP全文验收见[H2交付](delivery/2026-11-14-harness-real-model.md)。这两次只读成功不证明正式六阶段、持久会话或其他平台已经准入。
+Check completion status, strict JSON/original result schema and the original MCP connection receipt together. Any native tool error fails the call, without implicit retry or session continuation. Upstream may return completed after plugin failure/disconnection, so final text alone is not success. On failure or an unknown result, inspect evidence by original run ID before proceeding. Do not create another call as purported recovery. See [H1 delivery](delivery/2026-11-12-harness-probes.md) for pinned packages and loopback/stop probes; [H2 delivery](delivery/2026-11-14-harness-real-model.md) records actual explicit-Responses calls with tools disabled and complete same-template expert-leaf task-MCP reading. These two read-only successes do not admit formal six-stage execution, persistent sessions or other platforms.
 
-#### 查看已保存的原生历史
+<a id="查看已保存的原生历史"></a>
+#### Read saved native history
 
-Linux／WSL2 可在原调用记录页点击“读取原生历史”，然后逐页查看保存的输入、工具结果和模型回复。读取只访问原 run 的归档，不启动 SDK、不调用模型，也不恢复会话；其他后端会显示不支持。原 stdout／stderr 查看方式保持。
+On Linux/WSL2, select “Read native history” on the original invocation record and page through saved inputs, tool results and model replies. Reading accesses only that run's archive, without starting the SDK, invoking models or restoring a session. Other backends report unsupported. Original stdout/stderr viewing remains available.
 
 ```bash
 ergora agent output my-project RUN_ID --native-history
-# 下一页：使用上一页返回的 next_offset 和 revision
+# Next page: use next_offset and revision from the previous response.
 ergora agent output my-project RUN_ID --native-history \
   --history-offset NEXT_OFFSET --history-revision REVISION
 ```
 
-每页默认最多 65,536B，可用 `--history-limit` 在 4–65,536B 内调整；游标以字节为单位，返回内容保持 UTF-8 边界。网页只展示当前一页，完整导出可由调用者逐页保存 `native_history.content`，直到 `next_offset` 为 null。观察 revision 绑定当前文件身份和时间／大小，不是完整内容 SHA，也不证明写入者已停止。读取期间文件变化会拒绝旧页，应“从头读取”或不带旧 revision 从零开始。只支持原调用保存的、未压缩的 v4 单会话归档；归档丢失、ID／目录不符或未来存储代次不能当作空历史。归档末尾不等于成功完成，原调用状态和结果回执仍独立核查。
+Each page defaults to at most 65,536B; choose 4–65,536B with `--history-limit`. Cursors use bytes and preserve UTF-8 boundaries. The page displays only the current window. For a complete export, save successive `native_history.content` values until `next_offset` is null. Observed revision binds current file identity and time/size, not a complete content SHA or proof the writer stopped. A changed file refuses an old page. “Read from start” or restart at zero without the old revision. Only the original saved uncompressed v4 single-session archive is supported. Missing archives, mismatched IDs/directories or future storage generations are not empty history. Archive EOF does not mean successful completion; original call status and result receipts remain separate checks.
 
-#### 显式续接一次只读会话
+<a id="显式续接一次只读会话"></a>
+#### Explicitly continue one read-only session
 
-先用固定 manifest 准备源输入，并在首次实际调用时授权一次后续输入：
+Prepare source input from a fixed manifest and authorize one follow-up input during the first actual call:
 
 ```bash
 ergora composition run-input my-project ./prepared-review \
   --mode task-mcp --allow-one-continuation --timeout 300
 ```
 
-只有这次调用成功、完整附件读取与原生完成证据都通过，才可作为来源。旧记录、默认未开启的调用、text-only、正式阶段和其他后端不具备此授权。不能给旧记录补字段来开启。
+Only a successful call with complete attachment-reading and native-completion evidence can become a source. Old records, calls that did not explicitly enable continuation, text-only, formal stages and other backends lack that authorization. Do not add fields to old records to enable it.
 
-用**原 manifest、原叶子、相同 grant 和相同 `--max-prompt-bytes`**准备新任务正文；不修改父子定义、Skill、上下文或后端：
+Prepare new task text with **the original manifest, original leaf, same grant and same `--max-prompt-bytes`**, without changing parent/child definitions, Skills, context or backend:
 
 ```bash
 ergora composition prepare-from-manifest ./review-manifest root/review \
@@ -191,21 +211,22 @@ ergora composition continue-input my-project SOURCE_RUN_ID ./prepared-followup \
 ergora agent output my-project FOLLOWUP_RUN_ID --native-history
 ```
 
-`SOURCE_RUN_ID` 是第一次调用返回的 `id`。`--intent` 是调用者选择的 1–64 位字母／数字／下划线／短横线标识，首位须为字母或数字。一个来源只占用一次续接名额；相同 intent、完整输入摘要与 timeout 重复提交只返回原记录，不再发送。改变任一值会拒绝；续接结果也不能再作为新来源。并发操作及时返回忙，随后查看原 run。项目修订、仓库／cwd 身份、输入／资料、原档、schema、绑定或 runtime 合同变化时应开始新源。
+`SOURCE_RUN_ID` is the `id` returned by the first call. Choose a 1–64-character `--intent` using letters/digits/underscore/hyphen, beginning with a letter or digit. A source has exactly one continuation slot. Resubmitting the same intent, complete input digest and timeout returns the original record without sending again. Changing any value is refused. A continuation result cannot become another source. Concurrent operations promptly report busy; inspect the original run afterward. Changes to project revision, repository/cwd identity, input/materials, original archive, schema, binding or runtime contract require a new source.
 
-续接保留原 home／session ID／cwd 和之前的完整上下文，为新调用创建独立输入、结果、MCP scope 和审计。读取附件必须在新 scope 内再次完整完成；旧回执不算新交付。原源结果及其记录保持，原 session 归档会追加；两条记录的历史入口指向同一原档。输出同时给出来源、续接状态、输入 receipt 和恢复／新增字节区间。SDK idle 不代表已持久化，成功证据在正常关闭后核对完整原前缀和本次结果。
+Continuation retains original home/session ID/cwd and complete preceding context while creating independent input, result, MCP scope and audit for the new call. Complete attachment reading must happen again in the new scope; old receipts do not establish new delivery. Original source result/record remain, while its session archive is appended. Both history entry points refer to the same original archive. Output supplies provenance, continuation status, input receipt and restored/new byte ranges. SDK idle is not durable persistence: after normal closure, success evidence checks the complete original prefix and current result.
 
-这是一次新的显式 wall-time 授权，范围 1–3600 秒，准备／preflight 的已用时间会从调用余量扣除；停止清理可能另需时间。它不是累计 token／费用上限，一次 prompt 可能引发多次模型 HTTP 和工具循环。`reserved` 表示已保存名额但尚未进入发送路径，`unknown` 表示已进入可能发送的路径且缺少完整成功证据，只有 `completed` 结合 run 的 `status:succeeded` 才是本次成功。超时、Ctrl+C、断连或丢回执均保留名额和原件，不自动重发；相同请求仍只返回原状态，需人工检查证据。正式六阶段、跨后端／版本迁移和任意多轮会话另有合同，不从这里恢复。
+This grants a new explicit 1–3600-second wall-time budget. Preparation/preflight time is deducted from the remaining call allowance; stop cleanup may take additional time. It is not a cumulative token/cost cap: one prompt can trigger multiple model HTTP requests and tool loops. `reserved` means the slot is saved before entering a send path. `unknown` means a possibly sending path was entered without complete success evidence. Only `completed` with run `status:succeeded` establishes this call's success. Timeout, Ctrl+C, disconnect or lost receipts retain the slot/original materials without automatic resending. An identical request still returns original state and requires manual evidence inspection. Formal six-stage recovery, cross-backend/version migration and arbitrary multiple-turn sessions have separate contracts and cannot be restored here.
 
-失败也会在原进程 owner 收尾后只读观察原归档，记录最终字节及可确认的恢复／新增区间；恢复回执丢失时 `restored_bytes` 为 null，只有源之后的物理增量，不能当作已收到新输入。`native.completed:false` 不会改写 `unknown`；目录身份丢失或原件不可读时保存 `observation_error`。这些观察不重启 SDK、不恢复正式任务，也不证明部分输出已成功执行。
+After failure, the original process owner still finishes cleanup before read-only archive observation records final bytes and confirmable restored/new ranges. With a missing restore receipt, `restored_bytes` is null; a physical increment after the source alone does not establish receipt of new input. `native.completed:false` does not rewrite `unknown`. Missing directory identity or unreadable originals save `observation_error`. Observations do not restart the SDK, recover formal tasks or prove partial output executed successfully.
 
-## 可选的正式六阶段执行桥接
+<a id="可选的正式六阶段执行桥接"></a>
+## Optional formal six-stage execution bridge
 
-默认`agentflow`执行器保持v2.2行为。要使项目的角色选择作用于正式任务，先按参考手册安装、配置模型和可信执行边界，再用[统一项目注册](PROJECTS.md)一次登记Git根、角色、模板与可信检查，并运行`ergora reference executor --project PROJECT_ID`。旧的两次注册方式继续兼容，两个同名项目必须指向相同Git根。只对新任务启用；不要中途切换已开始的参考任务。
+The default `agentflow` executor retains v2.2 behavior. To apply project-role selections to formal tasks, first install the reference runtime and configure models/trusted execution boundaries. Then [register a unified project](PROJECTS.md) with Git root, roles, templates and trusted checks together, and run `ergora reference executor --project PROJECT_ID`. The old two-registration approach remains compatible; identically named projects must use the same Git root. Enable this only for new tasks, without switching an already-started reference task midway.
 
-已有reference项目可用`ergora project import-reference import.json --revision N`预览，审阅差异和文件身份后加`--apply --preview-sha256 SHA`显式采用。它保持兼容旧文件原字节，保存前后项目与来源记录；不搬迁在途任务或导入模型密钥。详细spec和恢复命令见[项目定义手册](PROJECTS.md#显式导入旧注册)。
+Preview an existing reference project with `ergora project import-reference import.json --revision N`, review differences/file identities, then explicitly adopt with `--apply --preview-sha256 SHA`. Compatible old files retain original bytes, with before/after project and provenance records saved. It neither migrates in-flight tasks nor imports model keys. See [project definitions](PROJECTS.md#显式导入旧注册) for the complete spec and recovery commands.
 
-先停止原 executor，保留 Temporal、worker 等服务：
+Stop the original executor first, retaining Temporal, worker and other services:
 
 ```bash
 "$HOME/multi-agent-platform/.venv/bin/supervisorctl" \
@@ -213,29 +234,30 @@ ergora agent output my-project FOLLOWUP_RUN_ID --native-history
 ergora reference executor --installation "$HOME/multi-agent-platform"
 ```
 
-该命令在前台监听原 FileAdapter 队列，使用同一 executor 锁，保留原任务创建、审批、取消、恢复和导出命令。也可加 `--request /ABSOLUTE/PATH/envelope.json` 精确处理一个已发布信封。执行器校验参考 Python 源码身份，拒绝未经适配的版本。
+The command listens in the foreground to the original FileAdapter queue under the same executor lock, preserving original task creation, approval, cancellation, recovery and export commands. Add `--request /ABSOLUTE/PATH/envelope.json` to process exactly one published envelope. The executor verifies reference Python source identities and refuses unadapted versions.
 
-新任务首次处理时将角色工具与项目修订写入原任务持久目录的 `agent-bindings.json`；恢复继续用这份选择。实现者和审查者使用不同角色身份、新会话、精确候选提交及原有工作区变化检测。正式阶段结束前清理并回收其派生进程，再执行原监控的只读变化检查；精确使用参考配置的 Codex 可执行路径。未知外部进程结果继续由参考监控对账；缺少能力、结果结构错误、命令失败或只读阶段改动都不能通过。Agent 的 `model-log` 和 `agent-selection` 附在原回执证据中。
+When first processing a new task, save selected role tools/project revision in `agent-bindings.json` inside the original persistent task directory. Recovery retains that selection. Implementer and reviewer use distinct role identities, fresh sessions, exact candidate commits and original workspace-change checks. Before a formal stage ends, clean up/reap descendants, then execute the original monitor's read-only change checks using the exact configured reference Codex executable path. The reference monitor still reconciles unknown external-process outcomes. Missing capabilities, invalid result structure, command failure or read-only-stage changes cannot pass. Agent `model-log` and `agent-selection` accompany original receipt evidence.
 
-桥接的模型阶段会核验本任务保存的 `compiled.json` 与stage合同，从该快照加载完整模板说明，并将说明摘要记入 `agent-selection`。快照缺失、被改或属于另一任务时明确失败；不会改用活动包。已有任务不因源包删除而换说明，安装profile本身漂移仍按原规则拒绝。此行为属于Ergora桥接；直接 `agentflow` 入口保留原v2.2行为。
+Bridge model stages verify this task's saved `compiled.json` and stage contract, load complete template instructions from that snapshot and record their digest in `agent-selection`. Missing, changed or other-task snapshots explicitly fail, without substituting the active package. Deleting source packages does not change existing tasks' instructions; installation-profile drift is still refused under original rules. This is Ergora bridge behavior; direct `agentflow` retains original v2.2 behavior.
 
-统一入口的[外部证据查询](USAGE.md#核对闭合运行的外部作业证据)将原run完整历史中的dev_submit与可信FileAdapter请求/回执逐项对应。每个已知job即使请求丢失仍保留为未决；没有正确fence、存在额外请求/孤立回执、无效回执或产物摘要错误时不会报告外部已确认。只读查询不修改原outcome、不发布fence、不释放租约，外部终止证据和六阶段质量结果分别保留。 正常REVIEW_READY也不会因workflow闭合自动释放租约：导出沿原规则处理，暂不导出时使用[正常任务关闭流程](USAGE.md#正常任务完成后的关闭)。需要写入fence和释放精确原claim时，显式使用[reconcile/reconciliation/resume-reconcile](USAGE.md#显式终态对账与工单租约释放)；它保存原outcome与独立清理evidence，原CANCEL_UNCONFIRMED保持，缺证据不释放。
+The unified entry's [external-evidence query](USAGE.md#核对闭合运行的外部作业证据) matches dev_submit entries in complete original-run history against trusted FileAdapter requests/receipts individually. Every known job remains unresolved even with a missing request. External confirmation is refused when the correct fence is missing, extra requests/orphan receipts exist, receipts are invalid or artifact digests are wrong. A read-only query changes no original outcome, publishes no fence and releases no lease. External termination evidence and six-stage quality outcomes remain separate. A normal REVIEW_READY also does not automatically release an issue lease when its workflow closes: export follows the original rules, or use [normal task closure](USAGE.md#正常任务完成后的关闭) when not exporting yet. To write a fence and release the exact original claim, explicitly use [reconcile/reconciliation/resume-reconcile](USAGE.md#显式终态对账与工单租约释放). It saves original outcome and independent cleanup evidence, retains original CANCEL_UNCONFIRMED and refuses release with missing evidence.
 
-原v7来源任务导出精确候选后，可按[候选评论说明](USAGE.md#为已导出的候选发布工单评论)准备并确认GitHub／GitLab中性评论；该操作单独保存意图及原生收据，复用原任务身份，不改变Agent后端、批准或导出结果。GitHub的[原生ID标签追加](USAGE.md#为已导出的候选追加-github-标签)复用同一回写生命周期；GitLab标签动作明确unsupported，选择tracker不会隐式改变Agent授权。
+After an original v7 provenance task exports its exact candidate, follow [candidate comments](USAGE.md#为已导出的候选发布工单评论) to prepare/confirm a neutral GitHub/GitLab comment. That action separately saves intent/native receipt and reuses original task identity without changing backend, approval or export results. GitHub [native-ID label addition](USAGE.md#为已导出的候选追加-github-标签) reuses that writeback lifecycle. GitLab labels explicitly report unsupported. Selecting a tracker does not implicitly alter Agent authorization.
 
-新记录还保存`configuration`有效绑定视图，含每层来源、校验结果、项目修订和内容摘要；`ergora project config PROJECT_ID`可查看当前值。旧任务没有此附加字段时仍使用原绑定快照，不重建历史配置。视图范围与独立调用的上下文区别见[有效绑定与运行快照](USAGE.md#有效绑定与运行快照)。
+New records also save the effective `configuration` view, including each layer's source, validation, project revision and content digest. Read current values through `ergora project config PROJECT_ID`. Older tasks without this extra field retain their original binding snapshot, without reconstructing historical configuration. See [effective bindings and run snapshots](USAGE.md#有效绑定与运行快照) for its scope versus standalone-call context.
 
-统一注册项目需要长期运行时，优先用`ergora services start PROJECT temporal worker executor a2a --revision N`管理所选栈，不必手改ini。以下仅适用于保留原Supervisor的旧部署：在 `~/.config/multi-agent-platform/supervisor.d/executor.ini` 中把该 program 的 `command` 改为 Ergora 可执行文件绝对路径、`reference executor --installation ...`，保留 stopasgroup/killasgroup。再用 supervisorctl `reread` / `update`。初始化参考发行可能重新生成该文件，升级后应核对。不要同时运行新旧两个 executor。
+For long-running unified projects, prefer `ergora services start PROJECT temporal worker executor a2a --revision N` to manage the selected stack without hand-editing ini. The following applies only to legacy deployments retaining original Supervisor: in `~/.config/multi-agent-platform/supervisor.d/executor.ini`, change the program's `command` to the absolute Ergora executable plus `reference executor --installation ...`, retaining stopasgroup/killasgroup. Run supervisorctl `reread` / `update`. Reference-distribution initialization may regenerate this file; check after upgrading. Do not run old and new executors together.
 
-桥接沿用参考配置中的 Codex TOML 和 API 变量。参考监控的凭据白名单不会传递任意 shell 变量；其他 provider 可使用工具自己的持久登录，或参考 `credentials.json` 的 0600 凭据映射。模板、项目绑定与仓库中只保存凭据变量名/元数据。独立调用的活动 Skill/记忆选项不会自动改写正式任务的上下文。
+The bridge retains Codex TOML/API variables from reference configuration. The reference monitor's credential whitelist does not forward arbitrary shell variables. Other providers may use their own persistent login or the reference `credentials.json` 0600 credential mapping. Templates, bindings and repositories store only credential-variable names/metadata. Standalone active-Skill/memory options do not automatically rewrite formal-task context.
 
-## ForgeKernel 原生候选
+<a id="forgekernel-原生候选"></a>
+## ForgeKernel native candidates
 
 ```bash
 bash scripts/install-agent.sh forgekernel
 ```
 
-默认源码为 `~/.local/share/ergora-tools/forgekernel`，安装固定版本，不安装 CUDA/PyTorch、不登录 Claude、不启动 GPU。依据 [官方说明](https://github.com/OpenBMB/ForgeKernel/tree/5030503d3ff71851aa34c14b9caf13ebfa9d9a78) 填写原生任务和本地设备配置后绑定：
+Default source is `~/.local/share/ergora-tools/forgekernel`. Installation pins its version without installing CUDA/PyTorch, logging into Claude or starting GPU work. Configure native tasks/local devices using the [official instructions](https://github.com/OpenBMB/ForgeKernel/tree/5030503d3ff71851aa34c14b9caf13ebfa9d9a78), then bind:
 
 ```json
 {
@@ -255,33 +277,34 @@ ergora kernel status my-project CAMPAIGN_ID
 ergora kernel run my-project CAMPAIGN_ID --timeout 3600
 ```
 
-同样操作位于“工作流设计 → 训练优化实验 → 原生 Kernel 候选”。`plan` 检查并展示原生计划；`prepare` 只创建并冻结原生 campaign；`run` 才执行模型/GPU，显式调用也用于继续同一个 campaign；`status` 核对原生状态。Ergora ID 与原生目录映射持久保存，改变当前项目绑定不会改变已有 campaign。
+The same operations appear in “Workflow design → Training optimization experiments → Native kernel candidates”. `plan` checks/displays the native plan; `prepare` only creates/freezes a native campaign. `run` invokes models/GPU and explicitly continues that same campaign; `status` checks native state. The Ergora-ID/native-directory mapping is persistent. Changing current project bindings does not alter existing campaigns.
 
-固定版本仅支持 Claude backend；Codex 登录不能替代它。首版适配仅支持 local delivery，SSH delivery 显式拒绝。超时/中断可能留下原生子作业，记录为 `outcome_unknown`，不声称远端或 GPU 已取消。先核对原生目录和旧作业是否停止；需要继续时，提供 `--reconcile-reason '实际核对依据'`，页面也有对应字段。创建结果不明时先 status 从该 ID 的原生目录对账，不能直接创建另一个 campaign 替代。
+The pinned version supports only Claude backend; Codex login cannot substitute for it. This adapter version supports local delivery only and explicitly refuses SSH delivery. Timeout/interruption may leave native child jobs; record `outcome_unknown` without claiming remote/GPU cancellation. Check native directories and stopped old jobs first. To continue, supply `--reconcile-reason '实际核对依据'`, also available in the page. With uncertain creation, first use status to reconcile that ID's native directory rather than creating a replacement campaign.
 
-固定版本检查同时覆盖 `src/forgekernel` 和实际使用的 `scripts`：相对 Git HEAD 的修改、删除或未跟踪文件会使 doctor 显示 `version=unsupported`，并在启动 native driver 前拒绝操作。需要自定义包装脚本时放在 checkout 之外；固定源码检查不保证外部 Python 依赖、CLI 二进制、环境或 OS 隔离。
+Pinned-source checks cover both `src/forgekernel` and actually used `scripts`. Modified, deleted or untracked files relative to Git HEAD make doctor report `version=unsupported` and refuse operations before starting the native driver. Put custom wrappers outside the checkout. Pinned-source checks do not guarantee external Python dependencies, CLI binaries, environment or OS isolation.
 
-除原生任务快照，campaign 还固定 models.toml、loop.toml、backends.toml 的 SHA；后续配置漂移会明确拒绝，须恢复对应配置。运行中不要修改共享默认配置；备份与换机须同时保留工具源码、这些配置及 campaign。报告与实际 best/kernel.py 或 best/kernel.cu 的身份会保存；`native_finished` 只描述生成器的完成，`native_failed` 保留上游失败。选择候选提交后，继续用训练模板的 manifest、可信 runner、正确性/质量与配对性能证据，并按 evidence SHA 人工放行。ForgeKernel 的内部 judge、target_met 或报告文字不能直接成为 perfctl PASS。实际验证范围及未测的 GPU/模型效果见 [S8 记录](delivery/2026-10-31-s8-agents.md)。
+In addition to native task snapshots, campaigns freeze SHAs for models.toml, loop.toml and backends.toml. Later configuration drift explicitly refuses execution; restore matching configuration. Do not edit shared defaults during a run. Backups/machine moves must retain tool source, these configurations and campaigns together. Reports and actual best/kernel.py or best/kernel.cu identities are saved. `native_finished` describes generator completion only; `native_failed` retains upstream failure. After selecting a candidate commit, continue with training-template manifests, trusted runners, correctness/quality and paired performance evidence, then manual release bound to evidence SHA. ForgeKernel's internal judge, target_met or report prose is not perfctl PASS. See [S8 evidence](delivery/2026-10-31-s8-agents.md) for actual checks and untested GPU/model quality.
 
-完整选型与未接入工具见 [三模板调研](research/2026-10-31-template-agents.md)。
+See [three-template research](research/2026-10-31-template-agents.md) for complete tool selection and tools not integrated.
 
-新增后端的代码入口是`agent_backends.py`的共有`AgentBackend`合同及本地映射；命令、结果提取、后端专用配置和诊断归各实现，公开配置schema与能力仍只在`components.json`声明。`agents`、正式阶段和doctor复用这些实现，进程监控与取消由`processes`管理。接入步骤和调用关系见[当前架构](architecture/current.md#agent后端接入)。新增专长定义、模板成员和嵌套资源继承仍按[AC计划](plans/2026-11-08-agent-composition.md)实施。
+Backend extensions use the shared `AgentBackend` contract and local mapping in `agent_backends.py`. Each implementation owns its commands, result extraction, specialized configuration and diagnostics. Public configuration schemas/capabilities remain declared only in `components.json`. `agents`, formal stages and doctor reuse those implementations; `processes` owns process monitoring/cancellation. See [current architecture](architecture/current.md#agent后端接入) for integration/call paths. New specialist definitions, template members and nested resource inheritance follow the [AC plan](plans/2026-11-08-agent-composition.md).
 
-## 维护内置组件描述
+<a id="维护内置组件描述"></a>
+## Maintain built-in component descriptions
 
-源码中的 `src/ergora/data/components.json` 是内置角色与工具目录的来源，目录版本为 `schema_version: 1`。角色保存能力要求、显示信息和新项目默认绑定；组件保存已实现的驱动名称、能力、操作、平台、探测方式、配置字段及安装来源。`ergora tools list` 和 Web bootstrap 返回这些描述，绑定表单按字段生成。ForgeKernel 与 mini 的安装器也从此文件读取固定源码和提交。
+`src/ergora/data/components.json` supplies built-in roles/tool descriptions at catalog `schema_version: 1`. Roles save capability requirements, display information and recommended bindings for new projects. Components save implemented driver names, capabilities, operations, platforms, probe methods, configuration fields and installation sources. `ergora tools list` and Web bootstrap return these descriptions; binding forms are generated from their fields. ForgeKernel/mini installers also read pinned sources/commits from this file.
 
-复用已有 `command` 驱动时，可在随包目录增加一个组件，使用 `implementation: "command"`、对应的 `tool.const` 和既有配置字段；模板及页面不需要增加厂商分支。重新构建并安装软件后生效。普通命令、`stage-json-v1`、角色能力及可信验收规则仍由相同实现检查。实际驱动、资源清理和新的操作语义需要代码适配与合同验收；增加描述不会自动支持新的 SDK。
+To reuse the existing `command` driver, add a packaged component with `implementation: "command"`, matching `tool.const` and existing configuration fields. Templates/pages need no vendor-specific branch. Rebuild/install to apply the change. The same implementation still checks ordinary commands, `stage-json-v1`, role capabilities and trusted acceptance. Actual drivers, cleanup and new operation semantics require code adaptation/contract acceptance; adding a description does not support a new SDK automatically.
 
-当前表单支持 string、number、integer、array 和 enum。`x-ergora-*` 字段仅提供表单的枚举标签、平台默认值、项目 task queue 默认值及输入步长。配置描述不注入已保存绑定或运行快照，也不改变 Agent 的运行默认值。核心使用同一配置的 JSON Schema 做结构校验，既有角色、路径、URL 和可信门禁继续由业务所有者负责；具体类型、错误路径及兼容规则见 [合同与身份](architecture/contracts-and-identities.md)。目录不加载用户提供的 Python 插件，配置中也不保存密钥值。
+Forms currently support string, number, integer, array and enum. `x-ergora-*` fields supply only form enum labels, platform defaults, project task-queue defaults and input steps. Descriptions are not injected into saved bindings/run snapshots and do not change Agent runtime defaults. Core structural validation uses the same configuration JSON Schema; business owners retain role, path, URL and trusted-gate checks. See [contracts and identities](architecture/contracts-and-identities.md) for types, error paths and compatibility. The catalog loads no user Python plugins or key values.
 
-独立组合叶子的默认text-only及可选task-mcp模式见[工作流手册](WORKFLOW_DEFINITIONS.md#通过任务-mcp-读取固定附件)。后者只读选中叶子/祖先固定资源，不继承ambient工具；原生工具表、Claude bare认证差异和Linux支持范围均按该模式处理。普通agent run及正式stage不自动采用此模式。
+See [fixed attachment reads through task MCP](WORKFLOW_DEFINITIONS.md#通过任务-mcp-读取固定附件) for independent composition leaves' default text-only and optional task-mcp modes. The latter reads only selected leaf/ancestor fixed resources, without ambient tools. Native tool lists, Claude bare-authentication differences and Linux support follow that mode's contract. Ordinary agent run/formal stages do not adopt it automatically.
 
-独立组合调用前可用`composition check-input`查看[能力及权限链](WORKFLOW_DEFINITIONS.md#调用前查看能力与权限)。报告由当前后端合同与原准入共同生成；它不探测认证或启动服务，实际调用会重新准入并保存相同结构的policy。新增受限后端需实现自己的composition_policy，不能只声明模式名称。
+Before independent composition calls, use `composition check-input` to inspect [capabilities and permission chains](WORKFLOW_DEFINITIONS.md#调用前查看能力与权限). The report combines current backend contracts with original admission. It probes no authentication and starts no services. An actual call repeats admission and saves a policy with the same structure. A new restricted backend must implement composition_policy rather than merely declare a mode name.
 
+<a id="专长工作实例的可写调用"></a>
+## Writable calls for specialist work instances
 
-## 专长工作实例的可写调用
+Formal `work-units-v1` maps each original unit to a frozen implementer instance; see [specialist executors and original work units](WORKFLOW_DEFINITIONS.md#专长执行者与原工作单元) for configuration/support. workspace-task-mcp reuses the same backend Interface, fixed resource service, native process supervision and call records. Codex explicitly enables workspace shell/file tools while disabling ambient rules, Skills, plugins, hooks, web and implicit sub-Agents. Reasoning configuration still consumes only whitelisted fields. Policy separately records native tool configuration and the absence of OS/network isolation; permission instructions are not enforced isolation.
 
-正式`work-units-v1`将每个原unit映射到冻结的implementer实例，配置和支持范围见[工作流手册](WORKFLOW_DEFINITIONS.md#专长执行者与原工作单元)。workspace-task-mcp使用同一backend Interface、固定资源服务、原生进程监督与调用记录；Codex显式开启workspace shell/file工具，关闭ambient规则、Skill、插件、hook、web和隐式子Agent。推理配置继续仅消费白名单字段。原生工具配置与无OS/网络隔离分别写入policy，不把权限提示词当强制隔离。
-
-调用证据包含原formal-call、完整输入快照与prompt、实际argv/cwd/stdin SHA、MCP原生回执、结构结果与最终原work receipt。提交和确定性检查由可信Executor完成。新workspace模式目前仅支持显式current-container的Codex/Linux/WSL2；Claude仍可使用已支持的只读审查模式，未验证的新可写组合会拒绝。旧独立read-only入口不能通过修改mode取得写权限。
+Invocation evidence includes original formal-call, complete input snapshot/prompt, actual argv/cwd/stdin SHA, native MCP receipts, structured result and final original work receipt. The trusted Executor owns commits/deterministic checks. This workspace mode currently supports only explicitly selected current-container Codex/Linux/WSL2. Claude retains supported read-only review modes; unverified new writable compositions are refused. Changing mode on an old independent read-only entry cannot grant write authority.
