@@ -463,10 +463,47 @@ else:
         from training_controller_service import DispatchService
 
         selected = json.loads(os.environ.get('ERGORA_TEST_CYCLE_DISPATCH_CASES', '{}'))
+        capacity = json.loads(os.environ.get('ERGORA_TEST_CYCLE_DISPATCH_CAPACITY', '{}'))
 
         async def connect():
+            from dataclasses import replace
+            from temporalio.api.common.v1 import Memo, Payloads
+            from temporalio.converter import DataConverter, DefaultPayloadConverter
+
+            converter = DataConverter.default
+            if capacity:
+                class DispatchConverter(DefaultPayloadConverter):
+                    def to_payloads(self, values):
+                        payloads = super().to_payloads(values)
+                        for value, encoded in zip(values, payloads):
+                            matching = (isinstance(value, dict) if capacity['field'] == 'input' else isinstance(value, str))
+                            if not matching:
+                                continue
+                            directory = (Path(payload['identity']['control_home']) / 'training-cycles'
+                                / payload['identity']['project'] / payload['identity']['cycle_id'] / 'controller')
+                            claimed = (directory / 'attempt.json').exists()
+                            if capacity.get('after_claim') and not claimed:
+                                continue
+                            if capacity.get('blocked'):
+                                mark('dispatch-encoding-blocked')
+                                time.sleep(60)
+                            encoded.metadata['dispatch-capacity'] = b''
+                            def size():
+                                return (Payloads(payloads=[encoded]) if capacity['field'] == 'input'
+                                    else Memo(fields={protocol.CYCLE_MEMO_KEY: encoded})).ByteSize()
+                            for _ in range(3):
+                                encoded.metadata['dispatch-capacity'] += b'x' * max(0, capacity['size'] - size())
+                                excess = size() - capacity['size']
+                                if excess > 0:
+                                    encoded.metadata['dispatch-capacity'] = encoded.metadata['dispatch-capacity'][:-excess]
+                            path = Path(os.environ['ERGORA_TEST_CYCLE_DISPATCH']) / 'encodings.json'
+                            records = json.loads(path.read_bytes()) if path.exists() else []
+                            records.append({'bytes': size(), 'claimed': claimed, 'field': capacity['field']})
+                            path.write_text(json.dumps(records))
+                        return payloads
+                converter = replace(converter, payload_converter_class=DispatchConverter)
             return Client(DispatchService(payload, selected.get(payload['identity']['operation_id'], fault)),
-                          namespace='foreign' if fault == 'namespace' else 'default')
+                          namespace='foreign' if fault == 'namespace' else 'default', data_converter=converter)
 
         connection.connect = connect
         mark('dispatch-helper')

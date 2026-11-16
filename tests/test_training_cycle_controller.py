@@ -1369,6 +1369,68 @@ def test_cycle_controller_final_admission_preserves_consumed_slot_without_start(
     assert not any(call['action'] == 'start' for call in calls)
 
 
+@pytest.mark.skipif(sys.platform != 'linux', reason='Controller dispatch uses the original Linux supervised operation')
+@pytest.mark.parametrize('field,size,after_claim', [
+    ('input', 32767, False), ('input', 32768, False), ('input', 32769, False),
+    ('memo', 2047, False), ('memo', 2048, False), ('memo', 2049, False),
+    ('input', 32769, True), ('memo', 2049, True)])
+def test_cycle_controller_measures_actual_sdk_input_and_memo_at_both_send_gates(
+        controller_dispatch, monkeypatch, field, size, after_claim):
+    """Schema2 reaches the common H owner; schema3 execution remains closed.
+
+    Legal converter metadata expands the original fixed business shape. No extra
+    input or Memo fields, rewritten ready gate, or synthetic start request is used.
+    """
+    import asyncio
+    from temporalio.api.workflowservice.v1 import StartWorkflowExecutionRequest
+
+    _, admission, storage, operation = controller_dispatch
+    monkeypatch.setenv('ERGORA_TEST_CYCLE_DISPATCH_CAPACITY', json.dumps({
+        'field': field, 'size': size, 'after_claim': after_claim}))
+    result = asyncio.run(operation().run())
+    encodings = json.loads((storage / 'encodings.json').read_bytes())
+    exceeded = size > (32768 if field == 'input' else 2048)
+    attempt = admission.folder / 'attempt.json'
+    if exceeded:
+        assert result['status'] == 'capacity_exceeded', result
+        assert result['attempt_saved'] is after_claim and attempt.exists() is after_claim
+        assert not (storage / 'request.pb').exists() and not (admission.folder / 'receipt.json').exists()
+        assert not (admission.folder / 'rejection.json').exists()
+        if after_claim:
+            original = attempt.read_bytes(), attempt.stat().st_ino
+            observed = asyncio.run(operation(mode='reconcile-controller').run())
+            assert observed['attempt_saved'] and observed['status'] == 'unknown'
+            assert (attempt.read_bytes(), attempt.stat().st_ino) == original
+            assert json.loads((storage / 'encodings.json').read_bytes()) == encodings
+    else:
+        assert result['status'] == 'submitted', result
+        request = StartWorkflowExecutionRequest.FromString((storage / 'request.pb').read_bytes())
+        actual = request.input if field == 'input' else request.memo
+        assert actual.ByteSize() == size
+        assert (request.input.ByteSize() <= 32768 and request.memo.ByteSize() <= 2048)
+        assert [entry['claimed'] for entry in encodings] == [False, True, True]
+    calls = [json.loads(path.read_bytes()) for path in storage.glob('call-*.json')]
+    assert sum(call['action'] == 'start' for call in calls) == (0 if exceeded else 1)
+    assert all(entry['bytes'] == size for entry in encodings)
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Encoding consumes the original Linux supervised H window')
+@pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 4}], indirect=True)
+def test_cycle_controller_final_encoding_cannot_renew_the_claimed_window(controller_dispatch, monkeypatch):
+    import asyncio
+
+    _, admission, storage, operation = controller_dispatch
+    monkeypatch.setenv('ERGORA_TEST_CYCLE_DISPATCH_CAPACITY', json.dumps({
+        'field': 'input', 'size': 32768, 'after_claim': True, 'blocked': True}))
+    current = operation()
+    result = asyncio.run(current.run())
+    markers = Path(os.environ['ERGORA_TEST_CYCLE_MARKERS'])
+    assert result['status'] == 'unknown' and admission.submission()['attempt_saved'], result
+    assert (markers / 'dispatch-encoding-blocked').exists() and not (storage / 'request.pb').exists()
+    assert not recorded_process_is_active(json.loads((markers / 'dispatch-encoding-blocked').read_bytes()))
+    assert current.process.returncode is not None
+
+
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller dispatch uses the original Linux supervised operation')
 @pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 4}], indirect=True)

@@ -4,7 +4,7 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import nullcontext
 from contextvars import ContextVar
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import datetime, timedelta, timezone
 import hashlib
 import json
@@ -37,6 +37,7 @@ with workflow.unsafe.imports_passed_through() if workflow is not None else nullc
     from .training_cycles import _CycleCapacityError
     if workflow is not None:
         from temporalio.common import RetryPolicy
+        from temporalio.converter import DefaultFailureConverter, FailureConverter
         from temporalio.exceptions import ActivityError, ApplicationError
 
 
@@ -44,6 +45,29 @@ _CREATING = ContextVar('ergora_training_budget_create', default=None)
 _CYCLE_LIMIT = 32_768
 _REQUEST_RETENTION_PROTOCOL = 'ergora-training-cycle-request-retention-v1'
 _ROOT_OBSERVERS = set()
+
+
+if workflow is not None:
+    class _CycleFailureConverter(FailureConverter):
+        """Bound the complete SDK failure after the default converter builds its tree."""
+
+        def __init__(self):
+            self._default = DefaultFailureConverter()
+
+        def to_failure(self, exception, payload_converter, failure):
+            # Delegate the entire tree. Default recursion must never reenter this
+            # boundary and hide aggregate overflow by replacing individual causes.
+            self._default.to_failure(exception, payload_converter, failure)
+            if failure.ByteSize() > _CYCLE_LIMIT:
+                failure.Clear()
+                failure.message = 'Complete cycle SDK failure exceeds 32 KiB'
+                failure.application_failure_info.type = 'cycle_failure_capacity_exceeded'
+                failure.application_failure_info.non_retryable = True
+                if failure.ByteSize() > _CYCLE_LIMIT:
+                    raise _CycleCapacityError('Complete cycle SDK capacity failure cannot be encoded')
+
+        def from_failure(self, failure, payload_converter):
+            return self._default.from_failure(failure, payload_converter)
 
 
 class _RoundRetentionError(RuntimeError):
@@ -1397,7 +1421,9 @@ def _candidate_operation(payload: dict, plan: dict, admission, active) -> dict:
 async def _dispatch_controller(payload: dict, plan: dict, admission, active) -> dict:
     """SDK orchestration belongs to H; immutable claims belong to training_cycles."""
     from temporalio.common import RetryPolicy, WorkflowIDReusePolicy, WorkflowIDConflictPolicy
-    from temporalio.exceptions import WorkflowAlreadyStartedError
+    from temporalio.api.common.v1 import Memo
+    from temporalio.converter import WorkflowSerializationContext
+    from temporalio.exceptions import ApplicationError, WorkflowAlreadyStartedError
     from temporalio.service import RPCError
     from .reference_training_runtime import lookup_controller_submission
 
@@ -1434,6 +1460,17 @@ async def _dispatch_controller(payload: dict, plan: dict, admission, active) -> 
             if activity_context is not None and client.namespace != activity_context['service_namespace']:
                 raise ValueError('Actual controller query namespace differs from its SDK activity service')
 
+            memo_values = {protocol.CYCLE_MEMO_KEY: protocol.CycleAdmission._sha(intent)}
+            converter = client.data_converter.with_context(WorkflowSerializationContext(
+                namespace=client.namespace, workflow_id=intent['workflow_id']))
+
+            async def capacity():
+                await _cycle_capacity(intent['workflow_input'], converter)
+                memo = Memo(fields={key: (await converter.encode([value]))[0]
+                                    for key, value in memo_values.items()})
+                if memo.ByteSize() > 2048:
+                    raise _CycleCapacityError('Complete controller Memo exceeds 2 KiB')
+
             async def reconcile():
                 current = admission.submission()
                 if current['status'] == 'rejected' or not current['attempt_saved']:
@@ -1465,6 +1502,8 @@ async def _dispatch_controller(payload: dict, plan: dict, admission, active) -> 
                 if current is not None:
                     return await reconcile() if current['attempt_saved'] and current['status'] == 'unknown' else observation(
                         current, runtime_status='queried')
+                await capacity()
+                remaining()
                 if not training_cycles._claim_controller(state, admission):
                     return await reconcile()
                 # Claim/fsync, source reads and the original ready observation all consume this same window.
@@ -1475,6 +1514,7 @@ async def _dispatch_controller(payload: dict, plan: dict, admission, active) -> 
                     return await reconcile()
                 if not current['attempt_saved']:
                     raise ValueError('Original controller start attempt disappeared; do not dispatch again')
+                await capacity()
                 training_cycles._controller_ready(state, admission)
                 timeout = remaining()
                 try:
@@ -1482,7 +1522,7 @@ async def _dispatch_controller(payload: dict, plan: dict, admission, active) -> 
                         id=intent['workflow_id'], task_queue=intent['task_queue'],
                         id_reuse_policy=WorkflowIDReusePolicy.REJECT_DUPLICATE,
                         id_conflict_policy=WorkflowIDConflictPolicy.FAIL, retry_policy=RetryPolicy(maximum_attempts=1),
-                        memo={protocol.CYCLE_MEMO_KEY: protocol.CycleAdmission._sha(intent)},
+                        memo=memo_values,
                         rpc_timeout=timedelta(seconds=timeout))
                 except WorkflowAlreadyStartedError as error:
                     current = training_cycles._record_controller(state, admission, run_id=error.run_id or None, reason='start_conflict')
@@ -1490,8 +1530,11 @@ async def _dispatch_controller(payload: dict, plan: dict, admission, active) -> 
                 current = training_cycles._record_controller(state, admission, run_id=handle.result_run_id)
                 active()
                 return observation(current, runtime_status='start_acknowledged')
-    except (RPCError, TimeoutError, ValueError) as error:
-        return observation(admission.submission(), status='unknown', runtime_status='unconfirmed', reason=str(error))
+    except (RPCError, TimeoutError, ValueError, ApplicationError) as error:
+        exceeded = (isinstance(error, _CycleCapacityError)
+            or isinstance(error, ApplicationError) and error.type == 'cycle_activity_capacity_exceeded')
+        return observation(admission.submission(), status='capacity_exceeded' if exceeded else 'unknown',
+                           runtime_status='unconfirmed', reason=str(error))
 
 
 def _activity_operation_result(operation, result):
@@ -2416,7 +2459,7 @@ def create_cycle_activities(client, program_version: int = 1, *,
                             stop_permit: asyncio.Semaphore | None = None):
     """Load optional SDK decorators only for the enabled cycle service."""
     from temporalio import activity
-    from temporalio.exceptions import ApplicationError
+    from temporalio.exceptions import ApplicationError, CancelledError
 
     names = protocol.cycle_activity_names(program_version)
     version3 = program_version == 2
@@ -2594,9 +2637,23 @@ def create_cycle_activities(client, program_version: int = 1, *,
                             raise
                         raise ApplicationError('Original cycle activity allowance ended',
                             type='cycle_activity_request_rejected', non_retryable=True) from None
-                except _CycleCapacityError as error:
-                    logging.error('Cycle activity request capacity failure: %s', error)
-                    raise ApplicationError(str(error), type='cycle_activity_capacity_exceeded', non_retryable=True) from error
+                except CancelledError:
+                    raise
+                except Exception as error:
+                    if not version3:
+                        if isinstance(error, _CycleCapacityError):
+                            logging.error('Cycle activity request capacity failure: %s', error)
+                            raise ApplicationError(str(error), type='cycle_activity_capacity_exceeded', non_retryable=True) from error
+                        raise
+                    logging.exception('Complete original V3 cycle activity failure')
+                    error_type = ('cycle_activity_capacity_exceeded' if isinstance(error, _CycleCapacityError)
+                        else error.type if isinstance(error, ApplicationError) and error.type in (
+                            'cycle_activity_request_rejected', 'cycle_activity_capacity_exceeded')
+                        else 'cycle_activity_failed')
+                    message = {'cycle_activity_request_rejected': 'Cycle activity request rejected',
+                        'cycle_activity_capacity_exceeded': 'Complete cycle activity capacity exceeded',
+                        'cycle_activity_failed': 'Cycle activity failed'}[error_type]
+                    raise ApplicationError(message, type=error_type, non_retryable=True) from None
             return execute
         registered[action] = activity.defn(name=name)(build(action))
     return registered
@@ -2604,6 +2661,7 @@ def create_cycle_activities(client, program_version: int = 1, *,
 
 async def _serve_cycle() -> None:
     from perf_temporal.connection import connect
+    from temporalio.client import Client
     from temporalio.worker import Worker
 
     stopped = asyncio.Event()
@@ -2636,16 +2694,19 @@ async def _serve_cycle() -> None:
         if stopped.is_set():
             return
         client = connecting.result()
+        config = client.config()
+        config['data_converter'] = replace(client.data_converter, failure_converter_class=_CycleFailureConverter)
+        clients = {1: client, 2: Client(**config)}
         normal_permit, stop_permit = asyncio.Semaphore(1), asyncio.Semaphore(1)
-        activities = {version: create_cycle_activities(client, version,
+        activities = {version: create_cycle_activities(clients[version], version,
             normal_permit=normal_permit, stop_permit=stop_permit) for version in (1, 2)}
         for version, queue in ((1, protocol.CYCLE_TASK_QUEUE), (2, protocol.CYCLE_TASK_QUEUE_V2)):
-            workers.append(Worker(client, task_queue=queue, workflows=[create_cycle_workflow(version)],
+            workers.append(Worker(clients[version], task_queue=queue, workflows=[create_cycle_workflow(version)],
                 activities=[activities[version][action] for action in protocol.cycle_activity_names(version)
                             if action != 'stop'], max_concurrent_activities=1,
                 graceful_shutdown_timeout=timedelta(0), on_fatal_error=fatal))
         for version, queue in ((1, protocol.CYCLE_STOP_TASK_QUEUE), (2, protocol.CYCLE_STOP_TASK_QUEUE_V2)):
-            workers.append(Worker(client, task_queue=queue, activities=[activities[version]['stop']],
+            workers.append(Worker(clients[version], task_queue=queue, activities=[activities[version]['stop']],
                 max_concurrent_activities=1, graceful_shutdown_timeout=timedelta(0), on_fatal_error=fatal))
         running = [asyncio.create_task(worker.run()) for worker in workers]
         done, _ = await asyncio.wait((*running, waiting), return_when=asyncio.FIRST_COMPLETED)
