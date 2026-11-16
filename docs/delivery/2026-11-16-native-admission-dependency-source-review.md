@@ -2,7 +2,7 @@
 
 2026-11-16。Reviewer：fresh-context 独立代理 `native_admission_v2_source_review`，未参与设计或实施。按根／src／tests AGENTS、组件变更协议、maintainable-project-delivery independent-review 及 ergora-codebase-quality module-design／test-seams／repository-style 审查。唯一写入为本报告；未运行测试、业务 probe、安装、服务或模型，未访问网络、commit 或 push。
 
-**最新状态：最终 r4 移植／固定候选 `b3e734bad3d5a0ba01f69a61fd9328e0ab637f33` 的有限源码两轴 approve，本片开放 finding 0。** 已核 M5 r6 最后门接线保持，R1 平台标记修正保持。以下首审与同片复核快照保留原原因和身份；最终身份及未验边界见末节。新安装与完整 hook 无 SDK mandatory 不因此闭合。
+**最新状态：最终 r5 移植／固定候选 `bc58be6781d35e7e4fbd54ad997df8a4743428a8` 的有限源码两轴 approve，本片开放 finding 0。** 已核 M5 r7 当前实际intent及最后门接线保持，R1 平台标记修正保持。以下首审与同片复核快照保留原原因和身份；最终身份及未验边界见末节。新安装与完整 hook 无 SDK mandatory 不因此闭合。
 
 |审查轴|结论|本切片开放 finding|
 |---|---|---|
@@ -109,3 +109,26 @@ M5 r4 的开放问题不被本审关闭。当前 `native_main.active` 在 `proto
 原 M5 reviewer 已在其报告的准确r6节给出R4／R5源码修复实证处置；本次独立核对的是这些修复在最终native候选中的**身份及接线保持**，没有复跑或重新验收其红绿矩阵。前述“r5尚未冻结／M5最后门待修”是首审时点，已由这里的准确r6继承更新；这不表示完整M5安装／模板／最终验收已完成。
 
 **最终 r4 固定候选的有限源码需求／维护性两轴 approve，开放 finding 0。** 初审25项和平台修正2项运行继续只属于各自原输入；不能转写为b3e734ba新安装或新末端时序的运行成绩。最终候选仍须自己的新非editable core／SDK完整安装、实际site-packages与资源身份、正常所选无SDKvenv whole-hook，以及自身模板／独立终核和候选自己的必要CI。Windows未运行；M5原R1完整hook无SDKmandatory、M6／schema3效果、正式producer、真实两轮／GPU／训练质量均没有由本次身份复核关闭。
+
+## 最终 r5／M5 r7父身份复核
+
+2026-11-16，同一 reviewer 再作有限只读身份／接线复核，未运行测试、probe、模型或安装。原开发树HEAD仍a1ff338；fixed树当前分支 `feat/native-admission-dependency-v2-fixed-r5`，干净HEAD **`bc58be6781d35e7e4fbd54ad997df8a4743428a8`**，唯一父 **`5bcecf37b615e3708ceb08acc329ba3dd0470f4a`**（M5 r7）。M5 r6→r7原delta为8291B，SHA **`64250fa2be9d490fbd185a2a2455d4dba522bc625e74145dbd76a6054d47ff96`**；产品增量只有原共享protocol的六行，其余为既有fixture／submission测试。
+
+|r5冻结原件|bytes|raw SHA256|
+|---|---:|---|
+|`native-only-r5.patch`|44045|`3524d80f4d1c62688086cbaf9638ddc07c6d5a8f8f79118fecb87555273fbdc0`|
+|`source-freeze-r5.json`|2906|`2b2afcc66b496ad8d7595b66e472e75bcd9f20ce3b309a6dc913940d56e81cc8`|
+|`all-tracked-untracked-inputs-r5.json`|421972|`f8e9387b04db06ffb0b70de82c27cafcb3661f637ffa5a3b0a7d09a2bb3d9e6e`|
+|`product-inputs-r5.json`|145658|`4cab575528cb89c1ac9008b95fbb6e0170fea7b1325e245a6d2318ff14e56b15`|
+
+逐项重算原开发树和fixed树的11 changed／2019 all／665 product，全部raw bytes／SHA／执行位均与r5清单匹配。fixed父→candidate完整Git diff与native-only-r5.patch逐字相同；按文件忽略Git index及hunk位置元数据后，r5与已审r4 native-only patch正文完全相同，**本片行为没有新增漂移**。283原件仍逐项匹配；v2资源、reference、CLI、平台标记及离线版本／capability行为保持已审身份。
+
+最终protocol的 `authenticate_cycle_candidate`、`native_main`、`validate_context`、`_round_sources` AST逐一等M5 r7父；worker与Execution文件逐字等父，worker仍为885c1405…身份。独立沿真实当前intent生产路径核到：
+
+- `protocol.py:1535` 使用当前budget父目录的固定 `<ident>.intent.json`，`:1536` 复用 `ExecutionRecords.document` 并显式 `limit=16 * LIMIT`。有current owner则必须读到文件；存在时 `:1538` 以原 `_match`／canonical SHA核完整实际intent与调用者缓存，不只比ID、也不新设raw pin，语义不变的空白重编码仍合法。
+- `:1639` 在长前驱／来源读取结束后，以同一16MiB上限重读并比较入口实际值，再执行原parent／clock的active。入口已有文件后来删除会走必读失败，改义会canonical不等；原safe普通文件／NOFOLLOW／duplicate-key／JSON object边界保持。没有以JSON null伪装optional缺失的通路。
+- 真正unborn路径仍来自原 `reference_training_submission.py:349` 的prepare binding，早于 `:355` 写intent及更晚owner出生。仅当本地owner／intent均未出生时允许None；`:358` 写后复核面对现存intent。新六行不创建／修复intent，不增加调用者可信skip开关，出生前后由现存本地事实区分。本次核的是实际生产caller及已审r7算法的保留，未另跑unborn行为测试。
+
+worker三处H仍在 `:1210,1255,1281`；末H／final parent SDK／index／local gate后仍在`:1288`作共享纯全链认证。native最终`:1746`先parent.check，`:1749–1752`再核fence／owner及原clock，原attempt／ack同步后active调用保留。新当前intent检查没有覆盖或挪走这两项r6最后门修复，未重开原clock。
+
+**r5固定候选有限源码需求／维护性两轴approve，开放finding 0。** 父任务已告知r5新core／SDK各665产品身份通过、自身原结构模板Codex28.602s approve；本轮未独立核这些安装／模型原件或仍在运行的installed25终态，不将其算作本次证据。下一步由新的fresh最终组合审查核准确候选的新安装、完整whole-hook及实际运行终态。M5原R1保持open，直至真实whole-hook无SDK证据独立核实；本报告不将旧r4/r3成绩、父r7源码批准或模型结论转授未完成的安装／整片验收。Windows与M6／schema3 effects、正式producer、真实两轮／GPU／训练质量边界保持。

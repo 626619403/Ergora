@@ -2,7 +2,7 @@
 
 2026-11-16。审查者：fresh-context reviewer `m5_predecessor_source_review`。按 `maintainable-project-delivery` 的 independent-review 和 `ergora-codebase-quality` 的 module-design／test-seams／repository-style 审查。未参与实现；本次仅只读源码、冻结输入和既有证据，唯一写入为本报告。未启动 tests、probes、模型、服务、安装，未改 source／test／PLAN，未 commit／push。
 
-> 当前结论：新增独立静态核实R6／P2（共享认证未读取当前实际intent），准确r6需求源码结论更新为request-changes；R2／R3／R4／R5保持关闭，R1 whole-hook mandatory仍开放，完整M5未通过。新红例／修复未验；此前approve按当时范围保留，不作当前最终批准。
+> 当前结论：准确r7冻结源码的需求／结构两轴均为 scoped approve；R6已由真实r6红例、r7末端完整intent重读和准确source绿色关闭，R2／R3／R4／R5保持关闭。R1 whole-hook mandatory仍开放，完整M5未通过；新r7安装／自身模板／最终验收未由本次源码报告认证。历史request-changes与原始失败保留于下文。
 
 ## 首冻r1：两轴结论与适用范围
 
@@ -341,3 +341,54 @@ unborn prepare是实际合同，不应因新增检查被误拒绝。`reference_t
 当前intent原完整身份沿canonical SHA，读取合法JSON后比较完整语义即可；不要顺手引入当前文件raw pin或拒绝语义不变的空白重编码。前驱已接受observation的raw inventory／ref字节规则仍按各自原合同执行，不能因此被放宽。safe ordinary-file／symlink／duplicate-key边界和16MiB aggregate容量继续复用原reader；不扩为默认10MB，也不把合法大intent缩回1MiB。
 
 最小真实验证应沿当前final纯认证的一处真实阻塞读改变当前actual intent，保持缓存／owner／早轮原件不变，修前保留错误acceptance，修后unknown无acceptance且不重建／修复文件；覆盖缺失与改义的有意义关系，并保留unborn prepare和合法现存16MiB语义边界。作者新installed13 passed／346.70s只认证该批原行为，未加入新风险保护时不能据其关闭R6。R1完整hook另树最终安装同样独立，当前准确r6不具备最终无开放风险批准。
+
+
+## r7同片复审：当前实际intent完整重读，R6关闭
+
+本次仍只读实施源码、固定提交和既有终态证据；未运行test／probe／安装／模型／服务，唯一写入为本报告。保留r6发现和红例，不以新绿色改写历史。r7没有扩大产品边界；原candidate绑定、出生身份／source pins、六阶段、锁／父许可、attempt-before-send与unknown只对账保持原合同，schema3 effects／M6仍关闭。
+
+|范围／轴|准确r7结论|边界|
+|---|---|---|
+|共享全前驱／最后准入的需求源码|**approve，限定本节准确冻结**|R6关闭；R2／R3／R4／R5保持关闭，没有新增开放源码finding|
+|已有owner／模块结构与维护性|**approve**|完整intent检查留在同一共享认证，复用原safe reader／canonical比较／16MiB容量，无新模块、ledger、schema或可信跳过开关|
+|完整M5／whole native hook|**pending／未通过**|R1 mandatory仍开放；准确r7新安装／自身模板／最终整片验收须单独核实，本节不认证|
+
+### 准确输入与固定身份
+
+完整r7 patch `m5-g-source-r7.patch` 94,220B，SHA256 **`61e1e11fbbc582453b3afeba3d20786eb2347c279fea3b4969285c0121f3b017`**；`source-freeze-r7.json` SHA **`37a93c5e947e6cb24fb02c61302f4dd9c52f0b757d733e2c57b0df58d4452a77`**；`frozen-inputs-r7.json` SHA **`9dd92719f6542977f92f96c56641a2e6e6389595f7e851ad685c2ec10bdfafde`**。本reviewer逐项重算11个变更文件的raw bytes／SHA、665个product／pyproject输入的raw bytes／SHA与所列executable状态，全部相同。实际实施树相对原baseline `1f57ca46e3e10115e8dd8cd9537f0011f6f505e3` 的完整diff字节与上述patch相同。
+
+另直接读取固定树 `.ergora/worktrees/training-cycle-predecessor-gates-fixed-r2`：HEAD **`5bcecf37b615e3708ceb08acc329ba3dd0470f4a`**，父 `f6722141cfa9ed885993360161c004e47e8df3a5`，working tree干净；该HEAD相对同一baseline的完整diff亦为94,220B及同一r7 SHA。这仅固定源码，不代表已合并或完整验收。
+
+完整审阅r6→r7 delta `m5-g-r6-to-r7.patch`，8,291B，SHA **`64250fa2be9d490fbd185a2a2455d4dba522bc625e74145dbd76a6054d47ff96`**。增量恰为三个既有文件，产品只有共享protocol的六行；其余为同一故障fixture和既有submission测试的边界断言。所有11项仍是既有文件，无新文件／模块／CI分组。
+
+|r7增量文件|raw SHA256|bytes|
+|---|---|---:|
+|`src/ergora/training_execution_protocol.py`|`e16894b51d747b112d11dbc67afa5d6d4ee7a9fba5ac41884ff44661730f9976`|116336|
+|`tests/fixtures/training_cycle_operations.py`|`76cc2450a311b0d2b62bca88526995b92279a0dfae9131741a502406c6f74a12`|28816|
+|`tests/test_training_submission.py`|`9633abee4decca4b9f03ca6c203c868ab088e01cbfd7dd702c08a39912091629`|247363|
+
+### r6真实红例与原H输出
+
+`frozen-source-r6-current-intent-red.log` 为 **1 failed，4 deselected／18.09s**，runner returncode1／wall18.8076398503s；log raw SHA **`2c4225f2a653bd5abed5b8e65f646c55e3f2c2ac05ffcc5e563816c4a5d3f87e`**，result JSON SHA **`44faa752b35a76357537228fc377d9c19eaf5f0b34c746a7fc4868c5663c0c5f`**。原command明确使用 `source-freeze-r6.json` 产品，并仅把新红例输入加入原测试／fixture；保存的两份test-input raw SHA逐项与该command相同（submission `c2547fed…`，fixture `76cc2450…`），没有把r7修复产品称作r6红例。
+
+故障在ordinal1当前observation已落盘，最后共享认证的当前owner末端重读返回前暂停。fixture沿真实 `protocol.read_raw` 读取原件，调用栈同时限定 `authenticate_cycle_candidate`、已有 `result` 和直接caller `_round_operation`，没有替换认证结果或原intent缓存。测试只将当前actual intent的完整JSON `operation_id` 改为另一个32位身份；当前index／observation、owner和早轮链不改。marker的raw SHA由 `20d6acc7e061e8d8f1b3602aa0967d20d1022dda0c76c02eea9c0245a80ec82e` 变为 `d1fda836cc06be246f917a5be267496d0670ccab2f01ab721a8a4a4266d3a80c`，不是仅追加空白。
+
+直接读原operation `743b35e075ad4639bfb1172c2baed7eb` 的 `helper/stdout.txt` 和 `round-final-result`：H仍为observed，measurement有 `continuation_ready=True`、完整acceptance／prefix，父operation stopped=true／supervisor0；原断言是在确认当前index／observation原字节未变之后，因预期unknown却收到observed失败。该原输出证实R6是实际只读acceptance错误，不是仅凭私有helper推演，也不声称发生真实训练效果。测试finally恢复actual intent，原artifact中恢复后的SHA与marker before一致。
+
+### 六行共享修复的源码判断
+
+`authenticate_cycle_candidate:1513–1517` 读取当前owner后，以原固定 `.intent.json` 路径和 `ExecutionRecords.document(...limit=16 * LIMIT)` 读取actual intent；owner存在时不允许缺失。只要文件存在，完整canonical `_match` 必须与调用者原intent缓存相同，未只比较operation_id或另加raw pin。原 `decode:536` 强制顶层JSON object，因而optional缺失返回的None不会与文件内容JSON null混淆；原ordinary-file／NOFOLLOW／duplicate-key／容量规则继续生效。
+
+第1618–1620行的再次读取放在长前驱遍历、owner／ready／cycle复核及最后 `_round_sources` 全部返回之后，紧邻原final active。尾读与入口actual完整值比较：入口既存则尾部不允许丢失，语义变化拒绝；入口无owner且actual也未出生时，尾部仍允许真实缺失，而期间新出现的任何完整object与None不同，保守拒绝。owner在认证期间出生也仍由原owner前后比较拒绝。不新增调用者可传的allow_missing开关，也不重建／修复持久文件。
+
+unborn prepare在write intent和owner birth之前必须合法；本修复用现有本地存在性区分该阶段。合法现存intent追加LF仍按canonical值相同接纳，不把当前intent升级为raw字节pin。原前驱observation／inventory的raw pin没有因此放宽。末尾仍先完成identity读取，再进入原parent／work最后active；没有重置或续预算。r6保留的三次H archive／紧邻前轮phase读取及额外末端纯认证全部保持，R2–R5不重开。这里仍不把逐文件验证称为对抗同用户任意并发替换的原子快照。
+
+### 准确r7 source绿色及其限制
+
+`frozen-source-r7-affected-command.json` 指定准确实施tree、source-freeze-r7与上述665输入SHA，调用三个函数展开为四节点：新current-intent阻塞故障、扩展internal collect／reconcile、ordinal1／ordinal3完整早轮链。实际 `frozen-source-r7-affected.log` 为 **4 passed／69.57s**，runner returncode0／wall70.1858168598s；log SHA **`087cf012f878a1b2bb25f564e5866aef248289dfae38d3e6a0941cda1e5b8baa`**，result JSON SHA **`2e43a78053f8849404e442cda08c4e8e7bac17bc82f23b5dcacd15cd7a58bd31`**。
+
+直接读新故障operation `93ade55e64314ec49278351390787bec` 的原H stdout：`status=unknown`，reason为 **`Complete original current candidate intent differs from its complete original identity`**。原父result没有measurement continuation／acceptance／prefix，仍stopped=true／supervisor0；测试已核原当前index和observation字节保持。marker从 `9ec28a5ed7c38f374d2b62e663d9312b2ec64c081453d518283acc2eaa91f38d` 变为 `db82090262071b8a203bd689d6d5e28647cf08f1f39d6fa927beed3a8cae4caa`，故障作用于同一实际intent晚漂移边界。finally恢复后actual SHA回到before。
+
+扩展的既有internal测试先保留真实collect与reconcile，随后在现存owner下核actual intent追加LF通过、删除则FileNotFoundError，再原字节恢复；最后沿原 `_cycle_submission` 为ordinal1构造合法尚未出生的完整intent，回溯真实已接受round0，返回一个original且没有创建intent／owner。该测试直接覆盖缺失、canonical空白及unborn之间必要差异，没有假造verifier-pass或新增兼容开关。late existing→missing由尾部必读的同一代码路径静态核实；本节不虚构另跑过该故障。原16MiB限制在两处均明确保留；新四节点没有包含大reader，不写成r7重新跑过大reader或旧完整矩阵。
+
+以上真实红绿及源码核对足以关闭本finding，**R6关闭，准确r7需求／结构两轴scoped approve**。本节未取得并核验准确r7新installed5／自身原模板／最终整片终态，不将r6安装13通过或旧模型模板结论转授r7。独立source-v2依赖隔离仍属另树；**R1 whole-hook SDK-free mandatory与完整M5继续pending／未通过**，不授予schema3正向effects／M6。

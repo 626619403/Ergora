@@ -180,3 +180,32 @@ r6运行仅验证实际受影响worker：原final-blocking四参数（含新漂�
 同片reviewer已核r4真红／r6绿及末_H保留，R4／R5关闭，r6限定源码两轴approve；当时报告SHA `3d028dc01c237e4aa83cbc4d1345a52aee38507ae5640e42074f38ecfdce1b84`。随后根以r6安装SDK调用原结构模板，Codex79.601秒 **request-changes**，发现shared长链认证末端可能遗漏当前磁盘intent漂移。18完整文件858,633B、完整diff及三祖先资源进入955,359B stdin，SHA `262d40104a2c0370bb8f8622f69f0b40ee2df6951eb0235d4455008b4436a5ec`；原result SHA `60c5b39ef69c815689dd18ac012aba92a7415bb59ba28c7513effab5134d94cd`，保存在 `self-review-r6b-codex/`。所有改动文件完整提供；仅未提供无变化的reference.py全文，未截断任何已提供文件。r6首次私有review脚本误设2,000,000字节，被现有1,000,000上限在prepare阶段明确拒绝，未调用模型；失败目录／setup-error原件保持，修正仍沿原上限，未改产品容量。
 
 新增R6／P2由同片reviewer静态核实：shared构造current但只读owner，当前intent仍是caller缓存；较早H／Execution读取不足以覆盖最后完整链的阻塞窗口。实施owner正在准确r6作原fixture真实反例，随后按原canonical意图身份最小重读，不新增raw pin或caller可放宽开关，保留owner／intent均未出生的prepare合同。r6安装通过只归本r6；R6、R1仍开放，完整M5未通过，后继产品／新安装／自身模板及最终终核另验。
+
+
+### r6自身模板P2：当前实际intent缺口与r7语义修正
+
+父owner的新r6非editable安装13 passed／346.70秒保留；其后自身模板 `self-review-r6b-codex` 实际Codex79.600703秒、955,359B完整输入、exit0、decision=request-changes，指出shared authenticator仅验证caller缓存current intent和当前owner，却未读当前实际intent。实施owner先核真实路径：`prepare_binding` 在intent发布前构造BudgetedStart并require_active→source→shared，因此必须允许尚未发布intent／owner的原prepare；发布后的Budget.source、H的原_H认证及末端pure、Execution／native context同样调用shared。H的_cycletarget／local gate虽较早读实际文件，末端pure大读取期间仍可能过时。
+
+保持准确r6六个产品文件raw不变，只给既有final-blocking fixture增加 `round-final-current-intent` 一个反例。真实round0已接受、当前round1 observation已落盘后，在最终direct `_round_operation→authenticate` 的末端current owner原始读取返回前pause（已读完旧链）；仅改变当前beta.intent.json的合法operation_id，owner／旧链不动，当前round1 index／observation字节保持。既有上下层保护完整保留。原r6仍返回observed／continuation_ready=True，准确status断言失败：**1 failed／4 deselected／18.09秒**（wrapper18.80764秒）。原命令、日志、结果、before／after原raw SHA及错误接受原件在 `frozen-source-r6-current-intent-red-*`，准确红测试和fixture完整原件在 `r6-current-intent-red-test-inputs`，finally恢复原intent。这是实际内容漂移，不把合法空白变化称作语义漂移。
+
+r7产品只在原shared函数增加6行：入口沿existing `ExecutionRecords.document` 以原 `16*LIMIT`（16 MiB）读取当前实际intent；有owner时缺文件直接拒绝，实际文件存在时完整语义_match caller缓存。当前owner和intent均尚未出生仍允许原prepare；末端所有source I/O后再读完整语义及原存在性，入口已有文件时末端不得缺失，入口缺失时也不得静默换成新文件，随后仍走原stop／完整clock active。没有新函数、caller开关、pin、替代intent、State／SDK或ledger。当前intent沿原canonical JSON合同比较，合法空白继续允许；前驱的原raw inventory约束保持。
+
+在原collect／reconcile函数尾复用真实fixture补充必要合同验证：当前intent仅加LF仍能认证；当前owner已经出生而intent缺失会拒绝；下一个candidate1的真实未发布prepare对象在intent／owner都缺失时能纯认证原前驱，且两个文件仍未出生。新晚漂移反例能击穿仅入口早读的修法；这些检查没有开放schema3效果或伪造SDK来源。
+
+完整11文件 `m5-g-source-r7.patch` SHA为 `61e1e11fbbc582453b3afeba3d20786eb2347c279fea3b4969285c0121f3b017`；`source-freeze-r7.json` SHA为 `37a93c5e947e6cb24fb02c61302f4dd9c52f0b757d733e2c57b0df58d4452a77`；`frozen-inputs-r7.json` SHA为 `9dd92719f6542977f92f96c56641a2e6e6389595f7e851ad685c2ec10bdfafde`。665输入、25 gate／四measurement重冻，283实际PASS、纯protocol禁止模块空。相对r6的准确三文件 `m5-g-r6-to-r7.patch` SHA为 `64250fa2be9d490fbd185a2a2455d4dba522bc625e74145dbd76a6054d47ff96`，旧文件取原r6b scope且逐raw匹配r6冻结，当前r7 reverse apply --check通过；相对68f3241完整delta `m5-g-r4-to-r7.patch` SHA为 `d578d5e551f4a959fecd568f76acfcff37113079db10770e0ea96476806a976d`。未编辑独立native树或包副本。
+
+固定r7仅跑新增late-current-intent单项、扩展collect／reconcile、原k1／k3全链，实际 **4 passed／69.57秒**（wrapper70.18582秒、returncode0）。准确命令／日志／结果为 `frozen-source-r7-affected-*`。未重跑既有13／8／native／大reader批，旧结果仍只归各自固定候选；完整hook无SDK mandatory仍由独立片另验。运行后完整源／原件／进程与权限复核另记。
+
+r7终核已完成：full diff／11文件raw／665输入raw及执行位全部仍匹配固定r7，首冻、r2／r3／r4、r5探索与r6原patch全部保持，`git diff --check`通过。新增晚current intent原结果为unknown，原reason为 `Complete original current candidate intent differs from its complete original identity`，supervisor returncode0且operation_stopped=true。自有测试根去重191个完整原Linux身份当前live match=0、unknown=0，未信号任意PID。权限归一记录15,494目录700／39,920普通文件600或保留owner执行位700，跳过98个symlink；随后同范围实际读回15,494目录／39,921文件／98 symlink，权限偏差0（读回多含刚生成的归一记录）。
+
+终核原件为 `source-r7-integrity-and-identities.json`、`source-r7-permission-normalization.json`、`source-r7-permission-readback.json`；红／绿准确result SHA、晚intent拒绝原结果及边界状态索引在 `source-r7-boundary-summary.json`，SHA256 `5a2baf52898480f0ce2f125b59f6a9fba765c767fb0176533710574cb4bccfc3`。产品与测试不再修改，交父owner继续新r7非editable安装、原模板及fresh复核。独立native树、父owner包／模型原件未改；本实施owner无存活自有工具会话，无commit／merge／push、安装、模型调用、真实训练或外部服务操作。完整hook无SDK mandatory仍OPEN，schema3效果仍关闭，源码4项通过不等于完整M5验收。
+
+### 根：r7 新安装与原结构模板终态
+
+完整 r7 已固定为 `5bcecf37b615e3708ceb08acc329ba3dd0470f4a`，父 `f6722141cfa9ed885993360161c004e47e8df3a5`；相对 1f57ca4 的完整 patch 仍为 `61e1e11f…`。新非 editable core／SDK 各 663 产品文件的字节／执行位与源码、wheel 同一，283 参考与依赖检查通过；core 不含 Temporal，SDK 为 1.34.0，Python 3.12。wheel SHA256 为 `fafeede32f20d162a4b2977bb121afef80a8df48e07dcda720e44c4d37a3a02e`。853 构建／测试输入、179 测试／示例副本冻结，六个生成 egg-info 文件按准确原件归档后移除。
+
+安装受影响组 **5 passed／148.89 秒**（driver 150.153 秒、exit 0）：末端当前 intent 漂移、collect／reconcile 的 canonical／missing／unborn 合同、k1／k3 全链和原完整容量 reader。命令、JUnit、日志、原件为私有 `package-r7/installed-affected-r7-*`。没有无理由重跑 r6 的 13 项或同 raw native 五项，旧结果只保留原候选范围。
+
+同一安装 SDK 使用 `refactoring-quality → ergora-structure-review@1.0.0`，Codex **67.198 秒、request-changes**；仅重申已知 R1 完整 hook 无 SDK 前置，没有新增接线 finding。18 个完整文件 862,310B、完整差异与三祖先资源全部进入 963,759B stdin，SHA256 `5c20e359784202e0da60506c4984414f8b20a477ec206e056bcfe4cc2c911316`；原 result SHA256 `d3423a6ec31f1a9cdb992a4a960f1714a2e1c8b451f28616594163829ef78974`，见 `self-review-r7-codex/`。保留该历史判定，不为消除文字上的 request-changes 反复调用模型。
+
+同片源码 reviewer 已关闭 R2–R6，限定需求／维护性通过，报告 SHA256 `8e7a72954e74af7568f67b829a6f49db3df6487a7f179cd56404b073057e9e23`。R1 由[原生依赖隔离独立片](2026-11-16-native-admission-dependency-isolation.md)的最终安装 whole-hook 证据解决，须新 fresh 联合终核后才能关闭；尚未导入或认证正式 M6／schema3 效果。安装原件与捕获身份另做终核。

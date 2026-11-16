@@ -16,9 +16,11 @@ M1b storage-only产品67ab9b4已导入23ad171，源码24＋12、旧v1 history三
 
 [父请求有界留存](delivery/2026-11-16-training-cycle-parent-request-retention.md)已闭合：固定产品`1f57ca46e3e10115e8dd8cd9537f0011f6f505e3`，原47,112B patch、源码22＋8、安装22＋8、完整663包／853输入、自身模板及fresh终核两轴approve／0；普通导入c4c0946。联合公开候选`debf6f96ed02620d22adc0ac6385c72641b3d53b`已推送／远端同一，自己的push／attempt1 [43784344936](https://github.com/626619403/Ergora/actions/runs/43784344936)官方01:31:47Z确认completed／success，八job全success，group5为17分31秒／Windows23分48秒、原时限不变。原403配额失败保持，不转授后继。
 
-**当前M5-G前驱／最后gate接线。** [设计](plans/2026-11-16-training-cycle-predecessor-native-gates.md)已fresh两轴approve／0；[交付](delivery/2026-11-16-training-cycle-predecessor-native-gates.md)固定基线1f57ca4。r1–r5原失败／红例／方向探索分开保留。r6恢复全部原_H，并在最后SDK/index/local后加必要纯认证；固定源`f6722141cfa9ed885993360161c004e47e8df3a5`／全patch3a56cf99，worker8过138.86秒＋同字节protocol五native过，184捕获身份无活匹配；fresh核R2–R5关闭。新非editable core／SDK各663字节／执行位同一、283／依赖过，安装 **13 passed／346.70秒**。自身原模板Codex79.601秒再request-changes，新增R6／P2当前磁盘intent在长认证期间漂移可能漏重读，独立静态核实；原fixture反例与r7修正进行中。R1完整无SDKhook仍由source-v2独立片承担，schema3效果不开放。CI[有限调查](delivery/2026-11-16-predecessor-gates-ci-budget-analysis.md)preparation一完整文件5→1候选未提交；旧r4 collector2322及两项改名映射不转授后继最终collector／fresh配置审／自身CI。
+**当前M5-G前驱／最后gate接线已完成最终r7安装，待新fresh联合终核。** [交付](delivery/2026-11-16-training-cycle-predecessor-native-gates.md)固定产品`5bcecf37b615e3708ceb08acc329ba3dd0470f4a`，11文件patch61e1e11f。r1–r6原失败／红例／探索保持；r7最小六行补实际current intent完整canonical与存在性末端重读，保留unborn。源码4过69.57秒，新core／SDK各663同字节／执行位，283／依赖过，安装 **5 passed／148.89秒**。原模板Codex67.198秒request-changes只重申已知R1、无新接线finding；同片源审关闭R2–R6。R1由下述native最终whole-hook证据交新fresh联合终核，不反复模型刷判定，不开放schema3。
 
-**完整hook无SDK独立前置。** [source-v2方案](plans/2026-11-16-native-admission-dependency-isolation.md)及[fresh设计审](delivery/2026-11-16-native-admission-dependency-design-review.md)静态两轴approve／0，源码25／119.99秒和v1真禁SDK失败保持。新增Linux范围mark P2已修、同片核2／9.49秒关闭；同步M5 r6后native-only r4 patcha0abc3ba（11文件／665产品／2019输入），固定候选`b3e734bad3d5a0ba01f69a61fd9328e0ab637f33`（父f672214），[源审](delivery/2026-11-16-native-admission-dependency-source-review.md)有限两轴approve／0。新core／SDK完整665字节／执行位同一、283／依赖过；行为／wholehook／原模板待最终M5 R6修正同步后验，不把包身份核验称行为通过。[交付](delivery/2026-11-16-native-admission-dependency-isolation.md)持续更新。
+**完整hook无SDK前置已完成最终r5安装，待联合终核／导入。** [交付](delivery/2026-11-16-native-admission-dependency-isolation.md)固定`bc58be6781d35e7e4fbd54ad997df8a4743428a8`，唯一父5bcecf3；native-only 11文件patch3524d80f，2019／665输入冻结、两树同一，同片[源审](delivery/2026-11-16-native-admission-dependency-source-review.md)两轴approve／0。新非editable core／SDK665同字节／执行位、283／依赖过，安装 **25 passed／161.78秒**。正常选定native解释器首次executor导入前禁SDK／State／YAML／schema，v2真实native_main/callback在9,999,999及10,000,000B达到原schema3闭门且SDK未加载；v1真实禁SDK失败保持。自身原模板Codex28.602秒approve。安装原件／进程身份审计及新fresh联合终核接续，M6／训练效果另验。
+
+最终[CI再平衡](delivery/2026-11-16-predecessor-native-ci-balance.md)候选四完整既有文件5→1，六组86文件／Windows／时限保持。准确855输入仅替JSON、原collector **2335**，与同产品旧单文件配置node multiset同一；对父留存2317净增18／四改名映射无删除，搬移原87／最终89节点。组数354／444／410／453／315／359，原selector组1／5重放444／359。JSON8ffe961f已fresh两轴approve／0、固定55dc51c，待联合产品普通推送／准确候选自己的官方CI；旧r4／单文件历史不转授。
 
 [M6正式V2／完整M1c与真实两轮设计](plans/2026-11-16-training-cycle-v2-runtime.md)已fresh静态两轴approve／0，尚未实现。已完成[真实CPU素材只读清点](delivery/2026-11-16-training-cycle-v2-cpu-prerequisites.md)：现有正例仅N1，后续须两个新候选各自manifest／review、新schema3出生及实际现场，旧pin／clock不升级。M5不单独开放执行；ordinal1／schema3效果、正式v3 producer及真实两轮仍待验，GPU／训练质量独立未认证。
 
@@ -32,7 +34,7 @@ M1b storage-only产品67ab9b4已导入23ad171，源码24＋12、旧v1 history三
 
 **WA1–WA3 三份审计已收，WA4 详细方案仍为草案。** 用户新增的历史研究复用、任意循环、硬脚本／人工 Hook、调研设计前人类反复讨论与缺失公司知识提问均已[完整登记](plans/2026-11-15-workflow-evidence-and-human-gates.md)。[研究复用](delivery/2026-11-15-workflow-research-reuse-audit.md)、[实际 runtime](delivery/2026-11-15-workflow-runtime-capabilities-audit.md)、[设计／知识关卡](delivery/2026-11-15-workflow-design-knowledge-audit.md)审计明确现状：自有定义／StageDAG＋Temporal；受限嵌套串并行和既有批准／检查存在，通用 Repeat、任意非 Agent Hook和 typed 问题／答复／设计修订硬关卡尚未实现。已[汇总详细方案、客观验收和 D1–D4 产品取舍](plans/2026-11-15-workflow-design-and-execution-evolution.md)；先完成手头授权工作，再与用户讨论，不把设计写成已实施。
 
-WA4三项异步讨论已获用户明确答复，D1–D4均采用建议；[原答复及决定](delivery/2026-11-16-workflow-design-decisions.md)已保存。新profile对框架／结构重构／重要变化强制设计；项目／模板最低必答、单owner决定、免答明确记录、新revision与重要变化重批、沉默非同意；先设计／知识关卡，再可信检查，与当前训练循环并行，最后通用Repeat／混合画布。[WA5a／b详细设计](plans/2026-11-16-design-knowledge-gates.md)r2 SHA5360d993补齐G1冻结policy原件路径与withdraw尾部恢复，经[新fresh设计审](delivery/2026-11-16-design-knowledge-gates-design-review.md)需求／维护性两轴approve／0。已启动独立WA5a-1 typed材料／完整读取与Q/K缺项只读检查；旧admission无design policy时明确inspection-only、runtime_enforced:false，不把packet自报owner升级身份。不注册input12／新writer，不改默认模板，新runtime门未实施。
+WA4三项异步讨论已获用户明确答复，D1–D4均采用建议；[原答复及决定](delivery/2026-11-16-workflow-design-decisions.md)已保存。新profile对框架／结构重构／重要变化强制设计；项目／模板最低必答、单owner决定、免答明确记录、新revision与重要变化重批、沉默非同意；先设计／知识关卡，再可信检查，与当前训练循环并行，最后通用Repeat／混合画布。[WA5a／b详细设计](plans/2026-11-16-design-knowledge-gates.md)r2 SHA5360d993补齐G1冻结policy原件路径与withdraw尾部恢复，经[新fresh设计审](delivery/2026-11-16-design-knowledge-gates-design-review.md)需求／维护性两轴approve／0。WA5a-1 [只读typed材料检查](delivery/2026-11-16-design-packet-inspection.md)五文件已冻结patch cfde3166，2053输入同一，源码118 passed／25.11秒、原283保持；r1新非editable core／SDK666及安装118过；fresh发现真实原生解释器缺jsonschema，原模板另提重复source ID与报告媒体两P2，正在同片核实修正，不能以r1安装绿代真实native seam。旧admission无design policy时明确inspection-only、runtime_enforced:false，不把packet自报owner升级身份。不注册input12／新writer，不改默认模板，新runtime门未实施。
 
 ## 接续顺序与可验收节点
 
@@ -44,9 +46,9 @@ WA4三项异步讨论已获用户明确答复，D1–D4均采用建议；[原答
 |P1 c1b2|af176cf产品同97a0bbf；新包／自身模板／终审闭合；安装8+新冻1分别记账，SDK-free保持；真实N32完整／unknown／容量及收尾通过；已导入6918095，发布待CI分组收尾|[服务交付](delivery/2026-11-16-training-cycle-service.md)|
 |P0 CI测试分组／Windows skip|879自己的43752183692终态failure及Windows原四错保持。c52已fresh两轴approve／0并随df43660普通推送／精确远端同一；自己的43755708928终态success，plan／六Linux／Windows八job全success，group5 17分29秒在原时限；只认证df43660，隔离Workflow另验|[CI分组计划](plans/2026-11-16-training-ci-shards.md)／[Windows修正](delivery/2026-11-16-windows-sdk-fixture-skip.md)|
 |P1 c1c|ec6dcbc终审两轴approve／0并导入5b04b2b；文档随fa2fd17普通推送／远端精确同一，自己的官方43766716392八job全success。仍严格首轮ordinal0|[首轮交付](delivery/2026-11-16-training-cycle-workflow-first-round.md)／[现场](delivery/2026-11-16-training-cycle-workflow-live-acceptance.md)／[最终审查](delivery/2026-11-16-training-cycle-workflow-final-review.md)|
-|P1 c1d|r6源8＋同raw native5过、新安装13过，R2–R5关闭；新自身模板提出current intent R6/P2，原反例／r7最小修正进行中。R1无SDK前置独立；M6正式V2／实际两轮仍未实施|[M5交付](delivery/2026-11-16-training-cycle-predecessor-native-gates.md)／[M6设计](plans/2026-11-16-training-cycle-v2-runtime.md)|
-|P1 M5真实hook依赖前置|Linux mark已核关闭，r4源审0，固定b3e734b接M5r6、新core／SDK665身份已过；待接M5 R6最终修正后wholehook行为／原模板／终核，不改283／v1、不补旧pin|[依赖片交付](delivery/2026-11-16-native-admission-dependency-isolation.md)|
-|P1 WA4→WA5a／b|D1–D4已确认，详细设计r2新fresh两轴approve／0；独立a-1只读typed材料／QK检查实施中，执行门与源journal写入后继独立验|[详细设计](plans/2026-11-16-design-knowledge-gates.md)／[已确认决定](delivery/2026-11-16-workflow-design-decisions.md)|
+|P1 c1d|最终r7/5bcecf3源码4、新安装5过，R2–R6关闭；原模板仅已知R1。接native最终证据及安装收尾，新fresh联合终核后导入；M6／实际两轮另验|[M5交付](delivery/2026-11-16-training-cycle-predecessor-native-gates.md)／[M6设计](plans/2026-11-16-training-cycle-v2-runtime.md)|
+|P1 M5真实hook依赖前置|r5/bc58be6接最终r7，新core／SDK665身份过、安装25过、v2实际禁SDK native reader过、原模板approve；收尾及新fresh联合终核，保留v1失败，不改283／旧pin|[依赖片交付](delivery/2026-11-16-native-admission-dependency-isolation.md)|
+|P1 WA4→WA5a／b|D1–D4确认、设计r2 fresh通过；a-1 r1五文件冻结、源码118／新安装118过；fresh发现native缺jsonschema、原模板提出两P2，先修真实原生边界与source/report检查，再新冻验收；执行门与源journal写入后继独立验|[详细设计](plans/2026-11-16-design-knowledge-gates.md)／[已确认决定](delivery/2026-11-16-workflow-design-decisions.md)|
 |P1 R1–R3／WA5c|逐 finding独立验证、成对eval和可信非Agent检查。不能以Claude产品能力或提示词冒充当前runtime|[审查演进计划](plans/2026-11-15-review-validation-evolution.md)／[设计演进方案](plans/2026-11-15-workflow-design-and-execution-evolution.md)|
 |P1 Q5.2／Q6|按实际调用证据细化可维护性重构；最终严格全面审查、手册／示例／脚本／组件协议与发布。kernel专家保留在v3路径|[领域／优化／质量计划](plans/2026-11-15-domain-review-optimization-quality.md)|
 |P2 WA5d／e|本域闭环后再设计一般有界Repeat和混合图，随后CLI／页面／交接；沿原编译与Temporal|[设计演进方案](plans/2026-11-15-workflow-design-and-execution-evolution.md)|
@@ -80,8 +82,8 @@ WA4三项异步讨论已获用户明确答复，D1–D4均采用建议；[原答
 ## 压缩／换机恢复清单
 
 1. 先核本页、Git HEAD／分支／diff与在跑进程，不重复启动现有回归或训练。旧摘要不能覆盖原JUnit／receipt与准确候选。
-2. M2／父留存各自八job成功。M5当前r6/f672源与新安装13过、R4／R5关闭，但自身模板新增R6当前intent漂移，原反例／r7在途；不重启旧批或转授成绩。native r4/b3e734b有限源审0、core／SDK665身份过，接最终M5 delta后再验wholehook；M6各自另验。
+2. M2／父留存各自八job成功。M5最终r7/5bcecf3安装5过、R2–R6关闭，模型仅已知R1；native最终r5/bc58be6安装25过、真实正常前缀禁SDK完整hook过、原模板approve。收尾／新fresh联合终核后普通导入；不重启旧批、不转授结果。CI新四文件配置2335真实collector／selector过、fresh两轴approve／0、已固定55dc51c，待自己的CI。M6各自另验。
 3. 前片CI准确失败须保留，不把限额／403／未知改成success；独立候选修复与自己的CI分别记录。
 4. Windows四行修正610f111自己的43777200480八job全success，833原五setup errors保持。CI两文件再平衡已独审导入a01570a，合并2295 collector只新增M2的26节点，无删除；正式运行时限仍由新联合候选自己的CI认证，不借旧CI。
-5. WA1–WA3已完成、D1–D4明确确认，不重复问。WA5a／b设计r2已fresh两轴approve／0，a-1独立实施typed材料只读检查；恢复先核其worktree与交付，不启临时v12或借packet自报信息批准。训练／依赖片继续各自验收。
+5. WA1–WA3已完成、D1–D4明确确认，不重复问。WA5a／b设计r2已fresh两轴approve／0，a-1 r1源码／安装118过、五文件冻结；fresh真实native依赖与原模板两P2待修，勿转授r1绿；恢复先核其worktree与交付，不启临时v12或借packet自报信息批准。训练／依赖片继续各自验收。
 6. 每个节点完成更新本页及所属交付。当前事实与历史分开，具体数值／原件留所属交付，本页只保留可恢复的活动状态。

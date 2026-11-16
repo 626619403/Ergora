@@ -1,6 +1,6 @@
 # 前驱链与 native-v2 联合候选的 CI 再平衡
 
-2026-11-16。实施基线 `3a57987dcca17395d7fd993843c28255013e2970`；实际收集产品为 `bc58be6781d35e7e4fbd54ad997df8a4743428a8`，包含 M5 r7。当前配置待 fresh 独立审查，尚未提交或取得自己的官方 CI。这里的 collector 只证明收集与归属。
+2026-11-16。实施基线 `3a57987dcca17395d7fd993843c28255013e2970`；实际收集产品为 `bc58be6781d35e7e4fbd54ad997df8a4743428a8`，包含 M5 r7。配置已由[新 fresh 独立审查](2026-11-16-predecessor-native-ci-balance-review.md)需求／维护性两轴 approve、finding 0，固定提交 `55dc51c`；尚未取得自己的官方 CI。这里的 collector 只证明收集与归属。
 
 唯一产品配置修改为 `scripts/ci/linux-groups.json`：将四个完整既有文件 `test_training_preparation.py`、`test_task_budget.py`、`test_training_runner.py`、`test_training_runtime.py` 从 group5 移至 group1。保留六组、86 个唯一文件、全部测试正文、Windows all、Linux 20／Windows 30 分钟、原 job 和上传逻辑。
 
@@ -25,4 +25,4 @@
 
 `comparison.json` 保存完整新增集合和四个改名：ordinal3 完整链参数、source-sync 出生参数、旧 CLI 的显式 v1 后缀、旧 history 的 None 后缀。原始集合为移出4／移入22，不能称字面 node ID 全不变。该记录与 `collector-result.json`、`identity.json`、原 collector request／phases／stdout、855 项复制身份共同保存，不改写此前单文件候选或 r4 收集结果。
 
-下一步：fresh 独立配置审查；通过后将最终产品与该配置普通导入／推送，核准确远端和自己的官方八 job。在此之前没有测试正文、Windows、最终时长或官方成功认证；不重复无变化总批来替代正式 CI。
+下一步：最终产品联合终审通过后与已审配置普通导入／推送，核准确远端和自己的官方八 job。在此之前没有测试正文、Windows、最终时长或官方成功认证；不重复无变化总批来替代正式 CI。

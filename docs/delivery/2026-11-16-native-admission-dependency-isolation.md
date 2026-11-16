@@ -82,3 +82,21 @@ v1在同样禁SDK入口真实returncode1，trace保持 `training_executor → tr
 原开发树HEAD仍a1ff、未reset；精确接入M5 r4→r6 delta后，另在新固定树以 `f6722141cfa9ed885993360161c004e47e8df3a5` 为父生成native候选 `b3e734bad3d5a0ba01f69a61fd9328e0ab637f33`。native-only r4仍11文件，44,045B／SHA256 `a0abc3ba3a44055f125284bf693b8f7449b56d38137456ca90de5abda46db4a6`；相对本片r3仅新增已审Linux mark及M5父上下文变化，native原产品逻辑未另扩。`source-freeze-r4.json`、2019全输入和665产品逐raw／执行位匹配两树，三处_H、末端纯链及parent→clock顺序保持；同片有限源审两轴approve／0，报告SHA `f699fed34d78c2dd3e19f14235daaf0c0c659023f4a90d043ff6172a3c8a9ea4`。
 
 新非editable wheel `3351ce085bf6721b046ab7991cdd8612a7a64837bf849ae5b47cab4448c506a0`的core／SDK各665完整产品字节／执行位同源及wheel、283参考／依赖通过，855构建测试输入、179测试／示例副本保持；六个生成egg-info已按准确原件归档移除。仅核包身份，**未在本r4执行新的wholehook行为批**。其后M5自身模板新增current intent R6／P2，正在原r6复现／r7修正；根暂缓本片最终行为验收，先接确切后继delta，避免把即将变化的父产品包装成最终结果。旧r3源码25／r4包身份各保原范围，不能转授新候选。
+
+## 最终 r5：接入 M5 r7、真实安装 whole-hook 与原模板
+
+最终固定候选 `bc58be6781d35e7e4fbd54ad997df8a4743428a8` 的唯一父为 M5 r7 `5bcecf37b615e3708ceb08acc329ba3dd0470f4a`。native-only 仍 11 文件／44,045B，`native-only-r5.patch` SHA256 `3524d80f4d1c62688086cbaf9638ddc07c6d5a8f8f79118fecb87555273fbdc0`；2019 全输入清单 SHA256 `f8e9387b04db06ffb0b70de82c27cafcb3661f637ffa5a3b0a7d09a2bb3d9e6e`、665 产品清单 `4cab575528cb89c1ac9008b95fbb6e0170fea7b1325e245a6d2318ff14e56b15`。同片 fresh 源码 reviewer 核两树、严格版本身份和 M5 的最终 intent／clock／phase 语义，限定需求／维护性均 approve、开放 0，报告 SHA256 `4e8561a4b98af1a259469d0d9cb38cd569b3d2f499bc31d1c6c3241010950251`。这不是安装验收的替代。
+
+新非 editable wheel SHA256 `3c1ddaeb816d20841525d0be1f3139a59d0b62daaa98e14a75857481ce6e2fa7`；core／SDK 各 665 完整产品字节／执行位同源码和 wheel，283／依赖检查通过，core 无 Temporal、SDK 1.34.0、Python 3.12。855 构建／测试输入与 179 测试／示例副本冻结，六个生成 egg-info 文件准确归档后移除。私有原件为 `package-r5/`。
+
+同一冻结输入的安装组 **25 passed／161.78 秒**（driver 162.864 秒、exit 0），包括 reference／版本选择 17 项、原 CLI loader 两分支 2 项、history 2 项、v1／v2 完整容量 2 项及 schema3 闭门／completed 早读 2 项。准确命令、JUnit、日志、case 原件为 `installed-affected-r5-*`。
+
+完整 native 路径原件在两份 `test_round_complete_observatio{0,1}/native-reader-results.json`：
+
+- v2 在选定无 SDK venv 的正常 `-P` 入口、首次 executor 导入前阻止 SDK／State／YAML／schema 导入，真实 `native_main → native callback` 读取 9,999,999B 和 10,000,000B 原前驱，均到达原 `Schema3 controller execution is not enabled`，`executor_sdk_loaded:false`。另外的 `-S` 纯认证单列，不冒充 whole-hook。
+- 同一实际入口对 source、四 measurement、descriptor／manifest／ROOT 漂移均明确拒绝。fixture 复制完整 byte-identical 已安装包以供 native child 使用；没有伪造 sys.prefix、SDK、来源 pin 或关闭原 verifier。
+- v1 禁 SDK 的原真实 rc1／executor→training→client→Temporal traceback 保留；允许 SDK 后到同一 schema3 闭门且 loaded=true。M+1 原容量拒绝仍由原测试验证，没有对超限输入调用 native reader；不能声称旧 v1 具备无 SDK 能力。
+
+同一安装 SDK 运行原 `refactoring-quality → ergora-structure-review@1.0.0`，Codex **28.602 秒、approve**。16 个完整文件 830,415B、完整 native 差异和三祖先资源全部进入 880,790B stdin，SHA256 `3c9d56cabfea2bf7a5ff5aaba01db8be996c40b75e98c602350378cbff7b0ab0`；原 result SHA256 `a102abc50fc17f2a6325bf703b6d9c0c930d057e244d946b5bdfc5eae9c87549`，见 `self-review-r5-codex/`。
+
+待安装原件／捕获身份终核与新 fresh 联合证据审查后决定 M5 R1 关闭及普通导入。源码、安装、模型各自 scope 保持；未运行训练、正式 V2 producer 或真实两轮，schema3／ordinal1 效果仍关闭，不称 runner／控制面／tracking 无依赖。
