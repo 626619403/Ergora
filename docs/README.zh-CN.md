@@ -23,7 +23,7 @@
 |指南|适用内容|语言状态|
 |---|---|---|
 |[模板入门旅程](TEMPLATE_WALKTHROUGHS.md)|治理／重构／训练提案的完整旅程与 manifest|中文；第三批完成完整双语|
-|[Agent 定义](AGENT_DEFINITIONS.md)|独立专家定义、资源与不可变版本|中文；第三批完成完整双语|
+|[Agent 定义](zh-CN/AGENT_DEFINITIONS.md)|独立专家定义、资源与不可变版本|[English](AGENT_DEFINITIONS.md) / [中文](zh-CN/AGENT_DEFINITIONS.md)|
 |[Agent 后端](zh-CN/AGENT_BACKENDS.md)|真实角色／模式支持、后端配置、正式执行和会话恢复|[English](AGENT_BACKENDS.md) / [中文](zh-CN/AGENT_BACKENDS.md)|
 |[工作流定义](WORKFLOW_DEFINITIONS.md)|嵌套引用、资源继承、权限、图编译、manifest 和显式叶调用|中文；第三批完成完整双语|
 

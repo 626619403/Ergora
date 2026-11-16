@@ -23,7 +23,7 @@ Control-plane installation does not start services, authenticate a model or enab
 |Guide|Use it for|Language status|
 |---|---|---|
 |[Template walkthroughs](TEMPLATE_WALKTHROUGHS.md)|Complete governance/refactoring/training-proposal journeys and manifests|Chinese; full pair queued in batch 3|
-|[Agent definitions](AGENT_DEFINITIONS.md)|Independent specialist definitions, resources and immutable versions|Chinese; full pair queued in batch 3|
+|[Agent definitions](AGENT_DEFINITIONS.md)|Independent specialist definitions, resources and immutable versions|[English](AGENT_DEFINITIONS.md) / [中文](zh-CN/AGENT_DEFINITIONS.md)|
 |[Agent backends](AGENT_BACKENDS.md)|Actual role/mode support, backend configuration, formal execution and session recovery|[English](AGENT_BACKENDS.md) / [中文](zh-CN/AGENT_BACKENDS.md)|
 |[Workflow definitions](WORKFLOW_DEFINITIONS.md)|Nested references, resource inheritance, permissions, graph compilation, manifests and explicit leaf calls|Chinese; full pair queued in batch 3|
 
