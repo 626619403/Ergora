@@ -74,3 +74,15 @@
 至此，两轴 approve 和 R1 关闭只适用于准确 `bc58be6781d35e7e4fbd54ad997df8a4743428a8` 及其 M5 r7 父、显式 source-v2 新安装与上述验收范围。允许普通集成这一产品；CI 四文件配置另由其独立审查负责，本报告没有把 collector、旧候选 CI 或 Windows 未运行项当作正文／平台／时长验收。准确公开候选自己的官方 CI 仍须另记。
 
 所有 schema3／ordinal1 start、create、request、launch、native 正向效果仍关闭；旧 v1／schema1/2／owner／pin／clock 不升级。M6 的正式 producer／runtime、完整 M1c、真实两个新候选 CPU 轮次、schema3 permit／晚阶段正向与故障、GPU／训练质量均留后继同候选验收，不由本报告授予。
+
+## 同片普通集成身份复核
+
+2026-11-16，追加只读身份及冲突处理复核。准确普通合并提交为 `1308e32833c8174351906429902190cbaa2a3aa7`，第一父 `bc35acd9d8d755042205c5626cc4badc52e7a91e`，第二父为已审 native r5 `bc58be6781d35e7e4fbd54ad997df8a4743428a8`，其 M5 r7 父链完整保留。
+
+独立静态重核集成树：665 个完整产品文件的名字、raw bytes／SHA 和执行位均与 native package-r5 的冻结产品及实际 wheel 一致；wheel SHA 仍为 `3c1ddaeb816d20841525d0be1f3139a59d0b62daaa98e14a75857481ce6e2fa7`，`src/ergora` 相对已审候选无差异。855 项冻结输入只有 `scripts/ci/linux-groups.json` 和 `tests/test_training_cycle_controller.py` 两处预期差异。
+
+CI JSON 逐字等已独审提交 `55dc51ccad454d978319a06e38f4fb3a1ce1d70f`，SHA256 为 `8ffe961f3e4578485186d864430b9f93becf5eed81bea37338a6aa0015e685ab`；六组、86 文件的完整 inventory multiset 相对候选不变，无删除或重复。配置的需求／维护性结论沿[原 CI 分组审查](2026-11-16-predecessor-native-ci-balance-review.md)保持，不把合并后的全部 JSON 差异概括为仅本轮四文件搬移。
+
+controller 测试相对已审候选仅增加三条主线已有的 Linux skip，分别位于 `test_schema3_birth_retains_sources_bytes_and_one_clock`、`test_schema3_intent_is_local_and_all_execution_entries_remain_closed`、`test_controller_original_type_is_authenticated_read_only`。全部测试函数集合相同；`test_schema3_native_callback_refuses_before_executor_effects_and_keeps_completed_read` 的完整 AST（含 decorators／函数体）与候选一致，保留 `Managed native callback requires Linux` 及 `['managed', 'managed-v2']` 两种安装参数。冲突处理没有丢失 v2 覆盖、原平台保护或断言。
+
+**准确集成产品继续保持需求符合性 approve、结构／维护性 approve，新增开放阻塞项 0。** 本次只复核同片集成身份与冲突处理，没有新增产品行为，也未重跑安装、测试或 collector；主树 collector 原件与准确公开候选自己的官方 CI 由[联合交付](2026-11-16-predecessor-native-final-acceptance.md)分别记账。本报告不授予新平台／时长／正式 CI 验收，前述 schema3／ordinal1 效果关闭及 M6／runtime／真实两轮／训练／GPU 边界保持。

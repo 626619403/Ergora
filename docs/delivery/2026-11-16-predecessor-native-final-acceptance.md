@@ -29,3 +29,14 @@
 ## 独立终审结论
 
 新 reviewer 已直接重算准确两候选完整diff、853／855输入、各179副本和663／665两安装／wheel字节与执行位，核完整正常`-P` native入口及v1真实失败，读原红绿与完整模板输入，允许普通集成`bc58be6781d35e7e4fbd54ad997df8a4743428a8`及M5 r7父。终审报告SHA256 `771e33ba08f36aa54e8f5a5356913c538d152302f71300541d39509429876f21`。身份口径和descriptor验证入口已按原证据纠正；无需重跑原无变化批。正式集成后重新核产品／测试差异，自己的官方CI另记，不借旧成功。
+
+## 普通集成身份与主树收集
+
+准确产品已普通合并为 `1308e32833c8174351906429902190cbaa2a3aa7`，父为 `bc35acd9d8d755042205c5626cc4badc52e7a91e` 和准确候选bc58be6。唯一冲突为原controller callback测试的Linux mark／managed参数；保留候选已审的Linux mark和managed／managed-v2两参数，同时保留主线其他三条已审Windows skip。没有产品行为修订。
+
+集成后逐项重算**665完整产品的名字、字节和执行位**，与最终已验native产品完全相同；855冻结输入仅两处差异：已审CI四文件JSON、controller测试中三条既有Linux skip，后者无测试正文改动。私有 `predecessor-gates-ci-balance/integrated-r1/integration-identity.json` 保留准确父／输入范围。
+
+同一主树通过原已安装SDK运行原 `scripts/ci/run.py --collect-only`，**2335节点／exit0／8.841秒**；与final-native-r5-four-files原收集node multiset完全同一，六组354／444／410／453／315／359。原件在同目录`command/result/comparison.json`及all/。该结果仍只证明收集，未冒充正文、Windows或官方时长。接续同片集成身份复核／普通推送和准确候选自己的官方CI。
+
+
+同一独立reviewer已追加固定集成身份复核：1308e32双亲正确、665完整产品与包同一、855输入只上述两差异、callback完整AST与候选相同、managed-v2及原Windows范围保持；两轴继续approve／新增阻塞0。追加后的报告SHA256 `30b4077d1dae0562721031b33345d26df24f9af77834f035fed91bcfaf05325f`；此前771e33ba为追加前原审身份，保留其历史范围。接续普通推送，不自动合入main。
