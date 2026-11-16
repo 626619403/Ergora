@@ -92,3 +92,35 @@ WA4三项异步讨论已获用户明确答复，D1–D4均采用建议；[原答
 6. 每个节点完成更新本页及所属交付。当前事实与历史分开，具体数值／原件留所属交付，本页只保留可恢复的活动状态。
 
 当前后继设计拆片：[registration／State与源journal](plans/2026-11-16-design-gates-registration-and-journal.md)，r2 SHAa94b4a5a；[fresh设计审](delivery/2026-11-16-design-gates-registration-and-journal-design-review.md)两轴approve／0，原三finding关闭。a1已最终闭合并普通导入3d632a7；最小下一片S1可按已审范围实施，真正首次登记、State6与pre-claim拒旧输入，先登记准确序列化边界；既存creation与registration修订耦合、同UID真实人类通道不可用、b1封存／撤回及a2双门／最后spawn为明确后继，不用storage-only冒充新v12执行。
+
+
+## 恢复后检查点归档 2026-11-16T06:08:46.003817+00:00
+
+## 当前检查点
+
+**本轮恢复补记（2026-11-16）**：核 HEAD 仍为 `eba8680`，主树在途只有计划／交付。准确候选自己的官方 CI `43807888266` attempt1 已 completed／failure：7/8 jobs 成功（含 Windows），Ubuntu group2 为 `test_schema3_intent_is_local_and_all_execution_entries_remain_closed` 的旧 cold fixture 仍默认 operation-v1，先触发协议身份不符；原件见联合交付的 `publication-r1/current-summary.json` 和 annotations。待原接缝复现及最小 fixture 修正，不改生产关闭 gate／时限。
+
+用户追加能力核对：正式只读审查和 work-unit DAG 已有串并行、异后端及祖先配额；但公开 Agent binding/schema/UI 未有逐实例思考强度，只有 Codex 外部配置透传。已列为当前补齐项：沿原后端契约增加显式推理配置，保留旧缺省与已冻结任务，沿原页面表单／定义编译／原调用验证， unsupported 不静默降级；详见下方优先表。S1 首轮独审 R1/P2（交错首次登记落孤立 intent）与 V2a 首轮 F1/F2（SDK 中止 cleanup 完成判据、可选 SDK fixture）均已交原作者修正；原通过不转授修正版，补丁／安装／复核分别接续。
+
+主开发分支 `refactor/architecture-foundations`，本次已审源码候选 `f9b9d72d6d5f2102809a3cafaadb2226bba0966b`；后继状态记录提交不改变该源码身份，恢复时另核实际 HEAD。root 在途变更目前只有计划／交付，勿覆盖其他 agent 的报告。默认分支仍为用户已设置的 `main`；普通推送开发分支，不自动合 main／强推。
+
+- **M5／native 已交付且自己的 CI 闭合。** 固定产品 `5bcecf3`、`bc58be6` 普通导入 `1308e32`；公开 `0a5a0ffb32cd2a247eaef49a008cb5692ffad47a` 的官方 push／attempt1 [43801502094](https://github.com/626619403/Ergora/actions/runs/43801502094)于04:29:27Z确认 completed／success，8/8 jobs成功，原时限不变。原403和中间在途快照保留。[联合终核](delivery/2026-11-16-predecessor-native-final-acceptance.md)。只认证该候选，不认证后继模板或训练质量。
+- **WA5a-1 inspection-only 已合入。** 产品 `cb861ea7138627d6646e8de1c0867a3ed92ce474` 普通导入 `3d632a7`；src／tests完整子树同一。完整六文件patch `4daea8ea…`、2064源输入、668完整包同一；源码受影响56过／1可选Web skip，新安装57全过，原模板Codex31.855秒approve；fresh两轴approve／0，原native缺依赖、重复source、报告媒体和第二公共读取入口四问题已关闭。发布／自己的CI另验。它只读设计材料，不赋予批准／执行能力。[交付](delivery/2026-11-16-design-packet-inspection.md)／[终审](delivery/2026-11-16-design-packet-inspection-source-review.md)。
+- **M6-V1 最终路径修正版已独立终核并合入。** 隔离 `.ergora/worktrees/training-cycle-v2-expression`，基线 `bc58be6`，产品固定 `2acdcc44eb86659f3ab9d22d2f83bb0973388406`，普通导入当前 `f9b9d72`。五文件patch `b871eb2b…`、2019完整输入manifest `610ab4bb…`；新wheel `8574ebe6…`、core／SDK各665完整字节／执行位同一。源码V2/V3定向25过、安装同组25过、Windows纯路径语义probe、三份原V1 history安装重放及core无SDK过；原模板Codex76.908秒approve。前候选80＋8只保留原身份，当前106个worker函数AST仅新V2 consume路径改变；最终独立需求／维护性两轴approve／0；联合新安装／必要接缝与自己的发布CI接续。生产默认仍V1、所有schema3执行效果继续关闭，四poller／完整M1c／真实CPU两轮尚未完成。[交付](delivery/2026-11-16-training-cycle-v2-expression.md)／[源审](delivery/2026-11-16-training-cycle-v2-expression-source-review.md)。
+- **WA5-S1 已开始隔离实施。** `.ergora/worktrees/design-policy-registration`、`feat/design-policy-registration`，准确基线 `3d632a7`，作者已固定formal policy要求的具体shape／SHA／实际owner并开始源码；v2发布中断、State6旧writer fencing、出生／legacy准入与backup范围正在原fixture验证，尚未freeze／安装／独审。前置a1已闭合；[拆片r2](plans/2026-11-16-design-gates-registration-and-journal.md)已审原字节 SHA `a94b4a5a…`、仅16个源码链接格式化后当前字节 `bde47bee…`，原件和映射另存，[新fresh设计审](delivery/2026-11-16-design-gates-registration-and-journal-design-review.md)两轴approve／0，原三finding关闭。范围：真正首次registration2、State6 writer fences、原status／恢复、tasks两出生入口和受管executor pre-claim拒旧输入；所有已有v1含空项目不升级。不开input12／definition8／新执行，原standalone stack切换与外部config/state整体回退不冒称受控。作者唯一交付为`docs/delivery/2026-11-16-design-policy-registration.md`，根统一更新本页。
+- **a1／M6-V1 联合安装及独审已闭合，已普通推送。** 新安装82＋8通过，collector2386节点、原参数ID映射后净增51／删除0，core无SDK／Windows纯路径probe通过；新fresh跨片审查两轴approve／0、报告SHA `afb0556c…`，无需源码修正。公开 `eba86805e5d50824eefb5e69edd0faab099cbf42` 已核远端同一；官方HTML精确commit发现push [43807888266](https://github.com/626619403/Ergora/actions/runs/43807888266) in_progress，REST额度05:25:25Z恢复后再核该候选自己的attempt／最终8 jobs。准确联合包 `ea1927be…`，完整边界见[集成交付](delivery/2026-11-16-design-training-expression-integration.md)和[终审](delivery/2026-11-16-design-training-expression-integration-review.md)。后继实现隔离，尚未借此开放执行或认证真实训练。
+
+本日旧c1b/c1c、BR、M1/M2、父留存、CI修正的完整固定输入和结果见历史及各交付，已审已合工作不重复跑。M6与S1各自隔离，不互相转授源码／安装／模型／CI通过。
+
+## 06:16Z 恢复前检查点（原文归档）
+
+
+主开发分支 `refactor/architecture-foundations`，实际 HEAD `a975098eebb39eaba6dcf43a83605854c1f8bd86`（精确版本 cold fixture 修正已普通合入，尚未推送）。默认分支仍为用户已设置的 `main`；普通发布开发分支，不自动合 main／强推。根在途为计划／交付，其余产品在各自隔离树；恢复先核实际 HEAD、工作树、在跑命令和原证据，勿覆盖其他agent报告。
+
+- **前置 M5/native、a1 与 M6-V1 已有各自源码／安装／独审结果。** 最后公开 `eba8680` 的联合包、82＋8及独审保持原身份；其自己的官方 CI `43807888266` attempt1 已终态 failure：7/8 jobs成功（含Windows），唯一失败为旧cold fixture默认operation-v1，却期待schema3 effect关闭提示。原生产身份拒绝没有失效；不能用此前 `0a5a0ff` 的8/8成功替代。[原联合交付](delivery/2026-11-16-design-training-expression-integration.md)。
+- **CI最小修正已审并本地合入。** 产品 `e3a4369` → `a975098`；只改原测试，保留cold v1身份拒绝，另以明确v2来源触达真正关闭动作，真实S/H stopped与无副作用均核。原1失败、修后相关6过；fresh两轴approve／0。公开发布和新候选自己的CI待接续。[交付](delivery/2026-11-16-schema3-cold-fixture.md)／[独审](delivery/2026-11-16-schema3-cold-fixture-review.md)。
+- **WA5-S1 r2源码原独审已闭合，但自身模板新finding已重开，未合入。** 准确固定树 `design-policy-registration-fixed`，产品 `121ed2b`；R1交错首次登记孤立intent已用原3红例／完整registration78过修复，原fresh复核两轴approve／0。新非editable core／SDK同一、283参考／依赖过，新安装原runtime／composition／approve／cancel／budget **119 passed**（982.955秒）；前r1安装166等结果单列。随后原Ergora结构审查模板实际Claude **request-changes**：v1缺control project或repo不符可能在process前置拒绝而丢原FAILED回执，另两项marker命名／v1历史重验观察待核。已交原作者做真实反例和最小修正；不能把119过或原独审当新finding不存在。原通过只保留原身份。[交付](delivery/2026-11-16-design-policy-registration.md)／[原源码审](delivery/2026-11-16-design-policy-registration-source-review.md)。
+- **M6-V2a最终r3已独审、新安装通过，原模板在途，未合入。** 固定树 `training-cycle-v2-runtime-fixed`，产品 `82c6595`；四SDK poller仍仅两实际业务许可，原等待预算和normal先drain/stop后关；F1/F2在新的fresh源码审两轴approve／0。新安装runtime **65过**、实际S/H **6过**、core无SDK **6 skip**；SDK强行run取消明确incomplete/unknown，不伪造cleanup，不承诺外部loop.stop可恢复。原Ergora模板实际Claude正在调用；完整M1c、真实旧queue SDK10秒正向start及CPU两轮仍未验，所有schema3实际效果继续关闭。[交付](delivery/2026-11-16-training-cycle-v2-runtime.md)／[r3独审](delivery/2026-11-16-training-cycle-v2a-r3-source-review.md)。
+- **逐Agent思考强度已补源码与手册，页面实测通过，待完整独审／集成。** 固定隔离产品 `0dcbc20`：Codex `reasoning_effort`、Claude `effort`，原组件表单自动展示，原绑定／定义／历史reader／任务冻结消费。源码45过／8原Forge/mini外部依赖skip，13个parallel节点均已过；后继8项是重复并行验证，不计新覆盖，错误归类已据独审更正。实际页面Codex reviewer high、Claude reviewer medium、implementer low保存／重开及API读回通过，未安装系统依赖；正式组合selector和真实模型等级另验。fresh源码审在途；训练／设计storage不继承本片通过。[计划](plans/2026-11-16-agent-reasoning-and-parallelism.md)／[交付](delivery/2026-11-16-agent-reasoning-options.md)。
+
+本日更早完整检查点和身份已逐字存历史，各交付保留原始失败、修正及未验界限；只重跑变化真正影响的接缝，不再重复无变化大套件。

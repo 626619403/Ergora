@@ -25,4 +25,12 @@
 
 后继 [S1 拆片](../plans/2026-11-16-design-gates-registration-and-journal.md)已审原字节 SHA256 `a94b4a5a95a674330e09e84b0c7596635bc985521c3f8d221ed996dbb07965ae` 完整另存；公开链接仅将16个 `.py:行号` 改为 GitHub 支持的 `.py#L行号`，当前字节 SHA256 `bde47bee749ff973901beeebc6f148316b3ea2d2635e191ac5804942e142f984`。正文中的“待复核”保留该修订当时的状态，最终设计结论以[已完成的独立设计审](2026-11-16-design-gates-registration-and-journal-design-review.md)为准；没有调整已审政策或验收内容。链接变更原件及映射为私有 `approved-plan-r2-original.md`、`plan-link-formatting.json`。
 
-发布尚未执行；准确候选自己的CI未发起，不能借0a5a0ff八job成功替代。后续S1和M6-V2源码只在各自隔离worktree，不在本包内。
+## 公开候选与 CI
+
+源码 f9b9d72 及上述已完成文档以 `eba86805e5d50824eefb5e69edd0faab099cbf42` 普通推送 `refactor/architecture-foundations`；`git ls-remote` 读得精确相同完整 OID。没有强推或合入 main。公开候选相对于已验源码仅改计划／交付文档，产品包身份保持。
+
+05:05:11Z 官方 REST 发现返回 HTTP403，未认证额度 remaining=0、reset 为05:25:25Z；完整响应留存，不把它算作测试失败或 CI 成功。05:05:59Z 官方公开 Actions 列表的完整 commit 链接精确匹配 eba8680，发现本分支 push [43807888266](https://github.com/626619403/Ergora/actions/runs/43807888266)，创建05:04:37Z、状态 in_progress。HTML 原件 SHA256 `61ce683b666ef752f4033ffc90c901c1091dd728e762d1f02f526cff69c60d29`，只据其发现 run，不冒充 REST attempt／jobs 终态。原件在本片 `publication-r1/`，后续待原额度恢复再观察准确候选自己的最终八 job，不能借0a5a0ff八job成功替代。
+
+后续 S1 和 M6-V2a 源码只在各自隔离 worktree，不在本包内。
+
+05:26:53Z 官方 REST 已读得准确 `eba8680` 的 attempt1 最终 completed／failure，8 jobs 中7成功（含 Windows），Ubuntu group2 失败。完整 run／jobs 原响应和汇总保存在 `publication-r1/20261116T052653Z-*` 与 `current-summary.json`；05:31:26Z 原 annotations 指出唯一失败为 `test_schema3_intent_is_local_and_all_execution_entries_remain_closed`：期待 schema3 执行关闭，实际先被完整授权的 operation 版本校验拒绝。其 cold fixture 没有 snapshot／activity_context，仍按旧缺省构造 operation-v1，而真实 schema3 要求 operation-v2。生产拒绝仍生效，不能把该 CI 记为通过；后续在原 fixture 验证版本与关闭动作的最小修正，原失败保留。其他候选的绿色不替代本次失败。
