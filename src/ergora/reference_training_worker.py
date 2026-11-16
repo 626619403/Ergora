@@ -2675,31 +2675,50 @@ async def _serve_cycle() -> None:
                         continue
                 if not shutdown.cancelled():
                     shutdown.result()
+            if worker.is_running and not worker.is_shutdown:
+                # SDK run cancellation can interrupt shutdown itself. Public
+                # shutdown cannot resume it, so task completion proves no drain.
+                raise RuntimeError('Cycle worker cleanup is incomplete; running state is unknown')
 
         # Stop both normal pollers together; keep both stop pollers available
         # until normal S/H and pending-root cleanup have actually returned.
         async def finish():
             for start in (0, 2):
                 finishing = asyncio.gather(*(finish_worker(worker, task)
-                    for worker, task in zip(workers[start:start + 2], running[start:start + 2])))
+                    for worker, task in zip(workers[start:start + 2], running[start:start + 2])),
+                    return_exceptions=True)
                 while not finishing.done():
                     try:
                         await asyncio.shield(finishing)
                     except asyncio.CancelledError:
                         continue
-                finishing.result()
+                # An aborted SDK run must not interrupt its peer's actual drain
+                # or advance shutdown to the stop group.
+                for result in finishing.result():
+                    if isinstance(result, BaseException):
+                        raise result
         cleanup = asyncio.create_task(finish())
-        while not cleanup.done():
+        try:
+            while not cleanup.done():
+                try:
+                    await asyncio.shield(cleanup)
+                except asyncio.CancelledError:
+                    continue
+            cleanup.result()
+        finally:
+            connecting.cancel()
+            waiting.cancel()
+            settled = asyncio.gather(connecting, waiting, return_exceptions=True)
             try:
-                await asyncio.shield(cleanup)
-            except asyncio.CancelledError:
-                continue
-        cleanup.result()
-        connecting.cancel()
-        waiting.cancel()
-        await asyncio.gather(connecting, waiting, return_exceptions=True)
-        for signum in (signal.SIGTERM, signal.SIGINT):
-            loop.remove_signal_handler(signum)
+                while not settled.done():
+                    try:
+                        await asyncio.shield(settled)
+                    except asyncio.CancelledError:
+                        continue
+                settled.result()
+            finally:
+                for signum in (signal.SIGTERM, signal.SIGINT):
+                    loop.remove_signal_handler(signum)
     if failure is not None:
         raise failure
 

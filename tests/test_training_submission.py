@@ -2672,6 +2672,7 @@ def cycle_sdk_activity(controller_dispatch, request):
 @pytest.fixture
 def shared_cycle_activities(cycle_operation_fault, tmp_path):
     """Real SDK context and S/H cleanup; missing controllers can only return unknown."""
+    pytest.importorskip('temporalio')
     import asyncio
     from dataclasses import replace
     from datetime import datetime, timedelta, timezone
