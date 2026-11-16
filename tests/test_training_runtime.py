@@ -421,6 +421,8 @@ def cycle_capacity_converter():
 
 @pytest.mark.parametrize('source', ['request', 'inspection', 'operation', 'cancel'])
 def test_cycle_v3_wrapper_failure_does_not_export_original_error(cycle_sdk_completion, monkeypatch, source):
+    if sys.platform != 'linux' and source != 'request':
+        pytest.skip('Valid cycle operation construction requires the original Linux boot clock')
     import asyncio
     from types import SimpleNamespace
     from temporalio.converter import DataConverter
@@ -1572,6 +1574,7 @@ def test_cycle_v2_initial_input_counts_actual_converter_metadata(
         assert failure.ByteSize() <= 32768 and not h.scheduled('observe-candidate')
 
 
+@pytest.mark.skipif(sys.platform != 'linux', reason='Assembled cycle operations retain the original Linux boot clock')
 @pytest.mark.parametrize('size', [32767, 32768, 32769])
 def test_cycle_v3_completion_counts_assembled_measurement_and_all_operations(
         cycle_v2_workflow, cycle_capacity_converter, cycle_sdk_completion, monkeypatch, tmp_path, size):
