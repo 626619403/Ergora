@@ -1,6 +1,6 @@
 # c1d M2a＋M3a：内部测量接受与轮次发布
 
-2026-11-16。当前状态：内部片实现／源码／安装／自身模板／fresh最终终核闭合，产品68ba793已普通导入c6cfafb；公开新联合候选及自己的CI另验。以下保留逐阶段原件与当时状态。
+2026-11-16。当前状态：内部片实现／源码／安装／自身模板／fresh最终终核闭合，产品68ba793已普通导入c6cfafb，联合公开候选a0d533d自己的CI已八job全success。以下保留逐阶段原件与当时状态。
 
 具体[计划](../plans/2026-11-16-training-cycle-measurement-acceptance.md)及R1修订已由[fresh独立设计审查](2026-11-16-training-cycle-measurement-acceptance-design-review.md)接纳，需求与维护性两轴approve、开放0。根任务接纳B分片：现有operation-v2内部collect／reconcile用例，M2四事实和M3索引／完整观察由同片闭合实际consumer；M5仅必要只读binding格式提前，SDK v3注册／正式V2及执行开放不提前。
 
@@ -137,3 +137,11 @@ Ergora自身原`refactoring-quality → ergora-structure-review@1.0.0`经新安�
 final-union-r1首次协调命令将venv解释器symlink误resolve为基础Python，子进程缺pytest、0.118秒退出，尚未collect；旧stdout／stderr／请求保持。保留venv入口后final-union-r2实际collect退出0／10.03秒，不以首次失败冒称产品故障或覆盖旧结果。
 
 **本内部片已闭合并导入；公开发布与该联合候选自己的CI仍另验。** 接续父raw留存已获准隔离实施，M5／M6／完整M1c／真实两轮及GPU／训练质量保持独立未完成，不由此关闭。
+
+
+## 联合公开候选与自己的 CI
+
+已普通推送 `a0d533d13b4aae9441e3b6b920b27c2534353b87` 到原开发分支，精确远端 SHA 同一。首次官方 API 查询为 HTTP200／total_count0；随后准确发现自己的 push／attempt1 [43780806957](https://github.com/626619403/Ergora/actions/runs/43780806957)，head_sha 精确匹配。00:37:41Z 的 run／jobs 均 HTTP200：in_progress，plan 与 Linux组1／4 已成功，其余五job在途；尚无整体成功结论。实际请求／响应／headers／摘要和推送记录独立保留于 ignored `cycle-measurement-collect/publication-r1/`。此次候选包含已审测量产品和另已审分组／Windows修正，旧610f111的CI不转授本次。
+
+
+官方 `20261116T005631Z` 终态快照：准确a0d533d自己的43780806957、push／attempt1、head_sha同一，run／jobs均HTTP200，completed／success，plan／六Linux／Windows八job全部success。group5整个job18分43秒、Windows23分23秒，原20／30分钟限制不变。原005135Z七成功／Windows在途及首次未观察到run均按历史原件保留，不改写。此CI只认证a0d533d联合产品；新父留存1f57ca4及其后CI分组需要自己的候选验收。
