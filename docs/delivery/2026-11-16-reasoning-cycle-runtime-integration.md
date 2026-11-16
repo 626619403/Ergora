@@ -1,6 +1,6 @@
 # 逐Agent推理配置与训练服务生命周期联合验收
 
-2026-11-16。当前实施／验证中，未发布。源基线 `eba86805e5d50824eefb5e69edd0faab099cbf42`，联合产品 `c540939d3b3f38f3851b0de965c9cd0f969eea77`，独立固定树 `reasoning-cycle-runtime-integration-r1`。本片不修改产品或扩大执行范围，仅核普通合入后的同一包、必要接缝和发布身份。
+2026-11-16。联合新安装及必要定向验证完成，已普通发布，自己的CI已核全通过。源基线 `eba86805e5d50824eefb5e69edd0faab099cbf42`，联合产品 `c540939d3b3f38f3851b0de965c9cd0f969eea77`，独立固定树 `reasoning-cycle-runtime-integration-r1`。本片不修改产品或扩大执行范围，仅核普通合入后的同一包、必要接缝和发布身份。
 
 ## 范围与原审查
 
@@ -15,10 +15,15 @@
 - [x] 固定联合HEAD与2,071项原输入；完整基线差异SHA256 `db1a7646801071506aa69d81db39a6ed7bd5334c324b59b120a25e844457b6db`。
 - [x] 从该固定树构建新非editable wheel，SHA256 `630fae78261a7718f7289bd1337ca5fd6dda8eb7c6c5773750e14ae0b36f2ce2`；core／SDK各668完整包内容及执行位与source／wheel同一，三训练owner实际从site-packages导入，283参考及依赖逐项通过。core无SDK，SDK为1.34.0。
 - [x] 复用原定向接缝，**33 passed／34.808秒**：实际两CLI参数传递、配置优先级、Agent版本／正式任务冻结、异后端并行／祖先配额、SDK服务生命周期与实际S/H共享许可、显式schema3 cold拒绝。整批runner36.278秒，80个捕获的自有进程身份在结束后均absent；不外推全系统。没有重跑无变化的完整业务／GPU套件。
-- [ ] 更新计划、普通提交／推送开发分支，核精确远端及本候选自己的适用CI；不自动合main或强推。
+- [x] 更新计划、普通提交／推送开发分支，`git ls-remote`已核精确远端 `04af2344239306cb00458e89f81258093235f049`；不自动合main或强推。
+- [x] 本候选自己的适用CI；原官方REST发现HTTP403／额度0原件保留，额度恢复后核 run `43819270365`／attempt1／准确head `04af2344239306cb00458e89f81258093235f049`，8 jobs均终态success，含Windows。两次HTTP200响应和完整jobs在 `publication-r2/`，原403不算测试失败或通过。
 
 私有原件位于 `.ergora/checks/reasoning-cycle-runtime-integration/`。安装不修改用户运行home，不启停其他owner服务或业务项目；凭据只引用环境。源码、安装、受控SDK、真实服务、业务质量和CI分别记账。
 
 ## 产品组合核对
 
 相对公开源基线，本包恰好改变 `agent_backends.py`、`data/components.json`、`reference_training_worker.py`、`task_envelopes.py`，新增／删除包文件均为0；与两已审产品及普通合入差异相符。新安装测试输入来自同一固定树，原argv、JUnit、raw、包比对与进程身份分别保存在 `package-r1/`。该机械组合不增加产品分派、接口、表或新的执行能力；各源码独审与自身模板结果保持原报告身份。
+
+## 发布身份
+
+普通推送 `refactor/architecture-foundations` 的公开候选为 `04af2344239306cb00458e89f81258093235f049`；相对联合产品c540939只增加计划／交付文档，src／tests／scripts／examples／CI／pyproject无变化。远端完整OID和产品同一性记录在 `publication-r1/remote-identity.json`。REST额度恢复后的发现和完整jobs保留在 `publication-r2/`；[自己的run43819270365](https://github.com/626619403/Ergora/actions/runs/43819270365) attempt1 为8/8 success。原eba8680的7/8失败和其他候选的绿均不替代此次结果；后继S1／V2b不继承此次CI。

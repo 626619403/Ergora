@@ -127,3 +127,59 @@ State 事务回滚仅限 DB；原 offline backup/restore 仅限 control-home inv
 按作者最小同版-I清单，真实旧process／失败回执／冻结selection／历史status-resume、新v2与foreign-home preclaim、原BudgetedJob及原四个composition旅程，共 **13 passed／78.701秒**（runner79.783秒）。捕获529个自有进程身份结束后均absent；准确argv、完整raw／JUnit及过程身份留存，不声称全系统无残留。r2的119／前代安装结果没有转授。
 
 新的fresh源码审查另在真实隔离fixture确认：合法旧job已submit后删除native项目配置，c540安装仍发布FAILED且poll可见，80cb安装却在process前_admit_project的project_for抛Blocked，poll为空、无回执。两者均无prepare／命令／模型；新candidate的13过未覆盖此边界。对照原件 `reviewer-native-resolution-r1/result.json`，精确原件与两个实际site-packages来源均保留。本finding仍待最小修正／同片独立复核，不合入80cb或借原模板先行关闭。
+
+## 作者 r4：固定任务身份与原 native 失败回执
+
+本节接续[新的兼容审查 F1/P2](2026-11-16-design-policy-registration-v1-compatibility-review.md)，只记录 r4 作者范围。唯一可写产品树改为 `.ergora/worktrees/design-native-resolution-receipt`，分支 `fix/design-native-resolution-receipt`，准确 baseline／HEAD `80cb39cbc29b7e800a2dfefb09538732eecb5a68`；原作者树、fixed-r3 和所有旧冻结保持不动。**r4 作者候选已冻结，受影响源码17项通过；新非 editable 安装、原安全 -I 反例、原模板与同片独立复核待主控，F1 尚不自宣关闭。** 本轮没有提交、安装、网络、模型、真实服务或用户 home／现有环境操作。
+
+先把 reviewer 的原 `probe_fixture.py`、`stage_agent.py` 与 patch 原字节复制到新专属证据根 `.ergora/checks/design-policy-registration/native-resolution-fix-r4/original-probe-input/`。未改原 probe，使用已有 80cb39c SDK 非 editable 安装和原 `-I -B` 重跑：合法 native job 已 submit 后只删 `CONFIG/projects/demo.json`，实际 executor 为 site-packages 的 `f9b794a723e5dc73d6caef70c82151b6b3d8116218d586799aa76f1191901512`，仍在外层 `project_for` 抛 Blocked，poll=null、receipt不存在。runner正常退出不等于产品通过；`red-original-installed-probe/result.json` 明确记 `product_failed_receipt_contract_met:false`，原固定 project／binding／compiled 仍完整。
+
+原 producer 的事实是：`agent_platform.projects.create_task` 在同任务目录发布 `project.json` 的 name／tracker、`binding.json` 的 project_id／完整 tracker，及 compiled／spec；原 compiler 已核项目与 binding／policy 身份并生成同一 spec。r4 仅替换 `_admit_project` 对 mutable `CONFIG/projects` 的查找：按当前 spec 的原 slug(task_id) 读取同任务的 project／binding，核 `native.name == binding.project_id`、`binding.tracker == spec.request.tracker`（含 issue），以及 native tracker 等于其中 kind／project；再按该固定 name 核原 marker／control-home，读取 State policy 拒绝 registration2。
+
+这个读取只识别 preclaim 所需的原登记身份，不授予执行，也不替代原业务准入。直接 Executor 和 process 保留原两个 gate；原 constructor 的完整 mutable `project_for`、repo／注册配置检查、compiled 校验、`_execute` 的失败 artifact、DirectJob／adapter／poll、预算和 claim owner 均未搬动或另造。没有吞掉 project_for 错误、增加 catalog／resolver、引入 registration/schema validator 或更改 native reference。**同任务固定身份缺失、格式不可读或上述关系不符时仍在 preclaim fail-closed**，不扫描另一项目补身份；这是执行设计 policy／foreign-marker 核验所需的边界，不用它扩大业务准入。
+
+扩原 fixture 的同一 native-config-missing 反例，保留 v1／v2 健康映射对照。映射丢失时 v1 仍无 frozen agent selection，必须得到 FAILED／agent-admission-error、poll 同终态，原 project／binding／compiled 字节保持；v2 和 foreign-home 的直接 Executor／process 必须按正确 policy／marker 原因拒绝且 claim／body／prepare／model／命令全0。原 BudgetedJob 接缝另核健康／缺映射两种情况均在 job 构造／claim 前拒绝；没有为 duplicate tracker／各类读取异常复制同源矩阵，原测试20／60／90秒时限与实际路径未缩改。
+
+|r4 run|实际结果与边界|
+|---|---|
+|`red-original-installed-probe`|原 -I 安装反例，20.055秒；如上实际 f9b794a7、无 receipt／poll，产品合同未满足。原 argv／raw／PID-start ticks 已保存，wait后该原进程 absent。|
+|`red-source-native-mapping`|**3 failed／3 passed，25.59秒**（runner26.52秒）。两个健康 legacy 对照及健康预算入口通过，缺映射的 v1／v2／预算三项失败；产品 src 与80cb原件全同，只改三处原测试／fixture，见 `baseline-comparison.json`。2,072输入 manifest `a45949d75104d7549b7f0c8cc9eb0d85cdbc6171db1384286ea75fab5b329c7b`；捕获56个自有后代身份，终核均 absent。|
+|`green-original-source-probe`|同一原 probe 用明确源码导入，1.971秒，实际 executor 路径在新作者树，SHA256 `b6ca6c2b96a144d0cfd8785762f650bd01c430a5c5d0ed8388648dfa5f52184a`。真实 process／DirectJob／adapter 返回 FAILED＋agent-admission-error，原 poll读到同一终态；claim/body各1，prepare／model／命令0，固定 project字节保持。它不是新 -I 安装结果，argv／raw和实际module SHA已分列。|
+|`source-affected`|**17 passed，89.72秒**（runner90.63秒，JUnit17／0 failure／0 error／0 skip）。原 native policy／foreign-home健康与缺映射4项，预算2项，原 missing-control／repo×frozen4项，原 compiled缺失／tampered／cross-task FAILED回执3项，原 unified／imported登记切换六阶段4项。2,072输入 manifest `a27fa3e81d81079ef1d1e4d502b42e3652657739a8930e2e9b5ce873f962ee10`；捕获299个自有后代身份，终核均 absent，无额外信号或全系统残留承诺。|
+
+新 legacy／budget fixture 保存各自 raw stdout／stderr，并断言其实际 executor 文件SHA与当前源码文件同一，绿色值均为 b6ca6c2b。全部 run 的准确 argv、环境覆盖、JUnit、完整 raw、tracked diff、源码 tar／bytes／mode 和自有过程身份在上述 r4 各目录。model只是原确定性 CLI fixture，真实模型／服务调用0；没有运行无变化119大组，也没有把已有80cb的原13项安装结果转授。
+
+r4 冻结为 `.ergora/checks/design-policy-registration/native-resolution-fix-r4/source-final/`。只有四个 tracked 文件：`src/ergora/reference_executor.py`、原 `tests/fixtures/reference_acceptance.py`、`tests/test_budget_jobs.py`、`tests/test_composition_executor.py`；untracked为空。准确80cb之上的完整 `complete.patch` SHA256 `b374940f18021853aad15160bd5ccd6736a2cc67337b192f4db3248f25566809`，2,072完整输入 manifest同上 a27fa3e8；完整 archive／mode在 `complete-tree.tar` 与 `source-inputs.json`。670源码包输入 manifest SHA256 `5e8e68259bc1942b2c8e52983b0764d2425f13c5378511edb2ee5e9fad162097`；沿原打包排除 package内AGENTS后的669项预期 runtime manifest为 `abcc52c98e13409850077cd85f6735c144ef92a56f6bc45ccedc8a7fe5f45e27`，实际新wheel仍须主控独立核对。
+
+冻结已逐项核与17过运行的全2,072原件 bytes／mode相同，原baseline index的 forward apply-check、当前候选的 reverse apply-check及diff-check通过；见 `freeze.json`，新 executor SHA为上述 b6ca6c2b。源码和本节均交主控后停止写入，不改变原已发布profile／input／训练owner或root接续段。
+
+主控接新候选后负责新非 editable 安装、原 -I 真正绿例、原模板及同片 fresh reviewer复核。已备 `native-resolution-fix-r4/probe-fixed.py`：以 `green-original-installed-probe <新SDK-python>` 为参数运行（不带 `--source`）即原 -I -B 路径，自动核实际 module SHA必须等于b6ca6c2b、FAILED回执／poll及零业务计数；只执行原 probe，不安装。此前源码绿色和已有旧安装红例明确分开，尚未声称新 -I 已通过或F1独立关闭。
+## 根后继：native回执修正版固定与新安装
+
+根已核作者r4完整四文件patch `b374940f18021853aad15160bd5ccd6736a2cc67337b192f4db3248f25566809`，在从80cb39c新建的 `design-policy-registration-fixed-r4` 固定为 `b28cd316b63bb788c502a026f1ec971d5572242a`。与作者四文件SHA／执行位相同，固定树干净；原作者树、r3固定树及旧失败证据不改。
+
+准确新非editable wheel SHA256 `9736406796a6f2272cffdef1a878198a978c6d0bc5a4a1d0f80acd8cbd865040`；core／SDK各669完整包文件与source／wheel字节及执行位相同，真实site-packages导入、283参考和依赖检查通过，core无SDK／SDK1.34.0。作者670源文件含原打包排除的根AGENTS；没有把这个排除称缺漏。原件在 `package-native-resolution-r4/`，不覆盖r3安装。
+
+原fresh反例的同一 `-I` probe已用此新SDK安装 **通过／2.455秒**，实际executor来自site-packages且SHA为作者固定的 `b6ca6c2b96a144d0cfd8785762f650bd01c430a5c5d0ed8388648dfa5f52184a`。原process／DirectJob／adapter发布FAILED＋agent-admission-error，poll同终态；claim/body各1，prepare／model／业务命令全0，原冻结project保持，wait后原进程absent。原件 `native-resolution-fix-r4/green-original-installed-probe/`，没有把源码绿或旧安装红转授此结果。
+
+受影响原17节点的新安装运行、同片fresh reviewer对F1修复的独立复核与原模板仍未完成；用户要求交新agent接续，S1尚未合入。本段不关闭原request-changes或把S1标为完成。
+
+## 交接接续：r4安装回归完成，独立复核中
+
+接续时主checkout HEAD仍为 `04af2344239306cb00458e89f81258093235f049`，未提交文档保留，固定产品树干净。先逐项重核现有新安装的core／SDK各669文件SHA与包记录一致，再从 `package-native-resolution-r4/test-inputs/` 使用SDK安装的绝对解释器、`-I -B`、清除 `PYTHONPATH`，按作者原五入口展开的17节点运行，未改原fixture时限。
+
+`package-native-resolution-r4/installed-affected-r1`：**17 passed／92.33秒**，JUnit17／0 failure／0 error／0 skip，runner93.710秒；捕获607个本命令自有进程身份，结束后均absent。准确argv及选择、完整stdout／stderr／JUnit与过程身份保存在同名 `.command.json`、`installed-affected-selection.json` 等原件。覆盖native policy／foreign-home健康与配置缺失、BudgetedJob早claim、旧control／repo与冻结选择、compiled失败回执及原登记切换六阶段；未借用旧13／119安装通过。
+
+完整产品diff仍为 `c540939 → b28cd31` 的14文件，SHA256 `5a109196321ed79df8b78e5ff26f0a4feb365141afe3645fdd04c7a650f0db81`，与新包冻结同一。自身结构模板采用已授权Codex回退，新的完整输入／脚本在 `self-review-r4.py`、`self-review-r4-codex/`；当前未预判结果。新的fresh-context独立复核接原F1及本轮证据；未完成复核／模板／集成发布前不关闭本片，schema3效果与后继设计执行继续关闭。
+
+### 自身模板r4结果
+
+首次r4 runner把 `--full-index` diff与原短index头patch的SHA混比，scope核验即停止，未启动native/model；记录为 `self-review-r4-codex/not-started.json`。实际产品未变，原短头完整diff仍为 `5a109196…`；同一完整source的full-index格式为 `2d99ea35b839bd2a0fee2f0574f1cee0edfc9d712a3072094787d389e7db155c`，不混称原件SHA。新label的 `self-review-r4-r2.py` 使用与冻结一致的diff格式。
+
+`self-review-r4-r2-codex/` 原模板实际Codex回退 **78.706秒／approve**；20份完整source／合同共423,272字节、完整diff及3份累积资源均进入实际stdin（511,335字节，SHA256 `26065d9f815d23a9612beb2027a59645248d9cadd17a3175610b779b7d6400cf`）。原结果SHA256 `ce2497a5872a15ceee137b7112d8239247050f4814d3a97396690302e0a6db85`，完整回复、manifest、input、原生stdout／stderr和summary保留。这是supplied-text审查，不代替新fresh reviewer的独立源码／原件核查；未声称异后端成功、真实服务或发布通过。
+
+### r4独立复核与普通合入
+
+新的fresh-context [完整两轴独审](2026-11-16-design-policy-registration-r4-review.md)已完成：**需求approve／维护性approve，开放findings0，原F1/P2在准确b28cd31关闭**。reviewer独立逐项核2,072输入、wheel及core／SDK各669 runtime文件bytes／执行位，差异0，核原-I probe和17安装raw／JUnit。其授权的A→B同tracker身份反例真实运行3.357秒，被原constructor不可变project发布拒绝，原FAILED／poll保留、业务starts0；这是否定疑点，不另造finding或resolver。12采样自有进程终核absent，原件保留于 `reviewer-r4-identity-edge-r1/`。
+
+根已普通无冲突合入开发分支 `6cec589f404b17f4828a70807d5e33d89fad3fa0`。与已接纳容量片的19个source／test文件分别逐字节核对两原候选全同，无merge-resolution改动；联合新安装开始，证据根 `.ergora/checks/design-capacity-integration/`。S1源码／安装／独审／原模板已闭合，联合包／发布／自己的CI另记；所有设计执行与schema3效果继续关闭。
