@@ -1284,6 +1284,9 @@ def _round_operation(payload, plan, admission, ready, active):
     if training_rounds.read(destination, sha256=saved['sha256']) != saved:
         raise ValueError('Round prefix changed before its final acceptance')
     _round_local_gate(payload, plan, admission, ready, active)
+    # All blocking H readers have returned; bind the complete local chain last.
+    originals = protocol.authenticate_cycle_candidate(intent, plan, admission, ready)
+    protocol.round_report_binding(saved, plan, ordinal, originals[0][0] if originals else None)
     acceptance = protocol.round_acceptance(value, ref, intent) if measurement_state == 'accepted' else None
     if acceptance is not None:
         protocol.validate_round_acceptance(acceptance)

@@ -964,7 +964,7 @@ def test_execute_startup_failure_keeps_the_consumed_launch_and_cleans_the_origin
 @pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 30}], indirect=True)
 @pytest.mark.skipif(sys.platform != 'linux', reason='Real native publications and callback require Linux')
 @pytest.mark.parametrize('boundary,fault', [
-    ('attempt', 'source'), ('ack', 'root'), ('attempt', 'clock'), ('ack', 'interpreter')])
+    ('attempt', 'source'), ('ack', 'root'), ('attempt', 'clock'), ('ack', 'interpreter'), ('ack', 'parent-work')])
 def test_native_final_publications_recheck_sources_root_and_original_clock(
         controller_admission, cycle_selection, cycle_candidate, service, tmp_path, monkeypatch, boundary, fault):
     from ergora import training_execution_protocol as protocol
@@ -1009,13 +1009,18 @@ def test_native_final_publications_recheck_sources_root_and_original_clock(
             finally:
                 marker.with_suffix('.release').touch()
             assert future.result(timeout=12)['status'] == 'requested'
-        if fault == 'interpreter':
+        if fault in ('interpreter', 'parent-work'):
             attempt = json.loads((job / 'managed-execution/attempt.json').read_bytes())
             until = time.monotonic() + 10
             while recorded_process_is_active(attempt['executor']) and time.monotonic() < until:
                 time.sleep(.02)
             assert not recorded_process_is_active(attempt['executor'])
-            retained_interpreter.rename(interpreter)
+            if fault == 'interpreter':
+                retained_interpreter.rename(interpreter)
+            else:
+                sampled = json.loads(marker.with_suffix('.clock').read_bytes())
+                assert sampled['boot_id'] == sampled['clock']['boot_id']
+                assert sampled['work_remaining'] < 0 < sampled['total_remaining']
         stop_controller_test_owner(runtime)
         records = training.execution(state, 'demo', 'alpha')['records']
         assert all(records[name] is not None for name in ('request', 'launch', 'attempt'))
@@ -1025,10 +1030,12 @@ def test_native_final_publications_recheck_sources_root_and_original_clock(
         assert (records['stopped'] is not None) is (boundary == 'ack')
         assert (job / 'request.json').read_bytes() == native_request
         assert not (job / 'started.json').exists() and not (job / 'result.json').exists()
-        if fault == 'interpreter':
+        if fault in ('interpreter', 'parent-work'):
             output = runtime / 'ergora/training-submissions/alpha.budget/observations' / (
                 'execute-' + records['launch']['execution_phase_id']) / 'helper/stderr.txt'
-            assert b'Original native interpreter is unavailable' in output.read_bytes()
+            expected = (b'Original native interpreter is unavailable' if fault == 'interpreter' else
+                        b'Original execution fence, owner or computation deadline forbids work')
+            assert expected in output.read_bytes()
         assert json.loads(service[1].read_bytes())['starts'] == 1
     finally:
         marker.with_suffix('.release').touch()
@@ -3676,13 +3683,22 @@ def test_round_final_source_and_stop_gate_cannot_release_acceptance(round_candid
 @pytest.mark.skipif(sys.platform != 'linux', reason='Original final index and parent RPC interleaving requires Linux')
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)
 @pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
-@pytest.mark.parametrize('fault', ['round-final-index-stop', 'round-final-parent-source', 'round-final-parent-project'])
+@pytest.mark.parametrize('fault', ['round-final-index-stop', 'round-final-parent-source', 'round-final-parent-project',
+                                 'round-final-parent-predecessor'])
 def test_round_final_blocking_read_cannot_release_stale_acceptance(round_candidate, cycle_operation_fault, fault):
     import asyncio
 
-    state, admission, _, operation, _ = round_candidate
+    state, admission, _, operation, prepare = round_candidate
+    ordinal = 0
+    if fault == 'round-final-parent-predecessor':
+        first = asyncio.run(operation().run())
+        assert first['facts']['measurement']['continuation_ready'] is True, first
+        prepare(1, {key: first['facts']['measurement'][key] for key in ('prefix', 'acceptance')})
+        ordinal = 1
     markers = cycle_operation_fault(fault)
-    current = operation()
+    current = operation(ordinal=ordinal)
+    earliest = admission.folder / 'rounds/0/rounds.json'
+    original_earliest = earliest.read_bytes() if ordinal else None
     descriptor = Path(admission.authorization['execution']['installation']) / 'ergora-native-runtime.json'
     original_descriptor = descriptor.read_bytes()
     with state.connect() as db:
@@ -3694,7 +3710,7 @@ def test_round_final_blocking_read_cannot_release_stale_acceptance(round_candida
             while not (markers / 'round-final-boundary').exists() and not task.done() and not current.expired():
                 await asyncio.sleep(.01)
             assert (markers / 'round-final-boundary').exists(), await task if task.done() else None
-            index = admission.folder / 'rounds/0/rounds.json'
+            index = admission.folder / ('rounds/' + str(ordinal)) / 'rounds.json'
             observation = current.output / 'helper/observation.json'
             original_index, original_observation = index.read_bytes(), observation.read_bytes()
             if fault == 'round-final-index-stop':
@@ -3703,6 +3719,8 @@ def test_round_final_blocking_read_cannot_release_stale_acceptance(round_candida
                 (markers / 'round-final-stop').write_text(json.dumps(stopped) + '\n')
             elif fault == 'round-final-parent-source':
                 descriptor.write_bytes(original_descriptor + b'\n')
+            elif fault == 'round-final-parent-predecessor':
+                earliest.write_bytes(original_earliest + b'\n')
             else:
                 project = json.loads(original_project)
                 project['revision'] += 1
@@ -3725,6 +3743,8 @@ def test_round_final_blocking_read_cannot_release_stale_acceptance(round_candida
     try:
         asyncio.run(interleave())
     finally:
+        if original_earliest is not None:
+            earliest.write_bytes(original_earliest)
         descriptor.write_bytes(original_descriptor)
         with state.connect() as db:
             db.execute("UPDATE projects SET document=? WHERE id='demo'", (original_project,))

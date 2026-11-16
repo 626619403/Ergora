@@ -194,7 +194,8 @@ else:
         connection.connect = round_connect
         mark('round-helper-entered')
         native_root = Path(payload['snapshot']['authorization']['execution']['state_directory'])
-        if fault in ('round-final-index-stop', 'round-final-parent-source', 'round-final-parent-project'):
+        if fault in ('round-final-index-stop', 'round-final-parent-source', 'round-final-parent-project',
+                     'round-final-parent-predecessor'):
             observation = (Path(payload['identity']['control_home']) / 'operations/training-cycles'
                            / payload['identity']['operation_id'] / 'helper/observation.json')
             if fault == 'round-final-index-stop':

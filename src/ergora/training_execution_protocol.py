@@ -1716,13 +1716,14 @@ def native_main(installation: str) -> None:
             _match(refreshed.owner, chain.owner, 'Native callback original owner')
             _match(refreshed.records, {**chain.records, 'attempt': attempt, 'ack': ack},
                    'Native callback current publication stage')
+            if parent is not None:
+                parent.check()
+            # Parent authorization reads consume the same original work allowance.
             if ((chain.root / ('training/fences/' + chain.ident + '.json')).exists()
                     or not owner_active(chain.budget / 'owner.json', chain.owner)
                     or budget_clock.remaining(context['authorization']['clock'], context['policy']['wall_seconds'],
                                               context['policy']['cleanup_seconds']) <= 0):
                 raise ValueError('Original execution fence, owner or computation deadline forbids work')
-            if parent is not None:
-                parent.check()
         active()
         attempt = {'schema_version': 1, 'kind': 'training-execution-attempt', 'protocol': PROTOCOL,
             'launch_sha256': chain.sha(launch), 'request_sha256': chain.sha(request), 'owner_sha256': chain.sha(chain.owner),
