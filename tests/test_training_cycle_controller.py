@@ -1548,14 +1548,22 @@ def test_schema3_intent_is_local_and_all_execution_entries_remain_closed(
         'protocol', 'control_home', 'project', 'cycle_id', 'input_sha256', 'authorization_sha256'}
     with pytest.raises(ValueError, match='execution is not enabled'):
         training_cycles._claim_controller(state, admission)
-    # Cold H bypasses the schema2 snapshot validator; exercise the actual S/H
-    # child path and its retained stopped/result records, without a service double.
+    # Keep the cold v1 identity guard, then reach the schema3 execution gate
+    # with an explicitly versioned snapshot through the real S/H child path.
     import asyncio
-    operation = worker._CycleOperation(state.root, 'demo', 'controller', authorized['authorization_sha256'], 'inspect')
-    cold = asyncio.run(operation.run())
-    assert cold['status'] == 'unknown' and cold['operation_stopped'] is True
-    assert 'Schema3 controller execution is not enabled' in cold['reason']
-    assert operation.process.returncode is not None
+    plan = training_cycles._load(state.root, 'demo', 'controller', admission.directory)[0]
+    snapshot = worker._cycle_snapshot(plan, authorized['authorization'])
+    original = {path: path.read_bytes() for path in admission.directory.rglob('*') if path.is_file()}
+    for mode, source_snapshot, reason in (
+            ('inspect', None, 'Cycle operation protocol differs from its complete original authorization'),
+            ('prepare-controller', snapshot, 'Schema3 controller execution is not enabled')):
+        operation = worker._CycleOperation(state.root, 'demo', 'controller', authorized['authorization_sha256'],
+            mode, snapshot=source_snapshot)
+        cold = asyncio.run(operation.run())
+        assert cold['status'] == 'unknown' and cold['reason'] == reason
+        assert cold['operation_stopped'] is True and operation.process.returncode == 0
+        assert operation.response.frames[0]['process']['status'] == 'succeeded'
+        assert {path: path.read_bytes() for path in admission.directory.rglob('*') if path.is_file()} == original
     service[0]('accepted')
     digest = request['candidates'][0]['manifest_sha256']
     for cycle_entry in (True, False):
