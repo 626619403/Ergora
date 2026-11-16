@@ -107,7 +107,18 @@ def _schema_v5(db: sqlite3.Connection) -> None:
         _writer_fences(db, table, 5)
 
 
-_MIGRATIONS = (_schema_v1, _schema_v2, _schema_v3, _schema_v4, _schema_v5)
+def _schema_v6(db: sqlite3.Connection) -> None:
+    # Frozen design requirements cannot be dropped by older project writers.
+    # Registration journals and native files keep their separate versions.
+    tables = (*_TABLES, 'issue_snapshots', 'issue_task_links',
+              'issue_writebacks', 'issue_writeback_observations', 'candidate_review_links')
+    for table in tables:
+        for operation in ('insert', 'update', 'delete'):
+            db.execute(f'DROP TRIGGER "ergora_writer_v5_{table}_{operation}"')
+        _writer_fences(db, table, 6)
+
+
+_MIGRATIONS = (_schema_v1, _schema_v2, _schema_v3, _schema_v4, _schema_v5, _schema_v6)
 SCHEMA_VERSION = len(_MIGRATIONS)
 
 

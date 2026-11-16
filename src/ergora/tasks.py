@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 import re
 
-from . import agent_backends, agents, bindings, contracts, issue_snapshots, issue_sources, projects, reference, reference_budget, task_context, workflow_definitions
+from . import agent_backends, agents, bindings, contracts, issue_snapshots, issue_sources, projects, reference, reference_budget, task_context, task_design, workflow_definitions
 from .reference_creation_process import task_preparation
 from .asset_trees import inventory_tree
 from .state import State
@@ -38,6 +38,7 @@ def _definition(state: State, project: dict, definition: dict, *, working_direct
     version = definition.get('schema_version') if isinstance(definition, dict) else None
     schema = _DEFINITIONS.get(version, _DEFINITIONS[1]) if type(version) is int else _DEFINITIONS[1]
     contracts.validate(definition, schema, 'Task definition')
+    task_design.require_execution_support(project)
     if definition['task_type'] not in project['registration']['definition']['templates']:
         raise ValueError('Task template is not registered for this project')
     if len(json.dumps(definition, ensure_ascii=False, allow_nan=False).encode('utf-8')) > 1_048_576:
@@ -255,6 +256,7 @@ def _budget_project(state: State, project_id: str, definition: dict, expected_re
         raise ValueError('Task definition exceeds 1 MiB')
     project = _project(state, project_id, validate_runtime=False)
     _revision(project, expected_revision)
+    task_design.require_execution_support(project)
     return project
 
 

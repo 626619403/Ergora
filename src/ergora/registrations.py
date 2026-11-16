@@ -19,7 +19,9 @@ from .definition_bundles import parse_json
 from .state import State, file_lock
 
 
-_SCHEMA = json.loads((Path(__file__).parent / "data/schemas/project-registration-v1.json").read_text(encoding="utf-8"))
+_SCHEMAS = {version: json.loads((Path(__file__).parent / f"data/schemas/project-registration-v{version}.json").read_text(encoding="utf-8"))
+            for version in (1, 2)}
+_SCHEMA = _SCHEMAS[1]
 _IMPORT_FIELDS = ("schema_version", "id", "repo", "templates", "execution", "bindings")
 _IMPORT_SCHEMA = {"type": "object", "additionalProperties": False,
                   "required": list(_IMPORT_FIELDS[:-1]),
@@ -48,6 +50,57 @@ def _execution_directories(execution: dict, repo: Path) -> dict:
 def _sha(value) -> str:
     raw = json.dumps(value, sort_keys=True, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+def _design_requirements(policy: dict) -> dict:
+    """Union frozen requirements without authenticating the configured owner."""
+    profile = policy['profile']
+    if _sha(profile) != policy['profile_sha256']:
+        raise ValueError('Design profile canonical SHA-256 mismatch')
+    if _sha({key: value for key, value in policy.items() if key != 'sha256'}) != policy['sha256']:
+        raise ValueError('Design policy canonical SHA-256 mismatch')
+    result, seen = {}, {}
+    for name in ('minimum_questions', 'minimum_knowledge_requirements'):
+        items = {}
+        for source in (profile, policy):
+            for item in source[name]:
+                previous = seen.get(item['id'])
+                if previous is not None and previous != (name, item):
+                    raise ValueError('Conflicting design minimum requirement: ' + item['id'])
+                seen[item['id']] = (name, item)
+                items[item['id']] = item
+        result[name] = list(items.values())
+    for name in ('change_kinds', 'required_sections'):
+        result[name] = sorted(set(profile[name]) | set(policy[name]))
+    limits = profile['limits']
+    for name, limit in (('minimum_questions', 'questions'), ('minimum_knowledge_requirements', 'knowledge_requirements')):
+        if len(result[name]) > limits[limit]:
+            raise ValueError('Design minimum requirements exceed configured capacity: ' + limit)
+    if len(result['required_sections']) > 128:
+        raise ValueError('Design required sections exceed the packet capacity')
+    return deepcopy(result)
+
+
+def _validate_definition(definition: dict, context: str) -> dict | None:
+    version = definition.get('schema_version') if isinstance(definition, dict) else None
+    schema = _SCHEMAS.get(version, _SCHEMA) if type(version) is int else _SCHEMA
+    contracts.validate(definition, schema, context)
+    if version == 2:
+        policy = definition['design_policy']
+        requirements = _design_requirements(policy)
+        if set(policy['applicable_task_types']) - set(definition['templates']):
+            raise ValueError('Design policy task types must be registered project templates')
+        return requirements
+
+
+def _validate_saved(project: dict) -> dict | None:
+    registration = project['registration']
+    requirements = _validate_definition({**registration['definition'], 'schema_version': registration['schema_version'],
+                                         'id': project['id'], 'repo': project['repo']}, 'Saved project registration')
+    if registration['sha256'] != _sha({'id': project['id'], 'repo': project['repo'],
+                                       'definition': registration['definition']}):
+        raise ValueError('Saved registration definition SHA-256 mismatch')
+    return requirements
 
 
 def _revision(value: int) -> None:
@@ -115,14 +168,13 @@ def published_project(control_home: str | Path, project_id: str, operation_id: s
                 or record['source']['kind'] not in ('registration', 'reference-import')
                 or type(project['schema_version']) is not int or project['schema_version'] != 1
                 or project['id'] != project_id or type(project['revision']) is not int or project['revision'] < 1
-                or type(registration['schema_version']) is not int or registration['schema_version'] != 1
+                or type(registration['schema_version']) is not int or registration['schema_version'] not in _SCHEMAS
                 or registration['status'] != 'pending' or registration['operation_id'] != operation_id
                 or registration['sha256'] != digest or _sha(record) != intent_sha256
                 or _sha(result) != _sha({'schema_version': 1, 'status': 'published', 'operation_id': operation_id,
                                         'intent_sha256': intent_sha256, 'registration_sha256': digest})):
             raise ValueError("Original registration has no matching complete published intent and result")
-        contracts.validate({'schema_version': 1, 'id': project_id, 'repo': project['repo'], **definition},
-                           _SCHEMA, 'Original project registration')
+        _validate_saved(project)
         if Path(project['repo']).resolve() != Path(project['repo']) or not Path(project['repo']).is_absolute():
             raise ValueError("Original repository must retain its registered canonical path")
         for value in definition['execution'].values():
@@ -143,6 +195,10 @@ def published_project(control_home: str | Path, project_id: str, operation_id: s
 
 
 def _prepare(state: State, definition: dict, before: dict | None) -> dict:
+    if before and 'registration' in before and (definition['schema_version'] == 2
+                                                or before['registration']['schema_version'] == 2):
+        raise ValueError('Design policy requires a first unified registration; existing registrations cannot be '
+                         'upgraded, replaced or downgraded. Resume the original operation; migration is not supported')
     fresh = projects.new_document(definition["id"], Path(definition["repo"]))
     if before is not None:
         if before["repo"] != fresh["repo"]:
@@ -181,7 +237,10 @@ def _prepare(state: State, definition: dict, before: dict | None) -> dict:
     if result.returncode:
         raise ValueError("Registration requires an existing committed baseline")
     selected["base_sha"] = result.stdout.strip()
-    reference.registration_io(execution, project["id"], paths=selected["allowed_paths"], scope=selected["scope_policy"])
+    observed = reference.registration_io(execution, project["id"], paths=selected["allowed_paths"], scope=selected["scope_policy"])
+    if definition['schema_version'] == 2 and any(value is not None for value in observed['files'].values()):
+        raise ValueError('Design policy requires a first unified registration without existing native projections; '
+                         'native registration migration is not supported')
     digest = _sha({"id": project["id"], "repo": project["repo"], "definition": selected})
     marker = reference.registration_paths(project["id"])[0]
     files = publication_files(project, selected, state.root, digest)
@@ -191,7 +250,7 @@ def _prepare(state: State, definition: dict, before: dict | None) -> dict:
             # An adopted execution allowlist may have a different, equivalent order.
             files = deepcopy(previous["files"])
     project["revision"] = before["revision"] + 1 if before else 1
-    project["registration"] = {"schema_version": 1, "definition": selected, "sha256": digest,
+    project["registration"] = {"schema_version": definition['schema_version'], "definition": selected, "sha256": digest,
                                "status": "pending", "operation_id": uuid.uuid4().hex, "files": files}
     return project
 
@@ -229,8 +288,19 @@ def _journal(state: State, project: dict) -> Path:
     return state.root / "registrations" / project["id"] / (project["registration"]["operation_id"] + ".json")
 
 
-def _reserve(state: State, before: dict | None, project: dict, source: dict) -> None:
-    _record(_journal(state, project), {"schema_version": 1, "source": source, "before": before, "after": project})
+def _intent(before: dict | None, project: dict, source: dict) -> dict:
+    record = {"schema_version": 1, "source": source, "before": before, "after": project}
+    # Match _record's actual UTF-8 serialization, including the full before /
+    # after policy and projections. A durable intent must fit its own reader.
+    raw = json.dumps(record, ensure_ascii=False, indent=2, allow_nan=False).encode('utf-8')
+    if len(raw) > MAX_RECOVERY_BYTES:
+        raise ValueError(f'Registration recovery record exceeds {MAX_RECOVERY_BYTES} bytes; nothing was written')
+    return record
+
+
+def _reserve(state: State, record: dict) -> None:
+    before, project = record['before'], record['after']
+    _record(_journal(state, project), record)
     with state.connect() as db:
         db.execute("BEGIN IMMEDIATE")
         row = db.execute("SELECT document FROM projects WHERE id=?", (project["id"],)).fetchone()
@@ -241,6 +311,8 @@ def _reserve(state: State, before: dict | None, project: dict, source: dict) -> 
 
 
 def _finish(state: State, project: dict) -> dict:
+    if project['registration']['schema_version'] == 2:
+        _validate_saved(project)
     registration = project["registration"]
     journal = _journal(state, project)
     record = json.loads(journal.read_text(encoding="utf-8"))
@@ -269,18 +341,25 @@ def _finish(state: State, project: dict) -> dict:
 
 def register(state: State, definition: dict, expected_revision: int) -> dict:
     _revision(expected_revision)
-    contracts.validate(definition, _SCHEMA, "Project registration")
+    _validate_definition(definition, "Project registration")
     before = _current(state, definition["id"])
     if (before["revision"] if before else 0) != expected_revision:
         raise ValueError("Project revision changed; reload before registering")
     project = _prepare(state, definition, before)
     registration = project["registration"]
+    record = _intent(before, project, {"kind": "registration"})
     with _publication_lock(state, registration["definition"]["execution"]):
+        if _current(state, project["id"]) != before:
+            raise ValueError("Project revision changed; reload before registering")
+        if registration['schema_version'] == 2:
+            existing = reference.registration_io(registration['definition']['execution'], project['id'])
+            if any(value is not None for value in existing['files'].values()):
+                raise ValueError('Design policy requires a first unified registration without existing native projections')
         observed = reference.registration_io(registration["definition"]["execution"], project["id"], files=registration["files"])
         marker = reference.registration_paths(project["id"])[0]
         if observed["files"][marker] is None and any(value is not None for value in observed["files"].values()):
             raise ValueError("Legacy reference registration detected; preview and explicitly import it")
-        _reserve(state, before, project, {"kind": "registration"})
+        _reserve(state, record)
         return _finish(state, project)
 
 
@@ -365,8 +444,9 @@ def apply_import(state: State, specification: dict, expected_revision: int, prev
         preview, project, before = _import_plan(state, specification, expected_revision)
         if preview_sha256 != preview["preview_sha256"]:
             raise ValueError("Import preview changed; review a new preview before applying")
-        _reserve(state, before, project, {"kind": "reference-import", "preview_sha256": preview_sha256,
-                                        "files": preview["files"]})
+        record = _intent(before, project, {"kind": "reference-import", "preview_sha256": preview_sha256,
+                                          "files": preview["files"]})
+        _reserve(state, record)
         return _finish(state, project)
 
 
@@ -386,13 +466,23 @@ def status(state: State, project_id: str) -> dict:
     if "registration" not in project:
         return {"project": project_id, "revision": project["revision"], "status": "unregistered"}
     registration = project["registration"]
+    if registration['schema_version'] == 2:
+        effective_requirements = _validate_saved(project)
     observed = reference.registration_io(registration["definition"]["execution"], project_id)
     files = {path: "missing" if observed["files"][path] is None else
              "matches" if _sha(observed["files"][path]["document"]) == _sha(value) else "differs"
              for path, value in registration["files"].items()}
     tracker = registration["definition"]["tracker"]
     duplicate_tracker = any(other["tracker"] == tracker for other in observed["other_projects"])
-    return {"project": project_id, "revision": project["revision"], "status": registration["status"],
+    result = {"project": project_id, "revision": project["revision"], "status": registration["status"],
+            "registration_schema_version": registration['schema_version'],
             "sha256": registration["sha256"], "files": files, "duplicate_tracker": duplicate_tracker,
             "consistent": all(value == "matches" for value in files.values()) and not duplicate_tracker,
             "recovery_record": str(_journal(state, project))}
+    if registration['schema_version'] == 2:
+        policy = registration['definition']['design_policy']
+        result['design'] = {'policy': deepcopy(policy), 'sha256': policy['sha256'],
+            'profile_sha256': policy['profile_sha256'], 'effective_requirements': effective_requirements,
+            'execution_supported': False, 'actor_assurance': {'required': policy['profile']['required_actor_assurance'],
+                'available': False, 'code': 'human_channel_unavailable'}}
+    return result

@@ -7,8 +7,46 @@ import sys
 
 import pytest
 
+from test_registrations import design_policy
+
 
 pytestmark = pytest.mark.skipif(sys.platform != 'linux', reason='Formal execution requires Linux / WSL2')
+
+
+@pytest.mark.parametrize('version', [1, 2])
+def test_native_legacy_job_obeys_registered_design_policy_before_claim(tmp_path, version):
+    pytest.importorskip('temporalio')
+    (tmp_path / 'design-policy.json').write_text(json.dumps(design_policy()), encoding='utf-8')
+    fixture = Path(__file__).parent / 'fixtures/reference_acceptance.py'
+    mode = 'design-policy-legacy-v' + str(version)
+    result = subprocess.run([sys.executable, str(fixture), str(tmp_path), 'repository-governance', 'command', mode],
+                            capture_output=True, text=True, timeout=60)
+    assert result.returncode == 0, result.stdout + result.stderr
+    summary = json.loads(result.stdout)
+    if summary.get('skip'):
+        pytest.skip(summary['skip'])
+    assert summary['legacy_request_root']
+    if version == 2:
+        assert summary['rejected'] == mode and set(summary['starts'].values()) == {0}
+        assert summary['registration']['design']['execution_supported'] is False
+    else:
+        assert summary['allowed'] == mode and summary['frozen_selection']
+
+
+@pytest.mark.parametrize('problem', ['missing-control', 'repo-mismatch'])
+@pytest.mark.parametrize('frozen', [False, True])
+def test_native_legacy_control_failure_keeps_receipt_or_frozen_selection(tmp_path, problem, frozen):
+    pytest.importorskip('temporalio')
+    fixture = Path(__file__).parent / 'fixtures/reference_acceptance.py'
+    mode = 'legacy-control-' + ('frozen-' if frozen else '') + problem
+    result = subprocess.run([sys.executable, str(fixture), str(tmp_path), 'repository-governance', 'command', mode],
+                            capture_output=True, text=True, timeout=60)
+    assert result.returncode == 0, result.stdout + result.stderr
+    summary = json.loads(result.stdout)
+    if summary.get('skip'):
+        pytest.skip(summary['skip'])
+    assert summary['state'] == ('SUCCEEDED' if frozen else 'FAILED')
+    assert summary['poll_received_terminal'] and summary['frozen_selection'] == frozen
 
 
 @pytest.mark.parametrize('template,mode', [

@@ -106,12 +106,14 @@ async def main():
         binding["argv"] += ["--wait-for-cancellation", str(root / "action-ready"), str(root / "late-write")]
     for role in ("inspector", "planner", "implementer", "reviewer"):
         projects.bind(state, "demo", role, binding, state.project("demo")["revision"])
-    if mode.startswith("unified") or mode == "imported-registration" or composition_mode:
+    if mode.startswith(("unified", "design-policy-legacy-")) or mode == "imported-registration" or composition_mode:
         definition = {"schema_version": 1, "id": "demo", "repo": str(repo), "templates": [kind],
                       "tracker": {"kind": "github", "project": "fixtures/demo"}, "allowed_paths": ["src"],
                       "checks": checks, "scope_policy": {"schema_version": 1, "protected_paths": [".git"],
                                                           "max_changed_files": 200, "max_changed_lines": 20000},
                       "execution": {"installation": str(installation), "config_directory": str(config), "state_directory": str(runtime)}}
+        if mode == 'design-policy-legacy-v2':
+            definition.update(schema_version=2, design_policy=read(root / 'design-policy.json'))
         if mode == "imported-registration":
             register("demo", repo, "github", "fixtures/demo", ["src"], root / "checks.json")
             sources = {path: (config / path).read_bytes() for path in ("projects/demo.json", "policies/demo/scope.json")}
@@ -339,6 +341,89 @@ async def main():
         context = app.context(actual_stage, expected, task_input["work_units"][0] if stage == "work:unit" else None, dependencies)
         job = await activities.submit(context)
         request = requests / "task-1" / (context["job_id"] + ".json")
+        if stage == 'inventory' and mode.startswith(('design-policy-legacy-', 'legacy-control-')):
+            from ergora import reference_executor as driver
+
+            starts = {name: 0 for name in ('claim', 'body', 'prepare', 'model', 'commands')}
+
+            def observe(owner, name, label):
+                original_method = getattr(owner, name)
+                def counted(*args, **kwargs):
+                    starts[label] += 1
+                    return original_method(*args, **kwargs)
+                setattr(owner, name, counted)
+
+            observe(driver.original, 'claim', 'claim')
+            observe(driver, '_execute', 'body')
+            for name in ('prepare', 'model', 'commands'):
+                observe(driver.Executor, name, name)
+            envelope = read(request)
+            if mode.startswith('legacy-control-'):
+                frozen = '-frozen-' in mode
+                snapshot = runtime / 'tasks/task-1/agent-bindings.json'
+                if frozen:
+                    selection = driver.Executor(envelope, state.root).selection
+                    original_snapshot = snapshot.read_bytes()
+                other = State(root / 'other-control')
+                if mode.endswith('repo-mismatch'):
+                    other_repo = root / 'other-repo'
+                    other_repo.mkdir()
+                    git(other_repo, 'init')
+                    git(other_repo, 'commit', '--allow-empty', '-m', 'other baseline')
+                    projects.create(other, 'demo', other_repo)
+                if frozen:
+                    assert driver.Executor(envelope, other.root).selection == selection
+                receipt = driver.process(request, other.root)
+                assert receipt['state'] == ('SUCCEEDED' if frozen else 'FAILED'), receipt
+                assert await activities.poll(job) == receipt
+                assert not (runtime / 'rejected-envelopes').exists()
+                if frozen:
+                    assert snapshot.read_bytes() == original_snapshot
+                    assert starts['model'] == 1
+                else:
+                    expected = 'Unknown project' if mode.endswith('missing-control') else 'same Git repository'
+                    assert expected in receipt['detail'], receipt
+                    assert {artifact['name'] for artifact in receipt['artifacts']} == {'agent-admission-error'}
+                    assert not snapshot.exists() and starts['model'] == starts['commands'] == 0
+                print(json.dumps({'mode': mode, 'state': receipt['state'], 'poll_received_terminal': True,
+                    'frozen_selection': frozen, 'starts': starts, 'detail': receipt['detail']}))
+                return
+            errors = []
+            other = State(root / 'unregistered-other-control')
+            projects.create(other, 'demo', repo)
+            for enter in (lambda: driver.Executor(envelope, other.root),
+                          lambda: driver.process(request, other.root)):
+                try:
+                    enter()
+                except Exception as error:
+                    assert 'another control directory' in str(error), str(error)
+                else:
+                    raise AssertionError('A different control home bypassed the native ownership marker')
+            assert starts == dict.fromkeys(starts, 0), starts
+            if mode.endswith('-v2'):
+                for enter in (lambda: driver.Executor(envelope, state.root),
+                              lambda: driver.process(request, state.root)):
+                    try:
+                        enter()
+                    except ValueError as error:
+                        errors.append(str(error))
+                assert len(errors) == 2 and all('design_policy_execution_unsupported' in detail for detail in errors), errors
+                assert starts == dict.fromkeys(starts, 0), starts
+                assert not (runtime / 'executor.sqlite3').exists() and not (runtime / 'workspaces').exists()
+                print(json.dumps({'rejected': mode, 'starts': starts, 'errors': errors,
+                    'legacy_request_root': requests == runtime / 'requests', 'registration': registrations.status(state, 'demo')}))
+            else:
+                # The direct constructor creates the original frozen selection;
+                # process then consumes that exact selection through DirectJob.
+                first = driver.Executor(envelope, state.root)
+                frozen = first.selection
+                receipt = driver.process(request, state.root)
+                assert receipt['state'] == 'SUCCEEDED', receipt
+                assert driver.Executor(envelope, state.root).selection == frozen
+                assert starts['claim'] > 0 and starts['body'] == 1 and starts['model'] == 1
+                print(json.dumps({'allowed': mode, 'starts': starts, 'frozen_selection': True,
+                    'legacy_request_root': requests == runtime / 'requests'}))
+            return
         if stage == 'inventory' and mode in ('composition-missing-admission', 'composition-other-admission',
                 'composition-missing-publication', 'composition-binding-drift', 'composition-config-drift', 'composition-policy-drift', 'composition-multiple'):
             from ergora.reference_executor import Executor

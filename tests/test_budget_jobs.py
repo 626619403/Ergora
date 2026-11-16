@@ -4,17 +4,19 @@ import asyncio
 import json
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import time
 
 import pytest
 
-from ergora import reference, task_envelopes, tasks
+from ergora import reference, registrations, task_envelopes, tasks
 from ergora.reference_inputs import execution_input
+from ergora.state import State
 from test_task_budget import budget_creation, full_creation, full_graph, work_creation, work_graph
-from test_registrations import installation, registration
-from test_task_creation import creation_project
+from test_registrations import design_policy, installation, registration
+from test_task_creation import creation_project, _files
 
 
 pytestmark = pytest.mark.skipif(sys.platform != 'linux', reason='Budgeted job owners require Linux/WSL2')
@@ -102,6 +104,58 @@ def pending(envelope, home):
         'candidate_sha': context['expected_candidate_sha'], 'artifacts': [], 'checks': []}
 reference_executor._execute = pending
 '''
+
+
+def test_v2_rejects_original_budgeted_input_before_job_constructor_or_claim(budget_creation, monkeypatch, tmp_path):
+    old, document, adapter, job, path, environment, folder = _prepare(budget_creation, monkeypatch)
+    original_files = _files(Path(environment['AGENTFLOW_STATE_DIR']))
+    registered = json.loads(json.dumps(budget_creation[1]))
+    state = State(tmp_path / 'design-control')
+    config, runtime = tmp_path / 'design-config', tmp_path / 'design-runtime'
+    registered.update(schema_version=2, design_policy=design_policy())
+    registered['execution'].update(config_directory=str(config), state_directory=str(runtime))
+    registrations.register(state, registered, 0)
+    # Replay an intact, genuinely published v1 budget document/job into the new
+    # native root. Its old binding is not a supported migration or recovery.
+    # Regardless of its later owner checks, it must not claim a new v2 job.
+    shutil.copytree(Path(environment['AGENTFLOW_STATE_DIR']) / 'tasks', runtime / 'tasks')
+    selected = execution_input(document)
+    target = selected.request_root(runtime / 'requests') / path.parent.name / path.name
+    target.parent.mkdir(parents=True)
+    target.write_bytes(path.read_bytes())
+    roots = {key: str(runtime / key) for key in ('requests', 'receipts', 'artifacts', 'approvals', 'fences')}
+    (config / 'adapter.json').write_text(json.dumps({**roots, 'trusted_receipts': True}))
+    environment.update(AGENTFLOW_CONFIG_DIR=str(config), AGENTFLOW_STATE_DIR=str(runtime))
+    source = '''
+import json,sys
+from pathlib import Path
+from ergora import reference_executor as driver
+from ergora.reference_job_lifecycle import BudgetedJob
+starts={'job':0,'claim':0,'body':0,'model':0,'commands':0}
+def observe(owner,name,label):
+ original=getattr(owner,name)
+ def counted(*args,**kwargs):
+  starts[label]+=1
+  return original(*args,**kwargs)
+ setattr(owner,name,counted)
+observe(BudgetedJob,'__init__','job')
+observe(driver.original,'claim','claim')
+observe(driver,'_execute','body')
+for name in ('model','commands'): observe(driver.Executor,name,name)
+try:
+ driver.process(Path(sys.argv[1]),Path(sys.argv[2]))
+except ValueError as error:
+ assert 'design_policy_execution_unsupported' in str(error),str(error)
+else: raise AssertionError('Budgeted input was admitted')
+assert starts==dict.fromkeys(starts,0),starts
+print(json.dumps(starts))
+'''
+    result = subprocess.run([sys.executable, '-P', '-c', source, str(target), str(state.root)],
+        capture_output=True, text=True, env=environment, timeout=20)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert set(json.loads(result.stdout).values()) == {0}
+    assert not (runtime / 'executor.sqlite3').exists() and not (runtime / 'workspaces').exists()
+    assert _files(Path(budget_creation[1]['execution']['state_directory'])) == original_files
 
 
 def test_constructor_lock_consumes_original_budget_and_cannot_reexecute(budget_creation, monkeypatch, tmp_path):
