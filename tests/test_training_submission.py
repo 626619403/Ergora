@@ -3845,13 +3845,14 @@ def test_round_new_wire_bounds_complete_stdout_and_identity_frame(round_candidat
 @pytest.mark.skipif(sys.platform != 'linux', reason='Original diagnostic S and fd durability require Linux')
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)
 @pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
-def test_round_parent_request_retention_keeps_same_original_encoding(round_candidate, monkeypatch, caplog):
+@pytest.mark.parametrize('mode', ['collect-round', 'observe-candidate', 'reconcile-controller'])
+def test_round_parent_request_retention_keeps_same_original_encoding(round_candidate, monkeypatch, caplog, mode):
     import asyncio
     from ergora import reference_training_worker as worker
 
     state, admission, plan, operation, _ = round_candidate
     # The existing internal producer owns UUID, validation and the one encoding.
-    # Its source records/services are synthetic; no SDK v3 creator is registered.
+    # Its source records/services are synthetic; production service registration remains v1.
     original = json.dumps
     encodings = []
     def encode(value, *args, **kwargs):
@@ -3860,7 +3861,19 @@ def test_round_parent_request_retention_keeps_same_original_encoding(round_candi
             encodings.append(raw.encode('utf-8'))
         return raw
     monkeypatch.setattr(worker.json, 'dumps', encode)
-    current = operation(reason='原始秘密🧪' * 12000)
+    if mode == 'collect-round':
+        current = operation(reason='原始秘密🧪' * 12000)
+    else:
+        from copy import deepcopy
+        template = operation().payload
+        context = deepcopy(template['activity_context']) if mode == 'observe-candidate' else None
+        if context:
+            context['activity_source']['activity_type'] = worker.protocol.CYCLE_ACTIVITY_NAMES_V3['observe-candidate']
+        encodings.clear()
+        current = worker._CycleOperation(state.root, 'demo', 'controller', admission.authorization['sha256'], mode,
+            snapshot=template['snapshot'], ordinal=0 if context else None, reason='原始秘密🧪' * 12000,
+            activity_context=context, window=template['bootstrap'],
+            start_context=template['start_context'] if context else None)
     assert len(encodings) == 1 and current.encoded == encodings[0] and not current.encoded.endswith(b'\n')
     identity = dict(current.identity)
     before = {path: path.read_bytes() for path in admission.directory.rglob('*') if path.is_file()}
@@ -4185,3 +4198,40 @@ def test_round_parent_request_chunks_keep_original_bytes_and_loop_fair(round_can
     assert sum(size for size, _ in writes) == len(current.encoded)
     assert len(writes) > 2 and all(b > a for (_, a), (_, b) in zip(writes, writes[1:]))
     assert (current.output / 'request.json').read_bytes() == current.encoded
+
+
+@pytest.mark.skipif(sys.platform != 'linux', reason='Schema3 effect closure uses the original supervised Linux H')
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
+def test_cycle_v3_expression_keeps_effect_modes_closed_in_actual_helper(round_candidate):
+    """Synthetic existing chain; no new controller, native effect, root or stop notification."""
+    import asyncio
+    from copy import deepcopy
+    from ergora import reference_training_worker as worker, training_execution_protocol as protocol
+
+    state, admission, _, original, _ = round_candidate
+    template = original().payload
+    snapshot = template['snapshot']
+    arguments = (state.root, 'demo', 'controller', admission.authorization['sha256'])
+    controller = template['start_context']['controller']
+    captured = []
+    for mode, action, ordinal in [('prepare-controller', None, None), ('submit-controller', None, None),
+            ('prepare-candidate', 'start', 0), ('request-execution-candidate', 'request-execution-or-observe', 0),
+            ('stop-writer', 'stop', None), ('notify-owner', 'stop', 0)]:
+        context = deepcopy(template['activity_context']) if action else None
+        if context:
+            context['activity_source'].update(activity_type=protocol.CYCLE_ACTIVITY_NAMES_V3[action],
+                task_queue=protocol.CYCLE_STOP_TASK_QUEUE_V2 if action == 'stop' else protocol.CYCLE_TASK_QUEUE_V2)
+        operation = worker._CycleOperation(*arguments, mode, snapshot=snapshot, ordinal=ordinal,
+            activity_context=context, reason='closed-fixture' if mode == 'stop-writer' else None,
+            start_context={'controller': controller} if mode in protocol.CYCLE_CANDIDATE_MODES else None,
+            window=template['bootstrap'] if mode == 'request-execution-candidate' else None)
+        result = asyncio.run(operation.run())
+        assert result['status'] == 'unknown' and result['reason'] == 'Schema3 controller execution is not enabled', (mode, result)
+        assert result['operation_stopped'] is True and result['supervisor_returncode'] == 0
+        captured.append(operation.output)
+    assert not admission.stop.exists()
+    for output in captured:
+        stdout = json.loads((output / 'helper/stdout.txt').read_bytes())
+        assert stdout == {'status': 'unknown', 'reason': 'Schema3 controller execution is not enabled'}
+        assert (output / 'request.json').exists()
