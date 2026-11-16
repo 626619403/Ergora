@@ -25,7 +25,7 @@ Control-plane installation does not start services, authenticate a model or enab
 |[Template walkthroughs](TEMPLATE_WALKTHROUGHS.md)|Complete governance/refactoring/training-proposal journeys and manifests|Chinese; full pair queued in batch 3|
 |[Agent definitions](AGENT_DEFINITIONS.md)|Independent specialist definitions, resources and immutable versions|[English](AGENT_DEFINITIONS.md) / [中文](zh-CN/AGENT_DEFINITIONS.md)|
 |[Agent backends](AGENT_BACKENDS.md)|Actual role/mode support, backend configuration, formal execution and session recovery|[English](AGENT_BACKENDS.md) / [中文](zh-CN/AGENT_BACKENDS.md)|
-|[Workflow definitions](WORKFLOW_DEFINITIONS.md)|Nested references, resource inheritance, permissions, graph compilation, manifests and explicit leaf calls|Chinese; full pair queued in batch 3|
+|[Workflow definitions](WORKFLOW_DEFINITIONS.md)|Nested references, resource inheritance, permissions, graph compilation, manifests and explicit leaf calls|[English](WORKFLOW_DEFINITIONS.md) / [中文](zh-CN/WORKFLOW_DEFINITIONS.md)|
 
 A valid definition, preset installation or preview does not execute a graph. Formal development retains the supported six-stage runtime. Per-binding reasoning settings request a level supported by the selected backend/model; they do not prove the model used that level. Automatic task-based level selection remains planned.
 

@@ -25,7 +25,7 @@
 |[模板入门旅程](TEMPLATE_WALKTHROUGHS.md)|治理／重构／训练提案的完整旅程与 manifest|中文；第三批完成完整双语|
 |[Agent 定义](zh-CN/AGENT_DEFINITIONS.md)|独立专家定义、资源与不可变版本|[English](AGENT_DEFINITIONS.md) / [中文](zh-CN/AGENT_DEFINITIONS.md)|
 |[Agent 后端](zh-CN/AGENT_BACKENDS.md)|真实角色／模式支持、后端配置、正式执行和会话恢复|[English](AGENT_BACKENDS.md) / [中文](zh-CN/AGENT_BACKENDS.md)|
-|[工作流定义](WORKFLOW_DEFINITIONS.md)|嵌套引用、资源继承、权限、图编译、manifest 和显式叶调用|中文；第三批完成完整双语|
+|[工作流定义](zh-CN/WORKFLOW_DEFINITIONS.md)|嵌套引用、资源继承、权限、图编译、manifest 和显式叶调用|[English](WORKFLOW_DEFINITIONS.md) / [中文](zh-CN/WORKFLOW_DEFINITIONS.md)|
 
 有效定义、preset 安装或预览不等于执行整张图。正式开发保留受支持的六阶段运行时。逐 binding 的推理设置请求所选后端／模型支持的等级，不证明模型实际使用了该等级。自动按任务选档仍属后续设计。
 
