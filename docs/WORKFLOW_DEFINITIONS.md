@@ -28,6 +28,7 @@ ergora composition install-preset optimization-performance-diagnosis
 ergora composition install-preset training-flow-map
 ergora composition install-preset training-optimization-v3
 ergora composition install-preset evidence-report
+ergora composition install-preset optimization-report
 ergora composition install-preset pretraining-review
 ergora composition install-preset posttraining-review
 ergora composition show ergora-large-change-delivery 1.0.0 --material
@@ -51,6 +52,7 @@ The [evidence-report author](EVIDENCE_REPORTS.md) provides an independent read-o
 |optimization-performance-diagnosis|`ergora-opt-performance-diagnosis-proposal`|Reproduction of the same symptom and compatible report readers; read-only design/profile→measurement proposal leaves, with experiment execution retained by the original runner|
 |training-flow-map|`ergora-training-flow-map`|Read-only `root/map` separately produces algorithm/execution dependency maps, state lifecycles and falsifiable redundancy hypotheses; no automatic downstream specialist or training execution|
 |evidence-report|`ergora-evidence-report`|Read-only `root/author` produces Markdown/static HTML reports bound to sources; preserves original evidence, run records and independent review/release|
+|optimization-report|`ergora-evidence-report@2.0.0`|Same read-only author interface, with dedicated optimization Skill and full template context: source flow/redundancy → comparable results → diagnosis/decisions; explicitly supplied evidence only|
 |training-optimization-v3|`ergora-training-proposal@3.0.0`|Flow mapping → parallel design/diagnosis → retained kernel assessment (operator changes may be unnecessary) → measurement review; all five leaves take the original task, complete predecessors must be supplied explicitly, with no automatic scheduling|
 |pretraining-review|`ergora-pretraining-review` 1.0.1|Original general three-way review alongside a pretraining specialist, required/all-join; all four leaves inherit shared backend guidance; the domain leaf can be called independently|
 |posttraining-review|`ergora-posttraining-review` 1.0.1|Original general three-way review alongside a posttraining specialist, required/all-join; all four leaves inherit shared backend guidance; the domain leaf can be called independently|

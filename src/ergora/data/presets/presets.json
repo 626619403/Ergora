@@ -527,6 +527,17 @@
       "workflows": [
         "ergora-evidence-report"
       ]
+    },
+    "optimization-report": {
+      "description": "Readonly optimization reports: scope, algorithm/data flow, redundancy hypotheses, comparable baseline/candidate progression, decisions and original evidence; no collection, execution or adoption authority.",
+      "runtime": "proposal-leaves",
+      "root": "ergora-evidence-report-v2",
+      "agents": [
+        "ergora-evidence-report-author-v2"
+      ],
+      "workflows": [
+        "ergora-evidence-report-v2"
+      ]
     }
   }
 }
