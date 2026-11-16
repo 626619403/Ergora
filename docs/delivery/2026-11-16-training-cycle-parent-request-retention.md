@@ -92,3 +92,13 @@ Ergora自身原 `refactoring-quality → ergora-structure-review@1.0.0` 使用�
 已普通合并开发分支 `c4c0946060ba781eb8b2cb2e7e9d3ad2798dcd5a`。合并后全部663产品字节／执行位与原已验候选同一；853冻结输入仅两项另外已审的主线差异：Windows四行提前skip与CI分组JSON，原归属／证据不变。`package-r3/merge-inputs-r3.json`保留准确合并身份。该产品内部片闭合；公开联合候选与自己的CI待后续，不借M2或前片CI通过。
 
 接续M5-G在固定1f57ca4上独立实施；全M1c／正式V2-v3／schema3效果／ordinal1及真实两轮仍待各自候选验收。已审留存只覆盖当前collect/reconcile两个内部v2 mode；M6新增mode的实际producer、诊断控制表和完整Failure／Payload边界需在M6重新接齐，不能沿用本片结果称已全开。
+
+
+## 联合公开候选
+
+已普通推送 `debf6f96ed02620d22adc0ac6385c72641b3d53b` 到原开发分支，精确远端SHA同一。它包含已审父留存及另已审两完整文件的CI再平衡9a35174、闭合记录及M5/M6后继计划。官方API HTTP200在01:08:41Z准确发现其自己的push／attempt1 [43784344936](https://github.com/626619403/Ergora/actions/runs/43784344936)，head_sha同一，in_progress／无终态。推送／远端／发现请求和原响应沿ignored `cycle-parent-request-retention/publication-r1/`保留。前a0d533d的八job成功不授予本候选；后续按它自己的结果更新。
+
+
+01:17:46Z准确run／jobs查询均HTTP403，官方rate-limit headers为remaining0、reset01:25:06Z；原响应和headers逐次保留，不将该失败改写为Workflow失败或成功。最后成功发现仍为准确debf6f9的run43784344936在途；配额恢复后再查询，本地M5工作继续。
+
+配额恢复后01:30:01Z的run／jobs均HTTP200，准确debf6f9、push／attempt1、八job中七项成功且Windows在途。01:31:47Z再次官方HTTP200，准确同一head／run／attempt已completed／success，plan／六Linux／Windows八job全success。group5实际17分31秒、group1为7分07秒、Windows23分48秒；原Linux20／Windows30分钟未改。日期固定原件为`publication-r1/20261116T013147Z-{run-response,jobs-response,summary}.json`及响应headers，原403不覆盖。该CI仅闭合debf6f9联合候选，不授予尚在隔离测试的M5或未来M6。

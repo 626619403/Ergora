@@ -12,3 +12,8 @@
 
 
 新的[fresh独立审查](2026-11-16-parent-retention-ci-balance-review.md)需求／维护性两轴approve、开放0。配置固定提交 `9a351740de95eebc3376bc1454162e030b1a1731`，唯一父c4c0946、只一JSON两增两删，新raw身份保持；审查报告SHA256 `c8db2caaa8af418bcd014cd3f1cb0bd46f9d22498ec6be3cb9ba67a3611d05ae`。该小片完成，不重跑产品／模型或无变化body；新组合由后续联合公开候选自己的CI验收。
+
+
+配置已随准确联合候选 `debf6f96ed02620d22adc0ac6385c72641b3d53b` 普通推送且精确远端同一；自己的43784344936在途，尚无最终组合时长或整体通过结论。原a0d的时间仅用于选择方向。
+
+后续官方01:31:47Z快照确认该准确head／push／attempt1的43784344936终态completed／success，八job全success；group5为17分31秒、group1为7分07秒、Windows23分48秒，原20／30分钟不变。原始响应及日期固定summary保留于ignored `cycle-parent-request-retention/publication-r1/20261116T013147Z-*`。这里闭合实际新组合，无需用旧时长推算；尚未导入的M5不继承此结果。

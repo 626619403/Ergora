@@ -1,6 +1,6 @@
 # WA4：设计讨论、可验证节点与循环执行演进方案
 
-日期：2026-11-15。状态：**方案草案，尚未作产品决定或实施**。承接[WA1–WA5原始要求](2026-11-15-workflow-evidence-and-human-gates.md)，依据固定a4371c8的[调研复用审计](../delivery/2026-11-15-workflow-research-reuse-audit.md)、[真实运行模型审计](../delivery/2026-11-15-workflow-runtime-capabilities-audit.md)、[设计与知识关卡审计](../delivery/2026-11-15-workflow-design-knowledge-audit.md)。审计范围不包含尚未合入的BR1／BR2或未完成的训练生命周期实现；本方案也不将它们当作已验前提。
+日期：2026-11-15。状态：**D1–D4已获用户明确确认；详细实施设计进行中，尚未实施新关卡**。承接[WA1–WA5原始要求](2026-11-15-workflow-evidence-and-human-gates.md)，依据固定a4371c8的[调研复用审计](../delivery/2026-11-15-workflow-research-reuse-audit.md)、[真实运行模型审计](../delivery/2026-11-15-workflow-runtime-capabilities-audit.md)、[设计与知识关卡审计](../delivery/2026-11-15-workflow-design-knowledge-audit.md)。审计范围不包含尚未合入的BR1／BR2或未完成的训练生命周期实现；本方案也不将它们当作已验前提。
 
 ## 结论与实施顺序建议
 
@@ -78,3 +78,6 @@ flowchart LR
 WA4下一步：读完三份审计的具体来源／接口，对本方案进行讨论和必要的独立设计审查；确认范围后登记每片实际owner、schema／旧profile兼容、样例材料、命令和真实旅程。不在方案未确认时修改产品定义／schema／runtime。实现片按根规则更新计划与交付、调用自身审查模板并获得新的独立两轴评审。
 
 2026-11-16：已将D1、D2／D3和D4以三项异步问题提交用户讨论，完整推荐及可选代价如上；当前待真实答复，没有把沉默视作批准。c1／BR等已授权且不依赖这些取舍的工作继续。
+
+
+2026-11-16后续：用户已对三项异步问题分别明确答复“采用建议范围”“采用上述规则”“采用建议顺序”，[D1–D4决定记录](../delivery/2026-11-16-workflow-design-decisions.md)为当前依据。前文“尚未决定／待答”保留为讨论时历史状态，不再阻塞详细设计；当前正在细化WA5a／b真实owner、版本、原批准／work最后门及恢复，未实施新关卡。该方向决定不代替任何任务候选的精确批准。
