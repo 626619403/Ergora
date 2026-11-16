@@ -6,6 +6,19 @@ English · [简体中文](zh-CN/EVIDENCE_REPORTS.md) · [Documentation](README.m
 
 The `evidence-report` preset provides the read-only author `ergora-evidence-report-author@1.0.0`, workflow root `ergora-evidence-report@1.0.0`, and standalone leaf `root/author`. It organizes complete engineering, research or experiment material supplied by the operator into Markdown and static self-contained HTML, with sources, actual coverage and unverified scope. Unlike the programmatic [`review report`](LOCAL_REVIEW.md), which reads original reviewer runs without an LLM call, this leaf is an explicit report-author invocation. It does not issue formal approval.
 
+## Optimization reports
+
+Select `optimization-report` for the explicitly versioned author/root `@2.0.0`, with the same `root/author`, read-only ceiling and four-field response. It retains the complete general evidence-report Skill and adds a dedicated [optimization-report Skill](../src/ergora/data/presets/agents/ergora-evidence-report-author-v2/skills/ergora-optimization-report/SKILL.md) and [placeholder layout](../src/ergora/data/presets/agents/ergora-evidence-report-author-v2/skills/ergora-optimization-report/assets/optimization-report-template.md). The entire layout is a context resource included in the frozen prompt. The existing `evidence-report` selection remains `@1.0.0`.
+
+Supply the complete original task, algorithm/computation/data-flow analysis (for example, the original `training-flow-map` result), redundancy evidence, baseline and every retained trial's full configuration, actual output locations, raw measurements and quality checks. The report proceeds from scope/objective to source flow and redundancy hypotheses, then comparable baseline/candidate tables, diagnosis, decisions and remaining bottlenecks. It preserves complete combined settings, negative results, missing evidence and measured/estimated/unverified distinctions. Different phases, hardware or useful work use separate tables; MFU is optional. This author does not run the flow-map predecessor or measure performance.
+
+```bash
+ergora composition install-preset optimization-report
+ergora composition show ergora-evidence-report 2.0.0 --material
+```
+
+Then use the grant and explicit invocation flow below, replacing the `prepare-manifest` version with `2.0.0` and choosing fresh manifest/input/output directories. Original evidence, static HTML checks and explicit result export retain the same obligations. Resource/loading validation and unrun scope are recorded in the [delivery record](delivery/2026-11-16-optimization-report-skill.md).
+
 <a id="准备原材料"></a>
 ## Prepare original material
 

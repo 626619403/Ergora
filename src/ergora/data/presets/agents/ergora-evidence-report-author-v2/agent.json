@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "id": "ergora-evidence-report-author",
+  "version": "2.0.0",
+  "description": "Readonly progressive optimization reports with source flow, comparable trial tables, full configurations and evidence-linked Markdown/static HTML.",
+  "roles": [
+    "implementer"
+  ],
+  "specialties": [
+    "evidence-reporting",
+    "source-provenance",
+    "static-html-reports",
+    "optimization-reporting",
+    "comparison-contracts",
+    "configuration-progression"
+  ],
+  "backend": {
+    "tool": "codex"
+  },
+  "resources": [
+    {
+      "id": "ergora-evidence-report-author-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "1ff334bf7fc91f7e691c18525f5d87232539f9a0e929b4894b864ec23a33fbeb"
+    },
+    {
+      "id": "ergora-evidence-report-skill",
+      "kind": "skill",
+      "path": "skills/ergora-evidence-report",
+      "digest": "42968e4a057ce46801f45105b1b122bb3e2640540c846360da915ef3955d292f"
+    },
+    {
+      "id": "ergora-optimization-report-skill",
+      "kind": "skill",
+      "path": "skills/ergora-optimization-report",
+      "digest": "11167b9365a810be28ebe8fc1e4410055c7bca592be5bb474c4f4d6159055b62"
+    },
+    {
+      "id": "ergora-optimization-report-template",
+      "kind": "context",
+      "path": "skills/ergora-optimization-report/assets/optimization-report-template.md",
+      "sha256": "f6e372ccf09a837a5f54b16e734c2ceac3237936d329eb9df3847346409c3a6e"
+    }
+  ]
+}
