@@ -78,7 +78,7 @@ def _prepare_role(state, project_id, role, prompt, timeout, skill_names, recall,
             {"requirements": contract["agents"][role], "result_schema": schema}, ensure_ascii=False)
     return prompt, schema, {'project': project_id, 'role': role, 'binding': binding,
         'project_revision': project['revision'], 'context': context, 'template': template,
-        'suffix': prompt[len(task):], 'schema': schema}
+        'suffix': prompt[len(task):], 'schema': schema}, configuration
 
 
 def run_agent(state: State, project_id: str, role: str, prompt: str, timeout: int = 300,
@@ -88,12 +88,12 @@ def run_agent(state: State, project_id: str, role: str, prompt: str, timeout: in
     if session_intent is not None:
         return _start_session(state, project_id, role, prompt, timeout, skill_names, recall, template,
                               session_intent, expected_revision, codex_config)
-    prepared, schema, document = _prepare_role(state, project_id, role, prompt, timeout, skill_names, recall, template)
+    prepared, schema, document, configuration = _prepare_role(state, project_id, role, prompt, timeout, skill_names, recall, template)
     document.pop('suffix')
     document.pop('schema')
     run_id = uuid.uuid4().hex
     document.update(id=run_id, started=now(), status='running',
-                    configuration=projects.effective_configuration(state.project(project_id)),
+                    configuration=configuration,
                     prompt_sha256=hashlib.sha256(prepared.encode()).hexdigest())
     _store(state, document)
     try:
@@ -674,8 +674,8 @@ def _start_session(state, project_id, role, prompt, timeout, skill_names, recall
         home.mkdir(mode=0o700)
         staged = Path(tempfile.mkdtemp(prefix='.context-', dir=folder))
         try:
-            full_prompt, schema, context = _prepare_role(state, project_id, role, prompt, timeout, skill_names, recall, template,
-                                                       freeze=(staged, folder / 'context'))
+            full_prompt, schema, context, _ = _prepare_role(state, project_id, role, prompt, timeout, skill_names, recall, template,
+                                                          freeze=(staged, folder / 'context'))
             if context['project_revision'] != revision or state.project(project_id)['revision'] != revision:
                 raise ValueError('Project changed during session preparation; no native effect was started')
             adapter = agent_backends.for_binding(context['binding'], {'codex': {'config': codex_config, 'role': role}})
