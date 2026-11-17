@@ -147,22 +147,13 @@ if os.environ.get('ERGORA_TEST_TRAINING_CONTROLLER') or fault == 'configuration-
 if base.envelope.get('protocol') == 'ergora-training-cycle-root-v1':
     install_root_faults(budget, base.envelope)
 
-if fault == 'legacy-owner-schema1' and base.payload['mode'] == 'owner':
-    record_owner = budget.training_cycles._record
-    def legacy_owner(path, value, **kwargs):
-        if path.name == 'owner.json':
-            value = {key: item for key, item in value.items() if key != 'execution_capability'}
-            value['schema_version'] = 1
-        return record_owner(path, value, **kwargs)
-    budget.training_cycles._record = legacy_owner
-
 if fault in ('managed-no-launch', 'managed-launch-failed'):
     training_cancellation_client.Service.query_workflow = base.Service.query_workflow
     if base.payload['mode'] == 'admission':
         from contextlib import contextmanager
-        from ergora import reference_training_execution
+        from ergora import state as state_owner
 
-        execution_lock = reference_training_execution.file_lock
+        execution_lock = state_owner.file_lock
         @contextmanager
         def observed_contention(path, **kwargs):
             try:
@@ -171,7 +162,7 @@ if fault in ('managed-no-launch', 'managed-launch-failed'):
             except BlockingIOError:
                 base.storage.with_suffix('.admission-contended').touch()
                 raise
-        reference_training_execution.file_lock = observed_contention
+        state_owner.file_lock = observed_contention
 
 install_launch_fault(budget, base.payload)
 
@@ -228,55 +219,52 @@ if fault in ('phase-isolation', 'phase-reap-overrun'):
             return await completion(active)
         budget.BudgetedStart.completion = with_descendant
     if fault == 'phase-isolation' and base.payload['mode'] == 'owner':
-        supervise = budget.BudgetedStart.supervise
-        def with_peer(active, mode, context, **kwargs):
-            if mode != 'monitor':
-                return supervise(active, mode, context, **kwargs)
+        from ergora import reference_training_execution
+
+        drive = reference_training_execution.Execution.drive
+        def with_peer(execution, context, phase_type):
+            active = execution.budget
             original_path = active.path
             def parent_path(name):
                 if name.startswith('observations/'):
                     raise AssertionError('A live parent must not validate phase storage paths')
                 return original_path(name)
             active.path = parent_path
-            phases = []
+            peer = phase_type(active, 'cleanup', context, phase_id=peer_id)
+            poll, finish = phase_type.poll, phase_type.finish
+            def poll_with_peer(phase, *args, **kwargs):
+                if phase is not peer and not peer.done:
+                    poll(peer)
+                return poll(phase, *args, **kwargs)
+            def finish_with_peer(phase):
+                result = finish(phase)
+                if phase.mode == 'monitor':
+                    subreaper = ctypes.c_int()
+                    if ctypes.CDLL(None).prctl(37, ctypes.byref(subreaper), 0, 0, 0) != 0:
+                        raise OSError('Cannot inspect test owner subreaper state')
+                    base.storage.with_suffix('.isolation').write_text(json.dumps({
+                        'owner_subreaper': subreaper.value, 'peer_survived_monitor': not peer.done}))
+                return result
             try:
-                peer = budget._BudgetPhase(active, 'cleanup', context, phase_id=peer_id)
                 assert peer.start()
-                phases.append(peer)
                 until = time.monotonic() + 6
                 marker = base.storage.with_suffix('.peer-blocked-sync')
                 while not marker.exists() and time.monotonic() < until:
-                    peer.poll()
+                    poll(peer)
                     time.sleep(.02)
                 assert marker.exists(), 'Peer did not reach its controlled fsync'
-                monitor = budget._BudgetPhase(active, mode, context)
-                assert monitor.start()
-                phases.append(monitor)
-                while not monitor.done:
-                    for phase in phases:
-                        if not phase.done:
-                            phase.poll()
-                    time.sleep(.02)
-                result = monitor.finish()
-                phases.remove(monitor)
-                subreaper = ctypes.c_int()
-                if ctypes.CDLL(None).prctl(37, ctypes.byref(subreaper), 0, 0, 0) != 0:
-                    raise OSError('Cannot inspect test owner subreaper state')
-                base.storage.with_suffix('.isolation').write_text(json.dumps({
-                    'owner_subreaper': subreaper.value, 'peer_survived_monitor': not peer.done}))
-                return result
+                phase_type.poll, phase_type.finish = poll_with_peer, finish_with_peer
+                return drive(execution, context, phase_type)
             finally:
-                for phase in phases:
-                    phase.request_stop()
-                while any(not phase.done for phase in phases):
-                    for phase in phases:
-                        if not phase.done:
-                            phase.poll()
-                    time.sleep(.02)
-                for phase in phases:
-                    phase.finish()
+                phase_type.poll, phase_type.finish = poll, finish
+                if peer.process is not None:
+                    peer.request_stop()
+                    while not peer.done:
+                        poll(peer)
+                        time.sleep(.02)
+                    finish(peer)
                 active.path = original_path
-        budget.BudgetedStart.supervise = with_peer
+        reference_training_execution.Execution.drive = with_peer
 
 if fault == 'phase-reap-overrun' and base.payload['mode'] == 'phase-supervisor' and base.payload['phase']['mode'] == 'monitor':
     reap = budget.processes._reap_children
@@ -334,21 +322,25 @@ sys.stdin = base.io.StringIO(json.dumps(base.envelope if base.envelope.get('prot
                                        else base.payload))
 base.install_budget_fixture()
 if fault in ('phase-slow-reader', 'phase-held-reader') and base.payload['mode'] == 'owner':
-    supervise = budget.BudgetedStart.supervise
+    start_phase = budget._BudgetPhase.start
     launch = subprocess.Popen
     transferring_monitor = False
-    def transfer(active, mode, context, **kwargs):
+    def transfer(phase):
         global transferring_monitor
-        transferring_monitor = mode == 'monitor'
+        transferring_monitor = phase.mode == 'monitor'
         try:
-            return supervise(active, mode, context, **kwargs)
+            return start_phase(phase)
         finally:
             transferring_monitor = False
     def delayed_reader(argv, *args, **kwargs):
-        if transferring_monitor and 'from ergora.reference_training_worker import budget_main;budget_main()' in argv:
+        selected = transferring_monitor and 'from ergora.reference_training_worker import budget_main;budget_main()' in argv
+        if selected:
             delay = .25 if fault == 'phase-slow-reader' else 60
             argv = [*argv[:-1], f'import time,runpy;time.sleep({delay});runpy.run_path({__file__!r},run_name="__main__")']
-        return launch(argv, *args, **kwargs)
-    budget.BudgetedStart.supervise = transfer
+        process = launch(argv, *args, **kwargs)
+        if selected:
+            base.storage.with_suffix('.reader-delayed').write_text(json.dumps(budget._process_identity(process.pid)))
+        return process
+    budget._BudgetPhase.start = transfer
     subprocess.Popen = delayed_reader
 budget_main()

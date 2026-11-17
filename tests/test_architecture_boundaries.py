@@ -44,7 +44,7 @@ def test_control_plane_import_graph_is_acyclic(local_dependencies):
     ("components", set()), ("contracts", set()), ("state", set()), ("git_materials", set()),
     ("review_dags", set()), ("issue_sources", set()), ("budget_clock", set()),
     ("reference_budget", {"budget_clock"}), ("native_six_stage", set()),
-    ("task_envelopes", {"review_dags", "issue_sources", "reference_budget", "native_six_stage"}),
+    ("task_envelopes", {"components", "review_dags", "issue_sources", "reference_budget", "native_six_stage"}),
     ("handoff", {"contracts", "task_envelopes", "issue_sources"}),
     ("windows_job", set()), ("processes", {"windows_job"}),
 ])

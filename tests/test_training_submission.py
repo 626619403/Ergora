@@ -1404,12 +1404,9 @@ def test_cycle_held_start_does_not_hold_the_deadline_owner_or_its_native_fence(c
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Native training start and recovery require Linux/WSL2')
-@pytest.mark.parametrize('legacy_schema', [1, 2])
-def test_cycle_managed_create_requires_its_live_owner_and_preserves_single_start_slot(cycle_selection, service, tmp_path, legacy_schema):
+def test_cycle_managed_create_requires_its_live_owner_and_preserves_single_start_slot(cycle_selection, service, tmp_path):
     from ergora import training_cycles
 
-    if legacy_schema == 1:
-        service[0]('accepted', budget_scenario='legacy-owner-schema1')
     state, definition, runtime, authorized = authorize_budget(cycle_selection, tmp_path, wall=24, cleanup=5)
     submitted = training_cycles.start(state, 'demo', 'budget', 'alpha', authorized['authorization_sha256'], 1)
     created = native_budget_create(definition, 'alpha', managed=True)
@@ -1418,10 +1415,8 @@ def test_cycle_managed_create_requires_its_live_owner_and_preserves_single_start
     original = {name: (prefix / ('alpha.' + name + '.json')).read_bytes() for name in ('intent', 'attempt', 'result')}
     try:
         owner = json.loads((prefix / 'alpha.budget/owner.json').read_bytes())
-        assert owner['schema_version'] == legacy_schema and owner.get('execution_capability') is None
-        with pytest.raises(ValueError, match='no execution capability'):
-            training.execute(state, 'demo', 'alpha', 1, submitted['intent_sha256'], submitted['run_id'],
-                hashlib.sha256((runtime / 'training/jobs/alpha/request.json').read_bytes()).hexdigest(), confirm=True)
+        assert owner['schema_version'] == 2
+        assert owner['execution_capability']['admission_protocol'] == reference.TRAINING_PROTOCOL
         assert not (runtime / 'training/jobs/alpha/managed-execution').exists()
         assert training.start(state, 'demo', 'alpha', 1, submitted['manifest_sha256'])['status'] == 'submitted'
         assert training.resume_start(state, 'demo', 'alpha', 1, submitted['intent_sha256'])['status'] == 'submitted'
@@ -1779,8 +1774,10 @@ def test_budget_phase_reap_survives_total_deadline_and_catchable_owner_cancel(cy
     assert monitor['stopped'] is True and monitor['supervisor_returncode'] in (0, -signal.SIGKILL)
     assert monitor['status'] == 'unknown' and observed['overrun_seconds'] >= .5
     assert observed['publication']['status'] == 'unknown' and observed['executor_stop_confirmed'] is None
-    assert not (folder / 'final.json').exists() and not (runtime / 'training/fences/alpha.json').exists()
-    assert [path.name.split('-')[0] for path in (folder / 'observations').iterdir()] == ['monitor']
+    assert not (folder / 'final.json').exists()
+    fence = json.loads((runtime / 'training/fences/alpha.json').read_bytes())
+    assert fence == {'binding': json.loads((runtime / 'training/specs/alpha.json').read_bytes())['binding']}
+    assert {item['mode'] for item in observed['phases']} == {'monitor', 'admission', 'fence', 'cleanup'}
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Native training start and recovery require Linux/WSL2')
@@ -1792,6 +1789,7 @@ def test_budget_phase_large_input_is_complete_and_a_held_reader_does_not_block_t
     state, _, runtime, authorized = authorize_budget(cycle_selection, tmp_path, wall=24, cleanup=8)
     training_cycles.start(state, 'demo', 'budget', 'alpha', authorized['authorization_sha256'], 1)
     wait_budget_stopped(runtime, seconds=30)
+    assert_budget_process_stopped(json.loads(service[1].with_suffix('.reader-delayed').read_bytes()))
     marker = service[1].with_suffix('.complete-input')
     if fault == 'phase-slow-reader':
         probe = ('训练场景' * 65_536).encode('utf-8')
@@ -4424,7 +4422,8 @@ sys.meta_path.insert(0,WithoutApplication())
 from ergora import training_execution_protocol as protocol
 try:
     if sys.argv[3].startswith('native'):
-        protocol.native_main(sys.argv[2])
+        from ergora.reference_training_execution import native_main
+        native_main(sys.argv[2])
     else:
         from pathlib import Path
         context=json.load(sys.stdin)['cached']

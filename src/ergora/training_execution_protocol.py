@@ -4,7 +4,7 @@ import asyncio
 import logging
 import uuid
 
-from contextlib import ExitStack, contextmanager
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 import getpass
 import hashlib
@@ -1885,103 +1885,6 @@ def validate_context(context: dict, chain: ExecutionRecords, *, live=True) -> Cy
     if live and parent is not None:
         parent.check()
     return parent
-
-
-def native_main(installation: str) -> None:
-    """Use the selected venv; the callback remains inside the original executor lock."""
-    from agent_platform import core
-
-    payload = json.load(sys.stdin)
-    context, phase = payload['cached'], payload['phase']
-    project, intent = context['project'], context['intent']
-    reference.validate_installation(Path(installation), training=True)
-    if (sys.prefix != str(Path(installation) / '.venv') or core.ROOT != Path(installation)
-            or core.PYTHON != Path(installation) / '.venv/bin/python'
-            or core.STATE != Path(intent['execution']['state_directory'])
-            or core.CONFIG != Path(intent['execution']['config_directory'])):
-        raise ValueError('Managed native interpreter or registered core paths differ')
-    from agent_platform.training_executor import process
-
-    def admit(folder, record):
-        nonlocal parent, active
-        chain = ExecutionRecords(project, intent['experiment_id'], intent['control_home']).load()
-        checked_parent = validate_context(context, chain)
-        if parent is None and checked_parent is not None:
-            parent = checked_parent
-            admissions.enter_context(parent.permission())
-        request, launch = chain.records['request'], chain.records['launch']
-        if request is None or launch is None or any(chain.records[name] is not None for name in ('attempt', 'ack', 'stopped')):
-            raise ValueError('Managed execution requires its one unused consumed launch')
-        protocol_phase = {'schema_version': 1, 'intent_sha256': chain.sha(intent),
-            'authorization_sha256': chain.owner['authorization_sha256'], 'protocol': 'ergora-budget-phase-v1',
-            'phase_id': launch['execution_phase_id'], 'mode': 'execute', 'context_sha256': chain.sha(context),
-            'owner': {key: chain.owner[key] for key in ('pid', 'start_ticks', 'boot_id')}}
-        _match(phase, protocol_phase, 'Complete execution supervisor phase')
-        actor = (context['authorization']['controller']['actor_id'] if context['authorization']['schema_version'] in (2, 3, 4)
-                 else f'unix:{os.getuid()}:{getpass.getuser()}')
-        if (folder != chain.folder.parent
-                or launch['clock_sha256'] != chain.sha(context['authorization']['clock'])
-                or request['actor_id'] != actor):
-            raise ValueError('Native callback differs from its original supervisor, actor or clock')
-        _match(record, chain.native, 'Native locked request')
-        supervisor, executor = processes.identity(os.getppid()), processes.identity(os.getpid())
-        _match(phase['owner'], {key: chain.owner[key] for key in ('pid', 'start_ticks', 'boot_id')}, 'Supervisor owner')
-        parent_fields = Path('/proc/' + str(supervisor['pid']) + '/stat').read_text().rsplit(')', 1)[1].split()
-        if int(parent_fields[1]) != chain.owner['pid']:
-            raise ValueError('Native supervisor is not a child of its original budget owner')
-        _match(processes.identity(chain.owner['pid']), phase['owner'], 'Original owner process')
-        attempt, ack = None, None
-
-        def active():
-            refreshed = ExecutionRecords(project, intent['experiment_id'], intent['control_home']).load()
-            validate_context(context, refreshed)
-            _match(refreshed.owner, chain.owner, 'Native callback original owner')
-            _match(refreshed.records, {**chain.records, 'attempt': attempt, 'ack': ack},
-                   'Native callback current publication stage')
-            if parent is not None:
-                parent.check()
-            # Parent authorization reads consume the same original work allowance.
-            if ((chain.root / ('training/fences/' + chain.ident + '.json')).exists()
-                    or not owner_active(chain.budget / 'owner.json', chain.owner)
-                    or budget_clock.remaining(context['authorization']['clock'], context['policy']['wall_seconds'],
-                                              context['policy']['cleanup_seconds']) <= 0):
-                raise ValueError('Original execution fence, owner or computation deadline forbids work')
-        active()
-        attempt = {'schema_version': 1, 'kind': 'training-execution-attempt', 'protocol': PROTOCOL,
-            'launch_sha256': chain.sha(launch), 'request_sha256': chain.sha(request), 'owner_sha256': chain.sha(chain.owner),
-            'run_id': request['run_id'], 'job_id': request['job_id'], 'native_request_sha256': request['native_request_sha256'],
-            'supervisor': supervisor, 'executor': executor}
-        publish(chain.folder / 'attempt.json', attempt, chain.root)
-        active()
-        ack = {'schema_version': 1, 'kind': 'training-execution-ack', 'protocol': PROTOCOL,
-            'attempt_sha256': chain.sha(attempt), 'launch_sha256': chain.sha(launch), 'request_sha256': chain.sha(request),
-            'owner_sha256': chain.sha(chain.owner), 'executor': executor}
-        publish(chain.folder / 'ack.json', ack, chain.root)
-        active()
-
-    def before_runner(folder, record, checkouts, manifest):
-        from .training_configuration import stage_request
-
-        if active is None:
-            raise ValueError('Configuration runner requires its original managed admission')
-        active()
-        values = stage_request(folder, record, checkouts, manifest, context, active)
-        active()
-        return values, active
-
-    chain = ExecutionRecords(project, intent['experiment_id'], intent['control_home'])
-    parent, active = None, None
-    with ExitStack() as admissions:
-        # Hold the permit before the executor lock. New-version completed
-        # results retain their original inert read even after the owner ends;
-        # if that record vanishes, the callback still requires fresh admission.
-        if (context['authorization']['schema_version'] == 2
-                or context['authorization']['schema_version'] in (3, 4)
-                    and not (chain.folder.parent / 'result.json').exists()):
-            parent = validate_context(context, chain.load())
-            admissions.enter_context(parent.permission())
-        print(json.dumps(process(chain.folder.parent, admit=admit, before_runner=before_runner),
-                         ensure_ascii=False, allow_nan=False))
 
 
 def record_stopped(context: dict, phase: dict, process: dict) -> dict:

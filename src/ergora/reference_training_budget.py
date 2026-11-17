@@ -295,7 +295,7 @@ class _BudgetPhase:
                     or grant['request']['owner_sha256'] != self.budget.operation.sha(owner)):
                 raise ValueError('Native execution phase has no original single-use launch grant')
             installation = Path(capability['installation'])
-            command = reference.worker_command(installation, module='training_execution_protocol', entrypoint='native_main')
+            command = reference.worker_command(installation, module='reference_training_execution', entrypoint='native_main')
             environment['PYTHONPATH'] = os.pathsep.join(str(installation / part) for part in
                 ('local', 'upstream/platform', 'upstream/temporal', 'upstream'))
             payload = {**payload, 'phase': self.identity}

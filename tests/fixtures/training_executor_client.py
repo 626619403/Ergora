@@ -17,7 +17,7 @@ if mode in ('native-context', 'native-context-isolated'):
                         'ergora.state', 'ergora.training_rounds', 'ergora.registrations'):
                     raise AssertionError('Native callback imported application or SDK: ' + fullname)
         sys.meta_path.insert(0, WithoutApplication())
-    from ergora.training_execution_protocol import native_main
+    from ergora.reference_training_execution import native_main
     from agent_platform import core
     try:
         native_main(str(core.ROOT))

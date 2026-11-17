@@ -195,7 +195,6 @@ def _chain(request):
 
 def stage_request(folder, record, checkouts, manifest, context, active):
     """Prepare only after original attempt/ack, under the native executor lock."""
-    from agent_platform.core import git
     from ergora import training_execution_protocol as protocol
 
     active()
@@ -206,8 +205,8 @@ def stage_request(folder, record, checkouts, manifest, context, active):
     folder = Path(folder)
     trusted = folder / 'configuration-driver'
     if not trusted.exists():
-        git(folder, 'clone', '--no-checkout', '--no-local', source['repo'], str(trusted))
-        git(trusted, 'checkout', '--detach', source['commit'])
+        _git(folder, 'clone', '--no-checkout', '--no-local', source['repo'], str(trusted))
+        _git(trusted, 'checkout', '--detach', source['commit'])
     _checkout(trusted, source['commit'])
     if source_reference(trusted, source['commit'], source['entrypoint']) != {**source, 'repo': str(trusted)}:
         raise ValueError('Configuration driver checkout inventory changed')
