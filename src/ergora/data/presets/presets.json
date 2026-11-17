@@ -549,6 +549,25 @@
       "workflows": [
         "ergora-evidence-report-v3"
       ]
+    },
+    "training-optimization-v4": {
+      "description": "Readonly flow-first optimization proposals with framework/library/backend alternatives from setup onward and reproducible environment adaptation handoffs; no automatic execution or installation.",
+      "runtime": "proposal-leaves",
+      "root": "ergora-training-proposal-v4",
+      "agents": [
+        "ergora-training-flow-analyst",
+        "ergora-experiment-designer-v2",
+        "ergora-performance-analyst-v2",
+        "ergora-kernel-designer-v2",
+        "ergora-measurement-reviewer-v2"
+      ],
+      "workflows": [
+        "ergora-training-flow-map",
+        "ergora-training-analysis-v2",
+        "ergora-kernel-assessment",
+        "ergora-measurement-review-v2",
+        "ergora-training-proposal-v4"
+      ]
     }
   }
 }

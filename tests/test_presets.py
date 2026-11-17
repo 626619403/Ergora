@@ -134,17 +134,20 @@ def test_readonly_analysis_presets_freeze_complete_material_without_changing_tra
     assert {source['instance'] for resource in leaf['resources'] for source in resource['sources']} == {'root', leaf_path}
 
 
-def test_bottleneck_path_retains_kernel_assessment_and_original_task_in_frozen_leaves(tmp_path):
+@pytest.mark.parametrize('version', ['3', '4'])
+def test_bottleneck_path_retains_kernel_assessment_and_original_task_in_frozen_leaves(tmp_path, version):
     state = State(tmp_path / 'state')
     previous = [workflows.install_preset(state, name)['root']
-                for name in ('training-optimization', 'training-optimization-v2', 'training-flow-map')]
-    installed = workflows.install_preset(state, 'training-optimization-v3')
-    assert workflows.install_preset(state, 'training-optimization-v3') == installed
+                for name in ('training-optimization', 'training-optimization-v2', 'training-optimization-v3',
+                             'training-flow-map')]
+    preset = 'training-optimization-v' + version
+    installed = workflows.install_preset(state, preset)
+    assert workflows.install_preset(state, preset) == installed
     assert [workflows.get(state, item['id'], item['version'])['digest'] for item in previous] == [
         item['digest'] for item in previous]
     definition = workflows.get(state, installed['root']['id'], installed['root']['version'])['definition']
     nodes = {item['id']: item for item in definition['nodes']}
-    assert definition['version'] == '3.0.0'
+    assert definition['version'] == version + '.0.0'
     assert {name: nodes[name]['depends_on'] for name in ('flow', 'analysis', 'kernel', 'measurement')} == {
         'flow': [], 'analysis': ['flow'], 'kernel': ['analysis'], 'measurement': ['kernel']}
     assert set(nodes['gather']['depends_on']) == {'flow', 'analysis', 'kernel', 'measurement'}
@@ -156,6 +159,7 @@ def test_bottleneck_path_retains_kernel_assessment_and_original_task_in_frozen_l
     leaves = {item['path']: item for item in graph['instances'] if item['kind'] == 'agent'}
     assert set(leaves) == {'root/flow/map', 'root/analysis/design', 'root/analysis/profile',
                            'root/kernel/assess', 'root/measurement/review'}
+    parent_materials = workflows.get(state, definition['id'], definition['version'], material=True)['resources']
     shutil.rmtree(state.root / 'agent-definitions')
     shutil.rmtree(state.root / 'workflow-definitions')
     task = b'Original exact source and contract. Complete supplied predecessor result envelopes remain task data.'
@@ -167,6 +171,10 @@ def test_bottleneck_path_retains_kernel_assessment_and_original_task_in_frozen_l
         assert actual['composition'] == graph and task.decode() in actual['prompt']
         assert all(resource['text'] in actual['prompt'] for resource in leaf['resources'])
         assert any(source['instance'] == 'root' for resource in leaf['resources'] for source in resource['sources'])
+        for material in parent_materials:
+            inherited = next(resource for resource in leaf['resources'] if resource['id'] == material['id'])
+            assert inherited['text'] == material['text'] and material['text'] in actual['prompt']
+            assert {source['instance'] for source in inherited['sources']} == {'root'}
 
 
 @pytest.mark.parametrize('identity,preset', [
