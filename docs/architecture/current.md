@@ -1,6 +1,6 @@
 # 当前架构与扩展边界
 
-Ergora 把项目合同、可组合的专长 Agent、正式执行和可核对证据接在一起。CLI 与网页共用应用用例；Agent 后端、工单来源和外部通信各有自己的接入位置。当前实现仍复用冻结参考发行的六阶段与 Temporal，不要求每个项目使用工单，也没有第二套正式调度器。
+Ergora 把项目合同、可组合的专长 Agent、正式执行和可核对证据接在一起。CLI 与网页共用应用用例；Agent 后端、工单来源和外部通信各有自己的接入位置。当前实现仍复用随包参考实现的六阶段与 Temporal，不要求每个项目使用工单，也没有第二套正式调度器。
 
 本页按 `750dd68ff2b1e41f6fe390d6a52e651bf41d5642` 的640个产品文件更新，覆盖原F7／F8／F9／F10以及Q1精确本地包、Q2领域配方、Q3流程／提案与Q4.1索引。固定[源码清单](../delivery/evidence/2026-11-15-component-source-inventory.json)为76个顶层第一方Python模块（含`__init__`／`__main__`）、312条去重本地导入边和28个第一方console JS模块；Python导入包含函数内导入，静态图无环。随包驱动、冻结reference、vendor与动态装载／子进程调用不计入这76模块的静态导入图，运行关系需另核下文。原506cc57的611文件／73模块／300边保持历史范围，不当当前清单。
 
@@ -33,7 +33,7 @@ flowchart TB
   Writebacks --> IssueBackends
   Writebacks --> Tasks
   Uses --> Library[agent_definitions / workflow_definitions]
-  Uses --> Runs[agent_runs / 独立调用]
+  Uses --> Runs[agent_runs / 独立调用与原生会话]
   Uses --> Evolution[memory / skills / evaluation / optimization / research]
   Uses --> Retrospective[retrospectives / 来源绑定候选]
   Retrospective --> Evidence[handoff / 原证据与完整文本]
@@ -73,7 +73,7 @@ flowchart TB
 |`issue_writebacks`|CLI与HTTP共享原v7已导出精确候选的评论／单标签prepare及共同send／status／observe；本域action Interface／registry拥有两种真实动作，消费原tasks与快照|原C1记录保持；同一生命周期先提交attempt再至多一次写，只有严格原201评论或原200标签收据持久化才确认。GitHub按原生ID追加，GitLab标签明确unsupported；IssueBackend拥有原生协议，State／backup复用原本域记录，观察不确认unknown，无第二调度或通用副作用框架|
 |`agent_definitions`、`workflow_definitions`|独立专家、精确嵌套引用、继承／DAG编译、preset与manifest|定义可静态检查；preview不授执行权，freeze不启动任务|
 |`definition_bundles`|两类定义共用的完整资源树、检查／修订／不可变版本发布|修订派生新包；逐定义发布，根最后发布，不是跨库事务|
-|`agent_runs`|独立叶子／角色的输入冻结、准入、调用和归档|原项目／定义／后端绑定保持；普通调用成功不生成正式任务通过|
+|`agent_runs`|独立叶子／角色的输入冻结、准入、调用和归档；项目原生会话的intent、turn链及精确停止|原项目／定义／后端绑定保持；会话沿冻结配置和原生UUID续接，普通调用或会话成功不生成正式任务通过|
 |`task_context`|按显式选择读取当前有效记忆／活动Skill，在原准备目录派生并冻结完整根|复用原定义／manifest和资产所有者，首次intent前核来源；恢复已存意图不随当前head重建，没有第二资源库|
 |`review_packets`、`git_materials`|state-free 精确 base／head／diff-base 本地包、显式上下文／祖先规范、离线摘要与引用校验；与原 executor 共用有界二进制 Git／批量完整 blob|Git 2.43+、本地普通文本对象；原叶权限由 executor 回调核对。新目录原子发布，不执行目标代码或获取缺对象；自洽不认证来源、祖先或检查，无正式任务／批准身份|
 |`training_rounds`|显式选择原实验后生成新的不可变索引；固定旧SHA扩展、保留原观察及前驱、离线核整份身份和内部链接|create复用原training观察／归档／投递／批准；read无需State。初始锚点与实际比较分开，首版同原baseline；失败／unknown不提升。无自动运行、来源认证或批准权威|
@@ -205,7 +205,7 @@ Skill控制台在原`skills.js`内保存当前view的选择代际：选择变化
 
 训练领域组合提供实验设计／kernel／性能／测量审查的只读提案叶。实际实验仍走 `prepare → start（控制排队）→ 操作者run-local + manifest SHA → 可信统计门禁 → owner evidence SHA → 集成复验`。控制worker不自动启动训练，Forge内部judge不替代可信门禁；GPU结果和完整实验图须有独立实测，见[训练手册](../TRAINING.md)。
 
-新项目的baseline与runner由同一training应用入口从CLI／HTTP／页面预览，再确认当前项目revision及完整canonical内容SHA登记，原文件字节SHA单列。baseline仍交原perfctl锁／原子init，仅Linux／WSL2初始化，预览与初始化无需SDK或服务。runner沿原register_runner在隔离临时CONFIG预览，确认后用规范化文档向真实config不可变发布，仅Linux／WSL2且需可选SDK，无需服务。两者共用短本地DB预留与页面表单生命周期；失联先读原文件，同内容显式重试，不同内容不覆盖；共享config的外项目runner ID拒绝且不展示命令。实验准备的CLI／HTTP复用原多件publisher，确认精确计划后保存原意图，部分发布只能以原intent显式恢复；训练页的局部preparation面板只拥有编辑／请求序列与显式确认，发布算法仍在原owner。见[分片计划](../plans/2026-11-14-training-preparation.md)。
+新项目的baseline与runner由同一training应用入口从CLI／HTTP／页面预览，再确认当前项目revision及完整canonical内容SHA登记，原文件字节SHA单列。baseline仍交原perfctl锁／原子init，仅Linux／WSL2初始化，预览与初始化无需SDK或服务。runner沿原register_runner在隔离临时CONFIG预览，确认后用规范化文档向真实config不可变发布，仅Linux／WSL2，无需SDK或服务。两者共用短本地DB预留与页面表单生命周期；失联先读原文件，同内容显式重试，不同内容不覆盖；共享config的外项目runner ID拒绝且不展示命令。实验准备的CLI／HTTP复用原多件publisher，确认精确计划后保存原意图，部分发布只能以原intent显式恢复；训练页的局部preparation面板只拥有编辑／请求序列与显式确认，发布算法仍在原owner。见[分片计划](../plans/2026-11-14-training-preparation.md)。
 
 训练证据读取由`training.evidence → reference.training_evidence → reference_training_evidence`进入隔离有界子进程，复用原注册与训练记录reader。归档gate按原JSON内容、evidence／元数据按绑定字节SHA核对；artifact只在明确选择后完整核摘要并返回Unicode窗口，原索引不冒称全部内容已验。读取原本地integration ticket不生成Task或批准，Temporal、原archive／gate与owner receipt继续拥有原职责。见[证据计划](../plans/2026-11-14-training-evidence.md)。
 
@@ -213,7 +213,9 @@ Skill控制台在原`skills.js`内保存当前view的选择代际：选择变化
 
 `agent_backends.AgentBackend`是已有共享ABC，`_BACKENDS`只登记本族Codex、Claude Code、mini-swe-agent、DeepSeek Harness、command五种Adapter。`Invocation`传角色、正文、cwd、协议目录、时限和结果schema，不拥有模板成员或正式状态。`agents.invoke`沿共同Interface调用；Adapter拥有命令、原生配置、模式能力、结果提取、诊断及固定探测。通用结果校验归agents，进程生命周期归processes，doctor沿同一Adapter读取实际支持范围。
 
-DeepSeek只准入只读composition模式，其独立SDK驱动位于`data/drivers/deepseek.py`；基础安装不导入或依赖SDK。默认调用使用原`.protocol`目录保存新原生home／ID、固定patch、完整模型输入、事件和终值；原Adapter拒绝不完整turn与工具错误，原agents校验结构，原agent_runs核MCP readiness。显式opt-in的新standalone task-MCP源可沿原Invocation续接一次；`agent_runs`拥有原项目／资料／权限准入、唯一intent与DB记录，Adapter／driver拥有原生冻结、resume／receipt和归档，`processes`仍拥有停止。新调用复用原home／ID／cwd，独立MCP与结果；原锁覆盖操作及子进程，unknown不重发。不增调度或状态账本，native／workspace和正式任务恢复仍unsupported；实际验收分别见[H1](../delivery/2026-11-12-harness-probes.md)与[H3b](../delivery/2026-11-14-harness-session-continuation.md)。
+DeepSeek只准入只读`text-only`／`task-mcp` composition模式，其独立SDK驱动位于`data/drivers/deepseek.py`；基础安装不导入或依赖SDK。每次调用使用新原生home／ID和固定patch，运行一次`harness.run`并保存完整模型输入、事件及终值。Adapter拒绝不完整turn与工具错误，agents校验结构，agent_runs核MCP readiness，processes拥有停止；归档历史可离线分页读取。native／workspace与持久会话明确unsupported。
+
+普通项目角色会话由`agent_runs.run_agent(session_intent=...)`出生，当前仅Codex在Linux／WSL2支持。出生冻结项目revision、仓库、角色、资料和原生配置；`continue_session`要求精确最新parent、新intent与新prompt，沿同一原生UUID执行resume。完整编码输入在reservation前核容量；终态须同步并重读同一原件，cleanup未确认保持unknown。`stop_session`只请求停止选定turn，后续prompt仍需原停止事实与续接准入。会话不授予正式任务、候选批准或完整Workflow执行权。
 
 新增后端需实现这一Interface、登记本地映射，并在 `components.json` 声明配置schema／角色能力／平台／安装配方。仅能遵守命令协议时可选现有command；它不会凭一条argv获得恢复、隔离或MCP能力。正式模式还要给出真实准入与资源／权限合同，不能只登记模式名。上层任务／模板无需新增厂商分支；验证应覆盖结构化输出、错误退出、取消与真实平台限制。[接入手册](../AGENT_BACKENDS.md)列出公开协议。
 
@@ -314,7 +316,7 @@ flowchart LR
 |POSIX group／stage subreaper／Windows Job、research专用抓取进程|平台和通信／网络预算／父进程死亡语义不同，共享能共用的Job；不因都叫取消就合并|
 |Input／Workflow版本继承|不同已发布history、queue和材料合同有真实兼容责任；局部映射构造，不把版本分支散到调用者|
 |原Executor与mini environment继承、原SDK Protocol|实际外部hook和开发／训练合同；替代实现须证明等价恢复与证据语义|
-|冻结283文件、21对镜像、旧HTML与reference动态桥|仍为安装、报告、正式执行／训练的生产分发；替代入口及升级／在途恢复验收后才逐项退出，见[reference迁出条件](reference-boundary.md#身份恢复及迁出条件)|
+|随包reference资源、local/bootstrap镜像、HTML与动态桥|当前manifest核定资源身份，仍供安装、报告、正式执行／训练消费；历史分发基线保留原验证身份，迁出条件见[reference边界](reference-boundary.md#身份恢复及迁出条件)|
 |status／list／poll与各域revision事务|分别陈述本地合同、原运行和外部事实；只读投影可组合，不能机械合并状态机|
 
 原A1的13项保留／删除判断及R1–R8证据在[历史清单](current-history-2026-11-11.md#a1-清单结案)，本次文档整理不重新授予旧验收或删除API。当前没有根据这份静态盘点新增重构层或性能优化；有实际反例／测量再改对应所有者。
@@ -444,7 +446,8 @@ flowchart LR
   Queue --> Worker[可选 training-budget-worker]
   Worker --> Gate[registry 锁内最终预算 gate]
   Gate --> Request[原 native request]
-  Owner --> Phase[每阶段独立 supervisor]
+  Owner --> Drive[reference_training_execution.Execution.drive]
+  Drive --> Phase[每阶段独立 supervisor]
   Phase --> Helpers[原 processes.run / 本阶段 helper 子树]
   Helpers --> Fence[原 registry fence / 持久观察]
   Helpers --> Cancel[原 run / 稳定取消意图]
@@ -453,9 +456,9 @@ flowchart LR
 
 预算 queue 与旧 worker 分离，缺 owner／原授权／期限时不能新 create；已有 request 的读取、fence 与 release 不受该新工作 gate 改写。owner 不获取跨 RPC 的 submission 锁，阻塞操作只在受监督 helper 内执行。缓存全文摘要绑定原 owner 身份，供原截止清理使用；持久 fence、控制面取消、native 结果及 executor 停止分别报告。单job受管执行沿下一节接入同一owner；自动训练循环仍是后继义务。用户入口与恢复见[训练手册](../TRAINING.md#按原预算投递与持续截止监管)。
 
-legacy能力为null的owner仍串行处理monitor／fence／cleanup／publish；每个阶段的supervisor独占原Linux subreaper，预算owner自身不启subreaper。owner用非阻塞PIPE传完整context；supervisor在原run实际reap返回后先flush完整身份的stopped帧，再读helper结果。总截止或可捕获取消不能打断已经开始的安全reap；只在收到有效stopped后，才可结束超期的结果reader。原final保存短phase观察，业务unknown与该子树stopped分列；独立2MiB的final读写封套容纳原结果及新增摘要，helper与普通记录仍保留1MiB。旧活owner不重启或补能力，具体过程与验收见[独立阶段监督](../delivery/2026-11-15-training-budget-phase-supervision.md)。
+当前`BudgetedStart.own`固定完整source／context能力后，统一交给`reference_training_execution.Execution.drive`交错监管monitor／admission／execute／fence／cleanup，最终发布仍走原supervise。每个阶段的supervisor独占原Linux subreaper，预算owner自身不启subreaper。owner用非阻塞PIPE传完整context；supervisor在原run实际reap返回后先flush完整身份的stopped帧，再读helper结果。总截止或可捕获取消不能打断已经开始的安全reap；只在收到有效stopped后，才可结束超期的结果reader。原final保存短phase观察，业务unknown与该子树stopped分列；独立2MiB的final读写封套容纳原结果及新增摘要，helper与普通记录仍保留1MiB。已存owner按原身份观察，不重启或补能力。
 
-[B3.3c1](../plans/2026-11-15-training-managed-execution.md)将原`_BudgetPhase`拆为start／request_stop／非阻塞poll／finish，串行run使用同一生命周期；能力为null的owner保持上述四mode原合同。父侧只按已核预算目录拼接固定phase路径，safe_file／目录和stderr文件由对应S在实际使用时处理；新增stderr管道有界读取，初始化未发送请求时的失败会收尾等待进程。多个phase的调用者先全部请求停止，再轮询全部，已终止才finish；stopped之后S只直接读写／观察、不再spawn。受管执行由下节显式用例消费同一低层接缝，phase接口自身不产生执行许可。
+`_BudgetPhase`提供start／request_stop／非阻塞poll／finish，Execution消费同一生命周期。父侧只按已核预算目录拼接固定phase路径，safe_file／目录和stderr文件由对应S在实际使用时处理；stderr管道有界读取，初始化未发送请求时的失败会收尾等待进程。多个phase的调用者先全部请求停止，再轮询全部，已终止才finish；stopped之后S只直接读写／观察、不再spawn。phase接口自身不产生执行许可。
 
 [b2a共享响应整理](../delivery/2026-11-15-training-phase-frames.md)把两帧分包、完整身份／顺序、process观察和容量校验移入已有stdlib `training_execution_protocol.PhaseFrames`。原budget装配2 MiB结果容量，其poll／finish与record_phase读取同一response；selector、原clock、TERM与唯一reaper仍由原owner持有。共享codec只解析事实，不产生动作或停止证明，后继cycle operation单独使用32 KiB结果容量；当前整理本身没有fan-out或总Workflow。
 
@@ -483,16 +486,18 @@ SDK父loop只做异步进程／管道监督；所有State、锁、fsync、原生
 
 ## 原生训练来源与锁内准入接缝
 
-`reference.prepare_training` 和既有 `validate_installation` 共用本地来源校验，CLI 只解析显式协议及新目录。两个固定 data 资源物化 `training-executor-admission-v1`，不新增模块族或全局工具注册器；原 283 字节不变。新协议完整核279来源，legacy保留按用途的Python范围；准备中断的空或缺损descriptor不能回退为legacy。
+`reference.prepare_training` 和 `validate_installation` 共用当前本地来源校验。CLI显式选择唯一协议`training-executor-admission-v3`及新目录；准备直接复制当前`data/reference/platform`，先同步空descriptor，完整核随包manifest后同步最终声明。训练来源必须带匹配的current descriptor，缺损／篡改明确失败；普通任务安装仍按其实际Python来源合同核验。准备命令为`ergora reference prepare-training --protocol training-executor-admission-v3 --directory NEW_DIRECTORY`。
 
-派生的原 `training_executor.process` 在原 `executor.lock` 内、started／Git／runner之前调用窄admit；无result的旧started及无hook接管managed命名空间均拒绝，已有result保持只读。原执行／归档／追踪／结果算法未复制。来源准备不安装native依赖、不创建实验或消费request，不授予原预算owner新能力；同预算的显式受管执行见下节，自动循环仍开放。生命周期及来源图见[reference边界](reference-boundary.md#版本化原生训练来源)；kernel专家继续在原v3提案路径参与评估。
+当前`training_executor.process`在原`executor.lock`内、started／Git／runner之前调用窄admit；无result的旧started及无hook接管managed命名空间均拒绝，已有result保持只读。原执行／归档／追踪／结果算法仍归该owner。来源准备不安装native依赖、不创建实验或消费request，不授予原预算owner新能力；同预算的显式受管执行见下节，自动循环仍开放。生命周期及来源图见[reference边界](reference-boundary.md#版本化原生训练来源)；kernel专家继续在原v3提案路径参与评估。
 
 
 ## 单job显式受管执行
 
 `training.execute → reference.training_execution → reference_training_worker.execution_main`装配原`_Submission`／`BudgetedStart`和`reference_training_execution.Execution`。执行用例拥有原run/history/memo／QUEUED准入、不可变请求、单次launch和原phase交错监管；不另建提交客户端、实验数据库或调度器。只有出生时完整核新来源的schema2 owner声明能力，旧schema1／null不获执行权。普通start、状态、恢复和升级不创建显式request。
 
-`training_execution_protocol`是实际跨解释器边界：应用、执行S和native callback共享严格记录、完整context／原来源绑定及离线读取；顶层导入闭包仅stdlib和原reference／clock／processes。它复用原来源校验、canonical SHA、安全路径与无覆盖publish，不import应用State／schema框架或SDK。native使用其独立`.venv`和原依赖；bootstrap仅短暂定位Ergora包，不把应用site-packages作为原生依赖路径。
+`reference_training_execution.native_main`拥有native入口及锁内admit／before_runner回调，调用当前`training_executor.process`。`training_execution_protocol`拥有跨解释器共享的严格记录、完整context／原来源验证及离线读取；顶层导入闭包仅stdlib和原reference／clock／processes。native入口直接复用这些规则，State／file_lock只在应用控制方法内延迟导入；native使用所选独立`.venv`和原依赖，bootstrap仅短暂定位Ergora包。
+
+配置驱动runner在原clone后由before_runner调用`training_configuration.stage_request`，固定可信driver来源及baseline／candidate配置源码。`training_configuration`调用driver的prepare／describe／run，对同一组实际配置对象先观察、保存并重读receipt，再执行训练；receipt作为原full evidence的哈希artifact归档。原执行、archive、质量gate与批准owner保持。
 
 ```mermaid
 flowchart TD
@@ -503,8 +508,13 @@ flowchart TD
   Admission --> Launch[持久消费 launch / 一次内存许可]
   Launch --> Birth
   Birth --> Execute[独立 execute S / 原 process reaper]
-  Execute --> Native[所选 native Python / 原 executor.lock 内 gate]
-  Native --> Body[原 Git / runner / archive / track]
+  Execute --> Native[所选 native Python / reference_training_execution.native_main]
+  Native --> Locked[training_executor.process / 原 executor.lock 内回调]
+  Native --> Records[training_execution_protocol / 记录与来源验证]
+  Locked --> Clone[原 Git / 两臂checkout]
+  Clone --> Config[配置驱动runner / training_configuration]
+  Clone --> Body[原 runner / archive / track]
+  Config --> Body
   Body --> Reap[实际回收含新session子树]
   Reap --> Frame[匹配 stopped 帧]
   Frame --> Stored[同S直接持久 stopped / 不再spawn]

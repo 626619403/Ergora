@@ -47,7 +47,7 @@ flowchart LR
 
 |操作|当前所有者 / 实际消费者|边界|
 |---|---|---|
-|冻结资源身份|`reference.info / verify`；CLI|manifest负责283文件身份，旧HTML/zip是原分发基线；verify不启动runtime|
+|随包资源身份|`reference.info / verify`；CLI|manifest负责当前资源的逐件字节身份，HTML/zip保留原分发基线身份；verify不启动runtime|
 |模板复制 / 角色合同 / 页面输入|`reference.copy_template / agent_contract / template_details`；CLI、Web、agent_runs|Web只取得结构化数据，不再拼接ROOT；复制保留源字节并附加角色合同；开发模板返回input，训练返回files，不将训练伪装为开发DAG|
 |草稿结构校验|`reference.validate_input`；drafts、Web|专用子进程调用原make_spec；只报告结构PASS及原输入摘要，不创建正式任务或批准|
 |portable编译/转换/导出|`reference.workflow`；CLI|专用Python进程使用明确的随包路径和`-P -S`，不让业务仓库/可选site package替换原编译器；Windows有界no-follow reader patch只作用于相应专用子进程|
@@ -83,7 +83,7 @@ flowchart LR
 
 六阶段状态、精确计划批准、工作单元DAG、可信integrate/verify、候选SHA、review会话和回执继续由原合同验证。项目binding变更只影响新任务；在途任务仍使用冻结快照。原submission已开始而无terminal时保持未知并拒绝自动重执行；只重启worker不应创建新任务或换引擎。训练prepare/control worker不会隐式生成执行请求；新受管execute需确认原run／request，旧run-local仍需确认manifest SHA。
 
-283冻结文件、21对local/bootstrap镜像及旧HTML继续作为生产参考分发，**尚未降为只供测试的归档**。以下是未来退出条件，不代表R6已经迁入：
+当前reference资源由随包manifest固定身份，生产仍消费local/bootstrap镜像及HTML／安装报告。历史283文件分发基线保留原验证身份；当前源码按现owner更新，并同步当前manifest及相应镜像。以下是迁出条件：
 
 |尚在使用的部分|迁出 / 仅归档的前提|
 |---|---|
@@ -117,8 +117,8 @@ flowchart LR
 
 ### 同预算显式执行与冻结离线读取
 
-`training.execute`经`reference.training_execution`调用受监督的应用worker；`reference_training_execution`接受原submission／budget对象，持有请求／launch／原run准入和并行phase用例，不反向import两owner。新`training_execution_protocol`以stdlib提供完整身份与记录绑定，由应用writer、执行S、独立离线reader和native锁内callback实际复用。原validator、clock、SHA、safe_file、publish与唯一reaper均沿原owner，native解释器独立使用其锁定依赖。
+`training.execute`经`reference.training_execution`调用受监督的应用worker；`reference_training_execution.Execution`接受原submission／budget对象，持有请求／launch／原run准入和交错phase监管，不反向import两owner。其`native_main`拥有所选native解释器入口与原锁内admit／before_runner回调；`training_execution_protocol`以stdlib提供完整记录、context／来源验证及离线读取，供应用writer、执行S、离线reader和native回调共用。State／file_lock只在应用控制方法内延迟导入；原clock、SHA、安全发布及唯一reaper仍沿原owner，native解释器独立使用其锁定依赖。
 
 出生能力固定完整来源及context；request→launch→attempt→ack→stopped保留在原job的`managed-execution`下，launch永不复用。父owner只交错poll／signal，磁盘／RPC／锁在各自S子树中；实际reap之后发stopped，S此后只直接存储。fence等待不扣住已有执行停止，compute与total分别约束工作和清理结果。
 
-`training.execution`读取分支沿原`_training_reader`，固定随包platform来源与`-S`，先读历史原链，后用另一个有界进程观察当前来源；所选native缺失不能挡住历史。确认durable时仅同步／重读现存原件，不创建记录、不改原bytes或恢复运行。原`training_files`共用该reader传输实现，CLI只解析参数；不把所有工具提升为新协议总线。旧schema1／null能力保持，无自动升级或活动任务迁移。完整用法见[训练手册](../TRAINING.md#显式受管执行与离线停止观察)。
+`training.execution`读取分支沿原`_training_reader`，固定随包platform来源与`-S`，先读历史原链，后用另一个有界进程观察当前来源；所选native缺失不能挡住历史。确认durable时仅同步／重读现存原件，不创建记录、不改原bytes或恢复运行。原`training_files`共用该reader传输实现，CLI只解析参数；历史记录按原身份观察，不授予执行能力或重启owner。完整用法见[训练手册](../TRAINING.md#显式受管执行与离线停止观察)。
