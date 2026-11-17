@@ -12,4 +12,6 @@ Use a fresh-context independent reviewer for each complete implementation slice.
 
 Keep the existing six-stage development contract and candidate-bound evidence intact while migrating the reference implementation. Optional tool integrations must expose their actual availability and supported operations. Unsupported capabilities must fail visibly.
 
+During active development, maintain one current implementation and interface. Update their existing semantic owners directly and remove obsolete adapters, version dispatch and compatibility-only tests; do not add legacy interfaces or duplicate resource trees to preserve earlier development versions. Retain the correctness of candidate binding, budgets, recovery and process cleanup, and preserve original validation evidence without relabeling it.
+
 When changing component implementations or their configuration, read the applicable directory's `AGENTS.md` and [component change protocol](docs/architecture/component-change-protocols.md). It identifies extension owners, stable contracts, data and recovery obligations, and relevant checks.
