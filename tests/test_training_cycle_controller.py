@@ -78,7 +78,7 @@ assert all(name not in sys.modules for name in
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Original independent root and initialization locks require Linux')
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)
-@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 30}], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': version, 'control_timeout_seconds': 30} for version in (2, 3)], indirect=True)
 @pytest.mark.parametrize('pending,fault', [
     pytest.param('before', 'ready', id='missing'), pytest.param('after', 'ready', id='initializing'),
     pytest.param('after', 'foreign', id='foreign'), pytest.param('after', 'malformed', id='malformed'),
@@ -283,7 +283,7 @@ def test_controller_birth_consent_retains_original_actor_clock_and_mode(controll
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller CLI uses original Linux consent, locks and clock')
-@pytest.mark.parametrize('program_version', [1, 2])
+@pytest.mark.parametrize('program_version', [1, 2, 3])
 def test_controller_cli_records_consent_then_reads_prepares_and_stops_without_sdk(
         cycle_selection, tmp_path, monkeypatch, program_version):
     from contextlib import redirect_stderr, redirect_stdout
@@ -303,8 +303,8 @@ def test_controller_cli_records_consent_then_reads_prepares_and_stops_without_sd
 
     args = ['cycle-authorize-controller', 'demo', 'cli-controller', '--directory', str(source),
             '--sha256', selected['sha256'], '--revision', '1', '--confirm']
-    if program_version == 1:
-        args.extend(['--program-version', '1'])
+    if program_version != 2:
+        args.extend(['--program-version', str(program_version)])
     assert invoke(args)[0] != 0
     directory = state.root / 'training-cycles/demo/cli-controller'
     assert not directory.exists(), 'Missing execution consent cannot reserve an ID or start its clock'
@@ -342,7 +342,7 @@ def test_controller_cli_records_consent_then_reads_prepares_and_stops_without_sd
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller consent requires Linux/WSL2 clocks and flock')
-@pytest.mark.parametrize('program_version', [1, 2])
+@pytest.mark.parametrize('program_version', [1, 2, 3])
 @pytest.mark.parametrize('boundary', ['authorization-file', 'lock-file', 'lock-directory', 'ready-directory'])
 def test_controller_lock_publication_recovers_only_the_original_consent(
         cycle_selection, tmp_path, monkeypatch, boundary, program_version):
@@ -719,7 +719,7 @@ def test_cycle_candidate_root_survives_short_calls_and_normal_loop_shutdown(
         assert operation.handed_off is True and operation.root.poll() is None
         assert cycle_budget_root == [
             'from ergora.reference_training_budget import cycle_root_main;cycle_root_main()'
-            if admission.authorization['schema_version'] == 3
+            if admission.authorization['schema_version'] in (3, 4)
             else 'from ergora.reference_training_worker import budget_main;budget_main()']
         owner = result['confirmation']['owner']
         assert recorded_process_is_active(owner)
@@ -746,7 +746,7 @@ def test_cycle_candidate_root_survives_short_calls_and_normal_loop_shutdown(
 
 
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)
-@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 30}], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': version, 'control_timeout_seconds': 30} for version in (2, 3)], indirect=True)
 @pytest.mark.skipif(sys.platform != 'linux', reason='Root handoff and real S-H cancellation require Linux/WSL2')
 @pytest.mark.parametrize('boundary', ['transfer', 'confirm', 'lost-confirm', 'lookup', 'attempt-sync', 'sdk-start'])
 def test_cycle_candidate_cancellation_distinguishes_root_handoff(
@@ -883,7 +883,7 @@ def test_cycle_candidate_lost_prepare_reply_never_recreates_its_root_offer(
 
 
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)
-@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 30}], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': version, 'control_timeout_seconds': 30} for version in (2, 3)], indirect=True)
 @pytest.mark.skipif(sys.platform != 'linux', reason='Pending OS creation must retain its actual Linux child')
 @pytest.mark.parametrize('ending', ['cancel', 'deadline'])
 def test_cycle_candidate_cancel_retains_a_late_popen_handle_without_sending_input(cycle_candidate, monkeypatch, ending):
@@ -932,7 +932,7 @@ def test_cycle_candidate_cancel_retains_a_late_popen_handle_without_sending_inpu
 
 
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)
-@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 30}], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': version, 'control_timeout_seconds': 30} for version in (2, 3)], indirect=True)
 @pytest.mark.skipif(sys.platform != 'linux', reason='Loop shutdown must retain the actual independent Linux root')
 @pytest.mark.parametrize('boundary', ['spawn', 'confirm'])
 def test_cycle_candidate_loop_shutdown_reaps_a_pending_root(
@@ -1295,7 +1295,7 @@ def test_controller_stop_after_attempt_sync_never_resends_the_consumed_rpc(
 
 
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)
-@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 30}], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': version, 'control_timeout_seconds': 30} for version in (2, 3)], indirect=True)
 @pytest.mark.skipif(sys.platform != 'linux', reason='Original start-attempt synchronization and H/SDK gate require Linux')
 def test_controller_remote_close_after_attempt_sync_never_sends_the_consumed_start(
         controller_admission, cycle_selection, cycle_candidate, service, tmp_path, monkeypatch):
@@ -1337,7 +1337,7 @@ def test_controller_remote_close_after_attempt_sync_never_sends_the_consumed_sta
 
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)
 @pytest.mark.parametrize('controller_admission', [{'control_timeout_seconds': 30},
-    {'program_version': 2, 'control_timeout_seconds': 30}], indirect=True)
+    {'program_version': 2, 'control_timeout_seconds': 30}, {'program_version': 3, 'control_timeout_seconds': 30}], indirect=True)
 @pytest.mark.skipif(sys.platform != 'linux', reason='Real request/launch and native locked admission require Linux')
 @pytest.mark.parametrize('boundary', ['request', 'launch', 'executor-lock', 'attempt', 'ack'])
 def test_controller_stop_at_original_execution_boundaries_preserves_consumed_records(
@@ -1368,7 +1368,7 @@ def test_controller_stop_at_original_execution_boundaries_preserves_consumed_rec
                 assert marker.exists(), f'The actual {boundary} boundary must be reached'
                 request_record = json.loads((job / 'managed-execution/request.json').read_bytes())
                 assert request_record['actor_id'] == admission.authorization['controller']['actor_id']
-                if admission.authorization['schema_version'] == 3 and boundary in ('attempt', 'ack'):
+                if admission.authorization['schema_version'] in (3, 4) and boundary in ('attempt', 'ack'):
                     native = json.loads((job / 'managed-execution/attempt.json').read_bytes())['executor']
                     locked = admission.lock.stat()
                     held = []
@@ -1522,7 +1522,7 @@ def test_controller_consent_cannot_dispatch_through_either_manual_binding_path(c
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller dispatch uses the original Linux supervised operation')
-@pytest.mark.parametrize('controller_admission', [{}, {'program_version': 2}], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{}, {'program_version': 2}, {'program_version': 3}], indirect=True)
 def test_controller_cli_reconciles_only_its_original_lost_reply(controller_dispatch, cycle_operation_fault):
     from contextlib import redirect_stdout
     import io
@@ -1552,7 +1552,7 @@ def test_controller_cli_reconciles_only_its_original_lost_reply(controller_dispa
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller dispatch uses the original Linux supervised operation')
-@pytest.mark.parametrize('controller_admission', [{}, {'program_version': 2}], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{}, {'program_version': 2}, {'program_version': 3}], indirect=True)
 @pytest.mark.parametrize('case', ['accepted', 'lost-reply', 'not-found', 'closed', 'continued', 'retry', 'reset'])
 def test_cycle_controller_recovers_only_its_single_original_attempt(controller_dispatch, case):
     import asyncio
@@ -1713,7 +1713,7 @@ def test_cycle_controller_final_admission_preserves_consumed_slot_without_start(
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller dispatch uses the original Linux supervised operation')
-@pytest.mark.parametrize('controller_admission', [{}, {'program_version': 2}], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{}, {'program_version': 2}, {'program_version': 3}], indirect=True)
 @pytest.mark.parametrize('field,size,after_claim', [
     ('input', 32767, False), ('input', 32768, False), ('input', 32769, False),
     ('memo', 2047, False), ('memo', 2048, False), ('memo', 2049, False),
@@ -1867,22 +1867,23 @@ def test_cycle_controller_reconcile_after_original_total_never_renews_execution(
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller consent requires Linux/WSL2 clocks and flock')
-@pytest.mark.parametrize('controller_admission', [{'program_version': 2}], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2}, {'program_version': 3}], indirect=True)
 def test_schema3_birth_retains_sources_bytes_and_one_clock(controller_admission, monkeypatch):
     from ergora import training_cycles
     from ergora.training_execution_protocol import MEASUREMENT_SOURCES
 
     state, source, selected, authorized, admission = controller_admission
     authorization = authorized['authorization']
-    assert authorization['schema_version'] == 3 and authorized['coverage']['execution_authorized'] is False
+    program_version = authorization['schema_version'] - 1
+    assert authorization['schema_version'] in (3, 4) and authorized['coverage']['execution_authorized'] is False
     assert set(authorization['measurement_sources']) == set(MEASUREMENT_SOURCES)
     package = Path(training_cycles.__file__).parent
     assert authorization['measurement_sources'] == {
         name: hashlib.sha256((package / name).read_bytes()).hexdigest() for name in MEASUREMENT_SOURCES}
     controller = authorization['controller']
     identity = {key: authorization[key] for key in ('control_home', 'project', 'cycle_id', 'input_sha256')}
-    assert controller['protocol'] == controller['task_queue'] == 'ergora-training-cycle-v2'
-    assert controller['workflow_id'] == 'ergora-training-cycle-v2/' + training_cycles._sha(identity)
+    assert controller['protocol'] == controller['task_queue'] == 'ergora-training-cycle-v' + str(program_version)
+    assert controller['workflow_id'] == 'ergora-training-cycle-v' + str(program_version) + '/' + training_cycles._sha(identity)
     original = {p: p.read_bytes() for p in admission.directory.rglob('*') if p.is_file()}
     (source / 'cycle.json').unlink()
     source.rmdir()
@@ -1890,22 +1891,22 @@ def test_schema3_birth_retains_sources_bytes_and_one_clock(controller_admission,
     monkeypatch.setattr(training_cycles.budget_clock, 'authorize', lambda *args: pytest.fail('Ready retries cannot renew clocks'))
     monkeypatch.setattr(training, 'check_start', lambda *args: pytest.fail('Ready retries cannot repeat admissions'))
     again = training_cycles.authorize_controller(state, 'demo', 'controller', source, selected['sha256'], 1,
-        confirm=True, execute_selected=True, program_version=2)
+        confirm=True, execute_selected=True, program_version=program_version)
     assert again['authorization'] == authorization and again['ready'] == authorized['ready']
-    for mode in (None, 1):
+    for mode in (None, 1, 3 if program_version == 2 else 2):
         with pytest.raises(ValueError, match='consent mode'):
             if mode is None:
                 training_cycles.authorize(state, 'demo', 'controller', source, selected['sha256'], 1, confirm=True)
             else:
                 training_cycles.authorize_controller(state, 'demo', 'controller', source, selected['sha256'], 1,
-                    confirm=True, execute_selected=True)
+                    confirm=True, execute_selected=True, program_version=mode)
     with pytest.raises(ValueError, match='different complete input'):
         training_cycles.authorize_controller(state, 'demo', 'controller', source, '0' * 64, 1,
-            confirm=True, execute_selected=True, program_version=2)
+            confirm=True, execute_selected=True, program_version=program_version)
     with pytest.raises(ValueError, match='revision changed'):
         training_cycles.authorize_controller(state, 'demo', 'controller', source, selected['sha256'], 2,
-            confirm=True, execute_selected=True, program_version=2)
-    for invalid in (True, False, 1.0, '2'):
+            confirm=True, execute_selected=True, program_version=program_version)
+    for invalid in (True, False, 1.0, '2', 4):
         with pytest.raises(ValueError, match='program version'):
             training_cycles.authorize_controller(state, 'demo', 'invalid', source, selected['sha256'], 1,
                 confirm=True, execute_selected=True, program_version=invalid)
@@ -1927,7 +1928,7 @@ def test_schema3_birth_retains_sources_bytes_and_one_clock(controller_admission,
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller consent requires Linux/WSL2 clocks and flock')
-@pytest.mark.parametrize('controller_admission', [{'program_version': 2}], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2}, {'program_version': 3}], indirect=True)
 def test_schema3_intent_and_claim_keep_original_sources_and_refuse_manual_binding(
         controller_admission, cycle_selection, service, monkeypatch):
     from ergora import reference_training_worker as worker, training_cycles
@@ -1995,7 +1996,7 @@ def test_schema3_intent_and_claim_keep_original_sources_and_refuse_manual_bindin
     assert (admission.folder / 'intent.json').read_bytes() == raw
     # The saved authorization never adopts the drift, including an explicit retry.
     assert training_cycles.authorize_controller(state, 'demo', 'controller', source, selected['sha256'], 1,
-        confirm=True, execute_selected=True, program_version=2)['authorization']['measurement_sources'] == original_sources
+        confirm=True, execute_selected=True, program_version=authorized['authorization']['schema_version'] - 1)['authorization']['measurement_sources'] == original_sources
     with monkeypatch.context() as expired:
         expired.setattr(training_cycles.budget_clock, 'remaining', lambda *args, **kwargs: 0)
         with pytest.raises(ValueError, match='deadline has passed'):
@@ -2011,7 +2012,7 @@ def test_schema3_intent_and_claim_keep_original_sources_and_refuse_manual_bindin
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Managed native callback requires Linux')
 @pytest.mark.parametrize('installation', ['managed', 'managed-v2'], indirect=True)
-@pytest.mark.parametrize('controller_admission', [{'program_version': 2}], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': 2}, {'program_version': 3}], indirect=True)
 def test_schema3_native_callback_refuses_legacy_budget_binding_and_keeps_completed_read(
         controller_admission, request):
     from ergora import training_cycles
@@ -2084,7 +2085,7 @@ def test_schema3_native_callback_refuses_legacy_budget_binding_and_keeps_complet
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Controller consent requires Linux/WSL2 clocks and flock')
-@pytest.mark.parametrize('controller_admission', [{}, {'program_version': 2}], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{}, {'program_version': 2}, {'program_version': 3}], indirect=True)
 def test_controller_original_type_is_authenticated_read_only(controller_admission, tmp_path, monkeypatch):
     import asyncio
     from temporalio.client import Client
@@ -2102,7 +2103,7 @@ def test_controller_original_type_is_authenticated_read_only(controller_admissio
     before = {path: path.read_bytes() for path in admission.directory.rglob('*') if path.is_file()}
     found = asyncio.run(lookup_controller_submission(Client(sdk), prepared['intent'], run_id=None, timeout=2))
     assert found[1].run_id == sdk.run_id
-    if authorized['authorization']['schema_version'] == 3:
+    if authorized['authorization']['schema_version'] in (3, 4):
         sdk.case = 'v1-type'
         with pytest.raises(ValueError, match='controller type'):
             asyncio.run(lookup_controller_submission(Client(sdk), prepared['intent'], run_id=sdk.run_id, timeout=2))

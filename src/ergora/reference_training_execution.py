@@ -27,7 +27,7 @@ class Execution:
         if chain.owner is None or chain.owner.get('execution_capability') is None:
             raise ValueError('This original budget owner has no execution capability; it cannot be upgraded or restarted')
         protocol.validate_context(context, chain)
-        actor = (context['authorization']['controller']['actor_id'] if context['authorization']['schema_version'] in (2, 3)
+        actor = (context['authorization']['controller']['actor_id'] if context['authorization']['schema_version'] in (2, 3, 4)
                  else f'unix:{os.getuid()}:{getpass.getuser()}')
         request = chain.request_record(actor)
         # These checks run in a supervised helper, never inside a DB reservation.

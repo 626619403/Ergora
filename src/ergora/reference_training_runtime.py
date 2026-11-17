@@ -144,8 +144,9 @@ async def authenticate_round_collection(client, intent: dict, binding: dict, req
     from temporalio.client import WorkflowExecutionStatus
     from . import training_execution_protocol as protocol
 
+    names = protocol.cycle_activity_names(3 if intent['protocol'] == 'ergora-training-cycle-v3' else 2)
     action = ('collect-round' if context['activity_source']['activity_type'] ==
-              'ergora.training_cycle.collect-round.v3' and context['activity_source']['attempt'] == 1
+              names['collect-round'] and context['activity_source']['attempt'] == 1
               else 'reconcile-round')
     protocol.validate_cycle_activity_request(request, action)
     protocol.validate_cycle_activity_context(context, measurement_action=action)
@@ -172,7 +173,7 @@ async def authenticate_round_collection(client, intent: dict, binding: dict, req
             is_current = scheduled.activity_id == source['activity_id']
             # Decode collect commands as well as matching IDs so another command
             # cannot spend the same round's opportunity under a different ID.
-            collect_type = scheduled.activity_type.name == 'ergora.training_cycle.collect-round.v3'
+            collect_type = scheduled.activity_type.name == names['collect-round']
             if not (is_collect or is_current or collect_type):
                 continue
             values = await client.data_converter.decode(scheduled.input.payloads, [dict])

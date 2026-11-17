@@ -20,7 +20,7 @@ from temporalio.converter import DataConverter
 from temporalio.exceptions import WorkflowAlreadyStartedError
 from temporalio.service import RPCError, RPCStatusCode
 
-from ergora.training_execution_protocol import CYCLE_MEMO_KEY, CycleAdmission
+from ergora.training_execution_protocol import CYCLE_MEMO_KEY, CycleAdmission, cycle_workflow_type, cycle_activity_names
 
 
 class Service:
@@ -51,8 +51,7 @@ class Service:
         return DescribeWorkflowExecutionResponse(workflow_execution_info=WorkflowExecutionInfo(
             execution=WorkflowExecution(workflow_id=intent['workflow_id'],
                 run_id='another-run' if case == 'run' else receipt['run_id']),
-            type=WorkflowType(name='TrainingCycleWorkflowV2' if intent['protocol'] == 'ergora-training-cycle-v2'
-                              else 'TrainingCycleWorkflow'), memo=await self.memo(intent, case),
+            type=WorkflowType(name=cycle_workflow_type(intent['protocol'])), memo=await self.memo(intent, case),
             first_run_id=receipt['run_id'], status=WorkflowExecutionStatus.COMPLETED if case == 'closed' else WorkflowExecutionStatus.RUNNING))
 
     async def get_workflow_execution_history(self, request, **kwargs):
@@ -62,7 +61,7 @@ class Service:
             value['input_sha256'] = '0' * 64
         started = WorkflowExecutionStartedEventAttributes(
             workflow_type=WorkflowType(name='ForeignWorkflow' if case == 'type' else
-                'TrainingCycleWorkflowV2' if intent['protocol'] == 'ergora-training-cycle-v2' else 'TrainingCycleWorkflow'),
+                cycle_workflow_type(intent['protocol'])),
             task_queue=TaskQueue(name='another-queue' if case == 'queue' else intent['task_queue']),
             input=Payloads(payloads=await DataConverter.default.encode([value])), memo=await self.memo(intent, case),
             first_execution_run_id=receipt['run_id'], original_execution_run_id=receipt['run_id'], attempt=1)
@@ -97,8 +96,7 @@ class DispatchService:
     async def start_workflow_execution(self, request, **kwargs):
         self.record('start', request)
         assert request.workflow_id == self.intent['workflow_id']
-        expected_type = ('TrainingCycleWorkflowV2' if self.intent['protocol'] == 'ergora-training-cycle-v2'
-                         else 'TrainingCycleWorkflow')
+        expected_type = cycle_workflow_type(self.intent['protocol'])
         assert request.workflow_type.name == expected_type and request.task_queue.name == self.intent['task_queue']
         assert request.workflow_id_reuse_policy == WorkflowIDReusePolicy.REJECT_DUPLICATE
         assert request.workflow_id_conflict_policy == WorkflowIDConflictPolicy.FAIL and request.retry_policy.maximum_attempts == 1
@@ -147,9 +145,7 @@ class DispatchService:
             if self.case == 'retry' else WorkflowExecutionStatus.COMPLETED if self.case == 'closed' else WorkflowExecutionStatus.RUNNING)
         return DescribeWorkflowExecutionResponse(workflow_execution_info=WorkflowExecutionInfo(
             execution=WorkflowExecution(workflow_id=self.intent['workflow_id'], run_id='foreign-run' if self.case == 'run' else selected),
-            type=WorkflowType(name=('TrainingCycleWorkflowV2'
-                if self.intent['protocol'] == 'ergora-training-cycle-v2' and self.case != 'v1-type'
-                else 'TrainingCycleWorkflow')), memo=memo, status=status,
+            type=WorkflowType(name=(cycle_workflow_type(self.intent['protocol']) if self.case != 'v1-type' else 'TrainingCycleWorkflow')), memo=memo, status=status,
             first_run_id=self.successor if self.case == 'first-run' else self.run_id))
 
     async def get_workflow_execution_history(self, request, **kwargs):
@@ -163,8 +159,7 @@ class DispatchService:
             memo = Memo(fields={CYCLE_MEMO_KEY: (await DataConverter.default.encode(['0' * 64]))[0]})
         started = WorkflowExecutionStartedEventAttributes(
             workflow_type=WorkflowType(name='ForeignWorkflow' if self.case == 'type' else
-                'TrainingCycleWorkflowV2' if self.intent['protocol'] == 'ergora-training-cycle-v2'
-                and self.case != 'v1-type' else 'TrainingCycleWorkflow'),
+                cycle_workflow_type(self.intent['protocol']) if self.case != 'v1-type' else 'TrainingCycleWorkflow'),
             task_queue=TaskQueue(name='foreign-queue' if self.case == 'queue' else self.intent['task_queue']),
             input=Payloads(payloads=await DataConverter.default.encode([value])), memo=memo,
             first_execution_run_id=self.run_id, original_execution_run_id=self.run_id if self.case == 'reset' else request.execution.run_id,
@@ -210,7 +205,7 @@ class RoundService(DispatchService):
             run = 'foreign-run'
         return DescribeWorkflowExecutionResponse(workflow_execution_info=WorkflowExecutionInfo(
             execution=WorkflowExecution(workflow_id=request.execution.workflow_id, run_id=run),
-            type=WorkflowType(name='TrainingCycleWorkflowV2' if parent else 'ExperimentWorkflow'),
+            type=WorkflowType(name=cycle_workflow_type(self.intent['protocol']) if parent else 'ExperimentWorkflow'),
             memo=Memo(fields={(CYCLE_MEMO_KEY if parent else MEMO_KEY): (await DataConverter.default.encode([digest]))[0]}),
             first_run_id=run, status=WorkflowExecutionStatus.COMPLETED if not parent and self.case.startswith('round-outcome')
                 else WorkflowExecutionStatus.RUNNING))
@@ -236,7 +231,7 @@ class RoundService(DispatchService):
             return GetWorkflowExecutionHistoryResponse(history=History(events=[HistoryEvent(event_id=1,
                 workflow_execution_started_event_attributes=WorkflowExecutionStartedEventAttributes(
                     input=Payloads(payloads=await DataConverter.default.encode([self.start['observation']['experiment']['spec']]))))]))
-        started = WorkflowExecutionStartedEventAttributes(workflow_type=WorkflowType(name='TrainingCycleWorkflowV2'),
+        started = WorkflowExecutionStartedEventAttributes(workflow_type=WorkflowType(name=cycle_workflow_type(self.intent['protocol'])),
             task_queue=TaskQueue(name=self.intent['task_queue']),
             input=Payloads(payloads=await DataConverter.default.encode([self.intent['workflow_input']])),
             memo=Memo(fields={CYCLE_MEMO_KEY: (await DataConverter.default.encode([CycleAdmission._sha(self.intent)]))[0]}),
@@ -245,7 +240,7 @@ class RoundService(DispatchService):
         original = {'workflow_input': self.intent['workflow_input'], 'ordinal': self.payload['identity']['ordinal'],
                     'predecessor': self.payload['start_context']['controller']['predecessor']}
         scheduled = ActivityTaskScheduledEventAttributes(activity_id='candidate-' + str(original['ordinal']) + '-collect',
-            activity_type=ActivityType(name='ergora.training_cycle.collect-round.v3'),
+            activity_type=ActivityType(name=cycle_activity_names(3 if self.intent['protocol'] == 'ergora-training-cycle-v3' else 2)['collect-round']),
             task_queue=TaskQueue(name=self.intent['task_queue']), input=Payloads(payloads=await DataConverter.default.encode([original])))
         if self.case == 'round-history-input':
             original['predecessor'] = {'foreign': True}
@@ -256,7 +251,7 @@ class RoundService(DispatchService):
             events.append(HistoryEvent(event_id=3, activity_task_scheduled_event_attributes=scheduled))
         if self.payload['identity']['mode'] == 'reconcile-round':
             current = ActivityTaskScheduledEventAttributes(activity_id=self.payload['activity_context']['activity_source']['activity_id'],
-                activity_type=ActivityType(name='ergora.training_cycle.reconcile-round.v3'),
+                activity_type=ActivityType(name=cycle_activity_names(3 if self.intent['protocol'] == 'ergora-training-cycle-v3' else 2)['reconcile-round']),
                 task_queue=TaskQueue(name=self.intent['task_queue']), input=Payloads(payloads=await DataConverter.default.encode([original])))
             events.append(HistoryEvent(event_id=4, activity_task_scheduled_event_attributes=current))
         if self.case == 'round-history-count':

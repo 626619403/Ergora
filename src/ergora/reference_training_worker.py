@@ -111,9 +111,11 @@ class _CycleOperation:
             bootstrap = {'boot_id': boot, 'started_ns': ticks,
                 'deadline_ns': min(ticks + int(seconds * 1_000_000_000), clock['boottime_ns']
                     + (policy['wall_seconds'] - policy['cleanup_seconds']) * 1_000_000_000)}
-        version2 = (snapshot is not None and snapshot['authorization']['schema_version'] == 3 or
-            activity_context is not None and activity_context['workflow_input']['protocol'] == 'ergora-training-cycle-v2')
-        self.identity = {'protocol': ('ergora-training-cycle-operation-v2' if version2
+        version2 = (snapshot is not None and snapshot['authorization']['schema_version'] in (3, 4) or
+            activity_context is not None and activity_context['workflow_input']['protocol'] in ('ergora-training-cycle-v2', 'ergora-training-cycle-v3'))
+        declared = (snapshot is not None and snapshot['authorization']['schema_version'] == 4 or
+            activity_context is not None and activity_context['workflow_input']['protocol'] == 'ergora-training-cycle-v3')
+        self.identity = {'protocol': ('ergora-training-cycle-operation-v3' if declared else 'ergora-training-cycle-operation-v2' if version2
             else 'ergora-training-cycle-operation-v1'), 'operation_id': uuid.uuid4().hex,
             'mode': mode, 'control_home': str(home), 'project': project, 'cycle_id': cycle_id,
             'input_sha256': snapshot['authorization']['input_sha256'] if snapshot is not None else None,
@@ -355,7 +357,7 @@ def cycle_request_retention_main() -> None:
     protocol._exact(identity, ('protocol', 'operation_id', 'mode', 'control_home', 'project', 'cycle_id',
         'input_sha256', 'authorization_sha256', 'ordinal', 'parent'), 'Request retention identity')
     if (envelope['protocol'] != _REQUEST_RETENTION_PROTOCOL
-            or identity['protocol'] != 'ergora-training-cycle-operation-v2'
+            or identity['protocol'] not in ('ergora-training-cycle-operation-v2', 'ergora-training-cycle-operation-v3')
             or identity['mode'] not in (*protocol.CYCLE_WORK_MODES, 'reconcile-candidate', 'reconcile-controller')
             or not isinstance(identity['operation_id'], str) or re.fullmatch('[a-f0-9]{32}', identity['operation_id']) is None
             or (identity['mode'] in (*protocol.CYCLE_CANDIDATE_MODES, *protocol.CYCLE_MEASUREMENT_MODES)
@@ -620,8 +622,8 @@ class _CycleCandidate:
                 raise _CycleCapacityError('Complete controller root request exceeds 32 KiB; intent remains occupied')
             authorization = self.preparation.payload['snapshot']['authorization']
             entry = ('from ergora.reference_training_budget import cycle_root_main;cycle_root_main()'
-                if authorization['schema_version'] == 3
-                    and authorization['controller']['protocol'] == 'ergora-training-cycle-v2'
+                if authorization['schema_version'] in (3, 4)
+                    and authorization['controller']['protocol'] in ('ergora-training-cycle-v2', 'ergora-training-cycle-v3')
                 else 'from ergora.reference_training_worker import budget_main;budget_main()')
             # Only OS creation runs in the thread. Its public concurrent Future
             # cannot be cancelled by the loop's global Task shutdown.
@@ -785,8 +787,7 @@ def _cycle_operation(payload: dict) -> dict:
     admission = protocol.CycleAdmission(directory, authorization)
     if authorization['sha256'] != identity['authorization_sha256']:
         raise ValueError('Cycle operation requires the complete original authorization SHA256')
-    if identity['protocol'] != ('ergora-training-cycle-operation-v2' if authorization['schema_version'] == 3
-                                else 'ergora-training-cycle-operation-v1'):
+    if identity['protocol'] != {2: 'ergora-training-cycle-operation-v1', 3: 'ergora-training-cycle-operation-v2', 4: 'ergora-training-cycle-operation-v3'}[authorization['schema_version']]:
         raise ValueError('Cycle operation protocol differs from its complete original authorization')
     snapshot = _cycle_snapshot(plan, authorization)
     mode = identity['mode']
@@ -1066,7 +1067,7 @@ def _execution_candidate_operation(payload: dict, plan: dict, admission, active)
     except (OSError, ValueError) as error:
         problem('budget', error)
     facts['budget'] = budget
-    if authorization['schema_version'] == 3 and identity['mode'] not in protocol.CYCLE_MEASUREMENT_MODES:
+    if authorization['schema_version'] in (3, 4) and identity['mode'] not in protocol.CYCLE_MEASUREMENT_MODES:
         facts.update(selection=protocol.round_selection(plan, authorization), measurement={
             'measurement_state': 'pending', 'index_state': 'absent', 'continuation_ready': False,
             'prefix': None, 'acceptance': None})
@@ -1321,7 +1322,7 @@ def _candidate_operation(payload: dict, plan: dict, admission, active) -> dict:
     activity = payload.get('activity_context')
     mode = identity['mode']
     if mode == 'prepare-candidate' and activity is not None:
-        if identity['ordinal'] != 0 and admission.authorization['schema_version'] != 3:
+        if identity['ordinal'] != 0 and admission.authorization['schema_version'] not in (3, 4):
             raise ValueError('successor_not_enabled')
         if activity['activity_source']['attempt'] > 1:
             raise ValueError('Retried SDK start may only reconcile existing records')
@@ -1335,7 +1336,7 @@ def _candidate_operation(payload: dict, plan: dict, admission, active) -> dict:
     operation, intent = _cycle_submission(plan, admission, identity['ordinal'])
     if intent is not None and intent['budget']['controller'] != context['controller']:
         raise ValueError('Candidate operation differs from its complete original controller binding')
-    if (admission.authorization['schema_version'] == 3 and mode in protocol.CYCLE_START_MODES
+    if (admission.authorization['schema_version'] in (3, 4) and mode in protocol.CYCLE_START_MODES
             and (mode != 'prepare-candidate' or intent is None)):
         _round_previous(payload, plan, admission, active)
     if mode == 'prepare-candidate':
@@ -1356,7 +1357,7 @@ def _candidate_operation(payload: dict, plan: dict, admission, active) -> dict:
         # The immutable intent is the only offer. Losing any later reply never
         # grants another launch, even if this synchronization fails.
         protocol.sync_directories(operation.path('.intent.json').parent, operation.root)
-        if admission.authorization['schema_version'] == 3:
+        if admission.authorization['schema_version'] in (3, 4):
             _round_previous(payload, plan, admission, active)
         launch = budget.launch_context(payload)
         active()
@@ -1381,7 +1382,7 @@ def _candidate_operation(payload: dict, plan: dict, admission, active) -> dict:
         raise ValueError('Candidate operation lost its exact original training intent')
     budget = BudgetedStart(operation, intent)
     if mode == 'confirm-candidate':
-        if admission.authorization['schema_version'] == 3:
+        if admission.authorization['schema_version'] in (3, 4):
             import fcntl
 
             owner_path = budget.path('owner.json')
@@ -1446,7 +1447,7 @@ def _candidate_operation(payload: dict, plan: dict, admission, active) -> dict:
         if ({key: owner[key] for key in ('pid', 'start_ticks', 'boot_id')} != context['root_process']
                 or owner['context_sha256'] != operation.sha(budget.context())):
             raise ValueError('Candidate root differs from its complete original owner or context')
-        if admission.authorization['schema_version'] == 3:
+        if admission.authorization['schema_version'] in (3, 4):
             # Context/source reads may block after the preceding liveness check.
             budget.require_active(owner=True)
             protocol._match(budget.owner_record(), owner, 'Original confirmed candidate owner')
@@ -1486,8 +1487,8 @@ async def _dispatch_controller(payload: dict, plan: dict, admission, active) -> 
     activity_context = payload.get('activity_context')
     if activity_context is not None:
         _activity_binding(payload, admission)
-        if (activity_context['activity_source']['activity_type'] in (
-                protocol.CYCLE_ACTIVITY_NAMES['stop'], protocol.CYCLE_ACTIVITY_NAMES_V3['stop'])
+        if (activity_context['activity_source']['activity_type'] ==
+                protocol.cycle_activity_names(admission.authorization['schema_version'] - 1)['stop']
                 and saved['run_id'] is not None):
             return observation(saved, runtime_status='local_binding')
     if saved['status'] == 'rejected':
@@ -1593,7 +1594,7 @@ def _activity_operation_result(operation, result):
 async def stop_live_controller(home: Path, project_id: str, cycle_id: str, authorization_sha256: str,
                                *, reason: str, inspection_timeout: int = 10,
                                activity_context: dict | None = None, inspection: dict | None = None,
-                               operation_records: list | None = None) -> dict:
+                               operation_records: list | None = None, window: dict | None = None) -> dict:
     """Observe every independent branch, retaining each real task through cleanup."""
     if inspection is None:
         inspection = await _CycleOperation(home, project_id, cycle_id, authorization_sha256, 'inspect',
@@ -1601,6 +1602,16 @@ async def stop_live_controller(home: Path, project_id: str, cycle_id: str, autho
     if inspection['status'] != 'inspected':
         return {'status': 'unknown', 'inspection': inspection, 'operations': [], 'runtime_status': 'not_queried'}
     snapshot = inspection['snapshot']
+    if snapshot['authorization']['schema_version'] == 4:
+        clock, policy = snapshot['authorization']['clock'], snapshot['policy']
+        if window is None:
+            if activity_context is not None:
+                raise ValueError('V3 SDK stop requires its original activity deadline')
+            boot, ticks = budget_clock._clock()
+            window = {'boot_id': boot, 'started_ns': ticks,
+                      'deadline_ns': clock['boottime_ns'] + policy['wall_seconds'] * 1_000_000_000}
+        window = {**window, 'deadline_ns': min(window['deadline_ns'],
+            clock['boottime_ns'] + policy['wall_seconds'] * 1_000_000_000)}
     branches = [('stop-writer', None), ('drain', None)]
     branches.extend((mode, ordinal) for ordinal in range(len(snapshot['candidates']))
                     for mode in ('notify-owner', 'observe-execution'))
@@ -1621,7 +1632,7 @@ async def stop_live_controller(home: Path, project_id: str, cycle_id: str, autho
             try:
                 operation = _CycleOperation(home, project_id, cycle_id, authorization_sha256, mode,
                     snapshot=snapshot, reason=reason if mode == 'stop-writer' else None,
-                    ordinal=ordinal, activity_context=activity_context)
+                    ordinal=ordinal, activity_context=activity_context, window=window)
             except (OSError, ValueError, TypeError, KeyError) as error:
                 value = {'operation_id': uuid.uuid4().hex, 'mode': mode, 'ordinal': ordinal,
                     'operation_stopped': False, 'supervisor_returncode': None,
@@ -2122,13 +2133,22 @@ if workflow is not None:
             return self.status()
 
 
-    @workflow.defn(name='TrainingCycleWorkflowV2')
-    class TrainingCycleWorkflowV2(TrainingCycleWorkflow):
+    class _FiniteCycleWorkflow(TrainingCycleWorkflow):
         """Consume the born selection; history owns each round's three opportunities."""
 
-        @workflow.init
-        def __init__(self, original: dict):
+        def __init__(self, original: dict, *, window_policy: str):
             super().__init__(original)
+            # The wrappers fix this birth policy; no current project configuration is read.
+            declared = window_policy == 'declared-control-v3'
+            self._input_protocol = 'ergora-training-cycle-v3' if declared else 'ergora-training-cycle-v2'
+            self._activity_names = protocol.CYCLE_ACTIVITY_NAMES_V4 if declared else protocol.CYCLE_ACTIVITY_NAMES_V3
+            self._normal_queue = protocol.CYCLE_TASK_QUEUE_V3 if declared else protocol.CYCLE_TASK_QUEUE_V2
+            self._stop_queue = protocol.CYCLE_STOP_TASK_QUEUE_V3 if declared else protocol.CYCLE_STOP_TASK_QUEUE_V2
+            self._envelope_schema = 4 if declared else 3
+            self._envelope_protocol = 'ergora-training-cycle-activity-v4' if declared else 'ergora-training-cycle-activity-v3'
+            self._status_schema = 3 if declared else 2
+            self._status_protocol = 'ergora-training-cycle-workflow-v3' if declared else 'ergora-training-cycle-workflow-v2'
+            self._window_policy = window_policy
             self._ordinal, self._confirmed = 0, 0
             self._selection = self._prefix = self._predecessor = None
             self._project_revision = self._registration_sha256 = None
@@ -2138,7 +2158,7 @@ if workflow is not None:
         @workflow.query
         def status(self) -> dict:
             info = workflow.info()
-            value = {'schema_version': 2, 'protocol': 'ergora-training-cycle-workflow-v2',
+            value = {'schema_version': self._status_schema, 'protocol': self._status_protocol,
                 'workflow_id': info.workflow_id, 'run_id': info.run_id,
                 'input_sha256': self._input.get('input_sha256'),
                 'authorization_sha256': self._input.get('authorization_sha256'),
@@ -2156,7 +2176,8 @@ if workflow is not None:
             if not self._guard():
                 return None, None
             scheduled = workflow.now()
-            seconds = 10 if cold else min((self._work - scheduled).total_seconds(), self._control, 10)
+            seconds = 10 if cold else min((self._work - scheduled).total_seconds(), self._control,
+                10 if self._window_policy == 'legacy-v2' else self._control)
             if seconds <= 0:
                 self._stop_reason = 'work_budget_exhausted'
                 return None, None
@@ -2178,8 +2199,8 @@ if workflow is not None:
                 self._state.update(collect_scheduled=True, phase='COLLECTING_ROUND')
             elif action == 'reconcile-round':
                 self._state['phase'] = 'RECONCILING_ROUND'
-            self._normal = workflow.start_activity(protocol.CYCLE_ACTIVITY_NAMES_V3[action], request,
-                activity_id=ident, task_queue=protocol.CYCLE_TASK_QUEUE_V2,
+            self._normal = workflow.start_activity(self._activity_names[action], request,
+                activity_id=ident, task_queue=self._normal_queue,
                 schedule_to_close_timeout=timedelta(seconds=seconds),
                 start_to_close_timeout=timedelta(seconds=seconds), retry_policy=RetryPolicy(maximum_attempts=1),
                 cancellation_type=workflow.ActivityCancellationType.TRY_CANCEL)
@@ -2199,8 +2220,8 @@ if workflow is not None:
             self._capacity(value)
             protocol._exact(value, ('schema_version', 'protocol', 'action', 'status', 'workflow_input',
                 'controller', 'observation', 'inspection', 'operations', 'runtime_status', 'facts'), 'V3 cycle envelope')
-            if (type(value['schema_version']) is not int or value['schema_version'] != 3
-                    or value['protocol'] != 'ergora-training-cycle-activity-v3' or value['action'] != action
+            if (type(value['schema_version']) is not int or value['schema_version'] != self._envelope_schema
+                    or value['protocol'] != self._envelope_protocol or value['action'] != action
                     or value['status'] not in ('observed', 'unknown') or value['workflow_input'] != self._input):
                 raise ValueError('V3 activity lost its complete original wire or input')
             controller = value['controller']
@@ -2362,8 +2383,8 @@ if workflow is not None:
             request = {'workflow_input': self._input, 'reason': self._stop_reason}
             self._capacity(request)
             self._state.update(stop_activity_id='cycle-stop', stop_activity_status='scheduled')
-            self._stop_handle = workflow.start_activity(protocol.CYCLE_ACTIVITY_NAMES_V3['stop'], request,
-                activity_id='cycle-stop', task_queue=protocol.CYCLE_STOP_TASK_QUEUE_V2,
+            self._stop_handle = workflow.start_activity(self._activity_names['stop'], request,
+                activity_id='cycle-stop', task_queue=self._stop_queue,
                 schedule_to_close_timeout=timedelta(seconds=seconds), start_to_close_timeout=timedelta(seconds=seconds),
                 retry_policy=RetryPolicy(maximum_attempts=1),
                 cancellation_type=workflow.ActivityCancellationType.WAIT_CANCELLATION_COMPLETED)
@@ -2388,8 +2409,8 @@ if workflow is not None:
             try:
                 protocol.validate_cycle_activity_request({'workflow_input': original, 'ordinal': 0, 'predecessor': None},
                                                          'observe-candidate')
-                if original['protocol'] != 'ergora-training-cycle-v2':
-                    raise ValueError('V2 Workflow requires its original v2 input')
+                if original['protocol'] != self._input_protocol:
+                    raise ValueError('Finite Workflow requires its original born input protocol')
                 self._capacity(original)
             except (ValueError, KeyError, TypeError) as error:
                 raise ApplicationError(str(error), type='cycle_workflow_input_rejected', non_retryable=True) from error
@@ -2429,12 +2450,50 @@ if workflow is not None:
             return self.status()
 
 
+    @workflow.defn(name='TrainingCycleWorkflowV2')
+    class TrainingCycleWorkflowV2(_FiniteCycleWorkflow):
+        @workflow.init
+        def __init__(self, original: dict):
+            super().__init__(original, window_policy='legacy-v2')
+
+        @workflow.query
+        def status(self) -> dict:
+            return super().status()
+
+        @workflow.signal
+        def request_stop(self, request):
+            super().request_stop(request)
+
+        @workflow.run
+        async def run(self, original: dict) -> dict:
+            return await super().run(original)
+
+
+    @workflow.defn(name='TrainingCycleWorkflowV3')
+    class TrainingCycleWorkflowV3(_FiniteCycleWorkflow):
+        @workflow.init
+        def __init__(self, original: dict):
+            super().__init__(original, window_policy='declared-control-v3')
+
+        @workflow.query
+        def status(self) -> dict:
+            return super().status()
+
+        @workflow.signal
+        def request_stop(self, request):
+            super().request_stop(request)
+
+        @workflow.run
+        async def run(self, original: dict) -> dict:
+            return await super().run(original)
+
+
 def create_cycle_workflow(program_version: int = 1):
     """Resolve the optional SDK class without constructing an unimportable local class."""
     if workflow is None:
         raise RuntimeError('Training cycle Workflow requires ergora[temporal]')
     protocol.cycle_activity_names(program_version)
-    return TrainingCycleWorkflow if program_version == 1 else TrainingCycleWorkflowV2
+    return {1: TrainingCycleWorkflow, 2: TrainingCycleWorkflowV2, 3: TrainingCycleWorkflowV3}[program_version]
 
 
 def create_cycle_activities(client, program_version: int = 1, *,
@@ -2445,13 +2504,15 @@ def create_cycle_activities(client, program_version: int = 1, *,
     from temporalio.exceptions import ApplicationError, CancelledError
 
     names = protocol.cycle_activity_names(program_version)
-    version3 = program_version == 2
+    version3 = program_version in (2, 3)
+    declared = program_version == 3
+    input_protocol = {1: 'ergora-training-cycle-v1', 2: 'ergora-training-cycle-v2', 3: 'ergora-training-cycle-v3'}[program_version]
 
-    async def invoke(action, request, window=None):
+    async def source_context(action, request):
         await _cycle_capacity(request, client.data_converter)
         try:
             protocol.validate_cycle_activity_request(request, action)
-            if request['workflow_input']['protocol'] != ('ergora-training-cycle-v2' if version3 else 'ergora-training-cycle-v1'):
+            if request['workflow_input']['protocol'] != input_protocol:
                 raise ValueError('Activity request differs from its registered program version')
             info = activity.info()
             if getattr(info, 'is_local', False):
@@ -2467,28 +2528,44 @@ def create_cycle_activities(client, program_version: int = 1, *,
                 raise ValueError('successor_not_enabled')
         except (ValueError, TypeError, KeyError) as error:
             raise ApplicationError(str(error), type='cycle_activity_request_rejected', non_retryable=True) from error
+        return context
+
+    async def invoke(action, request, window=None, context=None):
+        if context is None:
+            context = await source_context(action, request)
+        source = context['activity_source']
         original = request['workflow_input']
         version2 = action in ('request-execution-or-observe', 'observe-candidate')
         arguments = (Path(original['control_home']), original['project'], original['cycle_id'], original['authorization_sha256'])
-        cold = _CycleOperation(*arguments, 'inspect-controller-activity', activity_context=context, window=window)
+        inspection_window = window
+        if declared:
+            _, inspection_started = budget_clock._clock()
+            # Queue time still consumes the original SDK/command window. Only
+            # this readonly subwindow starts after the permit was acquired.
+            inspection_window = {**window, 'deadline_ns': min(window['deadline_ns'],
+                inspection_started + 10_000_000_000)}
+        cold = _CycleOperation(*arguments, 'inspect-controller-activity', activity_context=context, window=inspection_window)
         inspection = await cold.run()
         if inspection['status'] == 'capacity_exceeded':
             raise ApplicationError(inspection['reason'], type='cycle_activity_capacity_exceeded', non_retryable=True)
+        if declared and cold.expired():
+            raise ApplicationError('Original readonly inspection window ended',
+                type='cycle_activity_request_rejected', non_retryable=True)
         records = [_activity_operation_result(cold, inspection)]
         outcome = inspection
         if inspection['status'] == 'inspected':
             snapshot = inspection['snapshot']
             policy, clock = snapshot['policy'], snapshot['authorization']['clock']
-            work_window = dict(cold.payload['bootstrap'])
+            work_window = dict(window if declared else cold.payload['bootstrap'])
             work_window['deadline_ns'] = min(work_window['deadline_ns'],
                 work_window['started_ns'] + policy['control_timeout_seconds'] * 1_000_000_000,
                 clock['boottime_ns'] + (policy['wall_seconds'] - policy['cleanup_seconds']) * 1_000_000_000)
             if version3:
-                if snapshot['authorization']['schema_version'] != 3:
+                if snapshot['authorization']['schema_version'] != (4 if declared else 3):
                     raise ValueError('V3 activity requires its complete original schema3 authorization')
                 if action == 'stop':
                     outcome = await stop_live_controller(*arguments, reason=request['reason'], inspection=inspection,
-                        activity_context=context, operation_records=records)
+                        activity_context=context, operation_records=records, window=window if declared else None)
                 else:
                     start_status = None
                     binding = {'protocol': original['protocol'], **inspection['controller'],
@@ -2559,14 +2636,14 @@ def create_cycle_activities(client, program_version: int = 1, *,
                     records.append(_activity_operation_result(operation, outcome))
             elif action == 'stop':
                 outcome = await stop_live_controller(*arguments, reason=request['reason'], inspection=inspection,
-                    activity_context=context, operation_records=records)
+                    activity_context=context, operation_records=records, window=window if declared else None)
         if outcome.get('status') == 'capacity_exceeded' or any(
                 item.get('status') == 'capacity_exceeded' for item in outcome.get('operations', [])):
             logging.error('Complete cycle operation capacity failure; outcome: %s; operations: %s', outcome, records)
             raise ApplicationError('Complete original operation result exceeded its frame capacity',
                                    type='cycle_activity_capacity_exceeded', non_retryable=True)
-        envelope = {'schema_version': 3 if version3 else 2 if version2 else 1,
-            'protocol': 'ergora-training-cycle-activity-v3' if version3 else 'ergora-training-cycle-activity-v2' if version2 else 'ergora-training-cycle-activity-v1', 'action': action,
+        envelope = {'schema_version': 4 if declared else 3 if version3 else 2 if version2 else 1,
+            'protocol': 'ergora-training-cycle-activity-v4' if declared else 'ergora-training-cycle-activity-v3' if version3 else 'ergora-training-cycle-activity-v2' if version2 else 'ergora-training-cycle-activity-v1', 'action': action,
             'status': 'observed' if inspection['status'] == 'inspected' and outcome.get('status') != 'unknown' else 'unknown',
             'workflow_input': original, 'controller': inspection.get('controller'),
             'observation': inspection.get('observation'), 'inspection': records[0], 'operations': records[1:],
@@ -2591,8 +2668,9 @@ def create_cycle_activities(client, program_version: int = 1, *,
 
             async def execute(request: dict) -> dict:
                 try:
-                    if permit is None:
+                    if permit is None and not declared:
                         return await invoke(selected, request)
+                    context = await source_context(selected, request) if declared else None
                     # Freeze before queuing. Both versions consume their original
                     # cold window and the SDK's full scheduled/started allowance.
                     loop_started = asyncio.get_running_loop().time()
@@ -2606,7 +2684,10 @@ def create_cycle_activities(client, program_version: int = 1, *,
                     if remaining is not None and remaining < 1:
                         raise ApplicationError('Original SDK activity allowance cannot admit a cold observation',
                             type='cycle_activity_request_rejected', non_retryable=True)
-                    cold_seconds = 10 if remaining is None else min(10, remaining)
+                    if declared and remaining is None:
+                        raise ApplicationError('V3 requires its original SDK activity deadline',
+                            type='cycle_activity_request_rejected', non_retryable=True)
+                    cold_seconds = remaining if declared else 10 if remaining is None else min(10, remaining)
                     window = {'boot_id': boot, 'started_ns': ticks,
                               'deadline_ns': ticks + int(cold_seconds * 1_000_000_000)}
                     sdk_timeout = asyncio.timeout_at(None if remaining is None else loop_started + remaining)
@@ -2614,18 +2695,20 @@ def create_cycle_activities(client, program_version: int = 1, *,
                     try:
                         async with sdk_timeout:
                             async with waiting_timeout:
-                                await permit.acquire()
+                                if permit is not None:
+                                    await permit.acquire()
                             try:
                                 current_boot, current_ticks = budget_clock._clock()
                                 if (current_boot != boot or current_ticks < ticks
                                         or current_ticks >= window['deadline_ns']):
                                     raise ApplicationError('Original cycle observation window ended while queuing',
                                         type='cycle_activity_request_rejected', non_retryable=True)
-                                return await invoke(selected, request, window)
+                                return await invoke(selected, request, window, context)
                             finally:
                                 # The original run methods wait for S/H, pending
                                 # roots and all stop peers before propagating cancel.
-                                permit.release()
+                                if permit is not None:
+                                    permit.release()
                     except TimeoutError:
                         if not sdk_timeout.expired() and not waiting_timeout.expired():
                             raise
@@ -2662,7 +2745,7 @@ async def _serve_cycle() -> None:
     loop = asyncio.get_running_loop()
     for signum in (signal.SIGTERM, signal.SIGINT):
         loop.add_signal_handler(signum, stopped.set)
-    workers, running = [], []
+    workers, running, normal_workers, stop_workers = [], [], [], []
     waiting = asyncio.create_task(stopped.wait())
 
     async def connect_bounded():
@@ -2690,18 +2773,20 @@ async def _serve_cycle() -> None:
         client = connecting.result()
         config = client.config()
         config['data_converter'] = replace(client.data_converter, failure_converter_class=_CycleFailureConverter)
-        clients = {1: client, 2: Client(**config)}
+        clients = {1: client, 2: Client(**config), 3: Client(**config)}
         normal_permit, stop_permit = asyncio.Semaphore(1), asyncio.Semaphore(1)
         activities = {version: create_cycle_activities(clients[version], version,
-            normal_permit=normal_permit, stop_permit=stop_permit) for version in (1, 2)}
-        for version, queue in ((1, protocol.CYCLE_TASK_QUEUE), (2, protocol.CYCLE_TASK_QUEUE_V2)):
+            normal_permit=normal_permit, stop_permit=stop_permit) for version in (1, 2, 3)}
+        for version, queue in ((1, protocol.CYCLE_TASK_QUEUE), (2, protocol.CYCLE_TASK_QUEUE_V2), (3, protocol.CYCLE_TASK_QUEUE_V3)):
             workers.append(Worker(clients[version], task_queue=queue, workflows=[create_cycle_workflow(version)],
                 activities=[activities[version][action] for action in protocol.cycle_activity_names(version)
                             if action != 'stop'], max_concurrent_activities=1,
                 graceful_shutdown_timeout=timedelta(0), on_fatal_error=fatal))
-        for version, queue in ((1, protocol.CYCLE_STOP_TASK_QUEUE), (2, protocol.CYCLE_STOP_TASK_QUEUE_V2)):
+            normal_workers.append(workers[-1])
+        for version, queue in ((1, protocol.CYCLE_STOP_TASK_QUEUE), (2, protocol.CYCLE_STOP_TASK_QUEUE_V2), (3, protocol.CYCLE_STOP_TASK_QUEUE_V3)):
             workers.append(Worker(clients[version], task_queue=queue, activities=[activities[version]['stop']],
                 max_concurrent_activities=1, graceful_shutdown_timeout=timedelta(0), on_fatal_error=fatal))
+            stop_workers.append(workers[-1])
         running = [asyncio.create_task(worker.run()) for worker in workers]
         done, _ = await asyncio.wait((*running, waiting), return_when=asyncio.FIRST_COMPLETED)
         for task in done:
@@ -2735,12 +2820,12 @@ async def _serve_cycle() -> None:
                 # shutdown cannot resume it, so task completion proves no drain.
                 raise RuntimeError('Cycle worker cleanup is incomplete; running state is unknown')
 
-        # Stop both normal pollers together; keep both stop pollers available
-        # until normal S/H and pending-root cleanup have actually returned.
+        # All normal pollers drain before any stop poller closes. The permits
+        # remain shared across every registered version through actual cleanup.
         async def finish():
-            for start in (0, 2):
+            for group in (normal_workers, stop_workers):
                 finishing = asyncio.gather(*(finish_worker(worker, task)
-                    for worker, task in zip(workers[start:start + 2], running[start:start + 2])),
+                    for worker, task in zip(workers, running) if worker in group),
                     return_exceptions=True)
                 while not finishing.done():
                     try:

@@ -615,7 +615,7 @@ def parser() -> argparse.ArgumentParser:
     cycle.add_argument("--revision", type=int, required=True)
     cycle.add_argument("--confirm", action="store_true")
     cycle.add_argument("--execute-selected", action="store_true", help="Explicitly consent to executing the exact selected candidates")
-    cycle.add_argument("--program-version", type=int, choices=(1, 2), default=2,
+    cycle.add_argument("--program-version", type=int, choices=(1, 2, 3), default=2,
                        help="Freeze this controller version; an existing cycle ID retains its original version")
     for action, description in (
             ('status', 'Read saved parent intent/attempt/receipt without querying or dispatching'),

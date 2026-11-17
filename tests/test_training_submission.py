@@ -773,7 +773,7 @@ def save_controller_binding(admission):
         'authorization_sha256': admission.authorization['sha256'], 'task_queue': BUDGET_TASK_QUEUE,
         'controller': {'protocol': intent['protocol'], 'workflow_id': intent['workflow_id'],
             'run_id': receipt['run_id'], 'intent_sha256': attempt['intent_sha256'], 'ordinal': 0,
-            **({'predecessor': None} if intent['protocol'] == 'ergora-training-cycle-v2' else {})}}
+            **({'predecessor': None} if intent['protocol'] in ('ergora-training-cycle-v2', 'ergora-training-cycle-v3') else {})}}
 
 
 @pytest.fixture
@@ -2639,7 +2639,7 @@ def cycle_sdk_activity(controller_dispatch, request):
     options = getattr(request, 'param', False)
     program_version = options.get('program_version', 1) if isinstance(options, dict) else 1
     dispatch_parent = isinstance(options, dict) and options.get('dispatch_parent', False)
-    if program_version == 2 and not dispatch_parent:
+    if program_version in (2, 3) and not dispatch_parent:
         # Keep the offline stop harness's fixed originals and default behavior.
         save_controller_binding(admission)
     else:
@@ -2649,7 +2649,7 @@ def cycle_sdk_activity(controller_dispatch, request):
             submitted = asyncio.run(operation('accepted', 'reconcile-controller').run())
             assert submitted['status'] == 'submitted' and admission.submission()['run_id'] == DispatchService.run_id
     converter = (replace(DataConverter.default, failure_converter_class=worker._CycleFailureConverter)
-                 if program_version == 2 else DataConverter.default)
+                 if program_version in (2, 3) else DataConverter.default)
     client = SimpleNamespace(namespace='default', data_converter=converter)
     shared = options.get('shared', False) if isinstance(options, dict) else options
     if shared:
@@ -2662,21 +2662,22 @@ def cycle_sdk_activity(controller_dispatch, request):
     def environment(action, **changes):
         env = ActivityEnvironment()
         env.info = replace(env.info, workflow_id=admission.submission()['workflow_id'],
-            workflow_run_id=admission.submission()['run_id'] if program_version == 2 else DispatchService.run_id,
+            workflow_run_id=admission.submission()['run_id'] if program_version in (2, 3) else DispatchService.run_id,
             workflow_type=worker.protocol.cycle_workflow_type(admission.controller_intent()['protocol']),
             workflow_namespace='default', namespace='default',
             activity_type=worker.protocol.cycle_activity_names(program_version)[action],
-            task_queue=((worker.protocol.CYCLE_STOP_TASK_QUEUE_V2 if program_version == 2 else worker.protocol.CYCLE_STOP_TASK_QUEUE)
-                if action == 'stop' else (worker.protocol.CYCLE_TASK_QUEUE_V2 if program_version == 2 else worker.protocol.CYCLE_TASK_QUEUE)))
+            task_queue=(({1: worker.protocol.CYCLE_STOP_TASK_QUEUE, 2: worker.protocol.CYCLE_STOP_TASK_QUEUE_V2, 3: worker.protocol.CYCLE_STOP_TASK_QUEUE_V3}[program_version])
+                if action == 'stop' else ({1: worker.protocol.CYCLE_TASK_QUEUE, 2: worker.protocol.CYCLE_TASK_QUEUE_V2, 3: worker.protocol.CYCLE_TASK_QUEUE_V3}[program_version])))
         env.info = replace(env.info, **changes)
-        if shared:
+        if shared or program_version == 3:
             from datetime import datetime, timedelta, timezone
 
+            policy = training_cycles._load(state.root, 'demo', 'controller', admission.directory)[0]['definition']['budget']
             observed = datetime.now(timezone.utc)
             seconds = budget_clock.remaining(admission.authorization['clock'], policy['wall_seconds'],
                                             0 if action == 'stop' else policy['cleanup_seconds'])
             if action != 'stop':
-                seconds = min(10, policy['control_timeout_seconds'], seconds)
+                seconds = min(policy['control_timeout_seconds'], seconds, 10 if program_version != 3 else 60)
             env.info = replace(env.info, scheduled_time=observed, current_attempt_scheduled_time=observed,
                 started_time=observed, schedule_to_close_timeout=timedelta(seconds=seconds),
                 start_to_close_timeout=timedelta(seconds=seconds))
@@ -2701,7 +2702,7 @@ def shared_cycle_activities(cycle_operation_fault, tmp_path):
     normal, stop = asyncio.Semaphore(1), asyncio.Semaphore(1)
     client = SimpleNamespace(namespace='default', data_converter=DataConverter.default)
     activities = {version: worker.create_cycle_activities(client, version,
-        normal_permit=normal, stop_permit=stop) for version in (1, 2)}
+        normal_permit=normal, stop_permit=stop) for version in (1, 2, 3)}
     calls = {}
 
     def start(version, action, label, *, scheduled_ago=0, started_ago=0,
@@ -2709,15 +2710,16 @@ def shared_cycle_activities(cycle_operation_fault, tmp_path):
         original = {'protocol': 'ergora-training-cycle-v' + str(version), 'control_home': str(tmp_path / label),
             'project': 'demo', 'cycle_id': 'first', 'input_sha256': 'a' * 64, 'authorization_sha256': 'b' * 64}
         request = {'workflow_input': original, **({'reason': 'Original explicit stop'} if action == 'stop' else
-            {'ordinal': 0, **({'predecessor': None} if version == 2 else {})})}
+            {'ordinal': 0, **({'predecessor': None} if version in (2, 3) else {})})}
         env = ActivityEnvironment()
         observed = datetime.now(timezone.utc)
         env.info = replace(env.info, workflow_id='original-' + str(version), workflow_run_id='fixed-run',
             workflow_type=worker.protocol.cycle_workflow_type(original['protocol']), namespace='default',
             workflow_namespace='default', activity_id=label,
             activity_type=worker.protocol.cycle_activity_names(version)[action],
-            task_queue=((worker.protocol.CYCLE_STOP_TASK_QUEUE_V2 if action == 'stop' else worker.protocol.CYCLE_TASK_QUEUE_V2)
-                if version == 2 else (worker.protocol.CYCLE_STOP_TASK_QUEUE if action == 'stop' else worker.protocol.CYCLE_TASK_QUEUE)),
+            task_queue=((worker.protocol.CYCLE_STOP_TASK_QUEUE_V3 if action == 'stop' else worker.protocol.CYCLE_TASK_QUEUE_V3)
+                if version == 3 else (worker.protocol.CYCLE_STOP_TASK_QUEUE_V2 if action == 'stop' else worker.protocol.CYCLE_TASK_QUEUE_V2)
+                if version in (2, 3) else (worker.protocol.CYCLE_STOP_TASK_QUEUE if action == 'stop' else worker.protocol.CYCLE_TASK_QUEUE)),
             scheduled_time=observed - timedelta(seconds=scheduled_ago),
             current_attempt_scheduled_time=observed,
             started_time=observed - timedelta(seconds=started_ago),
@@ -2747,7 +2749,8 @@ def shared_cycle_activities(cycle_operation_fault, tmp_path):
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Shared activities retain the original supervised Linux S/H')
-def test_cycle_service_shared_permits_keep_mixed_versions_until_real_cleanup(shared_cycle_activities):
+@pytest.mark.parametrize('queued_version,queue_wait', [(2, 0), (3, 0), (3, 12)])
+def test_cycle_service_shared_permits_keep_mixed_versions_until_real_cleanup(shared_cycle_activities, queued_version, queue_wait):
     import asyncio
     from ergora import budget_clock
 
@@ -2755,15 +2758,37 @@ def test_cycle_service_shared_permits_keep_mixed_versions_until_real_cleanup(sha
 
     async def scenario():
         try:
+            if queue_wait:
+                await normal.acquire()
+                held = True
+                try:
+                    second = start(queued_version, 'observe-candidate', 'normal-second')
+                    await asyncio.sleep(queue_wait)
+                    assert normal.locked() and not second.done()
+                    assert not (markers / 'permit-helper-normal-second').exists()
+                    released_at = budget_clock._clock()[1]
+                    normal.release()
+                    held = False
+                    helper = await marked('permit-helper-normal-second')
+                    assert released_at - helper['bootstrap']['started_ns'] >= queue_wait * 1_000_000_000
+                    assert helper['bootstrap']['deadline_ns'] - helper['bootstrap']['started_ns'] > 10_000_000_000
+                    assert 0 < helper['bootstrap']['deadline_ns'] - budget_clock._clock()[1] <= 10_000_000_000
+                    (markers / 'permit-release-normal-second').touch()
+                    (markers / 'permit-finish-normal-second').touch()
+                    assert (await second)['status'] == 'unknown' and not normal.locked()
+                finally:
+                    if held:
+                        normal.release()
+                return
             first = start(1, 'observe-candidate', 'normal-first')
             first_helper = await marked('permit-helper-normal-first')
             first_stop = start(1, 'stop', 'stop-first')
             await marked('permit-helper-stop-first')
             queued_at = budget_clock._clock()[1]
-            second = start(2, 'observe-candidate', 'normal-second')
-            second_stop = start(2, 'stop', 'stop-second')
+            second = start(queued_version, 'observe-candidate', 'normal-second')
+            second_stop = start(queued_version, 'stop', 'stop-second')
             # A cancelled waiter never takes a permit or creates an operation.
-            abandoned = start(2, 'observe-candidate', 'normal-abandoned')
+            abandoned = start(queued_version, 'observe-candidate', 'normal-abandoned')
             await asyncio.sleep(.05)
             abandoned.cancel()
             with pytest.raises(asyncio.CancelledError):
@@ -2791,8 +2816,12 @@ def test_cycle_service_shared_permits_keep_mixed_versions_until_real_cleanup(sha
             second_helper = await marked('permit-helper-normal-second')
             assert not recorded_process_is_active(supervisor)
             assert queued_at <= second_helper['bootstrap']['started_ns'] < released_at
-            assert (second_helper['bootstrap']['deadline_ns'] - second_helper['bootstrap']['started_ns']
-                    == first_helper['bootstrap']['deadline_ns'] - first_helper['bootstrap']['started_ns'])
+            if queued_version == 2:
+                assert (second_helper['bootstrap']['deadline_ns'] - second_helper['bootstrap']['started_ns']
+                        == first_helper['bootstrap']['deadline_ns'] - first_helper['bootstrap']['started_ns'])
+            else:
+                remaining = second_helper['bootstrap']['deadline_ns'] - budget_clock._clock()[1]
+                assert 0 < remaining <= 10_000_000_000
             assert not second.done() and not first_stop.done()
             assert not (markers / 'permit-helper-stop-second').exists()
 
@@ -2812,13 +2841,15 @@ def test_cycle_service_shared_permits_keep_mixed_versions_until_real_cleanup(sha
             await finish()
 
     asyncio.run(scenario())
-    for name in ('normal-first', 'normal-second', 'stop-first', 'stop-second'):
+    names = ('normal-second',) if queue_wait else ('normal-first', 'normal-second', 'stop-first', 'stop-second')
+    for name in names:
         assert not recorded_process_is_active(json.loads((markers / ('permit-descendant-' + name)).read_bytes()))
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Shared SDK deadlines consume the original Linux boot window')
 @pytest.mark.parametrize('deadline', ['scheduled', 'started'])
-def test_cycle_service_waiting_consumes_sdk_deadline_before_any_operation(shared_cycle_activities, deadline):
+@pytest.mark.parametrize('tested_version', [2, 3])
+def test_cycle_service_waiting_consumes_sdk_deadline_before_any_operation(shared_cycle_activities, deadline, tested_version):
     import asyncio
     from temporalio.exceptions import ApplicationError
 
@@ -2830,7 +2861,7 @@ def test_cycle_service_waiting_consumes_sdk_deadline_before_any_operation(shared
             await marked('permit-helper-normal-owner')
             changes = ({'scheduled_ago': 2, 'schedule_seconds': 3.2} if deadline == 'scheduled'
                        else {'scheduled_ago': 2, 'started_ago': 2, 'start_seconds': 3.2})
-            waiting = start(2, 'observe-candidate', 'normal-expired', **changes)
+            waiting = start(tested_version, 'observe-candidate', 'normal-expired', **changes)
             with pytest.raises(ApplicationError) as rejected:
                 await waiting
             assert rejected.value.type == 'cycle_activity_request_rejected' and rejected.value.non_retryable
@@ -2838,7 +2869,7 @@ def test_cycle_service_waiting_consumes_sdk_deadline_before_any_operation(shared
             home = Path(calls['normal-expired']['request']['workflow_input']['control_home'])
             assert not (home / 'operations').exists()
             # The queue timeout cannot consume or enlarge the independent stop permit.
-            stop = start(2, 'stop', 'stop-after-timeout')
+            stop = start(tested_version, 'stop', 'stop-after-timeout')
             await marked('permit-helper-stop-after-timeout')
             for label in ('normal-owner', 'stop-after-timeout'):
                 (markers / ('permit-release-' + label)).touch()
@@ -2852,7 +2883,8 @@ def test_cycle_service_waiting_consumes_sdk_deadline_before_any_operation(shared
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='SDK timeout cleanup retains the original supervised Linux S/H')
 @pytest.mark.parametrize('deadline', ['scheduled', 'started'])
-def test_cycle_service_sdk_deadline_cancels_invoke_and_waits_for_original_subtree(shared_cycle_activities, deadline):
+@pytest.mark.parametrize('tested_version', [1, 3])
+def test_cycle_service_sdk_deadline_cancels_invoke_and_waits_for_original_subtree(shared_cycle_activities, deadline, tested_version):
     import asyncio
     from temporalio.exceptions import ApplicationError
     from ergora import budget_clock
@@ -2863,7 +2895,7 @@ def test_cycle_service_sdk_deadline_cancels_invoke_and_waits_for_original_subtre
         try:
             changes = ({'scheduled_ago': 2, 'schedule_seconds': 5} if deadline == 'scheduled'
                        else {'scheduled_ago': 2, 'started_ago': 2, 'start_seconds': 5})
-            expired = start(1, 'observe-candidate', 'normal-body-expired', **changes)
+            expired = start(tested_version, 'observe-candidate', 'normal-body-expired', **changes)
             helper = await marked('permit-helper-normal-body-expired')
             info = calls['normal-body-expired']['info']
             limit = min(info.scheduled_time + info.schedule_to_close_timeout,
@@ -2981,22 +3013,67 @@ def test_cycle_sdk_retry_only_observes_and_successor_never_prepares(cycle_sdk_ac
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='SDK stop consumes the original supervised Linux H')
-@pytest.mark.parametrize('cycle_sdk_activity', [False, True], indirect=True)
-def test_cycle_sdk_bound_stop_is_offline_and_returns_every_real_branch(cycle_sdk_activity, cycle_operation_fault):
+@pytest.mark.parametrize('controller_admission,cycle_sdk_activity,queue_wait', [
+    ({}, False, 0), ({}, True, 0),
+    ({'program_version': 2}, {'program_version': 2}, 0),
+    ({'program_version': 3}, {'program_version': 3}, 0),
+    ({'program_version': 3}, {'program_version': 3}, 70)], indirect=['controller_admission', 'cycle_sdk_activity'])
+def test_cycle_sdk_bound_stop_is_offline_and_returns_every_real_branch(cycle_sdk_activity, cycle_operation_fault, queue_wait):
     import asyncio
 
     state, admission, storage, _, activities, environment = cycle_sdk_activity
     cycle_operation_fault('accepted')
-    asyncio.run(environment('inspect').run(activities['inspect'], {'workflow_input': admission.controller_intent()['workflow_input']}))
+    if 'inspect' in activities:
+        asyncio.run(environment('inspect').run(activities['inspect'], {'workflow_input': admission.controller_intent()['workflow_input']}))
+    else:
+        assert admission.submission()['result_saved'] is True
     remote_before = {path: path.read_bytes() for path in storage.glob('call-*.json')}
     cycle_operation_fault('unavailable-sources')
-    result = asyncio.run(environment('stop').run(activities['stop'], {
-        'workflow_input': admission.controller_intent()['workflow_input'], 'reason': 'Explicit original cycle stop'}))
+    request = {'workflow_input': admission.controller_intent()['workflow_input'],
+               'reason': 'Explicit original cycle stop'}
+    if queue_wait:
+        from dataclasses import replace
+        from types import SimpleNamespace
+        from temporalio.converter import DataConverter
+        from ergora import reference_training_worker as worker, training_cycles
+
+        operations = state.root / 'operations/training-cycles'
+        before = set(operations.iterdir()) if operations.exists() else set()
+
+        async def queued_stop():
+            stop_permit = asyncio.Semaphore(0)
+            client = SimpleNamespace(namespace='default', data_converter=replace(
+                DataConverter.default, failure_converter_class=worker._CycleFailureConverter))
+            queued = worker.create_cycle_activities(client, 3, stop_permit=stop_permit)
+            task = asyncio.create_task(environment('stop').run(queued['stop'], request))
+            try:
+                await asyncio.sleep(queue_wait)
+                assert not task.done() and (set(operations.iterdir()) if operations.exists() else set()) == before
+                stop_permit.release()
+                return await task
+            finally:
+                if not task.done():
+                    task.cancel()
+                await asyncio.gather(task, return_exceptions=True)
+        result = asyncio.run(queued_stop())
+    else:
+        result = asyncio.run(environment('stop').run(activities['stop'], request))
     assert result['status'] == 'observed'
     assert {(item['mode'], item['ordinal']) for item in result['operations']} == {
         ('stop-writer', None), ('drain', None), ('notify-owner', 0), ('notify-owner', 1),
         ('observe-execution', 0), ('observe-execution', 1)}
     assert {path: path.read_bytes() for path in storage.glob('call-*.json')} == remote_before
+    if queue_wait:
+        cold = json.loads((state.root / 'operations/training-cycles' /
+            result['inspection']['operation_id'] / 'request.json').read_bytes())['bootstrap']
+        assert cold['deadline_ns'] - cold['started_ns'] > queue_wait * 1_000_000_000
+        policy = training_cycles._load(state.root, admission.authorization['project'],
+            admission.authorization['cycle_id'], admission.directory)[0]['definition']['budget']
+        total = admission.authorization['clock']['boottime_ns'] + policy['wall_seconds'] * 1_000_000_000
+        for item in result['operations']:
+            window = json.loads((state.root / 'operations/training-cycles' /
+                item['operation_id'] / 'request.json').read_bytes())['bootstrap']
+            assert window['started_ns'] == cold['started_ns'] and window['deadline_ns'] <= total
     for item in [result['inspection'], *result['operations']]:
         assert item['operation_stopped'] is True
         ref = item['result']['ref']
@@ -3032,8 +3109,8 @@ def test_cycle_sdk_stop_keeps_all_66_real_branch_refs(cycle_sdk_activity, cycle_
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Full v3 stop fanout retains the original supervised Linux operations')
 @pytest.mark.parametrize('cycle_selection', [32], indirect=True)
-@pytest.mark.parametrize('controller_admission', [{'program_version': 2}], indirect=True)
-@pytest.mark.parametrize('cycle_sdk_activity', [{'program_version': 2}], indirect=True)
+@pytest.mark.parametrize('controller_admission,cycle_sdk_activity', [
+    ({'program_version': version}, {'program_version': version}) for version in (2, 3)], indirect=True)
 @pytest.mark.parametrize('aggregate_overflow', [False, True])
 def test_cycle_v3_stop_completion_keeps_all_66_branches_and_originals(
         cycle_sdk_activity, cycle_sdk_completion, cycle_operation_fault, monkeypatch, tmp_path, caplog, aggregate_overflow):
@@ -3063,7 +3140,7 @@ def test_cycle_v3_stop_completion_keeps_all_66_branches_and_originals(
         return operation
 
     async def capacity(value, converter):
-        if isinstance(value, dict) and value.get('protocol') == 'ergora-training-cycle-activity-v3':
+        if isinstance(value, dict) and value.get('protocol') in ('ergora-training-cycle-activity-v3', 'ergora-training-cycle-activity-v4'):
             captured.append(value)
         await original_capacity(value, converter)
 
@@ -3072,7 +3149,8 @@ def test_cycle_v3_stop_completion_keeps_all_66_branches_and_originals(
     converter = replace(DataConverter.default, failure_converter_class=worker._CycleFailureConverter)
     completion = asyncio.run(cycle_sdk_completion(activities['stop'], {
         'workflow_input': admission.controller_intent()['workflow_input'], 'reason': 'Stop all original selected candidates'},
-        converter=converter, task_queue=worker.protocol.CYCLE_STOP_TASK_QUEUE_V2,
+        converter=converter, sdk_timeout_seconds=120,
+        task_queue={3: worker.protocol.CYCLE_STOP_TASK_QUEUE_V2, 4: worker.protocol.CYCLE_STOP_TASK_QUEUE_V3}[admission.authorization['schema_version']],
         workflow_execution=WorkflowExecution(workflow_id=admission.submission()['workflow_id'],
                                              run_id=admission.submission()['run_id'])))
     (tmp_path / 'completion.pb').write_bytes(completion.SerializeToString())
@@ -3435,7 +3513,9 @@ def test_cycle_sdk_launch_capacity_keeps_occupied_intent_without_another_offer(
 @pytest.mark.parametrize('controller_admission,installation,cycle_sdk_activity', [
     ({}, None, False),
     ({'program_version': 2, 'control_timeout_seconds': 30}, 'managed',
-     {'program_version': 2, 'dispatch_parent': True})], indirect=True)
+     {'program_version': 2, 'dispatch_parent': True}),
+    ({'program_version': 3, 'control_timeout_seconds': 30}, 'managed',
+     {'program_version': 3, 'dispatch_parent': True})], indirect=True)
 @pytest.mark.parametrize('failure', ['popen', 'cleanup', 'oversized-parent'])
 def test_cycle_sdk_start_retains_parent_failures(
         cycle_sdk_activity, cycle_sdk_completion, cycle_operation_fault, service, cycle_selection, monkeypatch, tmp_path, failure):
@@ -3447,7 +3527,7 @@ def test_cycle_sdk_start_retains_parent_failures(
     from ergora import reference_training_worker as worker
 
     state, admission, storage, _, activities, environment = cycle_sdk_activity
-    version3 = admission.authorization['schema_version'] == 3
+    version3 = admission.authorization['schema_version'] in (3, 4)
     monkeypatch.setenv('ERGORA_TEST_TRAINING_CONTROLLER', str(admission.folder))
     service[0]('accepted')
     cycle_operation_fault('candidate')
@@ -3482,7 +3562,7 @@ def test_cycle_sdk_start_retains_parent_failures(
         return result
 
     async def capacity(value, converter):
-        if isinstance(value, dict) and value.get('protocol') == 'ergora-training-cycle-activity-v3':
+        if isinstance(value, dict) and value.get('protocol') in ('ergora-training-cycle-activity-v3', 'ergora-training-cycle-activity-v4'):
             captured.append(value)
         await original_capacity(value, converter)
 
@@ -3560,8 +3640,9 @@ def test_cycle_sdk_start_retains_parent_failures(
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='The actual S/H capacity boundary and root cleanup require Linux')
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)
-@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 30}], indirect=True)
-@pytest.mark.parametrize('cycle_sdk_activity', [{'program_version': 2, 'dispatch_parent': True}], indirect=True)
+@pytest.mark.parametrize('controller_admission,cycle_sdk_activity', [
+    ({'program_version': version, 'control_timeout_seconds': 30}, {'program_version': version, 'dispatch_parent': True})
+    for version in (2, 3)], indirect=True)
 @pytest.mark.parametrize('fault', ['oversized-stdout', 'oversized-frame'])
 def test_cycle_v3_parent_unknown_cannot_hide_final_observation_capacity(
         cycle_sdk_activity, cycle_sdk_completion, cycle_budget_root, cycle_operation_fault, service,
@@ -3601,7 +3682,7 @@ def test_cycle_v3_parent_unknown_cannot_hide_final_observation_capacity(
         return value
 
     async def assembled_capacity(value, converter):
-        if isinstance(value, dict) and value.get('protocol') == 'ergora-training-cycle-activity-v3':
+        if isinstance(value, dict) and value.get('protocol') in ('ergora-training-cycle-activity-v3', 'ergora-training-cycle-activity-v4'):
             assembled.append(value)
         await capacity(value, converter)
 
@@ -3711,7 +3792,7 @@ def round_candidate(controller_admission, prepared, cycle_operation_fault, monke
     from ergora import reference_training_worker as worker, training_cycles
 
     state, _, _, authorized, admission = controller_admission
-    assert authorized['authorization']['schema_version'] == 3
+    assert authorized['authorization']['schema_version'] in (3, 4)
     plan, authorization, ready = training_cycles._load(state.root, 'demo', 'controller', admission.directory)
     binding = save_controller_binding(admission)
     binding['controller']['predecessor'] = None
@@ -3739,11 +3820,12 @@ def round_candidate(controller_admission, prepared, cycle_operation_fault, monke
     def operation(mode='collect-round', *, attempt=1, window=None, ordinal=0, reason=None):
         context = {'workflow_input': admission.controller_intent()['workflow_input'], 'service_namespace': 'default',
             'activity_source': {'workflow_id': binding['controller']['workflow_id'],
-                'workflow_run_id': binding['controller']['run_id'], 'workflow_type': 'TrainingCycleWorkflowV2',
+                'workflow_run_id': binding['controller']['run_id'],
+                'workflow_type': worker.protocol.cycle_workflow_type(admission.controller_intent()['protocol']),
                 'workflow_namespace': 'default', 'namespace': 'default', 'activity_id': 'candidate-' + str(ordinal) + '-' + (
                     'collect' if mode == 'collect-round' else 'reconcile'),
-                'activity_type': 'ergora.training_cycle.' + mode + '.v3',
-                'task_queue': 'ergora-training-cycle-v2', 'attempt': attempt}}
+                'activity_type': worker.protocol.cycle_activity_names(authorization['schema_version'] - 1)[mode],
+                'task_queue': admission.controller_intent()['task_queue'], 'attempt': attempt}}
         return worker._CycleOperation(state.root, 'demo', 'controller', authorization['sha256'], mode,
             snapshot=snapshot, ordinal=ordinal, start_context={'controller': json.loads((runtime / (
                 'ergora/training-submissions/' + plan['definition']['candidates'][ordinal]['experiment_id'] + '.intent.json'
@@ -3753,7 +3835,7 @@ def round_candidate(controller_admission, prepared, cycle_operation_fault, monke
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Original S/H and fd durability require Linux')
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)
-@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': version, 'control_timeout_seconds': 20} for version in (2, 3)], indirect=True)
 @pytest.mark.parametrize('phase', ['accepted', 'cancelling', 'after-intent'])
 def test_successor_birth_rechecks_previous_live_phase_before_saving_intent(
         round_candidate, cycle_operation_fault, phase):
@@ -3767,7 +3849,8 @@ def test_successor_birth_rechecks_previous_live_phase_before_saving_intent(
     assert previous['continuation_ready'] is True
     template = operation('reconcile-round').payload
     context = deepcopy(template['activity_context'])
-    context['activity_source'].update(activity_id='candidate-1-start', activity_type='ergora.training_cycle.start.v3')
+    context['activity_source'].update(activity_id='candidate-1-start',
+        activity_type=worker.protocol.cycle_activity_names(admission.authorization['schema_version'] - 1)['start'])
     controller = {**template['start_context']['controller'], 'ordinal': 1,
                   'predecessor': {key: previous[key] for key in ('prefix', 'acceptance')}}
     runtime = Path(admission.authorization['execution']['state_directory'])
@@ -3835,7 +3918,7 @@ def test_successor_live_predecessor_query_does_not_hold_database_reservation(rou
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Original S/H and fd durability require Linux')
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)
-@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': version, 'control_timeout_seconds': 20} for version in (2, 3)], indirect=True)
 def test_round_internal_collect_and_reconcile_preserve_authenticated_originals(round_candidate, cycle_operation_fault):
     import asyncio
     from ergora import training_execution_protocol as protocol, reference_training_worker as worker
@@ -4012,7 +4095,7 @@ def test_round_capture_retains_fresh_internal_reads_before_later_reader_failure(
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Original SDK history and S/H require Linux')
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)
-@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': version, 'control_timeout_seconds': 20} for version in (2, 3)], indirect=True)
 def test_round_only_original_collect_opportunity_may_publish(round_candidate, cycle_operation_fault):
     import asyncio
 
@@ -4053,7 +4136,7 @@ def test_round_original_deadline_keeps_available_full_diagnostics(round_candidat
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Original H writer and explicit 10 MB reader require Linux')
 @pytest.mark.parametrize('installation', ['managed', 'managed-v2'], indirect=True)
-@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': version, 'control_timeout_seconds': 20} for version in (2, 3)], indirect=True)
 def test_round_complete_observation_capacity_uses_utf8_and_lf(round_candidate, cycle_operation_fault, monkeypatch):
     import asyncio
     from ergora import training_execution_protocol as protocol, reference_training_worker as worker
@@ -4298,7 +4381,7 @@ def test_round_reply_loss_reconciles_and_partial_target_never_creates(round_cand
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Original H source and irreversible stop checks require Linux')
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)
-@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': version, 'control_timeout_seconds': 20} for version in (2, 3)], indirect=True)
 @pytest.mark.parametrize('fault', ['round-source-drift', 'round-stop-after-observation'])
 def test_round_final_source_and_stop_gate_cannot_release_acceptance(round_candidate, cycle_operation_fault, fault):
     import asyncio
@@ -4501,7 +4584,7 @@ def test_round_parent_request_retention_keeps_same_original_encoding(round_candi
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Original diagnostic S and fd durability require Linux')
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)
-@pytest.mark.parametrize('controller_admission', [{'program_version': 2, 'control_timeout_seconds': 20}], indirect=True)
+@pytest.mark.parametrize('controller_admission', [{'program_version': version, 'control_timeout_seconds': 20} for version in (2, 3)], indirect=True)
 def test_round_parent_request_capacity_boundary_keeps_normal_wire(round_candidate, cycle_operation_fault):
     import asyncio
 

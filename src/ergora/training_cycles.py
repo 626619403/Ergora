@@ -204,7 +204,7 @@ def _origin(home: Path, project: dict, source: dict | None = None) -> dict:
 def _authorization(home: Path, project_id: str, cycle_id: str, plan: dict, digest: str, value: dict) -> dict:
     try:
         version = value['schema_version']
-        if type(version) is not int or version not in (1, 2, 3):
+        if type(version) is not int or version not in (1, 2, 3, 4):
             raise ValueError('Unsupported original training authorization schema')
         clock = value['clock']
         if not isinstance(clock, dict) or set(clock) != set(budget_clock.FIELDS):
@@ -214,9 +214,9 @@ def _authorization(home: Path, project_id: str, cycle_id: str, plan: dict, diges
                     'control_home': str(home), 'project': project_id, 'project_revision': plan['project']['revision'],
                     'input_sha256': digest, 'registration': _origin(home, plan['project'], value['registration']),
                     'execution': plan['project']['registration']['definition']['execution'], 'clock': clock}
-        if version in (2, 3):
+        if version in (2, 3, 4):
             expected['controller'] = _controller(home, project_id, cycle_id, digest, value['controller']['actor_id'], version)
-        if version == 3:
+        if version in (3, 4):
             sources = value['measurement_sources']
             if (not isinstance(sources, dict) or set(sources) != set(training_execution_protocol.MEASUREMENT_SOURCES)
                     or any(not isinstance(item, str) or re.fullmatch('[0-9a-f]{64}', item) is None
@@ -241,8 +241,8 @@ def _controller(home: Path, project_id: str, cycle_id: str, digest: str, actor: 
     if not isinstance(actor, str) or re.fullmatch('unix:[0-9]+:[^\r\n]+', actor) is None:
         raise ValueError('Controller authorization requires its original Unix actor')
     identity = {'control_home': str(home), 'project': project_id, 'cycle_id': cycle_id, 'input_sha256': digest}
-    protocol = 'ergora-training-cycle-v2' if version == 3 else 'ergora-training-cycle-v1'
-    prefix = 'ergora-training-cycle-v2/' if version == 3 else 'ergora-training-cycle/'
+    protocol = {2: 'ergora-training-cycle-v1', 3: 'ergora-training-cycle-v2', 4: 'ergora-training-cycle-v3'}[version]
+    prefix = {2: 'ergora-training-cycle/', 3: 'ergora-training-cycle-v2/', 4: 'ergora-training-cycle-v3/'}[version]
     return {'protocol': protocol, 'workflow_id': prefix + _sha(identity),
         'task_queue': protocol, 'execution_scope': 'ordered-selected-native-once',
         'continuation': 'accepted-archive-pass', 'actor_id': actor, 'confirmation': True}
@@ -257,7 +257,7 @@ def _load(home: Path, project_id: str, cycle_id: str, directory: Path) -> tuple[
     ready = _document(ready_path) if ready_path.exists() or ready_path.is_symlink() else None
     if ready is not None:
         _validate_ready(plan, authorization, ready)
-        if authorization['schema_version'] in (2, 3):
+        if authorization['schema_version'] in (2, 3, 4):
             training_execution_protocol.CycleAdmission(directory, authorization).validate_lock()
     return plan, authorization, ready
 
@@ -312,7 +312,7 @@ def _status(state: State, plan: dict, authorization: dict, ready: dict | None) -
     current = state.project(authorization['project'])
     matches = _sha(current) == _sha(plan['project'])
     stopped = None
-    if authorization['schema_version'] in (2, 3):
+    if authorization['schema_version'] in (2, 3, 4):
         admission = training_execution_protocol.CycleAdmission(
             _directory(state.root, authorization['project'], authorization['cycle_id']), authorization)
         stopped = admission.observe()
@@ -415,7 +415,7 @@ def prepare_controller(state: State, project_id: str, cycle_id: str,
         if observed['status'] != 'ready':
             raise ValueError(observed['reason'] or 'Controller preparation requires the original durable ready record')
         with admission.permission():
-            if (observed['authorization']['schema_version'] == 3
+            if (observed['authorization']['schema_version'] in (3, 4)
                     and _measurement_sources() != observed['authorization']['measurement_sources']):
                 raise ValueError('Original measurement sources changed; controller intent cannot be prepared or recovered')
             intent = admission.controller_intent()
@@ -495,8 +495,8 @@ def authorize_controller(state: State, project_id: str, cycle_id: str, directory
     """Record birth-time consent for the original ordered selection, never upgrade it."""
     if execute_selected is not True:
         raise ValueError('Explicitly confirm execution of the complete ordered training selection')
-    if type(program_version) is not int or program_version not in (1, 2):
-        raise ValueError('Controller program version must be integer 1 or 2')
+    if type(program_version) is not int or program_version not in (1, 2, 3):
+        raise ValueError('Controller program version must be integer 1, 2 or 3')
     return _authorize(state, project_id, cycle_id, directory, sha256, expected_revision,
                       confirm=confirm, version=program_version + 1)
 
@@ -527,16 +527,16 @@ def _authorize(state: State, project_id: str, cycle_id: str, directory: Path, sh
             plan = _decode(raw)
             if plan['control_home'] != str(state.root) or _sha(plan['project']) != _sha(project):
                 raise ValueError('Training authorization requires the original control home and complete current project')
-            sources = _measurement_sources() if version == 3 else None
+            sources = _measurement_sources() if version in (3, 4) else None
             value = {'schema_version': version, 'kind': 'training-cycle-authorization', 'cycle_id': cycle_id,
                      'control_home': str(state.root), 'project': project_id, 'project_revision': expected_revision,
                      'input_sha256': sha256, 'registration': _origin(state.root, project),
                      'execution': project['registration']['definition']['execution'],
                      'clock': budget_clock.authorize(plan['definition']['budget']['wall_seconds'])}
-            if version in (2, 3):
+            if version in (2, 3, 4):
                 value['controller'] = _controller(state.root, project_id, cycle_id, sha256,
                     f'unix:{os.getuid()}:{getpass.getuser()}', version)
-            if version == 3:
+            if version in (3, 4):
                 value['measurement_sources'] = sources
             authorization = {**value, 'sha256': _sha(value)}
             _authorization(state.root, project_id, cycle_id, plan, sha256, authorization)
@@ -560,7 +560,7 @@ def _authorize(state: State, project_id: str, cycle_id: str, directory: Path, sh
                     _durable_status(state, plan, authorization, ready, destination))
         if ready is not None or observed['status'] != 'pending':
             return observed
-        if version in (2, 3):
+        if version in (2, 3, 4):
             admission = training_execution_protocol.CycleAdmission(destination, authorization)
             if admission.folder.exists() or admission.folder.is_symlink():
                 if is_link(admission.folder) or not admission.folder.is_dir():

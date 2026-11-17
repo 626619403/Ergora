@@ -330,7 +330,7 @@ class BudgetedStart:
         state = State(Path(self.intent['control_home']))
         directory = training_cycles._directory(state.root, self.intent['project'], self.binding['cycle_id'])
         plan, authorization, ready = training_cycles._load(state.root, self.intent['project'], self.binding['cycle_id'], directory)
-        if authorization['schema_version'] == 3:
+        if authorization['schema_version'] in (3, 4):
             training_execution_protocol.authenticate_cycle_candidate(
                 self.intent, plan, training_execution_protocol.CycleAdmission(directory, authorization), ready)
         elif authorization['schema_version'] == 2:
@@ -373,7 +373,7 @@ class BudgetedStart:
                 budget_clock.remaining(authorization['clock'], plan['definition']['budget']['wall_seconds'],
                     plan['definition']['budget']['cleanup_seconds']))
             origin = self.operation.payload.get('cycle_operation')
-            if authorization['schema_version'] == 3 and origin is not None:
+            if authorization['schema_version'] in (3, 4) and origin is not None:
                 return min(timeout, training_execution_protocol.cycle_operation_remaining(origin))
             return timeout
 
@@ -385,7 +385,7 @@ class BudgetedStart:
                 from perf_temporal.connection import connect
 
                 client = await connect()
-            if authorization['schema_version'] == 3:
+            if authorization['schema_version'] in (3, 4):
                 origin = self.operation.payload.get('cycle_operation')
                 context = origin.get('activity_context') if origin is not None else None
                 if context is not None and client.namespace != context['service_namespace']:
@@ -731,7 +731,7 @@ class BudgetedStart:
         raise ValueError('Unsupported training budget helper phase')
 
 
-def _controller_owner(request: dict, *, required_schema_version: int | None = None) -> dict:
+def _controller_owner(request: dict, *, required_schema_versions: tuple[int, ...] | None = None) -> dict:
     """Bootstrap the actual original root outside every short S-H subtree."""
     protocol = training_execution_protocol
     protocol.validate_cycle_root_request(request)
@@ -750,7 +750,7 @@ def _controller_owner(request: dict, *, required_schema_version: int | None = No
             or processes.identity(request['parent']['pid']) != request['parent']
             or protocol.cycle_operation_remaining(source) <= 0):
         raise ValueError('Controller root lost its complete original prepare request, parent or window')
-    if required_schema_version is not None and source['snapshot']['authorization']['schema_version'] != required_schema_version:
+    if required_schema_versions is not None and source['snapshot']['authorization']['schema_version'] not in required_schema_versions:
         raise ValueError('Dedicated controller root requires its original schema3 authorization')
     _select_cycle_project(source['snapshot']['authorization'], payload['project'])
     from .reference_training_submission import _Submission
@@ -772,5 +772,5 @@ def cycle_root_main() -> None:
     request = json.load(sys.stdin)
     if len(json.dumps(request, ensure_ascii=False, allow_nan=False).encode('utf-8')) > 32_768:
         raise ValueError('Complete controller root request exceeds 32 KiB')
-    result = _controller_owner(request, required_schema_version=3)
+    result = _controller_owner(request, required_schema_versions=(3, 4))
     print(json.dumps(result, ensure_ascii=False, allow_nan=False))

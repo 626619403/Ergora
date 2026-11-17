@@ -254,7 +254,7 @@ class _Submission(_TrainingProject):
                     operation.preflight(intent)
                     if budget is not None:
                         if ('controller' in budget.binding
-                                and budget.binding['controller']['protocol'] == 'ergora-training-cycle-v2'):
+                                and budget.binding['controller']['protocol'] in ('ergora-training-cycle-v2', 'ergora-training-cycle-v3')):
                             await budget.check_controller_history(self.client)
                         budget.require_active(owner=True)
                         options['task_queue'] = budget.binding['task_queue']
