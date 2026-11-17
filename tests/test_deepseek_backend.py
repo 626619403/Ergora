@@ -181,3 +181,69 @@ def test_archived_history_refuses_layout_changes_during_a_page(native_archive, m
     monkeypatch.setattr(deepseek.codecs, "getincrementaldecoder", mutate_after_listing)
     with pytest.raises(ValueError, match="directory changed"):
         adapter.archived_history(protocol, cwd=cwd, offset=0, limit=4093, revision=None)
+
+
+@pytest.mark.parametrize('task_resources', [False, True])
+def test_current_sdk_driver_runs_one_new_input_and_retains_mcp_and_notification_records(tmp_path, task_resources):
+    protocol = tmp_path / 'protocol'
+    protocol.mkdir()
+    cwd = tmp_path / 'repo'
+    cwd.mkdir()
+    expected = {'summary': 'one current input', 'artifacts': {'response': 'observed'}}
+    request = {'binding': binding(), 'prompt': 'Read the selected evidence', 'cwd': str(cwd),
+               'schema': agents.result_schema(['response']), 'mode': 'task-mcp' if task_resources else 'text-only',
+               'task_mcp': {'command': sys.executable, 'args': ['-I', '-m', 'ergora.task_mcp', 'scope', 'digest', 'audit']}
+                           if task_resources else None}
+    source = protocol / 'request.json'
+    source.write_text(json.dumps(request))
+    code = r'''
+import json,os,sys
+from pathlib import Path
+from types import SimpleNamespace
+from dataclasses import dataclass
+from ergora.data.drivers import deepseek
+request = json.loads(Path(sys.argv[1]).read_text())
+expected = json.loads(sys.argv[2])
+@dataclass
+class Notice:
+    method: str
+    payload: dict
+class Harness:
+    def __init__(self, **options):
+        self.options = options
+        assert options['cwd'] == request['cwd'] == options['runtime_cwd']
+        assert Path(options['dsh_home']).is_dir()
+        patch = json.loads(Path(options['patches'][0]).read_text())
+        disabled = {item['id'] for item in patch if item.get('disabled')}
+        assert {'persistent-bash', 'persistent-pwsh', 'tool-fs', 'tool-working-directory', 'mcp-resources'}.issubset(disabled)
+        plugins = [item['insert'][0] for item in patch if 'insert' in item]
+        assert plugins[0]['config']['providers']['ergora']['retryPolicy']['maxRetries'] == 0
+        assert ('mcp-ergora-task' in [item['id'] for item in plugins]) == (request['task_mcp'] is not None)
+        if request['task_mcp'] is not None:
+            assert plugins[-1]['config']['args'] == request['task_mcp']['args']
+        assert os.environ['FIXTURE_MODEL_KEY'] == 'no-real-model'
+        assert 'FIXTURE_UNRELATED_CREDENTIAL' not in os.environ
+    def __enter__(self):
+        print('fixture SDK diagnostic')
+        return self
+    def __exit__(self, *args):
+        pass
+    def run(self, prompt, *, session_id, on_notification):
+        assert prompt.startswith(request['prompt']) and 'JSON object matching this schema' in prompt
+        on_notification(Notice('session.status', {'sessionId': session_id, 'status': 'idle'}))
+        return SimpleNamespace(session_id=session_id, finish_reason='completed', final_response=json.dumps(expected), events=[])
+sys.modules['deepseek_harness'] = SimpleNamespace(DeepSeekHarness=Harness)
+deepseek.installed_versions = lambda: {'deepseek-harness-sdk':'0.2.2rc2','deepseek-harness-runtime-bin':'0.2.2rc2'}
+sys.argv = ['driver',sys.argv[1]]
+deepseek.main()
+'''
+    result = subprocess.run([sys.executable, '-c', code, str(source), json.dumps(expected)],
+                            env={**os.environ, 'FIXTURE_MODEL_KEY': 'no-real-model', 'FIXTURE_UNRELATED_CREDENTIAL': 'not-forwarded'},
+                            capture_output=True, text=True, timeout=10)
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout) == expected and 'fixture SDK diagnostic' in result.stderr
+    native = json.loads((protocol / 'native-result.json').read_text())
+    identity = json.loads((protocol / 'native-identity.json').read_text())
+    assert native['finish_reason'] == 'completed' and native['session_id'] == identity['session_id']
+    assert json.loads(native['final_response']) == expected
+    assert json.loads((protocol / 'native-events.jsonl').read_text())['method'] == 'session.status'

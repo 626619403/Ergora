@@ -21,6 +21,9 @@ from .definition_bundles import parse_json
 from .state import State, file_lock, now
 
 
+_MAX_SESSION_TURNS = 10_000
+
+
 def _store(state: State, document: dict) -> None:
     with state.connect() as db:
         db.execute("INSERT INTO agent_runs VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET document=excluded.document",
@@ -543,10 +546,10 @@ def _validate_session_authority(state, context):
 def _session_turns(state, project, ident):
     _session_id(ident)
     with state.connect() as db:
-        rows = db.execute("SELECT document FROM agent_runs WHERE project=? AND json_extract(document,'$.session.id')=? ORDER BY rowid LIMIT 10001",
-                          (project, ident)).fetchall()
-    if not rows or len(rows) > 10000:
-        raise ValueError('Unknown session or session exceeds the 10000-turn observation limit')
+        rows = db.execute("SELECT document FROM agent_runs WHERE project=? AND json_extract(document,'$.session.id')=? ORDER BY rowid LIMIT ?",
+                          (project, ident, _MAX_SESSION_TURNS + 1)).fetchall()
+    if not rows or len(rows) > _MAX_SESSION_TURNS:
+        raise ValueError(f'Unknown session or session exceeds the {_MAX_SESSION_TURNS}-turn observation limit')
     turns = [_observe_session_run(state, parse_json(row[0], 'Session run', finite=True, bounded=True)) for row in rows]
     previous = None
     for ordinal, turn in enumerate(turns):
@@ -567,6 +570,8 @@ def _session_summary(state, project, ident, turns):
         reason = 'The latest turn has no confirmed process cleanup; observe the original operation'
     elif not latest.get('native_session', {}).get('id'):
         reason = 'The stopped turn has no saved native session UUID; start a new session explicitly'
+    elif len(turns) >= _MAX_SESSION_TURNS:
+        reason = f'This session reached its {_MAX_SESSION_TURNS}-turn limit; start a new session explicitly'
     else:
         try:
             _validate_session_authority(state, context)
@@ -696,6 +701,8 @@ def continue_session(state: State, project_id: str, session_id: str, parent_run_
         return _observe_session_run(state, existing)
     with file_lock(state.root / 'runs' / (session_id + '.session.lock'), blocking=False) as lock:
         turns = _session_turns(state, project_id, session_id)
+        if len(turns) >= _MAX_SESSION_TURNS:
+            raise ValueError(f'This session reached its {_MAX_SESSION_TURNS}-turn limit; no new turn was reserved')
         latest = turns[-1]
         context = _read_session_context(state, turns[0])
         if expected_revision != context['project_revision']:

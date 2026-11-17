@@ -317,6 +317,8 @@ def test_forge_config_drift_and_cuda_candidate_identity(tmp_path, monkeypatch):
 
 @pytest.fixture
 def native_session_case(tmp_path, monkeypatch):
+    if sys.platform != 'linux':
+        pytest.skip('Persistent native sessions require the Linux/WSL2 process owner')
     from ergora import agent_runs
     state, repo = project(tmp_path)
     programs = tmp_path / 'session-bin'
@@ -608,3 +610,56 @@ session_main()
     with pytest.raises(ValueError, match='unknown parents'):
         runs.continue_session(state, 'demo', result['session']['id'], result['id'], 'do not repeat the unknown effect',
                               expected_revision=state.project('demo')['revision'], intent_id='blocked')
+
+
+def test_session_turn_capacity_keeps_every_admitted_chain_readable_and_existing_intents_observable(tmp_path, monkeypatch):
+    from contextlib import contextmanager, nullcontext
+    import sqlite3
+    import uuid
+    from types import SimpleNamespace
+    from ergora import agent_runs as runs
+    database = sqlite3.connect(':memory:')
+    database.execute('CREATE TABLE agent_runs (id TEXT PRIMARY KEY, project TEXT, document TEXT)')
+    @contextmanager
+    def connect():
+        yield database
+    state = SimpleNamespace(root=tmp_path, connect=connect, project=lambda name: {'id': name})
+    root = 'capacity-root'
+    limit = runs._MAX_SESSION_TURNS
+    previous = None
+    for ordinal in range(limit - 1):
+        ident = root if ordinal == 0 else 'turn-' + str(ordinal)
+        document = {'id': ident, 'project': 'demo', 'session': {'id': root, 'parent_run': previous, 'ordinal': ordinal},
+                    'status': 'succeeded', 'execution_stopped': True, 'native_session': {'id': 'fixed-native'},
+                    'submitted': {'intent_id': 'birth' if ordinal == 0 else 'existing-' + str(ordinal)}, 'context_digest': '0' * 64}
+        database.execute('INSERT INTO agent_runs VALUES (?,?,?)', (ident, 'demo', json.dumps(document)))
+        previous = ident
+    context = {'repo': str(tmp_path), 'role': 'implementer', 'binding': {'tool': 'codex'},
+               'sandbox': 'workspace-write', 'project_revision': 1}
+    monkeypatch.setattr(runs, '_observe_session_run', lambda state, document: document)
+    monkeypatch.setattr(runs, '_read_session_context', lambda state, root: context)
+    monkeypatch.setattr(runs, '_validate_session_authority', lambda state, context: None)
+    monkeypatch.setattr(runs, 'file_lock', lambda *args, **kwargs: nullcontext(None))
+    monkeypatch.setattr(runs.budget_clock, 'authorize', lambda timeout: {'unused_by_effect_stub': True})
+    admitted = []
+    def reserve(_state, _project, _root, _parent, _ident, ordinal, *args):
+        admitted.append(ordinal)
+    monkeypatch.setattr(runs, '_reserve_session_turn', reserve)
+    assert runs.inspect_session(state, 'demo', root)['can_continue'] is True
+    runs.continue_session(state, 'demo', root, previous, 'last allowed new turn', expected_revision=1, intent_id='last')
+    assert admitted == [limit - 1]
+    ident = uuid.uuid5(uuid.NAMESPACE_URL, 'ergora:native-turn:' + root + ':existing-final').hex
+    submitted = {'parent_run': previous, 'prompt': 'existing final', 'expected_revision': 1,
+                 'timeout': 300, 'intent_id': 'existing-final'}
+    final = {'id': ident, 'project': 'demo', 'session': {'id': root, 'parent_run': previous, 'ordinal': limit - 1},
+             'status': 'succeeded', 'execution_stopped': True, 'native_session': {'id': 'fixed-native'}, 'submitted': submitted}
+    database.execute('INSERT INTO agent_runs VALUES (?,?,?)', (ident, 'demo', json.dumps(final)))
+    observed = runs.inspect_session(state, 'demo', root)
+    assert observed['can_continue'] is False and str(limit) in observed['reason']
+    assert runs.sessions(state, 'demo')['sessions'][0]['id'] == root
+    with pytest.raises(ValueError, match='no new turn was reserved'):
+        runs.continue_session(state, 'demo', root, ident, 'over capacity', expected_revision=1, intent_id='over-limit')
+    assert admitted == [limit - 1] and database.execute('SELECT COUNT(*) FROM agent_runs').fetchone()[0] == limit
+    assert runs.continue_session(state, 'demo', root, previous, 'existing final',
+                                  expected_revision=1, intent_id='existing-final') == final
+    database.close()
