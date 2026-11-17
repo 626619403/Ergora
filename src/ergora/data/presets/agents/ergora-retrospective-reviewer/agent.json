@@ -11,7 +11,9 @@
     "evidence-review"
   ],
   "backend": {
-    "tool": "claude-code"
+    "tool": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
   },
   "resources": [
     {
@@ -20,5 +22,9 @@
       "path": "instructions.md",
       "sha256": "6e237932ecf925aa61b029f1bafb73d3b4a7e4f4614b984d7bb9e7c0d9297e37"
     }
-  ]
+  ],
+  "invocation_minimum": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  }
 }

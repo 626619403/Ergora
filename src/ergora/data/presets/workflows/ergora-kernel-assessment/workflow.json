@@ -42,7 +42,7 @@
         "kind": "agent",
         "id": "ergora-kernel-designer",
         "version": "2.0.0",
-        "digest": "fd1528529bd17b355cca28653f698843666b587066c477391c9e5e064ff4a13e"
+        "digest": "f921c32ec74f3c08b6b9a8549c632aec8b4d28491eeabccd7ffa7f129fe544d3"
       },
       "role": "kernel-tuner",
       "depends_on": [],

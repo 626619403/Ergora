@@ -10,9 +10,11 @@
         "ergora-correctness-reviewer",
         "ergora-test-value-reviewer",
         "ergora-governance-mapper",
-        "ergora-architecture-test-author"
+        "ergora-architecture-test-author",
+        "ergora-development-preparer"
       ],
       "workflows": [
+        "ergora-development-preparation",
         "ergora-structure-review",
         "ergora-correctness-review",
         "ergora-test-value-review",
@@ -32,9 +34,11 @@
         "ergora-api-contract-author",
         "ergora-server-implementer",
         "ergora-client-implementer",
-        "ergora-compatibility-validator"
+        "ergora-compatibility-validator",
+        "ergora-development-preparer"
       ],
       "workflows": [
+        "ergora-development-preparation",
         "ergora-structure-review",
         "ergora-correctness-review",
         "ergora-test-value-review",
@@ -44,23 +48,26 @@
       ]
     },
     "training-optimization": {
-      "description": "Read-only experiment, profile and kernel proposals with measurement review; trusted experiments remain separate.",
+      "description": "Readonly flow-first optimization proposals with framework/library/backend alternatives from setup onward and reproducible environment adaptation handoffs; no automatic execution or installation.",
       "runtime": "proposal-leaves",
       "root": "ergora-training-proposal",
       "agents": [
+        "ergora-training-flow-analyst",
         "ergora-experiment-designer",
         "ergora-performance-analyst",
         "ergora-kernel-designer",
         "ergora-measurement-reviewer"
       ],
       "workflows": [
+        "ergora-training-flow-map",
         "ergora-training-analysis",
+        "ergora-kernel-assessment",
         "ergora-measurement-review",
         "ergora-training-proposal"
       ]
     },
     "refactoring": {
-      "description": "Behavior-preserving module refactoring through one six-stage-v1 large-change task; caller migration, rollback and independent final review remain explicit.",
+      "description": "Behavior-preserving six-stage refactoring with repository-specific style, module ownership and realistic test-seam guidance.",
       "runtime": "development-v5",
       "root": "ergora-refactoring-template",
       "agents": [
@@ -69,7 +76,7 @@
         "ergora-test-value-reviewer",
         "ergora-development-preparer",
         "ergora-refactoring-engineer",
-        "ergora-compatibility-validator-v2"
+        "ergora-compatibility-validator"
       ],
       "workflows": [
         "ergora-structure-review",
@@ -82,34 +89,18 @@
         "ergora-refactoring-template"
       ]
     },
-    "training-optimization-v2": {
-      "description": "Cross-domain experiment design, critical-path diagnosis, kernel/wrapper candidates and independent evidence review; readonly v2 proposals with original trusted experiment ownership.",
-      "runtime": "proposal-leaves",
-      "root": "ergora-training-proposal-v2",
-      "agents": [
-        "ergora-experiment-designer-v2",
-        "ergora-performance-analyst-v2",
-        "ergora-kernel-designer-v2",
-        "ergora-measurement-reviewer-v2"
-      ],
-      "workflows": [
-        "ergora-training-analysis-v2",
-        "ergora-measurement-review-v2",
-        "ergora-training-proposal-v2"
-      ]
-    },
     "optimization-memory-tuning": {
       "description": "Capacity, allocation and hottest-rank memory diagnosis; three readonly v2 experts, no experiment execution or automatic graph runner.",
       "runtime": "proposal-leaves",
       "root": "ergora-opt-memory-tuning-proposal",
       "agents": [
-        "ergora-experiment-designer-v2",
-        "ergora-performance-analyst-v2",
-        "ergora-measurement-reviewer-v2"
+        "ergora-experiment-designer",
+        "ergora-performance-analyst",
+        "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis-v2",
-        "ergora-measurement-review-v2",
+        "ergora-training-analysis",
+        "ergora-measurement-review",
         "ergora-opt-memory-tuning-proposal"
       ]
     },
@@ -118,13 +109,13 @@
       "runtime": "proposal-leaves",
       "root": "ergora-opt-activation-recompute-proposal",
       "agents": [
-        "ergora-experiment-designer-v2",
-        "ergora-performance-analyst-v2",
-        "ergora-measurement-reviewer-v2"
+        "ergora-experiment-designer",
+        "ergora-performance-analyst",
+        "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis-v2",
-        "ergora-measurement-review-v2",
+        "ergora-training-analysis",
+        "ergora-measurement-review",
         "ergora-opt-activation-recompute-proposal"
       ]
     },
@@ -133,13 +124,13 @@
       "runtime": "proposal-leaves",
       "root": "ergora-opt-cpu-offloading-proposal",
       "agents": [
-        "ergora-experiment-designer-v2",
-        "ergora-performance-analyst-v2",
-        "ergora-measurement-reviewer-v2"
+        "ergora-experiment-designer",
+        "ergora-performance-analyst",
+        "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis-v2",
-        "ergora-measurement-review-v2",
+        "ergora-training-analysis",
+        "ergora-measurement-review",
         "ergora-opt-cpu-offloading-proposal"
       ]
     },
@@ -148,13 +139,13 @@
       "runtime": "proposal-leaves",
       "root": "ergora-opt-cuda-graphs-proposal",
       "agents": [
-        "ergora-experiment-designer-v2",
-        "ergora-performance-analyst-v2",
-        "ergora-measurement-reviewer-v2"
+        "ergora-experiment-designer",
+        "ergora-performance-analyst",
+        "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis-v2",
-        "ergora-measurement-review-v2",
+        "ergora-training-analysis",
+        "ergora-measurement-review",
         "ergora-opt-cuda-graphs-proposal"
       ]
     },
@@ -163,13 +154,13 @@
       "runtime": "proposal-leaves",
       "root": "ergora-opt-sequence-packing-proposal",
       "agents": [
-        "ergora-experiment-designer-v2",
-        "ergora-performance-analyst-v2",
-        "ergora-measurement-reviewer-v2"
+        "ergora-experiment-designer",
+        "ergora-performance-analyst",
+        "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis-v2",
-        "ergora-measurement-review-v2",
+        "ergora-training-analysis",
+        "ergora-measurement-review",
         "ergora-opt-sequence-packing-proposal"
       ]
     },
@@ -178,13 +169,13 @@
       "runtime": "proposal-leaves",
       "root": "ergora-opt-parallelism-proposal",
       "agents": [
-        "ergora-experiment-designer-v2",
-        "ergora-performance-analyst-v2",
-        "ergora-measurement-reviewer-v2"
+        "ergora-experiment-designer",
+        "ergora-performance-analyst",
+        "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis-v2",
-        "ergora-measurement-review-v2",
+        "ergora-training-analysis",
+        "ergora-measurement-review",
         "ergora-opt-parallelism-proposal"
       ]
     },
@@ -193,13 +184,13 @@
       "runtime": "proposal-leaves",
       "root": "ergora-opt-megatron-fsdp-proposal",
       "agents": [
-        "ergora-experiment-designer-v2",
-        "ergora-performance-analyst-v2",
-        "ergora-measurement-reviewer-v2"
+        "ergora-experiment-designer",
+        "ergora-performance-analyst",
+        "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis-v2",
-        "ergora-measurement-review-v2",
+        "ergora-training-analysis",
+        "ergora-measurement-review",
         "ergora-opt-megatron-fsdp-proposal"
       ]
     },
@@ -208,13 +199,13 @@
       "runtime": "proposal-leaves",
       "root": "ergora-opt-hierarchical-cp-proposal",
       "agents": [
-        "ergora-experiment-designer-v2",
-        "ergora-performance-analyst-v2",
-        "ergora-measurement-reviewer-v2"
+        "ergora-experiment-designer",
+        "ergora-performance-analyst",
+        "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis-v2",
-        "ergora-measurement-review-v2",
+        "ergora-training-analysis",
+        "ergora-measurement-review",
         "ergora-opt-hierarchical-cp-proposal"
       ]
     },
@@ -223,13 +214,13 @@
       "runtime": "proposal-leaves",
       "root": "ergora-opt-tp-dp-overlap-proposal",
       "agents": [
-        "ergora-experiment-designer-v2",
-        "ergora-performance-analyst-v2",
-        "ergora-measurement-reviewer-v2"
+        "ergora-experiment-designer",
+        "ergora-performance-analyst",
+        "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis-v2",
-        "ergora-measurement-review-v2",
+        "ergora-training-analysis",
+        "ergora-measurement-review",
         "ergora-opt-tp-dp-overlap-proposal"
       ]
     },
@@ -238,13 +229,13 @@
       "runtime": "proposal-leaves",
       "root": "ergora-opt-moe-dispatcher-proposal",
       "agents": [
-        "ergora-experiment-designer-v2",
-        "ergora-performance-analyst-v2",
-        "ergora-measurement-reviewer-v2"
+        "ergora-experiment-designer",
+        "ergora-performance-analyst",
+        "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis-v2",
-        "ergora-measurement-review-v2",
+        "ergora-training-analysis",
+        "ergora-measurement-review",
         "ergora-opt-moe-dispatcher-proposal"
       ]
     },
@@ -253,13 +244,13 @@
       "runtime": "proposal-leaves",
       "root": "ergora-opt-moe-overlap-proposal",
       "agents": [
-        "ergora-experiment-designer-v2",
-        "ergora-performance-analyst-v2",
-        "ergora-measurement-reviewer-v2"
+        "ergora-experiment-designer",
+        "ergora-performance-analyst",
+        "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis-v2",
-        "ergora-measurement-review-v2",
+        "ergora-training-analysis",
+        "ergora-measurement-review",
         "ergora-opt-moe-overlap-proposal"
       ]
     },
@@ -268,13 +259,13 @@
       "runtime": "proposal-leaves",
       "root": "ergora-opt-profiling-proposal",
       "agents": [
-        "ergora-experiment-designer-v2",
-        "ergora-performance-analyst-v2",
-        "ergora-measurement-reviewer-v2"
+        "ergora-experiment-designer",
+        "ergora-performance-analyst",
+        "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis-v2",
-        "ergora-measurement-review-v2",
+        "ergora-training-analysis",
+        "ergora-measurement-review",
         "ergora-opt-profiling-proposal"
       ]
     },
@@ -283,13 +274,13 @@
       "runtime": "proposal-leaves",
       "root": "ergora-opt-memory-snapshot-proposal",
       "agents": [
-        "ergora-experiment-designer-v2",
-        "ergora-performance-analyst-v2",
-        "ergora-measurement-reviewer-v2"
+        "ergora-experiment-designer",
+        "ergora-performance-analyst",
+        "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis-v2",
-        "ergora-measurement-review-v2",
+        "ergora-training-analysis",
+        "ergora-measurement-review",
         "ergora-opt-memory-snapshot-proposal"
       ]
     },
@@ -298,13 +289,13 @@
       "runtime": "proposal-leaves",
       "root": "ergora-opt-recipe-model-proposal",
       "agents": [
-        "ergora-experiment-designer-v2",
-        "ergora-performance-analyst-v2",
-        "ergora-measurement-reviewer-v2"
+        "ergora-experiment-designer",
+        "ergora-performance-analyst",
+        "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis-v2",
-        "ergora-measurement-review-v2",
+        "ergora-training-analysis",
+        "ergora-measurement-review",
         "ergora-opt-recipe-model-proposal"
       ]
     },
@@ -313,13 +304,13 @@
       "runtime": "proposal-leaves",
       "root": "ergora-opt-model-verification-proposal",
       "agents": [
-        "ergora-experiment-designer-v2",
-        "ergora-performance-analyst-v2",
-        "ergora-measurement-reviewer-v2"
+        "ergora-experiment-designer",
+        "ergora-performance-analyst",
+        "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis-v2",
-        "ergora-measurement-review-v2",
+        "ergora-training-analysis",
+        "ergora-measurement-review",
         "ergora-opt-model-verification-proposal"
       ]
     },
@@ -328,13 +319,13 @@
       "runtime": "proposal-leaves",
       "root": "ergora-opt-cluster-resiliency-proposal",
       "agents": [
-        "ergora-experiment-designer-v2",
-        "ergora-performance-analyst-v2",
-        "ergora-measurement-reviewer-v2"
+        "ergora-experiment-designer",
+        "ergora-performance-analyst",
+        "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis-v2",
-        "ergora-measurement-review-v2",
+        "ergora-training-analysis",
+        "ergora-measurement-review",
         "ergora-opt-cluster-resiliency-proposal"
       ]
     },
@@ -343,14 +334,14 @@
       "runtime": "proposal-leaves",
       "root": "ergora-opt-low-precision-proposal",
       "agents": [
-        "ergora-experiment-designer-v2",
-        "ergora-performance-analyst-v2",
-        "ergora-kernel-designer-v2",
-        "ergora-measurement-reviewer-v2"
+        "ergora-experiment-designer",
+        "ergora-performance-analyst",
+        "ergora-kernel-designer",
+        "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis-v2",
-        "ergora-measurement-review-v2",
+        "ergora-training-analysis",
+        "ergora-measurement-review",
         "ergora-opt-low-precision-proposal"
       ]
     },
@@ -359,38 +350,15 @@
       "runtime": "proposal-leaves",
       "root": "ergora-opt-kernel-proposal",
       "agents": [
-        "ergora-experiment-designer-v2",
-        "ergora-performance-analyst-v2",
-        "ergora-kernel-designer-v2",
-        "ergora-measurement-reviewer-v2"
+        "ergora-experiment-designer",
+        "ergora-performance-analyst",
+        "ergora-kernel-designer",
+        "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis-v2",
-        "ergora-measurement-review-v2",
+        "ergora-training-analysis",
+        "ergora-measurement-review",
         "ergora-opt-kernel-proposal"
-      ]
-    },
-    "refactoring-quality": {
-      "description": "Behavior-preserving six-stage refactoring with repository-specific style, module ownership and realistic test-seam guidance.",
-      "runtime": "development-v5",
-      "root": "ergora-refactoring-template-v1.1",
-      "agents": [
-        "ergora-structure-reviewer",
-        "ergora-correctness-reviewer",
-        "ergora-test-value-reviewer",
-        "ergora-development-preparer",
-        "ergora-refactoring-engineer",
-        "ergora-compatibility-validator-v2"
-      ],
-      "workflows": [
-        "ergora-structure-review",
-        "ergora-correctness-review",
-        "ergora-test-value-review",
-        "ergora-delivery-review",
-        "ergora-development-preparation",
-        "ergora-refactoring-work",
-        "ergora-refactoring-delivery",
-        "ergora-refactoring-template-v1.1"
       ]
     },
     "optimization-performance-diagnosis": {
@@ -398,13 +366,13 @@
       "runtime": "proposal-leaves",
       "root": "ergora-opt-performance-diagnosis-proposal",
       "agents": [
-        "ergora-experiment-designer-v2",
-        "ergora-performance-analyst-v2",
-        "ergora-measurement-reviewer-v2"
+        "ergora-experiment-designer",
+        "ergora-performance-analyst",
+        "ergora-measurement-reviewer"
       ],
       "workflows": [
-        "ergora-training-analysis-v2",
-        "ergora-measurement-review-v2",
+        "ergora-training-analysis",
+        "ergora-measurement-review",
         "ergora-opt-performance-diagnosis-proposal"
       ]
     },
@@ -423,16 +391,13 @@
     "memory-retrospective": {
       "description": "Complete source-bound memory text proposal and complementary readonly evidence review; original explicit save and restore remain separate.",
       "runtime": "proposal-leaves",
-      "root": "ergora-memory-retrospective-v1.0.1",
+      "root": "ergora-memory-retrospective",
       "agents": [
         "ergora-memory-retrospective-author",
-        "ergora-memory-retrospective-reviewer",
-        "ergora-memory-retrospective-author-v1.0.1",
-        "ergora-memory-retrospective-reviewer-v1.0.1"
+        "ergora-memory-retrospective-reviewer"
       ],
       "workflows": [
-        "ergora-memory-retrospective",
-        "ergora-memory-retrospective-v1.0.1"
+        "ergora-memory-retrospective"
       ]
     },
     "workflow-retrospective": {
@@ -450,7 +415,7 @@
     "pretraining-review": {
       "description": "Exact-source pretraining specialist plus existing engineering reviews; readonly leaves, no automatic standalone root runner or platform approval.",
       "runtime": "proposal-leaves",
-      "root": "ergora-pretraining-review-v1.0.1",
+      "root": "ergora-pretraining-review",
       "agents": [
         "ergora-structure-reviewer",
         "ergora-correctness-reviewer",
@@ -463,14 +428,13 @@
         "ergora-test-value-review",
         "ergora-delivery-review",
         "ergora-pretraining-domain-review",
-        "ergora-pretraining-review",
-        "ergora-pretraining-review-v1.0.1"
+        "ergora-pretraining-review"
       ]
     },
     "posttraining-review": {
       "description": "Exact-source posttraining specialist plus existing engineering reviews; readonly leaves, no automatic standalone root runner or platform approval.",
       "runtime": "proposal-leaves",
-      "root": "ergora-posttraining-review-v1.0.1",
+      "root": "ergora-posttraining-review",
       "agents": [
         "ergora-structure-reviewer",
         "ergora-correctness-reviewer",
@@ -483,8 +447,7 @@
         "ergora-test-value-review",
         "ergora-delivery-review",
         "ergora-posttraining-domain-review",
-        "ergora-posttraining-review",
-        "ergora-posttraining-review-v1.0.1"
+        "ergora-posttraining-review"
       ]
     },
     "training-flow-map": {
@@ -496,25 +459,6 @@
       ],
       "workflows": [
         "ergora-training-flow-map"
-      ]
-    },
-    "training-optimization-v3": {
-      "description": "Readonly flow maps, bottleneck-led interventions, retained kernel assessment (including no-change) and measurement review; manual complete handoffs, no automatic graph/experiment runner.",
-      "runtime": "proposal-leaves",
-      "root": "ergora-training-proposal-v3",
-      "agents": [
-        "ergora-training-flow-analyst",
-        "ergora-experiment-designer-v2",
-        "ergora-performance-analyst-v2",
-        "ergora-kernel-designer-v2",
-        "ergora-measurement-reviewer-v2"
-      ],
-      "workflows": [
-        "ergora-training-flow-map",
-        "ergora-training-analysis-v2",
-        "ergora-kernel-assessment",
-        "ergora-measurement-review-v2",
-        "ergora-training-proposal-v3"
       ]
     },
     "evidence-report": {
@@ -548,25 +492,6 @@
       ],
       "workflows": [
         "ergora-evidence-report-v3"
-      ]
-    },
-    "training-optimization-v4": {
-      "description": "Readonly flow-first optimization proposals with framework/library/backend alternatives from setup onward and reproducible environment adaptation handoffs; no automatic execution or installation.",
-      "runtime": "proposal-leaves",
-      "root": "ergora-training-proposal-v4",
-      "agents": [
-        "ergora-training-flow-analyst",
-        "ergora-experiment-designer-v2",
-        "ergora-performance-analyst-v2",
-        "ergora-kernel-designer-v2",
-        "ergora-measurement-reviewer-v2"
-      ],
-      "workflows": [
-        "ergora-training-flow-map",
-        "ergora-training-analysis-v2",
-        "ergora-kernel-assessment",
-        "ergora-measurement-review-v2",
-        "ergora-training-proposal-v4"
       ]
     }
   }

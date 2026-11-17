@@ -11,7 +11,9 @@
     "boundary-documentation"
   ],
   "backend": {
-    "tool": "codex"
+    "tool": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
   },
   "resources": [
     {
@@ -26,5 +28,9 @@
       "path": "skills/ergora-governance-mapper",
       "digest": "b0a3587ced81b7e318a0f7e55fbb35aa041c4c84acd798b320aa33cd17d6a1e3"
     }
-  ]
+  ],
+  "invocation_minimum": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  }
 }

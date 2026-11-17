@@ -6,7 +6,11 @@
   "starting_sha": "REPLACE_WITH_EXACT_BASELINE_SHA",
   "input": {
     "goal": "Refactor the implementation behind src/example/normalizer.py while preserving its public normalize interface and the behavior observed by the real callers in src/example/client.py. Confirm those callers and the behavior from the actual baseline before planning.",
-    "allowed_paths": ["src/example", "tests/example", "docs/refactoring"],
+    "allowed_paths": [
+      "src/example",
+      "tests/example",
+      "docs/refactoring"
+    ],
     "acceptance": [
       "The exact baseline and actual callers are recorded; public imports, supported inputs, outputs and failure behavior remain compatible.",
       "Every affected caller is checked against the approved interface migration; persisted-format impact is identified and verified or explicitly recorded as absent with evidence.",
@@ -23,13 +27,20 @@
       {
         "id": "rewrite",
         "depends_on": [],
-        "paths": ["src/example"],
+        "paths": [
+          "src/example"
+        ],
         "instructions": "Implement the approved module refactor and caller migration in an isolated workspace. Preserve the declared behavior and explain how the interface improves depth or locality."
       },
       {
         "id": "compatibility",
-        "depends_on": ["rewrite"],
-        "paths": ["tests/example", "docs/refactoring"],
+        "depends_on": [
+          "rewrite"
+        ],
+        "paths": [
+          "tests/example",
+          "docs/refactoring"
+        ],
         "instructions": "Validate the dependency-integrated candidate using real caller fixtures, relevant old/new behavior and isolated rollback. Record executed checks, original failures and remaining gaps."
       }
     ]
@@ -45,7 +56,11 @@
       "inventory": "root/development/preparation/inventory",
       "plan": "root/development/preparation/plan",
       "mode": "task-mcp",
-      "repository_paths": ["src/example", "tests/example", "docs/refactoring"]
+      "repository_paths": [
+        "src/example",
+        "tests/example",
+        "docs/refactoring"
+      ]
     },
     "execution": {
       "protocol": "work-units-v2",
@@ -62,15 +77,28 @@
     },
     "backend_overrides": {
       "root/development/work/rewrite": {
-        "binding": {"tool": "codex", "sandbox": "current-container"},
+        "binding": {
+          "tool": "codex",
+          "sandbox": "current-container",
+          "model": "gpt-6.1-sol",
+          "reasoning_effort": "xhigh"
+        },
         "reason": "Explicit trusted-container selection for the scoped refactoring writer."
       },
       "root/development/work/compatibility": {
-        "binding": {"tool": "codex", "sandbox": "current-container"},
+        "binding": {
+          "tool": "codex",
+          "sandbox": "current-container",
+          "model": "gpt-6.1-sol",
+          "reasoning_effort": "high"
+        },
         "reason": "Explicit trusted-container selection for the scoped compatibility validation unit."
       }
     },
-    "diversity": {"policy": "prefer-distinct"}
+    "diversity": {
+      "policy": "prefer-distinct",
+      "reason": "Use gpt-6.1-sol for separate implementation and review sessions under the declared model minimum."
+    }
   },
   "budget": {
     "wall_seconds": 3600,

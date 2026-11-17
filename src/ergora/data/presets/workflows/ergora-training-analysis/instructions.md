@@ -1,2 +1,1 @@
-Prepare complementary experiment and profiling proposals from the same workload.
-These are read-only inputs to the original trusted runner/gate, with no experiment execution or adoption authorization.
+Develop independent experiment-design and evidence-based performance hypotheses from the same fixed workload. Each selected expert reads its own complete Skill/context resources and all structural ancestor materials. State missing reports and cross-domain interactions explicitly; these readonly proposals do not collect profiles or run experiments. Preserve source identities so an operator can pass complete original outputs to the next selected leaf.

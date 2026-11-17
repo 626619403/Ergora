@@ -42,7 +42,7 @@
         "kind": "agent",
         "id": "ergora-pretraining-reviewer",
         "version": "1.0.0",
-        "digest": "2cfe9caead2d10ce603a587afd32ba4662f5eb3df78fc3abfd2b8ce75c0cef87"
+        "digest": "42379fca661b895b10d878b8edba469b65e000667185b9c7c3d77fcfce6b40a1"
       },
       "role": "reviewer",
       "depends_on": [],

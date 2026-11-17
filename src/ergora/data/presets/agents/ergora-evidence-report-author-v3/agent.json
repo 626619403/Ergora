@@ -15,7 +15,9 @@
     "concise-optimization-logs"
   ],
   "backend": {
-    "tool": "codex"
+    "tool": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
   },
   "resources": [
     {
@@ -42,5 +44,9 @@
       "path": "skills/ergora-optimization-report/assets/optimization-report-template.md",
       "sha256": "df465e900b8f6b9cbf832e8aeb450bc75e0713571e915aad0de2b2c03e098638"
     }
-  ]
+  ],
+  "invocation_minimum": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  }
 }

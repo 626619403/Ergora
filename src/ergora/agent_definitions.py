@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from . import agents, contracts, definition_bundles
+from . import agents, components, contracts, definition_bundles
 from .state import State
 
 
@@ -13,6 +13,7 @@ def _inspect_bundle(source: Path, *, material: bool = False) -> dict:
 def validate_admission(document: dict) -> None:
     """Apply today's role/backend contract to an already integrity-checked package."""
     definition = document["definition"]
+    components.validate_agent_minimum(definition["backend"], definition.get("invocation_minimum"))
     for role in definition["roles"]:
         if role not in agents.ROLE_CAPABILITIES:
             raise ValueError(f"Unknown agent role: {role}")

@@ -1,1 +1,0 @@
-Use the complete frozen memory request and complete predecessor result. Each child reads all ancestor resources. Candidate generation and review are explicit readonly leaf invocations; the original memory owner retains saving, revision conflicts, expiry and restore. Installing this static graph does not execute its ports or authorize a write.

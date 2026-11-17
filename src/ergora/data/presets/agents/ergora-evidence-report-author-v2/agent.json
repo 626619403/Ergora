@@ -15,7 +15,9 @@
     "configuration-progression"
   ],
   "backend": {
-    "tool": "codex"
+    "tool": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
   },
   "resources": [
     {
@@ -42,5 +44,9 @@
       "path": "skills/ergora-optimization-report/assets/optimization-report-template.md",
       "sha256": "f6e372ccf09a837a5f54b16e734c2ceac3237936d329eb9df3847346409c3a6e"
     }
-  ]
+  ],
+  "invocation_minimum": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  }
 }

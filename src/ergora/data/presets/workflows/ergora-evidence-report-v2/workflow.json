@@ -41,7 +41,7 @@
         "kind": "agent",
         "id": "ergora-evidence-report-author",
         "version": "2.0.0",
-        "digest": "1e67f2a71986cf37601fcc5671e6f4bf5768da0749caf15019883b06186aa70c"
+        "digest": "564a4188547f09389193753928338a9b3ef82fd1ddcc1a8989d7cffea4139128"
       },
       "role": "implementer",
       "depends_on": [],

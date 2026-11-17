@@ -44,7 +44,7 @@
         "kind": "agent",
         "id": "ergora-refactoring-engineer",
         "version": "1.0.0",
-        "digest": "09bb5a05363eec1e96d7a99f077228a1a3d33acb1ca0a5a596bf5165212e8398"
+        "digest": "90d7c404b71b7ddc7516c8bdcc3d094c5a3ca3039910ce9fbac9e8028cdda6bb"
       },
       "role": "implementer",
       "depends_on": [],
@@ -71,7 +71,7 @@
         "kind": "agent",
         "id": "ergora-compatibility-validator",
         "version": "2.0.0",
-        "digest": "f4315988025976a16e81b9431086b0628b0e69f67d06c73ac82052ceb453ae07"
+        "digest": "732e48a5651bb00e3a45709968f3d305fcb5203fd9056aca353e3079be01461e"
       },
       "role": "implementer",
       "depends_on": [

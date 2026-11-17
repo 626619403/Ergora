@@ -65,7 +65,7 @@ ergora composition run-input my-project ./report-input --mode text-only --backen
 ergora composition inspect-run my-project RUN_ID > ./report-observation.json
 ```
 
-Skill 全文自包含，text-only 内联读取即可，无需 MCP 附件或新工具授权。`max-prompt-bytes` 约束完整提示 UTF-8 字节，不承诺模型容量。默认 Codex 是可替换 binding；也可沿同一 `check-input/run-input` 显式选择支持本 role／模式的后端并记录原因，模型名不能跨后端照搬。检查不会调用模型，也不证明安装／认证。没有自动失败回退或隐式重发；失败、unknown 或超时先保留原 run 并按原 owner 对账。
+Skill 全文自包含，text-only 内联读取即可，无需 MCP 附件或新工具授权。`max-prompt-bytes` 约束完整提示 UTF-8 字节，不承诺模型容量。内置作者要求 Codex `gpt-6.1-sol` 且推理强度至少 `high`，覆盖须满足定义下限。其他后端示例仅适用于未声明该下限的自定义定义，并仍须通过实际职能／模式准入。自定义provider按需通过`--codex-config`提供操作者原推理配置，模板不保存provider凭据。检查不会调用模型，也不证明安装／认证。没有自动失败回退或隐式重发；失败、unknown 或超时先保留原 run 并按原 owner 对账。
 
 ## 查看原结果并导出阅读视图
 

@@ -39,7 +39,7 @@ export PATH="$HOME/.local/bin:$PATH"
 ergora composition presets
 ergora composition install-preset repository-governance
 ergora composition install-preset refactoring
-ergora composition install-preset refactoring-quality
+ergora composition install-preset refactoring
 ergora serve
 ```
 
@@ -62,8 +62,8 @@ Before a formal run, [authenticate the selected backend](docs/USAGE.md#安装与
 |---|---|---|
 |Govern an existing repository|`repository-governance`|Inventory, architecture/knowledge checks and scoped changes|
 |Develop a cross-module change|`large-change`|Owned work units, integration, compatibility and migration/rollback checks|
-|Preserve behavior while refactoring|`refactoring` or `refactoring-quality`|Preparation, refactoring, compatibility validation and three independent review specialties within the original six stages|
-|Prepare training optimization|`training-optimization-v3`|Source-anchored flow map, bottleneck analysis, kernel assessment and measurement review; explicitly invoked proposal leaves|
+|Preserve behavior while refactoring|`refactoring`|Preparation, refactoring, compatibility validation and three independent review specialties within the original six stages|
+|Prepare training optimization|`training-optimization`|Source-anchored flow map, bottleneck analysis, kernel assessment and measurement review; explicitly invoked proposal leaves|
 |Collect exact PR/MR review material|[Local review](docs/LOCAL_REVIEW.md)|Complete Git source, requirements and explicit context; collection itself does not call a review model|
 |Write a readable report from existing evidence|[Evidence reports](docs/EVIDENCE_REPORTS.md)|One explicit read-only author call; Markdown and self-contained HTML with source/coverage limits|
 |Review pretraining/posttraining code|[Training review](docs/TRAINING_REVIEW.md)|Domain reviewers composed with general review, plus CPU contract examples|
@@ -74,7 +74,7 @@ Before a formal run, [authenticate the selected backend](docs/USAGE.md#安装与
 
 The optimization directions cover memory/recompute/offload, CUDA Graphs/packing, parallelism/FSDP/hierarchical CP, communication/MoE, profiling/memory snapshots, recipes/model verification, cluster recovery, low precision and kernels. Proposal leaves run one explicitly selected leaf at a time; the operator supplies complete predecessor results. Installing a preset does not execute its graph or submit a training job.
 
-Specialist definitions, prompts and bundled Skills are Ergora implementations informed by the cited [engineering](docs/research/2026-11-14-local-engineering-skills.md) and [composition](docs/research/2026-11-08-agent-composition.md) research. Codex and Claude Code are selectable execution backends. `refactoring-quality` adds repository conventions, real-caller and test-value guidance through inherited resources while retaining existing roles and runtime contracts.
+Specialist definitions, prompts and bundled Skills are Ergora implementations informed by the cited [engineering](docs/research/2026-11-14-local-engineering-skills.md) and [composition](docs/research/2026-11-08-agent-composition.md) research. Codex and Claude Code are selectable execution backends. `refactoring` includes repository conventions, real-caller and test-value guidance through inherited resources while retaining existing roles and runtime contracts.
 
 <a id="当前工作流"></a>
 ## Formal development workflow

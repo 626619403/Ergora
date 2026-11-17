@@ -11,7 +11,9 @@
     "failure-recovery"
   ],
   "backend": {
-    "tool": "claude-code"
+    "tool": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
   },
   "resources": [
     {
@@ -26,5 +28,9 @@
       "path": "skills/ergora-correctness-reviewer",
       "digest": "d64d17983c598862b57c92b6514c1244050ecf434ce6ba2dc5a63e9218adbc08"
     }
-  ]
+  ],
+  "invocation_minimum": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  }
 }

@@ -44,7 +44,7 @@
         "kind": "workflow",
         "id": "ergora-development-preparation",
         "version": "1.0.0",
-        "digest": "3006fcc8b7b93a018952ebe7921514d5cd604434670c2d36caae90e598fc4acd"
+        "digest": "8fde0654275b87cd2a85dbca3a2f9495d68c422bb050594f998e247ce66718b4"
       },
       "depends_on": [],
       "inputs": {
@@ -59,7 +59,7 @@
         "kind": "workflow",
         "id": "ergora-refactoring-work",
         "version": "1.0.0",
-        "digest": "c4385feb2e92b2e2b1253d53eac7d578f6a3ff64343ae22a2e426db8f082da25"
+        "digest": "9ad1165126bc81bd5ed15aec1cae252766cbcc0d0faa9a89fc4bbcb1db2e9db0"
       },
       "depends_on": [],
       "inputs": {
@@ -74,7 +74,7 @@
         "kind": "workflow",
         "id": "ergora-delivery-review",
         "version": "1.0.0",
-        "digest": "a85e76dcd25bfddd24684b6e23ad3668097b44df0f9a7d745e387e5a841c471c"
+        "digest": "f5df72439258051203f7fd12af306802d7b8dc4165133d2ffa6e0521ac83cd45"
       },
       "depends_on": [
         "work"

@@ -1,14 +1,32 @@
 {
   "schema_version": 2,
   "id": "ergora-training-proposal",
-  "version": "1.0.0",
-  "description": "Prepare a bounded training/kernel optimization proposal for operator review.",
+  "version": "4.0.0",
+  "description": "Readonly bottleneck-led proposals with early framework/library choices and reproducible environment-change handoffs; original execution owners and evidence contracts remain separate.",
   "resources": [
     {
-      "id": "ergora-training-proposal-instructions",
+      "id": "ergora-training-proposal-v4-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "96348a1c01393d98d38850efdbdf2630d1dbb67708a148977e8b2cbbaf55bdfe"
+      "sha256": "078bef5f1db6cc31620fb0f1f76e82da40a3fe69cf1f7c3c67f83a9dc9184f67"
+    },
+    {
+      "id": "ergora-bottleneck-optimization-skill",
+      "kind": "skill",
+      "path": "skills/ergora-bottleneck-optimization",
+      "digest": "907364c2193125b29d681476d6e88f79c8234b39599d9e2c754817727e006bd5"
+    },
+    {
+      "id": "ergora-library-environment-optimization-skill",
+      "kind": "skill",
+      "path": "skills/ergora-library-environment-optimization",
+      "digest": "4a04f0512feaf8d6067409bddb233b06764193d616c632fe9f3f53166027b805"
+    },
+    {
+      "id": "ergora-environment-change-record",
+      "kind": "context",
+      "path": "context/environment-change-record.md",
+      "sha256": "575a61cbdf22e0192ebac3db22641356f4a39901707a67eb648356539c587eaf"
     }
   ],
   "permissions": {
@@ -37,12 +55,12 @@
   },
   "nodes": [
     {
-      "id": "analysis",
+      "id": "flow",
       "ref": {
         "kind": "workflow",
-        "id": "ergora-training-analysis",
+        "id": "ergora-training-flow-map",
         "version": "1.0.0",
-        "digest": "a9edaf8f526bdc8c5dab19ed72f566b696e8d02aee1e52cbf620d5f6f918d917"
+        "digest": "54051978692c1337dd814c1bbd5f6d82b19b623cad8ea951dc5e03ae8fbffd96"
       },
       "depends_on": [],
       "inputs": {
@@ -52,31 +70,37 @@
       }
     },
     {
+      "id": "analysis",
+      "ref": {
+        "kind": "workflow",
+        "id": "ergora-training-analysis",
+        "version": "2.0.0",
+        "digest": "c29c3046c72d6d4fac17eedc9f44206ac4306d6c8a0512aa611a1fe62bdf2ab5"
+      },
+      "depends_on": [
+        "flow"
+      ],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      }
+    },
+    {
       "id": "kernel",
       "ref": {
-        "kind": "agent",
-        "id": "ergora-kernel-designer",
+        "kind": "workflow",
+        "id": "ergora-kernel-assessment",
         "version": "1.0.0",
-        "digest": "5c1df0b888521d64123814815d106e24bb337731dc0beb2bf42fa4dd348dea9f"
+        "digest": "92c7849ee2ff32bfcda03d4b98ebe30ca7d5874e39994dfebd96630bcf879070"
       },
-      "role": "kernel-tuner",
       "depends_on": [
         "analysis"
       ],
       "inputs": {
         "task": {
-          "node": "analysis",
-          "output": "result"
+          "input": "task"
         }
-      },
-      "permissions": {
-        "read": [
-          "workspace",
-          "definitions"
-        ],
-        "write": [],
-        "shell": false,
-        "network": []
       }
     },
     {
@@ -84,16 +108,15 @@
       "ref": {
         "kind": "workflow",
         "id": "ergora-measurement-review",
-        "version": "1.0.0",
-        "digest": "8336061c7e67741cb55ee72857d1c890797411d35cf75da050a4133e844e65a8"
+        "version": "2.0.0",
+        "digest": "08b9b05396cb00858cd2bb4783f28214c1289f91ebcce9835b80599e68b7a7f0"
       },
       "depends_on": [
         "kernel"
       ],
       "inputs": {
         "task": {
-          "node": "kernel",
-          "output": "result"
+          "input": "task"
         }
       }
     },
@@ -101,6 +124,9 @@
       "id": "gather",
       "join": "all",
       "depends_on": [
+        "flow",
+        "analysis",
+        "kernel",
         "measurement"
       ]
     }

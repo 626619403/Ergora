@@ -24,9 +24,12 @@ export function taskComposition({ tools, projectId, base, input, active, invalid
   const preparationMode = select([["task-mcp", "固定任务 MCP 资料读取"], ["text-only", "完整文本输入"]], "task-mcp", "preparation_mode");
   const repositoryPaths = field("准备阶段可读取的仓库相对路径（每行一个）", "repository_paths", "", "textarea", { required: true });
   const nativeSection = node("fieldset", {},
-    node("legend", {}, "原生六阶段调用与准备"),
+    node("legend", {}, "原生六阶段调用"),
     node("p", {}, "选择普通父模板中的六阶段调用，以及其内部的盘点、计划、执行和审查实例。完整父链和全部阶段由服务端核对。原生执行支持 Linux／WSL2。"),
     node("label", {}, "六阶段工作流实例", native),
+  );
+  const preparationSection = node("fieldset", {},
+    node("legend", {}, "盘点与计划"),
     node("label", {}, "盘点 Agent 实例", inventory),
     node("label", {}, "计划 Agent 实例", plan),
     node("label", {}, "准备资料模式", preparationMode), repositoryPaths,
@@ -80,7 +83,7 @@ export function taskComposition({ tools, projectId, base, input, active, invalid
   );
   const settings = node("fieldset", { disabled: true, hidden: true },
     node("legend", {}, "正式任务组合配置"),
-    nativeSection, contextSection,
+    nativeSection, preparationSection, contextSection,
     node("label", {}, "审查工作流实例", review),
     node("label", {}, "审查资料模式", mode), workSection,
     node("label", {}, "执行与审查后端策略", diversity), diversityReason,
@@ -99,10 +102,16 @@ export function taskComposition({ tools, projectId, base, input, active, invalid
     composition.disabled = composition.hidden = source.value === "project";
     workSection.disabled = workSection.hidden = !["delivery", "native"].includes(source.value);
     nativeSection.disabled = nativeSection.hidden = source.value !== "native";
+    preparationSection.disabled = preparationSection.hidden = !hasPreparation();
     budgetSection.disabled = budgetSection.hidden = source.value !== "native";
     contextSection.disabled = contextSection.hidden = source.value !== "native";
     resetContext();
     renderMembers();
+  }
+
+  function hasPreparation() {
+    return source.value === "native" || (source.value === "delivery" &&
+      manifest?.composition.instances.some((item) => item.kind === "agent" && ["inspector", "planner"].includes(item.role)));
   }
 
   function resetContext() {
@@ -179,6 +188,7 @@ export function taskComposition({ tools, projectId, base, input, active, invalid
         for (const target of [inventory, plan]) target.replaceChildren(...select(leaves, "").children);
       }
       manifest = checked;
+      preparationSection.disabled = preparationSection.hidden = !hasPreparation();
       settings.disabled = settings.hidden = false;
       status.replaceChildren(node("p", {}, `完整包已核验：${checked.manifest.root.id}@${checked.manifest.root.version}`),
         pre({ preview_sha256: checked.manifest.preview_sha256, manifest_digest: checked.digest }));
@@ -217,7 +227,8 @@ export function taskComposition({ tools, projectId, base, input, active, invalid
       if (!choice.value) { options.replaceChildren(); return; }
       const component = choices.find((item) => item.tool === choice.value);
       // Writers must choose their binding explicitly, including any trust field.
-      const current = !writer && leaf.backend_request.tool === choice.value ? leaf.backend_request : {};
+      const current = leaf.backend_request.tool === choice.value ? { ...leaf.backend_request } : {};
+      if (writer) delete current.sandbox;
       editor = bindingFields(component, current, { projectId, prefix });
       options.replaceChildren(editor.element, reason);
     });
@@ -242,7 +253,7 @@ export function taskComposition({ tools, projectId, base, input, active, invalid
       for (const leaf of manifest.composition.instances.filter((item) => item.kind === "agent")) {
         const writer = ["delivery", "native"].includes(source.value) && work.value && leaf.path.startsWith(work.value + "/");
         const reviewer = review.value && leaf.path.startsWith(review.value + "/");
-        const preparing = source.value === "native" && [inventory.value, plan.value].includes(leaf.path);
+        const preparing = hasPreparation() && [inventory.value, plan.value].includes(leaf.path);
         if (!writer && !reviewer && !preparing) continue;
         const role = writer ? "work" : reviewer ? "review" : "preparation";
         const key = `${role}:${leaf.path}`;
@@ -319,13 +330,15 @@ export function taskComposition({ tools, projectId, base, input, active, invalid
           assignments: Object.fromEntries(assigned.map(({ id, choice }) => [id, choice.value])),
         };
       }
-      if (source.value === "native") {
-        composition.native = { protocol: "six-stage-v1", instance: native.value };
+      if (hasPreparation()) {
         composition.preparation = {
           protocol: "preparation-v1", inventory: inventory.value, plan: plan.value,
           mode: preparationMode.value,
           repository_paths: lines(repositoryPaths.querySelector("textarea").value),
         };
+      }
+      if (source.value === "native") {
+        composition.native = { protocol: "six-stage-v1", instance: native.value };
         const budget = Object.fromEntries([...budgetSection.querySelectorAll("input")]
           .map((item) => [item.name, item.valueAsNumber]));
         if (contextMode.value === "selected") {

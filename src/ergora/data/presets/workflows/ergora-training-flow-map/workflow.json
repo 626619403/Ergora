@@ -42,7 +42,7 @@
         "kind": "agent",
         "id": "ergora-training-flow-analyst",
         "version": "1.0.0",
-        "digest": "0494590d9d6a2efa376a0f5d311f554d13069b345ac779625e1281322d33cf26"
+        "digest": "8789ee1b08c5ca26bdd2067e132b6a026c7a8760b7eb5a833cc46c6986c74bb9"
       },
       "role": "performance-analyst",
       "depends_on": [],

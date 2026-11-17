@@ -42,7 +42,7 @@
         "kind": "agent",
         "id": "ergora-development-preparer",
         "version": "1.0.0",
-        "digest": "c8527fd7dfd8ec9549e285412f907406a880097663412066d664900778f295d3"
+        "digest": "dc0afff379954a95a2abd356153f2676332ad3048a889a200af0ef8569584fc7"
       },
       "role": "inspector",
       "depends_on": [],
@@ -67,7 +67,7 @@
         "kind": "agent",
         "id": "ergora-development-preparer",
         "version": "1.0.0",
-        "digest": "c8527fd7dfd8ec9549e285412f907406a880097663412066d664900778f295d3"
+        "digest": "dc0afff379954a95a2abd356153f2676332ad3048a889a200af0ef8569584fc7"
       },
       "role": "planner",
       "depends_on": [],

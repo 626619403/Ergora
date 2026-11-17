@@ -42,7 +42,7 @@
         "kind": "agent",
         "id": "ergora-correctness-reviewer",
         "version": "1.0.0",
-        "digest": "c90f74219843f5a0724e6c83ef531453493bd26d1d45d40ca495e0ca6bbd441b"
+        "digest": "66d5b674599cd3cda0bcf44bba257c016794fb0b96290ff481919575561a4f6b"
       },
       "role": "reviewer",
       "depends_on": [],

@@ -12,7 +12,9 @@
     "static-html-reports"
   ],
   "backend": {
-    "tool": "codex"
+    "tool": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
   },
   "resources": [
     {
@@ -27,5 +29,9 @@
       "path": "skills/ergora-evidence-report",
       "digest": "42968e4a057ce46801f45105b1b122bb3e2640540c846360da915ef3955d292f"
     }
-  ]
+  ],
+  "invocation_minimum": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  }
 }

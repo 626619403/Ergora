@@ -1,30 +1,38 @@
 {
   "schema_version": 1,
   "id": "ergora-performance-analyst",
-  "version": "1.0.0",
-  "description": "Analyze supplied profiling evidence and design reproducible paired measurements.",
+  "version": "2.0.0",
+  "description": "Diagnose a supplied critical path across traces, memory, ranks, communication and data flow without inventing a profile.",
   "roles": [
     "performance-analyst"
   ],
   "specialties": [
-    "profiling",
-    "measurement-analysis"
+    "critical-path-diagnosis",
+    "memory-and-rank-analysis",
+    "communication-overlap",
+    "measurement-uncertainty"
   ],
   "backend": {
-    "tool": "codex"
+    "tool": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
   },
   "resources": [
     {
       "id": "ergora-performance-analyst-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "22003b55c9c6681d8293fbec3058418ea8f21e77138d2e0dd680feccef3dad06"
+      "sha256": "964fb91d3bff310b57077dcad65f7b64a772d04e0afc77e236e622791100ab2a"
     },
     {
       "id": "ergora-performance-analyst-skill",
       "kind": "skill",
       "path": "skills/ergora-performance-analyst",
-      "digest": "acd5463fe2cd17dd72e5a802017c239fda9a415ffa9a6e58581827f1015fdc7e"
+      "digest": "d158fcac4b2cdb0b5a9424c76830fe0080f48992bcad6263a21ed7f2f688082e"
     }
-  ]
+  ],
+  "invocation_minimum": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  }
 }

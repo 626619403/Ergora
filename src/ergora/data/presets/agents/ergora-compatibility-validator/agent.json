@@ -1,30 +1,37 @@
 {
   "schema_version": 1,
   "id": "ergora-compatibility-validator",
-  "version": "1.0.0",
-  "description": "Validate the integrated server/client behavior against the fixed compatibility contract.",
+  "version": "2.0.0",
+  "description": "Validate the integrated interface migration, behavior and rollback against the approved contract.",
   "roles": [
     "implementer"
   ],
   "specialties": [
     "integration-validation",
-    "reversible-rollout"
+    "interface-compatibility",
+    "migration-rollback"
   ],
   "backend": {
-    "tool": "codex"
+    "tool": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
   },
   "resources": [
     {
       "id": "ergora-compatibility-validator-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "69ee580d80fdde496d8b17657050c9e856db8084a6ed04f2c009cc52a0996794"
+      "sha256": "beebae56f200c6433f74a9113417a4ebcf38ec726c4849db3694c0d7b00c0f58"
     },
     {
       "id": "ergora-compatibility-validator-skill",
       "kind": "skill",
       "path": "skills/ergora-compatibility-validator",
-      "digest": "f68b6073b61af18b9870f0a80f807d87012137650352a44ac2ce77ad0549866a"
+      "digest": "1e8dd2a33177bbcad9225b2719eebaf6dfe247422d8aa7d24990c1382776a098"
     }
-  ]
+  ],
+  "invocation_minimum": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  }
 }

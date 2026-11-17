@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "ergora-memory-retrospective-author",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Source-bound memory retrospective author.",
   "roles": [
     "implementer"
@@ -11,14 +11,20 @@
     "retrospective-analysis"
   ],
   "backend": {
-    "tool": "codex"
+    "tool": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
   },
   "resources": [
     {
       "id": "ergora-memory-retrospective-author-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "0ff08dc1bc1de6a350b9d09cb41fe596e26f68dec652324990b361b123906af7"
+      "sha256": "481a0826438a845738046630e7efd2e4c826c33f501af69595432eb488222c2d"
     }
-  ]
+  ],
+  "invocation_minimum": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  }
 }

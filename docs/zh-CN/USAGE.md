@@ -656,27 +656,16 @@ Linux／WSL2 可在上述原生六阶段定义上使用 [task-definition v7](../
 
 ```bash
 ergora composition install-preset refactoring
-ergora composition prepare-manifest ergora-refactoring-template 1.0.0 \
+ergora composition prepare-manifest ergora-refactoring-template 1.1.0 \
   --grant examples/composition/refactoring/grant.json \
   --directory ./refactoring-manifest
 ```
 
 示例位于仓库[refactoring目录](../../examples/composition/refactoring/README.md)；wheel中已含全部Agent和子模板，使用自己的grant时无需examples。将[task.example.json](../../examples/composition/refactoring/task.example.json)复制成任务定义，填写真实工单、task ID、baseline、manifest路径／摘要及项目内实际模块／caller；同时核完整资料范围、行为不变量、迁移和隔离回退检查。随后沿原`task prepare → preview → create`的双摘要确认与start／计划批准流程。有效JSON或prepare成功只证明合同可装配，行为保持由实际检查和审查证据支持。
 
-默认preparation及writer使用Codex，reviewer使用Claude Code；每个实例可以沿原`backend_overrides`换成实际支持的后端。Claude不可用时，按[多样性政策](#为正式任务冻结审查组合)填写各叶覆盖及`diversity.reason`；独立同后端会话保留真实回退原因。兼容性执行者有自己的可写工作单元，其检查不替代最终三个独立reviewer。改变默认分工时须一并修订精确子模板和原units映射；原任务/profile与材料上限继续适用。
+全部内置专家使用Codex gpt-6.1-sol：规划max，跨文件重构xhigh，兼容验证与独立审查high。完整`backend_overrides`须保留满足定义最低线的model／reasoning_effort；writer仍需明确选择current-container。`prefer-distinct`同后端选择须记录`diversity.reason`，`require-distinct`继续拒绝同后端。兼容性工作单元不替代独立最终审查。
 
-新配方不会重写旧版本或在途任务。回退新任务的选择时重新选择旧精确包／manifest并prepare；已经启动的任务继续用原task／run观察、取消或对账。
-
-要让各角色同时获得仓库规范、模块依赖与真实测试接缝指导，显式选择 `refactoring-quality`：
-
-```bash
-ergora composition install-preset refactoring-quality
-ergora composition prepare-manifest ergora-refactoring-template 1.1.0 \
-  --grant examples/composition/refactoring/grant.json \
-  --directory ./refactoring-quality-manifest
-```
-
-它只给父模板增加一份标准 [`ergora-codebase-quality`](../../src/ergora/data/presets/workflows/ergora-refactoring-template-v1.1/skills/ergora-codebase-quality/SKILL.md)，所有后代继承完整 Skill 包；原子流程、实例路径、权限、预算、后端与任务示例均沿用上文。将新 manifest 路径／摘要填入自己的新任务；旧 1.0.0 和已冻结任务不会随安装升级。角色依目标仓库适用的规范与配置工作，不套用其他训练框架的格式规定。
+父模板直接包含标准[`ergora-codebase-quality`](../../src/ergora/data/presets/workflows/ergora-refactoring-template/skills/ergora-codebase-quality/SKILL.md)，所有后代继承完整Skill，依目标仓库适用规范、配置、真实调用者和测试接缝工作。原任务／预算／候选身份及恢复owner保持；安装和静态preview不批准业务迁移。
 
 重构执行者、结构审查者、正确性与测试价值审查者、兼容验证者的定义和组合均由本仓库维护；工程指导借鉴[已记录的Skill与上游研究](../research/2026-11-14-local-engineering-skills.md)，并保留各来源许可。它们是独立可版本化的专长配置，Codex／Claude Code是实际运行后端。选一个后端不等于导入该工具的全部私有提示、Skill或调度框架；后端能力及资料完整读取按[Agent手册](../AGENT_BACKENDS.md)分别核验。
 
@@ -684,7 +673,7 @@ ergora composition prepare-manifest ergora-refactoring-template 1.1.0 \
 
 ```bash
 ergora skill import my-project \
-  src/ergora/data/presets/workflows/ergora-refactoring-template-v1.1/skills/ergora-codebase-quality
+  src/ergora/data/presets/workflows/ergora-refactoring-template/skills/ergora-codebase-quality
 ```
 
 独立 `agent run --skill ergora-codebase-quality` 消费项目当前采用版本；这与模板内固定的 Skill 是两个明确选择。首次同名 import 成为初始 baseline，后续候选仍需[评价与采用](../INTEGRATIONS.md#skill-候选评价与采用)。项目 import 或编辑宿主 Skill 不会修改冻结模板；正式任务换资料须选择新版本与 manifest。
@@ -957,7 +946,7 @@ ergora handoff read ./task-handoff.zip --selection ./selection.json --sha256 EXP
 ergora composition install-preset retrospective
 ```
 
-新组合的根为`ergora-skill-retrospective 1.0.0`，包含只读作者`root/propose`与后继审查者`root/review`，分别默认Codex和Claude Code。按[完整manifest步骤](../WORKFLOW_DEFINITIONS.md#固定当前预览到持久控制目录)给这个根准备manifest目录；grant需显式允许读取`workspace`／`definitions`、空write／network且shell为false，并给出根需要的limits。导入、manifest和下列准备均不发模型请求。
+新组合的根为`ergora-skill-retrospective 1.0.0`，包含只读作者`root/propose`与后继审查者`root/review`，均默认Codex gpt-6.1-sol high。按[完整manifest步骤](../WORKFLOW_DEFINITIONS.md#固定当前预览到持久控制目录)给这个根准备manifest目录；grant需显式允许读取`workspace`／`definitions`、空write／network且shell为false，并给出根需要的limits。导入、manifest和下列准备均不发模型请求。
 
 ```bash
 ergora retrospective prepare my-project ./task-handoff.zip --selection ./selection.json --packet-sha256 PACKET_SHA --skill SKILL_NAME --digest BASELINE_DIGEST --head-revision HEAD_REVISION --objective ./objective.txt --manifest ./retrospective-manifest --instance root/propose --directory ./retrospective-author-input --max-prompt-bytes 500000
@@ -971,12 +960,12 @@ ergora composition run-input my-project ./retrospective-author-input --backend c
 ```bash
 ergora retrospective check ./retrospective-author-input AUTHOR_RESULT --result-sha256 AUTHOR_RESULT_SHA > ./retrospective-checked.json
 ergora composition prepare-from-manifest ./retrospective-manifest root/review --task ./retrospective-checked.json --directory ./retrospective-review-input --max-prompt-bytes 500000
-ergora composition run-input my-project ./retrospective-review-input --backend claude-code --mode text-only --timeout 600
+ergora composition run-input my-project ./retrospective-review-input --codex-config ./inference.toml --mode text-only --timeout 600
 ```
 
 作者的普通`artifacts.response`必须是符合冻结proposal_schema的JSON，包含对应来源SHA、基线digest／revision、选中材料的精确引用、负结果、成本／不确定性，以及完整标准Skill文件建议。没有充分依据可返回`candidate:null`。检查输出完整原请求与原Agent结果，核候选的便携路径、元数据、目录内容身份和引用；它离线执行、不创建State，源包或原Skill以后丢失仍可核。`quality_evaluated:false`、`adoption_authorized:false`、`origin_authenticated:false`明确保留，结构关联通过不是质量证明。
 
-check有界读取最多8 MiB的原结果，给完整文件在response字符串中的嵌套JSON转义留出空间。后继审查沿上面的原composition准备命令显式接收完整checked JSON；该preset审查叶返回文字审查，不再调用retrospective check。后继完整prompt仍须单独通过原容量门禁，大结果可离线检查不代表它能放进任意后继prompt。静态depends_on本身不会自动执行端口。可在原`composition run-input`中选其他受支持后端，尽量让作者／审查者不同；Claude不可用时显式选Codex并记录`--backend-reason`，同后端回退不能当异后端成功。检查或模型调用失败先保留原input、run和reply，不自动重发；原Agent记录是调用事实的权威。
+check有界读取最多8 MiB的原结果，给完整文件在response字符串中的嵌套JSON转义留出空间。后继审查沿上面的原composition准备命令显式接收完整checked JSON；该preset审查叶返回文字审查，不再调用retrospective check。后继完整prompt仍须单独通过原容量门禁，大结果可离线检查不代表它能放进任意后继prompt。静态depends_on本身不会自动执行端口。内置作者／审查者使用独立Codex会话并满足定义下限；上述`inference.toml`由操作者提供可信provider配置及环境凭据引用。其他后端示例仅适用于未声明该下限的自定义定义，覆盖仍须经过实际准入；同后端会话不构成异后端成功。检查或模型调用失败先保留原input、run和reply，不自动重发；原Agent记录是调用事实的权威。
 
 有非null候选并审阅完整内容后，从check返回值取得`candidate_digest`，明确导出到末级名称等于Skill name的新目录：
 
@@ -1002,7 +991,7 @@ ergora skill rollback my-project SKILL_NAME BASELINE_DIGEST --revision ADOPTED_H
 
 ### 生成来源绑定的记忆复盘候选
 
-用同项目的完整交接包和selection准备记忆建议。安装`memory-retrospective`，再按[manifest步骤](../WORKFLOW_DEFINITIONS.md#固定当前预览到持久控制目录)固定其根`ergora-memory-retrospective 1.0.0`，保存到`memory-retrospective-manifest`。该模板的`root/propose`与`root/review`默认分别为Codex、Claude；权限与显式调用方式同上，所有叶读取全部祖先资料。
+用同项目的完整交接包和selection准备记忆建议。安装`memory-retrospective`，再按[manifest步骤](../WORKFLOW_DEFINITIONS.md#固定当前预览到持久控制目录)固定其根`ergora-memory-retrospective 1.0.1`，保存到`memory-retrospective-manifest`。该模板的`root/propose`与`root/review`均默认Codex gpt-6.1-sol high；权限与显式调用方式同上，所有叶读取全部祖先资料。
 
 ```bash
 ergora composition install-preset memory-retrospective
@@ -1018,7 +1007,7 @@ ergora composition run-input my-project ./memory-author-input --backend codex --
 ```bash
 ergora retrospective check-memory ./memory-author-input AUTHOR_RESULT --result-sha256 AUTHOR_RESULT_SHA > ./memory-checked.json
 ergora composition prepare-from-manifest ./memory-retrospective-manifest root/review --task ./memory-checked.json --directory ./memory-review-input --max-prompt-bytes 500000
-ergora composition run-input my-project ./memory-review-input --backend claude-code --mode text-only --timeout 600
+ergora composition run-input my-project ./memory-review-input --codex-config ./inference.toml --mode text-only --timeout 600
 ```
 
 作者按冻结schema提供完整候选正文（最多100000字符）、假设、适用范围和验证计划，也可返回null。原失败、未知成本和每项观察的精确材料引用保持。模型不能选来源、有效期或修订；check的`save`只包含可供原记忆接口使用的完整正文、由整包SHA与选择SHA派生的固定来源，以及原ID／expected_revision。candidate_digest绑定完整save内容和基线身份；离线检查不创建State、查询实时记忆或认证来源作者，也不证明当前有效或质量提升。原结果上限8 MiB，审查完整prompt仍另核容量。后端不可用时可按前节显式回退并记录原因。
@@ -1305,7 +1294,7 @@ ergora composition run-input my-project ./workflow-author-input --backend codex 
 ```bash
 ergora retrospective check-workflow ./workflow-author-input AUTHOR_RESULT --result-sha256 AUTHOR_RESULT_SHA > ./workflow-checked.json
 ergora composition prepare-from-manifest ./workflow-retrospective-manifest root/review --task ./workflow-checked.json --directory ./workflow-review-input --max-prompt-bytes 1000000
-ergora composition run-input my-project ./workflow-review-input --backend claude-code --mode text-only --timeout 600
+ergora composition run-input my-project ./workflow-review-input --codex-config ./inference.toml --mode text-only --timeout 600
 ```
 
 作者、审查者读取完整祖先资料和完整前驱。后端选择／失败保存与上述Skill候选相同；静态依赖不会自动执行端口。检查允许`candidate:null`，否则核原preview、完整资源、图及原grant；只在自动清理的私有临时目录写入，不读写活动State。首版只允许根description、已有声明资源的无NUL UTF-8内容与额外依赖边，保留原节点／引用／端口／权限／审查要求及已有依赖；改变这些结构仍走原手工版本修订。

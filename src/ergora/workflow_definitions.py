@@ -310,6 +310,8 @@ class _Compilation:
                             raise ValueError(f"Composition material_bytes budget exceeded at {child_path} (scope {active['path']})")
                     self.instances.append({"path": child_path, "parent": path, "kind": "agent", "ref": node["ref"],
                                            "role": node["role"], "backend_request": child["definition"]["backend"],
+                                           **({"invocation_minimum": child["definition"]["invocation_minimum"]}
+                                              if "invocation_minimum" in child["definition"] else {}),
                                            **({"review_requirement": node["review_requirement"]}
                                               if "review_requirement" in node else {}),
                                            "depends_on": dependencies, "inputs": node["inputs"], "outputs": ["result"],

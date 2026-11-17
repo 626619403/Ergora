@@ -42,7 +42,7 @@
         "kind": "agent",
         "id": "ergora-posttraining-reviewer",
         "version": "1.0.0",
-        "digest": "c70dcc80e3cc9dbba2be5fb82225a252acd20c6b5420992caa1a74f1dc12b61b"
+        "digest": "c95a84137325763ef68a424c354ebfc492ae284cee23032293834dc3717a2600"
       },
       "role": "reviewer",
       "depends_on": [],

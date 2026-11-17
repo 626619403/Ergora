@@ -12,7 +12,9 @@
     "redundancy-hypotheses"
   ],
   "backend": {
-    "tool": "codex"
+    "tool": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
   },
   "resources": [
     {
@@ -27,5 +29,9 @@
       "path": "skills/ergora-training-flow-map",
       "digest": "97fc5e3aeea2dcc9d9ba2c1db7f495361b46ac3370390dfd86b5889ec4dfeb51"
     }
-  ]
+  ],
+  "invocation_minimum": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  }
 }

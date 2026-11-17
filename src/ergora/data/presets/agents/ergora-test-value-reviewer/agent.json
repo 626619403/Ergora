@@ -11,7 +11,9 @@
     "test-cost"
   ],
   "backend": {
-    "tool": "claude-code"
+    "tool": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
   },
   "resources": [
     {
@@ -26,5 +28,9 @@
       "path": "skills/ergora-test-value-reviewer",
       "digest": "efa332025ec77b77ea13755880401537faacd818429080dbd10ee0ef2c2d3585"
     }
-  ]
+  ],
+  "invocation_minimum": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  }
 }

@@ -11,7 +11,9 @@
     "data-boundaries"
   ],
   "backend": {
-    "tool": "codex"
+    "tool": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "xhigh"
   },
   "resources": [
     {
@@ -26,5 +28,9 @@
       "path": "skills/ergora-server-implementer",
       "digest": "3a436ef997574ca8469654352666c6b4c8ae2abb8205b8004f794a2b10f072ff"
     }
-  ]
+  ],
+  "invocation_minimum": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "xhigh"
+  }
 }

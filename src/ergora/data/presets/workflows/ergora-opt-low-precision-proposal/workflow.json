@@ -48,7 +48,7 @@
         "kind": "workflow",
         "id": "ergora-training-analysis",
         "version": "2.0.0",
-        "digest": "a9d715b010ba4c444cf8cacebf739388c2a434b3fc6adcc024ee8ba78776be2a"
+        "digest": "c29c3046c72d6d4fac17eedc9f44206ac4306d6c8a0512aa611a1fe62bdf2ab5"
       },
       "depends_on": [],
       "inputs": {
@@ -63,7 +63,7 @@
         "kind": "agent",
         "id": "ergora-kernel-designer",
         "version": "2.0.0",
-        "digest": "fd1528529bd17b355cca28653f698843666b587066c477391c9e5e064ff4a13e"
+        "digest": "f921c32ec74f3c08b6b9a8549c632aec8b4d28491eeabccd7ffa7f129fe544d3"
       },
       "role": "kernel-tuner",
       "depends_on": [
@@ -91,7 +91,7 @@
         "kind": "workflow",
         "id": "ergora-measurement-review",
         "version": "2.0.0",
-        "digest": "098f379a30627950103b485d1e1364bbd80f5f8f316f0ded804ca8847ecb8961"
+        "digest": "08b9b05396cb00858cd2bb4783f28214c1289f91ebcce9835b80599e68b7a7f0"
       },
       "depends_on": [
         "kernel"

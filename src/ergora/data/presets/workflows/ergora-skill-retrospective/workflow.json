@@ -48,7 +48,7 @@
         "kind": "agent",
         "id": "ergora-retrospective-author",
         "version": "1.0.0",
-        "digest": "5b19bc21eb7b20357be9f4acc8ecbfa5a55415ead8d5e93b2237524f5d3af616"
+        "digest": "644f5bc2d0e53630a1fcbce8c5a2bc56ba6604e0d0e5412892165050ba8c053e"
       },
       "role": "implementer",
       "depends_on": [],
@@ -73,7 +73,7 @@
         "kind": "agent",
         "id": "ergora-retrospective-reviewer",
         "version": "1.0.0",
-        "digest": "45d7172a407b9aee47b9f4958d38a9a42b02374d777854a39add91344de5561b"
+        "digest": "b6e3f173c63d03c19f873052029ba7dec04e6da454f8afbeb29bd14896fd0713"
       },
       "role": "reviewer",
       "depends_on": [

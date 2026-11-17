@@ -1,14 +1,20 @@
 {
   "schema_version": 2,
   "id": "ergora-refactoring-template",
-  "version": "1.0.0",
-  "description": "Forward one behavior-preserving module refactor to the original large-change six-stage owner.",
+  "version": "1.1.0",
+  "description": "Behavior-preserving six-stage refactoring with repository-specific style, module ownership and realistic test-seam guidance.",
   "resources": [
     {
       "id": "ergora-refactoring-template-instructions",
       "kind": "instructions",
       "path": "instructions.md",
       "sha256": "6ed4dcc6ad9c95996381293199676b3e9a6bf01497859128e9c6048a69381a53"
+    },
+    {
+      "id": "ergora-codebase-quality-skill",
+      "kind": "skill",
+      "path": "skills/ergora-codebase-quality",
+      "digest": "45bb58d30e958c314f29ecc9ed50c016f1ca3d2245b59d66fab7870da0a07693"
     }
   ],
   "permissions": {
@@ -44,7 +50,7 @@
         "kind": "workflow",
         "id": "ergora-refactoring-delivery",
         "version": "1.0.0",
-        "digest": "8bc02f70dc320aff86736235446b94a0f4065bb63d243a382906be69e947822d"
+        "digest": "73e2c52a6e1dc14ec31d0720a53e28220c726d6dc304cdb964ee5bacbaf70d34"
       },
       "depends_on": [],
       "inputs": {

@@ -1,14 +1,14 @@
 {
   "schema_version": 2,
   "id": "ergora-measurement-review",
-  "version": "1.0.0",
-  "description": "Review measurement validity and reproducibility without changing the evaluation contract.",
+  "version": "2.0.0",
+  "description": "Independently review the exact supplied optimization proposal/candidate and original measurement evidence.",
   "resources": [
     {
       "id": "ergora-measurement-review-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "10a74282241c0040284a0e61db8cdd20905313f2822db8213888c067a1b76bc1"
+      "sha256": "539f90bfb214dad27f61984cc04b7a65a9d14024a6eccf0b28b846dd568d6392"
     }
   ],
   "permissions": {
@@ -41,8 +41,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-measurement-reviewer",
-        "version": "1.0.0",
-        "digest": "eb0fb716357a60203318baa5c62f904ac87d00fd40216d197593b33fa4657302"
+        "version": "2.0.0",
+        "digest": "9b21f32a3031709bacd4ac436d3a35ab9e56d13ad3022f59a5262a466cd26f8a"
       },
       "role": "reviewer",
       "depends_on": [],

@@ -55,6 +55,21 @@ CATALOG = {layer: _choices(layer) for layer in LAYERS}
 CHOICES = {role: CATALOG[role] for role in ROLE_CAPABILITIES}
 
 
+def validate_agent_minimum(binding: dict, minimum: dict | None) -> None:
+    """Check a definition's explicit floor without probing or substituting a model."""
+    if minimum is None:
+        return
+    efforts = ("low", "medium", "high", "xhigh", "max", "ultra")
+    if (not isinstance(minimum, dict) or set(minimum) != {"model", "reasoning_effort"}
+            or minimum["model"] != "gpt-6.1-sol" or minimum["reasoning_effort"] not in efforts[1:]):
+        raise ValueError("Invalid Agent invocation minimum")
+    if not isinstance(binding, dict) or binding.get("tool") != "codex" or binding.get("model") != minimum["model"]:
+        raise ValueError("Agent invocation minimum requires explicit Codex model " + minimum["model"])
+    effort = binding.get("reasoning_effort")
+    if effort not in efforts or efforts.index(effort) < efforts.index(minimum["reasoning_effort"]):
+        raise ValueError("Agent invocation requires reasoning_effort at least " + minimum["reasoning_effort"])
+
+
 def configuration(layer: str, tool: str, platform: str) -> dict:
     """Copy the binding structure and resolve display-only defaults for this view."""
     component = COMPONENTS[tool]

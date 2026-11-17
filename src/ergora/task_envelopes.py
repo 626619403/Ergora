@@ -8,6 +8,7 @@ import base64
 import hashlib
 import json
 
+from .components import validate_agent_minimum
 from .review_dags import ReviewDAG, WorkDelivery, preparation_members, require_root_task
 from .issue_sources import validate_snapshot
 
@@ -410,6 +411,7 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
             raise ValueError('Formal review requirement differs from its frozen graph: ' + path)
         _binding(member['binding'])
         _binding(member['requested_binding'])
+        validate_agent_minimum(member['binding'], expected[path].get('invocation_minimum'))
         if member['requested_binding'] != expected[path]['backend_request']:
             raise ValueError('Formal composition requested binding differs from its frozen graph')
         _policy(member['policy'], member['mode'])
@@ -435,6 +437,7 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
                 raise ValueError('Invalid frozen preparation member: ' + path)
             _binding(member['binding'])
             _binding(member['requested_binding'])
+            validate_agent_minimum(member['binding'], expected[path].get('invocation_minimum'))
             _policy(member['policy'], member['mode'])
     if document['schema_version'] in (5, 6, 7, 8, 9, 10, 11):
         execution = composition['execution']
@@ -454,6 +457,7 @@ def unwrap(document: dict) -> tuple[dict, dict | None]:
                 raise ValueError('Invalid frozen work member: ' + path)
             _binding(member['binding'])
             _binding(member['requested_binding'])
+            validate_agent_minimum(member['binding'], delivery.work.members[path].get('invocation_minimum'))
             _policy(member['policy'], member['mode'])
         if (not isinstance(diversity, dict)
                 or set(diversity) - {'policy', 'reason', 'implementer_backends', 'same_backend_members'}

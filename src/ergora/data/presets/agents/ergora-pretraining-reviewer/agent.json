@@ -12,7 +12,9 @@
     "distributed-training-state"
   ],
   "backend": {
-    "tool": "claude-code"
+    "tool": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
   },
   "resources": [
     {
@@ -27,5 +29,9 @@
       "path": "skills/ergora-pretraining-review",
       "digest": "0e146179e53af1bddb0aec6947566f0b9dbc9a3199282bbe5ee18c8262308e17"
     }
-  ]
+  ],
+  "invocation_minimum": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  }
 }

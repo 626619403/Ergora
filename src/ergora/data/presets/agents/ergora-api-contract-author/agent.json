@@ -11,7 +11,9 @@
     "backward-compatibility"
   ],
   "backend": {
-    "tool": "codex"
+    "tool": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "max"
   },
   "resources": [
     {
@@ -26,5 +28,9 @@
       "path": "skills/ergora-api-contract-author",
       "digest": "d8fc66ad0f462538a4182817a8e108e907d4ec65619d6d051c4566b174427bbe"
     }
-  ]
+  ],
+  "invocation_minimum": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "max"
+  }
 }

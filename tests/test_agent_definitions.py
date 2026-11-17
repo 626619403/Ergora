@@ -76,6 +76,16 @@ def test_versions_are_immutable_idempotent_and_export_roundtrips(bundle, tmp_pat
         definitions.export(state, "kernel-implementer", "1.0.0", tmp_path / "share")
 
 
+def test_definition_default_must_satisfy_its_declared_minimum(bundle):
+    revise(bundle, lambda item: item.update(
+        backend={"tool": "codex", "model": "gpt-6.1-sol", "reasoning_effort": "high"},
+        invocation_minimum={"model": "gpt-6.1-sol", "reasoning_effort": "xhigh"}))
+    with pytest.raises(ValueError, match="at least xhigh"):
+        definitions.inspect_bundle(bundle)
+    revise(bundle, lambda item: item["backend"].update(reasoning_effort="max"))
+    assert definitions.inspect_bundle(bundle)["definition"]["backend"]["reasoning_effort"] == "max"
+
+
 def test_revision_preserves_complete_package_and_only_publishes_explicitly(bundle, tmp_path):
     skill = bundle / "skills/kernel-measurement"
     (skill / "references/empty").mkdir(parents=True)

@@ -11,7 +11,9 @@
     "retrospective-analysis"
   ],
   "backend": {
-    "tool": "claude-code"
+    "tool": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
   },
   "resources": [
     {
@@ -20,5 +22,9 @@
       "path": "instructions.md",
       "sha256": "8401247145c82f1a350aecdb675f8d72dadcef010ed6b32c9ae87df8f0a05703"
     }
-  ]
+  ],
+  "invocation_minimum": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  }
 }

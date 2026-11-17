@@ -1,6 +1,7 @@
 """Shipped recipes use the existing immutable definitions and formal contracts."""
 
 import json
+from copy import deepcopy
 from pathlib import Path
 import shutil
 import subprocess
@@ -65,6 +66,10 @@ def test_bundled_recipe_is_restartable_and_freezes_complete_ancestors(tmp_path, 
     before = workflows.preview(state.root, root['id'], root['version'], grant)
     leaves = [item for item in before['instances'] if item['kind'] == 'agent']
     for item in leaves:
+        assert item['backend_request']['model'] == item['invocation_minimum']['model'] == 'gpt-6.1-sol'
+        assert item['backend_request']['reasoning_effort'] == item['invocation_minimum']['reasoning_effort']
+        if item['role'] in ('planner', 'experiment-planner', 'kernel-tuner') or item['ref']['id'] == 'ergora-api-contract-author':
+            assert item['invocation_minimum']['reasoning_effort'] == 'max'
         assert all(resource['text'] in item['prompt'] for resource in item['resources'])
         assert any(source['instance'] == 'root' for resource in item['resources'] for source in resource['sources'])
     if kind == 'training-optimization':
@@ -75,9 +80,12 @@ def test_bundled_recipe_is_restartable_and_freezes_complete_ancestors(tmp_path, 
         units = reference.template_details(kind)['input']['work_units']
         execution = {'protocol': 'work-units-v1', 'instance': 'root/work', 'mode': 'workspace-task-mcp',
                      'assignments': {unit['id']: 'root/work/' + unit['id'] for unit in units}}
-        delivery = WorkDelivery(before, execution, 'root/review', units)
+        preparation = {'protocol': 'preparation-v1', 'inventory': 'root/preparation/inventory',
+            'plan': 'root/preparation/plan', 'mode': 'task-mcp',
+            'repository_paths': reference.template_details(kind)['input']['allowed_paths']}
+        delivery = WorkDelivery(before, execution, 'root/review', units, preparation=preparation)
         assert set(delivery.work.members) == set(execution['assignments'].values())
-        assert {item['backend_request']['tool'] for item in leaves if item['role'] == 'reviewer'} == {'claude-code'}
+        assert {item['backend_request']['tool'] for item in leaves if item['role'] == 'reviewer'} == {'codex'}
         assert {item['backend_request']['tool'] for item in leaves if item['role'] == 'implementer'} == {'codex'}
         selected = 'root/review/structure/review'
     manifest = workflows.prepare_manifest(state.root, root['id'], root['version'], grant, tmp_path / 'manifest')
@@ -111,7 +119,7 @@ def test_readonly_analysis_presets_freeze_complete_material_without_changing_tra
         tmp_path, preset, leaf_path, role):
     state = State(tmp_path / 'state')
     original = [workflows.install_preset(state, name)['root']
-                for name in ('training-optimization', 'training-optimization-v2', 'evidence-report',
+                for name in ('training-optimization', 'evidence-report',
                              'optimization-report')]
     installed = workflows.install_preset(state, preset)
     assert workflows.install_preset(state, preset) == installed
@@ -134,20 +142,13 @@ def test_readonly_analysis_presets_freeze_complete_material_without_changing_tra
     assert {source['instance'] for resource in leaf['resources'] for source in resource['sources']} == {'root', leaf_path}
 
 
-@pytest.mark.parametrize('version', ['3', '4'])
-def test_bottleneck_path_retains_kernel_assessment_and_original_task_in_frozen_leaves(tmp_path, version):
+def test_bottleneck_path_retains_kernel_assessment_and_original_task_in_frozen_leaves(tmp_path):
     state = State(tmp_path / 'state')
-    previous = [workflows.install_preset(state, name)['root']
-                for name in ('training-optimization', 'training-optimization-v2', 'training-optimization-v3',
-                             'training-flow-map')]
-    preset = 'training-optimization-v' + version
-    installed = workflows.install_preset(state, preset)
-    assert workflows.install_preset(state, preset) == installed
-    assert [workflows.get(state, item['id'], item['version'])['digest'] for item in previous] == [
-        item['digest'] for item in previous]
+    installed = workflows.install_preset(state, 'training-optimization')
+    assert workflows.install_preset(state, 'training-optimization') == installed
     definition = workflows.get(state, installed['root']['id'], installed['root']['version'])['definition']
     nodes = {item['id']: item for item in definition['nodes']}
-    assert definition['version'] == version + '.0.0'
+    assert definition['version'] == '4.0.0'
     assert {name: nodes[name]['depends_on'] for name in ('flow', 'analysis', 'kernel', 'measurement')} == {
         'flow': [], 'analysis': ['flow'], 'kernel': ['analysis'], 'measurement': ['kernel']}
     assert set(nodes['gather']['depends_on']) == {'flow', 'analysis', 'kernel', 'measurement'}
@@ -189,14 +190,16 @@ def test_bundled_review_can_be_selected_without_its_delivery_parent(registration
     original = reference.template_details('repository-governance')['input']
     project['allowed_paths'] = original['allowed_paths']
     registrations.register(state, project, 0)
-    workflows.install_preset(state, preset)
-    root = workflows.get(state, identity, '1.0.0')['definition']
+    installed = workflows.install_preset(state, preset)
+    root = workflows.get(state, identity, installed['root']['version'])['definition']
     manifest = workflows.prepare_manifest(state.root, identity, root['version'],
         {'schema_version': 1, 'permissions': root['permissions'], 'limits': root['limits']}, tmp_path / 'manifest')
     for protocol in ({}, {'review_protocol': 'dag-v1'}):
         definition = {'schema_version': 2, 'task_id': 'standalone-review', 'task_type': 'repository-governance',
             'issue_id': '1', 'input': original, 'composition': {'manifest': manifest['path'],
                 'manifest_digest': manifest['digest'], 'review_instance': 'root', 'mode': 'task-mcp', **protocol}}
+        definition['composition']['diversity'] = {
+            'policy': 'prefer-distinct', 'reason': 'Use the pinned model in a separate review session.'}
         preview = tasks.preview(state, 'demo', definition, 1)
         selected = execution_input(preview['files']['task.spec.json'])
         selected.require_submission()
@@ -250,41 +253,50 @@ def test_development_preset_creates_original_unit_contract_without_starting(regi
     root = workflows.get(state, selected['root']['id'], selected['root']['version'])['definition']
     manifest = workflows.prepare_manifest(state.root, root['id'], root['version'],
         {'schema_version': 1, 'permissions': root['permissions'], 'limits': root['limits']}, tmp_path / 'manifest')
+    graph = workflows.inspect_manifest(Path(manifest['path']), material=True)['composition']
+    requested = {item['path']: item['backend_request'] for item in graph['instances'] if item['kind'] == 'agent'}
     assignments = {unit['id']: 'root/work/' + unit['id'] for unit in original['work_units']}
-    definition = {'schema_version': 2, 'task_id': 'preset-task', 'task_type': kind, 'issue_id': '1', 'input': original,
+    definition = {'schema_version': 4, 'task_id': 'preset-task', 'task_type': kind, 'issue_id': '1', 'input': original,
         'composition': {'manifest': manifest['path'], 'manifest_digest': manifest['digest'],
             'review_protocol': 'dag-v1', 'review_instance': 'root/review', 'mode': 'task-mcp',
-            'execution': {'protocol': 'work-units-v1', 'instance': 'root/work',
+            'preparation': {'protocol': 'preparation-v1', 'inventory': 'root/preparation/inventory',
+                            'plan': 'root/preparation/plan', 'mode': 'task-mcp',
+                            'repository_paths': original['allowed_paths']},
+            'execution': {'protocol': 'work-units-v2', 'instance': 'root/work',
                           'mode': 'workspace-task-mcp', 'assignments': assignments},
-            'backend_overrides': {path: {'binding': {'tool': 'codex', 'sandbox': 'current-container'},
+            'backend_overrides': {path: {'binding': {**requested[path], 'sandbox': 'current-container'},
                                          'reason': 'Explicit trusted-container selection for this acceptance'}
                                   for path in assignments.values()},
-            'diversity': {'policy': 'require-distinct'}}}
+            'diversity': {'policy': 'prefer-distinct', 'reason': 'Use the explicitly pinned model for independent review sessions.'}}}
     preview = tasks.preview(state, 'demo', definition, 1)
     frozen = preview['files']['task.spec.json']
-    assert frozen['schema_version'] == 5
+    assert frozen['schema_version'] == 8
+    preparing = frozen['composition']['preparation']['members']
+    assert preparing['root/preparation/plan']['binding'] == {
+        'tool': 'codex', 'model': 'gpt-6.1-sol', 'reasoning_effort': 'max'}
+    task_envelopes.unwrap(frozen)
+    incomplete = deepcopy(definition)
+    incomplete['schema_version'] = 2
+    del incomplete['composition']['preparation']
+    with pytest.raises(ValueError, match='exactly all Agent leaves'):
+        tasks.preview(state, 'demo', incomplete, 1)
+    lowered = deepcopy(definition)
+    lowered['composition']['backend_overrides']['root/preparation/plan'] = {
+        'binding': {'tool': 'codex', 'model': 'gpt-6.1-sol', 'reasoning_effort': 'high'},
+        'reason': 'Rejected lower planner request'}
+    with pytest.raises(ValueError, match='at least max'):
+        tasks.preview(state, 'demo', lowered, 1)
     assert frozen['legacy_spec']['request']['input'] == original
-    assert frozen['composition']['diversity']['same_backend_members'] == []
+    assert set(frozen['composition']['diversity']['same_backend_members']) == set(frozen['composition']['members'])
     created = tasks.create(state, 'demo', definition, 1, preview['preview_sha256'])
     assert created['status'] == 'published' and created['execution_started_by_operation'] is False
-    assert not (Path(project['execution']['state_directory']) / 'requests-composition-v5').exists()
+    assert not (Path(project['execution']['state_directory']) / 'requests-composition-v8').exists()
 
 
-@pytest.mark.parametrize('preset', ['refactoring', 'refactoring-quality'])
-def test_refactoring_preset_restarts_with_old_versions_and_complete_parent_materials(tmp_path, preset):
+def test_refactoring_preset_freezes_complete_parent_materials(tmp_path):
     state = State(tmp_path / 'state')
-    original = workflows.install_preset(state, 'large-change')
-    old_validator = agent_definitions.get(state, 'ergora-compatibility-validator', '1.0.0')
-    original_refactoring = workflows.install_preset(state, 'refactoring')
-    old_root = workflows.get(state, 'ergora-refactoring-template', '1.0.0')
-    installed = workflows.install_preset(state, preset)
-    assert installed == workflows.install_preset(state, preset)
-    assert workflows.install_preset(state, 'refactoring') == original_refactoring
-    assert workflows.get(state, 'ergora-refactoring-template', '1.0.0') == old_root
-    assert workflows.install_preset(state, 'large-change') == original
-    assert agent_definitions.get(state, 'ergora-compatibility-validator', '1.0.0') == old_validator
-    validator = agent_definitions.get(state, 'ergora-compatibility-validator', '2.0.0')
-    assert validator['digest'] != old_validator['digest']
+    installed = workflows.install_preset(state, 'refactoring')
+    assert installed == workflows.install_preset(state, 'refactoring')
     assert installed['execution_authorized'] is False
     root = workflows.get(state, installed['root']['id'], installed['root']['version'])['definition']
     grant = {'schema_version': 1, 'permissions': root['permissions'], 'limits': root['limits']}
@@ -322,8 +334,7 @@ def test_refactoring_preset_restarts_with_old_versions_and_complete_parent_mater
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Budgeted native preparation requires Linux/WSL2')
-@pytest.mark.parametrize('preset', ['refactoring', 'refactoring-quality'])
-def test_refactoring_preset_prepares_the_original_large_change_native_contract(registration, tmp_path, preset):
+def test_refactoring_preset_prepares_the_original_large_change_native_contract(registration, tmp_path):
     state, project = registration
     example = Path(__file__).parents[1] / 'examples/composition/refactoring/task.example.json'
     definition = json.loads(example.read_bytes())
@@ -345,7 +356,7 @@ def test_refactoring_preset_prepares_the_original_large_change_native_contract(r
     definition['issue_id'] = '1'
     project['allowed_paths'] = definition['input']['allowed_paths']
     registrations.register(state, project, 0)
-    installed = workflows.install_preset(state, preset)
+    installed = workflows.install_preset(state, 'refactoring')
     root = workflows.get(state, installed['root']['id'], installed['root']['version'])['definition']
     grant = {'schema_version': 1, 'permissions': root['permissions'], 'limits': root['limits']}
     manifest = workflows.prepare_manifest(state.root, root['id'], root['version'], grant, tmp_path / 'manifest')
@@ -368,52 +379,24 @@ def test_refactoring_preset_prepares_the_original_large_change_native_contract(r
         composition['execution']['members'].keys() | composition['members'].keys()
         | composition['preparation']['members'].keys())
     assert composition['execution']['assignments'] == definition['composition']['execution']['assignments']
-    assert composition['diversity']['same_backend_members'] == []
-    assert {member['binding']['tool'] for member in composition['members'].values()} == {'claude-code'}
+    assert set(composition['diversity']['same_backend_members']) == set(composition['members'])
+    assert {member['binding']['tool'] for member in composition['members'].values()} == {'codex'}
     assert all(member['binding']['sandbox'] == 'current-container'
                for member in composition['execution']['members'].values())
+    leaves = {item['path']: item for item in graph['instances'] if item['kind'] == 'agent'}
+    for section, members in ((None, composition['members']), ('preparation', composition['preparation']['members']),
+                             ('execution', composition['execution']['members'])):
+        path = next(iter(members))
+        leaf, member = leaves[path], members[path]
+        lowered = {**member['binding'], 'reasoning_effort': 'low'}
+        with pytest.raises(ValueError, match='at least'):
+            tasks._member(leaf, member['mode'], {'binding': lowered, 'reason': 'Rejected lower selection'})
+        changed = deepcopy(document)
+        target = changed['composition'][section]['members'] if section else changed['composition']['members']
+        target[path]['binding'] = lowered
+        changed['sha256'] = task_envelopes.identity({key: value for key, value in changed.items() if key != 'sha256'})
+        with pytest.raises(ValueError, match='at least'):
+            task_envelopes.unwrap(changed)
     runtime = Path(project['execution']['state_directory'])
     assert not (runtime / 'tasks' / definition['task_id']).exists()
     assert not (runtime / 'requests-composition-v10').exists()
-
-
-def test_training_v2_keeps_v1_and_prepares_four_readonly_experts_with_skill_references(tmp_path):
-    state = State(tmp_path / 'state')
-    old = workflows.install_preset(state, 'training-optimization')
-    old_root = workflows.get(state, old['root']['id'], old['root']['version'])
-    selected = workflows.install_preset(state, 'training-optimization-v2')
-    assert selected == workflows.install_preset(state, 'training-optimization-v2')
-    assert workflows.install_preset(state, 'training-optimization') == old
-    assert workflows.get(state, old['root']['id'], old['root']['version']) == old_root
-    assert selected['root']['id'] == old['root']['id']
-    assert selected['root']['version'] == '2.0.0'
-    root = workflows.get(state, selected['root']['id'], selected['root']['version'])['definition']
-    grant = {'schema_version': 1, 'permissions': root['permissions'], 'limits': root['limits']}
-    manifest = workflows.prepare_manifest(state.root, root['id'], root['version'], grant, tmp_path / 'manifest')
-    graph = workflows.inspect_manifest(Path(manifest['path']), material=True)['composition']
-    instances = {item['path']: item for item in graph['instances']}
-    leaves = {item['path']: item for item in graph['instances'] if item['kind'] == 'agent'}
-    assert {path: leaf['role'] for path, leaf in leaves.items()} == {
-        'root/analysis/design': 'experiment-planner', 'root/analysis/profile': 'performance-analyst',
-        'root/kernel': 'kernel-tuner', 'root/measurement/review': 'reviewer'}
-    assert all(leaf['ref']['version'] == '2.0.0' for leaf in leaves.values())
-    assert all(not leaf['permissions']['write'] and not leaf['permissions']['shell']
-               and not leaf['permissions']['network'] for leaf in leaves.values())
-    shutil.rmtree(state.root / 'agent-definitions')
-    shutil.rmtree(state.root / 'workflow-definitions')
-    for path, leaf in leaves.items():
-        ancestors = set()
-        current = leaf
-        while current is not None:
-            ancestors.add(current['path'])
-            current = instances[current['parent']] if current['parent'] is not None else None
-        assert {source['instance'] for resource in leaf['resources'] for source in resource['sources']} == ancestors
-        prepared = workflows.prepare_input_from_manifest(Path(manifest['path']), path,
-            b'Analyze only supplied evidence; missing measurement remains unverified.',
-            tmp_path / path.replace('/', '-'), 100000)
-        actual = workflows.inspect_input(Path(prepared['path']), material=True)
-        assert all(resource['text'] in actual['prompt'] for resource in leaf['resources'])
-        reference = Path(prepared['path']) / 'assets/agent-definitions/objects' / leaf['ref']['digest']
-        source = Path(__file__).parents[1] / 'src/ergora/data/presets/agents' / (leaf['ref']['id'] + '-v2')
-        relative = 'skills/' + leaf['ref']['id'] + '/references/evidence-contract.md'
-        assert (reference / relative).read_bytes() == (source / relative).read_bytes()

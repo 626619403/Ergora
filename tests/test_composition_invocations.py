@@ -26,11 +26,13 @@ def prepared(tmp_path):
     state = State(tmp_path / "state")
     projects.create(state, "demo", repo)
 
-    def build(*, binding=None, permission=None):
+    def build(*, binding=None, permission=None, minimum=None):
         agent_source = tmp_path / "agent"
         shutil.copytree(EXAMPLES / "agents/architecture-reviewer", agent_source)
         doc = json.loads((agent_source / "agent.json").read_text())
         doc["backend"] = binding or {"tool": "codex"}
+        if minimum is not None:
+            doc["invocation_minimum"] = minimum
         (agent_source / "agent.json").write_text(json.dumps(doc), encoding="utf-8")
         agent = agent_definitions.import_bundle(state, agent_source)
         source = tmp_path / "workflow"
@@ -49,6 +51,62 @@ def prepared(tmp_path):
                                 "Review the supplied candidate. 核对结构。\r\n".encode(), target, 30000)
         return state, repo, target
     return build
+
+
+@pytest.mark.parametrize("floor,effort", [("medium", "medium"), ("high", "xhigh"), ("xhigh", "max"), ("max", "ultra")])
+def test_explicit_minimum_reaches_native_command_without_replacing_provider(prepared, tmp_path, monkeypatch, floor, effort):
+    requested = {"tool": "codex", "model": "gpt-6.1-sol", "reasoning_effort": floor}
+    state, _, source = prepared(binding=requested,
+        minimum={"model": requested["model"], "reasoning_effort": floor})
+    config = tmp_path / "inference.toml"
+    config.write_text('model="operator-default"\nmodel_reasoning_effort="low"\nmodel_provider="fixture"\n'
+        '[model_providers.fixture]\nname="Fixture"\nbase_url="https://example.invalid/v1"\n'
+        'env_key="ERGORA_TEST_KEY"\nwire_api="responses"\n', encoding="utf-8")
+    actual = {**requested, "reasoning_effort": effort}
+    assert agent_runs.check_input(state, "demo", source, backend="codex", codex_config=config)['binding'] == requested
+    calls = []
+
+    def native(argv, cwd, output, timeout, stdin, env, **kwargs):
+        calls.append(argv)
+        assert argv[argv.index("--model") + 1] == actual["model"]
+        settings = dict(argv[i + 1].split("=", 1) for i, item in enumerate(argv) if item == "-c")
+        assert settings["model_reasoning_effort"] == json.dumps(effort)
+        assert settings["model_provider"] == '"fixture"'
+        assert settings["model_providers.fixture.env_key"] == '"ERGORA_TEST_KEY"'
+        assert settings["model_providers.fixture.base_url"] == '"https://example.invalid/v1"'
+        Path(argv[argv.index("--output-last-message") + 1]).write_text(json.dumps(
+            {"summary": "Review", "artifacts": {"response": "Evidence"}, "decision": "approve"}))
+        output.mkdir()
+        return {"status": "succeeded", "returncode": 0, "output": str(output)}
+
+    monkeypatch.setattr(processes, "run", native)
+    run = agent_runs.run_input(state, "demo", source, codex_config=config, binding_override=actual)
+    assert run["status"] == "succeeded" and run["binding"] == actual and run["requested_binding"] == requested
+    assert len(calls) == 1
+    assert agent_runs.inspect_run(state, "demo", run['id'])['input']['available']
+    run['binding'] = {**actual, 'reasoning_effort': 'low'}
+    with state.connect() as db:
+        db.execute("UPDATE agent_runs SET document=? WHERE id=?", (json.dumps(run), run['id']))
+    observed = agent_runs.inspect_run(state, "demo", run['id'])
+    assert not observed['input']['available'] and 'at least' in observed['input']['error']
+    assert observed['run'] == run and len(calls) == 1
+
+
+@pytest.mark.parametrize("binding", [
+    {"tool": "codex", "reasoning_effort": "high"},
+    {"tool": "codex", "model": "gpt-6-sol", "reasoning_effort": "ultra"},
+    {"tool": "codex", "model": "gpt-6.1-sol"},
+    {"tool": "codex", "model": "gpt-6.1-sol", "reasoning_effort": "medium"},
+    {"tool": "claude-code", "model": "gpt-6.1-sol", "effort": "high"},
+])
+def test_actual_binding_below_minimum_is_rejected_before_run(prepared, monkeypatch, binding):
+    requested = {"tool": "codex", "model": "gpt-6.1-sol", "reasoning_effort": "high"}
+    state, _, source = prepared(binding=requested,
+        minimum={"model": requested["model"], "reasoning_effort": requested["reasoning_effort"]})
+    monkeypatch.setattr(processes, "run", lambda *args, **kwargs: pytest.fail("Rejected calls must not run"))
+    with pytest.raises(ValueError, match="requires"):
+        agent_runs.run_input(state, "demo", source, binding_override=binding)
+    assert agent_runs.runs(state, "demo") == []
 
 
 @pytest.fixture

@@ -71,7 +71,7 @@ ergora composition run-input my-project ./report-input --mode text-only --backen
 ergora composition inspect-run my-project RUN_ID > ./report-observation.json
 ```
 
-The full Skill is self-contained and can be inlined in text-only mode, without MCP attachments or new tool grants. `max-prompt-bytes` limits the complete UTF-8 prompt; it does not promise model capacity. Codex is a replaceable binding. Use the same `check-input/run-input` flow to select another backend supporting this role/mode and record the reason; model names are backend-specific. Checking admission does not call the model or establish installation/authentication. There is no automatic failure fallback or implicit resend. Retain failed/unknown/timed-out original runs and reconcile through their original owner.
+The full Skill is self-contained and can be inlined in text-only mode, without MCP attachments or new tool grants. `max-prompt-bytes` limits the complete UTF-8 prompt; it does not promise model capacity. The bundled author requires Codex `gpt-6.1-sol` with at least `high` reasoning effort; overrides must satisfy that definition minimum. Other-backend examples apply to custom definitions without this minimum and still require actual role/mode admission. Supply the operator's existing provider configuration through `--codex-config` when needed; templates store no provider credentials. Checking admission does not call the model or establish installation/authentication. There is no automatic failure fallback or implicit resend. Retain failed/unknown/timed-out original runs and reconcile through their original owner.
 
 <a id="查看原结果并导出阅读视图"></a>
 ## Inspect the original result and export reading views

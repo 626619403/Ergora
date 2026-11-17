@@ -48,7 +48,7 @@
         "kind": "agent",
         "id": "ergora-workflow-retrospective-author",
         "version": "1.0.0",
-        "digest": "fd67007ca156dc4cda9d6c89a2b0fb803ac972100def8963568cdbc55a103d05"
+        "digest": "46d98efceb80672ea4003a122ade855fe33c0f42b3369b027f314076d56ad321"
       },
       "role": "implementer",
       "depends_on": [],
@@ -73,7 +73,7 @@
         "kind": "agent",
         "id": "ergora-workflow-retrospective-reviewer",
         "version": "1.0.0",
-        "digest": "d73bbdfc08c218dcbd0779faa484acae7b33cc62b76b67f71e83f6a5d1750780"
+        "digest": "47b8ec48297016b8c9664d567f956fdfb16288cf30b7cbcb1b2f8b42a34dcdd0"
       },
       "role": "reviewer",
       "depends_on": [

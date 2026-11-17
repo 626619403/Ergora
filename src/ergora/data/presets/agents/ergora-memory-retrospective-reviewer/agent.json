@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "ergora-memory-retrospective-reviewer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Source-bound memory retrospective reviewer.",
   "roles": [
     "reviewer"
@@ -11,14 +11,20 @@
     "retrospective-analysis"
   ],
   "backend": {
-    "tool": "claude-code"
+    "tool": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
   },
   "resources": [
     {
       "id": "ergora-memory-retrospective-reviewer-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "5fef0693958ea6495f52c8b7c824d3621f23b2966153446816ae38a6d9c39441"
+      "sha256": "c5f81d8e39e8139a0cf096bf5a30a11982199e9303837cd0dc18d0687882dde5"
     }
-  ]
+  ],
+  "invocation_minimum": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  }
 }

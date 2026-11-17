@@ -42,7 +42,7 @@
         "kind": "agent",
         "id": "ergora-structure-reviewer",
         "version": "1.0.0",
-        "digest": "97587043a4e802819978e7263d000162aa7c33ddd998f6e2a069a32044ee4e5c"
+        "digest": "7d97a7a6406452917080fdde3550406b08562fddebdbe6b1f00a7fbbe23b0d7f"
       },
       "role": "reviewer",
       "depends_on": [],

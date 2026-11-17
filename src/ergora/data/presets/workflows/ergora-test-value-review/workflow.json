@@ -42,7 +42,7 @@
         "kind": "agent",
         "id": "ergora-test-value-reviewer",
         "version": "1.0.0",
-        "digest": "41a2a42c9276fa2eb2ab128fd7a294c3e7eb3d1f4dd3578862f7d9da5bf10f27"
+        "digest": "a05f1281098015ab110653d29908724388667fd9cff50a62c6e2ff5fa6fef8aa"
       },
       "role": "reviewer",
       "depends_on": [],

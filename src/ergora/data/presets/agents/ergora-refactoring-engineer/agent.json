@@ -12,7 +12,9 @@
     "behavior-preservation"
   ],
   "backend": {
-    "tool": "codex"
+    "tool": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "xhigh"
   },
   "resources": [
     {
@@ -27,5 +29,9 @@
       "path": "skills/ergora-refactoring-engineer",
       "digest": "a1f1a4526f37aba0185d747a73730571bf8ed90de0144a4822b6813653bbdaef"
     }
-  ]
+  ],
+  "invocation_minimum": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "xhigh"
+  }
 }

@@ -11,7 +11,9 @@
     "compatibility-fallbacks"
   ],
   "backend": {
-    "tool": "codex"
+    "tool": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "xhigh"
   },
   "resources": [
     {
@@ -26,5 +28,9 @@
       "path": "skills/ergora-client-implementer",
       "digest": "ad17488baeaa212e57f97684d10298d81591170e0d00d7ac5243d7d51a7c8da4"
     }
-  ]
+  ],
+  "invocation_minimum": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "xhigh"
+  }
 }

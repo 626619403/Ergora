@@ -1,2 +1,3 @@
-Validate the integrated server/client behavior against the fixed compatibility contract.
-Read all inherited resources and complete authenticated outputs from both predecessor units. Work within the original integration-tests unit. Keep trusted scoring, CI, production deployment and commits with their existing owners.
+Validate the dependency-integrated candidate against the original approved compatibility contract.
+Read the complete inherited material, actual caller map, migration plan and predecessor evidence. Exercise the relevant old/new interfaces and persisted formats, failure cases and rollback trigger using isolated fixtures. Change only paths assigned to this work unit.
+Preserve original failures and distinguish executed checks from proposed checks. Explain the oracle and cost of any new regression test; keep checks that protect distinct behavior. This implementation validation unit does not replace independent final review, trusted verification or owner approval.

@@ -42,7 +42,7 @@
         "kind": "workflow",
         "id": "ergora-structure-review",
         "version": "1.0.0",
-        "digest": "996c55d50e307943ae5dc77b2c929baea0d996a924fa66ab8c86a41e813c40c9"
+        "digest": "8e7e13f715f22d442f85cb2207c66ae495a5e1c25485f2195c6d7c2fdc1c6363"
       },
       "depends_on": [],
       "inputs": {
@@ -57,7 +57,7 @@
         "kind": "workflow",
         "id": "ergora-correctness-review",
         "version": "1.0.0",
-        "digest": "bbc2d7bb8c0ecf420bedee847763aaaf488df7b90139904eb00057b78406aa5f"
+        "digest": "d5ebce97322239528b1ad1202960c08ab77883f78a30f5a759959893a29bd942"
       },
       "depends_on": [],
       "inputs": {
@@ -72,7 +72,7 @@
         "kind": "workflow",
         "id": "ergora-test-value-review",
         "version": "1.0.0",
-        "digest": "83e1cfd354d05434c4e55f728ba7c01e1dfdaf12f8461ac05c89cbb4c0855254"
+        "digest": "5ec94bb0419a18dde361dd2730ac029341357dd4399af91e2291168de30ed008"
       },
       "depends_on": [],
       "inputs": {

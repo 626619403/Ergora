@@ -1,31 +1,38 @@
 {
   "schema_version": 1,
   "id": "ergora-kernel-designer",
-  "version": "1.0.0",
-  "description": "Design a kernel candidate from the supplied workload contract and performance analysis.",
+  "version": "2.0.0",
+  "description": "Design a kernel candidate together with its numerical, layout, wrapper and end-to-end integration contract.",
   "roles": [
     "kernel-tuner"
   ],
   "specialties": [
-    "cuda",
-    "triton",
-    "kernel-candidates"
+    "cuda-triton-candidates",
+    "precision-and-layout",
+    "fusion-and-capture",
+    "wrapper-and-training-integration"
   ],
   "backend": {
-    "tool": "codex"
+    "tool": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "max"
   },
   "resources": [
     {
       "id": "ergora-kernel-designer-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "9e3b3cf5bfa5de975ee88ae7603dca4a5966d2abf3326a84b768ef190a1ece6d"
+      "sha256": "5094cab5bdc33c1818b49fe03712ff6937d4c6704101844fc479d08f73afeece"
     },
     {
       "id": "ergora-kernel-designer-skill",
       "kind": "skill",
       "path": "skills/ergora-kernel-designer",
-      "digest": "7e67344d5e7d87140ada7fb9af64a5d145d0d8cbb0c7f97b0fb1d6608660aa18"
+      "digest": "42ea1bbaeaa62fcb3189ba605ebb5199c1960415ae445df9b84e690f1c55cbd8"
     }
-  ]
+  ],
+  "invocation_minimum": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "max"
+  }
 }

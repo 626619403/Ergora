@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 import re
 
-from . import agent_backends, agents, bindings, contracts, issue_snapshots, issue_sources, projects, reference, reference_budget, task_context, task_design, workflow_definitions
+from . import agent_backends, agents, bindings, components, contracts, issue_snapshots, issue_sources, projects, reference, reference_budget, task_context, task_design, workflow_definitions
 from .reference_creation_process import task_preparation
 from .asset_trees import inventory_tree
 from .state import State
@@ -78,6 +78,7 @@ def _member(leaf: dict, mode: str, override: dict | None) -> dict:
     """Freeze the actual backend and policy for one formally selected leaf."""
     binding = dict(override['binding'] if override else leaf['backend_request'])
     agents.validate_binding(leaf['role'], binding, formal=True)
+    components.validate_agent_minimum(binding, leaf.get('invocation_minimum'))
     backend = agent_backends.for_binding(binding)
     backend.check_mode(mode)
     return {'role': leaf['role'], 'binding': binding, 'requested_binding': leaf['backend_request'],

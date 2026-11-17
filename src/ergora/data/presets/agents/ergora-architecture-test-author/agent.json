@@ -11,7 +11,9 @@
     "validation"
   ],
   "backend": {
-    "tool": "codex"
+    "tool": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "xhigh"
   },
   "resources": [
     {
@@ -26,5 +28,9 @@
       "path": "skills/ergora-architecture-test-author",
       "digest": "12c22f51091413e164065e8884cb130cfe6ac54f6d2c59d25e13f9e3d25dcc96"
     }
-  ]
+  ],
+  "invocation_minimum": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "xhigh"
+  }
 }

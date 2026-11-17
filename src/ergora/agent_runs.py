@@ -9,7 +9,7 @@ import stat
 import time
 import uuid
 
-from . import agent_backends, agent_definitions, agents, contracts, projects, task_mcp, workflow_definitions
+from . import agent_backends, agent_definitions, agents, components, contracts, projects, task_mcp, workflow_definitions
 from .asset_trees import is_link
 from .bindings import validate_binding
 from .definition_bundles import parse_json
@@ -101,10 +101,12 @@ def _admission(state, project_id, prepared, *, backend, model, reason, mode, cod
     if binding_override is not None and (backend is not None or model is not None):
         raise ValueError("Choose a complete binding override or backend/model fields")
     binding = dict(binding_override) if binding_override is not None else (
-        {"tool": backend} if backend else dict(leaf["backend_request"]))
+        {"tool": backend} if backend and backend != leaf["backend_request"]["tool"]
+        else dict(leaf["backend_request"]))
     if model is not None:
         binding["model"] = model
     agents.validate_binding(leaf["role"], binding, formal=True)
+    components.validate_agent_minimum(binding, definition["definition"].get("invocation_minimum"))
     adapter = agent_backends.for_binding(binding, {"codex": {"config": codex_config}})
     adapter.check_invocation()
     adapter.check_mode(mode)
@@ -401,6 +403,9 @@ def inspect_run(state: State, project_id: str, run_id: str, *, max_result_bytes:
         if (prepared["digest"] != document.get("input_digest") or prepared["request"] != document.get("input_request")
                 or prepared["request"]["prompt_sha256"] != document.get("prompt_sha256")):
             raise ValueError("Saved input differs from the original run input identity")
+        leaf = next(item for item in prepared['composition']['instances']
+                    if item['path'] == prepared['request']['instance'])
+        components.validate_agent_minimum(document.get('binding'), leaf.get('invocation_minimum'))
         observed["input"] = {"available": True, **prepared}
     except (OSError, ValueError, RecursionError) as error:
         observed["input"]["error"] = str(error)

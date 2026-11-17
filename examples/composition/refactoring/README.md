@@ -8,7 +8,7 @@ This example requires a registered Linux/WSL2 project with the original executio
 
    ```bash
    ergora composition install-preset refactoring
-   ergora composition prepare-manifest ergora-refactoring-template 1.0.0 \
+   ergora composition prepare-manifest ergora-refactoring-template 1.1.0 \
      --grant examples/composition/refactoring/grant.json \
      --directory ./refactoring-manifest
    ```
@@ -23,6 +23,6 @@ This example requires a registered Linux/WSL2 project with the original executio
 
 The two writers and three reviewers are defaults. Use the existing definition revision and exact-reference mechanisms to change their number, expertise or dependencies, and update original work-unit assignments accordingly. One writer must cover each original unit; preparation still selects one inspector and one planner. Original task/profile and material limits apply.
 
-Backend choices are per instance through `backend_overrides`. Reviewers default to Claude Code, writers and preparation to Codex. If Claude is unavailable, explicitly choose a supported Codex binding for each affected review instance and record its reason plus `diversity.reason` under `prefer-distinct`. `require-distinct` continues to reject same-backend review. The fallback preserves independent sessions and candidate evidence; it does not constitute an actual two-backend validation.
+All specialists select Codex gpt-6.1-sol: preparation/planning max, refactoring xhigh, compatibility validation and final review high. `backend_overrides` supplies complete bindings satisfying those minimums; the example also selects current-container for writers. Same-backend review retains separate sessions and the declared `diversity.reason`; `require-distinct` rejects it. Actual provider configuration and environment credential references come from the operator's inference configuration, outside the template.
 
-The existing three preset entries, their immutable versions and in-flight tasks remain unchanged. Roll back a new task's selection by choosing the previous exact preset/root/manifest and preparing a new task; an already started task continues through its original identity.
+The parent includes repository conventions, real caller and test-seam guidance through its complete inherited Skill. Recover a started task through its original task/run identity.

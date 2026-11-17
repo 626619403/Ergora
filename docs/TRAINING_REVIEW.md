@@ -13,9 +13,9 @@
 
 两个根还包含 `root/general/structure/review`、`root/general/correctness/review` 和 `root/general/test-value/review`。每个实例继承自己的结构祖先材料和权限上限；领域专家的 Skill 归它自己的 Agent 定义。需要改变专长时导出、派生新版本，再从新根引用，沿 [定义手册](WORKFLOW_DEFINITIONS.md)操作；原版本和在途任务保留。
 
-默认后端为 Claude Code，可按 [后端手册](AGENT_BACKENDS.md)逐实例选择当前支持的后端。执行者／审查者优先使用不同后端；同后端回退记录原因、独立会话与覆盖，不能以多个模型同意替代可信检查。
+默认使用 Codex gpt-6.1-sol high，逐实例覆盖须满足[定义下限](AGENT_DEFINITIONS.md)。执行者／审查者优先使用不同后端；同后端回退记录原因、独立会话与覆盖，不能以多个模型同意替代可信检查。
 
-这两个 preset 当前选择同 ID 的 **1.0.1** 根。根的共享 [审查后端 Skill](../src/ergora/data/presets/workflows/ergora-pretraining-review-v1.0.1/skills/ergora-review-backends/SKILL.md)由四叶继承，区分 Ergora 结构化调用、Codex／Claude Code 原生命令、公开插件／自建 CI 和厂商托管审查；[官方来源核对](research/2026-11-15-review-backend-guidance.md)记录截至 2026-11-15 的安装／认证、GitHub／GitLab 可用范围与结果副作用。选择后端或安装 preset 不会自动安装 CLI、启用订阅服务或发表 PR／MR 意见。旧 1.0.0 根、独立通用审查根和已冻结 manifest 保留原身份；独立旧根不因 catalog 更新获得新资料。
+这两个 preset 当前选择同 ID 的 **1.0.1** 根。根的共享 [审查后端 Skill](../src/ergora/data/presets/workflows/ergora-pretraining-review/skills/ergora-review-backends/SKILL.md)由四叶继承，区分 Ergora 结构化调用、Codex／Claude Code 原生命令、公开插件／自建 CI 和厂商托管审查；[官方来源核对](research/2026-11-15-review-backend-guidance.md)记录截至 2026-11-15 的安装／认证、GitHub／GitLab 可用范围与结果副作用。选择后端或安装 preset 不会自动安装 CLI、启用订阅服务或发表 PR／MR 意见。旧 1.0.0 根、独立通用审查根和已冻结 manifest 保留原身份；独立旧根不因 catalog 更新获得新资料。
 
 ## 准备完整本地输入
 

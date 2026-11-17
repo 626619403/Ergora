@@ -11,7 +11,9 @@
     "module-ownership"
   ],
   "backend": {
-    "tool": "claude-code"
+    "tool": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
   },
   "resources": [
     {
@@ -26,5 +28,9 @@
       "path": "skills/ergora-structure-reviewer",
       "digest": "d973c911f2a49a29e517425f14a80041d6d9e067e0bdb8b38be708341ceb7de7"
     }
-  ]
+  ],
+  "invocation_minimum": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  }
 }

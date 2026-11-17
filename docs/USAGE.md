@@ -686,27 +686,16 @@ In “Formal tasks → Preview and create,” select the native six stages and r
 
 ```bash
 ergora composition install-preset refactoring
-ergora composition prepare-manifest ergora-refactoring-template 1.0.0 \
+ergora composition prepare-manifest ergora-refactoring-template 1.1.0 \
   --grant examples/composition/refactoring/grant.json \
   --directory ./refactoring-manifest
 ```
 
 The example is in the repository's [refactoring directory](../examples/composition/refactoring/README.md). The wheel contains all Agents and subtemplates; examples are unnecessary when using your own grant. Copy [task.example.json](../examples/composition/refactoring/task.example.json) into a task definition and enter the real issue, task ID, baseline, manifest path/digest and actual project modules/callers. Also check the complete material scope, behavior invariants, migration and isolated rollback checks. Then follow the original `task prepare → preview → create` sequence with two-digest confirmation, followed by start/plan approval. Valid JSON or successful prepare proves only that the contract can be assembled. Actual checks and review evidence support behavior preservation.
 
-By default, preparation and writers use Codex, and reviewers use Claude Code. Each instance can use the original `backend_overrides` to select another actually supported backend. When Claude is unavailable, fill in per-leaf overrides and `diversity.reason` according to the [diversity policy](#为正式任务冻结审查组合). Independent sessions on the same backend retain the actual fallback reason. The compatibility executor has its own writable work unit; its checks do not replace the final three independent reviewers. If changing the default division of work, revise the exact subtemplates and original units mapping together. The original task/profile and material limits still apply.
+All bundled specialists use Codex gpt-6.1-sol: planning uses max, refactoring across files uses xhigh, and compatibility validation and independent review use high. Complete `backend_overrides` must retain model/reasoning_effort values satisfying the definition minimum; writers also explicitly select current-container. Same-backend selection under `prefer-distinct` requires `diversity.reason`; `require-distinct` continues to reject it. The compatibility work unit does not replace final independent review.
 
-The new recipe does not rewrite old versions or in-flight tasks. To revert the selection for a new task, reselect the old exact bundle/manifest and prepare it. Observe, cancel or reconcile an already started task using its original task/run.
-
-To give every role guidance on repository conventions, module dependencies and real testing seams, explicitly select `refactoring-quality`:
-
-```bash
-ergora composition install-preset refactoring-quality
-ergora composition prepare-manifest ergora-refactoring-template 1.1.0 \
-  --grant examples/composition/refactoring/grant.json \
-  --directory ./refactoring-quality-manifest
-```
-
-It adds only the standard [`ergora-codebase-quality`](../src/ergora/data/presets/workflows/ergora-refactoring-template-v1.1/skills/ergora-codebase-quality/SKILL.md) to the parent template; all descendants inherit the complete Skill bundle. The atomic workflows, instance paths, permissions, budget, backends and task example follow the configuration above. Enter the new manifest path/digest into your new task. Installation does not upgrade old 1.0.0 or frozen tasks. Roles follow the target repository's applicable conventions and configuration rather than applying another training framework's formatting rules.
+The parent directly includes [`ergora-codebase-quality`](../src/ergora/data/presets/workflows/ergora-refactoring-template/skills/ergora-codebase-quality/SKILL.md). All descendants inherit complete guidance on the target repository conventions, actual callers and testing seams. Original task/budget/candidate identities and recovery owners remain; installation and static preview do not approve a business migration.
 
 The definitions and compositions for the refactoring implementer, structure reviewer, correctness and test-value reviewers, and compatibility validator are maintained in this repository. Engineering guidance draws on [documented Skills and upstream research](research/2026-11-14-local-engineering-skills.md), retaining each source's license. They are independently versionable specialty configurations; Codex/Claude Code are the actual runtime backends. Selecting a backend does not import all of that tool's private prompts, Skills or scheduling framework. Check backend capabilities and complete material reading separately according to the [Agent guide](AGENT_BACKENDS.md).
 
@@ -714,7 +703,7 @@ To use the Skill only in a standalone project invocation, run the following comm
 
 ```bash
 ergora skill import my-project \
-  src/ergora/data/presets/workflows/ergora-refactoring-template-v1.1/skills/ergora-codebase-quality
+  src/ergora/data/presets/workflows/ergora-refactoring-template/skills/ergora-codebase-quality
 ```
 
 Standalone `agent run --skill ergora-codebase-quality` consumes the project's currently adopted version. This and the template's fixed Skill are two explicit choices. The first same-name import becomes the initial baseline; subsequent candidates still require [evaluation and adoption](INTEGRATIONS.md#skill-候选评价与采用). Importing into a project or editing a host Skill does not change a frozen template. Changing materials for a formal task requires selecting a new version and manifest.
@@ -982,7 +971,7 @@ Both “Tool bindings” and “Retrospective improvement” offer “Invoke fro
 
 After confirming, enter the timeout and explicitly submit one call. Fields are locked during execution; the page does not automatically resend or continue it. Closing a window, changing pages or a network error does not mean the original call stopped. Reopen the window and explicitly “Read original invocation records”, matching the latest 100 original records by input digest, backend and start time. The result's status is the original run status: HTTP success can still have stored failed/timed_out. Use the result file and SHA for the complete result; diagnostics have a bounded display.
 
-When opened from “Retrospective improvement”, a successful original record can “Use in original-result inspection”, copying the saved run-snapshot directory, input digest, result path and SHA. Check its direction, then explicitly inspect and export. Prepare the subsequent reviewer input separately from the complete checked JSON below; it is not passed automatically. Prefer different author and reviewer backends and record a reason for fallback. This entry supports only text-only read-only leaves. Tool restrictions provide no OS isolation or authorization for formal tasks, evaluation or adoption. A general input's task body has no common project field; selecting a project assigns this run's ownership. Retrospective inspection separately checks its original project declaration.
+When opened from “Retrospective improvement”, a successful original record can “Use in original-result inspection”, copying the saved run-snapshot directory, input digest, result path and SHA. Check its direction, then explicitly inspect and export. Prepare the subsequent reviewer input separately from the complete checked JSON below; it is not passed automatically. For custom definitions without a model minimum, prefer different author and reviewer backends and record a reason for fallback; bundled leaves retain their declared minimum. This entry supports only text-only read-only leaves. Tool restrictions provide no OS isolation or authorization for formal tasks, evaluation or adoption. A general input's task body has no common project field; selecting a project assigns this run's ownership. Retrospective inspection separately checks its original project declaration.
 
 <a id="在页面检查结果并导出完整候选"></a>
 ### Inspect results and export complete candidates in the page
@@ -1002,7 +991,7 @@ Start with a registered project, verifiable handoff package and baseline Skill a
 ergora composition install-preset retrospective
 ```
 
-The new composition root is `ergora-skill-retrospective 1.0.0`, with read-only author `root/propose` and subsequent reviewer `root/review`, defaulting to Codex and Claude Code respectively. Prepare this root's manifest directory through the [complete manifest steps](WORKFLOW_DEFINITIONS.md#固定当前预览到持久控制目录). The grant must explicitly permit reading `workspace`/`definitions`, empty write/network and shell=false, and provide the root's required limits. Import, manifest creation and the preparation below send no model requests.
+The new composition root is `ergora-skill-retrospective 1.0.0`, with read-only author `root/propose` and subsequent reviewer `root/review`, both using Codex gpt-6.1-sol high. Prepare this root's manifest directory through the [complete manifest steps](WORKFLOW_DEFINITIONS.md#固定当前预览到持久控制目录). The grant must explicitly permit reading `workspace`/`definitions`, empty write/network and shell=false, and provide the root's required limits. Import, manifest creation and the preparation below send no model requests.
 
 ```bash
 ergora retrospective prepare my-project ./task-handoff.zip --selection ./selection.json --packet-sha256 PACKET_SHA --skill SKILL_NAME --digest BASELINE_DIGEST --head-revision HEAD_REVISION --objective ./objective.txt --manifest ./retrospective-manifest --instance root/propose --directory ./retrospective-author-input --max-prompt-bytes 500000
@@ -1016,12 +1005,12 @@ The invocation receipt supplies the original `result` file path and `result_sha2
 ```bash
 ergora retrospective check ./retrospective-author-input AUTHOR_RESULT --result-sha256 AUTHOR_RESULT_SHA > ./retrospective-checked.json
 ergora composition prepare-from-manifest ./retrospective-manifest root/review --task ./retrospective-checked.json --directory ./retrospective-review-input --max-prompt-bytes 500000
-ergora composition run-input my-project ./retrospective-review-input --backend claude-code --mode text-only --timeout 600
+ergora composition run-input my-project ./retrospective-review-input --codex-config ./inference.toml --mode text-only --timeout 600
 ```
 
 The author's ordinary `artifacts.response` must be JSON matching the frozen proposal_schema, including the corresponding provenance SHA, baseline digest/revision, exact selected-material references, negative results, costs/uncertainties and complete standard Skill-file suggestions. With insufficient evidence, it can return `candidate:null`. Inspection returns the complete original request and Agent result, checking portable paths, metadata, directory-content identity and references. It operates offline without creating State, and remains possible if the source package or original Skill is later lost. `quality_evaluated:false`, `adoption_authorized:false` and `origin_authenticated:false` remain explicit: structural linkage is not quality evidence.
 
-check reads at most 8 MiB of the original result, allowing nested JSON escaping of complete files in the response string. The reviewer explicitly receives the complete checked JSON through the original composition preparation command above. This preset's review leaf returns a textual review; do not call retrospective check on it. The complete subsequent prompt must independently pass the original capacity gate. Offline inspection of a large result does not mean it fits any subsequent prompt. Static depends_on does not execute ports automatically. Choose other supported backends through the original `composition run-input`, preferably separating author and reviewer. If Claude is unavailable, explicitly select Codex and record `--backend-reason`; same-backend fallback is not different-backend success. If inspection or a model call fails, retain the original input, run and reply before proceeding, without automatic resubmission. Original Agent records remain authoritative for invocation facts.
+check reads at most 8 MiB of the original result, allowing nested JSON escaping of complete files in the response string. The reviewer explicitly receives the complete checked JSON through the original composition preparation command above. This preset's review leaf returns a textual review; do not call retrospective check on it. The complete subsequent prompt must independently pass the original capacity gate. Offline inspection of a large result does not mean it fits any subsequent prompt. Static depends_on does not execute ports automatically. Bundled authors and reviewers use separate Codex sessions satisfying the definition minimum. Supply trusted provider configuration and environment credential references in the example inference.toml. Other backend examples apply to custom definitions without this minimum and still require actual admission; same-backend sessions do not establish different-backend validation. If inspection or a model call fails, retain the original input, run and reply before proceeding, without automatic resubmission. Original Agent records remain authoritative for invocation facts.
 
 With a nonnull candidate and its full content reviewed, take `candidate_digest` from check and explicitly export to a new directory whose final name equals the Skill name:
 
@@ -1048,7 +1037,7 @@ Fill the placeholders with the exact suite digest/run IDs returned by register a
 <a id="生成来源绑定的记忆复盘候选"></a>
 ### Generate a provenance-bound memory retrospective candidate
 
-Prepare memory suggestions using the same project's complete handoff package and selection. Install `memory-retrospective`, then use the [manifest steps](WORKFLOW_DEFINITIONS.md#固定当前预览到持久控制目录) to pin root `ergora-memory-retrospective 1.0.0` into `memory-retrospective-manifest`. Its `root/propose` and `root/review` default to Codex and Claude respectively. Permissions and explicit invocation follow the preceding steps; all leaves read all ancestor materials.
+Prepare memory suggestions using the same project's complete handoff package and selection. Install `memory-retrospective`, then use the [manifest steps](WORKFLOW_DEFINITIONS.md#固定当前预览到持久控制目录) to pin root `ergora-memory-retrospective 1.0.1` into `memory-retrospective-manifest`. Its `root/propose` and `root/review` both default to Codex gpt-6.1-sol high. Permissions and explicit invocation follow the preceding steps; all leaves read all ancestor materials.
 
 ```bash
 ergora composition install-preset memory-retrospective
@@ -1064,10 +1053,10 @@ After obtaining the author's original `result` and `result_sha256` receipt, insp
 ```bash
 ergora retrospective check-memory ./memory-author-input AUTHOR_RESULT --result-sha256 AUTHOR_RESULT_SHA > ./memory-checked.json
 ergora composition prepare-from-manifest ./memory-retrospective-manifest root/review --task ./memory-checked.json --directory ./memory-review-input --max-prompt-bytes 500000
-ergora composition run-input my-project ./memory-review-input --backend claude-code --mode text-only --timeout 600
+ergora composition run-input my-project ./memory-review-input --codex-config ./inference.toml --mode text-only --timeout 600
 ```
 
-The author supplies a complete candidate body (at most 100000 characters), hypothesis, applicability and validation plan under the frozen schema, or returns null. Original failures, unknown costs and exact material references for each observation remain. The model cannot choose provenance, expiry or revision. check's `save` contains only the complete body usable by the original memory interface, fixed provenance derived from package SHA and selection SHA, and original ID/expected_revision. candidate_digest binds complete save content and baseline identity. Offline inspection creates no State, queries no live memory and authenticates no source author; it establishes neither current validity nor quality improvement. The original result limit is 8 MiB, and the complete review prompt has a separate capacity check. If a backend is unavailable, use the explicit fallback and reason from the preceding section.
+The author supplies a complete candidate body (at most 100000 characters), hypothesis, applicability and validation plan under the frozen schema, or returns null. Original failures, unknown costs and exact material references for each observation remain. The model cannot choose provenance, expiry or revision. check's `save` contains only the complete body usable by the original memory interface, fixed provenance derived from package SHA and selection SHA, and original ID/expected_revision. candidate_digest binds complete save content and baseline identity. Offline inspection creates no State, queries no live memory and authenticates no source author; it establishes neither current validity nor quality improvement. The original result limit is 8 MiB, and the complete review prompt has a separate capacity check. If the backend is unavailable, retain the original invocation facts; any explicit override must still satisfy the selected definition minimum.
 
 After reviewing a nonnull candidate's original evidence and validation plan, explicitly export:
 
@@ -1367,7 +1356,7 @@ ergora composition run-input my-project ./workflow-author-input --backend codex 
 ```bash
 ergora retrospective check-workflow ./workflow-author-input AUTHOR_RESULT --result-sha256 AUTHOR_RESULT_SHA > ./workflow-checked.json
 ergora composition prepare-from-manifest ./workflow-retrospective-manifest root/review --task ./workflow-checked.json --directory ./workflow-review-input --max-prompt-bytes 1000000
-ergora composition run-input my-project ./workflow-review-input --backend claude-code --mode text-only --timeout 600
+ergora composition run-input my-project ./workflow-review-input --codex-config ./inference.toml --mode text-only --timeout 600
 ```
 
 Author and reviewer read complete ancestor materials and predecessors. Backend selection/failure preservation follows Skill candidates above; static dependencies do not execute ports automatically. Inspection permits `candidate:null`. Otherwise it checks original preview, complete resources, graph and original grant, writing only in an automatically cleaned private temporary directory without reading/writing active State. The first version permits only root description, NUL-free UTF-8 content in already-declared resources and extra dependency edges. It preserves original nodes/references/ports/permissions/review requirements and existing dependencies. Change those structures through original manual version revisions.

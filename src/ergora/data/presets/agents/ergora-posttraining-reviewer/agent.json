@@ -12,7 +12,9 @@
     "policy-version-lifecycle"
   ],
   "backend": {
-    "tool": "claude-code"
+    "tool": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
   },
   "resources": [
     {
@@ -27,5 +29,9 @@
       "path": "skills/ergora-posttraining-review",
       "digest": "d2f29cc38fe54d63a9e95bcdc31e0a6a566e7f8839c7e8cb888113b5c1805f0f"
     }
-  ]
+  ],
+  "invocation_minimum": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  }
 }
