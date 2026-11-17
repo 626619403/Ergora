@@ -95,6 +95,7 @@
       "tests/test_state_backups.py",
       "tests/test_training.py",
       "tests/test_training_baseline.py",
+      "tests/test_training_search.py",
       "tests/test_training_evidence.py",
       "tests/test_task_evidence_index.py",
       "tests/test_task_submission_locks.py"

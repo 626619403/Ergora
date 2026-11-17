@@ -584,6 +584,17 @@ def parser() -> argparse.ArgumentParser:
     preview.add_argument("--history-revision", help="Observation revision required after the first history page")
     experiments = commands.add_parser("training", help="Observe native experiments; explicitly submit, cancel or reconcile original operations")
     operations = experiments.add_subparsers(dest="operation", required=True)
+    for name in ("search-preview", "search-prepare"):
+        search = operations.add_parser(name, help="Preview or prepare finite configuration candidates; never execute training")
+        search.add_argument("project")
+        search.add_argument("--request", type=Path, required=True)
+        if name == "search-prepare":
+            search.add_argument("--revision", type=int, required=True)
+            search.add_argument("--preview-sha256", required=True)
+            search.add_argument("--directory", type=Path, required=True)
+    reading = operations.add_parser("search-read", help="Verify a saved search preparation offline; never query or execute training")
+    reading.add_argument("directory", type=Path)
+    reading.add_argument("--sha256", help="Pin the saved search.json raw SHA256")
     rounds = operations.add_parser("rounds-create", help="Freeze selected original experiment observations in a new advisory index")
     rounds.add_argument("project")
     rounds.add_argument("--definition", type=Path, required=True)
@@ -1314,7 +1325,19 @@ def main(argv: list[str] | None = None) -> int:
             if (original_operation is not None or registration_digest is not None
                     or (args.operation != "fence-start" and hasattr(args, "original_registration") and args.confirm)):
                 recovery = {"operation_id": original_operation, "intent_sha256": registration_digest, "confirm": args.confirm}
-            if args.operation in ("baseline-preview", "init-baseline", "runner-preview", "register-runner", "experiment-preview", "prepare", "rounds-create", "cycle-create"):
+            if args.operation in ("search-preview", "search-prepare", "search-read"):
+                from . import training_search
+
+                if args.operation == "search-read":
+                    output = training_search.read(args.directory, sha256=args.sha256)
+                else:
+                    document = training_search.read_request(args.request)
+                    if args.operation == "search-preview":
+                        output = training_search.preview(State(args.home), args.project, document)
+                    else:
+                        output = training_search.prepare(State(args.home), args.project, document, args.revision,
+                                                         args.preview_sha256, args.directory)
+            elif args.operation in ("baseline-preview", "init-baseline", "runner-preview", "register-runner", "experiment-preview", "prepare", "rounds-create", "cycle-create"):
                 document_path = (args.definition if args.operation in ("rounds-create", "cycle-create") else
                                  args.experiment if args.operation in ("experiment-preview", "prepare") else args.document)
                 with document_path.open("rb") as stream:
