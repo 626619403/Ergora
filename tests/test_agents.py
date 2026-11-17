@@ -663,3 +663,151 @@ def test_session_turn_capacity_keeps_every_admitted_chain_readable_and_existing_
     assert runs.continue_session(state, 'demo', root, previous, 'existing final',
                                   expected_revision=1, intent_id='existing-final') == final
     database.close()
+
+
+def test_published_final_requires_successful_sync_and_stable_readback_before_terminal_observation(native_session_case, monkeypatch):
+    state, repo, config, runs = native_session_case
+    marker = repo.parent / 'final-sync-failure.json'
+    worker = '''import json
+from pathlib import Path
+from ergora import agent_runs
+original = agent_runs._sync_directory_chain
+def fail_final(directory):
+    if directory.name == 'final':
+        Path(%r).write_text(json.dumps({'visible': True, 'status': json.loads((directory/'record.json').read_bytes())['status']}))
+        raise OSError('fixture post-publication final directory fsync failure')
+    return original(directory)
+agent_runs._sync_directory_chain = fail_final
+agent_runs.session_main()
+''' % str(marker)
+    original_popen = subprocess.Popen
+    original_sync = runs._sync_directory_chain
+    confirmations = []
+    def invoke_worker(argv, *args, **kwargs):
+        if len(argv) > 2 and argv[1] == '-c' and 'session_main' in argv[2]:
+            argv = [*argv[:2], worker, *argv[3:]]
+        return original_popen(argv, *args, **kwargs)
+    def fail_observer(directory):
+        if directory.name == 'final':
+            confirmations.append(str(directory))
+            raise OSError('fixture persistent final directory fsync failure')
+        return original_sync(directory)
+    monkeypatch.setattr(subprocess, 'Popen', invoke_worker)
+    monkeypatch.setattr(runs, '_sync_directory_chain', fail_observer)
+    revision = state.project('demo')['revision']
+    first = runs.run_agent(state, 'demo', 'implementer', 'one actual fake effect', 10,
+                           session_intent='final-publication', expected_revision=revision, codex_config=config)
+    assert json.loads(marker.read_text()) == {'visible': True, 'status': 'succeeded'}
+    assert first['status'] == 'unknown' and first['execution_stopped'] is False and confirmations
+    assert runs.inspect_session(state, 'demo', first['id'])['can_continue'] is False
+    again = runs.run_agent(state, 'demo', 'implementer', 'one actual fake effect', 10,
+                           session_intent='final-publication', expected_revision=revision, codex_config=config)
+    assert again['status'] == 'unknown' and len((repo / 'native-calls.jsonl').read_text().splitlines()) == 1
+    # An explicit observer can finish durability confirmation of the exact
+    # existing packet after storage recovers. It never repeats native work.
+    monkeypatch.setattr(runs, '_sync_directory_chain', original_sync)
+    confirmed = runs.inspect_session(state, 'demo', first['id'])
+    assert confirmed['status'] == 'succeeded' and confirmed['can_continue'] is True
+    assert len((repo / 'native-calls.jsonl').read_text().splitlines()) == 1
+    # Identical bytes on a replaced inode during confirmation are not the held
+    # original object and cannot grant a terminal observation either.
+    def replace_final(directory):
+        original_sync(directory)
+        if directory.name == 'final':
+            path = directory / 'record.json'
+            replacement = directory / 'replacement.json'
+            replacement.write_bytes(path.read_bytes())
+            replacement.replace(path)
+    monkeypatch.setattr(runs, '_sync_directory_chain', replace_final)
+    changed = runs.inspect_session(state, 'demo', first['id'])
+    assert changed['status'] == 'unknown' and changed['can_continue'] is False
+
+
+def test_supervised_cleanup_exception_retains_unknown_and_never_claims_the_owned_subtree_stopped(native_session_case):
+    state, repo, config, _ = native_session_case
+    code = r'''
+import json,os,signal,subprocess,sys
+from pathlib import Path
+from ergora import agent_runs,processes
+from ergora.state import State
+state=State(Path(sys.argv[1]));repo=Path(sys.argv[2]);config=Path(sys.argv[3])
+processes.prepare_supervised() # probe-only outer owner for exact final cleanup
+original=subprocess.Popen
+worker="from ergora import agent_runs,processes\ndef fail():\n raise OSError('fixture original reaper failed before confirmation')\nprocesses._reap_children=fail\nagent_runs.session_main()"
+def inject(argv,*args,**kwargs):
+    if len(argv)>2 and argv[1]=='-c' and 'session_main' in argv[2]:
+        argv=[*argv[:2],worker,*argv[3:]]
+    return original(argv,*args,**kwargs)
+subprocess.Popen=inject
+escaped=None
+try:
+    result=agent_runs.run_agent(state,'demo','implementer','SLEEP actual owned escape',1,
+        session_intent='cleanup-unconfirmed',expected_revision=state.project('demo')['revision'],codex_config=config)
+    escaped=int((repo/'escape-pid').read_text())
+    identity=processes.identity(escaped)
+    assert result['status']=='unknown' and result['execution_stopped'] is False,result
+    assert 'original reaper failed' in result['error']
+    assert agent_runs.inspect_session(state,'demo',result['session']['id'])['can_continue'] is False
+finally:
+    if escaped is not None:
+        try:processes.notify_identity(processes.identity(escaped),signal.SIGKILL)
+        except (FileNotFoundError,ProcessLookupError,ValueError):pass
+        os.waitpid(escaped,0)
+print(json.dumps({'original_cleanup_unconfirmed':True,'owned_escape_observed_live':bool(identity),
+                  'probe_owned_child_reaped':not Path('/proc',str(escaped)).exists()}))
+'''
+    result = subprocess.run([sys.executable, '-c', code, str(state.root), str(repo), str(config)],
+                            capture_output=True, text=True, timeout=15)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert json.loads(result.stdout) == {'original_cleanup_unconfirmed': True, 'owned_escape_observed_live': True,
+                                        'probe_owned_child_reaped': True}
+
+
+def test_complete_encoded_request_is_bounded_before_birth_or_continuation_reservation(native_session_case, monkeypatch):
+    state, repo, config, runs = native_session_case
+    revision = state.project('demo')['revision']
+    prompt = chr(1) * 1_000_000
+    runs._session_prompt(prompt, 10) # public UTF-8 bound is unchanged
+    original_store = runs._store
+    stored = []
+    def capture_store(state, document):
+        stored.append(document['id'])
+        return original_store(state, document)
+    monkeypatch.setattr(runs, '_store', capture_store)
+    with pytest.raises(runs.SessionRejected, match='Complete encoded session packet') as rejected:
+        runs.run_agent(state, 'demo', 'implementer', prompt, 10, session_intent='encoded-birth',
+                       expected_revision=revision, codex_config=config)
+    assert rejected.value.intent_id == 'encoded-birth' and stored == []
+    assert runs.sessions(state, 'demo', intent_id='encoded-birth')['sessions'] == []
+    assert list((state.root / 'runs').glob('*.session-turn')) == [] and not (repo / 'native-calls.jsonl').exists()
+    first = runs.run_agent(state, 'demo', 'implementer', 'valid original parent', 10,
+                           session_intent='encoded-parent', expected_revision=revision, codex_config=config)
+    before = list(stored)
+    with pytest.raises(runs.SessionRejected, match='Complete encoded session packet') as rejected:
+        runs.continue_session(state, 'demo', first['id'], first['id'], prompt,
+                              expected_revision=revision, intent_id='encoded-child', timeout=10)
+    assert rejected.value.intent_id == 'encoded-child' and stored == before
+    observed = runs.inspect_session(state, 'demo', first['id'])
+    assert observed['latest_run'] == first['id'] and observed['can_continue'] is True
+    assert len((repo / 'native-calls.jsonl').read_text().splitlines()) == 1
+
+
+@pytest.mark.parametrize('resource_characters', [1_450_000, 1_700_000])
+def test_frozen_context_encoded_and_aggregate_capacity_are_checked_before_publication(native_session_case, monkeypatch, resource_characters):
+    from ergora import skills
+    state, repo, config, runs = native_session_case
+    skill = repo.parent / 'encoded-context'
+    skill.mkdir()
+    (skill / 'SKILL.md').write_text('---\nname: encoded-context\ndescription: bounded complete context\n---\n' + chr(1) * resource_characters)
+    skills.import_bundle(state, 'demo', skill)
+    published = []
+    publisher = runs.publish_directory
+    def capture(staged, destination):
+        published.append(destination.name)
+        return publisher(staged, destination)
+    monkeypatch.setattr(runs, 'publish_directory', capture)
+    with pytest.raises(runs.SessionRejected, match='exceeds'):
+        runs.run_agent(state, 'demo', 'implementer', 'small legal public prompt', 10, ['encoded-context'],
+                       session_intent='context-capacity', expected_revision=state.project('demo')['revision'], codex_config=config)
+    assert 'context' not in published and runs.runs(state, 'demo') == []
+    assert not (repo / 'native-calls.jsonl').exists()

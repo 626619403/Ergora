@@ -69,6 +69,10 @@ export function agentDialog(data, base, refresh, origin = null) {
   function observed(intent) {
     sessionStorage.setItem(pendingKey, JSON.stringify(pending().filter((item) => item.intent !== intent)));
   }
+  function admissionRejected(error, intent) {
+    const rejection = error.response;
+    return rejection?.admission_rejected === true && rejection.native_effect_started === false && rejection.intent_id === intent;
+  }
   const result = node("div", { "aria-live": "polite" });
   const unresolved = node("div", { "aria-live": "polite" });
   const observationResult = node("div", { "aria-live": "polite" });
@@ -181,21 +185,20 @@ export function agentDialog(data, base, refresh, origin = null) {
     if (persistent) remember({ kind: "start", intent, payload });
     starting = true;
     const rendering = ++resultSequence;
+    const selection = selectionSequence;
     pendingView();
     result.replaceChildren(empty("已提交原调用。可读取项目历史并停止精确轮次；关闭页面不会撤销调用。"));
     try {
       const run = await api(`${base}/agent-runs`, payload);
       observed(intent);
-      if (!active()) return;
+      if (!active() || selection !== selectionSequence) return;
       showRun(result, run, () => rendering === resultSequence);
       if (run.session) await selectSession(run.session.id);
       else result.append(row(button("刷新项目总览", () => refresh(data.project.id))));
     } catch (error) {
-      const rejection = error.response;
-      const rejectedBeforeBirth = persistent && rejection?.admission_rejected === true &&
-        rejection.native_effect_started === false && rejection.intent_id === intent;
+      const rejectedBeforeBirth = persistent && admissionRejected(error, intent);
       if (rejectedBeforeBirth) observed(intent);
-      if (active()) result.replaceChildren(panel(rejectedBeforeBirth ? "会话准入已拒绝" : "调用未获确认", error.message,
+      if (active() && selection === selectionSequence) result.replaceChildren(panel(rejectedBeforeBirth ? "会话准入已拒绝" : "调用未获确认", error.message,
         rejectedBeforeBirth ? "原 owner 已明确确认此 intent 未出生、未开始 native effect。可修改配置后明确新建会话。" :
           persistent ? "原请求仍保留。先观察原操作；不会自动重发。" : "单次调用的回复未确认，请从最近工具调用核对原记录；没有自动重发。"));
     } finally {
@@ -289,8 +292,14 @@ export function agentDialog(data, base, refresh, origin = null) {
         kind === "stop" ? "stop_requested、notification 和 run 中的停止事实分别核对；请求返回不等于清理完成。" : "沿原会话读取本轮结果。", pre(response),
         row(button("读取本轮后的会话", () => selectSession(id, 0, reading)))));
     } catch (error) {
-      if (active() && current()) target.replaceChildren(panel("提交未获确认", error.message,
-        "已保留完整请求和原 intent。先观察原操作；不会自动重发。"));
+      const rejected = kind === "continue" && admissionRejected(error, payload.intent_id);
+      if (rejected) observed(payload.intent_id);
+      if (active() && current()) {
+        if (rejected) fields.disabled = false;
+        target.replaceChildren(panel(rejected ? "续答准入已拒绝" : "提交未获确认", error.message,
+          rejected ? "原 owner 已明确确认本轮未保留执行名额、未开始 native effect。可修改任务说明后明确提交新一轮。" :
+            "已保留完整请求和原 intent。先观察原操作；不会自动重发。"));
+      }
     } finally {
       pendingView();
     }

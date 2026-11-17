@@ -469,6 +469,11 @@ def create_app(home: Path | None = None) -> FastAPI:
         response.headers["Cache-Control"] = "no-store"
         return response
 
+    @application.exception_handler(agent_runs.SessionRejected)
+    async def session_admission_rejected(request, error):
+        return JSONResponse(status_code=400, content={"error": str(error), "admission_rejected": True,
+                            "native_effect_started": False, "intent_id": error.intent_id})
+
     @application.exception_handler(ValueError)
     @application.exception_handler(OSError)
     async def application_error(request, error):
@@ -1003,13 +1008,9 @@ def create_app(home: Path | None = None) -> FastAPI:
 
     @application.post("/api/projects/{project_id}/agent-runs")
     def agent_run(project_id: str, body: AgentPayload):
-        try:
-            return agent_runs.run_agent(state, project_id, body.role, body.prompt, body.timeout, body.skills, body.recall, body.template,
-                                        session_intent=body.session_intent, expected_revision=body.expected_revision,
-                                        codex_config=Path(body.codex_config) if body.codex_config is not None else None)
-        except agent_runs.SessionRejected as error:
-            return JSONResponse(status_code=400, content={"error": str(error), "admission_rejected": True,
-                                "native_effect_started": False, "intent_id": error.intent_id})
+        return agent_runs.run_agent(state, project_id, body.role, body.prompt, body.timeout, body.skills, body.recall, body.template,
+                                    session_intent=body.session_intent, expected_revision=body.expected_revision,
+                                    codex_config=Path(body.codex_config) if body.codex_config is not None else None)
 
     @application.get("/api/projects/{project_id}/agent-runs")
     def list_agent_runs(project_id: str):

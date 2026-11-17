@@ -22,6 +22,7 @@ from .state import State, file_lock, now
 
 
 _MAX_SESSION_TURNS = 10_000
+_SESSION_PACKET_BYTES = 10_000_000
 
 
 def _store(state: State, document: dict) -> None:
@@ -288,17 +289,36 @@ def _record(state: State, project_id: str, run_id: str) -> dict:
     return document
 
 
-def _artifact(directory: Path, name: str, byte_limit: int) -> bytes:
+def _artifact(directory: Path, name: str, byte_limit: int, *, confirm_durable: bool = False) -> bytes:
     if is_link(directory) or not directory.is_dir():
         raise ValueError("Run artifacts require an ordinary directory")
     path = directory / name
     details = path.stat()
     if is_link(path) or not stat.S_ISREG(details.st_mode):
         raise ValueError("Run artifact requires an ordinary file: " + name)
-    with path.open("rb") as stream:
+    directory_identity = _directory_identity(directory) if confirm_durable else None
+    stream = (os.fdopen(os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK), 'rb')
+              if confirm_durable else path.open('rb'))
+    with stream:
+        if confirm_durable:
+            before = os.fstat(stream.fileno())
+            def stamp(value):
+                return value.st_dev, value.st_ino, value.st_size, value.st_mtime_ns, value.st_ctime_ns
+            if not stat.S_ISREG(before.st_mode) or stamp(before) != stamp(details):
+                raise ValueError('Run artifact changed before durable confirmation')
         raw = stream.read(min(byte_limit + 1, details.st_size + 1))
-    if len(raw) > byte_limit:
-        raise ValueError(f"Complete run artifact exceeds its byte limit: {name} > {byte_limit}")
+        if len(raw) > byte_limit:
+            raise ValueError(f"Complete run artifact exceeds its byte limit: {name} > {byte_limit}")
+        if confirm_durable:
+            os.fsync(stream.fileno())
+            _sync_directory_chain(directory)
+            stream.seek(0)
+            if stream.read(byte_limit + 1) != raw:
+                raise ValueError('Run artifact bytes changed during durable confirmation')
+            if (stamp(before) != stamp(os.fstat(stream.fileno()))
+                    or stamp(before) != stamp(path.stat(follow_symlinks=False))
+                    or directory_identity != _directory_identity(directory)):
+                raise ValueError('Run artifact identity changed during durable confirmation')
     return raw
 
 
@@ -414,7 +434,7 @@ def output(state: State, project_id: str, run_id: str, *, native_history: bool =
 # Ordinary native sessions live in the original run store. Provider state is
 # private to one root; immutable input/attempt/final packets are owned here.
 class SessionRejected(ValueError):
-    """Start admission ended before reserving or launching native work."""
+    """This turn's admission ended before reserving or launching native work."""
 
     def __init__(self, message, intent_id):
         super().__init__(message)
@@ -427,7 +447,10 @@ def _session_id(value, label='Session ID'):
 
 
 def _session_encode(value):
-    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(',', ':'), allow_nan=False).encode('utf-8')
+    raw = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(',', ':'), allow_nan=False).encode('utf-8')
+    if len(raw) > _SESSION_PACKET_BYTES:
+        raise ValueError(f'Complete encoded session packet exceeds {_SESSION_PACKET_BYTES} bytes; it was not truncated')
+    return raw
 
 
 def _session_sha(value):
@@ -444,6 +467,8 @@ def _sync_directory_chain(directory):
 
 
 def _publish_session_packet(destination, values):
+    if any(len(raw) > _SESSION_PACKET_BYTES for raw in values.values()):
+        raise ValueError(f'Complete encoded session packet exceeds {_SESSION_PACKET_BYTES} bytes')
     destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
     staged = Path(tempfile.mkdtemp(prefix='.session-', dir=destination.parent))
     try:
@@ -456,17 +481,17 @@ def _publish_session_packet(destination, values):
                 os.fsync(stream.fileno())
         _sync_directory_chain(staged)
         publish_directory(staged, destination)
-        _sync_directory_chain(destination)
         for name, raw in values.items():
-            if _artifact(destination, name, len(raw)) != raw:
+            if _artifact(destination, name, len(raw), confirm_durable=True) != raw:
                 raise ValueError('Session packet changed after durable publication')
     finally:
         if staged.exists():
             shutil.rmtree(staged)
 
 
-def _session_packet(directory, name='record.json'):
-    return parse_json(_artifact(directory, name, 10_000_000).decode('utf-8'), 'Native session packet', finite=True, bounded=True)
+def _session_packet(directory, name='record.json', *, confirm_durable=False):
+    return parse_json(_artifact(directory, name, _SESSION_PACKET_BYTES, confirm_durable=confirm_durable).decode('utf-8'),
+                      'Native session packet', finite=True, bounded=True)
 
 
 def _session_folder(state, ident):
@@ -497,7 +522,11 @@ def _observe_session_run(state, document):
                 or stop_request.get('request_sha256') != document['request_sha256']):
             raise ValueError('Saved stop request differs from its original turn')
     if (folder / 'final').exists():
-        final = _session_packet(folder / 'final')
+        try:
+            final = _session_packet(folder / 'final', confirm_durable=True)
+        except (OSError, ValueError) as error:
+            return dict(document, status='unknown', execution_stopped=False, stop_request=stop_request,
+                        error='Final packet durability is unconfirmed: ' + str(error))
         if final['request_sha256'] != document['request_sha256'] or final['session'] != document['session']:
             raise ValueError('Session final differs from the selected request')
         if final.get('status') == 'succeeded':
@@ -657,6 +686,8 @@ def _start_session(state, project_id, role, prompt, timeout, skill_names, recall
                            native_home=str(home), native_home_identity=_directory_identity(home), grant=None,
                            sandbox=inference['sandbox'])
             (staged / 'context.json').write_bytes(_session_encode(context))
+            # Verify the whole frozen package before publishing any context.
+            digest = inventory_tree(staged)[0]
             for path in staged.rglob('*'):
                 if path.is_file():
                     with path.open('rb') as stream:
@@ -666,7 +697,8 @@ def _start_session(state, project_id, role, prompt, timeout, skill_names, recall
             _sync_directory_chain(staged)
             publish_directory(staged, folder / 'context')
             _sync_directory_chain(folder / 'context')
-            digest = inventory_tree(folder / 'context')[0]
+            if inventory_tree(folder / 'context')[0] != digest:
+                raise ValueError('Session context changed during publication')
         except (OSError, ValueError) as error:
             raise SessionRejected(str(error), intent) from error
         finally:
@@ -725,12 +757,16 @@ def _reserve_session_turn(state, project, root, parent, ident, ordinal, prompt, 
     request = {'run_id': ident, 'project': project, 'session': session, 'submitted': submitted,
                'context_digest': digest, 'prompt': full_prompt, 'schema': context['schema'],
                'clock': clock, 'timeout': timeout, 'native_id': parent['native_session']['id'] if parent else None}
+    try:
+        encoded_request = _session_encode(request)
+    except ValueError as error:
+        raise SessionRejected(str(error), submitted['intent_id']) from error
     folder = _session_folder(state, ident)
-    _publish_session_packet(folder, {'request.json': _session_encode(request)})
+    _publish_session_packet(folder, {'request.json': encoded_request})
     document = {'id': ident, 'project': project, 'kind': 'native-agent-run', 'role': context['role'],
                 'binding': context['binding'], 'project_revision': context['project_revision'],
                 'template': context['template'], 'session': session, 'submitted': submitted,
-                'context_digest': digest, 'request_sha256': _session_sha(request),
+                'context_digest': digest, 'request_sha256': hashlib.sha256(encoded_request).hexdigest(),
                 'prompt_sha256': hashlib.sha256(full_prompt.encode()).hexdigest(),
                 'started': now(), 'status': 'reserved', 'formal_execution_authorized': False}
     _store(state, document)
@@ -834,6 +870,8 @@ def session_main():
             expired = True
         return stopping or expired or (folder / 'stop').exists()
 
+    invocation_entered = False
+    document['execution_stopped'] = False
     try:
         context = _read_session_context(state, document)
         _validate_session_authority(state, context)
@@ -842,35 +880,39 @@ def session_main():
         else:
             environment = dict(os.environ, CODEX_HOME=context['native_home'])
             native = {'configuration': context['inference'], 'native_id': request['native_id']}
+            remaining = max(.01, budget_clock.remaining(request['clock'], request['timeout']))
+            invocation_entered = True
             document.update(agents.invoke(context['binding'], context['role'], request['prompt'], Path(context['repo']),
-                state.root / 'runs' / ident, max(.01, budget_clock.remaining(request['clock'], request['timeout'])),
+                state.root / 'runs' / ident, remaining,
                 request['schema'], env=environment, supervised=True, lock_fd=fd, session=native, stop_requested=should_stop))
         if expired:
             document['status'] = 'timed_out'
         document['execution_stopped'] = True
     except (OSError, ValueError, TypeError, KeyError) as error:
-        document.update(status='failed', error=str(error), execution_stopped=True)
-    try:
-        # The native owner has returned from its only reaper. Persist only our
-        # own closed artifacts; this is not a claim about provider-internal DBs.
-        for output in (state.root / 'runs' / ident, state.root / 'runs' / (ident + '.protocol')):
-            if not output.exists():
-                continue
-            for path in output.iterdir():
-                if is_link(path) or not path.is_file():
-                    raise ValueError('Native output archive contains a non-ordinary file')
-                descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
-                try:
-                    os.fsync(descriptor)
-                finally:
-                    os.close(descriptor)
-            _sync_directory_chain(output)
-        if document.get('result_sha256') is not None:
-            name = 'result.json' if request['schema'] is not None else 'result.txt'
-            if hashlib.sha256(_artifact(state.root / 'runs' / ident, name, 8_388_608)).hexdigest() != document['result_sha256']:
-                raise ValueError('Durable result readback differs from the original result')
-    except (OSError, ValueError) as error:
-        document.update(status='unknown', error='Native artifacts lack durable confirmation: ' + str(error))
+        document.update(status='unknown' if invocation_entered else 'failed', error=str(error),
+                        execution_stopped=not invocation_entered)
+    if document['execution_stopped']:
+        try:
+            # The native owner has returned from its only reaper. Persist only our
+            # own closed artifacts; this is not a claim about provider-internal DBs.
+            for output in (state.root / 'runs' / ident, state.root / 'runs' / (ident + '.protocol')):
+                if not output.exists():
+                    continue
+                for path in output.iterdir():
+                    if is_link(path) or not path.is_file():
+                        raise ValueError('Native output archive contains a non-ordinary file')
+                    descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+                    try:
+                        os.fsync(descriptor)
+                    finally:
+                        os.close(descriptor)
+                _sync_directory_chain(output)
+            if document.get('result_sha256') is not None:
+                name = 'result.json' if request['schema'] is not None else 'result.txt'
+                if hashlib.sha256(_artifact(state.root / 'runs' / ident, name, 8_388_608)).hexdigest() != document['result_sha256']:
+                    raise ValueError('Durable result readback differs from the original result')
+        except (OSError, ValueError) as error:
+            document.update(status='unknown', error='Native artifacts lack durable confirmation: ' + str(error))
     document['finished'] = now()
     _publish_session_packet(folder / 'final', {'record.json': _session_encode(document)})
     _store(state, document)
