@@ -4,6 +4,8 @@ import { app, stages } from "./state.js";
 import { agentDialog, outputPanels } from "./agents.js";
 
 export function overview(data, base, { refresh, render }) {
+  const control = app.bootstrap.state_directory;
+  const openAgent = button("项目会话 / 运行 Agent", () => agentDialog(data, base, refresh, openAgent), "primary");
   const counts = [
     ["项目记忆", data.memories.length, "有来源的持久记录", "▤"],
     ["活动 Skill", data.skills.active.length, "明确采用的版本", "◇"],
@@ -141,8 +143,8 @@ export function overview(data, base, { refresh, render }) {
     ),
     panel(
       "最近工具调用",
-      "进程成功退出仅代表调用完成，正式验收继续使用已有证据门禁。",
-      row(button("运行一次 Agent", () => agentDialog(data, base, refresh), "primary")),
+      "进程成功退出仅代表调用完成，正式验收继续使用已有证据门禁。早期单次调用可查看原记录；会话是否可继续由项目会话目录展示。",
+      row(openAgent),
       table(
         ["角色 / 工具", "状态", "开始时间", "记录"],
         data.agent_runs.slice(0, 8).map((item) => [
@@ -152,8 +154,16 @@ export function overview(data, base, { refresh, render }) {
           button(
             "查看记录",
             async () => {
-              const output = await api(`${base}/agent-runs/${item.id}/output`);
-              modal("工具调用记录", [pre(item), ...outputPanels(output, base)]);
+              const view = node("div", {}, node("p", {}, "正在读取原调用记录…"));
+              modal("工具调用记录", view);
+              const current = () => view.isConnected && view.closest("dialog")?.open && app.data === data &&
+                app.project === data.project.id && app.bootstrap.state_directory === control;
+              try {
+                const output = await api(`${base}/agent-runs/${encodeURIComponent(item.id)}/output`);
+                if (current()) view.replaceChildren(pre(item), ...outputPanels(output, base, current));
+              } catch (error) {
+                if (current()) view.replaceChildren(pre(item), node("p", {}, error.message));
+              }
             },
             "text-button",
           ),

@@ -4,9 +4,9 @@ import hashlib
 import sys
 import tempfile
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
-from fastapi import Body, FastAPI, Request
+from fastapi import Body, FastAPI, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ConfigDict, Field
@@ -401,10 +401,26 @@ class ReviewPayload(RevisionPayload):
 class AgentPayload(Payload):
     role: str
     prompt: str
-    timeout: int = 300
+    timeout: int = Field(default=300, strict=True, ge=1, le=3600)
     skills: list[str] = Field(default_factory=list)
     recall: str | None = None
     template: str | None = None
+    session_intent: str | None = None
+    expected_revision: int | None = Field(default=None, strict=True, ge=1)
+    codex_config: str | None = None
+
+
+class AgentContinuePayload(Payload):
+    parent_run_id: str
+    prompt: str
+    expected_revision: int = Field(strict=True, ge=1)
+    intent_id: str
+    timeout: int = Field(default=300, strict=True, ge=1, le=3600)
+
+
+class AgentStopPayload(Payload):
+    run_id: str
+    intent_id: str
 
 
 class KernelPayload(Payload):
@@ -987,11 +1003,36 @@ def create_app(home: Path | None = None) -> FastAPI:
 
     @application.post("/api/projects/{project_id}/agent-runs")
     def agent_run(project_id: str, body: AgentPayload):
-        return agent_runs.run_agent(state, project_id, body.role, body.prompt, body.timeout, body.skills, body.recall, body.template)
+        try:
+            return agent_runs.run_agent(state, project_id, body.role, body.prompt, body.timeout, body.skills, body.recall, body.template,
+                                        session_intent=body.session_intent, expected_revision=body.expected_revision,
+                                        codex_config=Path(body.codex_config) if body.codex_config is not None else None)
+        except agent_runs.SessionRejected as error:
+            return JSONResponse(status_code=400, content={"error": str(error), "admission_rejected": True,
+                                "native_effect_started": False, "intent_id": error.intent_id})
 
     @application.get("/api/projects/{project_id}/agent-runs")
     def list_agent_runs(project_id: str):
         return agent_runs.runs(state, project_id)
+
+    @application.get("/api/projects/{project_id}/agent-sessions")
+    def list_agent_sessions(project_id: str, after: Annotated[int, Query(ge=0)] = 0,
+                            limit: Annotated[int, Query(ge=1, le=100)] = 20, intent_id: str | None = None):
+        return agent_runs.sessions(state, project_id, after=after, limit=limit, intent_id=intent_id)
+
+    @application.get("/api/projects/{project_id}/agent-sessions/{session_id}")
+    def inspect_agent_session(project_id: str, session_id: str, after: Annotated[int, Query(ge=0)] = 0,
+                              limit: Annotated[int, Query(ge=1, le=100)] = 20):
+        return agent_runs.inspect_session(state, project_id, session_id, after=after, limit=limit)
+
+    @application.post("/api/projects/{project_id}/agent-sessions/{session_id}/continue")
+    def continue_agent_session(project_id: str, session_id: str, body: AgentContinuePayload):
+        return agent_runs.continue_session(state, project_id, session_id, body.parent_run_id, body.prompt,
+                                           expected_revision=body.expected_revision, intent_id=body.intent_id, timeout=body.timeout)
+
+    @application.post("/api/projects/{project_id}/agent-sessions/{session_id}/stop")
+    def stop_agent_session(project_id: str, session_id: str, body: AgentStopPayload):
+        return agent_runs.stop_session(state, project_id, session_id, body.run_id, intent_id=body.intent_id)
 
     @application.post("/api/projects/{project_id}/composition-inputs/check")
     def check_composition_input(project_id: str, body: CompositionInputPayload):

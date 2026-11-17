@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 from ergora import memory, projects, skills
 from ergora.state import State
 from ergora.web import create_app
+from test_agents import native_session_case
 
 
 @pytest.fixture
@@ -73,6 +74,150 @@ def test_binding_revisions_and_cli_web_share_durable_state(console):
     assert len(bounded["text"]) == 65536 and bounded["truncated"]
     assert client.get(f"/api/projects/other/agent-runs/{result['id']}/output").status_code == 400
     assert client.get("/api/projects/other/dashboard").json()["agent_runs"] == []
+
+
+def test_project_sessions_http_and_cli_preserve_exact_operation_inputs(console, tmp_path, monkeypatch, capsys):
+    from ergora import agent_runs, cli
+
+    client, state, _ = console
+    calls = []
+    root = {"id": "session-root", "project": "demo", "status": "succeeded", "session": {"id": "session-root"}}
+    page = {"sessions": [{"id": root["id"], "birth_intent": "birth-once"}], "next_after": None}
+    detail = {"id": root["id"], "turns": [root], "next_after": None}
+    stopped = {"run_id": "exact-turn", "stop_requested": True, "notification": "unconfirmed", "run": root}
+
+    def start(control, project, role, prompt, timeout, skill_names, recall, template, **options):
+        calls.append((control.root, project, role, prompt, timeout, skill_names, recall, template, options))
+        return root
+
+    def listing(control, project, **options):
+        calls.append((control.root, project, options))
+        return page
+
+    def inspect(control, project, session, **options):
+        calls.append((control.root, project, session, options))
+        return detail
+
+    def followup(control, project, session, parent, prompt, **options):
+        calls.append((control.root, project, session, parent, prompt, options))
+        return root
+
+    def stop(control, project, session, run, **options):
+        calls.append((control.root, project, session, run, options))
+        return stopped
+
+    monkeypatch.setattr(agent_runs, "run_agent", start)
+    monkeypatch.setattr(agent_runs, "sessions", listing)
+    monkeypatch.setattr(agent_runs, "inspect_session", inspect)
+    monkeypatch.setattr(agent_runs, "continue_session", followup)
+    monkeypatch.setattr(agent_runs, "stop_session", stop)
+    prompt = tmp_path / "prompt.md"
+    prompt.write_text("Continue developing: café\n", encoding="utf-8")
+    config = tmp_path / "native options.toml"
+    payload = {"role": "implementer", "prompt": prompt.read_text(), "timeout": 71, "skills": ["original-skill"],
+               "recall": "original memory", "template": "large-change", "session_intent": "birth-once",
+               "expected_revision": 3, "codex_config": str(config)}
+    base = "/api/projects/demo"
+    assert client.post(base + "/agent-runs", json=payload).json() == root
+    initial = calls.pop()
+    assert initial == (state.root, "demo", "implementer", prompt.read_text(), 71, ["original-skill"],
+                       "original memory", "large-change", {"session_intent": "birth-once", "expected_revision": 3, "codex_config": config})
+    prefix = ["--home", str(state.root), "agent"]
+    assert cli.main(prefix + ["run", "demo", "implementer", "--prompt", str(prompt), "--timeout", "71",
+        "--skill", "original-skill", "--recall", "original memory", "--template", "large-change",
+        "--session-intent", "birth-once", "--revision", "3", "--codex-config", str(config)]) == 0
+    assert calls.pop() == initial and json.loads(capsys.readouterr().out) == root
+    assert client.get(base + "/agent-sessions?after=2&limit=7&intent_id=birth-once").json() == page
+    listing_call = calls.pop()
+    assert listing_call == (state.root, "demo", {"after": 2, "limit": 7, "intent_id": "birth-once"})
+    assert cli.main(prefix + ["sessions", "demo", "--after", "2", "--limit", "7", "--intent", "birth-once"]) == 0
+    assert calls.pop() == listing_call and json.loads(capsys.readouterr().out) == page
+    url = base + "/agent-sessions/session-root"
+    assert client.get(url + "?after=1&limit=4").json() == detail
+    inspect_call = calls.pop()
+    assert inspect_call == (state.root, "demo", "session-root", {"after": 1, "limit": 4})
+    assert cli.main(prefix + ["session", "demo", "session-root", "--after", "1", "--limit", "4"]) == 0
+    assert calls.pop() == inspect_call and json.loads(capsys.readouterr().out) == detail
+    continuation = {"parent_run_id": "exact-parent", "prompt": prompt.read_text(), "expected_revision": 3,
+                    "intent_id": "continue-once", "timeout": 83}
+    assert client.post(url + "/continue", json=continuation).json() == root
+    followup_call = calls.pop()
+    assert followup_call == (state.root, "demo", "session-root", "exact-parent", prompt.read_text(),
+                             {"expected_revision": 3, "intent_id": "continue-once", "timeout": 83})
+    assert cli.main(prefix + ["continue", "demo", "session-root", "--parent", "exact-parent", "--prompt", str(prompt),
+        "--revision", "3", "--intent", "continue-once", "--timeout", "83"]) == 0
+    assert calls.pop() == followup_call and json.loads(capsys.readouterr().out) == root
+    assert client.post(url + "/stop", json={"run_id": "exact-turn", "intent_id": "stop-once"}).json() == stopped
+    stop_call = calls.pop()
+    assert stop_call == (state.root, "demo", "session-root", "exact-turn", {"intent_id": "stop-once"})
+    assert cli.main(prefix + ["stop", "demo", "session-root", "--run", "exact-turn", "--intent", "stop-once"]) == 0
+    assert calls.pop() == stop_call and json.loads(capsys.readouterr().out) == stopped
+
+    # Transport validation cannot add execution authority or silently coerce revision/budget values.
+    for change in ({"expected_revision": True}, {"timeout": "83"}, {"cwd": "/elsewhere"}, {"native_uuid": "external"}):
+        assert client.post(url + "/continue", json={**continuation, **change}).status_code == 422
+    assert client.get(base + "/agent-sessions?after=-1").status_code == 422
+    assert client.post(url + "/stop", json={"run_id": "exact-turn", "intent_id": "stop-once"},
+                       headers={"X-Ergora-Request": ""}).status_code == 403
+    assert client.post(url + "/continue", json=continuation, headers={"Origin": "https://other.example"}).status_code == 403
+    assert calls == []
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Persistent native turns use the Linux process owner")
+def test_project_native_session_http_and_cli_share_original_development_chain(native_session_case, tmp_path):
+    state, repo, config, _ = native_session_case
+    revision = state.project("demo")["revision"]
+    base = "/api/projects/demo/agent-sessions"
+    headers = {"Origin": "http://127.0.0.1:8977", "X-Ergora-Request": "1"}
+    with TestClient(create_app(state.root), base_url="http://127.0.0.1:8977", headers=headers) as client:
+        rejected = client.post("/api/projects/demo/agent-runs", json={"role": "implementer", "prompt": "stale start",
+            "timeout": 10, "session_intent": "rejected-birth", "expected_revision": revision - 1, "codex_config": str(config)})
+        assert rejected.status_code == 400
+        assert rejected.json() == {"error": "Session start requires the current project revision", "admission_rejected": True,
+                                   "native_effect_started": False, "intent_id": "rejected-birth"}
+        oversized = client.post("/api/projects/demo/agent-runs", json={"role": "implementer", "prompt": "X" * 1_000_001,
+            "session_intent": "oversized-birth", "expected_revision": revision, "codex_config": str(config)})
+        assert oversized.status_code == 400 and oversized.json()["admission_rejected"] is True
+        assert oversized.json()["intent_id"] == "oversized-birth" and not oversized.json()["native_effect_started"]
+        assert client.get(base, params={"intent_id": "rejected-birth"}).json()["sessions"] == []
+        assert not (repo / "native-calls.jsonl").exists()
+        # Discard the submitted call's reply and recover only by its exact original birth intent.
+        response = client.post("/api/projects/demo/agent-runs", json={"role": "implementer", "prompt": "HTTP first change",
+            "timeout": 10, "session_intent": "http-birth", "expected_revision": revision, "codex_config": str(config)})
+        assert response.status_code == 200
+        del response
+        observed = client.get(base, params={"intent_id": "http-birth"}).json()
+        assert len(observed["sessions"]) == 1 and observed["next_after"] is None
+        session = observed["sessions"][0]
+        assert session["birth_intent"] == "http-birth" and session["sandbox"] == "workspace-write"
+        assert session["can_continue"] and (repo / "turn-1.txt").read_text() == "HTTP first change"
+        assert client.get(base, params={"intent_id": "unrelated-birth"}).json()["sessions"] == []
+        assert client.get(base.replace("/demo/", "/other/")).status_code == 400
+        second = client.post(f"{base}/{session['id']}/continue", json={"parent_run_id": session["latest_run"],
+            "prompt": "HTTP second change", "expected_revision": revision, "intent_id": "http-next", "timeout": 10}).json()
+        assert second["status"] == "succeeded", second
+        assert second["session"]["parent_run"] == session["latest_run"]
+        assert second["formal_execution_authorized"] is False
+        prompt = tmp_path / "third.md"
+        prompt.write_text("CLI third change")
+        process = subprocess.run([sys.executable, "-m", "ergora", "--home", str(state.root), "agent", "continue", "demo",
+            session["id"], "--parent", second["id"], "--prompt", str(prompt), "--revision", str(revision),
+            "--intent", "cli-third", "--timeout", "10"], capture_output=True, text=True, timeout=20)
+        assert process.returncode == 0, process.stderr
+        third = json.loads(process.stdout)
+        assert third["status"] == "succeeded", third
+        first_page = client.get(f"{base}/{session['id']}?limit=2").json()
+        final_page = client.get(f"{base}/{session['id']}?after={first_page['next_after']}&limit=2").json()
+        assert [turn["session"]["ordinal"] for turn in first_page["turns"] + final_page["turns"]] == [0, 1, 2]
+        assert final_page["next_after"] is None and final_page["latest_run"] == third["id"]
+        output = client.get(f"/api/projects/demo/agent-runs/{third['id']}/output").json()
+        assert output["result"]["available"] and output["result"]["text"] == "fixture-original turn 3"
+        assert output["result"]["sha256"] == third["result_sha256"]
+        assert (repo / "turn-2.txt").read_text() == "HTTP second change"
+        assert (repo / "turn-3.txt").read_text() == "CLI third change"
+        calls = [json.loads(line) for line in (repo / "native-calls.jsonl").read_text().splitlines()]
+        assert len(calls) == 3 and len({call["id"] for call in calls}) == 1
+        assert len({call["home"] for call in calls}) == 1
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="Native archive reads admit Linux/WSL2")

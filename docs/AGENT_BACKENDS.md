@@ -132,7 +132,7 @@ The provider's environment variables supply authentication. mini supports implem
 <a id="deepseek-harness-只读叶后端"></a>
 ### DeepSeek Harness read-only leaf backend
 
-The optional adapter pins SDK/runtime-bin `0.2.2rc2` in a separate environment; basic Ergora does not depend on it. Supported Linux/WSL2 entry points are `composition check-input/run-input` in `text-only` or `task-mcp` mode for reviewer, experiment-planner, performance-analyst and kernel-tuner roles. The last two produce textual proposals, not measurements or kernel execution. An explicitly enabled new standalone task-MCP source supports the one continuation below. Native `agent run`, workspace writes, arbitrary multiple turns and formal-task recovery remain unsupported. OpenHands SDK is not registered.
+The optional adapter pins SDK/runtime-bin `0.2.2rc2` in a separate environment; basic Ergora does not depend on it. Supported Linux/WSL2 entry points are `composition check-input/run-input` in `text-only` or `task-mcp` mode for reviewer, experiment-planner, performance-analyst and kernel-tuner roles. The last two produce textual proposals, not measurements or kernel execution. This backend supports independent restricted calls and saved-history observation. Persistent native development sessions, native `agent run`, workspace writes and formal-task recovery remain unsupported. OpenHands SDK is not registered.
 
 After the installer provides uv, install separately in persistent storage:
 
@@ -189,35 +189,12 @@ ergora agent output my-project RUN_ID --native-history \
 
 Each page defaults to at most 65,536B; choose 4–65,536B with `--history-limit`. Cursors use bytes and preserve UTF-8 boundaries. The page displays only the current window. For a complete export, save successive `native_history.content` values until `next_offset` is null. Observed revision binds current file identity and time/size, not a complete content SHA or proof the writer stopped. A changed file refuses an old page. “Read from start” or restart at zero without the old revision. Only the original saved uncompressed v4 single-session archive is supported. Missing archives, mismatched IDs/directories or future storage generations are not empty history. Archive EOF does not mean successful completion; original call status and result receipts remain separate checks.
 
-<a id="显式续接一次只读会话"></a>
-#### Explicitly continue one read-only session
+<a id="项目原生开发会话"></a>
+#### Project native development sessions
 
-Prepare source input from a fixed manifest and authorize one follow-up input during the first actual call:
+The ordinary `agent run` path can save a project session with an explicit birth intent and project revision. Select its original history and continue with a new prompt through `agent continue` or the project overview's “项目会话 / 运行 Agent” dialog. Role, template artifacts, selected Skills, memory and native configuration freeze at session creation; later turns use the same native workspace permissions. This is separate from formal-task execution and approval. The Codex session command uses `--no-daemon`; only the turn's owned process subtree is covered by its cleanup evidence. A stopped turn with a confirmed final cleanup and usable native reference can receive a new explicit prompt; an unknown outcome cannot be replayed.
 
-```bash
-ergora composition run-input my-project ./prepared-review \
-  --mode task-mcp --allow-one-continuation --timeout 300
-```
-
-Only a successful call with complete attachment-reading and native-completion evidence can become a source. Old records, calls that did not explicitly enable continuation, text-only, formal stages and other backends lack that authorization. Do not add fields to old records to enable it.
-
-Prepare new task text with **the original manifest, original leaf, same grant and same `--max-prompt-bytes`**, without changing parent/child definitions, Skills, context or backend:
-
-```bash
-ergora composition prepare-from-manifest ./review-manifest root/review \
-  --task followup.md --directory ./prepared-followup --max-prompt-bytes 200000
-ergora composition continue-input my-project SOURCE_RUN_ID ./prepared-followup \
-  --intent followup-one --timeout 300
-ergora agent output my-project FOLLOWUP_RUN_ID --native-history
-```
-
-`SOURCE_RUN_ID` is the `id` returned by the first call. Choose a 1–64-character `--intent` using letters/digits/underscore/hyphen, beginning with a letter or digit. A source has exactly one continuation slot. Resubmitting the same intent, complete input digest and timeout returns the original record without sending again. Changing any value is refused. A continuation result cannot become another source. Concurrent operations promptly report busy; inspect the original run afterward. Changes to project revision, repository/cwd identity, input/materials, original archive, schema, binding or runtime contract require a new source.
-
-Continuation retains original home/session ID/cwd and complete preceding context while creating independent input, result, MCP scope and audit for the new call. Complete attachment reading must happen again in the new scope; old receipts do not establish new delivery. Original source result/record remain, while its session archive is appended. Both history entry points refer to the same original archive. Output supplies provenance, continuation status, input receipt and restored/new byte ranges. SDK idle is not durable persistence: after normal closure, success evidence checks the complete original prefix and current result.
-
-This grants a new explicit 1–3600-second wall-time budget. Preparation/preflight time is deducted from the remaining call allowance; stop cleanup may take additional time. It is not a cumulative token/cost cap: one prompt can trigger multiple model HTTP requests and tool loops. `reserved` means the slot is saved before entering a send path. `unknown` means a possibly sending path was entered without complete success evidence. Only `completed` with run `status:succeeded` establishes this call's success. Timeout, Ctrl+C, disconnect or lost receipts retain the slot/original materials without automatic resending. An identical request still returns original state and requires manual evidence inspection. Formal six-stage recovery, cross-backend/version migration and arbitrary multiple-turn sessions have separate contracts and cannot be restored here.
-
-After failure, the original process owner still finishes cleanup before read-only archive observation records final bytes and confirmable restored/new ranges. With a missing restore receipt, `restored_bytes` is null; a physical increment after the source alone does not establish receipt of new input. `native.completed:false` does not rewrite `unknown`. Missing directory identity or unreadable originals save `observation_error`. Observations do not restart the SDK, recover formal tasks or prove partial output executed successfully.
+See [project-session operations](USAGE.md#project-native-sessions) for the current CLI/HTTP inputs, exact-intent observation after a lost reply and per-turn stop. The persistent interface selects Codex on Linux/WSL2; it does not enable other backends' persistent capabilities. Existing single-use composition results and native archives remain observable through their original run/output records.
 
 <a id="可选的正式六阶段执行桥接"></a>
 ## Optional formal six-stage execution bridge

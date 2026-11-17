@@ -13,11 +13,13 @@ export async function api(path, body, method = "POST", decode) {
   const response = await fetch(path, options);
   if (response.ok) return decode ? decode(response) : response.json();
   const result = await response.json();
-  throw new Error(
+  const error = new Error(
     result.error ||
       (typeof result.detail === "string"
         ? result.detail
         : JSON.stringify(result.detail)) ||
       `HTTP ${response.status}`,
   );
+  error.response = result;
+  throw error;
 }

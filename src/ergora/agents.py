@@ -46,15 +46,17 @@ def invoke(binding: dict, role: str, prompt: str, cwd: Path, output: Path, timeo
            schema: dict | None = None, *, env: dict | None = None,
            codex_options: list[str] | None = None, codex_bin: str = "codex", supervised: bool = False,
            codex_config: str | Path | None = None, mode: str = "native", task_mcp: dict | None = None,
-           continuation: dict | None = None, lock_fd: int | None = None) -> dict:
+           lock_fd: int | None = None,
+           session: dict | None = None, stop_requested=None) -> dict:
     """A successful process is not evidence acceptance; structured consumers validate separately."""
     validate_binding(role, binding, formal=bool(schema))
     backend = agent_backends.for_binding(binding, {"codex": {
         "arguments": codex_options, "executable": codex_bin, "config": codex_config}})
-    backend.check_invocation()
+    if session is None:
+        backend.check_invocation()
+    else:
+        backend.validate_session_configuration(session['configuration'], cwd)
     backend.check_mode(mode)
-    if continuation is not None:
-        backend.check_continuation(mode)
     if (mode in ("task-mcp", "workspace-task-mcp")) != (task_mcp is not None):
         raise ValueError("Task MCP mode requires its explicit per-call server configuration")
     protocol = output.with_name(output.name + ".protocol")
@@ -62,10 +64,11 @@ def invoke(binding: dict, role: str, prompt: str, cwd: Path, output: Path, timeo
     (protocol / "prompt.txt").write_text(prompt, encoding="utf-8", newline="\n")
     if schema:
         (protocol / "schema.json").write_text(json.dumps(schema), encoding="utf-8", newline="\n")
-    request = agent_backends.Invocation(role, prompt, cwd, protocol, timeout, schema, mode, task_mcp, continuation)
+    request = agent_backends.Invocation(role, prompt, cwd, protocol, timeout, schema, mode, task_mcp, session)
     argv, stdin = backend.command(request)
     document = processes.run(argv, cwd, output, timeout, stdin, env, supervised=supervised,
-                             command_record=protocol / "command.json" if mode != "native" else None,
+                             command_record=protocol / "command.json" if mode != "native" or session is not None else None,
+                             **({"stop_requested": stop_requested} if stop_requested is not None else {}),
                              **({"lock_fd": lock_fd} if lock_fd is not None else {}))
     if document["status"] == "succeeded" and schema:
         try:
@@ -76,4 +79,18 @@ def invoke(binding: dict, role: str, prompt: str, cwd: Path, output: Path, timeo
             document.update(result=str(output / "result.json"), result_sha256=hashlib.sha256(content).hexdigest())
         except (OSError, ValueError, TypeError, AttributeError, KeyError, RecursionError) as error:
             document.update(status="failed", error=f"Invalid structured agent result: {error}")
+    if session is not None:
+        try:
+            document['native_session'] = backend.session_result(output, request, completed=document['status'] == 'succeeded')
+            if document['status'] == 'succeeded' and schema is None:
+                raw = (protocol / 'result.txt').read_bytes()
+                if not raw.strip() or len(raw) > 8_388_608:
+                    raise ValueError('Native session final message is empty or exceeds 8 MiB')
+                raw.decode('utf-8')
+                (output / 'result.txt').write_bytes(raw)
+                document.update(result=str(output / 'result.txt'), result_sha256=hashlib.sha256(raw).hexdigest())
+        except (OSError, ValueError, TypeError, KeyError) as error:
+            document['native_observation_error'] = str(error)
+            if document['status'] == 'succeeded':
+                document.update(status='failed', error=f'Invalid native session result: {error}')
     return document

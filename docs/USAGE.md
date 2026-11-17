@@ -1201,6 +1201,23 @@ ergora agent runs my-project
 ergora agent output my-project RUN_ID
 ```
 
+
+<a id="project-native-sessions"></a>
+To keep an ordinary native development conversation, open “项目会话 / 运行 Agent” on the project overview. Select a historical session and enter the next prompt. The view shows the original role, repository, backend, sandbox, model and continuation availability. A new session chooses its role, optional template artifacts, Skills, memory query and trusted native configuration once. Subsequent turns use the frozen settings and materials. This path retains the role's native workspace permissions and does not create a formal Task or candidate approval. The persistent interface selects Codex on Linux/WSL2; unsupported configurations fail visibly. Actual native execution and resume must be validated with the selected CLI and provider.
+
+```bash
+ergora agent run my-project implementer --prompt develop.md --session-intent BIRTH_INTENT --revision CURRENT_REVISION --codex-config native.toml
+ergora agent sessions my-project
+ergora agent sessions my-project --intent BIRTH_INTENT
+ergora agent session my-project SESSION_ID
+ergora agent continue my-project SESSION_ID --parent LATEST_RUN_ID --prompt next.md --revision CURRENT_REVISION --intent TURN_INTENT
+ergora agent stop my-project SESSION_ID --run EXACT_RUN_ID --intent STOP_INTENT
+```
+
+Choose a stable, unique intent for each explicit operation. List and inspect pages accept `--after` and `--limit`; follow their `next_after` manually. After a lost response, retain the original intent and inspect the exact original session/turn before submitting any new work. `agent sessions --intent` observes the original birth intent without invoking an Agent. The console retains unresolved requests in this browser tab's session storage and offers “观察原操作”; it never automatically resends them. `stop_requested`, notification delivery and confirmed process cleanup are separate facts. A turn can continue only when the domain reports `can_continue`; changed configuration or missing cleanup evidence remains visibly blocked. Normal source and HEAD edits are part of development.
+
+The same HTTP operations are `GET /api/projects/ID/agent-sessions` (optional `intent_id`, `after`, `limit`), `GET /api/projects/ID/agent-sessions/SESSION_ID`, and POST `.../continue` or `.../stop`. A continue body contains only `parent_run_id`, `prompt`, `expected_revision`, `intent_id` and optional `timeout`. A stop body contains `run_id` and `intent_id`. Starting a persistent session uses the existing `POST .../agent-runs` with `session_intent`, `expected_revision` and a one-time `codex_config` source. Mutations retain the same-origin and `X-Ergora-Request: 1` contract. Existing single-use run/output history remains readable.
+
 Pages and CLI share persistent business state. Refresh before saving after revision conflicts. An Agent call's `succeeded` is not formal-task acceptance or review approval. The default reference executor retains its original configuration. Explicitly enable bridging when selected role tools should affect formal tasks; see [Agent selection and formal execution](AGENT_BACKENDS.md).
 
 <a id="有效绑定与运行快照"></a>

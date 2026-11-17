@@ -1,5 +1,5 @@
 import { api } from "./api.js";
-import { node, pre, panel, field, selectField, status, form, modal, button, row, empty, table } from "./ui.js";
+import { node, pre, panel, field, selectField, status, form, modal, button, row, empty, table, checkbox } from "./ui.js";
 import { app } from "./state.js";
 
 function archivedHistory(base, runId, active = () => true) {
@@ -52,63 +52,253 @@ export function outputPanels(result, base, active) {
       pre(stream.text),
     ),
   );
+  if (result.result) panels.unshift(panel("最终回复原文",
+    result.result.available ? `${result.result.bytes} 字节 · SHA256 ${result.result.sha256}` : result.result.reason,
+    result.result.available ? pre(result.result.text) : null));
   if (base) panels.push(archivedHistory(base, result.id, active));
   return panels;
 }
-export function agentDialog(data, base, refresh) {
-  const result = node("div");
-  modal(
-    "运行 Agent",
-    form(
-      [
-        selectField(
-          "角色",
-          [...app.agentRoles.map((role) => [role, app.layers[role][0]])],
-          "reviewer",
-          "role",
-        ),
-        selectField(
-          "模板产物要求（可选）",
-          [
-            ["", "普通独立调用"],
-            ...app.bootstrap.templates.map((kind) => [kind, kind]),
-          ],
-          "",
-          "template",
-        ),
-        field("任务说明", "prompt", "", "textarea", { required: true }),
-        field("活动 Skill 名称（逗号分隔，可选）", "skills"),
-        field("项目记忆检索（可选）", "recall"),
-        field("超时（秒）", "timeout", 300, "number", { min: 1, max: 3600 }),
-        result,
-      ],
-      "执行调用",
-      async (values) => {
-        result.replaceChildren(
-          node("p", {}, "工具正在执行。可在其他页面刷新查看运行记录。"),
-        );
-        const response = await api(`${base}/agent-runs`, {
-          role: values.get("role"),
-          prompt: values.get("prompt"),
-          timeout: Number(values.get("timeout")),
-          skills: values
-            .get("skills")
-            .split(",")
-            .map((x) => x.trim())
-            .filter(Boolean),
-          recall: values.get("recall") || null,
-          template: values.get("template") || null,
-        });
-        const output = await api(`${base}/agent-runs/${response.id}/output`);
-        result.replaceChildren(
-          status(response.status),
-          pre(response),
-          ...outputPanels(output, base),
-        );
-        await refresh(data.project.id);
-      },
-    ),
-  );
+export function agentDialog(data, base, refresh, origin = null) {
+  const tab = app.tab;
+  const control = app.bootstrap.state_directory;
+  const pendingKey = `ergora-agent-pending:${JSON.stringify([control, data.project.id])}`;
+  const pending = () => JSON.parse(sessionStorage.getItem(pendingKey) || "[]");
+  function remember(operation) {
+    sessionStorage.setItem(pendingKey, JSON.stringify([...pending(), operation]));
+  }
+  function observed(intent) {
+    sessionStorage.setItem(pendingKey, JSON.stringify(pending().filter((item) => item.intent !== intent)));
+  }
+  const result = node("div", { "aria-live": "polite" });
+  const unresolved = node("div", { "aria-live": "polite" });
+  const observationResult = node("div", { "aria-live": "polite" });
+  const listing = node("div", { "aria-live": "polite" });
+  const detail = node("div", { "aria-live": "polite" });
+  const read = button("读取项目会话", () => readSessions(true));
+  const next = button("下一页会话", () => readSessions(false), "secondary", { disabled: true });
+  const startFields = node("fieldset", {},
+    selectField("角色", app.agentRoles.map((role) => [role, app.layers[role][0]]), "implementer", "role"),
+    selectField("模板产物要求（可选）", [["", "普通独立调用"], ...app.bootstrap.templates.map((kind) => [kind, kind])], "", "template"),
+    field("任务说明", "prompt", "", "textarea", { required: true }),
+    field("活动 Skill 名称（逗号分隔，可选）", "skills"),
+    field("项目记忆检索（可选）", "recall"),
+    checkbox("保存为可继续的开发会话", "persistent", true),
+    field("首次会话的 Codex 配置文件", "codex_config", "", "text", { autocomplete: "off" }),
+    field("超时（秒）", "timeout", 300, "number", { required: true, min: 1, max: 3600, step: 1 }));
+  const startForm = form([startFields], "开始调用", start);
+  const view = node("div", {}, unresolved, observationResult,
+    panel("项目历史会话", "选择原会话后输入任务说明继续。角色、模型、权限和材料沿首次冻结；变更配置需要新建会话。", row(read, next), listing, detail),
+    node("details", {}, node("summary", {}, "新建会话或单次 Agent 调用"),
+      node("p", {}, "沿当前角色的 native workspace 权限运行。普通开发会话不产生正式任务批准或可信候选；模板选项仅要求该角色的产物。持久化能力与阻断原因以服务器实际返回为准。"), startForm, result));
+  const active = () => view.isConnected && view.closest("dialog")?.open && app.data === data &&
+    app.project === data.project.id && app.bootstrap.state_directory === control && app.tab === tab && (!origin || origin.isConnected);
+  let listSequence = 0;
+  let selectionSequence = 0;
+  let selected = null;
+  let nextAfter = null;
+  let starting = false;
+  let resultSequence = 0;
+  let observationSequence = 0;
+
+  function pendingView() {
+    if (!active()) return;
+    const saved = pending();
+    startFields.disabled = starting || saved.some((item) => item.kind === "start");
+    unresolved.replaceChildren(...(saved.length ? [panel("提交尚待观察",
+      "已保留原 intent 和完整请求，没有自动重发。先观察原操作；当前没有记录也不能证明未运行。",
+      ...saved.map((item) => node("details", {}, node("summary", {}, `${item.kind} · ${item.intent}`), pre(item))),
+      row(button("观察原操作", observePending)))] : []));
+  }
+
+  function showRun(target, run, current) {
+    target.replaceChildren(status(run.status), pre(run), row(button("读取这轮原输出", async () => {
+      try {
+        const output = await api(`${base}/agent-runs/${encodeURIComponent(run.id)}/output`);
+        if (active() && current()) target.append(...outputPanels(output, base, () => active() && current()));
+      } catch (error) {
+        if (active() && current()) target.append(panel("原输出读取失败", error.message));
+      }
+    })));
+  }
+
+  const observationOffsets = new Map();
+  async function observePending() {
+    const reading = ++observationSequence;
+    const selection = selectionSequence;
+    const current = () => active() && reading === observationSequence && selection === selectionSequence;
+    const saved = pending();
+    const observations = [];
+    try {
+      for (const item of saved) {
+        if (item.kind === "start") {
+          const query = new URLSearchParams({ intent_id: item.intent, limit: 1 });
+          const page = await api(`${base}/agent-sessions?${query}`);
+          if (!current()) return;
+          const session = page.sessions.find((session) => session.birth_intent === item.intent);
+          if (session) {
+            observed(item.intent);
+            observations.push(panel(`原会话 ${session.id}`, "已按原出生 intent 找到。", pre(session),
+              row(button("选择这个原会话", () => selectSession(session.id)))));
+          } else observations.push(empty(`出生 intent ${item.intent} 尚无可观察记录；仍保留原提交。`));
+        } else {
+          const after = observationOffsets.get(item.intent) ?? 0;
+          const page = await api(`${base}/agent-sessions/${encodeURIComponent(item.session)}?after=${after}&limit=20`);
+          if (!current()) return;
+          const run = page.turns.find((turn) => item.kind === "continue"
+            ? turn.submitted?.intent_id === item.intent && turn.session.parent_run === item.payload.parent_run_id
+            : turn.id === item.payload.run_id && turn.stop_request?.intent_id === item.intent);
+          if (run) {
+            observed(item.intent);
+            observationOffsets.delete(item.intent);
+            observations.push(panel(`原操作 ${run.id}`, "已按原会话、轮次和 intent 找到。", pre(run),
+              row(button("选择这个原会话", () => selectSession(item.session)))));
+          } else {
+            observationOffsets.set(item.intent, page.next_after ?? 0);
+            observations.push(empty(page.next_after === null
+              ? `intent ${item.intent} 尚无对应原记录；保留原提交，下次观察从头读取。`
+              : `intent ${item.intent} 不在本页；再次观察读取下一页轮次。`));
+          }
+        }
+      }
+      if (!current()) return;
+      pendingView();
+      observationResult.replaceChildren(...observations);
+      await readSessions(true);
+    } catch (error) {
+      if (current()) observationResult.replaceChildren(panel("观察失败", error.message));
+    }
+  }
+
+  async function start(values) {
+    if (!active() || starting || pending().some((item) => item.kind === "start")) return;
+    const persistent = values.has("persistent");
+    const payload = { role: values.get("role"), prompt: values.get("prompt"), timeout: Number(values.get("timeout")),
+      skills: values.get("skills").split(",").map((value) => value.trim()).filter(Boolean),
+      recall: values.get("recall") || null, template: values.get("template") || null };
+    const intent = crypto.randomUUID();
+    if (persistent) Object.assign(payload, { session_intent: intent, expected_revision: data.project.revision,
+      codex_config: values.get("codex_config") || null });
+    if (persistent) remember({ kind: "start", intent, payload });
+    starting = true;
+    const rendering = ++resultSequence;
+    pendingView();
+    result.replaceChildren(empty("已提交原调用。可读取项目历史并停止精确轮次；关闭页面不会撤销调用。"));
+    try {
+      const run = await api(`${base}/agent-runs`, payload);
+      observed(intent);
+      if (!active()) return;
+      showRun(result, run, () => rendering === resultSequence);
+      if (run.session) await selectSession(run.session.id);
+      else result.append(row(button("刷新项目总览", () => refresh(data.project.id))));
+    } catch (error) {
+      const rejection = error.response;
+      const rejectedBeforeBirth = persistent && rejection?.admission_rejected === true &&
+        rejection.native_effect_started === false && rejection.intent_id === intent;
+      if (rejectedBeforeBirth) observed(intent);
+      if (active()) result.replaceChildren(panel(rejectedBeforeBirth ? "会话准入已拒绝" : "调用未获确认", error.message,
+        rejectedBeforeBirth ? "原 owner 已明确确认此 intent 未出生、未开始 native effect。可修改配置后明确新建会话。" :
+          persistent ? "原请求仍保留。先观察原操作；不会自动重发。" : "单次调用的回复未确认，请从最近工具调用核对原记录；没有自动重发。"));
+    } finally {
+      starting = false;
+      pendingView();
+    }
+  }
+
+  async function readSessions(reset) {
+    if (!active()) return;
+    const reading = ++listSequence;
+    read.disabled = next.disabled = true;
+    try {
+      const query = new URLSearchParams({ after: reset ? 0 : nextAfter, limit: 20 });
+      const page = await api(`${base}/agent-sessions?${query}`);
+      if (!active() || reading !== listSequence) return;
+      nextAfter = page.next_after;
+      listing.replaceChildren(table(["会话 / 角色", "后端 / 权限", "状态", "操作"], page.sessions.map((session) => [
+        node("span", {}, session.id, node("small", {}, session.role)),
+        `${session.binding.tool} · ${session.mode} · ${session.sandbox ?? "未记录"}`,
+        node("span", {}, status(session.status), node("small", {}, session.can_continue ? "可继续" : session.reason)),
+        button("选择会话", () => selectSession(session.id)),
+      ])));
+    } catch (error) {
+      if (active() && reading === listSequence) listing.replaceChildren(panel("会话读取失败", error.message));
+    } finally {
+      if (active() && reading === listSequence) {
+        read.disabled = false;
+        next.disabled = nextAfter === null;
+      }
+    }
+  }
+
+  async function selectSession(id, after = 0, expectedSelection = null) {
+    if (!active() || (expectedSelection !== null && expectedSelection !== selectionSequence)) return;
+    const reading = ++selectionSequence;
+    selected = id;
+    detail.replaceChildren(empty("正在读取原会话…"));
+    try {
+      const session = await api(`${base}/agent-sessions/${encodeURIComponent(id)}?after=${after}&limit=20`);
+      if (!active() || reading !== selectionSequence || selected !== id) return;
+      const current = () => reading === selectionSequence && selected === id;
+      const callResult = node("div", { "aria-live": "polite" });
+      const continueFields = node("fieldset", { disabled: !session.can_continue || pending().some((item) => item.session === id && item.kind === "continue") },
+        field("继续任务说明", "prompt", "", "textarea", { required: true }),
+        field("本轮超时（秒）", "timeout", 300, "number", { required: true, min: 1, max: 3600, step: 1 }));
+      const continueForm = form([continueFields], "继续这个会话", async (values) => {
+        if (!active() || !current() || continueFields.disabled) return;
+        const payload = { parent_run_id: session.latest_run, prompt: values.get("prompt"),
+          expected_revision: data.project.revision, intent_id: crypto.randomUUID(), timeout: Number(values.get("timeout")) };
+        await submitTurn("continue", payload, callResult, current, continueFields, reading);
+      });
+      detail.replaceChildren(panel(`会话 ${session.id}`, session.can_continue ? "可以沿此会话继续开发。" : session.reason,
+        table(["冻结事实", "原记录"], [["仓库", session.repo], ["角色", session.role], ["模式 / sandbox", `${session.mode} / ${session.sandbox ?? "未记录"}`],
+          ["后端 / 模型 / effort", `${session.binding.tool} / ${session.binding.model ?? "见原配置"} / ${session.binding.reasoning_effort ?? session.binding.effort ?? "见原配置"}`],
+          ["最新轮次", session.latest_run]]), pre(session.binding),
+        row(button("刷新这个会话", () => selectSession(id)),
+          session.next_after === null ? null : button("下一页轮次", () => selectSession(id, session.next_after))),
+        ...session.turns.map((run) => {
+          const output = node("div");
+          return node("details", {}, node("summary", {}, `${run.id} · ${run.status} · ${run.started ?? ""}`), pre(run),
+            row(button("读取这轮原输出", async () => {
+              try {
+                const result = await api(`${base}/agent-runs/${encodeURIComponent(run.id)}/output`);
+                if (active() && current()) output.replaceChildren(...outputPanels(result, base, () => active() && current()));
+              } catch (error) {
+                if (active() && current()) output.replaceChildren(panel("原输出读取失败", error.message));
+              }
+            }), button("请求停止这轮", async (event) => {
+              if (!active() || !current() || pending().some((item) => item.kind === "stop" && item.payload.run_id === run.id)) return;
+              event.currentTarget.disabled = true;
+              await submitTurn("stop", { run_id: run.id, intent_id: crypto.randomUUID() }, callResult, current, null, reading);
+            }, "secondary", { disabled: run.execution_stopped === true || Boolean(run.stop_request) || pending().some((item) => item.kind === "stop" && item.payload.run_id === run.id) })), output);
+        }), continueForm, callResult));
+    } catch (error) {
+      if (active() && reading === selectionSequence) detail.replaceChildren(panel("会话读取失败", error.message));
+    }
+  }
+
+  async function submitTurn(kind, payload, target, current, fields, reading) {
+    const id = selected;
+    remember({ kind, session: id, intent: payload.intent_id, payload });
+    if (fields) fields.disabled = true;
+    pendingView();
+    target.replaceChildren(empty("已保存本次提交意图，正在等待原操作返回。可以刷新原会话观察；不自动重发。"));
+    try {
+      const response = await api(`${base}/agent-sessions/${encodeURIComponent(id)}/${kind}`, payload);
+      observed(payload.intent_id);
+      if (!active() || !current()) return;
+      target.replaceChildren(panel(kind === "stop" ? "原停止请求已返回" : "原续答记录已返回",
+        kind === "stop" ? "stop_requested、notification 和 run 中的停止事实分别核对；请求返回不等于清理完成。" : "沿原会话读取本轮结果。", pre(response),
+        row(button("读取本轮后的会话", () => selectSession(id, 0, reading)))));
+    } catch (error) {
+      if (active() && current()) target.replaceChildren(panel("提交未获确认", error.message,
+        "已保留完整请求和原 intent。先观察原操作；不会自动重发。"));
+    } finally {
+      pendingView();
+    }
+  }
+
+  modal("项目 Agent 会话", view);
+  pendingView();
+  readSessions(true);
 }
 
 export function compositionDialog(data, base, origin, onResult) {

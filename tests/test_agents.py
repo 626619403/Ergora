@@ -313,3 +313,298 @@ def test_forge_config_drift_and_cuda_candidate_identity(tmp_path, monkeypatch):
         assert "frozen campaign identity" in refused["operations"][-1]["stderr_preview"]
         defaults.write_text(original)
         assert kernel.operate(state, "demo", prepared["id"], "status")["status"] == "observed"
+
+
+@pytest.fixture
+def native_session_case(tmp_path, monkeypatch):
+    from ergora import agent_runs
+    state, repo = project(tmp_path)
+    programs = tmp_path / 'session-bin'
+    programs.mkdir()
+    script = programs / 'codex'
+    script.write_text(f'#!{sys.executable}\n' + r'''
+import json, os, pathlib, subprocess, sys, time, uuid
+args = sys.argv[1:]
+if args == ['--version']:
+    print('codex-cli 0.167.1-fixture')
+    raise SystemExit(0)
+prompt = sys.stdin.read()
+home = pathlib.Path(os.environ['CODEX_HOME'])
+saved = home / 'thread.json'
+if 'resume' in args:
+    native = json.loads(saved.read_text())
+    assert args[args.index('resume') + 1] == native['id']
+else:
+    assert not saved.exists()
+    native = {'id': str(uuid.uuid4()), 'turns': 0, 'nonce': 'fixture-original'}
+native['turns'] += 1
+saved.write_text(json.dumps(native))
+repo = pathlib.Path.cwd()
+with (repo / 'native-calls.jsonl').open('a') as stream:
+    stream.write(json.dumps({'argv': args, 'home': str(home), 'id': native['id'], 'prompt': prompt}) + '\n')
+print(json.dumps({'type': 'thread.started', 'thread_id': native['id']}), flush=True)
+if prompt.startswith('SLEEP'):
+    code = 'import time;time.sleep(40)'
+    child = subprocess.Popen([sys.executable, '-c', code], start_new_session=True)
+    (repo / 'escape-pid').write_text(str(child.pid))
+    (repo / 'native-ready').touch()
+    time.sleep(40)
+if prompt.startswith('PAUSE'):
+    time.sleep(.4)
+(repo / ('turn-' + str(native['turns']) + '.txt')).write_text(prompt)
+result_path = pathlib.Path(args[args.index('--output-last-message') + 1])
+if '--output-schema' in args:
+    schema = json.loads(pathlib.Path(args[args.index('--output-schema') + 1]).read_text())
+    result = {'summary': native['nonce'], 'artifacts': {k: 'fixture evidence' for k in schema['properties']['artifacts']['required']}}
+    if 'decision' in schema['required']:
+        result['decision'] = 'approve'
+    result_path.write_text(json.dumps(result))
+else:
+    result_path.write_text(native['nonce'] + ' turn ' + str(native['turns']))
+print(json.dumps({'type': 'turn.completed', 'usage': {'input_tokens': 1, 'output_tokens': 1}}), flush=True)
+''')
+    script.chmod(0o700)
+    monkeypatch.setenv('PATH', str(programs) + os.pathsep + os.environ['PATH'])
+    selected = {'tool': 'codex', 'model': 'gpt-6.1-sol', 'reasoning_effort': 'xhigh'}
+    projects.bind(state, 'demo', 'implementer', selected, state.project('demo')['revision'])
+    config = tmp_path / 'session.toml'
+    config.write_text('model = "gpt-6.1-sol"\nmodel_reasoning_effort = "xhigh"\n')
+    return state, repo, config, agent_runs
+
+
+def test_native_development_session_restores_exact_uuid_across_application_processes(native_session_case):
+    state, repo, config, runs = native_session_case
+    revision = state.project('demo')['revision']
+    first = runs.run_agent(state, 'demo', 'implementer', 'first change', timeout=10,
+                           session_intent='development', expected_revision=revision, codex_config=config)
+    assert first['status'] == 'succeeded', first
+    assert first['execution_stopped'] is True and first['formal_execution_authorized'] is False
+    assert (repo / 'turn-1.txt').read_text() == 'first change'
+    assert runs.sessions(state, 'demo')['sessions'][0]['sandbox'] == 'workspace-write'
+    request = {'home': str(state.root), 'session': first['id'], 'parent': first['id'], 'revision': revision}
+    code = ('import json,sys;from pathlib import Path;from ergora import agent_runs;from ergora.state import State;'
+            'q=json.loads(sys.argv[1]);r=agent_runs.continue_session(State(Path(q["home"])),"demo",q["session"],q["parent"],'
+            '"second change",expected_revision=q["revision"],intent_id="second",timeout=10);print(json.dumps(r))')
+    fresh = subprocess.run([sys.executable, '-c', code, json.dumps(request)], capture_output=True, text=True, timeout=20)
+    assert fresh.returncode == 0, fresh.stderr
+    second = json.loads(fresh.stdout)
+    assert second['status'] == 'succeeded', second
+    third = runs.continue_session(State(state.root), 'demo', first['id'], second['id'], 'third change',
+                                  expected_revision=revision, intent_id='third', timeout=10)
+    assert third['status'] == 'succeeded', third
+    calls = [json.loads(line) for line in (repo / 'native-calls.jsonl').read_text().splitlines()]
+    assert len(calls) == 3 and len({call['id'] for call in calls}) == 1 and len({call['home'] for call in calls}) == 1
+    assert '--ephemeral' not in calls[0]['argv'] and calls[0]['argv'][calls[0]['argv'].index('--sandbox') + 1] == 'workspace-write'
+    assert calls[1]['argv'][calls[1]['argv'].index('resume') + 1] == first['native_session']['id']
+    assert Path(third['result']).read_text() == 'fixture-original turn 3'
+    observed = runs.inspect_session(state, 'demo', first['id'])
+    assert observed['can_continue'] and [t['session']['ordinal'] for t in observed['turns']] == [0, 1, 2]
+    precise = runs.sessions(state, 'demo', intent_id='development')['sessions']
+    assert len(precise) == 1 and precise[0]['birth_intent'] == 'development' and precise[0]['id'] == first['id']
+    assert runs.sessions(state, 'demo', intent_id='not-recorded')['sessions'] == []
+    assert runs.run_agent(state, 'demo', 'implementer', 'first change', timeout=10,
+                          session_intent='development', expected_revision=revision, codex_config=config)['id'] == first['id']
+    assert runs.continue_session(state, 'demo', first['id'], second['id'], 'third change',
+                                  expected_revision=revision, intent_id='third', timeout=10)['id'] == third['id']
+    assert len((repo / 'native-calls.jsonl').read_text().splitlines()) == 3
+
+
+def test_session_keeps_template_context_and_configuration_after_source_changes(native_session_case):
+    state, repo, config, runs = native_session_case
+    first = runs.run_agent(state, 'demo', 'implementer', 'first', timeout=10, template='repository-governance',
+                          session_intent='template', expected_revision=state.project('demo')['revision'], codex_config=config)
+    assert first['status'] == 'succeeded', first
+    config.write_text('model = "different-model"\nmodel_reasoning_effort = "low"\n')
+    second = runs.continue_session(state, 'demo', first['id'], first['id'], 'second',
+                                  expected_revision=state.project('demo')['revision'], intent_id='second', timeout=10)
+    assert second['status'] == 'succeeded' and second['binding']['model'] == 'gpt-6.1-sol'
+    assert json.loads(Path(second['result']).read_text())['summary'] == 'fixture-original'
+    calls = [json.loads(line) for line in (repo / 'native-calls.jsonl').read_text().splitlines()]
+    assert 'Template role requirements' in calls[0]['prompt'] and 'Template role requirements' in calls[1]['prompt']
+    assert calls[1]['argv'][calls[1]['argv'].index('--model') + 1] == 'gpt-6.1-sol'
+    assert all('different-model' not in argument for argument in calls[1]['argv'])
+
+
+def test_session_rejects_stale_parent_cross_project_and_changed_authority(native_session_case):
+    state, repo, config, runs = native_session_case
+    revision = state.project('demo')['revision']
+    first = runs.run_agent(state, 'demo', 'implementer', 'first', timeout=10,
+                          session_intent='authority', expected_revision=revision, codex_config=config)
+    assert first['status'] == 'succeeded', first
+    projects.create(state, 'other-session-project', repo)
+    with pytest.raises(ValueError, match='Unknown session'):
+        runs.inspect_session(state, 'other-session-project', first['id'])
+    second = runs.continue_session(state, 'demo', first['id'], first['id'], 'second',
+                                  expected_revision=revision, intent_id='second', timeout=10)
+    with pytest.raises(ValueError, match='latest stopped'):
+        runs.continue_session(state, 'demo', first['id'], first['id'], 'stale',
+                              expected_revision=revision, intent_id='stale')
+    projects.bind(state, 'demo', 'implementer', {'tool': 'codex', 'model': 'gpt-6.1-sol', 'reasoning_effort': 'high'}, revision)
+    with pytest.raises(ValueError, match='revision'):
+        runs.continue_session(state, 'demo', first['id'], second['id'], 'changed authority',
+                              expected_revision=revision, intent_id='drift')
+    assert len((repo / 'native-calls.jsonl').read_text().splitlines()) == 2
+    assert runs.inspect_session(state, 'demo', first['id'])['can_continue'] is False
+
+
+def test_session_concurrent_parent_has_one_real_effect(native_session_case):
+    from concurrent.futures import ThreadPoolExecutor
+    state, repo, config, runs = native_session_case
+    revision = state.project('demo')['revision']
+    first = runs.run_agent(state, 'demo', 'implementer', 'first', timeout=10,
+                          session_intent='concurrent', expected_revision=revision, codex_config=config)
+    def call(intent):
+        try:
+            return runs.continue_session(State(state.root), 'demo', first['id'], first['id'], 'PAUSE next',
+                                          expected_revision=revision, intent_id=intent, timeout=10)
+        except (ValueError, BlockingIOError) as error:
+            return str(error)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        outcomes = list(pool.map(call, ['one', 'two']))
+    assert sum(isinstance(value, dict) and value['status'] == 'succeeded' for value in outcomes) == 1, outcomes
+    assert len((repo / 'native-calls.jsonl').read_text().splitlines()) == 2
+
+
+def test_session_missing_final_is_unknown_and_never_replays(native_session_case):
+    state, repo, config, runs = native_session_case
+    revision = state.project('demo')['revision']
+    first = runs.run_agent(state, 'demo', 'implementer', 'first', timeout=10,
+                          session_intent='unknown', expected_revision=revision, codex_config=config)
+    final = state.root / 'runs' / (first['id'] + '.session-turn') / 'final'
+    final.rename(final.with_name('saved-final'))
+    observed = runs.inspect_session(state, 'demo', first['id'])
+    assert observed['status'] == 'unknown' and observed['can_continue'] is False
+    again = runs.run_agent(state, 'demo', 'implementer', 'first', timeout=10,
+                           session_intent='unknown', expected_revision=revision, codex_config=config)
+    assert again['status'] == 'unknown'
+    with pytest.raises(ValueError, match='latest stopped'):
+        runs.continue_session(state, 'demo', first['id'], first['id'], 'not authorized replay',
+                              expected_revision=revision, intent_id='new')
+    assert len((repo / 'native-calls.jsonl').read_text().splitlines()) == 1
+
+
+def test_session_reservation_survives_attempt_publication_failure_without_dispatch(native_session_case, monkeypatch):
+    state, repo, config, runs = native_session_case
+    publish = runs._publish_session_packet
+    def fail_attempt(path, values):
+        if path.name == 'attempt':
+            raise OSError('fixture attempt fsync failure')
+        return publish(path, values)
+    monkeypatch.setattr(runs, '_publish_session_packet', fail_attempt)
+    with pytest.raises(OSError, match='fsync'):
+        runs.run_agent(state, 'demo', 'implementer', 'first', timeout=10,
+                       session_intent='reserved', expected_revision=state.project('demo')['revision'], codex_config=config)
+    again = runs.run_agent(state, 'demo', 'implementer', 'first', timeout=10,
+                           session_intent='reserved', expected_revision=state.project('demo')['revision'], codex_config=config)
+    assert again['status'] == 'unknown' and not (repo / 'native-calls.jsonl').exists()
+
+
+@pytest.mark.parametrize('end', ['deadline', 'stop'])
+def test_session_original_reaper_stops_escape_child_and_does_not_reopen_turn(native_session_case, end):
+    from concurrent.futures import ThreadPoolExecutor
+    state, repo, config, runs = native_session_case
+    revision = state.project('demo')['revision']
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(runs.run_agent, state, 'demo', 'implementer', 'SLEEP original turn', 1 if end == 'deadline' else 10,
+                             session_intent='cleanup', expected_revision=revision, codex_config=config)
+        limit = time.monotonic() + 10
+        while not (repo / 'native-ready').exists() and not future.done() and time.monotonic() < limit:
+            time.sleep(.02)
+        assert (repo / 'native-ready').exists()
+        if end == 'stop':
+            session = runs.sessions(State(state.root), 'demo')['sessions'][0]
+            stopped = runs.stop_session(State(state.root), 'demo', session['id'], session['latest_run'], intent_id='explicit-stop')
+            assert stopped['stop_requested']
+            assert stopped['run']['stop_request']['intent_id'] == 'explicit-stop'
+        result = future.result(timeout=15)
+    assert result['status'] in ('timed_out', 'cancelled'), result
+    assert result['execution_stopped'] is True
+    escaped = int((repo / 'escape-pid').read_text())
+    assert not Path('/proc', str(escaped)).exists(), 'The original subreaper must reap even a new-session child'
+    again = runs.run_agent(state, 'demo', 'implementer', 'SLEEP original turn', 1 if end == 'deadline' else 10,
+                           session_intent='cleanup', expected_revision=revision, codex_config=config)
+    assert again['id'] == result['id'] and len((repo / 'native-calls.jsonl').read_text().splitlines()) == 1
+    continued = runs.continue_session(state, 'demo', result['session']['id'], result['id'], 'new explicit work',
+                                      expected_revision=revision, intent_id='after-stop', timeout=10)
+    assert continued['status'] == 'succeeded', continued
+    assert continued['native_session']['id'] == result['native_session']['id']
+    assert len((repo / 'native-calls.jsonl').read_text().splitlines()) == 2
+
+
+def test_session_prebirth_rejection_is_distinct_from_consumed_attempt_failure(native_session_case, monkeypatch):
+    state, repo, config, runs = native_session_case
+    revision = state.project('demo')['revision']
+    with pytest.raises(runs.SessionRejected) as rejected:
+        runs.run_agent(state, 'demo', 'implementer', 'bad\0prompt', session_intent='rejected',
+                       expected_revision=revision, codex_config=config)
+    assert rejected.value.intent_id == 'rejected' and runs.sessions(state, 'demo', intent_id='rejected')['sessions'] == []
+    original = subprocess.Popen
+    def refuse_helper(argv, *args, **kwargs):
+        if len(argv) > 2 and argv[1] == '-c' and 'session_main' in argv[2]:
+            raise OSError('fixture helper creation failed after durable attempt')
+        return original(argv, *args, **kwargs)
+    monkeypatch.setattr(subprocess, 'Popen', refuse_helper)
+    attempted = runs.run_agent(state, 'demo', 'implementer', 'no effect', session_intent='consumed-popen',
+                               expected_revision=revision, codex_config=config)
+    assert attempted['status'] == 'failed' and attempted['execution_stopped'] is True
+    assert (state.root / 'runs' / (attempted['id'] + '.session-turn') / 'attempt').is_dir()
+    assert not (repo / 'native-calls.jsonl').exists()
+    assert runs.run_agent(state, 'demo', 'implementer', 'no effect', session_intent='consumed-popen',
+                          expected_revision=revision, codex_config=config)['id'] == attempted['id']
+
+
+def test_session_skill_context_is_frozen_internally_and_complete_result_is_readable(native_session_case):
+    from ergora import skills
+    state, repo, config, runs = native_session_case
+    skill = repo.parent / 'session-evidence'
+    skill.mkdir()
+    (skill / 'SKILL.md').write_text('---\nname: session-evidence\ndescription: frozen selected evidence\n---\nORIGINAL RESOURCE\n')
+    (skill / 'attachment.txt').write_text('complete attachment bytes')
+    imported = skills.import_bundle(state, 'demo', skill)
+    first = runs.run_agent(state, 'demo', 'implementer', 'first', 10, ['session-evidence'],
+                          session_intent='resource', expected_revision=state.project('demo')['revision'], codex_config=config)
+    assert first['status'] == 'succeeded', first
+    actual = skills.get(state, 'demo', imported['digest'])
+    Path(actual['path'], 'SKILL.md').write_text('CURRENT SOURCE CHANGED')
+    second = runs.continue_session(state, 'demo', first['id'], first['id'], 'second',
+                                  expected_revision=state.project('demo')['revision'], intent_id='second', timeout=10)
+    assert second['status'] == 'succeeded', second
+    calls = [json.loads(line) for line in (repo / 'native-calls.jsonl').read_text().splitlines()]
+    assert all('ORIGINAL RESOURCE' in call['prompt'] and 'CURRENT SOURCE CHANGED' not in call['prompt'] for call in calls)
+    context = state.root / 'runs' / (first['id'] + '.session') / 'context'
+    assert (context / 'skills/session-evidence/attachment.txt').read_text() == 'complete attachment bytes'
+    observed = runs.output(state, 'demo', second['id'])['result']
+    assert observed['available'] and observed['text'] == 'fixture-original turn 2'
+    assert observed['sha256'] == second['result_sha256']
+
+
+def test_session_result_fsync_failure_keeps_stopped_execution_and_unknown_outcome(native_session_case, monkeypatch):
+    state, repo, config, runs = native_session_case
+    original = subprocess.Popen
+    code = '''import os
+from ergora.agent_runs import session_main
+real = os.fsync
+def fail_result(descriptor):
+    if os.readlink('/proc/self/fd/' + str(descriptor)).endswith('/result.txt'):
+        raise OSError('fixture result fsync failure')
+    return real(descriptor)
+os.fsync = fail_result
+session_main()
+'''
+    def inject_in_helper(argv, *args, **kwargs):
+        if len(argv) > 2 and argv[1] == '-c' and 'session_main' in argv[2]:
+            argv = [*argv[:2], code, *argv[3:]]
+        return original(argv, *args, **kwargs)
+    monkeypatch.setattr(subprocess, 'Popen', inject_in_helper)
+    result = runs.run_agent(state, 'demo', 'implementer', 'one effect', 10,
+                           session_intent='result-fsync', expected_revision=state.project('demo')['revision'], codex_config=config)
+    assert result['status'] == 'unknown' and result['execution_stopped'] is True
+    assert 'durable confirmation' in result['error'] and (repo / 'turn-1.txt').exists()
+    observed = runs.inspect_session(state, 'demo', result['session']['id'])
+    assert observed['can_continue'] is False and 'fsync' in observed['reason']
+    again = runs.run_agent(state, 'demo', 'implementer', 'one effect', 10,
+                          session_intent='result-fsync', expected_revision=state.project('demo')['revision'], codex_config=config)
+    assert again['id'] == result['id'] and len((repo / 'native-calls.jsonl').read_text().splitlines()) == 1
+    with pytest.raises(ValueError, match='unknown parents'):
+        runs.continue_session(state, 'demo', result['session']['id'], result['id'], 'do not repeat the unknown effect',
+                              expected_revision=state.project('demo')['revision'], intent_id='blocked')

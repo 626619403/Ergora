@@ -9,10 +9,10 @@ from pathlib import Path
 import subprocess
 import sys
 import tomllib
+import uuid
 
 from . import components, contracts, processes
-from .data.drivers.deepseek import (CALL_METADATA_LIMITS, MAX_CONTINUATION_HISTORY,
-    call_files as _call_files, native_directories as _native_directories, native_history_page)
+from .data.drivers.deepseek import native_history_page
 
 
 def _events(output: Path):
@@ -59,7 +59,7 @@ class Invocation:
     schema: dict | None
     mode: str = "native"
     task_mcp: dict | None = None
-    continuation: dict | None = None
+    session: dict | None = None
 
 
 class AgentBackend(ABC):
@@ -108,14 +108,14 @@ class AgentBackend(ABC):
         """Observe saved native bytes without starting an interpreter or SDK."""
         return {"available": False, "reason": "This backend has no native archive reader"}
 
-    def check_continuation(self, mode: str) -> None:
-        raise ValueError(f"{self.binding['tool']} does not support explicit session continuation")
+    def session_configuration(self, cwd: Path) -> dict:
+        raise ValueError(f"{self.binding['tool']} does not support persistent native sessions")
 
-    def continuation_source(self, protocol: Path, *, cwd: Path) -> dict:
-        raise ValueError(f"{self.binding['tool']} does not support explicit session continuation")
+    def validate_session_configuration(self, configuration: dict, cwd: Path) -> None:
+        raise ValueError(f"{self.binding['tool']} does not support persistent native sessions")
 
-    def continuation_result(self, protocol: Path, *, source: dict) -> dict:
-        raise ValueError(f"{self.binding['tool']} does not support explicit session continuation")
+    def session_result(self, output: Path, request: Invocation, *, completed: bool = True) -> dict:
+        raise ValueError(f"{self.binding['tool']} does not support persistent native sessions")
 
     def diagnostics(self) -> dict:
         return {"authentication": self.authentication, "remediation": [
@@ -170,7 +170,8 @@ class CodexBackend(AgentBackend):
         config = {}
         if self.options.get("config") is not None:
             options += ["--ignore-user-config", "--ignore-rules", "--disable", "plugins", "--disable", "apps"]
-            config = tomllib.loads(Path(self.options["config"]).read_text(encoding="utf-8"))
+            config = (json.loads(json.dumps(self.options['parsed_config'])) if 'parsed_config' in self.options
+                      else tomllib.loads(Path(self.options["config"]).read_text(encoding="utf-8")))
         if mode != "native":
             if self.options.get("arguments"):
                 raise ValueError("Restricted composition calls do not accept additional native arguments")
@@ -215,17 +216,115 @@ class CodexBackend(AgentBackend):
     def command(self, request: Invocation) -> tuple[list[str], str]:
         if request.mode == "workspace-task-mcp":
             self.composition_policy(request.mode)
-        options = self._options(request.mode, request.task_mcp)
+        options = (list(request.session['configuration']['arguments']) if request.session is not None
+                   else self._options(request.mode, request.task_mcp))
         sandbox = "read-only" if request.mode not in ("native", "workspace-task-mcp") else self.binding.get(
             "sandbox", "read-only" if request.role != "implementer" else "workspace-write")
         sandbox = "danger-full-access" if sandbox == "current-container" else sandbox
-        argv = [self.executable(), "exec", "--ephemeral", "--sandbox", sandbox, "--json", *options]
+        executable = request.session['configuration']['executable'] if request.session is not None else self.executable()
+        prefix = request.session['configuration']['prefix_arguments'] if request.session is not None else []
+        argv = [executable, *prefix, "exec", *([] if request.session is not None else ["--ephemeral"]),
+                "--sandbox", sandbox, "--json", *options]
         if "model" in self.binding:
             argv += ["--model", self.binding["model"]]
         if request.schema:
             argv += ["--output-schema", str(request.protocol / "schema.json"),
                      "--output-last-message", str(request.protocol / "result.json")]
+        elif request.session is not None:
+            argv += ["--output-last-message", str(request.protocol / "result.txt")]
+        if request.session is not None and request.session.get('native_id') is not None:
+            argv += ['resume', request.session['native_id']]
         return [*argv, "-"], request.prompt
+
+    def session_configuration(self, cwd: Path) -> dict:
+        if sys.platform != 'linux':
+            raise ValueError('Persistent native sessions require Linux/WSL2 process ownership')
+        source = Path(self.options.get('config') or Path(os.environ.get('CODEX_HOME', str(Path.home() / '.codex'))) / 'config.toml')
+        if not source.is_file():
+            raise ValueError('Persistent Codex sessions require an explicit or existing trusted Codex configuration')
+        raw = source.read_bytes()
+        config = tomllib.loads(raw.decode('utf-8'))
+        # The existing native option owner accepts inference settings. Persistent
+        # sessions cannot retain literal credentials or ambient tool/profile state.
+        allowed = {'model', 'model_provider', 'model_reasoning_effort', 'service_tier', 'model_providers',
+                   'approval_policy', 'sandbox_mode', 'sandbox_workspace_write'}
+        unsupported = set(config) - allowed
+        if unsupported:
+            raise ValueError('Persistent Codex configuration has unsupported settings: ' + ', '.join(sorted(unsupported)))
+        for provider in config.get('model_providers', {}).values():
+            if not isinstance(provider, dict) or set(provider) - {
+                    'name', 'base_url', 'env_key', 'wire_api', 'requires_openai_auth', 'env_http_headers'}:
+                raise ValueError('Persistent Codex provider settings support credential environment references only')
+            from urllib.parse import urlsplit
+            url = urlsplit(provider.get('base_url', ''))
+            if url.username or url.password or url.query or url.fragment:
+                raise ValueError('Persistent Codex provider URL cannot contain credentials, query or fragment')
+            for name in [provider.get('env_key'), *provider.get('env_http_headers', {}).values()]:
+                if name is not None and (not isinstance(name, str) or not name.isidentifier()):
+                    raise ValueError('Codex credentials require environment variable names')
+        effective = dict(self.binding)
+        for key in ('model', 'model_reasoning_effort'):
+            target = 'reasoning_effort' if key == 'model_reasoning_effort' else key
+            if target not in effective and key in config:
+                effective[target] = config[key]
+        if not effective.get('model') or not effective.get('reasoning_effort'):
+            raise ValueError('Persistent Codex sessions require an explicit model and reasoning effort')
+        adapter = CodexBackend(effective, {**self.options, 'config': str(source), 'parsed_config': config})
+        arguments = adapter._options('native')
+        if source.read_bytes() != raw:
+            raise ValueError('Codex configuration changed while freezing options')
+        executable = str(Path(processes.resolve_program(self.executable(), cwd)).resolve())
+        selected_files = [Path(executable)]
+        if Path(executable).name == 'codex.js':
+            import platform
+            package = Path(executable).parent.parent
+            target = {'x86_64': ('linux-x64', 'x86_64-unknown-linux-musl'),
+                      'aarch64': ('linux-arm64', 'aarch64-unknown-linux-musl')}.get(platform.machine())
+            if target is None:
+                raise ValueError('Cannot establish native Codex binary for this architecture')
+            candidates = [package / 'node_modules' / '@openai' / ('codex-' + target[0]) / 'vendor' / target[1] / 'bin' / 'codex',
+                          package / 'vendor' / target[1] / 'bin' / 'codex']
+            binary = next((candidate for candidate in candidates if candidate.is_file()), None)
+            if binary is None:
+                raise ValueError('Cannot establish the selected npm Codex native binary')
+            selected_files += [package / 'package.json', binary]
+        fingerprints = {}
+        for path in selected_files:
+            with path.open('rb') as stream:
+                fingerprints[str(path.resolve())] = hashlib.file_digest(stream, 'sha256').hexdigest()
+        version = subprocess.run([executable, '--version'], cwd=cwd, capture_output=True, text=True, timeout=5)
+        if version.returncode or not version.stdout.startswith('codex-cli '):
+            raise ValueError('Cannot establish selected Codex CLI version')
+        return {'arguments': arguments, 'prefix_arguments': ['--no-daemon'],
+                'binding': effective, 'executable': executable,
+                'executable_files': fingerprints, 'version': version.stdout.strip(),
+                'sandbox': effective.get('sandbox', 'workspace-write' if self.options.get('role') == 'implementer' else 'read-only'),
+                'source_sha256': hashlib.sha256(raw).hexdigest()}
+
+    def validate_session_configuration(self, configuration: dict, cwd: Path) -> None:
+        if self.binding != configuration['binding']:
+            raise ValueError('Session binding differs from its frozen native configuration')
+        for filename, expected in configuration['executable_files'].items():
+            with Path(filename).open('rb') as stream:
+                if hashlib.file_digest(stream, 'sha256').hexdigest() != expected:
+                    raise ValueError('Selected native executable changed; start a new session')
+        self.check_mode('native')
+
+    def session_result(self, output: Path, request: Invocation, *, completed: bool = True) -> dict:
+        thread, terminal = [], []
+        for event in _events(output):
+            if event.get('type') == 'thread.started':
+                thread.append(str(uuid.UUID(event['thread_id'])))
+            if event.get('type') in ('turn.completed', 'turn.failed', 'error'):
+                terminal.append(event)
+        if not completed and not thread and request.session.get('native_id') is not None:
+            return {'id': request.session['native_id'], 'completed': False, 'observed_in_turn': False}
+        if len(thread) != 1 or (completed and (len(terminal) != 1 or terminal[0]['type'] != 'turn.completed')):
+            raise ValueError('Native session lacks one matching thread and completed turn')
+        if request.session.get('native_id') not in (None, thread[0]):
+            raise ValueError('Native resume returned a different session UUID')
+        return {'id': thread[0], 'completed': len(terminal) == 1 and terminal[0]['type'] == 'turn.completed',
+                'observed_in_turn': True, 'usage': terminal[0].get('usage') if terminal else None}
 
     def read_result(self, output: Path, request: Invocation) -> dict:
         if request.mode in ("task-mcp", "workspace-task-mcp"):
@@ -341,8 +440,7 @@ class DeepSeekHarnessBackend(AgentBackend):
 
     invocation_modes = ("text-only", "task-mcp")
     guidance = ("Install the pinned DeepSeek SDK/runtime in a separate Python environment and select its interpreter.",
-                "Configure the OpenAI-compatible base_url, model and api_key_env; native/workspace calls are unsupported.",
-                "Session continuation requires an explicitly enabled new standalone task-MCP source and its frozen contract.")
+                "Configure the OpenAI-compatible base_url, model and api_key_env; native/workspace calls are unsupported.")
 
     def executable(self) -> str:
         return self.binding["python"]
@@ -384,8 +482,6 @@ class DeepSeekHarnessBackend(AgentBackend):
     def command(self, request: Invocation) -> tuple[list[str], str]:
         document = {"binding": self.binding, "prompt": request.prompt, "cwd": str(request.cwd),
                     "schema": request.schema, "mode": request.mode, "task_mcp": request.task_mcp}
-        if request.continuation is not None:
-            document["continuation"] = request.continuation
         path = request.protocol / "request.json"
         path.write_text(json.dumps(document, ensure_ascii=False), encoding="utf-8", newline="\n")
         return [self.executable(), "-I", str(Path(__file__).parent / "data/drivers/deepseek.py"), str(path)], ""
@@ -398,118 +494,6 @@ class DeepSeekHarnessBackend(AgentBackend):
                for event in native["events"]):
             raise ValueError("DeepSeek Harness reported a tool error; see native-events.jsonl")
         return json.loads(native["final_response"])
-
-    def check_continuation(self, mode: str) -> None:
-        self.check_invocation()
-        if mode != "task-mcp":
-            raise ValueError("Explicit continuation requires a standalone task-MCP call")
-
-    def continuation_source(self, protocol: Path, *, cwd: Path) -> dict:
-        self.check_continuation("task-mcp")
-        material = _call_files(protocol, {"native-source-seal.json": 65_536, **CALL_METADATA_LIMITS})
-        seal = json.loads(material["native-source-seal.json"])
-        request = json.loads(material["request.json"])
-        identity = json.loads(material["native-identity.json"])
-        frozen = json.loads(material["native-call-contract.json"])
-        for value in (seal, request, identity, frozen):
-            contracts.validate(value, {"type": "object"}, "Saved continuation metadata")
-        metadata = {name: hashlib.sha256(raw).hexdigest() for name, raw in material.items() if name != "native-source-seal.json"}
-        if (type(seal.get("schema_version")) is not int or seal["schema_version"] != 1
-                or not isinstance(request.get("continuation"), dict) or request["continuation"].get("kind") != "source"
-                or not isinstance(request["continuation"].get("authority"), dict)
-                or request.get("binding") != self.binding or request.get("cwd") != str(cwd)
-                or request.get("mode") != "task-mcp" or not isinstance(request.get("schema"), dict)
-                or request["schema"] != json.loads(material["schema.json"])
-                or not isinstance(identity.get("session_id"), str) or seal.get("session_id") != identity["session_id"]
-                or seal.get("root_idle") is not True or not seal.get("receipt_id")
-                or frozen.get("files") != {name: digest for name, digest in metadata.items() if name != "native-call-contract.json"}
-                or any(seal.get(key) != value for key, value in frozen.items() if key != "files")
-                or seal.get("files") != {name: hashlib.sha256(raw).hexdigest() for name, raw in material.items()
-                                         if name != "native-source-seal.json"}):
-            raise ValueError("Native source differs from its frozen call contract")
-        with _native_directories(protocol, cwd, expected=seal):
-            history, _ = self._history_snapshot(protocol, cwd)
-        if seal.get("history") != history:
-            raise ValueError("Native source history changed after its sealed completion")
-        return {"protocol": str(protocol), "cwd": str(cwd), "session_id": identity["session_id"],
-                "seal_sha256": hashlib.sha256(material["native-source-seal.json"]).hexdigest(),
-                "authority": request["continuation"]["authority"], "history": history}
-
-    def _history_snapshot(self, protocol: Path, cwd: Path, ranges: tuple = ()) -> tuple[dict, list[str]]:
-        digest = hashlib.sha256()
-        intervals = [hashlib.sha256() for _ in ranges]
-        offset, revision, first = 0, None, None
-        while True:
-            page = self.archived_history(protocol, cwd=cwd, offset=offset, limit=65_536, revision=revision)
-            if not page["available"] or page["size_bytes"] > MAX_CONTINUATION_HISTORY:
-                raise ValueError("Continuation requires an available native archive of at most 64 MiB")
-            first = first or page
-            raw = page["content"].encode("utf-8")
-            digest.update(raw)
-            for (start, end), hasher in zip(ranges, intervals):
-                left, right = max(start, offset), min(end, offset + len(raw))
-                if left < right:
-                    hasher.update(raw[left - offset:right - offset])
-            if page["next_offset"] is None:
-                break
-            revision, offset = page["revision"], page["next_offset"]
-        history = {"source": first["source"], "size_bytes": first["size_bytes"], "sha256": digest.hexdigest()}
-        return history, [hasher.hexdigest() for hasher in intervals]
-
-    def continuation_result(self, protocol: Path, *, source: dict) -> dict:
-        """Observe stopped-call bytes even when no completed input receipt exists."""
-        root, cwd = Path(source["protocol"]), Path(source["cwd"])
-        sealed = _call_files(root, {"native-source-seal.json": 65_536})["native-source-seal.json"]
-        if hashlib.sha256(sealed).hexdigest() != source["seal_sha256"]:
-            raise ValueError("Native source seal changed during continuation")
-        seal = json.loads(sealed)
-        try:
-            restoration = json.loads(_call_files(protocol, {"native-restore.json": 65_536})["native-restore.json"])
-        except FileNotFoundError:
-            restoration = None
-        b0 = source["history"]["size_bytes"]
-        b1 = restoration["restored"]["size_bytes"] if restoration is not None else None
-        if b1 is not None and (type(b1) is not int or not b0 <= b1 <= MAX_CONTINUATION_HISTORY):
-            raise ValueError("Native restore observation has an invalid byte interval")
-        with _native_directories(root, cwd, expected=seal):
-            history, hashes = self._history_snapshot(root, cwd,
-                ((0, b0), (b0, b1 or b0), (b1 or b0, MAX_CONTINUATION_HISTORY), (0, b1 or b0)))
-        observed = {"completed": False, "session_id": source["session_id"], "source_bytes": b0,
-            "restored_bytes": b1, "final_bytes": history["size_bytes"], "history": history,
-            "source_prefix_preserved": history["size_bytes"] >= b0 and hashes[0] == source["history"]["sha256"],
-            "restore_sha256": hashes[1] if b1 is not None else None,
-            "activity_sha256": hashes[2] if b1 is not None else None,
-            "post_source_sha256": hashes[2] if b1 is None else None}
-        if restoration is not None and (restoration.get("source") != source["history"]
-                or restoration.get("prefix_preserved") is not True
-                or restoration["restored"] != {**history, "size_bytes": b1, "sha256": hashes[3]}
-                or restoration.get("restore_sha256") != hashes[1]):
-            raise ValueError("Native restore interval differs from its saved observation")
-        try:
-            material = _call_files(protocol, {"native-continuation.json": 65_536, **CALL_METADATA_LIMITS})
-        except FileNotFoundError:
-            return observed
-        receipt = json.loads(material["native-continuation.json"])
-        request = json.loads(material["request.json"])
-        contracts.validate(receipt, {"type": "object", "required": ["result_sha256"], "properties": {
-            "result_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}}}, "Native continuation receipt")
-        contracts.validate(request, {"type": "object"}, "Native continuation request")
-        b2 = receipt.get("final_bytes")
-        if (receipt.get("schema_version") != 1 or receipt.get("session_id") != source["session_id"]
-                or receipt.get("source_seal_sha256") != source["seal_sha256"]
-                or not isinstance(request.get("continuation"), dict) or request["continuation"].get("source") != source
-                or receipt.get("root_idle") is not True or not receipt.get("receipt_id")
-                or type(b1) is not int or type(b2) is not int or not b0 <= b1 < b2 <= MAX_CONTINUATION_HISTORY
-                or receipt.get("restored_bytes") != b1
-                or receipt.get("files") != {name: hashlib.sha256(raw).hexdigest() for name, raw in material.items()
-                                         if name != "native-continuation.json"}):
-            raise ValueError("Native continuation lacks its matching input, identity or completed receipt")
-        if (history != receipt.get("history") or history["size_bytes"] != b2 or hashes[0] != source["history"]["sha256"]
-                or receipt.get("restore_sha256") != hashes[1] or receipt.get("activity_sha256") != hashes[2]):
-            raise ValueError("Native continuation history differs from its original prefix or saved intervals")
-        return {**observed, "completed": True, "receipt_id": receipt["receipt_id"],
-            "receipt_sha256": hashlib.sha256(material["native-continuation.json"]).hexdigest(),
-            "result_sha256": receipt["result_sha256"], "root_idle": True}
 
     def archived_history(self, protocol: Path, *, cwd: Path, offset: int,
                          limit: int, revision: str | None) -> dict:

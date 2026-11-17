@@ -236,18 +236,10 @@ def parser() -> argparse.ArgumentParser:
         operation.add_argument("--codex-config", type=Path, help="Inference settings only; native tool and permission settings are ignored")
         if name == "run-input":
             operation.add_argument("--timeout", type=int, default=300)
-            operation.add_argument("--allow-one-continuation", action="store_true",
-                                   help="Enable one explicit follow-up for a new standalone task-MCP source; unsupported backends fail")
     inspection = operations.add_parser("inspect-run", help="Read an exact original composition run, complete input and result offline")
     inspection.add_argument("project")
     inspection.add_argument("id")
     inspection.add_argument("--max-result-bytes", type=int, default=8_388_608, help="Complete result capacity; excess is reported without truncation")
-    continuation = operations.add_parser("continue-input", help="Send one explicit new prepared input to an enabled native source")
-    continuation.add_argument("project")
-    continuation.add_argument("source_run")
-    continuation.add_argument("directory", type=Path)
-    continuation.add_argument("--intent", required=True, help="Stable input identity; repeats return the original saved attempt")
-    continuation.add_argument("--timeout", type=int, default=300)
     project = commands.add_parser("project", help="Register a project and choose layer tools")
     operations = project.add_subparsers(dest="operation", required=True)
     create = operations.add_parser("add")
@@ -573,6 +565,31 @@ def parser() -> argparse.ArgumentParser:
     run.add_argument("--skill", action="append", help="Include the current adopted version of this skill")
     run.add_argument("--recall", help="Recall project memories with this query before invoking the tool")
     run.add_argument("--template", choices=reference.TEMPLATES, help="Require the selected template role's structured artifacts (not formal acceptance)")
+    run.add_argument("--session-intent", help="Save a native session under this stable intent; requires --revision")
+    run.add_argument("--revision", type=int, help="Current project revision for a new persistent session")
+    run.add_argument("--codex-config", type=Path, help="Trusted native configuration to freeze once when starting a session")
+    for name in ("sessions", "session"):
+        listing = operations.add_parser(name, help="Read original project sessions without invoking an Agent")
+        listing.add_argument("project")
+        if name == "session":
+            listing.add_argument("id")
+        else:
+            listing.add_argument("--intent", help="Observe the exact original birth intent without invoking an Agent")
+        listing.add_argument("--after", type=int, default=0)
+        listing.add_argument("--limit", type=int, default=20)
+    continuation = operations.add_parser("continue", help="Continue an exact project session with a new prompt")
+    continuation.add_argument("project")
+    continuation.add_argument("id")
+    continuation.add_argument("--parent", required=True, help="Latest original run selected from session history")
+    continuation.add_argument("--prompt", type=Path, required=True)
+    continuation.add_argument("--revision", type=int, required=True)
+    continuation.add_argument("--intent", required=True, help="Stable intent; a lost reply must be observed before any new work")
+    continuation.add_argument("--timeout", type=int, default=300)
+    stop = operations.add_parser("stop", help="Request stop of one exact session turn, then inspect its original record")
+    stop.add_argument("project")
+    stop.add_argument("id")
+    stop.add_argument("--run", required=True)
+    stop.add_argument("--intent", required=True)
     listing = operations.add_parser("runs")
     listing.add_argument("project")
     preview = operations.add_parser("output")
@@ -1265,13 +1282,9 @@ def main(argv: list[str] | None = None) -> int:
                     backend=args.backend, model=args.model, reason=args.backend_reason, mode=args.mode, codex_config=args.codex_config)
             elif args.operation == "run-input":
                 output = agent_runs.run_input(State(args.home), args.project, args.directory, args.timeout,
-                    backend=args.backend, model=args.model, reason=args.backend_reason, codex_config=args.codex_config, mode=args.mode,
-                    allow_one_continuation=args.allow_one_continuation)
+                    backend=args.backend, model=args.model, reason=args.backend_reason, codex_config=args.codex_config, mode=args.mode)
             elif args.operation == "inspect-run":
                 output = agent_runs.inspect_run(State(args.home), args.project, args.id, max_result_bytes=args.max_result_bytes)
-            elif args.operation == "continue-input":
-                output = agent_runs.continue_input(State(args.home), args.project, args.source_run, args.directory,
-                    intent_id=args.intent, timeout=args.timeout)
             else:
                 state = State(args.home)
                 if args.operation == "import":
@@ -1308,6 +1321,16 @@ def main(argv: list[str] | None = None) -> int:
                         output = agent_definitions.get(state, args.id, args.version, material=args.material)
                     else:
                         output = agent_definitions.export(state, args.id, args.version, args.directory)
+                elif args.operation == "sessions":
+                    output = agent_runs.sessions(state, args.project, after=args.after, limit=args.limit, intent_id=args.intent)
+                elif args.operation == "session":
+                    output = agent_runs.inspect_session(state, args.project, args.id, after=args.after, limit=args.limit)
+                elif args.operation == "continue":
+                    output = agent_runs.continue_session(state, args.project, args.id, args.parent,
+                        args.prompt.read_text(encoding="utf-8-sig"), expected_revision=args.revision,
+                        intent_id=args.intent, timeout=args.timeout)
+                elif args.operation == "stop":
+                    output = agent_runs.stop_session(state, args.project, args.id, args.run, intent_id=args.intent)
                 elif args.operation == "runs":
                     output = agent_runs.runs(state, args.project)
                 elif args.operation == "output":
@@ -1315,9 +1338,10 @@ def main(argv: list[str] | None = None) -> int:
                                               offset=args.history_offset, limit=args.history_limit,
                                               revision=args.history_revision)
                 else:
-                    output = agent_runs.run_agent(state, args.project, args.role, args.prompt.read_text(encoding="utf-8-sig"), args.timeout, args.skill, args.recall, args.template)
+                    output = agent_runs.run_agent(state, args.project, args.role, args.prompt.read_text(encoding="utf-8-sig"), args.timeout, args.skill, args.recall, args.template,
+                        session_intent=args.session_intent, expected_revision=args.revision, codex_config=args.codex_config)
             print(json.dumps(output, ensure_ascii=False, indent=2))
-            return 0 if args.operation != "run" or output["status"] == "succeeded" else 1
+            return 0 if args.operation not in ("run", "continue") or output["status"] == "succeeded" else 1
         elif args.command == "training":
             original_operation = getattr(args, "original_registration", None)
             registration_digest = getattr(args, "registration_intent_sha256", None)
@@ -1574,7 +1598,7 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         if args.command == "services" and output.get("outcome") in ("unconfirmed", "failed"):
             return 1
-        if args.command == "composition" and args.operation in ("run-input", "continue-input") and output["status"] != "succeeded":
+        if args.command == "composition" and args.operation == "run-input" and output["status"] != "succeeded":
             return 1
         return 0
     except (ValueError, OSError, RuntimeError) as error:
