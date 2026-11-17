@@ -59,6 +59,8 @@
       "tests/test_full_stage_materials.py",
       "tests/test_original_payloads.py",
       "tests/test_parallel_reviews.py",
+      "tests/test_local_gpu_pool.py",
+      "tests/test_local_gpu_guard.py",
       "tests/test_processes.py",
       "tests/test_project_configuration.py",
       "tests/test_review_dag_runtime.py",

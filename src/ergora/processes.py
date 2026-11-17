@@ -111,12 +111,21 @@ def cancel_supervised() -> None:
     _cancel_requested = True
 
 
-def _adopt_children() -> None:
-    # The supervised path runs inside a dedicated, single-job stage_driver.
-    # Adopt orphaned grandchildren so completion can reap them before evidence checks.
+def prepare_supervised() -> None:
+    """Prepare a dedicated, single-job Linux owner to reap orphaned descendants."""
+    if sys.platform != 'linux':
+        raise ValueError('Supervised process ownership requires Linux; use WSL2')
     libc = ctypes.CDLL(None, use_errno=True)
     if libc.prctl(36, 1, 0, 0, 0) != 0:  # Linux PR_SET_CHILD_SUBREAPER
         raise OSError(ctypes.get_errno(), "Cannot adopt supervised agent descendants")
+    enabled = ctypes.c_int()
+    if libc.prctl(37, ctypes.byref(enabled), 0, 0, 0) != 0:  # PR_GET_CHILD_SUBREAPER
+        raise OSError(ctypes.get_errno(), 'Cannot observe supervised process ownership')
+    if enabled.value != 1:
+        raise OSError('Supervised process ownership was not enabled')
+
+
+_adopt_children = prepare_supervised
 
 
 def _reap_children() -> None:

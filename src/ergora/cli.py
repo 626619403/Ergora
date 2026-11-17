@@ -855,6 +855,20 @@ def parser() -> argparse.ArgumentParser:
             operation.add_argument("--max-bytes", type=int, default=1_000_000)
             operation.add_argument("--timeout", type=int, default=30)
             operation.add_argument("--allow-private", action="store_true")
+    pool = commands.add_parser("gpu-pool", help="Local cooperating GPU resource decisions; does not authorize execution")
+    pool_operations = pool.add_subparsers(dest="operation", required=True)
+    for name in ("inspect", "request", "cancel", "release", "reconcile", "close"):
+        operation = pool_operations.add_parser(name)
+        operation.add_argument("--config", required=True)
+        if name == "request":
+            operation.add_argument("--request", required=True)
+        if name == "cancel":
+            operation.add_argument("--request-id", required=True)
+            operation.add_argument("--origin", required=True)
+        if name in ("release", "reconcile"):
+            operation.add_argument("--lease-id", required=True)
+        if name == "release":
+            operation.add_argument("--proof", required=True)
     return result
 
 
@@ -868,7 +882,24 @@ def main(argv: list[str] | None = None) -> int:
         return reference.workflow(argv[1:])
     args = parser().parse_args(argv)
     try:
-        if args.command == "review":
+        if args.command == "gpu-pool":
+            from . import local_gpu_pool
+
+            def document(path):
+                return local_gpu_pool._decode(local_gpu_pool._read(Path(path), local_gpu_pool.FRAME_LIMIT))
+
+            pool = local_gpu_pool.LocalGpuPool.connect(document(args.config))
+            if args.operation == "request":
+                output = pool.request(document(args.request))
+            elif args.operation == "cancel":
+                output = pool.cancel(args.request_id, document(args.origin))
+            elif args.operation == "release":
+                output = pool.release(args.lease_id, document(args.proof))
+            elif args.operation == "reconcile":
+                output = pool.reconcile(args.lease_id)
+            else:
+                output = getattr(pool, args.operation)()
+        elif args.command == "review":
             from . import review_packets
 
             if args.operation in ("prepare-input", "verify-input", "report"):
@@ -1514,6 +1545,8 @@ def main(argv: list[str] | None = None) -> int:
         else:
             return reference.workflow(args.arguments)
         print(json.dumps(output, ensure_ascii=False, indent=2))
+        if args.command == "gpu-pool" and output["status"] in ("unavailable", "rejected", "unknown"):
+            return 1
         if args.command == "reference" and args.operation == "executor" and output and output["state"] != "SUCCEEDED":
             return 1
         if args.command == "services" and output.get("outcome") in ("unconfirmed", "failed"):
