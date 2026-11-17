@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-evidence-report",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Readonly optimization-report author with a bundled progressive template; source evidence, execution and adoption remain separately owned.",
   "resources": [
     {
@@ -40,8 +40,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-evidence-report-author",
-        "version": "2.0.0",
-        "digest": "564a4188547f09389193753928338a9b3ef82fd1ddcc1a8989d7cffea4139128"
+        "version": "2.0.1",
+        "digest": "8a43e9201233d52fed4d56ec55cee177a3046582b2335f5ee459f4e1130c2840"
       },
       "role": "implementer",
       "depends_on": [],

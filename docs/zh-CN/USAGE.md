@@ -656,7 +656,7 @@ Linux／WSL2 可在上述原生六阶段定义上使用 [task-definition v7](../
 
 ```bash
 ergora composition install-preset refactoring
-ergora composition prepare-manifest ergora-refactoring-template 1.1.0 \
+ergora composition prepare-manifest ergora-refactoring-template 1.1.1 \
   --grant examples/composition/refactoring/grant.json \
   --directory ./refactoring-manifest
 ```
@@ -946,7 +946,7 @@ ergora handoff read ./task-handoff.zip --selection ./selection.json --sha256 EXP
 ergora composition install-preset retrospective
 ```
 
-新组合的根为`ergora-skill-retrospective 1.0.0`，包含只读作者`root/propose`与后继审查者`root/review`，均默认Codex gpt-6.1-sol high。按[完整manifest步骤](../WORKFLOW_DEFINITIONS.md#固定当前预览到持久控制目录)给这个根准备manifest目录；grant需显式允许读取`workspace`／`definitions`、空write／network且shell为false，并给出根需要的limits。导入、manifest和下列准备均不发模型请求。
+新组合的根为`ergora-skill-retrospective 1.0.1`，包含只读作者`root/propose`与后继审查者`root/review`，均默认Codex gpt-6.1-sol high。按[完整manifest步骤](../WORKFLOW_DEFINITIONS.md#固定当前预览到持久控制目录)给这个根准备manifest目录；grant需显式允许读取`workspace`／`definitions`、空write／network且shell为false，并给出根需要的limits。导入、manifest和下列准备均不发模型请求。
 
 ```bash
 ergora retrospective prepare my-project ./task-handoff.zip --selection ./selection.json --packet-sha256 PACKET_SHA --skill SKILL_NAME --digest BASELINE_DIGEST --head-revision HEAD_REVISION --objective ./objective.txt --manifest ./retrospective-manifest --instance root/propose --directory ./retrospective-author-input --max-prompt-bytes 500000
@@ -991,7 +991,7 @@ ergora skill rollback my-project SKILL_NAME BASELINE_DIGEST --revision ADOPTED_H
 
 ### 生成来源绑定的记忆复盘候选
 
-用同项目的完整交接包和selection准备记忆建议。安装`memory-retrospective`，再按[manifest步骤](../WORKFLOW_DEFINITIONS.md#固定当前预览到持久控制目录)固定其根`ergora-memory-retrospective 1.0.1`，保存到`memory-retrospective-manifest`。该模板的`root/propose`与`root/review`均默认Codex gpt-6.1-sol high；权限与显式调用方式同上，所有叶读取全部祖先资料。
+用同项目的完整交接包和selection准备记忆建议。安装`memory-retrospective`，再按[manifest步骤](../WORKFLOW_DEFINITIONS.md#固定当前预览到持久控制目录)固定其根`ergora-memory-retrospective 1.0.2`，保存到`memory-retrospective-manifest`。该模板的`root/propose`与`root/review`均默认Codex gpt-6.1-sol high；权限与显式调用方式同上，所有叶读取全部祖先资料。
 
 ```bash
 ergora composition install-preset memory-retrospective
@@ -1281,7 +1281,7 @@ ssh -L 8977:127.0.0.1:8977 user@server
 
 ### 生成来源绑定的工作流复盘候选
 
-安装`workflow-retrospective`，再按[完整manifest步骤](../WORKFLOW_DEFINITIONS.md#固定当前预览到持久控制目录)为根`ergora-workflow-retrospective 1.0.0`保存`workflow-retrospective-manifest`。另为待改进的根保存完整`target-manifest`，记录原检查返回的完整digest。前者是作者／审查图，后者是目标图。handoff、selection与objective沿[Skill候选](#生成来源绑定的skill复盘候选)步骤准备，均须来自同一项目。
+安装`workflow-retrospective`，再按[完整manifest步骤](../WORKFLOW_DEFINITIONS.md#固定当前预览到持久控制目录)为根`ergora-workflow-retrospective 1.0.1`保存`workflow-retrospective-manifest`。另为待改进的根保存完整`target-manifest`，记录原检查返回的完整digest。前者是作者／审查图，后者是目标图。handoff、selection与objective沿[Skill候选](#生成来源绑定的skill复盘候选)步骤准备，均须来自同一项目。
 
 ```bash
 ergora composition install-preset workflow-retrospective

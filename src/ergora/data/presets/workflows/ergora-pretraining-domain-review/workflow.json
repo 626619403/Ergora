@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-pretraining-domain-review",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Independent readonly pretraining specialist review.",
   "resources": [
     {
@@ -41,8 +41,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-pretraining-reviewer",
-        "version": "1.0.0",
-        "digest": "42379fca661b895b10d878b8edba469b65e000667185b9c7c3d77fcfce6b40a1"
+        "version": "1.0.1",
+        "digest": "4b9141e79c334566afb987ade2c12456c99c6bf13837f83185d35760bdc4cec7"
       },
       "role": "reviewer",
       "depends_on": [],

@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-kernel-assessment",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Assess whether a kernel intervention is warranted; a reasoned no-change outcome is valid.",
   "resources": [
     {
@@ -41,8 +41,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-kernel-designer",
-        "version": "2.0.0",
-        "digest": "f921c32ec74f3c08b6b9a8549c632aec8b4d28491eeabccd7ffa7f129fe544d3"
+        "version": "2.0.1",
+        "digest": "e6e344c2655df61bd639fb9adb0483a7764241e3fa592972b6840677378ca9cb"
       },
       "role": "kernel-tuner",
       "depends_on": [],

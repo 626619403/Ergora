@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-delivery-review",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Gather complementary reviews of the same exact verified candidate.",
   "resources": [
     {
@@ -41,8 +41,8 @@
       "ref": {
         "kind": "workflow",
         "id": "ergora-structure-review",
-        "version": "1.0.0",
-        "digest": "8e7e13f715f22d442f85cb2207c66ae495a5e1c25485f2195c6d7c2fdc1c6363"
+        "version": "1.0.1",
+        "digest": "934f709f3f4d27e0765729fb70a888778f7fe87b47e913c18ecc62f9ee6bc3c5"
       },
       "depends_on": [],
       "inputs": {
@@ -56,8 +56,8 @@
       "ref": {
         "kind": "workflow",
         "id": "ergora-correctness-review",
-        "version": "1.0.0",
-        "digest": "d5ebce97322239528b1ad1202960c08ab77883f78a30f5a759959893a29bd942"
+        "version": "1.0.1",
+        "digest": "a06d27f18ec66260d0586b4eeee11dc9895a5015dc18cf86d8d856fed7522cd3"
       },
       "depends_on": [],
       "inputs": {
@@ -71,8 +71,8 @@
       "ref": {
         "kind": "workflow",
         "id": "ergora-test-value-review",
-        "version": "1.0.0",
-        "digest": "5ec94bb0419a18dde361dd2730ac029341357dd4399af91e2291168de30ed008"
+        "version": "1.0.1",
+        "digest": "3a40362d4d26ef91de6cf85ceb877df01fc7ab3d2456c55cd025e42b0e3e3529"
       },
       "depends_on": [],
       "inputs": {

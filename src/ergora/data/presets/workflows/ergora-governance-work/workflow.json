@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-governance-work",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Map the two original governance units to complementary experts.",
   "resources": [
     {
@@ -43,8 +43,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-governance-mapper",
-        "version": "1.0.0",
-        "digest": "cfe885b9e4fa81be570e6cad185e5c977503dfb291dbbdb9f4a63123eecc19d1"
+        "version": "1.0.1",
+        "digest": "e1f79c901b1fd8e8bcf3aceae2afdf21fce798618cc0152ac58009abd099e416"
       },
       "role": "implementer",
       "depends_on": [],
@@ -70,8 +70,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-architecture-test-author",
-        "version": "1.0.0",
-        "digest": "04d06b8a0e9aa731787e554d9b7ceb50a85b8fafc88d46c536460d278f3f909a"
+        "version": "1.0.1",
+        "digest": "21bfe8cb1c4bafe95992d6ba9012c1094fc05f432c5caf9c8f063fca3db241d7"
       },
       "role": "implementer",
       "depends_on": [],

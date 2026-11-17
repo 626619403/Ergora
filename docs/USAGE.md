@@ -686,7 +686,7 @@ In “Formal tasks → Preview and create,” select the native six stages and r
 
 ```bash
 ergora composition install-preset refactoring
-ergora composition prepare-manifest ergora-refactoring-template 1.1.0 \
+ergora composition prepare-manifest ergora-refactoring-template 1.1.1 \
   --grant examples/composition/refactoring/grant.json \
   --directory ./refactoring-manifest
 ```
@@ -991,7 +991,7 @@ Start with a registered project, verifiable handoff package and baseline Skill a
 ergora composition install-preset retrospective
 ```
 
-The new composition root is `ergora-skill-retrospective 1.0.0`, with read-only author `root/propose` and subsequent reviewer `root/review`, both using Codex gpt-6.1-sol high. Prepare this root's manifest directory through the [complete manifest steps](WORKFLOW_DEFINITIONS.md#固定当前预览到持久控制目录). The grant must explicitly permit reading `workspace`/`definitions`, empty write/network and shell=false, and provide the root's required limits. Import, manifest creation and the preparation below send no model requests.
+The new composition root is `ergora-skill-retrospective 1.0.1`, with read-only author `root/propose` and subsequent reviewer `root/review`, both using Codex gpt-6.1-sol high. Prepare this root's manifest directory through the [complete manifest steps](WORKFLOW_DEFINITIONS.md#固定当前预览到持久控制目录). The grant must explicitly permit reading `workspace`/`definitions`, empty write/network and shell=false, and provide the root's required limits. Import, manifest creation and the preparation below send no model requests.
 
 ```bash
 ergora retrospective prepare my-project ./task-handoff.zip --selection ./selection.json --packet-sha256 PACKET_SHA --skill SKILL_NAME --digest BASELINE_DIGEST --head-revision HEAD_REVISION --objective ./objective.txt --manifest ./retrospective-manifest --instance root/propose --directory ./retrospective-author-input --max-prompt-bytes 500000
@@ -1037,7 +1037,7 @@ Fill the placeholders with the exact suite digest/run IDs returned by register a
 <a id="生成来源绑定的记忆复盘候选"></a>
 ### Generate a provenance-bound memory retrospective candidate
 
-Prepare memory suggestions using the same project's complete handoff package and selection. Install `memory-retrospective`, then use the [manifest steps](WORKFLOW_DEFINITIONS.md#固定当前预览到持久控制目录) to pin root `ergora-memory-retrospective 1.0.1` into `memory-retrospective-manifest`. Its `root/propose` and `root/review` both default to Codex gpt-6.1-sol high. Permissions and explicit invocation follow the preceding steps; all leaves read all ancestor materials.
+Prepare memory suggestions using the same project's complete handoff package and selection. Install `memory-retrospective`, then use the [manifest steps](WORKFLOW_DEFINITIONS.md#固定当前预览到持久控制目录) to pin root `ergora-memory-retrospective 1.0.2` into `memory-retrospective-manifest`. Its `root/propose` and `root/review` both default to Codex gpt-6.1-sol high. Permissions and explicit invocation follow the preceding steps; all leaves read all ancestor materials.
 
 ```bash
 ergora composition install-preset memory-retrospective
@@ -1343,7 +1343,7 @@ An abnormal request may have executed. First refresh the library and select orig
 <a id="生成来源绑定的工作流复盘候选"></a>
 ### Generate a provenance-bound workflow retrospective candidate
 
-Install `workflow-retrospective`, then follow the [complete manifest steps](WORKFLOW_DEFINITIONS.md#固定当前预览到持久控制目录) to save root `ergora-workflow-retrospective 1.0.0` into `workflow-retrospective-manifest`. Separately save complete `target-manifest` for the root to improve, retaining the complete digest from its original check. The first is the author/reviewer graph; the second is the target graph. Prepare handoff, selection and objective through the [Skill-candidate steps](#生成来源绑定的skill复盘候选), all from the same project.
+Install `workflow-retrospective`, then follow the [complete manifest steps](WORKFLOW_DEFINITIONS.md#固定当前预览到持久控制目录) to save root `ergora-workflow-retrospective 1.0.1` into `workflow-retrospective-manifest`. Separately save complete `target-manifest` for the root to improve, retaining the complete digest from its original check. The first is the author/reviewer graph; the second is the target graph. Prepare handoff, selection and objective through the [Skill-candidate steps](#生成来源绑定的skill复盘候选), all from the same project.
 
 ```bash
 ergora composition install-preset workflow-retrospective

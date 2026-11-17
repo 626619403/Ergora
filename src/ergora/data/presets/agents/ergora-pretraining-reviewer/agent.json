@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "ergora-pretraining-reviewer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Readonly pretraining numerical, data, state and recovery review.",
   "roles": [
     "reviewer"

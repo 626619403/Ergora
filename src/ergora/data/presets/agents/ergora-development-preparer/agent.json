@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "ergora-development-preparer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Prepare an evidence-based inventory or execution plan for the selected original development stage.",
   "roles": [
     "inspector",

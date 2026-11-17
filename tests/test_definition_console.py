@@ -118,7 +118,7 @@ def test_historical_http_details_remain_readable_when_current_backend_admission_
     previews = {}
     for kind, original in [('agent', agent_before), ('workflow', workflow_before)]:
         path = f"/api/{kind}-definitions/{original['definition']['id']}/{original['definition']['version']}"
-        body = {'base_digest': original['digest'], 'definition': {**original['definition'], 'version': '1.0.1'},
+        body = {'base_digest': original['digest'], 'definition': {**original['definition'], 'version': '9.0.0'},
                 'resource_changes': {'schema_version': 1, 'operations': []}}
         response = client.post(path + '/revisions/preview-resources', json=body)
         assert response.status_code == 200, response.text
@@ -136,7 +136,7 @@ def test_historical_http_details_remain_readable_when_current_backend_admission_
         'grant': {'schema_version': 1, 'permissions': definition['permissions'], 'limits': definition['limits']}})
     assert response.status_code == 400 and 'Backend no longer admitted' in response.json()['error']
     for kind, original in [('agent', agent_before), ('workflow', workflow_before)]:
-        definition = {**original['definition'], 'version': '1.0.1'}
+        definition = {**original['definition'], 'version': '9.0.0'}
         path = f"/api/{kind}-definitions/{definition['id']}/{original['definition']['version']}"
         file = client.post(path + '/files/read', json={'base_digest': original['digest'], 'path': f'{kind}.json'})
         assert file.status_code == 200, file.text
@@ -162,7 +162,7 @@ def test_revision_http_and_cli_share_candidate_identity_and_keep_base(library_co
     base_url = f"/api/{kind}-definitions/{reference['id']}/{reference['version']}"
     original = client.get(base_url).json()
     (Path(original['path']) / f'{kind}.json').chmod(0o444)
-    definition = {**original['definition'], 'version': '1.0.1', 'description': 'New immutable revision'}
+    definition = {**original['definition'], 'version': '9.0.0', 'description': 'New immutable revision'}
     payload = {'base_digest': reference['digest'], 'definition': definition}
     response = client.post(base_url + '/revisions/check', json=payload)
     assert response.status_code == 200, response.text

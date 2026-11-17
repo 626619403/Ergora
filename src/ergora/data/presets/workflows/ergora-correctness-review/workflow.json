@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-correctness-review",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Check requirements, candidate correctness and recovery.",
   "resources": [
     {
@@ -41,8 +41,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-correctness-reviewer",
-        "version": "1.0.0",
-        "digest": "66d5b674599cd3cda0bcf44bba257c016794fb0b96290ff481919575561a4f6b"
+        "version": "1.0.1",
+        "digest": "e93bc32509d04a4c1faa3a6208cddae24727514a7e94b2f53ef18aa7085735e7"
       },
       "role": "reviewer",
       "depends_on": [],

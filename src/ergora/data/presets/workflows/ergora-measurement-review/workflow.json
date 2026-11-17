@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-measurement-review",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Independently review the exact supplied optimization proposal/candidate and original measurement evidence.",
   "resources": [
     {
@@ -41,8 +41,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-measurement-reviewer",
-        "version": "2.0.0",
-        "digest": "9b21f32a3031709bacd4ac436d3a35ab9e56d13ad3022f59a5262a466cd26f8a"
+        "version": "2.0.1",
+        "digest": "2d3ef5f7222e3d605c5261da66ab8959ccad18ad2e19c659c641361338de5a30"
       },
       "role": "reviewer",
       "depends_on": [],

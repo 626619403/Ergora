@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "ergora-training-flow-analyst",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Readonly source-anchored training algorithm, dependency and lifetime analysis.",
   "roles": [
     "performance-analyst"

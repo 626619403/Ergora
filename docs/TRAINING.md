@@ -587,7 +587,7 @@ prepare返回的实验ID／manifest SHA → 原runner／job → evidence SHA／�
 
 ## 可选的实验专家提案
 
-`ergora composition install-preset training-optimization`导入当前根`ergora-training-proposal@4.0.0`：源码图谱、跨域实验设计、纯性能诊断、kernel实施方案评估与独立测量审查。全部五叶继承库／环境选择和原证据合同；model固定gpt-6.1-sol，设计／kernel规划max、诊断／测量审查high。它们供操作者填写原workload／baseline／experiment，不执行搜索或授予采用；真实CPU/GPU仍由本手册的原runner与证据门禁负责。
+`ergora composition install-preset training-optimization`导入当前根`ergora-training-proposal@4.0.1`：源码图谱、跨域实验设计、纯性能诊断、kernel实施方案评估与独立测量审查。全部五叶继承库／环境选择和原证据合同；model固定gpt-6.1-sol，设计／kernel规划max、诊断／测量审查high。它们供操作者填写原workload／baseline／experiment，不执行搜索或授予采用；真实CPU/GPU仍由本手册的原runner与证据门禁负责。
 
 |叶路径|主要职责与所需资料|结果边界|
 |---|---|---|
@@ -604,10 +604,10 @@ prepare返回的实验ID／manifest SHA → 原runner／job → evidence SHA／�
 
 ```bash
 ergora composition install-preset training-flow-map
-ergora composition show ergora-training-flow-map 1.0.0 --material
+ergora composition show ergora-training-flow-map 1.0.1 --material
 ```
 
-该根提供独立只读叶 `root/map`，Agent 为 `ergora-training-flow-analyst@1.0.0`。按[完整 manifest 与单叶输入](WORKFLOW_DEFINITIONS.md#准备完整的单叶输入)为根 `ergora-training-flow-map@1.0.0` 生成 grant／manifest，再提供完整训练入口、调用者、实际配置、需求及已有原报告；也可用[精确本地包](LOCAL_REVIEW.md)的完整 `review read` 结果作为 task。Skill 自包含，无外部附件，可用已认证后端的 `text-only` 模式。
+该根提供独立只读叶 `root/map`，Agent 为 `ergora-training-flow-analyst@1.0.1`。按[完整 manifest 与单叶输入](WORKFLOW_DEFINITIONS.md#准备完整的单叶输入)为根 `ergora-training-flow-map@1.0.1` 生成 grant／manifest，再提供完整训练入口、调用者、实际配置、需求及已有原报告；也可用[精确本地包](LOCAL_REVIEW.md)的完整 `review read` 结果作为 task。Skill 自包含，无外部附件，可用已认证后端的 `text-only` 模式。
 
 ```bash
 ergora composition prepare-from-manifest ./flow-map-manifest root/map \
@@ -624,10 +624,10 @@ ergora composition run-input my-project ./flow-map-input --backend codex \
 
 ```bash
 ergora composition install-preset training-optimization
-ergora composition show ergora-training-proposal 4.0.0 --material
+ergora composition show ergora-training-proposal 4.0.1 --material
 ```
 
-当前根 `ergora-training-proposal@4.0.0` 组合图谱和四位跨域专家。根Skill负责证据、方向及库／环境选择，子Skill保留各自方法。顺序如下，design／profile 读取相同资料、可以独立进行：
+当前根 `ergora-training-proposal@4.0.1` 组合图谱和四位跨域专家。根Skill负责证据、方向及库／环境选择，子Skill保留各自方法。顺序如下，design／profile 读取相同资料、可以独立进行：
 
 ```mermaid
 flowchart LR
@@ -667,7 +667,7 @@ kernel 评估不会被方向选择跳过。实际干预可为去冗余／解依�
 ergora composition install-preset optimization-performance-diagnosis
 ```
 
-根为 `ergora-opt-performance-diagnosis-proposal`、版本 1.0.0，复用 v2 的 design／profile／measurement 三叶。父模板提供标准 [`ergora-performance-diagnosis`](../src/ergora/data/presets/workflows/ergora-opt-performance-diagnosis-proposal/skills/ergora-performance-diagnosis/SKILL.md)：先固定同症状反馈命令，再按实际格式、版本、phase 和硬件选择已有报告 reader。没有可比证据或 trace 来自不同场景时保留 unknown，向原 runner 提出有限补测请求。
+使用安装结果返回的完整 `root` 引用准备 manifest；根 ID 为 `ergora-opt-performance-diagnosis-proposal`，复用跨域 design／profile／measurement 三叶。父模板提供标准 [`ergora-performance-diagnosis`](../src/ergora/data/presets/workflows/ergora-opt-performance-diagnosis-proposal/skills/ergora-performance-diagnosis/SKILL.md)：先固定同症状反馈命令，再按实际格式、版本、phase 和硬件选择已有报告 reader。没有可比证据或 trace 来自不同场景时保留 unknown，向原 runner 提出有限补测请求。
 
 沿[单叶输入与调用](WORKFLOW_DEFINITIONS.md#准备完整的单叶输入)为该精确根准备 grant／manifest，显式选 `root/analysis/design` 或 `root/analysis/profile`；之后把两份完整原结果交给 `root/measurement/review`。资料通过父链累加，权限仍为只读、无 shell／网络；安装不执行整图、采集器、parser 或实验。工具路线是选择依据，具体工具的安装、可用性和授权分别核实。真实收益仍按本手册的原 runner／evidence gate 验收。
 
@@ -709,8 +709,8 @@ ergora skill import my-project \
 
 ```bash
 ergora composition install-preset optimization-memory-tuning
-ergora composition show ergora-opt-memory-tuning-proposal 1.0.0
-ergora composition prepare-manifest ergora-opt-memory-tuning-proposal 1.0.0 --grant ./grant.json --directory ./memory-manifest
+ergora composition show ergora-opt-memory-tuning-proposal 1.0.1
+ergora composition prepare-manifest ergora-opt-memory-tuning-proposal 1.0.1 --grant ./grant.json --directory ./memory-manifest
 ergora composition prepare-from-manifest ./memory-manifest root/analysis/design --task ./memory-task.txt --directory ./memory-design --max-prompt-bytes 100000
 ergora composition check-input PROJECT_ID ./memory-design --mode task-mcp --backend codex --backend-reason "Explicit design backend"
 ergora composition run-input PROJECT_ID ./memory-design --mode task-mcp --backend codex --backend-reason "Explicit design backend" --timeout 600

@@ -15,7 +15,7 @@
 
 默认使用 Codex gpt-6.1-sol high，逐实例覆盖须满足[定义下限](AGENT_DEFINITIONS.md)。执行者／审查者优先使用不同后端；同后端回退记录原因、独立会话与覆盖，不能以多个模型同意替代可信检查。
 
-这两个 preset 当前选择同 ID 的 **1.0.1** 根。根的共享 [审查后端 Skill](../src/ergora/data/presets/workflows/ergora-pretraining-review/skills/ergora-review-backends/SKILL.md)由四叶继承，区分 Ergora 结构化调用、Codex／Claude Code 原生命令、公开插件／自建 CI 和厂商托管审查；[官方来源核对](research/2026-11-15-review-backend-guidance.md)记录截至 2026-11-15 的安装／认证、GitHub／GitLab 可用范围与结果副作用。选择后端或安装 preset 不会自动安装 CLI、启用订阅服务或发表 PR／MR 意见。旧 1.0.0 根、独立通用审查根和已冻结 manifest 保留原身份；独立旧根不因 catalog 更新获得新资料。
+使用各自安装结果返回的完整 `root` 引用准备 manifest。根的共享 [审查后端 Skill](../src/ergora/data/presets/workflows/ergora-pretraining-review/skills/ergora-review-backends/SKILL.md)由四叶继承，区分 Ergora 结构化调用、Codex／Claude Code 原生命令、公开插件／自建 CI 和厂商托管审查；[官方来源核对](research/2026-11-15-review-backend-guidance.md)记录截至 2026-11-15 的安装／认证、GitHub／GitLab 可用范围与结果副作用。选择后端或安装 preset 不会自动安装 CLI、启用订阅服务或发表 PR／MR 意见。
 
 ## 准备完整本地输入
 

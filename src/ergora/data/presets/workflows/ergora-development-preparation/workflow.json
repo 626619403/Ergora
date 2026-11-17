@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-development-preparation",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Read-only inventory and planning calls for the original development owner.",
   "resources": [
     {
@@ -41,8 +41,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-development-preparer",
-        "version": "1.0.0",
-        "digest": "dc0afff379954a95a2abd356153f2676332ad3048a889a200af0ef8569584fc7"
+        "version": "1.0.1",
+        "digest": "bcb90daaffbd8251c21e1aca5614eeb9aac563dba6da6485203e838ea0f7960c"
       },
       "role": "inspector",
       "depends_on": [],
@@ -66,8 +66,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-development-preparer",
-        "version": "1.0.0",
-        "digest": "dc0afff379954a95a2abd356153f2676332ad3048a889a200af0ef8569584fc7"
+        "version": "1.0.1",
+        "digest": "bcb90daaffbd8251c21e1aca5614eeb9aac563dba6da6485203e838ea0f7960c"
       },
       "role": "planner",
       "depends_on": [],

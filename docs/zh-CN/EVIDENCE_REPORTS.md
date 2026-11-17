@@ -2,20 +2,20 @@
 
 [English](../EVIDENCE_REPORTS.md) · 简体中文 · [文档入口](../README.zh-CN.md)
 
-`evidence-report` 提供只读报告作者 `ergora-evidence-report-author@1.0.0`，根为 `ergora-evidence-report@1.0.0`，独立叶为 `root/author`。它把操作者完整提供的工程、研究或实验材料整理为 Markdown 和静态自包含 HTML，给出来源、实际覆盖与未验证范围。它与 [`review report`](../LOCAL_REVIEW.md) 的程序汇总不同：后者读取原 reviewer runs，不调用 LLM；本叶是一次明确的报告作者调用，不产生正式批准。
+`evidence-report` 提供只读报告作者 `ergora-evidence-report-author@1.0.1`，根为 `ergora-evidence-report@1.0.1`，独立叶为 `root/author`。它把操作者完整提供的工程、研究或实验材料整理为 Markdown 和静态自包含 HTML，给出来源、实际覆盖与未验证范围。它与 [`review report`](../LOCAL_REVIEW.md) 的程序汇总不同：后者读取原 reviewer runs，不调用 LLM；本叶是一次明确的报告作者调用，不产生正式批准。
 
 ## 优化报告
 
-显式选择 `optimization-report` 可使用作者／根的 `@2.0.0`，叶仍为 `root/author`，只读上限与原四字段出口保持。新版完整保留通用证据报告 Skill，另带专门的[优化报告 Skill](../../src/ergora/data/presets/agents/ergora-evidence-report-author-v2/skills/ergora-optimization-report/SKILL.md)及[占位结构模板](../../src/ergora/data/presets/agents/ergora-evidence-report-author-v2/skills/ergora-optimization-report/assets/optimization-report-template.md)。模板全文作为 context 进入冻结提示；原 `evidence-report` 选择仍是 `@1.0.0`。
+显式选择 `optimization-report` 可使用作者／根的 `@2.0.1`，叶仍为 `root/author`，只读上限与原四字段出口保持。新版完整保留通用证据报告 Skill，另带专门的[优化报告 Skill](../../src/ergora/data/presets/agents/ergora-evidence-report-author-v2/skills/ergora-optimization-report/SKILL.md)及[占位结构模板](../../src/ergora/data/presets/agents/ergora-evidence-report-author-v2/skills/ergora-optimization-report/assets/optimization-report-template.md)。模板全文作为 context 进入冻结提示；原 `evidence-report` 选择仍是 `@1.0.1`。
 
 提供完整原任务、算法／计算依赖／数据流分析（例如原 `training-flow-map` 结果）、冗余证据、baseline、每项保留试次的完整配置、真实产物位置、原测量与质量检查。报告依次展示范围／目标、源码流程与冗余假设、可比 baseline／候选表、诊断、决定与剩余瓶颈；保留完整组合配置、负结果、缺证据以及实测／估算／未验区别。不同阶段、硬件或有效工作量分表，MFU 按适用性选用。报告作者不运行前驱图谱或测量性能。
 
 ```bash
 ergora composition install-preset optimization-report
-ergora composition show ergora-evidence-report 2.0.0 --material
+ergora composition show ergora-evidence-report 2.0.1 --material
 ```
 
-然后沿下文 grant 与显式调用流程，把 `prepare-manifest` 版本换成 `2.0.0`，选择新的 manifest／input／output 目录。原证据、静态 HTML 检查和显式导出义务保持。资源／加载验证及未运行范围见[交付记录](../delivery/2026-11-16-optimization-report-skill.md)。
+然后沿下文 grant 与显式调用流程，把 `prepare-manifest` 版本换成 `2.0.1`，选择新的 manifest／input／output 目录。原证据、静态 HTML 检查和显式导出义务保持。资源／加载验证及未运行范围见[交付记录](../delivery/2026-11-16-optimization-report-skill.md)。
 
 ## 准备原材料
 
@@ -40,7 +40,7 @@ ergora composition show ergora-evidence-report 2.0.0 --material
 
 ```bash
 ergora composition install-preset evidence-report
-ergora composition show ergora-evidence-report 1.0.0 --material
+ergora composition show ergora-evidence-report 1.0.1 --material
 ```
 
 保存 `report-grant.json`；此处与新根的精确只读上限一致：
@@ -54,7 +54,7 @@ ergora composition show ergora-evidence-report 1.0.0 --material
 ```
 
 ```bash
-ergora composition prepare-manifest ergora-evidence-report 1.0.0 \
+ergora composition prepare-manifest ergora-evidence-report 1.0.1 \
   --grant ./report-grant.json --directory ./report-manifest
 ergora composition prepare-from-manifest ./report-manifest root/author \
   --task ./report-task.md --directory ./report-input --max-prompt-bytes 250000
