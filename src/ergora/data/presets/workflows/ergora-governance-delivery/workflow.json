@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-governance-delivery",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Govern an existing repository while preserving its accepted behavior and boundary policy.",
   "resources": [
     {
@@ -43,8 +43,8 @@
       "ref": {
         "kind": "workflow",
         "id": "ergora-development-preparation",
-        "version": "1.0.0",
-        "digest": "8fde0654275b87cd2a85dbca3a2f9495d68c422bb050594f998e247ce66718b4"
+        "version": "1.0.1",
+        "digest": "183d642464c6932090006c1a85def3c8404dcc4d524c797356a1763b92881241"
       },
       "depends_on": [],
       "inputs": {
@@ -58,8 +58,8 @@
       "ref": {
         "kind": "workflow",
         "id": "ergora-governance-work",
-        "version": "1.0.0",
-        "digest": "fbbf9f4f9e5df5af75995d122c7ac3247a39631707287d65d54b23068c5f1e2c"
+        "version": "1.0.1",
+        "digest": "eb9aeffade86f6ab14fc6e907ad03b0c18d1a3486c22a692aad4612bbd315e88"
       },
       "depends_on": [],
       "inputs": {
@@ -73,8 +73,8 @@
       "ref": {
         "kind": "workflow",
         "id": "ergora-delivery-review",
-        "version": "1.0.0",
-        "digest": "f5df72439258051203f7fd12af306802d7b8dc4165133d2ffa6e0521ac83cd45"
+        "version": "1.0.1",
+        "digest": "38ac828fc5e16ef097a7efb19ca7688ce762d8f889c91927812be927cade4970"
       },
       "depends_on": [
         "work"

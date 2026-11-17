@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-training-proposal",
-  "version": "4.0.0",
+  "version": "4.0.1",
   "description": "Readonly bottleneck-led proposals with early framework/library choices and reproducible environment-change handoffs; original execution owners and evidence contracts remain separate.",
   "resources": [
     {
@@ -59,8 +59,8 @@
       "ref": {
         "kind": "workflow",
         "id": "ergora-training-flow-map",
-        "version": "1.0.0",
-        "digest": "54051978692c1337dd814c1bbd5f6d82b19b623cad8ea951dc5e03ae8fbffd96"
+        "version": "1.0.1",
+        "digest": "2e78a683b097bc4e3c08d0a3b5ed172584b4eda91de4dc783b10275cd3d0f0c7"
       },
       "depends_on": [],
       "inputs": {
@@ -74,8 +74,8 @@
       "ref": {
         "kind": "workflow",
         "id": "ergora-training-analysis",
-        "version": "2.0.0",
-        "digest": "c29c3046c72d6d4fac17eedc9f44206ac4306d6c8a0512aa611a1fe62bdf2ab5"
+        "version": "2.0.1",
+        "digest": "deefe8c9401be71db07724f5b86bcf3b482e7bf13c23b53c0a278395faf25086"
       },
       "depends_on": [
         "flow"
@@ -91,8 +91,8 @@
       "ref": {
         "kind": "workflow",
         "id": "ergora-kernel-assessment",
-        "version": "1.0.0",
-        "digest": "92c7849ee2ff32bfcda03d4b98ebe30ca7d5874e39994dfebd96630bcf879070"
+        "version": "1.0.1",
+        "digest": "11121fb833a7bfdc0cc715841886a70e2e48fae450b6df7c29174a8754ac5a06"
       },
       "depends_on": [
         "analysis"
@@ -108,8 +108,8 @@
       "ref": {
         "kind": "workflow",
         "id": "ergora-measurement-review",
-        "version": "2.0.0",
-        "digest": "08b9b05396cb00858cd2bb4783f28214c1289f91ebcce9835b80599e68b7a7f0"
+        "version": "2.0.1",
+        "digest": "d8b8e8abb2dd462b32d78d0b878c15f9c702448b386162426c28f4ff871ab914"
       },
       "depends_on": [
         "kernel"

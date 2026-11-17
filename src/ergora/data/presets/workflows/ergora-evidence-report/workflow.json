@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-evidence-report",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A readonly evidence-report author; original machine records and explicit review/release remain separate.",
   "resources": [
     {
@@ -40,8 +40,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-evidence-report-author",
-        "version": "1.0.0",
-        "digest": "b7cc9b728798ceff106c3cccaadaa96e7c6a4de567c10cf7cb058a4c2d664d9c"
+        "version": "1.0.1",
+        "digest": "0eb7ec0c10c39c850380dbdb981188056aa03981ac5f350db53f96f9bcec4e4d"
       },
       "role": "implementer",
       "depends_on": [],

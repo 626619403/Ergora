@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-test-value-review",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Check regression value, necessary assertions and measured test cost.",
   "resources": [
     {
@@ -41,8 +41,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-test-value-reviewer",
-        "version": "1.0.0",
-        "digest": "a05f1281098015ab110653d29908724388667fd9cff50a62c6e2ff5fa6fef8aa"
+        "version": "1.0.1",
+        "digest": "e0929dcd507ba4f66aac8392ec5c15f7bbd714b50af67e19d0f2bc481942169b"
       },
       "role": "reviewer",
       "depends_on": [],

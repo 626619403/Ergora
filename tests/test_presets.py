@@ -22,6 +22,7 @@ from test_registrations import installation, registration
 def test_direction_roots_keep_full_context_when_reusing_v2_experts(tmp_path, direction):
     state = State(tmp_path / 'state')
     installed = workflows.install_preset(state, 'optimization-' + direction)
+    specialists = {item['id']: item for item in installed['agents']}
     assert installed == workflows.install_preset(state, 'optimization-' + direction)
     root = workflows.get(state, installed['root']['id'], installed['root']['version'])['definition']
     grant = {'schema_version': 1, 'permissions': root['permissions'], 'limits': root['limits']}
@@ -40,7 +41,7 @@ def test_direction_roots_keep_full_context_when_reusing_v2_experts(tmp_path, dir
     shutil.rmtree(state.root / 'agent-definitions')
     shutil.rmtree(state.root / 'workflow-definitions')
     for path, leaf in leaves.items():
-        assert leaf['ref']['id'] == expected[path] and leaf['ref']['version'] == '2.0.0'
+        assert leaf['ref'] == specialists[expected[path]]
         assert not leaf['permissions']['write'] and not leaf['permissions']['shell'] and not leaf['permissions']['network']
         prepared = workflows.prepare_input_from_manifest(Path(manifest['path']), path,
             b'Use supplied original experiment evidence; retain missing measurements.',
@@ -148,7 +149,6 @@ def test_bottleneck_path_retains_kernel_assessment_and_original_task_in_frozen_l
     assert workflows.install_preset(state, 'training-optimization') == installed
     definition = workflows.get(state, installed['root']['id'], installed['root']['version'])['definition']
     nodes = {item['id']: item for item in definition['nodes']}
-    assert definition['version'] == '4.0.0'
     assert {name: nodes[name]['depends_on'] for name in ('flow', 'analysis', 'kernel', 'measurement')} == {
         'flow': [], 'analysis': ['flow'], 'kernel': ['analysis'], 'measurement': ['kernel']}
     assert set(nodes['gather']['depends_on']) == {'flow', 'analysis', 'kernel', 'measurement'}
@@ -209,11 +209,12 @@ def test_bundled_review_can_be_selected_without_its_delivery_parent(registration
 def test_domain_reviews_keep_general_identities_and_frozen_ancestor_material(tmp_path, domain):
     state = State(tmp_path / 'state')
     original = workflows.install_preset(state, 'repository-governance')
-    general = workflows.get(state, 'ergora-delivery-review', '1.0.0')
+    general_ref = next(item for item in original['workflows'] if item['id'] == 'ergora-delivery-review')
+    general = workflows.get(state, general_ref['id'], general_ref['version'])
     installed = workflows.install_preset(state, domain + '-review')
     assert workflows.install_preset(state, domain + '-review') == installed
     assert workflows.install_preset(state, 'repository-governance') == original
-    assert workflows.get(state, 'ergora-delivery-review', '1.0.0') == general
+    assert workflows.get(state, general_ref['id'], general_ref['version']) == general
     definition = workflows.get(state, installed['root']['id'], installed['root']['version'])['definition']
     manifest = workflows.prepare_manifest(state.root, definition['id'], definition['version'],
         {'schema_version': 1, 'permissions': definition['permissions'], 'limits': definition['limits']}, tmp_path / 'manifest')

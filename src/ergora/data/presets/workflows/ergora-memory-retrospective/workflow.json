@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-memory-retrospective",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Complete source-bound memory text proposal and complementary readonly evidence review; original explicit save and restore remain separate.",
   "resources": [
     {
@@ -47,8 +47,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-memory-retrospective-author",
-        "version": "1.0.1",
-        "digest": "6270fc45381597b4a4b0e0ab43fb70ad229101e12ac9836e9f3313701cf87f8a"
+        "version": "1.0.2",
+        "digest": "9eae39068bc511e7ab0f6be969cff42552179f55bb757b449dc5afc706a852e6"
       },
       "role": "implementer",
       "depends_on": [],
@@ -72,8 +72,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-memory-retrospective-reviewer",
-        "version": "1.0.1",
-        "digest": "76f53cca5c0278de9e2d2dca57e0233e47c7be4f99dd031ff45aa20ae4bd1d73"
+        "version": "1.0.2",
+        "digest": "0264a4cd8304b281b7240ce71d4a1a088794d8d49ad521649f4ebcb5e8c9b9ad"
       },
       "role": "reviewer",
       "depends_on": [

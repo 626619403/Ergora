@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "ergora-evidence-report-author",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "Readonly selected concise optimization log: retained measured improvements, screened and deferred trials, capacity scope and original evidence in Markdown/static HTML.",
   "roles": [
     "implementer"

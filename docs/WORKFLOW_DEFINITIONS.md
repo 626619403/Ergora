@@ -28,8 +28,8 @@ ergora composition install-preset evidence-report
 ergora composition install-preset optimization-report
 ergora composition install-preset pretraining-review
 ergora composition install-preset posttraining-review
-ergora composition show ergora-large-change-delivery 1.0.0 --material
-ergora agent definition show ergora-server-implementer 1.0.0 --material
+ergora composition show ergora-large-change-delivery 1.0.1 --material
+ergora agent definition show ergora-server-implementer 1.0.1 --material
 ```
 
 [Pretraining/posttraining review](TRAINING_REVIEW.md) adds domain specialists to the general three-way review and describes independent leaf calls separately from formal all-join review.
@@ -38,18 +38,18 @@ The [evidence-report author](EVIDENCE_REPORTS.md) provides an independent read-o
 
 `presets` reads shipped content without creating State. `install-preset` imports exact versions in dependency order; repetition retains the same identity and refuses different content at an existing ID/version. Each definition is published atomically, but the whole installation is not a cross-library transaction; retry after interruption. Installation changes no project binding or permission, does not install/authenticate an Agent CLI, and grants no execution or approval authority. The authoritative resources for the new default library are in [data/presets](../src/ergora/data/presets/presets.json); replace specialists and subtemplates through the existing export/new-version/import process. Existing examples retain their identities.
 
-|Composition|Root ID (1.0.0 unless marked)|Default relationships and supported use|
+|Composition|Root ID (1.0.1 unless marked)|Default relationships and supported use|
 |---|---|---|
 |repository-governance|`ergora-governance-delivery`|Knowledge-mapping and architecture-regression specialists in parallel, then trusted integrate/verify and three reviews; includes independent inventory/planning with the original work/review stages|
 |large-change|`ergora-large-change-delivery`|Interface contract → parallel server/client work → integration/compatibility validation → three reviews; includes independent inventory/planning with the original work/review stages|
-|training-optimization|`ergora-training-proposal@4.0.0`|Source flow → parallel design/diagnosis → kernel implementation planning → measurement review; all five leaves inherit library/environment selection guidance, with explicit complete handoffs and read-only proposals.|
-|refactoring|`ergora-refactoring-template@1.1.0`|Ordinary parent → native six stages: preparation → serial rewrite/compatibility work → three independent reviews; retains large-change formal task type, explicitly definition6/input10|
+|training-optimization|`ergora-training-proposal@4.0.1`|Source flow → parallel design/diagnosis → kernel implementation planning → measurement review; all five leaves inherit library/environment selection guidance, with explicit complete handoffs and read-only proposals.|
+|refactoring|`ergora-refactoring-template@1.1.1`|Ordinary parent → native six stages: preparation → serial rewrite/compatibility work → three independent reviews; retains large-change formal task type, explicitly definition6/input10|
 |optimization-performance-diagnosis|`ergora-opt-performance-diagnosis-proposal`|Reproduction of the same symptom and compatible report readers; read-only design/profile→measurement proposal leaves, with experiment execution retained by the original runner|
 |training-flow-map|`ergora-training-flow-map`|Read-only `root/map` separately produces algorithm/execution dependency maps, state lifecycles and falsifiable redundancy hypotheses; no automatic downstream specialist or training execution|
 |evidence-report|`ergora-evidence-report`|Read-only `root/author` produces Markdown/static HTML reports bound to sources; preserves original evidence, run records and independent review/release|
-|optimization-report|`ergora-evidence-report@2.0.0`|Same read-only author interface, with dedicated optimization Skill and full template context: source flow/redundancy → comparable results → diagnosis/decisions; explicitly supplied evidence only|
-|pretraining-review|`ergora-pretraining-review` 1.0.1|Original general three-way review alongside a pretraining specialist, required/all-join; all four leaves inherit shared backend guidance; the domain leaf can be called independently|
-|posttraining-review|`ergora-posttraining-review` 1.0.1|Original general three-way review alongside a posttraining specialist, required/all-join; all four leaves inherit shared backend guidance; the domain leaf can be called independently|
+|optimization-report|`ergora-evidence-report@2.0.1`|Same read-only author interface, with dedicated optimization Skill and full template context: source flow/redundancy → comparable results → diagnosis/decisions; explicitly supplied evidence only|
+|pretraining-review|`ergora-pretraining-review` 1.0.2|Original general three-way review alongside a pretraining specialist, required/all-join; all four leaves inherit shared backend guidance; the domain leaf can be called independently|
+|posttraining-review|`ergora-posttraining-review` 1.0.2|Original general three-way review alongside a posttraining specialist, required/all-join; all four leaves inherit shared backend guidance; the domain leaf can be called independently|
 
 Development compositions share `ergora-delivery-review`, which references three independently usable subtemplates for structure, correctness and test value. Each specialist has separate initial instructions, expertise and Skills, loading complete materials along its own structural parent chain. Bundled specialists default to Codex gpt-6.1-sol and enforce the [definition minimum](AGENT_DEFINITIONS.md); per-instance overrides must satisfy it. Invocation admission still checks availability and authentication; same-backend selection follows the diversity policy and records its reason.
 

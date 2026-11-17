@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-structure-review",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Check structural ownership and stable module interfaces.",
   "resources": [
     {
@@ -41,8 +41,8 @@
       "ref": {
         "kind": "agent",
         "id": "ergora-structure-reviewer",
-        "version": "1.0.0",
-        "digest": "7d97a7a6406452917080fdde3550406b08562fddebdbe6b1f00a7fbbe23b0d7f"
+        "version": "1.0.1",
+        "digest": "bde5de7bc3862a832caeb5f4698b9f35186ab2a1ead2daa36f04e4c9c6d1422a"
       },
       "role": "reviewer",
       "depends_on": [],

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "id": "ergora-retrospective-reviewer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Source-bound Skill retrospective evidence and applicability reviewer.",
   "roles": [
     "reviewer"

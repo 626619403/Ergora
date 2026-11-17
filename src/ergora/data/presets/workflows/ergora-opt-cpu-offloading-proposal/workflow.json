@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-opt-cpu-offloading-proposal",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Distinct layer, fine-grained activation and optimizer offload contracts; readonly proposals with independent evidence review.",
   "resources": [
     {
@@ -47,8 +47,8 @@
       "ref": {
         "kind": "workflow",
         "id": "ergora-training-analysis",
-        "version": "2.0.0",
-        "digest": "c29c3046c72d6d4fac17eedc9f44206ac4306d6c8a0512aa611a1fe62bdf2ab5"
+        "version": "2.0.1",
+        "digest": "deefe8c9401be71db07724f5b86bcf3b482e7bf13c23b53c0a278395faf25086"
       },
       "depends_on": [],
       "inputs": {
@@ -62,8 +62,8 @@
       "ref": {
         "kind": "workflow",
         "id": "ergora-measurement-review",
-        "version": "2.0.0",
-        "digest": "08b9b05396cb00858cd2bb4783f28214c1289f91ebcce9835b80599e68b7a7f0"
+        "version": "2.0.1",
+        "digest": "d8b8e8abb2dd462b32d78d0b878c15f9c702448b386162426c28f4ff871ab914"
       },
       "depends_on": [
         "analysis"

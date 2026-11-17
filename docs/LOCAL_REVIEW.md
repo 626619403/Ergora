@@ -69,11 +69,11 @@ GitHub使用本次响应中的base／head SHA计算唯一merge-base；首版拒�
 
 先按[领域审查手册](TRAINING_REVIEW.md)安装`pretraining-review`或`posttraining-review`，准备所选完整manifest及明确的grant。自定义审查组合沿[定义手册](WORKFLOW_DEFINITIONS.md)导入，不必修改Python。每个叶的专长、祖先Skill、上下文、MCP声明和逐级收窄的权限都来自这个冻结组合；后端在实际调用时逐叶选择。
 
-以下示例使用本地包及预训练根`ergora-pretraining-review@1.0.0`。`review-grant.json`应包含所选根的`permissions`和`limits`，格式见[组合分享](WORKFLOW_DEFINITIONS.md#保存和分享完整组合)。`MANIFEST_DIGEST`取prepare-manifest回执的`digest`，`PACKET_SHA256`取原材料回执；两者须明确核对。
+以下示例使用本地包及预训练根`ergora-pretraining-review@1.0.2`。`review-grant.json`应包含所选根的`permissions`和`limits`，格式见[组合分享](WORKFLOW_DEFINITIONS.md#保存和分享完整组合)。`MANIFEST_DIGEST`取prepare-manifest回执的`digest`，`PACKET_SHA256`取原材料回执；两者须明确核对。
 
 ```bash
 ergora composition install-preset pretraining-review
-ergora composition prepare-manifest ergora-pretraining-review 1.0.0 \
+ergora composition prepare-manifest ergora-pretraining-review 1.0.2 \
   --grant ./review-grant.json --directory ./reviews/pretraining-manifest
 
 ergora review prepare-input ./reviews/candidate-01 \
@@ -88,7 +88,7 @@ ergora review verify-input ./reviews/candidate-01 \
   --input ./reviews/domain-input --input-digest INPUT_DIGEST
 ```
 
-外部PR／MR将材料目录换为整个外部来源目录，使用`--source-kind external --source-sha256 SOURCE_SHA256`，保留完整观察及其内部源码包。后训练根用`ergora-posttraining-review@1.0.0`，领域路径同为`root/domain/review`；两个根的通用叶为`root/general/structure/review`、`root/general/correctness/review`、`root/general/test-value/review`。一次prepare只准备所选一个叶，不运行其他分支或all-join。
+外部PR／MR将材料目录换为整个外部来源目录，使用`--source-kind external --source-sha256 SOURCE_SHA256`，保留完整观察及其内部源码包。后训练根用`ergora-posttraining-review@1.0.2`，领域路径同为`root/domain/review`；两个根的通用叶为`root/general/structure/review`、`root/general/correctness/review`、`root/general/test-value/review`。一次prepare只准备所选一个叶，不运行其他分支或all-join。
 
 新目录是原格式的完整composition input。`task.txt`包含原需求、全部源码／显式上下文／祖先规范／检查、外部观察及所选来源与manifest身份；`prompt.txt`再加入模板完整祖先资料。`input_digest`取新回执；完整prompt（含JSON编码和资料）最多1,000,000B，`--max-prompt-bytes`可设更小。超限明确失败，不截断材料。需要未运行前驱、具有write／shell／network权限或无权读取任一包内源码的叶也会拒绝。
 
