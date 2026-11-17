@@ -82,6 +82,7 @@ class PhaseLog:
         if len(nodeids) != len(set(nodeids)):
             raise pytest.UsageError('CI collection repeats test node IDs')
         selected, deselected = [], []
+        group_counts = [0] * len(groups)
         shard_counts = {name: dict.fromkeys(assignment['groups'], 0) for name, assignment in assignments.items()}
         for item in items:
             name = item.path.relative_to(config.rootpath).as_posix()
@@ -89,13 +90,15 @@ class PhaseLog:
             shard = int.from_bytes(hashlib.sha256(item.nodeid.encode('utf-8')).digest(), 'big') % assignment['count']
             index = assignment['groups'][shard]
             shard_counts[name][shard] += 1
+            group_counts[index] += 1
             (selected if index == self.group else deselected).append(item)
         empty = [(name, shard) for name, counts in shard_counts.items() for shard, count in counts.items() if count == 0]
         if empty:
             raise pytest.UsageError(f'CI file shards contain no tests: {empty}')
-        self.emit('shards', counts=shard_counts)
-        if not selected:
-            raise pytest.UsageError(f'CI group {self.group} selected no tests')
+        empty_groups = [index for index, count in enumerate(group_counts) if count == 0]
+        if empty_groups:
+            raise pytest.UsageError(f'CI groups contain no tests: {empty_groups}')
+        self.emit('shards', counts=shard_counts, group_counts=group_counts)
         items[:] = selected
         config.hook.pytest_deselected(items=deselected)
 
