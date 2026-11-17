@@ -86,10 +86,9 @@ def test_versioned_input_contract_imports_without_sdk_or_native_modules():
 @pytest.mark.skipif(sys.platform != 'linux', reason='Budget worker uses the local Linux/WSL2 runtime')
 def test_budget_worker_bootstrap_registers_its_actual_queue_adapter_and_native_activities(tmp_path):
     pytest.importorskip('temporalio')
-    import shutil
 
     installation = tmp_path / 'installation with space'
-    shutil.copytree(reference.ROOT / 'platform', installation)
+    reference.prepare_training(installation, protocol=reference.TRAINING_PROTOCOL)
     environment = dict(os.environ, AGENTFLOW_CONFIG_DIR=str(tmp_path / 'config'),
         AGENTFLOW_STATE_DIR=str(tmp_path / 'runtime'), PYTHONPATH=os.pathsep.join(map(str, (
             installation / 'local', installation / 'upstream/platform',
@@ -133,124 +132,64 @@ def prepared_training_installation(tmp_path_factory):
     return root, receipt
 
 
-@pytest.fixture(scope='module')
-def prepared_training_v2_installation(tmp_path_factory):
-    if sys.platform != 'linux':
-        pytest.skip('Native source preparation uses Linux/WSL2 directory synchronization')
-    root = tmp_path_factory.mktemp('native-v2-parent') / 'training runtime with spaces'
-    receipt = reference.prepare_training(root, protocol='training-executor-admission-v2')
-    return root, receipt
-
-
-def test_native_source_protocol_is_explicit_and_preserves_the_legacy_installation(prepared_training_installation, tmp_path):
-    import shutil
-
+def test_native_source_protocol_has_one_complete_training_identity(prepared_training_installation):
     root, receipt = prepared_training_installation
-    legacy = tmp_path / 'legacy'
-    shutil.copytree(reference.ROOT / 'platform', legacy)
-    original = (legacy / 'local/agent_platform/training_executor.py').read_bytes()
-    assert reference.validate_installation(legacy, training=True) == legacy.resolve()
     assert reference.validate_installation(root, training=True) == root.resolve()
     assert reference.validate_installation(root) == root.resolve()
     assert receipt == {'status': 'source_prepared', 'protocol': reference.TRAINING_PROTOCOL,
         'installation': str(root.resolve()), 'dependencies_installed': False,
         'runtime_started': False, 'execution_authorized': False}
     assert not (root / '.venv').exists()
-    assert (legacy / 'local/agent_platform/training_executor.py').read_bytes() == original
-    assert (root / 'local/agent_platform/training_executor.py').read_bytes() != original
-    # Legacy keeps its existing Python-only identity; descriptor installations
-    # retain the stronger complete-platform check below.
-    with (legacy / 'requirements.lock').open('ab') as stream:
-        stream.write(b'\n')
-    assert reference.validate_installation(legacy, training=True) == legacy.resolve()
+    assert (root / 'local/agent_platform/training_executor.py').read_bytes() == (
+        reference.ROOT / 'platform/local/agent_platform/training_executor.py').read_bytes()
 
 
-def test_source_v2_identity_keeps_its_training_override_and_descriptor_together(
-        prepared_training_installation, prepared_training_v2_installation, tmp_path):
-    import shutil
-
-    v1, _ = prepared_training_installation
-    source, receipt = prepared_training_v2_installation
-    root = tmp_path / 'v2-identity'
-    shutil.copytree(source, root)
-    assert receipt['protocol'] == 'training-executor-admission-v2'
-    assert reference.validate_installation(root, training=True) == root.resolve()
-    executor = 'local/agent_platform/training_executor.py'
-    assert (root / executor).read_bytes() == (v1 / executor).read_bytes()
-    training = root / 'local/agent_platform/training.py'
-    raw = training.read_bytes()
-    training.write_bytes((v1 / 'local/agent_platform/training.py').read_bytes())
-    with pytest.raises(ValueError, match='runtime identity'):
-        reference.validate_installation(root, training=True)
-    training.write_bytes(raw)
-    descriptor = root / 'ergora-native-runtime.json'
-    declared = descriptor.read_bytes()
-    for changed in ((v1 / descriptor.name).read_bytes(), json.dumps(json.loads(declared)).encode(), b''):
-        descriptor.write_bytes(changed)
-        with pytest.raises(ValueError, match='runtime (identity|descriptor)'):
-            reference.validate_installation(root, training=True)
-    descriptor.write_bytes(declared)
-    descriptor.unlink()
-    with pytest.raises(ValueError, match='runtime identity'):
-        reference.validate_installation(root, training=True)
-
-
-def test_source_capabilities_pin_one_version_and_history_only_checks_saved_shape(
-        prepared_training_installation, prepared_training_v2_installation, tmp_path, monkeypatch):
+def test_source_capability_pins_complete_current_gate_and_offline_saved_shape(
+        prepared_training_installation, tmp_path, monkeypatch):
     from copy import deepcopy
     import shutil
     import venv
     from ergora import training_execution_protocol as protocol
 
     monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
-    capabilities = {}
-    for source, _ in (prepared_training_installation, prepared_training_v2_installation):
-        root = tmp_path / source.parent.name
-        shutil.copytree(source, root)
-        venv.EnvBuilder(with_pip=False).create(root / '.venv')
-        cap = protocol.source_capability(root, {'original': 'ready'})
-        capabilities[cap['admission_protocol']] = cap
-        assert len(cap['gate_sources']) == 25
+    source, _ = prepared_training_installation
+    root = tmp_path / 'source-capability'
+    shutil.copytree(source, root)
+    venv.EnvBuilder(with_pip=False).create(root / '.venv')
+    cap = protocol.source_capability(root, {'original': 'ready'})
+    assert {'training_configuration.py', 'reference_training_setup.py', 'reference_training_preparation.py',
+            'data/schemas/training-cycle-v1.json', 'data/native-runtime/training-executor-admission-v3.json'} <= set(cap['gate_sources'])
+    protocol.validate_sources(cap)
+    owner = {'schema_version': 2, 'intent_sha256': 'a' * 64, 'authorization_sha256': 'b' * 64,
+        'pid': 1, 'start_ticks': '0', 'boot_id': '0' * 36, 'context_sha256': 'c' * 64,
+        'execution_capability': cap}
+    root.rename(root.with_name(root.name + '-unavailable'))
+    assert protocol.owner_record(owner) == owner
+    with pytest.raises(OSError):
         protocol.validate_sources(cap)
-        owner = {'schema_version': 2, 'intent_sha256': 'a' * 64, 'authorization_sha256': 'b' * 64,
-            'pid': 1, 'start_ticks': '0', 'boot_id': '0' * 36, 'context_sha256': 'c' * 64,
-            'execution_capability': cap}
-        root.rename(root.with_name(root.name + '-unavailable'))
-        assert protocol.owner_record(owner) == owner
-        with pytest.raises(OSError):
-            protocol.validate_sources(cap)
-        root.with_name(root.name + '-unavailable').rename(root)
-        for changed in ('missing', 'extra', 'other-version', 'unknown-version'):
-            invalid = deepcopy(owner)
-            item = invalid['execution_capability']
-            if changed == 'missing':
-                item['gate_sources'].pop('reference.py')
-            elif changed == 'extra':
-                item['gate_sources']['unexpected.py'] = '0' * 64
-            elif changed == 'other-version':
-                item['admission_protocol'] = next(name for name in reference.TRAINING_PROTOCOLS if name != cap['admission_protocol'])
-            else:
-                item['admission_protocol'] = 'training-executor-admission-v3'
-            with pytest.raises(ValueError, match='execution capability'):
-                protocol.owner_record(invalid)
-        stale = deepcopy(cap)
-        stale['gate_sources']['reference.py'] = '0' * 64
-        assert protocol.owner_record({**owner, 'execution_capability': stale})['execution_capability'] == stale
-        with pytest.raises(ValueError, match='gate source changed'):
-            protocol.validate_sources(stale)
-    v2 = deepcopy(capabilities['training-executor-admission-v2'])
-    v2.update(admission_protocol=reference.TRAINING_PROTOCOL,
-              gate_sources=capabilities[reference.TRAINING_PROTOCOL]['gate_sources'])
-    with pytest.raises(ValueError, match='descriptor changed'):
-        protocol.validate_sources(v2)
+    root.with_name(root.name + '-unavailable').rename(root)
+    for changed in ('missing', 'extra'):
+        invalid = deepcopy(owner)
+        item = invalid['execution_capability']
+        if changed == 'missing':
+            item['gate_sources'].pop('reference.py')
+        else:
+            item['gate_sources']['unexpected.py'] = '0' * 64
+        with pytest.raises(ValueError, match='execution capability'):
+            protocol.owner_record(invalid)
+    stale = deepcopy(cap)
+    stale['gate_sources']['reference.py'] = '0' * 64
+    assert protocol.owner_record({**owner, 'execution_capability': stale})['execution_capability'] == stale
+    with pytest.raises(ValueError, match='gate source changed'):
+        protocol.validate_sources(stale)
 
 
 def test_capability_birth_does_not_accept_a_descriptor_changed_after_validation(
-        prepared_training_v2_installation, tmp_path, monkeypatch):
+        prepared_training_installation, tmp_path, monkeypatch):
     import shutil
     from ergora import training_execution_protocol as protocol
 
-    source, _ = prepared_training_v2_installation
+    source, _ = prepared_training_installation
     root = tmp_path / 'racing-descriptor'
     shutil.copytree(source, root)
     monkeypatch.syspath_prepend(str(reference.ROOT / 'platform/upstream/platform'))
@@ -267,25 +206,8 @@ def test_capability_birth_does_not_accept_a_descriptor_changed_after_validation(
         protocol.source_capability(root, {'original': 'ready'})
 
 
-@pytest.mark.skipif(sys.platform != 'linux', reason='Native source preparation requires Linux/WSL2')
-def test_preparing_v2_cannot_alias_a_complete_bundled_v1_pair(tmp_path, monkeypatch):
-    import shutil
-
-    data = tmp_path / 'bundled-data'
-    shutil.copytree(reference.DATA / 'native-runtime', data / 'native-runtime')
-    shutil.copy2(reference.DATA / 'reference-manifest.json', data / 'reference-manifest.json')
-    for suffix in ('.json', '.patch'):
-        shutil.copy2(data / 'native-runtime' / (reference.TRAINING_PROTOCOL + suffix),
-                     data / 'native-runtime' / ('training-executor-admission-v2' + suffix))
-    monkeypatch.setattr(reference, 'DATA', data)
-    root = tmp_path / 'must-not-be-prepared'
-    with pytest.raises(ValueError, match='Bundled native training protocol source identity changed'):
-        reference.prepare_training(root, protocol='training-executor-admission-v2')
-    assert not root.exists()
-
-
 @pytest.mark.parametrize('changed', ['missing-descriptor', 'formatted-descriptor', 'truncated-descriptor', 'oversized-descriptor',
-                                    'linked-descriptor', 'fifo-descriptor', 'executor', 'requirements'])
+                                    'linked-descriptor', 'fifo-descriptor', 'executor', 'training', 'requirements'])
 def test_native_source_identity_cannot_fall_back_or_accept_an_unverified_file(prepared_training_installation, tmp_path, changed):
     import shutil
 
@@ -308,9 +230,9 @@ def test_native_source_identity_cannot_fall_back_or_accept_an_unverified_file(pr
     elif changed == 'fifo-descriptor':
         descriptor.unlink()
         os.mkfifo(descriptor)
-    elif changed == 'executor':
-        path = 'local/agent_platform/training_executor.py'
-        (root / path).write_bytes((reference.ROOT / 'platform' / path).read_bytes())
+    elif changed in ('executor', 'training'):
+        path = 'local/agent_platform/' + ('training_executor.py' if changed == 'executor' else 'training.py')
+        (root / path).write_bytes((root / path).read_bytes() + b'\n')
     else:
         with (root / 'requirements.lock').open('ab') as stream:
             stream.write(b'\n')
@@ -321,11 +243,15 @@ def test_native_source_identity_cannot_fall_back_or_accept_an_unverified_file(pr
 def test_interrupted_source_preparation_declares_its_incomplete_identity(prepared_training_installation, tmp_path, monkeypatch):
     root = tmp_path / 'interrupted-source'
 
-    def unavailable(*args, **kwargs):
-        raise OSError('Git launch interrupted after source copy')
+    copy = reference.shutil.copy2
+    def interrupted(source, destination):
+        result = copy(source, destination)
+        if Path(destination) == root / 'local/agent_platform/training_executor.py':
+            raise OSError('Interrupted native source copy')
+        return result
 
-    monkeypatch.setattr(reference.subprocess, 'run', unavailable)
-    with pytest.raises(OSError, match='Git launch interrupted'):
+    monkeypatch.setattr(reference.shutil, 'copy2', interrupted)
+    with pytest.raises(OSError, match='Interrupted native source copy'):
         reference.prepare_training(root, protocol=reference.TRAINING_PROTOCOL)
     assert (root / 'ergora-native-runtime.json').read_bytes() == b''
     original = reference.ROOT / 'platform/local/agent_platform/training_executor.py'

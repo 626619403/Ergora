@@ -1,4 +1,4 @@
-"""The public v2.2 reference stays byte-identical during extraction."""
+"""Current reference resources and exact native source preparation."""
 
 from __future__ import annotations
 
@@ -18,8 +18,8 @@ from .reference_creation_process import task_creation
 
 DATA = Path(__file__).parent / "data"
 ROOT = DATA / "reference"
-TRAINING_PROTOCOL = "training-executor-admission-v1"
-TRAINING_PROTOCOLS = (TRAINING_PROTOCOL, "training-executor-admission-v2")
+TRAINING_PROTOCOL = "training-executor-admission-v3"
+TRAINING_PROTOCOLS = (TRAINING_PROTOCOL,)
 TEMPLATES = ("repository-governance", "large-change", "training-optimization")
 
 
@@ -42,7 +42,7 @@ def verify() -> dict:
         if not path.is_file() or path.is_symlink():
             raise ValueError(f"Reference file missing or symlinked: {relative}")
         if hashlib.sha256(path.read_bytes()).hexdigest() != expected:
-            raise ValueError(f"Reference file differs from the public distribution: {relative}")
+            raise ValueError(f"Reference file differs from its resource manifest: {relative}")
     return {"status": "PASS", **info()}
 
 
@@ -100,22 +100,22 @@ def _training_descriptor(raw: bytes) -> dict:
         protocol = declared['protocol_id']
     except (ValueError, KeyError, TypeError) as error:
         raise ValueError(message) from error
-    if protocol not in TRAINING_PROTOCOLS:
+    if protocol != TRAINING_PROTOCOL:
         raise ValueError(message)
     if raw != (DATA / "native-runtime" / (protocol + ".json")).read_bytes():
         raise ValueError(message)
     return declared
 
 
-def _training_overrides(installation: Path, manifest_sha256: str) -> dict:
-    """An explicit source declaration never falls back to the legacy identity."""
+def _installed_training_descriptor(installation: Path, manifest_sha256: str) -> dict | None:
+    """Read one bounded current declaration without following links."""
     import stat
 
     descriptor = installation / "ergora-native-runtime.json"
     try:
         details = descriptor.lstat()
     except FileNotFoundError:
-        return {}
+        return None
     if not stat.S_ISREG(details.st_mode):
         raise ValueError("Native runtime descriptor must be an ordinary file without symlinks")
     flags = os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_NONBLOCK', 0)
@@ -124,36 +124,35 @@ def _training_overrides(installation: Path, manifest_sha256: str) -> dict:
             raise ValueError("Native runtime descriptor must be an ordinary file")
         raw = stream.read(65_537)
     protocol = _training_descriptor(raw)
-    if protocol['base_manifest_sha256'] != manifest_sha256:
+    if protocol['reference_manifest_sha256'] != manifest_sha256:
         raise ValueError("Native runtime protocol belongs to another reference manifest")
-    return protocol['overrides']
+    return protocol
 
 
-def _validate_installation_files(installation: Path, manifest: dict, *, training: bool, overrides: dict) -> None:
+def _validate_installation_files(installation: Path, manifest: dict, *, complete: bool) -> None:
     prefixes = ("platform/local/", "platform/upstream/platform/")
-    if training:
-        prefixes += ("platform/upstream/temporal/perf_temporal/", "platform/upstream/perfctl.py",
-                     "platform/upstream/compare_runs.py")
     for relative, expected in manifest["files"].items():
-        selected = (relative.startswith("platform/") if overrides else
+        selected = (relative.startswith("platform/") if complete else
                     relative.startswith(prefixes) and relative.endswith(".py"))
         if selected:
             file = installation / relative.removeprefix("platform/")
             if (not file.is_file() or file.is_symlink()
-                    or hashlib.sha256(file.read_bytes()).hexdigest() != overrides.get(relative, expected)):
+                    or hashlib.sha256(file.read_bytes()).hexdigest() != expected):
                 raise ValueError(f"Unsupported reference runtime identity: {relative}")
 
 
 def validate_installation(installation: Path, *, training: bool = False) -> Path:
     installation = installation.expanduser().resolve(strict=True)
     raw = (DATA / "reference-manifest.json").read_bytes()
-    overrides = _training_overrides(installation, hashlib.sha256(raw).hexdigest())
-    _validate_installation_files(installation, json.loads(raw), training=training, overrides=overrides)
+    descriptor = _installed_training_descriptor(installation, hashlib.sha256(raw).hexdigest())
+    if training and descriptor is None:
+        raise ValueError('Training installation requires its current native runtime descriptor')
+    _validate_installation_files(installation, json.loads(raw), complete=descriptor is not None)
     return installation
 
 
 def prepare_training(directory: Path, *, protocol: str) -> dict:
-    """Prepare exact versioned native source, without dependencies or execution."""
+    """Prepare current native source without dependencies or execution."""
     if sys.platform != "linux":
         raise ValueError("Native training source preparation requires Linux; use WSL2")
     if protocol not in TRAINING_PROTOCOLS:
@@ -161,18 +160,16 @@ def prepare_training(directory: Path, *, protocol: str) -> dict:
     verify()
     manifest_raw = (DATA / "reference-manifest.json").read_bytes()
     metadata = (DATA / "native-runtime" / (protocol + ".json")).read_bytes()
-    declared = json.loads(metadata)
-    patch = DATA / "native-runtime" / (protocol + ".patch")
+    declared = _training_descriptor(metadata)
     if (declared['protocol_id'] != protocol
-            or hashlib.sha256(manifest_raw).hexdigest() != declared['base_manifest_sha256']
-            or hashlib.sha256(patch.read_bytes()).hexdigest() != declared['patch_sha256']):
-        raise ValueError("Bundled native training protocol source identity changed")
+            or hashlib.sha256(manifest_raw).hexdigest() != declared['reference_manifest_sha256']):
+        raise ValueError("Bundled native training source identity changed")
     directory = directory.expanduser().absolute()
     directory.mkdir(parents=True)
     descriptor = directory / "ergora-native-runtime.json"
     directory_fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY)
     try:
-        # A crash after copying base files must never make this a legacy runtime.
+        # Declare the incomplete source before copying any executable files.
         with descriptor.open('xb') as stream:
             stream.flush()
             os.fsync(stream.fileno())
@@ -183,16 +180,7 @@ def prepare_training(directory: Path, *, protocol: str) -> dict:
                 target = directory / relative.removeprefix('platform/')
                 target.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(ROOT / relative, target)
-        environment = {key: value for key, value in os.environ.items() if not key.startswith('GIT_')}
-        environment.update(GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL=os.devnull,
-                           GIT_CEILING_DIRECTORIES=str(directory))
-        for arguments in (['--check'], []):
-            applied = subprocess.run(['git', '-C', str(directory), 'apply', '--whitespace=error-all',
-                                      *arguments, str(patch.resolve())],
-                                     capture_output=True, text=True, env=environment, timeout=30)
-            if applied.returncode:
-                raise ValueError('Native source patch failed: ' + applied.stderr.strip())
-        _validate_installation_files(directory, manifest, training=True, overrides=declared['overrides'])
+        _validate_installation_files(directory, manifest, complete=True)
         with descriptor.open('wb') as stream:
             stream.write(metadata)
             stream.flush()
@@ -505,7 +493,7 @@ def training_setup(project: dict, home: Path, operation: str, payload: dict) -> 
     if (operation == 'init-baseline' or runner) and sys.platform != 'linux':
         raise ValueError('Native training initialization and runner registration require Linux; use the registered runtime in WSL2')
     return _training_process(project, 'setup', {'project': project, 'control_home': str(home),
-                             'operation': operation, **payload}, 20, sdk=runner)
+                             'operation': operation, **payload}, 20, sdk=False)
 
 
 def training_preparation(project: dict, home: Path, operation: str, payload: dict) -> dict:
@@ -513,7 +501,7 @@ def training_preparation(project: dict, home: Path, operation: str, payload: dic
     if sys.platform != 'linux':
         raise ValueError('Native training preparation requires Linux; use the registered runtime in WSL2')
     return _training_process(project, 'preparation', {'project': project, 'control_home': str(home),
-                             'operation': operation, **payload}, 20, sdk=operation != 'status')
+                             'operation': operation, **payload}, 20, sdk=False)
 
 
 def training_submission(project: dict, home: Path, operation: str, payload: dict, *, timeout: int) -> dict:

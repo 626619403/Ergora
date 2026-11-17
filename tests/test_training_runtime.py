@@ -11,34 +11,33 @@ import pytest
 
 from ergora import reference, training
 from test_training import experiments, registration
-from test_reference import prepared_training_installation, prepared_training_v2_installation
+from test_reference import prepared_training_installation
 
 
 @pytest.fixture(scope='module')
-def installation(tmp_path_factory, request):
-    root = tmp_path_factory.mktemp('training-reference-installation')
-    if getattr(request, 'param', None) in ('managed', 'managed-v2'):
-        import venv
+def installation(tmp_path_factory):
+    import venv
 
-        root = root / 'managed native'
-        selected = ('training-executor-admission-v2' if request.param == 'managed-v2' else reference.TRAINING_PROTOCOL)
-        reference.prepare_training(root, protocol=selected)
-        # The native admission boundary runs without application/SDK dependencies.
+    root = tmp_path_factory.mktemp('training-reference-installation') / 'managed native'
+    if sys.platform == 'linux':
+        reference.prepare_training(root, protocol=reference.TRAINING_PROTOCOL)
         venv.EnvBuilder(with_pip=False).create(root / '.venv')
     else:
-        shutil.copytree(reference.ROOT / 'platform', root, dirs_exist_ok=True)
+        shutil.copytree(reference.ROOT / 'platform', root)
+        shutil.copyfile(reference.DATA / 'native-runtime' / (reference.TRAINING_PROTOCOL + '.json'),
+                        root / 'ergora-native-runtime.json')
     return root
 
 
 @pytest.mark.parametrize('action', ['run-local', 'approve'])
-def test_native_v2_cli_keeps_the_original_loader_at_each_sdk_use(
-        prepared_training_v2_installation, tmp_path, action):
+def test_native_cli_keeps_the_original_loader_at_each_sdk_use(
+        prepared_training_installation, tmp_path, action):
     import os
     import subprocess
     import venv
 
     pytest.importorskip('temporalio')
-    root, _ = prepared_training_v2_installation
+    root, _ = prepared_training_installation
     state = tmp_path / 'native-state'
     spec = state / 'training/specs/alpha.json'
     spec.parent.mkdir(parents=True)

@@ -16,6 +16,7 @@ from .reference_training_context import _TrainingProject
 from .reference_training_runtime import MEMO_KEY as _MEMO_KEY
 from . import reference_training_budget as budgets, training_cycles
 from .state import file_lock
+from .training_configuration import validate_runner
 
 
 _INTENT_LIMIT = 16 * 1_048_576
@@ -60,12 +61,8 @@ class _Submission(_TrainingProject):
         if any(item[name] is not None for name in ('job_request', 'started', 'result', 'fence', 'negative_result')):
             raise ValueError('Native job, execution or fence records already exist; do not resubmit this experiment')
         runner = item['current_runner']
-        if (set(runner) != {'schema_version', 'runner_template_id', 'project', 'repo', 'command', 'timeout_seconds'}
-                or type(runner['schema_version']) is not int or runner['schema_version'] != 1
-                or not isinstance(runner['command'], list) or not runner['command']
-                or not all(isinstance(arg, str) and arg for arg in runner['command'])
-                or type(runner['timeout_seconds']) is not int
-                or not 1 <= runner['timeout_seconds'] <= min(82800, item['max_run_seconds'])):
+        validate_runner(runner)
+        if runner['timeout_seconds'] > item['max_run_seconds']:
             raise ValueError('Trusted runner command or execution walltime is invalid')
         repo = Path(self.project['repo'])
         if Path(self.core.git(repo, 'rev-parse', '--show-toplevel').stdout.strip()).resolve() != repo:

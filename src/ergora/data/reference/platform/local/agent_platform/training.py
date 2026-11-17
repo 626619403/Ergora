@@ -17,7 +17,6 @@ import uuid
 
 import perfctl
 from perf_temporal.adapter import ApprovalRejected, ContractViolation
-from perf_temporal.client import load_experiment
 from perf_temporal.models import Binding, Experiment, GateDecision, IntegrationTask, Job, Observation, ReleaseContext
 
 from .core import CONFIG, PYTHON, STATE, UPSTREAM, git, read, require, slug, write
@@ -57,14 +56,12 @@ def exact_job(job: Job) -> dict:
 
 def register_runner(source: Path) -> dict:
     value = read(source)
-    require(set(value) == {'schema_version', 'runner_template_id', 'project', 'repo', 'command', 'timeout_seconds'},
-            'Runner requires schema_version, runner_template_id, project, repo, command, timeout_seconds')
-    require(value['schema_version'] == 1, 'Unsupported runner template')
+    from ergora.training_configuration import validate_runner
+
+    validate_runner(value)
     slug(value['runner_template_id']); slug(value['project'])
     repo = Path(value['repo']).resolve()
     require(Path(git(repo, 'rev-parse', '--show-toplevel').stdout.strip()).resolve() == repo, 'Runner must name a Git repository root')
-    require(isinstance(value['command'], list) and value['command'] and all(isinstance(x, str) and x for x in value['command']), 'Runner commands use argv arrays')
-    require(type(value['timeout_seconds']) is int and 1 <= value['timeout_seconds'] <= 82800, 'Runner execution walltime must be 1..82800 seconds')
     value['repo'] = str(repo)
     write(CONFIG / 'training-runners' / (value['runner_template_id'] + '.json'), value)
     return {'registered_runner': value['runner_template_id'], 'project': value['project']}
@@ -242,6 +239,8 @@ def cli(arguments: list[str]):
         return {'training_control_worker': args.action, 'automatic_training_execution': False}
     spec = TRAINING / 'specs' / (slug(args.experiment_id) + '.json')
     if args.action == 'run-local':
+        from perf_temporal.client import load_experiment
+
         experiment = load_experiment(str(spec))
         require(args.confirm_manifest_sha == experiment.binding.manifest_sha, 'Confirm the exact immutable manifest SHA before execution')
         request = job_folder(args.experiment_id) / 'request.json'
@@ -252,6 +251,8 @@ def cli(arguments: list[str]):
     operation = args.action
     if operation == 'cancel': tail = ['--reason', args.reason]
     if operation == 'approve':
+        from perf_temporal.client import load_experiment
+
         import re
         require(re.fullmatch('[a-f0-9]{64}', args.evidence_sha), 'Expected exact evidence SHA-256')
         experiment = load_experiment(str(spec))

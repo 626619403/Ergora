@@ -6,7 +6,10 @@ from copy import deepcopy
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
+import shutil
+import subprocess
 import sys
 
 import pytest
@@ -20,15 +23,99 @@ pytestmark = pytest.mark.skipif(sys.platform != 'linux', reason='Native runner r
 
 @pytest.fixture
 def runner_project(registration, tmp_path):
-    pytest.importorskip('temporalio')
     state, definition = registration
     registrations.register(state, definition, 0)
     marker = tmp_path / 'must-not-execute'
-    runner = {'schema_version': 1, 'runner_template_id': 'demo-training', 'project': 'demo',
+    runner = {'schema_version': 2, 'runner_template_id': 'demo-training', 'project': 'demo',
               'repo': definition['repo'] + '/.',
               'command': [sys.executable, '-c', f'from pathlib import Path;Path({str(marker)!r}).touch()',
-                          '{manifest}', '{output}'], 'timeout_seconds': 300}
+                          '{manifest}', '{output}'], 'timeout_seconds': 300, 'configuration_readback': None}
     return state, definition, runner, marker
+
+
+@pytest.fixture
+def configuration_project(registration, tmp_path, monkeypatch):
+    """Real source/config commits; registration itself must never import the driver."""
+    from ergora import training_configuration
+
+    state, definition = registration
+    repository = Path(definition['repo'])
+    source = tmp_path / 'trusted configuration source'
+    source.mkdir()
+    environment = dict(os.environ, GIT_AUTHOR_NAME='Fixture', GIT_AUTHOR_EMAIL='fixture@example.test',
+                       GIT_COMMITTER_NAME='Fixture', GIT_COMMITTER_EMAIL='fixture@example.test')
+
+    def git(root, *arguments):
+        result = subprocess.run(['git', '-C', str(root), *arguments], env=environment,
+                                capture_output=True, text=True, timeout=10, check=True)
+        return result.stdout.strip()
+
+    def commit(root, message):
+        git(root, 'add', '.')
+        git(root, '-c', 'commit.gpgsign=false', 'commit', '-m', message)
+        return git(root, 'rev-parse', 'HEAD')
+
+    git(source, 'init')
+    shutil.copyfile(Path(__file__).parent / 'fixtures/training_configuration_driver.py', source / 'driver.py')
+    source_commit = commit(source, 'trusted test-only CPU configuration driver')
+    configuration = repository / 'src/configuration.json'
+    configuration.parent.mkdir()
+    baseline_raw = b'{ "global_batch": 12, "microbatch": 3, "strategy": "redundant-loop" }\r\n'
+    configuration.write_bytes(baseline_raw)
+    baseline_commit = commit(repository, 'baseline CPU source configuration')
+    candidate_raw = b'{"global_batch":24,"microbatch":6,"strategy":"closed-form"}\n'
+    configuration.write_bytes(candidate_raw)
+    candidate_commit = commit(repository, 'candidate CPU source configuration')
+    markers = tmp_path / 'configuration markers'
+    monkeypatch.setenv('ERGORA_TEST_CONFIGURATION_MARKERS', str(markers))
+    selected = training_configuration.source_reference(source, source_commit, 'driver.py')
+    runner = {'schema_version': 2, 'runner_template_id': 'configuration-cpu', 'project': 'demo',
+              'repo': definition['repo'], 'command': [str(Path(definition['execution']['installation']) / '.venv/bin/python'),
+                   '{configuration_driver}', '{configuration_request}'], 'timeout_seconds': 20,
+              'configuration_readback': {'protocol': 'training-configuration-driver-v1', 'source': selected,
+                  'configuration_path': 'src/configuration.json', 'manifest_configuration_role': 'source-bytes',
+                  'observation_scheme': 'fixture-cpu-configuration-v1'}}
+    return {'state': state, 'definition': definition, 'runner': runner, 'markers': markers,
+            'baseline_raw': baseline_raw, 'baseline_commit': baseline_commit,
+            'candidate_raw': candidate_raw, 'candidate_commit': candidate_commit,
+            'configuration': configuration, 'source': source, 'git': git, 'commit': commit}
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+def test_configuration_driver_registration_reads_git_source_without_importing_it(configuration_project):
+    item = configuration_project
+    state, definition, runner = item['state'], item['definition'], item['runner']
+    registrations.register(state, definition, 0)
+    preview = training.preview_runner(state, 'demo', runner)
+    result = training.register_runner(state, 'demo', runner, preview['project_revision'], preview['runner_sha256'])
+    assert result['status'] == 'registered' and result['current_runner'] == runner
+    raw = (Path(definition['execution']['config_directory']) / 'training-runners/configuration-cpu.json').read_bytes()
+    assert training.register_runner(state, 'demo', runner, preview['project_revision'], preview['runner_sha256'])['status'] == 'already_registered'
+    assert (Path(definition['execution']['config_directory']) / 'training-runners/configuration-cpu.json').read_bytes() == raw
+    assert not item['markers'].exists() and not Path(definition['execution']['state_directory']).exists()
+
+
+def test_configuration_driver_source_rejects_a_tracked_entrypoint_symlink(configuration_project):
+    from ergora import training_configuration
+
+    item = configuration_project
+    (item['source'] / 'linked.py').symlink_to('driver.py')
+    commit = item['commit'](item['source'], 'symlink is not a trusted source entrypoint')
+    with pytest.raises(ValueError):
+        training_configuration.source_reference(item['source'], commit, 'linked.py')
+    assert not item['markers'].exists()
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+def test_configuration_driver_cannot_relabel_an_observation_snapshot_as_source(configuration_project):
+    item = configuration_project
+    registrations.register(item['state'], item['definition'], 0)
+    runner = deepcopy(item['runner'])
+    runner['configuration_readback']['manifest_configuration_role'] = 'snapshot'
+    with pytest.raises(ValueError):
+        training.preview_runner(item['state'], 'demo', runner)
+    assert not item['markers'].exists()
+    assert not (Path(item['definition']['execution']['config_directory']) / 'training-runners/configuration-cpu.json').exists()
 
 
 def test_preview_normalizes_with_original_owner_and_same_content_keeps_bytes(runner_project):

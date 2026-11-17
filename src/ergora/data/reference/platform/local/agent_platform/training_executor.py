@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+from collections.abc import Callable
 import fcntl
 import hashlib
 import json
@@ -48,11 +49,23 @@ def track(record: dict, folder: Path, manifest: dict, gate: dict) -> str:
     return run_id
 
 
-def process(folder: Path) -> dict:
+def process(folder: Path, *, admit: Callable[[Path, dict], None] | None = None,
+            before_runner: Callable[[Path, dict, dict, dict], tuple[dict, Callable[[], None]]] | None = None) -> dict:
     with (folder / 'executor.lock').open('a') as lock:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         if (folder / 'result.json').exists(): return read(folder / 'result.json')
         record = read(folder / 'request.json')
+        configuration_runner = record['runner']['configuration_readback'] is not None
+        if configuration_runner:
+            require(admit is not None and before_runner is not None,
+                    'Configuration runner requires its original managed execution callback')
+        require(not ((folder / 'started.json').exists() or (folder / 'started.json').is_symlink()),
+                'An earlier executor started without a result; reconcile it before further execution')
+        if admit is None:
+            require(not ((folder / 'managed-execution').exists() or (folder / 'managed-execution').is_symlink()),
+                    'This job is reserved for managed execution; use its original execution request')
+        else:
+            admit(folder, record)
         binding = binding_from(record['experiment']['binding'])
         ident = binding.experiment_id
         fence = fence_path(ident)
@@ -74,10 +87,15 @@ def process(folder: Path) -> dict:
             output = folder / 'run-output'
             values = {'manifest': str(manifest_path), 'output': str(output),
                       'baseline_repo': str(checkouts['baseline']), 'candidate_repo': str(checkouts['candidate'])}
+            if configuration_runner:
+                configuration_values, active = before_runner(folder, record, checkouts, manifest)
+                values.update(configuration_values)
             command = []
             for arg in record['runner']['command']:
                 for key, value in values.items(): arg = arg.replace('{' + key + '}', value)
                 command.append(arg)
+            if configuration_runner:
+                active()
             code = Sandbox().run('af-perf-' + ident + '-run', checkouts['candidate'], output,
                 command, writable=False, fence=fence, timeout=record['runner']['timeout_seconds'])
             require(code == 0, f'Training runner exited {code}; inspect {output}/execution.log')

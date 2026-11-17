@@ -340,7 +340,7 @@ def _check_native(packet, choice):
             raise ValueError('Invalid frozen native source identity')
         _digest(record['file_sha256'])
     baseline, runner = (plan['sources'][name]['document'] for name in ('baseline', 'runner'))
-    _exact(runner, {'schema_version', 'runner_template_id', 'project', 'repo', 'command', 'timeout_seconds'},
+    _exact(runner, {'schema_version', 'runner_template_id', 'project', 'repo', 'command', 'timeout_seconds', 'configuration_readback'},
            'original runner template')
     _exact(plan['execution'], {'installation', 'config_directory', 'state_directory'}, 'native execution paths')
     if (any(not isinstance(value, str) or not PurePosixPath(value).is_absolute()
@@ -353,7 +353,7 @@ def _check_native(packet, choice):
             ('baseline_id', 'baseline_id'), ('baseline_commit', 'commit'), ('base_config_sha256', 'config_sha256'),
             ('workload_fingerprint', 'workload_fingerprint'))):
         raise ValueError('Original baseline anchor differs from its registered snapshot')
-    if (runner['schema_version'] != 1 or type(runner['schema_version']) is not int
+    if (runner['schema_version'] != 2 or type(runner['schema_version']) is not int
             or runner['project'] != project['id'] or runner['repo'] != project['repo']
             or runner['runner_template_id'] != request['runner_template_id']
             or type(runner['timeout_seconds']) is not int

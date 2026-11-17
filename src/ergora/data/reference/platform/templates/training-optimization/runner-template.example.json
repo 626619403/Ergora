@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "runner_template_id": "project-training-v1",
   "project": "REPLACE_PROJECT",
   "repo": "/absolute/path/your-project",
@@ -9,5 +9,6 @@
     "{manifest}",
     "{output}"
   ],
-  "timeout_seconds": 21600
+  "timeout_seconds": 21600,
+  "configuration_readback": null
 }
