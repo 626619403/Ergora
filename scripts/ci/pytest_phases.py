@@ -12,7 +12,7 @@ import pytest
 def pytest_addoption(parser):
     parser.addoption('--ci-results', default='ci-results', help='Fresh CI observation directory')
     parser.addoption('--ci-group', type=int, default=None, help='Linux group index; omitted means full selection')
-    parser.addoption('--ci-groups', default=str(Path(__file__).with_name('linux-groups.json')), help='Explicit Linux file groups')
+    parser.addoption('--ci-groups', default=str(Path(__file__).with_name('linux-groups.json')), help='Explicit Linux file and node-shard groups')
 
 
 def pytest_configure(config):
@@ -45,21 +45,55 @@ class PhaseLog:
         self.emit('partition', groups_sha256=hashlib.sha256(raw).hexdigest(), group_count=len(groups))
         if not 0 <= self.group < len(groups):
             raise pytest.UsageError(f'CI group {self.group} outside configured range')
-        names = [name for group in groups for name in group]
-        if len(names) != len(set(names)):
-            raise pytest.UsageError('CI groups assign a file more than once')
-        missing = [name for name in names if not (config.rootpath / name).is_file()]
+        assignments = {}
+        for index, group in enumerate(groups):
+            for entry in group:
+                if isinstance(entry, str):
+                    name, shard, count, whole = entry, 0, 1, True
+                elif isinstance(entry, dict) and set(entry) == {'file', 'shard', 'shards'}:
+                    name, shard, count, whole = entry['file'], entry['shard'], entry['shards'], False
+                    if (not isinstance(name, str) or type(shard) is not int or type(count) is not int
+                            or count < 1 or not 0 <= shard < count):
+                        raise pytest.UsageError(f'Invalid CI file shard: {entry}')
+                else:
+                    raise pytest.UsageError(f'Invalid CI group entry: {entry}')
+                previous = assignments.get(name)
+                if previous is None:
+                    previous = assignments[name] = {'whole': whole, 'count': count, 'groups': {}}
+                elif previous['whole'] or whole:
+                    raise pytest.UsageError(f'CI groups assign a whole file more than once: {name}')
+                if previous['count'] != count or shard in previous['groups']:
+                    raise pytest.UsageError(f'CI file shards disagree or repeat: {name}')
+                previous['groups'][shard] = index
+        for name, assignment in assignments.items():
+            if set(assignment['groups']) != set(range(assignment['count'])):
+                raise pytest.UsageError(f'CI file shards are incomplete: {name}')
+        missing = [name for name in assignments if not (config.rootpath / name).is_file()]
         if missing:
             raise pytest.UsageError(f'CI groups reference missing files: {missing}')
-        assignments = {name: index for index, group in enumerate(groups) for name in group}
         paths = {item.path.relative_to(config.rootpath).as_posix() for item in items}
         unknown = paths - assignments.keys()
         if unknown:
             raise pytest.UsageError(f'Add collected files to CI groups: {sorted(unknown)}')
+        uncollected = assignments.keys() - paths
+        if uncollected:
+            raise pytest.UsageError(f'CI groups reference files without collected tests: {sorted(uncollected)}')
+        nodeids = [item.nodeid for item in items]
+        if len(nodeids) != len(set(nodeids)):
+            raise pytest.UsageError('CI collection repeats test node IDs')
         selected, deselected = [], []
+        shard_counts = {name: dict.fromkeys(assignment['groups'], 0) for name, assignment in assignments.items()}
         for item in items:
-            index = assignments[item.path.relative_to(config.rootpath).as_posix()]
+            name = item.path.relative_to(config.rootpath).as_posix()
+            assignment = assignments[name]
+            shard = int.from_bytes(hashlib.sha256(item.nodeid.encode('utf-8')).digest(), 'big') % assignment['count']
+            index = assignment['groups'][shard]
+            shard_counts[name][shard] += 1
             (selected if index == self.group else deselected).append(item)
+        empty = [(name, shard) for name, counts in shard_counts.items() for shard, count in counts.items() if count == 0]
+        if empty:
+            raise pytest.UsageError(f'CI file shards contain no tests: {empty}')
+        self.emit('shards', counts=shard_counts)
         if not selected:
             raise pytest.UsageError(f'CI group {self.group} selected no tests')
         items[:] = selected

@@ -93,10 +93,37 @@
       "tests/test_state_backups.py",
       "tests/test_training.py",
       "tests/test_training_baseline.py",
-      "tests/test_training_submission.py",
       "tests/test_training_evidence.py",
       "tests/test_task_evidence_index.py",
       "tests/test_task_submission_locks.py"
+    ],
+    [
+      {
+        "file": "tests/test_training_submission.py",
+        "shard": 0,
+        "shards": 4
+      }
+    ],
+    [
+      {
+        "file": "tests/test_training_submission.py",
+        "shard": 1,
+        "shards": 4
+      }
+    ],
+    [
+      {
+        "file": "tests/test_training_submission.py",
+        "shard": 2,
+        "shards": 4
+      }
+    ],
+    [
+      {
+        "file": "tests/test_training_submission.py",
+        "shard": 3,
+        "shards": 4
+      }
     ]
   ]
 }
