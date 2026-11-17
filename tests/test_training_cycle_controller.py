@@ -103,7 +103,7 @@ def test_confirm_waits_only_for_its_bound_original_owner(
     assert prepared['status'] == 'new_offer', prepared
     launch = prepared['launch']
     root = subprocess.Popen([sys.executable, '-P', '-c',
-        'from ergora.reference_training_budget import cycle_root_main;cycle_root_main()'], stdin=subprocess.PIPE,
+        'from ergora.reference_training_submission import cycle_root_main;cycle_root_main()'], stdin=subprocess.PIPE,
         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         env={**os.environ, **launch['environment']}, start_new_session=True)
     root_identity = processes.identity(root.pid)
@@ -221,7 +221,7 @@ def test_dedicated_cycle_root_refuses_original_schema2_before_birth(
     folder = cycle_selection[2] / 'ergora/training-submissions/alpha.budget'
     before = {path.relative_to(folder): path.read_bytes() for path in folder.rglob('*') if path.is_file()}
     child = subprocess.run([sys.executable, '-P', '-c',
-        'from ergora.reference_training_budget import cycle_root_main;cycle_root_main()'],
+        'from ergora.reference_training_submission import cycle_root_main;cycle_root_main()'],
         input=json.dumps(launch['request']).encode(), capture_output=True,
         env={**os.environ, **launch['environment']}, timeout=8)
     assert child.returncode != 0 and b'original schema3 authorization' in child.stderr
@@ -718,7 +718,7 @@ def test_cycle_candidate_root_survives_short_calls_and_normal_loop_shutdown(
         assert result['submission']['status'] == 'submitted'
         assert operation.handed_off is True and operation.root.poll() is None
         assert cycle_budget_root == [
-            'from ergora.reference_training_budget import cycle_root_main;cycle_root_main()'
+            'from ergora.reference_training_submission import cycle_root_main;cycle_root_main()'
             if admission.authorization['schema_version'] in (3, 4)
             else 'from ergora.reference_training_worker import budget_main;budget_main()']
         owner = result['confirmation']['owner']
@@ -895,7 +895,7 @@ def test_cycle_candidate_cancel_retains_a_late_popen_handle_without_sending_inpu
     operation = cycle_candidate()
 
     def pending(argv, *args, **kwargs):
-        if argv[-1] == 'from ergora.reference_training_budget import cycle_root_main;cycle_root_main()':
+        if argv[-1] == 'from ergora.reference_training_submission import cycle_root_main;cycle_root_main()':
             entered.set()
             release.wait()
         return original(argv, *args, **kwargs)
@@ -954,7 +954,7 @@ def test_cycle_candidate_loop_shutdown_reaps_a_pending_root(
         return notify(expected, signum)
 
     def pending(argv, *args, **kwargs):
-        root = argv[-1] == 'from ergora.reference_training_budget import cycle_root_main;cycle_root_main()'
+        root = argv[-1] == 'from ergora.reference_training_submission import cycle_root_main;cycle_root_main()'
         if root and boundary == 'spawn':
             entered.set()
             release.wait(20)

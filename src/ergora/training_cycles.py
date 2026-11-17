@@ -620,10 +620,8 @@ def controller(state: State, project_id: str, cycle_id: str, authorization_sha25
         return prepare_controller(state, project_id, cycle_id, authorization_sha256, expected_revision)
     if action == 'stop':
         return stop_controller(state, project_id, cycle_id, authorization_sha256, reason=reason)
-    from .reference_training_worker import _CycleOperation, _cycle_snapshot
-
     mode = 'submit-controller' if action == 'submit' else 'reconcile-controller'
-    operation = _CycleOperation(state.root, project_id, cycle_id, authorization_sha256, mode,
-        snapshot=_cycle_snapshot(plan, authorization),
+    operation = training_execution_protocol._CycleOperation(state.root, project_id, cycle_id, authorization_sha256, mode,
+        snapshot=training_execution_protocol._cycle_snapshot(plan, authorization),
         inspection_timeout=plan['definition']['budget']['control_timeout_seconds'])
     return asyncio.run(operation.run())

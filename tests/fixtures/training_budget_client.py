@@ -99,7 +99,9 @@ if light_root:
 
     subprocess.Popen = launch_phase
     budget._BudgetPhase.start = checked_phase
-    budget.cycle_root_main()
+    from ergora.reference_training_submission import cycle_root_main
+
+    cycle_root_main()
     raise SystemExit(0)
 
 sys.path.insert(0, str(Path(__file__).parent))

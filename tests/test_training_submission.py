@@ -3273,9 +3273,9 @@ def cycle_budget_root(monkeypatch):
 
     def root(argv, *args, **kwargs):
         if argv[-1] in ('from ergora.reference_training_worker import budget_main;budget_main()',
-                       'from ergora.reference_training_budget import cycle_root_main;cycle_root_main()'):
+                       'from ergora.reference_training_submission import cycle_root_main;cycle_root_main()'):
             entries.append(argv[-1])
-            light_root = argv[-1] == 'from ergora.reference_training_budget import cycle_root_main;cycle_root_main()'
+            light_root = argv[-1] == 'from ergora.reference_training_submission import cycle_root_main;cycle_root_main()'
             argv = [*argv[:-1], f'import runpy;runpy.run_path({fixture!r},run_name="__main__",'
                     f'init_globals={{"light_root":{light_root!r}}})']
         return launch(argv, *args, **kwargs)
@@ -3537,7 +3537,7 @@ def test_cycle_sdk_start_retains_parent_failures(
 
     def spawn(argv, *args, **kwargs):
         if argv[-1] in ('from ergora.reference_training_worker import budget_main;budget_main()',
-                       'from ergora.reference_training_budget import cycle_root_main;cycle_root_main()'):
+                       'from ergora.reference_training_submission import cycle_root_main;cycle_root_main()'):
             spawns.append(argv[-1])
             if failure != 'cleanup':
                 raise OSError(reason)
@@ -3586,7 +3586,7 @@ def test_cycle_sdk_start_retains_parent_failures(
         (tmp_path / 'assembled.json').write_text(json.dumps(envelope, ensure_ascii=False))
         candidate, parent, _, _ = candidates[0]
         (tmp_path / 'parent-result.json').write_text(json.dumps(parent, ensure_ascii=False))
-        assert spawns == ['from ergora.reference_training_budget import cycle_root_main;cycle_root_main()']
+        assert spawns == ['from ergora.reference_training_submission import cycle_root_main;cycle_root_main()']
         assert parent['status'] == 'unknown'
         assert parent['reason'] == ('Input transfer failed' if failure == 'cleanup' else reason)
         assert (storage / 'request.pb').exists()
@@ -3714,7 +3714,7 @@ def test_cycle_v3_parent_unknown_cannot_hide_final_observation_capacity(
     retained = next(item for item in records if item['result'].get('inline', {}).get('reason') == reason)
     assert retained['operation_id'] == candidate.operation.identity['operation_id']
     assert retained['result']['inline']['cleanup_problem'] == cleanup_reason
-    assert cycle_budget_root == ['from ergora.reference_training_budget import cycle_root_main;cycle_root_main()']
+    assert cycle_budget_root == ['from ergora.reference_training_submission import cycle_root_main;cycle_root_main()']
     assert candidate.root.returncode is not None and not candidate.handed_off
     assert observed['status'] == 'capacity_exceeded' and observed['operation_stopped'] is True
     assert observed['supervisor_returncode'] == 0

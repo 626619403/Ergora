@@ -393,3 +393,12 @@ def main() -> None:
         raise SystemExit('BLOCKED: Training submission timed out; inspect its original intent and reconcile, do not resubmit') from error
     except (OSError, ValueError, KeyError, TypeError, ImportError, Blocked) as error:
         raise SystemExit('BLOCKED: ' + str(error))
+
+
+def cycle_root_main() -> None:
+    """Enter the original schema3 controller owner without loading the SDK worker."""
+    request = json.load(sys.stdin)
+    if len(json.dumps(request, ensure_ascii=False, allow_nan=False).encode('utf-8')) > 32_768:
+        raise ValueError('Complete controller root request exceeds 32 KiB')
+    result = budgets._controller_owner(request, operation_factory=_Submission, required_schema_versions=(3, 4))
+    print(json.dumps(result, ensure_ascii=False, allow_nan=False))

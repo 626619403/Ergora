@@ -731,7 +731,7 @@ class BudgetedStart:
         raise ValueError('Unsupported training budget helper phase')
 
 
-def _controller_owner(request: dict, *, required_schema_versions: tuple[int, ...] | None = None) -> dict:
+def _controller_owner(request: dict, *, operation_factory, required_schema_versions: tuple[int, ...] | None = None) -> dict:
     """Bootstrap the actual original root outside every short S-H subtree."""
     protocol = training_execution_protocol
     protocol.validate_cycle_root_request(request)
@@ -753,8 +753,7 @@ def _controller_owner(request: dict, *, required_schema_versions: tuple[int, ...
     if required_schema_versions is not None and source['snapshot']['authorization']['schema_version'] not in required_schema_versions:
         raise ValueError('Dedicated controller root requires its original schema3 authorization')
     _select_cycle_project(source['snapshot']['authorization'], payload['project'])
-    from .reference_training_submission import _Submission
-    operation = _Submission(payload)
+    operation = operation_factory(payload)
     intent = operation.load()
     if (intent is None or operation.sha(intent) != payload['intent_sha256']
             or intent.get('budget', {}).get('controller') != source['start_context']['controller']):
@@ -765,12 +764,3 @@ def _controller_owner(request: dict, *, required_schema_versions: tuple[int, ...
         os.dup2(stdout.fileno(), sys.stdout.fileno())
         os.dup2(stderr.fileno(), sys.stderr.fileno())
     return budget.own(root_operation=source)
-
-
-def cycle_root_main() -> None:
-    """Enter the original schema3 controller owner without loading the SDK worker."""
-    request = json.load(sys.stdin)
-    if len(json.dumps(request, ensure_ascii=False, allow_nan=False).encode('utf-8')) > 32_768:
-        raise ValueError('Complete controller root request exceeds 32 KiB')
-    result = _controller_owner(request, required_schema_versions=(3, 4))
-    print(json.dumps(result, ensure_ascii=False, allow_nan=False))

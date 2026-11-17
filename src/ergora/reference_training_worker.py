@@ -43,8 +43,8 @@ with workflow.unsafe.imports_passed_through() if workflow is not None else nullc
 
 
 _CREATING = ContextVar('ergora_training_budget_create', default=None)
-_CYCLE_LIMIT = 32_768
-_REQUEST_RETENTION_PROTOCOL = 'ergora-training-cycle-request-retention-v1'
+_CYCLE_LIMIT = protocol._CYCLE_LIMIT
+_REQUEST_RETENTION_PROTOCOL = protocol._REQUEST_RETENTION_PROTOCOL
 _ROOT_OBSERVERS = set()
 
 
@@ -88,252 +88,9 @@ def _retain_round_reader(payload: dict, name: str, value: dict) -> None:
         raise _RoundRetentionError('Complete original round reader diagnostic was not flushed: ' + str(error)) from error
 
 
-class _CycleOperation:
-    """Asynchronously supervise one isolated original-record operation."""
+_CycleOperation = protocol._CycleOperation
 
-    def __init__(self, home: Path, project: str, cycle_id: str, authorization_sha256: str, mode: str,
-                 *, snapshot: dict | None = None, ordinal: int | None = None,
-                 reason: str | None = None, inspection_timeout: int = 10,
-                 start_context: dict | None = None, window: dict | None = None,
-                 activity_context: dict | None = None):
-        bootstrap = window
-        if mode in protocol.CYCLE_OBSERVATION_MODES and window is None:
-            if type(inspection_timeout) is not int or not 1 <= inspection_timeout <= 60:
-                raise ValueError('Cold inspection timeout must be 1 to 60 seconds')
-            boot, ticks = budget_clock._clock()
-            bootstrap = {'boot_id': boot, 'started_ns': ticks,
-                         'deadline_ns': ticks + inspection_timeout * 1_000_000_000}
-        elif mode in ('prepare-controller', 'submit-controller', 'prepare-candidate', *protocol.CYCLE_MEASUREMENT_MODES) and window is None:
-            policy, clock = snapshot['policy'], snapshot['authorization']['clock']
-            boot, ticks = budget_clock._clock()
-            seconds = min(policy['control_timeout_seconds'], budget_clock.remaining(
-                clock, policy['wall_seconds'], policy['cleanup_seconds']))
-            bootstrap = {'boot_id': boot, 'started_ns': ticks,
-                'deadline_ns': min(ticks + int(seconds * 1_000_000_000), clock['boottime_ns']
-                    + (policy['wall_seconds'] - policy['cleanup_seconds']) * 1_000_000_000)}
-        version2 = (snapshot is not None and snapshot['authorization']['schema_version'] in (3, 4) or
-            activity_context is not None and activity_context['workflow_input']['protocol'] in ('ergora-training-cycle-v2', 'ergora-training-cycle-v3'))
-        declared = (snapshot is not None and snapshot['authorization']['schema_version'] == 4 or
-            activity_context is not None and activity_context['workflow_input']['protocol'] == 'ergora-training-cycle-v3')
-        self.identity = {'protocol': ('ergora-training-cycle-operation-v3' if declared else 'ergora-training-cycle-operation-v2' if version2
-            else 'ergora-training-cycle-operation-v1'), 'operation_id': uuid.uuid4().hex,
-            'mode': mode, 'control_home': str(home), 'project': project, 'cycle_id': cycle_id,
-            'input_sha256': snapshot['authorization']['input_sha256'] if snapshot is not None else None,
-            'authorization_sha256': authorization_sha256, 'ordinal': ordinal, 'parent': processes.identity(os.getpid())}
-        self.payload = {'identity': self.identity, 'snapshot': snapshot, 'bootstrap': bootstrap, 'reason': reason}
-        if start_context is not None:
-            self.payload['start_context'] = start_context
-        if activity_context is not None:
-            self.payload['activity_context'] = activity_context
-        protocol.validate_cycle_operation(self.payload)
-        self.encoded = json.dumps(self.payload, ensure_ascii=False, allow_nan=False, separators=(',', ':')).encode('utf-8')
-        self.capacity_rejected = len(self.encoded) > _CYCLE_LIMIT
-        if self.capacity_rejected and (not version2 or snapshot is None or bootstrap is None):
-            logging.error('Complete unsent cycle operation request: %s', self.payload)
-            raise _CycleCapacityError('Complete cycle operation request exceeds 32 KiB; nothing was truncated')
-        self.output = home / 'operations/training-cycles' / self.identity['operation_id']
-        self.response = protocol.PhaseFrames(self.identity, self.output, _CYCLE_LIMIT)
-        self.stopping, self.signalled, self.sent = False, False, False
-        self.process, self.spawning, self.problem = None, None, None
-        self.diagnostics = bytearray()
-        self.result_ref = None
-        self.request_retention = {'status': 'unknown', 'waited': False, 'returncode': None}
-        self.retention_response = bytearray()
-        self.request_sha256 = None
-
-    def expired(self) -> bool:
-        try:
-            return protocol.cycle_operation_remaining(self.payload) <= 0
-        except (OSError, ValueError):
-            return True
-
-    def request_stop(self) -> None:
-        self.stopping = True
-
-    async def _send(self) -> None:
-        stream = self.process.stdin
-        try:
-            if self.capacity_rejected:
-                envelope = _request_retention_envelope(self.payload, len(self.encoded))
-                control = json.dumps(envelope, ensure_ascii=False, allow_nan=False, separators=(',', ':')).encode('utf-8')
-                if len(control) > _CYCLE_LIMIT:
-                    raise ValueError('Complete request retention envelope exceeds 32 KiB')
-                stream.write(control + b'\n')
-                await stream.drain()
-                digest = hashlib.sha256()
-                raw = memoryview(self.encoded)
-                for offset in range(0, len(raw), 65_536):
-                    if self.stopping or self.expired():
-                        raise ValueError('Original request retention allowance ended during send')
-                    chunk = raw[offset:offset + 65_536]
-                    digest.update(chunk)
-                    stream.write(chunk)
-                    await stream.drain()
-                    await asyncio.sleep(0)
-                self.request_sha256 = digest.hexdigest()
-            else:
-                stream.write(self.encoded)
-                await stream.drain()
-            self.sent = True
-        finally:
-            stream.close()
-            await stream.wait_closed()
-
-    async def _read(self, stream, *, diagnostic=False) -> None:
-        while raw := await stream.read(65_536):
-            if diagnostic:
-                self.diagnostics.extend(raw[:max(0, 65_536 - len(self.diagnostics))])
-            elif self.capacity_rejected:
-                # Keep draining after rejection without retaining unbounded output.
-                self.retention_response.extend(raw[:max(0, _CYCLE_LIMIT + 2 - len(self.retention_response))])
-            else:
-                self.response.receive(raw)
-
-    def observation(self, result: dict) -> dict:
-        if self.capacity_rejected:
-            result = {'status': 'capacity_exceeded',
-                'reason': 'Complete cycle operation request exceeds 32 KiB; nothing was truncated',
-                'request_retention': dict(self.request_retention)}
-        return {**result, 'operation_id': self.identity['operation_id'], 'mode': self.identity['mode'],
-            'ordinal': self.identity['ordinal'], 'output': str(self.output),
-            'operation_stopped': bool(self.response.frames),
-            'supervisor_returncode': self.process.returncode if self.process is not None and not self.capacity_rejected else None}
-
-    async def _run(self) -> dict:
-        if self.stopping or self.expired():
-            return self.observation({'status': 'unknown', 'reason': 'Original cycle operation allowance is exhausted'})
-        self.spawning = asyncio.create_task(asyncio.create_subprocess_exec(sys.executable, '-P', '-c',
-            ('from ergora.reference_training_worker import cycle_request_retention_main;cycle_request_retention_main()'
-             if self.capacity_rejected else
-             'from ergora.training_execution_protocol import cycle_supervisor_main;cycle_supervisor_main()'),
-            stdin=asyncio.subprocess.PIPE, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
-            env=dict(os.environ), start_new_session=True))
-        while self.process is None:
-            try:
-                self.process = await asyncio.shield(self.spawning)
-            except asyncio.CancelledError:
-                self.request_stop()
-                if self.spawning.cancelled():
-                    # The stdlib closes and waits for a cancelled creation.
-                    # No request was sent, so S could not have started H.
-                    return self.observation({'status': 'unknown',
-                        'reason': 'Supervisor creation was cancelled before its request was sent'})
-            except OSError as error:
-                return self.observation({'status': 'unknown', 'reason': str(error)})
-        tasks = [asyncio.create_task(self._send()), asyncio.create_task(self._read(self.process.stdout)),
-                 asyncio.create_task(self._read(self.process.stderr, diagnostic=True)),
-                 asyncio.create_task(self.process.wait())]
-        while True:
-            # Loop shutdown cancels inner tasks as well as their caller. Keep
-            # draining the original pipes and waiting for the original S;
-            # cancelling an observer is not proof that its H subtree stopped.
-            if tasks[0].cancelled():
-                self.request_stop()
-                self.process.stdin.close()
-            for index, stream in ((1, self.process.stdout), (2, self.process.stderr)):
-                if tasks[index].cancelled():
-                    self.request_stop()
-                    tasks[index] = asyncio.create_task(self._read(stream, diagnostic=index == 2))
-            if tasks[3].cancelled():
-                self.request_stop()
-                tasks[3] = asyncio.create_task(self.process.wait())
-            for task in tasks:
-                if task.done() and not task.cancelled() and task.exception() is not None and self.problem is None:
-                    self.problem = str(task.exception())
-            expired = self.expired()
-            if ((self.stopping or self.problem is not None or self.response.problem is not None or expired)
-                    and not self.signalled and self.process.returncode is None):
-                try:
-                    self.process.kill() if self.capacity_rejected else self.process.terminate()
-                except ProcessLookupError:
-                    pass
-                self.signalled = True
-            # Only the matching first frame permits killing S after its sole H subtree is reaped.
-            if self.response.frames and expired and self.process.returncode is None:
-                try:
-                    self.process.kill()
-                except ProcessLookupError:
-                    pass
-            if all(task.done() for task in tasks):
-                break
-            try:
-                await asyncio.sleep(.05)
-            except asyncio.CancelledError:
-                self.request_stop()
-        outcomes = await asyncio.gather(*tasks, return_exceptions=True)
-        if self.capacity_rejected:
-            self.request_retention.update(waited=not isinstance(outcomes[3], BaseException),
-                                          returncode=self.process.returncode)
-            if (not self.stopping and self.process.returncode == 0 and self.sent
-                    and not any(isinstance(item, BaseException) for item in outcomes) and not self.expired()):
-                try:
-                    raw = self.retention_response
-                    if not raw.endswith(b'\n') or len(raw) - 1 > _CYCLE_LIMIT or raw.count(b'\n') != 1:
-                        raise ValueError('Request retention requires exactly one bounded confirmation and EOF')
-                    confirmation = protocol.decode(bytes(raw[:-1]))
-                    protocol._exact(confirmation, ('protocol', 'identity', 'ref'), 'Request retention confirmation')
-                    protocol._process(confirmation['identity']['parent'])
-                    ref = confirmation['ref']
-                    protocol._exact(ref, ('file', 'bytes', 'sha256'), 'Original request reference')
-                    if (confirmation['protocol'] != _REQUEST_RETENTION_PROTOCOL or confirmation['identity'] != self.identity
-                            or type(confirmation['identity']['ordinal']) is not type(self.identity['ordinal'])
-                            or ref['file'] != 'request.json' or type(ref['bytes']) is not int
-                            or ref['bytes'] != len(self.encoded) or ref['sha256'] != self.request_sha256):
-                        raise ValueError('Request retention confirmation differs from the complete original request')
-                    self.request_retention.update(status='durable_confirmed', ref=ref)
-                except (ValueError, TypeError, KeyError) as error:
-                    self.problem = str(error)
-            return self.observation({})
-        if (not self.stopping and self.process.returncode == 0 and self.sent and len(self.response.frames) == 2
-                and not self.response.buffer and self.response.problem is None
-                and not any(isinstance(item, BaseException) for item in outcomes) and not self.expired()):
-            value = dict(self.response.frames[1]['result'])
-            self.result_ref = value.pop('_stdout_ref', None)
-            if self.result_ref is not None:
-                protocol._exact(self.result_ref, ('file', 'bytes', 'sha256'), 'Cycle stdout reference')
-                if (self.result_ref['file'] != 'helper/stdout.txt' or type(self.result_ref['bytes']) is not int
-                        or not 0 <= self.result_ref['bytes'] <= _CYCLE_LIMIT):
-                    raise ValueError('Cycle stdout reference has invalid source or size')
-                protocol._digest(self.result_ref['sha256'])
-            return self.observation(value)
-        return self.observation({'status': 'unknown', 'response_rejected': self.response.problem is not None,
-            'reason': self.problem or 'Original cycle operation has no complete in-budget result; inspect its operation logs'})
-
-    async def run(self) -> dict:
-        # The owned task retains the real spawn and handle even when its caller is cancelled.
-        running = asyncio.create_task(self._run())
-        if self.capacity_rejected:
-            running.add_done_callback(lambda _: logging.error(
-                'Cycle request capacity failure: operation_id=%s mode=%s ordinal=%s output=%s request_retention=%s',
-                self.identity['operation_id'], self.identity['mode'], self.identity['ordinal'], self.output,
-                self.request_retention))
-        try:
-            return await asyncio.shield(running)
-        except asyncio.CancelledError:
-            self.request_stop()
-            finished = asyncio.gather(running, return_exceptions=True)
-            while not finished.done():
-                try:
-                    await asyncio.shield(finished)
-                except asyncio.CancelledError:
-                    continue
-            outcome = finished.result()[0]
-            if isinstance(outcome, BaseException):
-                self.problem = str(outcome)
-            raise
-
-
-def _request_retention_envelope(payload: dict, size: int) -> dict:
-    # These are original supervision inputs, never a replacement authorization.
-    policy = payload['snapshot']['policy']
-    clock = payload['snapshot']['authorization']['clock']
-    window = payload['bootstrap']
-    return {'protocol': _REQUEST_RETENTION_PROTOCOL, 'identity': payload['identity'], 'bytes': size,
-        'bootstrap': window, 'budget': {'clock': {key: clock[key] for key in budget_clock.FIELDS},
-            'policy': {key: policy[key] for key in ('wall_seconds', 'cleanup_seconds')}},
-        'deadline_ns': min(window['deadline_ns'], clock['boottime_ns']
-            + (policy['wall_seconds'] - policy['cleanup_seconds']) * 1_000_000_000)}
-
+_request_retention_envelope = protocol._request_retention_envelope
 
 def _request_retention_remaining(envelope: dict) -> float:
     window, budget = envelope['bootstrap'], envelope['budget']
@@ -621,7 +378,7 @@ class _CycleCandidate:
             if len(encoded) > _CYCLE_LIMIT:
                 raise _CycleCapacityError('Complete controller root request exceeds 32 KiB; intent remains occupied')
             authorization = self.preparation.payload['snapshot']['authorization']
-            entry = ('from ergora.reference_training_budget import cycle_root_main;cycle_root_main()'
+            entry = ('from ergora.reference_training_submission import cycle_root_main;cycle_root_main()'
                 if authorization['schema_version'] in (3, 4)
                     and authorization['controller']['protocol'] in ('ergora-training-cycle-v2', 'ergora-training-cycle-v3')
                 else 'from ergora.reference_training_worker import budget_main;budget_main()')
@@ -711,12 +468,7 @@ async def start_cycle_candidate(home: Path, project: str, cycle_id: str, authori
                                  snapshot=snapshot, controller=controller).run()
 
 
-def _cycle_snapshot(plan: dict, authorization: dict) -> dict:
-    return {'authorization': authorization, 'policy': plan['definition']['budget'],
-        'candidates': [{'ordinal': index, 'experiment_id': item['experiment_id'],
-                        'manifest_sha256': item['manifest_sha256']}
-                       for index, item in enumerate(plan['definition']['candidates'])]}
-
+_cycle_snapshot = protocol._cycle_snapshot
 
 def _cycle_submission(plan: dict, admission, ordinal: int):
     """Locate the original bound intent independently of its live owner."""
@@ -2954,7 +2706,7 @@ def budget_main() -> None:
     if payload.get('protocol') == 'ergora-training-cycle-root-v1':
         if len(json.dumps(payload, ensure_ascii=False, allow_nan=False).encode('utf-8')) > _CYCLE_LIMIT:
             raise ValueError('Complete controller root request exceeds 32 KiB')
-        result = _controller_owner(payload)
+        result = _controller_owner(payload, operation_factory=_Submission)
         print(json.dumps(result, ensure_ascii=False, allow_nan=False))
         return
     operation = _Submission(payload)
