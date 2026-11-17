@@ -400,8 +400,8 @@ def test_completed_original_six_stage_export_binds_source_without_another_export
         'workload_fingerprint': search_request['experiment_template']['workload_fingerprint'],
         'evidence_uri': 'synthetic:test', 'quality_scope': 'CPU preparation contract only'})
     write(config / 'training-runners/trusted.json', {
-        'schema_version': 1, 'runner_template_id': 'trusted', 'project': 'demo', 'repo': definition['repo'],
-        'command': [sys.executable, '-c', 'pass'], 'timeout_seconds': 30})
+        'schema_version': 2, 'runner_template_id': 'trusted', 'project': 'demo', 'repo': definition['repo'],
+        'command': [sys.executable, '-c', 'pass'], 'timeout_seconds': 30, 'configuration_readback': None})
     search_request['experiment_template'].update(baseline_commit=commit, candidate_commit=exported['candidate_sha'])
     search_request['candidate_source'] = {
         'kind': 'exported_six_stage_v1', 'task_id': 'new-task', 'run_id': exported['run_id'],

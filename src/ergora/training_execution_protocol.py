@@ -155,12 +155,10 @@ GATE_SOURCES = (
     'training_cycles.py', 'registrations.py', 'data/schemas/training-cycle-v1.json',
     'data/schemas/project-registration-v1.json', 'definition_bundles.py', 'contracts.py',
     'asset_trees.py', 'state.py', 'budget_clock.py', 'processes.py', 'reference_creation_process.py',
-    '__init__.py', 'data/reference-manifest.json', 'data/native-runtime/training-executor-admission-v1.json',
+    '__init__.py', 'data/reference-manifest.json', 'training_configuration.py',
+    'reference_training_setup.py', 'reference_training_preparation.py',
+    'data/native-runtime/training-executor-admission-v3.json',
 )
-GATE_SOURCE_PROTOCOLS = {
-    reference.TRAINING_PROTOCOL: GATE_SOURCES,
-    'training-executor-admission-v2': (*GATE_SOURCES[:-1], 'data/native-runtime/training-executor-admission-v2.json'),
-}
 
 
 ROUND_COVERAGE = {'records': 'saved-observations', 'artifacts': 'index-only', 'runtime_status': 'not_queried',
@@ -1062,12 +1060,9 @@ def _capability(capability: dict) -> None:
     """Check saved identity only; history never requires the current installation."""
     _exact(capability, ('protocol', 'admission_protocol', 'descriptor_sha256', 'installation',
         'native_python', 'cycle_ready_sha256', 'gate_sources'), 'Execution capability')
-    try:
-        sources = GATE_SOURCE_PROTOCOLS[capability['admission_protocol']]
-    except (KeyError, TypeError) as error:
-        raise ValueError('Unsupported complete execution capability') from error
-    if (capability['protocol'] != PROTOCOL or not isinstance(capability['gate_sources'], dict)
-            or set(capability['gate_sources']) != set(sources)):
+    if (capability['protocol'] != PROTOCOL or capability['admission_protocol'] != reference.TRAINING_PROTOCOL
+            or not isinstance(capability['gate_sources'], dict)
+            or set(capability['gate_sources']) != set(GATE_SOURCES)):
         raise ValueError('Unsupported complete execution capability')
     for digest in (*capability['gate_sources'].values(), capability['descriptor_sha256'], capability['cycle_ready_sha256']):
         _digest(digest)
@@ -1113,18 +1108,14 @@ def owner_active(path: Path, expected: dict) -> bool:
     return False
 
 
-def source_capability(installation: Path, ready: dict) -> dict | None:
+def source_capability(installation: Path, ready: dict) -> dict:
     from dev_platform.contracts import canonical_sha
 
     reference.validate_installation(installation, training=True)
     descriptor = installation / 'ergora-native-runtime.json'
-    if not descriptor.exists():
-        reference.validate_installation(installation, training=True)
-        return None
     raw = read_raw(descriptor, 65_536)
     declared = reference._training_descriptor(raw)
-    # Bind this exact declaration around a complete installation check. A switch
-    # between two supported declarations cannot silently change the birth pin.
+    # Bind this exact declaration around the complete current installation check.
     reference.validate_installation(installation, training=True)
     if read_raw(descriptor, 65_536) != raw:
         raise ValueError('Native execution descriptor changed during capability birth')
@@ -1133,7 +1124,7 @@ def source_capability(installation: Path, ready: dict) -> dict | None:
         'installation': str(installation), 'native_python': str(installation / '.venv/bin/python'),
         'cycle_ready_sha256': canonical_sha(ready), 'gate_sources': {
             name: hashlib.sha256(read_raw(Path(__file__).parent / name)).hexdigest()
-            for name in GATE_SOURCE_PROTOCOLS[declared['protocol_id']]}}
+            for name in GATE_SOURCES}}
 
 
 def validate_sources(capability: dict) -> None:
@@ -1912,7 +1903,7 @@ def native_main(installation: str) -> None:
     from agent_platform.training_executor import process
 
     def admit(folder, record):
-        nonlocal parent
+        nonlocal parent, active
         chain = ExecutionRecords(project, intent['experiment_id'], intent['control_home']).load()
         checked_parent = validate_context(context, chain)
         if parent is None and checked_parent is not None:
@@ -1967,8 +1958,19 @@ def native_main(installation: str) -> None:
             'owner_sha256': chain.sha(chain.owner), 'executor': executor}
         publish(chain.folder / 'ack.json', ack, chain.root)
         active()
+
+    def before_runner(folder, record, checkouts, manifest):
+        from .training_configuration import stage_request
+
+        if active is None:
+            raise ValueError('Configuration runner requires its original managed admission')
+        active()
+        values = stage_request(folder, record, checkouts, manifest, context, active)
+        active()
+        return values, active
+
     chain = ExecutionRecords(project, intent['experiment_id'], intent['control_home'])
-    parent = None
+    parent, active = None, None
     with ExitStack() as admissions:
         # Hold the permit before the executor lock. New-version completed
         # results retain their original inert read even after the owner ends;
@@ -1978,7 +1980,8 @@ def native_main(installation: str) -> None:
                     and not (chain.folder.parent / 'result.json').exists()):
             parent = validate_context(context, chain.load())
             admissions.enter_context(parent.permission())
-        print(json.dumps(process(chain.folder.parent, admit=admit), ensure_ascii=False, allow_nan=False))
+        print(json.dumps(process(chain.folder.parent, admit=admit, before_runner=before_runner),
+                         ensure_ascii=False, allow_nan=False))
 
 
 def record_stopped(context: dict, phase: dict, process: dict) -> dict:

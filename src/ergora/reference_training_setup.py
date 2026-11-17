@@ -11,6 +11,7 @@ from tempfile import TemporaryDirectory
 
 from .reference import _validate_training_baseline
 from .reference_training_context import _TrainingProject, _native_bytes
+from .training_configuration import validate_runner
 
 
 def _baseline(context: _TrainingProject) -> dict:
@@ -66,12 +67,9 @@ def _runner(context: _TrainingProject) -> dict:
     runner = context.payload['runner']
     if not isinstance(runner, dict):
         raise ValueError('Runner must be a JSON object')
+    validate_runner(runner)
     if runner.get('project') != context.project['id'] or Path(runner['repo']).resolve() != Path(context.project['repo']):
         raise ValueError('Runner must retain the selected project and registered Git repository root')
-    # Native registration accepts True == 1, but formal submission requires an
-    # integer. Do not register a document that the actual consumer cannot use.
-    if type(runner.get('schema_version')) is not int:
-        raise ValueError('Runner schema_version must be an integer')
     with TemporaryDirectory(prefix='ergora-runner-preview-') as temporary:
         source = Path(temporary) / 'runner.json'
         source.write_bytes(_native_bytes(runner, 'Runner'))

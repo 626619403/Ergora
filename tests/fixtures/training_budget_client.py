@@ -129,7 +129,19 @@ if (os.environ.get('ERGORA_TEST_TRAINING_CONTROLLER_PAUSE') in ('attempt', 'ack'
         return command
     reference.worker_command = paused_native_command
 
-if os.environ.get('ERGORA_TEST_TRAINING_CONTROLLER'):
+if fault == 'configuration-full' and base.payload['mode'] == 'phase-supervisor' and base.payload['phase']['mode'] == 'execute':
+    from ergora import reference
+
+    worker_command = reference.worker_command
+    def configuration_native_command(installation, **kwargs):
+        command = worker_command(installation, **kwargs)
+        fixture = str(Path(__file__).with_name('training_configuration_native.py'))
+        command[-1] = command[-1].replace('import ergora;sys.path.pop(0);',
+            f'import ergora;sys.path.pop(0);import runpy;runpy.run_path({fixture!r})["install"]();')
+        return command
+    reference.worker_command = configuration_native_command
+
+if os.environ.get('ERGORA_TEST_TRAINING_CONTROLLER') or fault == 'configuration-full':
     training_cancellation_client.Service.query_workflow = base.Service.query_workflow
 
 if base.envelope.get('protocol') == 'ergora-training-cycle-root-v1':

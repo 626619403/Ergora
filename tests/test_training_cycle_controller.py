@@ -2011,7 +2011,7 @@ def test_schema3_intent_and_claim_keep_original_sources_and_refuse_manual_bindin
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Managed native callback requires Linux')
-@pytest.mark.parametrize('installation', ['managed', 'managed-v2'], indirect=True)
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
 @pytest.mark.parametrize('controller_admission', [{'program_version': 2}, {'program_version': 3}], indirect=True)
 def test_schema3_native_callback_refuses_legacy_budget_binding_and_keeps_completed_read(
         controller_admission, request):
@@ -2053,17 +2053,14 @@ def test_schema3_native_callback_refuses_legacy_budget_binding_and_keeps_complet
         authorization_sha256=authorized['authorization_sha256'], clock_sha256=sha(authorized['authorization']['clock']))
     save(folder / 'launch.json', launch)
     installation = Path(definition['execution']['installation'])
-    isolated = json.loads((installation / 'ergora-native-runtime.json').read_bytes())['protocol_id'] == 'training-executor-admission-v2'
-    sdk_paths = [] if isolated else [Path(item) for item in sys.path if 'site-packages' in item]
     environment = dict(os.environ, PYTHONDONTWRITEBYTECODE='1',
         AGENTFLOW_CONFIG_DIR=definition['execution']['config_directory'],
         AGENTFLOW_STATE_DIR=definition['execution']['state_directory'],
         PYTHONPATH=os.pathsep.join(map(str, (Path(training_cycles.__file__).parent.parent,
-            installation / 'local', installation / 'upstream/platform', installation / 'upstream/temporal', installation / 'upstream',
-            *sdk_paths))))
+            installation / 'local', installation / 'upstream/platform', installation / 'upstream/temporal', installation / 'upstream'))))
     command = [str(installation / '.venv/bin/python'), '-B', '-P',
         str(Path(__file__).parent / 'fixtures/training_executor_client.py'),
-        'native-context-isolated' if isolated else 'native-context', str(folder.parent)]
+        'native-context-isolated', str(folder.parent)]
     before = {path: path.read_bytes() for path in folder.parent.rglob('*') if path.is_file()}
     result = subprocess.run(command, input=json.dumps({'cached': context, 'phase': {}}), env=environment,
         capture_output=True, text=True, timeout=15)

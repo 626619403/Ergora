@@ -627,18 +627,9 @@ class BudgetedStart:
                     **_process_identity(os.getpid()), 'context_sha256': self.operation.sha(context),
                     'execution_capability': capability})
             self.phase_observations = []
-            if capability is not None:
-                from .reference_training_execution import Execution
+            from .reference_training_execution import Execution
 
-                outcome = Execution(self.operation, self).drive(context, _BudgetPhase)
-            else:
-                observed = self.supervise('monitor', context)
-                if observed.get('status') == 'completed':
-                    outcome = observed
-                else:
-                    outcome = self.supervise('fence', context)
-                    if outcome.get('status') == 'fenced':
-                        outcome = {**outcome, 'control': self.supervise('cleanup', context)}
+            outcome = Execution(self.operation, self).drive(context, _BudgetPhase)
             try:
                 remaining = self.remaining(context, cleanup=True)
             except (OSError, ValueError):

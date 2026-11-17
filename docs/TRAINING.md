@@ -79,19 +79,19 @@ init / runner-add → prepare → worker-start → start
 
 ### 准备版本化原生来源
 
-Linux／WSL2 上可用已安装的 Ergora 和 Git，在一个尚不存在的持久目录显式选择版本化来源。以下准备保留原准入行为、将 SDK 导入留在原 CLI 使用边界的 `training-executor-admission-v2`：
+Linux／WSL2 上可用已安装的 Ergora 和 Git，在一个尚不存在的持久目录显式选择版本化来源。当前训练来源为 `training-executor-admission-v3`，保留原准入行为，并将 SDK 导入留在实际 CLI 使用边界：
 
 ```bash
 ergora reference prepare-training \
-  --protocol training-executor-admission-v2 \
-  --directory "$HOME/.local/share/ergora/native/training-admission-v2"
+  --protocol training-executor-admission-v3 \
+  --directory "$HOME/.local/share/ergora/native/training-admission"
 ```
 
-成功返回 `status=source_prepared` 和规范化的 `installation`。这里只复制经过校验的来源并应用固定 delta；`dependencies_installed`、`runtime_started`、`execution_authorized` 都为 false。它不创建控制项目、实验或服务，也不运行 runner。目录已存在时拒绝覆盖；准备中断会保留目录供检查，重试请选择另一个新目录。
+成功返回 `status=source_prepared` 和规范化的 `installation`。这里只复制经过校验的当前来源并同步descriptor；`dependencies_installed`、`runtime_started`、`execution_authorized` 都为 false。它不创建控制项目、实验或服务，也不运行 runner。目录已存在时拒绝覆盖；准备中断会保留目录供检查，重试请选择另一个新目录。
 
-新来源保留原 Git、两臂 runner、Sandbox、归档、MLflow 和结果处理，只在原 `executor.lock` 内增加窄准入接缝。无结果却已有 `started.json` 时拒绝重入；手工无 hook 调用不能接管 `managed-execution/` 下的受管任务。已有 result 仍只读返回，不能据此追认受管停止。新协议核完整 279 个 platform 来源文件和固定 descriptor；空、缺损、链接、篡改的声明不会回退为旧安装。原 v2.2／283 文件与旧安装保持原身份。
+新来源保留原 Git、两臂 runner、Sandbox、归档、MLflow 和结果处理，只在原 `executor.lock` 内增加窄准入接缝。无结果却已有 `started.json` 时拒绝重入；手工无 hook 调用不能接管 `managed-execution/` 下的受管任务。已有 result 仍只读返回，不能据此追认受管停止。当前来源核完整 platform 文件和固定 descriptor；空、缺损、链接或篡改的声明直接拒绝。来源代码、示例及校验清单随当前实现维护，公开 HTML/zip 仅记录原始来源。
 
-仍可显式选择 `training-executor-admission-v1`，其原 patch／descriptor 保持不变，但加载原 executor 会传递导入 Temporal SDK。v2 在真实准入 callback 前不需要 SDK；原 `run-local`／`approve` 继续使用同一个 client loader，训练、跟踪与控制面操作仍各需原依赖。版本准备不授予新执行权，也不开放自动多轮。旧 owner、安装、记录和 clock 不自动升级；选择 v2 请新建来源目录，不能改写旧 descriptor 或给旧 owner 重采来源。
+准备只复制当前源码并同步声明，不安装依赖，不授予执行权，也不开放自动多轮。native 准入与可信配置驱动不依赖 Temporal SDK；实际 `run-local`／`approve` 的控制面操作仍需其原依赖。训练安装必须匹配当前 descriptor，已有运行仍受出生时的完整 source、owner、原 clock 与单次 launch 约束。
 
 依赖仍属于该 native 安装自己的 `.venv` 和固定 `requirements.lock`，基础 Ergora 或 `temporal` extra 不代替它。准备来源不初始化这套依赖；原安装／服务和可信 Linux 容器边界仍按完整参考手册处理。下文受管执行要求独立新状态目录、所有参与 executor 使用同一协议，不能接管旧 started 或活旧 owner。模板提案与 kernel 专家只提供建议；执行仍需原预算及显式确认，自动多轮循环另行提供。
 
@@ -115,7 +115,7 @@ ergora training list my-project
 
 ### 预览与登记可信 runner
 
-在 Linux／WSL2 的控制环境安装 `ergora[temporal]`，填写训练模板中的 `runner-template.example.json`。预览与登记不需要 Temporal 服务或 GPU。runner 是可信操作者授权的逐实验命令，登记会保存 argv，但不会运行它；其 `{manifest}`／`{output}` 占位符由后续原生 `run-local` 执行时替换。
+在 Linux／WSL2 的控制环境填写训练模板中的 `runner-template.example.json`。预览与登记不需要 Temporal SDK、服务或 GPU。runner 是可信操作者授权的逐实验命令，登记会保存 argv，但不会运行它；其 `{manifest}`／`{output}` 占位符由后续原生 `run-local` 执行时替换。
 
 ```bash
 ergora training runner-preview my-project --runner ./training-task/runner-template.example.json
@@ -124,7 +124,9 @@ ergora training register-runner my-project --runner ./training-task/runner-templ
   --revision REVISION --runner-sha256 PREVIEW_RUNNER_CONTENT_SHA256
 ```
 
-`project` 必须是当前已登记项目，`repo` 必须指向其 Git 根；回执显示 resolve 后的规范路径。字段／argv／超时由原 `agentflow training runner-add` 的登记逻辑验证；`schema_version`须为整数1，超时为1–82800秒。预览只在隔离子进程的临时配置目录运行原登记器，不修改真实配置；确认后仍由原登记器不可变写入真实 `training-runners/RUNNER_ID.json`。共享配置目录中的ID全局唯一，建议使用带项目名称和版本的ID。
+`project` 必须是当前已登记项目，`repo` 必须指向其 Git 根；回执显示 resolve 后的规范路径。字段／argv／超时由原 `agentflow training runner-add` 的登记逻辑验证；`schema_version`须为整数2，exact七字段包含`configuration_readback`，超时为1–82800秒。普通full命令将`configuration_readback`设为null。预览只在隔离子进程的临时配置目录运行原登记器，不修改真实配置；确认后仍由原登记器不可变写入真实 `training-runners/RUNNER_ID.json`。共享配置目录中的ID全局唯一，建议使用带项目名称和版本的ID。
+
+可信配置驱动使用非null的`configuration_readback`，固定`training-configuration-driver-v1`、受审Git source引用、checkout内配置相对路径、`source-bytes`材料角色与观测scheme；command必须为绝对Python、`{configuration_driver}`、`{configuration_request}`三个argv。固定source adapter实现`prepare/describe/run`，构造与两次观察后由同一context运行，receipt经原evidence artifacts归档；该能力只支持原managed full入口，不能用手工run-local取得执行权。接口通过不证明任意目标训练框架已提供该adapter。
 
 控制台“训练实验”→“可信 runner”→“预览与登记 runner”提供同一流程。HTTP为`POST /api/projects/{project}/training/runner-preview`（`runner`对象）及`POST .../register-runner`（再加`revision / runner_sha256`）。编辑或切项目使旧预览失效，确认内容SHA与原文件字节SHA分列；CLI原文件和原生序列化文件各最多1MiB，HTTP沿既有4MB封套。
 
@@ -132,7 +134,7 @@ ergora training register-runner my-project --runner ./training-task/runner-templ
 
 ### 精确准备实验与恢复部分发布
 
-填写真实、经过项目负责人审阅的完整 `experiment.json`，并先登记可信runner及baseline。共享执行状态目录中的实验ID全局唯一，建议带项目名称；已有原生实验仍用`list / show`查看。以下CLI／HTTP入口在Linux／WSL2安装`ergora[temporal]`后可用，不需要启动服务。准备不会运行runner、提交workflow或批准性能结果；不会替你把`contract_approved`改成true。
+填写真实、经过项目负责人审阅的完整 `experiment.json`，并先登记可信runner及baseline。共享执行状态目录中的实验ID全局唯一，建议带项目名称；已有原生实验仍用`list / show`查看。以下CLI／HTTP入口在Linux／WSL2可用，无需Temporal SDK或启动服务。准备不会运行runner、提交workflow或批准性能结果；不会替你把`contract_approved`改成true。
 
 ```bash
 ergora training experiment-preview my-project --experiment ./training-task/experiment.json \
@@ -330,7 +332,7 @@ Supervisor给cycle服务70秒停止观察期；CLI控制等待上限为60秒，�
 
 ### 显式受管执行与离线停止观察
 
-使用上述新原生来源、其独立完整依赖及可信Linux容器。按原手册启用当前容器的可信执行配置；它允许同用户Agent访问当前用户文件，不提供Agent间OS隔离。启动原`temporal`、`training-budget-worker`及需要的`mlflow`服务，完成`cycle-authorize`与`cycle-start`后，等待原运行处于`QUEUED`且同job的`request.json`已生成。新owner必须在出生时声明`ergora-training-execution-v1`能力；旧schema1和能力为null的owner保持原控制用途，不能升级或重启接管。
+使用上述新原生来源、其独立完整依赖及可信Linux容器。按原手册启用当前容器的可信执行配置；它允许同用户Agent访问当前用户文件，不提供Agent间OS隔离。启动原`temporal`、`training-budget-worker`及需要的`mlflow`服务，完成`cycle-authorize`与`cycle-start`后，等待原运行处于`QUEUED`且同job的`request.json`已生成。owner出生时固定当前`ergora-training-execution-v1`能力、完整来源和context；缺失或漂移时拒绝执行，不能重采来源、重启或续期接管。
 
 ```bash
 ergora training execute my-project trial-a --revision REVISION \
@@ -538,11 +540,11 @@ HTTP复用同一用例：`GET .../training/{experiment}/approval`；`POST .../ap
 |`baseline_commit / candidate_commit`|真实runner仓库中的完整Git提交；`prepare`补同值`baseline_sha / candidate_sha`，已有别名冲突会拒绝。设计公式、生成代码片段和原result摘要都不是候选commit。|
 |`workload_fingerprint / environment_fingerprint`|项目固定的工作负载与真实环境身份，包括有效batch／token、precision、软件／硬件／mesh等实际条件；保留用于计算指纹的原记录。内容和归一化规则由项目定义，平台不自动探测或证明其真实性。|
 |`dataset_manifest_sha256 / initial_checkpoint_sha256`|真实数据manifest及初态产物摘要，保存可复现来源与内容范围；不能填示例、文件名的SHA或未实际使用的checkpoint。|
-|`base_config_sha256 / candidate_config_sha256`|两臂实际最终有效配置摘要，包含所选版本中真正生效的开关；配置能解析和提案写了参数不证明执行时使用过。|
+|`base_config_sha256 / candidate_config_sha256`|按runner明确材料角色固定两臂输入；可信配置驱动固定为Git配置源的原字节SHA，不能填观测snapshot SHA。实际构造、完整snapshot及semantic identity另存本次receipt；普通full由其项目合同举证实际配置。配置可解析或提案写了参数不证明执行时使用过。|
 |`validation_contract_sha256 / checks_required`|项目独立oracle、容差、shape／stride／梯度／RNG／全rank／恢复等所需覆盖及其固定合同。检查列表非空且唯一；模板中的JVP等仅为示例，按真实任务选择充分检查，不能为迁就PASS删掉必要项。|
 |`quality_required`|显式布尔值；N／A要求true。E是否需要任务质量证据也由项目合同决定；短loss、单算子误差或一次forward不自动替代训练／服务质量。|
 |`comparison_tool_sha256 / performance_policy`|核实际固定`compare_runs.py`原字节SHA；批准实际归一化单位、配对重复／统计／阈值。原gate重算并核两臂代码、配置、环境、数据和初态；局部kernel speedup或Amdahl估算不能充当整体配对测量。|
-|runner的`schema_version / runner_template_id / project / repo / command / timeout_seconds`|原runner schema 1、真实项目Git根和受信argv；`{manifest} / {output} / {baseline_repo} / {candidate_repo}`由原执行器提供。使用已验证环境与资源权限，保留唯一作业／rank／取消所有者。|
+|runner的`schema_version / runner_template_id / project / repo / command / timeout_seconds / configuration_readback`|当前runner schema2 exact七字段；真实项目Git根和受信argv。readback为null时提供普通full及`{manifest} / {output} / {baseline_repo} / {candidate_repo}`；为driver object时使用固定三argv、Git source-bytes和原managed执行。使用已验证环境与资源权限，保留唯一作业／rank／取消所有者。|
 |`prepare --max-run-seconds`及其补充字段|该值是排队加执行窗口，至少覆盖runner执行walltime，二者分别核预算；prepare还补`runner_template_id / max_run_seconds / local_project`。总搜索、模型调用和原生重试成本另向原所有者核账，不能凭单个walltime声称全预算已受控。|
 |`notes`及人工追溯表|可写提案manifest／input／result身份、完整前驱结果摘要、决定与缺项的说明位置。若在notes记录追溯表SHA，可人工核表与原件；现有validator不自动校验这条关联，表不是新执行或批准凭据。|
 

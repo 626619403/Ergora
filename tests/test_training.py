@@ -4,13 +4,23 @@ from copy import deepcopy
 import hashlib
 import json
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 
 import pytest
 
 from ergora import reference, registrations, training
-from test_registrations import installation, registration
+from test_registrations import registration
+
+
+@pytest.fixture(scope='module')
+def installation(tmp_path_factory):
+    root = tmp_path_factory.mktemp('training-observation-installation')
+    shutil.copytree(reference.ROOT / 'platform', root, dirs_exist_ok=True)
+    shutil.copyfile(reference.DATA / 'native-runtime' / (reference.TRAINING_PROTOCOL + '.json'),
+                    root / 'ergora-native-runtime.json')
+    return root
 
 
 @pytest.fixture
@@ -33,8 +43,8 @@ def experiments(registration, request):
     baseline = {'baseline_id': 'baseline-one', 'commit': commit, 'config_sha256': 'a' * 64,
                 'workload_fingerprint': 'b' * 64, 'evidence_uri': 'synthetic:test', 'quality_scope': 'CPU contract only'}
     write(prefix / 'baseline.json', baseline)
-    runner = {'schema_version': 1, 'runner_template_id': 'trusted', 'project': 'demo', 'repo': definition['repo'],
-              'command': [sys.executable, '-c', 'pass'], 'timeout_seconds': 30}
+    runner = {'schema_version': 2, 'runner_template_id': 'trusted', 'project': 'demo', 'repo': definition['repo'],
+              'command': [sys.executable, '-c', 'pass'], 'timeout_seconds': 30, 'configuration_readback': None}
     write(config / 'training-runners/trusted.json', runner)
     template = json.loads((reference.ROOT / 'platform/templates/training-optimization/experiment.json').read_text())
     for ident in ('alpha', 'beta'):

@@ -10,6 +10,7 @@ from tempfile import TemporaryDirectory
 from .reference import _training_records
 from .reference_training_context import _TrainingProject, _native_bytes
 from .state import file_lock
+from .training_configuration import validate_runner
 
 
 _INTENT_LIMIT = 16 * 1_048_576
@@ -55,11 +56,10 @@ class _Preparation(_TrainingProject):
             if not isinstance(value, dict):
                 raise ValueError('Training preparation source must be a JSON object: ' + name)
             if name == 'runner':
+                validate_runner(value)
                 if (value.get('project') != self.project['id'] or value.get('repo') != self.project['repo']
                         or value.get('runner_template_id') != runner_id):
                     raise ValueError('Training runner must belong to the selected project and registered Git root')
-                if type(value.get('schema_version')) is not int:
-                    raise ValueError('Runner schema_version must be an integer for formal training submission')
             sources[name] = {'document': value, 'file_sha256': hashlib.sha256(raw).hexdigest()}
         return sources
 

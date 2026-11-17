@@ -14,9 +14,11 @@ E 类工程优化保持训练问题，N 类数值变化需要误差预算，A �
 
 ## 2. 注册可信 runner 与基线
 
-runner JSON 包含 schema_version、runner_template_id、project、repo、command、timeout_seconds。repo 为真实 Git 仓库绝对路径；command 是 argv 数组，可使用 {manifest}、{output}、{baseline_repo}、{candidate_repo}。基线与候选使用精确提交的独立 worktree；结果写到 output。
+当前runner JSON为schema_version=2，exact七字段包含schema_version、runner_template_id、project、repo、command、timeout_seconds、configuration_readback。repo为真实Git根绝对路径。configuration_readback为null时提供普通full argv，可使用{manifest}、{output}、{baseline_repo}、{candidate_repo}；为可信配置driver object时command固定为绝对Python、{configuration_driver}、{configuration_request}三个argv，只能经原managed执行。基线与候选使用精确提交的独立worktree；结果写到output。
 
-runner 使用项目已经验证的训练环境与脚本。worktree 不复制被忽略的 .venv。先检查 baseline 与 candidate 的可复现性、资源占用和输出证据格式，避免把长 GPU 作业放进 Temporal activity。
+可信配置driver固定Git repo/commit/inventory/entrypoint、配置相对路径、source-bytes角色与观测scheme；prepare/describe/run在同一进程使用同一context，receipt沿原full artifacts归档。普通full配置身份由项目合同负责，driver的manifest配置SHA则固定原Git源字节，不能用不可逆观测snapshot替代。
+
+runner使用项目已经验证的训练环境与脚本。worktree 不复制被忽略的 .venv。先检查 baseline 与 candidate 的可复现性、资源占用和输出证据格式，避免把长 GPU 作业放进 Temporal activity。
 
 ```bash
 agentflow training init --project my-project --baseline /absolute/path/baseline.json
@@ -38,6 +40,8 @@ agentflow training run-local EXPERIMENT_ID --confirm-manifest-sha MANIFEST_SHA25
 agentflow training status EXPERIMENT_ID
 agentflow training result EXPERIMENT_ID
 ```
+
+该run-local示例仅用于configuration_readback=null的普通full。可信配置driver需要Ergora原budget/managed入口，不能从手工入口获得执行权。
 
 替换示例 ID 和 SHA。控制 worker 默认关闭；start 只启动实验控制流程，run-local 只执行明确选择的这个实验，不扫描队列。同一 ID 重复调用会查询在途或已完成记录，结果不明时拒绝自动重执行。
 

@@ -20,7 +20,6 @@ pytestmark = pytest.mark.skipif(sys.platform != 'linux', reason='Native experime
 
 @pytest.fixture
 def preparation_input(experiments):
-    pytest.importorskip('temporalio')
     state, definition, runtime, prefix, _ = experiments
     draft = json.loads((prefix / 'experiments/alpha/manifest.json').read_bytes())
     draft.update(experiment_id='gamma', notes='CPU publication contract only; no training or GPU acceptance')

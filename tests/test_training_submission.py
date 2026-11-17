@@ -19,6 +19,7 @@ from ergora import projects, reference, registrations, training
 from test_registrations import original_registration
 from test_training import experiments, registration
 from test_training_runtime import cycle_sdk_completion, installation
+from test_training_runner import configuration_project
 
 
 @pytest.fixture
@@ -47,7 +48,7 @@ def synthetic_execution(prepared, *, controller=None, ident='alpha'):
     """A synthetic stopped archive, deliberately carrying no live execution authority."""
     from datetime import datetime, timezone
     from ergora import training_cycles
-    from ergora.training_execution_protocol import GATE_SOURCE_PROTOCOLS, PROTOCOL
+    from ergora.training_execution_protocol import GATE_SOURCES, PROTOCOL
 
     state, definition, runtime, _, write, _ = prepared
     project = state.project('demo')
@@ -77,7 +78,7 @@ def synthetic_execution(prepared, *, controller=None, ident='alpha'):
         'execution_capability': {'protocol': PROTOCOL, 'admission_protocol': admission_protocol,
             'descriptor_sha256': 'c' * 64, 'installation': definition['execution']['installation'],
             'native_python': str(Path(definition['execution']['installation']) / '.venv/bin/python'),
-            'cycle_ready_sha256': 'd' * 64, 'gate_sources': {name: 'e' * 64 for name in GATE_SOURCE_PROTOCOLS[admission_protocol]}}}
+            'cycle_ready_sha256': 'd' * 64, 'gate_sources': {name: 'e' * 64 for name in GATE_SOURCES}}}
     if controller is not None:
         from ergora.training_execution_protocol import source_capability
         owner['authorization_sha256'] = admission.authorization['sha256']
@@ -127,8 +128,6 @@ def synthetic_execution(prepared, *, controller=None, ident='alpha'):
     return state, definition, runtime, folder
 
 
-@pytest.mark.parametrize('installation', [None, pytest.param('managed-v2', marks=pytest.mark.skipif(
-    sys.platform != 'linux', reason='Native source preparation requires Linux/WSL2'))], indirect=True)
 def test_execution_history_is_sdk_free_and_survives_missing_installation(historical_execution, capsys):
     from ergora.cli import main
 
@@ -732,6 +731,275 @@ def authorize_budget(selection, tmp_path, *, wall=14, cleanup=4, timeout=4):
                                           state.project('demo')['revision'], confirm=True)
     assert authorized['status'] == 'ready'
     return state, definition, runtime, authorized
+
+
+@pytest.fixture
+def configuration_execution(configuration_project, cycle_selection, service, tmp_path, request):
+    """Original preparation/start/admission with actual Git configs and CPU evidence."""
+    item = configuration_project
+    state, definition, runtime, prefix, write, selection = cycle_selection
+    options = getattr(request, 'param', {})
+    config = json.loads(item['candidate_raw'])
+    config.update(options)
+    item['configuration'].write_text(json.dumps(config) + '\n')
+    if item['git'](Path(definition['repo']), 'status', '--porcelain'):
+        item['candidate_commit'] = item['commit'](Path(definition['repo']), 'selected CPU configuration case')
+    item['candidate_raw'] = item['configuration'].read_bytes()
+    baseline = json.loads((prefix / 'baseline.json').read_bytes())
+    baseline.update(commit=item['baseline_commit'], config_sha256=hashlib.sha256(item['baseline_raw']).hexdigest())
+    write(prefix / 'baseline.json', baseline)
+    item['baseline_record'] = (prefix / 'baseline.json').read_bytes()
+    preview = training.preview_runner(state, 'demo', item['runner'])
+    training.register_runner(state, 'demo', item['runner'], preview['project_revision'], preview['runner_sha256'])
+    draft = json.loads((runtime / 'training/manifests/alpha.json').read_bytes())
+    for name in ('local_project', 'runner_template_id', 'baseline_sha', 'candidate_sha', 'max_run_seconds'):
+        draft.pop(name, None)
+    draft.update(baseline_commit=item['baseline_commit'], candidate_commit=item['candidate_commit'],
+                 base_config_sha256=hashlib.sha256(item['baseline_raw']).hexdigest(),
+                 candidate_config_sha256=hashlib.sha256(item['candidate_raw']).hexdigest(),
+                 track='E', quality_required=False, checks_required=['cpu_exact_configuration'],
+                 allowed_changes=['CPU fixture batch grouping and redundant arithmetic removal'],
+                 performance_policy={'normalization_source_samples': 48,
+                     'statistics': {'min_pairs': 4, 'bootstrap_resamples': 1000, 'confidence': .95, 'seed': 73},
+                     'thresholds': {'min_saved_seconds_at_normalization': 0.001,
+                                    'min_speedup_percent': None, 'mode': 'all'}})
+    for path in (runtime / 'training/manifests/alpha.json', runtime / 'training/specs/alpha.json',
+                 prefix / 'experiments/alpha/manifest.json'):
+        path.unlink()
+    proposed = training.preview_experiment(state, 'demo', draft, 'configuration-cpu', max_run_seconds=120)
+    published = training.prepare_experiment(state, 'demo', draft, 'configuration-cpu',
+        proposed['project_revision'], proposed['preview_sha256'], max_run_seconds=120)
+    assert published['status'] == 'prepared'
+    assert not item['markers'].exists(), 'Preview and preparation cannot import or run the driver'
+    selection['candidates'] = [{**selection['candidates'][0],
+        'manifest_sha256': hashlib.sha256((runtime / 'training/manifests/alpha.json').read_bytes()).hexdigest()}]
+    service[0]('accepted', budget_scenario='configuration-full')
+    item.update(state=state, definition=definition, runtime=runtime, prefix=prefix,
+                selection=cycle_selection, service=service, tmp_path=tmp_path)
+    return item
+
+
+def run_configuration_execution(item, *, wall=60, cleanup=10, on_requested=None):
+    from ergora import training_cycles
+
+    state, definition, runtime, authorized = authorize_budget(item['selection'], item['tmp_path'],
+        wall=wall, cleanup=cleanup, timeout=10)
+    item['authorization'] = authorized
+    try:
+        item['submission'] = training_cycles.start(state, 'demo', 'budget', 'alpha', authorized['authorization_sha256'], 1)
+        created = native_budget_create(definition, 'alpha', managed=True)
+        assert created.returncode == 0, created.stderr
+        job = runtime / 'training/jobs/alpha'
+        item['job'] = job
+        item['native_sha256'] = hashlib.sha256((job / 'request.json').read_bytes()).hexdigest()
+        training.execute(state, 'demo', 'alpha', 1, item['submission']['intent_sha256'],
+            item['submission']['run_id'], item['native_sha256'], confirm=True)
+        if on_requested is not None:
+            on_requested(item)
+        until = time.monotonic() + 20
+        while not (job / 'managed-execution/stopped.json').exists() and time.monotonic() < until:
+            time.sleep(.03)
+        assert (job / 'managed-execution/stopped.json').exists(), 'Original S must reap the actual native executor'
+        return training.execution(state, 'demo', 'alpha')
+    finally:
+        stop_controller_test_owner(runtime)
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('configuration_execution', [{'global_batch': 24, 'microbatch': 6},
+                                                   {'global_batch': 48, 'microbatch': 8}], indirect=True)
+def test_configuration_driver_runs_actual_cpu_work_and_original_managed_archive(configuration_execution):
+    item = configuration_execution
+    observed = run_configuration_execution(item)
+    assert observed['executor_stop_confirmed'] is True
+    assert all(observed['records'][name] is not None for name in ('request', 'launch', 'attempt', 'ack', 'stopped'))
+    job = item['job']
+    result = json.loads((job / 'result.json').read_bytes())
+    assert result['state'] == 'SUCCEEDED', result
+    gate = json.loads((job / 'gate-report.json').read_bytes())
+    assert gate['passed'] is True, gate
+    receipt = json.loads((job / 'run-output/configuration-receipt.json').read_bytes())
+    assert receipt['native_request_sha256'] == item['native_sha256']
+    for name in ('request', 'launch', 'attempt', 'ack'):
+        assert receipt['managed'][name + '_sha256'] == observed['record_sha256'][name]
+    assert receipt['binding'] == json.loads((job / 'request.json').read_bytes())['experiment']['binding']
+    assert receipt['observations']['baseline']['snapshot']['global_batch'] == 12
+    assert receipt['observations']['candidate']['snapshot']['global_batch'] in (24, 48)
+    assert receipt['observations']['candidate']['workload']['schedule']['updates'] != receipt['observations']['baseline']['workload']['schedule']['updates']
+    prepared = [json.loads(line) for line in (item['markers'] / 'prepare.jsonl').read_text().splitlines()]
+    actual = [json.loads(line) for line in (item['markers'] / 'first-work.jsonl').read_text().splitlines()]
+    assert len(prepared) == len(actual) == 1 and prepared[0]['identity'] == actual[0]['identity']
+    assert actual[0]['observations'] >= 2
+    evidence = training.evidence(item['state'], 'demo', 'alpha')['archive']
+    assert evidence['evidence_sha256'] == gate['evidence_sha256']
+    archive = Path(evidence['path'])
+    assert (archive / 'configuration-receipt.json').read_bytes() == (job / 'run-output/configuration-receipt.json').read_bytes()
+    assert (item['prefix'] / 'baseline.json').read_bytes() == item['baseline_record']
+    assert not (item['runtime'] / 'training/approvals').exists()
+    before = {path: path.read_bytes() for path in (job / 'managed-execution').iterdir() if path.is_file()}
+    assert training.resume_start(item['state'], 'demo', 'alpha', 1, item['submission']['intent_sha256'])['status'] == 'submitted'
+    training.execution(item['state'], 'demo', 'alpha')
+    with pytest.raises(ValueError):
+        training.execute(item['state'], 'demo', 'alpha', 1, item['submission']['intent_sha256'],
+            item['submission']['run_id'], item['native_sha256'], confirm=True)
+    assert all(path.read_bytes() == raw for path, raw in before.items())
+    assert len((item['markers'] / 'first-work.jsonl').read_text().splitlines()) == 1
+    assert json.loads(item['service'][1].read_bytes())['starts'] == 1
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('configuration_execution', [{'precision': 'float16'}, {'fault': 'describe-drift'},
+                                                   {'fault': 'nonfinite'}, {'fault': 'oversize'},
+                                                   {'fault': 'source-drift'}, {'fault': 'configuration-drift'},
+                                                   {'fault': 'receipt-sync'}], indirect=True)
+def test_configuration_driver_rejects_observation_divergence_before_first_work(configuration_execution):
+    item = configuration_execution
+    observed = run_configuration_execution(item)
+    assert observed['executor_stop_confirmed'] is True
+    assert not (item['markers'] / 'first-work.jsonl').exists()
+    assert len((item['markers'] / 'prepare.jsonl').read_text().splitlines()) == 1
+    result = json.loads((item['job'] / 'result.json').read_bytes())
+    assert result['state'] == 'FAILED', result
+    assert not (item['job'] / 'gate-report.json').exists()
+    assert not (item['job'] / 'run-output/evidence.json').exists()
+    assert json.loads(item['service'][1].read_bytes())['starts'] == 1
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('configuration_execution', [{'fault': 'last-source-fence'},
+                                                   {'fault': 'last-source-deadline'}], indirect=True)
+def test_configuration_driver_checks_authority_after_the_last_source_read(configuration_execution):
+    item = configuration_execution
+    observed = run_configuration_execution(item)
+    assert observed['executor_stop_confirmed'] is True
+    assert (item['markers'] / 'prepare.jsonl').is_file()
+    assert (item['markers'] / 'last-source-returned.jsonl').is_file()
+    assert (item['markers'] / 'last-guard-rejected.jsonl').is_file()
+    assert not (item['markers'] / 'first-work.jsonl').exists()
+    assert not (item['job'] / 'run-output/evidence.json').exists()
+    assert len((item['markers'] / 'prepare.jsonl').read_text().splitlines()) == 1
+    assert len((item['markers'] / 'describe.jsonl').read_text().splitlines()) == 2
+    assert json.loads((item['job'] / 'run-output/configuration-receipt.json').read_bytes())['managed'] == {
+        name + '_sha256': observed['record_sha256'][name] for name in ('request', 'launch', 'attempt', 'ack')}
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('configuration_execution', [{'fault': 'last-source-request-drift'}], indirect=True)
+def test_configuration_driver_rechecks_published_request_bytes_before_first_work(configuration_execution):
+    item = configuration_execution
+    observed = run_configuration_execution(item)
+    assert observed['executor_stop_confirmed'] is True
+    drift = json.loads((item['markers'] / 'request-drift.jsonl').read_text())
+    receipt = json.loads((item['job'] / 'run-output/configuration-receipt.json').read_bytes())
+    original = (item['job'] / 'run-output/request-before-drift.json').read_bytes()
+    changed = (item['job'] / 'configuration-request.json').read_bytes()
+    assert changed == original + b'\n' and json.loads(changed) == json.loads(original)
+    assert hashlib.sha256(original).hexdigest() == drift['original_sha256']
+    assert drift['original_sha256'] == receipt['request_sha256']
+    assert drift['changed_sha256'] != receipt['request_sha256']
+    assert (item['markers'] / 'prepare.jsonl').is_file()
+    assert len((item['markers'] / 'describe.jsonl').read_text().splitlines()) == 2
+    assert not (item['markers'] / 'first-work.jsonl').exists()
+    assert not (item['job'] / 'run-output/evidence.json').exists()
+    result = json.loads((item['job'] / 'result.json').read_bytes())
+    assert result['state'] == 'FAILED', result
+    assert 'Configuration driver request bytes changed' in (item['job'] / 'run-output/execution.log').read_text()
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+def test_configuration_driver_wrong_raw_hash_never_constructs_or_runs(configuration_execution):
+    item = configuration_execution
+    runtime, prefix = item['runtime'], item['prefix']
+    manifest = json.loads((runtime / 'training/manifests/alpha.json').read_bytes())
+    manifest['candidate_config_sha256'] = '0' * 64
+    raw = (json.dumps(manifest, indent=2) + '\n').encode()
+    for path in (runtime / 'training/manifests/alpha.json', prefix / 'experiments/alpha/manifest.json'):
+        path.write_bytes(raw)
+    spec = json.loads((runtime / 'training/specs/alpha.json').read_bytes())
+    spec['binding']['manifest_sha'] = hashlib.sha256(raw).hexdigest()
+    (runtime / 'training/specs/alpha.json').write_text(json.dumps(spec) + '\n')
+    item['selection'][-1]['candidates'][0]['manifest_sha256'] = spec['binding']['manifest_sha']
+    observed = run_configuration_execution(item)
+    assert observed['executor_stop_confirmed'] is True
+    assert not item['markers'].exists()
+    assert not (item['job'] / 'run-output/evidence.json').exists()
+    assert json.loads((item['job'] / 'result.json').read_bytes())['state'] == 'FAILED'
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+def test_configuration_driver_manual_native_entry_has_no_execution_authority(configuration_execution):
+    item = configuration_execution
+    installation = Path(item['definition']['execution']['installation'])
+    job = item['runtime'] / 'training/jobs/alpha'
+    job.mkdir(parents=True)
+    request = {'schema_version': 1, 'job_id': 'local-perf-alpha', 'runner': item['runner'],
+               'experiment': json.loads((item['runtime'] / 'training/specs/alpha.json').read_bytes())}
+    (job / 'request.json').write_text(json.dumps(request) + '\n')
+    environment = {**os.environ, 'AGENTFLOW_CONFIG_DIR': item['definition']['execution']['config_directory'],
+        'AGENTFLOW_STATE_DIR': item['definition']['execution']['state_directory'],
+        'PYTHONPATH': os.pathsep.join(map(str, (Path(reference.__file__).parent.parent,
+            installation / 'local', installation / 'upstream/platform', installation / 'upstream/temporal', installation / 'upstream')))}
+    command = [sys.executable, '-B', '-P', str(Path(__file__).parent / 'fixtures/training_executor_client.py'),
+               'no-hook', str(job)]
+    result = subprocess.run(command, env=environment, capture_output=True, text=True, timeout=10)
+    assert result.returncode == 0, result.stderr
+    assert json.loads(result.stdout)['error_type'] == 'Blocked'
+    assert not (job / 'started.json').exists() and not (job / 'result.json').exists()
+    assert not item['markers'].exists()
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('configuration_execution', [{'fault': 'reader-timeout'}], indirect=True)
+@pytest.mark.parametrize('boundary', ['explicit-fence', 'work-deadline'])
+def test_configuration_driver_stops_the_actual_reader_without_returning_its_launch(configuration_execution, boundary):
+    item = configuration_execution
+    original_clock = None
+
+    def after_request(active):
+        nonlocal original_clock
+        until = time.monotonic() + 10
+        while not (active['markers'] / 'prepare.jsonl').exists() and time.monotonic() < until:
+            time.sleep(.02)
+        assert (active['markers'] / 'prepare.jsonl').exists(), 'The real reader must be running at the boundary'
+        authorization = active['state'].root / 'training-cycles/demo/budget/authorization.json'
+        original_clock = authorization.read_bytes()
+        if boundary == 'explicit-fence':
+            installation = Path(active['definition']['execution']['installation'])
+            environment = {**os.environ,
+                'AGENTFLOW_CONFIG_DIR': active['definition']['execution']['config_directory'],
+                'AGENTFLOW_STATE_DIR': active['definition']['execution']['state_directory'],
+                'PYTHONPATH': os.pathsep.join(str(installation / part) for part in
+                    ('local', 'upstream/platform', 'upstream/temporal', 'upstream'))}
+            program = '''import asyncio,json,sys
+from pathlib import Path
+from agent_platform.training import binding_from,create_adapter
+from perf_temporal.models import Job
+record=json.loads(Path(sys.argv[1]).read_bytes())
+asyncio.run(create_adapter().cancel_job_group(Job(binding_from(record['experiment']['binding']),record['job_id'])))
+'''
+            fenced = subprocess.run([str(installation / '.venv/bin/python'), '-P', '-c', program,
+                str(active['job'] / 'request.json')], env=environment, capture_output=True, text=True, timeout=10)
+            assert fenced.returncode == 0, fenced.stderr
+
+    observed = run_configuration_execution(item, wall=18 if boundary == 'work-deadline' else 60,
+                                           cleanup=5 if boundary == 'work-deadline' else 10,
+                                           on_requested=after_request)
+    assert observed['executor_stop_confirmed'] is True
+    assert all(observed['records'][name] is not None for name in ('request', 'launch', 'attempt', 'ack', 'stopped'))
+    assert not (item['markers'] / 'first-work.jsonl').exists()
+    assert not (item['job'] / 'run-output/evidence.json').exists()
+    assert len((item['markers'] / 'prepare.jsonl').read_text().splitlines()) == 1
+    assert (item['state'].root / 'training-cycles/demo/budget/authorization.json').read_bytes() == original_clock
+    before = {path: path.read_bytes() for path in (item['job'] / 'managed-execution').iterdir() if path.is_file()}
+    training.execution(item['state'], 'demo', 'alpha')
+    training.submission(item['state'], 'demo', 'alpha')
+    with pytest.raises(ValueError):
+        training.execute(item['state'], 'demo', 'alpha', 1, item['submission']['intent_sha256'],
+            item['submission']['run_id'], item['native_sha256'], confirm=True)
+    assert all(path.read_bytes() == raw for path, raw in before.items())
+    assert len((item['markers'] / 'prepare.jsonl').read_text().splitlines()) == 1
+    for name in ('supervisor', 'executor'):
+        assert_budget_process_stopped(observed['records']['attempt'][name])
 
 
 @pytest.fixture
@@ -4135,7 +4403,7 @@ def test_round_original_deadline_keeps_available_full_diagnostics(round_candidat
 
 
 @pytest.mark.skipif(sys.platform != 'linux', reason='Original H writer and explicit 10 MB reader require Linux')
-@pytest.mark.parametrize('installation', ['managed', 'managed-v2'], indirect=True)
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
 @pytest.mark.parametrize('controller_admission', [{'program_version': version, 'control_timeout_seconds': 20} for version in (2, 3)], indirect=True)
 def test_round_complete_observation_capacity_uses_utf8_and_lf(round_candidate, cycle_operation_fault, monkeypatch):
     import asyncio
@@ -4143,19 +4411,13 @@ def test_round_complete_observation_capacity_uses_utf8_and_lf(round_candidate, c
 
     state, admission, plan, operation, prepare = round_candidate
     installation = Path(admission.authorization['execution']['installation'])
-    sdk_required = json.loads((installation / 'ergora-native-runtime.json').read_bytes())['protocol_id'] == reference.TRAINING_PROTOCOL
-    import temporalio
-    sdk_site = str(Path(temporalio.__file__).parent.parent)
     isolated = state.root.parent / 'native-reader-package'
     shutil.copytree(Path(protocol.__file__).parent, isolated / 'ergora', ignore=shutil.ignore_patterns('__pycache__'))
     program = '''import sys,json
 sys.path.insert(0,sys.argv[1])
-if sys.argv[3]=='native-sdk':
-    sys.path.append(sys.argv[4])
 class WithoutApplication:
     def find_spec(self, fullname, path=None, target=None):
-        if fullname.split('.')[0] in ('yaml','jsonschema') or (
-                sys.argv[3]!='native-sdk' and fullname.split('.')[0]=='temporalio') or fullname in (
+        if fullname.split('.')[0] in ('yaml','jsonschema','temporalio') or fullname in (
                 'ergora.state','ergora.training_rounds','ergora.registrations'):
             raise AssertionError('Native reader imported application or SDK: '+fullname)
 sys.meta_path.insert(0,WithoutApplication())
@@ -4182,18 +4444,15 @@ except ValueError as error:
 
     reader_results = []
 
-    def native_read(context, *, without_site=False, reject_sdk=False):
-        mode = 'isolated-local' if without_site else ('native-sdk' if sdk_required and not reject_sdk else 'native')
+    def native_read(context, *, without_site=False):
+        mode = 'isolated-local' if without_site else 'native'
         result = subprocess.run([str(installation / '.venv/bin/python'), '-P', '-B',
-            *(['-S'] if without_site else []), '-c', program, str(isolated), str(installation), mode, sdk_site],
+            *(['-S'] if without_site else []), '-c', program, str(isolated), str(installation), mode],
             input=json.dumps({'cached': context, 'phase': {}}),
             env=environment, capture_output=True, text=True, timeout=15)
         reader_results.append({'target': target, 'mode': mode, 'returncode': result.returncode,
                                'stdout': result.stdout, 'stderr': result.stderr})
         (state.root.parent / 'native-reader-results.json').write_text(json.dumps(reader_results, indent=2) + '\n')
-        if reject_sdk:
-            assert result.returncode != 0 and 'Native reader imported application or SDK: temporalio' in result.stderr
-            return {'import_refused': 'temporalio'}
         assert result.returncode == 0, result.stderr
         observed = json.loads(result.stdout)
         return observed
@@ -4256,10 +4515,8 @@ except ValueError as error:
                 (chain.folder.parent / name).unlink(missing_ok=True)
             before = {path: path.read_bytes() for path in chain.folder.rglob('*') if path.is_file()}
             assert native_read(context, without_site=True) == {'authenticated': True, 'executor_sdk_loaded': False}
-            if sdk_required and target == protocol.ARTIFACT_LIMIT - 1:
-                assert native_read(context, reject_sdk=True) == {'import_refused': 'temporalio'}
             inactive = {'rejected': 'Original execution owner or computation budget is no longer active',
-                        'executor_sdk_loaded': sdk_required}
+                        'executor_sdk_loaded': False}
             assert native_read(context) == inactive
             if target == protocol.ARTIFACT_LIMIT - 1:
                 # Drift a real copied package after its successful original

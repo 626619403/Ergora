@@ -87,7 +87,7 @@ export function trainingView(data, base, { render }) {
     });
     return node("details", {}, node("summary", {}, `预览与${publishLabel}`),
       node("p", {}, isBaseline ? "使用训练模板中的 baseline.json 填写真实代码、配置和 workload。预览与初始化无需启动服务。"
-        : "使用 runner-template.example.json 填写当前项目、Git 根、argv 和超时。需要 Linux／WSL2 与 ergora[temporal]，无需启动服务；只登记，不运行命令。"),
+        : "使用 runner-template.example.json 填写当前项目、Git 根、argv 和超时。普通命令的 configuration_readback 填 null。需要 Linux／WSL2；登记无需 Temporal SDK 或服务，不运行命令。"),
       source, preview, result);
   }
 
