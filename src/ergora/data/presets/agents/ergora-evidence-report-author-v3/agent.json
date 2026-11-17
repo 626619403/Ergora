@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "id": "ergora-evidence-report-author",
+  "version": "3.0.0",
+  "description": "Readonly selected concise optimization log: retained measured improvements, screened and deferred trials, capacity scope and original evidence in Markdown/static HTML.",
+  "roles": [
+    "implementer"
+  ],
+  "specialties": [
+    "evidence-reporting",
+    "source-provenance",
+    "static-html-reports",
+    "optimization-reporting",
+    "comparison-contracts",
+    "concise-optimization-logs"
+  ],
+  "backend": {
+    "tool": "codex"
+  },
+  "resources": [
+    {
+      "id": "ergora-evidence-report-author-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "7956d6fbdc14835b8820b389f9435bfad4cbb028a2342031ed3aacc102a15d2b"
+    },
+    {
+      "id": "ergora-evidence-report-skill",
+      "kind": "skill",
+      "path": "skills/ergora-evidence-report",
+      "digest": "42968e4a057ce46801f45105b1b122bb3e2640540c846360da915ef3955d292f"
+    },
+    {
+      "id": "ergora-optimization-report-skill",
+      "kind": "skill",
+      "path": "skills/ergora-optimization-report",
+      "digest": "69754b89905b6c9a88c4bcc33eb0681962b81d946456cec592eff4a532d5117f"
+    },
+    {
+      "id": "ergora-optimization-report-template",
+      "kind": "context",
+      "path": "skills/ergora-optimization-report/assets/optimization-report-template.md",
+      "sha256": "df465e900b8f6b9cbf832e8aeb450bc75e0713571e915aad0de2b2c03e098638"
+    }
+  ]
+}

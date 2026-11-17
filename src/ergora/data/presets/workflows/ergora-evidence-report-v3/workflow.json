@@ -1,0 +1,63 @@
+{
+  "schema_version": 2,
+  "id": "ergora-evidence-report",
+  "version": "3.0.0",
+  "description": "Readonly explicitly selected concise optimization-report author with six-section evidence-linked template; collection, quality acceptance and adoption remain separately owned.",
+  "resources": [
+    {
+      "id": "ergora-evidence-report-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "c0969629afbb8f9cdae7cffb0058f591ad09c6928c6b259d5807e78d41599426"
+    }
+  ],
+  "permissions": {
+    "read": [
+      "definitions"
+    ],
+    "write": [],
+    "shell": false,
+    "network": []
+  },
+  "limits": {
+    "depth": 4,
+    "instances": 8,
+    "concurrency": 1,
+    "material_bytes": 131072
+  },
+  "inputs": [
+    "task"
+  ],
+  "outputs": {
+    "result": {
+      "node": "author",
+      "output": "result"
+    }
+  },
+  "nodes": [
+    {
+      "id": "author",
+      "ref": {
+        "kind": "agent",
+        "id": "ergora-evidence-report-author",
+        "version": "3.0.0",
+        "digest": "62c28a2ca97cba9d44bc30112e38c41b1c7414aa7a2eefba4118de55eb663048"
+      },
+      "role": "implementer",
+      "depends_on": [],
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "read": [
+          "definitions"
+        ],
+        "write": [],
+        "shell": false,
+        "network": []
+      }
+    }
+  ]
+}

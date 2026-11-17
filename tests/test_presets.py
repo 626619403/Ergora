@@ -105,12 +105,14 @@ def test_preset_listing_and_installation_are_real_offline_cli_operations(tmp_pat
     ('training-flow-map', 'root/map', 'performance-analyst'),
     ('evidence-report', 'root/author', 'implementer'),
     ('optimization-report', 'root/author', 'implementer'),
+    ('optimization-report-concise', 'root/author', 'implementer'),
 ])
 def test_readonly_analysis_presets_freeze_complete_material_without_changing_training_versions(
         tmp_path, preset, leaf_path, role):
     state = State(tmp_path / 'state')
     original = [workflows.install_preset(state, name)['root']
-                for name in ('training-optimization', 'training-optimization-v2', 'evidence-report')]
+                for name in ('training-optimization', 'training-optimization-v2', 'evidence-report',
+                             'optimization-report')]
     installed = workflows.install_preset(state, preset)
     assert workflows.install_preset(state, preset) == installed
     assert [workflows.get(state, item['id'], item['version'])['digest'] for item in original] == [

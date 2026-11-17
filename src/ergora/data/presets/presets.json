@@ -538,6 +538,17 @@
       "workflows": [
         "ergora-evidence-report-v2"
       ]
+    },
+    "optimization-report-concise": {
+      "description": "Selected concise optimization log: one initial baseline, retained measured improvements/capacity achievements, screened trials, deferred work and pending kernel migration; readonly authoring.",
+      "runtime": "proposal-leaves",
+      "root": "ergora-evidence-report-v3",
+      "agents": [
+        "ergora-evidence-report-author-v3"
+      ],
+      "workflows": [
+        "ergora-evidence-report-v3"
+      ]
     }
   }
 }
