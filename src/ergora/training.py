@@ -33,20 +33,22 @@ def register_runner(state: State, project_id: str, runner: dict, expected_revisi
 
 
 def preview_experiment(state: State, project_id: str, experiment: dict, runner_template_id: str,
-                       *, max_run_seconds: int | None = None) -> dict:
-    """Generate the original three-file publication plan entirely in staging."""
+                       *, max_run_seconds: int | None = None, configuration_materials: dict | None = None) -> dict:
+    """Generate the original publication plan entirely in staging."""
     return reference.training_preparation(_project(state, project_id), state.root, 'preview',
         {'experiment_id': experiment.get('experiment_id') if isinstance(experiment, dict) else None, 'request': {'experiment': experiment,
-         'runner_template_id': runner_template_id, 'max_run_seconds': max_run_seconds}})
+         'runner_template_id': runner_template_id, 'max_run_seconds': max_run_seconds,
+         'configuration_materials': configuration_materials}})
 
 
 def prepare_experiment(state: State, project_id: str, experiment: dict, runner_template_id: str,
-                       expected_revision: int, preview_sha256: str, *, max_run_seconds: int | None = None) -> dict:
+                       expected_revision: int, preview_sha256: str, *, max_run_seconds: int | None = None,
+                       configuration_materials: dict | None = None) -> dict:
     """Freeze the confirmed local plan before the original owner publishes any file."""
     return _setup(state, project_id, expected_revision, 'prepare',
         {'experiment_id': experiment.get('experiment_id') if isinstance(experiment, dict) else None, 'preview_sha256': preview_sha256,
          'request': {'experiment': experiment, 'runner_template_id': runner_template_id,
-                     'max_run_seconds': max_run_seconds}}, reference.training_preparation)
+                     'max_run_seconds': max_run_seconds, 'configuration_materials': configuration_materials}}, reference.training_preparation)
 
 
 def preparation(state: State, project_id: str, experiment_id: str) -> dict:

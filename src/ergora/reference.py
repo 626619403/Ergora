@@ -666,6 +666,11 @@ def _training_records(payload: dict) -> dict:
         for value in (started, result):
             if value is not None and (request is None or value['job_id'] != request['job_id']):
                 raise ValueError('Training job result has no matching original request')
+        from ergora.training_materials import input_descriptor, read_materials
+
+        inputs = input_descriptor(manifest)
+        for arm, raw_material in read_materials(root, manifest).items():
+            files['state/' + inputs[arm]['path']] = hashlib.sha256(raw_material).hexdigest()
         gate = None
         gate_ref = result.get('gate') if result is not None else None
         if gate_ref is not None:

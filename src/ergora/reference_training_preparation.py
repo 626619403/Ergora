@@ -1,4 +1,4 @@
-"""Freeze one native preparation plan; explicitly recover its three immutable files."""
+"""Freeze one native preparation plan; explicitly recover its immutable files."""
 
 import hashlib
 import json
@@ -11,6 +11,7 @@ from .reference import _training_records
 from .reference_training_context import _TrainingProject, _native_bytes
 from .state import file_lock
 from .training_configuration import validate_runner
+from .training_materials import confirm_file, material_plan, read_raw
 
 
 _INTENT_LIMIT = 16 * 1_048_576
@@ -21,7 +22,7 @@ class _Preparation(_TrainingProject):
         super().__init__(payload)
         self.ident = self.core.slug(payload['experiment_id'])
         self.prefix = 'ergora/training-preparations/' + self.ident
-        self.targets = ('training/manifests/' + self.ident + '.json',
+        self.base_targets = ('training/manifests/' + self.ident + '.json',
                         'training/projects/' + self.project['id'] + '/perf/experiments/' + self.ident + '/manifest.json',
                         'training/specs/' + self.ident + '.json')
         self.identity = {'schema_version': 1, 'operation': 'prepare-training',
@@ -32,15 +33,44 @@ class _Preparation(_TrainingProject):
     def path(self, suffix: str) -> Path:
         return self.adapter.safe_file(self.root, self.prefix + suffix)
 
+    def targets(self, request):
+        materials = request['configuration_materials']
+        return (*self.base_targets, *material_plan(self.ident, materials)[1]) if materials is not None else self.base_targets
+
+    def confirm_intent(self, intent):
+        raw = _native_bytes(intent, 'Preparation intent', _INTENT_LIMIT)
+        confirm_file(self.path('.intent.json'), raw, self.root)
+        if self.sha(self.load()) != self.sha(intent):
+            raise ValueError('Original preparation intent identity changed during durable readback')
+
+    def confirm_prepared(self, intent):
+        self.confirm_intent(intent)
+        observed = self.status(intent)
+        if observed['status'] == 'prepared':
+            for relative, text in intent['files'].items():
+                confirm_file(self.adapter.safe_file(self.root, relative), text.encode('utf-8'), self.root)
+            observed = self.status(intent)
+        return observed
+
+    def observe(self, intent):
+        observed = self.status(intent)
+        if observed['status'] != 'prepared':
+            return observed
+        # Existing immutable records only: no new intent or output is published.
+        with file_lock(self.path('.lock'), blocking=False):
+            if self.sha(self.load()) != self.sha(intent):
+                raise ValueError('Original preparation intent changed during observation')
+            return self.confirm_prepared(intent)
+
     def load(self) -> dict | None:
         try:
-            intent = self.document(self.root, self.prefix + '.intent.json', _INTENT_LIMIT)
+            intent = json.loads(read_raw(self.path('.intent.json'), _INTENT_LIMIT))
         except FileNotFoundError:
             return None
         if (any(intent.get(key) != value for key, value in self.identity.items())
                 or type(intent.get('project_revision')) is not int or intent['project_revision'] < 1
                 or set(intent) != set(self.identity) | {'project_revision', 'request', 'sources', 'files'}
-                or set(intent['files']) != set(self.targets)
+                or set(intent['files']) != set(self.targets(intent['request']))
                 or intent['request']['experiment']['experiment_id'] != self.ident):
             raise ValueError('Training preparation intent differs from its original project or experiment')
         return intent
@@ -86,13 +116,14 @@ class _Preparation(_TrainingProject):
                 baseline = native.perf_root(self.project['id']) / 'baseline.json'
                 baseline.parent.mkdir(parents=True)
                 baseline.write_bytes(_native_bytes(sources['baseline']['document'], 'Baseline'))
-                native.prepare(draft, request['runner_template_id'], maximum)
-                files = {relative: self.adapter.read_raw(root / relative).decode('utf-8') for relative in self.targets}
-                spec = json.loads(files[self.targets[2]])
+                native.prepare(draft, request['runner_template_id'], maximum,
+                               configuration_materials=request['configuration_materials'])
+                files = {relative: self.adapter.read_raw(root / relative).decode('utf-8') for relative in self.targets(request)}
+                spec = json.loads(files[self.base_targets[2]])
                 # The only staging address is the manifest URI. The native
                 # owner already generated the exact manifest-byte binding.
-                spec['manifest_uri'] = self.adapter.safe_file(self.root, self.targets[0]).as_uri()
-                files[self.targets[2]] = _native_bytes(spec, 'Experiment spec').decode('utf-8')
+                spec['manifest_uri'] = self.adapter.safe_file(self.root, self.base_targets[0]).as_uri()
+                files[self.base_targets[2]] = _native_bytes(spec, 'Experiment spec').decode('utf-8')
             finally:
                 native.CONFIG, native.TRAINING = config, training
         return {**self.identity, 'project_revision': revision, 'request': request, 'sources': sources, 'files': files}
@@ -101,14 +132,15 @@ class _Preparation(_TrainingProject):
         result = {'project': self.project['id'], 'project_revision': self.project['revision'],
                   'experiment_id': self.ident, 'runtime_status': 'not_queried', 'execution_success': None}
         if intent is None:
-            occupied = any(self.adapter.safe_file(self.root, relative).exists() for relative in self.targets)
+            occupied = any(self.adapter.safe_file(self.root, relative).exists() for relative in (*self.base_targets, 'training/configurations/' + self.ident + '/baseline.json',
+                                                      'training/configurations/' + self.ident + '/candidate.json'))
             return {**result, 'status': 'native_files_without_intent' if occupied else 'not_recorded',
                     'intent_sha256': None, 'files': []}
         files = []
-        for relative in self.targets:
+        for relative in self.targets(intent['request']):
             expected = intent['files'][relative].encode('utf-8')
             try:
-                raw = self.adapter.read_raw(self.adapter.safe_file(self.root, relative))
+                raw = read_raw(self.adapter.safe_file(self.root, relative))
             except FileNotFoundError:
                 raw = None
             files.append({'path': relative, 'expected_sha256': hashlib.sha256(expected).hexdigest(),
@@ -129,37 +161,38 @@ class _Preparation(_TrainingProject):
     def publish(self, intent: dict) -> dict:
         from agent_platform import training as native
 
+        self.confirm_intent(intent)
         observed = self.status(intent)
         if observed['status'] == 'conflict':
             raise ValueError('Native preparation files conflict with the original intent; no files were replaced')
         self.ensure_unstarted()
         if observed['status'] == 'prepared':
-            return observed
+            return self.confirm_prepared(intent)
         if self.sha(self.sources(intent['request'])) != self.sha(intent['sources']):
             raise ValueError('Preparation baseline or runner bytes changed; restore the original sources before recovery')
         self.adapter.safe_file(self.root, 'training/registry.lock')
         with TemporaryDirectory(prefix='ergora-experiment-prepare-') as temporary:
             draft = Path(temporary) / 'draft.json'
             draft.write_bytes(_native_bytes(intent['request']['experiment'], 'Experiment draft'))
-            native.prepare(draft, intent['request']['runner_template_id'], intent['request']['max_run_seconds'])
+            native.prepare(draft, intent['request']['runner_template_id'], intent['request']['max_run_seconds'],
+                           configuration_materials=intent['request']['configuration_materials'])
         observed = self.status(intent)
         if observed['status'] != 'prepared':
             raise ValueError('Native preparation differs from the confirmed plan; inspect its original intent and files')
         _training_records({'project': self.project['id'], 'repo': self.project['repo'], 'experiment_id': self.ident})
-        return observed
+        return self.confirm_prepared(intent)
 
     def run(self) -> dict:
         self.registration()
         operation = self.payload['operation']
         intent = self.load()
         if operation == 'status':
-            return self.status(intent)
+            return self.observe(intent)
         if operation == 'preview':
             plan = self.plan(self.payload['request'], self.project['revision'])
-            observed = self.status(intent)
             return {'project': self.project['id'], 'project_revision': self.project['revision'],
                     'experiment_id': self.ident, 'preview_sha256': self.sha(plan), 'plan': plan,
-                    'preparation': observed, 'runtime_status': 'not_queried', 'execution_success': None}
+                    'preparation': self.observe(intent), 'runtime_status': 'not_queried', 'execution_success': None}
         if operation not in ('prepare', 'resume'):
             raise ValueError('Unsupported training preparation operation')
         if operation == 'prepare':
@@ -167,10 +200,11 @@ class _Preparation(_TrainingProject):
                 if (self.payload['preview_sha256'] != self.sha(intent)
                         or self.sha(self.payload['request']) != self.sha(intent['request'])):
                     raise ValueError('Preparation already has an original intent; inspect and resume that intent')
-                return self.status(intent)
-            plan = self.plan(self.payload['request'], self.project['revision'])
-            if self.payload['preview_sha256'] != self.sha(plan):
-                raise ValueError('Confirm the exact experiment preparation preview SHA-256')
+                plan = intent
+            else:
+                plan = self.plan(self.payload['request'], self.project['revision'])
+                if self.payload['preview_sha256'] != self.sha(plan):
+                    raise ValueError('Confirm the exact experiment preparation preview SHA-256')
         elif intent is None or self.payload['intent_sha256'] != self.sha(intent):
             raise ValueError('Recovery requires the exact original preparation intent SHA-256')
         lock = self.path('.lock')
@@ -181,11 +215,10 @@ class _Preparation(_TrainingProject):
                 if intent is not None:
                     if self.sha(intent) != self.sha(plan):
                         raise ValueError('Another preparation intent owns this experiment ID')
-                    return self.status(intent)
+                    return self.confirm_prepared(intent)
                 if self.status(None)['status'] != 'not_recorded':
                     raise ValueError('Native experiment files have no matching preparation intent; inspect the original records')
-                # Preflight every path before making the first immutable checkpoint.
-                for relative in (*self.targets, 'training/registry.lock'):
+                for relative in (*self.targets(plan['request']), 'training/registry.lock'):
                     self.adapter.safe_file(self.root, relative)
                 if self.sha(self.sources(plan['request'])) != self.sha(plan['sources']):
                     raise ValueError('Preparation sources changed after preview; preview again')

@@ -31,12 +31,14 @@ def stop_after(monkeypatch):
     original = reference.processes.run
     fixture = Path(__file__).parent / 'fixtures/training_preparation_process.py'
 
-    def select(index):
+    def select(index=None, *, sync_failure=None, trace=None, ident='gamma'):
         def invoke(argv, *args, **kwargs):
-            if index is not None and argv[-1] == 'from ergora.reference_training_preparation import main;main()':
+            if (index is not None or sync_failure) and argv[-1] == 'from ergora.reference_training_preparation import main;main()':
                 argv = [*argv[:-1], f'import runpy;runpy.run_path({str(fixture)!r},run_name="__main__")']
-                kwargs['env'] = {**kwargs['env'], 'ERGORA_TEST_PREPARATION_STOP_AFTER': str(index),
-                                 'ERGORA_TEST_PREPARATION_ID': 'gamma'}
+                kwargs['env'] = {**kwargs['env'], 'ERGORA_TEST_PREPARATION_STOP_AFTER': str(index if index is not None else -1),
+                                 'ERGORA_TEST_PREPARATION_ID': ident,
+                                 'ERGORA_TEST_PREPARATION_SYNC_FAILURE': sync_failure or '',
+                                 'ERGORA_TEST_PREPARATION_TRACE': str(trace) if trace else ''}
             return original(argv, *args, **kwargs)
         monkeypatch.setattr(reference.processes, 'run', invoke)
     return select
@@ -231,3 +233,42 @@ def test_cli_http_use_exact_plan_and_recover_after_actual_lost_success_reply(pre
                      '--revision', str(preview['project_revision']), '--intent-sha256', observed['intent_sha256']])
     assert code == 0 and json.loads(output.getvalue())['status'] == 'prepared'
     assert all(path.read_bytes() == raw for path, raw in saved.items())
+
+
+@pytest.mark.parametrize('failure', ('file', 'parent', 'ancestor', 'root', 'readback-inode', 'readback-open-inode'))
+def test_original_intent_is_confirmed_before_any_native_output_and_equal_visible_recovery(
+        preparation_input, stop_after, tmp_path, failure):
+    state, _, runtime, _, draft = preparation_input
+    preview = training.preview_experiment(state, 'demo', draft, 'trusted')
+    trace = tmp_path / 'intent-confirmation.jsonl'
+    stop_after(sync_failure=failure, trace=trace)
+    with pytest.raises(ValueError, match='intent synchronization failure|changed during durable readback'):
+        training.prepare_experiment(state, 'demo', draft, 'trusted', preview['project_revision'], preview['preview_sha256'])
+    intent = runtime / 'ergora/training-preparations/gamma.intent.json'
+    original = intent.read_bytes()
+    events = [json.loads(line) for line in trace.read_text().splitlines()]
+    assert events and not any(item['event'] == 'native-output-call' for item in events)
+    assert not any((runtime / name).exists() for name in preview['plan']['files'])
+    # The visible intent is retained. Matched prepare and explicit resume must
+    # both complete its same durability check before publishing anything.
+    for operation in (
+            lambda: training.prepare_experiment(state, 'demo', draft, 'trusted',
+                preview['project_revision'], preview['preview_sha256']),
+            lambda: training.resume_prepare(state, 'demo', 'gamma', preview['project_revision'], preview['preview_sha256'])):
+        with pytest.raises(ValueError, match='intent synchronization failure|changed during durable readback'):
+            operation()
+    assert intent.read_bytes() == original
+    assert not any((runtime / name).exists() for name in preview['plan']['files'])
+    stop_after()
+    recovered = training.resume_prepare(State(state.root), 'demo', 'gamma', preview['project_revision'], preview['preview_sha256'])
+    assert recovered['status'] == 'prepared' and recovered['intent_sha256'] == preview['preview_sha256']
+    assert intent.read_bytes() == original
+    if failure == 'parent':
+        stop_after(sync_failure=failure, trace=trace)
+        with pytest.raises(ValueError, match='intent synchronization failure'):
+            training.preparation(state, 'demo', 'gamma')
+        with pytest.raises(ValueError, match='intent synchronization failure'):
+            training.prepare_experiment(state, 'demo', draft, 'trusted', preview['project_revision'], preview['preview_sha256'])
+        assert intent.read_bytes() == original
+    assert not (runtime / 'training/jobs/gamma').exists()
+    assert not (state.root / 'training-cycles').exists()

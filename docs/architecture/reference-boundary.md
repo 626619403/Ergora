@@ -112,6 +112,8 @@ flowchart LR
 
 当前process保留同一原锁、Git两臂、Sandbox、full归档与结果owner：业务副作用前检查不确定started／缺callback的managed命名空间，admit一次发布attempt／ack；配置驱动只在原clone后进入before_runner，沿原active检查准备request。已有result先只读返回，不能据此追认停止。wrapper在末次source检查后、首work前独立复核原完整chain、parent、owner、native fence及clock；不重复admit，不建立另一实验账本。
 
+配置材料由纯stdlib `training_materials`持有exact descriptor、raw JSON与不可变发布/持久读回；native prepare/create_job、reference原件reader和configuration wrapper共同消费，低层不反向导入wrapper、protocol、reference或State/SDK。manifest `configuration_inputs`唯一选择Git文件或prepared-json；runner只给trusted source和`prepared_json_format`能力声明。搜索完整输入包先持久，再由原preparation锁内先同步原intent文件/目录链并读回同inode/raw，才正式发布两材料与原三文件。材料raw SHA进入原source inventory/cycle，运行在原job冻结实际输入副本，同context receipt及两raw沿原full artifacts归档；不建立另一结果账本或预算。
+
 应用`_BudgetPhase`交错start／poll／finish原监管进程；父不执行phase业务文件系统I/O，S持唯一processes.run回收算法。stopped只在真实reap后发出，此后S禁止再生子进程。当前owner固定source/context能力，执行、观察、fence与清理共享原期限；来源准备自身不授执行权限。具体使用见[训练手册](../TRAINING.md#准备版本化原生来源)。
 
 

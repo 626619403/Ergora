@@ -126,7 +126,7 @@ ergora training register-runner my-project --runner ./training-task/runner-templ
 
 `project` 必须是当前已登记项目，`repo` 必须指向其 Git 根；回执显示 resolve 后的规范路径。字段／argv／超时由原 `agentflow training runner-add` 的登记逻辑验证；`schema_version`须为整数2，exact七字段包含`configuration_readback`，超时为1–82800秒。普通full命令将`configuration_readback`设为null。预览只在隔离子进程的临时配置目录运行原登记器，不修改真实配置；确认后仍由原登记器不可变写入真实 `training-runners/RUNNER_ID.json`。共享配置目录中的ID全局唯一，建议使用带项目名称和版本的ID。
 
-可信配置驱动使用非null的`configuration_readback`，固定`training-configuration-driver-v1`、受审Git source引用、checkout内配置相对路径、`source-bytes`材料角色与观测scheme；command必须为绝对Python、`{configuration_driver}`、`{configuration_request}`三个argv。固定source adapter实现`prepare/describe/run`，构造与两次观察后由同一context运行，receipt经原evidence artifacts归档；该能力只支持原managed full入口，不能用手工run-local取得执行权。接口通过不证明任意目标训练框架已提供该adapter。
+可信配置驱动使用非null的`configuration_readback`，固定`training-configuration-driver-v1`、受审Git source引用、`source-bytes`材料角色、观测scheme及required `prepared_json_format`能力声明（null或`json-v1`）；command必须为绝对Python、`{configuration_driver}`、`{configuration_request}`三个argv。固定source adapter实现`prepare/describe/run`，构造与两次观察后由同一context运行，receipt经原evidence artifacts归档；该能力只支持原managed full入口，不能用手工run-local取得执行权。输入来源只由experiment manifest的`configuration_inputs`选择：`{kind:"git-source",path:"<checkout相对普通文件>"}`，或由原准备owner生成的prepared-json descriptor；runner不再另存配置路径。JSON声明只说明所选source被登记为支持该格式，实际构造和目标语义仍须在原预算内验证。接口通过不证明任意目标训练框架已提供该adapter。
 
 控制台“训练实验”→“可信 runner”→“预览与登记 runner”提供同一流程。HTTP为`POST /api/projects/{project}/training/runner-preview`（`runner`对象）及`POST .../register-runner`（再加`revision / runner_sha256`）。编辑或切项目使旧预览失效，确认内容SHA与原文件字节SHA分列；CLI原文件和原生序列化文件各最多1MiB，HTTP沿既有4MB封套。
 
@@ -148,9 +148,9 @@ ergora training preparation my-project EXPERIMENT_ID
 
 `--max-run-seconds`可省略以使用原owner默认窗口；明确传值时为60–86400秒，且须覆盖runner超时，0／False不表示省略。原CLI draft和每个原生文件各最多1MiB，完整恢复意图最多16MiB；超容量明确拒绝。预览在临时配置／状态目录调用原prepare，绑定真实Git commit、baseline和比较器；spec URI映射回登记的真实manifest路径，manifest字节binding保持原owner结果。预览不写真实执行目录。
 
-确认后先不可变保存原意图，再直接由原prepare依次发布全局manifest、项目manifest与spec；三件并非一个原子事务。`preparation`只读取本地意图及各文件字节事实，无需SDK或服务，状态为`not_recorded / intent_saved / partially_prepared / prepared / conflict / native_files_without_intent`。`prepared`仅表示三原文件与确认计划一致。内容确认的canonical `preview_sha256`与原意图的`intent_sha256`标识同一冻结对象；每个发布文件的字节SHA另列，不能拿文件`sha256sum`代替意图摘要。
+确认后先不可变保存原意图，同步正式意图文件及目录链到登记state root并核同inode／原字节读回，成功后才由原prepare发布正式输出；各件并非一个原子事务。普通full／Git输入仍为全局manifest、项目manifest与spec三件；prepared-json另有两份原raw配置。`preparation`无需SDK或服务，状态为`not_recorded / intent_saved / partially_prepared / prepared / conflict / native_files_without_intent`。`prepared`表示同一原意图和全部输出均已同步并读回一致；读取该状态会在原锁内确认现存原件持久性，不补文件或换ID。目录同步／读回失败不能返回prepared。内容确认的canonical `preview_sha256`与原意图的`intent_sha256`标识同一冻结对象；每个发布文件的字节SHA另列，不能拿文件`sha256sum`代替意图摘要。
 
-若请求失败或回执丢失，先读取原实验ID的准备记录。重复相同`prepare`只读回原意图现状，不自动补文件。确认恢复时使用原intent SHA和当前项目revision：
+若请求失败或回执丢失，先读取原实验ID的准备记录。重复相同`prepare`同步并核回同一原意图和已有文件现状，不自动补文件。确认恢复时使用原intent SHA和当前项目revision：
 
 ```bash
 ergora training resume-prepare my-project EXPERIMENT_ID \
@@ -158,11 +158,28 @@ ergora training resume-prepare my-project EXPERIMENT_ID \
 ergora training show my-project EXPERIMENT_ID
 ```
 
-恢复重核原source字节、注册身份、精确文件计划及已有内容，再由原owner补齐；不同内容不覆盖。显式恢复即使三件完整也拒绝已有job／fence／start；此时仍可用`preparation`或相同`prepare`只读回原准备状态。source漂移、已存在job／fence／start或没有本工具意图的旧原生文件，须先核对其原记录；此入口不自动接管、清理或换ID重试。原意图在所登记执行状态目录`ergora/training-preparations/`，无第二实验数据库。
+恢复重核原source字节、注册身份、精确文件计划及已有内容，再由原owner补齐；不同内容不覆盖。显式恢复即使全部输出完整也拒绝已有job／fence／start；此时仍可用`preparation`或相同`prepare`确认现存原件后读回准备状态。source漂移、已存在job／fence／start或没有本工具意图的旧原生文件，须先核对其原记录；此入口不自动接管、清理或换ID重试。原意图在所登记执行状态目录`ergora/training-preparations/`，无第二实验数据库。
 
 HTTP对应`POST /api/projects/{project}/training/experiment-preview`，body含`experiment / runner_template_id / max_run_seconds`（可省略或null）；`POST .../prepare`再加`revision / preview_sha256`。读取`GET .../training/{experiment_id}/preparation`，恢复`POST .../training/{experiment_id}/resume-prepare`含`revision / intent_sha256`。它们与CLI共用应用入口。训练页“准备实验”中展开“预览与准备实验”，填写完整experiment JSON、已登记runner ID与可选窗口，先预览完整发布计划，再粘贴preview SHA确认。准备完成可查看原实验，提交仍需详情中的独立确认。
 
-请求失败或页面重开时，展开“读取与恢复原准备记录”，输入原实验ID读取各文件事实；`intent_saved / partially_prepared`会展示完整原意图和逐件状态，粘贴原intent SHA后明确恢复。`conflict / native_files_without_intent`不提供覆盖／接管操作。编辑输入或切项目会使旧预览和迟到回执失效，发送期间禁用本面板防双击。完整prepared仅表示文件一致，不代表已经start、训练成功或批准采用。
+请求失败或页面重开时，展开“读取与恢复原准备记录”，输入原实验ID读取各文件事实；`intent_saved / partially_prepared`会展示完整原意图和逐件状态，粘贴原intent SHA后明确恢复。`conflict / native_files_without_intent`不提供覆盖／接管操作。编辑输入或切项目会使旧预览和迟到回执失效，发送期间禁用本面板防双击。完整prepared仅表示原件持久且一致，不代表已经start、训练成功或批准采用。
+
+### 有限 JSON 配置材料接入 managed full
+
+`training search-preview/search-prepare/search-read` 从完整 baseline UTF-8 与有限标量变项生成完整候选配置，保持原候选代码 commit／六阶段export来源。请求字段见随包 `data/schemas/training-search-v1.json`。第一轮模型算法、结构、尺寸、精度和objective保持固定；合法batch/chunk/parallel/library改动仍须满足项目 workload 和完整质量合同。
+
+```bash
+ergora training search-preview my-project --request ./search-request.json
+ergora training search-prepare my-project --request ./search-request.json \
+  --revision REVISION --preview-sha256 PREVIEW_SHA256 --directory ./search-inputs
+ergora training search-read ./search-inputs --sha256 SEARCH_JSON_RAW_SHA256
+```
+
+所选runner必须有非null可信配置驱动及`prepared_json_format="json-v1"`声明；缺失或不匹配在包发布／首原生准备意图前显示configuration execution unavailable，不导入driver来探测。完整包先同步读回，再逐候选沿原准备意图发布两材料、两manifest和spec。配置副本固定在登记state下`training/configurations/EXPERIMENT_ID/{baseline,candidate}.json`；唯一manifest descriptor记录kind/format及两份path/raw SHA/bytes。API `preview_experiment/prepare_experiment`的`configuration_materials`keyword传完整`{format:"json-v1",baseline:{utf8,sha256},candidate:{utf8,sha256}}`，不用观察snapshot或pickle重建配置；普通实验入口默认null。
+
+准备不授执行权、不开clock、不自动循环。操作者仍以返回的原experiment ID／manifest SHA按下文原cycle授权、显式start和managed execute消费材料；不改原三键performance policy、attempt/unknown对账或reaper。wrapper在同一opaque context构造／观察后冻结receipt，首work前重核原raw／source／fence／clock；原full evidence archive保存实际消费的两份raw和receipt。raw SHA、canonical snapshot SHA和adapter semantic identity各有独立意义。只有实际原gate通过才具有其声明范围内的完整证据；JSON能力声明不证明GEAct/MoE、GPU、质量或收益。
+
+`search-read`只核冻结包，不读取当前source／native状态，不创建State或要求Temporal SDK。丢回复／部分发布继续同包、同原intent／ID恢复；已存在job／submission／fence后不补修，丢失原意图也不从包重造。baseline复用、typed screen、negative/skip循环和自动采用属于独立后继。
 
 ## 在控制台查看原实验
 
@@ -540,11 +557,11 @@ HTTP复用同一用例：`GET .../training/{experiment}/approval`；`POST .../ap
 |`baseline_commit / candidate_commit`|真实runner仓库中的完整Git提交；`prepare`补同值`baseline_sha / candidate_sha`，已有别名冲突会拒绝。设计公式、生成代码片段和原result摘要都不是候选commit。|
 |`workload_fingerprint / environment_fingerprint`|项目固定的工作负载与真实环境身份，包括有效batch／token、precision、软件／硬件／mesh等实际条件；保留用于计算指纹的原记录。内容和归一化规则由项目定义，平台不自动探测或证明其真实性。|
 |`dataset_manifest_sha256 / initial_checkpoint_sha256`|真实数据manifest及初态产物摘要，保存可复现来源与内容范围；不能填示例、文件名的SHA或未实际使用的checkpoint。|
-|`base_config_sha256 / candidate_config_sha256`|按runner明确材料角色固定两臂输入；可信配置驱动固定为Git配置源的原字节SHA，不能填观测snapshot SHA。实际构造、完整snapshot及semantic identity另存本次receipt；普通full由其项目合同举证实际配置。配置可解析或提案写了参数不证明执行时使用过。|
+|`base_config_sha256 / candidate_config_sha256`|按runner明确材料角色固定两臂输入；可信配置驱动固定为Git配置源或prepared-json材料的原字节SHA（含BOM／原换行），不能填观测snapshot SHA。实际构造、完整snapshot及semantic identity另存本次receipt；普通full由其项目合同举证实际配置。配置可解析或提案写了参数不证明执行时使用过。|
 |`validation_contract_sha256 / checks_required`|项目独立oracle、容差、shape／stride／梯度／RNG／全rank／恢复等所需覆盖及其固定合同。检查列表非空且唯一；模板中的JVP等仅为示例，按真实任务选择充分检查，不能为迁就PASS删掉必要项。|
 |`quality_required`|显式布尔值；N／A要求true。E是否需要任务质量证据也由项目合同决定；短loss、单算子误差或一次forward不自动替代训练／服务质量。|
 |`comparison_tool_sha256 / performance_policy`|核实际固定`compare_runs.py`原字节SHA；批准实际归一化单位、配对重复／统计／阈值。原gate重算并核两臂代码、配置、环境、数据和初态；局部kernel speedup或Amdahl估算不能充当整体配对测量。|
-|runner的`schema_version / runner_template_id / project / repo / command / timeout_seconds / configuration_readback`|当前runner schema2 exact七字段；真实项目Git根和受信argv。readback为null时提供普通full及`{manifest} / {output} / {baseline_repo} / {candidate_repo}`；为driver object时使用固定三argv、Git source-bytes和原managed执行。使用已验证环境与资源权限，保留唯一作业／rank／取消所有者。|
+|runner的`schema_version / runner_template_id / project / repo / command / timeout_seconds / configuration_readback`|当前runner schema2 exact七字段；真实项目Git根和受信argv。readback为null时提供普通full及`{manifest} / {output} / {baseline_repo} / {candidate_repo}`；为driver object时使用固定三argv、manifest选择的source-bytes输入和原managed执行；prepared-json需`prepared_json_format=json-v1`声明。使用已验证环境与资源权限，保留唯一作业／rank／取消所有者。|
 |`prepare --max-run-seconds`及其补充字段|该值是排队加执行窗口，至少覆盖runner执行walltime，二者分别核预算；prepare还补`runner_template_id / max_run_seconds / local_project`。总搜索、模型调用和原生重试成本另向原所有者核账，不能凭单个walltime声称全预算已受控。|
 |`notes`及人工追溯表|可写提案manifest／input／result身份、完整前驱结果摘要、决定与缺项的说明位置。若在notes记录追溯表SHA，可人工核表与原件；现有validator不自动校验这条关联，表不是新执行或批准凭据。|
 

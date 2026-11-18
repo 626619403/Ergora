@@ -17,10 +17,34 @@ import pytest
 from ergora import projects, reference, tasks, training, training_search
 from ergora.state import State
 from test_task_creation import creation_project
-from test_task_export import export as export_candidate, export_client, export_task
+from test_task_export import export as export_candidate, export_client, export_task as _original_export_task
 from test_task_submission import native_client
 from test_training import experiments, registration
 from test_training_runtime import installation
+from test_training_preparation import stop_after
+from test_training_runner import configuration_source
+from test_training_submission import (assert_budget_process_stopped, native_budget_create, prepared, service,
+                                      stop_controller_test_owner)
+
+
+@pytest.fixture
+def export_task(creation_project, native_client, request, installation, tmp_path):
+    """Give the existing formal export fixture its declared SDK in its own venv."""
+    temporalio = pytest.importorskip('temporalio')
+    interpreter = Path(installation) / '.venv/bin/python'
+    site = Path(temporalio.__file__).parent.parent
+    location = subprocess.run([str(interpreter), '-P', '-c',
+        'import sysconfig;print(sysconfig.get_path("purelib"))'], capture_output=True, text=True, check=True, timeout=10)
+    path = Path(location.stdout.strip()) / 'ergora-test-sdk.pth'
+    path.write_text(str(site) + '\n')
+    observed = subprocess.run([str(interpreter), '-P', '-c',
+        'import json,temporalio,ergora;print(json.dumps({"temporalio":temporalio.__file__,"sdk_version":temporalio.__version__,"ergora":ergora.__file__}))'],
+        capture_output=True, text=True, check=True, timeout=10)
+    imports = json.loads(observed.stdout)
+    assert Path(imports['ergora']).resolve() == Path(reference.__file__).with_name('__init__.py').resolve()
+    (tmp_path / 'native-sdk-reuse.json').write_text(json.dumps({
+        'pth': str(path), 'content': path.read_text(), 'imports': imports}, indent=2) + '\n')
+    return _original_export_task.__wrapped__(creation_project, native_client, request)
 
 
 def _sha(raw):
@@ -76,7 +100,7 @@ def search_request():
 
 
 @pytest.fixture
-def search_input(request, search_request):
+def search_input(request, search_request, configuration_source):
     if sys.platform != 'linux':
         pytest.skip('Native experiment preparation requires Linux/WSL2')
     pytest.importorskip('temporalio')
@@ -86,6 +110,14 @@ def search_input(request, search_request):
     write(prefix / 'baseline.json', baseline)
     search_request['experiment_template'].update(baseline_commit=baseline['commit'], candidate_commit=baseline['commit'],
                                                 workload_fingerprint=baseline['workload_fingerprint'])
+    runner = {'schema_version': 2, 'runner_template_id': 'trusted', 'project': 'demo', 'repo': definition['repo'],
+              'command': [str(Path(definition['execution']['installation']) / '.venv/bin/python'),
+                          '{configuration_driver}', '{configuration_request}'], 'timeout_seconds': 20,
+              'configuration_readback': {'protocol': 'training-configuration-driver-v1',
+                  'source': configuration_source['reference'], 'prepared_json_format': 'json-v1',
+                  'manifest_configuration_role': 'source-bytes',
+                  'observation_scheme': 'fixture-cpu-configuration-v1'}}
+    write(Path(definition['execution']['config_directory']) / 'training-runners/trusted.json', runner)
     return state, definition, runtime, prefix, search_request
 
 
@@ -303,7 +335,8 @@ def test_invalid_requests_fail_before_native_preview_or_any_publication(search_i
     assert _files(runtime, Path(definition['execution']['config_directory'])) == before
 
 
-def test_two_batch_configurations_prepare_real_native_bindings_and_read_offline(search_input, tmp_path, monkeypatch):
+def test_two_batch_configurations_prepare_real_native_bindings_and_read_offline(
+        search_input, configuration_source, tmp_path, monkeypatch):
     state, definition, runtime, prefix, request = search_input
     originals = _files(runtime, Path(definition['execution']['config_directory']))
     project_before = state.project('demo')
@@ -353,9 +386,14 @@ def test_two_batch_configurations_prepare_real_native_bindings_and_read_offline(
     def no_native(*args, **kwargs):
         pytest.fail('Offline packet reading contacted native preparation')
     monkeypatch.setattr(reference.processes, 'run', no_native)
+    # Offline packet verification uses frozen declarations even when the live
+    # source has disappeared and application state cannot be instantiated.
+    source = configuration_source['source']
+    source.rename(source.with_name(source.name + '-unavailable'))
+    monkeypatch.setattr(State, '__init__', lambda *args, **kwargs: pytest.fail('Offline reader created State'))
     observed = training_search.read(directory, sha256=result['sha256'])
     assert observed['plan'] == plan and observed['sha256'] == _sha((directory / 'search.json').read_bytes())
-    assert observed['coverage']['configuration_execution'] == 'unavailable'
+    assert observed['coverage']['configuration_execution'] == 'requires-original-managed-full'
     assert observed['coverage']['runtime_status'] == 'not_queried'
     from ergora.cli import main
     output = io.StringIO()
@@ -370,6 +408,8 @@ class NoSDK(importlib.abc.MetaPathFinder):
             raise ModuleNotFoundError('SDK unavailable in the offline reader')
 sys.meta_path.insert(0, NoSDK())
 from ergora.training_search import read
+from ergora.state import State
+State.__init__ = lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError('Offline reader constructed State'))
 print(json.dumps(read(sys.argv[1],sha256=sys.argv[2]),ensure_ascii=False))
 '''
     offline = subprocess.run([sys.executable, '-c', program, str(directory), result['sha256']],
@@ -382,7 +422,7 @@ print(json.dumps(read(sys.argv[1],sha256=sys.argv[2]),ensure_ascii=False))
 @pytest.mark.skipif(sys.platform != 'linux' or importlib.util.find_spec('temporalio') is None,
                     reason='Original native source export requires Linux/WSL2 and the Temporal SDK')
 def test_completed_original_six_stage_export_binds_source_without_another_export(
-        export_task, export_client, search_request, tmp_path, monkeypatch):
+        export_task, export_client, search_request, configuration_source, tmp_path, monkeypatch):
     state, definition, _, _ = export_task
     exported = export_candidate(export_task)
     assert exported['status'] == 'exported'
@@ -401,7 +441,11 @@ def test_completed_original_six_stage_export_binds_source_without_another_export
         'evidence_uri': 'synthetic:test', 'quality_scope': 'CPU preparation contract only'})
     write(config / 'training-runners/trusted.json', {
         'schema_version': 2, 'runner_template_id': 'trusted', 'project': 'demo', 'repo': definition['repo'],
-        'command': [sys.executable, '-c', 'pass'], 'timeout_seconds': 30, 'configuration_readback': None})
+        'command': [sys.executable, '{configuration_driver}', '{configuration_request}'], 'timeout_seconds': 30,
+        'configuration_readback': {'protocol': 'training-configuration-driver-v1',
+            'source': configuration_source['reference'], 'prepared_json_format': 'json-v1',
+            'manifest_configuration_role': 'source-bytes',
+            'observation_scheme': 'fixture-cpu-configuration-v1'}})
     search_request['experiment_template'].update(baseline_commit=commit, candidate_commit=exported['candidate_sha'])
     search_request['candidate_source'] = {
         'kind': 'exported_six_stage_v1', 'task_id': 'new-task', 'run_id': exported['run_id'],
@@ -433,9 +477,9 @@ def test_completed_original_six_stage_export_binds_source_without_another_export
     assert _files(runtime, config) == saved
 
 
-@pytest.mark.parametrize('boundary', (1, 2))
+@pytest.mark.parametrize('boundary,matching', ((4, 1), (5, 2), (1, 3), (2, 4), (3, 5)))
 def test_partial_native_publication_resumes_frozen_choices_without_reenumeration(
-        search_input, tmp_path, monkeypatch, interrupt_publication, boundary):
+        search_input, tmp_path, monkeypatch, interrupt_publication, boundary, matching):
     state, _, runtime, _, request = search_input
     preview = training_search.preview(state, 'demo', request)
     directory = tmp_path / 'search'
@@ -451,12 +495,20 @@ def test_partial_native_publication_resumes_frozen_choices_without_reenumeration
         _prepare(state, request, preview, directory)
     assert seen == [choices[0]['experiment_id']]
     first = training.preparation(state, 'demo', choices[0]['experiment_id'])
-    assert first['status'] == 'partially_prepared'
-    assert sum(item['state'] == 'matching' for item in first['files']) == boundary
+    assert first['status'] == ('prepared' if matching == 5 else 'partially_prepared')
+    assert sum(item['state'] == 'matching' for item in first['files']) == matching
     frozen = _files(directory)
     published = {runtime / relative: (runtime / relative).read_bytes()
                  for relative in choices[0]['native_plan']['files'] if (runtime / relative).exists()}
     interrupt_publication()
+    if boundary == 4:
+        path, original_raw = next(iter(published.items()))
+        path.write_bytes(original_raw + b'\n')
+        conflicting = _files(runtime, directory)
+        with pytest.raises(ValueError):
+            _prepare(state, request, preview, directory)
+        assert _files(runtime, directory) == conflicting
+        path.write_bytes(original_raw)
     def no_new_preview(*args, **kwargs):
         pytest.fail('Recovery regenerated the frozen search or a native preview')
     monkeypatch.setattr(training_search, 'preview', no_new_preview)
@@ -571,7 +623,7 @@ def test_revision_source_drift_and_packet_corruption_preserve_partial_originals(
     outside = tmp_path / 'unrelated-config.json'
     outside.write_bytes(b'{"unrelated":"preserved"}\n')
     for mutate in ('policy', 'policy-number-kind', 'native-request-number-kind', 'native-plan',
-                   'cardinality', 'coverage', 'config', 'extra-file', 'config-symlink'):
+                   'cardinality', 'coverage', 'frozen-source', 'config', 'extra-file', 'config-symlink'):
         packet = json.loads(original_packet)
         if mutate == 'policy':
             packet['performance_policy']['statistics']['confidence'] = 0.97
@@ -587,6 +639,10 @@ def test_revision_source_drift_and_packet_corruption_preserve_partial_originals(
             packet['cardinality'] = 2.0
         elif mutate == 'coverage':
             packet['coverage']['execution_authorized'] = 0
+        elif mutate == 'frozen-source':
+            for native in packet['choices']:
+                native['native_plan']['sources']['runner']['document']['configuration_readback']['source']['commit'] = 'x' * 40
+                native['native_preview_sha256'] = _canonical_sha(native['native_plan'])
         elif mutate == 'config':
             (directory / choice['configuration']['path']).write_text('{"changed":true}\n')
         elif mutate == 'extra-file':
@@ -594,7 +650,7 @@ def test_revision_source_drift_and_packet_corruption_preserve_partial_originals(
         else:
             (directory / choice['configuration']['path']).unlink()
             (directory / choice['configuration']['path']).symlink_to(outside)
-        if mutate in ('policy', 'policy-number-kind', 'native-request-number-kind', 'native-plan', 'cardinality', 'coverage'):
+        if mutate in ('policy', 'policy-number-kind', 'native-request-number-kind', 'native-plan', 'cardinality', 'coverage', 'frozen-source'):
             (directory / 'search.json').write_text(json.dumps(packet), encoding='utf-8')
         with pytest.raises(ValueError):
             training_search.read(directory)
@@ -623,3 +679,349 @@ def test_revision_source_drift_and_packet_corruption_preserve_partial_originals(
         _prepare(state, request, preview, directory)
     assert _files(directory) == {path: raw for path, raw in saved.items() if directory in path.parents}
     assert not (runtime / f"training/specs/{choice['experiment_id']}.json").exists()
+
+
+@pytest.fixture
+def search_execution(search_input, service, configuration_source, tmp_path, request):
+    """External JSON, one unchanged source commit, and the original managed CPU path."""
+    state, definition, runtime, prefix, search_request = search_input
+    options = getattr(request, 'param', {})
+    baseline = '\ufeff{ "global_batch": 12, "microbatch": 3, "strategy": "redundant-loop"'
+    if options:
+        baseline += ', ' + json.dumps(options)[1:-1]
+    baseline += ' }\r\n'
+    search_request['experiment_template']['allowed_changes'].append('Remove redundant exact arithmetic')
+    candidate = {'global_batch': 24, 'microbatch': 6, 'strategy': 'closed-form', **options}
+    search_request['baseline_configuration'] = {'format': 'json-v1', 'utf8': baseline,
+                                               'sha256': _sha(baseline.encode('utf-8'))}
+    search_request['configuration'] = {
+        'format': 'json-v1', 'template': candidate,
+        'schema': {'type': 'object', 'additionalProperties': False,
+                   'required': list(candidate), 'properties': {
+                       name: {'type': 'integer' if name in ('global_batch', 'microbatch') else 'string'}
+                       for name in candidate}},
+        'mutable': [{'path': ['global_batch'], 'change_type': 'batch_size',
+                     'allowed_change': search_request['experiment_template']['allowed_changes'][0]},
+                    {'path': ['microbatch'], 'change_type': 'batch_organization',
+                     'allowed_change': search_request['experiment_template']['allowed_changes'][1]},
+                    {'path': ['strategy'], 'change_type': 'execution_parameter',
+                     'allowed_change': search_request['experiment_template']['allowed_changes'][2]}]}
+    search_request['dimensions'] = [{'name': 'batch', 'path': ['global_batch'], 'values': [24, 48]},
+                                    {'name': 'chunk', 'path': ['microbatch'], 'values': [6]}]
+    search_request['selection']['max_trials'] = 2
+    search_request['measurement'] = {'normalization_source_samples': 48,
+        'statistics': {'min_pairs': 4, 'bootstrap_resamples': 1000, 'seed': 73},
+        'thresholds': {'min_saved_seconds_at_normalization': .001,
+                       'min_speedup_percent': None, 'mode': 'all'}}
+    search_request['budget'] = {'wall_seconds': 90, 'cleanup_seconds': 15, 'control_timeout_seconds': 10}
+    search_request['experiment_template'].update(
+        base_config_sha256=_sha(baseline.encode('utf-8')), track='E', quality_required=False,
+        checks_required=['cpu_exact_configuration'])
+    baseline_path = prefix / 'baseline.json'
+    baseline_record = json.loads(baseline_path.read_bytes())
+    baseline_record['config_sha256'] = search_request['baseline_configuration']['sha256']
+    baseline_path.write_text(json.dumps(baseline_record) + '\n')
+    source_commit = baseline_record['commit']
+    assert configuration_source['git'](Path(definition['repo']), 'ls-tree', '-r', '--name-only', source_commit) == ''
+    assert search_request['experiment_template']['baseline_commit'] == source_commit
+    assert search_request['experiment_template']['candidate_commit'] == source_commit
+    preview = training_search.preview(state, 'demo', search_request)
+    directory = tmp_path / 'external-json-search'
+    published = _prepare(state, search_request, preview, directory)
+    assert not configuration_source['markers'].exists()
+    assert not (state.root / 'training-cycles').exists()
+    return {'state': state, 'definition': definition, 'runtime': runtime, 'prefix': prefix,
+            'request': search_request, 'preview': preview, 'prepared': published, 'directory': directory,
+            'markers': configuration_source['markers'], 'service': service, 'tmp_path': tmp_path,
+            'baseline_record': baseline_path.read_bytes()}
+
+
+def _execute_search(item, *, limit=None, lose_reply=False):
+    from ergora import training_cycles
+
+    state, definition, runtime = item['state'], item['definition'], item['runtime']
+    request = {'schema_version': 1, 'budget': item['request']['budget'],
+               'candidates': [{'experiment_id': result['experiment_id'], 'manifest_sha256': result['manifest_sha256'],
+                               'change': 'External JSON batch/chunk grouping',
+                               'next_bottleneck': 'CPU fixture only; no GPU or model-quality claim'}
+                              for result in item['prepared']['experiments']]}
+    source = item['tmp_path'] / 'original-cycle-input'
+    selected = training_cycles.create(state, 'demo', request, source)
+    authorized = training_cycles.authorize(state, 'demo', 'search', source, selected['sha256'],
+                                          state.project('demo')['revision'], confirm=True)
+    item['authorization'] = authorized
+    authorization_path = state.root / 'training-cycles/demo/search/authorization.json'
+    original_clock = authorization_path.read_bytes()
+    results = []
+    for result in item['prepared']['experiments'][:limit]:
+        ident = result['experiment_id']
+        record = item['tmp_path'] / (ident + '-service.json')
+        item['service'][0]('accepted', budget_scenario='configuration-full', record_path=record)
+        try:
+            submitted = training_cycles.start(state, 'demo', 'search', ident,
+                authorized['authorization_sha256'], state.project('demo')['revision'])
+            created = native_budget_create(definition, ident, managed=True)
+            assert created.returncode == 0, created.stderr
+            job = runtime / 'training/jobs' / ident
+            native_sha = _sha((job / 'request.json').read_bytes())
+            def execute():
+                return training.execute(state, 'demo', ident, state.project('demo')['revision'],
+                    submitted['intent_sha256'], submitted['run_id'], native_sha, confirm=True)
+            if lose_reply and results:
+                invoke = reference.training_execution
+                def lose_actual_reply(project, home, operation, payload, **kwargs):
+                    value = invoke(project, home, operation, payload, **kwargs)
+                    if operation == 'request':
+                        raise ValueError('Lost actual prepared-JSON execution request reply')
+                    return value
+                with pytest.MonkeyPatch.context() as patch:
+                    patch.setattr(reference, 'training_execution', lose_actual_reply)
+                    with pytest.raises(ValueError, match='Lost actual prepared-JSON'):
+                        execute()
+            else:
+                execute()
+            import time
+            until = time.monotonic() + 30
+            while not (job / 'managed-execution/stopped.json').exists() and time.monotonic() < until:
+                time.sleep(.03)
+            assert (job / 'managed-execution/stopped.json').is_file(), 'The original supervisor must reap its executor'
+            observed = training.execution(state, 'demo', ident)
+            results.append({'experiment_id': ident, 'job': job, 'execution': observed,
+                            'submission': submitted, 'native_sha256': native_sha, 'service': record})
+        finally:
+            stop_controller_test_owner(runtime, ident=ident)
+        assert authorization_path.read_bytes() == original_clock
+    item['executions'] = results
+    return results
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+def test_search_materials_run_two_real_cpu_candidates_on_one_original_clock_and_archive(search_execution):
+    item = search_execution
+    results = _execute_search(item, lose_reply=True)
+    assert len(results) == 2
+    actual_grouping = []
+    for choice, result in zip(item['preview']['plan']['choices'], results):
+        job, ident, observed = result['job'], result['experiment_id'], result['execution']
+        assert observed['executor_stop_confirmed'] is True
+        assert all(observed['records'][name] is not None for name in ('request', 'launch', 'attempt', 'ack', 'stopped'))
+        assert json.loads((job / 'result.json').read_bytes())['state'] == 'SUCCEEDED'
+        gate = json.loads((job / 'gate-report.json').read_bytes())
+        assert gate['passed'] is True, gate
+        manifest = json.loads((item['runtime'] / f'training/manifests/{ident}.json').read_bytes())
+        receipt_raw = (job / 'run-output/configuration-receipt.json').read_bytes()
+        receipt = json.loads(receipt_raw)
+        assert receipt['configuration_inputs'] == manifest['configuration_inputs']
+        assert receipt['native_request_sha256'] == result['native_sha256']
+        assert receipt['binding'] == json.loads((job / 'request.json').read_bytes())['experiment']['binding']
+        for name in ('request', 'launch', 'attempt', 'ack'):
+            assert receipt['managed'][name + '_sha256'] == observed['record_sha256'][name]
+        archived = training.evidence(item['state'], 'demo', ident)['archive']
+        assert archived['evidence_sha256'] == gate['evidence_sha256']
+        archive = Path(archived['path'])
+        configuration_request = json.loads((job / 'configuration-request.json').read_bytes())
+        assert receipt['configurations'] == configuration_request['configurations']
+        artifacts = {entry['path']: entry['sha256']
+                     for entry in json.loads((job / 'run-output/evidence.json').read_bytes())['artifacts']}
+        assert artifacts['configuration-receipt.json'] == _sha(receipt_raw)
+        assert (archive / 'configuration-receipt.json').read_bytes() == receipt_raw
+        for arm, packet_path in (('baseline', 'baseline-config.json'), ('candidate', choice['configuration']['path'])):
+            raw = (item['directory'] / packet_path).read_bytes()
+            descriptor = manifest['configuration_inputs'][arm]
+            assert descriptor == {'path': f'training/configurations/{ident}/{arm}.json',
+                                  'sha256': _sha(raw), 'bytes': len(raw)}
+            assert (item['runtime'] / descriptor['path']).read_bytes() == raw
+            assert (job / f'run-output/configuration-inputs/{arm}.json').read_bytes() == raw
+            assert (archive / f'configuration-inputs/{arm}.json').read_bytes() == raw
+            assert receipt['configurations'][arm] == {
+                'repo': str(job / arm), 'commit': manifest[arm + '_commit'],
+                'path': str(job / f'run-output/configuration-inputs/{arm}.json'), 'source_sha256': _sha(raw)}
+            assert artifacts[f'configuration-inputs/{arm}.json'] == _sha(raw)
+            observation = receipt['observations'][arm]
+            assert observation['source_sha256'] == _sha(raw)
+            assert observation['snapshot_sha256'] == _canonical_sha(observation['snapshot'])
+            assert observation['semantic_identity']['sha256'] == _sha(
+                json.dumps(observation['snapshot'], sort_keys=True).encode())
+        candidate = json.loads((item['directory'] / choice['configuration']['path']).read_bytes())
+        raw_result = json.loads((job / 'run-output/raw/0-candidate.json').read_bytes())
+        groups = raw_result['grouping']
+        assert groups == [[candidate['microbatch']] * (candidate['global_batch'] // candidate['microbatch'])] * (
+            raw_result['source_samples'] // candidate['global_batch'])
+        actual_grouping.append(groups)
+        baseline_result = json.loads((job / 'run-output/raw/0-baseline.json').read_bytes())
+        assert raw_result['values'] == baseline_result['values']
+        assert baseline_result['grouping'] != groups
+        assert json.loads(result['service'].read_bytes())['starts'] == 1
+        before = _files(job / 'managed-execution')
+        with pytest.raises(ValueError):
+            training.execute(item['state'], 'demo', ident, item['state'].project('demo')['revision'],
+                result['submission']['intent_sha256'], result['submission']['run_id'], result['native_sha256'], confirm=True)
+        assert _files(job / 'managed-execution') == before
+        for name in ('supervisor', 'executor'):
+            assert_budget_process_stopped(observed['records']['attempt'][name])
+    assert actual_grouping[0] != actual_grouping[1]
+    prepared_contexts = [json.loads(line) for line in (item['markers'] / 'prepare.jsonl').read_text().splitlines()]
+    first_work = [json.loads(line) for line in (item['markers'] / 'first-work.jsonl').read_text().splitlines()]
+    assert len(prepared_contexts) == len(first_work) == 2
+    assert [entry['identity'] for entry in prepared_contexts] == [entry['identity'] for entry in first_work]
+    assert all(entry['observations'] == 2 for entry in first_work)
+    assert (item['prefix'] / 'baseline.json').read_bytes() == item['baseline_record']
+
+
+@pytest.mark.parametrize('prepared_format', (None, 'missing'))
+def test_search_requires_declared_json_execution_before_any_intent_or_import(
+        search_input, configuration_source, tmp_path, prepared_format):
+    state, definition, runtime, _, request = search_input
+    path = Path(definition['execution']['config_directory']) / 'training-runners/trusted.json'
+    runner = json.loads(path.read_bytes())
+    if prepared_format == 'missing':
+        runner['configuration_readback'].pop('prepared_json_format')
+    else:
+        runner['configuration_readback']['prepared_json_format'] = prepared_format
+    path.write_text(json.dumps(runner) + '\n')
+    before = _files(runtime, path.parent)
+    with pytest.raises(ValueError):
+        training_search.preview(state, 'demo', request)
+    with pytest.raises(ValueError):
+        training_search.prepare(state, 'demo', request, state.project('demo')['revision'], '0' * 64, tmp_path / 'unavailable')
+    assert _files(runtime, path.parent) == before
+    assert not configuration_source['markers'].exists()
+    assert not (tmp_path / 'unavailable').exists()
+    assert not (runtime / 'ergora/training-preparations').exists()
+    assert not (state.root / 'training-cycles').exists()
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('search_execution', [{'fault': 'last-material-fence'},
+                                           {'fault': 'last-material-deadline'}], indirect=True)
+def test_prepared_driver_checks_live_authority_after_the_last_actual_material_read(search_execution):
+    item = search_execution
+    result, = _execute_search(item, limit=1)
+    observed, job = result['execution'], result['job']
+    assert observed['executor_stop_confirmed'] is True
+    assert (item['markers'] / 'last-material-returned.jsonl').is_file()
+    assert (item['markers'] / 'last-guard-rejected.jsonl').is_file()
+    assert len((item['markers'] / 'prepare.jsonl').read_text().splitlines()) == 1
+    assert len((item['markers'] / 'describe.jsonl').read_text().splitlines()) == 2
+    assert not (item['markers'] / 'first-work.jsonl').exists()
+    assert not (job / 'run-output/evidence.json').exists()
+    assert not (job / 'gate-report.json').exists()
+    receipt = json.loads((job / 'run-output/configuration-receipt.json').read_bytes())
+    assert receipt['managed'] == {name + '_sha256': observed['record_sha256'][name]
+                                  for name in ('request', 'launch', 'attempt', 'ack')}
+    assert json.loads(result['service'].read_bytes())['starts'] == 1
+    for name in ('supervisor', 'executor'):
+        assert_budget_process_stopped(observed['records']['attempt'][name])
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('search_execution', [{'fault': 'configuration-drift'}], indirect=True)
+def test_prepared_actual_input_drift_after_construction_never_reaches_first_work(search_execution):
+    item = search_execution
+    result, = _execute_search(item, limit=1)
+    assert result['execution']['executor_stop_confirmed'] is True
+    assert len((item['markers'] / 'prepare.jsonl').read_text().splitlines()) == 1
+    assert not (item['markers'] / 'first-work.jsonl').exists()
+    assert json.loads((result['job'] / 'result.json').read_bytes())['state'] == 'FAILED'
+    assert not (result['job'] / 'gate-report.json').exists()
+    assert not (result['job'] / 'run-output/evidence.json').exists()
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('mutation', ('raw-bytes', 'symlink'))
+def test_native_material_drift_cannot_enter_the_original_cycle_source_inventory(search_execution, tmp_path, mutation):
+    item = search_execution
+    ident = item['prepared']['experiments'][0]['experiment_id']
+    path = item['runtime'] / f'training/configurations/{ident}/candidate.json'
+    original = path.read_bytes()
+    if mutation == 'raw-bytes':
+        path.write_bytes(original + b'\n')
+    else:
+        outside = tmp_path / 'same-external-data.json'
+        outside.write_bytes(original)
+        path.unlink()
+        path.symlink_to(outside)
+    with pytest.raises(ValueError):
+        _execute_search(item)
+    assert not item['markers'].exists()
+    assert not (item['runtime'] / 'ergora/training-submissions').exists()
+    assert not (item['state'].root / 'training-cycles/demo/search/authorization.json').exists()
+    if mutation == 'symlink':
+        assert outside.read_bytes() == original
+
+
+def test_prepared_intent_directory_sync_precedes_all_five_native_outputs_and_resumes_same_id(
+        search_input, configuration_source, stop_after, tmp_path):
+    state, _, runtime, _, request = search_input
+    preview = training_search.preview(state, 'demo', request)
+    choice = preview['plan']['choices'][0]
+    ident = choice['experiment_id']
+    assert len(choice['native_plan']['files']) == 5
+    trace = tmp_path / 'prepared-intent-sync.jsonl'
+    directory = tmp_path / 'prepared-inputs'
+    stop_after(sync_failure='parent', trace=trace, ident=ident)
+    with pytest.raises(ValueError, match='intent synchronization failure'):
+        _prepare(state, request, preview, directory)
+    original = (runtime / f'ergora/training-preparations/{ident}.intent.json').read_bytes()
+    assert training_search.read(directory)['plan'] == preview['plan']
+    assert not any((runtime / name).exists() for name in choice['native_plan']['files'])
+    events = [json.loads(line) for line in trace.read_text().splitlines()]
+    assert events and not any(event['event'] == 'native-output-call' for event in events)
+    assert not configuration_source['markers'].exists()
+    assert not (state.root / 'training-cycles').exists()
+    stop_after()
+    restored = _prepare(state, request, preview, directory)
+    assert restored['status'] == 'prepared'
+    assert restored['experiments'][0]['experiment_id'] == ident
+    assert restored['experiments'][0]['intent_sha256'] == choice['native_preview_sha256']
+    assert (runtime / f'ergora/training-preparations/{ident}.intent.json').read_bytes() == original
+    for relative, raw in choice['native_plan']['files'].items():
+        assert (runtime / relative).read_bytes() == raw.encode('utf-8')
+    assert not configuration_source['markers'].exists()
+    assert not (state.root / 'training-cycles').exists()
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('search_execution', [{'fault': 'receipt-raw-drift'}], indirect=True)
+def test_prepared_receipt_raw_drift_during_work_never_enters_archive(search_execution):
+    item = search_execution
+    result, = _execute_search(item, limit=1)
+    job, observed, ident = result['job'], result['execution'], result['experiment_id']
+    before = (item['markers'] / 'receipt-before.raw').read_bytes()
+    after = (item['markers'] / 'receipt-after.raw').read_bytes()
+    assert after == before + b'\n' and json.loads(before) == json.loads(after)
+    receipt = json.loads(before)
+    assert receipt['native_request_sha256'] == result['native_sha256']
+    assert receipt['managed'] == {name + '_sha256': observed['record_sha256'][name]
+                                 for name in ('request', 'launch', 'attempt', 'ack')}
+    assert observed['executor_stop_confirmed'] is True
+    assert all(observed['records'][name] is not None for name in ('request', 'launch', 'attempt', 'ack', 'stopped'))
+    assert len((item['markers'] / 'first-work.jsonl').read_text().splitlines()) == 1
+    assert json.loads((job / 'result.json').read_bytes())['state'] == 'FAILED'
+    assert 'Configuration receipt changed during training work' in (job / 'run-output/execution.log').read_text()
+    assert not (job / 'gate-report.json').exists()
+    assert not (item['prefix'] / 'experiments' / ident / 'accepted-evidence').exists()
+    artifacts = json.loads((job / 'run-output/evidence.json').read_bytes())['artifacts']
+    assert not any(entry['path'] == 'configuration-receipt.json' for entry in artifacts)
+    for name in ('supervisor', 'executor'):
+        assert_budget_process_stopped(observed['records']['attempt'][name])
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('search_execution', [{'fault': 'receipt-readback-inode'}], indirect=True)
+def test_prepared_receipt_readback_confirms_the_actual_inode_before_work(search_execution):
+    item = search_execution
+    result, = _execute_search(item, limit=1)
+    observed, job = result['execution'], result['job']
+    drift, = [json.loads(line) for line in (item['markers'] / 'receipt-inode-drift.jsonl').read_text().splitlines()]
+    assert drift['same_raw'] is True and drift['before_inode'] != drift['after_inode']
+    assert observed['executor_stop_confirmed'] is True
+    assert len((item['markers'] / 'prepare.jsonl').read_text().splitlines()) == 1
+    assert len((item['markers'] / 'describe.jsonl').read_text().splitlines()) == 1
+    assert not (item['markers'] / 'first-work.jsonl').exists()
+    assert not (job / 'run-output/evidence.json').exists()
+    assert not (job / 'gate-report.json').exists()
+    assert json.loads((job / 'result.json').read_bytes())['state'] == 'FAILED'
+    assert 'changed during durable readback' in (job / 'run-output/execution.log').read_text()
+    for name in ('supervisor', 'executor'):
+        assert_budget_process_stopped(observed['records']['attempt'][name])

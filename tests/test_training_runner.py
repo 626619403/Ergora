@@ -34,12 +34,10 @@ def runner_project(registration, tmp_path):
 
 
 @pytest.fixture
-def configuration_project(registration, tmp_path, monkeypatch):
-    """Real source/config commits; registration itself must never import the driver."""
+def configuration_source(tmp_path, monkeypatch):
+    """A real reviewed source identity; constructing its reference never imports it."""
     from ergora import training_configuration
 
-    state, definition = registration
-    repository = Path(definition['repo'])
     source = tmp_path / 'trusted configuration source'
     source.mkdir()
     environment = dict(os.environ, GIT_AUTHOR_NAME='Fixture', GIT_AUTHOR_EMAIL='fixture@example.test',
@@ -58,6 +56,18 @@ def configuration_project(registration, tmp_path, monkeypatch):
     git(source, 'init')
     shutil.copyfile(Path(__file__).parent / 'fixtures/training_configuration_driver.py', source / 'driver.py')
     source_commit = commit(source, 'trusted test-only CPU configuration driver')
+    markers = tmp_path / 'configuration markers'
+    monkeypatch.setenv('ERGORA_TEST_CONFIGURATION_MARKERS', str(markers))
+    selected = training_configuration.source_reference(source, source_commit, 'driver.py')
+    return {'source': source, 'reference': selected, 'markers': markers, 'git': git, 'commit': commit}
+
+
+@pytest.fixture
+def configuration_project(registration, configuration_source):
+    """Real source/config commits; registration itself must never import the driver."""
+    state, definition = registration
+    repository = Path(definition['repo'])
+    git, commit = configuration_source['git'], configuration_source['commit']
     configuration = repository / 'src/configuration.json'
     configuration.parent.mkdir()
     baseline_raw = b'{ "global_batch": 12, "microbatch": 3, "strategy": "redundant-loop" }\r\n'
@@ -66,19 +76,17 @@ def configuration_project(registration, tmp_path, monkeypatch):
     candidate_raw = b'{"global_batch":24,"microbatch":6,"strategy":"closed-form"}\n'
     configuration.write_bytes(candidate_raw)
     candidate_commit = commit(repository, 'candidate CPU source configuration')
-    markers = tmp_path / 'configuration markers'
-    monkeypatch.setenv('ERGORA_TEST_CONFIGURATION_MARKERS', str(markers))
-    selected = training_configuration.source_reference(source, source_commit, 'driver.py')
+    selected = configuration_source['reference']
     runner = {'schema_version': 2, 'runner_template_id': 'configuration-cpu', 'project': 'demo',
               'repo': definition['repo'], 'command': [str(Path(definition['execution']['installation']) / '.venv/bin/python'),
                    '{configuration_driver}', '{configuration_request}'], 'timeout_seconds': 20,
               'configuration_readback': {'protocol': 'training-configuration-driver-v1', 'source': selected,
-                  'configuration_path': 'src/configuration.json', 'manifest_configuration_role': 'source-bytes',
+                  'prepared_json_format': None, 'manifest_configuration_role': 'source-bytes',
                   'observation_scheme': 'fixture-cpu-configuration-v1'}}
-    return {'state': state, 'definition': definition, 'runner': runner, 'markers': markers,
+    return {'state': state, 'definition': definition, 'runner': runner, 'markers': configuration_source['markers'],
             'baseline_raw': baseline_raw, 'baseline_commit': baseline_commit,
             'candidate_raw': candidate_raw, 'candidate_commit': candidate_commit,
-            'configuration': configuration, 'source': source, 'git': git, 'commit': commit}
+            'configuration': configuration, 'source': configuration_source['source'], 'git': git, 'commit': commit}
 
 
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)

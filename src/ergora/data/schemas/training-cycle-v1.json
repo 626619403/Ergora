@@ -7,7 +7,7 @@
     "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
     "configurationReadback": {
       "type": ["object", "null"], "additionalProperties": false,
-      "required": ["protocol", "source", "configuration_path", "manifest_configuration_role", "observation_scheme"],
+      "required": ["protocol", "source", "prepared_json_format", "manifest_configuration_role", "observation_scheme"],
       "properties": {
         "protocol": {"const": "training-configuration-driver-v1"},
         "source": {
@@ -20,7 +20,7 @@
             "entrypoint": {"type": "string", "minLength": 1}
           }
         },
-        "configuration_path": {"type": "string", "minLength": 1},
+        "prepared_json_format": {"enum": [null, "json-v1"]},
         "manifest_configuration_role": {"const": "source-bytes"},
         "observation_scheme": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$"}
       }

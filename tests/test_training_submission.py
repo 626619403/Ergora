@@ -19,7 +19,7 @@ from ergora import projects, reference, registrations, training
 from test_registrations import original_registration
 from test_training import experiments, registration
 from test_training_runtime import cycle_sdk_completion, installation
-from test_training_runner import configuration_project
+from test_training_runner import configuration_project, configuration_source
 
 
 @pytest.fixture
@@ -692,11 +692,11 @@ asyncio.run(run())
         capture_output=True, text=True, timeout=10)
 
 
-def wait_budget_stopped(runtime, seconds=15):
+def wait_budget_stopped(runtime, seconds=15, *, ident='alpha'):
     from ergora.reference_training_budget import _process_identity
     from ergora.state import file_lock
 
-    folder = runtime / 'ergora/training-submissions/alpha.budget'
+    folder = runtime / f'ergora/training-submissions/{ident}.budget'
     owner = json.loads((folder / 'owner.json').read_bytes())
     until = time.monotonic() + seconds
     while time.monotonic() < until:
@@ -754,7 +754,8 @@ def configuration_execution(configuration_project, cycle_selection, service, tmp
     draft = json.loads((runtime / 'training/manifests/alpha.json').read_bytes())
     for name in ('local_project', 'runner_template_id', 'baseline_sha', 'candidate_sha', 'max_run_seconds'):
         draft.pop(name, None)
-    draft.update(baseline_commit=item['baseline_commit'], candidate_commit=item['candidate_commit'],
+    draft.update(configuration_inputs={'kind': 'git-source', 'path': 'src/configuration.json'},
+                 baseline_commit=item['baseline_commit'], candidate_commit=item['candidate_commit'],
                  base_config_sha256=hashlib.sha256(item['baseline_raw']).hexdigest(),
                  candidate_config_sha256=hashlib.sha256(item['candidate_raw']).hexdigest(),
                  track='E', quality_required=False, checks_required=['cpu_exact_configuration'],
@@ -1067,18 +1068,18 @@ def run_cycle_candidate(factory, ordinal=0):
     return asyncio.run(factory(ordinal).run())
 
 
-def stop_controller_test_owner(runtime):
+def stop_controller_test_owner(runtime, *, ident='alpha'):
     from ergora import processes
     import signal
 
-    path = runtime / 'ergora/training-submissions/alpha.budget/owner.json'
+    path = runtime / f'ergora/training-submissions/{ident}.budget/owner.json'
     if path.exists():
         owner = json.loads(path.read_bytes())
         try:
             processes.notify_identity({key: owner[key] for key in ('pid', 'start_ticks', 'boot_id')}, signal.SIGTERM)
         except (OSError, ValueError):
             pass
-        wait_budget_stopped(runtime, seconds=25)
+        wait_budget_stopped(runtime, seconds=25, ident=ident)
 
 
 @pytest.mark.parametrize('installation', ['managed'], indirect=True)

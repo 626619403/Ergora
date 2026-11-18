@@ -1,7 +1,6 @@
 """Finite configuration preparation, using the original native publication owner.
 
-This version does not execute candidates, start a budget, or attest that a
-registered runner reads these configuration files. Its offline reader verifies
+This preparation does not execute candidates or start a budget. Its offline reader verifies
 content and links, not execution authority or current native state.
 """
 
@@ -24,6 +23,7 @@ from . import contracts, tasks, training
 from .asset_trees import inventory_tree, is_link, publish_directory
 from .definition_bundles import parse_json
 from .state import State
+from .training_materials import material_plan, relative, require_driver
 
 
 MAX_REQUEST_BYTES = 1_048_576
@@ -32,7 +32,7 @@ MAX_PACKAGE_BYTES = 10_000_000
 _SCHEMA = json.loads((Path(__file__).parent / 'data/schemas/training-search-v1.json').read_text())
 _COVERAGE = {'operation': 'preparation-only', 'origin_authenticated': False,
              'runtime_status': 'not_queried', 'execution_authorized': False,
-             'budget_started': False, 'configuration_execution': 'unavailable'}
+             'budget_started': False, 'configuration_execution': 'requires-original-managed-full'}
 _PACKET_FIELDS = {'schema_version', 'kind', 'control_home', 'project', 'request', 'request_sha256',
                   'candidate_source', 'cardinality', 'family_allocation', 'performance_policy',
                   'performance_policy_sha256', 'baseline_configuration', 'choices', 'coverage'}
@@ -311,7 +311,11 @@ def _choice(request, project, ordinal, grid_ordinal, combination):
     # Original native serialization preserves insertion order. Normalize the
     # request before its first native preview so readback cannot change bytes.
     native = parse_json(_encode({'experiment': {**request['experiment_template'], 'experiment_id': ident,
-                 'candidate_config_sha256': digest, 'performance_policy': policy}, **request['runner']}).decode(),
+                 'candidate_config_sha256': digest, 'performance_policy': policy}, **request['runner'],
+                 'configuration_materials': {'format': 'json-v1',
+                     'baseline': {'utf8': request['baseline_configuration']['utf8'],
+                                  'sha256': request['baseline_configuration']['sha256']},
+                     'candidate': {'utf8': raw.decode('utf-8'), 'sha256': digest}}}).decode(),
                  'generated native request', finite=True, bounded=True)
     return {'ordinal': ordinal, 'grid_ordinal': grid_ordinal, 'combination': combination, 'variant_id': variant,
             'experiment_id': ident, 'configuration': {'path': 'configs/' + ident + '.json',
@@ -342,6 +346,25 @@ def _check_native(packet, choice):
     baseline, runner = (plan['sources'][name]['document'] for name in ('baseline', 'runner'))
     _exact(runner, {'schema_version', 'runner_template_id', 'project', 'repo', 'command', 'timeout_seconds', 'configuration_readback'},
            'original runner template')
+    capability = runner['configuration_readback']
+    _exact(capability, {'protocol', 'source', 'prepared_json_format', 'manifest_configuration_role', 'observation_scheme'},
+           'frozen configuration readback')
+    if (capability['protocol'] != 'training-configuration-driver-v1'
+            or capability['manifest_configuration_role'] != 'source-bytes'
+            or capability['prepared_json_format'] != 'json-v1'
+            or not isinstance(capability['observation_scheme'], str)
+            or re.fullmatch('[A-Za-z0-9][A-Za-z0-9_.-]{0,127}', capability['observation_scheme']) is None):
+        raise ValueError('Frozen configuration execution declaration is unavailable or unsupported')
+    source = capability['source']
+    _exact(source, {'repo', 'commit', 'inventory_sha256', 'entrypoint'}, 'frozen configuration source')
+    _digest(source['inventory_sha256'])
+    relative(source['entrypoint'])
+    if (not isinstance(source['repo'], str) or not PurePosixPath(source['repo']).is_absolute()
+            or not isinstance(source['commit'], str) or re.fullmatch('[a-f0-9]{40}', source['commit']) is None
+            or len(runner['command']) != 3 or not isinstance(runner['command'][0], str)
+            or not PurePosixPath(runner['command'][0]).is_absolute()
+            or runner['command'][1:] != ['{configuration_driver}', '{configuration_request}']):
+        raise ValueError('Frozen configuration driver source or command differs from its current contract')
     _exact(plan['execution'], {'installation', 'config_directory', 'state_directory'}, 'native execution paths')
     if (any(not isinstance(value, str) or not PurePosixPath(value).is_absolute()
             for value in plan['execution'].values())
@@ -359,19 +382,24 @@ def _check_native(packet, choice):
             or type(runner['timeout_seconds']) is not int
             or not 1 <= runner['timeout_seconds'] <= request['max_run_seconds']):
         raise ValueError('Original runner differs from the selected project or window')
+    inputs, raw_materials = material_plan(ident, request['configuration_materials'])
     targets = ('training/manifests/' + ident + '.json',
                'training/projects/' + project['id'] + '/perf/experiments/' + ident + '/manifest.json',
-               'training/specs/' + ident + '.json')
+               'training/specs/' + ident + '.json', *raw_materials)
     _exact(plan['files'], targets, 'original native publication files')
     if any(not isinstance(value, str) for value in plan['files'].values()):
         raise ValueError('Original native publication files must contain complete UTF-8 text')
     raw = plan['files'][targets[0]].encode('utf-8')
     if len(raw) > MAX_CONFIG_BYTES or plan['files'][targets[1]].encode('utf-8') != raw:
         raise ValueError('Original native manifests have inconsistent complete bytes')
+    for name, raw_material in raw_materials.items():
+        if plan['files'][name].encode('utf-8') != raw_material:
+            raise ValueError('Original native preparation changes frozen raw configuration material')
     manifest = parse_json(raw.decode(), 'frozen native manifest', finite=True, bounded=True)
     expected = {**request['experiment'], 'candidate_sha': request['experiment']['candidate_commit'],
                 'baseline_sha': request['experiment']['baseline_commit'], 'runner_template_id': request['runner_template_id'],
-                'max_run_seconds': request['max_run_seconds'], 'local_project': project['id']}
+                'max_run_seconds': request['max_run_seconds'], 'local_project': project['id'], 'configuration_inputs': inputs}
+    require_driver(manifest, runner)
     if not _identical(manifest, expected):
         raise ValueError('Original native manifest changes the frozen candidate or performance policy')
     spec_raw = plan['files'][targets[2]].encode('utf-8')

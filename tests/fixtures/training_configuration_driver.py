@@ -63,6 +63,34 @@ def prepare(request):
                 raise OSError('Controlled actual receipt synchronization failure')
             return fsync(descriptor)
         os.fsync = fail_receipt_sync
+    if fault == 'receipt-readback-inode':
+        fsync, opened = os.fsync, os.open
+        receipt = Path(request['output']) / 'configuration-receipt.json'
+        root = Path(request['context']['intent']['execution']['state_directory'])
+        confirmation = {'file_synced': False, 'root_synced': False, 'exchanged': False}
+
+        def sync_receipt(descriptor):
+            path = Path('/proc/self/fd/' + str(descriptor)).resolve()
+            result = fsync(descriptor)
+            if path == receipt:
+                confirmation['file_synced'] = True
+            if path == root and confirmation['file_synced']:
+                confirmation['root_synced'] = True
+            return result
+
+        def open_receipt(path, *args, **kwargs):
+            if Path(path) == receipt and confirmation['root_synced'] and not confirmation['exchanged']:
+                confirmation['exchanged'] = True
+                raw = receipt.read_bytes()
+                before = receipt.stat().st_ino
+                replacement = receipt.with_suffix('.replacement')
+                replacement.write_bytes(raw)
+                replacement.replace(receipt)
+                marker('receipt-inode-drift', {'before_inode': before, 'after_inode': receipt.stat().st_ino,
+                                               'source_sha256': digest(raw), 'same_raw': receipt.read_bytes() == raw})
+            return opened(path, *args, **kwargs)
+
+        os.fsync, os.open = sync_receipt, open_receipt
     if fault == 'reader-timeout':
         while True:
             time.sleep(.02)
@@ -97,7 +125,8 @@ def describe(context):
         }
     marker('describe', {'identity': context['identity'], 'ordinal': context['observations']})
     if context['observations'] == 2 and context['configurations']['candidate']['fault'] in (
-            'last-source-fence', 'last-source-deadline', 'last-source-request-drift'):
+            'last-source-fence', 'last-source-deadline', 'last-source-request-drift',
+            'last-material-fence', 'last-material-deadline'):
         import sys
         from ergora import training_execution_protocol as protocol
 
@@ -112,62 +141,84 @@ def describe(context):
                 marker('last-guard-rejected', {'reason': str(error)})
                 raise
 
+        def invalidate():
+            fault = context['configurations']['candidate']['fault']
+            if fault == 'last-source-request-drift':
+                path = Path(request['output']).parent / 'configuration-request.json'
+                original = path.read_bytes()
+                (Path(request['output']) / 'request-before-drift.json').write_bytes(original)
+                path.write_bytes(original + b'\n')
+                marker('request-drift', {'original_sha256': digest(original),
+                                         'changed_sha256': digest(path.read_bytes())})
+            elif fault in ('last-source-fence', 'last-material-fence'):
+                import asyncio
+                from agent_platform import training
+                from perf_temporal.models import Job
+
+                record = json.loads((Path(request['output']).parent / 'request.json').read_bytes())
+                asyncio.run(training.create_adapter().cancel_job_group(
+                    Job(training.binding_from(record['experiment']['binding']), record['job_id'])))
+            else:
+                from datetime import timedelta
+
+                clock, policy = request['context']['authorization']['clock'], request['context']['policy']
+                original_clock, original_datetime = protocol.budget_clock._clock, protocol.budget_clock.datetime
+                _, ticks = original_clock()
+                shift = max(0, clock['boottime_ns'] + (policy['wall_seconds'] - policy['cleanup_seconds'] + 1)
+                            * 1_000_000_000 - ticks)
+                def shifted_clock():
+                    boot, current = original_clock()
+                    return boot, current + shift
+                class ShiftedDateTime(original_datetime):
+                    @classmethod
+                    def now(cls, tz=None):
+                        return original_datetime.now(tz) + timedelta(seconds=shift / 1_000_000_000)
+                protocol.budget_clock._clock = shifted_clock
+                protocol.budget_clock.datetime = ShiftedDateTime
+            marker('last-material-returned' if fault.startswith('last-material') else 'last-source-returned',
+                       {'identity': context['identity']})
+
         def final_source(repo, commit, relative):
             value = source_bytes(repo, commit, relative)
             if str(repo) == request['configurations']['candidate']['repo']:
-                fault = context['configurations']['candidate']['fault']
-                if fault == 'last-source-request-drift':
-                    path = Path(request['output']).parent / 'configuration-request.json'
-                    original = path.read_bytes()
-                    (Path(request['output']) / 'request-before-drift.json').write_bytes(original)
-                    path.write_bytes(original + b'\n')
-                    marker('request-drift', {'original_sha256': digest(original),
-                                             'changed_sha256': digest(path.read_bytes())})
-                elif fault == 'last-source-fence':
-                    import asyncio
-                    from agent_platform import training
-                    from perf_temporal.models import Job
-
-                    record = json.loads((Path(request['output']).parent / 'request.json').read_bytes())
-                    asyncio.run(training.create_adapter().cancel_job_group(
-                        Job(training.binding_from(record['experiment']['binding']), record['job_id'])))
-                else:
-                    from datetime import timedelta
-
-                    clock, policy = request['context']['authorization']['clock'], request['context']['policy']
-                    original_clock, original_datetime = protocol.budget_clock._clock, protocol.budget_clock.datetime
-                    _, ticks = original_clock()
-                    shift = max(0, clock['boottime_ns'] + (policy['wall_seconds'] - policy['cleanup_seconds'] + 1)
-                                * 1_000_000_000 - ticks)
-                    def shifted_clock():
-                        boot, current = original_clock()
-                        return boot, current + shift
-                    class ShiftedDateTime(original_datetime):
-                        @classmethod
-                        def now(cls, tz=None):
-                            return original_datetime.now(tz) + timedelta(seconds=shift / 1_000_000_000)
-                    protocol.budget_clock._clock = shifted_clock
-                    protocol.budget_clock.datetime = ShiftedDateTime
-                marker('last-source-returned', {'identity': context['identity']})
+                invalidate()
             return value
 
-        wrapper._chain, wrapper._source_bytes = record_rejection, final_source
+        wrapper._chain = record_rejection
+        if context['configurations']['candidate']['fault'].startswith('last-material'):
+            from ergora import training_materials
+
+            original_read = training_materials.read_raw
+            def final_material(path, *args, **kwargs):
+                value = original_read(path, *args, **kwargs)
+                if Path(path) == Path(request['configurations']['candidate']['path']):
+                    invalidate()
+                return value
+            training_materials.read_raw = final_material
+        else:
+            wrapper._source_bytes = final_source
     return result
 
 
 def calculate(config, inputs):
-    values = []
+    values, grouping = [], []
     for start in range(0, len(inputs), config['global_batch']):
-        for n in inputs[start:start + config['global_batch']]:
-            if config['strategy'] == 'redundant-loop':
-                for _ in range(12):
-                    total = 0
-                    for item in range(1, n + 1):
-                        total += item * item
-            else:
-                total = n * (n + 1) * (2 * n + 1) // 6
-            values.append(total)
-    return values
+        batch = inputs[start:start + config['global_batch']]
+        chunks = []
+        for offset in range(0, len(batch), config['microbatch']):
+            chunk = batch[offset:offset + config['microbatch']]
+            chunks.append(len(chunk))
+            for n in chunk:
+                if config['strategy'] == 'redundant-loop':
+                    for _ in range(12):
+                        total = 0
+                        for item in range(1, n + 1):
+                            total += item * item
+                else:
+                    total = n * (n + 1) * (2 * n + 1) // 6
+                values.append(total)
+        grouping.append(chunks)
+    return values, grouping
 
 
 def oracle(inputs):
@@ -200,11 +251,11 @@ def run(context, request, output):
         pair = {'pair_id': 'pair-' + str(index), 'order': order}
         for arm in (('baseline', 'candidate') if order == 'AB' else ('candidate', 'baseline')):
             started = time.perf_counter_ns()
-            values = calculate(context['configurations'][arm], inputs)
+            values, grouping = calculate(context['configurations'][arm], inputs)
             elapsed = (time.perf_counter_ns() - started) / 1e9
             if values != expected:
                 raise ValueError('Independent CPU oracle rejected actual output')
-            raw = {'arm': arm, 'values': values, 'source_samples': len(inputs),
+            raw = {'arm': arm, 'values': values, 'grouping': grouping, 'source_samples': len(inputs),
                    'elapsed_seconds': elapsed, 'context_identity': context['identity']}
             name = f'raw/{index}-{arm}.json'
             write(output / name, raw)
@@ -249,3 +300,13 @@ def run(context, request, output):
                              for path in sorted(output.rglob('*'))
                              if path.is_file() and path.name not in ('execution.log', 'configuration-receipt.json')]
     write(output / 'evidence.json', evidence)
+    if context['configurations']['candidate']['fault'] == 'receipt-raw-drift':
+        receipt = output / 'configuration-receipt.json'
+        before = receipt.read_bytes()
+        after = before + b'\n'
+        receipt.write_bytes(after)
+        directory = Path(os.environ['ERGORA_TEST_CONFIGURATION_MARKERS'])
+        (directory / 'receipt-before.raw').write_bytes(before)
+        (directory / 'receipt-after.raw').write_bytes(after)
+        marker('receipt-raw-drift', {'before_sha256': digest(before), 'after_sha256': digest(after),
+                                      'same_decoded_values': json.loads(before) == json.loads(after)})

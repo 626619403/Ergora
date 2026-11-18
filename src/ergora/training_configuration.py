@@ -128,14 +128,15 @@ def validate_runner(runner: dict) -> None:
     capability = runner['configuration_readback']
     if capability is None:
         return
-    _exact(capability, ('protocol', 'source', 'configuration_path', 'manifest_configuration_role',
+    _exact(capability, ('protocol', 'source', 'prepared_json_format', 'manifest_configuration_role',
                         'observation_scheme'), 'Configuration readback')
     if capability['protocol'] != PROTOCOL or capability['manifest_configuration_role'] != 'source-bytes':
         raise ValueError('Unsupported configuration driver protocol or manifest configuration role')
     if (not isinstance(capability['observation_scheme'], str)
             or re.fullmatch('[A-Za-z0-9][A-Za-z0-9_.-]{0,127}', capability['observation_scheme']) is None):
         raise ValueError('Configuration driver requires a versioned observation scheme')
-    _relative(capability['configuration_path'])
+    if capability['prepared_json_format'] not in (None, 'json-v1'):
+        raise ValueError('Unsupported declared prepared JSON format')
     source = capability['source']
     _exact(source, ('repo', 'commit', 'inventory_sha256', 'entrypoint'), 'Configuration driver source')
     if source_reference(Path(source['repo']), source['commit'], source['entrypoint']) != source:
@@ -195,7 +196,7 @@ def _chain(request):
 
 def stage_request(folder, record, checkouts, manifest, context, active):
     """Prepare only after original attempt/ack, under the native executor lock."""
-    from ergora import training_execution_protocol as protocol
+    from ergora import training_execution_protocol as protocol, training_materials as materials
 
     active()
     runner = record['runner']
@@ -210,11 +211,19 @@ def stage_request(folder, record, checkouts, manifest, context, active):
     _checkout(trusted, source['commit'])
     if source_reference(trusted, source['commit'], source['entrypoint']) != {**source, 'repo': str(trusted)}:
         raise ValueError('Configuration driver checkout inventory changed')
+    descriptor = materials.require_driver(manifest, runner)
+    raw_materials = materials.read_materials(Path(context['intent']['execution']['state_directory']), manifest)
     configurations = {}
     for arm, commit_key, hash_key in (('baseline', 'baseline_sha', 'base_config_sha256'),
                                       ('candidate', 'candidate_sha', 'candidate_config_sha256')):
         commit = record['experiment']['binding'][commit_key]
-        path, digest = _source_bytes(checkouts[arm], commit, capability['configuration_path'])
+        if descriptor['kind'] == 'git-source':
+            path, digest = _source_bytes(checkouts[arm], commit, descriptor['path'])
+        else:
+            _checkout(checkouts[arm], commit)
+            path = folder / 'run-output/configuration-inputs' / (arm + '.json')
+            materials.publish_material(path, raw_materials[arm], Path(context['intent']['execution']['state_directory']))
+            digest = hashlib.sha256(raw_materials[arm]).hexdigest()
         if digest != manifest[hash_key]:
             raise ValueError('Configuration source raw SHA differs from manifest ' + hash_key)
         configurations[arm] = {'repo': str(checkouts[arm]), 'commit': commit, 'path': str(path), 'source_sha256': digest}
@@ -269,7 +278,7 @@ def _observations(value, request):
 
 
 def _inputs(request, original_raw):
-    from ergora import training_execution_protocol as protocol
+    from ergora import training_execution_protocol as protocol, training_materials as materials
 
     chain = _chain(request)
     runner = chain.native['runner']
@@ -289,11 +298,21 @@ def _inputs(request, original_raw):
     if hashlib.sha256(manifest_raw).hexdigest() != request['binding']['manifest_sha']:
         raise ValueError('Configuration driver manifest bytes changed')
     manifest = json.loads(manifest_raw)
+    descriptor = materials.require_driver(manifest, runner)
+    raw_materials = materials.read_materials(chain.root, manifest)
     for arm, commit_key, hash_key in (('baseline', 'baseline_sha', 'base_config_sha256'),
                                       ('candidate', 'candidate_sha', 'candidate_config_sha256')):
         repo = chain.folder.parent / arm
         commit = request['binding'][commit_key]
-        path, digest = _source_bytes(repo, commit, capability['configuration_path'])
+        if descriptor['kind'] == 'git-source':
+            path, digest = _source_bytes(repo, commit, descriptor['path'])
+        else:
+            _checkout(repo, commit)
+            path = chain.folder.parent / 'run-output/configuration-inputs' / (arm + '.json')
+            raw_input = materials.read_raw(path)
+            if raw_input != raw_materials[arm]:
+                raise ValueError('Configuration driver input differs from its original prepared raw bytes')
+            digest = hashlib.sha256(raw_input).hexdigest()
         if request['configurations'][arm] != {'repo': str(repo), 'commit': commit, 'path': str(path), 'source_sha256': digest}:
             raise ValueError('Configuration driver input differs from the original checkout')
         if digest != manifest[hash_key]:
@@ -305,7 +324,7 @@ def _inputs(request, original_raw):
 
 def main(request_path):
     """Construct, observe, freeze and run the same source-owned configuration objects."""
-    from ergora import training_execution_protocol as protocol
+    from ergora import training_execution_protocol as protocol, training_materials as materials
 
     raw = protocol.read_raw(Path(request_path), 16 * LIMIT)
     request = protocol.decode(raw)
@@ -353,32 +372,37 @@ def main(request_path):
                'request_sha256': hashlib.sha256(raw).hexdigest(), 'binding': request['binding'],
                'native_request_sha256': request['native_request_sha256'], 'runner_sha256': request['runner_sha256'],
                'managed': request['managed'], 'source': request['configuration_readback']['source'],
-               'environment_fingerprint': manifest['environment_fingerprint'], 'observations': observations}
+               'environment_fingerprint': manifest['environment_fingerprint'], 'observations': observations,
+               'configuration_inputs': materials.input_descriptor(manifest), 'configurations': request['configurations']}
     _bytes(receipt, LIMIT - 1)
+    receipt_raw = chain.adapter.canonical(receipt) + b'\n'
     protocol.publish(receipt_path, receipt, chain.root)
-    saved = protocol.decode(protocol.read_raw(receipt_path))
-    if saved != receipt:
-        raise ValueError('Configuration receipt differs after durable readback')
+    materials.confirm_file(receipt_path, receipt_raw, chain.root)
     if _bytes(_observations(driver['describe'](context), request)) != _bytes(observations):
         raise ValueError('Configuration changed after observation and before training work')
     _inputs(request, raw)
     driver['run'](context, request, output)
     # Preserve the readback as an ordinary hashed artifact in the original full
     # evidence bundle. The original archive and quality gate remain its owners.
-    receipt_raw = protocol.read_raw(receipt_path)
-    if protocol.decode(receipt_raw) != saved:
+    if protocol.read_raw(receipt_path) != receipt_raw:
         raise ValueError('Configuration receipt changed during training work')
+    artifacts = [{'path': 'configuration-receipt.json', 'sha256': hashlib.sha256(receipt_raw).hexdigest()}]
+    for arm, original in materials.read_materials(chain.root, manifest).items():
+        path = Path(request['configurations'][arm]['path'])
+        if materials.read_raw(path) != original:
+            raise ValueError('Actual configuration input changed during training work')
+        artifacts.append({'path': path.relative_to(output).as_posix(), 'sha256': hashlib.sha256(original).hexdigest()})
     evidence_path = output / 'evidence.json'
     if evidence_path.is_file():
         evidence = protocol.decode(protocol.read_raw(evidence_path))
-        artifact = {'path': 'configuration-receipt.json', 'sha256': hashlib.sha256(receipt_raw).hexdigest()}
-        existing = [item for item in evidence['artifacts'] if item['path'] == artifact['path']]
-        if existing and existing != [artifact]:
-            raise ValueError('Full evidence contains a conflicting configuration receipt')
-        if not existing:
-            evidence['artifacts'].append(artifact)
-            # This is the runner-owned unfinished output, not an immutable archive.
-            evidence_path.write_bytes(_bytes(evidence, LIMIT - 1) + b'\n')
+        for artifact in artifacts:
+            existing = [item for item in evidence['artifacts'] if item['path'] == artifact['path']]
+            if existing and existing != [artifact]:
+                raise ValueError('Full evidence contains a conflicting configuration input or receipt')
+            if not existing:
+                evidence['artifacts'].append(artifact)
+        # This is the runner-owned unfinished output, not an immutable archive.
+        evidence_path.write_bytes(_bytes(evidence, LIMIT - 1) + b'\n')
 
 
 if __name__ == '__main__':

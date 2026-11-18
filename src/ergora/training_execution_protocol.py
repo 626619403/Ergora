@@ -155,7 +155,7 @@ GATE_SOURCES = (
     'training_cycles.py', 'registrations.py', 'data/schemas/training-cycle-v1.json',
     'data/schemas/project-registration-v1.json', 'definition_bundles.py', 'contracts.py',
     'asset_trees.py', 'state.py', 'budget_clock.py', 'processes.py', 'reference_creation_process.py',
-    '__init__.py', 'data/reference-manifest.json', 'training_configuration.py',
+    '__init__.py', 'data/reference-manifest.json', 'training_configuration.py', 'training_materials.py',
     'reference_training_setup.py', 'reference_training_preparation.py',
     'data/native-runtime/training-executor-admission-v3.json',
 )

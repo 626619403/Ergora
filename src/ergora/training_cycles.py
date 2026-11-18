@@ -16,6 +16,7 @@ from .asset_trees import is_link, publish_directory
 from .definition_bundles import parse_json
 from .training_execution_protocol import _CycleCapacityError, _read_cycle_bytes as _read_bytes
 from .state import State, file_lock, now
+from .training_materials import require_driver
 
 
 MAX_PLAN_BYTES = 10_000_000
@@ -109,6 +110,13 @@ def _decode(raw: bytes) -> dict:
             frozen = 'state/training/manifests/' + selected['experiment_id'] + '.json'
             expected_names = {registered, frozen, 'state/training/specs/' + selected['experiment_id'] + '.json',
                               'config/training-runners/' + runner['runner_template_id'] + '.json'}
+            inputs = require_driver(manifest, runner)
+            if inputs is not None and inputs['kind'] == 'prepared-json':
+                for arm in ('baseline', 'candidate'):
+                    key = 'state/' + inputs[arm]['path']
+                    expected_names.add(key)
+                    if files.get(key) != inputs[arm]['sha256']:
+                        raise ValueError('Training cycle lacks its original raw configuration inputs')
             if (set(observed['baseline_files']) != {prefix + 'baseline.json'} or set(files) != expected_names
                     or files[registered] != selected['manifest_sha256'] or files[frozen] != selected['manifest_sha256']):
                 raise ValueError('Training cycle lacks its complete original source SHA inventory')
