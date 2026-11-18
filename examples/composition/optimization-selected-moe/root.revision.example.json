@@ -1,7 +1,7 @@
 {
   "schema_version": 2,
   "id": "ergora-training-proposal",
-  "version": "4.1.1",
+  "version": "4.1.4",
   "description": "Selected MoE dispatcher/overlap proposals under one shared optimization ancestor; eleven explicit readonly leaf calls.",
   "resources": [
     {
@@ -14,7 +14,7 @@
       "id": "ergora-bottleneck-optimization-skill",
       "kind": "skill",
       "path": "skills/ergora-bottleneck-optimization",
-      "digest": "802487c8d53d6c3900d80323aeca7387fa4aee50540658ba6896ccd92a42f078"
+      "digest": "d9629536874a5f2c9a176e8540e3f9f96126557d0c324fb2b64f01185b7e01d1"
     },
     {
       "id": "ergora-library-environment-optimization-skill",

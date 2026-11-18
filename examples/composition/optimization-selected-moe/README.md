@@ -2,21 +2,23 @@
 
 This example publishes an exact revision of the shared training proposal with MoE dispatcher and overlap workflows as real descendants. All eleven leaves inherit both shared optimization Skills and the environment-change record. Topic specialists carry their complete topic methods. The single current resource tree remains in `src/ergora/data/presets`; this directory contains a standard revision document, not a duplicate resource bundle.
 
+The inherited [GPU comparison policy](../../../src/ergora/data/presets/workflows/ergora-training-proposal/skills/ergora-bottleneck-optimization/SKILL.md#gpu-comparisons-and-pool-validation) guides the authorized execution supervisor's small comparisons, candidate batches and target-scale acceptance through available `igs` pool operations. These readonly proposal calls retain their existing permissions.
+
 Install the three dependency closures in your chosen control home, then check and publish the supplied document. These commands pin the shipped references; a conflicting published version is never overwritten.
 
 ```bash
 ergora composition install-preset training-optimization
 ergora composition install-preset optimization-moe-dispatcher
 ergora composition install-preset optimization-moe-overlap
-ergora composition revise ergora-training-proposal 4.1.0 --base-digest 76a0d8c6a4f04bafc13fd2b5ac458af07b26a363c4b45a954121e3446e4de882 --document examples/composition/optimization-selected-moe/root.revision.example.json --check
-ergora composition revise ergora-training-proposal 4.1.0 --base-digest 76a0d8c6a4f04bafc13fd2b5ac458af07b26a363c4b45a954121e3446e4de882 --document examples/composition/optimization-selected-moe/root.revision.example.json
-ergora composition preview ergora-training-proposal 4.1.1 --grant examples/composition/optimization-selected-moe/grant.json
+ergora composition revise ergora-training-proposal 4.1.3 --base-digest 29f5a66e650678ea34d1445a4138bca8f7aa84d2777d141f6edbb6990f317a8c --document examples/composition/optimization-selected-moe/root.revision.example.json --check
+ergora composition revise ergora-training-proposal 4.1.3 --base-digest 29f5a66e650678ea34d1445a4138bca8f7aa84d2777d141f6edbb6990f317a8c --document examples/composition/optimization-selected-moe/root.revision.example.json
+ergora composition preview ergora-training-proposal 4.1.4 --grant examples/composition/optimization-selected-moe/grant.json
 ```
 
 The base digest in these commands is the exact shipped root. The check resolves every reference and validates the whole graph. Use the returned `preview_sha256` in the existing freeze call, then use its returned complete manifest path:
 
 ```bash
-ergora composition freeze-manifest ergora-training-proposal 4.1.1 --grant examples/composition/optimization-selected-moe/grant.json --preview-sha256 PREVIEW_SHA256
+ergora composition freeze-manifest ergora-training-proposal 4.1.4 --grant examples/composition/optimization-selected-moe/grant.json --preview-sha256 PREVIEW_SHA256
 ergora composition show-manifest PREVIEW_SHA256 --material
 ergora composition prepare-from-manifest FROZEN_MANIFEST_PATH root/moe-dispatcher/specialist --task analysis-task.txt --directory dispatcher-input --max-prompt-bytes 1000000
 ergora composition prepare-from-manifest FROZEN_MANIFEST_PATH root/moe-overlap/specialist --task analysis-task.txt --directory overlap-input --max-prompt-bytes 1000000

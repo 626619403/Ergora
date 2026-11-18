@@ -34,6 +34,18 @@ The coordinator records selected topics, reasons, dependencies, complete result 
 
 A catalog direction is a proposal method, not proof of compatibility, permission or measured gain. Fix permitted E/N/A changes and independent quality bounds before approximate or quantized candidates. Reuse original baseline/runner/manifest/evidence and compare_runs/perfctl policy; do not edit an oracle, threshold or baseline to improve an outcome. Module timings or isolated kernel gains cannot replace a paired full-workload comparison.
 
+## GPU comparisons and pool validation
+
+The supervising execution agent may run small performance comparisons on **2 GPUs**, using **4 GPUs when necessary** to fit the unchanged workload or exercise the relevant bottleneck. Keep model algorithm, structure, size, precision and training objective fixed for the first optimization round. Compare the baseline and candidate on the same GPU count, hardware/topology, workload and measurement contract; record throughput, peak memory, correctness and measurement uncertainty.
+
+Accumulate candidates with measured benefit into a batch for larger acceptance runs. The supervisor may submit multiple **8-GPU jobs**, or larger multi-GPU jobs with enough GPUs and nodes to exercise the target cross-node behavior. Each target scale needs its own matched baseline/candidate comparison and original full quality/evidence gate. Small-scale gain promotes a candidate to this queue; it does not certify large-scale gain or advance the accepted baseline. Keep failed, noisy, no-gain and unrepresentative small-scale results visible.
+
+Use **igs-cli (`igs`)** to submit these experiments to the selected resource pool. Check actual CLI availability, authentication and supported operations; report unavailable capabilities explicitly. Follow the available iGS job/resource skills for real specifications, mounts, images and multi-node environments; all iGS commands use `--format json`. A prepared request is submitted with `igs job create --region REGION --file experiment-job.json --format json`. The user's staged experiment authorization covers submissions within the agreed resource and experiment budget; reuse that authorization instead of requesting approval for each covered run. Preserve actual pool/quota limits, concurrency, wall-time and cleanup budgets. A GPU visibility mask does not change how many GPUs a pool specification reserves.
+
+Retain the exact request and returned job ID, then inspect the created job. A lost or ambiguous create response requires read-only reconciliation, not another submission. Platform creation or Running status does not prove that training or acceptance succeeded. Keep source/recipe/environment identities, GPU count/topology, paired raw results, quality checks, resource cost and the promotion/acceptance decision in the experiment report.
+
+After target-scale acceptance, feed the verified results and remaining bottleneck into the next small-comparison round; repeat this small-test → candidate-batch → target-scale-acceptance cycle within the original task's bounds. Readonly specialists supply hypotheses and measurement plans; the authorized supervisor uses the original execution owner and supported tools for job effects and cleanup.
+
 ## Execution boundary
 
 This is a static readonly proposal graph. Dependencies express intended order; each leaf's task binding preserves the original root task. A standalone prepare-input/run-input does not execute predecessors or automatically attach their outputs. The operator must provide the original task/source plus the complete results required above on each call. Never infer that a dependency has run from its presence in the graph.
