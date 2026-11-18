@@ -10,11 +10,147 @@ import sys
 
 import pytest
 
-from ergora import agent_definitions, reference, registrations, task_envelopes, tasks, workflow_definitions as workflows
+from ergora import agent_definitions, reference, reference_budget, registrations, task_envelopes, tasks, workflow_definitions as workflows
 from ergora.reference_inputs import execution_input
 from ergora.review_dags import ReviewDAG, WorkDelivery
 from ergora.state import State
 from test_registrations import installation, registration
+
+
+def _selected_engineering_review(state):
+    example = Path(__file__).resolve().parents[1] / 'examples/composition/pr-review-selected'
+    installed = workflows.install_preset(state, 'engineering-review')
+    base = installed['root']
+    document = json.loads((example / 'root.revision.example.json').read_bytes())
+    published = workflows.revise(state, base['id'], base['version'], base['digest'], document, publish=True)
+    return installed, published
+
+
+def test_engineering_specialists_use_real_roles_resources_and_review_slots(tmp_path):
+    state = State(tmp_path / 'state')
+    installed, published = _selected_engineering_review(state)
+    assert _selected_engineering_review(state)[1] == published
+    base = installed['root']
+    original = workflows.get(state, base['id'], base['version'], material=True)
+    root = published['definition']
+    grant = {'schema_version': 1, 'permissions': root['permissions'], 'limits': root['limits']}
+    assert len(ReviewDAG(workflows.preview(state.root, base['id'], base['version'], grant), 'root').members) == 3
+    selected = workflows.preview(state.root, root['id'], root['version'], grant)
+    assert set(ReviewDAG(selected, 'root').members) == {
+        'root/structure/review', 'root/correctness/review', 'root/test-value/review',
+        'root/performance', 'root/resource-lifecycle'}
+    # Prepare the remaining optional methods through the same standard revision,
+    # without installing a second copy of any root resource.
+    expanded = deepcopy(root)
+    expanded.update(id='all-selected-methods', version='1.0.0')
+    available = {item['id']: item for item in installed['agents']}
+    for name in ('dependency', 'security', 'measurement'):
+        expanded['nodes'].insert(-1, {'id': name, 'ref': available['ergora-' + name + '-reviewer'],
+            'role': 'reviewer', 'review_requirement': 'required', 'depends_on': [],
+            'permissions': root['permissions'], 'inputs': {'task': {'input': 'task'}}})
+        expanded['nodes'][-1]['depends_on'].append(name)
+    workflows.revise(state, root['id'], root['version'], published['digest'], expanded, publish=True)
+    manifest = workflows.prepare_manifest(state.root, expanded['id'], expanded['version'], grant, tmp_path / 'manifest')
+    graph = workflows.inspect_manifest(Path(manifest['path']), material=True)['composition']
+    dag = ReviewDAG(graph, 'root')
+    expected_specialties = {
+        'root/structure/review': ('ergora-structure-reviewer', ('ergora-structure-reviewer-skill',)),
+        'root/correctness/review': ('ergora-correctness-reviewer', ('ergora-correctness-reviewer-skill',)),
+        'root/test-value/review': ('ergora-test-value-reviewer', ('ergora-test-value-reviewer-skill',)),
+        'root/performance': ('ergora-performance-analyst', ('ergora-performance-analyst-skill',
+            'ergora-performance-diagnosis-skill', 'ergora-opt-profiling-proposal-context')),
+        'root/resource-lifecycle': ('ergora-resource-lifecycle-reviewer', ('ergora-resource-lifecycle-reviewer-skill',)),
+        'root/dependency': ('ergora-dependency-reviewer', ('ergora-dependency-reviewer-skill',)),
+        'root/security': ('ergora-security-reviewer', ('ergora-security-reviewer-skill',)),
+        'root/measurement': ('ergora-measurement-reviewer', ('ergora-measurement-reviewer-skill',)),
+    }
+    methods = {}
+    for path, (identity, required_resources) in expected_specialties.items():
+        reference = available[identity]
+        original_agent = agent_definitions.get(state, reference['id'], reference['version'], material=True)
+        resources = {resource['id']: resource for resource in original_agent['resources']}
+        methods[path] = [resources[resource_id] for resource_id in required_resources]
+    shutil.rmtree(state.root / 'agent-definitions')
+    shutil.rmtree(state.root / 'workflow-definitions')
+    assert dag.members.keys() == expected_specialties.keys()
+    for path, leaf in dag.members.items():
+        expected_agent = available[expected_specialties[path][0]]
+        assert leaf['ref'] == expected_agent
+        assert leaf['role'] == 'reviewer' and leaf['review_requirement'] == 'required'
+        assert leaf['permissions'] == root['permissions']
+        floor = 'max' if path == 'root/performance' else 'high'
+        assert leaf['backend_request']['model'] == leaf['invocation_minimum']['model'] == 'gpt-6.1-sol'
+        assert leaf['backend_request']['reasoning_effort'] == leaf['invocation_minimum']['reasoning_effort'] == floor
+        prepared = workflows.prepare_input_from_manifest(Path(manifest['path']), path,
+            b'Complete exact original requirements, source, callers and original check artifacts.',
+            tmp_path / path.replace('/', '-'), 1_000_000)
+        actual = workflows.inspect_input(Path(prepared['path']), material=True)
+        for method in methods[path]:
+            inherited = next(resource for resource in leaf['resources'] if resource['id'] == method['id'])
+            assert inherited['kind'] == method['kind']
+            assert inherited.get('digest', inherited.get('sha256')) == method.get('digest', method.get('sha256'))
+            assert inherited['text'] == method['text'] and method['text'] in actual['prompt']
+            assert {source['instance'] for source in inherited['sources']} == {path}
+            assert all(source['definition'] == expected_agent for source in inherited['sources'])
+        for resource in original['resources']:
+            inherited = next(item for item in leaf['resources'] if item['id'] == resource['id'])
+            assert inherited['text'] == resource['text'] and resource['text'] in actual['prompt']
+            assert {source['instance'] for source in inherited['sources']} == {'root'}
+        assert all(resource['text'] in actual['prompt'] for resource in leaf['resources'])
+
+
+@pytest.mark.parametrize('domain', ['pretraining', 'posttraining'])
+def test_training_review_common_contract_reaches_domain_and_general_inputs(tmp_path, domain):
+    state = State(tmp_path / 'state')
+    installed = workflows.install_preset(state, domain + '-review')
+    root_ref = installed['root']
+    original = workflows.get(state, root_ref['id'], root_ref['version'], material=True)
+    root = original['definition']
+    grant = {'schema_version': 1, 'permissions': root['permissions'], 'limits': root['limits']}
+    manifest = workflows.prepare_manifest(state.root, root['id'], root['version'], grant, tmp_path / 'manifest')
+    graph = workflows.inspect_manifest(Path(manifest['path']), material=True)['composition']
+    shutil.rmtree(state.root / 'agent-definitions')
+    shutil.rmtree(state.root / 'workflow-definitions')
+    common = next(resource for resource in original['resources'] if resource['kind'] == 'instructions')
+    for path in ('root/domain/review', 'root/general/structure/review'):
+        leaf = next(item for item in graph['instances'] if item['path'] == path)
+        inherited = next(resource for resource in leaf['resources'] if resource['id'] == common['id'])
+        assert inherited['text'] == common['text']
+        assert {source['instance'] for source in inherited['sources']} == {'root'}
+        prepared = workflows.prepare_input_from_manifest(Path(manifest['path']), path,
+            b'The same complete original source, requirements and check evidence.',
+            tmp_path / path.replace('/', '-'), 1_000_000)
+        actual = workflows.inspect_input(Path(prepared['path']), material=True)
+        assert common['text'] in actual['prompt']
+        assert all(resource['text'] in actual['prompt'] for resource in leaf['resources'])
+
+
+def test_selected_review_members_are_fixed_slots_in_existing_development_projection(tmp_path):
+    state = State(tmp_path / 'state')
+    _, selected = _selected_engineering_review(state)
+    installed = workflows.install_preset(state, 'repository-governance')
+    base = next(item for item in installed['workflows'] if item['id'] == 'ergora-governance-delivery')
+    root = workflows.get(state, base['id'], base['version'])['definition']
+    root.update(id='selected-engineering-delivery', version='1.0.0')
+    next(node for node in root['nodes'] if node['id'] == 'review')['ref'] = {
+        'kind': 'workflow', 'id': selected['definition']['id'],
+        'version': selected['definition']['version'], 'digest': selected['digest']}
+    workflows.revise(state, base['id'], base['version'], base['digest'], root, publish=True)
+    grant = {'schema_version': 1, 'permissions': root['permissions'], 'limits': root['limits']}
+    graph = workflows.preview(state.root, root['id'], root['version'], grant)
+    units = reference.template_details('repository-governance')['input']['work_units']
+    execution = {'protocol': 'work-units-v1', 'instance': 'root/work', 'mode': 'workspace-task-mcp',
+                 'assignments': {unit['id']: 'root/work/' + unit['id'] for unit in units}}
+    preparation = {'protocol': 'preparation-dag-v1', 'mode': 'task-mcp', 'repository_paths': ['.'],
+        **{stage: {'instance': 'root/preparation/' + stage, 'coordinator': 'root/preparation/' + stage + '/coordinator'}
+           for stage in ('inventory', 'plan')}}
+    delivery = WorkDelivery(graph, execution, 'root/review', units, preparation=preparation)
+    preparation['members'] = {path: leaf for group in delivery.preparation.values() for path, leaf in group['dag'].members.items()}
+    slots = reference_budget.call_slots({'preparation': preparation, 'execution': execution, 'members': delivery.review.members})
+    review_slots = {key: value for key, value in slots.items() if key.startswith('review:')}
+    assert review_slots == {'review:' + path: path for path in delivery.review.members}
+    assert len(review_slots) == 5
+    assert len(slots) == len(preparation['members']) + len(delivery.work.members) + len(delivery.review.members)
 
 
 @pytest.mark.parametrize('direction', ['memory-tuning', 'activation-recompute', 'cpu-offloading',

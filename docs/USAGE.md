@@ -684,7 +684,7 @@ In “Formal tasks → Preview and create,” select the native six stages and r
 
 ```bash
 ergora composition install-preset refactoring
-ergora composition prepare-manifest ergora-refactoring-template 1.1.1 \
+ergora composition prepare-manifest ergora-refactoring-template 1.2.1 \
   --grant examples/composition/refactoring/grant.json \
   --directory ./refactoring-manifest
 ```

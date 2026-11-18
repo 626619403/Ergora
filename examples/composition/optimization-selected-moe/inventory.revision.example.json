@@ -54,10 +54,10 @@
         "write": []
       },
       "ref": {
-        "digest": "9c52fc7be53cc051ee8d9066a5a6b114e685e441e3bc8991aef01e6a44001699",
+        "digest": "34775f17c0c42d90e77aac2afe6e6c411f982229c2c57b7244ae02b452ed86a0",
         "id": "ergora-performance-analyst",
         "kind": "agent",
-        "version": "2.2.0"
+        "version": "2.3.0"
       },
       "role": "inspector"
     },
@@ -181,5 +181,5 @@
     }
   ],
   "schema_version": 2,
-  "version": "1.0.0"
+  "version": "1.0.1"
 }

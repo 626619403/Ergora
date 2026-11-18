@@ -11,7 +11,9 @@
 |`pretraining-review`／`ergora-pretraining-review`|`root/domain/review` → `ergora-pretraining-reviewer`|有效 token 与 loss／mask、累积／更新时钟、精度、mesh／collective、状态与恢复|
 |`posttraining-review`／`ergora-posttraining-review`|`root/domain/review` → `ergora-posttraining-reviewer`|实际 SFT／偏好／RL 算法、样本／分组／反馈／mask、policy／reference／reward、版本／异步恢复|
 
-两个根还包含 `root/general/structure/review`、`root/general/correctness/review` 和 `root/general/test-value/review`。每个实例继承自己的结构祖先材料和权限上限；领域专家的 Skill 归它自己的 Agent 定义。需要改变专长时导出、派生新版本，再从新根引用，沿 [定义手册](WORKFLOW_DEFINITIONS.md)操作；原版本和在途任务保留。
+两个根还包含 `root/general/structure/review`、`root/general/correctness/review` 和 `root/general/test-value/review`。两个外层根把完整原件、需求／标准双轴、覆盖缺口与后续任务交接合同交给所有 general 和 domain 叶；domain 与 general 是兄弟，domain 不继承 general 的资料。协调者须读完整回复，缺项不能由非空 schema 或 approve 补证；实际结果和工具 decision 保原样。后续提议可批量或前批未完追加，supervisor 按原依赖／资源／预算处理，保当前冻结图、原 clock 与 unknown 原 job 对账。
+
+按需增加工程专项时，参照 [PR 选集](../examples/composition/pr-review-selected/README.md)先发布 delivery-review revision，再把其精确引用放入本根 general 节点并提升外层版本；保 domain 分支及两个分支的完整输入，不能拿另一份 manifest 的结果冒充共同审查。每个实例继承自己的结构祖先材料和权限上限；领域专家的 Skill 归它自己的 Agent 定义。需要改变专长时导出、派生新版本，再从新根引用，沿 [定义手册](WORKFLOW_DEFINITIONS.md)操作；原版本和在途任务保留。
 
 默认使用 Codex gpt-6.1-sol high，逐实例覆盖须满足[定义下限](AGENT_DEFINITIONS.md)。执行者／审查者优先使用不同后端；同后端回退记录原因、独立会话与覆盖，不能以多个模型同意替代可信检查。
 

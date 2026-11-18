@@ -1,5 +1,5 @@
 {
-  "description": "Formal six-stage MoE development; shared policy is the complete resource snapshot of ergora-training-proposal@4.2.1 digest 107243b88573de49c13e3fcc567d270638f97628be5fcdccc1d1bf84d31a4191.",
+  "description": "Formal six-stage MoE development; shared policy is the complete resource snapshot of ergora-training-proposal@4.2.2 digest 3947a032ce495c3c7728a19fc2e48c92f889e5deb1e7ea6c10e9395943768733.",
   "id": "ergora-large-change-delivery",
   "inputs": [
     "task"
@@ -20,10 +20,10 @@
         }
       },
       "ref": {
-        "digest": "9efcb006857c4c577dc2a1ae8fe1d5740bf81678b4981b186029353d133c5138",
+        "digest": "64e1439a6d6d0e7b3e092ee26f74833d50c0a93bf754bf86a8fcfcdd13bfcd2b",
         "id": "ergora-development-preparation",
         "kind": "workflow",
-        "version": "1.2.0"
+        "version": "1.2.1"
       }
     },
     {
@@ -53,10 +53,10 @@
         }
       },
       "ref": {
-        "digest": "8c6e0210e25d247d27547754cfc8ad5e5d76cc275dff9fa75abd93f3d050fff9",
+        "digest": "b40b74e34c58e09cb0a7cd5513c9bd904cc22d92e2865c67edab291e4d9671b5",
         "id": "ergora-delivery-review",
         "kind": "workflow",
-        "version": "1.1.0"
+        "version": "1.3.0"
       }
     }
   ],
@@ -104,5 +104,5 @@
     }
   ],
   "schema_version": 2,
-  "version": "1.2.1"
+  "version": "1.4.0"
 }

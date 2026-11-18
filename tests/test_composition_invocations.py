@@ -18,6 +18,37 @@ from ergora.state import State
 EXAMPLES = Path(__file__).resolve().parents[1] / "examples"
 
 
+@pytest.mark.parametrize("name,effort", [("performance", "high"), ("resource-lifecycle", "medium"),
+                                       ("dependency", "medium"), ("security", "medium")])
+def test_selected_specialist_floor_rejects_lower_override_before_any_native_call(tmp_path, monkeypatch, name, effort):
+    from test_presets import _selected_engineering_review
+    state = State(tmp_path / "state")
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    subprocess.run(["git", "init", str(repository)], capture_output=True, check=True)
+    projects.create(state, "demo", repository)
+    installed, selected = _selected_engineering_review(state)
+    root = selected["definition"]
+    if name in ("dependency", "security"):
+        root = json.loads(json.dumps(root))
+        root.update(id="selected-" + name, version="1.0.0")
+        reference = next(item for item in installed["agents"] if item["id"] == "ergora-" + name + "-reviewer")
+        root["nodes"].insert(-1, {"id": name, "ref": reference, "role": "reviewer", "depends_on": [],
+            "review_requirement": "required", "permissions": root["permissions"], "inputs": {"task": {"input": "task"}}})
+        root["nodes"][-1]["depends_on"].append(name)
+        workflows.revise(state, selected["definition"]["id"], selected["definition"]["version"],
+                         selected["digest"], root, publish=True)
+    grant = {"schema_version": 1, "permissions": root["permissions"], "limits": root["limits"]}
+    destination = tmp_path / "input"
+    workflows.prepare_input(state.root, root["id"], root["version"], "root/" + name, grant,
+                            b"Complete exact review source and original requirements.", destination, 1_000_000)
+    monkeypatch.setattr(processes, "run", lambda *args, **kwargs: pytest.fail("Rejected review must not invoke a model"))
+    with pytest.raises(ValueError, match="requires"):
+        agent_runs.run_input(state, "demo", destination,
+            binding_override={"tool": "codex", "model": "gpt-6.1-sol", "reasoning_effort": effort})
+    assert agent_runs.runs(state, "demo") == []
+
+
 @pytest.fixture
 def prepared(tmp_path):
     repo = tmp_path / "repo"

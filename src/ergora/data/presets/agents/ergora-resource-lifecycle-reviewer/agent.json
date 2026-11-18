@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "id": "ergora-resource-lifecycle-reviewer",
+  "version": "1.0.0",
+  "description": "Review resource ownership, bounded concurrency, cancellation and recovery for the exact candidate.",
+  "roles": [
+    "reviewer"
+  ],
+  "specialties": [
+    "resource-lifecycle",
+    "concurrency-liveness",
+    "cancellation-recovery"
+  ],
+  "backend": {
+    "tool": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  },
+  "resources": [
+    {
+      "id": "ergora-resource-lifecycle-reviewer-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "3ac9fe07700944b9ee3fc04c58e2555f25e141c6ced76157fe3ed528140685ab"
+    },
+    {
+      "id": "ergora-resource-lifecycle-reviewer-skill",
+      "kind": "skill",
+      "path": "skills/ergora-resource-lifecycle-reviewer",
+      "digest": "4b3229bb4ccd10074dc24d961503b64ac33b88cd47027ce346bbffbbaba99f0f"
+    }
+  ],
+  "invocation_minimum": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  }
+}

@@ -1,0 +1,148 @@
+{
+  "description": "Explicit core engineering, performance and resource-lifecycle review of the same exact candidate.",
+  "id": "ergora-selected-engineering-review",
+  "inputs": [
+    "task"
+  ],
+  "limits": {
+    "concurrency": 4,
+    "depth": 8,
+    "instances": 128,
+    "material_bytes": 262144
+  },
+  "nodes": [
+    {
+      "depends_on": [],
+      "id": "structure",
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "ref": {
+        "digest": "934f709f3f4d27e0765729fb70a888778f7fe87b47e913c18ecc62f9ee6bc3c5",
+        "id": "ergora-structure-review",
+        "kind": "workflow",
+        "version": "1.0.1"
+      }
+    },
+    {
+      "depends_on": [],
+      "id": "correctness",
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "ref": {
+        "digest": "a06d27f18ec66260d0586b4eeee11dc9895a5015dc18cf86d8d856fed7522cd3",
+        "id": "ergora-correctness-review",
+        "kind": "workflow",
+        "version": "1.0.1"
+      }
+    },
+    {
+      "depends_on": [],
+      "id": "test-value",
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "ref": {
+        "digest": "3a40362d4d26ef91de6cf85ceb877df01fc7ab3d2456c55cd025e42b0e3e3529",
+        "id": "ergora-test-value-review",
+        "kind": "workflow",
+        "version": "1.0.1"
+      }
+    },
+    {
+      "depends_on": [],
+      "id": "performance",
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "network": [],
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "shell": false,
+        "write": []
+      },
+      "ref": {
+        "digest": "34775f17c0c42d90e77aac2afe6e6c411f982229c2c57b7244ae02b452ed86a0",
+        "id": "ergora-performance-analyst",
+        "kind": "agent",
+        "version": "2.3.0"
+      },
+      "review_requirement": "required",
+      "role": "reviewer"
+    },
+    {
+      "depends_on": [],
+      "id": "resource-lifecycle",
+      "inputs": {
+        "task": {
+          "input": "task"
+        }
+      },
+      "permissions": {
+        "network": [],
+        "read": [
+          "workspace",
+          "definitions"
+        ],
+        "shell": false,
+        "write": []
+      },
+      "ref": {
+        "digest": "b52190c95c39516425e0cde28f5ccbc711a96d95380a997dbc743a63f71edfbd",
+        "id": "ergora-resource-lifecycle-reviewer",
+        "kind": "agent",
+        "version": "1.0.0"
+      },
+      "review_requirement": "required",
+      "role": "reviewer"
+    },
+    {
+      "depends_on": [
+        "structure",
+        "correctness",
+        "test-value",
+        "performance",
+        "resource-lifecycle"
+      ],
+      "id": "gather",
+      "join": "all"
+    }
+  ],
+  "outputs": {
+    "result": {
+      "node": "gather",
+      "output": "result"
+    }
+  },
+  "permissions": {
+    "network": [],
+    "read": [
+      "workspace",
+      "definitions"
+    ],
+    "shell": false,
+    "write": []
+  },
+  "resources": [
+    {
+      "id": "ergora-delivery-review-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "ed1cfce67c06ddc26f4c65cd630cd34703845bc88d5be6e7018fead43ae5354b"
+    }
+  ],
+  "schema_version": 2,
+  "version": "1.0.0"
+}

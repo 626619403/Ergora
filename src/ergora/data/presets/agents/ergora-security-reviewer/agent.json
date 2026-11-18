@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "ergora-security-reviewer",
+  "version": "1.0.0",
+  "description": "Review changed trust and permission boundaries through reachable abuse paths.",
+  "roles": [
+    "reviewer"
+  ],
+  "specialties": [
+    "trust-boundaries",
+    "authorization"
+  ],
+  "backend": {
+    "tool": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  },
+  "resources": [
+    {
+      "id": "ergora-security-reviewer-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "2b47fe2480c38228fbace5960a989a355b6e913a0af9c5d672ba7258ed591a3c"
+    },
+    {
+      "id": "ergora-security-reviewer-skill",
+      "kind": "skill",
+      "path": "skills/ergora-security-reviewer",
+      "digest": "2f5b8a4a15212335cb17ced3eaa9372585ebc8b6b06f47ef6e37fb7232dc611d"
+    }
+  ],
+  "invocation_minimum": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  }
+}

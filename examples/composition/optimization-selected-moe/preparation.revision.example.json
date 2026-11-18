@@ -20,10 +20,10 @@
         }
       },
       "ref": {
-        "digest": "a93309f1aa23518b90bad9459bd021813fb016b73097bd4893636dee3e0b1169",
+        "digest": "2a26047f6578f0b25351ace07fdc1ed2a2505b2c7c4a9f23df3304fc2b6075a0",
         "id": "ergora-optimization-inventory",
         "kind": "workflow",
-        "version": "1.0.0"
+        "version": "1.0.1"
       }
     },
     {
@@ -66,5 +66,5 @@
     }
   ],
   "schema_version": 2,
-  "version": "1.2.0"
+  "version": "1.2.1"
 }

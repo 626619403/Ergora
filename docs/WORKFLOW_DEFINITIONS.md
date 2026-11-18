@@ -28,7 +28,8 @@ ergora composition install-preset evidence-report
 ergora composition install-preset optimization-report
 ergora composition install-preset pretraining-review
 ergora composition install-preset posttraining-review
-ergora composition show ergora-large-change-template 1.0.0 --material
+ergora composition install-preset engineering-review
+ergora composition show ergora-large-change-template 1.0.1 --material
 ergora agent definition show ergora-server-implementer 1.0.1 --material
 ```
 
@@ -40,16 +41,18 @@ The [evidence-report author](EVIDENCE_REPORTS.md) provides an independent read-o
 
 |Composition|Root ID/version|Default relationships and supported use|
 |---|---|---|
-|repository-governance|`ergora-governance-template@1.0.0`|Knowledge-mapping and architecture-regression specialists in parallel, then trusted integrate/verify and three reviews; includes independent inventory/planning with the original work/review stages|
-|large-change|`ergora-large-change-template@1.0.0`|Interface contract → parallel server/client work → integration/compatibility validation → three reviews; includes independent inventory/planning with the original work/review stages|
-|training-optimization|`ergora-training-proposal@4.2.1`|Shared flow/design/diagnosis → retained kernel assessment → measurement proposal. Select relevant topic workflows as real descendants in an exact root revision; each leaf inherits the complete common methods and environment record. Explicit leaf calls only.|
-|refactoring|`ergora-refactoring-template@1.2.0`|Ordinary parent → native six stages: preparation → serial rewrite/compatibility work → three independent reviews; retains large-change formal task type, definition8/input12|
-|optimization-performance-diagnosis|`ergora-opt-performance-diagnosis-proposal@1.2.0`|Limited symptom/compatible-reader specialist plus local test design and measurement proposal; actual profile collection stays with its original owner|
+|repository-governance|`ergora-governance-template@1.0.1`|Knowledge-mapping and architecture-regression specialists in parallel, then trusted integrate/verify and three reviews; includes independent inventory/planning with the original work/review stages|
+|large-change|`ergora-large-change-template@1.0.1`|Interface contract → parallel server/client work → integration/compatibility validation → three reviews; includes independent inventory/planning with the original work/review stages|
+|training-optimization|`ergora-training-proposal@4.2.2`|Shared flow/design/diagnosis → retained kernel assessment → measurement proposal. Select relevant topic workflows as real descendants in an exact root revision; each leaf inherits the complete common methods and environment record. Explicit leaf calls only.|
+|refactoring|`ergora-refactoring-template@1.2.1`|Ordinary parent → native six stages: preparation → serial rewrite/compatibility work → three independent reviews; retains large-change formal task type, definition8/input12|
+|optimization-performance-diagnosis|`ergora-opt-performance-diagnosis-proposal@1.2.1`|Limited symptom/compatible-reader specialist plus local test design and measurement proposal; actual profile collection stays with its original owner|
 |training-flow-map|`ergora-training-flow-map`|Read-only `root/map` separately produces algorithm/execution dependency maps, state lifecycles and falsifiable redundancy hypotheses; no automatic downstream specialist or training execution|
 |evidence-report|`ergora-evidence-report`|Read-only `root/author` produces Markdown/static HTML reports bound to sources; preserves original evidence, run records and independent review/release|
 |optimization-report|`ergora-evidence-report@2.0.1`|Same read-only author interface, with dedicated optimization Skill and full template context: source flow/redundancy → comparable results → diagnosis/decisions; explicitly supplied evidence only|
-|pretraining-review|`ergora-pretraining-review` 1.0.2|Original general three-way review alongside a pretraining specialist, required/all-join; all four leaves inherit shared backend guidance; the domain leaf can be called independently|
-|posttraining-review|`ergora-posttraining-review` 1.0.2|Original general three-way review alongside a posttraining specialist, required/all-join; all four leaves inherit shared backend guidance; the domain leaf can be called independently|
+|pretraining-review|`ergora-pretraining-review` 1.1.0|Original general three-way review alongside a pretraining specialist, required/all-join; all four leaves inherit shared backend guidance; the domain leaf can be called independently|
+|posttraining-review|`ergora-posttraining-review` 1.1.0|Original general three-way review alongside a posttraining specialist, required/all-join; all four leaves inherit shared backend guidance; the domain leaf can be called independently|
+
+The `engineering-review` catalog imports `ergora-delivery-review@1.2.0` plus optional performance/resource-lifecycle/dependency/security/measurement reviewers. Its default remains three core branches. The [five-member revision example](../examples/composition/pr-review-selected/README.md) selects performance and resource lifecycle before freeze, keeps every selected member required and documents full source inputs, readonly permissions, model floors and supervisor follow-up handoff. Independent source calls run one leaf each; the source report requires all declared leaves. Formal development uses its existing ReviewDAG, candidate, fixed call slots, original clock and cleanup owners. All training-root domain/general leaves inherit their own outer root reporting contract; full response compliance is read separately from schema/decision coverage.
 
 Development compositions share `ergora-delivery-review`, which references three independently usable subtemplates for structure, correctness and test value. Each specialist has separate initial instructions, expertise and Skills, loading complete materials along its own structural parent chain. Bundled specialists default to Codex gpt-6.1-sol and enforce the [definition minimum](AGENT_DEFINITIONS.md); per-instance overrides must satisfy it. Invocation admission still checks availability and authentication; same-backend selection follows the diversity policy and records its reason.
 
@@ -395,7 +398,7 @@ Joint revision is not a cross-library atomic transaction. Interruption or parent
 <a id="沿完整依赖链发布资源修订"></a>
 ### Publish resource revisions through the complete dependency chain
 
-For the governance composition's structure reviewer, publication order is Agent `ergora-structure-reviewer` → `ergora-structure-review` → `ergora-delivery-review` → `ergora-governance-delivery` → root `ergora-governance-template@1.0.0`. Large changes use the same inner definitions through `ergora-large-change-delivery` → root `ergora-large-change-template@1.0.0`; the training proposal's measurement chain is Agent `ergora-measurement-reviewer` → `ergora-measurement-review` → `ergora-training-proposal`. At every level, update the parent reference with the exact version and digest from the dependency's publication receipt.
+For the governance composition's structure reviewer, publication order is Agent `ergora-structure-reviewer` → `ergora-structure-review` → `ergora-delivery-review` → `ergora-governance-delivery` → root `ergora-governance-template@1.0.1`. Large changes use the same inner definitions through `ergora-large-change-delivery` → root `ergora-large-change-template@1.0.1`; the training proposal's measurement chain is Agent `ergora-measurement-reviewer` → `ergora-measurement-review` → `ergora-training-proposal`. At every level, update the parent reference with the exact version and digest from the dependency's publication receipt.
 
 1. Save a complete manifest and required leaf inputs from the old root, retaining the original version as a comparison. Preserve existing `resources` when adding materials at each level; Skills must include their entry point, all referenced files and necessary empty directories. Ordinary undeclared attachments may also remain in the package.
 2. Starting with the Agent, raise each changed package's version and follow resource preview, explicit acceptance, checking and publication above. In the parent, set `nodes[].ref` to the newly published child's complete `kind/id/version/digest`, then publish the parent, root last. Checks refuse unpublished new dependencies or mismatched digests; do not invent predicted digests or edit old indexes.

@@ -65,8 +65,12 @@ def review_manifest(tmp_path):
     state = State(tmp_path / "review-definitions")
 
     def build(domain, *, after_general=False):
-        installed = workflows.install_preset(state, domain + "-review")
-        document = workflows.get(state, installed["root"]["id"], installed["root"]["version"])
+        if domain == "engineering":
+            from test_presets import _selected_engineering_review
+            _, document = _selected_engineering_review(state)
+        else:
+            installed = workflows.install_preset(state, domain + "-review")
+            document = workflows.get(state, installed["root"]["id"], installed["root"]["version"])
         root = document["definition"]
         if after_general:
             major, minor, patch = map(int, root["version"].split("."))
@@ -198,7 +202,7 @@ def reviewed_source(source, review_manifest, tmp_path, monkeypatch):
         path = run["input_request"]["instance"]
         response = "Original reply for " + path + ":\n````\nUnicode: \u0085\u2028\u2029\r\n" + "完整审查意见。" * 10000
         result = {"summary": path, "artifacts": {"response": response},
-                  "decision": decision if path == "root/domain/review" else "approve"}
+                  "decision": decision if path in ("root/domain/review", "root/resource-lifecycle") else "approve"}
         Path(argv[argv.index("--output-last-message") + 1]).write_text(json.dumps(result), encoding="utf-8")
         output.mkdir()
         return {"status": "succeeded", "returncode": 0, "output": str(output)}
@@ -229,7 +233,7 @@ def reviewed_source(source, review_manifest, tmp_path, monkeypatch):
 
 
 @pytest.mark.parametrize("domain,decision", [("pretraining", "request-changes"), ("posttraining", "request-changes"),
-                                            ("pretraining", "approve")])
+                                            ("pretraining", "approve"), ("engineering", "request-changes")])
 def test_complete_review_report_retains_each_original_and_minority_without_redispatch(reviewed_source, tmp_path,
                                                                                     monkeypatch, capsys, domain, decision):
     state, packet, options = reviewed_source(domain, decision)
@@ -241,9 +245,11 @@ def test_complete_review_report_retains_each_original_and_minority_without_redis
     monkeypatch.setattr(agent_backends, "for_binding", lambda *a, **k: pytest.fail("Report must not readmit a backend"))
     monkeypatch.setattr(agents, "invoke", lambda *a, **k: pytest.fail("Report must not redispatch"))
     observed = review_requests.report(state, "demo", packet, **options)
-    assert observed["coverage"] == {"expected": 4, "selected": 4, "verified": 4, "completed": 4, "complete": True}
+    count = len(options["runs"])
+    assert observed["coverage"] == {"expected": count, "selected": count, "verified": count, "completed": count, "complete": True}
     assert observed["decision"] == decision and not observed["formal_execution_authorized"]
-    assert observed["request_changes"] == (["root/domain/review"] if decision == "request-changes" else [])
+    opposed = "root/resource-lifecycle" if domain == "engineering" else "root/domain/review"
+    assert observed["request_changes"] == ([opposed] if decision == "request-changes" else [])
     for branch in observed["branches"]:
         original = branch["observation"]
         assert original["result"]["bytes"] > 65536 and original["run"]["id"] == options["runs"][branch["instance"]]

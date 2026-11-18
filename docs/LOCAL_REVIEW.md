@@ -67,13 +67,15 @@ GitHub使用本次响应中的base／head SHA计算唯一merge-base；首版拒�
 
 ## 交给领域或专长审查叶
 
+普通工程审查可安装 `engineering-review`：默认保持结构／正确性／测试价值三路，按原需求和 diff 在冻结前显式选择性能、资源生命周期、依赖、安全或计量。选择记录 selected／not-applicable／blocked 及事实理由，不自动全跑。完整五叶 revision、只读 grant、逐叶调用与精确报告清单见 [PR 选集示例](../examples/composition/pr-review-selected/README.md)。性能复用原专家且最低 max，其他 reviewer 至少 gpt-6.1-sol/high；含 Skill 附件时使用实际支持的 task-mcp，不将 text-only 当完整附件访问。
+
 先按[领域审查手册](TRAINING_REVIEW.md)安装`pretraining-review`或`posttraining-review`，准备所选完整manifest及明确的grant。自定义审查组合沿[定义手册](WORKFLOW_DEFINITIONS.md)导入，不必修改Python。每个叶的专长、祖先Skill、上下文、MCP声明和逐级收窄的权限都来自这个冻结组合；后端在实际调用时逐叶选择。
 
-以下示例使用本地包及预训练根`ergora-pretraining-review@1.0.2`。`review-grant.json`应包含所选根的`permissions`和`limits`，格式见[组合分享](WORKFLOW_DEFINITIONS.md#保存和分享完整组合)。`MANIFEST_DIGEST`取prepare-manifest回执的`digest`，`PACKET_SHA256`取原材料回执；两者须明确核对。
+以下示例使用本地包及预训练根`ergora-pretraining-review@1.1.0`。`review-grant.json`应包含所选根的`permissions`和`limits`，格式见[组合分享](WORKFLOW_DEFINITIONS.md#保存和分享完整组合)。`MANIFEST_DIGEST`取prepare-manifest回执的`digest`，`PACKET_SHA256`取原材料回执；两者须明确核对。
 
 ```bash
 ergora composition install-preset pretraining-review
-ergora composition prepare-manifest ergora-pretraining-review 1.0.2 \
+ergora composition prepare-manifest ergora-pretraining-review 1.1.0 \
   --grant ./review-grant.json --directory ./reviews/pretraining-manifest
 
 ergora review prepare-input ./reviews/candidate-01 \
@@ -88,7 +90,7 @@ ergora review verify-input ./reviews/candidate-01 \
   --input ./reviews/domain-input --input-digest INPUT_DIGEST
 ```
 
-外部PR／MR将材料目录换为整个外部来源目录，使用`--source-kind external --source-sha256 SOURCE_SHA256`，保留完整观察及其内部源码包。后训练根用`ergora-posttraining-review@1.0.2`，领域路径同为`root/domain/review`；两个根的通用叶为`root/general/structure/review`、`root/general/correctness/review`、`root/general/test-value/review`。一次prepare只准备所选一个叶，不运行其他分支或all-join。
+外部PR／MR将材料目录换为整个外部来源目录，使用`--source-kind external --source-sha256 SOURCE_SHA256`，保留完整观察及其内部源码包。后训练根用`ergora-posttraining-review@1.1.0`，领域路径同为`root/domain/review`；两个根的通用叶为`root/general/structure/review`、`root/general/correctness/review`、`root/general/test-value/review`。一次prepare只准备所选一个叶，不运行其他分支或all-join。
 
 新目录是原格式的完整composition input。`task.txt`包含原需求、全部源码／显式上下文／祖先规范／检查、外部观察及所选来源与manifest身份；`prompt.txt`再加入模板完整祖先资料。`input_digest`取新回执；完整prompt（含JSON编码和资料）最多1,000,000B，`--max-prompt-bytes`可设更小。超限明确失败，不截断材料。需要未运行前驱、具有write／shell／network权限或无权读取任一包内源码的叶也会拒绝。
 
@@ -139,6 +141,8 @@ ergora review report demo ./reviews/candidate-01 \
 外部PR／MR同样选择整个来源目录、`--source-kind external`及SOURCE_SHA256。报告按明确manifest的全部Agent叶列出预期成员，核每份原input的实例／完整编译图／来源task、原prompt及result SHA，再按可信reviewer结果合同解释意见。单独叶或自定义嵌套只读审查模板也可用；每个叶都须直接读取根task，不能跳过串行前驱。定义中的专长／后端与原run实际binding／选择原因分别保留，历史读取不要求当前后端、认证、Git或网络。
 
 `coverage`分别给出expected、selected、verified和completed；complete要求全部预期叶的证据可核且原status为succeeded。只有完整覆盖且全部approve才总体approve；任一request-changes都保留并使完整报告为request-changes。漏选、未知run、失败／运行中、错源或坏原件使总体为incomplete，`request_changes`仍列出已核反对分支，完整回复与错误继续保存在branches中。未知实例或重复run映射直接拒绝，不能用同一run填满多位专家。
+
+协调者还须读回每位 reviewer 的完整 response，分别记录原工具 decision／coverage 与文本合同是否齐备：输入身份／覆盖、需求轴、标准轴、证据缺口和后续任务。预／后训练的 domain 与 general 都从各自外层根继承共同合同。缺项明确标合同缺失并要求补齐，不能由非空 schema、approve 或进程成功推导双轴通过，也不改写原工具 decision。后续提议可以成批或在前批 queued／running 时追加，由 supervisor 作为后续明确任务记录依赖／资源／验收；保当前冻结图／slots、原 clock／余额／cleanup reserve，unknown 只按原 job／run 对账、不重发。未执行提议无 job ID；[两批交接示例](../examples/composition/pr-review-selected/supervisor-handoff.example.md)不提供队列后端或执行授权。
 
 报告成功返回观察时exit0，脚本应检查`coverage.complete`、`decision`及各分支原状态。默认每份result最多8,388,608B，可显式提高`--max-result-bytes`后重新读取；超限返回对应分支不可核，绝不截断。重复生成只读原run，不补跑缺叶、重发失败／unknown、写平台或授予正式批准；正式六阶段任务仍使用原runtime。Markdown含每份已核回复及完整JSON观察，分享时保留项目原有源码访问范围。
 

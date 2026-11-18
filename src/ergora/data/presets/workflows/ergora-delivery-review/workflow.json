@@ -1,14 +1,14 @@
 {
   "schema_version": 2,
   "id": "ergora-delivery-review",
-  "version": "1.0.1",
+  "version": "1.2.0",
   "description": "Gather complementary reviews of the same exact verified candidate.",
   "resources": [
     {
       "id": "ergora-delivery-review-instructions",
       "kind": "instructions",
       "path": "instructions.md",
-      "sha256": "83e867dadc6b374bd3791bcf79c87462375fff58a43b73a569d6f7b3c954e377"
+      "sha256": "ed1cfce67c06ddc26f4c65cd630cd34703845bc88d5be6e7018fead43ae5354b"
     }
   ],
   "permissions": {

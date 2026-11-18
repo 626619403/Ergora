@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "id": "ergora-dependency-reviewer",
+  "version": "1.0.0",
+  "description": "Review external dependency, packaging and optional capability contracts for the exact candidate.",
+  "roles": [
+    "reviewer"
+  ],
+  "specialties": [
+    "external-dependency-contracts",
+    "optional-capabilities"
+  ],
+  "backend": {
+    "tool": "codex",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  },
+  "resources": [
+    {
+      "id": "ergora-dependency-reviewer-instructions",
+      "kind": "instructions",
+      "path": "instructions.md",
+      "sha256": "127ba917df6764f3e5bd833ca5d3361ea2831ea23a25c4a59728af0bb8bf8403"
+    },
+    {
+      "id": "ergora-dependency-reviewer-skill",
+      "kind": "skill",
+      "path": "skills/ergora-dependency-reviewer",
+      "digest": "c9dcd55ef739a05c37e32850540796e39efb2551c4b97949d45f74838f5f86ee"
+    }
+  ],
+  "invocation_minimum": {
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "high"
+  }
+}

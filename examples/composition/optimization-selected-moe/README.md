@@ -2,9 +2,9 @@
 
 This current example selects a fixed MoE dispatcher/overlap workload. A single ordinary parent invokes `root/development`, whose original six-stage owner runs inventory and plan groups, waits for exact owner plan approval, and retains work, trusted integrate/verify and independent final review. It does not choose among the nineteen directions automatically or execute training experiments.
 
-[publication.json](publication.json) pins every current revision base, published reference and policy file. The shared source is `ergora-training-proposal@4.2.1`; its complete two Skills and environment record are added to the development ancestor through the existing resource-preview/accepted-candidate/revise interface. The bottleneck Skill tree is `90aaeb7c6041ac0f10fa8eebae48978a504a1cb213fafc0a537078fb8961ea17`. The source tree contains one policy copy. Stored immutable revisions preserve their original bytes and executable bits.
+[publication.json](publication.json) pins every current revision base, published reference and policy file. The shared source is `ergora-training-proposal@4.2.2`; its complete two Skills and environment record are added to the development ancestor through the existing resource-preview/accepted-candidate/revise interface. The bottleneck Skill tree is `90aaeb7c6041ac0f10fa8eebae48978a504a1cb213fafc0a537078fb8961ea17`. The source tree contains one policy copy. Stored immutable revisions preserve their original bytes and executable bits.
 
-The exact root is `ergora-selected-moe-development@1.0.1`, digest `62eeeaf259d179cc0276050b2bae6ea9b23d44d17e0a64aa4ab55b87fa8a3201`. The [fixed revision documents](root.revision.example.json) use current preparation/delivery and native-parent bases; fresh publication needs no older source tree.
+The exact root is `ergora-selected-moe-development@1.0.2`, digest `73809d969d8b697841d2ec031409823228bf434bf3b4e0521c45852e1d50ef3e`. The [fixed revision documents](root.revision.example.json) use current preparation/delivery and native-parent bases; fresh publication needs no older source tree.
 
 ```text
 root/development
