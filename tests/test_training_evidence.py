@@ -1,6 +1,7 @@
 """Saved training evidence, selected content and local tickets are distinct facts."""
 
 from contextlib import redirect_stdout
+import hashlib
 import io
 import json
 import os
@@ -115,8 +116,376 @@ def test_selected_text_requires_exact_index_digest_and_capacity(archive):
     notes = folder / 'notes.txt'
     with notes.open('wb') as stream:
         stream.truncate(16_777_217)
-    with pytest.raises(ValueError, match='size limit'):
+    with pytest.raises(ValueError, match='size limit|capacity'):
         training.evidence(state, 'demo', 'alpha', artifact='notes.txt', evidence_sha256=report['evidence_sha256'])
+
+
+@pytest.mark.parametrize('selected_installation', ('missing', 'descriptor-mismatch'))
+def test_public_reference_inventory_runs_without_site_packages_or_selected_native_installation(
+        archive, monkeypatch, selected_installation):
+    state, definition, runtime, _, _, folder, report = archive
+    native = Path(definition['execution']['installation'])
+    descriptor = native / 'ergora-native-runtime.json'
+    original_descriptor = descriptor.read_bytes()
+    moved = native.with_name(native.name + '-temporarily-unavailable')
+    before = {path: path.read_bytes() for path in runtime.rglob('*') if path.is_file()}
+    original_run = reference.subprocess.run
+    calls = []
+    guard = '''import sys
+class DenyApplicationImports:
+    def find_spec(self, fullname, *args):
+        if fullname in ('ergora.state', 'jsonschema', 'temporalio') or fullname.startswith(('jsonschema.', 'temporalio.')):
+            raise AssertionError('Forbidden reader import: ' + fullname)
+sys.meta_path.insert(0, DenyApplicationImports())
+'''
+    def guarded(argv, *args, **kwargs):
+        if argv[-1] == 'from ergora.reference_training_evidence import main;main()':
+            assert '-S' in argv and '-P' in argv
+            calls.append(json.loads(kwargs['input'])['operation'])
+            argv = [*argv[:-1], guard + argv[-1]]
+        return original_run(argv, *args, **kwargs)
+    monkeypatch.setattr(reference.subprocess, 'run', guarded)
+    try:
+        if selected_installation == 'missing':
+            native.rename(moved)
+        else:
+            descriptor.write_text(json.dumps({**json.loads(original_descriptor), 'unavailable_fixture_descriptor': True}))
+        ordinary = training.evidence(state, 'demo', 'alpha', artifact='notes.txt', evidence_sha256=report['evidence_sha256'])
+        assert ordinary['artifact']['text'] == (folder / 'notes.txt').read_text()
+        saved = training.baseline_reference(state, 'demo', 'alpha', evidence_sha256=report['evidence_sha256'])
+        reference_document = saved['reference']
+        assert saved['read_only'] is True and saved['runtime_status'] == 'not_queried'
+        assert reference_document['coverage']['inventory'] == 'complete'
+        assert reference_document['coverage']['applicability'] == 'not_requested'
+        assert reference_document['receipt'] is None
+        assert reference_document['coverage']['quality']['state'] == 'unavailable'
+        assert reference_document['coverage']['execution_source']['state'] == 'unavailable'
+        assert reference_document['coverage']['cleanup']['state'] == 'unavailable'
+        indexed = {entry['path']: entry for entry in reference_document['inventory']['entries'] if entry['root'] == 'archive'}
+        evidence = json.loads((folder / 'evidence.json').read_bytes())
+        for artifact in evidence['artifacts']:
+            raw = (folder / artifact['path']).read_bytes()
+            assert indexed[artifact['path']]['sha256'] == artifact['sha256']
+            assert indexed[artifact['path']]['bytes'] == len(raw)
+        assert calls == ['inspect', 'baseline-reference']
+        assert {path: path.read_bytes() for path in runtime.rglob('*') if path.is_file()} == before
+    finally:
+        if selected_installation == 'missing':
+            moved.rename(native)
+        else:
+            descriptor.write_bytes(original_descriptor)
+
+
+@pytest.mark.parametrize('mutation', ('raw', 'symlink', 'fifo', 'capacity'))
+def test_reference_inventory_checks_every_indexed_artifact_without_blocking_on_fifo(archive, mutation):
+    state, _, _, _, _, folder, report = archive
+    path = folder / 'trace.bin'
+    if mutation == 'raw':
+        path.write_bytes(path.read_bytes() + b'drift')
+    elif mutation == 'capacity':
+        with path.open('wb') as stream:
+            stream.truncate(16_777_217)
+    else:
+        if mutation == 'fifo' and not hasattr(os, 'mkfifo'):
+            pytest.skip('FIFO requires POSIX')
+        path.unlink()
+        if mutation == 'symlink':
+            try:
+                path.symlink_to(folder / 'notes.txt')
+            except OSError:
+                pytest.skip('Symlinks require unavailable platform permission')
+        else:
+            os.mkfifo(path)
+    # Ordinary inspect does not read this non-selected artifact; complete inventory must reject it.
+    if mutation in ('raw', 'capacity'):
+        assert training.evidence(state, 'demo', 'alpha')['archive']['artifact_content_status'] == 'not_read'
+    with pytest.raises(ValueError):
+        training.baseline_reference(state, 'demo', 'alpha', evidence_sha256=report['evidence_sha256'])
+
+
+def test_inventory_keeps_the_first_file_identity_across_repeated_reads(tmp_path):
+    from ergora.reference_training_evidence import _Inventory
+
+    path = tmp_path / 'original.json'
+    raw = b'{"saved":"original"}\n'
+    sha = hashlib.sha256(raw).hexdigest()
+    path.write_bytes(raw)
+    original = path.stat()
+    inventory = _Inventory()
+    assert inventory.read(tmp_path, path.name, 'job', sha) == raw
+    replacement = tmp_path / 'replacement.json'
+    replacement.write_bytes(raw)
+    replacement.replace(path)
+    changed = path.stat()
+    assert path.read_bytes() == raw
+    assert (original.st_dev, original.st_ino) != (changed.st_dev, changed.st_ino)
+    observed = {'path': str(path), 'sha256': sha, 'raw_unchanged': True,
+                'first_identity': [original.st_dev, original.st_ino],
+                'replacement_identity': [changed.st_dev, changed.st_ino],
+                'second_read_started': False, 'second_read_returned': False, 'confirm_returned': False}
+    try:
+        with pytest.raises(ValueError, match='archive_changed: baseline reference'):
+            observed['second_read_started'] = True
+            assert inventory.read(tmp_path, path.name, 'execution', sha) == raw
+            observed['second_read_returned'] = True
+            inventory.confirm()
+            observed['confirm_returned'] = True
+    finally:
+        (tmp_path / 'inventory-duplicate-read.json').write_text(json.dumps(observed, indent=2) + '\n')
+
+
+@pytest.mark.parametrize('mutation', ('remove', 'same-raw-inode', 'dangling-link', 'stable'))
+def test_inventory_confirms_initially_present_fence_after_later_files(tmp_path, monkeypatch, mutation):
+    from ergora import reference_training_evidence as evidence, training_execution_protocol as protocol
+
+    if mutation == 'dangling-link':
+        probe = tmp_path / 'symlink-permission-probe'
+        try:
+            probe.symlink_to(tmp_path / 'missing-symlink-permission-target')
+        except OSError:
+            pytest.skip('Symlinks require unavailable platform permission')
+        probe.unlink()
+    fence, later = tmp_path / 'fence.json', tmp_path / 'later.json'
+    binding = {'experiment_id': 'owned-fence', 'manifest_sha': 'a' * 64,
+               'candidate_sha': 'b' * 40, 'baseline_sha': 'c' * 40}
+    raw = (json.dumps({'binding': binding}) + '\n').encode()
+    fence.write_bytes(raw)
+    later.write_bytes(b'{"artifact":"later-confirmation"}\n')
+    original = fence.stat()
+    inventory = evidence._Inventory()
+    assert inventory.read(tmp_path, fence.name, 'job', hashlib.sha256(raw).hexdigest(), optional=True) == raw
+    assert inventory.read(tmp_path, later.name, 'archive') == later.read_bytes()
+    assert json.loads(fence.read_bytes())['binding'] == binding
+    original_fd = protocol._fd
+    trace, later_seen, outcome, reason = [], False, 'not-returned', None
+    def change_during_later_confirmation(path):
+        nonlocal later_seen
+        path = Path(path)
+        trace.append('confirm-open:' + path.name)
+        if path == later and not later_seen:
+            later_seen = True
+            if mutation == 'remove':
+                fence.unlink()
+            elif mutation == 'same-raw-inode':
+                replacement = tmp_path / 'replacement.json'
+                replacement.write_bytes(raw)
+                replacement.replace(fence)
+                assert fence.read_bytes() == raw and fence.stat().st_ino != original.st_ino
+            elif mutation == 'dangling-link':
+                fence.unlink()
+                fence.symlink_to(tmp_path / 'missing-controlled-fence-target')
+            trace.append('later-action-completed:' + mutation)
+        return original_fd(path)
+    monkeypatch.setattr(protocol, '_fd', change_during_later_confirmation)
+    try:
+        if mutation == 'stable':
+            inventory.confirm()
+            outcome = 'accepted'
+        else:
+            with pytest.raises((ValueError, OSError)) as error:
+                inventory.confirm()
+                outcome = 'accepted'
+            outcome, reason = 'rejected', str(error.value)
+    finally:
+        assert later_seen and 'later-action-completed:' + mutation in trace
+        if mutation in ('same-raw-inode', 'stable'):
+            assert fence.read_bytes() == raw and json.loads(fence.read_bytes())['binding'] == binding
+            final_inode = fence.stat().st_ino
+            assert (final_inode != original.st_ino) is (mutation == 'same-raw-inode')
+            final_kind = 'ordinary'
+        else:
+            final_inode = fence.lstat().st_ino if fence.is_symlink() else None
+            final_kind = 'dangling-link' if fence.is_symlink() else 'absent'
+        (tmp_path / 'present-fence-confirmation.json').write_text(json.dumps({
+            'mutation': mutation, 'initial_present': True, 'initial_binding': binding,
+            'initial_sha256': hashlib.sha256(raw).hexdigest(), 'first_inode': original.st_ino,
+            'final_inode': final_inode, 'final_kind': final_kind, 'later_seen': later_seen,
+            'trace': trace, 'outcome': outcome, 'reason': reason}, indent=2) + '\n')
+
+
+def test_complete_reference_rechecks_same_inode_after_all_artifacts_are_read(archive, monkeypatch, tmp_path):
+    state, _, _, _, _, folder, report = archive
+    marker = tmp_path / 'actual-archive-inode-exchange.json'
+    original_run = reference.subprocess.run
+    program = f'''import json
+from pathlib import Path
+from ergora import reference_training_evidence as evidence
+target=Path({str(folder / 'trace.bin')!r})
+marker=Path({str(marker)!r})
+original=evidence._Inventory.confirm
+def exchange_after_inventory(inventory):
+    raw=target.read_bytes()
+    before=target.stat().st_ino
+    replacement=target.with_suffix('.replacement')
+    replacement.write_bytes(raw)
+    replacement.replace(target)
+    marker.write_text(json.dumps({{'before':before,'after':target.stat().st_ino}}))
+    return original(inventory)
+evidence._Inventory.confirm=exchange_after_inventory
+'''
+    def invoke(argv, *args, **kwargs):
+        if argv[-1] == 'from ergora.reference_training_evidence import main;main()':
+            argv = [*argv[:-1], program + argv[-1]]
+        return original_run(argv, *args, **kwargs)
+    monkeypatch.setattr(reference.subprocess, 'run', invoke)
+    with pytest.raises(ValueError):
+        training.baseline_reference(state, 'demo', 'alpha', evidence_sha256=report['evidence_sha256'])
+    exchanged = json.loads(marker.read_text())
+    assert exchanged['before'] != exchanged['after']
+
+
+@pytest.mark.parametrize('mutation', ('registered-manifest-lf', 'registration-lf', 'registration-inode',
+                                     'late-fence', 'late-dangling-fence'))
+def test_reference_rechecks_original_and_registration_guards_and_fence_absence(archive, monkeypatch, tmp_path, mutation):
+    state, definition, runtime, prefix, _, _, report = archive
+    if mutation == 'late-dangling-fence':
+        probe = tmp_path / 'symlink-permission-probe'
+        try:
+            probe.symlink_to(tmp_path / 'missing-symlink-permission-target')
+        except OSError:
+            pytest.skip('Symlinks require unavailable platform permission')
+        probe.unlink()
+    saved = training.baseline_reference(state, 'demo', 'alpha', evidence_sha256=report['evidence_sha256'])
+    if mutation == 'registered-manifest-lf':
+        target = prefix / 'experiments/alpha/manifest.json'
+    elif mutation.startswith('registration-'):
+        target = Path(definition['execution']['config_directory']) / reference.registration_paths('demo')[0]
+    else:
+        target = runtime / 'training/fences/alpha.json'
+    original_raw = target.read_bytes() if target.exists() else None
+    marker = tmp_path / 'actual-reference-guard-change.json'
+    program = f'''import hashlib,json
+from pathlib import Path
+from ergora import reference_training_evidence as evidence
+target=Path({str(target)!r})
+marker=Path({str(marker)!r})
+mutation={mutation!r}
+original=evidence._Inventory.confirm
+def change_after_first_reads(inventory):
+    before=target.read_bytes() if target.exists() else None
+    before_inode=target.stat().st_ino if before is not None else None
+    enrolled=target in inventory.originals
+    target.parent.mkdir(parents=True,exist_ok=True)
+    if mutation.endswith('-lf'):
+        target.write_bytes(before+b'\\n')
+    elif mutation=='registration-inode':
+        replacement=target.with_suffix('.replacement')
+        replacement.write_bytes(before)
+        replacement.replace(target)
+    elif mutation=='late-fence':
+        target.write_text(json.dumps({{'binding':{saved['reference']['source']['binding']!r}}}))
+    else:
+        target.symlink_to(target.with_name('missing-controlled-fence-target'))
+    after=target.read_bytes() if target.exists() else None
+    marker.write_text(json.dumps({{'mutation':mutation,'target':str(target),'enrolled':enrolled,
+        'before_sha256':hashlib.sha256(before).hexdigest() if before is not None else None,
+        'after_sha256':hashlib.sha256(after).hexdigest() if after is not None else None,
+        'same_json':json.loads(before)==json.loads(after) if before is not None and after is not None else None,
+        'same_raw':before==after,'before_inode':before_inode,'after_inode':target.lstat().st_ino,
+        'visible_at_final_confirm':True,'dangling':target.is_symlink() and not target.exists()}}))
+    return original(inventory)
+evidence._Inventory.confirm=change_after_first_reads
+'''
+    original_run = reference.subprocess.run
+    def inject(argv, *args, **kwargs):
+        if argv[-1] == 'from ergora.reference_training_evidence import main;main()':
+            assert '-S' in argv and '-P' in argv
+            argv = [*argv[:-1], program + argv[-1]]
+        return original_run(argv, *args, **kwargs)
+    monkeypatch.setattr(reference.subprocess, 'run', inject)
+    try:
+        with pytest.raises(ValueError, match='archive_changed'):
+            training.baseline_reference(state, 'demo', 'alpha', evidence_sha256=report['evidence_sha256'])
+    finally:
+        if original_raw is None:
+            if target.exists() or target.is_symlink():
+                target.unlink()
+        else:
+            target.write_bytes(original_raw)
+        assert marker.is_file(), 'The controlled change must actually occur at final confirmation'
+        changed = json.loads(marker.read_bytes())
+        if mutation.endswith('-lf'):
+            assert changed['same_json'] is True and changed['before_sha256'] != changed['after_sha256']
+        elif mutation == 'registration-inode':
+            assert changed['same_raw'] is True and changed['before_inode'] != changed['after_inode']
+        else:
+            assert changed['before_inode'] is None and changed['visible_at_final_confirm'] is True
+            assert changed['dangling'] is (mutation == 'late-dangling-fence')
+
+
+def test_reference_is_independent_of_mutable_heads_and_registration_formatting(archive, monkeypatch):
+    state, definition, runtime, prefix, write, folder, report = archive
+    saved = training.baseline_reference(state, 'demo', 'alpha', evidence_sha256=report['evidence_sha256'])
+    head = prefix / 'baseline.json'
+    config = Path(definition['execution']['config_directory'])
+    guard = config / reference.registration_paths('demo')[0]
+    head_raw, guard_raw = head.read_bytes(), guard.read_bytes()
+    try:
+        write(head, {**json.loads(head_raw), 'baseline_id': 'different-current-head'})
+        guard.write_bytes(guard_raw + b'\n')
+        assert training.baseline_reference(state, 'demo', 'alpha', evidence_sha256=report['evidence_sha256']) == saved
+        ignored = [head, config / 'training-runners/trusted.json',
+                   runtime / ('training/integration-tickets/alpha-' + report['evidence_sha256'][:16] + '.json'),
+                   runtime / 'training/negative-results/alpha.json']
+        program = f'''from pathlib import Path
+from ergora import training_materials as materials,training_execution_protocol as protocol
+ignored={{Path(value) for value in {[str(path) for path in ignored]!r}}}
+original_raw,original_fd=materials.read_raw,protocol._fd
+def checked_raw(path,*args,**kwargs):
+    assert Path(path) not in ignored,'unrelated mutable reference read: '+str(path)
+    return original_raw(path,*args,**kwargs)
+def checked_fd(path,*args,**kwargs):
+    assert Path(path) not in ignored,'unrelated mutable reference read: '+str(path)
+    return original_fd(path,*args,**kwargs)
+materials.read_raw=checked_raw
+protocol._fd=checked_fd
+'''
+        original_run = reference.subprocess.run
+        def inject(argv, *args, **kwargs):
+            if argv[-1] == 'from ergora.reference_training_evidence import main;main()':
+                argv = [*argv[:-1], program + argv[-1]]
+            return original_run(argv, *args, **kwargs)
+        monkeypatch.setattr(reference.subprocess, 'run', inject)
+        assert training.baseline_reference(state, 'demo', 'alpha', evidence_sha256=report['evidence_sha256']) == saved
+    finally:
+        head.write_bytes(head_raw)
+        guard.write_bytes(guard_raw)
+
+
+@pytest.mark.parametrize('updates,expected_state', [
+    pytest.param({'metric': True}, None, id='metric-bool'),
+    pytest.param({'unit': True}, None, id='unit-bool'),
+    pytest.param({'unit': []}, None, id='unit-list'),
+    pytest.param({'unit': ''}, None, id='unit-empty'),
+    pytest.param({'aggregation': {'kind': 'peak'}}, None, id='aggregation-object'),
+    pytest.param({'scope': True}, None, id='scope-bool'),
+    pytest.param({'scope': []}, None, id='scope-list'),
+    pytest.param({'scope': {}}, None, id='scope-empty-object'),
+    pytest.param({'scope': '  '}, None, id='scope-blank'),
+    pytest.param({'scope': {'process': 'runner', 'ranks': [0]}}, 'observed', id='structured-scope-data'),
+    pytest.param({'unit': 'unrecognized-pages', 'limit': 0}, 'unavailable', id='unknown-unit-no-comparison'),
+])
+def test_resource_metric_metadata_types_are_distinct_from_measurements(updates, expected_state):
+    """Resource metadata only: no process memory observation or accepted full is synthesized."""
+    from ergora.reference_training_evidence import _resource_coverage
+
+    metric = {'metric': 'peak_memory', 'unit': 'bytes', 'aggregation': 'peak',
+              'scope': 'whole_runner_process', 'observed': 7, 'limit': 8, **updates}
+    raw = (json.dumps({'metric': metric}, allow_nan=False) + '\n').encode()
+    resource_ref = {'path': 'resource-report.json', 'sha256': hashlib.sha256(raw).hexdigest(), 'bytes': len(raw)}
+    selected = {**metric, 'report_ref': resource_ref}
+    artifacts = {resource_ref['path']: resource_ref}
+    def read_artifact(value):
+        assert artifacts[value['path']] == value
+        assert hashlib.sha256(raw).hexdigest() == value['sha256'] and len(raw) == value['bytes']
+        return json.loads(raw)
+    if expected_state is None:
+        with pytest.raises(ValueError, match='[Rr]esource'):
+            _resource_coverage([selected], artifacts, read_artifact)
+    else:
+        result = _resource_coverage([selected], artifacts, read_artifact)
+        assert result['state'] == expected_state and result['metrics'] == [selected]
+        assert not any(reason['code'] == 'resource_limit_exceeded' for reason in result['reasons'])
 
 
 def test_no_archive_and_cli_http_share_the_observation(experiments):

@@ -103,8 +103,16 @@ def evidence(state: State, project_id: str, experiment_id: str, *, artifact: str
     if artifact is None and (evidence_sha256 is not None or offset != 0):
         raise ValueError('Evidence SHA and character offset apply only to a selected artifact')
     return reference.training_evidence(_project(state, project_id), state.root,
-        {'experiment_id': experiment_id, 'artifact': artifact, 'evidence_sha256': evidence_sha256,
+        {'operation': 'inspect', 'experiment_id': experiment_id, 'artifact': artifact, 'evidence_sha256': evidence_sha256,
          'offset': offset, 'limit': limit})
+
+
+def baseline_reference(state: State, project_id: str, experiment_id: str, *, evidence_sha256: str) -> dict:
+    """Inventory one exact accepted archive, without granting current execution or quality."""
+    if not isinstance(evidence_sha256, str) or re.fullmatch('[a-f0-9]{64}', evidence_sha256) is None:
+        raise ValueError('Baseline reference requires the exact evidence SHA-256')
+    return reference.training_evidence(_project(state, project_id), state.root,
+        {'operation': 'baseline-reference', 'experiment_id': experiment_id, 'evidence_sha256': evidence_sha256})
 
 
 def submission(state: State, project_id: str, experiment_id: str, *, original_registration: dict | None = None) -> dict:

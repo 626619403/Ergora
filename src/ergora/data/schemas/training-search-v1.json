@@ -43,7 +43,8 @@
         "allowed_changes": {"$ref": "#/$defs/string_list"},
         "checks_required": {"$ref": "#/$defs/string_list"},
         "quality_required": {"type": "boolean"},
-        "notes": {"type": "string"}
+        "notes": {"type": "string"},
+        "baseline_reference": {"type": ["object", "null"], "additionalProperties": false, "required": ["experiment_id", "evidence_sha256", "reference_sha256"], "properties": {"experiment_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"}, "evidence_sha256": {"$ref": "#/$defs/sha256"}, "reference_sha256": {"$ref": "#/$defs/sha256"}}}
       }
     },
     "runner": {

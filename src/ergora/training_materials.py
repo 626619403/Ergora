@@ -128,10 +128,26 @@ def require_driver(manifest, runner):
     """Check declared support without importing or constructing the driver."""
     value = input_descriptor(manifest)
     capability = runner['configuration_readback']
+    selector = baseline_selector(manifest)
+    if selector is not None and (capability is None or capability['baseline_reference_protocol'] != 'baseline-reference-v1'):
+        raise ValueError('Baseline reference unavailable: trusted driver does not declare baseline-reference-v1')
     if (value is None) != (capability is None):
         raise ValueError('Configuration execution unavailable: runner and input descriptor disagree')
     if value is not None and value['kind'] == 'prepared-json' and capability.get('prepared_json_format') != value['format']:
         raise ValueError('Configuration execution unavailable: trusted driver does not declare json-v1 support')
+    return value
+
+
+def baseline_selector(manifest):
+    """Validate the immutable same-project archive selection, without observing it."""
+    value = manifest.get('baseline_reference')
+    if value is None:
+        return None
+    _exact(value, ('experiment_id', 'evidence_sha256', 'reference_sha256'), 'Baseline reference selector')
+    if not isinstance(value['experiment_id'], str) or re.fullmatch('[A-Za-z0-9][A-Za-z0-9_-]{0,79}', value['experiment_id']) is None:
+        raise ValueError('Baseline reference requires an exact original experiment ID')
+    for key in ('evidence_sha256', 'reference_sha256'):
+        _sha(value[key])
     return value
 
 
@@ -152,7 +168,7 @@ def read_raw(path, limit=LIMIT):
     """Read an ordinary bounded file without waiting on a FIFO or following links."""
     path = Path(path)
     _path(path, path.parent)
-    descriptor = os.open(path, os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_NONBLOCK', 0))
+    descriptor = os.open(path, os.O_RDONLY | getattr(os, 'O_NOFOLLOW', 0) | getattr(os, 'O_NONBLOCK', 0) | getattr(os, 'O_BINARY', 0))
     with os.fdopen(descriptor, 'rb') as stream:
         if not stat.S_ISREG(os.fstat(stream.fileno()).st_mode):
             raise ValueError('Configuration inputs require ordinary files')

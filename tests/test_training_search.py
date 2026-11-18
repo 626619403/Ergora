@@ -115,6 +115,7 @@ def search_input(request, search_request, configuration_source):
                           '{configuration_driver}', '{configuration_request}'], 'timeout_seconds': 20,
               'configuration_readback': {'protocol': 'training-configuration-driver-v1',
                   'source': configuration_source['reference'], 'prepared_json_format': 'json-v1',
+                  'baseline_reference_protocol': None,
                   'manifest_configuration_role': 'source-bytes',
                   'observation_scheme': 'fixture-cpu-configuration-v1'}}
     write(Path(definition['execution']['config_directory']) / 'training-runners/trusted.json', runner)
@@ -444,6 +445,7 @@ def test_completed_original_six_stage_export_binds_source_without_another_export
         'command': [sys.executable, '{configuration_driver}', '{configuration_request}'], 'timeout_seconds': 30,
         'configuration_readback': {'protocol': 'training-configuration-driver-v1',
             'source': configuration_source['reference'], 'prepared_json_format': 'json-v1',
+                  'baseline_reference_protocol': None,
             'manifest_configuration_role': 'source-bytes',
             'observation_scheme': 'fixture-cpu-configuration-v1'}})
     search_request['experiment_template'].update(baseline_commit=commit, candidate_commit=exported['candidate_sha'])
@@ -685,7 +687,12 @@ def test_revision_source_drift_and_packet_corruption_preserve_partial_originals(
 def search_execution(search_input, service, configuration_source, tmp_path, request):
     """External JSON, one unchanged source commit, and the original managed CPU path."""
     state, definition, runtime, prefix, search_request = search_input
-    options = getattr(request, 'param', {})
+    options = dict(getattr(request, 'param', {}))
+    if options.pop('baseline_reference_support', False):
+        runner_path = Path(definition['execution']['config_directory']) / 'training-runners/trusted.json'
+        runner = json.loads(runner_path.read_bytes())
+        runner['configuration_readback']['baseline_reference_protocol'] = 'baseline-reference-v1'
+        runner_path.write_text(json.dumps(runner) + '\n')
     baseline = '\ufeff{ "global_batch": 12, "microbatch": 3, "strategy": "redundant-loop"'
     if options:
         baseline += ', ' + json.dumps(options)[1:-1]
@@ -698,8 +705,8 @@ def search_execution(search_input, service, configuration_source, tmp_path, requ
         'format': 'json-v1', 'template': candidate,
         'schema': {'type': 'object', 'additionalProperties': False,
                    'required': list(candidate), 'properties': {
-                       name: {'type': 'integer' if name in ('global_batch', 'microbatch') else 'string'}
-                       for name in candidate}},
+                       name: {'type': 'integer' if type(value) is int else 'string'}
+                       for name, value in candidate.items()}},
         'mutable': [{'path': ['global_batch'], 'change_type': 'batch_size',
                      'allowed_change': search_request['experiment_template']['allowed_changes'][0]},
                     {'path': ['microbatch'], 'change_type': 'batch_organization',
@@ -745,12 +752,13 @@ def _execute_search(item, *, limit=None, lose_reply=False):
                                'change': 'External JSON batch/chunk grouping',
                                'next_bottleneck': 'CPU fixture only; no GPU or model-quality claim'}
                               for result in item['prepared']['experiments']]}
-    source = item['tmp_path'] / 'original-cycle-input'
+    cycle_id = item.get('cycle_id', 'search')
+    source = item['tmp_path'] / (cycle_id + '-cycle-input')
     selected = training_cycles.create(state, 'demo', request, source)
-    authorized = training_cycles.authorize(state, 'demo', 'search', source, selected['sha256'],
+    authorized = training_cycles.authorize(state, 'demo', cycle_id, source, selected['sha256'],
                                           state.project('demo')['revision'], confirm=True)
     item['authorization'] = authorized
-    authorization_path = state.root / 'training-cycles/demo/search/authorization.json'
+    authorization_path = state.root / ('training-cycles/demo/' + cycle_id + '/authorization.json')
     original_clock = authorization_path.read_bytes()
     results = []
     for result in item['prepared']['experiments'][:limit]:
@@ -758,7 +766,7 @@ def _execute_search(item, *, limit=None, lose_reply=False):
         record = item['tmp_path'] / (ident + '-service.json')
         item['service'][0]('accepted', budget_scenario='configuration-full', record_path=record)
         try:
-            submitted = training_cycles.start(state, 'demo', 'search', ident,
+            submitted = training_cycles.start(state, 'demo', cycle_id, ident,
                 authorized['authorization_sha256'], state.project('demo')['revision'])
             created = native_budget_create(definition, ident, managed=True)
             assert created.returncode == 0, created.stderr
@@ -865,6 +873,344 @@ def test_search_materials_run_two_real_cpu_candidates_on_one_original_clock_and_
     assert len(prepared_contexts) == len(first_work) == 2
     assert [entry['identity'] for entry in prepared_contexts] == [entry['identity'] for entry in first_work]
     assert all(entry['observations'] == 2 for entry in first_work)
+    assert (item['prefix'] / 'baseline.json').read_bytes() == item['baseline_record']
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('search_execution', [{'baseline_reference_support': True}], indirect=True)
+def test_baseline_reference_is_consumed_by_two_complete_independent_cpu_runs(search_execution):
+    item = search_execution
+    source = _execute_search(item, limit=1)[0]
+    source_gate = json.loads((source['job'] / 'gate-report.json').read_bytes())
+    assert source_gate['passed'] is True, source_gate
+    saved = training.baseline_reference(item['state'], 'demo', source['experiment_id'],
+                                        evidence_sha256=source_gate['evidence_sha256'])
+    reference_document = saved['reference']
+    assert reference_document['coverage']['inventory'] == 'complete'
+    assert reference_document['coverage']['execution_source']['state'] == 'verified'
+    assert reference_document['coverage']['cleanup']['state'] == 'verified'
+    assert reference_document['coverage']['quality']['baseline_scope_verified'] is True
+    assert reference_document['coverage']['quality']['state'] == 'unavailable'
+    assert reference_document['coverage']['resources']['state'] == 'unavailable'
+    assert reference_document['receipt']['oracle']['coverage']['model_training_quality'] == 'not_evaluated'
+    from pathlib import PureWindowsPath
+
+    pending = [reference_document]
+    while pending:
+        value = pending.pop()
+        if isinstance(value, dict):
+            pending.extend(value.values())
+        elif isinstance(value, list):
+            pending.extend(value)
+        elif isinstance(value, str):
+            assert not Path(value).is_absolute() and not PureWindowsPath(value).is_absolute(), value
+    source_archive = Path(source_gate['archive_report']['archive_path'])
+    original_receipt_raw = (source_archive / 'baseline-reference-receipt.json').read_bytes()
+    original_receipt = json.loads(original_receipt_raw)
+    assert Path(original_receipt['source']['repo']).is_absolute()
+    assert Path(original_receipt['environment']['observed']['executable']).is_absolute()
+    assert reference_document['receipt']['source'] == {
+        key: value for key, value in original_receipt['source'].items() if key != 'repo'}
+    assert reference_document['receipt']['environment']['observed'] == {
+        key: value for key, value in original_receipt['environment']['observed'].items() if key != 'executable'}
+    environment_ref = original_receipt['environment']['report_ref']
+    assert reference_document['receipt']['environment']['report_ref'] == environment_ref
+    archive_inventory = {entry['path']: entry for entry in reference_document['inventory']['entries']
+                         if entry['root'] == 'archive'}
+    for name in ('baseline-reference-receipt.json', environment_ref['path'], 'baseline-reference-source-inventory.raw'):
+        raw = (source_archive / name).read_bytes()
+        assert archive_inventory[name]['sha256'] == _sha(raw)
+        assert archive_inventory[name]['bytes'] == len(raw)
+        assert (source['job'] / 'run-output' / name).read_bytes() == raw
+    environment_raw = (source_archive / environment_ref['path']).read_bytes()
+    assert environment_ref == {'path': environment_ref['path'], 'sha256': _sha(environment_raw), 'bytes': len(environment_raw)}
+    assert json.loads(environment_raw) == {'environment': original_receipt['environment']['observed']}
+    assert archive_inventory['baseline-reference-source-inventory.raw']['sha256'] == original_receipt['source']['inventory_sha256']
+    # A historical map is checked against its archived declaration, independently of current live requirements.
+    extension_marker = item['tmp_path'] / 'historical-current-coverage-extension.json'
+    extension = f'''import json
+from pathlib import Path
+from ergora import training_execution_protocol as protocol
+name='training_search.py'
+assert name not in protocol.GATE_SOURCES and Path(protocol.__file__).with_name(name).is_file()
+before=list(protocol.GATE_SOURCES)
+protocol.GATE_SOURCES=(*protocol.GATE_SOURCES,name)
+Path({str(extension_marker)!r}).write_text(json.dumps({{'before':before,'after':list(protocol.GATE_SOURCES)}}))
+'''
+    original_reader = reference.subprocess.run
+    def extend_current_coverage(argv, *args, **kwargs):
+        if argv[-1] == 'from ergora.reference_training_evidence import main;main()':
+            argv = [*argv[:-1], extension + argv[-1]]
+        return original_reader(argv, *args, **kwargs)
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(reference.subprocess, 'run', extend_current_coverage)
+        assert training.baseline_reference(item['state'], 'demo', source['experiment_id'],
+                                           evidence_sha256=source_gate['evidence_sha256']) == saved
+    extended = json.loads(extension_marker.read_bytes())
+    assert extended['after'] == [*extended['before'], 'training_search.py']
+    source_output = source['job'] / 'run-output'
+    source_comparison = json.loads((source_output / 'comparison-input.json').read_bytes())
+    seen_runs = {pair[arm]['run_id'] for pair in source_comparison['pairs'] for arm in ('baseline', 'candidate')}
+    selector = {'experiment_id': source['experiment_id'], 'evidence_sha256': source_gate['evidence_sha256'],
+                'reference_sha256': saved['reference_sha256']}
+    candidate_request = deepcopy(item['request'])
+    candidate_request['search_id'] = 'reference-candidates'
+    candidate_request['experiment_template']['baseline_reference'] = selector
+    preview = training_search.preview(item['state'], 'demo', candidate_request)
+    directory = item['tmp_path'] / 'reference-candidate-inputs'
+    published = _prepare(item['state'], candidate_request, preview, directory)
+    selected = {**item, 'request': candidate_request, 'preview': preview, 'prepared': published,
+                'directory': directory, 'cycle_id': 'reuse'}
+    results = _execute_search(selected, lose_reply=True)
+    projections = []
+    read_digests = []
+    group_counts = []
+    for result in results:
+        job, observed = result['job'], result['execution']
+        assert json.loads((job / 'result.json').read_bytes())['state'] == 'SUCCEEDED'
+        gate = json.loads((job / 'gate-report.json').read_bytes())
+        assert gate['passed'] is True, gate
+        evidence = training.evidence(item['state'], 'demo', result['experiment_id'])
+        archive = Path(evidence['archive']['path'])
+        output = job / 'run-output'
+        bundle = json.loads((output / 'evidence.json').read_bytes())
+        assert bundle['quality']['status'] == 'NOT_RUN'
+        indexed = {entry['path']: entry['sha256'] for entry in bundle['artifacts']}
+        # Verify every original artifact, including oracle inputs/expected and core source evidence.
+        for path, sha in indexed.items():
+            raw = (output / path).read_bytes()
+            assert _sha(raw) == sha and (archive / path).read_bytes() == raw
+        read_raw = (output / 'baseline-reference-read.json').read_bytes()
+        read = json.loads(read_raw)
+        assert read['selector'] == selector
+        assert read['reference_sha256'] == saved['reference_sha256']
+        assert read['anchor_sha256'] == saved['anchor_sha256']
+        assert read['inventory_sha256'] == reference_document['inventory']['sha256']
+        assert read['quality']['state'] == 'reusable'
+        assert read['timing']['state'] == 'historical_only'
+        assert read['resources']['state'] == 'unavailable'
+        assert read['candidate_quality'] == 'not_evaluated'
+        assert read['baseline_work_skipped'] is read['independent_pair_supplied'] is read['promotion_approved'] is False
+        relations = {entry['field']: entry for entry in read['projection']['relations']}
+        assert relations['effective_samples']['current'] == 48
+        assert relations['optimizer_updates']['relation'] == 'not_applicable'
+        assert relations['optimizer_updates']['current'] is None
+        projections.append(read['projection'])
+        read_digests.append(_sha(read_raw))
+        request = json.loads((job / 'configuration-request.json').read_bytes())
+        assert request['baseline_reference'] == selector
+        comparison = json.loads((output / 'comparison-input.json').read_bytes())
+        assert {pair['order'] for pair in comparison['pairs']} == {'AB', 'BA'}
+        first_candidate = json.loads((output / comparison['pairs'][0]['candidate']['raw_ref']['path']).read_bytes())
+        configured = json.loads(Path(request['configurations']['candidate']['path']).read_bytes())
+        expected_groups = (len(first_candidate['values']) + configured['global_batch'] - 1) // configured['global_batch']
+        assert len(first_candidate['grouping']) == expected_groups == relations['batch_groups']['current']
+        group_counts.append(expected_groups)
+        for pair in comparison['pairs']:
+            for arm in ('baseline', 'candidate'):
+                record = pair[arm]
+                assert record['run_id'] not in seen_runs
+                seen_runs.add(record['run_id'])
+                raw = json.loads((output / record['raw_ref']['path']).read_bytes())
+                assert raw['provenance'] == {
+                    'native_request_sha256': result['native_sha256'],
+                    'launch_sha256': observed['record_sha256']['launch'],
+                    'execution_phase_id': request['execution_phase_id'], 'run_id': record['run_id'],
+                    'window_id': raw['provenance']['window_id']}
+                assert raw['values'] == json.loads((output / f"expected/{pair['pair_id'].split('-')[-1]}.json").read_bytes())['values']
+                assert record['elapsed_seconds'] == raw['elapsed_seconds']
+        assert all(observed[name] is True for name in ('executor_stop_confirmed', 'durable_stop_confirmed'))
+        assert json.loads(result['service'].read_bytes())['starts'] == 1
+        before = _files(job / 'managed-execution')
+        with pytest.raises(ValueError):
+            training.execute(item['state'], 'demo', result['experiment_id'], item['state'].project('demo')['revision'],
+                result['submission']['intent_sha256'], result['submission']['run_id'], result['native_sha256'], confirm=True)
+        assert _files(job / 'managed-execution') == before
+        for name in ('supervisor', 'executor'):
+            assert_budget_process_stopped(observed['records']['attempt'][name])
+    assert projections[0]['candidate_observation_sha256'] != projections[1]['candidate_observation_sha256']
+    assert read_digests[0] != read_digests[1]
+    assert len(set(group_counts)) == len(results)
+    assert (item['prefix'] / 'baseline.json').read_bytes() == item['baseline_record']
+    assert training.baseline_reference(item['state'], 'demo', source['experiment_id'],
+                                       evidence_sha256=source_gate['evidence_sha256']) == saved
+    markers = {name: [json.loads(line) for line in (item['markers'] / (name + '.jsonl')).read_text().splitlines()]
+               for name in ('prepare', 'first-work', 'reference-read', 'reference-record')}
+    assert [entry['identity'] for entry in markers['prepare']] == [entry['identity'] for entry in markers['first-work']]
+    assert [entry['identity'] for entry in markers['reference-read']] == [entry['identity'] for entry in markers['first-work'][1:]]
+    assert [entry['identity'] for entry in markers['reference-record']] == [entry['identity'] for entry in markers['first-work']]
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('search_execution,resource_state', [
+    pytest.param({'baseline_reference_support': True, 'resource_limit_bytes': 1_073_741_824}, 'observed', id='within'),
+    pytest.param({'baseline_reference_support': True, 'resource_limit_bytes': 1}, 'invalid', id='over'),
+], indirect=['search_execution'])
+def test_actual_process_resource_soft_limit_preserves_other_reference_dimensions(search_execution, resource_state):
+    item = search_execution
+    source = _execute_search(item, limit=1)[0]
+    gate = json.loads((source['job'] / 'gate-report.json').read_bytes())
+    assert gate['passed'] is True, gate
+    assert json.loads((source['job'] / 'result.json').read_bytes())['state'] == 'SUCCEEDED'
+    archive = Path(gate['archive_report']['archive_path'])
+    receipt = json.loads((archive / 'baseline-reference-receipt.json').read_bytes())
+    metric, = receipt['resources']
+    assert set(metric) == {'metric', 'unit', 'aggregation', 'scope', 'observed', 'limit', 'report_ref'}
+    assert (metric['metric'], metric['unit'], metric['aggregation'], metric['scope']) == (
+        'peak_rss', 'bytes', 'peak', 'whole_runner_process')
+    baseline = json.loads(item['request']['baseline_configuration']['utf8'].lstrip('\ufeff'))
+    assert metric['limit'] == baseline['resource_limit_bytes']
+    assert type(metric['observed']) is int and metric['observed'] > 0
+    assert (metric['observed'] > metric['limit']) is (resource_state == 'invalid')
+    resource_ref = metric['report_ref']
+    resource_raw = (archive / resource_ref['path']).read_bytes()
+    assert resource_ref == {'path': resource_ref['path'], 'sha256': _sha(resource_raw), 'bytes': len(resource_raw)}
+    report = json.loads(resource_raw)
+    assert report['metric'] == {key: value for key, value in metric.items() if key != 'report_ref'}
+    observation = report['observation']
+    assert observation['method'] == 'resource.getrusage(RUSAGE_SELF).ru_maxrss'
+    assert observation['raw_unit'] == 'KiB' and observation['bytes_per_unit'] == 1024
+    assert metric['observed'] == observation['raw_value'] * observation['bytes_per_unit']
+    assert observation['pid'] == json.loads((item['markers'] / 'prepare.jsonl').read_text().splitlines()[0])['pid']
+    configuration_request = json.loads((source['job'] / 'configuration-request.json').read_bytes())
+    assert observation['native_request_sha256'] == source['native_sha256']
+    assert observation['launch_sha256'] == source['execution']['record_sha256']['launch']
+    assert observation['execution_phase_id'] == configuration_request['execution_phase_id']
+    evidence = json.loads((archive / 'evidence.json').read_bytes())
+    assert evidence['quality']['status'] == 'NOT_RUN'
+    assert sum((archive / entry['path']).stat().st_size for entry in evidence['artifacts']) < 64 * 1_048_576
+    for entry in evidence['artifacts']:
+        raw = (archive / entry['path']).read_bytes()
+        assert _sha(raw) == entry['sha256']
+        assert (source['job'] / 'run-output' / entry['path']).read_bytes() == raw
+    saved = training.baseline_reference(item['state'], 'demo', source['experiment_id'],
+                                        evidence_sha256=gate['evidence_sha256'])
+    reference_document = saved['reference']
+    coverage = reference_document['coverage']
+    assert coverage['inventory'] == 'complete'
+    assert coverage['execution_source']['state'] == coverage['cleanup']['state'] == 'verified'
+    assert coverage['quality']['baseline_scope_verified'] is True
+    assert coverage['quality']['state'] == 'unavailable'
+    assert coverage['timing']['state'] == 'historical_only'
+    assert coverage['resources']['state'] == resource_state
+    assert coverage['resources']['metrics'] == receipt['resources']
+    if resource_state == 'invalid':
+        assert coverage['resources']['reasons'] == [{
+            'code': 'resource_limit_exceeded', 'field': 'resources.peak_rss.limit',
+            'expected': metric['limit'], 'observed': metric['observed'], 'source_ref': resource_ref}]
+    else:
+        assert coverage['resources']['reasons'] == []
+    request = deepcopy(item['request'])
+    request['search_id'] = 'resource-consumer'
+    request['experiment_template']['baseline_reference'] = {
+        'experiment_id': source['experiment_id'], 'evidence_sha256': gate['evidence_sha256'],
+        'reference_sha256': saved['reference_sha256']}
+    request['dimensions'][0]['values'] = [24]
+    request['selection']['max_trials'] = 1
+    preview = training_search.preview(item['state'], 'demo', request)
+    directory = item['tmp_path'] / 'resource-consumer-inputs'
+    published = _prepare(item['state'], request, preview, directory)
+    selected = {**item, 'request': request, 'preview': preview, 'prepared': published,
+                'directory': directory, 'cycle_id': 'resource-read'}
+    consumer, = _execute_search(selected)
+    consumer_gate = json.loads((consumer['job'] / 'gate-report.json').read_bytes())
+    assert consumer_gate['passed'] is True, consumer_gate
+    assert json.loads((consumer['job'] / 'result.json').read_bytes())['state'] == 'SUCCEEDED'
+    consumer_archive = Path(consumer_gate['archive_report']['archive_path'])
+    read = json.loads((consumer_archive / 'baseline-reference-read.json').read_bytes())
+    assert read['reference_sha256'] == saved['reference_sha256'] and read['anchor_sha256'] == saved['anchor_sha256']
+    assert read['resources'] == coverage['resources']
+    assert read['quality']['state'] == 'reusable' and read['timing']['state'] == 'historical_only'
+    assert read['candidate_quality'] == 'not_evaluated'
+    assert read['baseline_work_skipped'] is read['independent_pair_supplied'] is read['promotion_approved'] is False
+    comparison = json.loads((consumer_archive / 'comparison-input.json').read_bytes())
+    assert {pair['order'] for pair in comparison['pairs']} == {'AB', 'BA'}
+    source_comparison = json.loads((archive / 'comparison-input.json').read_bytes())
+    source_runs = {pair[arm]['run_id'] for pair in source_comparison['pairs'] for arm in ('baseline', 'candidate')}
+    for pair in comparison['pairs']:
+        for arm in ('baseline', 'candidate'):
+            assert pair[arm]['run_id'] not in source_runs
+            raw = json.loads((consumer_archive / pair[arm]['raw_ref']['path']).read_bytes())
+            assert raw['provenance']['native_request_sha256'] == consumer['native_sha256']
+            assert raw['provenance']['launch_sha256'] == consumer['execution']['record_sha256']['launch']
+    for result in (source, consumer):
+        assert result['execution']['executor_stop_confirmed'] is result['execution']['durable_stop_confirmed'] is True
+        for name in ('supervisor', 'executor'):
+            assert_budget_process_stopped(result['execution']['records']['attempt'][name])
+    # A resource-limit outcome does not excuse corrupt resource-report bytes.
+    resource_path = archive / resource_ref['path']
+    try:
+        resource_path.write_bytes(resource_raw + b'\n')
+        with pytest.raises(ValueError, match='archive_changed'):
+            training.baseline_reference(item['state'], 'demo', source['experiment_id'], evidence_sha256=gate['evidence_sha256'])
+    finally:
+        resource_path.write_bytes(resource_raw)
+    assert training.baseline_reference(item['state'], 'demo', source['experiment_id'],
+                                       evidence_sha256=gate['evidence_sha256']) == saved
+    assert (item['prefix'] / 'baseline.json').read_bytes() == item['baseline_record']
+
+
+def test_source_callbacks_do_not_declare_reference_support(search_input, configuration_source):
+    state, _, runtime, _, request = search_input
+    request['experiment_template']['baseline_reference'] = {
+        'experiment_id': 'alpha', 'evidence_sha256': 'a' * 64, 'reference_sha256': 'b' * 64}
+    with pytest.raises(ValueError, match='[Bb]aseline.reference|[Pp]rotocol'):
+        training_search.preview(state, 'demo', request)
+    assert not configuration_source['markers'].exists()
+    assert not (runtime / 'training/search-preparations').exists()
+
+
+@pytest.mark.parametrize('installation', ['managed'], indirect=True)
+@pytest.mark.parametrize('search_execution', [{'baseline_reference_support': True}], indirect=True)
+def test_reference_receipt_raw_durability_and_cached_windows_fail_in_managed_consumer(search_execution):
+    item = search_execution
+    source = _execute_search(item, limit=1)[0]
+    gate = json.loads((source['job'] / 'gate-report.json').read_bytes())
+    assert gate['passed'] is True, gate
+    saved = training.baseline_reference(item['state'], 'demo', source['experiment_id'],
+                                        evidence_sha256=gate['evidence_sha256'])
+    for ordinal, fault in enumerate(('reference-read-sync', 'reference-read-last-sync-fence',
+                                     'reference-read-last-sync-deadline', 'reference-read-raw-drift',
+                                     'reference-cached-window', 'reference-current-coverage-extension')):
+        request = deepcopy(item['request'])
+        request['search_id'] = 'reference-fault-' + str(ordinal)
+        request['experiment_template']['baseline_reference'] = {
+            'experiment_id': source['experiment_id'], 'evidence_sha256': gate['evidence_sha256'],
+            'reference_sha256': saved['reference_sha256']}
+        request['dimensions'][0]['values'] = [24]
+        request['selection']['max_trials'] = 1
+        preview = training_search.preview(item['state'], 'demo', request)
+        directory = item['tmp_path'] / request['search_id']
+        published = _prepare(item['state'], request, preview, directory)
+        selected = {**item, 'request': request, 'preview': preview, 'prepared': published,
+                    'directory': directory, 'cycle_id': 'fault-' + str(ordinal)}
+        first_work = (item['markers'] / 'first-work.jsonl').read_bytes()
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setenv('ERGORA_TEST_REFERENCE_FAULT', fault)
+            result = _execute_search(selected)[0]
+        job, observed = result['job'], result['execution']
+        expected_state = 'CANCELLED' if fault == 'reference-read-last-sync-fence' else 'FAILED'
+        assert json.loads((job / 'result.json').read_bytes())['state'] == expected_state
+        assert not (job / 'gate-report.json').exists()
+        assert (item['markers'] / (fault.replace('reference-cached-window', 'cached-window') + '.jsonl')).is_file()
+        if fault in ('reference-read-sync', 'reference-read-last-sync-fence', 'reference-read-last-sync-deadline',
+                     'reference-current-coverage-extension'):
+            assert (item['markers'] / 'first-work.jsonl').read_bytes() == first_work
+        elif fault == 'reference-read-raw-drift':
+            mutation = json.loads((item['markers'] / (fault + '.jsonl')).read_text().splitlines()[-1])
+            assert mutation['same_decoded_values'] is True
+            assert mutation['before_sha256'] != mutation['after_sha256']
+        if fault == 'reference-current-coverage-extension':
+            injected = json.loads((item['markers'] / (fault + '.jsonl')).read_text().splitlines()[-1])
+            assert injected['after'] == [*injected['before'], 'training_search.py']
+            assert injected['managed'] == {name + '_sha256': observed['record_sha256'][name]
+                                          for name in ('request', 'launch', 'attempt', 'ack')}
+            assert 'Current execution source coverage is incomplete or unsupported' in (job / 'run-output/execution.log').read_text()
+        assert observed['executor_stop_confirmed'] is observed['durable_stop_confirmed'] is True
+        for name in ('supervisor', 'executor'):
+            assert_budget_process_stopped(observed['records']['attempt'][name])
+    assert training.baseline_reference(item['state'], 'demo', source['experiment_id'],
+                                       evidence_sha256=gate['evidence_sha256']) == saved
     assert (item['prefix'] / 'baseline.json').read_bytes() == item['baseline_record']
 
 
@@ -998,7 +1344,7 @@ def test_prepared_receipt_raw_drift_during_work_never_enters_archive(search_exec
     assert all(observed['records'][name] is not None for name in ('request', 'launch', 'attempt', 'ack', 'stopped'))
     assert len((item['markers'] / 'first-work.jsonl').read_text().splitlines()) == 1
     assert json.loads((job / 'result.json').read_bytes())['state'] == 'FAILED'
-    assert 'Configuration receipt changed during training work' in (job / 'run-output/execution.log').read_text()
+    assert 'Configuration or baseline reference receipt changed during training work' in (job / 'run-output/execution.log').read_text()
     assert not (job / 'gate-report.json').exists()
     assert not (item['prefix'] / 'experiments' / ident / 'accepted-evidence').exists()
     artifacts = json.loads((job / 'run-output/evidence.json').read_bytes())['artifacts']

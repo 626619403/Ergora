@@ -826,7 +826,7 @@ def test_configuration_driver_runs_actual_cpu_work_and_original_managed_archive(
     assert receipt['binding'] == json.loads((job / 'request.json').read_bytes())['experiment']['binding']
     assert receipt['observations']['baseline']['snapshot']['global_batch'] == 12
     assert receipt['observations']['candidate']['snapshot']['global_batch'] in (24, 48)
-    assert receipt['observations']['candidate']['workload']['schedule']['updates'] != receipt['observations']['baseline']['workload']['schedule']['updates']
+    assert receipt['observations']['candidate']['workload']['layout']['batch_groups'] != receipt['observations']['baseline']['workload']['layout']['batch_groups']
     prepared = [json.loads(line) for line in (item['markers'] / 'prepare.jsonl').read_text().splitlines()]
     actual = [json.loads(line) for line in (item['markers'] / 'first-work.jsonl').read_text().splitlines()]
     assert len(prepared) == len(actual) == 1 and prepared[0]['identity'] == actual[0]['identity']

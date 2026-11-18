@@ -120,7 +120,7 @@ def _decode(raw: bytes) -> dict:
             if (set(observed['baseline_files']) != {prefix + 'baseline.json'} or set(files) != expected_names
                     or files[registered] != selected['manifest_sha256'] or files[frozen] != selected['manifest_sha256']):
                 raise ValueError('Training cycle lacks its complete original source SHA inventory')
-            common = {name: manifest[name] for name in _COMMON}
+            common = {name: manifest.get(name) for name in _COMMON}
             if anchor is None:
                 anchor, baseline_files = common, observed['baseline_files']
             elif common != anchor or observed['baseline_files'] != baseline_files:

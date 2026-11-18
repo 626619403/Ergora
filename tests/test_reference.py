@@ -175,8 +175,12 @@ def test_source_capability_pins_complete_current_gate_and_offline_saved_shape(
             item['gate_sources'].pop('reference.py')
         else:
             item['gate_sources']['unexpected.py'] = '0' * 64
-        with pytest.raises(ValueError, match='execution capability'):
-            protocol.owner_record(invalid)
+        assert protocol.owner_record(invalid) == invalid
+        with pytest.raises(ValueError, match='source coverage'):
+            protocol.validate_sources(item)
+        path = tmp_path / ('current-' + changed + '.json')
+        path.write_text(json.dumps(invalid))
+        assert protocol.owner_active(path, invalid) is False
     stale = deepcopy(cap)
     stale['gate_sources']['reference.py'] = '0' * 64
     assert protocol.owner_record({**owner, 'execution_capability': stale})['execution_capability'] == stale

@@ -7,7 +7,7 @@
     "sha256": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
     "configurationReadback": {
       "type": ["object", "null"], "additionalProperties": false,
-      "required": ["protocol", "source", "prepared_json_format", "manifest_configuration_role", "observation_scheme"],
+      "required": ["protocol", "source", "prepared_json_format", "manifest_configuration_role", "observation_scheme", "baseline_reference_protocol"],
       "properties": {
         "protocol": {"const": "training-configuration-driver-v1"},
         "source": {
@@ -22,7 +22,8 @@
         },
         "prepared_json_format": {"enum": [null, "json-v1"]},
         "manifest_configuration_role": {"const": "source-bytes"},
-        "observation_scheme": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$"}
+        "observation_scheme": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$"},
+        "baseline_reference_protocol": {"enum": [null, "baseline-reference-v1"]}
       }
     },
     "commit": {"type": "string", "pattern": "^(?:[a-f0-9]{40}|[a-f0-9]{64})$"},
@@ -173,7 +174,8 @@
                     "allowed_changes": {"type": "array", "minItems": 1},
                     "checks_required": {"type": "array", "minItems": 1, "uniqueItems": true},
                     "quality_required": {"type": "boolean"},
-                    "performance_policy": {"type": "object", "minProperties": 1}
+                    "performance_policy": {"type": "object", "minProperties": 1},
+                    "baseline_reference": {"type": ["object", "null"], "additionalProperties": false, "required": ["experiment_id", "evidence_sha256", "reference_sha256"], "properties": {"experiment_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$"}, "evidence_sha256": {"$ref": "#/$defs/sha256"}, "reference_sha256": {"$ref": "#/$defs/sha256"}}}
                   }
                 },
                 "spec": {

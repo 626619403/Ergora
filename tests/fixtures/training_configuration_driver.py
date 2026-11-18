@@ -5,12 +5,30 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import platform
+import sys
 import time
 import uuid
 
 
+INTEGER_ORACLE_SCHEME = 'fixture-independent-integer-output-v1'
+INTEGER_COVERAGE = {'scope': 'exact integer sum-of-squares outputs for the recorded baseline inputs',
+                    'model_training_quality': 'not_evaluated',
+                    'optimizer': 'not_applicable', 'loss': 'not_applicable', 'schedule': 'not_applicable'}
+
+
 def digest(value):
     return hashlib.sha256(value).hexdigest()
+
+
+def canonical_sha(value):
+    return digest(json.dumps(value, ensure_ascii=False, sort_keys=True,
+                             separators=(',', ':'), allow_nan=False).encode())
+
+
+def artifact(output, name):
+    raw = (Path(output) / name).read_bytes()
+    return {'path': name, 'sha256': digest(raw), 'bytes': len(raw)}
 
 
 def write(path, value):
@@ -37,16 +55,24 @@ def construct(path):
     micro = supplied.get('microbatch', 3)
     if type(batch) is not int or type(micro) is not int or batch < micro or batch % micro:
         raise ValueError('CPU fixture requires a divisible positive batch')
-    return {'global_batch': batch, 'microbatch': micro, 'accumulation': batch // micro,
-            'precision': supplied.get('precision', 'float32'),
-            'strategy': supplied.get('strategy', 'closed-form'),
-            'fault': supplied.get('fault'), 'seed': supplied.get('seed', 1729)}
+    result = {'global_batch': batch, 'microbatch': micro, 'accumulation': batch // micro,
+              'precision': supplied.get('precision', 'float32'),
+              'strategy': supplied.get('strategy', 'closed-form'),
+              'fault': supplied.get('fault'), 'seed': supplied.get('seed', 1729)}
+    if 'resource_limit_bytes' in supplied:
+        limit = supplied['resource_limit_bytes']
+        if type(limit) is not int or limit <= 0:
+            raise ValueError('CPU fixture resource soft limit must be positive bytes')
+        result['resource_limit_bytes'] = limit
+    return result
 
 
 def prepare(request):
     context = {'configurations': {arm: construct(item['path'])
                                 for arm, item in request['configurations'].items()},
                'request': request, 'observations': 0, 'identity': uuid.uuid4().hex}
+    if os.environ.get('ERGORA_TEST_REFERENCE_FAULT'):
+        context['configurations']['candidate']['fault'] = os.environ['ERGORA_TEST_REFERENCE_FAULT']
     marker('prepare', {'pid': os.getpid(), 'identity': context['identity']})
     fault = context['configurations']['candidate']['fault']
     if fault == 'source-drift':
@@ -121,9 +147,12 @@ def describe(context):
                          'window': {'source_samples': 48}, 'global_batch': config['global_batch'],
                          'microbatch': config['microbatch'], 'accumulation': config['accumulation'],
                          'normalization': 'source-sample', 'optimizer': {'kind': 'not-applicable'},
-                         'schedule': {'updates': 48 // config['global_batch']}, 'layout': 'cpu-single-process'},
+                         'schedule': {'kind': 'not-applicable'},
+                         'layout': {'kind': 'cpu-single-process',
+                                    'batch_groups': (48 + config['global_batch'] - 1) // config['global_batch']}},
         }
     marker('describe', {'identity': context['identity'], 'ordinal': context['observations']})
+    context['described'] = deepcopy(result)
     if context['observations'] == 2 and context['configurations']['candidate']['fault'] in (
             'last-source-fence', 'last-source-deadline', 'last-source-request-drift',
             'last-material-fence', 'last-material-deadline'):
@@ -239,6 +268,7 @@ def run(context, request, output):
                           'observations': context['observations']})
     manifest_raw = Path(request['manifest']).read_bytes()
     manifest = json.loads(manifest_raw)
+    reference_enabled = request['configuration_readback']['baseline_reference_protocol'] == 'baseline-reference-v1'
     comparison = {'schema_version': 1, 'experiment_id': manifest['experiment_id'],
                   'comparison_id': 'actual-cpu-readback-fixture', 'manifest_sha256': digest(manifest_raw),
                   'workload_fingerprint': manifest['workload_fingerprint'], 'independent_unit': 'paired_run',
@@ -247,9 +277,16 @@ def run(context, request, output):
     for index in range(manifest['performance_policy']['statistics']['min_pairs']):
         inputs = list(range(3500 + index, 3548 + index))
         expected = oracle(inputs)
+        if reference_enabled:
+            write(output / f'inputs/{index}.json', {'values': inputs})
+            context.setdefault('input_windows', []).append({
+                'fingerprint': digest(json.dumps(inputs).encode()), 'source_samples': len(inputs)})
+            write(output / f'expected/{index}.json', {'values': expected,
+                  'algorithm': 'sum successive odd increments; independent of both execution strategies'})
         order = 'AB' if index % 2 == 0 else 'BA'
         pair = {'pair_id': 'pair-' + str(index), 'order': order}
         for arm in (('baseline', 'candidate') if order == 'AB' else ('candidate', 'baseline')):
+            run_id, window_id = uuid.uuid4().hex, uuid.uuid4().hex
             started = time.perf_counter_ns()
             values, grouping = calculate(context['configurations'][arm], inputs)
             elapsed = (time.perf_counter_ns() - started) / 1e9
@@ -257,10 +294,22 @@ def run(context, request, output):
                 raise ValueError('Independent CPU oracle rejected actual output')
             raw = {'arm': arm, 'values': values, 'grouping': grouping, 'source_samples': len(inputs),
                    'elapsed_seconds': elapsed, 'context_identity': context['identity']}
+            if reference_enabled:
+                raw.update(matched_input_fingerprint=digest(json.dumps(inputs).encode()),
+                    measurement_mode='unprofiled', aggregation='global_completion_window',
+                    provenance={'native_request_sha256': request['native_request_sha256'],
+                                'launch_sha256': request['managed']['launch_sha256'],
+                                'execution_phase_id': request['execution_phase_id'],
+                                'run_id': run_id, 'window_id': window_id})
+                if arm == 'baseline' and context['configurations']['candidate']['fault'] == 'reference-cached-window':
+                    historical = context['reference']['receipt']['measurement'][index]
+                    raw['elapsed_seconds'] = elapsed = historical['elapsed_seconds']
+                    raw['provenance'] = {**historical['provenance'], 'run_id': run_id}
+                    marker('cached-window', {'new_run_id': run_id, 'provenance': raw['provenance']})
             name = f'raw/{index}-{arm}.json'
             write(output / name, raw)
             raw_results.append(name)
-            pair[arm] = {'run_id': uuid.uuid4().hex, 'code_sha': manifest[arm + '_commit'],
+            pair[arm] = {'run_id': run_id, 'code_sha': manifest[arm + '_commit'],
                          'matched_input_fingerprint': digest(json.dumps(inputs).encode()),
                          'environment_fingerprint': manifest['environment_fingerprint'],
                          'initial_checkpoint_sha256': manifest['initial_checkpoint_sha256'],
@@ -269,7 +318,54 @@ def run(context, request, output):
                          'dataset_manifest_sha256': manifest['dataset_manifest_sha256'],
                          'measurement_mode': 'unprofiled', 'aggregation': 'global_completion_window',
                          'elapsed_seconds': elapsed, 'source_samples': len(inputs)}
+            if reference_enabled:
+                pair[arm]['raw_ref'] = artifact(output, name)
         comparison['pairs'].append(pair)
+    if reference_enabled:
+        context['comparison'] = deepcopy(comparison)
+        context['resources'] = []
+        if 'resource_limit_bytes' in context['configurations']['baseline']:
+            import resource
+
+            maximum_kib = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+            metric = {'metric': 'peak_rss', 'unit': 'bytes', 'aggregation': 'peak',
+                      'scope': 'whole_runner_process', 'observed': maximum_kib * 1024,
+                      'limit': context['configurations']['baseline']['resource_limit_bytes']}
+            write(output / 'resource-peak-rss.json', {'metric': metric, 'observation': {
+                'method': 'resource.getrusage(RUSAGE_SELF).ru_maxrss', 'raw_value': maximum_kib,
+                'raw_unit': 'KiB', 'bytes_per_unit': 1024, 'pid': os.getpid(), 'ranks': [0],
+                'window': 'process lifetime through collection after both paired integer arms completed',
+                'native_request_sha256': request['native_request_sha256'],
+                'launch_sha256': request['managed']['launch_sha256'],
+                'execution_phase_id': request['execution_phase_id']}})
+            context['resources'] = [{**metric, 'report_ref': artifact(output, 'resource-peak-rss.json')}]
+        baseline_observation = deepcopy(context['described']['baseline'])
+        baseline_observation['snapshot_sha256'] = canonical_sha(baseline_observation['snapshot'])
+        subject = {'arm': 'baseline', 'commit': manifest['baseline_commit'],
+                   'config_sha256': manifest['base_config_sha256'],
+                   'observation_sha256': canonical_sha(baseline_observation),
+                   'run_ids': [pair['baseline']['run_id'] for pair in comparison['pairs']],
+                   'windows': [json.loads((output / pair['baseline']['raw_ref']['path']).read_bytes())['provenance']
+                               for pair in comparison['pairs']]}
+        context['baseline_oracle'] = {
+            'scheme': INTEGER_ORACLE_SCHEME,
+            'source_entrypoint': request['configuration_readback']['source']['entrypoint'],
+            'validation_contract_sha256': manifest['validation_contract_sha256'],
+            'subject': subject,
+            'coverage': deepcopy(INTEGER_COVERAGE),
+            'status': 'PASS',
+            'input_refs': [artifact(output, f'inputs/{index}.json') for index in range(len(comparison['pairs']))],
+            'expected_refs': [artifact(output, f'expected/{index}.json') for index in range(len(comparison['pairs']))]}
+        # This report is produced only after every actual baseline output equals the independent oracle.
+        write(output / 'baseline-output-oracle.json', {
+            'kind': 'baseline-output-oracle',
+            **{key: context['baseline_oracle'][key] for key in ('scheme', 'subject', 'coverage', 'status',
+                                                               'input_refs', 'expected_refs')},
+            'actual_refs': [pair['baseline']['raw_ref'] for pair in comparison['pairs']]})
+        context['environment'] = {'device': 'CPU', 'python': sys.version, 'implementation': platform.python_implementation(),
+                                  'executable': str(Path(sys.executable).resolve()), 'platform': platform.platform(),
+                                  'ranks': [0], 'layout': 'single-process', 'dependencies': 'Python standard library'}
+        write(output / 'baseline-environment.json', {'environment': context['environment']})
     write(output / 'comparison-input.json', comparison)
     # This is the original comparator; the original native executor alone archives the bundle.
     import compare_runs
@@ -310,3 +406,157 @@ def run(context, request, output):
         (directory / 'receipt-after.raw').write_bytes(after)
         marker('receipt-raw-drift', {'before_sha256': digest(before), 'after_sha256': digest(after),
                                       'same_decoded_values': json.loads(before) == json.loads(after)})
+    if context['configurations']['candidate']['fault'] == 'reference-read-raw-drift':
+        receipt = output / 'baseline-reference-read.json'
+        original = receipt.read_bytes()
+        receipt.write_bytes(original + b'\n')
+        marker('reference-read-raw-drift', {'before_sha256': digest(original),
+               'after_sha256': digest(receipt.read_bytes()),
+               'same_decoded_values': json.loads(original) == json.loads(receipt.read_bytes())})
+
+
+def baseline_reference_record(context, request, output):
+    """Report the already completed integer workload; this callback performs no new work."""
+    manifest = json.loads(Path(request['manifest']).read_bytes())
+    pairs = context['comparison']['pairs']
+    baseline = context['configurations']['baseline']
+    marker('reference-record', {'identity': context['identity'], 'pid': os.getpid()})
+    return {'baseline': {'commit': manifest['baseline_commit'], 'config_sha256': manifest['base_config_sha256'],
+                'invariants': context['described']['baseline']['invariants'],
+                'initialization': {'kind': 'stateless'},
+                'inputs': {'scheme': 'fixed-positive-integers-v1', 'rng': {'kind': 'not-applicable'},
+                           'windows': context['input_windows'],
+                           'refs': context['baseline_oracle']['input_refs'], 'mask': 'none', 'padding': 'none', 'drop': 'none'},
+                'workload': {'global_batch': baseline['global_batch'], 'microbatch': baseline['microbatch'],
+                             'accumulation': baseline['accumulation'], 'source_samples_per_window': 48,
+                             'optimizer': {'kind': 'not-applicable'}, 'loss': {'kind': 'not-applicable'},
+                             'schedule': {'kind': 'not-applicable'},
+                             'layout': {'kind': 'cpu-single-process', 'batch_groups': len(json.loads(
+                                 (Path(output) / pairs[0]['baseline']['raw_ref']['path']).read_bytes())['grouping'])}},
+                'output_refs': [pair['baseline']['raw_ref'] for pair in pairs],
+                'run_ids': [pair['baseline']['run_id'] for pair in pairs]},
+            'oracle': {**context['baseline_oracle'], 'report_ref': artifact(output, 'baseline-output-oracle.json')},
+            'environment': {'observed': context['environment'], 'report_ref': artifact(output, 'baseline-environment.json')},
+            'measurement': [{'pair_id': pair['pair_id'], 'order': pair['order'],
+                'run_id': pair['baseline']['run_id'], 'raw_ref': pair['baseline']['raw_ref'],
+                'provenance': json.loads((Path(output) / pair['baseline']['raw_ref']['path']).read_bytes())['provenance'],
+                'elapsed_seconds': pair['baseline']['elapsed_seconds'], 'source_samples': pair['baseline']['source_samples'],
+                'unit': 'seconds', 'measurement_mode': 'unprofiled', 'aggregation': 'global_completion_window'} for pair in pairs],
+            'resources': deepcopy(context['resources'])}
+
+
+def baseline_reference_read(context, request, reference):
+    """Consume a reference in the same context that subsequently executes both arms."""
+    observations = {}
+    for arm, observed in context['described'].items():
+        observations[arm] = {**observed, 'snapshot_sha256': canonical_sha(observed['snapshot'])}
+    receipt = reference.get('receipt')
+    oracle_record = receipt.get('oracle') if isinstance(receipt, dict) else None
+    current = context['configurations']['candidate']
+    context['reference'] = deepcopy(reference)
+    manifest = json.loads(Path(request['manifest']).read_bytes())
+    baseline = receipt['baseline'] if receipt else {}
+    inputs = baseline.get('inputs', {})
+    expected_windows = [{'fingerprint': digest(json.dumps(list(range(3500 + index, 3548 + index))).encode()),
+                         'source_samples': 48} for index in range(manifest['performance_policy']['statistics']['min_pairs'])]
+    supported = bool(oracle_record and oracle_record['scheme'] == INTEGER_ORACLE_SCHEME
+        and oracle_record['coverage'] == INTEGER_COVERAGE
+        and baseline['commit'] == manifest['baseline_commit']
+        and baseline['config_sha256'] == manifest['base_config_sha256']
+        and baseline['invariants'] == observations['baseline']['invariants'] == observations['candidate']['invariants']
+        and baseline['initialization'] == {'kind': 'stateless'}
+        and inputs.get('scheme') == 'fixed-positive-integers-v1' and inputs.get('windows') == expected_windows
+        and inputs.get('rng') == {'kind': 'not-applicable'}
+        and baseline['workload'].get('source_samples_per_window') == 48)
+    original_layout = baseline.get('workload', {}).get('layout')
+    original_groups = original_layout.get('batch_groups') if isinstance(original_layout, dict) else None
+    current_groups = (48 + current['global_batch'] - 1) // current['global_batch']
+    relations = [
+        {'field': 'input_scheme', 'relation': 'matched' if supported else 'unknown',
+         'reference': inputs.get('scheme'), 'current': 'fixed-positive-integers-v1', 'unit': 'identity'},
+        {'field': 'input_windows', 'relation': 'matched' if supported else 'unknown',
+         'reference': canonical_sha(inputs['windows']) if 'windows' in inputs else None,
+         'current': canonical_sha(expected_windows), 'unit': 'identity'},
+        {'field': 'effective_samples', 'relation': 'matched' if supported else 'unknown',
+         'reference': baseline.get('workload', {}).get('source_samples_per_window'), 'current': 48, 'unit': 'samples'},
+        {'field': 'initialization', 'relation': 'matched' if supported else 'unknown',
+         'reference': baseline.get('initialization', {}).get('kind'), 'current': 'stateless', 'unit': 'identity'},
+        {'field': 'global_batch', 'relation': 'matched' if current['global_batch'] == context['configurations']['baseline']['global_batch'] else 'different',
+         'reference': context['configurations']['baseline']['global_batch'],
+         'current': current['global_batch'], 'unit': 'samples'},
+        {'field': 'microbatch', 'relation': 'matched' if current['microbatch'] == context['configurations']['baseline']['microbatch'] else 'different',
+         'reference': context['configurations']['baseline']['microbatch'],
+         'current': current['microbatch'], 'unit': 'samples'},
+        {'field': 'batch_groups', 'relation': ('matched' if original_groups == current_groups else 'different') if supported else 'unknown',
+         'reference': original_groups, 'current': current_groups, 'unit': 'groups'},
+        # Both execution strategies and the independent oracle use Python's exact unbounded integers.
+        {'field': 'integer_output_environment', 'relation': 'not_applicable',
+         'reference': None, 'current': None, 'unit': 'identity'},
+        {'field': 'optimizer_updates', 'relation': 'not_applicable', 'reference': None, 'current': None, 'unit': 'updates'},
+        {'field': 'schedule_progress', 'relation': 'not_applicable', 'reference': None, 'current': None, 'unit': 'updates'}]
+    marker('reference-read', {'identity': context['identity'], 'pid': os.getpid(),
+                             'candidate_batch': current['global_batch']})
+    if current['fault'] == 'reference-read-sync':
+        original_sync = os.fsync
+        receipt_path = Path(request['output']) / 'baseline-reference-read.json'
+        def fail_read_receipt(descriptor):
+            if Path('/proc/self/fd/' + str(descriptor)).resolve() == receipt_path:
+                marker('reference-read-sync', {'identity': context['identity']})
+                raise OSError('Controlled actual reference read receipt fsync failure')
+            return original_sync(descriptor)
+        os.fsync = fail_read_receipt
+    if current['fault'] in ('reference-read-last-sync-fence', 'reference-read-last-sync-deadline'):
+        original_sync = os.fsync
+        receipt_path = Path(request['output']) / 'baseline-reference-read.json'
+        stopped = False
+        def stop_after_read_sync(descriptor):
+            nonlocal stopped
+            result = original_sync(descriptor)
+            if not stopped and Path('/proc/self/fd/' + str(descriptor)).resolve() == receipt_path:
+                stopped = True
+                if current['fault'].endswith('fence'):
+                    import asyncio
+                    from agent_platform import training
+                    from perf_temporal.models import Job
+                    record = json.loads((Path(request['output']).parent / 'request.json').read_bytes())
+                    asyncio.run(training.create_adapter().cancel_job_group(
+                        Job(training.binding_from(record['experiment']['binding']), record['job_id'])))
+                else:
+                    from datetime import timedelta
+                    from ergora import training_execution_protocol as protocol
+                    clock, policy = request['context']['authorization']['clock'], request['context']['policy']
+                    original_clock, original_datetime = protocol.budget_clock._clock, protocol.budget_clock.datetime
+                    _, ticks = original_clock()
+                    shift = max(0, clock['boottime_ns'] + (policy['wall_seconds'] - policy['cleanup_seconds'] + 1)
+                                * 1_000_000_000 - ticks)
+                    def shifted_clock():
+                        boot, current_ticks = original_clock()
+                        return boot, current_ticks + shift
+                    class ShiftedDateTime(original_datetime):
+                        @classmethod
+                        def now(cls, tz=None):
+                            return original_datetime.now(tz) + timedelta(seconds=shift / 1_000_000_000)
+                    protocol.budget_clock._clock = shifted_clock
+                    protocol.budget_clock.datetime = ShiftedDateTime
+                marker(current['fault'], {'identity': context['identity']})
+            return result
+        os.fsync = stop_after_read_sync
+    if current['fault'] == 'reference-current-coverage-extension':
+        from ergora import training_execution_protocol as protocol
+        name = 'training_search.py'
+        assert name not in protocol.GATE_SOURCES and Path(protocol.__file__).with_name(name).is_file()
+        before = list(protocol.GATE_SOURCES)
+        protocol.GATE_SOURCES = (*protocol.GATE_SOURCES, name)
+        marker(current['fault'], {'identity': context['identity'], 'before': before,
+                                  'after': list(protocol.GATE_SOURCES), 'managed': request['managed']})
+    return {'scheme': 'fixture-integer-reference-projection-v1',
+            'baseline_observation_sha256': canonical_sha(observations['baseline']),
+            'candidate_observation_sha256': canonical_sha(observations['candidate']),
+            'invariants': observations['baseline']['invariants'], 'relations': relations,
+            'allowed_deltas': [item['field'] for item in relations if item['relation'] == 'different'],
+            'oracle_applicability': {'state': 'supported' if supported else 'unavailable',
+                'scheme': INTEGER_ORACLE_SCHEME if supported else None,
+                'coverage': deepcopy(INTEGER_COVERAGE) if supported else {},
+                'reasons': [] if supported else [{'code': 'oracle_relation_unsupported', 'field': 'oracle_applicability',
+                    'expected': INTEGER_ORACLE_SCHEME, 'observed': oracle_record['scheme'] if oracle_record else None,
+                    'source_ref': oracle_record['report_ref'] if oracle_record else None}]}}

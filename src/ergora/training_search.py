@@ -347,9 +347,10 @@ def _check_native(packet, choice):
     _exact(runner, {'schema_version', 'runner_template_id', 'project', 'repo', 'command', 'timeout_seconds', 'configuration_readback'},
            'original runner template')
     capability = runner['configuration_readback']
-    _exact(capability, {'protocol', 'source', 'prepared_json_format', 'manifest_configuration_role', 'observation_scheme'},
+    _exact(capability, {'protocol', 'source', 'prepared_json_format', 'manifest_configuration_role', 'observation_scheme', 'baseline_reference_protocol'},
            'frozen configuration readback')
-    if (capability['protocol'] != 'training-configuration-driver-v1'
+    if (capability['baseline_reference_protocol'] not in (None, 'baseline-reference-v1')
+            or capability['protocol'] != 'training-configuration-driver-v1'
             or capability['manifest_configuration_role'] != 'source-bytes'
             or capability['prepared_json_format'] != 'json-v1'
             or not isinstance(capability['observation_scheme'], str)

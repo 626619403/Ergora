@@ -123,4 +123,4 @@ flowchart LR
 
 出生能力固定完整来源及context；request→launch→attempt→ack→stopped保留在原job的`managed-execution`下，launch永不复用。父owner只交错poll／signal，磁盘／RPC／锁在各自S子树中；实际reap之后发stopped，S此后只直接存储。fence等待不扣住已有执行停止，compute与total分别约束工作和清理结果。
 
-`training.execution`读取分支沿原`_training_reader`，固定随包platform来源与`-S`，先读历史原链，后用另一个有界进程观察当前来源；所选native缺失不能挡住历史。确认durable时仅同步／重读现存原件，不创建记录、不改原bytes或恢复运行。原`training_files`共用该reader传输实现，CLI只解析参数；历史记录按原身份观察，不授予执行能力或重启owner。完整用法见[训练手册](../TRAINING.md#显式受管执行与离线停止观察)。
+`training.execution`读取分支沿原`_training_reader`，固定随包platform来源与`-S`，先读历史原链，后用另一个有界进程观察当前来源；`training.evidence`与`training.baseline_reference`也用同一reader，所选native缺失不能挡住历史。后者与managed configuration wrapper共用现`reference_training_evidence`的完整库存算法，accepted archive绑定校验由普通inspect与固定reference共用；固定路径不消费当前head／runner／ticket等诊断副读。原证据与当前注册guard共享同一有界首次raw／device／inode及末确认，guard-only不进入immutable index／hash；fence缺席以最后lstat确认，不能忽略晚生文件或悬链。保存capability按原结构读取，原manifest／protocol字面声明和descriptor原bytes核历史来源，缺项逐维unavailable。当前效果仍要求完整current source、native安装、live owner和原clock。确认durable时仅同步／重读现存原件，不创建记录、不改原bytes或恢复运行。原`training_files`共用该reader传输实现，CLI只解析参数；历史记录按原身份观察，不授予执行能力或重启owner。完整用法见[训练手册](../TRAINING.md#显式受管执行与离线停止观察)。

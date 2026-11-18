@@ -81,7 +81,8 @@ def configuration_project(registration, configuration_source):
               'repo': definition['repo'], 'command': [str(Path(definition['execution']['installation']) / '.venv/bin/python'),
                    '{configuration_driver}', '{configuration_request}'], 'timeout_seconds': 20,
               'configuration_readback': {'protocol': 'training-configuration-driver-v1', 'source': selected,
-                  'prepared_json_format': None, 'manifest_configuration_role': 'source-bytes',
+                  'prepared_json_format': None, 'baseline_reference_protocol': None,
+                  'manifest_configuration_role': 'source-bytes',
                   'observation_scheme': 'fixture-cpu-configuration-v1'}}
     return {'state': state, 'definition': definition, 'runner': runner, 'markers': configuration_source['markers'],
             'baseline_raw': baseline_raw, 'baseline_commit': baseline_commit,

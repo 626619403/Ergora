@@ -514,7 +514,10 @@ def training_submission(project: dict, home: Path, operation: str, payload: dict
 
 def training_evidence(project: dict, home: Path, payload: dict) -> dict:
     """Read the original archive without the optional SDK, services or release side effects."""
-    return _training_process(project, 'evidence', {'project': project, 'control_home': str(home), **payload}, 20, sdk=False)
+    if project.get('_original_registration') is not None:
+        raise ValueError('Training evidence does not support registration recovery')
+    return _training_reader(project, 'from ergora.reference_training_evidence import main;main()',
+                            {'project': project, 'control_home': str(home), **payload}, timeout=20)
 
 
 def training_release(project: dict, home: Path, operation: str, payload: dict, *, timeout: int) -> dict:
@@ -584,6 +587,7 @@ def _training_records(payload: dict) -> dict:
     from dev_platform import adapter
     from perf_temporal.models import Binding, Experiment
     import perfctl
+    from .training_materials import read_raw
 
     project_id = slug(payload['project'])
     root, config = STATE.resolve(), CONFIG.resolve()
@@ -597,7 +601,7 @@ def _training_records(payload: dict) -> dict:
         path = adapter.safe_file(storage, relative)
         if optional and not path.exists():
             return None
-        raw = adapter.read_raw(path)
+        raw = read_raw(path)
         value = json.loads(raw)
         if not isinstance(value, dict):
             raise ValueError('Training JSON must be an object: ' + relative)

@@ -156,7 +156,7 @@ GATE_SOURCES = (
     'data/schemas/project-registration-v1.json', 'definition_bundles.py', 'contracts.py',
     'asset_trees.py', 'state.py', 'budget_clock.py', 'processes.py', 'reference_creation_process.py',
     '__init__.py', 'data/reference-manifest.json', 'training_configuration.py', 'training_materials.py',
-    'reference_training_setup.py', 'reference_training_preparation.py',
+    'reference_training_setup.py', 'reference_training_preparation.py', 'reference_training_evidence.py',
     'data/native-runtime/training-executor-admission-v3.json',
 )
 
@@ -243,13 +243,13 @@ def validate_round_content(report: dict) -> None:
 ROUND_COMMON = ('baseline_id', 'baseline_commit', 'base_config_sha256', 'workload_fingerprint',
            'dataset_manifest_sha256', 'initial_checkpoint_sha256', 'environment_fingerprint',
            'validation_contract_sha256', 'comparison_tool_sha256', 'checks_required',
-           'quality_required', 'performance_policy')
+           'quality_required', 'performance_policy', 'baseline_reference')
 
 
 def round_selection(plan: dict, authorization: dict) -> dict:
     manifest = plan['admissions'][0]['observation']['experiment']['manifest']
     return {'count': len(plan['admissions']),
-        'common_sha256': CycleAdmission._sha({key: manifest[key] for key in ROUND_COMMON}),
+        'common_sha256': CycleAdmission._sha({key: manifest.get(key) for key in ROUND_COMMON}),
         'measurement_sources_sha256': CycleAdmission._sha(authorization['measurement_sources'])}
 
 
@@ -268,8 +268,8 @@ def round_report_binding(saved, plan, ordinal, previous):
                 or item['native']['records']['experiment']['spec'] != admitted['spec']
                 or item['native']['records']['experiment']['binding'] != admitted['binding']
                 or item['native']['records']['project_revision'] != plan['project']['revision']
-                or {key: admitted['manifest'][key] for key in ROUND_COMMON} != {
-                    key: plan['admissions'][0]['observation']['experiment']['manifest'][key] for key in ROUND_COMMON}
+                or {key: admitted['manifest'].get(key) for key in ROUND_COMMON} != {
+                    key: plan['admissions'][0]['observation']['experiment']['manifest'].get(key) for key in ROUND_COMMON}
                 or item['comparison']['manifest_sha256'] != selected['manifest_sha256']):
             raise ValueError('Round index changed a frozen candidate, manifest or annotation')
     if previous is None:
@@ -1060,15 +1060,83 @@ def _capability(capability: dict) -> None:
     """Check saved identity only; history never requires the current installation."""
     _exact(capability, ('protocol', 'admission_protocol', 'descriptor_sha256', 'installation',
         'native_python', 'cycle_ready_sha256', 'gate_sources'), 'Execution capability')
-    if (capability['protocol'] != PROTOCOL or capability['admission_protocol'] != reference.TRAINING_PROTOCOL
+    if (not all(isinstance(capability[key], str) and 0 < len(capability[key]) <= 128
+                for key in ('protocol', 'admission_protocol'))
             or not isinstance(capability['gate_sources'], dict)
-            or set(capability['gate_sources']) != set(GATE_SOURCES)):
+            or not 0 < len(capability['gate_sources']) <= 256):
         raise ValueError('Unsupported complete execution capability')
+    from .training_materials import relative
+
+    for name in capability['gate_sources']:
+        relative(name)
     for digest in (*capability['gate_sources'].values(), capability['descriptor_sha256'], capability['cycle_ready_sha256']):
         _digest(digest)
     installation = Path(capability['installation'])
     if not installation.is_absolute() or capability['native_python'] != str(installation / '.venv/bin/python'):
         raise ValueError('Execution capability has no exact native interpreter')
+
+
+def _current_capability(capability: dict) -> None:
+    """Current effects require the entire current source and admission contract."""
+    _capability(capability)
+    if (capability['protocol'] != PROTOCOL or capability['admission_protocol'] != reference.TRAINING_PROTOCOL
+            or set(capability['gate_sources']) != set(GATE_SOURCES)):
+        raise ValueError('Current execution source coverage is incomplete or unsupported')
+
+
+def observe_source_manifest(capability: dict, manifest: dict | None, protocol_raw: bytes | None,
+                            descriptor_raw: bytes | None) -> dict:
+    """Verify saved source declarations as data; never execute an archived module."""
+    import ast
+
+    _capability(capability)
+    result = {'state': 'unavailable', 'capability_sha256': CycleAdmission._sha(capability),
+              'declared_gate_sources_sha256': None, 'reasons': []}
+    if manifest is None or protocol_raw is None or descriptor_raw is None:
+        result['reasons'] = ['source_manifest_unavailable']
+        return result
+    _exact(manifest, ('schema_version', 'kind', 'capability_sha256', 'gate_sources',
+                      'protocol_source_ref', 'native_descriptor_ref'), 'Saved execution source manifest')
+    from dev_platform.contracts import canonical_sha
+
+    for key, name, raw in (('protocol_source_ref', 'baseline-reference-protocol-source.py.txt', protocol_raw),
+                           ('native_descriptor_ref', 'baseline-reference-native-descriptor.json', descriptor_raw)):
+        _exact(manifest[key], ('path', 'sha256', 'bytes'), 'Saved source artifact reference')
+        if manifest[key] != {'path': name, 'sha256': hashlib.sha256(raw).hexdigest(), 'bytes': len(raw)}:
+            raise ValueError('Saved source artifact reference differs from its original bytes')
+
+    if (type(manifest['schema_version']) is not int or manifest['schema_version'] != 1
+            or manifest['kind'] != 'training-execution-source-manifest'
+            or manifest['capability_sha256'] != canonical_sha(capability)
+            or manifest['gate_sources'] != capability['gate_sources']
+            or hashlib.sha256(protocol_raw).hexdigest() != capability['gate_sources'].get('training_execution_protocol.py')
+            or hashlib.sha256(descriptor_raw).hexdigest() != capability['descriptor_sha256']):
+        raise ValueError('Saved execution source manifest differs from its original capability')
+    declarations = {}
+    try:
+        for node in ast.parse(protocol_raw).body:
+            if isinstance(node, ast.Assign):
+                for target in node.targets:
+                    if isinstance(target, ast.Name) and target.id in ('PROTOCOL', 'GATE_SOURCES'):
+                        if target.id in declarations:
+                            raise ValueError('Ambiguous saved source declaration')
+                        declarations[target.id] = ast.literal_eval(node.value)
+    except (SyntaxError, ValueError, TypeError, MemoryError, RecursionError):
+        result['reasons'] = ['reader_unsupported']
+        return result
+    names = declarations.get('GATE_SOURCES')
+    if not isinstance(names, (tuple, list)) or not all(isinstance(name, str) for name in names):
+        result['reasons'] = ['reader_unsupported']
+        return result
+    if (declarations.get('PROTOCOL') != capability['protocol'] or len(names) != len(set(names))
+            or set(names) != set(capability['gate_sources'])):
+        raise ValueError('Saved execution source declaration is incomplete or mismatched')
+    descriptor = decode(descriptor_raw)
+    if (descriptor.get('protocol_id') != capability['admission_protocol']
+            or descriptor.get('reference_manifest_sha256') != capability['gate_sources'].get('data/reference-manifest.json')):
+        raise ValueError('Saved native descriptor differs from its original source manifest')
+    return {**result, 'state': 'verified', 'capability_sha256': canonical_sha(capability),
+            'declared_gate_sources_sha256': canonical_sha(manifest['gate_sources'])}
 
 
 def owner_record(value: dict) -> dict:
@@ -1091,6 +1159,8 @@ def owner_active(path: Path, expected: dict) -> bool:
 
     try:
         value = owner_record(decode(read_raw(path)))
+        if value.get('execution_capability') is not None:
+            _current_capability(value['execution_capability'])
         _match(value, expected, 'Original live owner')
         _match(processes.identity(value['pid']), {key: value[key] for key in ('pid', 'start_ticks', 'boot_id')}, 'Live process')
         with os.fdopen(_fd(path.parent / 'lock'), 'rb') as lock:
@@ -1128,7 +1198,7 @@ def source_capability(installation: Path, ready: dict) -> dict:
 
 
 def validate_sources(capability: dict) -> None:
-    _capability(capability)
+    _current_capability(capability)
     for name, expected in capability['gate_sources'].items():
         if hashlib.sha256(read_raw(Path(__file__).parent / name)).hexdigest() != expected:
             raise ValueError('Original execution gate source changed: ' + name)

@@ -129,7 +129,9 @@ def validate_runner(runner: dict) -> None:
     if capability is None:
         return
     _exact(capability, ('protocol', 'source', 'prepared_json_format', 'manifest_configuration_role',
-                        'observation_scheme'), 'Configuration readback')
+                        'observation_scheme', 'baseline_reference_protocol'), 'Configuration readback')
+    if capability['baseline_reference_protocol'] not in (None, 'baseline-reference-v1'):
+        raise ValueError('Unsupported baseline reference protocol')
     if capability['protocol'] != PROTOCOL or capability['manifest_configuration_role'] != 'source-bytes':
         raise ValueError('Unsupported configuration driver protocol or manifest configuration role')
     if (not isinstance(capability['observation_scheme'], str)
@@ -233,6 +235,8 @@ def stage_request(folder, record, checkouts, manifest, context, active):
                'binding': record['experiment']['binding'],
                'native_request_sha256': chain.records['request']['native_request_sha256'],
                'runner_sha256': chain.sha(runner), 'configuration_readback': capability,
+               'baseline_reference': materials.baseline_selector(manifest),
+               'execution_phase_id': chain.records['launch']['execution_phase_id'],
                'configurations': configurations, 'trusted_repo': str(trusted),
                'manifest': str(folder.parent.parent / 'manifests' / (intent['experiment_id'] + '.json')),
                'output': str(folder / 'run-output'), 'context': context,
@@ -281,6 +285,8 @@ def _inputs(request, original_raw):
     from ergora import training_execution_protocol as protocol, training_materials as materials
 
     chain = _chain(request)
+    if request['execution_phase_id'] != chain.records['launch']['execution_phase_id']:
+        raise ValueError('Configuration request differs from its original execution phase')
     runner = chain.native['runner']
     if request['configuration_readback'] != runner['configuration_readback']:
         raise ValueError('Configuration driver capability differs from the original runner')
@@ -299,6 +305,8 @@ def _inputs(request, original_raw):
         raise ValueError('Configuration driver manifest bytes changed')
     manifest = json.loads(manifest_raw)
     descriptor = materials.require_driver(manifest, runner)
+    if request['baseline_reference'] != materials.baseline_selector(manifest):
+        raise ValueError('Baseline reference selection differs from the original manifest')
     raw_materials = materials.read_materials(chain.root, manifest)
     for arm, commit_key, hash_key in (('baseline', 'baseline_sha', 'base_config_sha256'),
                                       ('candidate', 'candidate_sha', 'candidate_config_sha256')):
@@ -322,6 +330,191 @@ def _inputs(request, original_raw):
     return _chain(request), manifest
 
 
+def _publish_receipt(path, value, chain):
+    from ergora import training_execution_protocol as protocol, training_materials as materials
+
+    _bytes(value, LIMIT - 1)
+    raw = chain.adapter.canonical(value) + b'\n'
+    protocol.publish(path, value, chain.root)
+    materials.confirm_file(path, raw, chain.root)
+    return raw
+
+
+def _reference_read(projection, selected, request, request_raw, observations):
+    """The source declares its oracle relation; core keeps quality and timing separate."""
+    from ergora import training_execution_protocol as protocol
+    from ergora.reference_training_evidence import _reason
+
+    projection = protocol.decode(_bytes(projection))
+    _exact(projection, ('scheme', 'baseline_observation_sha256', 'candidate_observation_sha256', 'invariants',
+                        'relations', 'allowed_deltas', 'oracle_applicability'), 'Baseline reference projection')
+    reference = selected['reference']
+    anchor = reference['anchor']
+    chain = _chain(request)
+    manifest = protocol.decode(protocol.read_raw(Path(request['manifest'])))
+    if (anchor['baseline_commit'] != request['binding']['baseline_sha']
+            or anchor['base_config_sha256'] != manifest['base_config_sha256']
+            or anchor['workload_fingerprint'] != manifest['workload_fingerprint']
+            or anchor['baseline_id'] != manifest['baseline_id']):
+        raise ValueError('Baseline reference anchor differs from the current baseline')
+    if (not isinstance(projection['scheme'], str) or not projection['scheme']
+            or projection['baseline_observation_sha256'] != chain.sha(observations['baseline'])
+            or projection['candidate_observation_sha256'] != chain.sha(observations['candidate'])
+            or projection['invariants'] != observations['baseline']['invariants']):
+        raise ValueError('Baseline reference projection differs from the actual configuration observations')
+    relations, deltas = projection['relations'], projection['allowed_deltas']
+    if not isinstance(relations, list) or not isinstance(deltas, list) or not all(isinstance(key, str) for key in deltas):
+        raise ValueError('Baseline reference requires explicit field relations and allowed deltas')
+    fields, different, unsupported_units = set(), set(), []
+    for relation in relations:
+        _exact(relation, ('field', 'relation', 'reference', 'current', 'unit'), 'Baseline reference field relation')
+        if (not isinstance(relation['field'], str) or not relation['field'] or relation['field'] in fields
+                or relation['relation'] not in ('matched', 'different', 'unknown', 'not_applicable')
+                or not isinstance(relation['unit'], str) or not relation['unit']):
+            raise ValueError('Baseline reference has an unsupported field relation')
+        if relation['unit'] not in ('samples', 'tokens', 'updates', 'groups', 'bytes', 'identity', 'not_applicable'):
+            unsupported_units.append(relation['field'])
+        fields.add(relation['field'])
+        if relation['unit'] in ('samples', 'tokens', 'updates', 'groups', 'bytes'):
+            if any(value is not None and (type(value) is not int or value < 0)
+                   for value in (relation['reference'], relation['current'])):
+                raise ValueError('Baseline reference counts must be nonnegative integers in declared units')
+        if relation['relation'] == 'matched' and relation['reference'] != relation['current']:
+            raise ValueError('Baseline reference claims unequal field values match')
+        if relation['relation'] == 'different':
+            different.add(relation['field'])
+    if len(deltas) != len(set(deltas)) or not set(deltas) <= different:
+        raise ValueError('Baseline reference allowed deltas must name actual different fields')
+    applicability = projection['oracle_applicability']
+    _exact(applicability, ('state', 'scheme', 'coverage', 'reasons'), 'Baseline oracle applicability')
+    if applicability['state'] not in ('supported', 'unavailable', 'invalid') or not isinstance(applicability['reasons'], list):
+        raise ValueError('Unsupported baseline oracle applicability')
+    receipt, quality = reference['receipt'], reference['coverage']['quality']
+    if receipt is not None and receipt.get('baseline') and receipt['baseline'].get('invariants') != projection['invariants']:
+        raise ValueError('Baseline reference changes fixed model, precision or objective invariants')
+    if quality.get('state') == 'invalid' or applicability['state'] == 'invalid':
+        raise ValueError('Baseline reference is invalid for this target oracle')
+    reusable = quality['baseline_scope_verified'] and applicability['state'] == 'supported' and not unsupported_units
+    if reusable and (receipt['oracle']['scheme'] != applicability['scheme'] or receipt['oracle']['coverage'] != applicability['coverage']):
+        raise ValueError('Baseline reference applicability does not match its actual baseline oracle scope')
+    reasons = list(quality['reasons'])
+    if unsupported_units:
+        reasons.append(_reason('reader_unsupported', 'projection.relation_units', observed=unsupported_units))
+    if not reusable:
+        reasons.append(_reason('oracle_relation_unsupported', 'projection.oracle_applicability', observed=applicability['state']))
+    return {'schema_version': 1, 'kind': 'baseline-reference-read', 'request_sha256': hashlib.sha256(request_raw).hexdigest(),
+            'binding': request['binding'], 'selector': request['baseline_reference'],
+            'reference_sha256': selected['reference_sha256'], 'anchor_sha256': selected['anchor_sha256'],
+            'inventory_sha256': reference['inventory']['sha256'],
+            'candidate_observation_sha256': chain.sha(observations['candidate']), 'projection': projection,
+            'quality': {'state': 'reusable' if reusable else 'unavailable', 'coverage': applicability['coverage'] if reusable else None,
+                        'reasons': reasons},
+            'timing': reference['coverage']['timing'], 'resources': reference['coverage']['resources'],
+            'candidate_quality': 'not_evaluated', 'baseline_work_skipped': False,
+            'independent_pair_supplied': False, 'promotion_approved': False}
+
+
+def _record_reference(driver, context, request, output, observations, configuration_raw, request_raw, manifest):
+    """Collect already executed source facts under the original full job and clock."""
+    from ergora import training_execution_protocol as protocol, training_materials as materials
+    from ergora.reference_training_evidence import _receipt_coverage, _measurement, _resource_coverage
+
+    chain, _ = _inputs(request, request_raw)
+    evidence_path = output / 'evidence.json'
+    evidence_raw = protocol.read_raw(evidence_path)
+    evidence = protocol.decode(evidence_raw)
+    originals, artifacts = {}, {}
+    for item in evidence['artifacts']:
+        _exact(item, ('path', 'sha256'), 'Full evidence artifact')
+        path = output / materials.relative(item['path'])
+        original = materials.read_raw(path, 16 * LIMIT)
+        if item['path'] in artifacts or hashlib.sha256(original).hexdigest() != item['sha256']:
+            raise ValueError('Full evidence has duplicate or changed original artifacts')
+        originals[path] = original
+        artifacts[item['path']] = {**item, 'bytes': len(original)}
+    data = protocol.decode(_bytes(driver['baseline_reference_record'](context, request, output)))
+    _exact(data, ('baseline', 'oracle', 'environment', 'measurement', 'resources'), 'Source baseline record')
+    if protocol.read_raw(evidence_path) != evidence_raw:
+        raise ValueError('Baseline collection changed original unfinished evidence bytes')
+    for path, original in originals.items():
+        if materials.read_raw(path, 16 * LIMIT) != original:
+            raise ValueError('Baseline collection changed original raw work or reports')
+    # Core owns the complete source and execution provenance. These are data
+    # artifacts, never an alternate runnable source tree or a live admission.
+    capability = chain.owner['execution_capability']
+    source_originals = {
+        'baseline-reference-source-inventory.raw': _git(Path(request['trusted_repo']), 'ls-tree', '-r', '-z', '--full-tree', request['configuration_readback']['source']['commit']),
+        'baseline-reference-protocol-source.py.txt': protocol.read_raw(Path(protocol.__file__)),
+        'baseline-reference-native-descriptor.json': protocol.read_raw(Path(capability['installation']) / 'ergora-native-runtime.json')}
+    descriptor = materials.input_descriptor(manifest)
+    configuration_refs = {}
+    for arm in ('baseline', 'candidate'):
+        original = materials.read_raw(Path(request['configurations'][arm]['path']), 10 * LIMIT)
+        if hashlib.sha256(original).hexdigest() != request['configurations'][arm]['source_sha256']:
+            raise ValueError('Baseline source configuration bytes changed after actual work')
+        name = ('baseline-reference-configuration-inputs/' + arm + '.raw' if descriptor['kind'] == 'git-source'
+                else 'configuration-inputs/' + arm + '.json')
+        if descriptor['kind'] == 'git-source':
+            source_originals[name] = original
+        configuration_refs[arm] = {'path': name, 'sha256': hashlib.sha256(original).hexdigest(), 'bytes': len(original)}
+    if isinstance(data['baseline'], dict):
+        existing = data['baseline'].get('configuration_ref')
+        if existing is not None and existing != configuration_refs['baseline']:
+            raise ValueError('Source baseline configuration reference differs from actual core raw input')
+        data['baseline']['configuration_ref'] = configuration_refs['baseline']
+    if (hashlib.sha256(source_originals['baseline-reference-source-inventory.raw']).hexdigest() != request['configuration_readback']['source']['inventory_sha256']
+            or hashlib.sha256(source_originals['baseline-reference-protocol-source.py.txt']).hexdigest() != capability['gate_sources']['training_execution_protocol.py']
+            or hashlib.sha256(source_originals['baseline-reference-native-descriptor.json']).hexdigest() != capability['descriptor_sha256']):
+        raise ValueError('Baseline source bytes differ from the actual current admitted execution')
+    result = {}
+    for name, original in source_originals.items():
+        path = output / name
+        materials.publish_material(path, original, chain.root)
+        result[path] = original
+        artifacts[name] = {'path': name, 'sha256': hashlib.sha256(original).hexdigest(), 'bytes': len(original)}
+    for ref in configuration_refs.values():
+        if ref['path'] in artifacts and artifacts[ref['path']] != ref:
+            raise ValueError('Full evidence raw configuration differs from its original input')
+        artifacts[ref['path']] = ref
+    source_manifest = {'schema_version': 1, 'kind': 'training-execution-source-manifest',
+        'capability_sha256': chain.sha(capability), 'gate_sources': capability['gate_sources'],
+        'protocol_source_ref': artifacts['baseline-reference-protocol-source.py.txt'],
+        'native_descriptor_ref': artifacts['baseline-reference-native-descriptor.json']}
+    path = output / 'baseline-reference-execution-sources.json'
+    result[path] = _publish_receipt(path, source_manifest, chain)
+    path = output / 'configuration-receipt.json'
+    artifacts[path.name] = {'path': path.name, 'sha256': hashlib.sha256(configuration_raw).hexdigest(), 'bytes': len(configuration_raw)}
+    receipt = {'schema_version': 1, 'kind': 'baseline-reference-receipt', 'binding': request['binding'],
+        'native_request_sha256': request['native_request_sha256'], 'runner_sha256': request['runner_sha256'],
+        'managed': request['managed'], 'configuration_receipt_sha256': artifacts['configuration-receipt.json']['sha256'],
+        'source': request['configuration_readback']['source'],
+        'baseline_observation_sha256': chain.sha(observations['baseline']), **data}
+
+    def artifact(ref):
+        if artifacts.get(ref.get('path')) != ref:
+            raise ValueError('Baseline receipt references an unindexed current artifact')
+        path = output / ref['path']
+        original = materials.read_raw(path)
+        if hashlib.sha256(original).hexdigest() != ref['sha256'] or len(original) != ref['bytes']:
+            raise ValueError('Baseline receipt raw report bytes changed')
+        return protocol.decode(original)
+
+    chain.originals[chain.folder.parent / 'configuration-request.json'] = request_raw
+    _receipt_coverage(receipt, protocol.decode(configuration_raw), request, manifest, request['binding'], artifacts, artifact, chain)
+    _measurement(receipt, evidence, manifest, artifacts, artifact, chain)
+    _resource_coverage(receipt['resources'], artifacts, artifact)
+    path = output / 'baseline-reference-receipt.json'
+    result[path] = _publish_receipt(path, receipt, chain)
+    _inputs(request, request_raw)
+    # Preserve the complete source evidence and all original work across the
+    # callback and all source I/O, not just their decoded JSON values.
+    for path, original in {**originals, **result, evidence_path: evidence_raw}.items():
+        if materials.read_raw(path, 16 * LIMIT) != original:
+            raise ValueError('Baseline source collection changed exact original bytes')
+    _inputs(request, request_raw)
+    return result
+
+
 def main(request_path):
     """Construct, observe, freeze and run the same source-owned configuration objects."""
     from ergora import training_execution_protocol as protocol, training_materials as materials
@@ -329,7 +522,7 @@ def main(request_path):
     raw = protocol.read_raw(Path(request_path), 16 * LIMIT)
     request = protocol.decode(raw)
     _exact(request, ('schema_version', 'kind', 'binding', 'native_request_sha256', 'runner_sha256',
-                     'configuration_readback', 'configurations', 'trusted_repo', 'manifest', 'output', 'context', 'managed'),
+                     'configuration_readback', 'baseline_reference', 'execution_phase_id', 'configurations', 'trusted_repo', 'manifest', 'output', 'context', 'managed'),
            'Configuration driver request')
     if type(request['schema_version']) is not int or request['schema_version'] != 1 or request['kind'] != 'training-configuration-driver-request':
         raise ValueError('Unsupported configuration driver request')
@@ -363,6 +556,11 @@ def main(request_path):
     for operation in ('prepare', 'describe', 'run'):
         if not callable(driver.get(operation)):
             raise ValueError('Configuration driver does not support ' + operation)
+    supports_reference = request['configuration_readback']['baseline_reference_protocol'] == 'baseline-reference-v1'
+    if supports_reference:
+        for operation in ('baseline_reference_read', 'baseline_reference_record'):
+            if not callable(driver.get(operation)):
+                raise ValueError('Configuration driver does not support ' + operation)
     _inputs(request, raw)
     context = driver['prepare'](request)
     observations = _observations(driver['describe'](context), request)
@@ -378,15 +576,42 @@ def main(request_path):
     receipt_raw = chain.adapter.canonical(receipt) + b'\n'
     protocol.publish(receipt_path, receipt, chain.root)
     materials.confirm_file(receipt_path, receipt_raw, chain.root)
+    frozen = {receipt_path: receipt_raw}
+    if request['baseline_reference'] is not None:
+        from ergora.reference_training_evidence import _baseline_reference
+        from ergora.reference_training_context import _TrainingProject
+
+        project = _TrainingProject({'project': request['context']['project'], 'control_home': request['context']['intent']['control_home']})
+        selected = _baseline_reference(project, request['context']['intent']['control_home'], request['baseline_reference'])
+        if selected['reference_sha256'] != request['baseline_reference']['reference_sha256']:
+            raise ValueError('Baseline reference content differs from the frozen selector')
+        reference = selected['reference']
+        before_reference = _bytes(reference, 8 * LIMIT)
+        projection = driver['baseline_reference_read'](context, request, reference)
+        if _bytes(reference, 8 * LIMIT) != before_reference:
+            raise ValueError('Baseline reference changed during its source-owned read callback')
+        read = _reference_read(projection, selected, request, raw, observations)
+        read_path = output / 'baseline-reference-read.json'
+        frozen[read_path] = _publish_receipt(read_path, read, chain)
+        # Re-read the same full immutable inventory after the callback and the
+        # durable receipt; then the existing last admission follows all I/O.
+        again = _baseline_reference(project, request['context']['intent']['control_home'], request['baseline_reference'])
+        if _bytes(again['reference'], 8 * LIMIT) != before_reference:
+            raise ValueError('Baseline reference changed before current full work')
     if _bytes(_observations(driver['describe'](context), request)) != _bytes(observations):
         raise ValueError('Configuration changed after observation and before training work')
     _inputs(request, raw)
     driver['run'](context, request, output)
+    _inputs(request, raw)
+    if supports_reference:
+        frozen.update(_record_reference(driver, context, request, output, observations, receipt_raw, raw, manifest))
     # Preserve the readback as an ordinary hashed artifact in the original full
     # evidence bundle. The original archive and quality gate remain its owners.
-    if protocol.read_raw(receipt_path) != receipt_raw:
-        raise ValueError('Configuration receipt changed during training work')
-    artifacts = [{'path': 'configuration-receipt.json', 'sha256': hashlib.sha256(receipt_raw).hexdigest()}]
+    artifacts = []
+    for path, original in frozen.items():
+        if protocol.read_raw(path, 16 * LIMIT) != original:
+            raise ValueError('Configuration or baseline reference receipt changed during training work')
+        artifacts.append({'path': path.relative_to(output).as_posix(), 'sha256': hashlib.sha256(original).hexdigest()})
     for arm, original in materials.read_materials(chain.root, manifest).items():
         path = Path(request['configurations'][arm]['path'])
         if materials.read_raw(path) != original:
@@ -403,6 +628,7 @@ def main(request_path):
                 evidence['artifacts'].append(artifact)
         # This is the runner-owned unfinished output, not an immutable archive.
         evidence_path.write_bytes(_bytes(evidence, LIMIT - 1) + b'\n')
+    _inputs(request, raw)
 
 
 if __name__ == '__main__':
